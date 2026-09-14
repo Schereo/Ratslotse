@@ -66,10 +66,31 @@ def test_native_app_config_contract(client):
 
     `features` ist seit 09/2026 dabei und ohne gesetzte `FEATURE_FLAGS` leer —
     die ausgelieferte App kennt das Feld nicht und darf es auch nicht müssen.
+    Dasselbe gilt für `election`: Es kam später dazu und ist Zugabe, kein
+    Vertrag. Deshalb prüft dieser Test die drei Felder EINZELN statt die
+    ganze Antwort gegen ein Literal — sonst macht jedes neue Feld ihn rot,
+    obwohl genau das erlaubt ist.
     """
     response = client.get("/api/app-config")
     assert response.status_code == 200
-    assert response.json() == {"min_build": 0, "note": None, "features": []}
+    daten = response.json()
+    assert daten["min_build"] == 0
+    assert daten["note"] is None
+    assert daten["features"] == []
+
+
+def test_app_config_nennt_die_wahl_im_fokus(client):
+    """Startseite und Heute-Karte zeigen einen Countdown, ohne den ganzen
+    Wahlabend zu laden — dafür steht die Wahl hier.
+
+    ``null`` ist ausdrücklich erlaubt (keine Wahl mehr, oder Registry nicht
+    lesbar): Ohne diese Antwort startet die native App gar nicht, und eine
+    kaputte Registry darf das nicht auslösen."""
+    wahl = client.get("/api/app-config").json().get("election")
+    assert wahl is not None
+    assert set(wahl) == {"slug", "short_title", "date", "polls_close", "kind", "path"}
+    assert wahl["kind"] in ("council", "mayor")
+    assert wahl["path"].startswith("/wahlabend")
 
 
 def test_app_config_meldet_eingeschaltete_features(client, monkeypatch):
@@ -541,6 +562,7 @@ def test_admin_jobs_listet_registry_auch_ohne_laeufe(client):
         "archive_statistik",  # sichert die Statistik-Quellen versioniert, täglich
         "check_cities",  # Ratsdokumente der Vergleichsstädte, sonntags 3 Uhr
         "check_herzschlag",  # meldet Jobs, die nicht mehr laufen, täglich 6:30
+        "check_wahltermine",  # Terminkalender der Stadt gegen kommunalwahl/wahlen/, täglich 6:15
     }
     job = next(j for j in b if j["key"] == "check_council")
     assert job["state"] == "unknown" and job["last"] is None and job["history"] == []
@@ -1724,6 +1746,54 @@ def _seed_datierte_beschluesse(tage: list[str]) -> list[int]:
             "SELECT id FROM council_decisions WHERE ksinr = ?", (ksinr,)).fetchone()[0])
     cs.close()
     return ids
+
+
+def test_heute_widget_zaehlt_und_liest_eindeutige_ungelesene_beschluesse(client):
+    owner_id = _register(client).json()["id"]
+    ids = _seed_datierte_beschluesse(["2026-09-10", "2026-09-09", "2026-08-01"])
+    st = Store(RATSLOTSE_DB)
+    rad = st.add_topic(owner_id, "Radwege", "Radwege")
+    schule = st.add_topic(owner_id, "Schulwege", "Schulwege")
+    fremd = st.add_topic(owner_id + 1, "Fremdes Thema", "Fremdes Thema")
+    st.save_topic_decision_matches(rad.id, owner_id, [(d, 0.8) for d in ids])
+    # Der ältere ungelesene Treffer passt zu zwei Themen. Der verwaiste
+    # Match ohne Ratsbeschluss darf die Zahl im Widget nicht erhöhen.
+    st.save_topic_decision_matches(schule.id, owner_id, [(ids[-1], 0.9), (987654, 0.8)])
+    st.save_topic_decision_matches(fremd.id, owner_id + 1, [(ids[-1], 0.8)])
+    st.mark_topic_hit_seen(owner_id, rad.id, ids[0])
+    st.mark_topic_hit_seen(owner_id, rad.id, ids[1])
+
+    # Bestehende Apps erhalten weiter die jüngsten, auch gelesenen Treffer.
+    vorher = client.get("/api/topics/latest-hits?limit=1").json()
+    assert vorher["hits"][0]["id"] == ids[0]
+    widget = client.get("/api/topics/latest-hits?limit=1&unread_only=true").json()
+    assert [h["id"] for h in widget["hits"]] == [ids[-1]]
+    assert widget["hits"][0]["is_new"] is True
+    assert widget["topic_count"] == 2
+    assert widget["total"] == 3
+    assert widget["unread_decisions"] == 1
+    assert widget["unread_total"] == 3  # alter Zähler bleibt kompatibel
+
+    url = f"/api/topics/decisions/{ids[-1]}/seen"
+    response = client.post(url)
+    assert response.status_code == 200
+    assert response.json() == {"marked": 2}
+    assert client.post(url).json() == {"marked": 0}
+    assert client.post("/api/topics/decisions/123456/seen").json() == {"marked": 0}
+    assert st.unseen_hit_ids(owner_id + 1) == {fremd.id: {ids[-1]}}
+    nachher = client.get("/api/topics/latest-hits?unread_only=true").json()
+    assert nachher["hits"] == []
+    assert nachher["unread_decisions"] == 0
+    assert nachher["total"] == 3
+    st.close()
+
+
+def test_heute_widget_ohne_themen_und_ohne_anmeldung(client):
+    assert client.get("/api/topics/latest-hits?unread_only=true").status_code == 401
+    assert client.post("/api/topics/decisions/1/seen").status_code == 401
+    _register(client)
+    data = client.get("/api/topics/latest-hits?unread_only=true").json()
+    assert data == {"hits": [], "topic_count": 0, "total": 0, "unread_total": 0, "unread_decisions": 0}
 
 
 def test_sechs_monats_fenster_rechnet_kalendarisch():

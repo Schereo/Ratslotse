@@ -16,6 +16,7 @@ Fassung im Schlüssel und wird gegen ein Golden Set gemessen
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass
 from typing import ClassVar, Literal
 
@@ -103,6 +104,41 @@ class IdeaStance(BaseModel):
     reason: str = Field(default="", max_length=200)
 
 
+#: Anrede oder Funktion, dahinter ein Name. Der Name fällt weg, die Funktion
+#: bleibt. Bewusst großzügig: Ein zu viel entfernter Nachname kostet nichts,
+#: ein stehengebliebener bricht eine Zusage.
+_FUNKTIONEN = ("Stadtrat", "Stadträtin", "Ratsherr", "Ratsfrau", "Ratsmitglied",
+               "Oberbürgermeister", "Oberbürgermeisterin", "Bürgermeister",
+               "Bürgermeisterin", "Bezirksbürgermeister", "Ausschussvorsitzender",
+               "Ausschussvorsitzende", "Ratsvorsitzender", "Ratsvorsitzende",
+               "Beigeordneter", "Beigeordnete", "Dezernent", "Dezernentin",
+               "Erster Stadtrat", "Ortsvorsteherin", "Ortsvorsteher",
+               # Die riskanteste Gruppe steht zuerst im Sinn, nicht zuletzt:
+               # Ratsmitglieder dürften genannt werden, diese nicht.
+               "Sachkundiger Einwohner", "Sachkundige Einwohnerin",
+               "Sachkundiger Bürger", "Sachkundige Bürgerin",
+               "Bürgermitglied", "Einwohnerin", "Einwohner", "Gast",
+               "Bezirksbürgermeisterin", "Ortsbürgermeister", "Ortsbürgermeisterin",
+               "Fachbereichsleiter", "Fachbereichsleiterin", "Amtsleiter",
+               "Amtsleiterin", "Protokollführer", "Protokollführerin")
+_NAMEN_RE = re.compile(
+    r"\b(?:(" + "|".join(sorted(_FUNKTIONEN, key=len, reverse=True)) + r")|Herr|Frau)"
+    r"\s+(?:Dr\.\s+|Prof\.\s+)*"
+    r"[A-ZÄÖÜ][a-zäöüß]+(?:-[A-ZÄÖÜ][a-zäöüß]+)?"
+    r"(?:\s+[A-ZÄÖÜ][a-zäöüß]+(?:-[A-ZÄÖÜ][a-zäöüß]+)?)?")
+
+
+def _ohne_name(m: re.Match) -> str:
+    """``Frau Schiller`` -> ``Frau N.``, ``Stadtrat Rohne`` -> ``Stadtrat N.``
+
+    Anrede und Funktion bleiben stehen, der Name fällt weg. Das ist der
+    einzige Ersatz, der die Grammatik heil lässt: „von Frau N." liest sich,
+    „von eine Person" nicht — und ein Satz, den niemand lesen mag, ist auf
+    einer Vergleichskarte nichts wert.
+    """
+    return f"{m.group(1) or m.group(0).split()[0]} N."
+
+
 class OutcomeReason(BaseModel):
     """Was in der Niederschrift zu diesem Tagesordnungspunkt steht.
 
@@ -157,6 +193,30 @@ class OutcomeReason(BaseModel):
     def _vote_kuerzen(cls, v) -> str | None:
         text = " ".join(str(v or "").split())
         return text[:cls.GRENZEN["vote"]] or None
+
+    @field_validator("discussed", "decided", "why")
+    @classmethod
+    def _ohne_namen(cls, v: str) -> str:
+        """Personennamen aus der Ausgabe nehmen — im CODE, nicht im Prompt.
+
+        Der Prompt verlangt Fraktionen und Rollen statt Namen, und das Modell
+        hält sich meistens daran. **Meistens reicht nicht:** Gemessen am
+        10.09.2026 standen in 2 von 36 Antworten trotzdem Namen („Frau
+        Schiller", „Frau Tabea"). Eine Zusage, die bei null liegen soll, darf
+        nicht an einer Bitte hängen — dieselbe Bauweise wie bei ``fit``, das
+        erfundene Beleg-Kennungen nicht erbittet, sondern verwirft.
+
+        Anrede und Funktion bleiben stehen, der Name fällt weg: „Stadtrat
+        Rohne fragt" wird „Stadtrat N. fragt". Für die Karte zählt das
+        Argument, nicht wer es vorgetragen hat.
+
+        **Strenger als die Projektregel, und mit Absicht.** Ratsmitglieder
+        dürften genannt werden — private Personen nicht. Nur steht in einem
+        Protokoll beides nebeneinander („Sachkundiger Einwohner Fassl
+        erkundigt sich …"), und weder ein Modell noch eine Regel unterscheidet
+        das verlässlich. Also fällt jeder Name weg.
+        """
+        return _NAMEN_RE.sub(_ohne_name, v)
 
 
 class IdeaEffort(BaseModel):
@@ -379,6 +439,18 @@ class Annotator:
     #: sich an einem Bebauungsplan gar nicht stellen. Spart hier drei Viertel
     #: der Kosten: 1.511 übertragbare von 24.591 Papieren.
     only_usable: bool = False
+    #: Wer diesen Annotator fährt, wenn nicht die übliche Schleife
+    #: (``annotate.run``). ``stance`` braucht das LABEL SEINER GRUPPE als
+    #: Bezugspunkt; das kennt nur ``clusters.stance_all``, und der generische
+    #: Weg rendert den Prompt deshalb gar nicht erst zu Ende.
+    #:
+    #: **Ohne diese Angabe lief er zweimal**, einmal richtig und einmal ins
+    #: Leere: Am 13.09.2026 meldete der Bestandslauf 9.289 „Fehler" ohne einen
+    #: einzigen Modellaufruf — jede Vorlage ein `KeyError: 'gruppe'`. Es kostete
+    #: nichts und tat nichts, aber eine Fehlerzahl, die nichts bedeutet, ist
+    #: schlimmer als keine: Der Wochen-Cron zählt sie in `job_runs`, und die
+    #: nächste Person sucht einen Fehler, den es nicht gibt.
+    own_stage: str = ""
     #: Woran man erkennt, dass die Fassung reif ist — wie ``fertig_wenn`` bei
     #: den Feature-Schaltern.
     gut_wenn: str = ""
@@ -474,7 +546,7 @@ ANNOTATORS: dict[str, Annotator] = {
         batch_size=1, input_chars=1200, max_tokens=4000,
         # Nur Vorlagen in einer Gruppe: Ohne gemeinsame Sache gibt es keine
         # Richtung, auf die sich das Urteil beziehen könnte.
-        only_usable=True, needs_index=True,
+        only_usable=True, needs_index=True, own_stage="cluster",
         gut_wenn="eval/run_cities_stance.py gegen 40 Handfälle aus Gruppen mit "
                  "drei oder mehr Städten. Schranke 85 % — höher als bei "
                  "`transfer`, weil die Kanten schärfer sind: Eine Vorlage will "
@@ -514,7 +586,16 @@ ANNOTATORS: dict[str, Annotator] = {
         # Was fehlt: 40 Abschnitte, ganz gelesen, `has_reason` und `vote` von
         # Hand gesetzt. `eval/build_cities_reason_cases.py` zieht die
         # Stichprobe; das Urteil muss ein Mensch fällen.
-        active=False,
+        # AN seit 13.09.2026. Der Prüfstand hält über drei Läufe alle drei
+        # Schranken: 0 erfundene Begründungen, 93 % Abstimmungsergebnis
+        # (Schwelle 90), 0 Personennamen. Zwei Irrtümer steckten vorher im
+        # MASSSTAB, nicht im Modell: Jede Ausnahme zählte als Erfindung, und
+        # `vote` wurde als Zeichenkette verglichen („mit 6 Ja-, 34
+        # Neinstimmen" gegen „6 Ja, 34 Nein" galt als Fehler). Dazu die
+        # Streuung: dieselbe Einstellung lieferte in Einzelläufen 80/87/79 %,
+        # bei 15 Abstimmungen sind das je sieben Punkte — deshalb mittelt der
+        # Prüfstand jetzt über drei Läufe.
+        active=True,
         gut_wenn="eval/run_cities_reason.py gegen Handfälle aus echten "
                  "Niederschriften. Drei Schranken, und die erste ist eine "
                  "harte Zusage bei NULL: `grounded=true`, wo im Abschnitt gar "
@@ -545,9 +626,16 @@ ANNOTATORS: dict[str, Annotator] = {
 }
 
 
-def active_annotators(object_kind: str | None = None) -> list[Annotator]:
+def active_annotators(object_kind: str | None = None,
+                      own_stage: str = "") -> list[Annotator]:
+    """Die aktiven Annotatoren — ohne die, die eine eigene Stufe fährt.
+
+    ``own_stage=""`` (die Vorgabe) liefert genau die, die die übliche
+    Schleife fahren darf. Wer die Annotatoren EINER Stufe will, nennt sie.
+    """
     return [a for a in ANNOTATORS.values()
-            if a.active and (object_kind is None or object_kind in a.applies_to)]
+            if a.active and a.own_stage == own_stage
+            and (object_kind is None or object_kind in a.applies_to)]
 
 
 def get(key: str) -> Annotator:

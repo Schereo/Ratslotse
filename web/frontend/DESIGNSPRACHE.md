@@ -395,6 +395,24 @@ iOS-Schrift.
 
 ## 6. Interaktions-Grammatik
 
+### Kopf einer einzelnen Sitzung
+
+Der Sitzungskopf bildet eine gemeinsame Karte: leiser Kicker „Sitzung“ und
+Anzahl der Tagesordnungspunkte, darunter der Kurzname als einzige Hauptüberschrift.
+Der amtliche Name steht bei Abweichung separat in Inter 13, ohne Abschneiden
+und ohne die fette Titelschrift zu erben. Eine abgesetzte Informationszeile
+ordnet „Termin“ und „Ort“ mit kleinen Icons; das Datum erscheint einmal vollständig,
+die Uhrzeit darunter. Adressen bleiben vollständig lesbar. Fehlende Angaben
+werden benannt. Breite und Schriftgröße bestimmen, ob die zwei Angaben neben-
+oder untereinander stehen.
+
+Kalender, Merken und Teilen stehen gleichwertig in einer abgetrennten
+Aktionsleiste; der externe Ratsinfo-Link folgt am Ende. Alle Aktionen haben
+mindestens 44 px Bedienhöhe. Mobil passen zwei in eine Zeile, bei großer Schrift
+eine. Die Rücknavigation liegt oberhalb der Karte.
+
+### Allgemeine Aktionen
+
 - Primäraktion = gefüllter primary-Button (Radius 10–11, h 32–38); Sekundär =
   weißer Ghost mit Rahmen; destruktiv = #b91c1c gefüllt nur im Bestätigungsdialog.
 - Vorschlags-Chips (antippbare Fragen): primary-Rahmen /30 + bg /4 (auf Tonfläche
@@ -498,3 +516,79 @@ die Technik-Doku und bleibt dort auch bestehen; auf die Seite gehören die
 Hinweis, wenn eine Zahl **unsere Rechnung** ist, und die **Grenzen** dessen,
 was sie hergibt. Das ist der Unterschied zwischen quellen-ehrlich (§ 1) und
 selbstbezogen.
+
+### Widgets auf „Heute“
+
+Die Seite setzt eigenständige Bausteine zusammen: Web `HeuteWidget`, iOS
+`RatsWidget` geben Kopf, Inhalt und optionalen Abschluss vor. Die Überschrift
+darf umbrechen. Daten, Lade- und Fehlerzustände sowie Aktionen gehören in den
+jeweiligen Baustein; die Seite bestimmt Platz und Reihenfolge. Stabile Kennungen
+(etwa `seit-besuch`) bereiten eine spätere persönliche Auswahl vor. Eine
+Auswahl oder Sortierung der Widgets gibt es derzeit noch nicht.
+
+Alle sechs Web-Widgets verwenden `HeuteWidget`: Rückblick, Woche, Zahl,
+Viertel, Verlauf und Fundstück. Der Kopf hat links ein Lucide-Icon (20 px),
+daneben Bricolage 16/700, darunter eine durchgezogene Trennlinie. Kopf und
+Inhalt haben 16 px seitlichen und 12 px vertikalen Abstand; der optionale
+Abschluss hat 16 × 8 px. Zwischen Karten liegen 16 px. Keine eigenen
+Kartenfarben, Kopf-Polsterungen oder rechts stehenden Ersatz-Icons; Farbe
+hebt einzelne Informationen hervor, etwa die Kennzahl. Inhalt folgt den
+Leserollen: Titel 16, Hinweis 14, Metadaten 13 — als rem.
+
+`HeuteWidgetGrid` bietet ab ausreichender Rasterbreite zwei Spalten.
+`size="normal"` belegt eine, `size="wide"` beide. Die Größen sind zunächst
+Vorgaben im Seitenlayout; es gibt noch keine persönliche Größenauswahl.
+Die Karte misst ihre **eigene Inhaltsbreite**, relativ zur Schriftgröße:
+unter 28 rem `compact`, ab 28 rem `standard`, ab 56,25 rem `expanded`.
+`useWidgetDetail()` bzw. die Render-Funktion des Inhalts liefert diese Stufe.
+Eine breite Vorgabe auf dem Telefon bleibt kompakt. Kein fester Höhenrahmen,
+der große Schrift abschneidet.
+
+Größe verändert den Inhalt: Die Woche zeigt ein/zwei/drei Punkte je Sitzung
+und breit zusätzliche Erläuterungen; weitere Punkte bleiben aufklappbar.
+Wochentag und Datum stehen als kompakter Zweizeiler untereinander. Die
+Datumsspalte ist 3,5 rem breit, mit 0,75 rem Abstand zu den Sitzungsinhalten.
+Mobil bilden Datum und Gremium eine Kopfzeile, die Punkte nutzen darunter
+die volle Breite. Nur horizontale Sitzungstrenner, keine seitliche Linie
+oder dekorativen Aufzählungspunkte.
+Der breite Rückblick kann zwei Sitzungen als direkte Vorschau zeigen.
+„Mein Viertel“ zeigt pro gewähltem Viertel die jüngste belegte Entwicklung:
+Vorhaben, kurze Erklärung, Stand und ausdrücklich das Datum der letzten
+Ratsberatung. Eine Beratung in den nächsten 14 Tagen bekommt Vorrang und
+führt direkt zum Tagesordnungspunkt. Das Indexdatum ist kein Neuigkeitsdatum.
+Zahlen heißen immer „Vorhaben“. Kompakt zunächst zwei Viertel, sonst drei,
+weitere auf Knopfdruck; die jüngsten Ratsstände zuerst. Breit stehen die
+Viertel nebeneinander, schmal untereinander. Ortsnamen als leiser Kicker,
+Vorhabentitel als Hauptinformation, Stand als kleines beschriftetes Abzeichen.
+Details erst für sichtbare Viertel laden; sie teilen den Cache der Stadtkarte.
+Der Verlauf zeigt kompakt drei Einträge mit Nachladen, breit bis zu fünf
+mit längeren Titeln. Das Fundstück ergänzt breit die vollständige Erzählung
+und Quellenangaben. Nicht jede Kennzahl braucht künstlich mehr Information,
+nur weil Platz da ist. Die beiden kompakten Überblickskarten stehen vor der
+breiten Woche; weitere Widgets folgen im selben Raster.
+
+„Seit deinem letzten Besuch“ ersetzt die frühere Themen-Karte auf Heute.
+Der Rückblick zeigt allgemeine Ergänzungen, unabhängig von Abos: neue und
+geänderte Tagesordnungen sowie erstmals ergänzte Protokolle mit Ergebnissen.
+Beim ersten Besuch heißt er „Neu bei Ratslotse“ und nennt ausdrücklich sieben
+Tage. Der Zeitraum bleibt während eines Besuchs stabil, auch beim Nachladen;
+ein neuer Besuch beginnt nach 30 Minuten ohne sichtbare Nutzung.
+
+Hierarchie: Zeitraum → höchstens drei aufklappbare Arten → Gremien → Sitzungen.
+Tagesordnungen erscheinen nur für Sitzungen ab heute; ältere Protokolle bleiben
+relevant. Neue Tagesordnungen und Änderungen derselben Sitzung zählen nicht
+doppelt. Protokolle zeigen die jüngste Sitzung zuerst, Tagesordnungen den
+nächsten Termin. Auch bei monatelanger Abwesenheit bleibt die Übersicht
+eingeklappt. Je Art erscheinen zunächst vier Gremien, je Gremium drei
+Sitzungen; weitere werden auf Wunsch geöffnet bzw. nachgeladen. Bei nur einer
+Sitzung führt das Gremium direkt zum Inhalt. Die Datenspanne hält nachträglich
+importierte Archiv-Protokolle von vermeintlich aktuellen Sitzungen unterscheidbar.
+Der Fokus folgt beim Nachladen der ersten neuen Sitzung. Keine Tags und keine
+konkurrierende zweite Themen-Karte.
+
+Animationen erklären Zustandswechsel: neue Zeilen blenden über 220 ms mit
+vier Pixeln Bewegung ein, Hover hebt die Zeile leicht hervor und bewegt nur
+den Richtungspfeil. Reduzierte Bewegung schaltet diese Effekte aus. Große
+Schrift darf mehr Höhe beanspruchen; Metadaten und Aktionen bleiben lesbar.
+Ein Ladefehler erhält vorhandene Inhalte und bietet Wiederholen; er wird
+niemals als „keine Neuigkeiten“ dargestellt.

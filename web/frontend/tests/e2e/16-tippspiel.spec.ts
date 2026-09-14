@@ -17,9 +17,9 @@ async function appConfig(page: Page, features: string[]) {
 }
 
 const PARTEIEN = [
-  { slug: "gruene", short: "Grüne", name: "BÜNDNIS 90/DIE GRÜNEN", color: "#46962B", color_dark: "#6FCB4C", seats_2021: 16 },
-  { slug: "spd", short: "SPD", name: "SPD", color: "#E3000F", color_dark: "#FF4D57", seats_2021: 15 },
-  { slug: "cdu", short: "CDU", name: "CDU", color: "#121212", color_dark: "#C9CDD3", seats_2021: 9 },
+  { slug: "gruene", short: "Grüne", name: "BÜNDNIS 90/DIE GRÜNEN", color: "#46962B", color_dark: "#6FCB4C", seats_previous: 16 },
+  { slug: "spd", short: "SPD", name: "SPD", color: "#E3000F", color_dark: "#FF4D57", seats_previous: 15 },
+  { slug: "cdu", short: "CDU", name: "CDU", color: "#121212", color_dark: "#C9CDD3", seats_previous: 9 },
 ];
 const OB_KANDIDATUREN = [
   { slug: "rohr", name: "Jascha Rohr", party: "GRÜNE" },
@@ -29,6 +29,14 @@ const OB_KANDIDATUREN = [
 function setup(overrides: Partial<Record<string, unknown>> = {}) {
   return {
     round: "ratswahl", listed: true, title: "Tippspiel zur Ratswahl", phase: "open", seats_total: 40,
+    // Titel und Datum der Wahl kommen seit 09/2026 aus der Antwort, nicht aus
+    // einem Literal in der Komponente — die Attrappe muss sie mitliefern.
+    election_slug: "ratswahl-2026", election_title: "Ratswahl Oldenburg",
+    election_date: "2026-09-13", tip_kind: "seats", previous_label: "2021",
+    // Die Hauptrunde ist öffentlich: ohne Konto, Name selbst gewählt. Fehlt
+    // das Feld, hält die Seite die Runde für eine Konto-Runde und blendet das
+    // Namensfeld aus — genau das haben diese Tests gemerkt.
+    public: true,
     locked: false, locked_at: null, late_scored: false, shared_device: false, player_count: 3,
     deadline_hint: "bis zur ersten Hochrechnung (ca. 20 Uhr)",
     parties: PARTEIEN, mayor_candidates: OB_KANDIDATUREN,
@@ -100,7 +108,7 @@ test.describe("Schalter an: Beitritt und Tippen", () => {
   test("Einstieg zeigt Name-Feld, Regeln und einen deaktivierten Knopf", async ({ page }) => {
     tippMocks(page, meins());
     await page.goto("/tipp");
-    await expect(page.getByRole("heading", { name: /Wie geht die Ratswahl aus/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Wie geht die Ratswahl Oldenburg aus/ })).toBeVisible();
     await expect(page.getByRole("button", { name: /Jetzt mitmachen/ })).toBeDisabled();
     await expect(page.getByText("5 · 3 · 1")).toBeVisible();
   });

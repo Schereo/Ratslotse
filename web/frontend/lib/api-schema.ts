@@ -812,6 +812,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/stats/signups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stats Signups
+         * @description Neue Konten und abgewiesene Registrierungen — beide Seiten in einem Bild.
+         *
+         *     Sichtbar war bis 09/2026 nur, wer durchkam. Wer an der Bremse oder am
+         *     Wegwerf-Riegel hängenblieb, hinterließ nirgends eine Spur, und „es hat
+         *     niemand versucht" war von „es haben 500 versucht" nicht zu unterscheiden.
+         *
+         *     Der tägliche Herzschlag (``scripts/check_herzschlag.py``) schlägt bei
+         *     denselben Zahlen Alarm; diese Ansicht ist der Blick dazwischen.
+         */
+        get: operations["stats_signups_api_admin_stats_signups_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/users": {
         parameters: {
             query?: never;
@@ -4426,6 +4453,10 @@ export interface paths {
          * @description Ohne gültigen Cookie: Beitritt (``name`` Pflicht). Mit gültigem
          *     Cookie: nur der Tipp wird aktualisiert, ``name`` bleibt unbeachtet —
          *     umbenennen kann nur der Admin (``PUT …/admin/spieler/{id}``).
+         *
+         *     **In einer Konto-Runde ist das Konto die Identität**, nicht der Cookie:
+         *     Der Name kommt aus dem Profil, und ein zweiter Tipp desselben Kontos ist
+         *     kein zweiter Tipp, sondern eine Änderung — auch auf einem anderen Gerät.
          */
         post: operations["beitreten_oder_tippen_api_tipp_post"];
         delete?: never;
@@ -4488,8 +4519,12 @@ export interface paths {
         get?: never;
         /**
          * Einstellungen Setzen
-         * @description Schalter je Runde. ``shared_device``: ein Gerät, mehrere Personen —
-         *     Vallys Kreis (13.09.2026) hat nicht für jede Person ein Handy.
+         * @description Schalter je Runde.
+         *
+         *     ``shared_device``: ein Gerät, mehrere Personen — Vallys Kreis (13.09.2026)
+         *     hat nicht für jede Person ein Handy. ``public``: für alle öffnen oder auf
+         *     Konten beschränken (Tims Wunsch 14.09.2026 — eine Runde, die von selbst zu
+         *     einer Wahl entsteht, soll nicht ungefragt offen stehen).
          */
         put: operations["einstellungen_setzen_api_tipp_admin_einstellungen_put"];
         post?: never;
@@ -4670,6 +4705,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/today/updates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Updates */
+        get: operations["updates_api_today_updates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/today/visit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Visit */
+        post: operations["visit_api_today_visit_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/topics": {
         parameters: {
             query?: never;
@@ -4682,6 +4751,29 @@ export interface paths {
         put?: never;
         /** Add Topic */
         post: operations["add_topic_api_topics_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/topics/decisions/{decision_id}/seen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark Decision Seen
+         * @description Ein Heute-Treffer wird in allen passenden EIGENEN Themen gelesen.
+         *
+         *     Das Widget fasst gleiche Beschlüsse zusammen. Die Gelesen-Marke muss
+         *     dieselbe Menge treffen, sonst taucht derselbe Beschluss erneut auf.
+         */
+        post: operations["mark_decision_seen_api_topics_decisions__decision_id__seen_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4969,11 +5061,67 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Wahlabend */
+        /**
+         * Wahlabend
+         * @description Der Wahlabend: live, als Generalprobe oder als Rückblick.
+         *
+         *     ``?wahl=<slug>`` liefert den eingefrorenen Stand einer gelaufenen Wahl aus
+         *     dem Repo (``kommunalwahl/referenz-…``). Das ist der Punkt, an dem eine
+         *     Rückblick-Seite unabhängig vom Votemanager wird: Seine Adressen tragen den
+         *     Wahltag im Pfad und wandern irgendwann ins Archiv.
+         */
         get: operations["wahlabend_api_wahlabend_get"];
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/wahlabend/beobachtet": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Wahlabend Beobachtet
+         * @description Die gemerkten Kandidaturen dieses Kontos, mit dem Stand von jetzt.
+         *
+         *     Angemeldet, weil es die eigene Liste ist. Eine Antwort statt 383 Zeilen
+         *     für fünf Namen — die App soll nicht die ganze Rangliste holen müssen.
+         */
+        get: operations["wahlabend_beobachtet_api_wahlabend_beobachtet_get"];
+        put?: never;
+        /**
+         * Wahlabend Beobachten
+         * @description Eine Kandidatur merken — quer über alle Listen, das ist der Punkt.
+         */
+        post: operations["wahlabend_beobachten_api_wahlabend_beobachtet_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/wahlabend/beobachtet/{merker_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Wahlabend Nicht Mehr Beobachten
+         * @description Einen Merker entfernen. 404, wenn er einem anderen Konto gehört —
+         *     dieselbe Antwort wie „gibt es nicht", damit die Kennung nichts verrät.
+         */
+        delete: operations["wahlabend_nicht_mehr_beobachten_api_wahlabend_beobachtet__merker_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -4996,6 +5144,30 @@ export interface paths {
          *     ausgezählten Stand.
          */
         get: operations["wahlabend_bild_api_wahlabend_bild_png_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/wahlabend/kandidaten": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Wahlabend Kandidaten
+         * @description Alle Kandidaturen als eine Rangliste — sortiert und gefiltert vom Server.
+         *
+         *     Öffentlich wie der Wahlabend selbst, hinter demselben Schalter. Der Rang
+         *     ist stadtweit und bleibt es auch gefiltert; was die beiden Anteile
+         *     bedeuten, steht in ``election/candidates.py``.
+         */
+        get: operations["wahlabend_kandidaten_api_wahlabend_kandidaten_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -5038,8 +5210,86 @@ export interface paths {
          * Ob Wahl
          * @description Die OB-Wahl für sich — hinter dem Schalter ``wahlabend`` (nicht
          *     ``tippspiel``): Sie ist Teil des Wahlabends, nicht nur des Tippspiels.
+         *
+         *     Immer der ERSTE Wahlgang; die Stichwahl hat ihren eigenen Pfad. Daran
+         *     hängt der Vergleich des Tippspiels, und der darf sich am 27.09. nicht
+         *     unter der Hand verschieben.
          */
         get: operations["ob_wahl_api_wahlabend_ob_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/wahlabend/stichwahl": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stichwahl
+         * @description Die Stichwahl — 404, solange keine im Kalender steht.
+         *
+         *     Am 13.09.2026 hat niemand die absolute Mehrheit erreicht; am 27.09. läuft
+         *     deshalb die Stichwahl zwischen Ulf Prange (SPD) und Jascha Rohr (GRÜNE).
+         *     Ihre Wahl-Id beim Votemanager gibt es heute noch nicht — sie wird zur
+         *     Laufzeit in ``termin.json`` gesucht (``mayor.resolve_ids``). Bis dahin
+         *     antwortet dieser Pfad mit ``phase: "before"`` und einem Vermerk, nicht mit
+         *     einem Fehler: Eine Seite, die auf den Abend wartet, ist keine kaputte.
+         */
+        get: operations["stichwahl_api_wahlabend_stichwahl_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/wahlabend/wahlbezirke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Wahlabend Wahlbezirke
+         * @description Derselbe Stand je Wahlbezirk — die Ebene unter den Wahlbereichen.
+         *
+         *     Öffentlich wie der Wahlabend selbst, hinter demselben Schalter. Eigener
+         *     Endpunkt, weil die Seite die 133 Bezirke erst braucht, wenn jemand die
+         *     Karte aufmacht (s. ``ElectionDistrictList``).
+         */
+        get: operations["wahlabend_wahlbezirke_api_wahlabend_wahlbezirke_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/wahlen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Wahlen
+         * @description Alle Wahlen, die wir zeigen — die nächste zuerst, dann rückwärts.
+         *
+         *     Öffentlich wie die Zahlen selbst. Entwürfe bleiben draußen; sie sind das
+         *     Gegenstück zum Feature-Schalter für eine einzelne Wahl.
+         */
+        get: operations["wahlen_api_wahlen_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -5052,6 +5302,13 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AdminAbweisung */
+        AdminAbweisung: {
+            /** N */
+            n: number;
+            /** Reason */
+            reason: string;
+        };
         /** AdminAliasDeleted */
         AdminAliasDeleted: {
             /** Entities */
@@ -5063,6 +5320,42 @@ export interface components {
         AdminAliasList: {
             /** Aliases */
             aliases: components["schemas"]["AdminEntityAlias"][];
+        };
+        /** AdminAnmeldeTag */
+        AdminAnmeldeTag: {
+            /** Created */
+            created: number;
+            /** Day */
+            day: string;
+            /** Rejected */
+            rejected: number;
+            /** Verified */
+            verified: number;
+        };
+        /**
+         * AdminAnmeldungen
+         * @description Was bei der Registrierung ankam — und was abprallte.
+         *
+         *     Beide Seiten in einem Bild. Die Zahl der neuen Konten allein sagt nicht,
+         *     ob gerade jemand anklopft und an der Bremse oder am Wegwerf-Riegel
+         *     hängenbleibt; bis 09/2026 war genau das unsichtbar.
+         *
+         *     Nichts hier ist einer Person zuzuordnen: Die Abweisungen tragen weder
+         *     Adresse noch Domain noch Netzadresse, nur Tag, Grund und Anzahl.
+         */
+        AdminAnmeldungen: {
+            /** Created */
+            created: number;
+            /** Days */
+            days: number;
+            /** Reasons */
+            reasons: components["schemas"]["AdminAbweisung"][];
+            /** Rejected */
+            rejected: number;
+            /** Series */
+            series: components["schemas"]["AdminAnmeldeTag"][];
+            /** Verified */
+            verified: number;
         };
         /** AdminClientShare */
         AdminClientShare: {
@@ -5992,6 +6285,30 @@ export interface components {
          */
         AppConfigOut: {
             /**
+             * AppElectionOut
+             * @description Die Wahl, die gerade ansteht — klein genug für jede Seite.
+             *
+             *     Warum hier und nicht nur in ``/api/wahlabend``: Startseite, Heute-Karte
+             *     und Dashboard zeigen einen Countdown, ohne den ganzen Wahlabend zu laden.
+             *     Bis 09/2026 stand der Termin dafür als ``WAHLABEND_BEGINN_UTC`` im
+             *     Frontend — eine Konstante, die ein Deploy braucht und die niemand mit der
+             *     Registry abgleicht.
+             */
+            election?: {
+                /** Date */
+                date: string;
+                /** Kind */
+                kind: string;
+                /** Path */
+                path: string;
+                /** Polls Close */
+                polls_close: string;
+                /** Short Title */
+                short_title: string;
+                /** Slug */
+                slug: string;
+            } | null;
+            /**
              * Features
              * @default []
              */
@@ -6000,6 +6317,30 @@ export interface components {
             min_build: number;
             /** Note */
             note?: string | null;
+        };
+        /**
+         * AppElectionOut
+         * @description Die Wahl, die gerade ansteht — klein genug für jede Seite.
+         *
+         *     Warum hier und nicht nur in ``/api/wahlabend``: Startseite, Heute-Karte
+         *     und Dashboard zeigen einen Countdown, ohne den ganzen Wahlabend zu laden.
+         *     Bis 09/2026 stand der Termin dafür als ``WAHLABEND_BEGINN_UTC`` im
+         *     Frontend — eine Konstante, die ein Deploy braucht und die niemand mit der
+         *     Registry abgleicht.
+         */
+        AppElectionOut: {
+            /** Date */
+            date: string;
+            /** Kind */
+            kind: string;
+            /** Path */
+            path: string;
+            /** Polls Close */
+            polls_close: string;
+            /** Short Title */
+            short_title: string;
+            /** Slug */
+            slug: string;
         };
         /** AppleLoginRequest */
         AppleLoginRequest: {
@@ -8121,6 +8462,15 @@ export interface components {
             /** Votes */
             votes: number | null;
         };
+        /** ElectionAreaRef */
+        ElectionAreaRef: {
+            /** Name */
+            name: string;
+            /** Number */
+            number: number;
+            /** Roman */
+            roman: string;
+        };
         /** ElectionCandidate */
         ElectionCandidate: {
             /** Born */
@@ -8143,6 +8493,160 @@ export interface components {
             votes_to_seat: number | null;
         };
         /**
+         * ElectionCandidateParty
+         * @description Eine Liste in der Kandidaten-Rangliste — mit dem Verhältnis, das die
+         *     Frage „wie kommt jemand auf so viele Personenstimmen?" beantwortet:
+         *     Wie viel von dem, was eine Liste bekommt, ging an Personen statt an die
+         *     Liste? Gemessen 2026: SPD 50 %, CDU 48 %, Grüne 35 %, AfD 36 %.
+         */
+        ElectionCandidateParty: {
+            /** Candidate Votes */
+            candidate_votes: number | null;
+            /** Candidates Total */
+            candidates_total: number;
+            /** Color */
+            color: string;
+            /** Color Dark */
+            color_dark: string;
+            /** List Votes */
+            list_votes: number | null;
+            /** Name */
+            name: string;
+            /** Personal Pct */
+            personal_pct: number | null;
+            /** Short */
+            short: string;
+            /** Slug */
+            slug: string;
+        };
+        /**
+         * ElectionCandidateRanking
+         * @description ``GET /api/wahlabend/kandidaten`` — alle Kandidaturen einer Ratswahl,
+         *     sortiert und gefiltert vom Server, damit Web und App dieselbe Liste
+         *     zeigen (und keiner sie im Browser nachsortiert).
+         */
+        ElectionCandidateRanking: {
+            /** Area */
+            area: number | null;
+            /** Areas */
+            areas: components["schemas"]["ElectionAreaRef"][];
+            /** Dataset */
+            dataset: string;
+            election: components["schemas"]["ElectionInfo"];
+            /** Parties */
+            parties: components["schemas"]["ElectionCandidateParty"][];
+            /** Party */
+            party: string | null;
+            /** Person Votes Available */
+            person_votes_available: boolean;
+            /** Phase */
+            phase: string;
+            /** Rows */
+            rows: components["schemas"]["ElectionCandidateRow"][];
+            /** Shown */
+            shown: number;
+            /** Sort */
+            sort: string;
+            /** Total */
+            total: number;
+        };
+        /**
+         * ElectionCandidateRow
+         * @description Eine Kandidatur, stadtweit einsortiert.
+         */
+        ElectionCandidateRow: {
+            /** Area */
+            area: number;
+            /** Area Name */
+            area_name: string;
+            /** Area Roman */
+            area_roman: string;
+            /** Born */
+            born: number | null;
+            /** Color */
+            color: string;
+            /** Color Dark */
+            color_dark: string;
+            /** Elected */
+            elected: string | null;
+            /** Name */
+            name: string;
+            /** Occupation */
+            occupation: string | null;
+            /** Party */
+            party: string;
+            /** Party Share Pct */
+            party_share_pct: number | null;
+            /** Party Short */
+            party_short: string;
+            /** Position */
+            position: number;
+            /** Projected Elected */
+            projected_elected: string | null;
+            /** Rank */
+            rank: number | null;
+            /** Votes */
+            votes: number | null;
+            /** Votes To Seat */
+            votes_to_seat: number | null;
+        };
+        /**
+         * ElectionDistrict
+         * @description Ein Wahlbezirk — die kleinste Einheit, die die Stadt veröffentlicht.
+         *     2026: 91 an der Urne, 42 für die Briefwahl.
+         */
+        ElectionDistrict: {
+            /** Area */
+            area: number;
+            /** Counted */
+            counted: boolean;
+            /** Name */
+            name: string;
+            /** Number */
+            number: number;
+            /** Parties */
+            parties: components["schemas"]["ElectionDistrictParty"][];
+            /** Postal */
+            postal: boolean;
+            /** Reports Expected */
+            reports_expected: number;
+            /** Reports Received */
+            reports_received: number;
+            totals: components["schemas"]["ElectionTotals"];
+        };
+        /**
+         * ElectionDistrictList
+         * @description ``GET /api/wahlabend/wahlbezirke`` — derselbe Stand, eine Ebene tiefer.
+         *
+         *     Bewusst ein eigener Endpunkt und nicht Teil von ``ElectionNight``:
+         *     133 Bezirke mal 16 Listen sind über 2.000 Zahlen, und die Seite braucht
+         *     sie erst, wenn jemand die Karte aufmacht. Personenstimmen je Bezirk
+         *     stehen NICHT darin — die CSV kennt sie, aber 133 × 383 Zahlen
+         *     beantworten keine Frage, die jemand hat.
+         */
+        ElectionDistrictList: {
+            /** Counted */
+            counted: number;
+            /** Dataset */
+            dataset: string;
+            /** Districts */
+            districts: components["schemas"]["ElectionDistrict"][];
+            election: components["schemas"]["ElectionInfo"];
+            /** Phase */
+            phase: string;
+            /** Total */
+            total: number;
+        };
+        /** ElectionDistrictParty */
+        ElectionDistrictParty: {
+            /** Share Pct */
+            share_pct: number | null;
+            /** Slug */
+            slug: string;
+            /** Votes */
+            votes: number | null;
+        };
+        /**
          * ElectionHistoryPoint
          * @description Ein Minutenstand des Abends — für den Verlauf (Auszählung, Anteile, Sitze).
          */
@@ -8160,16 +8664,72 @@ export interface components {
                 [key: string]: number;
             };
         };
-        /** ElectionInfo */
+        /**
+         * ElectionInfo
+         * @description Wer wählt was, wann — aus ``kommunalwahl/wahlen/``.
+         *
+         *     Bis 09/2026 trug diese Form nur Datum, Sitzzahl und den amtlichen Titel;
+         *     „Ratswahl Oldenburg", „13. September 2026" und der Wahlschluss standen
+         *     daneben als Literale im Frontend. Jetzt kommt beides von hier — eine
+         *     andere Wahl in der Registry ändert die Seite, ohne dass jemand eine
+         *     Überschrift nachzieht.
+         */
         ElectionInfo: {
             /** Date */
             date: string;
+            /** Polls Close */
+            polls_close: string;
             /** Presentation Url */
             presentation_url: string;
+            /** Previous Label */
+            previous_label: string;
             /** Seats */
             seats: number;
+            /** Short Title */
+            short_title: string;
+            /** Slug */
+            slug: string;
+            /** Status */
+            status: string;
             /** Title */
             title: string;
+        };
+        /** ElectionList */
+        ElectionList: {
+            /** Elections */
+            elections: components["schemas"]["ElectionListItem"][];
+        };
+        /**
+         * ElectionListItem
+         * @description Eine Zeile der Übersicht unter ``/wahlen``.
+         */
+        ElectionListItem: {
+            /** Date */
+            date: string;
+            /** Focus */
+            focus: boolean;
+            /** Kind */
+            kind: string;
+            /** Path */
+            path: string;
+            /** Polls Close */
+            polls_close: string;
+            /** Short Title */
+            short_title: string;
+            /** Slug */
+            slug: string;
+            /** Status */
+            status: string;
+            /** Summary */
+            summary: string | null;
+            /** Tipp Locked */
+            tipp_locked: boolean;
+            /** Tipp Path */
+            tipp_path: string;
+            /** Title */
+            title: string;
+            /** Top */
+            top: components["schemas"]["ElectionTopEntry"][];
         };
         /** ElectionMandate */
         ElectionMandate: {
@@ -8215,6 +8775,8 @@ export interface components {
         };
         /** ElectionParty */
         ElectionParty: {
+            /** Areas */
+            areas: components["schemas"]["ElectionPartyArea"][];
             /** Candidates Total */
             candidates_total: number;
             /** Color */
@@ -8231,12 +8793,12 @@ export interface components {
             projected_seats: number | null;
             /** Seats */
             seats: number | null;
-            /** Seats 2021 */
-            seats_2021: number | null;
-            /** Share 2021 Pct */
-            share_2021_pct: number | null;
+            /** Seats Previous */
+            seats_previous: number | null;
             /** Share Pct */
             share_pct: number | null;
+            /** Share Previous Pct */
+            share_previous_pct: number | null;
             /** Short */
             short: string;
             /** Slug */
@@ -8247,6 +8809,40 @@ export interface components {
             votes_to_lose_seat: number | null;
             /** Votes To Next Seat */
             votes_to_next_seat: number | null;
+        };
+        /**
+         * ElectionPartyArea
+         * @description Ein Wahlbereich aus der Sicht EINER Liste — die Rangfolge, in der sie
+         *     dort stark ist. Gemeint sind die absoluten Stimmen, nicht der Anteil: Ein
+         *     Wahlbereich mit 22.000 Wahlberechtigten schlägt einen mit 12.000 auch
+         *     dann, wenn der Prozentwert dort niedriger ist — und die Sitze folgen den
+         *     Stimmen (§ 37 Abs. 3), nicht den Prozenten.
+         */
+        ElectionPartyArea: {
+            /** Area */
+            area: number;
+            /** Name */
+            name: string;
+            /** Next Seat */
+            next_seat: boolean;
+            /** Projected Seats */
+            projected_seats: number | null;
+            /** Rank */
+            rank: number;
+            /** Remainder */
+            remainder: number | null;
+            /** Remainder Quota */
+            remainder_quota: number | null;
+            /** Roman */
+            roman: string;
+            /** Seats */
+            seats: number | null;
+            /** Share Pct */
+            share_pct: number | null;
+            /** Took Last Seat */
+            took_last_seat: boolean;
+            /** Votes */
+            votes: number | null;
         };
         /** ElectionProgress */
         ElectionProgress: {
@@ -8270,6 +8866,19 @@ export interface components {
             /** Ok */
             ok: boolean;
         };
+        /** ElectionTopEntry */
+        ElectionTopEntry: {
+            /** Color */
+            color: string;
+            /** Color Dark */
+            color_dark: string;
+            /** Label */
+            label: string;
+            /** Pct */
+            pct: number | null;
+            /** Seats */
+            seats: number | null;
+        };
         /** ElectionTotals */
         ElectionTotals: {
             /** Eligible */
@@ -8282,6 +8891,77 @@ export interface components {
             valid_votes: number | null;
             /** Voters */
             voters: number | null;
+        };
+        /**
+         * ElectionWatchEntry
+         * @description Eine beobachtete Kandidatur — der Merker plus ihre aktuelle Zeile.
+         */
+        ElectionWatchEntry: {
+            /** Area */
+            area: number;
+            /** Election */
+            election: string;
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Party */
+            party: string;
+            /** Position */
+            position: number;
+            /**
+             * ElectionCandidateRow
+             * @description Eine Kandidatur, stadtweit einsortiert.
+             */
+            row: {
+                /** Area */
+                area: number;
+                /** Area Name */
+                area_name: string;
+                /** Area Roman */
+                area_roman: string;
+                /** Born */
+                born: number | null;
+                /** Color */
+                color: string;
+                /** Color Dark */
+                color_dark: string;
+                /** Elected */
+                elected: string | null;
+                /** Name */
+                name: string;
+                /** Occupation */
+                occupation: string | null;
+                /** Party */
+                party: string;
+                /** Party Share Pct */
+                party_share_pct: number | null;
+                /** Party Short */
+                party_short: string;
+                /** Position */
+                position: number;
+                /** Projected Elected */
+                projected_elected: string | null;
+                /** Rank */
+                rank: number | null;
+                /** Votes */
+                votes: number | null;
+                /** Votes To Seat */
+                votes_to_seat: number | null;
+            } | null;
+            /** Subtitle */
+            subtitle: string;
+        };
+        /**
+         * ElectionWatchList
+         * @description ``GET /api/wahlabend/beobachtet`` — die gemerkten Kandidaturen EINES
+         *     Kontos, mit dem Stand von jetzt. Eine Antwort statt 383 Zeilen für fünf
+         *     Namen.
+         */
+        ElectionWatchList: {
+            election: components["schemas"]["ElectionInfo"];
+            /** Entries */
+            entries: components["schemas"]["ElectionWatchEntry"][];
         };
         /**
          * ElsewhereItem
@@ -8871,6 +9551,8 @@ export interface components {
                 /** Why */
                 why: string;
             } | null;
+            /** Protocol Source */
+            protocol_source: string;
             /** Reason */
             reason: string;
             /** Siblings */
@@ -8887,6 +9569,8 @@ export interface components {
             votes: string;
             /** Web */
             web: string | null;
+            /** Window Since */
+            window_since: string | null;
         };
         /**
          * IdeaEvidence
@@ -8924,6 +9608,8 @@ export interface components {
         };
         /** IdeaFields */
         IdeaFields: {
+            /** Bodies */
+            bodies: string[];
             /** Fields */
             fields: components["schemas"]["IdeaFieldSummary"][];
         };
@@ -9333,6 +10019,12 @@ export interface components {
         };
         /** MayorCandidate */
         MayorCandidate: {
+            /** Color */
+            color: string;
+            /** Color Dark */
+            color_dark: string;
+            /** First Round Pct */
+            first_round_pct: number | null;
             /** Name */
             name: string;
             /** Party */
@@ -9344,10 +10036,39 @@ export interface components {
             /** Votes */
             votes: number | null;
         };
+        /**
+         * MayorElectionInfo
+         * @description Welche Wahl das hier ist — aus ``kommunalwahl/wahlen/``.
+         *
+         *     Stand bis 09/2026 nicht in der Antwort: Es gab genau eine OB-Wahl, und
+         *     die Seite kannte sie auswendig. Mit der Stichwahl am 27.09. sind es zwei,
+         *     und die Überschrift darf nicht mehr im Frontend stehen.
+         */
+        MayorElectionInfo: {
+            /** Date */
+            date: string;
+            /** Is Runoff */
+            is_runoff: boolean;
+            /** Polls Close */
+            polls_close: string;
+            /** Presentation Url */
+            presentation_url: string;
+            /** Short Title */
+            short_title: string;
+            /** Slug */
+            slug: string;
+            /** Title */
+            title: string;
+        };
         /** MayorNight */
         MayorNight: {
             /** Candidates */
             candidates: components["schemas"]["MayorCandidate"][];
+            /** Dataset */
+            dataset: string;
+            /** Elected */
+            elected: string | null;
+            election: components["schemas"]["MayorElectionInfo"];
             /** Error */
             error: string | null;
             /** Fetched At */
@@ -9996,6 +10717,12 @@ export interface components {
         PredictionGame: {
             /** Deadline Hint */
             deadline_hint: string;
+            /** Election Date */
+            election_date: string;
+            /** Election Slug */
+            election_slug: string;
+            /** Election Title */
+            election_title: string;
             /** Late Scored */
             late_scored: boolean;
             /** Listed */
@@ -10012,12 +10739,18 @@ export interface components {
             phase: string;
             /** Player Count */
             player_count: number;
+            /** Previous Label */
+            previous_label: string;
+            /** Public */
+            public: boolean;
             /** Round */
             round: string;
             /** Seats Total */
             seats_total: number;
             /** Shared Device */
             shared_device: boolean;
+            /** Tip Kind */
+            tip_kind: string;
             /** Title */
             title: string;
         };
@@ -10136,8 +10869,8 @@ export interface components {
             color_dark: string;
             /** Name */
             name: string;
-            /** Seats 2021 */
-            seats_2021: number | null;
+            /** Seats Previous */
+            seats_previous: number | null;
             /** Short */
             short: string;
             /** Slug */
@@ -10277,6 +11010,8 @@ export interface components {
         PredictionSettingsIn: {
             /** Late Scored */
             late_scored?: boolean | null;
+            /** Public */
+            public?: boolean | null;
             /** Shared Device */
             shared_device?: boolean | null;
         };
@@ -11655,6 +12390,62 @@ export interface components {
             /** Tops */
             tops: string[];
         };
+        /** TodayUpdate */
+        TodayUpdate: {
+            /** Arrived */
+            arrived: string;
+            /** Committee */
+            committee: string;
+            /** Decision Count */
+            decision_count: number;
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "protocol" | "agenda" | "agenda_change";
+            /** Ksinr */
+            ksinr: number;
+            /** Session Date */
+            session_date: string;
+        };
+        /** TodayUpdateGroup */
+        TodayUpdateGroup: {
+            /** Committee */
+            committee: string;
+            /** Count */
+            count: number;
+            /** First Session Date */
+            first_session_date: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "protocol" | "agenda" | "agenda_change";
+            /** Last Session Date */
+            last_session_date: string;
+            latest: components["schemas"]["TodayUpdate"];
+        };
+        /** TodayUpdates */
+        TodayUpdates: {
+            /** Counts */
+            counts: {
+                [key: string]: number;
+            };
+            /** First Visit */
+            first_visit: boolean;
+            /** Groups */
+            groups: components["schemas"]["TodayUpdateGroup"][];
+            /** Items */
+            items: components["schemas"]["TodayUpdate"][];
+            /** Since */
+            since: string;
+            /** Total */
+            total: number;
+            /** Until */
+            until: string;
+        };
         /** TopicDecision */
         TopicDecision: {
             /** Committee */
@@ -11767,6 +12558,8 @@ export interface components {
             topic_count: number;
             /** Total */
             total: number;
+            /** Unread Decisions */
+            unread_decisions: number;
             /** Unread Total */
             unread_total: number;
         };
@@ -12099,6 +12892,26 @@ export interface components {
             video_seconds: number | null;
             /** Vote */
             vote: string | null;
+        };
+        /** VisitWindow */
+        VisitWindow: {
+            /** First Visit */
+            first_visit: boolean;
+            /** Since */
+            since: string;
+            /** Until */
+            until: string;
+        };
+        /** WatchIn */
+        WatchIn: {
+            /** Area */
+            area: number;
+            /** Election */
+            election: string;
+            /** Party */
+            party: string;
+            /** Position */
+            position: number;
         };
         /** WebUserOut */
         WebUserOut: {
@@ -13338,6 +14151,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminSeitenaufrufe"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stats_signups_api_admin_stats_signups_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAnmeldungen"];
                 };
             };
             /** @description Validation Error */
@@ -18012,6 +18856,62 @@ export interface operations {
             };
         };
     };
+    updates_api_today_updates_get: {
+        parameters: {
+            query?: {
+                offset?: number;
+                limit?: number;
+                since?: string | null;
+                until?: string | null;
+                kind?: "protocol" | "agenda" | "agenda_change" | null;
+                committee?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TodayUpdates"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    visit_api_today_visit_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VisitWindow"];
+                };
+            };
+        };
+    };
     list_topics_api_topics_get: {
         parameters: {
             query?: never;
@@ -18065,6 +18965,37 @@ export interface operations {
             };
         };
     };
+    mark_decision_seen_api_topics_decisions__decision_id__seen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                decision_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MarkedHits"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     describe_topic_api_topics_describe_post: {
         parameters: {
             query?: never;
@@ -18102,6 +19033,7 @@ export interface operations {
         parameters: {
             query?: {
                 limit?: number;
+                unread_only?: boolean;
             };
             header?: never;
             path?: never;
@@ -18372,10 +19304,12 @@ export interface operations {
     wahlabend_api_wahlabend_get: {
         parameters: {
             query?: {
-                /** @description „2021“ = Generalprobe mit den Zahlen von 2021 */
+                /** @description gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert) */
                 probe?: string | null;
                 /** @description Generalprobe: nur die ersten N Wahlbezirke ausgezählt */
                 counted?: number | null;
+                /** @description Slug einer gelaufenen Wahl — ihr eingefrorener Stand, ohne Abruf */
+                wahl?: string | null;
             };
             header?: never;
             path?: never;
@@ -18403,12 +19337,109 @@ export interface operations {
             };
         };
     };
+    wahlabend_beobachtet_api_wahlabend_beobachtet_get: {
+        parameters: {
+            query?: {
+                /** @description Slug der Wahl; ohne ihn die Wahl im Fokus */
+                wahl?: string | null;
+                /** @description gesetzt = Generalprobe */
+                probe?: string | null;
+                counted?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ElectionWatchList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    wahlabend_beobachten_api_wahlabend_beobachtet_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WatchIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ElectionWatchEntry"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    wahlabend_nicht_mehr_beobachten_api_wahlabend_beobachtet__merker_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                merker_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     wahlabend_bild_api_wahlabend_bild_png_get: {
         parameters: {
             query?: {
                 /** @description „seats“ = ausgezählter Stand, „projected_seats“ = Hochrechnung; Vorgabe je Phase */
                 feld?: string | null;
-                /** @description „2021“ = Generalprobe mit den Zahlen von 2021 */
+                /** @description gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert) */
                 probe?: string | null;
                 /** @description Generalprobe: nur die ersten N Wahlbezirke ausgezählt */
                 counted?: number | null;
@@ -18446,6 +19477,48 @@ export interface operations {
             };
         };
     };
+    wahlabend_kandidaten_api_wahlabend_kandidaten_get: {
+        parameters: {
+            query?: {
+                /** @description gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert) */
+                probe?: string | null;
+                /** @description Generalprobe: nur die ersten N Wahlbezirke ausgezählt */
+                counted?: number | null;
+                /** @description Slug einer gelaufenen Wahl — ihr eingefrorener Stand, ohne Abruf */
+                wahl?: string | null;
+                /** @description votes = nach Personenstimmen, party = in Stimmzettel-Reihenfolge, area = je Wahlbereich, name */
+                sort?: string;
+                /** @description nur diese Liste (Slug) */
+                party?: string | null;
+                /** @description nur dieser Wahlbereich (Nummer) */
+                area?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ElectionCandidateRanking"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     wahlabend_karte_api_wahlabend_karte_png_get: {
         parameters: {
             query: {
@@ -18457,9 +19530,9 @@ export interface operations {
                 position?: number | null;
                 /** @description „beitrag“ = 1080×1350 (4:5), „story“ = 1080×1920 (9:16), „quer“ = 1200×630 */
                 format?: string;
-                /** @description false = ohne den Abstand zu 2021 (Listenkarte) */
+                /** @description false = ohne den Abstand zur Vorwahl (Listenkarte) */
                 compare?: boolean;
-                /** @description „2021“ = Generalprobe mit den Zahlen von 2021 */
+                /** @description gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert) */
                 probe?: string | null;
                 /** @description Generalprobe: nur die ersten N Wahlbezirke ausgezählt */
                 counted?: number | null;
@@ -18500,7 +19573,9 @@ export interface operations {
     ob_wahl_api_wahlabend_ob_get: {
         parameters: {
             query?: {
+                /** @description gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert) */
                 probe?: string | null;
+                /** @description Generalprobe: nur die ersten N Wahlbezirke ausgezählt */
                 counted?: number | null;
             };
             header?: never;
@@ -18529,6 +19604,96 @@ export interface operations {
             };
         };
     };
+    stichwahl_api_wahlabend_stichwahl_get: {
+        parameters: {
+            query?: {
+                /** @description gesetzt = Generalprobe mit den Zahlen des ersten Wahlgangs */
+                probe?: string | null;
+                /** @description Generalprobe: nur die ersten N Wahlbezirke ausgezählt */
+                counted?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MayorNight"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    wahlabend_wahlbezirke_api_wahlabend_wahlbezirke_get: {
+        parameters: {
+            query?: {
+                /** @description gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert) */
+                probe?: string | null;
+                /** @description Generalprobe: nur die ersten N Wahlbezirke ausgezählt */
+                counted?: number | null;
+                /** @description Slug einer gelaufenen Wahl — ihr eingefrorener Stand, ohne Abruf */
+                wahl?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ElectionDistrictList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    wahlen_api_wahlen_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ElectionList"];
+                };
+            };
+        };
+    };
 }
 
-// vertrag-sha256: e494427b5216438af76ef4bce930b3817968c9147ead9444979d2adfa8a50260
+// vertrag-sha256: 277d2e3b2cf10e01468a11291e87695dbc2af33d818c4044fd8954e9bf0d6793

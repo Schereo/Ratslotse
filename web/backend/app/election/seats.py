@@ -31,7 +31,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import Literal, TypeVar
+from typing import Generic, Literal, TypeVar
 
 K = TypeVar("K")
 
@@ -79,12 +79,40 @@ class Allocation:
     ties: list[str] = field(default_factory=list)
     #: § 36 Abs. 7 — mehr Sitze als Bewerber*innen, nirgends unterzubringen.
     vacant: int = 0
+    #: Je Partei die Reste ihrer Stufe 2 (§ 37 Abs. 3): in welchem Wahlbereich
+    #: ihr letzter Sitz gelandet ist und welcher als Nächster zum Zug käme.
+    #: Leer, wenn eine Partei gar keinen Sitz hat.
+    district_remainders: dict[str, Remainders[int]] = field(default_factory=dict)
 
     def has_mandate(self, party: str, district: int, position: int) -> bool:
         return any(
             m.party == party and m.district == district and m.position == position
             for m in self.mandates
         )
+
+
+@dataclass(frozen=True)
+class Remainders(Generic[K]):
+    """Die Bruchteile EINER Hare/Niemeyer-Runde — der „Zugriff" auf die Restsitze.
+
+    Die Sitze verteilen sich zuerst nach ganzen Quoten; was übrig bleibt, geht
+    an die größten Reste. Genau dieser Schritt entscheidet bei einer Partei,
+    in WELCHEM Wahlbereich ihr letzter Sitz landet (§ 37 Abs. 3) — und er ist
+    die einzige Stelle der Zuteilung, an der ein Ergebnis knapp sein kann,
+    ohne dass man es den Stimmen ansieht.
+
+    ``values`` sind die Reste (Zähler über demselben Nenner ``quota``, deshalb
+    direkt vergleichbar), ``last`` der Schlüssel, der den LETZTEN Restsitz
+    bekommen hat, ``next`` der, der als Nächster einen bekäme. Beide sind
+    ``None``, wenn es nichts zu verteilen gab.
+    """
+
+    values: dict[K, int]
+    #: Der gemeinsame Nenner (Summe der positiven Stimmen). Ein Rest ohne ihn
+    #: ist eine Zahl ohne Maßstab.
+    quota: int
+    last: K | None
+    next: K | None
 
 
 def hare_niemeyer(
@@ -97,10 +125,23 @@ def hare_niemeyer(
     vergebene und der erste nicht vergebene Rest gleich waren — dort hätte das
     Los entschieden, hier gewinnt die Reihenfolge der Eingabe.
     """
+    result, ties, _ = hare_niemeyer_detail(votes, seats, first)
+    return result, ties
+
+
+def hare_niemeyer_detail(
+    votes: Mapping[K, int], seats: int, first: K | None = None
+) -> tuple[dict[K, int], list[tuple[K, K]], Remainders[K]]:
+    """Dieselbe Rechnung, dazu die Reste — s. :class:`Remainders`.
+
+    Getrennt von :func:`hare_niemeyer`, damit deren Signatur bleibt, wie sie
+    ist: Sie steht an fünf Stellen der Zuteilung und ist gegen das amtliche
+    Ergebnis von 2021 verifiziert.
+    """
     result: dict[K, int] = {k: 0 for k in votes}
     total = sum(v for v in votes.values() if v > 0)
     if seats <= 0 or total <= 0:
-        return result, []
+        return result, [], Remainders({}, total, None, None)
     remainders: dict[K, int] = {}
     for k, v in votes.items():
         if v <= 0:
@@ -109,16 +150,22 @@ def hare_niemeyer(
         remainders[k] = v * seats % total
     left = seats - sum(result.values())
     ranked = sorted(remainders, key=lambda k: remainders[k], reverse=True)
+    zuerst: K | None = None
     if first is not None and left > 0 and first in remainders:
         result[first] += 1
         left -= 1
         ranked.remove(first)
+        zuerst = first
     ties: list[tuple[K, K]] = []
     if 0 < left < len(ranked) and remainders[ranked[left - 1]] == remainders[ranked[left]]:
         ties.append((ranked[left - 1], ranked[left]))
     for k in ranked[:left]:
         result[k] += 1
-    return result, ties
+    # Der letzte vergebene Restsitz: der schwächste Rest, der noch zum Zug kam.
+    # Hat nur die Mehrheitsklausel einen vergeben, ist es deren Schlüssel.
+    letzter = ranked[left - 1] if left > 0 else zuerst
+    naechster = ranked[left] if left < len(ranked) else None
+    return result, ties, Remainders(remainders, total, letzter, naechster)
 
 
 def allocate(lists: Sequence[DistrictList], total_seats: int) -> Allocation:
@@ -145,12 +192,14 @@ def allocate(lists: Sequence[DistrictList], total_seats: int) -> Allocation:
     notes = [f"Los zwischen {a} und {b} (Stufe 1)" for a, b in ties1]
 
     seats_by_list: dict[tuple[str, int], int] = {}
+    district_remainders: dict[str, Remainders[int]] = {}
     mandates: list[Mandate] = []
     vacant = 0
     for p in parties:
         # Stufe 2 — Wahlbereiche (§ 37 Abs. 3)
         per_district = {dl.district: dl.total for dl in by_party[p]}
-        seats_wb, ties2 = hare_niemeyer(per_district, seats_by_party[p])
+        seats_wb, ties2, rest2 = hare_niemeyer_detail(per_district, seats_by_party[p])
+        district_remainders[p] = rest2
         notes += [f"Los zwischen Wahlbereich {a} und {b} ({p}, Stufe 2)" for a, b in ties2]
         overflow = 0
         unseated: list[tuple[int, int, int]] = []  # (Stimmen, Wahlbereich, Platz)
@@ -221,7 +270,7 @@ def allocate(lists: Sequence[DistrictList], total_seats: int) -> Allocation:
             v, d, k = unseated.pop(0)
             mandates.append(Mandate(p, d, k, v, "transfer"))
             seats_by_list[(p, d)] = seats_by_list.get((p, d), 0) + 1
-    return Allocation(seats_by_party, seats_by_list, mandates, notes, vacant)
+    return Allocation(seats_by_party, seats_by_list, mandates, notes, vacant, district_remainders)
 
 
 def with_extra_votes(

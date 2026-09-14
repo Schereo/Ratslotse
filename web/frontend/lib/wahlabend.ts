@@ -14,6 +14,14 @@ export type WahlabendBereich = Wahlabend["areas"][number];
 export type WahlabendBereichPartei = WahlabendBereich["parties"][number];
 export type WahlabendKandidat = WahlabendBereichPartei["candidates"][number];
 export type WahlabendMandat = Wahlabend["mandates"][number];
+export type Kandidatenliste = ApiAntwort<"/wahlabend/kandidaten">;
+export type KandidatenZeile = Kandidatenliste["rows"][number];
+export type KandidatenListe = Kandidatenliste["parties"][number];
+export type KandidatenSortierung = "votes" | "party" | "area" | "name";
+export type Wahlbezirke = ApiAntwort<"/wahlabend/wahlbezirke">;
+export type Wahlbezirk = Wahlbezirke["districts"][number];
+export type Beobachtet = ApiAntwort<"/wahlabend/beobachtet">;
+export type BeobachtetEintrag = Beobachtet["entries"][number];
 
 /** Schlüssel im localStorage: die zuletzt gewählte Liste. */
 export const LISTE_SPEICHER = "wahlabend.liste";
@@ -112,6 +120,51 @@ export function kandidatenStatus(
   return { ton: "out", text: "außer Reichweite" };
 }
 
+/**
+ * Welche drei Kandidaturen eine Wahlbereichs-Karte zeigt — und welche hinter
+ * dem Aufklappen bleiben.
+ *
+ * Tims Befund (14.09.2026): „bei großen Listen die Boxen der Kandidaten nur
+ * pro Wahlbereich mit jeweils max drei Kandidaten". Gemessen an 2026 führen
+ * SPD und Linke in einem Wahlbereich bis zu zwölf Kandidaturen; sechs Karten
+ * untereinander waren auf dem Telefon rund siebzig Zeilen.
+ *
+ * **Die Auswahl geht nach Bedeutung, die Reihenfolge nach Listenplatz.** Wer
+ * gewählt ist, gehört in die drei — auch von Platz 9, denn Listensitze und
+ * Übergänge treffen nicht die Stimmstärksten. Gezeigt werden sie trotzdem in
+ * der Reihenfolge des Stimmzettels: Zwei Ordnungen in einer Karte wären eine
+ * zu viel, und die Platznummer steht an jeder Zeile.
+ *
+ * Vor der Auszählung gibt es nichts zu gewichten — dann sind es die ersten
+ * drei Listenplätze.
+ */
+export function vorneDrei<T extends Pick<WahlabendKandidat, "position" | "votes" | "elected" | "projected_elected" | "votes_to_seat">>(
+  kandidaten: readonly T[],
+  phase: string,
+  anzahl = 3,
+): { vorne: T[]; rest: T[] } {
+  const nachPlatz = (a: T, b: T) => a.position - b.position;
+  const alle = [...kandidaten].sort(nachPlatz);
+  if (alle.length <= anzahl) return { vorne: alle, rest: [] };
+  if (phase === "before" || alle.every((k) => k.votes === null)) {
+    return { vorne: alle.slice(0, anzahl), rest: alle.slice(anzahl) };
+  }
+  const gewicht = (k: T): number => {
+    if (k.elected) return 0;
+    if (k.projected_elected) return 1;
+    if (k.votes_to_seat !== null && k.votes_to_seat > 0 && k.votes_to_seat <= KNAPP_BIS) return 2;
+    return 3;
+  };
+  const gewaehlt = [...alle]
+    .sort((a, b) => gewicht(a) - gewicht(b) || (b.votes ?? 0) - (a.votes ?? 0) || a.position - b.position)
+    .slice(0, anzahl);
+  const drin = new Set(gewaehlt.map((k) => k.position));
+  return {
+    vorne: alle.filter((k) => drin.has(k.position)),
+    rest: alle.filter((k) => !drin.has(k.position)),
+  };
+}
+
 /** Die Punkte des Sitzbands: je Sitz einer, in Stimmzettel-Reihenfolge der Listen. */
 export function sitzband(
   parteien: readonly WahlabendPartei[],
@@ -123,13 +176,58 @@ export function sitzband(
 }
 
 /** Query-String für den Abruf: Generalprobe und Auszählungsstand durchreichen. */
-export function abfragePfad(probe: string | null, counted: string | null): string {
+export function abfragePfad(probe: string | null, counted: string | null, wahl?: string | null): string {
   const q = new URLSearchParams();
-  if (probe) q.set("probe", probe);
-  if (counted && /^\d+$/.test(counted)) q.set("counted", counted);
+  // `wahl` und `probe` schließen sich aus: Der Rückblick IST die echte Zahl,
+  // eine Generalprobe darauf ergäbe nichts.
+  if (wahl) q.set("wahl", wahl);
+  else {
+    if (probe) q.set("probe", probe);
+    if (counted && /^\d+$/.test(counted)) q.set("counted", counted);
+  }
   const s = q.toString();
   return s ? `/wahlabend?${s}` : "/wahlabend";
 }
+
+/** Die Beobachtungsliste dieses Kontos — dieselbe Wahl wie die Seite. */
+export function beobachtetPfad(wahl: string | null | undefined, probe: string | null, counted: string | null): string {
+  const q = new URLSearchParams();
+  if (wahl) q.set("wahl", wahl);
+  else if (probe) {
+    q.set("probe", probe);
+    if (counted && /^\d+$/.test(counted)) q.set("counted", counted);
+  }
+  const s = q.toString();
+  return s ? `/wahlabend/beobachtet?${s}` : "/wahlabend/beobachtet";
+}
+
+/** Dieselbe Herkunft für die Wahlbezirke — sie kennen weder Sortierung noch
+ *  Filter, die Karte zeigt immer alle. */
+export function bezirkePfad(probe: string | null, counted: string | null, wahl: string | null | undefined): string {
+  const basis = abfragePfad(probe, counted, wahl);
+  const q = basis.includes("?") ? basis.slice(basis.indexOf("?")) : "";
+  return `/wahlabend/wahlbezirke${q}`;
+}
+
+/** Dieselbe Herkunft (Probe/Stand/Rückblick) für die Kandidaten-Rangliste —
+ *  plus Sortierung und Filter, die der SERVER anwendet. */
+export function kandidatenPfad(
+  probe: string | null,
+  counted: string | null,
+  wahl: string | null | undefined,
+  sortierung: KandidatenSortierung,
+  liste: string | null,
+  bereich: number | null,
+): string {
+  const basis = abfragePfad(probe, counted, wahl);
+  const q = new URLSearchParams(basis.includes("?") ? basis.slice(basis.indexOf("?") + 1) : "");
+  if (sortierung !== "votes") q.set("sort", sortierung);
+  if (liste) q.set("party", liste);
+  if (bereich !== null) q.set("area", String(bereich));
+  const s = q.toString();
+  return s ? `/wahlabend/kandidaten?${s}` : "/wahlabend/kandidaten";
+}
+
 
 /* ── Sitze, Mehrheiten, Halbkreis ───────────────────────────────────────── */
 
@@ -244,15 +342,13 @@ export function kartePfad(
 
 /* ── Wann ist Wahlabend? ────────────────────────────────────────────────── */
 
-/** 13.09.2026, 18:00 Uhr in Oldenburg (MESZ = UTC+2): Die Wahllokale schließen,
- *  ab hier „läuft" der Wahlabend. */
-export const WAHLABEND_BEGINN_UTC = Date.UTC(2026, 8, 13, 16, 0, 0);
-
 export type WahlabendZeit = {
-  phase: "vorher" | "laeuft";
+  /** `vorher` = Countdown, `laeuft` = der Abend selbst, `danach` = Ergebnis. */
+  phase: "vorher" | "laeuft" | "danach";
   /** Kalendertage bis zum Wahltag in deutscher Zeit; 0 am Wahltag selbst. */
   tage: number;
-  /** Kurz, für den Mono-Kicker: „NOCH 6 TAGE", „HEUTE AB 18 UHR", „LIVE". */
+  /** Kurz, für den Mono-Kicker: „Noch 6 Tage", „Heute ab 18 Uhr", „Live",
+   *  „Ergebnis". */
   kicker: string;
   /** Ein Satzanfang für Überschriften: „Am Sonntag ab 18 Uhr", „Heute ab 18 Uhr". */
   wann: string;
@@ -265,11 +361,38 @@ function berlinerTag(d: Date): number {
 }
 
 /** Vor dem Wahlabend zählt die Seite herunter, danach „läuft" sie — dieselbe
- *  Regel für Landing, Heute-Seite und die Tafel. */
-export function wahlabendZeit(jetzt: Date = new Date()): WahlabendZeit {
-  if (jetzt.getTime() >= WAHLABEND_BEGINN_UTC) return { phase: "laeuft", tage: 0, kicker: "Live", wann: "Jetzt" };
-  const tage = Math.max(0, Math.round((Date.UTC(2026, 8, 13) - berlinerTag(jetzt)) / 86_400_000));
+ *  Regel für Landing, Heute-Seite und die Tafel.
+ *
+ *  Der Termin kommt als Parameter, seit 09/2026 aus der Antwort
+ *  (`election.polls_close`). Davor stand er hier als `WAHLABEND_BEGINN_UTC`
+ *  — eine Konstante, die ein Deploy braucht und die niemand mit der Registry
+ *  abgleicht. Ein unbrauchbarer Termin ergibt „läuft": lieber kein Countdown
+ *  als ein Countdown auf NaN. */
+export function wahlabendZeit(pollsClose: string | null | undefined, jetzt: Date = new Date()): WahlabendZeit {
+  const schluss = pollsClose ? new Date(pollsClose).getTime() : NaN;
+  if (!Number.isFinite(schluss)) return { phase: "laeuft", tage: 0, kicker: "Live", wann: "Jetzt" };
+  if (jetzt.getTime() >= schluss) {
+    // Der Wahlabend endet mit dem Wahltag. Bis 09/2026 kannte diese Funktion
+    // nur „vorher" und „laeuft" — und weil nichts danach kam, stand am
+    // Montagmorgen nach der Wahl immer noch „Der Wahlabend läuft" auf der
+    // Startseite (Tims Befund am 14.09.2026, live auf Prod). Ab Mitternacht
+    // ist es ein Ergebnis, kein Abend.
+    const danach = berlinerTag(jetzt) > berlinerTag(new Date(schluss));
+    return danach
+      ? { phase: "danach", tage: 0, kicker: "Ergebnis", wann: "Seit dem Wahlabend" }
+      : { phase: "laeuft", tage: 0, kicker: "Live", wann: "Jetzt" };
+  }
+  const tage = Math.max(0, Math.round((berlinerTag(new Date(schluss)) - berlinerTag(jetzt)) / 86_400_000));
   if (tage === 0) return { phase: "vorher", tage, kicker: "Heute ab 18 Uhr", wann: "Heute ab 18 Uhr" };
   if (tage === 1) return { phase: "vorher", tage, kicker: "Morgen ab 18 Uhr", wann: "Morgen ab 18 Uhr" };
-  return { phase: "vorher", tage, kicker: `Noch ${tage} Tage`, wann: "Am Sonntag ab 18 Uhr" };
+  const wochentag = new Intl.DateTimeFormat("de-DE", { weekday: "long", timeZone: "Europe/Berlin" }).format(new Date(schluss));
+  return { phase: "vorher", tage, kicker: `Noch ${tage} Tage`, wann: `Am ${wochentag} ab 18 Uhr` };
+}
+
+/** Tag und Monat ausgeschrieben: „13. September 2026". */
+export function datumLang(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(`${iso}T12:00:00Z`);
+  if (!Number.isFinite(d.getTime())) return iso;
+  return new Intl.DateTimeFormat("de-DE", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Berlin" }).format(d);
 }

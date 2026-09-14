@@ -15,7 +15,7 @@ import { apiUrl } from "@/lib/api";
 import type { ApiAntwort } from "@/lib/vertrag";
 import { BrandMark } from "@/components/brand";
 import { Lotti } from "@/components/lotti";
-import { mitRunde, uhrzeitKurz } from "@/lib/tipp";
+import { kurzesDatum, mitRunde, uhrzeitKurz } from "@/lib/tipp";
 
 type PredictionGame = ApiAntwort<"/tipp/setup">;
 
@@ -29,11 +29,11 @@ export function BeamerMitmachen({ game, tipCount, runde }: { game: PredictionGam
         <div className="flex items-center gap-[18px]">
           <BrandMark className="h-14 w-14" />
           <span className="font-display text-[36px] font-bold tracking-[-0.02em]">Ratslotse</span>
-          <span className="border-l-2 border-border pl-[18px] text-[28px] text-muted-foreground">Wahlabend 13.09.2026</span>
+          <span className="border-l-2 border-border pl-[18px] text-[28px] text-muted-foreground">Wahlabend {kurzesDatum(game.election_date)}</span>
         </div>
         <p className="mt-14 font-mono text-[26px] uppercase tracking-[0.11em] text-signal">{game.listed ? "Tippspiel" : game.title}</p>
         <h1 className="mt-3.5 text-balance font-display text-[104px] font-bold leading-none tracking-[-0.03em]">
-          Wie geht die Ratswahl aus?
+          Wie geht die {game.election_title} aus?
         </h1>
         <p className="mt-[34px] max-w-[26ch] text-[36px] leading-[1.4] text-foreground/80">
           {game.seats_total} Sitze, {game.parties.length} Wahllisten. Tippe, wie die Wahl ausgeht. Mitmachen ohne Konto.

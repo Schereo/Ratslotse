@@ -1,0 +1,471 @@
+{
+  "quelle": {
+    "titel": "Wahl des Rates der Stadt Oldenburg (Oldb), 2026-09-13 — Open Data des Votemanagers",
+    "url": "https://votemanager.kdo.de/20260913/03403000/praesentation/opendata.html",
+    "abgerufen": "2026-09-14",
+    "stand": "vorlaeufig",
+    "nachgerechnet": "Sitzverteilung aus den Open-Data-CSVs, NKWG §§ 36/37 (scripts/wahl_einfrieren.py)"
+  },
+  "sitze_gesamt": 52,
+  "parteien": [
+    {
+      "index": 1,
+      "label": "Grüne",
+      "slug": "gruene"
+    },
+    {
+      "index": 2,
+      "label": "SPD",
+      "slug": "spd"
+    },
+    {
+      "index": 3,
+      "label": "CDU",
+      "slug": "cdu"
+    },
+    {
+      "index": 4,
+      "label": "Linke",
+      "slug": "linke"
+    },
+    {
+      "index": 5,
+      "label": "FDP",
+      "slug": "fdp"
+    },
+    {
+      "index": 6,
+      "label": "AfD",
+      "slug": "afd"
+    },
+    {
+      "index": 7,
+      "label": "Volt",
+      "slug": "volt"
+    },
+    {
+      "index": 8,
+      "label": "Piraten",
+      "slug": "piraten"
+    },
+    {
+      "index": 9,
+      "label": "BSW",
+      "slug": "bsw"
+    },
+    {
+      "index": 10,
+      "label": "DAVA",
+      "slug": "dava"
+    },
+    {
+      "index": 11,
+      "label": "M. Stille",
+      "slug": "stille"
+    },
+    {
+      "index": 12,
+      "label": "Die PARTEI",
+      "slug": "partei"
+    },
+    {
+      "index": 13,
+      "label": "PGM",
+      "slug": "pgm"
+    },
+    {
+      "index": 14,
+      "label": "Bürger Bündnis",
+      "slug": "buergerbuendnis"
+    },
+    {
+      "index": 15,
+      "label": "Echt Oldenburg",
+      "slug": "echt-oldenburg"
+    },
+    {
+      "index": 16,
+      "label": "WFO",
+      "slug": "fuer-oldenburg"
+    }
+  ],
+  "sitze_votemanager": {
+    "linke": 7,
+    "bsw": 1,
+    "spd": 12,
+    "gruene": 13,
+    "buergerbuendnis": 1,
+    "echt-oldenburg": 1,
+    "piraten": 1,
+    "volt": 2,
+    "fdp": 2,
+    "cdu": 7,
+    "afd": 5
+  },
+  "sitzverteilung": [
+    {
+      "party": "Grüne",
+      "name": "Menge, Susanne",
+      "district": 1,
+      "kind": "direkt",
+      "votes": 1287
+    },
+    {
+      "party": "Grüne",
+      "name": "Neemann, Hermann",
+      "district": 1,
+      "kind": "Listenplatz 2",
+      "votes": 528
+    },
+    {
+      "party": "Grüne",
+      "name": "Kruse, Ingrid",
+      "district": 1,
+      "kind": "Listenplatz 3",
+      "votes": 345
+    },
+    {
+      "party": "Grüne",
+      "name": "Nzume, Lena",
+      "district": 2,
+      "kind": "direkt",
+      "votes": 1223
+    },
+    {
+      "party": "Grüne",
+      "name": "Beerheide, Nicolai",
+      "district": 2,
+      "kind": "Listenplatz 2",
+      "votes": 316
+    },
+    {
+      "party": "Grüne",
+      "name": "Schlieker, Pia",
+      "district": 3,
+      "kind": "direkt",
+      "votes": 1138
+    },
+    {
+      "party": "Grüne",
+      "name": "Bako, Dara",
+      "district": 3,
+      "kind": "Listenplatz 2",
+      "votes": 690
+    },
+    {
+      "party": "Grüne",
+      "name": "Jandrich, Annabelle",
+      "district": 4,
+      "kind": "direkt",
+      "votes": 823
+    },
+    {
+      "party": "Grüne",
+      "name": "Bernhardt, Kurt",
+      "district": 4,
+      "kind": "Listenplatz 2",
+      "votes": 353
+    },
+    {
+      "party": "Grüne",
+      "name": "Drügemöller, Ruth",
+      "district": 5,
+      "kind": "Listenplatz 1",
+      "votes": 485
+    },
+    {
+      "party": "Grüne",
+      "name": "Saed, Nujdar",
+      "district": 5,
+      "kind": "direkt",
+      "votes": 1784
+    },
+    {
+      "party": "Grüne",
+      "name": "Berends, Sina",
+      "district": 6,
+      "kind": "direkt",
+      "votes": 1392
+    },
+    {
+      "party": "Grüne",
+      "name": "Dr. Giesers, Benjamin",
+      "district": 6,
+      "kind": "Listenplatz 2",
+      "votes": 448
+    },
+    {
+      "party": "SPD",
+      "name": "Ellberg, Bernhard",
+      "district": 1,
+      "kind": "direkt",
+      "votes": 1680
+    },
+    {
+      "party": "SPD",
+      "name": "Tulan, Güzel",
+      "district": 1,
+      "kind": "Listenplatz 2",
+      "votes": 911
+    },
+    {
+      "party": "SPD",
+      "name": "Prange, Ulf",
+      "district": 2,
+      "kind": "direkt",
+      "votes": 4019
+    },
+    {
+      "party": "SPD",
+      "name": "Unruh, Bettina",
+      "district": 2,
+      "kind": "Listenplatz 2",
+      "votes": 611
+    },
+    {
+      "party": "SPD",
+      "name": "Behrens, Paul",
+      "district": 3,
+      "kind": "direkt",
+      "votes": 1171
+    },
+    {
+      "party": "SPD",
+      "name": "Eilers-Dörfler, Germaid",
+      "district": 3,
+      "kind": "Listenplatz 2",
+      "votes": 732
+    },
+    {
+      "party": "SPD",
+      "name": "Piechotta, Nicole",
+      "district": 4,
+      "kind": "direkt",
+      "votes": 2193
+    },
+    {
+      "party": "SPD",
+      "name": "Dr. Witkowski, Mareike",
+      "district": 4,
+      "kind": "Listenplatz 2",
+      "votes": 993
+    },
+    {
+      "party": "SPD",
+      "name": "Oeljeschläger, Claudia",
+      "district": 5,
+      "kind": "direkt",
+      "votes": 1539
+    },
+    {
+      "party": "SPD",
+      "name": "Latko, Pascal",
+      "district": 5,
+      "kind": "Listenplatz 2",
+      "votes": 684
+    },
+    {
+      "party": "SPD",
+      "name": "Dr. Fortmann, Florian",
+      "district": 6,
+      "kind": "direkt",
+      "votes": 989
+    },
+    {
+      "party": "SPD",
+      "name": "Schmeichel, Marianne",
+      "district": 6,
+      "kind": "Listenplatz 2",
+      "votes": 436
+    },
+    {
+      "party": "CDU",
+      "name": "Klaukien, Olaf",
+      "district": 1,
+      "kind": "Listenplatz 1",
+      "votes": 609
+    },
+    {
+      "party": "CDU",
+      "name": "Baak, Christoph",
+      "district": 2,
+      "kind": "direkt",
+      "votes": 1325
+    },
+    {
+      "party": "CDU",
+      "name": "Howad, Niklas",
+      "district": 3,
+      "kind": "Listenplatz 1",
+      "votes": 637
+    },
+    {
+      "party": "CDU",
+      "name": "Menke, Stefan",
+      "district": 4,
+      "kind": "direkt",
+      "votes": 1526
+    },
+    {
+      "party": "CDU",
+      "name": "Faurie, Christoph",
+      "district": 4,
+      "kind": "Listenplatz 2",
+      "votes": 700
+    },
+    {
+      "party": "CDU",
+      "name": "Woltmann, Barbara",
+      "district": 5,
+      "kind": "Listenplatz 1",
+      "votes": 975
+    },
+    {
+      "party": "CDU",
+      "name": "Averbeck, Petra",
+      "district": 6,
+      "kind": "direkt",
+      "votes": 1304
+    },
+    {
+      "party": "Linke",
+      "name": "Mazidi, Mousa",
+      "district": 1,
+      "kind": "direkt",
+      "votes": 737
+    },
+    {
+      "party": "Linke",
+      "name": "Brauer, Anna",
+      "district": 1,
+      "kind": "Listenplatz 2",
+      "votes": 499
+    },
+    {
+      "party": "Linke",
+      "name": "Boldt, Heike",
+      "district": 2,
+      "kind": "Listenplatz 1",
+      "votes": 1375
+    },
+    {
+      "party": "Linke",
+      "name": "Haseloh, Steven",
+      "district": 3,
+      "kind": "Listenplatz 1",
+      "votes": 308
+    },
+    {
+      "party": "Linke",
+      "name": "Rodowski, Sebastian",
+      "district": 4,
+      "kind": "Listenplatz 1",
+      "votes": 295
+    },
+    {
+      "party": "Linke",
+      "name": "Teschner, Mattis",
+      "district": 5,
+      "kind": "Listenplatz 1",
+      "votes": 221
+    },
+    {
+      "party": "Linke",
+      "name": "Düman, Leylan",
+      "district": 6,
+      "kind": "Listenplatz 1",
+      "votes": 440
+    },
+    {
+      "party": "FDP",
+      "name": "Dittrich, René",
+      "district": 2,
+      "kind": "Listenplatz 1",
+      "votes": 297
+    },
+    {
+      "party": "FDP",
+      "name": "Dr. Büsselmann, Gero",
+      "district": 4,
+      "kind": "Listenplatz 1",
+      "votes": 534
+    },
+    {
+      "party": "AfD",
+      "name": "Peusch, Eberhard",
+      "district": 1,
+      "kind": "Listenplatz 1",
+      "votes": 400
+    },
+    {
+      "party": "AfD",
+      "name": "Wolf, Felix",
+      "district": 3,
+      "kind": "Listenplatz 1",
+      "votes": 625
+    },
+    {
+      "party": "AfD",
+      "name": "Paul, Andreas Michael",
+      "district": 4,
+      "kind": "Listenplatz 1",
+      "votes": 1654
+    },
+    {
+      "party": "AfD",
+      "name": "Bernhardt, Lidia",
+      "district": 5,
+      "kind": "Listenplatz 1",
+      "votes": 1681
+    },
+    {
+      "party": "AfD",
+      "name": "Pawlikowski, Adrian",
+      "district": 6,
+      "kind": "Listenplatz 1",
+      "votes": 569
+    },
+    {
+      "party": "Volt",
+      "name": "Schilling, Daniel",
+      "district": 1,
+      "kind": "Listenplatz 1",
+      "votes": 336
+    },
+    {
+      "party": "Volt",
+      "name": "Dembski-Minßen, Neele",
+      "district": 3,
+      "kind": "Listenplatz 1",
+      "votes": 283
+    },
+    {
+      "party": "Piraten",
+      "name": "Wittfoot, Nicole",
+      "district": 1,
+      "kind": "Listenplatz 1",
+      "votes": 156
+    },
+    {
+      "party": "BSW",
+      "name": "Dr. Onken, Holger",
+      "district": 5,
+      "kind": "Listenplatz 1",
+      "votes": 252
+    },
+    {
+      "party": "Bürger Bündnis",
+      "name": "Sander, Andreas",
+      "district": 3,
+      "kind": "Listenplatz 1",
+      "votes": 398
+    },
+    {
+      "party": "Echt Oldenburg",
+      "name": "Butzin, Ralf",
+      "district": 6,
+      "kind": "direkt",
+      "votes": 605
+    }
+  ]
+}

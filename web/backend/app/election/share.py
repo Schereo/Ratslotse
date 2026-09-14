@@ -6,7 +6,7 @@ oder EINE Person: wie sie abgeschnitten hat, anschaulich genug, dass man es
 in den Familienchat oder auf Instagram stellt — und mit Lotti, die den
 Wählenden dankt. Drei Karten, dieselbe Bühne:
 
-* **Liste stadtweit** — Anteil, Sitze, Stimmen mit dem Abstand zu 2021, der
+* **Liste stadtweit** — Anteil, Sitze, Stimmen mit dem Abstand zur Vorwahl, der
   Rang unter den Listen und ein Halbkreis, in dem nur die eigenen Sitze
   Farbe tragen.
 * **Liste im Wahlbereich** — Anteil und Sitze dort, dazu die Personenstimmen
@@ -269,27 +269,27 @@ def _signed(value: float, digits: int = 1) -> str:
     return ("+" if value > 0 else "−") + text
 
 
-def _share_delta(party: ElectionParty) -> str:
-    now, before = party["share_pct"], party["share_2021_pct"]
+def _share_delta(party: ElectionParty, vorwahl: str) -> str:
+    now, before = party["share_pct"], party["share_previous_pct"]
     if now is None:
         return ""
     if before is None:
         return "neu angetreten"
     diff = round(now - before, 1)
     if abs(diff) < 0.05:
-        return "wie 2021"
-    return f"{_signed(diff)} Punkte zu 2021"
+        return f"wie {vorwahl}"
+    return f"{_signed(diff)} Punkte zu {vorwahl}"
 
 
-def _seat_delta(party: ElectionParty, seats: int) -> str:
-    before = party["seats_2021"]
+def _seat_delta(party: ElectionParty, seats: int, vorwahl: str) -> str:
+    before = party["seats_previous"]
     if before is None:
         return "neu angetreten"
     diff = seats - before
     if diff == 0:
-        return "wie 2021"
+        return f"wie {vorwahl}"
     word = "Sitz" if abs(diff) == 1 else "Sitze"
-    return f"{_signed(diff, 0)} {word} zu 2021"
+    return f"{_signed(diff, 0)} {word} zu {vorwahl}"
 
 
 def _rank(data: ElectionNight, party: ElectionParty) -> str:
@@ -324,7 +324,8 @@ def _status(candidate: ElectionCandidate, phase: str, persons: bool) -> tuple[st
 def _kicker(data: ElectionNight, sel: Selection) -> str:
     parts = ["RATSWAHL OLDENBURG", _date(data["election"].get("date"))]
     if data["dataset"] == "probe":
-        parts.append("GENERALPROBE MIT ZAHLEN VON 2021")
+        vorwahl = data["election"].get("previous_label") or "der Vorwahl"
+        parts.append(f"GENERALPROBE MIT ZAHLEN VON {vorwahl.upper()}")
     elif data["phase"] == "complete":
         parts.append("VORLÄUFIGES ERGEBNIS")
     else:
@@ -563,7 +564,7 @@ def _bars(sheet: _Sheet, L: Layout, candidates: list[ElectionCandidate], y: floa
 def render(data: ElectionNight, sel: Selection, fmt: str = "beitrag", compare: bool = True) -> bytes:
     """Die Karte als PNG — beitrag (1080×1350), story (1080×1920) oder quer (1200×630).
 
-    ``compare=False`` lässt den Abstand zu 2021 weg (Listenkarte): Wer die
+    ``compare=False`` lässt den Abstand zur Vorwahl weg (Listenkarte): Wer die
     Karte teilt, muss den Verlust nicht mitteilen — die Zahlen stehen ohnehin
     auf der Seite."""
     L = LAYOUTS.get(fmt, BEITRAG)
@@ -628,8 +629,11 @@ def _party(sheet: _Sheet, L: Layout, data: ElectionNight, sel: Selection, compar
     seats = p["seats"] or 0
     total = int(data["election"]["seats"])
     x = L.margin
-    share_note = _share_delta(p) if compare else ""
-    seat_note = _seat_delta(p, seats) if compare else ""
+    # Wie die Vorwahl heißt, sagt die Antwort — bis 09/2026 stand „2021" hier
+    # in vier Zeichenketten. Ohne Vorwahl bleibt der Vergleich weg.
+    vorwahl = data["election"].get("previous_label") or ""
+    share_note = _share_delta(p, vorwahl) if compare and vorwahl else ""
+    seat_note = _seat_delta(p, seats, vorwahl) if compare and vorwahl else ""
     x += _stat(sheet, L, x, "STIMMENANTEIL", _pct(p["share_pct"]), share_note, SIGNAL_INK) + L.stat_gap
     word = "SITZ IM RAT" if seats == 1 else "SITZE IM RAT"
     x += _stat(sheet, L, x, word, str(seats), seat_note, SIGNAL_INK) + L.stat_gap

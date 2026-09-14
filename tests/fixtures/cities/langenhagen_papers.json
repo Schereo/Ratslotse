@@ -1,0 +1,140 @@
+[
+ {
+  "id": "https://www.langenhagen.sitzung-online.de/oparl/papers/2001686",
+  "type": "https://schema.oparl.org/1.1/Paper",
+  "name": "Änderung der Geschäftsordnung in § 17 Abs. 1 e) zur Klarstellung des Umgangs mit nicht beantworteten Anfragen.",
+  "reference": "BD/2023/367-1",
+  "date": "2024-10-18",
+  "paperType": "Antrag öffentlich",
+  "web": "https://www.langenhagen.sitzung-online.de/public/VO020?VOLFDNR=2001686",
+  "created": "2000-01-01T00:00:00+01:00",
+  "modified": "2000-01-01T00:00:00+01:00",
+  "consultation": [
+   {
+    "id": "https://www.langenhagen.sitzung-online.de/oparl/consultations/2002302",
+    "meeting": null,
+    "agendaItem": null,
+    "authoritative": true,
+    "role": "Entscheidung"
+   },
+   {
+    "id": "https://www.langenhagen.sitzung-online.de/oparl/consultations/2002300",
+    "meeting": null,
+    "agendaItem": null,
+    "authoritative": false,
+    "role": "Vorberatung"
+   },
+   {
+    "id": "https://www.langenhagen.sitzung-online.de/oparl/consultations/2002301",
+    "meeting": null,
+    "agendaItem": null,
+    "authoritative": false,
+    "role": "Vorberatung"
+   }
+  ],
+  "mainFile": {
+   "id": "https://www.langenhagen.sitzung-online.de/oparl/files/2367106",
+   "name": "Sammeldokument öffentlich",
+   "accessUrl": "https://www.langenhagen.sitzung-online.de/public/doc?DOCTYP=130&DOLFDNR=2367106&OTYP=41",
+   "mimeType": "pdf"
+  }
+ },
+ {
+  "id": "https://www.langenhagen.sitzung-online.de/oparl/papers/2001687",
+  "type": "https://schema.oparl.org/1.1/Paper",
+  "name": "Dritte Änderung der Satzung über die Bereitstellung von Haushaltsmitteln für die Fraktionen des Rates und der Ortsräte der Stadt Langenhagen vom 25.1.2016",
+  "reference": "BD/2024/290",
+  "date": "2024-10-18",
+  "paperType": "Beschlussdrucksache",
+  "web": "https://www.langenhagen.sitzung-online.de/public/VO020?VOLFDNR=2001687",
+  "created": "2000-01-01T00:00:00+01:00",
+  "modified": "2000-01-01T00:00:00+01:00",
+  "consultation": [
+   {
+    "id": "https://www.langenhagen.sitzung-online.de/oparl/consultations/2002303",
+    "meeting": null,
+    "agendaItem": null,
+    "authoritative": false,
+    "role": "Vorberatung"
+   },
+   {
+    "id": "https://www.langenhagen.sitzung-online.de/oparl/consultations/2002304",
+    "meeting": null,
+    "agendaItem": null,
+    "authoritative": false,
+    "role": "Vorberatung"
+   },
+   {
+    "id": "https://www.langenhagen.sitzung-online.de/oparl/consultations/2002305",
+    "meeting": null,
+    "agendaItem": null,
+    "authoritative": true,
+    "role": "Entscheidung"
+   }
+  ],
+  "mainFile": {
+   "id": "https://www.langenhagen.sitzung-online.de/oparl/files/2367169",
+   "name": "Sammeldokument öffentlich",
+   "accessUrl": "https://www.langenhagen.sitzung-online.de/public/doc?DOCTYP=130&DOLFDNR=2367169&OTYP=41",
+   "mimeType": "pdf"
+  }
+ },
+ {
+  "id": "https://www.langenhagen.sitzung-online.de/oparl/papers/2001688",
+  "type": "https://schema.oparl.org/1.1/Paper",
+  "name": "Anfrage der Fraktion BÜNDNIS 90/ DIE GRÜNEN zur Gewährleistung der Rechtmäßigkeit der stattfindenden Verarbeitung von personenbezogenen Daten beim YouTube-Stream der Ratssitzungen.",
+  "reference": "RA/2024/291",
+  "date": "2024-10-07",
+  "paperType": "Ratsanfrage",
+  "web": "https://www.langenhagen.sitzung-online.de/public/VO020?VOLFDNR=2001688",
+  "created": "2000-01-01T00:00:00+01:00",
+  "modified": "2000-01-01T00:00:00+01:00",
+  "consultation": [],
+  "mainFile": {
+   "id": "https://www.langenhagen.sitzung-online.de/oparl/files/2367275",
+   "name": "Sammeldokument öffentlich",
+   "accessUrl": "https://www.langenhagen.sitzung-online.de/public/doc?DOCTYP=130&DOLFDNR=2367275&OTYP=41",
+   "mimeType": "pdf"
+  }
+ },
+ {
+  "id": "https://www.langenhagen.sitzung-online.de/oparl/papers/2001691",
+  "type": "https://schema.oparl.org/1.1/Paper",
+  "name": "Anpassung des städtischen Wohnraumförderprogramms",
+  "reference": "BD/2024/292",
+  "date": "2024-10-24",
+  "paperType": "Beschlussdrucksache",
+  "web": "https://www.langenhagen.sitzung-online.de/public/VO020?VOLFDNR=2001691",
+  "created": "2000-01-01T00:00:00+01:00",
+  "modified": "2000-01-01T00:00:00+01:00",
+  "consultation": [
+   {
+    "id": "https://www.langenhagen.sitzung-online.de/oparl/consultations/2002308",
+    "meeting": null,
+    "agendaItem": null,
+    "authoritative": false,
+    "role": "Vorberatung"
+   },
+   {
+    "id": "https://www.langenhagen.sitzung-online.de/oparl/consultations/2002309",
+    "meeting": null,
+    "agendaItem": null,
+    "authoritative": true,
+    "role": "Entscheidung"
+   },
+   {
+    "id": "https://www.langenhagen.sitzung-online.de/oparl/consultations/2002307",
+    "meeting": null,
+    "agendaItem": null,
+    "authoritative": false,
+    "role": "Vorberatung"
+   }
+  ],
+  "mainFile": {
+   "id": "https://www.langenhagen.sitzung-online.de/oparl/files/2367298",
+   "name": "Sammeldokument öffentlich",
+   "accessUrl": "https://www.langenhagen.sitzung-online.de/public/doc?DOCTYP=130&DOLFDNR=2367298&OTYP=41",
+   "mimeType": "pdf"
+  }
+ }
+]

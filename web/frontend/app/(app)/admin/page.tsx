@@ -28,6 +28,7 @@ type AdminKohorten = ApiAntwort<"/admin/stats/cohorts">;
 type AdminSackgasse = ApiAntwort<"/admin/stats/dead-ends">[number];
 type AdminEreignisse = ApiAntwort<"/admin/stats/events">;
 type AdminSeitenaufrufe = ApiAntwort<"/admin/stats/page-views">;
+type AdminAnmeldungen = ApiAntwort<"/admin/stats/signups">;
 /** Ein Eintrag des Rollen-Katalogs — aus dem Vertrag, nicht abgetippt. */
 type RolleInfo = ApiAntwort<"/admin/roles">[number];
 import { Badge, Button, Card, CardListSkeleton, ChartSkeleton, ConfirmDialog, Dialog, DialogContent, DialogHeader, DialogTitle, EmptyState, ErrorState, Input, Label, PageHeader, Select, Spinner, TableSkeleton, Textarea, formatDate, formatDateTime, toast } from "@/components/ui";
@@ -635,6 +636,112 @@ function SeitenaufrufeSection() {
   );
 }
 
+/** Warum eine Registrierung abgewiesen wurde — nur für die Anzeige.
+ *  Die Werte selbst bleiben englisch (kern.store.SIGNUP_REJECTION_REASONS). */
+const ABWEISUNG_LABEL: Record<string, string> = {
+  rate_limit: "Bremse",
+  disposable_email: "Wegwerf-Adresse",
+  duplicate_email: "Adresse schon vergeben",
+};
+
+/** Neue Konten — und wer es versucht hat, ohne durchzukommen.
+ *
+ *  Warum beides in einem Bild: Die FYI-Mail an die Admins geht erst raus, wenn
+ *  jemand seine Adresse BESTÄTIGT hat. Ein Skript, das Konten anlegt und nie
+ *  einen Link klickt, löst keine einzige Mail aus — und wer an der Bremse oder
+ *  am Wegwerf-Riegel abprallt, hinterließ bis 09/2026 gar keine Spur. „Es hat
+ *  niemand versucht" war damit von „es haben 500 versucht" nicht zu
+ *  unterscheiden.
+ *
+ *  Die Abweisungen tragen weder Adresse noch Domain noch Netzadresse — nur
+ *  Tag, Grund und Anzahl. Wer einen Einzelfall braucht, findet die Domain im
+ *  Server-Log.
+ */
+function AnmeldungenSection() {
+  const { data, isPending, isError, refetch, isFetching } = useQuery({
+    queryKey: ["admin", "signups"],
+    queryFn: () => api.get<AdminAnmeldungen>("/admin/stats/signups?days=30"),
+  });
+
+  if (isPending) return <div className="pt-2"><ChartSkeleton /></div>;
+  if (isError || !data) {
+    return (
+      <div className="pt-2">
+        <ErrorState title="Die Registrierungen konnten nicht geladen werden" onRetry={() => void refetch()} busy={isFetching} />
+      </div>
+    );
+  }
+
+  const unbestaetigt = data.created - data.verified;
+  const abgewiesen = data.reasons.filter((r) => r.n > 0);
+
+  return (
+    <div className="space-y-3 pt-2">
+      <AbschnittKopf titel="Registrierungen" rechts={`${data.days} Tage`}>
+        Abgewiesene Versuche tragen nur Tag, Grund und Anzahl — keine Adresse, keine Domain, keine Netzadresse. Der tägliche Herzschlag meldet sich per E-Mail, sobald hier ungewöhnlich viel zusammenkommt.
+      </AbschnittKopf>
+
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.5fr_1fr]">
+        <Card className="p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <StatKicker>Neue Konten</StatKicker>
+              <p className="mt-1.5 font-display text-[28px] font-extrabold leading-none tracking-tight tabular-nums text-foreground">
+                {data.created.toLocaleString("de-DE")}
+              </p>
+            </div>
+            <div className="text-right">
+              <StatKicker>Adresse bestätigt</StatKicker>
+              <p className="mt-1.5 font-display text-[22px] font-extrabold leading-none tracking-tight tabular-nums text-foreground">
+                {data.verified.toLocaleString("de-DE")}
+                {unbestaetigt > 0 && (
+                  <span className="ml-1.5 font-mono text-[11px] font-normal text-muted-foreground">
+                    · {unbestaetigt.toLocaleString("de-DE")} offen
+                  </span>
+                )}
+              </p>
+            </div>
+          </div>
+          <MiniBars values={data.series.length ? data.series.map((d) => d.created) : [0]} days={data.series.map((d) => d.day)} height={64} className="mt-4" />
+        </Card>
+
+        <Card className="flex flex-col gap-4 p-4">
+          <div>
+            <StatKicker>Abgewiesen</StatKicker>
+            <p className="mt-1.5 font-display text-[22px] font-extrabold leading-none tracking-tight tabular-nums text-foreground">
+              {data.rejected.toLocaleString("de-DE")}
+            </p>
+          </div>
+          {abgewiesen.length > 0 ? (
+            <>
+              <div>
+                <StatKicker>Woran</StatKicker>
+                <div className="mt-2.5">
+                  <AnteilBalken teile={abgewiesen.map((r, i) => ({
+                    label: ABWEISUNG_LABEL[r.reason] ?? r.reason,
+                    n: r.n,
+                    ton: i === 0 ? "bg-signal/70" : i === 1 ? "bg-primary" : "bg-primary/30",
+                  }))} />
+                </div>
+              </div>
+              <p className="mt-auto text-[11.5px] leading-snug text-muted-foreground">
+                „Adresse schon vergeben“ ist meist harmlos — wer sein Konto vergessen hat,
+                landet dort genauso. Nur die beiden anderen lösen eine Mail aus.
+              </p>
+            </>
+          ) : (
+            <p className="text-[12px] leading-snug text-muted-foreground">
+              Niemand ist an der Bremse oder am Wegwerf-Riegel hängengeblieben. Gezählt
+              wird ab dem Deploy dieser Version; frühere Versuche lassen sich nicht
+              nachtragen.
+            </p>
+          )}
+        </Card>
+      </div>
+    </div>
+  );
+}
+
 /** Welche Handlungen wie oft vorkommen — und die zwei Anteile dahinter.
  *
  *  Neben jeder Zahl steht, aus wie vielen KONTEN sie stammt, und wie sie sich
@@ -867,6 +974,8 @@ function StatsTab() {
       </div>
 
       <KohortenSection />
+
+      <AnmeldungenSection />
 
       <SeitenaufrufeSection />
 
@@ -1848,8 +1957,16 @@ function UserDetailPanel({ userId, isSelf, rollenKatalog, onClose }: {
 
       <StatKickerSpaced>Angelegt</StatKickerSpaced>
       <div className="mt-2 flex flex-col gap-1.5">
-        <DetailRow label={`${data.topics.length} ${data.topics.length === 1 ? "Thema" : "Themen"}`} value={data.topics.slice(0, 4).join(", ") || "—"} />
-        <DetailRow label={`${data.subscriptions.length} Ausschuss-${data.subscriptions.length === 1 ? "Abo" : "Abos"}`} value={data.subscriptions.slice(0, 4).join(", ") || "—"} />
+        <DetailList
+          label={`${data.topics.length} ${data.topics.length === 1 ? "Thema" : "Themen"}`}
+          entries={data.topics}
+          empty="Noch keins angelegt"
+        />
+        <DetailList
+          label={`${data.subscriptions.length} Ausschuss-${data.subscriptions.length === 1 ? "Abo" : "Abos"}`}
+          entries={data.subscriptions}
+          empty="Keiner abonniert"
+        />
         <DetailRow label="Zustellung" value={data.delivery_channel === "both" ? "Push + E-Mail" : data.delivery_channel === "push" ? "Push" : data.delivery_channel === "off" ? "Aus" : "E-Mail"} />
         <DetailRow label="Gespräche speichern" value={data.saves_conversations === 1 ? "An" : data.saves_conversations === 0 ? "Bewusst aus" : "Nie gefragt"} />
       </div>
@@ -1965,6 +2082,59 @@ function DetailRow({ label, value }: { label: string; value: string }) {
       <span className="shrink-0 text-[12.5px] text-foreground">{label}</span>
       <span className="truncate text-[11.5px] text-muted-foreground">{value}</span>
     </div>
+  );
+}
+
+/** Ab so vielen Einträgen startet die Liste zugeklappt. Darunter passt sie in
+ *  ein, zwei Zeilen und kostet offen nichts; ein Konto mit fünfzehn Abos
+ *  schöbe offen alles darunter — Zustellung, Verlauf, Rollen, Limits — aus dem
+ *  Blick, und das sind die Dinge, wegen derer man das Detail aufmacht. */
+const DETAIL_LISTE_ZU_AB = 8;
+
+/** Angelegtes als VOLLSTÄNDIGE Liste — Themen und Ausschuss-Abos.
+ *
+ *  Bis 09/2026 stand hier eine `DetailRow`: die ersten vier Namen,
+ *  kommagetrennt, in einer Zeile mit `truncate` — je nach Breite waren also
+ *  zwei zu sehen, und nichts deutete darauf hin, dass mehr da sind. Wer wissen
+ *  wollte, WELCHE Themen ein Konto angelegt hat, musste in die Datenbank
+ *  (gemessen an Konto 37: 10 Themen, 15 Abos, im Panel sichtbar 2 bzw. 1).
+ *  Die Zahl im Label bleibt, die Namen stehen vollständig darunter.
+ *
+ *  Natives `<details>` wie bei den Cron-Schritten weiter oben: Tastatur und
+ *  Screenreader können das ohne Zutun, und der Zustand gehört dem Element, es
+ *  braucht keinen React-State. `open` steht nur für den ERSTEN Aufbau — danach
+ *  führt das DOM den Zustand, React fasst ihn nicht wieder an, solange der Wert
+ *  derselbe bleibt. Der Wechsel auf ein anderes Konto baut die Karte neu auf
+ *  (eigener Query-Key), die Vorgabe greift also je Konto frisch. */
+function DetailList({ label, entries, empty }: { label: string; entries: string[]; empty: string }) {
+  // Nichts da, nichts zum Aufklappen: ein Satz, kein Pfeil, der ins Leere führt.
+  if (!entries.length) {
+    return (
+      <div className="rounded-lg border border-border bg-card px-3 py-2">
+        <p className="text-[12.5px] text-foreground">{label}</p>
+        <p className="mt-1 text-[11.5px] text-muted-foreground">{empty}</p>
+      </div>
+    );
+  }
+  return (
+    <details className="group rounded-lg border border-border bg-card px-3 py-2"
+      open={entries.length < DETAIL_LISTE_ZU_AB}>
+      <summary className="flex cursor-pointer list-none items-center gap-1.5 text-[12.5px] text-foreground [&::-webkit-details-marker]:hidden">
+        <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-fluss ease-out-strong group-open:rotate-180" />
+        {label}
+      </summary>
+      {/* Themen dürfen doppelt heißen (zwei Konten, ein Wort — und auch
+          innerhalb eines Kontos verbietet es niemand), der Index gehört
+          deshalb in den Key. */}
+      <div className="mt-1.5 flex flex-wrap gap-1.5">
+        {entries.map((eintrag, i) => (
+          <span key={`${i}-${eintrag}`}
+            className="rounded-full border border-border bg-muted/40 px-2.5 py-1 text-[11.5px] text-muted-foreground">
+            {eintrag}
+          </span>
+        ))}
+      </div>
+    </details>
   );
 }
 

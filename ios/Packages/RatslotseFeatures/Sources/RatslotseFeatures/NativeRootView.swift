@@ -23,6 +23,7 @@ func ratsDebugValue(_: String) -> String? { nil }
 
 public struct NativeRootView: View {
     @Bindable private var model: AppModel
+    @Environment(\.scenePhase) private var scenePhase
     @Namespace private var zoomNamespace
 
     public init(model: AppModel) { self.model = model }
@@ -70,6 +71,14 @@ public struct NativeRootView: View {
         }
         .environment(\.ratsZoomNamespace, zoomNamespace)
         .sensoryFeedback(.success, trigger: model.actionFeedback)
+        .task(id: "\(scenePhase)-\(model.session)") {
+            guard scenePhase == .active, case .active = model.session else { return }
+            while !Task.isCancelled {
+                try? await model.api.sendVoid("/api/today/visit")
+                do { try await Task.sleep(for: .seconds(300)) }
+                catch { return }
+            }
+        }
         .font(RatsFont.body())
         .foregroundStyle(RatsColor.text)
         .background(RatsColor.page.ignoresSafeArea())

@@ -234,18 +234,28 @@ _PAPER_KIND_RULES: tuple[tuple[tuple[str, ...], PaperKind], ...] = (
     (("anfrage",), PaperKind.INQUIRY),
     (("petition", "einwohnerantrag", "einwohnerfrage", "bürgerantrag", "buergerantrag"), PaperKind.PETITION),
     (("antrag", "anregung", "resolution"), PaperKind.MOTION),
-    (("informationsvorlage", "berichtsvorlage", "kenntnisnahme", "bericht"), PaperKind.REPORT),
+    # „informationsdrucksache" enthält „drucksache" nicht als Teilwort des
+    # generischen Exakt-Eintrags unten (der greift nur bei GENAU „drucksache")
+    # — Hannovers eigenes Wort für eine reine Kenntnisgabe ohne Beschluss.
+    # „kenntnisgabe" neben „kenntnisnahme": Wolfsburg nennt seine
+    # Informationsvorlage „Schriftliche Kenntnisgabe" — dieselbe Sache, ein
+    # anderes Wort. Gemessen 13.09.2026: 14 von 120 Seiten einer Stichprobe.
+    (("informationsvorlage", "berichtsvorlage", "kenntnisnahme", "kenntnisgabe",
+      "bericht", "informationsdrucksache"), PaperKind.REPORT),
     (("beschlussvorlage", "entscheidungsvorlage", "beschlußvorlage"), PaperKind.PROPOSAL),
     (("mitteilung",), PaperKind.NOTICE),
 )
 
 #: Vorlagenarten, die für sich allein stehen (nicht als Teilwort gesucht):
-#: Münster nennt seine Verwaltungsvorlagen schlicht „Vorlagen".
+#: Münster nennt seine Verwaltungsvorlagen schlicht „Vorlagen", Hannover
+#: seine Beschlussvorlagen schlicht „Drucksache" — als Teilwort geprüft
+#: träfe das auch „Informationsdrucksache" und „Anfrage-Drucksache" mit.
 _PAPER_KIND_EXACT: dict[str, PaperKind] = {
     "vorlage": PaperKind.PROPOSAL,
     "vorlagen": PaperKind.PROPOSAL,
     "anhörung": PaperKind.REPORT,
     "anhoerung": PaperKind.REPORT,
+    "drucksache": PaperKind.PROPOSAL,
 }
 
 
@@ -280,13 +290,22 @@ _OUTCOME_RULES: tuple[tuple[tuple[str, ...], Outcome], ...] = (
     # dastand, weil „beschlussfassung" in der Zustimmungsliste steht. Dieselbe
     # Falle wie „nicht empfohlen", nur mit einem anderen Wort davor: Der
     # Zustimmungs-Zweig ist der letzte, also fängt ihn jede frühere Regel ab.
+    # „weitere Lesung erforderlich" ist Wolfsburgs Wort für vertagt: Die Sache
+    # ist nicht entschieden und kommt wieder. 58-mal in 255 Sitzungen
+    # (10.09.2026); ohne die Regel steht sie als „kein Ergebnis" da, was das
+    # Gegenteil dessen behauptet, was passiert ist — die Beratung geht weiter.
     (("vertagt", "zurückgestellt", "zurueckgestellt", "abgesetzt", "geschoben",
-      "verschoben"), Outcome.POSTPONED),
+      "verschoben", "weitere lesung"), Outcome.POSTPONED),
     (("verwiesen", "überwiesen", "ueberwiesen", "weitergeleitet"), Outcome.REFERRED),
     (("zurückgezogen", "zurueckgezogen", "erledigt", "zurückgenommen"), Outcome.WITHDRAWN),
     (("kenntnis",), Outcome.NOTED),
+    # „Einstimmig" allein ist Hannovers häufigstes Ergebniswort (64 von rund
+    # 250 Beratungen in einer Stichprobe) — ohne Beschlusswort daneben, weil
+    # die Feststellung „einstimmig" schon die ganze Auskunft ist. Gemessen: In
+    # keinem einzigen Fall stand es für eine Ablehnung; es kommt nie ohne ein
+    # positives Ergebnis vor.
     (("beschlossen", "angenommen", "genehmigt", "empfohlen", "empfehlung",
-      "zugestimmt", "beschlussfassung"), Outcome.ACCEPTED),
+      "zugestimmt", "beschlussfassung", "einstimmig"), Outcome.ACCEPTED),
 )
 
 #: Verneinte Zustimmung — steht VOR den Zustimmungswörtern, weil sie sie

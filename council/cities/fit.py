@@ -109,8 +109,9 @@ def candidates_for(main: CitiesStore, body_id: str | None = None) -> list[dict]:
     Bebauungsplan ist „fehlt Oldenburg das?" keine sinnvolle Frage — er fehlt
     Oldenburg, und das ist richtig so.
     """
+    from council.cities import auswahl
     einordnung = main.annotations_for("classify", "2")
-    return [p for p in main.papers(body_id=body_id)
+    return [p for p in auswahl.papiere(main, body_id)
             if p["body_id"] != "oldenburg"
             and (einordnung.get(p["id"]) or {}).get("transfer") in USABLE]
 
@@ -372,8 +373,15 @@ def run(main: CitiesStore, rats: CouncilStore, ann: Annotator,
              "cost_usd": 0.0, "prompt_tokens": 0, "completion_tokens": 0}
     t0 = time.time()
 
-    def eine_stimme(p: dict, belege: list[Evidence], klasse: dict):
-        """Ein Aufruf ans Modell — gibt die geprüfte Nutzlast oder ``None``."""
+    def eine_stimme(p: dict, belege: list[Evidence], klasse: dict,
+                    korb: list[float] | None = None):
+        """Ein Aufruf ans Modell — gibt die geprüfte Nutzlast oder ``None``.
+
+        ``korb`` sammelt die Kosten DIESES Aufrufs. Er gehört dem Aufrufer,
+        nicht dem Lauf: `stand["cost_usd"]` ist ein gemeinsamer Zähler über
+        alle Arbeiter, und eine Differenz darauf schreibt einer Vorlage zu,
+        was in derselben Zeitspanne alle anderen verbraucht haben.
+        """
         try:
             extra = {"provider": {}} if ann.routing_free else {}
             antwort = llm.chat_complete(
@@ -397,6 +405,8 @@ def run(main: CitiesStore, rats: CouncilStore, ann: Annotator,
 
         verbrauch = getattr(antwort, "usage", None)
         kosten = float(getattr(verbrauch, "cost", 0) or 0) if verbrauch else 0.0
+        if korb is not None:
+            korb.append(kosten)
         with sperre:
             if verbrauch:
                 stand["prompt_tokens"] += verbrauch.prompt_tokens or 0
@@ -438,10 +448,17 @@ def run(main: CitiesStore, rats: CouncilStore, ann: Annotator,
                 stand["skipped_no_evidence"] += 1
             return None
         klasse = einordnung.get(p["id"]) or {}
-        vorher = stand["cost_usd"]
-        stimmen = [x for x in (eine_stimme(p, belege, klasse) for _ in range(VOTES))
+        # **Der eigene Korb, nicht die Differenz auf dem gemeinsamen Zähler.**
+        # Mit 48 Arbeitern stand an jeder Vorlage rund das 48-Fache ihrer
+        # echten Kosten; am 09.09.2026 mit 96 Arbeitern das 104-Fache, und
+        # die Summe über alle Urteile ergab $1.611 für einen Lauf, der
+        # $15,57 gekostet hat. Der Lauf-Gesamtwert war immer richtig — nur
+        # die Zahl an der einzelnen Vorlage war es nie.
+        korb: list[float] = []
+        stimmen = [x for x in (eine_stimme(p, belege, klasse, korb)
+                               for _ in range(VOTES))
                    if x is not None]
-        kosten = stand["cost_usd"] - vorher
+        kosten = sum(korb)
         if not stimmen:
             return None
         ergebnis, einigkeit = majority(stimmen)

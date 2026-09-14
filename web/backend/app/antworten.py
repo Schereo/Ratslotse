@@ -45,6 +45,38 @@ class Ok(TypedDict):
     ok: bool
 
 
+class VisitWindow(TypedDict):
+    since: str
+    until: str
+    first_visit: bool
+
+
+class TodayUpdate(TypedDict):
+    id: str
+    kind: Literal["protocol", "agenda", "agenda_change"]
+    ksinr: int
+    arrived: str
+    committee: str
+    session_date: str
+    decision_count: int
+
+
+class TodayUpdateGroup(TypedDict):
+    kind: Literal["protocol", "agenda", "agenda_change"]
+    committee: str
+    count: int
+    first_session_date: str
+    last_session_date: str
+    latest: TodayUpdate
+
+
+class TodayUpdates(VisitWindow):
+    total: int
+    counts: dict[str, int]
+    items: list[TodayUpdate]
+    groups: list[TodayUpdateGroup]
+
+
 class OkWithId(TypedDict):
     ok: bool
     id: int
@@ -826,6 +858,9 @@ class TopicHitList(TypedDict):
     topic_count: int
     total: int
     unread_total: int
+    # Eindeutige, noch vorhandene Beschlüsse; ein Treffer in zwei Themen
+    # zählt im Heute-Widget nur einmal. unread_total bleibt für ältere Apps.
+    unread_decisions: int
 
 
 class TopicDecision(TypedDict):
@@ -1392,6 +1427,18 @@ class IdeaEvidence(TypedDict):
     outcome: str | None
 
 
+#: Was die Karte über die Niederschriften einer Stadt sagen kann.
+#:
+#: **Drei Zustände, nicht zwei.** „Kein Warum" heißt bei Magdeburg etwas
+#: anderes als bei Hannover: Dort sind die Protokolle schlicht nicht
+#: abrufbar, hier hält die Stadt die Beratungsergebnisse ausdrücklich
+#: zurück („vertraulich und daher nicht zur Veröffentlichung im Internet
+#: freigegeben", auf 22 von 25 geprüften Punktseiten). Wer beides gleich
+#: darstellt, lässt eine bewusste Entscheidung der Stadt wie eine Lücke in
+#: unseren Daten aussehen.
+PROTOKOLL_QUELLEN = ("available", "none", "withheld")
+
+
 class IdeaProtocol(TypedDict):
     """Was die Niederschrift der Sitzung zu dieser Vorlage sagt.
 
@@ -1468,6 +1515,15 @@ class Idea(TypedDict):
     #: ``None``, solange keine Niederschrift vorliegt oder ihr Abschnitt keine
     #: Begründung trägt. Das ist der Regelfall und kein Fehler.
     protocol: IdeaProtocol | None
+    #: Warum an DIESER Karte kein „Warum" steht — einer der drei Werte aus
+    #: ``PROTOKOLL_QUELLEN``. Ohne ihn sieht Hannovers bewusste
+    #: Zurückhaltung aus wie eine Lücke in unseren Daten.
+    protocol_source: str
+    #: Ab wann Beschlüsse dieser Stadt in den Vergleich gehen
+    #: (``BodySpec.compare_since``). ``None`` bei Oldenburg, der Bezugsstadt.
+    #: Die Städte tragen verschieden weit zurück — ohne die Angabe liest man
+    #: „nur eine Idee" als Aussage über die Stadt statt über das Fenster.
+    window_since: str | None
     #: Was die Idee den Rat kosten würde (`council/cities/annotators.py`,
     #: Annotator `effort`): inquiry < review < resolution < decision < budget.
     #: Leer, solange der Wochen-Cron sie noch nicht vergeben hat.
@@ -1537,6 +1593,14 @@ class FeedbackAck(TypedDict):
 
 class IdeaFields(TypedDict):
     fields: list[IdeaFieldSummary]
+    #: Die Städte, aus denen Ideen vorliegen, nach Namen sortiert.
+    #:
+    #: **Sie gehören in die Antwort, nicht in den Einleitungstext.** Der zählte
+    #: sie fest auf („Osnabrück, Braunschweig, Münster, Potsdam und
+    #: Magdeburg") — und war am 13.09.2026 falsch, sobald Hannover,
+    #: Wolfsburg und Hildesheim dazukamen. Eine Aufzählung, die eine Zeile
+    #: Prosa ist, veraltet beim nächsten Adapter wieder.
+    bodies: list[str]
 
 
 class ElsewhereResponse(TypedDict):
@@ -1641,6 +1705,40 @@ class AdminKohorten(TypedDict):
     #: die Veränderung. Ein Stand allein sagt nicht, ob etwas gewirkt hat.
     previous: AdminKennzahlen
     basis: AdminKohortenBasis
+
+
+class AdminAnmeldeTag(TypedDict):
+    day: str
+    #: Konten, die an diesem Tag angelegt wurden.
+    created: int
+    #: Davon mit bestätigter Adresse — der Stand HEUTE, nicht der an dem Tag.
+    verified: int
+    #: Abgewiesene Registrierungsversuche an diesem Tag (alle Gründe).
+    rejected: int
+
+
+class AdminAbweisung(TypedDict):
+    #: Ein Wert aus ``kern.store.SIGNUP_REJECTION_REASONS``.
+    reason: str
+    n: int
+
+
+class AdminAnmeldungen(TypedDict):
+    """Was bei der Registrierung ankam — und was abprallte.
+
+    Beide Seiten in einem Bild. Die Zahl der neuen Konten allein sagt nicht,
+    ob gerade jemand anklopft und an der Bremse oder am Wegwerf-Riegel
+    hängenbleibt; bis 09/2026 war genau das unsichtbar.
+
+    Nichts hier ist einer Person zuzuordnen: Die Abweisungen tragen weder
+    Adresse noch Domain noch Netzadresse, nur Tag, Grund und Anzahl.
+    """
+    days: int
+    created: int
+    verified: int
+    rejected: int
+    series: list[AdminAnmeldeTag]
+    reasons: list[AdminAbweisung]
 
 
 class AdminSeitenTag(TypedDict):
@@ -3652,10 +3750,31 @@ WAHLABEND_KARTE_PNG: dict[int | str, dict[str, Any]] = {
 
 
 class ElectionInfo(TypedDict):
+    """Wer wählt was, wann — aus ``kommunalwahl/wahlen/``.
+
+    Bis 09/2026 trug diese Form nur Datum, Sitzzahl und den amtlichen Titel;
+    „Ratswahl Oldenburg", „13. September 2026" und der Wahlschluss standen
+    daneben als Literale im Frontend. Jetzt kommt beides von hier — eine
+    andere Wahl in der Registry ändert die Seite, ohne dass jemand eine
+    Überschrift nachzieht.
+    """
+    #: Kennung der Wahl, z. B. „ratswahl-2026".
+    slug: str
     date: str
     seats: int
+    #: Der amtliche Titel („Wahl des Rates der Stadt Oldenburg (Oldb)").
     title: str
+    #: Die kurze Form für Überschriften und Kicker („Ratswahl Oldenburg").
+    short_title: str
+    #: Wahlschluss mit Zeitzone (ISO) — Grundlage von Countdown und Abruftakt.
+    polls_close: str
+    #: „vorbereitung" | „live" | „rueckblick".
+    status: str
     presentation_url: str
+    #: Name der Vergleichswahl für ``seats_previous``/``share_previous_pct“ —
+    #: „2021" bei der Ratswahl 2026. Leer, wenn es keine Vorwahl gibt; dann
+    #: zeigen beide Seiten den Vergleich gar nicht.
+    previous_label: str
 
 
 class ElectionSource(TypedDict):
@@ -3717,6 +3836,33 @@ class ElectionArea(TypedDict):
     parties: list[ElectionAreaParty]
 
 
+class ElectionPartyArea(TypedDict):
+    """Ein Wahlbereich aus der Sicht EINER Liste — die Rangfolge, in der sie
+    dort stark ist. Gemeint sind die absoluten Stimmen, nicht der Anteil: Ein
+    Wahlbereich mit 22.000 Wahlberechtigten schlägt einen mit 12.000 auch
+    dann, wenn der Prozentwert dort niedriger ist — und die Sitze folgen den
+    Stimmen (§ 37 Abs. 3), nicht den Prozenten."""
+    area: int
+    roman: str
+    name: str
+    #: Rang innerhalb dieser Liste, 1 = ihr stärkster Wahlbereich.
+    rank: int
+    votes: int | None
+    share_pct: float | None
+    seats: int | None
+    projected_seats: int | None
+    #: Der Hare/Niemeyer-Rest dieser Liste in diesem Wahlbereich (§ 37 Abs. 3)
+    #: und der gemeinsame Nenner — zusammen der „Zugriff" auf die Restsitze.
+    #: ``None``, solange nichts ausgezählt ist oder die Liste keinen Sitz hat.
+    remainder: int | None
+    remainder_quota: int | None
+    #: Hier ist der LETZTE Sitz dieser Liste gelandet (größter noch bedienter
+    #: Rest) …
+    took_last_seat: bool
+    #: … und hierhin ginge ihr nächster.
+    next_seat: bool
+
+
 class ElectionParty(TypedDict):
     index: int
     slug: str
@@ -3730,12 +3876,21 @@ class ElectionParty(TypedDict):
     share_pct: float | None
     seats: int | None
     projected_seats: int | None
-    seats_2021: int | None
-    share_2021_pct: float | None
+    #: Sitze und Anteil derselben Liste bei der VORWAHL — wie die heißt, sagt
+    #: ``ElectionInfo.previous_label``. Hieß bis 09/2026 ``seats_2021`` /
+    #: ``share_2021_pct``: ein Jahr im Feldnamen, das bei der nächsten Wahl
+    #: nicht mehr stimmt und das kein Client umbenennen kann.
+    seats_previous: int | None
+    share_previous_pct: float | None
     #: Stufe 1 (stadtweit): Stimmen bis zum nächsten Sitz bzw. bis zum
     #: Verlust eines Sitzes. ``None`` = nicht erreichbar / kein Sitz.
     votes_to_next_seat: int | None
     votes_to_lose_seat: int | None
+    #: Die Wahlbereiche dieser Liste in ihrer Rangfolge, stärkster zuerst.
+    #: Dieselben Zahlen stehen auch in ``ElectionArea.parties`` — dort nach
+    #: Wahlbereich sortiert, hier nach Liste. Wer „wo ist diese Liste stark?"
+    #: fragt, soll nicht sechs Wahlbereiche durchsuchen müssen.
+    areas: list[ElectionPartyArea]
 
 
 class ElectionMandate(TypedDict):
@@ -3779,6 +3934,191 @@ class ElectionNight(TypedDict):
     history: list[ElectionHistoryPoint]
 
 
+class ElectionTopEntry(TypedDict):
+    label: str
+    #: Sitze (Ratswahl) — ``null`` bei einer Mehrheitswahl.
+    seats: int | None
+    #: Anteil in Prozent (Mehrheitswahl) — ``null`` bei einer Ratswahl.
+    pct: float | None
+    color: str
+    color_dark: str
+
+
+class ElectionListItem(TypedDict):
+    """Eine Zeile der Übersicht unter ``/wahlen``."""
+    slug: str
+    short_title: str
+    title: str
+    date: str
+    polls_close: str
+    #: „council" (Sitze) oder „mayor" (Prozente, auch Stichwahl).
+    kind: str
+    #: „vorbereitung" | „live" | „rueckblick".
+    status: str
+    #: Wo diese Wahl zu sehen ist — leer, wenn es keine Seite dafür gibt.
+    path: str
+    #: Das Ergebnis in einem Satz; ``null``, solange es keines gibt.
+    summary: str | None
+    #: Ist das die Wahl, auf die gerade alles zeigt (``elections.focus``)?
+    focus: bool
+    #: Der Weg zum Tippspiel dieser Wahl — leer, wenn es keines gibt ODER die
+    #: fragende Person nicht hineindarf. Die Entscheidung trifft das Backend:
+    #: Ein Link, den man sieht und nicht benutzen kann, ist schlechter als
+    #: keiner.
+    tipp_path: str
+    #: Es GIBT ein Tippspiel, aber nur mit Konto — und hier fragt niemand mit
+    #: Konto. Das eine ehrliche Signal, aus dem die Seite einen Grund zum
+    #: Registrieren machen darf; ohne es müsste sie raten.
+    tipp_locked: bool
+    #: Die vorderen Listen bzw. Kandidaturen mit Sitzen/Anteil und Farbe —
+    #: für eine Zeile aus Punkten, wie die Designsprache sie erlaubt (8-px-Dots,
+    #: nie Flächen). Leer, solange es kein Ergebnis gibt.
+    top: list[ElectionTopEntry]
+
+
+class ElectionList(TypedDict):
+    elections: list[ElectionListItem]
+
+
+class ElectionAreaRef(TypedDict):
+    number: int
+    roman: str
+    name: str
+
+
+class ElectionDistrictParty(TypedDict):
+    slug: str
+    votes: int | None
+    share_pct: float | None
+
+
+class ElectionDistrict(TypedDict):
+    """Ein Wahlbezirk — die kleinste Einheit, die die Stadt veröffentlicht.
+    2026: 91 an der Urne, 42 für die Briefwahl."""
+    number: int
+    name: str
+    #: Der Wahlbereich, zu dem er zählt (1…6).
+    area: int
+    #: Briefwahlbezirk (Nummer ab 900)? Er zählt zum Wahlbereich, hat aber
+    #: keine Fläche auf der Karte — die Stimmen kommen von überall her.
+    postal: bool
+    counted: bool
+    reports_expected: int
+    reports_received: int
+    totals: ElectionTotals
+    parties: list[ElectionDistrictParty]
+
+
+class ElectionDistrictList(TypedDict):
+    """``GET /api/wahlabend/wahlbezirke`` — derselbe Stand, eine Ebene tiefer.
+
+    Bewusst ein eigener Endpunkt und nicht Teil von ``ElectionNight``:
+    133 Bezirke mal 16 Listen sind über 2.000 Zahlen, und die Seite braucht
+    sie erst, wenn jemand die Karte aufmacht. Personenstimmen je Bezirk
+    stehen NICHT darin — die CSV kennt sie, aber 133 × 383 Zahlen
+    beantworten keine Frage, die jemand hat.
+    """
+    dataset: str
+    phase: str
+    election: ElectionInfo
+    #: Wie viele Bezirke es gibt und wie viele davon gezählt sind.
+    total: int
+    counted: int
+    districts: list[ElectionDistrict]
+
+
+class ElectionCandidateParty(TypedDict):
+    """Eine Liste in der Kandidaten-Rangliste — mit dem Verhältnis, das die
+    Frage „wie kommt jemand auf so viele Personenstimmen?" beantwortet:
+    Wie viel von dem, was eine Liste bekommt, ging an Personen statt an die
+    Liste? Gemessen 2026: SPD 50 %, CDU 48 %, Grüne 35 %, AfD 36 %."""
+    slug: str
+    short: str
+    name: str
+    color: str
+    color_dark: str
+    candidates_total: int
+    #: Stadtweit: Listenstimmen, Personenstimmen und der Personen-Anteil an
+    #: beiden — ``None``, solange nichts ausgezählt ist.
+    list_votes: int | None
+    candidate_votes: int | None
+    personal_pct: float | None
+
+
+class ElectionCandidateRow(TypedDict):
+    """Eine Kandidatur, stadtweit einsortiert."""
+    #: Rang nach Personenstimmen über ALLE Kandidaturen der Wahl — bleibt
+    #: auch gefiltert der stadtweite Rang (Platz 7 der Stadt ist Platz 7,
+    #: auch wenn nur die eigene Liste gezeigt wird). ``None`` ohne Stimmen.
+    rank: int | None
+    party: str
+    party_short: str
+    color: str
+    color_dark: str
+    area: int
+    area_roman: str
+    area_name: str
+    position: int
+    name: str
+    occupation: str | None
+    born: int | None
+    votes: int | None
+    #: Anteil dieser Person an ALLEN Stimmen ihrer Liste im Wahlbereich
+    #: (Liste + Personen). Das ist die Zahl hinter „hat die Liste getragen".
+    party_share_pct: float | None
+    #: "direct" | "list" | "transfer" — oder ``None``: kein Sitz.
+    elected: str | None
+    projected_elected: str | None
+    votes_to_seat: int | None
+
+
+class ElectionWatchEntry(TypedDict):
+    """Eine beobachtete Kandidatur — der Merker plus ihre aktuelle Zeile."""
+    #: Die Kennung des Merkers (zum Entfernen).
+    id: int
+    election: str
+    party: str
+    area: int
+    position: int
+    #: Der Name, wie er beim Merken galt. Er steht auch dann da, wenn die
+    #: Kandidatur in der aktuellen Antwort fehlt — ein leerer Eintrag wäre
+    #: schlimmer als ein alter Name.
+    name: str
+    subtitle: str
+    #: Die aktuelle Zeile aus der Rangliste; ``None``, wenn es diese
+    #: Kandidatur in dieser Wahl nicht (mehr) gibt.
+    row: ElectionCandidateRow | None
+
+
+class ElectionWatchList(TypedDict):
+    """``GET /api/wahlabend/beobachtet`` — die gemerkten Kandidaturen EINES
+    Kontos, mit dem Stand von jetzt. Eine Antwort statt 383 Zeilen für fünf
+    Namen."""
+    election: ElectionInfo
+    entries: list[ElectionWatchEntry]
+
+
+class ElectionCandidateRanking(TypedDict):
+    """``GET /api/wahlabend/kandidaten`` — alle Kandidaturen einer Ratswahl,
+    sortiert und gefiltert vom Server, damit Web und App dieselbe Liste
+    zeigen (und keiner sie im Browser nachsortiert)."""
+    dataset: str
+    phase: str
+    person_votes_available: bool
+    election: ElectionInfo
+    #: Wie sortiert wurde: "votes" | "party" | "area" | "name".
+    sort: str
+    #: Die angewandten Filter — ``None`` = kein Filter.
+    party: str | None
+    area: int | None
+    #: Kandidaturen insgesamt und davon gezeigt.
+    total: int
+    shown: int
+    parties: list[ElectionCandidateParty]
+    areas: list[ElectionAreaRef]
+    rows: list[ElectionCandidateRow]
+
+
 # ------------------------------------------------------------------ OB-Wahl (election/mayor.py)
 
 class MayorCandidate(TypedDict):
@@ -3789,11 +4129,39 @@ class MayorCandidate(TypedDict):
     party: str
     votes: int | None
     share_pct: float | None
+    #: Nur in einer Stichwahl: der Anteil dieser Person im ERSTEN Wahlgang.
+    #: ``null`` sonst — der erste Wahlgang vergleicht sich mit nichts.
+    first_round_pct: float | None
+    #: Farbe der vorschlagenden Liste (hell/dunkel); leer bei einem
+    #: Einzelwahlvorschlag — dann zeichnet die Seite neutral.
+    color: str
+    color_dark: str
+
+
+class MayorElectionInfo(TypedDict):
+    """Welche Wahl das hier ist — aus ``kommunalwahl/wahlen/``.
+
+    Stand bis 09/2026 nicht in der Antwort: Es gab genau eine OB-Wahl, und
+    die Seite kannte sie auswendig. Mit der Stichwahl am 27.09. sind es zwei,
+    und die Überschrift darf nicht mehr im Frontend stehen."""
+    slug: str
+    title: str
+    short_title: str
+    date: str
+    #: Wahlschluss mit Zeitzone (ISO) — Grundlage des Countdowns.
+    polls_close: str
+    #: Ist das eine Stichwahl? Dann trägt ``first_round_pct`` je Kandidatur
+    #: das Ergebnis des ersten Wahlgangs.
+    is_runoff: bool
+    presentation_url: str
 
 
 class MayorNight(TypedDict):
+    #: "live" (Votemanager) oder "probe" (Generalprobe mit echten Zahlen).
+    dataset: str
     #: "before" (nichts ausgezählt) | "counting" | "complete".
     phase: str
+    election: MayorElectionInfo
     reports_expected: int
     reports_received: int
     turnout_pct: float | None
@@ -3802,6 +4170,9 @@ class MayorNight(TypedDict):
     candidates: list[MayorCandidate]
     #: Slugs der beiden Kandidaturen einer Stichwahl — leer ohne Stichwahl-Satz.
     runoff: list[str]
+    #: Slug der gewählten Person, sobald die Darstellung eine nennt und es
+    #: keine Stichwahl gibt — sonst ``null``.
+    elected: str | None
     fetched_at: str | None
     ok: bool
     error: str | None
@@ -3820,7 +4191,9 @@ class PredictionParty(TypedDict):
     name: str
     color: str
     color_dark: str
-    seats_2021: int | None
+    #: Sitze dieser Liste bei der Vorwahl; ``PredictionGame.previous_label``
+    #: sagt, welche das ist.
+    seats_previous: int | None
 
 
 class PredictionMayorCandidate(TypedDict):
@@ -3840,6 +4213,24 @@ class PredictionGame(TypedDict):
     #: "open" (Tippen offen) | "locked" (Tipp-Schluss erreicht) | "final" (Endstand).
     phase: str
     seats_total: int
+    #: Die Wahl, auf die getippt wird. ``election_slug`` schreibt sie fest —
+    #: eine Runde vergleicht sich für immer mit DIESER Wahl, auch wenn längst
+    #: eine spätere läuft.
+    election_slug: str
+    election_title: str
+    election_date: str
+    #: Was getippt wird: „seats" (ganze Sitze, Summe = ``seats_total``) oder
+    #: „pct" (Prozent je Kandidatur). Der Client liest das statt die Wahlart
+    #: zu deuten; bei „pct" ist ``parties`` leer und ``seats_total`` 0.
+    tip_kind: str
+    #: Steht die Runde allen offen, oder braucht sie ein Konto? Bei ``false``
+    #: kommt man ohne Anmeldung gar nicht bis hierher — das Feld sagt der
+    #: Oberfläche, dass sie den Namen NICHT abfragen muss (er kommt aus dem
+    #: Profil) und wer eingeladen ist.
+    public: bool
+    #: Name der Vergleichswahl für ``PredictionParty.seats_previous``
+    #: („2021"); leer, wenn es keine gibt.
+    previous_label: str
     locked: bool
     locked_at: str | None
     late_scored: bool

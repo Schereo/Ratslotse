@@ -173,11 +173,21 @@ JOBS: list[dict] = [
         "max_age_h": 30,
     },
     {
+        "key": "check_wahltermine",
+        "label": "Wahltermine der Stadt",
+        "description": "Vergleicht den Terminkalender des Votemanagers mit kommunalwahl/wahlen/ — "
+                       "meldet eine Wahl, die wir nicht kennen, und eine Wahl-Id, die endlich da ist "
+                       "(oder kurz vor dem Wahltag immer noch fehlt).",
+        "schedule": "täglich 6:15 Uhr",
+        "max_age_h": 30,
+    },
+    {
         "key": "check_herzschlag",
         "label": "Herzschlag",
-        "description": "Meldet Jobs, die nicht mehr laufen, und einen vollen Datenträger. "
-                       "Ein Job, der gar nicht startet, stürzt auch nicht ab — "
-                       "ohne diese Prüfung fällt sein Schweigen niemandem auf.",
+        "description": "Meldet Jobs, die nicht mehr laufen, einen vollen Datenträger "
+                       "und auffällige Registrierungen. Ein Job, der gar nicht startet, "
+                       "stürzt auch nicht ab — und Konten, die ihre Adresse nie "
+                       "bestätigen, lösen keine einzige Mail aus.",
         "schedule": "täglich 6:30 Uhr",
         "max_age_h": 30,
     },

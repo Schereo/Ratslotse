@@ -1,6 +1,24 @@
 {
   "components": {
     "schemas": {
+      "AdminAbweisung": {
+        "properties": {
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason",
+          "n"
+        ],
+        "title": "AdminAbweisung",
+        "type": "object"
+      },
       "AdminAliasDeleted": {
         "properties": {
           "entities": {
@@ -33,6 +51,79 @@
           "aliases"
         ],
         "title": "AdminAliasList",
+        "type": "object"
+      },
+      "AdminAnmeldeTag": {
+        "properties": {
+          "created": {
+            "title": "Created",
+            "type": "integer"
+          },
+          "day": {
+            "title": "Day",
+            "type": "string"
+          },
+          "rejected": {
+            "title": "Rejected",
+            "type": "integer"
+          },
+          "verified": {
+            "title": "Verified",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "day",
+          "created",
+          "verified",
+          "rejected"
+        ],
+        "title": "AdminAnmeldeTag",
+        "type": "object"
+      },
+      "AdminAnmeldungen": {
+        "description": "Was bei der Registrierung ankam — und was abprallte.\n\nBeide Seiten in einem Bild. Die Zahl der neuen Konten allein sagt nicht,\nob gerade jemand anklopft und an der Bremse oder am Wegwerf-Riegel\nhängenbleibt; bis 09/2026 war genau das unsichtbar.\n\nNichts hier ist einer Person zuzuordnen: Die Abweisungen tragen weder\nAdresse noch Domain noch Netzadresse, nur Tag, Grund und Anzahl.",
+        "properties": {
+          "created": {
+            "title": "Created",
+            "type": "integer"
+          },
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "reasons": {
+            "items": {
+              "$ref": "#/components/schemas/AdminAbweisung"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "rejected": {
+            "title": "Rejected",
+            "type": "integer"
+          },
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/AdminAnmeldeTag"
+            },
+            "title": "Series",
+            "type": "array"
+          },
+          "verified": {
+            "title": "Verified",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "days",
+          "created",
+          "verified",
+          "rejected",
+          "series",
+          "reasons"
+        ],
+        "title": "AdminAnmeldungen",
         "type": "object"
       },
       "AdminClientShare": {
@@ -2305,6 +2396,48 @@
       "AppConfigOut": {
         "description": "Compatibility contract consumed before a native app starts loading data.",
         "properties": {
+          "election": {
+            "description": "Die Wahl, die gerade ansteht — klein genug für jede Seite.\n\nWarum hier und nicht nur in ``/api/wahlabend``: Startseite, Heute-Karte\nund Dashboard zeigen einen Countdown, ohne den ganzen Wahlabend zu laden.\nBis 09/2026 stand der Termin dafür als ``WAHLABEND_BEGINN_UTC`` im\nFrontend — eine Konstante, die ein Deploy braucht und die niemand mit der\nRegistry abgleicht.",
+            "properties": {
+              "date": {
+                "title": "Date",
+                "type": "string"
+              },
+              "kind": {
+                "title": "Kind",
+                "type": "string"
+              },
+              "path": {
+                "title": "Path",
+                "type": "string"
+              },
+              "polls_close": {
+                "title": "Polls Close",
+                "type": "string"
+              },
+              "short_title": {
+                "title": "Short Title",
+                "type": "string"
+              },
+              "slug": {
+                "title": "Slug",
+                "type": "string"
+              }
+            },
+            "required": [
+              "slug",
+              "short_title",
+              "date",
+              "polls_close",
+              "kind",
+              "path"
+            ],
+            "title": "AppElectionOut",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
           "features": {
             "default": [],
             "items": {
@@ -2329,6 +2462,45 @@
           "min_build"
         ],
         "title": "AppConfigOut",
+        "type": "object"
+      },
+      "AppElectionOut": {
+        "description": "Die Wahl, die gerade ansteht — klein genug für jede Seite.\n\nWarum hier und nicht nur in ``/api/wahlabend``: Startseite, Heute-Karte\nund Dashboard zeigen einen Countdown, ohne den ganzen Wahlabend zu laden.\nBis 09/2026 stand der Termin dafür als ``WAHLABEND_BEGINN_UTC`` im\nFrontend — eine Konstante, die ein Deploy braucht und die niemand mit der\nRegistry abgleicht.",
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "polls_close": {
+            "title": "Polls Close",
+            "type": "string"
+          },
+          "short_title": {
+            "title": "Short Title",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "short_title",
+          "date",
+          "polls_close",
+          "kind",
+          "path"
+        ],
+        "title": "AppElectionOut",
         "type": "object"
       },
       "AppleLoginRequest": {
@@ -7459,6 +7631,29 @@
         "title": "ElectionAreaParty",
         "type": "object"
       },
+      "ElectionAreaRef": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "integer"
+          },
+          "roman": {
+            "title": "Roman",
+            "type": "string"
+          }
+        },
+        "required": [
+          "number",
+          "roman",
+          "name"
+        ],
+        "title": "ElectionAreaRef",
+        "type": "object"
+      },
       "ElectionCandidate": {
         "properties": {
           "born": {
@@ -7533,6 +7728,396 @@
         "title": "ElectionCandidate",
         "type": "object"
       },
+      "ElectionCandidateParty": {
+        "description": "Eine Liste in der Kandidaten-Rangliste — mit dem Verhältnis, das die\nFrage „wie kommt jemand auf so viele Personenstimmen?\" beantwortet:\nWie viel von dem, was eine Liste bekommt, ging an Personen statt an die\nListe? Gemessen 2026: SPD 50 %, CDU 48 %, Grüne 35 %, AfD 36 %.",
+        "properties": {
+          "candidate_votes": {
+            "title": "Candidate Votes",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "candidates_total": {
+            "title": "Candidates Total",
+            "type": "integer"
+          },
+          "color": {
+            "title": "Color",
+            "type": "string"
+          },
+          "color_dark": {
+            "title": "Color Dark",
+            "type": "string"
+          },
+          "list_votes": {
+            "title": "List Votes",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "personal_pct": {
+            "title": "Personal Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "short": {
+            "title": "Short",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "short",
+          "name",
+          "color",
+          "color_dark",
+          "candidates_total",
+          "list_votes",
+          "candidate_votes",
+          "personal_pct"
+        ],
+        "title": "ElectionCandidateParty",
+        "type": "object"
+      },
+      "ElectionCandidateRanking": {
+        "description": "``GET /api/wahlabend/kandidaten`` — alle Kandidaturen einer Ratswahl,\nsortiert und gefiltert vom Server, damit Web und App dieselbe Liste\nzeigen (und keiner sie im Browser nachsortiert).",
+        "properties": {
+          "area": {
+            "title": "Area",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "areas": {
+            "items": {
+              "$ref": "#/components/schemas/ElectionAreaRef"
+            },
+            "title": "Areas",
+            "type": "array"
+          },
+          "dataset": {
+            "title": "Dataset",
+            "type": "string"
+          },
+          "election": {
+            "$ref": "#/components/schemas/ElectionInfo"
+          },
+          "parties": {
+            "items": {
+              "$ref": "#/components/schemas/ElectionCandidateParty"
+            },
+            "title": "Parties",
+            "type": "array"
+          },
+          "party": {
+            "title": "Party",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "person_votes_available": {
+            "title": "Person Votes Available",
+            "type": "boolean"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/ElectionCandidateRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "shown": {
+            "title": "Shown",
+            "type": "integer"
+          },
+          "sort": {
+            "title": "Sort",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "dataset",
+          "phase",
+          "person_votes_available",
+          "election",
+          "sort",
+          "party",
+          "area",
+          "total",
+          "shown",
+          "parties",
+          "areas",
+          "rows"
+        ],
+        "title": "ElectionCandidateRanking",
+        "type": "object"
+      },
+      "ElectionCandidateRow": {
+        "description": "Eine Kandidatur, stadtweit einsortiert.",
+        "properties": {
+          "area": {
+            "title": "Area",
+            "type": "integer"
+          },
+          "area_name": {
+            "title": "Area Name",
+            "type": "string"
+          },
+          "area_roman": {
+            "title": "Area Roman",
+            "type": "string"
+          },
+          "born": {
+            "title": "Born",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "color": {
+            "title": "Color",
+            "type": "string"
+          },
+          "color_dark": {
+            "title": "Color Dark",
+            "type": "string"
+          },
+          "elected": {
+            "title": "Elected",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "occupation": {
+            "title": "Occupation",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "party": {
+            "title": "Party",
+            "type": "string"
+          },
+          "party_share_pct": {
+            "title": "Party Share Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "party_short": {
+            "title": "Party Short",
+            "type": "string"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "projected_elected": {
+            "title": "Projected Elected",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rank": {
+            "title": "Rank",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "votes": {
+            "title": "Votes",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "votes_to_seat": {
+            "title": "Votes To Seat",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "rank",
+          "party",
+          "party_short",
+          "color",
+          "color_dark",
+          "area",
+          "area_roman",
+          "area_name",
+          "position",
+          "name",
+          "occupation",
+          "born",
+          "votes",
+          "party_share_pct",
+          "elected",
+          "projected_elected",
+          "votes_to_seat"
+        ],
+        "title": "ElectionCandidateRow",
+        "type": "object"
+      },
+      "ElectionDistrict": {
+        "description": "Ein Wahlbezirk — die kleinste Einheit, die die Stadt veröffentlicht.\n2026: 91 an der Urne, 42 für die Briefwahl.",
+        "properties": {
+          "area": {
+            "title": "Area",
+            "type": "integer"
+          },
+          "counted": {
+            "title": "Counted",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "integer"
+          },
+          "parties": {
+            "items": {
+              "$ref": "#/components/schemas/ElectionDistrictParty"
+            },
+            "title": "Parties",
+            "type": "array"
+          },
+          "postal": {
+            "title": "Postal",
+            "type": "boolean"
+          },
+          "reports_expected": {
+            "title": "Reports Expected",
+            "type": "integer"
+          },
+          "reports_received": {
+            "title": "Reports Received",
+            "type": "integer"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/ElectionTotals"
+          }
+        },
+        "required": [
+          "number",
+          "name",
+          "area",
+          "postal",
+          "counted",
+          "reports_expected",
+          "reports_received",
+          "totals",
+          "parties"
+        ],
+        "title": "ElectionDistrict",
+        "type": "object"
+      },
+      "ElectionDistrictList": {
+        "description": "``GET /api/wahlabend/wahlbezirke`` — derselbe Stand, eine Ebene tiefer.\n\nBewusst ein eigener Endpunkt und nicht Teil von ``ElectionNight``:\n133 Bezirke mal 16 Listen sind über 2.000 Zahlen, und die Seite braucht\nsie erst, wenn jemand die Karte aufmacht. Personenstimmen je Bezirk\nstehen NICHT darin — die CSV kennt sie, aber 133 × 383 Zahlen\nbeantworten keine Frage, die jemand hat.",
+        "properties": {
+          "counted": {
+            "title": "Counted",
+            "type": "integer"
+          },
+          "dataset": {
+            "title": "Dataset",
+            "type": "string"
+          },
+          "districts": {
+            "items": {
+              "$ref": "#/components/schemas/ElectionDistrict"
+            },
+            "title": "Districts",
+            "type": "array"
+          },
+          "election": {
+            "$ref": "#/components/schemas/ElectionInfo"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "dataset",
+          "phase",
+          "election",
+          "total",
+          "counted",
+          "districts"
+        ],
+        "title": "ElectionDistrictList",
+        "type": "object"
+      },
+      "ElectionDistrictParty": {
+        "properties": {
+          "share_pct": {
+            "title": "Share Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "votes": {
+            "title": "Votes",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "slug",
+          "votes",
+          "share_pct"
+        ],
+        "title": "ElectionDistrictParty",
+        "type": "object"
+      },
       "ElectionHistoryPoint": {
         "description": "Ein Minutenstand des Abends — für den Verlauf (Auszählung, Anteile, Sitze).",
         "properties": {
@@ -7569,18 +8154,39 @@
         "type": "object"
       },
       "ElectionInfo": {
+        "description": "Wer wählt was, wann — aus ``kommunalwahl/wahlen/``.\n\nBis 09/2026 trug diese Form nur Datum, Sitzzahl und den amtlichen Titel;\n„Ratswahl Oldenburg\", „13. September 2026\" und der Wahlschluss standen\ndaneben als Literale im Frontend. Jetzt kommt beides von hier — eine\nandere Wahl in der Registry ändert die Seite, ohne dass jemand eine\nÜberschrift nachzieht.",
         "properties": {
           "date": {
             "title": "Date",
+            "type": "string"
+          },
+          "polls_close": {
+            "title": "Polls Close",
             "type": "string"
           },
           "presentation_url": {
             "title": "Presentation Url",
             "type": "string"
           },
+          "previous_label": {
+            "title": "Previous Label",
+            "type": "string"
+          },
           "seats": {
             "title": "Seats",
             "type": "integer"
+          },
+          "short_title": {
+            "title": "Short Title",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
           },
           "title": {
             "title": "Title",
@@ -7588,12 +8194,113 @@
           }
         },
         "required": [
+          "slug",
           "date",
           "seats",
           "title",
-          "presentation_url"
+          "short_title",
+          "polls_close",
+          "status",
+          "presentation_url",
+          "previous_label"
         ],
         "title": "ElectionInfo",
+        "type": "object"
+      },
+      "ElectionList": {
+        "properties": {
+          "elections": {
+            "items": {
+              "$ref": "#/components/schemas/ElectionListItem"
+            },
+            "title": "Elections",
+            "type": "array"
+          }
+        },
+        "required": [
+          "elections"
+        ],
+        "title": "ElectionList",
+        "type": "object"
+      },
+      "ElectionListItem": {
+        "description": "Eine Zeile der Übersicht unter ``/wahlen``.",
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "focus": {
+            "title": "Focus",
+            "type": "boolean"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "polls_close": {
+            "title": "Polls Close",
+            "type": "string"
+          },
+          "short_title": {
+            "title": "Short Title",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tipp_locked": {
+            "title": "Tipp Locked",
+            "type": "boolean"
+          },
+          "tipp_path": {
+            "title": "Tipp Path",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "top": {
+            "items": {
+              "$ref": "#/components/schemas/ElectionTopEntry"
+            },
+            "title": "Top",
+            "type": "array"
+          }
+        },
+        "required": [
+          "slug",
+          "short_title",
+          "title",
+          "date",
+          "polls_close",
+          "kind",
+          "status",
+          "path",
+          "summary",
+          "focus",
+          "tipp_path",
+          "tipp_locked",
+          "top"
+        ],
+        "title": "ElectionListItem",
         "type": "object"
       },
       "ElectionMandate": {
@@ -7737,6 +8444,13 @@
       },
       "ElectionParty": {
         "properties": {
+          "areas": {
+            "items": {
+              "$ref": "#/components/schemas/ElectionPartyArea"
+            },
+            "title": "Areas",
+            "type": "array"
+          },
           "candidates_total": {
             "title": "Candidates Total",
             "type": "integer"
@@ -7775,22 +8489,22 @@
               "null"
             ]
           },
-          "seats_2021": {
-            "title": "Seats 2021",
+          "seats_previous": {
+            "title": "Seats Previous",
             "type": [
               "integer",
               "null"
             ]
           },
-          "share_2021_pct": {
-            "title": "Share 2021 Pct",
+          "share_pct": {
+            "title": "Share Pct",
             "type": [
               "number",
               "null"
             ]
           },
-          "share_pct": {
-            "title": "Share Pct",
+          "share_previous_pct": {
+            "title": "Share Previous Pct",
             "type": [
               "number",
               "null"
@@ -7839,12 +8553,100 @@
           "share_pct",
           "seats",
           "projected_seats",
-          "seats_2021",
-          "share_2021_pct",
+          "seats_previous",
+          "share_previous_pct",
           "votes_to_next_seat",
-          "votes_to_lose_seat"
+          "votes_to_lose_seat",
+          "areas"
         ],
         "title": "ElectionParty",
+        "type": "object"
+      },
+      "ElectionPartyArea": {
+        "description": "Ein Wahlbereich aus der Sicht EINER Liste — die Rangfolge, in der sie\ndort stark ist. Gemeint sind die absoluten Stimmen, nicht der Anteil: Ein\nWahlbereich mit 22.000 Wahlberechtigten schlägt einen mit 12.000 auch\ndann, wenn der Prozentwert dort niedriger ist — und die Sitze folgen den\nStimmen (§ 37 Abs. 3), nicht den Prozenten.",
+        "properties": {
+          "area": {
+            "title": "Area",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "next_seat": {
+            "title": "Next Seat",
+            "type": "boolean"
+          },
+          "projected_seats": {
+            "title": "Projected Seats",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "rank": {
+            "title": "Rank",
+            "type": "integer"
+          },
+          "remainder": {
+            "title": "Remainder",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "remainder_quota": {
+            "title": "Remainder Quota",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "roman": {
+            "title": "Roman",
+            "type": "string"
+          },
+          "seats": {
+            "title": "Seats",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "share_pct": {
+            "title": "Share Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "took_last_seat": {
+            "title": "Took Last Seat",
+            "type": "boolean"
+          },
+          "votes": {
+            "title": "Votes",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "area",
+          "roman",
+          "name",
+          "rank",
+          "votes",
+          "share_pct",
+          "seats",
+          "projected_seats",
+          "remainder",
+          "remainder_quota",
+          "took_last_seat",
+          "next_seat"
+        ],
+        "title": "ElectionPartyArea",
         "type": "object"
       },
       "ElectionProgress": {
@@ -7903,6 +8705,45 @@
         "title": "ElectionSource",
         "type": "object"
       },
+      "ElectionTopEntry": {
+        "properties": {
+          "color": {
+            "title": "Color",
+            "type": "string"
+          },
+          "color_dark": {
+            "title": "Color Dark",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "pct": {
+            "title": "Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "seats": {
+            "title": "Seats",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "label",
+          "seats",
+          "pct",
+          "color",
+          "color_dark"
+        ],
+        "title": "ElectionTopEntry",
+        "type": "object"
+      },
       "ElectionTotals": {
         "properties": {
           "eligible": {
@@ -7949,6 +8790,193 @@
           "invalid_ballots"
         ],
         "title": "ElectionTotals",
+        "type": "object"
+      },
+      "ElectionWatchEntry": {
+        "description": "Eine beobachtete Kandidatur — der Merker plus ihre aktuelle Zeile.",
+        "properties": {
+          "area": {
+            "title": "Area",
+            "type": "integer"
+          },
+          "election": {
+            "title": "Election",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "party": {
+            "title": "Party",
+            "type": "string"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "row": {
+            "description": "Eine Kandidatur, stadtweit einsortiert.",
+            "properties": {
+              "area": {
+                "title": "Area",
+                "type": "integer"
+              },
+              "area_name": {
+                "title": "Area Name",
+                "type": "string"
+              },
+              "area_roman": {
+                "title": "Area Roman",
+                "type": "string"
+              },
+              "born": {
+                "title": "Born",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "color": {
+                "title": "Color",
+                "type": "string"
+              },
+              "color_dark": {
+                "title": "Color Dark",
+                "type": "string"
+              },
+              "elected": {
+                "title": "Elected",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "name": {
+                "title": "Name",
+                "type": "string"
+              },
+              "occupation": {
+                "title": "Occupation",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "party": {
+                "title": "Party",
+                "type": "string"
+              },
+              "party_share_pct": {
+                "title": "Party Share Pct",
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "party_short": {
+                "title": "Party Short",
+                "type": "string"
+              },
+              "position": {
+                "title": "Position",
+                "type": "integer"
+              },
+              "projected_elected": {
+                "title": "Projected Elected",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "rank": {
+                "title": "Rank",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "votes": {
+                "title": "Votes",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "votes_to_seat": {
+                "title": "Votes To Seat",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "rank",
+              "party",
+              "party_short",
+              "color",
+              "color_dark",
+              "area",
+              "area_roman",
+              "area_name",
+              "position",
+              "name",
+              "occupation",
+              "born",
+              "votes",
+              "party_share_pct",
+              "elected",
+              "projected_elected",
+              "votes_to_seat"
+            ],
+            "title": "ElectionCandidateRow",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "subtitle": {
+            "title": "Subtitle",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "election",
+          "party",
+          "area",
+          "position",
+          "name",
+          "subtitle",
+          "row"
+        ],
+        "title": "ElectionWatchEntry",
+        "type": "object"
+      },
+      "ElectionWatchList": {
+        "description": "``GET /api/wahlabend/beobachtet`` — die gemerkten Kandidaturen EINES\nKontos, mit dem Stand von jetzt. Eine Antwort statt 383 Zeilen für fünf\nNamen.",
+        "properties": {
+          "election": {
+            "$ref": "#/components/schemas/ElectionInfo"
+          },
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/ElectionWatchEntry"
+            },
+            "title": "Entries",
+            "type": "array"
+          }
+        },
+        "required": [
+          "election",
+          "entries"
+        ],
+        "title": "ElectionWatchList",
         "type": "object"
       },
       "ElsewhereItem": {
@@ -9319,6 +10347,10 @@
               "null"
             ]
           },
+          "protocol_source": {
+            "title": "Protocol Source",
+            "type": "string"
+          },
           "reason": {
             "title": "Reason",
             "type": "string"
@@ -9359,6 +10391,13 @@
               "string",
               "null"
             ]
+          },
+          "window_since": {
+            "title": "Window Since",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
@@ -9382,6 +10421,8 @@
           "confidence",
           "evidence",
           "protocol",
+          "protocol_source",
+          "window_since",
           "effort",
           "siblings",
           "stance",
@@ -9480,6 +10521,13 @@
       },
       "IdeaFields": {
         "properties": {
+          "bodies": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Bodies",
+            "type": "array"
+          },
           "fields": {
             "items": {
               "$ref": "#/components/schemas/IdeaFieldSummary"
@@ -9489,7 +10537,8 @@
           }
         },
         "required": [
-          "fields"
+          "fields",
+          "bodies"
         ],
         "title": "IdeaFields",
         "type": "object"
@@ -10515,6 +11564,21 @@
       },
       "MayorCandidate": {
         "properties": {
+          "color": {
+            "title": "Color",
+            "type": "string"
+          },
+          "color_dark": {
+            "title": "Color Dark",
+            "type": "string"
+          },
+          "first_round_pct": {
+            "title": "First Round Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -10547,9 +11611,56 @@
           "name",
           "party",
           "votes",
-          "share_pct"
+          "share_pct",
+          "first_round_pct",
+          "color",
+          "color_dark"
         ],
         "title": "MayorCandidate",
+        "type": "object"
+      },
+      "MayorElectionInfo": {
+        "description": "Welche Wahl das hier ist — aus ``kommunalwahl/wahlen/``.\n\nStand bis 09/2026 nicht in der Antwort: Es gab genau eine OB-Wahl, und\ndie Seite kannte sie auswendig. Mit der Stichwahl am 27.09. sind es zwei,\nund die Überschrift darf nicht mehr im Frontend stehen.",
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "is_runoff": {
+            "title": "Is Runoff",
+            "type": "boolean"
+          },
+          "polls_close": {
+            "title": "Polls Close",
+            "type": "string"
+          },
+          "presentation_url": {
+            "title": "Presentation Url",
+            "type": "string"
+          },
+          "short_title": {
+            "title": "Short Title",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "title",
+          "short_title",
+          "date",
+          "polls_close",
+          "is_runoff",
+          "presentation_url"
+        ],
+        "title": "MayorElectionInfo",
         "type": "object"
       },
       "MayorNight": {
@@ -10560,6 +11671,20 @@
             },
             "title": "Candidates",
             "type": "array"
+          },
+          "dataset": {
+            "title": "Dataset",
+            "type": "string"
+          },
+          "elected": {
+            "title": "Elected",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "election": {
+            "$ref": "#/components/schemas/MayorElectionInfo"
           },
           "error": {
             "title": "Error",
@@ -10628,7 +11753,9 @@
           }
         },
         "required": [
+          "dataset",
           "phase",
+          "election",
           "reports_expected",
           "reports_received",
           "turnout_pct",
@@ -10636,6 +11763,7 @@
           "invalid_ballots",
           "candidates",
           "runoff",
+          "elected",
           "fetched_at",
           "ok",
           "error",
@@ -12036,6 +13164,18 @@
             "title": "Deadline Hint",
             "type": "string"
           },
+          "election_date": {
+            "title": "Election Date",
+            "type": "string"
+          },
+          "election_slug": {
+            "title": "Election Slug",
+            "type": "string"
+          },
+          "election_title": {
+            "title": "Election Title",
+            "type": "string"
+          },
           "late_scored": {
             "title": "Late Scored",
             "type": "boolean"
@@ -12077,6 +13217,14 @@
             "title": "Player Count",
             "type": "integer"
           },
+          "previous_label": {
+            "title": "Previous Label",
+            "type": "string"
+          },
+          "public": {
+            "title": "Public",
+            "type": "boolean"
+          },
           "round": {
             "title": "Round",
             "type": "string"
@@ -12089,6 +13237,10 @@
             "title": "Shared Device",
             "type": "boolean"
           },
+          "tip_kind": {
+            "title": "Tip Kind",
+            "type": "string"
+          },
           "title": {
             "title": "Title",
             "type": "string"
@@ -12100,6 +13252,12 @@
           "title",
           "phase",
           "seats_total",
+          "election_slug",
+          "election_title",
+          "election_date",
+          "tip_kind",
+          "public",
+          "previous_label",
           "locked",
           "locked_at",
           "late_scored",
@@ -12405,8 +13563,8 @@
             "title": "Name",
             "type": "string"
           },
-          "seats_2021": {
-            "title": "Seats 2021",
+          "seats_previous": {
+            "title": "Seats Previous",
             "type": [
               "integer",
               "null"
@@ -12427,7 +13585,7 @@
           "name",
           "color",
           "color_dark",
-          "seats_2021"
+          "seats_previous"
         ],
         "title": "PredictionParty",
         "type": "object"
@@ -12797,6 +13955,13 @@
         "properties": {
           "late_scored": {
             "title": "Late Scored",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "public": {
+            "title": "Public",
             "type": [
               "boolean",
               "null"
@@ -16124,6 +17289,148 @@
         "title": "TodaySession",
         "type": "object"
       },
+      "TodayUpdate": {
+        "properties": {
+          "arrived": {
+            "title": "Arrived",
+            "type": "string"
+          },
+          "committee": {
+            "title": "Committee",
+            "type": "string"
+          },
+          "decision_count": {
+            "title": "Decision Count",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "protocol",
+              "agenda",
+              "agenda_change"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "ksinr": {
+            "title": "Ksinr",
+            "type": "integer"
+          },
+          "session_date": {
+            "title": "Session Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "ksinr",
+          "arrived",
+          "committee",
+          "session_date",
+          "decision_count"
+        ],
+        "title": "TodayUpdate",
+        "type": "object"
+      },
+      "TodayUpdateGroup": {
+        "properties": {
+          "committee": {
+            "title": "Committee",
+            "type": "string"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "first_session_date": {
+            "title": "First Session Date",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "protocol",
+              "agenda",
+              "agenda_change"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "last_session_date": {
+            "title": "Last Session Date",
+            "type": "string"
+          },
+          "latest": {
+            "$ref": "#/components/schemas/TodayUpdate"
+          }
+        },
+        "required": [
+          "kind",
+          "committee",
+          "count",
+          "first_session_date",
+          "last_session_date",
+          "latest"
+        ],
+        "title": "TodayUpdateGroup",
+        "type": "object"
+      },
+      "TodayUpdates": {
+        "properties": {
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Counts",
+            "type": "object"
+          },
+          "first_visit": {
+            "title": "First Visit",
+            "type": "boolean"
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/TodayUpdateGroup"
+            },
+            "title": "Groups",
+            "type": "array"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TodayUpdate"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "since": {
+            "title": "Since",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "until": {
+            "title": "Until",
+            "type": "string"
+          }
+        },
+        "required": [
+          "since",
+          "until",
+          "first_visit",
+          "total",
+          "counts",
+          "items",
+          "groups"
+        ],
+        "title": "TodayUpdates",
+        "type": "object"
+      },
       "TopicDecision": {
         "properties": {
           "committee": {
@@ -16380,6 +17687,10 @@
             "title": "Total",
             "type": "integer"
           },
+          "unread_decisions": {
+            "title": "Unread Decisions",
+            "type": "integer"
+          },
           "unread_total": {
             "title": "Unread Total",
             "type": "integer"
@@ -16389,7 +17700,8 @@
           "hits",
           "topic_count",
           "total",
-          "unread_total"
+          "unread_total",
+          "unread_decisions"
         ],
         "title": "TopicHitList",
         "type": "object"
@@ -17210,6 +18522,57 @@
           "created_at"
         ],
         "title": "VideoResult",
+        "type": "object"
+      },
+      "VisitWindow": {
+        "properties": {
+          "first_visit": {
+            "title": "First Visit",
+            "type": "boolean"
+          },
+          "since": {
+            "title": "Since",
+            "type": "string"
+          },
+          "until": {
+            "title": "Until",
+            "type": "string"
+          }
+        },
+        "required": [
+          "since",
+          "until",
+          "first_visit"
+        ],
+        "title": "VisitWindow",
+        "type": "object"
+      },
+      "WatchIn": {
+        "properties": {
+          "area": {
+            "title": "Area",
+            "type": "integer"
+          },
+          "election": {
+            "title": "Election",
+            "type": "string"
+          },
+          "party": {
+            "title": "Party",
+            "type": "string"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "election",
+          "party",
+          "area",
+          "position"
+        ],
+        "title": "WatchIn",
         "type": "object"
       },
       "WebUserOut": {
@@ -19012,6 +20375,50 @@
           }
         },
         "summary": "Stats Page Views",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/stats/signups": {
+      "get": {
+        "description": "Neue Konten und abgewiesene Registrierungen — beide Seiten in einem Bild.\n\nSichtbar war bis 09/2026 nur, wer durchkam. Wer an der Bremse oder am\nWegwerf-Riegel hängenblieb, hinterließ nirgends eine Spur, und „es hat\nniemand versucht\" war von „es haben 500 versucht\" nicht zu unterscheiden.\n\nDer tägliche Herzschlag (``scripts/check_herzschlag.py``) schlägt bei\ndenselben Zahlen Alarm; diese Ansicht ist der Blick dazwischen.",
+        "operationId": "stats_signups_api_admin_stats_signups_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminAnmeldungen"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stats Signups",
         "tags": [
           "admin"
         ]
@@ -24861,7 +26268,7 @@
     },
     "/api/tipp": {
       "post": {
-        "description": "Ohne gültigen Cookie: Beitritt (``name`` Pflicht). Mit gültigem\nCookie: nur der Tipp wird aktualisiert, ``name`` bleibt unbeachtet —\numbenennen kann nur der Admin (``PUT …/admin/spieler/{id}``).",
+        "description": "Ohne gültigen Cookie: Beitritt (``name`` Pflicht). Mit gültigem\nCookie: nur der Tipp wird aktualisiert, ``name`` bleibt unbeachtet —\numbenennen kann nur der Admin (``PUT …/admin/spieler/{id}``).\n\n**In einer Konto-Runde ist das Konto die Identität**, nicht der Cookie:\nDer Name kommt aus dem Profil, und ein zweiter Tipp desselben Kontos ist\nkein zweiter Tipp, sondern eine Änderung — auch auf einem anderen Gerät.",
         "operationId": "beitreten_oder_tippen_api_tipp_post",
         "parameters": [
           {
@@ -25009,7 +26416,7 @@
     },
     "/api/tipp/admin/einstellungen": {
       "put": {
-        "description": "Schalter je Runde. ``shared_device``: ein Gerät, mehrere Personen —\nVallys Kreis (13.09.2026) hat nicht für jede Person ein Handy.",
+        "description": "Schalter je Runde.\n\n``shared_device``: ein Gerät, mehrere Personen — Vallys Kreis (13.09.2026)\nhat nicht für jede Person ein Handy. ``public``: für alle öffnen oder auf\nKonten beschränken (Tims Wunsch 14.09.2026 — eine Runde, die von selbst zu\neiner Wahl entsteht, soll nicht ungefragt offen stehen).",
         "operationId": "einstellungen_setzen_api_tipp_admin_einstellungen_put",
         "parameters": [
           {
@@ -25647,6 +27054,139 @@
         ]
       }
     },
+    "/api/today/updates": {
+      "get": {
+        "operationId": "updates_api_today_updates_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 3,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "title": "Since",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "title": "Until",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "enum": [
+                "protocol",
+                "agenda",
+                "agenda_change"
+              ],
+              "title": "Kind",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "committee",
+            "required": false,
+            "schema": {
+              "maxLength": 300,
+              "title": "Committee",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TodayUpdates"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Updates",
+        "tags": [
+          "today"
+        ]
+      }
+    },
+    "/api/today/visit": {
+      "post": {
+        "operationId": "visit_api_today_visit_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VisitWindow"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Visit",
+        "tags": [
+          "today"
+        ]
+      }
+    },
     "/api/topics": {
       "get": {
         "operationId": "list_topics_api_topics_get",
@@ -25711,6 +27251,49 @@
         ]
       }
     },
+    "/api/topics/decisions/{decision_id}/seen": {
+      "post": {
+        "description": "Ein Heute-Treffer wird in allen passenden EIGENEN Themen gelesen.\n\nDas Widget fasst gleiche Beschlüsse zusammen. Die Gelesen-Marke muss\ndieselbe Menge treffen, sonst taucht derselbe Beschluss erneut auf.",
+        "operationId": "mark_decision_seen_api_topics_decisions__decision_id__seen_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "decision_id",
+            "required": true,
+            "schema": {
+              "title": "Decision Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarkedHits"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Mark Decision Seen",
+        "tags": [
+          "topics"
+        ]
+      }
+    },
     "/api/topics/describe": {
       "post": {
         "description": "Design 26a / RL-U17: aus einem Themen-*Namen* eine Beschreibung machen.\n\nDer Nutzer tippt nur „Cäcilienbrücke\". Wir suchen die Beschlüsse dazu und\nlassen daraus einen präzisen Satz formulieren — das ist der Text, an dem der\nThemen-Wächter später jeden neuen Beschluss misst, also lohnt die Mühe.\n\nNichts hier blockiert: Wer keinen Rats-Bezug hat oder zu vage schreibt,\nbekommt einen Hinweis und darf trotzdem speichern. Der Endpunkt urteilt,\ner verbietet nicht.\n\nMit ``description`` im Body wird zusätzlich die (bis 26a brachliegende)\nVagheits-Prüfung auf den selbst getippten Text angewandt.\n\n``matches``/``matches_capped`` zählen nach derselben Definition wie die\nThemen-Karte (s. Modul-Kopf), nur eben auf den Text, der gerade im Feld\nsteht: Wer die Beschreibung ändert, soll vorher sehen, was das mit der\nTrefferliste macht. Vorher lief hier eine eigene Suche mit eigener\nSchwelle und einem Deckel von 12 — daher stand unter jedem breiten Thema\n„12 Beschlüsse\", während die Karte „40+\" sagte.",
@@ -25768,6 +27351,16 @@
               "minimum": 1,
               "title": "Limit",
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "unread_only",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Unread Only",
+              "type": "boolean"
             }
           }
         ],
@@ -26186,15 +27779,16 @@
     },
     "/api/wahlabend": {
       "get": {
+        "description": "Der Wahlabend: live, als Generalprobe oder als Rückblick.\n\n``?wahl=<slug>`` liefert den eingefrorenen Stand einer gelaufenen Wahl aus\ndem Repo (``kommunalwahl/referenz-…``). Das ist der Punkt, an dem eine\nRückblick-Seite unabhängig vom Votemanager wird: Seine Adressen tragen den\nWahltag im Pfad und wandern irgendwann ins Archiv.",
         "operationId": "wahlabend_api_wahlabend_get",
         "parameters": [
           {
-            "description": "„2021“ = Generalprobe mit den Zahlen von 2021",
+            "description": "gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)",
             "in": "query",
             "name": "probe",
             "required": false,
             "schema": {
-              "description": "„2021“ = Generalprobe mit den Zahlen von 2021",
+              "description": "gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)",
               "title": "Probe",
               "type": [
                 "string",
@@ -26214,6 +27808,20 @@
               "title": "Counted",
               "type": [
                 "integer",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "Slug einer gelaufenen Wahl — ihr eingefrorener Stand, ohne Abruf",
+            "in": "query",
+            "name": "wahl",
+            "required": false,
+            "schema": {
+              "description": "Slug einer gelaufenen Wahl — ihr eingefrorener Stand, ohne Abruf",
+              "title": "Wahl",
+              "type": [
+                "string",
                 "null"
               ]
             }
@@ -26247,6 +27855,158 @@
         ]
       }
     },
+    "/api/wahlabend/beobachtet": {
+      "get": {
+        "description": "Die gemerkten Kandidaturen dieses Kontos, mit dem Stand von jetzt.\n\nAngemeldet, weil es die eigene Liste ist. Eine Antwort statt 383 Zeilen\nfür fünf Namen — die App soll nicht die ganze Rangliste holen müssen.",
+        "operationId": "wahlabend_beobachtet_api_wahlabend_beobachtet_get",
+        "parameters": [
+          {
+            "description": "Slug der Wahl; ohne ihn die Wahl im Fokus",
+            "in": "query",
+            "name": "wahl",
+            "required": false,
+            "schema": {
+              "description": "Slug der Wahl; ohne ihn die Wahl im Fokus",
+              "title": "Wahl",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "gesetzt = Generalprobe",
+            "in": "query",
+            "name": "probe",
+            "required": false,
+            "schema": {
+              "description": "gesetzt = Generalprobe",
+              "title": "Probe",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "counted",
+            "required": false,
+            "schema": {
+              "maximum": 500,
+              "minimum": 0,
+              "title": "Counted",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ElectionWatchList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Wahlabend Beobachtet",
+        "tags": [
+          "wahlabend"
+        ]
+      },
+      "post": {
+        "description": "Eine Kandidatur merken — quer über alle Listen, das ist der Punkt.",
+        "operationId": "wahlabend_beobachten_api_wahlabend_beobachtet_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WatchIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ElectionWatchEntry"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Wahlabend Beobachten",
+        "tags": [
+          "wahlabend"
+        ]
+      }
+    },
+    "/api/wahlabend/beobachtet/{merker_id}": {
+      "delete": {
+        "description": "Einen Merker entfernen. 404, wenn er einem anderen Konto gehört —\ndieselbe Antwort wie „gibt es nicht\", damit die Kennung nichts verrät.",
+        "operationId": "wahlabend_nicht_mehr_beobachten_api_wahlabend_beobachtet__merker_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "merker_id",
+            "required": true,
+            "schema": {
+              "title": "Merker Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Wahlabend Nicht Mehr Beobachten",
+        "tags": [
+          "wahlabend"
+        ]
+      }
+    },
     "/api/wahlabend/bild.png": {
       "get": {
         "description": "Der Stand als Bild zum Teilen (PNG, 1200×630) — öffentlich wie die\nSeite selbst; Messenger und soziale Netze holen es ohne Konto ab.\n\nOhne ``feld`` zeigt das Bild während der Auszählung die Hochrechnung\n(interessanter als ein Zwischenstand aus 40 Bezirken) und sonst den\nausgezählten Stand.",
@@ -26268,12 +28028,12 @@
             }
           },
           {
-            "description": "„2021“ = Generalprobe mit den Zahlen von 2021",
+            "description": "gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)",
             "in": "query",
             "name": "probe",
             "required": false,
             "schema": {
-              "description": "„2021“ = Generalprobe mit den Zahlen von 2021",
+              "description": "gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)",
               "title": "Probe",
               "type": [
                 "string",
@@ -26325,6 +28085,127 @@
           }
         },
         "summary": "Wahlabend Bild",
+        "tags": [
+          "wahlabend"
+        ]
+      }
+    },
+    "/api/wahlabend/kandidaten": {
+      "get": {
+        "description": "Alle Kandidaturen als eine Rangliste — sortiert und gefiltert vom Server.\n\nÖffentlich wie der Wahlabend selbst, hinter demselben Schalter. Der Rang\nist stadtweit und bleibt es auch gefiltert; was die beiden Anteile\nbedeuten, steht in ``election/candidates.py``.",
+        "operationId": "wahlabend_kandidaten_api_wahlabend_kandidaten_get",
+        "parameters": [
+          {
+            "description": "gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)",
+            "in": "query",
+            "name": "probe",
+            "required": false,
+            "schema": {
+              "description": "gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)",
+              "title": "Probe",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "Generalprobe: nur die ersten N Wahlbezirke ausgezählt",
+            "in": "query",
+            "name": "counted",
+            "required": false,
+            "schema": {
+              "description": "Generalprobe: nur die ersten N Wahlbezirke ausgezählt",
+              "maximum": 500,
+              "minimum": 0,
+              "title": "Counted",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "Slug einer gelaufenen Wahl — ihr eingefrorener Stand, ohne Abruf",
+            "in": "query",
+            "name": "wahl",
+            "required": false,
+            "schema": {
+              "description": "Slug einer gelaufenen Wahl — ihr eingefrorener Stand, ohne Abruf",
+              "title": "Wahl",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "votes = nach Personenstimmen, party = in Stimmzettel-Reihenfolge, area = je Wahlbereich, name",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "votes",
+              "description": "votes = nach Personenstimmen, party = in Stimmzettel-Reihenfolge, area = je Wahlbereich, name",
+              "pattern": "^(votes|party|area|name)$",
+              "title": "Sort",
+              "type": "string"
+            }
+          },
+          {
+            "description": "nur diese Liste (Slug)",
+            "in": "query",
+            "name": "party",
+            "required": false,
+            "schema": {
+              "description": "nur diese Liste (Slug)",
+              "title": "Party",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "nur dieser Wahlbereich (Nummer)",
+            "in": "query",
+            "name": "area",
+            "required": false,
+            "schema": {
+              "description": "nur dieser Wahlbereich (Nummer)",
+              "maximum": 20,
+              "minimum": 1,
+              "title": "Area",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ElectionCandidateRanking"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Wahlabend Kandidaten",
         "tags": [
           "wahlabend"
         ]
@@ -26393,24 +28274,24 @@
             }
           },
           {
-            "description": "false = ohne den Abstand zu 2021 (Listenkarte)",
+            "description": "false = ohne den Abstand zur Vorwahl (Listenkarte)",
             "in": "query",
             "name": "compare",
             "required": false,
             "schema": {
               "default": true,
-              "description": "false = ohne den Abstand zu 2021 (Listenkarte)",
+              "description": "false = ohne den Abstand zur Vorwahl (Listenkarte)",
               "title": "Compare",
               "type": "boolean"
             }
           },
           {
-            "description": "„2021“ = Generalprobe mit den Zahlen von 2021",
+            "description": "gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)",
             "in": "query",
             "name": "probe",
             "required": false,
             "schema": {
-              "description": "„2021“ = Generalprobe mit den Zahlen von 2021",
+              "description": "gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)",
               "title": "Probe",
               "type": [
                 "string",
@@ -26469,14 +28350,16 @@
     },
     "/api/wahlabend/ob": {
       "get": {
-        "description": "Die OB-Wahl für sich — hinter dem Schalter ``wahlabend`` (nicht\n``tippspiel``): Sie ist Teil des Wahlabends, nicht nur des Tippspiels.",
+        "description": "Die OB-Wahl für sich — hinter dem Schalter ``wahlabend`` (nicht\n``tippspiel``): Sie ist Teil des Wahlabends, nicht nur des Tippspiels.\n\nImmer der ERSTE Wahlgang; die Stichwahl hat ihren eigenen Pfad. Daran\nhängt der Vergleich des Tippspiels, und der darf sich am 27.09. nicht\nunter der Hand verschieben.",
         "operationId": "ob_wahl_api_wahlabend_ob_get",
         "parameters": [
           {
+            "description": "gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)",
             "in": "query",
             "name": "probe",
             "required": false,
             "schema": {
+              "description": "gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)",
               "title": "Probe",
               "type": [
                 "string",
@@ -26485,10 +28368,12 @@
             }
           },
           {
+            "description": "Generalprobe: nur die ersten N Wahlbezirke ausgezählt",
             "in": "query",
             "name": "counted",
             "required": false,
             "schema": {
+              "description": "Generalprobe: nur die ersten N Wahlbezirke ausgezählt",
               "maximum": 133,
               "minimum": 0,
               "title": "Counted",
@@ -26523,7 +28408,171 @@
         },
         "summary": "Ob Wahl",
         "tags": [
-          "tippspiel"
+          "wahlabend"
+        ]
+      }
+    },
+    "/api/wahlabend/stichwahl": {
+      "get": {
+        "description": "Die Stichwahl — 404, solange keine im Kalender steht.\n\nAm 13.09.2026 hat niemand die absolute Mehrheit erreicht; am 27.09. läuft\ndeshalb die Stichwahl zwischen Ulf Prange (SPD) und Jascha Rohr (GRÜNE).\nIhre Wahl-Id beim Votemanager gibt es heute noch nicht — sie wird zur\nLaufzeit in ``termin.json`` gesucht (``mayor.resolve_ids``). Bis dahin\nantwortet dieser Pfad mit ``phase: \"before\"`` und einem Vermerk, nicht mit\neinem Fehler: Eine Seite, die auf den Abend wartet, ist keine kaputte.",
+        "operationId": "stichwahl_api_wahlabend_stichwahl_get",
+        "parameters": [
+          {
+            "description": "gesetzt = Generalprobe mit den Zahlen des ersten Wahlgangs",
+            "in": "query",
+            "name": "probe",
+            "required": false,
+            "schema": {
+              "description": "gesetzt = Generalprobe mit den Zahlen des ersten Wahlgangs",
+              "title": "Probe",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "Generalprobe: nur die ersten N Wahlbezirke ausgezählt",
+            "in": "query",
+            "name": "counted",
+            "required": false,
+            "schema": {
+              "description": "Generalprobe: nur die ersten N Wahlbezirke ausgezählt",
+              "maximum": 133,
+              "minimum": 0,
+              "title": "Counted",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MayorNight"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stichwahl",
+        "tags": [
+          "wahlabend"
+        ]
+      }
+    },
+    "/api/wahlabend/wahlbezirke": {
+      "get": {
+        "description": "Derselbe Stand je Wahlbezirk — die Ebene unter den Wahlbereichen.\n\nÖffentlich wie der Wahlabend selbst, hinter demselben Schalter. Eigener\nEndpunkt, weil die Seite die 133 Bezirke erst braucht, wenn jemand die\nKarte aufmacht (s. ``ElectionDistrictList``).",
+        "operationId": "wahlabend_wahlbezirke_api_wahlabend_wahlbezirke_get",
+        "parameters": [
+          {
+            "description": "gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)",
+            "in": "query",
+            "name": "probe",
+            "required": false,
+            "schema": {
+              "description": "gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)",
+              "title": "Probe",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "Generalprobe: nur die ersten N Wahlbezirke ausgezählt",
+            "in": "query",
+            "name": "counted",
+            "required": false,
+            "schema": {
+              "description": "Generalprobe: nur die ersten N Wahlbezirke ausgezählt",
+              "maximum": 500,
+              "minimum": 0,
+              "title": "Counted",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "Slug einer gelaufenen Wahl — ihr eingefrorener Stand, ohne Abruf",
+            "in": "query",
+            "name": "wahl",
+            "required": false,
+            "schema": {
+              "description": "Slug einer gelaufenen Wahl — ihr eingefrorener Stand, ohne Abruf",
+              "title": "Wahl",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ElectionDistrictList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Wahlabend Wahlbezirke",
+        "tags": [
+          "wahlabend"
+        ]
+      }
+    },
+    "/api/wahlen": {
+      "get": {
+        "description": "Alle Wahlen, die wir zeigen — die nächste zuerst, dann rückwärts.\n\nÖffentlich wie die Zahlen selbst. Entwürfe bleiben draußen; sie sind das\nGegenstück zum Feature-Schalter für eine einzelne Wahl.",
+        "operationId": "wahlen_api_wahlen_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ElectionList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Wahlen",
+        "tags": [
+          "wahlabend"
         ]
       }
     }

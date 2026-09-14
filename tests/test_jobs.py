@@ -107,6 +107,10 @@ def test_registry_deckt_die_cron_eintraege_ab():
         # Merkt, wenn ein Job aufhört zu laufen — und wenn die Platte
         # vollläuft. Ein Job, der gar nicht startet, stürzt nicht ab.
         "check_herzschlag",
+        # Vergleicht den Terminkalender des Votemanagers mit kommunalwahl/wahlen/:
+        # eine unbekannte Wahl, und eine Wahl-Id, die endlich da ist — oder
+        # kurz vor dem Wahltag immer noch fehlt. Täglich 6:15.
+        "check_wahltermine",
     }
     for job in JOBS:
         assert BY_KEY[job["key"]] is job

@@ -140,6 +140,27 @@ class UserOut(BaseModel):
     saves_conversations: int | None = None
 
 
+class AppElectionOut(BaseModel):
+    """Die Wahl, die gerade ansteht — klein genug für jede Seite.
+
+    Warum hier und nicht nur in ``/api/wahlabend``: Startseite, Heute-Karte
+    und Dashboard zeigen einen Countdown, ohne den ganzen Wahlabend zu laden.
+    Bis 09/2026 stand der Termin dafür als ``WAHLABEND_BEGINN_UTC`` im
+    Frontend — eine Konstante, die ein Deploy braucht und die niemand mit der
+    Registry abgleicht.
+    """
+
+    slug: str
+    short_title: str
+    date: str
+    #: Wahlschluss mit Zeitzone (ISO).
+    polls_close: str
+    #: „council" (Sitze) oder „mayor" (Prozente, auch Stichwahl).
+    kind: str
+    #: Der Pfad, auf dem diese Wahl zu sehen ist.
+    path: str
+
+
 class AppConfigOut(BaseModel):
     """Compatibility contract consumed before a native app starts loading data."""
 
@@ -153,6 +174,10 @@ class AppConfigOut(BaseModel):
     #: Voreingestellt leer — eine ältere App, die das Feld nicht kennt, sieht
     #: schlicht nichts Neues, und das ist richtig so.
     features: list[str] = []
+    #: Die nächste (oder gerade laufende) Wahl — ``null``, wenn keine mehr
+    #: ansteht oder die Registry nicht lesbar ist. Aus demselben Grund
+    #: voreingestellt ``None``: Eine ältere App darf das Feld nicht brauchen.
+    election: AppElectionOut | None = None
 
 
 class TopicIn(BaseModel):
@@ -578,6 +603,11 @@ class PredictionSettingsIn(BaseModel):
     gesetzt ist, wird geändert."""
     shared_device: bool | None = None
     late_scored: bool | None = None
+    #: „Für alle freischalten": Eine Runde, die von selbst zu einer Wahl
+    #: entstanden ist, beginnt bei „nur für Angemeldete". Umgekehrt geht es
+    #: auch — aber dann verlieren Leute ohne Konto ihren Zugang, nicht ihren
+    #: Tipp (der hängt am Cookie und wartet).
+    public: bool | None = None
 
 
 class PredictionPlayerIn(BaseModel):

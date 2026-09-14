@@ -11,6 +11,7 @@ import type { DecisionOutcome, Topic } from "@/lib/types";
 import { decisionHref, sitzungHref } from "@/lib/routes";
 import { shortCommittee } from "@/lib/committees";
 import { cn, formatDate } from "@/lib/utils";
+import { STAND } from "@/lib/viertel-einblick";
 import { Badge, Button, Card, Input, Spinner, toast } from "@/components/ui";
 import { STAND_FARBE } from "@/components/viertel-zeichner";
 import { loadOrtsbereiche, ortsbereichFor } from "@/lib/districts";
@@ -38,15 +39,7 @@ export type Uebersicht = ApiAntwort<"/districts/projects">;
 export type Treffer = ApiAntwort<"/districts/lookup">["matches"][number];
 export type OrtHref = (placeId: string, vorhaben?: number | null) => string;
 
-/** Reihenfolge und Beschriftung der Stände — was gerade passiert, zuerst. */
-export const STAND: Record<string, { label: string; color: "amber" | "green" | "blue" | "slate" | "red"; rang: number }> = {
-  building: { label: "Im Bau", color: "amber", rang: 0 },
-  decided: { label: "Beschlossen", color: "green", rang: 1 },
-  planning: { label: "In Planung", color: "blue", rang: 2 },
-  idea: { label: "Idee", color: "slate", rang: 3 },
-  done: { label: "Fertig", color: "slate", rang: 4 },
-  rejected: { label: "Abgelehnt", color: "red", rang: 5 },
-};
+export { STAND } from "@/lib/viertel-einblick";
 export const KATEGORIE: Record<string, string> = {
   housing: "Wohnen & Bauen", traffic: "Verkehr", school_childcare: "Schule & Kita",
   green: "Grün & Umwelt", culture_sport_social: "Kultur, Sport & Soziales", other: "Sonstiges",

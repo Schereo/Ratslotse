@@ -39,7 +39,6 @@ from kern import features
 from kern.store import Store
 
 from ..antworten import (
-    MayorNight,
     Ok,
     PredictionAdminPlayer,
     PredictionAdminStand,
@@ -50,8 +49,8 @@ from ..antworten import (
     PredictionStand,
 )
 from ..config import get_settings
-from ..deps import get_store, require_admin
-from ..election import mayor, register
+from ..deps import get_store, optional_user, require_admin
+from ..election import elections, mayor, register
 from ..prediction import rounds, service
 from ..prediction.rounds import Round
 from ..ratelimit import prediction_join_limiter, prediction_tip_limiter
@@ -75,9 +74,29 @@ def _runde(slug: str | None) -> Round:
     return runde
 
 
+def _zutritt(store: Store, game_id: int, user: dict | None) -> dict:
+    """Darf diese Person hier mitspielen? Gibt die Spielzeile zurück.
+
+    Eine Konto-Runde ist nicht nur ein versteckter Link: Der Riegel sitzt im
+    Router. Ein Link, den man nicht sieht, ist keine Beschränkung — er ist
+    eine Vermutung darüber, was Leute finden.
+    """
+    game = store.prediction_game(game_id)
+    if game.get("visibility") == "konto" and user is None:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED,
+                            "Für dieses Tippspiel brauchst du ein Konto — melde dich an oder registriere dich.")
+    return game
+
+
 def _game_id(store: Store, runde: Round) -> int:
-    """Die Spielzeile der Runde — legt sie beim ersten Zugriff an."""
-    return store.prediction_game_by_slug(runde.slug, runde.title)["id"]
+    """Die Spielzeile der Runde — legt sie beim ersten Zugriff an.
+
+    Die Wahl wird beim ANLEGEN festgeschrieben. Sie später zu wechseln wäre
+    kein Feature, sondern ein Rangbetrug: Die abgegebenen Tipps meinen die
+    Wahl, zu der sie abgegeben wurden."""
+    return store.prediction_game_by_slug(runde.slug, runde.title,
+                                         runde.election or elections.active().slug,
+                                         runde.visibility)["id"]
 
 
 def _cookie_name(runde: Round) -> str:
@@ -107,6 +126,36 @@ def _clear_cookie(response: Response, runde: Round) -> None:
 
 
 # ------------------------------------------------------------------ Validierung — deutsche Sätze statt Pydantic-Meldungen
+
+def _token_hash_fuer(store: Store, game: dict, game_id: int, request: Request,
+                     runde: Round, user: dict | None) -> str | None:
+    """Der Schlüssel, unter dem „meins" die Person findet.
+
+    In einer Konto-Runde ist das der Token der Zeile, die am KONTO hängt — der
+    Cookie im Browser spielt dort keine Rolle (und es gibt keinen). Sonst wie
+    bisher der Cookie.
+    """
+    if game.get("visibility") == "konto":
+        if user is None:
+            return None
+        zeile = store.prediction_player_by_owner(int(user["id"]), game_id)
+        return zeile["token_hash"] if zeile else None
+    return _token_hash(request, runde)
+
+
+def _kontoname(user: dict | None) -> str:
+    """Der Name, unter dem ein Konto in der Rangliste steht.
+
+    Der Anzeigename ist seit 09/2026 Pflicht (``display_name``); fehlt er
+    trotzdem, bleibt der Teil vor dem @ — eine leere Zeile in der Rangliste
+    wäre schlechter als ein grober Name."""
+    if user is None:
+        return ""
+    name = (user.get("display_name") or "").strip()
+    if not name:
+        name = str(user.get("email", "")).split("@", 1)[0]
+    return _clean_name(name[:30] or "Gast")
+
 
 def _clean_name(name: str) -> str:
     bereinigt = " ".join(name.split())
@@ -138,10 +187,15 @@ def _validate_seats(seats: dict[str, int], reg: register.Register) -> None:
                             f"Verteile insgesamt {reg.seats} Sitze. Du hast bisher {summe} Sitze vergeben.")
 
 
-def _validate_mayor(tip: dict[str, float] | None) -> None:
+def _validate_mayor(tip: dict[str, float] | None, ob: elections.Election | None) -> None:
+    """Der Prozent-Tipp — gegen die Kandidaturen DIESER Wahl.
+
+    Bis 14.09.2026 stand hier ``mayor.candidates()``, also immer die OB-Wahl
+    der aktiven Ratswahl. Eine Runde auf eine Stichwahl hätte damit Namen
+    abgelehnt, die genau dort antreten."""
     if not tip:
         return
-    bekannt = {c.slug for c in mayor.candidates()}
+    bekannt = {c.slug for c in (mayor.candidates(ob) if ob is not None else ())}
     unbekannt = sorted(set(tip) - bekannt)
     if unbekannt:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -160,52 +214,85 @@ def _validate_mayor(tip: dict[str, float] | None) -> None:
 # ------------------------------------------------------------------ Öffentlich
 
 @router.get("/api/tipp/setup")
-def setup(runde: str | None = Query(default=None, alias="round"), store: Store = Depends(get_store)) -> PredictionGame:
+def setup(runde: str | None = Query(default=None, alias="round"),
+          user: dict | None = Depends(optional_user),
+          store: Store = Depends(get_store)) -> PredictionGame:
     _frei()
     r = _runde(runde)
-    return service.setup(store, _game_id(store, r))
+    game_id = _game_id(store, r)
+    _zutritt(store, game_id, user)
+    return service.setup(store, game_id)
 
 
 @router.post("/api/tipp", status_code=status.HTTP_200_OK)
 def beitreten_oder_tippen(payload: PredictionJoinIn, request: Request, response: Response,
                           runde: str | None = Query(default=None, alias="round"),
+                          user: dict | None = Depends(optional_user),
                           store: Store = Depends(get_store)) -> PredictionMine:
     """Ohne gültigen Cookie: Beitritt (``name`` Pflicht). Mit gültigem
     Cookie: nur der Tipp wird aktualisiert, ``name`` bleibt unbeachtet —
-    umbenennen kann nur der Admin (``PUT …/admin/spieler/{id}``)."""
+    umbenennen kann nur der Admin (``PUT …/admin/spieler/{id}``).
+
+    **In einer Konto-Runde ist das Konto die Identität**, nicht der Cookie:
+    Der Name kommt aus dem Profil, und ein zweiter Tipp desselben Kontos ist
+    kein zweiter Tipp, sondern eine Änderung — auch auf einem anderen Gerät.
+    """
     _frei()
     r = _runde(runde)
     game_id = _game_id(store, r)
+    game = _zutritt(store, game_id, user)
+    konto_runde = game.get("visibility") == "konto"
     prediction_join_limiter.check(request)
     service._check_auto_lock(store, game_id)  # noqa: SLF001 — bewusste Wiederverwendung, s. Moduldoc
-    reg = register.load()
-    token_hash = _token_hash(request, r)
-    player = store.prediction_player_by_token(token_hash, game_id) if token_hash else None
+    wahl = service.wahl_der_runde(game)
+    ob = elections.mayor_of(wahl) if wahl.kind == "council" else wahl
+    reg = register.load(wahl.register_path) if wahl.kind == "council" else None
+    if konto_runde:
+        assert user is not None  # _zutritt hat das schon durchgesetzt
+        player = store.prediction_player_by_owner(int(user["id"]), game_id)
+        token_hash = player["token_hash"] if player else None
+    else:
+        token_hash = _token_hash(request, r)
+        player = store.prediction_player_by_token(token_hash, game_id) if token_hash else None
 
     if player is None:
-        if not payload.name:
+        name = _kontoname(user) if konto_runde else (_clean_name(payload.name) if payload.name else None)
+        if not name:
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Bitte gib deinen Namen ein.")
-        name = _clean_name(payload.name)
         game = store.prediction_game(game_id)
         jetzt = datetime.now(timezone.utc).isoformat(timespec="seconds")
         late_at = jetzt if game["phase"] != "open" else None
         klartext = secrets.token_hex(16)
         try:
-            player = store.prediction_player_add(game_id, name, _hash(klartext), late_at)
+            player = store.prediction_player_add(game_id, name, _hash(klartext), late_at,
+                                                 owner_id=int(user["id"]) if konto_runde and user else None)
         except sqlite3.IntegrityError as exc:
             raise HTTPException(status.HTTP_409_CONFLICT,
                                 f"„{name}“ ist schon vergeben — versuch es z. B. mit „{name} 2“.") from exc
-        _set_cookie(response, r, klartext)
+        if not konto_runde:
+            # In einer Konto-Runde gibt es keinen Cookie zu setzen: Die
+            # Zugehörigkeit hängt an der Anmeldung, nicht am Browser.
+            _set_cookie(response, r, klartext)
         if late_at:
             store.prediction_log_add(game_id, f"{player['name']} ist nach Tipp-Schluss beigetreten (nachgetippt).")
 
-    if payload.seats is not None:
+    if payload.seats is not None or (wahl.kind == "mayor" and payload.mayor):
         game = store.prediction_game(game_id)
         if player["late_at"] is None and game["phase"] != "open":
             raise HTTPException(status.HTTP_409_CONFLICT,
                                 "Die Tippfrist ist vorbei. Du kannst deinen Tipp nicht mehr ändern.")
-        _validate_seats(payload.seats, reg)
-        _validate_mayor(payload.mayor)
+        if wahl.kind == "council":
+            if payload.seats is None or reg is None:
+                raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
+                                    "Bitte verteile die Sitze auf die Wahllisten.")
+            _validate_seats(payload.seats, reg)
+        elif payload.seats:
+            # Eine Mehrheitswahl hat keine Sitze zu verteilen. Den Tipp still
+            # zu verwerfen wäre schlimmer als ihn abzulehnen: Wer 52 Zahlen
+            # eintippt, soll erfahren, dass sie hier nichts bedeuten.
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
+                                "Bei dieser Wahl werden keine Sitze verteilt — getippt werden Prozente.")
+        _validate_mayor(payload.mayor, ob)
         prediction_tip_limiter.check(request)
         store.prediction_tip_set(player["id"], json.dumps(payload.seats, ensure_ascii=False),
                                  json.dumps(payload.mayor, ensure_ascii=False) if payload.mayor else None)
@@ -223,13 +310,16 @@ def beitreten_oder_tippen(payload: PredictionJoinIn, request: Request, response:
 def meins(request: Request, probe: str | None = Query(default=None),
          counted: int | None = Query(default=None, ge=0, le=133),
          runde: str | None = Query(default=None, alias="round"),
+         user: dict | None = Depends(optional_user),
          store: Store = Depends(get_store)) -> PredictionMine:
     _frei()
     r = _runde(runde)
-    token_hash = _token_hash(request, r)
+    game_id = _game_id(store, r)
+    game = _zutritt(store, game_id, user)
+    token_hash = _token_hash_fuer(store, game, game_id, request, r, user)
     if token_hash is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Gib zuerst deinen Namen ein, um mitzumachen.")
-    ergebnis = service.mine(store, _game_id(store, r), token_hash, probe=probe, counted=counted)
+    ergebnis = service.mine(store, game_id, token_hash, probe=probe, counted=counted)
     if ergebnis is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Deine Teilnahme wurde nicht gefunden. Gib deinen Namen bitte noch einmal ein.")
     return ergebnis
@@ -237,12 +327,15 @@ def meins(request: Request, probe: str | None = Query(default=None),
 
 @router.delete("/api/tipp/me")
 def austreten(request: Request, response: Response, runde: str | None = Query(default=None, alias="round"),
+              user: dict | None = Depends(optional_user),
               store: Store = Depends(get_store)) -> Ok:
     _frei()
     r = _runde(runde)
-    token_hash = _token_hash(request, r)
+    game_id = _game_id(store, r)
+    game = _zutritt(store, game_id, user)
+    token_hash = _token_hash_fuer(store, game, game_id, request, r, user)
     if token_hash:
-        player = store.prediction_player_by_token(token_hash, _game_id(store, r))
+        player = store.prediction_player_by_token(token_hash, game_id)
         if player:
             store.prediction_player_delete_own(player["id"])
             service.reset()
@@ -291,23 +384,6 @@ def stand(request: Request, response: Response, probe: str | None = Query(defaul
     response.headers["ETag"] = etag
     response.headers["Cache-Control"] = "no-cache"
     return ergebnis
-
-
-@router.get("/api/wahlabend/ob")
-def ob_wahl(probe: str | None = Query(default=None), counted: int | None = Query(default=None, ge=0, le=133)) -> MayorNight:
-    """Die OB-Wahl für sich — hinter dem Schalter ``wahlabend`` (nicht
-    ``tippspiel``): Sie ist Teil des Wahlabends, nicht nur des Tippspiels."""
-    if not features.an("wahlabend"):
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Der Wahlabend ist noch nicht freigeschaltet.")
-    ergebnis = mayor.probe(counted) if probe == "2021" else mayor.fetch()
-    return MayorNight(
-        phase=ergebnis.phase, reports_expected=ergebnis.reports_expected, reports_received=ergebnis.reports_received,
-        turnout_pct=ergebnis.turnout_pct, valid_votes=ergebnis.valid_votes, invalid_ballots=ergebnis.invalid_ballots,
-        candidates=[{"slug": c.slug, "name": c.name, "party": c.party, "votes": c.votes, "share_pct": c.share_pct}
-                   for c in ergebnis.candidates],
-        runoff=list(ergebnis.runoff), fetched_at=ergebnis.fetched_at, ok=ergebnis.ok, error=ergebnis.error,
-        notes=list(ergebnis.notes),
-    )
 
 
 # ------------------------------------------------------------------ QR-Code
@@ -465,8 +541,12 @@ def phase_setzen(payload: PredictionPhaseIn, _admin: dict = Depends(require_admi
 @router.put("/api/tipp/admin/einstellungen")
 def einstellungen_setzen(payload: PredictionSettingsIn, _admin: dict = Depends(require_admin),
                          runde: Round = Depends(_admin_runde), store: Store = Depends(get_store)) -> PredictionAdminStand:
-    """Schalter je Runde. ``shared_device``: ein Gerät, mehrere Personen —
-    Vallys Kreis (13.09.2026) hat nicht für jede Person ein Handy."""
+    """Schalter je Runde.
+
+    ``shared_device``: ein Gerät, mehrere Personen — Vallys Kreis (13.09.2026)
+    hat nicht für jede Person ein Handy. ``public``: für alle öffnen oder auf
+    Konten beschränken (Tims Wunsch 14.09.2026 — eine Runde, die von selbst zu
+    einer Wahl entsteht, soll nicht ungefragt offen stehen)."""
     game_id = _game_id(store, runde)
     felder: dict[str, object] = {}
     if payload.shared_device is not None:
@@ -474,6 +554,10 @@ def einstellungen_setzen(payload: PredictionSettingsIn, _admin: dict = Depends(r
         store.prediction_log_add(game_id, "Geteiltes Gerät " + ("eingeschaltet" if payload.shared_device else "ausgeschaltet"))
     if payload.late_scored is not None:
         felder["late_scored"] = 1 if payload.late_scored else 0
+    if payload.public is not None:
+        felder["visibility"] = "oeffentlich" if payload.public else "konto"
+        store.prediction_log_add(game_id, "Runde " + ("für alle freigeschaltet"
+                                                      if payload.public else "auf Konten beschränkt"))
     store.prediction_game_set(game_id, **felder)
     service.reset()
     return _admin_stand(store, runde)

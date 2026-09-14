@@ -18,8 +18,8 @@ import {
 } from "./tipp";
 import type { TippPartei } from "./tipp";
 
-function partei(slug: string, seats_2021: number | null, color = "#123456"): TippPartei {
-  return { slug, short: slug, name: slug, color, color_dark: color, seats_2021 } as TippPartei;
+function partei(slug: string, seats_previous: number | null, color = "#123456"): TippPartei {
+  return { slug, short: slug, name: slug, color, color_dark: color, seats_previous } as TippPartei;
 }
 
 describe("fehltText", () => {

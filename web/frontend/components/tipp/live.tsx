@@ -174,7 +174,7 @@ export function TippLive() {
           // Wahlabend, der seine Probe ebenfalls ausschildert) — das Schild
           // bleibt deshalb stehen, auch wenn die Steuerung verschwindet.
           <span className="rounded-full border border-amber-300 bg-amber-50 px-3 py-1 font-mono text-[12px] uppercase tracking-[0.08em] text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/15 dark:text-amber-200">
-            Generalprobe · Zahlen von 2021
+            Generalprobe · Zahlen der Vorwahl
           </span>
         )}
         {/* Auf der Leinwand verschwindet die Bedienung nach vier Sekunden

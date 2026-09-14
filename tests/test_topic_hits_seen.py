@@ -41,6 +41,21 @@ def test_counts_are_per_owner(tmp_path):
     assert store.unseen_hit_counts(8) == {}
 
 
+def test_beschluss_lesen_fasst_nur_eigene_themen_zusammen(tmp_path):
+    store, topic = _setup(tmp_path)
+    weiteres = store.add_topic(7, "Schulwege", "Sichere Schulwege")
+    fremdes = store.add_topic(8, "Radverkehr", "Radverkehr")
+    for owner, t in ((7, weiteres), (8, fremdes)):
+        store.save_topic_decision_matches(t.id, owner, [(101, 0.8)])
+
+    assert store.mark_decision_hits_seen(7, 101) == 2
+    assert store.unseen_hit_ids(7) == {topic.id: {102, 103}}
+    assert store.unseen_hit_ids(8) == {fremdes.id: {101}}
+    assert store.mark_decision_hits_seen(7, 101) == 0
+    assert store.mark_decision_hits_seen(7, 987654) == 0
+    store.close()
+
+
 def test_geloeschtes_thema_zaehlt_nicht_mehr_mit(tmp_path):
     """DER Fehler hinter „der Zähler geht nicht weg" (25.07.2026).
 

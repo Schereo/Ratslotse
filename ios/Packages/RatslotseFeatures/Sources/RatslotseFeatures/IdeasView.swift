@@ -277,6 +277,24 @@ private struct IdeaCard: View {
     @State private var gesagt: String = ""
     @State private var fehlgeschlagen = false
 
+    /// „Beschlüsse ab 2023 · Niederschriften nicht öffentlich" — dieselben
+    /// drei Zustände wie im Web (`NIEDERSCHRIFTEN` in `ideen/view.tsx`).
+    private var herkunft: String {
+        var teile: [String] = []
+        if let seit = idee.windowSince, seit.count >= 4 {
+            // „Vergleich ab", nicht „Beschlüsse ab" — das Fenster gehört der
+            // STADT, nicht dieser Vorlage; die Suche findet auch ältere.
+            teile.append("Vergleich ab \(seit.prefix(4))")
+        }
+        switch idee.protocolSource {
+        case "available": teile.append("mit Niederschriften")
+        case "withheld": teile.append("Niederschriften nicht öffentlich")
+        case "none": teile.append("ohne Niederschriften")
+        default: break
+        }
+        return teile.joined(separator: " · ")
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top, spacing: 6) {
@@ -294,6 +312,16 @@ private struct IdeaCard: View {
             }
             if let originator = idee.originator, !originator.isEmpty {
                 Text(originator).font(RatsFont.body(10.5)).foregroundStyle(RatsColor.muted)
+            }
+            // Woher die Karte ihr Wissen über diese Stadt hat — und woher
+            // nicht. Ohne sie liest man „kein Warum" als Lücke bei uns,
+            // obwohl Hannover seine Beratungsergebnisse ausdrücklich
+            // zurückhält; und „nur eine Idee" als Aussage über die Stadt,
+            // obwohl es das Zeitfenster ist.
+            if !herkunft.isEmpty {
+                Text(herkunft)
+                    .font(RatsFont.body(10))
+                    .foregroundStyle(RatsColor.muted.opacity(0.8))
             }
             // Aufwand und Verbreitung ordnen den Rest der Karte ein, bevor man
             // ihn liest: „Anfrage, auch in drei anderen Städten" sagt schon

@@ -6,18 +6,258 @@ gehalten. Alles Übrige: [`../CLAUDE.md`](../CLAUDE.md) und
 
 ## Ein Adapter je Ratsinformationssystem, nicht je Stadt
 
-Vier Hersteller bedienen die deutschen Kommunen; Städte desselben Herstellers
-antworten in derselben Sprache, mit denselben Eigenheiten. Deshalb gibt es
-**einen Adapter je System**, und jede Reparatur kommt allen Städten dieses
-Systems zugute — auch denen, die noch niemand angeschlossen hat.
+Vier Hersteller bedienen die meisten deutschen Kommunen; Städte desselben
+Herstellers antworten in derselben Sprache, mit denselben Eigenheiten.
+Deshalb gibt es **einen Adapter je System**, und jede Reparatur kommt allen
+Städten dieses Systems zugute — auch denen, die noch niemand angeschlossen
+hat. Eine Stadt kann auch einen Eigenbau fahren, ohne jeden Hersteller — dann
+bekommt sie trotzdem nur EINEN Adapter, keine Sonderbehandlung in der Mitte.
 
 | Datei | Zeilen | angeschlossen | wartet in der Registry |
 |---|---:|---|---|
-| `adapters/_common.py` | 411 | alle | alle |
-| `adapters/allris4.py` | 181 | Osnabrück, Braunschweig, Potsdam | Leipzig, Bonn |
-| `adapters/session.py` | 167 | Münster, Magdeburg | Köln, Dresden, Wuppertal, Düsseldorf |
-| `adapters/rubin.py` | 90 | — | Freiburg, Darmstadt |
-| `adapters/oldenburg.py` | 313 | Oldenburg (liest `council.sqlite`) | — |
+| `adapters/_common.py` | 435 | alle | alle |
+| `adapters/allris4.py` | 226 | Osnabrück, Braunschweig, Potsdam | Leipzig, Bonn, Langenhagen, Peine |
+| `adapters/allris4_html.py` | 615 | Wolfsburg | Laatzen, Lüneburg |
+| `adapters/allris_classic.py` | 672 | — | Hildesheim |
+| `adapters/hannover_sim.py` | 454 | — | Hannover |
+| `adapters/session.py` | 164 | Münster, Magdeburg | Köln, Dresden, Wuppertal, Düsseldorf |
+| `adapters/rubin.py` | 87 | — | Freiburg, Darmstadt |
+| `adapters/oldenburg.py` | 310 | Oldenburg (liest `council.sqlite`) | — |
+
+**Ein HTML-Typattribut ist projektweit dasselbe Problem.** BeautifulSoup
+liefert bei mehrwertigen Attributen (`class`) eine Liste statt einer
+Zeichenkette; drei HTML-lesende Dialekte bauten je ihre eigene `_attr()`, bis
+Hannover als dritte Kopie den Ausschlag gab. `attr()` in `_common.py` ist der
+eine Ort dafür — kein Dialekt bekommt seinen eigenen mehr.
+
+**Derselbe Hersteller kann DREI Adapter brauchen.** Neben ALLRIS 4 (mit und
+ohne Schnittstelle) gibt es die ältere Generation **ALLRIS classic**:
+statische `.asp`-Seiten, ISO-8859-1, kein Seitenzustand, kein OParl. Sie ist
+die einfachere Welt — der Index ist ein schlichter GET
+(`si010_e.asp?YY=2026&MM=09`, 10 bis 18 Sitzungen je Monat, Historie ab etwa
+2007), es gibt keine Wicket-Selbstaufrufe und keine CDATA. Gemessen an
+Hildesheim (11.09.2026).
+
+Zwei Eigenheiten, die es sonst nirgends gibt:
+
+- **Der Vorlagentext steht IN der Seite.** An Hildesheims Vorlagen hängt kein
+  einziger Datei-Verweis; der Sachverhalt ist der Seiteninhalt. Deshalb
+  `fetch_files=False` und der Text über `inline_texts` — dieselbe Bahn, die
+  Oldenburg und more! rubin schon benutzen.
+- **Zu jedem beratenen Punkt gibt es einen „Auszug"** (`to020.asp?TOLFDNR=…`)
+  mit Wortprotokoll, Beschluss und Abstimmungsergebnis, je Punkt schon
+  getrennt. Gemessen: **2.075 von 3.728** Punkten haben einen. Das ist das
+  „Warum" ohne das Schneiden einer Niederschrift — und es ist zugleich die
+  echte Kennung des Punktes, denn die Tagesordnung selbst vergibt keine
+  (ihr `TOLFDNR` ist auf jeder Zeile dieselbe Zahl).
+
+  Drei Dinge daran sind nicht offensichtlich:
+
+  - **Die drei Abschnitte sind eingebettete Dokumente.** ALLRIS hängt sie als
+    eigene, aus RTF konvertierte `<html>`-Bäume hinter Sprungmarken
+    (`<a name="allrisWP">`) mitten in die Seite. Geschnitten wird deshalb am
+    Rohtext und jedes Stück für sich geparst; ein Parser-Lauf über das Ganze
+    verliert die Grenzen zwischen ihnen.
+  - **Ein Abschnitt ist alles drei zusammen.** Beratung, Beschluss und
+    Abstimmung — so liefert ihn der Schnitt einer Niederschrift bei den
+    anderen Städten auch. Getrennt abgelegt läse das Modell zum „Warum" die
+    halbe Geschichte.
+  - **„(offen)" ist kein Ergebnis.** Es ist ALLRIS' Wort für „noch nichts
+    entschieden"; als `result_raw` geführt wäre es die Behauptung, es gäbe
+    eines.
+
+  Geschrieben werden sie über `pipeline.inline_sections` — dieselbe Tabelle
+  `protocol_sections`, die der Schnitt füllt, nur ohne Schnitt.
+  `split_protocols` fände hier nichts: Sie sucht Dateien mit der Rolle
+  `protocol`, und Hildesheim hat keine. Geholt wird nur im Fenster von
+  **24 Monaten** (`AUSZUG_MONATE`, wie `PROTOCOL_MONTHS`) — ein Auszug je
+  beratenem Punkt wären seit 2007 über 10.000 Abrufe.
+
+**Und zwei Fallen, die es nur hier gibt:**
+
+- **Die Stadt-Website ist um ALLRIS herumgebaut.** 105 der 280 kB jeder Seite
+  sind Navigation, und die verlinkt dieselben `au020.asp`-Adressen unter
+  **generischen** Namen: „Der Ortsrat" unter dem Menüpunkt „Achtum / Uppen".
+  Ungefiltert gewinnen diese über die echten — und 42 von 198 Sitzungen
+  finden ihr Gremium nicht mehr. `_inhalt()` schneidet den Rahmen weg, bevor
+  irgendetwas gelesen wird; danach 175 von 198.
+- **Ein weggelassenes Feld verschwindet nicht, es wandert ins Nachbarfeld.**
+  `Verfasser:` und `Bearbeiter/-in:` nennen Namen von
+  Verwaltungsmitarbeitenden und werden bewusst nicht gespeichert. Sie standen
+  deshalb im ersten Entwurf gar nicht in der Feldliste — und damit lief der
+  Wert des Feldes DAVOR bis zum nächsten bekannten Wort weiter: Jede Vorlage
+  bekam als Art „Mitteilungsvorlage Verfasser: …" samt Namen. Ein Feld, das
+  man nicht will, muss trotzdem als **Grenze** in der Regel stehen
+  (`_GRENZEN`).
+
+**Was Hildesheim nicht hat:** den Rat in der Gremienliste. `au010.asp` führt
+Ausschüsse, Beiräte und Aufsichtsräte, aber nicht den Rat selbst — seine
+Sitzungen bleiben ohne Gremium, und das ist richtig so. Ein Gremium zu
+erfinden, damit eine Zahl schöner aussieht, wäre derselbe Fehler wie die
+erfundenen Punkt-Kennungen aus phase0.
+
+**Derselbe Hersteller kann zwei Adapter brauchen.** ALLRIS 4 hat ein
+OParl-Modul; wo es antwortet, liest `allris4.py` die Schnittstelle. Wo es
+eingebaut ist und mit HTTP 500 antwortet — gemessen bei Laatzen, Lüneburg und
+Wolfsburg —, liest `allris4_html.py` dieselbe Anwendung über ihre Oberfläche.
+Der Unterschied ist die Quelle, nicht die Stadt, deshalb sind es zwei
+Dialekte und keine Bedingung im einen.
+
+**Beim HTML-Lesen sind drei Fallen gemessen worden**, alle am 10.09.2026 an
+Laatzen:
+
+1. **Spalten über die Kopfzeile suchen, nie über feste Nummern.** Eine
+   verschobene Spalte liefert sonst stumm den falschen Wert — die
+   „Zuständigkeit" landete als Titel.
+2. **Das Feld heißt `Vorlageart`, nicht `Vorlagenart`.** Ein Buchstabe, und
+   jede Vorlage der Stadt steht ohne Art da; der Vergleich hält sie dann
+   ausnahmslos für „other", ohne Fehler und ohne Auffälligkeit.
+3. **Eine erfundene Kennung muss als solche erkennbar bleiben.** `#top-` ist
+   projektweit die Marke dafür (`SYNTHETISCHE_KENNUNG`). Ein Punkt mit
+   `TOLFDNR` hat eine echte Adresse und bekommt sie; nur Formalpunkte ohne
+   eigene Seite tragen die Marke. Stünde sie an allen, hielte
+   `zwillinge_zusammenfuehren` jeden Punkt des Dialekts für erfunden.
+
+**Der Index ist ``si018``, nicht der Kalender.** ``si010`` ist ein
+Monatsraster: Seine Zellen tragen keine Sitzungskennung, und die
+Monatsnavigation hängt an einer Seitenversion, die der Server hochzählt.
+``si018`` („Sitzungen Übersicht") ist eine Liste, deren Blätterung sich
+selbst beschreibt — jede Antwort nennt das Ziel für „weiter". Gemessen am
+10.09.2026: Wolfsburg 652 Sitzungen in 28 Abrufen, Lüneburg 778 in 33,
+**ohne einen Browser**.
+
+Drei Eigenheiten, die dabei jede für sich den ganzen Index leer aussehen
+lassen:
+
+- **Die Seitenversion wird gelesen, nicht gesetzt.** Wicket zählt sie je
+  Sitzung hoch. Ein fest verdrahtetes ``si018?0-1.0-`` funktioniert nur,
+  solange davor nichts anderes geholt wurde — nach dem (bei Wolfsburg
+  ohnehin scheiternden) Gremien-Abruf stand die Seite bei 6, und die
+  Antwort war leer. Ergebnis: „0 Sitzungen" statt 652, ohne Fehler.
+- **Die Kennung steht in zwei Formen da.** Wolfsburg setzt Wicket-Verweise
+  ohne ``href`` und identifiziert sie über ``id="silink_1003198"``; Laatzen
+  setzt in derselben Tabelle echte ``SILFDNR=``-Adressen. Wer nur eine Form
+  sucht, hält den Index der anderen Stadt für leer.
+- **Das „weiter"-Ziel ist mal absolut, mal relativ.** Wolfsburg schreibt die
+  volle Adresse, Lüneburg ``./si018?…``.
+
+**Die Gremien kommen aus ``gr010``, nicht aus ``gr020``.** ``gr020`` ist die
+Seite EINES Gremiums und antwortet ohne ``GRLFDNR`` mit HTTP 500 — bei allen
+drei gemessenen Städten. Dieselbe Selbstaufruf-Mechanik wie beim Index, plus
+eine eigene Falle: **Die Namen liegen in CDATA.** Wer die AJAX-Antwort als
+HTML parst, findet dort kein einziges ``<a>`` und hält die Stadt für
+gremienlos. Gemessen: Wolfsburg 43, Lüneburg 66, Laatzen 15.
+
+**Und eine nichtöffentliche ANLAGE auch.** Derselbe Satz kommt mit HTTP 200
+statt einer PDF-Datei zurück, wenn eine Vorlage nicht öffentlich ist.
+Ungeprüft landet die Seite als ``.pdf`` im Dateispeicher, und die Textstufe
+meldet bei jedem Lauf aufs Neue „invalid pdf header" — Fehler, die wie ein
+Parserproblem aussehen und in Wahrheit eine Zugangsbeschränkung sind.
+Gemessen an Wolfsburg: **444 von 1.798**. `get_file` weist deshalb ab, was
+als Webseite zurückkommt: **Ein Dokument-Abruf, der HTML liefert, ist nie das
+Dokument.**
+
+**Normalisieren löscht nicht.** ``upsert_batch`` legt an und aktualisiert; ein
+Objekt, das der Adapter nicht mehr baut, bleibt liegen. Nach der Reparatur
+der Geister oben standen die 199 immer noch in ``cities.sqlite`` und
+drückten „Vorlagen je Sitzung" von 3,5 auf 2,4 — die Kennzahl, an der die
+Plausibilitätsprüfung hängt. Wer eine Regel ändert, die entscheidet, ob ein
+Objekt überhaupt entsteht, muss den Altbestand von Hand aufräumen.
+
+**Eine nichtöffentliche Sitzung sieht aus wie ein Fehler.** ALLRIS antwortet
+für sie mit HTTP 200 und einer 13.701-Byte-Hülle; der einzige Unterschied zu
+einem technischen Fehler ist der Satz „Keine Information verfügbar … oder Sie
+sind nicht berechtigt". Wer ihn nicht liest, baut je Fall einen Geist: eine
+Sitzung namens „Sitzung", ohne Datum, ohne Tagesordnung — und die zählt in
+jeder Kennzahl mit, als fehlten UNS die Daten, statt dass es sie öffentlich
+gar nicht gibt. Gemessen an Wolfsburg: **77 von 255**. Abgelegt wird die
+Absage trotzdem (die Rohschicht hält fest, was der Server gesagt hat);
+aussortiert wird beim Normalisieren.
+
+**Dieselbe Spalte heißt je Stadt anders.** Die Ergebnisspalte der
+Tagesordnung heißt bei Laatzen „Zuständigkeit", bei Wolfsburg
+„Beschlussart" — und ein Rückfall auf eine feste Spaltennummer trifft dort
+ins Leere, weil die Tabelle sechs Spalten hat. Gemessen: **0 von 1.358**
+Beratungen mit Ergebnis, ohne Fehler und ohne Auffälligkeit. Nach der
+Reparatur 1.344.
+
+**Ohne Sitzungs-Cookie antwortet der Selbstaufruf mit einer leeren Hülle.**
+Der Client hält eine ``requests.Session``, das genügt — aber der erste Abruf
+auf ``si018`` muss trotzdem passieren.
+
+**Und die Beratungsfolge steht über zwei Zeilen je Station** — Status,
+Gremium, Beschluss in der ersten, Datum und Sitzungsname in der zweiten. Wer
+Zeile für Zeile liest, bekommt lauter halbe Stationen.
+
+## Hannover: kein Hersteller, ein Eigenbau — und trotzdem nur EIN Adapter
+
+Hannover (535 k Einwohner, die größte Stadt im Vergleich) fährt keinen der
+vier Standard-Hersteller. Ihr „Sitzungsmanagement" (SIM) ist ein
+IBM-Notes/Domino-Webserver, öffentlich seit 2003, ohne Wicket- oder
+Formular-Zustand — jede Seite ein schlichtes GET. Gemessen 11.09.2026.
+
+**Ein zweiter, verlinkter Host wird bewusst NICHT gelesen.** `ris.hannit.de`
+(ALLRIS net, betrieben vom städtischen IT-Dienstleister hannIT) trägt eine
+ausdrückliche Zugriffssperre gegen automatisierte Zugriffe (ALTCHA-Challenge:
+„Zum Schutz vor automatisierten Zugriffen"). Dieselbe Regel wie bei
+Göttingens Cloudflare-Sperre: **eine bewusste Absage an automatisierten
+Zugriff ist eine Absage, keine Aufgabe** — auch dann, wenn die Technik dahinter
+(ein Rechenrätsel statt Verhaltenserkennung) grundsätzlich lösbar wäre.
+
+**Drei Gremien-Arten, drei Adressmuster**, alle als EINE ungeblätterte Liste
+mit Historie ab 2003: die Ratsversammlung (`Termine.xsp` ohne Parameter),
+33 Ausschüsse (`?view=Termine&grem=<Kürzel>`) und 13 Stadtbezirksräte
+(`?view=Termine<Kürzel>` — kein `grem=`, das Kürzel steht im `view`-Wert
+selbst). Jedes Gremium trägt seine eigene Listen-Adresse aus der Seite, auf
+der es gefunden wurde, statt aus einem nachgebauten Muster — die drei
+Adressformen sind zu verschieden, um sie zu raten.
+
+**Der Verwaltungsausschuss veröffentlicht keine einzige Sitzungsseite.** Er
+steht in keiner der drei Listen und hat kein Kürzel; er taucht ausschließlich
+als unverlinkter Text in der Beratungsfolge von Vorlagen auf. Seine
+Beratungen werden trotzdem erfasst (Datum, Ergebnis), nur ohne Sitzungs- oder
+Gremienbezug — was nicht veröffentlicht ist, bleibt unveröffentlicht, es
+bekommt keinen erfundenen Umweg.
+
+**Die Beratungsfolge verlinkt direkt auf ihre Sitzung, wo die existiert.**
+Das ist der Unterschied zu jedem anderen HTML-Dialekt hier: Beratung und
+Ergebnis lassen sich darüber einer Sitzung zuordnen, ohne einen Titel
+abzugleichen und ohne zu raten.
+
+**Tagesordnungspunkt-Seiten (`TOPS/…`) werden NICHT gelesen — bewusst, nicht
+aus Bequemlichkeit.** Sie dienen nur als Kennung. Gemessen: **22 von 25**
+geprüften Punkten einer Sitzung tragen auf ihrer eigenen Seite den Satz „Die
+zu diesem Tagesordnungspunkt vorliegenden Dokumente und Beratungsergebnisse
+sind vertraulich und daher nicht zur Veröffentlichung im Internet
+freigegeben" — direkt neben dem Ergebnis, das die Seite trotzdem zeigt.
+**Keine** der 39 geprüften Vorlagenseiten (`DS/…`) trägt diesen Satz; ihre
+Beratungsfolge ist ohne Einschränkung öffentlich. Ergebnisse kommen deshalb
+ausschließlich von dort. Punkte ohne Vorlage (Formalpunkte, mündliche
+Berichte) bleiben ohne Ergebnis — eine ehrliche Lücke, keine Vermutung über
+einen Text, den die Seite selbst als vertraulich bezeichnet.
+
+**Eine Ergebnis-Schreibweise ohne Zustimmungs- oder Ablehnungswort:** reine
+Stimmenzahlen wie „6 Stimmen dafür, 5 Stimmen dagegen, 0 Enthaltungen".
+`model.outcome` kennt keine Zahlen; der Adapter vergleicht hier direkt
+(dafür > dagegen → angenommen, dafür < dagegen → abgelehnt, gleich → offen,
+keine Vermutung) — und **nur**, wenn der ganze Ergebnistext exakt diese Form
+hat. Eine erzählende Passage wie „... fand bei 4 Ja-Stimmen, 6 Nein-Stimmen
+... nicht die erforderliche 2/3-Mehrheit" enthält ähnliche Zahlen, ist aber
+eine Verfahrensfrage (Dringlichkeit einer Tagesordnungs-Erweiterung), kein
+Sachbeschluss — ein Teiltreffer würde sie falsch einordnen.
+
+**„Einstimmig" ist Hannovers häufigstes Ergebniswort — ohne ein einziges
+Zustimmungswort daneben.** 64 von rund 250 Beratungen in einer Stichprobe.
+Es steht jetzt in `model._OUTCOME_RULES`, weil es in keinem gemessenen Fall
+für eine Ablehnung stand.
+
+**Ein Klammerzusatz ändert das Gremium nicht — außer bei einer echten
+gemeinsamen Sitzung.** „Ratsversammlung (Sondersitzung)" ist dieselbe
+Ratsversammlung; ohne einen Nachschlag ohne Klammer fanden zwei von 119
+Sitzungen einer Stichprobe ihr Gremium nicht. Eine ECHTE gemeinsame Sitzung
+mehrerer Gremien bleibt dagegen absichtlich ohne Treffer — sie einem der
+beteiligten Gremien zuzuschlagen wäre erfunden, derselbe Fehler wie die
+erfundenen Punkt-Kennungen aus phase0.
 
 **Eine Eigenheit gehört in den Adapter, nie in eine Stadt-Bedingung.** Ein
 `if body_id == "magdeburg"` im Normalisieren heißt: Die nächste Somacos-Stadt
@@ -115,8 +355,18 @@ tausendfache Lücke macht die halbe Beschlusslage einer Stadt unsichtbar.
 
 ## Eine neue Stadt anschließen
 
+0. **Den Host von der Rathaus-Seite holen, nie raten.** Am 10.09.2026 galt
+   Wolfsburg eine Stunde als technisch nicht erntbar — gemessen gegen
+   `ratsinfo.wolfsburg.de`, einen Host, der **nicht einmal im DNS steht**.
+   Die Stadt verlinkt von `wolfsburg.de/politik` auf
+   `ratsinfob.stadt.wolfsburg.de`, ohne `/public`; dort ist alles in
+   Ordnung. Dieselbe Falle bei Lüneburg
+   (`buergerinfo.stadt.lueneburg.de/public`) — und dort trägt der Name
+   „buergerinfo" obendrein die Handschrift von Somacos, während gemessen
+   ALLRIS 4 läuft. **Das Produkt steht im Seiteninhalt, nicht im Domainnamen.**
 1. **Eintrag in [`registry.py`](registry.py)**, `active=False`. ALLRIS-4-
-   Instanzen laufen fast immer unter `<stadt>.sitzung-online.de/oparl/system`.
+   Instanzen laufen oft, aber längst nicht immer unter
+   `<stadt>.sitzung-online.de/oparl/system`.
 2. **Ernten und normalisieren**, erst mit kurzem Fenster:
    `--run --body <stadt> --since 2025-01-01 --stage fetch --stage normalize`.
 3. **`--pruefen`.** Das ist der Schritt, den man nicht auslassen darf: Alle

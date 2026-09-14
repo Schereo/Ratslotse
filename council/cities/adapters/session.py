@@ -162,6 +162,3 @@ class SessionAdapter:
         if ergaenzt:
             logger.info("%s: %s Papier-Ergebnisse über den Titel verbunden", body_id, ergaenzt)
         return batch
-
-    def file_url(self, file_json: dict, url: str | None) -> str | None:
-        return url

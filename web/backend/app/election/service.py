@@ -40,14 +40,19 @@ from ..antworten import (
     ElectionArea,
     ElectionAreaParty,
     ElectionCandidate,
+    ElectionDistrict,
+    ElectionDistrictList,
+    ElectionDistrictParty,
     ElectionHistoryPoint,
+    ElectionInfo,
     ElectionMandate,
     ElectionNight,
     ElectionParty,
+    ElectionPartyArea,
     ElectionSource,
     ElectionTotals,
 )
-from . import history, votemanager
+from . import elections, history, votemanager
 from .projection import Projection, project
 from .reference import Reference
 from .reference import load as load_reference
@@ -223,6 +228,35 @@ def _scaled(lists: Iterable[DistrictList], projection: Projection, reg: Register
     return out
 
 
+def _election_of(reg: Register | None) -> ElectionInfo:
+    """Titel, Datum und Sitzzahl der Wahl — aus dem Register, sonst aus der Registry.
+
+    ``_bare`` ist die letzte Reißleine: Dort ist das Register gerade NICHT
+    lesbar, und bis 09/2026 stand deshalb „13.09.2026, 52 Sitze, Wahl des
+    Rates …" von Hand in der Antwort — eine dritte Fassung derselben Angaben,
+    die bei der nächsten Wahl still falsch geworden wäre.
+    """
+    wahl = elections.active()
+    return ElectionInfo(
+        slug=wahl.slug,
+        # Datum, Titel und Sitzzahl stehen im Register UND in der Registry —
+        # `tests/test_wahlregistry.py` hält beide gegeneinander. Genommen wird
+        # durchgehend die REGISTRY: Sie ist die Identität der Wahl und immer
+        # lesbar. Eine gemischte Herkunft hatte hier kurz „Datum 2026,
+        # Wahlschluss 2031" ergeben — zwei richtige Quellen, eine falsche
+        # Antwort. Das ``reg`` bleibt als Parameter, weil die Sitzzahl beim
+        # Nachrechnen ohnehin von dort kommt.
+        date=wahl.date,
+        seats=wahl.seats,
+        title=wahl.title,
+        short_title=wahl.short_title,
+        polls_close=wahl.polls_close.isoformat(),
+        status=wahl.status,
+        presentation_url=votemanager.presentation_url(),
+        previous_label=wahl.previous_label,
+    )
+
+
 def _mandates(alloc: Allocation | None, reg: Register) -> list[ElectionMandate]:
     if alloc is None:
         return []
@@ -298,6 +332,91 @@ def _fill_city(city: AreaRow | None, area_rows: dict[int, AreaRow], notes: list[
 
 # ------------------------------------------------------------------ Zusammensetzen
 
+def districts(reg: Register, snap: Snapshot, dataset: str) -> ElectionDistrictList:
+    """Derselbe Stand, eine Ebene tiefer: je Wahlbezirk die Listen mit ihrem
+    Anteil.
+
+    `_fill_areas` liest dieselben Zeilen, summiert sie aber zu Wahlbereichen
+    und wirft die Einzelzeile weg. Für die Karte („wie hat mein Wahllokal
+    gewählt?") ist genau sie die Antwort.
+
+    **Briefwahlbezirke kommen mit.** Sie zählen zum Wahlbereich (ihre
+    Zehnerstelle sagt zu welchem) und tragen 2026 gut ein Drittel der
+    Stimmen; sie haben nur keine Fläche. Wer sie weglässt, zeigt eine Stadt,
+    in der ein Drittel der Wählenden nicht vorkommt.
+
+    Personenstimmen bleiben draußen — s. ``ElectionDistrictList``.
+    """
+    slugs = {p.index: p.slug for p in reg.parties}
+    zeilen: list[ElectionDistrict] = []
+    for row in snap.districts:
+        nr = votemanager.district_number(row.name, None)
+        if nr is None:
+            continue
+        bereich = votemanager.area_of_district(nr)
+        if bereich is None:
+            continue
+        listen = [
+            ElectionDistrictParty(slug=slug, votes=lr.total if lr else None,
+                                  share_pct=_pct(lr.total if lr else None, row.valid_votes))
+            for index, slug in slugs.items()
+            for lr in [row.lists.get(index)]
+        ]
+        zeilen.append(ElectionDistrict(
+            number=nr, name=row.name, area=bereich, postal=nr >= 900,
+            counted=row.counted,
+            reports_expected=row.reports_expected, reports_received=row.reports_received,
+            totals=_totals(row), parties=listen,
+        ))
+    zeilen.sort(key=lambda z: z["number"])
+    gezaehlt = sum(1 for z in zeilen if z["counted"])
+    return ElectionDistrictList(
+        dataset=dataset,
+        phase="before" if gezaehlt == 0 else ("complete" if gezaehlt == len(zeilen) else "counting"),
+        election=_election_of(reg),
+        total=len(zeilen), counted=gezaehlt, districts=zeilen,
+    )
+
+
+def _fill_party_areas(parties: list[ElectionParty], areas: list[ElectionArea],
+                      alloc: Allocation | None) -> None:
+    """Je Liste ihre Wahlbereiche in Rangfolge — dieselben Zahlen, andere Achse.
+
+    Der Rang geht nach ABSOLUTEN Stimmen: Danach verteilt § 37 Abs. 3 die
+    Sitze einer Partei auf die Wahlbereiche, und danach fragt man auch („wo
+    holt die Liste ihre Stimmen?"). Der Prozentwert steht daneben, weil er
+    eine andere Frage beantwortet (wie stark ist sie DORT), und die beiden
+    Antworten fallen auseinander: Wahlbereich IV hat rund doppelt so viele
+    Wahlberechtigte wie I.
+
+    ``remainder`` ist der Bruchteil aus derselben Stufe 2. Er hat nur dort
+    einen Sinn, wo die Liste überhaupt Sitze zu verteilen hatte — sonst bleibt
+    er ``None``.
+    """
+    for p in parties:
+        zeilen: list[ElectionPartyArea] = []
+        rest = alloc.district_remainders.get(p["slug"]) if alloc else None
+        for a in areas:
+            eintrag = next((ap for ap in a["parties"] if ap["slug"] == p["slug"]), None)
+            if eintrag is None:
+                continue  # tritt in diesem Wahlbereich nicht an
+            zeilen.append(ElectionPartyArea(
+                area=a["number"], roman=a["roman"], name=a["name"], rank=0,
+                votes=eintrag["votes"], share_pct=eintrag["share_pct"],
+                seats=eintrag["seats"], projected_seats=eintrag["projected_seats"],
+                remainder=rest.values.get(a["number"]) if rest else None,
+                remainder_quota=rest.quota if rest and rest.values else None,
+                took_last_seat=bool(rest and rest.last == a["number"]),
+                next_seat=bool(rest and rest.next == a["number"]),
+            ))
+        # Ohne Stimmen ans Ende, dort in Wahlbereichs-Reihenfolge: Vor der
+        # Auszählung ist jede Rangfolge erfunden.
+        zeilen.sort(key=lambda z: (z["votes"] is None, -(z["votes"] or 0), z["area"]))
+        for i, z in enumerate(zeilen, start=1):
+            z["rank"] = i
+        p["areas"] = zeilen
+
+
 def compose(reg: Register, ref: Reference, snap: Snapshot, dataset: str, *,
             margins: bool = True, projection: bool = True) -> ElectionNight:
     """Ein Stand als fertige Antwort.
@@ -352,7 +471,9 @@ def compose(reg: Register, ref: Reference, snap: Snapshot, dataset: str, *,
             if any(dl.total > 0 for dl in scaled):
                 proj_lists, proj_alloc = scaled, allocate(scaled, reg.seats)
             if proj.unmatched:
-                notes.append(f"{len(proj.unmatched)} ausgezählte Wahlbezirke haben kein Gegenstück von 2021.")
+                vorwahl = elections.active().previous_label or "der Vorwahl"
+                notes.append(f"{len(proj.unmatched)} ausgezählte Wahlbezirke haben kein Gegenstück "
+                             f"von {vorwahl}.")
     elif phase == "complete":
         proj_alloc = alloc
     proj_by_list = {(dl.party, dl.district): dl for dl in proj_lists}
@@ -369,9 +490,10 @@ def compose(reg: Register, ref: Reference, snap: Snapshot, dataset: str, *,
             votes=votes, share_pct=_pct(votes, valid_city),
             seats=alloc.seats_by_party.get(p.slug, 0) if alloc else None,
             projected_seats=proj_alloc.seats_by_party.get(p.slug, 0) if proj_alloc else None,
-            seats_2021=ref.seats_by_slug.get(p.slug),
-            share_2021_pct=ref.share_by_slug.get(p.slug),
+            seats_previous=ref.seats_by_slug.get(p.slug),
+            share_previous_pct=ref.share_by_slug.get(p.slug),
             votes_to_next_seat=gain, votes_to_lose_seat=loss,
+            areas=[],  # gefüllt, sobald die Wahlbereiche stehen (s. u.)
         ))
 
     areas: list[ElectionArea] = []
@@ -434,9 +556,11 @@ def compose(reg: Register, ref: Reference, snap: Snapshot, dataset: str, *,
             totals=_totals(row), parties=area_parties,
         ))
 
+    _fill_party_areas(parties, areas, alloc)
+
     return ElectionNight(
         dataset=dataset, phase=phase, person_votes_available=persons,
-        election={"date": reg.date, "seats": reg.seats, "title": reg.title, "presentation_url": votemanager.presentation_url()},
+        election=_election_of(reg),
         source={
             "fetched_at": snap.fetched_at.isoformat(timespec="seconds"),
             "last_modified": snap.last_modified, "ok": snap.ok, "error": snap.error,
@@ -593,9 +717,7 @@ def _bare(error: str) -> ElectionNight:
     Register lesbar ist. Leere Listen sind wenig — ein 500er wäre weniger."""
     return ElectionNight(
         dataset="live", phase="before", person_votes_available=False,
-        election={"date": "2026-09-13", "seats": 52,
-                  "title": "Wahl des Rates der Stadt Oldenburg (Oldb)",
-                  "presentation_url": votemanager.presentation_url()},
+        election=_election_of(None),
         source={"fetched_at": None, "last_modified": None, "ok": False, "error": error},
         progress={"districts_total": 0, "districts_counted": 0},
         totals=_totals(None), parties=[], areas=[], mandates=[], projected_mandates=[],

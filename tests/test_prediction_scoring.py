@@ -103,9 +103,11 @@ def test_score_hoechstwerte():
     alle_16 = {f"liste{i}": 0 for i in range(16)}
     alle_9 = {f"ob{i}": 30.0 for i in range(9)}
     s = score(alle_16, alle_9, alle_16, alle_9)
-    assert s.seat_points == scoring.MAX_SEAT_POINTS == 80
-    assert s.mayor_points == scoring.MAX_MAYOR_POINTS == 54
-    assert s.total == scoring.MAX_TOTAL_POINTS == 134
+    # Die Höchstwerte kommen aus der WAHL (16 Listen, 9 Kandidaturen), nicht
+    # mehr aus Konstanten — 2026 sind das dieselben Zahlen wie vorher.
+    assert s.seat_points == 16 * scoring.POINTS_PER_LIST == 80
+    assert s.mayor_points == 9 * scoring.POINTS_PER_MAYOR == 54
+    assert s.total == scoring.max_points(16, 9) == 134
 
 
 # ------------------------------------------------------------------ order() / ranks()

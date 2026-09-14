@@ -31,7 +31,7 @@
 //    Schlüssel.
 // 3. Reiter statt einer sehr langen Rolle. Was NICHT hinter einem Reiter
 //    verschwindet: der Brutto/Netto-Umschalter (Begründung in
-//    `components/haushalt/area-reiter.tsx`).
+//    `components/ui/reiter.tsx`).
 
 import { Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -52,7 +52,7 @@ import { Gegenbalken } from "@/components/grafik/gegenbalken";
 import { Hantel } from "@/components/grafik/hantel";
 import { Warum } from "@/components/haushalt/warum";
 import { Summe } from "@/components/haushalt/tafel";
-import { BereichReiter, ReiterTafel, type Reiter } from "@/components/haushalt/area-reiter";
+import { ReiterLeiste, ReiterTafel, type Reiter } from "@/components/ui/reiter";
 import { Datenstand } from "@/components/haushalt/datenstand";
 import { cn } from "@/lib/utils";
 
@@ -426,7 +426,7 @@ function BereichInner() {
       </div>
       </div>
 
-      <BereichReiter reiter={reiterListe} aktiv={aktiv} onChange={setReiter} />
+      <ReiterLeiste reiter={reiterListe} aktiv={aktiv} onChange={setReiter} label="Ansichten dieses Bereichs" />
 
       <ReiterTafel id="ueberblick" aktiv={aktiv} className="flex flex-col gap-4">
         {/* Die Rechnung des Bereichs steht seit 24.08. oben auf der Tafel —

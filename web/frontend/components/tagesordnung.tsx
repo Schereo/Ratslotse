@@ -533,7 +533,7 @@ export function useTopsAusLink(roh: string | null): string[] {
  *  bietet keinen Export — wer den Termin nicht verpassen will, tippt ihn bisher
  *  ab. Die Tagesordnung wandert mit ins Beschreibungsfeld, samt Ratsinfo-Link,
  *  damit der Eintrag auch in vier Wochen noch etwas sagt. */
-export function CalendarButton({ session, agenda }: { session: CouncilSession; agenda?: string[] }) {
+export function CalendarButton({ session, agenda, className }: { session: CouncilSession; agenda?: string[]; className?: string }) {
   // Umlaute umschreiben statt wegwerfen — sonst hieße die Datei
   // „ratslotse-stadtgr-n-klima-….ics".
   const slug = shortCommittee(session.committee)
@@ -561,7 +561,7 @@ export function CalendarButton({ session, agenda }: { session: CouncilSession; a
           `ratslotse-${slug}-${session.session_date.slice(0, 10)}.ics`,
         ).catch(() => toast.error("Kalendereintrag konnte nicht erzeugt werden."));
       }}
-      className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-primary"
+      className={cn("inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-primary", className)}
     >
       <CalendarPlus className="h-3.5 w-3.5" /> Kalender
     </button>

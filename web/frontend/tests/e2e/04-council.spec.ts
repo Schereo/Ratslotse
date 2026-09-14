@@ -206,12 +206,36 @@ test.describe("Geteilte Sitzung ohne Konto", () => {
 
   test("zeigt Gremium und Tagesordnung statt der Anmeldung", async ({ page }) => {
     await page.goto("/council/sitzung?ksinr=42");
-    await expect(page.getByRole("heading", { name: /Bauausschuss/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Bau", exact: true })).toBeVisible();
+    await expect(page.getByText("Bauausschuss", { exact: true })).toBeVisible();
     await expect(page.getByText("Bebauungsplan Hafen")).toBeVisible();
     await expect(page.getByRole("button", { name: "Sitzung teilen" })).toBeVisible();
     // Der Weg ins Konto steht am Fuß der Seite, nicht davor.
     await expect(page.getByRole("link", { name: "Kostenlos registrieren" })).toBeVisible();
     await expect(page.locator("#password")).toHaveCount(0);
+  });
+
+
+  test("Sitzungskopf bleibt mit langen Angaben und großer Schrift mobil lesbar", async ({ page }) => {
+    const committee = "Ausschuss für Wirtschaftsförderung, Digitalisierung und internationale Zusammenarbeit";
+    const location = "Alte Fleiwa, Industriestraße 1d, Sitzungssaal 1/2";
+    await page.route("**/api/council/session/42", route => route.fulfill({ json: { ...MOCK_DETAIL, committee, location } }));
+    await page.setViewportSize({ width: 320, height: 844 });
+    await page.goto("/council/sitzung?ksinr=42");
+    await expect(page.getByRole("heading", { name: "Wirtschaft & Digitales", exact: true })).toBeVisible();
+    await page.addStyleTag({ content: "html { font-size: 200% !important; }" });
+    const header = page.locator('header[aria-labelledby="sitzung-titel"]');
+    await expect(header.getByText(committee, { exact: true })).toBeVisible();
+    await expect(header.getByText(location, { exact: true })).toBeVisible();
+    await expect.poll(() => header.evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(1);
+    const actions = header.getByRole("group", { name: "Aktionen zur Sitzung" });
+    for (const action of await actions.locator("button, a").all()) {
+      const box = await action.boundingBox();
+      expect(box?.height).toBeGreaterThanOrEqual(44);
+      expect(box!.x + box!.width).toBeLessThanOrEqual(320);
+    }
+    await expect(actions.getByRole("link", { name: "Ratsinfo" })).toHaveAttribute("href", /__ksinr=42/);
+    await expect(actions.getByRole("button", { name: "Zur Merkliste hinzufügen" })).toHaveCount(0);
   });
 
   test("hebt den geteilten Tagesordnungspunkt hervor", async ({ page }) => {

@@ -213,7 +213,11 @@ def test_ohne_staedte_datenbank_antwortet_er_trotzdem(rats_db, tmp_path):
     app.dependency_overrides[get_cities_store] = lambda: leer
     try:
         c = TestClient(app)
-        assert c.get("/api/council/cities/ideas/fields").json() == {"fields": []}
+        # `bodies` steht auch dann in der Antwort, wenn sie leer ist: Das
+        # Frontend schreibt daraus den Satz „Was Räte in … beschlossen haben"
+        # und braucht eine Liste, keine fehlende Angabe.
+        assert c.get("/api/council/cities/ideas/fields").json() == {
+            "fields": [], "bodies": []}
         daten = c.get("/api/council/cities/ideas?field=verkehr").json()
         assert daten["items"] == [] and daten["total"] == 0
     finally:

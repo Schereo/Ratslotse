@@ -14,8 +14,8 @@ export function Badge({ children, color = "slate", className }: { children: Reac
   const colors: Record<BadgeColor, string> = {
     slate: "bg-muted text-muted-foreground",
     blue: "bg-primary/10 text-primary",
-    green: "bg-green-100 text-green-700",
-    amber: "bg-amber-100 text-amber-700",
+    green: "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-300",
+    amber: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300",
     red: "bg-destructive/10 text-destructive",
   };
   return (

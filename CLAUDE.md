@@ -483,6 +483,9 @@ COUNCIL_EMBED_MODEL=sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
 COUNCIL_RECAP_MODEL=deepseek/deepseek-v4-pro
 COUNCIL_VIDEO_MODEL=openai/gpt-5.6-luna     # liest Abstimmungsergebnisse aus Sitzungs-Transkripten
 COUNCIL_STT_MODEL=google/gemini-2.5-flash   # transkribiert den Livestream-Mitschnitt (Audio-Input)
+WAHLABEND_ELECTION=ratswahl-2026          # welche Wahl /wahlabend zeigt (kommunalwahl/wahlen/); leer = die jüngste
+WAHLABEND_VOTEMANAGER_URL=...             # Basis-URL des Votemanagers, überschreibt die der Wahl
+WAHLABEND_COLUMNS=gruene,spd,cdu,…        # Notausgang: Spaltenreihenfolge der Open-Data-CSVs
 COUNCIL_STREAM_URL=https://cdn.oeins.de/sd480/index.m3u8  # O1-Livestream (HLS)
 COUNCIL_RECORD_MAX_HOURS=6                  # Kappe des Sitzungs-Mitschnitts
 COUNCIL_CHUNK_SECONDS=30                    # Stücklänge des Mitschnitts ohne Streaming (Live-Verfolgung)
@@ -528,6 +531,13 @@ RATSLOTSE_PROXY_HOSTS=gisportal4ol.oldenburg.de,youtube.com         # nur diese 
   `scripts/update_disposable_domains.py --schreiben`; `PROTECTED_DOMAINS`
   schützt echte Anbieter (und Apples „E-Mail verbergen") vor einem
   Fehleintrag der Liste.
+- **Abgewiesene Registrierungen werden gezählt** (seit 09/2026). `page_views`
+  zählt, wer kam; `signup_rejections` zählt, wer nicht durchkam — je Tag und
+  Grund, ohne Adresse, Domain oder Netzadresse. Sichtbar im Admin-Panel unter
+  *Statistik → Registrierungen*; `scripts/check_herzschlag.py` meldet eine
+  Welle per Mail. Der Grund: Die FYI-Mail an die Admins hängt an der
+  **Bestätigung** — tausend Konten, die nie einen Link klicken, lösen ohne den
+  Herzschlag keine einzige Mail aus.
 - **Rollen und Rechte:** Ein Konto trägt seit 09/2026 **mehrere** Rollen
   (Tabelle `web_user_roles`); welche es gibt und was sie dürfen, steht an genau
   einer Stelle — [`kern/roles.py`](kern/roles.py). Geprüft wird immer gegen ein
@@ -640,7 +650,12 @@ RATSLOTSE_PROXY_HOSTS=gisportal4ol.oldenburg.de,youtube.com         # nur diese 
   oldenburg.planungsbeteiligung.de für Frist-Banner und KI-Kontext),
   `remind_setup.py`
   (täglich; genau eine Service-Mail an Konten, die den Einrichtungs-
-  Assistenten angefangen und seit 48 h nicht beendet haben). Alle laufen in
+  Assistenten angefangen und seit 48 h nicht beendet haben),
+  `check_wahltermine.py` (täglich 6:15; vergleicht den Terminkalender des
+  Votemanagers mit `kommunalwahl/wahlen/` — meldet eine Wahl, die wir nicht
+  kennen, und eine Wahl-Id, die endlich da ist oder kurz vor dem Wahltag
+  immer noch fehlt. Legt **nichts** an: Eine Wahl ist Handarbeit mit Blick in
+  die amtliche Bekanntmachung). Alle laufen in
   `run_guarded` (`kern/alerts.py`): Ein Crash wird geloggt **und** per E-Mail an
   `ALERT_EMAIL`/`WEB_ADMIN_EMAIL` gemeldet. Außerdem protokolliert `run_guarded`
   jeden Lauf in `job_runs` (Dauer, Status, Kennzahlen aus dem Rückgabe-dict der

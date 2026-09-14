@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { abfragePfad, bildPfad, delta, fortschritt, halbkreis, kandidatenStatus, koalitionen, mehrheit, nachStimmen, prozent, sitzband, sitzgrenze, standText, uhrzeit, wahlabendZeit, zahl } from "./wahlabend";
+import { abfragePfad, bildPfad, delta, fortschritt, halbkreis, kandidatenStatus, koalitionen, mehrheit, nachStimmen, prozent, sitzband, sitzgrenze, standText, uhrzeit, vorneDrei, wahlabendZeit, zahl } from "./wahlabend";
+
+/** Wahlschluss 13.09.2026, 18 Uhr — kommt im Betrieb aus `election.polls_close`. */
+const SCHLUSS = "2026-09-13T18:00:00+02:00";
 
 describe("Formate", () => {
   it("Zahlen und Prozente auf Deutsch, Lücken als Strich", () => {
@@ -116,14 +119,58 @@ describe("Kandidatenrennen und Bild", () => {
   });
 });
 
+describe("Die drei Kandidaturen einer Wahlbereichs-Karte", () => {
+  /** Zwölf Plätze, Stimmen fallend — bis auf Platz 9, der einen Listensitz hat. */
+  const liste = [
+    { position: 1, votes: 2193, elected: "direct", projected_elected: null, votes_to_seat: null },
+    { position: 2, votes: 993, elected: null, projected_elected: null, votes_to_seat: 120 },
+    { position: 3, votes: 488, elected: null, projected_elected: null, votes_to_seat: 700 },
+    { position: 9, votes: 40, elected: "list", projected_elected: null, votes_to_seat: null },
+  ];
+
+  it("nimmt Gewählte mit, auch von hinten — und zeigt sie nach Listenplatz", () => {
+    const { vorne, rest } = vorneDrei(liste, "complete");
+    expect(vorne.map((k) => k.position)).toEqual([1, 2, 9]);
+    expect(rest.map((k) => k.position)).toEqual([3]);
+  });
+
+  it("vor der Auszählung sind es die ersten drei Listenplätze", () => {
+    const ohne = liste.map((k) => ({ ...k, votes: null, elected: null, votes_to_seat: null }));
+    expect(vorneDrei(ohne, "before").vorne.map((k) => k.position)).toEqual([1, 2, 3]);
+    // Auch mitten in der Auszählung, solange keine Personenstimmen da sind.
+    expect(vorneDrei(ohne, "counting").vorne.map((k) => k.position)).toEqual([1, 2, 3]);
+  });
+
+  it("wer knapp dran ist, steht vor dem, der es nicht ist", () => {
+    const knapp = [
+      { position: 1, votes: 100, elected: null, projected_elected: null, votes_to_seat: 9000 },
+      { position: 2, votes: 90, elected: null, projected_elected: null, votes_to_seat: 8000 },
+      { position: 3, votes: 80, elected: null, projected_elected: null, votes_to_seat: 60 },
+      { position: 4, votes: 70, elected: null, projected_elected: "list", votes_to_seat: null },
+    ];
+    expect(vorneDrei(knapp, "counting").vorne.map((k) => k.position)).toEqual([1, 3, 4]);
+  });
+
+  it("kurze Listen bleiben ganz sichtbar", () => {
+    expect(vorneDrei(liste.slice(0, 3), "complete").rest).toEqual([]);
+    expect(vorneDrei([], "complete")).toEqual({ vorne: [], rest: [] });
+  });
+});
+
 describe("Wann ist Wahlabend", () => {
   it("zählt in deutscher Zeit herunter und kippt um 18 Uhr auf „läuft“", () => {
-    expect(wahlabendZeit(new Date("2026-09-07T06:00:00Z"))).toMatchObject({ phase: "vorher", tage: 6, kicker: "Noch 6 Tage", wann: "Am Sonntag ab 18 Uhr" });
-    expect(wahlabendZeit(new Date("2026-09-12T21:30:00Z"))).toMatchObject({ phase: "vorher", tage: 1, kicker: "Morgen ab 18 Uhr" });
+    expect(wahlabendZeit(SCHLUSS, new Date("2026-09-07T06:00:00Z"))).toMatchObject({ phase: "vorher", tage: 6, kicker: "Noch 6 Tage", wann: "Am Sonntag ab 18 Uhr" });
+    expect(wahlabendZeit(SCHLUSS, new Date("2026-09-12T21:30:00Z"))).toMatchObject({ phase: "vorher", tage: 1, kicker: "Morgen ab 18 Uhr" });
     // 12.09. 23:30 MESZ ist noch der Samstag — in UTC schon der 12., in Berlin ebenfalls.
-    expect(wahlabendZeit(new Date("2026-09-12T22:30:00Z"))).toMatchObject({ phase: "vorher", tage: 0, kicker: "Heute ab 18 Uhr" });
-    expect(wahlabendZeit(new Date("2026-09-13T15:59:00Z")).phase).toBe("vorher");
-    expect(wahlabendZeit(new Date("2026-09-13T16:00:00Z"))).toMatchObject({ phase: "laeuft", kicker: "Live" });
-    expect(wahlabendZeit(new Date("2026-09-20T12:00:00Z")).phase).toBe("laeuft");
+    expect(wahlabendZeit(SCHLUSS, new Date("2026-09-12T22:30:00Z"))).toMatchObject({ phase: "vorher", tage: 0, kicker: "Heute ab 18 Uhr" });
+    expect(wahlabendZeit(SCHLUSS, new Date("2026-09-13T15:59:00Z")).phase).toBe("vorher");
+    expect(wahlabendZeit(SCHLUSS, new Date("2026-09-13T16:00:00Z"))).toMatchObject({ phase: "laeuft", kicker: "Live" });
+    // Der Abend endet mit dem Wahltag. Bis 09/2026 kannte die Funktion nur
+    // „vorher" und „laeuft" — und am Montagmorgen stand deshalb immer noch
+    // „Der Wahlabend läuft" auf der Startseite (Tims Befund, live auf Prod).
+    expect(wahlabendZeit(SCHLUSS, new Date("2026-09-13T21:59:00Z")).phase).toBe("laeuft");
+    expect(wahlabendZeit(SCHLUSS, new Date("2026-09-13T22:30:00Z"))).toMatchObject({ phase: "danach", kicker: "Ergebnis" });
+    expect(wahlabendZeit(SCHLUSS, new Date("2026-09-14T07:00:00Z")).phase).toBe("danach");
+    expect(wahlabendZeit(SCHLUSS, new Date("2026-09-20T12:00:00Z")).phase).toBe("danach");
   });
 });

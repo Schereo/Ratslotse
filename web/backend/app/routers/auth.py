@@ -196,7 +196,14 @@ def register(
     background: BackgroundTasks,
     store: Store = Depends(get_store),
 ) -> UserOut:
-    register_limiter.check(request)
+    # Die Bremse zählt ihren Treffer mit: Ein Skript, das hier hängenbleibt,
+    # hinterließ sonst nirgends eine Spur — „niemand hat es versucht" sah aus
+    # wie „500 haben es versucht".
+    try:
+        register_limiter.check(request)
+    except HTTPException:
+        store.record_signup_rejection("rate_limit")
+        raise
     settings = get_settings()
     email = str(body.email).lower().strip()
     # Der Name ist Pflicht — geprüft HIER und nicht als `min_length` im Schema:
@@ -213,8 +220,10 @@ def register(
     # die Reihenfolge verrät so auch nicht, ob die Adresse schon ein Konto hat.
     if is_disposable(email):
         logger.info("Registrierung abgewiesen: Wegwerf-Domain %s", domain_of(email))
+        store.record_signup_rejection("disposable_email")
         raise HTTPException(status.HTTP_400_BAD_REQUEST, REGISTER_REJECTED)
     if store.get_web_user_by_email(email):
+        store.record_signup_rejection("duplicate_email")
         raise HTTPException(status.HTTP_409_CONFLICT, "E-Mail ist bereits registriert.")
     # Registration hands out no role at all: everything it could decide on comes
     # from this unauthenticated request body. Even the configured WEB_ADMIN_EMAIL

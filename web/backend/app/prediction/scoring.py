@@ -11,10 +11,20 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-#: Höchstwerte — 16 Listen × 5, 9 OB-Kandidaturen × 6.
-MAX_SEAT_POINTS = 16 * 5
-MAX_MAYOR_POINTS = 9 * 6
-MAX_TOTAL_POINTS = MAX_SEAT_POINTS + MAX_MAYOR_POINTS
+#: Punkte je Liste bzw. je Kandidatur, wenn der Tipp exakt sitzt.
+POINTS_PER_LIST = 5
+POINTS_PER_MAYOR = 6
+
+
+def max_points(lists: int, mayors: int) -> int:
+    """Die erreichbare Höchstpunktzahl — aus der WAHL, nicht aus Konstanten.
+
+    Hier stand bis 14.09.2026 ``16 * 5`` und ``9 * 6``: die Listen- und
+    Kandidaturenzahl von 2026, eingemauert. Bei der nächsten Wahl wäre die
+    „von 134 möglichen Punkten"-Zeile still falsch — und niemand prüft eine
+    Zahl, die schon immer dastand.
+    """
+    return lists * POINTS_PER_LIST + mayors * POINTS_PER_MAYOR
 
 
 def seat_points(tip: int, actual: int | None) -> int:

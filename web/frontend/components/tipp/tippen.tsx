@@ -46,17 +46,22 @@ export function Tippen({ setup, meins, runde, onGespeichert, onZurueck }: {
   onZurueck?: () => void;
 }) {
   // Ein neuer Tipp fängt bei NULL an — alle Sitze werden selbst verteilt.
-  // Bis 13.09.2026 stand hier die Verteilung von 2021 als Vorschlag; wer
+  // Bis 13.09.2026 stand hier die Verteilung der Vorwahl als Vorschlag; wer
   // nur „Tipp abgeben" drückte, tippte damit unbemerkt das letzte Ergebnis
   // nach (Tims Befund). Ein Tipp soll eine Entscheidung sein, kein
-  // Bestätigen. Die 2021er Zahl steht weiter unter jeder Liste — als
+  // Bestätigen. Die Zahl der Vorwahl steht weiter unter jeder Liste — als
   // Anhaltspunkt, nicht als Vorgabe.
   const [seats, setSeats] = useState<Record<string, number>>(() =>
     meins.has_tip
       ? Object.fromEntries(meins.seats.map((s) => [s.slug, s.tip]))
       : Object.fromEntries(setup.parties.map((p) => [p.slug, 0])),
   );
-  const [obOffen, setObOffen] = useState(meins.has_mayor_tip);
+  // „seats" = Sitze verteilen (Ratswahl), „pct" = nur Prozente (OB- oder
+  // Stichwahl). Die Antwort sagt es; die Komponente deutet keine Wahlart.
+  const sitzwahl = setup.tip_kind === "seats";
+  // Bei einer reinen Prozentwahl ist der Prozentteil kein Zusatz, sondern
+  // das Spiel — der Schalter entfällt.
+  const [obOffen, setObOffen] = useState(sitzwahl ? meins.has_mayor_tip : true);
   const [ob, setOb] = useState<Record<string, number>>(() =>
     Object.fromEntries(meins.mayor.map((m) => [m.slug, m.tip])),
   );
@@ -74,7 +79,7 @@ export function Tippen({ setup, meins, runde, onGespeichert, onZurueck }: {
   // `fehlt` ist der Grund, warum nicht abgegeben werden kann — und zugleich
   // die Beschriftung des Knopfes. Eine Wahrheit statt zwei, die
   // auseinanderlaufen können.
-  const fehlt = fehltText(rest, obOffen, obRest);
+  const fehlt = sitzwahl ? fehltText(rest, obOffen, obRest) : fehltText(0, true, obRest);
   const kannAbgeben = fehlt === null && !sendet && !gespeichert;
 
   function setzeSitz(slug: string, wert: number) {
@@ -96,7 +101,7 @@ export function Tippen({ setup, meins, runde, onGespeichert, onZurueck }: {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ seats, mayor: obOffen ? ob : null }),
+        body: JSON.stringify({ seats: sitzwahl ? seats : null, mayor: obOffen ? ob : null }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
@@ -140,22 +145,24 @@ export function Tippen({ setup, meins, runde, onGespeichert, onZurueck }: {
           <span className="text-muted-foreground">{meins.name} · Tipp ändern</span>
         </div>
       )}
-      <div className="sticky top-0 z-20 mx-4 mt-3 rounded-[14px] border border-border bg-card p-3 pt-[calc(env(safe-area-inset-top)+12px)] shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
-        <div className="flex items-baseline justify-between">
-          <span className="font-display text-[17px] font-bold">Sitze im Rat</span>
-          <span className={`font-mono text-xs ${ton === "ok" ? "text-emerald-600 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400"}`}>
-            {restText}
-          </span>
+      {sitzwahl && (
+        <div className="sticky top-0 z-20 mx-4 mt-3 rounded-[14px] border border-border bg-card p-3 pt-[calc(env(safe-area-inset-top)+12px)] shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+          <div className="flex items-baseline justify-between">
+            <span className="font-display text-[17px] font-bold">Sitze im Rat</span>
+            <span className={`font-mono text-xs ${ton === "ok" ? "text-emerald-600 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400"}`}>
+              {restText}
+            </span>
+          </div>
+          <div className="mt-2 flex h-2 overflow-hidden rounded-full bg-muted">
+            {segmente.map((s) => (
+              <div key={s.slug} style={{ width: s.breite, background: s.farbe }} className="h-full transition-[width] duration-200" />
+            ))}
+          </div>
+          <p className="mt-1.5 text-[11.5px] text-muted-foreground">
+            Verteile insgesamt {setup.seats_total} Sitze. Mit 0 tippst du, dass diese Liste keinen Sitz bekommt.
+          </p>
         </div>
-        <div className="mt-2 flex h-2 overflow-hidden rounded-full bg-muted">
-          {segmente.map((s) => (
-            <div key={s.slug} style={{ width: s.breite, background: s.farbe }} className="h-full transition-[width] duration-200" />
-          ))}
-        </div>
-        <p className="mt-1.5 text-[11.5px] text-muted-foreground">
-          Verteile insgesamt {setup.seats_total} Sitze. Mit 0 tippst du, dass diese Liste keinen Sitz bekommt.
-        </p>
-      </div>
+      )}
       {meins.late_at !== null && (
         <p className="mx-4 mt-3 rounded-[10px] border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] leading-relaxed text-amber-800 dark:border-amber-900/50 dark:bg-amber-900/20 dark:text-amber-200">
           Die Tippfrist ist vorbei. Dein Tipp wird als <strong>später abgegeben</strong> gekennzeichnet. {setup.late_scored ? "Er zählt bei der Platzierung mit." : "Er bekommt Punkte, aber keinen Platz in der Rangliste."}
@@ -163,7 +170,7 @@ export function Tippen({ setup, meins, runde, onGespeichert, onZurueck }: {
       )}
 
       <div className="mt-2 flex flex-col gap-1.5 px-4">
-        {setup.parties.map((p) => (
+        {(sitzwahl ? setup.parties : []).map((p) => (
           <div key={p.slug} className="flex items-center gap-2.5 rounded-xl border border-border bg-card py-2 pl-3 pr-2">
             <span
               className="h-2 w-2 flex-none rounded-full shadow-[inset_0_0_0_1px_rgba(0,0,0,0.15)]"
@@ -172,7 +179,9 @@ export function Tippen({ setup, meins, runde, onGespeichert, onZurueck }: {
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold leading-tight">{p.short}</p>
               <p className="text-[11px] text-muted-foreground">
-                {p.seats_2021 !== null ? `2021: ${p.seats_2021}` : "neu 2026"}
+                {p.seats_previous !== null && setup.previous_label
+                  ? `${setup.previous_label}: ${p.seats_previous}`
+                  : "neu angetreten"}
               </p>
             </div>
             <button
@@ -206,10 +215,16 @@ export function Tippen({ setup, meins, runde, onGespeichert, onZurueck }: {
       <div className="mx-4 mt-4.5 rounded-[14px] border border-border bg-card p-3.5">
         <div className="flex items-center justify-between gap-2.5">
           <div>
-            <p className="font-display text-base font-bold">OB-Wahl mittippen</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">Freiwillig · bis zu 6 Bonuspunkte pro Person</p>
+            <p className="font-display text-base font-bold">
+              {sitzwahl ? "OB-Wahl mittippen" : `${setup.election_title} tippen`}
+            </p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {sitzwahl ? "Freiwillig · bis zu 6 Bonuspunkte pro Person" : "Bis zu 6 Punkte pro Person"}
+            </p>
           </div>
-          <Switch checked={obOffen} onCheckedChange={setObOffen} aria-label="OB-Wahl mittippen" />
+          {/* Bei einer reinen Prozentwahl gibt es nichts zuzuschalten — der
+              Block IST das Spiel. */}
+          {sitzwahl && <Switch checked={obOffen} onCheckedChange={setObOffen} aria-label="OB-Wahl mittippen" />}
         </div>
         <Aufklapp offen={obOffen}>
           <div className="mt-3 flex flex-col gap-1.5">

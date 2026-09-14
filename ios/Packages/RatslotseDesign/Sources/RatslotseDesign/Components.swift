@@ -60,7 +60,7 @@ public struct OutcomeBadge: View {
     public init(_ outcome: String) { self.outcome = outcome }
 
     public var body: some View {
-        Text(label)
+        Text(Self.label(for: outcome))
             .font(RatsFont.body(11, weight: .semibold))
             .foregroundStyle(foreground)
             .padding(.horizontal, 8)
@@ -69,7 +69,7 @@ public struct OutcomeBadge: View {
             .clipShape(Capsule())
     }
 
-    private var label: String {
+    public static func label(for outcome: String) -> String {
         switch outcome {
         case "accepted": "Angenommen"
         case "rejected": "Abgelehnt"

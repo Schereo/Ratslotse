@@ -146,6 +146,64 @@ def unterbau_pruefen(main: CitiesStore) -> list[str]:
     return befunde
 
 
+#: Was 1.000 **Aufrufe** kosten, gemessen am 13.09.2026 über `llm_usage` in
+#: `data/ratslotse.sqlite`. Nicht je Vorlage — die meisten Annotatoren
+#: bündeln, und wie stark, steht in ihrer eigenen Konfiguration.
+KOSTEN_JE_1000_AUFRUFE = {"classify": 1.15, "effort": 0.82, "fit": 0.58}
+
+#: Wie oft `fit` je Vorlage fragt: drei Stimmen, Mehrheit entscheidet.
+FIT_STIMMEN = 3
+
+#: `search_terms` läuft je Vorlage (kein Bündel) mit einem kleinen Modell.
+KOSTEN_TERMS_JE_1000 = 0.03
+
+
+def kosten_je_1000_vorlagen() -> float:
+    """Was 1.000 Vorlagen durch alle bezahlten Stufen kosten.
+
+    **Die Bündelgröße kommt aus dem Annotator, nicht aus einer Zahl hier.**
+    Der erste Entwurf multiplizierte den Preis je 1.000 AUFRUFE mit der Zahl
+    der Vorlagen — und `classify` bündelt zu sechst, `effort` zu acht. Die
+    Vorschau stand damit 7,8-fach zu hoch: $1,15 statt der gemessenen $0,147
+    je 1.000 Vorlagen (nachgerechnet am Lauf vom 13.09.2026 über 4.921
+    Hannoveraner Urteile). Eine Schätzung, der man nicht glauben kann, ist
+    schlimmer als keine — sie hält einen richtigen Lauf auf.
+    """
+    from council.cities.annotators import get as get_annotator
+
+    summe = KOSTEN_TERMS_JE_1000
+    for name, preis in KOSTEN_JE_1000_AUFRUFE.items():
+        ann = get_annotator(name)
+        stimmen = FIT_STIMMEN if name == "fit" else 1
+        summe += preis / max(ann.batch_size, 1) * stimmen
+    return summe
+
+
+def vorschau(main_store, specs) -> None:
+    """Vor dem bezahlten Lauf: Wie viele Vorlagen, in welchem Fenster, für wie viel.
+
+    **Die Zahl gehört VOR den Lauf, nicht in den Bericht danach.** Am
+    11.09.2026 lief `fit` über den ganzen Bestand, während der Index nur
+    Oldenburg kannte — $15,40 für zwei tote Beleg-Arme. Und ohne Fenster
+    hätte Hannover allein rund $75 statt $35 gekostet, bei einem Vergleich
+    von acht Jahren gegen drei.
+    """
+    from council.cities import auswahl as auswahl_modul
+
+    print("\n  Fenster und Kandidaten (Schätzung aus gemessenen Preisen):")
+    summe = 0.0
+    for spec in specs:
+        f = auswahl_modul.fenster(spec.id)
+        papiere = auswahl_modul.papiere(main_store, spec.id)
+        kosten = len(papiere) / 1000 * kosten_je_1000_vorlagen()
+        summe += kosten
+        arten = ", ".join(f.kinds) if f.kinds else "alle"
+        print(f"    {spec.name[:22]:22} ab {f.since or 'immer':10} "
+              f"Arten: {arten:34} {len(papiere):6} Vorlagen  ~${kosten:,.0f}")
+    print(f"    {'':22}    {'':10} {'':34} {'':6}            ~${summe:,.0f}\n",
+          flush=True)
+
+
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -220,6 +278,9 @@ def main() -> int:
                     inline = pipeline.extract_inline(main_store, spec, raw_dir)
                     if inline:
                         ergebnisse[spec.id]["inline_texts"] = inline
+                    abschnitte = pipeline.inline_sections(main_store, spec, raw_dir)
+                    if abschnitte:
+                        ergebnisse[spec.id]["inline_sections"] = abschnitte
                     print(f"  {spec.id} normalisiert: {zahlen}", flush=True)
                 if "extract" in stages:
                     zahlen = pipeline.extract(main_store, files_dir, spec.id)
@@ -236,6 +297,8 @@ def main() -> int:
         # ganzen Bestand neu bezahlen. Ohne `--body` läuft beides über alles,
         # denn der Index rechnet Nachbarschaften ÜBER Stadtgrenzen.
         auswahl = [s.id for s in specs] if a.body else [None]
+        if {"annotate", "fit"} & set(stages):
+            vorschau(main_store, specs)
         if "annotate" in stages:
             for stadt in auswahl:
                 for schluessel, zahlen in pipeline.annotate(
