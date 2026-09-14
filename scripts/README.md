@@ -72,6 +72,7 @@ verloren gehen könnten.
 | Skript | Wann |
 |--------|------|
 | `grant_admin.py` | Adminrechte an ein **bestehendes** Konto geben (Erst-Einrichtung ohne Mail-Versand, ausgesperrter Admin) |
+| `update_disposable_domains.py [--schreiben]` | Wegwerf-Domain-Liste (`kern/disposable_email_domains.txt`) aus dem Upstream nachziehen; Vorgabe ist der Bericht |
 | `reextract_protocols.py` | Beschlüsse neu extrahieren nach Prompt-Änderung |
 | `build_decisions_fts.py` | Volltext-Index der Beschlüsse neu bauen |
 | `extract_decision_locations.py --full` | Einmaliger Orts-Backfill; danach inkrementell über `check_protocols.py` |

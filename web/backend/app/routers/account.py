@@ -12,6 +12,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request,
 
 from kern.digest_email import render_html_email
 from kern.email import send_email
+from kern.disposable_email import DISPOSABLE_EMAIL_MESSAGE, is_disposable
 from kern.store import Store
 from council.store import CouncilStore
 
@@ -266,6 +267,11 @@ def change_email(
         # Validierungsregel hängen soll — er kostet nichts und beschreibt die
         # Absicht an der Stelle, an der sie gilt.
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Diese Adresse ist nicht zulässig.")
+    if is_disposable(neu):
+        # Dieselbe Regel wie bei der Registrierung — sonst wäre der Wechsel
+        # der Umweg um den Riegel: erst mit echter Adresse anmelden, dann auf
+        # die Wegwerf-Adresse umziehen.
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, DISPOSABLE_EMAIL_MESSAGE)
     if store.get_web_user_by_email(neu):
         raise HTTPException(status.HTTP_409_CONFLICT, "E-Mail ist bereits registriert.")
 
