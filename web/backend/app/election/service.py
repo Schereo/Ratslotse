@@ -40,6 +40,9 @@ from ..antworten import (
     ElectionArea,
     ElectionAreaParty,
     ElectionCandidate,
+    ElectionDistrict,
+    ElectionDistrictList,
+    ElectionDistrictParty,
     ElectionHistoryPoint,
     ElectionInfo,
     ElectionMandate,
@@ -328,6 +331,52 @@ def _fill_city(city: AreaRow | None, area_rows: dict[int, AreaRow], notes: list[
 
 
 # ------------------------------------------------------------------ Zusammensetzen
+
+def districts(reg: Register, snap: Snapshot, dataset: str) -> ElectionDistrictList:
+    """Derselbe Stand, eine Ebene tiefer: je Wahlbezirk die Listen mit ihrem
+    Anteil.
+
+    `_fill_areas` liest dieselben Zeilen, summiert sie aber zu Wahlbereichen
+    und wirft die Einzelzeile weg. Für die Karte („wie hat mein Wahllokal
+    gewählt?") ist genau sie die Antwort.
+
+    **Briefwahlbezirke kommen mit.** Sie zählen zum Wahlbereich (ihre
+    Zehnerstelle sagt zu welchem) und tragen 2026 gut ein Drittel der
+    Stimmen; sie haben nur keine Fläche. Wer sie weglässt, zeigt eine Stadt,
+    in der ein Drittel der Wählenden nicht vorkommt.
+
+    Personenstimmen bleiben draußen — s. ``ElectionDistrictList``.
+    """
+    slugs = {p.index: p.slug for p in reg.parties}
+    zeilen: list[ElectionDistrict] = []
+    for row in snap.districts:
+        nr = votemanager.district_number(row.name, None)
+        if nr is None:
+            continue
+        bereich = votemanager.area_of_district(nr)
+        if bereich is None:
+            continue
+        listen = [
+            ElectionDistrictParty(slug=slug, votes=lr.total if lr else None,
+                                  share_pct=_pct(lr.total if lr else None, row.valid_votes))
+            for index, slug in slugs.items()
+            for lr in [row.lists.get(index)]
+        ]
+        zeilen.append(ElectionDistrict(
+            number=nr, name=row.name, area=bereich, postal=nr >= 900,
+            counted=row.counted,
+            reports_expected=row.reports_expected, reports_received=row.reports_received,
+            totals=_totals(row), parties=listen,
+        ))
+    zeilen.sort(key=lambda z: z["number"])
+    gezaehlt = sum(1 for z in zeilen if z["counted"])
+    return ElectionDistrictList(
+        dataset=dataset,
+        phase="before" if gezaehlt == 0 else ("complete" if gezaehlt == len(zeilen) else "counting"),
+        election=_election_of(reg),
+        total=len(zeilen), counted=gezaehlt, districts=zeilen,
+    )
+
 
 def _fill_party_areas(parties: list[ElectionParty], areas: list[ElectionArea],
                       alloc: Allocation | None) -> None:

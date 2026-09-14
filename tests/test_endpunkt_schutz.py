@@ -114,6 +114,9 @@ OEFFENTLICH = {
     # Dieselben Zahlen, nur als Kandidaten-Rangliste sortiert und gefiltert —
     # Namen, Beruf und Jahrgang stehen so auf dem amtlichen Stimmzettel.
     ("get", "/api/wahlabend/kandidaten"),
+    # Und dieselben Zahlen je Wahlbezirk — Open Data der Stadt, nichts
+    # Persönliches: Ein Wahlbezirk hat mindestens einige hundert Wählende.
+    ("get", "/api/wahlabend/wahlbezirke"),
     # Dasselbe als Bild zum Teilen. Es zeigt exakt das, was die öffentliche
     # Seite zeigt, und wird gerade von denen abgeholt, die kein Konto haben:
     # WhatsApp und die sozialen Netze, wenn sie einen Link auspacken.

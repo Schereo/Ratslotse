@@ -18,7 +18,8 @@ import { Mascot } from "@/components/mascot";
 import { KICKER, Punkt, TON } from "@/components/wahlabend/bausteine";
 import { Halbkreis } from "@/components/wahlabend/halbkreis";
 import { Kandidaten, type KandidatenFilter } from "@/components/wahlabend/kandidaten";
-import { Rangfolge, bereichAnker } from "@/components/wahlabend/rangfolge";
+import { Wahlgebiete } from "@/components/wahlabend/wahlgebiete";
+import { Rangfolge, bereichAnker, springeZuBereich } from "@/components/wahlabend/rangfolge";
 import { Kopf } from "@/components/wahlabend/kopf";
 import { ReiterLeiste, ReiterTafel, type Reiter } from "@/components/ui/reiter";
 import { Mehrheiten } from "@/components/wahlabend/mehrheiten";
@@ -704,7 +705,7 @@ function BereichKarte({
   );
 }
 
-function Bereiche({ daten, liste, probe, counted }: { daten: Wahlabend; liste: string | null; probe: string | null; counted: string | null }) {
+function Bereiche({ daten, liste, probe, counted, rueckblick }: { daten: Wahlabend; liste: string | null; probe: string | null; counted: string | null; rueckblick: string | null }) {
   if (!liste) return null;
   const partei = daten.parties.find((p) => p.slug === liste);
   if (!partei) return null;
@@ -733,7 +734,20 @@ function Bereiche({ daten, liste, probe, counted }: { daten: Wahlabend; liste: s
           <KartenLinks liste={liste} bereich={null} platz={null} probe={probe} counted={counted} stadtweit name={partei.short} vorwahl={daten.election.previous_label} />
         </p>
       ) : null}
-      <Rangfolge partei={partei} daten={daten} />
+      {/* Rangfolge und Karte beantworten dieselbe Frage von zwei Seiten:
+          „wo ist die Liste stark?" und „wo ist das?". Nebeneinander, sobald
+          Platz ist; darunter stapeln sie. */}
+      <div className="mt-4 grid items-start gap-4 @3xl:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
+        <Rangfolge partei={partei} daten={daten} />
+        <Wahlgebiete
+          daten={daten}
+          partei={partei}
+          probe={probe}
+          counted={counted}
+          rueckblick={rueckblick}
+          onBereich={springeZuBereich}
+        />
+      </div>
       {/* Die Karten folgen derselben Rangfolge — eine Liste, die in IV am
           stärksten ist, soll IV zuerst zeigen. Wahlbereiche, in denen sie
           nicht antritt, hängt der Server nicht an `areas` an; sie stehen
@@ -984,7 +998,7 @@ export function WahlabendView() {
         </ReiterTafel>
         <ReiterTafel id="bereiche" aktiv={ansicht}>
           <ListenWahl parteien={daten.parties} liste={liste} waehle={waehle} />
-          <Bereiche daten={daten} liste={liste} probe={probe} counted={counted} />
+          <Bereiche daten={daten} liste={liste} probe={probe} counted={counted} rueckblick={rueckblick} />
         </ReiterTafel>
         <ReiterTafel id="kandidaten" aktiv={ansicht}>
           <Kandidaten

@@ -20,7 +20,7 @@ import logging
 from datetime import datetime, timezone
 from functools import lru_cache
 
-from ..antworten import ElectionNight, ElectionTopEntry
+from ..antworten import ElectionDistrictList, ElectionNight, ElectionTopEntry
 from . import elections, reference, register
 from .votemanager import Snapshot, parse
 
@@ -39,6 +39,50 @@ def verfuegbar(wahl: elections.Election) -> bool:
     """
     return (wahl.archive_folder is not None and wahl.archive_folder.is_dir()
             and wahl.register_path is not None and wahl.register_path.is_file())
+
+
+def _eingefroren(slug: str):
+    """Register, Referenz und Snapshot einer eingefrorenen Wahl — oder
+    ``None``. Beide Wege in den Rückblick (``night`` und ``districts``)
+    brauchen dieselben drei Stücke."""
+    wahl = elections.get(slug)
+    if wahl is None or not verfuegbar(wahl) or wahl.archive_folder is None:
+        return None
+    ordner = wahl.archive_folder
+    praefix = reference.meta_path(ordner).stem
+    lies = lambda name: (ordner / f"{praefix}-{name}.csv").read_text(encoding="utf-8-sig")  # noqa: E731
+    schnapp = Snapshot(
+        city=parse(lies("stadt")), areas=parse(lies("wahlbereiche")),
+        districts=parse(lies("wahlbezirke")),
+        fetched_at=datetime.now(timezone.utc), last_modified=None, ok=True, error=None,
+    )
+    # Das Register DIESER Wahl — `verfuegbar` hat schon dafür gesorgt, dass es
+    # eines gibt.
+    assert wahl.register_path is not None
+    reg = register.load(wahl.register_path)
+    ref = reference.load(wahl.reference_folder) if wahl.reference_folder else None
+    if ref is None:
+        # Ohne Vorwahl kein Vergleich — `compose` braucht trotzdem eine
+        # Referenz, also die eigene: Der Abstand zu sich selbst ist null,
+        # und `previous_label` ist bei so einer Wahl ohnehin leer.
+        ref = reference.load(ordner)
+    return reg, ref, schnapp
+
+
+@lru_cache(maxsize=8)
+def districts(slug: str) -> ElectionDistrictList | None:
+    """Die Wahlbezirke einer gelaufenen Wahl — aus dem Repo, ohne Netz."""
+    try:
+        from . import service
+
+        teile = _eingefroren(slug)
+        if teile is None:
+            return None
+        reg, _, schnapp = teile
+        return service.districts(reg, schnapp, "archive")
+    except Exception:
+        _log.exception("Wahlabend: Wahlbezirke für „%s“ nicht lesbar", slug)
+        return None
 
 
 @lru_cache(maxsize=8)
@@ -182,3 +226,4 @@ def _mayor_summary(wahl: elections.Election) -> str | None:
 
 def reset() -> None:
     night.cache_clear()
+    districts.cache_clear()
