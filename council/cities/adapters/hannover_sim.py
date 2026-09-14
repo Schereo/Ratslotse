@@ -76,7 +76,7 @@ from urllib.parse import urljoin
 from bs4 import BeautifulSoup
 
 from council.cities.adapters._common import (
-    attr, muss_geholt_werden, normalize_title)
+    abgeschlossene_sitzungen, attr, muss_geholt_werden, normalize_title)
 from council.cities.model import (AgendaItem, Batch, Consultation, File, FileRole,
                                   Meeting, Organization, Outcome, Paper, org_kind,
                                   outcome, paper_kind)
@@ -232,6 +232,8 @@ class HannoverSimAdapter:
         """Je Gremium seine Sitzungsliste — eine ungeblätterte Seite."""
         wurzel = body["id"]
         gesehen: set[str] = set()
+        uebersprungen = 0
+        fertig = abgeschlossene_sitzungen(client.sitzungstage)
         for org in client.raw.raw_objects(client.body_id, "organization"):
             url = org.get("meetings_url")
             if not url:
@@ -250,6 +252,9 @@ class HannoverSimAdapter:
                 if kennung in gesehen:
                     continue
                 gesehen.add(kennung)
+                if kennung in fertig:
+                    uebersprungen += 1
+                    continue
                 try:
                     html = client.get_text(kennung)
                 except Exception as e:  # noqa: BLE001 — eine Sitzung, nicht der Lauf
@@ -259,6 +264,9 @@ class HannoverSimAdapter:
                 obj = {"id": kennung, "html": html}
                 client.raw.put_raw_object(client.body_id, "meeting", kennung, obj)
                 yield obj
+        if uebersprungen:
+            logger.info("%s: %s abgeschlossene Sitzungen nicht erneut geholt",
+                        client.body_id, uebersprungen)
         logger.info("%s: %s Sitzungen", client.body_id, len(gesehen))
 
     # ------------------------------------------------------------- Vorlagen

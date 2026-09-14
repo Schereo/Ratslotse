@@ -18,6 +18,7 @@ import statistics
 from datetime import date
 from pathlib import Path
 
+from council.cities import default_paths
 from council.cities.adapters import get_adapter
 from council.cities.model import Body
 from council.cities.oparl import OParlClient, file_path
@@ -137,10 +138,36 @@ def _mit_wache(objekte, client, zahlen: dict, was: str, body_id: str):
                     statistics.median(client.dauern) if client.dauern else 0.0)
 
 
+def _sitzungstage(main_path: str | Path | None, body_id: str) -> dict[str, str]:
+    """Die Sitzungstage des Bestands — eine kurze, lesende Verbindung.
+
+    Sie wird sofort wieder geschlossen. Ein offener Leser über die ganze
+    Ernte hinweg hielte sonst die WAL fest; genau daran ist am 13.09.2026
+    der Durchsatz von 343 auf 8 Vorlagen je Stunde gefallen (#1300).
+    """
+    if main_path is None:
+        main_path = default_paths()[0]
+    if not Path(main_path).exists():
+        return {}
+    try:
+        with CitiesStore(main_path) as main:
+            return main.meeting_dates(body_id)
+    except Exception as e:  # noqa: BLE001 — ohne Bestand wird eben alles geholt
+        logger.info("%s: Sitzungstage nicht lesbar (%s)", body_id, type(e).__name__)
+        return {}
+
+
 def fetch(spec: BodySpec, raw_dir: str | Path, files_dir: str | Path,
           since: str | None = None, with_files: bool = True,
-          max_files: int | None = None) -> dict:
-    """Alles Öffentliche einer Stadt holen und roh ablegen."""
+          max_files: int | None = None, main_path: str | Path | None = None) -> dict:
+    """Alles Öffentliche einer Stadt holen und roh ablegen.
+
+    ``main_path`` zeigt auf die Hauptdatenbank und wird nur **gelesen**: Aus
+    ihr kommen die Sitzungstage, an denen die Dialekte erkennen, welche
+    Sitzung durch ist und keinen Abruf mehr braucht. Fehlt sie, wird nichts
+    übersprungen — der erste Lauf einer neuen Stadt holt also alles, und das
+    ist richtig so.
+    """
     seit = since or spec.since
     adapter = get_adapter(spec.dialect)
     raw = CitiesStore(raw_path_for(raw_dir, spec.id))
@@ -149,6 +176,7 @@ def fetch(spec: BodySpec, raw_dir: str | Path, files_dir: str | Path,
               "protocols_fetched": 0, "protocols_failed": 0, "requests": 0}
     try:
         client = OParlClient(raw, spec.id, files_dir)
+        client.sitzungstage = _sitzungstage(main_path, spec.id)
         gefunden = adapter.discover(client, spec)
         body = gefunden["body"]
         raw.upsert_body(Body(spec.id, gefunden.get("name") or spec.name, spec.state,
