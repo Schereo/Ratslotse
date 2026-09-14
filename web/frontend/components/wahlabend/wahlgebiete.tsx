@@ -51,7 +51,7 @@ import {
 
 /** Welcher Ausschnitt gezeigt wird: die sechs Wahlbereiche, alle Wahlbezirke
  *  der Stadt, oder die Wahlbezirke EINES Wahlbereichs (1–6). */
-type Fokus = "bereiche" | "stadt" | number;
+type Fokus = "bereiche" | "city" | number;  // `city` englisch wie die Werte des Vertrags
 
 function Chip({ an, onClick, children, title }: { an: boolean; onClick: () => void; children: React.ReactNode; title?: string }) {
   return (
@@ -235,7 +235,7 @@ export function Wahlgebiete({ daten, partei, probe, counted, rueckblick, classNa
         // erst zurück zur Übersicht. „Ganze Stadt" ist der Überblick mit
         // allen 91 — dort sind die Flächen klein, das ist der Preis.
         <div className="mt-3 flex flex-wrap gap-1.5">
-          <Chip an={fokus === "stadt"} onClick={() => geheZu("stadt")}>Ganze Stadt</Chip>
+          <Chip an={fokus === "city"} onClick={() => geheZu("city")}>Ganze Stadt</Chip>
           {daten.areas.map((a) => (
             <Chip key={a.number} an={fokus === a.number} onClick={() => geheZu(a.number)} title={a.name}>
               {a.roman}
