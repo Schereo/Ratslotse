@@ -205,6 +205,17 @@ sonst ließe sich das Konto nie bestätigen. Solange ein Konto nicht aktiv ist,
 zeigt die Oberfläche einen Hinweis statt der Inhalte und pollt `/auth/me`
 (`app/(app)/layout.tsx`); serverseitig blockt `require_active`.
 
+**Wegwerf-Adressen werden abgewiesen** (seit 09/2026). Die Bestätigung hält
+sie nicht ab — ein Zehn-Minuten-Postfach empfängt den Link genauso. Deshalb
+prüfen Registrierung und Adresswechsel die Domain (samt Eltern-Domains) gegen
+`kern/disposable_email_domains.txt`, eine öffentlich gepflegte Liste mit rund
+8.800 Anbietern (CC0), und antworten mit 422 und einem deutschen Satz, den Web
+und App unverändert zeigen. `PROTECTED_DOMAINS` in `kern/disposable_email.py`
+nennt Anbieter, die nie gesperrt werden, darunter Apples
+`privaterelay.appleid.com`. Was Sign in with Apple selbst liefert, ist von Apple
+bestätigt und wird nicht geprüft. Nachziehen der Liste:
+`scripts/update_disposable_domains.py --schreiben`.
+
 ### Was ohne Konto sichtbar ist
 
 Vier Endpunkte antworten **ohne Anmeldung**. Nicht aus Versehen, sondern weil
