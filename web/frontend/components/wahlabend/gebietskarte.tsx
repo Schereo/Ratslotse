@@ -38,6 +38,7 @@ export function Gebietskarte<P extends Gebiet>({
   titel,
   hinweis,
   hoehe = HOEHE,
+  schrift = 13,
   className,
 }: {
   flaechen: readonly GeoFlaeche<P>[];
@@ -54,6 +55,9 @@ export function Gebietskarte<P extends Gebiet>({
   /** Ein Satz unter der Karte — was die Tönung bedeutet. */
   hinweis?: string;
   hoehe?: number;
+  /** Schriftgröße der Beschriftung in px — sechs römische Ziffern dürfen
+   *  groß sein, zwanzig Bezirksnummern nicht. */
+  schrift?: number;
   className?: string;
 }) {
   const [breite, setBreite] = useState(520);
@@ -116,7 +120,7 @@ export function Gebietskarte<P extends Gebiet>({
                       : "fill-muted stroke-border",
                 )}
                 style={ton ? { fill: ton } : undefined}
-                strokeWidth={aktiv ? 2 : 1}
+                strokeWidth={aktiv ? 2.5 : 1}
                 onMouseEnter={() => setSchwebt(nr)}
                 onMouseLeave={() => setSchwebt((n) => (n === nr ? null : n))}
                 onClick={() => onWaehlen?.(nr)}
@@ -136,7 +140,8 @@ export function Gebietskarte<P extends Gebiet>({
               <g key={`t-${p.eigenschaften.nr}`} className="pointer-events-none">
                 <text
                   x={p.cx} y={p.cy} textAnchor="middle" dominantBaseline="middle"
-                  className="font-display text-[13px] font-bold"
+                  className="font-display font-bold"
+                  style={{ fontSize: schrift }}
                   stroke={aktiv ? "hsl(var(--primary))" : "hsl(var(--background))"}
                   strokeWidth="3" strokeLinejoin="round"
                 >
@@ -144,8 +149,8 @@ export function Gebietskarte<P extends Gebiet>({
                 </text>
                 <text
                   x={p.cx} y={p.cy} textAnchor="middle" dominantBaseline="middle"
-                  className={cn("font-display text-[13px] font-bold",
-                    aktiv ? "fill-primary-foreground" : "fill-foreground")}
+                  className={cn("font-display font-bold", aktiv ? "fill-primary-foreground" : "fill-foreground")}
+                  style={{ fontSize: schrift }}
                 >
                   {text}
                 </text>
