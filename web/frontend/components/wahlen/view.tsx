@@ -17,14 +17,14 @@ import { api } from "@/lib/api";
 import { useFeature } from "@/lib/features";
 import { cn } from "@/lib/utils";
 import { datumLang, wahlabendZeit } from "@/lib/wahlabend";
-import { geteilt, nachJahren, wann, type Wahlliste, type Wahlzeile } from "@/lib/wahlen";
+import { geteilt, nachJahren, type Wahlliste, type Wahlzeile } from "@/lib/wahlen";
 
 const KICKER = "font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground";
 
 /** Die Wahl im Fokus — als Anzeigetafel, wie auf dem Wahlabend selbst. */
 function Fokus({ z }: { z: Wahlzeile }) {
   const zeit = wahlabendZeit(z.polls_close);
-  const kommt = wann(z) === "kommt";
+  const kommt = zeit.phase === "vorher";
   return (
     <section className="hh-tafel mt-5 rounded-2xl p-5 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-x-8 gap-y-4">

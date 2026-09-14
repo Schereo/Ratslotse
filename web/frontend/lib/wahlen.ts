@@ -20,14 +20,6 @@ export function geteilt(zeilen: readonly Wahlzeile[]): { fokus: Wahlzeile | null
   return { fokus, weitere: zeilen.filter((z) => z !== fokus) };
 }
 
-/** „Am 27. September", „Heute", „Seit dem 13. September" — ein Satzanfang
- *  für die Zeile, je nachdem ob die Wahl noch kommt. */
-export function wann(zeile: Wahlzeile, jetzt: Date = new Date()): string {
-  const schluss = new Date(zeile.polls_close).getTime();
-  if (!Number.isFinite(schluss)) return "";
-  return jetzt.getTime() < schluss ? "kommt" : "gelaufen";
-}
-
 /** Nach Jahren gruppiert — die Übersicht wächst mit jeder Wahl, und ein
  *  Jahrgang ist die Gliederung, die Leute im Kopf haben. */
 export function nachJahren(zeilen: readonly Wahlzeile[]): { jahr: string; zeilen: Wahlzeile[] }[] {

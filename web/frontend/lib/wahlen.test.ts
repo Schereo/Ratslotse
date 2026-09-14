@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { geteilt, nachJahren, wann, type Wahlzeile } from "./wahlen";
+import { geteilt, nachJahren, type Wahlzeile } from "./wahlen";
 
 const z = (slug: string, date: string, focus = false): Wahlzeile => ({
   slug, short_title: slug, title: slug, date, polls_close: `${date}T18:00:00+02:00`,
@@ -25,16 +25,6 @@ describe("geteilt", () => {
     const { fokus, weitere } = geteilt([z("stichwahl", "2026-09-27", true), z("ratswahl", "2026-09-13")]);
     expect(fokus?.slug).toBe("stichwahl");
     expect(weitere[0].slug).toBe("ratswahl");
-  });
-});
-
-describe("wann", () => {
-  it("unterscheidet kommend und gelaufen", () => {
-    expect(wann(z("a", "2026-09-27"), new Date("2026-09-20T09:00:00Z"))).toBe("kommt");
-    expect(wann(z("a", "2026-09-27"), new Date("2026-09-28T09:00:00Z"))).toBe("gelaufen");
-  });
-  it("hält einen unbrauchbaren Termin aus", () => {
-    expect(wann({ ...z("a", "2026-09-27"), polls_close: "irgendwann" })).toBe("");
   });
 });
 
