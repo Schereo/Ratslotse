@@ -122,6 +122,12 @@ def test_liste_wird_nur_einmal_gelesen():
 
 # --- Die Endpunkte -----------------------------------------------------------
 
+def test_meldungen_nennen_den_grund_nicht():
+    """Tims Vorgabe (14.09.2026): Wer abgewiesen wird, soll nicht erfahren, welche
+    Prüfung angeschlagen hat — sonst probiert er die nächste Domain."""
+    for text in (de.REGISTER_REJECTED, de.EMAIL_CHANGE_REJECTED):
+        assert not re.search(r"wegwerf|adresse|domain|e-mail", text, re.I), text
+
 def _register(client, email, name="Testkonto"):
     return client.post("/api/auth/register",
                        json={"display_name": name, "email": email, "password": PASSWORT})
@@ -130,8 +136,8 @@ def _register(client, email, name="Testkonto"):
 def test_registrierung_weist_wegwerf_adresse_ab(client):
     wegwerf = _adresse("94an.com")
     r = _register(client, wegwerf)
-    assert r.status_code == 422, r.text
-    assert r.json()["detail"] == de.DISPOSABLE_EMAIL_MESSAGE
+    assert r.status_code == 400, r.text
+    assert r.json()["detail"] == de.REGISTER_REJECTED
     # Es ist kein Konto entstanden: Die Anmeldung mit denselben Daten scheitert.
     login = client.post("/api/auth/login", json={"email": wegwerf, "password": PASSWORT})
     assert login.status_code == 401
@@ -148,6 +154,6 @@ def test_adresswechsel_auf_wegwerf_adresse_scheitert(client):
     assert _register(client, "echt@example.org").status_code == 201
     r = client.post("/api/account/change-email",
                     json={"new_email": _adresse("airhemp.com"), "current_password": PASSWORT})
-    assert r.status_code == 422, r.text
-    assert r.json()["detail"] == de.DISPOSABLE_EMAIL_MESSAGE
+    assert r.status_code == 400, r.text
+    assert r.json()["detail"] == de.EMAIL_CHANGE_REJECTED
     assert client.get("/api/auth/me").json()["email"] == "echt@example.org"
