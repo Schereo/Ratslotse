@@ -218,6 +218,7 @@ nennt Anbieter, die nie gesperrt werden, darunter Apples
 bestätigt und wird nicht geprüft. Nachziehen der Liste:
 `scripts/update_disposable_domains.py --schreiben`.
 
+<<<<<<< HEAD
 **Abgewiesene Registrierungen werden gezählt.** Sichtbar war bis 09/2026 nur,
 wer durchkam — wer an der Bremse oder am Wegwerf-Riegel hängenblieb,
 hinterließ nirgends eine Spur. Die Tabelle `signup_rejections` zählt deshalb
@@ -236,6 +237,8 @@ einen Link klickt, löst ohne den Herzschlag keine einzige Mail aus.
 `duplicate_email` löst bewusst keinen Alarm aus: Wer sein Konto vergessen hat,
 landet dort genauso wie jemand, der Adressen durchprobiert.
 
+=======
+>>>>>>> origin/main
 ### Was ohne Konto sichtbar ist
 
 Vier Endpunkte antworten **ohne Anmeldung**. Nicht aus Versehen, sondern weil
