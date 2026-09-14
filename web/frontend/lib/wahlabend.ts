@@ -116,6 +116,51 @@ export function kandidatenStatus(
   return { ton: "out", text: "außer Reichweite" };
 }
 
+/**
+ * Welche drei Kandidaturen eine Wahlbereichs-Karte zeigt — und welche hinter
+ * dem Aufklappen bleiben.
+ *
+ * Tims Befund (14.09.2026): „bei großen Listen die Boxen der Kandidaten nur
+ * pro Wahlbereich mit jeweils max drei Kandidaten". Gemessen an 2026 führen
+ * SPD und Linke in einem Wahlbereich bis zu zwölf Kandidaturen; sechs Karten
+ * untereinander waren auf dem Telefon rund siebzig Zeilen.
+ *
+ * **Die Auswahl geht nach Bedeutung, die Reihenfolge nach Listenplatz.** Wer
+ * gewählt ist, gehört in die drei — auch von Platz 9, denn Listensitze und
+ * Übergänge treffen nicht die Stimmstärksten. Gezeigt werden sie trotzdem in
+ * der Reihenfolge des Stimmzettels: Zwei Ordnungen in einer Karte wären eine
+ * zu viel, und die Platznummer steht an jeder Zeile.
+ *
+ * Vor der Auszählung gibt es nichts zu gewichten — dann sind es die ersten
+ * drei Listenplätze.
+ */
+export function vorneDrei<T extends Pick<WahlabendKandidat, "position" | "votes" | "elected" | "projected_elected" | "votes_to_seat">>(
+  kandidaten: readonly T[],
+  phase: string,
+  anzahl = 3,
+): { vorne: T[]; rest: T[] } {
+  const nachPlatz = (a: T, b: T) => a.position - b.position;
+  const alle = [...kandidaten].sort(nachPlatz);
+  if (alle.length <= anzahl) return { vorne: alle, rest: [] };
+  if (phase === "before" || alle.every((k) => k.votes === null)) {
+    return { vorne: alle.slice(0, anzahl), rest: alle.slice(anzahl) };
+  }
+  const gewicht = (k: T): number => {
+    if (k.elected) return 0;
+    if (k.projected_elected) return 1;
+    if (k.votes_to_seat !== null && k.votes_to_seat > 0 && k.votes_to_seat <= KNAPP_BIS) return 2;
+    return 3;
+  };
+  const gewaehlt = [...alle]
+    .sort((a, b) => gewicht(a) - gewicht(b) || (b.votes ?? 0) - (a.votes ?? 0) || a.position - b.position)
+    .slice(0, anzahl);
+  const drin = new Set(gewaehlt.map((k) => k.position));
+  return {
+    vorne: alle.filter((k) => drin.has(k.position)),
+    rest: alle.filter((k) => !drin.has(k.position)),
+  };
+}
+
 /** Die Punkte des Sitzbands: je Sitz einer, in Stimmzettel-Reihenfolge der Listen. */
 export function sitzband(
   parteien: readonly WahlabendPartei[],

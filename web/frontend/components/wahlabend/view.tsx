@@ -9,6 +9,7 @@
 // knapp dran? Die Seite fragt einmal je Minute nach, so lange cacht auch der
 // Votemanager der Stadt.
 
+import { ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -42,6 +43,7 @@ import {
   sitzgrenze,
   standText,
   uhrzeit,
+  vorneDrei,
   zahl,
   type KandidatenSortierung,
   type StatusTon,
@@ -605,6 +607,9 @@ function BereichKarte({
   const stimmen = useTween(eintrag?.votes);
   const max = Math.max(0, ...(eintrag?.candidates ?? []).map((k) => k.votes ?? 0));
   const grenze = eintrag ? sitzgrenze(eintrag.candidates) : null;
+  // Balken und Sitzgrenze rechnen weiter über ALLE Kandidaturen — sonst
+  // änderte das Aufklappen den Maßstab.
+  const { vorne, rest } = vorneDrei(eintrag?.candidates ?? [], daten.phase);
   const teilbar = zaehlt && !!eintrag;
   return (
     <article
@@ -648,20 +653,38 @@ function BereichKarte({
               {zugriff ? <dd className="mt-1 whitespace-nowrap font-mono text-[10px] font-medium uppercase tracking-[0.08em] text-signal">{zugriff}</dd> : null}
             </div>
           </dl>
+          {/* Höchstens drei Kandidaturen je Karte (Tims Befund 14.09.2026):
+              SPD und Linke stellen in einem Wahlbereich bis zu zwölf, und
+              sechs Karten untereinander waren auf dem Telefon rund siebzig
+              Zeilen. Welche drei, entscheidet `vorneDrei` — Gewählte immer
+              dabei, gezeigt in Listenplatz-Reihenfolge. */}
           <ol className="mt-4 divide-y divide-border/70 border-t border-border/70">
-            {eintrag.candidates.map((k, i) => (
-              <KandidatZeile
-                key={k.position}
-                k={k}
-                max={max}
-                grenze={grenze}
-                rang={i}
+            {vorne.map((k, i) => (
+              <KandidatZeile key={k.position} k={k} max={max} grenze={grenze} rang={i}
                 status={kandidatenStatus(k, daten.phase, daten.person_votes_available, bereich.districts_counted > 0)}
                 hochrechnung={daten.phase === "counting"}
                 bild={teilbar && k.votes !== null ? { liste: slug, bereich: bereich.number, probe, counted, vorwahl: daten.election.previous_label } : null}
               />
             ))}
           </ol>
+          {rest.length ? (
+            <details className="group border-b border-border/70">
+              <summary className="cursor-pointer list-none py-2 text-[12.5px] font-medium text-primary marker:hidden">
+                <ChevronDown aria-hidden className="mr-1 inline h-3.5 w-3.5 align-[-2px] transition-transform group-open:rotate-180" />
+                {rest.length} weitere {rest.length === 1 ? "Kandidatur" : "Kandidaturen"}
+                <span className="sr-only"> anzeigen</span>
+              </summary>
+              <ol className="divide-y divide-border/70 border-t border-border/70">
+                {rest.map((k, i) => (
+                  <KandidatZeile key={k.position} k={k} max={max} grenze={grenze} rang={i}
+                    status={kandidatenStatus(k, daten.phase, daten.person_votes_available, bereich.districts_counted > 0)}
+                    hochrechnung={daten.phase === "counting"}
+                    bild={teilbar && k.votes !== null ? { liste: slug, bereich: bereich.number, probe, counted, vorwahl: daten.election.previous_label } : null}
+                  />
+                ))}
+              </ol>
+            </details>
+          ) : null}
           {zaehlt ? (
             <p className="mt-2 text-[11px] text-muted-foreground">
               Liste {zahl(eintrag.list_votes)} · Personen {zahl(eintrag.candidate_votes)}
