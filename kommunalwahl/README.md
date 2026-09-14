@@ -84,22 +84,42 @@ curl -L <partei-url> | shasum -a 256   # mit manifest.json vergleichen
 ## Wahlabend
 
 Zwei Bestände in diesem Verzeichnis gehören nicht zum Programmvergleich, sondern zur Seite
-`/wahlabend`: das **Kandidatenregister zur Ratswahl 2026** und die **Referenz von 2021**. Beide
-liest das Backend direkt aus dem Repo (`web/backend/app/election/`) — es gibt dafür keine
-Datenbank und keinen Cron. Die Technik dahinter steht in der Doku unter
+`/wahlabend`: das **Kandidatenregister zur Ratswahl 2026** und die **Referenzordner gelaufener
+Wahlen**. Beide liest das Backend direkt aus dem Repo (`web/backend/app/election/`) — es gibt
+dafür keine Datenbank und keinen Cron. Die Technik dahinter steht in der Doku unter
 [ratslotse.de/docs/wahlabend](https://ratslotse.de/docs/wahlabend/).
 
 | Pfad | Inhalt |
 |---|---|
 | `kandidaten.py` | Liest `quellen/zulassung-wahlvorschlaege.pdf` und schreibt `kandidaten.json` |
 | `kandidaten.json` | 16 Wahlvorschläge, 6 Wahlbereiche, 383 Bewerber\*innen mit Listenplatz, Name, Beruf, Jahrgang, Wohnort; dazu Termin, Sitzzahl (52) und die Quellenangabe |
-| `referenz-2021/ratswahl-2021-{stadt,wahlbereiche,wahlbezirke}.csv` | Die Open-Data-Dateien der Ratswahl 2021 (altes Spaltenschema) |
-| `referenz-2021/ratswahl-2021.json` | Amtliche Sitzverteilung 2021 (50 Sitze) und die Zuordnung 2021er Spalte → Liste 2026 |
+| `referenz-2021/` | Die Ratswahl 2021: drei Open-Data-CSVs (altes Spaltenschema), amtliche Sitzverteilung (50 Sitze) und die Zuordnung 2021er Spalte → Liste 2026 |
+| `referenz-2026/` | Die Ratswahl 2026, eingefroren am 14.09.2026: drei CSVs (neues Schema), die Ergebnisdarstellung beider Wahlen, der Minutenverlauf des Abends und die nachgerechnete Sitzverteilung (52 Sitze) |
 
 ```bash
 python3 kandidaten.py            # schreibt kandidaten.json
 python3 kandidaten.py --pruefen  # vergleicht nur — was die CI prüft
 ```
+
+**Ein Referenzordner folgt einer Konvention**, und die ist die ganze Verwaltung: Die Meta-Datei
+heißt `<name>-<jahr>.json`, die drei CSVs tragen ihren Namen als Präfix, und die Begleitdateien
+(`termin.json`, `verlauf.json`, `praesentation-*.json`) tragen **keine** Jahreszahl — sonst wäre
+nicht mehr eindeutig, welche die Meta-Datei ist. `reference.meta_path` sucht danach,
+`tests/test_wahlreferenz.py` hält beide Ordner dagegen.
+
+Angelegt wird ein Ordner nicht von Hand, sondern von
+[`scripts/wahl_einfrieren.py`](../scripts/wahl_einfrieren.py) — solange die Quelle noch
+antwortet:
+
+```bash
+python3 scripts/wahl_einfrieren.py --ziel kommunalwahl/referenz-2026 \
+    --verlauf data/wahlabend-verlauf.json
+python3 scripts/wahl_einfrieren.py --stand amtlich   # nach dem Wahlausschuss erneut
+```
+
+Das Skript rechnet die Sitzverteilung mit demselben Code nach, der am Wahlabend läuft
+(NKWG §§ 36/37), und **bricht ab**, wenn sie von der abweicht, die der Votemanager selbst
+ausweist. Eine falsche Referenz fiele erst bei der nächsten Wahl auf — dann ist die Quelle weg.
 
 **Die Reihenfolge der Wahlvorschläge ist die des Stimmzettels** und damit zugleich die der Spalten
 `D1 … D16` in den Open-Data-CSVs des Votemanagers. Der Index einer Liste in `kandidaten.json` ist
