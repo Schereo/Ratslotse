@@ -8792,6 +8792,193 @@
         "title": "ElectionTotals",
         "type": "object"
       },
+      "ElectionWatchEntry": {
+        "description": "Eine beobachtete Kandidatur — der Merker plus ihre aktuelle Zeile.",
+        "properties": {
+          "area": {
+            "title": "Area",
+            "type": "integer"
+          },
+          "election": {
+            "title": "Election",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "party": {
+            "title": "Party",
+            "type": "string"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "row": {
+            "description": "Eine Kandidatur, stadtweit einsortiert.",
+            "properties": {
+              "area": {
+                "title": "Area",
+                "type": "integer"
+              },
+              "area_name": {
+                "title": "Area Name",
+                "type": "string"
+              },
+              "area_roman": {
+                "title": "Area Roman",
+                "type": "string"
+              },
+              "born": {
+                "title": "Born",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "color": {
+                "title": "Color",
+                "type": "string"
+              },
+              "color_dark": {
+                "title": "Color Dark",
+                "type": "string"
+              },
+              "elected": {
+                "title": "Elected",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "name": {
+                "title": "Name",
+                "type": "string"
+              },
+              "occupation": {
+                "title": "Occupation",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "party": {
+                "title": "Party",
+                "type": "string"
+              },
+              "party_share_pct": {
+                "title": "Party Share Pct",
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "party_short": {
+                "title": "Party Short",
+                "type": "string"
+              },
+              "position": {
+                "title": "Position",
+                "type": "integer"
+              },
+              "projected_elected": {
+                "title": "Projected Elected",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "rank": {
+                "title": "Rank",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "votes": {
+                "title": "Votes",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "votes_to_seat": {
+                "title": "Votes To Seat",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "rank",
+              "party",
+              "party_short",
+              "color",
+              "color_dark",
+              "area",
+              "area_roman",
+              "area_name",
+              "position",
+              "name",
+              "occupation",
+              "born",
+              "votes",
+              "party_share_pct",
+              "elected",
+              "projected_elected",
+              "votes_to_seat"
+            ],
+            "title": "ElectionCandidateRow",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "subtitle": {
+            "title": "Subtitle",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "election",
+          "party",
+          "area",
+          "position",
+          "name",
+          "subtitle",
+          "row"
+        ],
+        "title": "ElectionWatchEntry",
+        "type": "object"
+      },
+      "ElectionWatchList": {
+        "description": "``GET /api/wahlabend/beobachtet`` — die gemerkten Kandidaturen EINES\nKontos, mit dem Stand von jetzt. Eine Antwort statt 383 Zeilen für fünf\nNamen.",
+        "properties": {
+          "election": {
+            "$ref": "#/components/schemas/ElectionInfo"
+          },
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/ElectionWatchEntry"
+            },
+            "title": "Entries",
+            "type": "array"
+          }
+        },
+        "required": [
+          "election",
+          "entries"
+        ],
+        "title": "ElectionWatchList",
+        "type": "object"
+      },
       "ElsewhereItem": {
         "description": "Eine Vorlage aus einer anderen Stadt, die zu einem Oldenburger Beschluss passt.",
         "properties": {
@@ -18360,6 +18547,34 @@
         "title": "VisitWindow",
         "type": "object"
       },
+      "WatchIn": {
+        "properties": {
+          "area": {
+            "title": "Area",
+            "type": "integer"
+          },
+          "election": {
+            "title": "Election",
+            "type": "string"
+          },
+          "party": {
+            "title": "Party",
+            "type": "string"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "election",
+          "party",
+          "area",
+          "position"
+        ],
+        "title": "WatchIn",
+        "type": "object"
+      },
       "WebUserOut": {
         "properties": {
           "created_at": {
@@ -27635,6 +27850,158 @@
           }
         },
         "summary": "Wahlabend",
+        "tags": [
+          "wahlabend"
+        ]
+      }
+    },
+    "/api/wahlabend/beobachtet": {
+      "get": {
+        "description": "Die gemerkten Kandidaturen dieses Kontos, mit dem Stand von jetzt.\n\nAngemeldet, weil es die eigene Liste ist. Eine Antwort statt 383 Zeilen\nfür fünf Namen — die App soll nicht die ganze Rangliste holen müssen.",
+        "operationId": "wahlabend_beobachtet_api_wahlabend_beobachtet_get",
+        "parameters": [
+          {
+            "description": "Slug der Wahl; ohne ihn die Wahl im Fokus",
+            "in": "query",
+            "name": "wahl",
+            "required": false,
+            "schema": {
+              "description": "Slug der Wahl; ohne ihn die Wahl im Fokus",
+              "title": "Wahl",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "gesetzt = Generalprobe",
+            "in": "query",
+            "name": "probe",
+            "required": false,
+            "schema": {
+              "description": "gesetzt = Generalprobe",
+              "title": "Probe",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "counted",
+            "required": false,
+            "schema": {
+              "maximum": 500,
+              "minimum": 0,
+              "title": "Counted",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ElectionWatchList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Wahlabend Beobachtet",
+        "tags": [
+          "wahlabend"
+        ]
+      },
+      "post": {
+        "description": "Eine Kandidatur merken — quer über alle Listen, das ist der Punkt.",
+        "operationId": "wahlabend_beobachten_api_wahlabend_beobachtet_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WatchIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ElectionWatchEntry"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Wahlabend Beobachten",
+        "tags": [
+          "wahlabend"
+        ]
+      }
+    },
+    "/api/wahlabend/beobachtet/{merker_id}": {
+      "delete": {
+        "description": "Einen Merker entfernen. 404, wenn er einem anderen Konto gehört —\ndieselbe Antwort wie „gibt es nicht\", damit die Kennung nichts verrät.",
+        "operationId": "wahlabend_nicht_mehr_beobachten_api_wahlabend_beobachtet__merker_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "merker_id",
+            "required": true,
+            "schema": {
+              "title": "Merker Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Wahlabend Nicht Mehr Beobachten",
         "tags": [
           "wahlabend"
         ]

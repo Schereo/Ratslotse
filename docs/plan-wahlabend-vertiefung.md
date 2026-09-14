@@ -24,7 +24,7 @@ bereits eine Regel, s. §2.2), `tests/CLAUDE.md`, und die Docstrings von
 > | **A** | Rangfolge der Wahlbereiche je Liste, „Zugriff" auf den letzten Sitz | #1352 |
 > | **B+C** | Amtliche Wahlbereichs- **und** Wahlbezirks-Karte, Ergebnis je Bezirk | ein PR (s. u.) |
 > | **D** | Höchstens drei Kandidaturen je Karte | eigener PR |
-> | **E** | Beobachtungsliste | **offen** — s. Anhang D |
+> | **E** | Beobachtungsliste über die Merkliste-Tabelle | eigener PR |
 >
 > **Drei Abweichungen vom Plan, alle bewusst:**
 >
@@ -350,13 +350,18 @@ Konto), `test_wahlkandidaten.py` um `beobachtet`. Browsertest in
 **Fertig, wenn:** Tim fünf Namen aus drei Listen merkt und sie oben in einer
 Karte sieht — Bild gegengelesen.
 
-## Anhang D — Was PR E noch braucht (offen)
+## Anhang D — Wie PR E gebaut wurde, und was daran anders ist
 
-Die Beobachtungsliste ist als Einzige nicht gebaut. Sie ist die aufwendigste
-der fünf (Konto-Tabelle, zweiter Endpunkt, Stern an jeder Zeile, Auftritt auf
-`/merkliste`) und die einzige, die niemandem fehlt, solange keine Wahl läuft:
-Für die Ratswahl 2026 ist der Abend vorbei. Der Bauplan steht unverändert
-unter „PR E"; §2.4 nennt die Tabelle, die dafür schon da ist.
+Gebaut wie geplant, mit **einer** Abweichung: Die gemerkten Kandidaturen
+stehen **nicht** auf `/merkliste`. Sie liegen zwar in derselben Tabelle
+(`bookmarks`, Art `candidate`), aber die Ratsliste löst jeden Eintrag gegen
+den Ratsbestand auf (`enrich_bookmark` → Sitzung, TOP, Beschluss). Eine
+Kandidatur hat davon nichts; sie wäre dort eine leere Zeile. Die Ratsliste
+überspringt die Art deshalb ausdrücklich, und die Wahl-Merker stehen auf der
+Wahlabend-Seite — dort, wo man sie setzt. `tests/test_wahl_beobachtet.py`
+hält beides fest.
+
+Die Benachrichtigung („dein Kandidat ist drin") bleibt wie geplant draußen.
 
 ## Anhang A — Was NICHT gebaut wird, und warum
 

@@ -20,6 +20,8 @@ export type KandidatenListe = Kandidatenliste["parties"][number];
 export type KandidatenSortierung = "votes" | "party" | "area" | "name";
 export type Wahlbezirke = ApiAntwort<"/wahlabend/wahlbezirke">;
 export type Wahlbezirk = Wahlbezirke["districts"][number];
+export type Beobachtet = ApiAntwort<"/wahlabend/beobachtet">;
+export type BeobachtetEintrag = Beobachtet["entries"][number];
 
 /** Schlüssel im localStorage: die zuletzt gewählte Liste. */
 export const LISTE_SPEICHER = "wahlabend.liste";
@@ -185,6 +187,18 @@ export function abfragePfad(probe: string | null, counted: string | null, wahl?:
   }
   const s = q.toString();
   return s ? `/wahlabend?${s}` : "/wahlabend";
+}
+
+/** Die Beobachtungsliste dieses Kontos — dieselbe Wahl wie die Seite. */
+export function beobachtetPfad(wahl: string | null | undefined, probe: string | null, counted: string | null): string {
+  const q = new URLSearchParams();
+  if (wahl) q.set("wahl", wahl);
+  else if (probe) {
+    q.set("probe", probe);
+    if (counted && /^\d+$/.test(counted)) q.set("counted", counted);
+  }
+  const s = q.toString();
+  return s ? `/wahlabend/beobachtet?${s}` : "/wahlabend/beobachtet";
 }
 
 /** Dieselbe Herkunft für die Wahlbezirke — sie kennen weder Sortierung noch

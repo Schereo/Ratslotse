@@ -59,6 +59,12 @@ def list_bookmarks(user: dict = Depends(require_active),
                    council: CouncilStore = Depends(get_council_store)) -> BookmarkList:
     out = []
     for row in ratslotse.get_bookmarks(user["id"]):
+        # Gemerkte Wahl-Kandidaturen liegen in derselben Tabelle, gehören aber
+        # nicht in die Ratsliste: Sie haben weder Sitzung noch Vorlage, und
+        # `enrich_bookmark` machte aus ihnen eine leere Zeile. Sie stehen auf
+        # der Wahlabend-Seite (`/api/wahlabend/beobachtet`).
+        if row.get("kind") == "candidate":
+            continue
         entry = bookmark_logic.enrich_bookmark(row, council)
         # Alte Oberpunkt-Merker bleiben sichtbar, lösen aber keine irreführende
         # Ergebnis-Meldung mehr aus. Gelöscht wird nichts ohne Zutun des Kontos.

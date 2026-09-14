@@ -19,6 +19,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { KICKER, Punkt, TON } from "@/components/wahlabend/bausteine";
+import { BeobachtenHinweis, BeobachtetKarte, Stern, useBeobachtet } from "@/components/wahlabend/beobachtet";
 import { Segmented } from "@/components/ui/segmented";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -145,6 +146,7 @@ export function Kandidaten({
   setFilter: (f: KandidatenFilter) => void;
   live: boolean;
 }) {
+  const beobachtet = useBeobachtet(rueckblick, probe, counted);
   const pfad = kandidatenPfad(probe, counted, rueckblick, filter.sortierung, filter.liste, filter.bereich);
   const abfrage = useQuery({
     queryKey: ["wahlabend-kandidaten", pfad],
@@ -173,6 +175,17 @@ export function Kandidaten({
           ? "Die Personenstimmen kommen mit der Auszählung — bis dahin stehen hier die Namen in Stimmzettel-Reihenfolge."
           : "Der Rang ist stadtweit und bleibt es auch gefiltert. Der Anteil sagt, wie viel von allen Stimmen der eigenen Liste im Wahlbereich auf diese Person entfielen."}
       </p>
+
+      {beobachtet.angemeldet ? (
+        <BeobachtetKarte
+          className="mt-4"
+          eintraege={beobachtet.eintraege}
+          daten={daten}
+          entfernen={(e) => e.row && beobachtet.umschalten(e.row)}
+        />
+      ) : (
+        <BeobachtenHinweis className="mt-2" />
+      )}
 
       {!vorher ? <Personenanteile listen={liste?.parties ?? []} liste={filter.liste} waehle={(slug) => setFilter({ ...filter, liste: slug })} /> : null}
 
@@ -257,7 +270,14 @@ export function Kandidaten({
                         <Balken votes={z.votes} max={max} drin={drin} />
                       </td>
                       <td className={cn("border-b border-border/60", SPALTE_ZAHL, "text-muted-foreground")}>{z.party_share_pct === null ? "–" : prozent(z.party_share_pct)}</td>
-                      <td className="border-b border-border/60 px-3 py-2"><Statuspille z={z} daten={liste} /></td>
+                      <td className="border-b border-border/60 px-3 py-2">
+                        <span className="flex items-center gap-2">
+                          <Statuspille z={z} daten={liste} />
+                          {beobachtet.angemeldet ? (
+                            <Stern gemerkt={beobachtet.istGemerkt(z)} onClick={() => beobachtet.umschalten(z)} name={z.name} />
+                          ) : null}
+                        </span>
+                      </td>
                     </tr>
                   );
                 })}
@@ -279,12 +299,15 @@ export function Kandidaten({
                       {z.party_short} · Platz {z.position} · WB {z.area_roman}
                     </span>
                     <span className="mt-1.5 block"><Balken votes={z.votes} max={max} drin={drin} /></span>
-                    <span className="mt-1 block"><Statuspille z={z} daten={liste} /></span>
+                    <span className="mt-1 flex items-center gap-2"><Statuspille z={z} daten={liste} /></span>
                   </span>
                   <span className="flex-none text-right">
                     <span className={cn("block text-[13px] tabular-nums", drin && "font-semibold")}>{zahl(z.votes)}</span>
                     <span className="block text-[10.5px] text-muted-foreground tabular-nums">{z.party_share_pct === null ? "" : `${prozent(z.party_share_pct)} der Liste`}</span>
                   </span>
+                  {beobachtet.angemeldet ? (
+                    <Stern gemerkt={beobachtet.istGemerkt(z)} onClick={() => beobachtet.umschalten(z)} name={z.name} className="mt-0.5 flex-none" />
+                  ) : null}
                 </li>
               );
             })}
