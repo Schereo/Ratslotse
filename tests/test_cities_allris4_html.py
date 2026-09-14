@@ -220,13 +220,41 @@ def test_grunddaten_ueberleben_einen_umbau_der_tabelle():
     assert kopf["Uhrzeit"] == "18:00"
 
 
+#: Die Städte dieses Dialekts, die ihren Probelauf hinter sich haben — mit
+#: dem, was er gekostet hat. Der Eintrag ist die Begründung fürs
+#: Einschalten, nicht bloß eine Ausnahme von einer Regel.
+GEPRUEFT = {
+    # 245 Abrufe in 266 s (201 Sitzungen, 14 Vorlagen), `--pruefen` ohne
+    # Befund. Davor 2.261 — s. #1330, #1334, #1336.
+    "wolfsburg": "14.09.2026",
+}
+
+
 @pytest.mark.parametrize("stadt", ["laatzen", "lueneburg", "wolfsburg"])
 def test_die_registry_nennt_die_wurzel_nicht_ein_oparl_system(stadt):
     """Der Dialekt liest die Oberfläche — ``/oparl/system`` gäbe es dort nicht."""
     spec = BODIES[stadt]
     assert spec.dialect == "allris4_html"
     assert spec.system_url and not spec.system_url.endswith("/oparl/system")
-    assert not spec.active, "erst nach einem Probelauf einschalten"
+
+
+@pytest.mark.parametrize("stadt", ["laatzen", "lueneburg", "wolfsburg"])
+def test_eingeschaltet_wird_erst_nach_einem_probelauf(stadt):
+    """Schritt 6 des Rezepts, als Wächter.
+
+    Eine Stadt anzuschalten heißt, jede Woche einen fremden Server
+    anzufassen — und zwar so oft, wie der Dialekt es eben tut. Wolfsburg
+    hat das anfangs **2.261 Abrufe je Woche** gekostet, ohne dass es jemand
+    gemerkt hätte: Der Lauf war grün, die Zahlen sahen normal aus.
+    """
+    assert BODIES[stadt].active == (stadt in GEPRUEFT), (
+        f"{stadt}: erst den Probelauf fahren (s. council/cities/CLAUDE.md, "
+        "Schritt 2–6), dann hier eintragen, was er gekostet hat.")
+
+
+def test_kein_eintrag_ohne_stadt():
+    """Die Gegenrichtung: eine Liste, die nur wächst, ist kaputt."""
+    assert set(GEPRUEFT) <= set(BODIES), "GEPRUEFT nennt eine Stadt, die es nicht gibt"
 
 
 # --------------------------------------------------------- Der Index (si018)

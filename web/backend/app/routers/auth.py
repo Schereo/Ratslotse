@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, status
 
 from kern import roles as kern_roles
+from kern.disposable_email import REGISTER_REJECTED, domain_of, is_disposable
 from kern.store import Store
 from kern.digest_email import knopf, render_html_email
 from kern.email import send_email
@@ -195,7 +196,14 @@ def register(
     background: BackgroundTasks,
     store: Store = Depends(get_store),
 ) -> UserOut:
-    register_limiter.check(request)
+    # Die Bremse zählt ihren Treffer mit: Ein Skript, das hier hängenbleibt,
+    # hinterließ sonst nirgends eine Spur — „niemand hat es versucht" sah aus
+    # wie „500 haben es versucht".
+    try:
+        register_limiter.check(request)
+    except HTTPException:
+        store.record_signup_rejection("rate_limit")
+        raise
     settings = get_settings()
     email = str(body.email).lower().strip()
     # Der Name ist Pflicht — geprüft HIER und nicht als `min_length` im Schema:
@@ -207,7 +215,15 @@ def register(
     display_name = (body.display_name or "").strip()
     if not display_name:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, NAME_FEHLT)
+    # Wegwerf-Anbieter VOR der Dubletten-Prüfung: Die Bestätigungs-Mail hält
+    # sie nicht ab (das Postfach gibt es ja, nur eben für zehn Minuten), und
+    # die Reihenfolge verrät so auch nicht, ob die Adresse schon ein Konto hat.
+    if is_disposable(email):
+        logger.info("Registrierung abgewiesen: Wegwerf-Domain %s", domain_of(email))
+        store.record_signup_rejection("disposable_email")
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, REGISTER_REJECTED)
     if store.get_web_user_by_email(email):
+        store.record_signup_rejection("duplicate_email")
         raise HTTPException(status.HTTP_409_CONFLICT, "E-Mail ist bereits registriert.")
     # Registration hands out no role at all: everything it could decide on comes
     # from this unauthenticated request body. Even the configured WEB_ADMIN_EMAIL

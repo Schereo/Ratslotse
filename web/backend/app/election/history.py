@@ -39,9 +39,20 @@ _write_warned = False
 
 
 def path() -> Path:
-    """Wohin der Verlauf geschrieben wird."""
+    """Wohin der Verlauf geschrieben wird — eine Datei JE WAHL.
+
+    Bis 09/2026 hieß sie für alle Zeiten ``wahlabend-verlauf.json``. Zwei
+    Wahlabende hintereinander hätten sich damit dieselbe Datei geteilt, und
+    der zweite hätte an die Punkte des ersten angehängt: eine Kurve, die
+    mitten in der Nacht von 133 ausgezählten Bezirken auf null zurückspringt.
+    Der Verlauf des 13.09.2026 liegt eingefroren in
+    ``kommunalwahl/referenz-2026/verlauf.json``.
+    """
     override = os.environ.get("WAHLABEND_HISTORY_FILE")
-    return Path(override) if override else ROOT / "data" / "wahlabend-verlauf.json"
+    if override:
+        return Path(override)
+    from . import elections
+    return ROOT / "data" / f"wahlabend-verlauf-{elections.active().slug}.json"
 
 
 # ------------------------------------------------------------------ Datei
@@ -65,10 +76,30 @@ def _point_from(raw: Any) -> ElectionHistoryPoint | None:
     )
 
 
+def _umzug(ziel: Path) -> None:
+    """Die namenlose Datei von vor 09/2026 auf ihren Wahl-Namen ziehen.
+
+    Auf Prod liegt der Verlauf des 13.09.2026 als ``wahlabend-verlauf.json``;
+    ohne diesen Schritt liefe die Seite nach dem Deploy mit leerer Kurve
+    weiter — kein Fehler, keine Meldung, nur ein verschwundener Abend.
+    Idempotent, und der Schritt darf verschwinden, sobald alle Umgebungen
+    einmal gestartet sind (dasselbe Muster wie ``store._umzug_von_nwz``).
+    """
+    alt = ziel.with_name("wahlabend-verlauf.json")
+    if ziel.exists() or not alt.is_file():
+        return
+    try:
+        alt.replace(ziel)
+        _log.warning("Wahlabend-Verlauf umgezogen: %s -> %s", alt.name, ziel.name)
+    except OSError as e:
+        _log.warning("Wahlabend-Verlauf %s ließ sich nicht auf %s umziehen (%s).", alt.name, ziel.name, e)
+
+
 def _load() -> None:
     """Beim ersten Zugriff — und nach einem Pfadwechsel — die Datei lesen."""
     global _points, _loaded
     file = path()
+    _umzug(file)
     if _loaded == file:
         return
     _loaded, _points = file, []

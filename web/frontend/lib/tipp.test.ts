@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  fehltText,
   probePfad,
   punkteText,
   rangDeltaText,
@@ -10,7 +11,6 @@ import {
   restSitze,
   restSitzeText,
   restSitzeTon,
-  startverteilung,
   summeOb,
   summeSitze,
   tippSegmente,
@@ -18,32 +18,34 @@ import {
 } from "./tipp";
 import type { TippPartei } from "./tipp";
 
-function partei(slug: string, seats_2021: number | null, color = "#123456"): TippPartei {
-  return { slug, short: slug, name: slug, color, color_dark: color, seats_2021 } as TippPartei;
+function partei(slug: string, seats_previous: number | null, color = "#123456"): TippPartei {
+  return { slug, short: slug, name: slug, color, color_dark: color, seats_previous } as TippPartei;
 }
 
-describe("startverteilung", () => {
-  it("summiert exakt auf die Sitzzahl, proportional zu 2021", () => {
-    const parteien = [partei("spd", 12), partei("cdu", 12), partei("gruene", 12), partei("linke", 8), partei("volt", 1)];
-    const v = startverteilung(parteien, 52);
-    expect(summeSitze(v)).toBe(52);
-    // Größenordnung bleibt erhalten: die größte 2021er Liste bleibt vorn.
-    expect(v.spd).toBeGreaterThanOrEqual(v.linke);
-    expect(v.linke).toBeGreaterThanOrEqual(v.volt);
+describe("fehltText", () => {
+  it("nennt die fehlenden Sitze im Singular und Plural", () => {
+    expect(fehltText(12, false, 100)).toBe("Noch 12 Sitze verteilen");
+    expect(fehltText(1, false, 100)).toBe("Noch 1 Sitz verteilen");
   });
 
-  it("Listen ohne 2021er Sitz starten bei 0", () => {
-    const parteien = [partei("spd", 20), partei("neu", null)];
-    const v = startverteilung(parteien, 52);
-    expect(v.neu).toBe(0);
-    expect(summeSitze(v)).toBe(52);
+  it("nennt auch die Überzahl", () => {
+    expect(fehltText(-3, false, 100)).toBe("3 Sitze zu viel");
+    expect(fehltText(-1, false, 100)).toBe("1 Sitz zu viel");
   });
 
-  it("ohne jedes Gewicht bekommt die erste Liste alles — keine Division durch 0", () => {
-    const parteien = [partei("a", 0), partei("b", 0)];
-    const v = startverteilung(parteien, 52);
-    expect(summeSitze(v)).toBe(52);
-    expect(v.a).toBe(52);
+  it("meldet die OB-Prozente erst, wenn die Sitze stimmen", () => {
+    // Rest 5 UND OB über 100: Die Sitze stehen oben, also kommen sie zuerst.
+    expect(fehltText(5, true, -2)).toBe("Noch 5 Sitze verteilen");
+    expect(fehltText(0, true, -2)).toBe("OB-Prozente über 100 %");
+    // Rundungstoleranz wie im Backend (bis 100,5 %) und ein zugeklappter
+    // OB-Block blockieren nicht.
+    expect(fehltText(0, true, -0.4)).toBeNull();
+    expect(fehltText(0, false, -50)).toBeNull();
+  });
+
+  it("gibt null zurück, wenn alles passt — dann darf abgegeben werden", () => {
+    expect(fehltText(0, true, 12)).toBeNull();
+    expect(fehltText(0, false, 100)).toBeNull();
   });
 });
 

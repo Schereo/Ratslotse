@@ -115,8 +115,10 @@ OEFFENTLICH = {
     # Seite zeigt, und wird gerade von denen abgeholt, die kein Konto haben:
     # WhatsApp und die sozialen Netze, wenn sie einen Link auspacken.
     ("get", "/api/wahlabend/bild.png"),
+    ("get", "/api/wahlabend/karte.png"),
     # Die OB-Wahl gehört zum selben Feature-Schalter — Teil des Wahlabends.
     ("get", "/api/wahlabend/ob"),
+    ("get", "/api/wahlabend/stichwahl"),
 
     # Tippspiel (docs/plan-tippspiel-ratswahl.md): ohne Konto — die Identität
     # ist der Cookie-Token, nicht `web_users.id`. Hinter dem Schalter
@@ -126,6 +128,7 @@ OEFFENTLICH = {
     ("post", "/api/tipp"),
     ("get", "/api/tipp/me"),
     ("delete", "/api/tipp/me"),
+    ("post", "/api/tipp/abmelden"),  # geteiltes Gerät: nur der eigene Cookie geht, kein Datenzugriff
     ("get", "/api/tipp/stand"),
     ("get", "/api/tipp/qr.png"),
 

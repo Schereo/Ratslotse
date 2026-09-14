@@ -42,7 +42,9 @@ from datetime import date, timedelta
 
 from bs4 import BeautifulSoup
 
-from council.cities.adapters._common import (VERSCHLOSSEN, attr,
+from council.cities.adapters._common import (VERSCHLOSSEN,
+                                             abgeschlossene_sitzungen, attr,
+                                             muss_geholt_werden,
                                              eindeutige_beratungen, normalize_title,
                                              zwillinge_zusammenfuehren)
 from council.cities.model import (AgendaItem, Batch, Consultation, File, FileRole,
@@ -266,8 +268,9 @@ class AllrisClassicAdapter:
         """Monatskalender → Sitzungsseiten."""
         wurzel = body["id"]
         gesehen: set[str] = set()
-        verschlossen = auszuege = 0
+        verschlossen = auszuege = uebersprungen = 0
         grenze = _fenster(AUSZUG_MONATE)
+        fertig = abgeschlossene_sitzungen(client.sitzungstage)
         for jahr, monat in _monate(since):
             try:
                 kalender = client.get_text(
@@ -281,6 +284,11 @@ class AllrisClassicAdapter:
                     continue
                 gesehen.add(nr)
                 kennung = f"{wurzel}/to010.asp?SILFDNR={nr}"
+                # Hier hängt doppelt viel dran: Zu jeder Sitzung holt der
+                # Dialekt auch noch ihre Auszüge (s. `_auszuege`).
+                if kennung in fertig:
+                    uebersprungen += 1
+                    continue
                 try:
                     html = client.get_text(kennung)
                 except Exception as e:  # noqa: BLE001 — eine Sitzung, nicht der Lauf
@@ -293,6 +301,9 @@ class AllrisClassicAdapter:
                 client.raw.put_raw_object(client.body_id, "meeting", kennung, obj)
                 yield obj
                 auszuege += self._auszuege(client, wurzel, html, grenze)
+        if uebersprungen:
+            logger.info("%s: %s abgeschlossene Sitzungen nicht erneut geholt",
+                        client.body_id, uebersprungen)
         logger.info("%s: %s Sitzungen (%s nicht öffentlich), %s Auszüge",
                     client.body_id, len(gesehen), verschlossen, auszuege)
 
@@ -337,12 +348,18 @@ class AllrisClassicAdapter:
         """
         wurzel = body["id"]
         gesehen: set[str] = set()
+        # Einmal je Lauf gefragt, nicht je Vorlage — siehe `muss_geholt_werden`.
+        bekannt = client.raw.raw_ids(client.body_id, "paper")
+        frisch = client.raw.raw_ids_since(client.body_id, "meeting", client.gestartet)
         for roh in client.raw.raw_objects(client.body_id, "meeting"):
             for nr in re.findall(r"VOLFDNR=(\d+)", roh.get("html") or ""):
                 if nr in gesehen:
                     continue
                 gesehen.add(nr)
                 kennung = f"{wurzel}/vo020.asp?VOLFDNR={nr}"
+                if not muss_geholt_werden(client, roh.get("id") or "", kennung,
+                                          bekannt, frisch):
+                    continue
                 try:
                     html = client.get_text(kennung)
                 except Exception as e:  # noqa: BLE001 — eine Vorlage, nicht der Lauf

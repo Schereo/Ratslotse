@@ -162,9 +162,22 @@ class CitiesStore:
     # -------------------------------------------------------------- Schicht 0
 
     def put_raw_object(self, body_id: str, kind: str, oparl_id: str,
-                       body_json: dict, fetched_at: str | None = None) -> bool:
-        """Rohantwort ablegen. ``True``, wenn sie neu war (sonst unverändert)."""
-        content = canonical_hash(body_json)
+                       body_json: dict, fetched_at: str | None = None,
+                       hash_basis: object = None) -> bool:
+        """Rohantwort ablegen. ``True``, wenn sie neu war (sonst unverändert).
+
+        ``hash_basis`` sagt, WORAUS der Inhaltsvergleich gebildet wird, wenn
+        die Antwort Flüchtiges enthält. Abgelegt wird immer die Antwort
+        selbst — die Rohschicht hält fest, was der Server gesagt hat.
+
+        **Sonst gilt jede Seite als geändert.** Wolfsburgs ALLRIS 4 vergibt
+        seine Wicket-Element-IDs je Anfrage neu (`id12cd2` → `id12ce6`); der
+        Inhalt ist bitgleich, der Hash nicht. Gemessen am 14.09.2026: 1.956
+        Zeilen für 652 Sitzungen — genau drei Ernten —, und weil `iter_papers`
+        daran erkennt, was aufzufrischen ist, wurden jedes Mal ALLE 1.571
+        Vorlagen neu geholt: 2.261 Abrufe statt 251 wie bei Hannover.
+        """
+        content = canonical_hash(body_json if hash_basis is None else hash_basis)
         with self._write() as conn:
             cur = conn.execute(
                 "INSERT OR IGNORE INTO raw_objects (body_id, kind, oparl_id, fetched_at, content_hash, body_json) "
@@ -209,6 +222,29 @@ class CitiesStore:
                 "SELECT body_json FROM raw_objects WHERE id=?", (kennung,)).fetchone()
             if row is not None:
                 yield json.loads(row["body_json"])
+
+    def raw_ids(self, body_id: str, kind: str) -> set[str]:
+        """Die Kennungen, die von dieser Stadt und Art schon abgelegt sind.
+
+        Für die Frage „muss ich das noch holen?" — einmal je Lauf statt
+        einmal je Objekt. Bei Hannover sind das 25.729 Zeichenketten; eine
+        Abfrage je Vorlage wäre 25.729 Abfragen für dieselbe Auskunft.
+        """
+        return {r["oparl_id"] for r in self._conn.execute(
+            "SELECT DISTINCT oparl_id FROM raw_objects WHERE body_id=? AND kind=?",
+            (body_id, kind))}
+
+    def raw_ids_since(self, body_id: str, kind: str, seit: str) -> set[str]:
+        """Die Kennungen, die seit ``seit`` (ISO-Zeitstempel) hereinkamen.
+
+        ``put_raw_object`` legt nur an, was NEU ist (``UNIQUE(oparl_id,
+        content_hash)``) — was hier zurückkommt, hat sich also wirklich
+        geändert oder ist zum ersten Mal da.
+        """
+        return {r["oparl_id"] for r in self._conn.execute(
+            "SELECT DISTINCT oparl_id FROM raw_objects "
+            "WHERE body_id=? AND kind=? AND fetched_at >= ?",
+            (body_id, kind, seit))}
 
     def raw_count(self, body_id: str, kind: str) -> int:
         row = self._conn.execute(
@@ -388,6 +424,18 @@ class CitiesStore:
             rows = self._conn.execute(
                 "SELECT * FROM meetings WHERE body_id=? ORDER BY start DESC", (body_id,))
         return [dict(r) for r in rows]
+
+    def meeting_dates(self, body_id: str) -> dict[str, str]:
+        """Kennung → Sitzungstag, für alle Sitzungen dieser Stadt.
+
+        Für die Frage „ist diese Sitzung durch?" — einmal je Lauf statt
+        einmal je Sitzung. Sitzungen ohne Datum bleiben draußen: Über die
+        weiß der Bestand nichts, und was man nicht weiß, holt man.
+        """
+        return {r["id"]: r["start"] for r in self._conn.execute(
+            "SELECT id, start FROM meetings "
+            "WHERE body_id=? AND start IS NOT NULL AND start != ''",
+            (body_id,)).fetchall()}
 
     def agenda_items(self, meeting_id: str) -> list[dict]:
         return [dict(r) for r in self._conn.execute(
@@ -1354,6 +1402,15 @@ class CitiesStore:
           war beim letzten ``cluster``-Lauf noch nicht eingeordnet. Sie kann
           in keiner Gruppe liegen, also fehlt ihr der Cluster-Arm.
 
+          **Ohne Instrument zählt sie nicht mit.** ``clusters.idea_text``
+          verlangt eines („kein Instrument, keine Idee") und überspringt den
+          Rest absichtlich — ein Lauf von ``cluster`` ändert daran nichts.
+          Solche Vorlagen mitzuzählen machte den Wächter unerfüllbar: Am
+          13.09.2026 hielt er einen `fit`-Lauf mit dem Rat „Erst: --stage
+          cluster" auf, und genau 19 Vorlagen hatten `instrument = null`.
+          Ein Wächter, der zu etwas rät, das nicht hilft, wird umgangen —
+          und dann fängt er auch den echten Fall nicht mehr.
+
         Beide zählen nur, was ``fit`` überhaupt betrifft: fremde Vorlagen für
         die Papier-Vektoren (Oldenburgs eigene sind die Gegenseite und werden
         getrennt geprüft), übertragbare für die Ideen.
@@ -1370,6 +1427,7 @@ class CitiesStore:
             "     JOIN annotations a ON a.object_kind='paper' AND a.object_id=p.id "
             "       AND a.annotator='classify' AND a.version='2' "
             "   WHERE json_extract(a.payload,'$.transfer') IN ('adaptable','universal') "
+            "     AND COALESCE(json_extract(a.payload,'$.instrument'),'') != '' "
             "     AND NOT EXISTS (SELECT 1 FROM object_embeddings o "
             "                     WHERE o.object_kind='idea' AND o.object_id=p.id "
             "                       AND o.model=?)) AS ideas_unembedded",

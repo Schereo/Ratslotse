@@ -176,11 +176,23 @@ BODIES: dict[str, BodySpec] = {
     "wolfsburg": BodySpec(
         "wolfsburg", "Wolfsburg", "NI", "allris4_html",
         "https://ratsinfob.stadt.wolfsburg.de",
-        active=False,
+        # AN seit 14.09.2026, nach dem Probelauf, den das Rezept verlangt:
+        # **245 Abrufe in 266 Sekunden** (201 Sitzungen, 14 Vorlagen).
+        # Davor waren es 2.261, und der Weg dahin ging über drei Ursachen:
+        # Wicket schreibt seine Element-IDs, Token und Seitenversionen bei
+        # jedem Abruf neu (#1330), dazu den Merkzettel des
+        # Tagesordnungsbaums (#1334) — jede Seite galt deshalb als geändert.
+        # Und selbst danach blieben 652 Abrufe stehen, weil der Lauf jede
+        # Sitzungsseite des Index neu holte; seit #1336 bleiben die 451
+        # abgeschlossenen liegen. Die 199 nichtöffentlichen Hüllen tragen
+        # kein Datum und werden weiter geholt — sie könnten öffentlich
+        # werden.
+        active=True,
         notes="CC BY 4.0 (laut /oparl/system). OParl ist eingebaut, liefert "
               "aber nur /system — bodies und alles dahinter antworten mit "
               "HTTP 500. Gelesen wird deshalb die Oberfläche. 652 Sitzungen "
-              "im Index (si018), gemessen 10.09.2026."),
+              "im Index (si018), davon 199 nicht öffentlich; 1.571 Vorlagen. "
+              "Gemessen 10.09.2026, Wochenlauf nachgemessen 14.09.2026."),
 
     # --- Hannover: kein Hersteller aus dem Vergleich, Eigenbau auf
     #     Notes/Domino. Ein zweiter Host (ris.hannit.de/public/, ALLRIS net)
@@ -190,7 +202,12 @@ BODIES: dict[str, BodySpec] = {
     "hannover": BodySpec(
         "hannover", "Hannover", "NI", "hannover_sim",
         "https://e-government.hannover-stadt.de/lhhsimwebre.nsf",
-        since="2018-01-01", active=False, fetch_files=False,
+        # AN seit 14.09.2026, nach dem Probelauf, den das Rezept verlangt:
+        # Ein Wochen-Fenster kostet **251 Abrufe in 127 Sekunden** (93
+        # geänderte Sitzungen, 109 aufgefrischte Vorlagen, davon 19 neu).
+        # Vor `muss_geholt_werden` wären es 25.729 Abrufe je Sonntag gewesen
+        # — gemessen: 4.083 geholte Vorlagen, davon 4.083 schon bekannt.
+        since="2018-01-01", active=True, fetch_files=False,
         # Anfragen bleiben draußen: 6.483 Stück, 1 % mit Ergebnis. In Hannover
         # werden sie beantwortet, nicht beschlossen — der Vergleich fände dort
         # nichts zu vergleichen, die Einordnung kostete rund $7.

@@ -205,6 +205,37 @@ sonst ließe sich das Konto nie bestätigen. Solange ein Konto nicht aktiv ist,
 zeigt die Oberfläche einen Hinweis statt der Inhalte und pollt `/auth/me`
 (`app/(app)/layout.tsx`); serverseitig blockt `require_active`.
 
+**Wegwerf-Adressen werden abgewiesen** (seit 09/2026). Die Bestätigung hält
+sie nicht ab — ein Zehn-Minuten-Postfach empfängt den Link genauso. Deshalb
+prüfen Registrierung und Adresswechsel die Domain (samt Eltern-Domains) gegen
+`kern/disposable_email_domains.txt`, eine öffentlich gepflegte Liste mit rund
+8.800 Anbietern (CC0), und antworten mit 400 und einem Satz **ohne Grund**
+(„Die Registrierung konnte nicht abgeschlossen werden.“) — wer abgewiesen wird,
+soll nicht erfahren, welche Prüfung angeschlagen hat. Die Domain steht im
+Server-Log (`ratslotse.web.auth` bzw. `ratslotse.web.account`). `PROTECTED_DOMAINS` in `kern/disposable_email.py`
+nennt Anbieter, die nie gesperrt werden, darunter Apples
+`privaterelay.appleid.com`. Was Sign in with Apple selbst liefert, ist von Apple
+bestätigt und wird nicht geprüft. Nachziehen der Liste:
+`scripts/update_disposable_domains.py --schreiben`.
+
+**Abgewiesene Registrierungen werden gezählt.** Sichtbar war bis 09/2026 nur,
+wer durchkam — wer an der Bremse oder am Wegwerf-Riegel hängenblieb,
+hinterließ nirgends eine Spur. Die Tabelle `signup_rejections` zählt deshalb
+je Tag und Grund (`rate_limit`, `disposable_email`, `duplicate_email` aus
+`kern.store.SIGNUP_REJECTION_REASONS`), und zwar **nur** das: keine Adresse,
+keine Domain, keine Netzadresse, kein Konto — dieselbe Haltung wie bei
+`page_views`. Sichtbar unter `GET /api/admin/stats/signups` und im Admin-Panel
+unter *Statistik → Registrierungen*.
+
+`scripts/check_herzschlag.py` schlägt einmal täglich Alarm, wenn in 24 Stunden
+zehn oder mehr Konten dazukommen, ebenso viele davon unbestätigt bleiben oder
+gestern und heute zusammen zwanzig Versuche abgewiesen wurden. Der Grund für
+diese Schwelle: Die FYI-Mail an die Admins geht erst raus, wenn jemand seine
+Adresse **bestätigt** hat — ein Skript, das tausend Konten anlegt und nie
+einen Link klickt, löst ohne den Herzschlag keine einzige Mail aus.
+`duplicate_email` löst bewusst keinen Alarm aus: Wer sein Konto vergessen hat,
+landet dort genauso wie jemand, der Adressen durchprobiert.
+
 ### Was ohne Konto sichtbar ist
 
 Vier Endpunkte antworten **ohne Anmeldung**. Nicht aus Versehen, sondern weil

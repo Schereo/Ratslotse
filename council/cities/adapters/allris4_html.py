@@ -39,8 +39,10 @@ from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
 
-from council.cities.adapters._common import (VERSCHLOSSEN, attr,
-                                             eindeutige_beratungen, normalize_title,
+from council.cities.adapters._common import (VERSCHLOSSEN,
+                                             abgeschlossene_sitzungen, attr,
+                                             eindeutige_beratungen,
+                                             muss_geholt_werden, normalize_title,
                                              zwillinge_zusammenfuehren)
 from council.cities.model import (AgendaItem, Batch, Consultation, File, FileRole,
                                   Meeting, Organization, Paper, org_kind,
@@ -72,6 +74,51 @@ _DATUM_EN = re.compile(
 _UHRZEIT = re.compile(r"(\d{1,2}):(\d{2})")
 #: ``Ö 6.1``, ``N 17``, ``6.1`` — die Nummer eines Tagesordnungspunkts.
 _TOP_NR = re.compile(r"^([ÖN]\s*)?(\d+(?:\.\d+)*)\.?$")
+
+
+#: Wickets Element-IDs. Sie wechseln bei JEDEM Abruf, ohne dass sich am
+#: Inhalt etwas ändert — `id="id12cd2"` wird zu `id="id12ce6"`, dazu dieselbe
+#: Kennung in `$('#id12cd2')`, in `Wicket.Ajax.ajax({"c":"id12cd3"})` und
+#: **zusammengesetzt** als `showHideLink_id12be0`.
+#:
+#: Nur hinter `#`, `"`, `'` oder `_` und nur mit Wortgrenze dahinter, damit
+#: nichts im Fließtext getroffen wird — „id" gefolgt von Hexziffern steht in
+#: einer Ratsvorlage nicht zufällig hinter einem Anführungszeichen.
+_WICKET_ID = re.compile(r"""(?<=[#"'_])id[0-9a-f]{4,}\b""")
+
+#: Das Sitzungs-Token des Suchformulars. Auch das ist je Abruf anders und
+#: sagt nichts über den Inhalt der Seite.
+_SECTOKEN = re.compile(r'(name="sectoken"\s+value=")[0-9a-f]+(")')
+
+#: Wickets Seitenversion in den Selbstaufruf-Adressen. Der Server zählt sie
+#: je Sitzung hoch — dieselbe Mechanik, die schon den Index zwingt, sie zu
+#: LESEN statt zu setzen (s. Modul-Docstring). Sie steht in **drei** Formen
+#: da: `vo020?2416-1.0-`, `?2416-1.-` und, an Anlagen-Verweisen, `?1567--`.
+#: Die erste Fassung kannte nur die beiden mit Punkt — und ließ damit 81 von
+#: 120 Vorlagenseiten weiter als verändert gelten.
+_SEITENVERSION = re.compile(r"\?\d+-[\d.]*-")
+
+#: Der Seitenzustand des Tagesordnungsbaums. ALLRIS merkt sich im
+#: `sessionStorage` des Browsers, welche Äste auf- und zugeklappt sind, und
+#: benennt den Schlüssel nach einer Sitzung — nur nicht zuverlässig nach
+#: DIESER: Auf der Seite von 1002921 stand mal `…_1002921` und mal
+#: `…_1001560`, je nachdem, was die Sitzung zuvor gesehen hatte. Reiner
+#: Sitzungszustand, und der einzige Unterschied zwischen zwei Abrufen von
+#: 310 der 652 Sitzungsseiten.
+_BAUMZUSTAND = re.compile(r"(toTreeTable[A-Za-z]+)_\d+")
+
+
+def ohne_wicket_ids(html: str | None) -> str:
+    """Die Seite ohne das, was sich bei jedem Abruf ändert.
+
+    **Nur für den Inhaltsvergleich**, nie für die Ablage: Was der Server
+    gesagt hat, wird unverändert gespeichert. Ohne diese Bereinigung galt
+    jede Wolfsburger Seite als neu, und der Wochenlauf holte den ganzen
+    Bestand — 2.261 Abrufe statt 251 (gemessen 14.09.2026).
+    """
+    ohne = _WICKET_ID.sub("id_", html or "")
+    ohne = _BAUMZUSTAND.sub(r"\1_", _SECTOKEN.sub(r"\1_\2", ohne))
+    return _SEITENVERSION.sub("?v-", ohne)
 
 
 def _zahl(url: str, name: str) -> str | None:
@@ -232,9 +279,15 @@ class Allris4HtmlAdapter:
                       since: str) -> Iterator[dict]:
         """Kalender → Sitzungsseiten. Der Index kommt aus ``kalender_ids``."""
         wurzel = body["id"]
-        verschlossen = 0
+        verschlossen = uebersprungen = 0
+        # Eine Sitzung von 2019 ändert sich nicht mehr. Ohne diese Regel
+        # kostete allein der Sitzungsteil des Wochenlaufs 652 Abrufe.
+        fertig = abgeschlossene_sitzungen(client.sitzungstage)
         for nr in sorted(self.kalender_ids(client, wurzel), reverse=True):
             kennung = f"{wurzel}/to010?SILFDNR={nr}"
+            if kennung in fertig:
+                uebersprungen += 1
+                continue
             try:
                 html = client.get_text(f"{kennung}&refresh=false")
             except Exception as e:  # noqa: BLE001 — eine Sitzung, nicht der Lauf
@@ -246,11 +299,19 @@ class Allris4HtmlAdapter:
             if VERSCHLOSSEN in html:
                 verschlossen += 1
             obj = {"id": kennung, "silfdnr": nr, "html": html}
-            client.raw.put_raw_object(client.body_id, "meeting", kennung, obj)
+            # Der Inhaltsvergleich läuft über die bereinigte Seite; abgelegt
+            # wird die Antwort selbst. Ohne das gilt jede Sitzung bei jedem
+            # Lauf als geändert — und `iter_papers` holt daraufhin ALLE
+            # Vorlagen neu (gemessen: 2.261 Abrufe statt 251).
+            client.raw.put_raw_object(client.body_id, "meeting", kennung, obj,
+                                      hash_basis=ohne_wicket_ids(html))
             yield obj
         if verschlossen:
             logger.info("%s: %s Sitzungen sind nicht öffentlich", client.body_id,
                         verschlossen)
+        if uebersprungen:
+            logger.info("%s: %s abgeschlossene Sitzungen nicht erneut geholt",
+                        client.body_id, uebersprungen)
 
     def kalender_ids(self, client: OParlClient, wurzel: str) -> set[str]:
         """Welche Sitzungen gibt es?
@@ -370,12 +431,18 @@ class Allris4HtmlAdapter:
         """
         wurzel = body["id"]
         gesehen: set[str] = set()
+        # Einmal je Lauf gefragt, nicht je Vorlage — siehe `muss_geholt_werden`.
+        bekannt = client.raw.raw_ids(client.body_id, "paper")
+        frisch = client.raw.raw_ids_since(client.body_id, "meeting", client.gestartet)
         for roh in client.raw.raw_objects(client.body_id, "meeting"):
             for nr in re.findall(r"VOLFDNR=(\d+)", roh.get("html") or ""):
                 if nr in gesehen:
                     continue
                 gesehen.add(nr)
                 kennung = f"{wurzel}/vo020?VOLFDNR={nr}"
+                if not muss_geholt_werden(client, roh.get("id") or "", kennung,
+                                          bekannt, frisch):
+                    continue
                 try:
                     html = client.get_text(f"{kennung}&refresh=false")
                 except Exception as e:  # noqa: BLE001
@@ -383,7 +450,8 @@ class Allris4HtmlAdapter:
                                 nr, type(e).__name__)
                     continue
                 obj = {"id": kennung, "volfdnr": nr, "html": html}
-                client.raw.put_raw_object(client.body_id, "paper", kennung, obj)
+                client.raw.put_raw_object(client.body_id, "paper", kennung, obj,
+                                          hash_basis=ohne_wicket_ids(html))
                 yield obj
 
     # --------------------------------------------------------- Normalisieren

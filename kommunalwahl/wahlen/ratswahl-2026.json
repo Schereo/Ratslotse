@@ -1,0 +1,26 @@
+{
+  "slug": "ratswahl-2026",
+  "kind": "council",
+  "title": "Wahl des Rates der Stadt Oldenburg (Oldb)",
+  "short_title": "Ratswahl Oldenburg",
+  "date": "2026-09-13",
+  "polls_close": "2026-09-13T18:00:00+02:00",
+  "seats": 52,
+  "status": "live",
+  "register": "kommunalwahl/kandidaten.json",
+  "reference": "kommunalwahl/referenz-2021",
+  "previous_label": "2021",
+  "mayor": "ob-2026",
+  "source": {
+    "adapter": "votemanager",
+    "base": "https://votemanager.kdo.de/20260913/03403000",
+    "files": {
+      "city": "/daten/opendata/Open-Data-03403000-Stadtratswahl-Stadt.csv",
+      "areas": "/daten/opendata/Open-Data-03403000-Stadtratswahl-Wahlbereiche.csv",
+      "districts": "/daten/opendata/Open-Data-03403000-Stadtratswahl-Wahlbezirk.csv"
+    },
+    "presentation_id": 913,
+    "city_id": "ebene_-6361_id_10358",
+    "areas_level": "ebene_-6362"
+  }
+}

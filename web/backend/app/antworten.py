@@ -1707,6 +1707,40 @@ class AdminKohorten(TypedDict):
     basis: AdminKohortenBasis
 
 
+class AdminAnmeldeTag(TypedDict):
+    day: str
+    #: Konten, die an diesem Tag angelegt wurden.
+    created: int
+    #: Davon mit bestätigter Adresse — der Stand HEUTE, nicht der an dem Tag.
+    verified: int
+    #: Abgewiesene Registrierungsversuche an diesem Tag (alle Gründe).
+    rejected: int
+
+
+class AdminAbweisung(TypedDict):
+    #: Ein Wert aus ``kern.store.SIGNUP_REJECTION_REASONS``.
+    reason: str
+    n: int
+
+
+class AdminAnmeldungen(TypedDict):
+    """Was bei der Registrierung ankam — und was abprallte.
+
+    Beide Seiten in einem Bild. Die Zahl der neuen Konten allein sagt nicht,
+    ob gerade jemand anklopft und an der Bremse oder am Wegwerf-Riegel
+    hängenbleibt; bis 09/2026 war genau das unsichtbar.
+
+    Nichts hier ist einer Person zuzuordnen: Die Abweisungen tragen weder
+    Adresse noch Domain noch Netzadresse, nur Tag, Grund und Anzahl.
+    """
+    days: int
+    created: int
+    verified: int
+    rejected: int
+    series: list[AdminAnmeldeTag]
+    reasons: list[AdminAbweisung]
+
+
 class AdminSeitenTag(TypedDict):
     day: str
     n: int
@@ -3693,6 +3727,22 @@ WAHLABEND_PNG: dict[int | str, dict[str, Any]] = {
     404: {"description": "Der Wahlabend ist noch nicht freigeschaltet (Feature-Schalter `wahlabend`)."},
 }
 
+WAHLABEND_KARTE_PNG: dict[int | str, dict[str, Any]] = {
+    200: {
+        "description": (
+            "Die Karte zum Teilen (PNG): wie eine Liste (`?list=`), eine "
+            "Liste im Wahlbereich (`&area=`) oder eine Person (`&position=`) "
+            "abgeschnitten hat — Anteil, Sitze, Stimmen, Abstand zu 2021 bzw. "
+            "Personenstimmen und Status, dazu Lotti mit dem Dank an die "
+            "Wählenden. `&format=beitrag` (1080×1350, Vorgabe), `story` "
+            "(1080×1920) oder `quer` (1200×630); `&compare=false` lässt den "
+            "Abstand zu 2021 weg. Eine Minute cachebar."
+        ),
+        "content": {"image/png": {"schema": {"type": "string", "format": "binary"}}},
+    },
+    404: {"description": "Wahlabend nicht freigeschaltet, oder Liste/Wahlbereich/Listenplatz gibt es nicht."},
+}
+
 
 # --------------------------------------------------------------------------
 # Wahlabend (Ratswahl 13.09.2026) — GET /api/wahlabend
@@ -3700,10 +3750,31 @@ WAHLABEND_PNG: dict[int | str, dict[str, Any]] = {
 
 
 class ElectionInfo(TypedDict):
+    """Wer wählt was, wann — aus ``kommunalwahl/wahlen/``.
+
+    Bis 09/2026 trug diese Form nur Datum, Sitzzahl und den amtlichen Titel;
+    „Ratswahl Oldenburg", „13. September 2026" und der Wahlschluss standen
+    daneben als Literale im Frontend. Jetzt kommt beides von hier — eine
+    andere Wahl in der Registry ändert die Seite, ohne dass jemand eine
+    Überschrift nachzieht.
+    """
+    #: Kennung der Wahl, z. B. „ratswahl-2026".
+    slug: str
     date: str
     seats: int
+    #: Der amtliche Titel („Wahl des Rates der Stadt Oldenburg (Oldb)").
     title: str
+    #: Die kurze Form für Überschriften und Kicker („Ratswahl Oldenburg").
+    short_title: str
+    #: Wahlschluss mit Zeitzone (ISO) — Grundlage von Countdown und Abruftakt.
+    polls_close: str
+    #: „vorbereitung" | „live" | „rueckblick".
+    status: str
     presentation_url: str
+    #: Name der Vergleichswahl für ``seats_previous``/``share_previous_pct“ —
+    #: „2021" bei der Ratswahl 2026. Leer, wenn es keine Vorwahl gibt; dann
+    #: zeigen beide Seiten den Vergleich gar nicht.
+    previous_label: str
 
 
 class ElectionSource(TypedDict):
@@ -3778,8 +3849,12 @@ class ElectionParty(TypedDict):
     share_pct: float | None
     seats: int | None
     projected_seats: int | None
-    seats_2021: int | None
-    share_2021_pct: float | None
+    #: Sitze und Anteil derselben Liste bei der VORWAHL — wie die heißt, sagt
+    #: ``ElectionInfo.previous_label``. Hieß bis 09/2026 ``seats_2021`` /
+    #: ``share_2021_pct``: ein Jahr im Feldnamen, das bei der nächsten Wahl
+    #: nicht mehr stimmt und das kein Client umbenennen kann.
+    seats_previous: int | None
+    share_previous_pct: float | None
     #: Stufe 1 (stadtweit): Stimmen bis zum nächsten Sitz bzw. bis zum
     #: Verlust eines Sitzes. ``None`` = nicht erreichbar / kein Sitz.
     votes_to_next_seat: int | None
@@ -3837,11 +3912,39 @@ class MayorCandidate(TypedDict):
     party: str
     votes: int | None
     share_pct: float | None
+    #: Nur in einer Stichwahl: der Anteil dieser Person im ERSTEN Wahlgang.
+    #: ``null`` sonst — der erste Wahlgang vergleicht sich mit nichts.
+    first_round_pct: float | None
+    #: Farbe der vorschlagenden Liste (hell/dunkel); leer bei einem
+    #: Einzelwahlvorschlag — dann zeichnet die Seite neutral.
+    color: str
+    color_dark: str
+
+
+class MayorElectionInfo(TypedDict):
+    """Welche Wahl das hier ist — aus ``kommunalwahl/wahlen/``.
+
+    Stand bis 09/2026 nicht in der Antwort: Es gab genau eine OB-Wahl, und
+    die Seite kannte sie auswendig. Mit der Stichwahl am 27.09. sind es zwei,
+    und die Überschrift darf nicht mehr im Frontend stehen."""
+    slug: str
+    title: str
+    short_title: str
+    date: str
+    #: Wahlschluss mit Zeitzone (ISO) — Grundlage des Countdowns.
+    polls_close: str
+    #: Ist das eine Stichwahl? Dann trägt ``first_round_pct`` je Kandidatur
+    #: das Ergebnis des ersten Wahlgangs.
+    is_runoff: bool
+    presentation_url: str
 
 
 class MayorNight(TypedDict):
+    #: "live" (Votemanager) oder "probe" (Generalprobe mit echten Zahlen).
+    dataset: str
     #: "before" (nichts ausgezählt) | "counting" | "complete".
     phase: str
+    election: MayorElectionInfo
     reports_expected: int
     reports_received: int
     turnout_pct: float | None
@@ -3850,6 +3953,9 @@ class MayorNight(TypedDict):
     candidates: list[MayorCandidate]
     #: Slugs der beiden Kandidaturen einer Stichwahl — leer ohne Stichwahl-Satz.
     runoff: list[str]
+    #: Slug der gewählten Person, sobald die Darstellung eine nennt und es
+    #: keine Stichwahl gibt — sonst ``null``.
+    elected: str | None
     fetched_at: str | None
     ok: bool
     error: str | None
@@ -3868,7 +3974,9 @@ class PredictionParty(TypedDict):
     name: str
     color: str
     color_dark: str
-    seats_2021: int | None
+    #: Sitze dieser Liste bei der Vorwahl; ``PredictionGame.previous_label``
+    #: sagt, welche das ist.
+    seats_previous: int | None
 
 
 class PredictionMayorCandidate(TypedDict):
@@ -3878,13 +3986,30 @@ class PredictionMayorCandidate(TypedDict):
 
 
 class PredictionGame(TypedDict):
+    #: Die Runde (``prediction/rounds.py``): "ratswahl" ist die Hauptrunde
+    #: ohne Parameter, jede andere hängt an ``?runde=<slug>``.
+    round: str
+    #: Steht die Runde auf der Website? Die Hauptrunde ja, ein privater
+    #: Kreis nicht — dann zeigt der Beamer den Link mit Parameter.
+    listed: bool
     title: str
     #: "open" (Tippen offen) | "locked" (Tipp-Schluss erreicht) | "final" (Endstand).
     phase: str
     seats_total: int
+    #: Kurzname und Datum der Wahl, auf die getippt wird — bis 09/2026 stand
+    #: „Ratswahl Oldenburg · 13.09.2026" als Literal im Frontend.
+    election_title: str
+    election_date: str
+    #: Name der Vergleichswahl für ``PredictionParty.seats_previous``
+    #: („2021"); leer, wenn es keine gibt.
+    previous_label: str
     locked: bool
     locked_at: str | None
     late_scored: bool
+    #: Ein Gerät, mehrere Personen (Schalter je Runde, Admin): Nach dem
+    #: Speichern bietet „Mein Tipp" „Fertig — nächste Person" an, das den
+    #: Cookie löscht und den Tipp behält. Aus in der Hauptrunde.
+    shared_device: bool
     player_count: int
     #: Menschentext für den Zeitpunkt des Tipp-Schlusses, z. B. „bis zur
     #: ersten Hochrechnung (ca. 20 Uhr)" — der Server nennt keine feste Uhrzeit,
@@ -4036,7 +4161,19 @@ class PredictionAdminPlayer(TypedDict):
     has_mayor_tip: bool
 
 
+class PredictionRoundInfo(TypedDict):
+    """Eine Runde im Runden-Umschalter des Admins (1h)."""
+    slug: str
+    title: str
+    listed: bool
+    phase: str
+    player_count: int
+
+
 class PredictionAdminStand(TypedDict):
+    #: Alle Runden — der Admin verwaltet jede, auch die, die nicht auf der
+    #: Website steht (ihr Kreis hat keine eigene Adminperson).
+    rounds: list[PredictionRoundInfo]
     game: PredictionGame
     results: list[PredictionResultRow]
     players: list[PredictionAdminPlayer]

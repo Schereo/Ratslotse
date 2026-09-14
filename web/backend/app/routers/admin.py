@@ -34,7 +34,7 @@ from ..antworten import (CityStats, EventStreamResponse, SSE_LIVE_PROBE,
                          AdminGrowth, AdminJob, AdminLimits, AdminLlmUsage, AdminPlaceCandidate,
                          AdminEreignisse, AdminKohorten, AdminPlaceCandidates,
                          AdminQuizStats, AdminRequestFehler, AdminSackgasse,
-                         AdminSeitenaufrufe,
+                         AdminSeitenaufrufe, AdminAnmeldungen,
                          AdminFeedbackNotified,
                          AdminUnread, AdminUserDetail, AdminUserRow, Ok)
 from ..deps import get_cities_store, get_council_store, get_store, require_admin
@@ -145,6 +145,28 @@ def stats_page_views(
     # sie gegen das Schema. `kern/` darf die Form nicht selbst kennen — es
     # importiert nichts aus `app` (tests/test_schichten.py).
     return cast("AdminSeitenaufrufe", store.seitenaufrufe(max(1, min(days, 365))))
+
+
+@router.get("/stats/signups")
+def stats_signups(
+    days: int = 30,
+    _admin: dict = Depends(require_admin),
+    store: Store = Depends(get_store),
+) -> AdminAnmeldungen:
+    """Neue Konten und abgewiesene Registrierungen — beide Seiten in einem Bild.
+
+    Sichtbar war bis 09/2026 nur, wer durchkam. Wer an der Bremse oder am
+    Wegwerf-Riegel hängenblieb, hinterließ nirgends eine Spur, und „es hat
+    niemand versucht" war von „es haben 500 versucht" nicht zu unterscheiden.
+
+    Der tägliche Herzschlag (``scripts/check_herzschlag.py``) schlägt bei
+    denselben Zahlen Alarm; diese Ansicht ist der Blick dazwischen.
+    """
+    # `cast` wie bei den Fehlern: Der Store baut ein `dict`, die Form hält
+    # `AdminAnmeldungen` in `antworten.py` fest, und der Vertragstest prüft sie
+    # gegen das Schema. `kern/` darf die Form nicht selbst kennen — es
+    # importiert nichts aus `app` (tests/test_schichten.py).
+    return cast("AdminAnmeldungen", store.signup_signals(max(1, min(days, 365))))
 
 
 @router.get("/stats/events")

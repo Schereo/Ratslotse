@@ -17,7 +17,7 @@ from pathlib import Path
 
 from .antworten import Health
 from .config import get_settings
-from .schemas import AppConfigOut
+from .schemas import AppConfigOut, AppElectionOut
 from .routers import today, account, admin, auth, auth_apple, bookmarks, council, districts, feedback, kommunalwahl, news, onboarding, push, quiz, social, topics, badges, calendar, tippspiel, wahlabend
 from .session import SitzungsVerlaengerung
 
@@ -343,6 +343,26 @@ def health() -> Health:
     return {"status": "ok"}
 
 
+def _naechste_wahl() -> AppElectionOut | None:
+    """Die Wahl im Fokus, klein genug für jede Seite.
+
+    Die Regel steht in ``election.elections.focus`` — an EINER Stelle, weil
+    außer dieser Antwort auch die Übersicht unter ``/wahlen`` sie braucht.
+    Wirft nie: Ohne ``/api/app-config`` startet die native App gar nicht, und
+    eine unlesbare Registry darf das nicht auslösen.
+    """
+    from .election import elections
+
+    try:
+        wahl = elections.focus()
+        return AppElectionOut(slug=wahl.slug, short_title=wahl.short_title, date=wahl.date,
+                              polls_close=wahl.polls_close.isoformat(), kind=wahl.kind,
+                              path=elections.path_of(wahl))
+    except Exception:
+        logging.getLogger("ratslotse.web").exception("app-config: Wahl nicht lesbar")
+        return None
+
+
 @app.get("/api/app-config", response_model=AppConfigOut)
 def app_config() -> AppConfigOut:
     """Small public compatibility contract for installed native builds."""
@@ -352,4 +372,5 @@ def app_config() -> AppConfigOut:
         min_build=max(0, settings.app_min_build),
         note=settings.app_update_notice.strip() or None,
         features=schalter.aktive(),
+        election=_naechste_wahl(),
     )

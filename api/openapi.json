@@ -1,6 +1,24 @@
 {
   "components": {
     "schemas": {
+      "AdminAbweisung": {
+        "properties": {
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason",
+          "n"
+        ],
+        "title": "AdminAbweisung",
+        "type": "object"
+      },
       "AdminAliasDeleted": {
         "properties": {
           "entities": {
@@ -33,6 +51,79 @@
           "aliases"
         ],
         "title": "AdminAliasList",
+        "type": "object"
+      },
+      "AdminAnmeldeTag": {
+        "properties": {
+          "created": {
+            "title": "Created",
+            "type": "integer"
+          },
+          "day": {
+            "title": "Day",
+            "type": "string"
+          },
+          "rejected": {
+            "title": "Rejected",
+            "type": "integer"
+          },
+          "verified": {
+            "title": "Verified",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "day",
+          "created",
+          "verified",
+          "rejected"
+        ],
+        "title": "AdminAnmeldeTag",
+        "type": "object"
+      },
+      "AdminAnmeldungen": {
+        "description": "Was bei der Registrierung ankam — und was abprallte.\n\nBeide Seiten in einem Bild. Die Zahl der neuen Konten allein sagt nicht,\nob gerade jemand anklopft und an der Bremse oder am Wegwerf-Riegel\nhängenbleibt; bis 09/2026 war genau das unsichtbar.\n\nNichts hier ist einer Person zuzuordnen: Die Abweisungen tragen weder\nAdresse noch Domain noch Netzadresse, nur Tag, Grund und Anzahl.",
+        "properties": {
+          "created": {
+            "title": "Created",
+            "type": "integer"
+          },
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "reasons": {
+            "items": {
+              "$ref": "#/components/schemas/AdminAbweisung"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "rejected": {
+            "title": "Rejected",
+            "type": "integer"
+          },
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/AdminAnmeldeTag"
+            },
+            "title": "Series",
+            "type": "array"
+          },
+          "verified": {
+            "title": "Verified",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "days",
+          "created",
+          "verified",
+          "rejected",
+          "series",
+          "reasons"
+        ],
+        "title": "AdminAnmeldungen",
         "type": "object"
       },
       "AdminClientShare": {
@@ -2305,6 +2396,48 @@
       "AppConfigOut": {
         "description": "Compatibility contract consumed before a native app starts loading data.",
         "properties": {
+          "election": {
+            "description": "Die Wahl, die gerade ansteht — klein genug für jede Seite.\n\nWarum hier und nicht nur in ``/api/wahlabend``: Startseite, Heute-Karte\nund Dashboard zeigen einen Countdown, ohne den ganzen Wahlabend zu laden.\nBis 09/2026 stand der Termin dafür als ``WAHLABEND_BEGINN_UTC`` im\nFrontend — eine Konstante, die ein Deploy braucht und die niemand mit der\nRegistry abgleicht.",
+            "properties": {
+              "date": {
+                "title": "Date",
+                "type": "string"
+              },
+              "kind": {
+                "title": "Kind",
+                "type": "string"
+              },
+              "path": {
+                "title": "Path",
+                "type": "string"
+              },
+              "polls_close": {
+                "title": "Polls Close",
+                "type": "string"
+              },
+              "short_title": {
+                "title": "Short Title",
+                "type": "string"
+              },
+              "slug": {
+                "title": "Slug",
+                "type": "string"
+              }
+            },
+            "required": [
+              "slug",
+              "short_title",
+              "date",
+              "polls_close",
+              "kind",
+              "path"
+            ],
+            "title": "AppElectionOut",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
           "features": {
             "default": [],
             "items": {
@@ -2329,6 +2462,45 @@
           "min_build"
         ],
         "title": "AppConfigOut",
+        "type": "object"
+      },
+      "AppElectionOut": {
+        "description": "Die Wahl, die gerade ansteht — klein genug für jede Seite.\n\nWarum hier und nicht nur in ``/api/wahlabend``: Startseite, Heute-Karte\nund Dashboard zeigen einen Countdown, ohne den ganzen Wahlabend zu laden.\nBis 09/2026 stand der Termin dafür als ``WAHLABEND_BEGINN_UTC`` im\nFrontend — eine Konstante, die ein Deploy braucht und die niemand mit der\nRegistry abgleicht.",
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "polls_close": {
+            "title": "Polls Close",
+            "type": "string"
+          },
+          "short_title": {
+            "title": "Short Title",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "short_title",
+          "date",
+          "polls_close",
+          "kind",
+          "path"
+        ],
+        "title": "AppElectionOut",
         "type": "object"
       },
       "AppleLoginRequest": {
@@ -7569,18 +7741,39 @@
         "type": "object"
       },
       "ElectionInfo": {
+        "description": "Wer wählt was, wann — aus ``kommunalwahl/wahlen/``.\n\nBis 09/2026 trug diese Form nur Datum, Sitzzahl und den amtlichen Titel;\n„Ratswahl Oldenburg\", „13. September 2026\" und der Wahlschluss standen\ndaneben als Literale im Frontend. Jetzt kommt beides von hier — eine\nandere Wahl in der Registry ändert die Seite, ohne dass jemand eine\nÜberschrift nachzieht.",
         "properties": {
           "date": {
             "title": "Date",
+            "type": "string"
+          },
+          "polls_close": {
+            "title": "Polls Close",
             "type": "string"
           },
           "presentation_url": {
             "title": "Presentation Url",
             "type": "string"
           },
+          "previous_label": {
+            "title": "Previous Label",
+            "type": "string"
+          },
           "seats": {
             "title": "Seats",
             "type": "integer"
+          },
+          "short_title": {
+            "title": "Short Title",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
           },
           "title": {
             "title": "Title",
@@ -7588,10 +7781,15 @@
           }
         },
         "required": [
+          "slug",
           "date",
           "seats",
           "title",
-          "presentation_url"
+          "short_title",
+          "polls_close",
+          "status",
+          "presentation_url",
+          "previous_label"
         ],
         "title": "ElectionInfo",
         "type": "object"
@@ -7775,22 +7973,22 @@
               "null"
             ]
           },
-          "seats_2021": {
-            "title": "Seats 2021",
+          "seats_previous": {
+            "title": "Seats Previous",
             "type": [
               "integer",
               "null"
             ]
           },
-          "share_2021_pct": {
-            "title": "Share 2021 Pct",
+          "share_pct": {
+            "title": "Share Pct",
             "type": [
               "number",
               "null"
             ]
           },
-          "share_pct": {
-            "title": "Share Pct",
+          "share_previous_pct": {
+            "title": "Share Previous Pct",
             "type": [
               "number",
               "null"
@@ -7839,8 +8037,8 @@
           "share_pct",
           "seats",
           "projected_seats",
-          "seats_2021",
-          "share_2021_pct",
+          "seats_previous",
+          "share_previous_pct",
           "votes_to_next_seat",
           "votes_to_lose_seat"
         ],
@@ -10536,6 +10734,21 @@
       },
       "MayorCandidate": {
         "properties": {
+          "color": {
+            "title": "Color",
+            "type": "string"
+          },
+          "color_dark": {
+            "title": "Color Dark",
+            "type": "string"
+          },
+          "first_round_pct": {
+            "title": "First Round Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -10568,9 +10781,56 @@
           "name",
           "party",
           "votes",
-          "share_pct"
+          "share_pct",
+          "first_round_pct",
+          "color",
+          "color_dark"
         ],
         "title": "MayorCandidate",
+        "type": "object"
+      },
+      "MayorElectionInfo": {
+        "description": "Welche Wahl das hier ist — aus ``kommunalwahl/wahlen/``.\n\nStand bis 09/2026 nicht in der Antwort: Es gab genau eine OB-Wahl, und\ndie Seite kannte sie auswendig. Mit der Stichwahl am 27.09. sind es zwei,\nund die Überschrift darf nicht mehr im Frontend stehen.",
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "is_runoff": {
+            "title": "Is Runoff",
+            "type": "boolean"
+          },
+          "polls_close": {
+            "title": "Polls Close",
+            "type": "string"
+          },
+          "presentation_url": {
+            "title": "Presentation Url",
+            "type": "string"
+          },
+          "short_title": {
+            "title": "Short Title",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "title",
+          "short_title",
+          "date",
+          "polls_close",
+          "is_runoff",
+          "presentation_url"
+        ],
+        "title": "MayorElectionInfo",
         "type": "object"
       },
       "MayorNight": {
@@ -10581,6 +10841,20 @@
             },
             "title": "Candidates",
             "type": "array"
+          },
+          "dataset": {
+            "title": "Dataset",
+            "type": "string"
+          },
+          "elected": {
+            "title": "Elected",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "election": {
+            "$ref": "#/components/schemas/MayorElectionInfo"
           },
           "error": {
             "title": "Error",
@@ -10649,7 +10923,9 @@
           }
         },
         "required": [
+          "dataset",
           "phase",
+          "election",
           "reports_expected",
           "reports_received",
           "turnout_pct",
@@ -10657,6 +10933,7 @@
           "invalid_ballots",
           "candidates",
           "runoff",
+          "elected",
           "fetched_at",
           "ok",
           "error",
@@ -11983,9 +12260,17 @@
             },
             "title": "Results",
             "type": "array"
+          },
+          "rounds": {
+            "items": {
+              "$ref": "#/components/schemas/PredictionRoundInfo"
+            },
+            "title": "Rounds",
+            "type": "array"
           }
         },
         "required": [
+          "rounds",
           "game",
           "results",
           "players",
@@ -12049,8 +12334,20 @@
             "title": "Deadline Hint",
             "type": "string"
           },
+          "election_date": {
+            "title": "Election Date",
+            "type": "string"
+          },
+          "election_title": {
+            "title": "Election Title",
+            "type": "string"
+          },
           "late_scored": {
             "title": "Late Scored",
+            "type": "boolean"
+          },
+          "listed": {
+            "title": "Listed",
             "type": "boolean"
           },
           "locked": {
@@ -12086,9 +12383,21 @@
             "title": "Player Count",
             "type": "integer"
           },
+          "previous_label": {
+            "title": "Previous Label",
+            "type": "string"
+          },
+          "round": {
+            "title": "Round",
+            "type": "string"
+          },
           "seats_total": {
             "title": "Seats Total",
             "type": "integer"
+          },
+          "shared_device": {
+            "title": "Shared Device",
+            "type": "boolean"
           },
           "title": {
             "title": "Title",
@@ -12096,12 +12405,18 @@
           }
         },
         "required": [
+          "round",
+          "listed",
           "title",
           "phase",
           "seats_total",
+          "election_title",
+          "election_date",
+          "previous_label",
           "locked",
           "locked_at",
           "late_scored",
+          "shared_device",
           "player_count",
           "deadline_hint",
           "parties",
@@ -12403,8 +12718,8 @@
             "title": "Name",
             "type": "string"
           },
-          "seats_2021": {
-            "title": "Seats 2021",
+          "seats_previous": {
+            "title": "Seats Previous",
             "type": [
               "integer",
               "null"
@@ -12425,7 +12740,7 @@
           "name",
           "color",
           "color_dark",
-          "seats_2021"
+          "seats_previous"
         ],
         "title": "PredictionParty",
         "type": "object"
@@ -12582,6 +12897,40 @@
           "published_at"
         ],
         "title": "PredictionResultRow",
+        "type": "object"
+      },
+      "PredictionRoundInfo": {
+        "description": "Eine Runde im Runden-Umschalter des Admins (1h).",
+        "properties": {
+          "listed": {
+            "title": "Listed",
+            "type": "boolean"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "player_count": {
+            "title": "Player Count",
+            "type": "integer"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "title",
+          "listed",
+          "phase",
+          "player_count"
+        ],
+        "title": "PredictionRoundInfo",
         "type": "object"
       },
       "PredictionRow": {
@@ -12754,6 +13103,27 @@
           "exact"
         ],
         "title": "PredictionSeatLine",
+        "type": "object"
+      },
+      "PredictionSettingsIn": {
+        "description": "``PUT /api/tipp/admin/einstellungen`` — Schalter je Runde. Nur was\ngesetzt ist, wird geändert.",
+        "properties": {
+          "late_scored": {
+            "title": "Late Scored",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "shared_device": {
+            "title": "Shared Device",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "title": "PredictionSettingsIn",
         "type": "object"
       },
       "PredictionStand": {
@@ -19130,6 +19500,50 @@
         ]
       }
     },
+    "/api/admin/stats/signups": {
+      "get": {
+        "description": "Neue Konten und abgewiesene Registrierungen — beide Seiten in einem Bild.\n\nSichtbar war bis 09/2026 nur, wer durchkam. Wer an der Bremse oder am\nWegwerf-Riegel hängenblieb, hinterließ nirgends eine Spur, und „es hat\nniemand versucht\" war von „es haben 500 versucht\" nicht zu unterscheiden.\n\nDer tägliche Herzschlag (``scripts/check_herzschlag.py``) schlägt bei\ndenselben Zahlen Alarm; diese Ansicht ist der Blick dazwischen.",
+        "operationId": "stats_signups_api_admin_stats_signups_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminAnmeldungen"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stats Signups",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/admin/users": {
       "get": {
         "description": "Nutzer-Liste mit Aktivitätssignalen (Design 20a): Themen-/Abo-/Quiz-/\nKI-Frage-Zahl + letzter Aktivitätstag je Konto.",
@@ -24976,6 +25390,20 @@
       "post": {
         "description": "Ohne gültigen Cookie: Beitritt (``name`` Pflicht). Mit gültigem\nCookie: nur der Tipp wird aktualisiert, ``name`` bleibt unbeachtet —\numbenennen kann nur der Admin (``PUT …/admin/spieler/{id}``).",
         "operationId": "beitreten_oder_tippen_api_tipp_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "schema": {
+              "title": "Round",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -25014,10 +25442,70 @@
         ]
       }
     },
+    "/api/tipp/abmelden": {
+      "post": {
+        "description": "Das Gerät weitergeben: Der Cookie geht, der Tipp BLEIBT — im Gegensatz\nzu ``DELETE /api/tipp/me``, das die Teilnahme löscht. Gedacht für Runden\nmit ``shared_device`` (ein Handy, mehrere Personen), aber unabhängig vom\nSchalter erlaubt: Ein Gerät ohne Cookie ist nie ein Schaden.",
+        "operationId": "abmelden_api_tipp_abmelden_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "schema": {
+              "title": "Round",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Abmelden",
+        "tags": [
+          "tippspiel"
+        ]
+      }
+    },
     "/api/tipp/admin/abfragen": {
       "post": {
         "description": "„Jetzt abfragen\": die Live-Zahlen der Ratswahl UND der OB-Wahl in den\nEntwurf übernehmen — NICHT veröffentlicht, das bleibt ein eigener Schritt.",
         "operationId": "jetzt_abfragen_api_tipp_admin_abfragen_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "schema": {
+              "title": "Round",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -25028,6 +25516,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Jetzt Abfragen",
@@ -25036,9 +25534,79 @@
         ]
       }
     },
+    "/api/tipp/admin/einstellungen": {
+      "put": {
+        "description": "Schalter je Runde. ``shared_device``: ein Gerät, mehrere Personen —\nVallys Kreis (13.09.2026) hat nicht für jede Person ein Handy.",
+        "operationId": "einstellungen_setzen_api_tipp_admin_einstellungen_put",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "schema": {
+              "title": "Round",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PredictionSettingsIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PredictionAdminStand"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Einstellungen Setzen",
+        "tags": [
+          "tippspiel"
+        ]
+      }
+    },
     "/api/tipp/admin/ergebnis": {
       "put": {
         "operationId": "ergebnis_eintragen_api_tipp_admin_ergebnis_put",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "schema": {
+              "title": "Round",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -25084,6 +25652,20 @@
     "/api/tipp/admin/phase": {
       "put": {
         "operationId": "phase_setzen_api_tipp_admin_phase_put",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "schema": {
+              "title": "Round",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -25134,6 +25716,18 @@
               "title": "Player Id",
               "type": "integer"
             }
+          },
+          {
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "schema": {
+              "title": "Round",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
           }
         ],
         "requestBody": {
@@ -25177,6 +25771,20 @@
     "/api/tipp/admin/stand": {
       "get": {
         "operationId": "admin_stand_api_tipp_admin_stand_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "schema": {
+              "title": "Round",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -25187,6 +25795,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Admin Stand",
@@ -25198,6 +25816,20 @@
     "/api/tipp/admin/veroeffentlichen": {
       "post": {
         "operationId": "veroeffentlichen_api_tipp_admin_veroeffentlichen_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "schema": {
+              "title": "Round",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -25208,6 +25840,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Veroeffentlichen",
@@ -25219,6 +25861,20 @@
     "/api/tipp/admin/verwerfen": {
       "post": {
         "operationId": "verwerfen_api_tipp_admin_verwerfen_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "schema": {
+              "title": "Round",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -25229,6 +25885,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Verwerfen",
@@ -25240,6 +25906,20 @@
     "/api/tipp/me": {
       "delete": {
         "operationId": "austreten_api_tipp_me_delete",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "schema": {
+              "title": "Round",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -25250,6 +25930,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Austreten",
@@ -25282,6 +25972,18 @@
               "title": "Counted",
               "type": [
                 "integer",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "schema": {
+              "title": "Round",
+              "type": [
+                "string",
                 "null"
               ]
             }
@@ -25318,12 +26020,36 @@
     "/api/tipp/qr.png": {
       "get": {
         "operationId": "qr_code_api_tipp_qr_png_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "schema": {
+              "title": "Round",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
               "image/png": {}
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Qr Code",
@@ -25335,6 +26061,20 @@
     "/api/tipp/setup": {
       "get": {
         "operationId": "setup_api_tipp_setup_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "schema": {
+              "title": "Round",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -25345,6 +26085,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Setup",
@@ -25379,6 +26129,18 @@
               "title": "Counted",
               "type": [
                 "integer",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "schema": {
+              "title": "Round",
+              "type": [
+                "string",
                 "null"
               ]
             }
@@ -26140,12 +26902,12 @@
         "operationId": "wahlabend_api_wahlabend_get",
         "parameters": [
           {
-            "description": "„2021“ = Generalprobe mit den Zahlen von 2021",
+            "description": "gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)",
             "in": "query",
             "name": "probe",
             "required": false,
             "schema": {
-              "description": "„2021“ = Generalprobe mit den Zahlen von 2021",
+              "description": "gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)",
               "title": "Probe",
               "type": [
                 "string",
@@ -26219,12 +26981,12 @@
             }
           },
           {
-            "description": "„2021“ = Generalprobe mit den Zahlen von 2021",
+            "description": "gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)",
             "in": "query",
             "name": "probe",
             "required": false,
             "schema": {
-              "description": "„2021“ = Generalprobe mit den Zahlen von 2021",
+              "description": "gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)",
               "title": "Probe",
               "type": [
                 "string",
@@ -26281,16 +27043,87 @@
         ]
       }
     },
-    "/api/wahlabend/ob": {
+    "/api/wahlabend/karte.png": {
       "get": {
-        "description": "Die OB-Wahl für sich — hinter dem Schalter ``wahlabend`` (nicht\n``tippspiel``): Sie ist Teil des Wahlabends, nicht nur des Tippspiels.",
-        "operationId": "ob_wahl_api_wahlabend_ob_get",
+        "description": "Die Karte zum Teilen (PNG): wie eine Liste, eine Liste im Wahlbereich\noder eine Person abgeschnitten hat — mit Lotti, die den Wählenden dankt.\n``format`` wählt Beitrag (4:5), Story (9:16) oder quer; ``position``\nbraucht ``area``; eine Kombination, die es nicht gibt, antwortet 404.",
+        "operationId": "wahlabend_karte_api_wahlabend_karte_png_get",
         "parameters": [
           {
+            "description": "Slug der Liste, z. B. „gruene“",
+            "in": "query",
+            "name": "list",
+            "required": true,
+            "schema": {
+              "description": "Slug der Liste, z. B. „gruene“",
+              "pattern": "^[a-z0-9-]{1,40}$",
+              "title": "List",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Wahlbereich (1–6): die Liste dort",
+            "in": "query",
+            "name": "area",
+            "required": false,
+            "schema": {
+              "description": "Wahlbereich (1–6): die Liste dort",
+              "maximum": 20,
+              "minimum": 1,
+              "title": "Area",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "Listenplatz im Wahlbereich: die Person",
+            "in": "query",
+            "name": "position",
+            "required": false,
+            "schema": {
+              "description": "Listenplatz im Wahlbereich: die Person",
+              "maximum": 99,
+              "minimum": 1,
+              "title": "Position",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "„beitrag“ = 1080×1350 (4:5), „story“ = 1080×1920 (9:16), „quer“ = 1200×630",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "default": "beitrag",
+              "description": "„beitrag“ = 1080×1350 (4:5), „story“ = 1080×1920 (9:16), „quer“ = 1200×630",
+              "pattern": "^(beitrag|story|quer)$",
+              "title": "Format",
+              "type": "string"
+            }
+          },
+          {
+            "description": "false = ohne den Abstand zur Vorwahl (Listenkarte)",
+            "in": "query",
+            "name": "compare",
+            "required": false,
+            "schema": {
+              "default": true,
+              "description": "false = ohne den Abstand zur Vorwahl (Listenkarte)",
+              "title": "Compare",
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)",
             "in": "query",
             "name": "probe",
             "required": false,
             "schema": {
+              "description": "gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)",
               "title": "Probe",
               "type": [
                 "string",
@@ -26299,10 +27132,80 @@
             }
           },
           {
+            "description": "Generalprobe: nur die ersten N Wahlbezirke ausgezählt",
             "in": "query",
             "name": "counted",
             "required": false,
             "schema": {
+              "description": "Generalprobe: nur die ersten N Wahlbezirke ausgezählt",
+              "maximum": 500,
+              "minimum": 0,
+              "title": "Counted",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/png": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Die Karte zum Teilen (PNG): wie eine Liste (`?list=`), eine Liste im Wahlbereich (`&area=`) oder eine Person (`&position=`) abgeschnitten hat — Anteil, Sitze, Stimmen, Abstand zu 2021 bzw. Personenstimmen und Status, dazu Lotti mit dem Dank an die Wählenden. `&format=beitrag` (1080×1350, Vorgabe), `story` (1080×1920) oder `quer` (1200×630); `&compare=false` lässt den Abstand zu 2021 weg. Eine Minute cachebar."
+          },
+          "404": {
+            "description": "Wahlabend nicht freigeschaltet, oder Liste/Wahlbereich/Listenplatz gibt es nicht."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Wahlabend Karte",
+        "tags": [
+          "wahlabend"
+        ]
+      }
+    },
+    "/api/wahlabend/ob": {
+      "get": {
+        "description": "Die OB-Wahl für sich — hinter dem Schalter ``wahlabend`` (nicht\n``tippspiel``): Sie ist Teil des Wahlabends, nicht nur des Tippspiels.\n\nImmer der ERSTE Wahlgang; die Stichwahl hat ihren eigenen Pfad. Daran\nhängt der Vergleich des Tippspiels, und der darf sich am 27.09. nicht\nunter der Hand verschieben.",
+        "operationId": "ob_wahl_api_wahlabend_ob_get",
+        "parameters": [
+          {
+            "description": "gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)",
+            "in": "query",
+            "name": "probe",
+            "required": false,
+            "schema": {
+              "description": "gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)",
+              "title": "Probe",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "Generalprobe: nur die ersten N Wahlbezirke ausgezählt",
+            "in": "query",
+            "name": "counted",
+            "required": false,
+            "schema": {
+              "description": "Generalprobe: nur die ersten N Wahlbezirke ausgezählt",
               "maximum": 133,
               "minimum": 0,
               "title": "Counted",
@@ -26337,7 +27240,71 @@
         },
         "summary": "Ob Wahl",
         "tags": [
-          "tippspiel"
+          "wahlabend"
+        ]
+      }
+    },
+    "/api/wahlabend/stichwahl": {
+      "get": {
+        "description": "Die Stichwahl — 404, solange keine im Kalender steht.\n\nAm 13.09.2026 hat niemand die absolute Mehrheit erreicht; am 27.09. läuft\ndeshalb die Stichwahl zwischen Ulf Prange (SPD) und Jascha Rohr (GRÜNE).\nIhre Wahl-Id beim Votemanager gibt es heute noch nicht — sie wird zur\nLaufzeit in ``termin.json`` gesucht (``mayor.resolve_ids``). Bis dahin\nantwortet dieser Pfad mit ``phase: \"before\"`` und einem Vermerk, nicht mit\neinem Fehler: Eine Seite, die auf den Abend wartet, ist keine kaputte.",
+        "operationId": "stichwahl_api_wahlabend_stichwahl_get",
+        "parameters": [
+          {
+            "description": "gesetzt = Generalprobe mit den Zahlen des ersten Wahlgangs",
+            "in": "query",
+            "name": "probe",
+            "required": false,
+            "schema": {
+              "description": "gesetzt = Generalprobe mit den Zahlen des ersten Wahlgangs",
+              "title": "Probe",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "Generalprobe: nur die ersten N Wahlbezirke ausgezählt",
+            "in": "query",
+            "name": "counted",
+            "required": false,
+            "schema": {
+              "description": "Generalprobe: nur die ersten N Wahlbezirke ausgezählt",
+              "maximum": 133,
+              "minimum": 0,
+              "title": "Counted",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MayorNight"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stichwahl",
+        "tags": [
+          "wahlabend"
         ]
       }
     }

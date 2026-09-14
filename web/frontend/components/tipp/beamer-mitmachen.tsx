@@ -15,23 +15,25 @@ import { apiUrl } from "@/lib/api";
 import type { ApiAntwort } from "@/lib/vertrag";
 import { BrandMark } from "@/components/brand";
 import { Lotti } from "@/components/lotti";
-import { uhrzeitKurz } from "@/lib/tipp";
+import { kurzesDatum, mitRunde, uhrzeitKurz } from "@/lib/tipp";
 
 type PredictionGame = ApiAntwort<"/tipp/setup">;
 
-export function BeamerMitmachen({ game, tipCount }: { game: PredictionGame; tipCount: number }) {
+export function BeamerMitmachen({ game, tipCount, runde }: { game: PredictionGame; tipCount: number; runde: string | null }) {
   const schluss = uhrzeitKurz(game.locked_at);
+  // Der Link, den der Raum sieht — samt Runde, denn der QR-Code zeigt dorthin.
+  const link = `ratslotse.de${mitRunde("/tipp", runde, "runde")}`;
   return (
     <div className="grid h-full grid-cols-[1fr_620px] gap-20 px-[120px] py-24 text-foreground">
       <div className="flex flex-col justify-center">
         <div className="flex items-center gap-[18px]">
           <BrandMark className="h-14 w-14" />
           <span className="font-display text-[36px] font-bold tracking-[-0.02em]">Ratslotse</span>
-          <span className="border-l-2 border-border pl-[18px] text-[28px] text-muted-foreground">Wahlabend 13.09.2026</span>
+          <span className="border-l-2 border-border pl-[18px] text-[28px] text-muted-foreground">Wahlabend {kurzesDatum(game.election_date)}</span>
         </div>
-        <p className="mt-14 font-mono text-[26px] uppercase tracking-[0.11em] text-signal">Tippspiel</p>
+        <p className="mt-14 font-mono text-[26px] uppercase tracking-[0.11em] text-signal">{game.listed ? "Tippspiel" : game.title}</p>
         <h1 className="mt-3.5 text-balance font-display text-[104px] font-bold leading-none tracking-[-0.03em]">
-          Wie geht die Ratswahl aus?
+          Wie geht die {game.election_title} aus?
         </h1>
         <p className="mt-[34px] max-w-[26ch] text-[36px] leading-[1.4] text-foreground/80">
           {game.seats_total} Sitze, {game.parties.length} Wahllisten. Tippe, wie die Wahl ausgeht. Mitmachen ohne Konto.
@@ -62,9 +64,9 @@ export function BeamerMitmachen({ game, tipCount }: { game: PredictionGame; tipC
       <div className="flex flex-col items-center justify-center gap-[34px]">
         <div className="h-[560px] w-[560px] rounded-[32px] bg-white p-[34px]">
           {/* eslint-disable-next-line @next/next/no-img-element -- externes PNG vom Backend, kein next/image-Fall */}
-          <img src={apiUrl("/tipp/qr.png")} alt="QR-Code zum Tippspiel" width={492} height={492} className="h-full w-full" />
+          <img src={apiUrl(mitRunde("/tipp/qr.png", runde))} alt="QR-Code zum Tippspiel" width={492} height={492} className="h-full w-full" />
         </div>
-        <p className="font-mono text-[40px] text-primary">ratslotse.de/tipp</p>
+        <p className={runde ? "font-mono text-[30px] text-primary" : "font-mono text-[40px] text-primary"}>{link}</p>
       </div>
     </div>
   );

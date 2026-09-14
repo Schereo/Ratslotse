@@ -175,9 +175,10 @@ JOBS: list[dict] = [
     {
         "key": "check_herzschlag",
         "label": "Herzschlag",
-        "description": "Meldet Jobs, die nicht mehr laufen, und einen vollen Datenträger. "
-                       "Ein Job, der gar nicht startet, stürzt auch nicht ab — "
-                       "ohne diese Prüfung fällt sein Schweigen niemandem auf.",
+        "description": "Meldet Jobs, die nicht mehr laufen, einen vollen Datenträger "
+                       "und auffällige Registrierungen. Ein Job, der gar nicht startet, "
+                       "stürzt auch nicht ab — und Konten, die ihre Adresse nie "
+                       "bestätigen, lösen keine einzige Mail aus.",
         "schedule": "täglich 6:30 Uhr",
         "max_age_h": 30,
     },

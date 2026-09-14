@@ -13,10 +13,9 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { BrandMark } from "@/components/brand";
 import { Mascot } from "@/components/mascot";
-import { WebThemeSwitch } from "@/components/web-theme-switch";
 import { Halbkreis } from "@/components/wahlabend/halbkreis";
+import { Kopf } from "@/components/wahlabend/kopf";
 import { Mehrheiten } from "@/components/wahlabend/mehrheiten";
 import { Verlauf } from "@/components/wahlabend/verlauf";
 import { useFrisch, useTween } from "@/lib/use-tween";
@@ -25,9 +24,12 @@ import { api, apiUrl } from "@/lib/api";
 import { useAppConfig, useFeature } from "@/lib/features";
 import { cn } from "@/lib/utils";
 import {
+  datumLang,
   LISTE_SPEICHER,
   abfragePfad,
   bildPfad,
+  kartePfad,
+  type KartenFormat,
   delta,
   fortschritt,
   kandidatenStatus,
@@ -58,28 +60,6 @@ const TON: Record<StatusTon, string> = {
 
 /* ── Kopf & Fuß ─────────────────────────────────────────────────────────── */
 
-function Kopf() {
-  return (
-    <header className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur">
-      <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+0.75rem)] sm:px-6 lg:px-10">
-        <div className="flex min-w-0 items-center gap-2.5">
-          <Link href="/" className="flex flex-none items-center gap-2.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-            <BrandMark className="h-[30px] w-[30px]" />
-            <span className="font-display text-[17px] font-bold tracking-tight text-foreground">Ratslotse</span>
-          </Link>
-          <span className="truncate border-l border-border pl-2.5 text-[13px] text-muted-foreground">Wahlabend 2026</span>
-        </div>
-        <div className="flex flex-none items-center gap-3 sm:gap-4">
-          <WebThemeSwitch />
-          <Link href="/" className="hidden text-[13px] font-medium text-primary sm:inline">
-            ← Zurück zu Ratslotse
-          </Link>
-        </div>
-      </div>
-    </header>
-  );
-}
-
 function Fuss({ daten }: { daten: Wahlabend | undefined }) {
   return (
     <footer className="mt-10 border-t border-border pt-4 text-[12.5px] leading-relaxed text-muted-foreground">
@@ -99,10 +79,113 @@ function Fuss({ daten }: { daten: Wahlabend | undefined }) {
         <strong className="font-semibold text-foreground">Unsere Rechnung:</strong> Die Sitze folgen dem Verfahren des
         Niedersächsischen Kommunalwahlgesetzes (§§ 36, 37 — dreimal Hare/Niemeyer: Listen, Wahlbereiche, dann Listen-
         gegen Personensitze). Gegen das amtliche Ergebnis von 2021 geprüft, alle 50 Mandate. Die Hochrechnung setzt für
-        jeden offenen Wahlbezirk sein Ergebnis von 2021 an, skaliert mit dem Trend der schon ausgezählten Bezirke im
+        jeden offenen Wahlbezirk sein Ergebnis von {daten?.election.previous_label ?? "der Vorwahl"} an, skaliert mit dem Trend der schon ausgezählten Bezirke im
         selben Wahlbereich. Kein amtliches Ergebnis — das stellt der Wahlausschuss fest.
       </p>
     </footer>
+  );
+}
+
+/* ── Karten zum Teilen ──────────────────────────────────────────────────── */
+
+/** Die Auswahl „Beitrag · Story“ (und quer, wo Platz ist) für eine Karte. */
+function KartenLinks({
+  liste,
+  bereich,
+  platz,
+  probe,
+  counted,
+  stadtweit = false,
+  name,
+  vorwahl,
+}: {
+  liste: string;
+  bereich: number | null;
+  platz: number | null;
+  probe: string | null;
+  counted: string | null;
+  /** Die Listenkarte: dazu das Querformat und der Schalter für den Vergleich
+   *  zur Vorwahl. */
+  stadtweit?: boolean;
+  name: string;
+  /** Wie die Vorwahl heißt („2021") — leer, wenn es keine gibt. */
+  vorwahl: string;
+}) {
+  const [vergleich, setVergleich] = useState(true);
+  const formate: { format: KartenFormat; label: string }[] = [
+    { format: "beitrag", label: "Beitrag" },
+    { format: "story", label: "Story" },
+    ...(stadtweit ? [{ format: "quer" as const, label: "quer" }] : []),
+  ];
+  return (
+    <span className="inline-flex flex-wrap items-center gap-x-1.5">
+      <span>Bild zum Teilen:</span>
+      {formate.map((f, i) => (
+        <span key={f.format}>
+          {i > 0 ? <span className="mr-1.5 text-muted-foreground">·</span> : null}
+          <a
+            href={apiUrl(kartePfad(liste, bereich, platz, f.format, probe, counted, vergleich))}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-primary"
+            aria-label={`${name}: Bild zum Teilen als ${f.label} ↗`}
+          >
+            {f.label} ↗
+          </a>
+        </span>
+      ))}
+      {stadtweit && vorwahl ? (
+        <label className="ml-2 inline-flex cursor-pointer items-center gap-1.5 text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={vergleich}
+            onChange={(e) => setVergleich(e.target.checked)}
+            className="h-3.5 w-3.5 accent-primary"
+          />
+          mit Vergleich zu {vorwahl}
+        </label>
+      ) : null}
+    </span>
+  );
+}
+
+/** Die Stichwahl ist die Frage, die nach der Ratswahl offen blieb — auf DIESER
+ *  Seite steht sie nicht, also gehört hier ein Weg dorthin. Ohne Datum im
+ *  Code: Es kommt aus der Antwort der Stichwahl-Seite. */
+function StichwahlHinweis() {
+  return (
+    <section className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl border border-border bg-muted/40 px-4 py-2.5 text-[13px]">
+      <span className={cn(KICKER, "text-foreground")}>Am 27. September</span>
+      <span>
+        Beim Oberbürgermeisteramt hat niemand die absolute Mehrheit erreicht — es gibt eine{" "}
+        <Link href="/wahlabend/stichwahl" className="font-medium text-primary">
+          Stichwahl
+        </Link>
+        .
+      </span>
+    </section>
+  );
+}
+
+/** Der Hinweis, dass es die Karten neu gibt — mit festem Platz unter der
+ *  Anzeigetafel, nicht wegklickbar, nicht aufdringlich: Wer die Seite am
+ *  Wahlabend schon kannte, soll sehen, was dazugekommen ist. */
+function NeuKarten({ liste }: { liste: string | null }) {
+  return (
+    <section className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl border border-primary/16 bg-primary/5 px-4 py-2.5 text-[13px]">
+      <span className="rounded-md bg-primary px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-primary-foreground">
+        Neu
+      </span>
+      <span>
+        <strong className="font-semibold">Ein Bild zum Teilen für jede Liste, jeden Wahlbereich und jede Person</strong> — als
+        Beitrag (4:5) oder Story (9:16), mit Lotti und einem Danke an die Wählenden.{" "}
+        {liste ? (
+          <span className="text-muted-foreground">Die Links stehen unten neben der Liste, an jedem Wahlbereich und an jeder Person.</span>
+        ) : (
+          <span className="text-muted-foreground">Wähle unten eine Liste, dann stehen die Links neben der Liste, an jedem Wahlbereich und an jeder Person.</span>
+        )}
+      </span>
+    </section>
   );
 }
 
@@ -134,7 +217,7 @@ function Tafel({
   abfrageFehler: boolean;
 }) {
   const p = daten.progress;
-  const zeit = useWahlabendZeit();
+  const zeit = useWahlabendZeit(daten.election.polls_close);
   const beteiligung = useTween(daten.totals.turnout_pct);
   const gueltig = useTween(daten.totals.valid_votes);
   const bild = apiUrl(bildPfad(daten.phase === "counting" ? "projected_seats" : "seats", probe, counted));
@@ -151,7 +234,7 @@ function Tafel({
       <div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-5">
         <div className="min-w-0 flex-1">
           <p className={KICKER}>
-            Ratswahl Oldenburg · 13. September 2026 ·{" "}
+            {daten.election.short_title} · {datumLang(daten.election.date)} ·{" "}
             <span suppressHydrationWarning>{daten.dataset === "probe" ? "Generalprobe" : zeit.kicker}</span>
           </p>
           <h1 className="mt-1 font-display text-[28px] font-bold leading-none tracking-tight sm:text-[32px]">Wahlabend</h1>
@@ -242,6 +325,7 @@ function ListenZeile({
   phase,
   aktiv,
   waehle,
+  vorwahl,
 }: {
   p: WahlabendPartei;
   max: number;
@@ -249,6 +333,7 @@ function ListenZeile({
   phase: string;
   aktiv: boolean;
   waehle: (slug: string) => void;
+  vorwahl: string;
 }) {
   const anteil = useTween(p.share_pct);
   return (
@@ -276,7 +361,7 @@ function ListenZeile({
           <span className="w-[4.2rem] text-right text-[13px] tabular-nums">{prozent(anteil)}</span>
         </span>
         <span className="hidden w-12 text-right font-mono text-[10.5px] text-signal sm:inline tabular-nums">
-          {delta(p.share_pct, p.share_2021_pct) ?? ""}
+          {delta(p.share_pct, p.share_previous_pct) ?? ""}
         </span>
         <span className="text-right text-[12.5px] tabular-nums text-muted-foreground">
           {zaehlt ? (
@@ -287,7 +372,7 @@ function ListenZeile({
           ) : (
             "–"
           )}
-          <span className="hidden sm:inline"> · 2021: {p.seats_2021 ?? 0}</span>
+          {vorwahl ? <span className="hidden sm:inline"> · {vorwahl}: {p.seats_previous ?? 0}</span> : null}
         </span>
       </button>
     </li>
@@ -295,6 +380,7 @@ function ListenZeile({
 }
 
 function ListenTafel({ daten, liste, waehle }: { daten: Wahlabend; liste: string | null; waehle: (slug: string) => void }) {
+  const vorwahl = daten.election.previous_label;
   const sortiert = nachStimmen(daten.parties);
   const max = Math.max(1, ...daten.parties.map((p) => p.share_pct ?? 0));
   const zaehlt = daten.phase !== "before";
@@ -302,15 +388,16 @@ function ListenTafel({ daten, liste, waehle }: { daten: Wahlabend; liste: string
     <section className="mt-6">
       <div className="flex items-baseline justify-between gap-3">
         <h2 className="font-display text-[16px] font-bold tracking-tight">Alle Listen stadtweit</h2>
-        <span className={cn(KICKER, "hidden sm:inline")}>Anteil · Sitze Stand → Hochrechnung · 2021</span>
+        <span className={cn(KICKER, "hidden sm:inline")}>Anteil · Sitze Stand → Hochrechnung{vorwahl ? ` · ${vorwahl}` : ""}</span>
       </div>
       <ol className="mt-3 rounded-2xl border border-border bg-card p-2 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
         {sortiert.map((p) => (
-          <ListenZeile key={p.slug} p={p} max={max} zaehlt={zaehlt} phase={daten.phase} aktiv={liste === p.slug} waehle={waehle} />
+          <ListenZeile key={p.slug} p={p} max={max} zaehlt={zaehlt} phase={daten.phase} aktiv={liste === p.slug} waehle={waehle} vorwahl={vorwahl} />
         ))}
       </ol>
       <p className="mt-2 text-[11.5px] text-muted-foreground">
-        Antippen wählt die Liste für die Wahlbereiche unten. Der Abstand in Punkten vergleicht mit dem Ergebnis von 2021.
+        Antippen wählt die Liste für die Wahlbereiche unten.
+        {vorwahl ? ` Der Abstand in Punkten vergleicht mit dem Ergebnis von ${vorwahl}.` : ""}
       </p>
     </section>
   );
@@ -327,13 +414,17 @@ function Sitzbild({ daten }: { daten: Wahlabend }) {
   );
 }
 
-/** Gewinne und Verluste gegenüber 2021 in Prozentpunkten — Deltas tragen
- *  Signal-Orange (Designsprache), Flächen bleiben neutral. */
+/** Gewinne und Verluste gegenüber der Vorwahl in Prozentpunkten — Deltas
+ *  tragen Signal-Orange (Designsprache), Flächen bleiben neutral.
+ *
+ *  Wie die Vorwahl heißt, steht in der Antwort (`election.previous_label`);
+ *  bis 09/2026 stand „2021" hier als Literal. */
 function GewinneVerluste({ daten }: { daten: Wahlabend }) {
-  if (daten.phase === "before") return null;
+  const vorwahl = daten.election.previous_label;
+  if (daten.phase === "before" || !vorwahl) return null;
   const zeilen = daten.parties
-    .filter((p) => p.share_pct !== null && p.share_2021_pct !== null)
-    .map((p) => ({ p, d: (p.share_pct ?? 0) - (p.share_2021_pct ?? 0) }))
+    .filter((p) => p.share_pct !== null && p.share_previous_pct !== null)
+    .map((p) => ({ p, d: (p.share_pct ?? 0) - (p.share_previous_pct ?? 0) }))
     .sort((a, b) => b.d - a.d);
   if (!zeilen.length) return null;
   const max = Math.max(0.5, ...zeilen.map((z) => Math.abs(z.d)));
@@ -341,7 +432,7 @@ function GewinneVerluste({ daten }: { daten: Wahlabend }) {
     <section className="rounded-2xl border border-border bg-card p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
       <div className="flex items-baseline justify-between gap-3">
         <h2 className="font-display text-[16px] font-bold tracking-tight">Gewinne und Verluste</h2>
-        <span className={KICKER}>Punkte gegenüber 2021</span>
+        <span className={KICKER}>Punkte gegenüber {vorwahl}</span>
       </div>
       <ol className="mt-3 space-y-1.5">
         {zeilen.map(({ p, d }) => (
@@ -361,11 +452,11 @@ function GewinneVerluste({ daten }: { daten: Wahlabend }) {
                 }
               />
             </span>
-            <span className="text-right font-mono text-[11px] tabular-nums text-signal">{delta(p.share_pct, p.share_2021_pct)}</span>
+            <span className="text-right font-mono text-[11px] tabular-nums text-signal">{delta(p.share_pct, p.share_previous_pct)}</span>
           </li>
         ))}
       </ol>
-      <p className="mt-2 text-[11px] text-muted-foreground">Listen ohne Antritt 2021 fehlen hier; sie stehen oben mit „–".</p>
+      <p className="mt-2 text-[11px] text-muted-foreground">Listen ohne Antritt {vorwahl} fehlen hier; sie stehen oben mit „–".</p>
     </section>
   );
 }
@@ -443,6 +534,7 @@ function KandidatZeile({
   rang,
   status,
   hochrechnung,
+  bild,
 }: {
   k: WahlabendKandidat;
   max: number;
@@ -450,6 +542,7 @@ function KandidatZeile({
   rang: number;
   status: { ton: StatusTon; text: string };
   hochrechnung: boolean;
+  bild: { liste: string; bereich: number; probe: string | null; counted: string | null; vorwahl: string } | null;
 }) {
   const stimmen = useTween(k.votes);
   const breite = stimmen === null || max <= 0 ? 0 : Math.max(1.5, (100 * stimmen) / max);
@@ -474,18 +567,35 @@ function KandidatZeile({
           </span>
         ) : null}
         <span className={cn("mt-1 inline-block rounded-full px-2 py-0.5 text-[10.5px] font-semibold", TON[status.ton])}>{status.text}</span>
+        {bild ? (
+          <span className="mt-1 block text-[10.5px] text-muted-foreground">
+            <KartenLinks liste={bild.liste} bereich={bild.bereich} platz={k.position} probe={bild.probe} counted={bild.counted} name={k.name} vorwahl={bild.vorwahl} />
+          </span>
+        ) : null}
       </span>
       <span className="flex-none text-right">
         <span className="block text-[13px] font-semibold tabular-nums">{zahl(stimmen === null ? null : Math.round(stimmen))}</span>
         {hochrechnung && k.projected_votes !== null ? (
-          <span className="block text-[10.5px] text-muted-foreground tabular-nums">→ {zahl(k.projected_votes)}</span>
+          <span className="block text-[10.5px] text-muted-foreground tabular-nums" title="Hochrechnung: Personenstimmen am Ende der Auszählung">Hochr. → {zahl(k.projected_votes)}</span>
         ) : null}
       </span>
     </li>
   );
 }
 
-function BereichKarte({ bereich, slug, daten }: { bereich: WahlabendBereich; slug: string; daten: Wahlabend }) {
+function BereichKarte({
+  bereich,
+  slug,
+  daten,
+  probe,
+  counted,
+}: {
+  bereich: WahlabendBereich;
+  slug: string;
+  daten: Wahlabend;
+  probe: string | null;
+  counted: string | null;
+}) {
   const eintrag = bereich.parties.find((p) => p.slug === slug);
   const zaehlt = daten.phase !== "before" && bereich.districts_counted > 0;
   const frisch = useFrisch(bereich.districts_counted);
@@ -493,6 +603,7 @@ function BereichKarte({ bereich, slug, daten }: { bereich: WahlabendBereich; slu
   const stimmen = useTween(eintrag?.votes);
   const max = Math.max(0, ...(eintrag?.candidates ?? []).map((k) => k.votes ?? 0));
   const grenze = eintrag ? sitzgrenze(eintrag.candidates) : null;
+  const teilbar = zaehlt && !!eintrag;
   return (
     <article
       className={cn(
@@ -538,6 +649,7 @@ function BereichKarte({ bereich, slug, daten }: { bereich: WahlabendBereich; slu
                 rang={i}
                 status={kandidatenStatus(k, daten.phase, daten.person_votes_available, bereich.districts_counted > 0)}
                 hochrechnung={daten.phase === "counting"}
+                bild={teilbar && k.votes !== null ? { liste: slug, bereich: bereich.number, probe, counted, vorwahl: daten.election.previous_label } : null}
               />
             ))}
           </ol>
@@ -545,6 +657,11 @@ function BereichKarte({ bereich, slug, daten }: { bereich: WahlabendBereich; slu
             <p className="mt-2 text-[11px] text-muted-foreground">
               Liste {zahl(eintrag.list_votes)} · Personen {zahl(eintrag.candidate_votes)}
               {grenze !== null ? <> · Marke: Sitzgrenze bei {zahl(grenze)}</> : null}
+            </p>
+          ) : null}
+          {teilbar ? (
+            <p className="mt-1.5 text-[11px] text-muted-foreground">
+              <KartenLinks liste={slug} bereich={bereich.number} platz={null} probe={probe} counted={counted} name={`Wahlbereich ${bereich.roman}`} vorwahl={daten.election.previous_label} />
             </p>
           ) : null}
         </>
@@ -555,10 +672,11 @@ function BereichKarte({ bereich, slug, daten }: { bereich: WahlabendBereich; slu
   );
 }
 
-function Bereiche({ daten, liste }: { daten: Wahlabend; liste: string | null }) {
+function Bereiche({ daten, liste, probe, counted }: { daten: Wahlabend; liste: string | null; probe: string | null; counted: string | null }) {
   if (!liste) return null;
   const partei = daten.parties.find((p) => p.slug === liste);
   if (!partei) return null;
+  const karte = daten.phase !== "before";
   return (
     <section className="mt-5 @container">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
@@ -574,9 +692,16 @@ function Bereiche({ daten, liste }: { daten: Wahlabend; liste: string | null }) 
           </p>
         ) : null}
       </div>
+      {karte ? (
+        <p className="mt-1 text-[12.5px] text-muted-foreground">
+          <KartenLinks liste={liste} bereich={null} platz={null} probe={probe} counted={counted} stadtweit name={partei.short} vorwahl={daten.election.previous_label} />
+        </p>
+      ) : null}
+      <div>
+      </div>
       <div className="mt-3 grid gap-4 @3xl:grid-cols-2 @6xl:grid-cols-3">
         {daten.areas.map((b) => (
-          <BereichKarte key={b.number} bereich={b} slug={liste} daten={daten} />
+          <BereichKarte key={b.number} bereich={b} slug={liste} daten={daten} probe={probe} counted={counted} />
         ))}
       </div>
     </section>
@@ -629,6 +754,9 @@ export function WahlabendView() {
   const counted = params.get("counted");
   const schalterAn = useFeature("wahlabend");
   const config = useAppConfig();
+  // Ohne Argument: der Termin aus `/api/app-config`. Hier ist die Antwort des
+  // Wahlabends noch nicht da — und genau dieser Wert entscheidet, ob sie
+  // überhaupt jede Minute geholt wird.
   const zeit = useWahlabendZeit();
   // Bis Sonntag 18 Uhr gibt es nichts nachzufragen — der Minutentakt beginnt
   // mit dem Wahlabend (Tims Wunsch: eine Woche Polling wäre Overkill).
@@ -689,7 +817,7 @@ export function WahlabendView() {
       <Hinweisbild
         pose="sleep"
         titel="Der Wahlabend ist noch nicht freigeschaltet"
-        text="Am 13. September 2026 ab 18 Uhr zeigt diese Seite den Auszählungsstand der Ratswahl Oldenburg — live, nachgerechnet, je Wahlbereich."
+        text={`${zeit.wann} zeigt diese Seite den Auszählungsstand — live, nachgerechnet, je Wahlbereich.`}
       />
     );
   } else if (abfrage.isError && !daten) {
@@ -707,15 +835,18 @@ export function WahlabendView() {
       <>
         {daten.dataset === "probe" ? (
           <p className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-[13px] text-amber-900 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-100">
-            <strong className="font-semibold">Generalprobe.</strong> Die Zahlen sind die der Ratswahl 2021, die Listen und Namen die
-            von 2026. Nichts davon ist ein Ergebnis vom 13. September.
+            <strong className="font-semibold">Generalprobe.</strong> Die Zahlen sind die der Ratswahl{" "}
+            {daten.election.previous_label || "der Vorwahl"}, die Listen und Namen die von heute. Nichts davon ist
+            ein Ergebnis dieser Wahl.
           </p>
         ) : null}
         <Tafel daten={daten} aktualisiert={abfrage.dataUpdatedAt} probe={probe} counted={counted} abfrageFehler={abfrage.isError} />
+        <StichwahlHinweis />
+        {daten.phase !== "before" ? <NeuKarten liste={liste} /> : null}
         <Vorbehalt daten={daten} />
         {daten.phase === "before" && daten.dataset === "live" ? (
           <p className="mt-4 text-[13.5px] leading-relaxed text-muted-foreground">
-            Gewählt wird am Sonntag, 13. September, die Wahllokale schließen um 18 Uhr. Die ersten Wahlbezirke melden
+            Gewählt wird am {datumLang(daten.election.date)}, die Wahllokale schließen um 18 Uhr. Die ersten Wahlbezirke melden
             erfahrungsgemäß gegen 20 Uhr; 2021 lag das vorläufige Ergebnis der Ratswahl am Montagmorgen vor. Die Seite
             aktualisiert sich dann von selbst — bis dahin zeigt sie die Listen und Kandidat*innen ohne Zahlen.
           </p>
@@ -725,7 +856,7 @@ export function WahlabendView() {
         <MehrheitenBlock daten={daten} />
         <Verlauf daten={daten} liste={liste} />
         <ListenWahl parteien={daten.parties} liste={liste} waehle={waehle} />
-        <Bereiche daten={daten} liste={liste} />
+        <Bereiche daten={daten} liste={liste} probe={probe} counted={counted} />
         <Mandate daten={daten} />
       </>
     );
@@ -733,7 +864,7 @@ export function WahlabendView() {
 
   return (
     <>
-      <Kopf />
+      <Kopf label="Wahlabend 2026" />
       <main className="mx-auto w-full max-w-7xl px-4 pb-16 sm:px-6 lg:px-10 @container">
         {inhalt}
         <Fuss daten={daten} />
