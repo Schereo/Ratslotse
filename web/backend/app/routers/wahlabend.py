@@ -4,8 +4,8 @@
 Feature-Schalter ``wahlabend``: Ohne ihn antwortet der Endpunkt 404, damit die
 Seite bis zum Wahlabend dunkel bleiben kann und danach ohne Deploy wieder.
 
-``?probe=2021`` liefert die Generalprobe (Zahlen von 2021 im Register von
-2026), ``&counted=N`` davon nur die ersten N Wahlbezirke ausgezählt.
+``?probe=1`` liefert die Generalprobe (Zahlen der Vorwahl im heutigen
+Register), ``&counted=N`` davon nur die ersten N Wahlbezirke ausgezählt.
 
 Dazu ``GET /api/wahlabend/bild.png``: derselbe Stand als teilbares Bild —
 und ``GET /api/wahlabend/karte.png?list=…[&area=…[&position=…]]``: die
@@ -47,12 +47,19 @@ def _frei() -> None:
 
 
 def _stand(probe: str | None, counted: int | None) -> ElectionNight:
-    return service.probe(counted) if probe == "2021" else service.live()
+    """Generalprobe oder Abruf.
+
+    Jeder nicht-leere Wert schaltet die Probe ein — bis 09/2026 musste dort
+    genau ``2021`` stehen. Das war der Name der Vorwahl im Parameter, und bei
+    der nächsten Kommunalwahl hätte ihn niemand mehr erraten. Alte Links mit
+    ``?probe=2021`` funktionieren unverändert weiter.
+    """
+    return service.probe(counted) if probe else service.live()
 
 
 @router.get("/api/wahlabend")
 def wahlabend(
-    probe: str | None = Query(default=None, description="„2021“ = Generalprobe mit den Zahlen von 2021"),
+    probe: str | None = Query(default=None, description="gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)"),
     counted: int | None = Query(default=None, ge=0, le=500, description="Generalprobe: nur die ersten N Wahlbezirke ausgezählt"),
 ) -> ElectionNight:
     _frei()
@@ -109,7 +116,7 @@ def _gewaehlt(stand: mayor.MayorResult) -> str | None:
 
 
 @router.get("/api/wahlabend/ob")
-def ob_wahl(probe: str | None = Query(default=None, description="gesetzt = Generalprobe mit den Zahlen von 2021"),
+def ob_wahl(probe: str | None = Query(default=None, description="gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)"),
             counted: int | None = Query(default=None, ge=0, le=133,
                                         description="Generalprobe: nur die ersten N Wahlbezirke ausgezählt")) -> MayorNight:
     """Die OB-Wahl für sich — hinter dem Schalter ``wahlabend`` (nicht
@@ -147,7 +154,7 @@ def stichwahl(probe: str | None = Query(default=None, description="gesetzt = Gen
 def wahlabend_bild(
     feld: str | None = Query(default=None, pattern="^(seats|projected_seats)$",
                              description="„seats“ = ausgezählter Stand, „projected_seats“ = Hochrechnung; Vorgabe je Phase"),
-    probe: str | None = Query(default=None, description="„2021“ = Generalprobe mit den Zahlen von 2021"),
+    probe: str | None = Query(default=None, description="gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)"),
     counted: int | None = Query(default=None, ge=0, le=500, description="Generalprobe: nur die ersten N Wahlbezirke ausgezählt"),
 ) -> Response:
     """Der Stand als Bild zum Teilen (PNG, 1200×630) — öffentlich wie die
@@ -196,8 +203,8 @@ def wahlabend_karte(
     position: int | None = Query(default=None, ge=1, le=99, description="Listenplatz im Wahlbereich: die Person"),
     format: str = Query(default="beitrag", pattern="^(beitrag|story|quer)$",
                         description="„beitrag“ = 1080×1350 (4:5), „story“ = 1080×1920 (9:16), „quer“ = 1200×630"),
-    compare: bool = Query(default=True, description="false = ohne den Abstand zu 2021 (Listenkarte)"),
-    probe: str | None = Query(default=None, description="„2021“ = Generalprobe mit den Zahlen von 2021"),
+    compare: bool = Query(default=True, description="false = ohne den Abstand zur Vorwahl (Listenkarte)"),
+    probe: str | None = Query(default=None, description="gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)"),
     counted: int | None = Query(default=None, ge=0, le=500, description="Generalprobe: nur die ersten N Wahlbezirke ausgezählt"),
 ) -> Response:
     """Die Karte zum Teilen (PNG): wie eine Liste, eine Liste im Wahlbereich

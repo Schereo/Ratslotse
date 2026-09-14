@@ -3691,6 +3691,10 @@ class ElectionInfo(TypedDict):
     seats: int
     title: str
     presentation_url: str
+    #: Name der Vergleichswahl für ``seats_previous``/``share_previous_pct“ —
+    #: „2021" bei der Ratswahl 2026. Leer, wenn es keine Vorwahl gibt; dann
+    #: zeigen beide Seiten den Vergleich gar nicht.
+    previous_label: str
 
 
 class ElectionSource(TypedDict):
@@ -3765,8 +3769,12 @@ class ElectionParty(TypedDict):
     share_pct: float | None
     seats: int | None
     projected_seats: int | None
-    seats_2021: int | None
-    share_2021_pct: float | None
+    #: Sitze und Anteil derselben Liste bei der VORWAHL — wie die heißt, sagt
+    #: ``ElectionInfo.previous_label``. Hieß bis 09/2026 ``seats_2021`` /
+    #: ``share_2021_pct``: ein Jahr im Feldnamen, das bei der nächsten Wahl
+    #: nicht mehr stimmt und das kein Client umbenennen kann.
+    seats_previous: int | None
+    share_previous_pct: float | None
     #: Stufe 1 (stadtweit): Stimmen bis zum nächsten Sitz bzw. bis zum
     #: Verlust eines Sitzes. ``None`` = nicht erreichbar / kein Sitz.
     votes_to_next_seat: int | None
@@ -3886,7 +3894,9 @@ class PredictionParty(TypedDict):
     name: str
     color: str
     color_dark: str
-    seats_2021: int | None
+    #: Sitze dieser Liste bei der Vorwahl; ``PredictionGame.previous_label``
+    #: sagt, welche das ist.
+    seats_previous: int | None
 
 
 class PredictionMayorCandidate(TypedDict):
@@ -3906,6 +3916,9 @@ class PredictionGame(TypedDict):
     #: "open" (Tippen offen) | "locked" (Tipp-Schluss erreicht) | "final" (Endstand).
     phase: str
     seats_total: int
+    #: Name der Vergleichswahl für ``PredictionParty.seats_previous``
+    #: („2021"); leer, wenn es keine gibt.
+    previous_label: str
     locked: bool
     locked_at: str | None
     late_scored: bool

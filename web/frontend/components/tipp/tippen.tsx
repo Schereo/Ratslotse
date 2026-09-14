@@ -46,10 +46,10 @@ export function Tippen({ setup, meins, runde, onGespeichert, onZurueck }: {
   onZurueck?: () => void;
 }) {
   // Ein neuer Tipp fängt bei NULL an — alle Sitze werden selbst verteilt.
-  // Bis 13.09.2026 stand hier die Verteilung von 2021 als Vorschlag; wer
+  // Bis 13.09.2026 stand hier die Verteilung der Vorwahl als Vorschlag; wer
   // nur „Tipp abgeben" drückte, tippte damit unbemerkt das letzte Ergebnis
   // nach (Tims Befund). Ein Tipp soll eine Entscheidung sein, kein
-  // Bestätigen. Die 2021er Zahl steht weiter unter jeder Liste — als
+  // Bestätigen. Die Zahl der Vorwahl steht weiter unter jeder Liste — als
   // Anhaltspunkt, nicht als Vorgabe.
   const [seats, setSeats] = useState<Record<string, number>>(() =>
     meins.has_tip
@@ -172,7 +172,9 @@ export function Tippen({ setup, meins, runde, onGespeichert, onZurueck }: {
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold leading-tight">{p.short}</p>
               <p className="text-[11px] text-muted-foreground">
-                {p.seats_2021 !== null ? `2021: ${p.seats_2021}` : "neu 2026"}
+                {p.seats_previous !== null && setup.previous_label
+                  ? `${setup.previous_label}: ${p.seats_previous}`
+                  : "neu angetreten"}
               </p>
             </div>
             <button

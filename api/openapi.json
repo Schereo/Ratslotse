@@ -7578,6 +7578,10 @@
             "title": "Presentation Url",
             "type": "string"
           },
+          "previous_label": {
+            "title": "Previous Label",
+            "type": "string"
+          },
           "seats": {
             "title": "Seats",
             "type": "integer"
@@ -7591,7 +7595,8 @@
           "date",
           "seats",
           "title",
-          "presentation_url"
+          "presentation_url",
+          "previous_label"
         ],
         "title": "ElectionInfo",
         "type": "object"
@@ -7775,22 +7780,22 @@
               "null"
             ]
           },
-          "seats_2021": {
-            "title": "Seats 2021",
+          "seats_previous": {
+            "title": "Seats Previous",
             "type": [
               "integer",
               "null"
             ]
           },
-          "share_2021_pct": {
-            "title": "Share 2021 Pct",
+          "share_pct": {
+            "title": "Share Pct",
             "type": [
               "number",
               "null"
             ]
           },
-          "share_pct": {
-            "title": "Share Pct",
+          "share_previous_pct": {
+            "title": "Share Previous Pct",
             "type": [
               "number",
               "null"
@@ -7839,8 +7844,8 @@
           "share_pct",
           "seats",
           "projected_seats",
-          "seats_2021",
-          "share_2021_pct",
+          "seats_previous",
+          "share_previous_pct",
           "votes_to_next_seat",
           "votes_to_lose_seat"
         ],
@@ -12156,6 +12161,10 @@
             "title": "Player Count",
             "type": "integer"
           },
+          "previous_label": {
+            "title": "Previous Label",
+            "type": "string"
+          },
           "round": {
             "title": "Round",
             "type": "string"
@@ -12179,6 +12188,7 @@
           "title",
           "phase",
           "seats_total",
+          "previous_label",
           "locked",
           "locked_at",
           "late_scored",
@@ -12484,8 +12494,8 @@
             "title": "Name",
             "type": "string"
           },
-          "seats_2021": {
-            "title": "Seats 2021",
+          "seats_previous": {
+            "title": "Seats Previous",
             "type": [
               "integer",
               "null"
@@ -12506,7 +12516,7 @@
           "name",
           "color",
           "color_dark",
-          "seats_2021"
+          "seats_previous"
         ],
         "title": "PredictionParty",
         "type": "object"
@@ -26624,12 +26634,12 @@
         "operationId": "wahlabend_api_wahlabend_get",
         "parameters": [
           {
-            "description": "„2021“ = Generalprobe mit den Zahlen von 2021",
+            "description": "gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)",
             "in": "query",
             "name": "probe",
             "required": false,
             "schema": {
-              "description": "„2021“ = Generalprobe mit den Zahlen von 2021",
+              "description": "gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)",
               "title": "Probe",
               "type": [
                 "string",
@@ -26703,12 +26713,12 @@
             }
           },
           {
-            "description": "„2021“ = Generalprobe mit den Zahlen von 2021",
+            "description": "gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)",
             "in": "query",
             "name": "probe",
             "required": false,
             "schema": {
-              "description": "„2021“ = Generalprobe mit den Zahlen von 2021",
+              "description": "gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)",
               "title": "Probe",
               "type": [
                 "string",
@@ -26828,24 +26838,24 @@
             }
           },
           {
-            "description": "false = ohne den Abstand zu 2021 (Listenkarte)",
+            "description": "false = ohne den Abstand zur Vorwahl (Listenkarte)",
             "in": "query",
             "name": "compare",
             "required": false,
             "schema": {
               "default": true,
-              "description": "false = ohne den Abstand zu 2021 (Listenkarte)",
+              "description": "false = ohne den Abstand zur Vorwahl (Listenkarte)",
               "title": "Compare",
               "type": "boolean"
             }
           },
           {
-            "description": "„2021“ = Generalprobe mit den Zahlen von 2021",
+            "description": "gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)",
             "in": "query",
             "name": "probe",
             "required": false,
             "schema": {
-              "description": "„2021“ = Generalprobe mit den Zahlen von 2021",
+              "description": "gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)",
               "title": "Probe",
               "type": [
                 "string",
@@ -26908,12 +26918,12 @@
         "operationId": "ob_wahl_api_wahlabend_ob_get",
         "parameters": [
           {
-            "description": "gesetzt = Generalprobe mit den Zahlen von 2021",
+            "description": "gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)",
             "in": "query",
             "name": "probe",
             "required": false,
             "schema": {
-              "description": "gesetzt = Generalprobe mit den Zahlen von 2021",
+              "description": "gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)",
               "title": "Probe",
               "type": [
                 "string",

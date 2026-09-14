@@ -63,7 +63,7 @@ from ..antworten import (
     PredictionSeatLine,
     PredictionStand,
 )
-from ..election import mayor, register
+from ..election import elections, mayor, register
 from ..election import service as election_service
 from . import scoring
 
@@ -305,17 +305,18 @@ def setup(store: Store, game_id: int) -> PredictionGame:
     runde = rounds.get(game["slug"])
     reg = _reg()
     parties = [PredictionParty(slug=p.slug, short=p.short, name=p.official, color=p.color,
-                               color_dark=p.color_dark, seats_2021=None) for p in reg.parties]
+                               color_dark=p.color_dark, seats_previous=None) for p in reg.parties]
     try:
-        ref_2021 = {p["slug"]: p.get("seats_2021") for p in election_service.live()["parties"]}
+        vorwahl = {p["slug"]: p.get("seats_previous") for p in election_service.live()["parties"]}
         for pp in parties:
-            pp["seats_2021"] = ref_2021.get(pp["slug"])
+            pp["seats_previous"] = vorwahl.get(pp["slug"])
     except Exception:
-        _log.exception("Tippspiel: 2021er Sitze für die Startverteilung nicht zu lesen.")
+        _log.exception("Tippspiel: Sitze der Vorwahl für die Startverteilung nicht zu lesen.")
     mayors = [PredictionMayorCandidate(slug=c.slug, name=c.name, party=c.party) for c in mayor.candidates()]
     return PredictionGame(
         round=game["slug"], listed=runde.listed if runde else False,
         title=game["title"], phase=game["phase"], seats_total=reg.seats,
+        previous_label=elections.active().previous_label,
         locked=game["phase"] != "open", locked_at=game["locked_at"],
         late_scored=bool(game["late_scored"]), shared_device=bool(game["shared_device"]),
         player_count=store.prediction_player_count(game_id),

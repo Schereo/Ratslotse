@@ -160,7 +160,7 @@ export function HandyRangliste({ stand, probe }: { stand: PredictionStand; probe
       </div>
       {probe && (
         <p className="mt-3 rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-center font-mono text-[10px] uppercase tracking-[0.08em] text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/15 dark:text-amber-200">
-          Generalprobe · Zahlen von 2021
+          Generalprobe · Zahlen der Vorwahl
         </p>
       )}
       {mitRang.length === 0 && (
