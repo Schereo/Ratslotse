@@ -130,3 +130,14 @@ def test_die_stichwahl_abschriften_kennen_jedes_feld(stichwahl_probe, n):
     )
     assert ist["reports_received"] == n
     assert ist["projection"]["decided"] is (n == 133)
+
+
+def test_die_stichwahl_bezirke_abschrift_kennt_jedes_feld(stichwahl_probe):
+    """Die Karte der Stichwahl (S5) mockt `/api/wahlabend/stichwahl/bezirke`
+    mit dem 60er-Stand. Wieder erzeugen wie oben, mit `r.stichwahl_bezirke`."""
+    from app.routers import wahlabend as router
+
+    ist = json.loads((FIXTURES / "stichwahl-bezirke-probe-60.json").read_text(encoding="utf-8"))
+    fehlt = _fehlt(router.stichwahl_bezirke(probe="1", counted=60), ist, "stichwahl-bezirke")
+    assert not fehlt, "Diese Felder fehlen in stichwahl-bezirke-probe-60.json:\n  " + "\n  ".join(fehlt)
+    assert ist["counted"] == 60 and ist["total"] == 133

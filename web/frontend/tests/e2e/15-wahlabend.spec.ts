@@ -342,3 +342,31 @@ test.describe("Stichwahl: Momente", () => {
     await expect(page.getByTestId("verlauf")).toContainText("1 Führungswechsel");
   });
 });
+
+/* ── Die Karte der Stichwahl (S5) ──────────────────────────────────────── */
+
+const STICHWAHL_BEZIRKE = JSON.parse(readFileSync(path.join(__dirname, "fixtures", "stichwahl-bezirke-probe-60.json"), "utf8"));
+
+test.describe("Stichwahl: Karte", () => {
+  test("91 Flächen, offene gestrichelt, ein Tipp zeigt beide Wahlgänge", async ({ page }) => {
+    await appConfig(page, ["wahlabend"]);
+    stichwahlMock(page, [60]);
+    // Später registriert = zuerst gefragt (s. wahlabendMock).
+    await page.route("**/api/wahlabend/stichwahl/bezirke*", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(STICHWAHL_BEZIRKE) }),
+    );
+    await page.goto("/wahlabend/stichwahl?probe=1");
+    const karte = page.getByTestId("stichwahl-karte");
+    await expect.poll(() => karte.locator("svg path").count()).toBe(91);
+    // 60 gezählt, davon alle Urne (die Briefwahl kommt zuletzt): 31 offen.
+    await expect.poll(() => karte.locator("svg path[data-offen]").count()).toBe(31);
+    await expect(karte).toContainText("60 von 91 Urnenbezirken gezählt");
+    await karte.locator("svg path").first().click({ force: true });
+    await expect(page.getByTestId("bezirkstafel")).toContainText("1. Wahlgang");
+    await expect(page.getByTestId("bezirkstafel")).toContainText("Stichwahl");
+    // Ein Wahlbereich heranholen: weniger Flächen, mit Nummer beschriftet.
+    await karte.getByRole("button", { name: "I", exact: true }).click();
+    await expect.poll(() => karte.locator("svg path").count()).toBeLessThan(91);
+    await expect(karte.getByText("Wahlbereich I", { exact: true })).toBeVisible();
+  });
+});

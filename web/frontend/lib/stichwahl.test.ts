@@ -180,3 +180,17 @@ describe("Momente", () => {
     expect(letzterWechsel(basis)?.leader).toBe("prange");
   });
 });
+
+describe("Karte", () => {
+  it("der Anteil eines Bezirks — erster Wahlgang oder Stichwahl, null ohne Zahlen", async () => {
+    const { bezirkAnteil, stichwahlBezirkePfad } = await import("./stichwahl");
+    const d = {
+      number: 101, name: "x", area: 1, postal: false, counted: false, eligible: 1419, voters: null, valid_votes: null,
+      votes: { prange: null, rohr: null }, first_round: { prange: 192, rohr: 258 },
+    };
+    expect(bezirkAnteil(d, "prange", "first_round")).toBe(42.7);
+    expect(bezirkAnteil(d, "prange", "votes")).toBeNull();
+    expect(stichwahlBezirkePfad("1", "60")).toBe("/wahlabend/stichwahl/bezirke?probe=1&counted=60");
+    expect(stichwahlBezirkePfad(null, "x")).toBe("/wahlabend/stichwahl/bezirke");
+  });
+});
