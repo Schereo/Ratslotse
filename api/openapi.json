@@ -11579,8 +11579,20 @@
               "null"
             ]
           },
+          "independent": {
+            "title": "Independent",
+            "type": "boolean"
+          },
           "name": {
             "title": "Name",
+            "type": "string"
+          },
+          "nominated_by": {
+            "title": "Nominated By",
+            "type": "string"
+          },
+          "note_source": {
+            "title": "Note Source",
             "type": "string"
           },
           "party": {
@@ -11598,6 +11610,13 @@
             "title": "Slug",
             "type": "string"
           },
+          "supported_by": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Supported By",
+            "type": "array"
+          },
           "votes": {
             "title": "Votes",
             "type": [
@@ -11610,6 +11629,10 @@
           "slug",
           "name",
           "party",
+          "nominated_by",
+          "independent",
+          "supported_by",
+          "note_source",
           "votes",
           "share_pct",
           "first_round_pct",

@@ -4126,7 +4126,27 @@ class MayorCandidate(TypedDict):
     name: str
     #: Kurzform der vorschlagenden Partei/Wählergruppe; leer bei einem
     #: Namen, den die Ergebnisdarstellung nicht zuordnen konnte.
+    #:
+    #: **Das ist der Wahlvorschlag, nicht die Parteimitgliedschaft.** Auf dem
+    #: Stimmzettel steht je Kandidatur genau eine Liste; wer sie aufgestellt
+    #: hat, muss weder ihr Mitglied sein noch ihre einzige Unterstützung
+    #: haben. 2026 in Oldenburg: Jascha Rohr steht als GRÜNE auf dem Zettel,
+    #: ist parteilos und wird auch von der CDU unterstützt. Die drei Felder
+    #: darunter machen den Unterschied sichtbar, statt ihn zu verschweigen.
     party: str
+    #: Der volle amtliche Name des Wahlvorschlags („BÜNDNIS 90/DIE GRÜNEN
+    #: (GRÜNE)"), wie er in der Bekanntmachung steht.
+    nominated_by: str
+    #: Parteilos — nach eigener Angabe bzw. der der vorschlagenden Liste.
+    #: ``False`` heißt NICHT „Mitglied": Es heißt, dass uns dazu nichts
+    #: Belegtes vorliegt.
+    independent: bool
+    #: Weitere Listen, die diese Kandidatur unterstützen, ohne sie
+    #: vorzuschlagen — Kurznamen, leer im Normalfall.
+    supported_by: list[str]
+    #: Beleg für die beiden Angaben darüber. Sie stehen NICHT in der
+    #: amtlichen Bekanntmachung; ohne Quelle zeigt die Seite sie nicht.
+    note_source: str
     votes: int | None
     share_pct: float | None
     #: Nur in einer Stichwahl: der Anteil dieser Person im ERSTEN Wahlgang.

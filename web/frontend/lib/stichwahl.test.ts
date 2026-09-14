@@ -4,7 +4,8 @@ import { abfragePfad, abstandStimmen, datumLang, fuehrend, nachStimmen, verschie
 // Der Typ kommt aus dem Vertrag, nicht aus einer Handschrift daneben: Ein
 // neues Pflichtfeld in der Antwort soll hier auffallen (web/frontend/CLAUDE.md).
 const k = (slug: string, votes: number | null, share: number | null, vorher: number | null = null): StichwahlKandidat =>
-  ({ slug, name: slug, party: "", votes, share_pct: share, first_round_pct: vorher, color: "", color_dark: "" });
+  ({ slug, name: slug, party: "", votes, share_pct: share, first_round_pct: vorher, color: "", color_dark: "",
+     nominated_by: "", independent: false, supported_by: [], note_source: "" });
 
 describe("nachStimmen", () => {
   it("sortiert absteigend", () => {

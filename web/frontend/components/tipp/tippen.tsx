@@ -238,7 +238,13 @@ export function Tippen({ setup, meins, runde, onGespeichert, onZurueck }: {
               <div key={o.slug} className="flex items-center gap-2.5 border-t border-muted py-1.5">
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[13.5px] font-semibold">{o.name}</p>
-                  <p className="text-[11px] text-muted-foreground">{o.party}</p>
+                  {/* „vorgeschlagen von", nicht bloß der Listenname: Der
+                      Stimmzettel lässt je Kandidatur genau eine Liste zu,
+                      und wer dort steht, muss weder deren Mitglied sein noch
+                      ihre einzige Unterstützung haben. */}
+                  <p className="text-[11px] text-muted-foreground">
+                    {o.party === "Einzelwahlvorschlag" ? o.party : `vorgeschlagen von ${o.party}`}
+                  </p>
                 </div>
                 <div className="flex items-center gap-1">
                   <input

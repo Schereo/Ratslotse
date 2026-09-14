@@ -10025,14 +10025,22 @@ export interface components {
             color_dark: string;
             /** First Round Pct */
             first_round_pct: number | null;
+            /** Independent */
+            independent: boolean;
             /** Name */
             name: string;
+            /** Nominated By */
+            nominated_by: string;
+            /** Note Source */
+            note_source: string;
             /** Party */
             party: string;
             /** Share Pct */
             share_pct: number | null;
             /** Slug */
             slug: string;
+            /** Supported By */
+            supported_by: string[];
             /** Votes */
             votes: number | null;
         };
@@ -19696,4 +19704,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 277d2e3b2cf10e01468a11291e87695dbc2af33d818c4044fd8954e9bf0d6793
+// vertrag-sha256: 60cc49768e60095c3c4f62183904439ad09bde2c50e26ddc1218e9bcd167b575
