@@ -12338,6 +12338,10 @@
             "title": "Election Date",
             "type": "string"
           },
+          "election_slug": {
+            "title": "Election Slug",
+            "type": "string"
+          },
           "election_title": {
             "title": "Election Title",
             "type": "string"
@@ -12399,6 +12403,10 @@
             "title": "Shared Device",
             "type": "boolean"
           },
+          "tip_kind": {
+            "title": "Tip Kind",
+            "type": "string"
+          },
           "title": {
             "title": "Title",
             "type": "string"
@@ -12410,8 +12418,10 @@
           "title",
           "phase",
           "seats_total",
+          "election_slug",
           "election_title",
           "election_date",
+          "tip_kind",
           "previous_label",
           "locked",
           "locked_at",

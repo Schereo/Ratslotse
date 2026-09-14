@@ -31,7 +31,8 @@ function setup(overrides: Partial<Record<string, unknown>> = {}) {
     round: "ratswahl", listed: true, title: "Tippspiel zur Ratswahl", phase: "open", seats_total: 40,
     // Titel und Datum der Wahl kommen seit 09/2026 aus der Antwort, nicht aus
     // einem Literal in der Komponente — die Attrappe muss sie mitliefern.
-    election_title: "Ratswahl Oldenburg", election_date: "2026-09-13", previous_label: "2021",
+    election_slug: "ratswahl-2026", election_title: "Ratswahl Oldenburg",
+    election_date: "2026-09-13", tip_kind: "seats", previous_label: "2021",
     locked: false, locked_at: null, late_scored: false, shared_device: false, player_count: 3,
     deadline_hint: "bis zur ersten Hochrechnung (ca. 20 Uhr)",
     parties: PARTEIEN, mayor_candidates: OB_KANDIDATUREN,

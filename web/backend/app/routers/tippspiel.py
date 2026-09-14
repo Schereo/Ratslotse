@@ -50,7 +50,7 @@ from ..antworten import (
 )
 from ..config import get_settings
 from ..deps import get_store, require_admin
-from ..election import mayor, register
+from ..election import elections, mayor, register
 from ..prediction import rounds, service
 from ..prediction.rounds import Round
 from ..ratelimit import prediction_join_limiter, prediction_tip_limiter
@@ -75,8 +75,13 @@ def _runde(slug: str | None) -> Round:
 
 
 def _game_id(store: Store, runde: Round) -> int:
-    """Die Spielzeile der Runde — legt sie beim ersten Zugriff an."""
-    return store.prediction_game_by_slug(runde.slug, runde.title)["id"]
+    """Die Spielzeile der Runde — legt sie beim ersten Zugriff an.
+
+    Die Wahl wird beim ANLEGEN festgeschrieben. Sie später zu wechseln wäre
+    kein Feature, sondern ein Rangbetrug: Die abgegebenen Tipps meinen die
+    Wahl, zu der sie abgegeben wurden."""
+    return store.prediction_game_by_slug(runde.slug, runde.title,
+                                         runde.election or elections.active().slug)["id"]
 
 
 def _cookie_name(runde: Round) -> str:
@@ -137,10 +142,15 @@ def _validate_seats(seats: dict[str, int], reg: register.Register) -> None:
                             f"Verteile insgesamt {reg.seats} Sitze. Du hast bisher {summe} Sitze vergeben.")
 
 
-def _validate_mayor(tip: dict[str, float] | None) -> None:
+def _validate_mayor(tip: dict[str, float] | None, ob: elections.Election | None) -> None:
+    """Der Prozent-Tipp — gegen die Kandidaturen DIESER Wahl.
+
+    Bis 14.09.2026 stand hier ``mayor.candidates()``, also immer die OB-Wahl
+    der aktiven Ratswahl. Eine Runde auf eine Stichwahl hätte damit Namen
+    abgelehnt, die genau dort antreten."""
     if not tip:
         return
-    bekannt = {c.slug for c in mayor.candidates()}
+    bekannt = {c.slug for c in (mayor.candidates(ob) if ob is not None else ())}
     unbekannt = sorted(set(tip) - bekannt)
     if unbekannt:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -177,7 +187,9 @@ def beitreten_oder_tippen(payload: PredictionJoinIn, request: Request, response:
     game_id = _game_id(store, r)
     prediction_join_limiter.check(request)
     service._check_auto_lock(store, game_id)  # noqa: SLF001 — bewusste Wiederverwendung, s. Moduldoc
-    reg = register.load()
+    wahl = service.wahl_der_runde(store.prediction_game(game_id))
+    ob = elections.mayor_of(wahl) if wahl.kind == "council" else wahl
+    reg = register.load(wahl.register_path) if wahl.kind == "council" else None
     token_hash = _token_hash(request, r)
     player = store.prediction_player_by_token(token_hash, game_id) if token_hash else None
 
@@ -198,13 +210,23 @@ def beitreten_oder_tippen(payload: PredictionJoinIn, request: Request, response:
         if late_at:
             store.prediction_log_add(game_id, f"{player['name']} ist nach Tipp-Schluss beigetreten (nachgetippt).")
 
-    if payload.seats is not None:
+    if payload.seats is not None or (wahl.kind == "mayor" and payload.mayor):
         game = store.prediction_game(game_id)
         if player["late_at"] is None and game["phase"] != "open":
             raise HTTPException(status.HTTP_409_CONFLICT,
                                 "Die Tippfrist ist vorbei. Du kannst deinen Tipp nicht mehr ändern.")
-        _validate_seats(payload.seats, reg)
-        _validate_mayor(payload.mayor)
+        if wahl.kind == "council":
+            if payload.seats is None or reg is None:
+                raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
+                                    "Bitte verteile die Sitze auf die Wahllisten.")
+            _validate_seats(payload.seats, reg)
+        elif payload.seats:
+            # Eine Mehrheitswahl hat keine Sitze zu verteilen. Den Tipp still
+            # zu verwerfen wäre schlimmer als ihn abzulehnen: Wer 52 Zahlen
+            # eintippt, soll erfahren, dass sie hier nichts bedeuten.
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
+                                "Bei dieser Wahl werden keine Sitze verteilt — getippt werden Prozente.")
+        _validate_mayor(payload.mayor, ob)
         prediction_tip_limiter.check(request)
         store.prediction_tip_set(player["id"], json.dumps(payload.seats, ensure_ascii=False),
                                  json.dumps(payload.mayor, ensure_ascii=False) if payload.mayor else None)

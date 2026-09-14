@@ -129,6 +129,25 @@ def _has_any_result(night: ElectionNight) -> bool:
     return any((p["seats"] or p["projected_seats"]) for p in night["parties"])
 
 
+def wahl_der_runde(game: dict) -> elections.Election:
+    """Auf welche Wahl diese Runde tippt.
+
+    Die Spielzeile nennt sie (``election_slug``, seit 14.09.2026). Steht dort
+    nichts — eine Runde von vor dem Umbau —, gilt die Wahl aus der
+    Runden-Registry, und sonst die aktive Ratswahl. Nie einfach „der
+    Wahlabend": Beim nächsten Mal ist das ein anderer, und eine alte Runde
+    würde rückwirkend gegen fremde Zahlen gepunktet.
+    """
+    from . import rounds
+
+    slug = game.get("election_slug")
+    wahl = elections.get(slug) if slug else None
+    if wahl is None:
+        runde = rounds.get(game.get("slug"))
+        wahl = elections.get(runde.election) if runde and runde.election else None
+    return wahl or elections.active()
+
+
 def _read_night(probe: str | None, counted: int | None) -> ElectionNight | None:
     try:
         return election_service.probe(counted) if probe == "2021" else election_service.live()
@@ -146,12 +165,18 @@ def _read_mayor(probe: str | None, counted: int | None) -> mayor.MayorResult | N
 
 
 def _check_auto_lock(store: Store, game_id: int, night: ElectionNight | None = None) -> None:
-    """Setzt den Tipp-Schluss, sobald die erste Hochrechnung der ECHTEN
-    Ratswahl da ist — NIE aus der Generalprobe (``_build`` ruft das nur im
+    """Setzt den Tipp-Schluss, sobald die erste Hochrechnung der ECHTEN Wahl
+    dieser Runde da ist — NIE aus der Generalprobe (``_build`` ruft das nur im
     Live-Pfad auf; der Router bei jedem ``POST /api/tipp``, ohne ``night``,
-    dann liest die Funktion selbst)."""
+    dann liest die Funktion selbst).
+
+    **Der Wahlabend gehört der RUNDE, nicht dem Dienst.** Eine Runde auf eine
+    andere Wahl darf nicht zumachen, weil irgendwo anders ausgezählt wird.
+    """
     game = store.prediction_game(game_id)
     if game["phase"] != "open":
+        return
+    if wahl_der_runde(game).slug != elections.active().slug:
         return
     if night is None:
         night = _read_night(None, None)
@@ -303,21 +328,31 @@ def setup(store: Store, game_id: int) -> PredictionGame:
 
     game = store.prediction_game(game_id)
     runde = rounds.get(game["slug"])
-    reg = _reg()
-    parties = [PredictionParty(slug=p.slug, short=p.short, name=p.official, color=p.color,
-                               color_dark=p.color_dark, seats_previous=None) for p in reg.parties]
-    try:
-        vorwahl = {p["slug"]: p.get("seats_previous") for p in election_service.live()["parties"]}
-        for pp in parties:
-            pp["seats_previous"] = vorwahl.get(pp["slug"])
-    except Exception:
-        _log.exception("Tippspiel: Sitze der Vorwahl für die Startverteilung nicht zu lesen.")
-    mayors = [PredictionMayorCandidate(slug=c.slug, name=c.name, party=c.party) for c in mayor.candidates()]
+    wahl = wahl_der_runde(game)
+    # Eine Mehrheitswahl hat keine Listen und keine Sitze — dort wird auf
+    # Prozente getippt, und `parties` bleibt leer. Der Client entscheidet
+    # daran, welches Formular er zeigt; er muss die Wahlart nicht auswerten.
+    sitzwahl = wahl.kind == "council"
+    reg = _reg() if sitzwahl else None
+    parties: list[PredictionParty] = []
+    if reg is not None:
+        parties = [PredictionParty(slug=p.slug, short=p.short, name=p.official, color=p.color,
+                                   color_dark=p.color_dark, seats_previous=None) for p in reg.parties]
+        try:
+            vorwahl = {p["slug"]: p.get("seats_previous") for p in election_service.live()["parties"]}
+            for pp in parties:
+                pp["seats_previous"] = vorwahl.get(pp["slug"])
+        except Exception:
+            _log.exception("Tippspiel: Sitze der Vorwahl für die Startverteilung nicht zu lesen.")
+    ob = elections.mayor_of(wahl) if sitzwahl else wahl
+    mayors = [PredictionMayorCandidate(slug=c.slug, name=c.name, party=c.party)
+              for c in (mayor.candidates(ob) if ob is not None else ())]
     return PredictionGame(
         round=game["slug"], listed=runde.listed if runde else False,
-        title=game["title"], phase=game["phase"], seats_total=reg.seats,
-        election_title=elections.active().short_title, election_date=reg.date,
-        previous_label=elections.active().previous_label,
+        title=game["title"], phase=game["phase"], seats_total=reg.seats if reg else 0,
+        election_slug=wahl.slug, election_title=wahl.short_title, election_date=wahl.date,
+        tip_kind="seats" if sitzwahl else "pct",
+        previous_label=wahl.previous_label,
         locked=game["phase"] != "open", locked_at=game["locked_at"],
         late_scored=bool(game["late_scored"]), shared_device=bool(game["shared_device"]),
         player_count=store.prediction_player_count(game_id),
