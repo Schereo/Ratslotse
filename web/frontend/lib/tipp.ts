@@ -171,3 +171,12 @@ export function uhrzeitKurz(iso: string | null | undefined): string | null {
   if (Number.isNaN(d.getTime())) return null;
   return d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin" });
 }
+
+/** „13.09.2026" — das Datum der Wahl in der Kurzform, die auf Kicker und
+ *  Beamer passt. Die lange Form steht in `lib/wahlabend.ts::datumLang`. */
+export function kurzesDatum(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(`${iso}T12:00:00Z`);
+  if (!Number.isFinite(d.getTime())) return iso;
+  return new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Europe/Berlin" }).format(d);
+}

@@ -29,6 +29,9 @@ const OB_KANDIDATUREN = [
 function setup(overrides: Partial<Record<string, unknown>> = {}) {
   return {
     round: "ratswahl", listed: true, title: "Tippspiel zur Ratswahl", phase: "open", seats_total: 40,
+    // Titel und Datum der Wahl kommen seit 09/2026 aus der Antwort, nicht aus
+    // einem Literal in der Komponente — die Attrappe muss sie mitliefern.
+    election_title: "Ratswahl Oldenburg", election_date: "2026-09-13", previous_label: "2021",
     locked: false, locked_at: null, late_scored: false, shared_device: false, player_count: 3,
     deadline_hint: "bis zur ersten Hochrechnung (ca. 20 Uhr)",
     parties: PARTEIEN, mayor_candidates: OB_KANDIDATUREN,
@@ -100,7 +103,7 @@ test.describe("Schalter an: Beitritt und Tippen", () => {
   test("Einstieg zeigt Name-Feld, Regeln und einen deaktivierten Knopf", async ({ page }) => {
     tippMocks(page, meins());
     await page.goto("/tipp");
-    await expect(page.getByRole("heading", { name: /Wie geht die Ratswahl aus/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Wie geht die Ratswahl Oldenburg aus/ })).toBeVisible();
     await expect(page.getByRole("button", { name: /Jetzt mitmachen/ })).toBeDisabled();
     await expect(page.getByText("5 · 3 · 1")).toBeVisible();
   });

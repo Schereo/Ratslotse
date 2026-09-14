@@ -6150,6 +6150,30 @@ export interface components {
          */
         AppConfigOut: {
             /**
+             * AppElectionOut
+             * @description Die Wahl, die gerade ansteht — klein genug für jede Seite.
+             *
+             *     Warum hier und nicht nur in ``/api/wahlabend``: Startseite, Heute-Karte
+             *     und Dashboard zeigen einen Countdown, ohne den ganzen Wahlabend zu laden.
+             *     Bis 09/2026 stand der Termin dafür als ``WAHLABEND_BEGINN_UTC`` im
+             *     Frontend — eine Konstante, die ein Deploy braucht und die niemand mit der
+             *     Registry abgleicht.
+             */
+            election?: {
+                /** Date */
+                date: string;
+                /** Kind */
+                kind: string;
+                /** Path */
+                path: string;
+                /** Polls Close */
+                polls_close: string;
+                /** Short Title */
+                short_title: string;
+                /** Slug */
+                slug: string;
+            } | null;
+            /**
              * Features
              * @default []
              */
@@ -6158,6 +6182,30 @@ export interface components {
             min_build: number;
             /** Note */
             note?: string | null;
+        };
+        /**
+         * AppElectionOut
+         * @description Die Wahl, die gerade ansteht — klein genug für jede Seite.
+         *
+         *     Warum hier und nicht nur in ``/api/wahlabend``: Startseite, Heute-Karte
+         *     und Dashboard zeigen einen Countdown, ohne den ganzen Wahlabend zu laden.
+         *     Bis 09/2026 stand der Termin dafür als ``WAHLABEND_BEGINN_UTC`` im
+         *     Frontend — eine Konstante, die ein Deploy braucht und die niemand mit der
+         *     Registry abgleicht.
+         */
+        AppElectionOut: {
+            /** Date */
+            date: string;
+            /** Kind */
+            kind: string;
+            /** Path */
+            path: string;
+            /** Polls Close */
+            polls_close: string;
+            /** Short Title */
+            short_title: string;
+            /** Slug */
+            slug: string;
         };
         /** AppleLoginRequest */
         AppleLoginRequest: {
@@ -8318,16 +8366,33 @@ export interface components {
                 [key: string]: number;
             };
         };
-        /** ElectionInfo */
+        /**
+         * ElectionInfo
+         * @description Wer wählt was, wann — aus ``kommunalwahl/wahlen/``.
+         *
+         *     Bis 09/2026 trug diese Form nur Datum, Sitzzahl und den amtlichen Titel;
+         *     „Ratswahl Oldenburg", „13. September 2026" und der Wahlschluss standen
+         *     daneben als Literale im Frontend. Jetzt kommt beides von hier — eine
+         *     andere Wahl in der Registry ändert die Seite, ohne dass jemand eine
+         *     Überschrift nachzieht.
+         */
         ElectionInfo: {
             /** Date */
             date: string;
+            /** Polls Close */
+            polls_close: string;
             /** Presentation Url */
             presentation_url: string;
             /** Previous Label */
             previous_label: string;
             /** Seats */
             seats: number;
+            /** Short Title */
+            short_title: string;
+            /** Slug */
+            slug: string;
+            /** Status */
+            status: string;
             /** Title */
             title: string;
         };
@@ -10191,6 +10256,10 @@ export interface components {
         PredictionGame: {
             /** Deadline Hint */
             deadline_hint: string;
+            /** Election Date */
+            election_date: string;
+            /** Election Title */
+            election_title: string;
             /** Late Scored */
             late_scored: boolean;
             /** Listed */
@@ -18950,4 +19019,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 2f4871ea65d36b271a2032d57312c169d5e61c240f92ffd7d164202058391edd
+// vertrag-sha256: beec4784ae14a52a371986c8e0688a45dcb8ce4d51b650a3f3f51393d27da610

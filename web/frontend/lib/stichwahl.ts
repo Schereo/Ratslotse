@@ -10,6 +10,7 @@
  * daraus macht (web/frontend/CLAUDE.md).
  */
 import type { ApiAntwort } from "./vertrag";
+export { datumLang } from "./wahlabend";
 
 export type Stichwahl = ApiAntwort<"/wahlabend/stichwahl">;
 export type StichwahlKandidat = Stichwahl["candidates"][number];
@@ -90,13 +91,6 @@ export function zeitlage(pollsClose: string, jetzt: Date = new Date()): Zeitlage
   if (tage === 0) return { phase: "vorher", tage, kicker: "Heute ab 18 Uhr" };
   if (tage === 1) return { phase: "vorher", tage, kicker: "Morgen ab 18 Uhr" };
   return { phase: "vorher", tage, kicker: `Noch ${tage} Tage` };
-}
-
-/** Tag und Monat ausgeschrieben: „27. September 2026". */
-export function datumLang(iso: string): string {
-  const d = new Date(`${iso}T12:00:00Z`);
-  if (!Number.isFinite(d.getTime())) return iso;
-  return new Intl.DateTimeFormat("de-DE", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Berlin" }).format(d);
 }
 
 export function abfragePfad(probe: string | null, counted: string | null): string {
