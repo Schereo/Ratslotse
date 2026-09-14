@@ -1,5 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { abfragePfad, abstandStimmen, datumLang, fuehrend, nachStimmen, verschiebung, vorsprung, zeitlage, type StichwahlKandidat } from "./stichwahl";
+import {
+  abfragePfad,
+  abstandStimmen,
+  bezirkeText,
+  chanceText,
+  datumLang,
+  fuehrend,
+  nachStimmen,
+  verschiebung,
+  vorsprung,
+  zeitlage,
+  type StichwahlHochrechnung,
+  type StichwahlKandidat,
+} from "./stichwahl";
 
 // Der Typ kommt aus dem Vertrag, nicht aus einer Handschrift daneben: Ein
 // neues Pflichtfeld in der Antwort soll hier auffallen (web/frontend/CLAUDE.md).
@@ -75,5 +88,43 @@ describe("Kleinkram", () => {
     expect(abfragePfad(null, null)).toBe("/wahlabend/stichwahl");
     expect(abfragePfad("ja", "40")).toBe("/wahlabend/stichwahl?probe=ja&counted=40");
     expect(abfragePfad("ja", "abc")).toBe("/wahlabend/stichwahl?probe=ja");
+  });
+});
+
+// ── Hochrechnung (docs/plan-stichwahl-spannung.md S2) ──────────────────────
+
+const h = (teil: Partial<StichwahlHochrechnung>): StichwahlHochrechnung => ({
+  shares: { prange: 51.8, rohr: 48.2 },
+  projected_votes: { prange: 44000, rohr: 41000 },
+  leader: "prange",
+  lead_votes: 3000,
+  chance_pct: 71,
+  counted_ballot: 41,
+  counted_postal: 6,
+  open_ballot: 50,
+  open_postal: 36,
+  decided: false,
+  actual_leader: "prange",
+  actual_lead_votes: 900,
+  open_votes_max: 60000,
+  caveats: [],
+  ...teil,
+});
+
+describe("chanceText", () => {
+  it("nennt die Chance des Führenden mit Namen", () => {
+    expect(chanceText(h({}), "Ulf Prange")).toBe("Chance: Ulf Prange 71 %");
+  });
+  it("sagt unter 15 Bezirken, warum es keine gibt", () => {
+    expect(chanceText(h({ chance_pct: null, counted_ballot: 9, counted_postal: 1 }), "Ulf Prange")).toMatch(/Erst 10 Bezirke gezählt/);
+  });
+  it("schweigt, wenn rechnerisch entschieden — dafür gibt es einen eigenen Satz", () => {
+    expect(chanceText(h({ decided: true, chance_pct: null }), "Ulf Prange")).toBeNull();
+  });
+});
+
+describe("bezirkeText", () => {
+  it("zählt Urne und Brief getrennt und nennt die Gesamtzahl", () => {
+    expect(bezirkeText(h({}))).toBe("nach 47 von 133 Bezirken · Urne 41, Brief 6");
   });
 });

@@ -14,6 +14,27 @@ export { datumLang } from "./wahlabend";
 
 export type Stichwahl = ApiAntwort<"/wahlabend/stichwahl">;
 export type StichwahlKandidat = Stichwahl["candidates"][number];
+/** Die Hochrechnung des Backends (`runoff_model`) — da, sobald ein Bezirk
+ *  gemeldet hat. Eine Modellrechnung; die Seite nennt sie so. */
+export type StichwahlHochrechnung = NonNullable<Stichwahl["projection"]>;
+
+/** Der Satz zur Chance — oder warum es noch keinen gibt. `null`, wenn die
+ *  Seite lieber nichts sagt (rechnerisch entschieden hat einen eigenen Satz). */
+export function chanceText(p: StichwahlHochrechnung, name: string | undefined): string | null {
+  if (p.decided) return null;
+  const bezirke = p.counted_ballot + p.counted_postal;
+  if (p.chance_pct === null) {
+    return `Erst ${bezirke} ${bezirke === 1 ? "Bezirk" : "Bezirke"} gezählt — zu früh für eine Wahrscheinlichkeit. Ab 15 nennt das Modell eine.`;
+  }
+  return `Chance: ${name ?? p.leader} ${p.chance_pct} %`;
+}
+
+/** Wie das Modell die Bezirke gesehen hat: „nach 47 von 133 Bezirken · Urne 41, Brief 6". */
+export function bezirkeText(p: StichwahlHochrechnung): string {
+  const gezaehlt = p.counted_ballot + p.counted_postal;
+  const gesamt = gezaehlt + p.open_ballot + p.open_postal;
+  return `nach ${gezaehlt} von ${gesamt} Bezirken · Urne ${p.counted_ballot}, Brief ${p.counted_postal}`;
+}
 
 /** Nach Stimmen, die meisten zuerst.
  *

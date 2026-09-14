@@ -11843,6 +11843,9 @@
             "title": "Phase",
             "type": "string"
           },
+          "projection": {
+            "$ref": "#/components/schemas/RunoffProjection"
+          },
           "reports_expected": {
             "title": "Reports Expected",
             "type": "integer"
@@ -16269,6 +16272,97 @@
           }
         },
         "title": "RolesUpdate",
+        "type": "object"
+      },
+      "RunoffProjection": {
+        "description": "Die Hochrechnung einer Stichwahl (``runoff_model``,\ndocs/plan-stichwahl-spannung.md S2). Modellrechnung, keine Umfrage — die\nSeite nennt sie „Modell\" und stellt die Bezirkszahl daneben.",
+        "properties": {
+          "actual_lead_votes": {
+            "title": "Actual Lead Votes",
+            "type": "integer"
+          },
+          "actual_leader": {
+            "title": "Actual Leader",
+            "type": "string"
+          },
+          "caveats": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Caveats",
+            "type": "array"
+          },
+          "chance_pct": {
+            "title": "Chance Pct",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "counted_ballot": {
+            "title": "Counted Ballot",
+            "type": "integer"
+          },
+          "counted_postal": {
+            "title": "Counted Postal",
+            "type": "integer"
+          },
+          "decided": {
+            "title": "Decided",
+            "type": "boolean"
+          },
+          "lead_votes": {
+            "title": "Lead Votes",
+            "type": "integer"
+          },
+          "leader": {
+            "title": "Leader",
+            "type": "string"
+          },
+          "open_ballot": {
+            "title": "Open Ballot",
+            "type": "integer"
+          },
+          "open_postal": {
+            "title": "Open Postal",
+            "type": "integer"
+          },
+          "open_votes_max": {
+            "title": "Open Votes Max",
+            "type": "integer"
+          },
+          "projected_votes": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Projected Votes",
+            "type": "object"
+          },
+          "shares": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Shares",
+            "type": "object"
+          }
+        },
+        "required": [
+          "shares",
+          "projected_votes",
+          "leader",
+          "lead_votes",
+          "chance_pct",
+          "counted_ballot",
+          "counted_postal",
+          "open_ballot",
+          "open_postal",
+          "decided",
+          "actual_leader",
+          "actual_lead_votes",
+          "open_votes_max",
+          "caveats"
+        ],
+        "title": "RunoffProjection",
         "type": "object"
       },
       "SessionDetail": {

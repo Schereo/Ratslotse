@@ -4187,6 +4187,37 @@ class MayorDistrictList(TypedDict):
     districts: list[MayorDistrictEntry]
 
 
+class RunoffProjection(TypedDict):
+    """Die Hochrechnung einer Stichwahl (``runoff_model``,
+    docs/plan-stichwahl-spannung.md S2). Modellrechnung, keine Umfrage — die
+    Seite nennt sie „Modell" und stellt die Bezirkszahl daneben."""
+    #: Hochgerechneter Endstand je Slug in Prozent.
+    shares: dict[str, float]
+    #: Hochgerechnete Stimmen je Slug.
+    projected_votes: dict[str, int]
+    leader: str
+    #: Hochgerechneter Vorsprung des Führenden in Stimmen.
+    lead_votes: int
+    #: Chance des Führenden in Prozent (ganze Zahl) — ``None`` unter 15
+    #: gezählten Bezirken oder wenn rechnerisch entschieden.
+    chance_pct: int | None
+    #: Wie viele Bezirke das Modell gesehen hat, getrennt nach Urne und Brief.
+    counted_ballot: int
+    counted_postal: int
+    open_ballot: int
+    open_postal: int
+    #: Der TATSÄCHLICHE Vorsprung übersteigt die Obergrenze der offenen Stimmen.
+    decided: bool
+    #: Wer nach den gezählten Stimmen wirklich vorn liegt, und um wie viel.
+    actual_leader: str
+    actual_lead_votes: int
+    #: Obergrenze der noch offenen Stimmen (Wahlberechtigte der offenen
+    #: Urnenbezirke plus 1,6 × gültige Erststimmen der offenen Briefwahlbezirke).
+    open_votes_max: int
+    #: Menschentext: was das Modell annimmt und was nicht.
+    caveats: list[str]
+
+
 class MayorNight(TypedDict):
     #: "live" (Votemanager) oder "probe" (Generalprobe mit echten Zahlen).
     dataset: str
@@ -4208,6 +4239,8 @@ class MayorNight(TypedDict):
     ok: bool
     error: str | None
     notes: list[str]
+    #: Nur bei einer Stichwahl, sobald ein Bezirk gemeldet hat.
+    projection: NotRequired[RunoffProjection]
 
 
 # ------------------------------------------------------------------ Tippspiel (docs/plan-tippspiel-ratswahl.md)

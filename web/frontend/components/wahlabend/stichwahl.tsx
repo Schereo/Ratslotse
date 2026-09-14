@@ -14,7 +14,9 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
+import { Info } from "lucide-react";
 import { Mascot } from "@/components/mascot";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Kopf } from "@/components/wahlabend/kopf";
 import { api } from "@/lib/api";
 import { useFeature } from "@/lib/features";
@@ -24,6 +26,8 @@ import { prozent, uhrzeit, zahl } from "@/lib/wahlabend";
 import {
   abfragePfad,
   abstandStimmen,
+  bezirkeText,
+  chanceText,
   datumLang,
   fuehrend,
   nachStimmen,
@@ -31,6 +35,7 @@ import {
   vorsprung,
   zeitlage,
   type Stichwahl,
+  type StichwahlHochrechnung,
   type StichwahlKandidat,
 } from "@/lib/stichwahl";
 
@@ -101,10 +106,23 @@ function Tafel({ daten }: { daten: Stichwahl }) {
 
 /* ── Die beiden ─────────────────────────────────────────────────────────── */
 
-function Person({ k, fuehrt, fertig, probe }: { k: StichwahlKandidat; fuehrt: boolean; fertig: boolean; probe: boolean }) {
+function Person({
+  k,
+  fuehrt,
+  fertig,
+  probe,
+  hochrechnung,
+}: {
+  k: StichwahlKandidat;
+  fuehrt: boolean;
+  fertig: boolean;
+  probe: boolean;
+  hochrechnung: number | null;
+}) {
   const c = farbe(k);
   const anteil = useTween(k.share_pct);
   const stimmen = useTween(k.votes);
+  const erwartet = useTween(hochrechnung);
   const diff = verschiebung(k);
   return (
     <article
@@ -131,6 +149,11 @@ function Person({ k, fuehrt, fertig, probe }: { k: StichwahlKandidat; fuehrt: bo
       </div>
 
       <p className="mt-4 font-display text-[44px] font-bold leading-none tabular-nums sm:text-[56px]">{prozent(anteil)}</p>
+      {erwartet !== null ? (
+        <p className="mt-1.5 text-[12.5px] tabular-nums text-muted-foreground" data-testid="hochrechnung-anteil">
+          Hochrechnung <span className="font-semibold text-foreground">{prozent(erwartet)}</span>
+        </p>
+      ) : null}
       <div className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-foreground/10">
         <div
           className="h-full rounded-full transition-[width] duration-weg"
@@ -177,6 +200,101 @@ function Abstand({ daten }: { daten: Stichwahl }) {
       )}
     </p>
   );
+}
+
+/* ── Hochrechnung ───────────────────────────────────────────────────────── */
+
+/** Die Karte „Hochrechnung": zwei große Zahlen, die Bezirkszahl daneben, die
+ *  Chance des Führenden — und ⓘ mit dem, was das Modell annimmt. Nie ohne
+ *  das Wort „Modell", nie ohne die Bezirkszahl (docs/plan-stichwahl-spannung.md S2). */
+function Hochrechnung({ daten, p }: { daten: Stichwahl; p: StichwahlHochrechnung }) {
+  const reihe = nachStimmen(daten.candidates).slice().sort((a, b) => (p.shares[b.slug] ?? 0) - (p.shares[a.slug] ?? 0));
+  const fuehrt = daten.candidates.find((k) => k.slug === p.leader);
+  const vorn = daten.candidates.find((k) => k.slug === p.actual_leader);
+  const chance = chanceText(p, fuehrt?.name);
+  const fertig = p.open_ballot + p.open_postal === 0;
+  return (
+    <section
+      className={cn(
+        "mt-5 rounded-2xl border bg-card p-5 sm:p-6",
+        p.decided ? "border-foreground/25 shadow-sm" : "border-border",
+      )}
+      data-testid="hochrechnung"
+      aria-label="Hochrechnung"
+    >
+      <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+        <h2 className={KICKER}>{fertig ? "Endstand" : "Hochrechnung"}</h2>
+        <p className="text-[11.5px] tabular-nums text-muted-foreground">{bezirkeText(p)}</p>
+      </div>
+      <dl className="mt-3 grid grid-cols-2 gap-x-6">
+        {reihe.map((k) => {
+          const c = farbe(k);
+          return (
+            <div key={k.slug} className="min-w-0">
+              <dt className="flex items-center gap-1.5 truncate text-[12.5px] text-muted-foreground">
+                <span aria-hidden className="inline-block h-2 w-2 flex-none rounded-full" style={{ background: `light-dark(${c.hell}, ${c.dunkel})` }} />
+                <span className="truncate">{k.name}</span>
+              </dt>
+              <dd className="mt-0.5 font-display text-[32px] font-bold leading-none tabular-nums sm:text-[40px]">
+                <Zahl wert={p.shares[k.slug] ?? null} />
+              </dd>
+            </div>
+          );
+        })}
+      </dl>
+
+      {p.decided ? (
+        <p className="mt-4 text-[14px] leading-relaxed" data-testid="entschieden">
+          <strong className="font-semibold">
+            {fertig ? `${vorn?.name ?? p.actual_leader} hat gewonnen.` : `${vorn?.name ?? p.actual_leader} ist rechnerisch gewählt.`}
+          </strong>{" "}
+          {fertig
+            ? `Alle Bezirke sind gezählt; der Vorsprung beträgt ${zahl(p.actual_lead_votes)} Stimmen.`
+            : `Der Vorsprung von ${zahl(p.actual_lead_votes)} Stimmen ist größer als alle Stimmen, die noch offen sind (höchstens ${zahl(p.open_votes_max)}).`}
+          {daten.dataset === "probe" ? " Das ist die Generalprobe — kein Ergebnis vom 27. September." : ""}
+        </p>
+      ) : chance ? (
+        <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1">
+          <p className={cn("text-[14px]", p.chance_pct === null ? "text-muted-foreground" : "font-semibold")} data-testid="chance">
+            {chance}
+          </p>
+          <p className="text-[12px] text-muted-foreground">Modell aus dem ersten Wahlgang je Bezirk</p>
+        </div>
+      ) : null}
+
+      <Sheet>
+        <SheetTrigger asChild>
+          <button
+            type="button"
+            className="mt-3 inline-flex items-center gap-1 rounded-md text-[12px] font-medium text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <Info className="h-3.5 w-3.5" aria-hidden />
+            Was das Modell annimmt
+          </button>
+        </SheetTrigger>
+        <SheetContent side="bottom" className="px-5 pt-5 sm:px-8">
+          <h3 className="font-display text-[18px] font-bold tracking-tight">Was das Modell annimmt</h3>
+          <ul className="mt-3 max-w-[70ch] space-y-2 text-[13.5px] leading-relaxed text-muted-foreground">
+            {p.caveats.map((c) => (
+              <li key={c}>· {c}</li>
+            ))}
+            <li>
+              · Die Chance ist Φ(Vorsprung ÷ Streuung) über die offenen Bezirke — eine Modellrechnung, keine Umfrage. Unter 15
+              gezählten Bezirken zeigen wir sie nicht, über 99 % nie; „rechnerisch entschieden" ist dagegen kein Modell, sondern
+              Arithmetik gegen die Wahlberechtigten der offenen Bezirke.
+            </li>
+            <li>· Geprüft an der Stichwahl 2021 (Krogmann gegen Fuhrhop): Nach 30 gezählten Bezirken nannte das Modell in jeder Auszählungsreihenfolge den Sieger.</li>
+          </ul>
+        </SheetContent>
+      </Sheet>
+    </section>
+  );
+}
+
+/** Eine Prozentzahl, die sich beim Wechsel bewegt. */
+function Zahl({ wert }: { wert: number | null }) {
+  const v = useTween(wert);
+  return <>{prozent(v)}</>;
 }
 
 /* ── Zustände ohne Zahlen ───────────────────────────────────────────────── */
@@ -251,10 +369,18 @@ export function StichwahlView() {
 
         <section className="mt-5 grid gap-4 sm:grid-cols-2">
           {sortiert.map((k) => (
-            <Person key={k.slug} k={k} fuehrt={k.slug === vorn} fertig={fertig} probe={data.dataset === "probe"} />
+            <Person
+              key={k.slug}
+              k={k}
+              fuehrt={k.slug === vorn}
+              fertig={fertig}
+              probe={data.dataset === "probe"}
+              hochrechnung={data.projection && !fertig ? (data.projection.shares[k.slug] ?? null) : null}
+            />
           ))}
         </section>
         <Abstand daten={data} />
+        {data.projection ? <Hochrechnung daten={data} p={data.projection} /> : null}
 
         {data.phase === "before" ? (
           <p className="mt-6 rounded-xl border border-border bg-muted/40 px-4 py-3 text-[13.5px] leading-relaxed text-muted-foreground">
