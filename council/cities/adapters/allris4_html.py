@@ -75,6 +75,38 @@ _UHRZEIT = re.compile(r"(\d{1,2}):(\d{2})")
 _TOP_NR = re.compile(r"^([ÖN]\s*)?(\d+(?:\.\d+)*)\.?$")
 
 
+#: Wickets Element-IDs. Sie wechseln bei JEDEM Abruf, ohne dass sich am
+#: Inhalt etwas ändert — `id="id12cd2"` wird zu `id="id12ce6"`, dazu dieselbe
+#: Kennung in `$('#id12cd2')`, in `Wicket.Ajax.ajax({"c":"id12cd3"})` und
+#: **zusammengesetzt** als `showHideLink_id12be0`.
+#:
+#: Nur hinter `#`, `"`, `'` oder `_` und nur mit Wortgrenze dahinter, damit
+#: nichts im Fließtext getroffen wird — „id" gefolgt von Hexziffern steht in
+#: einer Ratsvorlage nicht zufällig hinter einem Anführungszeichen.
+_WICKET_ID = re.compile(r"""(?<=[#"'_])id[0-9a-f]{4,}\b""")
+
+#: Das Sitzungs-Token des Suchformulars. Auch das ist je Abruf anders und
+#: sagt nichts über den Inhalt der Seite.
+_SECTOKEN = re.compile(r'(name="sectoken"\s+value=")[0-9a-f]+(")')
+
+#: Wickets Seitenversion in den Selbstaufruf-Adressen (`vo020?2416-1.0-…`).
+#: Der Server zählt sie je Sitzung hoch — dieselbe Mechanik, die schon den
+#: Index zwingt, sie zu LESEN statt zu setzen (s. Modul-Docstring).
+_SEITENVERSION = re.compile(r"\?\d+-\d+\.\d*-")
+
+
+def ohne_wicket_ids(html: str | None) -> str:
+    """Die Seite ohne das, was sich bei jedem Abruf ändert.
+
+    **Nur für den Inhaltsvergleich**, nie für die Ablage: Was der Server
+    gesagt hat, wird unverändert gespeichert. Ohne diese Bereinigung galt
+    jede Wolfsburger Seite als neu, und der Wochenlauf holte den ganzen
+    Bestand — 2.261 Abrufe statt 251 (gemessen 14.09.2026).
+    """
+    ohne = _WICKET_ID.sub("id_", html or "")
+    return _SEITENVERSION.sub("?v-", _SECTOKEN.sub(r"\1_\2", ohne))
+
+
 def _zahl(url: str, name: str) -> str | None:
     m = re.search(rf"{name}=(\d+)", url or "")
     return m.group(1) if m else None
@@ -247,7 +279,12 @@ class Allris4HtmlAdapter:
             if VERSCHLOSSEN in html:
                 verschlossen += 1
             obj = {"id": kennung, "silfdnr": nr, "html": html}
-            client.raw.put_raw_object(client.body_id, "meeting", kennung, obj)
+            # Der Inhaltsvergleich läuft über die bereinigte Seite; abgelegt
+            # wird die Antwort selbst. Ohne das gilt jede Sitzung bei jedem
+            # Lauf als geändert — und `iter_papers` holt daraufhin ALLE
+            # Vorlagen neu (gemessen: 2.261 Abrufe statt 251).
+            client.raw.put_raw_object(client.body_id, "meeting", kennung, obj,
+                                      hash_basis=ohne_wicket_ids(html))
             yield obj
         if verschlossen:
             logger.info("%s: %s Sitzungen sind nicht öffentlich", client.body_id,
@@ -390,7 +427,8 @@ class Allris4HtmlAdapter:
                                 nr, type(e).__name__)
                     continue
                 obj = {"id": kennung, "volfdnr": nr, "html": html}
-                client.raw.put_raw_object(client.body_id, "paper", kennung, obj)
+                client.raw.put_raw_object(client.body_id, "paper", kennung, obj,
+                                          hash_basis=ohne_wicket_ids(html))
                 yield obj
 
     # --------------------------------------------------------- Normalisieren
