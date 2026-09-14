@@ -986,7 +986,12 @@ export function WahlabendView() {
         <ReiterLeiste
           reiter={ANSICHTEN}
           aktiv={ansicht}
-          onChange={(id) => setzeQuery({ ansicht: id === "ergebnis" ? null : id })}
+          // IMMER ausdrücklich in die Adresse — auch „ergebnis". Bis 14.09.2026
+          // wurde der Reiter dann weggelassen, und `ansichtAus` machte aus
+          // einer Adresse mit `?liste=` wieder „bereiche": Sobald jemand eine
+          // Liste angetippt hatte, war der Ergebnis-Reiter nicht mehr
+          // erreichbar (Tims Befund: „der lädt gar nicht").
+          onChange={(id) => setzeQuery({ ansicht: id })}
           label="Ansichten des Wahlabends"
           className="mt-8"
         />
