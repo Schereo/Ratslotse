@@ -20,7 +20,7 @@ import logging
 from datetime import datetime, timezone
 from functools import lru_cache
 
-from ..antworten import ElectionNight
+from ..antworten import ElectionNight, ElectionTopEntry
 from . import elections, reference, register
 from .votemanager import Snapshot, parse
 
@@ -104,6 +104,63 @@ def summary(wahl: elections.Election) -> str | None:
     except Exception:
         _log.exception("Wahlabend: Kurzfassung für „%s“ nicht lesbar", wahl.slug)
         return None
+
+
+#: Neutraler Punkt für Listen ohne Farbe (Designsprache: „Gruppen: neutraler Dot").
+NEUTRAL = ("#6b7a8c", "#a3b1c2")
+
+
+def top(wahl: elections.Election, n: int = 5) -> list[ElectionTopEntry]:
+    """Die vorderen Listen mit Sitzen und Farbe — die Punktzeile der Übersicht.
+
+    Aus derselben Meta-Datei wie ``summary``; die Farbe kommt über den Slug aus
+    dem Register (``parteien-meta.json``). Fehlt einer Liste der Slug (eine
+    Liste von 2021, die es 2026 nicht mehr gibt), bleibt ihr Punkt neutral —
+    das ist besser als eine geratene Farbe.
+    """
+    if wahl.archive_folder is None or not wahl.archive_folder.is_dir():
+        return []
+    try:
+        if wahl.kind != "council":
+            return _mayor_top(wahl, n)
+        meta = json.loads(reference.meta_path(wahl.archive_folder).read_text(encoding="utf-8"))
+        slug_by_label = {p["label"]: p.get("slug") for p in meta["parteien"]}
+        sitze: dict[str, int] = {}
+        for m in meta["sitzverteilung"]:
+            sitze[m["party"]] = sitze.get(m["party"], 0) + 1
+        farben = _farben(wahl)
+        zeilen: list[ElectionTopEntry] = []
+        for label, anzahl in sorted(sitze.items(), key=lambda kv: (-kv[1], kv[0]))[:n]:
+            hell, dunkel = farben.get(slug_by_label.get(label) or "", NEUTRAL)
+            zeilen.append(ElectionTopEntry(label=label, seats=anzahl, pct=None, color=hell, color_dark=dunkel))
+        return zeilen
+    except Exception:
+        _log.exception("Wahlabend: Punktzeile für „%s“ nicht lesbar", wahl.slug)
+        return []
+
+
+def _farben(wahl: elections.Election) -> dict[str, tuple[str, str]]:
+    """Slug -> (hell, dunkel) aus dem Register der Wahl — oder dem aktiven,
+    wenn sie keines hat: Die Farbe einer Partei hängt nicht am Jahr."""
+    try:
+        reg = register.load(wahl.register_path) if wahl.register_path else register.load()
+        return {p.slug: (p.color, p.color_dark) for p in reg.parties}
+    except Exception:
+        return {}
+
+
+def _mayor_top(wahl: elections.Election, n: int) -> list[ElectionTopEntry]:
+    from . import mayor
+
+    datei = wahl.archive_folder / "praesentation-ob.json" if wahl.archive_folder else None
+    if datei is None or not datei.is_file():
+        return []
+    stand = mayor.parse(json.loads(datei.read_text(encoding="utf-8")), mayor.candidates(wahl))
+    if stand is None:
+        return []
+    beste = sorted(stand.candidates, key=lambda c: -(c.votes or 0))[:n]
+    return [ElectionTopEntry(label=c.name, seats=None, pct=c.share_pct,
+                             color=c.color or NEUTRAL[0], color_dark=c.color_dark or NEUTRAL[1]) for c in beste]
 
 
 def _mayor_summary(wahl: elections.Election) -> str | None:

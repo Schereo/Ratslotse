@@ -99,17 +99,22 @@ def wahlen(user: dict | None = Depends(optional_user), store: Store = Depends(ge
     for w in sorted(elections.all().values(), key=lambda w: (w.date, w.slug), reverse=True):
         if w.status == "entwurf":
             continue
+        tipp, gesperrt = _tipp_pfad(store, w, user)
         zeilen.append(ElectionListItem(
             slug=w.slug, short_title=w.short_title, title=w.title, date=w.date,
             polls_close=w.polls_close.isoformat(), kind=w.kind, status=w.status,
             path=_pfad_zu(w), summary=archive.summary(w), focus=w.slug == fokus.slug,
-            tipp_path=_tipp_pfad(store, w, user),
+            tipp_path=tipp, tipp_locked=gesperrt, top=archive.top(w),
         ))
     return ElectionList(elections=zeilen)
 
 
-def _tipp_pfad(store: Store, w: elections.Election, user: dict | None) -> str:
-    """Der Weg zum Tippspiel dieser Wahl — oder nichts.
+def _tipp_pfad(store: Store, w: elections.Election, user: dict | None) -> tuple[str, bool]:
+    """Der Weg zum Tippspiel dieser Wahl — oder nichts; dazu, ob es eines gäbe.
+
+    Das zweite Feld ist das ehrliche Signal für den Registrier-Anreiz: „Es
+    gibt ein Tippspiel, aber nicht für dich." Ohne diese Angabe müsste die
+    Seite raten, ob sich ein Konto hier lohnt.
 
     Nichts heißt: Es gibt keine Runde, oder sie steht nur Angemeldeten offen
     und hier fragt niemand Angemeldetes. **Die Runde wird hier NICHT angelegt**
@@ -118,21 +123,26 @@ def _tipp_pfad(store: Store, w: elections.Election, user: dict | None) -> str:
     Aufruf von ``/tipp``.
     """
     if not features.an("tippspiel"):
-        return ""
+        return "", False
     runde = rounds.get(w.slug)
     if runde is None:
-        return ""
+        return "", False
     zeile = store.prediction_spiel_zeile(runde.slug)
-    if zeile is None and w.polls_close + elections.FOKUS_NACHHER < datetime.now(timezone.utc):
+    vorbei = (w.polls_close + elections.FOKUS_NACHHER < datetime.now(timezone.utc)
+              or archive.summary(w) is not None)
+    if zeile is None and vorbei:
         # Auf eine gelaufene Wahl kann man nicht mehr tippen. Hat jemand es
         # damals getan, bleibt die Runde verlinkt (die Zeile ist da) — nur neu
         # angeboten wird sie nicht. Die Ratswahl 2021 bekäme sonst 2026 ein
-        # Tippspiel, auf das niemand mehr etwas setzen kann.
-        return ""
+        # Tippspiel, auf das niemand mehr etwas setzen kann — und die OB-Wahl
+        # vom 13.09. stand zwei Tage danach noch als „Tippspiel mit Konto" da,
+        # obwohl ihr Ergebnis längst feststand: Ein Ergebnis im Repo heißt
+        # vorbei, egal wie frisch.
+        return "", False
     sichtbarkeit = zeile["visibility"] if zeile else runde.visibility
     if sichtbarkeit == "konto" and user is None:
-        return ""
-    return rounds.public_path(runde)
+        return "", True
+    return rounds.public_path(runde), False
 
 
 def _pfad_zu(w: elections.Election) -> str:

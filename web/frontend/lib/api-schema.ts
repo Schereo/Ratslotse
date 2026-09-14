@@ -8463,10 +8463,14 @@ export interface components {
             status: string;
             /** Summary */
             summary: string | null;
+            /** Tipp Locked */
+            tipp_locked: boolean;
             /** Tipp Path */
             tipp_path: string;
             /** Title */
             title: string;
+            /** Top */
+            top: components["schemas"]["ElectionTopEntry"][];
         };
         /** ElectionMandate */
         ElectionMandate: {
@@ -8566,6 +8570,19 @@ export interface components {
             last_modified: string | null;
             /** Ok */
             ok: boolean;
+        };
+        /** ElectionTopEntry */
+        ElectionTopEntry: {
+            /** Color */
+            color: string;
+            /** Color Dark */
+            color_dark: string;
+            /** Label */
+            label: string;
+            /** Pct */
+            pct: number | null;
+            /** Seats */
+            seats: number | null;
         };
         /** ElectionTotals */
         ElectionTotals: {
@@ -19127,4 +19144,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: ef58ed46e999fb2d30cd3cacf41008e31e83afa2c27074e14b20ef9c2c73c417
+// vertrag-sha256: 3c9bdc7a3ae0f55ac4307a98a405fa94e91e0be92b28b48a7ed3b9cf361c6e94
