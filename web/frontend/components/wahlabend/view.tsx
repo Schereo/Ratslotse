@@ -17,6 +17,7 @@ import { Mascot } from "@/components/mascot";
 import { KICKER, Punkt, TON } from "@/components/wahlabend/bausteine";
 import { Halbkreis } from "@/components/wahlabend/halbkreis";
 import { Kandidaten, type KandidatenFilter } from "@/components/wahlabend/kandidaten";
+import { Rangfolge, bereichAnker } from "@/components/wahlabend/rangfolge";
 import { Kopf } from "@/components/wahlabend/kopf";
 import { ReiterLeiste, ReiterTafel, type Reiter } from "@/components/ui/reiter";
 import { Mehrheiten } from "@/components/wahlabend/mehrheiten";
@@ -584,12 +585,18 @@ function BereichKarte({
   daten,
   probe,
   counted,
+  rang,
+  zugriff,
 }: {
   bereich: WahlabendBereich;
   slug: string;
   daten: Wahlabend;
   probe: string | null;
   counted: string | null;
+  /** Platz dieses Wahlbereichs in der Rangfolge der gewählten Liste. */
+  rang: number | null;
+  /** „letzter Sitz" bzw. „nächster Sitz" — oder nichts. */
+  zugriff: string | null;
 }) {
   const eintrag = bereich.parties.find((p) => p.slug === slug);
   const zaehlt = daten.phase !== "before" && bereich.districts_counted > 0;
@@ -601,14 +608,20 @@ function BereichKarte({
   const teilbar = zaehlt && !!eintrag;
   return (
     <article
+      id={bereichAnker(bereich.number)}
+      // Der Anker ist kein Schmuck: Die Rangfolge darüber springt hierher,
+      // und `scroll-mt` hält den klebenden Seitenkopf aus dem Weg.
       className={cn(
-        "flex flex-col rounded-2xl border border-border bg-card p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-shadow duration-buehne",
+        "flex scroll-mt-24 flex-col rounded-2xl border border-border bg-card p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-shadow duration-buehne",
         frisch && "shadow-lifted ring-2 ring-primary/40",
       )}
     >
       <div className="flex items-baseline justify-between gap-3">
         <div>
-          <p className={KICKER}>Wahlbereich {bereich.roman}</p>
+          <p className={KICKER}>
+            Wahlbereich {bereich.roman}
+            {rang ? <span className="text-primary"> · Platz {rang}</span> : null}
+          </p>
           <h3 className="font-display text-[15px] font-bold tracking-tight">{bereich.name}</h3>
         </div>
         <span className="font-mono text-[10.5px] text-muted-foreground tabular-nums">
@@ -617,14 +630,14 @@ function BereichKarte({
       </div>
       {eintrag ? (
         <>
+          {/* Die Stimmen zuerst und groß, der Anteil klein daneben (Tims
+              Befund 14.09.2026): Die Sitze folgen den Stimmen, der Anteil
+              beantwortet eine andere Frage. */}
           <dl className="mt-3 flex items-end gap-5">
-            <div>
-              <dt className={KICKER}>Anteil</dt>
-              <dd className="font-display text-[22px] font-bold leading-none tabular-nums">{zaehlt ? prozent(anteil) : "–"}</dd>
-            </div>
             <div>
               <dt className={KICKER}>Stimmen</dt>
               <dd className="font-display text-[22px] font-bold leading-none tabular-nums">{zaehlt ? zahl(stimmen === null ? null : Math.round(stimmen)) : "–"}</dd>
+              <dd className="mt-1 text-[11.5px] text-muted-foreground tabular-nums">{zaehlt ? prozent(anteil) : ""}</dd>
             </div>
             <div>
               <dt className={KICKER}>Sitze{daten.phase === "counting" ? " · Hochr." : ""}</dt>
@@ -632,6 +645,7 @@ function BereichKarte({
                 {daten.phase === "before" ? "–" : (eintrag.seats ?? "–")}
                 {daten.phase === "counting" ? <span className="text-muted-foreground"> → {eintrag.projected_seats ?? "–"}</span> : null}
               </dd>
+              {zugriff ? <dd className="mt-1 whitespace-nowrap font-mono text-[10px] font-medium uppercase tracking-[0.08em] text-signal">{zugriff}</dd> : null}
             </div>
           </dl>
           <ol className="mt-4 divide-y divide-border/70 border-t border-border/70">
@@ -672,6 +686,10 @@ function Bereiche({ daten, liste, probe, counted }: { daten: Wahlabend; liste: s
   const partei = daten.parties.find((p) => p.slug === liste);
   if (!partei) return null;
   const karte = daten.phase !== "before";
+  const rangZeilen = new Map(partei.areas.map((z) => [z.area, z]));
+  const sortiert = [...daten.areas].sort(
+    (a, b) => (rangZeilen.get(a.number)?.rank ?? 99) - (rangZeilen.get(b.number)?.rank ?? 99),
+  );
   return (
     <section className="mt-5 @container">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
@@ -692,12 +710,27 @@ function Bereiche({ daten, liste, probe, counted }: { daten: Wahlabend; liste: s
           <KartenLinks liste={liste} bereich={null} platz={null} probe={probe} counted={counted} stadtweit name={partei.short} vorwahl={daten.election.previous_label} />
         </p>
       ) : null}
-      <div>
-      </div>
+      <Rangfolge partei={partei} daten={daten} />
+      {/* Die Karten folgen derselben Rangfolge — eine Liste, die in IV am
+          stärksten ist, soll IV zuerst zeigen. Wahlbereiche, in denen sie
+          nicht antritt, hängt der Server nicht an `areas` an; sie stehen
+          hinten und behalten ihre Erklärung. */}
       <div className="mt-3 grid gap-4 @3xl:grid-cols-2 @6xl:grid-cols-3">
-        {daten.areas.map((b) => (
-          <BereichKarte key={b.number} bereich={b} slug={liste} daten={daten} probe={probe} counted={counted} />
-        ))}
+        {sortiert.map((b) => {
+          const z = rangZeilen.get(b.number);
+          return (
+            <BereichKarte
+              key={b.number}
+              bereich={b}
+              slug={liste}
+              daten={daten}
+              probe={probe}
+              counted={counted}
+              rang={z?.rank ?? null}
+              zugriff={z?.took_last_seat ? "letzter Sitz" : z?.next_seat ? "nächster Sitz" : null}
+            />
+          );
+        })}
       </div>
     </section>
   );

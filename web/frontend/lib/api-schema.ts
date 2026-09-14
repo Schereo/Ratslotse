@@ -8647,6 +8647,8 @@ export interface components {
         };
         /** ElectionParty */
         ElectionParty: {
+            /** Areas */
+            areas: components["schemas"]["ElectionPartyArea"][];
             /** Candidates Total */
             candidates_total: number;
             /** Color */
@@ -8679,6 +8681,40 @@ export interface components {
             votes_to_lose_seat: number | null;
             /** Votes To Next Seat */
             votes_to_next_seat: number | null;
+        };
+        /**
+         * ElectionPartyArea
+         * @description Ein Wahlbereich aus der Sicht EINER Liste — die Rangfolge, in der sie
+         *     dort stark ist. Gemeint sind die absoluten Stimmen, nicht der Anteil: Ein
+         *     Wahlbereich mit 22.000 Wahlberechtigten schlägt einen mit 12.000 auch
+         *     dann, wenn der Prozentwert dort niedriger ist — und die Sitze folgen den
+         *     Stimmen (§ 37 Abs. 3), nicht den Prozenten.
+         */
+        ElectionPartyArea: {
+            /** Area */
+            area: number;
+            /** Name */
+            name: string;
+            /** Next Seat */
+            next_seat: boolean;
+            /** Projected Seats */
+            projected_seats: number | null;
+            /** Rank */
+            rank: number;
+            /** Remainder */
+            remainder: number | null;
+            /** Remainder Quota */
+            remainder_quota: number | null;
+            /** Roman */
+            roman: string;
+            /** Seats */
+            seats: number | null;
+            /** Share Pct */
+            share_pct: number | null;
+            /** Took Last Seat */
+            took_last_seat: boolean;
+            /** Votes */
+            votes: number | null;
         };
         /** ElectionProgress */
         ElectionProgress: {
@@ -19317,4 +19353,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: e4dffdb95d5068ed9db13eae8bdf5449e3c8d77ccccca3126e26f653e343996e
+// vertrag-sha256: e7626c5ce445e316ea6b7af97e8b2f5d501bbad2d075eabbd4299769c20e4dc7

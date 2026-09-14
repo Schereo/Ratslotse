@@ -45,6 +45,7 @@ from ..antworten import (
     ElectionMandate,
     ElectionNight,
     ElectionParty,
+    ElectionPartyArea,
     ElectionSource,
     ElectionTotals,
 )
@@ -328,6 +329,45 @@ def _fill_city(city: AreaRow | None, area_rows: dict[int, AreaRow], notes: list[
 
 # ------------------------------------------------------------------ Zusammensetzen
 
+def _fill_party_areas(parties: list[ElectionParty], areas: list[ElectionArea],
+                      alloc: Allocation | None) -> None:
+    """Je Liste ihre Wahlbereiche in Rangfolge — dieselben Zahlen, andere Achse.
+
+    Der Rang geht nach ABSOLUTEN Stimmen: Danach verteilt § 37 Abs. 3 die
+    Sitze einer Partei auf die Wahlbereiche, und danach fragt man auch („wo
+    holt die Liste ihre Stimmen?"). Der Prozentwert steht daneben, weil er
+    eine andere Frage beantwortet (wie stark ist sie DORT), und die beiden
+    Antworten fallen auseinander: Wahlbereich IV hat rund doppelt so viele
+    Wahlberechtigte wie I.
+
+    ``remainder`` ist der Bruchteil aus derselben Stufe 2. Er hat nur dort
+    einen Sinn, wo die Liste überhaupt Sitze zu verteilen hatte — sonst bleibt
+    er ``None``.
+    """
+    for p in parties:
+        zeilen: list[ElectionPartyArea] = []
+        rest = alloc.district_remainders.get(p["slug"]) if alloc else None
+        for a in areas:
+            eintrag = next((ap for ap in a["parties"] if ap["slug"] == p["slug"]), None)
+            if eintrag is None:
+                continue  # tritt in diesem Wahlbereich nicht an
+            zeilen.append(ElectionPartyArea(
+                area=a["number"], roman=a["roman"], name=a["name"], rank=0,
+                votes=eintrag["votes"], share_pct=eintrag["share_pct"],
+                seats=eintrag["seats"], projected_seats=eintrag["projected_seats"],
+                remainder=rest.values.get(a["number"]) if rest else None,
+                remainder_quota=rest.quota if rest and rest.values else None,
+                took_last_seat=bool(rest and rest.last == a["number"]),
+                next_seat=bool(rest and rest.next == a["number"]),
+            ))
+        # Ohne Stimmen ans Ende, dort in Wahlbereichs-Reihenfolge: Vor der
+        # Auszählung ist jede Rangfolge erfunden.
+        zeilen.sort(key=lambda z: (z["votes"] is None, -(z["votes"] or 0), z["area"]))
+        for i, z in enumerate(zeilen, start=1):
+            z["rank"] = i
+        p["areas"] = zeilen
+
+
 def compose(reg: Register, ref: Reference, snap: Snapshot, dataset: str, *,
             margins: bool = True, projection: bool = True) -> ElectionNight:
     """Ein Stand als fertige Antwort.
@@ -404,6 +444,7 @@ def compose(reg: Register, ref: Reference, snap: Snapshot, dataset: str, *,
             seats_previous=ref.seats_by_slug.get(p.slug),
             share_previous_pct=ref.share_by_slug.get(p.slug),
             votes_to_next_seat=gain, votes_to_lose_seat=loss,
+            areas=[],  # gefüllt, sobald die Wahlbereiche stehen (s. u.)
         ))
 
     areas: list[ElectionArea] = []
@@ -465,6 +506,8 @@ def compose(reg: Register, ref: Reference, snap: Snapshot, dataset: str, *,
             districts_counted=row.reports_received if row else 0,
             totals=_totals(row), parties=area_parties,
         ))
+
+    _fill_party_areas(parties, areas, alloc)
 
     return ElectionNight(
         dataset=dataset, phase=phase, person_votes_available=persons,

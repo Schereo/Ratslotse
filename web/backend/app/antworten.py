@@ -3836,6 +3836,33 @@ class ElectionArea(TypedDict):
     parties: list[ElectionAreaParty]
 
 
+class ElectionPartyArea(TypedDict):
+    """Ein Wahlbereich aus der Sicht EINER Liste — die Rangfolge, in der sie
+    dort stark ist. Gemeint sind die absoluten Stimmen, nicht der Anteil: Ein
+    Wahlbereich mit 22.000 Wahlberechtigten schlägt einen mit 12.000 auch
+    dann, wenn der Prozentwert dort niedriger ist — und die Sitze folgen den
+    Stimmen (§ 37 Abs. 3), nicht den Prozenten."""
+    area: int
+    roman: str
+    name: str
+    #: Rang innerhalb dieser Liste, 1 = ihr stärkster Wahlbereich.
+    rank: int
+    votes: int | None
+    share_pct: float | None
+    seats: int | None
+    projected_seats: int | None
+    #: Der Hare/Niemeyer-Rest dieser Liste in diesem Wahlbereich (§ 37 Abs. 3)
+    #: und der gemeinsame Nenner — zusammen der „Zugriff" auf die Restsitze.
+    #: ``None``, solange nichts ausgezählt ist oder die Liste keinen Sitz hat.
+    remainder: int | None
+    remainder_quota: int | None
+    #: Hier ist der LETZTE Sitz dieser Liste gelandet (größter noch bedienter
+    #: Rest) …
+    took_last_seat: bool
+    #: … und hierhin ginge ihr nächster.
+    next_seat: bool
+
+
 class ElectionParty(TypedDict):
     index: int
     slug: str
@@ -3859,6 +3886,11 @@ class ElectionParty(TypedDict):
     #: Verlust eines Sitzes. ``None`` = nicht erreichbar / kein Sitz.
     votes_to_next_seat: int | None
     votes_to_lose_seat: int | None
+    #: Die Wahlbereiche dieser Liste in ihrer Rangfolge, stärkster zuerst.
+    #: Dieselben Zahlen stehen auch in ``ElectionArea.parties`` — dort nach
+    #: Wahlbereich sortiert, hier nach Liste. Wer „wo ist diese Liste stark?"
+    #: fragt, soll nicht sechs Wahlbereiche durchsuchen müssen.
+    areas: list[ElectionPartyArea]
 
 
 class ElectionMandate(TypedDict):
