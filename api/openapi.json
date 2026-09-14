@@ -11822,12 +11822,20 @@
             },
             "title": "Shares",
             "type": "object"
+          },
+          "votes": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Votes",
+            "type": "object"
           }
         },
         "required": [
           "at",
           "reports_received",
           "shares",
+          "votes",
           "projected_shares",
           "chance_pct",
           "leader"

@@ -10,6 +10,7 @@ import {
   verschiebung,
   vorsprung,
   zeitlage,
+  type Stichwahl,
   type StichwahlHochrechnung,
   type StichwahlKandidat,
 } from "./stichwahl";
@@ -133,5 +134,49 @@ describe("bezugsperson (Verlauf)", () => {
   it("zeigt den Anteil dessen, der im ersten Wahlgang vorn lag", async () => {
     const { bezugsperson } = await import("../components/wahlabend/stichwahl-verlauf");
     expect(bezugsperson([k("rohr", 100, 40, 30.5), k("prange", 90, 60, 33.2)])?.slug).toBe("prange");
+  });
+});
+
+describe("Momente", () => {
+  const punkt = (at: string, n: number, prange: number, rohr: number, leader: string | null) => ({
+    at,
+    reports_received: n,
+    shares: { prange: (100 * prange) / (prange + rohr), rohr: (100 * rohr) / (prange + rohr) },
+    votes: { prange, rohr },
+    projected_shares: {},
+    chance_pct: null,
+    leader,
+  });
+  const basis = {
+    dataset: "probe",
+    phase: "counting",
+    election: { slug: "s", title: "", short_title: "", date: "2026-09-27", polls_close: "2026-09-27T16:00:00+00:00", is_runoff: true, presentation_url: "" },
+    reports_expected: 133,
+    reports_received: 47,
+    turnout_pct: null,
+    valid_votes: null,
+    invalid_ballots: null,
+    candidates: [k("prange", 12665, 52.1, 33.2), k("rohr", 11662, 47.9, 30.5)],
+    runoff: [],
+    elected: null,
+    fetched_at: null,
+    ok: true,
+    error: null,
+    notes: [],
+    history: [punkt("t1", 35, 9000, 9100, "rohr"), punkt("t2", 47, 12665, 11662, "prange")],
+    lead_changes: [{ at: "t2", reports_received: 47, leader: "prange", previous: "rohr" }],
+  } as unknown as Stichwahl;
+
+  it("die letzte Meldung: Bezirke und Stimmen seit dem Stand davor", async () => {
+    const { letzteMeldung } = await import("./stichwahl");
+    expect(letzteMeldung(basis)).toEqual({ at: "t2", bezirke: 12, zuwachs: { prange: 3665, rohr: 2562 } });
+    expect(letzteMeldung({ ...basis, history: [basis.history[1]] })?.zuwachs).toEqual({ prange: 12665, rohr: 11662 });
+    expect(letzteMeldung({ ...basis, history: [] })).toBeNull();
+  });
+  it("der Fenstertitel trägt den Stand", async () => {
+    const { fensterTitel, letzterWechsel } = await import("./stichwahl");
+    expect(fensterTitel({ ...basis, candidates: [k("prange", 12665, 52.1), k("rohr", 11662, 47.9)] })).toBe("prange 52,1 · rohr 47,9 — 47/133 · Stichwahl");
+    expect(fensterTitel({ ...basis, phase: "before" })).toBe("Stichwahl · Ratslotse");
+    expect(letzterWechsel(basis)?.leader).toBe("prange");
   });
 });

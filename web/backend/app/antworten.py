@@ -4194,6 +4194,8 @@ class MayorHistoryPoint(TypedDict):
     reports_received: int
     #: Slug → Ist-Anteil in Prozent (nur mit Stimmen).
     shares: dict[str, float]
+    #: Slug → Ist-Stimmen — für „Prange +312" zwischen zwei Ständen.
+    votes: dict[str, int]
     #: Slug → hochgerechneter Endstand — leer, solange es keine Hochrechnung gibt.
     projected_shares: dict[str, float]
     chance_pct: int | None

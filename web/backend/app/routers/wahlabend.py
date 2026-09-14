@@ -296,6 +296,7 @@ def _probe_mayor_history(w: elections.Election, counted: int | None) -> list[May
         shares = {c.slug: c.share_pct for c in stand.candidates if c.votes and c.share_pct is not None}
         out.append(MayorHistoryPoint(
             at=at, reports_received=stand.reports_received, shares=shares,
+            votes={c.slug: c.votes for c in stand.candidates if c.votes is not None},
             projected_shares=dict(proj["shares"]) if proj else {},
             chance_pct=proj["chance_pct"] if proj else None,
             leader=history.mayor_leader(shares, {c.slug: c.votes for c in stand.candidates}),

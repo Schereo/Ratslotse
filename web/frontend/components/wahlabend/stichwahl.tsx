@@ -11,6 +11,7 @@
 // Auszählungsstand, der Vergleich mit dem ersten Wahlgang. Hier steht nur, was
 // die Anzeige daraus macht.
 
+import { useEffect, useLayoutEffect, useRef } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -21,7 +22,7 @@ import { Kopf } from "@/components/wahlabend/kopf";
 import { StichwahlVerlauf } from "@/components/wahlabend/stichwahl-verlauf";
 import { api } from "@/lib/api";
 import { useFeature } from "@/lib/features";
-import { useTween } from "@/lib/use-tween";
+import { useFrisch, useTween } from "@/lib/use-tween";
 import { cn } from "@/lib/utils";
 import { prozent, uhrzeit, zahl } from "@/lib/wahlabend";
 import {
@@ -30,8 +31,12 @@ import {
   bezirkeText,
   chanceText,
   datumLang,
+  fensterTitel,
   fuehrend,
+  letzteMeldung,
+  letzterWechsel,
   nachStimmen,
+  nachname,
   verschiebung,
   vorsprung,
   zeitlage,
@@ -113,12 +118,18 @@ function Person({
   fertig,
   probe,
   hochrechnung,
+  frisch,
+  entschieden,
 }: {
   k: StichwahlKandidat;
   fuehrt: boolean;
   fertig: boolean;
   probe: boolean;
   hochrechnung: number | null;
+  /** Gerade neu gemeldet — die Karte leuchtet 1,6 s auf (§7 Bewegung). */
+  frisch: boolean;
+  /** Rechnerisch entschieden: Der Kicker sagt „Gewählt" statt „Vorn". */
+  entschieden: boolean;
 }) {
   const c = farbe(k);
   const anteil = useTween(k.share_pct);
@@ -128,9 +139,12 @@ function Person({
   return (
     <article
       className={cn(
-        "relative overflow-hidden rounded-2xl border bg-card p-5 transition-colors sm:p-6",
+        "relative overflow-hidden rounded-2xl border bg-card p-5 transition-[box-shadow,border-color] duration-fluss sm:p-6",
         fuehrt ? "border-foreground/25 shadow-sm" : "border-border",
+        frisch && "shadow-lifted ring-2 ring-primary/40",
       )}
+      data-testid="person"
+      data-slug={k.slug}
     >
       <span
         aria-hidden
@@ -144,7 +158,7 @@ function Person({
         </div>
         {fuehrt ? (
           <span className="flex-none rounded-md bg-foreground px-2 py-1 font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-background">
-            {fertig && !probe ? "Gewählt" : "Vorn"}
+            {entschieden || (fertig && !probe) ? "Gewählt" : "Vorn"}
           </span>
         ) : null}
       </div>
@@ -203,6 +217,161 @@ function Abstand({ daten }: { daten: Stichwahl }) {
   );
 }
 
+/* ── Die beiden nebeneinander — mit Platztausch ──────────────────────────── */
+
+/** Die Karten stehen in der Reihenfolge des Stimmzettels im DOM und werden
+ *  über `order` sortiert; wechselt die Führung, GLEITEN sie auf ihren neuen
+ *  Platz (FLIP: alte Lage messen, neue Lage messen, Differenz als Transform
+ *  setzen, dann in 300 ms auf null). Ein Sprung würde den Moment verschenken,
+ *  um den es geht. `prefers-reduced-motion` legt den Übergang still. */
+function Duell({
+  daten,
+  vorn,
+  fertig,
+  frisch,
+  entschieden,
+}: {
+  daten: Stichwahl;
+  vorn: string | null;
+  fertig: boolean;
+  frisch: boolean;
+  entschieden: boolean;
+}) {
+  const rang = nachStimmen(daten.candidates).map((k) => k.slug);
+  const raster = useRef<HTMLElement>(null);
+  const lagen = useRef<Map<string, DOMRect>>(new Map());
+  const schluessel = rang.join(">");
+  useLayoutEffect(() => {
+    const el = raster.current;
+    if (!el) return;
+    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const karten = Array.from(el.querySelectorAll<HTMLElement>("[data-slug]"));
+    const neu = new Map(karten.map((k) => [k.dataset.slug ?? "", k.getBoundingClientRect()]));
+    for (const k of karten) {
+      const slug = k.dataset.slug ?? "";
+      const alt = lagen.current.get(slug);
+      const jetzt = neu.get(slug);
+      if (!alt || !jetzt || still) continue;
+      const dx = alt.left - jetzt.left;
+      const dy = alt.top - jetzt.top;
+      if (Math.abs(dx) < 1 && Math.abs(dy) < 1) continue;
+      k.style.transition = "none";
+      k.style.transform = `translate(${dx}px, ${dy}px)`;
+      void k.offsetWidth; // Reflow, damit der Start auch gesetzt ist
+      k.style.transition = "transform 300ms var(--ease-in-out-strong)";
+      k.style.transform = "";
+      k.addEventListener("transitionend", () => { k.style.transition = ""; }, { once: true });
+    }
+    lagen.current = neu;
+  }, [schluessel]);
+  return (
+    <section ref={raster} className="mt-5 grid gap-4 sm:grid-cols-2" data-testid="duell" aria-label="Die beiden Kandidaturen">
+      {daten.candidates.map((k) => (
+        <div key={k.slug} style={{ order: Math.max(0, rang.indexOf(k.slug)) }}>
+          <Person
+            k={k}
+            fuehrt={k.slug === vorn}
+            fertig={fertig}
+            probe={daten.dataset === "probe"}
+            hochrechnung={daten.projection && !fertig ? (daten.projection.shares[k.slug] ?? null) : null}
+            frisch={frisch}
+            entschieden={entschieden && k.slug === vorn}
+          />
+        </div>
+      ))}
+    </section>
+  );
+}
+
+/* ── Die Meldung: was gerade dazukam ────────────────────────────────────── */
+
+/** „18:42 · 12 weitere Bezirke ausgezählt — Prange +312, Rohr +298". Aus der
+ *  Historie, nicht aus dem Browser-Zustand: Ein frisch geladener Tab sieht
+ *  dieselbe Zeile. Der Schlüssel wechselt mit dem Stand, die Zeile gleitet
+ *  deshalb bei jeder Meldung neu ein. */
+function Meldung({ daten }: { daten: Stichwahl }) {
+  const m = letzteMeldung(daten);
+  if (!m || daten.phase === "before") return null;
+  const wechsel = letzterWechsel(daten);
+  const neuVorn = wechsel && wechsel.reports_received === daten.reports_received
+    ? daten.candidates.find((k) => k.slug === wechsel.leader)
+    : null;
+  const teile = nachStimmen(daten.candidates).map((k) => `${nachname(k)} ${m.zuwachs[k.slug] >= 0 ? "+" : "−"}${zahl(Math.abs(m.zuwachs[k.slug] ?? 0))}`);
+  return (
+    <div
+      key={daten.reports_received}
+      className="mt-4 animate-in fade-in-0 slide-in-from-top-2 duration-fluss ease-out-strong"
+      data-testid="meldung"
+      role="status"
+    >
+      <p className="rounded-xl border border-border bg-card px-4 py-2.5 text-[13.5px] leading-relaxed">
+        <span className="font-mono text-[11px] text-muted-foreground">{uhrzeit(m.at) ?? "–"}</span>
+        <span className="mx-2 text-muted-foreground">·</span>
+        <strong className="font-semibold">
+          {m.bezirke === 1 ? "1 weiterer Bezirk" : `${zahl(m.bezirke)} weitere Bezirke`}
+        </strong>{" "}
+        ausgezählt — {teile.join(", ")}
+        {neuVorn ? (
+          <>
+            <span className="mx-2 text-muted-foreground">·</span>
+            <span className="font-semibold text-signal" data-testid="fuehrungswechsel-zeile">
+              Führungswechsel — {neuVorn.name} liegt jetzt vorn
+            </span>
+          </>
+        ) : null}
+      </p>
+    </div>
+  );
+}
+
+/* ── Bühnen: vor 18 Uhr, und wenn es entschieden ist ────────────────────── */
+
+function BuehneVorher({ daten }: { daten: Stichwahl }) {
+  const zeit = zeitlage(daten.election.polls_close);
+  return (
+    <section className="mt-5 flex flex-col items-center gap-5 rounded-2xl border border-border bg-card p-6 text-center sm:flex-row sm:text-left" data-testid="buehne-vorher">
+      <Mascot pose="wave" className="h-28 w-28 flex-none" decorative />
+      <div className="min-w-0">
+        <p className={KICKER} suppressHydrationWarning>{zeit.kicker}</p>
+        <h2 className="mt-1 font-display text-[20px] font-bold tracking-tight">Was ab 18 Uhr passiert</h2>
+        <p className="mt-2 max-w-[60ch] text-[13.5px] leading-relaxed text-muted-foreground">
+          Am 13. September hat niemand die absolute Mehrheit erreicht; am {datumLang(daten.election.date)} entscheidet die
+          Stichwahl zwischen den beiden Bestplatzierten. Ab 18 Uhr melden die 133 Wahlbezirke nach und nach — die Seite
+          fragt jede Minute nach. Ab dem ersten Bezirk rechnet sie hoch, ab dem 15. nennt sie eine Chance, und sobald der
+          Vorsprung größer ist als alles, was noch offen ist, steht hier, wer gewählt ist.
+        </p>
+      </div>
+    </section>
+  );
+}
+
+function BuehneEntschieden({ daten, p }: { daten: Stichwahl; p: StichwahlHochrechnung }) {
+  const wer = daten.candidates.find((k) => k.slug === p.actual_leader);
+  const fertig = p.open_ballot + p.open_postal === 0;
+  return (
+    <section
+      className="mt-5 flex flex-col items-center gap-5 rounded-2xl border border-foreground/25 bg-card p-6 text-center shadow-sm animate-in fade-in-0 zoom-in-95 duration-fluss ease-out-strong sm:flex-row sm:text-left"
+      data-testid="entschieden"
+      aria-live="polite"
+    >
+      <Mascot pose="celebrate" className="h-28 w-28 flex-none" decorative />
+      <div className="min-w-0">
+        <p className={KICKER}>{daten.dataset === "probe" ? "Generalprobe · " : ""}{fertig ? "Endergebnis" : "Rechnerisch entschieden"}</p>
+        <h2 className="mt-1 font-display text-[24px] font-bold tracking-tight sm:text-[28px]">
+          {wer?.name ?? p.actual_leader} ist gewählt
+        </h2>
+        <p className="mt-2 max-w-[60ch] text-[14px] leading-relaxed text-muted-foreground">
+          Der Vorsprung von <strong className="font-semibold text-signal">{zahl(p.actual_lead_votes)} Stimmen</strong>{" "}
+          {fertig
+            ? "steht — alle Bezirke sind gezählt."
+            : `ist größer als alle Stimmen, die noch offen sind (höchstens ${zahl(p.open_votes_max)}).`}{" "}
+          Kein amtliches Ergebnis; das stellt der Wahlausschuss fest.
+        </p>
+      </div>
+    </section>
+  );
+}
+
 /* ── Hochrechnung ───────────────────────────────────────────────────────── */
 
 /** Die Karte „Hochrechnung": zwei große Zahlen, die Bezirkszahl daneben, die
@@ -245,14 +414,10 @@ function Hochrechnung({ daten, p }: { daten: Stichwahl; p: StichwahlHochrechnung
       </dl>
 
       {p.decided ? (
-        <p className="mt-4 text-[14px] leading-relaxed" data-testid="entschieden">
-          <strong className="font-semibold">
-            {fertig ? `${vorn?.name ?? p.actual_leader} hat gewonnen.` : `${vorn?.name ?? p.actual_leader} ist rechnerisch gewählt.`}
-          </strong>{" "}
+        <p className="mt-4 text-[13.5px] leading-relaxed text-muted-foreground">
           {fertig
-            ? `Alle Bezirke sind gezählt; der Vorsprung beträgt ${zahl(p.actual_lead_votes)} Stimmen.`
-            : `Der Vorsprung von ${zahl(p.actual_lead_votes)} Stimmen ist größer als alle Stimmen, die noch offen sind (höchstens ${zahl(p.open_votes_max)}).`}
-          {daten.dataset === "probe" ? " Das ist die Generalprobe — kein Ergebnis vom 27. September." : ""}
+            ? `Alle Bezirke sind gezählt; ${vorn?.name ?? p.actual_leader} liegt ${zahl(p.actual_lead_votes)} Stimmen vorn.`
+            : `Rechnerisch entschieden: ${zahl(p.actual_lead_votes)} Stimmen Vorsprung, höchstens ${zahl(p.open_votes_max)} noch offen.`}
         </p>
       ) : chance ? (
         <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -325,6 +490,11 @@ export function StichwahlView() {
     refetchInterval: 60_000,
     retry: 1,
   });
+  // Vor den frühen Ausstiegen — Hooks laufen in jeder Runde in derselben Reihenfolge.
+  const frisch = useFrisch(data?.reports_received);
+  useEffect(() => {
+    if (data) document.title = fensterTitel(data);
+  }, [data]);
 
   if (!frei || isError) {
     return (
@@ -351,9 +521,9 @@ export function StichwahlView() {
     );
   }
 
-  const sortiert = nachStimmen(data.candidates);
   const vorn = fuehrend(data.candidates);
   const fertig = data.phase === "complete";
+  const entschieden = Boolean(data.projection?.decided);
 
   return (
     <>
@@ -367,30 +537,14 @@ export function StichwahlView() {
         ) : null}
 
         <Tafel daten={data} />
+        <Meldung daten={data} />
+        {entschieden && data.projection ? <BuehneEntschieden daten={data} p={data.projection} /> : null}
+        {data.phase === "before" ? <BuehneVorher daten={data} /> : null}
 
-        <section className="mt-5 grid gap-4 sm:grid-cols-2">
-          {sortiert.map((k) => (
-            <Person
-              key={k.slug}
-              k={k}
-              fuehrt={k.slug === vorn}
-              fertig={fertig}
-              probe={data.dataset === "probe"}
-              hochrechnung={data.projection && !fertig ? (data.projection.shares[k.slug] ?? null) : null}
-            />
-          ))}
-        </section>
+        <Duell daten={data} vorn={vorn} fertig={fertig} frisch={frisch} entschieden={entschieden} />
         <Abstand daten={data} />
         {data.projection ? <Hochrechnung daten={data} p={data.projection} /> : null}
         {data.phase !== "before" ? <StichwahlVerlauf daten={data} /> : null}
-
-        {data.phase === "before" ? (
-          <p className="mt-6 rounded-xl border border-border bg-muted/40 px-4 py-3 text-[13.5px] leading-relaxed text-muted-foreground">
-            Am 13. September hat niemand die absolute Mehrheit erreicht. Am {datumLang(data.election.date)} entscheidet
-            deshalb die Stichwahl zwischen den beiden Bestplatzierten. Die Zahlen erscheinen hier, sobald die Stadt die
-            ersten Wahlbezirke meldet.
-          </p>
-        ) : null}
 
         {data.notes.length > 0 ? (
           <ul className="mt-5 space-y-1.5 text-[12.5px] text-muted-foreground">

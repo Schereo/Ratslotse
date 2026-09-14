@@ -99,3 +99,34 @@ def test_die_abschriften_zeigen_denselben_stand(probe):
     assert [p["slug"] for p in rang["parties"]] == [p["slug"] for p in nacht["parties"]]
     bezirke = json.loads((FIXTURES / "wahlbezirke-probe.json").read_text(encoding="utf-8"))
     assert bezirke["counted"] == 60 and bezirke["phase"] == nacht["phase"]
+
+
+# ---------------------------------------------------------------- Stichwahl (S4)
+
+@pytest.fixture
+def stichwahl_probe(monkeypatch):
+    from app.election import mayor
+    from app.routers import wahlabend as router
+
+    monkeypatch.setenv("FEATURE_FLAGS", "wahlabend")
+    mayor.reset()
+    yield lambda n: router.stichwahl(probe="1", counted=n)
+    mayor.reset()
+
+
+@pytest.mark.parametrize("n", [40, 60, 133])
+def test_die_stichwahl_abschriften_kennen_jedes_feld(stichwahl_probe, n):
+    """Drei Stände der Stichwahl-Probe für die Browsertests: vor dem
+    Führungswechsel (40), danach (60), entschieden (133). Wieder erzeugen:
+
+        FEATURE_FLAGS=wahlabend .venv/bin/python -c "import sys, json; sys.path.insert(0, 'web/backend'); \\
+          from app.routers import wahlabend as r; print(json.dumps(r.stichwahl(probe='1', counted=N), ensure_ascii=False))" \\
+          > web/frontend/tests/e2e/fixtures/stichwahl-probe-N.json
+    """
+    ist = json.loads((FIXTURES / f"stichwahl-probe-{n}.json").read_text(encoding="utf-8"))
+    fehlt = _fehlt(stichwahl_probe(n), ist, "stichwahl")
+    assert not fehlt, (
+        f"Diese Felder fehlen in web/frontend/tests/e2e/fixtures/stichwahl-probe-{n}.json:\n  " + "\n  ".join(fehlt)
+    )
+    assert ist["reports_received"] == n
+    assert ist["projection"]["decided"] is (n == 133)

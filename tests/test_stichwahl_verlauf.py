@@ -27,6 +27,7 @@ SLUG = "ob-stichwahl-2026"
 def _punkt(at: str, n: int = 10, prange: float = 52.0, leader: str | None = "prange",
            proj: dict[str, float] | None = None) -> MayorHistoryPoint:
     return MayorHistoryPoint(at=at, reports_received=n, shares={"prange": prange, "rohr": round(100 - prange, 1)},
+                             votes={"prange": round(prange * 100), "rohr": round((100 - prange) * 100)},
                              projected_shares=proj or {}, chance_pct=None, leader=leader)
 
 
@@ -107,6 +108,7 @@ def test_der_live_punkt_traegt_hochrechnung_und_fuehrung(datei):
     assert len(punkte) == 1
     p = punkte[0]
     assert p["reports_received"] == 60 and p["leader"] == "prange"
+    assert p["votes"] == {c["slug"]: c["votes"] for c in night["candidates"]}
     assert set(p["projected_shares"]) == {"prange", "rohr"} and p["chance_pct"] is not None
     assert history.record_mayor(SLUG, night) == punkte, "derselbe Stand zweimal ist ein Punkt"
 
