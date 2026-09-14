@@ -653,7 +653,12 @@ RATSLOTSE_PROXY_HOSTS=gisportal4ol.oldenburg.de,youtube.com         # nur diese 
   oldenburg.planungsbeteiligung.de für Frist-Banner und KI-Kontext),
   `remind_setup.py`
   (täglich; genau eine Service-Mail an Konten, die den Einrichtungs-
-  Assistenten angefangen und seit 48 h nicht beendet haben). Alle laufen in
+  Assistenten angefangen und seit 48 h nicht beendet haben),
+  `check_wahltermine.py` (täglich 6:15; vergleicht den Terminkalender des
+  Votemanagers mit `kommunalwahl/wahlen/` — meldet eine Wahl, die wir nicht
+  kennen, und eine Wahl-Id, die endlich da ist oder kurz vor dem Wahltag
+  immer noch fehlt. Legt **nichts** an: Eine Wahl ist Handarbeit mit Blick in
+  die amtliche Bekanntmachung). Alle laufen in
   `run_guarded` (`kern/alerts.py`): Ein Crash wird geloggt **und** per E-Mail an
   `ALERT_EMAIL`/`WEB_ADMIN_EMAIL` gemeldet. Außerdem protokolliert `run_guarded`
   jeden Lauf in `job_runs` (Dauer, Status, Kennzahlen aus dem Rückgabe-dict der

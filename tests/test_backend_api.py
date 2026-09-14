@@ -562,6 +562,7 @@ def test_admin_jobs_listet_registry_auch_ohne_laeufe(client):
         "archive_statistik",  # sichert die Statistik-Quellen versioniert, täglich
         "check_cities",  # Ratsdokumente der Vergleichsstädte, sonntags 3 Uhr
         "check_herzschlag",  # meldet Jobs, die nicht mehr laufen, täglich 6:30
+        "check_wahltermine",  # Terminkalender der Stadt gegen kommunalwahl/wahlen/, täglich 6:15
     }
     job = next(j for j in b if j["key"] == "check_council")
     assert job["state"] == "unknown" and job["last"] is None and job["history"] == []
