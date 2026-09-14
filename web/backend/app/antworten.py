@@ -4187,6 +4187,28 @@ class MayorDistrictList(TypedDict):
     districts: list[MayorDistrictEntry]
 
 
+class MayorHistoryPoint(TypedDict):
+    """Ein Stand des Stichwahl-Abends — für den Verlauf (S3). Der Dienst
+    schreibt ihn sich selbst mit; der Votemanager kennt nur das Jetzt."""
+    at: str
+    reports_received: int
+    #: Slug → Ist-Anteil in Prozent (nur mit Stimmen).
+    shares: dict[str, float]
+    #: Slug → hochgerechneter Endstand — leer, solange es keine Hochrechnung gibt.
+    projected_shares: dict[str, float]
+    chance_pct: int | None
+    #: Wer nach Ist-Stimmen vorn liegt; ``None`` bei Gleichstand oder ohne Stimmen.
+    leader: str | None
+
+
+class MayorLeadChange(TypedDict):
+    """Ein Führungswechsel: zwischen zwei Ständen wechselte, wer vorn liegt."""
+    at: str
+    reports_received: int
+    leader: str
+    previous: str
+
+
 class RunoffProjection(TypedDict):
     """Die Hochrechnung einer Stichwahl (``runoff_model``,
     docs/plan-stichwahl-spannung.md S2). Modellrechnung, keine Umfrage — die
@@ -4241,6 +4263,11 @@ class MayorNight(TypedDict):
     notes: list[str]
     #: Nur bei einer Stichwahl, sobald ein Bezirk gemeldet hat.
     projection: NotRequired[RunoffProjection]
+    #: Der Verlauf des Abends, ältester Stand zuerst — leer vor der Auszählung
+    #: und beim ersten Wahlgang (dessen Abend war die Ratswahl).
+    history: list[MayorHistoryPoint]
+    #: Wann wechselte, wer vorn liegt — aus ``history`` gerechnet.
+    lead_changes: list[MayorLeadChange]
 
 
 # ------------------------------------------------------------------ Tippspiel (docs/plan-tippspiel-ratswahl.md)

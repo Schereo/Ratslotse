@@ -128,3 +128,10 @@ describe("bezirkeText", () => {
     expect(bezirkeText(h({}))).toBe("nach 47 von 133 Bezirken · Urne 41, Brief 6");
   });
 });
+
+describe("bezugsperson (Verlauf)", () => {
+  it("zeigt den Anteil dessen, der im ersten Wahlgang vorn lag", async () => {
+    const { bezugsperson } = await import("../components/wahlabend/stichwahl-verlauf");
+    expect(bezugsperson([k("rohr", 100, 40, 30.5), k("prange", 90, 60, 33.2)])?.slug).toBe("prange");
+  });
+});

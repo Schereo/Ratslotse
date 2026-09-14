@@ -559,11 +559,32 @@ def probe(counted: int | None, w: elections.Election | None = None) -> MayorResu
             return _bare("Die Generalprobe der OB-Wahl trägt keine Zahlen.", w)
         return replace(voll, districts=probe_districts(None, known, w))
     anteil = max(0.0, min(1.0, counted / 133))
+    bezirke = probe_districts(counted, known, w)
+    phase = "before" if counted == 0 else ("complete" if counted >= 133 else "counting")
+    if bezirke:
+        # Die Stichwahl-Probe zählt Bezirk für Bezirk: Die Stadtzeile ist die
+        # Summe der gemeldeten Bezirke, wie live — nicht ein Anteil der
+        # Gesamtzahl. Erst so bewegt sich der Anteil über den Abend (die
+        # Urne meldet zuerst, die Briefwahl liegt anders), und erst so passt
+        # die Zeile zu den Bezirken, aus denen die Hochrechnung rechnet.
+        gemeldet = [d for d in bezirke if d.counted]
+        stimmen = {c.slug: sum(d.votes.get(c.slug) or 0 for d in gemeldet) for c in voll.candidates}
+        summe = sum(stimmen.values())
+        skaliert = tuple(
+            replace(c, votes=stimmen[c.slug], share_pct=round(100 * stimmen[c.slug] / summe, 2) if summe else None)
+            for c in voll.candidates
+        )
+        return MayorResult(
+            phase=phase, reports_expected=len(bezirke), reports_received=len(gemeldet),
+            turnout_pct=voll.turnout_pct, valid_votes=summe or None,
+            invalid_ballots=round(voll.invalid_ballots * anteil) if voll.invalid_ballots is not None else None,
+            candidates=skaliert, runoff=() if phase != "complete" else voll.runoff,
+            fetched_at=None, ok=True, error=None, notes=(), districts=bezirke,
+        )
     skaliert = tuple(
         replace(c, votes=round(c.votes * anteil) if c.votes is not None else None)
         for c in voll.candidates
     )
-    phase = "before" if counted == 0 else ("complete" if counted >= 133 else "counting")
     return MayorResult(
         phase=phase, reports_expected=voll.reports_expected,
         reports_received=round(voll.reports_expected * anteil),
@@ -572,7 +593,7 @@ def probe(counted: int | None, w: elections.Election | None = None) -> MayorResu
         invalid_ballots=round(voll.invalid_ballots * anteil) if voll.invalid_ballots is not None else None,
         candidates=skaliert, runoff=() if phase != "complete" else voll.runoff,
         fetched_at=None, ok=True, error=None, notes=(),
-        districts=probe_districts(counted, known, w),
+        districts=bezirke,
     )
 
 
