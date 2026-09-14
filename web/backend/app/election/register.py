@@ -117,9 +117,21 @@ def _reordered(parties: list[Party]) -> list[Party]:
     return [replace(by_slug[slug], index=i) for i, slug in enumerate(wanted, start=1)]
 
 
-@lru_cache(maxsize=1)
 def load(path: Path | None = None) -> Register:
-    raw = json.loads(((path or KOMMUNALWAHL / "kandidaten.json")).read_text(encoding="utf-8"))
+    """Das Register der aktiven Wahl — oder das einer genannten Datei.
+
+    Welche Datei die Vorgabe ist, sagt die Wahl (``register`` in
+    ``kommunalwahl/wahlen/``); bis 09/2026 stand ``kandidaten.json`` hier als
+    Konstante. Aufgelöst wird VOR dem Zwischenspeicher, damit ein Wechsel der
+    aktiven Wahl nicht am Schlüssel ``None`` hängen bleibt.
+    """
+    from . import elections
+    return _load(path or elections.active().register_path or KOMMUNALWAHL / "kandidaten.json")
+
+
+@lru_cache(maxsize=4)
+def _load(path: Path) -> Register:
+    raw = json.loads(path.read_text(encoding="utf-8"))
     colors = _colors()
     parties = []
     for l in raw["lists"]:
@@ -137,3 +149,13 @@ def load(path: Path | None = None) -> Register:
         areas=tuple(Area(a["number"], a["roman"], a["name"]) for a in raw["areas"]),
         parties=tuple(parties),
     )
+
+
+def reset() -> None:
+    """Zwischenspeicher leeren — dieselbe Rolle wie ``presentation.reset``.
+
+    Bis 09/2026 riefen Tests dafür ``load.cache_clear()``; seit ``load`` die
+    Vorgabe VOR dem Zwischenspeicher auflöst, hängt der am inneren ``_load``.
+    Ein eigener Name ist ohnehin der bessere Vertrag.
+    """
+    _load.cache_clear()

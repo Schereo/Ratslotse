@@ -15,6 +15,12 @@ Auszählungsstand des Gebiets. **Leer heißt „liegt noch nicht vor"**, nicht n
 
 Der Abruf hält ein Ergebnis 60 s (so lange cacht auch der Votemanager).
 
+**Welche Wahl gemeint ist, steht nicht hier**, sondern in
+``kommunalwahl/wahlen/`` (``elections.active()``): Basis-URL, Dateinamen und
+der Zeitpunkt des Wahlschlusses kommen von dort. ``WAHLABEND_VOTEMANAGER_URL``
+überschreibt die Basis weiterhin — der Notausgang für den Abend, an dem die
+Stadt die Adresse anders schneidet als erwartet.
+
 **Jede Datei hat ihr eigenes Gedächtnis.** Vorher hing der ganze Abruf an der
 schwächsten der drei: Ein Aussetzer bei den Wahlbezirken ließ auch die frisch
 gemeldeten Wahlbereiche liegen, und die Seite stand still, obwohl zwei Drittel
@@ -55,16 +61,10 @@ from datetime import datetime, timezone
 
 import requests
 
-from . import crosscheck, presentation
+from . import crosscheck, elections, presentation
 from .register import load as load_register
 
-DEFAULT_BASE = "https://votemanager.kdo.de/20260913/03403000"
 PRESENTATION_PATH = "/praesentation/"
-FILES = {
-    "city": "/daten/opendata/Open-Data-03403000-Stadtratswahl-Stadt.csv",
-    "areas": "/daten/opendata/Open-Data-03403000-Stadtratswahl-Wahlbereiche.csv",
-    "districts": "/daten/opendata/Open-Data-03403000-Stadtratswahl-Wahlbezirk.csv",
-}
 #: Anzeigename je Datei — ein Fehlertext muss sagen, WELCHE Datei klemmt.
 FILE_NAMES = {"city": "Stadt", "areas": "Wahlbereiche", "districts": "Wahlbezirke"}
 #: Spalten, ohne die eine Antwort keine Ergebnis-CSV ist.
@@ -74,14 +74,16 @@ TTL_SECONDS = 60
 #: Lärm beim Votemanager und bei uns. Bis Sonntag 18 Uhr reicht ein
 #: Viertelstundentakt — danach greift der Minutentakt.
 TTL_SECONDS_BEFORE = 15 * 60
-#: 13.09.2026, 18:00 Uhr in Oldenburg (MESZ = UTC+2).
-ELECTION_NIGHT_START = datetime(2026, 9, 13, 16, 0, tzinfo=timezone.utc)
 
 
 def ttl_seconds(now: datetime | None = None) -> int:
-    """Wie lange ein Abruf gilt: 60 s am Wahlabend, 15 min davor."""
+    """Wie lange ein Abruf gilt: 60 s ab Wahlschluss, 15 min davor.
+
+    Der Zeitpunkt steht in der Wahl (``polls_close``), nicht mehr als
+    Konstante hier — sonst liefe die nächste Wahl den ganzen Abend im
+    Viertelstundentakt."""
     now = now or datetime.now(timezone.utc)
-    return TTL_SECONDS if now >= ELECTION_NIGHT_START else TTL_SECONDS_BEFORE
+    return TTL_SECONDS if now >= elections.active().polls_close else TTL_SECONDS_BEFORE
 #: (verbinden, lesen). Drei Dateien nacheinander, jede Minute eine Runde: Ein
 #: langes Lese-Zeitlimit hielte den Request-Thread fest, während die Seite
 #: schon längst den alten Stand hätte zeigen können.
@@ -92,7 +94,12 @@ _log = logging.getLogger("ratslotse.web.wahlabend")
 
 
 def base_url() -> str:
-    return os.environ.get("WAHLABEND_VOTEMANAGER_URL", DEFAULT_BASE).rstrip("/")
+    return os.environ.get("WAHLABEND_VOTEMANAGER_URL", elections.active().source.base).rstrip("/")
+
+
+def files() -> dict[str, str]:
+    """Die drei Open-Data-Pfade der aktiven Wahl, Schlüssel -> Pfad."""
+    return elections.active().source.files
 
 
 def presentation_url() -> str:
@@ -455,7 +462,7 @@ def fetch(force: bool = False) -> Snapshot:
         failed: list[tuple[str, str]] = []
         with requests.Session() as session:
             session.headers.update({"User-Agent": UA})
-            for key, path in FILES.items():
+            for key, path in files().items():
                 try:
                     text, last_modified = _get(session, base + path)
                     header = _header_of(text)

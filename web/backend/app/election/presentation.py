@@ -54,17 +54,21 @@ from typing import Any
 
 import requests
 
-from . import crosscheck
+from . import crosscheck, elections
 from .register import Register
 
-#: Der API-Pfad der Stadtratswahl (Wahl-Id 913).
-API_PATH = "/daten/api/wahl_913"
-#: Gebiets-Id der Stadt und Ebene der Wahlbereiche — die Vorgabe, falls
-#: ``wahl.json`` nicht zu haben ist. Beide Werte stehen dort und werden von
-#: dort gelesen; die Konstanten sind der Notnagel.
-DEFAULT_CITY_ID = "ebene_-6361_id_10358"
-DEFAULT_AREAS_LEVEL = "ebene_-6362"
 TIMEOUT = (5, 10)
+
+
+def _quelle() -> elections.Source:
+    """Wahl-Id, Stadt-Id und Wahlbereichs-Ebene der aktiven Ratswahl.
+
+    Standen bis 09/2026 als Konstanten hier (``wahl_913``,
+    ``ebene_-6361_id_10358``). Sie sind Vorgaben, keine Zusagen: Gelesen wird
+    beides aus ``wahl.json``, die Registry liefert nur den Notnagel für den
+    Fall, dass die Datei gerade nicht antwortet.
+    """
+    return elections.active().source
 
 _log = logging.getLogger("ratslotse.web.wahlabend")
 
@@ -321,12 +325,14 @@ def resolve_ids(session: requests.Session, base: str) -> tuple[str, str]:
     global _ids
     if _ids is not None:
         return _ids
+    quelle = _quelle()
+    vorgabe = (quelle.city_id or "", quelle.areas_level or "")
     try:
-        city, areas = ids_of(_get_json(session, base + API_PATH + "/wahl.json"))
+        city, areas = ids_of(_get_json(session, base + quelle.api_path + "/wahl.json"))
     except (requests.RequestException, ValueError) as exc:
         _log.info("Wahlabend: wahl.json ohne Antwort (%s: %s) — Vorgabe-Ids", type(exc).__name__, exc)
-        return DEFAULT_CITY_ID, DEFAULT_AREAS_LEVEL
-    _ids = (city or DEFAULT_CITY_ID, areas or DEFAULT_AREAS_LEVEL)
+        return vorgabe
+    _ids = (city or vorgabe[0], areas or vorgabe[1])
     return _ids
 
 
@@ -338,21 +344,22 @@ def fetch(session: requests.Session, base: str) -> Fetched:
     city: PresentationArea | None = None
     city_payload: Any | None = None
     city_id, level = resolve_ids(session, base)
+    api = _quelle().api_path
     try:
-        links = area_links(_get_json(session, f"{base}{API_PATH}/uebersicht_{level}_0.json"))
+        links = area_links(_get_json(session, f"{base}{api}/uebersicht_{level}_0.json"))
     except (requests.RequestException, ValueError) as exc:
         links = []
         errors.append(f"Übersicht: {type(exc).__name__}: {exc}"[:160])
     for label, gid in links:
         try:
-            area = parse_area(_get_json(session, f"{base}{API_PATH}/ergebnis_{gid}_0.json"))
+            area = parse_area(_get_json(session, f"{base}{api}/ergebnis_{gid}_0.json"))
         except (requests.RequestException, ValueError) as exc:
             errors.append(f"{label}: {type(exc).__name__}: {exc}"[:160])
             continue
         if area is not None:
             areas[label] = area
     try:
-        city_payload = _get_json(session, f"{base}{API_PATH}/ergebnis_{city_id}_0.json")
+        city_payload = _get_json(session, f"{base}{api}/ergebnis_{city_id}_0.json")
         city = parse_area(city_payload)
     except (requests.RequestException, ValueError) as exc:
         errors.append(f"Stadt: {type(exc).__name__}: {exc}"[:160])

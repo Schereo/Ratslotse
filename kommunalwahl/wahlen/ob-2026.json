@@ -1,0 +1,19 @@
+{
+  "slug": "ob-2026",
+  "kind": "mayor",
+  "title": "Wahl der Oberbürgermeisterin / Wahl des Oberbürgermeisters - Stadt Oldenburg",
+  "short_title": "OB-Wahl Oldenburg",
+  "date": "2026-09-13",
+  "polls_close": "2026-09-13T18:00:00+02:00",
+  "status": "live",
+  "candidates": {
+    "file": "kommunalwahl/wahl-fakten.json",
+    "key": "ob_kandidaten"
+  },
+  "source": {
+    "adapter": "votemanager",
+    "base": "https://votemanager.kdo.de/20260913/03403000",
+    "presentation_id": 2552,
+    "city_id": "ebene_-6360_id_10357"
+  }
+}

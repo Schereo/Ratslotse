@@ -41,13 +41,14 @@ from ..antworten import (
     ElectionAreaParty,
     ElectionCandidate,
     ElectionHistoryPoint,
+    ElectionInfo,
     ElectionMandate,
     ElectionNight,
     ElectionParty,
     ElectionSource,
     ElectionTotals,
 )
-from . import history, votemanager
+from . import elections, history, votemanager
 from .projection import Projection, project
 from .reference import Reference
 from .reference import load as load_reference
@@ -221,6 +222,22 @@ def _scaled(lists: Iterable[DistrictList], projection: Projection, reg: Register
         else:
             out.append(DistrictList(dl.party, dl.district, total, None, None, dl.n_candidates))
     return out
+
+
+def _election_of(reg: Register | None) -> ElectionInfo:
+    """Titel, Datum und Sitzzahl der Wahl — aus dem Register, sonst aus der Registry.
+
+    ``_bare`` ist die letzte Reißleine: Dort ist das Register gerade NICHT
+    lesbar, und bis 09/2026 stand deshalb „13.09.2026, 52 Sitze, Wahl des
+    Rates …" von Hand in der Antwort — eine dritte Fassung derselben Angaben,
+    die bei der nächsten Wahl still falsch geworden wäre.
+    """
+    if reg is not None:
+        return ElectionInfo(date=reg.date, seats=reg.seats, title=reg.title,
+                            presentation_url=votemanager.presentation_url())
+    wahl = elections.active()
+    return ElectionInfo(date=wahl.date, seats=wahl.seats, title=wahl.title,
+                        presentation_url=votemanager.presentation_url())
 
 
 def _mandates(alloc: Allocation | None, reg: Register) -> list[ElectionMandate]:
@@ -436,7 +453,7 @@ def compose(reg: Register, ref: Reference, snap: Snapshot, dataset: str, *,
 
     return ElectionNight(
         dataset=dataset, phase=phase, person_votes_available=persons,
-        election={"date": reg.date, "seats": reg.seats, "title": reg.title, "presentation_url": votemanager.presentation_url()},
+        election=_election_of(reg),
         source={
             "fetched_at": snap.fetched_at.isoformat(timespec="seconds"),
             "last_modified": snap.last_modified, "ok": snap.ok, "error": snap.error,
@@ -593,9 +610,7 @@ def _bare(error: str) -> ElectionNight:
     Register lesbar ist. Leere Listen sind wenig — ein 500er wäre weniger."""
     return ElectionNight(
         dataset="live", phase="before", person_votes_available=False,
-        election={"date": "2026-09-13", "seats": 52,
-                  "title": "Wahl des Rates der Stadt Oldenburg (Oldb)",
-                  "presentation_url": votemanager.presentation_url()},
+        election=_election_of(None),
         source={"fetched_at": None, "last_modified": None, "ok": False, "error": error},
         progress={"districts_total": 0, "districts_counted": 0},
         totals=_totals(None), parties=[], areas=[], mandates=[], projected_mandates=[],

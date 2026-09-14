@@ -48,16 +48,23 @@ from typing import Any
 
 import requests
 
-from . import crosscheck, presentation
+from . import crosscheck, elections, presentation
 from .register import KOMMUNALWAHL
 from .votemanager import TIMEOUT, UA, ttl_seconds
 
-#: Wahl-Id der OB-Wahl 2026 (gemessen 11.09.2026: ``daten/api/termin.json``).
-WAHL_ID = 2552
-#: Gebiets-Id der Stadt für diese Wahl — Vorgabe, falls ``termin.json`` einmal
-#: nicht zu haben ist; wird sonst daraus gelesen (``resolve_ids``).
-DEFAULT_CITY_ID = "ebene_-6360_id_10357"
-API_PATH = f"/daten/api/wahl_{WAHL_ID}"
+
+def wahl() -> elections.Election:
+    """Die OB-Wahl, die zur aktiven Ratswahl gehört.
+
+    Wahl-Id (2026: 2552), Gebiets-Id und Basis-URL standen bis 09/2026 als
+    Konstanten hier. Sie gehören zur Wahl, nicht zum Modul: Die Stichwahl am
+    27.09.2026 trägt eine andere Id unter einem anderen Termin.
+    """
+    ob = elections.mayor_of()
+    if ob is None:
+        raise LookupError(f"Zu „{elections.active().slug}“ ist keine OB-Wahl eingetragen "
+                          "(Feld „mayor“ in kommunalwahl/wahlen/).")
+    return ob
 TERMIN_PATH = "/daten/api/termin.json"
 
 _log = logging.getLogger("ratslotse.web.wahlabend")
@@ -121,11 +128,13 @@ def _party_kurz(vorgeschlagen_von: str) -> str:
 
 
 def candidates() -> tuple[MayorCandidate, ...]:
-    """Die neun OB-Kandidaturen aus ``kommunalwahl/wahl-fakten.json`` —
-    Stimmen und Anteil noch ``None``, die liefert erst ``fetch``/``probe``."""
-    raw = json.loads((KOMMUNALWAHL / "wahl-fakten.json").read_text(encoding="utf-8"))
+    """Die Kandidaturen aus der Datei, die die Wahl nennt (2026:
+    ``kommunalwahl/wahl-fakten.json``, Schlüssel ``ob_kandidaten``) — Stimmen
+    und Anteil noch ``None``, die liefert erst ``fetch``/``probe``."""
+    datei, schluessel = wahl().candidates or (KOMMUNALWAHL / "wahl-fakten.json", "ob_kandidaten")
+    raw = json.loads(datei.read_text(encoding="utf-8"))
     out = []
-    for k in raw["ob_kandidaten"]:
+    for k in raw[schluessel]:
         out.append(MayorCandidate(
             slug=slug_of(k["name"]), name=k["name"],
             party=_party_kurz(k["vorgeschlagen_von"]), votes=None, share_pct=None,
@@ -235,28 +244,29 @@ def parse(payload: Any, known: tuple[MayorCandidate, ...] | None = None) -> Mayo
 # ------------------------------------------------------------------ Abruf
 
 def base_url() -> str:
-    return os.environ.get("WAHLABEND_VOTEMANAGER_URL",
-                          "https://votemanager.kdo.de/20260913/03403000").rstrip("/")
+    return os.environ.get("WAHLABEND_VOTEMANAGER_URL", wahl().source.base).rstrip("/")
 
 
 def resolve_ids(session: requests.Session, base: str) -> str:
     """Die Gebiets-Id der Stadt für DIESE Wahl, aus ``termin.json`` gelesen
     (dort stehen Ratswahl und OB-Wahl nebeneinander, an ``wahl.id`` erkennbar).
     Ohne Antwort die Vorgabe."""
+    quelle = wahl().source
+    vorgabe = quelle.city_id or ""
     try:
         resp = session.get(base + TERMIN_PATH, timeout=TIMEOUT)
         resp.raise_for_status()
         payload = resp.json()
     except (requests.RequestException, ValueError) as exc:
         _log.info("Wahlabend/OB: termin.json ohne Antwort (%s: %s) — Vorgabe-Id", type(exc).__name__, exc)
-        return DEFAULT_CITY_ID
+        return vorgabe
     for eintrag in payload.get("wahleintraege", []) if isinstance(payload, dict) else []:
-        wahl = eintrag.get("wahl") if isinstance(eintrag, dict) else None
+        eintrag_wahl = eintrag.get("wahl") if isinstance(eintrag, dict) else None
         gebiet = eintrag.get("gebiet_link") if isinstance(eintrag, dict) else None
-        if isinstance(wahl, dict) and wahl.get("id") == WAHL_ID and isinstance(gebiet, dict) \
-                and isinstance(gebiet.get("id"), str):
+        if isinstance(eintrag_wahl, dict) and eintrag_wahl.get("id") == quelle.presentation_id \
+                and isinstance(gebiet, dict) and isinstance(gebiet.get("id"), str):
             return gebiet["id"]
-    return DEFAULT_CITY_ID
+    return vorgabe
 
 
 _lock = threading.Lock()
@@ -284,7 +294,8 @@ def fetch(force: bool = False) -> MayorResult:
             with requests.Session() as session:
                 session.headers.update({"User-Agent": UA})
                 city_id = resolve_ids(session, base)
-                resp = session.get(f"{base}{API_PATH}/ergebnis_{city_id}_0.json", timeout=TIMEOUT)
+                resp = session.get(f"{base}{wahl().source.api_path}/ergebnis_{city_id}_0.json",
+                                   timeout=TIMEOUT)
                 resp.raise_for_status()
                 result = parse(resp.json(), known)
         except (requests.RequestException, ValueError) as exc:
