@@ -5079,6 +5079,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/wahlabend/beobachtet": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Wahlabend Beobachtet
+         * @description Die gemerkten Kandidaturen dieses Kontos, mit dem Stand von jetzt.
+         *
+         *     Angemeldet, weil es die eigene Liste ist. Eine Antwort statt 383 Zeilen
+         *     für fünf Namen — die App soll nicht die ganze Rangliste holen müssen.
+         */
+        get: operations["wahlabend_beobachtet_api_wahlabend_beobachtet_get"];
+        put?: never;
+        /**
+         * Wahlabend Beobachten
+         * @description Eine Kandidatur merken — quer über alle Listen, das ist der Punkt.
+         */
+        post: operations["wahlabend_beobachten_api_wahlabend_beobachtet_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/wahlabend/beobachtet/{merker_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Wahlabend Nicht Mehr Beobachten
+         * @description Einen Merker entfernen. 404, wenn er einem anderen Konto gehört —
+         *     dieselbe Antwort wie „gibt es nicht", damit die Kennung nichts verrät.
+         */
+        delete: operations["wahlabend_nicht_mehr_beobachten_api_wahlabend_beobachtet__merker_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/wahlabend/bild.png": {
         parameters: {
             query?: never;
@@ -8843,6 +8891,77 @@ export interface components {
             valid_votes: number | null;
             /** Voters */
             voters: number | null;
+        };
+        /**
+         * ElectionWatchEntry
+         * @description Eine beobachtete Kandidatur — der Merker plus ihre aktuelle Zeile.
+         */
+        ElectionWatchEntry: {
+            /** Area */
+            area: number;
+            /** Election */
+            election: string;
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Party */
+            party: string;
+            /** Position */
+            position: number;
+            /**
+             * ElectionCandidateRow
+             * @description Eine Kandidatur, stadtweit einsortiert.
+             */
+            row: {
+                /** Area */
+                area: number;
+                /** Area Name */
+                area_name: string;
+                /** Area Roman */
+                area_roman: string;
+                /** Born */
+                born: number | null;
+                /** Color */
+                color: string;
+                /** Color Dark */
+                color_dark: string;
+                /** Elected */
+                elected: string | null;
+                /** Name */
+                name: string;
+                /** Occupation */
+                occupation: string | null;
+                /** Party */
+                party: string;
+                /** Party Share Pct */
+                party_share_pct: number | null;
+                /** Party Short */
+                party_short: string;
+                /** Position */
+                position: number;
+                /** Projected Elected */
+                projected_elected: string | null;
+                /** Rank */
+                rank: number | null;
+                /** Votes */
+                votes: number | null;
+                /** Votes To Seat */
+                votes_to_seat: number | null;
+            } | null;
+            /** Subtitle */
+            subtitle: string;
+        };
+        /**
+         * ElectionWatchList
+         * @description ``GET /api/wahlabend/beobachtet`` — die gemerkten Kandidaturen EINES
+         *     Kontos, mit dem Stand von jetzt. Eine Antwort statt 383 Zeilen für fünf
+         *     Namen.
+         */
+        ElectionWatchList: {
+            election: components["schemas"]["ElectionInfo"];
+            /** Entries */
+            entries: components["schemas"]["ElectionWatchEntry"][];
         };
         /**
          * ElsewhereItem
@@ -12782,6 +12901,17 @@ export interface components {
             since: string;
             /** Until */
             until: string;
+        };
+        /** WatchIn */
+        WatchIn: {
+            /** Area */
+            area: number;
+            /** Election */
+            election: string;
+            /** Party */
+            party: string;
+            /** Position */
+            position: number;
         };
         /** WebUserOut */
         WebUserOut: {
@@ -19207,6 +19337,103 @@ export interface operations {
             };
         };
     };
+    wahlabend_beobachtet_api_wahlabend_beobachtet_get: {
+        parameters: {
+            query?: {
+                /** @description Slug der Wahl; ohne ihn die Wahl im Fokus */
+                wahl?: string | null;
+                /** @description gesetzt = Generalprobe */
+                probe?: string | null;
+                counted?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ElectionWatchList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    wahlabend_beobachten_api_wahlabend_beobachtet_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WatchIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ElectionWatchEntry"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    wahlabend_nicht_mehr_beobachten_api_wahlabend_beobachtet__merker_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                merker_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     wahlabend_bild_api_wahlabend_bild_png_get: {
         parameters: {
             query?: {
@@ -19469,4 +19696,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 6d513e663990dd4cb7c2ac934fa597722de8c90260ec5f031e00c8f2d9f5bb3d
+// vertrag-sha256: 277d2e3b2cf10e01468a11291e87695dbc2af33d818c4044fd8954e9bf0d6793

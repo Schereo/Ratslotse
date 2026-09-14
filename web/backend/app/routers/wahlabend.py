@@ -17,7 +17,9 @@ import threading
 import time
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response, status
+
+from pydantic import BaseModel
 
 from kern import features
 from kern.store import Store
@@ -30,11 +32,13 @@ from ..antworten import (
     ElectionList,
     ElectionListItem,
     ElectionNight,
+    ElectionWatchEntry,
+    ElectionWatchList,
     MayorCandidate,
     MayorElectionInfo,
     MayorNight,
 )
-from ..deps import get_store, optional_user
+from ..deps import get_store, optional_user, require_active
 from ..election import archive, candidates, elections, image, mayor, service, share
 from ..prediction import rounds
 from ..election import votemanager
@@ -300,6 +304,113 @@ def stichwahl(probe: str | None = Query(default=None, description="gesetzt = Gen
     if w is None:
         raise HTTPException(status_code=404, detail="Es steht keine Stichwahl an.")
     return _mayor_night(w, probe, counted)
+
+
+# ------------------------------------------------------------------ Beobachtungsliste
+
+#: So heißt eine gemerkte Kandidatur in der Merkliste-Tabelle. Die Tabelle
+#: gehört sonst den Ratsinhalten (Sitzung, TOP, Beschluss); eine Kandidatur
+#: hat weder Sitzung noch Vorlage, deshalb bleibt sie aus der Ratsliste
+#: heraus (``routers/bookmarks.py`` überspringt diese Art) und wird nur hier
+#: bedient. Der Schlüssel ist das Tripel, das eine Kandidatur eindeutig macht.
+WATCH_KIND = "candidate"
+
+
+def _watch_key(election: str, party: str, area: int, position: int) -> str:
+    return f"candidate:{election}:{party}:{area}:{position}"
+
+
+def _watch_parse(key: str) -> tuple[str, str, int, int] | None:
+    teile = key.split(":")
+    if len(teile) != 5 or teile[0] != "candidate" or not teile[3].isdigit() or not teile[4].isdigit():
+        return None
+    return teile[1], teile[2], int(teile[3]), int(teile[4])
+
+
+class WatchIn(BaseModel):
+    election: str
+    party: str
+    area: int
+    position: int
+
+
+@router.get("/api/wahlabend/beobachtet")
+def wahlabend_beobachtet(
+    wahl: str | None = Query(default=None, description="Slug der Wahl; ohne ihn die Wahl im Fokus"),
+    probe: str | None = Query(default=None, description="gesetzt = Generalprobe"),
+    counted: int | None = Query(default=None, ge=0, le=500),
+    user: dict = Depends(require_active),
+    store: Store = Depends(get_store),
+) -> ElectionWatchList:
+    """Die gemerkten Kandidaturen dieses Kontos, mit dem Stand von jetzt.
+
+    Angemeldet, weil es die eigene Liste ist. Eine Antwort statt 383 Zeilen
+    für fünf Namen — die App soll nicht die ganze Rangliste holen müssen.
+    """
+    _frei()
+    slug = wahl or elections.focus().slug
+    night = _night(probe, counted, wahl)
+    zeilen = {(z["party"], z["area"], z["position"]): z
+              for z in candidates.ranking(night)["rows"]}
+    eintraege: list[ElectionWatchEntry] = []
+    for row in store.get_bookmarks(user["id"]):
+        if row.get("kind") != WATCH_KIND:
+            continue
+        teile = _watch_parse(row.get("target_key") or "")
+        if teile is None or teile[0] != slug:
+            continue
+        _, partei, bereich, platz = teile
+        eintraege.append(ElectionWatchEntry(
+            id=row["id"], election=slug, party=partei, area=bereich, position=platz,
+            name=row.get("title") or "", subtitle=row.get("subtitle") or "",
+            row=zeilen.get((partei, bereich, platz)),
+        ))
+    # Wer vorn liegt, steht oben; wer gar keine Zeile hat, ans Ende.
+    eintraege.sort(key=lambda e: (e["row"] is None, e["row"]["rank"] if e["row"] and e["row"]["rank"] else 10 ** 6))
+    return ElectionWatchList(election=night["election"], entries=eintraege)
+
+
+@router.post("/api/wahlabend/beobachtet", status_code=status.HTTP_201_CREATED)
+def wahlabend_beobachten(
+    payload: WatchIn = Body(...),
+    user: dict = Depends(require_active),
+    store: Store = Depends(get_store),
+) -> ElectionWatchEntry:
+    """Eine Kandidatur merken — quer über alle Listen, das ist der Punkt."""
+    _frei()
+    night = _night(None, None, payload.election if payload.election != elections.focus().slug else None)
+    zeile = next((z for z in candidates.ranking(night)["rows"]
+                  if z["party"] == payload.party and z["area"] == payload.area
+                  and z["position"] == payload.position), None)
+    if zeile is None:
+        raise HTTPException(status_code=404, detail="Diese Kandidatur gibt es bei dieser Wahl nicht.")
+    row = store.add_bookmark(
+        user["id"], kind=WATCH_KIND,
+        target_key=_watch_key(payload.election, payload.party, payload.area, payload.position),
+        title=zeile["name"],
+        subtitle=f"{zeile['party_short']} · Wahlbereich {zeile['area_roman']} · Platz {zeile['position']}",
+    )
+    return ElectionWatchEntry(
+        id=row["id"], election=payload.election, party=payload.party,
+        area=payload.area, position=payload.position,
+        name=zeile["name"], subtitle=row.get("subtitle") or "", row=zeile,
+    )
+
+
+@router.delete("/api/wahlabend/beobachtet/{merker_id}", status_code=status.HTTP_204_NO_CONTENT)
+def wahlabend_nicht_mehr_beobachten(
+    merker_id: int,
+    user: dict = Depends(require_active),
+    store: Store = Depends(get_store),
+) -> Response:
+    """Einen Merker entfernen. 404, wenn er einem anderen Konto gehört —
+    dieselbe Antwort wie „gibt es nicht", damit die Kennung nichts verrät."""
+    _frei()
+    vorhanden = store.get_bookmark_for_owner(user["id"], merker_id)
+    if vorhanden is None or vorhanden.get("kind") != WATCH_KIND:
+        raise HTTPException(status_code=404, detail="Nicht gefunden.")
+    store.delete_bookmark(user["id"], merker_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/api/wahlabend/bild.png", response_class=Response, responses=WAHLABEND_PNG)

@@ -4072,6 +4072,32 @@ class ElectionCandidateRow(TypedDict):
     votes_to_seat: int | None
 
 
+class ElectionWatchEntry(TypedDict):
+    """Eine beobachtete Kandidatur — der Merker plus ihre aktuelle Zeile."""
+    #: Die Kennung des Merkers (zum Entfernen).
+    id: int
+    election: str
+    party: str
+    area: int
+    position: int
+    #: Der Name, wie er beim Merken galt. Er steht auch dann da, wenn die
+    #: Kandidatur in der aktuellen Antwort fehlt — ein leerer Eintrag wäre
+    #: schlimmer als ein alter Name.
+    name: str
+    subtitle: str
+    #: Die aktuelle Zeile aus der Rangliste; ``None``, wenn es diese
+    #: Kandidatur in dieser Wahl nicht (mehr) gibt.
+    row: ElectionCandidateRow | None
+
+
+class ElectionWatchList(TypedDict):
+    """``GET /api/wahlabend/beobachtet`` — die gemerkten Kandidaturen EINES
+    Kontos, mit dem Stand von jetzt. Eine Antwort statt 383 Zeilen für fünf
+    Namen."""
+    election: ElectionInfo
+    entries: list[ElectionWatchEntry]
+
+
 class ElectionCandidateRanking(TypedDict):
     """``GET /api/wahlabend/kandidaten`` — alle Kandidaturen einer Ratswahl,
     sortiert und gefiltert vom Server, damit Web und App dieselbe Liste
