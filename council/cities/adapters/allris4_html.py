@@ -89,10 +89,22 @@ _WICKET_ID = re.compile(r"""(?<=[#"'_])id[0-9a-f]{4,}\b""")
 #: sagt nichts über den Inhalt der Seite.
 _SECTOKEN = re.compile(r'(name="sectoken"\s+value=")[0-9a-f]+(")')
 
-#: Wickets Seitenversion in den Selbstaufruf-Adressen (`vo020?2416-1.0-…`).
-#: Der Server zählt sie je Sitzung hoch — dieselbe Mechanik, die schon den
-#: Index zwingt, sie zu LESEN statt zu setzen (s. Modul-Docstring).
-_SEITENVERSION = re.compile(r"\?\d+-\d+\.\d*-")
+#: Wickets Seitenversion in den Selbstaufruf-Adressen. Der Server zählt sie
+#: je Sitzung hoch — dieselbe Mechanik, die schon den Index zwingt, sie zu
+#: LESEN statt zu setzen (s. Modul-Docstring). Sie steht in **drei** Formen
+#: da: `vo020?2416-1.0-`, `?2416-1.-` und, an Anlagen-Verweisen, `?1567--`.
+#: Die erste Fassung kannte nur die beiden mit Punkt — und ließ damit 81 von
+#: 120 Vorlagenseiten weiter als verändert gelten.
+_SEITENVERSION = re.compile(r"\?\d+-[\d.]*-")
+
+#: Der Seitenzustand des Tagesordnungsbaums. ALLRIS merkt sich im
+#: `sessionStorage` des Browsers, welche Äste auf- und zugeklappt sind, und
+#: benennt den Schlüssel nach einer Sitzung — nur nicht zuverlässig nach
+#: DIESER: Auf der Seite von 1002921 stand mal `…_1002921` und mal
+#: `…_1001560`, je nachdem, was die Sitzung zuvor gesehen hatte. Reiner
+#: Sitzungszustand, und der einzige Unterschied zwischen zwei Abrufen von
+#: 310 der 652 Sitzungsseiten.
+_BAUMZUSTAND = re.compile(r"(toTreeTable[A-Za-z]+)_\d+")
 
 
 def ohne_wicket_ids(html: str | None) -> str:
@@ -104,7 +116,8 @@ def ohne_wicket_ids(html: str | None) -> str:
     Bestand — 2.261 Abrufe statt 251 (gemessen 14.09.2026).
     """
     ohne = _WICKET_ID.sub("id_", html or "")
-    return _SEITENVERSION.sub("?v-", _SECTOKEN.sub(r"\1_\2", ohne))
+    ohne = _BAUMZUSTAND.sub(r"\1_", _SECTOKEN.sub(r"\1_\2", ohne))
+    return _SEITENVERSION.sub("?v-", ohne)
 
 
 def _zahl(url: str, name: str) -> str | None:

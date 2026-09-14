@@ -81,3 +81,50 @@ def test_der_adapter_vergleicht_bereinigt():
             f"allris4_html.{name} legt wieder bei jedem Abruf eine neue "
             "Rohzeile an — und `iter_papers` hält daraufhin jede Sitzung für "
             "frisch.")
+
+
+# Was die erste Fassung übersehen hat, gemessen an Lauf 2 vom 14.09.2026:
+# 310 von 652 Sitzungen und 81 von 120 Vorlagen galten weiter als verändert.
+BAUM_A = (
+    "<script>var clp = sessionStorage.getItem('toTreeTableBranchCollap_1002921');"
+    "var timeStamp = sessionStorage.getItem('toTreeTableTimeStamp_1002921');</script>"
+    '<a href="https://x/vo020?1567--anlagenHeaderPanel-attachmentsList-0-attachment-link'
+    '&amp;VOLFDNR=1008293">Anlage 1</a>'
+)
+BAUM_B = (
+    "<script>var clp = sessionStorage.getItem('toTreeTableBranchCollap_1001560');"
+    "var timeStamp = sessionStorage.getItem('toTreeTableTimeStamp_1001560');</script>"
+    '<a href="https://x/vo020?2355--anlagenHeaderPanel-attachmentsList-0-attachment-link'
+    '&amp;VOLFDNR=1008293">Anlage 1</a>'
+)
+
+
+def test_der_baumzustand_gilt_nicht_als_aenderung():
+    """ALLRIS benennt den sessionStorage-Schlüssel nach EINER Sitzung — nur
+    nicht zuverlässig nach DIESER: Auf der Seite von 1002921 stand mal
+    `…_1002921` und mal `…_1001560`, je nachdem, was die Sitzung zuvor
+    gesehen hatte. Das war der einzige Unterschied bei 310 von 652 Seiten.
+    """
+    assert ohne_wicket_ids(BAUM_A) == ohne_wicket_ids(BAUM_B)
+
+
+def test_die_seitenversion_auch_in_ihrer_dritten_form():
+    """`?1567--` hat keinen Punkt, die erste Regel verlangte einen.
+
+    Sie steht an den Anlagen-Verweisen jeder Vorlagenseite — 81 von 120
+    Vorlagen galten deshalb weiter als verändert.
+    """
+    eins = '<a href="https://x/vo020?1567--anlagenHeaderPanel-x&amp;VOLFDNR=7">A</a>'
+    zwei = '<a href="https://x/vo020?2355--anlagenHeaderPanel-x&amp;VOLFDNR=7">A</a>'
+    assert ohne_wicket_ids(eins) == ohne_wicket_ids(zwei)
+
+
+def test_die_vorlagenkennung_im_verweis_bleibt_stehen():
+    """Der Preis wäre, die Anlage einer ANDEREN Vorlage zuzuordnen.
+
+    `VOLFDNR` steht direkt neben der flüchtigen Seitenversion; eine zu
+    gierige Regel nähme sie mit, und zwei Vorlagen sähen gleich aus.
+    """
+    andere = BAUM_B.replace("VOLFDNR=1008293", "VOLFDNR=1008416")
+    assert ohne_wicket_ids(BAUM_B) != ohne_wicket_ids(andere)
+    assert "VOLFDNR=1008293" in ohne_wicket_ids(BAUM_B)
