@@ -13,7 +13,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 #: Die Dialekte, für die es einen Adapter gibt.
-DIALECTS = ("allris4", "session", "rubin", "oldenburg")
+DIALECTS = ("allris4", "allris4_html", "allris_classic", "session",
+            "rubin", "oldenburg", "hannover_sim")
 
 
 @dataclass(frozen=True)
@@ -31,6 +32,26 @@ class BodySpec:
     #: Nur aktive Städte holt der Cron. Die übrigen sind gemessen erreichbar
     #: und warten darauf, dass jemand sie einschaltet.
     active: bool = True
+    #: Ab wann eine Vorlage in den VERGLEICH geht — ``since`` regelt nur die
+    #: Ernte. Ohne eigenes Fenster verglich Hannover acht Jahre gegen die drei
+    #: der OParl-Städte, und der Bestandslauf kostete das Doppelte
+    #: (24.654 statt 9.277 Kandidaten, gemessen 13.09.2026). Leer heißt
+    #: unbegrenzt — so steht Oldenburg da, die Bezugsstadt: Ob es eine Sache
+    #: schon hat, beantwortet ein Beschluss von 2019 genauso gut.
+    compare_since: str | None = "2023-01-01"
+    #: Welche Vorlagenarten dieser Stadt am Vergleich teilnehmen. Leer heißt
+    #: alle, die ``model.IDEA_KINDS`` ohnehin zulässt. Hannover nimmt seine
+    #: Anfragen heraus: 6.483 Stück, davon **1 %** mit Ergebnis, weil Anfragen
+    #: dort beantwortet und nicht beschlossen werden (Tims Entscheidung
+    #: 13.09.2026).
+    compare_kinds: tuple[str, ...] = ()
+    #: Veröffentlicht die Stadt ihre Niederschriften so, dass wir sie lesen
+    #: dürfen? Aus bei Hannover: Die Ergebnisse stehen dort auf den
+    #: Tagesordnungspunkt-Seiten, und **22 von 25** geprüften tragen den Satz,
+    #: ihre Dokumente seien „vertraulich und daher nicht zur Veröffentlichung
+    #: im Internet freigegeben". Die Karte soll das sagen können — sonst
+    #: sieht eine bewusste Zurückhaltung aus wie eine Lücke in unseren Daten.
+    protocols_public: bool = True
     #: Holt der Lauf die PDF-Bytes? Aus für Quellen, deren Text schon
     #: vorliegt — Oldenburgs Vorlagentexte stehen längst in der
     #: Rats-Datenbank, sie ein zweites Mal herunterzuladen belastet nur
@@ -46,7 +67,7 @@ BODIES: dict[str, BodySpec] = {
     #     nicht haben?" sind dieselbe Rechnung mit vertauschten Rollen).
     "oldenburg": BodySpec(
         "oldenburg", "Oldenburg (Oldb)", "NI", "oldenburg", None,
-        since="2018-01-01", fetch_files=False,
+        since="2018-01-01", compare_since=None, fetch_files=False,
         notes="Kein OParl (SessionNet ohne Modul). Der Adapter liest council.sqlite."),
 
     # --- Ring 1: gleiches Kommunalverfassungsrecht (NKomVG)
@@ -95,6 +116,111 @@ BODIES: dict[str, BodySpec] = {
                          active=False, notes="OParl 1.0: Volltext liegt im Dateiobjekt."),
     "darmstadt": BodySpec("darmstadt", "Darmstadt", "HE", "rubin",
                           "https://darmstadt.gremien.info/oparl/system", active=False),
+    # Die einzigen zwei weiteren niedersächsischen Städte mit einer
+    # OParl-Schnittstelle, die antwortet — von 340 geprüften Kommunen ab 5.000
+    # Einwohnern (Erhebung 10.09.2026). Beide ALLRIS 4, also derselbe Adapter
+    # wie Osnabrück und Braunschweig, beide CC BY 4.0.
+    "langenhagen": BodySpec(
+        "langenhagen", "Langenhagen", "NI", "allris4",
+        "https://www.langenhagen.sitzung-online.de/oparl/system",
+        active=False,
+        notes="CC BY 4.0. Niederschriften an 4 von 8 geprüften Sitzungen — "
+              "die einzige weitere NI-Stadt, die zum „Warum“ etwas beiträgt."),
+    "peine": BodySpec(
+        "peine", "Peine", "NI", "allris4",
+        "https://ratsinfo.stadt-peine.de/public/oparl/system",
+        active=False,
+        notes="CC BY 4.0, 2.579 Vorlagen seit 2024. Keine Niederschriften an "
+              "den Sitzungen. Die Schnittstelle liegt unter /public/."),
+
+    # --- ALLRIS 4 ohne OParl: dieselbe Anwendung, Modul aus oder kaputt.
+    #     Gelesen wird dann die Oberflaeche (Dialekt ``allris4_html``); die
+    #     Adresse ist die Wurzel der Anwendung, nicht ein ``/oparl/system``.
+    "laatzen": BodySpec(
+        "laatzen", "Laatzen", "NI", "allris4_html",
+        "https://ratsinfo.laatzen.de/public",
+        active=False,
+        notes="OParl antwortet mit HTTP 500. Gemessen 10.09.2026: 8 Sitzungen, "
+              "154 Punkte, 74 Vorlagen, 241 Dateien, 83 Beratungen."),
+    # **Der Domainname sagt nichts über das Produkt.** „buergerinfo" ist
+    # sonst die Handschrift von Somacos; gemessen läuft dort ALLRIS 4
+    # („ALLRIS - Sitzungen Kalender" auf si010). Dieselbe Falle wie
+    # ``sitzung-online.de``, das nicht Somacos gehört, sondern CC e-gov.
+    "lueneburg": BodySpec(
+        "lueneburg", "Lüneburg", "NI", "allris4_html",
+        "https://buergerinfo.stadt.lueneburg.de/public",
+        active=False,
+        notes="OParl antwortet mit HTTP 500. Verlinkt von "
+              "hansestadt-lueneburg.de/rathaus/politik."),
+    # **Der Host steht NICHT nach dem üblichen Muster.** Weder
+    # ``ratsinfo.wolfsburg.de`` noch ``wolfsburg.sitzung-online.de`` lösen
+    # überhaupt auf; die Stadt verlinkt von wolfsburg.de/politik auf
+    # ``ratsinfob.stadt.wolfsburg.de``, ohne ``/public``. Ein geratener Host
+    # hat am 10.09.2026 eine Stunde gekostet und zu dem Schluss geführt, die
+    # Anwendung sei kaputt — sie ist es nicht.
+    # --- ALLRIS classic: die ältere `.asp`-Bauform. Eigener Dialekt, weil sie
+    #     mit ALLRIS 4 den Hersteller teilt und keine einzige Adresse.
+    #     Der Host stammt von hildesheim.de (Schritt 0 im Rezept): Er heißt
+    #     `stadt-hildesheim.de`, nicht `hildesheim.de` — und `bi.`, `ris.`
+    #     und `allris.hildesheim.de` lösen alle auf dieselbe Platzhalter-IP
+    #     auf, beweisen also nichts.
+    "hildesheim": BodySpec(
+        "hildesheim", "Hildesheim", "NI", "allris_classic",
+        "https://www.stadt-hildesheim.de/allris",
+        since="2018-01-01", active=False, fetch_files=False,
+        notes="Kein OParl. Der Vorlagentext steht IN der Seite, es gibt keine "
+              "Anlagen — deshalb fetch_files=False und Text über inline_texts. "
+              "Zu jedem beratenen Punkt gibt es einen Auszug (to020.asp) mit "
+              "Wortprotokoll und Beschluss - das Warum ohne PDF-Schnitt."),
+
+    "wolfsburg": BodySpec(
+        "wolfsburg", "Wolfsburg", "NI", "allris4_html",
+        "https://ratsinfob.stadt.wolfsburg.de",
+        # AN seit 14.09.2026, nach dem Probelauf, den das Rezept verlangt:
+        # **245 Abrufe in 266 Sekunden** (201 Sitzungen, 14 Vorlagen).
+        # Davor waren es 2.261, und der Weg dahin ging über drei Ursachen:
+        # Wicket schreibt seine Element-IDs, Token und Seitenversionen bei
+        # jedem Abruf neu (#1330), dazu den Merkzettel des
+        # Tagesordnungsbaums (#1334) — jede Seite galt deshalb als geändert.
+        # Und selbst danach blieben 652 Abrufe stehen, weil der Lauf jede
+        # Sitzungsseite des Index neu holte; seit #1336 bleiben die 451
+        # abgeschlossenen liegen. Die 199 nichtöffentlichen Hüllen tragen
+        # kein Datum und werden weiter geholt — sie könnten öffentlich
+        # werden.
+        active=True,
+        notes="CC BY 4.0 (laut /oparl/system). OParl ist eingebaut, liefert "
+              "aber nur /system — bodies und alles dahinter antworten mit "
+              "HTTP 500. Gelesen wird deshalb die Oberfläche. 652 Sitzungen "
+              "im Index (si018), davon 199 nicht öffentlich; 1.571 Vorlagen. "
+              "Gemessen 10.09.2026, Wochenlauf nachgemessen 14.09.2026."),
+
+    # --- Hannover: kein Hersteller aus dem Vergleich, Eigenbau auf
+    #     Notes/Domino. Ein zweiter Host (ris.hannit.de/public/, ALLRIS net)
+    #     ist verlinkt, trägt aber eine ausdrückliche Sperre gegen
+    #     automatisierte Zugriffe (ALTCHA) — wird nicht umgangen, dieselbe
+    #     Regel wie bei Göttingens Cloudflare. Gelesen wird SIM.
+    "hannover": BodySpec(
+        "hannover", "Hannover", "NI", "hannover_sim",
+        "https://e-government.hannover-stadt.de/lhhsimwebre.nsf",
+        # AN seit 14.09.2026, nach dem Probelauf, den das Rezept verlangt:
+        # Ein Wochen-Fenster kostet **251 Abrufe in 127 Sekunden** (93
+        # geänderte Sitzungen, 109 aufgefrischte Vorlagen, davon 19 neu).
+        # Vor `muss_geholt_werden` wären es 25.729 Abrufe je Sonntag gewesen
+        # — gemessen: 4.083 geholte Vorlagen, davon 4.083 schon bekannt.
+        since="2018-01-01", active=True, fetch_files=False,
+        # Anfragen bleiben draußen: 6.483 Stück, 1 % mit Ergebnis. In Hannover
+        # werden sie beantwortet, nicht beschlossen — der Vergleich fände dort
+        # nichts zu vergleichen, die Einordnung kostete rund $7.
+        compare_kinds=("motion", "proposal", "amendment"),
+        protocols_public=False,
+        notes="Kein Lizenzhinweis. Historie ab 2003, ungeblättert. Der "
+              "Verwaltungsausschuss veröffentlicht keine Sitzungsseiten — "
+              "seine Beratungen stehen nur als unverlinkter Text in "
+              "Vorlagen. Ergebnisse kommen ausschließlich aus der "
+              "Beratungsfolge der Vorlage: Tagesordnungspunkt-Seiten "
+              "erklären ihre eigenen Ergebnistexte zu vertraulichen "
+              "Informationen (22 von 25 geprüften), Vorlagenseiten nie "
+              "(0 von 39). Gemessen 11.09.2026."),
 }
 
 

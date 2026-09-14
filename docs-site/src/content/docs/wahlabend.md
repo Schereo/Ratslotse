@@ -121,16 +121,21 @@ je Listenplatz dieselbe Zahl — und damit dieselben 50 Mandate
 `tests/fixtures/wahlabend/praesentation-2021/`).
 
 Wann er greift: `votemanager.fetch()` sieht nach jedem CSV-Abruf nach, ob
-die Wahlbereichsdatei fehlt oder **einem** Wahlbereich noch die
-Personenstimmen fehlen. Nur dann holt er Übersicht, sechs Wahlbereiche und
-die Stadt (acht Abrufe) und übernimmt, was weiter ist: eine JSON-Zeile
-ersetzt die CSV-Zeile, wo diese fehlt oder keine Personenstimmen trägt.
-Trägt die CSV überall Personenstimmen, wird die Darstellung nicht gefragt.
-Die Wahlbezirke (133 Dateien) holt er **nicht** — die Hochrechnung hängt an
-der CSV; ohne sie gibt es Sitze und Namen, aber keine Prognose. Was
-übernommen wurde, steht als Hinweis in `notes` („I - Stadtmitte Nord, Stadt:
-Zahlen aus der Ergebnisdarstellung …"); ein CSV-Ausfall bleibt daneben als
-`source.error` stehen, denn er ist einer.
+die Wahlbereichsdatei fehlt, **einem** Wahlbereich noch die Personenstimmen
+fehlen, oder er dort einfach noch nicht fertig ausgezählt ist. Nur dann holt
+er Übersicht, sechs Wahlbereiche und die Stadt (acht Abrufe) und übernimmt,
+was **weiter** ist: Maßgeblich ist zuerst der Auszählungsstand (mehr
+Schnellmeldungen als die CSV), erst bei Gleichstand entscheiden zusätzliche
+Personenstimmen. Das ist bewusst mehr als „hat die CSV Personen, oder
+nicht" — eine Open-Data-CSV, die am Abend nicht mehr nachzieht, soll nicht
+für den Rest des Abends als „aktuell genug" gelten, nur weil sie einmal für
+alle Bereiche Personenstimmen trug. Trägt die CSV überall Personenstimmen
+UND ist überall fertig ausgezählt, wird die Darstellung nicht gefragt. Die
+Wahlbezirke (133 Dateien) holt er **nicht** — die Hochrechnung hängt an der
+CSV; ohne sie gibt es Sitze und Namen, aber keine Prognose. Was übernommen
+wurde, steht als Hinweis in `notes` („I - Stadtmitte Nord, Stadt: Zahlen aus
+der Ergebnisdarstellung — sie ist weiter als die Open-Data-CSV."); ein
+CSV-Ausfall bleibt daneben als `source.error` stehen, denn er ist einer.
 
 Zwei Dinge unterscheiden die Quelle von der CSV, und beide sind der Grund,
 warum sie nur der Ersatz ist:
@@ -315,6 +320,24 @@ einmal gerechnet und dann behalten — ihre Zahlen ändern sich ja nicht.
 
 Beide Caches leben im Prozess: Ein Neustart des Dienstes setzt sie zurück, ein
 zweiter Worker hätte seine eigenen.
+
+## Die OB-Wahl (`GET /api/wahlabend/ob`)
+
+Die Wahl der Oberbürgermeisterin/des Oberbürgermeisters läuft am selben Tag,
+hat aber **keine Open-Data-CSV** — gemessen am 11.09.2026: acht probierte
+Namensmuster, alle 404, auch im Archiv von 2021. `election/mayor.py` liest die
+Zahlen deshalb ausschließlich aus der Ergebnisdarstellung (derselbe
+JSON-Ersatzpfad wie oben, andere Wahl-Id, eine flache Tabelle: jede Zeile ist
+eine Kandidatur, nicht drei wie bei der Ratswahl). Die neun Kandidaturen selbst
+kommen aus `kommunalwahl/wahl-fakten.json`, nicht aus einer zweiten
+Handschrift; ein Slug wird aus dem Nachnamen abgeleitet (`slug_of`). Die
+Antwortform ist `MayorNight`: `phase` (`before`/`counting`/`complete`),
+Wahlbeteiligung, gültige/ungültige Stimmen, je Kandidatur Stimmen und Anteil,
+und `runoff` — die beiden Slugs einer Stichwahl, sobald der Votemanager sie
+meldet. Hängt am Schalter `wahlabend` (nicht `tippspiel`) — sie ist Teil des
+Wahlabends, auch wenn das Tippspiel sie für seinen OB-Vergleich mitliest.
+Dieselbe `probe(counted)`-Generalprobe wie bei der Ratswahl, mit der Fixture
+`tests/fixtures/wahlabend/ob-2021.json`.
 
 ## Die Seite `/wahlabend`
 

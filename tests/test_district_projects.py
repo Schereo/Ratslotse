@@ -182,7 +182,7 @@ def test_buendelung_namensvetter_und_stadtweit_regel(monkeypatch):
 
 
 def _register(client, email="tester@example.org"):
-    r = client.post("/api/auth/register", json={"email": email, "password": "password123"})
+    r = client.post("/api/auth/register", json={"display_name": "Testkonto", "email": email, "password": "password123"})
     assert r.status_code == 201, r.text
     from kern.store import Store
     s = Store(RATSLOTSE_DB)

@@ -42,7 +42,7 @@ export function RechercheToggle({ aktiv, frei, onToggle }: {
       onClick={onToggle}
       disabled={leer && !aktiv}
       aria-pressed={aktiv}
-      title={leer ? "Tageskontingent aufgebraucht — ab Mitternacht wieder" : "Gründliche Recherche: dauert etwa 30 Sekunden, liest deutlich mehr Beschlüsse"}
+      title={leer ? "Tageslimit erreicht — ab Mitternacht wieder verfügbar" : "Gründliche Recherche: dauert etwa 30 Sekunden und liest deutlich mehr Beschlüsse"}
       className={cn(
         "inline-flex h-[30px] shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-[11.5px] font-semibold transition-colors",
         aktiv
@@ -67,7 +67,7 @@ export function RechercheHinweisKarte({ frei }: { frei: number | null }) {
       <FlaskConical className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
       <p className="text-[11.5px] leading-relaxed text-muted-foreground">
         <strong className="text-foreground">Gründliche Recherche:</strong>{" "}
-        zerlegt deine Frage in Facetten, liest deutlich mehr Beschlüsse und
+        teilt deine Frage in mehrere Aspekte, liest deutlich mehr Beschlüsse und
         schreibt einen gegliederten Bericht. <strong>Dauert etwa 30 Sekunden</strong>
         {frei !== null && <> · noch {frei} von 5 heute</>}.
       </p>
@@ -84,12 +84,12 @@ export function RechercheLimitKarte({ onSchnelleFrage }: { onSchnelleFrage: () =
       <div className="min-w-0">
         <p className="text-[13px] font-semibold text-foreground">Deine 5 Recherchen für heute sind aufgebraucht</p>
         <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
-          Ab Mitternacht geht es weiter. Die schnelle Frage steht dir weiter unbegrenzt
-          zur Verfügung — für den Überblick reicht sie oft.
+          Ab Mitternacht geht es weiter. Du kannst weiterhin eine normale Frage stellen —
+          für einen ersten Überblick reicht das oft.
         </p>
         <button type="button" onClick={onSchnelleFrage}
           className="mt-2 inline-flex items-center rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
-          Als schnelle Frage stellen
+          Als normale Frage stellen
         </button>
       </div>
     </div>
@@ -153,8 +153,8 @@ export function RechercheFortschritt({ phase, facets, facettenFertig, dokumente,
           className="h-[72px] w-[72px] shrink-0" />
         <div className="flex min-w-0 flex-1 flex-col gap-1.5 pt-0.5">
           {schritt(zustand(0), stufe > 0 && facets.length > 0
-            ? `Frage in ${facets.length} Facetten zerlegt` : "Frage zerlegen …")}
-          {schritt(zustand(1), phase === "suchen" ? "Facetten durchsuchen …" : "Facetten durchsuchen")}
+            ? `Frage in ${facets.length} Teilfragen aufgeteilt` : "Frage aufteilen …")}
+          {schritt(zustand(1), phase === "suchen" ? "Teilfragen durchsuchen …" : "Teilfragen durchsuchen")}
           {schritt(zustand(2), dokumente ? `${dokumente} Dokumente lesen` : "Dokumente lesen")}
           {schritt(zustand(3), "Bericht schreiben")}
         </div>
@@ -195,7 +195,7 @@ export function RechercheFortschritt({ phase, facets, facettenFertig, dokumente,
         {/* Nur in der App: Der Push kommt über APNs/FCM, im Browser gibt es
             kein Gerät, dem man etwas schicken könnte. Erst nach dem Mount
             prüfen, sonst weicht das Markup des statischen Exports ab. */}
-        {nativ && " Wir melden uns, wenn er da ist."}
+        {nativ && " Die App schickt dir eine Mitteilung, wenn er da ist."}
       </p>
     </div>
   );
@@ -212,10 +212,10 @@ export function RechercheGestoppt({ fertig, gesamt, teilberichtMoeglich, onTeilb
       <p className="text-[13px] font-semibold text-foreground">Recherche abgebrochen</p>
       <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
         {teilberichtMoeglich
-          ? <>{fertig} von {gesamt} Facetten waren fertig — die stehen dir als Teilbericht
-            zur Verfügung. Das zählt <strong>nicht</strong> gegen dein Tageskontingent.</>
-          : <>Es war noch keine Facette fertig. Das zählt <strong>nicht</strong> gegen
-            dein Tageskontingent.</>}
+          ? <>{fertig} von {gesamt} Teilfragen waren fertig. Daraus kann Ratslotse einen
+            Teilbericht erstellen. Dieser Versuch zählt <strong>nicht</strong> zu deinen fünf Recherchen heute.</>
+          : <>Noch keine Teilfrage war fertig. Dieser Versuch zählt <strong>nicht</strong> zu
+            deinen fünf Recherchen heute.</>}
       </p>
       <div className="mt-2 flex flex-wrap gap-2">
         {teilberichtMoeglich && (
@@ -242,8 +242,8 @@ export function RechercheFehlerKarte({ onFortsetzen, onSchnelleFrage }: {
     <div className="rounded-xl border border-signal/30 bg-signal/5 px-3.5 py-3">
       <p className="text-[13px] font-semibold text-foreground">Die Recherche ist abgebrochen</p>
       <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
-        Unterwegs ist die Verbindung abgerissen. Deine Frage ist nicht verloren —
-        die Recherche kann neu starten. Kein Verbrauch vom Kontingent.
+        Die Verbindung ist abgebrochen. Deine Frage ist nicht verloren; du kannst die
+        Recherche neu starten. Dieser Versuch zählt nicht zu deinen fünf Recherchen heute.
       </p>
       <div className="mt-2 flex flex-wrap gap-2">
         <button type="button" onClick={onFortsetzen}
@@ -252,7 +252,7 @@ export function RechercheFehlerKarte({ onFortsetzen, onSchnelleFrage }: {
         </button>
         <button type="button" onClick={onSchnelleFrage}
           className="inline-flex items-center rounded-[10px] border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-          Als schnelle Frage
+          Als normale Frage
         </button>
       </div>
     </div>

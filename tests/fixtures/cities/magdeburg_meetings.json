@@ -2,118 +2,248 @@
  {
   "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124467",
   "type": "https://schema.oparl.org/1.1/Meeting",
-  "name": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/organizations/gr/1",
-  "start": "2026-08-27",
+  "name": "öffentliche/nicht öffentliche Sitzung des Stadtrates",
+  "start": "2026-08-27T14:00:00+02:00",
+  "end": "2026-08-27T20:24:00+02:00",
   "organization": [
    "https://ratsinfo.magdeburg.de/oparl/bodies/0001/organizations/gr/1"
   ],
   "agendaItem": [
    {
-    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124467#top-7.23",
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/agendaitems/528520",
     "type": "https://schema.oparl.org/1.1/AgendaItem",
+    "meeting": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124467",
+    "number": "",
+    "order": "1",
+    "name": "Öffentliche Sitzung",
+    "public": true,
+    "created": "2026-08-04T13:42:06+02:00",
+    "modified": "2026-08-28T11:24:38+02:00"
+   },
+   {
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/agendaitems/528521",
+    "type": "https://schema.oparl.org/1.1/AgendaItem",
+    "meeting": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124467",
+    "number": "1",
+    "order": "2",
+    "name": "Eröffnung, Begrüßung und Feststellung der Ordnungsmäßigkeit der Einladung sowie der Beschlussfähigkeit und Durchführung feststellender Beschlüsse",
+    "public": true,
+    "created": "2026-08-04T13:42:06+02:00",
+    "modified": "2026-08-28T11:24:38+02:00"
+   },
+   {
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/agendaitems/528522",
+    "type": "https://schema.oparl.org/1.1/AgendaItem",
+    "meeting": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124467",
+    "number": "2",
+    "order": "3",
+    "name": "Bestätigung der Tagesordnung",
+    "public": true,
+    "result": "geändert beschlossen",
+    "created": "2026-08-04T13:42:06+02:00",
+    "modified": "2026-08-28T11:24:38+02:00"
+   },
+   {
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/agendaitems/528523",
+    "type": "https://schema.oparl.org/1.1/AgendaItem",
+    "meeting": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124467",
+    "number": "3",
+    "order": "4",
+    "name": "Bestätigung der Niederschriften der 038.(VIII) Sitzung des Stadtrates am 18.06.2026 und der Z/004(VIII)26 am 03.07.2026 - öffentlicher Teil",
+    "public": true,
+    "result": "ungeändert beschlossen",
+    "auxiliaryFile": [
+     {
+      "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/files/749641",
+      "type": "https://schema.oparl.org/1.1/File",
+      "name": "Niederschrift Stadtrat öffentlich (03.07.2026)",
+      "fileName": "00749641.pdf",
+      "mimeType": "application/pdf",
+      "date": "2026-08-18",
+      "accessUrl": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/downloadfiles/a/00749641.pdf",
+      "downloadUrl": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/downloadfiles/00749641.pdf",
+      "created": "2026-08-18T13:06:28+02:00",
+      "modified": "2026-08-18T13:06:28+02:00"
+     },
+     {
+      "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/files/749642",
+      "type": "https://schema.oparl.org/1.1/File",
+      "name": "Niederschrift Stadtrat öffentlich (18.06.2026)",
+      "fileName": "00749642.pdf",
+      "mimeType": "application/pdf",
+      "date": "2026-08-18",
+      "accessUrl": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/downloadfiles/a/00749642.pdf",
+      "downloadUrl": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/downloadfiles/00749642.pdf",
+      "created": "2026-08-18T13:06:37+02:00",
+      "modified": "2026-08-18T13:06:37+02:00"
+     }
+    ],
+    "created": "2026-08-04T13:42:06+02:00",
+    "modified": "2026-08-28T11:24:38+02:00"
+   },
+   {
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/agendaitems/528988",
+    "type": "https://schema.oparl.org/1.1/AgendaItem",
+    "meeting": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124467",
     "number": "7.23",
+    "order": "113",
     "name": "Neue Neustadt sauber und lebenswert – Sofortmaßnahmen gegen Vermüllung und für mehr Lebensqualität",
     "public": true,
-    "result": "vertagt"
+    "consultation": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/consultations/236585",
+    "result": "vertagt",
+    "created": "2026-08-07T08:58:06+02:00",
+    "modified": "2026-08-28T11:24:43+02:00"
    },
    {
-    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124467#top-7.32",
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/agendaitems/529281",
     "type": "https://schema.oparl.org/1.1/AgendaItem",
+    "meeting": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124467",
     "number": "7.32",
+    "order": "123",
     "name": "Platz der Deutschen Einheit",
     "public": true,
-    "result": "vertagt"
+    "consultation": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/consultations/236703",
+    "result": "vertagt",
+    "created": "2026-08-13T15:01:00+02:00",
+    "modified": "2026-08-28T11:24:43+02:00"
    },
    {
-    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124467#top-7.39",
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/agendaitems/529298",
     "type": "https://schema.oparl.org/1.1/AgendaItem",
+    "meeting": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124467",
     "number": "7.39",
+    "order": "131",
     "name": "Befriste Öffnungszeiten Hegelspielplatz",
     "public": true,
-    "result": "vertagt"
+    "consultation": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/consultations/236720",
+    "result": "vertagt",
+    "created": "2026-08-14T09:51:43+02:00",
+    "modified": "2026-08-28T11:24:43+02:00"
    },
    {
-    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124467#top-7.40",
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/agendaitems/529297",
     "type": "https://schema.oparl.org/1.1/AgendaItem",
+    "meeting": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124467",
     "number": "7.40",
+    "order": "132",
     "name": "Datenerhebung und Konsequenzen gemäß §4 Grünanlagensatzung",
     "public": true,
-    "result": "vertagt"
-   },
-   {
-    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124467#top-",
-    "type": "https://schema.oparl.org/1.1/AgendaItem",
-    "number": "",
-    "name": "CDU/FDP-Stadtratsfraktion",
-    "public": true,
-    "result": null
-   },
-   {
-    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124467#top-",
-    "type": "https://schema.oparl.org/1.1/AgendaItem",
-    "number": "",
-    "name": "Fraktion AfD",
-    "public": true,
-    "result": null
+    "consultation": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/consultations/236721",
+    "result": "vertagt",
+    "created": "2026-08-14T09:50:56+02:00",
+    "modified": "2026-08-28T11:24:43+02:00"
    }
   ]
  },
  {
   "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124468",
   "type": "https://schema.oparl.org/1.1/Meeting",
-  "name": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/organizations/gr/1",
-  "start": "2026-08-31",
+  "name": "öffentliche/nicht öffentliche Sitzung des Stadtrates",
+  "start": "2026-08-31T16:00:00+02:00",
+  "end": "2026-08-31T19:08:00+02:00",
   "organization": [
    "https://ratsinfo.magdeburg.de/oparl/bodies/0001/organizations/gr/1"
   ],
   "agendaItem": [
    {
-    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124468#top-7.23",
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/agendaitems/529690",
     "type": "https://schema.oparl.org/1.1/AgendaItem",
+    "meeting": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124468",
+    "number": "",
+    "order": "1",
+    "name": "Öffentliche Sitzung",
+    "public": true,
+    "created": "2026-08-28T09:00:33+02:00",
+    "modified": "2026-09-03T12:57:06+02:00"
+   },
+   {
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/agendaitems/529691",
+    "type": "https://schema.oparl.org/1.1/AgendaItem",
+    "meeting": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124468",
+    "number": "1",
+    "order": "2",
+    "name": "Eröffnung, Begrüßung und Feststellung der Ordnungsmäßigkeit der Einladung sowie der Beschlussfähigkeit und Durchführung feststellender Beschlüsse",
+    "public": true,
+    "created": "2026-08-28T09:00:46+02:00",
+    "modified": "2026-09-03T12:57:06+02:00"
+   },
+   {
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/agendaitems/529693",
+    "type": "https://schema.oparl.org/1.1/AgendaItem",
+    "meeting": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124468",
+    "number": "7.4",
+    "order": "4",
+    "name": "Friedensplatz neugestalten",
+    "public": true,
+    "consultation": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/consultations/233614",
+    "result": "abgelehnt",
+    "created": "2026-08-28T09:01:56+02:00",
+    "modified": "2026-09-03T12:57:06+02:00"
+   },
+   {
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/agendaitems/529694",
+    "type": "https://schema.oparl.org/1.1/AgendaItem",
+    "meeting": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124468",
+    "number": "7.4.1",
+    "order": "5",
+    "name": "Friedensplatz neugestalten",
+    "public": true,
+    "consultation": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/consultations/234741",
+    "result": "zur Kenntnis genommen",
+    "created": "2026-08-28T09:02:20+02:00",
+    "modified": "2026-09-03T12:57:06+02:00"
+   },
+   {
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/agendaitems/529799",
+    "type": "https://schema.oparl.org/1.1/AgendaItem",
+    "meeting": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124468",
     "number": "7.23",
+    "order": "59",
     "name": "Neue Neustadt sauber und lebenswert – Sofortmaßnahmen gegen Vermüllung und für mehr Lebensqualität",
     "public": true,
-    "result": "in die Ausschüsse verwiesen"
+    "consultation": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/consultations/236585",
+    "result": "in die Ausschüsse verwiesen",
+    "created": "2026-08-28T10:36:40+02:00",
+    "modified": "2026-09-03T12:57:08+02:00"
    },
    {
-    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124468#top-7.32",
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/agendaitems/529809",
     "type": "https://schema.oparl.org/1.1/AgendaItem",
+    "meeting": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124468",
     "number": "7.32",
+    "order": "69",
     "name": "Platz der Deutschen Einheit",
     "public": true,
-    "result": "in die Ausschüsse verwiesen"
+    "consultation": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/consultations/236703",
+    "result": "in die Ausschüsse verwiesen",
+    "created": "2026-08-28T10:42:59+02:00",
+    "modified": "2026-09-03T12:57:09+02:00"
    },
    {
-    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124468#top-7.39",
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/agendaitems/529817",
     "type": "https://schema.oparl.org/1.1/AgendaItem",
+    "meeting": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124468",
     "number": "7.39",
+    "order": "77",
     "name": "Befriste Öffnungszeiten Hegelspielplatz",
     "public": true,
-    "result": "in die Ausschüsse verwiesen"
+    "consultation": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/consultations/236720",
+    "result": "in die Ausschüsse verwiesen",
+    "created": "2026-08-28T10:47:46+02:00",
+    "modified": "2026-09-03T12:57:09+02:00"
    },
    {
-    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124468#top-7.40",
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/agendaitems/529819",
     "type": "https://schema.oparl.org/1.1/AgendaItem",
+    "meeting": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124468",
     "number": "7.40",
+    "order": "78",
     "name": "Datenerhebung und Konsequenzen gemäß §4 Grünanlagensatzung",
     "public": true,
-    "result": "in die Ausschüsse verwiesen"
-   },
-   {
-    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124468#top-",
-    "type": "https://schema.oparl.org/1.1/AgendaItem",
-    "number": "",
-    "name": "Fraktion AfD",
-    "public": true,
-    "result": null
-   },
-   {
-    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124468#top-",
-    "type": "https://schema.oparl.org/1.1/AgendaItem",
-    "number": "",
-    "name": "Fraktion Gartenpartei",
-    "public": true,
-    "result": null
+    "consultation": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/consultations/236721",
+    "result": "in die Ausschüsse verwiesen",
+    "created": "2026-08-28T10:48:28+02:00",
+    "modified": "2026-09-03T12:57:09+02:00"
    }
   ]
  }

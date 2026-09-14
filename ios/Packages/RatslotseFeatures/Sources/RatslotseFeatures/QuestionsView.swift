@@ -74,7 +74,14 @@ private struct QuestionPeopleEnvelope: Decodable, Sendable {
 }
 
 private struct QuestionExamplesEnvelope: Decodable, Sendable {
-    let sitzungen: [QuestionExampleSession]
+    /// Der Server nennt die Liste `sessions`. Hier stand bis zum 10.09.2026
+    /// `sitzungen` — seit der Einführung des Endpunkts (#950), also von Anfang
+    /// an. Der Aufruf steht unter `try?`: Das Decodieren scheiterte still, die
+    /// App zeigte immer nur ihre eingebauten Beispiele, und weil die gut sind,
+    /// fiel niemandem etwas auf. Dieselbe Klasse Fehler wie #913 beim
+    /// Tagesordnungs-Baustein — nur auf einem REST-Endpunkt, den der
+    /// Strom-Vertrag (`scripts/sse_vertrag.py`) nicht abdeckt.
+    let sessions: [QuestionExampleSession]
 }
 
 private struct QuestionExampleSession: Decodable, Sendable {
@@ -437,7 +444,7 @@ struct QuestionsView: View {
 
     private func loadQuestionExamples() async {
         guard let response: QuestionExamplesEnvelope = try? await model.api.get("/api/council/qa-beispiele"),
-              let latest = response.sitzungen.first
+              let latest = response.sessions.first
         else { return }
 
         var fresh = ["Was hat \(questionCommittee(latest.committee)) am \(questionDate(latest.sessionDate)) beschlossen?"]
@@ -459,12 +466,20 @@ struct QuestionsView: View {
         RatsDate.short(iso) ?? iso
     }
 
+    /// Der Server liefert `top_titel` seit dem 10.09.2026 bereits als
+    /// Gegenstand — ohne Verfahrensstand, Antragsteller-Klammer und „(Oldb)".
+    /// Hier bleibt nur die Notbremse gegen eine übermäßig lange Zeile, und die
+    /// schneidet an der WORTGRENZE: Der harte Schnitt bei 69 Zeichen trennte
+    /// mitten im Wort.
     private func shortQuestionTopic(_ title: String) -> String {
         let cleaned = title
             .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
             .trimmingCharacters(in: .whitespacesAndNewlines)
         guard cleaned.count > 72 else { return cleaned }
-        return String(cleaned.prefix(69)).trimmingCharacters(in: .whitespacesAndNewlines) + "…"
+        let kurz = String(cleaned.prefix(69))
+        guard let luecke = kurz.lastIndex(of: " "), kurz.distance(from: kurz.startIndex, to: luecke) >= 20
+        else { return String(kurz).trimmingCharacters(in: .whitespacesAndNewlines) + "…" }
+        return String(kurz[..<luecke]).trimmingCharacters(in: .whitespacesAndNewlines) + " …"
     }
 
     private static let fallbackQuestionExamples = [
@@ -1142,7 +1157,7 @@ private struct ConversationMemoryConsentCard: View {
     let choose: (Bool) -> Void
 
     var body: some View {
-        HStack(alignment: .top, spacing: 14) {
+        VStack(alignment: .leading, spacing: 14) {
             Lotti3DView(scene: .wave, animated: false)
                 .frame(width: 62, height: 62)
                 .accessibilityHidden(true)
@@ -1153,7 +1168,7 @@ private struct ConversationMemoryConsentCard: View {
                     .font(RatsFont.title(19))
                     .foregroundStyle(RatsColor.text)
                 Text("Wenn du möchtest, speichert Ratslotse deine Verläufe im Konto. Dann findest du sie auf all deinen Geräten unter „Gespräche“. Ohne Speicherung bleibt ein Gespräch nur geöffnet, bis du es schließt.")
-                    .font(RatsFont.body(13))
+                    .font(RatsFont.notice())
                     .foregroundStyle(RatsColor.secondary)
                     .lineSpacing(2)
 
@@ -1170,22 +1185,22 @@ private struct ConversationMemoryConsentCard: View {
                     RatsIcon(.sparkles, size: 10)
                         .foregroundStyle(RatsColor.signal)
                 }
-                .font(RatsFont.body(10))
+                .font(RatsFont.notice())
                 .foregroundStyle(RatsColor.muted)
                 .lineSpacing(2)
 
                 Link("Datenschutz zur KI-Verarbeitung", destination: URL(string: "https://ratslotse.de/datenschutz")!)
-                    .font(RatsFont.body(10, weight: .semibold))
+                    .font(RatsFont.notice(weight: .semibold))
                     .foregroundStyle(RatsColor.primary)
 
                 Text("Mit einer Auswahl erlaubst du die beschriebene Übermittlung an OpenRouter. Ohne diese Verarbeitung kann „Frag den Rat“ keine Antwort erzeugen. Ob Lotti den Verlauf zusätzlich in deinem Konto speichert, entscheidest du mit den beiden Optionen getrennt davon.")
-                    .font(RatsFont.body(9.5))
+                    .font(RatsFont.notice())
                     .foregroundStyle(RatsColor.muted)
                     .lineSpacing(2)
 
                 if let error {
                     RatsLabel(error, .triangleAlert)
-                        .font(RatsFont.body(11, weight: .medium))
+                        .font(RatsFont.notice(weight: .medium))
                         .foregroundStyle(RatsColor.danger)
                 }
             }
@@ -1611,7 +1626,7 @@ private struct QuestionTurnView: View {
                     evidence: turn.evidence,
                     people: people
                 )
-                    .font(RatsFont.body(15))
+                    .font(RatsFont.reading())
                     .foregroundStyle(RatsColor.bodyText)
                     .lineSpacing(6)
             }
@@ -1927,7 +1942,7 @@ private struct QuestionSourcesCard: View {
 
             if isExpanded, index.citedSources.isEmpty {
                 Text("Die Suche hat Ratsunterlagen gefunden, aber die Antwort zitiert noch keine davon direkt.")
-                    .font(RatsFont.body(11.5))
+                    .font(RatsFont.notice())
                     .foregroundStyle(RatsColor.secondary)
                     .lineSpacing(2)
             } else if isExpanded {
@@ -1950,7 +1965,7 @@ private struct QuestionSourcesCard: View {
                 DisclosureGroup(isExpanded: $showsSearchResults) {
                     VStack(spacing: 10) {
                         Text("Diese Unterlagen wurden gefunden, im Antworttext aber nicht als Beleg verwendet.")
-                            .font(RatsFont.body(10.5))
+                            .font(RatsFont.notice())
                             .foregroundStyle(RatsColor.muted)
                             .frame(maxWidth: .infinity, alignment: .leading)
                         ForEach(Array(index.uncitedSources.enumerated()), id: \.element.id) { position, source in
@@ -1979,23 +1994,26 @@ private struct UncitedQuestionSourceRow: View {
     let source: DecisionSummary
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(alignment: .top, spacing: 10) {
             Circle()
                 .fill(RatsColor.border)
                 .frame(width: 6, height: 6)
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 5) {
                 Text(source.title)
-                    .font(RatsFont.body(12.5, weight: .medium))
+                    .font(RatsFont.sourceTitle(weight: .medium))
                     .foregroundStyle(RatsColor.text)
-                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
                 Text(questionSourceMeta(source))
-                    .font(RatsFont.mono(9))
+                    .font(RatsFont.metadata())
                     .foregroundStyle(RatsColor.muted)
             }
-            Spacer(minLength: 0)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
             RatsIcon(.chevronRight, size: 12)
                 .foregroundStyle(RatsColor.muted)
         }
+        .multilineTextAlignment(.leading)
+        .frame(minHeight: 44)
         .contentShape(Rectangle())
     }
 }
@@ -2501,7 +2519,7 @@ struct SharedAnswerView: View {
             evidence: snapshot.evidenceFields,
             people: people
         )
-        .font(RatsFont.body(15))
+        .font(RatsFont.reading())
         .foregroundStyle(RatsColor.bodyText)
         .lineSpacing(6)
 
@@ -2718,48 +2736,95 @@ private struct QuestionAnswerActions: View {
     let model: AppModel
     @StateObject private var speaker = AnswerSpeaker()
     @State private var rating: String?
+    @State private var askReason = false
     @State private var shareItem: SharedAnswer?
     @State private var isSharing = false
 
+    /// Ein Symbol allein ist 16 pt groß — als Tippfläche gut ein Drittel
+    /// dessen, was Apple verlangt (44 pt). Wer danebentippt, hält den Knopf
+    /// für kaputt; genau so „funktionierte" die Bewertung nicht (Tims Befund
+    /// 10.09.2026). Die Fläche wächst, das Symbol bleibt.
+    private func tapTarget<Inhalt: View>(@ViewBuilder _ inhalt: () -> Inhalt) -> some View {
+        inhalt()
+            .frame(width: 34, height: 34)
+            .contentShape(Rectangle())
+    }
+
     var body: some View {
-        HStack(spacing: 12) {
-            Text("Aus Ratsunterlagen zusammengefasst")
-            Spacer()
+        HStack(spacing: 0) {
+            // Nach der Bewertung steht hier der Dank: Die Zeile war ohnehin
+            // Beiwerk, und ein eigener Streifen für zwei Wörter wäre zu viel.
+            Text(rating == nil ? "Aus Ratsunterlagen zusammengefasst" : "Danke für die Rückmeldung!")
+                .foregroundStyle(rating == nil ? RatsColor.muted : RatsColor.primary)
+                .font(RatsFont.notice())
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 8)
             Button {
                 speaker.toggle(text: turn.answer)
             } label: {
-                RatsIcon(speaker.isSpeaking ? .square : .volume2, size: 16)
+                tapTarget {
+                    RatsIcon(speaker.isSpeaking ? .square : .volume2, size: 16)
+                        .foregroundStyle(speaker.isSpeaking ? RatsColor.primary : RatsColor.muted)
+                }
             }
             .accessibilityLabel(speaker.isSpeaking ? "Vorlesen stoppen" : "Antwort vorlesen")
 
+            // Beide Daumen bleiben anklickbar — wer sich vertippt, muss die
+            // Bewertung ändern können (Tims Befund, so hält es auch das Web).
+            // Der nicht gewählte tritt nur zurück, statt zu erstarren.
             Button { rate("up") } label: {
-                RatsIcon(rating == "up" ? .thumbsUp : .thumbsUp, size: 16)
+                tapTarget {
+                    RatsIcon(.thumbsUp, size: 16)
+                        .foregroundStyle(rating == "up" ? RatsColor.primary : RatsColor.muted)
+                        .opacity(rating == "down" ? 0.4 : 1)
+                }
             }
             .accessibilityLabel("Antwort war hilfreich")
+            .accessibilityAddTraits(rating == "up" ? [.isSelected] : [])
 
             Button { rate("down") } label: {
-                RatsIcon(rating == "down" ? .thumbsDown : .thumbsDown, size: 16)
+                tapTarget {
+                    RatsIcon(.thumbsDown, size: 16)
+                        .foregroundStyle(rating == "down" ? RatsColor.signal : RatsColor.muted)
+                        .opacity(rating == "up" ? 0.4 : 1)
+                }
             }
             .accessibilityLabel("Antwort war nicht hilfreich")
+            .accessibilityAddTraits(rating == "down" ? [.isSelected] : [])
 
             Button { Task { await createShare() } } label: {
-                if isSharing { ProgressView().controlSize(.mini) }
-                else { RatsIcon(.share, size: 11) }
+                tapTarget {
+                    if isSharing { ProgressView().controlSize(.mini) }
+                    else { RatsIcon(.share, size: 13) }
+                }
             }
             .disabled(isSharing)
             .accessibilityLabel("Antwort als Link teilen")
         }
         .font(RatsFont.body(11))
         .foregroundStyle(RatsColor.muted)
+        .animation(.snappy(duration: 0.2), value: rating)
+        .animation(.snappy(duration: 0.2), value: speaker.isSpeaking)
         .sheet(item: $shareItem) { item in
             ActivityView(items: [item.url])
+        }
+        .sheet(isPresented: $askReason) {
+            AnswerFeedbackReasonSheet { reason in send(rating: "down", reason: reason) }
         }
         .onDisappear { speaker.stop() }
     }
 
+    /// Der Daumen zählt sofort — auch wenn der Grund nie kommt. Beim Daumen
+    /// runter fragt danach ein Blatt nach dem Grund; die Grund-Zeile ersetzt
+    /// beim Auswerten den nackten Daumen (gleiche Frage, jüngerer Zeitstempel).
     private func rate(_ value: String) {
         guard rating != value else { return }
         rating = value
+        send(rating: value, reason: nil)
+        if value == "down" { askReason = true }
+    }
+
+    private func send(rating value: String, reason: String?) {
         struct Body: Codable, Sendable {
             let question: String
             let answer_excerpt: String?
@@ -2773,7 +2838,7 @@ private struct QuestionAnswerActions: View {
                     question: String(turn.question.prefix(300)),
                     answer_excerpt: String(turn.answer.prefix(500)),
                     rating: value,
-                    reason: nil
+                    reason: reason
                 )
             )
         }
@@ -2851,6 +2916,20 @@ private struct QuestionAnswerActions: View {
     }
 }
 
+/// „Antwort vorlesen" — `AVSpeechSynthesizer` mit der Audio-Sitzung, ohne die
+/// er stumm bleibt.
+///
+/// Ohne eigene Kategorie spricht iOS in `.soloAmbient`, und die **gehorcht dem
+/// Klingelschalter**: Wer sein Telefon auf lautlos stehen hat — die meisten —
+/// drückte auf den Lautsprecher, sah das Symbol umspringen und hörte nichts.
+/// Kein Fehler, keine Meldung, nichts zu suchen (Tims Befund 10.09.2026).
+/// `.playback` ist die Kategorie für Inhalt, den man ABSICHTLICH hört; sie
+/// ignoriert den Schalter. `.spokenAudio` sagt dem System, dass es gesprochenes
+/// Wort ist (Podcast-Verhalten statt Musik), `.duckOthers` dreht laufende Musik
+/// leiser, statt sie abzuwürgen.
+///
+/// Am Ende wird die Sitzung wieder abgegeben — sonst bleibt fremde Musik
+/// dauerhaft heruntergeregelt, auch wenn hier längst niemand mehr spricht.
 private final class AnswerSpeaker: NSObject, ObservableObject, AVSpeechSynthesizerDelegate, @unchecked Sendable {
     @Published private(set) var isSpeaking = false
     private let synthesizer = AVSpeechSynthesizer()
@@ -2868,6 +2947,8 @@ private final class AnswerSpeaker: NSObject, ObservableObject, AVSpeechSynthesiz
         let cleaned = text
             .replacingOccurrences(of: #"\[(\d+|A\d+)\]"#, with: "", options: .regularExpression)
             .replacingOccurrences(of: #"[*_#`]"#, with: "", options: .regularExpression)
+        guard !cleaned.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        beginAudioSession()
         let utterance = AVSpeechUtterance(string: cleaned)
         utterance.voice = AVSpeechSynthesisVoice(language: "de-DE")
         utterance.rate = AVSpeechUtteranceDefaultSpeechRate * 0.92
@@ -2878,14 +2959,146 @@ private final class AnswerSpeaker: NSObject, ObservableObject, AVSpeechSynthesiz
     func stop() {
         synthesizer.stopSpeaking(at: .immediate)
         isSpeaking = false
+        endAudioSession()
+    }
+
+    private func beginAudioSession() {
+        let session = AVAudioSession.sharedInstance()
+        try? session.setCategory(.playback, mode: .spokenAudio, options: [.duckOthers])
+        try? session.setActive(true)
+    }
+
+    private func endAudioSession() {
+        try? AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
     }
 
     func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
         isSpeaking = false
+        endAudioSession()
     }
 
     func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
         isSpeaking = false
+        endAudioSession()
+    }
+}
+
+/// Nach dem Daumen runter: „Was war falsch?" — optional.
+///
+/// Der Daumen selbst ist schon gezählt, wenn dieses Blatt aufgeht; wer es
+/// zumacht, hat trotzdem bewertet. Deshalb steht dort ein × und kein
+/// „Abbrechen" — es gibt nichts abzubrechen. Der Grund ist das, was die
+/// Bewertung auswertbar macht: Ein nackter Daumen sagt nur, DASS etwas nicht
+/// stimmte.
+///
+/// Das Feld hält von Anfang an fünf Zeilen offen (`reservesSpace`), statt aus
+/// einer Zeile zu wachsen — ein einzeiliges Feld fragt nach einem Stichwort,
+/// und Stichworte kann man nicht auswerten.
+private struct AnswerFeedbackReasonSheet: View {
+    let send: (String) -> Void
+    @State private var reason = ""
+    @Environment(\.dismiss) private var dismiss
+    @FocusState private var focused: Bool
+
+    /// Dieselbe Grenze wie im Backend (`QaFeedbackBody.reason`) und im Web.
+    private static let maxZeichen = 500
+
+    private var getrimmt: String {
+        reason.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            RatsSheetHeader(
+                "Rückmeldung",
+                leadingGlyph: .x,
+                leadingAction: { dismiss() },
+                trailingTitle: "Senden",
+                trailingAction: getrimmt.isEmpty ? nil : {
+                    send(String(getrimmt.prefix(Self.maxZeichen)))
+                    dismiss()
+                }
+            )
+            // „Senden" taucht auf, sobald es etwas zu senden gibt. Ein von
+            // Anfang an sichtbarer, toter Knopf sähe aus, als wäre das Blatt
+            // kaputt; deshalb blendet der Platz ein statt zu erstarren.
+            .animation(.easeOut(duration: 0.16), value: getrimmt.isEmpty)
+            // Der Kopf trägt selbst nur 10 pt nach oben — das reicht in einem
+            // Blatt ohne Griff. Hier liegt der Ziehgriff darüber, und Titel
+            // wie Knöpfe stießen fast an ihn (Tims Befund 10.09.2026).
+            .padding(.top, 12)
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    VStack(alignment: .leading, spacing: 7) {
+                        Text("Was hat gefehlt?")
+                            .font(RatsFont.title(21))
+                            .foregroundStyle(RatsColor.text)
+                        Text("Dein Daumen ist schon gezählt. Was falsch oder unvollständig war, hilft uns, die Auskunft zu verbessern — freiwillig.")
+                            .font(RatsFont.body(13))
+                            .foregroundStyle(RatsColor.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    VStack(alignment: .trailing, spacing: 6) {
+                        TextField(
+                            "Zum Beispiel: falsches Datum, ein Beschluss fehlt, Frage nicht verstanden …",
+                            text: $reason,
+                            axis: .vertical
+                        )
+                        .lineLimit(5, reservesSpace: true)
+                        .font(RatsFont.body(15))
+                        .foregroundStyle(RatsColor.text)
+                        .focused($focused)
+                        .padding(.horizontal, 13)
+                        .padding(.vertical, 11)
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                        .background(RatsColor.stage)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(focused ? RatsColor.primary.opacity(0.55) : RatsColor.border,
+                                        lineWidth: focused ? 1.5 : 1)
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .animation(.easeOut(duration: 0.14), value: focused)
+                        .onChange(of: reason) { _, neu in
+                            if neu.count > Self.maxZeichen { reason = String(neu.prefix(Self.maxZeichen)) }
+                        }
+
+                        // Erst ab der zweiten Hälfte — vorher zählt niemand mit,
+                        // und eine Zahl, die nur dasteht, ist Beiwerk.
+                        if reason.count > Self.maxZeichen / 2 {
+                            Text("\(reason.count)/\(Self.maxZeichen)")
+                                .font(RatsFont.mono(10))
+                                .foregroundStyle(reason.count >= Self.maxZeichen
+                                                 ? RatsColor.signal : RatsColor.muted)
+                                .transition(.opacity)
+                        }
+                    }
+                    .animation(.easeOut(duration: 0.14), value: reason.count > Self.maxZeichen / 2)
+
+                    Text("Wir speichern deine Frage, einen Auszug der Antwort und diesen Text — sonst nichts.")
+                        .font(RatsFont.body(11))
+                        .foregroundStyle(RatsColor.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(18)
+                .frame(maxWidth: 560, alignment: .leading)
+            }
+            .scrollBounceBehavior(.basedOnSize)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RatsColor.page)
+        // 372 pt trägt Kopf, Frage, fünf Zeilen Feld und die Datenzeile ohne
+        // Leerlauf darunter; „groß" bleibt für eine lange Begründung offen.
+        .presentationDetents([.height(372), .large])
+        .presentationDragIndicator(.visible)
+        // Erst wenn das Blatt steht — ein Fokus im selben Takt wie die
+        // Präsentation setzt die Tastatur nicht, das Feld bleibt kalt.
+        .task {
+            try? await Task.sleep(for: .milliseconds(350))
+            focused = true
+        }
     }
 }
 
@@ -3158,20 +3371,22 @@ private struct EvidenceTextRow: View {
             VStack(alignment: .leading, spacing: 3) {
                 if let party, !party.isEmpty {
                     HStack(alignment: .firstTextBaseline, spacing: 7) {
-                        Text(title).font(RatsFont.body(12.5, weight: .semibold)).foregroundStyle(RatsColor.text)
+                        Text(title).font(RatsFont.sourceTitle()).foregroundStyle(RatsColor.text)
                         PartyChip(party: party, label: questionPartyAbbreviation(party))
                             .fixedSize()
                     }
                 } else {
-                    Text(title).font(RatsFont.body(12.5, weight: .semibold)).foregroundStyle(RatsColor.text)
+                    Text(title).font(RatsFont.sourceTitle()).foregroundStyle(RatsColor.text)
                 }
                 if let detail, !detail.isEmpty {
-                    Text(detail).font(RatsFont.body(11.5)).foregroundStyle(RatsColor.secondary).lineLimit(5)
+                    Text(detail).font(RatsFont.notice()).foregroundStyle(RatsColor.secondary).lineLimit(5)
                 }
-                if let meta, !meta.isEmpty { Text(meta).font(RatsFont.mono(9)).foregroundStyle(RatsColor.muted) }
+                if let meta, !meta.isEmpty { Text(meta).font(RatsFont.metadata()).foregroundStyle(RatsColor.muted) }
             }
+            .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
         }
+        .multilineTextAlignment(.leading)
         .contentShape(Rectangle())
     }
 }
@@ -3600,9 +3815,9 @@ struct CitedAnswerText: View {
     private func blockView(_ block: AnswerBlock) -> some View {
         switch block {
         case .heading(let line):
-            Text(styled(line)).font(RatsFont.body(15, weight: .bold))
+            Text(styled(line)).font(RatsFont.reading(weight: .bold))
         case .subheading(let line):
-            Text(styled(line)).font(RatsFont.body(13.5, weight: .bold))
+            Text(styled(line)).font(RatsFont.reading(weight: .semibold))
         case .paragraph(let line):
             Text(styled(line))
         case .list(let items):

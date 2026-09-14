@@ -40,7 +40,7 @@
     {"slug": "gruene", "kurz": "Grüne", "amtlich": "BÜNDNIS 90/DIE GRÜNEN (GRÜNE)", "typ": "partei", "kandidaten": 56, "wahlbereiche": 6},
     {"slug": "linke", "kurz": "Linke", "amtlich": "Die Linke (Die Linke)", "typ": "partei", "kandidaten": 46, "wahlbereiche": 6},
     {"slug": "fdp", "kurz": "FDP", "amtlich": "Freie Demokratische Partei Landesverband Niedersachsen e.V. (FDP)", "typ": "partei", "kandidaten": 34, "wahlbereiche": 6},
-    {"slug": "fuer-oldenburg", "kurz": "Für Oldenburg", "amtlich": "Wählergemeinschaft Für Oldenburg (WFO)", "typ": "waehlergruppe", "kandidaten": 24, "wahlbereiche": 6},
+    {"slug": "fuer-oldenburg", "kurz": "WFO", "amtlich": "Wählergemeinschaft Für Oldenburg (WFO)", "typ": "waehlergruppe", "kandidaten": 24, "wahlbereiche": 6},
     {"slug": "buergerbuendnis", "kurz": "Bürger Bündnis", "amtlich": "Bürger Bündnis Oldenburg (BB-OL)", "typ": "waehlergruppe", "kandidaten": 17, "wahlbereiche": 6},
     {"slug": "afd", "kurz": "AfD", "amtlich": "Alternative für Deutschland - Niedersachsen (AfD Niedersachsen)", "typ": "partei", "kandidaten": 13, "wahlbereiche": 6},
     {"slug": "volt", "kurz": "Volt", "amtlich": "Volt Deutschland Landesverband Niedersachsen (Volt)", "typ": "partei", "kandidaten": 13, "wahlbereiche": 6},

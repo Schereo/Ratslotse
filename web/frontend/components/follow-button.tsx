@@ -41,7 +41,7 @@ export function FollowButton({ kvonr, initial, className }: {
       qc.invalidateQueries({ queryKey: ["vorlage-follows"] });
       toast.success(
         next
-          ? "Wird verfolgt — du hörst von uns, sobald es weitergeht."
+          ? "Wird verfolgt — du bekommst Bescheid, sobald es weitergeht."
           : "Vorgang wird nicht mehr verfolgt.",
       );
     } catch (e) {

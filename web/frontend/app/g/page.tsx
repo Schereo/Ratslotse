@@ -113,7 +113,7 @@ export default async function GeteiltPage({ searchParams }: PageProps) {
           <div className="mt-8 ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-md border border-primary/20 bg-primary/5 px-4 py-2.5 text-[15px]">
             {share.question}
           </div>
-          <div className="mt-4 whitespace-pre-wrap text-[14.5px] leading-[1.7] text-foreground sm:leading-[1.75]">
+          <div className="mt-4 whitespace-pre-wrap text-lese text-foreground">
             <GeteilterAntwortText text={share.answer} quellenIds={share.sources.map((q) => q.id)}
               attachments={share.attachments} />
           </div>
@@ -126,16 +126,16 @@ export default async function GeteiltPage({ searchParams }: PageProps) {
           )}
           {share.sources.length > 0 && (
             <div className="mt-6 rounded-xl border border-border bg-card p-4">
-              <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+              <p className="font-mono text-meta uppercase tracking-[0.08em] text-muted-foreground">
                 Zitierte Beschlüsse
               </p>
               <ol className="mt-2 space-y-1.5">
                 {share.sources.map((q, i) => (
-                  <li key={q.id} id={`source-${i + 1}`} className="flex items-baseline gap-2 text-[13px]">
-                    <span className="inline-flex h-4 min-w-4 shrink-0 items-center justify-center rounded bg-primary/10 px-0.5 text-[10px] font-bold text-primary">{i + 1}</span>
+                  <li key={q.id} id={`source-${i + 1}`} className="flex items-baseline gap-2 py-1 text-quelle">
+                    <span className="inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded bg-primary/10 px-1 text-meta font-bold text-primary">{i + 1}</span>
                     <span className="min-w-0 flex-1">
-                      <Link href={`/council/decision?id=${q.id}`} className="hover:underline">{q.title}</Link>
-                      <span className="ml-1.5 font-mono text-[10.5px] text-muted-foreground">
+                      <Link href={`/council/decision?id=${q.id}`} className="block break-words font-semibold hover:underline">{q.title}</Link>
+                      <span className="mt-1 block font-mono text-meta text-muted-foreground">
                         {[fmtDatum(q.session_date), q.committee].filter(Boolean).join(" · ")}
                       </span>
                     </span>
@@ -158,7 +158,7 @@ export default async function GeteiltPage({ searchParams }: PageProps) {
             </div>
           )}
           <ShareAktionen token={t ?? ""} />
-          <p className="mt-4 text-[11px] leading-relaxed text-muted-foreground/80">
+          <p className="mt-4 text-hinweis text-muted-foreground">
             Automatische Antwort von „Frag den Rat" auf ratslotse.de, geteilt am {fmtDatum(share.created)} —
             Stand des Ratsinformationssystems zu diesem Zeitpunkt. Kann unvollständig sein; Quellen prüfen.
           </p>

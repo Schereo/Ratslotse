@@ -377,6 +377,18 @@ Jede Stufe braucht die vorige: Die Einordnung sagt, was eine *Idee* ist; der
 Index rechnet Nachbarschaften über alle Städte; die Cluster fassen zusammen,
 was dieselbe Idee ist; und `fit` urteilt erst, wenn es beides hat.
 
+**Die Niederschriften laufen daneben her.** Seit 09/2026 holt `fetch` auch die
+Sitzungsprotokolle (`role='protocol'`, nur Sitzungen der letzten 24 Monate),
+`pipeline.split_protocols` schneidet sie in ihre Tagesordnungspunkte, und
+`council.cities.reasons.run` liest daraus, warum ein Rat so entschieden hat —
+gedeckelt über `CITIES_REASON_MAX` (Vorgabe 400 Abschnitte je Lauf, unter
+0,10 $). Gefragt werden nur Punkte, deren Idee mindestens eine andere Stadt
+teilt; nur dort zeigt die Karte das „Warum" überhaupt.
+
+Eine Stadt, die Protokoll-Adressen nennt, aber keine ausliefert, wird nach
+drei Fehlversuchen übersprungen — Magdeburg nennt 606 Adressen, von denen
+jede einzelne mit 404 antwortet.
+
 **Nach jeder Ernte die Plausibilität prüfen.** Am 08.09.2026 lagen vier
 Ernte-Fehler gleichzeitig im Bestand, und kein einziger hat sich gemeldet —
 kein Absturz, kein roter Test, keine auffällige Zahl:

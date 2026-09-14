@@ -24,6 +24,7 @@ def _gold_analysis(case):
     return {
         "question": case["question"],
         "kind": case["allowed_types"][0],
+        "unklar": bool(case.get("expect_unclear")),
         "rechercheplan": qa._research_plan({"rechercheplan": {
             "intent": "fact", "channels": channels, "sort": "relevance",
             "needs": needs,
@@ -52,7 +53,7 @@ def test_routing_eval_gold_prediction_erreicht_hundert_prozent():
         list(by_question.values()), lambda question: _gold_analysis(by_question[question]))
     assert result["pass_rates"] == {
         "type": 1.0, "valid_plan": 1.0, "channels": 1.0,
-        "facets": 1.0, "all": 1.0,
+        "facets": 1.0, "clarity": 1.0, "all": 1.0,
     }
     assert result["mistakes"] == []
     assert result["precision"] == 1.0 and result["recall"] == 1.0

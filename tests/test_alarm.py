@@ -26,7 +26,7 @@ import yaml
 WURZEL = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(WURZEL))
 
-from scripts import alarm  # noqa: E402
+from scripts import alarm, ops_deploy_window  # noqa: E402
 
 
 def test_alarm_laedt_die_env_bevor_er_mailt():
@@ -146,3 +146,106 @@ def test_erreichbarkeit_meldet_zuerst_ueber_den_server():
 @pytest.mark.parametrize("datei", ["deploy.yml", "ops-erreichbarkeit.yml"])
 def test_workflows_sind_wohlgeformt(datei):
     assert _workflow(datei)["jobs"]
+
+
+# ---- Das Deploy-Fenster --------------------------------------------------
+#
+# Am 10.09.2026 fiel die Probe in einen laufenden Release-Deploy: Barriere um
+# 20:15:21 gesetzt, alle drei Versuche sahen `/api/health` 503, um 20:16:49
+# lief die Seite wieder — 85 Sekunden, Vor- und Rauchprobe je 49/49 grün. Von
+# außen sieht das aus wie der 07.09. (74 Minuten Ausfall). Der Unterschied ist
+# das ALTER der Barriere, und daraus muss eine Entscheidung werden, die man
+# prüfen kann.
+
+def test_frische_barriere_unterdrueckt_den_alarm():
+    """Der Fall vom 10.09.2026: 88 Sekunden alt, also deployt es gerade."""
+    unterdrueckt, grund = ops_deploy_window.evaluate("88", " /api/health:503")
+    assert unterdrueckt
+    assert "Deploy läuft" in grund
+
+
+def test_alte_barriere_meldet_weiterhin():
+    """Der Fall vom 07.09.2026. Genau dafür ist der Anpinger gebaut — er darf
+    daran nicht scheitern, nur weil es formal dieselbe Barriere ist."""
+    unterdrueckt, grund = ops_deploy_window.evaluate("4500", " /api/health:503")
+    assert not unterdrueckt
+    assert "hängt" in grund
+
+
+@pytest.mark.parametrize("alter", ["keine", "unerreichbar", "", "kaputt", "-5"])
+def test_ohne_nachweis_wird_gemeldet(alter):
+    """Unterdrückt wird nur mit positivem Nachweis. Kein Marker, kein SSH,
+    unverständliche Antwort — jeder dieser Wege endet im Alarm, nicht in der
+    Stille. Ein Fehler hier kostet eine überflüssige Mail, nicht eine
+    fehlende."""
+    unterdrueckt, _ = ops_deploy_window.evaluate(alter, " /:502")
+    assert not unterdrueckt
+
+
+def test_die_unterdrueckung_hat_eine_obergrenze():
+    """Ohne Kappe wäre aus der Bremse ein Knebel geworden: Eine hängende
+    Barriere meldete sich nie wieder. Der Ausfall vom 07.09. dauerte 74
+    Minuten — die Grenze muss deutlich darunter liegen."""
+    assert 0 < ops_deploy_window.LIMIT_SECONDS <= 900
+
+
+def test_begruendung_ueberlebt_die_ssh_zeile(tmp_path, monkeypatch):
+    """Der Grund wird in der Alarm-Mail über eine einfach gequotete
+    Shell-Zeile durchgereicht und als `key=value` an GitHub Actions gegeben.
+    Ein Anführungszeichen zerlegte das eine, ein Zeilenumbruch das andere."""
+    ziel = tmp_path / "github_output"
+    monkeypatch.setenv("GITHUB_OUTPUT", str(ziel))
+    rc = ops_deploy_window.main(["--age", "kaputt('x')\nzweite Zeile",
+                                 "--findings", " /api/health:503"])
+    assert rc == 0
+    zeilen = ziel.read_text(encoding="utf-8").splitlines()
+    assert "suppressed=0" in zeilen
+    grund = next(z for z in zeilen if z.startswith("reason="))
+    assert "'" not in grund, "sonst zerbricht die SSH-Zeile der Alarm-Mail"
+    assert len(zeilen) == 2, "eine Zeile je Ausgabe, sonst zerbricht das Format"
+
+
+def test_erreichbarkeit_fragt_vor_dem_alarm_nach_dem_deploy():
+    """Die Reihenfolge ist der Punkt: erst fragen, ob gerade deployt wird,
+    dann melden. Und die Frage braucht den SSH-Zugang vor sich."""
+    schritte = _workflow("ops-erreichbarkeit.yml")["jobs"]["probe"]["steps"]
+    namen = [s.get("name", "") for s in schritte]
+    assert namen.index("Configure deployment SSH") < namen.index("Läuft gerade ein Deploy?")
+    assert namen.index("Läuft gerade ein Deploy?") < namen.index("Alarm über den Server")
+    fenster = next(s for s in schritte if s.get("name") == "Läuft gerade ein Deploy?")
+    lauf = str(fenster["run"])
+    assert "scripts/ops_deploy_window.py" in lauf, "die Entscheidung hat einen Test"
+    assert ".release-maintenance" in lauf
+    # Auf dem SERVER gerechnet — sonst ginge die Uhrendifferenz zwischen
+    # Runner und VPS in das Alter ein.
+    assert "date +%s" in lauf and "stat -c %Y" in lauf
+    # Der Schritt darf den Lauf nicht abbrechen: Dann fiele die Meldung aus.
+    assert fenster.get("continue-on-error")
+
+
+def test_alarm_meldet_ausser_es_ist_nachweislich_ein_deploy():
+    """Fail-safe in die richtige Richtung: Die Alarm-Schritte hängen an einem
+    NEGATIVEN Test (`suppressed != '1'`). Ein übersprungener, abgestürzter oder
+    fehlerhafter Fenster-Schritt lässt das Feld leer — und dann wird gemeldet
+    wie vor diesem Riegel. Andersherum (`== '0'`) wäre jeder Aussetzer ein
+    stiller Ausfall."""
+    schritte = _workflow("ops-erreichbarkeit.yml")["jobs"]["probe"]["steps"]
+    for name in ("Erster Fehlschlag?", "Alarm über den Server", "Alarm am Server vorbei"):
+        bedingung = next(s for s in schritte if s.get("name") == name)["if"]
+        assert "steps.fenster.outputs.suppressed != '1'" in bedingung, name
+
+
+def test_unterdruecktes_fenster_bleibt_gruen():
+    """Ein grüner Lauf ist hier kein Schönheitsfehler, sondern Bedingung: Die
+    Mail-Bremse („nur beim ERSTEN Fehlschlag") liest die Farbe des vorherigen
+    Laufs. Wäre ein Deploy-Fenster rot, gälte ein echter Ausfall zehn Minuten
+    später als Wiederholung — und bliebe stumm."""
+    schritte = _workflow("ops-erreichbarkeit.yml")["jobs"]["probe"]["steps"]
+    befund = next(s for s in schritte if s.get("name") == "Befund")
+    lauf = str(befund["run"])
+    assert "exit 0" in lauf and "exit 1" in lauf
+    assert 'steps.fenster.outputs.suppressed }}" = "1"' in lauf
+    # Und der Anping-Schritt selbst färbt den Lauf nicht mehr rot — sonst käme
+    # der Befund-Schritt gar nicht mehr dazu, ihn grün zu lassen.
+    probe = next(s for s in schritte if s.get("name") == "Prod anpingen")
+    assert "exit 1" not in str(probe["run"])

@@ -292,19 +292,26 @@ struct RatsModalIntro: View {
 
 struct RatsSheetHeader: View {
     let title: String
+    let leadingGlyph: RatsGlyph?
     let leadingTitle: String?
     let leadingAction: (() -> Void)?
     let trailingTitle: String?
     let trailingAction: (() -> Void)?
 
+    /// `leadingGlyph` statt `leadingTitle`, wo das Wort nichts hinzufügt: Ein
+    /// Blatt, das nur eine Frage stellt, wird mit einem × zugemacht, nicht mit
+    /// „Abbrechen" — das klänge, als ginge dabei etwas verloren. Der Platz
+    /// bleibt derselbe (104 pt), damit der Titel mittig steht wie überall.
     init(
         _ title: String,
+        leadingGlyph: RatsGlyph? = nil,
         leadingTitle: String? = nil,
         leadingAction: (() -> Void)? = nil,
         trailingTitle: String? = nil,
         trailingAction: (() -> Void)? = nil
     ) {
         self.title = title
+        self.leadingGlyph = leadingGlyph
         self.leadingTitle = leadingTitle
         self.leadingAction = leadingAction
         self.trailingTitle = trailingTitle
@@ -313,7 +320,11 @@ struct RatsSheetHeader: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            action(title: leadingTitle, action: leadingAction)
+            if let leadingGlyph, let leadingAction {
+                glyphAction(leadingGlyph, action: leadingAction)
+            } else {
+                action(title: leadingTitle, action: leadingAction)
+            }
             Spacer(minLength: 4)
             Text(title)
                 .font(RatsFont.title(17))
@@ -330,6 +341,20 @@ struct RatsSheetHeader: View {
         .overlay(alignment: .bottom) {
             Rectangle().fill(RatsColor.separator).frame(height: 1)
         }
+    }
+
+    private func glyphAction(_ glyph: RatsGlyph, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            RatsIcon(glyph, size: 15)
+                .foregroundStyle(RatsColor.primary)
+                .frame(width: 34, height: 34)
+                .background(RatsColor.primary.opacity(0.08))
+                .overlay(Circle().stroke(RatsColor.primary.opacity(0.16)))
+                .clipShape(Circle())
+        }
+        .buttonStyle(RatsSheetHeaderButtonStyle())
+        .frame(width: 104, height: 34, alignment: .leading)
+        .accessibilityLabel("Schließen")
     }
 
     @ViewBuilder

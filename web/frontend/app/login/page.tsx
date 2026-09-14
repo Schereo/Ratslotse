@@ -56,7 +56,7 @@ export default function LoginPage() {
     <AuthShell title="Moin!" pose="wave">
         <p className="mt-3 text-sm text-muted-foreground">
           {firstRun
-            ? "Nur noch ein Konto — dann richten wir Ratslotse gemeinsam ein."
+            ? "Erstelle nur noch dein Konto, dann richten wir Ratslotse gemeinsam ein."
             : "Willkommen zurück — melde dich an, um fortzufahren."}
         </p>
         <div className="mt-6">

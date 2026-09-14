@@ -7,12 +7,21 @@ from pydantic import BaseModel, EmailStr, Field
 from kern import roles as rollen
 
 
+#: Antwort auf einen leeren Namen — an einer Stelle, weil Registrierung und
+#: Konto-Seite dieselbe Regel durchsetzen und dieselben Worte benutzen sollen.
+NAME_FEHLT = "Bitte trage deinen Namen ein."
+
+
 # ---- auth ----
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
-    # Anzeigename für die persönliche Ansprache — serverseitig optional
-    # (Apple-Konten und Alt-Bestand haben keinen).
+    #: Anzeigename für die persönliche Ansprache — **Pflicht**, geprüft aber im
+    #: Router (s. ``register``) statt hier per ``min_length``: Das Feld bleibt
+    #: darum ``str | None``, damit die im Store ausgelieferte App, die es noch
+    #: weglässt, unseren deutschen Satz zu sehen bekommt statt einer englischen
+    #: Pydantic-Meldung. Apple-Konten entstehen ohne dieses Schema; sie werden
+    #: nach der Anmeldung gefragt.
     display_name: str | None = Field(default=None, max_length=60)
 
 
@@ -131,6 +140,27 @@ class UserOut(BaseModel):
     saves_conversations: int | None = None
 
 
+class AppElectionOut(BaseModel):
+    """Die Wahl, die gerade ansteht — klein genug für jede Seite.
+
+    Warum hier und nicht nur in ``/api/wahlabend``: Startseite, Heute-Karte
+    und Dashboard zeigen einen Countdown, ohne den ganzen Wahlabend zu laden.
+    Bis 09/2026 stand der Termin dafür als ``WAHLABEND_BEGINN_UTC`` im
+    Frontend — eine Konstante, die ein Deploy braucht und die niemand mit der
+    Registry abgleicht.
+    """
+
+    slug: str
+    short_title: str
+    date: str
+    #: Wahlschluss mit Zeitzone (ISO).
+    polls_close: str
+    #: „council" (Sitze) oder „mayor" (Prozente, auch Stichwahl).
+    kind: str
+    #: Der Pfad, auf dem diese Wahl zu sehen ist.
+    path: str
+
+
 class AppConfigOut(BaseModel):
     """Compatibility contract consumed before a native app starts loading data."""
 
@@ -144,6 +174,10 @@ class AppConfigOut(BaseModel):
     #: Voreingestellt leer — eine ältere App, die das Feld nicht kennt, sieht
     #: schlicht nichts Neues, und das ist richtig so.
     features: list[str] = []
+    #: Die nächste (oder gerade laufende) Wahl — ``null``, wenn keine mehr
+    #: ansteht oder die Registry nicht lesbar ist. Aus demselben Grund
+    #: voreingestellt ``None``: Eine ältere App darf das Feld nicht brauchen.
+    election: AppElectionOut | None = None
 
 
 class TopicIn(BaseModel):
@@ -530,3 +564,47 @@ class ClientErrorIn(BaseModel):
     stack: str = Field(default="", max_length=4000)
     #: Der Pfad OHNE Query — die Query kann Suchbegriffe tragen.
     route: str = Field(default="", max_length=200)
+
+
+# ---- Tippspiel (docs/plan-tippspiel-ratswahl.md) ----
+#
+# Bewusst locker gehalten (nur Länge/Typ) — die eigentliche Prüfung (Name
+# getrimmt und ohne Zeilenumbruch, Sitze summieren auf 52, OB-Prozente auf
+# höchstens 100) läuft im Router mit einem deutschen Satz statt einer
+# Pydantic-Meldung; dieselbe Aufteilung wie bei ``RegisterRequest.display_name``.
+
+class PredictionJoinIn(BaseModel):
+    """``POST /api/tipp`` legt an ODER aktualisiert — beides derselbe Endpunkt
+    (ohne Cookie: Beitritt, ``name`` Pflicht; mit gültigem Cookie: nur der
+    Tipp wird aktualisiert, ``name`` bleibt unbeachtet — umbenennen kann nur
+    der Admin, s. 1h). ``seats``/``mayor`` fehlen beim ersten Anruf aus 1c oft
+    noch (die Namenseingabe kommt vor dem Tippformular); erst wenn beides da
+    ist, wird ein Tipp gespeichert."""
+    name: str | None = Field(default=None, min_length=2, max_length=30)
+    seats: dict[str, int] | None = None
+    #: ``None`` = die OB-Wahl bewusst nicht mitgetippt (kein Abzug dafür).
+    mayor: dict[str, float] | None = None
+
+
+class PredictionResultLineIn(BaseModel):
+    #: Listen-Slug ('gruene') oder OB-Kandidatur ('ob:rohr').
+    slug: str
+    seats: int | None = None
+    pct: float | None = None
+
+
+class PredictionPhaseIn(BaseModel):
+    phase: Literal["open", "locked", "final"]
+    late_scored: bool | None = None
+
+
+class PredictionSettingsIn(BaseModel):
+    """``PUT /api/tipp/admin/einstellungen`` — Schalter je Runde. Nur was
+    gesetzt ist, wird geändert."""
+    shared_device: bool | None = None
+    late_scored: bool | None = None
+
+
+class PredictionPlayerIn(BaseModel):
+    name: str | None = Field(default=None, min_length=2, max_length=30)
+    hidden: bool | None = None

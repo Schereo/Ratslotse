@@ -453,7 +453,7 @@ function Welcome({ onNext }: { onNext: () => void }) {
     { icon: Sparkles, tint: "bg-[hsla(19,92%,55%,0.2)] text-[hsl(19_92%_62%)]",
       title: "Frag den Rat", sub: "Antworten mit Quellen" },
     { icon: Bell, tint: "bg-[hsla(202,90%,60%,0.2)] text-[hsl(202_90%_68%)]",
-      title: "Bleib informiert", sub: "Mitteilung bei neuen Beschlüssen" },
+      title: "Bleib informiert", sub: "Bescheid bei neuen Beschlüssen" },
     { icon: Landmark, tint: "bg-white/10 text-white/80",
       title: "Aus der amtlichen Quelle", sub: "Rat Oldenburg" },
   ];
@@ -541,7 +541,7 @@ function CommitteeStep({ onNext }: { onNext: () => void }) {
   return (
     <StepShell
       title="Welche Gremien interessieren dich?"
-      lead="Du bekommst eine Mitteilung, sobald eine Tagesordnung erscheint. Jederzeit änderbar."
+      lead="Du bekommst eine Mitteilung, sobald eine Tagesordnung erscheint. Diese Auswahl kannst du später ändern."
       pose="point"
       footer={
         <Button className="w-full lg:w-auto lg:min-w-44" onClick={onNext}>
@@ -982,7 +982,7 @@ function TopicStep({ onNext }: { onNext: () => void }) {
         </Button>
       </form>
       <p className="mt-1.5 text-xs text-muted-foreground">
-        Beschreibung nicht nötig — Lotti formuliert sie automatisch aus passenden Beschlüssen.
+        Du brauchst keine Beschreibung zu schreiben — Lotti formuliert sie aus passenden Beschlüssen.
       </p>
 
       {warn && (
@@ -1487,7 +1487,7 @@ function PushStep({ onDone }: { onDone: () => void }) {
   return (
     <StepShell
       title="Soll Lotti sich melden?"
-      lead="Nur wenn der Rat zu deinen Themen entscheidet oder eine Tagesordnung erscheint. Kein Spam — versprochen."
+      lead="Lotti meldet sich nur, wenn der Rat zu deinen Themen entscheidet oder eine Tagesordnung erscheint. Keine Werbung, versprochen."
       pose="wave"
       footer={
         <div className="flex flex-col gap-2">

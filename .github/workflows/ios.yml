@@ -64,3 +64,26 @@ jobs:
           xcodebuild -project Ratslotse.xcodeproj -scheme Ratslotse
           -configuration Debug -destination "platform=iOS Simulator,id=$DEVICE_ID"
           CODE_SIGNING_ALLOWED=NO test-without-building
+
+  # Die Icons der App liegen als abgelegte Vektoren im Asset-Katalog, nicht als
+  # Bibliothek. Ob eine Datei DA ist, prüft `tests/test_ios_icons.py`; ob sie
+  # das ganze Zeichen zeigt, sieht nur der Vergleich mit lucide-react — bis
+  # 09/2026 fehlte `LucideBellDot` der Glockenkörper, und auf dem Knopf
+  # „Vorgang folgen" schwebte ein Punkt über einem Strich.
+  #
+  # Eigener Ubuntu-Job statt eines Schritts im Build oben: Der läuft auf
+  # macOS-Minuten (Faktor 10), und für einen Node-Vergleich ist kein Xcode
+  # nötig.
+  icons:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/frontend/package-lock.json
+      - run: npm ci
+        working-directory: web/frontend
+      - name: Icons gegen lucide-react halten
+        run: node ios/scripts/generate-lucide-icons.mjs --pruefen

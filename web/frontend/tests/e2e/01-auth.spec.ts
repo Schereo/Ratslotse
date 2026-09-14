@@ -21,12 +21,35 @@ test.describe("Auth", () => {
     await page.goto("/register");
     await expect(page.getByText("Ratslotse")).toBeVisible();
 
+    // Der Anzeigename ist Pflicht — ohne ihn weist der Server die
+    // Registrierung ab (422).
+    await page.locator("#display-name").fill("Testkonto");
     await page.locator("#email").fill(neu);
     await page.locator("#password").fill(ADMIN_PASSWORD);
     await page.getByRole("button", { name: "Konto erstellen" }).click();
     await page.waitForURL(/\/(link|dashboard)/, { timeout: 15_000 });
 
     await page.screenshot({ path: "test-results/screenshots/01-after-register.png", fullPage: true });
+  });
+
+  test("ohne Anzeigenamen legt das Formular kein Konto an", async ({ page }) => {
+    // Der Name ist seit 09/2026 Pflicht. Zwei Sperren, beide geprüft: das
+    // leere Feld fängt der Browser selbst ab (`required`, wie bei der
+    // E-Mail), ein Feld aus lauter Leerzeichen kommt daran vorbei — das
+    // fängt unsere eigene Prüfung. Die dritte Sperre sitzt im Backend und
+    // steht in tests/test_backend_api.py.
+    await page.goto("/register");
+    await page.locator("#email").fill(`ohne-namen-${Date.now()}@example.org`);
+    await page.locator("#password").fill(ADMIN_PASSWORD);
+    await page.getByRole("button", { name: "Konto erstellen" }).click();
+    await expect(page).toHaveURL(/\/register/);
+    expect(await page.locator("#display-name")
+      .evaluate((el: HTMLInputElement) => el.validity.valueMissing)).toBe(true);
+
+    await page.locator("#display-name").fill("   ");
+    await page.getByRole("button", { name: "Konto erstellen" }).click();
+    await expect(page.getByText("Bitte trage deinen Namen ein.")).toBeVisible();
+    await expect(page).toHaveURL(/\/register/);
   });
 
   test("login with wrong password shows error", async ({ page }) => {

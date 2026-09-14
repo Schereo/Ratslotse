@@ -76,9 +76,6 @@ class RubinAdapter:
     def normalize(self, body_id: str, raw: CitiesStore) -> Batch:
         return normalize_common(body_id, raw)
 
-    def file_url(self, file_json: dict, url: str | None) -> str | None:
-        return url
-
     def inline_texts(self, raw: CitiesStore, body_id: str) -> list[tuple[str, str]]:
         """``(file_id, text)`` für alles, was die Schnittstelle mitgeliefert hat."""
         out: list[tuple[str, str]] = []

@@ -1,9 +1,9 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { ChevronDown, ChevronRight } from "lucide-react";
-import { Card } from "@/components/ui";
+import { CalendarDays, ChevronDown, ChevronRight } from "lucide-react";
+import { HeuteWidget, useWidgetDetail, type WidgetSize } from "@/components/heute-widget";
 import { parteiDot } from "@/components/qa-bausteine";
 import { shortCommittee } from "@/lib/committees";
 import { cn } from "@/lib/utils";
@@ -46,51 +46,15 @@ export type Wochenvorschau = {
 /** Die drei Dichtestufen aus Design 14d. */
 type Dichte = "mobil" | "ipad" | "desktop";
 
-/* Gemessen wird die Breite der KARTE, nicht die des Fensters — dieselbe
-   Lektion wie beim Raster (#464): Mit Seitenleiste bedeutet 1280 px etwas
-   anderes als ohne, und auf dem Telefon gibt es sie gar nicht. Ein iPad hoch
-   (834) trägt in dieser App die Leiste und lässt der Karte rund 550 px; quer
-   (1194) sind es gut 900. Die Schwellen sind so gelegt, dass beide
-   Ausrichtungen die mittlere Stufe bekommen — so wie der Entwurf das iPad
-   führt (768–1279) — und erst der echte Desktop die volle.
-
-   Im Browser nachgemessen (Inhaltsbreite der Karte, ohne ihre Polsterung):
-
-     Fenster  390 (Telefon, keine Leiste) →  318
-     Fenster  834 (iPad hoch, mit Leiste) →  504
-     Fenster 1194 (iPad quer)             →  864
-     Fenster 1280 (Desktop)               →  934                             */
-const SCHWELLE_IPAD = 448;
-const SCHWELLE_DESKTOP = 900;
-
-/** Warum gemessen statt per CSS-Container-Query: Die Stufen unterscheiden sich
- *  nicht nur im Aussehen, sondern im **Inhalt** — mobil werden alle Sitzungen
- *  ohne eigene Treffer zu einer Zeile gebündelt, auf den größeren Stufen trägt
- *  jede ihre eigene. Das ließe sich in CSS nur durch doppeltes Markup
- *  nachbilden (beide Fassungen rendern, eine ausblenden); dann stünde jede
- *  Sitzung zweimal im Dokument — auch für Screenreader und Suche. */
-function useDichte<T extends HTMLElement>(ref: React.RefObject<T>): Dichte {
-  const [dichte, setDichte] = useState<Dichte>("desktop");
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const messen = (w: number) =>
-      setDichte(w >= SCHWELLE_DESKTOP ? "desktop" : w >= SCHWELLE_IPAD ? "ipad" : "mobil");
-    messen(el.getBoundingClientRect().width);
-    const ro = new ResizeObserver((eintraege) => {
-      for (const e of eintraege) messen(e.contentRect.width);
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [ref]);
-  return dichte;
+function SitzungsDatum({ date, className }: { date: string; className?: string }) {
+  const datum = new Date(date + "T12:00:00");
+  return <time dateTime={date}
+    aria-label={datum.toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+    className={cn("flex shrink-0 flex-col items-center gap-0.5 whitespace-nowrap font-mono leading-tight text-muted-foreground", className)}>
+    <span className="text-xs uppercase tracking-[0.04em]">{datum.toLocaleDateString("de-DE", { weekday: "short" })}</span>
+    <span className="text-meta font-medium tabular-nums">{datum.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}</span>
+  </time>;
 }
-
-const fmtTag = (iso: string) =>
-  new Date(iso + "T12:00:00")
-    .toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" })
-    .toUpperCase()
-    .replace(",", "");
 
 /** „13.–20. AUGUST" (Desktop) bzw. „13.–20. AUG" (iPad). */
 function zeitraum(von: string, bis: string, kurz: boolean) {
@@ -187,19 +151,32 @@ function topHref(ksinr: number, itemNumber: string) {
  *
  * Die drei Dichtestufen sind nicht skaliert, sondern inhaltlich abgestuft
  * (Matrix 14d). Prinzip ①: erst Zeilen weglassen, dann Wörter, zuletzt
- * Schrift — die Schriftgrößen laufen nur von 13,5 über 13 auf 12,5.
+ * Schrift. Die Leserollen bleiben gleich groß; kompakt erscheint ein Punkt,
+ * in der mittleren Stufe zwei, breit drei mit zusätzlichen Erläuterungen.
  * Prinzip ②: jede Stufe bleibt vollständig in der Zählung; die Karte darf
  * verkürzen, aber nicht verschweigen.
  */
-export function WocheImRat({ vorschau, heuteIso }: {
-  vorschau: Wochenvorschau;
-  /** Heutiges Datum als ISO — für den „HEUTE"-Chip. */
-  heuteIso: string;
+export function WocheImRat({ vorschau, heuteIso, size }: {
+  vorschau: Wochenvorschau; heuteIso: string; size?: WidgetSize;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const dichte = useDichte(ref);
+  return <HeuteWidget id="woche-im-rat" title="Die Woche im Rat" icon={CalendarDays} size={size}
+    data-tour="woche-im-rat" meta={<WochenMeta vorschau={vorschau} />}>
+    <WochenInhalt vorschau={vorschau} heuteIso={heuteIso} />
+  </HeuteWidget>;
+}
 
-  const maxPunkte = dichte === "desktop" ? 3 : 2;
+function WochenMeta({ vorschau }: { vorschau: Wochenvorschau }) {
+  const detail = useWidgetDetail();
+  const count = vorschau.sessions.length;
+  return <>{detail !== "compact" && `${zeitraum(vorschau.from_date, vorschau.to_date, true)} · `}
+    {count} {count === 1 ? "Sitzung" : "Sitzungen"}</>;
+}
+
+function WochenInhalt({ vorschau, heuteIso }: { vorschau: Wochenvorschau; heuteIso: string }) {
+  const detail = useWidgetDetail();
+  const dichte: Dichte = detail === "expanded" ? "desktop" : detail === "standard" ? "ipad" : "mobil";
+
+  const maxPunkte = detail === "expanded" ? 3 : detail === "standard" ? 2 : 1;
   const relevant = vorschau.relevant_per_session ?? {};
   const treffer_je = vorschau.matches_per_session ?? {};
   const weitereJe = vorschau.further_per_session ?? {};
@@ -217,7 +194,6 @@ export function WocheImRat({ vorschau, heuteIso }: {
   const mehrereTop = vorschau.items.filter((p) => p.top).length > 1;
 
   const sitzungen = vorschau.sessions;
-  const treffer = vorschau.matches_total ?? 0;
 
   // Jede Sitzung steht in der Rail — auch mobil. Vorher waren die ohne
   // interessante Punkte hinter „N Sitzungen ohne deine Themen" gebündelt;
@@ -233,29 +209,10 @@ export function WocheImRat({ vorschau, heuteIso }: {
     else tage.push({ date: s.session_date, sitzungen: [s] });
   }
 
-  const kicker = [
-    dichte !== "mobil" && zeitraum(vorschau.from_date, vorschau.to_date, dichte === "ipad"),
-    // Prinzip ②: Die Sitzungszahl steht auf JEDER Stufe.
-    `${sitzungen.length} ${sitzungen.length === 1 ? "SITZUNG" : "SITZUNGEN"}`,
-    dichte === "desktop" && treffer > 0 &&
-      `${treffer} ${treffer === 1 ? "PUNKT" : "PUNKTE"} ZU DEINEN THEMEN`,
-  ].filter(Boolean).join(" · ");
-
   return (
-    <Card className="p-5" data-tour="woche-im-rat">
-      {/* Gemessen wird dieser innere Container, nicht die Karte: `Card` ist eine
-          einfache Funktionskomponente ohne forwardRef, und die INHALTS-Breite
-          ist ohnehin das, worauf die Schwellen kalibriert sind. */}
-      <div ref={ref} className="flex flex-col" data-dichte={dichte}>
-      <div className="flex items-baseline justify-between gap-3">
-        <h2 className="font-display text-base font-bold text-foreground">Die Woche im Rat</h2>
-        <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
-          {kicker}
-        </span>
-      </div>
-
+    <div className="flex min-w-0 flex-col" data-dichte={dichte}>
       {dichte === "mobil" ? (
-        <div className="mt-3 flex flex-1 flex-col gap-3">
+        <div className="flex flex-1 flex-col gap-3">
           {tage.map(({ date, sitzungen: tagesSitzungen }) =>
             tagesSitzungen.map((s, i) => {
               const alle = punkteVon(s.ksinr);
@@ -287,13 +244,7 @@ export function WocheImRat({ vorschau, heuteIso }: {
           )}
         </div>
       ) : (
-        <div
-          className="mt-3 grid flex-1"
-          style={{
-            gridTemplateColumns: `${dichte === "desktop" ? 92 : 74}px 1fr`,
-            columnGap: dichte === "desktop" ? 16 : 13,
-          }}
-        >
+        <div className="grid flex-1 grid-cols-[3.5rem_minmax(0,1fr)] gap-x-3">
           {tage.map(({ date, sitzungen: tagesSitzungen }, ti) => (
             <RailTag
               key={date}
@@ -331,8 +282,7 @@ export function WocheImRat({ vorschau, heuteIso }: {
       {/* Ohne Fußzeile (Tim, 15.08.): Der Satz „entschieden wird in der
           Sitzung" erklärte, was die Karte ohnehin zeigt, und der Link zum
           Sitzungskalender war doppelt — jede Sitzungszeile führt dorthin. */}
-      </div>
-    </Card>
+    </div>
   );
 }
 
@@ -343,20 +293,18 @@ function RailTag({ date, heute, letzter, dichte, children }: {
 }) {
   return (
     <>
-      <div className="flex flex-col items-start pt-px">
+      <div className="flex flex-col items-center pt-px">
         {heute ? (
-          <span className="inline-flex items-center rounded-full bg-signal/[0.12] px-2 py-0.5 font-mono text-[9.5px] font-semibold uppercase tracking-[0.08em] text-signal">
+          <span className="inline-flex items-center rounded-full bg-signal/[0.12] px-1.5 py-0.5 font-mono text-xs font-semibold uppercase tracking-[0.04em] text-signal">
             Heute
           </span>
         ) : (
-          <span className="pl-0.5 font-mono text-[9.5px] font-medium tracking-[0.08em] text-muted-foreground">
-            {fmtTag(date)}
-          </span>
+          <SitzungsDatum date={date} />
         )}
         {/* Die Linie verbindet die Tage; am letzten endet die Rail. */}
-        {!letzter && <span className="mt-1.5 w-px flex-1 bg-border/70" style={{ marginLeft: dichte === "desktop" ? 12 : 11 }} />}
+        {!letzter && <span className="mt-1.5 w-px flex-1 bg-border/70" />}
       </div>
-      <div className={cn("flex flex-col", letzter ? "" : dichte === "desktop" ? "pb-3.5" : "pb-3", "gap-2")}>
+      <div className={cn("flex min-w-0 flex-col", letzter ? "" : dichte === "desktop" ? "pb-3.5" : "pb-3", "gap-2")}>
         {children}
       </div>
     </>
@@ -385,17 +333,17 @@ function RailSitzung({ sitzung, punkte, rest, badge, treffer, mehrere, dichte }:
   return (
     <div>
       <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
-        <span className={cn("font-bold text-foreground", desktop ? "text-[13.5px]" : "text-[13px]")}>
+        <span className={cn("font-semibold text-foreground", "text-quelle")}>
           {committee(sitzung.committee, dichte)}
         </span>
-        <span className={cn("text-muted-foreground", desktop ? "text-[11.5px]" : "text-[11px]")}>
+        <span className={cn("text-muted-foreground", "text-meta")}>
           {/* Matrix 14d: Desktop zeigt Uhrzeit UND Ort, iPad nur die Uhrzeit. */}
           {zeit}{desktop && sitzung.location ? ` · ${sitzung.location}` : ""}
         </span>
         {badge > 0 && (
           <span className={cn(
             "inline-flex shrink-0 items-center rounded-full bg-primary/10 font-bold text-primary",
-            desktop ? "px-2 py-px text-[10px]" : "px-1.5 py-px text-[9.5px]",
+            desktop ? "px-2 py-px text-xs" : "px-1.5 py-px text-xs",
           )}>
             {/* „für dich" nur, wenn wirklich ein eigenes Thema passt — sonst
                 behauptet das Abzeichen einen Bezug, den es nicht gibt. */}
@@ -410,7 +358,7 @@ function RailSitzung({ sitzung, punkte, rest, badge, treffer, mehrere, dichte }:
             href={`/council?tab=sessions&ksinr=${sitzung.ksinr}`}
             className={cn(
               "ml-auto shrink-0 font-medium text-primary hover:underline",
-              desktop ? "text-[11.5px]" : "text-[11px]",
+              "text-meta",
             )}
           >
             Tagesordnung →
@@ -438,7 +386,7 @@ function RailSitzung({ sitzung, punkte, rest, badge, treffer, mehrere, dichte }:
             <button
               type="button"
               onClick={() => setOffen(true)}
-              className="flex items-center gap-1 text-[11.5px] font-medium text-primary hover:underline"
+              className="flex min-h-11 items-center gap-1 text-meta font-medium text-primary hover:underline"
             >
               <ChevronDown className="h-3 w-3" aria-hidden />
               {rest.length === 1 ? "1 weiterer Punkt" : `${rest.length} weitere Punkte`}
@@ -454,12 +402,11 @@ function RailSitzung({ sitzung, punkte, rest, badge, treffer, mehrere, dichte }:
  *  gezeigten und die aufgeklappten, damit beide nicht auseinanderlaufen. */
 function MobilPunkt({ p }: { p: WochenPunkt }) {
   return (
-    <Link href={topHref(p.ksinr, p.item_number)} className="flex items-start gap-1.5">
+    <Link href={topHref(p.ksinr, p.item_number)}
+      className="group flex min-h-11 items-start gap-1.5 rounded-md py-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
       {/* Matrix 14d: mobil nur der Punkt, kein Antragsteller-Text. */}
-      {p.applicants
-        ? <span className="mt-[5px]"><ParteiPunkte wer={p.applicants} size={6} /></span>
-        : <span className="mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/40" />}
-      <span className="text-[12.5px] leading-snug text-foreground">
+      {p.applicants && <span className="mt-[5px]"><ParteiPunkte wer={p.applicants} size={6} /></span>}
+      <span className="min-w-0 text-hinweis leading-snug text-foreground transition-colors group-hover:text-primary">
         {p.titel_kurz || p.title}
       </span>
     </Link>
@@ -488,7 +435,7 @@ function RailPunkt({ punkt, top, mehrere, dichte }: {
         {/* Sagt, warum ausgerechnet dieser Punkt hinterlegt ist — ohne den
             Kicker wirkte die Fläche willkürlich (Tims Befund 15.08.). */}
         {top && desktop && (
-          <span className="mb-0.5 block font-mono text-[9px] font-semibold uppercase tracking-[0.11em] text-primary/80">
+          <span className="mb-0.5 block font-mono text-meta font-semibold uppercase tracking-[0.06em] text-primary/80">
             {punkt.topic_name
               ? "Dein Thema"
               /* Beim Dringlichkeitsantrag ist die Kurzfristigkeit selbst der
@@ -501,7 +448,7 @@ function RailPunkt({ punkt, top, mehrere, dichte }: {
         <span className={cn(
           "block leading-snug text-foreground",
           top ? "font-semibold" : "",
-          desktop ? "text-[13px]" : "text-[12.5px]",
+          "text-hinweis",
           desktop ? "" : "truncate",
         )}>
           {punkt.titel_kurz || punkt.title}
@@ -512,7 +459,7 @@ function RailPunkt({ punkt, top, mehrere, dichte }: {
             Fehlt er, tritt der Kartentext an seine Stelle (aus Vorlage und
             Anlagen), erst danach die titelbasierte Kurzfassung. */}
         {desktop && top && (punkt.wichtig_grund || punkt.social_text || punkt.summary) && (
-          <span className="mt-0.5 block text-[11.5px] leading-relaxed text-muted-foreground">
+          <span className="mt-0.5 block text-meta leading-relaxed text-muted-foreground">
             {punkt.wichtig_grund || punkt.social_text || punkt.summary}
             {punkt.topic_name && (
               <> — passt zu deinem Thema{" "}
@@ -524,13 +471,13 @@ function RailPunkt({ punkt, top, mehrere, dichte }: {
       {wer && (
         <span className="flex shrink-0 items-center gap-1.5 pt-0.5">
           <ParteiPunkte wer={wer} />
-          <span className={cn("whitespace-nowrap text-muted-foreground", desktop ? "text-[11px]" : "text-[10.5px]")}>
+          <span className={cn("whitespace-nowrap text-muted-foreground", "text-meta")}>
             {desktop ? `Antrag ${desktopName(wer)}` : kuerzel(wer)}
           </span>
         </span>
       )}
       {top && desktop ? (
-        <span className="shrink-0 whitespace-nowrap pt-0.5 text-[11.5px] font-semibold text-primary">
+        <span className="shrink-0 whitespace-nowrap pt-0.5 text-meta font-semibold text-primary">
           Öffnen →
         </span>
       ) : (
@@ -558,18 +505,18 @@ function RuhigeZeile({ sitzung, dichte }: { sitzung: WochenSitzung; dichte: Dich
     <>
       <span className={cn(
         "font-semibold text-foreground/90",
-        desktop ? "text-[13.5px]" : "text-[13px]",
+        "text-quelle",
       )}>
         {committee(sitzung.committee, dichte)}
       </span>
-      <span className={cn("text-muted-foreground", desktop ? "text-[11.5px]" : "text-[11px]")}>
+      <span className={cn("text-muted-foreground", "text-meta")}>
         {zeit}
         {oeffentlich
           ? ` · ${sitzung.n_items} ${desktop ? (sitzung.n_items === 1 ? "Punkt auf der Tagesordnung" : "Punkte auf der Tagesordnung") : "Punkte"}`
           : " · nicht öffentlich"}
       </span>
       {oeffentlich && desktop && (
-        <span className="text-[11.5px] font-medium text-primary">Tagesordnung →</span>
+        <span className="text-meta font-medium text-primary">Tagesordnung →</span>
       )}
     </>
   );
@@ -587,9 +534,9 @@ function RuhigeZeile({ sitzung, dichte }: { sitzung: WochenSitzung; dichte: Dich
 
 /* --------------------------------- Mobile --------------------------------- */
 
-/** Mobil wird die Rail-Spalte zur Zeile: Der Tag steht als Chip VOR dem
- *  Sitzungsnamen und spart damit die 74 px Spaltenbreite. Die Punkte hängen an
- *  einer 2-px-Kante. */
+/** Mobil bilden Datum und Gremium den Kopf. Die Punkte nutzen die ganze
+ *  Breite darunter; horizontale Trenner gliedern die Sitzungen. Eine senkrechte
+ *  Linie würde hier eine Datumsspalte andeuten, die es mobil nicht gibt. */
 function MobilSitzung({ sitzung, punkte, rest, weitere, badge, treffer, heute, mitTrennlinie }: {
   sitzung: WochenSitzung; punkte: WochenPunkt[];
   /** Punkte, die die Karte schon geladen hat, aber mobil erst nach dem
@@ -607,19 +554,17 @@ function MobilSitzung({ sitzung, punkte, rest, weitere, badge, treffer, heute, m
   const [offen, setOffen] = useState(false);
   return (
     <div className={cn(mitTrennlinie && "border-t border-border/60 pt-2.5")}>
-      <div className="flex items-center gap-1.5">
+      <div className="flex flex-wrap items-center gap-1.5">
         {heute ? (
           /* Matrix 14d: Uhrzeit mobil nur bei „heute" — dort ist sie die
              eigentliche Information. */
-          <span className="inline-flex shrink-0 items-center rounded-full bg-signal/[0.12] px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.06em] text-signal">
+          <span className="inline-flex shrink-0 items-center rounded-full bg-signal/[0.12] px-1.5 py-0.5 font-mono text-meta font-semibold uppercase tracking-[0.06em] text-signal">
             Heute {zeit}
           </span>
         ) : (
-          <span className="w-[68px] shrink-0 whitespace-nowrap font-mono text-[10px] font-medium tracking-[0.06em] text-muted-foreground">
-            {fmtTag(sitzung.session_date)}
-          </span>
+          <SitzungsDatum date={sitzung.session_date} className="w-14" />
         )}
-        <span className="min-w-0 flex-1 truncate text-[12.5px] font-bold text-foreground">
+        <span className="min-w-0 flex-1 truncate text-hinweis font-semibold text-foreground">
           {shortCommittee(sitzung.committee)}
         </span>
         {badge > 0 && (
@@ -627,14 +572,14 @@ function MobilSitzung({ sitzung, punkte, rest, weitere, badge, treffer, heute, m
              über einen Themenbezug. Passt ein eigenes Thema, sagt das
              Abzeichen es kurz dazu. */
           <span
-            className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-primary/10 px-1.5 py-px text-[9px] font-bold text-primary"
+            className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-primary/10 px-1.5 py-px text-xs font-bold text-primary"
             title={treffer > 0 ? `${treffer} zu deinen Themen` : `${badge} wichtige Punkte`}
           >
             {treffer > 0 ? `${treffer} für dich` : badge}
           </span>
         )}
       </div>
-      <div className="ml-[3px] mt-1.5 flex flex-col gap-1.5 border-l-2 border-primary/25 pl-2.5">
+      <div className="mt-2 flex flex-col gap-1.5">
         {punkte.map((p) => <MobilPunkt key={`${p.ksinr}-${p.item_number}`} p={p} />)}
         {/* Aufgefahren statt erschienen. Der Abstand zwischen den Punkten
             gehört hier IN den Aufklapper: Die Zeilen stehen in einem
@@ -652,7 +597,7 @@ function MobilSitzung({ sitzung, punkte, rest, weitere, badge, treffer, heute, m
           <button
             type="button"
             onClick={() => setOffen(true)}
-            className="flex items-center gap-1 self-start text-[11.5px] font-medium text-primary"
+            className="flex min-h-11 items-center gap-1 self-start text-meta font-medium text-primary"
           >
             <ChevronDown className="h-3 w-3" aria-hidden />
             {rest.length === 1 ? "1 weiterer Punkt" : `${rest.length} weitere Punkte`}
@@ -662,7 +607,7 @@ function MobilSitzung({ sitzung, punkte, rest, weitere, badge, treffer, heute, m
         {weitere > 0 && (offen || rest.length === 0) && (
           <Link
             href={`/council?tab=sessions&ksinr=${sitzung.ksinr}`}
-            className="text-[11.5px] font-medium text-primary"
+            className="text-meta font-medium text-primary"
           >
             Ganze Tagesordnung →
           </Link>
@@ -682,18 +627,16 @@ function MobilRuhig({ sitzung, heute, mitTrennlinie }: {
   const inhalt = (
     <>
       {heute ? (
-        <span className="inline-flex shrink-0 items-center rounded-full bg-signal/[0.12] px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.06em] text-signal">
+        <span className="inline-flex shrink-0 items-center rounded-full bg-signal/[0.12] px-1.5 py-0.5 font-mono text-meta font-semibold uppercase tracking-[0.06em] text-signal">
           Heute {zeit}
         </span>
       ) : (
-        <span className="w-[68px] shrink-0 whitespace-nowrap font-mono text-[10px] font-medium tracking-[0.06em] text-muted-foreground">
-          {fmtTag(sitzung.session_date)}
-        </span>
+        <SitzungsDatum date={sitzung.session_date} className="w-14" />
       )}
-      <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-foreground/90">
+      <span className="min-w-0 flex-1 truncate text-hinweis font-semibold text-foreground/90">
         {shortCommittee(sitzung.committee)}
       </span>
-      <span className="shrink-0 text-[11px] font-medium text-primary">
+      <span className="shrink-0 text-meta font-medium text-primary">
         {oeffentlich ? "Tagesordnung →" : <span className="text-muted-foreground">nicht öffentlich</span>}
       </span>
     </>
@@ -703,12 +646,12 @@ function MobilRuhig({ sitzung, heute, mitTrennlinie }: {
       {oeffentlich ? (
         <Link
           href={`/council?tab=sessions&ksinr=${sitzung.ksinr}`}
-          className="-mx-1.5 flex items-center gap-1.5 rounded-lg px-1.5 py-0.5"
+          className="-mx-1.5 flex flex-wrap items-center gap-1.5 rounded-lg px-1.5 py-0.5"
         >
           {inhalt}
         </Link>
       ) : (
-        <div className="flex items-center gap-1.5 px-1.5 py-0.5">{inhalt}</div>
+        <div className="flex flex-wrap items-center gap-1.5 px-1.5 py-0.5">{inhalt}</div>
       )}
     </div>
   );

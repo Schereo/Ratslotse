@@ -18,6 +18,20 @@ Dateien nach und ``pypdf/1`` legt sich daneben.
 python scripts/cities_import_phase0.py --trocken
 python scripts/cities_import_phase0.py --run
 ```
+
+**Dieses Skript ist gelaufen und darf nicht noch einmal laufen.** Der
+Probelauf hat die Kennungen der Tagesordnungspunkte nicht mitgeschrieben, also
+erfindet ``sitzungen_als_rohobjekte`` welche: ``<sitzung>#top-<nummer>``. Kein
+Ratsinformationssystem vergibt so etwas. Die echte Ernte brachte dieselben
+Punkte danach unter ihren richtigen Kennungen — und weil beide Zeilen
+nebeneinander liegen blieben, lag am 10.09.2026 ein Fünftel des Bestands
+doppelt (22.152 Punkte; s. Migration 7 und ``zwillinge_zusammenfuehren``).
+
+Ein zweiter Lauf wäre heute **schlimmer als der erste**: Er legt die
+erfundenen Sitzungsobjekte unter derselben ``oparl_id`` neu ab, und
+``CitiesStore.raw_objects`` nimmt je Kennung die **jüngste** Zeile. Die
+richtige Sitzung samt ihrer echten Punkte wäre damit verdeckt, bis jemand die
+Stadt neu erntet.
 """
 from __future__ import annotations
 

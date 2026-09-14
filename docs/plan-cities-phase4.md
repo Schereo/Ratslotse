@@ -362,7 +362,9 @@ Dann, je nach Befund:
   geschoben").
 - **Keine Beratung** → prüfen, ob die Stadt `consultation` liefert und der
   Adapter sie liest. Osnabrück und Braunschweig (ALLRIS) tun es; für
-  SessionNet-Städte gilt `link_within_meeting`.
+  SessionNet-Städte galt `link_within_meeting` — die Funktion ist am
+  10.09.2026 ausgebaut, sie band nachweislich null (s.
+  `council/cities/CLAUDE.md`).
 - **Noch offen** → nichts zu tun; die Zeile trägt „läuft seit <Datum>".
 
 **Test.** Je gefundener Regel ein Fall in `test_cities_model.py`.

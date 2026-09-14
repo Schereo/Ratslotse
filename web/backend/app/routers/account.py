@@ -12,6 +12,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request,
 
 from kern.digest_email import render_html_email
 from kern.email import send_email
+from kern.disposable_email import EMAIL_CHANGE_REJECTED, domain_of, is_disposable
 from kern.store import Store
 from council.store import CouncilStore
 
@@ -19,8 +20,8 @@ from ..config import get_settings
 from ..antworten import NotifySettings, Ok, TestDelivery
 from ..deps import get_council_store, get_current_user, get_store, ist_admin, require_active
 from ..ratelimit import change_email_limiter
-from ..schemas import (ChangeEmailRequest, ChangePasswordRequest, DeleteAccountRequest,
-                       DeliveryUpdate, NotifyPrefsIn, UserOut)
+from ..schemas import (NAME_FEHLT, ChangeEmailRequest, ChangePasswordRequest,
+                       DeleteAccountRequest, DeliveryUpdate, NotifyPrefsIn, UserOut)
 from ..security import hash_password, verify_password
 from .auth import (_VERIFY_TTL_HOURS, _app_access_token, _send_email_change_link,
                    _send_email_change_notice, _set_auth_cookie, _to_out)
@@ -105,6 +106,9 @@ def _reauth(user: dict, current_password: str, apple_identity_token: str) -> Non
 
 
 class DisplayNameIn(BaseModel):
+    #: Weiter ``str | None`` wie bei der Registrierung, damit ein leeres Feld
+    #: aus einem älteren Client unseren deutschen Satz zurückbekommt und keine
+    #: englische Pydantic-Meldung.
     display_name: str | None = Field(default=None, max_length=60)
 
 
@@ -115,8 +119,17 @@ def set_display_name(
     store: Store = Depends(get_store),
 ) -> Ok:
     """Anzeigename setzen/ändern — auch für Apple-Konten und Alt-Bestand,
-    die bei der Registrierung keinen angeben konnten."""
-    store.set_display_name(user["id"], body.display_name)
+    die bei der Registrierung keinen angeben konnten.
+
+    Leeren geht nicht mehr: Seit der Name bei der Registrierung Pflicht ist,
+    wäre dieser Endpunkt sonst die Hintertür, durch die ein Konto wieder ohne
+    Namen dasteht — und die Anrede in Mails und Übersicht fiele still auf
+    „Moin!" zurück.
+    """
+    name = (body.display_name or "").strip()
+    if not name:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, NAME_FEHLT)
+    store.set_display_name(user["id"], name)
     return {"ok": True}
 
 
@@ -254,6 +267,12 @@ def change_email(
         # Validierungsregel hängen soll — er kostet nichts und beschreibt die
         # Absicht an der Stelle, an der sie gilt.
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Diese Adresse ist nicht zulässig.")
+    if is_disposable(neu):
+        # Dieselbe Regel wie bei der Registrierung — sonst wäre der Wechsel
+        # der Umweg um den Riegel: erst mit echter Adresse anmelden, dann auf
+        # die Wegwerf-Adresse umziehen.
+        logger.info("Adresswechsel abgewiesen: Wegwerf-Domain %s (Konto %s)", domain_of(neu), user["id"])
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, EMAIL_CHANGE_REJECTED)
     if store.get_web_user_by_email(neu):
         raise HTTPException(status.HTTP_409_CONFLICT, "E-Mail ist bereits registriert.")
 

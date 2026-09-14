@@ -48,6 +48,7 @@ from pathlib import Path
 
 from kern import llm
 from kern.proxy import proxy_for
+from council.store_wortbeitraege import WortbeitraegeMixin
 
 log = logging.getLogger(__name__)
 
@@ -474,8 +475,7 @@ def extract_results(segments: list[tuple[float, str]],
         r = a if (a.get("no_votes") is not None
                   or a.get("abstentions") is not None) else b
         outcome = r.get("outcome")
-        if outcome not in ("accepted", "rejected", "postponed",
-                           "noted", "removed"):
+        if outcome not in WortbeitraegeMixin._VIDEO_OUTCOMES:
             continue
         quote = (r.get("beleg") or "").strip()
         pos = _anchor_position(folded, nr, a.get("beleg") or "", b.get("beleg") or "")

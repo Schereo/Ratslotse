@@ -483,6 +483,9 @@ COUNCIL_EMBED_MODEL=sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
 COUNCIL_RECAP_MODEL=deepseek/deepseek-v4-pro
 COUNCIL_VIDEO_MODEL=openai/gpt-5.6-luna     # liest Abstimmungsergebnisse aus Sitzungs-Transkripten
 COUNCIL_STT_MODEL=google/gemini-2.5-flash   # transkribiert den Livestream-Mitschnitt (Audio-Input)
+WAHLABEND_ELECTION=ratswahl-2026          # welche Wahl /wahlabend zeigt (kommunalwahl/wahlen/); leer = die jüngste
+WAHLABEND_VOTEMANAGER_URL=...             # Basis-URL des Votemanagers, überschreibt die der Wahl
+WAHLABEND_COLUMNS=gruene,spd,cdu,…        # Notausgang: Spaltenreihenfolge der Open-Data-CSVs
 COUNCIL_STREAM_URL=https://cdn.oeins.de/sd480/index.m3u8  # O1-Livestream (HLS)
 COUNCIL_RECORD_MAX_HOURS=6                  # Kappe des Sitzungs-Mitschnitts
 COUNCIL_CHUNK_SECONDS=30                    # Stücklänge des Mitschnitts ohne Streaming (Live-Verfolgung)
@@ -519,6 +522,25 @@ RATSLOTSE_PROXY_HOSTS=gisportal4ol.oldenburg.de,youtube.com         # nur diese 
   gibt es keinen Bestätigungslink — dann nach der Registrierung einmal auf dem
   Server: `.venv/bin/python scripts/grant_admin.py <adresse>` (befördert nur ein
   **vorhandenes** Konto). Beide Fälle stehen als WARNING im Log (`nwz-web-api`).
+- **Wegwerf-Adressen werden abgewiesen** (seit 09/2026). Registrierung und
+  Adresswechsel prüfen die Domain gegen `kern/disposable_email_domains.txt`
+  (öffentliche Liste, CC0, ~8.800 Einträge; Logik in
+  `kern/disposable_email.py`). Anlass: zwei Konten mit Tastatur-Namen auf
+  94an.com und airhemp.com, die den Bestätigungslink brav geklickt hatten —
+  die Bestätigung hält Wegwerf-Postfächer nicht ab. Nachziehen:
+  `scripts/update_disposable_domains.py --schreiben`; `PROTECTED_DOMAINS`
+  schützt echte Anbieter (und Apples „E-Mail verbergen") vor einem
+  Fehleintrag der Liste.
+<<<<<<< HEAD
+- **Abgewiesene Registrierungen werden gezählt** (seit 09/2026). `page_views`
+  zählt, wer kam; `signup_rejections` zählt, wer nicht durchkam — je Tag und
+  Grund, ohne Adresse, Domain oder Netzadresse. Sichtbar im Admin-Panel unter
+  *Statistik → Registrierungen*; `scripts/check_herzschlag.py` meldet eine
+  Welle per Mail. Der Grund: Die FYI-Mail an die Admins hängt an der
+  **Bestätigung** — tausend Konten, die nie einen Link klicken, lösen ohne den
+  Herzschlag keine einzige Mail aus.
+=======
+>>>>>>> origin/main
 - **Rollen und Rechte:** Ein Konto trägt seit 09/2026 **mehrere** Rollen
   (Tabelle `web_user_roles`); welche es gibt und was sie dürfen, steht an genau
   einer Stelle — [`kern/roles.py`](kern/roles.py). Geprüft wird immer gegen ein

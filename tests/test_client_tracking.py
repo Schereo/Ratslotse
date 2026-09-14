@@ -101,7 +101,7 @@ def test_zugriffe_werden_je_client_getrennt_gezaehlt(client):
 def test_registrierung_haelt_den_client_fest(client):
     """Womit jemand HERKOMMT ist eine andere Frage als was er DANN benutzt."""
     TestClient(app).post("/api/auth/register",
-                         json={"email": "appler@example.org", "password": "password123"},
+                         json={"display_name": "Testkonto", "email": "appler@example.org", "password": "password123"},
                          headers={"X-Client": "ios"})
     _register(client)  # der Admin selbst registriert sich im Browser
 

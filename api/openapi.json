@@ -1,6 +1,24 @@
 {
   "components": {
     "schemas": {
+      "AdminAbweisung": {
+        "properties": {
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason",
+          "n"
+        ],
+        "title": "AdminAbweisung",
+        "type": "object"
+      },
       "AdminAliasDeleted": {
         "properties": {
           "entities": {
@@ -33,6 +51,79 @@
           "aliases"
         ],
         "title": "AdminAliasList",
+        "type": "object"
+      },
+      "AdminAnmeldeTag": {
+        "properties": {
+          "created": {
+            "title": "Created",
+            "type": "integer"
+          },
+          "day": {
+            "title": "Day",
+            "type": "string"
+          },
+          "rejected": {
+            "title": "Rejected",
+            "type": "integer"
+          },
+          "verified": {
+            "title": "Verified",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "day",
+          "created",
+          "verified",
+          "rejected"
+        ],
+        "title": "AdminAnmeldeTag",
+        "type": "object"
+      },
+      "AdminAnmeldungen": {
+        "description": "Was bei der Registrierung ankam — und was abprallte.\n\nBeide Seiten in einem Bild. Die Zahl der neuen Konten allein sagt nicht,\nob gerade jemand anklopft und an der Bremse oder am Wegwerf-Riegel\nhängenbleibt; bis 09/2026 war genau das unsichtbar.\n\nNichts hier ist einer Person zuzuordnen: Die Abweisungen tragen weder\nAdresse noch Domain noch Netzadresse, nur Tag, Grund und Anzahl.",
+        "properties": {
+          "created": {
+            "title": "Created",
+            "type": "integer"
+          },
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "reasons": {
+            "items": {
+              "$ref": "#/components/schemas/AdminAbweisung"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "rejected": {
+            "title": "Rejected",
+            "type": "integer"
+          },
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/AdminAnmeldeTag"
+            },
+            "title": "Series",
+            "type": "array"
+          },
+          "verified": {
+            "title": "Verified",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "days",
+          "created",
+          "verified",
+          "rejected",
+          "series",
+          "reasons"
+        ],
+        "title": "AdminAnmeldungen",
         "type": "object"
       },
       "AdminClientShare": {
@@ -1805,6 +1896,13 @@
             "title": "Delivery Channel",
             "type": "string"
           },
+          "display_name": {
+            "title": "Display Name",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "email": {
             "title": "Email",
             "type": "string"
@@ -1892,6 +1990,7 @@
         "required": [
           "id",
           "email",
+          "display_name",
           "role",
           "roles",
           "status",
@@ -1973,6 +2072,13 @@
               "null"
             ]
           },
+          "display_name": {
+            "title": "Display Name",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "email": {
             "title": "Email",
             "type": "string"
@@ -2030,6 +2136,7 @@
         "required": [
           "id",
           "email",
+          "display_name",
           "role",
           "roles",
           "status",
@@ -2289,6 +2396,48 @@
       "AppConfigOut": {
         "description": "Compatibility contract consumed before a native app starts loading data.",
         "properties": {
+          "election": {
+            "description": "Die Wahl, die gerade ansteht — klein genug für jede Seite.\n\nWarum hier und nicht nur in ``/api/wahlabend``: Startseite, Heute-Karte\nund Dashboard zeigen einen Countdown, ohne den ganzen Wahlabend zu laden.\nBis 09/2026 stand der Termin dafür als ``WAHLABEND_BEGINN_UTC`` im\nFrontend — eine Konstante, die ein Deploy braucht und die niemand mit der\nRegistry abgleicht.",
+            "properties": {
+              "date": {
+                "title": "Date",
+                "type": "string"
+              },
+              "kind": {
+                "title": "Kind",
+                "type": "string"
+              },
+              "path": {
+                "title": "Path",
+                "type": "string"
+              },
+              "polls_close": {
+                "title": "Polls Close",
+                "type": "string"
+              },
+              "short_title": {
+                "title": "Short Title",
+                "type": "string"
+              },
+              "slug": {
+                "title": "Slug",
+                "type": "string"
+              }
+            },
+            "required": [
+              "slug",
+              "short_title",
+              "date",
+              "polls_close",
+              "kind",
+              "path"
+            ],
+            "title": "AppElectionOut",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
           "features": {
             "default": [],
             "items": {
@@ -2313,6 +2462,45 @@
           "min_build"
         ],
         "title": "AppConfigOut",
+        "type": "object"
+      },
+      "AppElectionOut": {
+        "description": "Die Wahl, die gerade ansteht — klein genug für jede Seite.\n\nWarum hier und nicht nur in ``/api/wahlabend``: Startseite, Heute-Karte\nund Dashboard zeigen einen Countdown, ohne den ganzen Wahlabend zu laden.\nBis 09/2026 stand der Termin dafür als ``WAHLABEND_BEGINN_UTC`` im\nFrontend — eine Konstante, die ein Deploy braucht und die niemand mit der\nRegistry abgleicht.",
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "polls_close": {
+            "title": "Polls Close",
+            "type": "string"
+          },
+          "short_title": {
+            "title": "Short Title",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "short_title",
+          "date",
+          "polls_close",
+          "kind",
+          "path"
+        ],
+        "title": "AppElectionOut",
         "type": "object"
       },
       "AppleLoginRequest": {
@@ -5172,10 +5360,7 @@
           },
           "note": {
             "title": "Note",
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string"
           },
           "until": {
             "title": "Until",
@@ -7556,18 +7741,39 @@
         "type": "object"
       },
       "ElectionInfo": {
+        "description": "Wer wählt was, wann — aus ``kommunalwahl/wahlen/``.\n\nBis 09/2026 trug diese Form nur Datum, Sitzzahl und den amtlichen Titel;\n„Ratswahl Oldenburg\", „13. September 2026\" und der Wahlschluss standen\ndaneben als Literale im Frontend. Jetzt kommt beides von hier — eine\nandere Wahl in der Registry ändert die Seite, ohne dass jemand eine\nÜberschrift nachzieht.",
         "properties": {
           "date": {
             "title": "Date",
+            "type": "string"
+          },
+          "polls_close": {
+            "title": "Polls Close",
             "type": "string"
           },
           "presentation_url": {
             "title": "Presentation Url",
             "type": "string"
           },
+          "previous_label": {
+            "title": "Previous Label",
+            "type": "string"
+          },
           "seats": {
             "title": "Seats",
             "type": "integer"
+          },
+          "short_title": {
+            "title": "Short Title",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
           },
           "title": {
             "title": "Title",
@@ -7575,12 +7781,95 @@
           }
         },
         "required": [
+          "slug",
           "date",
           "seats",
           "title",
-          "presentation_url"
+          "short_title",
+          "polls_close",
+          "status",
+          "presentation_url",
+          "previous_label"
         ],
         "title": "ElectionInfo",
+        "type": "object"
+      },
+      "ElectionList": {
+        "properties": {
+          "elections": {
+            "items": {
+              "$ref": "#/components/schemas/ElectionListItem"
+            },
+            "title": "Elections",
+            "type": "array"
+          }
+        },
+        "required": [
+          "elections"
+        ],
+        "title": "ElectionList",
+        "type": "object"
+      },
+      "ElectionListItem": {
+        "description": "Eine Zeile der Übersicht unter ``/wahlen``.",
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "focus": {
+            "title": "Focus",
+            "type": "boolean"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "polls_close": {
+            "title": "Polls Close",
+            "type": "string"
+          },
+          "short_title": {
+            "title": "Short Title",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "short_title",
+          "title",
+          "date",
+          "polls_close",
+          "kind",
+          "status",
+          "path",
+          "summary",
+          "focus"
+        ],
+        "title": "ElectionListItem",
         "type": "object"
       },
       "ElectionMandate": {
@@ -7762,22 +8051,22 @@
               "null"
             ]
           },
-          "seats_2021": {
-            "title": "Seats 2021",
+          "seats_previous": {
+            "title": "Seats Previous",
             "type": [
               "integer",
               "null"
             ]
           },
-          "share_2021_pct": {
-            "title": "Share 2021 Pct",
+          "share_pct": {
+            "title": "Share Pct",
             "type": [
               "number",
               "null"
             ]
           },
-          "share_pct": {
-            "title": "Share Pct",
+          "share_previous_pct": {
+            "title": "Share Previous Pct",
             "type": [
               "number",
               "null"
@@ -7826,8 +8115,8 @@
           "share_pct",
           "seats",
           "projected_seats",
-          "seats_2021",
-          "share_2021_pct",
+          "seats_previous",
+          "share_previous_pct",
           "votes_to_next_seat",
           "votes_to_lose_seat"
         ],
@@ -9250,6 +9539,66 @@
             "title": "Peers",
             "type": "integer"
           },
+          "protocol": {
+            "description": "Was die Niederschrift der Sitzung zu dieser Vorlage sagt.\n\nDas „Warum\" — der Grund, aus dem der Städtevergleich überhaupt gebaut\nwurde: Dass Magdeburg die Verpackungssteuer-Prüfung eingestellt hat, sagt\ndie Karte schon; *warum* der Rat das tat, ist das, was eine Oldenburger\nFraktion in ihrer eigenen Sitzung braucht.\n\n**``grounded`` entscheidet, ob überhaupt etwas gezeigt wird.** Steht im\nAbschnitt nur ein Ergebnis und keine Begründung — der häufigere Fall —,\nist es ``False``, ``why`` bleibt leer, und die Oberfläche zeigt an dieser\nStelle nichts. Eine erfundene Begründung wäre schlimmer als gar keine.",
+            "properties": {
+              "date": {
+                "title": "Date",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "decided": {
+                "title": "Decided",
+                "type": "string"
+              },
+              "discussed": {
+                "title": "Discussed",
+                "type": "string"
+              },
+              "grounded": {
+                "title": "Grounded",
+                "type": "boolean"
+              },
+              "organization": {
+                "title": "Organization",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "vote": {
+                "title": "Vote",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "why": {
+                "title": "Why",
+                "type": "string"
+              }
+            },
+            "required": [
+              "discussed",
+              "decided",
+              "vote",
+              "why",
+              "grounded",
+              "organization",
+              "date"
+            ],
+            "title": "IdeaProtocol",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "protocol_source": {
+            "title": "Protocol Source",
+            "type": "string"
+          },
           "reason": {
             "title": "Reason",
             "type": "string"
@@ -9290,6 +9639,13 @@
               "string",
               "null"
             ]
+          },
+          "window_since": {
+            "title": "Window Since",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
@@ -9312,6 +9668,9 @@
           "reason",
           "confidence",
           "evidence",
+          "protocol",
+          "protocol_source",
+          "window_since",
           "effort",
           "siblings",
           "stance",
@@ -9410,6 +9769,13 @@
       },
       "IdeaFields": {
         "properties": {
+          "bodies": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Bodies",
+            "type": "array"
+          },
           "fields": {
             "items": {
               "$ref": "#/components/schemas/IdeaFieldSummary"
@@ -9419,9 +9785,63 @@
           }
         },
         "required": [
-          "fields"
+          "fields",
+          "bodies"
         ],
         "title": "IdeaFields",
+        "type": "object"
+      },
+      "IdeaProtocol": {
+        "description": "Was die Niederschrift der Sitzung zu dieser Vorlage sagt.\n\nDas „Warum\" — der Grund, aus dem der Städtevergleich überhaupt gebaut\nwurde: Dass Magdeburg die Verpackungssteuer-Prüfung eingestellt hat, sagt\ndie Karte schon; *warum* der Rat das tat, ist das, was eine Oldenburger\nFraktion in ihrer eigenen Sitzung braucht.\n\n**``grounded`` entscheidet, ob überhaupt etwas gezeigt wird.** Steht im\nAbschnitt nur ein Ergebnis und keine Begründung — der häufigere Fall —,\nist es ``False``, ``why`` bleibt leer, und die Oberfläche zeigt an dieser\nStelle nichts. Eine erfundene Begründung wäre schlimmer als gar keine.",
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "decided": {
+            "title": "Decided",
+            "type": "string"
+          },
+          "discussed": {
+            "title": "Discussed",
+            "type": "string"
+          },
+          "grounded": {
+            "title": "Grounded",
+            "type": "boolean"
+          },
+          "organization": {
+            "title": "Organization",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "vote": {
+            "title": "Vote",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "why": {
+            "title": "Why",
+            "type": "string"
+          }
+        },
+        "required": [
+          "discussed",
+          "decided",
+          "vote",
+          "why",
+          "grounded",
+          "organization",
+          "date"
+        ],
+        "title": "IdeaProtocol",
         "type": "object"
       },
       "IdeaSearchResponse": {
@@ -10388,6 +10808,216 @@
           "is_public"
         ],
         "title": "MatchedAgendaItem",
+        "type": "object"
+      },
+      "MayorCandidate": {
+        "properties": {
+          "color": {
+            "title": "Color",
+            "type": "string"
+          },
+          "color_dark": {
+            "title": "Color Dark",
+            "type": "string"
+          },
+          "first_round_pct": {
+            "title": "First Round Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "party": {
+            "title": "Party",
+            "type": "string"
+          },
+          "share_pct": {
+            "title": "Share Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "votes": {
+            "title": "Votes",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "party",
+          "votes",
+          "share_pct",
+          "first_round_pct",
+          "color",
+          "color_dark"
+        ],
+        "title": "MayorCandidate",
+        "type": "object"
+      },
+      "MayorElectionInfo": {
+        "description": "Welche Wahl das hier ist — aus ``kommunalwahl/wahlen/``.\n\nStand bis 09/2026 nicht in der Antwort: Es gab genau eine OB-Wahl, und\ndie Seite kannte sie auswendig. Mit der Stichwahl am 27.09. sind es zwei,\nund die Überschrift darf nicht mehr im Frontend stehen.",
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "is_runoff": {
+            "title": "Is Runoff",
+            "type": "boolean"
+          },
+          "polls_close": {
+            "title": "Polls Close",
+            "type": "string"
+          },
+          "presentation_url": {
+            "title": "Presentation Url",
+            "type": "string"
+          },
+          "short_title": {
+            "title": "Short Title",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "title",
+          "short_title",
+          "date",
+          "polls_close",
+          "is_runoff",
+          "presentation_url"
+        ],
+        "title": "MayorElectionInfo",
+        "type": "object"
+      },
+      "MayorNight": {
+        "properties": {
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/MayorCandidate"
+            },
+            "title": "Candidates",
+            "type": "array"
+          },
+          "dataset": {
+            "title": "Dataset",
+            "type": "string"
+          },
+          "elected": {
+            "title": "Elected",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "election": {
+            "$ref": "#/components/schemas/MayorElectionInfo"
+          },
+          "error": {
+            "title": "Error",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "fetched_at": {
+            "title": "Fetched At",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "invalid_ballots": {
+            "title": "Invalid Ballots",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "reports_expected": {
+            "title": "Reports Expected",
+            "type": "integer"
+          },
+          "reports_received": {
+            "title": "Reports Received",
+            "type": "integer"
+          },
+          "runoff": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Runoff",
+            "type": "array"
+          },
+          "turnout_pct": {
+            "title": "Turnout Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "valid_votes": {
+            "title": "Valid Votes",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "dataset",
+          "phase",
+          "election",
+          "reports_expected",
+          "reports_received",
+          "turnout_pct",
+          "valid_votes",
+          "invalid_ballots",
+          "candidates",
+          "runoff",
+          "elected",
+          "fetched_at",
+          "ok",
+          "error",
+          "notes"
+        ],
+        "title": "MayorNight",
         "type": "object"
       },
       "MediaUpload": {
@@ -11641,6 +12271,1052 @@
         "title": "PolicyFields",
         "type": "object"
       },
+      "PredictionAdminPlayer": {
+        "description": "Eine Zeile der Teilnehmerliste im Admin-Panel (1h) — zum Ausblenden\nund Umbenennen. Anders als ``PredictionRow`` auf der öffentlichen Tafel\nzeigt diese Liste AUCH ausgeblendete Personen, denn genau die will der\nAdmin wiederfinden können.",
+        "properties": {
+          "has_mayor_tip": {
+            "title": "Has Mayor Tip",
+            "type": "boolean"
+          },
+          "has_tip": {
+            "title": "Has Tip",
+            "type": "boolean"
+          },
+          "hidden": {
+            "title": "Hidden",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "late_at": {
+            "title": "Late At",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "late_at",
+          "hidden",
+          "has_tip",
+          "has_mayor_tip"
+        ],
+        "title": "PredictionAdminPlayer",
+        "type": "object"
+      },
+      "PredictionAdminStand": {
+        "properties": {
+          "game": {
+            "$ref": "#/components/schemas/PredictionGame"
+          },
+          "log": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Log",
+            "type": "array"
+          },
+          "players": {
+            "items": {
+              "$ref": "#/components/schemas/PredictionAdminPlayer"
+            },
+            "title": "Players",
+            "type": "array"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/PredictionResultRow"
+            },
+            "title": "Results",
+            "type": "array"
+          },
+          "rounds": {
+            "items": {
+              "$ref": "#/components/schemas/PredictionRoundInfo"
+            },
+            "title": "Rounds",
+            "type": "array"
+          }
+        },
+        "required": [
+          "rounds",
+          "game",
+          "results",
+          "players",
+          "log"
+        ],
+        "title": "PredictionAdminStand",
+        "type": "object"
+      },
+      "PredictionCompareLine": {
+        "properties": {
+          "actual": {
+            "title": "Actual",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "avg_tip": {
+            "title": "Avg Tip",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "color": {
+            "title": "Color",
+            "type": "string"
+          },
+          "color_dark": {
+            "title": "Color Dark",
+            "type": "string"
+          },
+          "exact_count": {
+            "title": "Exact Count",
+            "type": "integer"
+          },
+          "short": {
+            "title": "Short",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "short",
+          "color",
+          "color_dark",
+          "actual",
+          "avg_tip",
+          "exact_count"
+        ],
+        "title": "PredictionCompareLine",
+        "type": "object"
+      },
+      "PredictionGame": {
+        "properties": {
+          "deadline_hint": {
+            "title": "Deadline Hint",
+            "type": "string"
+          },
+          "election_date": {
+            "title": "Election Date",
+            "type": "string"
+          },
+          "election_slug": {
+            "title": "Election Slug",
+            "type": "string"
+          },
+          "election_title": {
+            "title": "Election Title",
+            "type": "string"
+          },
+          "late_scored": {
+            "title": "Late Scored",
+            "type": "boolean"
+          },
+          "listed": {
+            "title": "Listed",
+            "type": "boolean"
+          },
+          "locked": {
+            "title": "Locked",
+            "type": "boolean"
+          },
+          "locked_at": {
+            "title": "Locked At",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mayor_candidates": {
+            "items": {
+              "$ref": "#/components/schemas/PredictionMayorCandidate"
+            },
+            "title": "Mayor Candidates",
+            "type": "array"
+          },
+          "parties": {
+            "items": {
+              "$ref": "#/components/schemas/PredictionParty"
+            },
+            "title": "Parties",
+            "type": "array"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "player_count": {
+            "title": "Player Count",
+            "type": "integer"
+          },
+          "previous_label": {
+            "title": "Previous Label",
+            "type": "string"
+          },
+          "round": {
+            "title": "Round",
+            "type": "string"
+          },
+          "seats_total": {
+            "title": "Seats Total",
+            "type": "integer"
+          },
+          "shared_device": {
+            "title": "Shared Device",
+            "type": "boolean"
+          },
+          "tip_kind": {
+            "title": "Tip Kind",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "round",
+          "listed",
+          "title",
+          "phase",
+          "seats_total",
+          "election_slug",
+          "election_title",
+          "election_date",
+          "tip_kind",
+          "previous_label",
+          "locked",
+          "locked_at",
+          "late_scored",
+          "shared_device",
+          "player_count",
+          "deadline_hint",
+          "parties",
+          "mayor_candidates"
+        ],
+        "title": "PredictionGame",
+        "type": "object"
+      },
+      "PredictionJoinIn": {
+        "description": "``POST /api/tipp`` legt an ODER aktualisiert — beides derselbe Endpunkt\n(ohne Cookie: Beitritt, ``name`` Pflicht; mit gültigem Cookie: nur der\nTipp wird aktualisiert, ``name`` bleibt unbeachtet — umbenennen kann nur\nder Admin, s. 1h). ``seats``/``mayor`` fehlen beim ersten Anruf aus 1c oft\nnoch (die Namenseingabe kommt vor dem Tippformular); erst wenn beides da\nist, wird ein Tipp gespeichert.",
+        "properties": {
+          "mayor": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Mayor",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "name": {
+            "maxLength": 30,
+            "minLength": 2,
+            "title": "Name",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "seats": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Seats",
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        },
+        "title": "PredictionJoinIn",
+        "type": "object"
+      },
+      "PredictionMayorCandidate": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "party": {
+            "title": "Party",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "party"
+        ],
+        "title": "PredictionMayorCandidate",
+        "type": "object"
+      },
+      "PredictionMayorCompareLine": {
+        "description": "Die OB-Zeile auf der ÖFFENTLICHEN Tafel (1g) — anders als\n``PredictionMayorLine`` (die EINEN Tipp beschreibt: „meins\" in 1e/1f)\ngibt es hier keine einzelne Person, deren Tipp „der\" Tipp wäre.",
+        "properties": {
+          "actual_pct": {
+            "title": "Actual Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "avg_tip": {
+            "title": "Avg Tip",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "party": {
+            "title": "Party",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "party",
+          "actual_pct",
+          "avg_tip"
+        ],
+        "title": "PredictionMayorCompareLine",
+        "type": "object"
+      },
+      "PredictionMayorLine": {
+        "properties": {
+          "actual_pct": {
+            "title": "Actual Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "avg_tip": {
+            "title": "Avg Tip",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "points": {
+            "title": "Points",
+            "type": "integer"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "tip": {
+            "title": "Tip",
+            "type": "number"
+          }
+        },
+        "required": [
+          "slug",
+          "tip",
+          "actual_pct",
+          "avg_tip",
+          "points"
+        ],
+        "title": "PredictionMayorLine",
+        "type": "object"
+      },
+      "PredictionMine": {
+        "properties": {
+          "has_mayor_tip": {
+            "title": "Has Mayor Tip",
+            "type": "boolean"
+          },
+          "has_tip": {
+            "title": "Has Tip",
+            "type": "boolean"
+          },
+          "late_at": {
+            "title": "Late At",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "locked": {
+            "title": "Locked",
+            "type": "boolean"
+          },
+          "mayor": {
+            "items": {
+              "$ref": "#/components/schemas/PredictionMayorLine"
+            },
+            "title": "Mayor",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "player_id": {
+            "title": "Player Id",
+            "type": "integer"
+          },
+          "rank": {
+            "title": "Rank",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "rank_before": {
+            "title": "Rank Before",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "score": {
+            "properties": {
+              "deviation": {
+                "title": "Deviation",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "exact_lists": {
+                "title": "Exact Lists",
+                "type": "integer"
+              },
+              "mayor_points": {
+                "title": "Mayor Points",
+                "type": "integer"
+              },
+              "seat_points": {
+                "title": "Seat Points",
+                "type": "integer"
+              },
+              "total": {
+                "title": "Total",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "total",
+              "seat_points",
+              "mayor_points",
+              "exact_lists",
+              "deviation"
+            ],
+            "title": "PredictionScore",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "scored": {
+            "title": "Scored",
+            "type": "boolean"
+          },
+          "seats": {
+            "items": {
+              "$ref": "#/components/schemas/PredictionSeatLine"
+            },
+            "title": "Seats",
+            "type": "array"
+          },
+          "source_label": {
+            "title": "Source Label",
+            "type": "string"
+          },
+          "stand_label": {
+            "title": "Stand Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id",
+          "name",
+          "late_at",
+          "scored",
+          "has_tip",
+          "has_mayor_tip",
+          "locked",
+          "seats",
+          "mayor",
+          "score",
+          "rank",
+          "rank_before",
+          "phase",
+          "stand_label",
+          "source_label",
+          "notes"
+        ],
+        "title": "PredictionMine",
+        "type": "object"
+      },
+      "PredictionParty": {
+        "properties": {
+          "color": {
+            "title": "Color",
+            "type": "string"
+          },
+          "color_dark": {
+            "title": "Color Dark",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "seats_previous": {
+            "title": "Seats Previous",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "short": {
+            "title": "Short",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "short",
+          "name",
+          "color",
+          "color_dark",
+          "seats_previous"
+        ],
+        "title": "PredictionParty",
+        "type": "object"
+      },
+      "PredictionPhaseIn": {
+        "properties": {
+          "late_scored": {
+            "title": "Late Scored",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "phase": {
+            "enum": [
+              "open",
+              "locked",
+              "final"
+            ],
+            "title": "Phase",
+            "type": "string"
+          }
+        },
+        "required": [
+          "phase"
+        ],
+        "title": "PredictionPhaseIn",
+        "type": "object"
+      },
+      "PredictionPlayerIn": {
+        "properties": {
+          "hidden": {
+            "title": "Hidden",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "name": {
+            "maxLength": 30,
+            "minLength": 2,
+            "title": "Name",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "title": "PredictionPlayerIn",
+        "type": "object"
+      },
+      "PredictionResultLineIn": {
+        "properties": {
+          "pct": {
+            "title": "Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "seats": {
+            "title": "Seats",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug"
+        ],
+        "title": "PredictionResultLineIn",
+        "type": "object"
+      },
+      "PredictionResultRow": {
+        "description": "Eine Zeile der Admin-Tabelle (1h) — Entwurf UND veröffentlichter Stand.",
+        "properties": {
+          "avg_tip": {
+            "title": "Avg Tip",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "exact_count": {
+            "title": "Exact Count",
+            "type": "integer"
+          },
+          "pct": {
+            "title": "Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "published_at": {
+            "title": "Published At",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "published_pct": {
+            "title": "Published Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "published_seats": {
+            "title": "Published Seats",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "published_source": {
+            "title": "Published Source",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "seats": {
+            "title": "Seats",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "seats",
+          "pct",
+          "source",
+          "avg_tip",
+          "exact_count",
+          "published_seats",
+          "published_pct",
+          "published_source",
+          "published_at"
+        ],
+        "title": "PredictionResultRow",
+        "type": "object"
+      },
+      "PredictionRoundInfo": {
+        "description": "Eine Runde im Runden-Umschalter des Admins (1h).",
+        "properties": {
+          "listed": {
+            "title": "Listed",
+            "type": "boolean"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "player_count": {
+            "title": "Player Count",
+            "type": "integer"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "title",
+          "listed",
+          "phase",
+          "player_count"
+        ],
+        "title": "PredictionRoundInfo",
+        "type": "object"
+      },
+      "PredictionRow": {
+        "properties": {
+          "has_tip": {
+            "title": "Has Tip",
+            "type": "boolean"
+          },
+          "late_at": {
+            "title": "Late At",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "player_id": {
+            "title": "Player Id",
+            "type": "integer"
+          },
+          "rank": {
+            "title": "Rank",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "rank_before": {
+            "title": "Rank Before",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "score": {
+            "properties": {
+              "deviation": {
+                "title": "Deviation",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "exact_lists": {
+                "title": "Exact Lists",
+                "type": "integer"
+              },
+              "mayor_points": {
+                "title": "Mayor Points",
+                "type": "integer"
+              },
+              "seat_points": {
+                "title": "Seat Points",
+                "type": "integer"
+              },
+              "total": {
+                "title": "Total",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "total",
+              "seat_points",
+              "mayor_points",
+              "exact_lists",
+              "deviation"
+            ],
+            "title": "PredictionScore",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "scored": {
+            "title": "Scored",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "player_id",
+          "name",
+          "late_at",
+          "scored",
+          "has_tip",
+          "score",
+          "rank",
+          "rank_before"
+        ],
+        "title": "PredictionRow",
+        "type": "object"
+      },
+      "PredictionScore": {
+        "properties": {
+          "deviation": {
+            "title": "Deviation",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "exact_lists": {
+            "title": "Exact Lists",
+            "type": "integer"
+          },
+          "mayor_points": {
+            "title": "Mayor Points",
+            "type": "integer"
+          },
+          "seat_points": {
+            "title": "Seat Points",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "seat_points",
+          "mayor_points",
+          "exact_lists",
+          "deviation"
+        ],
+        "title": "PredictionScore",
+        "type": "object"
+      },
+      "PredictionSeatLine": {
+        "properties": {
+          "actual": {
+            "title": "Actual",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "avg_tip": {
+            "title": "Avg Tip",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "exact": {
+            "title": "Exact",
+            "type": "boolean"
+          },
+          "points": {
+            "title": "Points",
+            "type": "integer"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "tip": {
+            "title": "Tip",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "slug",
+          "tip",
+          "actual",
+          "avg_tip",
+          "points",
+          "exact"
+        ],
+        "title": "PredictionSeatLine",
+        "type": "object"
+      },
+      "PredictionSettingsIn": {
+        "description": "``PUT /api/tipp/admin/einstellungen`` — Schalter je Runde. Nur was\ngesetzt ist, wird geändert.",
+        "properties": {
+          "late_scored": {
+            "title": "Late Scored",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "shared_device": {
+            "title": "Shared Device",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "title": "PredictionSettingsIn",
+        "type": "object"
+      },
+      "PredictionStand": {
+        "properties": {
+          "area_label": {
+            "title": "Area Label",
+            "type": "string"
+          },
+          "compare": {
+            "items": {
+              "$ref": "#/components/schemas/PredictionCompareLine"
+            },
+            "title": "Compare",
+            "type": "array"
+          },
+          "compare_sentence": {
+            "title": "Compare Sentence",
+            "type": "string"
+          },
+          "computed_at": {
+            "title": "Computed At",
+            "type": "string"
+          },
+          "leader_player_id": {
+            "title": "Leader Player Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "mayor": {
+            "items": {
+              "$ref": "#/components/schemas/PredictionMayorCompareLine"
+            },
+            "title": "Mayor",
+            "type": "array"
+          },
+          "mayor_status": {
+            "title": "Mayor Status",
+            "type": "string"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "player_count": {
+            "title": "Player Count",
+            "type": "integer"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/PredictionRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "seats_total": {
+            "title": "Seats Total",
+            "type": "integer"
+          },
+          "source_label": {
+            "title": "Source Label",
+            "type": "string"
+          },
+          "stand_label": {
+            "title": "Stand Label",
+            "type": "string"
+          },
+          "tip_count": {
+            "title": "Tip Count",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "phase",
+          "stand_label",
+          "area_label",
+          "source_label",
+          "seats_total",
+          "player_count",
+          "tip_count",
+          "compare",
+          "mayor",
+          "mayor_status",
+          "rows",
+          "leader_player_id",
+          "compare_sentence",
+          "computed_at",
+          "notes"
+        ],
+        "title": "PredictionStand",
+        "type": "object"
+      },
       "ProjectReportIn": {
         "properties": {
           "reason": {
@@ -11715,10 +13391,46 @@
         "title": "PushUnregisterRequest",
         "type": "object"
       },
+      "QaExampleSession": {
+        "description": "Eine Sitzung als Anlass für eine frische Beispielfrage.\n\n``top_titel`` ist der wichtigste Beschluss der Sitzung, vom Server bereits\nauf den Gegenstand eingedampft; ``n`` sagt, wie viele Beschlüsse die\nSitzung überhaupt hat.",
+        "properties": {
+          "committee": {
+            "title": "Committee",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "session_date": {
+            "title": "Session Date",
+            "type": "string"
+          },
+          "top_titel": {
+            "title": "Top Titel",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "committee",
+          "session_date",
+          "n",
+          "top_titel"
+        ],
+        "title": "QaExampleSession",
+        "type": "object"
+      },
       "QaExamples": {
         "properties": {
           "sessions": {
-            "title": "Sessions"
+            "items": {
+              "$ref": "#/components/schemas/QaExampleSession"
+            },
+            "title": "Sessions",
+            "type": "array"
           }
         },
         "required": [
@@ -14813,6 +16525,148 @@
         "title": "TodaySession",
         "type": "object"
       },
+      "TodayUpdate": {
+        "properties": {
+          "arrived": {
+            "title": "Arrived",
+            "type": "string"
+          },
+          "committee": {
+            "title": "Committee",
+            "type": "string"
+          },
+          "decision_count": {
+            "title": "Decision Count",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "protocol",
+              "agenda",
+              "agenda_change"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "ksinr": {
+            "title": "Ksinr",
+            "type": "integer"
+          },
+          "session_date": {
+            "title": "Session Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "ksinr",
+          "arrived",
+          "committee",
+          "session_date",
+          "decision_count"
+        ],
+        "title": "TodayUpdate",
+        "type": "object"
+      },
+      "TodayUpdateGroup": {
+        "properties": {
+          "committee": {
+            "title": "Committee",
+            "type": "string"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "first_session_date": {
+            "title": "First Session Date",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "protocol",
+              "agenda",
+              "agenda_change"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "last_session_date": {
+            "title": "Last Session Date",
+            "type": "string"
+          },
+          "latest": {
+            "$ref": "#/components/schemas/TodayUpdate"
+          }
+        },
+        "required": [
+          "kind",
+          "committee",
+          "count",
+          "first_session_date",
+          "last_session_date",
+          "latest"
+        ],
+        "title": "TodayUpdateGroup",
+        "type": "object"
+      },
+      "TodayUpdates": {
+        "properties": {
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Counts",
+            "type": "object"
+          },
+          "first_visit": {
+            "title": "First Visit",
+            "type": "boolean"
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/TodayUpdateGroup"
+            },
+            "title": "Groups",
+            "type": "array"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TodayUpdate"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "since": {
+            "title": "Since",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "until": {
+            "title": "Until",
+            "type": "string"
+          }
+        },
+        "required": [
+          "since",
+          "until",
+          "first_visit",
+          "total",
+          "counts",
+          "items",
+          "groups"
+        ],
+        "title": "TodayUpdates",
+        "type": "object"
+      },
       "TopicDecision": {
         "properties": {
           "committee": {
@@ -15069,6 +16923,10 @@
             "title": "Total",
             "type": "integer"
           },
+          "unread_decisions": {
+            "title": "Unread Decisions",
+            "type": "integer"
+          },
           "unread_total": {
             "title": "Unread Total",
             "type": "integer"
@@ -15078,7 +16936,8 @@
           "hits",
           "topic_count",
           "total",
-          "unread_total"
+          "unread_total",
+          "unread_decisions"
         ],
         "title": "TopicHitList",
         "type": "object"
@@ -15856,7 +17715,7 @@
               "rejected",
               "postponed",
               "noted",
-              "no_decision"
+              "removed"
             ],
             "title": "Outcome",
             "type": "string"
@@ -15899,6 +17758,29 @@
           "created_at"
         ],
         "title": "VideoResult",
+        "type": "object"
+      },
+      "VisitWindow": {
+        "properties": {
+          "first_visit": {
+            "title": "First Visit",
+            "type": "boolean"
+          },
+          "since": {
+            "title": "Since",
+            "type": "string"
+          },
+          "until": {
+            "title": "Until",
+            "type": "string"
+          }
+        },
+        "required": [
+          "since",
+          "until",
+          "first_visit"
+        ],
+        "title": "VisitWindow",
         "type": "object"
       },
       "WebUserOut": {
@@ -16397,7 +18279,7 @@
     },
     "/api/account/display-name": {
       "post": {
-        "description": "Anzeigename setzen/ändern — auch für Apple-Konten und Alt-Bestand,\ndie bei der Registrierung keinen angeben konnten.",
+        "description": "Anzeigename setzen/ändern — auch für Apple-Konten und Alt-Bestand,\ndie bei der Registrierung keinen angeben konnten.\n\nLeeren geht nicht mehr: Seit der Name bei der Registrierung Pflicht ist,\nwäre dieser Endpunkt sonst die Hintertür, durch die ein Konto wieder ohne\nNamen dasteht — und die Anrede in Mails und Übersicht fiele still auf\n„Moin!\" zurück.",
         "operationId": "set_display_name_api_account_display_name_post",
         "requestBody": {
           "content": {
@@ -17701,6 +19583,50 @@
           }
         },
         "summary": "Stats Page Views",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/stats/signups": {
+      "get": {
+        "description": "Neue Konten und abgewiesene Registrierungen — beide Seiten in einem Bild.\n\nSichtbar war bis 09/2026 nur, wer durchkam. Wer an der Bremse oder am\nWegwerf-Riegel hängenblieb, hinterließ nirgends eine Spur, und „es hat\nniemand versucht\" war von „es haben 500 versucht\" nicht zu unterscheiden.\n\nDer tägliche Herzschlag (``scripts/check_herzschlag.py``) schlägt bei\ndenselben Zahlen Alarm; diese Ansicht ist der Blick dazwischen.",
+        "operationId": "stats_signups_api_admin_stats_signups_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminAnmeldungen"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stats Signups",
         "tags": [
           "admin"
         ]
@@ -21332,7 +23258,7 @@
     },
     "/api/council/qa-beispiele": {
       "get": {
-        "description": "Frische Beispiel-Anlässe für den Empty State der KI-Frage (5a/I-07):\ndie jüngsten Sitzungen mit Beschlüssen — das Frontend formuliert daraus\n„Was hat der <Ausschuss> am <Datum> beschlossen?\".",
+        "description": "Frische Beispiel-Anlässe für den Empty State der KI-Frage (5a/I-07):\ndie jüngsten Sitzungen mit Beschlüssen — die Clients formulieren daraus\n„Was hat der <Ausschuss> am <Datum> beschlossen?\" und „Was wurde zu\n‚<top_titel>' entschieden?\".\n\nZwei Dinge stellt der Server sicher, damit dabei etwas Brauchbares\nherauskommt — beide gehören hierher und nicht in zwei Clients:\n\n* **Nur Sitzungen mit Substanz** (``mindest_tops``). Eine Sitzung mit einem\n  einzigen Punkt liefert als „wichtigsten Beschluss\" Verfahrenskram; am\n  10.09.2026 stand so „Was wurde zu ‚Beratung von nichtöffentlichen\n  Tagesordnungspunkten im …' entschieden?\" auf der leeren Seite.\n* **Der Titel kommt schon als Gegenstand** (``qa.vorschlags_gegenstand``):\n  ohne Verfahrensstand hinter dem Gedankenstrich, ohne Antragsteller-\n  Klammer, ohne „(Oldb)\". Vorher schnitt jeder Client selbst — das Web an\n  der Wortgrenze, die App hart bei 69 Zeichen mitten im Wort.",
         "operationId": "qa_beispiele_api_council_qa_beispiele_get",
         "responses": {
           "200": {
@@ -23548,6 +25474,927 @@
         ]
       }
     },
+    "/api/tipp": {
+      "post": {
+        "description": "Ohne gültigen Cookie: Beitritt (``name`` Pflicht). Mit gültigem\nCookie: nur der Tipp wird aktualisiert, ``name`` bleibt unbeachtet —\numbenennen kann nur der Admin (``PUT …/admin/spieler/{id}``).",
+        "operationId": "beitreten_oder_tippen_api_tipp_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "schema": {
+              "title": "Round",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PredictionJoinIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PredictionMine"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Beitreten Oder Tippen",
+        "tags": [
+          "tippspiel"
+        ]
+      }
+    },
+    "/api/tipp/abmelden": {
+      "post": {
+        "description": "Das Gerät weitergeben: Der Cookie geht, der Tipp BLEIBT — im Gegensatz\nzu ``DELETE /api/tipp/me``, das die Teilnahme löscht. Gedacht für Runden\nmit ``shared_device`` (ein Handy, mehrere Personen), aber unabhängig vom\nSchalter erlaubt: Ein Gerät ohne Cookie ist nie ein Schaden.",
+        "operationId": "abmelden_api_tipp_abmelden_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "schema": {
+              "title": "Round",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Abmelden",
+        "tags": [
+          "tippspiel"
+        ]
+      }
+    },
+    "/api/tipp/admin/abfragen": {
+      "post": {
+        "description": "„Jetzt abfragen\": die Live-Zahlen der Ratswahl UND der OB-Wahl in den\nEntwurf übernehmen — NICHT veröffentlicht, das bleibt ein eigener Schritt.",
+        "operationId": "jetzt_abfragen_api_tipp_admin_abfragen_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "schema": {
+              "title": "Round",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PredictionAdminStand"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Jetzt Abfragen",
+        "tags": [
+          "tippspiel"
+        ]
+      }
+    },
+    "/api/tipp/admin/einstellungen": {
+      "put": {
+        "description": "Schalter je Runde. ``shared_device``: ein Gerät, mehrere Personen —\nVallys Kreis (13.09.2026) hat nicht für jede Person ein Handy.",
+        "operationId": "einstellungen_setzen_api_tipp_admin_einstellungen_put",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "schema": {
+              "title": "Round",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PredictionSettingsIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PredictionAdminStand"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Einstellungen Setzen",
+        "tags": [
+          "tippspiel"
+        ]
+      }
+    },
+    "/api/tipp/admin/ergebnis": {
+      "put": {
+        "operationId": "ergebnis_eintragen_api_tipp_admin_ergebnis_put",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "schema": {
+              "title": "Round",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "items": {
+                  "$ref": "#/components/schemas/PredictionResultLineIn"
+                },
+                "title": "Zeilen",
+                "type": "array"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PredictionAdminStand"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ergebnis Eintragen",
+        "tags": [
+          "tippspiel"
+        ]
+      }
+    },
+    "/api/tipp/admin/phase": {
+      "put": {
+        "operationId": "phase_setzen_api_tipp_admin_phase_put",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "schema": {
+              "title": "Round",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PredictionPhaseIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PredictionAdminStand"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Phase Setzen",
+        "tags": [
+          "tippspiel"
+        ]
+      }
+    },
+    "/api/tipp/admin/spieler/{player_id}": {
+      "put": {
+        "operationId": "spieler_bearbeiten_api_tipp_admin_spieler__player_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "player_id",
+            "required": true,
+            "schema": {
+              "title": "Player Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "schema": {
+              "title": "Round",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PredictionPlayerIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PredictionAdminStand"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Spieler Bearbeiten",
+        "tags": [
+          "tippspiel"
+        ]
+      }
+    },
+    "/api/tipp/admin/stand": {
+      "get": {
+        "operationId": "admin_stand_api_tipp_admin_stand_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "schema": {
+              "title": "Round",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PredictionAdminStand"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Admin Stand",
+        "tags": [
+          "tippspiel"
+        ]
+      }
+    },
+    "/api/tipp/admin/veroeffentlichen": {
+      "post": {
+        "operationId": "veroeffentlichen_api_tipp_admin_veroeffentlichen_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "schema": {
+              "title": "Round",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PredictionAdminStand"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Veroeffentlichen",
+        "tags": [
+          "tippspiel"
+        ]
+      }
+    },
+    "/api/tipp/admin/verwerfen": {
+      "post": {
+        "operationId": "verwerfen_api_tipp_admin_verwerfen_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "schema": {
+              "title": "Round",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PredictionAdminStand"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Verwerfen",
+        "tags": [
+          "tippspiel"
+        ]
+      }
+    },
+    "/api/tipp/me": {
+      "delete": {
+        "operationId": "austreten_api_tipp_me_delete",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "schema": {
+              "title": "Round",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Austreten",
+        "tags": [
+          "tippspiel"
+        ]
+      },
+      "get": {
+        "operationId": "meins_api_tipp_me_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "probe",
+            "required": false,
+            "schema": {
+              "title": "Probe",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "counted",
+            "required": false,
+            "schema": {
+              "maximum": 133,
+              "minimum": 0,
+              "title": "Counted",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "schema": {
+              "title": "Round",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PredictionMine"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Meins",
+        "tags": [
+          "tippspiel"
+        ]
+      }
+    },
+    "/api/tipp/qr.png": {
+      "get": {
+        "operationId": "qr_code_api_tipp_qr_png_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "schema": {
+              "title": "Round",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/png": {}
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Qr Code",
+        "tags": [
+          "tippspiel"
+        ]
+      }
+    },
+    "/api/tipp/setup": {
+      "get": {
+        "operationId": "setup_api_tipp_setup_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "schema": {
+              "title": "Round",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PredictionGame"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Setup",
+        "tags": [
+          "tippspiel"
+        ]
+      }
+    },
+    "/api/tipp/stand": {
+      "get": {
+        "operationId": "stand_api_tipp_stand_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "probe",
+            "required": false,
+            "schema": {
+              "title": "Probe",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "counted",
+            "required": false,
+            "schema": {
+              "maximum": 133,
+              "minimum": 0,
+              "title": "Counted",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "schema": {
+              "title": "Round",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PredictionStand"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stand",
+        "tags": [
+          "tippspiel"
+        ]
+      }
+    },
+    "/api/today/updates": {
+      "get": {
+        "operationId": "updates_api_today_updates_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 3,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "title": "Since",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "title": "Until",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "enum": [
+                "protocol",
+                "agenda",
+                "agenda_change"
+              ],
+              "title": "Kind",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "committee",
+            "required": false,
+            "schema": {
+              "maxLength": 300,
+              "title": "Committee",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TodayUpdates"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Updates",
+        "tags": [
+          "today"
+        ]
+      }
+    },
+    "/api/today/visit": {
+      "post": {
+        "operationId": "visit_api_today_visit_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VisitWindow"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Visit",
+        "tags": [
+          "today"
+        ]
+      }
+    },
     "/api/topics": {
       "get": {
         "operationId": "list_topics_api_topics_get",
@@ -23612,6 +26459,49 @@
         ]
       }
     },
+    "/api/topics/decisions/{decision_id}/seen": {
+      "post": {
+        "description": "Ein Heute-Treffer wird in allen passenden EIGENEN Themen gelesen.\n\nDas Widget fasst gleiche Beschlüsse zusammen. Die Gelesen-Marke muss\ndieselbe Menge treffen, sonst taucht derselbe Beschluss erneut auf.",
+        "operationId": "mark_decision_seen_api_topics_decisions__decision_id__seen_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "decision_id",
+            "required": true,
+            "schema": {
+              "title": "Decision Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarkedHits"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Mark Decision Seen",
+        "tags": [
+          "topics"
+        ]
+      }
+    },
     "/api/topics/describe": {
       "post": {
         "description": "Design 26a / RL-U17: aus einem Themen-*Namen* eine Beschreibung machen.\n\nDer Nutzer tippt nur „Cäcilienbrücke\". Wir suchen die Beschlüsse dazu und\nlassen daraus einen präzisen Satz formulieren — das ist der Text, an dem der\nThemen-Wächter später jeden neuen Beschluss misst, also lohnt die Mühe.\n\nNichts hier blockiert: Wer keinen Rats-Bezug hat oder zu vage schreibt,\nbekommt einen Hinweis und darf trotzdem speichern. Der Endpunkt urteilt,\ner verbietet nicht.\n\nMit ``description`` im Body wird zusätzlich die (bis 26a brachliegende)\nVagheits-Prüfung auf den selbst getippten Text angewandt.\n\n``matches``/``matches_capped`` zählen nach derselben Definition wie die\nThemen-Karte (s. Modul-Kopf), nur eben auf den Text, der gerade im Feld\nsteht: Wer die Beschreibung ändert, soll vorher sehen, was das mit der\nTrefferliste macht. Vorher lief hier eine eigene Suche mit eigener\nSchwelle und einem Deckel von 12 — daher stand unter jedem breiten Thema\n„12 Beschlüsse\", während die Karte „40+\" sagte.",
@@ -23669,6 +26559,16 @@
               "minimum": 1,
               "title": "Limit",
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "unread_only",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Unread Only",
+              "type": "boolean"
             }
           }
         ],
@@ -24087,15 +26987,16 @@
     },
     "/api/wahlabend": {
       "get": {
+        "description": "Der Wahlabend: live, als Generalprobe oder als Rückblick.\n\n``?wahl=<slug>`` liefert den eingefrorenen Stand einer gelaufenen Wahl aus\ndem Repo (``kommunalwahl/referenz-…``). Das ist der Punkt, an dem eine\nRückblick-Seite unabhängig vom Votemanager wird: Seine Adressen tragen den\nWahltag im Pfad und wandern irgendwann ins Archiv.",
         "operationId": "wahlabend_api_wahlabend_get",
         "parameters": [
           {
-            "description": "„2021“ = Generalprobe mit den Zahlen von 2021",
+            "description": "gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)",
             "in": "query",
             "name": "probe",
             "required": false,
             "schema": {
-              "description": "„2021“ = Generalprobe mit den Zahlen von 2021",
+              "description": "gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)",
               "title": "Probe",
               "type": [
                 "string",
@@ -24115,6 +27016,20 @@
               "title": "Counted",
               "type": [
                 "integer",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "Slug einer gelaufenen Wahl — ihr eingefrorener Stand, ohne Abruf",
+            "in": "query",
+            "name": "wahl",
+            "required": false,
+            "schema": {
+              "description": "Slug einer gelaufenen Wahl — ihr eingefrorener Stand, ohne Abruf",
+              "title": "Wahl",
+              "type": [
+                "string",
                 "null"
               ]
             }
@@ -24169,12 +27084,12 @@
             }
           },
           {
-            "description": "„2021“ = Generalprobe mit den Zahlen von 2021",
+            "description": "gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)",
             "in": "query",
             "name": "probe",
             "required": false,
             "schema": {
-              "description": "„2021“ = Generalprobe mit den Zahlen von 2021",
+              "description": "gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)",
               "title": "Probe",
               "type": [
                 "string",
@@ -24226,6 +27141,293 @@
           }
         },
         "summary": "Wahlabend Bild",
+        "tags": [
+          "wahlabend"
+        ]
+      }
+    },
+    "/api/wahlabend/karte.png": {
+      "get": {
+        "description": "Die Karte zum Teilen (PNG): wie eine Liste, eine Liste im Wahlbereich\noder eine Person abgeschnitten hat — mit Lotti, die den Wählenden dankt.\n``format`` wählt Beitrag (4:5), Story (9:16) oder quer; ``position``\nbraucht ``area``; eine Kombination, die es nicht gibt, antwortet 404.",
+        "operationId": "wahlabend_karte_api_wahlabend_karte_png_get",
+        "parameters": [
+          {
+            "description": "Slug der Liste, z. B. „gruene“",
+            "in": "query",
+            "name": "list",
+            "required": true,
+            "schema": {
+              "description": "Slug der Liste, z. B. „gruene“",
+              "pattern": "^[a-z0-9-]{1,40}$",
+              "title": "List",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Wahlbereich (1–6): die Liste dort",
+            "in": "query",
+            "name": "area",
+            "required": false,
+            "schema": {
+              "description": "Wahlbereich (1–6): die Liste dort",
+              "maximum": 20,
+              "minimum": 1,
+              "title": "Area",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "Listenplatz im Wahlbereich: die Person",
+            "in": "query",
+            "name": "position",
+            "required": false,
+            "schema": {
+              "description": "Listenplatz im Wahlbereich: die Person",
+              "maximum": 99,
+              "minimum": 1,
+              "title": "Position",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "„beitrag“ = 1080×1350 (4:5), „story“ = 1080×1920 (9:16), „quer“ = 1200×630",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "default": "beitrag",
+              "description": "„beitrag“ = 1080×1350 (4:5), „story“ = 1080×1920 (9:16), „quer“ = 1200×630",
+              "pattern": "^(beitrag|story|quer)$",
+              "title": "Format",
+              "type": "string"
+            }
+          },
+          {
+            "description": "false = ohne den Abstand zur Vorwahl (Listenkarte)",
+            "in": "query",
+            "name": "compare",
+            "required": false,
+            "schema": {
+              "default": true,
+              "description": "false = ohne den Abstand zur Vorwahl (Listenkarte)",
+              "title": "Compare",
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)",
+            "in": "query",
+            "name": "probe",
+            "required": false,
+            "schema": {
+              "description": "gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)",
+              "title": "Probe",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "Generalprobe: nur die ersten N Wahlbezirke ausgezählt",
+            "in": "query",
+            "name": "counted",
+            "required": false,
+            "schema": {
+              "description": "Generalprobe: nur die ersten N Wahlbezirke ausgezählt",
+              "maximum": 500,
+              "minimum": 0,
+              "title": "Counted",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/png": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Die Karte zum Teilen (PNG): wie eine Liste (`?list=`), eine Liste im Wahlbereich (`&area=`) oder eine Person (`&position=`) abgeschnitten hat — Anteil, Sitze, Stimmen, Abstand zu 2021 bzw. Personenstimmen und Status, dazu Lotti mit dem Dank an die Wählenden. `&format=beitrag` (1080×1350, Vorgabe), `story` (1080×1920) oder `quer` (1200×630); `&compare=false` lässt den Abstand zu 2021 weg. Eine Minute cachebar."
+          },
+          "404": {
+            "description": "Wahlabend nicht freigeschaltet, oder Liste/Wahlbereich/Listenplatz gibt es nicht."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Wahlabend Karte",
+        "tags": [
+          "wahlabend"
+        ]
+      }
+    },
+    "/api/wahlabend/ob": {
+      "get": {
+        "description": "Die OB-Wahl für sich — hinter dem Schalter ``wahlabend`` (nicht\n``tippspiel``): Sie ist Teil des Wahlabends, nicht nur des Tippspiels.\n\nImmer der ERSTE Wahlgang; die Stichwahl hat ihren eigenen Pfad. Daran\nhängt der Vergleich des Tippspiels, und der darf sich am 27.09. nicht\nunter der Hand verschieben.",
+        "operationId": "ob_wahl_api_wahlabend_ob_get",
+        "parameters": [
+          {
+            "description": "gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)",
+            "in": "query",
+            "name": "probe",
+            "required": false,
+            "schema": {
+              "description": "gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)",
+              "title": "Probe",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "Generalprobe: nur die ersten N Wahlbezirke ausgezählt",
+            "in": "query",
+            "name": "counted",
+            "required": false,
+            "schema": {
+              "description": "Generalprobe: nur die ersten N Wahlbezirke ausgezählt",
+              "maximum": 133,
+              "minimum": 0,
+              "title": "Counted",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MayorNight"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ob Wahl",
+        "tags": [
+          "wahlabend"
+        ]
+      }
+    },
+    "/api/wahlabend/stichwahl": {
+      "get": {
+        "description": "Die Stichwahl — 404, solange keine im Kalender steht.\n\nAm 13.09.2026 hat niemand die absolute Mehrheit erreicht; am 27.09. läuft\ndeshalb die Stichwahl zwischen Ulf Prange (SPD) und Jascha Rohr (GRÜNE).\nIhre Wahl-Id beim Votemanager gibt es heute noch nicht — sie wird zur\nLaufzeit in ``termin.json`` gesucht (``mayor.resolve_ids``). Bis dahin\nantwortet dieser Pfad mit ``phase: \"before\"`` und einem Vermerk, nicht mit\neinem Fehler: Eine Seite, die auf den Abend wartet, ist keine kaputte.",
+        "operationId": "stichwahl_api_wahlabend_stichwahl_get",
+        "parameters": [
+          {
+            "description": "gesetzt = Generalprobe mit den Zahlen des ersten Wahlgangs",
+            "in": "query",
+            "name": "probe",
+            "required": false,
+            "schema": {
+              "description": "gesetzt = Generalprobe mit den Zahlen des ersten Wahlgangs",
+              "title": "Probe",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "Generalprobe: nur die ersten N Wahlbezirke ausgezählt",
+            "in": "query",
+            "name": "counted",
+            "required": false,
+            "schema": {
+              "description": "Generalprobe: nur die ersten N Wahlbezirke ausgezählt",
+              "maximum": 133,
+              "minimum": 0,
+              "title": "Counted",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MayorNight"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stichwahl",
+        "tags": [
+          "wahlabend"
+        ]
+      }
+    },
+    "/api/wahlen": {
+      "get": {
+        "description": "Alle Wahlen, die wir zeigen — die nächste zuerst, dann rückwärts.\n\nÖffentlich wie die Zahlen selbst. Entwürfe bleiben draußen; sie sind das\nGegenstück zum Feature-Schalter für eine einzelne Wahl.",
+        "operationId": "wahlen_api_wahlen_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ElectionList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Wahlen",
         "tags": [
           "wahlabend"
         ]

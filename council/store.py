@@ -408,11 +408,13 @@ class CouncilStore(BplanMixin, FundstueckeMixin, HaushaltMixin, OrteMixin, Perso
             self._conn.execute(
                 "INSERT OR REPLACE INTO council_protocols "
                 "(ksinr, document_id, document_url, protocol_nr, session_start, session_end, "
-                " raw_text, n_pages, page_offsets, model, extracted_at, status) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                " raw_text, n_pages, page_offsets, model, extracted_at, status, available_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "
+                "COALESCE((SELECT available_at FROM council_protocols WHERE ksinr = ?), ?))",
                 (ksinr, document.get("document_id"), document.get("url"), meta.get("protocol_nr"),
                  meta.get("session_start"), meta.get("session_end"), raw_text, n_pages,
-                 json.dumps(page_offsets) if page_offsets else None, model, now, status),
+                 json.dumps(page_offsets) if page_offsets else None, model, now, status,
+                 ksinr, now if status == "ok" else None),
             )
             # Teilvoten hängen an den decision-ids — vor dem Ersetzen der
             # Beschlüsse mitlöschen, sonst bleiben Waisen zurück (dieselbe
@@ -473,8 +475,10 @@ class CouncilStore(BplanMixin, FundstueckeMixin, HaushaltMixin, OrteMixin, Perso
         with self._conn:
             self._conn.execute(
                 "INSERT OR REPLACE INTO council_protocols "
-                "(ksinr, document_id, document_url, extracted_at, status) VALUES (?, ?, ?, ?, 'failed')",
-                (ksinr, document.get("document_id"), document.get("url"), now),
+                "(ksinr, document_id, document_url, extracted_at, status, available_at) "
+                "VALUES (?, ?, ?, ?, 'failed', "
+                "(SELECT available_at FROM council_protocols WHERE ksinr = ?))",
+                (ksinr, document.get("document_id"), document.get("url"), now, ksinr),
             )
 
     def get_decisions(self, ksinr: int) -> list[dict]:
@@ -4343,4 +4347,3 @@ class CouncilStore(BplanMixin, FundstueckeMixin, HaushaltMixin, OrteMixin, Perso
     # gerechnet, was der Protokoll-Import ohnehin schreibt. Damit kann die
     # Seite nicht veralten, und ein nachgetragenes Protokoll erscheint ohne
     # Backfill.
-

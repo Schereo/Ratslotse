@@ -45,7 +45,15 @@ VERTRAG = WURZEL / "api" / "openapi.json"
 UNDURCHSICHTIG = {"JSONValue", "Data", "String", "Bool", "Int", "Double"}
 
 AUFRUF = re.compile(
-    r":\s*([A-Za-z_][\w.]*(?:\[[^\]]+\])?\??)\s*=\s*(?:try\s+)?(?:await\s+)?"
+    # `try?` und `try!` gehören dazu: Bis zum 10.09.2026 verlangte das Muster
+    # ein Leerzeichen direkt hinter `try` und übersah damit jede Aufrufstelle
+    # mit `try?`. Genau eine davon war
+    # `QuestionExamplesEnvelope = try? await api.get("/api/council/qa-beispiele")`
+    # — die Envelope las `sitzungen`, der Server sendet `sessions`, und weil
+    # `try?` den Decode-Fehler verschluckt, zeigte die App seit #950 immer nur
+    # ihre eingebauten Beispielfragen. Der Wächter, der genau das finden soll,
+    # sah die Zeile nicht an.
+    r":\s*([A-Za-z_][\w.]*(?:\[[^\]]+\])?\??)\s*=\s*(?:try[?!]?\s+)?(?:await\s+)?"
     r"(?:\w+\.)*(?:api|client)\.(get|send|sendWithoutBody|sendVoid)\s*\("
     r"\s*\"([^\"]+)\"([^\n]*)",
     re.M,

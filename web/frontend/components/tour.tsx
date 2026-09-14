@@ -50,7 +50,7 @@ const STEPS: TourStep[] = [
   {
     id: "fragen", route: "/dashboard", anchor: "nav-fragen", pose: "point",
     title: "Frag den Rat",
-    text: "Das Herzstück: Stell deine Frage in normaler Sprache — ich lese die Beschlüsse und antworte mit Quellen.",
+    text: "Das Herzstück: Stell deine Frage in eigenen Worten — ich lese die Beschlüsse und antworte mit Quellen.",
   },
   {
     id: "question-beispiel", route: "/fragen", pose: "celebrate",
@@ -60,7 +60,7 @@ const STEPS: TourStep[] = [
     // Ankerlos: Die Beispiel-Antwort IST der Inhalt dieser Station — sie steht
     // mittig auf der abgedunkelten Fragen-Seite, ohne auf ein Bedienelement zu
     // zeigen. So bleibt Platz für die Demo, auch auf dem Handy.
-    text: "Jede Antwort fußt auf echten Beschlüssen; die Fußnote führt zum Original. Nachfragen geht im selben Gespräch weiter.",
+    text: "Jede Antwort basiert auf echten Beschlüssen. Die Quellen führen dich zum Original. Du kannst im selben Gespräch nachfragen.",
   },
   {
     id: "suche", route: "/council?tab=decisions", anchor: "beschluss-suche", pose: "search",
@@ -81,7 +81,7 @@ const STEPS: TourStep[] = [
     id: "analyse", route: "/council?tab=analysis", pose: "point",
     marks: ["analyse"],
     title: "Zahlen zum Rat",
-    text: "Wer beantragt was, wie oft ist der Rat sich einig, wohin fließt das Geld — die Analyse rechnet es aus den Beschlüssen aus.",
+    text: "Die Analyse zeigt, wer Anträge stellt, wie oft der Rat uneinig ist und welche Summen in den Beschlüssen stehen.",
   },
   {
     id: "karte", route: "/karte", pose: "search",

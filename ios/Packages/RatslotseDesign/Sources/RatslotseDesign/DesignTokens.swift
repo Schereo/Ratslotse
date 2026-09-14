@@ -18,6 +18,23 @@ public enum RatsRadius {
 }
 
 public enum RatsFont {
+    /// Leserollen wie im Web; die Bezugsstile lassen Dynamic Type mitwachsen.
+    public static func reading(weight: Font.Weight = .regular) -> Font {
+        body(17, weight: weight)
+    }
+
+    public static func sourceTitle(weight: Font.Weight = .semibold) -> Font {
+        body(16, weight: weight)
+    }
+
+    public static func metadata() -> Font {
+        mono(13)
+    }
+
+    public static func notice(weight: Font.Weight = .regular) -> Font {
+        .custom("Inter", size: 14, relativeTo: .footnote).weight(weight)
+    }
+
     public static func body(_ size: CGFloat = 15, weight: Font.Weight = .regular) -> Font {
         .custom("Inter", size: size, relativeTo: .body).weight(weight)
     }
@@ -73,7 +90,7 @@ public enum RatsColor {
     public static let text = Color.adaptive(light: 0x0D2132, dark: 0xF3F8FA)
     public static let bodyText = Color.adaptive(light: 0x17364D, dark: 0xDFEAF0)
     public static let secondary = Color.adaptive(light: 0x596B78, dark: 0x91A7B7)
-    public static let muted = Color.adaptive(light: 0x7C8C97, dark: 0x71899A)
+    public static let muted = Color.adaptive(light: 0x506474, dark: 0xA9BBC9)
     public static let primary = Color.adaptive(light: 0x076FA6, dark: 0x45B8ED)
     public static let primaryText = Color.adaptive(light: 0xFFFFFF, dark: 0x062238)
     public static let signal = Color.adaptive(light: 0xF05A22, dark: 0xFA7440)
@@ -139,7 +156,8 @@ public struct PrimaryButtonStyle: ButtonStyle {
             .font(RatsFont.body(15, weight: .semibold))
             .foregroundStyle(RatsColor.primaryText)
             .padding(.horizontal, RatsSpacing.lg)
-            .frame(minHeight: 42)
+            .padding(.vertical, 10)
+            .frame(minHeight: 44)
             .background(RatsColor.primary.opacity(configuration.isPressed ? 0.75 : 1))
             .clipShape(RoundedRectangle(cornerRadius: RatsRadius.button, style: .continuous))
             .scaleEffect(configuration.isPressed ? 0.975 : 1)
@@ -155,7 +173,8 @@ public struct SecondaryButtonStyle: ButtonStyle {
             .font(RatsFont.body(15, weight: .semibold))
             .foregroundStyle(RatsColor.primary)
             .padding(.horizontal, RatsSpacing.lg)
-            .frame(minHeight: 42)
+            .padding(.vertical, 10)
+            .frame(minHeight: 44)
             .background(RatsColor.card.opacity(configuration.isPressed ? 0.7 : 1))
             .overlay(
                 RoundedRectangle(cornerRadius: RatsRadius.button, style: .continuous)

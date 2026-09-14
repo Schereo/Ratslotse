@@ -1,6 +1,6 @@
 # Ratslotse — Designsprache
 
-Stand: 10.08.2026 · destilliert aus allen Design-Artboards dieses Projekts
+Stand: 11.09.2026 · destilliert aus allen Design-Artboards dieses Projekts
 (Ist-Screens, Kommunalwahl, Ratsgespräch 1a–8d). Referenz für Claude Code:
 Bei jedem neuen Screen gegen diese Datei bauen; die Artboards zeigen die Anwendung.
 
@@ -32,14 +32,14 @@ Bei jedem neuen Screen gegen diese Datei bauen; die Artboards zeigen die Anwendu
 | Trennlinie (in Karten) | hsl(206 40% 94%) |
 | Text | hsl(212 55% 11%) |
 | Fließtext lange Antworten | hsl(212 55% 20%) |
-| Sekundär | hsl(209 18% 42%) |
-| Muted/Labels | hsl(209 18% 55%) |
+| Sekundär / Muted / Labels | hsl(207 18% 38.5%) · iOS #506474 |
 | **Primär „Hafenblau"** | hsl(205 92% 34%) |
 | **Signal-Orange** (nur Akzent: KI-Funken, Deltas, Marker) | hsl(19 92% 55%) |
 
 ### Dunkel
 Seite hsl(213 50% 7%) · Karte hsl(212 42% 11%) · Rahmen hsl(211 36% 17%)
-(interaktiv 21%) · Text hsl(204 40% 96%) · Sekundär hsl(208 22% 65%) ·
+(interaktiv 21%) · Text hsl(204 40% 96%) · Muted hsl(206 23% 72.5%)
+(iOS #A9BBC9) ·
 Primär hsl(202 90% 60%) (Text darauf dunkel!) · Signal hsl(19 95% 60%).
 
 ### Semantik (Tints, nie Vollfarben-Flächen)
@@ -56,14 +56,43 @@ Dot hsl(209 18% 65%), kombiniertes Label.
 
 ## 3. Typografie
 
-- **Inter** 400/500/600/700 — UI und Fließtext. Antworten 14,5–15 / 1.7–1.75;
-  UI-Labels 12–13,5; Meta 10–11.
+- **Inter** 400/500/600/700 — UI und Fließtext. Die Leserollen unten gelten
+  für Beschlussdetails, Antworten, Quellen und Verarbeitungshinweise.
 - **Bricolage Grotesque** 600/700 — nur Titel, Abschnittsüberschriften (15–16),
   große Beträge (22–30, tabular-nums). Nie im Fließtext.
-- **IBM Plex Mono** 400/500 — Kicker-Labels (9–11 px, VERSAL, letter-spacing
-  0.10–0.11em), Datum · GREMIUM-Zeilen, Attributionen, Scores.
+- **IBM Plex Mono** 400/500 — Kicker, Datum · GREMIUM-Zeilen, Attributionen,
+  Scores. Inhaltliche Metadaten 13; Kicker mit zurückhaltender Laufweite
+  (etwa 0.06–0.08em), lange Angaben dürfen umbrechen.
 - Fußnote [n]: 16×16 Chip, Radius 4, bg primary/10, Text primary 10/700;
   zitiert-aktiv: gefüllt primary, Text weiß.
+
+### Leserollen (Web und iOS)
+
+| Zweck | Web-Utility | iOS `RatsFont` | Grundgröße / Zeilenhöhe Web |
+|---|---|---|---|
+| Kurzfassung, amtlicher Wortlaut, Antwort, Begründung | `text-lese` | `reading()` | 17 / 1.6 |
+| Quellentitel, Dokumentnamen | `text-quelle` | `sourceTitle()` | 16 / 1.5 |
+| Datum, Gremium, Vorlagennummer | `text-meta` | `metadata()` | 13 / 1.5 |
+| KI-, Verarbeitungs- und Quellenhinweis | `text-hinweis` | `notice()` | 14 / 1.6 |
+
+Die Webgrößen stehen in `tailwind.config.ts` in **rem**; iOS verwendet
+skalierende Custom Fonts mit Dynamic Type. Kein Schrumpfen per
+`minimumScaleFactor`, um Inhalt in eine zu kleine Zeile zu pressen.
+
+**Weniger wichtig heißt nicht schlechter lesbar.** Relevanter Text trägt
+deckende Farbe; kein zusätzliches `/60`, `/70` oder `opacity` auf Hinweis,
+Metadaten oder ganzer Quellenzeile. Der gedämpfte Text hält auf Karte,
+Seite und Tonfläche in beiden Themes mindestens 4,5:1; #506474 auf Weiß
+liegt bei etwa 6,15:1. Orange Beschriftung braucht die dunklere Textfarbe
+(Web `orange-800` / dunkel `orange-300`, iOS `signalInk`).
+
+**Mehr Schrift braucht Höhe.** Quellentitel und ihre Metadaten werden
+vollständig umbrochen, auch in schmalen Belegespalten. Textauszüge dürfen
+eine Vorschau bleiben, wenn die Quelle erreichbar ist; ein langer
+Begründungstext behält „Mehr anzeigen“. Hinweise werden nie abgeschnitten.
+Auswahlknöpfe umbrechen oder stapeln sich, Text-Dialoge scrollen bei Bedarf.
+Abnahme: echte lange Titel, Hell/Dunkel, doppelte Web-Schriftgröße und große
+iOS-Schrift.
 
 ## 4. Flächen & Abstände
 
@@ -288,8 +317,15 @@ Dot hsl(209 18% 65%), kombiniertes Label.
 - **Mono-Kicker** über jedem Block: QUELLEN · AKTUELLES VON DER STADT · EXTERN ·
   AUS DEN RATSDEBATTEN · WIE ES WEITERGEHT · ZUM BEISPIEL — plus rechts eine
   ehrliche Zähl-/Zeitraum-Angabe („12 zitiert · 40 gefunden", „2019–2026").
-- **Quellen-Pill/-Zeile** (RG-02): n-Badge 16 ⌀ + Titel ellipsiert (+ Jahr mobil /
-  GREMIUM · DATUM Desktop); Rest hinter „Alle N Quellen".
+- **Quellen-Zeile** (RG-02): n-Badge + vollständiger Titel in Leserolle
+  `quelle`, darunter Gremium · Datum in `meta`; in allen Breiten mehrzeilig.
+  Nicht zitierte Treffer bleiben hinter „Alle N Quellen“ / „Weitere“.
+  Die kleinen Zitat-Chips im Antworttext bleiben Verweise auf diese Zeilen.
+- **Stichwörter am Beschluss:** Themenfeld, Schlagwörter und verknüpfte Themen
+  stehen auf dem Handy zunächst hinter einer neutralen Zeile „6 Stichwörter“
+  (Web unter 640 px, iOS bei kompakter Breite). Ein Tippen zeigt alle Einträge;
+  Themenlinks bleiben bedienbar. Auf großen Displays bleiben die kleinen Tags
+  sichtbar. Die Zeile hat mindestens 44 px/pt Bedienfläche, Schriftrolle `meta`.
 - **Ergebnis-Badges** (RG-03): Angenommen / Abgelehnt / Vertagt / Zur Kenntnis
   in Semantik-Tints, Radius 9999, 10,5/600. **Badge oder Punkt hängt an der
   Länge der Liste, nicht am Seitentyp** (Tim, 28.08.2026): Die lange, zum
@@ -309,7 +345,8 @@ Dot hsl(209 18% 65%), kombiniertes Label.
 - **Presse-Block** (RG-06): max 3 Zeilen, gestrichelt, External-Link-Icon,
   nie Fußnoten-Ziel.
 - **Composer**: h 48–52, Radius 16, Funken-Icon (Signal-Orange) links, Senden
-  36–38 ⌀ primary (disabled: primary/35); Datenschutz-Zeile 10 px darunter, immer.
+  36–38 ⌀ primary (disabled: primary/35); ein Verarbeitungshinweis verwendet
+  die Leserolle `hinweis`.
 - **Composer als Andock-Panel (`tab`)**: Auf breiten Touch-Geräten ist der
   fixierte Balken kein durchgehender Riegel mehr. Er wird durchsichtig und
   klick-durchlässig; sichtbar ist nur ein Panel genau auf der Lesespalte —
@@ -321,7 +358,7 @@ Dot hsl(209 18% 65%), kombiniertes Label.
   anschneiden (Tims iPad-Befund 16.08.: „der ganze Bereich wird von dieser
   Fläche verdeckt"). Die Andockkante ist `TABLEISTE_HOEHE` aus
   `components/nav.tsx` — nie eine eigene Zahl.
-- **Turn-Fußzeile**: KI-Disclaimer 10,5–11 px + stille Icon-Aktionen 15 px
+- **Turn-Fußzeile**: KI-Hinweis 14 px + stille Icon-Aktionen 15 px
   (Teilen, Drucken, Vorlesen, 👍/👎) — keine gerahmten Buttons.
 - **Schritt-Zeichen (Haushalt)**: Jeder Schritt des Haushalts-Wegs trägt ein
   festes Lucide-Zeichen, definiert EINMAL am Schritt selbst
@@ -357,6 +394,24 @@ Dot hsl(209 18% 65%), kombiniertes Label.
   Bereichs-Steckbrief (trägt seit 24.08. die Anzeigetafel).
 
 ## 6. Interaktions-Grammatik
+
+### Kopf einer einzelnen Sitzung
+
+Der Sitzungskopf bildet eine gemeinsame Karte: leiser Kicker „Sitzung“ und
+Anzahl der Tagesordnungspunkte, darunter der Kurzname als einzige Hauptüberschrift.
+Der amtliche Name steht bei Abweichung separat in Inter 13, ohne Abschneiden
+und ohne die fette Titelschrift zu erben. Eine abgesetzte Informationszeile
+ordnet „Termin“ und „Ort“ mit kleinen Icons; das Datum erscheint einmal vollständig,
+die Uhrzeit darunter. Adressen bleiben vollständig lesbar. Fehlende Angaben
+werden benannt. Breite und Schriftgröße bestimmen, ob die zwei Angaben neben-
+oder untereinander stehen.
+
+Kalender, Merken und Teilen stehen gleichwertig in einer abgetrennten
+Aktionsleiste; der externe Ratsinfo-Link folgt am Ende. Alle Aktionen haben
+mindestens 44 px Bedienhöhe. Mobil passen zwei in eine Zeile, bei großer Schrift
+eine. Die Rücknavigation liegt oberhalb der Karte.
+
+### Allgemeine Aktionen
 
 - Primäraktion = gefüllter primary-Button (Radius 10–11, h 32–38); Sekundär =
   weißer Ghost mit Rahmen; destruktiv = #b91c1c gefüllt nur im Bestätigungsdialog.
@@ -461,3 +516,79 @@ die Technik-Doku und bleibt dort auch bestehen; auf die Seite gehören die
 Hinweis, wenn eine Zahl **unsere Rechnung** ist, und die **Grenzen** dessen,
 was sie hergibt. Das ist der Unterschied zwischen quellen-ehrlich (§ 1) und
 selbstbezogen.
+
+### Widgets auf „Heute“
+
+Die Seite setzt eigenständige Bausteine zusammen: Web `HeuteWidget`, iOS
+`RatsWidget` geben Kopf, Inhalt und optionalen Abschluss vor. Die Überschrift
+darf umbrechen. Daten, Lade- und Fehlerzustände sowie Aktionen gehören in den
+jeweiligen Baustein; die Seite bestimmt Platz und Reihenfolge. Stabile Kennungen
+(etwa `seit-besuch`) bereiten eine spätere persönliche Auswahl vor. Eine
+Auswahl oder Sortierung der Widgets gibt es derzeit noch nicht.
+
+Alle sechs Web-Widgets verwenden `HeuteWidget`: Rückblick, Woche, Zahl,
+Viertel, Verlauf und Fundstück. Der Kopf hat links ein Lucide-Icon (20 px),
+daneben Bricolage 16/700, darunter eine durchgezogene Trennlinie. Kopf und
+Inhalt haben 16 px seitlichen und 12 px vertikalen Abstand; der optionale
+Abschluss hat 16 × 8 px. Zwischen Karten liegen 16 px. Keine eigenen
+Kartenfarben, Kopf-Polsterungen oder rechts stehenden Ersatz-Icons; Farbe
+hebt einzelne Informationen hervor, etwa die Kennzahl. Inhalt folgt den
+Leserollen: Titel 16, Hinweis 14, Metadaten 13 — als rem.
+
+`HeuteWidgetGrid` bietet ab ausreichender Rasterbreite zwei Spalten.
+`size="normal"` belegt eine, `size="wide"` beide. Die Größen sind zunächst
+Vorgaben im Seitenlayout; es gibt noch keine persönliche Größenauswahl.
+Die Karte misst ihre **eigene Inhaltsbreite**, relativ zur Schriftgröße:
+unter 28 rem `compact`, ab 28 rem `standard`, ab 56,25 rem `expanded`.
+`useWidgetDetail()` bzw. die Render-Funktion des Inhalts liefert diese Stufe.
+Eine breite Vorgabe auf dem Telefon bleibt kompakt. Kein fester Höhenrahmen,
+der große Schrift abschneidet.
+
+Größe verändert den Inhalt: Die Woche zeigt ein/zwei/drei Punkte je Sitzung
+und breit zusätzliche Erläuterungen; weitere Punkte bleiben aufklappbar.
+Wochentag und Datum stehen als kompakter Zweizeiler untereinander. Die
+Datumsspalte ist 3,5 rem breit, mit 0,75 rem Abstand zu den Sitzungsinhalten.
+Mobil bilden Datum und Gremium eine Kopfzeile, die Punkte nutzen darunter
+die volle Breite. Nur horizontale Sitzungstrenner, keine seitliche Linie
+oder dekorativen Aufzählungspunkte.
+Der breite Rückblick kann zwei Sitzungen als direkte Vorschau zeigen.
+„Mein Viertel“ zeigt pro gewähltem Viertel die jüngste belegte Entwicklung:
+Vorhaben, kurze Erklärung, Stand und ausdrücklich das Datum der letzten
+Ratsberatung. Eine Beratung in den nächsten 14 Tagen bekommt Vorrang und
+führt direkt zum Tagesordnungspunkt. Das Indexdatum ist kein Neuigkeitsdatum.
+Zahlen heißen immer „Vorhaben“. Kompakt zunächst zwei Viertel, sonst drei,
+weitere auf Knopfdruck; die jüngsten Ratsstände zuerst. Breit stehen die
+Viertel nebeneinander, schmal untereinander. Ortsnamen als leiser Kicker,
+Vorhabentitel als Hauptinformation, Stand als kleines beschriftetes Abzeichen.
+Details erst für sichtbare Viertel laden; sie teilen den Cache der Stadtkarte.
+Der Verlauf zeigt kompakt drei Einträge mit Nachladen, breit bis zu fünf
+mit längeren Titeln. Das Fundstück ergänzt breit die vollständige Erzählung
+und Quellenangaben. Nicht jede Kennzahl braucht künstlich mehr Information,
+nur weil Platz da ist. Die beiden kompakten Überblickskarten stehen vor der
+breiten Woche; weitere Widgets folgen im selben Raster.
+
+„Seit deinem letzten Besuch“ ersetzt die frühere Themen-Karte auf Heute.
+Der Rückblick zeigt allgemeine Ergänzungen, unabhängig von Abos: neue und
+geänderte Tagesordnungen sowie erstmals ergänzte Protokolle mit Ergebnissen.
+Beim ersten Besuch heißt er „Neu bei Ratslotse“ und nennt ausdrücklich sieben
+Tage. Der Zeitraum bleibt während eines Besuchs stabil, auch beim Nachladen;
+ein neuer Besuch beginnt nach 30 Minuten ohne sichtbare Nutzung.
+
+Hierarchie: Zeitraum → höchstens drei aufklappbare Arten → Gremien → Sitzungen.
+Tagesordnungen erscheinen nur für Sitzungen ab heute; ältere Protokolle bleiben
+relevant. Neue Tagesordnungen und Änderungen derselben Sitzung zählen nicht
+doppelt. Protokolle zeigen die jüngste Sitzung zuerst, Tagesordnungen den
+nächsten Termin. Auch bei monatelanger Abwesenheit bleibt die Übersicht
+eingeklappt. Je Art erscheinen zunächst vier Gremien, je Gremium drei
+Sitzungen; weitere werden auf Wunsch geöffnet bzw. nachgeladen. Bei nur einer
+Sitzung führt das Gremium direkt zum Inhalt. Die Datenspanne hält nachträglich
+importierte Archiv-Protokolle von vermeintlich aktuellen Sitzungen unterscheidbar.
+Der Fokus folgt beim Nachladen der ersten neuen Sitzung. Keine Tags und keine
+konkurrierende zweite Themen-Karte.
+
+Animationen erklären Zustandswechsel: neue Zeilen blenden über 220 ms mit
+vier Pixeln Bewegung ein, Hover hebt die Zeile leicht hervor und bewegt nur
+den Richtungspfeil. Reduzierte Bewegung schaltet diese Effekte aus. Große
+Schrift darf mehr Höhe beanspruchen; Metadaten und Aktionen bleiben lesbar.
+Ein Ladefehler erhält vorhandene Inhalte und bietet Wiederholen; er wird
+niemals als „keine Neuigkeiten“ dargestellt.

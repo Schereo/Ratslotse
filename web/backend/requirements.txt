@@ -14,3 +14,6 @@ numpy>=1.26
 # Das teilbare Bild des Wahlabends (GET /api/wahlabend/bild.png) wird mit
 # Pillow gezeichnet; `app/election/image.py` importiert es beim Start.
 pillow>=11
+# QR-Code fürs Tippspiel (GET /api/tipp/qr.png) — reines Python, kein Pillow
+# nötig, schreibt PNG direkt.
+segno>=1.6

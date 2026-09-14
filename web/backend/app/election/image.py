@@ -298,7 +298,8 @@ def _header(sheet: _Sheet, data: ElectionNight, field: SeatField) -> None:
     counted, all_districts = progress["districts_counted"], progress["districts_total"]
     line = f"{_number(counted)} von {_number(all_districts)} Wahlbezirken ausgezählt"
     if data["dataset"] == "probe":
-        line += " · Generalprobe mit Zahlen von 2021"
+        vorwahl = data["election"].get("previous_label") or "der Vorwahl"
+        line += f" · Generalprobe mit Zahlen von {vorwahl}"
     else:
         clock = _clock(data["source"])
         if clock:

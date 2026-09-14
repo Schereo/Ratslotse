@@ -12,7 +12,7 @@ from datetime import date, timedelta
 from collections.abc import Callable
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field, field_validator
 
 from council.cities.store import CitiesStore
@@ -50,13 +50,14 @@ from ..antworten import (AnalysisData, BudgetAmendmentLists, BudgetAuditReports,
                          DecisionDetail, DecisionList, DiscoveryOfTheDay, Districts, Entities,
                          ElsewhereItem, ElsewhereResponse, EntitiesMap, EntityDetail,
                          FeedbackAck,
-                         Idea, IdeaEvidence, IdeaFields, IdeaFieldSummary, IdeaSibling,
+                         Idea, IdeaEvidence, IdeaFields, IdeaFieldSummary, IdeaProtocol,
+                         IdeaSibling,
                          IdeaSearchResponse, IdeasResponse,
                          EventStreamResponse, Finances, GoalDetail,
                          Goals, JpegResponse, NumberOfTheWeek, Ok,
                          PartyFilter, PartyOpinions, PeopleDirectory, PersonDetail, PlaceCatalog,
                          PlaceDetail, PLANZEICHNUNG_JPEG, PolicyFieldRecaps, PolicyFields,
-                         PublicNumbers, QaExamples,
+                         PublicNumbers, QaExampleSession, QaExamples,
                          QaShare, QaShareToken, ResearchCurrent, ResearchSnapshot, ResearchStarted,
                          ResearchStopped, SessionDetail, SessionList, SharePreview, Speeches,
                          SSE_FRAGE, SSE_RECHERCHE,
@@ -1876,7 +1877,10 @@ def cities_idea_fields(cities: CitiesStore = Depends(get_cities_store)) -> IdeaF
          "present": int(r["present"] or 0),
          "multi_city": int(r["multi_city"] or 0)}
         for r in cities.idea_fields()]
-    return {"fields": felder}
+    from council.cities.registry import BODIES
+    namen = sorted({(BODIES[b].name if b in BODIES else b)
+                    for b in cities.idea_body_ids()})
+    return {"fields": felder, "bodies": namen}
 
 
 @router.get("/cities/search")
@@ -1901,8 +1905,9 @@ def cities_search(
                                  limit=max(1, min(limit, 100)))
     peers = cities.peers_by_paper(EMBED_MODEL_FUER_SUCHE)
     eigenes = _eigene_rueckmeldungen(cities, user)
+    abschnitte = cities.section_counts()
     return {"query": q, "total": len(zeilen),
-            "items": [_idee_aus_zeile(store, cities, r, peers, eigenes)
+            "items": [_idee_aus_zeile(store, cities, r, peers, eigenes, abschnitte)
                       for r in zeilen]}
 
 
@@ -1942,14 +1947,32 @@ def cities_ideas(
 
     peers = cities.peers_by_paper(EMBED_MODEL_FUER_SUCHE)
     eigenes = _eigene_rueckmeldungen(cities, user)
-    items = [_idee_aus_zeile(store, cities, r, peers, eigenes) for r in zeilen]
+    abschnitte = cities.section_counts()
+    items = [_idee_aus_zeile(store, cities, r, peers, eigenes, abschnitte)
+             for r in zeilen]
     return {"field": field, "total": gesamt, "page": page, "per_page": per_page,
             "counts": {k: int(v) for k, v in zaehler.items()}, "items": items}
 
 
+def _protokoll_quelle(body_id: str, abschnitte: dict[str, int] | None) -> str:
+    """Warum an dieser Karte kein „Warum" steht — drei Zustände, nicht zwei.
+
+    Hannover hält die Beratungsergebnisse ausdrücklich zurück; Magdeburgs
+    Protokolle sind schlicht nicht abrufbar. Beides als „kein Warum" zu
+    zeigen, machte aus einer Entscheidung der Stadt eine Lücke bei uns.
+    """
+    from council.cities.registry import BODIES
+
+    spec = BODIES.get(body_id)
+    if spec is not None and not spec.protocols_public:
+        return "withheld"
+    return "available" if (abschnitte or {}).get(body_id) else "none"
+
+
 def _idee_aus_zeile(store: CouncilStore, cities: CitiesStore, r: dict,
                     peers: dict[str, int] | None = None,
-                    feedback: dict[str, str] | None = None) -> Idea:
+                    feedback: dict[str, str] | None = None,
+                    abschnitte: dict[str, int] | None = None) -> Idea:
     """Eine Zeile des Städte-Speichers als Idee für die Oberfläche.
 
     Beide Endpunkte — Liste und Suche — bauen dieselbe Form; sie zweimal zu
@@ -1983,6 +2006,10 @@ def _idee_aus_zeile(store: CouncilStore, cities: CitiesStore, r: dict,
         "evidence": _belege_aufloesen(store, urteil.get("evidence") or []),
         "effort": aufwand.get("effort") or "",
         "addressee": aufwand.get("addressee"),
+        "protocol": _protokoll(cities, r["id"]),
+        "protocol_source": _protokoll_quelle(r["body_id"], abschnitte),
+        "window_since": (BODIES[r["body_id"]].compare_since
+                         if r["body_id"] in BODIES else None),
         "siblings": _geschwister(r.get("siblings_json")),
         "stance": r.get("stance") or "",
         "peer_stances": {k[5:]: int(r[k]) for k in ("peer_for", "peer_against", "peer_review")
@@ -2008,6 +2035,32 @@ def _richtungen(roh: str | None) -> dict[str, int]:
         if x:
             zaehler[x] = zaehler.get(x, 0) + 1
     return zaehler
+
+
+def _protokoll(cities: CitiesStore, paper_id: str) -> IdeaProtocol | None:
+    """Das „Warum" aus der Niederschrift — oder nichts.
+
+    **Ohne Begründung im Text wird nichts gezeigt.** Das ist keine
+    Vorsichtsmaßnahme, sondern der Zweck: Ein „Warum", das ein Modell aus dem
+    Ergebnis erschließt, ist eine Behauptung über einen echten Ratsbeschluss.
+    Der Annotator sagt mit ``grounded``, ob eine dasteht; steht keine, gibt es
+    hier ``None`` und auf der Karte eine Leerstelle statt einer Erfindung.
+    """
+    zeile = cities.reason_for_paper(paper_id)
+    if not zeile:
+        return None
+    nutzlast = zeile["payload"]
+    if not nutzlast.get("grounded") or not (nutzlast.get("why") or "").strip():
+        return None
+    return {
+        "discussed": nutzlast.get("discussed") or "",
+        "decided": nutzlast.get("decided") or "",
+        "vote": nutzlast.get("vote"),
+        "why": nutzlast.get("why") or "",
+        "grounded": True,
+        "organization": zeile.get("organization_name") or zeile.get("meeting_name"),
+        "date": (zeile.get("start") or "")[:10] or None,
+    }
 
 
 def _geschwister(roh: str | None) -> list[IdeaSibling]:
@@ -2811,7 +2864,9 @@ def _deep_frei(ratslotse: Store, user: dict) -> int | None:
 
 
 @router.post("/deep-research", status_code=status.HTTP_201_CREATED)
-def deep_research_start(body: DeepResearchBody, user: dict = Depends(require_active),
+def deep_research_start(body: DeepResearchBody, request: Request,
+                        user: dict = Depends(require_active),
+                        store: CouncilStore = Depends(get_council_store),
                         ratslotse: Store = Depends(get_store)) -> ResearchStarted:
     """Recherche-Job starten. Kontingent: 5/Tag je KONTO aus der DB (nicht
     IP — übersteht Neustarts, und Abbruch/Fehler kosten laut Design nichts,
@@ -2827,13 +2882,46 @@ def deep_research_start(body: DeepResearchBody, user: dict = Depends(require_act
     if deepresearch.laufende_jobs() >= deepresearch.MAX_PARALLEL:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE,
                             "Gerade laufen viele Recherchen — bitte versuche es gleich nochmal.")
-    ratslotse.record_activity(user["id"], "research")
     question = body.question.strip()
+    # Derselbe Riegel wie bei der schnellen Frage — hier wiegt er schwerer:
+    # Ein Job auf eine gegenstandslose Frage zerlegt sie in Facetten, sucht zu
+    # jeder, liest Dokumente und schreibt einen Bericht. Das dauert eine halbe
+    # Minute, kostet ein Vielfaches einer normalen Antwort und verbraucht eine
+    # der fünf Recherchen des Tages — für eine Frage, die niemand gestellt hat.
+    #
+    # Deshalb VOR `deep_job_anlegen`: Das Kontingent zählt angelegte Jobs
+    # (`deep_jobs_heute`), eine Rückfrage darf also gar nicht erst einen
+    # anlegen. Und nach den Kontingent-Prüfungen oben: Wer heute ohnehin keine
+    # Recherche mehr hat, soll dafür keinen Modell-Aufruf auslösen.
+    #
+    # Die Erkennung ist wörtlich die von `/ask` — Analyse, dann die drei
+    # deterministischen Anker, die sie überstimmen.
+    verlauf = [r.model_dump() for r in body.history]
+    analyse = qa.analyse_query(question, verlauf=verlauf)
+    q_suche = analyse.get("question") or question
+    person = qa.finde_person(store, q_suche)
+    ort = qa.finde_ort(q_suche, store) or qa.finde_ort(question, store)
+    sitzungen = [] if person else (qa.finde_sitzungen(store, q_suche)
+                                   or qa.finde_sitzungen(store, question))
+    if qa.rueckfrage_noetig(analyse, person=person, ort=ort, sitzungen=sitzungen):
+        ratslotse.record_activity(user["id"], "ai_question_unclear", client_kind(request))
+        try:
+            vorschlaege = qa.rueckfrage_vorschlaege(store, question)
+        except Exception:  # noqa: BLE001 — ein Ausweg darf nie die Rückfrage brechen
+            vorschlaege = []
+        # `detail` bleibt bewusst ein STRING: Die ausgelieferte App zeigt genau
+        # dieses Feld als Fehlertext des Turns an (APIClient.ErrorEnvelope) —
+        # sie bekommt so die Rückfrage im Wortlaut statt „Die Anfrage konnte
+        # nicht verarbeitet werden". Die Marke und die Vorschläge daneben liest
+        # das Web, das daraus einen richtigen Rückfrage-Turn baut.
+        return JSONResponse(  # pyright: ignore[reportReturnType] — wie /api/health
+            {"detail": qa.RUECKFRAGE_TEXT, "unclear": True, "questions": vorschlaege},
+            status_code=status.HTTP_400_BAD_REQUEST)
+    ratslotse.record_activity(user["id"], "research")
     job_id = ratslotse.deep_job_anlegen(user["id"], question)
     settings = get_settings()
     job = deepresearch.DeepJob(id=job_id, user_id=user["id"], question=question,
-                               conversation_id=body.conversation_id,
-                               verlauf=[r.model_dump() for r in body.history])
+                               conversation_id=body.conversation_id, verlauf=verlauf)
     deepresearch.start_job(job, settings.ratslotse_db, settings.council_db)
     return {"job_id": job_id, "remaining": _deep_frei(ratslotse, user)}
 
@@ -2944,9 +3032,29 @@ def deep_research_gesehen(job_id: str, user: dict = Depends(require_active),
 @router.get("/qa-beispiele")
 def qa_beispiele(store: CouncilStore = Depends(get_council_store)) -> QaExamples:
     """Frische Beispiel-Anlässe für den Empty State der KI-Frage (5a/I-07):
-    die jüngsten Sitzungen mit Beschlüssen — das Frontend formuliert daraus
-    „Was hat der <Ausschuss> am <Datum> beschlossen?"."""
-    return {"sessions": store.juengste_sitzungen_mit_beschluessen(limit=2)}
+    die jüngsten Sitzungen mit Beschlüssen — die Clients formulieren daraus
+    „Was hat der <Ausschuss> am <Datum> beschlossen?" und „Was wurde zu
+    ‚<top_titel>' entschieden?".
+
+    Zwei Dinge stellt der Server sicher, damit dabei etwas Brauchbares
+    herauskommt — beide gehören hierher und nicht in zwei Clients:
+
+    * **Nur Sitzungen mit Substanz** (``mindest_tops``). Eine Sitzung mit einem
+      einzigen Punkt liefert als „wichtigsten Beschluss" Verfahrenskram; am
+      10.09.2026 stand so „Was wurde zu ‚Beratung von nichtöffentlichen
+      Tagesordnungspunkten im …' entschieden?" auf der leeren Seite.
+    * **Der Titel kommt schon als Gegenstand** (``qa.vorschlags_gegenstand``):
+      ohne Verfahrensstand hinter dem Gedankenstrich, ohne Antragsteller-
+      Klammer, ohne „(Oldb)". Vorher schnitt jeder Client selbst — das Web an
+      der Wortgrenze, die App hart bei 69 Zeichen mitten im Wort.
+    """
+    zeilen: list[QaExampleSession] = [
+        {"committee": str(z["committee"]), "session_date": str(z["session_date"]),
+         "n": int(z["n"]),
+         "top_titel": qa.vorschlags_gegenstand(z.get("top_titel") or "") or None}
+        for z in store.juengste_sitzungen_mit_beschluessen(
+            limit=2, mindest_tops=qa.RUECKFRAGE_MINDEST_TOPS)]
+    return {"sessions": zeilen}
 
 
 @router.get("/plan-bild/{document_id}", response_class=JpegResponse,
@@ -3520,7 +3628,8 @@ def _turn_speichern(ratslotse: Store, user: dict, body: AskBody, q_suche: str,
                     anlagen_rows: list[dict] | None = None,
                     planungen: list[dict] | None = None,
                     grafik: dict | None = None,
-                    sitzungen: list[dict] | None = None) -> int | None:
+                    sitzungen: list[dict] | None = None,
+                    unclear: bool = False) -> int | None:
     """„Meine Gespräche" (6a): Turn ins laufende Gespräch hängen (oder eines
     eröffnen) — nur mit ausdrücklicher Einwilligung, nie als Blocker.
 
@@ -3568,7 +3677,10 @@ def _turn_speichern(ratslotse: Store, user: dict, body: AskBody, q_suche: str,
              # soll aussehen wie das Gespräch, aus dem es stammt.
              "chart": grafik,
              # Der Tagesordnungs-Baustein ebenso (Sitzungs-Fragetyp).
-             "sessions": _sitzungen_kompakt(sitzungen or [])}, ensure_ascii=False)
+             "sessions": _sitzungen_kompakt(sitzungen or []),
+             # Und die Marke der Rückfrage: Ohne sie sähe der Turn beim
+             # Wiederöffnen aus wie eine Antwort ohne Treffer.
+             **({"unclear": True} if unclear else {})}, ensure_ascii=False)
         if not ratslotse.qa_turn_speichern(conversation_id, user["id"],
                                      body.question, answer_text, quellen_json):
             if neu:
@@ -3664,6 +3776,42 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             sitzung_ids = [i for s in sitzungen for i in s.get("decision_ids") or []]
             if sitzungen and typ not in ("party", "money"):
                 typ = "session"
+            # Nennt die Frage überhaupt einen Gegenstand? Wenn nicht, wird hier
+            # ZURÜCKGEFRAGT statt geantwortet — warum, steht bei
+            # `qa.RUECKFRAGE_TEXT`, und die Regel selbst bei
+            # `qa.rueckfrage_noetig` (dieselbe nimmt die gründliche Recherche).
+            #
+            # Die Stelle ist bewusst diese: nach den drei deterministischen
+            # Erkennungen, die das Modell überstimmen, und VOR der Suche —
+            # danach ist nichts mehr zu holen. Retrieval, Reranker,
+            # Haushalts-Bausteine und Antwort-Modell kosten zusammen ein
+            # Vielfaches des einen Analyse-Calls, der das Urteil ohnehin schon
+            # mitgebracht hat.
+            if qa.rueckfrage_noetig(analyse, einfach=einfach, person=person,
+                                    ort=ort, sitzungen=sitzungen):
+                yield _sse({"type": "token", "text": qa.RUECKFRAGE_TEXT})
+                try:
+                    vorschlaege = qa.rueckfrage_vorschlaege(store, q)
+                except Exception:  # noqa: BLE001 — ein Ausweg darf nie die Rückfrage brechen
+                    vorschlaege = []
+                if vorschlaege:
+                    yield _sse({"type": "suggestions", "questions": vorschlaege})
+                conversation_id = _turn_speichern(ratslotse, user, body, q_suche,
+                                                  qa.RUECKFRAGE_TEXT, [], [],
+                                                  unclear=True)
+                # Eigener Zähler, NICHT `ai_answer_empty`: Dort geht es um
+                # Fragen, die nichts gefunden haben. Hier wurde gar nicht erst
+                # gesucht — die beiden zusammenzuzählen verdürbe beide Zahlen.
+                ratslotse.record_activity(user["id"], "ai_question_unclear",
+                                          client_kind(request))
+                # `unclear` sagt den Clients, dass hier NICHT gesucht wurde.
+                # Ohne die Marke sähe die Rückfrage aus wie eine Antwort ohne
+                # Treffer — und bekäme deren Angebote: „Als Thema anlegen" mit
+                # „Was hast du?" als Themennamen und darunter den Vermerk
+                # „Automatische Antwort aus den gefundenen Beschlüssen".
+                yield _sse({"type": "done", "cited": [], "unclear": True,
+                            "conversation_id": conversation_id})
+                return
             latest_place = bool(ort and typ == "place"
                                 and (qa.latest_intent(q_suche) or qa.latest_intent(q)))
             shadow_plan = qa.research_plan_with_mandatory(

@@ -23,7 +23,7 @@ test.describe("Dashboard", () => {
   });
 
   test("begrüßt und zeigt die Signal-Handlung", async ({ page }) => {
-    // Ohne Anzeigenamen bleibt es beim bloßen „Moin!".
+    // Mit Anzeigenamen „Moin, X!", ohne bloß „Moin!" — beides fängt gleich an.
     await expect(page.getByRole("heading", { name: /^Moin/ })).toBeVisible();
     // DIE eine Handlung des Screens steht als Signal-Knopf daneben.
     await expect(page.locator("main").getByRole("link", { name: "Frag den Rat" })).toBeVisible();
@@ -64,7 +64,7 @@ test.describe("Dashboard", () => {
 
   test("die beiden kurzen Karten stehen da", async ({ page }) => {
     const main = page.locator("main");
-    await expect(main.getByRole("heading", { name: "Neu zu deinen Themen" })).toBeVisible();
+    await expect(main.getByRole("heading", { name: /Neu bei Ratslotse|Seit deinem letzten Besuch/ })).toBeVisible();
     await expect(main.getByRole("heading", { name: "Zahl der Woche" })).toBeVisible();
   });
 

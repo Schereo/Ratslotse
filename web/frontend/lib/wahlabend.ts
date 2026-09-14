@@ -100,11 +100,11 @@ export function kandidatenStatus(
   if (!personen || k.votes === null) return { ton: "unknown", text: "Personenstimmen fehlen noch" };
   if (k.elected) {
     if (phase === "counting" && k.projected_elected === null) {
-      return { ton: "shaky", text: `drin · ${art(k.elected)} · Hochrechnung: raus` };
+      return { ton: "shaky", text: `nach Auszählung drin (${art(k.elected)}) · laut Hochrechnung raus` };
     }
     return { ton: "seated", text: `drin · ${art(k.elected)}` };
   }
-  if (k.projected_elected) return { ton: "projected", text: `Hochrechnung: drin · ${art(k.projected_elected)}` };
+  if (k.projected_elected) return { ton: "projected", text: `laut Hochrechnung drin (${art(k.projected_elected)})` };
   if (k.votes_to_seat !== null && k.votes_to_seat > 0) {
     const text = `${zahl(k.votes_to_seat)} Stimmen bis zum Sitz`;
     return { ton: k.votes_to_seat <= KNAPP_BIS ? "close" : "open", text };
@@ -123,13 +123,19 @@ export function sitzband(
 }
 
 /** Query-String für den Abruf: Generalprobe und Auszählungsstand durchreichen. */
-export function abfragePfad(probe: string | null, counted: string | null): string {
+export function abfragePfad(probe: string | null, counted: string | null, wahl?: string | null): string {
   const q = new URLSearchParams();
-  if (probe) q.set("probe", probe);
-  if (counted && /^\d+$/.test(counted)) q.set("counted", counted);
+  // `wahl` und `probe` schließen sich aus: Der Rückblick IST die echte Zahl,
+  // eine Generalprobe darauf ergäbe nichts.
+  if (wahl) q.set("wahl", wahl);
+  else {
+    if (probe) q.set("probe", probe);
+    if (counted && /^\d+$/.test(counted)) q.set("counted", counted);
+  }
   const s = q.toString();
   return s ? `/wahlabend?${s}` : "/wahlabend";
 }
+
 
 /* ── Sitze, Mehrheiten, Halbkreis ───────────────────────────────────────── */
 
@@ -219,17 +225,36 @@ export function bildPfad(feld: "seats" | "projected_seats", probe: string | null
   return `/wahlabend/bild.png?${q.toString()}`;
 }
 
-/* ── Wann ist Wahlabend? ────────────────────────────────────────────────── */
+/** Die Formate der Karte: Beitrag 4:5, Story 9:16, quer für Link-Vorschauen. */
+export type KartenFormat = "beitrag" | "story" | "quer";
 
-/** 13.09.2026, 18:00 Uhr in Oldenburg (MESZ = UTC+2): Die Wahllokale schließen,
- *  ab hier „läuft" der Wahlabend. */
-export const WAHLABEND_BEGINN_UTC = Date.UTC(2026, 8, 13, 16, 0, 0);
+/** Die Karte zum Teilen: eine Liste, eine Liste im Wahlbereich oder eine Person. */
+export function kartePfad(
+  liste: string,
+  bereich: number | null,
+  platz: number | null,
+  format: KartenFormat,
+  probe: string | null,
+  counted: string | null,
+  vergleich = true,
+): string {
+  const q = new URLSearchParams({ list: liste });
+  if (bereich !== null) q.set("area", String(bereich));
+  if (bereich !== null && platz !== null) q.set("position", String(platz));
+  q.set("format", format);
+  if (!vergleich) q.set("compare", "false");
+  if (probe) q.set("probe", probe);
+  if (counted && /^\d+$/.test(counted)) q.set("counted", counted);
+  return `/wahlabend/karte.png?${q.toString()}`;
+}
+
+/* ── Wann ist Wahlabend? ────────────────────────────────────────────────── */
 
 export type WahlabendZeit = {
   phase: "vorher" | "laeuft";
   /** Kalendertage bis zum Wahltag in deutscher Zeit; 0 am Wahltag selbst. */
   tage: number;
-  /** Kurz, für den Mono-Kicker: „NOCH 6 TAGE", „HEUTE AB 18 UHR", „LIVE". */
+  /** Kurz, für den Mono-Kicker: „Noch 6 Tage", „Heute ab 18 Uhr", „Live". */
   kicker: string;
   /** Ein Satzanfang für Überschriften: „Am Sonntag ab 18 Uhr", „Heute ab 18 Uhr". */
   wann: string;
@@ -242,11 +267,29 @@ function berlinerTag(d: Date): number {
 }
 
 /** Vor dem Wahlabend zählt die Seite herunter, danach „läuft" sie — dieselbe
- *  Regel für Landing, Heute-Seite und die Tafel. */
-export function wahlabendZeit(jetzt: Date = new Date()): WahlabendZeit {
-  if (jetzt.getTime() >= WAHLABEND_BEGINN_UTC) return { phase: "laeuft", tage: 0, kicker: "Live", wann: "Jetzt" };
-  const tage = Math.max(0, Math.round((Date.UTC(2026, 8, 13) - berlinerTag(jetzt)) / 86_400_000));
+ *  Regel für Landing, Heute-Seite und die Tafel.
+ *
+ *  Der Termin kommt als Parameter, seit 09/2026 aus der Antwort
+ *  (`election.polls_close`). Davor stand er hier als `WAHLABEND_BEGINN_UTC`
+ *  — eine Konstante, die ein Deploy braucht und die niemand mit der Registry
+ *  abgleicht. Ein unbrauchbarer Termin ergibt „läuft": lieber kein Countdown
+ *  als ein Countdown auf NaN. */
+export function wahlabendZeit(pollsClose: string | null | undefined, jetzt: Date = new Date()): WahlabendZeit {
+  const schluss = pollsClose ? new Date(pollsClose).getTime() : NaN;
+  if (!Number.isFinite(schluss) || jetzt.getTime() >= schluss) {
+    return { phase: "laeuft", tage: 0, kicker: "Live", wann: "Jetzt" };
+  }
+  const tage = Math.max(0, Math.round((berlinerTag(new Date(schluss)) - berlinerTag(jetzt)) / 86_400_000));
   if (tage === 0) return { phase: "vorher", tage, kicker: "Heute ab 18 Uhr", wann: "Heute ab 18 Uhr" };
   if (tage === 1) return { phase: "vorher", tage, kicker: "Morgen ab 18 Uhr", wann: "Morgen ab 18 Uhr" };
-  return { phase: "vorher", tage, kicker: `Noch ${tage} Tage`, wann: "Am Sonntag ab 18 Uhr" };
+  const wochentag = new Intl.DateTimeFormat("de-DE", { weekday: "long", timeZone: "Europe/Berlin" }).format(new Date(schluss));
+  return { phase: "vorher", tage, kicker: `Noch ${tage} Tage`, wann: `Am ${wochentag} ab 18 Uhr` };
+}
+
+/** Tag und Monat ausgeschrieben: „13. September 2026". */
+export function datumLang(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(`${iso}T12:00:00Z`);
+  if (!Number.isFinite(d.getTime())) return iso;
+  return new Intl.DateTimeFormat("de-DE", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Berlin" }).format(d);
 }

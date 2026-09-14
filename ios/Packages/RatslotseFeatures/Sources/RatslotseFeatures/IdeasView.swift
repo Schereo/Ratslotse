@@ -277,6 +277,24 @@ private struct IdeaCard: View {
     @State private var gesagt: String = ""
     @State private var fehlgeschlagen = false
 
+    /// „Beschlüsse ab 2023 · Niederschriften nicht öffentlich" — dieselben
+    /// drei Zustände wie im Web (`NIEDERSCHRIFTEN` in `ideen/view.tsx`).
+    private var herkunft: String {
+        var teile: [String] = []
+        if let seit = idee.windowSince, seit.count >= 4 {
+            // „Vergleich ab", nicht „Beschlüsse ab" — das Fenster gehört der
+            // STADT, nicht dieser Vorlage; die Suche findet auch ältere.
+            teile.append("Vergleich ab \(seit.prefix(4))")
+        }
+        switch idee.protocolSource {
+        case "available": teile.append("mit Niederschriften")
+        case "withheld": teile.append("Niederschriften nicht öffentlich")
+        case "none": teile.append("ohne Niederschriften")
+        default: break
+        }
+        return teile.joined(separator: " · ")
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top, spacing: 6) {
@@ -294,6 +312,16 @@ private struct IdeaCard: View {
             }
             if let originator = idee.originator, !originator.isEmpty {
                 Text(originator).font(RatsFont.body(10.5)).foregroundStyle(RatsColor.muted)
+            }
+            // Woher die Karte ihr Wissen über diese Stadt hat — und woher
+            // nicht. Ohne sie liest man „kein Warum" als Lücke bei uns,
+            // obwohl Hannover seine Beratungsergebnisse ausdrücklich
+            // zurückhält; und „nur eine Idee" als Aussage über die Stadt,
+            // obwohl es das Zeitfenster ist.
+            if !herkunft.isEmpty {
+                Text(herkunft)
+                    .font(RatsFont.body(10))
+                    .foregroundStyle(RatsColor.muted.opacity(0.8))
             }
             // Aufwand und Verbreitung ordnen den Rest der Karte ein, bevor man
             // ihn liest: „Anfrage, auch in drei anderen Städten" sagt schon
@@ -361,6 +389,52 @@ private struct IdeaCard: View {
                 .padding(.top, 2)
             }
 
+            // Das „Warum" aus der Niederschrift. Steht nur da, wenn im Protokoll
+            // wirklich eine Begründung steht — das Backend liefert sonst `nil`.
+            // Ein erschlossenes „Warum" wäre eine Behauptung über einen echten
+            // Ratsbeschluss; lieber eine Leerstelle.
+            if let protokoll = idee.protocolNote {
+                DisclosureGroup {
+                    VStack(alignment: .leading, spacing: 5) {
+                        if !protokoll.decided.isEmpty {
+                            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                                Text(protokoll.decided)
+                                    .font(RatsFont.body(11.5))
+                                    .foregroundStyle(RatsColor.primary)
+                                if let vote = protokoll.vote, !vote.isEmpty {
+                                    Text(vote)
+                                        .font(RatsFont.body(10.5))
+                                        .foregroundStyle(RatsColor.muted)
+                                        .padding(.horizontal, 5)
+                                        .padding(.vertical, 1.5)
+                                        .background(RatsColor.muted.opacity(0.12),
+                                                    in: RoundedRectangle(cornerRadius: 4))
+                                }
+                            }
+                        }
+                        Text(protokoll.why)
+                            .font(RatsFont.body(11.5))
+                            .foregroundStyle(RatsColor.secondary)
+                        if !protokoll.discussed.isEmpty {
+                            Text(protokoll.discussed)
+                                .font(RatsFont.body(11))
+                                .foregroundStyle(RatsColor.muted)
+                        }
+                        Text(Self.herkunft(protokoll))
+                            .font(RatsFont.body(10.5))
+                            .foregroundStyle(RatsColor.muted.opacity(0.85))
+                    }
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.top, 3)
+                } label: {
+                    Text("Warum es in \(idee.bodyName) so ausging")
+                        .font(RatsFont.body(11, weight: .medium))
+                        .foregroundStyle(RatsColor.muted)
+                }
+                .tint(RatsColor.muted)
+            }
+
             if !idee.siblings.isEmpty {
                 DisclosureGroup {
                     VStack(alignment: .leading, spacing: 3) {
@@ -392,6 +466,15 @@ private struct IdeaCard: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .ratsCard()
+    }
+
+    /// „aus der Niederschrift des Kulturausschusses vom 18.06.2026" — was
+    /// davon fehlt, fällt weg, statt als leere Klammer dazustehen.
+    static func herkunft(_ p: IdeaProtocol) -> String {
+        var text = "aus der Niederschrift"
+        if let gremium = p.organization, !gremium.isEmpty { text += " des \(gremium)" }
+        if let tag = datum(p.date) { text += " vom \(tag)" }
+        return text
     }
 
     /// Das Urteil. Anzeigetafel-Tönung, nie eine dunkle Karte im Hellmodus.

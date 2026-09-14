@@ -43,7 +43,7 @@ export function DecisionLinkCard({ id, title, committee, session_date, field, le
             {/* Gremium und Datum können fehlen — ein Beschluss ohne Sitzung im
                 Bestand hat beides nicht. Dann steht die Zeile eben leer, statt
                 „undefined" zu zeigen. */}
-            <span className="text-xs text-muted-foreground" title={committee ?? undefined}>
+            <span className="text-meta text-muted-foreground" title={committee ?? undefined}>
               {[committee && shortCommittee(committee), session_date && formatDate(session_date)]
                 .filter(Boolean).join(" · ")}
             </span>
@@ -58,8 +58,8 @@ export function DecisionLinkCard({ id, title, committee, session_date, field, le
               </span>
             )}
           </div>
-          <p className="mt-1 text-sm font-medium text-foreground">{title}</p>
-          {sub && <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{sub}</p>}
+          <p className="mt-1 break-words text-quelle font-medium text-foreground">{title}</p>
+          {sub && <p className="mt-0.5 line-clamp-2 text-hinweis text-muted-foreground">{sub}</p>}
         </div>
         <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 self-center text-muted-foreground/40 group-hover:text-primary" />
       </Card>
@@ -100,7 +100,7 @@ export function FieldBadge({ field, className }: { field: string | null; classNa
 }
 
 export const IMPORTANCE_HINT =
-  "Geschätzte Wichtigkeit für die Stadt — aus Ratsdaten (Geldbetrag, Gegenstimmen, Verbindlichkeit & Gremien-Ebene, Länge des Beratungswegs) und, wo vorhanden, einer automatischen Einschätzung der Tragweite.";
+  "Die Wichtigkeit wird aus mehreren Angaben geschätzt: Geldbetrag, Gegenstimmen, Verbindlichkeit und bisheriger Beratungsweg. Wo möglich, kommt eine automatische Einschätzung der Folgen hinzu.";
 
 /** Kompakter „Wichtig"-Chip für Listen — nur ab einer Schwelle sichtbar, damit
  *  nur wirklich bedeutende Beschlüsse hervorstechen (statt jede Karte zu füllen). */
@@ -126,7 +126,7 @@ export function ImportanceBadge({ score, minShow = 55, className }: {
 
 const IMPORTANCE_SIGNAL_LABEL: Record<keyof ImportanceBreakdown["signals"], string> = {
   geld: "Geldbetrag", umstritten: "Umstrittenheit",
-  verbindlich: "Verbindlichkeit & Ebene", expense: "Beratungsaufwand",
+  verbindlich: "Verbindlichkeit der Entscheidung", expense: "Beratungsaufwand",
 };
 
 /** Ausführliche Wichtigkeits-Anzeige auf der Beschluss-Seite: Score + welche
@@ -213,11 +213,11 @@ export function ImportanceMeter({ score, signals, contributions, baseScore, impa
               {impact != null && (
                 <>
                   <div className="flex items-center justify-between gap-2">
-                    <dt className="text-muted-foreground">Tragweite (automatische Einschätzung)</dt>
+                    <dt className="text-muted-foreground">Geschätzte Folgen</dt>
                     <dd className="tabular-nums text-foreground">{impact}</dd>
                   </div>
                   <div className="flex items-center justify-between gap-2 border-t border-border pt-1">
-                    <dt className="font-medium text-foreground">Wichtigkeit · Mittel aus beiden</dt>
+                    <dt className="font-medium text-foreground">Wichtigkeit · Durchschnitt</dt>
                     <dd className="font-semibold tabular-nums text-foreground">{score}</dd>
                   </div>
                 </>
@@ -227,7 +227,7 @@ export function ImportanceMeter({ score, signals, contributions, baseScore, impa
 
           <p className="mt-2 text-[11px] leading-snug text-muted-foreground">
             Balken = Stärke des Signals, Zahl = sein Beitrag zum Wert.
-            {hasMissing && " Fehlende Angaben zählen nicht als null — die übrigen Signale teilen sich das volle Gewicht."}
+            {hasMissing && " Fehlende Angaben senken den Wert nicht automatisch. Die vorhandenen Angaben werden entsprechend stärker gewichtet."}
             {impact != null && ' Der Satz „Warum wichtig“ begründet die Tragweite.'}
           </p>
           <p className="mt-1 text-[11px] leading-snug text-muted-foreground">{IMPORTANCE_HINT}</p>

@@ -86,7 +86,7 @@ def test_sperrungen_werden_fortgeschrieben_und_je_viertel_gelesen():
 
 def _konto(client: TestClient, email: str = "leserin@example.org") -> str:
     """Ein aktives Konto samt Bearer-Token — wie in test_district_projects.py."""
-    r = client.post("/api/auth/register", json={"email": email, "password": "password123"})
+    r = client.post("/api/auth/register", json={"display_name": "Testkonto", "email": email, "password": "password123"})
     assert r.status_code == 201, r.text
     from kern.store import Store
     s = Store(os.environ["RATSLOTSE_DB"])

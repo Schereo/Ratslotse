@@ -1,0 +1,42 @@
+{
+  "datum_string": "13.09.2026",
+  "seitentitel": "Kommunalwahlen 2026 - Wahlenübersicht",
+  "wahleintraege": [
+    {
+      "wahl": {
+        "id": 2552,
+        "titel": "Wahl der Oberbürgermeisterin / Wahl des Oberbürgermeisters - Stadt Oldenburg"
+      },
+      "stimmentyp": {
+        "id": 0,
+        "titel": ""
+      },
+      "gebiet_link": {
+        "id": "ebene_-6360_id_10357",
+        "type": "ergebnis",
+        "title": "Stadt Oldenburg"
+      },
+      "leer": false
+    },
+    {
+      "wahl": {
+        "id": 913,
+        "titel": "Stadtratswahl - Stadt Oldenburg"
+      },
+      "stimmentyp": {
+        "id": 0,
+        "titel": ""
+      },
+      "gebiet_link": {
+        "id": "ebene_-6361_id_10358",
+        "type": "ergebnis",
+        "title": "Stadt Oldenburg"
+      },
+      "leer": false
+    }
+  ],
+  "filename_termin_uebersicht": "../../../03403000/index.html",
+  "file_version": "26.09.01",
+  "file_timestamp": "11.09.2026 13:51:12 748",
+  "server_hash": "646b1029f537300d28340ce6ec5ea8d7"
+}

@@ -55,7 +55,7 @@ export function QuizMapPlay({ targets, onExit }: { targets: string[]; onExit: ()
     // Lotti feiert mit bzw. muntert auf — wie im Fragen-Quiz. Ab 90 % tanzt sie.
     const pose = quote >= 80 ? "celebrate" : quote >= 50 ? "wave" : "point";
     const cheer =
-      quote >= 90 ? "Sensationell — du kennst Oldenburg wie deine Westentasche! Da tanzt die Möwe!"
+      quote >= 90 ? "Sensationell — du kennst Oldenburg wie deine Westentasche!"
       : quote >= 80 ? "Top — du kennst Oldenburgs Ortsbereiche richtig gut!"
       : quote >= 50 ? "Gut! Ein paar Ecken zeige ich dir gern noch."
       : "Macht nichts — beim Erkunden lernt man die Stadt am besten kennen. Ich flieg voraus!";

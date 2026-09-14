@@ -15,6 +15,7 @@ import { GuidedTour } from "@/components/tour";
 import { TourEinladung } from "@/components/tour-einladung";
 import { CommandPalette } from "@/components/command-palette";
 import { FeedbackDialog } from "@/components/feedback";
+import { BesuchErfassen } from "@/components/besuch-erfassen";
 import { OnboardingTracker } from "@/components/onboarding";
 import { BadgeCelebrator } from "@/components/badges";
 import { BackToTop } from "@/components/back-to-top";
@@ -115,6 +116,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       >
         Zum Inhalt springen
       </a>
+      {user && !gated && <BesuchErfassen userId={user.id} />}
       <SlashSearchShortcut />
       <GuidedTour />
       {/* Lotti lädt nach der Einrichtung zur Tour ein — statt jemanden auf

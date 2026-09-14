@@ -20,6 +20,9 @@ function neuesKonto() {
 async function registrieren(page: import("@playwright/test").Page) {
   const email = neuesKonto();
   await page.goto("/register");
+  // Der Anzeigename ist Pflicht — ohne ihn weist der Server die
+  // Registrierung ab (422).
+  await page.locator("#display-name").fill("Testkonto");
   await page.locator("#email").fill(email);
   await page.locator("#password").fill("password123");
   await page.getByRole("button", { name: "Konto erstellen" }).click();

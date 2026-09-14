@@ -558,7 +558,9 @@ function DisplayNameCard() {
     }
   }, [user, ready]);
   const save = useMutation({
-    mutationFn: () => api.post("/account/display-name", { display_name: name.trim() || null }),
+    // Kein `|| null` mehr: Der Name ist Pflicht, und der Endpunkt weist einen
+    // leeren ab — er wäre sonst die Hintertür zurück in ein namenloses Konto.
+    mutationFn: () => api.post("/account/display-name", { display_name: name.trim() }),
     onSuccess: async () => {
       await refresh();
       toast.success("Anzeigename gespeichert.");
@@ -570,7 +572,7 @@ function DisplayNameCard() {
     <Card className="p-6">
       <h2 className="font-semibold text-foreground">Anzeigename</h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        So sprechen wir dich auf der Übersicht und in E-Mails an.
+        So sprechen wir dich auf der Übersicht und in E-Mails an. Leer lassen geht nicht.
       </p>
       <form
         onSubmit={(e: React.FormEvent) => {
@@ -583,11 +585,12 @@ function DisplayNameCard() {
           value={name}
           onChange={(e) => setName(e.target.value)}
           maxLength={60}
+          required
           autoComplete="name"
           placeholder="z. B. Tim"
           aria-label="Anzeigename"
         />
-        <Button type="submit" variant="secondary" disabled={save.isPending}>
+        <Button type="submit" variant="secondary" disabled={save.isPending || !name.trim()}>
           {save.isPending ? "Speichern…" : "Speichern"}
         </Button>
       </form>

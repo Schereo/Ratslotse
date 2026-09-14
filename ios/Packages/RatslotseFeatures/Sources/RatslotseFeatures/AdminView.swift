@@ -210,7 +210,7 @@ private struct AdminLLMView: View {
 /// `roles` ist optional mit Vorgabe: Ein Backend im Stand vor 09/2026 schickt
 /// das Feld nicht, und ein nicht-optionales ließe den Decoder werfen — die
 /// Nutzer*innen-Liste bliebe dann leer statt unvollständig (ios/CLAUDE.md).
-private struct AdminUserRow: Decodable, Sendable, Identifiable { let id: Int; let email: String; let role: String; let roles: [String]?; let status: String; let lastSeen: String?; let nTopics: Int; let nAbos: Int; let nQuiz: Int; let nKi: Int; enum CodingKeys: String, CodingKey { case id,email,role,roles,status; case lastSeen = "last_seen"; case nTopics = "n_topics"; case nAbos = "n_subscriptions"; case nQuiz = "n_quiz"; case nKi = "n_ki" } }
+private struct AdminUserRow: Decodable, Sendable, Identifiable { let id: Int; let email: String; let displayName: String?; let role: String; let roles: [String]?; let status: String; let lastSeen: String?; let nTopics: Int; let nAbos: Int; let nQuiz: Int; let nKi: Int; enum CodingKeys: String, CodingKey { case id,email,role,roles,status; case displayName = "display_name"; case lastSeen = "last_seen"; case nTopics = "n_topics"; case nAbos = "n_subscriptions"; case nQuiz = "n_quiz"; case nKi = "n_ki" } }
 
 /// Die vergebbaren Rollen für das Menü — Schlüssel und Beschriftung.
 ///
@@ -222,10 +222,12 @@ private struct AdminUserRow: Decodable, Sendable, Identifiable { let id: Int; le
 private let ADMIN_ROLLEN: [(String, String)] = [("council_member", "Ratsmitglied"), ("admin", "Admin")]
 private struct AdminUsersView: View {
     let model: AppModel; @State private var users: [AdminUserRow] = []; @State private var query = ""; @State private var error: String?
-    var filtered: [AdminUserRow] { query.isEmpty ? users : users.filter { $0.email.localizedCaseInsensitiveContains(query) } }
+    // Name UND Adresse durchsuchen: Man erinnert sich an „Anne", nicht an ihre
+    // Adresse. Ohne Namen (Alt-Bestand) bleibt es bei der Adresse.
+    var filtered: [AdminUserRow] { query.isEmpty ? users : users.filter { "\($0.displayName ?? "") \($0.email)".localizedCaseInsensitiveContains(query) } }
     var body: some View { adminList(title: "Nutzer*innen", subtitle: "\(users.count) Konten") {
-        TextField("E-Mail suchen", text: $query).textFieldStyle(.roundedBorder)
-        ForEach(filtered) { user in VStack(alignment: .leading, spacing: 10) { HStack { Text(user.email).font(RatsFont.body(14, weight: .semibold)).lineLimit(1); Spacer(); Text((user.roles ?? []).isEmpty ? "user" : (user.roles ?? []).joined(separator: " · ")).font(RatsFont.mono(9)).foregroundStyle(user.role == "admin" ? RatsColor.signal : RatsColor.secondary) }; Text("\(user.nTopics) Themen · \(user.nAbos) Abos · \(user.nKi) KI-Fragen · \(user.nQuiz) Quiz").font(RatsFont.body(11)).foregroundStyle(RatsColor.secondary); HStack { Menu("Rollen") { ForEach(ADMIN_ROLLEN, id: \.0) { rolle in Button((user.roles ?? []).contains(rolle.0) ? "\(rolle.1) entfernen" : "\(rolle.1) geben") { Task { await setzeRollen(user, umschalten: rolle.0) } } } }.buttonStyle(.bordered); Button(user.status == "active" ? "Sperren" : "Freischalten") { Task { await update(user, key: "status", value: user.status == "active" ? "disabled" : "active") } }.buttonStyle(.bordered).disabled(user.id == model.user?.id) } }.ratsCard() }
+        TextField("Name oder E-Mail suchen", text: $query).textFieldStyle(.roundedBorder)
+        ForEach(filtered) { user in VStack(alignment: .leading, spacing: 10) { HStack { VStack(alignment: .leading, spacing: 1) { Text(user.displayName ?? user.email).font(RatsFont.body(14, weight: .semibold)).lineLimit(1); if user.displayName != nil { Text(user.email).font(RatsFont.body(11)).foregroundStyle(RatsColor.secondary).lineLimit(1) } }; Spacer(); Text((user.roles ?? []).isEmpty ? "user" : (user.roles ?? []).joined(separator: " · ")).font(RatsFont.mono(9)).foregroundStyle(user.role == "admin" ? RatsColor.signal : RatsColor.secondary) }; Text("\(user.nTopics) Themen · \(user.nAbos) Abos · \(user.nKi) KI-Fragen · \(user.nQuiz) Quiz").font(RatsFont.body(11)).foregroundStyle(RatsColor.secondary); HStack { Menu("Rollen") { ForEach(ADMIN_ROLLEN, id: \.0) { rolle in Button((user.roles ?? []).contains(rolle.0) ? "\(rolle.1) entfernen" : "\(rolle.1) geben") { Task { await setzeRollen(user, umschalten: rolle.0) } } } }.buttonStyle(.bordered); Button(user.status == "active" ? "Sperren" : "Freischalten") { Task { await update(user, key: "status", value: user.status == "active" ? "disabled" : "active") } }.buttonStyle(.bordered).disabled(user.id == model.user?.id) } }.ratsCard() }
         if let error { ErrorCard(message: error) { Task { await load() } } }
     }.task { await load() } }
     private func load() async { do { users = try await model.api.get("/api/admin/users"); error = nil } catch { self.error = error.localizedDescription } }

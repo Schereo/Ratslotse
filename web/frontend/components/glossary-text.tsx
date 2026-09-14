@@ -25,7 +25,7 @@ function Term({ label, def }: { label: string; def: string }) {
     return () => document.removeEventListener("click", onDoc);
   }, [open]);
   return (
-    <span ref={ref} className="relative inline-block">
+    <span ref={ref} className="relative inline-block max-w-full">
       <button
         type="button"
         onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
@@ -33,7 +33,7 @@ function Term({ label, def }: { label: string; def: string }) {
         onMouseLeave={() => setOpen(false)}
         onFocus={() => setOpen(true)}
         onBlur={() => setOpen(false)}
-        className="cursor-help border-b border-dotted border-primary/70 font-medium text-inherit"
+        className="max-w-full cursor-help whitespace-normal break-words border-b border-dotted border-primary/70 text-left font-medium text-inherit"
         aria-label={`Was bedeutet ${label}?`}
       >
         {label}

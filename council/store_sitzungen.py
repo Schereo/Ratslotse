@@ -1212,6 +1212,71 @@ class SitzungenMixin(StoreBasis):
         echte = [r for r in roh if not self._FORMALIE_RE.search(r["title"] or "")]
         return echte[:limit] if limit is not None else echte
 
+    def updates_since(self, since: str, until: str, offset: int = 0, limit: int = 3,
+                      kind: str | None = None, committee: str | None = None,
+                      today: str | None = None) -> dict:
+        """Öffentliche Ergänzungen nach Eingang, niemals nach Sitzungstag.
+
+        Ein Protokoll erscheint einmal, Wiederverarbeitung zählt nicht erneut.
+        Tagesordnungen stammen aus unveränderlichen Snapshots/Änderungen, nicht
+        aus fetched_at (das jeder Abruf überschreibt). Änderungen derselben
+        Sitzung bündeln wir; eine gerade erst neue Agenda zählt nicht doppelt.
+        """
+        from zoneinfo import ZoneInfo
+
+        today = today or datetime.now(ZoneInfo("Europe/Berlin")).date().isoformat()
+        query = """
+            WITH first_agenda AS (
+                SELECT ksinr, MIN(created_at) arrived FROM agenda_snapshots GROUP BY ksinr
+            ), events AS (
+                SELECT 'protocol' kind, ksinr, available_at arrived FROM council_protocols
+                WHERE status = 'ok' AND available_at IS NOT NULL
+                UNION ALL
+                SELECT 'agenda', ksinr, arrived FROM first_agenda
+                UNION ALL
+                SELECT 'agenda_change', c.ksinr, MAX(c.changed_at) FROM agenda_changes c
+                LEFT JOIN first_agenda a ON a.ksinr = c.ksinr
+                WHERE julianday(c.changed_at) > julianday(:since)
+                  AND julianday(c.changed_at) <= julianday(:until)
+                  AND (a.arrived IS NULL OR julianday(a.arrived) <= julianday(:since))
+                GROUP BY c.ksinr
+            ), visible AS (
+                SELECT e.*, s.committee, s.session_date,
+                    CASE WHEN e.kind = 'protocol' THEN (
+                        SELECT COUNT(*) FROM council_decisions d
+                        WHERE d.ksinr = e.ksinr AND d.kind = 'decision'
+                    ) ELSE 0 END decision_count
+                FROM events e JOIN council_sessions s ON s.ksinr = e.ksinr
+                WHERE julianday(e.arrived) > julianday(:since)
+                  AND julianday(e.arrived) <= julianday(:until)
+                  AND (e.kind = 'protocol' OR s.session_date >= :today)
+                  AND (:kind IS NULL OR e.kind = :kind)
+                  AND (:committee IS NULL OR s.committee = :committee)
+            )
+            SELECT * FROM visible ORDER BY
+                CASE WHEN kind = 'protocol' THEN session_date END DESC,
+                CASE WHEN kind != 'protocol' THEN session_date END ASC, ksinr DESC
+        """
+        rows = self._conn.execute(query, {"since": since, "until": until, "today": today,
+                                         "kind": kind, "committee": committee}).fetchall()
+        counts: dict[str, int] = {}
+        groups: dict[tuple[str, str], dict] = {}
+        for row in rows:
+            counts[row["kind"]] = counts.get(row["kind"], 0) + 1
+            key = (row["kind"], row["committee"])
+            if key not in groups:
+                groups[key] = {
+                    "kind": row["kind"], "committee": row["committee"], "count": 0,
+                    "first_session_date": row["session_date"], "last_session_date": row["session_date"],
+                    "latest": {**dict(row), "id": f"{row['kind']}:{row['ksinr']}"},
+                }
+            group = groups[key]
+            group["count"] += 1
+            group["first_session_date"] = min(group["first_session_date"], row["session_date"])
+            group["last_session_date"] = max(group["last_session_date"], row["session_date"])
+        return {"counts": counts, "groups": list(groups.values()), "total": sum(counts.values()), "items": [
+            {**dict(row), "id": f"{row['kind']}:{row['ksinr']}"} for row in rows[offset:offset + limit]]}
+
     def save_agenda_snapshot(self, ksinr: int, agenda_hash: str, items: list[dict]) -> None:
         """Öffentliche Tagesordnungspunkte zu diesem Hash einfrieren — die
         Vergleichsbasis für die Diff-Änderungsmeldung. INSERT OR IGNORE:
@@ -1698,11 +1763,21 @@ class SitzungenMixin(StoreBasis):
         return {(r[0] or "").strip().lower()
                 for r in self._conn.execute("SELECT name FROM committees") if r[0]}
 
-    def juengste_sitzungen_mit_beschluessen(self, limit: int = 2) -> list[dict]:
+    def juengste_sitzungen_mit_beschluessen(self, limit: int = 2,
+                                            mindest_tops: int = 1) -> list[dict]:
         """Die jüngsten vergangenen Sitzungen, zu denen Beschlüsse extrahiert
         sind — Futter für frische KI-Beispielfragen (5a/I-07). ``top_titel``
         nennt den wichtigsten Beschluss der Sitzung, damit ein Vorschlag
-        konkret nach dem Inhalt fragen kann statt nur nach dem Datum."""
+        konkret nach dem Inhalt fragen kann statt nur nach dem Datum.
+
+        ``mindest_tops`` hält dünne Sitzungen heraus, und das ist keine
+        Kosmetik: Eine Sitzung mit einem einzigen Punkt hat als „wichtigsten
+        Beschluss" zwangsläufig den, der da ist — und das ist typischerweise
+        Verfahrenskram. Am 10.09.2026 stand deshalb „Was wurde zu ‚Beratung
+        von nichtöffentlichen Tagesordnungspunkten im …' entschieden?" als
+        Beispielfrage auf der leeren Seite. Kein Titel-Putz repariert das; die
+        Zeile ist untruncated genauso wertlos. Die Auswahl muss stimmen.
+        """
         rows = self._conn.execute(
             """SELECT cs.committee, cs.session_date, COUNT(*) AS n,
                       (SELECT d2.title FROM council_decisions d2
@@ -1712,7 +1787,8 @@ class SitzungenMixin(StoreBasis):
                FROM council_decisions d
                JOIN council_sessions cs ON cs.ksinr = d.ksinr
                WHERE d.kind = 'decision'
-               GROUP BY d.ksinr ORDER BY cs.session_date DESC LIMIT ?""",
-            (int(limit),),
+               GROUP BY d.ksinr HAVING COUNT(*) >= ?
+               ORDER BY cs.session_date DESC LIMIT ?""",
+            (max(1, int(mindest_tops)), int(limit)),
         ).fetchall()
         return [dict(r) for r in rows]

@@ -122,6 +122,11 @@ export interface paths {
          * Set Display Name
          * @description Anzeigename setzen/ändern — auch für Apple-Konten und Alt-Bestand,
          *     die bei der Registrierung keinen angeben konnten.
+         *
+         *     Leeren geht nicht mehr: Seit der Name bei der Registrierung Pflicht ist,
+         *     wäre dieser Endpunkt sonst die Hintertür, durch die ein Konto wieder ohne
+         *     Namen dasteht — und die Anrede in Mails und Übersicht fiele still auf
+         *     „Moin!" zurück.
          */
         post: operations["set_display_name_api_account_display_name_post"];
         delete?: never;
@@ -799,6 +804,33 @@ export interface paths {
          *     Aufteilung nach Client. Nichts davon ist einer Person zuzuordnen.
          */
         get: operations["stats_page_views_api_admin_stats_page_views_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/stats/signups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stats Signups
+         * @description Neue Konten und abgewiesene Registrierungen — beide Seiten in einem Bild.
+         *
+         *     Sichtbar war bis 09/2026 nur, wer durchkam. Wer an der Bremse oder am
+         *     Wegwerf-Riegel hängenblieb, hinterließ nirgends eine Spur, und „es hat
+         *     niemand versucht" war von „es haben 500 versucht" nicht zu unterscheiden.
+         *
+         *     Der tägliche Herzschlag (``scripts/check_herzschlag.py``) schlägt bei
+         *     denselben Zahlen Alarm; diese Ansicht ist der Blick dazwischen.
+         */
+        get: operations["stats_signups_api_admin_stats_signups_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3343,8 +3375,21 @@ export interface paths {
         /**
          * Qa Beispiele
          * @description Frische Beispiel-Anlässe für den Empty State der KI-Frage (5a/I-07):
-         *     die jüngsten Sitzungen mit Beschlüssen — das Frontend formuliert daraus
-         *     „Was hat der <Ausschuss> am <Datum> beschlossen?".
+         *     die jüngsten Sitzungen mit Beschlüssen — die Clients formulieren daraus
+         *     „Was hat der <Ausschuss> am <Datum> beschlossen?" und „Was wurde zu
+         *     ‚<top_titel>' entschieden?".
+         *
+         *     Zwei Dinge stellt der Server sicher, damit dabei etwas Brauchbares
+         *     herauskommt — beide gehören hierher und nicht in zwei Clients:
+         *
+         *     * **Nur Sitzungen mit Substanz** (``mindest_tops``). Eine Sitzung mit einem
+         *       einzigen Punkt liefert als „wichtigsten Beschluss" Verfahrenskram; am
+         *       10.09.2026 stand so „Was wurde zu ‚Beratung von nichtöffentlichen
+         *       Tagesordnungspunkten im …' entschieden?" auf der leeren Seite.
+         *     * **Der Titel kommt schon als Gegenstand** (``qa.vorschlags_gegenstand``):
+         *       ohne Verfahrensstand hinter dem Gedankenstrich, ohne Antragsteller-
+         *       Klammer, ohne „(Oldb)". Vorher schnitt jeder Client selbst — das Web an
+         *       der Wortgrenze, die App hart bei 69 Zeichen mitten im Wort.
          */
         get: operations["qa_beispiele_api_council_qa_beispiele_get"];
         put?: never;
@@ -4394,6 +4439,298 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tipp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Beitreten Oder Tippen
+         * @description Ohne gültigen Cookie: Beitritt (``name`` Pflicht). Mit gültigem
+         *     Cookie: nur der Tipp wird aktualisiert, ``name`` bleibt unbeachtet —
+         *     umbenennen kann nur der Admin (``PUT …/admin/spieler/{id}``).
+         */
+        post: operations["beitreten_oder_tippen_api_tipp_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tipp/abmelden": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Abmelden
+         * @description Das Gerät weitergeben: Der Cookie geht, der Tipp BLEIBT — im Gegensatz
+         *     zu ``DELETE /api/tipp/me``, das die Teilnahme löscht. Gedacht für Runden
+         *     mit ``shared_device`` (ein Handy, mehrere Personen), aber unabhängig vom
+         *     Schalter erlaubt: Ein Gerät ohne Cookie ist nie ein Schaden.
+         */
+        post: operations["abmelden_api_tipp_abmelden_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tipp/admin/abfragen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Jetzt Abfragen
+         * @description „Jetzt abfragen": die Live-Zahlen der Ratswahl UND der OB-Wahl in den
+         *     Entwurf übernehmen — NICHT veröffentlicht, das bleibt ein eigener Schritt.
+         */
+        post: operations["jetzt_abfragen_api_tipp_admin_abfragen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tipp/admin/einstellungen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Einstellungen Setzen
+         * @description Schalter je Runde. ``shared_device``: ein Gerät, mehrere Personen —
+         *     Vallys Kreis (13.09.2026) hat nicht für jede Person ein Handy.
+         */
+        put: operations["einstellungen_setzen_api_tipp_admin_einstellungen_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tipp/admin/ergebnis": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Ergebnis Eintragen */
+        put: operations["ergebnis_eintragen_api_tipp_admin_ergebnis_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tipp/admin/phase": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Phase Setzen */
+        put: operations["phase_setzen_api_tipp_admin_phase_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tipp/admin/spieler/{player_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Spieler Bearbeiten */
+        put: operations["spieler_bearbeiten_api_tipp_admin_spieler__player_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tipp/admin/stand": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Admin Stand */
+        get: operations["admin_stand_api_tipp_admin_stand_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tipp/admin/veroeffentlichen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Veroeffentlichen */
+        post: operations["veroeffentlichen_api_tipp_admin_veroeffentlichen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tipp/admin/verwerfen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verwerfen */
+        post: operations["verwerfen_api_tipp_admin_verwerfen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tipp/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Meins */
+        get: operations["meins_api_tipp_me_get"];
+        put?: never;
+        post?: never;
+        /** Austreten */
+        delete: operations["austreten_api_tipp_me_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tipp/qr.png": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Qr Code */
+        get: operations["qr_code_api_tipp_qr_png_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tipp/setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Setup */
+        get: operations["setup_api_tipp_setup_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tipp/stand": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Stand */
+        get: operations["stand_api_tipp_stand_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/today/updates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Updates */
+        get: operations["updates_api_today_updates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/today/visit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Visit */
+        post: operations["visit_api_today_visit_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/topics": {
         parameters: {
             query?: never;
@@ -4406,6 +4743,29 @@ export interface paths {
         put?: never;
         /** Add Topic */
         post: operations["add_topic_api_topics_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/topics/decisions/{decision_id}/seen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark Decision Seen
+         * @description Ein Heute-Treffer wird in allen passenden EIGENEN Themen gelesen.
+         *
+         *     Das Widget fasst gleiche Beschlüsse zusammen. Die Gelesen-Marke muss
+         *     dieselbe Menge treffen, sonst taucht derselbe Beschluss erneut auf.
+         */
+        post: operations["mark_decision_seen_api_topics_decisions__decision_id__seen_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4693,7 +5053,15 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Wahlabend */
+        /**
+         * Wahlabend
+         * @description Der Wahlabend: live, als Generalprobe oder als Rückblick.
+         *
+         *     ``?wahl=<slug>`` liefert den eingefrorenen Stand einer gelaufenen Wahl aus
+         *     dem Repo (``kommunalwahl/referenz-…``). Das ist der Punkt, an dem eine
+         *     Rückblick-Seite unabhängig vom Votemanager wird: Seine Adressen tragen den
+         *     Wahltag im Pfad und wandern irgendwann ins Archiv.
+         */
         get: operations["wahlabend_api_wahlabend_get"];
         put?: never;
         post?: never;
@@ -4728,10 +5096,115 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/wahlabend/karte.png": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Wahlabend Karte
+         * @description Die Karte zum Teilen (PNG): wie eine Liste, eine Liste im Wahlbereich
+         *     oder eine Person abgeschnitten hat — mit Lotti, die den Wählenden dankt.
+         *     ``format`` wählt Beitrag (4:5), Story (9:16) oder quer; ``position``
+         *     braucht ``area``; eine Kombination, die es nicht gibt, antwortet 404.
+         */
+        get: operations["wahlabend_karte_api_wahlabend_karte_png_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/wahlabend/ob": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ob Wahl
+         * @description Die OB-Wahl für sich — hinter dem Schalter ``wahlabend`` (nicht
+         *     ``tippspiel``): Sie ist Teil des Wahlabends, nicht nur des Tippspiels.
+         *
+         *     Immer der ERSTE Wahlgang; die Stichwahl hat ihren eigenen Pfad. Daran
+         *     hängt der Vergleich des Tippspiels, und der darf sich am 27.09. nicht
+         *     unter der Hand verschieben.
+         */
+        get: operations["ob_wahl_api_wahlabend_ob_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/wahlabend/stichwahl": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stichwahl
+         * @description Die Stichwahl — 404, solange keine im Kalender steht.
+         *
+         *     Am 13.09.2026 hat niemand die absolute Mehrheit erreicht; am 27.09. läuft
+         *     deshalb die Stichwahl zwischen Ulf Prange (SPD) und Jascha Rohr (GRÜNE).
+         *     Ihre Wahl-Id beim Votemanager gibt es heute noch nicht — sie wird zur
+         *     Laufzeit in ``termin.json`` gesucht (``mayor.resolve_ids``). Bis dahin
+         *     antwortet dieser Pfad mit ``phase: "before"`` und einem Vermerk, nicht mit
+         *     einem Fehler: Eine Seite, die auf den Abend wartet, ist keine kaputte.
+         */
+        get: operations["stichwahl_api_wahlabend_stichwahl_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/wahlen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Wahlen
+         * @description Alle Wahlen, die wir zeigen — die nächste zuerst, dann rückwärts.
+         *
+         *     Öffentlich wie die Zahlen selbst. Entwürfe bleiben draußen; sie sind das
+         *     Gegenstück zum Feature-Schalter für eine einzelne Wahl.
+         */
+        get: operations["wahlen_api_wahlen_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AdminAbweisung */
+        AdminAbweisung: {
+            /** N */
+            n: number;
+            /** Reason */
+            reason: string;
+        };
         /** AdminAliasDeleted */
         AdminAliasDeleted: {
             /** Entities */
@@ -4743,6 +5216,42 @@ export interface components {
         AdminAliasList: {
             /** Aliases */
             aliases: components["schemas"]["AdminEntityAlias"][];
+        };
+        /** AdminAnmeldeTag */
+        AdminAnmeldeTag: {
+            /** Created */
+            created: number;
+            /** Day */
+            day: string;
+            /** Rejected */
+            rejected: number;
+            /** Verified */
+            verified: number;
+        };
+        /**
+         * AdminAnmeldungen
+         * @description Was bei der Registrierung ankam — und was abprallte.
+         *
+         *     Beide Seiten in einem Bild. Die Zahl der neuen Konten allein sagt nicht,
+         *     ob gerade jemand anklopft und an der Bremse oder am Wegwerf-Riegel
+         *     hängenbleibt; bis 09/2026 war genau das unsichtbar.
+         *
+         *     Nichts hier ist einer Person zuzuordnen: Die Abweisungen tragen weder
+         *     Adresse noch Domain noch Netzadresse, nur Tag, Grund und Anzahl.
+         */
+        AdminAnmeldungen: {
+            /** Created */
+            created: number;
+            /** Days */
+            days: number;
+            /** Reasons */
+            reasons: components["schemas"]["AdminAbweisung"][];
+            /** Rejected */
+            rejected: number;
+            /** Series */
+            series: components["schemas"]["AdminAnmeldeTag"][];
+            /** Verified */
+            verified: number;
         };
         /** AdminClientShare */
         AdminClientShare: {
@@ -5450,6 +5959,8 @@ export interface components {
             deep_limit: number | null;
             /** Delivery Channel */
             delivery_channel: string;
+            /** Display Name */
+            display_name: string | null;
             /** Email */
             email: string;
             features: components["schemas"]["AdminUserFeatures"];
@@ -5515,6 +6026,8 @@ export interface components {
             };
             /** Created At */
             created_at: string | null;
+            /** Display Name */
+            display_name: string | null;
             /** Email */
             email: string;
             /** Id */
@@ -5668,6 +6181,30 @@ export interface components {
          */
         AppConfigOut: {
             /**
+             * AppElectionOut
+             * @description Die Wahl, die gerade ansteht — klein genug für jede Seite.
+             *
+             *     Warum hier und nicht nur in ``/api/wahlabend``: Startseite, Heute-Karte
+             *     und Dashboard zeigen einen Countdown, ohne den ganzen Wahlabend zu laden.
+             *     Bis 09/2026 stand der Termin dafür als ``WAHLABEND_BEGINN_UTC`` im
+             *     Frontend — eine Konstante, die ein Deploy braucht und die niemand mit der
+             *     Registry abgleicht.
+             */
+            election?: {
+                /** Date */
+                date: string;
+                /** Kind */
+                kind: string;
+                /** Path */
+                path: string;
+                /** Polls Close */
+                polls_close: string;
+                /** Short Title */
+                short_title: string;
+                /** Slug */
+                slug: string;
+            } | null;
+            /**
              * Features
              * @default []
              */
@@ -5676,6 +6213,30 @@ export interface components {
             min_build: number;
             /** Note */
             note?: string | null;
+        };
+        /**
+         * AppElectionOut
+         * @description Die Wahl, die gerade ansteht — klein genug für jede Seite.
+         *
+         *     Warum hier und nicht nur in ``/api/wahlabend``: Startseite, Heute-Karte
+         *     und Dashboard zeigen einen Countdown, ohne den ganzen Wahlabend zu laden.
+         *     Bis 09/2026 stand der Termin dafür als ``WAHLABEND_BEGINN_UTC`` im
+         *     Frontend — eine Konstante, die ein Deploy braucht und die niemand mit der
+         *     Registry abgleicht.
+         */
+        AppElectionOut: {
+            /** Date */
+            date: string;
+            /** Kind */
+            kind: string;
+            /** Path */
+            path: string;
+            /** Polls Close */
+            polls_close: string;
+            /** Short Title */
+            short_title: string;
+            /** Slug */
+            slug: string;
         };
         /** AppleLoginRequest */
         AppleLoginRequest: {
@@ -6927,7 +7488,7 @@ export interface components {
             /** Next Session Date */
             next_session_date: string | null;
             /** Note */
-            note: string | null;
+            note: string;
             /** Until */
             until: string | null;
         };
@@ -7836,14 +8397,64 @@ export interface components {
                 [key: string]: number;
             };
         };
-        /** ElectionInfo */
+        /**
+         * ElectionInfo
+         * @description Wer wählt was, wann — aus ``kommunalwahl/wahlen/``.
+         *
+         *     Bis 09/2026 trug diese Form nur Datum, Sitzzahl und den amtlichen Titel;
+         *     „Ratswahl Oldenburg", „13. September 2026" und der Wahlschluss standen
+         *     daneben als Literale im Frontend. Jetzt kommt beides von hier — eine
+         *     andere Wahl in der Registry ändert die Seite, ohne dass jemand eine
+         *     Überschrift nachzieht.
+         */
         ElectionInfo: {
             /** Date */
             date: string;
+            /** Polls Close */
+            polls_close: string;
             /** Presentation Url */
             presentation_url: string;
+            /** Previous Label */
+            previous_label: string;
             /** Seats */
             seats: number;
+            /** Short Title */
+            short_title: string;
+            /** Slug */
+            slug: string;
+            /** Status */
+            status: string;
+            /** Title */
+            title: string;
+        };
+        /** ElectionList */
+        ElectionList: {
+            /** Elections */
+            elections: components["schemas"]["ElectionListItem"][];
+        };
+        /**
+         * ElectionListItem
+         * @description Eine Zeile der Übersicht unter ``/wahlen``.
+         */
+        ElectionListItem: {
+            /** Date */
+            date: string;
+            /** Focus */
+            focus: boolean;
+            /** Kind */
+            kind: string;
+            /** Path */
+            path: string;
+            /** Polls Close */
+            polls_close: string;
+            /** Short Title */
+            short_title: string;
+            /** Slug */
+            slug: string;
+            /** Status */
+            status: string;
+            /** Summary */
+            summary: string | null;
             /** Title */
             title: string;
         };
@@ -7907,12 +8518,12 @@ export interface components {
             projected_seats: number | null;
             /** Seats */
             seats: number | null;
-            /** Seats 2021 */
-            seats_2021: number | null;
-            /** Share 2021 Pct */
-            share_2021_pct: number | null;
+            /** Seats Previous */
+            seats_previous: number | null;
             /** Share Pct */
             share_pct: number | null;
+            /** Share Previous Pct */
+            share_previous_pct: number | null;
             /** Short */
             short: string;
             /** Slug */
@@ -8517,6 +9128,38 @@ export interface components {
             };
             /** Peers */
             peers: number;
+            /**
+             * IdeaProtocol
+             * @description Was die Niederschrift der Sitzung zu dieser Vorlage sagt.
+             *
+             *     Das „Warum" — der Grund, aus dem der Städtevergleich überhaupt gebaut
+             *     wurde: Dass Magdeburg die Verpackungssteuer-Prüfung eingestellt hat, sagt
+             *     die Karte schon; *warum* der Rat das tat, ist das, was eine Oldenburger
+             *     Fraktion in ihrer eigenen Sitzung braucht.
+             *
+             *     **``grounded`` entscheidet, ob überhaupt etwas gezeigt wird.** Steht im
+             *     Abschnitt nur ein Ergebnis und keine Begründung — der häufigere Fall —,
+             *     ist es ``False``, ``why`` bleibt leer, und die Oberfläche zeigt an dieser
+             *     Stelle nichts. Eine erfundene Begründung wäre schlimmer als gar keine.
+             */
+            protocol: {
+                /** Date */
+                date: string | null;
+                /** Decided */
+                decided: string;
+                /** Discussed */
+                discussed: string;
+                /** Grounded */
+                grounded: boolean;
+                /** Organization */
+                organization: string | null;
+                /** Vote */
+                vote: string | null;
+                /** Why */
+                why: string;
+            } | null;
+            /** Protocol Source */
+            protocol_source: string;
             /** Reason */
             reason: string;
             /** Siblings */
@@ -8533,6 +9176,8 @@ export interface components {
             votes: string;
             /** Web */
             web: string | null;
+            /** Window Since */
+            window_since: string | null;
         };
         /**
          * IdeaEvidence
@@ -8570,8 +9215,40 @@ export interface components {
         };
         /** IdeaFields */
         IdeaFields: {
+            /** Bodies */
+            bodies: string[];
             /** Fields */
             fields: components["schemas"]["IdeaFieldSummary"][];
+        };
+        /**
+         * IdeaProtocol
+         * @description Was die Niederschrift der Sitzung zu dieser Vorlage sagt.
+         *
+         *     Das „Warum" — der Grund, aus dem der Städtevergleich überhaupt gebaut
+         *     wurde: Dass Magdeburg die Verpackungssteuer-Prüfung eingestellt hat, sagt
+         *     die Karte schon; *warum* der Rat das tat, ist das, was eine Oldenburger
+         *     Fraktion in ihrer eigenen Sitzung braucht.
+         *
+         *     **``grounded`` entscheidet, ob überhaupt etwas gezeigt wird.** Steht im
+         *     Abschnitt nur ein Ergebnis und keine Begründung — der häufigere Fall —,
+         *     ist es ``False``, ``why`` bleibt leer, und die Oberfläche zeigt an dieser
+         *     Stelle nichts. Eine erfundene Begründung wäre schlimmer als gar keine.
+         */
+        IdeaProtocol: {
+            /** Date */
+            date: string | null;
+            /** Decided */
+            decided: string;
+            /** Discussed */
+            discussed: string;
+            /** Grounded */
+            grounded: boolean;
+            /** Organization */
+            organization: string | null;
+            /** Vote */
+            vote: string | null;
+            /** Why */
+            why: string;
         };
         /**
          * IdeaSearchResponse
@@ -8946,6 +9623,81 @@ export interface components {
             template_number: string | null;
             /** Title */
             title: string;
+        };
+        /** MayorCandidate */
+        MayorCandidate: {
+            /** Color */
+            color: string;
+            /** Color Dark */
+            color_dark: string;
+            /** First Round Pct */
+            first_round_pct: number | null;
+            /** Name */
+            name: string;
+            /** Party */
+            party: string;
+            /** Share Pct */
+            share_pct: number | null;
+            /** Slug */
+            slug: string;
+            /** Votes */
+            votes: number | null;
+        };
+        /**
+         * MayorElectionInfo
+         * @description Welche Wahl das hier ist — aus ``kommunalwahl/wahlen/``.
+         *
+         *     Stand bis 09/2026 nicht in der Antwort: Es gab genau eine OB-Wahl, und
+         *     die Seite kannte sie auswendig. Mit der Stichwahl am 27.09. sind es zwei,
+         *     und die Überschrift darf nicht mehr im Frontend stehen.
+         */
+        MayorElectionInfo: {
+            /** Date */
+            date: string;
+            /** Is Runoff */
+            is_runoff: boolean;
+            /** Polls Close */
+            polls_close: string;
+            /** Presentation Url */
+            presentation_url: string;
+            /** Short Title */
+            short_title: string;
+            /** Slug */
+            slug: string;
+            /** Title */
+            title: string;
+        };
+        /** MayorNight */
+        MayorNight: {
+            /** Candidates */
+            candidates: components["schemas"]["MayorCandidate"][];
+            /** Dataset */
+            dataset: string;
+            /** Elected */
+            elected: string | null;
+            election: components["schemas"]["MayorElectionInfo"];
+            /** Error */
+            error: string | null;
+            /** Fetched At */
+            fetched_at: string | null;
+            /** Invalid Ballots */
+            invalid_ballots: number | null;
+            /** Notes */
+            notes: string[];
+            /** Ok */
+            ok: boolean;
+            /** Phase */
+            phase: string;
+            /** Reports Expected */
+            reports_expected: number;
+            /** Reports Received */
+            reports_received: number;
+            /** Runoff */
+            runoff: string[];
+            /** Turnout Pct */
+            turnout_pct: number | null;
+            /** Valid Votes */
+            valid_votes: number | null;
         };
         /** MediaUpload */
         MediaUpload: {
@@ -9518,6 +10270,389 @@ export interface components {
             /** Fields */
             fields: components["schemas"]["PolicyField"][];
         };
+        /**
+         * PredictionAdminPlayer
+         * @description Eine Zeile der Teilnehmerliste im Admin-Panel (1h) — zum Ausblenden
+         *     und Umbenennen. Anders als ``PredictionRow`` auf der öffentlichen Tafel
+         *     zeigt diese Liste AUCH ausgeblendete Personen, denn genau die will der
+         *     Admin wiederfinden können.
+         */
+        PredictionAdminPlayer: {
+            /** Has Mayor Tip */
+            has_mayor_tip: boolean;
+            /** Has Tip */
+            has_tip: boolean;
+            /** Hidden */
+            hidden: boolean;
+            /** Id */
+            id: number;
+            /** Late At */
+            late_at: string | null;
+            /** Name */
+            name: string;
+        };
+        /** PredictionAdminStand */
+        PredictionAdminStand: {
+            game: components["schemas"]["PredictionGame"];
+            /** Log */
+            log: string[];
+            /** Players */
+            players: components["schemas"]["PredictionAdminPlayer"][];
+            /** Results */
+            results: components["schemas"]["PredictionResultRow"][];
+            /** Rounds */
+            rounds: components["schemas"]["PredictionRoundInfo"][];
+        };
+        /** PredictionCompareLine */
+        PredictionCompareLine: {
+            /** Actual */
+            actual: number | null;
+            /** Avg Tip */
+            avg_tip: number | null;
+            /** Color */
+            color: string;
+            /** Color Dark */
+            color_dark: string;
+            /** Exact Count */
+            exact_count: number;
+            /** Short */
+            short: string;
+            /** Slug */
+            slug: string;
+        };
+        /** PredictionGame */
+        PredictionGame: {
+            /** Deadline Hint */
+            deadline_hint: string;
+            /** Election Date */
+            election_date: string;
+            /** Election Slug */
+            election_slug: string;
+            /** Election Title */
+            election_title: string;
+            /** Late Scored */
+            late_scored: boolean;
+            /** Listed */
+            listed: boolean;
+            /** Locked */
+            locked: boolean;
+            /** Locked At */
+            locked_at: string | null;
+            /** Mayor Candidates */
+            mayor_candidates: components["schemas"]["PredictionMayorCandidate"][];
+            /** Parties */
+            parties: components["schemas"]["PredictionParty"][];
+            /** Phase */
+            phase: string;
+            /** Player Count */
+            player_count: number;
+            /** Previous Label */
+            previous_label: string;
+            /** Round */
+            round: string;
+            /** Seats Total */
+            seats_total: number;
+            /** Shared Device */
+            shared_device: boolean;
+            /** Tip Kind */
+            tip_kind: string;
+            /** Title */
+            title: string;
+        };
+        /**
+         * PredictionJoinIn
+         * @description ``POST /api/tipp`` legt an ODER aktualisiert — beides derselbe Endpunkt
+         *     (ohne Cookie: Beitritt, ``name`` Pflicht; mit gültigem Cookie: nur der
+         *     Tipp wird aktualisiert, ``name`` bleibt unbeachtet — umbenennen kann nur
+         *     der Admin, s. 1h). ``seats``/``mayor`` fehlen beim ersten Anruf aus 1c oft
+         *     noch (die Namenseingabe kommt vor dem Tippformular); erst wenn beides da
+         *     ist, wird ein Tipp gespeichert.
+         */
+        PredictionJoinIn: {
+            /** Mayor */
+            mayor?: {
+                [key: string]: number;
+            } | null;
+            /** Name */
+            name?: string | null;
+            /** Seats */
+            seats?: {
+                [key: string]: number;
+            } | null;
+        };
+        /** PredictionMayorCandidate */
+        PredictionMayorCandidate: {
+            /** Name */
+            name: string;
+            /** Party */
+            party: string;
+            /** Slug */
+            slug: string;
+        };
+        /**
+         * PredictionMayorCompareLine
+         * @description Die OB-Zeile auf der ÖFFENTLICHEN Tafel (1g) — anders als
+         *     ``PredictionMayorLine`` (die EINEN Tipp beschreibt: „meins" in 1e/1f)
+         *     gibt es hier keine einzelne Person, deren Tipp „der" Tipp wäre.
+         */
+        PredictionMayorCompareLine: {
+            /** Actual Pct */
+            actual_pct: number | null;
+            /** Avg Tip */
+            avg_tip: number | null;
+            /** Name */
+            name: string;
+            /** Party */
+            party: string;
+            /** Slug */
+            slug: string;
+        };
+        /** PredictionMayorLine */
+        PredictionMayorLine: {
+            /** Actual Pct */
+            actual_pct: number | null;
+            /** Avg Tip */
+            avg_tip: number | null;
+            /** Points */
+            points: number;
+            /** Slug */
+            slug: string;
+            /** Tip */
+            tip: number;
+        };
+        /** PredictionMine */
+        PredictionMine: {
+            /** Has Mayor Tip */
+            has_mayor_tip: boolean;
+            /** Has Tip */
+            has_tip: boolean;
+            /** Late At */
+            late_at: string | null;
+            /** Locked */
+            locked: boolean;
+            /** Mayor */
+            mayor: components["schemas"]["PredictionMayorLine"][];
+            /** Name */
+            name: string;
+            /** Notes */
+            notes: string[];
+            /** Phase */
+            phase: string;
+            /** Player Id */
+            player_id: number;
+            /** Rank */
+            rank: number | null;
+            /** Rank Before */
+            rank_before: number | null;
+            /** PredictionScore */
+            score: {
+                /** Deviation */
+                deviation: number | null;
+                /** Exact Lists */
+                exact_lists: number;
+                /** Mayor Points */
+                mayor_points: number;
+                /** Seat Points */
+                seat_points: number;
+                /** Total */
+                total: number;
+            } | null;
+            /** Scored */
+            scored: boolean;
+            /** Seats */
+            seats: components["schemas"]["PredictionSeatLine"][];
+            /** Source Label */
+            source_label: string;
+            /** Stand Label */
+            stand_label: string;
+        };
+        /** PredictionParty */
+        PredictionParty: {
+            /** Color */
+            color: string;
+            /** Color Dark */
+            color_dark: string;
+            /** Name */
+            name: string;
+            /** Seats Previous */
+            seats_previous: number | null;
+            /** Short */
+            short: string;
+            /** Slug */
+            slug: string;
+        };
+        /** PredictionPhaseIn */
+        PredictionPhaseIn: {
+            /** Late Scored */
+            late_scored?: boolean | null;
+            /**
+             * Phase
+             * @enum {string}
+             */
+            phase: "open" | "locked" | "final";
+        };
+        /** PredictionPlayerIn */
+        PredictionPlayerIn: {
+            /** Hidden */
+            hidden?: boolean | null;
+            /** Name */
+            name?: string | null;
+        };
+        /** PredictionResultLineIn */
+        PredictionResultLineIn: {
+            /** Pct */
+            pct?: number | null;
+            /** Seats */
+            seats?: number | null;
+            /** Slug */
+            slug: string;
+        };
+        /**
+         * PredictionResultRow
+         * @description Eine Zeile der Admin-Tabelle (1h) — Entwurf UND veröffentlichter Stand.
+         */
+        PredictionResultRow: {
+            /** Avg Tip */
+            avg_tip: number | null;
+            /** Exact Count */
+            exact_count: number;
+            /** Pct */
+            pct: number | null;
+            /** Published At */
+            published_at: string | null;
+            /** Published Pct */
+            published_pct: number | null;
+            /** Published Seats */
+            published_seats: number | null;
+            /** Published Source */
+            published_source: string | null;
+            /** Seats */
+            seats: number | null;
+            /** Slug */
+            slug: string;
+            /** Source */
+            source: string;
+        };
+        /**
+         * PredictionRoundInfo
+         * @description Eine Runde im Runden-Umschalter des Admins (1h).
+         */
+        PredictionRoundInfo: {
+            /** Listed */
+            listed: boolean;
+            /** Phase */
+            phase: string;
+            /** Player Count */
+            player_count: number;
+            /** Slug */
+            slug: string;
+            /** Title */
+            title: string;
+        };
+        /** PredictionRow */
+        PredictionRow: {
+            /** Has Tip */
+            has_tip: boolean;
+            /** Late At */
+            late_at: string | null;
+            /** Name */
+            name: string;
+            /** Player Id */
+            player_id: number;
+            /** Rank */
+            rank: number | null;
+            /** Rank Before */
+            rank_before: number | null;
+            /** PredictionScore */
+            score: {
+                /** Deviation */
+                deviation: number | null;
+                /** Exact Lists */
+                exact_lists: number;
+                /** Mayor Points */
+                mayor_points: number;
+                /** Seat Points */
+                seat_points: number;
+                /** Total */
+                total: number;
+            } | null;
+            /** Scored */
+            scored: boolean;
+        };
+        /** PredictionScore */
+        PredictionScore: {
+            /** Deviation */
+            deviation: number | null;
+            /** Exact Lists */
+            exact_lists: number;
+            /** Mayor Points */
+            mayor_points: number;
+            /** Seat Points */
+            seat_points: number;
+            /** Total */
+            total: number;
+        };
+        /** PredictionSeatLine */
+        PredictionSeatLine: {
+            /** Actual */
+            actual: number | null;
+            /** Avg Tip */
+            avg_tip: number | null;
+            /** Exact */
+            exact: boolean;
+            /** Points */
+            points: number;
+            /** Slug */
+            slug: string;
+            /** Tip */
+            tip: number;
+        };
+        /**
+         * PredictionSettingsIn
+         * @description ``PUT /api/tipp/admin/einstellungen`` — Schalter je Runde. Nur was
+         *     gesetzt ist, wird geändert.
+         */
+        PredictionSettingsIn: {
+            /** Late Scored */
+            late_scored?: boolean | null;
+            /** Shared Device */
+            shared_device?: boolean | null;
+        };
+        /** PredictionStand */
+        PredictionStand: {
+            /** Area Label */
+            area_label: string;
+            /** Compare */
+            compare: components["schemas"]["PredictionCompareLine"][];
+            /** Compare Sentence */
+            compare_sentence: string;
+            /** Computed At */
+            computed_at: string;
+            /** Leader Player Id */
+            leader_player_id: number | null;
+            /** Mayor */
+            mayor: components["schemas"]["PredictionMayorCompareLine"][];
+            /** Mayor Status */
+            mayor_status: string;
+            /** Notes */
+            notes: string[];
+            /** Phase */
+            phase: string;
+            /** Player Count */
+            player_count: number;
+            /** Rows */
+            rows: components["schemas"]["PredictionRow"][];
+            /** Seats Total */
+            seats_total: number;
+            /** Source Label */
+            source_label: string;
+            /** Stand Label */
+            stand_label: string;
+            /** Tip Count */
+            tip_count: number;
+            /** Title */
+            title: string;
+        };
         /** ProjectReportIn */
         ProjectReportIn: {
             /** Reason */
@@ -9548,10 +10683,28 @@ export interface components {
             /** Token */
             token: string;
         };
+        /**
+         * QaExampleSession
+         * @description Eine Sitzung als Anlass für eine frische Beispielfrage.
+         *
+         *     ``top_titel`` ist der wichtigste Beschluss der Sitzung, vom Server bereits
+         *     auf den Gegenstand eingedampft; ``n`` sagt, wie viele Beschlüsse die
+         *     Sitzung überhaupt hat.
+         */
+        QaExampleSession: {
+            /** Committee */
+            committee: string;
+            /** N */
+            n: number;
+            /** Session Date */
+            session_date: string;
+            /** Top Titel */
+            top_titel: string | null;
+        };
         /** QaExamples */
         QaExamples: {
             /** Sessions */
-            sessions: unknown;
+            sessions: components["schemas"]["QaExampleSession"][];
         };
         /** QaFeedbackBody */
         QaFeedbackBody: {
@@ -10840,6 +11993,62 @@ export interface components {
             /** Tops */
             tops: string[];
         };
+        /** TodayUpdate */
+        TodayUpdate: {
+            /** Arrived */
+            arrived: string;
+            /** Committee */
+            committee: string;
+            /** Decision Count */
+            decision_count: number;
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "protocol" | "agenda" | "agenda_change";
+            /** Ksinr */
+            ksinr: number;
+            /** Session Date */
+            session_date: string;
+        };
+        /** TodayUpdateGroup */
+        TodayUpdateGroup: {
+            /** Committee */
+            committee: string;
+            /** Count */
+            count: number;
+            /** First Session Date */
+            first_session_date: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "protocol" | "agenda" | "agenda_change";
+            /** Last Session Date */
+            last_session_date: string;
+            latest: components["schemas"]["TodayUpdate"];
+        };
+        /** TodayUpdates */
+        TodayUpdates: {
+            /** Counts */
+            counts: {
+                [key: string]: number;
+            };
+            /** First Visit */
+            first_visit: boolean;
+            /** Groups */
+            groups: components["schemas"]["TodayUpdateGroup"][];
+            /** Items */
+            items: components["schemas"]["TodayUpdate"][];
+            /** Since */
+            since: string;
+            /** Total */
+            total: number;
+            /** Until */
+            until: string;
+        };
         /** TopicDecision */
         TopicDecision: {
             /** Committee */
@@ -10952,6 +12161,8 @@ export interface components {
             topic_count: number;
             /** Total */
             total: number;
+            /** Unread Decisions */
+            unread_decisions: number;
             /** Unread Total */
             unread_total: number;
         };
@@ -11275,7 +12486,7 @@ export interface components {
              * Outcome
              * @enum {string}
              */
-            outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision";
+            outcome: "accepted" | "rejected" | "postponed" | "noted" | "removed";
             /** Quote */
             quote: string;
             /** Video Id */
@@ -11284,6 +12495,15 @@ export interface components {
             video_seconds: number | null;
             /** Vote */
             vote: string | null;
+        };
+        /** VisitWindow */
+        VisitWindow: {
+            /** First Visit */
+            first_visit: boolean;
+            /** Since */
+            since: string;
+            /** Until */
+            until: string;
         };
         /** WebUserOut */
         WebUserOut: {
@@ -12523,6 +13743,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminSeitenaufrufe"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stats_signups_api_admin_stats_signups_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAnmeldungen"];
                 };
             };
             /** @description Validation Error */
@@ -16706,6 +17957,553 @@ export interface operations {
             };
         };
     };
+    beitreten_oder_tippen_api_tipp_post: {
+        parameters: {
+            query?: {
+                round?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PredictionJoinIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PredictionMine"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    abmelden_api_tipp_abmelden_post: {
+        parameters: {
+            query?: {
+                round?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ok"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    jetzt_abfragen_api_tipp_admin_abfragen_post: {
+        parameters: {
+            query?: {
+                round?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PredictionAdminStand"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    einstellungen_setzen_api_tipp_admin_einstellungen_put: {
+        parameters: {
+            query?: {
+                round?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PredictionSettingsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PredictionAdminStand"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ergebnis_eintragen_api_tipp_admin_ergebnis_put: {
+        parameters: {
+            query?: {
+                round?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PredictionResultLineIn"][];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PredictionAdminStand"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    phase_setzen_api_tipp_admin_phase_put: {
+        parameters: {
+            query?: {
+                round?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PredictionPhaseIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PredictionAdminStand"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    spieler_bearbeiten_api_tipp_admin_spieler__player_id__put: {
+        parameters: {
+            query?: {
+                round?: string | null;
+            };
+            header?: never;
+            path: {
+                player_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PredictionPlayerIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PredictionAdminStand"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_stand_api_tipp_admin_stand_get: {
+        parameters: {
+            query?: {
+                round?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PredictionAdminStand"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    veroeffentlichen_api_tipp_admin_veroeffentlichen_post: {
+        parameters: {
+            query?: {
+                round?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PredictionAdminStand"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    verwerfen_api_tipp_admin_verwerfen_post: {
+        parameters: {
+            query?: {
+                round?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PredictionAdminStand"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    meins_api_tipp_me_get: {
+        parameters: {
+            query?: {
+                probe?: string | null;
+                counted?: number | null;
+                round?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PredictionMine"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    austreten_api_tipp_me_delete: {
+        parameters: {
+            query?: {
+                round?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ok"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    qr_code_api_tipp_qr_png_get: {
+        parameters: {
+            query?: {
+                round?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    setup_api_tipp_setup_get: {
+        parameters: {
+            query?: {
+                round?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PredictionGame"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stand_api_tipp_stand_get: {
+        parameters: {
+            query?: {
+                probe?: string | null;
+                counted?: number | null;
+                round?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PredictionStand"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    updates_api_today_updates_get: {
+        parameters: {
+            query?: {
+                offset?: number;
+                limit?: number;
+                since?: string | null;
+                until?: string | null;
+                kind?: "protocol" | "agenda" | "agenda_change" | null;
+                committee?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TodayUpdates"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    visit_api_today_visit_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VisitWindow"];
+                };
+            };
+        };
+    };
     list_topics_api_topics_get: {
         parameters: {
             query?: never;
@@ -16759,6 +18557,37 @@ export interface operations {
             };
         };
     };
+    mark_decision_seen_api_topics_decisions__decision_id__seen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                decision_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MarkedHits"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     describe_topic_api_topics_describe_post: {
         parameters: {
             query?: never;
@@ -16796,6 +18625,7 @@ export interface operations {
         parameters: {
             query?: {
                 limit?: number;
+                unread_only?: boolean;
             };
             header?: never;
             path?: never;
@@ -17066,10 +18896,12 @@ export interface operations {
     wahlabend_api_wahlabend_get: {
         parameters: {
             query?: {
-                /** @description „2021“ = Generalprobe mit den Zahlen von 2021 */
+                /** @description gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert) */
                 probe?: string | null;
                 /** @description Generalprobe: nur die ersten N Wahlbezirke ausgezählt */
                 counted?: number | null;
+                /** @description Slug einer gelaufenen Wahl — ihr eingefrorener Stand, ohne Abruf */
+                wahl?: string | null;
             };
             header?: never;
             path?: never;
@@ -17102,7 +18934,7 @@ export interface operations {
             query?: {
                 /** @description „seats“ = ausgezählter Stand, „projected_seats“ = Hochrechnung; Vorgabe je Phase */
                 feld?: string | null;
-                /** @description „2021“ = Generalprobe mit den Zahlen von 2021 */
+                /** @description gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert) */
                 probe?: string | null;
                 /** @description Generalprobe: nur die ersten N Wahlbezirke ausgezählt */
                 counted?: number | null;
@@ -17140,6 +18972,145 @@ export interface operations {
             };
         };
     };
+    wahlabend_karte_api_wahlabend_karte_png_get: {
+        parameters: {
+            query: {
+                /** @description Slug der Liste, z. B. „gruene“ */
+                list: string;
+                /** @description Wahlbereich (1–6): die Liste dort */
+                area?: number | null;
+                /** @description Listenplatz im Wahlbereich: die Person */
+                position?: number | null;
+                /** @description „beitrag“ = 1080×1350 (4:5), „story“ = 1080×1920 (9:16), „quer“ = 1200×630 */
+                format?: string;
+                /** @description false = ohne den Abstand zur Vorwahl (Listenkarte) */
+                compare?: boolean;
+                /** @description gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert) */
+                probe?: string | null;
+                /** @description Generalprobe: nur die ersten N Wahlbezirke ausgezählt */
+                counted?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Die Karte zum Teilen (PNG): wie eine Liste (`?list=`), eine Liste im Wahlbereich (`&area=`) oder eine Person (`&position=`) abgeschnitten hat — Anteil, Sitze, Stimmen, Abstand zu 2021 bzw. Personenstimmen und Status, dazu Lotti mit dem Dank an die Wählenden. `&format=beitrag` (1080×1350, Vorgabe), `story` (1080×1920) oder `quer` (1200×630); `&compare=false` lässt den Abstand zu 2021 weg. Eine Minute cachebar. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": string;
+                };
+            };
+            /** @description Wahlabend nicht freigeschaltet, oder Liste/Wahlbereich/Listenplatz gibt es nicht. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ob_wahl_api_wahlabend_ob_get: {
+        parameters: {
+            query?: {
+                /** @description gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert) */
+                probe?: string | null;
+                /** @description Generalprobe: nur die ersten N Wahlbezirke ausgezählt */
+                counted?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MayorNight"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stichwahl_api_wahlabend_stichwahl_get: {
+        parameters: {
+            query?: {
+                /** @description gesetzt = Generalprobe mit den Zahlen des ersten Wahlgangs */
+                probe?: string | null;
+                /** @description Generalprobe: nur die ersten N Wahlbezirke ausgezählt */
+                counted?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MayorNight"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    wahlen_api_wahlen_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ElectionList"];
+                };
+            };
+        };
+    };
 }
 
-// vertrag-sha256: 18c264586a2f426249e0cafd96143e6d597bd56b253188b963b4e75826fdeaef
+// vertrag-sha256: 8e254458cd7c956b13af8148fdc7885bc7561414fc2fa8cb7f86df14fa9adfda

@@ -235,6 +235,33 @@ function Haltungen({ idee }: { idee: Idee }) {
   );
 }
 
+/** Woher die Karte ihr Wissen über diese Stadt hat — und woher nicht.
+ *
+ * **Drei Zustände, nicht zwei.** „Kein Warum" heißt bei Magdeburg, dass die
+ * Protokolle nicht abrufbar sind; bei Hannover, dass die Stadt ihre
+ * Beratungsergebnisse ausdrücklich zurückhält. Wer beides gleich darstellt,
+ * lässt eine Entscheidung der Stadt wie eine Lücke in unseren Daten aussehen.
+ */
+const NIEDERSCHRIFTEN: Record<string, string> = {
+  available: "mit Niederschriften",
+  none: "ohne Niederschriften",
+  withheld: "Niederschriften nicht öffentlich",
+};
+
+function Herkunft({ idee }: { idee: Idee }) {
+  const teile = [
+    // „Vergleich ab", nicht „Beschlüsse ab": Das Fenster gehört der STADT,
+    // nicht dieser Vorlage. Die Suche findet auch ältere — eine Hannoveraner
+    // von 2021 unter der Zeile „Beschlüsse ab 2023" widerspricht sich selbst.
+    idee.window_since ? `Vergleich ab ${idee.window_since.slice(0, 4)}` : null,
+    NIEDERSCHRIFTEN[idee.protocol_source] ?? null,
+  ].filter(Boolean);
+  if (teile.length === 0) return null;
+  return (
+    <p className="mt-0.5 text-[11px] text-muted-foreground/80">{teile.join(" · ")}</p>
+  );
+}
+
 function IdeenKarte({ idee }: { idee: Idee }) {
   const status = STATUS[idee.status];
   const kopf = [ART[idee.kind] ?? null, datum(idee.date)].filter(Boolean).join(" · ");
@@ -270,6 +297,7 @@ function IdeenKarte({ idee }: { idee: Idee }) {
           </span>
         )}
       </div>
+      <Herkunft idee={idee} />
 
       <h3 className="mt-1.5 text-sm font-semibold text-foreground">{idee.name}</h3>
       {/* Die eigene Haltung, aber nur wenn sie GEGEN die Sache geht. „Dafür"
@@ -320,6 +348,44 @@ function IdeenKarte({ idee }: { idee: Idee }) {
         )}
         <Rueckmeldung idee={idee} />
       </div>
+
+      {/* Das „Warum" aus der Niederschrift. Steht nur da, wenn im Protokoll
+          wirklich eine Begründung steht — der Annotator sagt das mit
+          `grounded`, und das Backend gibt sonst `null`. Ein „Warum", das aus
+          dem Ergebnis erschlossen wäre, ist eine Behauptung über einen echten
+          Ratsbeschluss; lieber eine Leerstelle. */}
+      {idee.protocol && (
+        <details className="mt-3">
+          <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
+            Warum es in {idee.body_name} so ausging
+          </summary>
+          <div className="mt-1.5 space-y-1.5 border-l-2 border-border pl-3">
+            {idee.protocol.decided && (
+              <p className="text-xs leading-relaxed text-foreground">
+                {idee.protocol.decided}
+                {idee.protocol.vote && (
+                  <span className="ml-1.5 rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">
+                    {idee.protocol.vote}
+                  </span>
+                )}
+              </p>
+            )}
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              {idee.protocol.why}
+            </p>
+            {idee.protocol.discussed && (
+              <p className="text-xs leading-relaxed text-muted-foreground/80">
+                {idee.protocol.discussed}
+              </p>
+            )}
+            <p className="text-[11px] text-muted-foreground/70">
+              aus der Niederschrift
+              {idee.protocol.organization ? ` des ${idee.protocol.organization}` : ""}
+              {idee.protocol.date ? ` vom ${datum(idee.protocol.date)}` : ""}
+            </p>
+          </div>
+        </details>
+      )}
 
       {(idee.siblings ?? []).length > 0 && (
         <details className="mt-3">
@@ -491,6 +557,18 @@ export default function View() {
   const params = useSearchParams();
   const feld = useMemo(() => params?.get("feld") ?? null, [params]);
   const [frage, setFrage] = useState("");
+  const { data: felder } = useQuery({
+    queryKey: ["ideen-felder"],
+    queryFn: () => api.get<Felder>("/council/cities/ideas/fields"),
+    staleTime: 60 * 60 * 1000,
+  });
+  // „A, B und C" — die letzte mit „und", wie man es schreibt.
+  const staedte = useMemo(() => {
+    const namen = felder?.bodies ?? [];
+    if (namen.length === 0) return "anderen Städten";
+    if (namen.length === 1) return namen[0];
+    return `${namen.slice(0, -1).join(", ")} und ${namen[namen.length - 1]}`;
+  }, [felder]);
 
   if (!an) return null;
 
@@ -499,11 +577,15 @@ export default function View() {
       <div>
         <h1 className="text-xl font-semibold text-foreground">Ideen aus anderen Städten</h1>
         <p className="mt-1 max-w-prose text-sm text-muted-foreground">
-          Was Räte in Osnabrück, Braunschweig, Münster, Potsdam und Magdeburg
-          beschlossen haben — und ob Oldenburg dasselbe schon hat. Das prüft
-          ein Sprachmodell an Oldenburger Beschlüssen; sie stehen unter jeder
-          Idee. Ob sich ein Antrag lohnt, sagt hier bewusst niemand: Das hängt
-          an Mehrheiten und Haushaltslage.
+          {/* Die Städte kommen aus den DATEN, nicht aus diesem Satz. Fest
+              aufgezählt stand hier bis zum 13.09.2026 „Osnabrück,
+              Braunschweig, Münster, Potsdam und Magdeburg" — und das war
+              falsch, sobald Hannover, Wolfsburg und Hildesheim dazukamen.
+              Eine Aufzählung als Prosa veraltet beim nächsten Adapter. */}
+          Was Räte in {staedte} beschlossen haben — und ob Oldenburg dasselbe
+          schon hat. Das prüft ein Sprachmodell an Oldenburger Beschlüssen;
+          sie stehen unter jeder Idee. Ob sich ein Antrag lohnt, sagt hier
+          bewusst niemand: Das hängt an Mehrheiten und Haushaltslage.
         </p>
       </div>
       <Suchzeile onTreffer={setFrage} />

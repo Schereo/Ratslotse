@@ -240,6 +240,76 @@ Bericht ist dort das Mittel, nicht der Zweck.
 
 
 
+
+PROMPT_CITIES_REASON = """Du liest den Abschnitt einer Sitzungs-Niederschrift, der zu
+EINEM Tagesordnungspunkt gehört, und gibst wieder, was dort steht.
+
+Antworte NUR mit diesem JSON:
+{{"discussed": "<worum die Debatte ging, max. 400 Zeichen>",
+  "decided":   "<was beschlossen wurde, nah am Wortlaut, max. 200 Zeichen>",
+  "vote":      "<das Abstimmungsergebnis, wie es dasteht — oder null>",
+  "why":       "<die Begründung, WIE SIE IM TEXT STEHT, max. 300 Zeichen>",
+  "grounded":  true|false}}
+
+DU GIBST WIEDER, DU ERKLÄRST NICHT. Das ist die wichtigste Regel und der
+Unterschied zwischen brauchbar und wertlos. Warum ein Rat so entschieden hat,
+weißt du nicht — es sei denn, es steht da. Steht im Abschnitt keine
+Begründung, ist `why` ein leerer String und `grounded` ist false. Das ist die
+richtige Antwort, kein Versagen.
+
+`grounded` heißt: Im Abschnitt steht ein Grund, den du als „weil …"
+wiedergeben könntest — ein Argument für oder gegen die Sache, ein Einwand,
+ein genannter Umstand, der die Entscheidung trägt.
+
+Diese drei sind KEINE Begründung, und sie sind die häufigsten Verwechslungen:
+- Die bloße Feststellung, dass jemand begründet hat. „Ratsfrau A. bringt den
+  Antrag ein und begründet diesen" sagt nicht, WOMIT. -> false.
+- Sachinformation ohne Bezug zur Entscheidung. Ein Bericht darüber, wie ein
+  Verfahren läuft, ist kein Grund für einen Beschluss. -> false.
+- Ein reines Ergebnis („einstimmig beschlossen") oder eine Formalie
+  (Beschlussfähigkeit, Tagesordnung, Wahlverfahren). -> false.
+
+Dagegen IST eine Begründung: „auf Grund der kurzfristigen Einreichung der
+Vorlage sehen die Mitglieder von einer Empfehlung ab", „er sieht keine
+gesetzliche Möglichkeit für ein Verbot", „die Entscheidung soll auf Grundlage
+der neuen Prognose neu getroffen werden".
+
+`vote` ist das, was dasteht: „einstimmig", „mehrheitlich", „12 dafür, 8
+dagegen, 1 Enthaltung", „bei 2 Enthaltungen angenommen". Nichts umrechnen,
+nichts ergänzen. Steht kein Ergebnis da, ist `vote` null.
+
+`decided` bleibt nah am Wortlaut des Beschlusses. Kürzen ja, umdeuten nein.
+Wurde nichts beschlossen (Bericht, Kenntnisnahme, Vertagung), steht genau das
+da: „zur Kenntnis genommen", „vertagt".
+
+`discussed` fasst die Debatte zusammen: wer welche Position vertrat, welche
+Einwände kamen. Ohne Debatte im Text ein leerer String.
+
+KEINE PERSONENNAMEN. Fraktionen, Rollen und Ämter ja („die CDU-Fraktion", „die
+Verwaltung", „der Ausschussvorsitzende"), Namen nein. Der Text ist öffentlich,
+unsere Wiedergabe muss es nicht sein.
+
+BEISPIELE (erfunden):
+
+Abschnitt: „Die Verwaltung stellte das Konzept vor. Die Fraktion A kritisierte
+die Kosten von 400.000 Euro und beantragte Vertagung. Die Fraktion B verwies
+auf die Fristen des Landesprogramms, die eine Entscheidung noch in diesem Jahr
+verlangen. Der Vertagungsantrag wurde abgelehnt. Beschluss: Das Konzept wird
+beschlossen. Abstimmungsergebnis: 12 dafür, 8 dagegen."
+-> {{"discussed": "Die Verwaltung stellte das Konzept vor. Eine Fraktion
+kritisierte die Kosten von 400.000 Euro und beantragte Vertagung, eine andere
+verwies auf Fristen des Landesprogramms.", "decided": "Das Konzept wird
+beschlossen.", "vote": "12 dafür, 8 dagegen", "why": "Fristen des
+Landesprogramms verlangen eine Entscheidung noch in diesem Jahr; der
+Vertagungsantrag wurde abgelehnt.", "grounded": true}}
+
+Abschnitt: „Beschluss: Der Bericht wird zur Kenntnis genommen.
+Abstimmungsergebnis: einstimmig."
+-> {{"discussed": "", "decided": "Der Bericht wird zur Kenntnis genommen.",
+"vote": "einstimmig", "why": "", "grounded": false}}
+
+Der zweite Fall ist der HÄUFIGERE. Erfinde für ihn nichts."""
+
 PROMPT_CITIES_EFFORT = """Du schätzt ein, was eine Idee den Oldenburger Stadtrat kosten würde —
 von der bloßen Frage bis zum Haushaltsposten.
 
@@ -426,6 +496,25 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "-budget“. Ein falscher Bezugspunkt macht die Richtungsfrage "
             "wertlos; die Mitglieder selbst sind die Wahrheit.",
         "template": "DIE GRUPPE:\n{gruppe}\n\nDIE VORLAGE:\n{paper}",
+    },
+    "cities_reason_system": {
+        "title": "Was stand in der Niederschrift zu diesem Punkt?",
+        "description":
+            "Der Annotator `reason`. Keine Platzhalter — der Abschnitt steht "
+            "in der Nutzer-Nachricht. Die Beispiele sind ERFUNDEN, nicht aus "
+            "dem Prüfstand (die Lehre aus PR 10, wo der Eval sich selbst maß). "
+            "`grounded` ist die Sicherung gegen das Erfinden: Das Modell muss "
+            "sagen, ob es eine Begründung GEFUNDEN hat.",
+        "template": PROMPT_CITIES_REASON,
+    },
+    "cities_reason_user": {
+        "title": "Der Abschnitt der Niederschrift",
+        "description":
+            "Platzhalter: {stadt}, {datum}, {gremium}, {punkt} (Nummer und "
+            "Titel), {abschnitt} (der Text). Die Sitzungsdaten stehen dabei, "
+            "weil ein Abschnitt ohne sie oft nicht sagt, wer da tagt.",
+        "template": ("STADT: {stadt}\nGREMIUM: {gremium}\nDATUM: {datum}\n"
+                     "TAGESORDNUNGSPUNKT: {punkt}\n\nDER ABSCHNITT:\n{abschnitt}"),
     },
     "cities_effort_system": {
         "title": "Was würde diese Idee den Rat kosten?",
@@ -899,7 +988,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
     },
     "qa_analysis": {
         "title": "Frag den Rat – Frage-Analyse",
-        "description": "Ein Call vor der Suche: eigenständige Frage, Suchbegriffe, Fragetyp und Rechercheplan im Shadow-Mode als JSON. Platzhalter: {question}, {verlauf}.",
+        "description": "Ein Call vor der Suche: eigenständige Frage, Suchbegriffe, Fragetyp, Klarheits-Urteil und Rechercheplan im Shadow-Mode als JSON. Platzhalter: {question}, {verlauf}.",
         "template": (
             "Analysiere die Nutzerfrage an ein Stadtrats-Archiv (Oldenburg).{verlauf} Antworte NUR als JSON:\n"
             '{{"question": "die Frage als EIGENSTÄNDIGE Suchfrage — löse Rückbezüge wie „dazu“, '
@@ -915,6 +1004,18 @@ DEFAULTS: dict[str, dict[str, str]] = {
             'Aussagen …?\"). Im Zweifel false.\n", '
             '"terms": "4-8 deutsche Suchbegriffe, Substantive und nahe Synonyme, durch Leerzeichen"'
             ', "kind": "topic|history|party|money", "party": "Fraktionsname oder null", '
+            '"unklar": true/false — true NUR, wenn die Frage GAR KEINEN Gegenstand '
+            'nennt, den ein Stadtrats-Archiv durchsuchen könnte. Das sind: Begrüßungen '
+            'und Geplauder („Hallo“, „Wie geht es dir?“, „Was hast du?“), Fragen über '
+            'DICH statt über die Stadt („Wer bist du?“, „Was kannst du?“), '
+            'Test- und Unsinnseingaben, sowie Rückbezüge („Und dazu?“, „Was ist damit?“), '
+            'die sich ohne Gesprächsverlauf auf nichts beziehen. '
+            'false, sobald IRGENDEIN Gegenstand vorkommt — ein Thema, ein Vorhaben, ein '
+            'Ort, eine Einrichtung, eine Person, ein Gremium, ein Geldbetrag —, auch wenn '
+            'die Frage sehr breit, schief formuliert oder ohne Fragezeichen ist. '
+            'Eine Frage, die du nicht beantworten kannst, ist NICHT unklar: „Was macht der '
+            'Rat gerade?“ und „Gibt es Beschlüsse zu Kita-Plätzen?“ sind beide false. '
+            'Im Zweifel IMMER false.\n", '
             '"variants": ["bis zu 2 UMFORMULIERUNGEN der Frage aus anderem Blickwinkel — z. B. die '
             "Sachstands-Frage zusätzlich als Finanzierungs- oder Planungs-Frage, die vage Frage "
             'konkretisiert aufs wahrscheinlich gemeinte Vorhaben; jeweils ein kurzer Suchsatz"], '
@@ -1064,7 +1165,9 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "BESCHLÜSSE:\n"
             "{context}\n"
             "{presse}\n"
-            "Antworte auf Deutsch, mit id-Zitaten. Die Länge folgt der Frage: Eine enge "
+            "Antworte auf Deutsch, klar und natürlich für Erwachsene ohne Verwaltungswissen. "
+            "Vermeide Behördensprache und erkläre unvermeidbare Fachbegriffe kurz. Schreibe weder "
+            "belehrend noch kindlich. Verwende id-Zitate. Die Länge folgt der Frage: Eine enge "
             "Frage bekommt 2–5 Sätze; eine breite Frage („Was macht die Stadt für …?“) "
             "darf ausführlicher werden und die wichtigsten Vorhaben nacheinander nennen, "
             "statt sie wegzukürzen.\n"
@@ -1084,20 +1187,21 @@ DEFAULTS: dict[str, dict[str, str]] = {
         ),
     },
     "qa_simple": {
-        "title": "Frag den Rat – Einfacher erklären",
+        "title": "Frag den Rat – Verständlicher erklären",
         "description": (
-            "Schreibt eine schon vorliegende Antwort in einfache Sprache um (Knopf "
-            "„Einfacher erklären“). Ton wie „Lotti erklärt's einfach“. Platzhalter: "
+            "Schreibt eine schon vorliegende Antwort in klare Alltagssprache um (Knopf "
+            "„Verständlicher erklären“). Platzhalter: "
             "{question}, {bisher}, {glossar}, {context}."
         ),
         "template": (
-            "Du erklärst die Arbeit des Oldenburger Stadtrats in einfacher Sprache — für\n"
-            "Menschen ohne Verwaltungs-Vorwissen. Deine Aufgabe ist NICHT, noch einmal zu\n"
+            "Du erklärst die Arbeit des Oldenburger Stadtrats in klarer, natürlicher\n"
+            "Alltagssprache — für Erwachsene ohne Verwaltungswissen. Das ist keine Leichte\n"
+            "Sprache: Schreibe weder belehrend noch kindlich. Deine Aufgabe ist NICHT, noch einmal zu\n"
             "antworten, sondern die vorliegende Antwort VERSTÄNDLICH ZU MACHEN.\n"
             "{bisher}"
             "SO SCHREIBST DU:\n"
-            "- Kurze Sätze, höchstens ~15 Wörter, ein Gedanke pro Satz. Aktiv, kein\n"
-            "  Konjunktiv, keine Schachtelsätze, keine Klammer-Einschübe.\n"
+            "- Formuliere klar und direkt. Variiere die Satzlänge natürlich: ein Gedanke pro\n"
+            "  Satz, aktiv, ohne Schachtelsätze oder Klammer-Einschübe.\n"
             "- KEIN Fachwort ohne Erklärung im SELBEN Satz: „Ausfallbürgschaft — die Stadt\n"
             "  zahlt den Kredit, wenn der Verein es nicht mehr kann“. Lässt sich das Wort\n"
             "  ganz vermeiden, lass es weg und sag, was passiert.\n"
@@ -1131,21 +1235,22 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "BESCHLÜSSE (nur zum Nachschlagen von Fakten, Zahlen und Nummern — ihre\n"
             "Formulierungen sind Amtsdeutsch und werden NICHT übernommen):\n"
             "{context}\n\n"
-            "Schreibe jetzt die einfache Fassung auf Deutsch. Fang direkt mit der Sache an.\n\n"
+            "Schreibe jetzt die verständliche Fassung auf Deutsch. Fang direkt mit der Sache an.\n\n"
             "Hänge danach GENAU EINE letzte Zeile an, die so beginnt:\n"
             'FOLGEFRAGEN: ["…", "…", "…"]\n'
-            "Darin 3 kurze, ebenfalls einfach formulierte Anschlussfragen (je max. 70\n"
+            "Darin 3 kurze, ebenfalls klar formulierte Anschlussfragen (je max. 70\n"
             "Zeichen), deren Gegenstand wörtlich in den Beschlüssen oben vorkommt."
         ),
     },
     "simple_summary_system": {
-        "title": "Einfach erklärt – System (RL-904)",
-        "description": "Übersetzt einen Beschlusstext in 2–3 bürgernahe Sätze („Lotti erklärt's einfach“).",
+        "title": "Verständlich erklärt – System (RL-904)",
+        "description": "Übersetzt einen Beschlusstext in 2–3 klare, bürgernahe Sätze.",
         "template": (
-            "Du erklärst Beschlüsse des Oldenburger Stadtrats in einfacher Sprache — für Menschen "
-            "ohne Verwaltungs-Vorwissen.\n"
+            "Du erklärst Beschlüsse des Oldenburger Stadtrats in klarer, natürlicher "
+            "Alltagssprache — für Erwachsene ohne Verwaltungswissen. Das ist keine Leichte "
+            "Sprache: Schreibe weder belehrend noch kindlich.\n"
             "Regeln:\n"
-            "- 2–3 kurze Sätze, aktiv formuliert, kein Konjunktiv, keine Floskeln.\n"
+            "- 2–3 natürlich formulierte Sätze, aktiv, ohne Schachtelsätze oder Floskeln.\n"
             "- Erkläre, WAS entschieden wurde und was es für die Stadt konkret bedeutet.\n"
             "- Erfinde NICHTS: keine Zahlen, Daten, Orte oder Folgen, die nicht im Text stehen.\n"
             "- Übersetze Fachbegriffe (z. B. 'Aufstellungsbeschluss' → 'die Stadt beginnt offiziell "
@@ -1317,7 +1422,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "- Stadtteil-Projekt, mehrjährige Förderung, neue Richtlinie ≈ 55\n"
             "- Bebauungsplan für ein Quartier, Großvorhaben, stadtweite Satzung ≈ 75\n"
             "- Haushaltssatzung, Grundsatzentscheidung über viele Millionen ≈ 95\n\n"
-            "ZU JEDEM PUNKT SCHREIBST DU EINEN GRUND — in einfacher Sprache:\n"
+            "ZU JEDEM PUNKT SCHREIBST DU EINEN GRUND — klar und alltagstauglich für Erwachsene:\n"
             "- höchstens zwei kurze Sätze, zusammen unter 160 Zeichen\n"
             "- Alltagswörter. KEIN Verwaltungsdeutsch — verboten sind Wörter wie "
             "Bindungswirkung, Präzedenzwirkung, Verpflichtungsermächtigung, "
@@ -1346,7 +1451,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "- Satzung Jugendamt: „Die Regeln fürs Jugendamt werden geändert. Das wirkt sich "
             "auf die Arbeit mit Familien aus.\"\n\n"
             "Antworte als JSON: {\"ratings\": [{\"id\": <id>, \"score\": <0-100>, "
-            "\"warum\": \"<einfache Sprache, max. 160 Zeichen>\"}]} — genau ein Eintrag je "
+            "\"warum\": \"<klare Alltagssprache, max. 160 Zeichen>\"}]} — genau ein Eintrag je "
             "vorgelegtem Punkt."
         ),
     },

@@ -71,7 +71,9 @@ JOBS: list[dict] = [
         "key": "check_cities",
         "label": "Andere Städte",
         "description": "Vorlagen, Sitzungen und Ergebnisse der Vergleichsstädte über OParl — "
-                       "plus Oldenburg aus der eigenen Rats-Datenbank.",
+                       "plus Oldenburg aus der eigenen Rats-Datenbank. Holt und "
+                       "schneidet auch die Sitzungs-Niederschriften und liest daraus, "
+                       "warum ein fremder Rat so entschieden hat.",
         # Fünf Uhr und nicht drei: `weekly_enrich` läuft sonntags um drei, und
         # zwei Läufe, die beide ein Embedding-Modell laden, gehören nicht auf
         # dieselbe Stunde einer VM mit zwei Kernen.
@@ -173,9 +175,10 @@ JOBS: list[dict] = [
     {
         "key": "check_herzschlag",
         "label": "Herzschlag",
-        "description": "Meldet Jobs, die nicht mehr laufen, und einen vollen Datenträger. "
-                       "Ein Job, der gar nicht startet, stürzt auch nicht ab — "
-                       "ohne diese Prüfung fällt sein Schweigen niemandem auf.",
+        "description": "Meldet Jobs, die nicht mehr laufen, einen vollen Datenträger "
+                       "und auffällige Registrierungen. Ein Job, der gar nicht startet, "
+                       "stürzt auch nicht ab — und Konten, die ihre Adresse nie "
+                       "bestätigen, lösen keine einzige Mail aus.",
         "schedule": "täglich 6:30 Uhr",
         "max_age_h": 30,
     },

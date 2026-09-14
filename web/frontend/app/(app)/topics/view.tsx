@@ -15,7 +15,7 @@ import { TopicSheet, type Described } from "@/components/topic-sheet";
 import { ThemenKarte } from "@/components/themen-karte";
 import { FollowedVorgaenge } from "@/components/followed-vorgaenge";
 
-const HEADER_DESC = "Deine Suchaufträge an den Rat — wir prüfen jede neue Sitzung und melden Treffer.";
+const HEADER_DESC = "Ratslotse prüft neue Sitzungen auf diese Themen und meldet dir Treffer.";
 
 export function TopicsView() {
   const qc = useQueryClient();
@@ -108,10 +108,10 @@ export function TopicsView() {
       // saubere Meldung gewesen.
       setTeile(d.parts ?? []);
       setKiText(d.verdict === "plausibel"
-        ? "Zu diesem Thema hat der Rat bisher nichts entschieden — wir melden uns, sobald es so weit ist."
+        ? "Zu diesem Thema hat der Rat bisher nichts entschieden — du bekommst Bescheid, sobald es so weit ist."
         : "Vorschlag — kurz prüfen und anpassen.");
     },
-    onError: () => setKiText("Der Vorschlag kam gerade nicht durch. Schreib die Beschreibung selbst."),
+    onError: () => setKiText("Der Vorschlag konnte nicht erstellt werden. Schreib die Beschreibung selbst."),
   });
 
   /* RL-903: Alle Treffer eines Themas als gelesen markieren. Hängt am
@@ -181,7 +181,7 @@ export function TopicsView() {
       <div>
         <PageHeader title="Meine Themen" description={HEADER_DESC} />
         <div className="mt-6">
-          <ErrorState title="Die Themen kamen nicht durch"
+          <ErrorState title="Themen konnten nicht geladen werden"
             onRetry={() => void topicsQuery.refetch()} busy={topicsQuery.isFetching} />
         </div>
       </div>
@@ -291,7 +291,7 @@ export function TopicsView() {
       {vorschlaege.length > 0 && (
         <div className="mt-5">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
-            Gerade aktuell im Rat — mit einem Klick übernehmen
+            Aktuell im Rat — mit einem Klick übernehmen
           </p>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {vorschlaege.map((s) => (
@@ -319,7 +319,7 @@ export function TopicsView() {
           <EmptyState
             mascot="wave"
             title="Noch keine Themen"
-            hint="Lege ein Thema an — wir melden uns, sobald der Rat etwas dazu beschließt."
+            hint="Lege ein Thema an — du bekommst Bescheid, sobald der Rat etwas dazu beschließt."
             action={<Button size="sm" onClick={() => setFormOffen(true)}><Plus className="h-4 w-4" /> Erstes Thema anlegen</Button>}
           />
         </div>

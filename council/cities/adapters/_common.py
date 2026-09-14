@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 import re
 from dataclasses import replace
+from datetime import date, timedelta
 from typing import Any
 
 from council.cities.model import (
@@ -24,6 +25,38 @@ logger = logging.getLogger("council.cities.normalize")
 #: Als Datum ist er wertlos — wer ihn für echt hält, sortiert den ganzen
 #: Bestand auf denselben Tag.
 ALLRIS_LEERDATUM = "2000-01-01"
+
+#: Kennungen der Form ``<sitzung>#top-<nummer>``. **Kein
+#: Ratsinformationssystem vergibt sie** — sie stammen aus
+#: ``scripts/cities_import_phase0.py``, das den Probelauf vom 07.09.2026 in
+#: die Rohablage übernommen und dabei je Punkt eine Kennung erfunden hat.
+#: Die echte Ernte brachte dieselben Punkte danach unter ihrer eigenen
+#: ``agendaItems``-Kennung, und beide blieben liegen.
+SYNTHETISCHE_KENNUNG = "#top-"
+
+#: Was ALLRIS ausliefert, wenn ein Objekt nicht öffentlich ist — **mit HTTP
+#: 200**. Weder ein Fehler noch ein 403; der einzige Unterschied zu einer
+#: echten Seite ist dieser Satz. Gemessen an Wolfsburg (ALLRIS 4) und
+#: Hildesheim (ALLRIS classic), also über beide Bauformen hinweg: 77 von 255
+#: Sitzungen und 444 von 1.798 Dateien. Wer ihn nicht liest, legt Geister an.
+VERSCHLOSSEN = "Keine Information verfügbar"
+
+
+def attr(knoten, name: str) -> str:
+    """Ein HTML-Attribut als Zeichenkette — auch wenn BeautifulSoup eine Liste gibt.
+
+    ``get`` liefert bei mehrwertigen Attributen (``class``) eine Liste; wer
+    das Ergebnis blind wie eine Zeichenkette behandelt, bekommt an genau
+    einer Stelle einen Absturz, den kein Test sieht. Drei HTML-lesende
+    Dialekte (ALLRIS 4, ALLRIS classic, Hannovers Notes/Domino) brauchten
+    denselben Handgriff — hier steht er einmal für alle.
+    """
+    if knoten is None:
+        return ""
+    wert = knoten.get(name)
+    if isinstance(wert, (list, tuple)):
+        return " ".join(str(x) for x in wert)
+    return str(wert) if wert is not None else ""
 
 
 def obj_id(o: Any) -> str | None:
@@ -255,6 +288,71 @@ def eindeutige_beratungen(consultations: list[Consultation]) -> int:
     return geaendert
 
 
+def zwillinge_zusammenfuehren(batch: Batch) -> int:
+    """Denselben Punkt unter zwei Kennungen zu EINER Zeile machen.
+
+    Ein Tagesordnungspunkt lag im Bestand zweimal: einmal unter der Kennung,
+    die ``cities_import_phase0.py`` beim Übernehmen des Probelaufs erfunden
+    hat (``…/meetings/14460#top-1``), einmal unter der eigenen des Punktes
+    (``…/agendaitems/284259``). Gleiche Nummer, gleicher Titel, verschiedene
+    Zeile — gemessen am 10.09.2026 **22.152 Paare** in fünf Städten, also gut
+    ein Fünftel aller Punkte. Oldenburg, das aus ``council.sqlite`` liest,
+    hatte keinen einzigen.
+
+    **Gewinnt immer die eigene Kennung des Punktes.** Sie ist die, auf die
+    die Beratungsfolge zeigt, und sie ist die vollständigere: In 92 Paaren
+    trug nur sie ein Ergebnis, in keinem einzigen nur die erfundene. Wo beide
+    eines tragen und sie sich widersprechen (44-mal), gilt die Schnittstelle,
+    nicht der abgeschriebene Probelauf.
+
+    **Zwei Zeilen desselben Raums werden nie zusammengelegt.** Es gibt sie:
+    Potsdam führt „Informationen des Jugendamtes" zweimal in einer Sitzung,
+    und in Magdeburg stehen Vorlage und Änderungsantrag unter demselben Titel
+    mit **verschiedenem** Ergebnis (``rejected`` neben ``accepted``). Das sind
+    verschiedene Punkte, keine Dubletten — 16 Fälle, die eine Zusammenlegung
+    nach Titel allein zerstört hätte.
+
+    Gibt zurück, wie viele Zeilen verschwunden sind.
+    """
+    je_punkt: dict[tuple[str, str | None, str], list[AgendaItem]] = {}
+    for a in batch.agenda_items:
+        je_punkt.setdefault((a.meeting_id, a.number, a.name), []).append(a)
+
+    umleitung: dict[str, str] = {}
+    ersetzt: dict[str, AgendaItem] = {}
+    for gruppe in je_punkt.values():
+        erfunden = [a for a in gruppe if SYNTHETISCHE_KENNUNG in a.id]
+        echte = [a for a in gruppe if SYNTHETISCHE_KENNUNG not in a.id]
+        # Genau eine echte Zeile, sonst wäre das Ziel geraten.
+        if not erfunden or len(echte) != 1:
+            continue
+        gewinner = echte[0]
+        for a in erfunden:
+            umleitung[a.id] = gewinner.id
+            # Nur füllen, was der Gewinner nicht hat — sein Wert gilt.
+            if gewinner.outcome == "none" and a.outcome != "none":
+                gewinner = replace(gewinner, result_raw=a.result_raw, outcome=a.outcome)
+            if not gewinner.resolution_text and a.resolution_text:
+                gewinner = replace(gewinner, resolution_text=a.resolution_text)
+        if gewinner is not echte[0]:
+            ersetzt[echte[0].id] = gewinner
+
+    if not umleitung:
+        return 0
+
+    batch.agenda_items = [ersetzt.get(a.id, a) for a in batch.agenda_items
+                          if a.id not in umleitung]
+    for i, c in enumerate(batch.consultations):
+        ziel = umleitung.get(c.agenda_item_id or "")
+        if ziel:
+            batch.consultations[i] = replace(c, agenda_item_id=ziel)
+    for i, f in enumerate(batch.files):
+        ziel = umleitung.get(f.agenda_item_id or "")
+        if ziel:
+            batch.files[i] = replace(f, agenda_item_id=ziel)
+    return len(umleitung)
+
+
 def normalize_common(body_id: str, raw: CitiesStore, url_fix=None) -> Batch:
     """Rohablage → Batch. Der Teil, der bei allen Dialekten gleich ist."""
     meetings, items, m_files = meetings_from(raw, body_id, url_fix)
@@ -263,65 +361,18 @@ def normalize_common(body_id: str, raw: CitiesStore, url_fix=None) -> Batch:
     if getrennt:
         logger.info("%s: %s mehrfach vergebene Beratungs-Kennungen getrennt",
                     body_id, getrennt)
-    return Batch(
+    batch = Batch(
         organizations=organizations_from(raw, body_id),
         meetings=meetings, agenda_items=items,
         papers=papers, files=m_files + p_files, consultations=consultations)
-
-
-def link_within_meeting(batch: Batch) -> int:
-    """Beratungen an ihren Tagesordnungspunkt binden, wenn die Kennung ins Leere zeigt.
-
-    **Magdeburgs Schnittstelle führt zwei Kennungsräume für denselben Punkt.**
-    Die Sitzung listet ihn als ``…/meetings/123890#top-4.1``, die
-    Beratungsfolge eines Papiers nennt ihn ``…/agendaitems/480969``. Beide
-    kommen vom selben Server, und keine Kennung des einen Raums taucht im
-    anderen auf (gemessen: 0 von 307 Sitzungen nennen je eine
-    ``agendaitems``-Kennung). Über die Kennung sind sie nicht zu verbinden —
-    und ohne Verbindung hatte kein Magdeburger Papier je ein Ergebnis, obwohl
-    5.982 Tagesordnungspunkte eines tragen.
-
-    Was die Beratung aber **immer** mitliefert, ist die Sitzung. Innerhalb
-    einer Sitzung ist der Titel eindeutig genug: Der Punkt heißt wie die
-    Vorlage oder nennt ihre Nummer. Das ist derselbe Notnagel wie
-    ``link_by_title``, nur auf eine Handvoll Kandidaten statt auf den ganzen
-    Bestand angewandt — deshalb läuft er zuerst und ist der genauere.
-
-    **Bei Uneinigkeit wird nichts gebunden.** Eine Vorlage steht oft mehrfach
-    in derselben Sitzung (der Punkt 8.7 und sein Änderungsantrag 8.7.1).
-    Tragen alle Kandidaten dasselbe Ergebnis, ist die Wahl folgenlos und
-    fällt auf die kürzeste Nummer — den Hauptpunkt. Tragen sie verschiedene,
-    wäre jede Wahl geraten; dann bleibt die Beratung ohne Punkt.
-
-    Gemessen an Magdeburg (08.09.2026): 1.230 von 2.004 Beratungen gebunden,
-    588 wegen Uneinigkeit übersprungen, 186 ohne Kandidaten — **696 von 700
-    Papieren** bekommen so ihr Ergebnis.
-    """
-    bekannte = {a.id for a in batch.agenda_items}
-    je_sitzung: dict[str, list[AgendaItem]] = {}
-    for a in batch.agenda_items:
-        je_sitzung.setdefault(a.meeting_id, []).append(a)
-    titel_von: dict[str, Paper] = {p.id: p for p in batch.papers}
-
-    ergaenzt = 0
-    for i, c in enumerate(batch.consultations):
-        if not c.meeting_id or (c.agenda_item_id and c.agenda_item_id in bekannte):
-            continue
-        p = titel_von.get(c.paper_id)
-        if not p:
-            continue
-        nummer = (p.reference or "").strip()
-        kandidaten = [a for a in je_sitzung.get(c.meeting_id, [])
-                      if normalize_title(a.name) == normalize_title(p.name)
-                      or (nummer and nummer in (a.name or ""))]
-        mit_ergebnis = [a for a in kandidaten if a.outcome != "none"]
-        wahl = mit_ergebnis or kandidaten
-        if not wahl or len({a.outcome for a in wahl}) > 1:
-            continue
-        ziel = sorted(wahl, key=lambda a: (len(a.number or ""), a.number or ""))[0]
-        batch.consultations[i] = replace(c, agenda_item_id=ziel.id)
-        ergaenzt += 1
-    return ergaenzt
+    # Vor allem anderen: doppelt abgelegte Punkte auf eine Zeile bringen.
+    # Danach hat jeder Punkt genau eine Kennung, und die Abgleiche unten
+    # arbeiten auf einer Tagesordnung statt auf anderthalb.
+    doppelt = zwillinge_zusammenfuehren(batch)
+    if doppelt:
+        logger.info("%s: %s doppelt abgelegte Tagesordnungspunkte zusammengeführt",
+                    body_id, doppelt)
+    return batch
 
 
 def link_by_title(batch: Batch) -> int:
@@ -383,3 +434,77 @@ def link_by_title(batch: Batch) -> int:
                 role_raw="Titelabgleich", authoritative=None))
             ergaenzt += 1
     return ergaenzt
+
+
+#: Wie lange nach dem Sitzungstag noch etwas nachwächst. Die Niederschrift
+#: kommt Wochen später, ein Ergebnis wird nachgetragen, ein Punkt vertagt.
+#: 90 Tage sind reichlich bemessen — gemessen an Oldenburg liegt die
+#: Niederschrift im Schnitt nach 24 Tagen vor, im schlechtesten Fall nach 71.
+NACHLAUF_TAGE = 90
+
+
+def abgeschlossene_sitzungen(sitzungstage: dict[str, str],
+                             heute: str | None = None) -> set[str]:
+    """Sitzungen, an denen sich nichts mehr ändert — und die deshalb bleiben.
+
+    **Der Wochenlauf holte jede Sitzungsseite neu, jedes Mal.** Für die
+    Vorlagen gibt es dafür längst eine Regel (``muss_geholt_werden``); die
+    Sitzungen hatten keine, und bei Wolfsburg waren das allein 652 Abrufe je
+    Woche — der Boden, unter den der Lauf gar nicht kommen konnte.
+
+    Eine Ratssitzung vom März 2019 ändert sich nicht mehr. Was sich ändert,
+    tut es in den Wochen NACH der Sitzung: die Niederschrift kommt nach,
+    ein Ergebnis wird ergänzt. Danach steht die Seite.
+
+    Drinbleiben muss deshalb alles, worüber wir nicht sicher sind:
+
+    - **Was wir noch gar nicht haben.** Sonst käme eine abgebrochene Ernte
+      nie zu Ende — derselbe Grund wie bei den Vorlagen. Was hier gar nicht
+      vorkommt, kommt auch nicht in der Antwort vor.
+    - **Was kein Datum trägt.** Über eine undatierte Sitzung weiß der
+      Bestand nichts; sie könnte von morgen sein.
+    - **Alles ab ``NACHLAUF_TAGE`` vor heute**, Zukunft eingeschlossen.
+
+    Zurück kommen die Kennungen, die der Dialekt überspringen DARF — nie
+    die, die er holen muss. Die Richtung ist Absicht: Ein Fehler in dieser
+    Funktion lässt dann zu viel holen, nicht zu wenig.
+    """
+    stichtag = (date.fromisoformat(heute) if heute else date.today()) - timedelta(
+        days=NACHLAUF_TAGE)
+    fertig = set()
+    for kennung, tag in sitzungstage.items():
+        try:
+            if date.fromisoformat((tag or "")[:10]) < stichtag:
+                fertig.add(kennung)
+        except ValueError:  # kein lesbares Datum → holen
+            continue
+    return fertig
+
+
+def muss_geholt_werden(client, sitzung_id: str, vorlage_id: str,
+                       bekannt: set[str], frische_sitzungen: set[str]) -> bool:
+    """Braucht diese Vorlage einen Abruf — oder steht sie längst da?
+
+    **Die drei HTML-Dialekte holten bisher bei JEDEM Lauf jede Vorlage neu.**
+    Sie laufen über alle Sitzungen der Rohablage und rufen zu jedem
+    Drucksachen-Verweis ``get_text`` auf, ohne zu fragen, ob die Seite schon
+    abgelegt ist. Gemessen an Hannover am 13.09.2026 mit einem
+    Wochen-Fenster: **4.083 Vorlagen geholt, davon 4.083 schon bekannt und 0
+    neu** — der Lauf war nach 35 Minuten erst bei einem Sechstel. Ein
+    Wochen-Cron hätte so jeden Sonntag 25.729 Seiten von der Stadt gezogen,
+    um nichts zu erfahren.
+
+    Die Regel, die beides kann:
+
+    - **Unbekannt → holen.** Sonst käme eine abgebrochene Ernte nie zu Ende
+      (Hildesheim stand am 13.09. bei 1.078 Vorlagen zu 1.089 Sitzungen).
+    - **Bekannt, aber die Sitzung kam in DIESEM Lauf neu oder geändert
+      herein → holen.** Dort hängt das Neue: eine nachgetragene Station in
+      der Beratungsfolge, ein Ergebnis. Ändert sich die Sitzungsseite nicht,
+      ändert sich auch ihre Vorlagenliste nicht.
+    - **Bekannt und die Sitzung unverändert → stehen lassen.**
+    """
+    if vorlage_id not in bekannt:
+        return True
+    return sitzung_id in frische_sitzungen
+

@@ -1,0 +1,259 @@
+{
+  "zeitstempel": "13.09.2026 20:26",
+  "seitentitel": "Wahl der Oberbürgermeisterin / Wahl des Oberbürgermeisters 13.09.2026 - Stadt Oldenburg (Oldenburg) - Stadt Oldenburg",
+  "Komponente": {
+    "tabelle": {
+      "zeilen": [
+        {
+          "color": "#33cc00",
+          "label": {
+            "labelKurz": "Rohr, GRÜNE"
+          },
+          "zahl": "25.850",
+          "prozent": "30,54 %",
+          "tagged": false
+        },
+        {
+          "color": "#d60029",
+          "label": {
+            "labelKurz": "Prange, SPD"
+          },
+          "zahl": "28.075",
+          "prozent": "33,16 %",
+          "tagged": false
+        },
+        {
+          "color": "#d01d5c",
+          "label": {
+            "labelKurz": "Boldt, Die Linke"
+          },
+          "zahl": "10.198",
+          "prozent": "12,05 %",
+          "tagged": false
+        },
+        {
+          "color": "#ffed00",
+          "label": {
+            "labelKurz": "Fröhlich, FDP"
+          },
+          "zahl": "4.945",
+          "prozent": "5,84 %",
+          "tagged": false
+        },
+        {
+          "color": "#dbdbdb",
+          "label": {
+            "labelKurz": "Butzin, Einzelwahlvorschlag"
+          },
+          "zahl": "6.211",
+          "prozent": "7,34 %",
+          "tagged": false
+        },
+        {
+          "color": "#058f92",
+          "label": {
+            "labelKurz": "Castur, DAVA-Niedersachsen"
+          },
+          "zahl": "641",
+          "prozent": "0,76 %",
+          "tagged": false
+        },
+        {
+          "color": "#dbdbdb",
+          "label": {
+            "labelKurz": "Küßner, Einzelwahlvorschlag"
+          },
+          "zahl": "4.025",
+          "prozent": "4,75 %",
+          "tagged": false
+        },
+        {
+          "color": "#dbdbdb",
+          "label": {
+            "labelKurz": "Stille, Einzelwahlvorschlag"
+          },
+          "zahl": "868",
+          "prozent": "1,03 %",
+          "tagged": false
+        },
+        {
+          "color": "#777777",
+          "label": {
+            "labelKurz": "Wilkens, BB-OL"
+          },
+          "zahl": "3.843",
+          "prozent": "4,54 %",
+          "tagged": false
+        }
+      ]
+    },
+    "info": {
+      "titel": "Stadt Oldenburg (Oldenburg) - Stadt Oldenburg",
+      "hinweis": [
+        "Alle Schnellmeldungen eingegangen!",
+        "133 von 133 Ergebnissen"
+      ],
+      "tabelle": {
+        "zeilen": [
+          {
+            "label": {
+              "labelKurz": "Wahlberechtigte"
+            },
+            "zahl": "135.513",
+            "prozent": "",
+            "tagged": false
+          },
+          {
+            "label": {
+              "labelKurz": "Wähler/-innen"
+            },
+            "zahl": "85.991",
+            "prozent": "63,46 %",
+            "tagged": false
+          },
+          {
+            "label": {
+              "labelKurz": "ungültige Stimmen"
+            },
+            "zahl": "1.335",
+            "prozent": "1,55 %",
+            "tagged": false
+          },
+          {
+            "label": {
+              "labelKurz": "gültige Stimmen"
+            },
+            "zahl": "84.656",
+            "prozent": "98,45 %",
+            "tagged": false
+          }
+        ]
+      }
+    },
+    "grafik": {
+      "title": {
+        "titel": "Stadt Oldenburg (Oldenburg) - Stadt Oldenburg",
+        "subtitle": "Wahl der Oberbürgermeisterin / Wahl des Oberbürgermeisters 13.09.2026 "
+      },
+      "balken": [
+        {
+          "bezeichnung": "Rohr, GRÜNE",
+          "color": "#33cc00",
+          "bezeichnungAusfuehrlich": "Jascha Rohr, BÜNDNIS 90/DIE GRÜNEN",
+          "wert": 25850,
+          "wertString": "25.850 Stimmen",
+          "prozentGerundet": 30.54,
+          "prozentString": "30,54 %"
+        },
+        {
+          "bezeichnung": "Prange, SPD",
+          "color": "#d60029",
+          "bezeichnungAusfuehrlich": "Ulf Prange, Sozialdemokratische Partei Deutschlands",
+          "wert": 28075,
+          "wertString": "28.075 Stimmen",
+          "prozentGerundet": 33.16,
+          "prozentString": "33,16 %"
+        },
+        {
+          "bezeichnung": "Boldt, Die Linke",
+          "color": "#d01d5c",
+          "bezeichnungAusfuehrlich": "Heike Boldt, Die Linke",
+          "wert": 10198,
+          "wertString": "10.198 Stimmen",
+          "prozentGerundet": 12.05,
+          "prozentString": "12,05 %"
+        },
+        {
+          "bezeichnung": "Fröhlich, FDP",
+          "color": "#ffed00",
+          "bezeichnungAusfuehrlich": "Sebastian Fröhlich, Freie Demokratische Partei Landesverband Niedersachsen e.V.",
+          "wert": 4945,
+          "wertString": "4.945 Stimmen",
+          "prozentGerundet": 5.84,
+          "prozentString": "5,84 %"
+        },
+        {
+          "bezeichnung": "Butzin, Einzelwahlvorschlag",
+          "color": "#dbdbdb",
+          "bezeichnungAusfuehrlich": "Ralf Butzin, Einzelwahlvorschlag",
+          "wert": 6211,
+          "wertString": "6.211 Stimmen",
+          "prozentGerundet": 7.34,
+          "prozentString": "7,34 %"
+        },
+        {
+          "bezeichnung": "Küßner, Einzelwahlvorschlag",
+          "color": "#dbdbdb",
+          "bezeichnungAusfuehrlich": "Byanca Küßner, Einzelwahlvorschlag",
+          "wert": 4025,
+          "wertString": "4.025 Stimmen",
+          "prozentGerundet": 4.75,
+          "prozentString": "4,75 %"
+        },
+        {
+          "bezeichnung": "Wilkens, BB-OL",
+          "color": "#777777",
+          "bezeichnungAusfuehrlich": "Holger Martin Wilkens, Bürger Bündnis Oldenburg",
+          "wert": 3843,
+          "wertString": "3.843 Stimmen",
+          "prozentGerundet": 4.54,
+          "prozentString": "4,54 %"
+        }
+      ],
+      "sonstige": {
+        "bezeichnung": "Sonstige",
+        "color": "#acbee4",
+        "wert": 1509,
+        "wertString": "1.509 Stimmen",
+        "prozentGerundet": 1.79,
+        "prozentString": "1,79 %"
+      },
+      "sonstigeBalken": [
+        {
+          "bezeichnung": "Castur, DAVA-Niedersachsen",
+          "color": "#058f92",
+          "bezeichnungAusfuehrlich": "Yakup Castur, DAVA-Niedersachsen",
+          "wert": 641,
+          "wertString": "641 Stimmen",
+          "prozentGerundet": 0.76,
+          "prozentString": "0,76 %"
+        },
+        {
+          "bezeichnung": "Stille, Einzelwahlvorschlag",
+          "color": "#dbdbdb",
+          "bezeichnungAusfuehrlich": "Michael Stille, Einzelwahlvorschlag",
+          "wert": 868,
+          "wertString": "868 Stimmen",
+          "prozentGerundet": 1.03,
+          "prozentString": "1,03 %"
+        }
+      ],
+      "footer": "13.09.2026 20:25 Uhr - 133 von 133 Ergebnissen",
+      "isBalkenDarstellung": false,
+      "file_version": "26.09.01",
+      "file_timestamp": "13.09.2026 20:26:48 485",
+      "server_hash": "646b1029f537300d28340ce6ec5ea8d7"
+    },
+    "gewaehlte_kandidaten": {
+      "title": "Kein Kandidat hat die Absolute Mehrheit erreicht. Es findet eine Stichwahl statt zwischen Ulf Prange (SPD) und Jascha Rohr (GRÜNE)",
+      "items": [
+        {
+          "label": "Ulf Prange (SPD)"
+        },
+        {
+          "label": "Jascha Rohr (GRÜNE)"
+        }
+      ]
+    },
+    "wahlbeteiligung": {
+      "text": {
+        "text": "Die Wahlbeteiligung liegt bei: ",
+        "prozent": 63.46
+      },
+      "hinweis": ""
+    }
+  },
+  "file_version": "26.09.01",
+  "file_timestamp": "13.09.2026 20:26:48 485",
+  "server_hash": "646b1029f537300d28340ce6ec5ea8d7"
+}

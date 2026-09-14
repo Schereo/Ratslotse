@@ -1,0 +1,21 @@
+{
+  "title": "Tippspiel zur Ratswahl 2026",
+  "phase": "open",
+  "seats_total": 52,
+  "locked": false,
+  "locked_at": null,
+  "late_scored": false,
+  "player_count": 5,
+  "deadline_hint": "bis zur ersten Hochrechnung (ca. 20 Uhr)",
+  "parties": [
+    { "slug": "gruene", "short": "Grüne", "name": "Bündnis 90/Die Grünen", "color": "#4C9F38", "color_dark": "#6DBE5A", "seats_2021": 13 },
+    { "slug": "spd", "short": "SPD", "name": "SPD", "color": "#E3000F", "color_dark": "#F2394A", "seats_2021": 11 },
+    { "slug": "cdu", "short": "CDU", "name": "CDU", "color": "#000000", "color_dark": "#4A4A4A", "seats_2021": 9 },
+    { "slug": "linke", "short": "Linke", "name": "Die Linke", "color": "#BE3075", "color_dark": "#D95C9B", "seats_2021": 8 },
+    { "slug": "fdp", "short": "FDP", "name": "FDP", "color": "#FFED00", "color_dark": "#FFF066", "seats_2021": 5 }
+  ],
+  "mayor_candidates": [
+    { "slug": "rohr", "name": "Jascha Rohr", "party": "Grüne" },
+    { "slug": "prange", "name": "Ulf Prange", "party": "SPD" }
+  ]
+}

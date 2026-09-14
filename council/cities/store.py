@@ -162,9 +162,22 @@ class CitiesStore:
     # -------------------------------------------------------------- Schicht 0
 
     def put_raw_object(self, body_id: str, kind: str, oparl_id: str,
-                       body_json: dict, fetched_at: str | None = None) -> bool:
-        """Rohantwort ablegen. ``True``, wenn sie neu war (sonst unverändert)."""
-        content = canonical_hash(body_json)
+                       body_json: dict, fetched_at: str | None = None,
+                       hash_basis: object = None) -> bool:
+        """Rohantwort ablegen. ``True``, wenn sie neu war (sonst unverändert).
+
+        ``hash_basis`` sagt, WORAUS der Inhaltsvergleich gebildet wird, wenn
+        die Antwort Flüchtiges enthält. Abgelegt wird immer die Antwort
+        selbst — die Rohschicht hält fest, was der Server gesagt hat.
+
+        **Sonst gilt jede Seite als geändert.** Wolfsburgs ALLRIS 4 vergibt
+        seine Wicket-Element-IDs je Anfrage neu (`id12cd2` → `id12ce6`); der
+        Inhalt ist bitgleich, der Hash nicht. Gemessen am 14.09.2026: 1.956
+        Zeilen für 652 Sitzungen — genau drei Ernten —, und weil `iter_papers`
+        daran erkennt, was aufzufrischen ist, wurden jedes Mal ALLE 1.571
+        Vorlagen neu geholt: 2.261 Abrufe statt 251 wie bei Hannover.
+        """
+        content = canonical_hash(body_json if hash_basis is None else hash_basis)
         with self._write() as conn:
             cur = conn.execute(
                 "INSERT OR IGNORE INTO raw_objects (body_id, kind, oparl_id, fetched_at, content_hash, body_json) "
@@ -180,13 +193,58 @@ class CitiesStore:
         return json.loads(row["body_json"]) if row else None
 
     def raw_objects(self, body_id: str, kind: str) -> Iterator[dict]:
-        """Je ``oparl_id`` die zuletzt geholte Fassung."""
-        rows = self._conn.execute(
-            "SELECT body_json FROM raw_objects WHERE id IN ("
-            "  SELECT MAX(id) FROM raw_objects WHERE body_id=? AND kind=? GROUP BY oparl_id)"
-            " ORDER BY id", (body_id, kind))
-        for row in rows:
-            yield json.loads(row["body_json"])
+        """Je ``oparl_id`` die zuletzt geholte Fassung.
+
+        **Erst die Kennungen, dann je Zeile eine eigene Abfrage — bewusst
+        nicht ein Cursor, der über die ganze Schleife offen bleibt.** Die
+        Adapter ernten IN dieser Schleife: ``iter_papers`` liest die
+        Sitzungen und holt dabei stundenlang Vorlagen, die es über dieselbe
+        Verbindung schreibt. Ein offener Lese-Cursor hält in WAL-Modus einen
+        Snapshot fest, und solange der steht, darf SQLite die WAL nicht
+        einchecken — sie wächst unbegrenzt, und mit ihr die Kosten jedes
+        weiteren Zugriffs.
+
+        Gemessen an Hildesheim (11.09.2026): 362 MB WAL nach elf Stunden,
+        Durchsatz von 343 auf 8 Vorlagen je Stunde gefallen — bei gleicher
+        Seitenart, also kein Phasen-Artefakt. Ein Prozess-Neustart heilte es
+        sprunghaft und der Verfall begann von vorn. Der Lauf hat keinen
+        Fehler geworfen, er wurde nur immer langsamer.
+
+        Die Kennungen sind Ganzzahlen; die ganze Liste zu halten kostet
+        nichts. Die Zeilen selbst tragen ganze HTML-Seiten — sie bleiben
+        deshalb einzeln und träge.
+        """
+        kennungen = [row["id"] for row in self._conn.execute(
+            "SELECT MAX(id) AS id FROM raw_objects WHERE body_id=? AND kind=?"
+            " GROUP BY oparl_id ORDER BY MAX(id)", (body_id, kind)).fetchall()]
+        for kennung in kennungen:
+            row = self._conn.execute(
+                "SELECT body_json FROM raw_objects WHERE id=?", (kennung,)).fetchone()
+            if row is not None:
+                yield json.loads(row["body_json"])
+
+    def raw_ids(self, body_id: str, kind: str) -> set[str]:
+        """Die Kennungen, die von dieser Stadt und Art schon abgelegt sind.
+
+        Für die Frage „muss ich das noch holen?" — einmal je Lauf statt
+        einmal je Objekt. Bei Hannover sind das 25.729 Zeichenketten; eine
+        Abfrage je Vorlage wäre 25.729 Abfragen für dieselbe Auskunft.
+        """
+        return {r["oparl_id"] for r in self._conn.execute(
+            "SELECT DISTINCT oparl_id FROM raw_objects WHERE body_id=? AND kind=?",
+            (body_id, kind))}
+
+    def raw_ids_since(self, body_id: str, kind: str, seit: str) -> set[str]:
+        """Die Kennungen, die seit ``seit`` (ISO-Zeitstempel) hereinkamen.
+
+        ``put_raw_object`` legt nur an, was NEU ist (``UNIQUE(oparl_id,
+        content_hash)``) — was hier zurückkommt, hat sich also wirklich
+        geändert oder ist zum ersten Mal da.
+        """
+        return {r["oparl_id"] for r in self._conn.execute(
+            "SELECT DISTINCT oparl_id FROM raw_objects "
+            "WHERE body_id=? AND kind=? AND fetched_at >= ?",
+            (body_id, kind, seit))}
 
     def raw_count(self, body_id: str, kind: str) -> int:
         row = self._conn.execute(
@@ -292,13 +350,23 @@ class CitiesStore:
 
     def papers(self, body_id: str | None = None, kind: str | None = None,
                since: str | None = None, until: str | None = None,
-               limit: int | None = None) -> list[dict]:
+               limit: int | None = None,
+               kinds: Sequence[str] = ()) -> list[dict]:
+        """Vorlagen, gefiltert. ``kinds`` ist die Mehrzahl von ``kind``.
+
+        Beide Filter nebeneinander wären widersprüchlich; wer beides angibt,
+        bekommt den Durchschnitt, weil die Bedingungen sich addieren.
+        ``kinds`` benutzt der Vergleich (``auswahl.papiere``), ``kind`` die
+        Auswertungen, die genau eine Art wollen.
+        """
         sql = "SELECT * FROM papers WHERE 1=1"
         args: list[Any] = []
         if body_id:
             sql += " AND body_id=?"; args.append(body_id)
         if kind:
             sql += " AND kind=?"; args.append(kind)
+        if kinds:
+            sql += f" AND kind IN ({','.join('?' * len(kinds))})"; args += list(kinds)
         if since:
             sql += " AND date >= ?"; args.append(since)
         if until:
@@ -307,6 +375,30 @@ class CitiesStore:
         if limit:
             sql += " LIMIT ?"; args.append(limit)
         return [dict(r) for r in self._conn.execute(sql, args)]
+
+    def idea_body_ids(self) -> list[str]:
+        """Die Städte, aus denen beurteilte Ideen vorliegen.
+
+        Nicht alle mit Vorlagen: Eine Stadt, die geerntet, aber noch nicht
+        durch `fit` gelaufen ist, steht auf keiner Karte — und gehört dann
+        auch nicht in den Satz „Was Räte in … beschlossen haben".
+        """
+        return [r["body_id"] for r in self._conn.execute(
+            "SELECT DISTINCT p.body_id FROM papers p "
+            "JOIN annotations a ON a.object_kind='paper' AND a.object_id=p.id "
+            "  AND a.annotator='fit' "
+            "WHERE p.body_id != 'oldenburg' ORDER BY p.body_id")]
+
+    def paper_body_ids(self) -> list[str]:
+        """Die Städte, von denen Vorlagen im Speicher liegen.
+
+        **Nicht ``bodies()``.** Die Tabelle dort ist ein Stammsatz, den das
+        Normalisieren pflegt; wer nach den Städten des BESTANDES fragt, will
+        die Vorlagen gezählt haben. Ein Stammsatz, der fehlt, machte sonst
+        eine ganze Stadt für jede Auswertung unsichtbar.
+        """
+        return [r["body_id"] for r in self._conn.execute(
+            "SELECT DISTINCT body_id FROM papers ORDER BY body_id")]
 
     def paper_count(self, body_id: str | None = None) -> int:
         if body_id:
@@ -333,6 +425,18 @@ class CitiesStore:
                 "SELECT * FROM meetings WHERE body_id=? ORDER BY start DESC", (body_id,))
         return [dict(r) for r in rows]
 
+    def meeting_dates(self, body_id: str) -> dict[str, str]:
+        """Kennung → Sitzungstag, für alle Sitzungen dieser Stadt.
+
+        Für die Frage „ist diese Sitzung durch?" — einmal je Lauf statt
+        einmal je Sitzung. Sitzungen ohne Datum bleiben draußen: Über die
+        weiß der Bestand nichts, und was man nicht weiß, holt man.
+        """
+        return {r["id"]: r["start"] for r in self._conn.execute(
+            "SELECT id, start FROM meetings "
+            "WHERE body_id=? AND start IS NOT NULL AND start != ''",
+            (body_id,)).fetchall()}
+
     def agenda_items(self, meeting_id: str) -> list[dict]:
         return [dict(r) for r in self._conn.execute(
             "SELECT * FROM agenda_items WHERE meeting_id=? ORDER BY position, number", (meeting_id,))]
@@ -344,14 +448,30 @@ class CitiesStore:
 
     def files_without_bytes(self, body_id: str | None = None,
                             roles: Sequence[str] = ("main",),
-                            limit: int | None = None) -> list[dict]:
-        """Dateien mit URL, aber ohne geladene Bytes — die Arbeitsliste von ``fetch``."""
+                            limit: int | None = None,
+                            meeting_since: str | None = None) -> list[dict]:
+        """Dateien mit URL, aber ohne geladene Bytes — die Arbeitsliste von ``fetch``.
+
+        ``meeting_since`` greift nur für Dateien, die an einer **Sitzung**
+        hängen (die Niederschriften): Vor dem Datum wird nichts geholt. Der
+        Grund ist Menge — Potsdam allein führt 663 Protokolle, und die Ideen
+        auf der Karte reichen keine zehn Jahre zurück. Sitzungen ohne Datum
+        fallen dabei heraus; sie zu holen hieße, den ganzen Altbestand zu
+        holen, und die Erfahrung aus Phase 1 sagt, dass „unbekannt" fast
+        immer „alt" bedeutet.
+        """
         marks = ",".join("?" * len(roles))
-        sql = (f"SELECT * FROM files WHERE sha256 IS NULL AND access_url IS NOT NULL AND role IN ({marks})")
+        sql = (f"SELECT f.* FROM files f WHERE f.sha256 IS NULL "
+               f"AND f.access_url IS NOT NULL AND f.role IN ({marks})")
         args: list[Any] = list(roles)
         if body_id:
-            sql += " AND body_id=?"; args.append(body_id)
-        sql += " ORDER BY id"
+            sql += " AND f.body_id=?"; args.append(body_id)
+        if meeting_since:
+            sql += (" AND (f.meeting_id IS NULL OR EXISTS ("
+                    "  SELECT 1 FROM meetings m WHERE m.id = f.meeting_id"
+                    "    AND COALESCE(m.start, '') >= ?))")
+            args.append(meeting_since)
+        sql += " ORDER BY f.id"
         if limit:
             sql += " LIMIT ?"; args.append(limit)
         return [dict(r) for r in self._conn.execute(sql, args)]
@@ -385,6 +505,72 @@ class CitiesStore:
             (paper_id,)).fetchone()
         return dict(row) if row else None
 
+    def reason_for_paper(self, paper_id: str, annotator: str = "reason",
+                         version: str = "1") -> dict | None:
+        """Das „Warum" zu einem Papier — aus der Niederschrift seiner Sitzung.
+
+        Dieselbe Reihenfolge wie ``outcome_for_paper``: die entscheidende
+        Station zuerst, sonst die späteste mit Ergebnis. Ohne Abschnitt in der
+        Niederschrift gibt es kein „Warum" und die Antwort ist ``None`` — das
+        ist der häufigere Fall und kein Fehler.
+        """
+        row = self._conn.execute(
+            "SELECT an.payload, a.name AS item_name, a.number AS item_number, "
+            "       m.start, m.name AS meeting_name, o.name AS organization_name "
+            "FROM consultations c "
+            "JOIN agenda_items a ON a.id = c.agenda_item_id "
+            "JOIN annotations an ON an.object_kind='agenda_item' AND an.object_id = a.id "
+            "  AND an.annotator=? AND an.version=? "
+            "LEFT JOIN meetings m ON m.id = a.meeting_id "
+            "LEFT JOIN organizations o ON o.id = m.organization_id "
+            "WHERE c.paper_id = ? "
+            "ORDER BY COALESCE(c.authoritative, 0) DESC, m.start DESC LIMIT 1",
+            (annotator, version, paper_id)).fetchone()
+        if not row:
+            return None
+        aus = dict(row)
+        aus["payload"] = json.loads(aus["payload"] or "{}")
+        return aus
+
+    def agenda_items_for_reason(self, annotator: str, version: str, splitter: str,
+                                body_id: str | None = None,
+                                limit: int | None = None,
+                                nur_mit_gruppe: bool = True) -> list[dict]:
+        """Die Arbeitsliste des ``reason``-Annotators.
+
+        Ein Tagesordnungspunkt kommt infrage, wenn er einen Abschnitt der
+        Niederschrift hat und noch kein Urteil dieser Fassung. ``nur_mit_gruppe``
+        engt auf Punkte ein, deren Papier in einer Ideen-Gruppe mit mindestens
+        einer anderen Stadt liegt — nur dort wird das „Warum" auf der Karte
+        auch gezeigt, und das spart den Löwenanteil der Kosten.
+        """
+        sql = ("SELECT s.agenda_item_id, s.number, s.title, s.text, "
+               "       m.body_id, m.start, m.name AS meeting_name, "
+               "       o.name AS organization_name "
+               "FROM protocol_sections s "
+               "JOIN meetings m ON m.id = s.meeting_id "
+               "LEFT JOIN organizations o ON o.id = m.organization_id "
+               "WHERE s.splitter=? "
+               "  AND NOT EXISTS (SELECT 1 FROM annotations an "
+               "                  WHERE an.object_kind='agenda_item' "
+               "                    AND an.object_id = s.agenda_item_id "
+               "                    AND an.annotator=? AND an.version=?)")
+        args: list[Any] = [splitter, annotator, version]
+        if nur_mit_gruppe:
+            sql += ("  AND EXISTS (SELECT 1 FROM consultations c "
+                    "              JOIN idea_group_status g ON g.body_id = m.body_id "
+                    "              JOIN idea_clusters k ON k.paper_id = c.paper_id "
+                    "                AND k.cluster_id = g.cluster_id "
+                    "                AND k.model = g.model AND k.version = g.version "
+                    "              WHERE c.agenda_item_id = s.agenda_item_id "
+                    "                AND g.peers > 0)")
+        if body_id:
+            sql += " AND m.body_id=?"; args.append(body_id)
+        sql += " ORDER BY m.start DESC, s.ord"
+        if limit:
+            sql += " LIMIT ?"; args.append(limit)
+        return [dict(r) for r in self._conn.execute(sql, args)]
+
     # -------------------------------------------------------------- Schicht 2
 
     def put_text(self, file_id: str, extractor: str, version: str, text: str,
@@ -396,6 +582,81 @@ class CitiesStore:
                 "ON CONFLICT(file_id, extractor, version) DO UPDATE SET text=excluded.text, "
                 "  n_pages=excluded.n_pages, quality=excluded.quality, extracted_at=excluded.extracted_at",
                 (file_id, extractor, version, text, n_pages, quality, now()))
+
+    # ------------------------------------------- Niederschrift je Punkt
+
+    def put_protocol_sections(
+            self, splitter: str,
+            zeilen: Sequence[tuple[str, str, int, str, str, str, str]]) -> None:
+        """Die Abschnitte einer Niederschrift ablegen.
+
+        ``zeilen`` sind ``(file_id, meeting_id, ord, agenda_item_id, number,
+        title, text)``. Ein zweiter Lauf derselben Fassung überschreibt —
+        genau wie bei ``put_text``, damit eine Korrektur am Schnitt keine
+        Karteileichen hinterlässt.
+        """
+        with self._write() as conn:
+            conn.executemany(
+                "INSERT INTO protocol_sections "
+                "  (file_id, meeting_id, ord, agenda_item_id, number, title, text, splitter) "
+                "VALUES (?,?,?,?,?,?,?,?) "
+                "ON CONFLICT(agenda_item_id, splitter) DO UPDATE SET "
+                "  file_id=excluded.file_id, meeting_id=excluded.meeting_id, "
+                "  ord=excluded.ord, number=excluded.number, title=excluded.title, "
+                "  text=excluded.text",
+                [(*z, splitter) for z in zeilen])
+
+    def section_counts(self) -> dict[str, int]:
+        """Je Stadt die Zahl der Protokoll-Abschnitte.
+
+        Einmal je Anfrage statt einmal je Karte: Die Liste zeigt bis zu 100
+        Ideen, und eine Abfrage je Karte wäre hundert Abfragen für eine
+        Zahl, die sich zwischen ihnen nicht ändert.
+        """
+        return {r["body_id"]: r["n"] for r in self._conn.execute(
+            "SELECT m.body_id AS body_id, COUNT(*) AS n FROM protocol_sections ps "
+            "JOIN meetings m ON m.id=ps.meeting_id GROUP BY m.body_id")}
+
+    def protocol_section(self, agenda_item_id: str, splitter: str) -> dict | None:
+        row = self._conn.execute(
+            "SELECT * FROM protocol_sections WHERE agenda_item_id=? AND splitter=?",
+            (agenda_item_id, splitter)).fetchone()
+        return dict(row) if row else None
+
+    def protocol_sections_of(self, meeting_id: str, splitter: str) -> list[dict]:
+        return [dict(r) for r in self._conn.execute(
+            "SELECT * FROM protocol_sections WHERE meeting_id=? AND splitter=? "
+            "ORDER BY ord", (meeting_id, splitter))]
+
+    def protocols_with_text(self, extractor: str, version: str, splitter: str,
+                            body_id: str | None = None, limit: int | None = None,
+                            nur_offene: bool = True) -> list[dict]:
+        """Niederschriften mit Text — die Arbeitsliste des Schneidens.
+
+        Dasselbe Muster wie ``files_without_text`` für das Extrahieren.
+        ``nur_offene=False`` liefert auch die schon geschnittenen; das braucht
+        der Prüfstand, der die REGEL misst und nicht den Rückstand.
+        """
+        if nur_offene:
+            sql = ("SELECT f.id AS file_id, f.body_id, f.meeting_id, t.text FROM files f "
+                   "JOIN texts t ON t.file_id = f.id "
+                   "WHERE f.role='protocol' AND f.meeting_id IS NOT NULL "
+                   "  AND t.extractor=? AND t.version=? AND length(t.text) > 0 "
+                   "  AND NOT EXISTS (SELECT 1 FROM protocol_sections s "
+                   "                  WHERE s.file_id = f.id AND s.splitter=?)")
+            args: list[Any] = [extractor, version, splitter]
+        else:
+            sql = ("SELECT f.id AS file_id, f.body_id, f.meeting_id, t.text FROM files f "
+                   "JOIN texts t ON t.file_id = f.id "
+                   "WHERE f.role='protocol' AND f.meeting_id IS NOT NULL "
+                   "  AND t.extractor=? AND t.version=? AND length(t.text) > 0")
+            args = [extractor, version]
+        if body_id:
+            sql += " AND f.body_id=?"; args.append(body_id)
+        sql += " ORDER BY f.id"
+        if limit:
+            sql += " LIMIT ?"; args.append(limit)
+        return [dict(r) for r in self._conn.execute(sql, args)]
 
     def text_for_file(self, file_id: str, extractor: str, version: str) -> str | None:
         row = self._conn.execute(
@@ -1024,7 +1285,9 @@ class CitiesStore:
 
     def annotations_missing(self, object_kind: str, annotator: str, version: str,
                             body_id: str | None = None, limit: int | None = None,
-                            source_hashes: dict[str, str] | None = None) -> list[dict]:
+                            source_hashes: dict[str, str] | None = None,
+                            since: str | None = None,
+                            kinds: Sequence[str] = ()) -> list[dict]:
         """Objekte ohne Annotation dieses Annotators.
 
         Mit ``source_hashes`` (id → Hash der Eingabe) kommen zusätzlich die
@@ -1039,6 +1302,12 @@ class CitiesStore:
         args: list[Any] = [annotator, version]
         if body_id:
             sql += " AND p.body_id=?"; args.append(body_id)
+        # Dasselbe Fenster wie in `auswahl.papiere` — sonst holte diese
+        # Abfrage zurück, was die Kandidatenwahl gerade ausgeschlossen hat.
+        if since:
+            sql += " AND p.date >= ?"; args.append(since)
+        if kinds:
+            sql += f" AND p.kind IN ({','.join('?' * len(kinds))})"; args += list(kinds)
         sql += " ORDER BY p.date DESC, p.id"
         if limit:
             sql += " LIMIT ?"; args.append(limit)
@@ -1133,6 +1402,15 @@ class CitiesStore:
           war beim letzten ``cluster``-Lauf noch nicht eingeordnet. Sie kann
           in keiner Gruppe liegen, also fehlt ihr der Cluster-Arm.
 
+          **Ohne Instrument zählt sie nicht mit.** ``clusters.idea_text``
+          verlangt eines („kein Instrument, keine Idee") und überspringt den
+          Rest absichtlich — ein Lauf von ``cluster`` ändert daran nichts.
+          Solche Vorlagen mitzuzählen machte den Wächter unerfüllbar: Am
+          13.09.2026 hielt er einen `fit`-Lauf mit dem Rat „Erst: --stage
+          cluster" auf, und genau 19 Vorlagen hatten `instrument = null`.
+          Ein Wächter, der zu etwas rät, das nicht hilft, wird umgangen —
+          und dann fängt er auch den echten Fall nicht mehr.
+
         Beide zählen nur, was ``fit`` überhaupt betrifft: fremde Vorlagen für
         die Papier-Vektoren (Oldenburgs eigene sind die Gegenseite und werden
         getrennt geprüft), übertragbare für die Ideen.
@@ -1149,6 +1427,7 @@ class CitiesStore:
             "     JOIN annotations a ON a.object_kind='paper' AND a.object_id=p.id "
             "       AND a.annotator='classify' AND a.version='2' "
             "   WHERE json_extract(a.payload,'$.transfer') IN ('adaptable','universal') "
+            "     AND COALESCE(json_extract(a.payload,'$.instrument'),'') != '' "
             "     AND NOT EXISTS (SELECT 1 FROM object_embeddings o "
             "                     WHERE o.object_kind='idea' AND o.object_id=p.id "
             "                       AND o.model=?)) AS ideas_unembedded",
@@ -1545,6 +1824,27 @@ class CitiesStore:
                 "  status=excluded.status, error=excluded.error, at=excluded.at",
                 (object_kind, object_id, stage, version, status, error, now()))
 
+    def duplicate_agenda_items(self) -> dict[str, int]:
+        """Punkte, die in ihrer Sitzung ein zweites Mal unter anderer Kennung liegen.
+
+        Die Zahl, an der die phase0-Zwillinge aufgefallen wären: Bis zum
+        10.09.2026 lagen **31 bis 53 %** der Punkte jeder Stadt doppelt, ohne
+        dass irgendeine Kennzahl das gezeigt hätte (``stats`` zählt Zeilen,
+        und Zeilen gab es ja). Sauber bleiben ein paar Promille übrig —
+        Potsdam führt „Informationen des Jugendamtes" wirklich zweimal in
+        einer Sitzung, und in Magdeburg stehen Vorlage und Änderungsantrag
+        unter demselben Titel. Deshalb ist das Band nicht null.
+        """
+        rows = self._conn.execute(
+            "SELECT m.body_id AS body_id, COUNT(*) AS n "
+            "FROM agenda_items a JOIN meetings m ON m.id = a.meeting_id "
+            "WHERE EXISTS (SELECT 1 FROM agenda_items o "
+            "              WHERE o.meeting_id = a.meeting_id "
+            "                AND o.number IS a.number AND o.name = a.name "
+            "                AND o.id <> a.id) "
+            "GROUP BY m.body_id")
+        return {r["body_id"]: r["n"] for r in rows}
+
     def unmapped_outcomes(self, body_id: str, limit: int = 10) -> list[dict]:
         """Ergebnistexte einer Stadt, die auf ``none`` fallen — häufigste zuerst.
 
@@ -1592,6 +1892,11 @@ class CitiesStore:
             "     JOIN texts t ON t.file_id=f.id WHERE p.body_id=b.id AND length(t.text) > 0) "
             "   AS papers_with_text, "
             "  (SELECT COUNT(*) FROM meetings m WHERE m.body_id=b.id) AS meetings, "
+            "  (SELECT COUNT(*) FROM files f WHERE f.body_id=b.id "
+            "     AND f.role='protocol') AS protocols, "
+            "  (SELECT COUNT(*) FROM files f JOIN texts t ON t.file_id=f.id "
+            "     WHERE f.body_id=b.id AND f.role='protocol' AND length(t.text) > 0) "
+            "   AS protocols_with_text, "
             "  (SELECT COUNT(*) FROM agenda_items a JOIN meetings m ON m.id=a.meeting_id "
             "     WHERE m.body_id=b.id) AS agenda_items, "
             "  (SELECT COUNT(*) FROM agenda_items a JOIN meetings m ON m.id=a.meeting_id "

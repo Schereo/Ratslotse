@@ -1,5 +1,24 @@
+/**
+ * Die Lucide-Assets der App aus `lucide-react` erzeugen — und prüfen.
+ *
+ * Web und App sollen dieselbe Bildsprache tragen; deshalb liegen die Vektoren
+ * nicht abgetippt, sondern gerendert im Asset-Katalog. Welche gebraucht
+ * werden, sagt das Register `RatsIconography.swift` — eine zweite Liste hier
+ * wäre eine, die man vergisst.
+ *
+ *   node ios/scripts/generate-lucide-icons.mjs            # fehlende schreiben
+ *   node ios/scripts/generate-lucide-icons.mjs --pruefen  # nur melden
+ *
+ * Warum es die Prüfung gibt: `LucideBellDot` stand bis 09/2026 ohne seinen
+ * Glockenkörper im Katalog — abgetippt und dabei ein Pfad verloren. Die Datei
+ * war da, der Test „Asset vorhanden" grün, und auf dem Knopf „Vorgang folgen"
+ * schwebte ein Punkt über einem Strich. Verglichen werden deshalb die
+ * gezeichneten FORMEN, nicht der Dateitext: Attributreihenfolge und
+ * Zeilenenden unterscheiden sich zwischen den von Hand angelegten Dateien und
+ * dem Renderer, ohne dass ein Pixel anders aussieht.
+ */
 import { createRequire } from "node:module";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -10,65 +29,82 @@ const React = requireFromWeb("react");
 const { renderToStaticMarkup } = requireFromWeb("react-dom/server");
 const Lucide = requireFromWeb("lucide-react");
 
-const icons = {
-  ArrowLeft: "ArrowLeft",
-  BarChart3: "BarChart3",
-  Bell: "Bell",
-  Bookmark: "Bookmark",
-  CalendarDays: "CalendarDays",
-  ChevronDown: "ChevronDown",
-  CircleHelp: "CircleHelp",
-  FileSearch2: "FileSearch2",
-  History: "History",
-  House: "House",
-  LogOut: "LogOut",
-  Landmark: "Landmark",
-  Map: "Map",
-  MapPin: "MapPin",
-  MessageSquarePlus: "MessageSquarePlus",
-  MoreHorizontal: "MoreHorizontal",
-  Scale: "Scale",
-  Search: "Search",
-  SlidersHorizontal: "SlidersHorizontal",
-  Sparkles: "Sparkles",
-  Tag: "Tag",
-  Tags: "Tags",
-  Trophy: "Trophy",
-  UserCircle: "UserCircle",
-  UsersRound: "UsersRound",
-};
-
+const pruefen = process.argv.includes("--pruefen");
 const assetCatalog = join(repositoryRoot, "ios", "Resources", "Assets.xcassets");
+const register = join(
+  repositoryRoot, "ios", "Packages", "RatslotseDesign", "Sources", "RatslotseDesign",
+  "RatsIconography.swift",
+);
 
-for (const [assetSuffix, componentName] of Object.entries(icons)) {
-  const assetName = `Lucide${assetSuffix}`;
-  const imageSet = join(assetCatalog, `${assetName}.imageset`);
-  const icon = Lucide[componentName];
-  if (!icon) throw new Error(`Lucide 0.451.0 does not export ${componentName}`);
+/** Alle `"LucideXyz"` aus dem Register — die Liste, die die App wirklich zieht. */
+const assetNames = [...new Set(
+  [...(await readFile(register, "utf8")).matchAll(/"(Lucide\w+)"/g)].map((m) => m[1]),
+)].sort();
 
-  await rm(imageSet, { recursive: true, force: true });
-  await mkdir(imageSet, { recursive: true });
-
-  const svg = renderToStaticMarkup(
-    React.createElement(icon, {
-      color: "#000000",
-      fill: "none",
-      size: 24,
-      strokeWidth: 2,
-      "aria-hidden": undefined,
-    }),
-  );
-
-  await writeFile(join(imageSet, `${assetName}.svg`), `${svg}\n`);
-  await writeFile(
-    join(imageSet, "Contents.json"),
-    `${JSON.stringify({
-      images: [{ filename: `${assetName}.svg`, idiom: "universal" }],
-      info: { author: "xcode", version: 1 },
-      properties: {
-        "preserves-vector-representation": true,
-        "template-rendering-intent": "template",
-      },
-    }, null, 2)}\n`,
-  );
+/** Nur die gezeichneten Formen, unabhängig von Attributreihenfolge und Schreibweise. */
+function shapes(svg) {
+  return [...svg.matchAll(/<(path|circle|rect|line|polyline|polygon|ellipse)\b([^>]*?)\/?>/g)]
+    .map(([, tag, attrs]) => {
+      const pairs = [...attrs.matchAll(/([\w-]+)="([^"]*)"/g)]
+        .map(([, key, value]) => `${key}=${value.replace(/\s+/g, " ").trim()}`)
+        .sort();
+      return `${tag} ${pairs.join(" ")}`;
+    })
+    .join(" ; ");
 }
+
+const render = (icon) => renderToStaticMarkup(React.createElement(icon, {
+  color: "#000000", fill: "none", size: 24, strokeWidth: 2, "aria-hidden": undefined,
+}));
+
+const contents = (assetName) => `${JSON.stringify({
+  images: [{ filename: `${assetName}.svg`, idiom: "universal" }],
+  info: { author: "xcode", version: 1 },
+  properties: {
+    "preserves-vector-representation": true,
+    "template-rendering-intent": "template",
+  },
+}, null, 2)}\n`;
+
+const befunde = [];
+let geschrieben = 0;
+
+for (const assetName of assetNames) {
+  const componentName = assetName.slice("Lucide".length);
+  const icon = Lucide[componentName];
+  if (!icon) {
+    befunde.push(`${assetName}: Lucide 0.451.0 kennt kein ${componentName}`);
+    continue;
+  }
+
+  const imageSet = join(assetCatalog, `${assetName}.imageset`);
+  const svgPath = join(imageSet, `${assetName}.svg`);
+  const soll = render(icon);
+  let ist = null;
+  try { ist = await readFile(svgPath, "utf8"); } catch { /* fehlt */ }
+
+  if (ist !== null && shapes(ist) === shapes(soll)) continue;
+
+  if (pruefen) {
+    befunde.push(ist === null
+      ? `${assetName}: Asset fehlt`
+      : `${assetName}: gezeichnete Formen weichen ab\n    ist:  ${shapes(ist)}\n    soll: ${shapes(soll)}`);
+    continue;
+  }
+
+  await mkdir(imageSet, { recursive: true });
+  await writeFile(svgPath, `${soll}\n`);
+  await writeFile(join(imageSet, "Contents.json"), contents(assetName));
+  geschrieben += 1;
+}
+
+if (befunde.length) {
+  console.error(`${befunde.length} von ${assetNames.length} Assets stimmen nicht mit Lucide überein:`);
+  for (const b of befunde) console.error(`  ${b}`);
+  console.error("\n  node ios/scripts/generate-lucide-icons.mjs   # schreibt sie neu");
+  process.exit(1);
+}
+
+console.log(pruefen
+  ? `${assetNames.length} Lucide-Assets stimmen mit lucide-react überein.`
+  : `${assetNames.length} Lucide-Assets geprüft, ${geschrieben} geschrieben.`);

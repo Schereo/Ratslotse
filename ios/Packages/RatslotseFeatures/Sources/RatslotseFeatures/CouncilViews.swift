@@ -1741,6 +1741,18 @@ struct DecisionDetailView: View {
     }
 }
 
+/// Die drei Aktionen unter dem Kopf — und die Zeile, die sie auseinanderhält.
+///
+/// Folgen und Merken sehen nebeneinander aus wie zweimal dasselbe, sind aber
+/// zwei verschiedene Dinge: **Merken** ist eine stille Ablage zum
+/// Wiederfinden, **Folgen** ein Abo, das sich von selbst meldet, sobald der
+/// Vorgang eine Station weiterkommt (`scripts/check_vorlage_follows.py`).
+/// Genau so steht es auch im Schema: „`notify_result` ist bewusst getrennt vom
+/// Merken: Eine Ablage ist noch kein Benachrichtigungs-Abo."
+///
+/// Der Unterschied stand nirgends — der eine Knopf trug ein Wort, der andere
+/// ein Symbol, und beide dasselbe Grau (Tims Befund 10.09.2026). Deshalb die
+/// Zeile darunter: zwei Halbsätze, die sagen, was jeder von beiden tut.
 private struct DecisionActionBar: View {
     let isBookmarked: Bool
     let follow: FollowStatus?
@@ -1749,17 +1761,44 @@ private struct DecisionActionBar: View {
     let toggleBookmark: () -> Void
     let toggleFollow: (FollowStatus) -> Void
 
+    private var explanation: String? {
+        guard let follow else {
+            return isBookmarked ? nil : "Merken legt den Beschluss auf deine Merkliste — still, zum Wiederfinden."
+        }
+        return follow.following
+            ? "Du bekommst Bescheid, sobald der Vorgang eine Station weiterkommt. Merken legt ihn nur still auf deine Liste."
+            : "Folgen meldet dir jede neue Station im Rat. Merken legt den Beschluss nur still auf deine Liste."
+    }
+
     var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            actions
+            if let explanation {
+                Text(explanation)
+                    .font(RatsFont.body(11))
+                    .foregroundStyle(RatsColor.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: 560, alignment: .leading)
+        .animation(.snappy(duration: 0.2), value: follow?.following)
+    }
+
+    private var actions: some View {
         HStack(spacing: 10) {
             if let follow {
                 Button { toggleFollow(follow) } label: {
+                    // Symbol und Beschriftung zusammen in der Mitte. Vorher
+                    // standen sie links und ein „+" ganz rechts am Rand — bei
+                    // 12 pt neben einer 16-pt-Glocke, mit einem Loch dazwischen,
+                    // das mit der Titellänge wuchs (Tims Befund 10.09.2026).
+                    // 17 pt ist die Größe der beiden Nachbarknöpfe.
                     HStack(spacing: 9) {
-                        RatsIcon(follow.following ? .bellRing : .bellDot, size: 16)
+                        RatsIcon(follow.following ? .bellRing : .bellDot, size: 17)
                         Text(follow.following ? "Wird verfolgt" : "Vorgang folgen")
-                            .font(RatsFont.body(14, weight: .semibold))
+                            .font(RatsFont.body(15, weight: .semibold))
                             .lineLimit(1)
-                        Spacer(minLength: 0)
-                        RatsIcon(follow.following ? .check : .plus, size: 12)
+                            .minimumScaleFactor(0.85)
                     }
                     .foregroundStyle(follow.following ? RatsColor.primary : RatsColor.primaryText)
                     .padding(.horizontal, 16)
@@ -1795,7 +1834,6 @@ private struct DecisionActionBar: View {
                 .accessibilityLabel("Beschluss teilen")
             }
         }
-        .frame(maxWidth: 560, alignment: .leading)
     }
 }
 
@@ -2000,9 +2038,9 @@ private struct DecisionTemplateExcerpt: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(text)
-                .font(RatsFont.body(14))
+                .font(RatsFont.reading())
                 .foregroundStyle(RatsColor.bodyText)
-                .lineSpacing(4)
+                .lineSpacing(6)
                 .lineLimit(isExpanded || !isLong ? nil : 5)
             if isLong {
                 Button {
@@ -2025,6 +2063,8 @@ private struct DecisionTemplateExcerpt: View {
 
 private struct DecisionDetailHeader: View {
     let detail: DecisionDetail
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @State private var showsTags = false
 
     var body: some View {
         let decision = detail.decision
@@ -2033,10 +2073,6 @@ private struct DecisionDetailHeader: View {
                 if let outcome = decision.outcome {
                     DecisionDetailOutcome(outcome: outcome)
                 }
-                Text(metadata)
-                    .font(RatsFont.mono(9.5))
-                    .foregroundStyle(RatsColor.muted)
-                    .lineLimit(2)
                 Spacer(minLength: 0)
                 if let score = detail.importance?.score, score >= 55 {
                     RatsLabel("\(score)", .flame)
@@ -2050,6 +2086,11 @@ private struct DecisionDetailHeader: View {
                 }
             }
 
+            Text(metadata)
+                .font(RatsFont.metadata())
+                .foregroundStyle(RatsColor.muted)
+                .fixedSize(horizontal: false, vertical: true)
+
             Text(decision.title)
                 .font(RatsFont.title(24))
                 .foregroundStyle(RatsColor.text)
@@ -2057,21 +2098,26 @@ private struct DecisionDetailHeader: View {
                 .fixedSize(horizontal: false, vertical: true)
 
             if !tags.isEmpty {
-                LazyVGrid(
-                    columns: [GridItem(.adaptive(minimum: 145), spacing: 7)],
-                    alignment: .leading,
-                    spacing: 7
-                ) {
-                    ForEach(tags, id: \.self) { tag in
-                        RatsLabel(tag, .tag)
-                            .font(RatsFont.body(10.5, weight: .semibold))
-                            .foregroundStyle(RatsColor.primary)
-                            .lineLimit(1)
-                            .padding(.horizontal, 9)
-                            .padding(.vertical, 6)
-                            .background(RatsColor.primary.opacity(0.08))
-                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                if horizontalSizeClass == .compact {
+                    Button {
+                        showsTags.toggle()
+                    } label: {
+                        HStack(spacing: 6) {
+                            RatsIcon(.tag, size: 13)
+                            Text("\(tags.count) \(tags.count == 1 ? "Stichwort" : "Stichwörter")")
+                                .font(RatsFont.metadata())
+                            RatsIcon(.chevronDown, size: 12)
+                                .rotationEffect(.degrees(showsTags ? 180 : 0))
+                        }
+                        .foregroundStyle(RatsColor.muted)
+                        .frame(minHeight: 44)
                     }
+                    .buttonStyle(RatsPlainButtonStyle())
+                    .accessibilityValue(showsTags ? "Ausgeklappt" : "Eingeklappt")
+                    .accessibilityHint(showsTags ? "Stichwörter ausblenden" : "Stichwörter anzeigen")
+                }
+                if horizontalSizeClass != .compact || showsTags {
+                    tagGrid
                 }
             }
         }
@@ -2090,6 +2136,25 @@ private struct DecisionDetailHeader: View {
         }
     }
 
+    private var tagGrid: some View {
+        LazyVGrid(
+            columns: [GridItem(.adaptive(minimum: 145), spacing: 7)],
+            alignment: .leading,
+            spacing: 7
+        ) {
+            ForEach(tags, id: \.self) { tag in
+                RatsLabel(tag, .tag)
+                    .font(RatsFont.body(10.5, weight: .semibold))
+                    .foregroundStyle(RatsColor.primary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 6)
+                    .background(RatsColor.primary.opacity(0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            }
+        }
+    }
+
     private var metadata: String {
         let decision = detail.decision
         let item = decision.itemNumber.map { "TOP \($0)" }
@@ -2104,7 +2169,7 @@ private struct DecisionDetailHeader: View {
         let field = decision.policyField.map {
             $0.replacingOccurrences(of: "_", with: " ").capitalized
         }
-        return Array(([field].compactMap { $0 } + decision.policyTags + detail.entities.map(\.name)).prefix(7))
+        return [field].compactMap { $0 } + decision.policyTags + detail.entities.map(\.name)
     }
 }
 
@@ -2151,21 +2216,22 @@ private struct LottiDecisionSummary: View {
                     .frame(width: 72, height: 64)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("LOTTI ERKLÄRT'S EINFACH")
-                        .font(RatsFont.mono(9.5))
-                        .tracking(1.1)
-                        .foregroundStyle(RatsColor.signal)
+                        .font(RatsFont.metadata())
+                        .tracking(0.6)
+                        .foregroundStyle(RatsColor.signalInk)
                     Text("Das Wichtigste in Kürze")
                         .font(RatsFont.body(16, weight: .bold))
                         .foregroundStyle(RatsColor.text)
                 }
             }
             Text(text)
-                .font(RatsFont.body(15))
+                .font(RatsFont.reading())
                 .foregroundStyle(RatsColor.bodyText)
-                .lineSpacing(5)
+                .lineSpacing(6)
             RatsLabel("Automatische Kurzfassung – verbindlich ist der amtliche Wortlaut.", .sparkles)
-                .font(RatsFont.body(10.5))
+                .font(RatsFont.notice())
                 .foregroundStyle(RatsColor.muted)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(17)
         .background(RatsColor.signal.opacity(0.065))
@@ -2184,9 +2250,9 @@ private struct DecisionOfficialText: View {
     var body: some View {
         DisclosureGroup(isExpanded: $isExpanded) {
             Text(text)
-                .font(RatsFont.body(13.5))
-                .foregroundStyle(RatsColor.secondary)
-                .lineSpacing(4)
+                .font(RatsFont.reading())
+                .foregroundStyle(RatsColor.bodyText)
+                .lineSpacing(6)
                 .padding(.top, 10)
         } label: {
             Label {
@@ -2195,7 +2261,7 @@ private struct DecisionOfficialText: View {
                         .font(RatsFont.body(13.5, weight: .semibold))
                         .foregroundStyle(RatsColor.text)
                     Text("Aus dem Sitzungsprotokoll")
-                        .font(RatsFont.body(10.5))
+                        .font(RatsFont.metadata())
                         .foregroundStyle(RatsColor.muted)
                 }
             } icon: {
@@ -2382,19 +2448,20 @@ private struct DecisionDocumentsCard: View {
                                     .foregroundStyle(RatsColor.primary)
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(attachment.label)
-                                        .font(RatsFont.body(12.5, weight: .medium))
-                                        .lineLimit(2)
+                                        .font(RatsFont.sourceTitle(weight: .medium))
+                                        .fixedSize(horizontal: false, vertical: true)
                                         .multilineTextAlignment(.leading)
                                     if !attachment.applicants.isEmpty {
                                         Text(attachment.applicants.joined(separator: " · "))
-                                            .font(RatsFont.mono(9.5))
+                                            .font(RatsFont.metadata())
                                             .foregroundStyle(RatsColor.muted)
                                     }
                                 }
                                 Spacer(minLength: 5)
                                 RatsIcon(.eye, size: 16).foregroundStyle(RatsColor.muted)
                             }
-                            .padding(.vertical, 2)
+                            .frame(minHeight: 44)
+                            .padding(.vertical, 4)
                         }
                         .buttonStyle(RatsPlainButtonStyle())
                     }
@@ -2420,11 +2487,14 @@ private struct DecisionDocumentLink: View {
         Link(destination: url) {
             HStack(spacing: 9) {
                 RatsIcon(symbol, size: 14).foregroundStyle(RatsColor.primary)
-                Text(title).font(RatsFont.body(12.5, weight: .medium))
+                Text(title).font(RatsFont.sourceTitle(weight: .medium))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .multilineTextAlignment(.leading)
                 Spacer()
                 RatsIcon(.arrowUpRight, size: 12)
             }
             .foregroundStyle(RatsColor.bodyText)
+            .frame(minHeight: 44)
         }
     }
 }

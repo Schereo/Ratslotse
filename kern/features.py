@@ -95,6 +95,14 @@ FEATURES: dict[str, Feature] = {
                     "in der Woche nach dem 13.09.2026); danach ist die Seite ein "
                     "Rückblick und braucht keinen Schalter mehr.",
     ),
+    "tippspiel": Feature(
+        key="tippspiel",
+        description="Das Tippspiel zur Ratswahl am 13.09.2026: Sitze je Liste tippen, "
+                    "optional die OB-Prozente, Live-Vergleich und Scoreboard "
+                    "(docs/plan-tippspiel-ratswahl.md) — ohne Konto, per QR-Link.",
+        fertig_wenn="Der Wahlabend ist vorbei und das Scoreboard ein Rückblick statt "
+                    "eines laufenden Spiels.",
+    ),
 }
 
 

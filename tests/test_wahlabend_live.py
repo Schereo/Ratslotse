@@ -137,7 +137,7 @@ def votemanager_server(tmp_path, monkeypatch):
     monkeypatch.setenv("FEATURE_FLAGS", "wahlabend")
     monkeypatch.setenv("WAHLABEND_HISTORY_FILE", str(tmp_path / "verlauf.json"))
     monkeypatch.delenv("WAHLABEND_COLUMNS", raising=False)
-    register.load.cache_clear()
+    register.reset()
     votemanager.reset_memory()
     service.reset()
     yield lage
@@ -145,7 +145,7 @@ def votemanager_server(tmp_path, monkeypatch):
     server.server_close()
     votemanager.reset_memory()
     service.reset()
-    register.load.cache_clear()
+    register.reset()
 
 
 @pytest.fixture
@@ -575,6 +575,120 @@ def test_mit_vollstaendiger_csv_bleibt_die_darstellung_ungefragt(votemanager_ser
     assert not any("Ergebnisdarstellung" in n for n in d["notes"])
 
 
+def test_json_ohne_personen_ersetzt_leere_csv(votemanager_server, client):
+    """PR 0 (Tippspiel-Plan): Die CSV liegt bei 0 von N Meldungen, die
+    Ergebnisdarstellung zeigt schon Zahlen — aber ohne Personenstimmen.
+    Vorher hätte ``_better`` das verworfen, weil auch die JSON-Zeile keine
+    Personen trägt; jetzt entscheidet zuerst der Auszählungsstand."""
+    leg_ergebnisse(votemanager_server, 0)
+    leg_tabelle(votemanager_server, standardreihenfolge())
+    bereiche, stadt, _, _ = _stand(133)
+    leg_praesentation(votemanager_server, [_ohne_personen(b) for b in bereiche], _ohne_personen(stadt))
+    d = hol(client)
+    assert d["person_votes_available"] is False
+    assert sum(p["votes"] or 0 for p in d["parties"]) > 0, "die JSON-Zahlen wurden nicht übernommen"
+    assert any("weiter als die Open-Data-CSV" in n for n in d["notes"]), d["notes"]
+
+
+def test_json_weiter_als_csv_gewinnt(votemanager_server, client):
+    """Ein Wahlbereich ist in der CSV nur teilweise ausgezählt (mit
+    Personenstimmen); die Ergebnisdarstellung zeigt für denselben Bereich
+    schon den vollen Stand. Vorher gewann die CSV automatisch, weil sie
+    bereits Personenstimmen trug — jetzt gewinnt, wer weiter ist."""
+    leg_ergebnisse(votemanager_server, 40)
+    leg_tabelle(votemanager_server, standardreihenfolge())
+    snap = votemanager.fetch()
+    unvollstaendige = [a for a in snap.areas if a.reports_received < a.reports_expected]
+    assert unvollstaendige, "Testannahme verletzt: bei 40 von 133 Bezirken ist kein Wahlbereich unvollständig"
+    teil = unvollstaendige[0]
+
+    bereiche, stadt, _, _ = _stand(133)
+    leg_praesentation(votemanager_server, bereiche, stadt)
+    votemanager.reset_cache()
+    hol(client)
+    snap2 = votemanager.fetch()
+    voll = next(a for a in snap2.areas if a.number == teil.number)
+    assert voll.reports_received == voll.reports_expected, "die vollständigere JSON-Zeile hätte gewinnen müssen"
+    assert any("weiter als die Open-Data-CSV" in n for n in snap2.warnings), snap2.warnings
+
+
+def test_csv_weiter_als_json_bleibt(votemanager_server, client):
+    """Umgekehrter Fall: Die CSV ist weiter als die Ergebnisdarstellung.
+    Dann bleibt die CSV-Zeile stehen — kein Rückschritt durch das JSON."""
+    leg_ergebnisse(votemanager_server, 90)
+    leg_tabelle(votemanager_server, standardreihenfolge())
+    snap = votemanager.fetch()
+    unvollstaendige = [a for a in snap.areas if a.reports_received < a.reports_expected]
+    assert unvollstaendige, "Testannahme verletzt: bei 90 von 133 Bezirken ist kein Wahlbereich unvollständig"
+    teil = unvollstaendige[0]
+
+    bereiche, stadt, _, _ = _stand(40)  # die Ergebnisdarstellung hinkt hinterher
+    leg_praesentation(votemanager_server, bereiche, stadt)
+    votemanager.reset_cache()
+    hol(client)
+    snap2 = votemanager.fetch()
+    unveraendert = next(a for a in snap2.areas if a.number == teil.number)
+    assert unveraendert.reports_received == teil.reports_received, "die ältere JSON-Zeile hätte NICHT gewinnen dürfen"
+    assert not any("weiter als die Open-Data-CSV" in n for n in snap2.warnings), snap2.warnings
+
+
+def test_stadtzeile_folgt_derselben_regel(votemanager_server, client):
+    """Die Stadtzeile folgt seit PR 0 derselben ``_better``-Regel wie die
+    Wahlbereiche — vorher wurde sie nur ersetzt, wenn die CSV-Stadt GAR NICHT
+    ausgezählt war, ein Teilstand blockierte die JSON-Fassung für immer."""
+    leg_ergebnisse(votemanager_server, 40)
+    leg_tabelle(votemanager_server, standardreihenfolge())
+    snap = votemanager.fetch()
+    assert snap.city and snap.city[0].counted, "Testannahme verletzt: die Stadtzeile hat schon einen Teilstand"
+
+    bereiche, stadt, _, _ = _stand(133)
+    leg_praesentation(votemanager_server, bereiche, stadt)
+    votemanager.reset_cache()
+    hol(client)
+    snap2 = votemanager.fetch()
+    assert snap2.city[0].reports_received == stadt.reports_received
+    assert any("Stadt" in n and "weiter als die Open-Data-CSV" in n for n in snap2.warnings), snap2.warnings
+
+
+def test_needs_presentation_bei_unvollstaendiger_zaehlung_trotz_personen():
+    """Unit-Test des Kerns von PR 0: Eine Zeile mit Personenstimmen, aber
+    unvollständigem Meldungsstand, löst trotzdem einen Blick in die
+    Ergebnisdarstellung aus — die alte Prüfung fragte nur nach Personen."""
+    voll = AreaRow("Wahlbereich I", 1, 22, 22, 1000, 800, 10, 790, 780,
+                   {1: ListRow(1, 400, 300, 100, {1: 50, 2: 50})})
+    teil = AreaRow("Wahlbereich I", 1, 22, 10, 1000, 400, 5, 395, 390,
+                   {1: ListRow(1, 200, 150, 50, {1: 25, 2: 25})})
+    assert votemanager._needs_presentation([voll]) is False
+    assert votemanager._needs_presentation([teil]) is True
+
+
+@pytest.mark.parametrize("csv_reports, json_reports, csv_hat_personen, json_hat_personen, erwartet", [
+    (0, 0, False, False, False),   # Gleichstand, keine Seite hat Personen — kein Wechsel
+    (10, 20, False, False, True),  # JSON weiter, trotz fehlender Personen beiderseits
+    (20, 10, True, False, False),  # CSV weiter UND hat schon Personen — JSON (weniger weit) gewinnt nicht
+    (15, 15, False, True, True),   # Gleichstand, nur JSON hat Personen — alte Regel bleibt
+    (15, 15, True, True, False),   # Gleichstand, beide haben Personen — kein Wechsel
+])
+def test_better_vergleicht_zuerst_den_auszaehlungsstand(csv_reports, json_reports, csv_hat_personen, json_hat_personen, erwartet):
+    """Unit-Test der Kernfunktion: Meldungsstand zuerst, Personenstimmen nur
+    als Tie-Breaker bei Gleichstand — nicht mehr das alleinige Kriterium."""
+    def zeile(reports: int, personen: bool) -> AreaRow:
+        cands = {1: 10} if personen else None
+        return AreaRow("Wahlbereich I", 1, 22, reports, 1000, 800, 10, 790, 780,
+                       {1: ListRow(1, 400, 300, 100, cands)})
+
+    csv_row = zeile(csv_reports, csv_hat_personen)
+    json_row = zeile(json_reports, json_hat_personen)
+    assert votemanager._better(csv_row, json_row) is erwartet
+
+
+def test_better_ohne_csv_zeile_gewinnt_json_immer():
+    """Unverändert gegenüber vorher: Fehlt die CSV-Zeile ganz, gilt die
+    JSON-Zeile immer als besser — auch ohne jede Meldung."""
+    json_row = AreaRow("Wahlbereich I", 1, 22, 0, None, None, None, None, None, {})
+    assert votemanager._better(None, json_row) is True
+
+
 def test_vor_der_auszaehlung_ist_die_darstellung_leer_und_stoert_nicht(votemanager_server, client):
     leg_leere_dateien(votemanager_server)
     leg_leere_praesentation(votemanager_server)
@@ -626,7 +740,7 @@ def test_wahlabend_columns_dreht_die_spaltenzuordnung(votemanager_server, client
     assert vorgabe[6:8] == ["volt", "piraten"]
 
     monkeypatch.setenv("WAHLABEND_COLUMNS", ",".join(getauscht("volt", "piraten")))
-    register.load.cache_clear()
+    register.reset()
     service.reset()
     d = hol(client)
     assert [p["slug"] for p in d["parties"]][6:8] == ["piraten", "volt"]
@@ -636,7 +750,7 @@ def test_wahlabend_columns_dreht_die_spaltenzuordnung(votemanager_server, client
     assert volt["index"] == 8 and volt["candidates_total"] == 13
 
     monkeypatch.delenv("WAHLABEND_COLUMNS")
-    register.load.cache_clear()
+    register.reset()
     service.reset()
     assert [p["slug"] for p in hol(client)["parties"]][6:8] == ["volt", "piraten"]
 
@@ -653,6 +767,6 @@ def test_unbrauchbares_wahlabend_columns_laesst_die_vorgabe_stehen(votemanager_s
         "doppelt": ",".join(["spd" if s == "dava" else s for s in vorgabe]),
     }
     monkeypatch.setenv("WAHLABEND_COLUMNS", werte[fall])
-    register.load.cache_clear()
+    register.reset()
     assert [p.slug for p in register.load().parties] == vorgabe
     assert [p.index for p in register.load().parties] == list(range(1, len(vorgabe) + 1))

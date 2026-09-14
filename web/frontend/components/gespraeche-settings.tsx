@@ -69,8 +69,8 @@ export function GespraecheCard() {
         Gespräche
       </h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        Deine „Frag den Rat"-Verläufe liegen in deinem Konto und stehen auf allen
-        Geräten unter „Gespräche".
+        Wenn du Gespräche speicherst, findest du sie auf allen Geräten unter
+        „Gespräche".
       </p>
 
       <div className="mt-4 flex items-center justify-between gap-3">

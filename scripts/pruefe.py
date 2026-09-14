@@ -213,6 +213,13 @@ PRUEFUNGEN: list[Pruefung] = [
     Pruefung("kachelflaeche", "Geometrie der Kachelfläche nachrechnen", cwd=FRONTEND,
              befehl=["node", "--experimental-strip-types", "scripts/pruefe-kachelflaeche.mjs"],
              braucht=_node_fehlt),
+    # Die App trägt ihre Icons als abgelegte Vektoren, nicht als Bibliothek.
+    # `tests/test_ios_icons.py` prüft, dass die Datei DA ist — ob sie das ganze
+    # Zeichen zeigt, sieht man nur im Vergleich mit lucide-react. Bis 09/2026
+    # fehlte `LucideBellDot` der Glockenkörper.
+    Pruefung("iossymbole", "Icons der App gegen lucide-react halten",
+             befehl=["node", "ios/scripts/generate-lucide-icons.mjs", "--pruefen"],
+             braucht=_node_fehlt),
 ]
 
 

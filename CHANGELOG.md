@@ -7,6 +7,227 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [2.4.0] – 2026-09-10
+
+### Hinzugefügt
+- **Die Liste „Ideen aus anderen Städten" bekommt einen eigenen Prüfstand.**
+  Bisher ließ sich messen, ob ein einzelnes Urteil stimmt — ob die zwanzig
+  obersten Einträge zwanzig sind, die ein Ratsmitglied sehen will, ließ sich
+  nicht messen. Man kann jedes Einzelurteil verbessern und die Liste dabei
+  verschlechtern; ohne diese Zahl merkt es niemand. (#1242)
+- **Der Städtevergleich holt jetzt auch die Sitzungsprotokolle — und schneidet
+  sie auf.** Bisher lud er nur die Vorlage selbst; die Niederschrift der
+  Sitzung, in der über sie entschieden wurde, blieb liegen, obwohl die
+  Schnittstellen sie nennen. In ihr steht, was der Vergleich bisher nicht zeigen
+  konnte: *warum* ein fremder Rat so entschieden hat. Jede Niederschrift wird
+  entlang ihrer Tagesordnung geschnitten, damit zu jeder fremden Vorlage genau
+  der Abschnitt vorliegt, der sie behandelt. Gemessen an 38 echten Protokollen
+  aus fünf Städten bekommen 82 Prozent der Tagesordnungspunkte ihren Abschnitt.
+  Eine Stadt, die Protokoll-Adressen nennt und keine ausliefert, wird nach drei
+  Fehlversuchen übersprungen statt sechshundertmal vergeblich gefragt. Was
+  daraus auf der Karte zu lesen sein wird, kommt im nächsten Schritt: Der
+  Annotator, der das Warum aus den Abschnitten liest, ist gebaut und bleibt
+  vorerst ausgeschaltet — sein Prüfstand braucht erst einen Maßstab, den ein
+  Mensch gesetzt hat. (#1266)
+- **Der Städtevergleich unterscheidet jetzt, ob ein Rat eine Idee wollte oder
+  sie abgelehnt hat.** „Verpackungssteuersatzung erlassen" und
+  „Verpackungssteuer-Prüfung einstellen" behandeln dieselbe Sache und standen
+  beide als fehlende Idee auf der Liste — die Karte zählte damit eine Stadt für
+  etwas, das sie gerade gestoppt hat. Jede Idee trägt jetzt ihre Haltung, und
+  die Karte kann sagen: vier Räte dafür, einer dagegen, zwei prüfen erst.
+  (#1244)
+- **Der Städtevergleich bekommt seinen wöchentlichen Lauf.** Der Job, der
+  Vorlagen und Beschlüsse der fünf Vergleichsstädte holt und durch Einordnung,
+  Suche und Bewertung zieht, war seit Wochen gebaut und stand in keiner crontab
+  — neue Beschlüsse aus Braunschweig oder Potsdam erschienen deshalb nie. Dazu
+  ein Weg, den hier erarbeiteten Datenstand auf einen Server zu legen, statt ihn
+  dort in Stunden neu zu berechnen. (#1246)
+- **E-Mail-Adresse ändern.** Unter *Mein Konto* lässt sich die Adresse wechseln:
+  Passwort bestätigen, den Link an die neue Adresse klicken, fertig — Themen,
+  Merkliste und Abzeichen bleiben. Bis der Link geklickt ist, ändert sich
+  nichts, und die bisherige Adresse wird über den Wechsel informiert. Auch nach
+  einem Tippfehler bei der Registrierung: Der Hinweis „Bitte bestätige deine
+  E-Mail" bietet die Korrektur jetzt selbst an, statt in eine Sackgasse zu
+  führen. (#1237)
+- **Wer etwas vorschlägt, erfährt jetzt, wenn es umgesetzt ist.** Beim Abhaken
+  einer Rückmeldung im Admin-Bereich lässt sich der absendenden Person eine
+  E-Mail schicken — mit einem passenden Kernsatz je Art (Vorschlag umgesetzt,
+  Fehler behoben, Anfrage erledigt), der ursprünglichen Nachricht als Zitat und
+  optional ein paar Zeilen von uns dazu. (#1255)
+- **Der Wahlabend hat einen zweiten Weg zu den Zahlen.** Bleiben die
+  Open-Data-CSVs des Votemanagers am Wahlsonntag leer oder ohne Personenstimmen,
+  liest die Seite dieselben Zahlen aus den JSON-Dateien, mit denen der
+  Votemanager seine eigene Ergebnisdarstellung füllt: je Wahlbereich Listen- und
+  Personenstimmen, jede Bewerber*in in Listenreihenfolge. Sitze und Namen
+  erscheinen damit, sobald die Stadt selbst etwas zeigt. Die CSV bleibt die
+  erste Quelle; ein Hinweis auf der Seite sagt, wenn der Ersatz greift. Dazu
+  eine Gegenprobe am Ende der Auszählung: Weicht die Sitzverteilung, die der
+  Votemanager ausweist, von der eigenen Zuteilung ab, steht das sichtbar in den
+  Hinweisen. (#1234)
+
+### Geändert
+- **Der Städtevergleich urteilt je Idee nach der Mehrheit, nicht nach der
+  jüngsten Vorlage.** Beantragt eine Stadt eine Sache dreimal, bekam jede
+  Vorlage ihr eigenes Urteil — und die Karte zeigte das der jüngsten, auch wenn
+  die beiden anderen widersprachen. Jetzt steht „3 von 5 Vorlagen" daneben.
+  Außerdem erkennt die Bewertung Prüfaufträge sauberer als eigene Haltung, und
+  die Seite lädt wieder so schnell wie vor der Haltungs-Zeile. (#1262)
+- **„Ideen aus anderen Städten" zählt jetzt Ideen, nicht Vorlagen.** Wer eine
+  Sache dreimal beantragt, steht dreimal auf der Liste — Potsdam etwa mit drei
+  Anläufen zum selben Denkmalpflege-Konzept. Von den Einträgen mit mehreren
+  beteiligten Städten waren so gut drei Viertel Wiederholungen. Gezeigt wird
+  jetzt der jüngste Anlauf, die übrigen hängen daran. Außerdem zeigt die Seite
+  endlich die neue Bewertung: Sie las noch die alte Fassung mit 1.254 Urteilen,
+  während 9.484 daneben lagen. (#1239)
+- **Die Karte „Ideen aus anderen Städten" zeigt jetzt, wie die anderen Räte zur
+  Sache standen.** Unter jeder Idee steht „10 dafür, 4 prüfen erst, 2 dagegen",
+  und eine Vorlage, die die Sache selbst bremst, trägt das Wort „Gegenrichtung"
+  — bis dahin stand ein Antrag, der eine Steuer verhindern wollte, unmarkiert
+  unter den fehlenden Ideen. Wer eine Sache mehrfach beantragt hat, steht
+  außerdem einmal da; die übrigen Anläufe klappen auf. (#1254)
+- **Auf „Ideen aus anderen Städten" steht jetzt nur noch, was jemand
+  vorgeschlagen hat.** Antworten der Verwaltung, Mitteilungen und Berichte sind
+  keine Ideen, die Oldenburg fehlen — sie sind die Reaktion auf eine, und die
+  Idee selbst steht in der Anfrage daneben. Von den Einträgen, die mehrere
+  Städte teilen, waren zwei Fünftel solche Reaktionen. (#1241)
+- **Frag den Rat fragt zurück, statt irgendetwas zu antworten.** Auf „Was hast
+  du?" kam bisher eine ordentlich belegte Auskunft über die Arbeit des Stadtrats
+  — die Suche findet immer etwas, und das Antwort-Modell macht daraus etwas
+  Plausibles. Nennt eine Frage gar keinen Gegenstand, sagt Lotti das jetzt,
+  erklärt in einem Satz, worüber sie Auskunft geben kann, und schlägt konkrete
+  Fragen aus dem Bestand vor. Wer eine Ratsperson, einen Ort oder eine Sitzung
+  nennt, bekommt weiterhin seine Antwort: Eine beantwortbare Frage abzuweisen
+  wäre der teurere Fehler. Dieselbe Rückfrage kommt jetzt auch statt einer
+  gründlichen Recherche — die kostete sonst eine halbe Minute, ein Vielfaches
+  einer normalen Antwort und eine der fünf Recherchen des Tages für eine Frage,
+  die niemand gestellt hat. (#1261)
+- **„Frag den Rat" in der App lässt sich wieder lesen, während man tippt.** Die
+  Tastatur geht weg, sobald man neben das Eingabefeld tippt, am Gespräch zieht
+  oder eine Frage abschickt — vorher blieb sie stehen und vom Gespräch war ein
+  Drittel übrig. Wer hochgescrollt hat, springt über „Zum Ende" zurück an die
+  letzte Antwort. Die Quellenliste und die Orte-Karte zeigen auf dem iPhone
+  zuerst nur ihre Kopfzeile mit den Zahlen und öffnen sich auf Tipp. Lange
+  drücken auf die eigene Frage bietet „Noch einmal fragen", „Bearbeiten" und
+  „Kopieren". Und wer während einer laufenden Antwort kurz die App wechselt,
+  bekommt sie trotzdem: Die App bleibt dafür bis zu 30 Sekunden wach, und reißt
+  die Verbindung doch, fragt sie beim Zurückkommen einmal von selbst noch
+  einmal. (#1247)
+- **Auf der Heute-Seite der App lässt sich die Frage direkt eintippen.** Das
+  Feld unter „Frag den Rat" nimmt den Text an und stellt die Frage beim Absenden
+  sofort — vorher wechselte schon der Tipp ins Feld die Ansicht. Außerdem: Das
+  Ende der Heute-Seite und jeder anderen Registerkarte liegt nicht mehr unter
+  der Tab-Leiste; die Stadtkarte ist auf dem Telefon gut zwei Drittel der Höhe
+  statt eines knappen Drittels; und „Zum Ende" im Gespräch erscheint erst, wenn
+  man wirklich ein Stück hochgescrollt hat. (#1248)
+- **Die Stadtkarte füllt in der App das ganze Telefon.** Bisher stand sie in
+  einem kleinen Fenster über einer scrollenden Tafel, deren Kopf die Kartenkante
+  abschnitt. Jetzt ist die Karte die Bühne — randlos bis unter die Tab-Leiste —
+  und die Tafel liegt als Schublade darüber: ein Griff zum Ziehen, drei
+  Stellungen (nur der Kopf, halb, ganz), die Kamera legt Umriss und Vorhaben
+  immer in den freien Teil. Neu ist der Standort-Knopf: Ein Tipp öffnet den
+  Ortsbereich, in dem du gerade stehst (einmalige Abfrage, keine Verfolgung).
+  Nachbar-Chips wechseln das Viertel auf derselben Karte, statt eine neue
+  darüber zu legen; die Bündel der Themen-Orte richten sich nach der
+  Schirmbreite und liegen auf dem iPhone nicht mehr übereinander. (#1251)
+- **Der Anzeigename ist jetzt Pflicht — und im Admin-Panel endlich zu sehen.**
+  Bei der Registrierung war das Namensfeld freiwillig, im Admin-Panel stand
+  trotzdem nur die E-Mail-Adresse: Ein Konto war dort eine Adresse und keine
+  Person. Beides ist behoben. Wer sich neu anmeldet, trägt seinen Namen ein (der
+  Vorname genügt); wer über Apple kommt — Apple gibt den Namen nur bei der
+  allerersten Anmeldung heraus und auch nur auf Wunsch —, wird direkt danach
+  einmal gefragt. In der Nutzerliste des Admin-Panels steht der Name jetzt vorn,
+  die Adresse blass daneben, und die Suche findet beides. Bestehende Konten ohne
+  Namen bleiben unangetastet. (#1270)
+- **Die Analyse zeigt unter „Trends" nur noch die Rückblicke je Themenfeld.**
+  Die beiden Quartalsgrafiken („Beschlüsse je Quartal", „Erkanntes Finanzvolumen
+  je Quartal") und die Schlagwortliste „Aktuell aufkommende Themen" sind
+  entfallen — sie standen auf einem veralteten Datenstand und haben mehr
+  angedeutet, als sie belegen konnten. In der App fällt derselbe Block („Neue
+  Themen") weg. (#1268)
+
+### Behoben
+- **Ein deaktiviertes Konto schaltete sich über „Mit Apple anmelden" selbst
+  wieder frei.** Der Verknüpfungspfad las den Kontostand „pending" als „E-Mail
+  noch nicht bestätigt" — er bedeutet aber auch „von einem Admin deaktiviert".
+  Wer eine Apple-ID mit derselben bestätigten Adresse hatte, hob die Sperre
+  damit auf. Freigeschaltet wird jetzt nur noch, wer wegen der unbestätigten
+  Adresse wartete. (#1240)
+- **Die Beispielfragen auf der leeren Fragen-Seite meinen wieder etwas.** Dort
+  stand „Was wurde zu ‚Beratung von nichtöffentlichen Tagesordnungspunkten im …'
+  entschieden?" — der Vorschlag stammte aus einer Sitzung mit einem einzigen
+  Tagesordnungspunkt, und deren wichtigster Beschluss ist zwangsläufig
+  Verfahrenskram. Vorgeschlagen werden jetzt nur noch Sitzungen mit Substanz,
+  und der Server liefert den Gegenstand schon zurechtgestutzt statt jeden Client
+  selbst schneiden zu lassen. In der App erschienen die frischen Vorschläge
+  nebenbei überhaupt zum ersten Mal: Sie las die Liste unter dem falschen Namen
+  und zeigte deshalb immer nur ihre eingebauten Beispiele. (#1261)
+- **Der Städtevergleich findet wieder, was Oldenburg hat.** Nachdem alle sechs
+  Städte durchsuchbar gemacht wurden, fiel ausgerechnet die Suche nach den
+  Oldenburger Gegenstücken aus: Sie las eine Bestenliste, die vorher fast nur
+  Oldenburger Vorlagen enthielt und nun von den anderen Städten gefüllt wurde.
+  Sie fragt jetzt direkt bei Oldenburg nach, und die Liste der Belege, die dem
+  Modell vorliegt, ist von zwölf auf zwanzig gewachsen — gemessen an vierzig
+  handgeprüften Fällen findet es damit 22 statt 18 der erwarteten Belege.
+  (#1233)
+- **Im Städtevergleich lag jeder fünfte Tagesordnungspunkt doppelt.** 22.152
+  Punkte aus Braunschweig, Magdeburg, Münster, Osnabrück und Potsdam standen mit
+  zwei Kennungen im Speicher: einmal unter der, die die einmalige Übernahme des
+  Probelaufs erfunden hatte, einmal unter der echten des
+  Ratsinformationssystems. Gleiche Nummer, gleicher Titel, zwei Zeilen. Die
+  Zählungen im Admin-Panel waren dadurch um bis zu ein Drittel zu hoch, und wo
+  eine Auswertung den ersten Punkt einer Sitzung nahm, erwischte sie bei drei
+  Städten die Zeile ohne Ergebnis. Die Zeilen sind zusammengeführt — die echte
+  Kennung gewinnt, alles, was auf die erfundene zeigte, hängt jetzt an ihr. Kein
+  Papier hat dabei seine Beratungsfolge oder sein Ergebnis verloren. Damit so
+  etwas nicht wieder unbemerkt liegen bleibt, prüft die Plausibilitätsprüfung
+  des Bestands seit diesem Stand auch, ob Punkte doppelt vorkommen. (#1267)
+- **Der Städtevergleich weiß jetzt bei doppelt so vielen Vorlagen, wie sie
+  ausgegangen sind.** Ratsinformationssysteme nennen die Beratungsfolge einer
+  Vorlage oft nicht mit; dann wird sie über den Titel gesucht. Diese Suche gab
+  bisher auf, sobald eine Vorlage in mehreren Sitzungen auftauchte — was der
+  Normalfall ist, weil fast jede Sache erst in den Ausschuss und dann in den Rat
+  geht. Potsdam zeigte deshalb bei drei von vier Vorlagen kein Ergebnis. (#1245)
+- **Ein Test, der ohne Ursache rot wurde, wird es nicht mehr.** Die Prüfung, ob
+  das Einlesen der Städte-Daten zweimal dasselbe Ergebnis liefert, verglich auch
+  den Zeitstempel „zuletzt geholt" mit — und der zweite Lauf ist nun einmal ein
+  zweiter Lauf. Überschritten die beiden Aufrufe eine Sekundengrenze, fiel die
+  Prüfung um; in der CI unter Last regelmäßig, lokal so gut wie nie. (#1233)
+- **Der wöchentliche Städte-Lauf fragt jetzt auch, ob ein Rat die Idee wollte.**
+  Die Haltung einer Vorlage — dafür, dagegen, prüft erst — wurde bisher nur von
+  Hand berechnet; neue Vorlagen wären gruppiert und geprüft worden, hätten aber
+  auf der Karte keine Zeile „In den anderen Räten" bekommen. (#1257)
+- **Der Städtevergleich urteilt nicht mehr, bevor seine Daten fertig sind.** Ob
+  eine andere Stadt eine Idee hat, die Oldenburg fehlt, entscheidet sich an
+  Belegen — und die entstehen erst, wenn alle Vorlagen durchsuchbar gemacht und
+  zu Ideen gruppiert wurden. Wird das Urteil vorher gestartet, fehlen dem Modell
+  zwei seiner fünf Beleg-Quellen, und es hält für neu, was die Stadt längst hat.
+  Das fiel bisher nirgends auf. Jetzt weigert sich der Lauf, und er prüft sich
+  nach den ersten Urteilen zusätzlich selbst. (#1238)
+- **Die Bebauungsplan-Flächen der Stadtkarte kommen wieder an.** Das Geoportal
+  der Stadt sperrt den Adressbereich unseres Servers; der wöchentliche Abruf der
+  Umringe scheiterte deshalb still, und die Karte blieb ohne Flächen. Abrufe an
+  solche Ziele laufen jetzt über einen eigenen Umweg mit einer
+  Privatanschluss-Adresse. Derselbe Weg steht dem Abruf der Ratssitzungs-Videos
+  offen, den YouTube aus demselben Grund blockte. (#1249)
+- **Drei stille Fehler in der App: Glocke, Daumen, Vorlesen.** Der Knopf
+  „Vorgang folgen" trug ein Symbol, dem der Glockenkörper fehlte — übrig blieb
+  ein Punkt über einem Strich. Die Daumen unter einer KI-Antwort nahmen die
+  Bewertung zwar entgegen, sagten es aber nicht: Sie blieben grau, und ihre
+  Tippfläche war ein Drittel so groß, wie sie sein soll. Beim Daumen runter
+  fragt die App jetzt wie im Web nach dem Grund — der ist es, der eine Bewertung
+  auswertbar macht. Und „Antwort vorlesen" blieb stumm, solange das Telefon auf
+  lautlos stand; die App holt sich dafür jetzt die Tonausgabe, wie ein Podcast
+  es tut. Dazu steht unter Folgen und Merken jetzt, worin sie sich
+  unterscheiden: Folgen meldet jede neue Station im Rat, Merken legt einen
+  Beschluss still auf die eigene Liste. (#1258)
+- **Ein abgeschaltetes Konto wird in der App jetzt auch als solches erklärt.**
+  Der Kontostand kannte bisher nur „wartet" und „aktiv", und „wartet" bedeutete
+  zweierlei: E-Mail noch nicht bestätigt oder von einem Admin abgeschaltet. Die
+  App zeigte deshalb einer gesperrten Person „Bestätige deine E-Mail-Adresse" —
+  die sie längst bestätigt hatte. Abschalten ist jetzt ein eigener Zustand, mit
+  eigenem Text in App und Web — samt der Kontaktadresse direkt auf der Karte,
+  statt eines Verweises aufs Impressum. (#1243)
+
 ## [2.3.0] – 2026-09-09
 
 ### Hinzugefügt
@@ -7613,7 +7834,8 @@ Open-Source-Go-Live von Ratslotse.
 *Dieser Changelog beginnt mit dem Open-Source-Release von Ratslotse. Die
 Entwicklungshistorie davor ist nicht Teil dieses Repositories.*
 
-[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v2.3.0...main
+[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v2.4.0...main
+[2.4.0]: https://github.com/Schereo/Ratslotse/compare/v2.3.0...v2.4.0
 [2.3.0]: https://github.com/Schereo/Ratslotse/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/Schereo/Ratslotse/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/Schereo/Ratslotse/compare/v2.0.0...v2.1.0

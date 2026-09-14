@@ -34,8 +34,6 @@ class Adapter(Protocol):
         """Rohablage → Batch. **Rein**: liest nie das Netz."""
         ...
 
-    def file_url(self, file_json: dict, url: str | None) -> str | None: ...
-
 
 def get_adapter(dialect: str) -> Adapter:
     if dialect == "allris4":
@@ -44,6 +42,15 @@ def get_adapter(dialect: str) -> Adapter:
     if dialect == "session":
         from council.cities.adapters.session import SessionAdapter
         return SessionAdapter()
+    if dialect == "allris4_html":
+        from council.cities.adapters.allris4_html import Allris4HtmlAdapter
+        return Allris4HtmlAdapter()
+    if dialect == "allris_classic":
+        from council.cities.adapters.allris_classic import AllrisClassicAdapter
+        return AllrisClassicAdapter()
+    if dialect == "hannover_sim":
+        from council.cities.adapters.hannover_sim import HannoverSimAdapter
+        return HannoverSimAdapter()
     if dialect == "rubin":
         from council.cities.adapters.rubin import RubinAdapter
         return RubinAdapter()

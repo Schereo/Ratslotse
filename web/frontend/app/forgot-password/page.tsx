@@ -27,7 +27,7 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <AuthShell title="Passwort über Bord?" pose="confused">
+    <AuthShell title="Passwort vergessen?" pose="confused">
         {sent ? (
           <>
             <p className="mt-3 text-sm text-muted-foreground">

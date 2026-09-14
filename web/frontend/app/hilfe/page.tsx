@@ -46,8 +46,8 @@ export default function HilfePage() {
         <p className="mt-3 leading-relaxed text-muted-foreground">
           Ratslotse macht die Arbeit des Oldenburger Stadtrats durchsuchbar und verständlich.
           Wenn etwas klemmt, eine Angabe falsch aussieht oder du eine Frage zu deinem Konto hast:
-          Schreib mir. Hinter Ratslotse steckt kein Callcenter, sondern eine Person — dafür
-          antwortet die auch selbst.
+          Schreib mir. Hinter Ratslotse steht kein Callcenter, sondern eine einzelne Person: ich.
+          Deshalb bekommst du auch eine persönliche Antwort.
         </p>
 
         <div className="mt-8 space-y-8">

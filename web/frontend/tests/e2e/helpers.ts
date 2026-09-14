@@ -40,7 +40,7 @@ export async function loginAdmin(page: Page) {
   // may answer 409 when the account already exists; either way the following
   // login is the authoritative step.
   await page.request.post("/api/auth/register", {
-    data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
+    data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD, display_name: "Testkonto" },
   });
   await page.goto("/login");
   await page.locator("#email").fill(ADMIN_EMAIL);

@@ -82,6 +82,14 @@ const config: Config = {
         sans: ["var(--font-inter)", "system-ui", "sans-serif"],
         display: ["var(--font-display)", "var(--font-inter)", "system-ui", "sans-serif"],
       },
+      // Leserollen: rem wächst mit der Browser-Schriftgröße. Metadaten und
+      // wesentliche Hinweise gehören zum Inhalt, nicht ins Kleingedruckte.
+      fontSize: {
+        lese: ["1.0625rem", { lineHeight: "1.6" }],
+        quelle: ["1rem", { lineHeight: "1.5" }],
+        meta: ["0.8125rem", { lineHeight: "1.5" }],
+        hinweis: ["0.875rem", { lineHeight: "1.6" }],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",

@@ -14,14 +14,18 @@ einen Schreiber. ``fetch`` füllt also ``data/cities-raw/<slug>.sqlite``,
 from __future__ import annotations
 
 import logging
+import statistics
+from datetime import date
 from pathlib import Path
 
+from council.cities import default_paths
 from council.cities.adapters import get_adapter
 from council.cities.model import Body
 from council.cities.oparl import OParlClient, file_path
 from council.cities.registry import BodySpec
 from council.cities.store import CitiesStore
-from council.cities.text import EXTRACTOR, VERSION, extract as extract_text
+from council.cities.text import (EXTRACTOR, MAX_CHARS, MAX_CHARS_PROTOKOLL, MAX_PAGES,
+                                 MAX_PAGES_PROTOKOLL, VERSION, extract as extract_text)
 
 logger = logging.getLogger("council.cities.pipeline")
 
@@ -32,40 +36,180 @@ STAGES = ("fetch", "normalize", "extract", "annotate", "index")
 #: Verweis stehen und lassen sich später nachladen.
 FETCH_ROLES = ("main",)
 
+#: Die Niederschrift hängt an der **Sitzung**, nicht am Papier, und sie ist
+#: das Einzige, worin steht, WARUM ein Rat so entschieden hat. Sie wird
+#: getrennt geholt, weil zwei Dinge anders sind als bei der Vorlage: Es gibt
+#: sie nur für ein Zeitfenster (s. ``PROTOCOL_MONTHS``), und eine Stadt kann
+#: sie in ihrer Schnittstelle nennen, ohne sie auszuliefern (s.
+#: ``PROTOCOL_NIETEN``).
+PROTOCOL_ROLE = "protocol"
+
+#: Wie weit zurück Niederschriften geholt werden. 24 Monate ist der Zeitraum,
+#: in dem die Ideen auf der Karte liegen; alles davor kostet Abrufe und
+#: Plattenplatz für Vergleiche, die niemand zieht.
+PROTOCOL_MONTHS = 24
+
+#: Nach so vielen Fehlschlägen in Folge hört der Lauf mit den Niederschriften
+#: EINER Stadt auf. Magdeburg nennt 606 Protokoll-Adressen, von denen jede
+#: einzelne mit 404 antwortet — das sind 606 sinnlose Abrufe bei einer Stadt,
+#: die uns nichts getan hat. Die Registry weiß es, aber der Code soll es
+#: messen und nicht wissen: Eine Stadt, die morgen repariert, wird morgen
+#: wieder geholt.
+PROTOCOL_NIETEN = 3
+
 
 def raw_path_for(raw_dir: str | Path, body_id: str) -> Path:
     return Path(raw_dir) / f"{body_id}.sqlite"
 
 
+def protokoll_fenster(monate: int = PROTOCOL_MONTHS, heute: date | None = None) -> str:
+    """Ab welchem Sitzungsdatum Niederschriften geholt werden (``JJJJ-MM-TT``)."""
+    tag = heute or date.today()
+    jahre, monat = divmod(tag.month - 1 - monate, 12)
+    return f"{tag.year + jahre:04d}-{monat + 1:02d}-01"
+
+
+def _hole(client, raw: CitiesStore, body_id: str, offen: list[dict], zahlen: dict,
+          was: str, nieten_max: int | None = None,
+          schluessel: tuple[str, str] = ("files_fetched", "files_failed")) -> dict:
+    """Bytes zu einer Arbeitsliste holen. Bricht nach ``nieten_max`` Nieten ab."""
+    gut, schlecht = schluessel
+    nieten = 0
+    for i, datei in enumerate(offen, 1):
+        antwort = client.get_file(datei["access_url"])
+        if not antwort:
+            zahlen[schlecht] = zahlen.get(schlecht, 0) + 1
+            raw.mark_stage("file", datei["id"], "fetch", "1", "error", "nicht abrufbar")
+            nieten += 1
+            if nieten_max and nieten >= nieten_max:
+                logger.warning("%s: %s nach %s Fehlschlägen in Folge abgebrochen "
+                               "(%s von %s offen)", body_id, was, nieten,
+                               len(offen) - i, len(offen))
+                break
+            continue
+        nieten = 0
+        daten, mime = antwort
+        sha = client.store_file(daten, mime)
+        raw.set_file_sha(datei["id"], sha)
+        zahlen[gut] = zahlen.get(gut, 0) + 1
+        if i % 50 == 0:
+            logger.info("%s: %s/%s %s", body_id, i, len(offen), was)
+    return zahlen
+
+
 # ------------------------------------------------------------------- fetch
+
+#: Ab welchem Median der letzten 50 Abrufe eine Ernte abbricht. Gesund
+#: antwortet Hildesheims ALLRIS in rund einer Sekunde; der Apache davor gibt
+#: nach 30 Sekunden auf. 15 Sekunden liegen dazwischen — ein Server, der so
+#: lange braucht, ist überlastet, und weiter auf ihn einzuschlagen hilft
+#: niemandem.
+MEDIAN_MAX = 15.0
+
+#: Wie oft nachgesehen wird. Bei 200 Objekten je Prüfung kostet die Wache
+#: nichts und merkt einen Einbruch trotzdem innerhalb von Minuten.
+WACHE_TAKT = 200
+
+
+def _mit_wache(objekte, client, zahlen: dict, was: str, body_id: str):
+    """Einen Ernte-Abschnitt begleiten und abbrechen, wenn der Server einknickt.
+
+    **Langsam ist auch kaputt.** Die Hildesheim-Ernte lief am 11.09.2026 elf
+    Stunden und fiel dabei von 343 auf 8 Vorlagen je Stunde; gemeldet hat das
+    nichts. Erst als der Server ganz ausfiel, sah es nach einem Problem aus —
+    bis dahin sah es nach Arbeit aus.
+
+    Der Abbruch ist eine **ordentliche Rückkehr**, keine Ausnahme: Die
+    Rohablage bleibt vollständig, und der nächste Lauf setzt darauf auf.
+    """
+    for n, objekt in enumerate(objekte, 1):
+        yield objekt
+        if n % WACHE_TAKT:
+            continue
+        mittel = client.langsam(MEDIAN_MAX)
+        if mittel is not None:
+            zahlen["abgebrochen"] = (
+                f"{was}: Antwortzeit im Median {mittel:.0f}s (Grenze "
+                f"{MEDIAN_MAX:.0f}s) nach {n} Objekten")
+            logger.warning("%s: Ernte abgebrochen — %s", body_id,
+                           zahlen["abgebrochen"])
+            return
+        logger.info("%s: %s %s, Antwortzeit im Median %.1fs", body_id, n, was,
+                    statistics.median(client.dauern) if client.dauern else 0.0)
+
+
+def _sitzungstage(main_path: str | Path | None, body_id: str) -> dict[str, str]:
+    """Die Sitzungstage des Bestands — eine kurze, lesende Verbindung.
+
+    Sie wird sofort wieder geschlossen. Ein offener Leser über die ganze
+    Ernte hinweg hielte sonst die WAL fest; genau daran ist am 13.09.2026
+    der Durchsatz von 343 auf 8 Vorlagen je Stunde gefallen (#1300).
+    """
+    if main_path is None:
+        main_path = default_paths()[0]
+    if not Path(main_path).exists():
+        return {}
+    try:
+        with CitiesStore(main_path) as main:
+            return main.meeting_dates(body_id)
+    except Exception as e:  # noqa: BLE001 — ohne Bestand wird eben alles geholt
+        logger.info("%s: Sitzungstage nicht lesbar (%s)", body_id, type(e).__name__)
+        return {}
+
 
 def fetch(spec: BodySpec, raw_dir: str | Path, files_dir: str | Path,
           since: str | None = None, with_files: bool = True,
-          max_files: int | None = None) -> dict:
-    """Alles Öffentliche einer Stadt holen und roh ablegen."""
+          max_files: int | None = None, main_path: str | Path | None = None) -> dict:
+    """Alles Öffentliche einer Stadt holen und roh ablegen.
+
+    ``main_path`` zeigt auf die Hauptdatenbank und wird nur **gelesen**: Aus
+    ihr kommen die Sitzungstage, an denen die Dialekte erkennen, welche
+    Sitzung durch ist und keinen Abruf mehr braucht. Fehlt sie, wird nichts
+    übersprungen — der erste Lauf einer neuen Stadt holt also alles, und das
+    ist richtig so.
+    """
     seit = since or spec.since
     adapter = get_adapter(spec.dialect)
     raw = CitiesStore(raw_path_for(raw_dir, spec.id))
     zahlen = {"organizations": 0, "meetings": 0, "papers": 0,
-              "files_fetched": 0, "files_failed": 0, "requests": 0}
+              "files_fetched": 0, "files_failed": 0,
+              "protocols_fetched": 0, "protocols_failed": 0, "requests": 0}
     try:
         client = OParlClient(raw, spec.id, files_dir)
+        client.sitzungstage = _sitzungstage(main_path, spec.id)
         gefunden = adapter.discover(client, spec)
         body = gefunden["body"]
         raw.upsert_body(Body(spec.id, gefunden.get("name") or spec.name, spec.state,
                              spec.dialect, spec.system_url, gefunden.get("license")))
 
-        for _ in adapter.iter_organizations(client, body):
+        for _ in _mit_wache(adapter.iter_organizations(client, body),
+                            client, zahlen, "Gremien", spec.id):
             zahlen["organizations"] += 1
         logger.info("%s: %s Gremien", spec.id, zahlen["organizations"])
 
-        for _ in adapter.iter_meetings(client, body, seit):
+        # Nach einem Abbruch nicht weiter auf denselben Server einschlagen.
+        # Was schon in der Rohablage liegt, bleibt; der nächste Lauf setzt auf.
+        if zahlen.get("abgebrochen"):
+            zahlen["requests"] = client.requests_made
+            return zahlen
+
+        for _ in _mit_wache(adapter.iter_meetings(client, body, seit),
+                            client, zahlen, "Sitzungen", spec.id):
             zahlen["meetings"] += 1
         logger.info("%s: %s Sitzungen", spec.id, zahlen["meetings"])
 
-        for _ in adapter.iter_papers(client, body, seit):
+        if zahlen.get("abgebrochen"):
+            zahlen["requests"] = client.requests_made
+            return zahlen
+
+        for _ in _mit_wache(adapter.iter_papers(client, body, seit),
+                            client, zahlen, "Vorlagen", spec.id):
             zahlen["papers"] += 1
         logger.info("%s: %s Vorlagen", spec.id, zahlen["papers"])
+
+        if zahlen.get("abgebrochen"):
+            zahlen["requests"] = client.requests_made
+            return zahlen
 
         if with_files and spec.fetch_files:
             # Die Dateiliste steht erst nach dem Normalisieren fest; für die
@@ -73,18 +217,17 @@ def fetch(spec: BodySpec, raw_dir: str | Path, files_dir: str | Path,
             batch = adapter.normalize(spec.id, raw)
             raw.upsert_batch(batch)
             offen = raw.files_without_bytes(spec.id, FETCH_ROLES, limit=max_files)
-            for i, datei in enumerate(offen, 1):
-                antwort = client.get_file(datei["access_url"])
-                if not antwort:
-                    zahlen["files_failed"] += 1
-                    raw.mark_stage("file", datei["id"], "fetch", "1", "error", "nicht abrufbar")
-                    continue
-                daten, mime = antwort
-                sha = client.store_file(daten, mime)
-                raw.set_file_sha(datei["id"], sha)
-                zahlen["files_fetched"] += 1
-                if i % 50 == 0:
-                    logger.info("%s: %s/%s Dateien", spec.id, i, len(offen))
+            _hole(client, raw, spec.id, offen, zahlen, "Dateien")
+
+            # Die Niederschriften bekommen ein EIGENES Budget, keinen Rest:
+            # Vorlagen gibt es zehnmal so viele, und ein geteiltes Budget
+            # hieße, dass ein gedrosselter Lauf nie zu den Protokollen kommt.
+            protokolle = raw.files_without_bytes(
+                spec.id, (PROTOCOL_ROLE,), limit=max_files,
+                meeting_since=protokoll_fenster())
+            _hole(client, raw, spec.id, protokolle, zahlen, "Niederschriften",
+                  nieten_max=PROTOCOL_NIETEN,
+                  schluessel=("protocols_fetched", "protocols_failed"))
         zahlen["requests"] = client.requests_made
     finally:
         raw.close()
@@ -132,7 +275,13 @@ def extract(main: CitiesStore, files_dir: str | Path, body_id: str | None = None
         if not pfad.exists():
             zahlen["missing_bytes"] += 1
             continue
-        text, seiten, qualitaet = extract_text(pfad.read_bytes())
+        # Niederschriften bekommen die größeren Deckel: Was abgeschnitten
+        # wird, sind die HINTEREN Tagesordnungspunkte (s. council/cities/text.py).
+        protokoll = datei.get("role") == PROTOCOL_ROLE
+        text, seiten, qualitaet = extract_text(
+            pfad.read_bytes(),
+            max_pages=MAX_PAGES_PROTOKOLL if protokoll else MAX_PAGES,
+            max_chars=MAX_CHARS_PROTOKOLL if protokoll else MAX_CHARS)
         main.put_text(datei["id"], EXTRACTOR, VERSION, text, seiten, qualitaet)
         main.mark_stage("file", datei["id"], "extract", VERSION,
                         "done" if qualitaet in ("ok", "thin") else "error", qualitaet)
@@ -142,11 +291,76 @@ def extract(main: CitiesStore, files_dir: str | Path, body_id: str | None = None
     return zahlen
 
 
+def split_protocols(main: CitiesStore, body_id: str | None = None,
+                    limit: int | None = None) -> dict:
+    """Geholte Niederschriften in ihre Tagesordnungspunkte schneiden.
+
+    Regelarbeit: kein Modell, kein Netz. Läuft direkt nach ``extract``, damit
+    die Abschnitte dastehen, bevor jemand nach dem „Warum" fragt.
+    """
+    from council.cities.protocol import SPLITTER_VERSION, split_meeting
+
+    offen = main.protocols_with_text(EXTRACTOR, VERSION, SPLITTER_VERSION,
+                                     body_id, limit)
+    zahlen = {"protocols": 0, "sections": 0, "empty": 0}
+    for zeile in offen:
+        n = split_meeting(main, zeile["meeting_id"], zeile["file_id"], zeile["text"])
+        zahlen["protocols"] += 1
+        zahlen["sections"] += n
+        zahlen["empty"] += not n
+    if zahlen["protocols"]:
+        logger.info("%s: %s Niederschriften geschnitten, %s Abschnitte, "
+                    "%s ohne Treffer", body_id or "alle", zahlen["protocols"],
+                    zahlen["sections"], zahlen["empty"])
+    return zahlen
+
+
+def inline_sections(main: CitiesStore, spec: BodySpec, raw_dir: str | Path) -> int:
+    """Abschnitte übernehmen, die schon getrennt vorliegen.
+
+    **Nicht jede Stadt legt das „Warum" in eine Niederschrift.** ALLRIS
+    classic gibt zu jedem beratenen Punkt einen eigenen „Auszug" heraus, mit
+    Wortprotokoll, Beschluss und Abstimmungsergebnis — schon getrennt, als
+    HTML, ohne PDF. Es gibt dort also nichts zu schneiden, und
+    ``split_protocols`` fände nichts: Sie sucht Dateien mit der Rolle
+    ``protocol``, und Hildesheim hat keine.
+
+    Das Ergebnis ist dasselbe wie beim Schnitt — Zeilen in
+    ``protocol_sections``, die der Annotator ``reason`` liest.
+    """
+    if spec.dialect != "allris_classic":
+        return 0
+    from council.cities.adapters.allris_classic import AllrisClassicAdapter
+    from council.cities.protocol import SPLITTER_VERSION
+
+    pfad = raw_path_for(raw_dir, spec.id)
+    if not pfad.exists():
+        return 0
+    raw = CitiesStore(pfad)
+    try:
+        zeilen = AllrisClassicAdapter().auszug_abschnitte(raw, spec.id)
+        if zeilen:
+            main.put_protocol_sections(SPLITTER_VERSION, zeilen)
+        logger.info("%s: %s Abschnitte aus Auszügen", spec.id, len(zeilen))
+        return len(zeilen)
+    finally:
+        raw.close()
+
+
 def extract_inline(main: CitiesStore, spec: BodySpec, raw_dir: str | Path) -> int:
     """Texte übernehmen, die schon vorliegen — statt dieselben PDFs erneut zu holen.
 
-    Zwei Fälle: **more! rubin** liefert den Volltext im Dateiobjekt mit, und
-    für **Oldenburg** steht er längst geparst in der Rats-Datenbank.
+    Vier Fälle: **more! rubin** liefert den Volltext im Dateiobjekt mit,
+    **Oldenburg** hat ihn längst geparst in der Rats-Datenbank, und
+    **ALLRIS classic** (Hildesheim) sowie **Hannovers Notes/Domino** tragen
+    ihn direkt in der Vorlagenseite.
+
+    **Ein Dialekt hier zu vergessen, geht STUMM schief.** `allris_classic`
+    hatte diesen Eintrag seit seinem ersten PR nie: `inline_texts` funktionierte,
+    wurde aber nie aufgerufen — 25.729 Hannoveraner Vorlagen standen ohne
+    einen einzigen Satz Text da, ohne Fehler, ohne Auffälligkeit (gemessen
+    11.09.2026). Ein neuer Dialekt mit `inline_texts` gehört deshalb IMMER
+    auch hierher, nicht nur in die eigene Adapter-Datei.
     """
     if spec.dialect == "rubin":
         from council.cities.adapters.rubin import OPARL_TEXT, RubinAdapter
@@ -154,6 +368,13 @@ def extract_inline(main: CitiesStore, spec: BodySpec, raw_dir: str | Path) -> in
     elif spec.dialect == "oldenburg":
         from council.cities.adapters.oldenburg import EXTRACTOR, OldenburgAdapter
         adapter, extraktor = OldenburgAdapter(), EXTRACTOR
+    elif spec.dialect == "allris_classic":
+        from council.cities.adapters.allris_classic import (EXTRACTOR,
+                                                             AllrisClassicAdapter)
+        adapter, extraktor = AllrisClassicAdapter(), EXTRACTOR
+    elif spec.dialect == "hannover_sim":
+        from council.cities.adapters.hannover_sim import EXTRACTOR, HannoverSimAdapter
+        adapter, extraktor = HannoverSimAdapter(), EXTRACTOR
     else:
         return 0
 
@@ -263,6 +484,9 @@ def run(spec: BodySpec, main: CitiesStore, raw_dir: str | Path, files_dir: str |
         inline = extract_inline(main, spec, raw_dir)
         if inline:
             zahlen["inline_texts"] = inline
+        abschnitte = inline_sections(main, spec, raw_dir)
+        if abschnitte:
+            zahlen["inline_sections"] = abschnitte
     if "extract" in stages:
         zahlen["extract"] = extract(main, files_dir, spec.id)
     return zahlen

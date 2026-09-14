@@ -1,0 +1,490 @@
+
+<!DOCTYPE html>
+
+<html lang="de" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta content="text/html; charset=utf-8" http-equiv="Content-Type"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<meta content="ALLRIS net Version 4.1.5 (4150026) - 17.01.2025" name="description"/>
+
+<meta name="wicket.header.items"/>
+<title>ALLRIS - Vorlage</title>
+
+</head>
+<body>
+<div id="allris">
+<ul id="skipLinks"></ul>
+<div class="dialog-theme-default" id="ida">
+</div>
+<div class="dialog-theme-default" id="idb">
+</div>
+<div>
+<div id="top">
+<span id="logo" title="ALLRIS 4 - Stadt Laatzen"></span>
+<button aria-label="Menü zeigen" id="menuZeigen" type="button"></button>
+<button aria-label="Menü verbergen" id="menuVerbergen" type="button"></button>
+<div id="search">
+<form action="./vo020?0-1.-head-searchform&amp;VOLFDNR=1000238&amp;refresh=false" aria-label="Suchen" id="searchform" method="post"><input name="sectoken" type="hidden" value="4c495633b23e4468d07d95ab8a17c27c"/><div class="hidden-fields" hidden="" id="searchform_hf_0"></div><div class="hidden-fields" hidden=""><input autocomplete="off" tabindex="-1" type="text"/><input id="searchform_hf_1" name="p::submit" tabindex="-1" type="submit"/></div>
+<input aria-labelledby="submitSearchButton" class="searchtext searchfield" id="searchfield" name="searchfield" onchange="highlightAll(this.value);" onkeyup="highlightAll(this.value);" placeholder="Suchen" type="search" value=""/>
+<input class="searchsubmit" id="submitSearchButton" name="p::submit" type="submit" value="Suchen"/>
+</form>
+</div>
+</div>
+</div>
+<div>
+<div id="navigation">
+<nav aria-label="Menüleiste" class="menubar" data-jumplink="Zum Menü" id="navMenu" tabindex="-1">
+<ul class="nav-menu" role="menubar">
+<li class="nav-item" role="none">
+<a class="parent" href="#" role="menuitem">Ratsinfo</a>
+<div class="sub-nav">
+<ul class="sub-nav-group" role="menu">
+<li role="none"><a href="./app" role="menuitem">App</a></li>
+</ul>
+</div>
+</li><li class="nav-item" role="none">
+<a class="parent" href="#" role="menuitem">Organisation</a>
+<div class="sub-nav">
+<ul class="sub-nav-group" role="menu">
+<li role="none"><a href="./gr010?menu=Rat" role="menuitem">Rat</a></li><li role="none"><a href="./gr010?menu=Aussch%C3%BCsse" role="menuitem">Ausschüsse</a></li>
+</ul>
+</div>
+</li><li class="nav-item" role="none">
+<a class="parent" href="#" role="menuitem">Sitzungen</a>
+<div class="sub-nav">
+<ul class="sub-nav-group" role="menu">
+<li role="none"><a href="./si010" role="menuitem">Kalender</a></li><li role="none"><a href="./si018" role="menuitem">Übersicht</a></li>
+</ul>
+</div>
+</li><li class="nav-item" role="none">
+<a class="parent" href="#" role="menuitem">Vorlagen</a>
+<div class="sub-nav">
+<ul class="sub-nav-group" role="menu">
+<li role="none"><a href="./vo040" role="menuitem">Übersicht</a></li>
+</ul>
+</div>
+</li><li class="nav-item" role="none">
+<a class="parent" href="#" role="menuitem">TOP</a>
+<div class="sub-nav">
+<ul class="sub-nav-group" role="menu">
+<li role="none"><a href="./to035" role="menuitem">Beschluss</a></li>
+</ul>
+</div>
+</li><li class="nav-item" role="none">
+<a class="parent" href="#" role="menuitem">Recherche</a>
+<div class="sub-nav">
+<ul class="sub-nav-group" role="menu">
+<li role="none"><a href="./kp040" role="menuitem">Person</a></li><li role="none"><a href="./tr010" role="menuitem">Volltext</a></li>
+</ul>
+</div>
+</li>
+</ul>
+</nav>
+<nav aria-label="Symbolleiste" class="iconbar" data-jumplink="Zum Symbolmenü" id="navIcon" tabindex="-1">
+<ul class="nav-menu" role="menubar">
+<li role="none"><a aria-label="Neu laden" href="./vo020?0-1.-menu-linkGroup-0-linkGroupLink&amp;VOLFDNR=1000238&amp;refresh=false" role="menuitem"><img alt="Neu laden" role="presentation" src="images/available_updatesWhite.svg"/><span class="iconSubtitle">Neu laden</span></a></li><li role="none"><a aria-label="Wiedervorlage" class="termin" href="#" id="id8" role="menuitem"><img alt="Wiedervorlage" role="presentation" src="images/calendar_outlineWhite.svg"/><span class="iconSubtitle">Wiedervorlage</span></a></li><li role="none"><a aria-label="Seite versenden" href="mailto:?subject=Antrag%20-%202026%2F245&amp;body=Online-Version%20der%20Seite%3A%20http%3A%2F%2Fratsinfo.laatzen.de%2Fpublic%2Fvo020%3FVOLFDNR%3D1000238" id="idc" role="menuitem"><img alt="Seite versenden" role="presentation" src="images/message_outlineWhite.svg"/><span class="iconSubtitle">Seite versenden</span></a></li>
+<li class="nav-item" id="more" role="none">
+<a class="parent" href="#" id="mehr" role="menuitem">mehr</a>
+<div class="sub-nav">
+<ul class="sub-nav-group" role="menu">
+<li role="none"><a href="./vo020?VOLFDNR=1000238&amp;refresh=false&amp;VOLFDNR=1000238&amp;selfaction=print" role="menuitem" target="_blank"><img alt="" src="images/printerWhite.svg"/><span>Drucken</span></a></li>
+</ul>
+</div>
+</li>
+</ul>
+</nav>
+</div>
+</div>
+<div>
+<div id="subnavi">
+<nav aria-label="Sie sind hier" data-jumplink="Zur Brotkrumennavigation" id="path" tabindex="-1">
+<ul>
+<li>Sie sind hier:<strong><span><span class="wicketExtensionsBreadCrumbBar"><span class="wicketExtensionsBreadCrumbBarCrumb"><span><span></span><a aria-current="page" class="disable">Vorlage</a></span></span></span></span></strong> </li>
+</ul>
+</nav>
+</div>
+</div>
+<main aria-label="Seiteninhalt" data-jumplink="Zum Inhalt" id="pageContent" tabindex="-1">
+<div id="readOut">
+<div id="idd">
+<div class="header">
+<h1 class="title">Antrag - 2026/245</h1>
+</div>
+</div>
+<div id="head">
+<span aria-atomic="true" aria-relevant="additions removals" id="ide" role="alert">
+</span>
+<div id="headLeft">
+<div class="frameHeader">
+<h2>Grunddaten</h2>
+</div>
+<div class="headLeftInner roundedBorder">
+<div class="row">
+<dl>
+<dt class="colTitle">
+<span class="label">
+<a aria-describedby="vobetreff">Betreff:</a>
+</span>
+</dt>
+<dd class="colEntry3">
+<span class="text1" id="vobetreff"><p>Bildungscampus Laatzen - Abschluss des Partizipationsprozeses<br/>- Antrag der CDU/FDP-Gruppe im Rat der Stadt Laatzen, Bezugsdrucksache 2026/235</p></span>
+</dd>
+</dl>
+</div>
+<div data-wicket-placeholder="" hidden="" id="idf"></div>
+<div data-wicket-placeholder="" hidden="" id="id10"></div>
+<div class="row" id="id11">
+<dl>
+<dt class="colTitle">
+<span class="label">
+<a aria-describedby="vostatus">Status:</a>
+</span>
+</dt>
+<dd class="colEntry3">
+<span class="text4" id="vostatus">öffentlich</span> <span class="text4" id="vostat">
+<a> (Vorlage freigegeben)</a>
+</span>
+</dd>
+</dl>
+</div>
+<div data-wicket-placeholder="" hidden="" id="id12"></div>
+<div class="row" id="id13">
+<dl>
+<dt class="colTitle">
+<span class="label">
+<a aria-describedby="voart">Vorlageart:</a>
+</span>
+</dt>
+<dd class="colEntry3">
+<span class="text4" id="voart">Antrag</span>
+</dd>
+</dl>
+</div>
+<div data-wicket-placeholder="" hidden="" id="id14"></div>
+<div data-wicket-placeholder="" hidden="" id="id15"></div>
+<div class="row" id="id16">
+<dl>
+<dt class="colTitle">
+<span class="label">
+<a aria-describedby="vofamt">Federführend:</a>
+</span>
+</dt>
+<dd class="colEntry3">
+<span class="text4" id="vofamt">40 Bildung und Sport</span>
+</dd>
+</dl>
+</div>
+<div data-wicket-placeholder="" hidden="" id="id17"></div>
+<div data-wicket-placeholder="" hidden="" id="id18"></div>
+<div data-wicket-placeholder="" hidden="" id="id19"></div>
+<div data-wicket-placeholder="" hidden="" id="id1a"></div>
+<div data-wicket-placeholder="" hidden="" id="id1b"></div>
+<div data-wicket-placeholder="" hidden="" id="id1c"></div>
+<div data-wicket-placeholder="" hidden="" id="id1d"></div>
+<div data-wicket-placeholder="" hidden="" id="id1e"></div>
+</div>
+</div>
+<div id="headRight">
+<aside class="documents" data-jumplink="Zu Dokumente" id="dokumenteHeaderPanel" tabindex="-1">
+<div class="frameHeader">
+<span>Dokumente</span>
+</div>
+<ul class="headRightInner roundedBorder">
+<li>
+<a class="js-simple-tooltip doclink pdf" data-simpletooltip-text="Öffnet PDF-Datei 'Vorlage' in neuem Fenster" href="./wicket/resource/org.apache.wicket.Application/doc1006716.pdf" target="_blank">Vorlage</a>
+</li><li>
+<a class="js-simple-tooltip doclink pdf" data-simpletooltip-text="Öffnet PDF-Datei 'Sammeldokument öffentlich' in neuem Fenster" href="./wicket/resource/org.apache.wicket.Application/doc1006712.pdf" target="_blank">Sammeldokument</a>
+</li>
+</ul>
+</aside>
+<aside class="attachments" data-jumplink="Zu Anlagen" id="anlagenHeaderPanel" tabindex="-1">
+<div class="frameHeader">
+<span>Anlagen</span>
+</div>
+<ul class="headRightInner roundedBorder">
+<li><div>
+<a class="js-simple-tooltip attlink pdf" data-simpletooltip-text="Öffnen der PDF zu Anlage zu 2026-245 Antrag Bildungscampus.docx in neuen Fenster" href="./vo020?0--anlagenHeaderPanel-attachmentsList-0-attachment-link&amp;VOLFDNR=1000238&amp;refresh=false" target="_blank">Anlage zu 2026-245 Antrag Bildungscampus.docx</a>
+</div></li>
+</ul>
+</aside>
+<aside data-wicket-placeholder="" hidden="" id="mapHeaderPanel"></aside>
+</div>
+</div>
+<div class="clear"></div>
+<div id="mainContent">
+<div id="id1">
+<div class="compFull roundedBorder">
+<div class="expcol rs_skip rs_preserve">
+<a class="js-simple-tooltip" data-simpletooltip-text="Beratungsfolge ausblenden" href="#" id="showHideLink_id1"><img alt="Reduzieren" id="id1f" src="./wicket/resource/org.apache.wicket.Application/images/collapse-ver-C41D4AFF790B892FD71DE1FBA71538E6.svg"/></a><span class="wicket-ajax-indicator" hidden="" id="showHideLink_id1--ajax-indicator"><img alt="" src="./wicket/resource/org.apache.wicket.ajax.AbstractDefaultAjaxBehavior/indicator-ver-03CE3DCC84AF110E9DA8699A841E5200.gif"/></span>
+</div>
+<div data-wicket-placeholder="" hidden="" id="id20"></div>
+<div id="id21">
+<h2 class="expandedTitle">Beratungsfolge</h2>
+<div class="tree-theme-human" id="bfTable">
+<table class="dataTable captionVisible stickyHeader bfTable nonStickyHeader" id="id22">
+<caption class="rs_skip">Beratungsfolge</caption>
+<thead>
+<tr class="headers">
+<th class="colorCol" scope="col"><span>Status</span></th>
+<th scope="col"><span>Datum</span></th>
+<th scope="col"><span>Gremium</span></th>
+<th scope="col"><span>Beschluss</span></th>
+<th class="toLink" scope="col"><span>NA</span></th>
+</tr>
+</thead>
+<tbody>
+<tr class="even" id="id24">
+<td class="colorCol">
+<div>
+<span class="wfcolorDescIcon" data-iconcolor="#73D216">●</span>
+<span class="wfcolorDesc">Geplant</span>
+</div>
+</td><td>
+<div> </div>
+</td><td>
+<div>Ortsrat Laatzen</div>
+</td><td>
+<div>Anhörung</div>
+</td><td class="toLink">
+<div> </div>
+</td>
+</tr><tr class="odd" id="id25">
+<td class="colorCol">
+<div> </div>
+</td><td class="date">
+<div>25.08.2026</div>
+</td><td>
+<div>
+<a href="./to010?SILFDNR=1000022&amp;TOLFDNR=1000948">Sitzung des Ortsrates der Ortschaft Laatzen</a>
+</div>
+</td><td>
+<div>
+<a></a>
+</div>
+</td><td class="toLink">
+</td>
+</tr><tr class="even" id="id26">
+<td class="colorCol">
+<div>
+<span class="wfcolorDescIcon" data-iconcolor="#FFFFFF">●</span>
+<span class="wfcolorDesc">Erledigt</span>
+</div>
+</td><td>
+<div> </div>
+</td><td>
+<div>Ausschuss für nachhaltige Stadtentwicklung und Feuerschutz</div>
+</td><td>
+<div>Vorberatung</div>
+</td><td class="toLink">
+<div> </div>
+</td>
+</tr><tr class="odd" id="id27">
+<td class="colorCol">
+<div> </div>
+</td><td class="date">
+<div>01.09.2026</div>
+</td><td>
+<div>
+<a href="./to010?SILFDNR=1000025&amp;TOLFDNR=1000964">Sitzung des Ausschusses für nachhaltige Stadtentwicklung und Feuerschutz</a>
+</div>
+</td><td>
+<div>
+<a></a>
+</div>
+</td><td class="toLink">
+</td>
+</tr><tr class="even" id="id28">
+<td class="colorCol">
+<div>
+<span class="wfcolorDescIcon" data-iconcolor="#FFFFFF">●</span>
+<span class="wfcolorDesc">Erledigt</span>
+</div>
+</td><td>
+<div> </div>
+</td><td>
+<div>Schulausschuss</div>
+</td><td>
+<div>Vorberatung</div>
+</td><td class="toLink">
+<div> </div>
+</td>
+</tr><tr class="odd" id="id29">
+<td class="colorCol">
+<div> </div>
+</td><td class="date">
+<div>29.06.2026</div>
+</td><td>
+<div>
+<a href="./to010?SILFDNR=1000059&amp;TOLFDNR=1000633">Sitzung des Schulausschusses</a>
+</div>
+</td><td>
+<div>
+<a href="./to020?TOLFDNR=1000633">vertagt</a>
+</div>
+</td><td class="toLink">
+<div>
+<a class="objAnchor" href="./to020?TOLFDNR=1000633">NA</a>
+</div>
+</td>
+</tr><tr class="even" id="id2a">
+<td class="colorCol">
+<div> </div>
+</td><td class="date">
+<div>01.09.2026</div>
+</td><td>
+<div>
+<a href="./to010?SILFDNR=1000073&amp;TOLFDNR=1001059">Sitzung des Schulausschusses</a>
+</div>
+</td><td>
+<div>
+<a></a>
+</div>
+</td><td class="toLink">
+</td>
+</tr><tr class="odd" id="id2b">
+<td class="colorCol">
+<div>
+<span class="wfcolorDescIcon" data-iconcolor="#FFFFFF">●</span>
+<span class="wfcolorDesc">Erledigt</span>
+</div>
+</td><td>
+<div> </div>
+</td><td>
+<div>Verwaltungsausschuss (nicht-öffentlich)</div>
+</td><td>
+<div>Vorberatung</div>
+</td><td class="toLink">
+<div> </div>
+</td>
+</tr><tr class="even" id="id2c">
+<td class="colorCol">
+<div>
+<span class="wfcolorDescIcon" data-iconcolor="#FFFFFF">●</span>
+<span class="wfcolorDesc">Gestoppt</span>
+</div>
+</td><td>
+<div> </div>
+</td><td>
+<div>Rat der Stadt Laatzen</div>
+</td><td>
+<div>Entscheidung</div>
+</td><td class="toLink">
+<div> </div>
+</td>
+</tr><tr class="odd" id="id2d">
+<td class="colorCol">
+<div> </div>
+</td><td class="date">
+<div>03.09.2026</div>
+</td><td>
+<div>
+<a href="./to010?SILFDNR=1000027&amp;TOLFDNR=1001141">Sitzung des Rates der Stadt Laatzen</a>
+</div>
+</td><td>
+<div>
+<a></a>
+</div>
+</td><td class="toLink">
+</td>
+</tr><tr class="even" id="id2e">
+<td class="colorCol">
+<div>
+<span class="wfcolorDescIcon" data-iconcolor="#555753">●</span>
+<span class="wfcolorDesc">Gestoppt</span>
+</div>
+</td><td>
+<div> </div>
+</td><td>
+<div>Schulausschuss</div>
+</td><td>
+<div>Vorberatung</div>
+</td><td class="toLink">
+<div> </div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+<div id="id3">
+<div class="compFull roundedBorder">
+<div class="expcol rs_skip rs_preserve">
+<a class="js-simple-tooltip" data-simpletooltip-text="Sachverhalt ausblenden" href="#" id="showHideLink_id3"><img alt="Reduzieren" id="id2f" role="presentation" src="./wicket/resource/org.apache.wicket.Application/images/collapse-ver-C41D4AFF790B892FD71DE1FBA71538E6.svg"/></a><span class="wicket-ajax-indicator" hidden="" id="showHideLink_id3--ajax-indicator"><img alt="" src="./wicket/resource/org.apache.wicket.ajax.AbstractDefaultAjaxBehavior/indicator-ver-03CE3DCC84AF110E9DA8699A841E5200.gif"/></span>
+</div>
+<div data-wicket-placeholder="" hidden="" id="id30"></div>
+<div id="id31">
+<h2 class="expandedTitle"></h2>
+<div class="docPart" id="htm1006715" style="font-family:Carlito; font-size:11pt;">
+<div>
+<p style="margin-top:0pt; margin-bottom:8pt">
+<a name="Beschlußvorschlag"><span style="text-decoration:underline">Antrag:</span><span> </span></a>
+</p>
+<p style="margin-top:0pt; margin-bottom:8pt">
+<span style="-aw-bookmark-end:Beschlußvorschlag"></span><span>Bitte beachten Sie den in der Anlage beigefügten Antrag, der am 29.06.2026 bei der Stadt Laatzen eingegangen ist. </span>
+</p>
+<p style="margin-top:0pt; margin-bottom:8pt">
+<span> </span>
+</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="id6">
+<div class="compFull roundedBorder">
+<div class="expcol rs_skip rs_preserve">
+<a class="js-simple-tooltip" data-simpletooltip-text="Anlagen ausblenden" href="#" id="showHideLink_id6"><img alt="Reduzieren" id="id32" src="./wicket/resource/org.apache.wicket.Application/images/collapse-ver-C41D4AFF790B892FD71DE1FBA71538E6.svg"/></a><span class="wicket-ajax-indicator" hidden="" id="showHideLink_id6--ajax-indicator"><img alt="" src="./wicket/resource/org.apache.wicket.ajax.AbstractDefaultAjaxBehavior/indicator-ver-03CE3DCC84AF110E9DA8699A841E5200.gif"/></span>
+</div>
+<div data-wicket-placeholder="" hidden="" id="id33"></div>
+<div id="id34">
+<h2 class="expandedTitle">Anlagen</h2>
+<table class="dataTable captionVisible stickyHeader hoverRow attachmentTable nonStickyHeader" id="id35">
+<caption class="rs_skip">Anlagen</caption>
+<thead>
+<tr class="headers">
+<th scope="col"><span>Nr.</span></th>
+<th scope="col"><span>Name</span></th>
+<th scope="col"><span>Original</span></th>
+<th scope="col"><span aria-label="Keine Zusammenstellung" class="nocompImg" role="img"></span></th>
+<th scope="col"><span>Status</span></th>
+<th class="fileSize" scope="col"><span>Größe</span></th>
+</tr>
+</thead>
+<tbody>
+<tr class="even linkstretch" onclick="var a = $(this).find('a'); if ($(this).find('a:hover').length &lt;= 0) { var href = a.attr('href'); var _urlBlank = a.attr('target'); if (href) {  if (_urlBlank === '_blank') {    window.open(href, '_blank');  } else {    window.location = href;   } }}">
+<td class="rightCol">
+<div>1</div>
+</td><td>
+<div>
+<a class="js-simple-tooltip attlink pdf" data-simpletooltip-text="Öffnen der PDF zu Anlage zu 2026-245 Antrag Bildungscampus.docx in neuen Fenster" href="./vo020?0--attachments-expandedPanel-content-body-rows-1-cells-2-cell-link&amp;VOLFDNR=1000238&amp;refresh=false" target="_blank">Anlage zu 2026-245 Antrag Bildungscampus.docx</a>
+</div>
+</td><td>
+</td><td>
+</td><td>
+<div>(wie Dokument)</div>
+</td><td class="fileSize">
+<div>259,2 kB</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<div id="id37"><div><img alt="Loading..." src="./wicket/resource/org.apache.wicket.ajax.AbstractDefaultAjaxBehavior/indicator-ver-03CE3DCC84AF110E9DA8699A841E5200.gif"/></div></div>
+<div data-wicket-placeholder="" hidden="" id="id38"></div>
+</div>
+</div>
+</main>
+<div>
+<div id="footer">
+</div>
+</div>
+<span class="simpletooltip_container nachoben">
+<button class="js-simple-tooltip" id="backToTop" title="nach oben" type="button"></button>
+</span>
+</div>
+</body>
+</html>

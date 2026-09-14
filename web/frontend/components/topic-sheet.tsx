@@ -205,7 +205,7 @@ export function TopicSheet({ topic, nameEditable = false, onClose, onSaved }: {
               Blatt „12" beim selben Thema — die 12 war damals nichts weiter
               als die Länge des Prompt-Kontexts). */}
           <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-muted-foreground">
-            Passt auf den Text im Feld
+            Treffer für diese Beschreibung
           </p>
           {/* Während der Prüfung Platzhalterzeilen statt Spinner + „prüft…":
               Der Block behält seine Höhe (kein Springen, wenn das Ergebnis

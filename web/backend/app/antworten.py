@@ -45,6 +45,38 @@ class Ok(TypedDict):
     ok: bool
 
 
+class VisitWindow(TypedDict):
+    since: str
+    until: str
+    first_visit: bool
+
+
+class TodayUpdate(TypedDict):
+    id: str
+    kind: Literal["protocol", "agenda", "agenda_change"]
+    ksinr: int
+    arrived: str
+    committee: str
+    session_date: str
+    decision_count: int
+
+
+class TodayUpdateGroup(TypedDict):
+    kind: Literal["protocol", "agenda", "agenda_change"]
+    committee: str
+    count: int
+    first_session_date: str
+    last_session_date: str
+    latest: TodayUpdate
+
+
+class TodayUpdates(VisitWindow):
+    total: int
+    counts: dict[str, int]
+    items: list[TodayUpdate]
+    groups: list[TodayUpdateGroup]
+
+
 class OkWithId(TypedDict):
     ok: bool
     id: int
@@ -93,6 +125,18 @@ class Attendance(TypedDict):
     note: str | None
 
 
+#: Was ein vorläufiges Videoergebnis sagen kann.
+#:
+#: Ein EIGENES Vokabular, nicht ``Beschlussergebnis``: ``removed`` gibt es nur
+#: hier (ein abgesetzter Punkt hinterlässt im Protokoll gar keinen Beschluss),
+#: ``no_decision`` nur dort. Bis zum 11.09.2026 stand hier trotzdem die
+#: Beschluss-Aufzählung — die Ratssitzung vom 29.06. hatte fünf abgesetzte
+#: TOPs, und ``/council/session/4695`` antwortete seitdem mit einem 500er.
+#: Quelle ist ``CouncilStore._VIDEO_OUTCOMES``; ein Wächter in
+#: ``tests/test_api_vertrag.py`` hält beide zusammen.
+Videoergebnis = Literal["accepted", "rejected", "postponed", "noted", "removed"]
+
+
 class VideoResult(TypedDict):
     """Ein vorläufiges Ergebnis aus der Videoaufzeichnung.
 
@@ -103,7 +147,7 @@ class VideoResult(TypedDict):
     id: int
     ksinr: int
     item_number: str
-    outcome: Beschlussergebnis
+    outcome: Videoergebnis
     vote: str | None
     no_votes: int | None
     abstentions: int | None
@@ -814,6 +858,9 @@ class TopicHitList(TypedDict):
     topic_count: int
     total: int
     unread_total: int
+    # Eindeutige, noch vorhandene Beschlüsse; ein Treffer in zwei Themen
+    # zählt im Heute-Widget nur einmal. unread_total bleibt für ältere Apps.
+    unread_decisions: int
 
 
 class TopicDecision(TypedDict):
@@ -1195,6 +1242,7 @@ class AdminUserDetail(TypedDict):
     der Aktivität, ``history_days`` nennt die zugehörigen Tage."""
     id: int
     email: str
+    display_name: str | None
     role: str
     roles: list[str]
     status: str
@@ -1379,6 +1427,48 @@ class IdeaEvidence(TypedDict):
     outcome: str | None
 
 
+#: Was die Karte über die Niederschriften einer Stadt sagen kann.
+#:
+#: **Drei Zustände, nicht zwei.** „Kein Warum" heißt bei Magdeburg etwas
+#: anderes als bei Hannover: Dort sind die Protokolle schlicht nicht
+#: abrufbar, hier hält die Stadt die Beratungsergebnisse ausdrücklich
+#: zurück („vertraulich und daher nicht zur Veröffentlichung im Internet
+#: freigegeben", auf 22 von 25 geprüften Punktseiten). Wer beides gleich
+#: darstellt, lässt eine bewusste Entscheidung der Stadt wie eine Lücke in
+#: unseren Daten aussehen.
+PROTOKOLL_QUELLEN = ("available", "none", "withheld")
+
+
+class IdeaProtocol(TypedDict):
+    """Was die Niederschrift der Sitzung zu dieser Vorlage sagt.
+
+    Das „Warum" — der Grund, aus dem der Städtevergleich überhaupt gebaut
+    wurde: Dass Magdeburg die Verpackungssteuer-Prüfung eingestellt hat, sagt
+    die Karte schon; *warum* der Rat das tat, ist das, was eine Oldenburger
+    Fraktion in ihrer eigenen Sitzung braucht.
+
+    **``grounded`` entscheidet, ob überhaupt etwas gezeigt wird.** Steht im
+    Abschnitt nur ein Ergebnis und keine Begründung — der häufigere Fall —,
+    ist es ``False``, ``why`` bleibt leer, und die Oberfläche zeigt an dieser
+    Stelle nichts. Eine erfundene Begründung wäre schlimmer als gar keine.
+    """
+    #: Worum die Debatte ging. Leer, wenn ohne Aussprache entschieden wurde.
+    discussed: str
+    #: Was beschlossen wurde, nah am Wortlaut.
+    decided: str
+    #: Das Abstimmungsergebnis, wie es dasteht („einstimmig", „12 dafür, 8
+    #: dagegen"). ``None``, wenn keines im Protokoll steht.
+    vote: str | None
+    #: Die Begründung, wie sie im Text steht. Leer, wenn keine dasteht.
+    why: str
+    #: Steht im Abschnitt wirklich eine Begründung?
+    grounded: bool
+    #: Das Gremium, das getagt hat, und wann — die Herkunftsangabe unter dem
+    #: Absatz („aus der Niederschrift des Kulturausschusses vom 18.06.2026").
+    organization: str | None
+    date: str | None
+
+
 class IdeaSibling(TypedDict):
     """Eine weitere Vorlage DERSELBEN Stadt zu derselben Idee."""
     paper_id: str
@@ -1421,6 +1511,19 @@ class Idea(TypedDict):
     reason: str
     confidence: str
     evidence: list[IdeaEvidence]
+    #: Was in der Niederschrift dieser Sitzung stand — das „Warum".
+    #: ``None``, solange keine Niederschrift vorliegt oder ihr Abschnitt keine
+    #: Begründung trägt. Das ist der Regelfall und kein Fehler.
+    protocol: IdeaProtocol | None
+    #: Warum an DIESER Karte kein „Warum" steht — einer der drei Werte aus
+    #: ``PROTOKOLL_QUELLEN``. Ohne ihn sieht Hannovers bewusste
+    #: Zurückhaltung aus wie eine Lücke in unseren Daten.
+    protocol_source: str
+    #: Ab wann Beschlüsse dieser Stadt in den Vergleich gehen
+    #: (``BodySpec.compare_since``). ``None`` bei Oldenburg, der Bezugsstadt.
+    #: Die Städte tragen verschieden weit zurück — ohne die Angabe liest man
+    #: „nur eine Idee" als Aussage über die Stadt statt über das Fenster.
+    window_since: str | None
     #: Was die Idee den Rat kosten würde (`council/cities/annotators.py`,
     #: Annotator `effort`): inquiry < review < resolution < decision < budget.
     #: Leer, solange der Wochen-Cron sie noch nicht vergeben hat.
@@ -1490,6 +1593,14 @@ class FeedbackAck(TypedDict):
 
 class IdeaFields(TypedDict):
     fields: list[IdeaFieldSummary]
+    #: Die Städte, aus denen Ideen vorliegen, nach Namen sortiert.
+    #:
+    #: **Sie gehören in die Antwort, nicht in den Einleitungstext.** Der zählte
+    #: sie fest auf („Osnabrück, Braunschweig, Münster, Potsdam und
+    #: Magdeburg") — und war am 13.09.2026 falsch, sobald Hannover,
+    #: Wolfsburg und Hildesheim dazukamen. Eine Aufzählung, die eine Zeile
+    #: Prosa ist, veraltet beim nächsten Adapter wieder.
+    bodies: list[str]
 
 
 class ElsewhereResponse(TypedDict):
@@ -1594,6 +1705,40 @@ class AdminKohorten(TypedDict):
     #: die Veränderung. Ein Stand allein sagt nicht, ob etwas gewirkt hat.
     previous: AdminKennzahlen
     basis: AdminKohortenBasis
+
+
+class AdminAnmeldeTag(TypedDict):
+    day: str
+    #: Konten, die an diesem Tag angelegt wurden.
+    created: int
+    #: Davon mit bestätigter Adresse — der Stand HEUTE, nicht der an dem Tag.
+    verified: int
+    #: Abgewiesene Registrierungsversuche an diesem Tag (alle Gründe).
+    rejected: int
+
+
+class AdminAbweisung(TypedDict):
+    #: Ein Wert aus ``kern.store.SIGNUP_REJECTION_REASONS``.
+    reason: str
+    n: int
+
+
+class AdminAnmeldungen(TypedDict):
+    """Was bei der Registrierung ankam — und was abprallte.
+
+    Beide Seiten in einem Bild. Die Zahl der neuen Konten allein sagt nicht,
+    ob gerade jemand anklopft und an der Bremse oder am Wegwerf-Riegel
+    hängenbleibt; bis 09/2026 war genau das unsichtbar.
+
+    Nichts hier ist einer Person zuzuordnen: Die Abweisungen tragen weder
+    Adresse noch Domain noch Netzadresse, nur Tag, Grund und Anzahl.
+    """
+    days: int
+    created: int
+    verified: int
+    rejected: int
+    series: list[AdminAnmeldeTag]
+    reasons: list[AdminAbweisung]
 
 
 class AdminSeitenTag(TypedDict):
@@ -1777,6 +1922,10 @@ class AdminFeedbackNotified(TypedDict):
 class AdminUserRow(TypedDict):
     id: int
     email: str
+    #: Der selbst gewählte Name. Stand bis 09/2026 nicht in dieser Antwort —
+    #: das Panel zeigte und durchsuchte nur die Adresse, obwohl 18 von 23
+    #: Konten einen Namen trugen. Optional bleibt er wegen des Alt-Bestands.
+    display_name: str | None
     #: Die stärkste Rolle (Abkürzung fürs Abzeichen in der Liste).
     role: str
     #: Alle Rollen — die Wahrheit; das Detail bearbeitet diese Liste.
@@ -1907,7 +2056,14 @@ class CouncilRecess(TypedDict):
     active: bool
     label: str | None
     until: str | None
-    note: str | None
+    #: IMMER ein String, notfalls leer — `sitzungspause()` setzt ihn auf jedem
+    #: seiner fünf Rückgabewege. Hier stand `str | None`, und das war nicht
+    #: bloß ungenau: Die App deklariert `let note: String` (nicht optional),
+    #: und ein `null` ließe `JSONDecoder` werfen — die Pausen-Karte auf „Heute
+    #: im Rat" bliebe leer statt falsch. Gefunden am 10.09.2026, nachdem
+    #: `scripts/ios_vertrag.py` gelernt hatte, auch `try?`-Aufrufstellen zu
+    #: lesen.
+    note: str
     next_session_date: str | None
 
 
@@ -2982,8 +3138,28 @@ class ResearchStopped(TypedDict):
     partial_report_possible: bool
 
 
+class QaExampleSession(TypedDict):
+    """Eine Sitzung als Anlass für eine frische Beispielfrage.
+
+    ``top_titel`` ist der wichtigste Beschluss der Sitzung, vom Server bereits
+    auf den Gegenstand eingedampft; ``n`` sagt, wie viele Beschlüsse die
+    Sitzung überhaupt hat.
+    """
+    committee: str
+    session_date: str
+    n: int
+    top_titel: str | None
+
+
 class QaExamples(TypedDict):
-    sessions: Any
+    #: Ausgeschrieben statt ``Any``, und das ist kein Schönheitsdienst: Die App
+    #: las die Liste unter dem Namen ``sitzungen`` statt ``sessions`` — seit
+    #: der Einführung des Endpunkts (#950). Der Aufruf steht unter ``try?``,
+    #: das Decodieren scheiterte also still, und die App zeigte immer nur ihre
+    #: eingebauten Beispiele. `scripts/ios_vertrag.py` rechnet die Bindung aus
+    #: der Aufrufstelle aus — aber nur, wenn der Vertrag etwas über den Inhalt
+    #: behauptet. Gegen ``Any`` kann es nichts prüfen.
+    sessions: list[QaExampleSession]
 
 
 class TemplateFollow(TypedDict):
@@ -3551,6 +3727,22 @@ WAHLABEND_PNG: dict[int | str, dict[str, Any]] = {
     404: {"description": "Der Wahlabend ist noch nicht freigeschaltet (Feature-Schalter `wahlabend`)."},
 }
 
+WAHLABEND_KARTE_PNG: dict[int | str, dict[str, Any]] = {
+    200: {
+        "description": (
+            "Die Karte zum Teilen (PNG): wie eine Liste (`?list=`), eine "
+            "Liste im Wahlbereich (`&area=`) oder eine Person (`&position=`) "
+            "abgeschnitten hat — Anteil, Sitze, Stimmen, Abstand zu 2021 bzw. "
+            "Personenstimmen und Status, dazu Lotti mit dem Dank an die "
+            "Wählenden. `&format=beitrag` (1080×1350, Vorgabe), `story` "
+            "(1080×1920) oder `quer` (1200×630); `&compare=false` lässt den "
+            "Abstand zu 2021 weg. Eine Minute cachebar."
+        ),
+        "content": {"image/png": {"schema": {"type": "string", "format": "binary"}}},
+    },
+    404: {"description": "Wahlabend nicht freigeschaltet, oder Liste/Wahlbereich/Listenplatz gibt es nicht."},
+}
+
 
 # --------------------------------------------------------------------------
 # Wahlabend (Ratswahl 13.09.2026) — GET /api/wahlabend
@@ -3558,10 +3750,31 @@ WAHLABEND_PNG: dict[int | str, dict[str, Any]] = {
 
 
 class ElectionInfo(TypedDict):
+    """Wer wählt was, wann — aus ``kommunalwahl/wahlen/``.
+
+    Bis 09/2026 trug diese Form nur Datum, Sitzzahl und den amtlichen Titel;
+    „Ratswahl Oldenburg", „13. September 2026" und der Wahlschluss standen
+    daneben als Literale im Frontend. Jetzt kommt beides von hier — eine
+    andere Wahl in der Registry ändert die Seite, ohne dass jemand eine
+    Überschrift nachzieht.
+    """
+    #: Kennung der Wahl, z. B. „ratswahl-2026".
+    slug: str
     date: str
     seats: int
+    #: Der amtliche Titel („Wahl des Rates der Stadt Oldenburg (Oldb)").
     title: str
+    #: Die kurze Form für Überschriften und Kicker („Ratswahl Oldenburg").
+    short_title: str
+    #: Wahlschluss mit Zeitzone (ISO) — Grundlage von Countdown und Abruftakt.
+    polls_close: str
+    #: „vorbereitung" | „live" | „rueckblick".
+    status: str
     presentation_url: str
+    #: Name der Vergleichswahl für ``seats_previous``/``share_previous_pct“ —
+    #: „2021" bei der Ratswahl 2026. Leer, wenn es keine Vorwahl gibt; dann
+    #: zeigen beide Seiten den Vergleich gar nicht.
+    previous_label: str
 
 
 class ElectionSource(TypedDict):
@@ -3636,8 +3849,12 @@ class ElectionParty(TypedDict):
     share_pct: float | None
     seats: int | None
     projected_seats: int | None
-    seats_2021: int | None
-    share_2021_pct: float | None
+    #: Sitze und Anteil derselben Liste bei der VORWAHL — wie die heißt, sagt
+    #: ``ElectionInfo.previous_label``. Hieß bis 09/2026 ``seats_2021`` /
+    #: ``share_2021_pct``: ein Jahr im Feldnamen, das bei der nächsten Wahl
+    #: nicht mehr stimmt und das kein Client umbenennen kann.
+    seats_previous: int | None
+    share_previous_pct: float | None
     #: Stufe 1 (stadtweit): Stimmen bis zum nächsten Sitz bzw. bis zum
     #: Verlust eines Sitzes. ``None`` = nicht erreichbar / kein Sitz.
     votes_to_next_seat: int | None
@@ -3683,3 +3900,310 @@ class ElectionNight(TypedDict):
     computed_at: str
     #: Der Verlauf des Abends, ältester Punkt zuerst; leer vor der Auszählung.
     history: list[ElectionHistoryPoint]
+
+
+class ElectionListItem(TypedDict):
+    """Eine Zeile der Übersicht unter ``/wahlen``."""
+    slug: str
+    short_title: str
+    title: str
+    date: str
+    polls_close: str
+    #: „council" (Sitze) oder „mayor" (Prozente, auch Stichwahl).
+    kind: str
+    #: „vorbereitung" | „live" | „rueckblick".
+    status: str
+    #: Wo diese Wahl zu sehen ist — leer, wenn es keine Seite dafür gibt.
+    path: str
+    #: Das Ergebnis in einem Satz; ``null``, solange es keines gibt.
+    summary: str | None
+    #: Ist das die Wahl, auf die gerade alles zeigt (``elections.focus``)?
+    focus: bool
+
+
+class ElectionList(TypedDict):
+    elections: list[ElectionListItem]
+
+
+# ------------------------------------------------------------------ OB-Wahl (election/mayor.py)
+
+class MayorCandidate(TypedDict):
+    slug: str
+    name: str
+    #: Kurzform der vorschlagenden Partei/Wählergruppe; leer bei einem
+    #: Namen, den die Ergebnisdarstellung nicht zuordnen konnte.
+    party: str
+    votes: int | None
+    share_pct: float | None
+    #: Nur in einer Stichwahl: der Anteil dieser Person im ERSTEN Wahlgang.
+    #: ``null`` sonst — der erste Wahlgang vergleicht sich mit nichts.
+    first_round_pct: float | None
+    #: Farbe der vorschlagenden Liste (hell/dunkel); leer bei einem
+    #: Einzelwahlvorschlag — dann zeichnet die Seite neutral.
+    color: str
+    color_dark: str
+
+
+class MayorElectionInfo(TypedDict):
+    """Welche Wahl das hier ist — aus ``kommunalwahl/wahlen/``.
+
+    Stand bis 09/2026 nicht in der Antwort: Es gab genau eine OB-Wahl, und
+    die Seite kannte sie auswendig. Mit der Stichwahl am 27.09. sind es zwei,
+    und die Überschrift darf nicht mehr im Frontend stehen."""
+    slug: str
+    title: str
+    short_title: str
+    date: str
+    #: Wahlschluss mit Zeitzone (ISO) — Grundlage des Countdowns.
+    polls_close: str
+    #: Ist das eine Stichwahl? Dann trägt ``first_round_pct`` je Kandidatur
+    #: das Ergebnis des ersten Wahlgangs.
+    is_runoff: bool
+    presentation_url: str
+
+
+class MayorNight(TypedDict):
+    #: "live" (Votemanager) oder "probe" (Generalprobe mit echten Zahlen).
+    dataset: str
+    #: "before" (nichts ausgezählt) | "counting" | "complete".
+    phase: str
+    election: MayorElectionInfo
+    reports_expected: int
+    reports_received: int
+    turnout_pct: float | None
+    valid_votes: int | None
+    invalid_ballots: int | None
+    candidates: list[MayorCandidate]
+    #: Slugs der beiden Kandidaturen einer Stichwahl — leer ohne Stichwahl-Satz.
+    runoff: list[str]
+    #: Slug der gewählten Person, sobald die Darstellung eine nennt und es
+    #: keine Stichwahl gibt — sonst ``null``.
+    elected: str | None
+    fetched_at: str | None
+    ok: bool
+    error: str | None
+    notes: list[str]
+
+
+# ------------------------------------------------------------------ Tippspiel (docs/plan-tippspiel-ratswahl.md)
+#
+# EIN Spiel, kein Konto: Wer mitspielt, trägt einen Namen und bekommt einen
+# Cookie-Token — die Identität IST der Token, nicht ``web_users.id``. Die
+# Formen hier tragen deshalb nirgends eine Konto-Kennung.
+
+class PredictionParty(TypedDict):
+    slug: str
+    short: str
+    name: str
+    color: str
+    color_dark: str
+    #: Sitze dieser Liste bei der Vorwahl; ``PredictionGame.previous_label``
+    #: sagt, welche das ist.
+    seats_previous: int | None
+
+
+class PredictionMayorCandidate(TypedDict):
+    slug: str
+    name: str
+    party: str
+
+
+class PredictionGame(TypedDict):
+    #: Die Runde (``prediction/rounds.py``): "ratswahl" ist die Hauptrunde
+    #: ohne Parameter, jede andere hängt an ``?runde=<slug>``.
+    round: str
+    #: Steht die Runde auf der Website? Die Hauptrunde ja, ein privater
+    #: Kreis nicht — dann zeigt der Beamer den Link mit Parameter.
+    listed: bool
+    title: str
+    #: "open" (Tippen offen) | "locked" (Tipp-Schluss erreicht) | "final" (Endstand).
+    phase: str
+    seats_total: int
+    #: Die Wahl, auf die getippt wird. ``election_slug`` schreibt sie fest —
+    #: eine Runde vergleicht sich für immer mit DIESER Wahl, auch wenn längst
+    #: eine spätere läuft.
+    election_slug: str
+    election_title: str
+    election_date: str
+    #: Was getippt wird: „seats" (ganze Sitze, Summe = ``seats_total``) oder
+    #: „pct" (Prozent je Kandidatur). Der Client liest das statt die Wahlart
+    #: zu deuten; bei „pct" ist ``parties`` leer und ``seats_total`` 0.
+    tip_kind: str
+    #: Name der Vergleichswahl für ``PredictionParty.seats_previous``
+    #: („2021"); leer, wenn es keine gibt.
+    previous_label: str
+    locked: bool
+    locked_at: str | None
+    late_scored: bool
+    #: Ein Gerät, mehrere Personen (Schalter je Runde, Admin): Nach dem
+    #: Speichern bietet „Mein Tipp" „Fertig — nächste Person" an, das den
+    #: Cookie löscht und den Tipp behält. Aus in der Hauptrunde.
+    shared_device: bool
+    player_count: int
+    #: Menschentext für den Zeitpunkt des Tipp-Schlusses, z. B. „bis zur
+    #: ersten Hochrechnung (ca. 20 Uhr)" — der Server nennt keine feste Uhrzeit,
+    #: solange der Tipp-Schluss noch nicht gesetzt ist.
+    deadline_hint: str
+    parties: list[PredictionParty]
+    mayor_candidates: list[PredictionMayorCandidate]
+
+
+class PredictionJoin(TypedDict):
+    player_id: int
+    name: str
+    #: Nur in DIESER Antwort — der Klartext-Token, den der Cookie sonst trägt.
+    #: Das Web braucht ihn nicht (der Cookie reicht), eine spätere native App
+    #: schon (Bearer-Header statt Cookie, wie beim übrigen Vertrag).
+    token: str
+
+
+class PredictionSeatLine(TypedDict):
+    slug: str
+    tip: int
+    actual: int | None
+    avg_tip: float | None
+    points: int
+    exact: bool
+
+
+class PredictionMayorLine(TypedDict):
+    slug: str
+    tip: float
+    actual_pct: float | None
+    avg_tip: float | None
+    points: int
+
+
+class PredictionScore(TypedDict):
+    total: int
+    seat_points: int
+    mayor_points: int
+    exact_lists: int
+    #: Summe der absoluten Sitz-Abweichungen — Tie-Breaker bei Punktgleichstand.
+    #: ``None``, solange kein Sitz feststeht.
+    deviation: int | None
+
+
+class PredictionMine(TypedDict):
+    player_id: int
+    name: str
+    late_at: str | None
+    #: Zählt der Tipp mit, oder ist die Person „außer Konkurrenz" (Spätstarter,
+    #: solange ``late_scored`` beim Spiel aus ist)?
+    scored: bool
+    has_tip: bool
+    has_mayor_tip: bool
+    locked: bool
+    seats: list[PredictionSeatLine]
+    mayor: list[PredictionMayorLine]
+    score: PredictionScore | None
+    rank: int | None
+    rank_before: int | None
+    #: "open" | "locked" | "final" — wie ``PredictionGame.phase``.
+    phase: str
+    stand_label: str
+    source_label: str
+    notes: list[str]
+
+
+class PredictionRow(TypedDict):
+    player_id: int
+    name: str
+    late_at: str | None
+    scored: bool
+    has_tip: bool
+    score: PredictionScore | None
+    rank: int | None
+    rank_before: int | None
+
+
+class PredictionCompareLine(TypedDict):
+    slug: str
+    short: str
+    color: str
+    color_dark: str
+    actual: int | None
+    avg_tip: float | None
+    exact_count: int
+
+
+class PredictionMayorCompareLine(TypedDict):
+    """Die OB-Zeile auf der ÖFFENTLICHEN Tafel (1g) — anders als
+    ``PredictionMayorLine`` (die EINEN Tipp beschreibt: „meins" in 1e/1f)
+    gibt es hier keine einzelne Person, deren Tipp „der" Tipp wäre."""
+    slug: str
+    name: str
+    party: str
+    actual_pct: float | None
+    avg_tip: float | None
+
+
+class PredictionStand(TypedDict):
+    title: str
+    #: "open" | "locked" | "final".
+    phase: str
+    stand_label: str
+    #: „4/6 Wahlbereiche" — Menschentext für den Kopf des Beamers.
+    area_label: str
+    #: "votemanager" | "manuell" | "gemischt" | "" (noch kein Ergebnis).
+    source_label: str
+    seats_total: int
+    player_count: int
+    tip_count: int
+    compare: list[PredictionCompareLine]
+    mayor: list[PredictionMayorCompareLine]
+    #: "before" | "counting" | "complete" — wie ``MayorNight.phase``.
+    mayor_status: str
+    rows: list[PredictionRow]
+    leader_player_id: int | None
+    #: Der Satz neben Lotti auf dem Vergleichs-Beamer („Die Runde hat die
+    #: CDU im Schnitt um 2 Sitze zu stark getippt.").
+    compare_sentence: str
+    computed_at: str
+    notes: list[str]
+
+
+class PredictionResultRow(TypedDict):
+    """Eine Zeile der Admin-Tabelle (1h) — Entwurf UND veröffentlichter Stand."""
+    slug: str
+    seats: int | None
+    pct: float | None
+    source: str
+    avg_tip: float | None
+    exact_count: int
+    published_seats: int | None
+    published_pct: float | None
+    published_source: str | None
+    published_at: str | None
+
+
+class PredictionAdminPlayer(TypedDict):
+    """Eine Zeile der Teilnehmerliste im Admin-Panel (1h) — zum Ausblenden
+    und Umbenennen. Anders als ``PredictionRow`` auf der öffentlichen Tafel
+    zeigt diese Liste AUCH ausgeblendete Personen, denn genau die will der
+    Admin wiederfinden können."""
+    id: int
+    name: str
+    late_at: str | None
+    hidden: bool
+    has_tip: bool
+    has_mayor_tip: bool
+
+
+class PredictionRoundInfo(TypedDict):
+    """Eine Runde im Runden-Umschalter des Admins (1h)."""
+    slug: str
+    title: str
+    listed: bool
+    phase: str
+    player_count: int
+
+
+class PredictionAdminStand(TypedDict):
+    #: Alle Runden — der Admin verwaltet jede, auch die, die nicht auf der
+    #: Website steht (ihr Kreis hat keine eigene Adminperson).
+    rounds: list[PredictionRoundInfo]
+    game: PredictionGame
+    results: list[PredictionResultRow]
+    players: list[PredictionAdminPlayer]
+    log: list[str]

@@ -10,7 +10,7 @@ export async function generateMetadata(): Promise<Metadata> {
   if (istExport()) return {};
   const title = "Fragen";
   const text =
-    "Stell dem Oldenburger Stadtrat eine Frage in normaler Sprache — "
+    "Stell dem Oldenburger Stadtrat eine Frage in deinen eigenen Worten — "
     + "Ratslotse antwortet mit Beschlüssen, Wortbeiträgen und Quellenangabe.";
   return { title: title, description: text, openGraph: { title: title, description: text } };
 }

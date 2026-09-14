@@ -116,7 +116,11 @@ def batch_text(rows: Sequence[dict], texte: dict[str, str], ann: Annotator) -> s
 def run(main: CitiesStore, ann: Annotator, body_id: str | None = None,
         limit: int | None = None, workers: int = WORKERS) -> dict:
     """Alles annotieren, was noch keine oder eine veraltete Annotation hat."""
-    kandidaten = main.papers(body_id=body_id)
+    # Fenster und Vorlagenarten je Stadt — eine Regel, drei Aufrufer
+    # (hier, `fit.candidates_for`, und der Bericht in `cities_backfill`).
+    from council.cities import auswahl
+    f = auswahl.fenster(body_id)
+    kandidaten = auswahl.papiere(main, body_id)
     if ann.only_usable:
         # Manche Fragen stellen sich an einem Bebauungsplan gar nicht. Der
         # Filter ist derselbe wie bei `fit.candidates_for` — eine Regel, zwei
@@ -129,7 +133,8 @@ def run(main: CitiesStore, ann: Annotator, body_id: str | None = None,
     hashes = {p["id"]: source_hash(p, texte.get(p["id"]), ann) for p in kandidaten}
 
     offen = main.annotations_missing("paper", ann.key, ann.version, body_id=body_id,
-                                     source_hashes=hashes)
+                                     source_hashes=hashes,
+                                     since=f.since, kinds=f.kinds)
     if limit:
         offen = offen[:limit]
     if not offen:

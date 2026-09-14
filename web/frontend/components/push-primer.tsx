@@ -107,7 +107,7 @@ export function PushPrimer() {
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <Button size="sm" onClick={() => enable.mutate()} disabled={enable.isPending}>
-            {enable.isPending ? "Aktiviere…" : "Mitteilungen aktivieren"}
+            {enable.isPending ? "Wird aktiviert …" : "Mitteilungen aktivieren"}
           </Button>
           <Button size="sm" variant="ghost" onClick={snooze}>Später</Button>
         </div>

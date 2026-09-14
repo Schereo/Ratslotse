@@ -111,12 +111,10 @@ export function GoalsView() {
 
   return (
     <div className="space-y-3">
-      <AnalysisIntro summary={<>Wie stark der Rat jedes übergeordnete Stadtziel <strong className="font-semibold text-foreground">voranbringt</strong>.</>}>
-        Wie viele Ratsbeschlüsse jedes übergeordnete Ziel{" "}
-        <strong className="font-semibold text-foreground">voranbringen</strong>, ihm{" "}
-        <strong className="font-semibold text-foreground">entgegenwirken</strong> oder es neutral berühren. Das misst
-        die <strong className="font-semibold text-foreground">Aktivität und Richtung</strong> des Rats zum Ziel — nicht
-        die reale Kennzahl.
+      <AnalysisIntro summary={<>Wie stark die Beschlüsse des Rats die Ziele der Stadt <strong className="font-semibold text-foreground">unterstützen</strong>.</>}>
+        Die Auswertung zeigt, wie viele Ratsbeschlüsse ein Ziel <strong className="font-semibold text-foreground">unterstützen</strong>,
+        ihm <strong className="font-semibold text-foreground">entgegenstehen</strong> oder keinen klaren Einfluss haben.
+        Ob sich die Lage in der Stadt tatsächlich verbessert, lässt sich daraus nicht ablesen.
       </AnalysisIntro>
       {goals.map((g) => {
         const v = verdict(g);
