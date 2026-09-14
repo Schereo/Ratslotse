@@ -17,6 +17,7 @@ export type WahlabendMandat = Wahlabend["mandates"][number];
 export type Kandidatenliste = ApiAntwort<"/wahlabend/kandidaten">;
 export type KandidatenZeile = Kandidatenliste["rows"][number];
 export type KandidatenListe = Kandidatenliste["parties"][number];
+export type KandidatenBezirk = Kandidatenliste["districts"][number];
 export type KandidatenSortierung = "votes" | "party" | "area" | "name";
 export type Wahlbezirke = ApiAntwort<"/wahlabend/wahlbezirke">;
 export type Wahlbezirk = Wahlbezirke["districts"][number];
@@ -218,12 +219,16 @@ export function kandidatenPfad(
   sortierung: KandidatenSortierung,
   liste: string | null,
   bereich: number | null,
+  bezirk: number | null = null,
 ): string {
   const basis = abfragePfad(probe, counted, wahl);
   const q = new URLSearchParams(basis.includes("?") ? basis.slice(basis.indexOf("?") + 1) : "");
   if (sortierung !== "votes") q.set("sort", sortierung);
   if (liste) q.set("party", liste);
-  if (bereich !== null) q.set("area", String(bereich));
+  // Der Wahlbezirk bringt seinen Wahlbereich mit — beide zu schicken hieße,
+  // demselben Filter zweimal zu widersprechen.
+  if (bezirk !== null) q.set("district", String(bezirk));
+  else if (bereich !== null) q.set("area", String(bereich));
   const s = q.toString();
   return s ? `/wahlabend/kandidaten?${s}` : "/wahlabend/kandidaten";
 }

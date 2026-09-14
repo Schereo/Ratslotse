@@ -7812,6 +7812,24 @@
             "title": "Dataset",
             "type": "string"
           },
+          "district": {
+            "title": "District",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "district_name": {
+            "title": "District Name",
+            "type": "string"
+          },
+          "districts": {
+            "items": {
+              "$ref": "#/components/schemas/ElectionDistrictRef"
+            },
+            "title": "Districts",
+            "type": "array"
+          },
           "election": {
             "$ref": "#/components/schemas/ElectionInfo"
           },
@@ -7865,6 +7883,9 @@
           "sort",
           "party",
           "area",
+          "district",
+          "district_name",
+          "districts",
           "total",
           "shown",
           "parties",
@@ -7955,6 +7976,28 @@
               "null"
             ]
           },
+          "top_district": {
+            "title": "Top District",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "top_district_name": {
+            "title": "Top District Name",
+            "type": "string"
+          },
+          "top_district_postal": {
+            "title": "Top District Postal",
+            "type": "boolean"
+          },
+          "top_district_votes": {
+            "title": "Top District Votes",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
           "votes": {
             "title": "Votes",
             "type": [
@@ -7987,7 +8030,11 @@
           "party_share_pct",
           "elected",
           "projected_elected",
-          "votes_to_seat"
+          "votes_to_seat",
+          "top_district",
+          "top_district_name",
+          "top_district_votes",
+          "top_district_postal"
         ],
         "title": "ElectionCandidateRow",
         "type": "object"
@@ -8116,6 +8163,35 @@
           "share_pct"
         ],
         "title": "ElectionDistrictParty",
+        "type": "object"
+      },
+      "ElectionDistrictRef": {
+        "description": "Ein Wahlbezirk, nur mit dem, was eine Auswahl braucht.",
+        "properties": {
+          "area": {
+            "title": "Area",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "integer"
+          },
+          "postal": {
+            "title": "Postal",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "number",
+          "name",
+          "area",
+          "postal"
+        ],
+        "title": "ElectionDistrictRef",
         "type": "object"
       },
       "ElectionHistoryPoint": {
@@ -8900,6 +8976,28 @@
                   "null"
                 ]
               },
+              "top_district": {
+                "title": "Top District",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "top_district_name": {
+                "title": "Top District Name",
+                "type": "string"
+              },
+              "top_district_postal": {
+                "title": "Top District Postal",
+                "type": "boolean"
+              },
+              "top_district_votes": {
+                "title": "Top District Votes",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
               "votes": {
                 "title": "Votes",
                 "type": [
@@ -8932,7 +9030,11 @@
               "party_share_pct",
               "elected",
               "projected_elected",
-              "votes_to_seat"
+              "votes_to_seat",
+              "top_district",
+              "top_district_name",
+              "top_district_votes",
+              "top_district_postal"
             ],
             "title": "ElectionCandidateRow",
             "type": [
@@ -28176,6 +28278,22 @@
               "maximum": 20,
               "minimum": 1,
               "title": "Area",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "nur dieser Wahlbezirk — Stimmen, Anteil und Rang dann aus diesem Wahllokal",
+            "in": "query",
+            "name": "district",
+            "required": false,
+            "schema": {
+              "description": "nur dieser Wahlbezirk — Stimmen, Anteil und Rang dann aus diesem Wahllokal",
+              "maximum": 999,
+              "minimum": 1,
+              "title": "District",
               "type": [
                 "integer",
                 "null"

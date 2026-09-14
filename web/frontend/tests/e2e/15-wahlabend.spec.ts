@@ -189,6 +189,24 @@ test.describe("Schalter an: die Generalprobe", () => {
     await expect(karte.locator("path")).toHaveCount(6);
   });
 
+  test("der Wahlbezirk filtert die Rangliste auf ein Wahllokal", async ({ page }) => {
+    await page.goto("/wahlabend?ansicht=kandidaten");
+    const wahl = page.getByLabel("Wahlbezirk");
+    await expect(wahl).toBeVisible();
+    // Ohne Auswahl steht die ganze Stadt da, und jede Zeile nennt ihre
+    // Hochburg — den Wahlbezirk, in dem diese Kandidatur am stärksten war.
+    await expect(page.getByText(`${KANDIDATEN.total} Kandidaturen`)).toBeVisible();
+    const hochburg = KANDIDATEN.rows.find((z: { top_district: number | null }) => z.top_district !== null);
+    // In der TABELLE, nicht im Auswahlfeld: Dort steht derselbe Name als
+    // `<option>` und ist unsichtbar.
+    if (hochburg) await expect(page.locator("table").getByText(hochburg.top_district_name).first()).toBeVisible();
+
+    // Ein Wahllokal wählen: weniger Kandidaturen, und die Adresse merkt es sich.
+    const erster = KANDIDATEN.districts.find((b: { postal: boolean }) => !b.postal);
+    await wahl.selectOption(String(erster.number));
+    await expect(page).toHaveURL(new RegExp(`[?&]bezirk=${erster.number}`));
+  });
+
   test("die Kandidaten-Rangliste kommt vom Server, mit stadtweitem Rang", async ({ page }) => {
     await page.goto("/wahlabend?ansicht=kandidaten");
     const reiter = page.getByRole("tab", { name: "Kandidat*innen" });

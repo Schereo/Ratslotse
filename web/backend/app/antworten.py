@@ -4050,6 +4050,10 @@ class ElectionCandidateRow(TypedDict):
     #: Rang nach Personenstimmen über ALLE Kandidaturen der Wahl — bleibt
     #: auch gefiltert der stadtweite Rang (Platz 7 der Stadt ist Platz 7,
     #: auch wenn nur die eigene Liste gezeigt wird). ``None`` ohne Stimmen.
+    #:
+    #: **Mit einem Wahlbezirks-Filter zählt der Bezirk**: Dort sind die
+    #: Stimmen die dieses Wahllokals, und ein stadtweiter Rang daneben wäre
+    #: eine Zahl aus einer anderen Rechnung.
     rank: int | None
     party: str
     party_short: str
@@ -4070,6 +4074,17 @@ class ElectionCandidateRow(TypedDict):
     elected: str | None
     projected_elected: str | None
     votes_to_seat: int | None
+    #: Der Wahlbezirk, in dem diese Kandidatur die meisten Personenstimmen
+    #: geholt hat — ihre Hochburg. Das ist die EINZIGE Art, wie ein
+    #: Wahlbezirk zu einer Kandidatur gehört: Sie tritt im Wahlbereich an und
+    #: bekommt in jedem seiner 15 bis 24 Bezirke Stimmen; einer davon ist der
+    #: stärkste. ``None``, solange keine Personenstimmen vorliegen.
+    top_district: int | None
+    top_district_name: str
+    top_district_votes: int | None
+    #: Ist die Hochburg ein Briefwahlbezirk? Dann ist sie kein Ort, sondern
+    #: ein Stapel — das gehört dazugesagt.
+    top_district_postal: bool
 
 
 class ElectionWatchEntry(TypedDict):
@@ -4098,6 +4113,14 @@ class ElectionWatchList(TypedDict):
     entries: list[ElectionWatchEntry]
 
 
+class ElectionDistrictRef(TypedDict):
+    """Ein Wahlbezirk, nur mit dem, was eine Auswahl braucht."""
+    number: int
+    name: str
+    area: int
+    postal: bool
+
+
 class ElectionCandidateRanking(TypedDict):
     """``GET /api/wahlabend/kandidaten`` — alle Kandidaturen einer Ratswahl,
     sortiert und gefiltert vom Server, damit Web und App dieselbe Liste
@@ -4111,6 +4134,18 @@ class ElectionCandidateRanking(TypedDict):
     #: Die angewandten Filter — ``None`` = kein Filter.
     party: str | None
     area: int | None
+    #: Ein WAHLBEZIRK als Filter — die Ebene unter dem Wahlbereich, also ein
+    #: Wahllokal. Er ist kein Merkmal einer Kandidatur: Wer antritt, steht in
+    #: einem Wahlbereich und bekommt in JEDEM seiner 15 bis 24 Wahlbezirke
+    #: Stimmen. Gesetzt heißt deshalb: Es werden die Kandidaturen dieses
+    #: Wahlbereichs gezeigt, und ``votes``, ``party_share_pct`` und ``rank``
+    #: beziehen sich auf DIESEN Wahlbezirk — nicht auf die Stadt.
+    district: int | None
+    #: Name des Wahllokals („504 Grundschule Bümmerstede"); leer ohne Filter.
+    district_name: str
+    #: Alle Wahlbezirke zur Auswahl, aufsteigend — damit die Oberfläche für
+    #: die Liste keine zweite Abfrage braucht.
+    districts: list[ElectionDistrictRef]
     #: Kandidaturen insgesamt und davon gezeigt.
     total: int
     shown: int

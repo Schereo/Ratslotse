@@ -46,6 +46,12 @@ export type KandidatenFilter = {
   sortierung: KandidatenSortierung;
   liste: string | null;
   bereich: number | null;
+  /** Ein WAHLBEZIRK — das Wahllokal, in dem ausgezählt wurde. Er ist kein
+   *  Merkmal einer Kandidatur (wer antritt, steht in einem Wahlbereich und
+   *  bekommt in jedem seiner 15 bis 24 Bezirke Stimmen), deshalb gibt es ihn
+   *  als Filter und nicht als Spalte: Gesetzt zeigt die Liste, wer in DIESEM
+   *  Wahllokal vorn lag. */
+  bezirk: number | null;
 };
 
 function Chip({ an, onClick, children, title }: { an: boolean; onClick: () => void; children: React.ReactNode; title?: string }) {
@@ -123,6 +129,64 @@ function Statuspille({ z, daten }: { z: KandidatenZeile; daten: Kandidatenliste 
   return <span className={cn("inline-block whitespace-nowrap rounded-full px-2 py-0.5 text-[10.5px] font-semibold", TON[s.ton])}>{s.text}</span>;
 }
 
+/** „In welchem Wahllokal?" — die Ebene unter dem Wahlbereich.
+ *
+ *  Die Liste der Bezirke kommt mit der Antwort mit (`districts`), nicht aus
+ *  einer zweiten Abfrage. Ohne gewählten Wahlbereich stehen alle 133 da, nach
+ *  Wahlbereich gruppiert; mit Wahlbereich nur dessen eigene.
+ */
+function Bezirkswahl({ daten, liste, filter, setFilter }: {
+  daten: Wahlabend;
+  liste: Kandidatenliste | undefined;
+  filter: KandidatenFilter;
+  setFilter: (f: KandidatenFilter) => void;
+}) {
+  const alle = liste?.districts ?? [];
+  if (!alle.length) return null;
+  const gewaehlt = filter.bezirk;
+  // Nach dem gewählten Wahlbereich einschränken — sonst nach allen gruppieren.
+  const sichtbar = filter.bereich === null ? alle : alle.filter((b) => b.area === filter.bereich);
+  const nachBereich = daten.areas
+    .map((a) => ({ a, bezirke: sichtbar.filter((b) => b.area === a.number) }))
+    .filter((g) => g.bezirke.length);
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+      <label htmlFor="kandidaten-bezirk" className={KICKER}>Wahlbezirk</label>
+      <select
+        id="kandidaten-bezirk"
+        value={gewaehlt === null ? "" : String(gewaehlt)}
+        onChange={(e) => {
+          const wert = e.target.value ? Number(e.target.value) : null;
+          const b = wert === null ? null : alle.find((x) => x.number === wert) ?? null;
+          setFilter({ ...filter, bezirk: wert, bereich: b ? b.area : filter.bereich });
+        }}
+        className="min-h-9 max-w-full rounded-full border border-border bg-card px-3 text-[13px] font-medium text-foreground hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <option value="">Alle Wahlbezirke</option>
+        {nachBereich.map(({ a, bezirke }) => (
+          <optgroup key={a.number} label={`Wahlbereich ${a.roman} · ${a.name}`}>
+            {bezirke.map((b) => (
+              <option key={b.number} value={b.number}>
+                {b.name}
+                {b.postal ? " (Briefwahl)" : ""}
+              </option>
+            ))}
+          </optgroup>
+        ))}
+      </select>
+      {gewaehlt !== null ? (
+        <button
+          type="button"
+          onClick={() => setFilter({ ...filter, bezirk: null })}
+          className="text-[12.5px] font-medium text-primary underline-offset-2 hover:underline"
+        >
+          zurücksetzen
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 /** Der Tabellenkopf klebt unter dem Seitenkopf (kopf.tsx: 30-px-Marke +
  *  pt-3/pb-3 + Linie, im Browser gemessen 61 px plus Sicherheitszone). */
 const KLEBE_AB = "top-[calc(env(safe-area-inset-top)+61px)]";
@@ -147,7 +211,7 @@ export function Kandidaten({
   live: boolean;
 }) {
   const beobachtet = useBeobachtet(rueckblick, probe, counted);
-  const pfad = kandidatenPfad(probe, counted, rueckblick, filter.sortierung, filter.liste, filter.bereich);
+  const pfad = kandidatenPfad(probe, counted, rueckblick, filter.sortierung, filter.liste, filter.bereich, filter.bezirk);
   const abfrage = useQuery({
     queryKey: ["wahlabend-kandidaten", pfad],
     queryFn: () => api.get<Kandidatenliste>(pfad),
@@ -161,9 +225,13 @@ export function Kandidaten({
   const max = useMemo(() => {
     // Bezugsgröße ist die stärkste Person der WAHL, nicht der Auswahl — sonst
     // sähe die schwächste Liste gefiltert aus wie die stärkste.
+    //
+    // **Im Wahlbezirk gilt der Bezirk.** Dort geht es um 20 bis 300 Stimmen;
+    // gegen die 4.019 der Stadt gemessen wäre jeder Balken ein Strich.
+    if (liste?.district) return Math.max(0, ...liste.rows.map((z) => z.votes ?? 0));
     const alle = daten.areas.flatMap((a) => a.parties.flatMap((p) => p.candidates.map((k) => k.votes ?? 0)));
     return Math.max(0, ...alle);
-  }, [daten]);
+  }, [daten, liste]);
   const listeInfo = filter.liste ? daten.parties.find((p) => p.slug === filter.liste) : null;
   const vorher = daten.phase === "before";
 
@@ -173,7 +241,11 @@ export function Kandidaten({
       <p className="mt-1 text-[13px] text-muted-foreground">
         {vorher
           ? "Die Personenstimmen kommen mit der Auszählung — bis dahin stehen hier die Namen in Stimmzettel-Reihenfolge."
-          : "Der Rang ist stadtweit und bleibt es auch gefiltert. Der Anteil sagt, wie viel von allen Stimmen der eigenen Liste im Wahlbereich auf diese Person entfielen."}
+          : liste?.district
+            // Im Wahlbezirk zählen dessen Zahlen — ein stadtweiter Rang
+            // neben Bezirks-Stimmen wäre eine Zahl aus einer anderen Rechnung.
+            ? `Stimmen, Anteil und Rang gelten für dieses Wahllokal. Gezeigt werden die Kandidaturen des Wahlbereichs, zu dem es gehört — nur sie standen dort auf dem Stimmzettel.`
+            : "Der Rang ist stadtweit und bleibt es auch gefiltert. Der Anteil sagt, wie viel von allen Stimmen der eigenen Liste im Wahlbereich auf diese Person entfielen."}
       </p>
 
       {beobachtet.angemeldet ? (
@@ -209,14 +281,27 @@ export function Kandidaten({
         ))}
       </div>
       <div className="mt-2 flex flex-wrap gap-1.5">
-        <Chip an={filter.bereich === null} onClick={() => setFilter({ ...filter, bereich: null })}>Alle Wahlbereiche</Chip>
+        <Chip an={filter.bereich === null && filter.bezirk === null} onClick={() => setFilter({ ...filter, bereich: null, bezirk: null })}>Alle Wahlbereiche</Chip>
         {daten.areas.map((a) => (
-          <Chip key={a.number} an={filter.bereich === a.number} onClick={() => setFilter({ ...filter, bereich: filter.bereich === a.number ? null : a.number })} title={a.name}>
+          <Chip
+            key={a.number}
+            an={filter.bereich === a.number && filter.bezirk === null}
+            // Ein Wahlbereich hebt den Bezirk auf: Der Bezirk IST einer
+            // seiner Teile, beides zugleich wäre ein Widerspruch.
+            onClick={() => setFilter({ ...filter, bereich: filter.bereich === a.number && filter.bezirk === null ? null : a.number, bezirk: null })}
+            title={a.name}
+          >
             {a.roman}
             <span className="hidden text-muted-foreground sm:inline">· {a.name}</span>
           </Chip>
         ))}
       </div>
+
+      {/* Der Wahlbezirk als Auswahlfeld, nicht als Chip-Reihe: 133 Chips
+          wären keine Filterleiste mehr. Ein `select` bringt auf dem Handy
+          die native Rolltrommel mit und ordnet die Bezirke nach
+          Wahlbereich. */}
+      <Bezirkswahl daten={daten} liste={liste} filter={filter} setFilter={setFilter} />
 
       {abfrage.isError && !liste ? (
         <p className="mt-6 text-[13px] text-muted-foreground">Die Rangliste ließ sich gerade nicht laden — die Seite versucht es von selbst noch einmal.</p>
@@ -228,6 +313,7 @@ export function Kandidaten({
             {liste.shown === liste.total ? `${zahl(liste.total)} Kandidaturen` : `${zahl(liste.shown)} von ${zahl(liste.total)} Kandidaturen`}
             {listeInfo ? <> · {listeInfo.name}</> : null}
             {filter.bereich !== null ? <> · Wahlbereich {daten.areas.find((a) => a.number === filter.bereich)?.roman}</> : null}
+            {liste.district !== null ? <> · <strong className="font-semibold text-foreground">{liste.district_name}</strong></> : null}
             {abfrage.isFetching && abfrage.isPlaceholderData ? <> · wird aktualisiert …</> : null}
           </p>
 
@@ -239,9 +325,11 @@ export function Kandidaten({
                   <th scope="col" className="w-12 border-b border-border px-2 py-2 text-right font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">Rang</th>
                   <th scope="col" className="border-b border-border px-3 py-2 text-left font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">Kandidatur</th>
                   <th scope="col" className="w-28 border-b border-border px-3 py-2 text-left font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">Liste</th>
-                  <th scope="col" className="w-36 border-b border-border px-3 py-2 text-left font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">Wahlbereich</th>
+                  <th scope="col" className="w-44 border-b border-border px-3 py-2 text-left font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground" title="Wahlbereich der Kandidatur — darunter ihr stärkster Wahlbezirk">Wahlbereich {liste.district === null ? "· stärkster Bezirk" : ""}</th>
                   <th scope="col" className="w-48 border-b border-border border-l border-l-border/70 px-3 py-2 text-right font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">Personenstimmen</th>
-                  <th scope="col" className="w-24 border-b border-border border-l border-l-border/70 px-3 py-2 text-right font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground" title="Anteil an allen Stimmen der eigenen Liste im Wahlbereich">Anteil</th>
+                  <th scope="col" className="w-24 border-b border-border border-l border-l-border/70 px-3 py-2 text-right font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground" title={liste.district === null
+                    ? "Anteil an allen Stimmen der eigenen Liste im Wahlbereich"
+                    : "Anteil an allen Stimmen der eigenen Liste in diesem Wahlbezirk"}>Anteil</th>
                   <th scope="col" className="w-48 border-b border-border px-3 py-2 text-left font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">Stand</th>
                 </tr>
               </thead>
@@ -264,6 +352,15 @@ export function Kandidaten({
                       <td className="border-b border-border/60 px-3 py-2">
                         <span className="block">{z.area_roman}</span>
                         <span className="block truncate text-[11px] text-muted-foreground">{z.area_name}</span>
+                        {/* Die Hochburg ist die einzige Art, wie ein
+                            Wahlbezirk zu EINER Kandidatur gehört. Im
+                            Bezirks-Filter steht sie nicht: Dort sind ohnehin
+                            alle im selben Wahllokal. */}
+                        {liste.district === null && z.top_district !== null ? (
+                          <span className="mt-0.5 block truncate text-[11px] text-muted-foreground" title={`Stärkster Wahlbezirk: ${z.top_district_name} mit ${zahl(z.top_district_votes)} Personenstimmen`}>
+                            ↗ {z.top_district_name} · {zahl(z.top_district_votes)}
+                          </span>
+                        ) : null}
                       </td>
                       <td className={cn("border-b border-border/60", SPALTE_ZAHL)}>
                         <span className={cn("block", drin && "font-semibold")}>{zahl(z.votes)}</span>
@@ -298,12 +395,15 @@ export function Kandidaten({
                       <Punkt color={z.color} dark={z.color_dark} />
                       {z.party_short} · Platz {z.position} · WB {z.area_roman}
                     </span>
+                    {liste.district === null && z.top_district !== null ? (
+                      <span className="block truncate text-[11px] text-muted-foreground">↗ {z.top_district_name} · {zahl(z.top_district_votes)}</span>
+                    ) : null}
                     <span className="mt-1.5 block"><Balken votes={z.votes} max={max} drin={drin} /></span>
                     <span className="mt-1 flex items-center gap-2"><Statuspille z={z} daten={liste} /></span>
                   </span>
                   <span className="flex-none text-right">
                     <span className={cn("block text-[13px] tabular-nums", drin && "font-semibold")}>{zahl(z.votes)}</span>
-                    <span className="block text-[10.5px] text-muted-foreground tabular-nums">{z.party_share_pct === null ? "" : `${prozent(z.party_share_pct)} der Liste`}</span>
+                    <span className="block text-[10.5px] text-muted-foreground tabular-nums">{z.party_share_pct === null ? "" : `${prozent(z.party_share_pct)} der Liste${liste.district === null ? "" : " hier"}`}</span>
                   </span>
                   {beobachtet.angemeldet ? (
                     <Stern gemerkt={beobachtet.istGemerkt(z)} onClick={() => beobachtet.umschalten(z)} name={z.name} className="mt-0.5 flex-none" />

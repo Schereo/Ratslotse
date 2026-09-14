@@ -43,6 +43,7 @@ from ..antworten import (
     ElectionDistrict,
     ElectionDistrictList,
     ElectionDistrictParty,
+    ElectionDistrictRef,
     ElectionHistoryPoint,
     ElectionInfo,
     ElectionMandate,
@@ -331,6 +332,110 @@ def _fill_city(city: AreaRow | None, area_rows: dict[int, AreaRow], notes: list[
 
 
 # ------------------------------------------------------------------ Zusammensetzen
+
+def district_refs(snap: Snapshot) -> list[ElectionDistrictRef]:
+    """Alle Wahlbezirke als Auswahlliste — Nummer, Wahllokal, Wahlbereich.
+
+    Klein genug, um in jeder Antwort mitzufahren, die eine Auswahl anbieten
+    will; eine zweite Abfrage nur für 133 Namen wäre eine Netz-Runde für
+    nichts.
+    """
+    aus: list[ElectionDistrictRef] = []
+    for row in snap.districts:
+        nr = votemanager.district_number(row.name, None)
+        if nr is None:
+            continue
+        bereich = votemanager.area_of_district(nr)
+        if bereich is None:
+            continue
+        aus.append(ElectionDistrictRef(number=nr, name=row.name, area=bereich, postal=nr >= 900))
+    aus.sort(key=lambda d: d["number"])
+    return aus
+
+
+def _personenstimmen(partei, lr: ListRow | None, bereich: int) -> dict[int, int]:
+    """Personenstimmen je Listenplatz in EINER Zeile der Bezirksdatei.
+
+    **Ein Einzelwahlvorschlag hat keine Kandidatenspalte.** Er ist eine Liste
+    mit genau einer Person, und die Datei führt nur seine Gesamtzahl — dieselbe
+    Ausnahme macht ``compose`` für die Wahlbereichs-Ansicht. Ohne sie fehlte
+    Michael Stille in jeder Bezirks-Rangliste, obwohl er 123 Stimmen hat.
+    """
+    if lr is None:
+        return {}
+    if partei.kind == "einzelbewerber":
+        plaetze = [c.position for c in partei.candidates(bereich)]
+        return {plaetze[0]: lr.total} if plaetze and lr.total else {}
+    return {k: v for k, v in (lr.candidates or {}).items()}
+
+
+def top_districts(reg: Register, snap: Snapshot) -> dict[tuple[str, int, int], tuple[int, int, str, bool]]:
+    """Je Kandidatur ihr stärkster Wahlbezirk — die Hochburg.
+
+    Schlüssel ist ``(Listen-Slug, Listenplatz, Wahlbereich)``: Dieselbe Liste
+    stellt in jedem Wahlbereich eigene Leute, und deren Listenplätze
+    wiederholen sich. Wert ist ``(Stimmen, Bezirksnummer, Wahllokal, Brief)``.
+
+    Gemessen über den eingefrorenen Stand 2026: 382 Kandidaturen in zwei
+    Millisekunden — billig genug, um bei jeder Rangliste mitzufahren.
+    """
+    beste: dict[tuple[str, int, int], tuple[int, int, str, bool]] = {}
+    for row in snap.districts:
+        nr = votemanager.district_number(row.name, None)
+        if nr is None:
+            continue
+        bereich = votemanager.area_of_district(nr)
+        if bereich is None:
+            continue
+        for partei in reg.parties:
+            slug = partei.slug
+            for pos, stimmen in _personenstimmen(partei, row.lists.get(partei.index), bereich).items():
+                if not stimmen:
+                    continue
+                schluessel = (slug, pos, bereich)
+                vorher = beste.get(schluessel)
+                # Gleichstand: der kleinere Bezirk gewinnt, damit dieselbe
+                # Antwort nicht je nach Dateireihenfolge wechselt.
+                if vorher is None or stimmen > vorher[0] or (stimmen == vorher[0] and nr < vorher[1]):
+                    beste[schluessel] = (stimmen, nr, row.name, nr >= 900)
+    return beste
+
+
+def district_candidates(reg: Register, snap: Snapshot, number: int) -> dict | None:
+    """Ein einzelner Wahlbezirk mit den Personenstimmen JEDER Kandidatur.
+
+    Die Zahlen liegen in derselben Zeile wie die Listenstimmen — die
+    Bezirksdatei führt je Liste eine Spalte pro Listenplatz
+    (``D<liste>_2_<platz>``). ``service.districts`` wirft sie weg, weil 133
+    Bezirke mal 383 Kandidaturen die Antwort verdoppeln würden; für EINEN
+    Bezirk sind es 60 bis 90 Zahlen, und genau die beantworten „wer hat in
+    meinem Wahllokal die meisten Personenstimmen?".
+
+    ``None``, wenn es den Bezirk in diesem Stand nicht gibt. Sonst ein dict
+    mit ``number``, ``name``, ``area``, ``postal``, ``counted``,
+    ``valid_votes`` und ``lists``: je Listen-Slug die Gesamtstimmen der Liste
+    IN DIESEM BEZIRK und ihre Personenstimmen je Listenplatz.
+    """
+    for row in snap.districts:
+        nr = votemanager.district_number(row.name, None)
+        if nr is None or nr != number:
+            continue
+        bereich = votemanager.area_of_district(nr)
+        if bereich is None:
+            return None
+        listen: dict[str, dict] = {}
+        for partei in reg.parties:
+            lr = row.lists.get(partei.index)
+            if lr is None:
+                continue
+            listen[partei.slug] = {"total": lr.total,
+                                   "candidates": _personenstimmen(partei, lr, bereich)}
+        return {
+            "number": nr, "name": row.name, "area": bereich, "postal": nr >= 900,
+            "counted": row.counted, "valid_votes": row.valid_votes, "lists": listen,
+        }
+    return None
+
 
 def districts(reg: Register, snap: Snapshot, dataset: str) -> ElectionDistrictList:
     """Derselbe Stand, eine Ebene tiefer: je Wahlbezirk die Listen mit ihrem

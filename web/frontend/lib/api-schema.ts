@@ -8532,6 +8532,12 @@ export interface components {
             areas: components["schemas"]["ElectionAreaRef"][];
             /** Dataset */
             dataset: string;
+            /** District */
+            district: number | null;
+            /** District Name */
+            district_name: string;
+            /** Districts */
+            districts: components["schemas"]["ElectionDistrictRef"][];
             election: components["schemas"]["ElectionInfo"];
             /** Parties */
             parties: components["schemas"]["ElectionCandidateParty"][];
@@ -8585,6 +8591,14 @@ export interface components {
             projected_elected: string | null;
             /** Rank */
             rank: number | null;
+            /** Top District */
+            top_district: number | null;
+            /** Top District Name */
+            top_district_name: string;
+            /** Top District Postal */
+            top_district_postal: boolean;
+            /** Top District Votes */
+            top_district_votes: number | null;
             /** Votes */
             votes: number | null;
             /** Votes To Seat */
@@ -8645,6 +8659,20 @@ export interface components {
             slug: string;
             /** Votes */
             votes: number | null;
+        };
+        /**
+         * ElectionDistrictRef
+         * @description Ein Wahlbezirk, nur mit dem, was eine Auswahl braucht.
+         */
+        ElectionDistrictRef: {
+            /** Area */
+            area: number;
+            /** Name */
+            name: string;
+            /** Number */
+            number: number;
+            /** Postal */
+            postal: boolean;
         };
         /**
          * ElectionHistoryPoint
@@ -8944,6 +8972,14 @@ export interface components {
                 projected_elected: string | null;
                 /** Rank */
                 rank: number | null;
+                /** Top District */
+                top_district: number | null;
+                /** Top District Name */
+                top_district_name: string;
+                /** Top District Postal */
+                top_district_postal: boolean;
+                /** Top District Votes */
+                top_district_votes: number | null;
                 /** Votes */
                 votes: number | null;
                 /** Votes To Seat */
@@ -19492,6 +19528,8 @@ export interface operations {
                 party?: string | null;
                 /** @description nur dieser Wahlbereich (Nummer) */
                 area?: number | null;
+                /** @description nur dieser Wahlbezirk — Stimmen, Anteil und Rang dann aus diesem Wahllokal */
+                district?: number | null;
             };
             header?: never;
             path?: never;
@@ -19696,4 +19734,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 277d2e3b2cf10e01468a11291e87695dbc2af33d818c4044fd8954e9bf0d6793
+// vertrag-sha256: 4016139487263a342e91c226831ef91ecfa84da883c3a8cb3416728a7c41a7af
