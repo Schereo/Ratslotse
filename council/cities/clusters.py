@@ -394,6 +394,40 @@ def _stance_schreiben(main: CitiesStore, ann, puffer: list) -> None:
 #: verkettet sein — sie wurden direkt miteinander verglichen.
 CHECK_AB_MITGLIEDERN = 3
 
+#: Ab dieser Größe wird eine Gruppe DREIMAL gegengelesen statt einmal.
+#: Darunter lohnt es nicht: Eine Dreiergruppe ist mit einem Blick zu
+#: überschauen, und die großen sind es, die auf Seite eins landen — 1,2 % des
+#: Bestands stellten am 14.09.2026 **17 %** der ersten dreißig Karten je Feld,
+#: weil nach der Zahl der Städte sortiert wird.
+STIMMEN_AB_MITGLIEDERN = 10
+
+#: Wie viele Stimmen dann.
+STIMMEN = 3
+
+#: Ab welcher Uneinigkeit eine Gruppe als unbelegt gilt — gemessen als
+#: Spanne zwischen der großzügigsten und der sparsamsten Stimme, in Anteilen
+#: der Mitglieder.
+#:
+#: Gemessen am 14.09.2026 an zehn Gruppen ab elf Mitgliedern:
+#:
+#: ===========================  ====  ===========================  ======
+#: Gruppe                          n  drei Stimmen                 Spanne
+#: ===========================  ====  ===========================  ======
+#: Sammelbecken (#1)              86  0 %, 83 %, 83 %               83 %
+#: Kinderbetreuung (#15)          18  28 %, 33 %, 0 %               33 %
+#: Jugendförderung (#6)           24  0 %, 25 %, 25 %               25 %
+#: Baumfällungen (#25)            16  19 %, 0 %, 0 %                19 %
+#: Straßenbauprogramm (#12)       20  0 %, 0 %, 15 %                15 %
+#: Parkgebühren (#2)              55  11 %, 9 %, 11 %                2 %
+#: Tempo 30 (#13)                 19  0 %, 0 %, 0 %                  0 %
+#: ===========================  ====  ===========================  ======
+#:
+#: Der Abstand zwischen dem Sammelbecken und allem anderen ist groß genug,
+#: dass die Schwelle nicht auf die Nachkommastelle ankommt. 50 % heißt: Eine
+#: Stimme will die halbe Gruppe behalten, die andere sie wegwerfen — dann
+#: gibt es dort keine gemeinsame Sache, über die man etwas behaupten könnte.
+UNEINIG_AB = 0.5
+
 
 def check_clusters(main: CitiesStore, model: str = EMBED_MODEL,
                    version: str = CLUSTER_VERSION,
@@ -432,37 +466,96 @@ def check_clusters(main: CitiesStore, model: str = EMBED_MODEL,
     if limit:
         offen = offen[:limit]
     stand = {"checked": 0, "dropped": 0, "clusters_touched": 0,
-             "zu_viel": 0, "errors": 0, "cost_usd": 0.0}
+             "zu_viel": 0, "unbelegt": 0, "errors": 0, "cost_usd": 0.0}
     if not offen:
         return stand
 
     logger.info("cluster_check: %s Gruppen zu prüfen", len(offen))
     system = prompts.get(ann.prompt_system)
+
+    def eine_stimme(zeilen: str, erlaubt: set[str]):
+        """Ein Gegenlesen. Gibt ``(nutzlast, entfernen)`` oder wirft."""
+        antwort = llm.chat_complete(
+            model=ann.model, response_format={"type": "json_object"},
+            messages=[{"role": "system", "content": system},
+                      {"role": "user", "content": prompts.render(
+                          ann.prompt_user, items=zeilen)}],
+            max_tokens=ann.max_tokens, temperature=ann.temperature,
+            extra_body={"provider": {}} if ann.routing_free else {},
+            _feature=ann.feature)
+        last = ann.payload.model_validate(
+            parse_json(antwort.choices[0].message.content or ""))
+        verbrauch = getattr(antwort, "usage", None)
+        # Erfundene Kennungen fliegen raus — dieselbe Regel wie bei `fit`:
+        # Was dem Modell nicht vorlag, kann es nicht entfernen.
+        weg = {k for k in getattr(last, "drop", []) if k in erlaubt}
+        return last, weg, float(getattr(verbrauch, "cost", 0) or 0) if verbrauch else 0.0
+
     for cid, mitglieder in offen:
         zeilen = "\n".join(
             f"- {m['paper_id']} ({m['body_id']}, {(m.get('date') or '')[:7]}): "
             f"{m.get('instrument') or m.get('name') or ''}"
             for m in mitglieder)
+        # **Nicht mehr stumm kürzen.** Bis 14.09.2026 stand hier
+        # `zeilen[:ann.input_chars * 4]`. Genau EINE von 1.439 Gruppen lief
+        # dagegen — ausgerechnet das Sammelbecken mit 86 Mitgliedern, von dem
+        # das Modell nur 68 Zeilen sah, die letzte mitten im Wort. Was ihm
+        # nicht vorliegt, kann es nicht beanstanden; die Lücke sah aus wie
+        # ein sauberes Urteil.
+        if len(zeilen) > ann.input_chars * 4:
+            logger.warning(
+                "cluster_check: Gruppe %s ist mit %s Zeichen (%s Mitglieder) "
+                "größer als der Richtwert %s — sie wird trotzdem GANZ "
+                "vorgelegt, sonst urteilt das Modell über einen Ausschnitt",
+                cid, len(zeilen), len(mitglieder), ann.input_chars * 4)
+
+        # Große Gruppen bekommen DREI Stimmen, kleine eine. Der Grund steht
+        # bei `STIMMEN_AB_MITGLIEDERN`: Die großen landen auf Seite eins.
+        wie_oft = STIMMEN if len(mitglieder) >= STIMMEN_AB_MITGLIEDERN else 1
+        erlaubt = {m["paper_id"] for m in mitglieder}
+        stimmen: list[set[str]] = []
+        nutzlast = None
         try:
-            antwort = llm.chat_complete(
-                model=ann.model, response_format={"type": "json_object"},
-                messages=[{"role": "system", "content": system},
-                          {"role": "user", "content": prompts.render(
-                              ann.prompt_user, items=zeilen[:ann.input_chars * 4])}],
-                max_tokens=ann.max_tokens, temperature=ann.temperature,
-                extra_body={"provider": {}} if ann.routing_free else {},
-                _feature=ann.feature)
-            nutzlast = ann.payload.model_validate(
-                parse_json(antwort.choices[0].message.content or ""))
+            for _ in range(wie_oft):
+                nutzlast, weg, kosten = eine_stimme(zeilen, erlaubt)
+                stimmen.append(weg)
+                stand["cost_usd"] += kosten
         except Exception as e:  # noqa: BLE001 — eine Gruppe, nicht der Lauf
             stand["errors"] += 1
             logger.info("cluster_check gescheitert (%s): %s", cid, type(e).__name__)
             continue
+        assert nutzlast is not None
 
-        # Erfundene Kennungen fliegen raus — dieselbe Regel wie bei `fit`:
-        # Was dem Modell nicht vorlag, kann es nicht entfernen.
-        erlaubt = {m["paper_id"] for m in mitglieder}
-        raus = [k for k in getattr(nutzlast, "drop", []) if k in erlaubt]
+        if wie_oft > 1:
+            anteile = [len(s) / len(mitglieder) for s in stimmen]
+            spanne = max(anteile) - min(anteile)
+            if spanne > UNEINIG_AB:
+                # Keine gemeinsame Sache — also auch keine Aussage darüber.
+                logger.info("cluster_check: Gruppe %s uneins (%s), gilt als "
+                            "unbelegt", cid,
+                            ", ".join(f"{a:.0%}" for a in anteile))
+                nutzlast = nutzlast.model_copy(update={"drop": [], "stable": False})
+                main.put_annotation("cluster", f"{version}:{cid}", ann.key, ann.version,
+                                    nutzlast.model_dump(), text_hash(zeilen),
+                                    model=ann.model, cost_usd=0.0)
+                stand["checked"] += 1
+                stand["unbelegt"] = stand.get("unbelegt", 0) + 1
+                continue
+            # Einig: nur, was ALLE Stimmen entfernen wollen. Das ersetzt die
+            # Ein-Drittel-Sperre — drei übereinstimmende Stimmen sind ein
+            # anderes Argument als eine einzelne, auch über einem Drittel.
+            raus = sorted(set.intersection(*stimmen))
+            nutzlast = nutzlast.model_copy(update={"drop": raus, "stable": True})
+            main.put_annotation("cluster", f"{version}:{cid}", ann.key, ann.version,
+                                nutzlast.model_dump(), text_hash(zeilen),
+                                model=ann.model, cost_usd=0.0)
+            stand["checked"] += 1
+            if raus:
+                stand["dropped"] += len(raus)
+                stand["clusters_touched"] += 1
+            continue
+
+        raus = sorted(stimmen[0])
         # HÖCHSTENS EIN DRITTEL. Gemessen am ersten Lauf (09.09.2026) war das
         # die entscheidende Sicherung: Das Modell wählte für eine Gruppe das
         # zu enge Label „Klimaschutz-Berichtswesen" und warf danach 9 von 16
@@ -479,21 +572,18 @@ def check_clusters(main: CitiesStore, model: str = EMBED_MODEL,
                         "die Gruppe bleibt", cid, len(raus), len(mitglieder))
             stand["zu_viel"] = stand.get("zu_viel", 0) + 1
             raus = []
-        nutzlast = nutzlast.model_copy(update={"drop": raus})
-
-        verbrauch = getattr(antwort, "usage", None)
-        kosten = float(getattr(verbrauch, "cost", 0) or 0) if verbrauch else 0.0
+        nutzlast = nutzlast.model_copy(update={"drop": raus, "stable": True})
         main.put_annotation("cluster", f"{version}:{cid}", ann.key, ann.version,
                             nutzlast.model_dump(), text_hash(zeilen),
-                            model=ann.model, cost_usd=kosten)
+                            model=ann.model, cost_usd=0.0)
         stand["checked"] += 1
-        stand["cost_usd"] += kosten
         if raus:
             stand["dropped"] += len(raus)
             stand["clusters_touched"] += 1
-    logger.info("cluster_check: %s geprüft, %s Mitglieder aus %s Gruppen entfernt, $%.4f",
+    logger.info("cluster_check: %s geprüft, %s Mitglieder aus %s Gruppen entfernt, "
+                "%s Gruppen unbelegt, $%.4f",
                 stand["checked"], stand["dropped"], stand["clusters_touched"],
-                stand["cost_usd"])
+                stand["unbelegt"], stand["cost_usd"])
     return stand
 
 
