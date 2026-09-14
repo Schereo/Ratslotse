@@ -75,7 +75,8 @@ from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
 
-from council.cities.adapters._common import attr, normalize_title
+from council.cities.adapters._common import (
+    attr, muss_geholt_werden, normalize_title)
 from council.cities.model import (AgendaItem, Batch, Consultation, File, FileRole,
                                   Meeting, Organization, Outcome, Paper, org_kind,
                                   outcome, paper_kind)
@@ -267,12 +268,18 @@ class HannoverSimAdapter:
         """Die Drucksachen, die an den geholten Sitzungen hängen."""
         wurzel = body["id"]
         gesehen: set[str] = set()
+        # Einmal je Lauf gefragt, nicht je Vorlage — siehe `muss_geholt_werden`.
+        bekannt = client.raw.raw_ids(client.body_id, "paper")
+        frisch = client.raw.raw_ids_since(client.body_id, "meeting", client.gestartet)
         for roh in client.raw.raw_objects(client.body_id, "meeting"):
             for pfad in re.findall(r'href=(DS/[\w\-]+)\s', roh.get("html") or ""):
                 if pfad in gesehen:
                     continue
                 gesehen.add(pfad)
                 kennung = urljoin(f"{wurzel}/", pfad)
+                if not muss_geholt_werden(client, roh.get("id") or "", kennung,
+                                          bekannt, frisch):
+                    continue
                 try:
                     html = client.get_text(kennung)
                 except Exception as e:  # noqa: BLE001 — eine Vorlage, nicht der Lauf

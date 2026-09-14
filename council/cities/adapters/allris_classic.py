@@ -43,6 +43,7 @@ from datetime import date, timedelta
 from bs4 import BeautifulSoup
 
 from council.cities.adapters._common import (VERSCHLOSSEN, attr,
+                                             muss_geholt_werden,
                                              eindeutige_beratungen, normalize_title,
                                              zwillinge_zusammenfuehren)
 from council.cities.model import (AgendaItem, Batch, Consultation, File, FileRole,
@@ -337,12 +338,18 @@ class AllrisClassicAdapter:
         """
         wurzel = body["id"]
         gesehen: set[str] = set()
+        # Einmal je Lauf gefragt, nicht je Vorlage — siehe `muss_geholt_werden`.
+        bekannt = client.raw.raw_ids(client.body_id, "paper")
+        frisch = client.raw.raw_ids_since(client.body_id, "meeting", client.gestartet)
         for roh in client.raw.raw_objects(client.body_id, "meeting"):
             for nr in re.findall(r"VOLFDNR=(\d+)", roh.get("html") or ""):
                 if nr in gesehen:
                     continue
                 gesehen.add(nr)
                 kennung = f"{wurzel}/vo020.asp?VOLFDNR={nr}"
+                if not muss_geholt_werden(client, roh.get("id") or "", kennung,
+                                          bekannt, frisch):
+                    continue
                 try:
                     html = client.get_text(kennung)
                 except Exception as e:  # noqa: BLE001 — eine Vorlage, nicht der Lauf
