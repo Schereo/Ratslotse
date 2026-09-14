@@ -31,10 +31,15 @@ UPSTREAM_URL = (
     "disposable-email-domains/main/disposable_email_blocklist.conf"
 )
 
-#: Antwort an den Client — deutsch, weil Web und App den Text unverändert zeigen.
-DISPOSABLE_EMAIL_MESSAGE = (
-    "Wegwerf-Adressen sind nicht zulässig. Bitte nutze eine dauerhafte E-Mail-Adresse."
-)
+#: Antworten an den Client — deutsch, weil Web und App den Text unverändert
+#: zeigen, und **absichtlich ohne Grund** (Tim, 14.09.2026): Wer hier abgewiesen
+#: wird, soll nicht erfahren, welche Prüfung angeschlagen hat — sonst probiert
+#: er die nächste Domain. Der Grund steht stattdessen im Server-Log
+#: (Logger der beiden Router, nur die Domain, nie die Adresse). Der Rest des
+#: Repos ist öffentlich, geheim ist der Mechanismus also nicht — aber das
+#: Formular gibt ihn nicht her.
+REGISTER_REJECTED = "Die Registrierung konnte nicht abgeschlossen werden."
+EMAIL_CHANGE_REJECTED = "Der Adresswechsel konnte nicht abgeschlossen werden."
 
 #: Nie sperren, auch wenn die Liste sie eines Tages führen sollte. Die großen
 #: Postfach-Anbieter, die regionalen (EWE), die Uni, die Stadt — und Apples
