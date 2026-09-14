@@ -7,6 +7,31 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [2.5.1] – 2026-09-14
+
+### Geändert
+- **Wahlabend: die Karte ist groß, und die Wahlbezirke kommen je Wahlbereich.**
+  Die Karte der Wahlbereiche hat die ganze Breite statt eines Drittels, und die
+  Wahlbezirke erscheinen nicht mehr als 91 Splitter auf einmal: Ein Wahlbereich
+  antippen zoomt in seine 15 bis 24 Wahllokale, jedes fünf- bis sechsmal so groß
+  und auf dem Touchscreen zu treffen; „Ganze Stadt“ bleibt als Überblick. Das
+  Ergebnis eines Wahllokals steht neben der Karte, auf dem Handy darunter.
+  (#1357)
+
+### Behoben
+- **„Auch in 8 anderen Städten" stand auch dort, wo es nicht stimmte.** Ideen
+  werden über Städte hinweg zu Gruppen zusammengefasst; eine dieser Gruppen war
+  in Wahrheit gar keine — sie hatte 86 Vorlagen von Sportförderung über
+  Briefwahlbezirke bis zu einem Nachtfahrverbot für Mähroboter zusammengekettet.
+  Weil die Liste nach der Zahl der Städte sortiert, standen deren Vorlagen ganz
+  oben. Große Gruppen werden jetzt dreimal gegengelesen; sind sich die
+  Durchgänge uneinig, macht die Karte keine Aussage mehr über andere Städte.
+  (#1355)
+- **Wahlabend: der Reiter „Ergebnis“ war nicht mehr erreichbar, sobald eine
+  Liste angetippt war.** Der Reiter schrieb sich nicht in die Adresse; stand
+  dort `?liste=`, sprang die Seite sofort wieder zu den Wahlbereichen. Jetzt
+  steht jeder Reiter ausdrücklich in der Adresse. (#1358)
+
 ## [2.5.0] – 2026-09-14
 
 ### Hinzugefügt
@@ -8153,7 +8178,8 @@ Open-Source-Go-Live von Ratslotse.
 *Dieser Changelog beginnt mit dem Open-Source-Release von Ratslotse. Die
 Entwicklungshistorie davor ist nicht Teil dieses Repositories.*
 
-[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v2.5.0...main
+[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v2.5.1...main
+[2.5.1]: https://github.com/Schereo/Ratslotse/compare/v2.5.0...v2.5.1
 [2.5.0]: https://github.com/Schereo/Ratslotse/compare/v2.4.0...v2.5.0
 [2.4.0]: https://github.com/Schereo/Ratslotse/compare/v2.3.0...v2.4.0
 [2.3.0]: https://github.com/Schereo/Ratslotse/compare/v2.2.0...v2.3.0
