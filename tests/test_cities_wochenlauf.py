@@ -57,3 +57,24 @@ def test_bekanntes_an_einer_frischen_sitzung_wird_neu_geholt():
     """Dort hängt das Neue: eine nachgetragene Station, ein Ergebnis."""
     assert muss_geholt_werden(None, "sitzung/1", "vorlage/alt",
                               {"vorlage/alt"}, {"sitzung/1"})
+
+
+def test_hannover_ist_an_und_ohne_anfragen():
+    """Die größte Stadt im Vergleich — mit dem Fenster, das Tim gesetzt hat.
+
+    Eingeschaltet am 14.09.2026, nachdem der Probelauf aus dem Rezept sauber
+    war: **251 Abrufe in 127 Sekunden** für ein Wochen-Fenster. Vorher wären
+    es 25.729 gewesen, jeden Sonntag, für null neue Erkenntnis.
+
+    Und ohne Anfragen: 6.483 Stück mit **1 %** Ergebnisquote, weil sie in
+    Hannover beantwortet und nicht beschlossen werden.
+    """
+    from council.cities.registry import BODIES
+
+    hannover = BODIES["hannover"]
+    assert hannover.active, "Hannover gehört in den Wochen-Cron."
+    assert "inquiry" not in hannover.compare_kinds, (
+        "Hannovers Anfragen gehören nicht in den Vergleich — sie tragen in "
+        "1 % der Fälle ein Ergebnis (Tims Entscheidung 13.09.2026).")
+    assert hannover.compare_since == "2023-01-01", (
+        "Ohne Fenster verglichen 8 Jahre Hannover gegen 3 Jahre der anderen.")
