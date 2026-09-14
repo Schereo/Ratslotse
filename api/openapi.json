@@ -1,6 +1,24 @@
 {
   "components": {
     "schemas": {
+      "AdminAbweisung": {
+        "properties": {
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason",
+          "n"
+        ],
+        "title": "AdminAbweisung",
+        "type": "object"
+      },
       "AdminAliasDeleted": {
         "properties": {
           "entities": {
@@ -33,6 +51,79 @@
           "aliases"
         ],
         "title": "AdminAliasList",
+        "type": "object"
+      },
+      "AdminAnmeldeTag": {
+        "properties": {
+          "created": {
+            "title": "Created",
+            "type": "integer"
+          },
+          "day": {
+            "title": "Day",
+            "type": "string"
+          },
+          "rejected": {
+            "title": "Rejected",
+            "type": "integer"
+          },
+          "verified": {
+            "title": "Verified",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "day",
+          "created",
+          "verified",
+          "rejected"
+        ],
+        "title": "AdminAnmeldeTag",
+        "type": "object"
+      },
+      "AdminAnmeldungen": {
+        "description": "Was bei der Registrierung ankam — und was abprallte.\n\nBeide Seiten in einem Bild. Die Zahl der neuen Konten allein sagt nicht,\nob gerade jemand anklopft und an der Bremse oder am Wegwerf-Riegel\nhängenbleibt; bis 09/2026 war genau das unsichtbar.\n\nNichts hier ist einer Person zuzuordnen: Die Abweisungen tragen weder\nAdresse noch Domain noch Netzadresse, nur Tag, Grund und Anzahl.",
+        "properties": {
+          "created": {
+            "title": "Created",
+            "type": "integer"
+          },
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "reasons": {
+            "items": {
+              "$ref": "#/components/schemas/AdminAbweisung"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "rejected": {
+            "title": "Rejected",
+            "type": "integer"
+          },
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/AdminAnmeldeTag"
+            },
+            "title": "Series",
+            "type": "array"
+          },
+          "verified": {
+            "title": "Verified",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "days",
+          "created",
+          "verified",
+          "rejected",
+          "series",
+          "reasons"
+        ],
+        "title": "AdminAnmeldungen",
         "type": "object"
       },
       "AdminClientShare": {
@@ -19271,6 +19362,50 @@
           }
         },
         "summary": "Stats Page Views",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/stats/signups": {
+      "get": {
+        "description": "Neue Konten und abgewiesene Registrierungen — beide Seiten in einem Bild.\n\nSichtbar war bis 09/2026 nur, wer durchkam. Wer an der Bremse oder am\nWegwerf-Riegel hängenblieb, hinterließ nirgends eine Spur, und „es hat\nniemand versucht\" war von „es haben 500 versucht\" nicht zu unterscheiden.\n\nDer tägliche Herzschlag (``scripts/check_herzschlag.py``) schlägt bei\ndenselben Zahlen Alarm; diese Ansicht ist der Blick dazwischen.",
+        "operationId": "stats_signups_api_admin_stats_signups_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminAnmeldungen"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stats Signups",
         "tags": [
           "admin"
         ]

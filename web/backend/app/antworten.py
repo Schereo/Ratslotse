@@ -1678,6 +1678,40 @@ class AdminKohorten(TypedDict):
     basis: AdminKohortenBasis
 
 
+class AdminAnmeldeTag(TypedDict):
+    day: str
+    #: Konten, die an diesem Tag angelegt wurden.
+    created: int
+    #: Davon mit bestätigter Adresse — der Stand HEUTE, nicht der an dem Tag.
+    verified: int
+    #: Abgewiesene Registrierungsversuche an diesem Tag (alle Gründe).
+    rejected: int
+
+
+class AdminAbweisung(TypedDict):
+    #: Ein Wert aus ``kern.store.SIGNUP_REJECTION_REASONS``.
+    reason: str
+    n: int
+
+
+class AdminAnmeldungen(TypedDict):
+    """Was bei der Registrierung ankam — und was abprallte.
+
+    Beide Seiten in einem Bild. Die Zahl der neuen Konten allein sagt nicht,
+    ob gerade jemand anklopft und an der Bremse oder am Wegwerf-Riegel
+    hängenbleibt; bis 09/2026 war genau das unsichtbar.
+
+    Nichts hier ist einer Person zuzuordnen: Die Abweisungen tragen weder
+    Adresse noch Domain noch Netzadresse, nur Tag, Grund und Anzahl.
+    """
+    days: int
+    created: int
+    verified: int
+    rejected: int
+    series: list[AdminAnmeldeTag]
+    reasons: list[AdminAbweisung]
+
+
 class AdminSeitenTag(TypedDict):
     day: str
     n: int
