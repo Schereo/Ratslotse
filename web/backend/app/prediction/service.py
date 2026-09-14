@@ -352,6 +352,7 @@ def setup(store: Store, game_id: int) -> PredictionGame:
         title=game["title"], phase=game["phase"], seats_total=reg.seats if reg else 0,
         election_slug=wahl.slug, election_title=wahl.short_title, election_date=wahl.date,
         tip_kind="seats" if sitzwahl else "pct",
+        public=game.get("visibility", "oeffentlich") != "konto",
         previous_label=wahl.previous_label,
         locked=game["phase"] != "open", locked_at=game["locked_at"],
         late_scored=bool(game["late_scored"]), shared_device=bool(game["shared_device"]),

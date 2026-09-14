@@ -119,16 +119,21 @@ OEFFENTLICH = {
     # Die OB-Wahl gehört zum selben Feature-Schalter — Teil des Wahlabends.
     ("get", "/api/wahlabend/ob"),
     ("get", "/api/wahlabend/stichwahl"),
-    ("get", "/api/wahlen"),
+    # /api/wahlen stand hier bis 09/2026. Es ist WEITER ohne Konto erreichbar —
+    # es hängt aber jetzt an `optional_user`, weil es je Wahl den Weg zum
+    # Tippspiel mitliefert und eine Konto-Runde für Anonyme gar nicht erst
+    # verlinkt werden darf. Dieser Wächter zählt `optional_user` als Schutz.
 
-    # Tippspiel (docs/plan-tippspiel-ratswahl.md): ohne Konto — die Identität
-    # ist der Cookie-Token, nicht `web_users.id`. Hinter dem Schalter
-    # `tippspiel` (404, solange er aus ist). Admin-Routen (`/api/tipp/admin/…`)
-    # brauchen weiterhin `require_admin` und stehen deshalb NICHT hier.
-    ("get", "/api/tipp/setup"),
-    ("post", "/api/tipp"),
-    ("get", "/api/tipp/me"),
-    ("delete", "/api/tipp/me"),
+    # Tippspiel (docs/plan-tippspiel-ratswahl.md): die Runden zur Ratswahl
+    # gehen ohne Konto — die Identität ist der Cookie-Token. Hinter dem
+    # Schalter `tippspiel` (404, solange er aus ist). Admin-Routen
+    # (`/api/tipp/admin/…`) brauchen `require_admin` und stehen NICHT hier.
+    #
+    # `setup`, `POST /api/tipp` und `/api/tipp/me` sind seit 09/2026 an
+    # `optional_user` gehängt: Eine Runde mit `visibility = 'konto'` verlangt
+    # eine Anmeldung, und dieser Riegel gehört in den Router, nicht in einen
+    # versteckten Link. Sie stehen deshalb nicht mehr in dieser Liste — für
+    # die öffentlichen Runden ändert sich nichts.
     ("post", "/api/tipp/abmelden"),  # geteiltes Gerät: nur der eigene Cookie geht, kein Datenzugriff
     ("get", "/api/tipp/stand"),
     ("get", "/api/tipp/qr.png"),

@@ -3,7 +3,7 @@ import { geteilt, nachJahren, type Wahlzeile } from "./wahlen";
 
 const z = (slug: string, date: string, focus = false): Wahlzeile => ({
   slug, short_title: slug, title: slug, date, polls_close: `${date}T18:00:00+02:00`,
-  kind: "council", status: "live", path: "/wahlabend", summary: null, focus,
+  kind: "council", status: "live", path: "/wahlabend", summary: null, focus, tipp_path: "",
 });
 
 describe("geteilt", () => {

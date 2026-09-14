@@ -33,6 +33,10 @@ function setup(overrides: Partial<Record<string, unknown>> = {}) {
     // einem Literal in der Komponente — die Attrappe muss sie mitliefern.
     election_slug: "ratswahl-2026", election_title: "Ratswahl Oldenburg",
     election_date: "2026-09-13", tip_kind: "seats", previous_label: "2021",
+    // Die Hauptrunde ist öffentlich: ohne Konto, Name selbst gewählt. Fehlt
+    // das Feld, hält die Seite die Runde für eine Konto-Runde und blendet das
+    // Namensfeld aus — genau das haben diese Tests gemerkt.
+    public: true,
     locked: false, locked_at: null, late_scored: false, shared_device: false, player_count: 3,
     deadline_hint: "bis zur ersten Hochrechnung (ca. 20 Uhr)",
     parties: PARTEIEN, mayor_candidates: OB_KANDIDATUREN,
