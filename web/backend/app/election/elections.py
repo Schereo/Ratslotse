@@ -37,7 +37,7 @@ import json
 import logging
 import os
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 from pathlib import Path
 
@@ -204,6 +204,61 @@ def runoff() -> Election | None:
     kandidaten = [w for w in all().values()
                   if w.kind == "mayor" and w.first_round and w.status != "entwurf"]
     return max(kandidaten, key=lambda w: (w.date, w.slug)) if kandidaten else None
+
+
+#: Ab wann eine Wahl „im Fokus" ist und wie lange sie es bleibt
+#: (docs/plan-wahlen-generalisieren.md, PR 7). Zwei Tage vorher ist früh
+#: genug, dass ein geteilter Link am Wahlwochenende schon richtig führt, und
+#: spät genug, dass keine Seite wochenlang einen Countdown zeigt. Drei Tage
+#: danach sind für alle, die am Montag nachlesen.
+FOKUS_VORHER = timedelta(days=2)
+FOKUS_NACHHER = timedelta(days=3)
+
+
+def focus(jetzt: datetime | None = None) -> Election:
+    """Die Wahl, auf die eine Seite gerade zeigen würde.
+
+    Die Regel, in dieser Reihenfolge:
+
+    1. Läuft gerade ein Wahlwochenende, **die** Wahl — und liegen zwei am
+       selben Tag (13.09.2026: Ratswahl und OB-Wahl), die Ratswahl. Sie ist
+       die, nach der Leute suchen.
+    2. Sonst die nächste anstehende.
+    3. Sonst die zuletzt gelaufene (``active()``).
+
+    Sie steht hier und nicht in einer Seite, weil mehrere Stellen sie
+    brauchen: ``/api/app-config`` für den Countdown auf Startseite und
+    Heute-Karte, und später die Übersicht unter ``/wahlen``.
+    """
+    jetzt = jetzt or datetime.now(timezone.utc)
+    # Steht in der ``.env`` eine Wahl, ist SIE gemeint — sonst zeigte der
+    # Notausgang nur die halbe Seite um: /api/wahlabend die gewählte, der
+    # Countauf der Startseite weiter die aus dem Kalender.
+    gewuenscht = os.environ.get("WAHLABEND_ELECTION", "").strip()
+    if gewuenscht and gewuenscht in all():
+        return all()[gewuenscht]
+    kandidaten = [w for w in all().values() if w.status != "entwurf"]
+    if not kandidaten:
+        return active()
+
+    def rang(w: Election) -> tuple:
+        # Ratswahl vor OB-Wahl, sonst nach Datum — bei Gleichstand entscheidet
+        # der Slug, damit die Antwort nicht am Dateisystem hängt.
+        return (0 if w.kind == "council" else 1, w.polls_close, w.slug)
+
+    im_fenster = [w for w in kandidaten
+                  if w.polls_close - FOKUS_VORHER <= jetzt <= w.polls_close + FOKUS_NACHHER]
+    if im_fenster:
+        return min(im_fenster, key=rang)
+    kommend = [w for w in kandidaten if w.polls_close > jetzt]
+    if kommend:
+        return min(kommend, key=lambda w: (w.polls_close, rang(w)))
+    return active()
+
+
+def path_of(wahl: Election) -> str:
+    """Wo diese Wahl zu sehen ist."""
+    return "/wahlabend/stichwahl" if wahl.first_round else "/wahlabend"
 
 
 def mayor_of(wahl: Election | None = None) -> Election | None:

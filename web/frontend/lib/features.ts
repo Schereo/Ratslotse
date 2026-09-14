@@ -19,9 +19,13 @@
  * ```
  */
 import { useQuery } from "@tanstack/react-query";
+import type { ApiAntwort } from "./vertrag";
 import { api } from "./api";
 
-export type AppConfig = { min_build: number; note: string | null; features?: string[] };
+// Aus dem Vertrag statt von Hand: Die Form stand hier bis 09/2026 abgetippt
+// daneben, und ein neues Feld (jetzt `election`) fiel deshalb gar nicht auf.
+export type AppConfig = ApiAntwort<"/app-config">;
+export type AppWahl = NonNullable<AppConfig["election"]>;
 
 /**
  * Der reine Kern — ohne React, damit er prüfbar ist.
@@ -31,7 +35,7 @@ export type AppConfig = { min_build: number; note: string | null; features?: str
  * Fläche, die kurz aufblitzt und dann verschwindet, ist schlechter als eine,
  * die eine halbe Sekunde später erscheint.
  */
-export function featureAktiv(config: AppConfig | undefined | null, name: string): boolean {
+export function featureAktiv(config: { features?: string[] | null } | undefined | null, name: string): boolean {
   return !!config?.features?.includes(name);
 }
 

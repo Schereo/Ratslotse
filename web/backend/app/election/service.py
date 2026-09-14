@@ -233,13 +233,24 @@ def _election_of(reg: Register | None) -> ElectionInfo:
     die bei der nächsten Wahl still falsch geworden wäre.
     """
     wahl = elections.active()
-    if reg is not None:
-        return ElectionInfo(date=reg.date, seats=reg.seats, title=reg.title,
-                            presentation_url=votemanager.presentation_url(),
-                            previous_label=wahl.previous_label)
-    return ElectionInfo(date=wahl.date, seats=wahl.seats, title=wahl.title,
-                        presentation_url=votemanager.presentation_url(),
-                        previous_label=wahl.previous_label)
+    return ElectionInfo(
+        slug=wahl.slug,
+        # Datum, Titel und Sitzzahl stehen im Register UND in der Registry —
+        # `tests/test_wahlregistry.py` hält beide gegeneinander. Genommen wird
+        # durchgehend die REGISTRY: Sie ist die Identität der Wahl und immer
+        # lesbar. Eine gemischte Herkunft hatte hier kurz „Datum 2026,
+        # Wahlschluss 2031" ergeben — zwei richtige Quellen, eine falsche
+        # Antwort. Das ``reg`` bleibt als Parameter, weil die Sitzzahl beim
+        # Nachrechnen ohnehin von dort kommt.
+        date=wahl.date,
+        seats=wahl.seats,
+        title=wahl.title,
+        short_title=wahl.short_title,
+        polls_close=wahl.polls_close.isoformat(),
+        status=wahl.status,
+        presentation_url=votemanager.presentation_url(),
+        previous_label=wahl.previous_label,
+    )
 
 
 def _mandates(alloc: Allocation | None, reg: Register) -> list[ElectionMandate]:

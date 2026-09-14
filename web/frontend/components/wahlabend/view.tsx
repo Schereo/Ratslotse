@@ -24,6 +24,7 @@ import { api, apiUrl } from "@/lib/api";
 import { useAppConfig, useFeature } from "@/lib/features";
 import { cn } from "@/lib/utils";
 import {
+  datumLang,
   LISTE_SPEICHER,
   abfragePfad,
   bildPfad,
@@ -216,7 +217,7 @@ function Tafel({
   abfrageFehler: boolean;
 }) {
   const p = daten.progress;
-  const zeit = useWahlabendZeit();
+  const zeit = useWahlabendZeit(daten.election.polls_close);
   const beteiligung = useTween(daten.totals.turnout_pct);
   const gueltig = useTween(daten.totals.valid_votes);
   const bild = apiUrl(bildPfad(daten.phase === "counting" ? "projected_seats" : "seats", probe, counted));
@@ -233,7 +234,7 @@ function Tafel({
       <div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-5">
         <div className="min-w-0 flex-1">
           <p className={KICKER}>
-            Ratswahl Oldenburg · 13. September 2026 ·{" "}
+            {daten.election.short_title} · {datumLang(daten.election.date)} ·{" "}
             <span suppressHydrationWarning>{daten.dataset === "probe" ? "Generalprobe" : zeit.kicker}</span>
           </p>
           <h1 className="mt-1 font-display text-[28px] font-bold leading-none tracking-tight sm:text-[32px]">Wahlabend</h1>
@@ -753,6 +754,9 @@ export function WahlabendView() {
   const counted = params.get("counted");
   const schalterAn = useFeature("wahlabend");
   const config = useAppConfig();
+  // Ohne Argument: der Termin aus `/api/app-config`. Hier ist die Antwort des
+  // Wahlabends noch nicht da — und genau dieser Wert entscheidet, ob sie
+  // überhaupt jede Minute geholt wird.
   const zeit = useWahlabendZeit();
   // Bis Sonntag 18 Uhr gibt es nichts nachzufragen — der Minutentakt beginnt
   // mit dem Wahlabend (Tims Wunsch: eine Woche Polling wäre Overkill).
@@ -813,7 +817,7 @@ export function WahlabendView() {
       <Hinweisbild
         pose="sleep"
         titel="Der Wahlabend ist noch nicht freigeschaltet"
-        text="Am 13. September 2026 ab 18 Uhr zeigt diese Seite den Auszählungsstand der Ratswahl Oldenburg — live, nachgerechnet, je Wahlbereich."
+        text={`${zeit.wann} zeigt diese Seite den Auszählungsstand — live, nachgerechnet, je Wahlbereich.`}
       />
     );
   } else if (abfrage.isError && !daten) {
@@ -842,7 +846,7 @@ export function WahlabendView() {
         <Vorbehalt daten={daten} />
         {daten.phase === "before" && daten.dataset === "live" ? (
           <p className="mt-4 text-[13.5px] leading-relaxed text-muted-foreground">
-            Gewählt wird am Sonntag, 13. September, die Wahllokale schließen um 18 Uhr. Die ersten Wahlbezirke melden
+            Gewählt wird am {datumLang(daten.election.date)}, die Wahllokale schließen um 18 Uhr. Die ersten Wahlbezirke melden
             erfahrungsgemäß gegen 20 Uhr; 2021 lag das vorläufige Ergebnis der Ratswahl am Montagmorgen vor. Die Seite
             aktualisiert sich dann von selbst — bis dahin zeigt sie die Listen und Kandidat*innen ohne Zahlen.
           </p>

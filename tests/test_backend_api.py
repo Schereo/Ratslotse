@@ -66,10 +66,31 @@ def test_native_app_config_contract(client):
 
     `features` ist seit 09/2026 dabei und ohne gesetzte `FEATURE_FLAGS` leer —
     die ausgelieferte App kennt das Feld nicht und darf es auch nicht müssen.
+    Dasselbe gilt für `election`: Es kam später dazu und ist Zugabe, kein
+    Vertrag. Deshalb prüft dieser Test die drei Felder EINZELN statt die
+    ganze Antwort gegen ein Literal — sonst macht jedes neue Feld ihn rot,
+    obwohl genau das erlaubt ist.
     """
     response = client.get("/api/app-config")
     assert response.status_code == 200
-    assert response.json() == {"min_build": 0, "note": None, "features": []}
+    daten = response.json()
+    assert daten["min_build"] == 0
+    assert daten["note"] is None
+    assert daten["features"] == []
+
+
+def test_app_config_nennt_die_wahl_im_fokus(client):
+    """Startseite und Heute-Karte zeigen einen Countdown, ohne den ganzen
+    Wahlabend zu laden — dafür steht die Wahl hier.
+
+    ``null`` ist ausdrücklich erlaubt (keine Wahl mehr, oder Registry nicht
+    lesbar): Ohne diese Antwort startet die native App gar nicht, und eine
+    kaputte Registry darf das nicht auslösen."""
+    wahl = client.get("/api/app-config").json().get("election")
+    assert wahl is not None
+    assert set(wahl) == {"slug", "short_title", "date", "polls_close", "kind", "path"}
+    assert wahl["kind"] in ("council", "mayor")
+    assert wahl["path"].startswith("/wahlabend")
 
 
 def test_app_config_meldet_eingeschaltete_features(client, monkeypatch):

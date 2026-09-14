@@ -13,19 +13,30 @@ import { useEffect, useState } from "react";
 import { ArrowRight, Vote } from "lucide-react";
 import { Button, Card } from "@/components/ui";
 import { Mascot } from "@/components/mascot";
-import { useFeature } from "@/lib/features";
-import { wahlabendZeit, type WahlabendZeit } from "@/lib/wahlabend";
+import { useAppConfig, useFeature } from "@/lib/features";
+import { datumLang, wahlabendZeit, type WahlabendZeit } from "@/lib/wahlabend";
 
-/** Countdown bis Sonntag 18 Uhr, danach „läuft". Der Client rechnet nach dem
+/** Die Wahl, auf die gerade hingewiesen wird — aus `/api/app-config`.
+ *
+ *  Welche das ist, entscheidet das Backend (`election.elections.focus`): die
+ *  laufende, sonst die nächste anstehende. Bis 09/2026 wusste das Frontend
+ *  nur von einer einzigen, fest eincompilierten. */
+export function useFokusWahl() {
+  return useAppConfig().data?.election ?? null;
+}
+
+/** Countdown bis zum Wahlschluss, danach „läuft". Der Client rechnet nach dem
  *  Mounten selbst und jede Minute neu — der Bauzeit-Wert wäre nach ein paar
  *  Tagen falsch (suppressHydrationWarning, wie beim Wahl-Check). */
-export function useWahlabendZeit(): WahlabendZeit {
-  const [zeit, setZeit] = useState(() => wahlabendZeit());
+export function useWahlabendZeit(pollsClose?: string | null): WahlabendZeit {
+  const fokus = useFokusWahl();
+  const termin = pollsClose ?? fokus?.polls_close ?? null;
+  const [zeit, setZeit] = useState(() => wahlabendZeit(termin));
   useEffect(() => {
-    setZeit(wahlabendZeit());
-    const id = window.setInterval(() => setZeit(wahlabendZeit()), 60_000);
+    setZeit(wahlabendZeit(termin));
+    const id = window.setInterval(() => setZeit(wahlabendZeit(termin)), 60_000);
     return () => window.clearInterval(id);
-  }, []);
+  }, [termin]);
   return zeit;
 }
 
@@ -34,20 +45,21 @@ const KICKER = "font-mono text-[10px] font-medium uppercase tracking-[0.11em] te
 /** Landing: ein Streifen in der Anzeigetafel-Fläche, unter dem Hero. */
 export function WahlabendBanner() {
   const an = useFeature("wahlabend");
+  const wahl = useFokusWahl();
   const zeit = useWahlabendZeit();
   if (!an) return null;
   const laeuft = zeit.phase === "laeuft";
   return (
-    <section aria-label="Wahlabend zur Ratswahl 2026" className="mx-auto max-w-5xl px-5 pb-2 pt-6">
+    <section aria-label={`Wahlabend: ${wahl?.short_title ?? "die nächste Wahl"}`} className="mx-auto max-w-5xl px-5 pb-2 pt-6">
       <Link
-        href="/wahlabend"
+        href={wahl?.path ?? "/wahlabend"}
         className="hh-tafel group flex flex-col items-center gap-5 rounded-2xl px-5 py-6 sm:flex-row sm:gap-7 sm:px-7"
       >
         <Mascot pose="point" decorative className="hidden h-20 w-20 flex-none sm:block" />
         <div className="min-w-0 text-center sm:text-left">
           <p className={KICKER}>
             <Vote className="mr-1 inline h-3 w-3 align-[-1px]" aria-hidden />
-            Ratswahl · 13. September 2026 · <span suppressHydrationWarning>{zeit.kicker}</span>
+            {wahl?.short_title ?? "Wahlabend"} · {datumLang(wahl?.date)} · <span suppressHydrationWarning>{zeit.kicker}</span>
           </p>
           <h2 className="mt-1.5 font-display text-[22px] font-bold leading-tight tracking-tight sm:text-[24px]" suppressHydrationWarning>
             {laeuft ? "Der Wahlabend, live nachgerechnet." : `${zeit.wann}: der Wahlabend, live nachgerechnet.`}
@@ -55,7 +67,7 @@ export function WahlabendBanner() {
           <p className="mt-1.5 max-w-[62ch] text-sm leading-relaxed text-muted-foreground">
             Auszählungsstand, Sitze je Liste und Wahlbereich, und wer nach dem Kommunalwahlgesetz gerade im Rat
             wäre — aus den Open-Data-Zahlen der Stadt, jede Minute neu. Öffentlich, ohne Konto.
-            {laeuft ? "" : " Die Seite steht schon, die Zahlen kommen ab Sonntag 18 Uhr."} Eigene Rechnung, kein amtliches
+            {laeuft ? "" : ` Die Seite steht schon, die Zahlen kommen ${zeit.wann.toLowerCase()}.`} Eigene Rechnung, kein amtliches
             Ergebnis.
           </p>
         </div>
@@ -71,6 +83,7 @@ export function WahlabendBanner() {
  *  gibt es nichts Dringenderes. */
 export function WahlabendHinweis() {
   const an = useFeature("wahlabend");
+  const wahl = useFokusWahl();
   const zeit = useWahlabendZeit();
   if (!an) return null;
   const laeuft = zeit.phase === "laeuft";
@@ -79,7 +92,7 @@ export function WahlabendHinweis() {
       <Mascot pose="point" decorative className="hidden h-14 w-14 flex-none sm:block" />
       <div className="min-w-0 flex-1">
         <p className={KICKER}>
-          Ratswahl · 13. September 2026 · <span suppressHydrationWarning>{zeit.kicker}</span>
+          {wahl?.short_title ?? "Wahlabend"} · {datumLang(wahl?.date)} · <span suppressHydrationWarning>{zeit.kicker}</span>
         </p>
         <h2 className="mt-0.5 font-display text-base font-bold text-foreground" suppressHydrationWarning>
           {laeuft ? "Der Wahlabend läuft" : `${zeit.wann}: der Wahlabend`}
@@ -91,7 +104,7 @@ export function WahlabendHinweis() {
         </p>
       </div>
       <Button asChild className="w-full shrink-0 sm:w-auto">
-        <Link href="/wahlabend">
+        <Link href={wahl?.path ?? "/wahlabend"}>
           <span suppressHydrationWarning>{laeuft ? "Zum Wahlabend" : "Zur Wahlabend-Seite"}</span> <ArrowRight />
         </Link>
       </Button>
