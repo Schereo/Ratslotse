@@ -519,6 +519,15 @@ RATSLOTSE_PROXY_HOSTS=gisportal4ol.oldenburg.de,youtube.com         # nur diese 
   gibt es keinen Bestätigungslink — dann nach der Registrierung einmal auf dem
   Server: `.venv/bin/python scripts/grant_admin.py <adresse>` (befördert nur ein
   **vorhandenes** Konto). Beide Fälle stehen als WARNING im Log (`nwz-web-api`).
+- **Wegwerf-Adressen werden abgewiesen** (seit 09/2026). Registrierung und
+  Adresswechsel prüfen die Domain gegen `kern/disposable_email_domains.txt`
+  (öffentliche Liste, CC0, ~8.800 Einträge; Logik in
+  `kern/disposable_email.py`). Anlass: zwei Konten mit Tastatur-Namen auf
+  94an.com und airhemp.com, die den Bestätigungslink brav geklickt hatten —
+  die Bestätigung hält Wegwerf-Postfächer nicht ab. Nachziehen:
+  `scripts/update_disposable_domains.py --schreiben`; `PROTECTED_DOMAINS`
+  schützt echte Anbieter (und Apples „E-Mail verbergen") vor einem
+  Fehleintrag der Liste.
 - **Rollen und Rechte:** Ein Konto trägt seit 09/2026 **mehrere** Rollen
   (Tabelle `web_user_roles`); welche es gibt und was sie dürfen, steht an genau
   einer Stelle — [`kern/roles.py`](kern/roles.py). Geprüft wird immer gegen ein
