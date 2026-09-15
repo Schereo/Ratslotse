@@ -168,6 +168,14 @@ CREATE TABLE IF NOT EXISTS annotations (
     payload      TEXT NOT NULL,
     source_hash  TEXT NOT NULL,
     model        TEXT,
+    -- Was DIESES Urteil gekostet hat. **Zeilen von vor dem 13.09.2026 sind
+    -- unbrauchbar** und dürfen nicht aufsummiert werden: Bis #1320 stand hier
+    -- die Differenz auf einem Zähler, den sich alle Arbeiter teilten — mit 96
+    -- Fäden also rund das Hundertfache. Gemessen: `fit` v3 summiert sich auf
+    -- $1.734, die OpenRouter-Abrechnung nennt für denselben Lauf $15,57.
+    -- Der LAUF-Gesamtwert war immer richtig, nur die Zahl an der einzelnen
+    -- Zeile nie. Wer Kosten schätzen will, fährt eine Probe mit `limit=20`
+    -- und nimmt deren gemeldete Summe.
     cost_usd     REAL,
     created_at   TEXT NOT NULL,
     PRIMARY KEY (object_kind, object_id, annotator, version)
