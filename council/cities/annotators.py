@@ -37,7 +37,21 @@ COMPETENCE_VALUES = ("council", "administration", "utility", "holding", "state")
 #: Hat Oldenburg GENAU dieses Instrument schon? Drei Stufen, weil zwei zu grob
 #: sind: „teilweise" ist der häufigste ehrliche Befund — ein Antrag ohne
 #: Beschluss, ein Prüfauftrag, ein kleinerer Zuschnitt.
-FIT_STATUS = ("present", "partial", "missing")
+#:
+#: **Die vierte seit 14.09.2026: ``not_applicable``.** Sie beantwortet eine
+#: andere Frage als die drei anderen — nicht „hat Oldenburg das?", sondern
+#: „kann Oldenburg das überhaupt haben?". Ohne sie musste das Modell jede
+#: Vorlage in „fehlt" pressen, deren Voraussetzung es hier nicht gibt, und die
+#: Karte widersprach sich selbst: „In Oldenburg nicht gefunden" stand über
+#: „Oldenburg hat kein Stadtbahnsystem, daher gibt es keine Gleise, die
+#: fahrradfreundlich gestaltet werden könnten." Grob gezählt betraf das am
+#: 14.09.2026 **557 von 9.833** Urteilen mit Status „fehlt".
+#:
+#: Sie ist eng gefasst: eine fehlende VORAUSSETZUNG (keine Stadtbahn, kein
+#: Hafen, keine Stadtbezirksräte), nicht „kleiner", „ärmer" oder „anders
+#: organisiert". Das wären Gründe gegen einen Antrag, und darüber urteilt der
+#: Annotator bewusst nicht (s. `OldenburgStatus`).
+FIT_STATUS = ("present", "partial", "missing", "not_applicable")
 #: Lohnt ein Antrag im Oldenburger Rat? Eine EIGENE Frage, nicht die Umkehrung
 #: des Status: Auch bei „partial" kann gerade der Unterschied die Idee sein.
 FIT_WORTH = ("yes", "maybe", "no")
@@ -358,7 +372,13 @@ class OldenburgStatus(BaseModel):
 
     @property
     def braucht_beleg(self) -> bool:
-        """``present`` und ``partial`` sind Behauptungen über Oldenburg."""
+        """``present`` und ``partial`` sind Behauptungen über Oldenburg.
+
+        ``not_applicable`` ist auch eine — aber eine über die Stadt, nicht
+        über ihre Beschlüsse: „Oldenburg hat keine Stadtbahn" steht in keiner
+        Ratsvorlage. Ein Beleg dafür zu verlangen hieße, das Modell zum
+        Erfinden einzuladen.
+        """
         return self.status in ("present", "partial")
 
     @field_validator("reason", mode="before")
@@ -496,7 +516,12 @@ ANNOTATORS: dict[str, Annotator] = {
         # statt einer. Fassung 1 bleibt in der Tabelle liegen, bis die
         # Oberfläche umgestellt ist (PR 22) — beide nebeneinander zu haben
         # ist der Zweck des Fassungs-Schlüssels.
-        key="fit", version="3", applies_to=("paper",),
+        # Fassung 4 seit 14.09.2026: die vierte Stufe `not_applicable`.
+        # Ohne sie musste jede Vorlage, deren Voraussetzung es in Oldenburg
+        # nicht gibt, als „fehlt" durchgehen — die Karte sagte „In Oldenburg
+        # nicht gefunden" und begründete es mit „Oldenburg hat kein
+        # Stadtbahnsystem". Grob gezählt 557 von 9.833 Urteilen.
+        key="fit", version="4", applies_to=("paper",),
         prompt_system="cities_fit_system", prompt_user="cities_fit_user",
         model=os.environ.get("CITIES_FIT_MODEL", "deepseek/deepseek-v4-flash"),
         payload=OldenburgStatus,

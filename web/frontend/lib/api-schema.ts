@@ -5152,6 +5152,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/wahlabend/kandidat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Wahlabend Kandidat
+         * @description EINE Kandidatur in allen Wahlbezirken ihres Wahlbereichs.
+         *
+         *     Die Gegenrichtung zur Rangliste: Dort steht je Wahlbezirk, wer vorn lag;
+         *     hier steht je Kandidatur, wo ihre Stimmen herkamen. Öffentlich wie der
+         *     Wahlabend selbst, hinter demselben Schalter.
+         */
+        get: operations["wahlabend_kandidat_api_wahlabend_kandidat_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/wahlabend/kandidaten": {
         parameters: {
             query?: never;
@@ -5243,6 +5267,30 @@ export interface paths {
          *     einem Fehler: Eine Seite, die auf den Abend wartet, ist keine kaputte.
          */
         get: operations["stichwahl_api_wahlabend_stichwahl_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/wahlabend/stichwahl/bezirke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stichwahl Bezirke
+         * @description Die 133 Wahlbezirke der Stichwahl mit ihrem Stand — und je Bezirk
+         *     dieselben zwei Kandidaturen im ersten Wahlgang als Vergleich.
+         *
+         *     Öffentlich wie die Stichwahl, hinter demselben Schalter. Das ist der
+         *     Eingang für Karte und Hochrechnung (docs/plan-stichwahl-spannung.md).
+         */
+        get: operations["stichwahl_bezirke_api_wahlabend_stichwahl_bezirke_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -8493,6 +8541,70 @@ export interface components {
             votes_to_seat: number | null;
         };
         /**
+         * ElectionCandidateDetail
+         * @description ``GET /api/wahlabend/kandidat`` — eine Kandidatur in allen ihren
+         *     Wahlbezirken.
+         *
+         *     Die Gegenrichtung zur Rangliste: Dort steht je Wahlbezirk, wer vorn lag;
+         *     hier steht je Kandidatur, wo ihre Stimmen herkamen. Beides sind Schnitte
+         *     durch dieselbe Tabelle aus der Bezirksdatei.
+         */
+        ElectionCandidateDetail: {
+            /** Area */
+            area: number;
+            /** Area Name */
+            area_name: string;
+            /** Area Roman */
+            area_roman: string;
+            /** Born */
+            born: number | null;
+            /** Color */
+            color: string;
+            /** Color Dark */
+            color_dark: string;
+            /** Dataset */
+            dataset: string;
+            /** Districts */
+            districts: components["schemas"]["ElectionCandidateDistrict"][];
+            /** Elected */
+            elected: string | null;
+            election: components["schemas"]["ElectionInfo"];
+            /** Name */
+            name: string;
+            /** Occupation */
+            occupation: string | null;
+            /** Party */
+            party: string;
+            /** Party Short */
+            party_short: string;
+            /** Phase */
+            phase: string;
+            /** Position */
+            position: number;
+            /** Votes */
+            votes: number | null;
+        };
+        /**
+         * ElectionCandidateDistrict
+         * @description Ein Wahlbezirk aus der Sicht EINER Kandidatur.
+         */
+        ElectionCandidateDistrict: {
+            /** Counted */
+            counted: boolean;
+            /** Name */
+            name: string;
+            /** Number */
+            number: number;
+            /** Party Share Pct */
+            party_share_pct: number | null;
+            /** Postal */
+            postal: boolean;
+            /** Share Pct */
+            share_pct: number | null;
+            /** Votes */
+            votes: number | null;
+        };
+        /**
          * ElectionCandidateParty
          * @description Eine Liste in der Kandidaten-Rangliste — mit dem Verhältnis, das die
          *     Frage „wie kommt jemand auf so viele Personenstimmen?" beantwortet:
@@ -8532,6 +8644,12 @@ export interface components {
             areas: components["schemas"]["ElectionAreaRef"][];
             /** Dataset */
             dataset: string;
+            /** District */
+            district: number | null;
+            /** District Name */
+            district_name: string;
+            /** Districts */
+            districts: components["schemas"]["ElectionDistrictRef"][];
             election: components["schemas"]["ElectionInfo"];
             /** Parties */
             parties: components["schemas"]["ElectionCandidateParty"][];
@@ -8561,6 +8679,8 @@ export interface components {
             area_name: string;
             /** Area Roman */
             area_roman: string;
+            /** Area Votes */
+            area_votes: number | null;
             /** Born */
             born: number | null;
             /** Color */
@@ -8585,6 +8705,14 @@ export interface components {
             projected_elected: string | null;
             /** Rank */
             rank: number | null;
+            /** Top District */
+            top_district: number | null;
+            /** Top District Name */
+            top_district_name: string;
+            /** Top District Postal */
+            top_district_postal: boolean;
+            /** Top District Votes */
+            top_district_votes: number | null;
             /** Votes */
             votes: number | null;
             /** Votes To Seat */
@@ -8645,6 +8773,20 @@ export interface components {
             slug: string;
             /** Votes */
             votes: number | null;
+        };
+        /**
+         * ElectionDistrictRef
+         * @description Ein Wahlbezirk, nur mit dem, was eine Auswahl braucht.
+         */
+        ElectionDistrictRef: {
+            /** Area */
+            area: number;
+            /** Name */
+            name: string;
+            /** Number */
+            number: number;
+            /** Postal */
+            postal: boolean;
         };
         /**
          * ElectionHistoryPoint
@@ -8920,6 +9062,8 @@ export interface components {
                 area_name: string;
                 /** Area Roman */
                 area_roman: string;
+                /** Area Votes */
+                area_votes: number | null;
                 /** Born */
                 born: number | null;
                 /** Color */
@@ -8944,6 +9088,14 @@ export interface components {
                 projected_elected: string | null;
                 /** Rank */
                 rank: number | null;
+                /** Top District */
+                top_district: number | null;
+                /** Top District Name */
+                top_district_name: string;
+                /** Top District Postal */
+                top_district_postal: boolean;
+                /** Top District Votes */
+                top_district_votes: number | null;
                 /** Votes */
                 votes: number | null;
                 /** Votes To Seat */
@@ -9599,6 +9751,8 @@ export interface components {
             missing: number;
             /** Multi City */
             multi_city: number;
+            /** Not Applicable */
+            not_applicable: number;
             /** Partial */
             partial: number;
             /** Present */
@@ -10025,16 +10179,73 @@ export interface components {
             color_dark: string;
             /** First Round Pct */
             first_round_pct: number | null;
+            /** Independent */
+            independent: boolean;
             /** Name */
             name: string;
+            /** Nominated By */
+            nominated_by: string;
+            /** Note Source */
+            note_source: string;
             /** Party */
             party: string;
             /** Share Pct */
             share_pct: number | null;
             /** Slug */
             slug: string;
+            /** Supported By */
+            supported_by: string[];
             /** Votes */
             votes: number | null;
+        };
+        /**
+         * MayorDistrictEntry
+         * @description Ein Wahlbezirk einer OB-Wahl mit seinem Stand.
+         */
+        MayorDistrictEntry: {
+            /** Area */
+            area: number;
+            /** Counted */
+            counted: boolean;
+            /** Eligible */
+            eligible: number | null;
+            /** First Round */
+            first_round: {
+                [key: string]: number | null;
+            };
+            /** Name */
+            name: string;
+            /** Number */
+            number: number;
+            /** Postal */
+            postal: boolean;
+            /** Valid Votes */
+            valid_votes: number | null;
+            /** Voters */
+            voters: number | null;
+            /** Votes */
+            votes: {
+                [key: string]: number | null;
+            };
+        };
+        /**
+         * MayorDistrictList
+         * @description ``GET /api/wahlabend/stichwahl/bezirke`` — die 133 Wahlbezirke der
+         *     Stichwahl. Eigener Endpunkt, weil die Seite sie erst für Karte und
+         *     Hochrechnung braucht und ``MayorNight`` schlank bleiben soll.
+         */
+        MayorDistrictList: {
+            /** Counted */
+            counted: number;
+            /** Dataset */
+            dataset: string;
+            /** Districts */
+            districts: components["schemas"]["MayorDistrictEntry"][];
+            election: components["schemas"]["MayorElectionInfo"];
+            /** Phase */
+            phase: string;
+            /** Total */
+            total: number;
         };
         /**
          * MayorElectionInfo
@@ -10060,6 +10271,47 @@ export interface components {
             /** Title */
             title: string;
         };
+        /**
+         * MayorHistoryPoint
+         * @description Ein Stand des Stichwahl-Abends — für den Verlauf (S3). Der Dienst
+         *     schreibt ihn sich selbst mit; der Votemanager kennt nur das Jetzt.
+         */
+        MayorHistoryPoint: {
+            /** At */
+            at: string;
+            /** Chance Pct */
+            chance_pct: number | null;
+            /** Leader */
+            leader: string | null;
+            /** Projected Shares */
+            projected_shares: {
+                [key: string]: number;
+            };
+            /** Reports Received */
+            reports_received: number;
+            /** Shares */
+            shares: {
+                [key: string]: number;
+            };
+            /** Votes */
+            votes: {
+                [key: string]: number;
+            };
+        };
+        /**
+         * MayorLeadChange
+         * @description Ein Führungswechsel: zwischen zwei Ständen wechselte, wer vorn liegt.
+         */
+        MayorLeadChange: {
+            /** At */
+            at: string;
+            /** Leader */
+            leader: string;
+            /** Previous */
+            previous: string;
+            /** Reports Received */
+            reports_received: number;
+        };
         /** MayorNight */
         MayorNight: {
             /** Candidates */
@@ -10073,14 +10325,19 @@ export interface components {
             error: string | null;
             /** Fetched At */
             fetched_at: string | null;
+            /** History */
+            history: components["schemas"]["MayorHistoryPoint"][];
             /** Invalid Ballots */
             invalid_ballots: number | null;
+            /** Lead Changes */
+            lead_changes: components["schemas"]["MayorLeadChange"][];
             /** Notes */
             notes: string[];
             /** Ok */
             ok: boolean;
             /** Phase */
             phase: string;
+            projection?: components["schemas"]["RunoffProjection"];
             /** Reports Expected */
             reports_expected: number;
             /** Reports Received */
@@ -11928,6 +12185,46 @@ export interface components {
         RolesUpdate: {
             /** Roles */
             roles?: string[];
+        };
+        /**
+         * RunoffProjection
+         * @description Die Hochrechnung einer Stichwahl (``runoff_model``,
+         *     docs/plan-stichwahl-spannung.md S2). Modellrechnung, keine Umfrage — die
+         *     Seite nennt sie „Modell" und stellt die Bezirkszahl daneben.
+         */
+        RunoffProjection: {
+            /** Actual Lead Votes */
+            actual_lead_votes: number;
+            /** Actual Leader */
+            actual_leader: string;
+            /** Caveats */
+            caveats: string[];
+            /** Chance Pct */
+            chance_pct: number | null;
+            /** Counted Ballot */
+            counted_ballot: number;
+            /** Counted Postal */
+            counted_postal: number;
+            /** Decided */
+            decided: boolean;
+            /** Lead Votes */
+            lead_votes: number;
+            /** Leader */
+            leader: string;
+            /** Open Ballot */
+            open_ballot: number;
+            /** Open Postal */
+            open_postal: number;
+            /** Open Votes Max */
+            open_votes_max: number;
+            /** Projected Votes */
+            projected_votes: {
+                [key: string]: number;
+            };
+            /** Shares */
+            shares: {
+                [key: string]: number;
+            };
         };
         /**
          * SessionDetail
@@ -19477,6 +19774,48 @@ export interface operations {
             };
         };
     };
+    wahlabend_kandidat_api_wahlabend_kandidat_get: {
+        parameters: {
+            query: {
+                /** @description Listen-Slug der Kandidatur */
+                party: string;
+                /** @description Wahlbereich */
+                area: number;
+                /** @description Listenplatz */
+                position: number;
+                /** @description gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert) */
+                probe?: string | null;
+                /** @description Generalprobe: nur die ersten N Wahlbezirke ausgezählt */
+                counted?: number | null;
+                /** @description Slug einer gelaufenen Wahl — ihr eingefrorener Stand, ohne Abruf */
+                wahl?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ElectionCandidateDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     wahlabend_kandidaten_api_wahlabend_kandidaten_get: {
         parameters: {
             query?: {
@@ -19492,6 +19831,8 @@ export interface operations {
                 party?: string | null;
                 /** @description nur dieser Wahlbereich (Nummer) */
                 area?: number | null;
+                /** @description nur dieser Wahlbezirk — Stimmen, Anteil und Rang dann aus diesem Wahllokal */
+                district?: number | null;
             };
             header?: never;
             path?: never;
@@ -19638,6 +19979,40 @@ export interface operations {
             };
         };
     };
+    stichwahl_bezirke_api_wahlabend_stichwahl_bezirke_get: {
+        parameters: {
+            query?: {
+                /** @description gesetzt = Generalprobe mit den Zahlen des ersten Wahlgangs */
+                probe?: string | null;
+                /** @description Generalprobe: nur die ersten N Wahlbezirke gemeldet */
+                counted?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MayorDistrictList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     wahlabend_wahlbezirke_api_wahlabend_wahlbezirke_get: {
         parameters: {
             query?: {
@@ -19696,4 +20071,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 277d2e3b2cf10e01468a11291e87695dbc2af33d818c4044fd8954e9bf0d6793
+// vertrag-sha256: 028e8e9b6b1e5e9e7195aed28e952566bae4ed92a71333b58f1e739cae828cf8

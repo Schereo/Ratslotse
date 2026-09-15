@@ -117,6 +117,10 @@ OEFFENTLICH = {
     # Und dieselben Zahlen je Wahlbezirk — Open Data der Stadt, nichts
     # Persönliches: Ein Wahlbezirk hat mindestens einige hundert Wählende.
     ("get", "/api/wahlabend/wahlbezirke"),
+    # Und dieselbe Tabelle von der anderen Seite: eine Kandidatur in allen
+    # ihren Wahlbezirken. Namen und Zahlen stehen so in der amtlichen
+    # Ergebnisdarstellung.
+    ("get", "/api/wahlabend/kandidat"),
     # Dasselbe als Bild zum Teilen. Es zeigt exakt das, was die öffentliche
     # Seite zeigt, und wird gerade von denen abgeholt, die kein Konto haben:
     # WhatsApp und die sozialen Netze, wenn sie einen Link auspacken.
@@ -125,6 +129,9 @@ OEFFENTLICH = {
     # Die OB-Wahl gehört zum selben Feature-Schalter — Teil des Wahlabends.
     ("get", "/api/wahlabend/ob"),
     ("get", "/api/wahlabend/stichwahl"),
+    # Die 133 Wahlbezirke der Stichwahl — dieselbe Ergebnisdarstellung der
+    # Stadt, eine Ebene tiefer; ein Bezirk hat einige hundert Wählende.
+    ("get", "/api/wahlabend/stichwahl/bezirke"),
     # /api/wahlen stand hier bis 09/2026. Es ist WEITER ohne Konto erreichbar —
     # es hängt aber jetzt an `optional_user`, weil es je Wahl den Weg zum
     # Tippspiel mitliefert und eine Konto-Runde für Anonyme gar nicht erst

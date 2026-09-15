@@ -3,7 +3,7 @@
     "titel": "Bekanntmachung über die zugelassenen Wahlvorschläge, Wahlausschuss der Stadt Oldenburg, Sitzung vom 23. Juli 2026",
     "url": "https://www.oldenburg.de/fileadmin/oldenburg/Benutzer/Dateien/22_Rechtsamt/Bekanntmachungen/20260724-Zulassung_Wahlvorschlaege.pdf",
     "abgerufen": "2026-08-07",
-    "hinweis": "Alle Namen und Kandidatenzahlen stammen aus dieser amtlichen Quelle, nicht aus Presseberichten."
+    "hinweis": "Alle Namen und Kandidatenzahlen stammen aus dieser amtlichen Quelle, nicht aus Presseberichten. Parteimitgliedschaft und Unterstützung durch andere Listen stehen in der Bekanntmachung NICHT — sie tragen je Kandidatur ihre eigene Quelle (hinweis_quelle)."
   },
   "wahl": {
     "bezeichnung": "Wahl des Rates der Stadt Oldenburg (Oldb)",
@@ -53,7 +53,9 @@
     {"slug": "stille", "kurz": "M. Stille", "amtlich": "Einzelvorschlag Stille", "typ": "einzelbewerber", "kandidaten": 1, "wahlbereiche": 1}
   ],
   "ob_kandidaten": [
-    {"name": "Jascha Rohr", "beruf": "Unternehmer", "jahrgang": 1976, "vorgeschlagen_von": "BÜNDNIS 90/DIE GRÜNEN (GRÜNE)"},
+    {"name": "Jascha Rohr", "beruf": "Unternehmer", "jahrgang": 1976, "vorgeschlagen_von": "BÜNDNIS 90/DIE GRÜNEN (GRÜNE)",
+     "parteilos": true, "unterstuetzt_von": ["CDU"],
+     "hinweis_quelle": "https://www.gruene-oldenburg.de/2025/07/nominierung-jascha-rohr-obwahl-2026/"},
     {"name": "Ulf Prange", "beruf": "Landtagsabgeordneter/Jurist", "jahrgang": 1975, "vorgeschlagen_von": "Sozialdemokratische Partei Deutschlands (SPD)"},
     {"name": "Heike Boldt", "beruf": "Gewerkschaftssekretärin", "jahrgang": 1981, "vorgeschlagen_von": "Die Linke"},
     {"name": "Sebastian Fröhlich", "beruf": "Selbstständiger Kaufmann", "jahrgang": 1979, "vorgeschlagen_von": "Freie Demokratische Partei (FDP)"},

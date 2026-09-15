@@ -901,10 +901,12 @@ export function WahlabendView() {
   const ansicht = ansichtAus(params.get("ansicht"), params.get("liste"));
   const sortParam = params.get("sort");
   const bereichParam = params.get("bereich");
+  const bezirkParam = params.get("bezirk");
   const kandidatenFilter: KandidatenFilter = {
     sortierung: SORTIERUNGEN.find((s) => s === sortParam) ?? "votes",
     liste: params.get("kliste"),
     bereich: bereichParam && /^\d+$/.test(bereichParam) ? Number(bereichParam) : null,
+    bezirk: bezirkParam && /^\d+$/.test(bezirkParam) ? Number(bezirkParam) : null,
   };
   const setKandidatenFilter = useCallback(
     (f: KandidatenFilter) =>
@@ -912,6 +914,7 @@ export function WahlabendView() {
         sort: f.sortierung === "votes" ? null : f.sortierung,
         kliste: f.liste,
         bereich: f.bereich === null ? null : String(f.bereich),
+        bezirk: f.bezirk === null ? null : String(f.bezirk),
       }),
     [setzeQuery],
   );

@@ -7,6 +7,113 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [2.6.0] – 2026-09-15
+
+### Hinzugefügt
+- **Eine vierte Antwort: „Für Oldenburg nicht anwendbar".** Bisher konnte eine
+  Idee aus einer anderen Stadt nur vorhanden, teilweise vorhanden oder fehlend
+  sein — auch dann, wenn sie in Oldenburg gar nicht greifen kann. Über einem
+  Antrag zu fahrradfreundlichen Stadtbahngleisen stand deshalb „In Oldenburg
+  nicht gefunden" und direkt darunter „Oldenburg hat kein Stadtbahnsystem".
+  Solche Fälle bekommen jetzt eine eigene Stufe und stehen nicht mehr auf der
+  Liste der Dinge, die Oldenburg fehlen. (#1370)
+- **Wahlabend: die Kandidaten-Rangliste kennt jetzt die Wahlbezirke.** Drei neue
+  Wege zur selben Frage. Erstens steht in jeder Zeile der **stärkste
+  Wahlbezirk** der Kandidatur — das Wahllokal, in dem sie die meisten
+  Personenstimmen geholt hat („↗ 214 GS Drielake · 292"). Zweitens lässt sich
+  die Liste auf **ein Wahllokal** einschränken: Dann zeigt sie die Kandidaturen,
+  die dort auf dem Stimmzettel standen, mit den Stimmen, dem Anteil und dem Rang
+  aus genau diesem Wahlbezirk — die Antwort auf „wer lag bei mir um die Ecke
+  vorn?". Daneben steht die Zahl des ganzen Wahlbereichs, denn „105" sagt erst
+  neben „von 1.539" etwas: Pascal Latko holte 10,7 % seiner Stimmen in diesem
+  einen Wahllokal, Nujdar Saed nur 2,5 %. Die 42 Briefwahlbezirke sind mit dabei
+  und als solche gekennzeichnet. Und drittens, weil jede Kandidatur Stimmen in
+  **jedem** Wahlbezirk ihres Wahlbereichs hat — 15 bis 24 Zahlen, nicht eine:
+  Ein Tippen auf den Namen faltet die Zeile auf und zeigt sie alle, stärkster
+  Bezirk zuerst, mit dem Anteil an den eigenen Stimmen (wo kam das Ergebnis
+  her?) und dem Anteil an der Liste in diesem Lokal (wie personenbezogen wurde
+  dort gestimmt?). Ulf Prange holte seine 4.019 Stimmen aus 21 Bezirken, 292
+  davon in der GS Drielake. (#1363)
+- **Stichwahl: die 133 Wahlbezirke kommen mit — als Grundlage für Hochrechnung
+  und Karte.** Die Ergebnisdarstellung der Stadt führt eine Ebene „Wahlbezirke“,
+  deren Übersicht in einem einzigen Abruf den Stand aller Wahllokale trägt:
+  gemeldet oder nicht, Wahlberechtigte, gültige Stimmen, je Kandidatur die
+  Stimmen. Der Wahlabend liest sie jetzt jede Minute mit
+  (`/api/wahlabend/stichwahl/bezirke`), und der erste Wahlgang liegt je Bezirk
+  eingefroren im Repo — als Vergleich, an dem sich ein Zwischenstand deuten
+  lässt. Gemessen: Zwischen den Bezirken streute der Prange-Anteil im ersten
+  Wahlgang um acht Punkte, die Briefwahl lag fünf Punkte anders als die Urne.
+  Wer nur die Stadtzeile sieht, sieht davon nichts. (#1364)
+- **Die Stichwahl bekommt eine Hochrechnung — und eine Chance, wenn sie
+  belastbar ist.** Sobald die ersten Wahlbezirke gemeldet sind, rechnet die
+  Seite je Bezirk hoch: Jeder offene Bezirk stimmt wie im ersten Wahlgang,
+  verschoben um den Trend der schon gezählten — Urne und Briefwahl getrennt,
+  weil die Briefwahl 2021 in der Stichwahl um doppelt so viel drehte wie die
+  Urne. Ab 15 gezählten Bezirken steht eine Chance des Führenden daneben (eine
+  Modellrechnung, keine Umfrage; gedeckelt auf 99 %), und sobald der Vorsprung
+  größer ist als alle noch offenen Stimmen, heißt es „rechnerisch gewählt". ⓘ
+  nennt, was das Modell annimmt und was nicht. Kalibriert an der Stichwahl 2021:
+  Nach 30 gezählten Bezirken nannte das Modell in jeder Auszählungsreihenfolge
+  den Sieger. (#1365)
+- **Die Stichwahl bekommt ihre Karte.** Die 91 Urnenbezirke, getönt nach dem
+  Anteil des Erstplatzierten aus dem ersten Wahlgang — kräftig, wo er vorn lag,
+  hell, wo die andere Kandidatur stärker war. Sobald ein Bezirk gezählt ist,
+  trägt er seine Stichwahl-Tönung und einen festen Rand; offene bleiben blass
+  und gestrichelt, man sieht die Auszählung über die Stadt laufen. Ein Bezirk
+  antippen zeigt beide Wahlgänge nebeneinander, die Wahlbereiche lassen sich
+  einzeln heranholen. Die Briefwahl steht als Zeile darunter, sie hat keine
+  Fläche. (#1368)
+- **Die Stichwahl-Seite hat jetzt Momente.** Jede neue Meldung steht als Zeile
+  unter der Tafel („18:42 · 12 weitere Bezirke ausgezählt — Prange +312, Rohr
+  +298") und gleitet ein, die Karten der beiden leuchten kurz auf, die Zahlen
+  gleiten. Wechselt die Führung, tauschen die Karten sichtbar den Platz, und die
+  Zeile sagt, wer jetzt vorn liegt. Sobald es rechnerisch entschieden ist, tritt
+  Lotti mit der Bühne „… ist gewählt" auf — mit dem Vorsprung und der Schranke,
+  ohne Konfetti. Vor 18 Uhr steht statt Zahlen, was ab 18 Uhr passiert. Und der
+  Fenstertitel trägt den Stand, damit auch ein Tab im Hintergrund ihn zeigt.
+  Kein Push, keine Browser-Meldung — beides bräuchte eine Erlaubnis, die am
+  Wahlabend niemand geben will. (#1367)
+- **Die Stichwahl bekommt einen Verlauf.** Der Dienst schreibt sich jeden neuen
+  Stand des Abends mit — über einen Neustart hinweg — und die Seite zeichnet
+  daraus eine Treppenlinie über die Uhrzeit: der Anteil des Erstplatzierten des
+  ersten Wahlgangs, die 50-Prozent-Linie als die Frage des Abends, gestrichelt
+  daneben die Hochrechnung. Jeder Führungswechsel bekommt einen Punkt; Zeiger,
+  Finger oder Pfeiltasten lesen jeden Stand ab, samt Chance und gezählten
+  Bezirken. (#1366)
+
+### Geändert
+- **Auf den Ideen-Karten steht jetzt die Idee, nicht der Aktenname.** Statt
+  „Erneute Änderung der Parkgebührenordnung - kostenfreies Parken auf dem
+  Wallring und an Samstagen, Einführung einer ‚Brötchentaste'" heißt die
+  Überschrift „Parkgebührenordnung ändern"; der Titel aus dem
+  Ratsinformationssystem steht klein darunter und bleibt der Weg zur Quelle.
+  (#1360)
+- **Stichwahl: Über dem Namen steht jetzt, wer die Kandidatur vorgeschlagen hat
+  — nicht bloß eine Partei.** Auf dem Stimmzettel ist je Kandidatur genau eine
+  Liste zugelassen; wer dort steht, muss weder deren Mitglied sein noch ihre
+  einzige Unterstützung haben. Bei Jascha Rohr stand deshalb „GRÜNE“ über dem
+  Namen, als wäre es ein Parteibuch: Er ist parteilos, wurde von den Grünen
+  vorgeschlagen und wird auch von der CDU unterstützt, die keine eigene
+  Kandidatur aufgestellt hat. Die Seite sagt das jetzt — mit Beleg, denn anders
+  als die Namen selbst steht es nicht in der amtlichen Bekanntmachung. Ohne
+  Beleg zeigt die Seite solche Angaben gar nicht. (#1361)
+- **Die Karte der Stichwahl zeigt, wer wo vorn liegt — in Farbe.** Jeder
+  Wahlbezirk trägt die Farbe der Person, die dort vorn liegt: Prange rot, Rohr
+  orange, und die Farbe wird kräftiger, je deutlicher der Vorsprung. Gezählte
+  Bezirke zeigen die Stichwahl mit festem Rand, offene noch den ersten Wahlgang,
+  halb so kräftig und gestrichelt. Darunter steht, in wie vielen gezählten
+  Bezirken wer vorn liegt. (#1369)
+
+### Behoben
+- **In der Technik-Doku standen zwei unaufgelöste Merge-Konflikte.** Auf der
+  Seite „App und Konten" klafften seit August mitten im Text zwei Konfliktblöcke
+  samt `<<<<<<< HEAD` — einmal vor dem Abschnitt über abgewiesene
+  Registrierungen, einmal zwischen der Erklärung der beiden Wartezustände und
+  der Rubrik zum Adresswechsel. Beide Texte stimmten, keiner ist weggefallen;
+  sie stehen jetzt beide da, wo sie hingehören. Ein neuer Wächter in der
+  Testsuite sieht jede eingecheckte Datei durch und meldet Datei und Zeile,
+  bevor so etwas wieder auf die Seite kommt. (#1372)
+
 ## [2.5.1] – 2026-09-14
 
 ### Geändert
@@ -8178,7 +8285,8 @@ Open-Source-Go-Live von Ratslotse.
 *Dieser Changelog beginnt mit dem Open-Source-Release von Ratslotse. Die
 Entwicklungshistorie davor ist nicht Teil dieses Repositories.*
 
-[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v2.5.1...main
+[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v2.6.0...main
+[2.6.0]: https://github.com/Schereo/Ratslotse/compare/v2.5.1...v2.6.0
 [2.5.1]: https://github.com/Schereo/Ratslotse/compare/v2.5.0...v2.5.1
 [2.5.0]: https://github.com/Schereo/Ratslotse/compare/v2.4.0...v2.5.0
 [2.4.0]: https://github.com/Schereo/Ratslotse/compare/v2.3.0...v2.4.0

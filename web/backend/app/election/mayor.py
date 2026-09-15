@@ -48,7 +48,7 @@ from typing import Any
 
 import requests
 
-from . import crosscheck, elections, presentation
+from . import crosscheck, elections, mayor_districts, presentation
 from .register import KOMMUNALWAHL
 from .votemanager import TIMEOUT, UA, ttl_seconds
 
@@ -91,6 +91,15 @@ class MayorCandidate:
     #: nötig, und die Farben stehen ohnehin schon im Repo.
     color: str = ""
     color_dark: str = ""
+    #: Der volle amtliche Name des Wahlvorschlags aus der Bekanntmachung.
+    nominated_by: str = ""
+    #: Parteilos, und von wem sie sonst noch unterstützt wird — beides steht
+    #: NICHT in der Bekanntmachung, deshalb nur mit eigener Quelle
+    #: (`note_source`). Ohne Beleg bleibt das Feld leer: In einem
+    #: Wahlprodukt ist eine unbelegte Zuschreibung schlimmer als keine.
+    independent: bool = False
+    supported_by: tuple[str, ...] = ()
+    note_source: str = ""
 
 
 @dataclass(frozen=True)
@@ -108,6 +117,10 @@ class MayorResult:
     fetched_at: str | None
     ok: bool
     error: str | None
+    #: Die Wahlbezirke mit ihrem Stand — aus der Übersicht der Bezirks-Ebene,
+    #: ein Abruf je Minute (``mayor_districts``). Leer, wenn die Ebene nicht
+    #: erreichbar ist; die Stadtzeile trägt den Abend auch allein.
+    districts: tuple[mayor_districts.MayorDistrict, ...] = ()
     notes: tuple[str, ...] = ()
 
 
@@ -168,6 +181,14 @@ def candidates(w: elections.Election | None = None) -> tuple[MayorCandidate, ...
             slug=slug, name=k["name"],
             party=_party_kurz(k["vorgeschlagen_von"]), votes=None, share_pct=None,
             color=farbe, color_dark=farbe_dunkel,
+            nominated_by=k["vorgeschlagen_von"],
+            # Ohne Beleg keine Aussage: Parteilosigkeit und fremde
+            # Unterstützung stehen nicht in der amtlichen Bekanntmachung, und
+            # eine unbelegte Zuschreibung ist in einem Wahlprodukt das
+            # Gegenteil von Präzision.
+            independent=bool(k.get("parteilos")) and bool(k.get("hinweis_quelle")),
+            supported_by=tuple(k.get("unterstuetzt_von") or ()) if k.get("hinweis_quelle") else (),
+            note_source=k.get("hinweis_quelle") or "",
         ))
     if nur and len(out) != len(nur):
         fehlend = sorted(set(nur) - {c.slug for c in out})
@@ -393,6 +414,26 @@ NOCH_NICHT = ("Die Zahlen dieser Wahl stehen beim Votemanager noch nicht bereit 
               "die Seite versucht es weiter.")
 
 
+def _fetch_districts(session: requests.Session, base: str, api: str,
+                     known: tuple[MayorCandidate, ...]) -> tuple[mayor_districts.MayorDistrict, ...]:
+    """Die Bezirks-Übersicht — ein zweiter Abruf im selben Lauf. Scheitert er,
+    bleibt es bei der Stadtzeile; ein fehlender Bezirks-Stand darf den Abend
+    nicht umbringen, er nimmt nur der Hochrechnung den Boden."""
+    try:
+        wahl_json = session.get(f"{base}{api}/wahl.json", timeout=TIMEOUT)
+        wahl_json.raise_for_status()
+        ebene = mayor_districts.level_id(wahl_json.json())
+        if ebene is None:
+            _log.info("Wahlabend/OB: wahl.json nennt keine Wahlbezirks-Ebene")
+            return ()
+        resp = session.get(f"{base}{mayor_districts.overview_path(api, ebene)}", timeout=TIMEOUT)
+        resp.raise_for_status()
+        return mayor_districts.parse_overview(resp.json(), {c.slug: c.name for c in known})
+    except (requests.RequestException, ValueError) as exc:
+        _log.info("Wahlabend/OB: Bezirks-Übersicht ohne Antwort (%s: %s)", type(exc).__name__, exc)
+        return ()
+
+
 def fetch(force: bool = False, w: elections.Election | None = None) -> MayorResult:
     """Wie ``votemanager.fetch``: höchstens einmal je Minute vom Server,
     der letzte gute Stand bleibt stehen, wenn der Abruf scheitert. Wirft nie.
@@ -416,10 +457,12 @@ def fetch(force: bool = False, w: elections.Election | None = None) -> MayorResu
                 if wahl_id is None:
                     fehlt = True
                     raise ValueError("Wahl-Id noch nicht vergeben")
-                resp = session.get(f"{base}{w.source.api_path(wahl_id)}/ergebnis_{city_id}_0.json",
-                                   timeout=TIMEOUT)
+                api = w.source.api_path(wahl_id)
+                resp = session.get(f"{base}{api}/ergebnis_{city_id}_0.json", timeout=TIMEOUT)
                 resp.raise_for_status()
                 result = parse(resp.json(), known)
+                if result is not None:
+                    result = replace(result, districts=_fetch_districts(session, base, api, known))
         except (requests.RequestException, ValueError) as exc:
             fehler = f"{type(exc).__name__}: {exc}"[:200]
             _log.log(logging.INFO if fehlt else logging.WARNING,
@@ -491,6 +534,33 @@ def _nur_die_beiden(voll: MayorResult, known: tuple[MayorCandidate, ...]) -> May
                           "runoff": (), "notes": ()})
 
 
+def probe_districts(counted: int | None, known: tuple[MayorCandidate, ...],
+                    w: elections.Election | None = None) -> tuple[mayor_districts.MayorDistrict, ...]:
+    """Die Bezirke der Generalprobe: der erste Wahlgang je Bezirk, eingefroren
+    in ``referenz-2026/praesentation-ob-wahlbezirke.json`` — die ersten
+    ``counted`` in Dateireihenfolge gelten als gemeldet, der Rest wartet.
+    Nur für eine Stichwahl; der erste Wahlgang probt gegen 2021 ohne Bezirke."""
+    from pathlib import Path
+
+    w = w or wahl()
+    if not w.first_round:
+        return ()
+    datei = Path(__file__).resolve().parents[4] / "kommunalwahl" / "referenz-2026" / "praesentation-ob-wahlbezirke.json"
+    if not datei.is_file():
+        return ()
+    alle = mayor_districts.parse_overview(json.loads(datei.read_text(encoding="utf-8")),
+                                          {c.slug: c.name for c in known})
+    n = len(alle) if counted is None else max(0, min(len(alle), counted))
+    out = []
+    for i, d in enumerate(alle):
+        if i < n:
+            out.append(d)
+        else:
+            out.append(replace(d, counted=False, valid_votes=None, voters=None,
+                               votes={slug: None for slug in d.votes}))
+    return tuple(out)
+
+
 def probe(counted: int | None, w: elections.Election | None = None) -> MayorResult:
     """Generalprobe: echte Zahlen im Register DIESER Wahl, im Verhältnis
     ``counted``/133 ausgezählt — dasselbe Prinzip wie
@@ -502,13 +572,36 @@ def probe(counted: int | None, w: elections.Election | None = None) -> MayorResu
     if voll is not None and w.first_round:
         voll = _nur_die_beiden(voll, known)
     if voll is None or counted is None or counted >= 133:
-        return voll or _bare("Die Generalprobe der OB-Wahl trägt keine Zahlen.", w)
+        if voll is None:
+            return _bare("Die Generalprobe der OB-Wahl trägt keine Zahlen.", w)
+        return replace(voll, districts=probe_districts(None, known, w))
     anteil = max(0.0, min(1.0, counted / 133))
+    bezirke = probe_districts(counted, known, w)
+    phase = "before" if counted == 0 else ("complete" if counted >= 133 else "counting")
+    if bezirke:
+        # Die Stichwahl-Probe zählt Bezirk für Bezirk: Die Stadtzeile ist die
+        # Summe der gemeldeten Bezirke, wie live — nicht ein Anteil der
+        # Gesamtzahl. Erst so bewegt sich der Anteil über den Abend (die
+        # Urne meldet zuerst, die Briefwahl liegt anders), und erst so passt
+        # die Zeile zu den Bezirken, aus denen die Hochrechnung rechnet.
+        gemeldet = [d for d in bezirke if d.counted]
+        stimmen = {c.slug: sum(d.votes.get(c.slug) or 0 for d in gemeldet) for c in voll.candidates}
+        summe = sum(stimmen.values())
+        skaliert = tuple(
+            replace(c, votes=stimmen[c.slug], share_pct=round(100 * stimmen[c.slug] / summe, 2) if summe else None)
+            for c in voll.candidates
+        )
+        return MayorResult(
+            phase=phase, reports_expected=len(bezirke), reports_received=len(gemeldet),
+            turnout_pct=voll.turnout_pct, valid_votes=summe or None,
+            invalid_ballots=round(voll.invalid_ballots * anteil) if voll.invalid_ballots is not None else None,
+            candidates=skaliert, runoff=() if phase != "complete" else voll.runoff,
+            fetched_at=None, ok=True, error=None, notes=(), districts=bezirke,
+        )
     skaliert = tuple(
         replace(c, votes=round(c.votes * anteil) if c.votes is not None else None)
         for c in voll.candidates
     )
-    phase = "before" if counted == 0 else ("complete" if counted >= 133 else "counting")
     return MayorResult(
         phase=phase, reports_expected=voll.reports_expected,
         reports_received=round(voll.reports_expected * anteil),
@@ -517,6 +610,7 @@ def probe(counted: int | None, w: elections.Election | None = None) -> MayorResu
         invalid_ballots=round(voll.invalid_ballots * anteil) if voll.invalid_ballots is not None else None,
         candidates=skaliert, runoff=() if phase != "complete" else voll.runoff,
         fetched_at=None, ok=True, error=None, notes=(),
+        districts=bezirke,
     )
 
 

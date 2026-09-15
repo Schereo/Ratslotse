@@ -29,6 +29,10 @@ const PROBE = JSON.parse(
 const KANDIDATEN = JSON.parse(
   readFileSync(path.join(__dirname, "fixtures", "wahlabend-kandidaten-probe.json"), "utf8"),
 );
+/** Und als EINE aufgefaltete Kandidatur (`/api/wahlabend/kandidat`). */
+const KANDIDAT = JSON.parse(
+  readFileSync(path.join(__dirname, "fixtures", "wahlabend-kandidat-probe.json"), "utf8"),
+);
 /** Und als Wahlbezirke (`service.districts(reg, probe_snapshot(…, 60), "probe")`). */
 const BEZIRKE = JSON.parse(
   readFileSync(path.join(__dirname, "fixtures", "wahlbezirke-probe.json"), "utf8"),
@@ -68,6 +72,14 @@ function wahlabendMock(page: Page) {
       status: 200,
       contentType: "application/json",
       body: JSON.stringify(BEZIRKE),
+    });
+  });
+  page.route("**/api/wahlabend/kandidat?*", (route) => {
+    zaehler.rufe += 1;
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(KANDIDAT),
     });
   });
   page.route("**/api/wahlabend/kandidaten*", (route) => {
@@ -189,6 +201,46 @@ test.describe("Schalter an: die Generalprobe", () => {
     await expect(karte.locator("path")).toHaveCount(6);
   });
 
+  test("der Wahlbezirk filtert die Rangliste auf ein Wahllokal", async ({ page }) => {
+    await page.goto("/wahlabend?ansicht=kandidaten");
+    const wahl = page.getByLabel("Wahlbezirk");
+    await expect(wahl).toBeVisible();
+    // Ohne Auswahl steht die ganze Stadt da, und jede Zeile nennt ihre
+    // Hochburg — den Wahlbezirk, in dem diese Kandidatur am stärksten war.
+    await expect(page.getByText(`${KANDIDATEN.total} Kandidaturen`)).toBeVisible();
+    const hochburg = KANDIDATEN.rows.find((z: { top_district: number | null }) => z.top_district !== null);
+    // In der TABELLE, nicht im Auswahlfeld: Dort steht derselbe Name als
+    // `<option>` und ist unsichtbar.
+    if (hochburg) await expect(page.locator("table").getByText(hochburg.top_district_name).first()).toBeVisible();
+
+    // Ein Wahllokal wählen: weniger Kandidaturen, und die Adresse merkt es sich.
+    const erster = KANDIDATEN.districts.find((b: { postal: boolean }) => !b.postal);
+    await wahl.selectOption(String(erster.number));
+    await expect(page).toHaveURL(new RegExp(`[?&]bezirk=${erster.number}`));
+  });
+
+  test("ein Name faltet alle Wahlbezirke dieser einen Kandidatur auf", async ({ page }) => {
+    await page.goto("/wahlabend?ansicht=kandidaten");
+    const name = KANDIDAT.name;
+    const griff = page.locator("table").getByRole("button", { name: new RegExp(name) }).first();
+    await expect(griff).toHaveAttribute("aria-expanded", "false");
+
+    // Erst beim Aufklappen wird geholt — 383 Zeilen auf Vorrat wären 383 Abrufe.
+    await expect(page.getByText(/Wo die Stimmen herkamen/i)).toHaveCount(0);
+    await griff.click();
+    await expect(griff).toHaveAttribute("aria-expanded", "true");
+    await expect(page.getByText(/Wo die Stimmen herkamen/i).first()).toBeVisible();
+
+    // Jeder Wahlbezirk des Wahlbereichs steht da, stärkster zuerst.
+    const tafel = page.locator("table li");
+    await expect.poll(() => tafel.count()).toBe(KANDIDAT.districts.length);
+    await expect(tafel.first()).toContainText(KANDIDAT.districts[0].name);
+
+    // Und ein zweiter Klick klappt wieder zu.
+    await griff.click();
+    await expect(page.getByText(/Wo die Stimmen herkamen/i)).toHaveCount(0);
+  });
+
   test("die Kandidaten-Rangliste kommt vom Server, mit stadtweitem Rang", async ({ page }) => {
     await page.goto("/wahlabend?ansicht=kandidaten");
     const reiter = page.getByRole("tab", { name: "Kandidat*innen" });
@@ -273,4 +325,100 @@ test.describe("Handy (390px): der Wahlabend bleibt in der Breite", () => {
       ).toBeLessThanOrEqual(1);
     });
   }
+});
+
+/* ── Die Stichwahl (docs/plan-stichwahl-spannung.md S4) ─────────────────────
+ * Zwei Stände nacheinander: erst 40 Bezirke (Rohr vorn), dann 60 (Prange
+ * vorn, Führungswechsel beim 50.). `page.clock` dreht die Uhr eine Minute
+ * vor, damit die Seite nachfragt — sie fragt alle 60 s. Der dritte Stand
+ * (133) ist entschieden. Die Abschriften kommen aus der Probe des Backends
+ * (`tests/test_browsertest_fixtures.py` hält sie am Vertrag). */
+
+const STICHWAHL: Record<number, unknown> = Object.fromEntries(
+  [40, 60, 133].map((n) => [n, JSON.parse(readFileSync(path.join(__dirname, "fixtures", `stichwahl-probe-${n}.json`), "utf8"))]),
+);
+
+function stichwahlMock(page: Page, staende: number[]) {
+  let i = 0;
+  page.route("**/api/wahlabend/stichwahl*", (route) => {
+    const n = staende[Math.min(i, staende.length - 1)];
+    i += 1;
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(STICHWAHL[n]) });
+  });
+}
+
+test.describe("Stichwahl: Momente", () => {
+  test.beforeEach(async ({ page }) => {
+    await appConfig(page, ["wahlabend"]);
+  });
+
+  test("die Meldung nennt die neuen Bezirke, und der Titel trägt den Stand", async ({ page }) => {
+    stichwahlMock(page, [60]);
+    await page.goto("/wahlabend/stichwahl?probe=1");
+    await expect(page.getByTestId("meldung")).toContainText("10 weitere Bezirke");
+    await expect(page.getByTestId("meldung")).toContainText(/Prange \+[\d.]+, Rohr \+[\d.]+/);
+    // Der 60er-Stand trägt den Wechsel beim 50. — nicht bei 60: keine Zeile.
+    await expect(page.getByTestId("fuehrungswechsel-zeile")).toHaveCount(0);
+    await expect.poll(() => page.title()).toMatch(/Prange 5\d,\d · Rohr 4\d,\d — 60\/133 · Stichwahl/);
+    await expect(page.getByTestId("hochrechnung")).toContainText("Chance: Ulf Prange");
+  });
+
+  test("bei einem Führungswechsel tauschen die Karten den Platz", async ({ page }) => {
+    await page.clock.install();
+    stichwahlMock(page, [40, 60]);
+    await page.goto("/wahlabend/stichwahl?probe=1");
+    const karten = page.getByTestId("person");
+    await expect(karten).toHaveCount(2);
+    // 40 Bezirke: Rohr vorn — seine Karte steht zuerst (CSS `order`), trägt „Vorn".
+    const erste = async () => {
+      const lagen = await karten.evaluateAll((els) => els.map((e) => ({ slug: (e as HTMLElement).dataset.slug, x: e.getBoundingClientRect().left, y: e.getBoundingClientRect().top })));
+      return lagen.sort((a, b) => a.y - b.y || a.x - b.x)[0]?.slug;
+    };
+    await expect.poll(erste).toBe("rohr");
+    await expect(page.locator("[data-slug=rohr]")).toContainText("Vorn");
+
+    // Eine Minute später fragt die Seite nach — und bekommt den 60er-Stand.
+    await page.clock.runFor(61_000);
+    await expect(page.getByText("60 von 133 Wahlbezirken ausgezählt")).toBeVisible();
+    await expect.poll(erste).toBe("prange");
+    await expect(page.locator("[data-slug=prange]")).toContainText("Vorn");
+    await expect(page.locator("[data-slug=rohr]")).not.toContainText("Vorn");
+  });
+
+  test("rechnerisch entschieden: Lotti und „ist gewählt“", async ({ page }) => {
+    stichwahlMock(page, [133]);
+    await page.goto("/wahlabend/stichwahl?probe=1");
+    await expect(page.getByTestId("entschieden")).toContainText("Ulf Prange ist gewählt");
+    await expect(page.locator("[data-slug=prange]")).toContainText("Gewählt");
+    await expect(page.getByTestId("hochrechnung")).toContainText("Endstand");
+    await expect(page.getByTestId("verlauf")).toContainText("1 Führungswechsel");
+  });
+});
+
+/* ── Die Karte der Stichwahl (S5) ──────────────────────────────────────── */
+
+const STICHWAHL_BEZIRKE = JSON.parse(readFileSync(path.join(__dirname, "fixtures", "stichwahl-bezirke-probe-60.json"), "utf8"));
+
+test.describe("Stichwahl: Karte", () => {
+  test("91 Flächen, offene gestrichelt, ein Tipp zeigt beide Wahlgänge", async ({ page }) => {
+    await appConfig(page, ["wahlabend"]);
+    stichwahlMock(page, [60]);
+    // Später registriert = zuerst gefragt (s. wahlabendMock).
+    await page.route("**/api/wahlabend/stichwahl/bezirke*", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(STICHWAHL_BEZIRKE) }),
+    );
+    await page.goto("/wahlabend/stichwahl?probe=1");
+    const karte = page.getByTestId("stichwahl-karte");
+    await expect.poll(() => karte.locator("svg path").count()).toBe(91);
+    // 60 gezählt, davon alle Urne (die Briefwahl kommt zuletzt): 31 offen.
+    await expect.poll(() => karte.locator("svg path[data-offen]").count()).toBe(31);
+    await expect(karte).toContainText("60 von 91 Urnenbezirken gezählt");
+    await karte.locator("svg path").first().click({ force: true });
+    await expect(page.getByTestId("bezirkstafel")).toContainText("1. Wahlgang");
+    await expect(page.getByTestId("bezirkstafel")).toContainText("Stichwahl");
+    // Ein Wahlbereich heranholen: weniger Flächen, mit Nummer beschriftet.
+    await karte.getByRole("button", { name: "I", exact: true }).click();
+    await expect.poll(() => karte.locator("svg path").count()).toBeLessThan(91);
+    await expect(karte.getByText("Wahlbereich I", { exact: true })).toBeVisible();
+  });
 });

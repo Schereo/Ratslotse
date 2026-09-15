@@ -58,7 +58,7 @@ import requests
 WURZEL = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(WURZEL / "web" / "backend"))
 
-from app.election import elections, mayor, presentation, register, service, votemanager  # noqa: E402
+from app.election import elections, mayor, mayor_districts, presentation, register, service, votemanager  # noqa: E402
 from app.election import reference as referenz  # noqa: E402
 from app.election.votemanager import Snapshot  # noqa: E402
 
@@ -111,8 +111,19 @@ def _darstellung(session: requests.Session, basis: str, ziel: Path) -> Any | Non
     ratswahl = _json_sichern(session, f"{basis}{elections.active().source.api_path()}/ergebnis_{stadt_id}_0.json",
                              ziel / "praesentation-ratswahl.json")
     ob_id = mayor.resolve_ids(session, basis)
-    _json_sichern(session, f"{basis}{mayor.wahl().source.api_path()}/ergebnis_{ob_id}_0.json",
-                  ziel / "praesentation-ob.json")
+    ob_api = mayor.wahl().source.api_path()
+    _json_sichern(session, f"{basis}{ob_api}/ergebnis_{ob_id}_0.json", ziel / "praesentation-ob.json")
+    # Und die OB-Wahl je Wahlbezirk — die Übersicht der Bezirks-Ebene, ein
+    # Abruf für alle 133. Sie ist der Vergleich, an dem die Stichwahl gemessen
+    # wird (Hochrechnung, Karte); der Pfad des Votemanagers trägt den Wahltag
+    # und wandert irgendwann ins Archiv, deshalb liegt sie im Repo.
+    wahl_json = _json_sichern(session, f"{basis}{ob_api}/wahl.json", ziel / "praesentation-ob-wahl.json")
+    ebene = mayor_districts.level_id(wahl_json) if wahl_json is not None else None
+    if ebene:
+        _json_sichern(session, f"{basis}{mayor_districts.overview_path(ob_api, ebene)}",
+                      ziel / "praesentation-ob-wahlbezirke.json")
+    else:
+        print("  ! wahl.json der OB-Wahl nennt keine Wahlbezirks-Ebene — keine Bezirksdatei")
     return ratswahl
 
 
