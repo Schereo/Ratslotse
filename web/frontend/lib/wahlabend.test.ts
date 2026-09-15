@@ -174,3 +174,11 @@ describe("Wann ist Wahlabend", () => {
     expect(wahlabendZeit(SCHLUSS, new Date("2026-09-20T12:00:00Z")).phase).toBe("danach");
   });
 });
+
+describe("bezirksRanglistePfad", () => {
+  it("trägt Liste, Sortierung und Wahlbereich — Anteil ist die Vorgabe und fehlt im Pfad", async () => {
+    const { bezirksRanglistePfad } = await import("./wahlabend");
+    expect(bezirksRanglistePfad(null, null, null, "fdp", "share", null)).toBe("/wahlabend/wahlbezirke/rangliste?party=fdp");
+    expect(bezirksRanglistePfad("1", "60", null, "fdp", "votes", 4)).toBe("/wahlabend/wahlbezirke/rangliste?probe=1&counted=60&party=fdp&sort=votes&area=4");
+  });
+});

@@ -4033,6 +4033,42 @@ class ElectionDistrictList(TypedDict):
     districts: list[ElectionDistrict]
 
 
+class ElectionDistrictRankRow(TypedDict):
+    """Ein Wahlbezirk in der Rangliste EINER Liste."""
+    #: Rang nach der gewählten Sortierung — ``None``, solange nicht gezählt.
+    rank: int | None
+    number: int
+    name: str
+    area: int
+    area_roman: str
+    #: Briefwahlbezirk (9xy: x = Wahlbereich, y zählt durch). Er hat keine
+    #: Fläche, aber einen Wahlbereich — und der steht hier ausdrücklich.
+    postal: bool
+    counted: bool
+    votes: int | None
+    share_pct: float | None
+    valid_votes: int | None
+
+
+class ElectionDistrictRanking(TypedDict):
+    """``GET /api/wahlabend/wahlbezirke/rangliste`` — alle Wahlbezirke aus
+    der Sicht EINER Liste, sortiert. Die Frage dahinter (15.09.2026): „Wo hat
+    meine Liste in den Wahllokalen der Stadt wie gut abgeschnitten?" Die
+    Karte zeigt das als Tönung, diese Liste als Zahl mit Rang — und die
+    rechnet der Server, nicht der Browser."""
+    dataset: str
+    phase: str
+    election: ElectionInfo
+    party: str
+    #: "share" (Anteil) oder "votes" (Stimmen).
+    sort: str
+    #: Auf einen Wahlbereich beschränkt — sonst ``None`` (ganze Stadt).
+    area: int | None
+    total: int
+    counted: int
+    rows: list[ElectionDistrictRankRow]
+
+
 class ElectionCandidateParty(TypedDict):
     """Eine Liste in der Kandidaten-Rangliste — mit dem Verhältnis, das die
     Frage „wie kommt jemand auf so viele Personenstimmen?" beantwortet:

@@ -5323,6 +5323,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/wahlabend/wahlbezirke/rangliste": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Wahlabend Wahlbezirke Rangliste
+         * @description Alle Wahlbezirke aus der Sicht EINER Liste, mit Rang — „wo hat meine
+         *     Liste wie gut abgeschnitten?". Öffentlich wie die Wahlbezirke selbst.
+         *     Eine unbekannte Liste ist ein 404, kein leeres Ergebnis.
+         */
+        get: operations["wahlabend_wahlbezirke_rangliste_api_wahlabend_wahlbezirke_rangliste_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/wahlen": {
         parameters: {
             query?: never;
@@ -8773,6 +8795,59 @@ export interface components {
             slug: string;
             /** Votes */
             votes: number | null;
+        };
+        /**
+         * ElectionDistrictRankRow
+         * @description Ein Wahlbezirk in der Rangliste EINER Liste.
+         */
+        ElectionDistrictRankRow: {
+            /** Area */
+            area: number;
+            /** Area Roman */
+            area_roman: string;
+            /** Counted */
+            counted: boolean;
+            /** Name */
+            name: string;
+            /** Number */
+            number: number;
+            /** Postal */
+            postal: boolean;
+            /** Rank */
+            rank: number | null;
+            /** Share Pct */
+            share_pct: number | null;
+            /** Valid Votes */
+            valid_votes: number | null;
+            /** Votes */
+            votes: number | null;
+        };
+        /**
+         * ElectionDistrictRanking
+         * @description ``GET /api/wahlabend/wahlbezirke/rangliste`` — alle Wahlbezirke aus
+         *     der Sicht EINER Liste, sortiert. Die Frage dahinter (15.09.2026): „Wo hat
+         *     meine Liste in den Wahllokalen der Stadt wie gut abgeschnitten?" Die
+         *     Karte zeigt das als Tönung, diese Liste als Zahl mit Rang — und die
+         *     rechnet der Server, nicht der Browser.
+         */
+        ElectionDistrictRanking: {
+            /** Area */
+            area: number | null;
+            /** Counted */
+            counted: number;
+            /** Dataset */
+            dataset: string;
+            election: components["schemas"]["ElectionInfo"];
+            /** Party */
+            party: string;
+            /** Phase */
+            phase: string;
+            /** Rows */
+            rows: components["schemas"]["ElectionDistrictRankRow"][];
+            /** Sort */
+            sort: string;
+            /** Total */
+            total: number;
         };
         /**
          * ElectionDistrictRef
@@ -20049,6 +20124,48 @@ export interface operations {
             };
         };
     };
+    wahlabend_wahlbezirke_rangliste_api_wahlabend_wahlbezirke_rangliste_get: {
+        parameters: {
+            query: {
+                /** @description Slug der Liste, z. B. „fdp“ */
+                party: string;
+                /** @description „share“ = Anteil, „votes“ = Stimmen */
+                sort?: string;
+                /** @description nur dieser Wahlbereich; leer = ganze Stadt */
+                area?: number | null;
+                /** @description gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert) */
+                probe?: string | null;
+                /** @description Generalprobe: nur die ersten N Wahlbezirke ausgezählt */
+                counted?: number | null;
+                /** @description Slug einer gelaufenen Wahl — ihr eingefrorener Stand, ohne Abruf */
+                wahl?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ElectionDistrictRanking"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     wahlen_api_wahlen_get: {
         parameters: {
             query?: never;
@@ -20071,4 +20188,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 028e8e9b6b1e5e9e7195aed28e952566bae4ed92a71333b58f1e739cae828cf8
+// vertrag-sha256: 4e89826327b8e00d0613f79efa116ce5d85604f4aa3ca25fb809d19cf58a368c
