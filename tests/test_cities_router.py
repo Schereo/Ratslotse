@@ -283,10 +283,10 @@ def test_nur_übertragbare_treffer_werden_gezeigt(client, cities_db):
 
 def test_eine_rueckmeldung_je_konto_die_zweite_ersetzt(cities_db):
     """Ein Mensch, eine Stimme. Sonst wäre der Maßstab wieder wertlos."""
-    cities_db.put_feedback("paper", "os:p:1", "fit", "3", 7, "wrong", "passt nicht")
-    cities_db.put_feedback("paper", "os:p:1", "fit", "3", 7, "right")
-    assert cities_db.feedback_for("os:p:1", "fit", "3", 7) == "right"
-    (zeile,) = cities_db.feedback_stats("fit", "3")
+    cities_db.put_feedback("paper", "os:p:1", "fit", "4", 7, "wrong", "passt nicht")
+    cities_db.put_feedback("paper", "os:p:1", "fit", "4", 7, "right")
+    assert cities_db.feedback_for("os:p:1", "fit", "4", 7) == "right"
+    (zeile,) = cities_db.feedback_stats("fit", "4")
     assert zeile["richtig"] == 1 and zeile["falsch"] == 0
 
 
@@ -298,7 +298,7 @@ def test_die_fassung_gehoert_in_den_schluessel(cities_db):
     schleppte der nächste Maßstab Urteile über etwas mit, das es nicht mehr
     gibt.
     """
-    cities_db.put_feedback("paper", "os:p:1", "fit", "3", 7, "wrong")
+    cities_db.put_feedback("paper", "os:p:1", "fit", "4", 7, "wrong")
     assert cities_db.feedback_for("os:p:1", "fit", "4", 7) is None
     assert cities_db.feedback_stats("fit", "4") == []
 
@@ -307,4 +307,4 @@ def test_nur_richtig_oder_falsch(cities_db):
     """Eine Skala mit fünf Stufen beantwortet niemand ehrlich."""
     import pytest
     with pytest.raises(ValueError):
-        cities_db.put_feedback("paper", "os:p:1", "fit", "3", 7, "vielleicht")
+        cities_db.put_feedback("paper", "os:p:1", "fit", "4", 7, "vielleicht")

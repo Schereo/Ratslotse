@@ -49,7 +49,7 @@ um dieselbe Sache geht.
 {steckbrief}
 
 Antworte NUR mit diesem JSON:
-{{"status": "present" | "partial" | "missing",
+{{"status": "present" | "partial" | "missing" | "not_applicable",
   "evidence": ["<Kennung>", …],
   "reason": "<ein Satz, max. 300 Zeichen>",
   "confidence": "high" | "medium" | "low"}}
@@ -67,6 +67,17 @@ STATUS — hat Oldenburg GENAU DIESES Instrument schon?
   nur ein Antrag ohne Beschluss, nur ein Prüfauftrag, nur ein Bericht.
 - "missing": Kein Beleg deckt auch nur einen Teil ab. Dass ein Beleg dasselbe
   THEMENFELD betrifft, genügt dafür nicht.
+- "not_applicable": Das Instrument setzt in Oldenburg etwas voraus, das es hier
+  nicht gibt — dann FEHLT es nicht, es kann hier gar nicht greifen. Eine
+  fahrradfreundliche Gestaltung von Stadtbahngleisen setzt eine Stadtbahn
+  voraus; Oldenburg hat keine. Ein Beschluss über einen Hafen setzt einen Hafen
+  voraus, eine Regelung für Stadtbezirksräte setzt Stadtbezirksräte voraus.
+
+  NUR bei einer fehlenden VORAUSSETZUNG, und nur bei einer, die du im
+  Steckbrief oder in den Belegen erkennen kannst. NICHT, weil Oldenburg kleiner
+  ist, weniger Geld hat, etwas anders organisiert oder es politisch nicht
+  wollte — das sind Gründe gegen einen Antrag, und über die urteilst du nicht.
+  Im Zweifel "missing": Dass etwas fehlt, ist die schwächere Behauptung.
 
 Sei streng: Ein Beleg, der nur dasselbe THEMENFELD berührt, ist NICHT "present".
 Wärmeplanung und Wärmenetz-Ausbau sind zwei Sachen; ein Radverkehrskonzept belegt

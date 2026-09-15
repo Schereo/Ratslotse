@@ -41,7 +41,7 @@ def cities(tmp_path):
                           "competence": "council",
                           "instrument": "Denkmalpflege-Konzept erstellen",
                           "summary": "."}, "h" + pid)
-        s.put_annotation("paper", pid, "fit", "3",
+        s.put_annotation("paper", pid, "fit", "4",
                          {"status": "missing", "evidence": [], "reason": ".",
                           "confidence": "high"}, "f" + pid)
     s.replace_idea_clusters(MODELL, "1", [
@@ -68,7 +68,7 @@ def test_antworten_und_mitteilungen_stehen_nicht_auf_der_liste(cities):
                            "competence": "council",
                            "instrument": "Denkmalpflege-Konzept erstellen",
                            "summary": "."}, "hpo9")
-    cities.put_annotation("paper", "po:9", "fit", "3",
+    cities.put_annotation("paper", "po:9", "fit", "4",
                           {"status": "missing", "evidence": [], "reason": ".",
                            "confidence": "high"}, "fpo9")
     # In DERSELBEN Gruppe und JÜNGER als der Antrag — genau der Fall, in dem
@@ -133,7 +133,7 @@ def test_die_mehrheit_entscheidet_nicht_die_juengste(cities):
     davon widersprach die jüngste ihrer Mehrheit. Als lebende Abfrage 0,65 s
     je Seite — deshalb liegt die Mehrheit in `idea_group_status`.
     """
-    cities.put_annotation("paper", "po:3", "fit", "3",
+    cities.put_annotation("paper", "po:3", "fit", "4",
                           {"status": "present", "evidence": [], "reason": ".",
                            "confidence": "high"}, "fpo3b")
     cities.rebuild_group_status(MODELL, "1", "3")

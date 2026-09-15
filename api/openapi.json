@@ -10495,6 +10495,10 @@
             "title": "Multi City",
             "type": "integer"
           },
+          "not_applicable": {
+            "title": "Not Applicable",
+            "type": "integer"
+          },
           "partial": {
             "title": "Partial",
             "type": "integer"
@@ -10514,6 +10518,7 @@
           "missing",
           "partial",
           "present",
+          "not_applicable",
           "multi_city"
         ],
         "title": "IdeaFieldSummary",

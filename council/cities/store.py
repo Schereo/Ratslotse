@@ -765,7 +765,7 @@ class CitiesStore:
     #: es den Fassungs-Schlüssel. Sie blieb es auch danach noch einen halben
     #: Tag, weil niemand die Zeile umstellte; seitdem hält
     #: ``tests/test_cities_guards.py`` sie an der Fassung des Annotators.
-    IDEEN_FIT = ("fit", "3")
+    IDEEN_FIT = ("fit", "4")
     #: Die Aufwandsklasse hängt als LEFT JOIN dran, nicht als JOIN: Sie ist
     #: jünger als die Urteile, und eine Idee ohne sie soll sichtbar bleiben,
     #: statt aus der Liste zu fallen, bis der Cron nachgezogen hat.
@@ -1257,6 +1257,10 @@ class CitiesStore:
             "  SUM(json_extract(f.payload,'$.status')='missing') AS missing, "
             "  SUM(json_extract(f.payload,'$.status')='partial') AS partial, "
             "  SUM(json_extract(f.payload,'$.status')='present') AS present, "
+            # Ohne diese Zeile ginge die Rechnung nicht mehr auf: `total`
+            # zählt alle, `missing + partial + present` nur noch einen Teil.
+            # Eine Summe, die nicht stimmt, ist schlimmer als eine fehlende.
+            "  SUM(json_extract(f.payload,'$.status')='not_applicable') AS not_applicable, "
             # Wie viele Ideen dieses Feldes liegen in mindestens ZWEI anderen
             # Städten und fehlen Oldenburg? Das ist die Zahl, nach der ein
             # Themenfeld interessant ist — vorher stand hier „lohnt sich",
