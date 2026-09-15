@@ -17,11 +17,12 @@
 // Zeile setzt die Stimmen ins Verhältnis zur stärksten Person der Wahl.
 
 import { useQuery } from "@tanstack/react-query";
-import { ChevronRight } from "lucide-react";
-import { Fragment, useMemo, useState } from "react";
+import { ChevronDown } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Aufklapp } from "@/components/aufklapp";
 import { KICKER, Punkt, TON } from "@/components/wahlabend/bausteine";
 import { BeobachtenHinweis, BeobachtetKarte, Stern, useBeobachtet } from "@/components/wahlabend/beobachtet";
-import { KandidatBezirke } from "@/components/wahlabend/kandidat-bezirke";
+import { KandidatBezirke, useKandidatBezirke } from "@/components/wahlabend/kandidat-bezirke";
 import { Segmented } from "@/components/ui/segmented";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -126,49 +127,196 @@ function Balken({ votes, max, drin }: { votes: number | null; max: number; drin:
   );
 }
 
-/** Der Name ist der Griff. Er verspricht, was aufgeht: alle Wahlbezirke
- *  dieser einen Kandidatur — die Zahlen, die in der Liste nicht in eine
- *  Spalte passen.
- *
- *  Tims Befund 15.09.: Ein 10-px-Dreieck sagt niemandem, dass hier etwas
- *  aufgeht. Deshalb ein Pfeil in einem Kreis, der mit der ZEILE reagiert
- *  (`group/zeile` liegt auf `tr` bzw. `li`): Wer über die Zeile fährt, sieht
- *  den Kreis in Primärfarbe und die Zeile getönt — die ganze Zeile ist der
- *  Griff, nicht nur der Name. Offen: Pfeil nach unten, Kreis gefüllt. */
-function Aufklapper({ auf, onClick, name, children }: { auf: boolean; onClick: () => void; name: string; children: React.ReactNode }) {
+/** Der Griff des Drawers — dasselbe Muster wie die Tagesordnung im
+ *  Sitzungen-Reiter (Tims Wunsch 15.09.: „wir haben schöne, gut animierte
+ *  Drawer, warum nicht die?"): rechts ein Pfeil nach unten, der sich beim
+ *  Öffnen dreht und Primärfarbe bekommt; solange die Wahlbezirke geholt
+ *  werden, steht ein Spinner an seiner Stelle, und der Bereich fährt erst
+ *  auf, wenn die Zahlen da sind. Die ganze Zeile ist der Griff, dieser
+ *  Knopf ist der Weg für Tastatur und Screenreader. */
+function Aufklapptaste({ auf, laedt, onClick, name, className }: {
+  auf: boolean; laedt: boolean; onClick: () => void; name: string; className?: string;
+}) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-expanded={auf}
+      aria-label={auf ? `Wahlbezirke von ${name} zuklappen` : `Alle Wahlbezirke von ${name} zeigen`}
       title={auf ? "Wahlbezirke zuklappen" : `Alle Wahlbezirke von ${name} zeigen`}
-      className="-mx-1 block w-full min-w-0 rounded-md px-1 py-0.5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className={cn("flex h-8 w-8 flex-none items-center justify-center rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ring", className)}
     >
-      <span className="flex min-w-0 items-start gap-2">
+      {laedt ? (
         <span
+          aria-label="Wahlbezirke werden geladen"
+          role="status"
+          className="h-5 w-5 animate-spin rounded-full border-2 border-muted border-t-primary [animation-duration:600ms]"
+        />
+      ) : (
+        <ChevronDown
           aria-hidden
           className={cn(
-            "mt-px flex h-[22px] w-[22px] flex-none items-center justify-center rounded-full border transition-[transform,color,border-color,background-color] duration-tipp",
-            auf
-              ? "rotate-90 border-primary bg-primary text-primary-foreground"
-              : "border-border bg-card text-muted-foreground group-hover/zeile:border-primary group-hover/zeile:text-primary",
+            "h-5 w-5 text-muted-foreground/50 transition-[transform,color] duration-weg ease-out-strong group-hover/zeile:text-muted-foreground",
+            auf && "rotate-180 text-primary group-hover/zeile:text-primary",
           )}
-        >
-          <ChevronRight className="h-4 w-4" strokeWidth={2.25} />
-        </span>
-        <span className="min-w-0 flex-1">{children}</span>
-      </span>
+        />
+      )}
     </button>
   );
 }
 
-/** Die ganze Zeile klappt auf — nicht nur der Name. Ein Klick, der auf einem
- *  eigenen Knopf landet (Stern, Aufklapper selbst), bleibt bei dem. */
+/** Die ganze Zeile klappt auf — nicht nur der Knopf. Ein Klick, der auf
+ *  einem eigenen Knopf landet (Stern, die Taste selbst), bleibt bei dem. */
 function zeilenKlick(umschalten: () => void) {
   return (e: React.MouseEvent<HTMLElement>) => {
     if ((e.target as HTMLElement).closest("button, a")) return;
     umschalten();
   };
+}
+
+type ZeilenProps = {
+  z: KandidatenZeile;
+  liste: Kandidatenliste;
+  max: number;
+  auf: boolean;
+  umschalten: () => void;
+  beobachtet: ReturnType<typeof useBeobachtet>;
+  probe: string | null;
+  counted: string | null;
+  rueckblick: string | null;
+};
+
+/** Eine Zeile des Tisches (breit) samt ihrem Drawer darunter. Der Drawer ist
+ *  immer da (eine leere Rasterspur), damit er FAHREN kann statt zu
+ *  erscheinen — `Aufklapp` animiert nur, was schon im DOM steht. */
+function TischZeile({ z, liste, max, auf, umschalten, beobachtet, probe, counted, rueckblick }: ZeilenProps) {
+  const drin = z.elected !== null;
+  const bezirke = useKandidatBezirke({ party: z.party, area: z.area, position: z.position, probe, counted, rueckblick, offen: auf });
+  const laedt = auf && !bezirke.data && !bezirke.isError;
+  return (
+    <>
+      <tr
+        className={cn("group/zeile cursor-pointer transition-colors duration-tipp hover:bg-muted/40", auf && "bg-muted/30")}
+        onClick={zeilenKlick(umschalten)}
+      >
+        <td className="border-b border-border/60 px-2 py-2 text-right font-mono text-[11px] text-muted-foreground tabular-nums">{z.rank ?? "–"}</td>
+        {/* Der Griff steht auf dem Tisch LINKS vor dem Namen: Die Tabelle ist
+            breiter als manches Fenster, und ein Pfeil am rechten Rand läge
+            dann außerhalb des Bildes — gemessen bei 1.100 px. */}
+        <td className="border-b border-border/60 py-2 pl-1 pr-3">
+          <span className="flex min-w-0 items-center gap-1.5">
+            <Aufklapptaste auf={auf} laedt={laedt} onClick={umschalten} name={z.name} />
+            <span className="min-w-0 flex-1">
+              <span className={cn("block truncate", drin ? "font-semibold" : "font-medium")}>{z.name}</span>
+              <span className="block truncate text-[11.5px] text-muted-foreground">
+                {[z.occupation, z.born ? `*${z.born}` : null].filter(Boolean).join(" · ")}
+              </span>
+            </span>
+          </span>
+        </td>
+        <td className="border-b border-border/60 px-3 py-2">
+          <span className="flex items-center gap-1.5"><Punkt color={z.color} dark={z.color_dark} />{z.party_short}</span>
+          <span className="block text-[11px] text-muted-foreground">Platz {z.position}</span>
+        </td>
+        {/* Stadtweit hat eine Kandidatur 15 bis 24 Wahlbezirke — hier steht
+            ihr Wahlbereich und darunter die Hochburg, die eine davon, die
+            etwas aussagt. Im Bezirks-Filter ist es genau einer, und dann
+            steht er selbst da. */}
+        <td className="border-b border-border/60 px-3 py-2">
+          {liste.district === null ? (
+            <>
+              <span className="block">{z.area_roman}</span>
+              <span className="block truncate text-[11px] text-muted-foreground">{z.area_name}</span>
+              {z.top_district !== null ? (
+                <span className="mt-0.5 block truncate text-[11px] text-muted-foreground" title={`Stärkster Wahlbezirk: ${z.top_district_name} mit ${zahl(z.top_district_votes)} Personenstimmen`}>
+                  ↗ {z.top_district_name} · {zahl(z.top_district_votes)}
+                </span>
+              ) : null}
+            </>
+          ) : (
+            // Der Bezirk steht schon in der Überschrift — 61-mal derselbe
+            // Name wäre keine Spalte, sondern ein Muster. Hier steht, was je
+            // Zeile verschieden ist: die große Zahl, neben der die
+            // Bezirkszahl erst etwas sagt.
+            <>
+              <span className="block tabular-nums">{zahl(z.area_votes)}</span>
+              <span className="block text-[11px] text-muted-foreground tabular-nums">
+                {z.area_votes && z.votes !== null
+                  ? `${prozent((100 * z.votes) / z.area_votes)} davon hier`
+                  : `Wahlbereich ${z.area_roman}`}
+              </span>
+            </>
+          )}
+        </td>
+        <td className={cn("border-b border-border/60", SPALTE_ZAHL)}>
+          <span className={cn("block", drin && "font-semibold")}>{zahl(z.votes)}</span>
+          <Balken votes={z.votes} max={max} drin={drin} />
+        </td>
+        <td className={cn("border-b border-border/60", SPALTE_ZAHL, "text-muted-foreground")}>{z.party_share_pct === null ? "–" : prozent(z.party_share_pct)}</td>
+        <td className="border-b border-border/60 px-3 py-2">
+          <span className="flex items-center gap-2">
+            <Statuspille z={z} daten={liste} />
+            {beobachtet.angemeldet ? (
+              <Stern gemerkt={beobachtet.istGemerkt(z)} onClick={() => beobachtet.umschalten(z)} name={z.name} />
+            ) : null}
+          </span>
+        </td>
+      </tr>
+      <tr>
+        <td colSpan={7} className="p-0">
+          <Aufklapp offen={auf && (!!bezirke.data || bezirke.isError)}>
+            <div className="border-b border-border/60 bg-muted/20 px-3 pb-4 pt-3">
+              <KandidatBezirke detail={bezirke.data} fehler={bezirke.isError} />
+            </div>
+          </Aufklapp>
+        </td>
+      </tr>
+    </>
+  );
+}
+
+/** Dieselbe Zeile als Block für schmale Fenster. */
+function KarteZeile({ z, liste, max, auf, umschalten, beobachtet, probe, counted, rueckblick }: ZeilenProps) {
+  const drin = z.elected !== null;
+  const bezirke = useKandidatBezirke({ party: z.party, area: z.area, position: z.position, probe, counted, rueckblick, offen: auf });
+  const laedt = auf && !bezirke.data && !bezirke.isError;
+  return (
+    <li
+      className={cn("group/zeile -mx-2 cursor-pointer rounded-lg px-2 py-2.5 transition-colors duration-tipp hover:bg-muted/40", auf && "bg-muted/30")}
+      onClick={zeilenKlick(umschalten)}
+    >
+      <span className="flex items-start gap-2.5">
+        <span className="w-7 flex-none pt-0.5 text-right font-mono text-[10.5px] text-muted-foreground tabular-nums">{z.rank ?? "–"}</span>
+        <span className="min-w-0 flex-1">
+          <span className={cn("block truncate text-[13px]", drin ? "font-semibold" : "font-medium")}>{z.name}</span>
+          <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[11.5px] text-muted-foreground">
+            <Punkt color={z.color} dark={z.color_dark} />
+            {z.party_short} · Platz {z.position} · {liste.district === null ? `WB ${z.area_roman}` : `Bezirk ${liste.district}`}
+          </span>
+          {liste.district === null && z.top_district !== null ? (
+            <span className="block truncate text-[11px] text-muted-foreground">↗ {z.top_district_name} · {zahl(z.top_district_votes)}</span>
+          ) : null}
+          <span className="mt-1.5 block"><Balken votes={z.votes} max={max} drin={drin} /></span>
+          <span className="mt-1 flex items-center gap-2"><Statuspille z={z} daten={liste} /></span>
+        </span>
+        <span className="flex-none text-right">
+          <span className={cn("block text-[13px] tabular-nums", drin && "font-semibold")}>{zahl(z.votes)}</span>
+          <span className="block text-[10.5px] text-muted-foreground tabular-nums">{z.party_share_pct === null ? "" : `${prozent(z.party_share_pct)} der Liste${liste.district === null ? "" : " hier"}`}</span>
+        </span>
+        <span className="flex flex-none flex-col items-center gap-1">
+          <Aufklapptaste auf={auf} laedt={laedt} onClick={umschalten} name={z.name} className="-mr-1" />
+          {beobachtet.angemeldet ? (
+            <Stern gemerkt={beobachtet.istGemerkt(z)} onClick={() => beobachtet.umschalten(z)} name={z.name} className="flex-none" />
+          ) : null}
+        </span>
+      </span>
+      <Aufklapp offen={auf && (!!bezirke.data || bezirke.isError)}>
+        <div className="mt-2 border-t border-border/60 pt-3">
+          <KandidatBezirke detail={bezirke.data} fehler={bezirke.isError} />
+        </div>
+      </Aufklapp>
+    </li>
+  );
 }
 
 function Statuspille({ z, daten }: { z: KandidatenZeile; daten: Kandidatenliste }) {
@@ -387,84 +535,13 @@ export function Kandidaten({
               </thead>
               <tbody>
                 {liste.rows.map((z) => {
-                  const drin = z.elected !== null;
                   const id = `${z.party}-${z.area}-${z.position}`;
-                  const auf = offen === id;
                   return (
-                    <Fragment key={id}>
-                    <tr
-                      className={cn("group/zeile cursor-pointer transition-colors duration-tipp hover:bg-primary/5", auf && "bg-primary/[0.04]")}
-                      onClick={zeilenKlick(() => setOffen(auf ? null : id))}
-                    >
-                      <td className="border-b border-border/60 px-2 py-2 text-right font-mono text-[11px] text-muted-foreground tabular-nums">{z.rank ?? "–"}</td>
-                      <td className={cn("border-b px-3 py-2", auf ? "border-transparent" : "border-border/60")}>
-                        <Aufklapper auf={auf} onClick={() => setOffen(auf ? null : id)} name={z.name}>
-                          <span className={cn("block truncate", drin ? "font-semibold" : "font-medium")}>{z.name}</span>
-                          <span className="block truncate text-[11.5px] text-muted-foreground">
-                            {[z.occupation, z.born ? `*${z.born}` : null].filter(Boolean).join(" · ")}
-                          </span>
-                        </Aufklapper>
-                      </td>
-                      <td className="border-b border-border/60 px-3 py-2">
-                        <span className="flex items-center gap-1.5"><Punkt color={z.color} dark={z.color_dark} />{z.party_short}</span>
-                        <span className="block text-[11px] text-muted-foreground">Platz {z.position}</span>
-                      </td>
-                      {/* Stadtweit hat eine Kandidatur 15 bis 24 Wahlbezirke
-                          — hier steht ihr Wahlbereich und darunter die
-                          Hochburg, die eine davon, die etwas aussagt. Im
-                          Bezirks-Filter ist es genau einer, und dann steht
-                          er selbst da. */}
-                      <td className="border-b border-border/60 px-3 py-2">
-                        {liste.district === null ? (
-                          <>
-                            <span className="block">{z.area_roman}</span>
-                            <span className="block truncate text-[11px] text-muted-foreground">{z.area_name}</span>
-                            {z.top_district !== null ? (
-                              <span className="mt-0.5 block truncate text-[11px] text-muted-foreground" title={`Stärkster Wahlbezirk: ${z.top_district_name} mit ${zahl(z.top_district_votes)} Personenstimmen`}>
-                                ↗ {z.top_district_name} · {zahl(z.top_district_votes)}
-                              </span>
-                            ) : null}
-                          </>
-                        ) : (
-                          // Der Bezirk steht schon in der Überschrift — 61-mal
-                          // derselbe Name wäre keine Spalte, sondern ein Muster.
-                          // Hier steht, was je Zeile verschieden ist: die große
-                          // Zahl, neben der die Bezirkszahl erst etwas sagt.
-                          <>
-                            <span className="block tabular-nums">{zahl(z.area_votes)}</span>
-                            <span className="block text-[11px] text-muted-foreground tabular-nums">
-                              {z.area_votes && z.votes !== null
-                                ? `${prozent((100 * z.votes) / z.area_votes)} davon hier`
-                                : `Wahlbereich ${z.area_roman}`}
-                            </span>
-                          </>
-                        )}
-                      </td>
-                      <td className={cn("border-b border-border/60", SPALTE_ZAHL)}>
-                        <span className={cn("block", drin && "font-semibold")}>{zahl(z.votes)}</span>
-                        <Balken votes={z.votes} max={max} drin={drin} />
-                      </td>
-                      <td className={cn("border-b border-border/60", SPALTE_ZAHL, "text-muted-foreground")}>{z.party_share_pct === null ? "–" : prozent(z.party_share_pct)}</td>
-                      <td className="border-b border-border/60 px-3 py-2">
-                        <span className="flex items-center gap-2">
-                          <Statuspille z={z} daten={liste} />
-                          {beobachtet.angemeldet ? (
-                            <Stern gemerkt={beobachtet.istGemerkt(z)} onClick={() => beobachtet.umschalten(z)} name={z.name} />
-                          ) : null}
-                        </span>
-                      </td>
-                    </tr>
-                    {auf ? (
-                      <tr>
-                        <td colSpan={7} className="border-b border-border/60 px-3 pb-3">
-                          <KandidatBezirke
-                            party={z.party} area={z.area} position={z.position}
-                            probe={probe} counted={counted} rueckblick={rueckblick} offen
-                          />
-                        </td>
-                      </tr>
-                    ) : null}
-                    </Fragment>
+                    <TischZeile
+                      key={id} z={z} liste={liste} max={max} auf={offen === id}
+                      umschalten={() => setOffen(offen === id ? null : id)}
+                      beobachtet={beobachtet} probe={probe} counted={counted} rueckblick={rueckblick}
+                    />
                   );
                 })}
               </tbody>
@@ -474,48 +551,13 @@ export function Kandidaten({
           {/* Darunter: Zeilenblöcke mit eigener Beschriftung. */}
           <ol className={cn("mt-2 divide-y divide-border/70 border-t border-border/70 breit:hidden", abfrage.isPlaceholderData && "opacity-60 transition-opacity")}>
             {liste.rows.map((z) => {
-              const drin = z.elected !== null;
               const id = `${z.party}-${z.area}-${z.position}`;
-              const auf = offen === id;
               return (
-                <li
-                  key={id}
-                  className={cn("group/zeile -mx-2 cursor-pointer rounded-lg px-2 py-2.5 transition-colors duration-tipp hover:bg-primary/5", auf && "bg-primary/[0.04]")}
-                  onClick={zeilenKlick(() => setOffen(auf ? null : id))}
-                >
-                  <span className="flex items-start gap-2.5">
-                  <span className="w-7 flex-none pt-0.5 text-right font-mono text-[10.5px] text-muted-foreground tabular-nums">{z.rank ?? "–"}</span>
-                  <span className="min-w-0 flex-1">
-                    <Aufklapper auf={auf} onClick={() => setOffen(auf ? null : id)} name={z.name}>
-                      <span className={cn("block truncate text-[13px]", drin ? "font-semibold" : "font-medium")}>{z.name}</span>
-                    </Aufklapper>
-                    <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[11.5px] text-muted-foreground">
-                      <Punkt color={z.color} dark={z.color_dark} />
-                      {z.party_short} · Platz {z.position} · {liste.district === null ? `WB ${z.area_roman}` : `Bezirk ${liste.district}`}
-                    </span>
-                    {liste.district === null && z.top_district !== null ? (
-                      <span className="block truncate text-[11px] text-muted-foreground">↗ {z.top_district_name} · {zahl(z.top_district_votes)}</span>
-                    ) : null}
-                    <span className="mt-1.5 block"><Balken votes={z.votes} max={max} drin={drin} /></span>
-                    <span className="mt-1 flex items-center gap-2"><Statuspille z={z} daten={liste} /></span>
-                  </span>
-                  <span className="flex-none text-right">
-                    <span className={cn("block text-[13px] tabular-nums", drin && "font-semibold")}>{zahl(z.votes)}</span>
-                    <span className="block text-[10.5px] text-muted-foreground tabular-nums">{z.party_share_pct === null ? "" : `${prozent(z.party_share_pct)} der Liste${liste.district === null ? "" : " hier"}`}</span>
-                  </span>
-                  {beobachtet.angemeldet ? (
-                    <Stern gemerkt={beobachtet.istGemerkt(z)} onClick={() => beobachtet.umschalten(z)} name={z.name} className="mt-0.5 flex-none" />
-                  ) : null}
-                  </span>
-                  {auf ? (
-                    <span className="mt-2 block">
-                      <KandidatBezirke
-                        party={z.party} area={z.area} position={z.position}
-                        probe={probe} counted={counted} rueckblick={rueckblick} offen
-                      />
-                    </span>
-                  ) : null}
-                </li>
+                <KarteZeile
+                  key={id} z={z} liste={liste} max={max} auf={offen === id}
+                  umschalten={() => setOffen(offen === id ? null : id)}
+                  beobachtet={beobachtet} probe={probe} counted={counted} rueckblick={rueckblick}
+                />
               );
             })}
           </ol>
