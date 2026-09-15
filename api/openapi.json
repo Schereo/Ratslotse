@@ -11898,6 +11898,127 @@
         "title": "MayorCandidate",
         "type": "object"
       },
+      "MayorDistrictEntry": {
+        "description": "Ein Wahlbezirk einer OB-Wahl mit seinem Stand.",
+        "properties": {
+          "area": {
+            "title": "Area",
+            "type": "integer"
+          },
+          "counted": {
+            "title": "Counted",
+            "type": "boolean"
+          },
+          "eligible": {
+            "title": "Eligible",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "first_round": {
+            "additionalProperties": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "title": "First Round",
+            "type": "object"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "integer"
+          },
+          "postal": {
+            "title": "Postal",
+            "type": "boolean"
+          },
+          "valid_votes": {
+            "title": "Valid Votes",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "voters": {
+            "title": "Voters",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "votes": {
+            "additionalProperties": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "title": "Votes",
+            "type": "object"
+          }
+        },
+        "required": [
+          "number",
+          "name",
+          "area",
+          "postal",
+          "counted",
+          "eligible",
+          "voters",
+          "valid_votes",
+          "votes",
+          "first_round"
+        ],
+        "title": "MayorDistrictEntry",
+        "type": "object"
+      },
+      "MayorDistrictList": {
+        "description": "``GET /api/wahlabend/stichwahl/bezirke`` — die 133 Wahlbezirke der\nStichwahl. Eigener Endpunkt, weil die Seite sie erst für Karte und\nHochrechnung braucht und ``MayorNight`` schlank bleiben soll.",
+        "properties": {
+          "counted": {
+            "title": "Counted",
+            "type": "integer"
+          },
+          "dataset": {
+            "title": "Dataset",
+            "type": "string"
+          },
+          "districts": {
+            "items": {
+              "$ref": "#/components/schemas/MayorDistrictEntry"
+            },
+            "title": "Districts",
+            "type": "array"
+          },
+          "election": {
+            "$ref": "#/components/schemas/MayorElectionInfo"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "dataset",
+          "phase",
+          "election",
+          "total",
+          "counted",
+          "districts"
+        ],
+        "title": "MayorDistrictList",
+        "type": "object"
+      },
       "MayorElectionInfo": {
         "description": "Welche Wahl das hier ist — aus ``kommunalwahl/wahlen/``.\n\nStand bis 09/2026 nicht in der Antwort: Es gab genau eine OB-Wahl, und\ndie Seite kannte sie auswendig. Mit der Stichwahl am 27.09. sind es zwei,\nund die Überschrift darf nicht mehr im Frontend stehen.",
         "properties": {
@@ -11942,6 +12063,94 @@
         "title": "MayorElectionInfo",
         "type": "object"
       },
+      "MayorHistoryPoint": {
+        "description": "Ein Stand des Stichwahl-Abends — für den Verlauf (S3). Der Dienst\nschreibt ihn sich selbst mit; der Votemanager kennt nur das Jetzt.",
+        "properties": {
+          "at": {
+            "title": "At",
+            "type": "string"
+          },
+          "chance_pct": {
+            "title": "Chance Pct",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "leader": {
+            "title": "Leader",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "projected_shares": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Projected Shares",
+            "type": "object"
+          },
+          "reports_received": {
+            "title": "Reports Received",
+            "type": "integer"
+          },
+          "shares": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Shares",
+            "type": "object"
+          },
+          "votes": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Votes",
+            "type": "object"
+          }
+        },
+        "required": [
+          "at",
+          "reports_received",
+          "shares",
+          "votes",
+          "projected_shares",
+          "chance_pct",
+          "leader"
+        ],
+        "title": "MayorHistoryPoint",
+        "type": "object"
+      },
+      "MayorLeadChange": {
+        "description": "Ein Führungswechsel: zwischen zwei Ständen wechselte, wer vorn liegt.",
+        "properties": {
+          "at": {
+            "title": "At",
+            "type": "string"
+          },
+          "leader": {
+            "title": "Leader",
+            "type": "string"
+          },
+          "previous": {
+            "title": "Previous",
+            "type": "string"
+          },
+          "reports_received": {
+            "title": "Reports Received",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "at",
+          "reports_received",
+          "leader",
+          "previous"
+        ],
+        "title": "MayorLeadChange",
+        "type": "object"
+      },
       "MayorNight": {
         "properties": {
           "candidates": {
@@ -11979,12 +12188,26 @@
               "null"
             ]
           },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/MayorHistoryPoint"
+            },
+            "title": "History",
+            "type": "array"
+          },
           "invalid_ballots": {
             "title": "Invalid Ballots",
             "type": [
               "integer",
               "null"
             ]
+          },
+          "lead_changes": {
+            "items": {
+              "$ref": "#/components/schemas/MayorLeadChange"
+            },
+            "title": "Lead Changes",
+            "type": "array"
           },
           "notes": {
             "items": {
@@ -12000,6 +12223,9 @@
           "phase": {
             "title": "Phase",
             "type": "string"
+          },
+          "projection": {
+            "$ref": "#/components/schemas/RunoffProjection"
           },
           "reports_expected": {
             "title": "Reports Expected",
@@ -12046,7 +12272,9 @@
           "fetched_at",
           "ok",
           "error",
-          "notes"
+          "notes",
+          "history",
+          "lead_changes"
         ],
         "title": "MayorNight",
         "type": "object"
@@ -16427,6 +16655,97 @@
           }
         },
         "title": "RolesUpdate",
+        "type": "object"
+      },
+      "RunoffProjection": {
+        "description": "Die Hochrechnung einer Stichwahl (``runoff_model``,\ndocs/plan-stichwahl-spannung.md S2). Modellrechnung, keine Umfrage — die\nSeite nennt sie „Modell\" und stellt die Bezirkszahl daneben.",
+        "properties": {
+          "actual_lead_votes": {
+            "title": "Actual Lead Votes",
+            "type": "integer"
+          },
+          "actual_leader": {
+            "title": "Actual Leader",
+            "type": "string"
+          },
+          "caveats": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Caveats",
+            "type": "array"
+          },
+          "chance_pct": {
+            "title": "Chance Pct",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "counted_ballot": {
+            "title": "Counted Ballot",
+            "type": "integer"
+          },
+          "counted_postal": {
+            "title": "Counted Postal",
+            "type": "integer"
+          },
+          "decided": {
+            "title": "Decided",
+            "type": "boolean"
+          },
+          "lead_votes": {
+            "title": "Lead Votes",
+            "type": "integer"
+          },
+          "leader": {
+            "title": "Leader",
+            "type": "string"
+          },
+          "open_ballot": {
+            "title": "Open Ballot",
+            "type": "integer"
+          },
+          "open_postal": {
+            "title": "Open Postal",
+            "type": "integer"
+          },
+          "open_votes_max": {
+            "title": "Open Votes Max",
+            "type": "integer"
+          },
+          "projected_votes": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Projected Votes",
+            "type": "object"
+          },
+          "shares": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Shares",
+            "type": "object"
+          }
+        },
+        "required": [
+          "shares",
+          "projected_votes",
+          "leader",
+          "lead_votes",
+          "chance_pct",
+          "counted_ballot",
+          "counted_postal",
+          "open_ballot",
+          "open_postal",
+          "decided",
+          "actual_leader",
+          "actual_lead_votes",
+          "open_votes_max",
+          "caveats"
+        ],
+        "title": "RunoffProjection",
         "type": "object"
       },
       "SessionDetail": {
@@ -28881,6 +29200,70 @@
           }
         },
         "summary": "Stichwahl",
+        "tags": [
+          "wahlabend"
+        ]
+      }
+    },
+    "/api/wahlabend/stichwahl/bezirke": {
+      "get": {
+        "description": "Die 133 Wahlbezirke der Stichwahl mit ihrem Stand — und je Bezirk\ndieselben zwei Kandidaturen im ersten Wahlgang als Vergleich.\n\nÖffentlich wie die Stichwahl, hinter demselben Schalter. Das ist der\nEingang für Karte und Hochrechnung (docs/plan-stichwahl-spannung.md).",
+        "operationId": "stichwahl_bezirke_api_wahlabend_stichwahl_bezirke_get",
+        "parameters": [
+          {
+            "description": "gesetzt = Generalprobe mit den Zahlen des ersten Wahlgangs",
+            "in": "query",
+            "name": "probe",
+            "required": false,
+            "schema": {
+              "description": "gesetzt = Generalprobe mit den Zahlen des ersten Wahlgangs",
+              "title": "Probe",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "Generalprobe: nur die ersten N Wahlbezirke gemeldet",
+            "in": "query",
+            "name": "counted",
+            "required": false,
+            "schema": {
+              "description": "Generalprobe: nur die ersten N Wahlbezirke gemeldet",
+              "maximum": 133,
+              "minimum": 0,
+              "title": "Counted",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MayorDistrictList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stichwahl Bezirke",
         "tags": [
           "wahlabend"
         ]

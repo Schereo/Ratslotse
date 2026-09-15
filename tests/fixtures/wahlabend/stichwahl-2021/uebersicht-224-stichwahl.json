@@ -1,0 +1,7406 @@
+{
+ "zeitstempel": "30.09.2021 15:43",
+ "seitentitel": "Wahlbezirke",
+ "tabelle": {
+  "header": [
+   {
+    "labelKurz": "Wahlbezirk"
+   },
+   {
+    "labelKurz": "Stand"
+   },
+   {
+    "labelKurz": "Wahlberechtigte"
+   },
+   {
+    "labelKurz": "Wahlbeteiligung"
+   },
+   {
+    "labelKurz": "gültig"
+   },
+   {
+    "labelKurz": "Krogmann, SPD",
+    "labelLang": "Jürgen Krogmann, Sozialdemokratische Partei Deutschlands"
+   },
+   {
+    "labelKurz": "Fuhrhop, GRÜNE",
+    "labelLang": "Daniel Fuhrhop, BÜNDNIS 90/DIE GRÜNEN"
+   }
+  ],
+  "zeilen": [
+   {
+    "label": "101 Amt für Gebäudewirtschaft und Hochbau",
+    "link": {
+     "id": "ebene_6_id_57162",
+     "type": "ergebnis",
+     "title": "101 Amt für Gebäudewirtschaft und Hochbau"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,458",
+      "order_value_proz": "1.458",
+      "absolut": "1.458",
+      "prozent": "1.458",
+      "tip": "1.458",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "712",
+      "order_value_proz": "48.83",
+      "absolut": "712",
+      "prozent": "48,83 %",
+      "tip": "712",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "703",
+      "order_value_proz": "98.74",
+      "absolut": "703",
+      "prozent": "98,74 %",
+      "tip": "703",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "307",
+      "order_value_proz": "43.67",
+      "absolut": "307",
+      "prozent": "43,67 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "396",
+      "order_value_proz": "56.33",
+      "absolut": "396",
+      "prozent": "56,33 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "102 Jugendfreizeitstätte Bürgerfelde",
+    "link": {
+     "id": "ebene_6_id_57163",
+     "type": "ergebnis",
+     "title": "102 Jugendfreizeitstätte Bürgerfelde"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,436",
+      "order_value_proz": "1.436",
+      "absolut": "1.436",
+      "prozent": "1.436",
+      "tip": "1.436",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "640",
+      "order_value_proz": "44.57",
+      "absolut": "640",
+      "prozent": "44,57 %",
+      "tip": "640",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "636",
+      "order_value_proz": "99.38",
+      "absolut": "636",
+      "prozent": "99,38 %",
+      "tip": "636",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "364",
+      "order_value_proz": "57.23",
+      "absolut": "364",
+      "prozent": "57,23 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "272",
+      "order_value_proz": "42.77",
+      "absolut": "272",
+      "prozent": "42,77 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "103 Neues Gymnasium",
+    "link": {
+     "id": "ebene_6_id_57164",
+     "type": "ergebnis",
+     "title": "103 Neues Gymnasium"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,412",
+      "order_value_proz": "1.412",
+      "absolut": "1.412",
+      "prozent": "1.412",
+      "tip": "1.412",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "659",
+      "order_value_proz": "46.67",
+      "absolut": "659",
+      "prozent": "46,67 %",
+      "tip": "659",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "652",
+      "order_value_proz": "98.94",
+      "absolut": "652",
+      "prozent": "98,94 %",
+      "tip": "652",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "266",
+      "order_value_proz": "40.80",
+      "absolut": "266",
+      "prozent": "40,80 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "386",
+      "order_value_proz": "59.20",
+      "absolut": "386",
+      "prozent": "59,20 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "104 Neues Gymnasium",
+    "link": {
+     "id": "ebene_6_id_57165",
+     "type": "ergebnis",
+     "title": "104 Neues Gymnasium"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,461",
+      "order_value_proz": "1.461",
+      "absolut": "1.461",
+      "prozent": "1.461",
+      "tip": "1.461",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "628",
+      "order_value_proz": "42.98",
+      "absolut": "628",
+      "prozent": "42,98 %",
+      "tip": "628",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "620",
+      "order_value_proz": "98.73",
+      "absolut": "620",
+      "prozent": "98,73 %",
+      "tip": "620",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "222",
+      "order_value_proz": "35.81",
+      "absolut": "222",
+      "prozent": "35,81 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "398",
+      "order_value_proz": "64.19",
+      "absolut": "398",
+      "prozent": "64,19 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "105 BZTG Ehnernstr.",
+    "link": {
+     "id": "ebene_6_id_57166",
+     "type": "ergebnis",
+     "title": "105 BZTG Ehnernstr."
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,425",
+      "order_value_proz": "1.425",
+      "absolut": "1.425",
+      "prozent": "1.425",
+      "tip": "1.425",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "717",
+      "order_value_proz": "50.32",
+      "absolut": "717",
+      "prozent": "50,32 %",
+      "tip": "717",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "699",
+      "order_value_proz": "97.49",
+      "absolut": "699",
+      "prozent": "97,49 %",
+      "tip": "699",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "330",
+      "order_value_proz": "47.21",
+      "absolut": "330",
+      "prozent": "47,21 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "369",
+      "order_value_proz": "52.79",
+      "absolut": "369",
+      "prozent": "52,79 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "106 Neues Gymnasium",
+    "link": {
+     "id": "ebene_6_id_57167",
+     "type": "ergebnis",
+     "title": "106 Neues Gymnasium"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,552",
+      "order_value_proz": "1.552",
+      "absolut": "1.552",
+      "prozent": "1.552",
+      "tip": "1.552",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "617",
+      "order_value_proz": "39.76",
+      "absolut": "617",
+      "prozent": "39,76 %",
+      "tip": "617",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "612",
+      "order_value_proz": "99.19",
+      "absolut": "612",
+      "prozent": "99,19 %",
+      "tip": "612",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "246",
+      "order_value_proz": "40.20",
+      "absolut": "246",
+      "prozent": "40,20 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "366",
+      "order_value_proz": "59.80",
+      "absolut": "366",
+      "prozent": "59,80 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "107 BZTG",
+    "link": {
+     "id": "ebene_6_id_57168",
+     "type": "ergebnis",
+     "title": "107 BZTG"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,458",
+      "order_value_proz": "1.458",
+      "absolut": "1.458",
+      "prozent": "1.458",
+      "tip": "1.458",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "569",
+      "order_value_proz": "39.03",
+      "absolut": "569",
+      "prozent": "39,03 %",
+      "tip": "569",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "553",
+      "order_value_proz": "97.19",
+      "absolut": "553",
+      "prozent": "97,19 %",
+      "tip": "553",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "289",
+      "order_value_proz": "52.26",
+      "absolut": "289",
+      "prozent": "52,26 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "264",
+      "order_value_proz": "47.74",
+      "absolut": "264",
+      "prozent": "47,74 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "108 GS Bürgeresch",
+    "link": {
+     "id": "ebene_6_id_57169",
+     "type": "ergebnis",
+     "title": "108 GS Bürgeresch"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,475",
+      "order_value_proz": "1.475",
+      "absolut": "1.475",
+      "prozent": "1.475",
+      "tip": "1.475",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "631",
+      "order_value_proz": "42.78",
+      "absolut": "631",
+      "prozent": "42,78 %",
+      "tip": "631",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "619",
+      "order_value_proz": "98.10",
+      "absolut": "619",
+      "prozent": "98,10 %",
+      "tip": "619",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "281",
+      "order_value_proz": "45.40",
+      "absolut": "281",
+      "prozent": "45,40 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "338",
+      "order_value_proz": "54.60",
+      "absolut": "338",
+      "prozent": "54,60 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "109 Fachschule für das Handwerk",
+    "link": {
+     "id": "ebene_6_id_57170",
+     "type": "ergebnis",
+     "title": "109 Fachschule für das Handwerk"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,656",
+      "order_value_proz": "1.656",
+      "absolut": "1.656",
+      "prozent": "1.656",
+      "tip": "1.656",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "700",
+      "order_value_proz": "42.27",
+      "absolut": "700",
+      "prozent": "42,27 %",
+      "tip": "700",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "696",
+      "order_value_proz": "99.43",
+      "absolut": "696",
+      "prozent": "99,43 %",
+      "tip": "696",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "262",
+      "order_value_proz": "37.64",
+      "absolut": "262",
+      "prozent": "37,64 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "434",
+      "order_value_proz": "62.36",
+      "absolut": "434",
+      "prozent": "62,36 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "110 GS Bürgeresch",
+    "link": {
+     "id": "ebene_6_id_57171",
+     "type": "ergebnis",
+     "title": "110 GS Bürgeresch"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,670",
+      "order_value_proz": "1.670",
+      "absolut": "1.670",
+      "prozent": "1.670",
+      "tip": "1.670",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "703",
+      "order_value_proz": "42.10",
+      "absolut": "703",
+      "prozent": "42,10 %",
+      "tip": "703",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "689",
+      "order_value_proz": "98.01",
+      "absolut": "689",
+      "prozent": "98,01 %",
+      "tip": "689",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "342",
+      "order_value_proz": "49.64",
+      "absolut": "342",
+      "prozent": "49,64 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "347",
+      "order_value_proz": "50.36",
+      "absolut": "347",
+      "prozent": "50,36 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "111 GS Bürgeresch",
+    "link": {
+     "id": "ebene_6_id_57172",
+     "type": "ergebnis",
+     "title": "111 GS Bürgeresch"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,711",
+      "order_value_proz": "1.711",
+      "absolut": "1.711",
+      "prozent": "1.711",
+      "tip": "1.711",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "769",
+      "order_value_proz": "44.94",
+      "absolut": "769",
+      "prozent": "44,94 %",
+      "tip": "769",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "751",
+      "order_value_proz": "97.66",
+      "absolut": "751",
+      "prozent": "97,66 %",
+      "tip": "751",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "334",
+      "order_value_proz": "44.47",
+      "absolut": "334",
+      "prozent": "44,47 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "417",
+      "order_value_proz": "55.53",
+      "absolut": "417",
+      "prozent": "55,53 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "112 GSG Oldenburg",
+    "link": {
+     "id": "ebene_6_id_57173",
+     "type": "ergebnis",
+     "title": "112 GSG Oldenburg"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,508",
+      "order_value_proz": "1.508",
+      "absolut": "1.508",
+      "prozent": "1.508",
+      "tip": "1.508",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "624",
+      "order_value_proz": "41.38",
+      "absolut": "624",
+      "prozent": "41,38 %",
+      "tip": "624",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "614",
+      "order_value_proz": "98.40",
+      "absolut": "614",
+      "prozent": "98,40 %",
+      "tip": "614",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "331",
+      "order_value_proz": "53.91",
+      "absolut": "331",
+      "prozent": "53,91 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "283",
+      "order_value_proz": "46.09",
+      "absolut": "283",
+      "prozent": "46,09 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "113 GSG Oldenburg",
+    "link": {
+     "id": "ebene_6_id_57174",
+     "type": "ergebnis",
+     "title": "113 GSG Oldenburg"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,280",
+      "order_value_proz": "1.280",
+      "absolut": "1.280",
+      "prozent": "1.280",
+      "tip": "1.280",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "392",
+      "order_value_proz": "30.63",
+      "absolut": "392",
+      "prozent": "30,63 %",
+      "tip": "392",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "389",
+      "order_value_proz": "99.23",
+      "absolut": "389",
+      "prozent": "99,23 %",
+      "tip": "389",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "215",
+      "order_value_proz": "55.27",
+      "absolut": "215",
+      "prozent": "55,27 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "174",
+      "order_value_proz": "44.73",
+      "absolut": "174",
+      "prozent": "44,73 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "114 GS Donnerschwee",
+    "link": {
+     "id": "ebene_6_id_57175",
+     "type": "ergebnis",
+     "title": "114 GS Donnerschwee"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,386",
+      "order_value_proz": "1.386",
+      "absolut": "1.386",
+      "prozent": "1.386",
+      "tip": "1.386",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "678",
+      "order_value_proz": "48.92",
+      "absolut": "678",
+      "prozent": "48,92 %",
+      "tip": "678",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "659",
+      "order_value_proz": "97.20",
+      "absolut": "659",
+      "prozent": "97,20 %",
+      "tip": "659",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "372",
+      "order_value_proz": "56.45",
+      "absolut": "372",
+      "prozent": "56,45 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "287",
+      "order_value_proz": "43.55",
+      "absolut": "287",
+      "prozent": "43,55 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "115 GSG Oldenburg",
+    "link": {
+     "id": "ebene_6_id_57274",
+     "type": "ergebnis",
+     "title": "115 GSG Oldenburg"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,312",
+      "order_value_proz": "1.312",
+      "absolut": "1.312",
+      "prozent": "1.312",
+      "tip": "1.312",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "604",
+      "order_value_proz": "46.04",
+      "absolut": "604",
+      "prozent": "46,04 %",
+      "tip": "604",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "599",
+      "order_value_proz": "99.17",
+      "absolut": "599",
+      "prozent": "99,17 %",
+      "tip": "599",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "243",
+      "order_value_proz": "40.57",
+      "absolut": "243",
+      "prozent": "40,57 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "356",
+      "order_value_proz": "59.43",
+      "absolut": "356",
+      "prozent": "59,43 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "201 Cäcilienschule Oldenburg",
+    "link": {
+     "id": "ebene_6_id_57176",
+     "type": "ergebnis",
+     "title": "201 Cäcilienschule Oldenburg"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,630",
+      "order_value_proz": "1.630",
+      "absolut": "1.630",
+      "prozent": "1.630",
+      "tip": "1.630",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "773",
+      "order_value_proz": "47.42",
+      "absolut": "773",
+      "prozent": "47,42 %",
+      "tip": "773",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "759",
+      "order_value_proz": "98.19",
+      "absolut": "759",
+      "prozent": "98,19 %",
+      "tip": "759",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "333",
+      "order_value_proz": "43.87",
+      "absolut": "333",
+      "prozent": "43,87 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "426",
+      "order_value_proz": "56.13",
+      "absolut": "426",
+      "prozent": "56,13 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "202 Oberkirchenrat",
+    "link": {
+     "id": "ebene_6_id_57177",
+     "type": "ergebnis",
+     "title": "202 Oberkirchenrat"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,291",
+      "order_value_proz": "1.291",
+      "absolut": "1.291",
+      "prozent": "1.291",
+      "tip": "1.291",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "549",
+      "order_value_proz": "42.53",
+      "absolut": "549",
+      "prozent": "42,53 %",
+      "tip": "549",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "541",
+      "order_value_proz": "98.54",
+      "absolut": "541",
+      "prozent": "98,54 %",
+      "tip": "541",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "235",
+      "order_value_proz": "43.44",
+      "absolut": "235",
+      "prozent": "43,44 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "306",
+      "order_value_proz": "56.56",
+      "absolut": "306",
+      "prozent": "56,56 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "203 Edith-Ruß-Haus",
+    "link": {
+     "id": "ebene_6_id_57178",
+     "type": "ergebnis",
+     "title": "203 Edith-Ruß-Haus"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,493",
+      "order_value_proz": "1.493",
+      "absolut": "1.493",
+      "prozent": "1.493",
+      "tip": "1.493",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "706",
+      "order_value_proz": "47.29",
+      "absolut": "706",
+      "prozent": "47,29 %",
+      "tip": "706",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "697",
+      "order_value_proz": "98.73",
+      "absolut": "697",
+      "prozent": "98,73 %",
+      "tip": "697",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "236",
+      "order_value_proz": "33.86",
+      "absolut": "236",
+      "prozent": "33,86 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "461",
+      "order_value_proz": "66.14",
+      "absolut": "461",
+      "prozent": "66,14 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "204 GUV",
+    "link": {
+     "id": "ebene_6_id_57179",
+     "type": "ergebnis",
+     "title": "204 GUV"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,678",
+      "order_value_proz": "1.678",
+      "absolut": "1.678",
+      "prozent": "1.678",
+      "tip": "1.678",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "766",
+      "order_value_proz": "45.65",
+      "absolut": "766",
+      "prozent": "45,65 %",
+      "tip": "766",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "753",
+      "order_value_proz": "98.30",
+      "absolut": "753",
+      "prozent": "98,30 %",
+      "tip": "753",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "313",
+      "order_value_proz": "41.57",
+      "absolut": "313",
+      "prozent": "41,57 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "440",
+      "order_value_proz": "58.43",
+      "absolut": "440",
+      "prozent": "58,43 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "205 Edith-Russ-Haus",
+    "link": {
+     "id": "ebene_6_id_57180",
+     "type": "ergebnis",
+     "title": "205 Edith-Russ-Haus"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,365",
+      "order_value_proz": "1.365",
+      "absolut": "1.365",
+      "prozent": "1.365",
+      "tip": "1.365",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "509",
+      "order_value_proz": "37.29",
+      "absolut": "509",
+      "prozent": "37,29 %",
+      "tip": "509",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "504",
+      "order_value_proz": "99.02",
+      "absolut": "504",
+      "prozent": "99,02 %",
+      "tip": "504",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "202",
+      "order_value_proz": "40.08",
+      "absolut": "202",
+      "prozent": "40,08 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "302",
+      "order_value_proz": "59.92",
+      "absolut": "302",
+      "prozent": "59,92 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "206 Deutsche Rentenversicherung",
+    "link": {
+     "id": "ebene_6_id_57181",
+     "type": "ergebnis",
+     "title": "206 Deutsche Rentenversicherung"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,082",
+      "order_value_proz": "1.082",
+      "absolut": "1.082",
+      "prozent": "1.082",
+      "tip": "1.082",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "480",
+      "order_value_proz": "44.36",
+      "absolut": "480",
+      "prozent": "44,36 %",
+      "tip": "480",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "471",
+      "order_value_proz": "98.13",
+      "absolut": "471",
+      "prozent": "98,13 %",
+      "tip": "471",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "205",
+      "order_value_proz": "43.52",
+      "absolut": "205",
+      "prozent": "43,52 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "266",
+      "order_value_proz": "56.48",
+      "absolut": "266",
+      "prozent": "56,48 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "207 Graf-Anton-Günther-Schule",
+    "link": {
+     "id": "ebene_6_id_57182",
+     "type": "ergebnis",
+     "title": "207 Graf-Anton-Günther-Schule"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,487",
+      "order_value_proz": "1.487",
+      "absolut": "1.487",
+      "prozent": "1.487",
+      "tip": "1.487",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "696",
+      "order_value_proz": "46.81",
+      "absolut": "696",
+      "prozent": "46,81 %",
+      "tip": "696",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "683",
+      "order_value_proz": "98.13",
+      "absolut": "683",
+      "prozent": "98,13 %",
+      "tip": "683",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "285",
+      "order_value_proz": "41.73",
+      "absolut": "285",
+      "prozent": "41,73 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "398",
+      "order_value_proz": "58.27",
+      "absolut": "398",
+      "prozent": "58,27 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "208 Oberschule Osternburg",
+    "link": {
+     "id": "ebene_6_id_57183",
+     "type": "ergebnis",
+     "title": "208 Oberschule Osternburg"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,635",
+      "order_value_proz": "1.635",
+      "absolut": "1.635",
+      "prozent": "1.635",
+      "tip": "1.635",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "613",
+      "order_value_proz": "37.49",
+      "absolut": "613",
+      "prozent": "37,49 %",
+      "tip": "613",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "604",
+      "order_value_proz": "98.53",
+      "absolut": "604",
+      "prozent": "98,53 %",
+      "tip": "604",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "293",
+      "order_value_proz": "48.51",
+      "absolut": "293",
+      "prozent": "48,51 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "311",
+      "order_value_proz": "51.49",
+      "absolut": "311",
+      "prozent": "51,49 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "209 Oberschule Osternburg",
+    "link": {
+     "id": "ebene_6_id_57184",
+     "type": "ergebnis",
+     "title": "209 Oberschule Osternburg"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,595",
+      "order_value_proz": "1.595",
+      "absolut": "1.595",
+      "prozent": "1.595",
+      "tip": "1.595",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "719",
+      "order_value_proz": "45.08",
+      "absolut": "719",
+      "prozent": "45,08 %",
+      "tip": "719",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "705",
+      "order_value_proz": "98.05",
+      "absolut": "705",
+      "prozent": "98,05 %",
+      "tip": "705",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "363",
+      "order_value_proz": "51.49",
+      "absolut": "363",
+      "prozent": "51,49 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "342",
+      "order_value_proz": "48.51",
+      "absolut": "342",
+      "prozent": "48,51 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "210 GS Paul-Maar-Schule",
+    "link": {
+     "id": "ebene_6_id_57185",
+     "type": "ergebnis",
+     "title": "210 GS Paul-Maar-Schule"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,140",
+      "order_value_proz": "1.140",
+      "absolut": "1.140",
+      "prozent": "1.140",
+      "tip": "1.140",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "496",
+      "order_value_proz": "43.51",
+      "absolut": "496",
+      "prozent": "43,51 %",
+      "tip": "496",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "488",
+      "order_value_proz": "98.39",
+      "absolut": "488",
+      "prozent": "98,39 %",
+      "tip": "488",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "299",
+      "order_value_proz": "61.27",
+      "absolut": "299",
+      "prozent": "61,27 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "189",
+      "order_value_proz": "38.73",
+      "absolut": "189",
+      "prozent": "38,73 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "211 Grundschule Drielake",
+    "link": {
+     "id": "ebene_6_id_57186",
+     "type": "ergebnis",
+     "title": "211 Grundschule Drielake"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,678",
+      "order_value_proz": "1.678",
+      "absolut": "1.678",
+      "prozent": "1.678",
+      "tip": "1.678",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "666",
+      "order_value_proz": "39.69",
+      "absolut": "666",
+      "prozent": "39,69 %",
+      "tip": "666",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "651",
+      "order_value_proz": "97.75",
+      "absolut": "651",
+      "prozent": "97,75 %",
+      "tip": "651",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "306",
+      "order_value_proz": "47.00",
+      "absolut": "306",
+      "prozent": "47,00 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "345",
+      "order_value_proz": "53.00",
+      "absolut": "345",
+      "prozent": "53,00 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "212 Grundschule Drielake",
+    "link": {
+     "id": "ebene_6_id_57187",
+     "type": "ergebnis",
+     "title": "212 Grundschule Drielake"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,521",
+      "order_value_proz": "1.521",
+      "absolut": "1.521",
+      "prozent": "1.521",
+      "tip": "1.521",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "629",
+      "order_value_proz": "41.35",
+      "absolut": "629",
+      "prozent": "41,35 %",
+      "tip": "629",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "614",
+      "order_value_proz": "97.62",
+      "absolut": "614",
+      "prozent": "97,62 %",
+      "tip": "614",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "352",
+      "order_value_proz": "57.33",
+      "absolut": "352",
+      "prozent": "57,33 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "262",
+      "order_value_proz": "42.67",
+      "absolut": "262",
+      "prozent": "42,67 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "213 GS Paul-Maar-Schule",
+    "link": {
+     "id": "ebene_6_id_57188",
+     "type": "ergebnis",
+     "title": "213 GS Paul-Maar-Schule"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,269",
+      "order_value_proz": "1.269",
+      "absolut": "1.269",
+      "prozent": "1.269",
+      "tip": "1.269",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "620",
+      "order_value_proz": "48.86",
+      "absolut": "620",
+      "prozent": "48,86 %",
+      "tip": "620",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "614",
+      "order_value_proz": "99.03",
+      "absolut": "614",
+      "prozent": "99,03 %",
+      "tip": "614",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "420",
+      "order_value_proz": "68.40",
+      "absolut": "420",
+      "prozent": "68,40 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "194",
+      "order_value_proz": "31.60",
+      "absolut": "194",
+      "prozent": "31,60 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "214 GS Drielake",
+    "link": {
+     "id": "ebene_6_id_65968",
+     "type": "ergebnis",
+     "title": "214 GS Drielake"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,222",
+      "order_value_proz": "1.222",
+      "absolut": "1.222",
+      "prozent": "1.222",
+      "tip": "1.222",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "492",
+      "order_value_proz": "40.26",
+      "absolut": "492",
+      "prozent": "40,26 %",
+      "tip": "492",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "488",
+      "order_value_proz": "99.19",
+      "absolut": "488",
+      "prozent": "99,19 %",
+      "tip": "488",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "296",
+      "order_value_proz": "60.66",
+      "absolut": "296",
+      "prozent": "60,66 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "192",
+      "order_value_proz": "39.34",
+      "absolut": "192",
+      "prozent": "39,34 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "301 Grundschule Bloherfelde",
+    "link": {
+     "id": "ebene_6_id_57189",
+     "type": "ergebnis",
+     "title": "301 Grundschule Bloherfelde"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,478",
+      "order_value_proz": "1.478",
+      "absolut": "1.478",
+      "prozent": "1.478",
+      "tip": "1.478",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "602",
+      "order_value_proz": "40.73",
+      "absolut": "602",
+      "prozent": "40,73 %",
+      "tip": "602",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "594",
+      "order_value_proz": "98.67",
+      "absolut": "594",
+      "prozent": "98,67 %",
+      "tip": "594",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "331",
+      "order_value_proz": "55.72",
+      "absolut": "331",
+      "prozent": "55,72 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "263",
+      "order_value_proz": "44.28",
+      "absolut": "263",
+      "prozent": "44,28 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "302 Gymnasium Eversten",
+    "link": {
+     "id": "ebene_6_id_57190",
+     "type": "ergebnis",
+     "title": "302 Gymnasium Eversten"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,480",
+      "order_value_proz": "1.480",
+      "absolut": "1.480",
+      "prozent": "1.480",
+      "tip": "1.480",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "586",
+      "order_value_proz": "39.59",
+      "absolut": "586",
+      "prozent": "39,59 %",
+      "tip": "586",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "569",
+      "order_value_proz": "97.10",
+      "absolut": "569",
+      "prozent": "97,10 %",
+      "tip": "569",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "326",
+      "order_value_proz": "57.29",
+      "absolut": "326",
+      "prozent": "57,29 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "243",
+      "order_value_proz": "42.71",
+      "absolut": "243",
+      "prozent": "42,71 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "303 Grundschule Bloherfelde",
+    "link": {
+     "id": "ebene_6_id_57191",
+     "type": "ergebnis",
+     "title": "303 Grundschule Bloherfelde"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,982",
+      "order_value_proz": "1.982",
+      "absolut": "1.982",
+      "prozent": "1.982",
+      "tip": "1.982",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "757",
+      "order_value_proz": "38.19",
+      "absolut": "757",
+      "prozent": "38,19 %",
+      "tip": "757",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "754",
+      "order_value_proz": "99.60",
+      "absolut": "754",
+      "prozent": "99,60 %",
+      "tip": "754",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "425",
+      "order_value_proz": "56.37",
+      "absolut": "425",
+      "prozent": "56,37 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "329",
+      "order_value_proz": "43.63",
+      "absolut": "329",
+      "prozent": "43,63 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "304 Grundschule Bloherfelde",
+    "link": {
+     "id": "ebene_6_id_57192",
+     "type": "ergebnis",
+     "title": "304 Grundschule Bloherfelde"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,131",
+      "order_value_proz": "1.131",
+      "absolut": "1.131",
+      "prozent": "1.131",
+      "tip": "1.131",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "501",
+      "order_value_proz": "44.30",
+      "absolut": "501",
+      "prozent": "44,30 %",
+      "tip": "501",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "495",
+      "order_value_proz": "98.80",
+      "absolut": "495",
+      "prozent": "98,80 %",
+      "tip": "495",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "252",
+      "order_value_proz": "50.91",
+      "absolut": "252",
+      "prozent": "50,91 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "243",
+      "order_value_proz": "49.09",
+      "absolut": "243",
+      "prozent": "49,09 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "305 Gymnasium Eversten",
+    "link": {
+     "id": "ebene_6_id_57193",
+     "type": "ergebnis",
+     "title": "305 Gymnasium Eversten"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,468",
+      "order_value_proz": "1.468",
+      "absolut": "1.468",
+      "prozent": "1.468",
+      "tip": "1.468",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "642",
+      "order_value_proz": "43.73",
+      "absolut": "642",
+      "prozent": "43,73 %",
+      "tip": "642",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "633",
+      "order_value_proz": "98.60",
+      "absolut": "633",
+      "prozent": "98,60 %",
+      "tip": "633",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "289",
+      "order_value_proz": "45.66",
+      "absolut": "289",
+      "prozent": "45,66 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "344",
+      "order_value_proz": "54.34",
+      "absolut": "344",
+      "prozent": "54,34 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "306 Grundschule Wechloy",
+    "link": {
+     "id": "ebene_6_id_57194",
+     "type": "ergebnis",
+     "title": "306 Grundschule Wechloy"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,549",
+      "order_value_proz": "1.549",
+      "absolut": "1.549",
+      "prozent": "1.549",
+      "tip": "1.549",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "708",
+      "order_value_proz": "45.71",
+      "absolut": "708",
+      "prozent": "45,71 %",
+      "tip": "708",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "696",
+      "order_value_proz": "98.31",
+      "absolut": "696",
+      "prozent": "98,31 %",
+      "tip": "696",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "307",
+      "order_value_proz": "44.11",
+      "absolut": "307",
+      "prozent": "44,11 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "389",
+      "order_value_proz": "55.89",
+      "absolut": "389",
+      "prozent": "55,89 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "307 BBS Haarentor",
+    "link": {
+     "id": "ebene_6_id_57195",
+     "type": "ergebnis",
+     "title": "307 BBS Haarentor"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,737",
+      "order_value_proz": "1.737",
+      "absolut": "1.737",
+      "prozent": "1.737",
+      "tip": "1.737",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "732",
+      "order_value_proz": "42.14",
+      "absolut": "732",
+      "prozent": "42,14 %",
+      "tip": "732",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "725",
+      "order_value_proz": "99.04",
+      "absolut": "725",
+      "prozent": "99,04 %",
+      "tip": "725",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "275",
+      "order_value_proz": "37.93",
+      "absolut": "275",
+      "prozent": "37,93 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "450",
+      "order_value_proz": "62.07",
+      "absolut": "450",
+      "prozent": "62,07 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "308 Freiwillige Feuerwehr Haarentor",
+    "link": {
+     "id": "ebene_6_id_57196",
+     "type": "ergebnis",
+     "title": "308 Freiwillige Feuerwehr Haarentor"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,637",
+      "order_value_proz": "1.637",
+      "absolut": "1.637",
+      "prozent": "1.637",
+      "tip": "1.637",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "756",
+      "order_value_proz": "46.18",
+      "absolut": "756",
+      "prozent": "46,18 %",
+      "tip": "756",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "747",
+      "order_value_proz": "98.81",
+      "absolut": "747",
+      "prozent": "98,81 %",
+      "tip": "747",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "311",
+      "order_value_proz": "41.63",
+      "absolut": "311",
+      "prozent": "41,63 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "436",
+      "order_value_proz": "58.37",
+      "absolut": "436",
+      "prozent": "58,37 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "309 Grundschule Babenend",
+    "link": {
+     "id": "ebene_6_id_57197",
+     "type": "ergebnis",
+     "title": "309 Grundschule Babenend"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,787",
+      "order_value_proz": "1.787",
+      "absolut": "1.787",
+      "prozent": "1.787",
+      "tip": "1.787",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "771",
+      "order_value_proz": "43.14",
+      "absolut": "771",
+      "prozent": "43,14 %",
+      "tip": "771",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "763",
+      "order_value_proz": "98.96",
+      "absolut": "763",
+      "prozent": "98,96 %",
+      "tip": "763",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "384",
+      "order_value_proz": "50.33",
+      "absolut": "384",
+      "prozent": "50,33 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "379",
+      "order_value_proz": "49.67",
+      "absolut": "379",
+      "prozent": "49,67 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "310 Grundschule Dietrichsfeld",
+    "link": {
+     "id": "ebene_6_id_57198",
+     "type": "ergebnis",
+     "title": "310 Grundschule Dietrichsfeld"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,815",
+      "order_value_proz": "1.815",
+      "absolut": "1.815",
+      "prozent": "1.815",
+      "tip": "1.815",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "806",
+      "order_value_proz": "44.41",
+      "absolut": "806",
+      "prozent": "44,41 %",
+      "tip": "806",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "797",
+      "order_value_proz": "98.88",
+      "absolut": "797",
+      "prozent": "98,88 %",
+      "tip": "797",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "413",
+      "order_value_proz": "51.82",
+      "absolut": "413",
+      "prozent": "51,82 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "384",
+      "order_value_proz": "48.18",
+      "absolut": "384",
+      "prozent": "48,18 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "311 Grundschule Dietrichfeld",
+    "link": {
+     "id": "ebene_6_id_57199",
+     "type": "ergebnis",
+     "title": "311 Grundschule Dietrichfeld"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,536",
+      "order_value_proz": "1.536",
+      "absolut": "1.536",
+      "prozent": "1.536",
+      "tip": "1.536",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "617",
+      "order_value_proz": "40.17",
+      "absolut": "617",
+      "prozent": "40,17 %",
+      "tip": "617",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "608",
+      "order_value_proz": "98.54",
+      "absolut": "608",
+      "prozent": "98,54 %",
+      "tip": "608",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "361",
+      "order_value_proz": "59.38",
+      "absolut": "361",
+      "prozent": "59,38 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "247",
+      "order_value_proz": "40.63",
+      "absolut": "247",
+      "prozent": "40,63 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "312 Grundschule Babenend",
+    "link": {
+     "id": "ebene_6_id_57200",
+     "type": "ergebnis",
+     "title": "312 Grundschule Babenend"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,281",
+      "order_value_proz": "1.281",
+      "absolut": "1.281",
+      "prozent": "1.281",
+      "tip": "1.281",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "550",
+      "order_value_proz": "42.94",
+      "absolut": "550",
+      "prozent": "42,94 %",
+      "tip": "550",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "542",
+      "order_value_proz": "98.55",
+      "absolut": "542",
+      "prozent": "98,55 %",
+      "tip": "542",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "336",
+      "order_value_proz": "61.99",
+      "absolut": "336",
+      "prozent": "61,99 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "206",
+      "order_value_proz": "38.01",
+      "absolut": "206",
+      "prozent": "38,01 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "313 Grundschule Dietrichsfeld",
+    "link": {
+     "id": "ebene_6_id_57201",
+     "type": "ergebnis",
+     "title": "313 Grundschule Dietrichsfeld"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,758",
+      "order_value_proz": "1.758",
+      "absolut": "1.758",
+      "prozent": "1.758",
+      "tip": "1.758",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "602",
+      "order_value_proz": "34.24",
+      "absolut": "602",
+      "prozent": "34,24 %",
+      "tip": "602",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "591",
+      "order_value_proz": "98.17",
+      "absolut": "591",
+      "prozent": "98,17 %",
+      "tip": "591",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "328",
+      "order_value_proz": "55.50",
+      "absolut": "328",
+      "prozent": "55,50 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "263",
+      "order_value_proz": "44.50",
+      "absolut": "263",
+      "prozent": "44,50 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "314 Jugendfreizeitstätte Bürgerfelde",
+    "link": {
+     "id": "ebene_6_id_57202",
+     "type": "ergebnis",
+     "title": "314 Jugendfreizeitstätte Bürgerfelde"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,386",
+      "order_value_proz": "1.386",
+      "absolut": "1.386",
+      "prozent": "1.386",
+      "tip": "1.386",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "576",
+      "order_value_proz": "41.56",
+      "absolut": "576",
+      "prozent": "41,56 %",
+      "tip": "576",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "568",
+      "order_value_proz": "98.61",
+      "absolut": "568",
+      "prozent": "98,61 %",
+      "tip": "568",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "327",
+      "order_value_proz": "57.57",
+      "absolut": "327",
+      "prozent": "57,57 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "241",
+      "order_value_proz": "42.43",
+      "absolut": "241",
+      "prozent": "42,43 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "400 GS Alexandersfeld",
+    "link": {
+     "id": "ebene_6_id_57203",
+     "type": "ergebnis",
+     "title": "400 GS Alexandersfeld"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,108",
+      "order_value_proz": "1.108",
+      "absolut": "1.108",
+      "prozent": "1.108",
+      "tip": "1.108",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "498",
+      "order_value_proz": "44.95",
+      "absolut": "498",
+      "prozent": "44,95 %",
+      "tip": "498",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "494",
+      "order_value_proz": "99.20",
+      "absolut": "494",
+      "prozent": "99,20 %",
+      "tip": "494",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "262",
+      "order_value_proz": "53.04",
+      "absolut": "262",
+      "prozent": "53,04 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "232",
+      "order_value_proz": "46.96",
+      "absolut": "232",
+      "prozent": "46,96 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "401 GS Alexandersfeld",
+    "link": {
+     "id": "ebene_6_id_57204",
+     "type": "ergebnis",
+     "title": "401 GS Alexandersfeld"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,696",
+      "order_value_proz": "1.696",
+      "absolut": "1.696",
+      "prozent": "1.696",
+      "tip": "1.696",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "790",
+      "order_value_proz": "46.58",
+      "absolut": "790",
+      "prozent": "46,58 %",
+      "tip": "790",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "783",
+      "order_value_proz": "99.11",
+      "absolut": "783",
+      "prozent": "99,11 %",
+      "tip": "783",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "528",
+      "order_value_proz": "67.43",
+      "absolut": "528",
+      "prozent": "67,43 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "255",
+      "order_value_proz": "32.57",
+      "absolut": "255",
+      "prozent": "32,57 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "402 GS Alexandersfeld",
+    "link": {
+     "id": "ebene_6_id_57205",
+     "type": "ergebnis",
+     "title": "402 GS Alexandersfeld"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,500",
+      "order_value_proz": "1.500",
+      "absolut": "1.500",
+      "prozent": "1.500",
+      "tip": "1.500",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "691",
+      "order_value_proz": "46.07",
+      "absolut": "691",
+      "prozent": "46,07 %",
+      "tip": "691",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "676",
+      "order_value_proz": "97.83",
+      "absolut": "676",
+      "prozent": "97,83 %",
+      "tip": "676",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "416",
+      "order_value_proz": "61.54",
+      "absolut": "416",
+      "prozent": "61,54 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "260",
+      "order_value_proz": "38.46",
+      "absolut": "260",
+      "prozent": "38,46 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "403 Oberschule Ofenerdiek",
+    "link": {
+     "id": "ebene_6_id_57206",
+     "type": "ergebnis",
+     "title": "403 Oberschule Ofenerdiek"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,585",
+      "order_value_proz": "1.585",
+      "absolut": "1.585",
+      "prozent": "1.585",
+      "tip": "1.585",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "626",
+      "order_value_proz": "39.50",
+      "absolut": "626",
+      "prozent": "39,50 %",
+      "tip": "626",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "613",
+      "order_value_proz": "97.92",
+      "absolut": "613",
+      "prozent": "97,92 %",
+      "tip": "613",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "389",
+      "order_value_proz": "63.46",
+      "absolut": "389",
+      "prozent": "63,46 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "224",
+      "order_value_proz": "36.54",
+      "absolut": "224",
+      "prozent": "36,54 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "404 Oberschule Ofenerdiek",
+    "link": {
+     "id": "ebene_6_id_57207",
+     "type": "ergebnis",
+     "title": "404 Oberschule Ofenerdiek"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,461",
+      "order_value_proz": "1.461",
+      "absolut": "1.461",
+      "prozent": "1.461",
+      "tip": "1.461",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "645",
+      "order_value_proz": "44.15",
+      "absolut": "645",
+      "prozent": "44,15 %",
+      "tip": "645",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "631",
+      "order_value_proz": "97.83",
+      "absolut": "631",
+      "prozent": "97,83 %",
+      "tip": "631",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "431",
+      "order_value_proz": "68.30",
+      "absolut": "431",
+      "prozent": "68,30 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "200",
+      "order_value_proz": "31.70",
+      "absolut": "200",
+      "prozent": "31,70 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "405 Oberschule Ofenerdiek",
+    "link": {
+     "id": "ebene_6_id_57208",
+     "type": "ergebnis",
+     "title": "405 Oberschule Ofenerdiek"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,458",
+      "order_value_proz": "1.458",
+      "absolut": "1.458",
+      "prozent": "1.458",
+      "tip": "1.458",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "622",
+      "order_value_proz": "42.66",
+      "absolut": "622",
+      "prozent": "42,66 %",
+      "tip": "622",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "615",
+      "order_value_proz": "98.87",
+      "absolut": "615",
+      "prozent": "98,87 %",
+      "tip": "615",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "424",
+      "order_value_proz": "68.94",
+      "absolut": "424",
+      "prozent": "68,94 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "191",
+      "order_value_proz": "31.06",
+      "absolut": "191",
+      "prozent": "31,06 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "406 Oberschule Ofenerdiek",
+    "link": {
+     "id": "ebene_6_id_57209",
+     "type": "ergebnis",
+     "title": "406 Oberschule Ofenerdiek"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,625",
+      "order_value_proz": "1.625",
+      "absolut": "1.625",
+      "prozent": "1.625",
+      "tip": "1.625",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "668",
+      "order_value_proz": "41.11",
+      "absolut": "668",
+      "prozent": "41,11 %",
+      "tip": "668",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "659",
+      "order_value_proz": "98.65",
+      "absolut": "659",
+      "prozent": "98,65 %",
+      "tip": "659",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "422",
+      "order_value_proz": "64.04",
+      "absolut": "422",
+      "prozent": "64,04 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "237",
+      "order_value_proz": "35.96",
+      "absolut": "237",
+      "prozent": "35,96 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "407 Oberschule Ofenerdiek",
+    "link": {
+     "id": "ebene_6_id_57210",
+     "type": "ergebnis",
+     "title": "407 Oberschule Ofenerdiek"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,462",
+      "order_value_proz": "1.462",
+      "absolut": "1.462",
+      "prozent": "1.462",
+      "tip": "1.462",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "666",
+      "order_value_proz": "45.55",
+      "absolut": "666",
+      "prozent": "45,55 %",
+      "tip": "666",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "655",
+      "order_value_proz": "98.35",
+      "absolut": "655",
+      "prozent": "98,35 %",
+      "tip": "655",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "426",
+      "order_value_proz": "65.04",
+      "absolut": "426",
+      "prozent": "65,04 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "229",
+      "order_value_proz": "34.96",
+      "absolut": "229",
+      "prozent": "34,96 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "408 Ev. Kirchengemeinde Ofenerdiek",
+    "link": {
+     "id": "ebene_6_id_57211",
+     "type": "ergebnis",
+     "title": "408 Ev. Kirchengemeinde Ofenerdiek"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,661",
+      "order_value_proz": "1.661",
+      "absolut": "1.661",
+      "prozent": "1.661",
+      "tip": "1.661",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "786",
+      "order_value_proz": "47.32",
+      "absolut": "786",
+      "prozent": "47,32 %",
+      "tip": "786",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "774",
+      "order_value_proz": "98.47",
+      "absolut": "774",
+      "prozent": "98,47 %",
+      "tip": "774",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "458",
+      "order_value_proz": "59.17",
+      "absolut": "458",
+      "prozent": "59,17 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "316",
+      "order_value_proz": "40.83",
+      "absolut": "316",
+      "prozent": "40,83 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "409 Seniorentreffpunkt am Pavillon",
+    "link": {
+     "id": "ebene_6_id_57212",
+     "type": "ergebnis",
+     "title": "409 Seniorentreffpunkt am Pavillon"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,545",
+      "order_value_proz": "1.545",
+      "absolut": "1.545",
+      "prozent": "1.545",
+      "tip": "1.545",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "522",
+      "order_value_proz": "33.79",
+      "absolut": "522",
+      "prozent": "33,79 %",
+      "tip": "522",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "515",
+      "order_value_proz": "98.66",
+      "absolut": "515",
+      "prozent": "98,66 %",
+      "tip": "515",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "329",
+      "order_value_proz": "63.88",
+      "absolut": "329",
+      "prozent": "63,88 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "186",
+      "order_value_proz": "36.12",
+      "absolut": "186",
+      "prozent": "36,12 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "410 Grundschule Etzhorn",
+    "link": {
+     "id": "ebene_6_id_57213",
+     "type": "ergebnis",
+     "title": "410 Grundschule Etzhorn"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,674",
+      "order_value_proz": "1.674",
+      "absolut": "1.674",
+      "prozent": "1.674",
+      "tip": "1.674",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "935",
+      "order_value_proz": "55.85",
+      "absolut": "935",
+      "prozent": "55,85 %",
+      "tip": "935",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "919",
+      "order_value_proz": "98.29",
+      "absolut": "919",
+      "prozent": "98,29 %",
+      "tip": "919",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "643",
+      "order_value_proz": "69.97",
+      "absolut": "643",
+      "prozent": "69,97 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "276",
+      "order_value_proz": "30.03",
+      "absolut": "276",
+      "prozent": "30,03 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "411 GS Nadorst",
+    "link": {
+     "id": "ebene_6_id_57214",
+     "type": "ergebnis",
+     "title": "411 GS Nadorst"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,747",
+      "order_value_proz": "1.747",
+      "absolut": "1.747",
+      "prozent": "1.747",
+      "tip": "1.747",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "742",
+      "order_value_proz": "42.47",
+      "absolut": "742",
+      "prozent": "42,47 %",
+      "tip": "742",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "731",
+      "order_value_proz": "98.52",
+      "absolut": "731",
+      "prozent": "98,52 %",
+      "tip": "731",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "472",
+      "order_value_proz": "64.57",
+      "absolut": "472",
+      "prozent": "64,57 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "259",
+      "order_value_proz": "35.43",
+      "absolut": "259",
+      "prozent": "35,43 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "412 IGS Flötenteich",
+    "link": {
+     "id": "ebene_6_id_57215",
+     "type": "ergebnis",
+     "title": "412 IGS Flötenteich"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,454",
+      "order_value_proz": "1.454",
+      "absolut": "1.454",
+      "prozent": "1.454",
+      "tip": "1.454",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "528",
+      "order_value_proz": "36.31",
+      "absolut": "528",
+      "prozent": "36,31 %",
+      "tip": "528",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "516",
+      "order_value_proz": "97.73",
+      "absolut": "516",
+      "prozent": "97,73 %",
+      "tip": "516",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "334",
+      "order_value_proz": "64.73",
+      "absolut": "334",
+      "prozent": "64,73 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "182",
+      "order_value_proz": "35.27",
+      "absolut": "182",
+      "prozent": "35,27 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "413 IGS Flötenteich",
+    "link": {
+     "id": "ebene_6_id_57216",
+     "type": "ergebnis",
+     "title": "413 IGS Flötenteich"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,594",
+      "order_value_proz": "1.594",
+      "absolut": "1.594",
+      "prozent": "1.594",
+      "tip": "1.594",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "599",
+      "order_value_proz": "37.58",
+      "absolut": "599",
+      "prozent": "37,58 %",
+      "tip": "599",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "591",
+      "order_value_proz": "98.66",
+      "absolut": "591",
+      "prozent": "98,66 %",
+      "tip": "591",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "356",
+      "order_value_proz": "60.24",
+      "absolut": "356",
+      "prozent": "60,24 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "235",
+      "order_value_proz": "39.76",
+      "absolut": "235",
+      "prozent": "39,76 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "414 IGS Flötenteich",
+    "link": {
+     "id": "ebene_6_id_57217",
+     "type": "ergebnis",
+     "title": "414 IGS Flötenteich"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,021",
+      "order_value_proz": "1.021",
+      "absolut": "1.021",
+      "prozent": "1.021",
+      "tip": "1.021",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "380",
+      "order_value_proz": "37.22",
+      "absolut": "380",
+      "prozent": "37,22 %",
+      "tip": "380",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "377",
+      "order_value_proz": "99.21",
+      "absolut": "377",
+      "prozent": "99,21 %",
+      "tip": "377",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "229",
+      "order_value_proz": "60.74",
+      "absolut": "229",
+      "prozent": "60,74 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "148",
+      "order_value_proz": "39.26",
+      "absolut": "148",
+      "prozent": "39,26 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "415 Grundschule Ohmstede",
+    "link": {
+     "id": "ebene_6_id_57218",
+     "type": "ergebnis",
+     "title": "415 Grundschule Ohmstede"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,643",
+      "order_value_proz": "1.643",
+      "absolut": "1.643",
+      "prozent": "1.643",
+      "tip": "1.643",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "736",
+      "order_value_proz": "44.80",
+      "absolut": "736",
+      "prozent": "44,80 %",
+      "tip": "736",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "721",
+      "order_value_proz": "97.96",
+      "absolut": "721",
+      "prozent": "97,96 %",
+      "tip": "721",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "432",
+      "order_value_proz": "59.92",
+      "absolut": "432",
+      "prozent": "59,92 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "289",
+      "order_value_proz": "40.08",
+      "absolut": "289",
+      "prozent": "40,08 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "416 Grundschule Ohmstede",
+    "link": {
+     "id": "ebene_6_id_57219",
+     "type": "ergebnis",
+     "title": "416 Grundschule Ohmstede"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,537",
+      "order_value_proz": "1.537",
+      "absolut": "1.537",
+      "prozent": "1.537",
+      "tip": "1.537",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "715",
+      "order_value_proz": "46.52",
+      "absolut": "715",
+      "prozent": "46,52 %",
+      "tip": "715",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "699",
+      "order_value_proz": "97.76",
+      "absolut": "699",
+      "prozent": "97,76 %",
+      "tip": "699",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "436",
+      "order_value_proz": "62.37",
+      "absolut": "436",
+      "prozent": "62,37 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "263",
+      "order_value_proz": "37.63",
+      "absolut": "263",
+      "prozent": "37,63 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "501 LAVES",
+    "link": {
+     "id": "ebene_6_id_57220",
+     "type": "ergebnis",
+     "title": "501 LAVES"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,362",
+      "order_value_proz": "1.362",
+      "absolut": "1.362",
+      "prozent": "1.362",
+      "tip": "1.362",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "571",
+      "order_value_proz": "41.92",
+      "absolut": "571",
+      "prozent": "41,92 %",
+      "tip": "571",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "562",
+      "order_value_proz": "98.42",
+      "absolut": "562",
+      "prozent": "98,42 %",
+      "tip": "562",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "397",
+      "order_value_proz": "70.64",
+      "absolut": "397",
+      "prozent": "70,64 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "165",
+      "order_value_proz": "29.36",
+      "absolut": "165",
+      "prozent": "29,36 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "502 Kindertagesstätte Harreweg",
+    "link": {
+     "id": "ebene_6_id_57221",
+     "type": "ergebnis",
+     "title": "502 Kindertagesstätte Harreweg"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,527",
+      "order_value_proz": "1.527",
+      "absolut": "1.527",
+      "prozent": "1.527",
+      "tip": "1.527",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "661",
+      "order_value_proz": "43.29",
+      "absolut": "661",
+      "prozent": "43,29 %",
+      "tip": "661",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "649",
+      "order_value_proz": "98.18",
+      "absolut": "649",
+      "prozent": "98,18 %",
+      "tip": "649",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "419",
+      "order_value_proz": "64.56",
+      "absolut": "419",
+      "prozent": "64,56 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "230",
+      "order_value_proz": "35.44",
+      "absolut": "230",
+      "prozent": "35,44 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "503 Grundschule Bümmerstede",
+    "link": {
+     "id": "ebene_6_id_57222",
+     "type": "ergebnis",
+     "title": "503 Grundschule Bümmerstede"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,343",
+      "order_value_proz": "1.343",
+      "absolut": "1.343",
+      "prozent": "1.343",
+      "tip": "1.343",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "519",
+      "order_value_proz": "38.64",
+      "absolut": "519",
+      "prozent": "38,64 %",
+      "tip": "519",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "510",
+      "order_value_proz": "98.27",
+      "absolut": "510",
+      "prozent": "98,27 %",
+      "tip": "510",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "363",
+      "order_value_proz": "71.18",
+      "absolut": "363",
+      "prozent": "71,18 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "147",
+      "order_value_proz": "28.82",
+      "absolut": "147",
+      "prozent": "28,82 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "504 Grundschule Bümmerstede",
+    "link": {
+     "id": "ebene_6_id_57223",
+     "type": "ergebnis",
+     "title": "504 Grundschule Bümmerstede"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,360",
+      "order_value_proz": "1.360",
+      "absolut": "1.360",
+      "prozent": "1.360",
+      "tip": "1.360",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "620",
+      "order_value_proz": "45.59",
+      "absolut": "620",
+      "prozent": "45,59 %",
+      "tip": "620",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "614",
+      "order_value_proz": "99.03",
+      "absolut": "614",
+      "prozent": "99,03 %",
+      "tip": "614",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "462",
+      "order_value_proz": "75.24",
+      "absolut": "462",
+      "prozent": "75,24 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "152",
+      "order_value_proz": "24.76",
+      "absolut": "152",
+      "prozent": "24,76 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "505 Jugendfreizeitstätte Dwaschweg",
+    "link": {
+     "id": "ebene_6_id_57224",
+     "type": "ergebnis",
+     "title": "505 Jugendfreizeitstätte Dwaschweg"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,481",
+      "order_value_proz": "1.481",
+      "absolut": "1.481",
+      "prozent": "1.481",
+      "tip": "1.481",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "654",
+      "order_value_proz": "44.16",
+      "absolut": "654",
+      "prozent": "44,16 %",
+      "tip": "654",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "640",
+      "order_value_proz": "97.86",
+      "absolut": "640",
+      "prozent": "97,86 %",
+      "tip": "640",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "456",
+      "order_value_proz": "71.25",
+      "absolut": "456",
+      "prozent": "71,25 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "184",
+      "order_value_proz": "28.75",
+      "absolut": "184",
+      "prozent": "28,75 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "506 GS Unter dem Regenbogen",
+    "link": {
+     "id": "ebene_6_id_57225",
+     "type": "ergebnis",
+     "title": "506 GS Unter dem Regenbogen"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,529",
+      "order_value_proz": "1.529",
+      "absolut": "1.529",
+      "prozent": "1.529",
+      "tip": "1.529",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "501",
+      "order_value_proz": "32.77",
+      "absolut": "501",
+      "prozent": "32,77 %",
+      "tip": "501",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "491",
+      "order_value_proz": "98.00",
+      "absolut": "491",
+      "prozent": "98,00 %",
+      "tip": "491",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "320",
+      "order_value_proz": "65.17",
+      "absolut": "320",
+      "prozent": "65,17 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "171",
+      "order_value_proz": "34.83",
+      "absolut": "171",
+      "prozent": "34,83 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "507 GS Unter dem Regenbogen",
+    "link": {
+     "id": "ebene_6_id_57226",
+     "type": "ergebnis",
+     "title": "507 GS Unter dem Regenbogen"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,600",
+      "order_value_proz": "1.600",
+      "absolut": "1.600",
+      "prozent": "1.600",
+      "tip": "1.600",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "654",
+      "order_value_proz": "40.88",
+      "absolut": "654",
+      "prozent": "40,88 %",
+      "tip": "654",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "634",
+      "order_value_proz": "96.94",
+      "absolut": "634",
+      "prozent": "96,94 %",
+      "tip": "634",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "439",
+      "order_value_proz": "69.24",
+      "absolut": "439",
+      "prozent": "69,24 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "195",
+      "order_value_proz": "30.76",
+      "absolut": "195",
+      "prozent": "30,76 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "508 Kindertagesstätte Harreweg",
+    "link": {
+     "id": "ebene_6_id_57227",
+     "type": "ergebnis",
+     "title": "508 Kindertagesstätte Harreweg"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,358",
+      "order_value_proz": "1.358",
+      "absolut": "1.358",
+      "prozent": "1.358",
+      "tip": "1.358",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "618",
+      "order_value_proz": "45.51",
+      "absolut": "618",
+      "prozent": "45,51 %",
+      "tip": "618",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "613",
+      "order_value_proz": "99.19",
+      "absolut": "613",
+      "prozent": "99,19 %",
+      "tip": "613",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "388",
+      "order_value_proz": "63.30",
+      "absolut": "388",
+      "prozent": "63,30 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "225",
+      "order_value_proz": "36.70",
+      "absolut": "225",
+      "prozent": "36,70 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "509 Kindertagesstätte Harreweg",
+    "link": {
+     "id": "ebene_6_id_57228",
+     "type": "ergebnis",
+     "title": "509 Kindertagesstätte Harreweg"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,342",
+      "order_value_proz": "1.342",
+      "absolut": "1.342",
+      "prozent": "1.342",
+      "tip": "1.342",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "533",
+      "order_value_proz": "39.72",
+      "absolut": "533",
+      "prozent": "39,72 %",
+      "tip": "533",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "524",
+      "order_value_proz": "98.31",
+      "absolut": "524",
+      "prozent": "98,31 %",
+      "tip": "524",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "363",
+      "order_value_proz": "69.27",
+      "absolut": "363",
+      "prozent": "69,27 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "161",
+      "order_value_proz": "30.73",
+      "absolut": "161",
+      "prozent": "30,73 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "510 IGS Kreyenbrück",
+    "link": {
+     "id": "ebene_6_id_57229",
+     "type": "ergebnis",
+     "title": "510 IGS Kreyenbrück"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,519",
+      "order_value_proz": "1.519",
+      "absolut": "1.519",
+      "prozent": "1.519",
+      "tip": "1.519",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "576",
+      "order_value_proz": "37.92",
+      "absolut": "576",
+      "prozent": "37,92 %",
+      "tip": "576",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "555",
+      "order_value_proz": "96.35",
+      "absolut": "555",
+      "prozent": "96,35 %",
+      "tip": "555",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "398",
+      "order_value_proz": "71.71",
+      "absolut": "398",
+      "prozent": "71,71 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "157",
+      "order_value_proz": "28.29",
+      "absolut": "157",
+      "prozent": "28,29 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "511 IGS Kreyenbrück, SEK I",
+    "link": {
+     "id": "ebene_6_id_57230",
+     "type": "ergebnis",
+     "title": "511 IGS Kreyenbrück, SEK I"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,336",
+      "order_value_proz": "1.336",
+      "absolut": "1.336",
+      "prozent": "1.336",
+      "tip": "1.336",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "546",
+      "order_value_proz": "40.87",
+      "absolut": "546",
+      "prozent": "40,87 %",
+      "tip": "546",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "536",
+      "order_value_proz": "98.17",
+      "absolut": "536",
+      "prozent": "98,17 %",
+      "tip": "536",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "350",
+      "order_value_proz": "65.30",
+      "absolut": "350",
+      "prozent": "65,30 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "186",
+      "order_value_proz": "34.70",
+      "absolut": "186",
+      "prozent": "34,70 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "512 IGS Kreyenbrück",
+    "link": {
+     "id": "ebene_6_id_57231",
+     "type": "ergebnis",
+     "title": "512 IGS Kreyenbrück"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,589",
+      "order_value_proz": "1.589",
+      "absolut": "1.589",
+      "prozent": "1.589",
+      "tip": "1.589",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "623",
+      "order_value_proz": "39.21",
+      "absolut": "623",
+      "prozent": "39,21 %",
+      "tip": "623",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "613",
+      "order_value_proz": "98.39",
+      "absolut": "613",
+      "prozent": "98,39 %",
+      "tip": "613",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "380",
+      "order_value_proz": "61.99",
+      "absolut": "380",
+      "prozent": "61,99 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "233",
+      "order_value_proz": "38.01",
+      "absolut": "233",
+      "prozent": "38,01 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "513 IGS Kreyenbrück, SEK I",
+    "link": {
+     "id": "ebene_6_id_57232",
+     "type": "ergebnis",
+     "title": "513 IGS Kreyenbrück, SEK I"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,270",
+      "order_value_proz": "1.270",
+      "absolut": "1.270",
+      "prozent": "1.270",
+      "tip": "1.270",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "512",
+      "order_value_proz": "40.31",
+      "absolut": "512",
+      "prozent": "40,31 %",
+      "tip": "512",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "507",
+      "order_value_proz": "99.02",
+      "absolut": "507",
+      "prozent": "99,02 %",
+      "tip": "507",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "326",
+      "order_value_proz": "64.30",
+      "absolut": "326",
+      "prozent": "64,30 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "181",
+      "order_value_proz": "35.70",
+      "absolut": "181",
+      "prozent": "35,70 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "514 Grundschule Krusenbusch",
+    "link": {
+     "id": "ebene_6_id_57233",
+     "type": "ergebnis",
+     "title": "514 Grundschule Krusenbusch"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,157",
+      "order_value_proz": "1.157",
+      "absolut": "1.157",
+      "prozent": "1.157",
+      "tip": "1.157",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "589",
+      "order_value_proz": "50.91",
+      "absolut": "589",
+      "prozent": "50,91 %",
+      "tip": "589",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "574",
+      "order_value_proz": "97.45",
+      "absolut": "574",
+      "prozent": "97,45 %",
+      "tip": "574",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "417",
+      "order_value_proz": "72.65",
+      "absolut": "417",
+      "prozent": "72,65 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "157",
+      "order_value_proz": "27.35",
+      "absolut": "157",
+      "prozent": "27,35 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "515 Grundschule Krusenbusch",
+    "link": {
+     "id": "ebene_6_id_57234",
+     "type": "ergebnis",
+     "title": "515 Grundschule Krusenbusch"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,814",
+      "order_value_proz": "1.814",
+      "absolut": "1.814",
+      "prozent": "1.814",
+      "tip": "1.814",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "841",
+      "order_value_proz": "46.36",
+      "absolut": "841",
+      "prozent": "46,36 %",
+      "tip": "841",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "819",
+      "order_value_proz": "97.38",
+      "absolut": "819",
+      "prozent": "97,38 %",
+      "tip": "819",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "590",
+      "order_value_proz": "72.04",
+      "absolut": "590",
+      "prozent": "72,04 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "229",
+      "order_value_proz": "27.96",
+      "absolut": "229",
+      "prozent": "27,96 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "516 GS Paul-Maar-Schule",
+    "link": {
+     "id": "ebene_6_id_57235",
+     "type": "ergebnis",
+     "title": "516 GS Paul-Maar-Schule"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,395",
+      "order_value_proz": "1.395",
+      "absolut": "1.395",
+      "prozent": "1.395",
+      "tip": "1.395",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "616",
+      "order_value_proz": "44.16",
+      "absolut": "616",
+      "prozent": "44,16 %",
+      "tip": "616",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "601",
+      "order_value_proz": "97.56",
+      "absolut": "601",
+      "prozent": "97,56 %",
+      "tip": "601",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "377",
+      "order_value_proz": "62.73",
+      "absolut": "377",
+      "prozent": "62,73 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "224",
+      "order_value_proz": "37.27",
+      "absolut": "224",
+      "prozent": "37,27 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "517 GS Paul-Maar-Schule",
+    "link": {
+     "id": "ebene_6_id_57236",
+     "type": "ergebnis",
+     "title": "517 GS Paul-Maar-Schule"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,211",
+      "order_value_proz": "1.211",
+      "absolut": "1.211",
+      "prozent": "1.211",
+      "tip": "1.211",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "660",
+      "order_value_proz": "54.50",
+      "absolut": "660",
+      "prozent": "54,50 %",
+      "tip": "660",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "647",
+      "order_value_proz": "98.03",
+      "absolut": "647",
+      "prozent": "98,03 %",
+      "tip": "647",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "396",
+      "order_value_proz": "61.21",
+      "absolut": "396",
+      "prozent": "61,21 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "251",
+      "order_value_proz": "38.79",
+      "absolut": "251",
+      "prozent": "38,79 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "601 Grundschule Hogenkamp",
+    "link": {
+     "id": "ebene_6_id_57237",
+     "type": "ergebnis",
+     "title": "601 Grundschule Hogenkamp"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,369",
+      "order_value_proz": "1.369",
+      "absolut": "1.369",
+      "prozent": "1.369",
+      "tip": "1.369",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "633",
+      "order_value_proz": "46.24",
+      "absolut": "633",
+      "prozent": "46,24 %",
+      "tip": "633",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "626",
+      "order_value_proz": "98.89",
+      "absolut": "626",
+      "prozent": "98,89 %",
+      "tip": "626",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "388",
+      "order_value_proz": "61.98",
+      "absolut": "388",
+      "prozent": "61,98 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "238",
+      "order_value_proz": "38.02",
+      "absolut": "238",
+      "prozent": "38,02 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "602 Grundschule Hogenkamp",
+    "link": {
+     "id": "ebene_6_id_57238",
+     "type": "ergebnis",
+     "title": "602 Grundschule Hogenkamp"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,294",
+      "order_value_proz": "1.294",
+      "absolut": "1.294",
+      "prozent": "1.294",
+      "tip": "1.294",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "663",
+      "order_value_proz": "51.24",
+      "absolut": "663",
+      "prozent": "51,24 %",
+      "tip": "663",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "657",
+      "order_value_proz": "99.10",
+      "absolut": "657",
+      "prozent": "99,10 %",
+      "tip": "657",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "372",
+      "order_value_proz": "56.62",
+      "absolut": "372",
+      "prozent": "56,62 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "285",
+      "order_value_proz": "43.38",
+      "absolut": "285",
+      "prozent": "43,38 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "603 Grundschule Hogenkamp",
+    "link": {
+     "id": "ebene_6_id_57239",
+     "type": "ergebnis",
+     "title": "603 Grundschule Hogenkamp"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,300",
+      "order_value_proz": "1.300",
+      "absolut": "1.300",
+      "prozent": "1.300",
+      "tip": "1.300",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "611",
+      "order_value_proz": "47.00",
+      "absolut": "611",
+      "prozent": "47,00 %",
+      "tip": "611",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "605",
+      "order_value_proz": "99.02",
+      "absolut": "605",
+      "prozent": "99,02 %",
+      "tip": "605",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "396",
+      "order_value_proz": "65.45",
+      "absolut": "396",
+      "prozent": "65,45 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "209",
+      "order_value_proz": "34.55",
+      "absolut": "209",
+      "prozent": "34,55 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "604 Grundschule Hogenkamp",
+    "link": {
+     "id": "ebene_6_id_57240",
+     "type": "ergebnis",
+     "title": "604 Grundschule Hogenkamp"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,763",
+      "order_value_proz": "1.763",
+      "absolut": "1.763",
+      "prozent": "1.763",
+      "tip": "1.763",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "728",
+      "order_value_proz": "41.29",
+      "absolut": "728",
+      "prozent": "41,29 %",
+      "tip": "728",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "720",
+      "order_value_proz": "98.90",
+      "absolut": "720",
+      "prozent": "98,90 %",
+      "tip": "720",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "349",
+      "order_value_proz": "48.47",
+      "absolut": "349",
+      "prozent": "48,47 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "371",
+      "order_value_proz": "51.53",
+      "absolut": "371",
+      "prozent": "51,53 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "605 LBZ für Hörgeschädigte",
+    "link": {
+     "id": "ebene_6_id_57241",
+     "type": "ergebnis",
+     "title": "605 LBZ für Hörgeschädigte"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "2,014",
+      "order_value_proz": "2.014",
+      "absolut": "2.014",
+      "prozent": "2.014",
+      "tip": "2.014",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "734",
+      "order_value_proz": "36.44",
+      "absolut": "734",
+      "prozent": "36,44 %",
+      "tip": "734",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "721",
+      "order_value_proz": "98.23",
+      "absolut": "721",
+      "prozent": "98,23 %",
+      "tip": "721",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "389",
+      "order_value_proz": "53.95",
+      "absolut": "389",
+      "prozent": "53,95 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "332",
+      "order_value_proz": "46.05",
+      "absolut": "332",
+      "prozent": "46,05 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "606 LBZ für Hörgeschädigte",
+    "link": {
+     "id": "ebene_6_id_57242",
+     "type": "ergebnis",
+     "title": "606 LBZ für Hörgeschädigte"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,534",
+      "order_value_proz": "1.534",
+      "absolut": "1.534",
+      "prozent": "1.534",
+      "tip": "1.534",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "592",
+      "order_value_proz": "38.59",
+      "absolut": "592",
+      "prozent": "38,59 %",
+      "tip": "592",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "585",
+      "order_value_proz": "98.82",
+      "absolut": "585",
+      "prozent": "98,82 %",
+      "tip": "585",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "331",
+      "order_value_proz": "56.58",
+      "absolut": "331",
+      "prozent": "56,58 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "254",
+      "order_value_proz": "43.42",
+      "absolut": "254",
+      "prozent": "43,42 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "607 IGS Helene-Lange-Schule",
+    "link": {
+     "id": "ebene_6_id_57243",
+     "type": "ergebnis",
+     "title": "607 IGS Helene-Lange-Schule"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,429",
+      "order_value_proz": "1.429",
+      "absolut": "1.429",
+      "prozent": "1.429",
+      "tip": "1.429",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "586",
+      "order_value_proz": "41.01",
+      "absolut": "586",
+      "prozent": "41,01 %",
+      "tip": "586",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "581",
+      "order_value_proz": "99.15",
+      "absolut": "581",
+      "prozent": "99,15 %",
+      "tip": "581",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "268",
+      "order_value_proz": "46.13",
+      "absolut": "268",
+      "prozent": "46,13 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "313",
+      "order_value_proz": "53.87",
+      "absolut": "313",
+      "prozent": "53,87 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "608 Kath. Grundschule Eversten",
+    "link": {
+     "id": "ebene_6_id_57244",
+     "type": "ergebnis",
+     "title": "608 Kath. Grundschule Eversten"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,507",
+      "order_value_proz": "1.507",
+      "absolut": "1.507",
+      "prozent": "1.507",
+      "tip": "1.507",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "533",
+      "order_value_proz": "35.37",
+      "absolut": "533",
+      "prozent": "35,37 %",
+      "tip": "533",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "527",
+      "order_value_proz": "98.87",
+      "absolut": "527",
+      "prozent": "98,87 %",
+      "tip": "527",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "323",
+      "order_value_proz": "61.29",
+      "absolut": "323",
+      "prozent": "61,29 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "204",
+      "order_value_proz": "38.71",
+      "absolut": "204",
+      "prozent": "38,71 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "609 Kath. Grundschule Eversten",
+    "link": {
+     "id": "ebene_6_id_57245",
+     "type": "ergebnis",
+     "title": "609 Kath. Grundschule Eversten"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,546",
+      "order_value_proz": "1.546",
+      "absolut": "1.546",
+      "prozent": "1.546",
+      "tip": "1.546",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "671",
+      "order_value_proz": "43.40",
+      "absolut": "671",
+      "prozent": "43,40 %",
+      "tip": "671",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "656",
+      "order_value_proz": "97.76",
+      "absolut": "656",
+      "prozent": "97,76 %",
+      "tip": "656",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "353",
+      "order_value_proz": "53.81",
+      "absolut": "353",
+      "prozent": "53,81 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "303",
+      "order_value_proz": "46.19",
+      "absolut": "303",
+      "prozent": "46,19 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "610 Comeniusschule",
+    "link": {
+     "id": "ebene_6_id_57246",
+     "type": "ergebnis",
+     "title": "610 Comeniusschule"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,418",
+      "order_value_proz": "1.418",
+      "absolut": "1.418",
+      "prozent": "1.418",
+      "tip": "1.418",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "599",
+      "order_value_proz": "42.24",
+      "absolut": "599",
+      "prozent": "42,24 %",
+      "tip": "599",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "594",
+      "order_value_proz": "99.17",
+      "absolut": "594",
+      "prozent": "99,17 %",
+      "tip": "594",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "306",
+      "order_value_proz": "51.52",
+      "absolut": "306",
+      "prozent": "51,52 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "288",
+      "order_value_proz": "48.48",
+      "absolut": "288",
+      "prozent": "48,48 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "611 IGS Helene-Lange-Schule",
+    "link": {
+     "id": "ebene_6_id_57247",
+     "type": "ergebnis",
+     "title": "611 IGS Helene-Lange-Schule"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,446",
+      "order_value_proz": "1.446",
+      "absolut": "1.446",
+      "prozent": "1.446",
+      "tip": "1.446",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "661",
+      "order_value_proz": "45.71",
+      "absolut": "661",
+      "prozent": "45,71 %",
+      "tip": "661",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "654",
+      "order_value_proz": "98.94",
+      "absolut": "654",
+      "prozent": "98,94 %",
+      "tip": "654",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "307",
+      "order_value_proz": "46.94",
+      "absolut": "307",
+      "prozent": "46,94 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "347",
+      "order_value_proz": "53.06",
+      "absolut": "347",
+      "prozent": "53,06 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "612 Oberschule Eversten",
+    "link": {
+     "id": "ebene_6_id_57248",
+     "type": "ergebnis",
+     "title": "612 Oberschule Eversten"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,321",
+      "order_value_proz": "1.321",
+      "absolut": "1.321",
+      "prozent": "1.321",
+      "tip": "1.321",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "568",
+      "order_value_proz": "43.00",
+      "absolut": "568",
+      "prozent": "43,00 %",
+      "tip": "568",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "553",
+      "order_value_proz": "97.36",
+      "absolut": "553",
+      "prozent": "97,36 %",
+      "tip": "553",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "295",
+      "order_value_proz": "53.35",
+      "absolut": "295",
+      "prozent": "53,35 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "258",
+      "order_value_proz": "46.65",
+      "absolut": "258",
+      "prozent": "46,65 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "613 Oberschule Eversten",
+    "link": {
+     "id": "ebene_6_id_57249",
+     "type": "ergebnis",
+     "title": "613 Oberschule Eversten"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,561",
+      "order_value_proz": "1.561",
+      "absolut": "1.561",
+      "prozent": "1.561",
+      "tip": "1.561",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "647",
+      "order_value_proz": "41.45",
+      "absolut": "647",
+      "prozent": "41,45 %",
+      "tip": "647",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "633",
+      "order_value_proz": "97.84",
+      "absolut": "633",
+      "prozent": "97,84 %",
+      "tip": "633",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "320",
+      "order_value_proz": "50.55",
+      "absolut": "320",
+      "prozent": "50,55 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "313",
+      "order_value_proz": "49.45",
+      "absolut": "313",
+      "prozent": "49,45 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "614 LBZ für Hörgeschädigte",
+    "link": {
+     "id": "ebene_6_id_65967",
+     "type": "ergebnis",
+     "title": "614 LBZ für Hörgeschädigte"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "1,335",
+      "order_value_proz": "1.335",
+      "absolut": "1.335",
+      "prozent": "1.335",
+      "tip": "1.335",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "621",
+      "order_value_proz": "46.52",
+      "absolut": "621",
+      "prozent": "46,52 %",
+      "tip": "621",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "613",
+      "order_value_proz": "98.71",
+      "absolut": "613",
+      "prozent": "98,71 %",
+      "tip": "613",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "322",
+      "order_value_proz": "52.53",
+      "absolut": "322",
+      "prozent": "52,53 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "291",
+      "order_value_proz": "47.47",
+      "absolut": "291",
+      "prozent": "47,47 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "910 Briefwahl",
+    "link": {
+     "id": "ebene_6_id_57256",
+     "type": "ergebnis",
+     "title": "910 Briefwahl"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "0",
+      "order_value_proz": "0",
+      "absolut": "0",
+      "prozent": "0",
+      "tip": "0",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "521",
+      "order_value_proz": "",
+      "absolut": "521",
+      "prozent": "",
+      "tip": "521",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "518",
+      "order_value_proz": "99.42",
+      "absolut": "518",
+      "prozent": "99,42 %",
+      "tip": "518",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "213",
+      "order_value_proz": "41.12",
+      "absolut": "213",
+      "prozent": "41,12 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "305",
+      "order_value_proz": "58.88",
+      "absolut": "305",
+      "prozent": "58,88 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "911 Briefwahl",
+    "link": {
+     "id": "ebene_6_id_57257",
+     "type": "ergebnis",
+     "title": "911 Briefwahl"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "0",
+      "order_value_proz": "0",
+      "absolut": "0",
+      "prozent": "0",
+      "tip": "0",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "665",
+      "order_value_proz": "",
+      "absolut": "665",
+      "prozent": "",
+      "tip": "665",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "664",
+      "order_value_proz": "99.85",
+      "absolut": "664",
+      "prozent": "99,85 %",
+      "tip": "664",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "285",
+      "order_value_proz": "42.92",
+      "absolut": "285",
+      "prozent": "42,92 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "379",
+      "order_value_proz": "57.08",
+      "absolut": "379",
+      "prozent": "57,08 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "912 Briefwahl",
+    "link": {
+     "id": "ebene_6_id_57258",
+     "type": "ergebnis",
+     "title": "912 Briefwahl"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "0",
+      "order_value_proz": "0",
+      "absolut": "0",
+      "prozent": "0",
+      "tip": "0",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "618",
+      "order_value_proz": "",
+      "absolut": "618",
+      "prozent": "",
+      "tip": "618",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "618",
+      "order_value_proz": "100.00",
+      "absolut": "618",
+      "prozent": "100,00 %",
+      "tip": "618",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "275",
+      "order_value_proz": "44.50",
+      "absolut": "275",
+      "prozent": "44,50 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "343",
+      "order_value_proz": "55.50",
+      "absolut": "343",
+      "prozent": "55,50 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "913 Briefwahl",
+    "link": {
+     "id": "ebene_6_id_65943",
+     "type": "ergebnis",
+     "title": "913 Briefwahl"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "0",
+      "order_value_proz": "0",
+      "absolut": "0",
+      "prozent": "0",
+      "tip": "0",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "619",
+      "order_value_proz": "",
+      "absolut": "619",
+      "prozent": "",
+      "tip": "619",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "615",
+      "order_value_proz": "99.35",
+      "absolut": "615",
+      "prozent": "99,35 %",
+      "tip": "615",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "262",
+      "order_value_proz": "42.60",
+      "absolut": "262",
+      "prozent": "42,60 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "353",
+      "order_value_proz": "57.40",
+      "absolut": "353",
+      "prozent": "57,40 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "914 Briefwahl",
+    "link": {
+     "id": "ebene_6_id_65944",
+     "type": "ergebnis",
+     "title": "914 Briefwahl"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "0",
+      "order_value_proz": "0",
+      "absolut": "0",
+      "prozent": "0",
+      "tip": "0",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "591",
+      "order_value_proz": "",
+      "absolut": "591",
+      "prozent": "",
+      "tip": "591",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "585",
+      "order_value_proz": "98.98",
+      "absolut": "585",
+      "prozent": "98,98 %",
+      "tip": "585",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "258",
+      "order_value_proz": "44.10",
+      "absolut": "258",
+      "prozent": "44,10 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "327",
+      "order_value_proz": "55.90",
+      "absolut": "327",
+      "prozent": "55,90 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "915 Briefwahl",
+    "link": {
+     "id": "ebene_6_id_65945",
+     "type": "ergebnis",
+     "title": "915 Briefwahl"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "0",
+      "order_value_proz": "0",
+      "absolut": "0",
+      "prozent": "0",
+      "tip": "0",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "588",
+      "order_value_proz": "",
+      "absolut": "588",
+      "prozent": "",
+      "tip": "588",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "588",
+      "order_value_proz": "100.00",
+      "absolut": "588",
+      "prozent": "100,00 %",
+      "tip": "588",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "238",
+      "order_value_proz": "40.48",
+      "absolut": "238",
+      "prozent": "40,48 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "350",
+      "order_value_proz": "59.52",
+      "absolut": "350",
+      "prozent": "59,52 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "916 Briefwahl",
+    "link": {
+     "id": "ebene_6_id_65946",
+     "type": "ergebnis",
+     "title": "916 Briefwahl"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "0",
+      "order_value_proz": "0",
+      "absolut": "0",
+      "prozent": "0",
+      "tip": "0",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "471",
+      "order_value_proz": "",
+      "absolut": "471",
+      "prozent": "",
+      "tip": "471",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "464",
+      "order_value_proz": "98.51",
+      "absolut": "464",
+      "prozent": "98,51 %",
+      "tip": "464",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "177",
+      "order_value_proz": "38.15",
+      "absolut": "177",
+      "prozent": "38,15 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "287",
+      "order_value_proz": "61.85",
+      "absolut": "287",
+      "prozent": "61,85 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "920 Briefwahl",
+    "link": {
+     "id": "ebene_6_id_57259",
+     "type": "ergebnis",
+     "title": "920 Briefwahl"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "0",
+      "order_value_proz": "0",
+      "absolut": "0",
+      "prozent": "0",
+      "tip": "0",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "458",
+      "order_value_proz": "",
+      "absolut": "458",
+      "prozent": "",
+      "tip": "458",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "458",
+      "order_value_proz": "100.00",
+      "absolut": "458",
+      "prozent": "100,00 %",
+      "tip": "458",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "188",
+      "order_value_proz": "41.05",
+      "absolut": "188",
+      "prozent": "41,05 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "270",
+      "order_value_proz": "58.95",
+      "absolut": "270",
+      "prozent": "58,95 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "921 Briefwahl",
+    "link": {
+     "id": "ebene_6_id_57260",
+     "type": "ergebnis",
+     "title": "921 Briefwahl"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "0",
+      "order_value_proz": "0",
+      "absolut": "0",
+      "prozent": "0",
+      "tip": "0",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "611",
+      "order_value_proz": "",
+      "absolut": "611",
+      "prozent": "",
+      "tip": "611",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "609",
+      "order_value_proz": "99.67",
+      "absolut": "609",
+      "prozent": "99,67 %",
+      "tip": "609",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "252",
+      "order_value_proz": "41.38",
+      "absolut": "252",
+      "prozent": "41,38 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "357",
+      "order_value_proz": "58.62",
+      "absolut": "357",
+      "prozent": "58,62 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "922 Briefwahl",
+    "link": {
+     "id": "ebene_6_id_57261",
+     "type": "ergebnis",
+     "title": "922 Briefwahl"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "0",
+      "order_value_proz": "0",
+      "absolut": "0",
+      "prozent": "0",
+      "tip": "0",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "498",
+      "order_value_proz": "",
+      "absolut": "498",
+      "prozent": "",
+      "tip": "498",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "497",
+      "order_value_proz": "99.80",
+      "absolut": "497",
+      "prozent": "99,80 %",
+      "tip": "497",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "193",
+      "order_value_proz": "38.83",
+      "absolut": "193",
+      "prozent": "38,83 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "304",
+      "order_value_proz": "61.17",
+      "absolut": "304",
+      "prozent": "61,17 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "923 Briefwahl",
+    "link": {
+     "id": "ebene_6_id_65947",
+     "type": "ergebnis",
+     "title": "923 Briefwahl"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "0",
+      "order_value_proz": "0",
+      "absolut": "0",
+      "prozent": "0",
+      "tip": "0",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "561",
+      "order_value_proz": "",
+      "absolut": "561",
+      "prozent": "",
+      "tip": "561",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "560",
+      "order_value_proz": "99.82",
+      "absolut": "560",
+      "prozent": "99,82 %",
+      "tip": "560",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "250",
+      "order_value_proz": "44.64",
+      "absolut": "250",
+      "prozent": "44,64 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "310",
+      "order_value_proz": "55.36",
+      "absolut": "310",
+      "prozent": "55,36 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "924 Briefwahl",
+    "link": {
+     "id": "ebene_6_id_65948",
+     "type": "ergebnis",
+     "title": "924 Briefwahl"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "0",
+      "order_value_proz": "0",
+      "absolut": "0",
+      "prozent": "0",
+      "tip": "0",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "557",
+      "order_value_proz": "",
+      "absolut": "557",
+      "prozent": "",
+      "tip": "557",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "554",
+      "order_value_proz": "99.46",
+      "absolut": "554",
+      "prozent": "99,46 %",
+      "tip": "554",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "257",
+      "order_value_proz": "46.39",
+      "absolut": "257",
+      "prozent": "46,39 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "297",
+      "order_value_proz": "53.61",
+      "absolut": "297",
+      "prozent": "53,61 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "925 Briefwahl",
+    "link": {
+     "id": "ebene_6_id_65949",
+     "type": "ergebnis",
+     "title": "925 Briefwahl"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "0",
+      "order_value_proz": "0",
+      "absolut": "0",
+      "prozent": "0",
+      "tip": "0",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "497",
+      "order_value_proz": "",
+      "absolut": "497",
+      "prozent": "",
+      "tip": "497",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "493",
+      "order_value_proz": "99.20",
+      "absolut": "493",
+      "prozent": "99,20 %",
+      "tip": "493",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "208",
+      "order_value_proz": "42.19",
+      "absolut": "208",
+      "prozent": "42,19 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "285",
+      "order_value_proz": "57.81",
+      "absolut": "285",
+      "prozent": "57,81 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "926 Briefwahl",
+    "link": {
+     "id": "ebene_6_id_65950",
+     "type": "ergebnis",
+     "title": "926 Briefwahl"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "0",
+      "order_value_proz": "0",
+      "absolut": "0",
+      "prozent": "0",
+      "tip": "0",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "578",
+      "order_value_proz": "",
+      "absolut": "578",
+      "prozent": "",
+      "tip": "578",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "574",
+      "order_value_proz": "99.31",
+      "absolut": "574",
+      "prozent": "99,31 %",
+      "tip": "574",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "255",
+      "order_value_proz": "44.43",
+      "absolut": "255",
+      "prozent": "44,43 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "319",
+      "order_value_proz": "55.57",
+      "absolut": "319",
+      "prozent": "55,57 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "930 Briefwahl",
+    "link": {
+     "id": "ebene_6_id_57262",
+     "type": "ergebnis",
+     "title": "930 Briefwahl"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "0",
+      "order_value_proz": "0",
+      "absolut": "0",
+      "prozent": "0",
+      "tip": "0",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "633",
+      "order_value_proz": "",
+      "absolut": "633",
+      "prozent": "",
+      "tip": "633",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "633",
+      "order_value_proz": "100.00",
+      "absolut": "633",
+      "prozent": "100,00 %",
+      "tip": "633",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "257",
+      "order_value_proz": "40.60",
+      "absolut": "257",
+      "prozent": "40,60 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "376",
+      "order_value_proz": "59.40",
+      "absolut": "376",
+      "prozent": "59,40 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "931 Briefwahl",
+    "link": {
+     "id": "ebene_6_id_57263",
+     "type": "ergebnis",
+     "title": "931 Briefwahl"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "0",
+      "order_value_proz": "0",
+      "absolut": "0",
+      "prozent": "0",
+      "tip": "0",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "636",
+      "order_value_proz": "",
+      "absolut": "636",
+      "prozent": "",
+      "tip": "636",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "634",
+      "order_value_proz": "99.69",
+      "absolut": "634",
+      "prozent": "99,69 %",
+      "tip": "634",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "302",
+      "order_value_proz": "47.63",
+      "absolut": "302",
+      "prozent": "47,63 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "332",
+      "order_value_proz": "52.37",
+      "absolut": "332",
+      "prozent": "52,37 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "932 Briefwahl",
+    "link": {
+     "id": "ebene_6_id_57264",
+     "type": "ergebnis",
+     "title": "932 Briefwahl"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "0",
+      "order_value_proz": "0",
+      "absolut": "0",
+      "prozent": "0",
+      "tip": "0",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "656",
+      "order_value_proz": "",
+      "absolut": "656",
+      "prozent": "",
+      "tip": "656",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "655",
+      "order_value_proz": "99.85",
+      "absolut": "655",
+      "prozent": "99,85 %",
+      "tip": "655",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "303",
+      "order_value_proz": "46.26",
+      "absolut": "303",
+      "prozent": "46,26 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "352",
+      "order_value_proz": "53.74",
+      "absolut": "352",
+      "prozent": "53,74 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "933 Briefwahl",
+    "link": {
+     "id": "ebene_6_id_65951",
+     "type": "ergebnis",
+     "title": "933 Briefwahl"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "0",
+      "order_value_proz": "0",
+      "absolut": "0",
+      "prozent": "0",
+      "tip": "0",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "615",
+      "order_value_proz": "",
+      "absolut": "615",
+      "prozent": "",
+      "tip": "615",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "609",
+      "order_value_proz": "99.02",
+      "absolut": "609",
+      "prozent": "99,02 %",
+      "tip": "609",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "284",
+      "order_value_proz": "46.63",
+      "absolut": "284",
+      "prozent": "46,63 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "325",
+      "order_value_proz": "53.37",
+      "absolut": "325",
+      "prozent": "53,37 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "934 Briefwahl",
+    "link": {
+     "id": "ebene_6_id_65952",
+     "type": "ergebnis",
+     "title": "934 Briefwahl"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "0",
+      "order_value_proz": "0",
+      "absolut": "0",
+      "prozent": "0",
+      "tip": "0",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "612",
+      "order_value_proz": "",
+      "absolut": "612",
+      "prozent": "",
+      "tip": "612",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "609",
+      "order_value_proz": "99.51",
+      "absolut": "609",
+      "prozent": "99,51 %",
+      "tip": "609",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "271",
+      "order_value_proz": "44.50",
+      "absolut": "271",
+      "prozent": "44,50 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "338",
+      "order_value_proz": "55.50",
+      "absolut": "338",
+      "prozent": "55,50 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "935 Briefwahl",
+    "link": {
+     "id": "ebene_6_id_65953",
+     "type": "ergebnis",
+     "title": "935 Briefwahl"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "0",
+      "order_value_proz": "0",
+      "absolut": "0",
+      "prozent": "0",
+      "tip": "0",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "620",
+      "order_value_proz": "",
+      "absolut": "620",
+      "prozent": "",
+      "tip": "620",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "617",
+      "order_value_proz": "99.52",
+      "absolut": "617",
+      "prozent": "99,52 %",
+      "tip": "617",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "275",
+      "order_value_proz": "44.57",
+      "absolut": "275",
+      "prozent": "44,57 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "342",
+      "order_value_proz": "55.43",
+      "absolut": "342",
+      "prozent": "55,43 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "936 Briefwahl",
+    "link": {
+     "id": "ebene_6_id_65954",
+     "type": "ergebnis",
+     "title": "936 Briefwahl"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "0",
+      "order_value_proz": "0",
+      "absolut": "0",
+      "prozent": "0",
+      "tip": "0",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "559",
+      "order_value_proz": "",
+      "absolut": "559",
+      "prozent": "",
+      "tip": "559",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "556",
+      "order_value_proz": "99.46",
+      "absolut": "556",
+      "prozent": "99,46 %",
+      "tip": "556",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "274",
+      "order_value_proz": "49.28",
+      "absolut": "274",
+      "prozent": "49,28 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "282",
+      "order_value_proz": "50.72",
+      "absolut": "282",
+      "prozent": "50,72 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "940 Briefwahl",
+    "link": {
+     "id": "ebene_6_id_57265",
+     "type": "ergebnis",
+     "title": "940 Briefwahl"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "0",
+      "order_value_proz": "0",
+      "absolut": "0",
+      "prozent": "0",
+      "tip": "0",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "605",
+      "order_value_proz": "",
+      "absolut": "605",
+      "prozent": "",
+      "tip": "605",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "603",
+      "order_value_proz": "99.67",
+      "absolut": "603",
+      "prozent": "99,67 %",
+      "tip": "603",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "360",
+      "order_value_proz": "59.70",
+      "absolut": "360",
+      "prozent": "59,70 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "243",
+      "order_value_proz": "40.30",
+      "absolut": "243",
+      "prozent": "40,30 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "941 Briefwahl",
+    "link": {
+     "id": "ebene_6_id_57266",
+     "type": "ergebnis",
+     "title": "941 Briefwahl"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "0",
+      "order_value_proz": "0",
+      "absolut": "0",
+      "prozent": "0",
+      "tip": "0",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "695",
+      "order_value_proz": "",
+      "absolut": "695",
+      "prozent": "",
+      "tip": "695",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "692",
+      "order_value_proz": "99.57",
+      "absolut": "692",
+      "prozent": "99,57 %",
+      "tip": "692",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "408",
+      "order_value_proz": "58.96",
+      "absolut": "408",
+      "prozent": "58,96 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "284",
+      "order_value_proz": "41.04",
+      "absolut": "284",
+      "prozent": "41,04 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "942 Briefwahl",
+    "link": {
+     "id": "ebene_6_id_57267",
+     "type": "ergebnis",
+     "title": "942 Briefwahl"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "0",
+      "order_value_proz": "0",
+      "absolut": "0",
+      "prozent": "0",
+      "tip": "0",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "663",
+      "order_value_proz": "",
+      "absolut": "663",
+      "prozent": "",
+      "tip": "663",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "659",
+      "order_value_proz": "99.40",
+      "absolut": "659",
+      "prozent": "99,40 %",
+      "tip": "659",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "420",
+      "order_value_proz": "63.73",
+      "absolut": "420",
+      "prozent": "63,73 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "239",
+      "order_value_proz": "36.27",
+      "absolut": "239",
+      "prozent": "36,27 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "943 Briefwahl",
+    "link": {
+     "id": "ebene_6_id_65955",
+     "type": "ergebnis",
+     "title": "943 Briefwahl"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "0",
+      "order_value_proz": "0",
+      "absolut": "0",
+      "prozent": "0",
+      "tip": "0",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "649",
+      "order_value_proz": "",
+      "absolut": "649",
+      "prozent": "",
+      "tip": "649",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "644",
+      "order_value_proz": "99.23",
+      "absolut": "644",
+      "prozent": "99,23 %",
+      "tip": "644",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "398",
+      "order_value_proz": "61.80",
+      "absolut": "398",
+      "prozent": "61,80 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "246",
+      "order_value_proz": "38.20",
+      "absolut": "246",
+      "prozent": "38,20 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "944 Briefwahl",
+    "link": {
+     "id": "ebene_6_id_65956",
+     "type": "ergebnis",
+     "title": "944 Briefwahl"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "0",
+      "order_value_proz": "0",
+      "absolut": "0",
+      "prozent": "0",
+      "tip": "0",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "610",
+      "order_value_proz": "",
+      "absolut": "610",
+      "prozent": "",
+      "tip": "610",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "609",
+      "order_value_proz": "99.84",
+      "absolut": "609",
+      "prozent": "99,84 %",
+      "tip": "609",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "365",
+      "order_value_proz": "59.93",
+      "absolut": "365",
+      "prozent": "59,93 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "244",
+      "order_value_proz": "40.07",
+      "absolut": "244",
+      "prozent": "40,07 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "945 Briefwahl",
+    "link": {
+     "id": "ebene_6_id_65957",
+     "type": "ergebnis",
+     "title": "945 Briefwahl"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "0",
+      "order_value_proz": "0",
+      "absolut": "0",
+      "prozent": "0",
+      "tip": "0",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "642",
+      "order_value_proz": "",
+      "absolut": "642",
+      "prozent": "",
+      "tip": "642",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "636",
+      "order_value_proz": "99.07",
+      "absolut": "636",
+      "prozent": "99,07 %",
+      "tip": "636",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "380",
+      "order_value_proz": "59.75",
+      "absolut": "380",
+      "prozent": "59,75 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "256",
+      "order_value_proz": "40.25",
+      "absolut": "256",
+      "prozent": "40,25 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "946 Briefwahl",
+    "link": {
+     "id": "ebene_6_id_65958",
+     "type": "ergebnis",
+     "title": "946 Briefwahl"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "0",
+      "order_value_proz": "0",
+      "absolut": "0",
+      "prozent": "0",
+      "tip": "0",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "675",
+      "order_value_proz": "",
+      "absolut": "675",
+      "prozent": "",
+      "tip": "675",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "670",
+      "order_value_proz": "99.26",
+      "absolut": "670",
+      "prozent": "99,26 %",
+      "tip": "670",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "402",
+      "order_value_proz": "60.00",
+      "absolut": "402",
+      "prozent": "60,00 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "268",
+      "order_value_proz": "40.00",
+      "absolut": "268",
+      "prozent": "40,00 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "950 Briefwahl",
+    "link": {
+     "id": "ebene_6_id_57268",
+     "type": "ergebnis",
+     "title": "950 Briefwahl"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "0",
+      "order_value_proz": "0",
+      "absolut": "0",
+      "prozent": "0",
+      "tip": "0",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "436",
+      "order_value_proz": "",
+      "absolut": "436",
+      "prozent": "",
+      "tip": "436",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "436",
+      "order_value_proz": "100.00",
+      "absolut": "436",
+      "prozent": "100,00 %",
+      "tip": "436",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "269",
+      "order_value_proz": "61.70",
+      "absolut": "269",
+      "prozent": "61,70 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "167",
+      "order_value_proz": "38.30",
+      "absolut": "167",
+      "prozent": "38,30 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "951 Briefwahl",
+    "link": {
+     "id": "ebene_6_id_57269",
+     "type": "ergebnis",
+     "title": "951 Briefwahl"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "0",
+      "order_value_proz": "0",
+      "absolut": "0",
+      "prozent": "0",
+      "tip": "0",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "500",
+      "order_value_proz": "",
+      "absolut": "500",
+      "prozent": "",
+      "tip": "500",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "498",
+      "order_value_proz": "99.60",
+      "absolut": "498",
+      "prozent": "99,60 %",
+      "tip": "498",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "300",
+      "order_value_proz": "60.24",
+      "absolut": "300",
+      "prozent": "60,24 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "198",
+      "order_value_proz": "39.76",
+      "absolut": "198",
+      "prozent": "39,76 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "952 Briefwahl",
+    "link": {
+     "id": "ebene_6_id_57270",
+     "type": "ergebnis",
+     "title": "952 Briefwahl"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "0",
+      "order_value_proz": "0",
+      "absolut": "0",
+      "prozent": "0",
+      "tip": "0",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "437",
+      "order_value_proz": "",
+      "absolut": "437",
+      "prozent": "",
+      "tip": "437",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "436",
+      "order_value_proz": "99.77",
+      "absolut": "436",
+      "prozent": "99,77 %",
+      "tip": "436",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "250",
+      "order_value_proz": "57.34",
+      "absolut": "250",
+      "prozent": "57,34 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "186",
+      "order_value_proz": "42.66",
+      "absolut": "186",
+      "prozent": "42,66 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "953 Briefwahl",
+    "link": {
+     "id": "ebene_6_id_65959",
+     "type": "ergebnis",
+     "title": "953 Briefwahl"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "0",
+      "order_value_proz": "0",
+      "absolut": "0",
+      "prozent": "0",
+      "tip": "0",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "449",
+      "order_value_proz": "",
+      "absolut": "449",
+      "prozent": "",
+      "tip": "449",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "449",
+      "order_value_proz": "100.00",
+      "absolut": "449",
+      "prozent": "100,00 %",
+      "tip": "449",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "273",
+      "order_value_proz": "60.80",
+      "absolut": "273",
+      "prozent": "60,80 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "176",
+      "order_value_proz": "39.20",
+      "absolut": "176",
+      "prozent": "39,20 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "954 Briefwahl",
+    "link": {
+     "id": "ebene_6_id_65960",
+     "type": "ergebnis",
+     "title": "954 Briefwahl"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "0",
+      "order_value_proz": "0",
+      "absolut": "0",
+      "prozent": "0",
+      "tip": "0",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "438",
+      "order_value_proz": "",
+      "absolut": "438",
+      "prozent": "",
+      "tip": "438",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "436",
+      "order_value_proz": "99.54",
+      "absolut": "436",
+      "prozent": "99,54 %",
+      "tip": "436",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "264",
+      "order_value_proz": "60.55",
+      "absolut": "264",
+      "prozent": "60,55 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "172",
+      "order_value_proz": "39.45",
+      "absolut": "172",
+      "prozent": "39,45 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "955 Briefwahl",
+    "link": {
+     "id": "ebene_6_id_65961",
+     "type": "ergebnis",
+     "title": "955 Briefwahl"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "0",
+      "order_value_proz": "0",
+      "absolut": "0",
+      "prozent": "0",
+      "tip": "0",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "371",
+      "order_value_proz": "",
+      "absolut": "371",
+      "prozent": "",
+      "tip": "371",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "371",
+      "order_value_proz": "100.00",
+      "absolut": "371",
+      "prozent": "100,00 %",
+      "tip": "371",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "220",
+      "order_value_proz": "59.30",
+      "absolut": "220",
+      "prozent": "59,30 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "151",
+      "order_value_proz": "40.70",
+      "absolut": "151",
+      "prozent": "40,70 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "956 Briefwahl",
+    "link": {
+     "id": "ebene_6_id_65962",
+     "type": "ergebnis",
+     "title": "956 Briefwahl"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "0",
+      "order_value_proz": "0",
+      "absolut": "0",
+      "prozent": "0",
+      "tip": "0",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "389",
+      "order_value_proz": "",
+      "absolut": "389",
+      "prozent": "",
+      "tip": "389",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "388",
+      "order_value_proz": "99.74",
+      "absolut": "388",
+      "prozent": "99,74 %",
+      "tip": "388",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "227",
+      "order_value_proz": "58.51",
+      "absolut": "227",
+      "prozent": "58,51 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "161",
+      "order_value_proz": "41.49",
+      "absolut": "161",
+      "prozent": "41,49 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "960 Briefwahl",
+    "link": {
+     "id": "ebene_6_id_57271",
+     "type": "ergebnis",
+     "title": "960 Briefwahl"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "0",
+      "order_value_proz": "0",
+      "absolut": "0",
+      "prozent": "0",
+      "tip": "0",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "493",
+      "order_value_proz": "",
+      "absolut": "493",
+      "prozent": "",
+      "tip": "493",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "491",
+      "order_value_proz": "99.59",
+      "absolut": "491",
+      "prozent": "99,59 %",
+      "tip": "491",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "240",
+      "order_value_proz": "48.88",
+      "absolut": "240",
+      "prozent": "48,88 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "251",
+      "order_value_proz": "51.12",
+      "absolut": "251",
+      "prozent": "51,12 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "961 Briefwahl",
+    "link": {
+     "id": "ebene_6_id_57272",
+     "type": "ergebnis",
+     "title": "961 Briefwahl"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "0",
+      "order_value_proz": "0",
+      "absolut": "0",
+      "prozent": "0",
+      "tip": "0",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "649",
+      "order_value_proz": "",
+      "absolut": "649",
+      "prozent": "",
+      "tip": "649",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "645",
+      "order_value_proz": "99.38",
+      "absolut": "645",
+      "prozent": "99,38 %",
+      "tip": "645",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "303",
+      "order_value_proz": "46.98",
+      "absolut": "303",
+      "prozent": "46,98 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "342",
+      "order_value_proz": "53.02",
+      "absolut": "342",
+      "prozent": "53,02 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "962 Briefwahl",
+    "link": {
+     "id": "ebene_6_id_57273",
+     "type": "ergebnis",
+     "title": "962 Briefwahl"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "0",
+      "order_value_proz": "0",
+      "absolut": "0",
+      "prozent": "0",
+      "tip": "0",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "626",
+      "order_value_proz": "",
+      "absolut": "626",
+      "prozent": "",
+      "tip": "626",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "624",
+      "order_value_proz": "99.68",
+      "absolut": "624",
+      "prozent": "99,68 %",
+      "tip": "624",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "325",
+      "order_value_proz": "52.08",
+      "absolut": "325",
+      "prozent": "52,08 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "299",
+      "order_value_proz": "47.92",
+      "absolut": "299",
+      "prozent": "47,92 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "963 Briefwahl",
+    "link": {
+     "id": "ebene_6_id_65963",
+     "type": "ergebnis",
+     "title": "963 Briefwahl"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "0",
+      "order_value_proz": "0",
+      "absolut": "0",
+      "prozent": "0",
+      "tip": "0",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "540",
+      "order_value_proz": "",
+      "absolut": "540",
+      "prozent": "",
+      "tip": "540",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "538",
+      "order_value_proz": "99.63",
+      "absolut": "538",
+      "prozent": "99,63 %",
+      "tip": "538",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "272",
+      "order_value_proz": "50.56",
+      "absolut": "272",
+      "prozent": "50,56 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "266",
+      "order_value_proz": "49.44",
+      "absolut": "266",
+      "prozent": "49,44 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "964 Briefwahl",
+    "link": {
+     "id": "ebene_6_id_65964",
+     "type": "ergebnis",
+     "title": "964 Briefwahl"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "0",
+      "order_value_proz": "0",
+      "absolut": "0",
+      "prozent": "0",
+      "tip": "0",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "512",
+      "order_value_proz": "",
+      "absolut": "512",
+      "prozent": "",
+      "tip": "512",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "509",
+      "order_value_proz": "99.41",
+      "absolut": "509",
+      "prozent": "99,41 %",
+      "tip": "509",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "274",
+      "order_value_proz": "53.83",
+      "absolut": "274",
+      "prozent": "53,83 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "235",
+      "order_value_proz": "46.17",
+      "absolut": "235",
+      "prozent": "46,17 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   },
+   {
+    "label": "965 Briefwahl",
+    "link": {
+     "id": "ebene_6_id_65965",
+     "type": "ergebnis",
+     "title": "965 Briefwahl"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "0",
+      "order_value_proz": "0",
+      "absolut": "0",
+      "prozent": "0",
+      "tip": "0",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "566",
+      "order_value_proz": "",
+      "absolut": "566",
+      "prozent": "",
+      "tip": "566",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "561",
+      "order_value_proz": "99.12",
+      "absolut": "561",
+      "prozent": "99,12 %",
+      "tip": "561",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "262",
+      "order_value_proz": "46.70",
+      "absolut": "262",
+      "prozent": "46,70 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "299",
+      "order_value_proz": "53.30",
+      "absolut": "299",
+      "prozent": "53,30 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "966 Briefwahl",
+    "link": {
+     "id": "ebene_6_id_65966",
+     "type": "ergebnis",
+     "title": "966 Briefwahl"
+    },
+    "externeUrl": false,
+    "statusString": "eingegangen",
+    "statusProzent": 100.0,
+    "stimmbezirk": true,
+    "highlighted": false,
+    "felder": [
+     {
+      "order_value_abs": "0",
+      "order_value_proz": "0",
+      "absolut": "0",
+      "prozent": "0",
+      "tip": "0",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "510",
+      "order_value_proz": "",
+      "absolut": "510",
+      "prozent": "",
+      "tip": "510",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "509",
+      "order_value_proz": "99.80",
+      "absolut": "509",
+      "prozent": "99,80 %",
+      "tip": "509",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "250",
+      "order_value_proz": "49.12",
+      "absolut": "250",
+      "prozent": "49,12 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "259",
+      "order_value_proz": "50.88",
+      "absolut": "259",
+      "prozent": "50,88 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": true
+     }
+    ]
+   },
+   {
+    "label": "Stadt Oldenburg (Oldenburg)",
+    "link": {
+     "id": "ebene_3_id_513",
+     "type": "ergebnis",
+     "title": "Stadt Oldenburg (Oldenburg)"
+    },
+    "externeUrl": false,
+    "statusString": "133 von 133",
+    "statusProzent": 100.0,
+    "stimmbezirk": false,
+    "highlighted": true,
+    "felder": [
+     {
+      "order_value_abs": "135,112",
+      "order_value_proz": "135.112",
+      "absolut": "135.112",
+      "prozent": "135.112",
+      "tip": "135.112",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "81,472",
+      "order_value_proz": "60.30",
+      "absolut": "81.472",
+      "prozent": "60,30 %",
+      "tip": "81.472",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "80,442",
+      "order_value_proz": "98.74",
+      "absolut": "80.442",
+      "prozent": "98,74 %",
+      "tip": "80.442",
+      "highlighted": false
+     },
+     {
+      "order_value_abs": "43,493",
+      "order_value_proz": "54.07",
+      "absolut": "43.493",
+      "prozent": "54,07 %",
+      "tip": "Krogmann, SPD",
+      "highlighted": true
+     },
+     {
+      "order_value_abs": "36,949",
+      "order_value_proz": "45.93",
+      "absolut": "36.949",
+      "prozent": "45,93 %",
+      "tip": "Fuhrhop, GRÜNE",
+      "highlighted": false
+     }
+    ]
+   }
+  ]
+ },
+ "has_geografik": false,
+ "file_version": "21.9.14",
+ "file_timestamp": "30.09.2021 15:43:15 544"
+}

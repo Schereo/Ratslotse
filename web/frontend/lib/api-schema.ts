@@ -5275,6 +5275,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/wahlabend/stichwahl/bezirke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stichwahl Bezirke
+         * @description Die 133 Wahlbezirke der Stichwahl mit ihrem Stand — und je Bezirk
+         *     dieselben zwei Kandidaturen im ersten Wahlgang als Vergleich.
+         *
+         *     Öffentlich wie die Stichwahl, hinter demselben Schalter. Das ist der
+         *     Eingang für Karte und Hochrechnung (docs/plan-stichwahl-spannung.md).
+         */
+        get: operations["stichwahl_bezirke_api_wahlabend_stichwahl_bezirke_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/wahlabend/wahlbezirke": {
         parameters: {
             query?: never;
@@ -10165,6 +10189,55 @@ export interface components {
             votes: number | null;
         };
         /**
+         * MayorDistrictEntry
+         * @description Ein Wahlbezirk einer OB-Wahl mit seinem Stand.
+         */
+        MayorDistrictEntry: {
+            /** Area */
+            area: number;
+            /** Counted */
+            counted: boolean;
+            /** Eligible */
+            eligible: number | null;
+            /** First Round */
+            first_round: {
+                [key: string]: number | null;
+            };
+            /** Name */
+            name: string;
+            /** Number */
+            number: number;
+            /** Postal */
+            postal: boolean;
+            /** Valid Votes */
+            valid_votes: number | null;
+            /** Voters */
+            voters: number | null;
+            /** Votes */
+            votes: {
+                [key: string]: number | null;
+            };
+        };
+        /**
+         * MayorDistrictList
+         * @description ``GET /api/wahlabend/stichwahl/bezirke`` — die 133 Wahlbezirke der
+         *     Stichwahl. Eigener Endpunkt, weil die Seite sie erst für Karte und
+         *     Hochrechnung braucht und ``MayorNight`` schlank bleiben soll.
+         */
+        MayorDistrictList: {
+            /** Counted */
+            counted: number;
+            /** Dataset */
+            dataset: string;
+            /** Districts */
+            districts: components["schemas"]["MayorDistrictEntry"][];
+            election: components["schemas"]["MayorElectionInfo"];
+            /** Phase */
+            phase: string;
+            /** Total */
+            total: number;
+        };
+        /**
          * MayorElectionInfo
          * @description Welche Wahl das hier ist — aus ``kommunalwahl/wahlen/``.
          *
@@ -10188,6 +10261,47 @@ export interface components {
             /** Title */
             title: string;
         };
+        /**
+         * MayorHistoryPoint
+         * @description Ein Stand des Stichwahl-Abends — für den Verlauf (S3). Der Dienst
+         *     schreibt ihn sich selbst mit; der Votemanager kennt nur das Jetzt.
+         */
+        MayorHistoryPoint: {
+            /** At */
+            at: string;
+            /** Chance Pct */
+            chance_pct: number | null;
+            /** Leader */
+            leader: string | null;
+            /** Projected Shares */
+            projected_shares: {
+                [key: string]: number;
+            };
+            /** Reports Received */
+            reports_received: number;
+            /** Shares */
+            shares: {
+                [key: string]: number;
+            };
+            /** Votes */
+            votes: {
+                [key: string]: number;
+            };
+        };
+        /**
+         * MayorLeadChange
+         * @description Ein Führungswechsel: zwischen zwei Ständen wechselte, wer vorn liegt.
+         */
+        MayorLeadChange: {
+            /** At */
+            at: string;
+            /** Leader */
+            leader: string;
+            /** Previous */
+            previous: string;
+            /** Reports Received */
+            reports_received: number;
+        };
         /** MayorNight */
         MayorNight: {
             /** Candidates */
@@ -10201,14 +10315,19 @@ export interface components {
             error: string | null;
             /** Fetched At */
             fetched_at: string | null;
+            /** History */
+            history: components["schemas"]["MayorHistoryPoint"][];
             /** Invalid Ballots */
             invalid_ballots: number | null;
+            /** Lead Changes */
+            lead_changes: components["schemas"]["MayorLeadChange"][];
             /** Notes */
             notes: string[];
             /** Ok */
             ok: boolean;
             /** Phase */
             phase: string;
+            projection?: components["schemas"]["RunoffProjection"];
             /** Reports Expected */
             reports_expected: number;
             /** Reports Received */
@@ -12056,6 +12175,46 @@ export interface components {
         RolesUpdate: {
             /** Roles */
             roles?: string[];
+        };
+        /**
+         * RunoffProjection
+         * @description Die Hochrechnung einer Stichwahl (``runoff_model``,
+         *     docs/plan-stichwahl-spannung.md S2). Modellrechnung, keine Umfrage — die
+         *     Seite nennt sie „Modell" und stellt die Bezirkszahl daneben.
+         */
+        RunoffProjection: {
+            /** Actual Lead Votes */
+            actual_lead_votes: number;
+            /** Actual Leader */
+            actual_leader: string;
+            /** Caveats */
+            caveats: string[];
+            /** Chance Pct */
+            chance_pct: number | null;
+            /** Counted Ballot */
+            counted_ballot: number;
+            /** Counted Postal */
+            counted_postal: number;
+            /** Decided */
+            decided: boolean;
+            /** Lead Votes */
+            lead_votes: number;
+            /** Leader */
+            leader: string;
+            /** Open Ballot */
+            open_ballot: number;
+            /** Open Postal */
+            open_postal: number;
+            /** Open Votes Max */
+            open_votes_max: number;
+            /** Projected Votes */
+            projected_votes: {
+                [key: string]: number;
+            };
+            /** Shares */
+            shares: {
+                [key: string]: number;
+            };
         };
         /**
          * SessionDetail
@@ -19810,6 +19969,40 @@ export interface operations {
             };
         };
     };
+    stichwahl_bezirke_api_wahlabend_stichwahl_bezirke_get: {
+        parameters: {
+            query?: {
+                /** @description gesetzt = Generalprobe mit den Zahlen des ersten Wahlgangs */
+                probe?: string | null;
+                /** @description Generalprobe: nur die ersten N Wahlbezirke gemeldet */
+                counted?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MayorDistrictList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     wahlabend_wahlbezirke_api_wahlabend_wahlbezirke_get: {
         parameters: {
             query?: {
@@ -19868,4 +20061,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: c91af4594bee4dc22cdd172c4c725fa7c5b400ab74ff3f953ce0025cbcac2725
+// vertrag-sha256: 7fc45b2f7a7bb14722f5f2e4dfcf643273a8a1b3244a9a2809d10e3a6e3a8c17

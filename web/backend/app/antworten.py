@@ -4243,6 +4243,92 @@ class MayorElectionInfo(TypedDict):
     presentation_url: str
 
 
+class MayorDistrictEntry(TypedDict):
+    """Ein Wahlbezirk einer OB-Wahl mit seinem Stand."""
+    number: int
+    name: str
+    area: int
+    #: Briefwahlbezirk (ab 900): zählt zum Wahlbereich, hat keinen Ort.
+    postal: bool
+    counted: bool
+    eligible: int | None
+    voters: int | None
+    valid_votes: int | None
+    #: Slug → Stimmen; ``None``, solange der Bezirk nicht gemeldet hat.
+    votes: dict[str, int | None]
+    #: Dieselben Slugs im ERSTEN Wahlgang — nur bei einer Stichwahl, sonst
+    #: leer. Das ist die Vergleichsgröße für Karte und Hochrechnung; die
+    #: Seite soll sie nicht ein zweites Mal holen müssen.
+    first_round: dict[str, int | None]
+
+
+class MayorDistrictList(TypedDict):
+    """``GET /api/wahlabend/stichwahl/bezirke`` — die 133 Wahlbezirke der
+    Stichwahl. Eigener Endpunkt, weil die Seite sie erst für Karte und
+    Hochrechnung braucht und ``MayorNight`` schlank bleiben soll."""
+    dataset: str
+    phase: str
+    election: MayorElectionInfo
+    total: int
+    counted: int
+    districts: list[MayorDistrictEntry]
+
+
+class MayorHistoryPoint(TypedDict):
+    """Ein Stand des Stichwahl-Abends — für den Verlauf (S3). Der Dienst
+    schreibt ihn sich selbst mit; der Votemanager kennt nur das Jetzt."""
+    at: str
+    reports_received: int
+    #: Slug → Ist-Anteil in Prozent (nur mit Stimmen).
+    shares: dict[str, float]
+    #: Slug → Ist-Stimmen — für „Prange +312" zwischen zwei Ständen.
+    votes: dict[str, int]
+    #: Slug → hochgerechneter Endstand — leer, solange es keine Hochrechnung gibt.
+    projected_shares: dict[str, float]
+    chance_pct: int | None
+    #: Wer nach Ist-Stimmen vorn liegt; ``None`` bei Gleichstand oder ohne Stimmen.
+    leader: str | None
+
+
+class MayorLeadChange(TypedDict):
+    """Ein Führungswechsel: zwischen zwei Ständen wechselte, wer vorn liegt."""
+    at: str
+    reports_received: int
+    leader: str
+    previous: str
+
+
+class RunoffProjection(TypedDict):
+    """Die Hochrechnung einer Stichwahl (``runoff_model``,
+    docs/plan-stichwahl-spannung.md S2). Modellrechnung, keine Umfrage — die
+    Seite nennt sie „Modell" und stellt die Bezirkszahl daneben."""
+    #: Hochgerechneter Endstand je Slug in Prozent.
+    shares: dict[str, float]
+    #: Hochgerechnete Stimmen je Slug.
+    projected_votes: dict[str, int]
+    leader: str
+    #: Hochgerechneter Vorsprung des Führenden in Stimmen.
+    lead_votes: int
+    #: Chance des Führenden in Prozent (ganze Zahl) — ``None`` unter 15
+    #: gezählten Bezirken oder wenn rechnerisch entschieden.
+    chance_pct: int | None
+    #: Wie viele Bezirke das Modell gesehen hat, getrennt nach Urne und Brief.
+    counted_ballot: int
+    counted_postal: int
+    open_ballot: int
+    open_postal: int
+    #: Der TATSÄCHLICHE Vorsprung übersteigt die Obergrenze der offenen Stimmen.
+    decided: bool
+    #: Wer nach den gezählten Stimmen wirklich vorn liegt, und um wie viel.
+    actual_leader: str
+    actual_lead_votes: int
+    #: Obergrenze der noch offenen Stimmen (Wahlberechtigte der offenen
+    #: Urnenbezirke plus 1,6 × gültige Erststimmen der offenen Briefwahlbezirke).
+    open_votes_max: int
+    #: Menschentext: was das Modell annimmt und was nicht.
+    caveats: list[str]
+
+
 class MayorNight(TypedDict):
     #: "live" (Votemanager) oder "probe" (Generalprobe mit echten Zahlen).
     dataset: str
@@ -4264,6 +4350,13 @@ class MayorNight(TypedDict):
     ok: bool
     error: str | None
     notes: list[str]
+    #: Nur bei einer Stichwahl, sobald ein Bezirk gemeldet hat.
+    projection: NotRequired[RunoffProjection]
+    #: Der Verlauf des Abends, ältester Stand zuerst — leer vor der Auszählung
+    #: und beim ersten Wahlgang (dessen Abend war die Ratswahl).
+    history: list[MayorHistoryPoint]
+    #: Wann wechselte, wer vorn liegt — aus ``history`` gerechnet.
+    lead_changes: list[MayorLeadChange]
 
 
 # ------------------------------------------------------------------ Tippspiel (docs/plan-tippspiel-ratswahl.md)
