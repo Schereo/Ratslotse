@@ -7,6 +7,15 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [2.6.1] – 2026-09-15
+
+### Geändert
+- **In der Kandidaten-Rangliste sieht man jetzt, dass sich hinter jeder Zeile
+  die Wahlbezirke verbergen.** Statt eines winzigen Dreiecks steht vor jedem
+  Namen ein Pfeil im Kreis; fährt man über die Zeile, tönt sie sich und der
+  Kreis wird blau. Die ganze Zeile klappt auf, nicht nur der Name — offen ist
+  der Kreis gefüllt und der Pfeil zeigt nach unten. (#1374)
+
 ## [2.6.0] – 2026-09-15
 
 ### Hinzugefügt
@@ -8285,7 +8294,8 @@ Open-Source-Go-Live von Ratslotse.
 *Dieser Changelog beginnt mit dem Open-Source-Release von Ratslotse. Die
 Entwicklungshistorie davor ist nicht Teil dieses Repositories.*
 
-[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v2.6.0...main
+[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v2.6.1...main
+[2.6.1]: https://github.com/Schereo/Ratslotse/compare/v2.6.0...v2.6.1
 [2.6.0]: https://github.com/Schereo/Ratslotse/compare/v2.5.1...v2.6.0
 [2.5.1]: https://github.com/Schereo/Ratslotse/compare/v2.5.0...v2.5.1
 [2.5.0]: https://github.com/Schereo/Ratslotse/compare/v2.4.0...v2.5.0
