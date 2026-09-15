@@ -48,7 +48,7 @@ def cities(tmp_path):
         (MODELL, "1", 7, "po:1", 0.9), (MODELL, "1", 7, "po:2", 0.9),
         (MODELL, "1", 7, "po:3", 0.9), (MODELL, "1", 7, "ms:1", 0.9)])
     # Der fünfte Cluster-Schritt: Mehrheits-Status je Stadt und Gruppe.
-    s.rebuild_group_status(MODELL, "1", "3")
+    s.rebuild_group_status(MODELL, "1", "4")
     yield s
     s.close()
 
@@ -77,7 +77,7 @@ def test_antworten_und_mitteilungen_stehen_nicht_auf_der_liste(cities):
         (MODELL, "1", 7, "po:1", 0.9), (MODELL, "1", 7, "po:2", 0.9),
         (MODELL, "1", 7, "po:3", 0.9), (MODELL, "1", 7, "ms:1", 0.9),
         (MODELL, "1", 7, "po:9", 0.9)])
-    cities.rebuild_group_status(MODELL, "1", "3")
+    cities.rebuild_group_status(MODELL, "1", "4")
     zeilen, _, _ = cities.ideas("kultur_sport", status=("missing",))
     assert "po:9" not in {z["id"] for z in zeilen}
     assert {z["id"] for z in zeilen} == {"po:3", "ms:1"}, (
@@ -116,7 +116,7 @@ def test_ein_ausgeschlossenes_mitglied_verdraengt_nichts(cities):
     cities.put_annotation("cluster", "1:7", "cluster_check", "1",
                           {"label": "Denkmalpflege", "drop": ["po:3"],
                            "reason": "."}, "c7")
-    cities.rebuild_group_status(MODELL, "1", "3")
+    cities.rebuild_group_status(MODELL, "1", "4")
     zeilen, gesamt, _ = cities.ideas("kultur_sport", status=("missing",))
     kennungen = {z["id"] for z in zeilen}
     assert gesamt == 3
@@ -136,7 +136,7 @@ def test_die_mehrheit_entscheidet_nicht_die_juengste(cities):
     cities.put_annotation("paper", "po:3", "fit", "4",
                           {"status": "present", "evidence": [], "reason": ".",
                            "confidence": "high"}, "fpo3b")
-    cities.rebuild_group_status(MODELL, "1", "3")
+    cities.rebuild_group_status(MODELL, "1", "4")
     fehlt, gesamt, zaehler = cities.ideas("kultur_sport", status=("missing",))
     potsdam = [z for z in fehlt if z["body_id"] == "potsdam"]
     assert potsdam and potsdam[0]["id"] == "po:2", (
@@ -151,7 +151,7 @@ def test_die_mehrheit_entscheidet_nicht_die_juengste(cities):
 def test_ohne_cluster_bleibt_jede_vorlage_eine_zeile(cities):
     """Die Gegenrichtung: Ohne Gruppierung darf nichts verschwinden."""
     cities.replace_idea_clusters(MODELL, "1", [])
-    cities.rebuild_group_status(MODELL, "1", "3")
+    cities.rebuild_group_status(MODELL, "1", "4")
     _, gesamt, _ = cities.ideas("kultur_sport", status=("missing",))
     assert gesamt == 4
 

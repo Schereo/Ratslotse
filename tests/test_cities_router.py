@@ -299,8 +299,8 @@ def test_die_fassung_gehoert_in_den_schluessel(cities_db):
     gibt.
     """
     cities_db.put_feedback("paper", "os:p:1", "fit", "4", 7, "wrong")
-    assert cities_db.feedback_for("os:p:1", "fit", "4", 7) is None
-    assert cities_db.feedback_stats("fit", "4") == []
+    assert cities_db.feedback_for("os:p:1", "fit", "5", 7) is None
+    assert cities_db.feedback_stats("fit", "5") == []
 
 
 def test_nur_richtig_oder_falsch(cities_db):
