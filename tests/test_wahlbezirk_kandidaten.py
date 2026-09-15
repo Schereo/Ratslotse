@@ -4,9 +4,9 @@ Tims Wunsch (15.09.2026): „ein fünfter Filter fürs Sortieren, der Wahlbezirk
 heißt, wo man nach Wahlbezirk die Liste filtern kann? Oder dass auch in der
 Liste überhaupt der Wahlbezirk mit angezeigt wird."
 
-**Ein Wahlbezirk ist kein Merkmal einer Kandidatur.** Wer antritt, steht in
-einem WAHLBEREICH und bekommt in jedem seiner 15 bis 24 Wahlbezirke Stimmen.
-Als Spalte gäbe es also nicht einen Wert, sondern zwanzig. Deshalb zwei
+**Jede Kandidatur hat Stimmen in jedem Wahlbezirk ihres Wahlbereichs** — 15
+bis 24 Zahlen, nicht eine. Eine Spalte „Wahlbezirk" in der stadtweiten Liste
+könnte davon keine zeigen; als Filter wird daraus genau eine. Deshalb zwei
 Antworten auf dieselbe Frage:
 
 1. **Als Filter** („wer lag in meinem Wahllokal vorn?") — dann sind Stimmen,
@@ -120,6 +120,20 @@ def test_der_anteil_rechnet_gegen_die_liste_im_bezirk(stand):
         gesamt = d["lists"][z["party"]]["total"]
         if z["votes"] and gesamt:
             assert z["party_share_pct"] == round(100 * z["votes"] / gesamt, 1), z["name"]
+
+
+def test_die_grosse_zahl_steht_daneben(stand):
+    """„105" allein sagt nichts. Neben den 1.539 des ganzen Wahlbereichs sagt
+    es, dass dieses Wahllokal ein Vierzehntel ihrer Stimmen trug."""
+    reg, snap, nacht = stand
+    r = candidates.ranking(nacht, bezirk=service.district_candidates(reg, snap, 504))
+    stadtweit = {z["name"]: z["votes"] for z in candidates.ranking(nacht)["rows"]}
+    for z in r["rows"]:
+        assert z["area_votes"] == stadtweit[z["name"]], z["name"]
+        if z["votes"]:
+            assert z["votes"] <= (z["area_votes"] or 0), z["name"]
+    # Ohne Filter ist ``votes`` schon die große Zahl — dann bleibt das Feld leer.
+    assert all(z["area_votes"] is None for z in candidates.ranking(nacht)["rows"])
 
 
 def test_der_abstand_zum_sitz_bleibt_im_bezirk_leer(stand):

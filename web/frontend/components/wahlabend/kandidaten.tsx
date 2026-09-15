@@ -325,7 +325,9 @@ export function Kandidaten({
                   <th scope="col" className="w-12 border-b border-border px-2 py-2 text-right font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">Rang</th>
                   <th scope="col" className="border-b border-border px-3 py-2 text-left font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">Kandidatur</th>
                   <th scope="col" className="w-28 border-b border-border px-3 py-2 text-left font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">Liste</th>
-                  <th scope="col" className="w-44 border-b border-border px-3 py-2 text-left font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground" title="Wahlbereich der Kandidatur — darunter ihr stärkster Wahlbezirk">Wahlbereich {liste.district === null ? "· stärkster Bezirk" : ""}</th>
+                  <th scope="col" className="w-44 border-b border-border px-3 py-2 text-left font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground" title={liste.district === null
+                    ? "Wahlbereich der Kandidatur — darunter ihr stärkster Wahlbezirk"
+                    : "Stimmen im ganzen Wahlbereich — und welcher Anteil davon aus diesem Wahllokal kam"}>{liste.district === null ? "Wahlbereich · stärkster Bezirk" : "Im ganzen Wahlbereich"}</th>
                   <th scope="col" className="w-48 border-b border-border border-l border-l-border/70 px-3 py-2 text-right font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">Personenstimmen</th>
                   <th scope="col" className="w-24 border-b border-border border-l border-l-border/70 px-3 py-2 text-right font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground" title={liste.district === null
                     ? "Anteil an allen Stimmen der eigenen Liste im Wahlbereich"
@@ -349,18 +351,36 @@ export function Kandidaten({
                         <span className="flex items-center gap-1.5"><Punkt color={z.color} dark={z.color_dark} />{z.party_short}</span>
                         <span className="block text-[11px] text-muted-foreground">Platz {z.position}</span>
                       </td>
+                      {/* Stadtweit hat eine Kandidatur 15 bis 24 Wahlbezirke
+                          — hier steht ihr Wahlbereich und darunter die
+                          Hochburg, die eine davon, die etwas aussagt. Im
+                          Bezirks-Filter ist es genau einer, und dann steht
+                          er selbst da. */}
                       <td className="border-b border-border/60 px-3 py-2">
-                        <span className="block">{z.area_roman}</span>
-                        <span className="block truncate text-[11px] text-muted-foreground">{z.area_name}</span>
-                        {/* Die Hochburg ist die einzige Art, wie ein
-                            Wahlbezirk zu EINER Kandidatur gehört. Im
-                            Bezirks-Filter steht sie nicht: Dort sind ohnehin
-                            alle im selben Wahllokal. */}
-                        {liste.district === null && z.top_district !== null ? (
-                          <span className="mt-0.5 block truncate text-[11px] text-muted-foreground" title={`Stärkster Wahlbezirk: ${z.top_district_name} mit ${zahl(z.top_district_votes)} Personenstimmen`}>
-                            ↗ {z.top_district_name} · {zahl(z.top_district_votes)}
-                          </span>
-                        ) : null}
+                        {liste.district === null ? (
+                          <>
+                            <span className="block">{z.area_roman}</span>
+                            <span className="block truncate text-[11px] text-muted-foreground">{z.area_name}</span>
+                            {z.top_district !== null ? (
+                              <span className="mt-0.5 block truncate text-[11px] text-muted-foreground" title={`Stärkster Wahlbezirk: ${z.top_district_name} mit ${zahl(z.top_district_votes)} Personenstimmen`}>
+                                ↗ {z.top_district_name} · {zahl(z.top_district_votes)}
+                              </span>
+                            ) : null}
+                          </>
+                        ) : (
+                          // Der Bezirk steht schon in der Überschrift — 61-mal
+                          // derselbe Name wäre keine Spalte, sondern ein Muster.
+                          // Hier steht, was je Zeile verschieden ist: die große
+                          // Zahl, neben der die Bezirkszahl erst etwas sagt.
+                          <>
+                            <span className="block tabular-nums">{zahl(z.area_votes)}</span>
+                            <span className="block text-[11px] text-muted-foreground tabular-nums">
+                              {z.area_votes && z.votes !== null
+                                ? `${prozent((100 * z.votes) / z.area_votes)} davon hier`
+                                : `Wahlbereich ${z.area_roman}`}
+                            </span>
+                          </>
+                        )}
                       </td>
                       <td className={cn("border-b border-border/60", SPALTE_ZAHL)}>
                         <span className={cn("block", drin && "font-semibold")}>{zahl(z.votes)}</span>
@@ -393,7 +413,7 @@ export function Kandidaten({
                     <span className={cn("block truncate text-[13px]", drin ? "font-semibold" : "font-medium")}>{z.name}</span>
                     <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[11.5px] text-muted-foreground">
                       <Punkt color={z.color} dark={z.color_dark} />
-                      {z.party_short} · Platz {z.position} · WB {z.area_roman}
+                      {z.party_short} · Platz {z.position} · {liste.district === null ? `WB ${z.area_roman}` : `Bezirk ${liste.district}`}
                     </span>
                     {liste.district === null && z.top_district !== null ? (
                       <span className="block truncate text-[11px] text-muted-foreground">↗ {z.top_district_name} · {zahl(z.top_district_votes)}</span>

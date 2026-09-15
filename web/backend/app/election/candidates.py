@@ -26,14 +26,17 @@ und bleibt es auch gefiltert: Platz 7 der Stadt ist Platz 7, auch wenn nur
 die eigene Liste gezeigt wird.
 
 **Der Wahlbezirk ist die eine Ausnahme** (Tims Wunsch 15.09.2026: „ein
-fünfter Filter … der Wahlbezirk heißt"). Er ist kein Merkmal einer
-Kandidatur — wer antritt, steht in einem WAHLBEREICH und bekommt in jedem
-seiner 15 bis 24 Wahlbezirke Stimmen; als Spalte gäbe es also nicht einen
-Wert, sondern zwanzig. Als FILTER ergibt er dagegen genau eine Frage, die
-sonst niemand beantworten kann: „Wer hat in meinem Wahllokal die meisten
-Personenstimmen?" Dann sind Stimmen, Anteil und Rang die dieses Bezirks —
-ein stadtweiter Rang neben Bezirks-Stimmen wäre eine Zahl aus einer anderen
-Rechnung.
+fünfter Filter … der Wahlbezirk heißt"). Jede Kandidatur hat sehr wohl
+Stimmen in jedem Wahlbezirk ihres Wahlbereichs — nur eben 15 bis 24 Zahlen
+und nicht eine, weshalb eine SPALTE „Wahlbezirk" in der stadtweiten Liste
+nichts anzeigen könnte. Als FILTER dagegen wird aus den zwanzig Zahlen
+genau eine, und die beantwortet eine Frage, die sonst niemand beantwortet:
+„Wer hat in meinem Wahllokal die meisten Personenstimmen?" Dann sind
+Stimmen, Anteil und Rang die dieses Bezirks — ein stadtweiter Rang neben
+Bezirks-Stimmen wäre eine Zahl aus einer anderen Rechnung.
+
+In der ungefilterten Liste steht deshalb die **Hochburg**: die eine der
+zwanzig Zahlen, die etwas über die Person sagt.
 """
 from __future__ import annotations
 
@@ -84,10 +87,12 @@ def _hochburg(hochburgen: dict | None, slug: str, bereich: int, platz: int) -> d
     eintrag = (hochburgen or {}).get((slug, platz, bereich))
     if eintrag is None:
         return {"top_district": None, "top_district_name": "",
-                "top_district_votes": None, "top_district_postal": False}
+                "top_district_votes": None, "top_district_postal": False,
+                "area_votes": None}
     stimmen, nr, name, brief = eintrag
     return {"top_district": nr, "top_district_name": name,
-            "top_district_votes": stimmen, "top_district_postal": brief}
+            "top_district_votes": stimmen, "top_district_postal": brief,
+            "area_votes": None}
 
 
 def _ranked(rows: list[ElectionCandidateRow]) -> list[ElectionCandidateRow]:
@@ -161,6 +166,9 @@ def _im_bezirk(rows: list[ElectionCandidateRow], bezirk: dict) -> list[ElectionC
         gesamt = (eintrag or {}).get("total") if eintrag else None
         aus.append(ElectionCandidateRow(
             **{**r, "votes": stimmen, "party_share_pct": _pct(stimmen, gesamt),
+               # Die große Zahl bleibt daneben stehen: „105 von 1.539" sagt
+               # etwas, „105" allein sagt nichts.
+               "area_votes": r["votes"],
                # Der Abstand zum Sitz ist eine Rechnung über den ganzen
                # Wahlbereich; im Bezirk hat er keine Bedeutung.
                "votes_to_seat": None, "rank": None},

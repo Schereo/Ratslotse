@@ -7910,6 +7910,13 @@
             "title": "Area Roman",
             "type": "string"
           },
+          "area_votes": {
+            "title": "Area Votes",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
           "born": {
             "title": "Born",
             "type": [
@@ -8034,7 +8041,8 @@
           "top_district",
           "top_district_name",
           "top_district_votes",
-          "top_district_postal"
+          "top_district_postal",
+          "area_votes"
         ],
         "title": "ElectionCandidateRow",
         "type": "object"
@@ -8910,6 +8918,13 @@
                 "title": "Area Roman",
                 "type": "string"
               },
+              "area_votes": {
+                "title": "Area Votes",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
               "born": {
                 "title": "Born",
                 "type": [
@@ -9034,7 +9049,8 @@
               "top_district",
               "top_district_name",
               "top_district_votes",
-              "top_district_postal"
+              "top_district_postal",
+              "area_votes"
             ],
             "title": "ElectionCandidateRow",
             "type": [

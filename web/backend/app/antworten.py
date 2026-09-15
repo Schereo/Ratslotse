@@ -4085,6 +4085,11 @@ class ElectionCandidateRow(TypedDict):
     #: Ist die Hochburg ein Briefwahlbezirk? Dann ist sie kein Ort, sondern
     #: ein Stapel — das gehört dazugesagt.
     top_district_postal: bool
+    #: Nur im Wahlbezirks-Filter: die Stimmen DERSELBEN Kandidatur im ganzen
+    #: Wahlbereich. Erst neben ihr sagt die Bezirkszahl etwas — 105 von 1.539
+    #: heißt, dass dieses Wahllokal ein Vierzehntel ihrer Stimmen trug.
+    #: ``None`` ohne Filter: Dort IST ``votes`` schon die große Zahl.
+    area_votes: int | None
 
 
 class ElectionWatchEntry(TypedDict):
@@ -4135,11 +4140,12 @@ class ElectionCandidateRanking(TypedDict):
     party: str | None
     area: int | None
     #: Ein WAHLBEZIRK als Filter — die Ebene unter dem Wahlbereich, also ein
-    #: Wahllokal. Er ist kein Merkmal einer Kandidatur: Wer antritt, steht in
-    #: einem Wahlbereich und bekommt in JEDEM seiner 15 bis 24 Wahlbezirke
-    #: Stimmen. Gesetzt heißt deshalb: Es werden die Kandidaturen dieses
-    #: Wahlbereichs gezeigt, und ``votes``, ``party_share_pct`` und ``rank``
-    #: beziehen sich auf DIESEN Wahlbezirk — nicht auf die Stadt.
+    #: Wahllokal. Jede Kandidatur HAT Stimmen in jedem Wahlbezirk ihres
+    #: Wahlbereichs — 15 bis 24 Zahlen, nicht eine. Deshalb ist der
+    #: Wahlbezirk ein Ausschnitt und keine Spalte: Gesetzt werden die
+    #: Kandidaturen dieses Wahlbereichs gezeigt, und ``votes``,
+    #: ``party_share_pct`` und ``rank`` sind die aus DIESEM Wahlbezirk —
+    #: nicht die der Stadt.
     district: int | None
     #: Name des Wahllokals („504 Grundschule Bümmerstede"); leer ohne Filter.
     district_name: str

@@ -8567,6 +8567,8 @@ export interface components {
             area_name: string;
             /** Area Roman */
             area_roman: string;
+            /** Area Votes */
+            area_votes: number | null;
             /** Born */
             born: number | null;
             /** Color */
@@ -8948,6 +8950,8 @@ export interface components {
                 area_name: string;
                 /** Area Roman */
                 area_roman: string;
+                /** Area Votes */
+                area_votes: number | null;
                 /** Born */
                 born: number | null;
                 /** Color */
@@ -19734,4 +19738,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 4016139487263a342e91c226831ef91ecfa84da883c3a8cb3416728a7c41a7af
+// vertrag-sha256: d28a4152d7ddf8700dedb1391aea195f4015c42481eb536ec788a86e5989b7b9
