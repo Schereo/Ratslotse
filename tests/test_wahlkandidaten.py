@@ -97,18 +97,18 @@ def test_die_anderen_sortierungen(nacht):
 
 
 def test_der_endpunkt_liefert_gefiltert_und_weist_unbekanntes_ab():
-    r = router.wahlabend_kandidaten(probe=None, counted=None, wahl="ratswahl-2026", sort="votes", party="spd", area=None)
+    r = router.wahlabend_kandidaten(probe=None, counted=None, wahl="ratswahl-2026", sort="votes", party="spd", area=None, district=None)
     assert r["party"] == "spd" and r["area"] is None and all(z["party"] == "spd" for z in r["rows"])
     with pytest.raises(HTTPException) as e:
-        router.wahlabend_kandidaten(probe=None, counted=None, wahl="ratswahl-2026", sort="votes", party="xyz", area=None)
+        router.wahlabend_kandidaten(probe=None, counted=None, wahl="ratswahl-2026", sort="votes", party="xyz", area=None, district=None)
     assert e.value.status_code == 404
     with pytest.raises(HTTPException) as e:
-        router.wahlabend_kandidaten(probe=None, counted=None, wahl="ratswahl-2026", sort="votes", party=None, area=9)
+        router.wahlabend_kandidaten(probe=None, counted=None, wahl="ratswahl-2026", sort="votes", party=None, area=9, district=None)
     assert e.value.status_code == 404
 
 
 def test_der_endpunkt_ist_hinter_dem_schalter(monkeypatch):
     monkeypatch.setenv("FEATURE_FLAGS", "")
     with pytest.raises(HTTPException) as e:
-        router.wahlabend_kandidaten(probe=None, counted=None, wahl="ratswahl-2026", sort="votes", party=None, area=None)
+        router.wahlabend_kandidaten(probe=None, counted=None, wahl="ratswahl-2026", sort="votes", party=None, area=None, district=None)
     assert e.value.status_code == 404

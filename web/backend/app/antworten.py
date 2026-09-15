@@ -4050,6 +4050,10 @@ class ElectionCandidateRow(TypedDict):
     #: Rang nach Personenstimmen über ALLE Kandidaturen der Wahl — bleibt
     #: auch gefiltert der stadtweite Rang (Platz 7 der Stadt ist Platz 7,
     #: auch wenn nur die eigene Liste gezeigt wird). ``None`` ohne Stimmen.
+    #:
+    #: **Mit einem Wahlbezirks-Filter zählt der Bezirk**: Dort sind die
+    #: Stimmen die dieses Wahllokals, und ein stadtweiter Rang daneben wäre
+    #: eine Zahl aus einer anderen Rechnung.
     rank: int | None
     party: str
     party_short: str
@@ -4070,6 +4074,22 @@ class ElectionCandidateRow(TypedDict):
     elected: str | None
     projected_elected: str | None
     votes_to_seat: int | None
+    #: Der Wahlbezirk, in dem diese Kandidatur die meisten Personenstimmen
+    #: geholt hat — ihre Hochburg. Das ist die EINZIGE Art, wie ein
+    #: Wahlbezirk zu einer Kandidatur gehört: Sie tritt im Wahlbereich an und
+    #: bekommt in jedem seiner 15 bis 24 Bezirke Stimmen; einer davon ist der
+    #: stärkste. ``None``, solange keine Personenstimmen vorliegen.
+    top_district: int | None
+    top_district_name: str
+    top_district_votes: int | None
+    #: Ist die Hochburg ein Briefwahlbezirk? Dann ist sie kein Ort, sondern
+    #: ein Stapel — das gehört dazugesagt.
+    top_district_postal: bool
+    #: Nur im Wahlbezirks-Filter: die Stimmen DERSELBEN Kandidatur im ganzen
+    #: Wahlbereich. Erst neben ihr sagt die Bezirkszahl etwas — 105 von 1.539
+    #: heißt, dass dieses Wahllokal ein Vierzehntel ihrer Stimmen trug.
+    #: ``None`` ohne Filter: Dort IST ``votes`` schon die große Zahl.
+    area_votes: int | None
 
 
 class ElectionWatchEntry(TypedDict):
@@ -4098,6 +4118,60 @@ class ElectionWatchList(TypedDict):
     entries: list[ElectionWatchEntry]
 
 
+class ElectionCandidateDistrict(TypedDict):
+    """Ein Wahlbezirk aus der Sicht EINER Kandidatur."""
+    number: int
+    name: str
+    postal: bool
+    counted: bool
+    votes: int | None
+    #: Anteil an ALLEN Personenstimmen dieser Kandidatur — die Spalte summiert
+    #: sich auf 100 %. Das ist die Zahl, die zeigt, ob jemand gleichmäßig
+    #: gewählt wurde oder eine Hochburg hat.
+    share_pct: float | None
+    #: Und ihr Anteil an allen Stimmen der eigenen Liste in DIESEM Bezirk —
+    #: dieselbe Frage wie in der Rangliste, nur je Wahllokal.
+    party_share_pct: float | None
+
+
+class ElectionCandidateDetail(TypedDict):
+    """``GET /api/wahlabend/kandidat`` — eine Kandidatur in allen ihren
+    Wahlbezirken.
+
+    Die Gegenrichtung zur Rangliste: Dort steht je Wahlbezirk, wer vorn lag;
+    hier steht je Kandidatur, wo ihre Stimmen herkamen. Beides sind Schnitte
+    durch dieselbe Tabelle aus der Bezirksdatei.
+    """
+    dataset: str
+    phase: str
+    election: ElectionInfo
+    party: str
+    party_short: str
+    color: str
+    color_dark: str
+    area: int
+    area_roman: str
+    area_name: str
+    position: int
+    name: str
+    occupation: str | None
+    born: int | None
+    #: Die Personenstimmen im ganzen Wahlbereich — die Summe der Bezirke.
+    votes: int | None
+    elected: str | None
+    #: Alle Wahlbezirke des Wahlbereichs, stärkster zuerst. Auch die mit null
+    #: Stimmen: „hier hat mich niemand angekreuzt" ist eine Auskunft.
+    districts: list[ElectionCandidateDistrict]
+
+
+class ElectionDistrictRef(TypedDict):
+    """Ein Wahlbezirk, nur mit dem, was eine Auswahl braucht."""
+    number: int
+    name: str
+    area: int
+    postal: bool
+
+
 class ElectionCandidateRanking(TypedDict):
     """``GET /api/wahlabend/kandidaten`` — alle Kandidaturen einer Ratswahl,
     sortiert und gefiltert vom Server, damit Web und App dieselbe Liste
@@ -4111,6 +4185,19 @@ class ElectionCandidateRanking(TypedDict):
     #: Die angewandten Filter — ``None`` = kein Filter.
     party: str | None
     area: int | None
+    #: Ein WAHLBEZIRK als Filter — die Ebene unter dem Wahlbereich, also ein
+    #: Wahllokal. Jede Kandidatur HAT Stimmen in jedem Wahlbezirk ihres
+    #: Wahlbereichs — 15 bis 24 Zahlen, nicht eine. Deshalb ist der
+    #: Wahlbezirk ein Ausschnitt und keine Spalte: Gesetzt werden die
+    #: Kandidaturen dieses Wahlbereichs gezeigt, und ``votes``,
+    #: ``party_share_pct`` und ``rank`` sind die aus DIESEM Wahlbezirk —
+    #: nicht die der Stadt.
+    district: int | None
+    #: Name des Wahllokals („504 Grundschule Bümmerstede"); leer ohne Filter.
+    district_name: str
+    #: Alle Wahlbezirke zur Auswahl, aufsteigend — damit die Oberfläche für
+    #: die Liste keine zweite Abfrage braucht.
+    districts: list[ElectionDistrictRef]
     #: Kandidaturen insgesamt und davon gezeigt.
     total: int
     shown: int
@@ -4176,6 +4263,92 @@ class MayorElectionInfo(TypedDict):
     presentation_url: str
 
 
+class MayorDistrictEntry(TypedDict):
+    """Ein Wahlbezirk einer OB-Wahl mit seinem Stand."""
+    number: int
+    name: str
+    area: int
+    #: Briefwahlbezirk (ab 900): zählt zum Wahlbereich, hat keinen Ort.
+    postal: bool
+    counted: bool
+    eligible: int | None
+    voters: int | None
+    valid_votes: int | None
+    #: Slug → Stimmen; ``None``, solange der Bezirk nicht gemeldet hat.
+    votes: dict[str, int | None]
+    #: Dieselben Slugs im ERSTEN Wahlgang — nur bei einer Stichwahl, sonst
+    #: leer. Das ist die Vergleichsgröße für Karte und Hochrechnung; die
+    #: Seite soll sie nicht ein zweites Mal holen müssen.
+    first_round: dict[str, int | None]
+
+
+class MayorDistrictList(TypedDict):
+    """``GET /api/wahlabend/stichwahl/bezirke`` — die 133 Wahlbezirke der
+    Stichwahl. Eigener Endpunkt, weil die Seite sie erst für Karte und
+    Hochrechnung braucht und ``MayorNight`` schlank bleiben soll."""
+    dataset: str
+    phase: str
+    election: MayorElectionInfo
+    total: int
+    counted: int
+    districts: list[MayorDistrictEntry]
+
+
+class MayorHistoryPoint(TypedDict):
+    """Ein Stand des Stichwahl-Abends — für den Verlauf (S3). Der Dienst
+    schreibt ihn sich selbst mit; der Votemanager kennt nur das Jetzt."""
+    at: str
+    reports_received: int
+    #: Slug → Ist-Anteil in Prozent (nur mit Stimmen).
+    shares: dict[str, float]
+    #: Slug → Ist-Stimmen — für „Prange +312" zwischen zwei Ständen.
+    votes: dict[str, int]
+    #: Slug → hochgerechneter Endstand — leer, solange es keine Hochrechnung gibt.
+    projected_shares: dict[str, float]
+    chance_pct: int | None
+    #: Wer nach Ist-Stimmen vorn liegt; ``None`` bei Gleichstand oder ohne Stimmen.
+    leader: str | None
+
+
+class MayorLeadChange(TypedDict):
+    """Ein Führungswechsel: zwischen zwei Ständen wechselte, wer vorn liegt."""
+    at: str
+    reports_received: int
+    leader: str
+    previous: str
+
+
+class RunoffProjection(TypedDict):
+    """Die Hochrechnung einer Stichwahl (``runoff_model``,
+    docs/plan-stichwahl-spannung.md S2). Modellrechnung, keine Umfrage — die
+    Seite nennt sie „Modell" und stellt die Bezirkszahl daneben."""
+    #: Hochgerechneter Endstand je Slug in Prozent.
+    shares: dict[str, float]
+    #: Hochgerechnete Stimmen je Slug.
+    projected_votes: dict[str, int]
+    leader: str
+    #: Hochgerechneter Vorsprung des Führenden in Stimmen.
+    lead_votes: int
+    #: Chance des Führenden in Prozent (ganze Zahl) — ``None`` unter 15
+    #: gezählten Bezirken oder wenn rechnerisch entschieden.
+    chance_pct: int | None
+    #: Wie viele Bezirke das Modell gesehen hat, getrennt nach Urne und Brief.
+    counted_ballot: int
+    counted_postal: int
+    open_ballot: int
+    open_postal: int
+    #: Der TATSÄCHLICHE Vorsprung übersteigt die Obergrenze der offenen Stimmen.
+    decided: bool
+    #: Wer nach den gezählten Stimmen wirklich vorn liegt, und um wie viel.
+    actual_leader: str
+    actual_lead_votes: int
+    #: Obergrenze der noch offenen Stimmen (Wahlberechtigte der offenen
+    #: Urnenbezirke plus 1,6 × gültige Erststimmen der offenen Briefwahlbezirke).
+    open_votes_max: int
+    #: Menschentext: was das Modell annimmt und was nicht.
+    caveats: list[str]
+
+
 class MayorNight(TypedDict):
     #: "live" (Votemanager) oder "probe" (Generalprobe mit echten Zahlen).
     dataset: str
@@ -4197,6 +4370,13 @@ class MayorNight(TypedDict):
     ok: bool
     error: str | None
     notes: list[str]
+    #: Nur bei einer Stichwahl, sobald ein Bezirk gemeldet hat.
+    projection: NotRequired[RunoffProjection]
+    #: Der Verlauf des Abends, ältester Stand zuerst — leer vor der Auszählung
+    #: und beim ersten Wahlgang (dessen Abend war die Ratswahl).
+    history: list[MayorHistoryPoint]
+    #: Wann wechselte, wer vorn liegt — aus ``history`` gerechnet.
+    lead_changes: list[MayorLeadChange]
 
 
 # ------------------------------------------------------------------ Tippspiel (docs/plan-tippspiel-ratswahl.md)

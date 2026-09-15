@@ -54,6 +54,15 @@ SPD #e3000f · CDU #1a1a1a · Grüne #3d8f29 · FDP #ffe000 (heller Dot: Inset-R
 rgba(0,0,0,.15)) · AfD #009ee0 · Linke #e6007e · BSW #7d254f · Gruppen: neutraler
 Dot hsl(209 18% 65%), kombiniertes Label.
 
+**Die eine Ausnahme: die Karte der Stichwahl** (`stichwahl-karte.tsx`, Tims
+Entscheidung 15.09.2026). Zwei Namen auf einem Stimmzettel, eine Frage je
+Bezirk — „wer liegt hier vorn" — und die beantwortet eine Fläche in der Farbe
+der Person: Prange in SPD-Rot, Rohr in Orange (#e8590c / #ff8a3d), nicht in
+Grün, weil er parteilos antritt und Rot neben Grün die Ampel wäre. Die
+Deckkraft trägt den Vorsprung (50 % = kaum Farbe), offene Bezirke halb so
+kräftig und gestrichelt. Bei Listenwahlen mit sieben Farben bleibt es bei
+der Primärtönung.
+
 ## 3. Typografie
 
 - **Inter** 400/500/600/700 — UI und Fließtext. Die Leserollen unten gelten
@@ -501,7 +510,8 @@ unten sind der gemeinsame Nenner; die Bausteine dazu stehen in
 ## 8. Anti-Patterns
 
 Keine Anführungszeichen um Paraphrasen · keine Stimm-/Abstimmungsgrafiken ·
-kein Signal-Orange als Flächenfarbe · keine Parteifarben-Flächen · kein Emoji
+kein Signal-Orange als Flächenfarbe · keine Parteifarben-Flächen (Ausnahme:
+Stichwahl-Karte, s. § 2) · kein Emoji
 im UI-Text · keine gerahmten Button-Reihen unter Antworten (stille Icons) ·
 Bricolage nie im Fließtext · Externes nie wie Beschlüsse stylen · Footer nie
 auf der Chat-Seite (Links im Sidebar-Fuß).
