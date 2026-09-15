@@ -240,6 +240,12 @@ jobs:
             # tragen dann nur wieder CARTOs „API KEY REQUIRED"-Wasserzeichen.
             NEXT_PUBLIC_CARTO_API_KEY="${{ secrets.CARTO_API_KEY }}" npm run build
             cd ~/app
+            # Ist der Build in sich stimmig? Am 15.09.2026 (v2.6.1) verlangte
+            # die vorgerenderte /wahlabend ein Skript, das der Build nicht
+            # geschrieben hatte — der Name kam aus dem alten Webpack-Cache,
+            # die Seite blieb weiß, Deploy und Rauchprobe waren grün. Hier,
+            # VOR dem API-Stopp, bricht so ein Build folgenlos ab.
+            .venv/bin/python scripts/pruefe_build_chunks.py web/frontend/.next
 
             # Ab hier darf kein alter Prozess mehr schreiben: Neue Store-
             # Instanzen respektieren den Marker, der API-Dienst wird gestoppt,
