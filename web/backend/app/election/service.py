@@ -42,6 +42,8 @@ from ..antworten import (
     ElectionCandidate,
     ElectionDistrict,
     ElectionDistrictList,
+    ElectionDistrictRanking,
+    ElectionDistrictRankRow,
     ElectionCandidateDistrict,
     ElectionDistrictParty,
     ElectionDistrictRef,
@@ -514,6 +516,48 @@ def districts(reg: Register, snap: Snapshot, dataset: str) -> ElectionDistrictLi
         phase="before" if gezaehlt == 0 else ("complete" if gezaehlt == len(zeilen) else "counting"),
         election=_election_of(reg),
         total=len(zeilen), counted=gezaehlt, districts=zeilen,
+    )
+
+
+#: Sortierungen der Bezirks-Rangliste — der Vertrag nennt sie beim Namen.
+DISTRICT_SORTS = ("share", "votes")
+
+
+def district_ranking(liste: ElectionDistrictList, reg: Register, party: str,
+                     sort: str = "share", area: int | None = None) -> ElectionDistrictRanking:
+    """Alle Wahlbezirke aus der Sicht einer Liste, mit Rang.
+
+    Gezählte Bezirke zuerst, nach Anteil oder Stimmen absteigend; ungezählte
+    dahinter ohne Rang, in Nummernfolge. Bei gleichem Wert entscheidet die
+    Nummer — der Rang ist damit eindeutig und wiederholbar. Briefwahlbezirke
+    stehen dazwischen wie alle anderen: Sie sind ein Drittel der Stimmen.
+    """
+    if sort not in DISTRICT_SORTS:
+        raise ValueError(f"sort muss eines von {DISTRICT_SORTS} sein, nicht {sort!r}")
+    roman = {a.number: a.roman for a in reg.areas}
+    rows: list[ElectionDistrictRankRow] = []
+    for d in liste["districts"]:
+        if area is not None and d["area"] != area:
+            continue
+        p = next((x for x in d["parties"] if x["slug"] == party), None)
+        rows.append(ElectionDistrictRankRow(
+            rank=None, number=d["number"], name=d["name"], area=d["area"],
+            area_roman=roman.get(d["area"], str(d["area"])), postal=d["postal"],
+            counted=d["counted"],
+            votes=p["votes"] if p else None, share_pct=p["share_pct"] if p else None,
+            valid_votes=d["totals"]["valid_votes"],
+        ))
+    feld = "share_pct" if sort == "share" else "votes"
+    gezaehlt = [r for r in rows if r["counted"] and r[feld] is not None]
+    offen = [r for r in rows if not (r["counted"] and r[feld] is not None)]
+    gezaehlt.sort(key=lambda r: (-(r[feld] or 0), r["number"]))
+    offen.sort(key=lambda r: r["number"])
+    for i, r in enumerate(gezaehlt, start=1):
+        r["rank"] = i
+    return ElectionDistrictRanking(
+        dataset=liste["dataset"], phase=liste["phase"], election=liste["election"],
+        party=party, sort=sort, area=area,
+        total=len(rows), counted=len(gezaehlt), rows=gezaehlt + offen,
     )
 
 

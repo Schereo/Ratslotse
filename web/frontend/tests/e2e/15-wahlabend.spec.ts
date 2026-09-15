@@ -37,6 +37,10 @@ const KANDIDAT = JSON.parse(
 const BEZIRKE = JSON.parse(
   readFileSync(path.join(__dirname, "fixtures", "wahlbezirke-probe.json"), "utf8"),
 );
+/** Die Bezirks-Rangliste für Volt (`wahlabend_wahlbezirke_rangliste(party="volt", …, counted=60)`). */
+const RANGLISTE = JSON.parse(
+  readFileSync(path.join(__dirname, "fixtures", "wahlbezirke-rangliste-probe.json"), "utf8"),
+);
 
 /** `/api/app-config` mit genau den Schaltern, die dieser Test sehen will.
  *  `min_build` und `note` gehören dazu — es ist derselbe Endpunkt, den die
@@ -88,6 +92,15 @@ function wahlabendMock(page: Page) {
       status: 200,
       contentType: "application/json",
       body: JSON.stringify(KANDIDATEN),
+    });
+  });
+  // Nach den Wahlbezirken registriert, damit der Unterpfad gewinnt.
+  page.route("**/api/wahlabend/wahlbezirke/rangliste*", (route) => {
+    zaehler.rufe += 1;
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(RANGLISTE),
     });
   });
   return zaehler;
@@ -199,6 +212,24 @@ test.describe("Schalter an: die Generalprobe", () => {
     // Und zurück zu den sechs.
     await page.getByRole("button", { name: "Wahlbereiche" }).first().click();
     await expect(karte.locator("path")).toHaveCount(6);
+  });
+
+  test("die Rangliste unter der Karte nennt jeden Wahlbezirk der Liste mit Rang — die Briefwahl mit ihrem Wahlbereich", async ({ page }) => {
+    await page.goto("/wahlabend?ansicht=bereiche&liste=volt");
+    const liste = page.getByTestId("bezirks-rangliste");
+    await expect(liste).toContainText("Volt in allen Wahlbezirken der Stadt");
+    await expect(liste).toContainText("60 von 133 Bezirken gezählt");
+    // 133 Zeilen, die erste trägt Rang 1 und den stärksten Anteil der Abschrift.
+    await expect(liste.locator("ol > li")).toHaveCount(133);
+    await expect(liste.locator("ol > li").first()).toContainText(RANGLISTE.rows[0].name);
+    await expect(liste.locator("ol > li").first()).toContainText("1");
+    // Die Briefwahl steht dazwischen und nennt ihren Wahlbereich ausdrücklich.
+    await expect(liste.locator("ol > li").filter({ hasText: "Briefwahl" }).first().locator("[data-postal]")).toHaveText(/WB [IVX]+/);
+    // Eine Zeile antippen holt die Karte in die Bezirke und wählt den Bezirk.
+    await liste.locator("ol > li").first().getByRole("button").click();
+    const karte = page.getByRole("img", { name: "Karte von Oldenburg" });
+    await expect.poll(() => karte.locator("path").count()).toBe(91);
+    await expect(page.getByText(/gültige Stimmen/)).toBeVisible();
   });
 
   test("der Wahlbezirk filtert die Rangliste auf ein Wahllokal", async ({ page }) => {

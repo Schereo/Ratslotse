@@ -30,6 +30,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Segmented } from "@/components/ui/segmented";
 import { KICKER, Punkt } from "@/components/wahlabend/bausteine";
+import { BezirksRangliste } from "@/components/wahlabend/bezirks-rangliste";
 import { Gebietskarte } from "@/components/wahlabend/gebietskarte";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -309,7 +310,32 @@ export function Wahlgebiete({ daten, partei, probe, counted, rueckblick, classNa
           Briefwahl: {partei.short}{" "}
           {prozent(anteilBriefwahl(abfrage.data, partei.slug, typeof fokus === "number" ? fokus : null))}
           {typeof fokus === "number" ? ` in den Briefwahlbezirken von Wahlbereich ${roemisch(fokus)}` : ` über alle ${brief} Briefwahlbezirke`}.
+          {/* Tims Frage 15.09.: „Weiß man, wie sich die 9xx-Nummern ergeben?"
+              Ja — und es soll nicht nur einer wissen. */}
+          {" "}Ihre Nummern sagen, wohin sie gehören: 9xy, x ist der Wahlbereich — 921 ist der zweite Briefwahlbezirk von
+          Wahlbereich II, 950 der erste von V. Je Wahlbereich sind es sieben.
         </p>
+      ) : null}
+
+      {/* Die Rangliste unter der Karte: dieselbe Liste, dieselbe Frage, als
+          Zahl mit Rang statt als Tönung — und über ALLE Bezirke, auch die
+          Briefwahl, die auf der Karte keine Fläche hat. Folgt dem Fokus. */}
+      {zaehlt ? (
+        <BezirksRangliste
+          partei={partei}
+          bereich={typeof fokus === "number" ? fokus : null}
+          bereichName={fokusBereich ? `${fokusBereich.roman} · ${fokusBereich.name}` : undefined}
+          probe={probe}
+          counted={counted}
+          rueckblick={rueckblick}
+          gewaehlt={inBezirken ? gewaehlt : null}
+          onWaehlen={(nr) => {
+            // Eine Zeile antippen zeigt den Bezirk auf der Karte — dafür muss
+            // die Karte in den Bezirken stehen; ihr Ausschnitt bleibt.
+            if (!inBezirken) setFokus("city");
+            setGewaehlt((alt) => (alt === nr && inBezirken ? null : nr));
+          }}
+        />
       ) : null}
     </section>
   );

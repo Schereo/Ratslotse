@@ -174,3 +174,18 @@ def test_die_stichwahl_bezirke_abschrift_kennt_jedes_feld(stichwahl_probe):
     fehlt = _fehlt(router.stichwahl_bezirke(probe="1", counted=60), ist, "stichwahl-bezirke")
     assert not fehlt, "Diese Felder fehlen in stichwahl-bezirke-probe-60.json:\n  " + "\n  ".join(fehlt)
     assert ist["counted"] == 60 and ist["total"] == 133
+
+
+def test_die_rangliste_abschrift_kennt_jedes_feld(monkeypatch):
+    """Die Bezirks-Rangliste je Liste (15.09.2026) mockt
+    `/api/wahlabend/wahlbezirke/rangliste` mit der Probe für Volt bei 60."""
+    from app.election import service
+    from app.routers import wahlabend as router
+
+    monkeypatch.setenv("FEATURE_FLAGS", "wahlabend")
+    ist = json.loads((FIXTURES / "wahlbezirke-rangliste-probe.json").read_text(encoding="utf-8"))
+    soll = router.wahlabend_wahlbezirke_rangliste(party="volt", sort="share", area=None, probe="1", counted=60, wahl=None)
+    fehlt = _fehlt(soll, ist, "rangliste")
+    assert not fehlt, "Diese Felder fehlen in wahlbezirke-rangliste-probe.json:\n  " + "\n  ".join(fehlt)
+    assert ist["party"] == "volt" and ist["counted"] == 60 and ist["total"] == 133
+    assert service.DISTRICT_SORTS == ("share", "votes")

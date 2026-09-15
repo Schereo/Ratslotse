@@ -117,6 +117,7 @@ OEFFENTLICH = {
     # Und dieselben Zahlen je Wahlbezirk — Open Data der Stadt, nichts
     # Persönliches: Ein Wahlbezirk hat mindestens einige hundert Wählende.
     ("get", "/api/wahlabend/wahlbezirke"),
+    ("get", "/api/wahlabend/wahlbezirke/rangliste"),
     # Und dieselbe Tabelle von der anderen Seite: eine Kandidatur in allen
     # ihren Wahlbezirken. Namen und Zahlen stehen so in der amtlichen
     # Ergebnisdarstellung.

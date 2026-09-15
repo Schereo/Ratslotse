@@ -8334,6 +8334,136 @@
         "title": "ElectionDistrictParty",
         "type": "object"
       },
+      "ElectionDistrictRankRow": {
+        "description": "Ein Wahlbezirk in der Rangliste EINER Liste.",
+        "properties": {
+          "area": {
+            "title": "Area",
+            "type": "integer"
+          },
+          "area_roman": {
+            "title": "Area Roman",
+            "type": "string"
+          },
+          "counted": {
+            "title": "Counted",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "integer"
+          },
+          "postal": {
+            "title": "Postal",
+            "type": "boolean"
+          },
+          "rank": {
+            "title": "Rank",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "share_pct": {
+            "title": "Share Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "valid_votes": {
+            "title": "Valid Votes",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "votes": {
+            "title": "Votes",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "rank",
+          "number",
+          "name",
+          "area",
+          "area_roman",
+          "postal",
+          "counted",
+          "votes",
+          "share_pct",
+          "valid_votes"
+        ],
+        "title": "ElectionDistrictRankRow",
+        "type": "object"
+      },
+      "ElectionDistrictRanking": {
+        "description": "``GET /api/wahlabend/wahlbezirke/rangliste`` — alle Wahlbezirke aus\nder Sicht EINER Liste, sortiert. Die Frage dahinter (15.09.2026): „Wo hat\nmeine Liste in den Wahllokalen der Stadt wie gut abgeschnitten?\" Die\nKarte zeigt das als Tönung, diese Liste als Zahl mit Rang — und die\nrechnet der Server, nicht der Browser.",
+        "properties": {
+          "area": {
+            "title": "Area",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "counted": {
+            "title": "Counted",
+            "type": "integer"
+          },
+          "dataset": {
+            "title": "Dataset",
+            "type": "string"
+          },
+          "election": {
+            "$ref": "#/components/schemas/ElectionInfo"
+          },
+          "party": {
+            "title": "Party",
+            "type": "string"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/ElectionDistrictRankRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "sort": {
+            "title": "Sort",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "dataset",
+          "phase",
+          "election",
+          "party",
+          "sort",
+          "area",
+          "total",
+          "counted",
+          "rows"
+        ],
+        "title": "ElectionDistrictRanking",
+        "type": "object"
+      },
       "ElectionDistrictRef": {
         "description": "Ein Wahlbezirk, nur mit dem, was eine Auswahl braucht.",
         "properties": {
@@ -29370,6 +29500,124 @@
           }
         },
         "summary": "Wahlabend Wahlbezirke",
+        "tags": [
+          "wahlabend"
+        ]
+      }
+    },
+    "/api/wahlabend/wahlbezirke/rangliste": {
+      "get": {
+        "description": "Alle Wahlbezirke aus der Sicht EINER Liste, mit Rang — „wo hat meine\nListe wie gut abgeschnitten?\". Öffentlich wie die Wahlbezirke selbst.\nEine unbekannte Liste ist ein 404, kein leeres Ergebnis.",
+        "operationId": "wahlabend_wahlbezirke_rangliste_api_wahlabend_wahlbezirke_rangliste_get",
+        "parameters": [
+          {
+            "description": "Slug der Liste, z. B. „fdp“",
+            "in": "query",
+            "name": "party",
+            "required": true,
+            "schema": {
+              "description": "Slug der Liste, z. B. „fdp“",
+              "title": "Party",
+              "type": "string"
+            }
+          },
+          {
+            "description": "„share“ = Anteil, „votes“ = Stimmen",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "share",
+              "description": "„share“ = Anteil, „votes“ = Stimmen",
+              "pattern": "^(share|votes)$",
+              "title": "Sort",
+              "type": "string"
+            }
+          },
+          {
+            "description": "nur dieser Wahlbereich; leer = ganze Stadt",
+            "in": "query",
+            "name": "area",
+            "required": false,
+            "schema": {
+              "description": "nur dieser Wahlbereich; leer = ganze Stadt",
+              "maximum": 9,
+              "minimum": 1,
+              "title": "Area",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)",
+            "in": "query",
+            "name": "probe",
+            "required": false,
+            "schema": {
+              "description": "gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)",
+              "title": "Probe",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "Generalprobe: nur die ersten N Wahlbezirke ausgezählt",
+            "in": "query",
+            "name": "counted",
+            "required": false,
+            "schema": {
+              "description": "Generalprobe: nur die ersten N Wahlbezirke ausgezählt",
+              "maximum": 500,
+              "minimum": 0,
+              "title": "Counted",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "Slug einer gelaufenen Wahl — ihr eingefrorener Stand, ohne Abruf",
+            "in": "query",
+            "name": "wahl",
+            "required": false,
+            "schema": {
+              "description": "Slug einer gelaufenen Wahl — ihr eingefrorener Stand, ohne Abruf",
+              "title": "Wahl",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ElectionDistrictRanking"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Wahlabend Wahlbezirke Rangliste",
         "tags": [
           "wahlabend"
         ]
