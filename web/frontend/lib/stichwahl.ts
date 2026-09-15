@@ -199,3 +199,29 @@ export function bezirkAnteil(d: StichwahlBezirk, slug: string, quelle: "votes" |
   }
   return summe > 0 ? Math.round((1000 * mein) / summe) / 10 : null;
 }
+
+/** Wer in einem Bezirk vorn liegt und wie deutlich — für die Karte. Gezählt
+ *  zählt die Stichwahl, sonst der erste Wahlgang. `null` ohne Zahlen oder
+ *  bei Gleichstand. */
+export function bezirkFuehrung(d: StichwahlBezirk, slugs: readonly string[]): { slug: string; share: number; live: boolean } | null {
+  const quelle = d.counted ? "votes" : "first_round";
+  let best: { slug: string; share: number } | null = null;
+  let gleich = false;
+  for (const slug of slugs) {
+    const share = bezirkAnteil(d, slug, quelle);
+    if (share === null) return null;
+    if (!best || share > best.share) { best = { slug, share }; gleich = false; }
+    else if (share === best.share) gleich = true;
+  }
+  return best && !gleich ? { ...best, live: d.counted } : null;
+}
+
+/** Die Deckkraft einer Fläche: 50 % ist Gleichstand (kaum Farbe), `max` der
+ *  deutlichste Vorsprung auf der Karte (volle Farbe). Offene Bezirke
+ *  halb so kräftig — sie zeigen den ERSTEN Wahlgang. */
+export function flaechenAlpha(share: number, max: number, live: boolean): number {
+  const spanne = Math.max(5, max - 50);
+  const anteil = Math.min(1, Math.max(0, (share - 50) / spanne));
+  const a = 0.22 + 0.68 * anteil;
+  return live ? a : a * 0.5;
+}
