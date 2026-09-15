@@ -7,6 +7,18 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [2.6.2] – 2026-09-15
+
+### Geändert
+- **Die Wahlbezirke einer Kandidatur fahren jetzt auf wie die Tagesordnung im
+  Sitzungen-Reiter.** Rechts in der Zeile (auf dem Tisch links vor dem Namen)
+  steht der Pfeil, der sich beim Öffnen dreht; solange die Zahlen geholt werden,
+  dreht sich an seiner Stelle ein Spinner, und der Bereich fährt erst auf, wenn
+  sie da sind — kein zweiter Sprung mehr. Die ganze Zeile ist der Griff und tönt
+  sich beim Überfahren. Nebenbei behoben: Ein zugeklappter Bereich blieb ohne
+  Bewegung (bei „weniger Bewegung“ oder in einer versteckten Liste) unsichtbar
+  im Dokument stehen. (#1377)
+
 ## [2.6.1] – 2026-09-15
 
 ### Geändert
@@ -8294,7 +8306,8 @@ Open-Source-Go-Live von Ratslotse.
 *Dieser Changelog beginnt mit dem Open-Source-Release von Ratslotse. Die
 Entwicklungshistorie davor ist nicht Teil dieses Repositories.*
 
-[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v2.6.1...main
+[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v2.6.2...main
+[2.6.2]: https://github.com/Schereo/Ratslotse/compare/v2.6.1...v2.6.2
 [2.6.1]: https://github.com/Schereo/Ratslotse/compare/v2.6.0...v2.6.1
 [2.6.0]: https://github.com/Schereo/Ratslotse/compare/v2.5.1...v2.6.0
 [2.5.1]: https://github.com/Schereo/Ratslotse/compare/v2.5.0...v2.5.1
