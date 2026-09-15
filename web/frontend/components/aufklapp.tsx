@@ -15,7 +15,15 @@ import { cn } from "@/lib/utils";
  *  Der Inhalt bleibt beim Zufahren stehen, bis die Bewegung durch ist. Ohne
  *  das gäbe es nichts zu sehen: Die Aufrufstelle hängt ihren Inhalt an
  *  denselben Zustand wie `offen`, er wäre also im selben Bild verschwunden, in
- *  dem das Zufahren beginnt — die Karte fiele in sich zusammen, aber leer. */
+ *  dem das Zufahren beginnt — die Karte fiele in sich zusammen, aber leer.
+ *
+ *  Und ein Rückfall auf Zeit: `transitionend` kommt NICHT, wenn gar keine
+ *  Bewegung läuft — bei `prefers-reduced-motion` (der globale Block legt
+ *  Übergänge still) und bei einem Element, das gerade `display: none` ist
+ *  (die Handy-Liste der Kandidaten-Rangliste auf breiten Fenstern, gemessen
+ *  15.09.2026). Der zugeklappte Inhalt blieb dann im DOM stehen — unsichtbar
+ *  hinter `0fr`, aber für Screenreader und Tests da. Nach dem Takt plus
+ *  Reserve wird deshalb in jedem Fall abgeräumt. */
 export function Aufklapp({ offen, children, className }: {
   offen: boolean;
   children: React.ReactNode;
@@ -26,7 +34,13 @@ export function Aufklapp({ offen, children, className }: {
   const letzter = useRef<React.ReactNode>(children);
   if (offen) letzter.current = children;
 
-  useEffect(() => { if (offen) setGemountet(true); }, [offen]);
+  useEffect(() => {
+    if (offen) { setGemountet(true); return; }
+    // Takt `--takt-weg` (260 ms) plus Reserve — läuft die Bewegung, kommt
+    // `transitionend` vorher und der Timer räumt nur nach.
+    const id = window.setTimeout(() => setGemountet(false), 400);
+    return () => window.clearTimeout(id);
+  }, [offen]);
 
   return (
     <div

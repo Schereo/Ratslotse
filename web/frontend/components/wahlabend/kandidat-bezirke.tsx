@@ -13,21 +13,19 @@
 //   • „der Liste hier"       — wie personenbezogen wurde in DIESEM Lokal für
 //                              ihre Liste gestimmt?
 // Geholt wird erst beim Aufklappen (`enabled`), nicht für 383 Zeilen auf Vorrat.
+//
+// Die Abfrage lebt im Hook, die Tafel bekommt fertige Daten: Die ZEILE
+// braucht den Ladezustand (Spinner statt Pfeil, Aufklappen erst, wenn die
+// Zahlen da sind — sonst fährt der Bereich auf Spinner-Höhe auf und springt
+// beim Eintreffen ein zweites Mal; dasselbe Muster wie die Tagesordnung im
+// Sitzungen-Reiter).
 
 import { useQuery } from "@tanstack/react-query";
 import { KICKER } from "@/components/wahlabend/bausteine";
 import { api } from "@/lib/api";
 import { kandidatPfad, prozent, zahl, type KandidatDetail } from "@/lib/wahlabend";
 
-export function KandidatBezirke({
-  party,
-  area,
-  position,
-  probe,
-  counted,
-  rueckblick,
-  offen,
-}: {
+export function useKandidatBezirke({ party, area, position, probe, counted, rueckblick, offen }: {
   party: string;
   area: number;
   position: number;
@@ -37,28 +35,27 @@ export function KandidatBezirke({
   offen: boolean;
 }) {
   const pfad = kandidatPfad(probe, counted, rueckblick, party, area, position);
-  const abfrage = useQuery({
+  return useQuery({
     queryKey: ["wahlabend-kandidat", pfad],
     queryFn: () => api.get<KandidatDetail>(pfad),
     enabled: offen,
     staleTime: rueckblick ? Infinity : 30_000,
   });
-  const detail = abfrage.data;
+}
 
-  if (!offen) return null;
-  if (abfrage.isError) {
+/** Die Tafel — ohne eigenen Rahmen; den gibt der Drawer, in dem sie steht. */
+export function KandidatBezirke({ detail, fehler }: { detail: KandidatDetail | undefined; fehler: boolean }) {
+  if (fehler) {
     return <p className="py-2 text-[12.5px] text-muted-foreground">Die Wahlbezirke ließen sich gerade nicht laden.</p>;
   }
-  if (!detail) {
-    return <p className="py-2 text-[12.5px] text-muted-foreground">Wahlbezirke werden geladen …</p>;
-  }
+  if (!detail) return null;
 
   const mit = detail.districts.filter((b) => b.votes !== null);
   const max = Math.max(0, ...mit.map((b) => b.votes ?? 0));
   const gezaehlt = detail.districts.filter((b) => b.counted).length;
 
   return (
-    <div className="rounded-xl border border-border bg-muted/30 p-3">
+    <div>
       <p className={KICKER}>Wo die Stimmen herkamen</p>
       <p className="mt-0.5 text-[12.5px] leading-relaxed text-muted-foreground">
         {zahl(detail.votes)} Personenstimmen aus {zahl(detail.districts.length)} Wahlbezirken des Wahlbereichs{" "}
