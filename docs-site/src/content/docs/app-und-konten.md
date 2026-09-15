@@ -218,7 +218,6 @@ nennt Anbieter, die nie gesperrt werden, darunter Apples
 bestätigt und wird nicht geprüft. Nachziehen der Liste:
 `scripts/update_disposable_domains.py --schreiben`.
 
-<<<<<<< HEAD
 **Abgewiesene Registrierungen werden gezählt.** Sichtbar war bis 09/2026 nur,
 wer durchkam — wer an der Bremse oder am Wegwerf-Riegel hängenblieb,
 hinterließ nirgends eine Spur. Die Tabelle `signup_rejections` zählt deshalb
@@ -237,8 +236,6 @@ einen Link klickt, löst ohne den Herzschlag keine einzige Mail aus.
 `duplicate_email` löst bewusst keinen Alarm aus: Wer sein Konto vergessen hat,
 landet dort genauso wie jemand, der Adressen durchprobiert.
 
-=======
->>>>>>> origin/main
 ### Was ohne Konto sichtbar ist
 
 Vier Endpunkte antworten **ohne Anmeldung**. Nicht aus Versehen, sondern weil
@@ -329,7 +326,48 @@ erneut zu versuchen (Apple sendet die Adresse nur bei der Erstautorisierung).
 | `web_users.email_verified` | 0/1 | gesetzt durch Verifikationslink oder Apple-Login |
 | `web_users.password_set` | 0/1 | 0 = Apple-Konto ohne selbst gesetztes Passwort |
 
-<<<<<<< HEAD
+**Die beiden Wartezustände sind seit 09/2026 getrennt.** Bis dahin trug
+`pending` beide: „E-Mail noch nicht bestätigt" und „von einem Admin
+abgeschaltet". Das war nicht nur unscharf, sondern hatte zwei Folgen:
+
+- Der Apple-Verknüpfungspfad las `pending` als „unbestätigt" und schaltete das
+  Konto frei. Ein gesperrtes Konto hob damit seine Sperre selbst auf, sobald
+  die Apple-ID dieselbe bestätigte Adresse trug.
+- Die iOS-App zeigte einer gesperrten Person „Bestätige deine E-Mail-Adresse",
+  die sie längst bestätigt hatte, samt eines Knopfes, der Erfolg meldete und
+  nichts verschickte.
+
+Der Bestand wurde einmalig nachgezogen: bestätigt **und** nicht aktiv heißt
+rückwirkend `disabled`. Der Schritt trägt eine Migrationsmarke und läuft
+deshalb genau einmal je Datenbank — `verify_email` setzt erst
+`email_verified`, dann den Status, und in diesem Moment sähe eine ganz normale
+Bestätigung wie ein abgeschaltetes Konto aus.
+
+`PUT /api/admin/users/{id}/status` nimmt `active` und `disabled`. Der alte Wert
+`pending` wird weiterhin angenommen und als `disabled` gespeichert: Die im App
+Store ausgelieferte Admin-Ansicht schickt beim „Sperren" genau ihn.
+**Die Registrierung vergibt keine Rollen**: Jedes über `/api/auth/register`
+angelegte Konto ist `user` — auch die Adresse aus `WEB_ADMIN_EMAIL` und auch das
+erste Konto einer leeren Datenbank. Andernfalls bekäme Adminrechte, wer die
+konfigurierte Adresse als Erstes ins Formular tippt, ohne Zugriff auf dieses
+Postfach nachzuweisen.
+
+**Admin wird** die Adresse aus `WEB_ADMIN_EMAIL`, sobald sie ihre E-Mail
+**bestätigt** hat (`/api/auth/verify-email`, nach verbrauchtem Einmal-Token) —
+und nur, solange es im Deployment noch gar keinen Admin gibt. Damit holt sich ein
+bewusst degradiertes oder gesperrtes Konto die Rechte nicht über einen neuen
+Bestätigungslink zurück. Ohne `RESEND_API_KEY` gibt es keinen Link: dann vergibt
+`scripts/grant_admin.py <adresse>` die Rechte an ein **bestehendes** Konto (das
+Backend weist bei Registrierung und bei jedem Start im Log darauf hin).
+
+**Beim Apple-Login** gilt eine eigene Regel: Wird dabei ein Konto *neu* angelegt
+und entspricht die Adresse `WEB_ADMIN_EMAIL`, ist es sofort Admin — ohne
+Bestätigungslink und ohne die „noch kein Admin vorhanden"-Bedingung. Das ist
+vertretbar, weil Apple die Adresse im signierten Token bereits nachweist; der
+Nachweis, den die klassische Registrierung erst über den Link erbringt, liegt
+hier schon vor. Der „erstes Konto einer leeren Datenbank"-Notnagel entfällt aber
+auch hier.
+
 ### E-Mail-Adresse ändern
 
 Zweistufig, und zwar aus zwei verschiedenen Gründen:
@@ -369,50 +407,6 @@ angemeldete Teil der Probe entfällt dann mit der Meldung „kein Konto". Dann
 `RAUCHPROBE_KONTO` in der `.env` auf die neue Adresse setzen. Die Rollen selbst
 hängen an der Konto-id und bleiben beim Wechsel unberührt.
 :::
-=======
-**Die beiden Wartezustände sind seit 09/2026 getrennt.** Bis dahin trug
-`pending` beide: „E-Mail noch nicht bestätigt" und „von einem Admin
-abgeschaltet". Das war nicht nur unscharf, sondern hatte zwei Folgen:
-
-- Der Apple-Verknüpfungspfad las `pending` als „unbestätigt" und schaltete das
-  Konto frei. Ein gesperrtes Konto hob damit seine Sperre selbst auf, sobald
-  die Apple-ID dieselbe bestätigte Adresse trug.
-- Die iOS-App zeigte einer gesperrten Person „Bestätige deine E-Mail-Adresse",
-  die sie längst bestätigt hatte, samt eines Knopfes, der Erfolg meldete und
-  nichts verschickte.
-
-Der Bestand wurde einmalig nachgezogen: bestätigt **und** nicht aktiv heißt
-rückwirkend `disabled`. Der Schritt trägt eine Migrationsmarke und läuft
-deshalb genau einmal je Datenbank — `verify_email` setzt erst
-`email_verified`, dann den Status, und in diesem Moment sähe eine ganz normale
-Bestätigung wie ein abgeschaltetes Konto aus.
-
-`PUT /api/admin/users/{id}/status` nimmt `active` und `disabled`. Der alte Wert
-`pending` wird weiterhin angenommen und als `disabled` gespeichert: Die im App
-Store ausgelieferte Admin-Ansicht schickt beim „Sperren" genau ihn.
->>>>>>> origin/dev
-
-**Die Registrierung vergibt keine Rollen**: Jedes über `/api/auth/register`
-angelegte Konto ist `user` — auch die Adresse aus `WEB_ADMIN_EMAIL` und auch das
-erste Konto einer leeren Datenbank. Andernfalls bekäme Adminrechte, wer die
-konfigurierte Adresse als Erstes ins Formular tippt, ohne Zugriff auf dieses
-Postfach nachzuweisen.
-
-**Admin wird** die Adresse aus `WEB_ADMIN_EMAIL`, sobald sie ihre E-Mail
-**bestätigt** hat (`/api/auth/verify-email`, nach verbrauchtem Einmal-Token) —
-und nur, solange es im Deployment noch gar keinen Admin gibt. Damit holt sich ein
-bewusst degradiertes oder gesperrtes Konto die Rechte nicht über einen neuen
-Bestätigungslink zurück. Ohne `RESEND_API_KEY` gibt es keinen Link: dann vergibt
-`scripts/grant_admin.py <adresse>` die Rechte an ein **bestehendes** Konto (das
-Backend weist bei Registrierung und bei jedem Start im Log darauf hin).
-
-**Beim Apple-Login** gilt eine eigene Regel: Wird dabei ein Konto *neu* angelegt
-und entspricht die Adresse `WEB_ADMIN_EMAIL`, ist es sofort Admin — ohne
-Bestätigungslink und ohne die „noch kein Admin vorhanden"-Bedingung. Das ist
-vertretbar, weil Apple die Adresse im signierten Token bereits nachweist; der
-Nachweis, den die klassische Registrierung erst über den Link erbringt, liegt
-hier schon vor. Der „erstes Konto einer leeren Datenbank"-Notnagel entfällt aber
-auch hier.
 
 ## Was am Konto hängt
 
