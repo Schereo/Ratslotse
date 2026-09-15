@@ -29,6 +29,10 @@ const PROBE = JSON.parse(
 const KANDIDATEN = JSON.parse(
   readFileSync(path.join(__dirname, "fixtures", "wahlabend-kandidaten-probe.json"), "utf8"),
 );
+/** Und als EINE aufgefaltete Kandidatur (`/api/wahlabend/kandidat`). */
+const KANDIDAT = JSON.parse(
+  readFileSync(path.join(__dirname, "fixtures", "wahlabend-kandidat-probe.json"), "utf8"),
+);
 /** Und als Wahlbezirke (`service.districts(reg, probe_snapshot(…, 60), "probe")`). */
 const BEZIRKE = JSON.parse(
   readFileSync(path.join(__dirname, "fixtures", "wahlbezirke-probe.json"), "utf8"),
@@ -68,6 +72,14 @@ function wahlabendMock(page: Page) {
       status: 200,
       contentType: "application/json",
       body: JSON.stringify(BEZIRKE),
+    });
+  });
+  page.route("**/api/wahlabend/kandidat?*", (route) => {
+    zaehler.rufe += 1;
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(KANDIDAT),
     });
   });
   page.route("**/api/wahlabend/kandidaten*", (route) => {
@@ -205,6 +217,28 @@ test.describe("Schalter an: die Generalprobe", () => {
     const erster = KANDIDATEN.districts.find((b: { postal: boolean }) => !b.postal);
     await wahl.selectOption(String(erster.number));
     await expect(page).toHaveURL(new RegExp(`[?&]bezirk=${erster.number}`));
+  });
+
+  test("ein Name faltet alle Wahlbezirke dieser einen Kandidatur auf", async ({ page }) => {
+    await page.goto("/wahlabend?ansicht=kandidaten");
+    const name = KANDIDAT.name;
+    const griff = page.locator("table").getByRole("button", { name: new RegExp(name) }).first();
+    await expect(griff).toHaveAttribute("aria-expanded", "false");
+
+    // Erst beim Aufklappen wird geholt — 383 Zeilen auf Vorrat wären 383 Abrufe.
+    await expect(page.getByText(/Wo die Stimmen herkamen/i)).toHaveCount(0);
+    await griff.click();
+    await expect(griff).toHaveAttribute("aria-expanded", "true");
+    await expect(page.getByText(/Wo die Stimmen herkamen/i).first()).toBeVisible();
+
+    // Jeder Wahlbezirk des Wahlbereichs steht da, stärkster zuerst.
+    const tafel = page.locator("table li");
+    await expect.poll(() => tafel.count()).toBe(KANDIDAT.districts.length);
+    await expect(tafel.first()).toContainText(KANDIDAT.districts[0].name);
+
+    // Und ein zweiter Klick klappt wieder zu.
+    await griff.click();
+    await expect(page.getByText(/Wo die Stimmen herkamen/i)).toHaveCount(0);
   });
 
   test("die Kandidaten-Rangliste kommt vom Server, mit stadtweitem Rang", async ({ page }) => {

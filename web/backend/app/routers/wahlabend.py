@@ -27,6 +27,7 @@ from kern.store import Store
 from ..antworten import (
     WAHLABEND_KARTE_PNG,
     WAHLABEND_PNG,
+    ElectionCandidateDetail,
     ElectionCandidateRanking,
     ElectionDistrictList,
     ElectionDistrictRef,
@@ -96,6 +97,39 @@ def _night(probe: str | None, counted: int | None, wahl: str | None) -> Election
                                 detail="Von dieser Wahl liegt kein vollständiger Stand vor.")
         return bild
     return _stand(probe, counted)
+
+
+@router.get("/api/wahlabend/kandidat")
+def wahlabend_kandidat(
+    party: str = Query(description="Listen-Slug der Kandidatur"),
+    area: int = Query(ge=1, le=20, description="Wahlbereich"),
+    position: int = Query(ge=1, le=99, description="Listenplatz"),
+    probe: str | None = Query(default=None, description="gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)"),
+    counted: int | None = Query(default=None, ge=0, le=500, description="Generalprobe: nur die ersten N Wahlbezirke ausgezählt"),
+    wahl: str | None = Query(default=None, description="Slug einer gelaufenen Wahl — ihr eingefrorener Stand, ohne Abruf"),
+) -> ElectionCandidateDetail:
+    """EINE Kandidatur in allen Wahlbezirken ihres Wahlbereichs.
+
+    Die Gegenrichtung zur Rangliste: Dort steht je Wahlbezirk, wer vorn lag;
+    hier steht je Kandidatur, wo ihre Stimmen herkamen. Öffentlich wie der
+    Wahlabend selbst, hinter demselben Schalter.
+    """
+    _frei()
+    night = _night(probe, counted, wahl)
+    zeile = next((z for z in candidates.ranking(night)["rows"]
+                  if z["party"] == party and z["area"] == area and z["position"] == position), None)
+    if zeile is None:
+        raise HTTPException(status_code=404, detail="Diese Kandidatur gibt es bei dieser Wahl nicht.")
+    reg, snap = _snapshot(probe, counted, wahl)
+    return ElectionCandidateDetail(
+        dataset=night["dataset"], phase=night["phase"], election=night["election"],
+        party=party, party_short=zeile["party_short"],
+        color=zeile["color"], color_dark=zeile["color_dark"],
+        area=area, area_roman=zeile["area_roman"], area_name=zeile["area_name"],
+        position=position, name=zeile["name"], occupation=zeile["occupation"], born=zeile["born"],
+        votes=zeile["votes"], elected=zeile["elected"],
+        districts=service.candidate_districts(reg, snap, party, area, position),
+    )
 
 
 @router.get("/api/wahlabend/wahlbezirke")

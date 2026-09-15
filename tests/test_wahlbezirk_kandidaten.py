@@ -220,3 +220,71 @@ def test_liste_und_bezirk_lassen_sich_kombinieren():
     assert r["district"] == 504
     assert r["rows"] and all(z["party"] == "afd" for z in r["rows"])
     assert r["shown"] < r["total"]
+
+
+# ------------------------------------------- eine Kandidatur, alle Bezirke
+
+def test_eine_kandidatur_in_allen_ihren_bezirken(stand):
+    """Tims Frage: „dann ist doch jeder Person auch Stimmen in dem Bezirk
+    zugeordnet oder nicht?" — Ja, und zwar in jedem ihres Wahlbereichs."""
+    reg, snap, _ = stand
+    bezirke = service.candidate_districts(reg, snap, "spd", 2, 1)
+    # Wahlbereich II hat 14 Urnen- und 7 Briefwahlbezirke.
+    assert len(bezirke) == 21 and sum(1 for b in bezirke if b["postal"]) == 7
+    assert all(b["number"] // 100 == 2 or b["number"] // 10 == 92 for b in bezirke)
+    # Stärkster zuerst — und die Summe ist genau das Wahlbereichs-Ergebnis.
+    stimmen = [b["votes"] or 0 for b in bezirke]
+    assert stimmen == sorted(stimmen, reverse=True)
+    assert sum(stimmen) == 4019
+    assert bezirke[0]["name"] == "214 GS Drielake" and bezirke[0]["votes"] == 292
+
+
+def test_die_beiden_anteile_zeigen_in_verschiedene_richtungen(stand):
+    """„Anteil ihrer Stimmen" summiert sich auf 100 % — es ist die Herkunft
+    ihres Ergebnisses. „der Liste hier" misst gegen die Liste im Bezirk und
+    summiert sich auf gar nichts."""
+    reg, snap, _ = stand
+    bezirke = service.candidate_districts(reg, snap, "spd", 2, 1)
+    assert round(sum(b["share_pct"] or 0 for b in bezirke)) == 100
+    for b in bezirke:
+        if b["votes"]:
+            assert b["share_pct"] == round(100 * b["votes"] / 4019, 2)
+            assert 0 < (b["party_share_pct"] or 0) <= 100, b["name"]
+
+
+def test_auch_ein_einzelwahlvorschlag_hat_bezirke(stand):
+    """Ein Einzelbewerber hat keine Kandidatenspalte — seine Listenstimmen
+    SIND seine Personenstimmen. Ohne den Sonderweg stünden hier 21 Nullen."""
+    reg, snap, nacht = stand
+    einzel = [
+        (p["slug"], a["number"], c["position"], c["votes"])
+        for a in nacht["areas"] for p in a["parties"] for c in p["candidates"]
+        if len(p["candidates"]) == 1 and (c["votes"] or 0) > 0
+    ]
+    assert einzel, "Testannahme: 2026 trat mindestens ein Einzelwahlvorschlag an"
+    for slug, area, platz, stimmen in einzel:
+        bezirke = service.candidate_districts(reg, snap, slug, area, platz)
+        assert sum(b["votes"] or 0 for b in bezirke) == stimmen, slug
+
+
+def test_der_endpunkt_liefert_die_kandidatur_und_weist_unbekanntes_ab():
+    d = router.wahlabend_kandidat(party="spd", area=2, position=1, probe=None,
+                                  counted=None, wahl="ratswahl-2026")
+    assert d["name"] == "Prange, Ulf" and d["votes"] == 4019
+    assert d["party_short"] and d["area_roman"] == "II"
+    assert sum(b["votes"] or 0 for b in d["districts"]) == d["votes"]
+
+    # Unbekannte Liste, unbekannter Wahlbereich, unbesetzter Listenplatz.
+    for falsch in ({"party": "xyz"}, {"area": 9}, {"position": 99}):
+        argumente = {"party": "spd", "area": 2, "position": 1, **falsch}
+        with pytest.raises(HTTPException) as e:
+            router.wahlabend_kandidat(probe=None, counted=None, wahl="ratswahl-2026", **argumente)
+        assert e.value.status_code == 404
+
+
+def test_die_kandidatur_ist_hinter_dem_schalter(monkeypatch):
+    monkeypatch.setenv("FEATURE_FLAGS", "")
+    with pytest.raises(HTTPException) as e:
+        router.wahlabend_kandidat(party="spd", area=2, position=1, probe=None,
+                                  counted=None, wahl="ratswahl-2026")
+    assert e.value.status_code == 404

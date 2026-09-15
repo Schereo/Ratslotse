@@ -33,6 +33,7 @@ import pytest
 WURZEL = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(WURZEL / "web" / "backend"))
 
+from app.antworten import ElectionCandidateDetail  # noqa: E402
 from app.election import candidates, service  # noqa: E402
 
 FIXTURES = WURZEL / "web" / "frontend" / "tests" / "e2e" / "fixtures"
@@ -89,6 +90,33 @@ def test_die_wahlbezirks_abschrift_kennt_jedes_feld():
     )
 
 
+def _kandidat_frisch(probe: dict) -> dict:
+    """Die Abschrift einer EINZELNEN Kandidatur — dieselbe Rechnung wie in
+    ``routers/wahlabend.py::wahlabend_kandidat``, für die oberste Zeile der
+    Rangliste. Erzeugt die Datei, wenn man sie ausgibt."""
+    reg = service.load_register()
+    snap = service.probe_snapshot(reg, service.load_reference(), 60)
+    z = candidates.ranking(probe)["rows"][0]
+    return dict(ElectionCandidateDetail(
+        dataset=probe["dataset"], phase=probe["phase"], election=probe["election"],
+        party=z["party"], party_short=z["party_short"], color=z["color"], color_dark=z["color_dark"],
+        area=z["area"], area_roman=z["area_roman"], area_name=z["area_name"],
+        position=z["position"], name=z["name"], occupation=z["occupation"], born=z["born"],
+        votes=z["votes"], elected=z["elected"],
+        districts=service.candidate_districts(reg, snap, z["party"], z["area"], z["position"]),
+    ))
+
+
+def test_die_kandidat_abschrift_kennt_jedes_feld(probe):
+    ist = json.loads((FIXTURES / "wahlabend-kandidat-probe.json").read_text(encoding="utf-8"))
+    fehlt = _fehlt(_kandidat_frisch(probe), ist, "kandidat")
+    assert not fehlt, (
+        "Diese Felder fehlen in web/frontend/tests/e2e/fixtures/wahlabend-kandidat-probe.json:\n  "
+        + "\n  ".join(fehlt)
+        + "\n\nNeu erzeugen: der Rumpf von _kandidat_frisch() in dieser Datei."
+    )
+
+
 def test_die_abschriften_zeigen_denselben_stand(probe):
     """Beide stammen aus derselben Generalprobe — sonst zeigt die Rangliste
     im Browsertest andere Zahlen als die Tafel darüber."""
@@ -99,3 +127,8 @@ def test_die_abschriften_zeigen_denselben_stand(probe):
     assert [p["slug"] for p in rang["parties"]] == [p["slug"] for p in nacht["parties"]]
     bezirke = json.loads((FIXTURES / "wahlbezirke-probe.json").read_text(encoding="utf-8"))
     assert bezirke["counted"] == 60 and bezirke["phase"] == nacht["phase"]
+    # Die aufgefaltete Kandidatur ist die oberste Zeile der Rangliste — und
+    # ihre Bezirke summieren sich auf deren Stimmen.
+    kandidat = json.loads((FIXTURES / "wahlabend-kandidat-probe.json").read_text(encoding="utf-8"))
+    assert kandidat["phase"] == nacht["phase"] and kandidat["name"] == rang["rows"][0]["name"]
+    assert sum(b["votes"] or 0 for b in kandidat["districts"]) == kandidat["votes"]

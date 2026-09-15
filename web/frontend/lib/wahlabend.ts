@@ -19,6 +19,8 @@ export type KandidatenZeile = Kandidatenliste["rows"][number];
 export type KandidatenListe = Kandidatenliste["parties"][number];
 export type KandidatenBezirk = Kandidatenliste["districts"][number];
 export type KandidatenSortierung = "votes" | "party" | "area" | "name";
+export type KandidatDetail = ApiAntwort<"/wahlabend/kandidat">;
+export type KandidatBezirk = KandidatDetail["districts"][number];
 export type Wahlbezirke = ApiAntwort<"/wahlabend/wahlbezirke">;
 export type Wahlbezirk = Wahlbezirke["districts"][number];
 export type Beobachtet = ApiAntwort<"/wahlabend/beobachtet">;
@@ -231,6 +233,25 @@ export function kandidatenPfad(
   else if (bereich !== null) q.set("area", String(bereich));
   const s = q.toString();
   return s ? `/wahlabend/kandidaten?${s}` : "/wahlabend/kandidaten";
+}
+
+/** Die Gegenrichtung zur Rangliste: EINE Kandidatur in allen Wahlbezirken
+ *  ihres Wahlbereichs. Sortierung und Filter der Liste gelten hier nicht —
+ *  gefragt ist eine Person, nicht eine Auswahl. */
+export function kandidatPfad(
+  probe: string | null,
+  counted: string | null,
+  wahl: string | null | undefined,
+  liste: string,
+  bereich: number,
+  platz: number,
+): string {
+  const basis = abfragePfad(probe, counted, wahl);
+  const q = new URLSearchParams(basis.includes("?") ? basis.slice(basis.indexOf("?") + 1) : "");
+  q.set("party", liste);
+  q.set("area", String(bereich));
+  q.set("position", String(platz));
+  return `/wahlabend/kandidat?${q.toString()}`;
 }
 
 

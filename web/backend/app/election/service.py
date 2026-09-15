@@ -42,6 +42,7 @@ from ..antworten import (
     ElectionCandidate,
     ElectionDistrict,
     ElectionDistrictList,
+    ElectionCandidateDistrict,
     ElectionDistrictParty,
     ElectionDistrictRef,
     ElectionHistoryPoint,
@@ -367,6 +368,39 @@ def _personenstimmen(partei, lr: ListRow | None, bereich: int) -> dict[int, int]
         plaetze = [c.position for c in partei.candidates(bereich)]
         return {plaetze[0]: lr.total} if plaetze and lr.total else {}
     return {k: v for k, v in (lr.candidates or {}).items()}
+
+
+def candidate_districts(reg: Register, snap: Snapshot, party: str, area: int,
+                        position: int) -> list[ElectionCandidateDistrict]:
+    """Eine Kandidatur in allen Wahlbezirken ihres Wahlbereichs.
+
+    Die Gegenrichtung zu ``district_candidates``: dort ein Bezirk mit allen
+    Menschen, hier ein Mensch mit allen Bezirken. Stärkster zuerst; Bezirke
+    mit null Stimmen bleiben drin, denn auch das ist eine Auskunft.
+    """
+    partei = next((p for p in reg.parties if p.slug == party), None)
+    if partei is None:
+        return []
+    zeilen: list[ElectionCandidateDistrict] = []
+    gesamt = 0
+    for row in snap.districts:
+        nr = votemanager.district_number(row.name, None)
+        if nr is None or votemanager.area_of_district(nr) != area:
+            continue
+        lr = row.lists.get(partei.index)
+        stimmen = _personenstimmen(partei, lr, area).get(position)
+        if stimmen:
+            gesamt += stimmen
+        zeilen.append(ElectionCandidateDistrict(
+            number=nr, name=row.name, postal=nr >= 900, counted=row.counted,
+            votes=stimmen,
+            share_pct=None,  # braucht die Summe, die erst jetzt feststeht
+            party_share_pct=_pct(stimmen, lr.total if lr else None),
+        ))
+    for z in zeilen:
+        z["share_pct"] = _pct(z["votes"], gesamt or None)
+    zeilen.sort(key=lambda z: (z["votes"] is None, -(z["votes"] or 0), z["number"]))
+    return zeilen
 
 
 def top_districts(reg: Register, snap: Snapshot) -> dict[tuple[str, int, int], tuple[int, int, str, bool]]:

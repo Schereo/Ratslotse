@@ -17,9 +17,10 @@
 // Zeile setzt die Stimmen ins Verhältnis zur stärksten Person der Wahl.
 
 import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { KICKER, Punkt, TON } from "@/components/wahlabend/bausteine";
 import { BeobachtenHinweis, BeobachtetKarte, Stern, useBeobachtet } from "@/components/wahlabend/beobachtet";
+import { KandidatBezirke } from "@/components/wahlabend/kandidat-bezirke";
 import { Segmented } from "@/components/ui/segmented";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -46,11 +47,11 @@ export type KandidatenFilter = {
   sortierung: KandidatenSortierung;
   liste: string | null;
   bereich: number | null;
-  /** Ein WAHLBEZIRK — das Wahllokal, in dem ausgezählt wurde. Er ist kein
-   *  Merkmal einer Kandidatur (wer antritt, steht in einem Wahlbereich und
-   *  bekommt in jedem seiner 15 bis 24 Bezirke Stimmen), deshalb gibt es ihn
-   *  als Filter und nicht als Spalte: Gesetzt zeigt die Liste, wer in DIESEM
-   *  Wahllokal vorn lag. */
+  /** Ein WAHLBEZIRK — das Wahllokal, in dem ausgezählt wurde. Jede
+   *  Kandidatur hat Stimmen in jedem Bezirk ihres Wahlbereichs, also 15 bis
+   *  24 Zahlen; eine Spalte könnte davon keine zeigen. Deshalb hier ein
+   *  Filter (gesetzt zeigt die Liste, wer in DIESEM Wahllokal vorn lag) — und
+   *  je Zeile die Tafel mit allen Bezirken (`KandidatBezirke`). */
   bezirk: number | null;
 };
 
@@ -121,6 +122,31 @@ function Balken({ votes, max, drin }: { votes: number | null; max: number; drin:
     <span aria-hidden className="relative block h-1.5 w-full overflow-hidden rounded-full bg-foreground/10">
       <span className={cn("block h-full rounded-full", drin ? "bg-primary" : "bg-foreground/35")} style={{ width: `${Math.max(1.5, (100 * votes) / max)}%` }} />
     </span>
+  );
+}
+
+/** Der Name ist der Griff. Er verspricht, was aufgeht: alle Wahlbezirke
+ *  dieser einen Kandidatur — die Zahlen, die in der Liste nicht in eine
+ *  Spalte passen. */
+function Aufklapper({ auf, onClick, name, children }: { auf: boolean; onClick: () => void; name: string; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-expanded={auf}
+      title={auf ? "Wahlbezirke zuklappen" : `Alle Wahlbezirke von ${name} zeigen`}
+      className="group/auf -mx-1 block w-full min-w-0 rounded-md px-1 py-0.5 text-left transition-colors hover:bg-primary/5"
+    >
+      <span className="flex min-w-0 items-start gap-1.5">
+        <span
+          aria-hidden
+          className={cn("mt-[3px] flex-none font-mono text-[10px] text-muted-foreground transition-transform duration-tipp", auf && "rotate-90")}
+        >
+          ▸
+        </span>
+        <span className="min-w-0 flex-1">{children}</span>
+      </span>
+    </button>
   );
 }
 
@@ -232,6 +258,9 @@ export function Kandidaten({
     const alle = daten.areas.flatMap((a) => a.parties.flatMap((p) => p.candidates.map((k) => k.votes ?? 0)));
     return Math.max(0, ...alle);
   }, [daten, liste]);
+  // Aufgeklappt ist höchstens eine Zeile: Die Tafel ist selbst eine Liste,
+  // zwei davon übereinander liest niemand mehr als eine Tabelle.
+  const [offen, setOffen] = useState<string | null>(null);
   const listeInfo = filter.liste ? daten.parties.find((p) => p.slug === filter.liste) : null;
   const vorher = daten.phase === "before";
 
@@ -338,14 +367,19 @@ export function Kandidaten({
               <tbody>
                 {liste.rows.map((z) => {
                   const drin = z.elected !== null;
+                  const id = `${z.party}-${z.area}-${z.position}`;
+                  const auf = offen === id;
                   return (
-                    <tr key={`${z.party}-${z.area}-${z.position}`} className="group">
+                    <Fragment key={id}>
+                    <tr className="group">
                       <td className="border-b border-border/60 px-2 py-2 text-right font-mono text-[11px] text-muted-foreground tabular-nums">{z.rank ?? "–"}</td>
-                      <td className="border-b border-border/60 px-3 py-2">
-                        <span className={cn("block truncate", drin ? "font-semibold" : "font-medium")}>{z.name}</span>
-                        <span className="block truncate text-[11.5px] text-muted-foreground">
-                          {[z.occupation, z.born ? `*${z.born}` : null].filter(Boolean).join(" · ")}
-                        </span>
+                      <td className={cn("border-b px-3 py-2", auf ? "border-transparent" : "border-border/60")}>
+                        <Aufklapper auf={auf} onClick={() => setOffen(auf ? null : id)} name={z.name}>
+                          <span className={cn("block truncate", drin ? "font-semibold" : "font-medium")}>{z.name}</span>
+                          <span className="block truncate text-[11.5px] text-muted-foreground">
+                            {[z.occupation, z.born ? `*${z.born}` : null].filter(Boolean).join(" · ")}
+                          </span>
+                        </Aufklapper>
                       </td>
                       <td className="border-b border-border/60 px-3 py-2">
                         <span className="flex items-center gap-1.5"><Punkt color={z.color} dark={z.color_dark} />{z.party_short}</span>
@@ -396,6 +430,17 @@ export function Kandidaten({
                         </span>
                       </td>
                     </tr>
+                    {auf ? (
+                      <tr>
+                        <td colSpan={7} className="border-b border-border/60 px-3 pb-3">
+                          <KandidatBezirke
+                            party={z.party} area={z.area} position={z.position}
+                            probe={probe} counted={counted} rueckblick={rueckblick} offen
+                          />
+                        </td>
+                      </tr>
+                    ) : null}
+                    </Fragment>
                   );
                 })}
               </tbody>
@@ -406,11 +451,16 @@ export function Kandidaten({
           <ol className={cn("mt-2 divide-y divide-border/70 border-t border-border/70 breit:hidden", abfrage.isPlaceholderData && "opacity-60 transition-opacity")}>
             {liste.rows.map((z) => {
               const drin = z.elected !== null;
+              const id = `${z.party}-${z.area}-${z.position}`;
+              const auf = offen === id;
               return (
-                <li key={`${z.party}-${z.area}-${z.position}`} className="flex items-start gap-2.5 py-2.5">
+                <li key={id} className="py-2.5">
+                  <span className="flex items-start gap-2.5">
                   <span className="w-7 flex-none pt-0.5 text-right font-mono text-[10.5px] text-muted-foreground tabular-nums">{z.rank ?? "–"}</span>
                   <span className="min-w-0 flex-1">
-                    <span className={cn("block truncate text-[13px]", drin ? "font-semibold" : "font-medium")}>{z.name}</span>
+                    <Aufklapper auf={auf} onClick={() => setOffen(auf ? null : id)} name={z.name}>
+                      <span className={cn("block truncate text-[13px]", drin ? "font-semibold" : "font-medium")}>{z.name}</span>
+                    </Aufklapper>
                     <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[11.5px] text-muted-foreground">
                       <Punkt color={z.color} dark={z.color_dark} />
                       {z.party_short} · Platz {z.position} · {liste.district === null ? `WB ${z.area_roman}` : `Bezirk ${liste.district}`}
@@ -427,6 +477,15 @@ export function Kandidaten({
                   </span>
                   {beobachtet.angemeldet ? (
                     <Stern gemerkt={beobachtet.istGemerkt(z)} onClick={() => beobachtet.umschalten(z)} name={z.name} className="mt-0.5 flex-none" />
+                  ) : null}
+                  </span>
+                  {auf ? (
+                    <span className="mt-2 block">
+                      <KandidatBezirke
+                        party={z.party} area={z.area} position={z.position}
+                        probe={probe} counted={counted} rueckblick={rueckblick} offen
+                      />
+                    </span>
                   ) : null}
                 </li>
               );

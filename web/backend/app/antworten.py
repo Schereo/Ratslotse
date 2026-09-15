@@ -4118,6 +4118,52 @@ class ElectionWatchList(TypedDict):
     entries: list[ElectionWatchEntry]
 
 
+class ElectionCandidateDistrict(TypedDict):
+    """Ein Wahlbezirk aus der Sicht EINER Kandidatur."""
+    number: int
+    name: str
+    postal: bool
+    counted: bool
+    votes: int | None
+    #: Anteil an ALLEN Personenstimmen dieser Kandidatur — die Spalte summiert
+    #: sich auf 100 %. Das ist die Zahl, die zeigt, ob jemand gleichmäßig
+    #: gewählt wurde oder eine Hochburg hat.
+    share_pct: float | None
+    #: Und ihr Anteil an allen Stimmen der eigenen Liste in DIESEM Bezirk —
+    #: dieselbe Frage wie in der Rangliste, nur je Wahllokal.
+    party_share_pct: float | None
+
+
+class ElectionCandidateDetail(TypedDict):
+    """``GET /api/wahlabend/kandidat`` — eine Kandidatur in allen ihren
+    Wahlbezirken.
+
+    Die Gegenrichtung zur Rangliste: Dort steht je Wahlbezirk, wer vorn lag;
+    hier steht je Kandidatur, wo ihre Stimmen herkamen. Beides sind Schnitte
+    durch dieselbe Tabelle aus der Bezirksdatei.
+    """
+    dataset: str
+    phase: str
+    election: ElectionInfo
+    party: str
+    party_short: str
+    color: str
+    color_dark: str
+    area: int
+    area_roman: str
+    area_name: str
+    position: int
+    name: str
+    occupation: str | None
+    born: int | None
+    #: Die Personenstimmen im ganzen Wahlbereich — die Summe der Bezirke.
+    votes: int | None
+    elected: str | None
+    #: Alle Wahlbezirke des Wahlbereichs, stärkster zuerst. Auch die mit null
+    #: Stimmen: „hier hat mich niemand angekreuzt" ist eine Auskunft.
+    districts: list[ElectionCandidateDistrict]
+
+
 class ElectionDistrictRef(TypedDict):
     """Ein Wahlbezirk, nur mit dem, was eine Auswahl braucht."""
     number: int
