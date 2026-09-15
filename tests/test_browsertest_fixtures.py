@@ -99,3 +99,45 @@ def test_die_abschriften_zeigen_denselben_stand(probe):
     assert [p["slug"] for p in rang["parties"]] == [p["slug"] for p in nacht["parties"]]
     bezirke = json.loads((FIXTURES / "wahlbezirke-probe.json").read_text(encoding="utf-8"))
     assert bezirke["counted"] == 60 and bezirke["phase"] == nacht["phase"]
+
+
+# ---------------------------------------------------------------- Stichwahl (S4)
+
+@pytest.fixture
+def stichwahl_probe(monkeypatch):
+    from app.election import mayor
+    from app.routers import wahlabend as router
+
+    monkeypatch.setenv("FEATURE_FLAGS", "wahlabend")
+    mayor.reset()
+    yield lambda n: router.stichwahl(probe="1", counted=n)
+    mayor.reset()
+
+
+@pytest.mark.parametrize("n", [40, 60, 133])
+def test_die_stichwahl_abschriften_kennen_jedes_feld(stichwahl_probe, n):
+    """Drei Stände der Stichwahl-Probe für die Browsertests: vor dem
+    Führungswechsel (40), danach (60), entschieden (133). Wieder erzeugen:
+
+        FEATURE_FLAGS=wahlabend .venv/bin/python -c "import sys, json; sys.path.insert(0, 'web/backend'); \\
+          from app.routers import wahlabend as r; print(json.dumps(r.stichwahl(probe='1', counted=N), ensure_ascii=False))" \\
+          > web/frontend/tests/e2e/fixtures/stichwahl-probe-N.json
+    """
+    ist = json.loads((FIXTURES / f"stichwahl-probe-{n}.json").read_text(encoding="utf-8"))
+    fehlt = _fehlt(stichwahl_probe(n), ist, "stichwahl")
+    assert not fehlt, (
+        f"Diese Felder fehlen in web/frontend/tests/e2e/fixtures/stichwahl-probe-{n}.json:\n  " + "\n  ".join(fehlt)
+    )
+    assert ist["reports_received"] == n
+    assert ist["projection"]["decided"] is (n == 133)
+
+
+def test_die_stichwahl_bezirke_abschrift_kennt_jedes_feld(stichwahl_probe):
+    """Die Karte der Stichwahl (S5) mockt `/api/wahlabend/stichwahl/bezirke`
+    mit dem 60er-Stand. Wieder erzeugen wie oben, mit `r.stichwahl_bezirke`."""
+    from app.routers import wahlabend as router
+
+    ist = json.loads((FIXTURES / "stichwahl-bezirke-probe-60.json").read_text(encoding="utf-8"))
+    fehlt = _fehlt(router.stichwahl_bezirke(probe="1", counted=60), ist, "stichwahl-bezirke")
+    assert not fehlt, "Diese Felder fehlen in stichwahl-bezirke-probe-60.json:\n  " + "\n  ".join(fehlt)
+    assert ist["counted"] == 60 and ist["total"] == 133

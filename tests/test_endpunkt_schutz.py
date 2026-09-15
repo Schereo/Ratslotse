@@ -125,6 +125,9 @@ OEFFENTLICH = {
     # Die OB-Wahl gehört zum selben Feature-Schalter — Teil des Wahlabends.
     ("get", "/api/wahlabend/ob"),
     ("get", "/api/wahlabend/stichwahl"),
+    # Die 133 Wahlbezirke der Stichwahl — dieselbe Ergebnisdarstellung der
+    # Stadt, eine Ebene tiefer; ein Bezirk hat einige hundert Wählende.
+    ("get", "/api/wahlabend/stichwahl/bezirke"),
     # /api/wahlen stand hier bis 09/2026. Es ist WEITER ohne Konto erreichbar —
     # es hängt aber jetzt an `optional_user`, weil es je Wahl den Weg zum
     # Tippspiel mitliefert und eine Konto-Runde für Anonyme gar nicht erst

@@ -14,6 +14,27 @@ export { datumLang } from "./wahlabend";
 
 export type Stichwahl = ApiAntwort<"/wahlabend/stichwahl">;
 export type StichwahlKandidat = Stichwahl["candidates"][number];
+/** Die Hochrechnung des Backends (`runoff_model`) — da, sobald ein Bezirk
+ *  gemeldet hat. Eine Modellrechnung; die Seite nennt sie so. */
+export type StichwahlHochrechnung = NonNullable<Stichwahl["projection"]>;
+
+/** Der Satz zur Chance — oder warum es noch keinen gibt. `null`, wenn die
+ *  Seite lieber nichts sagt (rechnerisch entschieden hat einen eigenen Satz). */
+export function chanceText(p: StichwahlHochrechnung, name: string | undefined): string | null {
+  if (p.decided) return null;
+  const bezirke = p.counted_ballot + p.counted_postal;
+  if (p.chance_pct === null) {
+    return `Erst ${bezirke} ${bezirke === 1 ? "Bezirk" : "Bezirke"} gezählt — zu früh für eine Wahrscheinlichkeit. Ab 15 nennt das Modell eine.`;
+  }
+  return `Chance: ${name ?? p.leader} ${p.chance_pct} %`;
+}
+
+/** Wie das Modell die Bezirke gesehen hat: „nach 47 von 133 Bezirken · Urne 41, Brief 6". */
+export function bezirkeText(p: StichwahlHochrechnung): string {
+  const gezaehlt = p.counted_ballot + p.counted_postal;
+  const gesamt = gezaehlt + p.open_ballot + p.open_postal;
+  return `nach ${gezaehlt} von ${gesamt} Bezirken · Urne ${p.counted_ballot}, Brief ${p.counted_postal}`;
+}
 
 /** Nach Stimmen, die meisten zuerst.
  *
@@ -99,4 +120,108 @@ export function abfragePfad(probe: string | null, counted: string | null): strin
   if (counted && /^\d+$/.test(counted)) q.set("counted", counted);
   const s = q.toString();
   return s ? `/wahlabend/stichwahl?${s}` : "/wahlabend/stichwahl";
+}
+
+/* ── Momente (docs/plan-stichwahl-spannung.md S4) ──────────────────────────
+ * Alles aus der Historie des Backends, nicht aus dem Browser-Zustand — ein
+ * frisch geladener Tab soll dasselbe sehen wie einer, der seit 18 Uhr offen ist. */
+
+export type Meldung = {
+  at: string;
+  /** Wie viele Bezirke seit dem vorigen Stand dazukamen. */
+  bezirke: number;
+  /** Slug → Stimmen, die seit dem vorigen Stand dazukamen. */
+  zuwachs: Record<string, number>;
+};
+
+/** Die jüngste Meldung: der letzte Stand gegen den davor. Beim allerersten
+ *  Stand ist alles Zuwachs. `null` ohne Verlauf. */
+export function letzteMeldung(daten: Stichwahl): Meldung | null {
+  const h = daten.history ?? [];
+  if (h.length === 0) return null;
+  const p = h[h.length - 1];
+  const q = [...h].reverse().find((x) => x.reports_received < p.reports_received) ?? null;
+  const zuwachs: Record<string, number> = {};
+  for (const [slug, v] of Object.entries(p.votes)) zuwachs[slug] = v - (q?.votes[slug] ?? 0);
+  return { at: p.at, bezirke: p.reports_received - (q?.reports_received ?? 0), zuwachs };
+}
+
+/** Der jüngste Führungswechsel — oder `null`. */
+export function letzterWechsel(daten: Stichwahl): Stichwahl["lead_changes"][number] | null {
+  const w = daten.lead_changes ?? [];
+  return w.length ? w[w.length - 1] : null;
+}
+
+/** Nachname — für den Fenstertitel und die Zeile der Meldung. */
+export function nachname(k: StichwahlKandidat): string {
+  const teile = k.name.trim().split(/\s+/);
+  return teile[teile.length - 1] ?? k.name;
+}
+
+/** Der Fenstertitel: die billigste Meldung, die es gibt — wer den Tab im
+ *  Hintergrund hat, sieht den Stand trotzdem. */
+export function fensterTitel(daten: Stichwahl): string {
+  if (daten.phase === "before") return "Stichwahl · Ratslotse";
+  const stand = nachStimmen(daten.candidates)
+    .map((k) => `${nachname(k)} ${prozentKurz(k.share_pct)}`)
+    .join(" · ");
+  return `${stand} — ${daten.reports_received}/${daten.reports_expected} · Stichwahl`;
+}
+
+function prozentKurz(v: number | null): string {
+  return v === null ? "–" : `${v.toFixed(1).replace(".", ",")}`;
+}
+
+/* ── Die Karte der Stichwahl (docs/plan-stichwahl-spannung.md S5) ───────── */
+
+export type StichwahlBezirke = ApiAntwort<"/wahlabend/stichwahl/bezirke">;
+export type StichwahlBezirk = StichwahlBezirke["districts"][number];
+
+export function stichwahlBezirkePfad(probe: string | null, counted: string | null): string {
+  const q = new URLSearchParams();
+  if (probe) q.set("probe", probe);
+  if (counted && /^\d+$/.test(counted)) q.set("counted", counted);
+  const s = q.toString();
+  return s ? `/wahlabend/stichwahl/bezirke?${s}` : "/wahlabend/stichwahl/bezirke";
+}
+
+/** Der Anteil einer Kandidatur an den Stimmen der beiden in einem Bezirk —
+ *  im ersten Wahlgang (`first_round`) oder in der Stichwahl (`votes`).
+ *  `null`, solange die Zahlen fehlen. */
+export function bezirkAnteil(d: StichwahlBezirk, slug: string, quelle: "votes" | "first_round"): number | null {
+  const stimmen = d[quelle];
+  const mein = stimmen[slug];
+  if (mein === null || mein === undefined) return null;
+  let summe = 0;
+  for (const v of Object.values(stimmen)) {
+    if (v === null || v === undefined) return null;
+    summe += v;
+  }
+  return summe > 0 ? Math.round((1000 * mein) / summe) / 10 : null;
+}
+
+/** Wer in einem Bezirk vorn liegt und wie deutlich — für die Karte. Gezählt
+ *  zählt die Stichwahl, sonst der erste Wahlgang. `null` ohne Zahlen oder
+ *  bei Gleichstand. */
+export function bezirkFuehrung(d: StichwahlBezirk, slugs: readonly string[]): { slug: string; share: number; live: boolean } | null {
+  const quelle = d.counted ? "votes" : "first_round";
+  let best: { slug: string; share: number } | null = null;
+  let gleich = false;
+  for (const slug of slugs) {
+    const share = bezirkAnteil(d, slug, quelle);
+    if (share === null) return null;
+    if (!best || share > best.share) { best = { slug, share }; gleich = false; }
+    else if (share === best.share) gleich = true;
+  }
+  return best && !gleich ? { ...best, live: d.counted } : null;
+}
+
+/** Die Deckkraft einer Fläche: 50 % ist Gleichstand (kaum Farbe), `max` der
+ *  deutlichste Vorsprung auf der Karte (volle Farbe). Offene Bezirke
+ *  halb so kräftig — sie zeigen den ERSTEN Wahlgang. */
+export function flaechenAlpha(share: number, max: number, live: boolean): number {
+  const spanne = Math.max(5, max - 50);
+  const anteil = Math.min(1, Math.max(0, (share - 50) / spanne));
+  const a = 0.22 + 0.68 * anteil;
+  return live ? a : a * 0.5;
 }

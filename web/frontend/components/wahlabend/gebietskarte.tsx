@@ -39,6 +39,9 @@ export function Gebietskarte<P extends Gebiet>({
   hinweis,
   hoehe = HOEHE,
   schrift = 13,
+  blass,
+  rand,
+  farbe,
   className,
 }: {
   flaechen: readonly GeoFlaeche<P>[];
@@ -58,6 +61,17 @@ export function Gebietskarte<P extends Gebiet>({
   /** Schriftgröße der Beschriftung in px — sechs römische Ziffern dürfen
    *  groß sein, zwanzig Bezirksnummern nicht. */
   schrift?: number;
+  /** Flächen, die noch nichts zu sagen haben (Stichwahl: nicht gezählt) —
+   *  halb durchsichtig mit gestricheltem Rand, damit man die Auszählung
+   *  laufen SIEHT. */
+  blass?: (nr: number) => boolean;
+  /** Flächen mit festem Rand (Stichwahl: gezählt). */
+  rand?: (nr: number) => boolean;
+  /** Eine eigene Füllfarbe je Fläche (mit Alpha) — statt der Primärtönung
+   *  aus `werte`. Die Stichwahl-Karte nutzt das für „wer liegt hier vorn":
+   *  eine Farbe je Kandidatur, kräftiger je deutlicher (Tims Entscheidung
+   *  15.09.2026, s. DESIGNSPRACHE „Parteifarben"). `null` = neutral. */
+  farbe?: (nr: number) => string | null;
   className?: string;
 }) {
   const [breite, setBreite] = useState(520);
@@ -101,7 +115,10 @@ export function Gebietskarte<P extends Gebiet>({
             const nr = p.eigenschaften.nr;
             const aktiv = gewaehlt === nr;
             const hell = schwebt === nr;
-            const ton = !aktiv && !hell ? toenungSpanne(werte?.get(nr), min, max) : null;
+            const eigene = !aktiv && !hell ? farbe?.(nr) ?? null : null;
+            const ton = eigene ?? (!aktiv && !hell ? toenungSpanne(werte?.get(nr), min, max) : null);
+            const offen = blass?.(nr) ?? false;
+            const fest = rand?.(nr) ?? false;
             return (
               // Nicht fokussierbar, wie bei der Ortsbereichs-Karte: Chrome
               // legt den Fokus-Ring einer SVG-Fläche um deren Bounding-Box,
@@ -119,8 +136,10 @@ export function Gebietskarte<P extends Gebiet>({
                       ? "fill-primary/25 stroke-primary/50"
                       : "fill-muted stroke-border",
                 )}
-                style={ton ? { fill: ton } : undefined}
-                strokeWidth={aktiv ? 2.5 : 1}
+                style={{ ...(ton ? { fill: ton } : {}), ...(offen && !aktiv ? { fillOpacity: 0.45 } : {}) }}
+                strokeWidth={aktiv ? 2.5 : fest ? 1.5 : 1}
+                strokeDasharray={offen && !aktiv ? "3 2" : undefined}
+                data-offen={offen ? "1" : undefined}
                 onMouseEnter={() => setSchwebt(nr)}
                 onMouseLeave={() => setSchwebt((n) => (n === nr ? null : n))}
                 onClick={() => onWaehlen?.(nr)}

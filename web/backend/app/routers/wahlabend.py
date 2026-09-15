@@ -13,6 +13,7 @@ Karte einer Liste, einer Liste im Wahlbereich oder einer Person.
 """
 from __future__ import annotations
 
+import logging
 import threading
 import time
 from datetime import datetime, timezone
@@ -35,12 +36,18 @@ from ..antworten import (
     ElectionWatchEntry,
     ElectionWatchList,
     MayorCandidate,
+    MayorDistrictEntry,
+    MayorDistrictList,
     MayorElectionInfo,
+    MayorHistoryPoint,
     MayorNight,
+    RunoffProjection,
 )
 from ..deps import get_store, optional_user, require_active
-from ..election import archive, candidates, elections, image, mayor, service, share
+from ..election import archive, candidates, elections, history, image, mayor, runoff_model, service, share
 from ..prediction import rounds
+
+_log = logging.getLogger("ratslotse.web.wahlabend")
 from ..election import votemanager
 
 router = APIRouter(tags=["wahlabend"])
@@ -234,10 +241,14 @@ def _mayor_night(w: elections.Election, probe: str | None, counted: int | None) 
     """
     stand = mayor.probe(counted, w) if probe else mayor.fetch(w=w)
     vorher: dict[str, float | None] = {}
+    hochrechnung: RunoffProjection | None = None
     if w.first_round:
-        erster = mayor.parse(mayor.probe_payload(w)[0], mayor.candidates(w))
+        known = mayor.candidates(w)
+        erster = mayor.parse(mayor.probe_payload(w)[0], known)
         vorher = {c.slug: c.share_pct for c in erster.candidates} if erster else {}
-    return MayorNight(
+        hochrechnung = _runoff_projection(stand, known, w)
+    antwort = MayorNight(
+        history=[], lead_changes=[],
         dataset="probe" if probe else "live",
         phase=stand.phase,
         election=MayorElectionInfo(
@@ -255,6 +266,60 @@ def _mayor_night(w: elections.Election, probe: str | None, counted: int | None) 
         runoff=list(stand.runoff),
         elected=_gewaehlt(stand),
         fetched_at=stand.fetched_at, ok=stand.ok, error=stand.error, notes=list(stand.notes),
+    )
+    if hochrechnung is not None:
+        antwort["projection"] = hochrechnung
+    if w.first_round:
+        try:
+            antwort["history"] = _probe_mayor_history(w, counted) if probe else history.record_mayor(w.slug, antwort)
+            antwort["lead_changes"] = history.lead_changes(antwort["history"])
+        except Exception:
+            # Der Verlauf ist Zugabe; er darf den Abend nicht mitnehmen.
+            _log.exception("Stichwahl: der Verlauf ließ sich nicht fortschreiben.")
+            antwort["history"], antwort["lead_changes"] = [], []
+    return antwort
+
+
+def _probe_mayor_history(w: elections.Election, counted: int | None) -> list[MayorHistoryPoint]:
+    """Der Verlauf der Generalprobe: Stände in Zehnerschritten bis
+    ``counted``, ab 18:00 Uhr alle 15 Minuten — wie bei der Ratswahl."""
+    known = mayor.candidates(w)
+    ziel = 133 if counted is None else max(0, min(133, counted))
+    stops = list(range(10, ziel + 1, 10))
+    if ziel > 0 and (not stops or stops[-1] != ziel):
+        stops.append(ziel)
+    out: list[MayorHistoryPoint] = []
+    for i, n in enumerate(stops):
+        stand = mayor.probe(n, w)
+        proj = _runoff_projection(stand, known, w)
+        at = (service.PROBE_START + i * service.PROBE_STEP).astimezone(timezone.utc).isoformat(timespec="seconds")
+        shares = {c.slug: c.share_pct for c in stand.candidates if c.votes and c.share_pct is not None}
+        out.append(MayorHistoryPoint(
+            at=at, reports_received=stand.reports_received, shares=shares,
+            votes={c.slug: c.votes for c in stand.candidates if c.votes is not None},
+            projected_shares=dict(proj["shares"]) if proj else {},
+            chance_pct=proj["chance_pct"] if proj else None,
+            leader=history.mayor_leader(shares, {c.slug: c.votes for c in stand.candidates}),
+        ))
+    return out
+
+
+def _runoff_projection(stand: mayor.MayorResult, known: tuple[mayor.MayorCandidate, ...],
+                       w: elections.Election) -> RunoffProjection | None:
+    """Die Hochrechnung zum Stand — nur mit genau zwei Kandidaturen und
+    sobald ein Bezirk gemeldet hat (``runoff_model.project``)."""
+    if len(known) != 2 or not stand.districts:
+        return None
+    vorher = mayor.probe_districts(None, known, w)
+    p = runoff_model.project(stand.districts, vorher, (known[0].slug, known[1].slug))
+    if p is None:
+        return None
+    return RunoffProjection(
+        shares=p.shares, projected_votes=p.projected_votes, leader=p.leader, lead_votes=p.lead_votes,
+        chance_pct=p.chance_pct, counted_ballot=p.counted_ballot, counted_postal=p.counted_postal,
+        open_ballot=p.open_ballot, open_postal=p.open_postal, decided=p.decided,
+        actual_leader=p.actual_leader, actual_lead_votes=p.actual_lead_votes,
+        open_votes_max=p.open_votes_max, caveats=list(p.caveats),
     )
 
 
@@ -411,6 +476,39 @@ def wahlabend_nicht_mehr_beobachten(
         raise HTTPException(status_code=404, detail="Nicht gefunden.")
     store.delete_bookmark(user["id"], merker_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/api/wahlabend/stichwahl/bezirke")
+def stichwahl_bezirke(probe: str | None = Query(default=None, description="gesetzt = Generalprobe mit den Zahlen des ersten Wahlgangs"),
+                      counted: int | None = Query(default=None, ge=0, le=133,
+                                                  description="Generalprobe: nur die ersten N Wahlbezirke gemeldet")) -> MayorDistrictList:
+    """Die 133 Wahlbezirke der Stichwahl mit ihrem Stand — und je Bezirk
+    dieselben zwei Kandidaturen im ersten Wahlgang als Vergleich.
+
+    Öffentlich wie die Stichwahl, hinter demselben Schalter. Das ist der
+    Eingang für Karte und Hochrechnung (docs/plan-stichwahl-spannung.md).
+    """
+    _frei()
+    w = elections.runoff()
+    if w is None:
+        raise HTTPException(status_code=404, detail="Es steht keine Stichwahl an.")
+    stand = mayor.probe(counted, w) if probe else mayor.fetch(w=w)
+    known = mayor.candidates(w)
+    vorher = {d.number: d.votes for d in mayor.probe_districts(None, known, w)}
+    zeilen = [MayorDistrictEntry(
+        number=d.number, name=d.name, area=d.area, postal=d.postal, counted=d.counted,
+        eligible=d.eligible, voters=d.voters, valid_votes=d.valid_votes,
+        votes=dict(d.votes), first_round=dict(vorher.get(d.number, {})),
+    ) for d in stand.districts]
+    return MayorDistrictList(
+        dataset="probe" if probe else "live", phase=stand.phase,
+        election=MayorElectionInfo(
+            slug=w.slug, title=w.title, short_title=w.short_title, date=w.date,
+            polls_close=w.polls_close.isoformat(), is_runoff=bool(w.first_round),
+            presentation_url=mayor.base_url(w) + votemanager.PRESENTATION_PATH,
+        ),
+        total=len(zeilen), counted=sum(1 for z in zeilen if z["counted"]), districts=zeilen,
+    )
 
 
 @router.get("/api/wahlabend/bild.png", response_class=Response, responses=WAHLABEND_PNG)
