@@ -5152,6 +5152,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/wahlabend/kandidat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Wahlabend Kandidat
+         * @description EINE Kandidatur in allen Wahlbezirken ihres Wahlbereichs.
+         *
+         *     Die Gegenrichtung zur Rangliste: Dort steht je Wahlbezirk, wer vorn lag;
+         *     hier steht je Kandidatur, wo ihre Stimmen herkamen. Öffentlich wie der
+         *     Wahlabend selbst, hinter demselben Schalter.
+         */
+        get: operations["wahlabend_kandidat_api_wahlabend_kandidat_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/wahlabend/kandidaten": {
         parameters: {
             query?: never;
@@ -8517,6 +8541,70 @@ export interface components {
             votes_to_seat: number | null;
         };
         /**
+         * ElectionCandidateDetail
+         * @description ``GET /api/wahlabend/kandidat`` — eine Kandidatur in allen ihren
+         *     Wahlbezirken.
+         *
+         *     Die Gegenrichtung zur Rangliste: Dort steht je Wahlbezirk, wer vorn lag;
+         *     hier steht je Kandidatur, wo ihre Stimmen herkamen. Beides sind Schnitte
+         *     durch dieselbe Tabelle aus der Bezirksdatei.
+         */
+        ElectionCandidateDetail: {
+            /** Area */
+            area: number;
+            /** Area Name */
+            area_name: string;
+            /** Area Roman */
+            area_roman: string;
+            /** Born */
+            born: number | null;
+            /** Color */
+            color: string;
+            /** Color Dark */
+            color_dark: string;
+            /** Dataset */
+            dataset: string;
+            /** Districts */
+            districts: components["schemas"]["ElectionCandidateDistrict"][];
+            /** Elected */
+            elected: string | null;
+            election: components["schemas"]["ElectionInfo"];
+            /** Name */
+            name: string;
+            /** Occupation */
+            occupation: string | null;
+            /** Party */
+            party: string;
+            /** Party Short */
+            party_short: string;
+            /** Phase */
+            phase: string;
+            /** Position */
+            position: number;
+            /** Votes */
+            votes: number | null;
+        };
+        /**
+         * ElectionCandidateDistrict
+         * @description Ein Wahlbezirk aus der Sicht EINER Kandidatur.
+         */
+        ElectionCandidateDistrict: {
+            /** Counted */
+            counted: boolean;
+            /** Name */
+            name: string;
+            /** Number */
+            number: number;
+            /** Party Share Pct */
+            party_share_pct: number | null;
+            /** Postal */
+            postal: boolean;
+            /** Share Pct */
+            share_pct: number | null;
+            /** Votes */
+            votes: number | null;
+        };
+        /**
          * ElectionCandidateParty
          * @description Eine Liste in der Kandidaten-Rangliste — mit dem Verhältnis, das die
          *     Frage „wie kommt jemand auf so viele Personenstimmen?" beantwortet:
@@ -8556,6 +8644,12 @@ export interface components {
             areas: components["schemas"]["ElectionAreaRef"][];
             /** Dataset */
             dataset: string;
+            /** District */
+            district: number | null;
+            /** District Name */
+            district_name: string;
+            /** Districts */
+            districts: components["schemas"]["ElectionDistrictRef"][];
             election: components["schemas"]["ElectionInfo"];
             /** Parties */
             parties: components["schemas"]["ElectionCandidateParty"][];
@@ -8585,6 +8679,8 @@ export interface components {
             area_name: string;
             /** Area Roman */
             area_roman: string;
+            /** Area Votes */
+            area_votes: number | null;
             /** Born */
             born: number | null;
             /** Color */
@@ -8609,6 +8705,14 @@ export interface components {
             projected_elected: string | null;
             /** Rank */
             rank: number | null;
+            /** Top District */
+            top_district: number | null;
+            /** Top District Name */
+            top_district_name: string;
+            /** Top District Postal */
+            top_district_postal: boolean;
+            /** Top District Votes */
+            top_district_votes: number | null;
             /** Votes */
             votes: number | null;
             /** Votes To Seat */
@@ -8669,6 +8773,20 @@ export interface components {
             slug: string;
             /** Votes */
             votes: number | null;
+        };
+        /**
+         * ElectionDistrictRef
+         * @description Ein Wahlbezirk, nur mit dem, was eine Auswahl braucht.
+         */
+        ElectionDistrictRef: {
+            /** Area */
+            area: number;
+            /** Name */
+            name: string;
+            /** Number */
+            number: number;
+            /** Postal */
+            postal: boolean;
         };
         /**
          * ElectionHistoryPoint
@@ -8944,6 +9062,8 @@ export interface components {
                 area_name: string;
                 /** Area Roman */
                 area_roman: string;
+                /** Area Votes */
+                area_votes: number | null;
                 /** Born */
                 born: number | null;
                 /** Color */
@@ -8968,6 +9088,14 @@ export interface components {
                 projected_elected: string | null;
                 /** Rank */
                 rank: number | null;
+                /** Top District */
+                top_district: number | null;
+                /** Top District Name */
+                top_district_name: string;
+                /** Top District Postal */
+                top_district_postal: boolean;
+                /** Top District Votes */
+                top_district_votes: number | null;
                 /** Votes */
                 votes: number | null;
                 /** Votes To Seat */
@@ -19636,6 +19764,48 @@ export interface operations {
             };
         };
     };
+    wahlabend_kandidat_api_wahlabend_kandidat_get: {
+        parameters: {
+            query: {
+                /** @description Listen-Slug der Kandidatur */
+                party: string;
+                /** @description Wahlbereich */
+                area: number;
+                /** @description Listenplatz */
+                position: number;
+                /** @description gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert) */
+                probe?: string | null;
+                /** @description Generalprobe: nur die ersten N Wahlbezirke ausgezählt */
+                counted?: number | null;
+                /** @description Slug einer gelaufenen Wahl — ihr eingefrorener Stand, ohne Abruf */
+                wahl?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ElectionCandidateDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     wahlabend_kandidaten_api_wahlabend_kandidaten_get: {
         parameters: {
             query?: {
@@ -19651,6 +19821,8 @@ export interface operations {
                 party?: string | null;
                 /** @description nur dieser Wahlbereich (Nummer) */
                 area?: number | null;
+                /** @description nur dieser Wahlbezirk — Stimmen, Anteil und Rang dann aus diesem Wahllokal */
+                district?: number | null;
             };
             header?: never;
             path?: never;
@@ -19889,4 +20061,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 86a5323552dae9016887c07705242d3b5d8adc60248798372df037a0ac8622e7
+// vertrag-sha256: 7fc45b2f7a7bb14722f5f2e4dfcf643273a8a1b3244a9a2809d10e3a6e3a8c17

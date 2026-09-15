@@ -7728,6 +7728,167 @@
         "title": "ElectionCandidate",
         "type": "object"
       },
+      "ElectionCandidateDetail": {
+        "description": "``GET /api/wahlabend/kandidat`` — eine Kandidatur in allen ihren\nWahlbezirken.\n\nDie Gegenrichtung zur Rangliste: Dort steht je Wahlbezirk, wer vorn lag;\nhier steht je Kandidatur, wo ihre Stimmen herkamen. Beides sind Schnitte\ndurch dieselbe Tabelle aus der Bezirksdatei.",
+        "properties": {
+          "area": {
+            "title": "Area",
+            "type": "integer"
+          },
+          "area_name": {
+            "title": "Area Name",
+            "type": "string"
+          },
+          "area_roman": {
+            "title": "Area Roman",
+            "type": "string"
+          },
+          "born": {
+            "title": "Born",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "color": {
+            "title": "Color",
+            "type": "string"
+          },
+          "color_dark": {
+            "title": "Color Dark",
+            "type": "string"
+          },
+          "dataset": {
+            "title": "Dataset",
+            "type": "string"
+          },
+          "districts": {
+            "items": {
+              "$ref": "#/components/schemas/ElectionCandidateDistrict"
+            },
+            "title": "Districts",
+            "type": "array"
+          },
+          "elected": {
+            "title": "Elected",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "election": {
+            "$ref": "#/components/schemas/ElectionInfo"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "occupation": {
+            "title": "Occupation",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "party": {
+            "title": "Party",
+            "type": "string"
+          },
+          "party_short": {
+            "title": "Party Short",
+            "type": "string"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "votes": {
+            "title": "Votes",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "dataset",
+          "phase",
+          "election",
+          "party",
+          "party_short",
+          "color",
+          "color_dark",
+          "area",
+          "area_roman",
+          "area_name",
+          "position",
+          "name",
+          "occupation",
+          "born",
+          "votes",
+          "elected",
+          "districts"
+        ],
+        "title": "ElectionCandidateDetail",
+        "type": "object"
+      },
+      "ElectionCandidateDistrict": {
+        "description": "Ein Wahlbezirk aus der Sicht EINER Kandidatur.",
+        "properties": {
+          "counted": {
+            "title": "Counted",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "integer"
+          },
+          "party_share_pct": {
+            "title": "Party Share Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "postal": {
+            "title": "Postal",
+            "type": "boolean"
+          },
+          "share_pct": {
+            "title": "Share Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "votes": {
+            "title": "Votes",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "number",
+          "name",
+          "postal",
+          "counted",
+          "votes",
+          "share_pct",
+          "party_share_pct"
+        ],
+        "title": "ElectionCandidateDistrict",
+        "type": "object"
+      },
       "ElectionCandidateParty": {
         "description": "Eine Liste in der Kandidaten-Rangliste — mit dem Verhältnis, das die\nFrage „wie kommt jemand auf so viele Personenstimmen?\" beantwortet:\nWie viel von dem, was eine Liste bekommt, ging an Personen statt an die\nListe? Gemessen 2026: SPD 50 %, CDU 48 %, Grüne 35 %, AfD 36 %.",
         "properties": {
@@ -7812,6 +7973,24 @@
             "title": "Dataset",
             "type": "string"
           },
+          "district": {
+            "title": "District",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "district_name": {
+            "title": "District Name",
+            "type": "string"
+          },
+          "districts": {
+            "items": {
+              "$ref": "#/components/schemas/ElectionDistrictRef"
+            },
+            "title": "Districts",
+            "type": "array"
+          },
           "election": {
             "$ref": "#/components/schemas/ElectionInfo"
           },
@@ -7865,6 +8044,9 @@
           "sort",
           "party",
           "area",
+          "district",
+          "district_name",
+          "districts",
           "total",
           "shown",
           "parties",
@@ -7888,6 +8070,13 @@
           "area_roman": {
             "title": "Area Roman",
             "type": "string"
+          },
+          "area_votes": {
+            "title": "Area Votes",
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "born": {
             "title": "Born",
@@ -7955,6 +8144,28 @@
               "null"
             ]
           },
+          "top_district": {
+            "title": "Top District",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "top_district_name": {
+            "title": "Top District Name",
+            "type": "string"
+          },
+          "top_district_postal": {
+            "title": "Top District Postal",
+            "type": "boolean"
+          },
+          "top_district_votes": {
+            "title": "Top District Votes",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
           "votes": {
             "title": "Votes",
             "type": [
@@ -7987,7 +8198,12 @@
           "party_share_pct",
           "elected",
           "projected_elected",
-          "votes_to_seat"
+          "votes_to_seat",
+          "top_district",
+          "top_district_name",
+          "top_district_votes",
+          "top_district_postal",
+          "area_votes"
         ],
         "title": "ElectionCandidateRow",
         "type": "object"
@@ -8116,6 +8332,35 @@
           "share_pct"
         ],
         "title": "ElectionDistrictParty",
+        "type": "object"
+      },
+      "ElectionDistrictRef": {
+        "description": "Ein Wahlbezirk, nur mit dem, was eine Auswahl braucht.",
+        "properties": {
+          "area": {
+            "title": "Area",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "integer"
+          },
+          "postal": {
+            "title": "Postal",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "number",
+          "name",
+          "area",
+          "postal"
+        ],
+        "title": "ElectionDistrictRef",
         "type": "object"
       },
       "ElectionHistoryPoint": {
@@ -8834,6 +9079,13 @@
                 "title": "Area Roman",
                 "type": "string"
               },
+              "area_votes": {
+                "title": "Area Votes",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
               "born": {
                 "title": "Born",
                 "type": [
@@ -8900,6 +9152,28 @@
                   "null"
                 ]
               },
+              "top_district": {
+                "title": "Top District",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "top_district_name": {
+                "title": "Top District Name",
+                "type": "string"
+              },
+              "top_district_postal": {
+                "title": "Top District Postal",
+                "type": "boolean"
+              },
+              "top_district_votes": {
+                "title": "Top District Votes",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
               "votes": {
                 "title": "Votes",
                 "type": [
@@ -8932,7 +9206,12 @@
               "party_share_pct",
               "elected",
               "projected_elected",
-              "votes_to_seat"
+              "votes_to_seat",
+              "top_district",
+              "top_district_name",
+              "top_district_votes",
+              "top_district_postal",
+              "area_votes"
             ],
             "title": "ElectionCandidateRow",
             "type": [
@@ -28409,6 +28688,121 @@
         ]
       }
     },
+    "/api/wahlabend/kandidat": {
+      "get": {
+        "description": "EINE Kandidatur in allen Wahlbezirken ihres Wahlbereichs.\n\nDie Gegenrichtung zur Rangliste: Dort steht je Wahlbezirk, wer vorn lag;\nhier steht je Kandidatur, wo ihre Stimmen herkamen. Öffentlich wie der\nWahlabend selbst, hinter demselben Schalter.",
+        "operationId": "wahlabend_kandidat_api_wahlabend_kandidat_get",
+        "parameters": [
+          {
+            "description": "Listen-Slug der Kandidatur",
+            "in": "query",
+            "name": "party",
+            "required": true,
+            "schema": {
+              "description": "Listen-Slug der Kandidatur",
+              "title": "Party",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Wahlbereich",
+            "in": "query",
+            "name": "area",
+            "required": true,
+            "schema": {
+              "description": "Wahlbereich",
+              "maximum": 20,
+              "minimum": 1,
+              "title": "Area",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Listenplatz",
+            "in": "query",
+            "name": "position",
+            "required": true,
+            "schema": {
+              "description": "Listenplatz",
+              "maximum": 99,
+              "minimum": 1,
+              "title": "Position",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)",
+            "in": "query",
+            "name": "probe",
+            "required": false,
+            "schema": {
+              "description": "gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)",
+              "title": "Probe",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "Generalprobe: nur die ersten N Wahlbezirke ausgezählt",
+            "in": "query",
+            "name": "counted",
+            "required": false,
+            "schema": {
+              "description": "Generalprobe: nur die ersten N Wahlbezirke ausgezählt",
+              "maximum": 500,
+              "minimum": 0,
+              "title": "Counted",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "Slug einer gelaufenen Wahl — ihr eingefrorener Stand, ohne Abruf",
+            "in": "query",
+            "name": "wahl",
+            "required": false,
+            "schema": {
+              "description": "Slug einer gelaufenen Wahl — ihr eingefrorener Stand, ohne Abruf",
+              "title": "Wahl",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ElectionCandidateDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Wahlabend Kandidat",
+        "tags": [
+          "wahlabend"
+        ]
+      }
+    },
     "/api/wahlabend/kandidaten": {
       "get": {
         "description": "Alle Kandidaturen als eine Rangliste — sortiert und gefiltert vom Server.\n\nÖffentlich wie der Wahlabend selbst, hinter demselben Schalter. Der Rang\nist stadtweit und bleibt es auch gefiltert; was die beiden Anteile\nbedeuten, steht in ``election/candidates.py``.",
@@ -28495,6 +28889,22 @@
               "maximum": 20,
               "minimum": 1,
               "title": "Area",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "nur dieser Wahlbezirk — Stimmen, Anteil und Rang dann aus diesem Wahllokal",
+            "in": "query",
+            "name": "district",
+            "required": false,
+            "schema": {
+              "description": "nur dieser Wahlbezirk — Stimmen, Anteil und Rang dann aus diesem Wahllokal",
+              "maximum": 999,
+              "minimum": 1,
+              "title": "District",
               "type": [
                 "integer",
                 "null"

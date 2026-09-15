@@ -69,6 +69,19 @@ def _eingefroren(slug: str):
     return reg, ref, schnapp
 
 
+def snapshot(slug: str):
+    """Register und eingefrorener Stand einer gelaufenen Wahl — oder ``None``.
+
+    Für alles, was mehr braucht als die fertige Antwort: die Personenstimmen
+    je Wahlbezirk etwa stehen in der Bezirksdatei, nicht in ``night()``.
+    """
+    teile = _eingefroren(slug)
+    if teile is None:
+        return None
+    reg, _, schnapp = teile
+    return reg, schnapp
+
+
 @lru_cache(maxsize=8)
 def districts(slug: str) -> ElectionDistrictList | None:
     """Die Wahlbezirke einer gelaufenen Wahl — aus dem Repo, ohne Netz."""
