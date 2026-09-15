@@ -28,8 +28,10 @@ from kern.store import Store
 from ..antworten import (
     WAHLABEND_KARTE_PNG,
     WAHLABEND_PNG,
+    ElectionCandidateDetail,
     ElectionCandidateRanking,
     ElectionDistrictList,
+    ElectionDistrictRef,
     ElectionList,
     ElectionListItem,
     ElectionNight,
@@ -104,6 +106,39 @@ def _night(probe: str | None, counted: int | None, wahl: str | None) -> Election
     return _stand(probe, counted)
 
 
+@router.get("/api/wahlabend/kandidat")
+def wahlabend_kandidat(
+    party: str = Query(description="Listen-Slug der Kandidatur"),
+    area: int = Query(ge=1, le=20, description="Wahlbereich"),
+    position: int = Query(ge=1, le=99, description="Listenplatz"),
+    probe: str | None = Query(default=None, description="gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)"),
+    counted: int | None = Query(default=None, ge=0, le=500, description="Generalprobe: nur die ersten N Wahlbezirke ausgezählt"),
+    wahl: str | None = Query(default=None, description="Slug einer gelaufenen Wahl — ihr eingefrorener Stand, ohne Abruf"),
+) -> ElectionCandidateDetail:
+    """EINE Kandidatur in allen Wahlbezirken ihres Wahlbereichs.
+
+    Die Gegenrichtung zur Rangliste: Dort steht je Wahlbezirk, wer vorn lag;
+    hier steht je Kandidatur, wo ihre Stimmen herkamen. Öffentlich wie der
+    Wahlabend selbst, hinter demselben Schalter.
+    """
+    _frei()
+    night = _night(probe, counted, wahl)
+    zeile = next((z for z in candidates.ranking(night)["rows"]
+                  if z["party"] == party and z["area"] == area and z["position"] == position), None)
+    if zeile is None:
+        raise HTTPException(status_code=404, detail="Diese Kandidatur gibt es bei dieser Wahl nicht.")
+    reg, snap = _snapshot(probe, counted, wahl)
+    return ElectionCandidateDetail(
+        dataset=night["dataset"], phase=night["phase"], election=night["election"],
+        party=party, party_short=zeile["party_short"],
+        color=zeile["color"], color_dark=zeile["color_dark"],
+        area=area, area_roman=zeile["area_roman"], area_name=zeile["area_name"],
+        position=position, name=zeile["name"], occupation=zeile["occupation"], born=zeile["born"],
+        votes=zeile["votes"], elected=zeile["elected"],
+        districts=service.candidate_districts(reg, snap, party, area, position),
+    )
+
+
 @router.get("/api/wahlabend/wahlbezirke")
 def wahlabend_wahlbezirke(
     probe: str | None = Query(default=None, description="gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)"),
@@ -129,6 +164,22 @@ def wahlabend_wahlbezirke(
     return service.districts(reg, votemanager.fetch(), "live")
 
 
+def _snapshot(probe: str | None, counted: int | None, wahl: str | None):
+    """Register und Stand — dieselbe Herkunft wie ``_night``, eine Ebene
+    tiefer. Der Rückblick liest aus dem Repo, die Probe rechnet, live fragt
+    den Votemanager (dessen Abruf ohnehin zwischengespeichert ist)."""
+    if wahl:
+        teile = archive.snapshot(wahl)
+        if teile is None:
+            raise HTTPException(status_code=404,
+                                detail="Von dieser Wahl liegt kein vollständiger Stand vor.")
+        return teile
+    reg = service.load_register()
+    if probe:
+        return reg, service.probe_snapshot(reg, service.load_reference(), counted)
+    return reg, votemanager.fetch()
+
+
 @router.get("/api/wahlabend/kandidaten")
 def wahlabend_kandidaten(
     probe: str | None = Query(default=None, description="gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)"),
@@ -138,6 +189,8 @@ def wahlabend_kandidaten(
                       description="votes = nach Personenstimmen, party = in Stimmzettel-Reihenfolge, area = je Wahlbereich, name"),
     party: str | None = Query(default=None, description="nur diese Liste (Slug)"),
     area: int | None = Query(default=None, ge=1, le=20, description="nur dieser Wahlbereich (Nummer)"),
+    district: int | None = Query(default=None, ge=1, le=999,
+                                 description="nur dieser Wahlbezirk — Stimmen, Anteil und Rang dann aus diesem Wahllokal"),
 ) -> ElectionCandidateRanking:
     """Alle Kandidaturen als eine Rangliste — sortiert und gefiltert vom Server.
 
@@ -151,7 +204,22 @@ def wahlabend_kandidaten(
         raise HTTPException(status_code=404, detail="Diese Liste tritt bei dieser Wahl nicht an.")
     if area is not None and area not in {a["number"] for a in night["areas"]}:
         raise HTTPException(status_code=404, detail="Diesen Wahlbereich gibt es bei dieser Wahl nicht.")
-    return candidates.ranking(night, sort=sort, party=party, area=area)
+    # Die Wahlbezirke stehen nur in der Bezirksdatei; sie kosten einen zweiten
+    # Blick in denselben Stand. Die Auswahlliste fährt immer mit, damit die
+    # Oberfläche für 133 Namen keine eigene Abfrage braucht.
+    reg, snap = _snapshot(probe, counted, wahl)
+    bezirk = None
+    if district is not None:
+        bezirk = service.district_candidates(reg, snap, district)
+        if bezirk is None:
+            raise HTTPException(status_code=404, detail="Diesen Wahlbezirk gibt es bei dieser Wahl nicht.")
+        if area is not None and area != bezirk["area"]:
+            raise HTTPException(status_code=400,
+                                detail="Dieser Wahlbezirk liegt nicht in diesem Wahlbereich.")
+    bezirke: list[ElectionDistrictRef] = service.district_refs(snap)
+    return candidates.ranking(night, sort=sort, party=party, area=area,
+                              bezirk=bezirk, bezirke=bezirke,
+                              hochburgen=service.top_districts(reg, snap))
 
 
 @router.get("/api/wahlen")
