@@ -203,7 +203,7 @@ test.describe("Schalter an: die Generalprobe", () => {
 
   test("der Wahlbezirk filtert die Rangliste auf ein Wahllokal", async ({ page }) => {
     await page.goto("/wahlabend?ansicht=kandidaten");
-    const wahl = page.getByLabel("Wahlbezirk");
+    const wahl = page.getByLabel("Wahlbezirk", { exact: true });
     await expect(wahl).toBeVisible();
     // Ohne Auswahl steht die ganze Stadt da, und jede Zeile nennt ihre
     // Hochburg — den Wahlbezirk, in dem diese Kandidatur am stärksten war.

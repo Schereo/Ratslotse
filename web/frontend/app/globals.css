@@ -1292,11 +1292,20 @@ lotti-figur {
    es nicht. Das Kind braucht `min-height: 0`, sonst weigert es sich zu
    schrumpfen (Rasterkinder haben eine automatische Mindestgröße), und
    `overflow: hidden`, damit der Inhalt beim Zufahren wirklich abgeschnitten
-   wird statt herauszuragen. */
+   wird statt herauszuragen.
+
+   Kurve und Takt sind gemessen, nicht geraten (15.09.2026, Drawer von
+   991 px, erster sichtbarer Frame nach dem Öffnen):
+     ease-out-strong 260 ms → 262 px = 26 %   „springt auf" (Tim)
+     ease-drawer     300 ms → 135 px = 14 %
+     in-out-strong   300 ms →   2 px =  0 %   fährt an, voll nach 267 ms
+   Ein Kasten, der Platz SCHAFFT, darf nicht im ersten Bild schon ein
+   Viertel offen stehen — dieselbe Kurve wie der Platztausch der
+   Stichwahl-Karten. */
 .aufklapp {
   display: grid;
   grid-template-rows: 0fr;
-  transition: grid-template-rows var(--takt-weg) var(--ease-out-strong);
+  transition: grid-template-rows 300ms var(--ease-in-out-strong);
 }
 .aufklapp[data-offen="true"] {
   grid-template-rows: 1fr;
