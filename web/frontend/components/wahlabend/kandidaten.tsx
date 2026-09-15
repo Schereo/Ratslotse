@@ -17,6 +17,7 @@
 // Zeile setzt die Stimmen ins Verhältnis zur stärksten Person der Wahl.
 
 import { useQuery } from "@tanstack/react-query";
+import { ChevronRight } from "lucide-react";
 import { Fragment, useMemo, useState } from "react";
 import { KICKER, Punkt, TON } from "@/components/wahlabend/bausteine";
 import { BeobachtenHinweis, BeobachtetKarte, Stern, useBeobachtet } from "@/components/wahlabend/beobachtet";
@@ -127,7 +128,13 @@ function Balken({ votes, max, drin }: { votes: number | null; max: number; drin:
 
 /** Der Name ist der Griff. Er verspricht, was aufgeht: alle Wahlbezirke
  *  dieser einen Kandidatur — die Zahlen, die in der Liste nicht in eine
- *  Spalte passen. */
+ *  Spalte passen.
+ *
+ *  Tims Befund 15.09.: Ein 10-px-Dreieck sagt niemandem, dass hier etwas
+ *  aufgeht. Deshalb ein Pfeil in einem Kreis, der mit der ZEILE reagiert
+ *  (`group/zeile` liegt auf `tr` bzw. `li`): Wer über die Zeile fährt, sieht
+ *  den Kreis in Primärfarbe und die Zeile getönt — die ganze Zeile ist der
+ *  Griff, nicht nur der Name. Offen: Pfeil nach unten, Kreis gefüllt. */
 function Aufklapper({ auf, onClick, name, children }: { auf: boolean; onClick: () => void; name: string; children: React.ReactNode }) {
   return (
     <button
@@ -135,19 +142,33 @@ function Aufklapper({ auf, onClick, name, children }: { auf: boolean; onClick: (
       onClick={onClick}
       aria-expanded={auf}
       title={auf ? "Wahlbezirke zuklappen" : `Alle Wahlbezirke von ${name} zeigen`}
-      className="group/auf -mx-1 block w-full min-w-0 rounded-md px-1 py-0.5 text-left transition-colors hover:bg-primary/5"
+      className="-mx-1 block w-full min-w-0 rounded-md px-1 py-0.5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
-      <span className="flex min-w-0 items-start gap-1.5">
+      <span className="flex min-w-0 items-start gap-2">
         <span
           aria-hidden
-          className={cn("mt-[3px] flex-none font-mono text-[10px] text-muted-foreground transition-transform duration-tipp", auf && "rotate-90")}
+          className={cn(
+            "mt-px flex h-[22px] w-[22px] flex-none items-center justify-center rounded-full border transition-[transform,color,border-color,background-color] duration-tipp",
+            auf
+              ? "rotate-90 border-primary bg-primary text-primary-foreground"
+              : "border-border bg-card text-muted-foreground group-hover/zeile:border-primary group-hover/zeile:text-primary",
+          )}
         >
-          ▸
+          <ChevronRight className="h-4 w-4" strokeWidth={2.25} />
         </span>
         <span className="min-w-0 flex-1">{children}</span>
       </span>
     </button>
   );
+}
+
+/** Die ganze Zeile klappt auf — nicht nur der Name. Ein Klick, der auf einem
+ *  eigenen Knopf landet (Stern, Aufklapper selbst), bleibt bei dem. */
+function zeilenKlick(umschalten: () => void) {
+  return (e: React.MouseEvent<HTMLElement>) => {
+    if ((e.target as HTMLElement).closest("button, a")) return;
+    umschalten();
+  };
 }
 
 function Statuspille({ z, daten }: { z: KandidatenZeile; daten: Kandidatenliste }) {
@@ -371,7 +392,10 @@ export function Kandidaten({
                   const auf = offen === id;
                   return (
                     <Fragment key={id}>
-                    <tr className="group">
+                    <tr
+                      className={cn("group/zeile cursor-pointer transition-colors duration-tipp hover:bg-primary/5", auf && "bg-primary/[0.04]")}
+                      onClick={zeilenKlick(() => setOffen(auf ? null : id))}
+                    >
                       <td className="border-b border-border/60 px-2 py-2 text-right font-mono text-[11px] text-muted-foreground tabular-nums">{z.rank ?? "–"}</td>
                       <td className={cn("border-b px-3 py-2", auf ? "border-transparent" : "border-border/60")}>
                         <Aufklapper auf={auf} onClick={() => setOffen(auf ? null : id)} name={z.name}>
@@ -454,7 +478,11 @@ export function Kandidaten({
               const id = `${z.party}-${z.area}-${z.position}`;
               const auf = offen === id;
               return (
-                <li key={id} className="py-2.5">
+                <li
+                  key={id}
+                  className={cn("group/zeile -mx-2 cursor-pointer rounded-lg px-2 py-2.5 transition-colors duration-tipp hover:bg-primary/5", auf && "bg-primary/[0.04]")}
+                  onClick={zeilenKlick(() => setOffen(auf ? null : id))}
+                >
                   <span className="flex items-start gap-2.5">
                   <span className="w-7 flex-none pt-0.5 text-right font-mono text-[10.5px] text-muted-foreground tabular-nums">{z.rank ?? "–"}</span>
                   <span className="min-w-0 flex-1">
