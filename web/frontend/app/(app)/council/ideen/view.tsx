@@ -46,6 +46,16 @@ const STATUS: Record<string, { text: string; ton: string }> = {
     ton: "bg-amber-500/15 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300",
   },
   present: { text: "Oldenburg hat das", ton: "bg-muted text-muted-foreground" },
+  // Nicht „fehlt", sondern „kann hier gar nicht greifen": Eine
+  // fahrradfreundliche Gestaltung von Stadtbahngleisen setzt eine Stadtbahn
+  // voraus. Bis 14.09.2026 gab es diese Stufe nicht, und die Karte
+  // widersprach sich selbst — „In Oldenburg nicht gefunden" stand über
+  // „Oldenburg hat kein Stadtbahnsystem, daher gibt es keine Gleise, die
+  // fahrradfreundlich gestaltet werden könnten."
+  not_applicable: {
+    text: "Für Oldenburg nicht anwendbar",
+    ton: "bg-muted text-muted-foreground",
+  },
 };
 
 /**

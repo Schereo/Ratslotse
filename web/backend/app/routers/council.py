@@ -1875,6 +1875,7 @@ def cities_idea_fields(cities: CitiesStore = Depends(get_cities_store)) -> IdeaF
         {"field": r["field"], "total": int(r["total"] or 0),
          "missing": int(r["missing"] or 0), "partial": int(r["partial"] or 0),
          "present": int(r["present"] or 0),
+         "not_applicable": int(r["not_applicable"] or 0),
          "multi_city": int(r["multi_city"] or 0)}
         for r in cities.idea_fields()]
     from council.cities.registry import BODIES
