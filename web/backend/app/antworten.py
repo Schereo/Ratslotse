@@ -1579,6 +1579,12 @@ class IdeaFieldSummary(TypedDict):
     missing: int
     partial: int
     present: int
+    #: Ideen, die in Oldenburg nicht FEHLEN, sondern gar nicht greifen können,
+    #: weil eine Voraussetzung fehlt — keine Stadtbahn, kein Hafen, keine
+    #: Stadtbezirksräte. Ohne diese Zahl ergäbe `total` nicht mehr die Summe
+    #: der Stufen, und eine Übersicht, deren Zahlen nicht aufgehen, ist
+    #: schlimmer als eine ohne.
+    not_applicable: int
     #: Ideen dieses Feldes, die in mindestens ZWEI anderen Städten liegen und
     #: Oldenburg fehlen. Danach ist ein Themenfeld interessant — vorher stand
     #: hier die Zahl der „lohnt sich"-Urteile, also eine Modellmeinung.

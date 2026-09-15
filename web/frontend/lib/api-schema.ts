@@ -9751,6 +9751,8 @@ export interface components {
             missing: number;
             /** Multi City */
             multi_city: number;
+            /** Not Applicable */
+            not_applicable: number;
             /** Partial */
             partial: number;
             /** Present */
@@ -20061,4 +20063,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 7fc45b2f7a7bb14722f5f2e4dfcf643273a8a1b3244a9a2809d10e3a6e3a8c17
+// vertrag-sha256: fa703dc4565669b678e2e5a8200b2603a6c0601722de1bfa18c08dde8aa12332

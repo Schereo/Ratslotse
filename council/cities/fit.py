@@ -226,7 +226,12 @@ VOTES = int(os.environ.get("CITIES_FIT_VOTES", "3"))
 #: „Oldenburg hat das schon" nimmt eine Idee von der Liste und ist damit der
 #: teurere Irrtum — dieselbe Asymmetrie, die der Prüfstand als harte Schranke
 #: führt.
-STATUS_ORDNUNG = ("missing", "partial", "present")
+#:
+#: ``not_applicable`` steht ganz hinten, weil es die kühnste Aussage ist: Es
+#: nimmt die Idee nicht nur von der Liste, es erklärt sie für unmöglich. Zwei
+#: Stimmen „fehlt" gegen zwei „geht hier nicht" gehen deshalb als „fehlt"
+#: aus — die schwächere Behauptung gewinnt.
+STATUS_ORDNUNG = ("missing", "partial", "present", "not_applicable")
 
 
 def _mehrheit(werte: list[str], ordnung: tuple[str, ...]) -> str:
