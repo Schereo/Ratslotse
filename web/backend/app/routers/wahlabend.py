@@ -31,6 +31,7 @@ from ..antworten import (
     ElectionCandidateDetail,
     ElectionCandidateRanking,
     ElectionDistrictList,
+    ElectionDistrictRanking,
     ElectionDistrictRef,
     ElectionList,
     ElectionListItem,
@@ -152,6 +153,10 @@ def wahlabend_wahlbezirke(
     Karte aufmacht (s. ``ElectionDistrictList``).
     """
     _frei()
+    return _districts(probe, counted, wahl)
+
+
+def _districts(probe: str | None, counted: int | None, wahl: str | None) -> ElectionDistrictList:
     if wahl:
         bild = archive.districts(wahl)
         if bild is None:
@@ -162,6 +167,26 @@ def wahlabend_wahlbezirke(
     if probe:
         return service.districts(reg, service.probe_snapshot(reg, service.load_reference(), counted), "probe")
     return service.districts(reg, votemanager.fetch(), "live")
+
+
+@router.get("/api/wahlabend/wahlbezirke/rangliste")
+def wahlabend_wahlbezirke_rangliste(
+    party: str = Query(description="Slug der Liste, z. B. „fdp“"),
+    sort: str = Query(default="share", pattern="^(share|votes)$", description="„share“ = Anteil, „votes“ = Stimmen"),
+    area: int | None = Query(default=None, ge=1, le=9, description="nur dieser Wahlbereich; leer = ganze Stadt"),
+    probe: str | None = Query(default=None, description="gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)"),
+    counted: int | None = Query(default=None, ge=0, le=500, description="Generalprobe: nur die ersten N Wahlbezirke ausgezählt"),
+    wahl: str | None = Query(default=None, description="Slug einer gelaufenen Wahl — ihr eingefrorener Stand, ohne Abruf"),
+) -> ElectionDistrictRanking:
+    """Alle Wahlbezirke aus der Sicht EINER Liste, mit Rang — „wo hat meine
+    Liste wie gut abgeschnitten?". Öffentlich wie die Wahlbezirke selbst.
+    Eine unbekannte Liste ist ein 404, kein leeres Ergebnis."""
+    _frei()
+    liste = _districts(probe, counted, wahl)
+    reg = service.load_register()
+    if party not in {p.slug for p in reg.parties}:
+        raise HTTPException(status_code=404, detail=f"Die Liste „{party}“ gibt es bei dieser Wahl nicht.")
+    return service.district_ranking(liste, reg, party, sort, area)
 
 
 def _snapshot(probe: str | None, counted: int | None, wahl: str | None):

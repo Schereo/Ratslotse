@@ -22,6 +22,9 @@ export type KandidatenSortierung = "votes" | "party" | "area" | "name";
 export type KandidatDetail = ApiAntwort<"/wahlabend/kandidat">;
 export type KandidatBezirk = KandidatDetail["districts"][number];
 export type Wahlbezirke = ApiAntwort<"/wahlabend/wahlbezirke">;
+/** Alle Wahlbezirke aus der Sicht einer Liste, mit Rang — der Server sortiert. */
+export type BezirksRangliste = ApiAntwort<"/wahlabend/wahlbezirke/rangliste">;
+export type BezirksSortierung = "share" | "votes";
 export type Wahlbezirk = Wahlbezirke["districts"][number];
 export type Beobachtet = ApiAntwort<"/wahlabend/beobachtet">;
 export type BeobachtetEintrag = Beobachtet["entries"][number];
@@ -210,6 +213,24 @@ export function bezirkePfad(probe: string | null, counted: string | null, wahl: 
   const basis = abfragePfad(probe, counted, wahl);
   const q = basis.includes("?") ? basis.slice(basis.indexOf("?")) : "";
   return `/wahlabend/wahlbezirke${q}`;
+}
+
+/** Die Bezirks-Rangliste einer Liste — Herkunft wie die Wahlbezirke, dazu
+ *  Liste, Sortierung und optional ein Wahlbereich; alles rechnet der Server. */
+export function bezirksRanglistePfad(
+  probe: string | null,
+  counted: string | null,
+  wahl: string | null | undefined,
+  party: string,
+  sortierung: BezirksSortierung,
+  bereich: number | null,
+): string {
+  const basis = abfragePfad(probe, counted, wahl);
+  const q = new URLSearchParams(basis.includes("?") ? basis.slice(basis.indexOf("?") + 1) : "");
+  q.set("party", party);
+  if (sortierung !== "share") q.set("sort", sortierung);
+  if (bereich !== null) q.set("area", String(bereich));
+  return `/wahlabend/wahlbezirke/rangliste?${q.toString()}`;
 }
 
 /** Dieselbe Herkunft (Probe/Stand/Rückblick) für die Kandidaten-Rangliste —

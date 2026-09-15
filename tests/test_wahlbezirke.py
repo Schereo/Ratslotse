@@ -122,3 +122,61 @@ def test_die_generalprobe_zeigt_denselben_ausschnitt():
     assert d["dataset"] == "probe"
     assert d["counted"] == 60 < d["total"]
     assert d["phase"] == "counting"
+
+
+# ---------------------------------------------------------------- Rangliste je Liste (15.09.2026)
+
+def test_die_rangliste_einer_liste_ist_nach_anteil_sortiert_und_kennt_die_briefwahl(bezirke):
+    """Tims Bekannter (FDP): „Wo hat meine Liste in den Wahllokalen der Stadt
+    wie gut abgeschnitten?" — der Server sortiert und vergibt den Rang."""
+    from app.election import service
+
+    reg = service.load_register()
+    r = service.district_ranking(bezirke, reg, "fdp", "share")
+    assert r["party"] == "fdp" and r["sort"] == "share" and r["area"] is None
+    assert r["total"] == 133 and r["counted"] == 133
+    anteile = [z["share_pct"] for z in r["rows"]]
+    assert anteile == sorted(anteile, reverse=True)
+    assert [z["rank"] for z in r["rows"]] == list(range(1, 134))
+    # Die Briefwahl steht dazwischen — und trägt ihren Wahlbereich ausdrücklich.
+    brief = [z for z in r["rows"] if z["postal"]]
+    assert len(brief) == 42
+    b921 = next(z for z in brief if z["number"] == 921)
+    assert b921["area"] == 2 and b921["area_roman"] == "II"
+    assert all(z["area"] == (z["number"] - 900) // 10 for z in brief)
+
+
+def test_die_rangliste_nach_stimmen_und_je_wahlbereich(bezirke):
+    from app.election import service
+
+    reg = service.load_register()
+    r = service.district_ranking(bezirke, reg, "spd", "votes", area=4)
+    assert r["area"] == 4 and all(z["area"] == 4 for z in r["rows"])
+    assert r["total"] == 17 + 7, "Wahlbereich IV: 17 Urnen- und 7 Briefwahlbezirke"
+    stimmen = [z["votes"] for z in r["rows"]]
+    assert stimmen == sorted(stimmen, reverse=True)
+    assert r["rows"][0]["rank"] == 1
+
+
+def test_ungezaehlte_bezirke_stehen_hinten_ohne_rang():
+    from app.election import service
+
+    reg = service.load_register()
+    liste = service.districts(reg, service.probe_snapshot(reg, service.load_reference(), 40), "probe")
+    r = service.district_ranking(liste, reg, "gruene", "share")
+    assert r["counted"] == 40 and r["total"] == 133
+    assert [z["rank"] for z in r["rows"][:40]] == list(range(1, 41))
+    assert all(z["rank"] is None and not z["counted"] for z in r["rows"][40:])
+    nummern_offen = [z["number"] for z in r["rows"][40:]]
+    assert nummern_offen == sorted(nummern_offen)
+
+
+def test_der_rangliste_endpunkt_kennt_die_liste_oder_sagt_404(monkeypatch):
+    from fastapi import HTTPException
+
+    monkeypatch.setenv("FEATURE_FLAGS", "wahlabend")
+    d = router.wahlabend_wahlbezirke_rangliste(party="volt", sort="share", area=None, probe="1", counted=60, wahl=None)
+    assert d["party"] == "volt" and d["counted"] == 60
+    with pytest.raises(HTTPException) as e:
+        router.wahlabend_wahlbezirke_rangliste(party="gibt-es-nicht", sort="share", area=None, probe="1", counted=60, wahl=None)
+    assert e.value.status_code == 404

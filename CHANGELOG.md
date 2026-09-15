@@ -7,6 +7,29 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [2.6.3] – 2026-09-15
+
+### Hinzugefügt
+- **Unter der Wahlkarte steht jetzt die Rangliste der Wahlbezirke für die
+  gewählte Liste.** „Wo hat meine Liste in den Wahllokalen der Stadt wie gut
+  abgeschnitten?" — alle 133 Wahlbezirke mit Rang, sortierbar nach Anteil oder
+  Stimmen, stadtweit oder je Wahlbereich; eine Zeile antippen zeigt den Bezirk
+  auf der Karte. Die Briefwahlbezirke stehen dazwischen und nennen ihren
+  Wahlbereich ausdrücklich: Ihre Nummern heißen 9xy, x ist der Wahlbereich — 921
+  ist der zweite Briefwahlbezirk von II, je Wahlbereich sind es sieben. Über der
+  Karte schaltet ein Umschalter jederzeit zwischen den sechs Wahlbereichen und
+  allen Wahlbezirken; der Zurück-Knopf, der nur in der Bezirksansicht stand,
+  entfällt. (#1380)
+
+### Geändert
+- **Die beiden Prozentspalten in „Wo die Stimmen herkamen“ erklären sich jetzt
+  selbst.** Statt „davon“ und „der Liste“ steht die Bezugsgröße in der
+  Überschrift: „von 1.598“ heißt Anteil an allen Personenstimmen dieser
+  Kandidatur, „von SPD hier“ heißt Anteil an allen SPD-Stimmen in diesem
+  Wahlbezirk. Der Hinweis beim Überfahren ist ein Satz mit den Zahlen der Zeile
+  („209 von 1.598 Personenstimmen kamen aus diesem Wahlbezirk — 13,1 %“) statt
+  einer Definition. (#1379)
+
 ## [2.6.2] – 2026-09-15
 
 ### Geändert
@@ -8306,7 +8329,8 @@ Open-Source-Go-Live von Ratslotse.
 *Dieser Changelog beginnt mit dem Open-Source-Release von Ratslotse. Die
 Entwicklungshistorie davor ist nicht Teil dieses Repositories.*
 
-[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v2.6.2...main
+[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v2.6.3...main
+[2.6.3]: https://github.com/Schereo/Ratslotse/compare/v2.6.2...v2.6.3
 [2.6.2]: https://github.com/Schereo/Ratslotse/compare/v2.6.1...v2.6.2
 [2.6.1]: https://github.com/Schereo/Ratslotse/compare/v2.6.0...v2.6.1
 [2.6.0]: https://github.com/Schereo/Ratslotse/compare/v2.5.1...v2.6.0
