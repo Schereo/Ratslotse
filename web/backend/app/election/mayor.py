@@ -91,6 +91,15 @@ class MayorCandidate:
     #: nötig, und die Farben stehen ohnehin schon im Repo.
     color: str = ""
     color_dark: str = ""
+    #: Der volle amtliche Name des Wahlvorschlags aus der Bekanntmachung.
+    nominated_by: str = ""
+    #: Parteilos, und von wem sie sonst noch unterstützt wird — beides steht
+    #: NICHT in der Bekanntmachung, deshalb nur mit eigener Quelle
+    #: (`note_source`). Ohne Beleg bleibt das Feld leer: In einem
+    #: Wahlprodukt ist eine unbelegte Zuschreibung schlimmer als keine.
+    independent: bool = False
+    supported_by: tuple[str, ...] = ()
+    note_source: str = ""
 
 
 @dataclass(frozen=True)
@@ -172,6 +181,14 @@ def candidates(w: elections.Election | None = None) -> tuple[MayorCandidate, ...
             slug=slug, name=k["name"],
             party=_party_kurz(k["vorgeschlagen_von"]), votes=None, share_pct=None,
             color=farbe, color_dark=farbe_dunkel,
+            nominated_by=k["vorgeschlagen_von"],
+            # Ohne Beleg keine Aussage: Parteilosigkeit und fremde
+            # Unterstützung stehen nicht in der amtlichen Bekanntmachung, und
+            # eine unbelegte Zuschreibung ist in einem Wahlprodukt das
+            # Gegenteil von Präzision.
+            independent=bool(k.get("parteilos")) and bool(k.get("hinweis_quelle")),
+            supported_by=tuple(k.get("unterstuetzt_von") or ()) if k.get("hinweis_quelle") else (),
+            note_source=k.get("hinweis_quelle") or "",
         ))
     if nur and len(out) != len(nur):
         fehlend = sorted(set(nur) - {c.slug for c in out})

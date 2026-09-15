@@ -113,6 +113,38 @@ function Tafel({ daten }: { daten: Stichwahl }) {
 
 /* ── Die beiden ─────────────────────────────────────────────────────────── */
 
+/** Was der Parteiname über dem Namen NICHT sagt: ob die Person Mitglied ist,
+ *  und wer sie sonst noch unterstützt.
+ *
+ *  Beides steht nicht in der amtlichen Bekanntmachung — das Backend liefert
+ *  es nur mit eigener Quelle, und die steht hier als Beleg daneben. Ohne
+ *  Angaben bleibt die Zeile weg; sie ist kein Platzhalter. */
+function Herkunft({ k }: { k: StichwahlKandidat }) {
+  const teile = [
+    k.independent ? "parteilos" : null,
+    k.supported_by.length ? `unterstützt von ${k.supported_by.join(", ")}` : null,
+  ].filter(Boolean);
+  if (!teile.length) return null;
+  return (
+    <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted-foreground">
+      {teile.join(" · ")}
+      {k.note_source ? (
+        <>
+          {" "}
+          <a
+            href={k.note_source}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-primary underline-offset-2 hover:underline"
+          >
+            Beleg ↗
+          </a>
+        </>
+      ) : null}
+    </p>
+  );
+}
+
 function Person({
   k,
   fuehrt,
@@ -154,8 +186,15 @@ function Person({
       />
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className={KICKER}>{k.party || "Einzelwahlvorschlag"}</p>
+          {/* „vorgeschlagen von", nicht bloß der Parteiname: Auf dem
+              Stimmzettel steht je Kandidatur genau eine Liste, und wer sie
+              aufgestellt hat, muss weder ihr Mitglied sein noch ihre einzige
+              Unterstützung haben (Tims Hinweis 14.09.2026 zu Jascha Rohr). */}
+          <p className={KICKER}>
+            {k.party ? `vorgeschlagen von ${k.party}` : "Einzelwahlvorschlag"}
+          </p>
           <h2 className="mt-1 truncate font-display text-[22px] font-bold tracking-tight sm:text-[26px]">{k.name}</h2>
+          <Herkunft k={k} />
         </div>
         {fuehrt ? (
           <span className="flex-none rounded-md bg-foreground px-2 py-1 font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-background">
@@ -544,6 +583,17 @@ export function StichwahlView() {
 
         <Duell daten={data} vorn={vorn} fertig={fertig} frisch={frisch} entschieden={entschieden} />
         <Abstand daten={data} />
+
+        {/* Einmal für beide, statt an einer Karte: Die Angabe über dem Namen
+            ist der Wahlvorschlag. Wer das nicht weiß, liest sie als
+            Parteibuch. */}
+        <p className="mt-4 text-[12.5px] leading-relaxed text-muted-foreground">
+          Über jedem Namen steht, wer die Kandidatur <strong className="font-semibold text-foreground">vorgeschlagen</strong> hat.
+          Auf dem Stimmzettel ist je Kandidatur genau eine Liste zugelassen — wer dort steht, muss weder deren Mitglied
+          sein noch ihre einzige Unterstützung haben.
+        </p>
+
+
         {data.projection ? <Hochrechnung daten={data} p={data.projection} /> : null}
         {data.phase !== "before" ? <StichwahlVerlauf daten={data} /> : null}
         <StichwahlKarte daten={data} probe={probe} counted={counted} />
