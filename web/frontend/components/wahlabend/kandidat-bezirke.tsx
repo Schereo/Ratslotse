@@ -9,9 +9,14 @@
 // diese Tafel zeigt alle.
 //
 // Zwei Prozentwerte, weil sie zwei verschiedene Fragen beantworten:
-//   • „Anteil ihrer Stimmen" — wo kam ihr Ergebnis her? Summiert sich auf 100 %.
-//   • „der Liste hier"       — wie personenbezogen wurde in DIESEM Lokal für
-//                              ihre Liste gestimmt?
+//   • „von 1.598"    — wo kam ihr Ergebnis her? 71 von 1.598 = 4 %; die
+//                      Spalte summiert sich auf 100 %.
+//   • „von SPD hier" — wie viele der SPD-Stimmen in DIESEM Lokal gingen an
+//                      sie persönlich?
+// Tims Einwand 15.09.: „davon" und „der Liste" verstand niemand, und die
+// Hover-Erklärungen waren kompliziert. Deshalb stehen jetzt die Bezugsgrößen
+// selbst in der Überschrift, und jeder Tooltip ist ein Satz mit den Zahlen
+// dieser Zeile statt einer Definition.
 // Geholt wird erst beim Aufklappen (`enabled`), nicht für 383 Zeilen auf Vorrat.
 //
 // Die Abfrage lebt im Hook, die Tafel bekommt fertige Daten: Die ZEILE
@@ -61,8 +66,6 @@ export function KandidatBezirke({ detail, fehler }: { detail: KandidatDetail | u
         {zahl(detail.votes)} Personenstimmen aus {zahl(detail.districts.length)} Wahlbezirken des Wahlbereichs{" "}
         {detail.area_roman} · {detail.area_name}
         {gezaehlt < detail.districts.length ? ` — ${zahl(gezaehlt)} davon ausgezählt` : ""}. Stärkster zuerst.
-        {" "}„davon" ist ihr Anteil an den eigenen Stimmen<span className="hidden sm:inline">, „der Liste" ihr Anteil an allen
-        Stimmen ihrer Liste in diesem Wahllokal</span>.
       </p>
       {/* Die Spaltenköpfe stehen einmal oben statt 21-mal in der Zeile —
           auf dem Handy passte „7,3 % ihrer Stimmen" sonst neben keinen
@@ -70,8 +73,10 @@ export function KandidatBezirke({ detail, fehler }: { detail: KandidatDetail | u
       <div aria-hidden className="mt-3 flex items-center gap-2.5 border-b border-border/60 pb-1 font-mono text-[9.5px] uppercase tracking-[0.11em] text-muted-foreground">
         <span className="min-w-0 flex-1">Wahlbezirk</span>
         <span className="w-14 flex-none text-right">Stimmen</span>
-        <span className="w-16 flex-none text-right">davon</span>
-        <span className="hidden w-20 flex-none text-right sm:block">der Liste</span>
+        {/* Die Bezugsgröße steht in der Überschrift: „von 1.598" heißt, die
+            Prozentzahl misst an den Gesamtstimmen dieser Kandidatur. */}
+        <span className="w-[4.5rem] flex-none text-right" title={`Anteil an allen ${zahl(detail.votes)} Personenstimmen dieser Kandidatur`}>von {zahl(detail.votes)}</span>
+        <span className="hidden w-24 flex-none text-right sm:block" title={`Anteil an allen ${detail.party_short}-Stimmen im jeweiligen Wahlbezirk`}>von {detail.party_short} hier</span>
       </div>
       <ol className="divide-y divide-border/60">
         {detail.districts.map((b) => (
@@ -94,14 +99,16 @@ export function KandidatBezirke({ detail, fehler }: { detail: KandidatDetail | u
             </span>
             <span className="w-14 flex-none text-right text-[12.5px] font-semibold tabular-nums">{zahl(b.votes)}</span>
             <span
-              className="w-16 flex-none text-right text-[11px] text-muted-foreground tabular-nums"
-              title="Anteil an allen Personenstimmen dieser Kandidatur"
+              className="w-[4.5rem] flex-none text-right text-[11px] text-muted-foreground tabular-nums"
+              title={b.votes === null ? undefined
+                : `${zahl(b.votes)} von ${zahl(detail.votes)} Personenstimmen kamen aus diesem Wahlbezirk — ${prozent(b.share_pct)}`}
             >
               {prozent(b.share_pct)}
             </span>
             <span
-              className="hidden w-20 flex-none text-right text-[11px] text-muted-foreground tabular-nums sm:block"
-              title="Anteil an allen Stimmen der eigenen Liste in diesem Wahlbezirk"
+              className="hidden w-24 flex-none text-right text-[11px] text-muted-foreground tabular-nums sm:block"
+              title={b.party_share_pct === null ? undefined
+                : `Hier gingen ${prozent(b.party_share_pct)} aller ${detail.party_short}-Stimmen an diese Kandidatur`}
             >
               {prozent(b.party_share_pct)}
             </span>
