@@ -27,8 +27,8 @@
 // zu keinem Ort. Die Karte lässt sie weg und sagt das.
 
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Segmented } from "@/components/ui/segmented";
 import { KICKER, Punkt } from "@/components/wahlabend/bausteine";
 import { Gebietskarte } from "@/components/wahlabend/gebietskarte";
 import { api } from "@/lib/api";
@@ -52,6 +52,15 @@ import {
 /** Welcher Ausschnitt gezeigt wird: die sechs Wahlbereiche, alle Wahlbezirke
  *  der Stadt, oder die Wahlbezirke EINES Wahlbereichs (1–6). */
 type Fokus = "bereiche" | "city" | number;  // `city` englisch wie die Werte des Vertrags
+
+/** Der Umschalter über der Karte — Tims Wunsch 15.09.: „bei Wahlbereiche
+ *  oben bei der Map fehlt ein Toggle zwischen Wahlbereiche und Wahlbezirke".
+ *  Vorher kam man in die Bezirke nur, indem man einen Wahlbereich antippte,
+ *  und zurück nur über einen Knopf, der erst dort stand. */
+const EBENEN = [
+  { value: "bereiche", label: "Wahlbereiche" },
+  { value: "bezirke", label: "Wahlbezirke" },
+] as const;
 
 function Chip({ an, onClick, children, title }: { an: boolean; onClick: () => void; children: React.ReactNode; title?: string }) {
   return (
@@ -218,16 +227,12 @@ export function Wahlgebiete({ daten, partei, probe, counted, rueckblick, classNa
                 : "Sobald ausgezählt wird, färbt sich die Karte nach der Stärke der gewählten Liste."}
           </p>
         </div>
-        {inBezirken ? (
-          <button
-            type="button"
-            onClick={() => geheZu("bereiche")}
-            className="inline-flex min-h-9 flex-none items-center gap-1 rounded-full border border-border bg-card px-3.5 text-[13px] font-medium text-foreground hover:bg-primary/5"
-          >
-            <ChevronLeft aria-hidden className="h-4 w-4" />
-            Wahlbereiche
-          </button>
-        ) : null}
+        <Segmented
+          value={inBezirken ? "bezirke" : "bereiche"}
+          onChange={(v) => geheZu(v === "bezirke" ? "city" : "bereiche")}
+          options={[...EBENEN]}
+          className="flex-none"
+        />
       </div>
 
       {inBezirken ? (
