@@ -41,6 +41,7 @@ export function Gebietskarte<P extends Gebiet>({
   schrift = 13,
   blass,
   rand,
+  farbe,
   className,
 }: {
   flaechen: readonly GeoFlaeche<P>[];
@@ -66,6 +67,11 @@ export function Gebietskarte<P extends Gebiet>({
   blass?: (nr: number) => boolean;
   /** Flächen mit festem Rand (Stichwahl: gezählt). */
   rand?: (nr: number) => boolean;
+  /** Eine eigene Füllfarbe je Fläche (mit Alpha) — statt der Primärtönung
+   *  aus `werte`. Die Stichwahl-Karte nutzt das für „wer liegt hier vorn":
+   *  eine Farbe je Kandidatur, kräftiger je deutlicher (Tims Entscheidung
+   *  15.09.2026, s. DESIGNSPRACHE „Parteifarben"). `null` = neutral. */
+  farbe?: (nr: number) => string | null;
   className?: string;
 }) {
   const [breite, setBreite] = useState(520);
@@ -109,7 +115,8 @@ export function Gebietskarte<P extends Gebiet>({
             const nr = p.eigenschaften.nr;
             const aktiv = gewaehlt === nr;
             const hell = schwebt === nr;
-            const ton = !aktiv && !hell ? toenungSpanne(werte?.get(nr), min, max) : null;
+            const eigene = !aktiv && !hell ? farbe?.(nr) ?? null : null;
+            const ton = eigene ?? (!aktiv && !hell ? toenungSpanne(werte?.get(nr), min, max) : null);
             const offen = blass?.(nr) ?? false;
             const fest = rand?.(nr) ?? false;
             return (

@@ -194,3 +194,23 @@ describe("Karte", () => {
     expect(stichwahlBezirkePfad(null, "x")).toBe("/wahlabend/stichwahl/bezirke");
   });
 });
+
+describe("Karte: Führung und Deckkraft", () => {
+  const d = (votes: Record<string, number | null>, first: Record<string, number>, counted: boolean) => ({
+    number: 1, name: "x", area: 1, postal: false, counted, eligible: 1, voters: null, valid_votes: null,
+    votes, first_round: first,
+  });
+  it("nennt, wer vorn liegt — gezählt aus der Stichwahl, offen aus dem ersten Wahlgang", async () => {
+    const { bezirkFuehrung } = await import("./stichwahl");
+    expect(bezirkFuehrung(d({ prange: 300, rohr: 200 }, { prange: 100, rohr: 300 }, true), ["prange", "rohr"])).toEqual({ slug: "prange", share: 60, live: true });
+    expect(bezirkFuehrung(d({ prange: null, rohr: null }, { prange: 100, rohr: 300 }, false), ["prange", "rohr"])).toEqual({ slug: "rohr", share: 75, live: false });
+    expect(bezirkFuehrung(d({ prange: 5, rohr: 5 }, { prange: 1, rohr: 1 }, true), ["prange", "rohr"])).toBeNull();
+  });
+  it("die Deckkraft wächst mit dem Vorsprung, offene Bezirke halb so kräftig", async () => {
+    const { flaechenAlpha } = await import("./stichwahl");
+    expect(flaechenAlpha(50, 70, true)).toBeCloseTo(0.22);
+    expect(flaechenAlpha(70, 70, true)).toBeCloseTo(0.9);
+    expect(flaechenAlpha(70, 70, false)).toBeCloseTo(0.45);
+    expect(flaechenAlpha(52, 52, true)).toBeLessThan(0.6);
+  });
+});

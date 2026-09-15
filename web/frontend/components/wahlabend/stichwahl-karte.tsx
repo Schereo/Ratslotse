@@ -1,17 +1,16 @@
 "use client";
 
 // Die Karte der Stichwahl (docs/plan-stichwahl-spannung.md S5): die 91
-// Urnenbezirke, getönt nach dem Anteil dessen, der im ersten Wahlgang vorn
-// lag — hell, wo die andere Kandidatur stärker war, kräftig, wo er es war.
+// Urnenbezirke, je Bezirk in der Farbe dessen, der dort vorn liegt — Prange
+// rot, Rohr orange — und kräftiger, je deutlicher der Vorsprung. Tims
+// Entscheidung vom 15.09.2026; die Designsprache kennt sonst keine
+// Parteifarben-Flächen, für zwei Namen auf einem Stimmzettel ist das die
+// Ausnahme (DESIGNSPRACHE „Parteifarben").
 //
 // Zwei Zustände in einer Karte: Ein GEZÄHLTER Bezirk trägt seine Stichwahl-
-// Tönung und einen festen Rand; ein OFFENER bleibt beim ersten Wahlgang,
-// halb durchsichtig und gestrichelt. So sieht man die Auszählung laufen —
-// und vorher, wo die beiden ihre Hochburgen hatten.
-//
-// Eine Primärtönung, keine zwei Parteifarben (Designsprache: Parteifarben nur
-// als Punkte). Die Frage „wo lag wer vorn" beantwortet die Legende: über
-// 50 % ist die Fläche kräftig, darunter hell.
+// Farbe und einen festen Rand; ein OFFENER zeigt den ersten Wahlgang, halb
+// so kräftig und gestrichelt. So sieht man die Auszählung laufen — und
+// vorher, wo die beiden ihre Hochburgen hatten.
 //
 // Die 42 Briefwahlbezirke haben keine Fläche; sie stehen als Zeile darunter.
 // Kein neuer Endpunkt: `/api/wahlabend/stichwahl/bezirke` (S1) trägt je
@@ -26,8 +25,32 @@ import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { prozent, zahl } from "@/lib/wahlabend";
 import { ladeWahlbezirke, roemisch, type Wahlbezirkflaeche } from "@/lib/wahlgebiete";
-import { bezirkAnteil, stichwahlBezirkePfad, type Stichwahl, type StichwahlBezirk, type StichwahlBezirke, type StichwahlKandidat } from "@/lib/stichwahl";
+import {
+  bezirkAnteil,
+  bezirkFuehrung,
+  flaechenAlpha,
+  stichwahlBezirkePfad,
+  type Stichwahl,
+  type StichwahlBezirk,
+  type StichwahlBezirke,
+  type StichwahlKandidat,
+} from "@/lib/stichwahl";
 import { bezugsperson } from "@/components/wahlabend/stichwahl-verlauf";
+
+/** Die Kartenfarbe je Kandidatur: Prange in der Listenfarbe der SPD, Rohr in
+ *  Orange — nicht Grün, weil er parteilos antritt und Grün neben Rot auf
+ *  einer Fläche die Ampel wäre. Als hell/dunkel-Paar ohne Alpha; die
+ *  Deckkraft kommt aus dem Vorsprung. */
+function kartenfarbe(k: StichwahlKandidat, kandidaten: readonly StichwahlKandidat[]): { hell: string; dunkel: string } {
+  const erster = bezugsperson(kandidaten);
+  if (k.slug === erster?.slug) return { hell: k.color || "#e3000f", dunkel: k.color_dark || "#ff6b6b" };
+  return { hell: "#e8590c", dunkel: "#ff8a3d" };
+}
+
+function mitAlpha(hex: string, a: number): string {
+  const n = Math.round(Math.min(1, Math.max(0, a)) * 255).toString(16).padStart(2, "0");
+  return `${hex}${n}`;
+}
 
 type Fokus = "city" | number;
 
@@ -132,24 +155,52 @@ export function StichwahlKarte({ daten, probe, counted, className }: {
   });
   const bezirke = useMemo(() => new Map((abfrage.data?.districts ?? []).map((d) => [d.number, d])), [abfrage.data]);
 
-  // Die Tönung: Stichwahl, wo gezählt; sonst der erste Wahlgang. Die Spanne
-  // rechnet die Karte über die gezeigten Flächen — im Ausschnitt eines
-  // Wahlbereichs sollen SEINE Unterschiede sichtbar sein.
-  const werte = useMemo(() => {
-    const m = new Map<number, number>();
-    if (!wer) return m;
+  // Je Bezirk: wer vorn liegt (Stichwahl, wo gezählt; sonst erster Wahlgang)
+  // und wie deutlich. Die Deckkraft misst sich am deutlichsten Vorsprung der
+  // GEZEIGTEN Flächen — im Ausschnitt eines Wahlbereichs sollen SEINE
+  // Unterschiede sichtbar sein.
+  const slugs = useMemo(() => daten.candidates.map((k) => k.slug), [daten.candidates]);
+  const fuehrung = useMemo(() => {
+    const m = new Map<number, { slug: string; share: number; live: boolean }>();
     for (const d of bezirke.values()) {
       if (d.postal) continue;
-      const v = d.counted ? bezirkAnteil(d, wer.slug, "votes") : bezirkAnteil(d, wer.slug, "first_round");
-      if (v !== null) m.set(d.number, v);
+      const f = bezirkFuehrung(d, slugs);
+      if (f) m.set(d.number, f);
     }
     return m;
-  }, [bezirke, wer]);
+  }, [bezirke, slugs]);
   const imFokus = useMemo(
     () => (typeof fokus === "number" ? flaechen.filter((f) => f.properties.wb === fokus) : flaechen),
     [flaechen, fokus],
   );
   const bereiche = useMemo(() => [...new Set(flaechen.map((f) => f.properties.wb))].sort((a, b) => a - b), [flaechen]);
+  const maxShare = useMemo(() => {
+    let max = 50;
+    for (const f of imFokus) {
+      const x = fuehrung.get(f.properties.nr);
+      if (x && x.share > max) max = x.share;
+    }
+    return max;
+  }, [imFokus, fuehrung]);
+  const farben = useMemo(
+    () => new Map(daten.candidates.map((k) => [k.slug, kartenfarbe(k, daten.candidates)])),
+    [daten.candidates],
+  );
+  const flaechenfarbe = (nr: number): string | null => {
+    const f = fuehrung.get(nr);
+    const c = f ? farben.get(f.slug) : undefined;
+    if (!f || !c) return null;
+    const a = flaechenAlpha(f.share, maxShare, f.live);
+    return `light-dark(${mitAlpha(c.hell, a)}, ${mitAlpha(c.dunkel, a)})`;
+  };
+  const vornZaehler = useMemo(() => {
+    const z = new Map<string, number>();
+    for (const f of imFokus) {
+      const x = fuehrung.get(f.properties.nr);
+      if (x?.live) z.set(x.slug, (z.get(x.slug) ?? 0) + 1);
+    }
+    return z;
+  }, [imFokus, fuehrung]);
   const gezaehlt = [...bezirke.values()].filter((d) => !d.postal && d.counted).length;
   const urne = [...bezirke.values()].filter((d) => !d.postal).length;
   const brief = [...bezirke.values()].filter((d) => d.postal);
@@ -184,9 +235,11 @@ export function StichwahlKarte({ daten, probe, counted, className }: {
           </h2>
           <p className="mt-1 text-[13px] text-muted-foreground">
             {gezaehlt === 0
-              ? `Getönt nach dem ersten Wahlgang: je kräftiger, desto stärker ${wer.name} dort. Gezählte Bezirke bekommen ihre Stichwahl-Tönung und einen festen Rand.`
-              : `${gezaehlt} von ${urne} Urnenbezirken gezählt — die tragen ihre Stichwahl-Tönung und einen festen Rand; blass und gestrichelt ist noch der erste Wahlgang.`}{" "}
-            Ein Bezirk antippen zeigt beide Wahlgänge.
+              ? "Noch der erste Wahlgang, blass: wer wo vorn lag. Gezählte Bezirke bekommen ihre Stichwahl-Farbe und einen festen Rand."
+              : `${gezaehlt} von ${urne} Urnenbezirken gezählt — ${daten.candidates
+                  .map((k) => `${vornZaehler.get(k.slug) ?? 0}× ${k.name.split(" ").pop()}`)
+                  .join(", ")} vorn; blass und gestrichelt ist noch der erste Wahlgang.`}{" "}
+            Je kräftiger, desto deutlicher der Vorsprung. Ein Bezirk antippen zeigt beide Wahlgänge.
           </p>
         </div>
         {typeof fokus === "number" ? (
@@ -210,10 +263,25 @@ export function StichwahlKarte({ daten, probe, counted, className }: {
         ))}
       </div>
 
-      <div className={cn("mt-3 grid items-start gap-4", gewaehlterBezirk && "@3xl:grid-cols-[minmax(0,1fr)_22rem]")}>
+      <ul className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-muted-foreground" aria-label="Legende" data-testid="karten-legende">
+        {daten.candidates.map((k) => {
+          const c = farben.get(k.slug);
+          return (
+            <li key={k.slug} className="flex items-center gap-1.5">
+              <span aria-hidden className="inline-block h-3 w-5 rounded-sm" style={{ background: c ? `light-dark(${mitAlpha(c.hell, 0.85)}, ${mitAlpha(c.dunkel, 0.85)})` : undefined }} />
+              {k.name} vorn
+            </li>
+          );
+        })}
+        <li className="flex items-center gap-1.5">
+          <span aria-hidden className="inline-block h-3 w-5 rounded-sm border border-dashed border-border bg-muted" />
+          noch offen (1. Wahlgang)
+        </li>
+      </ul>
+      <div className={cn("mt-2 grid items-start gap-4", gewaehlterBezirk && "@3xl:grid-cols-[minmax(0,1fr)_22rem]")}>
         <Gebietskarte
           flaechen={imFokus}
-          werte={werte}
+          farbe={flaechenfarbe}
           gewaehlt={gewaehlt}
           onWaehlen={(nr) => setGewaehlt((alt) => (alt === nr ? null : nr))}
           beschriftung={typeof fokus === "number" ? (e) => String(e.nr) : undefined}
@@ -229,9 +297,7 @@ export function StichwahlKarte({ daten, probe, counted, className }: {
             if (!d.counted) return `${kopf} — noch offen · 1. Wahlgang ${wer.name} ${vorher}`;
             return `${kopf} — ${wer.name} ${prozent(bezirkAnteil(d, wer.slug, "votes"))} (1. Wahlgang ${vorher})`;
           }}
-          hinweis={abfrage.isPending
-            ? "Wahlbezirke werden geladen …"
-            : `Tönung: Anteil ${wer.name} · kräftig = vorn · blass = noch offen · Grenzen: Stadt Oldenburg, openGEOdata`}
+          hinweis={abfrage.isPending ? "Wahlbezirke werden geladen …" : "Grenzen: Stadt Oldenburg, openGEOdata"}
         />
         {gewaehlterBezirk ? (
           <Bezirkstafel zeile={gewaehlterBezirk} kandidaten={daten.candidates} schliessen={() => setGewaehlt(null)} />
