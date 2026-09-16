@@ -12282,11 +12282,16 @@ export interface components {
             /** Roles */
             roles?: string[];
         };
+        /** RunoffCandidateStrength */
+        RunoffCandidateStrength: {
+            strong: components["schemas"]["RunoffStrengthGroup"];
+            weak: components["schemas"]["RunoffStrengthGroup"];
+        };
         /**
          * RunoffLessons2014
          * @description Krogmann gegen Baak, 28.09./12.10.2014 — die Stichwahl OHNE andere Wahl
-         *     am selben Tag, also die Gegenprobe zu 2021: Wer kommt zur Stichwahl
-         *     wieder, und wo?
+         *     am selben Tag, also die Gegenprobe zu 2021: Wie veränderten sich die
+         *     Wählenden- und Stimmenzahlen?
          */
         RunoffLessons2014: {
             /** Baak First */
@@ -12295,6 +12300,7 @@ export interface components {
             baak_growth_by_fifth: number[];
             /** Baak Runoff */
             baak_runoff: number;
+            baak_strength: components["schemas"]["RunoffCandidateStrength"];
             /** Eliminated First */
             eliminated_first: number;
             /** Krogmann First */
@@ -12311,6 +12317,7 @@ export interface components {
             krogmann_pct_urn_runoff: number;
             /** Krogmann Runoff */
             krogmann_runoff: number;
+            krogmann_strength: components["schemas"]["RunoffCandidateStrength"];
             /** Note */
             note: string;
             /** Return By Fifth */
@@ -12547,6 +12554,22 @@ export interface components {
             shares: {
                 [key: string]: number;
             };
+        };
+        /**
+         * RunoffStrengthGroup
+         * @description Stimmenzahl in gleich vielen schwachen oder starken Urnenbezirken.
+         */
+        RunoffStrengthGroup: {
+            /** Change */
+            change: number;
+            /** Change Pct */
+            change_pct: number;
+            /** Districts */
+            districts: number;
+            /** First */
+            first: number;
+            /** Runoff */
+            runoff: number;
         };
         /**
          * SessionDetail
@@ -20479,4 +20502,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: e0d6a57a9066a6b50468c5f07cfa73558f4415c4767c817017179b2bc5354402
+// vertrag-sha256: a0bd488b8bc760e4b7c70e8aa7f7bd857fef5085ce484b18aed70bdab969f1e8

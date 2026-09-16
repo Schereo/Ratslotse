@@ -16815,8 +16815,24 @@
         "title": "RolesUpdate",
         "type": "object"
       },
+      "RunoffCandidateStrength": {
+        "properties": {
+          "strong": {
+            "$ref": "#/components/schemas/RunoffStrengthGroup"
+          },
+          "weak": {
+            "$ref": "#/components/schemas/RunoffStrengthGroup"
+          }
+        },
+        "required": [
+          "weak",
+          "strong"
+        ],
+        "title": "RunoffCandidateStrength",
+        "type": "object"
+      },
       "RunoffLessons2014": {
-        "description": "Krogmann gegen Baak, 28.09./12.10.2014 — die Stichwahl OHNE andere Wahl\nam selben Tag, also die Gegenprobe zu 2021: Wer kommt zur Stichwahl\nwieder, und wo?",
+        "description": "Krogmann gegen Baak, 28.09./12.10.2014 — die Stichwahl OHNE andere Wahl\nam selben Tag, also die Gegenprobe zu 2021: Wie veränderten sich die\nWählenden- und Stimmenzahlen?",
         "properties": {
           "baak_first": {
             "title": "Baak First",
@@ -16832,6 +16848,9 @@
           "baak_runoff": {
             "title": "Baak Runoff",
             "type": "integer"
+          },
+          "baak_strength": {
+            "$ref": "#/components/schemas/RunoffCandidateStrength"
           },
           "eliminated_first": {
             "title": "Eliminated First",
@@ -16867,6 +16886,9 @@
           "krogmann_runoff": {
             "title": "Krogmann Runoff",
             "type": "integer"
+          },
+          "krogmann_strength": {
+            "$ref": "#/components/schemas/RunoffCandidateStrength"
           },
           "note": {
             "title": "Note",
@@ -16904,6 +16926,8 @@
           "return_by_fifth",
           "krogmann_growth_by_fifth",
           "baak_growth_by_fifth",
+          "krogmann_strength",
+          "baak_strength",
           "krogmann_pct_urn_first",
           "krogmann_pct_urn_runoff",
           "krogmann_pct_postal_first",
@@ -17493,6 +17517,40 @@
           "caveats"
         ],
         "title": "RunoffProjection",
+        "type": "object"
+      },
+      "RunoffStrengthGroup": {
+        "description": "Stimmenzahl in gleich vielen schwachen oder starken Urnenbezirken.",
+        "properties": {
+          "change": {
+            "title": "Change",
+            "type": "integer"
+          },
+          "change_pct": {
+            "title": "Change Pct",
+            "type": "number"
+          },
+          "districts": {
+            "title": "Districts",
+            "type": "integer"
+          },
+          "first": {
+            "title": "First",
+            "type": "integer"
+          },
+          "runoff": {
+            "title": "Runoff",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "districts",
+          "first",
+          "runoff",
+          "change",
+          "change_pct"
+        ],
+        "title": "RunoffStrengthGroup",
         "type": "object"
       },
       "SessionDetail": {

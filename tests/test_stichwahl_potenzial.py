@@ -133,6 +133,18 @@ def test_2014_ist_die_gegenprobe_ohne_bundestagswahl(vorgabe):
     assert l["return_by_fifth"][-1] > l["return_by_fifth"][0]
     assert l["krogmann_growth_by_fifth"][0] > l["krogmann_growth_by_fifth"][-1] > 1
     assert len(l["return_by_fifth"]) == len(l["baak_growth_by_fifth"]) == 5
+    assert l["krogmann_strength"]["weak"] == {
+        "districts": 18, "first": 3051, "runoff": 4585, "change": 1534, "change_pct": 50.3,
+    }
+    assert l["krogmann_strength"]["strong"] == {
+        "districts": 18, "first": 4881, "runoff": 5592, "change": 711, "change_pct": 14.6,
+    }
+    assert l["baak_strength"]["weak"] == {
+        "districts": 18, "first": 1614, "runoff": 2041, "change": 427, "change_pct": 26.5,
+    }
+    assert l["baak_strength"]["strong"] == {
+        "districts": 18, "first": 2384, "runoff": 2282, "change": -102, "change_pct": -4.3,
+    }
     assert "12. Oktober 2014" in l["note"]
 
 

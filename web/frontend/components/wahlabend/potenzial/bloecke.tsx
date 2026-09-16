@@ -26,6 +26,10 @@ function Grosszahl({ wert, name }: { wert: string; name: string }) {
   );
 }
 
+function mitVorzeichen(wert: number): string {
+  return `${wert > 0 ? "+" : wert < 0 ? "−" : ""}${zahl(Math.abs(wert))}`;
+}
+
 export function Briefwahl({ p }: { p: Potenzial }) {
   const brief = p.districts.filter((z) => z.postal);
   const rohr = brief.reduce((s, z) => s + z.rohr, 0);
@@ -125,9 +129,6 @@ export function Lehren2021({ p }: { p: Potenzial }) {
  *  zeigen Veränderungen der Beteiligung, aber nicht, wer erneut abstimmte. */
 export function Lehren2014({ p }: { p: Potenzial }) {
   const l = p.lessons_2014;
-  const beschriftung = ["schwächstes Fünftel", "2.", "3.", "4.", "Hochburgen"];
-  const maxWieder = Math.max(...l.return_by_fifth, 1);
-  const maxWachstum = Math.max(...l.krogmann_growth_by_fifth, ...l.baak_growth_by_fifth, 1);
   const zuKrogmann = l.krogmann_runoff - l.krogmann_first;
   const zuBaak = l.baak_runoff - l.baak_first;
   return (
@@ -152,36 +153,64 @@ export function Lehren2014({ p }: { p: Potenzial }) {
           </p>
         </div>
         <div className="rounded-2xl border border-border bg-card p-5">
-          <div className={KICKER}>Wählendenzahlen im Vergleich, gruppiert nach Krogmanns Erstwahlanteil</div>
-          <ul className="mt-3 space-y-2">
-            {l.return_by_fifth.map((x, i) => (
-              <li key={i} className="flex items-center gap-3 text-[13px]">
-                <span className="w-32 flex-none text-muted-foreground">{beschriftung[i] ?? `${i + 1}.`}</span>
-                <span className="h-3 flex-none rounded-full" style={{ width: `${(50 * x) / maxWieder}%`, background: "hsl(var(--signal) / 0.6)" }} aria-hidden />
-                <span className="w-16 flex-none whitespace-nowrap text-right font-mono tabular-nums">{prozent(x)}</span>
-              </li>
-            ))}
-          </ul>
-          <div className={`${KICKER} mt-5`}>Stimmenzahlen im Verhältnis zum ersten Wahlgang: Krogmann · Baak</div>
-          <ul className="mt-3 space-y-2">
-            {l.krogmann_growth_by_fifth.map((x, i) => (
-              <li key={i} className="flex items-center gap-3 text-[13px]">
-                <span className="w-32 flex-none text-muted-foreground">{beschriftung[i] ?? `${i + 1}.`}</span>
-                <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <span className="h-2 rounded-full" style={{ width: `${(100 * x) / maxWachstum}%`, background: "hsl(var(--primary) / 0.6)" }} aria-hidden />
-                  <span className="h-2 rounded-full" style={{ width: `${(100 * (l.baak_growth_by_fifth[i] ?? 0)) / maxWachstum}%`, background: "hsl(var(--foreground) / 0.25)" }} aria-hidden />
-                </span>
-                <span className="w-28 flex-none whitespace-nowrap text-right font-mono tabular-nums">× {x.toFixed(2).replace(".", ",")} · {(l.baak_growth_by_fifth[i] ?? 0).toFixed(2).replace(".", ",")}</span>
-              </li>
-            ))}
-          </ul>
-          <p className="mt-3 text-[13px] leading-relaxed text-muted-foreground">
-            Beide Grafiken vergleichen Gesamtzahlen, nicht das Verhalten einzelner Menschen. Krogmanns Stimmenzahl
-            stieg in seinen schwächeren Bezirken relativ stärker; 2021 zeigt sich bei Fuhrhop ein ähnliches Muster.
-            Die Wählendenzahl sank 2014 in Krogmanns stärkeren Bezirken weniger stark. Ob sich etwas davon auf 2026
-            übertragen lässt, bleibt offen. Das stadtweite Verhältnis von 2014 lässt sich nicht einfach auf die drei
-            Gruppen der Modellrechnung übertragen.
+          <div className={KICKER}>Stimmenzahlen nach Stärke im ersten Wahlgang</div>
+          <h3 className="mt-2 text-[16px] font-semibold leading-snug">Was änderte sich in schwachen und starken Bezirken?</h3>
+          <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
+            Für jeden Kandidaten vergleichen wir seine 18 schwächsten und 18 stärksten Urnenbezirke. Entscheidend ist
+            sein eigener Stimmenanteil im ersten Wahlgang; deshalb sind es bei Krogmann und Baak nicht dieselben Bezirke.
           </p>
+          <div className="mt-4 space-y-4">
+            {([
+              { name: "Krogmann (SPD)", groups: l.krogmann_strength },
+              { name: "Baak (CDU)", groups: l.baak_strength },
+            ] as const).map(({ name, groups }) => (
+              <div key={name} className="border-t border-border pt-3">
+                <h4 className="text-[14px] font-semibold">{name}</h4>
+                <div className="mt-2 grid grid-cols-2 gap-3">
+                  {(["weak", "strong"] as const).map((key) => {
+                    const g = groups[key];
+                    return (
+                      <div key={key}>
+                        <div className={KICKER}>{key === "weak" ? "Schwächste 18" : "Stärkste 18"} Bezirke</div>
+                        <div className="mt-1 font-display text-[23px] font-bold tabular-nums leading-none tracking-tight">
+                          {mitVorzeichen(g.change)}
+                        </div>
+                        <div className="mt-1 text-[12px] text-muted-foreground">
+                          Stimmen {g.change < 0 ? "weniger" : "mehr"}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 rounded-xl bg-primary/5 p-3 text-[13px] leading-relaxed">
+            <strong className="font-semibold">Fazit:</strong> In ihren zuvor schwächsten Bezirken legten beide
+            Kandidaten zu. In seinen stärksten Bezirken gewann Krogmann weniger hinzu, Baak verlor dort leicht. Die
+            Bezirksdaten zeigen nicht, welche Menschen ihre Wahl änderten oder warum. Ob sich das 2026 wiederholt, ist offen.
+          </div>
+          <details className="mt-4 border-t border-border pt-3 text-[12.5px] leading-relaxed text-muted-foreground">
+            <summary className="cursor-pointer font-medium text-foreground">Ausgangszahlen und Berechnung anzeigen</summary>
+            <p className="mt-2">
+              Verglichen werden je Kandidat die 18 Urnenbezirke mit dem niedrigsten und höchsten eigenen Stimmenanteil
+              im ersten Wahlgang, von insgesamt 88 Urnenbezirken. Briefwahlbezirke sind nicht enthalten.
+            </p>
+            <ul className="mt-2 space-y-1">
+              {([
+                { name: "Krogmann", groups: l.krogmann_strength },
+                { name: "Baak", groups: l.baak_strength },
+              ] as const).flatMap(({ name, groups }) => (["weak", "strong"] as const).map((key) => {
+                const g = groups[key];
+                return (
+                  <li key={`${name}-${key}`}>
+                    {name}, {key === "weak" ? "schwächste" : "stärkste"} Bezirke: {zahl(g.first)} → {zahl(g.runoff)} Stimmen
+                    ({mitVorzeichen(g.change_pct)} %)
+                  </li>
+                );
+              }))}
+            </ul>
+          </details>
         </div>
       </div>
     </Block>

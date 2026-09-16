@@ -83,6 +83,17 @@ test.describe("Stichwahl-Potenzial", () => {
     await expect(rechenweg).toHaveJSProperty("open", true);
     await expect(rechenweg).toContainText("× 2,28");
 
+    // 2014 vergleicht für beide Kandidaten eigene, gleich große Bezirksgruppen.
+    const vergleich2014 = page.getByRole("heading", { name: "Was änderte sich in schwachen und starken Bezirken?" }).locator("..");
+    await expect(vergleich2014).toContainText("nicht dieselben Bezirke");
+    for (const wert of ["+1.534", "+711", "+427", "−102", "Fazit:"]) {
+      await expect(vergleich2014).toContainText(wert);
+    }
+    const zahlen2014 = vergleich2014.locator("details");
+    await expect(zahlen2014).toHaveJSProperty("open", false);
+    await zahlen2014.locator("summary").click();
+    await expect(zahlen2014).toContainText("3.051 → 4.585 Stimmen");
+
     // Die Einsatzliste: Eversten zuoberst; ein Haken überlebt das Neuladen.
     const liste = page.getByTestId("einsatzliste");
     const erstes = liste.locator("[data-buendel]").first();

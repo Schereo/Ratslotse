@@ -30,12 +30,14 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ..antworten import (
+    RunoffCandidateStrength,
     RunoffLessons2014,
     RunoffLessons2021,
     RunoffPotential,
     RunoffPotentialAssumption,
     RunoffPotentialBundle,
     RunoffPotentialDistrict,
+    RunoffStrengthGroup,
 )
 from . import mayor_districts
 
@@ -331,6 +333,22 @@ def lessons_2014() -> RunoffLessons2014:
         kg.append(round(sum(e2[n]["krogmann"] for n in teil) / max(1, sum(e1[n]["krogmann"] for n in teil)), 2))
         bg.append(round(sum(e2[n]["baak"] for n in teil) / max(1, sum(e1[n]["baak"] for n in teil)), 2))
 
+    def nach_staerke(slug: str) -> RunoffCandidateStrength:
+        # Beide Kandidaten bekommen eine eigene Sortierung. Gleich viele
+        # Bezirke pro Randgruppe machen absolute Zugewinne vergleichbar.
+        sortiert = sorted(urne, key=lambda n: (e1[n][slug] / max(1, e1[n]["valid"]), n))
+        anzahl = round(len(sortiert) / 5)
+
+        def gruppe(bezirke: list[int]) -> RunoffStrengthGroup:
+            erste = sum(e1[n][slug] for n in bezirke)
+            zweite = sum(e2[n][slug] for n in bezirke)
+            return RunoffStrengthGroup(
+                districts=len(bezirke), first=erste, runoff=zweite,
+                change=zweite - erste, change_pct=round(100 * (zweite - erste) / max(1, erste), 1),
+            )
+
+        return RunoffCandidateStrength(weak=gruppe(sortiert[:anzahl]), strong=gruppe(sortiert[-anzahl:]))
+
     def anteil(e: dict[int, dict[str, int]], post: bool) -> float:
         kk = sum(v["krogmann"] for n, v in e.items() if (n >= 900) == post)
         b = sum(v["baak"] for n, v in e.items() if (n >= 900) == post)
@@ -344,6 +362,7 @@ def lessons_2014() -> RunoffLessons2014:
         baak_first=sum(e1[n]["baak"] for n in nums), baak_runoff=sum(e2[n]["baak"] for n in nums),
         eliminated_first=sum(e1[n]["rieken"] + e1[n]["kreuzwieser"] for n in nums),
         return_by_fifth=wieder, krogmann_growth_by_fifth=kg, baak_growth_by_fifth=bg,
+        krogmann_strength=nach_staerke("krogmann"), baak_strength=nach_staerke("baak"),
         krogmann_pct_urn_first=anteil(e1, False), krogmann_pct_urn_runoff=anteil(e2, False),
         krogmann_pct_postal_first=anteil(e1, True), krogmann_pct_postal_runoff=anteil(e2, True),
         note="Die Stichwahl am 12. Oktober 2014 fand zwei Wochen nach dem ersten Wahlgang statt. Anders als 2021 "
