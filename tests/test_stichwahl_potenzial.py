@@ -31,7 +31,7 @@ def test_die_ausgangslage_2026(vorgabe):
     assert p["cdu_council"] == 37430
     assert len(p["districts"]) == 133
     assert all(z["eligible"] > 0 for z in p["districts"] if not z["postal"])
-    assert all(z["non_voters"] == 0 and z["strategy"] == "brief" for z in p["districts"] if z["postal"])
+    assert all(z["non_voters"] == 0 and z["strategy"] == "postal" for z in p["districts"] if z["postal"])
     assert sum(z["non_voters"] for z in p["districts"]) == p["non_voters"] == 76873
 
 
@@ -62,11 +62,11 @@ def test_mit_den_vorgaben_steht_rohr_vorn(vorgabe):
 def test_jeder_urnenbezirk_hat_einen_ort_und_eine_strategie(vorgabe):
     urne = [z for z in vorgabe["districts"] if not z["postal"]]
     assert all(z["district_name"] != "Briefwahl" for z in urne)
-    assert {z["strategy"] for z in urne} <= {"halten", "ueberzeugen", "beides", "liegenlassen"}
-    # Die Hochburg mit großem Pool ist „beides", die Diaspora mit kleinem Ertrag „liegenlassen".
+    assert {z["strategy"] for z in urne} <= {"hold", "persuade", "both", "skip"}
+    # Die Hochburg mit großem Pool ist „both“, die Diaspora mit kleinem Ertrag „skip“.
     by = {z["number"]: z for z in urne}
-    assert by[109]["strategy"] == "beides", by[109]      # Friseurmeisterschule, Nadorst Süd
-    assert by[501]["strategy"] == "liegenlassen", by[501]  # Caritas, Bümmerstede
+    assert by[109]["strategy"] == "both", by[109]      # Friseurmeisterschule, Nadorst Süd
+    assert by[501]["strategy"] == "skip", by[501]  # Caritas, Bümmerstede
     assert sum(vorgabe["strategy_counts"].values()) == 133
 
 
