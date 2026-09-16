@@ -114,8 +114,8 @@ function Befunde({ p }: { p: Potenzial }) {
       text: "Butzin und Küßner hatten ihre Stimmen in Bümmerstede, Kreyenbrück, Krusenbusch — nicht in Eversten. Hochburgen mobilisieren, die anderen Viertel überzeugen: kein Entweder-oder.",
     },
     {
-      title: faktor ? `Eine Tür in ${oben.district_name} bringt ${faktor.toFixed(1).replace(".", ",")}-mal so viel wie eine in ${unten.district_name}.` : "Der Ertrag je Tür streut stark.",
-      text: "Netto je 1.000 Wahlberechtigte, mit den Reglern von oben. Die Einsatzliste unten sortiert die Stadtbezirke genau danach.",
+      title: faktor ? `Je 1.000 Wahlberechtigte bringt ${oben.district_name} rechnerisch ${faktor.toFixed(1).replace(".", ",")}-mal so viel wie ${unten.district_name}.` : "Der Saldo je 1.000 Wahlberechtigte streut stark.",
+      text: "Der Saldo der Regler je 1.000 Wahlberechtigte — eine Rechengröße, keine gemessene Wirkung von Gesprächen. Die Einsatzliste unten sortiert die Stadtbezirke danach.",
     },
   ];
   return (
