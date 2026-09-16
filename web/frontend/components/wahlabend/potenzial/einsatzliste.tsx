@@ -105,7 +105,7 @@ export function Einsatzliste({ buendel, bezirke }: { buendel: PotenzialBuendel[]
                 <span className="min-w-0 flex-1">
                   <span className="block text-[15px] font-semibold">{b.district_name}</span>
                   <span className="block text-[12px] text-muted-foreground">
-                    {b.districts} Bezirke · {zahl(b.eligible)} Wahlberechtigte · Rohr {prozent(b.rohr_pct_of_two, 0)} · {zahl(b.non_voters)} Nichtwählende (geschätzt)
+                    {b.districts} {b.districts === 1 ? "Bezirk" : "Bezirke"} · {zahl(b.eligible)} Wahlberechtigte · Rohr {prozent(b.rohr_pct_of_two, 0)} · {zahl(b.non_voters)} Nichtwählende (geschätzt)
                   </span>
                 </span>
                 <span className="flex-none text-right">
