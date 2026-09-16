@@ -17024,12 +17024,20 @@
             "title": "Cdu To Rohr",
             "type": "number"
           },
+          "cdu_voters_est": {
+            "title": "Cdu Voters Est",
+            "type": "integer"
+          },
           "districts": {
             "items": {
               "$ref": "#/components/schemas/RunoffPotentialDistrict"
             },
             "title": "Districts",
             "type": "array"
+          },
+          "eligible": {
+            "title": "Eligible",
+            "type": "integer"
           },
           "lead": {
             "title": "Lead",
@@ -17105,6 +17113,14 @@
           "turnout_rohr": {
             "title": "Turnout Rohr",
             "type": "number"
+          },
+          "voters": {
+            "title": "Voters",
+            "type": "integer"
+          },
+          "votes_per_voter": {
+            "title": "Votes Per Voter",
+            "type": "number"
           }
         },
         "required": [
@@ -17112,7 +17128,11 @@
           "prange",
           "lead",
           "pool",
+          "eligible",
+          "voters",
           "cdu_council",
+          "cdu_voters_est",
+          "votes_per_voter",
           "non_voters",
           "rohr_pct_urn",
           "rohr_pct_postal",
@@ -17252,8 +17272,16 @@
             "title": "Area Roman",
             "type": "string"
           },
+          "ballot_papers": {
+            "title": "Ballot Papers",
+            "type": "integer"
+          },
           "cdu_council": {
             "title": "Cdu Council",
+            "type": "integer"
+          },
+          "cdu_voters_est": {
+            "title": "Cdu Voters Est",
             "type": "integer"
           },
           "district_name": {
@@ -17355,6 +17383,7 @@
           "district_name",
           "eligible",
           "voters",
+          "ballot_papers",
           "non_voters",
           "rohr",
           "prange",
@@ -17362,6 +17391,7 @@
           "pool",
           "pool_pct",
           "cdu_council",
+          "cdu_voters_est",
           "eliminated",
           "projected_rohr",
           "projected_prange",
@@ -30054,6 +30084,18 @@
             "schema": {
               "pattern": "^\\d{1,3},\\d{1,3}$",
               "title": "Wilkens",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Castur und Stille zusammen",
+            "in": "query",
+            "name": "others",
+            "required": false,
+            "schema": {
+              "description": "Castur und Stille zusammen",
+              "pattern": "^\\d{1,3},\\d{1,3}$",
+              "title": "Others",
               "type": "string"
             }
           },

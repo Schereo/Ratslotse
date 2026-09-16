@@ -66,8 +66,8 @@ function Tafel({ p, rechnet }: { p: Potenzial; rechnet: boolean }) {
       <div className="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-4">
         <Kennzahl wert={zahl(p.lead)} name="Rückstand, 1. Wahlgang" hinweis={`Prange ${zahl(p.prange)} · Rohr ${zahl(p.rohr)}`} />
         <Kennzahl wert={zahl(p.pool)} name="Umworbene" hinweis="Stimmen der fünf Ausgeschiedenen zusammen" />
-        <Kennzahl wert={zahl(p.cdu_council)} name="CDU-Zweitstimmen" hinweis="Ratswahl am selben Tag — die CDU hatte keine eigene Kandidatur" />
-        <Kennzahl wert={zahl(p.non_voters)} name="Nichtwählende, Urne" hinweis="Wahlberechtigte in den 91 Urnenbezirken, die nicht kamen" />
+        <Kennzahl wert={`≈ ${zahl(p.cdu_voters_est)}`} name="CDU-Wählende, Ratswahl" hinweis={`${zahl(p.cdu_council)} CDU-Stimmen der Ratswahl ÷ ${p.votes_per_voter.toFixed(2).replace(".", ",")} Stimmen je Wählendem — die CDU hatte keine eigene Kandidatur`} />
+        <Kennzahl wert={zahl(p.non_voters)} name="Nichtwählende" hinweis={`${zahl(p.eligible)} Wahlberechtigte minus ${zahl(p.voters)} Wählende (Urne und Brief); je Bezirk geschätzt`} />
       </div>
 
       <div className="mt-7">
@@ -190,7 +190,7 @@ export function PotenzialView() {
           </h1>
           <p className="mt-2 max-w-2xl text-[14.5px] leading-relaxed text-muted-foreground">
             Das Wähler*innen-Potenzial für Jascha Rohr in der Stichwahl am 27. September — gerechnet aus den 133
-            Wahlbezirken des ersten Wahlgangs, den Zweitstimmen der Ratswahl und der letzten Stichwahl. Wer die
+            Wahlbezirken des ersten Wahlgangs, den Stimmen der Ratswahl und den beiden letzten Stichwahlen. Wer die
             Ausgeschiedenen gewählt hat, ist bekannt; wohin diese Stimmen gehen, ist eine Annahme — die Regler.
           </p>
         </header>
@@ -198,7 +198,7 @@ export function PotenzialView() {
         <Tafel p={data} rechnet={isFetching} />
         <div className="print:hidden">
           <Befunde p={data} />
-          <ReglerTafel regler={regler} onChange={setRegler} annahmen={data.assumptions} wiederkommen2014={data.lessons_2014.return_rate_pct} />
+          <ReglerTafel regler={regler} onChange={setRegler} annahmen={data.assumptions} cduWaehlende={data.cdu_voters_est} wiederkommen2014={data.lessons_2014.return_rate_pct} />
           <PotenzialKarte bezirke={urne} zaehler={data.strategy_counts} />
         </div>
         <Einsatzliste buendel={data.bundles} bezirke={urne} />

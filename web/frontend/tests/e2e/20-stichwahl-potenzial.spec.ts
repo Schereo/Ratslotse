@@ -12,7 +12,7 @@
  *       .venv/bin/python -c "import sys, json; sys.path.insert(0, 'web/backend'); \
  *       from app.routers import wahlabend as r; print(json.dumps(r.stichwahl_potenzial( \
  *       token='probe-token-fuer-die-browsertests', boldt=None, kuessner=None, butzin=None, \
- *       froehlich=None, wilkens=None, cdu=None, turnout_rohr=100, turnout_prange=100, \
+ *       froehlich=None, wilkens=None, others=None, cdu=None, turnout_rohr=100, turnout_prange=100, \
  *       turnout_pool=100), ensure_ascii=False))" \
  *       > web/frontend/tests/e2e/fixtures/stichwahl-potenzial-probe.json
  */

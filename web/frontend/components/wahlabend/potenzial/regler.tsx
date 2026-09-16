@@ -1,7 +1,7 @@
 "use client";
 
 // Die Regler: je ausgeschiedener Kandidatur zwei Anteile (zu Rohr, zu
-// Prange — der Rest bleibt zu Hause), dazu die CDU-Zweitstimmen und die
+// Prange — der Rest geht zu keinem), dazu die CDU-Wählenden der Ratswahl und die
 // Beteiligung der drei Lager. Bauform wie im Haushalts-Labor
 // (`components/haushalt/regler.tsx`), nur schmaler: Hier stehen zwölf
 // Schieber nebeneinander, ein Titel und eine Zahl je Schieber reichen.
@@ -74,15 +74,17 @@ function PaarKarte({ slug, titel, kurz, untertitel, paar, vorgabe, onChange }: {
         <Schieber id={`r-${slug}-prange`} name={`${kurz} zu Prange`} wert={paar.prange} vorgabe={vorgabe.prange}
           onChange={(v) => onChange(paarSetzen(paar, "prange", v))} ton="grau" />
       </div>
-      <p className="mt-2.5 font-mono text-[11px] text-muted-foreground">bleiben zu Hause: {zuhause} %</p>
+      <p className="mt-2.5 font-mono text-[11px] text-muted-foreground">zu keinem der beiden: {zuhause} %</p>
     </div>
   );
 }
 
-export function ReglerTafel({ regler, onChange, annahmen, wiederkommen2014 }: {
+export function ReglerTafel({ regler, onChange, annahmen, cduWaehlende, wiederkommen2014 }: {
   regler: Regler;
   onChange: (r: Regler) => void;
   annahmen: Potenzial["assumptions"];
+  /** CDU-Wählende der Ratswahl, aus den Stimmen geschätzt. */
+  cduWaehlende: number;
   /** Die gemessene Wiederkommen-Quote der Stichwahl 2014, in Prozent. */
   wiederkommen2014: number;
 }) {
@@ -99,7 +101,8 @@ export function ReglerTafel({ regler, onChange, annahmen, wiederkommen2014 }: {
           <p className="mt-1 max-w-2xl text-[13.5px] leading-relaxed text-muted-foreground">
             Die Regler sind Einschätzungen, keine Messung — 2021 taugt nicht als Vorlage, weil die Stichwahl damals auf
             den Tag der Bundestagswahl fiel. Die Vorgaben sind Tims Bild vom 16. September; der Strich auf jeder Skala
-            markiert sie.
+            markiert sie. Die CDU-Wählenden haben im ersten Wahlgang schon jemanden gewählt — ihr Regler verschiebt nur
+            den Saldo, und er rechnet in Personen, nicht in Ratswahl-Stimmen.
           </p>
         </div>
         <button
@@ -128,9 +131,9 @@ export function ReglerTafel({ regler, onChange, annahmen, wiederkommen2014 }: {
         ))}
         <PaarKarte
           slug="cdu"
-          titel="CDU-Zweitstimmen"
+          titel="CDU-Wählende der Ratswahl"
           kurz="CDU"
-          untertitel="Ratswahl, keine eigene Kandidatur"
+          untertitel={`≈ ${zahl(cduWaehlende)} Personen`}
           paar={regler.cdu}
           vorgabe={VORGABE.cdu}
           onChange={(p) => onChange({ ...regler, cdu: p })}

@@ -27,12 +27,36 @@ def vorgabe():
 def test_die_ausgangslage_2026(vorgabe):
     p = vorgabe
     assert p["rohr"] == 25850 and p["prange"] == 28075 and p["lead"] == 2225
-    assert p["pool"] == 10198 + 4945 + 6211 + 4025 + 3843
-    assert p["cdu_council"] == 37430
+    # Alle sieben Ausgeschiedenen: fünf benannt, Castur und Stille als „Sonstige" (1.509).
+    assert p["pool"] == 10198 + 4945 + 6211 + 4025 + 3843 + 1509 == 30731
     assert len(p["districts"]) == 133
     assert all(z["eligible"] > 0 for z in p["districts"] if not z["postal"])
     assert all(z["non_voters"] == 0 and z["strategy"] == "postal" for z in p["districts"] if z["postal"])
-    assert sum(z["non_voters"] for z in p["districts"]) == p["non_voters"] == 76873
+
+
+def test_die_ratswahl_2026_und_nicht_die_generalprobe(vorgabe):
+    """Die Prüfung vom 16.09.2026 (Codex) fand 37.430 CDU-Stimmen — das war
+    2021, aus der Generalprobe. 2026 sind es 34.335, und das sind Stimmen,
+    keine Personen: bis zu drei je Wählendem (2,91 im Schnitt)."""
+    p = vorgabe
+    assert p["cdu_council"] == 34335
+    assert p["votes_per_voter"] == 2.91
+    assert abs(p["cdu_voters_est"] - round(34335 / 2.91)) <= 60   # Rundung je Bezirk
+    assert p["cdu_voters_est"] == sum(z["cdu_voters_est"] for z in p["districts"])
+
+
+def test_nichtwaehlende_ohne_die_briefwaehlenden(vorgabe):
+    """Dieselbe Prüfung: 76.873 „Nichtwählende an der Urne" enthielten die
+    27.351 Briefwählenden. Stadtweit sind es Wahlberechtigte minus Wählende
+    (Urne + Brief) = 49.522; je Bezirk geschätzt über die dort ausgestellten
+    Wahlscheine, deshalb ein paar Stimmen Rundung."""
+    p = vorgabe
+    assert p["eligible"] == 135513 and p["voters"] == 85991
+    assert abs(p["non_voters"] - (p["eligible"] - p["voters"])) <= 10
+    assert p["non_voters"] == sum(z["non_voters"] for z in p["districts"])
+    urne = [z for z in p["districts"] if not z["postal"]]
+    assert all(0 <= z["non_voters"] <= z["eligible"] - z["voters"] for z in urne)
+    assert sum(z["ballot_papers"] for z in urne) == 30458
 
 
 def test_die_briefwahl_ist_rohrs_bessere_haelfte(vorgabe):
@@ -65,8 +89,8 @@ def test_jeder_urnenbezirk_hat_einen_ort_und_eine_strategie(vorgabe):
     assert {z["strategy"] for z in urne} <= {"hold", "persuade", "both", "skip"}
     # Die Hochburg mit großem Pool ist „both“, die Diaspora mit kleinem Ertrag „skip“.
     by = {z["number"]: z for z in urne}
-    assert by[109]["strategy"] == "both", by[109]      # Friseurmeisterschule, Nadorst Süd
-    assert by[501]["strategy"] == "skip", by[501]  # Caritas, Bümmerstede
+    assert by[203]["strategy"] == "both", by[203]   # Kulturzentrum PFL, Innenstadt
+    assert by[501]["strategy"] == "skip", by[501]   # Caritas, Bümmerstede
     assert sum(vorgabe["strategy_counts"].values()) == 133
 
 
@@ -107,7 +131,7 @@ def test_2014_ist_die_gegenprobe_ohne_bundestagswahl(vorgabe):
 # ---------------------------------------------------------------- der Endpunkt
 
 def _ruf(**kw):
-    args = dict(token=None, boldt=None, kuessner=None, butzin=None, froehlich=None, wilkens=None, cdu=None,
+    args = dict(token=None, boldt=None, kuessner=None, butzin=None, froehlich=None, wilkens=None, others=None, cdu=None,
                 turnout_rohr=100, turnout_prange=100, turnout_pool=100)
     args.update(kw)
     return router.stichwahl_potenzial(**args)

@@ -12370,8 +12370,12 @@ export interface components {
             cdu_to_prange: number;
             /** Cdu To Rohr */
             cdu_to_rohr: number;
+            /** Cdu Voters Est */
+            cdu_voters_est: number;
             /** Districts */
             districts: components["schemas"]["RunoffPotentialDistrict"][];
+            /** Eligible */
+            eligible: number;
             /** Lead */
             lead: number;
             lessons_2014: components["schemas"]["RunoffLessons2014"];
@@ -12406,6 +12410,10 @@ export interface components {
             turnout_prange: number;
             /** Turnout Rohr */
             turnout_rohr: number;
+            /** Voters */
+            voters: number;
+            /** Votes Per Voter */
+            votes_per_voter: number;
         };
         /** RunoffPotentialAssumption */
         RunoffPotentialAssumption: {
@@ -12451,8 +12459,12 @@ export interface components {
             area: number;
             /** Area Roman */
             area_roman: string;
+            /** Ballot Papers */
+            ballot_papers: number;
             /** Cdu Council */
             cdu_council: number;
+            /** Cdu Voters Est */
+            cdu_voters_est: number;
             /** District Name */
             district_name: string;
             /** Eligible */
@@ -20334,6 +20346,8 @@ export interface operations {
                 butzin?: string;
                 froehlich?: string;
                 wilkens?: string;
+                /** @description Castur und Stille zusammen */
+                others?: string;
                 cdu?: string;
                 turnout_rohr?: number;
                 turnout_prange?: number;
@@ -20465,4 +20479,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 7bfde3545ea40b8a72e7ffc0eededd9ca25bad2f8ddeb33c9bc4061142ffd4c0
+// vertrag-sha256: b08d8673ec8636947c7d315c456fe216400a96f1b8fc7157e138d38bcb027183

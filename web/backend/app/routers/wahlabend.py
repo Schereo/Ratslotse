@@ -615,6 +615,7 @@ def stichwahl_potenzial(
     butzin: str = Query(default=None, pattern=r"^\d{1,3},\d{1,3}$"),
     froehlich: str = Query(default=None, pattern=r"^\d{1,3},\d{1,3}$"),
     wilkens: str = Query(default=None, pattern=r"^\d{1,3},\d{1,3}$"),
+    others: str = Query(default=None, pattern=r"^\d{1,3},\d{1,3}$", description="Castur und Stille zusammen"),
     cdu: str = Query(default=None, pattern=r"^\d{1,3},\d{1,3}$"),
     turnout_rohr: float = Query(default=100, ge=0, le=150),
     turnout_prange: float = Query(default=100, ge=0, le=150),

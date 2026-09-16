@@ -61,10 +61,10 @@ function Bezirkstafel({ z, schliessen }: { z: PotenzialBezirk; schliessen: () =>
 
       <div className="mt-3 divide-y divide-border">
         <Zeile name="Wahlberechtigte" wert={zahl(z.eligible)} />
-        <Zeile name="Nicht gekommen" wert={`${zahl(z.non_voters)} · ${prozent(z.eligible ? (100 * z.non_voters) / z.eligible : null, 0)}`} />
+        <Zeile name="Nichtwählende, geschätzt" wert={`${zahl(z.non_voters)} · ${prozent(z.eligible ? (100 * z.non_voters) / z.eligible : null, 0)}`} />
         <Zeile name="Rohr · Prange, 1. Wahlgang" wert={`${zahl(z.rohr)} · ${zahl(z.prange)}`} />
         <Zeile name="Rohr-Anteil der beiden" wert={prozent(z.rohr_pct_of_two)} stark />
-        <Zeile name="CDU-Zweitstimmen, Ratswahl" wert={zahl(z.cdu_council)} />
+        <Zeile name="CDU (Ratswahl)" wert={`${zahl(z.cdu_council)} Stimmen · ≈ ${zahl(z.cdu_voters_est)}`} />
       </div>
 
       <div className="mt-3">

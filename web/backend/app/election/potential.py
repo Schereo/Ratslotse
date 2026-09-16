@@ -37,11 +37,13 @@ from ..antworten import (
     RunoffPotentialBundle,
     RunoffPotentialDistrict,
 )
-from . import mayor_districts, service
+from . import mayor_districts
 
 #: Repo-Wurzel: web/backend/app/election/ -> vier Ebenen hoch.
 ROOT = Path(__file__).resolve().parents[4]
 REFERENZ = ROOT / "kommunalwahl" / "referenz-2026" / "praesentation-ob-wahlbezirke.json"
+#: Die Ratswahl vom selben Tag — CDU-Stimmen und Wahlscheine je Bezirk.
+RATSWAHL26 = ROOT / "kommunalwahl" / "referenz-2026"
 GEO = ROOT / "web" / "frontend" / "public" / "geo" / "wahlbezirke-oldenburg.json"
 FIX21 = ROOT / "tests" / "fixtures" / "wahlabend" / "stichwahl-2021"
 #: 2014 als Open-Data-CSV des Votemanagers (Hauptwahl 28.09., Stichwahl 12.10.).
@@ -53,12 +55,15 @@ DUELL = ("rohr", "prange")
 AUSGESCHIEDEN: dict[str, str] = {
     "boldt": "Heike Boldt (Linke)", "butzin": "Ralf Butzin", "froehlich": "Sebastian Fröhlich (FDP)",
     "kuessner": "Byanca Küßner", "wilkens": "Holger Martin Wilkens (BB-OL)",
+    #: Castur und Stille: die Bezirksdatei führt sie nur als „Sonstige" —
+    #: gültige Stimmen minus alle benannten Kandidaturen.
+    "others": "Sonstige (Castur, Stille)",
 }
 #: Vorgaben je Kandidatur: (zu Rohr, zu Prange) in Prozent — Tims
 #: Einschätzung in Zahlen, keine Messung.
 VORGABE: dict[str, tuple[float, float]] = {
     "boldt": (55, 15), "kuessner": (45, 15), "butzin": (40, 20),
-    "froehlich": (20, 35), "wilkens": (15, 30),
+    "froehlich": (20, 35), "wilkens": (15, 30), "others": (30, 30),
 }
 VORGABE_CDU: tuple[float, float] = (25, 25)
 #: Unter diesem Ertrag je 1.000 Wahlberechtigte heißt ein Bezirk „liegenlassen".
@@ -83,18 +88,50 @@ class Regler:
 
 
 def _lade_2026() -> dict[int, mayor_districts.MayorDistrict]:
-    known = {s: "" for s in DUELL + tuple(AUSGESCHIEDEN)}
-    return {d.number: d for d in mayor_districts.parse_overview(json.loads(REFERENZ.read_text(encoding="utf-8")), known)}
+    known = {s: "" for s in DUELL + tuple(AUSGESCHIEDEN) if s != "others"}
+    aus = {d.number: d for d in mayor_districts.parse_overview(json.loads(REFERENZ.read_text(encoding="utf-8")), known)}
+    for d in aus.values():
+        d.votes["others"] = max(0, (d.valid_votes or 0) - sum(v or 0 for v in d.votes.values()))
+    return aus
 
 
-def _cdu_je_bezirk() -> dict[int, int]:
-    reg = service.load_register()
-    liste = service.districts(reg, service.probe_snapshot(reg, service.load_reference(), None), "probe")
-    out: dict[int, int] = {}
-    for d in liste["districts"]:
-        p = next((x for x in d["parties"] if x["slug"] == "cdu"), None)
-        out[d["number"]] = (p["votes"] if p else 0) or 0
-    return out
+@dataclass(frozen=True)
+class Ratswahl:
+    """Was die Ratswahl vom selben Tag je Bezirk beisteuert."""
+    #: Bezirk → CDU-Stimmen (Listen- + Personenstimmen).
+    cdu: dict[int, int]
+    #: Bezirk → dort ausgestellte Wahlscheine (Spalte A2).
+    ballot_papers: dict[int, int]
+    ballot_papers_city: int
+    #: Gültige Stimmen je Wählendem — bis zu drei je Person (2026: 2,91).
+    votes_per_voter: float
+
+
+def _ratswahl_2026() -> Ratswahl:
+    """Aus der Open-Data-CSV der Ratswahl 2026 — nicht aus der Generalprobe,
+    die trägt die Zahlen von 2021 (der Fehler bis 16.09.2026: 37.430 CDU-
+    Stimmen von 2021 statt 34.335 von 2026)."""
+    import csv
+
+    from . import reference
+
+    idx = next(i for i, slug in reference._load(RATSWAHL26).slug_by_index.items() if slug == "cdu")
+    spalte = f"D{idx}_4"
+    cdu: dict[int, int] = {}
+    scheine: dict[int, int] = {}
+    stadt_scheine = 0
+    je_waehler = 3.0
+    with (RATSWAHL26 / "ratswahl-2026-wahlbezirke.csv").open(encoding="utf-8", newline="") as f:
+        for zeile in csv.DictReader(f, delimiter=";"):
+            nr = int(zeile["gebiet-nr"])
+            cdu[nr] = int(zeile[spalte] or 0)
+            scheine[nr] = int(zeile["A2"] or 0)
+    with (RATSWAHL26 / "ratswahl-2026-stadt.csv").open(encoding="utf-8", newline="") as f:
+        stadt = next(csv.DictReader(f, delimiter=";"))
+        stadt_scheine = int(stadt["A2"] or 0)
+        if int(stadt["B"] or 0):
+            je_waehler = int(stadt["D"] or 0) / int(stadt["B"])
+    return Ratswahl(cdu=cdu, ballot_papers=scheine, ballot_papers_city=stadt_scheine, votes_per_voter=round(je_waehler, 2))
 
 
 def _v(d: mayor_districts.MayorDistrict, slug: str) -> int:
@@ -120,8 +157,14 @@ def compute(regler: Regler | None = None) -> RunoffPotential:
     r = regler or Regler.vorgabe()
     D = _lade_2026()
     geo = {f["properties"]["nr"]: f["properties"] for f in json.loads(GEO.read_text(encoding="utf-8"))["features"]}
-    cdu = _cdu_je_bezirk()
+    rat = _ratswahl_2026()
     t_r, t_p, t_pool = r.turnout_rohr / 100, r.turnout_prange / 100, r.turnout_pool / 100
+    # Nichtwählende je Urnenbezirk: Wer einen Wahlschein hatte, hat meist per
+    # Brief gewählt — und die zählt ein 9xx-Bezirk, nicht der Wohnbezirk. Die
+    # Wahlscheine des Bezirks werden deshalb abgezogen, gewichtet damit, wie
+    # viele davon stadtweit auch genutzt wurden.
+    brief_waehlende = sum(d.voters or 0 for d in D.values() if d.postal and d.counted)
+    schein_quote = brief_waehlende / rat.ballot_papers_city if rat.ballot_papers_city else 0.0
 
     rows: list[RunoffPotentialDistrict] = []
     for n, d in sorted(D.items()):
@@ -131,19 +174,25 @@ def compute(regler: Regler | None = None) -> RunoffPotential:
         pool = sum(_v(d, s) for s in r.transfers)
         zu_r = sum(_v(d, s) * a / 100 for s, (a, _) in r.transfers.items()) * t_pool
         zu_p = sum(_v(d, s) * b / 100 for s, (_, b) in r.transfers.items()) * t_pool
-        cdu_netto = cdu.get(n, 0) * (r.cdu[0] - r.cdu[1]) / 100
+        cdu_stimmen = rat.cdu.get(n, 0)
+        cdu_personen = round(cdu_stimmen / rat.votes_per_voter) if rat.votes_per_voter else 0
+        # Der CDU-Regler verschiebt nur den SALDO: Diese Menschen haben im
+        # ersten Wahlgang schon jemanden gewählt. Gerechnet in Personen, nicht
+        # in Ratswahl-Stimmen — jede Person hatte bis zu drei davon.
+        cdu_netto = cdu_personen * (r.cdu[0] - r.cdu[1]) / 100
         rohr2 = rohr * t_r + zu_r + max(cdu_netto, 0)
         prange2 = prange * t_p + zu_p + max(-cdu_netto, 0)
-        nicht = 0 if d.postal else max(0, (d.eligible or 0) - (d.voters or 0))
+        scheine = 0 if d.postal else rat.ballot_papers.get(n, 0)
+        nicht = 0 if d.postal else max(0, (d.eligible or 0) - (d.voters or 0) - round(scheine * schein_quote))
         zwei = rohr + prange
         valid = d.valid_votes or (zwei + pool) or 1
         net_total = (rohr2 - prange2) - (rohr - prange)
         rows.append(RunoffPotentialDistrict(
             number=n, name=d.name, area=d.area, area_roman=ROMAN.get(d.area, str(d.area)), postal=d.postal,
             district_name=geo.get(n, {}).get("name", "Briefwahl"),
-            eligible=d.eligible or 0, voters=d.voters or 0, non_voters=nicht,
+            eligible=d.eligible or 0, voters=d.voters or 0, ballot_papers=scheine, non_voters=nicht,
             rohr=rohr, prange=prange, rohr_pct_of_two=round(100 * rohr / zwei, 1) if zwei else None,
-            pool=pool, pool_pct=round(100 * pool / valid, 1), cdu_council=cdu.get(n, 0),
+            pool=pool, pool_pct=round(100 * pool / valid, 1), cdu_council=cdu_stimmen, cdu_voters_est=cdu_personen,
             eliminated={s: _v(d, s) for s in r.transfers},
             projected_rohr=round(rohr2), projected_prange=round(prange2),
             net_convince=round(zu_r - zu_p, 1), net_cdu=round(cdu_netto, 1), net_total=round(net_total, 1),
@@ -184,7 +233,10 @@ def compute(regler: Regler | None = None) -> RunoffPotential:
         zaehler[z["strategy"]] += 1
     return RunoffPotential(
         rohr=rohr_g, prange=prange_g, lead=prange_g - rohr_g,
-        pool=sum(z["pool"] for z in rows), cdu_council=sum(z["cdu_council"] for z in rows),
+        pool=sum(z["pool"] for z in rows),
+        eligible=sum(z["eligible"] for z in rows), voters=sum(z["voters"] for z in rows),
+        cdu_council=sum(z["cdu_council"] for z in rows), cdu_voters_est=sum(z["cdu_voters_est"] for z in rows),
+        votes_per_voter=rat.votes_per_voter,
         non_voters=sum(z["non_voters"] for z in rows),
         rohr_pct_urn=anteil(urne), rohr_pct_postal=anteil(brief),
         assumptions=[RunoffPotentialAssumption(slug=s, name=AUSGESCHIEDEN.get(s, s), to_rohr=a, to_prange=bb,
@@ -199,10 +251,10 @@ def compute(regler: Regler | None = None) -> RunoffPotential:
         districts=rows, bundles=bundles, lessons_2021=lessons_2021(), lessons_2014=lessons_2014(),
         caveats=[
             "Die Regler sind Annahmen, keine Messung: Eine Bezirksstatistik zeigt, wo Stimmen liegen, nicht, wie sie wandern.",
-            "Die CDU-Zweitstimmen der Ratswahl verschieben nur; diese Menschen haben im ersten Wahlgang schon jemanden gewählt.",
-            "Die Briefwahl führt keine Wahlberechtigten — dort gibt es keine Nichtwählenden und keinen Ertrag je Tür.",
+            "Die CDU-Stimmen der Ratswahl sind Stimmen, keine Personen — jede Person hatte bis zu drei. Gerechnet wird mit Stimmen geteilt durch die Stimmen je Wählendem; der Regler verschiebt nur den Saldo, diese Menschen haben im ersten Wahlgang schon jemanden gewählt.",
+            "Nichtwählende je Bezirk sind geschätzt: Wahlberechtigte minus Urnenwählende minus die im Bezirk ausgestellten Wahlscheine, soweit sie stadtweit genutzt wurden. Stadtweit stimmt die Summe; die Briefwahl selbst führt keine Wahlberechtigten.",
             "2021 fiel die Stichwahl auf den Tag der Bundestagswahl; ihre Zahlen taugen nicht als Wanderungsschätzung.",
-            "2014 ist die Gegenprobe ohne andere Wahl: 87 % kamen wieder — aber SPD gegen CDU, mit den Grünen als Ausgeschiedenen; die Lager sind andere.",
+            "2014 ist ein Vergleich mit anderer Ausgangslage — SPD gegen CDU, die Grünen ausgeschieden, keine andere Wahl am selben Tag. Verhältnisse von Gesamtzahlen, kein beobachtetes Verhalten einzelner Menschen.",
         ],
     )
 
@@ -216,7 +268,8 @@ def lessons_2021() -> RunoffLessons2021:
         json.loads((FIX21 / "uebersicht-224-stichwahl.json").read_text(encoding="utf-8")),
         {"krogmann": "", "fuhrhop": ""})}
     nums = sorted(set(e1) & set(e2))
-    nach = sorted(nums, key=lambda n: _v(e1[n], "fuhrhop") / max(1, e1[n].valid_votes or 1))
+    # Fünftel nur über die Urnenbezirke — dieselbe Gruppenbildung wie 2014.
+    nach = sorted((n for n in nums if not e1[n].postal), key=lambda n: _v(e1[n], "fuhrhop") / max(1, e1[n].valid_votes or 1))
     k = len(nach) // 5
     fuenftel = []
     for i in range(5):
@@ -291,5 +344,6 @@ def lessons_2014() -> RunoffLessons2014:
         krogmann_pct_urn_first=anteil(e1, False), krogmann_pct_urn_runoff=anteil(e2, False),
         krogmann_pct_postal_first=anteil(e1, True), krogmann_pct_postal_runoff=anteil(e2, True),
         note="Stichwahl am 12.10.2014, zwei Wochen nach der Hauptwahl, ohne andere Wahl am selben Tag — "
-             "die einzige Stichwahl mit Bezirksdaten, die das Wiederkommen sauber zeigt.",
+             "die einzige Stichwahl mit Bezirksdaten ohne diesen Sondereffekt. Verhältnisse von Gesamtzahlen, "
+             "keine beobachteten Einzelpersonen.",
     )

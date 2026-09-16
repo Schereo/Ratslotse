@@ -22,6 +22,8 @@ export type Regler = {
   butzin: Paar;
   froehlich: Paar;
   wilkens: Paar;
+  /** Castur und Stille — die Bezirksdatei führt sie nur als „Sonstige“. */
+  others: Paar;
   cdu: Paar;
   /** Beteiligung in Prozent der Erstrunden-Wählenden je Lager. */
   turnoutRohr: number;
@@ -35,6 +37,7 @@ export const KANDIDATUREN: { slug: keyof Omit<Regler, "cdu" | "turnoutRohr" | "t
   { slug: "butzin", name: "Ralf Butzin", kurz: "Butzin" },
   { slug: "froehlich", name: "Sebastian Fröhlich (FDP)", kurz: "Fröhlich" },
   { slug: "wilkens", name: "Holger Martin Wilkens (BB-OL)", kurz: "Wilkens" },
+  { slug: "others", name: "Sonstige (Castur, Stille)", kurz: "Sonstige" },
 ];
 
 /** Die Vorgaben aus dem Plan §2.1 — Tims Einschätzung in Zahlen, keine Messung. */
@@ -44,6 +47,7 @@ export const VORGABE: Regler = {
   butzin: { rohr: 40, prange: 20 },
   froehlich: { rohr: 20, prange: 35 },
   wilkens: { rohr: 15, prange: 30 },
+  others: { rohr: 30, prange: 30 },
   cdu: { rohr: 25, prange: 25 },
   turnoutRohr: 100,
   turnoutPrange: 100,
@@ -89,8 +93,8 @@ export const TOENUNG = [
   { key: "yield_per_1000", title: "Ertrag je Tür", legend: "netto je 1.000 Wahlberechtigte" },
   { key: "rohr_pct_of_two", title: "Rohr-Anteil", legend: "Rohr an den Stimmen der beiden, 1. Wahlgang" },
   { key: "pool_pct", title: "Umworbene", legend: "Stimmen der Ausgeschiedenen, Anteil an den gültigen" },
-  { key: "cdu_council", title: "CDU", legend: "CDU-Zweitstimmen der Ratswahl" },
-  { key: "non_voters", title: "Nichtwählende", legend: "Wahlberechtigte, die nicht kamen" },
+  { key: "cdu_council", title: "CDU", legend: "CDU-Stimmen der Ratswahl, je 100 Wahlberechtigte" },
+  { key: "non_voters", title: "Nichtwählende", legend: "Nichtwählende (geschätzt), Anteil an den Wahlberechtigten" },
 ] as const;
 export type ToenungKey = (typeof TOENUNG)[number]["key"];
 

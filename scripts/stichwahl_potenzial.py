@@ -40,7 +40,7 @@ def main() -> int:
         ap.add_argument(f"--{s}", nargs=2, type=float, metavar=("ZU_ROHR", "ZU_PRANGE"), default=(a, b),
                         help=f"Anteile in Prozent (Vorgabe {a:.0f} {b:.0f})")
     ap.add_argument("--cdu", nargs=2, type=float, metavar=("ZU_ROHR", "ZU_PRANGE"), default=potential.VORGABE_CDU,
-                    help="CDU-Zweitstimmen der Ratswahl (Vorgabe netto 0)")
+                    help="CDU-Wählende der Ratswahl, geschätzt aus den Stimmen (Vorgabe netto 0)")
     ap.add_argument("--turnout-rohr", type=float, default=100, help="Beteiligung der Rohr-Basis in %% der Erstrunde")
     ap.add_argument("--turnout-prange", type=float, default=100)
     ap.add_argument("--turnout-pool", type=float, default=100, help="Beteiligung der Umworbenen")
@@ -70,7 +70,8 @@ def main() -> int:
     print("== 2026: erster Wahlgang ==")
     print(f"   Rohr {tsd(p['rohr'])}  Prange {tsd(p['prange'])}  → Prange vorn um {tsd(p['lead'])}")
     print(f"   umworben ({', '.join(a['name'].split(' (')[0].split()[-1] for a in p['assumptions'])}): {tsd(p['pool'])}")
-    print(f"   CDU-Zweitstimmen der Ratswahl: {tsd(p['cdu_council'])}   Nichtwählende an der Urne: {tsd(p['non_voters'])}")
+    print(f"   CDU-Stimmen der Ratswahl: {tsd(p['cdu_council'])} (≈ {tsd(p['cdu_voters_est'])} Wählende)   "
+          f"Nichtwählende: {tsd(p['non_voters'])} von {tsd(p['eligible'])} (je Bezirk geschätzt)")
     print(f"   Rohr-Anteil der Zwei: Urne {p['rohr_pct_urn']} %   Brief {p['rohr_pct_postal']} %")
     print()
     print("== Annahmen (zu Rohr / zu Prange, in %) ==")

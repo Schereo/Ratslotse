@@ -47,9 +47,10 @@ export function Briefwahl({ p }: { p: Potenzial }) {
             Brief, {prozent(p.lessons_2021.fuhrhop_pct_urn_runoff)} an der Urne.
           </p>
           <p className="mt-2">
-            Wer per Brief wählt, wählt sicher — der Sonntag kann regnen, das Kind krank werden. An jeder Tür gehört
-            deshalb der Hinweis dazu, dass die Briefwahl für die Stichwahl neu beantragt werden muss, wenn das beim
-            ersten Mal nicht mit angekreuzt war. Fristen und Antrag nennt die Stadt auf oldenburg.de.
+            Wer per Brief wählt, wählt sicher — der Sonntag kann regnen, das Kind krank werden. Wer bei der Hauptwahl
+            die Unterlagen auch für die Stichwahl angefordert hat, bekommt sie laut Stadt automatisch; alle anderen
+            beantragen sie neu. Ab dem 21. September geht das auch persönlich im Wahlbüro, mit Stimmabgabe vor Ort.
+            Stand und Fristen: oldenburg.de.
           </p>
         </div>
       </div>
@@ -100,7 +101,7 @@ export function Lehren2021({ p }: { p: Potenzial }) {
   );
 }
 
-/** 2014 ist die Gegenprobe: Stichwahl zwei Wochen nach der Hauptwahl, ohne
+/** 2014 ist der zweite Vergleich: Stichwahl zwei Wochen nach der Hauptwahl, ohne
  *  andere Wahl am selben Tag. Sie zeigt, was 2021 verdeckt — wer wiederkommt
  *  und wo. Die Lager waren andere (SPD gegen CDU, die Grünen ausgeschieden),
  *  deshalb steht sie neben 2021, nicht an seiner Stelle. */
@@ -112,12 +113,12 @@ export function Lehren2014({ p }: { p: Potenzial }) {
   const zuKrogmann = l.krogmann_runoff - l.krogmann_first;
   const zuBaak = l.baak_runoff - l.baak_first;
   return (
-    <Block kicker="Die Gegenprobe" titel="Krogmann gegen Baak — die Stichwahl ohne Bundestagswahl">
+    <Block kicker="Der Vergleich 2014" titel="Krogmann gegen Baak — die Stichwahl ohne Bundestagswahl">
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <div className="rounded-2xl border border-border bg-card p-5">
           <div className="flex flex-wrap gap-x-8 gap-y-4">
             <Grosszahl wert={`${zahl(l.voters_first)} → ${zahl(l.voters_runoff)}`} name="Wählende, Hauptwahl → Stichwahl" />
-            <Grosszahl wert={prozent(l.return_rate_pct)} name="kamen wieder" />
+            <Grosszahl wert={prozent(l.return_rate_pct)} name="der Wählendenzahl des 1. Wahlgangs" />
           </div>
           <div className="mt-4 divide-y divide-border text-[13px]">
             <div className="flex justify-between py-1.5"><span className="text-muted-foreground">Krogmann (SPD)</span><span className="font-mono tabular-nums">{zahl(l.krogmann_first)} → {zahl(l.krogmann_runoff)}</span></div>
@@ -157,10 +158,10 @@ export function Lehren2014({ p }: { p: Potenzial }) {
             ))}
           </ul>
           <p className="mt-3 text-[13px] leading-relaxed text-muted-foreground">
-            Zwei Dinge halten auch ohne Bundestagswahl: Der Sieger holte sein Plus dort, wo er schwach war — und die
-            Beteiligung fiel überall, am wenigsten in seinen Hochburgen. Für Rohr heißt das: Die eigene Basis kommt
-            eher wieder als die Umworbenen; wer die Diaspora gewinnen will, muss sie auch zur Urne bringen. Der
-            Knopf „Wie 2014“ bei der Beteiligung setzt die gemessene Quote als Annahme.
+            Zwei Beobachtungen, beide Verhältnisse von Gesamtzahlen, kein Verhalten einzelner Menschen: Der Sieger holte
+            sein Plus dort, wo er schwach war — 2021 bei Fuhrhop genauso —, und die Wählendenzahl hielt in seinen
+            Hochburgen besser als in seinen schwachen Bezirken. Ob das für Rohr ebenso gilt, ist eine Annahme. Der Knopf
+            „Wie 2014“ bei der Beteiligung setzt die gemessene Quote für alle drei Lager.
           </p>
         </div>
       </div>
@@ -182,7 +183,7 @@ export function Vorbehalte({ p }: { p: Potenzial }) {
           <span aria-hidden className="mt-[9px] h-1.5 w-1.5 flex-none rounded-full bg-foreground/40" />
           <span>
             Quellen: die 133 Wahlbezirke des ersten Wahlgangs vom 13. September 2026 (Open Data der Stadt), die
-            Zweitstimmen der Ratswahl am selben Tag, die Stichwahl vom 26. September 2021. Bezirksgrenzen: openGEOdata
+            Open-Data-CSV der Ratswahl am selben Tag, die Stichwahlen 2021 und 2014 (amtliche Bezirksdaten). Bezirksgrenzen: openGEOdata
             der Stadt. Gerechnet von Ratslotse, nicht von einem Institut.
           </span>
         </li>
