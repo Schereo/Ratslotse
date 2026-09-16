@@ -195,14 +195,15 @@ export function PotenzialView() {
         <Tafel p={data} rechnet={isFetching} />
         <div className="print:hidden">
           <Befunde p={data} />
-          <ReglerTafel regler={regler} onChange={setRegler} annahmen={data.assumptions} cduWaehlende={data.cdu_voters_est} wiederkommen2014={data.lessons_2014.return_rate_pct} />
+          <ReglerTafel regler={regler} onChange={setRegler} annahmen={data.assumptions} cduWaehlende={data.cdu_voters_est}
+            modellStimmenquote={100 * (data.projected_rohr + data.projected_prange) / (data.rohr + data.prange + data.pool)} />
           <PotenzialKarte bezirke={urne} zaehler={data.strategy_counts} />
         </div>
         <Einsatzliste buendel={data.bundles} bezirke={urne} />
         <div className="print:hidden">
           <Briefwahl p={data} />
-          <Lehren2021 p={data} />
           <Lehren2014 p={data} />
+          <Lehren2021 p={data} />
           <Vorbehalte p={data} />
         </div>
       </main>

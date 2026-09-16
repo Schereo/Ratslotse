@@ -10,7 +10,7 @@ import { RotateCcw } from "lucide-react";
 import { KICKER } from "@/components/wahlabend/bausteine";
 import { KANDIDATUREN, VORGABE, paarSetzen, type Paar, type Potenzial, type Regler } from "@/lib/potenzial";
 import { cn } from "@/lib/utils";
-import { zahl } from "@/lib/wahlabend";
+import { prozent, zahl } from "@/lib/wahlabend";
 
 function Schieber({ id, name, wert, min = 0, max = 100, step = 5, einheit = "%", onChange, ton = "signal", vorgabe }: {
   id: string;
@@ -79,17 +79,15 @@ function PaarKarte({ slug, titel, kurz, untertitel, paar, vorgabe, onChange }: {
   );
 }
 
-export function ReglerTafel({ regler, onChange, annahmen, cduWaehlende, wiederkommen2014 }: {
+export function ReglerTafel({ regler, onChange, annahmen, cduWaehlende, modellStimmenquote }: {
   regler: Regler;
   onChange: (r: Regler) => void;
   annahmen: Potenzial["assumptions"];
   /** CDU-Wählende der Ratswahl, aus den Stimmen geschätzt. */
   cduWaehlende: number;
-  /** Die gemessene Wiederkommen-Quote der Stichwahl 2014, in Prozent. */
-  wiederkommen2014: number;
+  /** Gültige Stimmen für Rohr/Prange im Modell relativ zu allen gültigen OB-Stimmen im ersten Wahlgang. */
+  modellStimmenquote: number;
 }) {
-  const quote = Math.round(wiederkommen2014);
-  const wie2014 = regler.turnoutRohr === quote && regler.turnoutPrange === quote && regler.turnoutPool === quote;
   const stimmen = new Map(annahmen.map((a) => [a.slug, a.votes]));
   const unveraendert = JSON.stringify(regler) === JSON.stringify(VORGABE);
   return (
@@ -99,10 +97,10 @@ export function ReglerTafel({ regler, onChange, annahmen, cduWaehlende, wiederko
           <div className={KICKER}>Annahmen</div>
           <h2 className="mt-1 font-display text-[22px] font-bold tracking-tight">Annahmen für die Stichwahl</h2>
           <p className="mt-1 max-w-2xl text-[13.5px] leading-relaxed text-muted-foreground">
-            Die Regler zeigen Einschätzungen, keine gemessenen Wechsel. Die Stichwahl 2021 lässt sich nicht direkt
-            übertragen: Sie fand am Tag der Bundestagswahl statt. Die Markierung auf jeder Skala zeigt die
-            voreingestellte Annahme. Der CDU-Regler berücksichtigt, dass diese Menschen im ersten Wahlgang bereits
-            gewählt haben. Er verändert deshalb den Stimmenabstand, statt zusätzliche Ratswahlstimmen als Personen zu zählen.
+            Die Regler zeigen Einschätzungen, keine gemessenen Wechsel. Die Markierung auf jeder Skala zeigt die
+            voreingestellte Annahme. Die Beteiligung von 2021 ist wegen der gleichzeitigen Bundestagswahl kein direkter
+            Maßstab. Der CDU-Regler berücksichtigt, dass diese Menschen im ersten Wahlgang bereits gewählt haben. Er
+            verändert deshalb den Stimmenabstand, statt zusätzliche Ratswahlstimmen als Personen zu zählen.
           </p>
         </div>
         <button
@@ -141,34 +139,27 @@ export function ReglerTafel({ regler, onChange, annahmen, cduWaehlende, wiederko
       </div>
 
       <div className="mt-3 rounded-2xl border border-border bg-card p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-baseline gap-2">
-            <h3 className="text-[14px] font-semibold">Beteiligung</h3>
-            <span className="font-mono text-[11px] text-muted-foreground">Wählendenzahl im Verhältnis zum ersten Wahlgang</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => onChange({ ...regler, turnoutRohr: quote, turnoutPrange: quote, turnoutPool: quote })}
-            disabled={wie2014}
-            title="Das Verhältnis der Wählendenzahlen von 2014 als Annahme für alle drei Gruppen einstellen"
-            className="inline-flex min-h-8 items-center rounded-full border border-border bg-card px-3 text-[12.5px] font-medium transition-colors hover:bg-primary/5 disabled:cursor-default disabled:opacity-40"
-          >
-            Wie 2014: {quote} %
-          </button>
+        <div className="flex flex-wrap items-baseline gap-2">
+          <h3 className="text-[14px] font-semibold">Beteiligung der Ausgangsgruppen</h3>
+          <span className="font-mono text-[11px] text-muted-foreground">im Verhältnis zum ersten Wahlgang</span>
         </div>
         <div className="mt-3 grid gap-3 sm:grid-cols-3">
-          <Schieber id="r-turnout-rohr" name="Rohr-Basis" wert={regler.turnoutRohr} vorgabe={100} min={60} max={120} step={1}
+          <Schieber id="r-turnout-rohr" name="Rohr-Basis" wert={regler.turnoutRohr} vorgabe={VORGABE.turnoutRohr} min={60} max={120} step={1}
             onChange={(v) => onChange({ ...regler, turnoutRohr: v })} ton="signal" />
-          <Schieber id="r-turnout-prange" name="Prange-Basis" wert={regler.turnoutPrange} vorgabe={100} min={60} max={120} step={1}
+          <Schieber id="r-turnout-prange" name="Prange-Basis" wert={regler.turnoutPrange} vorgabe={VORGABE.turnoutPrange} min={60} max={120} step={1}
             onChange={(v) => onChange({ ...regler, turnoutPrange: v })} ton="grau" />
-          <Schieber id="r-turnout-pool" name="Stimmen für Ausgeschiedene" wert={regler.turnoutPool} vorgabe={100} min={60} max={120} step={1}
+          <Schieber id="r-turnout-pool" name="Stimmen für Ausgeschiedene" wert={regler.turnoutPool} vorgabe={VORGABE.turnoutPool} min={60} max={120} step={1}
             onChange={(v) => onChange({ ...regler, turnoutPool: v })} ton="primary" />
         </div>
         <p className="mt-2.5 text-[12px] leading-relaxed text-muted-foreground">
-          Ein Wert über 100 Prozent bedeutet eine höhere angenommene Wählendenzahl als im ersten Wahlgang. 2021 lag
-          die Zahl um 12 Prozent höher; die Stichwahl fand allerdings am Tag der Bundestagswahl statt. 2014, ohne eine
-          weitere Wahl am selben Tag, erreichte die Stichwahl {wiederkommen2014.toFixed(1).replace(".", ",")} Prozent
-          der Wählendenzahl des ersten Wahlgangs. Ein Wert unter 100 Prozent steht für eine niedrigere Wählendenzahl.
+          100 Prozent an einem Regler heißt nicht 100 Prozent Wahlbeteiligung: Für diese Gruppe wird nur kein zusätzlicher
+          Rückgang angenommen. Wie viele Menschen insgesamt Rohr oder Prange wählen, hängt auch von den Wechselannahmen
+          oben ab. Ein Teil der Stimmen für ausgeschiedene Kandidaturen bleibt dort keinem der beiden zugeordnet.
+        </p>
+        <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
+          Mit den gewählten Annahmen ergeben sich für Rohr und Prange zusammen rund {prozent(modellStimmenquote, 0)} der
+          gültigen OB-Stimmenzahl aus dem ersten Wahlgang. Das ist keine exakte Wahlbeteiligung, weil ungültige Stimmen
+          fehlen. Der Anstieg von 2021 ist wegen der gleichzeitigen Bundestagswahl kein Ausgangswert für dieses Modell.
         </p>
       </div>
     </section>

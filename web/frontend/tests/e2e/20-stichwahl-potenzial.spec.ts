@@ -60,6 +60,9 @@ test.describe("Stichwahl-Potenzial", () => {
     const tafel = page.getByTestId("potenzial-tafel");
     await expect(tafel).toContainText("2.225");
     await expect(tafel).toContainText(/Rohr läge [\d.]+ Stimmen vorn/);
+    await expect(page.getByText(/100 Prozent an einem Regler heißt nicht 100 Prozent Wahlbeteiligung/)).toBeVisible();
+    await expect(page.getByText(/rund 86 % der gültigen OB-Stimmenzahl/)).toBeVisible();
+    await expect(page.getByRole("button", { name: /Wie 2014/ })).toHaveCount(0);
 
     // Ein Regler schickt seinen Stand an den Server — nur den, der abweicht.
     await page.getByLabel("Boldt zu Rohr").fill("80");

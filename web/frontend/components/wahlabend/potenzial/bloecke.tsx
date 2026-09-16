@@ -161,8 +161,8 @@ export function Lehren2014({ p }: { p: Potenzial }) {
             Beide Grafiken vergleichen Gesamtzahlen, nicht das Verhalten einzelner Menschen. Krogmanns Stimmenzahl
             stieg in seinen schwächeren Bezirken relativ stärker; 2021 zeigt sich bei Fuhrhop ein ähnliches Muster.
             Die Wählendenzahl sank 2014 in Krogmanns stärkeren Bezirken weniger stark. Ob sich etwas davon auf 2026
-            übertragen lässt, bleibt offen. Mit „Wie 2014“ wird dasselbe historische Verhältnis für alle drei Gruppen
-            als Annahme eingestellt.
+            übertragen lässt, bleibt offen. Das stadtweite Verhältnis von 2014 lässt sich nicht einfach auf die drei
+            Gruppen der Modellrechnung übertragen.
           </p>
         </div>
       </div>
