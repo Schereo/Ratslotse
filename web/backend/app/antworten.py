@@ -4384,7 +4384,12 @@ class RunoffPotentialDistrict(TypedDict):
     #: Stadtbezirk aus den Geodaten („Eversten") — die Einheit fürs Team.
     district_name: str
     eligible: int
+    #: Wählende an der Urne dieses Bezirks (Briefwahl zählt in den 9xx-Bezirken).
     voters: int
+    #: Wahlscheine, die in diesem Bezirk ausgestellt wurden (Ratswahl-CSV, A2).
+    ballot_papers: int
+    #: GESCHÄTZT: Wahlberechtigte minus Urnenwählende minus die genutzten
+    #: Wahlscheine des Bezirks — 0 für die Briefwahl.
     non_voters: int
     rohr: int
     prange: int
@@ -4392,8 +4397,10 @@ class RunoffPotentialDistrict(TypedDict):
     #: Stimmen der Ausgeschiedenen zusammen, und ihr Anteil an den gültigen.
     pool: int
     pool_pct: float
-    #: CDU-Zweitstimmen der Ratswahl in diesem Bezirk.
+    #: CDU-Stimmen der Ratswahl 2026 in diesem Bezirk — Stimmen, keine Personen
+    #: (bis zu drei je Person); ``cdu_voters_est`` rechnet sie auf Personen um.
     cdu_council: int
+    cdu_voters_est: int
     eliminated: dict[str, int]
     projected_rohr: int
     projected_prange: int
@@ -4437,6 +4444,49 @@ class RunoffLessons2021(TypedDict):
     note: str
 
 
+class RunoffStrengthGroup(TypedDict):
+    """Stimmenzahl in gleich vielen schwachen oder starken Urnenbezirken."""
+    districts: int
+    first: int
+    runoff: int
+    change: int
+    change_pct: float
+
+
+class RunoffCandidateStrength(TypedDict):
+    weak: RunoffStrengthGroup
+    strong: RunoffStrengthGroup
+
+
+class RunoffLessons2014(TypedDict):
+    """Krogmann gegen Baak, 28.09./12.10.2014 — die Stichwahl OHNE andere Wahl
+    am selben Tag, also die Gegenprobe zu 2021: Wie veränderten sich die
+    Wählenden- und Stimmenzahlen?"""
+    voters_first: int
+    voters_runoff: int
+    #: Wählende der Stichwahl in Prozent der Wählenden des ersten Wahlgangs.
+    return_rate_pct: float
+    krogmann_first: int
+    krogmann_runoff: int
+    baak_first: int
+    baak_runoff: int
+    #: Stimmen der Ausgeschiedenen (Rieken, Kreuzwieser) im ersten Wahlgang.
+    eliminated_first: int
+    #: Wiederkommen-Quote je Fünftel der Urnenbezirke nach Krogmanns Anteil, schwächste zuerst.
+    return_by_fifth: list[float]
+    #: Krogmann bzw. Baak Runde 2 ÷ Runde 1, dieselben Fünftel.
+    krogmann_growth_by_fifth: list[float]
+    baak_growth_by_fifth: list[float]
+    #: Je Kandidat die Bezirke mit dem niedrigsten bzw. höchsten eigenen Erstwahlanteil.
+    krogmann_strength: RunoffCandidateStrength
+    baak_strength: RunoffCandidateStrength
+    krogmann_pct_urn_first: float
+    krogmann_pct_urn_runoff: float
+    krogmann_pct_postal_first: float
+    krogmann_pct_postal_runoff: float
+    note: str
+
+
 class RunoffPotential(TypedDict):
     """``GET /api/wahlabend/stichwahl/potenzial?token=…`` — die ganze Rechnung
     zu einem Reglerstand. Alles hier ist gerechnet, nichts davon ist Prognose;
@@ -4445,8 +4495,17 @@ class RunoffPotential(TypedDict):
     prange: int
     #: Prange minus Rohr im ersten Wahlgang.
     lead: int
+    #: Stimmen aller ausgeschiedenen Kandidaturen (die ``assumptions``).
     pool: int
+    #: Wahlberechtigte und Wählende (Urne + Brief) der Stadt.
+    eligible: int
+    voters: int
+    #: CDU-Stimmen der Ratswahl 2026, und dieselben als Personen geschätzt
+    #: (Stimmen ÷ ``votes_per_voter``).
     cdu_council: int
+    cdu_voters_est: int
+    votes_per_voter: float
+    #: Wahlberechtigte minus Wählende — stadtweit exakt, je Bezirk geschätzt.
     non_voters: int
     rohr_pct_urn: float | None
     rohr_pct_postal: float | None
@@ -4467,6 +4526,7 @@ class RunoffPotential(TypedDict):
     districts: list[RunoffPotentialDistrict]
     bundles: list[RunoffPotentialBundle]
     lessons_2021: RunoffLessons2021
+    lessons_2014: RunoffLessons2014
     caveats: list[str]
 
 

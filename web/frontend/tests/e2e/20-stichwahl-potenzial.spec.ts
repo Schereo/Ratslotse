@@ -8,12 +8,8 @@
  * Antwort wird deshalb gemockt — mit der Abschrift aus `potential.compute()`
  * (`tests/test_browsertest_fixtures.py` hält sie am Vertrag). Erzeugt mit:
  *
- *     FEATURE_FLAGS=wahlabend WAHLKAMPF_TOKEN=probe-token-fuer-die-browsertests \
- *       .venv/bin/python -c "import sys, json; sys.path.insert(0, 'web/backend'); \
- *       from app.routers import wahlabend as r; print(json.dumps(r.stichwahl_potenzial( \
- *       token='probe-token-fuer-die-browsertests', boldt=None, kuessner=None, butzin=None, \
- *       froehlich=None, wilkens=None, cdu=None, turnout_rohr=100, turnout_prange=100, \
- *       turnout_pool=100), ensure_ascii=False))" \
+ *     /path/to/.venv/bin/python -c "import sys, json; sys.path.insert(0, 'web/backend'); \
+ *       from app.election import potential; print(json.dumps(potential.compute(), ensure_ascii=False))" \
  *       > web/frontend/tests/e2e/fixtures/stichwahl-potenzial-probe.json
  */
 import { readFileSync } from "node:fs";
@@ -60,6 +56,10 @@ test.describe("Stichwahl-Potenzial", () => {
     const tafel = page.getByTestId("potenzial-tafel");
     await expect(tafel).toContainText("2.225");
     await expect(tafel).toContainText(/Rohr läge [\d.]+ Stimmen vorn/);
+    await expect(page.getByText(/gehen jeweils 95 auch zur Stichwahl/)).toBeVisible();
+    await expect(page.getByText(/rund 81 % der gültigen OB-Stimmenzahl/)).toBeVisible();
+    await expect(page.getByLabel("Rohr-Basis")).toHaveValue("95");
+    await expect(page.getByRole("button", { name: /Wie 2014/ })).toHaveCount(0);
 
     // Ein Regler schickt seinen Stand an den Server — nur den, der abweicht.
     await page.getByLabel("Boldt zu Rohr").fill("80");
@@ -73,6 +73,26 @@ test.describe("Stichwahl-Potenzial", () => {
     await expect(page.getByTestId("potenzial-bezirk")).toContainText("Wahlberechtigte");
     await karte.getByRole("button", { name: "Ertrag je Tür" }).click();
     await expect(karte).toContainText("je 1.000 Wahlberechtigte");
+
+    // Der Rückblick auf 2021 erklärt den Vergleich zuerst in Worten; die Zahlen sind optional.
+    const rueckblick = page.getByRole("heading", { name: "Auch außerhalb seiner Hochburgen legte Fuhrhop zu." }).locator("..");
+    await expect(rueckblick).toContainText("Seine Stimmenzahl hat sich mehr als verdoppelt.");
+    const rechenweg = rueckblick.locator("details");
+    await expect(rechenweg).toHaveJSProperty("open", false);
+    await rechenweg.locator("summary").click();
+    await expect(rechenweg).toHaveJSProperty("open", true);
+    await expect(rechenweg).toContainText("× 2,28");
+
+    // 2014 vergleicht für beide Kandidaten eigene, gleich große Bezirksgruppen.
+    const vergleich2014 = page.getByRole("heading", { name: "Was änderte sich in schwachen und starken Bezirken?" }).locator("..");
+    await expect(vergleich2014).toContainText("nicht dieselben Bezirke");
+    for (const wert of ["+1.534", "+711", "+427", "−102", "Fazit:"]) {
+      await expect(vergleich2014).toContainText(wert);
+    }
+    const zahlen2014 = vergleich2014.locator("details");
+    await expect(zahlen2014).toHaveJSProperty("open", false);
+    await zahlen2014.locator("summary").click();
+    await expect(zahlen2014).toContainText("3.051 → 4.585 Stimmen");
 
     // Die Einsatzliste: Eversten zuoberst; ein Haken überlebt das Neuladen.
     const liste = page.getByTestId("einsatzliste");

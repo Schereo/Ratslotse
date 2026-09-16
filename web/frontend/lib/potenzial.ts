@@ -22,6 +22,8 @@ export type Regler = {
   butzin: Paar;
   froehlich: Paar;
   wilkens: Paar;
+  /** Castur und Stille — die Bezirksdatei führt sie nur als „Sonstige“. */
+  others: Paar;
   cdu: Paar;
   /** Beteiligung in Prozent der Erstrunden-Wählenden je Lager. */
   turnoutRohr: number;
@@ -29,25 +31,30 @@ export type Regler = {
   turnoutPool: number;
 };
 
+/** Zusätzlicher Rückgang je Ausgangsgruppe; kein gemessener Beteiligungswert. */
+export const BETEILIGUNG_VORGABE = 95;
+
 export const KANDIDATUREN: { slug: keyof Omit<Regler, "cdu" | "turnoutRohr" | "turnoutPrange" | "turnoutPool">; name: string; kurz: string }[] = [
   { slug: "boldt", name: "Heike Boldt (Linke)", kurz: "Boldt" },
   { slug: "kuessner", name: "Byanca Küßner", kurz: "Küßner" },
   { slug: "butzin", name: "Ralf Butzin", kurz: "Butzin" },
   { slug: "froehlich", name: "Sebastian Fröhlich (FDP)", kurz: "Fröhlich" },
   { slug: "wilkens", name: "Holger Martin Wilkens (BB-OL)", kurz: "Wilkens" },
+  { slug: "others", name: "Sonstige (Castur, Stille)", kurz: "Sonstige" },
 ];
 
-/** Die Vorgaben aus dem Plan §2.1 — Tims Einschätzung in Zahlen, keine Messung. */
+/** Die aktuellen Vorgaben — Annahmen in Zahlen, keine Messung. */
 export const VORGABE: Regler = {
   boldt: { rohr: 55, prange: 15 },
   kuessner: { rohr: 45, prange: 15 },
   butzin: { rohr: 40, prange: 20 },
   froehlich: { rohr: 20, prange: 35 },
   wilkens: { rohr: 15, prange: 30 },
+  others: { rohr: 30, prange: 30 },
   cdu: { rohr: 25, prange: 25 },
-  turnoutRohr: 100,
-  turnoutPrange: 100,
-  turnoutPool: 100,
+  turnoutRohr: BETEILIGUNG_VORGABE,
+  turnoutPrange: BETEILIGUNG_VORGABE,
+  turnoutPool: BETEILIGUNG_VORGABE,
 };
 
 /** Der Pfad zum Endpunkt — nur Regler, die von der Vorgabe abweichen, stehen
@@ -61,9 +68,9 @@ export function potenzialPfad(token: string, r: Regler): string {
     }
   }
   if (r.cdu.rohr !== VORGABE.cdu.rohr || r.cdu.prange !== VORGABE.cdu.prange) q.set("cdu", `${Math.round(r.cdu.rohr)},${Math.round(r.cdu.prange)}`);
-  if (r.turnoutRohr !== 100) q.set("turnout_rohr", String(r.turnoutRohr));
-  if (r.turnoutPrange !== 100) q.set("turnout_prange", String(r.turnoutPrange));
-  if (r.turnoutPool !== 100) q.set("turnout_pool", String(r.turnoutPool));
+  if (r.turnoutRohr !== VORGABE.turnoutRohr) q.set("turnout_rohr", String(r.turnoutRohr));
+  if (r.turnoutPrange !== VORGABE.turnoutPrange) q.set("turnout_prange", String(r.turnoutPrange));
+  if (r.turnoutPool !== VORGABE.turnoutPool) q.set("turnout_pool", String(r.turnoutPool));
   return `/wahlabend/stichwahl/potenzial?${q.toString()}`;
 }
 
@@ -77,20 +84,20 @@ export function paarSetzen(p: Paar, seite: keyof Paar, wert: number): Paar {
 
 /** Die Einstufung je Bezirk, wie das Backend sie nennt — und ihr Wort dazu. */
 export const STRATEGIE: Record<string, { title: string; sentence: string }> = {
-  hold: { title: "Halten", sentence: "Rohr liegt hier vorn — die Basis muss am 27.09. kommen. Briefwahl anbieten." },
-  persuade: { title: "Überzeugen", sentence: "Hier wohnen die Umworbenen — Linke, Butzin, Küßner. Ansprechen, nicht bekräftigen." },
-  both: { title: "Beides", sentence: "Starke Basis und großer Pool — hier lohnt jede Tür doppelt." },
-  skip: { title: "Liegenlassen", sentence: "Wenig zu holen je Tür. Zuletzt, wenn überhaupt." },
-  postal: { title: "Briefwahl", sentence: "Keine Fläche, keine Türen — die Stimmen kommen von überall." },
+  hold: { title: "Halten", sentence: "Rohr lag hier im ersten Wahlgang vorn. Entscheidend ist, ob seine bisherigen Wählenden erneut abstimmen. Briefwahl anbieten." },
+  persuade: { title: "Überzeugen", sentence: "Hier gab es viele Stimmen für Boldt, Butzin und Küßner. Gespräche stehen im Vordergrund." },
+  both: { title: "Beides", sentence: "Hier kommen viele Rohr-Stimmen und Stimmen für andere Kandidaturen zusammen." },
+  skip: { title: "Liegenlassen", sentence: "Der berechnete Wert ist niedrig. Diesen Bezirk zuletzt einplanen, wenn überhaupt." },
+  postal: { title: "Briefwahl", sentence: "Die Briefwahlbezirke lassen sich keinem einzelnen Wohngebiet auf der Karte zuordnen." },
 };
 
 /** Tönungs-Modi der Karte: Feld, Beschriftung, Legende. */
 export const TOENUNG = [
   { key: "yield_per_1000", title: "Ertrag je Tür", legend: "netto je 1.000 Wahlberechtigte" },
-  { key: "rohr_pct_of_two", title: "Rohr-Anteil", legend: "Rohr an den Stimmen der beiden, 1. Wahlgang" },
-  { key: "pool_pct", title: "Umworbene", legend: "Stimmen der Ausgeschiedenen, Anteil an den gültigen" },
-  { key: "cdu_council", title: "CDU", legend: "CDU-Zweitstimmen der Ratswahl" },
-  { key: "non_voters", title: "Nichtwählende", legend: "Wahlberechtigte, die nicht kamen" },
+  { key: "rohr_pct_of_two", title: "Rohr-Anteil", legend: "Rohrs Anteil an den Stimmen für beide Kandidaten im ersten Wahlgang" },
+  { key: "pool_pct", title: "Weitere Kandidaturen", legend: "Anteil der Stimmen für ausgeschiedene Kandidaturen an allen gültigen Stimmen" },
+  { key: "cdu_council", title: "CDU", legend: "CDU-Stimmen bei der Ratswahl je 100 Wahlberechtigte" },
+  { key: "non_voters", title: "Nichtwählende", legend: "Geschätzter Anteil der Nichtwählenden an den Wahlberechtigten" },
 ] as const;
 export type ToenungKey = (typeof TOENUNG)[number]["key"];
 

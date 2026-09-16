@@ -8,10 +8,10 @@ describe("potenzialPfad", () => {
   });
 
   it("nennt nur die Regler, die von der Vorgabe abweichen", () => {
-    const r = { ...VORGABE, boldt: { rohr: 70, prange: 10 }, turnoutPrange: 95 };
+    const r = { ...VORGABE, boldt: { rohr: 70, prange: 10 }, turnoutPrange: 90 };
     const pfad = potenzialPfad("t", r);
     expect(pfad).toContain("boldt=70%2C10");
-    expect(pfad).toContain("turnout_prange=95");
+    expect(pfad).toContain("turnout_prange=90");
     expect(pfad).not.toContain("kuessner=");
     expect(pfad).not.toContain("turnout_rohr=");
   });

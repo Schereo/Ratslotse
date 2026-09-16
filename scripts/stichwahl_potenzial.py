@@ -11,6 +11,7 @@ schreibt nichts, ruft nichts ab. Die Rechnung selbst steht in
     python scripts/stichwahl_potenzial.py --boldt 70 15       # Linke: 70 % zu Rohr, 15 % zu Prange
     python scripts/stichwahl_potenzial.py --turnout-rohr 90   # nur 90 % der Rohr-Basis kommen wieder
     python scripts/stichwahl_potenzial.py --json out.json     # die ganze Antwort als JSON
+    python scripts/stichwahl_potenzial.py --link              # die Adresse der Seite (Token aus der .env)
 """
 from __future__ import annotations
 
@@ -39,13 +40,25 @@ def main() -> int:
         ap.add_argument(f"--{s}", nargs=2, type=float, metavar=("ZU_ROHR", "ZU_PRANGE"), default=(a, b),
                         help=f"Anteile in Prozent (Vorgabe {a:.0f} {b:.0f})")
     ap.add_argument("--cdu", nargs=2, type=float, metavar=("ZU_ROHR", "ZU_PRANGE"), default=potential.VORGABE_CDU,
-                    help="CDU-Zweitstimmen der Ratswahl (Vorgabe netto 0)")
+                    help="CDU-Wählende der Ratswahl, geschätzt aus den Stimmen (Vorgabe netto 0)")
     ap.add_argument("--turnout-rohr", type=float, default=100, help="Beteiligung der Rohr-Basis in %% der Erstrunde")
     ap.add_argument("--turnout-prange", type=float, default=100)
     ap.add_argument("--turnout-pool", type=float, default=100, help="Beteiligung der Umworbenen")
     ap.add_argument("--json", type=Path, help="die ganze Antwort als JSON schreiben")
     ap.add_argument("--top", type=int, default=12)
+    ap.add_argument("--link", action="store_true", help="nur die Adresse der Seite mit dem Token dieser Umgebung")
     args = ap.parse_args()
+
+    if args.link:
+        from app.config import get_settings
+        from app.routers.wahlabend import wahlkampf_token
+
+        token = wahlkampf_token()
+        if token is None:
+            print("Kein Token: WEB_JWT_SECRET steht auf dem Vorgabewert und WAHLKAMPF_TOKEN ist nicht gesetzt.")
+            return 1
+        print(f"{get_settings().app_base_url.rstrip('/')}/stichwahl/potenzial?k={token}")
+        return 0
 
     regler = potential.Regler(
         transfers={s: tuple(getattr(args, s)) for s in potential.VORGABE},
@@ -57,7 +70,8 @@ def main() -> int:
     print("== 2026: erster Wahlgang ==")
     print(f"   Rohr {tsd(p['rohr'])}  Prange {tsd(p['prange'])}  → Prange vorn um {tsd(p['lead'])}")
     print(f"   umworben ({', '.join(a['name'].split(' (')[0].split()[-1] for a in p['assumptions'])}): {tsd(p['pool'])}")
-    print(f"   CDU-Zweitstimmen der Ratswahl: {tsd(p['cdu_council'])}   Nichtwählende an der Urne: {tsd(p['non_voters'])}")
+    print(f"   CDU-Stimmen der Ratswahl: {tsd(p['cdu_council'])} (≈ {tsd(p['cdu_voters_est'])} Wählende)   "
+          f"Nichtwählende: {tsd(p['non_voters'])} von {tsd(p['eligible'])} (je Bezirk geschätzt)")
     print(f"   Rohr-Anteil der Zwei: Urne {p['rohr_pct_urn']} %   Brief {p['rohr_pct_postal']} %")
     print()
     print("== Annahmen (zu Rohr / zu Prange, in %) ==")

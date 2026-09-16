@@ -11,7 +11,7 @@
 // 2021. Gerechnet wird im Backend — jede Reglerstellung ist eine Anfrage,
 // die Seite hält die letzte Antwort, bis die neue da ist.
 //
-// Alles hier ist Rechnung, nichts Prognose. Die Regler sind Tims Einschätzung
+// Alles hier ist Rechnung, nichts Prognose. Die Regler zeigen Annahmen
 // in Zahlen; die Seite sagt das an jeder Stelle, an der jemand eine Zahl
 // für eine Messung halten könnte.
 
@@ -26,7 +26,7 @@ import { VORGABE, potenzialPfad, saldoSatz, type Potenzial, type Regler } from "
 import { useTween } from "@/lib/use-tween";
 import { cn } from "@/lib/utils";
 import { prozent, zahl } from "@/lib/wahlabend";
-import { Briefwahl, Lehren2021, Vorbehalte } from "./bloecke";
+import { Briefwahl, Lehren2014, Lehren2021, Vorbehalte } from "./bloecke";
 import { Einsatzliste } from "./einsatzliste";
 import { PotenzialKarte } from "./karte";
 import { ReglerTafel } from "./regler";
@@ -64,10 +64,10 @@ function Tafel({ p, rechnet }: { p: Potenzial; rechnet: boolean }) {
   return (
     <section data-testid="potenzial-tafel" className="hh-tafel mt-6 rounded-2xl border px-5 py-5 sm:px-7 sm:py-6">
       <div className="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-4">
-        <Kennzahl wert={zahl(p.lead)} name="Rückstand, 1. Wahlgang" hinweis={`Prange ${zahl(p.prange)} · Rohr ${zahl(p.rohr)}`} />
-        <Kennzahl wert={zahl(p.pool)} name="Umworbene" hinweis="Stimmen der fünf Ausgeschiedenen zusammen" />
-        <Kennzahl wert={zahl(p.cdu_council)} name="CDU-Zweitstimmen" hinweis="Ratswahl am selben Tag — die CDU hatte keine eigene Kandidatur" />
-        <Kennzahl wert={zahl(p.non_voters)} name="Nichtwählende, Urne" hinweis="Wahlberechtigte in den 91 Urnenbezirken, die nicht kamen" />
+        <Kennzahl wert={zahl(p.lead)} name="Rückstand im ersten Wahlgang" hinweis={`Prange ${zahl(p.prange)} · Rohr ${zahl(p.rohr)}`} />
+        <Kennzahl wert={zahl(p.pool)} name="Stimmen der Ausgeschiedenen" hinweis="Stimmen für alle sieben ausgeschiedenen Kandidaturen, einschließlich der unter „Sonstige“ zusammengefassten" />
+        <Kennzahl wert={`≈ ${zahl(p.cdu_voters_est)}`} name="Geschätzte CDU-Wählende" hinweis={`${zahl(p.cdu_council)} CDU-Stimmen bei der Ratswahl, geteilt durch durchschnittlich ${p.votes_per_voter.toFixed(2).replace(".", ",")} Stimmen je Wählendem. Die CDU hatte keine eigene OB-Kandidatur.`} />
+        <Kennzahl wert={zahl(p.non_voters)} name="Nichtwählende" hinweis={`${zahl(p.eligible)} Wahlberechtigte minus ${zahl(p.voters)} Wählende (Urne und Brief); je Bezirk geschätzt`} />
       </div>
 
       <div className="mt-7">
@@ -80,8 +80,8 @@ function Tafel({ p, rechnet }: { p: Potenzial; rechnet: boolean }) {
           </span>
         </div>
         <p className="mt-1 text-[13px] text-muted-foreground">
-          Mit deinen Annahmen. Rohr gewinnt {zahl(p.net_total)} Stimmen Vorsprung gegenüber dem ersten Wahlgang — nötig
-          sind {zahl(p.lead + 1)}.
+          Nach deinen Annahmen verändert sich der Stimmenabstand für Rohr gegenüber dem ersten Wahlgang um {zahl(p.net_total)} Stimmen.
+          Um Prange zu überholen, müsste er den Rückstand um {zahl(p.lead + 1)} Stimmen verringern.
         </p>
 
         <div className="relative mt-4 h-7 overflow-hidden rounded-full bg-muted" role="img"
@@ -101,21 +101,18 @@ function Tafel({ p, rechnet }: { p: Potenzial; rechnet: boolean }) {
 
 /** Drei Sätze vorweg — die Befunde, die man auch ohne Regler mitnehmen soll. */
 function Befunde({ p }: { p: Potenzial }) {
-  const oben = p.bundles[0];
-  const unten = [...p.bundles].sort((a, b) => (a.yield_per_1000 ?? 0) - (b.yield_per_1000 ?? 0))[0];
-  const faktor = oben && unten && unten.yield_per_1000 ? (oben.yield_per_1000 ?? 0) / unten.yield_per_1000 : null;
   const saetze = [
     {
-      title: "Die Briefwahl ist Rohrs bessere Hälfte.",
-      text: `Per Brief holte er ${prozent(p.rohr_pct_postal)} der Stimmen, die auf einen der beiden fielen — an der Urne ${prozent(p.rohr_pct_urn)}. 2021 war es bei Fuhrhop genauso. Briefwahl anbieten, an jeder Tür.`,
+      title: "Rohrs Anteil war bei der Briefwahl höher.",
+      text: `Unter den Stimmen für Rohr und Prange lag sein Anteil per Brief bei ${prozent(p.rohr_pct_postal)}, an der Urne bei ${prozent(p.rohr_pct_urn)}. Auch Fuhrhop erreichte 2021 per Brief einen höheren Anteil. Bei Gesprächen kann die Briefwahl zur Sprache kommen.`,
     },
     {
-      title: "Die Umworbenen wohnen dort, wo Rohr schwach ist.",
-      text: "Butzin und Küßner hatten ihre Stimmen in Bümmerstede, Kreyenbrück, Krusenbusch — nicht in Eversten. Hochburgen mobilisieren, die anderen Viertel überzeugen: kein Entweder-oder.",
+      title: "Butzin und Küßner bekamen je nach Stadtbezirk unterschiedlich viel Zuspruch.",
+      text: "In Krusenbusch, Bümmerstede und Kreyenbrück ging ein größerer Teil der gültigen OB-Stimmen an der Urne an sie als in Eversten. Daraus lässt sich nicht ableiten, wen diese Menschen in der Stichwahl wählen.",
     },
     {
-      title: faktor ? `Eine Tür in ${oben.district_name} bringt ${faktor.toFixed(1).replace(".", ",")}-mal so viel wie eine in ${unten.district_name}.` : "Der Ertrag je Tür streut stark.",
-      text: "Netto je 1.000 Wahlberechtigte, mit den Reglern von oben. Die Einsatzliste unten sortiert die Stadtbezirke genau danach.",
+      title: "Die Bezirksliste zeigt berechnete Veränderungen.",
+      text: "„Netto“ zeigt, wie sich Rohrs Abstand zu Prange mit den gewählten Annahmen verändern würde. Der Wert gilt für den ganzen Stadtbezirk. „Je 1.000 Wahlberechtigte“ rechnet ihn auf eine einheitliche Größe um, damit sich große und kleine Bezirke vergleichen lassen. Wie wirksam Gespräche an Haustüren wären, lässt sich daraus nicht ablesen.",
     },
   ];
   return (
@@ -186,24 +183,26 @@ export function PotenzialView() {
             </span>
           </div>
           <h1 className="mt-2 font-display text-[28px] font-bold leading-tight tracking-tight sm:text-[34px]">
-            Wo eine Tür am meisten bringt
+            Stichwahl-Potenzial in Oldenburg
           </h1>
           <p className="mt-2 max-w-2xl text-[14.5px] leading-relaxed text-muted-foreground">
-            Das Wähler*innen-Potenzial für Jascha Rohr in der Stichwahl am 27. September — gerechnet aus den 133
-            Wahlbezirken des ersten Wahlgangs, den Zweitstimmen der Ratswahl und der letzten Stichwahl. Wer die
-            Ausgeschiedenen gewählt hat, ist bekannt; wohin diese Stimmen gehen, ist eine Annahme — die Regler.
+            Diese Auswertung zur Stichwahl am 27. September nutzt die Ergebnisse aus 133 Wahlbezirken, die Ratswahl
+            und die beiden früheren Stichwahlen. Wie viele Stimmen die ausgeschiedenen Kandidaturen erhielten, ist
+            bekannt. Wie sich Stimmen in der Stichwahl verteilen könnten, zeigen die Annahmen in den Reglern.
           </p>
         </header>
 
         <Tafel p={data} rechnet={isFetching} />
         <div className="print:hidden">
           <Befunde p={data} />
-          <ReglerTafel regler={regler} onChange={setRegler} annahmen={data.assumptions} />
+          <ReglerTafel regler={regler} onChange={setRegler} annahmen={data.assumptions} cduWaehlende={data.cdu_voters_est}
+            modellStimmenquote={100 * (data.projected_rohr + data.projected_prange) / (data.rohr + data.prange + data.pool)} />
           <PotenzialKarte bezirke={urne} zaehler={data.strategy_counts} />
         </div>
         <Einsatzliste buendel={data.bundles} bezirke={urne} />
         <div className="print:hidden">
           <Briefwahl p={data} />
+          <Lehren2014 p={data} />
           <Lehren2021 p={data} />
           <Vorbehalte p={data} />
         </div>

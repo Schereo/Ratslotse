@@ -16815,6 +16815,128 @@
         "title": "RolesUpdate",
         "type": "object"
       },
+      "RunoffCandidateStrength": {
+        "properties": {
+          "strong": {
+            "$ref": "#/components/schemas/RunoffStrengthGroup"
+          },
+          "weak": {
+            "$ref": "#/components/schemas/RunoffStrengthGroup"
+          }
+        },
+        "required": [
+          "weak",
+          "strong"
+        ],
+        "title": "RunoffCandidateStrength",
+        "type": "object"
+      },
+      "RunoffLessons2014": {
+        "description": "Krogmann gegen Baak, 28.09./12.10.2014 — die Stichwahl OHNE andere Wahl\nam selben Tag, also die Gegenprobe zu 2021: Wie veränderten sich die\nWählenden- und Stimmenzahlen?",
+        "properties": {
+          "baak_first": {
+            "title": "Baak First",
+            "type": "integer"
+          },
+          "baak_growth_by_fifth": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Baak Growth By Fifth",
+            "type": "array"
+          },
+          "baak_runoff": {
+            "title": "Baak Runoff",
+            "type": "integer"
+          },
+          "baak_strength": {
+            "$ref": "#/components/schemas/RunoffCandidateStrength"
+          },
+          "eliminated_first": {
+            "title": "Eliminated First",
+            "type": "integer"
+          },
+          "krogmann_first": {
+            "title": "Krogmann First",
+            "type": "integer"
+          },
+          "krogmann_growth_by_fifth": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Krogmann Growth By Fifth",
+            "type": "array"
+          },
+          "krogmann_pct_postal_first": {
+            "title": "Krogmann Pct Postal First",
+            "type": "number"
+          },
+          "krogmann_pct_postal_runoff": {
+            "title": "Krogmann Pct Postal Runoff",
+            "type": "number"
+          },
+          "krogmann_pct_urn_first": {
+            "title": "Krogmann Pct Urn First",
+            "type": "number"
+          },
+          "krogmann_pct_urn_runoff": {
+            "title": "Krogmann Pct Urn Runoff",
+            "type": "number"
+          },
+          "krogmann_runoff": {
+            "title": "Krogmann Runoff",
+            "type": "integer"
+          },
+          "krogmann_strength": {
+            "$ref": "#/components/schemas/RunoffCandidateStrength"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "return_by_fifth": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Return By Fifth",
+            "type": "array"
+          },
+          "return_rate_pct": {
+            "title": "Return Rate Pct",
+            "type": "number"
+          },
+          "voters_first": {
+            "title": "Voters First",
+            "type": "integer"
+          },
+          "voters_runoff": {
+            "title": "Voters Runoff",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "voters_first",
+          "voters_runoff",
+          "return_rate_pct",
+          "krogmann_first",
+          "krogmann_runoff",
+          "baak_first",
+          "baak_runoff",
+          "eliminated_first",
+          "return_by_fifth",
+          "krogmann_growth_by_fifth",
+          "baak_growth_by_fifth",
+          "krogmann_strength",
+          "baak_strength",
+          "krogmann_pct_urn_first",
+          "krogmann_pct_urn_runoff",
+          "krogmann_pct_postal_first",
+          "krogmann_pct_postal_runoff",
+          "note"
+        ],
+        "title": "RunoffLessons2014",
+        "type": "object"
+      },
       "RunoffLessons2021": {
         "properties": {
           "fuhrhop_first": {
@@ -16926,6 +17048,10 @@
             "title": "Cdu To Rohr",
             "type": "number"
           },
+          "cdu_voters_est": {
+            "title": "Cdu Voters Est",
+            "type": "integer"
+          },
           "districts": {
             "items": {
               "$ref": "#/components/schemas/RunoffPotentialDistrict"
@@ -16933,9 +17059,16 @@
             "title": "Districts",
             "type": "array"
           },
+          "eligible": {
+            "title": "Eligible",
+            "type": "integer"
+          },
           "lead": {
             "title": "Lead",
             "type": "integer"
+          },
+          "lessons_2014": {
+            "$ref": "#/components/schemas/RunoffLessons2014"
           },
           "lessons_2021": {
             "$ref": "#/components/schemas/RunoffLessons2021"
@@ -17004,6 +17137,14 @@
           "turnout_rohr": {
             "title": "Turnout Rohr",
             "type": "number"
+          },
+          "voters": {
+            "title": "Voters",
+            "type": "integer"
+          },
+          "votes_per_voter": {
+            "title": "Votes Per Voter",
+            "type": "number"
           }
         },
         "required": [
@@ -17011,7 +17152,11 @@
           "prange",
           "lead",
           "pool",
+          "eligible",
+          "voters",
           "cdu_council",
+          "cdu_voters_est",
+          "votes_per_voter",
           "non_voters",
           "rohr_pct_urn",
           "rohr_pct_postal",
@@ -17030,6 +17175,7 @@
           "districts",
           "bundles",
           "lessons_2021",
+          "lessons_2014",
           "caveats"
         ],
         "title": "RunoffPotential",
@@ -17150,8 +17296,16 @@
             "title": "Area Roman",
             "type": "string"
           },
+          "ballot_papers": {
+            "title": "Ballot Papers",
+            "type": "integer"
+          },
           "cdu_council": {
             "title": "Cdu Council",
+            "type": "integer"
+          },
+          "cdu_voters_est": {
+            "title": "Cdu Voters Est",
             "type": "integer"
           },
           "district_name": {
@@ -17253,6 +17407,7 @@
           "district_name",
           "eligible",
           "voters",
+          "ballot_papers",
           "non_voters",
           "rohr",
           "prange",
@@ -17260,6 +17415,7 @@
           "pool",
           "pool_pct",
           "cdu_council",
+          "cdu_voters_est",
           "eliminated",
           "projected_rohr",
           "projected_prange",
@@ -17361,6 +17517,40 @@
           "caveats"
         ],
         "title": "RunoffProjection",
+        "type": "object"
+      },
+      "RunoffStrengthGroup": {
+        "description": "Stimmenzahl in gleich vielen schwachen oder starken Urnenbezirken.",
+        "properties": {
+          "change": {
+            "title": "Change",
+            "type": "integer"
+          },
+          "change_pct": {
+            "title": "Change Pct",
+            "type": "number"
+          },
+          "districts": {
+            "title": "Districts",
+            "type": "integer"
+          },
+          "first": {
+            "title": "First",
+            "type": "integer"
+          },
+          "runoff": {
+            "title": "Runoff",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "districts",
+          "first",
+          "runoff",
+          "change",
+          "change_pct"
+        ],
+        "title": "RunoffStrengthGroup",
         "type": "object"
       },
       "SessionDetail": {
@@ -29956,6 +30146,18 @@
             }
           },
           {
+            "description": "Castur und Stille zusammen",
+            "in": "query",
+            "name": "others",
+            "required": false,
+            "schema": {
+              "description": "Castur und Stille zusammen",
+              "pattern": "^\\d{1,3},\\d{1,3}$",
+              "title": "Others",
+              "type": "string"
+            }
+          },
+          {
             "in": "query",
             "name": "cdu",
             "required": false,
@@ -29970,7 +30172,7 @@
             "name": "turnout_rohr",
             "required": false,
             "schema": {
-              "default": 100,
+              "default": 95.0,
               "maximum": 150,
               "minimum": 0,
               "title": "Turnout Rohr",
@@ -29982,7 +30184,7 @@
             "name": "turnout_prange",
             "required": false,
             "schema": {
-              "default": 100,
+              "default": 95.0,
               "maximum": 150,
               "minimum": 0,
               "title": "Turnout Prange",
@@ -29994,7 +30196,7 @@
             "name": "turnout_pool",
             "required": false,
             "schema": {
-              "default": 100,
+              "default": 95.0,
               "maximum": 150,
               "minimum": 0,
               "title": "Turnout Pool",

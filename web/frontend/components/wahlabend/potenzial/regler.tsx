@@ -1,7 +1,7 @@
 "use client";
 
 // Die Regler: je ausgeschiedener Kandidatur zwei Anteile (zu Rohr, zu
-// Prange — der Rest bleibt zu Hause), dazu die CDU-Zweitstimmen und die
+// Prange — der Rest geht zu keinem), dazu die CDU-Wählenden der Ratswahl und die
 // Beteiligung der drei Lager. Bauform wie im Haushalts-Labor
 // (`components/haushalt/regler.tsx`), nur schmaler: Hier stehen zwölf
 // Schieber nebeneinander, ein Titel und eine Zahl je Schieber reichen.
@@ -10,7 +10,7 @@ import { RotateCcw } from "lucide-react";
 import { KICKER } from "@/components/wahlabend/bausteine";
 import { KANDIDATUREN, VORGABE, paarSetzen, type Paar, type Potenzial, type Regler } from "@/lib/potenzial";
 import { cn } from "@/lib/utils";
-import { zahl } from "@/lib/wahlabend";
+import { prozent, zahl } from "@/lib/wahlabend";
 
 function Schieber({ id, name, wert, min = 0, max = 100, step = 5, einheit = "%", onChange, ton = "signal", vorgabe }: {
   id: string;
@@ -74,15 +74,19 @@ function PaarKarte({ slug, titel, kurz, untertitel, paar, vorgabe, onChange }: {
         <Schieber id={`r-${slug}-prange`} name={`${kurz} zu Prange`} wert={paar.prange} vorgabe={vorgabe.prange}
           onChange={(v) => onChange(paarSetzen(paar, "prange", v))} ton="grau" />
       </div>
-      <p className="mt-2.5 font-mono text-[11px] text-muted-foreground">bleiben zu Hause: {zuhause} %</p>
+      <p className="mt-2.5 font-mono text-[11px] text-muted-foreground">Für keinen der beiden: {zuhause} %</p>
     </div>
   );
 }
 
-export function ReglerTafel({ regler, onChange, annahmen }: {
+export function ReglerTafel({ regler, onChange, annahmen, cduWaehlende, modellStimmenquote }: {
   regler: Regler;
   onChange: (r: Regler) => void;
   annahmen: Potenzial["assumptions"];
+  /** CDU-Wählende der Ratswahl, aus den Stimmen geschätzt. */
+  cduWaehlende: number;
+  /** Gültige Stimmen für Rohr/Prange im Modell relativ zu allen gültigen OB-Stimmen im ersten Wahlgang. */
+  modellStimmenquote: number;
 }) {
   const stimmen = new Map(annahmen.map((a) => [a.slug, a.votes]));
   const unveraendert = JSON.stringify(regler) === JSON.stringify(VORGABE);
@@ -91,11 +95,12 @@ export function ReglerTafel({ regler, onChange, annahmen }: {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <div className={KICKER}>Annahmen</div>
-          <h2 className="mt-1 font-display text-[22px] font-bold tracking-tight">Wer geht wohin?</h2>
+          <h2 className="mt-1 font-display text-[22px] font-bold tracking-tight">Annahmen für die Stichwahl</h2>
           <p className="mt-1 max-w-2xl text-[13.5px] leading-relaxed text-muted-foreground">
-            Die Regler sind Einschätzungen, keine Messung — 2021 taugt nicht als Vorlage, weil die Stichwahl damals auf
-            den Tag der Bundestagswahl fiel. Die Vorgaben sind Tims Bild vom 16. September; der Strich auf jeder Skala
-            markiert sie.
+            Die Regler zeigen Einschätzungen, keine gemessenen Wechsel. Die Markierung auf jeder Skala zeigt die
+            voreingestellte Annahme. Die Beteiligung bei der letzten Stichwahl ist wegen der gleichzeitigen Bundestagswahl kein direkter
+            Maßstab. Der CDU-Regler berücksichtigt, dass diese Menschen im ersten Wahlgang bereits gewählt haben. Er
+            verändert deshalb den Stimmenabstand, statt zusätzliche Ratswahlstimmen als Personen zu zählen.
           </p>
         </div>
         <button
@@ -124,9 +129,9 @@ export function ReglerTafel({ regler, onChange, annahmen }: {
         ))}
         <PaarKarte
           slug="cdu"
-          titel="CDU-Zweitstimmen"
+          titel="CDU-Wählende der Ratswahl"
           kurz="CDU"
-          untertitel="Ratswahl, keine eigene Kandidatur"
+          untertitel={`≈ ${zahl(cduWaehlende)} Personen`}
           paar={regler.cdu}
           vorgabe={VORGABE.cdu}
           onChange={(p) => onChange({ ...regler, cdu: p })}
@@ -134,21 +139,27 @@ export function ReglerTafel({ regler, onChange, annahmen }: {
       </div>
 
       <div className="mt-3 rounded-2xl border border-border bg-card p-4">
-        <div className="flex items-baseline justify-between gap-2">
-          <h3 className="text-[14px] font-semibold">Beteiligung</h3>
-          <span className="font-mono text-[11px] text-muted-foreground">wer wiederkommt, in % des 1. Wahlgangs</span>
+        <div className="flex flex-wrap items-baseline gap-2">
+          <h3 className="text-[14px] font-semibold">Beteiligung der Ausgangsgruppen</h3>
+          <span className="font-mono text-[11px] text-muted-foreground">im Verhältnis zum ersten Wahlgang</span>
         </div>
         <div className="mt-3 grid gap-3 sm:grid-cols-3">
-          <Schieber id="r-turnout-rohr" name="Rohr-Basis" wert={regler.turnoutRohr} vorgabe={100} min={60} max={120} step={1}
+          <Schieber id="r-turnout-rohr" name="Rohr-Basis" wert={regler.turnoutRohr} vorgabe={VORGABE.turnoutRohr} min={60} max={120} step={1}
             onChange={(v) => onChange({ ...regler, turnoutRohr: v })} ton="signal" />
-          <Schieber id="r-turnout-prange" name="Prange-Basis" wert={regler.turnoutPrange} vorgabe={100} min={60} max={120} step={1}
+          <Schieber id="r-turnout-prange" name="Prange-Basis" wert={regler.turnoutPrange} vorgabe={VORGABE.turnoutPrange} min={60} max={120} step={1}
             onChange={(v) => onChange({ ...regler, turnoutPrange: v })} ton="grau" />
-          <Schieber id="r-turnout-pool" name="Umworbene" wert={regler.turnoutPool} vorgabe={100} min={60} max={120} step={1}
+          <Schieber id="r-turnout-pool" name="Stimmen für Ausgeschiedene" wert={regler.turnoutPool} vorgabe={VORGABE.turnoutPool} min={60} max={120} step={1}
             onChange={(v) => onChange({ ...regler, turnoutPool: v })} ton="primary" />
         </div>
         <p className="mt-2.5 text-[12px] leading-relaxed text-muted-foreground">
-          Über 100 heißt: Es kommen mehr als beim ersten Mal — 2021 waren es in der Stichwahl 12 % mehr Wählende, aber
-          das war die Bundestagswahl am selben Tag. Ohne sie ist unter 100 die ehrlichere Annahme.
+          Die Vorgabe nimmt an: Von 100 Menschen, die im ersten Wahlgang Rohr, Prange oder eine ausgeschiedene Kandidatur
+          gewählt haben, gehen jeweils {VORGABE.turnoutRohr} auch zur Stichwahl. Das ist eine Annahme, keine Messung.
+          Von den Stimmen für ausgeschiedene Kandidaturen wird außerdem nicht jede Rohr oder Prange zugerechnet.
+        </p>
+        <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
+          Mit den gewählten Annahmen ergeben sich für Rohr und Prange zusammen rund {prozent(modellStimmenquote, 0)} der
+          gültigen OB-Stimmenzahl aus dem ersten Wahlgang. Das ist keine exakte Wahlbeteiligung, weil ungültige Stimmen
+          fehlen. Der Anstieg bei der letzten Stichwahl ist wegen der gleichzeitigen Bundestagswahl kein Ausgangswert für dieses Modell.
         </p>
       </div>
     </section>

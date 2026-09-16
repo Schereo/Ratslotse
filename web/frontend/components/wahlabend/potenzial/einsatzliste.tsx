@@ -66,11 +66,14 @@ export function Einsatzliste({ buendel, bezirke }: { buendel: PotenzialBuendel[]
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <div className={KICKER}>Einsatzliste</div>
-          <h2 className="mt-1 font-display text-[22px] font-bold tracking-tight">Die Stadtbezirke, nach Ertrag</h2>
+          <h2 className="mt-1 font-display text-[22px] font-bold tracking-tight">Stadtbezirke im Vergleich</h2>
           <p className="mt-1 max-w-2xl text-[13.5px] leading-relaxed text-muted-foreground print:hidden">
-            Was ein Team an einem Nachmittag schafft, ist ein Stadtbezirk — deshalb sind die Bezirke so gebündelt. Netto
-            heißt: so viele Stimmen Vorsprung gewinnt Rohr dort mit den Reglern von oben. Der Haken merkt sich, was
-            vergeben ist — in diesem Browser.
+            Die Wahlbezirke sind nach Stadtbezirken zusammengefasst. Ein Stadtbezirk ist dabei als Einsatz für einen
+            Nachmittag gedacht. Die beiden Zahlen rechts zeigen, wie sich Rohrs Stimmenabstand zu Prange nach den
+            gewählten Annahmen verändern würde: zuerst in Stimmen für den Bezirk, dann umgerechnet auf 1.000
+            Wahlberechtigte. Ein Plus bedeutet, dass Rohr rechnerisch aufholt. Die Liste ist nach dem ersten Wert
+            sortiert. Mit den Häkchen kannst du festhalten, welche Bezirke übernommen wurden; sie werden nur in
+            diesem Browser gespeichert.
           </p>
         </div>
         <div className="flex items-center gap-2 print:hidden">
@@ -104,16 +107,16 @@ export function Einsatzliste({ buendel, bezirke }: { buendel: PotenzialBuendel[]
                 <span className="min-w-0 flex-1">
                   <span className="block text-[15px] font-semibold">{b.district_name}</span>
                   <span className="block text-[12px] text-muted-foreground">
-                    {b.districts} Bezirke · {zahl(b.eligible)} Wahlberechtigte · Rohr {prozent(b.rohr_pct_of_two, 0)} · {zahl(b.non_voters)} nicht gekommen
+                    {b.districts} {b.districts === 1 ? "Bezirk" : "Bezirke"} · {zahl(b.eligible)} Wahlberechtigte · Rohr {prozent(b.rohr_pct_of_two, 0)} · {zahl(b.non_voters)} Nichtwählende (geschätzt)
                   </span>
                 </span>
-                <span className="flex-none text-right">
+                <span className="w-20 flex-none text-right sm:w-28">
                   <span className="block font-mono text-[15px] font-semibold tabular-nums">{netto(b.net_total)}</span>
-                  <span className={KICKER}>netto</span>
+                  <span className="block text-[10px] leading-tight text-muted-foreground">Änderung des Abstands</span>
                 </span>
-                <span className="hidden flex-none text-right sm:block">
-                  <span className="block font-mono text-[15px] font-semibold tabular-nums">{b.yield_per_1000?.toFixed(0) ?? "–"}</span>
-                  <span className={KICKER}>je 1.000</span>
+                <span className="hidden w-28 flex-none text-right sm:block">
+                  <span className="block font-mono text-[15px] font-semibold tabular-nums">{b.yield_per_1000 === null ? "–" : netto(b.yield_per_1000)}</span>
+                  <span className="block text-[10px] leading-tight text-muted-foreground">je 1.000 Wahlberechtigte</span>
                 </span>
                 <span className="hidden w-14 flex-none text-right font-mono text-[12px] tabular-nums text-muted-foreground sm:block print:hidden">
                   {erledigt}/{zeilen.length}
@@ -121,30 +124,47 @@ export function Einsatzliste({ buendel, bezirke }: { buendel: PotenzialBuendel[]
                 <ChevronDown className={cn("h-4 w-4 flex-none text-muted-foreground transition-transform print:hidden", ist && "rotate-180")} aria-hidden />
               </button>
               {ist ? (
-                <ul className="border-t border-border">
-                  {zeilen.map((z) => {
-                    const an = haken.has(z.number);
-                    return (
-                      <li key={z.number} className={cn("flex items-center gap-3 px-4 py-2 text-[13px]", an && "opacity-60")}>
-                        <input
-                          type="checkbox"
-                          checked={an}
-                          onChange={(e) => setzen(z.number, e.target.checked)}
-                          aria-label={`Bezirk ${z.number} übernommen`}
-                          className="h-4 w-4 flex-none accent-[hsl(var(--primary))]"
-                        />
-                        <span className="w-9 flex-none font-mono text-[12px] text-muted-foreground">{z.number}</span>
-                        <span className={cn("min-w-0 flex-1 truncate", an && "line-through")}>{z.name}</span>
-                        <span className="hidden flex-none rounded-full px-2 py-0.5 text-[11px] font-medium sm:inline"
-                          style={{ background: STRATEGIE_FARBE[z.strategy] ?? "hsl(var(--muted))" }}>
-                          {STRATEGIE[z.strategy]?.title ?? z.strategy}
-                        </span>
-                        <span className="w-14 flex-none text-right font-mono text-[12px] tabular-nums">{netto(z.net_total)}</span>
-                        <span className="hidden w-10 flex-none text-right font-mono text-[12px] tabular-nums sm:block">{z.yield_per_1000?.toFixed(0) ?? "–"}</span>
-                      </li>
-                    );
-                  })}
-                </ul>
+                <div className="border-t border-border">
+                  <div className="flex items-end gap-3 border-b border-border bg-muted/30 px-4 py-2 text-[11px] leading-tight text-muted-foreground">
+                    <span className="w-4 flex-none" />
+                    <span className="w-9 flex-none">Nr.</span>
+                    <span className="min-w-0 flex-1">Wahlbezirk</span>
+                    <span className="hidden w-28 flex-none sm:block">Einordnung</span>
+                    <span className="w-20 flex-none text-right sm:w-28">Änderung des Abstands in Stimmen</span>
+                    <span className="hidden w-28 flex-none text-right sm:block">Änderung je 1.000 Wahlberechtigte</span>
+                  </div>
+                  <ul>
+                    {zeilen.map((z) => {
+                      const an = haken.has(z.number);
+                      return (
+                        <li key={z.number} className={cn("flex items-center gap-3 px-4 py-2 text-[13px]", an && "opacity-60")}>
+                          <input
+                            type="checkbox"
+                            checked={an}
+                            onChange={(e) => setzen(z.number, e.target.checked)}
+                            aria-label={`Bezirk ${z.number} übernommen`}
+                            className="h-4 w-4 flex-none accent-[hsl(var(--primary))]"
+                          />
+                          <span className="w-9 flex-none font-mono text-[12px] text-muted-foreground">{z.number}</span>
+                          <span className={cn("min-w-0 flex-1 truncate", an && "line-through")}>{z.name}</span>
+                          <span className="hidden w-28 flex-none sm:block">
+                            <span className="inline-block rounded-full px-2 py-0.5 text-[11px] font-medium"
+                              style={{ background: STRATEGIE_FARBE[z.strategy] ?? "hsl(var(--muted))" }}>
+                              {STRATEGIE[z.strategy]?.title ?? z.strategy}
+                            </span>
+                          </span>
+                          <span className="w-20 flex-none text-right font-mono text-[12px] tabular-nums sm:w-28">
+                            <span className="sr-only">Änderung des Stimmenabstands in Stimmen: </span>{netto(z.net_total)}
+                          </span>
+                          <span className="hidden w-28 flex-none text-right font-mono text-[12px] tabular-nums sm:block">
+                            <span className="sr-only">Änderung je 1.000 Wahlberechtigte: </span>
+                            {z.yield_per_1000 === null ? "–" : netto(z.yield_per_1000)}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
               ) : null}
             </li>
           );
