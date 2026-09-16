@@ -5299,6 +5299,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/wahlabend/stichwahl/potenzial": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stichwahl Potenzial
+         * @description Das Wähler*innen-Potenzial je Wahlbezirk zu einem Reglerstand
+         *     (docs/plan-stichwahl-potenzial.md). Nur mit Token; sonst 404.
+         */
+        get: operations["stichwahl_potenzial_api_wahlabend_stichwahl_potenzial_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/wahlabend/wahlbezirke": {
         parameters: {
             query?: never;
@@ -12260,6 +12281,179 @@ export interface components {
         RolesUpdate: {
             /** Roles */
             roles?: string[];
+        };
+        /** RunoffLessons2021 */
+        RunoffLessons2021: {
+            /** Fuhrhop First */
+            fuhrhop_first: number;
+            /** Fuhrhop Growth By Fifth */
+            fuhrhop_growth_by_fifth: number[];
+            /** Fuhrhop Pct Postal First */
+            fuhrhop_pct_postal_first: number;
+            /** Fuhrhop Pct Postal Runoff */
+            fuhrhop_pct_postal_runoff: number;
+            /** Fuhrhop Pct Urn First */
+            fuhrhop_pct_urn_first: number;
+            /** Fuhrhop Pct Urn Runoff */
+            fuhrhop_pct_urn_runoff: number;
+            /** Fuhrhop Runoff */
+            fuhrhop_runoff: number;
+            /** Krogmann First */
+            krogmann_first: number;
+            /** Krogmann Runoff */
+            krogmann_runoff: number;
+            /** Note */
+            note: string;
+            /** Voters First */
+            voters_first: number;
+            /** Voters Runoff */
+            voters_runoff: number;
+        };
+        /**
+         * RunoffPotential
+         * @description ``GET /api/wahlabend/stichwahl/potenzial?token=…`` — die ganze Rechnung
+         *     zu einem Reglerstand. Alles hier ist gerechnet, nichts davon ist Prognose;
+         *     ``caveats`` sagt es in Sätzen.
+         */
+        RunoffPotential: {
+            /** Assumptions */
+            assumptions: components["schemas"]["RunoffPotentialAssumption"][];
+            /** Balance */
+            balance: number;
+            /** Bundles */
+            bundles: components["schemas"]["RunoffPotentialBundle"][];
+            /** Caveats */
+            caveats: string[];
+            /** Cdu Council */
+            cdu_council: number;
+            /** Cdu To Prange */
+            cdu_to_prange: number;
+            /** Cdu To Rohr */
+            cdu_to_rohr: number;
+            /** Districts */
+            districts: components["schemas"]["RunoffPotentialDistrict"][];
+            /** Lead */
+            lead: number;
+            lessons_2021: components["schemas"]["RunoffLessons2021"];
+            /** Net Total */
+            net_total: number;
+            /** Non Voters */
+            non_voters: number;
+            /** Pool */
+            pool: number;
+            /** Pool Pct Median */
+            pool_pct_median: number;
+            /** Prange */
+            prange: number;
+            /** Projected Prange */
+            projected_prange: number;
+            /** Projected Rohr */
+            projected_rohr: number;
+            /** Rohr */
+            rohr: number;
+            /** Rohr Pct Postal */
+            rohr_pct_postal: number | null;
+            /** Rohr Pct Urn */
+            rohr_pct_urn: number | null;
+            /** Strategy Counts */
+            strategy_counts: {
+                [key: string]: number;
+            };
+            /** Turnout Pool */
+            turnout_pool: number;
+            /** Turnout Prange */
+            turnout_prange: number;
+            /** Turnout Rohr */
+            turnout_rohr: number;
+        };
+        /** RunoffPotentialAssumption */
+        RunoffPotentialAssumption: {
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+            /** To Prange */
+            to_prange: number;
+            /** To Rohr */
+            to_rohr: number;
+            /** Votes */
+            votes: number;
+        };
+        /** RunoffPotentialBundle */
+        RunoffPotentialBundle: {
+            /** District Name */
+            district_name: string;
+            /** Districts */
+            districts: number;
+            /** Eligible */
+            eligible: number;
+            /** Net Total */
+            net_total: number;
+            /** Non Voters */
+            non_voters: number;
+            /** Numbers */
+            numbers: number[];
+            /** Pool */
+            pool: number;
+            /** Prange */
+            prange: number;
+            /** Rohr */
+            rohr: number;
+            /** Rohr Pct Of Two */
+            rohr_pct_of_two: number | null;
+            /** Yield Per 1000 */
+            yield_per_1000: number | null;
+        };
+        /** RunoffPotentialDistrict */
+        RunoffPotentialDistrict: {
+            /** Area */
+            area: number;
+            /** Area Roman */
+            area_roman: string;
+            /** Cdu Council */
+            cdu_council: number;
+            /** District Name */
+            district_name: string;
+            /** Eligible */
+            eligible: number;
+            /** Eliminated */
+            eliminated: {
+                [key: string]: number;
+            };
+            /** Name */
+            name: string;
+            /** Net Cdu */
+            net_cdu: number;
+            /** Net Convince */
+            net_convince: number;
+            /** Net Total */
+            net_total: number;
+            /** Non Voters */
+            non_voters: number;
+            /** Number */
+            number: number;
+            /** Pool */
+            pool: number;
+            /** Pool Pct */
+            pool_pct: number;
+            /** Postal */
+            postal: boolean;
+            /** Prange */
+            prange: number;
+            /** Projected Prange */
+            projected_prange: number;
+            /** Projected Rohr */
+            projected_rohr: number;
+            /** Rohr */
+            rohr: number;
+            /** Rohr Pct Of Two */
+            rohr_pct_of_two: number | null;
+            /** Strategy */
+            strategy: string;
+            /** Voters */
+            voters: number;
+            /** Yield Per 1000 */
+            yield_per_1000: number | null;
         };
         /**
          * RunoffProjection
@@ -20088,6 +20282,48 @@ export interface operations {
             };
         };
     };
+    stichwahl_potenzial_api_wahlabend_stichwahl_potenzial_get: {
+        parameters: {
+            query?: {
+                /** @description WAHLKAMPF_TOKEN aus der .env */
+                token?: string | null;
+                /** @description zu Rohr,zu Prange in Prozent */
+                boldt?: string;
+                kuessner?: string;
+                butzin?: string;
+                froehlich?: string;
+                wilkens?: string;
+                cdu?: string;
+                turnout_rohr?: number;
+                turnout_prange?: number;
+                turnout_pool?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunoffPotential"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     wahlabend_wahlbezirke_api_wahlabend_wahlbezirke_get: {
         parameters: {
             query?: {
@@ -20188,4 +20424,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 4e89826327b8e00d0613f79efa116ce5d85604f4aa3ca25fb809d19cf58a368c
+// vertrag-sha256: 387584a29497b7e39b71304807cbfd23b64e182d5ab3fd7d329cc71a34e46def
