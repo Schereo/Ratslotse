@@ -68,7 +68,7 @@ function Bezirkstafel({ z, schliessen }: { z: PotenzialBezirk; schliessen: () =>
       </div>
 
       <div className="mt-3">
-        <div className={KICKER}>Umworbene: {zahl(z.pool)} · {prozent(z.pool_pct)} der gültigen</div>
+        <div className={KICKER}>Umworbene: {zahl(z.pool)} Stimmen · {prozent(z.pool_pct)} der gültigen Stimmen</div>
         <ul className="mt-1.5 space-y-1">
           {KANDIDATUREN.map((k) => {
             const n = z.eliminated[k.slug] ?? 0;
@@ -126,8 +126,9 @@ export function PotenzialKarte({ bezirke, zaehler }: { bezirke: PotenzialBezirk[
       <div className={KICKER}>Karte</div>
       <h2 className="mt-1 font-display text-[22px] font-bold tracking-tight">Wo halten, wo überzeugen</h2>
       <p className="mt-1 max-w-2xl text-[13.5px] leading-relaxed text-muted-foreground">
-        Jeder Urnenbezirk trägt eine Einstufung aus zwei Fragen: Liegt Rohr hier vorn (dann muss die Basis kommen), und
-        wohnen hier viele Umworbene (dann lohnt das Gespräch)? Die Briefwahl hat keine Fläche — sie steht weiter unten.
+        Die Einstufung jedes Urnenbezirks beruht auf zwei Fragen: Lag Rohr hier im ersten Wahlgang vorn (dann muss die
+        Basis wiederkommen)? Und wie viele Stimmen gingen an die ausgeschiedenen Kandidaturen (dann lohnt das Gespräch)?
+        Die Briefwahl lässt sich keinem Bezirk zuordnen; sie steht weiter unten.
       </p>
 
       <div className="mt-4 overflow-x-auto">
@@ -166,7 +167,7 @@ export function PotenzialKarte({ bezirke, zaehler }: { bezirke: PotenzialBezirk[
             <p className="mt-3 text-[12px] text-muted-foreground">
               Getönt nach {toenung?.legend}
               {spanne ? ` — von ${spanne[0].toFixed(1).replace(".", ",")} bis ${spanne[1].toFixed(1).replace(".", ",")}` : ""}.
-              Kräftiger ist mehr; gemessen zwischen dem schwächsten und dem stärksten Bezirk.
+              Je kräftiger die Farbe, desto höher der Wert im Vergleich zu den anderen Bezirken.
             </p>
           )}
         </div>
@@ -176,7 +177,7 @@ export function PotenzialKarte({ bezirke, zaehler }: { bezirke: PotenzialBezirk[
         ) : (
           <div className="rounded-2xl border border-dashed border-border p-4">
             <div className={KICKER}>Die sechs ergiebigsten Türen</div>
-            <p className="mt-1 text-[12.5px] text-muted-foreground">Netto je 1.000 Wahlberechtigte. Ein Tipp auf die Karte öffnet jeden Bezirk.</p>
+            <p className="mt-1 text-[12.5px] text-muted-foreground">Veränderung des Stimmenabstands je 1.000 Wahlberechtigte, mit den Reglern von oben. Ein Tipp auf die Karte öffnet jeden Bezirk.</p>
             <ol className="mt-3 space-y-1.5">
               {top.map((z) => (
                 <li key={z.number}>

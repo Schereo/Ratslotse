@@ -12282,6 +12282,11 @@ export interface components {
             /** Roles */
             roles?: string[];
         };
+        /** RunoffCandidateStrength */
+        RunoffCandidateStrength: {
+            strong: components["schemas"]["RunoffStrengthGroup"];
+            weak: components["schemas"]["RunoffStrengthGroup"];
+        };
         /**
          * RunoffLessons2014
          * @description Krogmann gegen Baak, 28.09./12.10.2014 — die Stichwahl OHNE andere Wahl
@@ -12295,6 +12300,7 @@ export interface components {
             baak_growth_by_fifth: number[];
             /** Baak Runoff */
             baak_runoff: number;
+            baak_strength: components["schemas"]["RunoffCandidateStrength"];
             /** Eliminated First */
             eliminated_first: number;
             /** Krogmann First */
@@ -12311,6 +12317,7 @@ export interface components {
             krogmann_pct_urn_runoff: number;
             /** Krogmann Runoff */
             krogmann_runoff: number;
+            krogmann_strength: components["schemas"]["RunoffCandidateStrength"];
             /** Note */
             note: string;
             /** Return By Fifth */
@@ -12547,6 +12554,24 @@ export interface components {
             shares: {
                 [key: string]: number;
             };
+        };
+        /**
+         * RunoffStrengthGroup
+         * @description Stimmen einer Kandidatur in gleich vielen schwachen oder starken
+         *     Urnenbezirken — absolut, damit ein Plus lesbar bleibt (ein Faktor 2,2 auf
+         *     100 Stimmen ist weniger als ein Faktor 1,5 auf 1.000).
+         */
+        RunoffStrengthGroup: {
+            /** Change */
+            change: number;
+            /** Change Pct */
+            change_pct: number;
+            /** Districts */
+            districts: number;
+            /** First */
+            first: number;
+            /** Runoff */
+            runoff: number;
         };
         /**
          * SessionDetail
@@ -20479,4 +20504,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: b08d8673ec8636947c7d315c456fe216400a96f1b8fc7157e138d38bcb027183
+// vertrag-sha256: 9fa888942c89b6b798a89c2921ee371b0b517ceae4c22855a88beefd151d5d1c

@@ -81,20 +81,20 @@ export function paarSetzen(p: Paar, seite: keyof Paar, wert: number): Paar {
 
 /** Die Einstufung je Bezirk, wie das Backend sie nennt — und ihr Wort dazu. */
 export const STRATEGIE: Record<string, { title: string; sentence: string }> = {
-  hold: { title: "Halten", sentence: "Rohr liegt hier vorn — die Basis muss am 27.09. kommen. Briefwahl anbieten." },
-  persuade: { title: "Überzeugen", sentence: "Hier wohnen die Umworbenen — Linke, Butzin, Küßner. Ansprechen, nicht bekräftigen." },
-  both: { title: "Beides", sentence: "Starke Basis und großer Pool — hier lohnt jede Tür doppelt." },
-  skip: { title: "Liegenlassen", sentence: "Wenig zu holen je Tür. Zuletzt, wenn überhaupt." },
-  postal: { title: "Briefwahl", sentence: "Keine Fläche, keine Türen — die Stimmen kommen von überall." },
+  hold: { title: "Halten", sentence: "Rohr lag hier im ersten Wahlgang vorn. Entscheidend ist, ob seine bisherigen Wählenden erneut abstimmen. Briefwahl anbieten." },
+  persuade: { title: "Überzeugen", sentence: "Hier gab es viele Stimmen für Boldt, Butzin und Küßner. Gespräche stehen im Vordergrund." },
+  both: { title: "Beides", sentence: "Hier kommen viele Rohr-Stimmen und viele Stimmen für die Ausgeschiedenen zusammen — Basis halten und Gespräche führen." },
+  skip: { title: "Liegenlassen", sentence: "Der berechnete Wert ist niedrig. Diesen Bezirk zuletzt einplanen, wenn überhaupt." },
+  postal: { title: "Briefwahl", sentence: "Die Briefwahlbezirke lassen sich keinem Wohngebiet auf der Karte zuordnen." },
 };
 
 /** Tönungs-Modi der Karte: Feld, Beschriftung, Legende. */
 export const TOENUNG = [
   { key: "yield_per_1000", title: "Ertrag je Tür", legend: "netto je 1.000 Wahlberechtigte" },
-  { key: "rohr_pct_of_two", title: "Rohr-Anteil", legend: "Rohr an den Stimmen der beiden, 1. Wahlgang" },
-  { key: "pool_pct", title: "Umworbene", legend: "Stimmen der Ausgeschiedenen, Anteil an den gültigen" },
-  { key: "cdu_council", title: "CDU", legend: "CDU-Stimmen der Ratswahl, je 100 Wahlberechtigte" },
-  { key: "non_voters", title: "Nichtwählende", legend: "Nichtwählende (geschätzt), Anteil an den Wahlberechtigten" },
+  { key: "rohr_pct_of_two", title: "Rohr-Anteil", legend: "Rohrs Anteil an den Stimmen für Rohr und Prange im ersten Wahlgang" },
+  { key: "pool_pct", title: "Umworbene", legend: "Anteil der Stimmen für ausgeschiedene Kandidaturen an allen gültigen Stimmen" },
+  { key: "cdu_council", title: "CDU", legend: "CDU-Stimmen bei der Ratswahl je 100 Wahlberechtigte" },
+  { key: "non_voters", title: "Nichtwählende", legend: "geschätzter Anteil der Nichtwählenden an den Wahlberechtigten" },
 ] as const;
 export type ToenungKey = (typeof TOENUNG)[number]["key"];
 

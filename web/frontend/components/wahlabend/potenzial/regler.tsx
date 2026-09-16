@@ -10,7 +10,7 @@ import { RotateCcw } from "lucide-react";
 import { KICKER } from "@/components/wahlabend/bausteine";
 import { KANDIDATUREN, VORGABE, paarSetzen, type Paar, type Potenzial, type Regler } from "@/lib/potenzial";
 import { cn } from "@/lib/utils";
-import { zahl } from "@/lib/wahlabend";
+import { prozent, zahl } from "@/lib/wahlabend";
 
 function Schieber({ id, name, wert, min = 0, max = 100, step = 5, einheit = "%", onChange, ton = "signal", vorgabe }: {
   id: string;
@@ -74,12 +74,12 @@ function PaarKarte({ slug, titel, kurz, untertitel, paar, vorgabe, onChange }: {
         <Schieber id={`r-${slug}-prange`} name={`${kurz} zu Prange`} wert={paar.prange} vorgabe={vorgabe.prange}
           onChange={(v) => onChange(paarSetzen(paar, "prange", v))} ton="grau" />
       </div>
-      <p className="mt-2.5 font-mono text-[11px] text-muted-foreground">zu keinem der beiden: {zuhause} %</p>
+      <p className="mt-2.5 font-mono text-[11px] text-muted-foreground">Für keinen der beiden: {zuhause} %</p>
     </div>
   );
 }
 
-export function ReglerTafel({ regler, onChange, annahmen, cduWaehlende, wiederkommen2014 }: {
+export function ReglerTafel({ regler, onChange, annahmen, cduWaehlende, wiederkommen2014, modellStimmenquote }: {
   regler: Regler;
   onChange: (r: Regler) => void;
   annahmen: Potenzial["assumptions"];
@@ -87,6 +87,8 @@ export function ReglerTafel({ regler, onChange, annahmen, cduWaehlende, wiederko
   cduWaehlende: number;
   /** Die gemessene Wiederkommen-Quote der Stichwahl 2014, in Prozent. */
   wiederkommen2014: number;
+  /** Rohr + Prange nach den Reglern, in % aller gültigen Stimmen des ersten Wahlgangs — die Plausibilitätsprobe. */
+  modellStimmenquote: number;
 }) {
   const quote = Math.round(wiederkommen2014);
   const wie2014 = regler.turnoutRohr === quote && regler.turnoutPrange === quote && regler.turnoutPool === quote;
@@ -99,10 +101,11 @@ export function ReglerTafel({ regler, onChange, annahmen, cduWaehlende, wiederko
           <div className={KICKER}>Annahmen</div>
           <h2 className="mt-1 font-display text-[22px] font-bold tracking-tight">Wer geht wohin?</h2>
           <p className="mt-1 max-w-2xl text-[13.5px] leading-relaxed text-muted-foreground">
-            Die Regler sind Einschätzungen, keine Messung — 2021 taugt nicht als Vorlage, weil die Stichwahl damals auf
-            den Tag der Bundestagswahl fiel. Die Vorgaben sind Tims Bild vom 16. September; der Strich auf jeder Skala
-            markiert sie. Die CDU-Wählenden haben im ersten Wahlgang schon jemanden gewählt — ihr Regler verschiebt nur
-            den Saldo, und er rechnet in Personen, nicht in Ratswahl-Stimmen.
+            Die Regler zeigen Einschätzungen, keine gemessenen Wechsel. Die Vorgaben sind eine Einschätzung vom
+            16. September; der Strich auf jeder Skala markiert sie. 2021 taugt nicht als Vorlage, weil die Stichwahl
+            damals auf den Tag der Bundestagswahl fiel. Der CDU-Regler berücksichtigt, dass diese Menschen im ersten
+            Wahlgang bereits gewählt haben: Er verändert nur den Stimmenabstand, und er rechnet in geschätzten
+            Personen, nicht in Ratswahl-Stimmen.
           </p>
         </div>
         <button
@@ -166,8 +169,12 @@ export function ReglerTafel({ regler, onChange, annahmen, cduWaehlende, wiederko
         </div>
         <p className="mt-2.5 text-[12px] leading-relaxed text-muted-foreground">
           Über 100 heißt: Es kommen mehr als beim ersten Mal — 2021 waren es 12 % mehr, aber das war die Bundestagswahl
-          am selben Tag. 2014, ohne andere Wahl, kamen {wiederkommen2014.toFixed(1).replace(".", ",")} % wieder, in den
-          Hochburgen des Siegers mehr als in seiner Diaspora. Unter 100 ist die ehrlichere Annahme.
+          am selben Tag. 2014, ohne andere Wahl, lag die Wählendenzahl der Stichwahl bei{" "}
+          {wiederkommen2014.toFixed(1).replace(".", ",")} % des ersten Wahlgangs. Unter 100 ist die vorsichtigere Annahme.
+        </p>
+        <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
+          Probe: Mit den gewählten Annahmen kommen Rohr und Prange zusammen auf rund {prozent(modellStimmenquote, 0)} der
+          gültigen Stimmen des ersten Wahlgangs.
         </p>
       </div>
     </section>

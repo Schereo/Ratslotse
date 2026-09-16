@@ -11,7 +11,7 @@
 // 2021. Gerechnet wird im Backend — jede Reglerstellung ist eine Anfrage,
 // die Seite hält die letzte Antwort, bis die neue da ist.
 //
-// Alles hier ist Rechnung, nichts Prognose. Die Regler sind Tims Einschätzung
+// Alles hier ist Rechnung, nichts Prognose. Die Regler sind Einschätzungen
 // in Zahlen; die Seite sagt das an jeder Stelle, an der jemand eine Zahl
 // für eine Messung halten könnte.
 
@@ -64,8 +64,8 @@ function Tafel({ p, rechnet }: { p: Potenzial; rechnet: boolean }) {
   return (
     <section data-testid="potenzial-tafel" className="hh-tafel mt-6 rounded-2xl border px-5 py-5 sm:px-7 sm:py-6">
       <div className="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-4">
-        <Kennzahl wert={zahl(p.lead)} name="Rückstand, 1. Wahlgang" hinweis={`Prange ${zahl(p.prange)} · Rohr ${zahl(p.rohr)}`} />
-        <Kennzahl wert={zahl(p.pool)} name="Umworbene" hinweis="Stimmen der fünf Ausgeschiedenen zusammen" />
+        <Kennzahl wert={zahl(p.lead)} name="Rückstand im ersten Wahlgang" hinweis={`Prange ${zahl(p.prange)} · Rohr ${zahl(p.rohr)}`} />
+        <Kennzahl wert={zahl(p.pool)} name="Umworbene" hinweis="Stimmen für alle sieben ausgeschiedenen Kandidaturen, einschließlich der unter „Sonstige“ zusammengefassten" />
         <Kennzahl wert={`≈ ${zahl(p.cdu_voters_est)}`} name="CDU-Wählende, Ratswahl" hinweis={`${zahl(p.cdu_council)} CDU-Stimmen der Ratswahl ÷ ${p.votes_per_voter.toFixed(2).replace(".", ",")} Stimmen je Wählendem — die CDU hatte keine eigene Kandidatur`} />
         <Kennzahl wert={zahl(p.non_voters)} name="Nichtwählende" hinweis={`${zahl(p.eligible)} Wahlberechtigte minus ${zahl(p.voters)} Wählende (Urne und Brief); je Bezirk geschätzt`} />
       </div>
@@ -80,8 +80,8 @@ function Tafel({ p, rechnet }: { p: Potenzial; rechnet: boolean }) {
           </span>
         </div>
         <p className="mt-1 text-[13px] text-muted-foreground">
-          Mit deinen Annahmen. Rohr gewinnt {zahl(p.net_total)} Stimmen Vorsprung gegenüber dem ersten Wahlgang — nötig
-          sind {zahl(p.lead + 1)}.
+          Nach deinen Annahmen verbessert sich Rohrs Stimmenabstand zu Prange gegenüber dem ersten Wahlgang um{" "}
+          {zahl(p.net_total)} Stimmen. Um Prange zu überholen, braucht er mindestens {zahl(p.lead + 1)}.
         </p>
 
         <div className="relative mt-4 h-7 overflow-hidden rounded-full bg-muted" role="img"
@@ -198,14 +198,15 @@ export function PotenzialView() {
         <Tafel p={data} rechnet={isFetching} />
         <div className="print:hidden">
           <Befunde p={data} />
-          <ReglerTafel regler={regler} onChange={setRegler} annahmen={data.assumptions} cduWaehlende={data.cdu_voters_est} wiederkommen2014={data.lessons_2014.return_rate_pct} />
+          <ReglerTafel regler={regler} onChange={setRegler} annahmen={data.assumptions} cduWaehlende={data.cdu_voters_est} wiederkommen2014={data.lessons_2014.return_rate_pct}
+            modellStimmenquote={(100 * (data.projected_rohr + data.projected_prange)) / (data.rohr + data.prange + data.pool)} />
           <PotenzialKarte bezirke={urne} zaehler={data.strategy_counts} />
         </div>
         <Einsatzliste buendel={data.bundles} bezirke={urne} />
         <div className="print:hidden">
           <Briefwahl p={data} />
-          <Lehren2021 p={data} />
           <Lehren2014 p={data} />
+          <Lehren2021 p={data} />
           <Vorbehalte p={data} />
         </div>
       </main>

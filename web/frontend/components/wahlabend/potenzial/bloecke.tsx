@@ -59,6 +59,10 @@ function mal(x: number): string {
   return `${x.toFixed(1).replace(".", ",")}-mal`;
 }
 
+function plus(n: number): string {
+  return `${n > 0 ? "+" : n < 0 ? "−" : ""}${zahl(Math.abs(n))}`;
+}
+
 export function Briefwahl({ p }: { p: Potenzial }) {
   const brief = p.districts.filter((z) => z.postal);
   const rohr = brief.reduce((s, z) => s + z.rohr, 0);
@@ -73,10 +77,11 @@ export function Briefwahl({ p }: { p: Potenzial }) {
         </div>
         <div className="text-[13.5px] leading-relaxed text-muted-foreground">
           <p>
-            Anteil an den Stimmen, die auf einen der beiden fielen. In den {brief.length} Briefwahlbezirken stand es{" "}
-            <strong className="font-semibold text-foreground">{zahl(rohr)} zu {zahl(prange)}</strong> für Rohr — dort liegen außerdem{" "}
-            {zahl(pool)} Stimmen der Ausgeschiedenen. 2021 hatte Fuhrhop dieselbe Schere: {prozent(p.lessons_2021.fuhrhop_pct_postal_runoff)} per
-            Brief, {prozent(p.lessons_2021.fuhrhop_pct_urn_runoff)} an der Urne.
+            Die Prozentwerte beziehen sich nur auf die Stimmen für Rohr und Prange. In den {brief.length} Briefwahlbezirken
+            erhielt Rohr <strong className="font-semibold text-foreground">{zahl(rohr)} Stimmen und Prange {zahl(prange)}</strong>;
+            dazu kamen {zahl(pool)} Stimmen für die Ausgeschiedenen. Auch 2021 lag der Briefwahlanteil des grünen
+            Kandidaten höher: Fuhrhop erreichte {prozent(p.lessons_2021.fuhrhop_pct_postal_runoff)} per Brief und{" "}
+            {prozent(p.lessons_2021.fuhrhop_pct_urn_runoff)} an der Urne.
           </p>
           <p className="mt-2">
             Wer per Brief wählt, wählt sicher — der Sonntag kann regnen, das Kind krank werden. Wer bei der Hauptwahl
@@ -146,9 +151,9 @@ export function Lehren2014({ p }: { p: Potenzial }) {
             <div className="flex justify-between py-1.5"><span className="text-muted-foreground">Krogmann-Anteil Brief</span><span className="font-mono tabular-nums">{prozent(l.krogmann_pct_postal_first)} → {prozent(l.krogmann_pct_postal_runoff)}</span></div>
           </div>
           <p className="mt-3 text-[13px] leading-relaxed text-muted-foreground">
-            {l.note} Von den {zahl(l.eliminated_first)} Stimmen der Ausgeschiedenen kamen netto {zahl(zuKrogmann)} bei
-            Krogmann an und {zahl(zuBaak)} bei Baak — der Rest blieb zu Hause oder füllte auf, was die eigene Basis
-            verlor.
+            {l.note} Im ersten Wahlgang entfielen {zahl(l.eliminated_first)} Stimmen auf die später ausgeschiedenen
+            Kandidaturen. Krogmann gewann in der Stichwahl {zahl(zuKrogmann)} Stimmen hinzu, Baak {zahl(zuBaak)}. Wie sich
+            das zusammensetzt, lässt sich aus den Gesamtzahlen nicht ablesen.
           </p>
         </div>
         <div className="rounded-2xl border border-border bg-card p-5 space-y-5">
@@ -159,10 +164,10 @@ export function Lehren2014({ p }: { p: Potenzial }) {
             satz="Die Wählendenzahl hielt in den Hochburgen des Siegers besser als dort, wo er schwach war."
           />
           <ZweiEnden
-            frage="Wo Krogmann in der Stichwahl zulegte"
-            links={{ wert: mal(l.krogmann_growth_by_fifth[0] ?? 0), name: "so viele Stimmen wie in der Hauptwahl — in seinen schwächsten Bezirken" }}
-            rechts={{ wert: mal(l.krogmann_growth_by_fifth.at(-1) ?? 0), name: "in seinen Hochburgen" }}
-            satz={`Wie Fuhrhop 2021: Das Plus kam aus den schwachen Bezirken. Baak legte kaum zu (${mal(l.baak_growth_by_fifth[0] ?? 0)} bis ${mal(l.baak_growth_by_fifth.at(-1) ?? 0)}). Beides sind Verhältnisse von Gesamtzahlen, kein Verhalten einzelner Menschen — ob es für Rohr ebenso gilt, ist eine Annahme. Der Knopf „Wie 2014“ bei der Beteiligung setzt die gemessene Quote für alle drei Lager.`}
+            frage={`Wo Krogmann in der Stichwahl zulegte — je ${l.krogmann_strength.weak.districts} Urnenbezirke`}
+            links={{ wert: plus(l.krogmann_strength.weak.change), name: `Stimmen mehr in seinen schwächsten Bezirken (${zahl(l.krogmann_strength.weak.first)} → ${zahl(l.krogmann_strength.weak.runoff)})` }}
+            rechts={{ wert: plus(l.krogmann_strength.strong.change), name: `in seinen Hochburgen (${zahl(l.krogmann_strength.strong.first)} → ${zahl(l.krogmann_strength.strong.runoff)})` }}
+            satz={`Wie Fuhrhop 2021: Das Plus kam aus den schwachen Bezirken. Baak gewann in seinen schwächsten Bezirken ${plus(l.baak_strength.weak.change)} Stimmen, in seinen Hochburgen ${plus(l.baak_strength.strong.change)}. Alles Verhältnisse von Gesamtzahlen, kein Verhalten einzelner Menschen — ob es für Rohr ebenso gilt, ist eine Annahme. Der Knopf „Wie 2014“ bei der Beteiligung setzt die gemessene Quote für alle drei Lager.`}
           />
         </div>
       </div>

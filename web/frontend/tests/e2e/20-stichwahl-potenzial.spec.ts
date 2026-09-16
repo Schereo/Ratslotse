@@ -60,6 +60,10 @@ test.describe("Stichwahl-Potenzial", () => {
     const tafel = page.getByTestId("potenzial-tafel");
     await expect(tafel).toContainText("2.225");
     await expect(tafel).toContainText(/Rohr läge [\d.]+ Stimmen vorn/);
+    await expect(page.getByText(/Probe: Mit den gewählten Annahmen/)).toBeVisible();
+    // 2014 als zwei Enden: Krogmanns Plus in den schwächsten und in den stärksten Bezirken.
+    await expect(page.getByText("+1.534")).toBeVisible();
+    await expect(page.getByText("+711")).toBeVisible();
 
     // Ein Regler schickt seinen Stand an den Server — nur den, der abweicht.
     await page.getByLabel("Boldt zu Rohr").fill("80");

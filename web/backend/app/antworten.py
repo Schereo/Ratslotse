@@ -4444,6 +4444,22 @@ class RunoffLessons2021(TypedDict):
     note: str
 
 
+class RunoffStrengthGroup(TypedDict):
+    """Stimmen einer Kandidatur in gleich vielen schwachen oder starken
+    Urnenbezirken — absolut, damit ein Plus lesbar bleibt (ein Faktor 2,2 auf
+    100 Stimmen ist weniger als ein Faktor 1,5 auf 1.000)."""
+    districts: int
+    first: int
+    runoff: int
+    change: int
+    change_pct: float
+
+
+class RunoffCandidateStrength(TypedDict):
+    weak: RunoffStrengthGroup
+    strong: RunoffStrengthGroup
+
+
 class RunoffLessons2014(TypedDict):
     """Krogmann gegen Baak, 28.09./12.10.2014 — die Stichwahl OHNE andere Wahl
     am selben Tag, also die Gegenprobe zu 2021: Wer kommt zur Stichwahl
@@ -4463,6 +4479,9 @@ class RunoffLessons2014(TypedDict):
     #: Krogmann bzw. Baak Runde 2 ÷ Runde 1, dieselben Fünftel.
     krogmann_growth_by_fifth: list[float]
     baak_growth_by_fifth: list[float]
+    #: Je Kandidat sein schwächstes und stärkstes Fünftel nach EIGENEM Anteil.
+    krogmann_strength: RunoffCandidateStrength
+    baak_strength: RunoffCandidateStrength
     krogmann_pct_urn_first: float
     krogmann_pct_urn_runoff: float
     krogmann_pct_postal_first: float
