@@ -98,7 +98,7 @@ export function ReglerTafel({ regler, onChange, annahmen, cduWaehlende, modellSt
           <h2 className="mt-1 font-display text-[22px] font-bold tracking-tight">Annahmen für die Stichwahl</h2>
           <p className="mt-1 max-w-2xl text-[13.5px] leading-relaxed text-muted-foreground">
             Die Regler zeigen Einschätzungen, keine gemessenen Wechsel. Die Markierung auf jeder Skala zeigt die
-            voreingestellte Annahme. Die Beteiligung von 2021 ist wegen der gleichzeitigen Bundestagswahl kein direkter
+            voreingestellte Annahme. Die Beteiligung bei der letzten Stichwahl ist wegen der gleichzeitigen Bundestagswahl kein direkter
             Maßstab. Der CDU-Regler berücksichtigt, dass diese Menschen im ersten Wahlgang bereits gewählt haben. Er
             verändert deshalb den Stimmenabstand, statt zusätzliche Ratswahlstimmen als Personen zu zählen.
           </p>
@@ -159,7 +159,7 @@ export function ReglerTafel({ regler, onChange, annahmen, cduWaehlende, modellSt
         <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
           Mit den gewählten Annahmen ergeben sich für Rohr und Prange zusammen rund {prozent(modellStimmenquote, 0)} der
           gültigen OB-Stimmenzahl aus dem ersten Wahlgang. Das ist keine exakte Wahlbeteiligung, weil ungültige Stimmen
-          fehlen. Der Anstieg von 2021 ist wegen der gleichzeitigen Bundestagswahl kein Ausgangswert für dieses Modell.
+          fehlen. Der Anstieg bei der letzten Stichwahl ist wegen der gleichzeitigen Bundestagswahl kein Ausgangswert für dieses Modell.
         </p>
       </div>
     </section>
