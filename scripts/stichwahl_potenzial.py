@@ -81,7 +81,7 @@ def main() -> int:
     print("== 2021: Krogmann gegen Fuhrhop ==")
     print(f"   Wählende R1 {tsd(l['voters_first'])} → R2 {tsd(l['voters_runoff'])} ({100 * l['voters_runoff'] / l['voters_first']:.0f} %) — {l['note']}")
     print(f"   Fuhrhop {tsd(l['fuhrhop_first'])} → {tsd(l['fuhrhop_runoff'])}   Krogmann {tsd(l['krogmann_first'])} → {tsd(l['krogmann_runoff'])}")
-    print(f"   Fuhrhop R2/R1 nach Fünfteln ihrer Stärke (schwächste zuerst): {'  '.join(f'× {x:.2f}' for x in l['fuhrhop_growth_by_fifth'])}")
+    print(f"   Fuhrhop R2/R1 nach Fünfteln seiner Stärke (schwächste zuerst): {'  '.join(f'× {x:.2f}' for x in l['fuhrhop_growth_by_fifth'])}")
     print(f"   Fuhrhop-Anteil der Zwei — Urne {l['fuhrhop_pct_urn_first']} → {l['fuhrhop_pct_urn_runoff']} %   Brief {l['fuhrhop_pct_postal_first']} → {l['fuhrhop_pct_postal_runoff']} %")
     for c in p["caveats"]:
         print(f"   ! {c}")

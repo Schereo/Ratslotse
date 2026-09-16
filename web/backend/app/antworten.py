@@ -4428,7 +4428,7 @@ class RunoffLessons2021(TypedDict):
     fuhrhop_runoff: int
     krogmann_first: int
     krogmann_runoff: int
-    #: Fuhrhop Runde 2 ÷ Runde 1, je Fünftel ihrer Bezirksstärke, schwächste zuerst.
+    #: Fuhrhop Runde 2 ÷ Runde 1, je Fünftel seiner Bezirksstärke, schwächste zuerst.
     fuhrhop_growth_by_fifth: list[float]
     fuhrhop_pct_urn_first: float
     fuhrhop_pct_urn_runoff: float

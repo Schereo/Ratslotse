@@ -79,7 +79,7 @@ export function Lehren2021({ p }: { p: Potenzial }) {
           </p>
         </div>
         <div className="rounded-2xl border border-border bg-card p-5">
-          <div className={KICKER}>Fuhrhop, Stichwahl ÷ 1. Wahlgang, je Fünftel ihrer Bezirksstärke</div>
+          <div className={KICKER}>Fuhrhop, Stichwahl ÷ 1. Wahlgang, je Fünftel seiner Bezirksstärke</div>
           <ul className="mt-3 space-y-2">
             {l.fuhrhop_growth_by_fifth.map((x, i) => (
               <li key={i} className="flex items-center gap-3 text-[13px]">
@@ -90,7 +90,7 @@ export function Lehren2021({ p }: { p: Potenzial }) {
             ))}
           </ul>
           <p className="mt-3 text-[13px] leading-relaxed text-muted-foreground">
-            Die Herausforderin wuchs dort am stärksten, wo sie am schwächsten war — in den Hochburgen war kaum noch
+            Der Herausforderer wuchs dort am stärksten, wo er am schwächsten war — in den Hochburgen war kaum noch
             Luft. Das ist die eine Lehre, die den Bundestagswahl-Effekt überlebt: Der Zuwachs kommt aus der Diaspora.
             Als Wanderungs-Schätzung taugt 2021 dagegen nicht; der Versuch lieferte Quoten über 100 %.
           </p>
