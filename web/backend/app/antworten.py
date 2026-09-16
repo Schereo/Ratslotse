@@ -4360,87 +4360,114 @@ class MayorLeadChange(TypedDict):
     previous: str
 
 
-# ------------------------------------------------------------------ Stichwahl: deskriptive Analyse
+# ------------------------------------------------------------------ Potenzial (docs/plan-stichwahl-potenzial.md)
+#
+# Nur mit Token erreichbar (WAHLKAMPF_TOKEN) — die Daten sind öffentliche
+# Wahlergebnisse, die Rechnung darauf ist Wahlkampf-Werkzeug.
 
-class RunoffAnalysisTotals(TypedDict):
-    eligible: int
-    voters: int
-    urn_voters: int
-    postal_voters: int
-    valid_votes: int
-    invalid_ballots: int
-    non_voters: int
-    turnout_pct: float | None
-
-
-class RunoffAnalysisCandidate(TypedDict):
+class RunoffPotentialAssumption(TypedDict):
     slug: str
     name: str
+    #: Anteile in Prozent — der Rest bleibt zu Hause.
+    to_rohr: float
+    to_prange: float
+    #: Stimmen dieser Kandidatur im ersten Wahlgang (Summe der Bezirke).
     votes: int
-    share_all_pct: float | None
-    in_runoff: bool
 
 
-class RunoffAnalysisMethod(TypedDict):
+class RunoffPotentialDistrict(TypedDict):
+    number: int
     name: str
+    area: int
+    area_roman: str
+    postal: bool
+    #: Stadtbezirk aus den Geodaten („Eversten") — die Einheit fürs Team.
+    district_name: str
+    eligible: int
     voters: int
-    valid_votes: int
-    finalist_votes: int
-    candidates: list[RunoffAnalysisCandidate]
+    non_voters: int
+    rohr: int
+    prange: int
+    rohr_pct_of_two: float | None
+    #: Stimmen der Ausgeschiedenen zusammen, und ihr Anteil an den gültigen.
+    pool: int
+    pool_pct: float
+    #: CDU-Zweitstimmen der Ratswahl in diesem Bezirk.
+    cdu_council: int
+    eliminated: dict[str, int]
+    projected_rohr: int
+    projected_prange: int
+    #: Gewinn des Vorsprungs gegenüber dem ersten Wahlgang, in Stimmen.
+    net_convince: float
+    net_cdu: float
+    net_total: float
+    #: net_total je 1.000 Wahlberechtigte — ``None`` für die Briefwahl.
+    yield_per_1000: float | None
+    #: "hold" | "persuade" | "both" | "skip" | "postal".
+    strategy: str
 
 
-class RunoffAnalysisChange(TypedDict):
-    name: str
-    first_votes: int
-    runoff_votes: int
-    change_votes: int
-    change_pct: float | None
-    growth_factor: float | None
+class RunoffPotentialBundle(TypedDict):
+    district_name: str
+    numbers: list[int]
+    districts: int
+    eligible: int
+    non_voters: int
+    rohr: int
+    prange: int
+    pool: int
+    rohr_pct_of_two: float | None
+    net_total: float
+    yield_per_1000: float | None
 
 
-class RunoffAnalysisHistory(TypedDict):
-    year: int
-    first_date: str
-    runoff_date: str
-    first: RunoffAnalysisTotals
-    runoff: RunoffAnalysisTotals
-    change_voters: int
-    change_voters_pct: float | None
-    #: Verhältnis zweier Gesamtzahlen, keine individuelle Rückkehrquote.
-    voter_count_ratio_pct: float | None
-    turnout_change_pp: float | None
-    candidates: list[RunoffAnalysisChange]
-    source_urls: list[str]
-    context: str
+class RunoffLessons2021(TypedDict):
+    voters_first: int
+    voters_runoff: int
+    fuhrhop_first: int
+    fuhrhop_runoff: int
+    krogmann_first: int
+    krogmann_runoff: int
+    #: Fuhrhop Runde 2 ÷ Runde 1, je Fünftel seiner Bezirksstärke, schwächste zuerst.
+    fuhrhop_growth_by_fifth: list[float]
+    fuhrhop_pct_urn_first: float
+    fuhrhop_pct_urn_runoff: float
+    fuhrhop_pct_postal_first: float
+    fuhrhop_pct_postal_runoff: float
+    note: str
 
 
-class RunoffAnalysisCouncil(TypedDict):
-    year: int
-    cdu_votes: int
-    cdu_list_votes: int
-    cdu_candidate_votes: int
-    source_url: str
-
-
-class RunoffAnalysis(TypedDict):
-    """Neutrale Stadtanalyse am bisherigen privaten Pfad. Keine Transfers,
-    Gebietseinstufungen oder Aussagen über individuelles Wahlverhalten.
-    Noch nicht veröffentlichtes Dev-Format; kein nativer App-Verbraucher.
-    """
-    election_date: str
-    data_status: str
-    source_url: str
-    district_count: int
-    urn_district_count: int
-    postal_district_count: int
-    totals: RunoffAnalysisTotals
-    candidates: list[RunoffAnalysisCandidate]
-    lead_votes: int
-    eliminated_votes: int
-    grouped_other_votes: int
-    voting_methods: list[RunoffAnalysisMethod]
-    council: RunoffAnalysisCouncil
-    history: list[RunoffAnalysisHistory]
+class RunoffPotential(TypedDict):
+    """``GET /api/wahlabend/stichwahl/potenzial?token=…`` — die ganze Rechnung
+    zu einem Reglerstand. Alles hier ist gerechnet, nichts davon ist Prognose;
+    ``caveats`` sagt es in Sätzen."""
+    rohr: int
+    prange: int
+    #: Prange minus Rohr im ersten Wahlgang.
+    lead: int
+    pool: int
+    cdu_council: int
+    non_voters: int
+    rohr_pct_urn: float | None
+    rohr_pct_postal: float | None
+    assumptions: list[RunoffPotentialAssumption]
+    cdu_to_rohr: float
+    cdu_to_prange: float
+    turnout_rohr: float
+    turnout_prange: float
+    turnout_pool: float
+    projected_rohr: int
+    projected_prange: int
+    #: Gewinn des Vorsprungs in Stimmen, Stadt.
+    net_total: int
+    #: Rohr minus Prange nach der Rechnung — positiv heißt Rohr vorn.
+    balance: int
+    strategy_counts: dict[str, int]
+    pool_pct_median: float
+    districts: list[RunoffPotentialDistrict]
+    bundles: list[RunoffPotentialBundle]
+    lessons_2021: RunoffLessons2021
+    caveats: list[str]
 
 
 class RunoffProjection(TypedDict):

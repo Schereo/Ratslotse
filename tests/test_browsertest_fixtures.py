@@ -191,11 +191,17 @@ def test_die_rangliste_abschrift_kennt_jedes_feld(monkeypatch):
     assert service.DISTRICT_SORTS == ("share", "votes")
 
 
-# ---------------------------------------------------------------- Stichwahlanalyse
+# ---------------------------------------------------------------- Stichwahl-Potenzial (P2)
 
-def test_die_analyse_abschrift_entspricht_der_berechnung():
-    """Nachziehen mit scripts/stichwahl_potenzial.py --json <Fixture-Pfad>."""
-    from app.election import runoff_analysis
+def test_die_potenzial_abschrift_kennt_jedes_feld():
+    """Das Wahlkampf-Werkzeug (`/stichwahl/potenzial?k=…`) mockt
+    `/api/wahlabend/stichwahl/potenzial` mit der Rechnung zu den Vorgaben.
+    Wieder erzeugen: der Befehl im Kopf von
+    `web/frontend/tests/e2e/20-stichwahl-potenzial.spec.ts`."""
+    from app.election import potential
 
-    ist = json.loads((FIXTURES / "stichwahl-analyse.json").read_text(encoding="utf-8"))
-    assert ist == runoff_analysis.compute(), "Fixture neu erzeugen: siehe docs/stichwahl-analyse.md"
+    ist = json.loads((FIXTURES / "stichwahl-potenzial-probe.json").read_text(encoding="utf-8"))
+    fehlt = _fehlt(potential.compute(), ist, "potenzial")
+    assert not fehlt, "Diese Felder fehlen in stichwahl-potenzial-probe.json:\n  " + "\n  ".join(fehlt)
+    assert ist["lead"] == 2225 and len(ist["districts"]) == 133
+    assert ist["bundles"][0]["district_name"] == "Eversten"

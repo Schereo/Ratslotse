@@ -133,10 +133,10 @@ OEFFENTLICH = {
     # Die 133 Wahlbezirke der Stichwahl — dieselbe Ergebnisdarstellung der
     # Stadt, eine Ebene tiefer; ein Bezirk hat einige hundert Wählende.
     ("get", "/api/wahlabend/stichwahl/bezirke"),
-    # Die deskriptive Stichwahlanalyse: kein Konto, aber ein Token aus
+    # Die Potenzial-Rechnung der Stichwahl: kein Konto, aber ein Token aus
     # der .env (WAHLKAMPF_TOKEN) — ohne ihn 404, ein falscher ebenso. Die
     # Daten sind öffentliche Wahlergebnisse; der Token schützt vor Zufall,
-    # nicht vor Angriff (docs/stichwahl-analyse.md).
+    # nicht vor Angriff (docs/plan-stichwahl-potenzial.md §3).
     ("get", "/api/wahlabend/stichwahl/potenzial"),
     # /api/wahlen stand hier bis 09/2026. Es ist WEITER ohne Konto erreichbar —
     # es hängt aber jetzt an `optional_user`, weil es je Wahl den Weg zum
