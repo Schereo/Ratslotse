@@ -77,6 +77,15 @@ test.describe("Stichwahl-Potenzial", () => {
     await karte.getByRole("button", { name: "Ertrag je Tür" }).click();
     await expect(karte).toContainText("je 1.000 Wahlberechtigte");
 
+    // Der Rückblick auf 2021 erklärt den Vergleich zuerst in Worten; die Zahlen sind optional.
+    const rueckblick = page.getByRole("heading", { name: "Auch außerhalb seiner Hochburgen legte Fuhrhop zu." }).locator("..");
+    await expect(rueckblick).toContainText("Seine Stimmenzahl hat sich mehr als verdoppelt.");
+    const rechenweg = rueckblick.locator("details");
+    await expect(rechenweg).toHaveJSProperty("open", false);
+    await rechenweg.locator("summary").click();
+    await expect(rechenweg).toHaveJSProperty("open", true);
+    await expect(rechenweg).toContainText("× 2,28");
+
     // Die Einsatzliste: Eversten zuoberst; ein Haken überlebt das Neuladen.
     const liste = page.getByTestId("einsatzliste");
     const erstes = liste.locator("[data-buendel]").first();

@@ -60,8 +60,7 @@ export function Briefwahl({ p }: { p: Potenzial }) {
 
 export function Lehren2021({ p }: { p: Potenzial }) {
   const l = p.lessons_2021;
-  const max = Math.max(...l.fuhrhop_growth_by_fifth, 1);
-  const beschriftung = ["schwächstes Fünftel", "2.", "3.", "4.", "Hochburgen"];
+  const beschriftung = ["Niedrigster Erstwahlanteil", "Zweites Fünftel", "Mittleres Fünftel", "Viertes Fünftel", "Höchster Erstwahlanteil"];
   return (
     <Block kicker="2021" titel="Krogmann gegen Fuhrhop: Was zeigt der Vergleich?">
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
@@ -80,22 +79,41 @@ export function Lehren2021({ p }: { p: Potenzial }) {
           </p>
         </div>
         <div className="rounded-2xl border border-border bg-card p-5">
-          <div className={KICKER}>Fuhrhops Stimmen in der Stichwahl im Verhältnis zum ersten Wahlgang</div>
-          <ul className="mt-3 space-y-2">
-            {l.fuhrhop_growth_by_fifth.map((x, i) => (
-              <li key={i} className="flex items-center gap-3 text-[13px]">
-                <span className="w-32 flex-none text-muted-foreground">{beschriftung[i] ?? `${i + 1}.`}</span>
-                <span className="h-3 flex-none rounded-full" style={{ width: `${(55 * x) / max}%`, background: "hsl(var(--primary) / 0.6)" }} aria-hidden />
-                <span className="font-mono tabular-nums">× {x.toFixed(2).replace(".", ",")}</span>
-              </li>
-            ))}
-          </ul>
-          <p className="mt-3 text-[13px] leading-relaxed text-muted-foreground">
-            Im Verhältnis zur Ausgangszahl stieg Fuhrhops Stimmenzahl in den Bezirken mit niedrigem Erstwahlanteil
-            am stärksten. In seinen stärkeren Bezirken fiel der relative Zuwachs geringer aus. Woher die zusätzlichen
-            Stimmen kamen, lässt sich daraus nicht bestimmen. Als Schätzung individueller Wechsel taugen die Zahlen
-            von 2021 nicht: Die einfache Rechnung ergab teilweise Werte über 100 Prozent.
+          <div className={KICKER}>Fuhrhops Stimmen nach Wahlbezirken</div>
+          <h3 className="mt-2 text-[16px] font-semibold leading-snug">Auch außerhalb seiner Hochburgen legte Fuhrhop zu.</h3>
+          <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
+            Verglichen wird seine Stimmenzahl in denselben Urnenbezirken im ersten Wahlgang und in der Stichwahl.
           </p>
+          <div className="mt-4 space-y-3 border-l-2 border-primary/35 pl-4 text-[13px]">
+            <div>
+              <div className={KICKER}>Wo sein Stimmenanteil zuvor niedrig war</div>
+              <p className="mt-1 font-medium">Seine Stimmenzahl hat sich mehr als verdoppelt.</p>
+            </div>
+            <div>
+              <div className={KICKER}>In seinen Hochburgen</div>
+              <p className="mt-1 font-medium">Seine Stimmenzahl stieg ebenfalls, aber weniger stark.</p>
+            </div>
+          </div>
+          <p className="mt-4 text-[13px] leading-relaxed text-muted-foreground">
+            Die Bezirksergebnisse verraten nicht, wer seine Stimme gewechselt hat. Zudem fand die Stichwahl 2021 am
+            Tag der Bundestagswahl statt. Das Muster lässt sich nicht einfach auf 2026 übertragen.
+          </p>
+          <details className="mt-4 border-t border-border pt-3 text-[12.5px] leading-relaxed text-muted-foreground">
+            <summary className="cursor-pointer font-medium text-foreground">Alle fünf Gruppen und die Berechnung anzeigen</summary>
+            <p className="mt-2">
+              Die Urnenbezirke sind nach Fuhrhops Stimmenanteil im ersten Wahlgang in fünf Gruppen geordnet.
+              Für jede Gruppe wird seine Stimmenzahl in der Stichwahl durch die Stimmenzahl im ersten Wahlgang geteilt.
+              Der erste Wert bedeutet zum Beispiel: Aus 100 Stimmen wurden rechnerisch 228.
+            </p>
+            <ul className="mt-2 space-y-1">
+              {l.fuhrhop_growth_by_fifth.map((x, i) => (
+                <li key={i} className="flex justify-between gap-4">
+                  <span>{beschriftung[i] ?? `${i + 1}. Fünftel`}</span>
+                  <span className="font-mono tabular-nums text-foreground">× {x.toFixed(2).replace(".", ",")}</span>
+                </li>
+              ))}
+            </ul>
+          </details>
         </div>
       </div>
     </Block>
