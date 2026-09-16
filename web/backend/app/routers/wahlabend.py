@@ -13,7 +13,9 @@ Karte einer Liste, einer Liste im Wahlbereich oder einer Person.
 """
 from __future__ import annotations
 
+import hmac
 import logging
+import os
 import threading
 import time
 from datetime import datetime, timezone
@@ -44,10 +46,11 @@ from ..antworten import (
     MayorElectionInfo,
     MayorHistoryPoint,
     MayorNight,
+    RunoffPotential,
     RunoffProjection,
 )
 from ..deps import get_store, optional_user, require_active
-from ..election import archive, candidates, elections, history, image, mayor, runoff_model, service, share
+from ..election import archive, candidates, elections, history, image, mayor, potential, runoff_model, service, share
 from ..prediction import rounds
 
 _log = logging.getLogger("ratslotse.web.wahlabend")
@@ -571,6 +574,50 @@ def wahlabend_nicht_mehr_beobachten(
         raise HTTPException(status_code=404, detail="Nicht gefunden.")
     store.delete_bookmark(user["id"], merker_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+def _wahlkampf_token(token: str | None) -> None:
+    """Die Potenzial-Seite hängt an EINEM Token aus der ``.env``
+    (``WAHLKAMPF_TOKEN``). Ohne gesetzten Token gibt es sie gar nicht; ein
+    falscher ist ein 404 wie ein fehlender — die Adresse soll nicht verraten,
+    dass es hier etwas gibt. Das ist Schutz gegen Zufall, nicht gegen Angriff:
+    Alle Daten dahinter sind öffentliche Wahlergebnisse."""
+    soll = os.environ.get("WAHLKAMPF_TOKEN", "").strip()
+    if len(soll) < 16 or not token or not hmac.compare_digest(soll, token.strip()):
+        raise HTTPException(status_code=404, detail="Not Found")
+
+
+@router.get("/api/wahlabend/stichwahl/potenzial")
+def stichwahl_potenzial(
+    token: str | None = Query(default=None, description="WAHLKAMPF_TOKEN aus der .env"),
+    boldt: str = Query(default=None, pattern=r"^\d{1,3},\d{1,3}$", description="zu Rohr,zu Prange in Prozent"),
+    kuessner: str = Query(default=None, pattern=r"^\d{1,3},\d{1,3}$"),
+    butzin: str = Query(default=None, pattern=r"^\d{1,3},\d{1,3}$"),
+    froehlich: str = Query(default=None, pattern=r"^\d{1,3},\d{1,3}$"),
+    wilkens: str = Query(default=None, pattern=r"^\d{1,3},\d{1,3}$"),
+    cdu: str = Query(default=None, pattern=r"^\d{1,3},\d{1,3}$"),
+    turnout_rohr: float = Query(default=100, ge=0, le=150),
+    turnout_prange: float = Query(default=100, ge=0, le=150),
+    turnout_pool: float = Query(default=100, ge=0, le=150),
+) -> RunoffPotential:
+    """Das Wähler*innen-Potenzial je Wahlbezirk zu einem Reglerstand
+    (docs/plan-stichwahl-potenzial.md). Nur mit Token; sonst 404."""
+    _wahlkampf_token(token)
+
+    def paar(wert: str | None, vorgabe: tuple[float, float]) -> tuple[float, float]:
+        if not wert:
+            return vorgabe
+        a, b = (float(x) for x in wert.split(","))
+        if a + b > 100:
+            raise HTTPException(status_code=422, detail="Die beiden Anteile ergeben zusammen mehr als 100 %.")
+        return a, b
+
+    regler = potential.Regler(
+        transfers={s: paar(locals()[s], potential.VORGABE[s]) for s in potential.VORGABE},
+        cdu=paar(cdu, potential.VORGABE_CDU),
+        turnout_rohr=turnout_rohr, turnout_prange=turnout_prange, turnout_pool=turnout_pool,
+    )
+    return potential.compute(regler)
 
 
 @router.get("/api/wahlabend/stichwahl/bezirke")
