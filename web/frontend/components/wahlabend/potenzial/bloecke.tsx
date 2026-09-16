@@ -27,6 +27,38 @@ function Grosszahl({ wert, name }: { wert: string; name: string }) {
   );
 }
 
+/** Zwei Enden statt fünf Balken: die schwächsten Bezirke einer Kandidatur
+ *  gegen ihre Hochburgen — die eine Zahl links, die andere rechts, der
+ *  Befund als Satz. Die fünf Fünftel dazwischen trägt die Antwort weiter,
+ *  gezeigt werden sie nicht mehr (Tims Rückmeldung 16.09.: zu kompliziert). */
+function ZweiEnden({ frage, links, rechts, satz }: {
+  frage: string;
+  links: { wert: string; name: string };
+  rechts: { wert: string; name: string };
+  satz: string;
+}) {
+  return (
+    <div>
+      <div className={KICKER}>{frage}</div>
+      <div className="mt-2 grid grid-cols-2 gap-4">
+        <div>
+          <div className="font-display text-[26px] font-bold tabular-nums leading-none tracking-tight">{links.wert}</div>
+          <div className="mt-1 text-[12px] text-muted-foreground">{links.name}</div>
+        </div>
+        <div>
+          <div className="font-display text-[26px] font-bold tabular-nums leading-none tracking-tight">{rechts.wert}</div>
+          <div className="mt-1 text-[12px] text-muted-foreground">{rechts.name}</div>
+        </div>
+      </div>
+      <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">{satz}</p>
+    </div>
+  );
+}
+
+function mal(x: number): string {
+  return `${x.toFixed(1).replace(".", ",")}-mal`;
+}
+
 export function Briefwahl({ p }: { p: Potenzial }) {
   const brief = p.districts.filter((z) => z.postal);
   const rohr = brief.reduce((s, z) => s + z.rohr, 0);
@@ -60,8 +92,6 @@ export function Briefwahl({ p }: { p: Potenzial }) {
 
 export function Lehren2021({ p }: { p: Potenzial }) {
   const l = p.lessons_2021;
-  const max = Math.max(...l.fuhrhop_growth_by_fifth, 1);
-  const beschriftung = ["schwächstes Fünftel", "2.", "3.", "4.", "Hochburgen"];
   return (
     <Block kicker="2021" titel="Krogmann gegen Fuhrhop — was es lehrt, und was nicht">
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
@@ -80,21 +110,12 @@ export function Lehren2021({ p }: { p: Potenzial }) {
           </p>
         </div>
         <div className="rounded-2xl border border-border bg-card p-5">
-          <div className={KICKER}>Fuhrhop, Stichwahl ÷ 1. Wahlgang, je Fünftel seiner Bezirksstärke</div>
-          <ul className="mt-3 space-y-2">
-            {l.fuhrhop_growth_by_fifth.map((x, i) => (
-              <li key={i} className="flex items-center gap-3 text-[13px]">
-                <span className="w-32 flex-none text-muted-foreground">{beschriftung[i] ?? `${i + 1}.`}</span>
-                <span className="h-3 flex-none rounded-full" style={{ width: `${(55 * x) / max}%`, background: "hsl(var(--primary) / 0.6)" }} aria-hidden />
-                <span className="font-mono tabular-nums">× {x.toFixed(2).replace(".", ",")}</span>
-              </li>
-            ))}
-          </ul>
-          <p className="mt-3 text-[13px] leading-relaxed text-muted-foreground">
-            Der Herausforderer wuchs dort am stärksten, wo er am schwächsten war — in den Hochburgen war kaum noch
-            Luft. Das ist die eine Lehre, die den Bundestagswahl-Effekt überlebt: Der Zuwachs kommt aus der Diaspora.
-            Als Wanderungs-Schätzung taugt 2021 dagegen nicht; der Versuch lieferte Quoten über 100 %.
-          </p>
+          <ZweiEnden
+            frage="Wo Fuhrhop in der Stichwahl zulegte"
+            links={{ wert: mal(l.fuhrhop_growth_by_fifth[0] ?? 0), name: "so viele Stimmen wie im 1. Wahlgang — in seinen schwächsten Bezirken" }}
+            rechts={{ wert: mal(l.fuhrhop_growth_by_fifth.at(-1) ?? 0), name: "in seinen Hochburgen" }}
+            satz="Der Herausforderer holte sein Plus dort, wo er schwach war — in den Hochburgen war kaum noch Luft. Das ist die eine Lehre, die den Bundestagswahl-Effekt überlebt. Als Schätzung, wer wohin wanderte, taugt 2021 nicht; der Versuch lieferte Quoten über 100 %."
+          />
         </div>
       </div>
     </Block>
@@ -107,9 +128,6 @@ export function Lehren2021({ p }: { p: Potenzial }) {
  *  deshalb steht sie neben 2021, nicht an seiner Stelle. */
 export function Lehren2014({ p }: { p: Potenzial }) {
   const l = p.lessons_2014;
-  const beschriftung = ["schwächstes Fünftel", "2.", "3.", "4.", "Hochburgen"];
-  const maxWieder = Math.max(...l.return_by_fifth, 1);
-  const maxWachstum = Math.max(...l.krogmann_growth_by_fifth, ...l.baak_growth_by_fifth, 1);
   const zuKrogmann = l.krogmann_runoff - l.krogmann_first;
   const zuBaak = l.baak_runoff - l.baak_first;
   return (
@@ -133,36 +151,19 @@ export function Lehren2014({ p }: { p: Potenzial }) {
             verlor.
           </p>
         </div>
-        <div className="rounded-2xl border border-border bg-card p-5">
-          <div className={KICKER}>Wer kam wieder — je Fünftel der Urnenbezirke nach Krogmanns Anteil</div>
-          <ul className="mt-3 space-y-2">
-            {l.return_by_fifth.map((x, i) => (
-              <li key={i} className="flex items-center gap-3 text-[13px]">
-                <span className="w-32 flex-none text-muted-foreground">{beschriftung[i] ?? `${i + 1}.`}</span>
-                <span className="h-3 flex-none rounded-full" style={{ width: `${(50 * x) / maxWieder}%`, background: "hsl(var(--signal) / 0.6)" }} aria-hidden />
-                <span className="w-16 flex-none whitespace-nowrap text-right font-mono tabular-nums">{prozent(x)}</span>
-              </li>
-            ))}
-          </ul>
-          <div className={`${KICKER} mt-5`}>Stichwahl ÷ Hauptwahl, dieselben Fünftel — Krogmann · Baak</div>
-          <ul className="mt-3 space-y-2">
-            {l.krogmann_growth_by_fifth.map((x, i) => (
-              <li key={i} className="flex items-center gap-3 text-[13px]">
-                <span className="w-32 flex-none text-muted-foreground">{beschriftung[i] ?? `${i + 1}.`}</span>
-                <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <span className="h-2 rounded-full" style={{ width: `${(100 * x) / maxWachstum}%`, background: "hsl(var(--primary) / 0.6)" }} aria-hidden />
-                  <span className="h-2 rounded-full" style={{ width: `${(100 * (l.baak_growth_by_fifth[i] ?? 0)) / maxWachstum}%`, background: "hsl(var(--foreground) / 0.25)" }} aria-hidden />
-                </span>
-                <span className="w-28 flex-none whitespace-nowrap text-right font-mono tabular-nums">× {x.toFixed(2).replace(".", ",")} · {(l.baak_growth_by_fifth[i] ?? 0).toFixed(2).replace(".", ",")}</span>
-              </li>
-            ))}
-          </ul>
-          <p className="mt-3 text-[13px] leading-relaxed text-muted-foreground">
-            Zwei Beobachtungen, beide Verhältnisse von Gesamtzahlen, kein Verhalten einzelner Menschen: Der Sieger holte
-            sein Plus dort, wo er schwach war — 2021 bei Fuhrhop genauso —, und die Wählendenzahl hielt in seinen
-            Hochburgen besser als in seinen schwachen Bezirken. Ob das für Rohr ebenso gilt, ist eine Annahme. Der Knopf
-            „Wie 2014“ bei der Beteiligung setzt die gemessene Quote für alle drei Lager.
-          </p>
+        <div className="rounded-2xl border border-border bg-card p-5 space-y-5">
+          <ZweiEnden
+            frage="Wie viele in der Stichwahl wählten, in % des 1. Wahlgangs"
+            links={{ wert: prozent(l.return_by_fifth[0] ?? 0, 0), name: "in Krogmanns schwächsten Bezirken" }}
+            rechts={{ wert: prozent(l.return_by_fifth.at(-1) ?? 0, 0), name: "in seinen Hochburgen" }}
+            satz="Die Wählendenzahl hielt in den Hochburgen des Siegers besser als dort, wo er schwach war."
+          />
+          <ZweiEnden
+            frage="Wo Krogmann in der Stichwahl zulegte"
+            links={{ wert: mal(l.krogmann_growth_by_fifth[0] ?? 0), name: "so viele Stimmen wie in der Hauptwahl — in seinen schwächsten Bezirken" }}
+            rechts={{ wert: mal(l.krogmann_growth_by_fifth.at(-1) ?? 0), name: "in seinen Hochburgen" }}
+            satz={`Wie Fuhrhop 2021: Das Plus kam aus den schwachen Bezirken. Baak legte kaum zu (${mal(l.baak_growth_by_fifth[0] ?? 0)} bis ${mal(l.baak_growth_by_fifth.at(-1) ?? 0)}). Beides sind Verhältnisse von Gesamtzahlen, kein Verhalten einzelner Menschen — ob es für Rohr ebenso gilt, ist eine Annahme. Der Knopf „Wie 2014“ bei der Beteiligung setzt die gemessene Quote für alle drei Lager.`}
+          />
         </div>
       </div>
     </Block>
