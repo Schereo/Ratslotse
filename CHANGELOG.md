@@ -7,6 +7,12 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [2.6.4] – 2026-09-16
+
+### Geändert
+- **Wartung vor der Stichwahl.** Vorbereitungen im Hintergrund für den 27.
+  September; an den Wahlseiten ändert sich für Leser*innen nichts.
+
 ## [2.6.3] – 2026-09-15
 
 ### Hinzugefügt
@@ -8329,7 +8335,8 @@ Open-Source-Go-Live von Ratslotse.
 *Dieser Changelog beginnt mit dem Open-Source-Release von Ratslotse. Die
 Entwicklungshistorie davor ist nicht Teil dieses Repositories.*
 
-[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v2.6.3...main
+[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v2.6.4...main
+[2.6.4]: https://github.com/Schereo/Ratslotse/compare/v2.6.3...v2.6.4
 [2.6.3]: https://github.com/Schereo/Ratslotse/compare/v2.6.2...v2.6.3
 [2.6.2]: https://github.com/Schereo/Ratslotse/compare/v2.6.1...v2.6.2
 [2.6.1]: https://github.com/Schereo/Ratslotse/compare/v2.6.0...v2.6.1

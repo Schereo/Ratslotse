@@ -13,7 +13,9 @@ Karte einer Liste, einer Liste im Wahlbereich oder einer Person.
 """
 from __future__ import annotations
 
+import hmac
 import logging
+import os
 import threading
 import time
 from datetime import datetime, timezone
@@ -44,10 +46,11 @@ from ..antworten import (
     MayorElectionInfo,
     MayorHistoryPoint,
     MayorNight,
+    RunoffPotential,
     RunoffProjection,
 )
 from ..deps import get_store, optional_user, require_active
-from ..election import archive, candidates, elections, history, image, mayor, runoff_model, service, share
+from ..election import archive, candidates, elections, history, image, mayor, potential, runoff_model, service, share
 from ..prediction import rounds
 
 _log = logging.getLogger("ratslotse.web.wahlabend")
@@ -571,6 +574,71 @@ def wahlabend_nicht_mehr_beobachten(
         raise HTTPException(status_code=404, detail="Nicht gefunden.")
     store.delete_bookmark(user["id"], merker_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+def wahlkampf_token() -> str | None:
+    """Der Token der Potenzial-Seite — der Teil der Adresse, den man raten
+    müsste. Aus der ``.env``: ``WAHLKAMPF_TOKEN``, wenn gesetzt (mindestens
+    16 Zeichen); sonst abgeleitet aus ``WEB_JWT_SECRET``, das jede Umgebung
+    ohnehin hat — so braucht die Seite keinen neuen Eintrag, und der Wert
+    steht trotzdem nicht im (öffentlichen) Repo. ``None``, wenn es kein
+    Geheimnis gibt, aus dem sich einer ableiten ließe (der unsichere
+    Vorgabewert zählt nicht). Link: ``scripts/stichwahl_potenzial.py --link``."""
+    from hashlib import sha256
+
+    from app.config import get_settings
+
+    soll = os.environ.get("WAHLKAMPF_TOKEN", "").strip()
+    if len(soll) >= 16:
+        return soll
+    geheimnis = get_settings().web_jwt_secret
+    if not geheimnis or geheimnis == "dev-insecure-change-me":
+        return None
+    return hmac.new(geheimnis.encode("utf-8"), b"stichwahl-potenzial", sha256).hexdigest()[:24]
+
+
+def _wahlkampf_token(token: str | None) -> None:
+    """Ohne gültigen Token gibt es die Seite gar nicht; ein falscher ist ein
+    404 wie ein fehlender — die Adresse soll nicht verraten, dass es hier
+    etwas gibt. Das ist Schutz gegen Zufall, nicht gegen Angriff: Alle Daten
+    dahinter sind öffentliche Wahlergebnisse."""
+    soll = wahlkampf_token()
+    if soll is None or not token or not hmac.compare_digest(soll, token.strip()):
+        raise HTTPException(status_code=404, detail="Not Found")
+
+
+@router.get("/api/wahlabend/stichwahl/potenzial")
+def stichwahl_potenzial(
+    token: str | None = Query(default=None, description="WAHLKAMPF_TOKEN aus der .env"),
+    boldt: str = Query(default=None, pattern=r"^\d{1,3},\d{1,3}$", description="zu Rohr,zu Prange in Prozent"),
+    kuessner: str = Query(default=None, pattern=r"^\d{1,3},\d{1,3}$"),
+    butzin: str = Query(default=None, pattern=r"^\d{1,3},\d{1,3}$"),
+    froehlich: str = Query(default=None, pattern=r"^\d{1,3},\d{1,3}$"),
+    wilkens: str = Query(default=None, pattern=r"^\d{1,3},\d{1,3}$"),
+    others: str = Query(default=None, pattern=r"^\d{1,3},\d{1,3}$", description="Castur und Stille zusammen"),
+    cdu: str = Query(default=None, pattern=r"^\d{1,3},\d{1,3}$"),
+    turnout_rohr: float = Query(default=potential.TURNOUT_VORGABE, ge=0, le=150),
+    turnout_prange: float = Query(default=potential.TURNOUT_VORGABE, ge=0, le=150),
+    turnout_pool: float = Query(default=potential.TURNOUT_VORGABE, ge=0, le=150),
+) -> RunoffPotential:
+    """Das Wähler*innen-Potenzial je Wahlbezirk zu einem Reglerstand
+    (docs/plan-stichwahl-potenzial.md). Nur mit Token; sonst 404."""
+    _wahlkampf_token(token)
+
+    def paar(wert: str | None, vorgabe: tuple[float, float]) -> tuple[float, float]:
+        if not wert:
+            return vorgabe
+        a, b = (float(x) for x in wert.split(","))
+        if a + b > 100:
+            raise HTTPException(status_code=422, detail="Die beiden Anteile ergeben zusammen mehr als 100 %.")
+        return a, b
+
+    regler = potential.Regler(
+        transfers={s: paar(locals()[s], potential.VORGABE[s]) for s in potential.VORGABE},
+        cdu=paar(cdu, potential.VORGABE_CDU),
+        turnout_rohr=turnout_rohr, turnout_prange=turnout_prange, turnout_pool=turnout_pool,
+    )
+    return potential.compute(regler)
 
 
 @router.get("/api/wahlabend/stichwahl/bezirke")

@@ -16815,6 +16815,619 @@
         "title": "RolesUpdate",
         "type": "object"
       },
+      "RunoffCandidateStrength": {
+        "properties": {
+          "strong": {
+            "$ref": "#/components/schemas/RunoffStrengthGroup"
+          },
+          "weak": {
+            "$ref": "#/components/schemas/RunoffStrengthGroup"
+          }
+        },
+        "required": [
+          "weak",
+          "strong"
+        ],
+        "title": "RunoffCandidateStrength",
+        "type": "object"
+      },
+      "RunoffLessons2014": {
+        "description": "Krogmann gegen Baak, 28.09./12.10.2014 — die Stichwahl OHNE andere Wahl\nam selben Tag, also die Gegenprobe zu 2021: Wie veränderten sich die\nWählenden- und Stimmenzahlen?",
+        "properties": {
+          "baak_first": {
+            "title": "Baak First",
+            "type": "integer"
+          },
+          "baak_growth_by_fifth": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Baak Growth By Fifth",
+            "type": "array"
+          },
+          "baak_runoff": {
+            "title": "Baak Runoff",
+            "type": "integer"
+          },
+          "baak_strength": {
+            "$ref": "#/components/schemas/RunoffCandidateStrength"
+          },
+          "eliminated_first": {
+            "title": "Eliminated First",
+            "type": "integer"
+          },
+          "krogmann_first": {
+            "title": "Krogmann First",
+            "type": "integer"
+          },
+          "krogmann_growth_by_fifth": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Krogmann Growth By Fifth",
+            "type": "array"
+          },
+          "krogmann_pct_postal_first": {
+            "title": "Krogmann Pct Postal First",
+            "type": "number"
+          },
+          "krogmann_pct_postal_runoff": {
+            "title": "Krogmann Pct Postal Runoff",
+            "type": "number"
+          },
+          "krogmann_pct_urn_first": {
+            "title": "Krogmann Pct Urn First",
+            "type": "number"
+          },
+          "krogmann_pct_urn_runoff": {
+            "title": "Krogmann Pct Urn Runoff",
+            "type": "number"
+          },
+          "krogmann_runoff": {
+            "title": "Krogmann Runoff",
+            "type": "integer"
+          },
+          "krogmann_strength": {
+            "$ref": "#/components/schemas/RunoffCandidateStrength"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "return_by_fifth": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Return By Fifth",
+            "type": "array"
+          },
+          "return_rate_pct": {
+            "title": "Return Rate Pct",
+            "type": "number"
+          },
+          "voters_first": {
+            "title": "Voters First",
+            "type": "integer"
+          },
+          "voters_runoff": {
+            "title": "Voters Runoff",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "voters_first",
+          "voters_runoff",
+          "return_rate_pct",
+          "krogmann_first",
+          "krogmann_runoff",
+          "baak_first",
+          "baak_runoff",
+          "eliminated_first",
+          "return_by_fifth",
+          "krogmann_growth_by_fifth",
+          "baak_growth_by_fifth",
+          "krogmann_strength",
+          "baak_strength",
+          "krogmann_pct_urn_first",
+          "krogmann_pct_urn_runoff",
+          "krogmann_pct_postal_first",
+          "krogmann_pct_postal_runoff",
+          "note"
+        ],
+        "title": "RunoffLessons2014",
+        "type": "object"
+      },
+      "RunoffLessons2021": {
+        "properties": {
+          "fuhrhop_first": {
+            "title": "Fuhrhop First",
+            "type": "integer"
+          },
+          "fuhrhop_growth_by_fifth": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Fuhrhop Growth By Fifth",
+            "type": "array"
+          },
+          "fuhrhop_pct_postal_first": {
+            "title": "Fuhrhop Pct Postal First",
+            "type": "number"
+          },
+          "fuhrhop_pct_postal_runoff": {
+            "title": "Fuhrhop Pct Postal Runoff",
+            "type": "number"
+          },
+          "fuhrhop_pct_urn_first": {
+            "title": "Fuhrhop Pct Urn First",
+            "type": "number"
+          },
+          "fuhrhop_pct_urn_runoff": {
+            "title": "Fuhrhop Pct Urn Runoff",
+            "type": "number"
+          },
+          "fuhrhop_runoff": {
+            "title": "Fuhrhop Runoff",
+            "type": "integer"
+          },
+          "krogmann_first": {
+            "title": "Krogmann First",
+            "type": "integer"
+          },
+          "krogmann_runoff": {
+            "title": "Krogmann Runoff",
+            "type": "integer"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "voters_first": {
+            "title": "Voters First",
+            "type": "integer"
+          },
+          "voters_runoff": {
+            "title": "Voters Runoff",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "voters_first",
+          "voters_runoff",
+          "fuhrhop_first",
+          "fuhrhop_runoff",
+          "krogmann_first",
+          "krogmann_runoff",
+          "fuhrhop_growth_by_fifth",
+          "fuhrhop_pct_urn_first",
+          "fuhrhop_pct_urn_runoff",
+          "fuhrhop_pct_postal_first",
+          "fuhrhop_pct_postal_runoff",
+          "note"
+        ],
+        "title": "RunoffLessons2021",
+        "type": "object"
+      },
+      "RunoffPotential": {
+        "description": "``GET /api/wahlabend/stichwahl/potenzial?token=…`` — die ganze Rechnung\nzu einem Reglerstand. Alles hier ist gerechnet, nichts davon ist Prognose;\n``caveats`` sagt es in Sätzen.",
+        "properties": {
+          "assumptions": {
+            "items": {
+              "$ref": "#/components/schemas/RunoffPotentialAssumption"
+            },
+            "title": "Assumptions",
+            "type": "array"
+          },
+          "balance": {
+            "title": "Balance",
+            "type": "integer"
+          },
+          "bundles": {
+            "items": {
+              "$ref": "#/components/schemas/RunoffPotentialBundle"
+            },
+            "title": "Bundles",
+            "type": "array"
+          },
+          "caveats": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Caveats",
+            "type": "array"
+          },
+          "cdu_council": {
+            "title": "Cdu Council",
+            "type": "integer"
+          },
+          "cdu_to_prange": {
+            "title": "Cdu To Prange",
+            "type": "number"
+          },
+          "cdu_to_rohr": {
+            "title": "Cdu To Rohr",
+            "type": "number"
+          },
+          "cdu_voters_est": {
+            "title": "Cdu Voters Est",
+            "type": "integer"
+          },
+          "districts": {
+            "items": {
+              "$ref": "#/components/schemas/RunoffPotentialDistrict"
+            },
+            "title": "Districts",
+            "type": "array"
+          },
+          "eligible": {
+            "title": "Eligible",
+            "type": "integer"
+          },
+          "lead": {
+            "title": "Lead",
+            "type": "integer"
+          },
+          "lessons_2014": {
+            "$ref": "#/components/schemas/RunoffLessons2014"
+          },
+          "lessons_2021": {
+            "$ref": "#/components/schemas/RunoffLessons2021"
+          },
+          "net_total": {
+            "title": "Net Total",
+            "type": "integer"
+          },
+          "non_voters": {
+            "title": "Non Voters",
+            "type": "integer"
+          },
+          "pool": {
+            "title": "Pool",
+            "type": "integer"
+          },
+          "pool_pct_median": {
+            "title": "Pool Pct Median",
+            "type": "number"
+          },
+          "prange": {
+            "title": "Prange",
+            "type": "integer"
+          },
+          "projected_prange": {
+            "title": "Projected Prange",
+            "type": "integer"
+          },
+          "projected_rohr": {
+            "title": "Projected Rohr",
+            "type": "integer"
+          },
+          "rohr": {
+            "title": "Rohr",
+            "type": "integer"
+          },
+          "rohr_pct_postal": {
+            "title": "Rohr Pct Postal",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "rohr_pct_urn": {
+            "title": "Rohr Pct Urn",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "strategy_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Strategy Counts",
+            "type": "object"
+          },
+          "turnout_pool": {
+            "title": "Turnout Pool",
+            "type": "number"
+          },
+          "turnout_prange": {
+            "title": "Turnout Prange",
+            "type": "number"
+          },
+          "turnout_rohr": {
+            "title": "Turnout Rohr",
+            "type": "number"
+          },
+          "voters": {
+            "title": "Voters",
+            "type": "integer"
+          },
+          "votes_per_voter": {
+            "title": "Votes Per Voter",
+            "type": "number"
+          }
+        },
+        "required": [
+          "rohr",
+          "prange",
+          "lead",
+          "pool",
+          "eligible",
+          "voters",
+          "cdu_council",
+          "cdu_voters_est",
+          "votes_per_voter",
+          "non_voters",
+          "rohr_pct_urn",
+          "rohr_pct_postal",
+          "assumptions",
+          "cdu_to_rohr",
+          "cdu_to_prange",
+          "turnout_rohr",
+          "turnout_prange",
+          "turnout_pool",
+          "projected_rohr",
+          "projected_prange",
+          "net_total",
+          "balance",
+          "strategy_counts",
+          "pool_pct_median",
+          "districts",
+          "bundles",
+          "lessons_2021",
+          "lessons_2014",
+          "caveats"
+        ],
+        "title": "RunoffPotential",
+        "type": "object"
+      },
+      "RunoffPotentialAssumption": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "to_prange": {
+            "title": "To Prange",
+            "type": "number"
+          },
+          "to_rohr": {
+            "title": "To Rohr",
+            "type": "number"
+          },
+          "votes": {
+            "title": "Votes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "to_rohr",
+          "to_prange",
+          "votes"
+        ],
+        "title": "RunoffPotentialAssumption",
+        "type": "object"
+      },
+      "RunoffPotentialBundle": {
+        "properties": {
+          "district_name": {
+            "title": "District Name",
+            "type": "string"
+          },
+          "districts": {
+            "title": "Districts",
+            "type": "integer"
+          },
+          "eligible": {
+            "title": "Eligible",
+            "type": "integer"
+          },
+          "net_total": {
+            "title": "Net Total",
+            "type": "number"
+          },
+          "non_voters": {
+            "title": "Non Voters",
+            "type": "integer"
+          },
+          "numbers": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Numbers",
+            "type": "array"
+          },
+          "pool": {
+            "title": "Pool",
+            "type": "integer"
+          },
+          "prange": {
+            "title": "Prange",
+            "type": "integer"
+          },
+          "rohr": {
+            "title": "Rohr",
+            "type": "integer"
+          },
+          "rohr_pct_of_two": {
+            "title": "Rohr Pct Of Two",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "yield_per_1000": {
+            "title": "Yield Per 1000",
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "district_name",
+          "numbers",
+          "districts",
+          "eligible",
+          "non_voters",
+          "rohr",
+          "prange",
+          "pool",
+          "rohr_pct_of_two",
+          "net_total",
+          "yield_per_1000"
+        ],
+        "title": "RunoffPotentialBundle",
+        "type": "object"
+      },
+      "RunoffPotentialDistrict": {
+        "properties": {
+          "area": {
+            "title": "Area",
+            "type": "integer"
+          },
+          "area_roman": {
+            "title": "Area Roman",
+            "type": "string"
+          },
+          "ballot_papers": {
+            "title": "Ballot Papers",
+            "type": "integer"
+          },
+          "cdu_council": {
+            "title": "Cdu Council",
+            "type": "integer"
+          },
+          "cdu_voters_est": {
+            "title": "Cdu Voters Est",
+            "type": "integer"
+          },
+          "district_name": {
+            "title": "District Name",
+            "type": "string"
+          },
+          "eligible": {
+            "title": "Eligible",
+            "type": "integer"
+          },
+          "eliminated": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Eliminated",
+            "type": "object"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "net_cdu": {
+            "title": "Net Cdu",
+            "type": "number"
+          },
+          "net_convince": {
+            "title": "Net Convince",
+            "type": "number"
+          },
+          "net_total": {
+            "title": "Net Total",
+            "type": "number"
+          },
+          "non_voters": {
+            "title": "Non Voters",
+            "type": "integer"
+          },
+          "number": {
+            "title": "Number",
+            "type": "integer"
+          },
+          "pool": {
+            "title": "Pool",
+            "type": "integer"
+          },
+          "pool_pct": {
+            "title": "Pool Pct",
+            "type": "number"
+          },
+          "postal": {
+            "title": "Postal",
+            "type": "boolean"
+          },
+          "prange": {
+            "title": "Prange",
+            "type": "integer"
+          },
+          "projected_prange": {
+            "title": "Projected Prange",
+            "type": "integer"
+          },
+          "projected_rohr": {
+            "title": "Projected Rohr",
+            "type": "integer"
+          },
+          "rohr": {
+            "title": "Rohr",
+            "type": "integer"
+          },
+          "rohr_pct_of_two": {
+            "title": "Rohr Pct Of Two",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "strategy": {
+            "title": "Strategy",
+            "type": "string"
+          },
+          "voters": {
+            "title": "Voters",
+            "type": "integer"
+          },
+          "yield_per_1000": {
+            "title": "Yield Per 1000",
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "number",
+          "name",
+          "area",
+          "area_roman",
+          "postal",
+          "district_name",
+          "eligible",
+          "voters",
+          "ballot_papers",
+          "non_voters",
+          "rohr",
+          "prange",
+          "rohr_pct_of_two",
+          "pool",
+          "pool_pct",
+          "cdu_council",
+          "cdu_voters_est",
+          "eliminated",
+          "projected_rohr",
+          "projected_prange",
+          "net_convince",
+          "net_cdu",
+          "net_total",
+          "yield_per_1000",
+          "strategy"
+        ],
+        "title": "RunoffPotentialDistrict",
+        "type": "object"
+      },
       "RunoffProjection": {
         "description": "Die Hochrechnung einer Stichwahl (``runoff_model``,\ndocs/plan-stichwahl-spannung.md S2). Modellrechnung, keine Umfrage — die\nSeite nennt sie „Modell\" und stellt die Bezirkszahl daneben.",
         "properties": {
@@ -16904,6 +17517,40 @@
           "caveats"
         ],
         "title": "RunoffProjection",
+        "type": "object"
+      },
+      "RunoffStrengthGroup": {
+        "description": "Stimmenzahl in gleich vielen schwachen oder starken Urnenbezirken.",
+        "properties": {
+          "change": {
+            "title": "Change",
+            "type": "integer"
+          },
+          "change_pct": {
+            "title": "Change Pct",
+            "type": "number"
+          },
+          "districts": {
+            "title": "Districts",
+            "type": "integer"
+          },
+          "first": {
+            "title": "First",
+            "type": "integer"
+          },
+          "runoff": {
+            "title": "Runoff",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "districts",
+          "first",
+          "runoff",
+          "change",
+          "change_pct"
+        ],
+        "title": "RunoffStrengthGroup",
         "type": "object"
       },
       "SessionDetail": {
@@ -29422,6 +30069,164 @@
           }
         },
         "summary": "Stichwahl Bezirke",
+        "tags": [
+          "wahlabend"
+        ]
+      }
+    },
+    "/api/wahlabend/stichwahl/potenzial": {
+      "get": {
+        "description": "Das Wähler*innen-Potenzial je Wahlbezirk zu einem Reglerstand\n(docs/plan-stichwahl-potenzial.md). Nur mit Token; sonst 404.",
+        "operationId": "stichwahl_potenzial_api_wahlabend_stichwahl_potenzial_get",
+        "parameters": [
+          {
+            "description": "WAHLKAMPF_TOKEN aus der .env",
+            "in": "query",
+            "name": "token",
+            "required": false,
+            "schema": {
+              "description": "WAHLKAMPF_TOKEN aus der .env",
+              "title": "Token",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "zu Rohr,zu Prange in Prozent",
+            "in": "query",
+            "name": "boldt",
+            "required": false,
+            "schema": {
+              "description": "zu Rohr,zu Prange in Prozent",
+              "pattern": "^\\d{1,3},\\d{1,3}$",
+              "title": "Boldt",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "kuessner",
+            "required": false,
+            "schema": {
+              "pattern": "^\\d{1,3},\\d{1,3}$",
+              "title": "Kuessner",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "butzin",
+            "required": false,
+            "schema": {
+              "pattern": "^\\d{1,3},\\d{1,3}$",
+              "title": "Butzin",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "froehlich",
+            "required": false,
+            "schema": {
+              "pattern": "^\\d{1,3},\\d{1,3}$",
+              "title": "Froehlich",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "wilkens",
+            "required": false,
+            "schema": {
+              "pattern": "^\\d{1,3},\\d{1,3}$",
+              "title": "Wilkens",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Castur und Stille zusammen",
+            "in": "query",
+            "name": "others",
+            "required": false,
+            "schema": {
+              "description": "Castur und Stille zusammen",
+              "pattern": "^\\d{1,3},\\d{1,3}$",
+              "title": "Others",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cdu",
+            "required": false,
+            "schema": {
+              "pattern": "^\\d{1,3},\\d{1,3}$",
+              "title": "Cdu",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "turnout_rohr",
+            "required": false,
+            "schema": {
+              "default": 95.0,
+              "maximum": 150,
+              "minimum": 0,
+              "title": "Turnout Rohr",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "turnout_prange",
+            "required": false,
+            "schema": {
+              "default": 95.0,
+              "maximum": 150,
+              "minimum": 0,
+              "title": "Turnout Prange",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "turnout_pool",
+            "required": false,
+            "schema": {
+              "default": 95.0,
+              "maximum": 150,
+              "minimum": 0,
+              "title": "Turnout Pool",
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunoffPotential"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stichwahl Potenzial",
         "tags": [
           "wahlabend"
         ]

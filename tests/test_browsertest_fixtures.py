@@ -189,3 +189,19 @@ def test_die_rangliste_abschrift_kennt_jedes_feld(monkeypatch):
     assert not fehlt, "Diese Felder fehlen in wahlbezirke-rangliste-probe.json:\n  " + "\n  ".join(fehlt)
     assert ist["party"] == "volt" and ist["counted"] == 60 and ist["total"] == 133
     assert service.DISTRICT_SORTS == ("share", "votes")
+
+
+# ---------------------------------------------------------------- Stichwahl-Potenzial (P2)
+
+def test_die_potenzial_abschrift_kennt_jedes_feld():
+    """Das Wahlkampf-Werkzeug (`/stichwahl/potenzial?k=…`) mockt
+    `/api/wahlabend/stichwahl/potenzial` mit der Rechnung zu den Vorgaben.
+    Wieder erzeugen: der Befehl im Kopf von
+    `web/frontend/tests/e2e/20-stichwahl-potenzial.spec.ts`."""
+    from app.election import potential
+
+    ist = json.loads((FIXTURES / "stichwahl-potenzial-probe.json").read_text(encoding="utf-8"))
+    fehlt = _fehlt(potential.compute(), ist, "potenzial")
+    assert not fehlt, "Diese Felder fehlen in stichwahl-potenzial-probe.json:\n  " + "\n  ".join(fehlt)
+    assert ist["lead"] == 2225 and len(ist["districts"]) == 133
+    assert ist["bundles"][0]["district_name"] == "Eversten"
