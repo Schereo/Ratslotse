@@ -102,20 +102,26 @@ function Tafel({ p, rechnet }: { p: Potenzial; rechnet: boolean }) {
 /** Drei Sätze vorweg — die Befunde, die man auch ohne Regler mitnehmen soll. */
 function Befunde({ p }: { p: Potenzial }) {
   const oben = p.bundles[0];
-  const unten = [...p.bundles].sort((a, b) => (a.yield_per_1000 ?? 0) - (b.yield_per_1000 ?? 0))[0];
-  const faktor = oben && unten && unten.yield_per_1000 ? (oben.yield_per_1000 ?? 0) / unten.yield_per_1000 : null;
+  const unten = p.bundles[p.bundles.length - 1];
+  const mitVorzeichen = (wert: number) => `${wert < 0 ? "−" : "+"}${zahl(Math.abs(Math.round(wert)))}`;
+  const anteilButzinKuessner = (stadtbezirk: string) => {
+    const bezirke = p.districts.filter((z) => !z.postal && z.district_name === stadtbezirk);
+    const stimmen = bezirke.reduce((summe, z) => summe + z.eliminated.butzin + z.eliminated.kuessner, 0);
+    const gueltig = bezirke.reduce((summe, z) => summe + z.rohr + z.prange + z.pool, 0);
+    return prozent(gueltig ? (100 * stimmen) / gueltig : null);
+  };
   const saetze = [
     {
       title: "Rohrs Anteil war bei der Briefwahl höher.",
       text: `Unter den Stimmen für Rohr und Prange lag sein Anteil per Brief bei ${prozent(p.rohr_pct_postal)}, an der Urne bei ${prozent(p.rohr_pct_urn)}. Auch Fuhrhop erreichte 2021 per Brief einen höheren Anteil. Bei Gesprächen kann die Briefwahl zur Sprache kommen.`,
     },
     {
-      title: "Nicht alle Kandidaturen waren in denselben Vierteln stark.",
-      text: "Butzin und Küßner erhielten Stimmen in Bümmerstede, Kreyenbrück und Krusenbusch, weniger in Eversten. Die eigenen Hochburgen im Blick zu behalten und in anderen Vierteln Gespräche zu führen, schließt sich nicht aus.",
+      title: "Butzin und Küßner schnitten regional unterschiedlich ab.",
+      text: `Zusammen erhielten sie an der Urne in Krusenbusch ${anteilButzinKuessner("Krusenbusch")}, in Bümmerstede ${anteilButzinKuessner("Bümmerstede")} und in Kreyenbrück ${anteilButzinKuessner("Kreyenbrück")} der gültigen OB-Stimmen. In Eversten waren es ${anteilButzinKuessner("Eversten")}. Verglichen werden Stimmenanteile, nicht absolute Stimmenzahlen. Was ihre Wähler*innen in der Stichwahl tun, ist daraus nicht erkennbar.`,
     },
     {
-      title: faktor ? `Der berechnete Wert liegt in ${oben.district_name} ${faktor.toFixed(1).replace(".", ",")}-mal so hoch wie in ${unten.district_name}.` : "Der berechnete Wert unterscheidet sich zwischen den Stadtbezirken deutlich.",
-      text: "Verglichen wird die Veränderung des Stimmenabstands je 1.000 Wahlberechtigte. Sie beruht auf den Einstellungen der Regler und misst nicht die Wirkung einzelner Gespräche. Die Einsatzliste ist nach diesem Wert sortiert.",
+      title: `${oben.district_name} steht bei diesen Annahmen oben in der Bezirksliste.`,
+      text: `„Netto“ zeigt, wie sich Rohrs Abstand zu Prange gegenüber dem ersten Wahlgang verändert. Für ${oben.district_name} verschiebt er sich im Modell um ${mitVorzeichen(oben.net_total)} Stimmen, für ${unten.district_name} um ${mitVorzeichen(unten.net_total)}. Ein Plus ist für Rohr günstig. Je 1.000 Wahlberechtigte sind das ${mitVorzeichen(oben.yield_per_1000 ?? 0)} und ${mitVorzeichen(unten.yield_per_1000 ?? 0)} Stimmen. Dieser Wert macht unterschiedlich große Stadtbezirke vergleichbar; die Liste ist nach „Netto“ sortiert. Die Wirkung von Haustürgesprächen lässt sich daraus nicht ablesen.`,
     },
   ];
   return (
