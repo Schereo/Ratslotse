@@ -101,27 +101,18 @@ function Tafel({ p, rechnet }: { p: Potenzial; rechnet: boolean }) {
 
 /** Drei Sätze vorweg — die Befunde, die man auch ohne Regler mitnehmen soll. */
 function Befunde({ p }: { p: Potenzial }) {
-  const oben = p.bundles[0];
-  const unten = p.bundles[p.bundles.length - 1];
-  const mitVorzeichen = (wert: number) => `${wert < 0 ? "−" : "+"}${zahl(Math.abs(Math.round(wert)))}`;
-  const anteilButzinKuessner = (stadtbezirk: string) => {
-    const bezirke = p.districts.filter((z) => !z.postal && z.district_name === stadtbezirk);
-    const stimmen = bezirke.reduce((summe, z) => summe + z.eliminated.butzin + z.eliminated.kuessner, 0);
-    const gueltig = bezirke.reduce((summe, z) => summe + z.rohr + z.prange + z.pool, 0);
-    return prozent(gueltig ? (100 * stimmen) / gueltig : null);
-  };
   const saetze = [
     {
       title: "Rohrs Anteil war bei der Briefwahl höher.",
       text: `Unter den Stimmen für Rohr und Prange lag sein Anteil per Brief bei ${prozent(p.rohr_pct_postal)}, an der Urne bei ${prozent(p.rohr_pct_urn)}. Auch Fuhrhop erreichte 2021 per Brief einen höheren Anteil. Bei Gesprächen kann die Briefwahl zur Sprache kommen.`,
     },
     {
-      title: "Butzin und Küßner schnitten regional unterschiedlich ab.",
-      text: `Zusammen erhielten sie an der Urne in Krusenbusch ${anteilButzinKuessner("Krusenbusch")}, in Bümmerstede ${anteilButzinKuessner("Bümmerstede")} und in Kreyenbrück ${anteilButzinKuessner("Kreyenbrück")} der gültigen OB-Stimmen. In Eversten waren es ${anteilButzinKuessner("Eversten")}. Verglichen werden Stimmenanteile, nicht absolute Stimmenzahlen. Was ihre Wähler*innen in der Stichwahl tun, ist daraus nicht erkennbar.`,
+      title: "Butzin und Küßner bekamen je nach Stadtbezirk unterschiedlich viel Zuspruch.",
+      text: "In Krusenbusch, Bümmerstede und Kreyenbrück ging ein größerer Teil der gültigen OB-Stimmen an der Urne an sie als in Eversten. Daraus lässt sich nicht ableiten, wen diese Menschen in der Stichwahl wählen.",
     },
     {
-      title: `${oben.district_name} steht bei diesen Annahmen oben in der Bezirksliste.`,
-      text: `„Netto“ zeigt, wie sich Rohrs Abstand zu Prange gegenüber dem ersten Wahlgang verändert. Für ${oben.district_name} verschiebt er sich im Modell um ${mitVorzeichen(oben.net_total)} Stimmen, für ${unten.district_name} um ${mitVorzeichen(unten.net_total)}. Ein Plus ist für Rohr günstig. Je 1.000 Wahlberechtigte sind das ${mitVorzeichen(oben.yield_per_1000 ?? 0)} und ${mitVorzeichen(unten.yield_per_1000 ?? 0)} Stimmen. Dieser Wert macht unterschiedlich große Stadtbezirke vergleichbar; die Liste ist nach „Netto“ sortiert. Die Wirkung von Haustürgesprächen lässt sich daraus nicht ablesen.`,
+      title: "Die Bezirksliste zeigt berechnete Veränderungen.",
+      text: "„Netto“ zeigt, wie sich Rohrs Abstand zu Prange mit den gewählten Annahmen verändern würde. Der Wert gilt für den ganzen Stadtbezirk. „Je 1.000 Wahlberechtigte“ rechnet ihn auf eine einheitliche Größe um, damit sich große und kleine Bezirke vergleichen lassen. Wie wirksam Gespräche an Haustüren wären, lässt sich daraus nicht ablesen.",
     },
   ];
   return (
