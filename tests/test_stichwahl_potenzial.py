@@ -87,6 +87,23 @@ def test_2021_ist_gemessen_und_gewarnt(vorgabe):
     assert any("Bundestagswahl" in c for c in vorgabe["caveats"])
 
 
+def test_2014_ist_die_gegenprobe_ohne_bundestagswahl(vorgabe):
+    """Krogmann gegen Baak, 28.09./12.10.2014 — die Zahlen der Open-Data-CSVs
+    des Votemanagers (Gesamtergebnis: 50.801 → 44.149 Wählende)."""
+    l = vorgabe["lessons_2014"]
+    assert l["voters_first"] == 50801 and l["voters_runoff"] == 44149
+    assert l["return_rate_pct"] == 86.9
+    assert l["krogmann_first"] == 23482 and l["krogmann_runoff"] == 30005
+    assert l["baak_first"] == 12603 and l["baak_runoff"] == 13348
+    assert l["eliminated_first"] == 11129 + 3193
+    # Die Beteiligung hielt in Krogmanns Hochburgen besser als in Baaks — und
+    # der Sieger wuchs dort am stärksten, wo er schwach war (wie Fuhrhop 2021).
+    assert l["return_by_fifth"][-1] > l["return_by_fifth"][0]
+    assert l["krogmann_growth_by_fifth"][0] > l["krogmann_growth_by_fifth"][-1] > 1
+    assert len(l["return_by_fifth"]) == len(l["baak_growth_by_fifth"]) == 5
+    assert "12.10.2014" in l["note"]
+
+
 # ---------------------------------------------------------------- der Endpunkt
 
 def _ruf(**kw):
@@ -113,6 +130,29 @@ def test_ohne_token_gibt_es_die_seite_nicht(monkeypatch):
     monkeypatch.setenv("WAHLKAMPF_TOKEN", "kurz")
     with pytest.raises(HTTPException):
         _ruf(token="kurz")
+
+
+def test_ohne_eigenen_token_zaehlt_der_aus_dem_jwt_geheimnis(monkeypatch):
+    """Kein neuer Eintrag in der .env nötig: Ohne WAHLKAMPF_TOKEN leitet sich
+    der Token aus WEB_JWT_SECRET ab — deterministisch, 24 Zeichen, und nie
+    aus dem unsicheren Vorgabewert."""
+    from fastapi import HTTPException
+
+    from app.config import get_settings
+
+    monkeypatch.setenv("FEATURE_FLAGS", "wahlabend")
+    monkeypatch.delenv("WAHLKAMPF_TOKEN", raising=False)
+    monkeypatch.setattr(get_settings(), "web_jwt_secret", "ein-geheimnis-fuer-den-test")
+    abgeleitet = router.wahlkampf_token()
+    assert abgeleitet and len(abgeleitet) == 24 and abgeleitet == router.wahlkampf_token()
+    assert _ruf(token=abgeleitet)["lead"] == 2225
+    monkeypatch.setenv("WAHLKAMPF_TOKEN", "eigener-token-lang-genug-1234")
+    assert router.wahlkampf_token() == "eigener-token-lang-genug-1234"
+    with pytest.raises(HTTPException):
+        _ruf(token=abgeleitet)
+    monkeypatch.delenv("WAHLKAMPF_TOKEN")
+    monkeypatch.setattr(get_settings(), "web_jwt_secret", "dev-insecure-change-me")
+    assert router.wahlkampf_token() is None
 
 
 def test_mit_token_kommt_die_rechnung_und_die_regler_greifen(monkeypatch):

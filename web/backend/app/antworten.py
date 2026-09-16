@@ -4437,6 +4437,32 @@ class RunoffLessons2021(TypedDict):
     note: str
 
 
+class RunoffLessons2014(TypedDict):
+    """Krogmann gegen Baak, 28.09./12.10.2014 — die Stichwahl OHNE andere Wahl
+    am selben Tag, also die Gegenprobe zu 2021: Wer kommt zur Stichwahl
+    wieder, und wo?"""
+    voters_first: int
+    voters_runoff: int
+    #: Wählende der Stichwahl in Prozent der Wählenden des ersten Wahlgangs.
+    return_rate_pct: float
+    krogmann_first: int
+    krogmann_runoff: int
+    baak_first: int
+    baak_runoff: int
+    #: Stimmen der Ausgeschiedenen (Rieken, Kreuzwieser) im ersten Wahlgang.
+    eliminated_first: int
+    #: Wiederkommen-Quote je Fünftel der Urnenbezirke nach Krogmanns Anteil, schwächste zuerst.
+    return_by_fifth: list[float]
+    #: Krogmann bzw. Baak Runde 2 ÷ Runde 1, dieselben Fünftel.
+    krogmann_growth_by_fifth: list[float]
+    baak_growth_by_fifth: list[float]
+    krogmann_pct_urn_first: float
+    krogmann_pct_urn_runoff: float
+    krogmann_pct_postal_first: float
+    krogmann_pct_postal_runoff: float
+    note: str
+
+
 class RunoffPotential(TypedDict):
     """``GET /api/wahlabend/stichwahl/potenzial?token=…`` — die ganze Rechnung
     zu einem Reglerstand. Alles hier ist gerechnet, nichts davon ist Prognose;
@@ -4467,6 +4493,7 @@ class RunoffPotential(TypedDict):
     districts: list[RunoffPotentialDistrict]
     bundles: list[RunoffPotentialBundle]
     lessons_2021: RunoffLessons2021
+    lessons_2014: RunoffLessons2014
     caveats: list[str]
 
 

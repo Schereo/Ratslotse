@@ -26,7 +26,7 @@ import { VORGABE, potenzialPfad, saldoSatz, type Potenzial, type Regler } from "
 import { useTween } from "@/lib/use-tween";
 import { cn } from "@/lib/utils";
 import { prozent, zahl } from "@/lib/wahlabend";
-import { Briefwahl, Lehren2021, Vorbehalte } from "./bloecke";
+import { Briefwahl, Lehren2014, Lehren2021, Vorbehalte } from "./bloecke";
 import { Einsatzliste } from "./einsatzliste";
 import { PotenzialKarte } from "./karte";
 import { ReglerTafel } from "./regler";
@@ -198,13 +198,14 @@ export function PotenzialView() {
         <Tafel p={data} rechnet={isFetching} />
         <div className="print:hidden">
           <Befunde p={data} />
-          <ReglerTafel regler={regler} onChange={setRegler} annahmen={data.assumptions} />
+          <ReglerTafel regler={regler} onChange={setRegler} annahmen={data.assumptions} wiederkommen2014={data.lessons_2014.return_rate_pct} />
           <PotenzialKarte bezirke={urne} zaehler={data.strategy_counts} />
         </div>
         <Einsatzliste buendel={data.bundles} bezirke={urne} />
         <div className="print:hidden">
           <Briefwahl p={data} />
           <Lehren2021 p={data} />
+          <Lehren2014 p={data} />
           <Vorbehalte p={data} />
         </div>
       </main>

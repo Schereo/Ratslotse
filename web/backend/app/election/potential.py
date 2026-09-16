@@ -30,6 +30,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ..antworten import (
+    RunoffLessons2014,
     RunoffLessons2021,
     RunoffPotential,
     RunoffPotentialAssumption,
@@ -43,6 +44,8 @@ ROOT = Path(__file__).resolve().parents[4]
 REFERENZ = ROOT / "kommunalwahl" / "referenz-2026" / "praesentation-ob-wahlbezirke.json"
 GEO = ROOT / "web" / "frontend" / "public" / "geo" / "wahlbezirke-oldenburg.json"
 FIX21 = ROOT / "tests" / "fixtures" / "wahlabend" / "stichwahl-2021"
+#: 2014 als Open-Data-CSV des Votemanagers (Hauptwahl 28.09., Stichwahl 12.10.).
+FIX14 = ROOT / "tests" / "fixtures" / "wahlabend" / "stichwahl-2014"
 
 DUELL = ("rohr", "prange")
 #: Die Ausgeschiedenen, wie die Bezirksdatei sie führt (Castur und Stille
@@ -193,12 +196,13 @@ def compute(regler: Regler | None = None) -> RunoffPotential:
         net_total=round(sum(z["net_total"] for z in rows)),
         balance=round(sum(z["projected_rohr"] - z["projected_prange"] for z in rows)),
         strategy_counts=dict(zaehler), pool_pct_median=round(pool_median, 1),
-        districts=rows, bundles=bundles, lessons_2021=lessons_2021(),
+        districts=rows, bundles=bundles, lessons_2021=lessons_2021(), lessons_2014=lessons_2014(),
         caveats=[
             "Die Regler sind Annahmen, keine Messung: Eine Bezirksstatistik zeigt, wo Stimmen liegen, nicht, wie sie wandern.",
             "Die CDU-Zweitstimmen der Ratswahl verschieben nur; diese Menschen haben im ersten Wahlgang schon jemanden gewählt.",
             "Die Briefwahl führt keine Wahlberechtigten — dort gibt es keine Nichtwählenden und keinen Ertrag je Tür.",
             "2021 fiel die Stichwahl auf den Tag der Bundestagswahl; ihre Zahlen taugen nicht als Wanderungsschätzung.",
+            "2014 ist die Gegenprobe ohne andere Wahl: 87 % kamen wieder — aber SPD gegen CDU, mit den Grünen als Ausgeschiedenen; die Lager sind andere.",
         ],
     )
 
@@ -231,4 +235,61 @@ def lessons_2021() -> RunoffLessons2021:
         fuhrhop_pct_urn_first=anteil(e1, False), fuhrhop_pct_urn_runoff=anteil(e2, False),
         fuhrhop_pct_postal_first=anteil(e1, True), fuhrhop_pct_postal_runoff=anteil(e2, True),
         note="Die Stichwahl am 26.09.2021 fiel auf den Tag der Bundestagswahl — 12 % mehr Wählende als im ersten Wahlgang.",
+    )
+
+
+def _lade_2014(datei: str, spalten: dict[str, str]) -> dict[int, dict[str, int]]:
+    """Eine Open-Data-CSV des Votemanagers (2014): je Bezirk Wahlberechtigte
+    (A), Wählende (B), gültige Stimmen (D) und die Kandidaturen (D1…). Die
+    Briefwahlbezirke (9xx) führen unter B nur die Wahlscheine — für sie
+    zählen die gültigen Stimmen."""
+    import csv
+
+    aus: dict[int, dict[str, int]] = {}
+    with (FIX14 / datei).open(encoding="utf-8", newline="") as f:
+        for zeile in csv.DictReader(f, delimiter=";"):
+            nr = int(zeile["gebiet-nr"])
+            if nr == 0:
+                continue
+            werte = {"eligible": int(zeile["A"] or 0), "voters": int(zeile["B"] or 0), "valid": int(zeile["D"] or 0)}
+            for slug, spalte in spalten.items():
+                werte[slug] = int(zeile[spalte] or 0)
+            aus[nr] = werte
+    return aus
+
+
+def lessons_2014() -> RunoffLessons2014:
+    """Krogmann gegen Baak, beide Wahlgänge je Bezirk — die Stichwahl ohne
+    Bundestagswahl daneben. Reihenfolge der Spalten laut Gesamtergebnis:
+    D1 Krogmann, D2 Rieken (Grüne), D3 Baak, D4 Kreuzwieser (WFO)."""
+    e1 = _lade_2014("hauptwahl-wahlbezirke.csv", {"krogmann": "D1", "rieken": "D2", "baak": "D3", "kreuzwieser": "D4"})
+    e2 = _lade_2014("stichwahl-wahlbezirke.csv", {"krogmann": "D1", "baak": "D2"})
+    nums = sorted(set(e1) & set(e2))
+    urne = [n for n in nums if n < 900]
+    nach = sorted(urne, key=lambda n: e1[n]["krogmann"] / max(1, e1[n]["valid"]))
+    k = len(nach) // 5
+    wieder, kg, bg = [], [], []
+    for i in range(5):
+        teil = nach[i * k:(i + 1) * k] if i < 4 else nach[4 * k:]
+        wieder.append(round(100 * sum(e2[n]["voters"] for n in teil) / max(1, sum(e1[n]["voters"] for n in teil)), 1))
+        kg.append(round(sum(e2[n]["krogmann"] for n in teil) / max(1, sum(e1[n]["krogmann"] for n in teil)), 2))
+        bg.append(round(sum(e2[n]["baak"] for n in teil) / max(1, sum(e1[n]["baak"] for n in teil)), 2))
+
+    def anteil(e: dict[int, dict[str, int]], post: bool) -> float:
+        kk = sum(v["krogmann"] for n, v in e.items() if (n >= 900) == post)
+        b = sum(v["baak"] for n, v in e.items() if (n >= 900) == post)
+        return round(100 * kk / max(1, kk + b), 1)
+
+    v1 = sum(e1[n]["voters"] for n in nums)
+    v2 = sum(e2[n]["voters"] for n in nums)
+    return RunoffLessons2014(
+        voters_first=v1, voters_runoff=v2, return_rate_pct=round(100 * v2 / max(1, v1), 1),
+        krogmann_first=sum(e1[n]["krogmann"] for n in nums), krogmann_runoff=sum(e2[n]["krogmann"] for n in nums),
+        baak_first=sum(e1[n]["baak"] for n in nums), baak_runoff=sum(e2[n]["baak"] for n in nums),
+        eliminated_first=sum(e1[n]["rieken"] + e1[n]["kreuzwieser"] for n in nums),
+        return_by_fifth=wieder, krogmann_growth_by_fifth=kg, baak_growth_by_fifth=bg,
+        krogmann_pct_urn_first=anteil(e1, False), krogmann_pct_urn_runoff=anteil(e2, False),
+        krogmann_pct_postal_first=anteil(e1, True), krogmann_pct_postal_runoff=anteil(e2, True),
+        note="Stichwahl am 12.10.2014, zwei Wochen nach der Hauptwahl, ohne andere Wahl am selben Tag — "
+             "die einzige Stichwahl mit Bezirksdaten, die das Wiederkommen sauber zeigt.",
     )

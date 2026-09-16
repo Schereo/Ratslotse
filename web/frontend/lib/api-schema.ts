@@ -12282,6 +12282,46 @@ export interface components {
             /** Roles */
             roles?: string[];
         };
+        /**
+         * RunoffLessons2014
+         * @description Krogmann gegen Baak, 28.09./12.10.2014 — die Stichwahl OHNE andere Wahl
+         *     am selben Tag, also die Gegenprobe zu 2021: Wer kommt zur Stichwahl
+         *     wieder, und wo?
+         */
+        RunoffLessons2014: {
+            /** Baak First */
+            baak_first: number;
+            /** Baak Growth By Fifth */
+            baak_growth_by_fifth: number[];
+            /** Baak Runoff */
+            baak_runoff: number;
+            /** Eliminated First */
+            eliminated_first: number;
+            /** Krogmann First */
+            krogmann_first: number;
+            /** Krogmann Growth By Fifth */
+            krogmann_growth_by_fifth: number[];
+            /** Krogmann Pct Postal First */
+            krogmann_pct_postal_first: number;
+            /** Krogmann Pct Postal Runoff */
+            krogmann_pct_postal_runoff: number;
+            /** Krogmann Pct Urn First */
+            krogmann_pct_urn_first: number;
+            /** Krogmann Pct Urn Runoff */
+            krogmann_pct_urn_runoff: number;
+            /** Krogmann Runoff */
+            krogmann_runoff: number;
+            /** Note */
+            note: string;
+            /** Return By Fifth */
+            return_by_fifth: number[];
+            /** Return Rate Pct */
+            return_rate_pct: number;
+            /** Voters First */
+            voters_first: number;
+            /** Voters Runoff */
+            voters_runoff: number;
+        };
         /** RunoffLessons2021 */
         RunoffLessons2021: {
             /** Fuhrhop First */
@@ -12334,6 +12374,7 @@ export interface components {
             districts: components["schemas"]["RunoffPotentialDistrict"][];
             /** Lead */
             lead: number;
+            lessons_2014: components["schemas"]["RunoffLessons2014"];
             lessons_2021: components["schemas"]["RunoffLessons2021"];
             /** Net Total */
             net_total: number;
@@ -20424,4 +20465,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 387584a29497b7e39b71304807cbfd23b64e182d5ab3fd7d329cc71a34e46def
+// vertrag-sha256: 7bfde3545ea40b8a72e7ffc0eededd9ca25bad2f8ddeb33c9bc4061142ffd4c0

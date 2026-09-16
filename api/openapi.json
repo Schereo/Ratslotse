@@ -16815,6 +16815,104 @@
         "title": "RolesUpdate",
         "type": "object"
       },
+      "RunoffLessons2014": {
+        "description": "Krogmann gegen Baak, 28.09./12.10.2014 — die Stichwahl OHNE andere Wahl\nam selben Tag, also die Gegenprobe zu 2021: Wer kommt zur Stichwahl\nwieder, und wo?",
+        "properties": {
+          "baak_first": {
+            "title": "Baak First",
+            "type": "integer"
+          },
+          "baak_growth_by_fifth": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Baak Growth By Fifth",
+            "type": "array"
+          },
+          "baak_runoff": {
+            "title": "Baak Runoff",
+            "type": "integer"
+          },
+          "eliminated_first": {
+            "title": "Eliminated First",
+            "type": "integer"
+          },
+          "krogmann_first": {
+            "title": "Krogmann First",
+            "type": "integer"
+          },
+          "krogmann_growth_by_fifth": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Krogmann Growth By Fifth",
+            "type": "array"
+          },
+          "krogmann_pct_postal_first": {
+            "title": "Krogmann Pct Postal First",
+            "type": "number"
+          },
+          "krogmann_pct_postal_runoff": {
+            "title": "Krogmann Pct Postal Runoff",
+            "type": "number"
+          },
+          "krogmann_pct_urn_first": {
+            "title": "Krogmann Pct Urn First",
+            "type": "number"
+          },
+          "krogmann_pct_urn_runoff": {
+            "title": "Krogmann Pct Urn Runoff",
+            "type": "number"
+          },
+          "krogmann_runoff": {
+            "title": "Krogmann Runoff",
+            "type": "integer"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "return_by_fifth": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Return By Fifth",
+            "type": "array"
+          },
+          "return_rate_pct": {
+            "title": "Return Rate Pct",
+            "type": "number"
+          },
+          "voters_first": {
+            "title": "Voters First",
+            "type": "integer"
+          },
+          "voters_runoff": {
+            "title": "Voters Runoff",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "voters_first",
+          "voters_runoff",
+          "return_rate_pct",
+          "krogmann_first",
+          "krogmann_runoff",
+          "baak_first",
+          "baak_runoff",
+          "eliminated_first",
+          "return_by_fifth",
+          "krogmann_growth_by_fifth",
+          "baak_growth_by_fifth",
+          "krogmann_pct_urn_first",
+          "krogmann_pct_urn_runoff",
+          "krogmann_pct_postal_first",
+          "krogmann_pct_postal_runoff",
+          "note"
+        ],
+        "title": "RunoffLessons2014",
+        "type": "object"
+      },
       "RunoffLessons2021": {
         "properties": {
           "fuhrhop_first": {
@@ -16937,6 +17035,9 @@
             "title": "Lead",
             "type": "integer"
           },
+          "lessons_2014": {
+            "$ref": "#/components/schemas/RunoffLessons2014"
+          },
           "lessons_2021": {
             "$ref": "#/components/schemas/RunoffLessons2021"
           },
@@ -17030,6 +17131,7 @@
           "districts",
           "bundles",
           "lessons_2021",
+          "lessons_2014",
           "caveats"
         ],
         "title": "RunoffPotential",

@@ -79,11 +79,15 @@ function PaarKarte({ slug, titel, kurz, untertitel, paar, vorgabe, onChange }: {
   );
 }
 
-export function ReglerTafel({ regler, onChange, annahmen }: {
+export function ReglerTafel({ regler, onChange, annahmen, wiederkommen2014 }: {
   regler: Regler;
   onChange: (r: Regler) => void;
   annahmen: Potenzial["assumptions"];
+  /** Die gemessene Wiederkommen-Quote der Stichwahl 2014, in Prozent. */
+  wiederkommen2014: number;
 }) {
+  const quote = Math.round(wiederkommen2014);
+  const wie2014 = regler.turnoutRohr === quote && regler.turnoutPrange === quote && regler.turnoutPool === quote;
   const stimmen = new Map(annahmen.map((a) => [a.slug, a.votes]));
   const unveraendert = JSON.stringify(regler) === JSON.stringify(VORGABE);
   return (
@@ -134,9 +138,20 @@ export function ReglerTafel({ regler, onChange, annahmen }: {
       </div>
 
       <div className="mt-3 rounded-2xl border border-border bg-card p-4">
-        <div className="flex items-baseline justify-between gap-2">
-          <h3 className="text-[14px] font-semibold">Beteiligung</h3>
-          <span className="font-mono text-[11px] text-muted-foreground">wer wiederkommt, in % des 1. Wahlgangs</span>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-baseline gap-2">
+            <h3 className="text-[14px] font-semibold">Beteiligung</h3>
+            <span className="font-mono text-[11px] text-muted-foreground">wer wiederkommt, in % des 1. Wahlgangs</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => onChange({ ...regler, turnoutRohr: quote, turnoutPrange: quote, turnoutPool: quote })}
+            disabled={wie2014}
+            title="Die gemessene Quote der Stichwahl ohne Bundestagswahl, für alle drei Lager"
+            className="inline-flex min-h-8 items-center rounded-full border border-border bg-card px-3 text-[12.5px] font-medium transition-colors hover:bg-primary/5 disabled:cursor-default disabled:opacity-40"
+          >
+            Wie 2014: {quote} %
+          </button>
         </div>
         <div className="mt-3 grid gap-3 sm:grid-cols-3">
           <Schieber id="r-turnout-rohr" name="Rohr-Basis" wert={regler.turnoutRohr} vorgabe={100} min={60} max={120} step={1}
@@ -147,8 +162,9 @@ export function ReglerTafel({ regler, onChange, annahmen }: {
             onChange={(v) => onChange({ ...regler, turnoutPool: v })} ton="primary" />
         </div>
         <p className="mt-2.5 text-[12px] leading-relaxed text-muted-foreground">
-          Über 100 heißt: Es kommen mehr als beim ersten Mal — 2021 waren es in der Stichwahl 12 % mehr Wählende, aber
-          das war die Bundestagswahl am selben Tag. Ohne sie ist unter 100 die ehrlichere Annahme.
+          Über 100 heißt: Es kommen mehr als beim ersten Mal — 2021 waren es 12 % mehr, aber das war die Bundestagswahl
+          am selben Tag. 2014, ohne andere Wahl, kamen {wiederkommen2014.toFixed(1).replace(".", ",")} % wieder, in den
+          Hochburgen des Siegers mehr als in seiner Diaspora. Unter 100 ist die ehrlichere Annahme.
         </p>
       </div>
     </section>

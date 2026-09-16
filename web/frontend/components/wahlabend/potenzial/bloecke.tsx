@@ -100,6 +100,74 @@ export function Lehren2021({ p }: { p: Potenzial }) {
   );
 }
 
+/** 2014 ist die Gegenprobe: Stichwahl zwei Wochen nach der Hauptwahl, ohne
+ *  andere Wahl am selben Tag. Sie zeigt, was 2021 verdeckt — wer wiederkommt
+ *  und wo. Die Lager waren andere (SPD gegen CDU, die Grünen ausgeschieden),
+ *  deshalb steht sie neben 2021, nicht an seiner Stelle. */
+export function Lehren2014({ p }: { p: Potenzial }) {
+  const l = p.lessons_2014;
+  const beschriftung = ["schwächstes Fünftel", "2.", "3.", "4.", "Hochburgen"];
+  const maxWieder = Math.max(...l.return_by_fifth, 1);
+  const maxWachstum = Math.max(...l.krogmann_growth_by_fifth, ...l.baak_growth_by_fifth, 1);
+  const zuKrogmann = l.krogmann_runoff - l.krogmann_first;
+  const zuBaak = l.baak_runoff - l.baak_first;
+  return (
+    <Block kicker="Die Gegenprobe" titel="Krogmann gegen Baak — die Stichwahl ohne Bundestagswahl">
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="flex flex-wrap gap-x-8 gap-y-4">
+            <Grosszahl wert={`${zahl(l.voters_first)} → ${zahl(l.voters_runoff)}`} name="Wählende, Hauptwahl → Stichwahl" />
+            <Grosszahl wert={prozent(l.return_rate_pct)} name="kamen wieder" />
+          </div>
+          <div className="mt-4 divide-y divide-border text-[13px]">
+            <div className="flex justify-between py-1.5"><span className="text-muted-foreground">Krogmann (SPD)</span><span className="font-mono tabular-nums">{zahl(l.krogmann_first)} → {zahl(l.krogmann_runoff)}</span></div>
+            <div className="flex justify-between py-1.5"><span className="text-muted-foreground">Baak (CDU)</span><span className="font-mono tabular-nums">{zahl(l.baak_first)} → {zahl(l.baak_runoff)}</span></div>
+            <div className="flex justify-between py-1.5"><span className="text-muted-foreground">Ausgeschieden: Rieken (Grüne), Kreuzwieser (WFO)</span><span className="font-mono tabular-nums">{zahl(l.eliminated_first)}</span></div>
+            <div className="flex justify-between py-1.5"><span className="text-muted-foreground">Krogmann-Anteil Urne</span><span className="font-mono tabular-nums">{prozent(l.krogmann_pct_urn_first)} → {prozent(l.krogmann_pct_urn_runoff)}</span></div>
+            <div className="flex justify-between py-1.5"><span className="text-muted-foreground">Krogmann-Anteil Brief</span><span className="font-mono tabular-nums">{prozent(l.krogmann_pct_postal_first)} → {prozent(l.krogmann_pct_postal_runoff)}</span></div>
+          </div>
+          <p className="mt-3 text-[13px] leading-relaxed text-muted-foreground">
+            {l.note} Von den {zahl(l.eliminated_first)} Stimmen der Ausgeschiedenen kamen netto {zahl(zuKrogmann)} bei
+            Krogmann an und {zahl(zuBaak)} bei Baak — der Rest blieb zu Hause oder füllte auf, was die eigene Basis
+            verlor.
+          </p>
+        </div>
+        <div className="rounded-2xl border border-border bg-card p-5">
+          <div className={KICKER}>Wer kam wieder — je Fünftel der Urnenbezirke nach Krogmanns Anteil</div>
+          <ul className="mt-3 space-y-2">
+            {l.return_by_fifth.map((x, i) => (
+              <li key={i} className="flex items-center gap-3 text-[13px]">
+                <span className="w-32 flex-none text-muted-foreground">{beschriftung[i] ?? `${i + 1}.`}</span>
+                <span className="h-3 flex-none rounded-full" style={{ width: `${(50 * x) / maxWieder}%`, background: "hsl(var(--signal) / 0.6)" }} aria-hidden />
+                <span className="w-16 flex-none whitespace-nowrap text-right font-mono tabular-nums">{prozent(x)}</span>
+              </li>
+            ))}
+          </ul>
+          <div className={`${KICKER} mt-5`}>Stichwahl ÷ Hauptwahl, dieselben Fünftel — Krogmann · Baak</div>
+          <ul className="mt-3 space-y-2">
+            {l.krogmann_growth_by_fifth.map((x, i) => (
+              <li key={i} className="flex items-center gap-3 text-[13px]">
+                <span className="w-32 flex-none text-muted-foreground">{beschriftung[i] ?? `${i + 1}.`}</span>
+                <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <span className="h-2 rounded-full" style={{ width: `${(100 * x) / maxWachstum}%`, background: "hsl(var(--primary) / 0.6)" }} aria-hidden />
+                  <span className="h-2 rounded-full" style={{ width: `${(100 * (l.baak_growth_by_fifth[i] ?? 0)) / maxWachstum}%`, background: "hsl(var(--foreground) / 0.25)" }} aria-hidden />
+                </span>
+                <span className="w-28 flex-none whitespace-nowrap text-right font-mono tabular-nums">× {x.toFixed(2).replace(".", ",")} · {(l.baak_growth_by_fifth[i] ?? 0).toFixed(2).replace(".", ",")}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-3 text-[13px] leading-relaxed text-muted-foreground">
+            Zwei Dinge halten auch ohne Bundestagswahl: Der Sieger holte sein Plus dort, wo er schwach war — und die
+            Beteiligung fiel überall, am wenigsten in seinen Hochburgen. Für Rohr heißt das: Die eigene Basis kommt
+            eher wieder als die Umworbenen; wer die Diaspora gewinnen will, muss sie auch zur Urne bringen. Der
+            Knopf „Wie 2014“ bei der Beteiligung setzt die gemessene Quote als Annahme.
+          </p>
+        </div>
+      </div>
+    </Block>
+  );
+}
+
 export function Vorbehalte({ p }: { p: Potenzial }) {
   return (
     <Block kicker="Vorbehalte" titel="Was diese Seite nicht weiß">
