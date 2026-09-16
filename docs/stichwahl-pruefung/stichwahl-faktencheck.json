@@ -1,0 +1,180 @@
+{
+  "zweck": "Unabhängige deskriptive Prüfung von Stadtgesamtwerten",
+  "ob_2026": {
+    "Wahlberechtigte": 135513,
+    "Wahlbeteiligung": 85991,
+    "gültig": 84656,
+    "Rohr, GRÜNE": 25850,
+    "Prange, SPD": 28075,
+    "Boldt, Die Linke": 10198,
+    "Fröhlich, FDP": 4945,
+    "Butzin, Einzelwahlvorschlag": 6211,
+    "Küßner, Einzelwahlvorschlag": 4025,
+    "Wilkens, BB-OL": 3843,
+    "Sonstige": 1509
+  },
+  "wahlarten_2026": {
+    "urne": {
+      "bezirke": 91,
+      "waehlende": 58640,
+      "gueltige_stimmen": 57534,
+      "finalisten_stimmen": 35426,
+      "rohr_stimmen": 16403,
+      "prange_stimmen": 19023,
+      "rohr_anteil_alle_pct": 28.510098376612092,
+      "rohr_anteil_zweier_pct": 46.30215096256986
+    },
+    "brief": {
+      "bezirke": 42,
+      "waehlende": 27351,
+      "gueltige_stimmen": 27122,
+      "finalisten_stimmen": 18499,
+      "rohr_stimmen": 9447,
+      "prange_stimmen": 9052,
+      "rohr_anteil_alle_pct": 34.83150210161492,
+      "rohr_anteil_zweier_pct": 51.067625277042005
+    }
+  },
+  "nichtwaehlende_2026": 49522,
+  "ausgeschiedene_2026": 30731,
+  "cdu_ratswahl_stimmen": {
+    "2021": 37430,
+    "2026": 34335
+  },
+  "historie_2014": {
+    "wahlberechtigte": [
+      130492,
+      130543
+    ],
+    "waehlende": [
+      50801,
+      44149
+    ],
+    "gueltige_stimmen": [
+      50407,
+      43353
+    ],
+    "ungueltige_stimmzettel": [
+      394,
+      796
+    ],
+    "veraenderung_waehlende": -6652,
+    "veraenderung_gueltige_stimmen": -7054,
+    "veraenderung_ungueltige_stimmzettel": 402,
+    "wahlbeteiligung_pct": [
+      38.9303558838856,
+      33.81950774840474
+    ],
+    "wahlbeteiligung_delta_pp": -5.110848135480865,
+    "verhaeltnis_waehlendenzahlen_pct": 86.90576957146513,
+    "ausgeschiedene_stimmen_erster_wahlgang": 14322,
+    "zuwachs_finalisten_zusammen": 7268,
+    "kandidaten": {
+      "Krogmann": {
+        "erster_wahlgang": 23482,
+        "stichwahl": 30005,
+        "differenz": 6523,
+        "veraenderung_pct": 27.778724129120178,
+        "faktor": 1.2777872412912017
+      },
+      "Baak": {
+        "erster_wahlgang": 12603,
+        "stichwahl": 13348,
+        "differenz": 745,
+        "veraenderung_pct": 5.911290962469254,
+        "faktor": 1.0591129096246925
+      }
+    }
+  },
+  "historie_2021": {
+    "wahlberechtigte": [
+      135173,
+      135112
+    ],
+    "waehlende": [
+      72765,
+      81472
+    ],
+    "gueltige_stimmen": [
+      72248,
+      80442
+    ],
+    "ungueltige_stimmzettel": [
+      517,
+      1030
+    ],
+    "veraenderung_waehlende": 8707,
+    "veraenderung_gueltige_stimmen": 8194,
+    "veraenderung_ungueltige_stimmzettel": 513,
+    "wahlbeteiligung_pct": [
+      53.831016549162925,
+      60.2996032920836
+    ],
+    "wahlbeteiligung_delta_pp": 6.468586742920678,
+    "verhaeltnis_waehlendenzahlen_pct": 111.96591768020339,
+    "ausgeschiedene_stimmen_erster_wahlgang": 21072,
+    "zuwachs_finalisten_zusammen": 29266,
+    "kandidaten": {
+      "Krogmann": {
+        "erster_wahlgang": 29564,
+        "stichwahl": 43493,
+        "differenz": 13929,
+        "veraenderung_pct": 47.11473413611149,
+        "faktor": 1.471147341361115
+      },
+      "Fuhrhop": {
+        "erster_wahlgang": 21612,
+        "stichwahl": 36949,
+        "differenz": 15337,
+        "veraenderung_pct": 70.96520451600962,
+        "faktor": 1.7096520451600963
+      }
+    }
+  },
+  "quellen": {
+    "kommunalwahl/referenz-2026/praesentation-ob-wahlbezirke.json": {
+      "sha256": "bc59e82ac2f80806ea15fe66f0d09ddd14bdfe7e30fc39cb792715a8521bca79",
+      "git_commit": null
+    },
+    "kommunalwahl/referenz-2021/ratswahl-2021.json": {
+      "sha256": "66121b77c50a1d8fff81db1e0595cc97cd63ba2f4910dc7b15661faa3a834d9c",
+      "git_commit": null
+    },
+    "kommunalwahl/referenz-2021/ratswahl-2021-stadt.csv": {
+      "sha256": "58480c57be25f20c771eb110b3fa856393192117f9c4338f9eca0cbd6dcae69f",
+      "git_commit": null
+    },
+    "kommunalwahl/referenz-2021/ratswahl-2021-wahlbezirke.csv": {
+      "sha256": "84f43272083e6dedddbd7af428759c4b76793b9c0e58d2d8a3b69f4f11af803a",
+      "git_commit": null
+    },
+    "kommunalwahl/referenz-2026/ratswahl-2026.json": {
+      "sha256": "e0df4697588efa2d8ce3c39a0583ce31ef974e2ab8bdeff9f79ebfaf2dcfb9d2",
+      "git_commit": null
+    },
+    "kommunalwahl/referenz-2026/ratswahl-2026-stadt.csv": {
+      "sha256": "f5acc28a92fd162f81dc33a4d3baa6e75775edf44b599021d4156216271ea7c2",
+      "git_commit": null
+    },
+    "kommunalwahl/referenz-2026/ratswahl-2026-wahlbezirke.csv": {
+      "sha256": "c8b845dc3f5666fd4c8137cd8b39b35d04af7b371bd3fde314ac0609917a0e31",
+      "git_commit": null
+    },
+    "tests/fixtures/wahlabend/stichwahl-2014/hauptwahl-wahlbezirke.csv": {
+      "sha256": "9ac4f61853682afaa4fbcb61e92013a5512f4d73afe5f01372b85965ffb9587d",
+      "git_commit": "a78689b63d225a893c0ab26ae643b3bdea73ab5b"
+    },
+    "tests/fixtures/wahlabend/stichwahl-2014/stichwahl-wahlbezirke.csv": {
+      "sha256": "87e8e606a6a5ac61916b06e122541631ccd6e31add83a0ca357c04622250c024",
+      "git_commit": "a78689b63d225a893c0ab26ae643b3bdea73ab5b"
+    },
+    "tests/fixtures/wahlabend/stichwahl-2021/uebersicht-223-erster-wahlgang.json": {
+      "sha256": "02eeb2700c10764962e3961918db30023aa6c10a610d43ba761c0d93f9ce8df1",
+      "git_commit": null
+    },
+    "tests/fixtures/wahlabend/stichwahl-2021/uebersicht-224-stichwahl.json": {
+      "sha256": "8d57893b16926ea1700a8c8deae212cdfaf7fd0aab0cbfa71990cc8cd8966260",
+      "git_commit": null
+    }
+  }
+}

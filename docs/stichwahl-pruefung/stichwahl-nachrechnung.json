@@ -1,0 +1,25 @@
+{
+  "stand": "2026-09-16",
+  "scope": "Stadtweite deskriptive Prüfung, keine Wahlkampfempfehlungen",
+  "ob_2026": {
+    "Wahlberechtigte": 135513,
+    "Wahlbeteiligung": 85991,
+    "gültig": 84656,
+    "Rohr, GRÜNE": 25850,
+    "Prange, SPD": 28075,
+    "Boldt, Die Linke": 10198,
+    "Fröhlich, FDP": 4945,
+    "Butzin, Einzelwahlvorschlag": 6211,
+    "Küßner, Einzelwahlvorschlag": 4025,
+    "Wilkens, BB-OL": 3843,
+    "Sonstige": 1509
+  },
+  "briefwahl_waehlende": 27351,
+  "nichtwaehlende_stadt": 49522,
+  "alle_ausgeschiedenen_stimmen": 30731,
+  "cdu_ratswahl_2026_stadt_und_bezirkssumme": [
+    34335,
+    34335
+  ],
+  "gepruefter_pr_1385_commit": "a78689b63d225a893c0ab26ae643b3bdea73ab5b"
+}
