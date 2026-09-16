@@ -36,6 +36,16 @@ dieser Überarbeitung.
 - [Amtliche Bekanntmachung Hauptwahl 2021](https://www.oldenburg.de/fileadmin/oldenburg/Benutzer/Dateien/22_Rechtsamt/Bekanntmachungen/20210917-11_KW_Bekanntmachung_Ergebnis_OB.pdf)
 - [Amtliche Bekanntmachung Stichwahl 2021](https://www.oldenburg.de/fileadmin/oldenburg/Benutzer/Dateien/22_Rechtsamt/Bekanntmachungen/20211001-2021-09-30_Bekanntmachung_Stichwahl_OB.pdf)
 
+## Aussagekraft für die Wirkung von Gesprächen
+
+Die fehlende Absicherung örtlicher Wirkungsaussagen ist kein Nachweis,
+dass Haustürgespräche generell wirkungslos wären. Experimente fanden etwa
+Auswirkungen auf die [Wahlbeteiligung bei US-Kommunalwahlen](https://doi.org/10.1111/1468-2508.t01-1-00126)
+und auf [Stimmenanteile bei der französischen Präsidentschaftswahl 2012](https://www.aeaweb.org/articles?id=10.1257/aer.20160524).
+Diese Studien untersuchen tatsächliche Kontakte mit Vergleichsgruppen.
+Die hier ausgewerteten Ergebnisdateien enthalten diese Informationen nicht;
+eine örtliche Rangfolge der Kontaktwirkung folgt daraus nicht.
+
 ## Vertrag und Prüfung
 
 `runoff_analysis.compute()` erzeugt `RunoffAnalysis` in `antworten.py`.

@@ -135,7 +135,8 @@ function Begriffe() {
       </dl>
       <Erklaerung>
         Diese Daten enthalten keine Messung von Haustürbesuchen, geführten Gesprächen oder dadurch veränderten
-        Wahlentscheidungen. Eine Wirkung je Kontakt lässt sich daraus nicht bestimmen. Die historischen Veränderungen
+        Wahlentscheidungen. Eine Wirkung je Kontakt lässt sich daraus nicht bestimmen. Das ist eine Grenze dieser
+        Datengrundlage, kein Beleg dafür, dass persönliche Gespräche generell wirkungslos sind. Die historischen Veränderungen
         sind ebenfalls kein Nachweis dafür, dass Stimmen aus einer bestimmten Gruppe kamen.
       </Erklaerung>
       <p className="text-hinweis text-muted-foreground">Prozentwerte sind für die Anzeige gerundet. Summen der angezeigten Anteile können deshalb geringfügig von 100 Prozent abweichen.</p>
