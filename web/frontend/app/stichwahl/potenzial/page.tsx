@@ -1,14 +1,8 @@
 import { Suspense } from "react";
-import { PotenzialView } from "@/components/wahlabend/potenzial/view";
+import { StichwahlAnalyseView } from "@/components/wahlabend/analyse/view";
 
-// Das Wähler*innen-Potenzial für die Stichwahl (docs/plan-stichwahl-potenzial.md).
-// Die Seite liest den Token aus `?k=` — ein Query-Parameter statt eines
-// Pfadsegments, damit der statische Export der App-Hülle sie kennt; dafür
-// braucht Next eine Suspense-Grenze (web/frontend/CLAUDE.md).
-export default function PotenzialSeite() {
-  return (
-    <Suspense fallback={null}>
-      <PotenzialView />
-    </Suspense>
-  );
+// Der bisherige private Link bleibt gültig. Die Seite erklärt jetzt
+// stadtweite Wahlergebnisse; sie enthält keine Gebietsempfehlungen.
+export default function StichwahlAnalyseSeite() {
+  return <Suspense fallback={null}><StichwahlAnalyseView /></Suspense>;
 }

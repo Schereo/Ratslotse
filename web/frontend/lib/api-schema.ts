@@ -5308,8 +5308,11 @@ export interface paths {
         };
         /**
          * Stichwahl Potenzial
-         * @description Das Wähler*innen-Potenzial je Wahlbezirk zu einem Reglerstand
-         *     (docs/plan-stichwahl-potenzial.md). Nur mit Token; sonst 404.
+         * @description Stadtweite Wahlergebnisse mit Bezugsgrößen und historischen Vergleichen.
+         *
+         *     Der bestehende private Pfad und sein Zugang bleiben erhalten. Der
+         *     frühere Szenariovertrag wird vor Veröffentlichung durch die deskriptive
+         *     Analyse ersetzt; Annahmen sind keine Eingabe dieses Endpunkts mehr.
          */
         get: operations["stichwahl_potenzial_api_wahlabend_stichwahl_potenzial_get"];
         put?: never;
@@ -12282,178 +12285,137 @@ export interface components {
             /** Roles */
             roles?: string[];
         };
-        /** RunoffLessons2021 */
-        RunoffLessons2021: {
-            /** Fuhrhop First */
-            fuhrhop_first: number;
-            /** Fuhrhop Growth By Fifth */
-            fuhrhop_growth_by_fifth: number[];
-            /** Fuhrhop Pct Postal First */
-            fuhrhop_pct_postal_first: number;
-            /** Fuhrhop Pct Postal Runoff */
-            fuhrhop_pct_postal_runoff: number;
-            /** Fuhrhop Pct Urn First */
-            fuhrhop_pct_urn_first: number;
-            /** Fuhrhop Pct Urn Runoff */
-            fuhrhop_pct_urn_runoff: number;
-            /** Fuhrhop Runoff */
-            fuhrhop_runoff: number;
-            /** Krogmann First */
-            krogmann_first: number;
-            /** Krogmann Runoff */
-            krogmann_runoff: number;
-            /** Note */
-            note: string;
-            /** Voters First */
-            voters_first: number;
-            /** Voters Runoff */
-            voters_runoff: number;
-        };
         /**
-         * RunoffPotential
-         * @description ``GET /api/wahlabend/stichwahl/potenzial?token=…`` — die ganze Rechnung
-         *     zu einem Reglerstand. Alles hier ist gerechnet, nichts davon ist Prognose;
-         *     ``caveats`` sagt es in Sätzen.
+         * RunoffAnalysis
+         * @description Neutrale Stadtanalyse am bisherigen privaten Pfad. Keine Transfers,
+         *     Gebietseinstufungen oder Aussagen über individuelles Wahlverhalten.
+         *     Noch nicht veröffentlichtes Dev-Format; kein nativer App-Verbraucher.
          */
-        RunoffPotential: {
-            /** Assumptions */
-            assumptions: components["schemas"]["RunoffPotentialAssumption"][];
-            /** Balance */
-            balance: number;
-            /** Bundles */
-            bundles: components["schemas"]["RunoffPotentialBundle"][];
-            /** Caveats */
-            caveats: string[];
-            /** Cdu Council */
-            cdu_council: number;
-            /** Cdu To Prange */
-            cdu_to_prange: number;
-            /** Cdu To Rohr */
-            cdu_to_rohr: number;
-            /** Districts */
-            districts: components["schemas"]["RunoffPotentialDistrict"][];
-            /** Lead */
-            lead: number;
-            lessons_2021: components["schemas"]["RunoffLessons2021"];
-            /** Net Total */
-            net_total: number;
-            /** Non Voters */
-            non_voters: number;
-            /** Pool */
-            pool: number;
-            /** Pool Pct Median */
-            pool_pct_median: number;
-            /** Prange */
-            prange: number;
-            /** Projected Prange */
-            projected_prange: number;
-            /** Projected Rohr */
-            projected_rohr: number;
-            /** Rohr */
-            rohr: number;
-            /** Rohr Pct Postal */
-            rohr_pct_postal: number | null;
-            /** Rohr Pct Urn */
-            rohr_pct_urn: number | null;
-            /** Strategy Counts */
-            strategy_counts: {
-                [key: string]: number;
-            };
-            /** Turnout Pool */
-            turnout_pool: number;
-            /** Turnout Prange */
-            turnout_prange: number;
-            /** Turnout Rohr */
-            turnout_rohr: number;
+        RunoffAnalysis: {
+            /** Candidates */
+            candidates: components["schemas"]["RunoffAnalysisCandidate"][];
+            council: components["schemas"]["RunoffAnalysisCouncil"];
+            /** Data Status */
+            data_status: string;
+            /** District Count */
+            district_count: number;
+            /** Election Date */
+            election_date: string;
+            /** Eliminated Votes */
+            eliminated_votes: number;
+            /** Grouped Other Votes */
+            grouped_other_votes: number;
+            /** History */
+            history: components["schemas"]["RunoffAnalysisHistory"][];
+            /** Lead Votes */
+            lead_votes: number;
+            /** Postal District Count */
+            postal_district_count: number;
+            /** Source Url */
+            source_url: string;
+            totals: components["schemas"]["RunoffAnalysisTotals"];
+            /** Urn District Count */
+            urn_district_count: number;
+            /** Voting Methods */
+            voting_methods: components["schemas"]["RunoffAnalysisMethod"][];
         };
-        /** RunoffPotentialAssumption */
-        RunoffPotentialAssumption: {
+        /** RunoffAnalysisCandidate */
+        RunoffAnalysisCandidate: {
+            /** In Runoff */
+            in_runoff: boolean;
             /** Name */
             name: string;
+            /** Share All Pct */
+            share_all_pct: number | null;
             /** Slug */
             slug: string;
-            /** To Prange */
-            to_prange: number;
-            /** To Rohr */
-            to_rohr: number;
             /** Votes */
             votes: number;
         };
-        /** RunoffPotentialBundle */
-        RunoffPotentialBundle: {
-            /** District Name */
-            district_name: string;
-            /** Districts */
-            districts: number;
-            /** Eligible */
-            eligible: number;
-            /** Net Total */
-            net_total: number;
-            /** Non Voters */
-            non_voters: number;
-            /** Numbers */
-            numbers: number[];
-            /** Pool */
-            pool: number;
-            /** Prange */
-            prange: number;
-            /** Rohr */
-            rohr: number;
-            /** Rohr Pct Of Two */
-            rohr_pct_of_two: number | null;
-            /** Yield Per 1000 */
-            yield_per_1000: number | null;
-        };
-        /** RunoffPotentialDistrict */
-        RunoffPotentialDistrict: {
-            /** Area */
-            area: number;
-            /** Area Roman */
-            area_roman: string;
-            /** Cdu Council */
-            cdu_council: number;
-            /** District Name */
-            district_name: string;
-            /** Eligible */
-            eligible: number;
-            /** Eliminated */
-            eliminated: {
-                [key: string]: number;
-            };
+        /** RunoffAnalysisChange */
+        RunoffAnalysisChange: {
+            /** Change Pct */
+            change_pct: number | null;
+            /** Change Votes */
+            change_votes: number;
+            /** First Votes */
+            first_votes: number;
+            /** Growth Factor */
+            growth_factor: number | null;
             /** Name */
             name: string;
-            /** Net Cdu */
-            net_cdu: number;
-            /** Net Convince */
-            net_convince: number;
-            /** Net Total */
-            net_total: number;
-            /** Non Voters */
-            non_voters: number;
-            /** Number */
-            number: number;
-            /** Pool */
-            pool: number;
-            /** Pool Pct */
-            pool_pct: number;
-            /** Postal */
-            postal: boolean;
-            /** Prange */
-            prange: number;
-            /** Projected Prange */
-            projected_prange: number;
-            /** Projected Rohr */
-            projected_rohr: number;
-            /** Rohr */
-            rohr: number;
-            /** Rohr Pct Of Two */
-            rohr_pct_of_two: number | null;
-            /** Strategy */
-            strategy: string;
+            /** Runoff Votes */
+            runoff_votes: number;
+        };
+        /** RunoffAnalysisCouncil */
+        RunoffAnalysisCouncil: {
+            /** Cdu Candidate Votes */
+            cdu_candidate_votes: number;
+            /** Cdu List Votes */
+            cdu_list_votes: number;
+            /** Cdu Votes */
+            cdu_votes: number;
+            /** Source Url */
+            source_url: string;
+            /** Year */
+            year: number;
+        };
+        /** RunoffAnalysisHistory */
+        RunoffAnalysisHistory: {
+            /** Candidates */
+            candidates: components["schemas"]["RunoffAnalysisChange"][];
+            /** Change Voters */
+            change_voters: number;
+            /** Change Voters Pct */
+            change_voters_pct: number | null;
+            /** Context */
+            context: string;
+            first: components["schemas"]["RunoffAnalysisTotals"];
+            /** First Date */
+            first_date: string;
+            runoff: components["schemas"]["RunoffAnalysisTotals"];
+            /** Runoff Date */
+            runoff_date: string;
+            /** Source Urls */
+            source_urls: string[];
+            /** Turnout Change Pp */
+            turnout_change_pp: number | null;
+            /** Voter Count Ratio Pct */
+            voter_count_ratio_pct: number | null;
+            /** Year */
+            year: number;
+        };
+        /** RunoffAnalysisMethod */
+        RunoffAnalysisMethod: {
+            /** Candidates */
+            candidates: components["schemas"]["RunoffAnalysisCandidate"][];
+            /** Finalist Votes */
+            finalist_votes: number;
+            /** Name */
+            name: string;
+            /** Valid Votes */
+            valid_votes: number;
             /** Voters */
             voters: number;
-            /** Yield Per 1000 */
-            yield_per_1000: number | null;
+        };
+        /** RunoffAnalysisTotals */
+        RunoffAnalysisTotals: {
+            /** Eligible */
+            eligible: number;
+            /** Invalid Ballots */
+            invalid_ballots: number;
+            /** Non Voters */
+            non_voters: number;
+            /** Postal Voters */
+            postal_voters: number;
+            /** Turnout Pct */
+            turnout_pct: number | null;
+            /** Urn Voters */
+            urn_voters: number;
+            /** Valid Votes */
+            valid_votes: number;
+            /** Voters */
+            voters: number;
         };
         /**
          * RunoffProjection
@@ -20287,16 +20249,6 @@ export interface operations {
             query?: {
                 /** @description WAHLKAMPF_TOKEN aus der .env */
                 token?: string | null;
-                /** @description zu Rohr,zu Prange in Prozent */
-                boldt?: string;
-                kuessner?: string;
-                butzin?: string;
-                froehlich?: string;
-                wilkens?: string;
-                cdu?: string;
-                turnout_rohr?: number;
-                turnout_prange?: number;
-                turnout_pool?: number;
             };
             header?: never;
             path?: never;
@@ -20310,7 +20262,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RunoffPotential"];
+                    "application/json": components["schemas"]["RunoffAnalysis"];
                 };
             };
             /** @description Validation Error */
@@ -20424,4 +20376,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 387584a29497b7e39b71304807cbfd23b64e182d5ab3fd7d329cc71a34e46def
+// vertrag-sha256: 6d032676dd3d5d894bbe716c1e1f403806174f60d80c8909f95c5c9be543e3bb
