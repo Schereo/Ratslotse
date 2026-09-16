@@ -64,9 +64,9 @@ function Tafel({ p, rechnet }: { p: Potenzial; rechnet: boolean }) {
   return (
     <section data-testid="potenzial-tafel" className="hh-tafel mt-6 rounded-2xl border px-5 py-5 sm:px-7 sm:py-6">
       <div className="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-4">
-        <Kennzahl wert={zahl(p.lead)} name="Rückstand, 1. Wahlgang" hinweis={`Prange ${zahl(p.prange)} · Rohr ${zahl(p.rohr)}`} />
-        <Kennzahl wert={zahl(p.pool)} name="Umworbene" hinweis="Stimmen der fünf Ausgeschiedenen zusammen" />
-        <Kennzahl wert={`≈ ${zahl(p.cdu_voters_est)}`} name="CDU-Wählende, Ratswahl" hinweis={`${zahl(p.cdu_council)} CDU-Stimmen der Ratswahl ÷ ${p.votes_per_voter.toFixed(2).replace(".", ",")} Stimmen je Wählendem — die CDU hatte keine eigene Kandidatur`} />
+        <Kennzahl wert={zahl(p.lead)} name="Rückstand im ersten Wahlgang" hinweis={`Prange ${zahl(p.prange)} · Rohr ${zahl(p.rohr)}`} />
+        <Kennzahl wert={zahl(p.pool)} name="Stimmen der Ausgeschiedenen" hinweis="Stimmen für alle sieben ausgeschiedenen Kandidaturen, einschließlich der unter „Sonstige“ zusammengefassten" />
+        <Kennzahl wert={`≈ ${zahl(p.cdu_voters_est)}`} name="Geschätzte CDU-Wählende" hinweis={`${zahl(p.cdu_council)} CDU-Stimmen bei der Ratswahl, geteilt durch durchschnittlich ${p.votes_per_voter.toFixed(2).replace(".", ",")} Stimmen je Wählendem. Die CDU hatte keine eigene OB-Kandidatur.`} />
         <Kennzahl wert={zahl(p.non_voters)} name="Nichtwählende" hinweis={`${zahl(p.eligible)} Wahlberechtigte minus ${zahl(p.voters)} Wählende (Urne und Brief); je Bezirk geschätzt`} />
       </div>
 
@@ -80,8 +80,8 @@ function Tafel({ p, rechnet }: { p: Potenzial; rechnet: boolean }) {
           </span>
         </div>
         <p className="mt-1 text-[13px] text-muted-foreground">
-          Mit deinen Annahmen. Rohr gewinnt {zahl(p.net_total)} Stimmen Vorsprung gegenüber dem ersten Wahlgang — nötig
-          sind {zahl(p.lead + 1)}.
+          Nach deinen Annahmen verändert sich der Stimmenabstand für Rohr gegenüber dem ersten Wahlgang um {zahl(p.net_total)} Stimmen.
+          Um Prange zu überholen, müsste er den Rückstand um {zahl(p.lead + 1)} Stimmen verringern.
         </p>
 
         <div className="relative mt-4 h-7 overflow-hidden rounded-full bg-muted" role="img"
@@ -106,16 +106,16 @@ function Befunde({ p }: { p: Potenzial }) {
   const faktor = oben && unten && unten.yield_per_1000 ? (oben.yield_per_1000 ?? 0) / unten.yield_per_1000 : null;
   const saetze = [
     {
-      title: "Die Briefwahl ist Rohrs bessere Hälfte.",
-      text: `Per Brief holte er ${prozent(p.rohr_pct_postal)} der Stimmen, die auf einen der beiden fielen — an der Urne ${prozent(p.rohr_pct_urn)}. 2021 war es bei Fuhrhop genauso. Briefwahl anbieten, an jeder Tür.`,
+      title: "Rohrs Anteil war bei der Briefwahl höher.",
+      text: `Unter den Stimmen für Rohr und Prange lag sein Anteil per Brief bei ${prozent(p.rohr_pct_postal)}, an der Urne bei ${prozent(p.rohr_pct_urn)}. Auch Fuhrhop erreichte 2021 per Brief einen höheren Anteil. Bei Gesprächen kann die Briefwahl zur Sprache kommen.`,
     },
     {
-      title: "Die Umworbenen wohnen dort, wo Rohr schwach ist.",
-      text: "Butzin und Küßner hatten ihre Stimmen in Bümmerstede, Kreyenbrück, Krusenbusch — nicht in Eversten. Hochburgen mobilisieren, die anderen Viertel überzeugen: kein Entweder-oder.",
+      title: "Nicht alle Kandidaturen waren in denselben Vierteln stark.",
+      text: "Butzin und Küßner erhielten Stimmen in Bümmerstede, Kreyenbrück und Krusenbusch, weniger in Eversten. Die eigenen Hochburgen im Blick zu behalten und in anderen Vierteln Gespräche zu führen, schließt sich nicht aus.",
     },
     {
-      title: faktor ? `Je 1.000 Wahlberechtigte bringt ${oben.district_name} rechnerisch ${faktor.toFixed(1).replace(".", ",")}-mal so viel wie ${unten.district_name}.` : "Der Saldo je 1.000 Wahlberechtigte streut stark.",
-      text: "Der Saldo der Regler je 1.000 Wahlberechtigte — eine Rechengröße, keine gemessene Wirkung von Gesprächen. Die Einsatzliste unten sortiert die Stadtbezirke danach.",
+      title: faktor ? `Der berechnete Wert liegt in ${oben.district_name} ${faktor.toFixed(1).replace(".", ",")}-mal so hoch wie in ${unten.district_name}.` : "Der berechnete Wert unterscheidet sich zwischen den Stadtbezirken deutlich.",
+      text: "Verglichen wird die Veränderung des Stimmenabstands je 1.000 Wahlberechtigte. Sie beruht auf den Einstellungen der Regler und misst nicht die Wirkung einzelner Gespräche. Die Einsatzliste ist nach diesem Wert sortiert.",
     },
   ];
   return (
@@ -186,12 +186,12 @@ export function PotenzialView() {
             </span>
           </div>
           <h1 className="mt-2 font-display text-[28px] font-bold leading-tight tracking-tight sm:text-[34px]">
-            Wo eine Tür am meisten bringt
+            Stichwahl-Potenzial in Oldenburg
           </h1>
           <p className="mt-2 max-w-2xl text-[14.5px] leading-relaxed text-muted-foreground">
-            Das Wähler*innen-Potenzial für Jascha Rohr in der Stichwahl am 27. September — gerechnet aus den 133
-            Wahlbezirken des ersten Wahlgangs, den Stimmen der Ratswahl und den beiden letzten Stichwahlen. Wer die
-            Ausgeschiedenen gewählt hat, ist bekannt; wohin diese Stimmen gehen, ist eine Annahme — die Regler.
+            Diese Auswertung zur Stichwahl am 27. September nutzt die Ergebnisse aus 133 Wahlbezirken, die Ratswahl
+            und die beiden früheren Stichwahlen. Wie viele Stimmen die ausgeschiedenen Kandidaturen erhielten, ist
+            bekannt. Wie sich Stimmen in der Stichwahl verteilen könnten, zeigen die Annahmen in den Reglern.
           </p>
         </header>
 

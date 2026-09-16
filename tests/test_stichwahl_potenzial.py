@@ -125,7 +125,7 @@ def test_2014_ist_die_gegenprobe_ohne_bundestagswahl(vorgabe):
     assert l["return_by_fifth"][-1] > l["return_by_fifth"][0]
     assert l["krogmann_growth_by_fifth"][0] > l["krogmann_growth_by_fifth"][-1] > 1
     assert len(l["return_by_fifth"]) == len(l["baak_growth_by_fifth"]) == 5
-    assert "12.10.2014" in l["note"]
+    assert "12. Oktober 2014" in l["note"]
 
 
 # ---------------------------------------------------------------- der Endpunkt

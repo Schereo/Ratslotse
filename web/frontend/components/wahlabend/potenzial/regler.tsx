@@ -74,7 +74,7 @@ function PaarKarte({ slug, titel, kurz, untertitel, paar, vorgabe, onChange }: {
         <Schieber id={`r-${slug}-prange`} name={`${kurz} zu Prange`} wert={paar.prange} vorgabe={vorgabe.prange}
           onChange={(v) => onChange(paarSetzen(paar, "prange", v))} ton="grau" />
       </div>
-      <p className="mt-2.5 font-mono text-[11px] text-muted-foreground">zu keinem der beiden: {zuhause} %</p>
+      <p className="mt-2.5 font-mono text-[11px] text-muted-foreground">Für keinen der beiden: {zuhause} %</p>
     </div>
   );
 }
@@ -97,12 +97,12 @@ export function ReglerTafel({ regler, onChange, annahmen, cduWaehlende, wiederko
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <div className={KICKER}>Annahmen</div>
-          <h2 className="mt-1 font-display text-[22px] font-bold tracking-tight">Wer geht wohin?</h2>
+          <h2 className="mt-1 font-display text-[22px] font-bold tracking-tight">Annahmen für die Stichwahl</h2>
           <p className="mt-1 max-w-2xl text-[13.5px] leading-relaxed text-muted-foreground">
-            Die Regler sind Einschätzungen, keine Messung — 2021 taugt nicht als Vorlage, weil die Stichwahl damals auf
-            den Tag der Bundestagswahl fiel. Die Vorgaben sind Tims Bild vom 16. September; der Strich auf jeder Skala
-            markiert sie. Die CDU-Wählenden haben im ersten Wahlgang schon jemanden gewählt — ihr Regler verschiebt nur
-            den Saldo, und er rechnet in Personen, nicht in Ratswahl-Stimmen.
+            Die Regler zeigen Einschätzungen, keine gemessenen Wechsel. Die Stichwahl 2021 lässt sich nicht direkt
+            übertragen: Sie fand am Tag der Bundestagswahl statt. Die Markierung auf jeder Skala zeigt Tims Annahmen
+            vom 16. September. Der CDU-Regler berücksichtigt, dass diese Menschen im ersten Wahlgang bereits gewählt
+            haben. Er verändert deshalb den Stimmenabstand, statt zusätzliche Ratswahlstimmen als Personen zu zählen.
           </p>
         </div>
         <button
@@ -144,13 +144,13 @@ export function ReglerTafel({ regler, onChange, annahmen, cduWaehlende, wiederko
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-baseline gap-2">
             <h3 className="text-[14px] font-semibold">Beteiligung</h3>
-            <span className="font-mono text-[11px] text-muted-foreground">wer wiederkommt, in % des 1. Wahlgangs</span>
+            <span className="font-mono text-[11px] text-muted-foreground">Wählendenzahl im Verhältnis zum ersten Wahlgang</span>
           </div>
           <button
             type="button"
             onClick={() => onChange({ ...regler, turnoutRohr: quote, turnoutPrange: quote, turnoutPool: quote })}
             disabled={wie2014}
-            title="Die gemessene Quote der Stichwahl ohne Bundestagswahl, für alle drei Lager"
+            title="Das Verhältnis der Wählendenzahlen von 2014 als Annahme für alle drei Gruppen einstellen"
             className="inline-flex min-h-8 items-center rounded-full border border-border bg-card px-3 text-[12.5px] font-medium transition-colors hover:bg-primary/5 disabled:cursor-default disabled:opacity-40"
           >
             Wie 2014: {quote} %
@@ -161,13 +161,14 @@ export function ReglerTafel({ regler, onChange, annahmen, cduWaehlende, wiederko
             onChange={(v) => onChange({ ...regler, turnoutRohr: v })} ton="signal" />
           <Schieber id="r-turnout-prange" name="Prange-Basis" wert={regler.turnoutPrange} vorgabe={100} min={60} max={120} step={1}
             onChange={(v) => onChange({ ...regler, turnoutPrange: v })} ton="grau" />
-          <Schieber id="r-turnout-pool" name="Umworbene" wert={regler.turnoutPool} vorgabe={100} min={60} max={120} step={1}
+          <Schieber id="r-turnout-pool" name="Stimmen für Ausgeschiedene" wert={regler.turnoutPool} vorgabe={100} min={60} max={120} step={1}
             onChange={(v) => onChange({ ...regler, turnoutPool: v })} ton="primary" />
         </div>
         <p className="mt-2.5 text-[12px] leading-relaxed text-muted-foreground">
-          Über 100 heißt: Es kommen mehr als beim ersten Mal — 2021 waren es 12 % mehr, aber das war die Bundestagswahl
-          am selben Tag. 2014, ohne andere Wahl, kamen {wiederkommen2014.toFixed(1).replace(".", ",")} % wieder, in den
-          Hochburgen des Siegers mehr als in seiner Diaspora. Unter 100 ist die ehrlichere Annahme.
+          Ein Wert über 100 Prozent bedeutet eine höhere angenommene Wählendenzahl als im ersten Wahlgang. 2021 lag
+          die Zahl um 12 Prozent höher; die Stichwahl fand allerdings am Tag der Bundestagswahl statt. 2014, ohne eine
+          weitere Wahl am selben Tag, erreichte die Stichwahl {wiederkommen2014.toFixed(1).replace(".", ",")} Prozent
+          der Wählendenzahl des ersten Wahlgangs. Ein Wert unter 100 Prozent steht für eine niedrigere Wählendenzahl.
         </p>
       </div>
     </section>

@@ -250,11 +250,11 @@ def compute(regler: Regler | None = None) -> RunoffPotential:
         strategy_counts=dict(zaehler), pool_pct_median=round(pool_median, 1),
         districts=rows, bundles=bundles, lessons_2021=lessons_2021(), lessons_2014=lessons_2014(),
         caveats=[
-            "Die Regler sind Annahmen, keine Messung: Eine Bezirksstatistik zeigt, wo Stimmen liegen, nicht, wie sie wandern.",
-            "Die CDU-Stimmen der Ratswahl sind Stimmen, keine Personen — jede Person hatte bis zu drei. Gerechnet wird mit Stimmen geteilt durch die Stimmen je Wählendem; der Regler verschiebt nur den Saldo, diese Menschen haben im ersten Wahlgang schon jemanden gewählt.",
-            "Nichtwählende je Bezirk sind geschätzt: Wahlberechtigte minus Urnenwählende minus die im Bezirk ausgestellten Wahlscheine, soweit sie stadtweit genutzt wurden. Stadtweit stimmt die Summe; die Briefwahl selbst führt keine Wahlberechtigten.",
-            "2021 fiel die Stichwahl auf den Tag der Bundestagswahl; ihre Zahlen taugen nicht als Wanderungsschätzung.",
-            "2014 ist ein Vergleich mit anderer Ausgangslage — SPD gegen CDU, die Grünen ausgeschieden, keine andere Wahl am selben Tag. Verhältnisse von Gesamtzahlen, kein beobachtetes Verhalten einzelner Menschen.",
+            "Die Regler beschreiben Annahmen. Die Bezirksergebnisse zeigen, wo Stimmen abgegeben wurden, aber nicht, wie einzelne Menschen bei der Stichwahl abstimmen werden.",
+            "Die CDU erhielt bei der Ratswahl Stimmen, keine bestimmte Zahl von Personen: Jede Person konnte bis zu drei Stimmen abgeben. Das Modell schätzt eine Personenzahl anhand der durchschnittlichen Stimmen je Wählendem. Der CDU-Regler verändert nur den Saldo, denn diese Menschen haben bereits im ersten Wahlgang gewählt.",
+            "Die Zahl der Nichtwählenden je Urnenbezirk ist geschätzt. Dafür werden von den Wahlberechtigten die Urnenwählenden und ein geschätzter Anteil der ausgestellten Wahlscheine abgezogen. Stadtweit stimmt die Summe; die Briefwahlbezirke weisen selbst keine Wahlberechtigten aus.",
+            "Die Stichwahl 2021 fand am Tag der Bundestagswahl statt. Aus ihren Ergebnissen lässt sich nicht ablesen, wie einzelne Menschen ihre Stimme zwischen den Wahlgängen verändert haben.",
+            "2014 waren die Ausgangsbedingungen anders: SPD gegen CDU, die Grünen nicht mehr in der Stichwahl und keine weitere Wahl am selben Tag. Die Zahlen vergleichen Gesamtergebnisse, kein individuelles Wahlverhalten.",
         ],
     )
 
@@ -287,7 +287,7 @@ def lessons_2021() -> RunoffLessons2021:
         fuhrhop_growth_by_fifth=fuenftel,
         fuhrhop_pct_urn_first=anteil(e1, False), fuhrhop_pct_urn_runoff=anteil(e2, False),
         fuhrhop_pct_postal_first=anteil(e1, True), fuhrhop_pct_postal_runoff=anteil(e2, True),
-        note="Die Stichwahl am 26.09.2021 fiel auf den Tag der Bundestagswahl — 12 % mehr Wählende als im ersten Wahlgang.",
+        note="Die Stichwahl am 26. September 2021 fand am Tag der Bundestagswahl statt. Die Zahl der Wählenden lag rund 12 Prozent über der des ersten Wahlgangs.",
     )
 
 
@@ -343,7 +343,7 @@ def lessons_2014() -> RunoffLessons2014:
         return_by_fifth=wieder, krogmann_growth_by_fifth=kg, baak_growth_by_fifth=bg,
         krogmann_pct_urn_first=anteil(e1, False), krogmann_pct_urn_runoff=anteil(e2, False),
         krogmann_pct_postal_first=anteil(e1, True), krogmann_pct_postal_runoff=anteil(e2, True),
-        note="Stichwahl am 12.10.2014, zwei Wochen nach der Hauptwahl, ohne andere Wahl am selben Tag — "
-             "die einzige Stichwahl mit Bezirksdaten ohne diesen Sondereffekt. Verhältnisse von Gesamtzahlen, "
-             "keine beobachteten Einzelpersonen.",
+        note="Die Stichwahl am 12. Oktober 2014 fand zwei Wochen nach dem ersten Wahlgang statt. Anders als 2021 "
+             "gab es am selben Tag keine weitere Wahl. Verglichen werden Gesamtzahlen; das Verhalten einzelner "
+             "Menschen lässt sich daraus nicht ablesen.",
     )

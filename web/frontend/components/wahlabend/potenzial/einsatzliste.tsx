@@ -66,11 +66,12 @@ export function Einsatzliste({ buendel, bezirke }: { buendel: PotenzialBuendel[]
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <div className={KICKER}>Einsatzliste</div>
-          <h2 className="mt-1 font-display text-[22px] font-bold tracking-tight">Die Stadtbezirke, nach Ertrag</h2>
+          <h2 className="mt-1 font-display text-[22px] font-bold tracking-tight">Stadtbezirke im Vergleich</h2>
           <p className="mt-1 max-w-2xl text-[13.5px] leading-relaxed text-muted-foreground print:hidden">
-            Was ein Team an einem Nachmittag schafft, ist ein Stadtbezirk — deshalb sind die Bezirke so gebündelt. Netto
-            heißt: so viele Stimmen Vorsprung gewinnt Rohr dort mit den Reglern von oben. Der Haken merkt sich, was
-            vergeben ist — in diesem Browser.
+            Die Wahlbezirke sind nach Stadtbezirken zusammengefasst. Ein Stadtbezirk ist dabei als Einsatz für einen
+            Nachmittag gedacht. Die Liste ist nach dem berechneten Nettowert sortiert: Er zeigt, wie sich Rohrs
+            Abstand zu Prange mit den gewählten Annahmen verändert. Mit den Häkchen kannst du festhalten, welche
+            Bezirke übernommen wurden. Sie werden nur in diesem Browser gespeichert.
           </p>
         </div>
         <div className="flex items-center gap-2 print:hidden">
@@ -104,7 +105,7 @@ export function Einsatzliste({ buendel, bezirke }: { buendel: PotenzialBuendel[]
                 <span className="min-w-0 flex-1">
                   <span className="block text-[15px] font-semibold">{b.district_name}</span>
                   <span className="block text-[12px] text-muted-foreground">
-                    {b.districts} Bezirke · {zahl(b.eligible)} Wahlberechtigte · Rohr {prozent(b.rohr_pct_of_two, 0)} · {zahl(b.non_voters)} nicht gekommen
+                    {b.districts} Bezirke · {zahl(b.eligible)} Wahlberechtigte · Rohr {prozent(b.rohr_pct_of_two, 0)} · {zahl(b.non_voters)} Nichtwählende (geschätzt)
                   </span>
                 </span>
                 <span className="flex-none text-right">
