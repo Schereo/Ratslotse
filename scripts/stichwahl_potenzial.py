@@ -34,7 +34,7 @@ def tsd(n: float, vorzeichen: bool = False) -> str:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
+    ap = argparse.ArgumentParser(description=(__doc__ or "").split("\n", 1)[0])
     for s, (a, b) in potential.VORGABE.items():
         ap.add_argument(f"--{s}", nargs=2, type=float, metavar=("ZU_ROHR", "ZU_PRANGE"), default=(a, b),
                         help=f"Anteile in Prozent (Vorgabe {a:.0f} {b:.0f})")
