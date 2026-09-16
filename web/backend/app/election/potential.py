@@ -66,6 +66,9 @@ VORGABE: dict[str, tuple[float, float]] = {
     "froehlich": (20, 35), "wilkens": (15, 30), "others": (30, 30),
 }
 VORGABE_CDU: tuple[float, float] = (25, 25)
+# Zusätzlicher Rückgang je Ausgangsgruppe; die Wechselannahmen lassen bereits
+# einen Teil der Stimmen für ausgeschiedene Kandidaturen unzugeordnet.
+TURNOUT_VORGABE = 95.0
 #: Unter diesem Ertrag je 1.000 Wahlberechtigte heißt ein Bezirk „liegenlassen".
 ERTRAG_GERING = 20.0
 ROMAN = {1: "I", 2: "II", 3: "III", 4: "IV", 5: "V", 6: "VI", 7: "VII", 8: "VIII", 9: "IX"}
@@ -78,9 +81,9 @@ class Regler:
     transfers: dict[str, tuple[float, float]]
     cdu: tuple[float, float] = VORGABE_CDU
     #: Beteiligung in Prozent der Erstrunden-Wählenden je Lager.
-    turnout_rohr: float = 100.0
-    turnout_prange: float = 100.0
-    turnout_pool: float = 100.0
+    turnout_rohr: float = TURNOUT_VORGABE
+    turnout_prange: float = TURNOUT_VORGABE
+    turnout_pool: float = TURNOUT_VORGABE
 
     @classmethod
     def vorgabe(cls) -> Regler:

@@ -65,22 +65,30 @@ def test_die_briefwahl_ist_rohrs_bessere_haelfte(vorgabe):
 
 
 def test_null_heisst_null_und_die_regler_wirken_linear():
-    null = potential.compute(potential.Regler(transfers={s: (0, 0) for s in potential.VORGABE}, cdu=(0, 0)))
+    null = potential.compute(potential.Regler(
+        transfers={s: (0, 0) for s in potential.VORGABE}, cdu=(0, 0),
+        turnout_rohr=100, turnout_prange=100, turnout_pool=100))
     assert null["net_total"] == 0 and null["balance"] == -null["lead"]
     nur_linke = potential.compute(potential.Regler(
-        transfers={**{s: (0, 0) for s in potential.VORGABE}, "boldt": (100, 0)}, cdu=(0, 0)))
+        transfers={**{s: (0, 0) for s in potential.VORGABE}, "boldt": (100, 0)}, cdu=(0, 0),
+        turnout_rohr=100, turnout_prange=100, turnout_pool=100))
     assert nur_linke["net_total"] == 10198
     # Beteiligung: 90 % der Rohr-Basis kostet ein Zehntel seiner Stimmen —
     # bis auf die Rundung je Bezirk (133 × höchstens eine halbe Stimme).
-    weniger = potential.compute(potential.Regler(transfers={s: (0, 0) for s in potential.VORGABE}, cdu=(0, 0), turnout_rohr=90))
+    weniger = potential.compute(potential.Regler(
+        transfers={s: (0, 0) for s in potential.VORGABE}, cdu=(0, 0),
+        turnout_rohr=90, turnout_prange=100, turnout_pool=100))
     assert abs(weniger["balance"] - (-weniger["lead"] - 2585)) <= 67
 
 
 def test_mit_den_vorgaben_steht_rohr_vorn(vorgabe):
-    """Der Plan sagt „+5.211 netto, Saldo rund +3.000" — Rundung je Bezirk
-    erlaubt ein paar Stimmen Abweichung, nicht mehr."""
-    assert abs(vorgabe["net_total"] - 5211) <= 5
-    assert 2900 <= vorgabe["balance"] <= 3050
+    """Die vorsichtigere Beteiligungsannahme ist im Ergebnis sichtbar."""
+    assert (vorgabe["turnout_rohr"], vorgabe["turnout_prange"], vorgabe["turnout_pool"]) == (95, 95, 95)
+    assert abs(vorgabe["net_total"] - 5061) <= 5
+    assert 2800 <= vorgabe["balance"] <= 2900
+    gueltig_erstwahl = vorgabe["rohr"] + vorgabe["prange"] + vorgabe["pool"]
+    gueltig_stichwahl_modell = vorgabe["projected_rohr"] + vorgabe["projected_prange"]
+    assert 80 <= 100 * gueltig_stichwahl_modell / gueltig_erstwahl <= 82
 
 
 def test_jeder_urnenbezirk_hat_einen_ort_und_eine_strategie(vorgabe):
@@ -132,7 +140,7 @@ def test_2014_ist_die_gegenprobe_ohne_bundestagswahl(vorgabe):
 
 def _ruf(**kw):
     args = dict(token=None, boldt=None, kuessner=None, butzin=None, froehlich=None, wilkens=None, others=None, cdu=None,
-                turnout_rohr=100, turnout_prange=100, turnout_pool=100)
+                turnout_rohr=95, turnout_prange=95, turnout_pool=95)
     args.update(kw)
     return router.stichwahl_potenzial(**args)
 
@@ -185,9 +193,9 @@ def test_mit_token_kommt_die_rechnung_und_die_regler_greifen(monkeypatch):
     monkeypatch.setenv("FEATURE_FLAGS", "wahlabend")
     monkeypatch.setenv("WAHLKAMPF_TOKEN", "richtig-und-lang-genug-1234")
     p = _ruf(token="richtig-und-lang-genug-1234")
-    assert p["lead"] == 2225 and abs(p["net_total"] - 5211) <= 5
-    q = _ruf(token="richtig-und-lang-genug-1234", boldt="80,5", cdu="40,10", turnout_prange=95)
-    assert q["assumptions"][0]["to_rohr"] == 80 and q["cdu_to_rohr"] == 40 and q["turnout_prange"] == 95
+    assert p["lead"] == 2225 and abs(p["net_total"] - 5061) <= 5
+    q = _ruf(token="richtig-und-lang-genug-1234", boldt="80,5", cdu="40,10", turnout_prange=90)
+    assert q["assumptions"][0]["to_rohr"] == 80 and q["cdu_to_rohr"] == 40 and q["turnout_prange"] == 90
     assert q["balance"] > p["balance"]
     with pytest.raises(HTTPException) as e:
         _ruf(token="richtig-und-lang-genug-1234", boldt="70,40")

@@ -152,9 +152,9 @@ export function ReglerTafel({ regler, onChange, annahmen, cduWaehlende, modellSt
             onChange={(v) => onChange({ ...regler, turnoutPool: v })} ton="primary" />
         </div>
         <p className="mt-2.5 text-[12px] leading-relaxed text-muted-foreground">
-          100 Prozent an einem Regler heißt nicht 100 Prozent Wahlbeteiligung: Für diese Gruppe wird nur kein zusätzlicher
-          Rückgang angenommen. Wie viele Menschen insgesamt Rohr oder Prange wählen, hängt auch von den Wechselannahmen
-          oben ab. Ein Teil der Stimmen für ausgeschiedene Kandidaturen bleibt dort keinem der beiden zugeordnet.
+          Die Vorgabe nimmt an: Von 100 Menschen, die im ersten Wahlgang Rohr, Prange oder eine ausgeschiedene Kandidatur
+          gewählt haben, gehen jeweils {VORGABE.turnoutRohr} auch zur Stichwahl. Das ist eine Annahme, keine Messung.
+          Von den Stimmen für ausgeschiedene Kandidaturen wird außerdem nicht jede Rohr oder Prange zugerechnet.
         </p>
         <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
           Mit den gewählten Annahmen ergeben sich für Rohr und Prange zusammen rund {prozent(modellStimmenquote, 0)} der

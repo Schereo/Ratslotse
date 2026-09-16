@@ -8,12 +8,8 @@
  * Antwort wird deshalb gemockt — mit der Abschrift aus `potential.compute()`
  * (`tests/test_browsertest_fixtures.py` hält sie am Vertrag). Erzeugt mit:
  *
- *     FEATURE_FLAGS=wahlabend WAHLKAMPF_TOKEN=probe-token-fuer-die-browsertests \
- *       .venv/bin/python -c "import sys, json; sys.path.insert(0, 'web/backend'); \
- *       from app.routers import wahlabend as r; print(json.dumps(r.stichwahl_potenzial( \
- *       token='probe-token-fuer-die-browsertests', boldt=None, kuessner=None, butzin=None, \
- *       froehlich=None, wilkens=None, others=None, cdu=None, turnout_rohr=100, turnout_prange=100, \
- *       turnout_pool=100), ensure_ascii=False))" \
+ *     /path/to/.venv/bin/python -c "import sys, json; sys.path.insert(0, 'web/backend'); \
+ *       from app.election import potential; print(json.dumps(potential.compute(), ensure_ascii=False))" \
  *       > web/frontend/tests/e2e/fixtures/stichwahl-potenzial-probe.json
  */
 import { readFileSync } from "node:fs";
@@ -60,8 +56,9 @@ test.describe("Stichwahl-Potenzial", () => {
     const tafel = page.getByTestId("potenzial-tafel");
     await expect(tafel).toContainText("2.225");
     await expect(tafel).toContainText(/Rohr läge [\d.]+ Stimmen vorn/);
-    await expect(page.getByText(/100 Prozent an einem Regler heißt nicht 100 Prozent Wahlbeteiligung/)).toBeVisible();
-    await expect(page.getByText(/rund 86 % der gültigen OB-Stimmenzahl/)).toBeVisible();
+    await expect(page.getByText(/gehen jeweils 95 auch zur Stichwahl/)).toBeVisible();
+    await expect(page.getByText(/rund 81 % der gültigen OB-Stimmenzahl/)).toBeVisible();
+    await expect(page.getByLabel("Rohr-Basis")).toHaveValue("95");
     await expect(page.getByRole("button", { name: /Wie 2014/ })).toHaveCount(0);
 
     // Ein Regler schickt seinen Stand an den Server — nur den, der abweicht.

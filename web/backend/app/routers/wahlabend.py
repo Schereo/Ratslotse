@@ -617,9 +617,9 @@ def stichwahl_potenzial(
     wilkens: str = Query(default=None, pattern=r"^\d{1,3},\d{1,3}$"),
     others: str = Query(default=None, pattern=r"^\d{1,3},\d{1,3}$", description="Castur und Stille zusammen"),
     cdu: str = Query(default=None, pattern=r"^\d{1,3},\d{1,3}$"),
-    turnout_rohr: float = Query(default=100, ge=0, le=150),
-    turnout_prange: float = Query(default=100, ge=0, le=150),
-    turnout_pool: float = Query(default=100, ge=0, le=150),
+    turnout_rohr: float = Query(default=potential.TURNOUT_VORGABE, ge=0, le=150),
+    turnout_prange: float = Query(default=potential.TURNOUT_VORGABE, ge=0, le=150),
+    turnout_pool: float = Query(default=potential.TURNOUT_VORGABE, ge=0, le=150),
 ) -> RunoffPotential:
     """Das Wähler*innen-Potenzial je Wahlbezirk zu einem Reglerstand
     (docs/plan-stichwahl-potenzial.md). Nur mit Token; sonst 404."""

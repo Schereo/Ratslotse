@@ -31,6 +31,9 @@ export type Regler = {
   turnoutPool: number;
 };
 
+/** Zusätzlicher Rückgang je Ausgangsgruppe; kein gemessener Beteiligungswert. */
+export const BETEILIGUNG_VORGABE = 95;
+
 export const KANDIDATUREN: { slug: keyof Omit<Regler, "cdu" | "turnoutRohr" | "turnoutPrange" | "turnoutPool">; name: string; kurz: string }[] = [
   { slug: "boldt", name: "Heike Boldt (Linke)", kurz: "Boldt" },
   { slug: "kuessner", name: "Byanca Küßner", kurz: "Küßner" },
@@ -40,7 +43,7 @@ export const KANDIDATUREN: { slug: keyof Omit<Regler, "cdu" | "turnoutRohr" | "t
   { slug: "others", name: "Sonstige (Castur, Stille)", kurz: "Sonstige" },
 ];
 
-/** Die Vorgaben aus dem Plan §2.1 — Annahmen in Zahlen, keine Messung. */
+/** Die aktuellen Vorgaben — Annahmen in Zahlen, keine Messung. */
 export const VORGABE: Regler = {
   boldt: { rohr: 55, prange: 15 },
   kuessner: { rohr: 45, prange: 15 },
@@ -49,9 +52,9 @@ export const VORGABE: Regler = {
   wilkens: { rohr: 15, prange: 30 },
   others: { rohr: 30, prange: 30 },
   cdu: { rohr: 25, prange: 25 },
-  turnoutRohr: 100,
-  turnoutPrange: 100,
-  turnoutPool: 100,
+  turnoutRohr: BETEILIGUNG_VORGABE,
+  turnoutPrange: BETEILIGUNG_VORGABE,
+  turnoutPool: BETEILIGUNG_VORGABE,
 };
 
 /** Der Pfad zum Endpunkt — nur Regler, die von der Vorgabe abweichen, stehen
@@ -65,9 +68,9 @@ export function potenzialPfad(token: string, r: Regler): string {
     }
   }
   if (r.cdu.rohr !== VORGABE.cdu.rohr || r.cdu.prange !== VORGABE.cdu.prange) q.set("cdu", `${Math.round(r.cdu.rohr)},${Math.round(r.cdu.prange)}`);
-  if (r.turnoutRohr !== 100) q.set("turnout_rohr", String(r.turnoutRohr));
-  if (r.turnoutPrange !== 100) q.set("turnout_prange", String(r.turnoutPrange));
-  if (r.turnoutPool !== 100) q.set("turnout_pool", String(r.turnoutPool));
+  if (r.turnoutRohr !== VORGABE.turnoutRohr) q.set("turnout_rohr", String(r.turnoutRohr));
+  if (r.turnoutPrange !== VORGABE.turnoutPrange) q.set("turnout_prange", String(r.turnoutPrange));
+  if (r.turnoutPool !== VORGABE.turnoutPool) q.set("turnout_pool", String(r.turnoutPool));
   return `/wahlabend/stichwahl/potenzial?${q.toString()}`;
 }
 

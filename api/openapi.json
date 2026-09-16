@@ -30114,7 +30114,7 @@
             "name": "turnout_rohr",
             "required": false,
             "schema": {
-              "default": 100,
+              "default": 95.0,
               "maximum": 150,
               "minimum": 0,
               "title": "Turnout Rohr",
@@ -30126,7 +30126,7 @@
             "name": "turnout_prange",
             "required": false,
             "schema": {
-              "default": 100,
+              "default": 95.0,
               "maximum": 150,
               "minimum": 0,
               "title": "Turnout Prange",
@@ -30138,7 +30138,7 @@
             "name": "turnout_pool",
             "required": false,
             "schema": {
-              "default": 100,
+              "default": 95.0,
               "maximum": 150,
               "minimum": 0,
               "title": "Turnout Pool",
