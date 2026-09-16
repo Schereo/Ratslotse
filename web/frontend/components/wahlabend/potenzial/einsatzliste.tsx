@@ -137,7 +137,7 @@ export function Einsatzliste({ buendel, bezirke }: { buendel: PotenzialBuendel[]
                         <span className={cn("min-w-0 flex-1 truncate", an && "line-through")}>{z.name}</span>
                         <span className="hidden flex-none rounded-full px-2 py-0.5 text-[11px] font-medium sm:inline"
                           style={{ background: STRATEGIE_FARBE[z.strategy] ?? "hsl(var(--muted))" }}>
-                          {STRATEGIE[z.strategy]?.titel ?? z.strategy}
+                          {STRATEGIE[z.strategy]?.title ?? z.strategy}
                         </span>
                         <span className="w-14 flex-none text-right font-mono text-[12px] tabular-nums">{netto(z.net_total)}</span>
                         <span className="hidden w-10 flex-none text-right font-mono text-[12px] tabular-nums sm:block">{z.yield_per_1000?.toFixed(0) ?? "–"}</span>

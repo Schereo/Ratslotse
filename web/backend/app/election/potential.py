@@ -100,16 +100,16 @@ def _v(d: mayor_districts.MayorDistrict, slug: str) -> int:
 
 def _strategie(row: RunoffPotentialDistrict, pool_median: float) -> str:
     if row["postal"]:
-        return "brief"
+        return "postal"
     if (row["yield_per_1000"] or 0) < ERTRAG_GERING:
-        return "liegenlassen"
+        return "skip"
     stark = (row["rohr_pct_of_two"] or 0) >= 50
     pool_gross = row["pool_pct"] >= pool_median
     if stark and pool_gross:
-        return "beides"
+        return "both"
     if stark:
-        return "halten"
-    return "ueberzeugen"
+        return "hold"
+    return "persuade"
 
 
 def compute(regler: Regler | None = None) -> RunoffPotential:

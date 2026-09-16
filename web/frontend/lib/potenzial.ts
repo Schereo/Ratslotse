@@ -75,21 +75,22 @@ export function paarSetzen(p: Paar, seite: keyof Paar, wert: number): Paar {
   return { ...p, [seite]: w, [andere]: Math.min(p[andere], 100 - w) };
 }
 
-export const STRATEGIE: Record<string, { titel: string; satz: string }> = {
-  halten: { titel: "Halten", satz: "Rohr liegt hier vorn — die Basis muss am 27.09. kommen. Briefwahl anbieten." },
-  ueberzeugen: { titel: "Überzeugen", satz: "Hier wohnen die Umworbenen — Linke, Butzin, Küßner. Ansprechen, nicht bekräftigen." },
-  beides: { titel: "Beides", satz: "Starke Basis und großer Pool — hier lohnt jede Tür doppelt." },
-  liegenlassen: { titel: "Liegenlassen", satz: "Wenig zu holen je Tür. Zuletzt, wenn überhaupt." },
-  brief: { titel: "Briefwahl", satz: "Keine Fläche, keine Türen — die Stimmen kommen von überall." },
+/** Die Einstufung je Bezirk, wie das Backend sie nennt — und ihr Wort dazu. */
+export const STRATEGIE: Record<string, { title: string; sentence: string }> = {
+  hold: { title: "Halten", sentence: "Rohr liegt hier vorn — die Basis muss am 27.09. kommen. Briefwahl anbieten." },
+  persuade: { title: "Überzeugen", sentence: "Hier wohnen die Umworbenen — Linke, Butzin, Küßner. Ansprechen, nicht bekräftigen." },
+  both: { title: "Beides", sentence: "Starke Basis und großer Pool — hier lohnt jede Tür doppelt." },
+  skip: { title: "Liegenlassen", sentence: "Wenig zu holen je Tür. Zuletzt, wenn überhaupt." },
+  postal: { title: "Briefwahl", sentence: "Keine Fläche, keine Türen — die Stimmen kommen von überall." },
 };
 
 /** Tönungs-Modi der Karte: Feld, Beschriftung, Legende. */
 export const TOENUNG = [
-  { key: "yield_per_1000", titel: "Ertrag je Tür", legende: "netto je 1.000 Wahlberechtigte" },
-  { key: "rohr_pct_of_two", titel: "Rohr-Anteil", legende: "Rohr an den Stimmen der beiden, 1. Wahlgang" },
-  { key: "pool_pct", titel: "Umworbene", legende: "Stimmen der Ausgeschiedenen, Anteil an den gültigen" },
-  { key: "cdu_council", titel: "CDU", legende: "CDU-Zweitstimmen der Ratswahl" },
-  { key: "non_voters", titel: "Nichtwählende", legende: "Wahlberechtigte, die nicht kamen" },
+  { key: "yield_per_1000", title: "Ertrag je Tür", legend: "netto je 1.000 Wahlberechtigte" },
+  { key: "rohr_pct_of_two", title: "Rohr-Anteil", legend: "Rohr an den Stimmen der beiden, 1. Wahlgang" },
+  { key: "pool_pct", title: "Umworbene", legend: "Stimmen der Ausgeschiedenen, Anteil an den gültigen" },
+  { key: "cdu_council", title: "CDU", legend: "CDU-Zweitstimmen der Ratswahl" },
+  { key: "non_voters", title: "Nichtwählende", legend: "Wahlberechtigte, die nicht kamen" },
 ] as const;
 export type ToenungKey = (typeof TOENUNG)[number]["key"];
 
@@ -118,14 +119,14 @@ export function toenungWert(z: ToenbarerBezirk, key: ToenungKey): number | null 
 
 /** Die Kartenfarbe je Strategie — Rohr-Orange (`--signal`) für die Basis,
  *  Hafenblau (`--primary`) für die Umworbenen, beides kräftig, wo beides
- *  gilt; „liegenlassen" bleibt neutral. Token statt Hex, damit die Fläche in
+ *  gilt; „skip“ bleibt neutral. Token statt Hex, damit die Fläche in
  *  beiden Themes zu ihrem Grund passt. */
 export const STRATEGIE_FARBE: Record<string, string | null> = {
-  halten: "hsl(var(--signal) / 0.5)",
-  beides: "hsl(var(--signal) / 0.9)",
-  ueberzeugen: "hsl(var(--primary) / 0.5)",
-  liegenlassen: null,
-  brief: null,
+  hold: "hsl(var(--signal) / 0.5)",
+  both: "hsl(var(--signal) / 0.9)",
+  persuade: "hsl(var(--primary) / 0.5)",
+  skip: null,
+  postal: null,
 };
 
 /** Die Haken der Einsatzliste — nur in diesem Browser, nie auf dem Server:

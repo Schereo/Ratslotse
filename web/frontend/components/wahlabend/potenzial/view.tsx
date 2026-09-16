@@ -106,15 +106,15 @@ function Befunde({ p }: { p: Potenzial }) {
   const faktor = oben && unten && unten.yield_per_1000 ? (oben.yield_per_1000 ?? 0) / unten.yield_per_1000 : null;
   const saetze = [
     {
-      titel: "Die Briefwahl ist Rohrs bessere Hälfte.",
+      title: "Die Briefwahl ist Rohrs bessere Hälfte.",
       text: `Per Brief holte er ${prozent(p.rohr_pct_postal)} der Stimmen, die auf einen der beiden fielen — an der Urne ${prozent(p.rohr_pct_urn)}. 2021 war es bei Fuhrhop genauso. Briefwahl anbieten, an jeder Tür.`,
     },
     {
-      titel: "Die Umworbenen wohnen dort, wo Rohr schwach ist.",
+      title: "Die Umworbenen wohnen dort, wo Rohr schwach ist.",
       text: "Butzin und Küßner hatten ihre Stimmen in Bümmerstede, Kreyenbrück, Krusenbusch — nicht in Eversten. Hochburgen mobilisieren, die anderen Viertel überzeugen: kein Entweder-oder.",
     },
     {
-      titel: faktor ? `Eine Tür in ${oben.district_name} bringt ${faktor.toFixed(1).replace(".", ",")}-mal so viel wie eine in ${unten.district_name}.` : "Der Ertrag je Tür streut stark.",
+      title: faktor ? `Eine Tür in ${oben.district_name} bringt ${faktor.toFixed(1).replace(".", ",")}-mal so viel wie eine in ${unten.district_name}.` : "Der Ertrag je Tür streut stark.",
       text: "Netto je 1.000 Wahlberechtigte, mit den Reglern von oben. Die Einsatzliste unten sortiert die Stadtbezirke genau danach.",
     },
   ];
@@ -123,7 +123,7 @@ function Befunde({ p }: { p: Potenzial }) {
       {saetze.map((s, i) => (
         <div key={i} className="rounded-2xl border border-border bg-card p-4">
           <div className={KICKER}>Befund {i + 1}</div>
-          <h3 className="mt-1.5 font-display text-[16px] font-bold leading-snug tracking-tight">{s.titel}</h3>
+          <h3 className="mt-1.5 font-display text-[16px] font-bold leading-snug tracking-tight">{s.title}</h3>
           <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">{s.text}</p>
         </div>
       ))}
@@ -190,7 +190,7 @@ export function PotenzialView() {
           </h1>
           <p className="mt-2 max-w-2xl text-[14.5px] leading-relaxed text-muted-foreground">
             Das Wähler*innen-Potenzial für Jascha Rohr in der Stichwahl am 27. September — gerechnet aus den 133
-            Wahlbezirken des ersten Wahlgangs, den Zweitstimmen der Ratswahl und der Stichwahl von 2021. Wer die
+            Wahlbezirken des ersten Wahlgangs, den Zweitstimmen der Ratswahl und der letzten Stichwahl. Wer die
             Ausgeschiedenen gewählt hat, ist bekannt; wohin diese Stimmen gehen, ist eine Annahme — die Regler.
           </p>
         </header>

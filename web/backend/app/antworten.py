@@ -4403,7 +4403,7 @@ class RunoffPotentialDistrict(TypedDict):
     net_total: float
     #: net_total je 1.000 Wahlberechtigte — ``None`` für die Briefwahl.
     yield_per_1000: float | None
-    #: "halten" | "ueberzeugen" | "beides" | "liegenlassen" | "brief".
+    #: "hold" | "persuade" | "both" | "skip" | "postal".
     strategy: str
 
 

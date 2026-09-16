@@ -25,7 +25,7 @@ import { ladeWahlbezirke, roemisch, type Wahlbezirkflaeche } from "@/lib/wahlgeb
 
 type Modus = "strategie" | ToenungKey;
 
-const REIHENFOLGE = ["beides", "halten", "ueberzeugen", "liegenlassen"] as const;
+const REIHENFOLGE = ["both", "hold", "persuade", "skip"] as const;
 
 function Zeile({ name, wert, stark }: { name: string; wert: string; stark?: boolean }) {
   return (
@@ -55,8 +55,8 @@ function Bezirkstafel({ z, schliessen }: { z: PotenzialBezirk; schliessen: () =>
       </div>
 
       <div className="mt-3 rounded-xl px-3 py-2.5" style={{ background: STRATEGIE_FARBE[z.strategy] ?? "hsl(var(--muted))" }}>
-        <div className="text-[13px] font-semibold">{s?.titel ?? z.strategy}</div>
-        <div className="mt-0.5 text-[12px] leading-relaxed">{s?.satz}</div>
+        <div className="text-[13px] font-semibold">{s?.title ?? z.strategy}</div>
+        <div className="mt-0.5 text-[12px] leading-relaxed">{s?.sentence}</div>
       </div>
 
       <div className="mt-3 divide-y divide-border">
@@ -134,7 +134,7 @@ export function PotenzialKarte({ bezirke, zaehler }: { bezirke: PotenzialBezirk[
         <Segmented<Modus>
           value={modus}
           onChange={(m) => setModus(m)}
-          options={[{ value: "strategie", label: "Strategie" }, ...TOENUNG.map((t) => ({ value: t.key, label: t.titel }))]}
+          options={[{ value: "strategie", label: "Strategie" }, ...TOENUNG.map((t) => ({ value: t.key, label: t.title }))]}
         />
       </div>
 
@@ -143,12 +143,12 @@ export function PotenzialKarte({ bezirke, zaehler }: { bezirke: PotenzialBezirk[
           <Gebietskarte
             flaechen={flaechen}
             werte={werte}
-            farbe={modus === "strategie" ? (nr) => STRATEGIE_FARBE[nachNummer.get(nr)?.strategy ?? "liegenlassen"] ?? null : undefined}
+            farbe={modus === "strategie" ? (nr) => STRATEGIE_FARBE[nachNummer.get(nr)?.strategy ?? "skip"] ?? null : undefined}
             gewaehlt={gewaehlt}
             onWaehlen={(nr) => setGewaehlt((g) => (g === nr ? null : nr))}
             titel={(e) => {
               const z = nachNummer.get(e.nr);
-              return z ? `${z.number} ${z.name} · ${STRATEGIE[z.strategy]?.titel ?? ""}` : `${e.nr} · Wahlbereich ${roemisch(e.wb)}`;
+              return z ? `${z.number} ${z.name} · ${STRATEGIE[z.strategy]?.title ?? ""}` : `${e.nr} · Wahlbereich ${roemisch(e.wb)}`;
             }}
             hoehe={420}
           />
@@ -157,14 +157,14 @@ export function PotenzialKarte({ bezirke, zaehler }: { bezirke: PotenzialBezirk[
               {REIHENFOLGE.map((s) => (
                 <li key={s} className="flex items-center gap-1.5 text-[12px]">
                   <span aria-hidden className="inline-block h-3 w-5 rounded-sm border border-border" style={{ background: STRATEGIE_FARBE[s] ?? "hsl(var(--muted))" }} />
-                  <span className="font-medium">{STRATEGIE[s].titel}</span>
+                  <span className="font-medium">{STRATEGIE[s].title}</span>
                   <span className="font-mono text-muted-foreground">{zaehler[s] ?? 0}</span>
                 </li>
               ))}
             </ul>
           ) : (
             <p className="mt-3 text-[12px] text-muted-foreground">
-              Getönt nach {toenung?.legende}
+              Getönt nach {toenung?.legend}
               {spanne ? ` — von ${spanne[0].toFixed(1).replace(".", ",")} bis ${spanne[1].toFixed(1).replace(".", ",")}` : ""}.
               Kräftiger ist mehr; gemessen zwischen dem schwächsten und dem stärksten Bezirk.
             </p>
