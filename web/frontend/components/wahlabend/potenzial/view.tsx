@@ -11,7 +11,7 @@
 // 2021. Gerechnet wird im Backend — jede Reglerstellung ist eine Anfrage,
 // die Seite hält die letzte Antwort, bis die neue da ist.
 //
-// Alles hier ist Rechnung, nichts Prognose. Die Regler sind Tims Einschätzung
+// Alles hier ist Rechnung, nichts Prognose. Die Regler zeigen Annahmen
 // in Zahlen; die Seite sagt das an jeder Stelle, an der jemand eine Zahl
 // für eine Messung halten könnte.
 

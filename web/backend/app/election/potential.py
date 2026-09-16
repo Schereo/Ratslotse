@@ -59,8 +59,8 @@ AUSGESCHIEDEN: dict[str, str] = {
     #: gültige Stimmen minus alle benannten Kandidaturen.
     "others": "Sonstige (Castur, Stille)",
 }
-#: Vorgaben je Kandidatur: (zu Rohr, zu Prange) in Prozent — Tims
-#: Einschätzung in Zahlen, keine Messung.
+#: Vorgaben je Kandidatur: (zu Rohr, zu Prange) in Prozent — Annahmen,
+#: keine gemessenen Wechsel.
 VORGABE: dict[str, tuple[float, float]] = {
     "boldt": (55, 15), "kuessner": (45, 15), "butzin": (40, 20),
     "froehlich": (20, 35), "wilkens": (15, 30), "others": (30, 30),

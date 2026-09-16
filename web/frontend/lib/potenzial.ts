@@ -40,7 +40,7 @@ export const KANDIDATUREN: { slug: keyof Omit<Regler, "cdu" | "turnoutRohr" | "t
   { slug: "others", name: "Sonstige (Castur, Stille)", kurz: "Sonstige" },
 ];
 
-/** Die Vorgaben aus dem Plan §2.1 — Tims Einschätzung in Zahlen, keine Messung. */
+/** Die Vorgaben aus dem Plan §2.1 — Annahmen in Zahlen, keine Messung. */
 export const VORGABE: Regler = {
   boldt: { rohr: 55, prange: 15 },
   kuessner: { rohr: 45, prange: 15 },

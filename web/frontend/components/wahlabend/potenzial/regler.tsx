@@ -100,9 +100,9 @@ export function ReglerTafel({ regler, onChange, annahmen, cduWaehlende, wiederko
           <h2 className="mt-1 font-display text-[22px] font-bold tracking-tight">Annahmen für die Stichwahl</h2>
           <p className="mt-1 max-w-2xl text-[13.5px] leading-relaxed text-muted-foreground">
             Die Regler zeigen Einschätzungen, keine gemessenen Wechsel. Die Stichwahl 2021 lässt sich nicht direkt
-            übertragen: Sie fand am Tag der Bundestagswahl statt. Die Markierung auf jeder Skala zeigt Tims Annahmen
-            vom 16. September. Der CDU-Regler berücksichtigt, dass diese Menschen im ersten Wahlgang bereits gewählt
-            haben. Er verändert deshalb den Stimmenabstand, statt zusätzliche Ratswahlstimmen als Personen zu zählen.
+            übertragen: Sie fand am Tag der Bundestagswahl statt. Die Markierung auf jeder Skala zeigt die
+            voreingestellte Annahme. Der CDU-Regler berücksichtigt, dass diese Menschen im ersten Wahlgang bereits
+            gewählt haben. Er verändert deshalb den Stimmenabstand, statt zusätzliche Ratswahlstimmen als Personen zu zählen.
           </p>
         </div>
         <button
