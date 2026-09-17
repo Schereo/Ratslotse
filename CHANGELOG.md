@@ -7,6 +7,49 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [2.6.5] – 2026-09-17
+
+### Hinzugefügt
+- **Im Admin-Panel steht jetzt, welche E-Mails eine Person bekommen hat.** Die
+  Mailhistorie nennt Anlass, Betreff, Zeitpunkt und Versandstatus; ältere
+  Einträge lassen sich nachladen. Unter Menschen → E-Mails stehen Versandmenge,
+  fehlgeschlagene Versuche und Aufrufe über Mail-Links. Die Empfängerliste führt
+  direkt zum Konto und lässt sich auf mindestens sieben Mails pro Woche
+  filtern. Die Links tragen eine Markierung des Anlasses, für alle
+  Empfänger*innen dieselbe. Gezählt werden damit anonyme Seitenaufrufe, keine
+  eindeutig zurückgekehrten Personen oder Mail-Öffnungen. Neu gezählt wird
+  außerdem Lottis Tour-Einladung nach der Einrichtung: ob sie erscheint,
+  angenommen und abgeschlossen wird. (#1390)
+
+### Geändert
+- **Die Verwaltung zeigt schneller, was genutzt wird und wo es hakt.** Fünf
+  Bereiche ordnen Kennzahlen, Konten, Rückmeldungen und Betriebsaufgaben. Ein
+  neuer Überblick verlinkt direkt zu offenen Fehlern, Feedback und auffälligen
+  Cron-Jobs. Bei neuen Konten lassen sich Anmeldewochen und Rückkehrfenster
+  einzeln auswählen; noch zu junge Konten bleiben ausdrücklich offen. Verläufe
+  zeigen ablesbare Einzelwerte und vollständige Tabellen. Der Mailbereich
+  verbindet Versandstatistik und nachladbare Mailhistorien je Konto;
+  Link-Aufrufe werden klar von Zustellung und persönlicher Rückkehr
+  unterschieden. Kontodetails gliedern sich in Aktivität, E-Mails und
+  Verwaltung. Alle bisherigen Verwaltungsfunktionen bleiben erreichbar. (#1392)
+- **Ein wackelnder Cron-Schritt macht nicht mehr den ganzen Lauf rot.** Die
+  Straßen-Geometrie holt ihre Daten von der öffentlichen Overpass-Instanz, und
+  die ist gelegentlich schlicht überlastet — dieselbe Abfrage antwortet mal in
+  einer Sekunde, mal viermal hintereinander mit „server too busy". Bisher zählte
+  das wie ein Absturz: Alarm-Mail und rote Kachel für etwas, das sich am
+  nächsten Sonntag von selbst erledigt. Jetzt steht so ein Schritt gelb in der
+  Cron-Übersicht, während der Lauf grün bleibt. Erst wenn er dreimal in Folge
+  ausfällt, wird er rot und meldet sich — dann ist es kein Ausrutscher mehr.
+  (#1391)
+
+### Behoben
+- **Der Bestandslauf des Städtevergleichs brach grundlos ab.** Er prüft mitten
+  im Lauf, ob die Belegsuche noch Treffer liefert, und hielt dafür die ersten
+  dreißig Vorlagen der Arbeitsliste hin — die stammen aber alle aus demselben
+  Gremium und sind kein Querschnitt. Fanden sie zufällig nichts, brach der ganze
+  Lauf nach Stunden mit der Meldung ab, die Datengrundlage sei unvollständig.
+  Geprüft wird jetzt über die ganze Liste gestreut. (#1389)
+
 ## [2.6.4] – 2026-09-16
 
 ### Geändert
@@ -8335,7 +8378,8 @@ Open-Source-Go-Live von Ratslotse.
 *Dieser Changelog beginnt mit dem Open-Source-Release von Ratslotse. Die
 Entwicklungshistorie davor ist nicht Teil dieses Repositories.*
 
-[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v2.6.4...main
+[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v2.6.5...main
+[2.6.5]: https://github.com/Schereo/Ratslotse/compare/v2.6.4...v2.6.5
 [2.6.4]: https://github.com/Schereo/Ratslotse/compare/v2.6.3...v2.6.4
 [2.6.3]: https://github.com/Schereo/Ratslotse/compare/v2.6.2...v2.6.3
 [2.6.2]: https://github.com/Schereo/Ratslotse/compare/v2.6.1...v2.6.2
