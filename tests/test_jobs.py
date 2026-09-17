@@ -261,3 +261,96 @@ def test_weekly_enrich_protokolliert_jeden_schritt(monkeypatch):
     # Und NUR die Liste: Eine abgeleitete Zahl daneben wäre eine zweite
     # Darstellung derselben Tatsache — gezählt wird beim Anzeigen.
     assert set(fehler.value.kennzahlen) == {SCHRITTE_SCHLUESSEL}
+
+
+# ---- Nachsichtige Schritte (Straßen-Geometrie / Overpass) ----
+
+
+def _lauf_mit(store, schritte: list[tuple[str, str]], started: str) -> None:
+    """Eine ``job_runs``-Zeile für ``weekly_enrich`` mit dieser Schritt-Bilanz."""
+    from kern.alerts import SCHRITTE_SCHLUESSEL
+
+    store.record_job_run(
+        "weekly_enrich", started, started, "ok", 1.0,
+        {SCHRITTE_SCHLUESSEL: [{"name": n, "script": "x.py", "status": s,
+                                "duration_s": 1.0} for n, s in schritte]},
+        None)
+
+
+def test_fehlschlaege_in_folge_zaehlt_bis_zum_letzten_ok(tmp_path, monkeypatch):
+    """Gezählt wird rückwärts bis zum ersten ``ok`` — nicht über den ganzen
+    Verlauf. Ein Schritt, der zwischendurch einmal lief, fängt neu an."""
+    from kern.alerts import fehlschlaege_in_folge
+    from kern.store import Store
+
+    monkeypatch.setenv("RATSLOTSE_DB", str(tmp_path / "ratslotse.sqlite"))
+    store = Store(tmp_path / "ratslotse.sqlite")
+    # älteste zuerst eingetragen; gelesen wird neueste zuerst
+    _lauf_mit(store, [("Straßen-Geometrie", "warn")], "2026-08-30T03:00:00")
+    _lauf_mit(store, [("Straßen-Geometrie", "ok")], "2026-09-06T03:00:00")
+    _lauf_mit(store, [("Straßen-Geometrie", "warn")], "2026-09-13T03:00:00")
+    _lauf_mit(store, [("Straßen-Geometrie", "error")], "2026-09-20T03:00:00")
+    store.close()
+
+    assert fehlschlaege_in_folge("weekly_enrich", "Straßen-Geometrie") == 2
+    # Ein Schritt, den kein Lauf kennt, hat keine Vorgeschichte — und darf
+    # keine geerbt bekommen.
+    assert fehlschlaege_in_folge("weekly_enrich", "Fundstücke") == 0
+
+
+def test_fehlschlaege_in_folge_ohne_datenbank_ist_null(tmp_path, monkeypatch):
+    """Eine unlesbare Datenbank darf keinen Alarm auslösen: Sie fällt an
+    anderer Stelle lauter auf, und hier hieße „unbekannt" sonst „rot"."""
+    from kern.alerts import fehlschlaege_in_folge
+
+    monkeypatch.setenv("RATSLOTSE_DB", str(tmp_path / "gibt-es-nicht" / "x.sqlite"))
+    assert fehlschlaege_in_folge("weekly_enrich", "Straßen-Geometrie") == 0
+
+
+def _lauf_mit_fehlschlag(monkeypatch, in_folge: int):
+    """``weekly_enrich`` mit einem einzigen, scheiternden Schritt."""
+    import subprocess
+
+    from scripts import weekly_enrich as we
+
+    monkeypatch.setattr(we, "STEPS", [("Straßen-Geometrie", "strassen_snapshot.py")])
+    monkeypatch.setattr(we, "fehlschlaege_in_folge", lambda *_: in_folge)
+
+    class Ergebnis:
+        returncode = 1
+
+    monkeypatch.setattr(subprocess, "run", lambda *a, **kw: Ergebnis())
+    return we
+
+
+def test_nachsichtiger_schritt_warnt_statt_zu_wecken(monkeypatch):
+    """Der erste Ausfall eines nachsichtigen Schritts ist gelb — der Lauf
+    bleibt grün, es gibt keine Exception und damit keine Alarm-Mail."""
+    from kern.alerts import SCHRITTE_SCHLUESSEL
+
+    we = _lauf_mit_fehlschlag(monkeypatch, in_folge=0)
+    kennzahlen = we._guarded_main()   # wirft NICHT
+    assert [s["status"] for s in kennzahlen[SCHRITTE_SCHLUESSEL]] == ["warn"]
+
+
+def test_nachsichtiger_schritt_wird_rot_wenn_er_bleibt(monkeypatch):
+    """Nachsicht hat eine Grenze: Beim Erreichen von ``NACHSICHTIG`` wird der
+    Schritt rot und reißt den Lauf mit — sonst verschwiege das Panel einen
+    Dienst, der dauerhaft weg ist."""
+    from scripts import weekly_enrich as we
+
+    grenze = we.NACHSICHTIG["Straßen-Geometrie"]
+    # -1, weil der laufende Lauf selbst mitzählt
+    we = _lauf_mit_fehlschlag(monkeypatch, in_folge=grenze - 1)
+    with pytest.raises(Exception) as fehler:
+        we._guarded_main()
+    assert "Straßen-Geometrie" in str(fehler.value)
+
+
+def test_nachsichtige_schritte_gibt_es_wirklich():
+    """Ein Tippfehler in ``NACHSICHTIG`` ist stumm: Der Schritt wäre einfach
+    weiter streng, und niemand merkte es, bis Overpass wieder zickt."""
+    from scripts import weekly_enrich as we
+
+    namen = {name for name, _ in we.STEPS}
+    assert set(we.NACHSICHTIG) <= namen, set(we.NACHSICHTIG) - namen

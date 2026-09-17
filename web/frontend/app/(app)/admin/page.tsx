@@ -1096,6 +1096,11 @@ function JobsSection() {
 function JobSchritte({ steps }: { steps: AdminJob["steps"] }) {
   if (!steps.length) return null;
   const fehler = steps.filter((s) => s.status === "error").length;
+  // `warn` ist ein Fehlschlag, der bewusst niemanden weckt (ein Schritt an
+  // einem fremden Dienst darf ein paarmal in Folge fallen). Er MUSS trotzdem
+  // schon zugeklappt zu sehen sein: Ein Gelb, das man nur beim Aufklappen
+  // findet, wäre dasselbe wie gar keins — und genau das soll es nicht sein.
+  const wackelig = steps.filter((s) => s.status === "warn").length;
   // Der längste Schritt setzt den Maßstab der Balken. Sie sind der eigentliche
   // Gewinn dieser Liste: Wo die Zeit hingeht, sieht man in einer Spalte
   // Sekundenzahlen erst beim Durchlesen, im Balken sofort.
@@ -1105,15 +1110,25 @@ function JobSchritte({ steps }: { steps: AdminJob["steps"] }) {
       <summary className="flex cursor-pointer list-none items-center gap-1.5 text-[11.5px] text-muted-foreground">
         <ChevronDown className="h-3.5 w-3.5 shrink-0 transition-transform duration-fluss ease-out-strong group-open:rotate-180" />
         {steps.length} Schritte
-        {fehler > 0
-          ? <span className="font-semibold text-destructive">· {fehler} fehlgeschlagen</span>
-          : <span>· alle durchgelaufen</span>}
+        {fehler > 0 && (
+          <span className="font-semibold text-destructive">· {fehler} fehlgeschlagen</span>
+        )}
+        {wackelig > 0 && (
+          <span className="font-semibold text-amber-700 dark:text-amber-400">
+            · {wackelig} {wackelig === 1 ? "wackelt" : "wackeln"}
+          </span>
+        )}
+        {fehler === 0 && wackelig === 0 && <span>· alle durchgelaufen</span>}
       </summary>
       <ul className="mt-1.5 space-y-px border-l-2 border-border pl-2.5">
         {steps.map((s, i) => (
           <li key={`${s.script}-${i}`} className="flex items-center gap-2 py-0.5">
             <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full",
-              s.status === "ok" ? "bg-green-500" : "bg-red-500")} />
+              s.status === "ok" ? "bg-green-500"
+                : s.status === "warn" ? "bg-amber-500" : "bg-red-500")}
+              title={s.status === "warn"
+                ? "Fehlgeschlagen, aber noch nicht oft genug in Folge für einen Alarm"
+                : undefined} />
             <span className="min-w-0 flex-1 truncate text-[11.5px] text-foreground">{s.name}</span>
             <span aria-hidden className="hidden h-1 w-16 shrink-0 overflow-hidden rounded-full bg-border sm:block">
               <span className="block h-full rounded-full bg-primary/45"

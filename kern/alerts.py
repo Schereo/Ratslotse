@@ -111,6 +111,58 @@ def _record_run(name: str, started: datetime, status: str,
 #: schreibt (`scripts/weekly_enrich.py`) meinen dieselbe Stelle.
 SCHRITTE_SCHLUESSEL = "Schritte"
 
+#: Status eines Unterschritts, der gescheitert ist, aber (noch) nicht gemeldet
+#: wird — s. ``fehlschlaege_in_folge``.
+SCHRITT_WARNUNG = "warn"
+
+
+def fehlschlaege_in_folge(job: str, schritt: str) -> int:
+    """Wie oft dieser Unterschritt zuletzt **hintereinander** nicht durchlief.
+
+    Gelesen aus den Schritt-Protokollen der vorherigen Läufe in ``job_runs``:
+    Sie stehen dort ohnehin, ein eigener Zähler wäre ein zweiter Stand
+    derselben Tatsache. Gezählt wird vom jüngsten Lauf rückwärts, bis ein
+    ``ok`` kommt — ein Lauf, der den Schritt gar nicht kennt (er ist neu oder
+    hieß anders), beendet die Zählung ebenfalls: Über ihn ist nichts
+    bekannt, und Raten fiele zulasten der Meldung.
+
+    Der laufende Lauf zählt NICHT mit; seine Zeile schreibt ``run_guarded``
+    erst am Ende. Wer „zum wievielten Mal in Folge" wissen will, rechnet
+    deshalb selbst ``fehlschlaege_in_folge(...) + 1``.
+
+    Schlägt das Lesen fehl, ist die Antwort 0 — nachsichtig. Eine unlesbare
+    Datenbank ist kein Grund, einen Alarm über einen fremden Dienst zu
+    schicken; sie fällt an anderer Stelle lauter auf.
+    """
+    try:
+        from pathlib import Path
+
+        from .store import Store
+
+        db = Path(os.environ.get("RATSLOTSE_DB")
+                  or Path(__file__).resolve().parent.parent / "data" / "ratslotse.sqlite")
+        store = Store(db)
+        try:
+            laeufe = store.job_runs(job, limit=20)
+        finally:
+            store.close()
+    except Exception:  # noqa: BLE001 — Zählen ist Beiwerk, nie ein Grund zu scheitern
+        logger.exception("Fehlschläge in Folge für %s/%s nicht lesbar", job, schritt)
+        return 0
+
+    anzahl = 0
+    for lauf in laeufe:  # neueste zuerst
+        stats = lauf.get("stats")
+        roh = stats.get(SCHRITTE_SCHLUESSEL) if isinstance(stats, dict) else None
+        if not isinstance(roh, list):
+            break
+        eintrag = next((e for e in roh
+                        if isinstance(e, dict) and e.get("name") == schritt), None)
+        if eintrag is None or eintrag.get("status") == "ok":
+            break
+        anzahl += 1
+    return anzahl
+
 
 class JobFehler(RuntimeError):
     """Ein Lauf, der teilweise gelungen ist — und seine Kennzahlen mitbringt.

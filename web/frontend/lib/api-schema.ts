@@ -5676,7 +5676,7 @@ export interface components {
              * Status
              * @enum {string}
              */
-            status: "ok" | "error";
+            status: "ok" | "warn" | "error";
         };
         /**
          * AdminKennzahlen
@@ -20502,4 +20502,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: a0bd488b8bc760e4b7c70e8aa7f7bd857fef5085ce484b18aed70bdab969f1e8
+// vertrag-sha256: e85d237f19485d2efb218c7b20cde380aadd3a258ebb31f65c5a0adeabb4a49d
