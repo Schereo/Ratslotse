@@ -7,13 +7,14 @@ nicht nur beim Klick auf die Kurs-Kachel.
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 
 from kern.store import Store
 
-from ..antworten import OnboardingState, SetupState
+from ..antworten import Ok, OnboardingState, SetupState
+from ..clients import client_kind
 from ..deps import get_store, require_active
-from ..schemas import OnboardingUpdate, SetupUpdate
+from ..schemas import OnboardingUpdate, SetupUpdate, TourUpdate
 
 router = APIRouter(prefix="/api/onboarding", tags=["onboarding"])
 
@@ -72,3 +73,33 @@ def set_setup(
     # wurde: Der letzte Schritt des Browsers kam als 422 zurück.
     store.set_setup_step(user["id"], max(0, min(4, payload.step)), done=payload.done)
     return store.get_setup(user["id"])
+
+
+#: Die drei Stationen der Tour-Einladung → der Zähler in ``user_activity``.
+#: Als feste Zuordnung und nicht als „tour_" + Wert: Die Spalte ``feature``
+#: hat eine überschaubare Menge Werte, und die soll ein Client nicht erweitern
+#: können.
+TOUR_ZAEHLER = {
+    "eingeladen": "tour_invite",
+    "gestartet": "tour_started",
+    "beendet": "tour_finished",
+}
+
+
+@router.post("/tour")
+def tour_stand(
+    payload: TourUpdate,
+    request: Request,
+    user: dict = Depends(require_active),
+    store: Store = Depends(get_store),
+) -> Ok:
+    """Eine Station von Lottis Tour zählen.
+
+    Nur ein Zähler, kein Zustand: Ob die Einladung schon beantwortet ist,
+    entscheidet weiterhin die Marke im Browser (``lib/tour-einladung.ts``) —
+    sie muss einen Tab überleben, der seit vor einem Deploy offen ist, und
+    genau dafür ist sie da. Hier geht es allein um die Frage, ob der Moment
+    nach der Einrichtung etwas bewirkt.
+    """
+    store.record_activity(user["id"], TOUR_ZAEHLER[payload.stand], client_kind(request))
+    return {"ok": True}

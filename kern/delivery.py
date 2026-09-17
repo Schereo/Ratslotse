@@ -122,25 +122,53 @@ def push_quittung(owner: dict, title: str, text: str, url: str) -> bool:
     return True
 
 
+def _protokoll(store, owner: dict, anlass: str | None, subject: str,
+               ok: bool, message_id: str | None) -> None:
+    """Die Mail ins Protokoll — nur, wenn der Aufrufer einen Store mitgibt.
+
+    Ohne Store passiert nichts: ``deliver_message`` läuft auch aus dem Watcher
+    und aus Skripten, und ein Protokoll ist nie ein Grund, eine Zustellung
+    scheitern zu lassen.
+    """
+    if store is None or not anlass:
+        return
+    owner_id = owner.get("owner_id") or owner.get("id")
+    if owner_id is None:
+        return
+    store.protokolliere_mail(int(owner_id), anlass, subject, ok=ok, message_id=message_id)
+
+
 def deliver_message(owner: dict, message_html: str, email_subject: str,
-                    push_url: str = "/dashboard", push_text: str | None = None) -> list[str]:
+                    push_url: str = "/dashboard", push_text: str | None = None,
+                    anlass: str | None = None, store=None) -> list[str]:
     """Deliver a single formatted message (HTML) to the owner's channel(s).
     Used for the weekly digest and council notifications. The same text is
     wrapped in the email shell for email delivery and stripped to plain text for
     the push body — es sei denn, der Anlass bringt einen eigenen ``push_text``
     mit (Tims Wunsch 18.08.: die Vorschau soll die Sache nennen, nicht Datum
-    und Sitzungsort aus dem Mail-Kopf)."""
+    und Sitzungsort aus dem Mail-Kopf).
+
+    ``anlass`` (ein Wert aus ``kern.store.MAIL_ANLAESSE``) tut zweierlei: Er
+    markiert die Links in der Mail (``?von=…``, siehe ``kern/mail_links.py``)
+    und wird zusammen mit ``store`` ins Mail-Protokoll geschrieben. Beides ist
+    optional — ohne die zwei verhält sich die Zustellung wie vorher, nur
+    unprotokolliert. Der GESCHEITERTE Versand wird dabei ebenso festgehalten
+    wie der gelungene: Er ist die Zeile, die erklärt, warum jemand nichts
+    bekommen hat."""
     sent: list[str] = []
     if wants_email(owner):
         try:
-            send_email(
+            message_id = send_email(
                 owner["email"], email_subject,
-                render_html_email(email_subject, message_html, greeting_name=owner.get("display_name")),
+                render_html_email(email_subject, message_html,
+                                  greeting_name=owner.get("display_name"), anlass=anlass),
                 text=None,
             )
             sent.append("email")
+            _protokoll(store, owner, anlass, email_subject, True, message_id)
         except Exception:
             logger.exception("email message send failed for %s", owner.get("email"))
+            _protokoll(store, owner, anlass, email_subject, False, None)
     if wants_push(owner):
         _send_push_and_prune(owner["push_tokens"], email_subject,
                              push_text or _plain(message_html), {"url": push_url})

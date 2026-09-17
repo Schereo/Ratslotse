@@ -745,6 +745,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/stats/emails": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stats Emails
+         * @description Das Mailaufkommen: je Anlass, je Tag, wer am meisten bekommt.
+         *
+         *     Die Frage dahinter ist Tims: „müssen wir irgendwo Mails reduzieren?" —
+         *     dafür zählt nicht die Gesamtzahl, sondern was bei einer einzelnen Person
+         *     ankommt. Deshalb steht neben der Summe die Liste der Vielempfänger*innen.
+         */
+        get: operations["stats_emails_api_admin_stats_emails_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/stats/events": {
         parameters: {
             query?: never;
@@ -872,6 +896,30 @@ export interface paths {
          * @description Nutzer-Detail (Design 20a): Feature-Nutzung, Angelegtes, 30-Tage-Verlauf.
          */
         get: operations["user_detail_api_admin_users__user_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/users/{user_id}/emails": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * User Emails
+         * @description Welche Mails diese Person bekommen hat — statt im Resend-Dashboard.
+         *
+         *     Eigener Endpunkt und nicht Teil von ``/users/{id}``: Die Liste lädt erst,
+         *     wenn der Reiter geöffnet wird, und die Detail-Antwort bleibt so klein, wie
+         *     sie ist.
+         */
+        get: operations["user_emails_api_admin_users__user_id__emails_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3913,6 +3961,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/onboarding/tour": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Tour Stand
+         * @description Eine Station von Lottis Tour zählen.
+         *
+         *     Nur ein Zähler, kein Zustand: Ob die Einladung schon beantwortet ist,
+         *     entscheidet weiterhin die Marke im Browser (``lib/tour-einladung.ts``) —
+         *     sie muss einen Tab überleben, der seit vor einem Deploy offen ist, und
+         *     genau dafür ist sie da. Hier geht es allein um die Frage, ob der Moment
+         *     nach der Einrichtung etwas bewirkt.
+         */
+        post: operations["tour_stand_api_onboarding_tour_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/page-views": {
         parameters: {
             query?: never;
@@ -5852,6 +5926,113 @@ export interface components {
             /** Prompt Tokens */
             prompt_tokens: number;
         };
+        /** AdminMailAnlass */
+        AdminMailAnlass: {
+            /** Anlass */
+            anlass: string;
+            /** Gescheitert */
+            gescheitert: number;
+            /** Konten */
+            konten: number;
+            /** Mails */
+            mails: number;
+        };
+        /**
+         * AdminMailRow
+         * @description Eine verschickte Mail in der Personen-Ansicht (``Store.mails_fuer_konto``).
+         */
+        AdminMailRow: {
+            /** Anlass */
+            anlass: string;
+            /** Besuch Am Tag */
+            besuch_am_tag: boolean;
+            /** Id */
+            id: number;
+            /** Ok */
+            ok: boolean;
+            /** Sent At */
+            sent_at: string;
+            /** Subject */
+            subject: string;
+        };
+        /** AdminMailRueckkehr */
+        AdminMailRueckkehr: {
+            /** Anlass */
+            anlass: string;
+            /** Rueckkehr */
+            rueckkehr: number;
+        };
+        /**
+         * AdminMailStats
+         * @description ``/api/admin/stats/emails`` — das Mailaufkommen insgesamt.
+         */
+        AdminMailStats: {
+            /** Gescheitert */
+            gescheitert: number;
+            /** Je Anlass */
+            je_anlass: components["schemas"]["AdminMailAnlass"][];
+            /** Je Tag */
+            je_tag: components["schemas"]["AdminMailTag"][];
+            /** Rueckkehr */
+            rueckkehr: number;
+            /** Rueckkehr Je Anlass */
+            rueckkehr_je_anlass: components["schemas"]["AdminMailRueckkehr"][];
+            /** Tage */
+            tage: number;
+            /** Verschickt */
+            verschickt: number;
+            /** Vielempfaenger */
+            vielempfaenger: components["schemas"]["AdminMailVielempfaenger"][];
+        };
+        /**
+         * AdminMailSummary
+         * @description Die Zahlen über der Mail-Liste eines Kontos.
+         */
+        AdminMailSummary: {
+            /** Gesamt */
+            gesamt: number;
+            /** Gescheitert */
+            gescheitert: number;
+            /** Je Anlass */
+            je_anlass: {
+                [key: string]: number;
+            };
+            /** Je Woche */
+            je_woche: number;
+            /** Tage */
+            tage: number;
+            /** Zeitraum */
+            zeitraum: number;
+        };
+        /** AdminMailTag */
+        AdminMailTag: {
+            /** Mails */
+            mails: number;
+            /** Tag */
+            tag: string;
+        };
+        /**
+         * AdminMailVielempfaenger
+         * @description Wer die meisten Mails bekommt — sortiert nach Menge im Zeitraum.
+         */
+        AdminMailVielempfaenger: {
+            /** Delivery Channel */
+            delivery_channel: string;
+            /** Display Name */
+            display_name: string | null;
+            /** Email */
+            email: string;
+            /** Haeufigster Anlass */
+            haeufigster_anlass: string | null;
+            /** Je Woche */
+            je_woche: number;
+            /** Letzte */
+            letzte: string | null;
+            /** Mails */
+            mails: number;
+            /** Owner Id */
+            owner_id: number;
+        };
         /** AdminNewsList */
         AdminNewsList: {
             /** Releases */
@@ -6185,6 +6366,15 @@ export interface components {
             subscriptions: string[];
             /** Topics */
             topics: string[];
+        };
+        /**
+         * AdminUserEmails
+         * @description Der Mail-Reiter einer Person: Zusammenfassung plus die letzten Mails.
+         */
+        AdminUserEmails: {
+            /** Rows */
+            rows: components["schemas"]["AdminMailRow"][];
+            summary: components["schemas"]["AdminMailSummary"];
         };
         /**
          * AdminUserFeatures
@@ -10684,6 +10874,8 @@ export interface components {
              * @default /
              */
             route: string;
+            /** Von */
+            von?: string | null;
         };
         /** PartyFilter */
         PartyFilter: {
@@ -13321,6 +13513,21 @@ export interface components {
             suggestions: components["schemas"]["TopicSuggestion"][];
         };
         /**
+         * TourUpdate
+         * @description Was mit Lottis Tour-Einladung passiert ist.
+         *
+         *     Drei Stationen, drei Zähler: ``eingeladen`` (die Einladung stand da),
+         *     ``gestartet`` (jemand hat ja gesagt), ``beendet`` (die Tour lief durch).
+         *     Ohne sie war die Einladung ein blinder Fleck — sie lebt vollständig im
+         *     ``localStorage``, und ob sie jemand annimmt, stand nirgends. Die Frage ist
+         *     seit 09/2026 offen und dieselbe wie bei der KI-Frage: Wird der Moment nach
+         *     der Einrichtung überhaupt benutzt?
+         */
+        TourUpdate: {
+            /** Stand */
+            stand: string;
+        };
+        /**
          * TrendData
          * @description ``CouncilStore.activity_trends`` plus die Klartext-Namen der Felder.
          *
@@ -14713,6 +14920,37 @@ export interface operations {
             };
         };
     };
+    stats_emails_api_admin_stats_emails_get: {
+        parameters: {
+            query?: {
+                tage?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminMailStats"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     stats_events_api_admin_stats_events_get: {
         parameters: {
             query?: {
@@ -14875,6 +15113,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminUserDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    user_emails_api_admin_users__user_id__emails_get: {
+        parameters: {
+            query?: {
+                tage?: number;
+            };
+            header?: never;
+            path: {
+                user_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminUserEmails"];
                 };
             };
             /** @description Validation Error */
@@ -18152,6 +18423,39 @@ export interface operations {
             };
         };
     };
+    tour_stand_api_onboarding_tour_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TourUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ok"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     seitenaufruf_api_page_views_post: {
         parameters: {
             query?: never;
@@ -20502,4 +20806,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: e85d237f19485d2efb218c7b20cde380aadd3a258ebb31f65c5a0adeabb4a49d
+// vertrag-sha256: 5807157d2b1a21d9c00e8c40ce2ff15e887181fc046be2c60095dc9097b9bca3
