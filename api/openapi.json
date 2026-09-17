@@ -695,6 +695,7 @@
           "status": {
             "enum": [
               "ok",
+              "warn",
               "error"
             ],
             "title": "Status",

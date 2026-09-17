@@ -662,6 +662,10 @@ const JOB_STATE: Record<AdminJob["state"], { dot: string; label: string }> = {
 };
 
 /** Cron-Übersicht: was läuft wann, wie lange, und was kam dabei heraus. */
+export function jobAuffaellig(job: AdminJob) {
+  return job.state === "error" || job.state === "stale" || job.steps.some((s) => s.status === "warn" || s.status === "error");
+}
+
 export function JobsSection() {
   const [filter, setFilter] = useState("all");
   const { data, isPending, isError, refetch, isFetching } = useQuery({
@@ -681,10 +685,11 @@ export function JobsSection() {
     );
   }
 
-  const auffaellig = data.filter((j) => j.state === "error" || j.state === "stale");
+  const auffaellig = data.filter(jobAuffaellig);
   const ohneLauf = data.filter((j) => j.state === "unknown");
   const order = { error: 0, stale: 1, unknown: 2, ok: 3 };
-  const sichtbar = [...(filter === "issues" ? auffaellig : filter === "unknown" ? ohneLauf : data)].sort((a, b) => order[a.state] - order[b.state]);
+  const prioritaet = (job: AdminJob) => job.state === "ok" && jobAuffaellig(job) ? 1.5 : order[job.state];
+  const sichtbar = [...(filter === "issues" ? auffaellig : filter === "unknown" ? ohneLauf : data)].sort((a, b) => prioritaet(a) - prioritaet(b));
   return (
     <div className="@container space-y-3 pt-2">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
@@ -694,10 +699,10 @@ export function JobsSection() {
       <div role="group" aria-label="Cron-Jobs filtern" className="flex flex-wrap gap-2">
         {([["all", `Alle (${data.length})`], ["issues", `Auffällig (${auffaellig.length})`], ["unknown", `Ohne Lauf (${ohneLauf.length})`]] as const).map(([value, label]) => <button key={value} aria-pressed={filter === value} onClick={() => setFilter(value)} className={cn("min-h-11 rounded-lg px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary", filter === value ? "bg-primary/10 font-semibold text-primary" : "bg-muted text-muted-foreground hover:text-foreground")}>{label}</button>)}
       </div>
-      {sichtbar.length === 0 && <p className="rounded-xl border border-border bg-card p-5 text-sm text-muted-foreground">{filter === "issues" ? "Keine fehlgeschlagenen oder überfälligen Jobs." : "Keine Jobs in dieser Auswahl."}</p>}
+      {sichtbar.length === 0 && <p className="rounded-xl border border-border bg-card p-5 text-sm text-muted-foreground">{filter === "issues" ? "Keine fehlgeschlagenen, überfälligen oder mit Warnungen beendeten Jobs." : "Keine Jobs in dieser Auswahl."}</p>}
       <div className="grid grid-cols-1 items-start gap-3 @3xl:grid-cols-2">
         {sichtbar.map((job) => {
-          const tone = JOB_STATE[job.state];
+          const tone = job.state === "ok" && jobAuffaellig(job) ? { dot: "bg-amber-500", label: "Mit Warnungen" } : JOB_STATE[job.state];
           const stats = job.last?.stats ?? null;
           return (
             <Card key={job.key} className="p-4">
@@ -771,25 +776,27 @@ export function JobsSection() {
 function JobSchritte({ steps }: { steps: AdminJob["steps"] }) {
   if (!steps.length) return null;
   const fehler = steps.filter((s) => s.status === "error").length;
+  const wackelig = steps.filter((s) => s.status === "warn").length;
   // Der längste Schritt setzt den Maßstab der Balken. Sie sind der eigentliche
   // Gewinn dieser Liste: Wo die Zeit hingeht, sieht man in einer Spalte
   // Sekundenzahlen erst beim Durchlesen, im Balken sofort.
   const laengster = Math.max(...steps.map((s) => s.duration_s ?? 0), 1);
   return (
     <details className="group mt-2.5">
-      <summary className="flex cursor-pointer list-none items-center gap-1.5 text-sm text-muted-foreground">
+      <summary className="flex cursor-pointer list-none flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
         <ChevronDown className="h-3.5 w-3.5 shrink-0 transition-transform duration-fluss ease-out-strong group-open:rotate-180" />
         {steps.length} Schritte
-        {fehler > 0
-          ? <span className="font-semibold text-destructive">· {fehler} fehlgeschlagen</span>
-          : <span>· alle durchgelaufen</span>}
+        {fehler > 0 && <span className="font-semibold text-destructive">· {fehler} fehlgeschlagen</span>}
+        {wackelig > 0 && <span className="font-semibold text-amber-700 dark:text-amber-400">· {wackelig} {wackelig === 1 ? "Warnung" : "Warnungen"}</span>}
+        {fehler === 0 && wackelig === 0 && <span>· alle durchgelaufen</span>}
       </summary>
       <ul className="mt-1.5 space-y-px border-l-2 border-border pl-2.5">
         {steps.map((s, i) => (
           <li key={`${s.script}-${i}`} className="flex items-center gap-2 py-0.5">
             <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full",
-              s.status === "ok" ? "bg-green-500" : "bg-red-500")} />
-            <span className="min-w-0 flex-1 truncate text-sm text-foreground">{s.name}</span>
+              s.status === "ok" ? "bg-green-500" : s.status === "warn" ? "bg-amber-500" : "bg-red-500")}
+              title={s.status === "warn" ? "Fehlgeschlagen, aber noch nicht oft genug in Folge für einen Alarm" : undefined} />
+            <span className="min-w-0 flex-1 text-sm text-foreground">{s.name}{s.status === "warn" && <span className="block text-xs text-amber-700 dark:text-amber-400">Fehlgeschlagen, vorerst toleriert</span>}</span>
             <span aria-hidden className="hidden h-1 w-16 shrink-0 overflow-hidden rounded-full bg-border sm:block">
               <span className="block h-full rounded-full bg-primary/45"
                 style={{ width: `${Math.round(((s.duration_s ?? 0) / laengster) * 100)}%` }} />

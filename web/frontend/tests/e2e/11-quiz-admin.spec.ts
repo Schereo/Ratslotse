@@ -141,6 +141,29 @@ test.describe("Admin-Panel — die Grenze", () => {
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBeTruthy();
     });
 
+    test("tolerierte Cron-Fehler bleiben im Überblick und im Auffällig-Filter sichtbar", async ({ page }) => {
+      const basis = { description: "Testlauf", schedule: "wöchentlich", state: "ok" as const, age_h: 1,
+        last: { started_at: "2026-09-17T12:00:00Z", duration_s: 10, stats: {} }, history: [] };
+      const jobs: ApiAntwort<"/admin/jobs"> = [
+        { ...basis, key: "weekly_enrich", label: "Bestandsanreicherung", steps: [
+          { name: "Ratsdaten lesen", script: "read", status: "ok", duration_s: 5 },
+          { name: "Fremden Dienst abrufen", script: "fetch", status: "warn", duration_s: 5 },
+        ] },
+        { ...basis, key: "backup", label: "Sicherung", steps: [] },
+      ];
+      await page.route("**/api/admin/jobs", (route) => route.fulfill({ json: jobs }));
+      await page.goto("/admin");
+      await expect(page.getByRole("link", { name: /^1 Cron-Jobs mit Auffälligkeiten/ })).toBeVisible();
+      await page.getByRole("link", { name: /^1 Cron-Jobs mit Auffälligkeiten/ }).click();
+      await page.getByRole("button", { name: "Auffällig (1)", exact: true }).click();
+      await expect(page.getByText("Bestandsanreicherung", { exact: true })).toBeVisible();
+      await expect(page.getByText("Sicherung", { exact: true })).toHaveCount(0);
+      await expect(page.getByText("Mit Warnungen · wöchentlich", { exact: true })).toBeVisible();
+      await page.getByText("2 Schritte", { exact: false }).click();
+      await expect(page.getByText("Fehlgeschlagen, vorerst toleriert", { exact: true })).toBeVisible();
+      await expect(page.getByText("alle durchgelaufen", { exact: false })).toHaveCount(0);
+    });
+
     test("Mailübersicht führt zur vollständigen Historie und erhält Fehler sowie ältere Aufrufe", async ({ page }) => {
       const users = await (await page.request.get("/api/admin/users")).json() as ApiAntwort<"/admin/users">;
       const user = users[0];

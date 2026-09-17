@@ -8,7 +8,7 @@ import { Button, Card, ChartSkeleton, ErrorState } from "@/components/ui";
 import { deZahl } from "@/components/grafik/format";
 import { cn } from "@/lib/utils";
 import { Veraenderung } from "./primitives";
-import { WeeklyActivity, type AdminGrowth, type AdminAnmeldungen, type AdminEreignisse, type AdminKohorten, type AdminJob } from "./statistics";
+import { jobAuffaellig, WeeklyActivity, type AdminGrowth, type AdminAnmeldungen, type AdminEreignisse, type AdminKohorten, type AdminJob } from "./statistics";
 
 function Metric({ label, value, note, href, pending, error, children }: {
   label: string; value: string; note: string; href: string; pending: boolean; error: boolean; children?: React.ReactNode;
@@ -52,7 +52,7 @@ export function AdminOverview() {
   const empty = e?.events.find((v) => v.key === "ai_answer_empty");
   const active = growth.data?.wau.at(-1);
   const previous = growth.data?.wau.at(-2);
-  const jobIssues = jobs.data?.filter((j) => j.state === "stale" || j.state === "error").length;
+  const jobIssues = jobs.data?.filter(jobAuffaellig).length;
   const unknownJobs = jobs.data?.filter((j) => j.state === "unknown").length ?? 0;
   const features = e?.events.filter((v) => v.key !== "session" && v.key !== "ai_question_chip" && v.key !== "ai_answer_empty")
     .sort((a, b) => b.users - a.users || b.n - a.n).slice(0, 4) ?? [];
@@ -91,7 +91,7 @@ export function AdminOverview() {
           <h3 className="font-display text-lg font-bold">Was braucht einen Blick?</h3>
           <p className="mt-1 text-sm text-muted-foreground">Offene Meldungen und Hintergrundaufgaben</p>
           <StatusLink title="Offene Fehlerarten" text={errors.data?.total ? "Fehler aus Browser und Backend prüfen." : "Keine offenen Fehler gemeldet."} href="#fehler" value={errors.data?.total} alert={!!errors.data?.total} pending={errors.isPending} error={errors.isError} />
-          <StatusLink title="Cron-Jobs mit Auffälligkeiten" text={`${jobIssues ? "Fehlgeschlagen oder überfällig." : "Kein erfasster Lauf auffällig."}${unknownJobs ? ` ${unknownJobs} Jobs noch ohne erfassten Lauf.` : ""}`} href="#jobs" value={jobIssues} alert={!!jobIssues} pending={jobs.isPending} error={jobs.isError} />
+          <StatusLink title="Cron-Jobs mit Auffälligkeiten" text={`${jobIssues ? "Fehlgeschlagen, überfällig oder mit Warnungen." : "Kein erfasster Lauf auffällig."}${unknownJobs ? ` ${unknownJobs} Jobs noch ohne erfassten Lauf.` : ""}`} href="#jobs" value={jobIssues} alert={!!jobIssues} pending={jobs.isPending} error={jobs.isError} />
           <StatusLink title="Fehlgeschlagene Mails" text="Versandversuche mit Fehler in den letzten 30 Tagen." href="#emails" value={mails.data?.gescheitert} alert={!!mails.data?.gescheitert} pending={mails.isPending} error={mails.isError} />
           <StatusLink title="Offenes Feedback" text={feedback.data?.total ? "Rückmeldungen lesen und bearbeiten." : "Alle Rückmeldungen bearbeitet."} href="#feedback" value={feedback.data?.total} alert={!!feedback.data?.total} pending={feedback.isPending} error={feedback.isError} />
         </Card>

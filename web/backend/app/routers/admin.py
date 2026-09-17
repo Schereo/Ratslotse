@@ -242,11 +242,16 @@ def _schritt(roh: dict) -> dict:
     auffüllen statt vertrauen (der Testfall dazu steht in
     ``tests/test_backend_api.py::test_kennzahlen_bleiben_flach``).
     """
+    from kern.alerts import SCHRITT_WARNUNG
+
     dauer = roh.get("duration_s")
+    # Alles, was nicht ``error`` oder ``warn`` heißt, gilt als ``ok``: Der
+    # Vertrag kennt drei Werte, das freie JSON könnte jeden tragen.
+    status = roh.get("status")
     return {
         "name": str(roh.get("name") or roh.get("script") or "?"),
         "script": str(roh.get("script") or ""),
-        "status": "error" if roh.get("status") == "error" else "ok",
+        "status": status if status in ("error", SCHRITT_WARNUNG) else "ok",
         "duration_s": float(dauer) if isinstance(dauer, (int, float)) else None,
     }
 
