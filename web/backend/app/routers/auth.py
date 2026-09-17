@@ -18,6 +18,7 @@ from kern.email import send_email
 
 from ..clients import client_kind, is_app_client
 from ..config import get_settings
+from ..mailprotokoll import protokolliere
 from ..antworten import Ok
 from ..deps import get_current_user, get_store
 from ..ratelimit import forgot_password_limiter, login_limiter, register_limiter, verify_email_limiter
@@ -99,12 +100,14 @@ def _notify_admins_registration(new_email: str) -> None:
     store = Store(settings.ratslotse_db)
     try:
         admins = [
-            u["email"] for u in store.list_web_users()
+            (int(u["id"]), u["email"]) for u in store.list_web_users()
             if "admin" in (u.get("roles") or []) and not str(u.get("email", "")).endswith("@local")
         ]
-    finally:
+    except Exception:
         store.close()
+        raise
     if not admins:
+        store.close()
         return
 
     admin_url = f"{settings.app_base_url.rstrip('/')}/admin"
@@ -126,12 +129,17 @@ def _notify_admins_registration(new_email: str) -> None:
         f"Neue Registrierung (bestätigt & aktiv): {new_email}\n\n"
         f"Im Admin-Bereich ansehen: {admin_url}\n"
     )
-    for addr in admins:
-        try:
-            send_email(addr, subject, body, text=text,
-                       api_key=settings.resend_api_key, sender=settings.email_from)
-        except Exception:
-            logger.exception("admin pending-registration notice failed for %s", addr)
+    try:
+        for owner_id, addr in admins:
+            try:
+                mid = send_email(addr, subject, body, text=text,
+                                 api_key=settings.resend_api_key, sender=settings.email_from)
+                store.protokolliere_mail(owner_id, "admin_fyi", subject, message_id=mid)
+            except Exception:
+                logger.exception("admin pending-registration notice failed for %s", addr)
+                store.protokolliere_mail(owner_id, "admin_fyi", subject, ok=False)
+    finally:
+        store.close()
 
 
 def _set_auth_cookie(response: Response, user: dict) -> None:
@@ -264,7 +272,7 @@ def register(
         token_hash = hashlib.sha256(raw.encode()).hexdigest()
         expires = (datetime.utcnow() + timedelta(hours=_VERIFY_TTL_HOURS)).isoformat(timespec="seconds")
         store.create_email_verification(user_id, token_hash, expires)
-        background.add_task(_send_verification_email, email, raw, display_name)
+        background.add_task(_send_verification_email, email, raw, display_name, user_id)
     elif email == _configured_admin_email(settings) and not _has_admin(store):
         # Ohne E-Mail-Versand gibt es keinen Link zum Bestätigen — der Weg über
         # verify_email() kann dieses Konto also nicht zum Admin machen. Laut sagen,
@@ -319,7 +327,8 @@ def me(request: Request, user: dict = Depends(get_current_user),
                    store.pending_email_change(int(user["id"]), now))
 
 
-def _send_reset_email(email: str, raw_token: str, display_name: str | None = None) -> None:
+def _send_reset_email(email: str, raw_token: str, display_name: str | None = None,
+                      owner_id: int | None = None) -> None:
     """Background task: email a one-hour password-reset link (best-effort)."""
     settings = get_settings()
     if not settings.resend_api_key:
@@ -331,6 +340,7 @@ def _send_reset_email(email: str, raw_token: str, display_name: str | None = Non
         "<p style='margin:0'>Du hast angefordert, dein Passwort zurückzusetzen. "
         "Über den Knopf vergibst du ein neues — der Link ist <b>1 Stunde</b> gültig:</p>"
         + knopf(link, "Neues Passwort setzen"),
+        anlass="password_reset",
         greeting_name=display_name,
         held="passwort",
         kicker="Dein Konto",
@@ -344,9 +354,12 @@ def _send_reset_email(email: str, raw_token: str, display_name: str | None = Non
         "Wenn du das nicht warst, ignoriere diese E-Mail.\n"
     )
     try:
-        send_email(email, subject, body, text=text, api_key=settings.resend_api_key, sender=settings.email_from)
+        mid = send_email(email, subject, body, text=text,
+                         api_key=settings.resend_api_key, sender=settings.email_from)
+        protokolliere(owner_id, "password_reset", subject, message_id=mid)
     except Exception:
         logger.exception("password-reset email failed for %s", email)
+        protokolliere(owner_id, "password_reset", subject, ok=False)
 
 
 @router.post("/forgot-password")
@@ -367,7 +380,8 @@ def forgot_password(
         token_hash = hashlib.sha256(raw.encode()).hexdigest()
         expires = (datetime.utcnow() + timedelta(hours=1)).isoformat(timespec="seconds")
         store.create_password_reset(int(user["id"]), token_hash, expires)
-        background.add_task(_send_reset_email, email, raw, user.get("display_name"))
+        background.add_task(_send_reset_email, email, raw, user.get("display_name"),
+                            int(user["id"]))
     return {"ok": True}
 
 
@@ -395,7 +409,8 @@ def reset_password(
     return _to_out(user, _app_access_token(request, user))
 
 
-def _send_verification_email(email: str, raw_token: str, display_name: str | None = None) -> None:
+def _send_verification_email(email: str, raw_token: str, display_name: str | None = None,
+                             owner_id: int | None = None) -> None:
     """Background task: email a verification link (valid 24h, best-effort)."""
     settings = get_settings()
     if not settings.resend_api_key:
@@ -407,6 +422,7 @@ def _send_verification_email(email: str, raw_token: str, display_name: str | Non
         "<p style='margin:0'>Ein Klick noch, dann ist dein Konto startklar: "
         "Bestätige bitte deine E-Mail-Adresse — der Link ist <b>24 Stunden</b> gültig.</p>"
         + knopf(link, "E-Mail bestätigen"),
+        anlass="verify_email",
         greeting_name=display_name,
         held="willkommen",
         kicker="Willkommen an Bord",
@@ -420,13 +436,17 @@ def _send_verification_email(email: str, raw_token: str, display_name: str | Non
         "Wenn du dich nicht registriert hast, ignoriere diese E-Mail.\n"
     )
     try:
-        send_email(email, subject, body, text=text, api_key=settings.resend_api_key, sender=settings.email_from)
+        mid = send_email(email, subject, body, text=text,
+                         api_key=settings.resend_api_key, sender=settings.email_from)
+        protokolliere(owner_id, "verify_email", subject, message_id=mid)
     except Exception:
         logger.exception("verification email failed for %s", email)
+        protokolliere(owner_id, "verify_email", subject, ok=False)
 
 
 def _send_email_change_link(neue_adresse: str, raw_token: str,
-                            display_name: str | None = None) -> None:
+                            display_name: str | None = None,
+                            owner_id: int | None = None) -> None:
     """Background task: der Bestätigungslink an die NEUE Adresse (24 h).
 
     Bewusst derselbe Pfad wie die Erstbestätigung — ``/verify-email`` kennt
@@ -445,6 +465,7 @@ def _send_email_change_link(neue_adresse: str, raw_token: str,
         "Ratslotse-Konto gehören. Ein Klick, dann ist der Wechsel erledigt — "
         "der Link ist <b>24 Stunden</b> gültig.</p>"
         + knopf(link, "Neue Adresse bestätigen"),
+        anlass="email_change",
         greeting_name=display_name,
         held="willkommen",
         kicker="Dein Konto",
@@ -458,14 +479,17 @@ def _send_email_change_link(neue_adresse: str, raw_token: str,
         "Wenn du das nicht angefordert hast, ignoriere diese E-Mail.\n"
     )
     try:
-        send_email(neue_adresse, subject, body, text=text,
-                   api_key=settings.resend_api_key, sender=settings.email_from)
+        mid = send_email(neue_adresse, subject, body, text=text,
+                         api_key=settings.resend_api_key, sender=settings.email_from)
+        protokolliere(owner_id, "email_change", subject, message_id=mid)
     except Exception:  # noqa: BLE001 — best effort, „Erneut senden" ist der Ausweg
         logger.exception("email-change link failed for %s", neue_adresse)
+        protokolliere(owner_id, "email_change", subject, ok=False)
 
 
 def _send_email_change_notice(alte_adresse: str, neue_adresse: str,
-                              display_name: str | None = None) -> None:
+                              display_name: str | None = None,
+                              owner_id: int | None = None) -> None:
     """Background task: Warnung an die ALTE Adresse, dass ein Wechsel läuft.
 
     Der wirksame Moment: Solange der Wechsel schwebt, gehen „Passwort
@@ -487,6 +511,7 @@ def _send_email_change_notice(alte_adresse: str, neue_adresse: str,
         "<p style='margin:10px 0 0'><b>Warst du das nicht?</b> Dann ändere jetzt dein "
         "Passwort — damit wird der Wechsel hinfällig und alle offenen Sitzungen enden.</p>"
         + knopf(reset_url, "Passwort ändern"),
+        anlass="email_change_info",
         greeting_name=display_name,
         held="passwort",
         kicker="Dein Konto",
@@ -500,14 +525,17 @@ def _send_email_change_notice(alte_adresse: str, neue_adresse: str,
         f"Warst du das nicht? Dann ändere jetzt dein Passwort: {reset_url}\n"
     )
     try:
-        send_email(alte_adresse, subject, body, text=text,
-                   api_key=settings.resend_api_key, sender=settings.email_from)
+        mid = send_email(alte_adresse, subject, body, text=text,
+                         api_key=settings.resend_api_key, sender=settings.email_from)
+        protokolliere(owner_id, "email_change_info", subject, message_id=mid)
     except Exception:  # noqa: BLE001 — der Wechsel hängt nicht an dieser Mail
         logger.exception("email-change notice failed for %s", alte_adresse)
+        protokolliere(owner_id, "email_change_info", subject, ok=False)
 
 
 def _send_email_changed_notice(alte_adresse: str, neue_adresse: str,
-                               display_name: str | None = None) -> None:
+                               display_name: str | None = None,
+                               owner_id: int | None = None) -> None:
     """Background task: Quittung an die alte Adresse, nachdem der Wechsel gilt."""
     settings = get_settings()
     if not settings.resend_api_key:
@@ -521,6 +549,7 @@ def _send_email_changed_notice(alte_adresse: str, neue_adresse: str,
         "<p style='margin:10px 0 0'>Anmeldung, Benachrichtigungen und „Passwort "
         "vergessen“ laufen ab jetzt über die neue Adresse. An diese hier schicken "
         "wir nichts mehr.</p>",
+        anlass="email_change_info",
         greeting_name=display_name,
         held="passwort",
         kicker="Dein Konto",
@@ -535,11 +564,13 @@ def _send_email_changed_notice(alte_adresse: str, neue_adresse: str,
         "Warst du das nicht? Dann antworte bitte umgehend auf diese E-Mail.\n"
     )
     try:
-        send_email(alte_adresse, subject, body, text=text,
-                   reply_to=settings.feedback_email or settings.web_admin_email or None,
-                   api_key=settings.resend_api_key, sender=settings.email_from)
+        mid = send_email(alte_adresse, subject, body, text=text,
+                         reply_to=settings.feedback_email or settings.web_admin_email or None,
+                         api_key=settings.resend_api_key, sender=settings.email_from)
+        protokolliere(owner_id, "email_change_info", subject, message_id=mid)
     except Exception:  # noqa: BLE001 — der Wechsel ist durch, die Mail ist Kür
         logger.exception("email-changed notice failed for %s", alte_adresse)
+        protokolliere(owner_id, "email_change_info", subject, ok=False)
 
 
 @router.post("/verify-email", response_model=UserOut)
@@ -592,7 +623,7 @@ def verify_email(
                 "Wechsel mit einer anderen Adresse erneut an.") from None
         if alte_adresse and not alte_adresse.endswith("@local"):
             background.add_task(_send_email_changed_notice, alte_adresse, neue_adresse,
-                                (vorher or {}).get("display_name"))
+                                (vorher or {}).get("display_name"), user_id)
     else:
         store.set_email_verified(user_id, True)
 
@@ -647,7 +678,9 @@ def resend_verification(
     # beiden Versender haben verschiedene Parameternamen, eine gemeinsame
     # Variable wäre ein Union-Typ, den `add_task` nicht mehr prüfen kann.
     if wechsel:
-        background.add_task(_send_email_change_link, email, raw, user.get("display_name"))
+        background.add_task(_send_email_change_link, email, raw, user.get("display_name"),
+                            int(user["id"]))
     else:
-        background.add_task(_send_verification_email, email, raw, user.get("display_name"))
+        background.add_task(_send_verification_email, email, raw, user.get("display_name"),
+                            int(user["id"]))
     return {"ok": True}

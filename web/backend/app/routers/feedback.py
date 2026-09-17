@@ -7,6 +7,8 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from kern.digest_email import render_html_email
+
+from ..mailprotokoll import protokolliere
 from kern.email import send_email
 from kern.store import Store
 
@@ -82,14 +84,19 @@ def submit_feedback(
         return {"ok": True}
 
     html_body, text_body = _mail_bauen("Neues Feedback", kind_label, user_email or "unbekannt", body.message)
+    betreff = f"Ratslotse-Feedback: {kind_label}"
     try:
-        send_email(
-            recipient, f"Ratslotse-Feedback: {kind_label}", html_body, text=text_body,
+        mid = send_email(
+            recipient, betreff, html_body, text=text_body,
             reply_to=user_email if "@" in user_email else None,
             api_key=settings.resend_api_key, sender=settings.email_from,
         )
+        # Ohne Konto-Id: Die Mail geht an den Betrieb, nicht an eine Person mit
+        # Konto — sie steht in der Gesamtstatistik, in keiner Personen-Ansicht.
+        protokolliere(None, "admin_fyi", betreff, message_id=mid, store=store)
     except Exception:  # noqa: BLE001 — a failed feedback mail must not error the user
         logger.exception("feedback email failed (from=%s)", user_email)
+        protokolliere(None, "admin_fyi", betreff, ok=False, store=store)
     return {"ok": True}
 
 
@@ -135,14 +142,17 @@ def submit_support(
         return {"ok": True}
 
     html_body, text_body = _mail_bauen("Anfrage über die Hilfe-Seite", kind_label, absender, body.message)
+    betreff = f"Ratslotse-Hilfe: {kind_label}"
     try:
-        send_email(
-            recipient, f"Ratslotse-Hilfe: {kind_label}", html_body, text=text_body,
+        mid = send_email(
+            recipient, betreff, html_body, text=text_body,
             reply_to=absender,
             api_key=settings.resend_api_key, sender=settings.email_from,
         )
+        protokolliere(None, "admin_fyi", betreff, message_id=mid, store=store)
     except Exception:  # noqa: BLE001 — ein gescheiterter Mailversand darf den Absender nicht treffen
         logger.exception("support-kontakt email failed (from=%s)", absender)
+        protokolliere(None, "admin_fyi", betreff, ok=False, store=store)
     return {"ok": True}
 
 
@@ -230,6 +240,12 @@ def seitenaufruf(payload: PageViewIn, request: Request,
             angemeldet=bool(payload.logged_in),
             erster=bool(payload.first),
         )
+        # Kam der Aufruf aus einer Mail, wird er ZUSÄTZLICH gezählt — in einer
+        # eigenen Tabelle, wieder ohne Konto. Erst diese Zahl neben der oberen
+        # beantwortet, ob die Mails jemanden zurückholen oder ob die Leute
+        # ohnehin vorbeikommen.
+        if payload.von:
+            store.merke_mail_rueckkehr(payload.von, angemeldet=bool(payload.logged_in))
     except Exception:  # noqa: BLE001 — die Zählung bleibt folgenlos
         logger.exception("Seitenaufruf ließ sich nicht zählen")
     return {"ok": True}

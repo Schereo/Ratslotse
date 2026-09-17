@@ -21,7 +21,11 @@
  * **Was NICHT gemeldet wird**, und das ist der Punkt:
  *
  * * **Keine Query.** `?id=8525` verriete, welchen Beschluss jemand liest,
- *   `?q=…` wäre eine Suchanfrage. Der Pfad allein ist stumpf.
+ *   `?q=…` wäre eine Suchanfrage. Der Pfad allein ist stumpf. Die einzige
+ *   Ausnahme ist `von` — der Anlass der E-Mail, aus der jemand kam. Er ist
+ *   für alle Empfänger*innen derselben Mail gleich und deshalb kein
+ *   Erkennungsmerkmal; genau daran unterscheidet er sich von den üblichen
+ *   Klick-Zählern, die je Empfänger*in eine eigene Umleitung bauen.
  * * **Kein Cookie.** Der Versand geht ausdrücklich OHNE `credentials`. Der
  *   Server löst für diese Meldung kein Konto auf — ob jemand angemeldet ist,
  *   sagt das Feld `logged_in`, und mehr als dieses Ja/Nein wird nicht daraus.
@@ -59,12 +63,21 @@ function ersterImTab(): boolean {
   }
 }
 
+/** Merkt sich, ob die Mail-Herkunft dieses Aufrufs schon gemeldet wurde.
+ *  Ein `?von=` bleibt beim Weiterklicken in der Adresszeile nicht stehen,
+ *  aber Next rendert dieselbe Seite mehrfach — ohne diese Marke zählte ein
+ *  Mail-Besuch zwei- oder dreimal. */
+let letztesVon: string | null = null;
+
 /** Einen Seitenaufruf melden. Wirft nie. */
-export function meldeAufruf(pfad: string, angemeldet: boolean, client = "web"): void {
+export function meldeAufruf(pfad: string, angemeldet: boolean, client = "web",
+                            von = ""): void {
   try {
     if (typeof window === "undefined") return;
     if (pfad === letzterPfad) return;
     letzterPfad = pfad;
+    const mailHerkunft = von && von !== letztesVon ? von.slice(0, 40) : undefined;
+    if (von) letztesVon = von;
 
     void fetch(apiUrl("/page-views"), {
       method: "POST",
@@ -77,6 +90,7 @@ export function meldeAufruf(pfad: string, angemeldet: boolean, client = "web"): 
         client,
         first: ersterImTab(),
         logged_in: angemeldet,
+        ...(mailHerkunft ? { von: mailHerkunft } : {}),
       }),
     }).catch(() => {
       /* Eine gescheiterte Zählung ist kein Ereignis. */

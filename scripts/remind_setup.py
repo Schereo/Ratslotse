@@ -116,11 +116,12 @@ def main() -> dict:
     for u in pending:
         step = int(u.get("setup_step") or 0)
         leer = u["id"] in ohne_haken_ids
+        betreff = ("Ratslotse meldet sich noch nicht bei dir" if leer
+                   else "Deine Einrichtung bei Ratslotse wartet noch")
         try:
-            send_email(
+            mid = send_email(
                 u["email"],
-                ("Ratslotse meldet sich noch nicht bei dir" if leer
-                 else "Deine Einrichtung bei Ratslotse wartet noch"),
+                betreff,
                 render_html_email(
                     "Noch kein Thema hinterlegt" if leer else "Fast fertig eingerichtet",
                     _body(u.get("display_name"), step, ohne_haken=leer),
@@ -130,8 +131,10 @@ def main() -> dict:
                     title="Noch kein Thema hinterlegt" if leer else "Fast fertig eingerichtet",
                     fusszeile="Diese Erinnerung schicken wir exact einmal — "
                               "du bekommst sie nicht noch einmal.",
+                    anlass="setup_reminder",
                 ),
             )
+            store.protokolliere_mail(int(u["id"]), "setup_reminder", betreff, message_id=mid)
         except Exception as exc:  # noqa: BLE001 — ein Fehlschlag stoppt nicht den Rest
             print(f"  Mail an Konto {u['id']} fehlgeschlagen: {exc}")
             continue

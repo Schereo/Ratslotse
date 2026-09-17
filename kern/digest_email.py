@@ -21,6 +21,8 @@ import re
 
 # Eigene Konstante statt Import aus kern.notify: notify → delivery →
 # digest_email wäre ein Ring. Beide lesen dieselbe Umgebungsvariable.
+from kern.mail_links import markiere
+
 APP_BASE_URL = os.environ.get("APP_BASE_URL", "https://ratslotse.de").rstrip("/")
 
 
@@ -274,6 +276,7 @@ def render_html_email(
     kicker: str | None = None,
     title: str | None = None,
     fusszeile: str | None = None,
+    anlass: str | None = None,
 ) -> str:
     """Eine fertig formatierte Nachricht in die Ratslotse-Hülle setzen.
 
@@ -289,6 +292,12 @@ def render_html_email(
     ``body_html_or_text`` darf Telegram-Erbe mit ``\\n`` enthalten — deshalb
     steht ``white-space:pre-wrap`` am Textblock. Wer sauberes HTML liefert
     (Absätze, Listen), bekommt es unverändert gerendert.
+
+    ``anlass`` hängt an jeden Link auf die eigene Domäne ``?von=<anlass>`` —
+    daran ist später zu sehen, ob die Mail jemanden zurückgeholt hat
+    (``kern/mail_links.py``). Die Markierung sitzt bewusst HIER, am Ende der
+    Kette: Ein neuer Meldeanlass bringt sie damit mit, ohne dass jemand an
+    jeder einzelnen Link-Stelle daran denken muss.
     """
     kopf = ""
     if kicker:
@@ -307,7 +316,7 @@ def render_html_email(
         if greeting_name else ""
     )
     abstand = 14 if (kopf or greeting) else 0
-    return (
+    return markiere((
         f"<div style='margin:0;padding:28px 12px;background:{_SEITE}'>"
         f"<div style='max-width:600px;margin:0 auto;font-family:{_FONT};color:{_TEXT}'>"
         f"<div style='padding:0 6px 14px'>{kopfzeile(unterzeile)}</div>"
@@ -320,7 +329,7 @@ def render_html_email(
         "</div></div>"
         f"{_fuss(fusszeile)}"
         "</div></div>"
-    )
+    ), anlass, APP_BASE_URL)
 
 
 def _fuss(fusszeile: str | None) -> str:

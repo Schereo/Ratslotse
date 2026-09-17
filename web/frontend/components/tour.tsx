@@ -7,6 +7,7 @@ import { Button } from "@/components/ui";
 import { Mascot, type MascotPose } from "@/components/mascot";
 import { reportBadgeEvent } from "@/components/badges";
 import { useOnboarding, type StepId } from "@/components/onboarding";
+import { meldeTour } from "@/lib/tour-einladung";
 
 /**
  * Geführte Lotti-Tour: Spotlight auf echte UI-Elemente (per data-tour-Anker),
@@ -256,6 +257,7 @@ export function GuidedTour() {
 
   const finishToQa = useCallback(() => {
     reportBadgeEvent("tour"); // RL-U12: Kompass — nur beim echten Durchlauf
+    meldeTour("beendet");     // nur der echte Durchlauf, nicht das Wegklicken
     end();
     router.push("/fragen");
   }, [end, router]);

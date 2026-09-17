@@ -365,7 +365,7 @@ def _melden(ratslotse_store, owner: dict, art: str, title: str, html: str, url: 
     weiter ohne Datenbank prüfbar ist.
     """
     if ratslotse_store is None:
-        deliver_message(owner, html, email_subject=title, push_url=url)
+        deliver_message(owner, html, email_subject=title, push_url=url, anlass=art)
         return
     notify.einreihen(ratslotse_store, owner["owner_id"], art, title, html, url)
 
