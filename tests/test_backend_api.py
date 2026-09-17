@@ -638,6 +638,31 @@ def test_admin_user_rows_and_detail(client):
     assert client.get("/api/admin/users/999999").status_code == 404
 
 
+def test_admin_mailhistorie_nachladen_und_grenzen(client):
+    _register(client)
+    uid = client.get("/api/auth/me").json()["id"]
+    store = Store(RATSLOTSE_DB)
+    for i in range(25):
+        store.protokolliere_mail(uid, "n2_thema", f"Mail {i}", ok=i != 0)
+    pfad = f"/api/admin/users/{uid}/emails"
+    erste = client.get(pfad, params={"limit": 20, "offset": 0})
+    zweite = client.get(pfad, params={"limit": 20, "offset": 20})
+    assert erste.status_code == zweite.status_code == 200
+    assert len(erste.json()["rows"]) == 20
+    assert len(zweite.json()["rows"]) == 5
+    assert zweite.json()["rows"][-1]["subject"] == "Mail 0"
+    assert zweite.json()["rows"][-1]["ok"] is False
+    assert erste.json()["summary"] == zweite.json()["summary"]
+    assert erste.json()["summary"]["gesamt"] == 24
+    for params in ({"offset": -1}, {"limit": 501}, {"limit": 0}, {"tage": 0}):
+        assert client.get(pfad, params=params).status_code == 422
+    assert client.get("/api/admin/users/999999/emails").status_code == 404
+    bob = TestClient(app)
+    _register(bob, "bob@test.de")
+    assert bob.get(pfad).status_code == 403
+    assert bob.get("/api/admin/stats/emails").status_code == 403
+
+
 def test_feature_zaehler_zaehlen_wirklich(client):
     """Die Chips des Nutzer-Details zeigen echte Nutzung.
 

@@ -9,6 +9,7 @@
  */
 import { expect, test } from "@playwright/test";
 import { zustandsDatei } from "./konten";
+import type { ApiAntwort } from "../../lib/vertrag";
 
 test.describe("Quiz", () => {
   test.use({ storageState: zustandsDatei("nutzerin") });
@@ -86,6 +87,139 @@ test.describe("Admin-Panel — die Grenze", () => {
       await page.goto("/admin");
       await expect(page.getByRole("heading", { name: "Admin" }).first()).toBeVisible({ timeout: 15_000 });
       expect(fehler).toEqual([]);
+    });
+
+    test("Bereiche bleiben über Direktlinks, Neuladen und Zurück erreichbar", async ({ page }) => {
+      await page.goto("/admin#konten");
+      await expect(page.getByRole("heading", { name: "Wer kommt wieder?" })).toBeVisible();
+      await expect(page.getByRole("navigation", { name: "Admin-Bereiche" }).getByRole("link")).toHaveCount(5);
+      await page.getByRole("link", { name: "Menschen", exact: true }).click();
+      await expect(page.getByRole("link", { name: "Web-Nutzer*innen", exact: true })).toHaveAttribute("aria-current", "page");
+      await page.reload();
+      await expect(page.getByRole("link", { name: "Web-Nutzer*innen", exact: true })).toHaveAttribute("aria-current", "page");
+      await page.goBack();
+      await expect(page.getByRole("heading", { name: "Wer kommt wieder?" })).toBeVisible();
+      await page.getByRole("link", { name: "Betrieb", exact: true }).click();
+      await expect(page.getByRole("heading", { name: "Cron-Jobs", exact: true })).toBeVisible();
+      await page.getByRole("link", { name: "Inhalte", exact: true }).click();
+      await expect(page.getByRole("link", { name: "Themen-Dubletten", exact: true })).toBeVisible();
+    });
+
+    test("junge Konten bleiben offen; unabhängige Merkmale sind kein Verlust-Trichter", async ({ page }) => {
+      // Deliberately more questions than finished setups, and no account old
+      // enough for 30 days. These are real possibilities, not a funnel.
+      const stages = [
+        ["registriert", 4, 4, null], ["bestaetigt", 4, 4, null],
+        ["setup_begonnen", 3, 4, null], ["setup_fertig", 2, 4, null],
+        ["haken", 3, 3, 1], ["frage", 4, 4, null],
+        ["tag2", 1, 3, 2], ["tag7", 1, 2, 7], ["tag30", 0, 0, 30],
+      ].map(([key, n, eligible, window_days]) => ({ key, label: key, n, eligible, window_days }));
+      await page.route("**/api/admin/stats/cohorts?*", (route) => route.fulfill({ json: {
+        weeks: 8, excluded: 1, total: stages,
+        cohorts: [{ week: "2026-09-14", n: 4, stages }],
+        kennzahlen: { haken_quote: 1, tag2: 1 / 3, tag7: 0.5, tag30: null, sackgassen_quote: null, fragen_median: 2 },
+        previous: { haken_quote: null, tag2: null, tag7: null, tag30: null, sackgassen_quote: null, fragen_median: 1 },
+        basis: { haken: [3, 3], tag2: [1, 3], tag7: [1, 2], tag30: [0, 0], sackgassen: [0, 0], vorher_n: 0 },
+      } }));
+      await page.goto("/admin#konten");
+      const section = page.getByRole("region", { name: "Entwicklung neuer Konten" });
+      await expect(section.getByText("1 von 2", { exact: true })).toBeVisible();
+      await expect(section.getByText("50 %", { exact: true })).toBeVisible();
+      await page.getByRole("button", { name: "30 Tage", exact: true }).click();
+      await expect(section.getByText("0 von 0", { exact: true })).toBeVisible();
+      await expect(section.getByText("0 %", { exact: true })).toHaveCount(0);
+      await expect(section.getByText(/Daraus lässt sich noch keine Rückkehrquote berechnen/)).toBeVisible();
+      await page.getByLabel("Anmeldegruppe").selectOption("2026-09-14");
+      await expect(section.getByText("Registriert in der Woche ab 14.09.2026", { exact: true })).toBeVisible();
+      await section.getByText("Alle Anmeldewochen vergleichen", { exact: true }).click();
+      await expect(section.getByRole("columnheader", { name: "Eine erste Frage gestellt" })).toBeVisible();
+      await expect(section.getByRole("cell", { name: "Noch offen", exact: true })).toBeVisible();
+      await page.setViewportSize({ width: 320, height: 850 });
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBeTruthy();
+      await page.setViewportSize({ width: 390, height: 850 });
+      await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBeTruthy();
+    });
+
+    test("Mailübersicht führt zur vollständigen Historie und erhält Fehler sowie ältere Aufrufe", async ({ page }) => {
+      const users = await (await page.request.get("/api/admin/users")).json() as ApiAntwort<"/admin/users">;
+      const user = users[0];
+      const stats: ApiAntwort<"/admin/stats/emails"> = {
+        tage: 30, verschickt: 1, gescheitert: 2, rueckkehr: 8,
+        je_anlass: [{ anlass: "probe", mails: 0, gescheitert: 2, konten: 1 }, { anlass: "n2_thema", mails: 1, gescheitert: 0, konten: 1 }],
+        je_tag: [], rueckkehr_je_anlass: [{ anlass: "n6_woche", rueckkehr: 8 }],
+        vielempfaenger: [{ owner_id: user.id, email: user.email, display_name: user.display_name,
+          delivery_channel: "push", mails: 1, je_woche: 0.2, letzte: "2026-09-17T10:00:00Z", haeufigster_anlass: "n2_thema" }],
+      };
+      await page.route("**/api/admin/stats/emails?*", (route) => route.fulfill({ json: stats }));
+      let failNextPage = true;
+      await page.route(`**/api/admin/users/${user.id}/emails?*`, (route) => {
+        const params = new URL(route.request().url()).searchParams;
+        const offset = Number(params.get("offset"));
+        // Retry is covered without relying on the query library's automatic retry.
+        if (offset === 20 && failNextPage) return route.fulfill({ status: 503, json: { detail: "Testfehler" } });
+        const response: ApiAntwort<"/admin/users/{user_id}/emails"> = {
+          summary: { gesamt: 44, zeitraum: 44, tage: 30, je_woche: 10.3, je_anlass: { n2_thema: 44 }, gescheitert: 1 },
+          rows: Array.from({ length: 45 }, (_, i) => ({ id: 45 - i, anlass: "n2_thema",
+            subject: `Mail ${45 - i}: Neue Vorlagen zum Radverkehr und zur Schulwegsicherheit in Eversten`,
+            sent_at: "2026-09-17T10:00:00Z", ok: i !== 44, besuch_am_tag: i % 2 === 0,
+          })).slice(offset, offset + Number(params.get("limit"))),
+        };
+        return route.fulfill({ json: response });
+      });
+      await page.goto("/admin#emails");
+      const table = page.getByRole("table", { name: "Versand und Link-Aufrufe nach Anlass" });
+      await expect(table.getByRole("row", { name: /Testmail/ }).getByRole("cell", { name: "2", exact: true })).toBeVisible();
+      await expect(table.getByRole("row", { name: /Wochenvorschau/ }).getByRole("cell", { name: "8", exact: true })).toBeVisible();
+      await expect(table.getByRole("row", { name: /Wochenvorschau/ }).getByRole("cell", { name: "–", exact: true })).toBeVisible();
+      await expect(page.getByText("Keine Öffnungs- oder Klickquote:", { exact: false })).toBeVisible();
+      await page.getByRole("link", { name: new RegExp(user.email.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")) }).click();
+      await expect(page).toHaveURL(new RegExp(`#users\\?user=${user.id}&detail=emails$`));
+      const mails = page.getByRole("list", { name: "Einzelne Mailversuche" });
+      await expect(mails.getByRole("listitem")).toHaveCount(20);
+      await expect(page.getByRole("region", { name: "Mailhistorie", exact: true }).getByText("10,3", { exact: true })).toBeVisible();
+      await page.getByRole("button", { name: "Ältere Mails laden" }).click();
+      await expect(page.getByText("Ältere Mails konnten nicht geladen werden.", { exact: false })).toBeVisible({ timeout: 15_000 });
+      await expect(mails.getByRole("listitem")).toHaveCount(20);
+      failNextPage = false;
+      await page.getByRole("button", { name: "Erneut versuchen", exact: true }).click();
+      await expect(mails.getByRole("listitem")).toHaveCount(40);
+      await page.getByRole("button", { name: "Ältere Mails laden" }).click();
+      await expect(mails.getByRole("listitem")).toHaveCount(45);
+      await expect(mails.getByText(/^Mail 1:/)).toBeVisible();
+      await expect(mails.getByText("Fehlgeschlagen", { exact: true })).toHaveCount(1);
+      await expect(page.getByRole("button", { name: "Ältere Mails laden" })).toHaveCount(0);
+      await page.getByRole("navigation", { name: "Kontodetails" }).getByRole("link", { name: "Aktivität" }).click();
+      await page.goBack();
+      await expect(page.getByRole("heading", { name: "Versandverlauf", exact: true })).toBeVisible();
+      await page.reload();
+      await expect(page.getByRole("navigation", { name: "Kontodetails" }).getByRole("link", { name: "E-Mails", exact: true })).toHaveAttribute("aria-current", "page");
+      for (const width of [320, 390]) {
+        await page.setViewportSize({ width, height: 850 });
+        if (width === 390) await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBeTruthy();
+      }
+      await page.getByRole("link", { name: "Zur Kontenliste", exact: true }).click();
+      await expect(page.getByRole("textbox", { name: "Konten durchsuchen" })).toBeVisible();
+    });
+
+    test("Verläufe sind per Tastatur ablesbar und behalten Nullwerte", async ({ page }) => {
+      await page.route("**/api/admin/stats/growth?*", async (route) => {
+        const response = await route.fetch();
+        const data = await response.json();
+        await route.fulfill({ json: { ...data, wau: [0, 7, 2], wau_days: ["2026-09-03", "2026-09-10", "2026-09-17"] } });
+      });
+      await page.goto("/admin");
+      const chart = page.getByRole("group", { name: "aktive Konten im Zeitverlauf", exact: true });
+      await chart.locator('[tabindex="0"]').focus();
+      await page.keyboard.press("Home");
+      await expect(page.locator(":focus")).toHaveAttribute("aria-label", /0 aktive Konten/);
+      await page.keyboard.press("ArrowRight");
+      await expect(page.locator(":focus")).toHaveAttribute("aria-label", /7 aktive Konten/);
+      await page.getByText("Alle 3 Werte als Tabelle", { exact: true }).click();
+      const table = page.getByRole("table", { name: "aktive Konten – vollständiger Verlauf" });
+      await expect(table.getByRole("row")).toHaveCount(4);
+      await expect(table.getByRole("cell", { name: "0", exact: true })).toBeVisible();
     });
   });
 });

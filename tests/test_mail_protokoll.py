@@ -144,6 +144,22 @@ def test_rueckkehr_zaehlt_ohne_konto(tmp_path):
     assert "owner_id" not in spalten, "Die Rückkehr wird bewusst OHNE Konto gezählt."
 
 
+def test_mailhistorie_blaettert_stabil_auch_bei_gleichem_zeitpunkt(tmp_path):
+    """Ältere Mails bleiben erreichbar, ohne andere Konten oder Doppelungen."""
+    from kern.store import Store
+    store = Store(str(tmp_path / "t.sqlite"))
+    uid = store.create_web_user("moin@example.org", "hash")
+    andere = store.create_web_user("anders@example.org", "hash")
+    for i in range(45):
+        store.protokolliere_mail(uid, "n2_thema", f"Mail {i}",
+                                 ok=i % 3 != 0, jetzt="2026-09-17T12:00:00+00:00")
+        store.protokolliere_mail(andere, "n2_thema", "Fremdes Konto")
+    seiten = [store.mails_fuer_konto(uid, limit=20, offset=n) for n in (0, 20, 40, 60)]
+    assert [len(s) for s in seiten] == [20, 20, 5, 0]
+    assert [r["subject"] for s in seiten for r in s] == [f"Mail {i}" for i in reversed(range(45))]
+    assert sum(not r["ok"] for s in seiten for r in s) == 15
+
+
 def test_loeschen_nimmt_das_protokoll_mit(tmp_path):
     """Nach dem Löschen eines Kontos darf keine Mailzeile übrig bleiben."""
     from kern.store import Store

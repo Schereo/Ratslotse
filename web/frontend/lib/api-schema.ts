@@ -15130,6 +15130,8 @@ export interface operations {
         parameters: {
             query?: {
                 tage?: number;
+                limit?: number;
+                offset?: number;
             };
             header?: never;
             path: {
@@ -20806,4 +20808,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 4c76b0846b81bb6f7e268a86f3b400c276474ca818453794f6ba3f5f4a20bf51
+// vertrag-sha256: cbd392e91ef4f801e3b6253373266f5790b56f9f6f7a9f82f34869ad4d3664ab

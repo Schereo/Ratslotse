@@ -72,6 +72,15 @@ Erklärsatz kompiliert nicht. Gerendert werden sie über `<Einordnung>`.
 
 ## Bisher gebaute Grafiken
 
+Für Tages- und Wochenverläufe im Admin-Bereich gibt es zusätzlich
+`AdminVerlauf` (`admin-verlauf.tsx`): Balken oder kumulierte Linie mit
+Datumsachse, Nullbasis, gemeinsamer Ableseleiste und vollständiger Tabelle.
+`days` und `values` kommen aus derselben Serverreihe; `weekly` bezeichnet
+Siebentageszeiträume mit dem gelieferten Enddatum. `extras` ergänzt die
+Ableseleiste und Tabelle um weitere Zahlen desselben Tages, etwa den heutigen
+Bestätigungsstand von damals angelegten Konten. Null bleibt ein Balken ohne
+Höhe; eine leere Reihe wird ausdrücklich als fehlender Verlauf beschriftet.
+
 | Grafik | Datei | Vertrag (Kurzform) |
 |---|---|---|
 | `<Zeitreihe>` (GB-01) | `zeitreihe.tsx` | Linien-Zeitreihe: `reihe: JahrPunkt[]` · `einheit` · `titel?` (Kopfzeile mit gemessener Menge) · `zweitreihe?` (dünn, gestrichelt, breit am Endpunkt beschriftet) · `annotationen?` (ⓘ im Bild, `kurz?` daneben, Text IMMER darunter) · `spruenge?` (größter Anstieg/Rückgang, GERECHNET, Signal-Orange als Differenz-Marke — nie über eine Lücke hinweg) · `vorjahresdifferenz?` (Zeile in der Ableseleiste) · `tabelle?` (alle Werte zum Abschreiben) · `umschalter?` (kontrolliert, mobil full-width). `treppe?` (der Wert gilt bis zum nächsten Punkt und springt dort, `curveStepAfter`) · `d3-shape` mit `defined(vorhanden)` bricht die Linie an Lücken — Interpolation ist im Code unmöglich. Direktbeschriftung sparsam (Endwerte, größte Differenz), Rest über die Ableseleiste; Achse `d3-scale` nice ticks, mobil nur Dekaden. Einsatz: Schulden, Hebesatz-Treppe (Steuer-Steckbrief). |

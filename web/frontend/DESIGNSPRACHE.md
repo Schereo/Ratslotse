@@ -507,6 +507,42 @@ unten sind der gemeinsame Nenner; die Bausteine dazu stehen in
   Verzögerungen), sorgt selbst dafür, dass dort sofort der Endwert steht — so
   wie `Reveal` und `.staffel-auf` es tun.
 
+## Admin: vom Überblick zur Untersuchung
+
+Fünf Hauptbereiche: Überblick, Nutzung, Menschen, Betrieb und Inhalte.
+Unterpunkte erscheinen nur im gewählten Bereich. Hash-Links halten die
+Auswahl bei Neuladen und Zurücknavigation, auch im statischen App-Export.
+Kennzahlen im Überblick sind Einstiege in die vollständigen Auswertungen;
+Zeitraum und Grundgesamtheit stehen jeweils direkt an der Zahl.
+
+Neue Konten werden nach Registrierungswoche untersucht. Einrichtung, frühe
+Abos und erste Fragen sind unabhängige Merkmale, keine aufeinanderfolgenden
+Trichterstufen. Rückkehr hat einen eigenen Umschalter (2/7/30 Tage) und zeigt
+erreicht, nicht erreicht und noch nicht auswertbar getrennt. Fehlende
+Grundlage ist „–“, niemals 0 %. Tabellen halten sämtliche Einzelwerte bereit.
+Betreiber-/Testkonten werden nur dort als ausgeschlossen beschriftet, wo die
+zugrunde liegende Abfrage sie tatsächlich ausschließt.
+
+Verläufe verwenden den gemeinsamen Ablese-Baustein für Maus, Touch und
+Tastatur. Nullwerte bekommen keine dekorative Mindesthöhe. Betriebsprobleme
+tragen einen ausgeschriebenen Status; ein fehlender Lauf gilt als unbekannt.
+
+### Admin: E-Mails und Kontodetails
+
+Unter Menschen → E-Mails stehen Versand, fehlgeschlagene Versuche und anonyme
+Mail-Link-Aufrufe nebeneinander. Aufrufe sind weder Personen noch eine Öffnungs-
+oder Klickquote. Anlass-Zeilen bleiben auch bei ausschließlich fehlgeschlagenem
+Versand oder Aufrufen älterer Mails erhalten. Der Tagesverlauf füllt Kalendertage
+ohne erfassten Versand mit Null und kennzeichnet die angeschnittenen Randtage.
+
+Die Empfängerliste führt direkt zur Mailhistorie des Kontos. Aktivität, E-Mails
+und Verwaltung haben eigene, per URL erreichbare Detailansichten. Auf schmalen
+Bildschirmen ersetzt das ausgewählte Detail die Kontenliste; ein Zurück-Link
+führt wieder zur Auswahl. Betreffzeilen werden vollständig umgebrochen, ältere
+Mails nachgeladen. Der heutige Benachrichtigungskanal löscht keine Historie.
+Aktivität am Versandtag ist als zeitliches Zusammentreffen beschriftet, ohne
+eine Wirkung der einzelnen Mail zu behaupten.
+
 ## 8. Anti-Patterns
 
 Keine Anführungszeichen um Paraphrasen · keine Stimm-/Abstimmungsgrafiken ·
