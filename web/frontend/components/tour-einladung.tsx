@@ -10,7 +10,7 @@ import {
   ONBOARDING_DONE_EVENT,
   ONBOARDING_FINISHED_EVENT,
 } from "@/components/onboarding-flow";
-import { einladungStand, merkeEinladung } from "@/lib/tour-einladung";
+import { einladungStand, meldeTour, merkeEinladung } from "@/lib/tour-einladung";
 
 /**
  * Lottis Einladung zur Tour — der Moment direkt nach der Einrichtung.
@@ -50,7 +50,13 @@ export function TourEinladung() {
       // Wer die Tour schon kennt, wird nicht eingeladen — die Marke wird dann
       // gleich hier abgeräumt, damit die Abzeichen nicht darauf warten.
       if (tourGesehen()) { merkeEinladung("erledigt"); return; }
-      timer = setTimeout(() => setOffen(true), VERZOEGERUNG_MS);
+      timer = setTimeout(() => {
+        setOffen(true);
+        // Gezählt wird, wenn sie wirklich steht — nicht, wenn der Assistent
+        // endet: Zwischen beidem liegen die Fälle, in denen diese Komponente
+        // gar nicht gemountet war (s. o.), und genau die soll die Zahl zeigen.
+        meldeTour("eingeladen");
+      }, VERZOEGERUNG_MS);
     };
     if (einladungStand() === "offen") zeigen();
     // Der Assistent hat die Marke schon gesetzt; das Ereignis sagt nur, dass
@@ -72,6 +78,7 @@ export function TourEinladung() {
   }, []);
 
   const tourStarten = useCallback(() => {
+    meldeTour("gestartet");
     schliessen();
     startGuidedTour();
   }, [schliessen]);

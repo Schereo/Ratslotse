@@ -25,6 +25,14 @@ import { pfad } from "@/lib/utils";
  * (`kern/seitenaufrufe.py::COUNCIL_TABS`) und wirft jeden anderen Parameter
  * weg — ein Suchbegriff kommt auf diesem Weg nicht durch.
  *
+ * **Die zweite Ausnahme: `?von=`.** Den Parameter hängt `kern/mail_links.py`
+ * an jeden Link in einer E-Mail; er nennt den ANLASS der Mail (`n2_thema`),
+ * für alle Empfänger*innen denselben. Er wird nicht als Teil der Route
+ * gezählt, sondern getrennt — daran ist zu sehen, ob die Mails jemanden
+ * zurückholen oder ob die Leute ohnehin von sich aus vorbeikommen. Nur beim
+ * ERSTEN Aufruf nach dem Öffnen des Links: Wer danach weiterklickt, käme
+ * sonst bei jedem Schritt noch einmal „aus der Mail".
+ *
  * Der Anmeldestatus geht als Ja/Nein mit, damit der Server für die Zählung
  * kein Konto auflösen muss (siehe `lib/aufrufe-melden.ts`). Solange der
  * Auth-Zustand noch lädt, wird nicht gemeldet — sonst stünde jeder erste
@@ -35,13 +43,14 @@ function ZaehlerInner() {
   const suchparameter = useSearchParams();
   const { user, loading } = useAuth();
   const tab = suchparameter?.get("tab") ?? "";
+  const von = suchparameter?.get("von") ?? "";
 
   useEffect(() => {
     if (loading) return;
     const p = pfad(pathname);
     const route = p === "/council" && tab ? `${p}?tab=${tab}` : p;
-    meldeAufruf(route, Boolean(user), isNativeApp() ? clientMarke() : "web");
-  }, [pathname, tab, user, loading]);
+    meldeAufruf(route, Boolean(user), isNativeApp() ? clientMarke() : "web", von);
+  }, [pathname, tab, von, user, loading]);
 
   return null;
 }

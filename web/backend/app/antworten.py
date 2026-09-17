@@ -1271,6 +1271,80 @@ class AdminUserDetail(TypedDict):
     clients: dict[str, int]
 
 
+class AdminMailRow(TypedDict):
+    """Eine verschickte Mail in der Personen-Ansicht (``Store.mails_fuer_konto``)."""
+    id: int
+    #: Ein Wert aus ``kern.store.MAIL_ANLAESSE``.
+    anlass: str
+    subject: str
+    sent_at: str
+    #: ``False`` = der Versand ist gescheitert. Die interessantere Zeile von
+    #: beiden — sie erklärt, warum jemand nichts bekommen hat.
+    ok: bool
+    #: War das Konto an dem Tag in der App? Ausdrücklich KEIN Klick-Nachweis,
+    #: siehe ``Store.mails_fuer_konto``.
+    besuch_am_tag: bool
+
+
+class AdminMailSummary(TypedDict):
+    """Die Zahlen über der Mail-Liste eines Kontos."""
+    gesamt: int
+    zeitraum: int
+    tage: int
+    je_woche: float
+    je_anlass: dict[str, int]
+    gescheitert: int
+
+
+class AdminUserEmails(TypedDict):
+    """Der Mail-Reiter einer Person: Zusammenfassung plus die letzten Mails."""
+    summary: AdminMailSummary
+    rows: list[AdminMailRow]
+
+
+class AdminMailAnlass(TypedDict):
+    anlass: str
+    mails: int
+    konten: int
+    gescheitert: int
+
+
+class AdminMailTag(TypedDict):
+    tag: str
+    mails: int
+
+
+class AdminMailRueckkehr(TypedDict):
+    anlass: str
+    rueckkehr: int
+
+
+class AdminMailVielempfaenger(TypedDict):
+    """Wer die meisten Mails bekommt — sortiert nach Menge im Zeitraum."""
+    owner_id: int
+    email: str
+    display_name: str | None
+    delivery_channel: str
+    mails: int
+    je_woche: float
+    letzte: str | None
+    haeufigster_anlass: str | None
+
+
+class AdminMailStats(TypedDict):
+    """``/api/admin/stats/emails`` — das Mailaufkommen insgesamt."""
+    tage: int
+    verschickt: int
+    gescheitert: int
+    #: Aufrufe über einen Link AUS einer Mail (``mail_returns``) — anonym und
+    #: aggregiert, deshalb keine Zuordnung zu den Zeilen darunter.
+    rueckkehr: int
+    je_anlass: list[AdminMailAnlass]
+    je_tag: list[AdminMailTag]
+    rueckkehr_je_anlass: list[AdminMailRueckkehr]
+    vielempfaenger: list[AdminMailVielempfaenger]
+
+
 class AdminPlaceCandidateEvidence(TypedDict):
     """Bis zu drei Belegbeschlüsse je Ortskandidat (fester SELECT)."""
     id: int
@@ -1846,7 +1920,10 @@ class AdminJobStep(TypedDict):
     """
     name: str
     script: str
-    status: Literal["ok", "error"]
+    #: ``warn`` ist ein Fehlschlag, der bewusst niemanden weckt — ein Schritt,
+    #: der an einem fremden Dienst hängt, darf ein paarmal in Folge fallen,
+    #: bevor er den ganzen Lauf rot macht (``scripts/weekly_enrich.NACHSICHTIG``).
+    status: Literal["ok", "warn", "error"]
     duration_s: float | None
 
 

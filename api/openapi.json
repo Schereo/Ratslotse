@@ -695,6 +695,7 @@
           "status": {
             "enum": [
               "ok",
+              "warn",
               "error"
             ],
             "title": "Status",
@@ -1141,6 +1142,270 @@
           "last"
         ],
         "title": "AdminLlmUsageFeature",
+        "type": "object"
+      },
+      "AdminMailAnlass": {
+        "properties": {
+          "anlass": {
+            "title": "Anlass",
+            "type": "string"
+          },
+          "gescheitert": {
+            "title": "Gescheitert",
+            "type": "integer"
+          },
+          "konten": {
+            "title": "Konten",
+            "type": "integer"
+          },
+          "mails": {
+            "title": "Mails",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "anlass",
+          "mails",
+          "konten",
+          "gescheitert"
+        ],
+        "title": "AdminMailAnlass",
+        "type": "object"
+      },
+      "AdminMailRow": {
+        "description": "Eine verschickte Mail in der Personen-Ansicht (``Store.mails_fuer_konto``).",
+        "properties": {
+          "anlass": {
+            "title": "Anlass",
+            "type": "string"
+          },
+          "besuch_am_tag": {
+            "title": "Besuch Am Tag",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "sent_at": {
+            "title": "Sent At",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "anlass",
+          "subject",
+          "sent_at",
+          "ok",
+          "besuch_am_tag"
+        ],
+        "title": "AdminMailRow",
+        "type": "object"
+      },
+      "AdminMailRueckkehr": {
+        "properties": {
+          "anlass": {
+            "title": "Anlass",
+            "type": "string"
+          },
+          "rueckkehr": {
+            "title": "Rueckkehr",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "anlass",
+          "rueckkehr"
+        ],
+        "title": "AdminMailRueckkehr",
+        "type": "object"
+      },
+      "AdminMailStats": {
+        "description": "``/api/admin/stats/emails`` — das Mailaufkommen insgesamt.",
+        "properties": {
+          "gescheitert": {
+            "title": "Gescheitert",
+            "type": "integer"
+          },
+          "je_anlass": {
+            "items": {
+              "$ref": "#/components/schemas/AdminMailAnlass"
+            },
+            "title": "Je Anlass",
+            "type": "array"
+          },
+          "je_tag": {
+            "items": {
+              "$ref": "#/components/schemas/AdminMailTag"
+            },
+            "title": "Je Tag",
+            "type": "array"
+          },
+          "rueckkehr": {
+            "title": "Rueckkehr",
+            "type": "integer"
+          },
+          "rueckkehr_je_anlass": {
+            "items": {
+              "$ref": "#/components/schemas/AdminMailRueckkehr"
+            },
+            "title": "Rueckkehr Je Anlass",
+            "type": "array"
+          },
+          "tage": {
+            "title": "Tage",
+            "type": "integer"
+          },
+          "verschickt": {
+            "title": "Verschickt",
+            "type": "integer"
+          },
+          "vielempfaenger": {
+            "items": {
+              "$ref": "#/components/schemas/AdminMailVielempfaenger"
+            },
+            "title": "Vielempfaenger",
+            "type": "array"
+          }
+        },
+        "required": [
+          "tage",
+          "verschickt",
+          "gescheitert",
+          "rueckkehr",
+          "je_anlass",
+          "je_tag",
+          "rueckkehr_je_anlass",
+          "vielempfaenger"
+        ],
+        "title": "AdminMailStats",
+        "type": "object"
+      },
+      "AdminMailSummary": {
+        "description": "Die Zahlen über der Mail-Liste eines Kontos.",
+        "properties": {
+          "gesamt": {
+            "title": "Gesamt",
+            "type": "integer"
+          },
+          "gescheitert": {
+            "title": "Gescheitert",
+            "type": "integer"
+          },
+          "je_anlass": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Je Anlass",
+            "type": "object"
+          },
+          "je_woche": {
+            "title": "Je Woche",
+            "type": "number"
+          },
+          "tage": {
+            "title": "Tage",
+            "type": "integer"
+          },
+          "zeitraum": {
+            "title": "Zeitraum",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "gesamt",
+          "zeitraum",
+          "tage",
+          "je_woche",
+          "je_anlass",
+          "gescheitert"
+        ],
+        "title": "AdminMailSummary",
+        "type": "object"
+      },
+      "AdminMailTag": {
+        "properties": {
+          "mails": {
+            "title": "Mails",
+            "type": "integer"
+          },
+          "tag": {
+            "title": "Tag",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tag",
+          "mails"
+        ],
+        "title": "AdminMailTag",
+        "type": "object"
+      },
+      "AdminMailVielempfaenger": {
+        "description": "Wer die meisten Mails bekommt — sortiert nach Menge im Zeitraum.",
+        "properties": {
+          "delivery_channel": {
+            "title": "Delivery Channel",
+            "type": "string"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "haeufigster_anlass": {
+            "title": "Haeufigster Anlass",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "je_woche": {
+            "title": "Je Woche",
+            "type": "number"
+          },
+          "letzte": {
+            "title": "Letzte",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mails": {
+            "title": "Mails",
+            "type": "integer"
+          },
+          "owner_id": {
+            "title": "Owner Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "owner_id",
+          "email",
+          "display_name",
+          "delivery_channel",
+          "mails",
+          "je_woche",
+          "letzte",
+          "haeufigster_anlass"
+        ],
+        "title": "AdminMailVielempfaenger",
         "type": "object"
       },
       "AdminNewsList": {
@@ -2011,6 +2276,27 @@
           "clients"
         ],
         "title": "AdminUserDetail",
+        "type": "object"
+      },
+      "AdminUserEmails": {
+        "description": "Der Mail-Reiter einer Person: Zusammenfassung plus die letzten Mails.",
+        "properties": {
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/AdminMailRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/AdminMailSummary"
+          }
+        },
+        "required": [
+          "summary",
+          "rows"
+        ],
+        "title": "AdminUserEmails",
         "type": "object"
       },
       "AdminUserFeatures": {
@@ -12904,6 +13190,14 @@
             "maxLength": 200,
             "title": "Route",
             "type": "string"
+          },
+          "von": {
+            "maxLength": 40,
+            "title": "Von",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "title": "PageViewIn",
@@ -19343,6 +19637,21 @@
         "title": "TopicSuggestions",
         "type": "object"
       },
+      "TourUpdate": {
+        "description": "Was mit Lottis Tour-Einladung passiert ist.\n\nDrei Stationen, drei Zähler: ``eingeladen`` (die Einladung stand da),\n``gestartet`` (jemand hat ja gesagt), ``beendet`` (die Tour lief durch).\nOhne sie war die Einladung ein blinder Fleck — sie lebt vollständig im\n``localStorage``, und ob sie jemand annimmt, stand nirgends. Die Frage ist\nseit 09/2026 offen und dieselbe wie bei der KI-Frage: Wird der Moment nach\nder Einrichtung überhaupt benutzt?",
+        "properties": {
+          "stand": {
+            "pattern": "^(eingeladen|gestartet|beendet)$",
+            "title": "Stand",
+            "type": "string"
+          }
+        },
+        "required": [
+          "stand"
+        ],
+        "title": "TourUpdate",
+        "type": "object"
+      },
       "TrendData": {
         "description": "``CouncilStore.activity_trends`` plus die Klartext-Namen der Felder.\n\nDie Reihen standen hier bis 02.09.2026 als ``Any``. Das ist beim Vertrag\nnicht dasselbe wie „egal\": Das Web leitet seine Typen aus diesen Formen\nab, und was hier ``Any`` heißt, muss dort von Hand nachgetippt werden —\nmit allem, was Handarbeit an einer Schnittstelle bedeutet.",
         "properties": {
@@ -21651,6 +21960,52 @@
         ]
       }
     },
+    "/api/admin/stats/emails": {
+      "get": {
+        "description": "Das Mailaufkommen: je Anlass, je Tag, wer am meisten bekommt.\n\nDie Frage dahinter ist Tims: „müssen wir irgendwo Mails reduzieren?\" —\ndafür zählt nicht die Gesamtzahl, sondern was bei einer einzelnen Person\nankommt. Deshalb steht neben der Summe die Liste der Vielempfänger*innen.",
+        "operationId": "stats_emails_api_admin_stats_emails_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "tage",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 365,
+              "minimum": 1,
+              "title": "Tage",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminMailStats"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stats Emails",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/admin/stats/events": {
       "get": {
         "description": "Welche Handlungen wie oft vorkamen — und die beiden Anteile dahinter.\n\n„Fragen aus einem Vorschlag\" und „Antworten ohne Quelle\" sind die zwei\nZahlen, die vorher gar nicht bzw. nur an den gespeicherten Gesprächen\nmessbar waren.",
@@ -21891,6 +22246,84 @@
           }
         },
         "summary": "User Detail",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/users/{user_id}/emails": {
+      "get": {
+        "description": "Welche Mails diese Person bekommen hat — statt im Resend-Dashboard.\n\nEigener Endpunkt und nicht Teil von ``/users/{id}``: Die Liste lädt erst,\nwenn der Reiter geöffnet wird, und die Detail-Antwort bleibt so klein, wie\nsie ist.",
+        "operationId": "user_emails_api_admin_users__user_id__emails_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "tage",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 365,
+              "minimum": 1,
+              "title": "Tage",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 200,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUserEmails"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "User Emails",
         "tags": [
           "admin"
         ]
@@ -26469,6 +26902,48 @@
           }
         },
         "summary": "Set Setup",
+        "tags": [
+          "onboarding"
+        ]
+      }
+    },
+    "/api/onboarding/tour": {
+      "post": {
+        "description": "Eine Station von Lottis Tour zählen.\n\nNur ein Zähler, kein Zustand: Ob die Einladung schon beantwortet ist,\nentscheidet weiterhin die Marke im Browser (``lib/tour-einladung.ts``) —\nsie muss einen Tab überleben, der seit vor einem Deploy offen ist, und\ngenau dafür ist sie da. Hier geht es allein um die Frage, ob der Moment\nnach der Einrichtung etwas bewirkt.",
+        "operationId": "tour_stand_api_onboarding_tour_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TourUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Tour Stand",
         "tags": [
           "onboarding"
         ]

@@ -15,6 +15,8 @@
  *  einmalig vorbei. Eine Marke im Speicher überlebt das alles.
  */
 
+import { api } from "./api";
+
 const KEY = "ratslotse:tour-einladung";
 
 /** "offen" — die Einladung ist dran; "erledigt" — beantwortet, egal wie. */
@@ -33,4 +35,31 @@ export function einladungStand(): EinladungsStand | null {
 export function merkeEinladung(wert: EinladungsStand) {
   if (typeof window === "undefined") return;
   try { localStorage.setItem(KEY, wert); } catch { /* Speicher gesperrt — egal */ }
+}
+
+/** Die drei Stationen, die gezählt werden. */
+export type TourStand = "eingeladen" | "gestartet" | "beendet";
+
+/**
+ * Eine Station am Konto zählen — fire and forget, wirft nie.
+ *
+ * **Warum das nötig ist.** Die Einladung lebte bis 09/2026 vollständig im
+ * `localStorage`: Ob sie überhaupt jemand zu sehen bekommt und ob jemand ja
+ * sagt, war nirgends zu beantworten — auch nicht in der Auswertung vom
+ * 17.09.2026, in der sechs neue Konten den Assistenten zu Ende gemacht haben
+ * und trotzdem niemand eine Frage gestellt hat. Die Einladung ist der eine
+ * Moment, in dem die KI-Frage erklärt wird; ob er trägt, muss messbar sein.
+ *
+ * **Was NICHT mitgeht:** nichts außer der Station. Kein Zeitpunkt, kein Pfad,
+ * keine Dauer — der Server setzt den Tag selbst und zählt je Konto und Tag
+ * hoch, wie bei jedem anderen Funktions-Zähler auch.
+ */
+export function meldeTour(stand: TourStand): void {
+  try {
+    void api.post("/onboarding/tour", { stand }).catch(() => {
+      /* Ein Zähler darf nichts kosten — auch keine Fehlermeldung. */
+    });
+  } catch {
+    /* dito */
+  }
 }

@@ -36,8 +36,10 @@ from ..antworten import (CityStats, EventStreamResponse, SSE_LIVE_PROBE,
                          AdminQuizStats, AdminRequestFehler, AdminSackgasse,
                          AdminSeitenaufrufe, AdminAnmeldungen,
                          AdminFeedbackNotified,
-                         AdminUnread, AdminUserDetail, AdminUserRow, Ok)
+                         AdminMailRow, AdminMailStats, AdminMailSummary,
+                         AdminUnread, AdminUserDetail, AdminUserEmails, AdminUserRow, Ok)
 from ..deps import get_cities_store, get_council_store, get_store, require_admin
+from ..mailprotokoll import protokolliere
 from ..schemas import (EntityAliasIn, EntityAliasOut, FeedbackNotifyIn, LimitsUpdate,
                        PlaceReviewIn, RoleInfo, RolesUpdate, RoleUpdate, StatusUpdate,
                        WebUserOut)
@@ -47,7 +49,7 @@ logger = logging.getLogger("ratslotse.web.admin")
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 
-def _send_activation_email(email: str) -> None:
+def _send_activation_email(email: str, owner_id: int | None = None) -> None:
     """Best-effort: tell a user their account was approved (status pending → active)."""
     settings = get_settings()
     if not settings.resend_api_key or not email:
@@ -62,20 +64,24 @@ def _send_activation_email(email: str) -> None:
         kicker="Dein Konto",
         title="Du bist freigeschaltet!",
         fusszeile="Fragen oder Feedback? Antworte einfach auf diese E-Mail.",
+        anlass="account_activated",
     )
     text = (
         "Dein Ratslotse-Konto wurde freigeschaltet.\n\n"
         f"Jetzt anmelden: {login}\n\n"
         "Fragen oder Feedback? Antworte einfach auf diese E-Mail.\n"
     )
+    betreff = "Ratslotse – dein Konto ist freigeschaltet"
     try:
-        send_email(
-            email, "Ratslotse – dein Konto ist freigeschaltet", body, text=text,
+        mid = send_email(
+            email, betreff, body, text=text,
             reply_to=settings.feedback_email or settings.web_admin_email or None,
             api_key=settings.resend_api_key, sender=settings.email_from,
         )
+        protokolliere(owner_id, "account_activated", betreff, message_id=mid)
     except Exception:  # noqa: BLE001 — approval must not fail on a mail hiccup
         logger.exception("activation email failed for %s", email)
+        protokolliere(owner_id, "account_activated", betreff, ok=False)
 
 
 # ---- stats ----
@@ -236,11 +242,16 @@ def _schritt(roh: dict) -> dict:
     auffüllen statt vertrauen (der Testfall dazu steht in
     ``tests/test_backend_api.py::test_kennzahlen_bleiben_flach``).
     """
+    from kern.alerts import SCHRITT_WARNUNG
+
     dauer = roh.get("duration_s")
+    # Alles, was nicht ``error`` oder ``warn`` heißt, gilt als ``ok``: Der
+    # Vertrag kennt drei Werte, das freie JSON könnte jeden tragen.
+    status = roh.get("status")
     return {
         "name": str(roh.get("name") or roh.get("script") or "?"),
         "script": str(roh.get("script") or ""),
-        "status": "error" if roh.get("status") == "error" else "ok",
+        "status": status if status in ("error", SCHRITT_WARNUNG) else "ok",
         "duration_s": float(dauer) if isinstance(dauer, (int, float)) else None,
     }
 
@@ -414,7 +425,8 @@ _RUECKMELDUNG_TEXTE = {
 
 
 def _send_feedback_reply(empfaenger: str, kind: str, nachricht: str,
-                         original: str) -> None:
+                         original: str, owner_id: int | None = None,
+                         store: Store | None = None) -> None:
     """Die Rückmeldung an die absendende Person.
 
     Läuft NICHT über ``kern.notify.einreihen``: Das ist der Weg für
@@ -453,20 +465,28 @@ def _send_feedback_reply(empfaenger: str, kind: str, nachricht: str,
         title=titel,
         fusszeile="Du bekommst diese E-Mail, weil du uns über Ratslotse "
                   "geschrieben hast. Antworten geht direkt.",
+        anlass="feedback_reply",
     )
     text_teile = [einleitung]
     if nachricht.strip():
         text_teile.append(nachricht.strip())
     if zitat:
         text_teile.append(f"Deine Nachricht damals:\n{zitat}")
-    send_email(
-        # Titel unverändert übernehmen: `.lower()` machte aus „Dein Vorschlag"
-        # ein „dein vorschlag" — im Deutschen wird das Substantiv großgeschrieben.
-        empfaenger, f"Ratslotse – {titel}", body,
-        text="\n\n".join(text_teile) + "\n",
-        reply_to=settings.feedback_email or settings.web_admin_email or None,
-        api_key=settings.resend_api_key, sender=settings.email_from,
-    )
+    try:
+        mid = send_email(
+            # Titel unverändert übernehmen: `.lower()` machte aus „Dein Vorschlag"
+            # ein „dein vorschlag" — im Deutschen wird das Substantiv großgeschrieben.
+            empfaenger, f"Ratslotse – {titel}", body,
+            text="\n\n".join(text_teile) + "\n",
+            reply_to=settings.feedback_email or settings.web_admin_email or None,
+            api_key=settings.resend_api_key, sender=settings.email_from,
+        )
+    except Exception:
+        protokolliere(owner_id, "feedback_reply", f"Ratslotse – {titel}",
+                      ok=False, store=store)
+        raise
+    protokolliere(owner_id, "feedback_reply", f"Ratslotse – {titel}",
+                  message_id=mid, store=store)
 
 
 @router.post("/feedback/{feedback_id}/notify")
@@ -509,7 +529,9 @@ def notify_feedback_author(
     # Antwort an eine fremde Person die schlechtere Auskunft.
     try:
         _send_feedback_reply(empfaenger, str(eintrag["kind"]), body.message,
-                             str(eintrag["message"]))
+                             str(eintrag["message"]),
+                             owner_id=int(eintrag.get("owner_id") or 0) or None,
+                             store=store)
     except Exception as fehler:  # noqa: BLE001 — dem Admin sagen, was war
         logger.exception("Rückmeldung an %s fehlgeschlagen", empfaenger)
         raise HTTPException(status.HTTP_502_BAD_GATEWAY,
@@ -549,6 +571,46 @@ def user_detail(user_id: int, _admin: dict = Depends(require_admin), store: Stor
     if not detail:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Nutzer*in nicht gefunden.")
     return detail
+
+
+@router.get("/users/{user_id}/emails")
+def user_emails(
+    user_id: int,
+    tage: int = Query(30, ge=1, le=365),
+    limit: int = Query(200, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    _admin: dict = Depends(require_admin),
+    store: Store = Depends(get_store),
+) -> AdminUserEmails:
+    """Welche Mails diese Person bekommen hat — statt im Resend-Dashboard.
+
+    Eigener Endpunkt und nicht Teil von ``/users/{id}``: Die Liste lädt erst,
+    wenn der Reiter geöffnet wird, und die Detail-Antwort bleibt so klein, wie
+    sie ist.
+    """
+    if not store.get_web_user_by_id(user_id):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Nutzer*in nicht gefunden.")
+    return {
+        "summary": cast("AdminMailSummary", store.mail_zusammenfassung(user_id, tage=tage)),
+        "rows": cast("list[AdminMailRow]", store.mails_fuer_konto(user_id, limit=limit, offset=offset)),
+    }
+
+
+@router.get("/stats/emails")
+def stats_emails(
+    tage: int = Query(30, ge=1, le=365),
+    _admin: dict = Depends(require_admin),
+    store: Store = Depends(get_store),
+) -> AdminMailStats:
+    """Das Mailaufkommen: je Anlass, je Tag, wer am meisten bekommt.
+
+    Die Frage dahinter ist Tims: „müssen wir irgendwo Mails reduzieren?" —
+    dafür zählt nicht die Gesamtzahl, sondern was bei einer einzelnen Person
+    ankommt. Deshalb steht neben der Summe die Liste der Vielempfänger*innen.
+    """
+    daten = store.mail_statistik(tage=tage)
+    daten["vielempfaenger"] = store.mail_vielempfaenger(tage=tage)
+    return cast("AdminMailStats", daten)
 
 
 @router.get("/roles")
@@ -649,7 +711,8 @@ def set_status(
     store.set_web_user_status(user_id, neuer_stand)
     # Notify the user only on the transition into 'active' (not on re-saves/no-ops).
     if neuer_stand == "active" and target.get("status") != "active":
-        background.add_task(_send_activation_email, target.get("email", ""))
+        background.add_task(_send_activation_email, target.get("email", ""),
+                            int(target["id"]))
     return WebUserOut(**store.get_web_user_by_id(user_id))
 
 

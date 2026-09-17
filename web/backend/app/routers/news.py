@@ -140,6 +140,7 @@ def admin_news_test(
 
     release = _release_oder_404(version)
     owner = {
+        "owner_id": admin["id"],
         "email": admin["email"],
         "display_name": admin.get("display_name"),
         "delivery_channel": admin.get("delivery_channel") or "email",
@@ -149,6 +150,7 @@ def admin_news_test(
         owner, news.body_html(release),
         email_subject=f"[Probe] {news.title_for(release)}",
         push_url=news.TAP_ZIEL, push_text=news.push_text_for(release),
+        anlass="probe", store=store,
     )
     return {"sent": sent}
 

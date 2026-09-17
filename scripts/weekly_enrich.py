@@ -60,7 +60,35 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")  # für die Alert-Mail (RESEND_API_KEY, ALERT_EMAIL)
 
-from kern.alerts import SCHRITTE_SCHLUESSEL, JobFehler  # noqa: E402
+from kern.alerts import (  # noqa: E402
+    SCHRITT_WARNUNG,
+    SCHRITTE_SCHLUESSEL,
+    JobFehler,
+    fehlschlaege_in_folge,
+)
+
+#: Schritte, deren Fehlschlag NICHT sofort den ganzen Lauf rot macht —
+#: Name → wie oft er hintereinander fallen darf, bevor er es doch tut.
+#:
+#: **Wozu.** Ein Schritt, der an einem fremden Gratis-Dienst hängt, fällt
+#: gelegentlich aus, ohne dass bei uns etwas kaputt ist: Overpass antwortete
+#: am 13.09.2026 um 3 Uhr viermal mit 504 („server too busy"), eine Woche
+#: zuvor derselben Maschine in 1,2 s mit 200 — und am 17.09. tagsüber mal so,
+#: mal so, vom Notebook wie vom Server, auch über den Spiegel. Behandelt wie
+#: ein Absturz kostet das eine Alarm-Mail und eine rote Kachel für etwas,
+#: das sich am nächsten Sonntag von selbst erledigt.
+#:
+#: **Und warum trotzdem eine Grenze.** „Manchmal klappt es" ist die Annahme;
+#: sie hört auf zu stimmen, wenn ein Dienst dauerhaft weg ist. Drei Wochen in
+#: Folge ist kein Ausrutscher mehr — dann ist Rot richtig.
+#:
+#: Der Preis der Nachsicht ist klar benennbar, sonst stünde sie hier nicht:
+#: Beim einzigen geglückten Lauf änderte die Straßen-Geometrie EINE Zeile
+#: (``orte_neu=1``, sonst alles unverändert). Was liegen bleibt, ist die
+#: Geometrie der in dieser Woche neu dazugekommenen Ortsnamen.
+NACHSICHTIG: dict[str, int] = {
+    "Straßen-Geometrie": 3,
+}
 
 STEPS: list[tuple[str, str]] = [
     # Zuerst und ohne LLM: die Regex-Ernte über den Bestand. Sie steht hier,
@@ -142,8 +170,11 @@ def main() -> list[dict]:
     ``job_runs``-Zeile; ihre Bilanz kann nur von hier kommen.
 
     Ein Eintrag ist ``{"name", "script", "status", "duration_s"}``; ``status``
-    ist ``ok`` oder ``error``. Falsy bei Erfolg ist die Rückgabe damit nicht
-    mehr — ``_guarded_main`` wertet sie aus, und ``__main__`` ruft nur den.
+    ist ``ok``, ``warn`` oder ``error``. Falsy bei Erfolg ist die Rückgabe
+    damit nicht mehr — ``_guarded_main`` wertet sie aus, und ``__main__`` ruft
+    nur den.
+
+    ``warn`` ist ein Fehlschlag, der (noch) niemanden weckt: s. ``NACHSICHTIG``.
     """
     protokoll: list[dict] = []
     for name, script in STEPS:
@@ -157,17 +188,39 @@ def main() -> list[dict]:
                 [sys.executable, str(ROOT / "scripts" / parts[0]), *parts[1:]], cwd=str(ROOT)
             )
             if r.returncode != 0:
-                status = "error"
-                print(f"!! {name} fehlgeschlagen (exit {r.returncode}) — weiter mit dem Rest.", flush=True)
+                status = _fehlstatus(name, f"exit {r.returncode}")
         except Exception as exc:  # noqa: BLE001 — never let one step abort the run
-            status = "error"
-            print(f"!! {name} abgebrochen: {exc!r}", flush=True)
+            status = _fehlstatus(name, repr(exc))
         protokoll.append({"name": name, "script": script, "status": status,
                           "duration_s": round(time.monotonic() - start, 1)})
     failed = [s["name"] for s in protokoll if s["status"] == "error"]
-    print(f"\n=== weekly_enrich fertig — {len(STEPS) - len(failed)}/{len(STEPS)} ok"
-          + (f", fehlgeschlagen: {', '.join(failed)}" if failed else "") + " ===", flush=True)
+    wackelig = [s["name"] for s in protokoll if s["status"] == SCHRITT_WARNUNG]
+    print(f"\n=== weekly_enrich fertig — {len(STEPS) - len(failed) - len(wackelig)}/{len(STEPS)} ok"
+          + (f", fehlgeschlagen: {', '.join(failed)}" if failed else "")
+          + (f", wackelig: {', '.join(wackelig)}" if wackelig else "") + " ===", flush=True)
     return protokoll
+
+
+def _fehlstatus(name: str, grund: str) -> str:
+    """``error`` — oder ``warn``, solange dieser Schritt nachsichtig ist.
+
+    Die Meldung steht hier und nicht an den beiden Aufrufstellen, damit sie in
+    beiden Fällen (Exit-Code und Absturz) dieselbe Zählung nennt: Wer im Log
+    „2 von 3" liest, weiß ohne Nachrechnen, wie viel Luft noch ist.
+    """
+    grenze = NACHSICHTIG.get(name)
+    if grenze is None:
+        print(f"!! {name} fehlgeschlagen ({grund}) — weiter mit dem Rest.", flush=True)
+        return "error"
+    # +1, weil der laufende Lauf noch in keiner job_runs-Zeile steht.
+    in_folge = fehlschlaege_in_folge("weekly_enrich", name) + 1
+    if in_folge >= grenze:
+        print(f"!! {name} fehlgeschlagen ({grund}) — zum {in_folge}. Mal in Folge, "
+              f"das ist kein Ausrutscher mehr. Der Lauf wird gemeldet.", flush=True)
+        return "error"
+    print(f" ~ {name} fehlgeschlagen ({grund}) — {in_folge}. Mal von {grenze} in Folge, "
+          f"noch kein Alarm. Weiter mit dem Rest.", flush=True)
+    return SCHRITT_WARNUNG
 
 
 def _guarded_main() -> dict:
@@ -181,6 +234,9 @@ def _guarded_main() -> dict:
     stand in ``job_runs`` also nur „error".
     """
     protokoll = main()
+    # Nur ``error`` weckt jemanden. Ein ``warn`` steht im Protokoll und damit
+    # in der Kachel, bleibt aber ohne Mail und ohne rote Jobzeile — sonst
+    # unterschiede sich die Nachsicht nicht von ihrem Gegenteil.
     # NUR die Liste, keine abgeleiteten Zahlen daneben. Bis 09/2026 standen
     # hier zusätzlich „Schritte gesamt" und „davon fehlgeschlagen" — im Panel
     # als zwei Chips, direkt über der Zeile „18 Schritte · 1 fehlgeschlagen",

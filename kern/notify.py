@@ -362,7 +362,7 @@ def _zustellen_fuer(store, owner_id: int, heute: str, jetzt_iso: str) -> int:
         return 0
 
     def _abschicken(posten_ids: list[int], html: str, title: str, url: str, gebuendelt: bool,
-                    push_text: str | None = None) -> bool:
+                    push_text: str | None = None, anlass: str | None = None) -> bool:
         """Einmal zustellen und das Ergebnis verbuchen.
 
         ``deliver_message`` schluckt Fehler und meldet über den Rückgabewert,
@@ -371,7 +371,7 @@ def _zustellen_fuer(store, owner_id: int, heute: str, jetzt_iso: str) -> int:
         Resend-Ausfall ließ Meldungen also lautlos für immer verschwinden.
         """
         channels = deliver_message(owner, html, email_subject=title, push_url=url,
-                                  push_text=push_text)
+                                  push_text=push_text, anlass=anlass, store=store)
         if not channels:
             store.bump_notification_attempts(posten_ids)
             logger.warning("owner %s: Zustellung erfolglos, %d Meldung(en) bleiben in der "
@@ -395,7 +395,7 @@ def _zustellen_fuer(store, owner_id: int, heute: str, jetzt_iso: str) -> int:
         n = 0
         for p in wichtige:
             if _abschicken([p["id"]], p["body_html"], p["title"], p["url"], False,
-                           push_text=p.get("push_text")):
+                           push_text=p.get("push_text"), anlass=p["kind"]):
                 n += 1
                 schon += 1
         if not posten:
@@ -413,12 +413,14 @@ def _zustellen_fuer(store, owner_id: int, heute: str, jetzt_iso: str) -> int:
             # Kurztext nur bei Einzelzustellung — ein Bündel baut seinen
             # eigenen Sammel-Text.
             if _abschicken([p["id"]], p["body_html"], p["title"], p["url"], False,
-                           push_text=p.get("push_text")):
+                           push_text=p.get("push_text"), anlass=p["kind"]):
                 n += 1
         if rest:
             title, html, url, push_text = _buendel(rest)
+            # Ein Bündel trägt Posten EINER Sorte, aber es ist EINE Mail —
+            # im Protokoll steht es deshalb als `bundel`, nicht als die Sorte.
             if _abschicken([p["id"] for p in rest], html, title, url, True,
-                           push_text=push_text):
+                           push_text=push_text, anlass="bundel"):
                 n += 1
         return n
 

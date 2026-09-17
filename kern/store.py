@@ -497,6 +497,54 @@ CREATE TABLE IF NOT EXISTS signup_rejections (
     PRIMARY KEY (day, reason)
 );
 
+-- Was tatsächlich als E-Mail rausging — je verschickter Mail EINE Zeile.
+--
+-- Bis 09/2026 gab es dafür keine Quelle im Haus: `notification_queue` sagt,
+-- welche Ratsmeldungen eingereiht wurden (und `bundled`, ob eine davon als
+-- eigene Mail rausging oder nur als Posten in einer Sammelmeldung) — aber
+-- Bestätigungslink, Passwort-Reset, Adresswechsel, Setup-Erinnerung und
+-- Feedback-Antwort gehen direkt über `kern/email.py` und hinterließen gar
+-- nichts. Die Frage „welche Mails hat diese Person bekommen?" war nur im
+-- Resend-Dashboard zu beantworten, also außerhalb des eigenen Systems.
+--
+-- Was NICHT gespeichert wird: keine Empfängeradresse (das Konto steht schon
+-- in `owner_id`), kein Mailtext, kein Öffnen, kein Klick. `message_id` ist
+-- die Resend-Kennung — sie hilft beim Nachschlagen eines Einzelfalls und
+-- sagt für sich genommen nichts über eine Person.
+--
+-- `owner_id` darf NULL sein: Betriebsalarme gehen an eine Adresse, hinter der
+-- kein Konto steht. Der Anlass kommt aus der Positivliste MAIL_ANLAESSE.
+CREATE TABLE IF NOT EXISTS email_log (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    owner_id   INTEGER,
+    anlass     TEXT NOT NULL,            -- siehe MAIL_ANLAESSE
+    subject    TEXT NOT NULL,
+    sent_at    TEXT NOT NULL,
+    ok         INTEGER NOT NULL DEFAULT 1,
+    message_id TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_email_log_owner ON email_log(owner_id, sent_at DESC);
+CREATE INDEX IF NOT EXISTS idx_email_log_sent ON email_log(sent_at);
+
+-- Wie viele Leute über einen Link AUS EINER MAIL zurückkamen — je Tag und
+-- Anlass, ohne zu wissen, wer. Das Gegenstück zu `email_log`: die eine
+-- Tabelle sagt, was rausging, diese, was zurückkam.
+--
+-- Die Mail-Links tragen dafür `?von=<anlass>` (kern/mail_links.py). Das ist
+-- für alle Empfänger*innen derselben Mailsorte derselbe Wert — also kein
+-- Erkennungsmerkmal, anders als die üblichen Klick-Zähler, die je Empfänger
+-- eine eigene Umleitungs-URL bauen. Genau deshalb steht hier auch kein Konto:
+-- „hat DIESE Person geklickt" ließe sich nur mit so einer Kennung
+-- beantworten, und die wollen wir nicht (siehe kern/seitenaufrufe.py).
+CREATE TABLE IF NOT EXISTS mail_returns (
+    day       TEXT NOT NULL,
+    anlass    TEXT NOT NULL,             -- siehe MAIL_ANLAESSE
+    logged_in INTEGER NOT NULL DEFAULT 0,
+    count     INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (day, anlass, logged_in)
+);
+CREATE INDEX IF NOT EXISTS idx_mail_returns_day ON mail_returns(day);
+
 CREATE INDEX IF NOT EXISTS idx_user_activity_owner ON user_activity(owner_id);
 
 -- Ein Eintrag je Cron-Lauf, geschrieben von run_guarded (kern/alerts.py).
@@ -691,8 +739,49 @@ SIGNUP_REJECTION_REASONS: frozenset[str] = frozenset({
 })
 
 
+#: Die Anlässe, aus denen Ratslotse eine E-Mail verschickt — die Positivliste
+#: zu ``email_log`` und ``mail_returns``. Was hier nicht steht, wird als
+#: ``andere`` protokolliert statt eine eigene Zeile zu erfinden: Der Anlass
+#: steht in Mail-Links in der Adresszeile (``?von=…``) und kommt damit aus
+#: einem fremden Browser zurück.
+#:
+#: Die sechs ``n…``-Anlässe sind die Ratsmeldungen aus ``kern/notify.py``;
+#: ``bundel`` ist die Sammelmeldung, die mehrere davon in EINER Mail
+#: zusammenfasst. Der Rest sind die Mails, die an keiner Warteschlange hängen.
+MAIL_ANLAESSE: frozenset[str] = frozenset({
+    # Ratsmeldungen (kern/notify.py) — `tests/test_mail_protokoll.py` hält
+    # fest, dass hier jede Sorte steht, die es dort gibt.
+    "n1_tagesordnung", "n1_aenderung", "n2_thema", "n3_result",
+    "n4_vorgang", "n5_vorabend", "n6_woche", "n7_news", "bundel",
+    # Dienst-Mails rund ums Konto
+    "verify_email",      # Bestätigungslink nach der Registrierung
+    "password_reset",    # Link zum Zurücksetzen
+    "email_change",      # Bestätigung an die NEUE Adresse
+    "email_change_info",  # Hinweis an die alte Adresse
+    "setup_reminder",    # scripts/remind_setup.py
+    "feedback_reply",    # Antwort auf eine Rückmeldung
+    "probe",             # Testmail aus den Kontoeinstellungen und der Neuigkeiten-Probe
+    # Mails, hinter denen kein Konto steht
+    "account_activated",  # Konto im Panel freigeschaltet
+    "account_deleted",   # Quittung nach dem Löschen (Konto gibt es dann nicht mehr)
+    "admin_fyi",         # FYI an die Admins (neue Registrierung, Feedback)
+    "alarm",             # Betriebsalarm (kern/alerts.py)
+    "andere",
+})
+
+#: Der Anlass für alles, was nicht in ``MAIL_ANLAESSE`` steht.
+MAIL_ANLASS_ANDERE = "andere"
+
+
+def mail_anlass(wert: str | None) -> str:
+    """Ein gemeldeter Anlass → ein Wert aus ``MAIL_ANLAESSE``, sonst ``andere``."""
+    w = (wert or "").strip().lower()
+    return w if w in MAIL_ANLAESSE else MAIL_ANLASS_ANDERE
+
+
 USER_OWNED_TABLES: tuple[tuple[str, str], ...] = (
     ("topics", "owner_id"),
+    ("email_log", "owner_id"),
     ("committee_subscriptions", "owner_id"),
     ("template_follows", "owner_id"),
     ("bookmarks", "owner_id"),
@@ -3910,6 +3999,161 @@ class Store:
         if len(werte) % 2:
             return float(werte[mitte])
         return round((werte[mitte - 1] + werte[mitte]) / 2, 1)
+
+    # ---- Mail-Protokoll (siehe email_log im Schema) ----
+    def protokolliere_mail(self, owner_id: int | None, anlass: str, subject: str,
+                           ok: bool = True, message_id: str | None = None,
+                           jetzt: str | None = None) -> None:
+        """Eine verschickte Mail festhalten — best-effort, nie load-bearing.
+
+        Wie ``record_activity``: Ein Protokoll, das den Versand scheitern
+        lässt, wäre schlimmer als kein Protokoll. Deshalb schluckt diese
+        Methode ihre Fehler; die Mail ist zu diesem Zeitpunkt ohnehin schon
+        raus, und ein fehlender Eintrag ist eine Lücke in der Statistik, kein
+        Schaden am Konto.
+
+        ``ok=False`` ist ausdrücklich vorgesehen: Ein gescheiterter Versand ist
+        die interessantere Zeile von beiden — er erklärt, warum jemand nichts
+        bekommen hat, und genau das war bisher nur im Log zu sehen.
+        """
+        try:
+            with self._conn:
+                self._conn.execute(
+                    "INSERT INTO email_log (owner_id, anlass, subject, sent_at, ok, message_id) "
+                    "VALUES (?, ?, ?, ?, ?, ?)",
+                    (owner_id, mail_anlass(anlass), (subject or "")[:300],
+                     jetzt or datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                     1 if ok else 0, message_id))
+        except Exception:  # noqa: BLE001 — s. Docstring
+            logger.exception("Mail-Protokoll fehlgeschlagen (owner=%s, anlass=%s)",
+                             owner_id, anlass)
+
+    def mails_fuer_konto(self, owner_id: int, limit: int = 200, offset: int = 0) -> list[dict]:
+        """Die Mails eines Kontos, neueste zuerst.
+
+        Jede Zeile bekommt ``besuch_am_tag``: War das Konto an dem Tag, an dem
+        die Mail rausging, überhaupt in der App? Das ist bewusst KEIN
+        Klick-Nachweis — ein solcher bräuchte eine Kennung je Empfänger*in im
+        Link, und die gibt es hier nicht (siehe ``mail_returns``). Es ist der
+        grobe, ehrliche Hinweis: Mail ging raus, an diesem Tag war jemand da.
+        """
+        rows = self._conn.execute(
+            "SELECT id, anlass, subject, sent_at, ok, message_id FROM email_log "
+            "WHERE owner_id = ? ORDER BY sent_at DESC, id DESC LIMIT ? OFFSET ?",
+            (owner_id, max(1, min(limit, 500)), max(0, offset))).fetchall()
+        tage = {r["day"] for r in self._conn.execute(
+            "SELECT DISTINCT day FROM user_activity WHERE owner_id = ?", (owner_id,)).fetchall()}
+        return [{
+            "id": r["id"],
+            "anlass": r["anlass"],
+            "subject": r["subject"],
+            "sent_at": r["sent_at"],
+            "ok": bool(r["ok"]),
+            "besuch_am_tag": (r["sent_at"] or "")[:10] in tage,
+        } for r in rows]
+
+    def mail_zusammenfassung(self, owner_id: int, tage: int = 30) -> dict:
+        """Wie viele Mails das Konto bekommen hat — gesamt, im Zeitraum, je Anlass."""
+        seit = (datetime.now(timezone.utc) - timedelta(days=tage)).isoformat(timespec="seconds")
+        gesamt = self._conn.execute(
+            "SELECT COUNT(*) c FROM email_log WHERE owner_id = ? AND ok = 1",
+            (owner_id,)).fetchone()["c"]
+        zeitraum = self._conn.execute(
+            "SELECT COUNT(*) c FROM email_log WHERE owner_id = ? AND ok = 1 AND sent_at >= ?",
+            (owner_id, seit)).fetchone()["c"]
+        je_anlass = {r["anlass"]: r["c"] for r in self._conn.execute(
+            "SELECT anlass, COUNT(*) c FROM email_log WHERE owner_id = ? AND ok = 1 "
+            "AND sent_at >= ? GROUP BY anlass ORDER BY c DESC", (owner_id, seit)).fetchall()}
+        gescheitert = self._conn.execute(
+            "SELECT COUNT(*) c FROM email_log WHERE owner_id = ? AND ok = 0 AND sent_at >= ?",
+            (owner_id, seit)).fetchone()["c"]
+        return {
+            "gesamt": gesamt,
+            "zeitraum": zeitraum,
+            "tage": tage,
+            "je_woche": round(zeitraum * 7 / tage, 1) if tage else 0.0,
+            "je_anlass": je_anlass,
+            "gescheitert": gescheitert,
+        }
+
+    def mail_vielempfaenger(self, tage: int = 30, limit: int = 20) -> list[dict]:
+        """Wer die meisten Mails bekommt — die Frage „müssen wir irgendwo kürzen?".
+
+        Sortiert nach Mails je Woche, nicht nach Gesamtzahl: Ein Konto, das es
+        seit einem Jahr gibt, stünde sonst immer oben, ohne dass daraus etwas
+        folgte.
+        """
+        seit = (datetime.now(timezone.utc) - timedelta(days=tage)).isoformat(timespec="seconds")
+        rows = self._conn.execute(
+            "SELECT e.owner_id, COUNT(*) c, MAX(e.sent_at) letzte, "
+            "  u.email, u.display_name, u.delivery_channel "
+            "FROM email_log e JOIN web_users u ON u.id = e.owner_id "
+            "WHERE e.ok = 1 AND e.sent_at >= ? AND e.owner_id IS NOT NULL "
+            "GROUP BY e.owner_id ORDER BY c DESC LIMIT ?",
+            (seit, max(1, min(limit, 100)))).fetchall()
+        ergebnis: list[dict] = []
+        for r in rows:
+            haeufigster = self._conn.execute(
+                "SELECT anlass, COUNT(*) c FROM email_log WHERE owner_id = ? AND ok = 1 "
+                "AND sent_at >= ? GROUP BY anlass ORDER BY c DESC LIMIT 1",
+                (r["owner_id"], seit)).fetchone()
+            ergebnis.append({
+                "owner_id": r["owner_id"],
+                "email": r["email"],
+                "display_name": r["display_name"],
+                "delivery_channel": r["delivery_channel"],
+                "mails": r["c"],
+                "je_woche": round(r["c"] * 7 / tage, 1) if tage else 0.0,
+                "letzte": r["letzte"],
+                "haeufigster_anlass": haeufigster["anlass"] if haeufigster else None,
+            })
+        return ergebnis
+
+    def mail_statistik(self, tage: int = 30) -> dict:
+        """Mailaufkommen insgesamt: je Anlass, je Tag, und was zurückkam."""
+        from datetime import date
+        seit = (datetime.now(timezone.utc) - timedelta(days=tage)).isoformat(timespec="seconds")
+        seit_tag = (date.today() - timedelta(days=tage)).isoformat()
+        je_anlass = [{"anlass": r["anlass"], "mails": r["c"],
+                      "konten": r["k"], "gescheitert": r["f"]}
+                     for r in self._conn.execute(
+                         "SELECT anlass, SUM(ok) c, COUNT(DISTINCT owner_id) k, "
+                         "  SUM(1 - ok) f FROM email_log WHERE sent_at >= ? "
+                         "GROUP BY anlass ORDER BY c DESC", (seit,)).fetchall()]
+        je_tag = [{"tag": r["t"], "mails": r["c"]} for r in self._conn.execute(
+            "SELECT substr(sent_at, 1, 10) t, COUNT(*) c FROM email_log "
+            "WHERE sent_at >= ? AND ok = 1 GROUP BY t ORDER BY t", (seit,)).fetchall()]
+        rueck = [{"anlass": r["anlass"], "rueckkehr": r["c"]} for r in self._conn.execute(
+            "SELECT anlass, SUM(count) c FROM mail_returns WHERE day >= ? "
+            "GROUP BY anlass ORDER BY c DESC", (seit_tag,)).fetchall()]
+        verschickt = sum(a["mails"] or 0 for a in je_anlass)
+        zurueck = sum(r["rueckkehr"] or 0 for r in rueck)
+        return {
+            "tage": tage,
+            "verschickt": verschickt,
+            "gescheitert": sum(a["gescheitert"] or 0 for a in je_anlass),
+            "rueckkehr": zurueck,
+            "je_anlass": je_anlass,
+            "je_tag": je_tag,
+            "rueckkehr_je_anlass": rueck,
+        }
+
+    def merke_mail_rueckkehr(self, anlass: str, angemeldet: bool = False) -> None:
+        """Einen Aufruf über einen Mail-Link zählen — anonym, aggregiert.
+
+        Gegenstück zu ``merke_seitenaufruf`` und mit derselben Haltung: Tag,
+        Anlass, angemeldet ja/nein. Kein Konto, keine Kennung — der Anlass im
+        Link ist für alle Empfänger*innen derselben Mail gleich.
+        """
+        from datetime import date
+        try:
+            with self._conn:
+                self._conn.execute(
+                    "INSERT INTO mail_returns (day, anlass, logged_in, count) VALUES (?, ?, ?, 1) "
+                    "ON CONFLICT(day, anlass, logged_in) DO UPDATE SET count = count + 1",
+                    (date.today().isoformat(), mail_anlass(anlass), 1 if angemeldet else 0))
+        except Exception:  # noqa: BLE001 — eine Zählung darf nichts kosten
+            logger.exception("Mail-Rückkehr ließ sich nicht zählen")
 
     # ---- Seitenaufrufe (anonym, siehe kern/seitenaufrufe.py) ----
     def merke_seitenaufruf(self, route: str, client: str = "web",
