@@ -1920,7 +1920,10 @@ class AdminJobStep(TypedDict):
     """
     name: str
     script: str
-    status: Literal["ok", "error"]
+    #: ``warn`` ist ein Fehlschlag, der bewusst niemanden weckt — ein Schritt,
+    #: der an einem fremden Dienst hängt, darf ein paarmal in Folge fallen,
+    #: bevor er den ganzen Lauf rot macht (``scripts/weekly_enrich.NACHSICHTIG``).
+    status: Literal["ok", "warn", "error"]
     duration_s: float | None
 
 
