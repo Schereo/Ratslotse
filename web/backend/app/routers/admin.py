@@ -576,7 +576,9 @@ def user_detail(user_id: int, _admin: dict = Depends(require_admin), store: Stor
 @router.get("/users/{user_id}/emails")
 def user_emails(
     user_id: int,
-    tage: int = 30,
+    tage: int = Query(30, ge=1, le=365),
+    limit: int = Query(200, ge=1, le=500),
+    offset: int = Query(0, ge=0),
     _admin: dict = Depends(require_admin),
     store: Store = Depends(get_store),
 ) -> AdminUserEmails:
@@ -590,13 +592,13 @@ def user_emails(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Nutzer*in nicht gefunden.")
     return {
         "summary": cast("AdminMailSummary", store.mail_zusammenfassung(user_id, tage=tage)),
-        "rows": cast("list[AdminMailRow]", store.mails_fuer_konto(user_id)),
+        "rows": cast("list[AdminMailRow]", store.mails_fuer_konto(user_id, limit=limit, offset=offset)),
     }
 
 
 @router.get("/stats/emails")
 def stats_emails(
-    tage: int = 30,
+    tage: int = Query(30, ge=1, le=365),
     _admin: dict = Depends(require_admin),
     store: Store = Depends(get_store),
 ) -> AdminMailStats:

@@ -4028,7 +4028,7 @@ class Store:
             logger.exception("Mail-Protokoll fehlgeschlagen (owner=%s, anlass=%s)",
                              owner_id, anlass)
 
-    def mails_fuer_konto(self, owner_id: int, limit: int = 200) -> list[dict]:
+    def mails_fuer_konto(self, owner_id: int, limit: int = 200, offset: int = 0) -> list[dict]:
         """Die Mails eines Kontos, neueste zuerst.
 
         Jede Zeile bekommt ``besuch_am_tag``: War das Konto an dem Tag, an dem
@@ -4039,8 +4039,8 @@ class Store:
         """
         rows = self._conn.execute(
             "SELECT id, anlass, subject, sent_at, ok, message_id FROM email_log "
-            "WHERE owner_id = ? ORDER BY sent_at DESC, id DESC LIMIT ?",
-            (owner_id, max(1, min(limit, 500)))).fetchall()
+            "WHERE owner_id = ? ORDER BY sent_at DESC, id DESC LIMIT ? OFFSET ?",
+            (owner_id, max(1, min(limit, 500)), max(0, offset))).fetchall()
         tage = {r["day"] for r in self._conn.execute(
             "SELECT DISTINCT day FROM user_activity WHERE owner_id = ?", (owner_id,)).fetchall()}
         return [{

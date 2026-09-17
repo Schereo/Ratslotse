@@ -21971,6 +21971,8 @@
             "required": false,
             "schema": {
               "default": 30,
+              "maximum": 365,
+              "minimum": 1,
               "title": "Tage",
               "type": "integer"
             }
@@ -22269,7 +22271,32 @@
             "required": false,
             "schema": {
               "default": 30,
+              "maximum": 365,
+              "minimum": 1,
               "title": "Tage",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 200,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
               "type": "integer"
             }
           }
