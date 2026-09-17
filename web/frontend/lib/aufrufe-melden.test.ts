@@ -147,3 +147,38 @@ describe("er darf nie stören", () => {
     expect(körper(aufrufe[0]).first).toBe(false);
   });
 });
+
+
+/**
+ * Die Mail-Herkunft (`?von=`) ist die zweite und letzte Ausnahme von „keine
+ * Query". Sie beantwortet, ob die Mails jemanden zurückholen — und sie darf
+ * nur mit, wenn sie wirklich da ist: Ein leerer Wert im Körper sähe aus wie
+ * „kam nicht aus einer Mail" und wäre trotzdem eine Zeile mehr im Versand.
+ */
+describe("Herkunft aus einer E-Mail", () => {
+  it("schickt den Anlass mit, wenn er gesetzt ist", async () => {
+    const { meldeAufruf } = await frisch();
+    meldeAufruf("/dashboard", true, "web", "n2_thema");
+    expect(körper(aufrufe[0]).von).toBe("n2_thema");
+  });
+
+  it("lässt das Feld weg, wenn niemand aus einer Mail kam", async () => {
+    const { meldeAufruf } = await frisch();
+    meldeAufruf("/dashboard", true, "web");
+    expect(körper(aufrufe[0])).not.toHaveProperty("von");
+  });
+
+  it("zählt denselben Mail-Besuch nur einmal", async () => {
+    const { meldeAufruf } = await frisch();
+    meldeAufruf("/dashboard", true, "web", "n2_thema");
+    meldeAufruf("/council", true, "web", "n2_thema");
+    expect(körper(aufrufe[0]).von).toBe("n2_thema");
+    expect(körper(aufrufe[1])).not.toHaveProperty("von");
+  });
+
+  it("kürzt einen überlangen Wert, statt ihn zu schlucken", async () => {
+    const { meldeAufruf } = await frisch();
+    meldeAufruf("/dashboard", false, "web", "x".repeat(200));
+    expect(körper(aufrufe[0]).von).toHaveLength(40);
+  });
+});

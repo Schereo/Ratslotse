@@ -93,7 +93,7 @@ def test_am_morgen_kommt_das_von_nachts_an(store, monkeypatch):
     owner = _konto(store)
     raus: list[str] = []
     monkeypatch.setattr("kern.delivery.deliver_message",
-                        lambda o, html, email_subject, push_url="/", push_text=None: (raus.append(email_subject), ["email"])[1])
+                        lambda o, html, email_subject, push_url="/", push_text=None, **_: (raus.append(email_subject), ["email"])[1])
     notify.einreihen(store, owner, notify.N3_ERGEBNIS, "Radwege: angenommen", "<p>x</p>",
                      "/council/decision?id=1", jetzt=_zeit("2026-08-18", 22, 40))
     assert notify.zustellen(store, jetzt=_zeit("2026-08-19", 7, 0)) == 1
@@ -108,7 +108,7 @@ def test_push_kurztext_reist_bis_zur_zustellung(store, monkeypatch):
     gesehen: list[str | None] = []
     monkeypatch.setattr(
         "kern.delivery.deliver_message",
-        lambda o, html, email_subject, push_url="/", push_text=None:
+        lambda o, html, email_subject, push_url="/", push_text=None, **_:
             (gesehen.append(push_text), ["email"])[1])
     jetzt = _zeit("2026-08-18", 9)
     notify.einreihen(store, owner, notify.N1_TAGESORDNUNG, "X: Tagesordnung geändert",
@@ -128,7 +128,7 @@ def test_buendel_traegt_keinen_einzel_kurztext(store, monkeypatch):
     gesehen: list[str | None] = []
     monkeypatch.setattr(
         "kern.delivery.deliver_message",
-        lambda o, html, email_subject, push_url="/", push_text=None:
+        lambda o, html, email_subject, push_url="/", push_text=None, **_:
             (gesehen.append(push_text), ["email"])[1])
     jetzt = _zeit("2026-08-18", 9)
     for i in range(3):
@@ -147,7 +147,7 @@ def test_buendel_traegt_volle_inhalte(store, monkeypatch):
     raus: list[str] = []
     monkeypatch.setattr(
         "kern.delivery.deliver_message",
-        lambda o, html, email_subject, push_url="/", push_text=None:
+        lambda o, html, email_subject, push_url="/", push_text=None, **_:
             (raus.append(html), ["email"])[1])
     jetzt = _zeit("2026-08-18", 9)
     for i in range(3):
@@ -175,7 +175,7 @@ def test_zwei_gehen_einzeln_raus(store, monkeypatch):
     owner = _konto(store)
     raus: list[str] = []
     monkeypatch.setattr("kern.delivery.deliver_message",
-                        lambda o, html, email_subject, push_url="/", push_text=None: (raus.append(email_subject), ["email"])[1])
+                        lambda o, html, email_subject, push_url="/", push_text=None, **_: (raus.append(email_subject), ["email"])[1])
     jetzt = _zeit("2026-08-18", 9)
     _einreihen(store, owner, 2, jetzt)
     assert notify.zustellen(store, jetzt=jetzt) == 2
@@ -187,7 +187,7 @@ def test_ab_der_dritten_wird_gebuendelt(store, monkeypatch):
     owner = _konto(store)
     raus: list[tuple[str, str]] = []
     monkeypatch.setattr("kern.delivery.deliver_message",
-                        lambda o, html, email_subject, push_url="/", push_text=None: (raus.append((email_subject, html)), ["email"])[1])
+                        lambda o, html, email_subject, push_url="/", push_text=None, **_: (raus.append((email_subject, html)), ["email"])[1])
     jetzt = _zeit("2026-08-18", 9)
     _einreihen(store, owner, 5, jetzt)
 
@@ -206,7 +206,7 @@ def test_die_grenze_gilt_ueber_den_ganzen_tag(store, monkeypatch):
     owner = _konto(store)
     raus: list[str] = []
     monkeypatch.setattr("kern.delivery.deliver_message",
-                        lambda o, html, email_subject, push_url="/", push_text=None: (raus.append(email_subject), ["email"])[1])
+                        lambda o, html, email_subject, push_url="/", push_text=None, **_: (raus.append(email_subject), ["email"])[1])
     _einreihen(store, owner, 2, _zeit("2026-08-18", 8))
     assert notify.zustellen(store, jetzt=_zeit("2026-08-18", 8)) == 2
 
@@ -224,7 +224,7 @@ def test_die_grenze_gilt_pro_person(store, monkeypatch):
     a, b = _konto(store, "a@x.de"), _konto(store, "b@x.de")
     raus: list[int] = []
     monkeypatch.setattr("kern.delivery.deliver_message",
-                        lambda o, html, email_subject, push_url="/", push_text=None: (raus.append(o["owner_id"]), ["email"])[1])
+                        lambda o, html, email_subject, push_url="/", push_text=None, **_: (raus.append(o["owner_id"]), ["email"])[1])
     jetzt = _zeit("2026-08-18", 9)
     _einreihen(store, a, 2, jetzt)
     _einreihen(store, b, 2, jetzt)
@@ -256,7 +256,7 @@ def test_die_vorabend_erinnerung_kommt_trotz_erschoepfter_grenze(store, monkeypa
     store.set_notify_prefs(owner, {notify.N5_VORABEND: True, notify.N1_TAGESORDNUNG: True})   # Vorgabe ist AUS
     raus: list[str] = []
     monkeypatch.setattr("kern.delivery.deliver_message",
-                        lambda o, html, email_subject, push_url="/", push_text=None: (raus.append(email_subject), ["email"])[1])
+                        lambda o, html, email_subject, push_url="/", push_text=None, **_: (raus.append(email_subject), ["email"])[1])
 
     _einreihen(store, owner, 2, _zeit("2026-08-17", 7))
     assert notify.zustellen(store, jetzt=_zeit("2026-08-17", 7)) == 2
@@ -274,7 +274,7 @@ def test_die_erinnerung_nimmt_keiner_anderen_meldung_den_platz(store, monkeypatc
     store.set_notify_prefs(owner, {notify.N5_VORABEND: True, notify.N1_TAGESORDNUNG: True})
     raus: list[str] = []
     monkeypatch.setattr("kern.delivery.deliver_message",
-                        lambda o, html, email_subject, push_url="/", push_text=None: (raus.append(email_subject), ["email"])[1])
+                        lambda o, html, email_subject, push_url="/", push_text=None, **_: (raus.append(email_subject), ["email"])[1])
 
     jetzt = _zeit("2026-08-17", 18)
     _vorabend_einreihen(store, owner, jetzt)
@@ -291,7 +291,7 @@ def test_auch_termingebundenes_wird_ab_der_dritten_gebuendelt(store, monkeypatch
     store.set_notify_prefs(owner, {notify.N5_VORABEND: True, notify.N1_TAGESORDNUNG: True})
     raus: list[str] = []
     monkeypatch.setattr("kern.delivery.deliver_message",
-                        lambda o, html, email_subject, push_url="/", push_text=None: (raus.append(email_subject), ["email"])[1])
+                        lambda o, html, email_subject, push_url="/", push_text=None, **_: (raus.append(email_subject), ["email"])[1])
     jetzt = _zeit("2026-08-17", 18)
     for i in range(4):
         _vorabend_einreihen(store, owner, jetzt, f"Gremium {i + 1} tagt")
@@ -488,7 +488,7 @@ def test_wichtiges_geht_an_der_tagesgrenze_vorbei(store, monkeypatch):
     owner = _konto(store)
     gesehen: list[str] = []
     monkeypatch.setattr("kern.delivery.deliver_message",
-                        lambda o, html, email_subject, push_url="/", push_text=None:
+                        lambda o, html, email_subject, push_url="/", push_text=None, **_:
                             (gesehen.append(email_subject), ["email"])[1])
     jetzt = _zeit("2026-08-18", 9)
     for i in range(2):
@@ -863,7 +863,7 @@ def test_erfolglose_zustellung_bleibt_in_der_warteschlange(store, monkeypatch):
     # Und sie geht raus, sobald der Versand wieder läuft.
     raus: list[str] = []
     monkeypatch.setattr("kern.delivery.deliver_message",
-                        lambda o, html, email_subject, push_url="/", push_text=None: (raus.append(email_subject), ["email"])[1])
+                        lambda o, html, email_subject, push_url="/", push_text=None, **_: (raus.append(email_subject), ["email"])[1])
     assert notify.zustellen(store, jetzt=_zeit("2026-08-19", 9)) == 1
     assert raus == ["Radweg"]
 
@@ -890,7 +890,7 @@ def test_ein_kaputtes_konto_reisst_die_anderen_nicht_mit(store, monkeypatch):
     notify.einreihen(store, a, notify.N2_THEMA, "für A", "<p>a</p>", "/x", jetzt=_zeit("2026-08-18", 9))
     notify.einreihen(store, b, notify.N2_THEMA, "für B", "<p>b</p>", "/y", jetzt=_zeit("2026-08-18", 9))
 
-    def kaputt_fuer_a(o, html, email_subject, push_url="/", push_text=None):
+    def kaputt_fuer_a(o, html, email_subject, push_url="/", push_text=None, **_):
         if o["owner_id"] == a:
             raise RuntimeError("Gateway weg")
         return ["email"]
@@ -938,7 +938,7 @@ def test_buendel_verlinkt_absolut(store, monkeypatch):
     owner = _konto(store)
     raus: list[str] = []
     monkeypatch.setattr("kern.delivery.deliver_message",
-                        lambda o, html, email_subject, push_url="/", push_text=None: (raus.append(html), ["email"])[1])
+                        lambda o, html, email_subject, push_url="/", push_text=None, **_: (raus.append(html), ["email"])[1])
     for i in range(3):
         notify.einreihen(store, owner, notify.N2_THEMA, f"Meldung {i}", "<p>x</p>",
                          f"/council/decision?id={i}", jetzt=_zeit("2026-08-18", 9))
@@ -1073,7 +1073,7 @@ def test_wieder_einschalten_faengt_bei_null_an(store, monkeypatch):
     title: list[str] = []
     monkeypatch.setattr(
         "kern.delivery.deliver_message",
-        lambda o, html, email_subject, push_url="/", push_text=None: (title.append(email_subject), ["email"])[1])
+        lambda o, html, email_subject, push_url="/", push_text=None, **_: (title.append(email_subject), ["email"])[1])
     assert notify.zustellen(store, jetzt=_zeit("2026-08-19", 10)) == 1
     assert title == ["danach"]
 

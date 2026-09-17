@@ -29,6 +29,8 @@ type AdminSackgasse = ApiAntwort<"/admin/stats/dead-ends">[number];
 type AdminEreignisse = ApiAntwort<"/admin/stats/events">;
 type AdminSeitenaufrufe = ApiAntwort<"/admin/stats/page-views">;
 type AdminAnmeldungen = ApiAntwort<"/admin/stats/signups">;
+type AdminMailStats = ApiAntwort<"/admin/stats/emails">;
+type AdminUserEmails = ApiAntwort<"/admin/users/{user_id}/emails">;
 /** Ein Eintrag des Rollen-Katalogs — aus dem Vertrag, nicht abgetippt. */
 type RolleInfo = ApiAntwort<"/admin/roles">[number];
 import { Badge, Button, Card, CardListSkeleton, ChartSkeleton, ConfirmDialog, Dialog, DialogContent, DialogHeader, DialogTitle, EmptyState, ErrorState, Input, Label, PageHeader, Select, Spinner, TableSkeleton, Textarea, formatDate, formatDateTime, toast } from "@/components/ui";
@@ -742,6 +744,146 @@ function AnmeldungenSection() {
   );
 }
 
+/** Wie viel Post Ratslotse verschickt — und ob sie jemanden zurückholt.
+ *
+ *  Zwei Fragen in einem Abschnitt, weil sie nur zusammen etwas bedeuten:
+ *  „1.200 Mails" ist ohne die Rückkehr-Zahl eine Fleißmeldung. Die dritte
+ *  Frage — „müssen wir irgendwo kürzen?" — beantwortet nicht die Summe,
+ *  sondern was bei einer EINZELNEN Person ankommt; deshalb steht die Liste der
+ *  Vielempfänger*innen daneben.
+ *
+ *  Zur Rückkehr-Zahl: Sie zählt Aufrufe, die über einen Link aus einer Mail
+ *  kamen (`?von=…`), anonym und ohne Konto. Sie ist deshalb NICHT auf die
+ *  Personen darunter zu beziehen — und sie ist eine Untergrenze: Wer den Link
+ *  kopiert, die Adresse von Hand eintippt oder den Parameter löscht, fehlt
+ *  darin. Mehr Genauigkeit gäbe es nur mit einer Kennung je Empfänger*in, und
+ *  die wollen wir nicht (siehe kern/mail_links.py).
+ */
+function MailSection() {
+  const { data, isPending, isError, refetch, isFetching } = useQuery({
+    queryKey: ["admin", "emails"],
+    queryFn: () => api.get<AdminMailStats>("/admin/stats/emails?tage=30"),
+  });
+
+  if (isPending) return <div className="pt-2"><ChartSkeleton /></div>;
+  if (isError || !data) {
+    return (
+      <div className="pt-2">
+        <ErrorState title="Das Mailaufkommen konnte nicht geladen werden" onRetry={() => void refetch()} busy={isFetching} />
+      </div>
+    );
+  }
+
+  const anlaesse = data.je_anlass.filter((a) => a.mails > 0);
+  const rueckJe = new Map(data.rueckkehr_je_anlass.map((r) => [r.anlass, r.rueckkehr]));
+  const quote = data.verschickt > 0 ? Math.round((data.rueckkehr / data.verschickt) * 100) : null;
+
+  return (
+    <div className="space-y-3 pt-2">
+      <AbschnittKopf titel="E-Mails" rechts={`${data.tage} Tage`}>
+        Was wirklich rausging — nicht, was eingereiht wurde. Eine Sammelmeldung zählt
+        als eine Mail, ein abgeschalteter Kanal als keine. „Zurück über den Link“ zählt
+        Aufrufe mit dem Mail-Parameter: anonym, ohne Konto, und immer eine Untergrenze.
+      </AbschnittKopf>
+
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.5fr_1fr]">
+        <Card className="p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <StatKicker>Verschickt</StatKicker>
+              <p className="mt-1.5 font-display text-[28px] font-extrabold leading-none tracking-tight tabular-nums text-foreground">
+                {data.verschickt.toLocaleString("de-DE")}
+              </p>
+            </div>
+            <div className="text-right">
+              <StatKicker>Zurück über den Link</StatKicker>
+              <p className="mt-1.5 font-display text-[22px] font-extrabold leading-none tracking-tight tabular-nums text-foreground">
+                {data.rueckkehr.toLocaleString("de-DE")}
+                {quote !== null && (
+                  <span className="ml-1.5 font-mono text-[11px] font-normal text-muted-foreground">
+                    · {quote} %
+                  </span>
+                )}
+              </p>
+            </div>
+          </div>
+          <MiniBars
+            values={data.je_tag.length ? data.je_tag.map((d) => d.mails) : [0]}
+            days={data.je_tag.map((d) => d.tag)}
+            height={64}
+            className="mt-4"
+          />
+          {data.gescheitert > 0 && (
+            <p className="mt-3 text-[11.5px] text-signal">
+              {data.gescheitert} Versand{data.gescheitert === 1 ? "" : "e"} gescheitert — im Detail
+              der jeweiligen Person nachzusehen.
+            </p>
+          )}
+
+          <StatKickerSpaced>Wofür</StatKickerSpaced>
+          {anlaesse.length ? (
+            <div className="mt-2 flex flex-col gap-1">
+              {anlaesse.map((a) => (
+                <div key={a.anlass} className="flex items-baseline gap-2 border-b border-border/60 py-1.5 last:border-0">
+                  <span className="min-w-0 flex-1 truncate text-[12.5px] text-foreground">{mailAnlass(a.anlass)}</span>
+                  <span className="shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground">
+                    {a.konten > 0 && <>an {a.konten} {a.konten === 1 ? "Konto" : "Konten"} · </>}
+                    {rueckJe.get(a.anlass) ? <>{rueckJe.get(a.anlass)}× zurück · </> : null}
+                    <b className="font-semibold text-foreground">{a.mails}</b>
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-2 text-[12px] text-muted-foreground">
+              In diesem Zeitraum ist keine Mail rausgegangen.
+            </p>
+          )}
+        </Card>
+
+        <Card className="flex flex-col gap-3 p-4">
+          <div>
+            <StatKicker>Wer am meisten bekommt</StatKicker>
+            <p className="mt-1 text-[11.5px] leading-snug text-muted-foreground">
+              Ab {MAIL_VIEL_JE_WOCHE} Mails je Woche markiert — das ist eine am Tag im
+              Schnitt, die Hälfte dessen, was die Tagesgrenze überhaupt durchlässt.
+            </p>
+          </div>
+          {data.vielempfaenger.length ? (
+            <ul className="flex flex-col gap-1">
+              {data.vielempfaenger.slice(0, 12).map((v) => (
+                <li key={v.owner_id} className="flex items-baseline gap-2 border-b border-border/60 py-1.5 last:border-0">
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[12.5px] text-foreground">
+                      {v.display_name || v.email}
+                    </span>
+                    <span className="block truncate text-[10.5px] text-muted-foreground">
+                      {v.haeufigster_anlass ? mailAnlass(v.haeufigster_anlass) : "—"}
+                      {v.delivery_channel === "off" && " · Kanal inzwischen aus"}
+                    </span>
+                  </span>
+                  <span className={cn(
+                    "shrink-0 rounded-full px-2 py-0.5 font-mono text-[10.5px] tabular-nums",
+                    v.je_woche >= MAIL_VIEL_JE_WOCHE
+                      ? "bg-signal/10 font-semibold text-signal"
+                      : "text-muted-foreground",
+                  )}>
+                    {v.je_woche}/Woche
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-[12px] leading-snug text-muted-foreground">
+              Noch niemand — protokolliert wird ab dem Deploy dieser Version.
+            </p>
+          )}
+        </Card>
+      </div>
+    </div>
+  );
+}
+
 /** Welche Handlungen wie oft vorkommen — und die zwei Anteile dahinter.
  *
  *  Neben jeder Zahl steht, aus wie vielen KONTEN sie stammt, und wie sie sich
@@ -980,6 +1122,8 @@ function StatsTab() {
       <SeitenaufrufeSection />
 
       <EreignisSection />
+
+      <MailSection />
 
       <SackgassenSection />
 
@@ -1971,6 +2115,12 @@ function UserDetailPanel({ userId, isSelf, rollenKatalog, onClose }: {
         <DetailRow label="Gespräche speichern" value={data.saves_conversations === 1 ? "An" : data.saves_conversations === 0 ? "Bewusst aus" : "Nie gefragt"} />
       </div>
 
+      {/* Was rausging. Steht direkt unter „Zustellung": Die beiden gehören
+          zusammen — ein Konto auf „Aus" hat hier notwendig eine leere Liste,
+          und genau dieser Zusammenhang war vorher nur zu erraten. */}
+      <StatKickerSpaced>E-Mails</StatKickerSpaced>
+      <MailAbschnitt userId={data.id} />
+
       <StatKickerSpaced>Aktivität (30 Tage)</StatKickerSpaced>
       <MiniBars values={data.history} days={data.history_days} height={38} highlightLast={false} className="mt-2" />
 
@@ -2069,6 +2219,162 @@ function UserDetailPanel({ userId, isSelf, rollenKatalog, onClose }: {
         Alles server-aggregiert & nur für Admins; nur eigene App-Aktivität, keine Dritt-Analytics.
       </p>
     </Card>
+  );
+}
+
+/** Der Anlass einer Mail in Klartext. Die Schlüssel stehen in
+ *  `kern/store.py::MAIL_ANLAESSE`; was hier fehlt, erscheint unübersetzt —
+ *  besser ein roher Schlüssel als eine falsche Beschriftung. */
+const MAIL_ANLASS_LABEL: Record<string, string> = {
+  n1_tagesordnung: "Tagesordnung",
+  n1_aenderung: "Änderung an der Tagesordnung",
+  n2_thema: "Treffer zu einem Thema",
+  n3_result: "Ergebnis einer Abstimmung",
+  n4_vorgang: "Neue Station einer Vorlage",
+  n5_vorabend: "Erinnerung am Vorabend",
+  n6_woche: "Wochenvorschau",
+  n7_news: "Neu bei Ratslotse",
+  bundel: "Sammelmeldung",
+  verify_email: "E-Mail bestätigen",
+  password_reset: "Passwort zurücksetzen",
+  email_change: "Neue Adresse bestätigen",
+  email_change_info: "Hinweis zum Adresswechsel",
+  setup_reminder: "Erinnerung an die Einrichtung",
+  feedback_reply: "Antwort auf eine Rückmeldung",
+  account_activated: "Konto freigeschaltet",
+  account_deleted: "Konto gelöscht",
+  probe: "Testmail",
+  admin_fyi: "FYI an die Admins",
+  alarm: "Betriebsalarm",
+  andere: "Sonstige",
+};
+
+const mailAnlass = (key: string) => MAIL_ANLASS_LABEL[key] ?? key;
+
+/** Ab wie vielen Mails je Woche ein Konto auffällig ist.
+ *
+ *  Die Zustellung selbst lässt höchstens zwei Meldungen am Tag durch
+ *  (`kern/notify.py::TAGESGRENZE`), also 14 in der Woche — wer in die Nähe
+ *  kommt, bekommt sie wirklich jeden Tag. Sieben ist die Hälfte davon: eine am
+ *  Tag im Schnitt, und damit die Schwelle, ab der sich die Frage „müssen wir
+ *  hier kürzen?" überhaupt lohnt. Bewusst keine feine Abstufung — eine Ampel
+ *  mit drei Farben behauptete eine Genauigkeit, die es dafür nicht gibt. */
+const MAIL_VIEL_JE_WOCHE = 7;
+
+/** So viele Mails stehen in der Liste; der Rest bleibt eine Zahl darunter.
+ *
+ *  Ein Konto mit vierzig Mails im Monat ist keine Ausnahme, sondern genau der
+ *  Fall, wegen dem man hier nachsieht — ungekürzt schöbe seine Liste alles
+ *  darunter (Verlauf, Rollen, Limits) um mehrere Bildschirme weg. Die
+ *  jüngsten fünfzehn beantworten „was kommt da gerade an?"; wer weiter zurück
+ *  will, hat mit der Summe darüber schon die Antwort auf „wie viel?". */
+const MAIL_ZEILEN = 15;
+
+/** Was diese Person an Mails bekommen hat — der Reiter, der das
+ *  Resend-Dashboard ersetzt.
+ *
+ *  Lädt erst beim Aufklappen (`enabled`), damit die Detail-Karte so schnell
+ *  steht wie bisher. Die Liste zeigt die Mails, die WIRKLICH rausgingen
+ *  (`email_log`), nicht die eingereihten Meldungen: Zwischen beidem liegen die
+ *  Sammelmeldung (mehrere Posten, eine Mail) und der abgeschaltete Kanal
+ *  (eingereiht, nie zugestellt). */
+function MailAbschnitt({ userId }: { userId: number }) {
+  const [offen, setOffen] = useState(false);
+  const { data, isPending, isError, refetch, isFetching } = useQuery({
+    queryKey: ["admin", "user", userId, "emails"],
+    queryFn: () => api.get<AdminUserEmails>(`/admin/users/${userId}/emails`),
+    enabled: offen,
+  });
+
+  return (
+    <details className="group mt-2 rounded-lg border border-border bg-card px-3 py-2"
+      onToggle={(e) => setOffen((e.currentTarget as HTMLDetailsElement).open)}>
+      <summary className="flex cursor-pointer list-none items-center gap-1.5 text-[12.5px] text-foreground [&::-webkit-details-marker]:hidden">
+        <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-fluss ease-out-strong group-open:rotate-180" />
+        Verschickte E-Mails
+        {data && (
+          <span className="ml-auto font-mono text-[11px] tabular-nums text-muted-foreground">
+            {data.summary.zeitraum} in {data.summary.tage} Tagen
+          </span>
+        )}
+      </summary>
+
+      {isPending && offen && <div className="mt-2"><Spinner /></div>}
+      {isError && (
+        <div className="mt-2">
+          <ErrorState title="Die Mails konnten nicht geladen werden" onRetry={() => void refetch()} busy={isFetching} />
+        </div>
+      )}
+
+      {data && (
+        <div className="mt-2.5 flex flex-col gap-2.5">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="rounded-full bg-muted px-2.5 py-1 text-[11.5px] text-muted-foreground">
+              <b className="font-semibold tabular-nums text-foreground">{data.summary.je_woche}</b> pro Woche
+            </span>
+            <span className="rounded-full bg-muted px-2.5 py-1 text-[11.5px] text-muted-foreground">
+              insgesamt <b className="font-semibold tabular-nums text-foreground">{data.summary.gesamt}</b>
+            </span>
+            {data.summary.je_woche >= MAIL_VIEL_JE_WOCHE && (
+              <span className="rounded-full bg-signal/10 px-2.5 py-1 text-[11.5px] font-semibold text-signal">
+                bekommt viel Post
+              </span>
+            )}
+            {data.summary.gescheitert > 0 && (
+              <span className="rounded-full bg-red-500/10 px-2.5 py-1 text-[11.5px] font-semibold text-red-600 dark:text-red-400">
+                {data.summary.gescheitert} nicht zugestellt
+              </span>
+            )}
+          </div>
+
+          {data.rows.length === 0 ? (
+            <p className="text-[11.5px] leading-snug text-muted-foreground">
+              Noch keine Mail an dieses Konto — protokolliert wird ab dem Deploy dieser
+              Version, frühere Sendungen stehen nur bei Resend.
+            </p>
+          ) : (
+            <ul className="flex flex-col gap-1">
+              {data.rows.slice(0, MAIL_ZEILEN).map((m) => (
+                <li key={m.id} className="flex items-baseline gap-2 border-b border-border/60 py-1.5 last:border-0">
+                  <span className="shrink-0 font-mono text-[10.5px] tabular-nums text-muted-foreground">
+                    {formatDateTime(m.sent_at)}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[12px] text-foreground">{m.subject}</span>
+                    <span className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-[10.5px] text-muted-foreground">
+                        {mailAnlass(m.anlass)}
+                      </span>
+                      {!m.ok && (
+                        <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-[10.5px] font-semibold text-red-600 dark:text-red-400">
+                          Versand gescheitert
+                        </span>
+                      )}
+                      {m.ok && m.besuch_am_tag && (
+                        <span className="rounded-full bg-primary/[0.08] px-2 py-0.5 text-[10.5px] text-primary">
+                          war am selben Tag da
+                        </span>
+                      )}
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {data.rows.length > MAIL_ZEILEN && (
+            <p className="text-[11.5px] text-muted-foreground">
+              … und {data.rows.length - MAIL_ZEILEN} ältere.
+            </p>
+          )}
+          <p className="text-[11px] leading-snug text-muted-foreground/70">
+            „War am selben Tag da“ heißt genau das — ob jemand den Link in DIESER Mail
+            geklickt hat, wird nicht erfasst; das ginge nur mit einer Kennung je
+            Empfänger*in im Link. Wie oft Mail-Links insgesamt benutzt werden, steht
+            unter Statistik.
+          </p>
+        </div>
+      )}
+    </details>
   );
 }
 

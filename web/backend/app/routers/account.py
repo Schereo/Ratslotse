@@ -49,6 +49,7 @@ def _send_goodbye_email(email: str) -> None:
         title="Tschüss — und danke!",
         fusszeile="Falls du diese Löschung nicht selbst ausgelöst hast, "
                   "antworte bitte umgehend auf diese E-Mail.",
+        anlass="account_deleted",
     )
     text = (
         "Dein Ratslotse-Konto und alle zugehörigen Daten wurden endgültig gelöscht.\n\n"
@@ -295,7 +296,8 @@ def change_email(
     store.create_email_verification(int(user["id"]), token_hash, expires, new_email=neu)
     background.add_task(_send_email_change_link, neu, raw, user.get("display_name"))
     if alt and not alt.endswith("@local"):
-        background.add_task(_send_email_change_notice, alt, neu, user.get("display_name"))
+        background.add_task(_send_email_change_notice, alt, neu, user.get("display_name"),
+                            int(user["id"]))
     return _to_out(user, _app_access_token(request, user), pending_email=neu)
 
 
@@ -325,6 +327,7 @@ def test_notification(
     (deliver_message); ohne RESEND_API_KEY wird E-Mail still übersprungen."""
     from kern.delivery import deliver_message
     owner = {
+        "owner_id": user["id"],
         "email": user["email"],
         "delivery_channel": user.get("delivery_channel") or "email",
         "push_tokens": store.get_push_tokens_for_owner(user["id"]),
@@ -334,6 +337,7 @@ def test_notification(
         "<p>Moin! Das ist eine <b>Test-Benachrichtigung</b> von Ratslotse — "
         "genau so sehen Hinweise zu deinen Themen und Tagesordnungen aus.</p>",
         email_subject="Ratslotse – Test-Benachrichtigung",
+        anlass="probe", store=store,
     )
     return {"sent": sent}
 

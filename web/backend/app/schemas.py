@@ -510,6 +510,19 @@ class PushUnregisterRequest(BaseModel):
     token: str = Field(min_length=1, max_length=512)
 
 
+class TourUpdate(BaseModel):
+    """Was mit Lottis Tour-Einladung passiert ist.
+
+    Drei Stationen, drei Zähler: ``eingeladen`` (die Einladung stand da),
+    ``gestartet`` (jemand hat ja gesagt), ``beendet`` (die Tour lief durch).
+    Ohne sie war die Einladung ein blinder Fleck — sie lebt vollständig im
+    ``localStorage``, und ob sie jemand annimmt, stand nirgends. Die Frage ist
+    seit 09/2026 offen und dieselbe wie bei der KI-Frage: Wird der Moment nach
+    der Einrichtung überhaupt benutzt?
+    """
+    stand: str = Field(pattern="^(eingeladen|gestartet|beendet)$")
+
+
 class SetupUpdate(BaseModel):
     """Design 26a: erreichter Schritt des Einrichtungs-Assistenten (0–4).
 
@@ -549,6 +562,13 @@ class PageViewIn(BaseModel):
     #: Cookie raus. Ein Client, der hier lügt, verschiebt eine grobe Statistik
     #: und sonst nichts; dafür berührt die Zählung nie eine Kontokennung.
     logged_in: bool = False
+    #: Kam der Aufruf aus einer E-Mail? Dann steht hier deren Anlass — der
+    #: Wert aus ``?von=…``, den ``kern/mail_links.py`` in jeden Mail-Link
+    #: schreibt. Er ist für alle Empfänger*innen derselben Mailsorte gleich
+    #: und damit kein Erkennungsmerkmal; der Server prüft ihn zusätzlich gegen
+    #: ``MAIL_ANLAESSE``. Das ist die **einzige** Ausnahme von „keine Query":
+    #: Ohne sie ist nicht zu beantworten, ob die Mails jemanden zurückholen.
+    von: str | None = Field(default=None, max_length=40)
 
 
 class ClientErrorIn(BaseModel):
