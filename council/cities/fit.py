@@ -286,6 +286,42 @@ class LaufAbbruch(RuntimeError):
     """Der Lauf hört auf, weil Weiterzahlen nichts Besseres bringt."""
 
 
+#: Wie viele Vorlagen die Stichprobe mitten im Lauf umfasst.
+PROBE_BREITE = 30
+
+
+def stichprobe(offen: list[dict], breite: int = PROBE_BREITE) -> list[dict]:
+    """Eine GESTREUTE Auswahl über die ganze Arbeitsliste, nicht ihr Anfang.
+
+    **Der Anfang ist keine Stichprobe.** Bis 17.09.2026 nahm der Lauf
+    ``offen[:30]``, und das hat ihn dreimal an derselben Stelle umgebracht:
+    Die Arbeitsliste kommt aus ``annotations_missing`` und ist damit nach
+    Kennung sortiert — ihre ersten dreißig Einträge sind ein
+    zusammenhängender Block, nicht ein Querschnitt. Gemessen am 17.09. an
+    7.660 offenen Vorlagen, beides im selben frischen Prozess:
+
+    ======================  =====  ====  ========  ========  =====
+    Auswahl                 recap   fts  decision  neighbor  chunk
+    ======================  =====  ====  ========  ========  =====
+    ``offen[:30]``             30     0         0         0      0
+    jede 255. Vorlage          30    28        17        14     15
+    ======================  =====  ====  ========  ========  =====
+
+    Der Wächter hielt den leeren Block für einen kaputten Unterbau und brach
+    ab („Der Unterbau ist unvollständig") — dabei war er vollständig, und
+    alle Urteile des Laufs waren zu 23 % belegt, so gut wie in Fassung 3
+    (27 %). Drei Abbrüche, jeder nach Stunden, jeder mit derselben
+    Fehldiagnose.
+
+    Gestreut und nicht zufällig: Zwei Läufe über denselben Bestand sollen
+    dieselbe Stichprobe ziehen, sonst ist ein Befund nicht nachstellbar.
+    """
+    if len(offen) <= breite:
+        return list(offen)
+    schritt = len(offen) // breite
+    return offen[::schritt][:breite]
+
+
 def _probe(main: CitiesStore, rats: CouncilStore, papiere: list[dict],
            einordnung: dict, model: str, chunk_matrix, papier_matrix,
            stand: dict) -> list[str]:
@@ -510,7 +546,7 @@ def run(main: CitiesStore, rats: CouncilStore, ann: Annotator,
                 logger.info("  %s/%s · %.0fs · $%.4f", n, len(offen),
                             time.time() - t0, stand["cost_usd"])
             if n == (PROBE_NACH if probe_after is None else probe_after):
-                fehlend = _probe(main, rats, offen[:30], einordnung, model,
+                fehlend = _probe(main, rats, stichprobe(offen), einordnung, model,
                                  matrix, papier_matrix, stand)
                 if fehlend:
                     raise LaufAbbruch(
