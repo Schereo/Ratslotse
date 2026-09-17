@@ -34,7 +34,7 @@ export function UsersTab({ currentUserId, route }: { currentUserId: number; rout
   const params = new URLSearchParams(route);
   const id = Number(params.get("user"));
   const selected = Number.isSafeInteger(id) && id > 0 ? id : null;
-  const section = params.get("detail") === "emails" ? "emails" : params.get("detail") === "verwaltung" ? "verwaltung" : "aktivitaet";
+  const section = params.get("detail") === "emails" ? "emails" : params.get("detail") === "administration" ? "administration" : "aktivitaet";
   const { data: users = [], isPending, isError, refetch, isFetching } = useQuery({
     queryKey: ["admin", "users"],
     queryFn: () => vertrag.get("/admin/users"),
@@ -133,7 +133,7 @@ export function UsersTab({ currentUserId, route }: { currentUserId: number; rout
 }
 
 function UserDetailPanel({ userId, isSelf, rollenKatalog, section }: {
-  userId: number; isSelf: boolean; rollenKatalog: RolleInfo[]; section: "aktivitaet" | "emails" | "verwaltung";
+  userId: number; isSelf: boolean; rollenKatalog: RolleInfo[]; section: "aktivitaet" | "emails" | "administration";
 }) {
   const qc = useQueryClient();
   const { data, isPending, isError, refetch, isFetching } = useQuery({
@@ -195,7 +195,7 @@ function UserDetailPanel({ userId, isSelf, rollenKatalog, section }: {
         </div>
       </div>
       <nav aria-label="Kontodetails" className="mt-5 flex flex-wrap gap-x-4 border-b border-border">
-        {([["aktivitaet", "Aktivität"], ["emails", "E-Mails"], ["verwaltung", "Verwaltung"]] as const).map(([key, label]) => (
+        {([["aktivitaet", "Aktivität"], ["emails", "E-Mails"], ["administration", "Verwaltung"]] as const).map(([key, label]) => (
           <a key={key} href={`#users?user=${userId}&detail=${key}`} aria-current={section === key ? "page" : undefined}
             className={cn("flex min-h-11 items-center border-b-2 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary", section === key ? "border-primary font-semibold text-primary" : "border-transparent text-muted-foreground")}>{label}</a>
         ))}
@@ -267,7 +267,7 @@ function UserDetailPanel({ userId, isSelf, rollenKatalog, section }: {
       <StatKickerSpaced>Aktivität (30 Tage)</StatKickerSpaced>
       <AdminVerlauf values={data.history} days={data.history_days} label="Aktivitäten" />
       </>}
-      {section === "verwaltung" && <>
+      {section === "administration" && <>
 
       {/* Rollen. Bis 09/2026 stand hier ein Umschalt-Knopf „Zu Admin" — der
           ging nur, solange es zwei Rollen gab. Jetzt trägt ein Konto mehrere,
