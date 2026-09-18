@@ -13,6 +13,19 @@ import { AdminVerlauf } from "@/components/grafik/admin-verlauf";
 import { UserMailHistory } from "./mail";
 
 type RolleInfo = ApiAntwort<"/admin/roles">[number];
+type UserRow = ApiAntwort<"/admin/users">[number];
+type UserSort = "registered" | "recent" | "inactive" | "active_30" | "active_total";
+type ActivityFilter = "all" | "active_30" | "inactive_30" | "never";
+
+function sortUsers(a: UserRow, b: UserRow, sort: UserSort): number {
+  const byRecent = (b.last_seen ?? "").localeCompare(a.last_seen ?? "");
+  const byRegistered = (b.created_at ?? "").localeCompare(a.created_at ?? "") || b.id - a.id;
+  if (sort === "recent") return byRecent || byRegistered;
+  if (sort === "inactive") return -byRecent || byRegistered;
+  if (sort === "active_30") return b.active_days_30 - a.active_days_30 || byRecent || byRegistered;
+  if (sort === "active_total") return b.active_days_total - a.active_days_total || byRecent || byRegistered;
+  return byRegistered;
+}
 
 /** Aktivitäts-Ampel aus dem letzten Aktivitätstag (Design 20a). */
 function activitySignal(lastSeen: string | null): { dot: string; label: string } {
@@ -31,6 +44,9 @@ const USER_FEATURE_LABEL: [keyof AdminUserDetail["features"], string][] = [
 
 export function UsersTab({ currentUserId, route }: { currentUserId: number; route: string }) {
   const [q, setQ] = useState("");
+  const [sort, setSort] = useState<UserSort>("registered");
+  const [activity, setActivity] = useState<ActivityFilter>("all");
+  const [hideDisabled, setHideDisabled] = useState(false);
   const params = new URLSearchParams(route);
   const id = Number(params.get("user"));
   const selected = Number.isSafeInteger(id) && id > 0 ? id : null;
@@ -54,21 +70,61 @@ export function UsersTab({ currentUserId, route }: { currentUserId: number; rout
   const needle = q.trim().toLowerCase();
   // Nach dem Namen zu suchen ist der Normalfall: Man erinnert sich an „Anne",
   // nicht an ihre Adresse. Beides durchsuchen, damit keins der beiden fehlt.
-  const filtered = needle
-    ? users.filter((u) => `${u.display_name ?? ""} ${u.email}`.toLowerCase().includes(needle))
-    : users;
+  const filtered = users.filter((u) => {
+    if (needle && !`${u.display_name ?? ""} ${u.email}`.toLowerCase().includes(needle)) return false;
+    if (hideDisabled && u.status === "disabled") return false;
+    if (activity === "active_30" && u.active_days_30 === 0) return false;
+    if (activity === "inactive_30" && u.active_days_30 > 0) return false;
+    if (activity === "never" && u.last_seen != null) return false;
+    return true;
+  }).sort((a, b) => sortUsers(a, b, sort));
 
   return (
-    <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
-      <Card className={cn("min-w-0 overflow-hidden p-0", selected != null && "hidden lg:block")}>
-        <div className="flex flex-wrap items-center gap-3 border-b border-border bg-muted/30 px-4 py-3">
-          <div className="relative flex-1">
-            <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Name oder E-Mail suchen…" aria-label="Konten durchsuchen"
-              className="h-9 w-full rounded-[9px] border border-input bg-card pl-9 pr-3 text-base text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
-          </div>
-          <span className="shrink-0 text-xs text-muted-foreground">{users.length} Nutzer*innen</span>
+    <div className="space-y-4">
+      <Card className={cn("min-w-0 p-4", selected != null && "hidden lg:block")}>
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="min-w-0 flex-[2_1_13rem] text-xs font-medium text-muted-foreground">
+            Name oder E-Mail
+            <span className="relative mt-1 block">
+              <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Name oder E-Mail suchen…" aria-label="Konten durchsuchen"
+                className="h-10 w-full rounded-[9px] border border-input bg-card pl-9 pr-3 text-base text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+            </span>
+          </label>
+          <label className="min-w-0 flex-[1_1_12rem] text-xs font-medium text-muted-foreground">
+            Sortieren
+            <select aria-label="Nutzer*innen sortieren" value={sort} onChange={(e) => setSort(e.target.value as UserSort)}
+              className="mt-1 h-10 w-full rounded-[9px] border border-input bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <option value="registered">Zuletzt registriert</option>
+              <option value="recent">Zuletzt aktiv</option>
+              <option value="inactive">Am längsten inaktiv</option>
+              <option value="active_30">Meiste aktive Tage (30 Tage)</option>
+              <option value="active_total">Meiste aktive Tage (gesamt)</option>
+            </select>
+          </label>
+          <label className="min-w-0 flex-[1_1_11rem] text-xs font-medium text-muted-foreground">
+            Aktivität
+            <select aria-label="Aktivität filtern" value={activity} onChange={(e) => setActivity(e.target.value as ActivityFilter)}
+              className="mt-1 h-10 w-full rounded-[9px] border border-input bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <option value="all">Alle</option>
+              <option value="active_30">In 30 Tagen aktiv</option>
+              <option value="inactive_30">In 30 Tagen inaktiv</option>
+              <option value="never">Noch nie aktiv</option>
+            </select>
+          </label>
+          <label className="flex min-h-10 w-full min-w-0 items-center gap-2 text-sm text-foreground sm:w-auto">
+            <input type="checkbox" checked={hideDisabled} onChange={(e) => setHideDisabled(e.target.checked)}
+              className="h-4 w-4 shrink-0 accent-primary" />
+            Gesperrte ausblenden
+          </label>
         </div>
+        <div className="mt-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-xs text-muted-foreground">
+          <span role="status" aria-live="polite">{filtered.length === users.length ? `${users.length} Nutzer*innen` : `${filtered.length} von ${users.length} Nutzer*innen`}</span>
+          <span>Aktive Tage zählen Besuche in Web und App je Tag einmal.</span>
+        </div>
+      </Card>
+      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
+      <Card role="region" aria-label="Nutzer*innenliste" className={cn("min-w-0 overflow-hidden p-0", selected != null && "hidden lg:block")}>
         <div className="divide-y divide-border">
           {filtered.map((u) => {
             const sig = activitySignal(u.last_seen);
@@ -116,11 +172,14 @@ export function UsersTab({ currentUserId, route }: { currentUserId: number; rout
                     )) : <span className="rounded bg-muted px-1.5 py-px text-xs text-muted-foreground">noch nichts angelegt</span>}
                   </div>
                 </div>
-                <span className="mt-2 inline-flex items-center gap-1.5 text-xs text-muted-foreground"><span className={cn("h-[7px] w-[7px] rounded-full", sig.dot)} />{sig.label}</span>
+                <span className="mt-2 inline-flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
+                  <span className={cn("h-[7px] w-[7px] rounded-full", sig.dot)} />
+                  {sig.label} · {sort === "active_total" ? `${u.active_days_total} ${u.active_days_total === 1 ? "Tag" : "Tage"} insgesamt` : `${u.active_days_30} ${u.active_days_30 === 1 ? "Tag" : "Tage"} in 30 Tagen`}
+                </span>
               </a>
             );
           })}
-          {!filtered.length && <p className="px-4 py-6 text-center text-sm text-muted-foreground">Keine Nutzer*in passt zu „{q}".</p>}
+          {!filtered.length && <p className="px-4 py-6 text-center text-sm text-muted-foreground">Keine Nutzer*innen mit diesen Filtern gefunden.</p>}
         </div>
       </Card>
 
@@ -128,6 +187,7 @@ export function UsersTab({ currentUserId, route }: { currentUserId: number; rout
         ? <UserDetailPanel key={selected} userId={selected} isSelf={selected === currentUserId}
                            rollenKatalog={rollenKatalog} section={section} />
         : <Card className="hidden p-8 text-center text-sm text-muted-foreground lg:block">Nutzer*in wählen, um Details zu sehen.</Card>}
+      </div>
     </div>
   );
 }
@@ -433,4 +493,3 @@ function DetailList({ label, entries, empty }: { label: string; entries: string[
     </details>
   );
 }
-

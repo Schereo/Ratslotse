@@ -4433,9 +4433,12 @@ class Store:
         }
 
     def admin_user_rows(self) -> list[dict]:
-        """Nutzer-Liste mit Aktivitätssignalen (Design 20a): je Konto Themen-,
-        Abo-, Quiz- und KI-Frage-Zahl + letzter Aktivitätstag. Alles in
-        ratslotse.sqlite, ein Query."""
+        """Nutzer-Liste mit Nutzung je Konto und aktiven Tagen für die Sortierung.
+
+        Ein Tag zählt auch bei mehreren Anfragen und Clients nur einmal. So
+        wird die Aktivität nicht durch häufige Hintergrund-Requests verzerrt.
+        """
+        cutoff = (datetime.now().date() - timedelta(days=29)).isoformat()
         rows = self._conn.execute(
             """SELECT u.id, u.email, u.display_name, u.role, u.status, u.created_at, u.apple_sub, u.signup_client,
                       (SELECT COUNT(*) FROM topics t WHERE t.owner_id = u.id) n_topics,
@@ -4445,8 +4448,13 @@ class Store:
                       -- `ai_question`; die Spalte der Antwort weiter `n_ki`.
                       (SELECT COALESCE(SUM(count), 0) FROM user_activity a
                          WHERE a.owner_id = u.id AND a.feature = 'ai_question') n_ki,
-                      (SELECT MAX(day) FROM user_activity a WHERE a.owner_id = u.id) last_seen
-               FROM web_users u ORDER BY u.created_at DESC"""
+                      (SELECT MAX(day) FROM user_activity a WHERE a.owner_id = u.id) last_seen,
+                      (SELECT COUNT(DISTINCT day) FROM user_activity a
+                         WHERE a.owner_id = u.id AND a.day >= ?) active_days_30,
+                      (SELECT COUNT(DISTINCT day) FROM user_activity a
+                         WHERE a.owner_id = u.id) active_days_total
+               FROM web_users u ORDER BY u.created_at DESC""",
+            (cutoff,),
         ).fetchall()
         # Ein zweiter Query statt eines Unterausdrucks je Client: Die Liste
         # zeigt die AUFTEILUNG, nicht eine Zahl — und welche Clients es gibt,
@@ -4464,6 +4472,8 @@ class Store:
                  "created_at": r["created_at"], "apple_linked": bool(r["apple_sub"]),
                  "n_topics": r["n_topics"], "n_subscriptions": r["n_subscriptions"],
                  "n_quiz": r["n_quiz"], "n_ki": r["n_ki"], "last_seen": r["last_seen"],
+                 "active_days_30": r["active_days_30"],
+                 "active_days_total": r["active_days_total"],
                  "signup_client": r["signup_client"],
                  "clients": nutzung.get(r["id"], {})} for r in rows]
 
