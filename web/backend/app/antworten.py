@@ -2021,6 +2021,9 @@ class AdminUserRow(TypedDict):
     n_quiz: int
     n_ki: int
     last_seen: str | None
+    #: Unterschiedliche Tage mit mindestens einem Besuch, inklusive App.
+    active_days_30: int
+    active_days_total: int
     #: Womit das Konto angelegt wurde: web | ios | android | app. ``None`` =
     #: vor Einführung der Messung registriert.
     signup_client: str | None

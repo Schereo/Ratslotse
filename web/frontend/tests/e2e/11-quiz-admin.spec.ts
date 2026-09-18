@@ -58,7 +58,7 @@ test.describe("Admin-Panel — die Grenze", () => {
       // Oberfläche überlassen — NICHT überlassen ist, dass Verwaltungsdaten
       // sichtbar werden.
       await expect(page.getByRole("heading", { name: "Admin" })).toHaveCount(0);
-      await expect(page.getByText("Web-Nutzer*innen")).toHaveCount(0);
+      await expect(page.getByText("Nutzer*innen", { exact: true })).toHaveCount(0);
     });
 
     test("sieht den Admin-Zugang auch nicht in der Navigation", async ({ page }) => {
@@ -94,15 +94,60 @@ test.describe("Admin-Panel — die Grenze", () => {
       await expect(page.getByRole("heading", { name: "Wer kommt wieder?" })).toBeVisible();
       await expect(page.getByRole("navigation", { name: "Admin-Bereiche" }).getByRole("link")).toHaveCount(5);
       await page.getByRole("link", { name: "Menschen", exact: true }).click();
-      await expect(page.getByRole("link", { name: "Web-Nutzer*innen", exact: true })).toHaveAttribute("aria-current", "page");
+      await expect(page.getByRole("link", { name: "Nutzer*innen", exact: true })).toHaveAttribute("aria-current", "page");
       await page.reload();
-      await expect(page.getByRole("link", { name: "Web-Nutzer*innen", exact: true })).toHaveAttribute("aria-current", "page");
+      await expect(page.getByRole("link", { name: "Nutzer*innen", exact: true })).toHaveAttribute("aria-current", "page");
       await page.goBack();
       await expect(page.getByRole("heading", { name: "Wer kommt wieder?" })).toBeVisible();
       await page.getByRole("link", { name: "Betrieb", exact: true }).click();
       await expect(page.getByRole("heading", { name: "Cron-Jobs", exact: true })).toBeVisible();
       await page.getByRole("link", { name: "Inhalte", exact: true }).click();
       await expect(page.getByRole("link", { name: "Themen-Dubletten", exact: true })).toBeVisible();
+    });
+
+    test("Nutzer*innen nach letzter Nutzung und aktiven Tagen sortieren und inaktive Konten filtern", async ({ page }) => {
+      const basis = await (await page.request.get("/api/admin/users")).json() as ApiAntwort<"/admin/users">;
+      expect(basis.length).toBeGreaterThanOrEqual(4);
+      const day = (ago: number) => new Date(Date.now() - ago * 86_400_000).toISOString().slice(0, 10);
+      const users: ApiAntwort<"/admin/users"> = [
+        { ...basis[0], display_name: "Test Anna", last_seen: day(0), active_days_30: 7, active_days_total: 8, status: "active", created_at: "2026-09-04T12:00:00Z" },
+        { ...basis[1], display_name: "Test Bea", last_seen: day(7), active_days_30: 2, active_days_total: 20, status: "active", created_at: "2026-09-03T12:00:00Z" },
+        { ...basis[2], display_name: "Test Cem", last_seen: day(40), active_days_30: 0, active_days_total: 4, status: "disabled", created_at: "2026-09-02T12:00:00Z" },
+        { ...basis[3], display_name: "Test Dana", last_seen: null, active_days_30: 0, active_days_total: 0, status: "pending", created_at: "2026-09-01T12:00:00Z" },
+      ];
+      await page.route("**/api/admin/users", (route) => route.fulfill({ json: users }));
+      await page.goto("/admin#users");
+      const list = page.getByRole("region", { name: "Nutzer*innenliste" });
+      const links = list.getByRole("link");
+      await expect(links).toHaveCount(4);
+      await page.getByLabel("Nutzer*innen sortieren").selectOption("recent");
+      await expect(links.first()).toContainText("Test Anna");
+      await page.getByLabel("Nutzer*innen sortieren").selectOption("inactive");
+      await expect(links.first()).toContainText("Test Dana");
+      await page.getByLabel("Nutzer*innen sortieren").selectOption("active_30");
+      await expect(links.first()).toContainText("Test Anna");
+      await page.getByLabel("Nutzer*innen sortieren").selectOption("active_total");
+      await expect(links.first()).toContainText("Test Bea");
+      await expect(links.first()).toContainText("20 Tage insgesamt");
+      await page.getByLabel("Aktivität filtern").selectOption("inactive_30");
+      await expect(links).toHaveCount(2);
+      await expect(list).toContainText("Test Cem");
+      await expect(list).toContainText("Test Dana");
+      await page.getByLabel("Gesperrte ausblenden").check();
+      await expect(links).toHaveCount(1);
+      await expect(links.first()).toContainText("Test Dana");
+      await expect(page.getByRole("status")).toHaveText("1 von 4 Nutzer*innen");
+      await page.getByLabel("Aktivität filtern").selectOption("never");
+      await expect(links).toHaveCount(1);
+      await page.getByLabel("Aktivität filtern").selectOption("all");
+      await page.getByRole("textbox", { name: "Konten durchsuchen" }).fill("Anna");
+      await expect(links).toHaveCount(1);
+      await expect(links.first()).toContainText("Test Anna");
+      await page.setViewportSize({ width: 320, height: 850 });
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBeTruthy();
+      await page.setViewportSize({ width: 390, height: 850 });
+      await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBeTruthy();
     });
 
     test("junge Konten bleiben offen; unabhängige Merkmale sind kein Verlust-Trichter", async ({ page }) => {

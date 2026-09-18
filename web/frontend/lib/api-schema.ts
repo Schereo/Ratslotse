@@ -6403,6 +6403,10 @@ export interface components {
         };
         /** AdminUserRow */
         AdminUserRow: {
+            /** Active Days 30 */
+            active_days_30: number;
+            /** Active Days Total */
+            active_days_total: number;
             /** Apple Linked */
             apple_linked: boolean;
             /** Clients */
@@ -20808,4 +20812,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 861d080b594bae015f739871c12b71e51913c2a372f1576ecb2fa5bbe5618737
+// vertrag-sha256: 00197093796a6d45d4d6b49ed200bd01c402c0c4358ecf35c8afaf63ac304d6c

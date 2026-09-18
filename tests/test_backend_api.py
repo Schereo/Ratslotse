@@ -622,17 +622,33 @@ def test_admin_user_rows_and_detail(client):
     """Design 20a: Nutzer-Liste mit Signalen + Detail (Features, 30-T-Verlauf)."""
     _register(client)  # admin; folgender /me-Request schreibt Aktivität
     admin = client.get("/api/auth/me").json()
+    store = Store(RATSLOTSE_DB)
+    today = date.today()
+    with store._conn:
+        store._conn.executemany(
+            "INSERT INTO user_activity (owner_id, day, feature, client, count) VALUES (?, ?, ?, ?, ?)",
+            [
+                (admin["id"], (today - timedelta(days=7)).isoformat(), "search", "web", 8),
+                (admin["id"], (today - timedelta(days=7)).isoformat(), "search", "ios", 3),
+                (admin["id"], (today - timedelta(days=31)).isoformat(), "search", "web", 1),
+            ],
+        )
+    assert TestClient(app).post("/api/auth/register", json={
+        "display_name": "Noch ohne Besuch", "email": "neu@test.de", "password": "password123",
+    }).status_code == 201
     rows = client.get("/api/admin/users").json()
     me = next(u for u in rows if u["id"] == admin["id"])
-    assert {"n_topics", "n_ki", "n_quiz", "last_seen"} <= set(me)
-    assert me["last_seen"] is not None  # via record_activity beim Login
+    assert {"n_topics", "n_ki", "n_quiz", "last_seen", "active_days_30", "active_days_total"} <= set(me)
+    assert me["last_seen"] == today.isoformat()
+    assert (me["active_days_30"], me["active_days_total"]) == (2, 3)
+    noch_nie = next(u for u in rows if u["email"] == "neu@test.de")
+    assert (noch_nie["last_seen"], noch_nie["active_days_30"], noch_nie["active_days_total"]) == (None, 0, 0)
     detail = client.get(f"/api/admin/users/{admin['id']}").json()
     assert detail["email"] == admin["email"]
     assert set(detail["features"]) == {"ki_frage", "research", "suche", "quiz",
                                        "analyse", "karte"}
     assert isinstance(detail["history"], list) and len(detail["history"]) == 30
     # 30-Tage-Achse passt zu den Balken und endet heute.
-    from datetime import date
     assert len(detail["history_days"]) == 30
     assert detail["history_days"][-1] == date.today().isoformat()
     assert client.get("/api/admin/users/999999").status_code == 404

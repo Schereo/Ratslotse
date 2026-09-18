@@ -2340,6 +2340,14 @@
       },
       "AdminUserRow": {
         "properties": {
+          "active_days_30": {
+            "title": "Active Days 30",
+            "type": "integer"
+          },
+          "active_days_total": {
+            "title": "Active Days Total",
+            "type": "integer"
+          },
           "apple_linked": {
             "title": "Apple Linked",
             "type": "boolean"
@@ -2433,6 +2441,8 @@
           "n_quiz",
           "n_ki",
           "last_seen",
+          "active_days_30",
+          "active_days_total",
           "signup_client",
           "clients"
         ],
