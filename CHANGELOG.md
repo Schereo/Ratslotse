@@ -7,6 +7,14 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [2.6.7] – 2026-09-18
+
+### Behoben
+- **Veränderungen im Admin-Bereich sind leichter zu lesen.** Aktionszahl, Zahl
+  der Konten und Vergleich mit dem Vorzeitraum stehen klar getrennt. Günstige
+  Entwicklungen sind grün, ungünstige rot und Veränderungen ohne eindeutige
+  Wertung gelb; Pfeile und Vorzeichen bleiben sichtbar. (#1397)
+
 ## [2.6.6] – 2026-09-18
 
 ### Geändert
@@ -8386,7 +8394,8 @@ Open-Source-Go-Live von Ratslotse.
 *Dieser Changelog beginnt mit dem Open-Source-Release von Ratslotse. Die
 Entwicklungshistorie davor ist nicht Teil dieses Repositories.*
 
-[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v2.6.6...main
+[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v2.6.7...main
+[2.6.7]: https://github.com/Schereo/Ratslotse/compare/v2.6.6...v2.6.7
 [2.6.6]: https://github.com/Schereo/Ratslotse/compare/v2.6.5...v2.6.6
 [2.6.5]: https://github.com/Schereo/Ratslotse/compare/v2.6.4...v2.6.5
 [2.6.4]: https://github.com/Schereo/Ratslotse/compare/v2.6.3...v2.6.4
