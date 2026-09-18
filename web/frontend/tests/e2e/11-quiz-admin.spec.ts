@@ -150,6 +150,40 @@ test.describe("Admin-Panel — die Grenze", () => {
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBeTruthy();
     });
 
+    test("Aktionszahlen und Veränderungen sind getrennt und nach Bedeutung gefärbt", async ({ page }) => {
+      const original = await (await page.request.get("/api/admin/stats/events?days=30")).json() as ApiAntwort<"/admin/stats/events">;
+      const beispiele: Record<string, { n: number; users: number; previous: number }> = {
+        topic_created: { n: 69, users: 12, previous: 105 },
+        map: { n: 46, users: 10, previous: 0 },
+        ai_answer_empty: { n: 3, users: 1, previous: 1 },
+        ai_question_unclear: { n: 0, users: 0, previous: 2 },
+        ai_question_chip: { n: 2, users: 1, previous: 1 },
+      };
+      await page.route("**/api/admin/stats/events?*", (route) => route.fulfill({ json: {
+        ...original,
+        events: original.events.map((e) => ({ ...e, ...beispiele[e.key] })),
+        empty_share: 0.1,
+        previous_empty_share: 0.2,
+        chip_share: 0.25,
+        previous_chip_share: 0.2,
+      } }));
+      await page.goto("/admin#aktivitaet");
+      const liste = page.getByRole("list", { name: "Genutzte Funktionen" });
+      const zeile = (name: string) => liste.getByRole("listitem").filter({ hasText: name });
+      const vergleich = (name: string) => zeile(name).locator('[aria-label*="gegenüber dem vorherigen Zeitraum"]');
+      await expect(zeile("Themen angelegt")).toContainText("69 Aktionen · 12 Konten");
+      await expect(vergleich("Themen angelegt")).toHaveAttribute("aria-label", /−36.*ungünstige Entwicklung/);
+      await expect(vergleich("Themen angelegt")).toHaveClass(/text-red-800/);
+      await expect(vergleich("Karte geöffnet")).toHaveAttribute("aria-label", /\+46.*günstige Entwicklung/);
+      await expect(vergleich("Karte geöffnet")).toHaveClass(/text-green-800/);
+      await expect(vergleich("Antworten ohne Quelle")).toHaveClass(/text-red-800/);
+      await expect(vergleich("Rückfragen statt Antwort")).toHaveClass(/text-green-800/);
+      await expect(vergleich("davon aus einem Vorschlag")).toHaveAttribute("aria-label", /ohne eindeutige Wertung/);
+      await expect(vergleich("davon aus einem Vorschlag")).toHaveClass(/text-amber-800/);
+      await page.setViewportSize({ width: 320, height: 850 });
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBeTruthy();
+    });
+
     test("junge Konten bleiben offen; unabhängige Merkmale sind kein Verlust-Trichter", async ({ page }) => {
       // Deliberately more questions than finished setups, and no account old
       // enough for 30 days. These are real possibilities, not a funnel.

@@ -98,7 +98,7 @@ export function AdminOverview() {
         <Card className="p-5">
           <h3 className="font-display text-lg font-bold">Wie intensiv wird gefragt?</h3>
           {cohorts.isPending ? <p className="mt-4 text-sm text-muted-foreground">Wird geladen…</p> : cohorts.isError ? <p role="alert" className="mt-4 text-sm text-muted-foreground">Noch nicht geladen. Bitte oben aktualisieren.</p> : <>
-            <div className="mt-4 flex flex-wrap items-baseline gap-3"><strong className="font-display text-4xl tabular-nums">{deZahl(k?.kennzahlen.fragen_median, 1)}</strong><Veraenderung jetzt={k?.kennzahlen.fragen_median ?? null} vorher={k?.previous.fragen_median} /></div>
+            <div className="mt-4 flex flex-wrap items-baseline gap-3"><strong className="font-display text-4xl tabular-nums">{deZahl(k?.kennzahlen.fragen_median, 1)}</strong><Veraenderung jetzt={k?.kennzahlen.fragen_median ?? null} vorher={k?.previous.fragen_median} neutral /></div>
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">Fragen je aktivem Konto in 7 Tagen (Median), einschließlich Betreiber-/Testkonten. Die Hälfte der aktiven Konten liegt höchstens bei diesem Wert.</p>
           </>}
         </Card>

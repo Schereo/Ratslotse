@@ -463,7 +463,7 @@ function EreignisSection({ qualityOnly = false }: { qualityOnly?: boolean }) {
             <p className={cn("font-display text-[28px] font-extrabold leading-none tracking-tight tabular-nums", data.chip_share == null ? "text-muted-foreground" : "text-foreground")}>
               {data.chip_share == null ? "–" : `${Math.round(data.chip_share * 100)} %`}
             </p>
-            <Veraenderung jetzt={data.chip_share} vorher={data.previous_chip_share} prozent />
+            <Veraenderung jetzt={data.chip_share} vorher={data.previous_chip_share} prozent neutral />
           </div>
           <div className="mt-2 flex flex-wrap items-baseline justify-between gap-x-2">
             <span className="text-sm text-muted-foreground">{data.chip_share == null ? "noch keine Fragen im Zeitraum" : "der Rest wurde ins Feld getippt"}</span>
@@ -487,26 +487,31 @@ function EreignisSection({ qualityOnly = false }: { qualityOnly?: boolean }) {
 
       {!qualityOnly && <Card className="p-4">
         <label className="mb-4 flex flex-wrap items-center gap-2 text-sm">Sortieren nach<select value={sort} onChange={(e) => setSort(e.target.value)} className="min-h-11 min-w-0 max-w-full rounded-lg border border-border bg-card px-3"><option value="users">Anzahl der Konten</option><option value="n">Anzahl der Aktionen</option></select></label>
-        <div className="flex flex-col gap-2">
+        <div role="list" aria-label="Genutzte Funktionen" className="flex flex-col gap-2">
           {zeilen.map((e) => (
-            <div key={e.key} className="grid grid-cols-1 items-center gap-x-3 gap-y-1 border-b border-border py-2 last:border-0 @3xl:grid-cols-[13rem_minmax(0,1fr)_12rem]">
+            <div role="listitem" key={e.key} className="grid grid-cols-1 items-center gap-x-3 gap-y-1 border-b border-border py-2 last:border-0 @3xl:grid-cols-[13rem_minmax(0,1fr)_13rem]">
               <span className={cn("text-sm", e.n === 0 ? "text-muted-foreground" : "text-foreground")}>{e.label}</span>
               <div className="hidden h-2.5 overflow-hidden rounded-full bg-muted @3xl:block" aria-hidden>
                 <div className={cn("h-full rounded-full", e.n === 0 ? "bg-transparent" : "bg-primary")} style={{ width: `${Math.min(100, Math.round(((sort === "users" ? e.users : e.n) / spitze) * 100))}%` }} />
               </div>
-              <span className="flex flex-wrap items-baseline justify-start gap-2 tabular-nums @3xl:justify-end">
-                <Veraenderung jetzt={e.n} vorher={e.previous} klein />
-                <span className="text-sm">
+              <div className="flex min-w-0 flex-col items-start gap-1 tabular-nums @3xl:items-end">
+                <p className="text-sm">
                   <span className={cn("font-semibold", e.n === 0 ? "text-muted-foreground" : "text-foreground")}>{e.n.toLocaleString("de-DE")}</span>
+                  <span className="text-muted-foreground"> {e.n === 1 ? "Aktion" : "Aktionen"}</span>
                   <span className="font-mono text-xs text-muted-foreground"> · {e.users} {e.users === 1 ? "Konto" : "Konten"}</span>
-                </span>
-              </span>
+                </p>
+                <p className="flex items-center gap-1.5 text-xs">
+                  <span className="text-muted-foreground">davor</span>
+                  <Veraenderung jetzt={e.n} vorher={e.previous} invers={e.key === "ai_answer_empty" || e.key === "ai_question_unclear"}
+                    neutral={e.key === "ai_question_chip"} klein />
+                </p>
+              </div>
             </div>
           ))}
         </div>
         <p className="mt-3 text-sm leading-snug text-muted-foreground">
-          Die zweite Zahl ist die der Konten. Eine große Zahl aus einem einzigen Konto
-          ist etwas anderes als dieselbe Zahl aus zwanzig.
+          Zuerst stehen die Aktionen, dann die Zahl der Konten. Der farbige Chip
+          zeigt die Veränderung gegenüber den {data.days} Tagen davor.
         </p>
       </Card>}
     </div>
@@ -820,4 +825,3 @@ function formatDuration(seconds: number): string {
   if (seconds < 3600) return `${Math.round(seconds / 60)} min`;
   return `${(seconds / 3600).toFixed(1)} h`;
 }
-
