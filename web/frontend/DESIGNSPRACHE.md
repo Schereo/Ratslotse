@@ -34,7 +34,7 @@ Bei jedem neuen Screen gegen diese Datei bauen; die Artboards zeigen die Anwendu
 | Fließtext lange Antworten | hsl(212 55% 20%) |
 | Sekundär / Muted / Labels | hsl(207 18% 38.5%) · iOS #506474 |
 | **Primär „Hafenblau"** | hsl(205 92% 34%) |
-| **Signal-Orange** (nur Akzent: KI-Funken, Deltas, Marker) | hsl(19 92% 55%) |
+| **Signal-Orange** (nur Akzent: KI-Funken, Marker und Deltas ohne Wertung) | hsl(19 92% 55%) |
 
 ### Dunkel
 Seite hsl(213 50% 7%) · Karte hsl(212 42% 11%) · Rahmen hsl(211 36% 17%)
@@ -48,6 +48,10 @@ Primär hsl(202 90% 60%) (Text darauf dunkel!) · Signal hsl(19 95% 60%).
 - Warnung/Vertagt/Limits: #fffbeb + #fde68a / #92400e
 - Neutral/Zur Kenntnis: hsl(206 40% 94%) / hsl(209 18% 42%)
 - Primär-Tints: bg primary/4–10, Rahmen primary/16–30 (Nutzer-Bubble: bg /7, Rahmen /18)
+- **Admin-Vergleiche:** günstige Entwicklung grün, ungünstige rot, ohne eindeutige
+  Wertung gelb; „unverändert“ neutral. Pfeil und Vorzeichen bleiben zusätzlich
+  sichtbar. Bei „Antworten ohne Quelle“ und „Rückfragen statt Antwort“ ist
+  weniger günstig. Die Farben gelten für Änderungs-Chips, nicht für Balken.
 
 ### Parteifarben (nur 8-px-Dots & 9-px-Tags, nie Flächen)
 SPD #e3000f · CDU #1a1a1a · Grüne #3d8f29 · FDP #ffe000 (heller Dot: Inset-Ring

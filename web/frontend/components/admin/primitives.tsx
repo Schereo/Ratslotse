@@ -9,9 +9,10 @@ import { cn } from "@/lib/utils";
  *  **woraus** sie besteht (Zähler und Nenner) und **wie sie sich verändert**
  *  hat (gegen dieselbe Spanne davor). Ein Stand allein — „43 %" — sagt weder,
  *  ob das 3 von 7 sind, noch ob es letzte Woche 60 % waren. Die Veränderung
- *  trägt Signal-Orange, wie jedes Delta in der Designsprache (§ 2, § 5 RG-04);
- *  Ampelfarben auf Balken sind raus, sie beantworteten eine andere Frage als
- *  die Balkenlänge und brauchten eine Legende, um nicht falsch gelesen zu werden.
+ *  trägt eine semantische Farbe: Grün, wenn es sich günstig bewegt, Rot bei
+ *  einer ungünstigen Entwicklung, Gelb bei Kennzahlen ohne eindeutige Wertung.
+ *  Balken selbst bleiben einfarbig, denn ihre Länge beantwortet eine andere
+ *  Frage als die Veränderung.
  */
 
 /** Zähler und Nenner in Mono — „6 von 14". */
@@ -23,15 +24,14 @@ export function Basis({ n, von, was }: { n: number; von: number; was?: string })
   );
 }
 
-/** Die Veränderung gegen den Vorzeitraum — als Chip in Signal-Orange.
+/** Die Veränderung gegen den Vorzeitraum — als bewerteter Chip.
  *
  *  `prozent`: beide Werte sind Anteile, die Differenz steht in Punkten.
- *  `invers`: klein ist gut (Antworten ohne Quelle). Die Farbe sagt nicht
- *  „gut/schlecht", sondern nur „hat sich bewegt" — die Richtung trägt der
- *  Pfeil, die Bewertung der Kontext. Ohne Vergleichswert: „kein Vergleich",
- *  nie eine erfundene Null. */
-export function Veraenderung({ jetzt, vorher, prozent, invers, klein }: {
-  jetzt: number | null; vorher: number | null | undefined; prozent?: boolean; invers?: boolean; klein?: boolean;
+ *  `invers`: weniger ist gut (z. B. Antworten ohne Quelle).
+ *  `neutral`: mehr oder weniger lässt sich nicht pauschal bewerten.
+ *  Ohne Vergleichswert: „kein Vergleich", nie eine erfundene Null. */
+export function Veraenderung({ jetzt, vorher, prozent, invers, neutral, klein }: {
+  jetzt: number | null; vorher: number | null | undefined; prozent?: boolean; invers?: boolean; neutral?: boolean; klein?: boolean;
 }) {
   const groesse = klein ? "text-xs px-1.5 py-px" : "text-xs px-2 py-0.5";
   if (jetzt == null || vorher == null) {
@@ -43,9 +43,17 @@ export function Veraenderung({ jetzt, vorher, prozent, invers, klein }: {
   }
 
   const text = prozent ? `${d > 0 ? "+" : "−"}${Math.abs(d)} Pkt.` : `${d > 0 ? "+" : "−"}${Math.abs(d).toLocaleString("de-DE")}`;
+  const bewertung = neutral ? "ohne eindeutige Wertung" : (d > 0) !== !!invers ? "günstige Entwicklung" : "ungünstige Entwicklung";
+  const farbe = neutral
+    ? "bg-amber-500/10 text-amber-800 dark:text-amber-300"
+    : (d > 0) !== !!invers
+      ? "bg-green-500/10 text-green-800 dark:text-green-300"
+      : "bg-red-500/10 text-red-800 dark:text-red-300";
   return (
-    <span className={cn("inline-flex items-center gap-1 rounded-full bg-signal/[0.10] font-mono font-semibold text-orange-800 dark:text-orange-300", groesse)}
-      title={`Gegenüber dem vorherigen Zeitraum${invers ? " (weniger ist hier besser)" : ""}`}>
+    <span className={cn("inline-flex items-center gap-1 rounded-full font-mono font-semibold", farbe, groesse)}
+      role="img"
+      aria-label={`${text} gegenüber dem vorherigen Zeitraum, ${bewertung}`}
+      title={`${text} gegenüber dem vorherigen Zeitraum – ${bewertung}`}>
       <svg className="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
         {d > 0 ? <path d="M12 19V5M5 12l7-7 7 7" /> : <path d="M12 5v14M19 12l-7 7-7-7" />}
       </svg>
@@ -90,4 +98,3 @@ export function KennzahlCard({ label, hint, wert, vorher, basis, anteil, invers,
     </Card>
   );
 }
-
