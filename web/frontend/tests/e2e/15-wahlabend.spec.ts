@@ -453,3 +453,75 @@ test.describe("Stichwahl: Karte", () => {
     await expect(karte.getByText("Wahlbereich I", { exact: true })).toBeVisible();
   });
 });
+
+/* ── Simulator und Tippspiel-Einladung (19.09.2026) ──────────────────────── */
+
+/** `/api/wahlen` entscheidet, ob und wohin verlinkt wird — die Seite rät das
+ *  nicht nach. Drei Fälle, drei Antworten. */
+function wahlenMock(page: Page, zeile: { tipp_path: string; tipp_locked: boolean }) {
+  return page.route("**/api/wahlen", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        elections: [{
+          slug: "ob-stichwahl-2026", short_title: "OB-Stichwahl Oldenburg", title: "Stichwahl",
+          date: "2026-09-27", polls_close: "2026-09-27T18:00:00+02:00", kind: "mayor", status: "live",
+          path: "/wahlabend/stichwahl", summary: null, focus: true, top: [], ...zeile,
+        }],
+      }),
+    }));
+}
+
+test.describe("Simulator und Tippspiel-Einladung", () => {
+  test.beforeEach(async ({ page }) => {
+    await appConfig(page, ["wahlabend", "tippspiel"]);
+  });
+
+  test("der Auszählungs-Simulator taucht im Prod-Build nirgends auf", async ({ page }) => {
+    // Die Browsertests laufen OHNE `NEXT_PUBLIC_RATSLOTSE_ENV=dev` — also so,
+    // wie Prod gebaut wird. Ein Werkzeug, mit dem jede*r die Zahlen der Seite
+    // verstellen kann, darf dort nicht auftauchen.
+    stichwahlMock(page, [60]);
+    await wahlenMock(page, { tipp_path: "/tipp?runde=stichwahl", tipp_locked: false });
+    await page.goto("/wahlabend/stichwahl?probe=1");
+    await expect(page.getByTestId("meldung")).toBeVisible();
+    await expect(page.getByTestId("auszaehlungs-simulator")).toHaveCount(0);
+  });
+
+  test("offene Runde: die Einladung führt ins Tippspiel", async ({ page }) => {
+    stichwahlMock(page, [60]);
+    await wahlenMock(page, { tipp_path: "/tipp?runde=stichwahl", tipp_locked: false });
+    await page.goto("/wahlabend/stichwahl?probe=1");
+    const einladung = page.getByTestId("tippspiel-einladung");
+    await expect(einladung).toBeVisible();
+    await expect(einladung.getByRole("link")).toHaveAttribute("href", "/tipp?runde=stichwahl");
+  });
+
+  test("Konto-Runde: die Einladung führt zur Anmeldung, nicht gegen die Wand", async ({ page }) => {
+    stichwahlMock(page, [60]);
+    await wahlenMock(page, { tipp_path: "", tipp_locked: true });
+    await page.goto("/wahlabend/stichwahl?probe=1");
+    await expect(page.getByTestId("tippspiel-einladung").getByRole("link")).toHaveAttribute("href", "/login");
+  });
+
+  test("ohne Runde bleibt die Seite still", async ({ page }) => {
+    stichwahlMock(page, [60]);
+    await wahlenMock(page, { tipp_path: "", tipp_locked: false });
+    await page.goto("/wahlabend/stichwahl?probe=1");
+    await expect(page.getByTestId("meldung")).toBeVisible();
+    await expect(page.getByTestId("tippspiel-einladung")).toHaveCount(0);
+  });
+
+  test("und wenn `/api/wahlen` ausfällt, bleibt der Wahlabend stehen", async ({ page }) => {
+    // Der Schalter `wahlabend` ist im Test-Backend aus, `/api/wahlen`
+    // antwortet dann mit 404. Genau daran ist die Seite am 19.09.2026 in die
+    // Fehlerfläche gelaufen, bevor die Einladung ihren Fehler selbst schluckte.
+    stichwahlMock(page, [60]);
+    await page.route("**/api/wahlen", (route) =>
+      route.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ detail: "aus" }) }));
+    await page.goto("/wahlabend/stichwahl?probe=1");
+    await expect(page.getByTestId("meldung")).toBeVisible();
+    await expect(page.getByTestId("tippspiel-einladung")).toHaveCount(0);
+  });
+});

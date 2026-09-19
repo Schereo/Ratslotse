@@ -94,12 +94,15 @@ class MayorCandidate:
     #: Der volle amtliche Name des Wahlvorschlags aus der Bekanntmachung.
     nominated_by: str = ""
     #: Parteilos, und von wem sie sonst noch unterstützt wird — beides steht
-    #: NICHT in der Bekanntmachung, deshalb nur mit eigener Quelle
-    #: (`note_source`). Ohne Beleg bleibt das Feld leer: In einem
+    #: NICHT in der Bekanntmachung, deshalb nur mit eigenen Quellen
+    #: (`note_sources`). Ohne Beleg bleibt das Feld leer: In einem
     #: Wahlprodukt ist eine unbelegte Zuschreibung schlimmer als keine.
     independent: bool = False
     supported_by: tuple[str, ...] = ()
-    note_source: str = ""
+    #: MEHRERE Belege, seit eine zweite Unterstützung dazukam (Volt für Rohr,
+    #: 15.09.2026): Eine Quelle deckt nicht, was eine andere Gruppe erklärt
+    #: hat. Die Datei darf weiter einen einzelnen String tragen.
+    note_sources: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -160,6 +163,16 @@ def _farben(vorgeschlagen_von: str) -> tuple[str, str]:
     return "", ""
 
 
+def _quellen(k: dict) -> tuple[str, ...]:
+    """Die Belege einer Kandidatur — ``hinweis_quelle`` als einzelner String
+    ODER als Liste. Beides, weil die Datei bis 09/2026 nur eine Quelle je
+    Kandidatur kannte und eine Migration hier nichts verbessern würde."""
+    roh = k.get("hinweis_quelle")
+    if isinstance(roh, str):
+        return (roh,) if roh else ()
+    return tuple(q for q in (roh or ()) if q)
+
+
 def candidates(w: elections.Election | None = None) -> tuple[MayorCandidate, ...]:
     """Die Kandidaturen aus der Datei, die die Wahl nennt (2026:
     ``kommunalwahl/wahl-fakten.json``, Schlüssel ``ob_kandidaten``) — Stimmen
@@ -186,9 +199,9 @@ def candidates(w: elections.Election | None = None) -> tuple[MayorCandidate, ...
             # Unterstützung stehen nicht in der amtlichen Bekanntmachung, und
             # eine unbelegte Zuschreibung ist in einem Wahlprodukt das
             # Gegenteil von Präzision.
-            independent=bool(k.get("parteilos")) and bool(k.get("hinweis_quelle")),
-            supported_by=tuple(k.get("unterstuetzt_von") or ()) if k.get("hinweis_quelle") else (),
-            note_source=k.get("hinweis_quelle") or "",
+            independent=bool(k.get("parteilos")) and bool(_quellen(k)),
+            supported_by=tuple(k.get("unterstuetzt_von") or ()) if _quellen(k) else (),
+            note_sources=_quellen(k),
         ))
     if nur and len(out) != len(nur):
         fehlend = sorted(set(nur) - {c.slug for c in out})
@@ -593,7 +606,12 @@ def probe(counted: int | None, w: elections.Election | None = None) -> MayorResu
         )
         return MayorResult(
             phase=phase, reports_expected=len(bezirke), reports_received=len(gemeldet),
-            turnout_pct=voll.turnout_pct, valid_votes=summe or None,
+            # Vor dem ersten gemeldeten Bezirk gibt es KEINE Beteiligung. Bis
+            # 19.09.2026 trug die Probe hier die des Vorwahlgangs, und die
+            # Seite schrieb „Noch nichts ausgezählt · 63,5 %" — ein Wert, den
+            # es am echten Abend um 18:00 Uhr nicht gibt.
+            turnout_pct=voll.turnout_pct if phase != "before" else None,
+            valid_votes=summe or None,
             invalid_ballots=round(voll.invalid_ballots * anteil) if voll.invalid_ballots is not None else None,
             candidates=skaliert, runoff=() if phase != "complete" else voll.runoff,
             fetched_at=None, ok=True, error=None, notes=(), districts=bezirke,
@@ -605,7 +623,7 @@ def probe(counted: int | None, w: elections.Election | None = None) -> MayorResu
     return MayorResult(
         phase=phase, reports_expected=voll.reports_expected,
         reports_received=round(voll.reports_expected * anteil),
-        turnout_pct=voll.turnout_pct,
+        turnout_pct=voll.turnout_pct if phase != "before" else None,
         valid_votes=round(voll.valid_votes * anteil) if voll.valid_votes is not None else None,
         invalid_ballots=round(voll.invalid_ballots * anteil) if voll.invalid_ballots is not None else None,
         candidates=skaliert, runoff=() if phase != "complete" else voll.runoff,

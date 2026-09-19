@@ -14,6 +14,7 @@ import { ArrowRight, Vote } from "lucide-react";
 import { Button, Card } from "@/components/ui";
 import { Mascot } from "@/components/mascot";
 import { useAppConfig, useFeature } from "@/lib/features";
+import { TippspielKnopf } from "@/components/tipp/einladung";
 import { datumLang, wahlabendZeit, type WahlabendZeit } from "@/lib/wahlabend";
 
 /** Die Wahl, auf die gerade hingewiesen wird — aus `/api/app-config`.
@@ -84,7 +85,11 @@ function texte(zeit: WahlabendZeit, name: string): {
   };
 }
 
-/** Landing: ein Streifen in der Anzeigetafel-Fläche, unter dem Hero. */
+/** Landing: ein Streifen in der Anzeigetafel-Fläche, unter dem Hero.
+ *
+ *  **Die Fläche ist seit 09/2026 nicht mehr als Ganzes ein Link.** Daneben
+ *  steht jetzt der Weg ins Tippspiel, und ein Link im Link ist kein gültiges
+ *  HTML — die Knöpfe sind deshalb zwei eigene Ziele. */
 export function WahlabendBanner() {
   const an = useFeature("wahlabend");
   const wahl = useFokusWahl();
@@ -93,10 +98,7 @@ export function WahlabendBanner() {
   const t = texte(zeit, wahl?.short_title ?? "Die Wahl");
   return (
     <section aria-label={`Wahlabend: ${wahl?.short_title ?? "die nächste Wahl"}`} className="mx-auto max-w-5xl px-5 pb-2 pt-6">
-      <Link
-        href={wahl?.path ?? "/wahlabend"}
-        className="hh-tafel group flex flex-col items-center gap-5 rounded-2xl px-5 py-6 sm:flex-row sm:gap-7 sm:px-7"
-      >
+      <div className="hh-tafel flex flex-col items-center gap-5 rounded-2xl px-5 py-6 sm:flex-row sm:gap-7 sm:px-7">
         <Mascot pose="point" decorative className="hidden h-20 w-20 flex-none sm:block" />
         <div className="min-w-0 text-center sm:text-left">
           <p className={KICKER}>
@@ -110,10 +112,16 @@ export function WahlabendBanner() {
             {t.text}
           </p>
         </div>
-        <span className="inline-flex flex-none items-center gap-1.5 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-transform duration-fluss ease-out-strong sm:ml-auto [@media(hover:hover)]:group-hover:-translate-y-0.5">
-          <span suppressHydrationWarning>{t.knopf}</span> <ArrowRight className="h-4 w-4" />
-        </span>
-      </Link>
+        <div className="flex w-full flex-col gap-2 sm:ml-auto sm:w-auto sm:flex-none">
+          <Link
+            href={wahl?.path ?? "/wahlabend"}
+            className="group inline-flex items-center justify-center gap-1.5 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-transform duration-fluss ease-out-strong [@media(hover:hover)]:hover:-translate-y-0.5"
+          >
+            <span suppressHydrationWarning>{t.knopf}</span> <ArrowRight className="h-4 w-4" />
+          </Link>
+          <TippspielKnopf slug={wahl?.slug} className="justify-center" />
+        </div>
+      </div>
     </section>
   );
 }
@@ -140,11 +148,14 @@ export function WahlabendHinweis() {
           {t.text}
         </p>
       </div>
-      <Button asChild className="w-full shrink-0 sm:w-auto">
-        <Link href={wahl?.path ?? "/wahlabend"}>
-          <span suppressHydrationWarning>{t.knopf}</span> <ArrowRight />
-        </Link>
-      </Button>
+      <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto">
+        <Button asChild className="w-full sm:w-auto">
+          <Link href={wahl?.path ?? "/wahlabend"}>
+            <span suppressHydrationWarning>{t.knopf}</span> <ArrowRight />
+          </Link>
+        </Button>
+        <TippspielKnopf slug={wahl?.slug} className="justify-center py-2 text-[13px]" kurz />
+      </div>
     </Card>
   );
 }

@@ -10477,8 +10477,8 @@ export interface components {
             name: string;
             /** Nominated By */
             nominated_by: string;
-            /** Note Source */
-            note_source: string;
+            /** Note Sources */
+            note_sources: string[];
             /** Party */
             party: string;
             /** Share Pct */
@@ -20940,4 +20940,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 9a75bb93cea87bd377367a5465f00a85c5ad41739719f9408105545d27dccf39
+// vertrag-sha256: 28e6e299218d3cebef062ff98d6b05c71f55ca3ae40ce83bcc2f427d12b14852

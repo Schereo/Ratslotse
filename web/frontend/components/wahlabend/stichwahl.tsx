@@ -19,6 +19,8 @@ import { Info } from "lucide-react";
 import { Mascot } from "@/components/mascot";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Kopf } from "@/components/wahlabend/kopf";
+import { TippspielEinladung } from "@/components/tipp/einladung";
+import { AuszaehlungsSimulator } from "@/components/wahlabend/simulator";
 import { StichwahlKarte } from "@/components/wahlabend/stichwahl-karte";
 import { StichwahlVerlauf } from "@/components/wahlabend/stichwahl-verlauf";
 import { api } from "@/lib/api";
@@ -125,24 +127,39 @@ function Herkunft({ k }: { k: StichwahlKandidat }) {
     k.supported_by.length ? `unterstützt von ${k.supported_by.join(", ")}` : null,
   ].filter(Boolean);
   if (!teile.length) return null;
+  // Mehrere Belege bekommen ihren Absender als Beschriftung: Seit Volt
+  // (15.09.2026) neben der CDU steht, deckt EIN Link nicht mehr beide
+  // Aussagen — und zwei gleich beschriftete „Beleg"-Links wären ein Rätsel.
+  const mehrere = k.note_sources.length > 1;
   return (
     <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted-foreground">
       {teile.join(" · ")}
-      {k.note_source ? (
-        <>
-          {" "}
+      {k.note_sources.map((quelle, i) => (
+        <span key={quelle}>
+          {i === 0 ? " " : " · "}
           <a
-            href={k.note_source}
+            href={quelle}
             target="_blank"
             rel="noopener noreferrer"
             className="font-medium text-primary underline-offset-2 hover:underline"
           >
-            Beleg ↗
+            {mehrere ? `${absender(quelle)} ↗` : "Beleg ↗"}
           </a>
-        </>
-      ) : null}
+        </span>
+      ))}
     </p>
   );
+}
+
+/** „gruene-oldenburg.de" aus einer Beleg-Adresse — ohne „www.", damit die
+ *  Zeile schmal bleibt. Eine kaputte Adresse gibt es selbst zurück, statt zu
+ *  werfen: Ein Beleg-Link ist nie eine Seite wert. */
+function absender(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
 }
 
 function Person({
@@ -578,6 +595,9 @@ export function StichwahlView() {
 
         <Tafel daten={data} />
         <Meldung daten={data} />
+        {/* Der Weg ins Tippspiel dieser Wahl — vor 18 Uhr die Einladung,
+            danach die Rangliste. Ob es eines gibt, sagt das Backend. */}
+        <TippspielEinladung slug={data.election.slug} phase={data.phase} />
         {entschieden && data.projection ? <BuehneEntschieden daten={data} p={data.projection} /> : null}
         {data.phase === "before" ? <BuehneVorher daten={data} /> : null}
 
@@ -622,6 +642,8 @@ export function StichwahlView() {
           </p>
         </footer>
       </main>
+      {/* Nur auf dev sichtbar — die Bedienung für die Generalprobe. */}
+      <AuszaehlungsSimulator />
     </>
   );
 }
