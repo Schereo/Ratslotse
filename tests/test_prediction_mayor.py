@@ -152,3 +152,18 @@ def test_fetch_ohne_server_liefert_bare_ergebnis_ohne_zu_werfen(monkeypatch):
     assert result.error
     assert len(result.candidates) == 9
     mayor.reset()
+
+
+def test_probe_ohne_gemeldeten_bezirk_nennt_keine_wahlbeteiligung():
+    """„Noch nichts ausgezählt" und daneben eine Beteiligung — das gibt es am
+    echten Abend um 18:00 Uhr nicht, und die Generalprobe darf es nicht
+    vormachen (Befund 19.09.2026 auf /wahlabend/stichwahl)."""
+    from app.election import elections
+
+    stichwahl = elections.get("ob-stichwahl-2026")
+    vorher = mayor.probe(0, stichwahl)
+    assert vorher.phase == "before"
+    assert vorher.turnout_pct is None
+    # Sobald gezählt wird, steht sie wieder da.
+    laeuft = mayor.probe(40, stichwahl)
+    assert laeuft.phase == "counting" and laeuft.turnout_pct is not None

@@ -50,8 +50,12 @@ def test_rohr_steht_als_gruener_auf_dem_zettel_und_ist_parteilos():
     assert rohr.nominated_by == "BÜNDNIS 90/DIE GRÜNEN (GRÜNE)"
     # Und was daneben gehört, damit daraus kein Parteibuch wird.
     assert rohr.independent is True
-    assert rohr.supported_by == ("CDU",)
-    assert rohr.note_source.startswith("https://")
+    # Seit dem 15.09.2026 zwei Unterstützungen — und je eine eigene Quelle:
+    # Die Nominierungs-Seite der Grünen belegt nicht, was Volt beschlossen hat.
+    assert rohr.supported_by == ("CDU", "Volt")
+    assert len(rohr.note_sources) == 2
+    assert all(q.startswith("https://") for q in rohr.note_sources)
+    assert any("volt" in q for q in rohr.note_sources)
 
 
 def test_wer_nichts_dazu_gemeldet_hat_bekommt_auch_nichts_angedichtet():
@@ -60,7 +64,7 @@ def test_wer_nichts_dazu_gemeldet_hat_bekommt_auch_nichts_angedichtet():
     for c in mayor.candidates():
         if c.slug == "rohr":
             continue
-        assert c.independent is False and c.supported_by == () and c.note_source == "", c.slug
+        assert c.independent is False and c.supported_by == () and c.note_sources == (), c.slug
 
 
 def test_ohne_quelle_keine_aussage(tmp_path, monkeypatch):
@@ -81,7 +85,7 @@ def test_ohne_quelle_keine_aussage(tmp_path, monkeypatch):
     assert wahl is not None
     ohne = mayor.candidates(_mit_datei(wahl, datei))
     rohr = next(c for c in ohne if c.slug == "rohr")
-    assert rohr.independent is False and rohr.supported_by == () and rohr.note_source == ""
+    assert rohr.independent is False and rohr.supported_by == () and rohr.note_sources == ()
     # Der Wahlvorschlag selbst bleibt natürlich stehen — der IST amtlich.
     assert rohr.party == "GRÜNE"
 
@@ -103,4 +107,8 @@ def test_die_datei_sagt_selbst_woher_die_zusatzangaben_stammen():
     mit_zusatz = [k for k in _roh() if k.get("parteilos") or k.get("unterstuetzt_von")]
     assert mit_zusatz, "Testannahme: mindestens eine Kandidatur trägt eine Zusatzangabe"
     for k in mit_zusatz:
-        assert k.get("hinweis_quelle", "").startswith("https://"), k["name"]
+        roh = k.get("hinweis_quelle")
+        quellen = [roh] if isinstance(roh, str) else list(roh or [])
+        assert quellen, k["name"]
+        for q in quellen:
+            assert q.startswith("https://"), f"{k['name']}: {q}"

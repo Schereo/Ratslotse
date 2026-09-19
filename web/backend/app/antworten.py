@@ -4353,9 +4353,11 @@ class MayorCandidate(TypedDict):
     #: Weitere Listen, die diese Kandidatur unterstützen, ohne sie
     #: vorzuschlagen — Kurznamen, leer im Normalfall.
     supported_by: list[str]
-    #: Beleg für die beiden Angaben darüber. Sie stehen NICHT in der
+    #: Belege für die beiden Angaben darüber. Sie stehen NICHT in der
     #: amtlichen Bekanntmachung; ohne Quelle zeigt die Seite sie nicht.
-    note_source: str
+    #: Mehrere, weil zwei Gruppen dieselbe Kandidatur unabhängig voneinander
+    #: unterstützen können — dann deckt ein Link nicht beide Aussagen.
+    note_sources: list[str]
     votes: int | None
     share_pct: float | None
     #: Nur in einer Stichwahl: der Anteil dieser Person im ERSTEN Wahlgang.

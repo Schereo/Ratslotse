@@ -54,8 +54,8 @@
   ],
   "ob_kandidaten": [
     {"name": "Jascha Rohr", "beruf": "Unternehmer", "jahrgang": 1976, "vorgeschlagen_von": "BÜNDNIS 90/DIE GRÜNEN (GRÜNE)",
-     "parteilos": true, "unterstuetzt_von": ["CDU"],
-     "hinweis_quelle": "https://www.gruene-oldenburg.de/2025/07/nominierung-jascha-rohr-obwahl-2026/"},
+     "parteilos": true, "unterstuetzt_von": ["CDU", "Volt"],
+     "hinweis_quelle": ["https://www.gruene-oldenburg.de/2025/07/nominierung-jascha-rohr-obwahl-2026/", "https://voltdeutschland.org/oldenburg/neuigkeiten/wandel-statt-weiter-so-volt-oldenburg-unterstuetzt-jascha-rohr"]},
     {"name": "Ulf Prange", "beruf": "Landtagsabgeordneter/Jurist", "jahrgang": 1975, "vorgeschlagen_von": "Sozialdemokratische Partei Deutschlands (SPD)"},
     {"name": "Heike Boldt", "beruf": "Gewerkschaftssekretärin", "jahrgang": 1981, "vorgeschlagen_von": "Die Linke"},
     {"name": "Sebastian Fröhlich", "beruf": "Selbstständiger Kaufmann", "jahrgang": 1979, "vorgeschlagen_von": "Freie Demokratische Partei (FDP)"},

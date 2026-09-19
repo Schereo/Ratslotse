@@ -21,6 +21,8 @@ import { Kandidaten, type KandidatenFilter } from "@/components/wahlabend/kandid
 import { Wahlgebiete } from "@/components/wahlabend/wahlgebiete";
 import { Rangfolge, bereichAnker, springeZuBereich } from "@/components/wahlabend/rangfolge";
 import { Kopf } from "@/components/wahlabend/kopf";
+import { AuszaehlungsSimulator } from "@/components/wahlabend/simulator";
+import { TippspielEinladung } from "@/components/tipp/einladung";
 import { ReiterLeiste, ReiterTafel, type Reiter } from "@/components/ui/reiter";
 import { Mehrheiten } from "@/components/wahlabend/mehrheiten";
 import { Verlauf } from "@/components/wahlabend/verlauf";
@@ -1027,8 +1029,14 @@ export function WahlabendView() {
       <Kopf label="Wahlabend 2026" />
       <main className="mx-auto w-full max-w-7xl px-4 pb-16 sm:px-6 lg:px-10 @container">
         {inhalt}
+        {/* Der Weg ins Tippspiel dieser Wahl — was es dazu gibt, sagt das
+            Backend. `daten` ist hier noch optional (die Seite rendert auch
+            ohne Zahlen); ohne Wahl bleibt die Einladung bei der im Fokus. */}
+        <TippspielEinladung slug={daten?.election.slug} phase={daten?.phase ?? "before"} />
         <Fuss daten={daten} />
       </main>
+      {/* Nur auf dev sichtbar — die Bedienung für die Generalprobe. */}
+      <AuszaehlungsSimulator />
     </>
   );
 }
