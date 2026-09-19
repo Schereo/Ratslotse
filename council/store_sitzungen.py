@@ -1100,6 +1100,17 @@ class SitzungenMixin(StoreBasis):
         ).fetchone()
         return row[0] if row is not None else None
 
+    def item_summaries(self, ksinr: int, agenda_hash: str) -> list[dict]:
+        """Die gespeicherten TOP-Sätze dieser Tagesordnung, in der Reihenfolge
+        des Speicherns — dieselbe Form, die ``summarize_agenda_items`` liefert
+        (``[{"number", "summary"}]``). Leer, wenn die Sätze zu einem anderen
+        Stand gehören: Ein Satz zu einer alten Tagesordnung ist keiner."""
+        return [{"number": r["item_number"], "summary": r["summary"]}
+                for r in self._conn.execute(
+                    "SELECT item_number, summary FROM agenda_item_summaries "
+                    "WHERE ksinr = ? AND agenda_hash = ? ORDER BY rowid",
+                    (ksinr, agenda_hash))]
+
     def save_item_summaries(self, ksinr: int, agenda_hash: str, punkte: list[dict]) -> None:
         """TOP-Zusammenfassungen ersetzen (eine Tagesordnung, ein Stand)."""
         now = datetime.utcnow().isoformat(timespec="seconds")

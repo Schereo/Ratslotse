@@ -5,6 +5,7 @@ Run daily via cron: 0 7 * * *
 from __future__ import annotations
 
 import hashlib
+from html import escape as _esc
 import re
 import sys
 from pathlib import Path
@@ -227,14 +228,15 @@ def _aufzaehlung(council_store: CouncilStore, ksinr: int, punkte: list[dict]) ->
     misst die Bewertung nicht genau genug.
     """
     kartentexte = _kartentexte(council_store, ksinr)
+    titel = {i["item_number"]: i["title"] for i in council_store.agenda_items(ksinr)}
 
     def zeile(p: dict) -> str:
         nummer = p["number"]
         text = kartentexte.get(nummer) or p["summary"]
         mark = "Dringlichkeitsantrag" if ist_dringlichkeitsantrag(nummer) else nummer
-        return f"• <b>{mark}</b>: {text}"
+        return top_block(mark, titel.get(nummer), text)
 
-    alle = "\n".join(zeile(p) for p in punkte)
+    alle = "".join(zeile(p) for p in punkte)
     oben = _hervorgehoben(_tragweite_der_sitzung(council_store, ksinr), punkte)
     if not oben:
         return alle
@@ -242,9 +244,66 @@ def _aufzaehlung(council_store: CouncilStore, ksinr: int, punkte: list[dict]) ->
     # ``white-space:pre-wrap`` — jedes ``\n`` neben einem Block wäre dort eine
     # sichtbare Leerzeile.
     return (digest_email.abschnitt("Das Wichtigste")
-            + "\n".join(zeile(p) for p in punkte if p["number"] in oben)
+            + "".join(zeile(p) for p in punkte if p["number"] in oben)
             + digest_email.abschnitt("Alle Punkte", str(len(punkte)))
             + alle)
+
+
+#: Kennzeichen eines Tagesordnungspunkts in der gecachten Mail. Daran erkennt
+#: ``_gecachte_aufzaehlung``, ob ein Block aus der Zeit vor den Überschriften
+#: stammt — der wird dann aus den gespeicherten Sätzen neu gebaut.
+_TOP_MARKE = "rl-top"
+_DRINGLICH_MARKE_RE = re.compile(r"^\s*Dringlichkeitsantrag\s*[:–-]\s*", re.IGNORECASE)
+
+
+def top_block(mark: str, title: str | None, text: str) -> str:
+    """Ein Tagesordnungspunkt der Mail: Überschrift oben, der Satz darunter.
+
+    Bis zum 19.09.2026 stand je Punkt nur „Ö 6.3: Beantragt sind 9.512.500
+    Euro zusätzlich für Wohngeld …" — der Kartentext nennt bewusst nicht, wie
+    der Punkt heißt (er ergänzt den Titel, unter dem er in der App steht), in
+    der Mail fehlte der Titel aber ganz. Zwanzig Sätze ohne Überschrift, und
+    man wusste bei keinem, worum es formal geht (Tims Befund an der
+    Rats-Tagesordnung vom 28.09.2026).
+
+    Jetzt steht über jedem Satz, was auch in der App darüber steht: Nummer
+    und Titel des Punktes, so wie das Ratsinformationssystem ihn führt. Bei
+    einem Dringlichkeitsantrag nennt die Überschrift, was er ist, und lässt
+    die Marke im Titel weg — dieselbe Regel wie ``ohneMarke`` in der
+    Tagesordnung des Webs.
+
+    Der Umbruch zwischen Überschrift und Satz ist ein ``\n``, kein ``<br>``:
+    Die Hülle rendert mit ``white-space:pre-wrap``, und die Push-Vorschau
+    streicht Tags ersatzlos — mit ``<br>`` klebte dort der Titel am Satz.
+    """
+    if title and mark == "Dringlichkeitsantrag":
+        title = _DRINGLICH_MARKE_RE.sub("", title).strip() or None
+    kopf = f"{_esc(mark)} · {_esc(title)}" if title else _esc(mark)
+    return (f"<div class='{_TOP_MARKE}' style='margin:0 0 14px'>"
+            f"<b>{kopf}</b>\n{text}</div>")
+
+
+def _gecachte_aufzaehlung(council_store: CouncilStore, ksinr: int,
+                          agenda_hash: str) -> str | None:
+    """Der gecachte Mail-Block — und wo er noch aus der Zeit ohne Überschriften
+    stammt, ein frischer aus den gespeicherten Sätzen.
+
+    Der Block wird je Tagesordnung EINMAL gebaut und dann jedem weiteren
+    Abonnenten unverändert geschickt. Ohne diesen Schritt bekäme, wer den Rat
+    heute abonniert, für die Sitzung am 28.09. noch die Liste ohne Titel —
+    obwohl die Sätze dazu längst gespeichert sind (``agenda_item_summaries``).
+    Kostet nichts: kein Modell, nur ein Neubau aus der Datenbank. Wo die
+    Sätze fehlen, bleibt der alte Block stehen — lieber der als keiner.
+    """
+    summary = _ohne_altkopf(_ohne_altlink(council_store.get_cached_summary(ksinr, agenda_hash)))
+    if not summary or _TOP_MARKE in summary:
+        return summary
+    punkte = council_store.item_summaries(ksinr, agenda_hash)
+    if not punkte:
+        return summary
+    summary = _aufzaehlung(council_store, ksinr, punkte)
+    council_store.save_summary(ksinr, agenda_hash, summary)
+    return summary
 
 
 def _ohne_altlink(summary: str | None) -> str | None:
@@ -419,7 +478,7 @@ def main() -> dict:
 
         # The summary depends only on the session — compute once and cache.
         # A cached '' means "only routine TOPs" (still a valid cache hit).
-        summary = _ohne_altkopf(_ohne_altlink(council_store.get_cached_summary(ksinr, agenda_hash)))
+        summary = _gecachte_aufzaehlung(council_store, ksinr, agenda_hash)
         if summary is None:
             try:
                 # Strukturiert holen: dieselben Sätze stehen in der Mail UND
