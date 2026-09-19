@@ -122,8 +122,16 @@ function Tafel({ daten }: { daten: Stichwahl }) {
  *  es nur mit eigener Quelle, und die steht hier als Beleg daneben. Ohne
  *  Angaben bleibt die Zeile weg; sie ist kein Platzhalter. */
 function Herkunft({ k }: { k: StichwahlKandidat }) {
+  // Drei Stufen, die der Stimmzettel nicht unterscheidet: aufgestellt (eine
+  // eigene Versammlung, wie bei Grünen UND CDU für Rohr), unterstützt (ein
+  // Beschluss ohne Aufstellung, wie Volt) — und darüber die Frage, warum
+  // dann nur eine Partei auf dem Zettel steht (`ballot_note`).
+  const aufgestellt = k.co_nominated_by.length
+    ? `aufgestellt von ${[k.party, ...k.co_nominated_by].filter(Boolean).join(" und ")}`
+    : null;
   const teile = [
     k.independent ? "parteilos" : null,
+    aufgestellt,
     k.supported_by.length ? `unterstützt von ${k.supported_by.join(", ")}` : null,
   ].filter(Boolean);
   if (!teile.length) return null;
@@ -134,6 +142,11 @@ function Herkunft({ k }: { k: StichwahlKandidat }) {
   return (
     <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted-foreground">
       {teile.join(" · ")}
+      {k.ballot_note ? (
+        <span className="mt-1 block text-[12px] leading-relaxed">
+          {k.ballot_note}
+        </span>
+      ) : null}
       {k.note_sources.map((quelle, i) => (
         <span key={quelle}>
           {i === 0 ? " " : " · "}

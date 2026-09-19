@@ -359,7 +359,8 @@ def _mayor_night(w: elections.Election, probe: str | None, counted: int | None) 
                                    share_pct=c.share_pct, first_round_pct=vorher.get(c.slug),
                                    color=c.color, color_dark=c.color_dark,
                                    nominated_by=c.nominated_by, independent=c.independent,
-                                   supported_by=list(c.supported_by), note_sources=list(c.note_sources))
+                                   co_nominated_by=list(c.co_nominated_by), supported_by=list(c.supported_by),
+                                   ballot_note=c.ballot_note, note_sources=list(c.note_sources))
                     for c in stand.candidates],
         runoff=list(stand.runoff),
         elected=_gewaehlt(stand),

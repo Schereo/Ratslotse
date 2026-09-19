@@ -19,7 +19,7 @@ import {
 // neues Pflichtfeld in der Antwort soll hier auffallen (web/frontend/CLAUDE.md).
 const k = (slug: string, votes: number | null, share: number | null, vorher: number | null = null): StichwahlKandidat =>
   ({ slug, name: slug, party: "", votes, share_pct: share, first_round_pct: vorher, color: "", color_dark: "",
-     nominated_by: "", independent: false, supported_by: [], note_sources: [] });
+     nominated_by: "", independent: false, co_nominated_by: [], supported_by: [], ballot_note: "", note_sources: [] });
 
 describe("nachStimmen", () => {
   it("sortiert absteigend", () => {
