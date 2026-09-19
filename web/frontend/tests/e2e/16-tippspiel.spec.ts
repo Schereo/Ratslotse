@@ -45,7 +45,7 @@ function setup(overrides: Partial<Record<string, unknown>> = {}) {
     // Namensfeld aus — genau das haben diese Tests gemerkt.
     public: true,
     locked: false, locked_at: null, late_scored: false, shared_device: false, player_count: 3,
-    deadline_hint: "bis zur ersten Hochrechnung (ca. 20 Uhr)",
+    deadline_hint: "bis Sonntag, 13.09., 18:00 Uhr (Schließung der Wahllokale)", polls_close: "2026-09-13T18:00:00+02:00",
     parties: PARTEIEN, mayor_candidates: OB_KANDIDATUREN,
     party_options: PARTEI_OPTIONEN, turnout_previous: null, turnout_previous_label: "", successor_path: "",
     ...overrides,
@@ -57,7 +57,8 @@ function stichwahlSetup(overrides: Partial<Record<string, unknown>> = {}) {
   return setup({
     round: "stichwahl", title: "Tippspiel zur OB-Stichwahl", seats_total: 0, parties: [],
     election_slug: "ob-stichwahl-2026", election_title: "OB-Stichwahl Oldenburg", election_date: "2026-09-27",
-    tip_kind: "pct", previous_label: "", deadline_hint: "bis zum ersten Auszählungsstand (kurz nach 18 Uhr)",
+    tip_kind: "pct", previous_label: "", deadline_hint: "bis Sonntag, 27.09., 18:00 Uhr (Schließung der Wahllokale)",
+    polls_close: "2026-09-27T18:00:00+02:00",
     turnout_previous: 63.46, turnout_previous_label: "1. Wahlgang",
     ...overrides,
   });

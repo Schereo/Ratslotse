@@ -13,7 +13,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { apiUrl } from "@/lib/api";
-import { kandidaturenSatz, kurzesDatum, mitRunde } from "@/lib/tipp";
+import { kandidaturenSatz, kurzesDatum, mitRunde, uhrzeitKurz } from "@/lib/tipp";
 import type { TippSetup } from "@/lib/tipp";
 import { BrandMark } from "@/components/brand";
 import { Mascot } from "@/components/mascot";
@@ -33,17 +33,20 @@ export function NamensHinweis() {
   );
 }
 
-/** Die drei Regel-Kacheln unter dem Formular, je Wahlart. */
+/** Die drei Regel-Kacheln unter dem Formular, je Wahlart. Die Frist ist die
+ *  Schließung der Wahllokale (`polls_close`, Tims Regel 19.09.2026) — nicht
+ *  mehr „bis zur ersten Hochrechnung". */
 export function RegelKacheln({ setup }: { setup: TippSetup }) {
   const sitzwahl = setup.tip_kind === "seats";
+  const schluss = uhrzeitKurz(setup.polls_close) ?? "18:00";
   const kacheln = sitzwahl
     ? [
-        ["bis ca. 20 Uhr", "Bis zur ersten Hochrechnung kannst du deinen Tipp ändern."],
+        [`bis ${schluss} Uhr`, "Wenn die Wahllokale schließen, endet die Tippfrist."],
         ["5 · 3 · 1", "Punkte je Liste: genau richtig, 1 oder 2 Sitze daneben"],
         ["OB-Bonus", "bis zu 6 Punkte pro Person, dazu 6 für die Wahlbeteiligung"],
       ]
     : [
-        ["ab 18 Uhr", "Mit dem ersten Auszählungsstand endet die Tippfrist."],
+        [`bis ${schluss} Uhr`, "Wenn die Wahllokale schließen, endet die Tippfrist."],
         ["6 · 3 · 1", "Punkte je Kandidatur: höchstens 0,5 / 1,5 / 3 Prozentpunkte daneben"],
         ["Wahlbeteiligung", "bis zu 6 Punkte: 1 / 2,5 / 5 Punkte daneben"],
       ];

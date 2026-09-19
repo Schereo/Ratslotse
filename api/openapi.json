@@ -14206,6 +14206,10 @@
             "title": "Player Count",
             "type": "integer"
           },
+          "polls_close": {
+            "title": "Polls Close",
+            "type": "string"
+          },
           "previous_label": {
             "title": "Previous Label",
             "type": "string"
@@ -14268,6 +14272,7 @@
           "shared_device",
           "player_count",
           "deadline_hint",
+          "polls_close",
           "parties",
           "mayor_candidates",
           "party_options",

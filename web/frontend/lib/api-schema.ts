@@ -11296,6 +11296,8 @@ export interface components {
             phase: string;
             /** Player Count */
             player_count: number;
+            /** Polls Close */
+            polls_close: string;
             /** Previous Label */
             previous_label: string;
             /** Public */
@@ -20938,4 +20940,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 6250f43ff1c1cca2a48779cb630ba7c68e01ff03d4c6a41eb581e2e133fa1b84
+// vertrag-sha256: 9a75bb93cea87bd377367a5465f00a85c5ad41739719f9408105545d27dccf39

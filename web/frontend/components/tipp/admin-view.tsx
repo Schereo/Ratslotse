@@ -375,7 +375,7 @@ export function TippAdminView() {
                     </Button>
                   : <span className="font-mono text-[11px] text-muted-foreground">{schluss ? `bis ${schluss}` : ""}</span>} />
               <PhaseZeile zustand={phase === "open" ? "offen" : "erledigt"} titel="Ende der Tippfrist"
-                rechts={<span className="font-mono text-[11px] text-muted-foreground">{schluss ? `${schluss} Uhr` : sitzwahl ? "mit der 1. Hochrechnung" : "mit dem 1. Auszählungsstand"}</span>} />
+                rechts={<span className="font-mono text-[11px] text-muted-foreground">{schluss ? `${schluss} Uhr` : `${uhrzeitKurz(setup.polls_close) ?? "18:00"} Uhr`}</span>} />
               <PhaseZeile zustand={phase === "locked" ? "aktiv" : phase === "final" ? "erledigt" : "offen"} titel={sitzwahl ? "Live · Hochrechnungen" : "Live · Auszählung"}
                 rechts={<span className="font-mono text-[11px] text-primary">{phase === "locked" && veroeffentlichtAm ? `Stand ${uhrzeitKurz(veroeffentlichtAm)}` : ""}</span>} />
               <PhaseZeile zustand={phase === "final" ? "aktiv" : "offen"} titel="Endergebnis"
@@ -394,9 +394,8 @@ export function TippAdminView() {
                 )} />
             </div>
             <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-              {sitzwahl
-                ? "Die Tippfrist endet automatisch mit der ersten Hochrechnung der Ratswahl."
-                : `Die Tippfrist endet automatisch mit dem ersten Auszählungsstand der ${setup.election_title}.`}
+              Die Tippfrist endet automatisch um {uhrzeitKurz(setup.polls_close) ?? "18:00"} Uhr, wenn die Wahllokale schließen
+              {sitzwahl ? " — oder früher mit der ersten Hochrechnung." : " — oder früher mit dem ersten Auszählungsstand."}
               {" "}Mit „Endstand setzen“ kennzeichnest du den aktuellen Stand als Endergebnis.
             </p>
             {/* Geteiltes Gerät — je Runde. Vallys Kreis (13.09.) hat nicht

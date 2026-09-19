@@ -226,14 +226,29 @@ def _read_mayor(probe: str | None, counted: int | None, w: elections.Election) -
         return None
 
 
+def _jetzt() -> datetime:
+    """Die Uhr — als Funktion, damit Tests sie stellen können."""
+    return datetime.now(timezone.utc)
+
+
+WOCHENTAGE = ("Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag")
+
+
 def _check_auto_lock(store: Store, game_id: int, night: ElectionNight | None = None,
                      ob: mayor.MayorResult | None = None) -> None:
-    """Setzt den Tipp-Schluss, sobald die erste Zahl der ECHTEN Wahl dieser
-    Runde da ist — NIE aus der Generalprobe (``_build`` ruft das nur im
-    Live-Pfad auf; der Router bei jedem ``POST /api/tipp``, ohne ``night``
-    und ``ob``, dann liest die Funktion selbst).
+    """Setzt den Tipp-Schluss — **spätestens um 18 Uhr am Wahltag**, wenn die
+    Wahllokale schließen (``polls_close`` der Wahl; Tims Regel 19.09.2026),
+    und davor schon, sobald die erste Zahl der ECHTEN Wahl dieser Runde da
+    ist. NIE aus der Generalprobe (``_build`` ruft das nur im Live-Pfad auf;
+    der Router bei jedem ``POST /api/tipp``, ohne ``night`` und ``ob``, dann
+    liest die Funktion selbst).
 
-    Bei einer Ratswahl ist das die erste Hochrechnung, bei einer OB- oder
+    Die Uhr-Regel braucht keinen Cron: Jeder Aufruf nach 18 Uhr — Tafel,
+    Beitritt, Tipp — sperrt zuerst, und ``locked_at`` ist die Schließung
+    selbst, nicht der Moment des Aufrufs. So sagt „Die Tippfrist endete um
+    18:00 Uhr" die Wahrheit, auch wenn der erste Aufruf um 18:07 kam.
+
+    Bei einer Ratswahl ist die erste Zahl die Hochrechnung, bei einer OB- oder
     Stichwahl der erste Auszählungsstand mit Prozenten. **Der Wahlabend
     gehört der RUNDE, nicht dem Dienst:** Eine Runde auf eine andere Wahl
     darf nicht zumachen, weil irgendwo anders ausgezählt wird.
@@ -242,6 +257,11 @@ def _check_auto_lock(store: Store, game_id: int, night: ElectionNight | None = N
     if game["phase"] != "open":
         return
     b = basis(game)
+    if _jetzt() >= b.wahl.polls_close:
+        schluss = b.wahl.polls_close.astimezone(timezone.utc).isoformat(timespec="seconds")
+        store.prediction_game_set(game_id, phase="locked", locked_at=schluss, locked_reason="polls_close")
+        store.prediction_log_add(game_id, f"Wahllokale geschlossen · Tipp-Schluss automatisch gesetzt ({_uhrzeit(schluss)} Uhr)")
+        return
     if b.sitzwahl:
         if b.wahl.slug != elections.active().slug:
             return
@@ -262,10 +282,14 @@ def _check_auto_lock(store: Store, game_id: int, night: ElectionNight | None = N
     store.prediction_log_add(game_id, f"{anlass} · Tipp-Schluss automatisch gesetzt ({_uhrzeit(now)} Uhr)")
 
 
-def _deadline_hint(game: dict, sitzwahl: bool) -> str:
+def _deadline_hint(game: dict, wahl: elections.Election) -> str:
+    """„bis Sonntag, 27.09., 18:00 Uhr (Schließung der Wahllokale)" — die
+    feste Frist; dass die erste Zahl sie noch früher beenden kann, ist die
+    Ausnahme und steht nicht im Satz."""
     if game["phase"] == "open":
-        return ("bis zur ersten Hochrechnung (ca. 20 Uhr)" if sitzwahl
-                else "bis zum ersten Auszählungsstand (kurz nach 18 Uhr)")
+        schluss = wahl.polls_close.astimezone(BERLIN)
+        return (f"bis {WOCHENTAGE[schluss.weekday()]}, {schluss:%d.%m.}, {schluss:%H:%M} Uhr "
+                f"(Schließung der Wahllokale)")
     if game["locked_at"]:
         return f"Die Tippfrist endete um {_uhrzeit(game['locked_at'])} Uhr."
     return "Die Tippfrist ist vorbei."
@@ -565,7 +589,8 @@ def setup(store: Store, game_id: int) -> PredictionGame:
         locked=game["phase"] != "open", locked_at=game["locked_at"],
         late_scored=bool(game["late_scored"]), shared_device=bool(game["shared_device"]),
         player_count=store.prediction_player_count(game_id),
-        deadline_hint=_deadline_hint(game, b.sitzwahl), parties=parties, mayor_candidates=mayors,
+        deadline_hint=_deadline_hint(game, b.wahl), polls_close=b.wahl.polls_close.isoformat(),
+        parties=parties, mayor_candidates=mayors,
         party_options=party_options(),
         turnout_previous=turnout_previous, turnout_previous_label=turnout_label,
         successor_path=_successor_path(store, game, runde),

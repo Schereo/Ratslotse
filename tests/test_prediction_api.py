@@ -13,6 +13,7 @@ Handeingabe (Entwurf ändert die Tafel NICHT, Veröffentlichen schon).
 from __future__ import annotations
 
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -45,6 +46,11 @@ def keine_echten_netzaufrufe(monkeypatch):
     überschreibt ``election_service.live`` lokal in seinem eigenen Test."""
     monkeypatch.setattr(election_service, "live", lambda: election_service.probe(0))
     monkeypatch.setattr(mayor_module, "fetch", lambda force=False, w=None: mayor_module.probe(0, w))
+    # Die Uhr steht VOR der Schließung der Wahllokale (13.09.2026, 18 Uhr):
+    # Seit 19.09.2026 sperrt sich eine Runde um 18 Uhr am Wahltag von selbst —
+    # mit der echten Uhr wäre die Ratswahl-Runde hier sofort zu.
+    monkeypatch.setattr(prediction_service, "_jetzt",
+                        lambda: datetime(2026, 9, 13, 10, 0, tzinfo=timezone.utc))
 
 
 @pytest.fixture

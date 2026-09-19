@@ -4758,10 +4758,13 @@ class PredictionGame(TypedDict):
     #: Cookie löscht und den Tipp behält. Aus in der Hauptrunde.
     shared_device: bool
     player_count: int
-    #: Menschentext für den Zeitpunkt des Tipp-Schlusses, z. B. „bis zur
-    #: ersten Hochrechnung (ca. 20 Uhr)" — der Server nennt keine feste Uhrzeit,
-    #: solange der Tipp-Schluss noch nicht gesetzt ist.
+    #: Menschentext für den Zeitpunkt des Tipp-Schlusses, z. B. „bis Sonntag,
+    #: 27.09., 18:00 Uhr (Schließung der Wahllokale)"; nach dem Schluss die
+    #: Uhrzeit, zu der er fiel.
     deadline_hint: str
+    #: Schließung der Wahllokale (ISO mit Zeitzone) — ab dann ist Tipp-Schluss,
+    #: spätestens. Eine erste Zahl davor beendet die Frist früher.
+    polls_close: str
     parties: list[PredictionParty]
     mayor_candidates: list[PredictionMayorCandidate]
     #: Das Parteien-Menü beim Beitritt (freiwillig, ohne AfD).

@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import sqlite3
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -52,6 +53,11 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setenv("FEATURE_FLAGS", "tippspiel,wahlabend")
     monkeypatch.setattr(election_service, "live", lambda: election_service.probe(0))
     monkeypatch.setattr(mayor_module, "fetch", _stichwahl_stand(0))
+    # Die Uhr steht VOR der Schließung der Wahllokale (13.09.2026, 18 Uhr):
+    # Seit 19.09.2026 sperrt sich eine Runde um 18 Uhr am Wahltag von selbst —
+    # mit der echten Uhr wäre die Ratswahl-Runde hier sofort zu.
+    monkeypatch.setattr(service, "_jetzt",
+                        lambda: datetime(2026, 9, 13, 10, 0, tzinfo=timezone.utc))
     store = Store(tmp_path / "stichwahl.sqlite")
     app.dependency_overrides[get_store] = lambda: store
     service.reset_all()
@@ -97,7 +103,7 @@ def test_setup_nennt_die_beiden_kandidaturen_und_das_parteien_menue(client):
     assert "stille" not in slugs, "ein Einzelwahlvorschlag ist keine Partei"
     assert {"gruene", "spd", "cdu", "volt", "fuer-oldenburg"} <= set(slugs)
     assert daten["turnout_previous"] == pytest.approx(63.46) and daten["turnout_previous_label"] == "1. Wahlgang"
-    assert "Auszählungsstand" in daten["deadline_hint"]
+    assert "Schließung der Wahllokale" in daten["deadline_hint"]
 
 
 def test_die_uebersicht_verlinkt_die_stichwahl_ohne_konto(client):
@@ -302,3 +308,39 @@ def test_eine_alte_datenbank_bekommt_die_neuen_spalten(tmp_path):
         assert zeile["party"] is None and zeile["turnout_pct"] is None and zeile["seats_json"] == '{"spd": 52}'
     finally:
         st.close()
+
+
+# ------------------------------------------------------------------ 18 Uhr ist Schluss (Tims Regel 19.09.2026)
+
+def test_um_18_uhr_am_wahltag_ist_tipp_schluss_auch_ohne_zahl(client, store, monkeypatch):
+    """Die Wahllokale schließen um 18 Uhr — ab dann wird nicht mehr getippt,
+    egal ob der Votemanager schon etwas meldet. ``locked_at`` ist die
+    Schließung selbst, nicht der Moment des ersten Aufrufs danach."""
+    tippen(client, "Anna", 52.0, 48.0)
+    game_id = store.prediction_spiel_zeile("stichwahl")["id"]
+    monkeypatch.setattr(service, "_jetzt", lambda: datetime(2026, 9, 27, 15, 59, 59, tzinfo=timezone.utc))
+    service.reset_all()
+    client.get(f"/api/tipp/stand{RUNDE}")
+    assert store.prediction_game(game_id)["phase"] == "open", "um 17:59:59 deutscher Zeit noch offen"
+
+    monkeypatch.setattr(service, "_jetzt", lambda: datetime(2026, 9, 27, 16, 7, tzinfo=timezone.utc))  # 18:07 Berlin
+    service.reset_all()
+    client.get(f"/api/tipp/stand{RUNDE}")
+    game = store.prediction_game(game_id)
+    assert game["phase"] == "locked" and game["locked_reason"] == "polls_close"
+    assert game["locked_at"] == "2026-09-27T16:00:00+00:00", "die Schließung, nicht 18:07"
+    setup = client.get(f"/api/tipp/setup{RUNDE}").json()
+    assert setup["deadline_hint"] == "Die Tippfrist endete um 18:00 Uhr."
+    assert any("Wahllokale geschlossen" in e["text"] for e in store.prediction_log(game_id))
+    # Ein Tipp danach ist 409 für Rechtzeitige …
+    assert client.post(f"/api/tipp{RUNDE}", json={"seats": None, "mayor": {"prange": 50.0, "rohr": 50.0}}).status_code == 409
+    # … und wer jetzt erst kommt, tippt nach.
+    client.cookies.clear()
+    spaet = client.post(f"/api/tipp{RUNDE}", json={"name": "Spät", "seats": None, "mayor": {"prange": 50.0, "rohr": 50.0}}).json()
+    assert spaet["late_at"] is not None
+
+
+def test_die_frist_steht_im_setup(client):
+    setup = client.get(f"/api/tipp/setup{RUNDE}").json()
+    assert setup["deadline_hint"] == "bis Sonntag, 27.09., 18:00 Uhr (Schließung der Wahllokale)"
+    assert setup["polls_close"] == "2026-09-27T18:00:00+02:00"

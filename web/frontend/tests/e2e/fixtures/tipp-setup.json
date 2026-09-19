@@ -6,7 +6,7 @@
   "locked_at": null,
   "late_scored": false,
   "player_count": 5,
-  "deadline_hint": "bis zur ersten Hochrechnung (ca. 20 Uhr)",
+  "deadline_hint": "bis Sonntag, 13.09., 18:00 Uhr (Schließung der Wahllokale)",
   "parties": [
     {"slug": "gruene", "short": "Grüne", "name": "Bündnis 90/Die Grünen", "color": "#4C9F38", "color_dark": "#6DBE5A", "seats_previous": 13},
     {"slug": "spd", "short": "SPD", "name": "SPD", "color": "#E3000F", "color_dark": "#F2394A", "seats_previous": 11},
@@ -34,5 +34,6 @@
   ],
   "turnout_previous": null,
   "turnout_previous_label": "",
-  "successor_path": ""
+  "successor_path": "",
+  "polls_close": "2026-09-13T18:00:00+02:00"
 }

@@ -84,11 +84,14 @@ Admin) und ist wie der Name nur vom Admin änderbar
 ist eine freiwillige, öffentliche Selbstauskunft — mit der Teilnahme
 (`DELETE /api/tipp/me`, Kontolöschung) verschwindet sie.
 
-**Der Tipp-Schluss setzt sich selbst.** Sobald die erste echte Hochrechnung
-eintrifft (`_check_auto_lock`, ausgelöst durch jeden `GET /api/tipp/stand`,
-solange die Phase noch `open` ist), springt das Spiel automatisch auf
-`locked` — niemand muss um 20 Uhr im Admin auf einen Knopf drücken. Bleibt die
-Hochrechnung aus, tut es der Admin von Hand („Tippen jetzt schließen").
+**Der Tipp-Schluss setzt sich selbst — spätestens um 18 Uhr am Wahltag.**
+Seit 19.09.2026 (Tims Regel) ist die Schließung der Wahllokale
+(`polls_close` der Wahl) die feste Frist: Jeder Aufruf danach — Tafel,
+Beitritt, Tipp — sperrt zuerst (`_check_auto_lock`), und `locked_at` ist die
+Schließung selbst, nicht der Moment des Aufrufs. Davor beendet schon die
+erste echte Zahl der Wahl die Frist (Hochrechnung bei der Ratswahl,
+Auszählungsstand bei der Stichwahl). Niemand muss im Admin auf einen Knopf
+drücken; der Knopf „Tippen beenden" bleibt für den Fall der Fälle.
 
 **Ein später Beitritt zählt „außer Konkurrenz".** Wer erst nach dem
 Tipp-Schluss beitritt, bekommt das Etikett „nachgetippt" und taucht auf der
