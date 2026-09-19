@@ -98,7 +98,16 @@ class MayorCandidate:
     #: (`note_sources`). Ohne Beleg bleibt das Feld leer: In einem
     #: Wahlprodukt ist eine unbelegte Zuschreibung schlimmer als keine.
     independent: bool = False
+    #: Parteien, die die Person auf einer EIGENEN Versammlung aufgestellt
+    #: haben, ohne auf dem Stimmzettel zu stehen (2026: die CDU bei Rohr).
+    #: Das ist mehr als Unterstützung — und weniger als der Wahlvorschlag,
+    #: denn den kennt § 45d NKWG je Person nur einmal (s. ``ballot_note``).
+    co_nominated_by: tuple[str, ...] = ()
+    #: Listen, die unterstützen, ohne aufzustellen (2026: Volt bei Rohr).
     supported_by: tuple[str, ...] = ()
+    #: Warum trotz mehrerer Aufstellungen nur EIN Wahlvorschlag auf dem
+    #: Zettel steht — der Satz für die Seite, aus der Datei, mit Beleg.
+    ballot_note: str = ""
     #: MEHRERE Belege, seit eine zweite Unterstützung dazukam (Volt für Rohr,
     #: 15.09.2026): Eine Quelle deckt nicht, was eine andere Gruppe erklärt
     #: hat. Die Datei darf weiter einen einzelnen String tragen.
@@ -200,7 +209,9 @@ def candidates(w: elections.Election | None = None) -> tuple[MayorCandidate, ...
             # eine unbelegte Zuschreibung ist in einem Wahlprodukt das
             # Gegenteil von Präzision.
             independent=bool(k.get("parteilos")) and bool(_quellen(k)),
+            co_nominated_by=tuple(k.get("aufgestellt_auch_von") or ()) if _quellen(k) else (),
             supported_by=tuple(k.get("unterstuetzt_von") or ()) if _quellen(k) else (),
+            ballot_note=(k.get("stimmzettel_hinweis") or "") if _quellen(k) else "",
             note_sources=_quellen(k),
         ))
     if nur and len(out) != len(nur):

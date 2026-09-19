@@ -12274,6 +12274,17 @@
       },
       "MayorCandidate": {
         "properties": {
+          "ballot_note": {
+            "title": "Ballot Note",
+            "type": "string"
+          },
+          "co_nominated_by": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Co Nominated By",
+            "type": "array"
+          },
           "color": {
             "title": "Color",
             "type": "string"
@@ -12344,7 +12355,9 @@
           "party",
           "nominated_by",
           "independent",
+          "co_nominated_by",
           "supported_by",
+          "ballot_note",
           "note_sources",
           "votes",
           "share_pct",

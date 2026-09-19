@@ -4340,8 +4340,9 @@ class MayorCandidate(TypedDict):
     #: Stimmzettel steht je Kandidatur genau eine Liste; wer sie aufgestellt
     #: hat, muss weder ihr Mitglied sein noch ihre einzige Unterstützung
     #: haben. 2026 in Oldenburg: Jascha Rohr steht als GRÜNE auf dem Zettel,
-    #: ist parteilos und wird auch von der CDU unterstützt. Die drei Felder
-    #: darunter machen den Unterschied sichtbar, statt ihn zu verschweigen.
+    #: ist parteilos, wurde von Grünen UND CDU aufgestellt und wird von Volt
+    #: unterstützt — § 45d NKWG kennt je Person nur einen Wahlvorschlag. Die
+    #: Felder darunter machen den Unterschied sichtbar, statt ihn zu verschweigen.
     party: str
     #: Der volle amtliche Name des Wahlvorschlags („BÜNDNIS 90/DIE GRÜNEN
     #: (GRÜNE)"), wie er in der Bekanntmachung steht.
@@ -4350,9 +4351,17 @@ class MayorCandidate(TypedDict):
     #: ``False`` heißt NICHT „Mitglied": Es heißt, dass uns dazu nichts
     #: Belegtes vorliegt.
     independent: bool
+    #: Parteien, die die Person auf einer eigenen Versammlung aufgestellt
+    #: haben, aber nicht auf dem Stimmzettel stehen — Kurznamen, leer im
+    #: Normalfall (2026: „CDU" bei Rohr).
+    co_nominated_by: list[str]
     #: Weitere Listen, die diese Kandidatur unterstützen, ohne sie
-    #: vorzuschlagen — Kurznamen, leer im Normalfall.
+    #: aufzustellen — Kurznamen, leer im Normalfall (2026: „Volt" bei Rohr).
     supported_by: list[str]
+    #: Warum trotz mehrerer Aufstellungen nur ein Wahlvorschlag auf dem
+    #: Zettel steht — ein Satz für die Seite; leer, wenn es nichts zu
+    #: erklären gibt.
+    ballot_note: str
     #: Belege für die beiden Angaben darüber. Sie stehen NICHT in der
     #: amtlichen Bekanntmachung; ohne Quelle zeigt die Seite sie nicht.
     #: Mehrere, weil zwei Gruppen dieselbe Kandidatur unabhängig voneinander

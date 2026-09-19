@@ -50,12 +50,18 @@ def test_rohr_steht_als_gruener_auf_dem_zettel_und_ist_parteilos():
     assert rohr.nominated_by == "BÜNDNIS 90/DIE GRÜNEN (GRÜNE)"
     # Und was daneben gehört, damit daraus kein Parteibuch wird.
     assert rohr.independent is True
-    # Seit dem 15.09.2026 zwei Unterstützungen — und je eine eigene Quelle:
-    # Die Nominierungs-Seite der Grünen belegt nicht, was Volt beschlossen hat.
-    assert rohr.supported_by == ("CDU", "Volt")
-    assert len(rohr.note_sources) == 2
+    # Recherchiert 19.09.2026: Grüne (2.7.2025) UND CDU (eigene
+    # Aufstellungsversammlung) haben Rohr aufgestellt; auf dem Zettel steht
+    # nur ein Wahlvorschlag, weil § 45d NKWG je Person nur einen kennt. Volt
+    # unterstützt seit dem 15.09.2026, ohne Aufstellung. Je Aussage eine
+    # eigene Quelle — die Grünen-Seite belegt nicht, was CDU oder Volt
+    # beschlossen haben.
+    assert rohr.co_nominated_by == ("CDU",)
+    assert rohr.supported_by == ("Volt",)
+    assert "45d" in rohr.ballot_note and "Wahlvorschlag" in rohr.ballot_note
+    assert len(rohr.note_sources) == 4
     assert all(q.startswith("https://") for q in rohr.note_sources)
-    assert any("volt" in q for q in rohr.note_sources)
+    assert any("volt" in q for q in rohr.note_sources) and any("jascha-rohr" in q for q in rohr.note_sources)
 
 
 def test_wer_nichts_dazu_gemeldet_hat_bekommt_auch_nichts_angedichtet():
@@ -65,6 +71,7 @@ def test_wer_nichts_dazu_gemeldet_hat_bekommt_auch_nichts_angedichtet():
         if c.slug == "rohr":
             continue
         assert c.independent is False and c.supported_by == () and c.note_sources == (), c.slug
+        assert c.co_nominated_by == () and c.ballot_note == "", c.slug
 
 
 def test_ohne_quelle_keine_aussage(tmp_path, monkeypatch):
@@ -77,7 +84,9 @@ def test_ohne_quelle_keine_aussage(tmp_path, monkeypatch):
         k.pop("hinweis_quelle", None)
         if k["name"] == "Jascha Rohr":
             k["parteilos"] = True
-            k["unterstuetzt_von"] = ["CDU"]
+            k["aufgestellt_auch_von"] = ["CDU"]
+            k["unterstuetzt_von"] = ["Volt"]
+            k["stimmzettel_hinweis"] = "Nur ein Wahlvorschlag je Person."
     datei = tmp_path / "wahl-fakten.json"
     datei.write_text(json.dumps(daten, ensure_ascii=False), encoding="utf-8")
 
@@ -86,6 +95,7 @@ def test_ohne_quelle_keine_aussage(tmp_path, monkeypatch):
     ohne = mayor.candidates(_mit_datei(wahl, datei))
     rohr = next(c for c in ohne if c.slug == "rohr")
     assert rohr.independent is False and rohr.supported_by == () and rohr.note_sources == ()
+    assert rohr.co_nominated_by == () and rohr.ballot_note == "", "auch die Aufstellung und der Zettel-Satz brauchen den Beleg"
     # Der Wahlvorschlag selbst bleibt natürlich stehen — der IST amtlich.
     assert rohr.party == "GRÜNE"
 
