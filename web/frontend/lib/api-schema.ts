@@ -4573,8 +4573,10 @@ export interface paths {
         put?: never;
         /**
          * Jetzt Abfragen
-         * @description „Jetzt abfragen": die Live-Zahlen der Ratswahl UND der OB-Wahl in den
-         *     Entwurf übernehmen — NICHT veröffentlicht, das bleibt ein eigener Schritt.
+         * @description „Jetzt abfragen": die Live-Zahlen der Wahl DIESER Runde in den Entwurf
+         *     übernehmen — bei einer Ratswahl Sitze UND OB-Prozente, bei einer OB- oder
+         *     Stichwahl nur deren Prozente; dazu die Wahlbeteiligung. NICHT
+         *     veröffentlicht, das bleibt ein eigener Schritt.
          */
         post: operations["jetzt_abfragen_api_tipp_admin_abfragen_post"];
         delete?: never;
@@ -11224,6 +11226,8 @@ export interface components {
             has_mayor_tip: boolean;
             /** Has Tip */
             has_tip: boolean;
+            /** Has Turnout Tip */
+            has_turnout_tip: boolean;
             /** Hidden */
             hidden: boolean;
             /** Id */
@@ -11232,6 +11236,8 @@ export interface components {
             late_at: string | null;
             /** Name */
             name: string;
+            /** Party */
+            party: string | null;
         };
         /** PredictionAdminStand */
         PredictionAdminStand: {
@@ -11284,6 +11290,8 @@ export interface components {
             mayor_candidates: components["schemas"]["PredictionMayorCandidate"][];
             /** Parties */
             parties: components["schemas"]["PredictionParty"][];
+            /** Party Options */
+            party_options: components["schemas"]["PredictionPartyOption"][];
             /** Phase */
             phase: string;
             /** Player Count */
@@ -11298,10 +11306,16 @@ export interface components {
             seats_total: number;
             /** Shared Device */
             shared_device: boolean;
+            /** Successor Path */
+            successor_path: string;
             /** Tip Kind */
             tip_kind: string;
             /** Title */
             title: string;
+            /** Turnout Previous */
+            turnout_previous: number | null;
+            /** Turnout Previous Label */
+            turnout_previous_label: string;
         };
         /**
          * PredictionJoinIn
@@ -11319,10 +11333,14 @@ export interface components {
             } | null;
             /** Name */
             name?: string | null;
+            /** Party */
+            party?: string | null;
             /** Seats */
             seats?: {
                 [key: string]: number;
             } | null;
+            /** Turnout */
+            turnout?: number | null;
         };
         /** PredictionMayorCandidate */
         PredictionMayorCandidate: {
@@ -11380,6 +11398,23 @@ export interface components {
             name: string;
             /** Notes */
             notes: string[];
+            /**
+             * PredictionPartyOption
+             * @description Ein Eintrag im Parteien-Menü beim Beitritt (freiwillig) — und das
+             *     Etikett neben dem Namen in der Rangliste. Die Liste kommt aus dem
+             *     Kandidatenregister der Ratswahl, ohne AfD (Tims Entscheidung 19.09.2026)
+             *     und ohne Einzelwahlvorschläge (die sind keine Partei).
+             */
+            party: {
+                /** Color */
+                color: string;
+                /** Color Dark */
+                color_dark: string;
+                /** Short */
+                short: string;
+                /** Slug */
+                slug: string;
+            } | null;
             /** Phase */
             phase: string;
             /** Player Id */
@@ -11396,10 +11431,14 @@ export interface components {
                 exact_lists: number;
                 /** Mayor Points */
                 mayor_points: number;
+                /** Pct Deviation */
+                pct_deviation: number | null;
                 /** Seat Points */
                 seat_points: number;
                 /** Total */
                 total: number;
+                /** Turnout Points */
+                turnout_points: number;
             } | null;
             /** Scored */
             scored: boolean;
@@ -11409,6 +11448,20 @@ export interface components {
             source_label: string;
             /** Stand Label */
             stand_label: string;
+            /**
+             * PredictionTurnoutLine
+             * @description Der eigene Tipp zur Wahlbeteiligung („meins").
+             */
+            turnout: {
+                /** Actual Pct */
+                actual_pct: number | null;
+                /** Avg Tip */
+                avg_tip: number | null;
+                /** Points */
+                points: number;
+                /** Tip */
+                tip: number;
+            } | null;
         };
         /** PredictionParty */
         PredictionParty: {
@@ -11420,6 +11473,23 @@ export interface components {
             name: string;
             /** Seats Previous */
             seats_previous: number | null;
+            /** Short */
+            short: string;
+            /** Slug */
+            slug: string;
+        };
+        /**
+         * PredictionPartyOption
+         * @description Ein Eintrag im Parteien-Menü beim Beitritt (freiwillig) — und das
+         *     Etikett neben dem Namen in der Rangliste. Die Liste kommt aus dem
+         *     Kandidatenregister der Ratswahl, ohne AfD (Tims Entscheidung 19.09.2026)
+         *     und ohne Einzelwahlvorschläge (die sind keine Partei).
+         */
+        PredictionPartyOption: {
+            /** Color */
+            color: string;
+            /** Color Dark */
+            color_dark: string;
             /** Short */
             short: string;
             /** Slug */
@@ -11441,6 +11511,8 @@ export interface components {
             hidden?: boolean | null;
             /** Name */
             name?: string | null;
+            /** Party */
+            party?: string | null;
         };
         /** PredictionResultLineIn */
         PredictionResultLineIn: {
@@ -11501,6 +11573,23 @@ export interface components {
             late_at: string | null;
             /** Name */
             name: string;
+            /**
+             * PredictionPartyOption
+             * @description Ein Eintrag im Parteien-Menü beim Beitritt (freiwillig) — und das
+             *     Etikett neben dem Namen in der Rangliste. Die Liste kommt aus dem
+             *     Kandidatenregister der Ratswahl, ohne AfD (Tims Entscheidung 19.09.2026)
+             *     und ohne Einzelwahlvorschläge (die sind keine Partei).
+             */
+            party: {
+                /** Color */
+                color: string;
+                /** Color Dark */
+                color_dark: string;
+                /** Short */
+                short: string;
+                /** Slug */
+                slug: string;
+            } | null;
             /** Player Id */
             player_id: number;
             /** Rank */
@@ -11515,10 +11604,14 @@ export interface components {
                 exact_lists: number;
                 /** Mayor Points */
                 mayor_points: number;
+                /** Pct Deviation */
+                pct_deviation: number | null;
                 /** Seat Points */
                 seat_points: number;
                 /** Total */
                 total: number;
+                /** Turnout Points */
+                turnout_points: number;
             } | null;
             /** Scored */
             scored: boolean;
@@ -11531,10 +11624,14 @@ export interface components {
             exact_lists: number;
             /** Mayor Points */
             mayor_points: number;
+            /** Pct Deviation */
+            pct_deviation: number | null;
             /** Seat Points */
             seat_points: number;
             /** Total */
             total: number;
+            /** Turnout Points */
+            turnout_points: number;
         };
         /** PredictionSeatLine */
         PredictionSeatLine: {
@@ -11596,8 +11693,37 @@ export interface components {
             stand_label: string;
             /** Tip Count */
             tip_count: number;
+            /** Tip Kind */
+            tip_kind: string;
             /** Title */
             title: string;
+            turnout: components["schemas"]["PredictionTurnoutCompare"];
+        };
+        /**
+         * PredictionTurnoutCompare
+         * @description Die Wahlbeteiligung auf der öffentlichen Tafel: Ist und Ø-Tipp.
+         */
+        PredictionTurnoutCompare: {
+            /** Actual Pct */
+            actual_pct: number | null;
+            /** Avg Tip */
+            avg_tip: number | null;
+            /** Tip Count */
+            tip_count: number;
+        };
+        /**
+         * PredictionTurnoutLine
+         * @description Der eigene Tipp zur Wahlbeteiligung („meins").
+         */
+        PredictionTurnoutLine: {
+            /** Actual Pct */
+            actual_pct: number | null;
+            /** Avg Tip */
+            avg_tip: number | null;
+            /** Points */
+            points: number;
+            /** Tip */
+            tip: number;
         };
         /** ProjectReportIn */
         ProjectReportIn: {
@@ -20812,4 +20938,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 00197093796a6d45d4d6b49ed200bd01c402c0c4358ecf35c8afaf63ac304d6c
+// vertrag-sha256: 6250f43ff1c1cca2a48779cb630ba7c68e01ff03d4c6a41eb581e2e133fa1b84

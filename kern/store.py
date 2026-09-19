@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
 from collections.abc import Iterable
+from types import EllipsisType
 from kern.dbfehler import neue_id, tabelle_fehlt
 from kern.maintenance import require_database_available
 
@@ -670,12 +671,19 @@ CREATE TABLE IF NOT EXISTS prediction_players (
     token_hash  TEXT NOT NULL UNIQUE, -- sha256 des Cookie-Geheimnisses
     created_at  TEXT NOT NULL,
     late_at     TEXT,                 -- gesetzt, wenn nach dem Tipp-Schluss (neu) getippt
-    hidden_at   TEXT                  -- Moderation im Admin: NULL = sichtbar
+    hidden_at   TEXT,                 -- Moderation im Admin: NULL = sichtbar
+    -- Parteizugehörigkeit, FREIWILLIG beim Beitritt gewählt (Slug einer
+    -- Wahlliste, z. B. 'volt') — steht sichtbar neben dem Namen in der
+    -- Rangliste. NULL = keine Angabe. Welche zur Wahl stehen, sagt
+    -- `prediction/service.py::party_options` (ohne AfD, Tims Entscheidung
+    -- 19.09.2026); die Spalte hält nur, was die Person selbst gewählt hat.
+    party       TEXT
 );
 CREATE TABLE IF NOT EXISTS prediction_tips (
     player_id   INTEGER PRIMARY KEY REFERENCES prediction_players(id),
-    seats_json  TEXT NOT NULL,        -- {"gruene": 14, …} alle 16 Slugs, Summe 52
+    seats_json  TEXT NOT NULL,        -- {"gruene": 14, …} alle Slugs der Wahl, Summe = Sitze; 'null' bei einer Prozentwahl
     mayor_json  TEXT,                 -- {"rohr": 31.5, …} oder NULL (nicht mitgetippt)
+    turnout_pct REAL,                 -- getippte Wahlbeteiligung in %, NULL = nicht mitgetippt (seit 19.09.2026)
     updated_at  TEXT NOT NULL
 );
 -- Das Ergebnis je Zeile: eine Liste ('gruene') oder eine OB-Kandidatur
@@ -1733,6 +1741,7 @@ class Store:
         self._migrate_tippspiel_geteiltes_geraet()
         self._migrate_tippspiel_wahl()
         self._migrate_tippspiel_konto()
+        self._migrate_tippspiel_partei_beteiligung()
         self._migrate_owner_id()
         self._treffer_datum_reparieren()
 
@@ -1850,6 +1859,22 @@ class Store:
         if "shared_device" not in vorhanden:
             with self._conn:
                 self._conn.execute("ALTER TABLE prediction_game ADD COLUMN shared_device INTEGER NOT NULL DEFAULT 0")
+
+    def _migrate_tippspiel_partei_beteiligung(self) -> None:
+        """Tippspiel: ``prediction_players.party`` und ``prediction_tips.turnout_pct``
+        (19.09.2026, vor der OB-Stichwahl am 27.09.).
+
+        Beides freiwillig und NULLbar: Wer schon mitgespielt hat, hat weder
+        eine Partei genannt noch die Wahlbeteiligung getippt — und soll
+        dadurch weder einen Punkt verlieren noch ein Etikett bekommen."""
+        spieler = {r[1] for r in self._conn.execute("PRAGMA table_info(prediction_players)")}
+        if "party" not in spieler:
+            with self._conn:
+                self._conn.execute("ALTER TABLE prediction_players ADD COLUMN party TEXT")
+        tipps = {r[1] for r in self._conn.execute("PRAGMA table_info(prediction_tips)")}
+        if "turnout_pct" not in tipps:
+            with self._conn:
+                self._conn.execute("ALTER TABLE prediction_tips ADD COLUMN turnout_pct REAL")
 
     def _treffer_datum_reparieren(self) -> None:
         """Einmalige Reparatur: ``council_topic_matches.matched_at`` im Bestand.
@@ -5340,22 +5365,23 @@ class Store:
         return f"{name} ({n})"
 
     def prediction_player_add(self, game_id: int, name: str, token_hash: str, late_at: str | None,
-                              owner_id: int | None = None) -> dict:
+                              owner_id: int | None = None, party: str | None = None) -> dict:
         """Eine Person in einer Runde. ``owner_id`` nur in einer Konto-Runde;
-        ein zweiter Versuch desselben Kontos scheitert am Teil-Index."""
+        ein zweiter Versuch desselben Kontos scheitert am Teil-Index.
+        ``party`` ist die freiwillige Parteizugehörigkeit (Listen-Slug)."""
         endgueltig = self.prediction_name_frei(game_id, name)
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
             cur = self._conn.execute(
-                "INSERT INTO prediction_players (game_id, name, token_hash, owner_id, created_at, late_at) "
-                "VALUES (?,?,?,?,?,?)",
-                (game_id, endgueltig, token_hash, owner_id, now, late_at),
+                "INSERT INTO prediction_players (game_id, name, token_hash, owner_id, created_at, late_at, party) "
+                "VALUES (?,?,?,?,?,?,?)",
+                (game_id, endgueltig, token_hash, owner_id, now, late_at, party),
             )
         return {"id": cur.lastrowid, "game_id": game_id, "name": endgueltig, "token_hash": token_hash,
-                "created_at": now, "late_at": late_at, "hidden_at": None}
+                "created_at": now, "late_at": late_at, "hidden_at": None, "party": party}
 
     _PLAYER_SPALTEN = ("SELECT p.id, p.game_id, p.name, p.token_hash, p.owner_id, p.created_at, p.late_at, p.hidden_at, "
-                       "       t.seats_json, t.mayor_json, t.updated_at AS tip_updated_at "
+                       "       p.party, t.seats_json, t.mayor_json, t.turnout_pct, t.updated_at AS tip_updated_at "
                        "FROM prediction_players p LEFT JOIN prediction_tips t ON t.player_id = p.id ")
 
     def prediction_player_by_token(self, token_hash: str, game_id: int) -> dict | None:
@@ -5376,12 +5402,17 @@ class Store:
             self._PLAYER_SPALTEN + "WHERE p.owner_id = ? AND p.game_id = ?", (owner_id, game_id)).fetchone()
         return dict(row) if row else None
 
-    def prediction_player_update(self, player_id: int, *, name: str | None = None, hidden: bool | None = None) -> None:
+    def prediction_player_update(self, player_id: int, *, name: str | None = None, hidden: bool | None = None,
+                                 party: str | None | EllipsisType = ...) -> None:
+        """``party=None`` nimmt die Angabe zurück; ``...`` (Vorgabe) lässt sie stehen —
+        ``None`` kann hier nicht zugleich „unverändert" und „keine" heißen."""
         felder: dict[str, object] = {}
         if name is not None:
             felder["name"] = name
         if hidden is not None:
             felder["hidden_at"] = datetime.utcnow().isoformat(timespec="seconds") if hidden else None
+        if party is not ...:
+            felder["party"] = party
         if not felder:
             return
         spalten = ", ".join(f"{k} = ?" for k in felder)
@@ -5409,14 +5440,17 @@ class Store:
         return self._conn.execute(
             "SELECT COUNT(*) FROM prediction_players WHERE game_id = ? AND hidden_at IS NULL", (game_id,)).fetchone()[0]
 
-    def prediction_tip_set(self, player_id: int, seats_json: str, mayor_json: str | None) -> None:
+    def prediction_tip_set(self, player_id: int, seats_json: str, mayor_json: str | None,
+                           turnout_pct: float | None = None) -> None:
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
             self._conn.execute(
-                "INSERT INTO prediction_tips (player_id, seats_json, mayor_json, updated_at) VALUES (?,?,?,?) "
+                "INSERT INTO prediction_tips (player_id, seats_json, mayor_json, turnout_pct, updated_at) "
+                "VALUES (?,?,?,?,?) "
                 "ON CONFLICT(player_id) DO UPDATE SET seats_json = excluded.seats_json, "
-                "mayor_json = excluded.mayor_json, updated_at = excluded.updated_at",
-                (player_id, seats_json, mayor_json, now),
+                "mayor_json = excluded.mayor_json, turnout_pct = excluded.turnout_pct, "
+                "updated_at = excluded.updated_at",
+                (player_id, seats_json, mayor_json, turnout_pct, now),
             )
 
     def prediction_result(self, game_id: int) -> list[dict]:

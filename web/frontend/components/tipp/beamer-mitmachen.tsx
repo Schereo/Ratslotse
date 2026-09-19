@@ -15,12 +15,13 @@ import { apiUrl } from "@/lib/api";
 import type { ApiAntwort } from "@/lib/vertrag";
 import { BrandMark } from "@/components/brand";
 import { Lotti } from "@/components/lotti";
-import { kurzesDatum, mitRunde, uhrzeitKurz } from "@/lib/tipp";
+import { kandidaturenSatz, kurzesDatum, mitRunde, uhrzeitKurz } from "@/lib/tipp";
 
 type PredictionGame = ApiAntwort<"/tipp/setup">;
 
 export function BeamerMitmachen({ game, tipCount, runde }: { game: PredictionGame; tipCount: number; runde: string | null }) {
   const schluss = uhrzeitKurz(game.locked_at);
+  const sitzwahl = game.tip_kind === "seats";
   // Der Link, den der Raum sieht — samt Runde, denn der QR-Code zeigt dorthin.
   const link = `ratslotse.de${mitRunde("/tipp", runde, "runde")}`;
   return (
@@ -36,7 +37,9 @@ export function BeamerMitmachen({ game, tipCount, runde }: { game: PredictionGam
           Wie geht die {game.election_title} aus?
         </h1>
         <p className="mt-[34px] max-w-[26ch] text-[36px] leading-[1.4] text-foreground/80">
-          {game.seats_total} Sitze, {game.parties.length} Wahllisten. Tippe, wie die Wahl ausgeht. Mitmachen ohne Konto.
+          {sitzwahl
+            ? `${game.seats_total} Sitze, ${game.parties.length} Wahllisten. Tippe, wie die Wahl ausgeht. Mitmachen ohne Konto.`
+            : `${kandidaturenSatz(game.mayor_candidates)}: Tippe die Prozente und die Wahlbeteiligung. Mitmachen ohne Konto.`}
         </p>
 
         <div className="mt-14 flex items-center gap-7">
@@ -45,10 +48,12 @@ export function BeamerMitmachen({ game, tipCount, runde }: { game: PredictionGam
               {game.locked ? "Tippfrist beendet" : "Tippen möglich"}
             </p>
             <p className="mt-1.5 font-display text-[64px] font-bold leading-none tabular-nums">
-              {game.locked ? (schluss ?? "vorbei") : "bis ca. 20 Uhr"}
+              {game.locked ? (schluss ?? "vorbei") : sitzwahl ? "bis ca. 20 Uhr" : "bis ca. 18:15"}
             </p>
             <p className="mt-2 text-[24px] text-muted-foreground">
-              {game.locked ? (game.late_scored ? "Spätere Tipps zählen mit" : "Spätere Tipps ohne Rang") : "bis zur ersten Hochrechnung"}
+              {game.locked
+                ? (game.late_scored ? "Spätere Tipps zählen mit" : "Spätere Tipps ohne Rang")
+                : sitzwahl ? "bis zur ersten Hochrechnung" : "bis zum ersten Auszählungsstand"}
             </p>
           </div>
           <div className="flex items-center gap-[22px]">

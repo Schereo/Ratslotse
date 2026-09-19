@@ -39,7 +39,7 @@ ADMIN = {"id": 1, "role": "admin", "roles": ["admin"], "status": "active"}
 @pytest.fixture(autouse=True)
 def netzfrei(monkeypatch):
     monkeypatch.setattr(election_service, "live", lambda: election_service.probe(0))
-    monkeypatch.setattr(mayor_module, "fetch", lambda force=False: mayor_module.probe(0))
+    monkeypatch.setattr(mayor_module, "fetch", lambda force=False, w=None: mayor_module.probe(0, w))
 
 
 @pytest.fixture
@@ -73,7 +73,9 @@ def _voller_tipp() -> dict[str, int]:
 def test_die_hauptrunde_ist_ohne_parameter_und_die_einzige_gelistete():
     assert rounds.get(None) is rounds.ROUNDS[rounds.DEFAULT]
     assert rounds.get("ratswahl").is_default
-    assert [r.slug for r in rounds.ROUNDS.values() if r.listed] == ["ratswahl"]
+    # Gelistet sind die Hauptrunde und — seit 19.09.2026 — die Stichwahl;
+    # Vallys Kreis bleibt privat.
+    assert [r.slug for r in rounds.ROUNDS.values() if r.listed] == ["ratswahl", "stichwahl"]
     assert rounds.get("gibt-es-nicht") is None
     assert rounds.public_path(rounds.get(None)) == "/tipp"
     assert rounds.public_path(rounds.get("vally")) == "/tipp?runde=vally"
@@ -149,8 +151,8 @@ def test_admin_verwaltet_beide_runden_getrennt(client):
     app.dependency_overrides[require_active] = lambda: ADMIN
     try:
         stand = client.get("/api/tipp/admin/stand").json()
-        assert [r["slug"] for r in stand["rounds"]] == ["ratswahl", "vally"]
-        assert {r["slug"]: r["player_count"] for r in stand["rounds"]} == {"ratswahl": 1, "vally": 1}
+        assert [r["slug"] for r in stand["rounds"]] == ["ratswahl", "vally", "stichwahl"]
+        assert {r["slug"]: r["player_count"] for r in stand["rounds"]} == {"ratswahl": 1, "vally": 1, "stichwahl": 0}
         assert [p["name"] for p in stand["players"]] == ["Ismail"]
         vally = client.get("/api/tipp/admin/stand?round=vally").json()
         assert [p["name"] for p in vally["players"]] == ["Nele"]

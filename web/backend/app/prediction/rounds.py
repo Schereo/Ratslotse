@@ -61,6 +61,13 @@ ROUNDS: dict[str, Round] = {
     "ratswahl": Round(slug="ratswahl", title="Tippspiel zur Ratswahl", listed=True),
     # Vallys Runde (12.09.2026): eigener Kreis, eigener Link, nicht gelistet.
     "vally": Round(slug="vally", title="Vallys Tippspiel", listed=False),
+    # Die OB-Stichwahl am 27.09.2026 (Tims Auftrag 19.09.2026: „schon
+    # freischalten"). Öffentlich wie die Ratswahl-Runden — Name statt Konto,
+    # dazu freiwillig die Parteizugehörigkeit — und mit kurzem Slug, weil die
+    # Adresse geteilt und getippt wird: ``/tipp?runde=stichwahl``. Der Admin
+    # kann sie wie jede Runde wieder auf Konten beschränken.
+    "stichwahl": Round(slug="stichwahl", title="Tippspiel zur OB-Stichwahl", listed=True,
+                       election="ob-stichwahl-2026"),
 }
 
 

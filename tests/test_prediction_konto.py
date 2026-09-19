@@ -41,6 +41,16 @@ TIPP = "ob-stichwahl-2026"  # eine Runde, die von selbst zu einer Wahl gehört
 #: verwechselt, bekommt still die Hauptrunde statt eines 404.
 
 
+@pytest.fixture(autouse=True)
+def ohne_eintrag_von_hand(monkeypatch):
+    """Diese Tests prüfen die Runde, die eine Wahl VON SELBST mitbringt (Konto-
+    Zwang, Admin schaltet frei). Seit 19.09.2026 hat die Stichwahl einen
+    Eintrag von Hand in ``ROUNDS`` (öffentlich, Slug ``stichwahl``) — der
+    ginge hier vor. Für den Mechanismus wird er ausgeblendet; dass er
+    existiert und öffentlich ist, prüft ``test_prediction_stichwahl.py``."""
+    monkeypatch.delitem(rounds.ROUNDS, "stichwahl", raising=False)
+
+
 @pytest.fixture
 def store(tmp_path, monkeypatch):
     monkeypatch.setenv("FEATURE_FLAGS", "tippspiel,wahlabend")

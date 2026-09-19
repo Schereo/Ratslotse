@@ -14003,6 +14003,10 @@
             "title": "Has Tip",
             "type": "boolean"
           },
+          "has_turnout_tip": {
+            "title": "Has Turnout Tip",
+            "type": "boolean"
+          },
           "hidden": {
             "title": "Hidden",
             "type": "boolean"
@@ -14021,15 +14025,24 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "party": {
+            "title": "Party",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
           "id",
           "name",
+          "party",
           "late_at",
           "hidden",
           "has_tip",
-          "has_mayor_tip"
+          "has_mayor_tip",
+          "has_turnout_tip"
         ],
         "title": "PredictionAdminPlayer",
         "type": "object"
@@ -14178,6 +14191,13 @@
             "title": "Parties",
             "type": "array"
           },
+          "party_options": {
+            "items": {
+              "$ref": "#/components/schemas/PredictionPartyOption"
+            },
+            "title": "Party Options",
+            "type": "array"
+          },
           "phase": {
             "title": "Phase",
             "type": "string"
@@ -14206,12 +14226,27 @@
             "title": "Shared Device",
             "type": "boolean"
           },
+          "successor_path": {
+            "title": "Successor Path",
+            "type": "string"
+          },
           "tip_kind": {
             "title": "Tip Kind",
             "type": "string"
           },
           "title": {
             "title": "Title",
+            "type": "string"
+          },
+          "turnout_previous": {
+            "title": "Turnout Previous",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "turnout_previous_label": {
+            "title": "Turnout Previous Label",
             "type": "string"
           }
         },
@@ -14234,7 +14269,11 @@
           "player_count",
           "deadline_hint",
           "parties",
-          "mayor_candidates"
+          "mayor_candidates",
+          "party_options",
+          "turnout_previous",
+          "turnout_previous_label",
+          "successor_path"
         ],
         "title": "PredictionGame",
         "type": "object"
@@ -14261,6 +14300,14 @@
               "null"
             ]
           },
+          "party": {
+            "maxLength": 40,
+            "title": "Party",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "seats": {
             "additionalProperties": {
               "type": "integer"
@@ -14268,6 +14315,13 @@
             "title": "Seats",
             "type": [
               "object",
+              "null"
+            ]
+          },
+          "turnout": {
+            "title": "Turnout",
+            "type": [
+              "number",
               "null"
             ]
           }
@@ -14416,6 +14470,38 @@
             "title": "Notes",
             "type": "array"
           },
+          "party": {
+            "description": "Ein Eintrag im Parteien-Menü beim Beitritt (freiwillig) — und das\nEtikett neben dem Namen in der Rangliste. Die Liste kommt aus dem\nKandidatenregister der Ratswahl, ohne AfD (Tims Entscheidung 19.09.2026)\nund ohne Einzelwahlvorschläge (die sind keine Partei).",
+            "properties": {
+              "color": {
+                "title": "Color",
+                "type": "string"
+              },
+              "color_dark": {
+                "title": "Color Dark",
+                "type": "string"
+              },
+              "short": {
+                "title": "Short",
+                "type": "string"
+              },
+              "slug": {
+                "title": "Slug",
+                "type": "string"
+              }
+            },
+            "required": [
+              "slug",
+              "short",
+              "color",
+              "color_dark"
+            ],
+            "title": "PredictionPartyOption",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
           "phase": {
             "title": "Phase",
             "type": "string"
@@ -14455,6 +14541,13 @@
                 "title": "Mayor Points",
                 "type": "integer"
               },
+              "pct_deviation": {
+                "title": "Pct Deviation",
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
               "seat_points": {
                 "title": "Seat Points",
                 "type": "integer"
@@ -14462,14 +14555,20 @@
               "total": {
                 "title": "Total",
                 "type": "integer"
+              },
+              "turnout_points": {
+                "title": "Turnout Points",
+                "type": "integer"
               }
             },
             "required": [
               "total",
               "seat_points",
               "mayor_points",
+              "turnout_points",
               "exact_lists",
-              "deviation"
+              "deviation",
+              "pct_deviation"
             ],
             "title": "PredictionScore",
             "type": [
@@ -14495,11 +14594,50 @@
           "stand_label": {
             "title": "Stand Label",
             "type": "string"
+          },
+          "turnout": {
+            "description": "Der eigene Tipp zur Wahlbeteiligung („meins\").",
+            "properties": {
+              "actual_pct": {
+                "title": "Actual Pct",
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "avg_tip": {
+                "title": "Avg Tip",
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "points": {
+                "title": "Points",
+                "type": "integer"
+              },
+              "tip": {
+                "title": "Tip",
+                "type": "number"
+              }
+            },
+            "required": [
+              "tip",
+              "actual_pct",
+              "avg_tip",
+              "points"
+            ],
+            "title": "PredictionTurnoutLine",
+            "type": [
+              "object",
+              "null"
+            ]
           }
         },
         "required": [
           "player_id",
           "name",
+          "party",
           "late_at",
           "scored",
           "has_tip",
@@ -14507,6 +14645,7 @@
           "locked",
           "seats",
           "mayor",
+          "turnout",
           "score",
           "rank",
           "rank_before",
@@ -14559,6 +14698,35 @@
         "title": "PredictionParty",
         "type": "object"
       },
+      "PredictionPartyOption": {
+        "description": "Ein Eintrag im Parteien-Menü beim Beitritt (freiwillig) — und das\nEtikett neben dem Namen in der Rangliste. Die Liste kommt aus dem\nKandidatenregister der Ratswahl, ohne AfD (Tims Entscheidung 19.09.2026)\nund ohne Einzelwahlvorschläge (die sind keine Partei).",
+        "properties": {
+          "color": {
+            "title": "Color",
+            "type": "string"
+          },
+          "color_dark": {
+            "title": "Color Dark",
+            "type": "string"
+          },
+          "short": {
+            "title": "Short",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "short",
+          "color",
+          "color_dark"
+        ],
+        "title": "PredictionPartyOption",
+        "type": "object"
+      },
       "PredictionPhaseIn": {
         "properties": {
           "late_scored": {
@@ -14597,6 +14765,13 @@
             "maxLength": 30,
             "minLength": 2,
             "title": "Name",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "party": {
+            "title": "Party",
             "type": [
               "string",
               "null"
@@ -14764,6 +14939,38 @@
             "title": "Name",
             "type": "string"
           },
+          "party": {
+            "description": "Ein Eintrag im Parteien-Menü beim Beitritt (freiwillig) — und das\nEtikett neben dem Namen in der Rangliste. Die Liste kommt aus dem\nKandidatenregister der Ratswahl, ohne AfD (Tims Entscheidung 19.09.2026)\nund ohne Einzelwahlvorschläge (die sind keine Partei).",
+            "properties": {
+              "color": {
+                "title": "Color",
+                "type": "string"
+              },
+              "color_dark": {
+                "title": "Color Dark",
+                "type": "string"
+              },
+              "short": {
+                "title": "Short",
+                "type": "string"
+              },
+              "slug": {
+                "title": "Slug",
+                "type": "string"
+              }
+            },
+            "required": [
+              "slug",
+              "short",
+              "color",
+              "color_dark"
+            ],
+            "title": "PredictionPartyOption",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
           "player_id": {
             "title": "Player Id",
             "type": "integer"
@@ -14799,6 +15006,13 @@
                 "title": "Mayor Points",
                 "type": "integer"
               },
+              "pct_deviation": {
+                "title": "Pct Deviation",
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
               "seat_points": {
                 "title": "Seat Points",
                 "type": "integer"
@@ -14806,14 +15020,20 @@
               "total": {
                 "title": "Total",
                 "type": "integer"
+              },
+              "turnout_points": {
+                "title": "Turnout Points",
+                "type": "integer"
               }
             },
             "required": [
               "total",
               "seat_points",
               "mayor_points",
+              "turnout_points",
               "exact_lists",
-              "deviation"
+              "deviation",
+              "pct_deviation"
             ],
             "title": "PredictionScore",
             "type": [
@@ -14829,6 +15049,7 @@
         "required": [
           "player_id",
           "name",
+          "party",
           "late_at",
           "scored",
           "has_tip",
@@ -14856,6 +15077,13 @@
             "title": "Mayor Points",
             "type": "integer"
           },
+          "pct_deviation": {
+            "title": "Pct Deviation",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
           "seat_points": {
             "title": "Seat Points",
             "type": "integer"
@@ -14863,14 +15091,20 @@
           "total": {
             "title": "Total",
             "type": "integer"
+          },
+          "turnout_points": {
+            "title": "Turnout Points",
+            "type": "integer"
           }
         },
         "required": [
           "total",
           "seat_points",
           "mayor_points",
+          "turnout_points",
           "exact_lists",
-          "deviation"
+          "deviation",
+          "pct_deviation"
         ],
         "title": "PredictionScore",
         "type": "object"
@@ -15024,14 +15258,22 @@
             "title": "Tip Count",
             "type": "integer"
           },
+          "tip_kind": {
+            "title": "Tip Kind",
+            "type": "string"
+          },
           "title": {
             "title": "Title",
             "type": "string"
+          },
+          "turnout": {
+            "$ref": "#/components/schemas/PredictionTurnoutCompare"
           }
         },
         "required": [
           "title",
           "phase",
+          "tip_kind",
           "stand_label",
           "area_label",
           "source_label",
@@ -15040,6 +15282,7 @@
           "tip_count",
           "compare",
           "mayor",
+          "turnout",
           "mayor_status",
           "rows",
           "leader_player_id",
@@ -15048,6 +15291,71 @@
           "notes"
         ],
         "title": "PredictionStand",
+        "type": "object"
+      },
+      "PredictionTurnoutCompare": {
+        "description": "Die Wahlbeteiligung auf der öffentlichen Tafel: Ist und Ø-Tipp.",
+        "properties": {
+          "actual_pct": {
+            "title": "Actual Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "avg_tip": {
+            "title": "Avg Tip",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "tip_count": {
+            "title": "Tip Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "actual_pct",
+          "avg_tip",
+          "tip_count"
+        ],
+        "title": "PredictionTurnoutCompare",
+        "type": "object"
+      },
+      "PredictionTurnoutLine": {
+        "description": "Der eigene Tipp zur Wahlbeteiligung („meins\").",
+        "properties": {
+          "actual_pct": {
+            "title": "Actual Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "avg_tip": {
+            "title": "Avg Tip",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "points": {
+            "title": "Points",
+            "type": "integer"
+          },
+          "tip": {
+            "title": "Tip",
+            "type": "number"
+          }
+        },
+        "required": [
+          "tip",
+          "actual_pct",
+          "avg_tip",
+          "points"
+        ],
+        "title": "PredictionTurnoutLine",
         "type": "object"
       },
       "ProjectReportIn": {
@@ -28258,7 +28566,7 @@
     },
     "/api/tipp/admin/abfragen": {
       "post": {
-        "description": "„Jetzt abfragen\": die Live-Zahlen der Ratswahl UND der OB-Wahl in den\nEntwurf übernehmen — NICHT veröffentlicht, das bleibt ein eigener Schritt.",
+        "description": "„Jetzt abfragen\": die Live-Zahlen der Wahl DIESER Runde in den Entwurf\nübernehmen — bei einer Ratswahl Sitze UND OB-Prozente, bei einer OB- oder\nStichwahl nur deren Prozente; dazu die Wahlbeteiligung. NICHT\nveröffentlicht, das bleibt ein eigener Schritt.",
         "operationId": "jetzt_abfragen_api_tipp_admin_abfragen_post",
         "parameters": [
           {

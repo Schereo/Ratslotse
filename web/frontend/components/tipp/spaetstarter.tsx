@@ -13,6 +13,8 @@ import { BrandMark } from "@/components/brand";
 import { Mascot } from "@/components/mascot";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NamensHinweis } from "./einstieg";
+import { ParteiAuswahl } from "./partei";
 
 export function Spaetstarter({ setup, runde, lottiAnimiert, onBeigetreten }: {
   setup: TippSetup;
@@ -20,7 +22,9 @@ export function Spaetstarter({ setup, runde, lottiAnimiert, onBeigetreten }: {
   lottiAnimiert: boolean;
   onBeigetreten: () => void;
 }) {
+  const mitKonto = !setup.public;
   const [name, setName] = useState("");
+  const [partei, setPartei] = useState("");
   const [fehler, setFehler] = useState<string | null>(null);
   const [sendet, setSendet] = useState(false);
 
@@ -40,7 +44,7 @@ export function Spaetstarter({ setup, runde, lottiAnimiert, onBeigetreten }: {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name: mitKonto ? null : name, party: partei || null }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
@@ -88,21 +92,31 @@ export function Spaetstarter({ setup, runde, lottiAnimiert, onBeigetreten }: {
         className="mt-3.5 w-full rounded-[14px] border border-border bg-card p-3.5 text-left"
         onSubmit={(e) => { e.preventDefault(); void beitreten(); }}
       >
-        <label htmlFor="tipp-name-spaet" className="block text-xs font-semibold text-muted-foreground">
-          Dein Name
-        </label>
-        <Input
-          id="tipp-name-spaet"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="z. B. Anna K."
-          maxLength={30}
-          autoFocus
-          className="mt-2 h-[46px] text-base font-semibold"
-        />
+        {mitKonto ? (
+          <p className="text-[13px] leading-relaxed text-muted-foreground">
+            Diese Runde läuft über dein Konto: In der Rangliste stehst du unter deinem Anzeigenamen.
+          </p>
+        ) : (
+          <>
+            <label htmlFor="tipp-name-spaet" className="block text-xs font-semibold text-muted-foreground">
+              Dein Name
+            </label>
+            <Input
+              id="tipp-name-spaet"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="z. B. Anna Kaiser"
+              maxLength={30}
+              autoFocus
+              className="mt-2 h-[46px] text-base font-semibold"
+            />
+            <NamensHinweis />
+          </>
+        )}
+        <ParteiAuswahl id="tipp-partei-spaet" optionen={setup.party_options} wert={partei} onChange={setPartei} className="mt-4" />
         {fehler && <p className="mt-2 text-[11.5px] font-medium text-destructive">{fehler}</p>}
 
-        <Button type="submit" variant="primary" disabled={name.trim().length < 2 || sendet} className="mt-3.5 h-[50px] w-full text-base">
+        <Button type="submit" variant="primary" disabled={(!mitKonto && name.trim().length < 2) || sendet} className="mt-3.5 h-[50px] w-full text-base">
           {sendet ? "Einen Moment …" : "Trotzdem tippen"}
         </Button>
       </form>

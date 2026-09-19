@@ -1,6 +1,7 @@
 "use client";
 
-// 1h — Tippspiel-Verwaltung: Ratswahl-Sitze und OB-Prozente eintragen,
+// 1h — Tippspiel-Verwaltung: Ratswahl-Sitze und OB-Prozente eintragen
+// (bei einer OB-/Stichwahl-Runde nur die Prozente), dazu die Wahlbeteiligung,
 // Entwurf vs. veröffentlicht, Phase steuern, Beamer wählen, Teilnehmer
 // moderieren. Gebaut gegen das Artboard 1h (Desktop 1280): Kopfband,
 // links die beiden Eingabe-Karten, rechts Phase / Beamer / Protokoll.
@@ -28,6 +29,7 @@ import { mitRunde, uhrzeitKurz } from "@/lib/tipp";
 import { cn } from "@/lib/utils";
 import { BrandMark } from "@/components/brand";
 import { Button, Segmented, Spinner, Switch } from "@/components/ui";
+import { ParteiChip } from "./partei";
 
 type AdminStand = ApiAntwort<"/tipp/admin/stand">;
 type Ergebnis = AdminStand["results"][number];
@@ -165,15 +167,18 @@ export function TippAdminView() {
   // würde vor dessen Freischaltung 404 liefern — genau in der Phase, in der
   // Tim hier vorbereiten soll (s. Moduldoc in routers/tippspiel.py).
   const setup = stand.game;
+  const sitzwahl = setup.tip_kind === "seats";
   const parteiVon = Object.fromEntries(setup.parties.map((p) => [p.slug, p]));
-  const ratswahlZeilen = stand.results.filter((r) => !r.slug.startsWith("ob:"));
+  const parteiOption = Object.fromEntries(setup.party_options.map((o) => [o.slug, o]));
+  const ratswahlZeilen = stand.results.filter((r) => !r.slug.startsWith("ob:") && r.slug !== "turnout");
   const obZeilen = stand.results.filter((r) => r.slug.startsWith("ob:"));
+  const beteiligung = stand.results.find((r) => r.slug === "turnout") ?? null;
 
   const entwurfSumme = ratswahlZeilen.reduce((s, r) => s + (r.seats ?? 0), 0);
   const entwurfVoll = entwurfSumme === setup.seats_total;
   const obSumme = obZeilen.reduce((s, r) => s + (r.pct ?? 0), 0);
-  const veroeffentlichtAm = ratswahlZeilen.map((r) => r.published_at).filter(Boolean).sort().at(-1) ?? null;
-  const entwurfIstLive = ratswahlZeilen.every((r) => r.seats === r.published_seats) && obZeilen.every((r) => r.pct === r.published_pct);
+  const veroeffentlichtAm = stand.results.map((r) => r.published_at).filter(Boolean).sort().at(-1) ?? null;
+  const entwurfIstLive = stand.results.every((r) => r.seats === r.published_seats && r.pct === r.published_pct);
   // „N Tipps" zählt Tipps, nicht Beitritte: `player_count` zählt jeden, der
   // seinen Namen eingegeben hat — auch ohne Tipp, auch ausgeblendet.
   const tipps = stand.players.filter((p) => p.has_tip && !p.hidden).length;
@@ -226,8 +231,8 @@ export function TippAdminView() {
 
       <div className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-6 px-4 py-6 sm:px-8 sm:pb-8 lg:grid-cols-[1fr_400px]">
         <div className="flex flex-col gap-5">
-          {/* ── Ratswahl · Sitze ─────────────────────────────────────── */}
-          <Karte>
+          {/* ── Ratswahl · Sitze (nur bei einer Sitzwahl) ────────────── */}
+          {sitzwahl && <Karte>
             <div className="flex items-center justify-between gap-4">
               <div>
                 <Kicker>Ratswahl · Sitze</Kicker>
@@ -281,11 +286,24 @@ export function TippAdminView() {
                 </Button>
               </div>
             </div>
-          </Karte>
+          </Karte>}
 
-          {/* ── OB-Wahl · Prozent ────────────────────────────────────── */}
+          {/* ── OB-Wahl · Prozent (bei einer OB-/Stichwahl-Runde DIE Karte) ── */}
           <Karte>
-            <Kicker>OB-Wahl · Prozent</Kicker>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <Kicker>{sitzwahl ? "OB-Wahl · Prozent" : `${setup.election_title} · Prozent`}</Kicker>
+                {!sitzwahl && <h2 className="mt-1 font-display text-xl font-bold">Auszählungsstand eintragen</h2>}
+              </div>
+              {!sitzwahl && (
+                <Button
+                  variant="secondary" size="sm" disabled={laeuft === "abfragen"}
+                  onClick={() => void aktion("abfragen", () => api.post(pfad("/tipp/admin/abfragen")), "Aktuelle Zahlen von votemanager im Entwurf gespeichert.")}
+                >
+                  {laeuft === "abfragen" ? "Fragt ab …" : "Jetzt abfragen"}
+                </Button>
+              )}
+            </div>
             <div className="mt-2.5 grid grid-cols-1 gap-x-[18px] gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
               {obZeilen.map((r) => {
                 const slug = r.slug.slice(3);
@@ -303,8 +321,44 @@ export function TippAdminView() {
               })}
             </div>
             <p className="mt-2.5 text-xs text-muted-foreground">
-              Insgesamt {dezimal(obSumme)} %. Die Stichwahl am 27. September gehört nicht zum Tippspiel.
+              Insgesamt {dezimal(obSumme)} %.
+              {" "}Ø-Tipp je Kandidatur: {obZeilen.map((r) => `${setup.mayor_candidates.find((c) => `ob:${c.slug}` === r.slug)?.name ?? r.slug} ${r.avg_tip !== null ? dezimal(r.avg_tip) : "–"}`).join(" · ")}
             </p>
+
+            {/* ── Wahlbeteiligung ── eine Zeile, wie eine Kandidatur zu behandeln. */}
+            {beteiligung && (
+              <div className="mt-3 flex items-center justify-between gap-3 rounded-[10px] border border-border px-3 py-2 text-[13px]">
+                <div className="min-w-0">
+                  <p className="font-semibold">Wahlbeteiligung</p>
+                  <p className="text-xs text-muted-foreground">Ø-Tipp {beteiligung.avg_tip !== null ? `${dezimal(beteiligung.avg_tip)} %` : "–"}</p>
+                </div>
+                <div className="flex flex-none items-center gap-1">
+                  <Feld wert={beteiligung.pct} manuell={beteiligung.source === "manuell" && beteiligung.pct !== null} label="Wahlbeteiligung in Prozent"
+                        breit dezimalstellen onSpeichern={(neu) => speichern("turnout", "pct", neu)} />
+                  <span className="text-xs text-muted-foreground">%</span>
+                </div>
+              </div>
+            )}
+
+            {!sitzwahl && (
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                <span className="text-[13px] font-semibold text-muted-foreground">
+                  {entwurfIstLive
+                    ? (veroeffentlichtAm ? `live seit ${uhrzeitKurz(veroeffentlichtAm)}` : "noch nichts veröffentlicht")
+                    : "Entwurf noch nicht veröffentlicht"}
+                </span>
+                <div className="flex gap-2">
+                  <Button variant="secondary" size="sm" disabled={laeuft === "verwerfen" || entwurfIstLive}
+                          onClick={() => void aktion("verwerfen", () => api.post(pfad("/tipp/admin/verwerfen")), "Entwurf verworfen.")}>
+                    {laeuft === "verwerfen" ? "Verwirft …" : "Entwurf verwerfen"}
+                  </Button>
+                  <Button variant="primary" size="sm" disabled={laeuft === "veroeffentlichen" || entwurfIstLive}
+                          onClick={() => void aktion("veroeffentlichen", () => api.post(pfad("/tipp/admin/veroeffentlichen")), "Veröffentlicht — der Beamer zeigt den Stand.")}>
+                    {laeuft === "veroeffentlichen" ? "Veröffentlicht …" : "Veröffentlichen"}
+                  </Button>
+                </div>
+              </div>
+            )}
           </Karte>
         </div>
 
@@ -321,8 +375,8 @@ export function TippAdminView() {
                     </Button>
                   : <span className="font-mono text-[11px] text-muted-foreground">{schluss ? `bis ${schluss}` : ""}</span>} />
               <PhaseZeile zustand={phase === "open" ? "offen" : "erledigt"} titel="Ende der Tippfrist"
-                rechts={<span className="font-mono text-[11px] text-muted-foreground">{schluss ? `${schluss} Uhr` : "mit der 1. Hochrechnung"}</span>} />
-              <PhaseZeile zustand={phase === "locked" ? "aktiv" : phase === "final" ? "erledigt" : "offen"} titel="Live · Hochrechnungen"
+                rechts={<span className="font-mono text-[11px] text-muted-foreground">{schluss ? `${schluss} Uhr` : sitzwahl ? "mit der 1. Hochrechnung" : "mit dem 1. Auszählungsstand"}</span>} />
+              <PhaseZeile zustand={phase === "locked" ? "aktiv" : phase === "final" ? "erledigt" : "offen"} titel={sitzwahl ? "Live · Hochrechnungen" : "Live · Auszählung"}
                 rechts={<span className="font-mono text-[11px] text-primary">{phase === "locked" && veroeffentlichtAm ? `Stand ${uhrzeitKurz(veroeffentlichtAm)}` : ""}</span>} />
               <PhaseZeile zustand={phase === "final" ? "aktiv" : "offen"} titel="Endergebnis"
                 rechts={phase === "locked" && (
@@ -340,7 +394,10 @@ export function TippAdminView() {
                 )} />
             </div>
             <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-              Die Tippfrist endet automatisch mit der ersten Hochrechnung der Ratswahl. Mit „Endstand setzen“ kennzeichnest du den aktuellen Stand als Endergebnis.
+              {sitzwahl
+                ? "Die Tippfrist endet automatisch mit der ersten Hochrechnung der Ratswahl."
+                : `Die Tippfrist endet automatisch mit dem ersten Auszählungsstand der ${setup.election_title}.`}
+              {" "}Mit „Endstand setzen“ kennzeichnest du den aktuellen Stand als Endergebnis.
             </p>
             {/* Geteiltes Gerät — je Runde. Vallys Kreis (13.09.) hat nicht
                 für jede Person ein Handy; die Hauptrunde braucht das nicht. */}
@@ -406,6 +463,7 @@ export function TippAdminView() {
                 <div key={p.id} className="flex items-center justify-between gap-2 border-b border-muted py-1.5 last:border-b-0">
                   <div className="flex min-w-0 items-center gap-2">
                     <span className={cn("truncate font-medium", p.hidden && "text-muted-foreground line-through")} title={p.name}>{p.name}</span>
+                    <ParteiChip partei={p.party ? parteiOption[p.party] ?? { slug: p.party, short: p.party, color: "", color_dark: "" } : null} />
                     {p.late_at && (
                       <span className="flex-none rounded-full border border-amber-200 px-1.5 font-mono text-[9px] uppercase tracking-[0.06em] text-amber-800 dark:border-amber-500/40 dark:text-amber-200">
                         später Tipp {uhrzeitKurz(p.late_at)}

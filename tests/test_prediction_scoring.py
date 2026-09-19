@@ -107,7 +107,9 @@ def test_score_hoechstwerte():
     # mehr aus Konstanten — 2026 sind das dieselben Zahlen wie vorher.
     assert s.seat_points == 16 * scoring.POINTS_PER_LIST == 80
     assert s.mayor_points == 9 * scoring.POINTS_PER_MAYOR == 54
-    assert s.total == scoring.max_points(16, 9) == 134
+    # Ohne Wahlbeteiligungs-Tipp fehlen genau deren 6 Punkte (seit 19.09.2026).
+    assert s.total == scoring.max_points(16, 9, turnout=False) == 134
+    assert scoring.max_points(16, 9) == 140
 
 
 # ------------------------------------------------------------------ order() / ranks()
@@ -159,3 +161,56 @@ def test_ranks_ist_dicht_und_beginnt_bei_eins():
     r = scoring.ranks(rows)
     assert sorted(r.values()) == [1, 2, 3]
     assert r[2] == 1 and r[3] == 2 and r[1] == 3  # Bert vor Cara (Namen-Tie-Breaker), Anna zuletzt
+
+
+# ------------------------------------------------------------------ turnout_points (19.09.2026)
+
+@pytest.mark.parametrize("tip, actual, erwartet", [
+    (63.5, 63.46, 6),   # auf den Punkt
+    (62.5, 63.46, 6),   # 0,96 daneben — noch die volle Stufe
+    (61.0, 63.46, 3),   # 2,46 daneben
+    (59.0, 63.46, 1),   # 4,46 daneben
+    (58.0, 63.46, 0),   # 5,46 daneben
+    (40.0, None, 0),    # noch kein Wert
+])
+def test_turnout_points_stufen(tip, actual, erwartet):
+    """Weitere Stufen als bei den Kandidaturen — eine Wahlbeteiligung schwankt
+    zwischen Wahlen um zehn Punkte, 0,5 wäre Lotterie."""
+    assert scoring.turnout_points(tip, actual) == erwartet
+
+
+def test_score_zaehlt_die_wahlbeteiligung_dazu_und_ohne_tipp_null():
+    mit = score({}, {"prange": 52.0}, {}, {"prange": 52.0}, tip_turnout=45.0, actual_turnout=45.5)
+    assert mit.turnout_points == 6 and mit.total == 12
+    assert mit.pct_deviation == 0.5
+    ohne = score({}, {"prange": 52.0}, {}, {"prange": 52.0})
+    assert ohne.turnout_points == 0 and ohne.total == 6, "kein Abzug, wenn nicht getippt"
+    assert ohne.pct_deviation == 0.0
+
+
+def test_prozent_runde_ohne_sitze_rechnet_ohne_sonderfall():
+    """``tip_seats`` ist bei einer Stichwahl ``None`` — kein Absturz, keine Sitzpunkte."""
+    s = score(None, {"prange": 50.0, "rohr": 50.0}, {}, {"prange": 52.06, "rohr": 47.94})
+    assert s.seat_points == 0 and s.exact_lists == 0 and s.deviation is None
+    assert s.mayor_points == 1 + 1 and s.total == 2
+    assert s.pct_deviation == round(2.06 + 2.06, 2)
+
+
+def test_max_points_mit_wahlbeteiligung():
+    assert scoring.max_points(0, 2) == 18, "Stichwahl: zwei Kandidaturen plus Wahlbeteiligung"
+    assert scoring.max_points(16, 9) == 140
+    assert scoring.max_points(16, 9, turnout=False) == 134
+
+
+def test_gleichstand_bricht_die_prozent_abweichung():
+    """Bei zwei Kandidaturen fallen viele auf dieselbe Punktzahl — dann
+    entscheidet, wer insgesamt näher dran war, nicht wer früher tippte."""
+    naeher = Standing(id=1, name="Zoe", updated_at="2026-09-27T10:00:00", scored=True,
+                      score=score(None, {"prange": 53.0}, {}, {"prange": 52.0}))
+    weiter = Standing(id=2, name="Anna", updated_at="2026-09-27T09:00:00", scored=True,
+                      score=score(None, {"prange": 50.7}, {}, {"prange": 52.0}))
+    weiter_weg = Standing(id=3, name="Ben", updated_at="2026-09-27T08:00:00", scored=True,
+                          score=score(None, {"prange": 50.6}, {}, {"prange": 52.0}))
+    assert naeher.score.total == weiter.score.total == weiter_weg.score.total == 3
+    # Früher getippt haben Ben und Anna — vorn steht trotzdem Zoe (1,0 Punkte daneben).
+    assert [s.id for s in order([weiter_weg, weiter, naeher])] == [1, 2, 3]

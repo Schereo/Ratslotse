@@ -11,19 +11,25 @@ import { holeWahl, istExport } from "@/lib/share-metadata";
 // Literalen: „52 Sitze auf 16 Wahllisten" wäre beim nächsten Mal falsch, und
 // die Zahl steht in jeder geteilten Vorschau.
 export async function generateMetadata(): Promise<Metadata> {
+  // Die Wahl im Fokus (`elections.focus`): Vor dem 27.09.2026 ist das die
+  // Stichwahl, und dann wird nicht verteilt, sondern in Prozent getippt.
   const wahl = istExport() ? null : await holeWahl();
-  const name = wahl && wahl.kind === "council" ? wahl.short_title : "Ratswahl Oldenburg";
+  const name = wahl?.short_title ?? "Ratswahl Oldenburg";
+  const sitzwahl = !wahl || wahl.kind === "council";
+  const beschreibung = sitzwahl
+    ? `Wie geht die ${name} aus? Tippe die Sitzverteilung, auf Wunsch die OB-Wahl und die Wahlbeteiligung. `
+    : `Wie geht die ${name} aus? Tippe die Prozente der Kandidaturen und die Wahlbeteiligung. `;
   return {
     title: `Tippspiel — ${name} | Ratslotse`,
-    description:
-      `Wie geht die ${name} aus? Tippe die Sitzverteilung und auf Wunsch die OB-Wahl. ` +
-      "Ohne Konto mitmachen und am Wahlabend die Rangliste verfolgen.",
+    description: beschreibung + "Ohne Konto mitmachen und am Wahlabend die Rangliste verfolgen.",
     openGraph: {
       type: "website",
       locale: "de_DE",
       siteName: "Ratslotse",
       title: `Tippspiel — ${name}`,
-      description: `Wie geht die ${name} aus? Verteile die Sitze auf die Wahllisten und mach ohne Konto mit.`,
+      description: sitzwahl
+        ? `Wie geht die ${name} aus? Verteile die Sitze auf die Wahllisten und mach ohne Konto mit.`
+        : `Wie geht die ${name} aus? Tippe die Prozente und die Wahlbeteiligung — ohne Konto.`,
     },
   };
 }

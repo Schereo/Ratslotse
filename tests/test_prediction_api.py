@@ -44,7 +44,7 @@ def keine_echten_netzaufrufe(monkeypatch):
     Beitritt automatisch sperren. Wer den Auto-Lock selbst prüfen will,
     überschreibt ``election_service.live`` lokal in seinem eigenen Test."""
     monkeypatch.setattr(election_service, "live", lambda: election_service.probe(0))
-    monkeypatch.setattr(mayor_module, "fetch", lambda force=False: mayor_module.probe(0))
+    monkeypatch.setattr(mayor_module, "fetch", lambda force=False, w=None: mayor_module.probe(0, w))
 
 
 @pytest.fixture

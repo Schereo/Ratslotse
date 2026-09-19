@@ -1,10 +1,14 @@
-"""Tippspiel zur Ratswahl 13.09.2026 — öffentlich unter ``/api/tipp/…``,
-Verwaltung unter ``/api/tipp/admin/…`` (docs/plan-tippspiel-ratswahl.md).
+"""Tippspiel zu den Wahlen 2026 (Ratswahl 13.09., OB-Stichwahl 27.09.) —
+öffentlich unter ``/api/tipp/…``, Verwaltung unter ``/api/tipp/admin/…``
+(docs/plan-tippspiel-ratswahl.md).
 
-**Ohne Konto.** Wer mitspielt, gibt einen Namen ein und bekommt einen Cookie
+**Ohne Konto.** Wer mitspielt, gibt einen Namen ein — freiwillig dazu die
+Parteizugehörigkeit (``party``, seit 19.09.2026) — und bekommt einen Cookie
 (``tipp_token``, 30 Tage, HttpOnly) — die Identität IST der Token, es gibt
 keine ``web_users``-Zeile dazu. ``POST /api/tipp`` ist damit ZUGLEICH Beitritt
 (ohne gültigen Cookie, ``name`` Pflicht) und Tipp-Update (mit gültigem Cookie).
+Ein Tipp besteht je nach Wahl aus Sitzen (Ratswahl) oder Prozenten (OB-,
+Stichwahl), dazu freiwillig die Wahlbeteiligung (``turnout``).
 
 **Seit 12.09.2026 mehrere Runden** (``prediction/rounds.py``): ``?round=``
 wählt sie, ohne Parameter ist es die Hauptrunde. Jede Runde hat ihren
@@ -32,6 +36,7 @@ import json
 import secrets
 import sqlite3
 from datetime import datetime, timezone
+from types import EllipsisType
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 
@@ -52,6 +57,7 @@ from ..config import get_settings
 from ..deps import get_store, optional_user, require_admin
 from ..election import elections, mayor, register
 from ..prediction import rounds, service
+from ..prediction.service import Basis
 from ..prediction.rounds import Round
 from ..ratelimit import prediction_join_limiter, prediction_tip_limiter
 from ..schemas import PredictionJoinIn, PredictionPhaseIn, PredictionSettingsIn, PredictionPlayerIn, PredictionResultLineIn
@@ -165,6 +171,27 @@ def _clean_name(name: str) -> str:
     return bereinigt
 
 
+def _clean_party(slug: str | None) -> str | None:
+    """Die freiwillige Parteizugehörigkeit — nur, was das Menü anbietet.
+    Leer heißt „keine Angabe"; ein Slug außerhalb des Menüs (auch die
+    bewusst ausgelassene AfD) ist 422, kein stilles Verwerfen."""
+    bereinigt = (slug or "").strip().lower()
+    if not bereinigt:
+        return None
+    if bereinigt not in {o["slug"] for o in service.party_options()}:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
+                            "Diese Partei steht hier nicht zur Auswahl.")
+    return bereinigt
+
+
+def _validate_turnout(tip: float | None) -> None:
+    if tip is None:
+        return
+    if not (0 <= tip <= 100):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
+                            "Die Wahlbeteiligung muss zwischen 0 und 100 Prozent liegen.")
+
+
 def _validate_seats(seats: dict[str, int], reg: register.Register) -> None:
     erwartet = {p.slug for p in reg.parties}
     if set(seats) != erwartet:
@@ -244,9 +271,8 @@ def beitreten_oder_tippen(payload: PredictionJoinIn, request: Request, response:
     konto_runde = game.get("visibility") == "konto"
     prediction_join_limiter.check(request)
     service._check_auto_lock(store, game_id)  # noqa: SLF001 — bewusste Wiederverwendung, s. Moduldoc
-    wahl = service.wahl_der_runde(game)
-    ob = elections.mayor_of(wahl) if wahl.kind == "council" else wahl
-    reg = register.load(wahl.register_path) if wahl.kind == "council" else None
+    b: Basis = service.basis(game)
+    wahl, ob, reg = b.wahl, b.ob_wahl, b.reg
     if konto_runde:
         assert user is not None  # _zutritt hat das schon durchgesetzt
         player = store.prediction_player_by_owner(int(user["id"]), game_id)
@@ -259,13 +285,15 @@ def beitreten_oder_tippen(payload: PredictionJoinIn, request: Request, response:
         name = _kontoname(user) if konto_runde else (_clean_name(payload.name) if payload.name else None)
         if not name:
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Bitte gib deinen Namen ein.")
+        partei = _clean_party(payload.party)
         game = store.prediction_game(game_id)
         jetzt = datetime.now(timezone.utc).isoformat(timespec="seconds")
         late_at = jetzt if game["phase"] != "open" else None
         klartext = secrets.token_hex(16)
         try:
             player = store.prediction_player_add(game_id, name, _hash(klartext), late_at,
-                                                 owner_id=int(user["id"]) if konto_runde and user else None)
+                                                 owner_id=int(user["id"]) if konto_runde and user else None,
+                                                 party=partei)
         except sqlite3.IntegrityError as exc:
             raise HTTPException(status.HTTP_409_CONFLICT,
                                 f"„{name}“ ist schon vergeben — versuch es z. B. mit „{name} 2“.") from exc
@@ -293,9 +321,11 @@ def beitreten_oder_tippen(payload: PredictionJoinIn, request: Request, response:
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
                                 "Bei dieser Wahl werden keine Sitze verteilt — getippt werden Prozente.")
         _validate_mayor(payload.mayor, ob)
+        _validate_turnout(payload.turnout)
         prediction_tip_limiter.check(request)
         store.prediction_tip_set(player["id"], json.dumps(payload.seats, ensure_ascii=False),
-                                 json.dumps(payload.mayor, ensure_ascii=False) if payload.mayor else None)
+                                 json.dumps(payload.mayor, ensure_ascii=False) if payload.mayor else None,
+                                 payload.turnout)
         service.reset()
 
     # Bei einem NEUEN Beitritt trägt das eingehende Request-Objekt den gerade
@@ -404,8 +434,8 @@ def qr_code(runde: str | None = Query(default=None, alias="round"), store: Store
 # ------------------------------------------------------------------ Admin (1h) — kein Schalter, s. Moduldoc
 
 def _admin_stand(store: Store, runde: Round) -> PredictionAdminStand:
-    reg = register.load()
     game_id = _game_id(store, runde)
+    b: Basis = service.basis(store.prediction_game(game_id))
     results = {r["slug"]: r for r in store.prediction_result(game_id)}
     tips = service._parsed(store.prediction_players(game_id, include_hidden=True))  # noqa: SLF001
     # Ø-Tipp und „exakt" zählen wie auf der öffentlichen Tafel: ohne
@@ -414,7 +444,7 @@ def _admin_stand(store: Store, runde: Round) -> PredictionAdminStand:
     sichtbare = [t for t in tips if t["hidden_at"] is None]
 
     rows: list[PredictionResultRow] = []
-    for p in reg.parties:
+    for p in (b.reg.parties if b.reg is not None else ()):
         r = results.get(p.slug, {})
         avg = service._avg(sichtbare, "seats", p.slug)  # noqa: SLF001
         veroeffentlicht = r.get("published_seats")
@@ -425,7 +455,7 @@ def _admin_stand(store: Store, runde: Round) -> PredictionAdminStand:
             avg_tip=avg, exact_count=exakt, published_seats=veroeffentlicht, published_pct=None,
             published_source=r.get("published_source"), published_at=r.get("published_at"),
         ))
-    for c in mayor.candidates():
+    for c in (mayor.candidates(b.ob_wahl) if b.ob_wahl is not None else ()):
         slug = f"ob:{c.slug}"
         r = results.get(slug, {})
         avg = service._avg(sichtbare, "mayor", c.slug)  # noqa: SLF001
@@ -434,9 +464,18 @@ def _admin_stand(store: Store, runde: Round) -> PredictionAdminStand:
             avg_tip=avg, exact_count=0, published_seats=None, published_pct=r.get("published_pct"),
             published_source=r.get("published_source"), published_at=r.get("published_at"),
         ))
+    # Die Wahlbeteiligung als eigene Zeile — Handeingabe wie bei einer
+    # Kandidatur, Slug ``turnout`` (service.TURNOUT_SLUG).
+    r = results.get(service.TURNOUT_SLUG, {})
+    rows.append(PredictionResultRow(
+        slug=service.TURNOUT_SLUG, seats=None, pct=r.get("pct"), source=r.get("source") or "manuell",
+        avg_tip=service._avg_turnout(sichtbare), exact_count=0,  # noqa: SLF001
+        published_seats=None, published_pct=r.get("published_pct"),
+        published_source=r.get("published_source"), published_at=r.get("published_at"),
+    ))
     spieler = [PredictionAdminPlayer(
-        id=t["id"], name=t["name"], late_at=t["late_at"], hidden=t["hidden_at"] is not None,
-        has_tip=t["seats"] is not None, has_mayor_tip=t["mayor"] is not None,
+        id=t["id"], name=t["name"], party=t["party"], late_at=t["late_at"], hidden=t["hidden_at"] is not None,
+        has_tip=t["tipped"], has_mayor_tip=t["mayor"] is not None, has_turnout_tip=t["turnout"] is not None,
     ) for t in sorted(tips, key=lambda t: t["name"].casefold())]
     # Uhrzeit in Berliner Zeit statt des rohen UTC-Zeitstempels aus dem Store
     # („2026-09-11T12:06:18" las sich am Nachmittag wie ein Fehler).
@@ -475,26 +514,41 @@ def ergebnis_eintragen(zeilen: list[PredictionResultLineIn], _admin: dict = Depe
 @router.post("/api/tipp/admin/abfragen")
 def jetzt_abfragen(_admin: dict = Depends(require_admin), runde: Round = Depends(_admin_runde),
                    store: Store = Depends(get_store)) -> PredictionAdminStand:
-    """„Jetzt abfragen": die Live-Zahlen der Ratswahl UND der OB-Wahl in den
-    Entwurf übernehmen — NICHT veröffentlicht, das bleibt ein eigener Schritt."""
+    """„Jetzt abfragen": die Live-Zahlen der Wahl DIESER Runde in den Entwurf
+    übernehmen — bei einer Ratswahl Sitze UND OB-Prozente, bei einer OB- oder
+    Stichwahl nur deren Prozente; dazu die Wahlbeteiligung. NICHT
+    veröffentlicht, das bleibt ein eigener Schritt."""
     from ..election import service as election_service
 
-    night = election_service.live()
-    zeilen: list[dict] = []
-    for p in night["parties"]:
-        wert = service.night_seats(p)
-        if wert is not None:
-            zeilen.append({"slug": p["slug"], "seats": wert})
-    ob = mayor.fetch()
-    for c in ob.candidates:
-        if c.share_pct is not None:
-            zeilen.append({"slug": f"ob:{c.slug}", "pct": c.share_pct})
     game_id = _game_id(store, runde)
+    b: Basis = service.basis(store.prediction_game(game_id))
+    zeilen: list[dict] = []
+    turnout: float | None = None
+    if b.sitzwahl:
+        night = election_service.live()
+        for p in night["parties"]:
+            wert = service.night_seats(p)
+            if wert is not None:
+                zeilen.append({"slug": p["slug"], "seats": wert})
+        if night["phase"] != "before":
+            turnout = night["totals"]["turnout_pct"]
+    if b.ob_wahl is not None:
+        ob = mayor.fetch(w=b.ob_wahl)
+        if ob.phase != "before":
+            for c in ob.candidates:
+                if c.share_pct is not None:
+                    zeilen.append({"slug": f"ob:{c.slug}", "pct": c.share_pct})
+            if not b.sitzwahl:
+                turnout = ob.turnout_pct
+    if turnout is not None:
+        zeilen.append({"slug": service.TURNOUT_SLUG, "pct": turnout})
     if zeilen:
         store.prediction_result_set(game_id, zeilen, source="votemanager")
         listen = sum(1 for z in zeilen if "seats" in z)
-        store.prediction_log_add(game_id, f"Votemanager abgefragt · {listen} Listen, {len(zeilen) - listen} "
-                                 f"Personen bei der OB-Wahl in den Entwurf übernommen.")
+        personen = sum(1 for z in zeilen if z["slug"].startswith("ob:"))
+        store.prediction_log_add(game_id, f"Votemanager abgefragt · {listen} Listen, {personen} "
+                                 f"Personen bei der OB-Wahl{' und die Wahlbeteiligung' if turnout is not None else ''} "
+                                 f"in den Entwurf übernommen.")
         service.reset()
     return _admin_stand(store, runde)
 
@@ -567,6 +621,8 @@ def einstellungen_setzen(payload: PredictionSettingsIn, _admin: dict = Depends(r
 def spieler_bearbeiten(player_id: int, payload: PredictionPlayerIn, _admin: dict = Depends(require_admin),
                        runde: Round = Depends(_admin_runde), store: Store = Depends(get_store)) -> PredictionAdminStand:
     name = _clean_name(payload.name) if payload.name is not None else None
-    store.prediction_player_update(player_id, name=name, hidden=payload.hidden)
+    # ``party`` fehlt → unverändert; ``""`` → keine Angabe; sonst ein Slug aus dem Menü.
+    partei: str | None | EllipsisType = ... if payload.party is None else _clean_party(payload.party)
+    store.prediction_player_update(player_id, name=name, hidden=payload.hidden, party=partei)
     service.reset()
     return _admin_stand(store, runde)

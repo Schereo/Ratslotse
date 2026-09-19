@@ -5,6 +5,11 @@
 // (Ø-Tipp), die Zahlen daneben, darunter die OB-Wahl als fünf Kacheln.
 // Maße aus dem Artboard (1920×1080), skaliert von `buehne.tsx`.
 //
+// Für eine OB- oder Stichwahl (`tip_kind === "pct"`, seit 19.09.2026) gibt
+// es keinen Halbkreis und keine Listen: Dann steht links je Kandidatur eine
+// große Kachel (Ist gegen Ø-Tipp als zwei Balken auf einer Skala), rechts
+// die Wahlbeteiligung und der Server-Satz. Dieselbe Bühne, derselbe Kopf.
+//
 // Der Halbkreis nimmt NUR die Geometrie aus `lib/wahlabend.ts`
 // (`halbkreis()`), nicht die Wahlabend-Komponente: Die trägt einen anderen
 // Datenvertrag und eine Zeiger-Interaktion, die aus fünf Metern niemand
@@ -16,6 +21,7 @@ import { halbkreis } from "@/lib/wahlabend";
 import type { ApiAntwort } from "@/lib/vertrag";
 import { Lotti } from "@/components/lotti";
 import { cn } from "@/lib/utils";
+import { prozentText } from "@/lib/tipp";
 import { BeamerKopf, LivePunkt, dezimal } from "./buehne";
 
 type PredictionStand = ApiAntwort<"/tipp/stand">;
@@ -55,7 +61,128 @@ const QUELLE: Record<string, string> = {
 
 const OB_STATUS: Record<string, string> = { before: "noch nicht ausgezählt", counting: "Auszählung", complete: "Ergebnis" };
 
+/** Die Wahlbeteiligung als Kachel — auf beiden Vergleichs-Screens dieselbe. */
+function BeteiligungKachel({ stand, gross }: { stand: PredictionStand; gross?: boolean }) {
+  const t = stand.turnout;
+  return (
+    <div className={cn("rounded-[14px] border border-border bg-card", gross ? "px-6 py-5" : "px-3.5 py-3")}>
+      <p className={cn("font-mono uppercase tracking-[0.11em] text-muted-foreground", gross ? "text-[22px]" : "text-[18px]")}>Wahlbeteiligung</p>
+      <p className={cn("mt-1 font-display font-bold leading-none tabular-nums", gross ? "text-[64px]" : "text-[34px]")}>
+        {t.actual_pct !== null ? dezimal(t.actual_pct) : "–"}{t.actual_pct !== null && <span className={cn("ml-1 text-muted-foreground", gross ? "text-[32px]" : "text-[20px]")}>%</span>}
+      </p>
+      <p className={cn("mt-0.5 text-muted-foreground", gross ? "text-[24px]" : "text-[20px]")}>
+        Ø-Tipp {t.avg_tip !== null ? prozentText(t.avg_tip) : "–"}{t.tip_count > 0 ? ` · ${t.tip_count} ${t.tip_count === 1 ? "Tipp" : "Tipps"}` : ""}
+      </p>
+    </div>
+  );
+}
+
+/** Der Vergleich einer OB- oder Stichwahl: zwei (oder neun) Kandidaturen als
+ *  Kacheln, je Kachel zwei Balken — Ist (Listenfarbe) und Ø-Tipp (Kontur) —
+ *  auf einer gemeinsamen Skala, die bei 100 % endet. */
+function VergleichProzent({ stand, rechtzeitig }: { stand: PredictionStand; rechtzeitig: number }) {
+  const hatZahl = stand.mayor.some((m) => m.actual_pct !== null);
+  const endstand = stand.phase === "final";
+  const kandidaturen = [...stand.mayor]
+    .sort((a, b) => (b.actual_pct ?? -1) - (a.actual_pct ?? -1) || (b.avg_tip ?? -1) - (a.avg_tip ?? -1));
+  const zweikampf = kandidaturen.length <= 2;
+  return (
+    <div className="flex h-full flex-col px-20 py-14 text-foreground">
+      <BeamerKopf
+        untertitel="Tippspiel · Tipps im Vergleich"
+        rechts={hatZahl ? (
+          <>
+            <LivePunkt endstand={endstand} />
+            {stand.area_label && <span>{stand.area_label}</span>}
+            <span>·</span>
+            <span className="font-mono">{stand.stand_label || "–"}</span>
+            {stand.source_label && (
+              <>
+                <span>·</span>
+                <span>{QUELLE[stand.source_label] ?? stand.source_label}</span>
+              </>
+            )}
+          </>
+        ) : (
+          <span>{stand.phase === "open" ? "Tippen möglich" : "Warten auf den ersten Auszählungsstand"}</span>
+        )}
+      />
+
+      {/* Beide Spalten mittig in der Höhe: Zwei Kachel-Reihen füllen die
+          Bühne nicht wie sechzehn Listen — oben angeklebt bliebe die untere
+          Hälfte leer. */}
+      <div className="mt-6 grid min-h-0 flex-1 grid-cols-[1fr_620px] items-center gap-16">
+        <div className="flex flex-col">
+          <p className="font-mono text-[22px] uppercase tracking-[0.11em] text-muted-foreground">
+            {hatZahl ? `Stimmenanteile · ${OB_STATUS[stand.mayor_status] ?? stand.mayor_status}` : "Stimmenanteile · noch keine Zahlen"}
+          </p>
+          <div className={cn("mt-6 grid gap-6", zweikampf ? "grid-cols-2" : "grid-cols-3")}>
+            {kandidaturen.map((k) => {
+              const ist = k.actual_pct ?? 0;
+              const avg = k.avg_tip ?? 0;
+              return (
+                <div key={k.slug} className={cn("rounded-[22px] border border-border bg-card", zweikampf ? "px-8 py-7" : "px-5 py-4")}>
+                  <p className={cn("truncate font-semibold leading-tight", zweikampf ? "text-[40px]" : "text-[26px]")} title={k.name}>{k.name}</p>
+                  <p className={cn("mt-1 text-muted-foreground", zweikampf ? "text-[24px]" : "text-[18px]")}>
+                    {k.party === "Einzelwahlvorschlag" ? k.party : `vorgeschlagen von ${k.party}`}
+                  </p>
+                  <div className={cn("flex items-end gap-6", zweikampf ? "mt-8" : "mt-4")}>
+                    <div>
+                      <p className={cn("font-mono uppercase tracking-[0.1em] text-muted-foreground", zweikampf ? "text-[20px]" : "text-[16px]")}>Stand</p>
+                      <p className={cn("font-display font-bold leading-none tabular-nums", zweikampf ? "text-[96px]" : "text-[52px]")}>
+                        {k.actual_pct !== null ? dezimal(k.actual_pct) : "–"}
+                      </p>
+                    </div>
+                    <div className="pb-2">
+                      <p className={cn("font-mono uppercase tracking-[0.1em] text-muted-foreground", zweikampf ? "text-[20px]" : "text-[16px]")}>Ø-Tipp</p>
+                      <p className={cn("font-display font-semibold leading-none tabular-nums text-muted-foreground", zweikampf ? "text-[48px]" : "text-[30px]")}>
+                        {k.avg_tip !== null ? dezimal(k.avg_tip) : "–"}
+                      </p>
+                    </div>
+                  </div>
+                  {/* Zwei Balken auf EINER Skala (0–100 %): oben das Ist in
+                      Primärfarbe, darunter der Ø-Tipp als Kontur. */}
+                  <div className={cn("flex flex-col gap-2", zweikampf ? "mt-7" : "mt-4")}>
+                    <div className="h-[18px] w-full overflow-hidden rounded-full bg-muted">
+                      <div className="h-full rounded-full bg-primary transition-[width] duration-700" style={{ width: `${Math.min(100, ist)}%` }} />
+                    </div>
+                    <div className="h-[18px] w-full overflow-hidden rounded-full border-2 border-dashed border-border">
+                      <div className="h-full rounded-full bg-foreground/25 transition-[width] duration-700" style={{ width: `${Math.min(100, avg)}%` }} />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <p className="mt-5 flex items-center gap-6 text-[20px] text-muted-foreground">
+            <span className="inline-flex items-center gap-2"><span className="inline-block h-3 w-8 rounded-full bg-primary" /> Stand</span>
+            <span className="inline-flex items-center gap-2"><span className="inline-block h-3 w-8 rounded-full border-2 border-dashed border-border bg-foreground/25" /> Ø-Tipp</span>
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-6">
+          <BeteiligungKachel stand={stand} gross />
+          <div data-testid="vergleich-satz" className="flex items-center gap-[22px] rounded-[22px] border border-border bg-card px-[26px] py-[22px]">
+            <Lotti regung="sucht" className="h-24 w-24 flex-none" decorative />
+            <div>
+              <p className="text-[24px] leading-[1.45] text-foreground/85">{stand.compare_sentence}</p>
+              <p className="mt-1.5 text-[22px] text-muted-foreground">Ø-Tipp = Durchschnitt der {rechtzeitig} rechtzeitig abgegebenen Tipps.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function BeamerVergleich({ stand }: { stand: PredictionStand }) {
+  if (stand.tip_kind === "pct") {
+    return <VergleichProzent stand={stand} rechtzeitig={stand.rows.filter((r) => r.has_tip && r.late_at === null).length} />;
+  }
+  return <VergleichSitze stand={stand} />;
+}
+
+function VergleichSitze({ stand }: { stand: PredictionStand }) {
   // Der Satz verspricht „vor Tipp-Schluss" — `tip_count` zählt aber ALLE
   // Tipps, auch nachgetippte, die in den Ø nicht eingehen (service._avg).
   const rechtzeitig = stand.rows.filter((r) => r.has_tip && r.late_at === null).length;
@@ -63,7 +190,8 @@ export function BeamerVergleich({ stand }: { stand: PredictionStand }) {
   const ohneSitz = stand.compare.filter((c) => c.actual === 0).map((c) => c.short);
   // Balken und Raute teilen sich eine Skala: die größte Zahl der Tafel.
   const maximum = Math.max(1, ...stand.compare.map((c) => Math.max(c.actual ?? 0, c.avg_tip ?? 0)));
-  // Fünf Kacheln für die OB-Wahl — die fünf mit dem meisten Ist (davor: Ø).
+  // Fünf Kacheln unten: die Wahlbeteiligung und die vier OB-Kandidaturen
+  // mit dem meisten Ist (davor: Ø).
   const ob = [...stand.mayor]
     .sort((a, b) => (b.actual_pct ?? -1) - (a.actual_pct ?? -1) || (b.avg_tip ?? -1) - (a.avg_tip ?? -1))
     .slice(0, 5);
@@ -167,7 +295,8 @@ export function BeamerVergleich({ stand }: { stand: PredictionStand }) {
                 OB-Wahl · {OB_STATUS[stand.mayor_status] ?? stand.mayor_status}{stand.mayor_status !== "before" && stand.stand_label ? ` ${stand.stand_label}` : ""}
               </p>
               <div className="grid grid-cols-5 gap-3.5">
-                {ob.map((o) => (
+                <BeteiligungKachel stand={stand} />
+                {ob.slice(0, 4).map((o) => (
                   <div key={o.slug} className="rounded-[14px] border border-border bg-card px-3.5 py-3">
                     <p className="truncate text-[22px] font-semibold" title={o.name}>{o.name}</p>
                     <p className="mt-1 font-display text-[34px] font-bold leading-none tabular-nums">

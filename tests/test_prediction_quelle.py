@@ -40,7 +40,7 @@ def wahlabend_vor_der_ersten_stimme(monkeypatch):
     """Vorgabe: nichts ausgezählt — ein Test, der Zahlen braucht, schaltet
     ``live`` selbst auf einen Teilstand um."""
     monkeypatch.setattr(election_service, "live", lambda: election_service.probe(0))
-    monkeypatch.setattr(mayor_module, "fetch", lambda force=False: mayor_module.probe(0))
+    monkeypatch.setattr(mayor_module, "fetch", lambda force=False, w=None: mayor_module.probe(0, w))
 
 
 @pytest.fixture

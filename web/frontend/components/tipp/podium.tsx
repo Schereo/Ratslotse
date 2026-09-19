@@ -17,9 +17,22 @@ import { ConfettiBurst } from "@/components/confetti";
 import { Lotti } from "@/components/lotti";
 import { cn } from "@/lib/utils";
 import { useTween } from "./beamer-hooks";
+import { ParteiChip } from "./partei";
 
 type PredictionStand = ApiAntwort<"/tipp/stand">;
 type Zeile = PredictionStand["rows"][number];
+
+/** „7 richtig · OB +6" (Ratswahl) bzw. „OB +12 · Beteiligung +3" (OB-/
+ *  Stichwahl) — die Bausteine der Punktzahl, nur die, die es bei dieser
+ *  Wahlart gibt. */
+function punkteDetail(z: Zeile, sitzwahl: boolean): string {
+  if (!z.score) return "";
+  const teile: string[] = [];
+  if (sitzwahl) teile.push(`${z.score.exact_lists} richtig`);
+  if (z.score.mayor_points > 0 || !sitzwahl) teile.push(`OB +${z.score.mayor_points}`);
+  if (z.score.turnout_points > 0) teile.push(`Beteiligung +${z.score.turnout_points}`);
+  return teile.join(" · ");
+}
 
 /** ▲▼-Chip zur Rangänderung — grün beim Aufstieg, neutral beim Abstieg
  *  (Designsprache: nichts Rotes, verlieren ist hier kein Fehler) und ein
@@ -65,7 +78,7 @@ function Punkte({ z, groesse, hell }: { z: Zeile; groesse: number; hell?: boolea
   );
 }
 
-export function Podium({ rows, phase }: { rows: Zeile[]; phase: string }) {
+export function Podium({ rows, phase, sitzwahl = true }: { rows: Zeile[]; phase: string; sitzwahl?: boolean }) {
   const top3 = rows.filter((r) => r.rank !== null && r.rank <= 3).sort((a, b) => a.rank! - b.rank!);
   const platz1 = top3.find((r) => r.rank === 1) ?? null;
   const leaderId = platz1?.player_id ?? null;
@@ -96,7 +109,7 @@ export function Podium({ rows, phase }: { rows: Zeile[]; phase: string }) {
     <div data-testid="podium" className="mt-9 grid h-[300px] grid-cols-[1fr_1.25fr_1fr] items-end gap-7">
 
       {/* Platz 2 */}
-      <Nebenplatz z={p2} rang={2} hoehe={232} nameGroesse={44} punkteGroesse={40} />
+      <Nebenplatz z={p2} rang={2} hoehe={232} nameGroesse={44} punkteGroesse={40} sitzwahl={sitzwahl} />
 
       {/* Platz 1 */}
       <div className="relative flex h-[300px] flex-col overflow-hidden rounded-[30px] border border-[hsl(202_90%_60%/0.5)] bg-gradient-to-br from-[hsl(205_92%_34%)] to-[hsl(205_92%_24%)] px-9 py-[30px] text-white shadow-[0_30px_80px_-30px_hsl(202_90%_60%/0.5)]">
@@ -113,21 +126,20 @@ export function Podium({ rows, phase }: { rows: Zeile[]; phase: string }) {
         <div className="animate-podium-schweben absolute right-[26px] top-[70px]">
           <Lotti regung="hebt-pokal" className="h-[120px] w-[120px]" decorative />
         </div>
-        <p className="relative mt-auto truncate font-display text-[64px] font-bold leading-none tracking-[-0.025em]" title={p1?.name}>
-          {p1?.name ?? "–"}
+        <p className="relative mt-auto flex items-center gap-4 font-display text-[64px] font-bold leading-none tracking-[-0.025em]">
+          <span className="truncate" title={p1?.name}>{p1?.name ?? "–"}</span>
+          {p1 && <ParteiChip partei={p1.party} hell className="px-3 font-sans text-[20px] font-semibold tracking-normal" />}
         </p>
         <div className="relative mt-2.5 flex items-baseline gap-3">
           {p1 ? <Punkte z={p1} groesse={56} hell /> : <span className="font-display text-[56px]">–</span>}
           {p1?.score && (
-            <span className="text-[24px] text-white/80">
-              Punkte · {p1.score.exact_lists} richtig{p1.score.mayor_points > 0 && ` · OB +${p1.score.mayor_points}`}
-            </span>
+            <span className="text-[24px] text-white/80">Punkte · {punkteDetail(p1, sitzwahl)}</span>
           )}
         </div>
       </div>
 
       {/* Platz 3 */}
-      <Nebenplatz z={p3} rang={3} hoehe={200} nameGroesse={40} punkteGroesse={36} />
+      <Nebenplatz z={p3} rang={3} hoehe={200} nameGroesse={40} punkteGroesse={36} sitzwahl={sitzwahl} />
       {/* Nach den drei Karten, nicht davor: Die Browsertests greifen die
           Plätze über ihre Reihenfolge im Raster — und ein Konfetti-Regen darf
           nicht zum „ersten Platz" werden. */}
@@ -136,8 +148,8 @@ export function Podium({ rows, phase }: { rows: Zeile[]; phase: string }) {
   );
 }
 
-function Nebenplatz({ z, rang, hoehe, nameGroesse, punkteGroesse }: {
-  z: Zeile | undefined; rang: number; hoehe: number; nameGroesse: number; punkteGroesse: number;
+function Nebenplatz({ z, rang, hoehe, nameGroesse, punkteGroesse, sitzwahl }: {
+  z: Zeile | undefined; rang: number; hoehe: number; nameGroesse: number; punkteGroesse: number; sitzwahl: boolean;
 }) {
   return (
     <div style={{ height: hoehe }} className="flex flex-col rounded-[26px] border border-border bg-card px-[30px] py-[26px]">
@@ -145,12 +157,13 @@ function Nebenplatz({ z, rang, hoehe, nameGroesse, punkteGroesse }: {
         <span className="font-display text-[44px] font-semibold leading-none text-muted-foreground">{rang}</span>
         {z && <RangChip rank={z.rank} rankBefore={z.rank_before} />}
       </div>
-      <p style={{ fontSize: nameGroesse }} className="mt-auto truncate font-display font-bold leading-[1.05] tracking-[-0.02em]" title={z?.name}>
-        {z?.name ?? "–"}
+      <p style={{ fontSize: nameGroesse }} className="mt-auto flex items-center gap-3 font-display font-bold leading-[1.05] tracking-[-0.02em]">
+        <span className="truncate" title={z?.name}>{z?.name ?? "–"}</span>
+        {z && <ParteiChip partei={z.party} className="px-2.5 font-sans text-[18px] font-semibold tracking-normal" />}
       </p>
       <div className="mt-1.5 flex items-baseline gap-2.5">
         {z ? <Punkte z={z} groesse={punkteGroesse} /> : <span className="font-display text-[40px] text-muted-foreground">–</span>}
-        {z?.score && <span className="text-[22px] text-muted-foreground">Punkte · {z.score.exact_lists} richtig</span>}
+        {z?.score && <span className="text-[22px] text-muted-foreground">Punkte · {punkteDetail(z, sitzwahl)}</span>}
       </div>
     </div>
   );

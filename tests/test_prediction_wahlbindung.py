@@ -47,11 +47,14 @@ def store(tmp_path, monkeypatch):
 # ------------------------------------------------------------------ Die Bindung
 
 def test_hoechstpunktzahl_kommt_aus_der_wahl():
-    """134 Punkte sind 16 Listen und 9 Kandidaturen — nicht eine Konstante."""
-    assert scoring.max_points(16, 9) == 134
-    # Eine Stichwahl: zwei Kandidaturen, keine Listen.
-    assert scoring.max_points(0, 2) == 12
-    assert scoring.max_points(0, 0) == 0
+    """134 Punkte sind 16 Listen und 9 Kandidaturen — nicht eine Konstante.
+    Seit 19.09.2026 kommen 6 für die Wahlbeteiligung dazu (jede Wahlart)."""
+    assert scoring.max_points(16, 9, turnout=False) == 134
+    assert scoring.max_points(16, 9) == 140
+    # Eine Stichwahl: zwei Kandidaturen, keine Listen — plus Wahlbeteiligung.
+    assert scoring.max_points(0, 2, turnout=False) == 12
+    assert scoring.max_points(0, 2) == 18
+    assert scoring.max_points(0, 0, turnout=False) == 0
 
 
 def test_eine_runde_ohne_eintrag_meint_die_aktive_ratswahl():
@@ -108,7 +111,7 @@ def test_eine_prozent_runde_braucht_keine_zeile_punkte_code(store, stichwahl_run
     # Und die Punkte rechnen sich ohne jede Sonderbehandlung.
     punkte = scoring.score({}, {"prange": 52.0, "rohr": 48.0},
                            {}, {"prange": 52.1, "rohr": 47.9})
-    assert punkte.total == 12 == scoring.max_points(0, len(aufbau["mayor_candidates"]))
+    assert punkte.total == 12 == scoring.max_points(0, len(aufbau["mayor_candidates"]), turnout=False)
 
 
 def test_die_hauptrunde_bleibt_eine_sitzwahl(store):
