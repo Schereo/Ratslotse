@@ -601,9 +601,15 @@ class PredictionJoinIn(BaseModel):
     noch (die Namenseingabe kommt vor dem Tippformular); erst wenn beides da
     ist, wird ein Tipp gespeichert."""
     name: str | None = Field(default=None, min_length=2, max_length=30)
+    #: Parteizugehörigkeit, freiwillig — nur beim Beitritt gelesen (wie
+    #: ``name``; später ändert sie nur der Admin). Ein Listen-Slug aus
+    #: ``PredictionGame.party_options``; ``None`` = keine Angabe.
+    party: str | None = Field(default=None, max_length=40)
     seats: dict[str, int] | None = None
     #: ``None`` = die OB-Wahl bewusst nicht mitgetippt (kein Abzug dafür).
     mayor: dict[str, float] | None = None
+    #: Getippte Wahlbeteiligung in Prozent; ``None`` = nicht mitgetippt.
+    turnout: float | None = None
 
 
 class PredictionResultLineIn(BaseModel):
@@ -633,3 +639,6 @@ class PredictionSettingsIn(BaseModel):
 class PredictionPlayerIn(BaseModel):
     name: str | None = Field(default=None, min_length=2, max_length=30)
     hidden: bool | None = None
+    #: Parteizugehörigkeit korrigieren: ein Listen-Slug, oder ``""`` für
+    #: „keine Angabe". Fehlt das Feld, bleibt sie, wie sie ist.
+    party: str | None = None

@@ -17,7 +17,8 @@ import { cn } from "@/lib/utils";
 import { Podium, RangChip } from "./podium";
 import { useTween, useFrisch } from "./beamer-hooks";
 import { BeamerKopf, LivePunkt } from "./buehne";
-import { mitRunde, uhrzeitKurz } from "@/lib/tipp";
+import { ParteiChip } from "./partei";
+import { mitRunde, regelSatz, uhrzeitKurz } from "@/lib/tipp";
 
 type PredictionStand = ApiAntwort<"/tipp/stand">;
 type Zeile = PredictionStand["rows"][number];
@@ -28,11 +29,13 @@ const LISTEN_HOEHE = 1080 - 48 - 40 - 44 - 36 - 300 - 34 - 22 - 30;
 const ZEILE_VOLL = 74;
 const ABSTAND = 14;
 
-function Ranglistenzeile({ z, index, proSpalte, spalten, hoehe, gewertet }: {
+function Ranglistenzeile({ z, index, proSpalte, spalten, hoehe, gewertet, sitzwahl }: {
   z: Zeile; index: number; proSpalte: number; spalten: number; hoehe: number;
   /** Steht schon ein Ergebnis? Sonst ist die Liste nur „wer mitspielt" —
    *  dann ohne Rang, Chip und Punkte, denn die gibt es noch nicht. */
   gewertet: boolean;
+  /** „N richtig" zählt Listen — bei einer Prozentwahl gibt es keine. */
+  sitzwahl: boolean;
 }) {
   const i = index % proSpalte;
   const spalte = Math.floor(index / proSpalte);
@@ -65,6 +68,7 @@ function Ranglistenzeile({ z, index, proSpalte, spalten, hoehe, gewertet }: {
       )}
       <span className="flex min-w-0 items-center gap-3.5">
         <span className={cn("truncate font-semibold", kompakt ? "text-[22px]" : "text-[30px]")} title={z.name}>{z.name}</span>
+        <ParteiChip partei={z.party} className={cn("px-2.5", kompakt ? "text-[15px]" : "text-[18px]")} />
         {z.late_at && (
           <span className="flex-none rounded-full border border-[#92400e] px-2.5 py-0.5 font-mono text-[18px] uppercase tracking-[0.08em] text-[#fcd34d]">
             Später Tipp {uhrzeitKurz(z.late_at)}
@@ -78,7 +82,7 @@ function Ranglistenzeile({ z, index, proSpalte, spalten, hoehe, gewertet }: {
             <span className={cn("font-display font-semibold tabular-nums text-primary", kompakt ? "text-[26px]" : "text-[36px]")}>
               {ohneTipp ? "–" : punkte}
             </span>
-            {!ohneTipp && z.score && (
+            {!ohneTipp && z.score && sitzwahl && (
               <span className={cn("text-muted-foreground", kompakt ? "text-[16px]" : "text-[20px]")}>{z.score.exact_lists} richtig</span>
             )}
           </span>
@@ -99,6 +103,7 @@ export function Scoreboard({ stand, runde }: { stand: PredictionStand; runde: st
   const platz = gewertet ? LISTEN_HOEHE : LISTEN_HOEHE + 300 + 34;
   const hoehe = Math.max(44, Math.min(ZEILE_VOLL, Math.floor(platz / proSpalte) - ABSTAND));
   const endstand = stand.phase === "final";
+  const sitzwahl = stand.tip_kind === "seats";
 
   return (
     <div className="flex h-full flex-col bg-[radial-gradient(900px_500px_at_50%_-10%,hsl(205_92%_34%/0.12),transparent_70%)] px-20 pb-10 pt-12 text-foreground dark:bg-[radial-gradient(900px_500px_at_50%_-10%,hsl(205_92%_34%/0.35),transparent_70%)]">
@@ -117,21 +122,23 @@ export function Scoreboard({ stand, runde }: { stand: PredictionStand; runde: st
         )}
       />
 
-      {gewertet && <Podium rows={stand.rows} phase={stand.phase} />}
+      {gewertet && <Podium rows={stand.rows} phase={stand.phase} sitzwahl={sitzwahl} />}
 
       <div className={cn("relative flex-1", gewertet ? "mt-[34px]" : "mt-10")}>
         {rest.map((z, index) => (
-          <Ranglistenzeile key={z.player_id} z={z} index={index} proSpalte={proSpalte} spalten={spalten} hoehe={hoehe} gewertet={gewertet} />
+          <Ranglistenzeile key={z.player_id} z={z} index={index} proSpalte={proSpalte} spalten={spalten} hoehe={hoehe} gewertet={gewertet} sitzwahl={sitzwahl} />
         ))}
       </div>
 
-      <div className="mt-[22px] flex items-center justify-between text-[22px] text-muted-foreground">
+      <div className="mt-[22px] flex items-center justify-between gap-10 text-[22px] text-muted-foreground">
         <span>
           {gewertet
-            ? "Je Liste: 5 Punkte für die richtige Sitzzahl, 3 bei 1 Sitz daneben, 1 bei 2 Sitzen daneben. OB-Bonus: bis zu 6 pro Person."
-            : "Mit der ersten Hochrechnung siehst du hier, wer vorne liegt."}
+            ? regelSatz(sitzwahl)
+            : sitzwahl ? "Mit der ersten Hochrechnung siehst du hier, wer vorne liegt." : "Mit dem ersten Auszählungsstand siehst du hier, wer vorne liegt."}
         </span>
-        <span className="font-mono">ratslotse.de{mitRunde("/tipp", runde, "runde")}</span>
+        {/* Die Adresse bleibt am Stück — „tipp?" auf der einen und
+            „runde=stichwahl" auf der nächsten Zeile tippt niemand richtig ab. */}
+        <span className="flex-none whitespace-nowrap font-mono">ratslotse.de{mitRunde("/tipp", runde, "runde")}</span>
       </div>
     </div>
   );
@@ -177,6 +184,7 @@ export function HandyRangliste({ stand, probe }: { stand: PredictionStand; probe
             <span className="font-display text-[19px] font-bold text-muted-foreground tabular-nums">{z.rank}</span>
             <span className="flex min-w-0 items-center gap-2">
               <span className="truncate text-[15px] font-semibold">{z.name}</span>
+              <ParteiChip partei={z.party} />
               {z.late_at && <span className="flex-none rounded-full border border-amber-300 px-1.5 font-mono text-[9px] uppercase text-amber-700 dark:border-amber-500/40 dark:text-amber-300">später Tipp</span>}
             </span>
             <RangChip rank={z.rank} rankBefore={z.rank_before} className="h-6 px-2 text-[12px]" />
@@ -186,13 +194,14 @@ export function HandyRangliste({ stand, probe }: { stand: PredictionStand; probe
         {ohne.map((z) => (
           <div key={z.player_id} className="grid grid-cols-[34px_1fr] items-center gap-2.5 rounded-xl border border-border bg-card px-3 py-2.5 opacity-60">
             <span className="text-muted-foreground">–</span>
-            <span className="truncate text-[15px] font-semibold">{z.name}</span>
+            <span className="flex min-w-0 items-center gap-2">
+              <span className="truncate text-[15px] font-semibold">{z.name}</span>
+              <ParteiChip partei={z.party} />
+            </span>
           </div>
         ))}
       </div>
-      <p className="mt-4 text-center text-[11.5px] text-muted-foreground">
-        Je Liste: 5 Punkte für die richtige Sitzzahl, 3 bei 1 Sitz daneben, 1 bei 2 Sitzen daneben. OB-Bonus: bis zu 6 pro Person.
-      </p>
+      <p className="mt-4 text-center text-[11.5px] text-muted-foreground">{regelSatz(stand.tip_kind === "seats")}</p>
     </div>
   );
 }

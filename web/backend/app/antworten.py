@@ -4694,6 +4694,33 @@ class PredictionMayorCandidate(TypedDict):
     party: str
 
 
+class PredictionPartyOption(TypedDict):
+    """Ein Eintrag im Parteien-Menü beim Beitritt (freiwillig) — und das
+    Etikett neben dem Namen in der Rangliste. Die Liste kommt aus dem
+    Kandidatenregister der Ratswahl, ohne AfD (Tims Entscheidung 19.09.2026)
+    und ohne Einzelwahlvorschläge (die sind keine Partei)."""
+    slug: str
+    short: str
+    color: str
+    color_dark: str
+
+
+class PredictionTurnoutLine(TypedDict):
+    """Der eigene Tipp zur Wahlbeteiligung („meins")."""
+    tip: float
+    actual_pct: float | None
+    avg_tip: float | None
+    points: int
+
+
+class PredictionTurnoutCompare(TypedDict):
+    """Die Wahlbeteiligung auf der öffentlichen Tafel: Ist und Ø-Tipp."""
+    actual_pct: float | None
+    avg_tip: float | None
+    #: Wie viele rechtzeitige Tipps die Wahlbeteiligung überhaupt nennen.
+    tip_count: int
+
+
 class PredictionGame(TypedDict):
     #: Die Runde (``prediction/rounds.py``): "ratswahl" ist die Hauptrunde
     #: ohne Parameter, jede andere hängt an ``?runde=<slug>``.
@@ -4731,12 +4758,28 @@ class PredictionGame(TypedDict):
     #: Cookie löscht und den Tipp behält. Aus in der Hauptrunde.
     shared_device: bool
     player_count: int
-    #: Menschentext für den Zeitpunkt des Tipp-Schlusses, z. B. „bis zur
-    #: ersten Hochrechnung (ca. 20 Uhr)" — der Server nennt keine feste Uhrzeit,
-    #: solange der Tipp-Schluss noch nicht gesetzt ist.
+    #: Menschentext für den Zeitpunkt des Tipp-Schlusses, z. B. „bis Sonntag,
+    #: 27.09., 18:00 Uhr (Schließung der Wahllokale)"; nach dem Schluss die
+    #: Uhrzeit, zu der er fiel.
     deadline_hint: str
+    #: Schließung der Wahllokale (ISO mit Zeitzone) — ab dann ist Tipp-Schluss,
+    #: spätestens. Eine erste Zahl davor beendet die Frist früher.
+    polls_close: str
     parties: list[PredictionParty]
     mayor_candidates: list[PredictionMayorCandidate]
+    #: Das Parteien-Menü beim Beitritt (freiwillig, ohne AfD).
+    party_options: list[PredictionPartyOption]
+    #: Anhaltspunkt fürs Wahlbeteiligungs-Feld: bei einer Stichwahl die
+    #: Beteiligung des ersten Wahlgangs, sonst nichts. ``turnout_previous_label``
+    #: sagt, was die Zahl ist („1. Wahlgang").
+    turnout_previous: float | None
+    turnout_previous_label: str
+    #: Wohin Neue sollen, wenn DIESE Runde schon zu ist und eine andere
+    #: gelistete Runde gerade läuft — z. B. von ``/tipp`` (Ratswahl, vorbei)
+    #: nach ``/tipp?runde=stichwahl``. Leer, wenn es nichts Besseres gibt.
+    #: Das Backend entscheidet; die Seite leitet nur um, und nur Leute ohne
+    #: eigene Teilnahme in dieser Runde.
+    successor_path: str
 
 
 class PredictionJoin(TypedDict):
@@ -4769,15 +4812,22 @@ class PredictionScore(TypedDict):
     total: int
     seat_points: int
     mayor_points: int
+    #: Punkte für die Wahlbeteiligung (seit 19.09.2026).
+    turnout_points: int
     exact_lists: int
     #: Summe der absoluten Sitz-Abweichungen — Tie-Breaker bei Punktgleichstand.
     #: ``None``, solange kein Sitz feststeht.
     deviation: int | None
+    #: Summe der absoluten Prozentpunkt-Abweichungen (Kandidaturen und
+    #: Wahlbeteiligung) — zweiter Tie-Breaker; bei einer Prozentwahl der einzige.
+    pct_deviation: float | None
 
 
 class PredictionMine(TypedDict):
     player_id: int
     name: str
+    #: Freiwillige Parteizugehörigkeit — ``None``, wenn keine genannt.
+    party: PredictionPartyOption | None
     late_at: str | None
     #: Zählt der Tipp mit, oder ist die Person „außer Konkurrenz" (Spätstarter,
     #: solange ``late_scored`` beim Spiel aus ist)?
@@ -4787,6 +4837,8 @@ class PredictionMine(TypedDict):
     locked: bool
     seats: list[PredictionSeatLine]
     mayor: list[PredictionMayorLine]
+    #: Der eigene Tipp zur Wahlbeteiligung — ``None``, wenn nicht getippt.
+    turnout: PredictionTurnoutLine | None
     score: PredictionScore | None
     rank: int | None
     rank_before: int | None
@@ -4800,6 +4852,8 @@ class PredictionMine(TypedDict):
 class PredictionRow(TypedDict):
     player_id: int
     name: str
+    #: Freiwillige Parteizugehörigkeit — steht als Etikett neben dem Namen.
+    party: PredictionPartyOption | None
     late_at: str | None
     scored: bool
     has_tip: bool
@@ -4833,6 +4887,9 @@ class PredictionStand(TypedDict):
     title: str
     #: "open" | "locked" | "final".
     phase: str
+    #: „seats" (Ratswahl: Sitze je Liste) oder „pct" (OB-/Stichwahl: nur
+    #: Prozente) — der Beamer wählt daran seinen Vergleichs-Screen.
+    tip_kind: str
     stand_label: str
     #: „4/6 Wahlbereiche" — Menschentext für den Kopf des Beamers.
     area_label: str
@@ -4843,6 +4900,8 @@ class PredictionStand(TypedDict):
     tip_count: int
     compare: list[PredictionCompareLine]
     mayor: list[PredictionMayorCompareLine]
+    #: Die Wahlbeteiligung: Ist gegen Ø-Tipp.
+    turnout: PredictionTurnoutCompare
     #: "before" | "counting" | "complete" — wie ``MayorNight.phase``.
     mayor_status: str
     rows: list[PredictionRow]
@@ -4875,10 +4934,13 @@ class PredictionAdminPlayer(TypedDict):
     Admin wiederfinden können."""
     id: int
     name: str
+    #: Slug der freiwilligen Parteizugehörigkeit (``PredictionGame.party_options``).
+    party: str | None
     late_at: str | None
     hidden: bool
     has_tip: bool
     has_mayor_tip: bool
+    has_turnout_tip: bool
 
 
 class PredictionRoundInfo(TypedDict):

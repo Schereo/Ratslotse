@@ -25,6 +25,13 @@ const OB_KANDIDATUREN = [
   { slug: "rohr", name: "Jascha Rohr", party: "GRÜNE" },
   { slug: "prange", name: "Ulf Prange", party: "SPD" },
 ];
+// Das Parteien-Menü beim Beitritt (seit 19.09.2026) — ohne AfD, das
+// entscheidet der Server; die Attrappe liefert nur, was er liefern würde.
+const PARTEI_OPTIONEN = [
+  { slug: "gruene", short: "Grüne", color: "#46962B", color_dark: "#6FCB4C" },
+  { slug: "spd", short: "SPD", color: "#E3000F", color_dark: "#FF4D57" },
+  { slug: "volt", short: "Volt", color: "#502379", color_dark: "#A87BD6" },
+];
 
 function setup(overrides: Partial<Record<string, unknown>> = {}) {
   return {
@@ -38,17 +45,30 @@ function setup(overrides: Partial<Record<string, unknown>> = {}) {
     // Namensfeld aus — genau das haben diese Tests gemerkt.
     public: true,
     locked: false, locked_at: null, late_scored: false, shared_device: false, player_count: 3,
-    deadline_hint: "bis zur ersten Hochrechnung (ca. 20 Uhr)",
+    deadline_hint: "bis Sonntag, 13.09., 18:00 Uhr (Schließung der Wahllokale)", polls_close: "2026-09-13T18:00:00+02:00",
     parties: PARTEIEN, mayor_candidates: OB_KANDIDATUREN,
+    party_options: PARTEI_OPTIONEN, turnout_previous: null, turnout_previous_label: "", successor_path: "",
     ...overrides,
   };
 }
 
+/** Die Stichwahl-Runde: keine Listen, zwei Kandidaturen, Prozente. */
+function stichwahlSetup(overrides: Partial<Record<string, unknown>> = {}) {
+  return setup({
+    round: "stichwahl", title: "Tippspiel zur OB-Stichwahl", seats_total: 0, parties: [],
+    election_slug: "ob-stichwahl-2026", election_title: "OB-Stichwahl Oldenburg", election_date: "2026-09-27",
+    tip_kind: "pct", previous_label: "", deadline_hint: "bis Sonntag, 27.09., 18:00 Uhr (Schließung der Wahllokale)",
+    polls_close: "2026-09-27T18:00:00+02:00",
+    turnout_previous: 63.46, turnout_previous_label: "1. Wahlgang",
+    ...overrides,
+  });
+}
+
 function meins(overrides: Partial<Record<string, unknown>> = {}) {
   return {
-    player_id: 1, name: "Anna", late_at: null, scored: true,
+    player_id: 1, name: "Anna", party: null, late_at: null, scored: true,
     has_tip: true, has_mayor_tip: false, locked: false,
-    seats: [], mayor: [], score: null, rank: null, rank_before: null,
+    seats: [], mayor: [], turnout: null, score: null, rank: null, rank_before: null,
     phase: "open", stand_label: "", source_label: "", notes: [],
     ...overrides,
   };
@@ -111,6 +131,49 @@ test.describe("Schalter an: Beitritt und Tippen", () => {
     await expect(page.getByRole("heading", { name: /Wie geht die Ratswahl Oldenburg aus/ })).toBeVisible();
     await expect(page.getByRole("button", { name: /Jetzt mitmachen/ })).toBeDisabled();
     await expect(page.getByText("5 · 3 · 1")).toBeVisible();
+    // Tims Wunsch 19.09.2026: Der Hinweis, den richtigen Namen zu nehmen,
+    // und das Parteien-Menü — freiwillig, mit „Keine Angabe" vorn.
+    await expect(page.getByText(/richtigen Namen/)).toBeVisible();
+    const partei = page.getByLabel(/Parteizugehörigkeit/);
+    await expect(partei).toHaveValue("");
+    await expect(partei.locator("option")).toHaveText(["Keine Angabe", "Grüne", "SPD", "Volt"]);
+  });
+
+  test("die Partei geht mit dem Beitritt an den Server", async ({ page }) => {
+    tippMocks(page, meins());
+    const beitritte: unknown[] = [];
+    await page.route("**/api/tipp", (route) => {
+      if (route.request().method() === "POST") beitritte.push(route.request().postDataJSON());
+      return route.fallback();
+    });
+    await page.goto("/tipp");
+    await page.getByLabel(/Dein Name/).fill("Testperson");
+    await page.getByLabel(/Parteizugehörigkeit/).selectOption("volt");
+    await page.getByRole("button", { name: /Jetzt mitmachen/ }).click();
+    await expect(page.getByText("Sitze im Rat")).toBeVisible();
+    expect(beitritte[0]).toMatchObject({ name: "Testperson", party: "volt" });
+  });
+
+  test("die Wahlbeteiligung reist mit dem Tipp — leer heißt nicht getippt", async ({ page }) => {
+    tippMocks(page, meins());
+    const tipps: Record<string, unknown>[] = [];
+    await page.route("**/api/tipp", (route) => {
+      const body = route.request().postDataJSON() as Record<string, unknown> | null;
+      if (route.request().method() === "POST" && body?.seats) tipps.push(body);
+      return route.fallback();
+    });
+    await page.goto("/tipp");
+    await page.getByLabel(/Dein Name/).fill("Testperson");
+    await page.getByRole("button", { name: /Jetzt mitmachen/ }).click();
+    await page.getByLabel("Sitze für Grüne").fill("40");
+    await expect(page.getByText("Wahlbeteiligung tippen")).toBeVisible();
+    // `fill` kann in ein Zahlenfeld kein Komma schreiben (Chromium verwirft
+    // den Wert) — echte Tastaturen liefern den Punkt selbst, `beteiligungAus`
+    // nimmt beides (s. lib/tipp.test.ts).
+    await page.getByLabel("Wahlbeteiligung in Prozent").fill("57.5");
+    await page.getByRole("button", { name: "Tipp abgeben" }).click();
+    await expect(page.getByRole("button", { name: "Gespeichert" })).toBeVisible();
+    expect(tipps[0]).toMatchObject({ turnout: 57.5 });
   });
 
   test("nach dem Beitritt steht das Formular auf null — alle Sitze selbst verteilen", async ({ page }) => {
@@ -170,7 +233,7 @@ test.describe("Mein Tipp nach Tipp-Schluss", () => {
     await appConfig(page, ["tippspiel"]);
     tippMocks(page, meins({
       locked: true, phase: "locked", stand_label: "20:41", has_tip: true,
-      score: { total: 42, seat_points: 35, mayor_points: 0, exact_lists: 7, deviation: 3 },
+      score: { total: 42, seat_points: 35, mayor_points: 0, turnout_points: 7, exact_lists: 7, deviation: 3, pct_deviation: null },
       rank: 3, rank_before: 5,
       seats: PARTEIEN.map((p, i) => ({ slug: p.slug, tip: 15 - i, actual: 15 - i, avg_tip: 14, points: 5, exact: true })),
     }), { setupOverrides: { locked: true, phase: "locked" }, bereitsBeigetreten: true });
@@ -220,7 +283,8 @@ test.describe("Mein Tipp: OB-Tipp", () => {
     await expect(page.getByText("Jascha Rohr")).toBeHidden();
     await page.getByRole("button", { name: "OB-Tipp ansehen" }).click();
     await expect(page.getByText("Jascha Rohr")).toBeVisible();
-    await expect(page.getByText("40 %")).toBeVisible();
+    // Eine Nachkommastelle wie im Formular (Schrittweite 0,5) — seit 19.09.2026.
+    await expect(page.getByText("40,0 %")).toBeVisible();
   });
 });
 
@@ -244,6 +308,98 @@ test.describe("Abgeben ist ein Moment", () => {
     await page.getByRole("button", { name: "Tipp ändern" }).click();
     await expect(page.getByText("Sitze im Rat")).toBeVisible();
     await expect(page.getByRole("button", { name: "Zurück" })).toBeVisible();
+  });
+});
+
+test.describe("Stichwahl (?runde=stichwahl): Prozente statt Sitze", () => {
+  test("Einstieg nennt die beiden Kandidaturen, das Formular hat keine Sitze", async ({ page }) => {
+    await appConfig(page, ["tippspiel"]);
+    let beigetreten = false;
+    await page.route(/\/api\/tipp\/setup\?round=stichwahl$/, (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(stichwahlSetup()) }));
+    await page.route(/\/api\/tipp\/me\?round=stichwahl$/, (route) =>
+      beigetreten
+        ? route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(meins({ has_tip: false })) })
+        : route.fulfill({ status: 401, contentType: "application/json", body: "{}" }));
+    const koerper: Record<string, unknown>[] = [];
+    await page.route(/\/api\/tipp\?round=stichwahl$/, (route) => {
+      beigetreten = true;
+      koerper.push(route.request().postDataJSON() as Record<string, unknown>);
+      return route.fulfill({ status: 200, contentType: "application/json",
+        body: JSON.stringify(meins({ has_tip: koerper.length > 1, has_mayor_tip: koerper.length > 1 })) });
+    });
+
+    await page.goto("/tipp?runde=stichwahl");
+    await expect(page.getByRole("heading", { name: /Wie geht die OB-Stichwahl Oldenburg aus/ })).toBeVisible();
+    await expect(page.getByText(/Jascha Rohr und Ulf Prange bekommen/)).toBeVisible();
+    await expect(page.getByText("6 · 3 · 1")).toBeVisible();
+    await page.getByLabel(/Dein Name/).fill("Nele");
+    await page.getByRole("button", { name: /Jetzt mitmachen/ }).click();
+
+    // Kein Sitze-Kopf, dafür die beiden Prozentfelder und die Wahlbeteiligung
+    // mit dem Anhaltspunkt aus dem ersten Wahlgang.
+    await expect(page.getByText("Wer wird OB?")).toBeVisible();
+    await expect(page.getByText("Sitze im Rat")).toHaveCount(0);
+    await expect(page.getByLabel("Prozent für Ulf Prange")).toBeVisible();
+    await expect(page.getByText(/1\. Wahlgang: 63,5 %/)).toBeVisible();
+    await page.getByLabel("Prozent für Ulf Prange").fill("52");
+    await page.getByLabel("Prozent für Jascha Rohr").fill("48");
+    await page.getByLabel("Wahlbeteiligung in Prozent").fill("45");
+    await page.getByRole("button", { name: "Tipp abgeben" }).click();
+    await expect(page.getByRole("button", { name: "Gespeichert" })).toBeVisible();
+    expect(koerper.at(-1)).toMatchObject({ seats: null, mayor: { prange: 52, rohr: 48 }, turnout: 45 });
+  });
+
+  test("Mein Tipp zeigt die Prozente offen, mit Partei-Etikett und Wahlbeteiligung", async ({ page }) => {
+    await appConfig(page, ["tippspiel"]);
+    await page.route(/\/api\/tipp\/setup\?round=stichwahl$/, (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(stichwahlSetup({ locked: true, phase: "locked" })) }));
+    await page.route(/\/api\/tipp\/me\?round=stichwahl$/, (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(meins({
+        locked: true, phase: "locked", stand_label: "18:41", has_tip: true, has_mayor_tip: true,
+        party: PARTEI_OPTIONEN[2],
+        mayor: [
+          { slug: "rohr", tip: 48, actual_pct: 47.9, avg_tip: 49.1, points: 6 },
+          { slug: "prange", tip: 52, actual_pct: 52.1, avg_tip: 50.9, points: 6 },
+        ],
+        turnout: { tip: 45, actual_pct: 43.2, avg_tip: 46.0, points: 3 },
+        score: { total: 15, seat_points: 0, mayor_points: 12, turnout_points: 3, exact_lists: 0, deviation: null, pct_deviation: 2.0 },
+        rank: 2, rank_before: 4,
+      })) }));
+    await page.goto("/tipp?runde=stichwahl");
+    await expect(page.getByText("Dein Rang")).toBeVisible();
+    await expect(page.getByText("Kandidaturen 12 · Wahlbeteiligung 3")).toBeVisible();
+    await expect(page.getByText("Ulf Prange")).toBeVisible();          // offen, ohne Knopf
+    await expect(page.getByRole("button", { name: /OB-Tipp ansehen/ })).toHaveCount(0);
+    await expect(page.getByText("Wahlbeteiligung", { exact: true })).toBeVisible();
+    await expect(page.getByTitle("Parteizugehörigkeit: Volt").first()).toBeVisible();
+  });
+});
+
+test.describe("Von der Ratswahl zur Stichwahl", () => {
+  test("/tipp schickt Neue zur laufenden Runde, wenn die Ratswahl-Runde zu ist", async ({ page }) => {
+    await appConfig(page, ["tippspiel"]);
+    tippMocks(page, meins(), { setupOverrides: { locked: true, phase: "locked", successor_path: "/tipp?runde=stichwahl" } });
+    await page.route(/\/api\/tipp\/setup\?round=stichwahl$/, (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(stichwahlSetup()) }));
+    await page.route(/\/api\/tipp\/me\?round=stichwahl$/, (route) =>
+      route.fulfill({ status: 401, contentType: "application/json", body: "{}" }));
+    await page.goto("/tipp");
+    await expect(page).toHaveURL(/\/tipp\/?\?runde=stichwahl/);
+    await expect(page.getByRole("heading", { name: /Wie geht die OB-Stichwahl Oldenburg aus/ })).toBeVisible();
+  });
+
+  test("wer in der Ratswahl-Runde schon mitgespielt hat, bleibt bei seinem Ergebnis", async ({ page }) => {
+    await appConfig(page, ["tippspiel"]);
+    tippMocks(page, meins({
+      locked: true, phase: "locked", stand_label: "20:41", has_tip: true,
+      score: { total: 42, seat_points: 35, mayor_points: 0, turnout_points: 7, exact_lists: 7, deviation: 3, pct_deviation: null },
+      rank: 3, rank_before: 5,
+      seats: PARTEIEN.map((p, i) => ({ slug: p.slug, tip: 15 - i, actual: 15 - i, avg_tip: 14, points: 5, exact: true })),
+    }), { setupOverrides: { locked: true, phase: "locked", successor_path: "/tipp?runde=stichwahl" }, bereitsBeigetreten: true });
+    await page.goto("/tipp");
+    await expect(page.getByText("Dein Rang")).toBeVisible();
+    await expect(page).toHaveURL(/\/tipp\/?$/);
   });
 });
 

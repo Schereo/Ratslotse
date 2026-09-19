@@ -1,12 +1,30 @@
 ---
 title: "Feature: Tippspiel"
-description: Das Tippspiel zur Ratswahl 2026 — Beitritt ohne Konto, Sitze und OB-Prozente tippen, Live-Vergleich und Beamer-Scoreboard am Wahlabend.
+description: Das Tippspiel zu den Wahlen 2026 — Beitritt ohne Konto, Sitze bzw. Prozente und die Wahlbeteiligung tippen, Live-Vergleich und Beamer-Scoreboard am Wahlabend.
 ---
 
-Zur Ratswahl am 13.09.2026 gibt es ein Tippspiel: Gäste tippen, wie viele
-Sitze jede Liste bekommt und wer Oberbürgermeister\*in wird, und sehen am
-Wahlabend live, wie ihr Tipp gegen die Hochrechnung abschneidet. Kein Konto,
-kein Passwort — ein Name reicht, per QR-Code vom Handy.
+Zur Ratswahl am 13.09.2026 gab es ein Tippspiel, zur OB-Stichwahl am
+27.09.2026 gibt es das nächste: Gäste tippen, wie viele Sitze jede Liste
+bekommt bzw. wie viel Prozent die Kandidaturen holen — dazu die
+Wahlbeteiligung — und sehen am Wahlabend live, wie ihr Tipp gegen den Stand
+abschneidet. Kein Konto, kein Passwort — ein Name reicht (freiwillig dazu die
+Parteizugehörigkeit), per QR-Code vom Handy.
+
+**Eine Runde je Wahl.** Die Ratswahl-Runde ist die Hauptrunde unter `/tipp`,
+die Stichwahl läuft unter `/tipp?runde=stichwahl` (Registry-Eintrag
+`stichwahl`, `election = ob-stichwahl-2026`, öffentlich). Weil `/tipp` auf
+alten QR-Codes und Sharepics steht, nennt `GET /api/tipp/setup` für eine
+geschlossene Runde einen `successor_path`: Neue werden zur gelisteten Runde
+der Wahl im Fokus geschickt, wer in der alten Runde mitgespielt hat (Cookie),
+sieht weiter sein Ergebnis.
+
+**Bis zum 19.09.2026 konnte die Stichwahl-Runde nicht spielen** — gemessen
+vor dem Umbau: `service.stand` las `mayor.fetch()` ohne Wahl (den ERSTEN
+Wahlgang, längst ausgezählt), ein Prozent-Tipp ohne Sitze galt als „kein
+Tipp“ (`has_tip False`, `tip_count 0`), und der Tipp-Schluss fiel nur für
+die aktive Ratswahl. Seitdem entscheidet `service.basis()` je Runde, welche
+Wahl gelesen und verglichen wird; `tests/test_prediction_stichwahl.py` hält
+das fest.
 
 :::note[Hinter dem Feature-Schalter `tippspiel`]
 Die **öffentlichen** Routen (`POST /api/tipp`, `GET /api/tipp/me`,
@@ -43,19 +61,37 @@ oder Serverfehler zu behandeln).
 
 ## Das Spiel
 
-Ein Tipp besteht aus zwei Teilen, beide optional für sich:
+Ein Tipp besteht je nach Wahlart (`PredictionGame.tip_kind`) aus:
 
-- **Sitze je Liste** — eine Zahl 0…52 für jede der 16 Listen; die Summe muss
-  genau 52 ergeben, sonst lehnt der Server den Tipp ab (400).
-- **OB-Prozente** — eine Zahl 0…100 für jede der neun Kandidaturen, ohne
-  Summenzwang (die Stichwahl am 27.09. ist bewusst **kein** Teil des
-  Tippspiels — bis dahin ist der Wahlabend vorbei).
+- **Sitze je Liste** (`seats`, Ratswahl) — eine Zahl 0…52 für jede der 16
+  Listen; die Summe muss genau 52 ergeben, sonst lehnt der Server den Tipp
+  ab (422). Dazu optional die **OB-Prozente** — eine Zahl 0…100 für jede der
+  neun Kandidaturen, ohne Summenzwang.
+- **Prozente je Kandidatur** (`pct`, OB-Wahl oder Stichwahl) — bei der
+  Stichwahl zwei Zahlen; Sitze gibt es nicht, ein `seats`-Feld ist dort 422.
+- **Wahlbeteiligung** (`turnout`, seit 19.09.2026, jede Wahlart) — eine Zahl
+  0…100, freiwillig. Bei einer Stichwahl nennt `turnout_previous` die
+  Beteiligung des ersten Wahlgangs als Anhaltspunkt (aus dem eingefrorenen
+  Stand im Repo, nicht aus dem Netz).
 
-**Der Tipp-Schluss setzt sich selbst.** Sobald die erste echte Hochrechnung
-eintrifft (`_check_auto_lock`, ausgelöst durch jeden `GET /api/tipp/stand`,
-solange die Phase noch `open` ist), springt das Spiel automatisch auf
-`locked` — niemand muss um 20 Uhr im Admin auf einen Knopf drücken. Bleibt die
-Hochrechnung aus, tut es der Admin von Hand („Tippen jetzt schließen").
+**Parteizugehörigkeit** (`party`, seit 19.09.2026): beim Beitritt freiwillig
+aus `PredictionGame.party_options` gewählt — die Parteien und Wählergruppen
+des Kandidatenregisters, **ohne AfD** (`service.PARTY_MENU_EXCLUDED`, Tims
+Entscheidung) und ohne Einzelwahlvorschläge. Ein Slug außerhalb des Menüs
+ist 422. Sie steht als Etikett neben dem Namen (Rangliste, „Mein Tipp“,
+Admin) und ist wie der Name nur vom Admin änderbar
+(`PUT /api/tipp/admin/spieler/{id}` mit `party`, `""` = keine Angabe). Sie
+ist eine freiwillige, öffentliche Selbstauskunft — mit der Teilnahme
+(`DELETE /api/tipp/me`, Kontolöschung) verschwindet sie.
+
+**Der Tipp-Schluss setzt sich selbst — spätestens um 18 Uhr am Wahltag.**
+Seit 19.09.2026 (Tims Regel) ist die Schließung der Wahllokale
+(`polls_close` der Wahl) die feste Frist: Jeder Aufruf danach — Tafel,
+Beitritt, Tipp — sperrt zuerst (`_check_auto_lock`), und `locked_at` ist die
+Schließung selbst, nicht der Moment des Aufrufs. Davor beendet schon die
+erste echte Zahl der Wahl die Frist (Hochrechnung bei der Ratswahl,
+Auszählungsstand bei der Stichwahl). Niemand muss im Admin auf einen Knopf
+drücken; der Knopf „Tippen beenden" bleibt für den Fall der Fälle.
 
 **Ein später Beitritt zählt „außer Konkurrenz".** Wer erst nach dem
 Tipp-Schluss beitritt, bekommt das Etikett „nachgetippt" und taucht auf der
@@ -67,22 +103,30 @@ anführen können.
 
 Berechnet in `web/backend/app/prediction/scoring.py`, ganze Zahlen:
 
-| Abweichung | Sitz-Punkte | OB-Punkte (Prozentpunkte) |
-|---|---:|---|
-| exakt | 5 | 6 (≤ 0,5 Pp.) |
-| ±1 | 3 | 3 (≤ 1,5 Pp.) |
-| ±2 | 1 | 1 (≤ 3,0 Pp.) |
-| mehr | 0 | 0 |
+| Abweichung | Sitz-Punkte | OB-Punkte (Prozentpunkte) | Wahlbeteiligung (Prozentpunkte) |
+|---|---:|---|---|
+| exakt | 5 | 6 (≤ 0,5 Pp.) | 6 (≤ 1,0 Pp.) |
+| ±1 | 3 | 3 (≤ 1,5 Pp.) | 3 (≤ 2,5 Pp.) |
+| ±2 | 1 | 1 (≤ 3,0 Pp.) | 1 (≤ 5,0 Pp.) |
+| mehr | 0 | 0 | 0 |
 
-Höchstwerte: Sitze 16 × 5 = **80**, OB 9 × 6 = **54**, zusammen **134**. Ohne
-OB-Tipp gibt es dafür schlicht null Punkte, keinen Abzug. **0 getippt auf 0
-erhalten ist exakt** — ohne diese Regel wären die sechs Kleinstlisten
-wertlos, und genau sie trennen die Feldmitte.
+Höchstwerte Ratswahl: Sitze 16 × 5 = **80**, OB 9 × 6 = **54**,
+Wahlbeteiligung **6**, zusammen **140**; Stichwahl: 2 × 6 + 6 = **18**
+(`scoring.max_points`). Ohne OB- oder Beteiligungs-Tipp gibt es dafür
+schlicht null Punkte, keinen Abzug. **0 getippt auf 0 erhalten ist exakt** —
+ohne diese Regel wären die sechs Kleinstlisten wertlos, und genau sie trennen
+die Feldmitte. Die Wahlbeteiligung hat weitere Stufen, weil sie zwischen
+Wahlen um zehn Punkte schwankt — auf einen Punkt genau ist eine Leistung, auf
+einen halben wäre es Lotterie.
 
 Ränge sind dicht (1, 2, 3, …). Bei Punktgleichstand entscheidet zuerst die
-Summe der absoluten Sitz-Abweichungen (`deviation`, kleiner gewinnt), dann wer
-seinen Tipp zuerst abgegeben hat. Ein echter Gleichstand — beides identisch —
-wird nicht ausgelost, sondern nach Eingabereihenfolge entschieden;
+Summe der absoluten Sitz-Abweichungen (`deviation`, kleiner gewinnt), dann
+die Summe der Prozentpunkt-Abweichungen über Kandidaturen und
+Wahlbeteiligung (`pct_deviation` — bei einer Stichwahl der einzige
+Zahlen-Tie-Breaker, denn mit zwei Kandidaturen fallen viele auf dieselbe
+Punktzahl), dann wer seinen Tipp zuerst abgegeben hat. Ein echter
+Gleichstand — alles identisch — wird nicht ausgelost, sondern nach
+Eingabereihenfolge entschieden;
 `prediction_standings_previous` hält je Stand fest, wer wo
 stand, damit die ▲▼-Chips auf dem Beamer den **vorherigen** Rang kennen.
 
@@ -143,12 +187,17 @@ den Knopf zeigt.
 
 ## Woher der Vergleich kommt
 
-**Grundlage ist der Wahlabend.** `GET /api/tipp/stand` liest denselben
+**Grundlage ist der Wahlabend der Wahl, auf die die Runde tippt**
+(`service.basis()`). Für eine Ratswahl liest `GET /api/tipp/stand` denselben
 Auszählungsstand wie `/wahlabend` (`election.service.live()`, in der
 Generalprobe `?probe=2021&counted=N`) und die OB-Prozente aus
-`election.mayor.fetch()`. Je Liste zählt die **Hochrechnung**, sobald es
-eine gibt, sonst der ausgezählte Stand — der Beamer folgt dem Votemanager
-also von selbst, ohne dass am Abend jemand klickt.
+`election.mayor.fetch()`; für eine OB- oder Stichwahl nur
+`mayor.fetch(w=<diese Wahl>)` — die Generalprobe der Stichwahl ist der
+eingefrorene erste Wahlgang, auf die beiden Namen gerechnet. Je Liste zählt
+die **Hochrechnung**, sobald es eine gibt, sonst der ausgezählte Stand — der
+Beamer folgt dem Votemanager also von selbst, ohne dass am Abend jemand
+klickt. Die Wahlbeteiligung kommt aus der Summenzeile derselben Quelle
+(Slug `turnout` in `prediction_result` für die Handeingabe).
 
 **Darüber liegt je Liste die veröffentlichte Handeingabe.** Der Admin trägt
 Zahlen ein (`PUT /api/tipp/admin/ergebnis`) oder holt sie per „Jetzt
@@ -184,10 +233,13 @@ Die eine Seite, die am Wahlabend die meiste Zeit auf dem Bildschirm steht:
    (`deadline_hint` — bewusst kein tickender Countdown: Der Server nennt
    keine feste Uhrzeit, solange sie nicht feststeht).
 2. **Danach automatisch** abwechselnd (alle 45 s) zwei Ansichten:
-   - **Vergleich** — Halbkreis mit dem veröffentlichten Sitzstand, Tabelle
-     Liste/Ist/Ø-Tipp/Exakt, OB-Prozente, der vom Server erzeugte Satz
-     (`compare_sentence`, z. B. „Die Runde hat die CDU im Schnitt um 2 Sitze
-     zu stark getippt").
+   - **Vergleich** — bei einer Ratswahl Halbkreis mit dem veröffentlichten
+     Sitzstand, Tabelle Liste/Ist/Ø-Tipp/Exakt, OB-Prozente und
+     Wahlbeteiligung; bei einer OB-/Stichwahl (`tip_kind = pct`) je
+     Kandidatur eine große Kachel mit Ist gegen Ø-Tipp als zwei Balken, daneben
+     die Wahlbeteiligung — und jeweils der vom Server erzeugte Satz
+     (`compare_sentence`, z. B. „Für Ulf Prange wurden im Durchschnitt rund
+     2,3 Prozentpunkte mehr getippt, als der aktuelle Stand zeigt").
    - **Scoreboard** — Podium für die ersten drei, darunter die Rangliste mit
      ▲▼-Chip je Rangänderung. Ein frischer Auszählungsstand
      (`computed_at` wechselt) springt für 60 Sekunden auf die Rangliste, ein
@@ -208,8 +260,9 @@ zusätzlich `.hh-tafel` (dieselbe Klasse wie beim Haushalt).
   Browser wechselt oder Cookies löscht, verliert seinen Zugang zum eigenen
   Tipp (nicht den Tipp selbst — der Admin sieht und kann ihn weiter zuordnen,
   s. u.).
-- **Die Stichwahl (27.09.) ist kein Teil des Tippspiels.** Sie liegt zeitlich
-  nach dem Wahlabend, für den das Spiel gebaut ist.
+- **Eine Runde tippt auf EINE Wahl.** Die Ratswahl-Runde bleibt für immer
+  an der Ratswahl, die Stichwahl hat ihre eigene Runde — ein Tipp wandert
+  nicht mit.
 - **Der Admin kann jeden Tipp sehen, niemand sonst.** Es gibt keine
   „Tipps der anderen ansehen"-Funktion vor Tipp-Schluss — das wäre gegen den
   Sinn eines Tipps.
@@ -218,7 +271,22 @@ zusätzlich `.hh-tafel` (dieselbe Klasse wie beim Haushalt).
   bleibt in der Datenbank (Nachvollziehbarkeit, falls ein Ausblenden ein
   Versehen war).
 
-## Runbook Wahlsonntag (13.09.2026)
+## Runbook Stichwahl-Sonntag (27.09.2026)
+
+Der Schalter `tippspiel` steht auf Prod seit dem 11.09. an; die Runde
+`stichwahl` entsteht beim ersten Aufruf von `/tipp?runde=stichwahl` (öffentlich,
+Name statt Konto). Vorher einmal `/tipp/admin`, Runde „Tippspiel zur
+OB-Stichwahl" wählen: Die Karte zeigt zwei Kandidaturen und die
+Wahlbeteiligung, kein Sitze-Feld. **Um 18 Uhr** schließen die Wahllokale;
+sobald der Votemanager den ersten Bezirk meldet (`mayor_status = counting`),
+setzt sich der Tipp-Schluss selbst. Bis dahin steht der Beamer
+(`/tipp/live?runde=stichwahl`) auf dem QR-Code. Eine Handeingabe geht wie bei
+der Ratswahl über Entwurf → Veröffentlichen; „Jetzt abfragen" holt die
+Stichwahl samt Wahlbeteiligung. **Offen bis zum Abend:** Die Wahl-Id der
+Stichwahl beim Votemanager wird über den Titel gefunden (`discover`); steht
+sie da, meldet `/api/wahlabend/stichwahl` Zahlen.
+
+## Runbook Wahlsonntag (13.09.2026) — gelaufen
 
 **Vorher, auf `dev` oder `feature`:** `FEATURE_FLAGS=*` steht dort ohnehin;
 `/tipp` und `/tipp/live` durchspielen, `/tipp/admin` einen Testlauf machen
@@ -277,5 +345,6 @@ Wahlausschuss das amtliche Ergebnis festgestellt hat — danach `tippspiel` aus
 | `tests/test_prediction_scoring.py` | Punkteformel, Rangregel |
 | `tests/test_prediction_mayor.py` | OB-Wahl: Slugs, Parsing der Ergebnisdarstellung |
 | `tests/test_prediction_api.py` | Endpunkte: Beitritt, Tippen, Admin, Auto-Tipp-Schluss |
+| `tests/test_prediction_stichwahl.py` | Die Stichwahl-Runde: Vergleich gegen die richtige Wahl, Wahlbeteiligung, Parteien-Menü, Nachfolge von `/tipp` |
 | `web/frontend/tests/e2e/16-tippspiel.spec.ts` | Beitritt, Tippen, Mein Tipp (Handy) |
 | `web/frontend/tests/e2e/17-tippspiel-live.spec.ts` | Der Beamer: Automatik, Führungswechsel, Themes |

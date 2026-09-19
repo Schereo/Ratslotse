@@ -14,8 +14,9 @@
 // Handler). Deshalb hier ein eigener, roher Abruf statt des Wrappers —
 // dieselbe Ausnahme wie bei Streams (web/frontend/CLAUDE.md).
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiUrl } from "@/lib/api";
 import { useAppConfig, useFeature } from "@/lib/features";
@@ -28,9 +29,17 @@ import { Spaetstarter } from "./spaetstarter";
 import { Tippen } from "./tippen";
 import { MeinTipp } from "./mein-tipp";
 
+class SetupFehler extends Error {
+  constructor(public readonly status: number) {
+    super(`setup ${status}`);
+  }
+}
+
 async function holeSetup(pfad: string): Promise<TippSetup> {
   const res = await fetch(apiUrl(pfad), { credentials: "include" });
-  if (!res.ok) throw new Error("setup");
+  // 401 heißt hier: eine Konto-Runde, und niemand ist angemeldet — kein
+  // Netzfehler, sondern eine Antwort, die die Seite erklären muss.
+  if (!res.ok) throw new SetupFehler(res.status);
   return res.json();
 }
 
@@ -71,8 +80,29 @@ function NichtFreigeschaltet() {
         Das Tippspiel ist noch nicht freigeschaltet
       </h1>
       <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">
-        Das Tippspiel startet rund um den Wahlabend am 13. September. Schau später noch einmal vorbei.
+        Das Tippspiel startet rund um den Wahlabend. Schau später noch einmal vorbei.
       </p>
+    </Rahmen>
+  );
+}
+
+function KontoNoetig() {
+  return (
+    <Rahmen>
+      <Kopf />
+      <div className="mt-6">
+        <Mascot pose="wave" className="h-24 w-24" decorative />
+      </div>
+      <h1 className="mt-3 text-balance font-display text-2xl font-bold leading-tight tracking-tight">
+        Für dieses Tippspiel brauchst du ein Konto
+      </h1>
+      <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">
+        Diese Runde läuft über Konten: ein Tipp je Person, auf jedem Gerät derselbe. Melde dich an oder registriere dich kostenlos.
+      </p>
+      <div className="mt-5 flex w-full flex-col gap-2">
+        <Link href="/login" className="inline-flex h-[46px] items-center justify-center rounded-xl bg-primary text-sm font-semibold text-primary-foreground">Anmelden</Link>
+        <Link href="/register" className="inline-flex h-[46px] items-center justify-center rounded-xl border border-border bg-card text-sm font-semibold text-foreground">Kostenlos registrieren</Link>
+      </div>
     </Rahmen>
   );
 }
@@ -92,6 +122,7 @@ export function TippView() {
   const { isLoading: configLaedt } = useAppConfig();
   const tippspielAn = useFeature("tippspiel");
   const queryClient = useQueryClient();
+  const router = useRouter();
   const [lottiAnimiert, setLottiAnimiert] = useState(false);
   const [bearbeiten, setBearbeiten] = useState(false);
   useEffect(() => setLottiAnimiert(true), []);
@@ -118,6 +149,17 @@ export function TippView() {
     queryClient.invalidateQueries({ queryKey: ["tipp"] });
   }
 
+  // `/tipp` steht auf alten QR-Codes und Sharepics der Ratswahl. Ist diese
+  // Runde zu und läuft eine andere (die Stichwahl), schickt der Server
+  // Neue dorthin (`successor_path`). Wer hier schon mitgespielt hat (Cookie,
+  // `meins` da), bleibt bei seinem Ergebnis — der Tipp gehört zu dieser Runde.
+  const setup = setupQuery.data;
+  const meins = meinsQuery.data;
+  const weiterZu = setup?.locked && meins === null && setup.successor_path ? setup.successor_path : null;
+  useEffect(() => {
+    if (weiterZu) router.replace(weiterZu);
+  }, [weiterZu, router]);
+
   // Geteiltes Gerät (Schalter je Runde, Admin): „Fertig — nächste Person"
   // löscht nur den Cookie, der Tipp bleibt. Danach antwortet `/tipp/me`
   // wieder 401, und die Zustandsmaschine landet von selbst beim Einstieg.
@@ -133,10 +175,8 @@ export function TippView() {
 
   if (configLaedt) return null; // wie useFeature überall: lieber später als falsch
   if (!tippspielAn) return <NichtFreigeschaltet />;
-  if (setupQuery.isLoading || meinsQuery.isLoading || !setupQuery.data) return <LadeSchirm />;
-
-  const setup = setupQuery.data;
-  const meins = meinsQuery.data;
+  if (setupQuery.error instanceof SetupFehler && setupQuery.error.status === 401) return <KontoNoetig />;
+  if (setupQuery.isLoading || meinsQuery.isLoading || !setup || meins === undefined || weiterZu) return <LadeSchirm />;
 
   if (!meins) {
     return setup.locked

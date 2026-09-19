@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  beteiligungAus,
   fehltText,
+  kandidaturenSatz,
   probePfad,
+  prozentText,
   punkteText,
+  punkteZeile,
+  regelSatz,
   rangDeltaText,
   rangPfeil,
   restOb,
@@ -147,5 +152,43 @@ describe("probePfad", () => {
 
   it("verwirft ein counted, das keine Zahl ist — der Server antwortete sonst mit 422", () => {
     expect(probePfad("/tipp/me", "2021", "viele")).toBe("/tipp/me?probe=2021");
+  });
+});
+
+describe("Wahlbeteiligung und Prozentwahl (19.09.2026)", () => {
+  it("beteiligungAus: leer heißt nicht getippt, Komma zählt wie Punkt, geklemmt auf 0–100", () => {
+    expect(beteiligungAus("")).toBeNull();
+    expect(beteiligungAus("   ")).toBeNull();
+    expect(beteiligungAus("abc")).toBeNull();
+    expect(beteiligungAus("45,5")).toBe(45.5);
+    expect(beteiligungAus("45.25")).toBe(45.3);
+    expect(beteiligungAus("120")).toBe(100);
+    expect(beteiligungAus("-3")).toBe(0);
+  });
+
+  it("kandidaturenSatz reiht die Namen mit „und“", () => {
+    expect(kandidaturenSatz([])).toBe("");
+    expect(kandidaturenSatz([{ name: "Ulf Prange" }])).toBe("Ulf Prange");
+    expect(kandidaturenSatz([{ name: "Jascha Rohr" }, { name: "Ulf Prange" }])).toBe("Jascha Rohr und Ulf Prange");
+    expect(kandidaturenSatz([{ name: "A" }, { name: "B" }, { name: "C" }])).toBe("A, B und C");
+  });
+
+  it("prozentText ist deutsch mit einer Nachkommastelle, Strich ohne Wert", () => {
+    expect(prozentText(63.46)).toBe("63,5 %");
+    expect(prozentText(52)).toBe("52,0 %");
+    expect(prozentText(null)).toBe("–");
+  });
+
+  it("punkteZeile nennt Sitze nur bei einer Sitzwahl", () => {
+    const score = { total: 15, seat_points: 5, mayor_points: 6, turnout_points: 3, exact_lists: 1, deviation: 2, pct_deviation: 1.5 };
+    expect(punkteZeile(score, true)).toBe("Sitze 5 · OB-Bonus 6 · Wahlbeteiligung 3 · 1 Listen richtig getippt");
+    expect(punkteZeile(score, false)).toBe("Kandidaturen 6 · Wahlbeteiligung 3");
+    expect(punkteZeile(null, false)).toBe("");
+  });
+
+  it("regelSatz unterscheidet die Wahlart", () => {
+    expect(regelSatz(true)).toMatch(/Je Liste/);
+    expect(regelSatz(false)).toMatch(/Je Kandidatur/);
+    expect(regelSatz(false)).toMatch(/Wahlbeteiligung/);
   });
 });

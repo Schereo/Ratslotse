@@ -11,11 +11,58 @@ import type { ApiAntwort } from "./vertrag";
 export type TippSetup = ApiAntwort<"/tipp/setup">;
 export type TippPartei = TippSetup["parties"][number];
 export type TippObKandidatur = TippSetup["mayor_candidates"][number];
+export type TippParteiOption = TippSetup["party_options"][number];
 export type TippMeins = ApiAntwort<"/tipp/me">;
 export type TippSitzZeile = TippMeins["seats"][number];
 export type TippObZeile = TippMeins["mayor"][number];
 export type TippTafel = ApiAntwort<"/tipp/stand">;
 export type TippReihe = TippTafel["rows"][number];
+
+/** „Ulf Prange und Jascha Rohr" — die Kandidaturen einer Prozentwahl als
+ *  Aufzählung für den Einstiegstext. Leer, wenn es keine gibt. */
+export function kandidaturenSatz(kandidaturen: readonly { name: string }[]): string {
+  const namen = kandidaturen.map((k) => k.name);
+  if (namen.length <= 1) return namen[0] ?? "";
+  return `${namen.slice(0, -1).join(", ")} und ${namen[namen.length - 1]}`;
+}
+
+/** Der Prozentwert fürs Wahlbeteiligungs-Feld aus einem Eingabetext: leer
+ *  heißt „nicht getippt" (`null`), sonst auf 0–100 geklemmt und auf eine
+ *  Nachkommastelle gerundet — dieselbe Schrittweite wie die OB-Felder.
+ *  Komma wie Punkt, denn deutsche Tastaturen bieten im Zahlenfeld oft nur
+ *  das Komma an. */
+export function beteiligungAus(text: string): number | null {
+  const roh = text.trim().replace(",", ".");
+  if (roh === "") return null;
+  const zahl = Number(roh);
+  if (!Number.isFinite(zahl)) return null;
+  return Math.round(Math.max(0, Math.min(100, zahl)) * 10) / 10;
+}
+
+/** „63,5 %" — ein Prozentwert, deutsch, eine Nachkommastelle. */
+export function prozentText(wert: number | null | undefined, stellen = 1): string {
+  if (wert === null || wert === undefined) return "–";
+  return `${wert.toLocaleString("de-DE", { minimumFractionDigits: stellen, maximumFractionDigits: stellen })} %`;
+}
+
+/** Die Punktezeile unter dem Rang — je nach Wahlart andere Bausteine:
+ *  Sitze und „Listen richtig" gibt es nur bei einer Ratswahl. */
+export function punkteZeile(score: TippMeins["score"], sitzwahl: boolean): string {
+  if (!score) return "";
+  const teile = sitzwahl
+    ? [`Sitze ${score.seat_points}`, `OB-Bonus ${score.mayor_points}`]
+    : [`Kandidaturen ${score.mayor_points}`];
+  teile.push(`Wahlbeteiligung ${score.turnout_points}`);
+  if (sitzwahl) teile.push(`${score.exact_lists} Listen richtig getippt`);
+  return teile.join(" · ");
+}
+
+/** Der Regel-Satz in der Fußzeile von Rangliste und Beamer. */
+export function regelSatz(sitzwahl: boolean): string {
+  return sitzwahl
+    ? "Je Liste: 5 Punkte für die richtige Sitzzahl, 3 bei 1 Sitz daneben, 1 bei 2 Sitzen daneben. OB-Bonus: bis zu 6 pro Person, Wahlbeteiligung: bis zu 6."
+    : "Je Kandidatur: 6 Punkte bei höchstens 0,5, 3 bei 1,5, 1 bei 3 Prozentpunkten daneben. Wahlbeteiligung: 6 · 3 · 1 bei 1 / 2,5 / 5 Punkten daneben.";
+}
 
 /**
  * Generalprobe durchreichen: `?probe=2021&counted=N` an einen Abrufpfad

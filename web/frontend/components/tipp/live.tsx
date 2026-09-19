@@ -44,6 +44,16 @@ const ANSICHTEN = [
 async function holeStand(pfad: string): Promise<PredictionStand> {
   return api.get<PredictionStand>(pfad);
 }
+
+/** Steht schon irgendeine Zahl auf der Tafel? Bei einer Ratswahl ein Sitz,
+ *  bei einer OB-/Stichwahl ein Prozentwert — oder die Wahlbeteiligung. Bis
+ *  19.09.2026 zählten nur Sitze; der Stichwahl-Beamer wäre nie vom QR-Code
+ *  weggekommen. */
+function hatZahlen(stand: PredictionStand): boolean {
+  return stand.compare.some((c) => c.actual !== null)
+    || stand.mayor.some((m) => m.actual_pct !== null)
+    || stand.turnout.actual_pct !== null;
+}
 async function holeSetup(pfad: string): Promise<PredictionGame> {
   return api.get<PredictionGame>(pfad);
 }
@@ -72,15 +82,12 @@ export function TippLive() {
     queryFn: () => holeStand(standPfad),
     enabled: schalterAn,
     placeholderData: keepPreviousData,
-    refetchInterval: (q) => {
-      const hat = q.state.data?.compare.some((c) => c.actual !== null) ?? false;
-      return hat ? 30_000 : 60_000;
-    },
+    refetchInterval: (q) => (q.state.data && hatZahlen(q.state.data) ? 30_000 : 60_000),
   });
   const setupQuery = useQuery({ queryKey: ["tipp", "setup-live", runde], queryFn: () => holeSetup(setupPfad), enabled: schalterAn });
 
   const stand = standQuery.data;
-  const hatErgebnis = stand?.compare.some((c) => c.actual !== null) ?? false;
+  const hatErgebnis = stand ? hatZahlen(stand) : false;
 
   const [auto, setAuto] = useState<"vergleich" | "rangliste">("vergleich");
   // Was der Raum gerade sehen soll. `auto` ist der Abend-Betrieb (QR bis zum
@@ -138,7 +145,7 @@ export function TippLive() {
         <Lotti regung="schlaeft" className="h-28 w-28" decorative />
         <h1 className="mt-4 font-display text-[22px] font-bold tracking-tight">Das Tippspiel ist noch nicht freigeschaltet</h1>
         <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">
-          Am 13. September 2026 ab 18 Uhr kannst du hier den Wahlabend verfolgen und die Ergebnisse mit den Tipps vergleichen.
+          Am Wahlabend ab 18 Uhr kannst du hier die Auszählung verfolgen und die Ergebnisse mit den Tipps vergleichen.
         </p>
       </div>
     );

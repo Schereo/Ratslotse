@@ -5,22 +5,22 @@
 // Kicker, der 104-px-Titel, der Kasten „Tippen noch", Lotti mit der Zahl der
 // Mitspielenden; rechts die 560-px-QR-Karte und die Adresse in Mono.
 //
-// Abweichung vom Entwurf: Der Kasten zeigt KEINE tickende MM:SS-Uhr. Der
-// Server nennt bewusst keinen festen Zeitpunkt für den Tipp-Schluss — er
-// kommt mit der ersten echten Hochrechnung oder Tims Klick. Eine Uhr ohne
-// echtes Ziel wäre Theater; der Kasten trägt stattdessen „bis ca. 20 Uhr"
-// und nach dem Schluss die Uhrzeit, zu der er fiel.
+// Abweichung vom Entwurf: Der Kasten zeigt KEINE tickende MM:SS-Uhr, sondern
+// die Schließung der Wahllokale (`polls_close`) — seit 19.09.2026 die feste
+// Tippfrist (Tims Regel) — und nach dem Schluss die Uhrzeit, zu der er fiel.
 
 import { apiUrl } from "@/lib/api";
 import type { ApiAntwort } from "@/lib/vertrag";
 import { BrandMark } from "@/components/brand";
 import { Lotti } from "@/components/lotti";
-import { kurzesDatum, mitRunde, uhrzeitKurz } from "@/lib/tipp";
+import { kandidaturenSatz, kurzesDatum, mitRunde, uhrzeitKurz } from "@/lib/tipp";
 
 type PredictionGame = ApiAntwort<"/tipp/setup">;
 
 export function BeamerMitmachen({ game, tipCount, runde }: { game: PredictionGame; tipCount: number; runde: string | null }) {
   const schluss = uhrzeitKurz(game.locked_at);
+  const frist = uhrzeitKurz(game.polls_close) ?? "18:00";
+  const sitzwahl = game.tip_kind === "seats";
   // Der Link, den der Raum sieht — samt Runde, denn der QR-Code zeigt dorthin.
   const link = `ratslotse.de${mitRunde("/tipp", runde, "runde")}`;
   return (
@@ -36,7 +36,9 @@ export function BeamerMitmachen({ game, tipCount, runde }: { game: PredictionGam
           Wie geht die {game.election_title} aus?
         </h1>
         <p className="mt-[34px] max-w-[26ch] text-[36px] leading-[1.4] text-foreground/80">
-          {game.seats_total} Sitze, {game.parties.length} Wahllisten. Tippe, wie die Wahl ausgeht. Mitmachen ohne Konto.
+          {sitzwahl
+            ? `${game.seats_total} Sitze, ${game.parties.length} Wahllisten. Tippe, wie die Wahl ausgeht. Mitmachen ohne Konto.`
+            : `${kandidaturenSatz(game.mayor_candidates)}: Tippe die Prozente und die Wahlbeteiligung. Mitmachen ohne Konto.`}
         </p>
 
         <div className="mt-14 flex items-center gap-7">
@@ -45,10 +47,12 @@ export function BeamerMitmachen({ game, tipCount, runde }: { game: PredictionGam
               {game.locked ? "Tippfrist beendet" : "Tippen möglich"}
             </p>
             <p className="mt-1.5 font-display text-[64px] font-bold leading-none tabular-nums">
-              {game.locked ? (schluss ?? "vorbei") : "bis ca. 20 Uhr"}
+              {game.locked ? (schluss ?? "vorbei") : `bis ${frist} Uhr`}
             </p>
             <p className="mt-2 text-[24px] text-muted-foreground">
-              {game.locked ? (game.late_scored ? "Spätere Tipps zählen mit" : "Spätere Tipps ohne Rang") : "bis zur ersten Hochrechnung"}
+              {game.locked
+                ? (game.late_scored ? "Spätere Tipps zählen mit" : "Spätere Tipps ohne Rang")
+                : "Schließung der Wahllokale"}
             </p>
           </div>
           <div className="flex items-center gap-[22px]">

@@ -1,15 +1,19 @@
 "use client";
 
-// 1d — Tippen: 52 Sitze auf 16 Listen verteilen, optional die OB-Wahl.
-// Der Rest wird live nachgeführt (segmentierte Leiste + Text); abgegeben
-// wird erst auf Knopfdruck, und nur wenn beide Summen stimmen.
+// 1d — Tippen: 52 Sitze auf 16 Listen verteilen, optional die OB-Wahl
+// (Ratswahl) — oder die Prozente der Kandidaturen (OB-/Stichwahl). Dazu seit
+// 19.09.2026 freiwillig die Wahlbeteiligung, bei jeder Wahlart. Der Rest
+// wird live nachgeführt (segmentierte Leiste + Text); abgegeben wird erst
+// auf Knopfdruck, und nur wenn die Summen stimmen.
 
 import { useMemo, useState } from "react";
 import { Check, ChevronLeft, Loader2 } from "lucide-react";
 import { apiUrl } from "@/lib/api";
 import {
+  beteiligungAus,
   fehltText,
   mitRunde,
+  prozentText,
   restObText,
   restObTon,
   restSitze,
@@ -65,6 +69,11 @@ export function Tippen({ setup, meins, runde, onGespeichert, onZurueck }: {
   const [ob, setOb] = useState<Record<string, number>>(() =>
     Object.fromEntries(meins.mayor.map((m) => [m.slug, m.tip])),
   );
+  // Die Wahlbeteiligung als Text, nicht als Zahl: Ein leeres Feld heißt
+  // „nicht getippt" — eine 0 wäre ein Tipp, und ein schlechter.
+  const [beteiligung, setBeteiligung] = useState(() =>
+    meins.turnout ? meins.turnout.tip.toLocaleString("de-DE", { maximumFractionDigits: 1 }) : "",
+  );
   const [sendet, setSendet] = useState(false);
   const [gespeichert, setGespeichert] = useState(false);
   const [fehler, setFehler] = useState<string | null>(null);
@@ -101,7 +110,7 @@ export function Tippen({ setup, meins, runde, onGespeichert, onZurueck }: {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ seats: sitzwahl ? seats : null, mayor: obOffen ? ob : null }),
+        body: JSON.stringify({ seats: sitzwahl ? seats : null, mayor: obOffen ? ob : null, turnout: beteiligungAus(beteiligung) }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
@@ -216,10 +225,10 @@ export function Tippen({ setup, meins, runde, onGespeichert, onZurueck }: {
         <div className="flex items-center justify-between gap-2.5">
           <div>
             <p className="font-display text-base font-bold">
-              {sitzwahl ? "OB-Wahl mittippen" : `${setup.election_title} tippen`}
+              {sitzwahl ? "OB-Wahl mittippen" : "Wer wird OB?"}
             </p>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              {sitzwahl ? "Freiwillig · bis zu 6 Bonuspunkte pro Person" : "Bis zu 6 Punkte pro Person"}
+              {sitzwahl ? "Freiwillig · bis zu 6 Bonuspunkte pro Person" : "Stimmenanteile in Prozent · bis zu 6 Punkte pro Person"}
             </p>
           </div>
           {/* Bei einer reinen Prozentwahl gibt es nichts zuzuschalten — der
@@ -262,6 +271,39 @@ export function Tippen({ setup, meins, runde, onGespeichert, onZurueck }: {
             ))}
           </div>
         </Aufklapp>
+      </div>
+
+      {/* Die Wahlbeteiligung — freiwillig, bei jeder Wahlart, ein Feld. Bei
+          einer Stichwahl ist sie DIE Frage des Abends (zwei Kandidaturen,
+          wenig zu verteilen), deshalb steht sie hier als eigene Karte und
+          nicht als Zeile unter den Kandidaturen. */}
+      <div className="mx-4 mt-3 rounded-[14px] border border-border bg-card p-3.5">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="font-display text-base font-bold">Wahlbeteiligung tippen</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Freiwillig · bis zu 6 Punkte
+              {setup.turnout_previous !== null && setup.turnout_previous_label
+                ? ` · ${setup.turnout_previous_label}: ${prozentText(setup.turnout_previous)}`
+                : ""}
+            </p>
+          </div>
+          <div className="flex flex-none items-center gap-1">
+            <input
+              type="number"
+              inputMode="decimal"
+              step={0.5}
+              min={0}
+              max={100}
+              aria-label="Wahlbeteiligung in Prozent"
+              placeholder="z. B. 45"
+              value={beteiligung}
+              onChange={(e) => setBeteiligung(e.target.value)}
+              className={`h-11 w-[72px] rounded-[10px] border border-border bg-card px-2 text-right font-display text-lg font-bold text-foreground placeholder:font-sans placeholder:text-sm placeholder:font-normal placeholder:text-muted-foreground ${OHNE_PFEILE}`}
+            />
+            <span className="text-[13px] text-muted-foreground">%</span>
+          </div>
+        </div>
       </div>
 
       {fehler && <p className="mx-4 mt-3 text-[12.5px] font-medium text-destructive">{fehler}</p>}

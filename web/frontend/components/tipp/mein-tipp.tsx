@@ -9,12 +9,13 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { mitRunde, rangDeltaText, rangPfeil, uhrzeitKurz } from "@/lib/tipp";
+import { mitRunde, prozentText, punkteZeile, rangDeltaText, rangPfeil, uhrzeitKurz } from "@/lib/tipp";
 import type { TippMeins, TippSetup } from "@/lib/tipp";
 import { Lotti } from "@/components/lotti";
 import { Aufklapp } from "@/components/aufklapp";
 import { BrandMark } from "@/components/brand";
 import { Button } from "@/components/ui/button";
+import { ParteiChip } from "./partei";
 
 function punktTon(punkte: number, hoechst: number): string {
   if (punkte === hoechst) return "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300";
@@ -44,14 +45,20 @@ export function MeinTipp({ setup, meins, runde, onAendern, onWeitergeben }: {
   );
   const pfeil = rangPfeil(meins.rank, meins.rank_before);
   const score = meins.score;
+  // Bei einer OB- oder Stichwahl gibt es keine Sitze: Dann ist der
+  // Prozent-Block das Spiel und steht offen da, nicht hinter einem Knopf.
+  const sitzwahl = setup.tip_kind === "seats";
   const nullAufNullListen = meins.seats.filter((s) => s.tip === 0 && s.actual === 0);
   const nachgetippt = meins.late_at !== null ? uhrzeitKurz(meins.late_at) : null;
-  const [obOffen, setObOffen] = useState(false);
+  const [obOffen, setObOffen] = useState(!sitzwahl);
   // Vor dem ersten Ergebnis ist diese Seite die BESTÄTIGUNG (Plan, 1e): Dann
   // sind „Ist" und „Pkt" in jeder Zeile leer — die Spalten bleiben weg, statt
   // eine halbe Tabelle mit Strichen zu zeigen.
-  const zeigeErgebnis = meins.seats.some((s) => s.actual !== null);
+  const zeigeErgebnis = meins.seats.some((s) => s.actual !== null)
+    || meins.mayor.some((m) => m.actual_pct !== null)
+    || (meins.turnout !== null && meins.turnout.actual_pct !== null);
   const spalten = zeigeErgebnis ? "grid-cols-[8px_1fr_34px_34px_44px]" : "grid-cols-[8px_1fr_44px]";
+  const obSpalten = zeigeErgebnis ? "grid-cols-[1fr_52px_52px_44px]" : "grid-cols-[1fr_60px]";
 
   return (
     <div className="mx-auto min-h-[100dvh] max-w-md pb-8">
@@ -88,7 +95,9 @@ export function MeinTipp({ setup, meins, runde, onAendern, onWeitergeben }: {
               genau diesen Zustand gebunden ist (DESIGNSPRACHE §1). */}
           <Lotti regung="klatscht" className="h-16 w-16 flex-none" decorative />
           <div className="min-w-0">
-            <p className="font-mono text-[10px] uppercase tracking-[0.11em] opacity-75">{meins.name}</p>
+            <p className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.11em] opacity-75">
+              {meins.name} <ParteiChip partei={meins.party} hell className="normal-case tracking-normal" />
+            </p>
             <p className="mt-0.5 font-display text-lg font-bold">Dein Tipp ist gespeichert.</p>
             <p className="mt-1 text-[12.5px] leading-relaxed opacity-90">
               {onWeitergeben
@@ -101,7 +110,9 @@ export function MeinTipp({ setup, meins, runde, onAendern, onWeitergeben }: {
         </div>
       ) : (
         <div className="mx-4 mt-3.5 overflow-hidden rounded-2xl bg-primary p-4 pb-4 text-primary-foreground">
-          <p className="font-mono text-[10px] uppercase tracking-[0.11em] opacity-75">{meins.name} · Dein Rang</p>
+          <p className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.11em] opacity-75">
+            {meins.name} <ParteiChip partei={meins.party} hell className="normal-case tracking-normal" /> · Dein Rang
+          </p>
           <div className="mt-1.5 flex items-end gap-3.5">
             <span className="font-display text-[64px] leading-[0.9] tracking-tight">{meins.rank ?? "–"}</span>
             <div className="flex-1 pb-1.5">
@@ -113,13 +124,11 @@ export function MeinTipp({ setup, meins, runde, onAendern, onWeitergeben }: {
               <p className="text-xs opacity-80">Punkte</p>
             </div>
           </div>
-          <p className="mt-3 text-[12.5px] opacity-85">
-            Sitze {score.seat_points} · OB-Bonus {score.mayor_points} · {score.exact_lists} Listen richtig getippt
-          </p>
+          <p className="mt-3 text-[12.5px] opacity-85">{punkteZeile(score, sitzwahl)}</p>
         </div>
       )}
 
-      <div className="mt-4 px-4">
+      {sitzwahl && <div className="mt-4 px-4">
         <div className="flex justify-between font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
           <span>Dein Tipp{zeigeErgebnis ? " · Stand" : ""}</span>
           <span>{zeigeErgebnis ? meins.stand_label : `${meins.seats.length} Listen`}</span>
@@ -161,41 +170,77 @@ export function MeinTipp({ setup, meins, runde, onAendern, onWeitergeben }: {
             {nullAufNullListen.map((s) => parteiVon[s.slug]?.short ?? s.slug).join(", ")} — richtig mit 0 Sitzen getippt: je 5 Punkte.
           </p>
         )}
-      </div>
+      </div>}
 
       {meins.has_mayor_tip && (
         // Der eigene OB-Tipp gehört zu „Mein Tipp" — vorher führte der Knopf
         // auf den Beamer-Vergleich, der die Ø-Werte der Runde zeigt, nie den
-        // eigenen Tipp.
+        // eigenen Tipp. Bei einer OB-/Stichwahl steht er offen da: Er IST der Tipp.
         <div className="mt-3 px-4">
-          <Aufklapp offen={obOffen}>
+          {!sitzwahl && (
+            <div className="flex justify-between font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
+              <span>Dein Tipp{zeigeErgebnis ? " · Stand" : ""}</span>
+              <span>{zeigeErgebnis ? meins.stand_label : `${meins.mayor.length} Kandidaturen`}</span>
+            </div>
+          )}
+          <Aufklapp offen={obOffen} className={sitzwahl ? undefined : "mt-2"}>
             <div className="overflow-hidden rounded-[14px] border border-border bg-card">
               {meins.mayor.map((m) => {
                 const k = kandidaturVon[m.slug];
                 return (
-                  <div key={m.slug} className="grid grid-cols-[1fr_46px_46px_44px] items-center gap-2.5 border-t border-muted px-3.5 py-2 text-[13px] first:border-t-0">
+                  <div key={m.slug} className={`grid ${obSpalten} items-center gap-2.5 border-t border-muted px-3.5 py-2 text-[13px] first:border-t-0`}>
                     <span className="min-w-0">
                       <span className="block truncate font-semibold">{k?.name ?? m.slug}</span>
                       <span className="block text-[11px] text-muted-foreground">{k?.party}</span>
                     </span>
-                    <span className="text-right font-mono text-muted-foreground">{m.tip.toLocaleString("de-DE")} %</span>
-                    <span className="text-right font-display text-[15px] font-bold">
-                      {m.actual_pct !== null ? `${m.actual_pct.toLocaleString("de-DE", { maximumFractionDigits: 1 })} %` : "–"}
-                    </span>
-                    <span className={`rounded-full py-0.5 text-center text-[11px] font-semibold ${punktTon(m.points, 6)}`}>
-                      {m.actual_pct === null ? "–" : m.points > 0 ? `+${m.points}` : "0"}
-                    </span>
+                    {zeigeErgebnis ? (
+                      <>
+                        <span className="text-right font-mono text-muted-foreground">{prozentText(m.tip)}</span>
+                        <span className="text-right font-display text-[15px] font-bold">{prozentText(m.actual_pct)}</span>
+                        <span className={`rounded-full py-0.5 text-center text-[11px] font-semibold ${punktTon(m.points, 6)}`}>
+                          {m.actual_pct === null ? "–" : m.points > 0 ? `+${m.points}` : "0"}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-right font-display text-[15px] font-bold tabular-nums">{prozentText(m.tip)}</span>
+                    )}
                   </div>
                 );
               })}
-              <div className="grid grid-cols-[1fr_46px_46px_44px] gap-2.5 px-3.5 pb-2 pt-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
-                <span>OB-Wahl</span>
+              <div className={`grid ${obSpalten} gap-2.5 px-3.5 pb-2 pt-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground`}>
+                <span>{sitzwahl ? "OB-Wahl" : setup.election_title}</span>
                 <span className="text-right">Tipp</span>
-                <span className="text-right">Stand</span>
-                <span className="text-center">Pkt</span>
+                {zeigeErgebnis && <><span className="text-right">Stand</span><span className="text-center">Pkt</span></>}
               </div>
             </div>
           </Aufklapp>
+        </div>
+      )}
+
+      {meins.turnout && (
+        // Die Wahlbeteiligung — eine Zeile, dieselben drei Spalten wie oben.
+        <div className="mt-3 px-4">
+          <div className={`grid ${obSpalten} items-center gap-2.5 rounded-[14px] border border-border bg-card px-3.5 py-2.5 text-[13px]`}>
+            <span className="min-w-0">
+              <span className="block truncate font-semibold">Wahlbeteiligung</span>
+              <span className="block text-[11px] text-muted-foreground">
+                {setup.turnout_previous !== null && setup.turnout_previous_label
+                  ? `${setup.turnout_previous_label}: ${prozentText(setup.turnout_previous)}`
+                  : "dein Tipp"}
+              </span>
+            </span>
+            {zeigeErgebnis ? (
+              <>
+                <span className="text-right font-mono text-muted-foreground">{prozentText(meins.turnout.tip)}</span>
+                <span className="text-right font-display text-[15px] font-bold">{prozentText(meins.turnout.actual_pct)}</span>
+                <span className={`rounded-full py-0.5 text-center text-[11px] font-semibold ${punktTon(meins.turnout.points, 6)}`}>
+                  {meins.turnout.actual_pct === null ? "–" : meins.turnout.points > 0 ? `+${meins.turnout.points}` : "0"}
+                </span>
+              </>
+            ) : (
+              <span className="text-right font-display text-[15px] font-bold tabular-nums">{prozentText(meins.turnout.tip)}</span>
+            )}
+          </div>
         </div>
       )}
 
@@ -230,7 +275,7 @@ export function MeinTipp({ setup, meins, runde, onAendern, onWeitergeben }: {
         <Button asChild variant="secondary" className="h-11 flex-1 text-sm">
           <Link href={mitRunde("/tipp/live", runde, "runde")}>Rangliste</Link>
         </Button>
-        {meins.has_mayor_tip && (
+        {sitzwahl && meins.has_mayor_tip && (
           <Button type="button" variant="secondary" className="h-11 flex-1 text-sm" aria-expanded={obOffen} onClick={() => setObOffen((o) => !o)}>
             {obOffen ? "OB-Tipp ausblenden" : "OB-Tipp ansehen"}
           </Button>
