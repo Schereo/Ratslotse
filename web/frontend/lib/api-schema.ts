@@ -10465,6 +10465,10 @@ export interface components {
         };
         /** MayorCandidate */
         MayorCandidate: {
+            /** Ballot Note */
+            ballot_note: string;
+            /** Co Nominated By */
+            co_nominated_by: string[];
             /** Color */
             color: string;
             /** Color Dark */
@@ -20940,4 +20944,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 28e6e299218d3cebef062ff98d6b05c71f55ca3ae40ce83bcc2f427d12b14852
+// vertrag-sha256: acabb1a401df749ba4a0c3f446fc5e016aeed88abb15b4afea602c53ac7f30ed

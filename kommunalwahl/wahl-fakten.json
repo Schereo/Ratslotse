@@ -3,7 +3,7 @@
     "titel": "Bekanntmachung über die zugelassenen Wahlvorschläge, Wahlausschuss der Stadt Oldenburg, Sitzung vom 23. Juli 2026",
     "url": "https://www.oldenburg.de/fileadmin/oldenburg/Benutzer/Dateien/22_Rechtsamt/Bekanntmachungen/20260724-Zulassung_Wahlvorschlaege.pdf",
     "abgerufen": "2026-08-07",
-    "hinweis": "Alle Namen und Kandidatenzahlen stammen aus dieser amtlichen Quelle, nicht aus Presseberichten. Parteimitgliedschaft und Unterstützung durch andere Listen stehen in der Bekanntmachung NICHT — sie tragen je Kandidatur ihre eigene Quelle (hinweis_quelle)."
+    "hinweis": "Alle Namen und Kandidatenzahlen stammen aus dieser amtlichen Quelle, nicht aus Presseberichten. Parteimitgliedschaft, eine zweite Aufstellung durch eine andere Partei (aufgestellt_auch_von) und Unterstützung ohne Aufstellung (unterstuetzt_von) stehen in der Bekanntmachung NICHT — sie tragen je Kandidatur ihre eigenen Quellen (hinweis_quelle, eine je Aussage). stimmzettel_hinweis erklärt, warum trotzdem nur EIN Wahlvorschlag auf dem Zettel steht."
   },
   "wahl": {
     "bezeichnung": "Wahl des Rates der Stadt Oldenburg (Oldb)",
@@ -54,8 +54,11 @@
   ],
   "ob_kandidaten": [
     {"name": "Jascha Rohr", "beruf": "Unternehmer", "jahrgang": 1976, "vorgeschlagen_von": "BÜNDNIS 90/DIE GRÜNEN (GRÜNE)",
-     "parteilos": true, "unterstuetzt_von": ["CDU", "Volt"],
-     "hinweis_quelle": ["https://www.gruene-oldenburg.de/2025/07/nominierung-jascha-rohr-obwahl-2026/", "https://voltdeutschland.org/oldenburg/neuigkeiten/wandel-statt-weiter-so-volt-oldenburg-unterstuetzt-jascha-rohr"]},
+     "parteilos": true,
+     "aufgestellt_auch_von": ["CDU"],
+     "unterstuetzt_von": ["Volt"],
+     "stimmzettel_hinweis": "Auf dem Stimmzettel steht trotzdem nur ein Wahlvorschlag: § 45d NKWG kennt je Person nur einen, einen gemeinsamen zweier Parteien gibt es nicht — Grüne und CDU einigten sich auf die Grünen als größere Fraktion.",
+     "hinweis_quelle": ["https://jascha-rohr.de/", "https://www.gruene-oldenburg.de/2025/07/nominierung-jascha-rohr-obwahl-2026/", "https://verliebt-in-oldenburg.de/", "https://voltdeutschland.org/oldenburg/neuigkeiten/wandel-statt-weiter-so-volt-oldenburg-unterstuetzt-jascha-rohr"]},
     {"name": "Ulf Prange", "beruf": "Landtagsabgeordneter/Jurist", "jahrgang": 1975, "vorgeschlagen_von": "Sozialdemokratische Partei Deutschlands (SPD)"},
     {"name": "Heike Boldt", "beruf": "Gewerkschaftssekretärin", "jahrgang": 1981, "vorgeschlagen_von": "Die Linke"},
     {"name": "Sebastian Fröhlich", "beruf": "Selbstständiger Kaufmann", "jahrgang": 1979, "vorgeschlagen_von": "Freie Demokratische Partei (FDP)"},
