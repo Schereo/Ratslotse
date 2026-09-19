@@ -96,12 +96,12 @@ def test_das_wichtigste_steht_oben_und_die_liste_bleibt_vollstaendig(store, stum
     assert ">6</td>" in html
     oben, unten = html.split("Alle Punkte", 1)
     # Oben die beiden Anträge über der Schwelle (80 und 70) plus Ö 7 (35).
-    assert "<b>Ö 8.1.2</b>" in oben and "<b>Ö 8.3</b>" in oben and "<b>Ö 7</b>" in oben
-    assert "<b>Ö 5</b>" not in oben and "<b>Ö 6</b>" not in oben
+    assert "<b>Ö 8.1.2 · " in oben and "<b>Ö 8.3 · " in oben and "<b>Ö 7 · " in oben
+    assert "<b>Ö 5 · " not in oben and "<b>Ö 6 · " not in oben
     # Unten steht die ganze Tagesordnung, die hervorgehobenen Punkte ein
     # zweites Mal an ihrem Platz.
     for nummer, _t, _s, _w in _TOPS:
-        assert f"<b>{nummer}</b>" in unten
+        assert f"<b>{nummer} · " in unten
 
 
 def test_hoechstens_drei_und_in_der_reihenfolge_der_tagesordnung(store, stumm):
@@ -112,10 +112,10 @@ def test_hoechstens_drei_und_in_der_reihenfolge_der_tagesordnung(store, stumm):
     store.save_agenda_impact(1, "Ö 6", 90, "jetzt der stärkste Punkt")
     oben = stumm._aufzaehlung(store, 1, punkte).split("Alle Punkte", 1)[0]
 
-    assert oben.count("• <b>") == 3
-    assert oben.index("<b>Ö 6</b>") < oben.index("<b>Ö 8.1.2</b>") < oben.index("<b>Ö 8.3</b>")
+    assert oben.count("class='rl-top'") == 3
+    assert oben.index("<b>Ö 6 · ") < oben.index("<b>Ö 8.1.2 · ") < oben.index("<b>Ö 8.3 · ")
     # Ö 7 (35) ist jetzt der vierte und fällt heraus.
-    assert "<b>Ö 7</b>" not in oben
+    assert "<b>Ö 7 · " not in oben
 
 
 def test_routine_tagesordnung_bekommt_keine_hervorhebung(store, stumm):
@@ -131,7 +131,8 @@ def test_routine_tagesordnung_bekommt_keine_hervorhebung(store, stumm):
 
     html = stumm._aufzaehlung(store, 1, punkte)
     assert "Das Wichtigste" not in html and "Alle Punkte" not in html
-    assert html.startswith("• <b>Ö 5</b>")
+    assert html.startswith("<div class='rl-top'")
+    assert "<b>Ö 5 · Widmung eines Weges 0</b>" in html
 
 
 def test_kurze_tagesordnung_bleibt_eine_liste(store, stumm):
@@ -153,7 +154,7 @@ def test_ohne_bewertung_bleibt_alles_wie_vorher(store, stumm):
     punkte = _tagesordnung(store, mit_bewertung=False)
     html = stumm._aufzaehlung(store, 1, punkte)
     assert "Das Wichtigste" not in html
-    assert html.count("• <b>") == len(_TOPS)
+    assert html.count("class='rl-top'") == len(_TOPS)
 
 
 def test_ein_fehlschlag_der_nachbewertung_kostet_die_mail_nichts(store, monkeypatch):
@@ -168,7 +169,7 @@ def test_ein_fehlschlag_der_nachbewertung_kostet_die_mail_nichts(store, monkeypa
 
     monkeypatch.setattr(council.impact, "rate_agenda_batch", kaputt)
     html = modul._aufzaehlung(store, 1, punkte)
-    assert html.count("• <b>") == len(_TOPS)
+    assert html.count("class='rl-top'") == len(_TOPS)
 
 
 def test_die_push_vorschau_faengt_beim_wichtigsten_punkt_an(store, stumm):
@@ -179,7 +180,7 @@ def test_die_push_vorschau_faengt_beim_wichtigsten_punkt_an(store, stumm):
 
     assert not kurz.startswith("Das Wichtigste")
     assert "Alle Punkte" not in kurz
-    assert kurz.startswith("• Ö 7:")   # der Aufzählungspunkt wie eh und je
+    assert kurz.startswith("Ö 7 · Förderprogramm")   # Nummer und Titel wie in der Mail
 
 
 def test_die_bewertung_der_mail_holt_nur_diese_sitzung_und_ohne_zeitfenster(store):

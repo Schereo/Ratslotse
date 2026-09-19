@@ -95,15 +95,19 @@ def test_der_dringlichkeitsantrag_heisst_in_der_mail_wie_er_heisst(store, monkey
     deshalb, was der Punkt IST."""
     modul = _check_committees()
     _sitzung(store)
+    _punkt(store, 1, "DZT 1", "Dringlichkeitsantrag: Untersuchung der Flugplatzbäke")
+    _punkt(store, 1, "Ö 5", "Bebauungsplan 837")
     monkeypatch.setattr(modul.social_text, "schreibe_fehlende", lambda *a, **kw: (0, 0))
 
     html = modul._aufzaehlung(store, 1, [
         {"number": "DZT 1", "summary": "Beantragt ist eine Untersuchung der Flugplatzbäke."},
         {"number": "Ö 5", "summary": "Der Rat berät über den Bebauungsplan."},
     ])
-    assert "<b>Dringlichkeitsantrag</b>: Beantragt ist" in html
+    # Die Marke steht einmal — als Kennung, nicht noch einmal im Titel.
+    assert ("<b>Dringlichkeitsantrag · Untersuchung der Flugplatzbäke</b>\n"
+            "Beantragt ist") in html
     assert "DZT 1" not in html
-    assert "<b>Ö 5</b>" in html
+    assert "<b>Ö 5 · Bebauungsplan 837</b>" in html
 
 
 def test_ein_fehlschlag_beim_nachziehen_kostet_die_mail_nichts(store, monkeypatch):
