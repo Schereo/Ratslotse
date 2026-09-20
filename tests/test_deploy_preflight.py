@@ -144,7 +144,11 @@ def test_preflight_rejects_backup_with_different_row_count(tmp_path):
     with sqlite3.connect(backup) as connection:
         connection.execute("INSERT INTO council_sessions (id) VALUES (99)")
 
-    with pytest.raises(PreflightError, match="abweichendes Tabellenmanifest"):
+    # Die Meldung nennt Tabelle und alle drei Zahlen — sonst steht man vor
+    # einem roten Deploy und rät, was sich bewegt hat (20.09.2026).
+    with pytest.raises(PreflightError,
+                       match=r"Tabellenmanifest: council_sessions hat im Backup 4 Zeilen, "
+                             r"die Quelle davor 3 und danach 3"):
         verify(tmp_path, marker)
 
 
@@ -334,10 +338,15 @@ def test_cron_guard_before_api_stop_ignores_the_api_itself(tmp_path):
     root.mkdir()
     proc_root = tmp_path / "proc"
     _prozess(proc_root, 100, root, str(root / ".venv/bin/uvicorn"), "app.main:app")
+    # So steht sie auf Prod wirklich in der Prozessliste: Der Shebang macht
+    # den Interpreter zu argv[0]. Bis 20.09.2026 galt das als Cron, und
+    # `--require-no-cron` blockierte jeden Deploy („PID 1153117 (python3)").
+    _prozess(proc_root, 101, root, str(root / ".venv/bin/python3"),
+             str(root / ".venv/bin/uvicorn"), "app.main:app")
 
     verify_no_cron_running(root, proc_root=proc_root)   # nur die API: frei
     assert running_repo_python_processes(root, proc_root=proc_root, own_pid=9999) \
-        == [(100, "uvicorn")], "nach dem Stopp zählt die API weiterhin mit"
+        == [(100, "uvicorn"), (101, "uvicorn")], "nach dem Stopp zählt die API weiterhin mit"
 
     _prozess(proc_root, 200, root, ".venv/bin/python", "scripts/check_cities.py")
     with pytest.raises(RuntimePreflightError, match=r"check_cities\.py.*BEVOR die API"):
