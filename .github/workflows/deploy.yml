@@ -127,12 +127,20 @@ jobs:
       # vor Barriere, rsync und API-Stopp, also folgenlos. Bis 20.09.2026
       # fiel das erst dem Wächter NACH dem Stopp auf (13.09. und 20.09.):
       # Barriere gesetzt, API aus, Prod 500, bis jemand von Hand eingriff.
+      #
+      # --wait-for-cron 600: Die meisten Läufe dieses Checkouts sind in
+      # Minuten durch; für die wäre ein Abbruch samt Neustart Unfug. Die
+      # langen fängt keine sinnvolle Wartezeit — check_cities.py lief am
+      # 20.09.2026 vierzehn Stunden und hat so SECHS Deploys hintereinander
+      # abgeräumt. Für die holt `ops-deploy-rueckstand.yml` den Deploy von
+      # selbst nach, sobald der Lauf durch ist.
       - name: Verify release runtime prerequisites
         run: |
           ssh target '
             set -eu
             cd ~/app
-            .venv/bin/python - --root . --minimum-app-build 19 --require-no-cron
+            .venv/bin/python - --root . --minimum-app-build 19 \
+              --require-no-cron --wait-for-cron 600
           ' < scripts/verify_release_runtime.py
 
       # Der Marker liegt in data/ (vom rsync ausgeschlossen) und muss VOR dem
@@ -143,6 +151,7 @@ jobs:
       # stammt aus einem nicht abgeschlossenen Cutover und ist ein harter
       # manueller Recovery-Fall, kein Anlass zum Überschreiben.
       - name: Enter release maintenance barrier
+        id: cutover
         run: |
           ssh target '
             set -eu
@@ -153,6 +162,11 @@ jobs:
               exit 1
             fi
           '
+          # Die Grenze, an der ein Abbruch aufhört, folgenlos zu sein: Ab hier
+          # kann die Seite unten bleiben. Der Alarm-Schritt unten liest das und
+          # ist ab jetzt in JEDEM Fall laut — auch wenn die Messung dort gerade
+          # unauffällig aussieht.
+          echo "begonnen=1" >> "$GITHUB_OUTPUT"
 
       - name: Deploy via rsync
         run: |
@@ -426,13 +440,28 @@ jobs:
                 || echo "Alarm-Mail fehlgeschlagen (der Deploy bleibt gruen)."
             fi
 
-      # LAUT SCHEITERN. Jeder Fehler oberhalb lässt die Wartungsbarriere
-      # bewusst stehen und den API-Dienst gestoppt (s. die Begründung am
-      # Cutover) — das ist richtig, aber es heißt: die Seite ist AB JETZT
-      # unten, und zwar bis jemand eingreift. Am 07.09.2026 hat das 74 Minuten
-      # niemand erfahren; die Rauchprobe fiel um 14:58, gemerkt wurde es, als
-      # eine Anmeldung 500 lieferte. Ein roter Actions-Lauf ist kein Alarm —
-      # er ist ein Eintrag in einer Liste, in die man schauen muss.
+      # LAUT SCHEITERN — ABER NUR, WENN ES BRENNT. Jeder Fehler ab dem
+      # Cutover lässt die Wartungsbarriere bewusst stehen und den API-Dienst
+      # gestoppt (s. die Begründung dort) — das ist richtig, aber es heißt:
+      # die Seite ist AB JETZT unten, und zwar bis jemand eingreift. Am
+      # 07.09.2026 hat das 74 Minuten niemand erfahren; ein roter Actions-Lauf
+      # ist kein Alarm, sondern ein Eintrag in einer Liste, in die man schauen
+      # muss.
+      #
+      # Die andere Hälfte kam am 20.09.2026 dazu: An diesem Tag brachen sechs
+      # Deploys ab, EINER davon nach dem API-Stopp — die anderen fünf in den
+      # Vorflug-Prüfungen oben, vor Barriere, rsync und Stopp, ohne Prod
+      # überhaupt anzufassen. Alle sechs schickten dieselbe Mail mit demselben
+      # Satz „die Seite ist unten", und alle sechs widersprachen sich zwei
+      # Zeilen tiefer selbst („Die Wartungsbarriere liegt nicht"). Sechs
+      # gleiche Mails heißt: Die eine, die zählte, wurde wie die fünf anderen
+      # gelesen.
+      #
+      # `--nur-wenn-betroffen` macht daraus eine Entscheidung: Liegt keine
+      # Barriere und laufen beide Dienste, bleibt es still. `--cutover-begonnen`
+      # hebelt das aus, sobald die Barriere in DIESEM Lauf gesetzt war.
+      # Das Gegenstück zur Stille ist `ops-deploy-rueckstand.yml` — es merkt,
+      # wenn Prod deswegen stehen bleibt, und holt den Deploy nach.
       #
       # Die Mail geht über den SERVER, nicht über den Runner: Dort liegen
       # RESEND_API_KEY und ALERT_EMAIL schon in der .env, es braucht also kein
@@ -444,11 +473,13 @@ jobs:
         continue-on-error: true
         run: |
           ssh target 'cd ~/app && .venv/bin/python - --root . \
+            --nur-wenn-betroffen \
+            --cutover-begonnen "${{ steps.cutover.outputs.begonnen }}" \
             --betreff "Ratslotse – Deploy abgebrochen, Prod prüfen" \
             --zustand \
-            --text "Der Prod-Deploy von Commit ${{ github.sha }} ist abgebrochen.
+            --text "Der Prod-Deploy von Commit ${{ github.sha }} ist abgebrochen, und Prod ist davon betroffen.
 
           Lauf: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
-          Steht die Wartungsbarriere noch, ist die Seite fuer Angemeldete unten. Zurueck kommt sie mit dem Ops-Workflow ops-wartungsbarriere.yml (Aktion api-start) oder per SSH."' \
+          Der gemessene Zustand steht unten. Steht die Wartungsbarriere, ist die Seite fuer Angemeldete unten; zurueck kommt sie mit dem Ops-Workflow ops-wartungsbarriere.yml (Aktion api-start) oder per SSH."' \
             < scripts/alarm.py
