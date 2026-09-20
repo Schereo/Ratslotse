@@ -29,6 +29,7 @@ import { reportBadgeEvent } from "@/components/badges";
 import { ChipPopover, DateRangeChip } from "@/components/filter-chips";
 import { SitzungspauseBanner } from "@/components/sitzungspause-banner";
 import { AnalysisTab } from "@/components/council-analysis";
+import { FrageChips } from "@/components/frage-chips";
 import { EntitiesTab } from "@/components/council-entities";
 import { cn, relativerTag, wochentagKurz } from "@/lib/utils";
 import { useHeute } from "@/lib/use-heute";
@@ -755,6 +756,14 @@ function DecisionsTab({ committees }: { committees: string[] }) {
           </div>
         )}
       </div>
+
+      {/* Die Stichwortsuche ist tot — 18 Suchvorgänge in zwei Wochen, alle
+          von einem gesperrten Konto (Auswertung 20.09.2026) —, die Liste
+          wird trotzdem angeklickt. Wer hier ein Stichwort eingibt, bekommt
+          es als Frage angeboten; ohne Stichwort die Frage nach dem Neuesten. */}
+      <FrageChips className="mt-4" fragen={query.trim()
+        ? [`Was wurde zu „${query.trim()}“ entschieden?`, `Was hat der Rat zuletzt zu ${query.trim()} beschlossen?`]
+        : ["Was hat der Rat zuletzt beschlossen?", "Welche Beschlüsse betreffen Familien in Oldenburg?"]} />
 
       {party && (
         <div className="mt-4 flex items-center gap-2 text-sm">

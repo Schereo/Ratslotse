@@ -11,6 +11,7 @@
 
 import { ChevronDown } from "lucide-react";
 import Link from "next/link";
+import { FrageChips } from "@/components/frage-chips";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -57,6 +58,17 @@ import {
 } from "@/lib/wahlabend";
 
 /* ── Kopf & Fuß ─────────────────────────────────────────────────────────── */
+
+/** Belegbare Fragen zum Ergebnis — die Partei-Frage nur mit angetippter Liste. */
+function wahlabendFragen(daten: Wahlabend, liste: string | null): string[] {
+  const partei = liste ? daten.parties.find((p) => p.slug === liste) : undefined;
+  return [
+    ...(partei ? [`Was hat ${partei.name} zuletzt im Rat beantragt?`] : []),
+    "Was hat der Rat zuletzt beschlossen?",
+    "Wie viele Schulden hat die Stadt Oldenburg?",
+  ];
+}
+
 
 function Fuss({ daten }: { daten: Wahlabend | undefined }) {
   return (
@@ -1002,6 +1014,12 @@ export function WahlabendView() {
         <ReiterTafel id="ergebnis" aktiv={ansicht}>
           <Sitzbild daten={daten} />
           <MehrheitenBlock daten={daten} />
+          {/* Der Wahlabend ist die meistbesuchte Seite (1.032 Aufrufe in zwei
+              Wochen um den 13.09.2026) und der Trichter für neue Konten — und
+              von hier führte kein Weg zur KI-Frage. Die Fragen folgen dem, was
+              gerade gezeigt wird: Ist eine Liste angetippt, fragt der erste
+              Chip nach ihr. */}
+          <FrageChips className="mt-6" fragen={wahlabendFragen(daten, liste)} />
           <Verlauf daten={daten} liste={liste} />
           <Mandate daten={daten} />
         </ReiterTafel>

@@ -727,6 +727,8 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   // die Einwilligung, an der die Erstnutzungs-Karte hängt.
   const { user: konto } = useAuth();
   const [q, setQ] = useState("");
+  /** Eine Chip-Frage, die auf die Einwilligung wartet (s. den ?q=-Effekt). */
+  const chipFrageRef = useRef<string | null>(null);
   const sp = useSearchParams();
   const pathname = pfad(usePathname());
   const router = useRouter();
@@ -739,9 +741,25 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     // Seit dem Split wohnt das Ratsgespräch auf /fragen — der frühere
     // mode=fragen-Guard hängt jetzt am Pfad.
     if (!urlQ || pathname !== "/fragen") return;
-    setQ((prev) => prev || urlQ);
+    // `chip=1`: Die Frage kommt von einem Frage-Chip auf einer anderen Seite
+    // (components/frage-chips.tsx). Dann wird sie sofort gestellt — wie ein
+    // Chip im Gespräch — und als Chip-Frage gezählt. Ohne die Marke bleibt es
+    // beim Vorbelegen: Ein geteilter oder getippter Link soll keine Frage
+    // auslösen, die niemand angetippt hat.
+    const ausChip = sp.get("chip") === "1";
+    if (!ausChip) setQ((prev) => prev || urlQ);
+    else if (einstellung === null || einstellung === undefined) {
+      // Noch keine Einwilligung — genau der Fall des NEUEN Kontos, für das
+      // der Chip gebaut ist. `ask` schwiege dann, und die Frage wäre weg
+      // (lokal gemessen: leerer Composer unter der Einwilligungs-Karte).
+      // Also vorbelegen und merken; sobald die Einwilligung steht, geht
+      // sie von selbst raus (Effekt weiter unten).
+      chipFrageRef.current = urlQ;
+      setQ(urlQ);
+    } else void ask(urlQ, true);
     const params = new URLSearchParams(sp.toString());
     params.delete("q");
+    params.delete("chip");
     // Auf dem EIGENEN Pfad bleiben: Das fest verdrahtete /council stammte aus
     // der Zeit vor dem Split — es warf jeden /fragen-Besucher nach dem
     // q-Verbrauch zurück in die Suche (im Browser gemessen: Alt-Link →
@@ -1357,6 +1375,14 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     () => (konto ? konto.saves_conversations ?? null : undefined),
   );
   const [gespraechId, setGespraechId] = useState<number | null>(null);
+  useEffect(() => {
+    // Die wartende Chip-Frage stellen, sobald die Einwilligung da ist.
+    if (einstellung === null || einstellung === undefined || !chipFrageRef.current) return;
+    const frage = chipFrageRef.current;
+    chipFrageRef.current = null;
+    void ask(frage, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [einstellung]);
   const [gespraeche, setGespraeche] = useState<GespraechEintrag[]>([]);
   // Der Bestand des Kontos — bewusst NICHT `gespraeche.length`: die Liste ist
   // seit 30.08. eine Seite (SEITE Zeilen) und schrumpft während einer Suche
