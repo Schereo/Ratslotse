@@ -178,3 +178,51 @@ def test_umlaut_mehrzahl():
     assert f("brueck") == ""           # „ue" ist schon ein Umlaut
     assert f("baeume") == ""           # letzte Gruppe ist ein „e"
     assert f("xyz") == ""
+
+
+# ---- Punktfragen ziehen den Vorlagentext ------------------------------------
+
+def test_zahlfrage_erkennung():
+    assert qa.zahlfrage("Wie viele Sumpfeichen müssen an der Nadorster Straße entfernt werden?")
+    assert qa.zahlfrage("Wann wurde der Bebauungsplan 851 beschlossen?")
+    assert qa.zahlfrage("Wie hoch ist der Zuschuss für die VHS?")
+    assert not qa.zahlfrage("Was ist beim Fliegerhorst geplant?")
+    assert not qa.zahlfrage("Wie lief das mit dem Stadion?")
+
+
+def test_zahlfrage_mit_eng_zieht_die_vorlage():
+    """Sumpfeichen-Fall: Der Beschluss sagt „Bericht zur Kenntnis genommen",
+    die Zahl steht in der Vorlage. Ohne diese Regel entfernte die Negativregel
+    für Metadatenfragen den Dokumentkanal (die Frage beginnt mit „Wie viele")."""
+    plan = qa.research_plan_with_mandatory(
+        {"channels": ["decisions"], "needs": [], "intent": "fact"}, typ="topic",
+        question="Wie viele Sumpfeichen müssen an der Nadorster Straße entfernt werden?", eng=True)
+    assert "documents" in plan["channels"]
+    assert "documents" in plan["mandatory_channels"]
+    # Ohne `eng` (Überblicksfrage) ändert sich nichts am bisherigen Verhalten.
+    plan2 = qa.research_plan_with_mandatory(
+        {"channels": ["decisions"], "needs": [], "intent": "fact"}, typ="topic",
+        question="Wie viele Sumpfeichen müssen an der Nadorster Straße entfernt werden?")
+    assert "documents" not in plan2["channels"]
+
+
+VORLAGE = (
+    "Sachverhalt. Die Verwaltung hat die Bäume an der unteren Nadorster Straße begutachtet. "
+    "Von den 14 Sumpfeichen zwischen Hausnummer 12 und 40 sind sieben nicht mehr standsicher "
+    "und müssen gefällt werden. Die Fällung ist für den Winter vorgesehen. "
+    "Für die übrigen Bäume wird ein Kronenrückschnitt empfohlen. "
+    "Finanzielle Auswirkungen: keine."
+)
+
+
+def test_fundstelle_findet_den_satz_mit_der_zahl():
+    stelle = qa.fundstelle(VORLAGE, "Wie viele Sumpfeichen müssen an der Nadorster Straße entfernt werden?",
+                           "Sumpfeiche Baum Nadorster Straße Fällung")
+    assert "14 Sumpfeichen" in stelle and "sieben" in stelle
+    # Nicht die ganze Vorlage — die Finanzzeile trägt kein Fragewort.
+    assert "Finanzielle Auswirkungen" not in stelle
+
+
+def test_fundstelle_leer_ohne_treffer():
+    assert qa.fundstelle(VORLAGE, "Wie hoch ist die Gewerbesteuer?", "Gewerbesteuer Hebesatz") == ""
+    assert qa.fundstelle("", "Wie viele Bäume?", "Baum") == ""

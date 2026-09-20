@@ -32,12 +32,18 @@ export function frageLink(frage: string): string {
   return `/fragen?q=${encodeURIComponent(frage)}&chip=1`;
 }
 
+/** Ein Chip: die Frage, die gestellt wird — und optional ein kürzerer Text
+ *  auf dem Chip, wenn die volle Frage zu lang für eine Pille wäre. */
+export type FrageChip = string | { frage: string; label: string };
+
 export function FrageChips({ fragen, titel = "Frag Lotti", className }: {
-  fragen: readonly string[];
+  fragen: readonly FrageChip[];
   titel?: string;
   className?: string;
 }) {
-  const liste = fragen.filter((f) => f.trim()).slice(0, 3);
+  const liste = fragen
+    .map((f) => (typeof f === "string" ? { frage: f, label: f } : f))
+    .filter((f) => f.frage.trim()).slice(0, 3);
   if (!liste.length) return null;
   return (
     <div className={cn("flex flex-wrap items-center gap-x-3 gap-y-2", className)}
@@ -47,10 +53,10 @@ export function FrageChips({ fragen, titel = "Frag Lotti", className }: {
         {titel}
       </span>
       <div className="flex flex-wrap gap-1.5">
-        {liste.map((frage) => (
-          <Link key={frage} href={frageLink(frage)} prefetch={false}
+        {liste.map(({ frage, label }) => (
+          <Link key={frage} href={frageLink(frage)} prefetch={false} title={label !== frage ? frage : undefined}
             className="inline-flex items-center rounded-full border border-primary/30 bg-primary/[0.05] px-3 py-1.5 text-[12.5px] text-foreground transition-[background-color,transform] duration-150 ease-out-strong hover:bg-primary/[0.1] active:scale-[0.98]">
-            {frage}
+            {label}
           </Link>
         ))}
       </div>

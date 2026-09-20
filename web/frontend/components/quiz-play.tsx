@@ -11,6 +11,7 @@ import { GlossaryText } from "@/components/glossary-text";
 import { QuizChart } from "@/components/quiz-chart";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { FrageChips } from "@/components/frage-chips";
 
 // Leaflet ist client-only + schwer → erst laden, wenn eine Karte gebraucht wird.
 const LocatorMap = dynamic(() => import("@/components/quiz-locator-map").then((m) => m.LocatorMap), {
@@ -367,6 +368,15 @@ export function QuizPlay({ questions, onExit, onComplete, title, answerPath = "/
               </div>
             )}
 
+            {/* Vom Spiel zum Inhalt: hch hat am 17.09.2026 zehn Fragen in
+                fünf Minuten gespielt — und danach führte kein Weg weiter.
+                Die Quizfrage wird zur Frage an Lotti; die Analyse macht daraus
+                die eigenständige Suchfrage. Nicht bei eigenen Übungsfragen. */}
+            {!practice && (
+              <FrageChips className="mt-3" titel="Frag Lotti dazu"
+                fragen={[{ label: "Mehr dazu aus den Ratsbeschlüssen",
+                           frage: `${q.question.trim().replace(/\?$/u, "")} — was steht dazu in den Ratsbeschlüssen?` }]} />
+            )}
             <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
               {result.source_ref && result.source_type ? (
                 result.source_ref.startsWith("http") ? (

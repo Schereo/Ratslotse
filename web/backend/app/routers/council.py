@@ -3818,7 +3818,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             shadow_plan = qa.research_plan_with_mandatory(
                 analyse.get("rechercheplan") or {}, typ=typ, question=q_suche,
                 person=bool(person), place=bool(ort), sessions=bool(sitzungen),
-                latest_decision=latest_place)
+                latest_decision=latest_place, eng=eng)
             yield _sse({"type": "step", "step": "search"})
             t0 = time.perf_counter()
             place_ids = (store.decision_ids_for_place(ort["id"], limit=120)
@@ -4287,10 +4287,15 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             if documents_enabled and not einfach:
                 try:  # Vorlagen-Auszüge (Sachverhalt) beilegen — best-effort
                     texts = store.vorlage_texts_for([c.get("template_number") or "" for c in ctx])
+                    # Bei einer engen Zahl-Frage („Wie viele Bäume?") die Sätze
+                    # mit den Fragewörtern statt der ersten 350 Zeichen — die
+                    # Zahl steht selten am Anfang der Vorlage (qa.fundstelle).
+                    zahl = eng and qa.zahlfrage(q_suche)
                     for c in ctx:
                         t = texts.get((c.get("template_number") or "").strip())
                         if t:
-                            c["vorlage_excerpt"] = vorlagen_mod.excerpt(t, 350)
+                            stelle = qa.fundstelle(t, q_suche, expanded) if zahl else ""
+                            c["vorlage_excerpt"] = stelle or vorlagen_mod.excerpt(t, 350)
                 except Exception:  # noqa: BLE001
                     pass
             try:  # Läuft zu einem Kandidaten gerade eine Bauleitplan-Beteiligung?

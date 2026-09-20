@@ -171,10 +171,27 @@ _EXPLICIT_DEBATE_RE = re.compile(
 )
 
 
+#: Punktfragen, deren Antwort eine ZAHL oder ein Datum ist. Die steht selten
+#: im Beschlusstext („nimmt den Bericht zur Kenntnis"), fast immer in der
+#: Vorlage dahinter — Sumpfeichen-Fall vom 11.09.2026: Die Beschlüsse zu den
+#: Baumfällungen an der Nadorster Straße standen im Kontext, die Antwort
+#: blieb „ohne Angabe zur Zahl", weil der Vorlagentext nicht mitkam.
+_ZAHL_FRAGE_RE = re.compile(
+    r"\b(wie\s*viele?|wieviel\w*|wie\s+hoch|wie\s+teuer|wie\s+lang\w*|wie\s+gro(?:ß|ss)\w*|"
+    r"wie\s+oft|wann|seit\s+wann|bis\s+wann|welche[rs]?\s+(?:betrag|summe|zahl|anzahl|h(?:ö|oe)he))\b",
+    re.IGNORECASE)
+
+
+def zahlfrage(question: str) -> bool:
+    """Verlangt die Frage eine Zahl oder ein Datum als Antwort?"""
+    return bool(_ZAHL_FRAGE_RE.search(question or ""))
+
+
 def research_plan_with_mandatory(plan: dict, *, typ: str, question: str = "",
                                  person: bool = False,
                                  place: bool = False, sessions: bool = False,
-                                 latest_decision: bool = False) -> dict:
+                                 latest_decision: bool = False,
+                                 eng: bool = False) -> dict:
     """LLM-Auswahl konsistent und mit harten Entitätskanälen machen.
 
     Das ist die zentrale Hybrid-Leitplanke: Ein expliziter Ort, eine Person
@@ -201,6 +218,12 @@ def research_plan_with_mandatory(plan: dict, *, typ: str, question: str = "",
         mandatory.append("places")
     if typ == "session" or sessions:
         mandatory.append("sessions")
+    # Eine enge Frage nach einer Zahl: Die Vorlage ist die Quelle, nicht der
+    # Beschluss — Kanal UND Bedarf, damit die Negativregeln unten sie nicht
+    # als „vorsorglich gewählt" wieder entfernen.
+    zahl = bool(eng and zahlfrage(question))
+    if zahl:
+        mandatory.append("documents")
     mandatory = list(dict.fromkeys(mandatory))
 
     need_channels = {
@@ -216,6 +239,8 @@ def research_plan_with_mandatory(plan: dict, *, typ: str, question: str = "",
     }
     model_needs = list(plan.get("needs") or [])
     inferred_needs: list[str] = []
+    if zahl and "documents" not in model_needs:
+        inferred_needs.append("documents")
     if (_OFFICIAL_UPDATE_WORDS_RE.search(question or "")
             and ("presse" in (question or "").lower()
                  or _OFFICIAL_SOURCE_RE.search(question or ""))
@@ -248,14 +273,14 @@ def research_plan_with_mandatory(plan: dict, *, typ: str, question: str = "",
         # obwohl es den feineren Bedarf ``future_dates`` korrekt erkannt hatte.
         selected.remove("press")
         suppressed.append("press")
-    if "documents" not in need_set and "documents" in selected:
+    if "documents" not in need_set and "documents" in selected and "documents" not in mandatory:
         # Kanal und Bedarf müssen bei Dokumenten bewusst zusammenpassen. Das
         # Modell setzte den Kanal in der Produktionsmatrix oft vorsorglich bei
         # einfachen Datums-/Abstimmungsfragen, ohne selbst einen Bedarf an
         # Dokumentinhalten zu erkennen.
         selected.remove("documents")
         suppressed.append("documents")
-    elif ("documents" in selected and question
+    elif ("documents" in selected and "documents" not in mandatory and question
           and not _EXPLICIT_DOCUMENT_RE.search(question)
           and (typ in ("person", "party", "session")
                or latest_decision or definition_only or finance_facets
@@ -396,6 +421,46 @@ def _ohne_fragehuelle(terms: str) -> str:
     woerter = terms.split()
     rest = [w for w in woerter if w.lower().strip(",.;:") not in _FRAGEHUELLE]
     return " ".join(rest) if rest else terms
+
+
+_SATZ_RE = re.compile(r"(?<=[.!?])\s+(?=[A-ZÄÖÜ0-9„])")
+
+
+def fundstelle(text: str, question: str, terms: str = "", breite: int = 500,
+               saetze: int = 2) -> str:
+    """Die Sätze einer Vorlage, in denen die Fragewörter stehen.
+
+    Der übliche Auszug (``vorlagen.excerpt``) nimmt die ersten 350 Zeichen ab
+    „Sachverhalt" — für „Was ist geplant?" richtig, für „Wie viele Bäume?"
+    meist am Ziel vorbei: Die Zahl steht auf Seite drei. Hier zählt je Satz,
+    wie viele Fragewörter er trifft (gefaltet, Teilwort, Umlaut-Mehrzahl wie
+    beim Nachzügler); die besten ``saetze`` Sätze kommen in Textreihenfolge,
+    gekappt auf ``breite``. Leer, wenn kein Satz ein Fragewort trägt — dann
+    bleibt es beim normalen Auszug.
+    """
+    if not text:
+        return ""
+    woerter = {w for w in (extract_keywords(question) + [t.lower() for t in (terms or "").split()])
+               if len(w) >= 4 and w not in _STOP and w not in _FRAGEHUELLE}
+    formen = []
+    for w in woerter:
+        g = _falte(w).rstrip("n") if w.endswith("en") else _falte(w)
+        formen.append((g, _umlaut_mehrzahl(g)))
+    if not formen:
+        return ""
+    kandidaten = [" ".join(s.split()) for s in _SATZ_RE.split(text) if len(s.strip()) > 20]
+    bewertet = []
+    for i, satz in enumerate(kandidaten):
+        f = _falte(satz)
+        treffer = sum(1 for g, u in formen if g in f or (u and u in f))
+        if treffer:
+            # Ein Satz mit einer Zahl darin ist bei einer Zahl-Frage mehr wert.
+            bewertet.append((treffer + (0.5 if re.search(r"\d", satz) else 0), i, satz))
+    if not bewertet:
+        return ""
+    beste = sorted(sorted(bewertet, key=lambda x: -x[0])[:saetze], key=lambda x: x[1])
+    raus = " ".join(s for _, _, s in beste)
+    return raus[:breite].rstrip() + ("…" if len(raus) > breite else "")
 
 
 #: Wie viele Kandidaten von hinter dem Kontext-Deckel höchstens nachrücken.
