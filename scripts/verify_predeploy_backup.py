@@ -183,15 +183,22 @@ def _fresh_backup(source: DatabaseState, backup_dir: Path, marker: Path) -> Data
     before = dict(source.table_rows)
     after = dict(source_now.table_rows)
     backup_rows = dict(state.table_rows)
+    # Die Meldung nennt Tabelle und Zahlen: Am 20.09.2026 blieb ein Deploy
+    # hier stehen, und aus „abweichendes Tabellenmanifest" allein ließ sich
+    # nicht sagen, welche Tabelle sich in den 15 Sekunden bewegt hatte.
     if set(backup_rows) != set(before) or set(after) != set(before):
+        fremd = sorted((set(backup_rows) ^ set(before)) | (set(after) ^ set(before)))
         raise PreflightError(
-            f"Backup für {source.path.name} hat ein abweichendes Tabellenmanifest"
+            f"Backup für {source.path.name} hat ein abweichendes Tabellenmanifest: "
+            f"Tabellen nur auf einer Seite: {', '.join(fremd)}"
         )
     for table, rows in backup_rows.items():
         lo, hi = sorted((before[table], after[table]))
         if not lo <= rows <= hi:
             raise PreflightError(
-                f"Backup für {source.path.name} hat ein abweichendes Tabellenmanifest"
+                f"Backup für {source.path.name} hat ein abweichendes Tabellenmanifest: "
+                f"{table} hat im Backup {rows} Zeilen, die Quelle davor {before[table]} "
+                f"und danach {after[table]}"
             )
     return state
 
