@@ -138,17 +138,31 @@ def test_preflight_accepts_source_that_grew_after_the_backup(tmp_path, monkeypat
     assert council.rows == 3
 
 
-def test_preflight_rejects_backup_with_different_row_count(tmp_path):
+def test_preflight_tolerates_rows_that_moved_since_the_backup(tmp_path, capsys):
+    """Das Backup entsteht VOR dem ersten Blick des Skripts; bis dahin darf
+    jede Tabelle gewachsen oder geschrumpft sein. Am 20.09.2026 blockierte
+    ein Zeilenvergleich drei Deploys, weil `check_cities.py` nebenher
+    `llm_usage` füllte. Die Bewegung wird genannt, nicht bestraft."""
     marker = _setup(tmp_path, account_name="ratslotse.sqlite")
     backup = tmp_path / "data" / "backups" / "council_2026-09-03.sqlite"
     with sqlite3.connect(backup) as connection:
         connection.execute("INSERT INTO council_sessions (id) VALUES (99)")
 
-    # Die Meldung nennt Tabelle und alle drei Zahlen — sonst steht man vor
-    # einem roten Deploy und rät, was sich bewegt hat (20.09.2026).
-    with pytest.raises(PreflightError,
-                       match=r"Tabellenmanifest: council_sessions hat im Backup 4 Zeilen, "
-                             r"die Quelle davor 3 und danach 3"):
+    council, _account = verify(tmp_path, marker)
+    assert council.rows == 3
+    assert "council_sessions (Backup 4, Quelle 3 → 3)" in capsys.readouterr().out
+
+
+def test_preflight_rejects_backup_with_a_different_table_set(tmp_path):
+    """Eine fremde oder fehlende Tabelle ist kein Zeilen-Drift, sondern ein
+    falsches Backup. Den Fall fängt schon der Schema-Hash; der
+    Tabellenmengen-Vergleich dahinter ist das zweite Netz."""
+    marker = _setup(tmp_path, account_name="ratslotse.sqlite")
+    backup = tmp_path / "data" / "backups" / "council_2026-09-03.sqlite"
+    with sqlite3.connect(backup) as connection:
+        connection.execute("CREATE TABLE nur_im_backup (id INTEGER)")
+
+    with pytest.raises(PreflightError, match=r"nicht dasselbe Schema"):
         verify(tmp_path, marker)
 
 
