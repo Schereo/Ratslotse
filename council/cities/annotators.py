@@ -521,7 +521,13 @@ ANNOTATORS: dict[str, Annotator] = {
         # nicht gibt, als „fehlt" durchgehen — die Karte sagte „In Oldenburg
         # nicht gefunden" und begründete es mit „Oldenburg hat kein
         # Stadtbahnsystem". Grob gezählt 557 von 9.833 Urteilen.
-        key="fit", version="4", applies_to=("paper",),
+        # Fassung 5 seit 20.09.2026: `not_applicable` ist an EINE Frage
+        # gebunden — könnte der Rat die fehlende Voraussetzung beschließen?
+        # Eine Stadtbahn nicht, ein Jugendparlament schon. Ohne diese
+        # Trennlinie hat die Stufe genau die Ideen versteckt, für die es das
+        # Feature gibt: 8 von 60 Urteilen, fünf davon ein Jugendparlament,
+        # das sechs Vergleichsstädte haben und Oldenburg nicht.
+        key="fit", version="5", applies_to=("paper",),
         prompt_system="cities_fit_system", prompt_user="cities_fit_user",
         model=os.environ.get("CITIES_FIT_MODEL", "deepseek/deepseek-v4-flash"),
         payload=OldenburgStatus,

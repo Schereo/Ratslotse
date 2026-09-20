@@ -81,7 +81,7 @@ def test_die_uebersicht_zaehlt_alle_vier(tmp_path):
             s.put_annotation("paper", f"p/{i}", "classify", "2",
                              {"field": "verkehr", "transfer": "adaptable",
                               "instrument": "x", "summary": "y"}, "h", "m", 0.0)
-            s.put_annotation("paper", f"p/{i}", "fit", "4",
+            s.put_annotation("paper", f"p/{i}", "fit", "5",
                              {"status": status, "evidence": [], "reason": "",
                               "confidence": "high"}, "h", "m", 0.0)
         (zeile,) = s.idea_fields()

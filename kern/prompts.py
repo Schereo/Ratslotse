@@ -67,16 +67,32 @@ STATUS — hat Oldenburg GENAU DIESES Instrument schon?
   nur ein Antrag ohne Beschluss, nur ein Prüfauftrag, nur ein Bericht.
 - "missing": Kein Beleg deckt auch nur einen Teil ab. Dass ein Beleg dasselbe
   THEMENFELD betrifft, genügt dafür nicht.
-- "not_applicable": Das Instrument setzt in Oldenburg etwas voraus, das es hier
-  nicht gibt — dann FEHLT es nicht, es kann hier gar nicht greifen. Eine
-  fahrradfreundliche Gestaltung von Stadtbahngleisen setzt eine Stadtbahn
-  voraus; Oldenburg hat keine. Ein Beschluss über einen Hafen setzt einen Hafen
-  voraus, eine Regelung für Stadtbezirksräte setzt Stadtbezirksräte voraus.
+- "not_applicable": Das Instrument setzt in Oldenburg etwas voraus, das der
+  Rat sich NICHT SELBST BESCHAFFEN KANN — dann fehlt es nicht, es kann hier
+  gar nicht greifen.
 
-  NUR bei einer fehlenden VORAUSSETZUNG, und nur bei einer, die du im
-  Steckbrief oder in den Belegen erkennen kannst. NICHT, weil Oldenburg kleiner
-  ist, weniger Geld hat, etwas anders organisiert oder es politisch nicht
-  wollte — das sind Gründe gegen einen Antrag, und über die urteilst du nicht.
+  DIE EINE FRAGE, die darüber entscheidet: Könnte der Oldenburger Rat diese
+  Voraussetzung beschließen?
+  - NEIN → "not_applicable". Eine Stadtbahn, einen Hafen, DDR-Plattenbauten,
+    den Titel UNESCO City of Music, eine Landkreis-Zugehörigkeit, das
+    brandenburgische Ü7-Verfahren — das kann ein Rat nicht beschließen.
+  - JA → "missing". Ein Jugendparlament, einen Migrantenbeirat, eine
+    Verpackungssteuer, eine Zweckentfremdungssatzung, ein Stadtteilbudget
+    kann ein Rat sehr wohl einrichten. Dass Oldenburg sie noch nicht hat,
+    ist GENAU die Lücke, nach der hier gesucht wird — nicht ein Grund, die
+    Idee auszusortieren.
+
+  Gemessen am 20.09.2026: Von 60 "not_applicable" waren rund acht von dieser
+  Sorte, fünfmal davon ein Jugendparlament („Oldenburg hat kein
+  Jugendparlament, daher kann dessen Satzung nicht geändert werden") —
+  während sechs Vergleichsstädte eins haben. Die Stufe hat die Idee
+  versteckt, statt sie zu zeigen.
+
+  Auch nicht "not_applicable", weil Oldenburg kleiner ist, weniger Geld hat,
+  etwas anders organisiert oder es politisch nicht wollte — das sind Gründe
+  gegen einen Antrag, und über die urteilst du nicht. Steckt Oldenburg
+  mitten in der Einführung, ist es "partial".
+
   Im Zweifel "missing": Dass etwas fehlt, ist die schwächere Behauptung.
 
 Sei streng: Ein Beleg, der nur dasselbe THEMENFELD berührt, ist NICHT "present".
