@@ -4,8 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight, Briefcase, Bus, ChevronDown, Cog, Construction, Euro as EuroIcon, Globe,
-  GraduationCap, HeartHandshake, Leaf, Shield, Tag, Trophy, type LucideIcon,
-} from "lucide-react";
+  GraduationCap, HeartHandshake, Leaf, Shield, Tag, Trophy, type LucideIcon, Plus } from "lucide-react";
 import { FieldRecap } from "@/lib/types";
 import { Card, CardListSkeleton, EmptyState } from "@/components/ui";
 import { useFetch } from "@/lib/use-fetch";
@@ -45,6 +44,23 @@ function parseRecap(summary: string): { lead: string; bullets: string[] } | null
 /** Ersten Teilsatz („Kern") eines Stichpunkts abtrennen — bis zum ersten
  *  Trenner (Doppelpunkt, Gedankenstrich oder Komma). Der Kern wird gefettet
  *  und führt beim Scannen das Auge (Design 15a). */
+/** Aus einem Kernpunkt einen THEMENNAMEN ziehen — oder nichts.
+ *
+ *  Die Kernpunkte sind Sätze („Der Oldenburger Wärmeplan wurde verabschiedet
+ *  …"). Als Thema taugt nur ihr Gegenstand, nicht der Satz: Gesucht wird die
+ *  Nominalphrase zwischen Artikel und Verb, und nur, wenn sie zwei bis fünf
+ *  Wörter hat. Alles andere bekommt kein Angebot — ein Thema namens „Mehrere
+ *  Berichte zu Baumfällungen (u.a. Großer Bürgerbusch" wäre schlimmer als
+ *  keins (lokal gemessen, erste Fassung dieser Funktion). */
+const THEMA_RE = /^(?:Der|Die|Das|Ein|Eine|Dem|Den|Des)\s+(.+?)\s+(?:wurde|wurden|wird|werden|ist|sind|soll|sollen|hat|haben|bleibt|erhält|bekommt|geht)\b/u;
+function themaAusKernpunkt(text: string): string | null {
+  const m = THEMA_RE.exec(text.trim());
+  if (!m) return null;
+  const t = m[1].replace(/[,:;(].*$/u, "").trim();
+  const n = t.split(/\s+/).length;
+  return n >= 1 && n <= 5 && t.length >= 6 && t.length <= 60 && /^[A-ZÄÖÜ]/u.test(t) ? t : null;
+}
+
 function splitBullet(b: string): { head: string; rest: string } {
   const m = b.match(/^(.{3,}?)(:\s|\s[–—-]\s|,\s)(.*)$/);
   if (m) return { head: m[1], rest: m[2] + m[3] };
@@ -129,10 +145,25 @@ function RecapCard({ r, open, onToggle }: { r: FieldRecap; open: boolean; onTogg
           <ul className="mt-2.5 space-y-2">
             {parsed.bullets.map((b, i) => {
               const { head, rest } = splitBullet(b);
+              const thema = themaAusKernpunkt(b);
               return (
                 <li key={i} className="flex gap-2 text-[13px] leading-relaxed text-muted-foreground">
                   <span className="mt-[0.45rem] h-[5px] w-[5px] shrink-0 rounded-full bg-primary" aria-hidden />
-                  <span><strong className="font-semibold text-foreground">{head}</strong>{rest}</span>
+                  <span>
+                    <strong className="font-semibold text-foreground">{head}</strong>{rest}
+                    {/* Der Haken im Moment des Interesses: Wer hier liest,
+                        dass die Wärmeplanung beschlossen ist, will davon
+                        hören, wenn es weitergeht — bisher gab es dafür nur
+                        den Assistenten und /topics, also nie diesen Moment
+                        (BartVZ, Neele: Auswertungen angesehen, kein Thema). */}
+                    {thema && (
+                      <Link href={`/topics?neu=${encodeURIComponent(thema)}`}
+                        title={`Thema „${thema}“ anlegen`} onClick={(e) => e.stopPropagation()}
+                        className="ml-1.5 inline-flex items-center gap-0.5 whitespace-nowrap rounded-full border border-primary/30 bg-primary/[0.05] px-2 py-px text-[11px] font-medium text-primary transition-colors hover:bg-primary/[0.1]">
+                        <Plus className="h-3 w-3" aria-hidden /> folgen
+                      </Link>
+                    )}
+                  </span>
                 </li>
               );
             })}
