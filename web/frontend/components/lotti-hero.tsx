@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { SeasonalFamily } from "@/components/seasonal-mascot";
+import { webglVerfuegbar } from "@/lib/webgl";
 
 /* Das Tor vor der 3D-Szene (Design „Lotti Hero Familie", Schutzschalter 11 + 13).
  *
@@ -44,12 +45,18 @@ export function LottiHero({ className }: { className?: string }) {
   //      jede Sekunde, und vier Figuren wären ohnehin zu klein zu erkennen.
   // 11 · Wer reduzierte Bewegung eingestellt hat, bekommt sie ebenfalls nicht:
   //      eine ruhige Zeichnung ist billiger als eine Szene, die stillsteht.
+  // Ohne WebGL gar nicht erst: `THREE.WebGLRenderer` wirft sonst mitten im
+  //      Rendern, und die Ausnahme lief bis 09/2026 bis zur Fehlergrenze der
+  //      Route — statt der Startseite stand „Etwas ist schiefgelaufen"
+  //      (s. lib/webgl.ts). Scheitert die Szene trotz bestandener Probe,
+  //      meldet sie sich über `onFehler`, und die Zeichnung bleibt stehen.
   const [zeigen, setZeigen] = useState(false);
+  const [gescheitert, setGescheitert] = useState(false);
 
   useEffect(() => {
     const breit = window.matchMedia("(min-width: 1024px)");
     const ruhe = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const pruefen = () => setZeigen(breit.matches && !ruhe.matches);
+    const pruefen = () => setZeigen(breit.matches && !ruhe.matches && webglVerfuegbar());
     pruefen();
     breit.addEventListener("change", pruefen);
     ruhe.addEventListener("change", pruefen);
@@ -63,7 +70,9 @@ export function LottiHero({ className }: { className?: string }) {
     // `min-w-0`: Ohne das trägt der Inhalt seine Mindestbreite in die
     // Grid-Spalte und drückt den Hero-Text aus dem Bild.
     <div className={`min-w-0 ${className ?? ""}`}>
-      {zeigen ? <LottiSzene className="h-full w-full" /> : <StilleFamilie />}
+      {zeigen && !gescheitert
+        ? <LottiSzene className="h-full w-full" onFehler={() => setGescheitert(true)} />
+        : <StilleFamilie />}
     </div>
   );
 }
