@@ -86,12 +86,21 @@ def fragen(basis: str, token: str, frage: str, verlauf: list[dict]) -> str:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Eine KI-Frage auf dem Server stellen")
-    ap.add_argument("fragen", nargs="+", help="eine Frage — oder mit --verlauf mehrere nacheinander")
+    ap.add_argument("fragen", nargs="*", help="eine Frage — oder mit --verlauf mehrere nacheinander")
+    ap.add_argument("--datei", default=None,
+                    help="Fragen aus einer Datei, eine je Zeile (der Ops-Workflow nimmt diesen Weg: "
+                         "die Login-Shell auf dem Server ist zsh, `mapfile` gibt es dort nicht)")
     ap.add_argument("--verlauf", action="store_true",
                     help="die Fragen als EIN Gespräch stellen (jede kennt die vorigen)")
     ap.add_argument("--basis", default="http://127.0.0.1:8000")
     ap.add_argument("--konto", default=None, help="Konto-Adresse fürs Token (Vorgabe wie Rauchprobe)")
     args = ap.parse_args()
+    fragen_liste = list(args.fragen)
+    if args.datei:
+        fragen_liste += [z.strip() for z in Path(args.datei).read_text(encoding="utf-8").splitlines()
+                         if z.strip()]
+    if not fragen_liste:
+        ap.error("keine Frage — als Argument oder über --datei")
 
     # Über importlib statt `import rauchprobe`: Das Modul liegt neben diesem
     # Skript und ist nur über den sys.path oben erreichbar — pyright in der CI
@@ -103,7 +112,7 @@ def main() -> int:
         return 2
 
     verlauf: list[dict] = []
-    for frage in args.fragen:
+    for frage in fragen_liste:
         antwort = fragen(args.basis, token, frage, verlauf if args.verlauf else [])
         if args.verlauf:
             verlauf.append({"question": frage[:300], "answer": antwort[:VERLAUF_ANTWORT_MAX]})

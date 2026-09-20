@@ -62,6 +62,8 @@ jobs:
             cd ~/app
             SCHALTER=""
             if [ "$VERLAUF" = "true" ]; then SCHALTER="--verlauf"; fi
-            printf '%s' "$FRAGE" | tr '‖' '\n' | sed '/^[[:space:]]*$/d' > /tmp/frage_probe.txt
-            mapfile -t FRAGEN < /tmp/frage_probe.txt
-            .venv/bin/python scripts/frage_probe.py $SCHALTER "${FRAGEN[@]}"
+            printf '%s' "$FRAGE" | tr '‖' '\n' > /tmp/frage_probe.txt
+            # Die Login-Shell auf dem Server ist zsh — kein `mapfile`; die
+            # Fragen gehen deshalb als Datei ins Skript (erster Lauf 20.09.:
+            # „command not found: mapfile").
+            .venv/bin/python scripts/frage_probe.py $SCHALTER --datei /tmp/frage_probe.txt
