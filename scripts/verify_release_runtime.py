@@ -209,8 +209,13 @@ def running_repo_python_processes(
     root: Path,
     proc_root: Path = Path("/proc"),
     own_pid: int | None = None,
+    ignore_api: bool = False,
 ) -> list[tuple[int, str]]:
     """Find older API/cron/ops Python processes belonging to this checkout.
+
+    ``ignore_api`` lässt den laufenden API-Dienst (``uvicorn``) aus — für die
+    Prüfung VOR dem Stopp, wo er noch laufen soll und nur die Cron-/Ops-
+    Prozesse interessieren (``verify_no_cron_running``).
 
     Linux exposes both argv and cwd through ``/proc``.  Looking at the whole
     repo process is stricter than checking open SQLite file descriptors: a
@@ -241,6 +246,8 @@ def running_repo_python_processes(
         executable = Path(args[0]).name.lower()
         if "python" not in executable and "uvicorn" not in executable:
             continue
+        if ignore_api and "uvicorn" in executable:
+            continue
         belongs_to_repo = _under(cwd, root)
         if not belongs_to_repo:
             for argument in args:
@@ -256,6 +263,28 @@ def running_repo_python_processes(
         )
         found.append((pid, label))
     return sorted(found)
+
+
+def verify_no_cron_running(root: Path, proc_root: Path = Path("/proc")) -> None:
+    """Kein Cron-/Ops-Prozess dieses Checkouts darf laufen — geprüft VOR dem
+    Stopp der API, wo ein Abbruch noch folgenlos ist.
+
+    Dieselbe Frage stellt ``verify_quiescent`` nach dem Stopp noch einmal
+    (dort mit Wartezeit). Nur brach der Deploy dann erst dort ab — mit
+    gesetzter Wartungsbarriere und gestoppter API: am 13.09.2026 (Wahltag)
+    und wieder am 20.09.2026 lief sonntags ``check_cities.py`` seit 5 Uhr,
+    und Prod antwortete 500, bis jemand die Barriere von Hand aufhob. Hier
+    ist noch nichts angefasst; wer das liest, startet den Deploy einfach neu,
+    sobald der Lauf durch ist.
+    """
+    running = running_repo_python_processes(root, proc_root=proc_root, ignore_api=True)
+    if running:
+        detail = ", ".join(f"PID {pid} ({label})" for pid, label in running)
+        raise PreflightError(
+            "Ein Cron- oder Ops-Prozess dieses Checkouts läuft noch: " + detail
+            + " — abgebrochen, BEVOR die API gestoppt wird; Prod läuft unverändert "
+            "weiter. Deploy neu starten, sobald der Lauf durch ist."
+        )
 
 
 def verify_quiescent(
@@ -281,6 +310,7 @@ def verify(
     minimum_app_build: int,
     require_quiescent: bool = False,
     quiescent_timeout: int = 0,
+    require_no_cron: bool = False,
 ) -> None:
     root = root.resolve()
     build, video_model, stt_model = verify_configuration(
@@ -295,6 +325,8 @@ def verify(
     ffmpeg = _tool_version(
         Path.home() / "bin" / "ffmpeg", "-version", "FFmpeg unter ~/bin/ffmpeg"
     )
+    if require_no_cron:
+        verify_no_cron_running(root)
     if require_quiescent:
         verify_quiescent(root, timeout_seconds=quiescent_timeout)
     print(
@@ -319,6 +351,12 @@ def main() -> int:
         default=0,
         help="Sekunden auf bereits laufende Repo-Prozesse warten",
     )
+    parser.add_argument(
+        "--require-no-cron",
+        action="store_true",
+        help="abbrechen, wenn ein Cron-/Ops-Prozess des Checkouts läuft "
+             "(die API darf laufen) — für die Prüfung VOR dem API-Stopp",
+    )
     args = parser.parse_args()
     try:
         verify(
@@ -326,6 +364,7 @@ def main() -> int:
             args.minimum_app_build,
             args.require_quiescent,
             args.quiescent_timeout,
+            args.require_no_cron,
         )
     except PreflightError as error:
         parser.exit(1, f"PRE-DEPLOY BLOCKIERT: {error}\n")

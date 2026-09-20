@@ -46,9 +46,13 @@ Vor den vorwärtsgerichteten Release-Migrationen legt der Deploy zusätzlich
 `data/.release-maintenance` an und stoppt den API-Dienst. Bereits laufende
 Python-Prozesse aus dem Checkout sowie fremde offene SQLite-Handles müssen
 verschwunden sein. Danach sperrt `prepare_release_databases.py` beide
-autoritativen Datenbanken gegen Writes, erzeugt je einen eindeutigen,
-rotationsfreien `*_predeploy_*.sqlite`-Snapshot und ein JSON-Manifest mit
-SHA-256, Schema-Hash und Zeilenzahlen aller Tabellen. Erst nach explizitem Lauf
+autoritativen Datenbanken gegen Writes, erzeugt je einen eindeutigen
+`*_predeploy_*.sqlite`-Snapshot und ein JSON-Manifest mit SHA-256,
+Schema-Hash und Zeilenzahlen aller Tabellen. Die Tages-Rotation von
+`backup_db.py` lässt diese Snapshots liegen; stattdessen räumt
+`prepare_release_databases.py` selbst auf und behält die jüngsten drei
+Deploys (`SNAPSHOT_RETENTION`) — bis 20.09.2026 blieb jeder liegen, 97
+Deploys füllten so 71 GB und die Prod-Platte war voll. Erst nach explizitem Lauf
 beider Migrationsstapel und erneutem `quick_check` entfernt der Workflow die
 Barriere. Scheitert ein Schritt, bleiben Marker und API-Stopp bestehen; ein
 Restore erfolgt nie automatisch, weil inzwischen entstandene Writes sonst
