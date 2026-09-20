@@ -536,26 +536,41 @@ def nachzuegler(candidates: list[dict], ctx_n: int, question: str, terms: str,
     for w in woerter:
         g = _falte(w).rstrip("n") if w.endswith("en") else _falte(w)
         formen[g] = (g, _umlaut_mehrzahl(g))
+    # Titel plus Anfang der Kurzfassung: Der Bericht zur Ortsbegehung an der
+    # Nadorster Straße trägt „Bäume" nur in der Kurzfassung — mit dem Titel
+    # allein blieb er hinter dem Deckel (dev, 20.09.2026).
     titel = {c["id"]: _falte(c.get("title") or "") for c in candidates}
+    texte = {c["id"]: _falte(f"{c.get('title') or ''} {(c.get('summary') or '')[:300]}")
+             for c in candidates}
     haeufig_ab = max(2, int(len(candidates) * _NACHZUEGLER_HAEUFIG))
 
     def trifft(w: str, t: str) -> bool:
         return any(f and f in t for f in formen[w])
 
+    # Selten heißt: in den TITELN selten — die Kurzfassung ist zum Zählen zu
+    # breit. Ein Wort, das in keinem Titel steht, ist erst recht selten (es
+    # kann dann nur noch über die Kurzfassung treffen).
     selten = {w for w in formen
-              if 0 < sum(1 for t in titel.values() if trifft(w, t)) < haeufig_ab}
+              if sum(1 for t in titel.values() if trifft(w, t)) < haeufig_ab}
     if not selten:
         return []
     vorn = {c["id"] for c in candidates[:ctx_n]}
-    raus: list[dict] = []
-    for c in candidates[ctx_n:]:
+    bewertet: list[tuple[int, int, dict]] = []
+    for rang, c in enumerate(candidates[ctx_n:]):
         if c["id"] in vorn:
             continue
-        if any(trifft(w, titel[c["id"]]) for w in selten):
-            raus.append(c)
-            if len(raus) >= max_n:
-                break
-    return raus
+        seltene = sum(1 for w in selten if trifft(w, texte[c["id"]]))
+        if not seltene:
+            continue
+        # Wer MEHR Fragewörter trägt, steht weiter vorn: „Baumfällungen an
+        # der unteren Nadorster Straße" (Baum, Fällung, Nadorster, Straße)
+        # vor „Fällung einer Sumpfeiche in der Stedinger Straße" (Sumpfeiche,
+        # Fällung, Straße). Vorher entschied allein der Rang, und das Modell
+        # zitierte die Stedinger Straße als Antwort auf die Nadorster.
+        alle = sum(1 for w in formen if trifft(w, texte[c["id"]]))
+        bewertet.append((-alle, rang, c))
+    bewertet.sort(key=lambda x: (x[0], x[1]))
+    return [c for _, _, c in bewertet[:max_n]]
 
 
 def _wiederholt_vorige_frage(umgeschrieben: str, verlauf: list[dict] | None) -> bool:

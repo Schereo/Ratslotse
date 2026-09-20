@@ -4275,7 +4275,13 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 if nach:
                     im_ctx = {c["id"] for c in ctx}
                     nach = [c for c in nach if c["id"] not in im_ctx]
-                    ctx = ctx[:QA_ANSWER_N - len(nach)] + nach
+                    # Nach VORN, nicht ans Ende: Auf den Plätzen 17–20 sah das
+                    # Modell die Baumfällungen an der Nadorster Straße und
+                    # zitierte trotzdem die Tannen an der Wehdestraße von
+                    # Platz 0 (dev, 20.09.2026). Nur die deterministisch
+                    # gesetzte neueste Entscheidung bleibt davor.
+                    anker = 1 if (latest_place or latest_topic) and ctx else 0
+                    ctx = ctx[:anker] + nach + ctx[anker:QA_ANSWER_N - len(nach)]
             if typ == "history":
                 ctx = qa.sort_verlauf(ctx)
             if typ == "session" and sitzung_ids and not einfach:

@@ -226,3 +226,26 @@ def test_fundstelle_findet_den_satz_mit_der_zahl():
 def test_fundstelle_leer_ohne_treffer():
     assert qa.fundstelle(VORLAGE, "Wie hoch ist die Gewerbesteuer?", "Gewerbesteuer Hebesatz") == ""
     assert qa.fundstelle("", "Wie viele Bäume?", "Baum") == ""
+
+
+def test_nachzuegler_mehr_fragewoerter_zuerst():
+    """Dev-Befund 20.09.: allein nach Rang kam „Fällung einer Sumpfeiche in der
+    Stedinger Straße" vor die Baumfällungen an der Nadorster Straße — und
+    das Modell zitierte die falsche Straße."""
+    cands = [_kand(i, f"Bebauungsplan {800 + i} (Nadorster Straße)") for i in range(20)]
+    cands.append(_kand(50, "Fällung von zwei Bäumen an der Freiherr-vom-Stein Straße"))
+    cands.append(_kand(51, "Fällung einer Sumpfeiche in der Stedinger Straße"))
+    cands.append(_kand(52, "Baumfällungen an der unteren Nadorster Straße - Bericht"))
+    nach = qa.nachzuegler(cands, 20, "Wie viele Sumpfeichen müssen an der Nadorster Straße entfernt werden?",
+                          "Sumpfeiche Baum Nadorster Straße Fällung")
+    assert [c["id"] for c in nach][0] == 52
+
+
+def test_nachzuegler_liest_auch_die_kurzfassung():
+    cands = [_kand(i, f"Bebauungsplan {800 + i} (Nadorster Straße)") for i in range(20)]
+    cands.append({"id": 60, "title": "Bericht zur erneuten Ortsbegehung der unteren Nadorster Str.",
+                  "summary": "Die Wurzelfreilegungen zeigen, dass die Bäume keine Senkerwurzeln bilden.",
+                  "session_date": "2026-06-11"})
+    nach = qa.nachzuegler(cands, 20, "Wie viele Bäume werden an der Nadorster Straße gefällt?",
+                          "Baum Baumfällung Nadorster Straße")
+    assert [c["id"] for c in nach] == [60]
