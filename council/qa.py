@@ -609,8 +609,18 @@ ENG_REGEL = (
     "nötig ist, den einen wichtigsten Bezug (etwa die Bestätigung im Rat). "
     "KEIN Absatz zur Debatte, KEINE Vorgeschichte, KEINE Aufzählung weiterer "
     "Beschlüsse — auch dann nicht, wenn der Kontext mehr hergibt. Fehlt die "
-    "Tatsache in den Quellen, sage das in einem Satz."
+    "Tatsache in den Quellen, sage das im ERSTEN Satz — und nenne dann in EINEM "
+    "weiteren Satz die Beschlüsse, die den gefragten Gegenstand (den Ort, das "
+    "Vorhaben, die Sache) betreffen, mit [id], damit man weiß, wo es "
+    "weitergeht. Eine Antwort ohne einen einzigen Beleg gibt es nur, wenn KEIN "
+    "Beschluss im Kontext den Gegenstand berührt."
 )
+# Der letzte Satz kam am 20.09.2026 dazu: „Wie viele Sumpfeichen müssen an der
+# Nadorster Straße entfernt werden?" bekam auf dev eine EINZEILIGE Antwort
+# ohne Beleg — die Zahl fehlt in den Unterlagen, das stimmt, aber die
+# Beschlüsse zu den Baumfällungen an genau dieser Straße standen im Kontext
+# und blieben unerwähnt. Für die Person ist das eine Sackgasse; ein Satz mit
+# zwei Belegen macht daraus einen Weg.
 
 EXTRA_REGELN = {
     "topic": "",
