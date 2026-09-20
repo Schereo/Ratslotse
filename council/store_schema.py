@@ -24,6 +24,7 @@ import sqlite3
 from pathlib import Path
 
 from kern.dbfehler import tabelle_fehlt
+from kern.store import vorhandene_werte
 from council.store_basis import StoreBasis
 
 
@@ -1017,8 +1018,8 @@ class SchemaMixin(StoreBasis):
 
         Anders als bei Spalten reicht ein Schema-Wechsel hier nicht: Die
         deutschen Bezeichner stehen als Daten in den Zeilen (``area_type =
-        'district'``). Ein UPDATE je Wert, das beim zweiten Lauf nichts mehr
-        findet.
+        'district'``). Ein UPDATE je noch vorhandenem Wert; beim zweiten Lauf
+        bleibt es bei der Leseabfrage.
         """
         info = list(self._conn.execute(f"PRAGMA table_info({tabelle})"))
         vorhanden = {r[1] for r in info}
@@ -1026,8 +1027,15 @@ class SchemaMixin(StoreBasis):
             # Tabelle fehlt oder trägt die Spalte (noch) nicht — beides ist
             # normal, etwa in einer frisch angelegten Datenbank.
             return
+        # Erst lesen, dann schreiben: Ein UPDATE ohne Treffer holt sich
+        # trotzdem die Schreibsperre der Datei — 385-mal je HTTP-Anfrage,
+        # gemessen auf Prod am 20.09.2026 (s. `kern.store.vorhandene_werte`,
+        # Wächter `tests/test_store_start_neben_schreiber.py`).
+        alte = vorhandene_werte(self._conn, tabelle, spalte, [alt for alt, _ in paare])
         log = logging.getLogger("ratslotse.council.store")
         for alt, neu in paare:
+            if alt not in alte:
+                continue
             try:
                 cur = self._conn.execute(
                     f"UPDATE {tabelle} SET {spalte} = ? WHERE {spalte} = ?", (neu, alt))
@@ -1137,6 +1145,17 @@ class SchemaMixin(StoreBasis):
                 "SELECT 1 FROM council_migration_marks WHERE marke = ?", (marke,)).fetchone():
             return
         spalten = {r[1] for r in self._conn.execute("PRAGMA table_info(council_provenance)")}
+        if not spalten:
+            # Die Tabelle gibt es noch nicht — sie entsteht weiter unten in
+            # `_migrate` aus dem aktuellen Schema, ihre Schlüssel sind also
+            # schon die neuen. Die Marke jetzt setzen, sonst holt der ZWEITE
+            # Start das nach und schreibt damit, obwohl er nur lesen sollte
+            # (Wächter: tests/test_store_start_neben_schreiber.py).
+            with self._conn:
+                self._conn.execute(
+                    "INSERT INTO council_migration_marks (marke, gesetzt_am) "
+                    "VALUES (?, datetime('now'))", (marke,))
+            return
         if "as_of" not in spalten or "key" not in spalten:
             return
         rows = self._conn.execute(
@@ -2015,8 +2034,14 @@ class SchemaMixin(StoreBasis):
         #
         # Gehoben statt neu gelesen: Der Text ist in Ordnung, nur sein Status
         # war es nicht. Ein erneuter OCR-Lauf kostete Geld für nichts.
-        self._conn.execute(
-            "UPDATE council_attachments SET status = 'ok' WHERE status = 'ocr'")
+        #
+        # Erst lesen: Das UPDATE ohne Treffer holte sich sonst bei jedem
+        # Store-Start die Schreibsperre — 28 ms je Anfrage, gemessen auf Prod
+        # am 20.09.2026 (Wächter: tests/test_store_start_neben_schreiber.py).
+        if self._conn.execute(
+                "SELECT 1 FROM council_attachments WHERE status = 'ocr' LIMIT 1").fetchone():
+            self._conn.execute(
+                "UPDATE council_attachments SET status = 'ok' WHERE status = 'ocr'")
         # Beratungsfolge je Vorlage (council.stammdaten): die offiziellen
         # Stationen einer Vorlage durch die Gremien — inkl. geplanter künftiger
         # Beratungen (ergebnis dann NULL). Je kvonr komplett ersetzt, weil
