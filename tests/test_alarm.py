@@ -78,6 +78,86 @@ def test_main_reicht_betreff_und_zustand_an_notify_admin(tmp_path, monkeypatch):
     assert "deadbeef" in gesehen["text"], "der Zustand hängt mit dran"
 
 
+# ---- Wann überhaupt gemailt wird -----------------------------------------
+
+def test_betroffen_bleibt_still_wenn_prod_unveraendert_ist(tmp_path):
+    """Der Fall vom 20.09.2026, fünfmal an einem Tag: Der Deploy bricht in
+    einer Vorflug-Prüfung ab — vor Barriere, rsync und API-Stopp. Prod ist
+    unverändert, es gibt nichts zu retten, und eine Mail dafür ist Rauschen.
+
+    Rauschen kostet genau die Aufmerksamkeit, die der echte Fall braucht: Die
+    eine Mail an jenem Tag, die zählte (13:23, Abbruch NACH dem API-Stopp),
+    sah aus wie die fünf harmlosen und wurde wie sie gelesen."""
+    (tmp_path / "data").mkdir()
+    with patch.object(alarm, "_dienst", return_value="active"):
+        laut, grund = alarm.betroffen(tmp_path)
+    assert laut is False
+    assert "unverändert" in grund
+
+
+def test_betroffen_ist_laut_wenn_die_barriere_liegt(tmp_path):
+    """Auch ohne dass DIESER Lauf den Cutover begonnen hätte: Eine Barriere aus
+    einem früheren Lauf lässt die Seite genauso unten — und der Schritt, der
+    daran scheitert (`Enter release maintenance barrier`), sieht von außen aus
+    wie ein harmloser Vorflug-Abbruch."""
+    (tmp_path / "data").mkdir()
+    (tmp_path / "data" / ".release-maintenance").write_text("abc123\n")
+    with patch.object(alarm, "_dienst", return_value="active"):
+        laut, grund = alarm.betroffen(tmp_path)
+    assert laut is True
+    assert "Wartungsbarriere" in grund
+
+
+def test_betroffen_ist_laut_wenn_ein_dienst_tot_ist(tmp_path):
+    """Nach dem Start kann die Barriere weg und die Seite trotzdem tot sein —
+    ein Build, der nicht läuft (24.07.2026: 25 von 602 Paketen, 502)."""
+    (tmp_path / "data").mkdir()
+    with patch.object(alarm, "_dienst", return_value="failed"):
+        laut, grund = alarm.betroffen(tmp_path)
+    assert laut is True
+    assert "nwz-web-api" in grund
+
+
+def test_betroffen_ist_laut_sobald_der_cutover_lief(tmp_path):
+    """Ab der gesetzten Barriere lief der neue Stand bereits. Dass die Messung
+    danach unauffällig aussieht, heißt nicht, dass nichts passiert ist."""
+    (tmp_path / "data").mkdir()
+    with patch.object(alarm, "_dienst", return_value="active"):
+        laut, grund = alarm.betroffen(tmp_path, cutover_begonnen=True)
+    assert laut is True
+    assert "Cutover" in grund
+
+
+def test_main_mailt_nicht_wenn_nichts_betroffen_ist(tmp_path, monkeypatch):
+    """Der ganze Weg: still heißt still — und zwar ohne .env und ohne
+    RESEND-Schlüssel, denn die Entscheidung fällt davor."""
+    (tmp_path / "data").mkdir()
+    gesehen = {}
+    monkeypatch.setitem(sys.modules, "kern.alerts", type(sys)("kern.alerts"))
+    sys.modules["kern.alerts"].notify_admin = lambda *a, **k: gesehen.setdefault("x", 1)
+    with patch.object(alarm, "_dienst", return_value="active"):
+        rc = alarm.main(["--root", str(tmp_path), "--text", "abgebrochen",
+                         "--nur-wenn-betroffen"])
+    assert rc == 0
+    assert not gesehen, "es wurde keine Mail abgesetzt"
+
+
+def test_main_mailt_doch_wenn_der_cutover_lief(tmp_path, monkeypatch):
+    """`--cutover-begonnen` kommt als WERT aus einer Schritt-Ausgabe; leer
+    heißt „der Schritt lief nicht", `1` heißt „ab hier ist es laut"."""
+    (tmp_path / "data").mkdir()
+    (tmp_path / ".env").write_text("")
+    gesehen = {}
+    monkeypatch.setitem(sys.modules, "kern.alerts", type(sys)("kern.alerts"))
+    sys.modules["kern.alerts"].notify_admin = lambda text, betreff="", fusszeile="": \
+        gesehen.update(text=text, betreff=betreff)
+    with patch.object(alarm, "_dienst", return_value="active"):
+        rc = alarm.main(["--root", str(tmp_path), "--text", "abgebrochen",
+                         "--nur-wenn-betroffen", "--cutover-begonnen", "1"])
+    assert rc == 0
+    assert gesehen["text"].startswith("abgebrochen")
+
+
 # ---- Die Workflows selbst ------------------------------------------------
 
 def _workflow(name: str) -> dict:
@@ -94,6 +174,10 @@ def test_deploy_alarmiert_wenn_er_abbricht():
     assert "scripts/alarm.py" in lauf
     # Der Alarm darf den roten Lauf nicht überdecken, wenn er selbst scheitert.
     assert all(s.get("continue-on-error") for s in alarme)
+    # ... aber er meldet nur, was Prod betrifft. Sonst gehen die fünf
+    # harmlosen Abbrüche eines Sonntags über dem einen echten (20.09.2026).
+    assert "--nur-wenn-betroffen" in lauf
+    assert "steps.cutover.outputs.begonnen" in lauf
 
 
 def test_erreichbarkeit_prueft_von_aussen_und_regelmaessig():

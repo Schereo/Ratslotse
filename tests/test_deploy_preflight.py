@@ -10,6 +10,7 @@ from pathlib import Path
 from unittest.mock import Mock, call
 
 import pytest
+import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -19,6 +20,7 @@ from kern.maintenance import BYPASS_ENV, MARKER_NAME  # noqa: E402
 from kern.store import Store  # noqa: E402
 from scripts import prepare_release_databases  # noqa: E402
 from scripts.verify_predeploy_backup import PreflightError, verify  # noqa: E402
+from scripts import verify_release_runtime  # noqa: E402
 from scripts.verify_release_runtime import (  # noqa: E402
     PreflightError as RuntimePreflightError,
     running_repo_python_processes,
@@ -373,6 +375,75 @@ def test_workflow_checks_for_running_crons_before_the_barrier():
     pruefung = workflow.index("--require-no-cron")
     assert pruefung < workflow.index("name: Enter release maintenance barrier")
     assert pruefung < workflow.index("systemctl stop nwz-web-api")
+
+
+def test_cron_guard_wartet_kurz_bevor_er_abbricht(tmp_path, monkeypatch):
+    """Ein Lauf, der in Minuten durch ist, soll den Deploy nicht abräumen.
+
+    `check_council.py` und `check_protocols.py` sind schnell; für sie wäre ein
+    roter Lauf samt Neustart von Hand Unfug. Die langen fängt keine sinnvolle
+    Wartezeit — check_cities.py lief am 20.09.2026 vierzehn Stunden —, die holt
+    `ops-deploy-rueckstand.yml` später nach.
+    """
+    root = tmp_path / "app"
+    root.mkdir()
+    antworten = [[(200, "check_council.py")], [(200, "check_council.py")], []]
+    monkeypatch.setattr(verify_release_runtime, "running_repo_python_processes",
+                        lambda *a, **k: antworten.pop(0))
+    monkeypatch.setattr(verify_release_runtime.time, "sleep", lambda _s: None)
+
+    verify_no_cron_running(root, timeout_seconds=60)
+    assert antworten == [], "es wurde bis zum Verschwinden nachgefragt"
+
+
+def test_cron_guard_bricht_nach_der_wartezeit_doch_ab(tmp_path, monkeypatch):
+    """Die Wartezeit ist eine Kulanz, kein Freibrief: Was weiterläuft, blockiert."""
+    root = tmp_path / "app"
+    root.mkdir()
+    monkeypatch.setattr(verify_release_runtime, "running_repo_python_processes",
+                        lambda *a, **k: [(200, "check_cities.py")])
+    monkeypatch.setattr(verify_release_runtime.time, "sleep", lambda _s: None)
+    with pytest.raises(RuntimePreflightError, match=r"check_cities\.py.*BEVOR die API"):
+        verify_no_cron_running(root, timeout_seconds=1)
+
+
+@pytest.mark.parametrize("laufend, erwartet", [([], 0), ([(200, "check_cities.py")], 3)])
+def test_nur_crons_berichtet_ohne_env_sudo_und_crontab(tmp_path, monkeypatch, capsys,
+                                                       laufend, erwartet):
+    """Der schlanke Blick für `ops-deploy-rueckstand.yml`.
+
+    Er entscheidet nichts und darf deshalb an nichts scheitern, was den Deploy
+    selbst zu Recht aufhält: keine .env, kein sudo-Recht, keine crontab. Nur
+    die Frage, ob gerade ein langer Lauf blockiert — 0 frei, 3 belegt.
+    """
+    monkeypatch.setattr(verify_release_runtime, "running_repo_python_processes",
+                        lambda *a, **k: laufend)
+    monkeypatch.setattr(sys, "argv", ["verify_release_runtime.py",
+                                      "--root", str(tmp_path), "--nur-crons"])
+    assert verify_release_runtime.main() == erwartet
+    ausgabe = capsys.readouterr().out
+    assert ("BELEGT" in ausgabe) == bool(laufend)
+
+
+def test_workflow_wartet_kurz_auf_laufende_crons():
+    """Sechs Deploys hintereinander rot, weil ein Sonntagslauf lief (20.09.2026).
+    Die Wartezeit nimmt wenigstens den kurzen Läufen diese Wirkung."""
+    workflow = (Path(__file__).resolve().parents[1] / ".github/workflows/deploy.yml").read_text()
+    assert "--wait-for-cron" in workflow
+
+
+def test_workflow_markiert_den_cutover_fuer_den_alarm():
+    """Ab der gesetzten Barriere ist ein Abbruch laut — davor nicht.
+
+    Ohne diese Markierung müsste der Alarm raten, und er hat am 20.09.2026
+    fünfmal falsch geraten: „die Seite ist unten", während sie lief."""
+    schritte = yaml.safe_load(
+        (Path(__file__).resolve().parents[1] / ".github/workflows/deploy.yml").read_text()
+    )["jobs"]["deploy"]["steps"]
+    barriere = next(s for s in schritte
+                    if s.get("name") == "Enter release maintenance barrier")
+    assert barriere.get("id") == "cutover"
+    assert "begonnen=1" in barriere["run"]
 
 
 def test_handle_scan_finds_database_opened_outside_repo(tmp_path):

@@ -271,7 +271,8 @@ def running_repo_python_processes(
     return sorted(found)
 
 
-def verify_no_cron_running(root: Path, proc_root: Path = Path("/proc")) -> None:
+def verify_no_cron_running(root: Path, proc_root: Path = Path("/proc"),
+                           timeout_seconds: int = 0) -> None:
     """Kein Cron-/Ops-Prozess dieses Checkouts darf laufen — geprüft VOR dem
     Stopp der API, wo ein Abbruch noch folgenlos ist.
 
@@ -282,15 +283,34 @@ def verify_no_cron_running(root: Path, proc_root: Path = Path("/proc")) -> None:
     und Prod antwortete 500, bis jemand die Barriere von Hand aufhob. Hier
     ist noch nichts angefasst; wer das liest, startet den Deploy einfach neu,
     sobald der Lauf durch ist.
+
+    ``timeout_seconds`` wartet vorher kurz ab. Die meisten Jobs dieses
+    Checkouts sind in Minuten durch (``check_council``, ``check_protocols``);
+    für die ist ein abgebrochener Lauf samt Neustart Unfug. Die langen —
+    ``check_cities.py`` lief am 20.09.2026 vierzehn Stunden — fängt keine
+    sinnvolle Wartezeit; für sie holt ``ops-deploy-rueckstand.yml`` den Deploy
+    später von selbst nach.
     """
-    running = running_repo_python_processes(root, proc_root=proc_root, ignore_api=True)
-    if running:
-        detail = ", ".join(f"PID {pid} ({label})" for pid, label in running)
-        raise PreflightError(
-            "Ein Cron- oder Ops-Prozess dieses Checkouts läuft noch: " + detail
-            + " — abgebrochen, BEVOR die API gestoppt wird; Prod läuft unverändert "
-            "weiter. Deploy neu starten, sobald der Lauf durch ist."
+    deadline = time.monotonic() + max(0, timeout_seconds)
+    gemeldet = False
+    while True:
+        running = running_repo_python_processes(
+            root, proc_root=proc_root, ignore_api=True
         )
+        if not running:
+            return
+        detail = ", ".join(f"PID {pid} ({label})" for pid, label in running)
+        if time.monotonic() >= deadline:
+            raise PreflightError(
+                "Ein Cron- oder Ops-Prozess dieses Checkouts läuft noch: " + detail
+                + " — abgebrochen, BEVOR die API gestoppt wird; Prod läuft unverändert "
+                "weiter. Der Deploy wird nachgeholt, sobald der Lauf durch ist "
+                "(ops-deploy-rueckstand.yml)."
+            )
+        if not gemeldet:
+            print(f"Warte auf: {detail}", flush=True)
+            gemeldet = True
+        time.sleep(min(5, max(0, deadline - time.monotonic())))
 
 
 def verify_quiescent(
@@ -317,6 +337,7 @@ def verify(
     require_quiescent: bool = False,
     quiescent_timeout: int = 0,
     require_no_cron: bool = False,
+    wait_for_cron: int = 0,
 ) -> None:
     root = root.resolve()
     build, video_model, stt_model = verify_configuration(
@@ -332,7 +353,7 @@ def verify(
         Path.home() / "bin" / "ffmpeg", "-version", "FFmpeg unter ~/bin/ffmpeg"
     )
     if require_no_cron:
-        verify_no_cron_running(root)
+        verify_no_cron_running(root, timeout_seconds=wait_for_cron)
     if require_quiescent:
         verify_quiescent(root, timeout_seconds=quiescent_timeout)
     print(
@@ -345,7 +366,10 @@ def verify(
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--root", type=Path, required=True)
-    parser.add_argument("--minimum-app-build", type=int, required=True)
+    # Nicht `required`: Der schlanke `--nur-crons`-Blick braucht die Zahl
+    # nicht. Für jeden anderen Aufruf bleibt sie Pflicht (s. unten) — fehlt
+    # sie dort, ist das ein Fehler und keine stille Vorgabe.
+    parser.add_argument("--minimum-app-build", type=int, default=None)
     parser.add_argument(
         "--require-quiescent",
         action="store_true",
@@ -363,7 +387,39 @@ def main() -> int:
         help="abbrechen, wenn ein Cron-/Ops-Prozess des Checkouts läuft "
              "(die API darf laufen) — für die Prüfung VOR dem API-Stopp",
     )
+    parser.add_argument(
+        "--wait-for-cron",
+        type=int,
+        default=0,
+        help="Sekunden auf einen laufenden Cron warten, bevor abgebrochen wird",
+    )
+    parser.add_argument(
+        "--nur-crons",
+        action="store_true",
+        help="NUR nachsehen, ob ein Cron-/Ops-Prozess läuft, und das melden: "
+             "0 = frei, 3 = belegt. Ohne .env, ohne sudo, ohne crontab — die "
+             "Frage, die ops-deploy-rueckstand.yml vor einem Nachhol-Deploy "
+             "stellt, nicht die Freigabe für den Deploy selbst",
+    )
     args = parser.parse_args()
+    # Der schlanke Modus steht bewusst VOR `verify`: Er darf nicht an einer
+    # fehlenden .env oder einem sudo-Recht scheitern, denn er entscheidet
+    # nichts — er berichtet nur, ob gerade ein langer Lauf blockiert.
+    if args.nur_crons:
+        try:
+            laufen = running_repo_python_processes(
+                args.root.resolve(), ignore_api=True
+            )
+        except PreflightError as error:
+            parser.exit(1, f"CRON-BLICK FEHLGESCHLAGEN: {error}\n")
+        if laufen:
+            detail = ", ".join(f"PID {pid} ({label})" for pid, label in laufen)
+            print(f"BELEGT: {detail}")
+            return 3
+        print("FREI: kein Cron-/Ops-Prozess dieses Checkouts.")
+        return 0
+    if args.minimum_app_build is None:
+        parser.error("--minimum-app-build fehlt")
     try:
         verify(
             args.root,
@@ -371,6 +427,7 @@ def main() -> int:
             args.require_quiescent,
             args.quiescent_timeout,
             args.require_no_cron,
+            args.wait_for_cron,
         )
     except PreflightError as error:
         parser.exit(1, f"PRE-DEPLOY BLOCKIERT: {error}\n")

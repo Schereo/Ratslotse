@@ -1,0 +1,198 @@
+# Holt einen ausgefallenen Prod-Deploy nach — und meldet, wenn das nicht geht.
+#
+# Das Gegenstück zur abgestuften Stille in `deploy.yml`: Seit dem 20.09.2026
+# mailt ein Abbruch VOR dem Cutover nicht mehr (Prod ist dann nachweislich
+# unverändert, s. `scripts/alarm.py::betroffen`). Ohne dieses Auffangnetz wäre
+# damit auch der Stau still geworden.
+#
+# Der Anlass steht in `scripts/ops_deploy_rueckstand.py`: sechs gemergte PRs,
+# sechs abgebrochene Deploys, 33 Stunden alter Prod-Stand — und sechs Mails,
+# die alle gleich aussahen. Fast immer derselbe Grund: `check_cities.py` läuft
+# sonntags ab 5 Uhr und blockiert bei einem Versionssprung des `fit`-Annotators
+# den ganzen Tag. Folgenlos, aber endlos, denn ein abgebrochener Lauf startet
+# sich nicht von selbst neu.
+#
+# Dieser Workflow tut genau das: Er fragt alle 30 Minuten, ob `main` dem
+# letzten geglückten Deploy voraus ist, sieht auf dem Server nach, ob noch ein
+# Cron läuft — und stößt den Deploy an, sobald die Luft rein ist.
+name: Ops – Deploy-Rückstand (Prod)
+
+on:
+  schedule:
+    # Alle 30 Minuten. Ein Deploy dauert zehn; öfter zu fragen brächte nichts,
+    # seltener ließe einen Sonntagsstau unnötig lange stehen.
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  # `actions: write` ist der ganze Zweck: den Deploy anstoßen. Lesend zusätzlich
+  # für die Frage, wie oft er zuletzt gescheitert ist.
+  actions: write
+
+concurrency:
+  group: ops-deploy-rueckstand
+  cancel-in-progress: false
+
+jobs:
+  rueckstand:
+    # Nicht in Forks: Dort fehlen die Secrets, und ein fremder Fork soll erst
+    # recht keinen Deploy auf ratslotse.de anstoßen.
+    if: github.repository == 'Schereo/Ratslotse'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Zeitstempel statt Hashes: `deploy.yml` hängt an `pull_request: closed`,
+      # und `github.sha` ist dort der MERGE-Commit des PRs, nicht der
+      # Squash-Commit auf `main`. Ein Hash-Vergleich wäre immer ungleich.
+      - name: Stand erheben
+        id: stand
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -u
+          commit=$(gh api "repos/${{ github.repository }}/commits/main" \
+                     -q '.commit.committer.date' 2>/dev/null || echo "")
+          # OHNE `--branch main`, und das ist keine Nachlässigkeit: Der Filter
+          # geht auf `head_branch`, und der ist bei einem `pull_request`-Lauf
+          # der Zweig des PRs — also gerade NICHT main. Mit dem Filter kämen
+          # nur die von Hand angestoßenen Läufe zurück, der letzte geglückte
+          # Deploy sähe wochenalt aus, und dieser Workflow stieße alle 30
+          # Minuten einen überflüssigen Deploy an. `deploy.yml` läuft ohnehin
+          # nur für main (PR-Ziel main oder workflow_dispatch).
+          erfolg=$(gh run list --workflow deploy.yml --status success \
+                     --limit 1 --json createdAt -q '.[0].createdAt' 2>/dev/null || echo "")
+          # Gescheiterte Läufe SEIT dem letzten geglückten: Ohne diese Zahl
+          # stieße ein Deploy, der aus einem ganz anderen Grund rot ist, sich
+          # alle 30 Minuten selbst neu an.
+          fehl=$(gh run list --workflow deploy.yml --limit 20 \
+                   --json conclusion,createdAt \
+                   -q "[.[] | select(.createdAt > \"${erfolg:-1970-01-01T00:00:00Z}\")
+                        | select(.conclusion == \"failure\")] | length" 2>/dev/null || echo 0)
+          echo "main-Commit:        ${commit:-unbekannt}"
+          echo "letzter Erfolg:     ${erfolg:-keiner}"
+          echo "Fehlversuche seit:  ${fehl:-0}"
+          {
+            echo "commit=$commit"
+            echo "erfolg=$erfolg"
+            echo "fehl=${fehl:-0}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Configure deployment SSH
+        id: ssh
+        continue-on-error: true
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          set -e
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' \
+            'Host edge' \
+            "  HostName ${{ secrets.VPS_PROXY_HOST }}" \
+            "  User ${{ secrets.VPS_USER }}" \
+            "  Port ${{ secrets.VPS_SSH_PORT }}" \
+            '  IdentityFile ~/.ssh/id_ed25519' \
+            '  StrictHostKeyChecking no' \
+            'Host target' \
+            "  HostName ${{ secrets.VPS_HOST }}" \
+            "  User ${{ secrets.VPS_USER }}" \
+            "  Port ${{ secrets.VPS_SSH_PORT }}" \
+            '  IdentityFile ~/.ssh/id_ed25519' \
+            '  ProxyJump edge' \
+            '  StrictHostKeyChecking no' \
+            > ~/.ssh/config
+          chmod 600 ~/.ssh/config
+
+      # Der schlanke Blick: NUR die Prozessliste, ohne .env, sudo und crontab.
+      # Er entscheidet nichts — er sagt, ob gerade ein langer Lauf blockiert.
+      # 0 = frei, 3 = belegt, alles andere (auch abgebrochenes SSH) = unbekannt,
+      # und unbekannt heißt ausdrücklich NICHT „frei".
+      - name: Läuft auf dem Server noch ein Cron?
+        id: crons
+        continue-on-error: true
+        run: |
+          set -u
+          rc=0
+          ssh -o ConnectTimeout=20 target '
+            cd ~/app
+            .venv/bin/python - --root . --nur-crons
+          ' < scripts/verify_release_runtime.py || rc=$?
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          echo "Rückgabewert: $rc"
+
+      # Die Werte über `env:` und nicht direkt in die Zeile: Alles, was aus
+      # einer API kommt, gehört nicht in eine Shell-Zeile hineininterpoliert.
+      - name: Entscheiden
+        id: befund
+        env:
+          COMMIT: ${{ steps.stand.outputs.commit }}
+          ERFOLG: ${{ steps.stand.outputs.erfolg }}
+          CRONS: ${{ steps.crons.outputs.rc }}
+          FEHL: ${{ steps.stand.outputs.fehl }}
+        run: |
+          python3 scripts/ops_deploy_rueckstand.py \
+            --main-commit "$COMMIT" \
+            --letzter-erfolg "$ERFOLG" \
+            --crons "$CRONS" \
+            --fehlversuche "$FEHL"
+
+      - name: Deploy nachholen
+        if: steps.befund.outputs.aktion == 'nachholen'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          echo "${{ steps.befund.outputs.grund }}"
+          gh workflow run deploy.yml --ref main
+          echo "deploy.yml auf main angestoßen."
+
+      # Nur beim ERSTEN Mal melden — dieselbe Bremse wie in
+      # `ops-erreichbarkeit.yml`: Ohne sie stünden bei einem Stau am Ende
+      # achtundvierzig gleiche Mails im Postfach, und genau das soll dieser
+      # Umbau ja abstellen.
+      - name: Erster Befund?
+        id: erster
+        if: steps.befund.outputs.aktion == 'melden'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -u
+          vorher=$(gh run list --workflow ops-deploy-rueckstand.yml --status completed \
+                     --limit 1 --json conclusion -q '.[0].conclusion' 2>/dev/null || echo "")
+          echo "Vorheriger Lauf: ${vorher:-keiner}"
+          if [ "$vorher" = "failure" ]; then
+            echo "melden=0" >> "$GITHUB_OUTPUT"
+          else
+            echo "melden=1" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Alarm über den Server
+        if: steps.befund.outputs.aktion == 'melden' && steps.erster.outputs.melden == '1'
+        continue-on-error: true
+        run: |
+          set -e
+          ssh -o ConnectTimeout=20 target 'cd ~/app && .venv/bin/python - --root . \
+            --betreff "Ratslotse – Prod haengt zurueck" \
+            --zustand \
+            --text "Auf main liegt Code, der es nicht auf Prod geschafft hat.
+
+          Befund: ${{ steps.befund.outputs.grund }}
+
+          Die Seite laeuft (der Zustand steht unten) — sie zeigt nur einen aelteren Stand. Nachholen von Hand: Actions -> Deploy to VPS -> Run workflow (Ref: main).
+
+          Lauf: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"' \
+            < scripts/alarm.py
+
+      # Rot nur beim echten Stau. „Warten" ist der Normalfall an einem
+      # Sonntagvormittag und darf keinen roten Lauf erzeugen — sonst läse die
+      # Bremse oben ihn als „nicht der erste Befund" und die Mail entfiele.
+      - name: Befund
+        if: always()
+        run: |
+          set -u
+          echo "${{ steps.befund.outputs.aktion }}: ${{ steps.befund.outputs.grund }}"
+          [ "${{ steps.befund.outputs.aktion }}" = "melden" ] && exit 1
+          exit 0
