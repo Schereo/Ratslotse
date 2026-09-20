@@ -423,7 +423,14 @@ def _ohne_fragehuelle(terms: str) -> str:
     return " ".join(rest) if rest else terms
 
 
-_SATZ_RE = re.compile(r"(?<=[.!?])\s+(?=[A-ZÄÖÜ0-9„])")
+#: Satzende ODER Zeilenumbruch: Vorlagen tragen Kopfzeilen und Abschnitts-
+#: Etiketten („Anlass:", „Bericht:") ohne Punkt — als EIN Riesensatz sammelten
+#: sie sonst alle Fragewörter ein und gewannen (dev, 20.09.2026: die
+#: Kopfzeile „Ausdruck vom … Untere Nadorster Straße – Bericht …" schlug den
+#: Sachverhalt).
+_SATZ_RE = re.compile(r"(?<=[.!?:])\s+(?=[A-ZÄÖÜ0-9„])|\n+")
+#: Länger als das ist kein Satz, sondern ein Block ohne Satzzeichen.
+_SATZ_MAX = 320
 
 
 def fundstelle(text: str, question: str, terms: str = "", breite: int = 500,
@@ -448,7 +455,8 @@ def fundstelle(text: str, question: str, terms: str = "", breite: int = 500,
         formen.append((g, _umlaut_mehrzahl(g)))
     if not formen:
         return ""
-    kandidaten = [" ".join(s.split()) for s in _SATZ_RE.split(text) if len(s.strip()) > 20]
+    kandidaten = [" ".join(s.split()) for s in _SATZ_RE.split(text)
+                  if 20 < len(s.strip()) <= _SATZ_MAX]
     bewertet = []
     for i, satz in enumerate(kandidaten):
         f = _falte(satz)

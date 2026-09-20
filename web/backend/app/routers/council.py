@@ -4294,7 +4294,10 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     for c in ctx:
                         t = texts.get((c.get("template_number") or "").strip())
                         if t:
-                            stelle = qa.fundstelle(t, q_suche, expanded) if zahl else ""
+                            # Auf dem GEPUTZTEN Text (ohne Kopfzeilen und
+                            # Anlagenliste, `chars=None` = vollständig).
+                            stelle = (qa.fundstelle(vorlagen_mod.excerpt(t, None), q_suche, expanded)
+                                      if zahl else "")
                             c["vorlage_excerpt"] = stelle or vorlagen_mod.excerpt(t, 350)
                 except Exception:  # noqa: BLE001
                     pass
