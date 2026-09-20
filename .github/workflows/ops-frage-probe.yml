@@ -1,0 +1,67 @@
+# Manuell auslösbar: eine KI-Frage auf dev oder prod stellen und die Antwort
+# samt Quellen im Lauf-Protokoll lesen.
+#
+# WOFÜR. Die Ende-zu-Ende-Probe nach einer Retrieval-Änderung („bekommt die
+# Sumpfeichen-Frage jetzt die Baumfällungen an der Nadorster Straße?") ging
+# bisher nur per SSH aufs Notebook-Terminal — und das hängt am
+# 1Password-Agenten. Am 20.09.2026 antwortete der nicht mehr, und die letzte
+# Messung eines gemergten PRs blieb liegen. Dieser Lauf braucht nur den
+# Deploy-Key, den die Action ohnehin hat.
+#
+# WAS ER NICHT IST: kein Eval. Eine Frage, eine Antwort, zum Hinsehen. Die
+# Frage zählt als Frage des Rauchproben-Kontos (WEB_ADMIN_EMAIL), wie die
+# Rauchprobe selbst. Mehrere Fragen mit „Verlauf" laufen als EIN Gespräch.
+name: "Ops: KI-Frage stellen"
+
+on:
+  workflow_dispatch:
+    inputs:
+      umgebung:
+        description: "Welche VM? (prod = ratslotse.de)"
+        type: choice
+        options: [dev, prod]
+        default: dev
+      frage:
+        description: "Die Frage — mehrere mit ‖ getrennt"
+        type: string
+        required: true
+      verlauf:
+        description: "Mehrere Fragen als ein Gespräch stellen (Anschlussfragen)"
+        type: boolean
+        default: false
+
+concurrency:
+  group: ops-frage-probe-${{ inputs.umgebung }}
+  cancel-in-progress: false
+
+jobs:
+  frage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Frage stellen
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          FRAGE: ${{ inputs.frage }}
+          VERLAUF: ${{ inputs.verlauf }}
+        with:
+          host: ${{ inputs.umgebung == 'prod' && secrets.VPS_HOST || secrets.VPS_DEV_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          proxy_host: ${{ secrets.VPS_PROXY_HOST }}
+          proxy_username: ${{ secrets.VPS_USER }}
+          proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          proxy_port: ${{ secrets.VPS_SSH_PORT }}
+          envs: FRAGE,VERLAUF
+          command_timeout: 15m
+          # Die Fragen kommen über Umgebungsvariablen und werden in der Shell
+          # am ‖ getrennt — kein Zitat-Roulette mit Anführungszeichen in der
+          # Frage („Sumpfeiche“) und keine YAML-Sonderzeichen im Skript.
+          script: |
+            set -e
+            cd ~/app
+            SCHALTER=""
+            if [ "$VERLAUF" = "true" ]; then SCHALTER="--verlauf"; fi
+            printf '%s' "$FRAGE" | tr '‖' '\n' | sed '/^[[:space:]]*$/d' > /tmp/frage_probe.txt
+            mapfile -t FRAGEN < /tmp/frage_probe.txt
+            .venv/bin/python scripts/frage_probe.py $SCHALTER "${FRAGEN[@]}"
