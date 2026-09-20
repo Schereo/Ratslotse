@@ -987,6 +987,22 @@ def _verlauf_plus(roh: str | None, tag: str) -> dict[str, int]:
     return d
 
 
+def vorhandene_werte(conn: sqlite3.Connection, tabelle: str, spalte: str,
+                     werte: list[str]) -> set[str]:
+    """Welche dieser Werte stehen in ``tabelle.spalte`` noch? — eine Leseabfrage.
+
+    Die Vorfrage jeder Werte-Migration: Sie kostet einen Durchlauf der
+    Tabelle, aber keine Schreibsperre. Ein ``UPDATE`` je Wert kostete bis
+    09/2026 beides, und zwar je HTTP-Anfrage (s. ``Store._werte_umschreiben``).
+    """
+    if not werte:
+        return set()
+    platzhalter = ", ".join("?" for _ in werte)
+    return {r[0] for r in conn.execute(
+        f"SELECT DISTINCT {spalte} FROM {tabelle} WHERE {spalte} IN ({platzhalter})",
+        werte)}
+
+
 class Store:
     def __init__(self, path: str | Path):
         self.path = Path(path)
@@ -1014,17 +1030,33 @@ class Store:
 
     def _werte_umschreiben(self, tabelle: str, spalte: str,
                            paare: list[tuple[str, str]]) -> None:
-        """Schreibt gespeicherte WERTE um — idempotent.
+        """Schreibt gespeicherte WERTE um — idempotent, und ohne Schreibsperre,
+        solange es nichts zu tun gibt.
 
         Das Gegenstück zu :meth:`_spalten_umbenennen`: Manche Begriffe stehen
         nicht als Spaltenname, sondern als Inhalt einer Zeile
         (``quiz_answers.category = 'geschichte'``). Wird nur die Spalte
         migriert, findet jede Abfrage danach nichts mehr.
+
+        **Erst lesen, dann schreiben.** Der Store entsteht je HTTP-Anfrage,
+        und ein ``UPDATE`` ohne Treffer holt sich trotzdem die Schreibsperre
+        der Datei. Bis 09/2026 waren das 41 Sperren je Anfrage an
+        ``ratslotse.sqlite``, 23 davon Durchläufe der indexlosen ``llm_usage``
+        (73 ms) — jede Leseanfrage war damit ein Schreiber, und ein Schwung
+        gleichzeitiger Anfragen (Startseite plus Admin-Panel) lief sich in
+        „database is locked" fest, zwölfmal in sieben Tagen. Dieselbe Falle
+        beschreibt :meth:`_marke_gesetzt` für die Marken; der Wächter ist
+        ``tests/test_store_start_neben_schreiber.py``. Eine Leseabfrage je
+        Tabelle sagt, welche alten Werte noch da sind; nur für die wird
+        geschrieben.
         """
         vorhanden = {r[1] for r in self._conn.execute(f"PRAGMA table_info({tabelle})")}
         if spalte not in vorhanden:
             return
+        alte = vorhandene_werte(self._conn, tabelle, spalte, [alt for alt, _ in paare])
         for alt, neu in paare:
+            if alt not in alte:
+                continue
             cur = self._conn.execute(
                 f"UPDATE {tabelle} SET {spalte} = ? WHERE {spalte} = ?", (neu, alt))
             if cur.rowcount:
@@ -2001,11 +2033,14 @@ class Store:
             # 3. topics.owner_id (ADD COLUMN — no constraint change needed).
             if "owner_id" not in self._table_cols("topics"):
                 self._conn.execute("ALTER TABLE topics ADD COLUMN owner_id INTEGER NOT NULL DEFAULT 0")
-            self._conn.execute(
-                "UPDATE topics SET owner_id = COALESCE("
-                "  (SELECT id FROM web_users WHERE telegram_chat_id = topics.chat_id), 0) "
-                "WHERE owner_id = 0"
-            )
+            # Erst lesen: Ohne Waise bleibt das UPDATE aus — es holte sich
+            # sonst bei jedem Store-Start die Schreibsperre (s. _werte_umschreiben).
+            if self._conn.execute("SELECT 1 FROM topics WHERE owner_id = 0 LIMIT 1").fetchone():
+                self._conn.execute(
+                    "UPDATE topics SET owner_id = COALESCE("
+                    "  (SELECT id FROM web_users WHERE telegram_chat_id = topics.chat_id), 0) "
+                    "WHERE owner_id = 0"
+                )
             self._conn.execute("CREATE INDEX IF NOT EXISTS idx_topics_owner ON topics(owner_id)")
 
             # 4. Rebuild the constrained tables so their PK/UNIQUE is on owner_id.

@@ -165,6 +165,15 @@ class SitzungenMixin(StoreBasis):
             return
         spalten = {r[1] for r in self._conn.execute("PRAGMA table_info(agenda_changes)")}
         if "diff_json" not in spalten:
+            # Noch keine Diffs (frische Datenbank; die Spalte kommt weiter
+            # unten in `_migrate` leer dazu) — nichts umzuschreiben, also die
+            # Marke gleich setzen. Sonst holt der ZWEITE Start sie nach und
+            # schreibt, obwohl er nur lesen sollte
+            # (Wächter: tests/test_store_start_neben_schreiber.py).
+            with self._conn:
+                self._conn.execute(
+                    "INSERT OR REPLACE INTO council_migration_marks(marke, gesetzt_am) "
+                    "VALUES (?, datetime('now'))", (marke,))
             return
         geaendert = []
         for rid, roh in self._conn.execute(
