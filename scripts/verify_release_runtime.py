@@ -246,7 +246,13 @@ def running_repo_python_processes(
         executable = Path(args[0]).name.lower()
         if "python" not in executable and "uvicorn" not in executable:
             continue
-        if ignore_api and "uvicorn" in executable:
+        # Auf Prod steht die API als `python3 …/.venv/bin/uvicorn app.main:app`
+        # in der Prozessliste — der Shebang macht den Interpreter zu argv[0],
+        # `uvicorn` ist argv[1]. Wer nur argv[0] ansieht, hält die API für
+        # einen Cron, und `--require-no-cron` blockiert JEDEN Deploy (so am
+        # 20.09.2026, 14:00: „PID 1153117 (python3)" war die API).
+        ist_api = any("uvicorn" in Path(a).name.lower() for a in args[:2])
+        if ignore_api and ist_api:
             continue
         belongs_to_repo = _under(cwd, root)
         if not belongs_to_repo:
@@ -257,7 +263,7 @@ def running_repo_python_processes(
                     break
         if not belongs_to_repo:
             continue
-        label = next(
+        label = "uvicorn" if ist_api else next(
             (Path(argument).name for argument in args[1:] if argument.endswith(".py")),
             Path(args[0]).name,
         )
