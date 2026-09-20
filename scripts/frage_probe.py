@@ -22,6 +22,7 @@ der Frage-Seite auch sieht.
 from __future__ import annotations
 
 import argparse
+import importlib
 import json
 import sys
 import time
@@ -84,7 +85,10 @@ def main() -> int:
     ap.add_argument("--konto", default=None, help="Konto-Adresse fürs Token (Vorgabe wie Rauchprobe)")
     args = ap.parse_args()
 
-    import rauchprobe  # noqa: E402 — liegt neben diesem Skript
+    # Über importlib statt `import rauchprobe`: Das Modul liegt neben diesem
+    # Skript und ist nur über den sys.path oben erreichbar — pyright in der CI
+    # zählte den direkten Import als fehlenden Import (Typ-Sperrklinke).
+    rauchprobe = importlib.import_module("rauchprobe")
     token, info = rauchprobe.token_bauen(WURZEL, args.konto)
     if not token:
         print(f"Kein Token: {info}", file=sys.stderr)
