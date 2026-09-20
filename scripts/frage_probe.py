@@ -26,9 +26,8 @@ import importlib
 import json
 import sys
 import time
+import urllib.request
 from pathlib import Path
-
-import requests
 
 WURZEL = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(WURZEL))
@@ -39,31 +38,40 @@ VERLAUF_ANTWORT_MAX = 600
 
 
 def fragen(basis: str, token: str, frage: str, verlauf: list[dict]) -> str:
-    """Eine Frage über den Ereignis-Strom stellen; gibt den Antworttext zurück."""
+    """Eine Frage über den Ereignis-Strom stellen; gibt den Antworttext zurück.
+
+    Mit der Standardbibliothek statt ``requests``: Das Skript läuft auf dem
+    Server in der Umgebung des Backends, in der CI aber unter pyright ohne
+    ``requests``-Stubs — und dort zählte der Import als Typbefund in der
+    Sperrklinke von ``scripts/``.
+    """
     t0 = time.time()
-    antwort = requests.post(
+    anfrage = urllib.request.Request(
         f"{basis}/api/council/ask",
-        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
-        json={"question": frage, "history": verlauf}, stream=True, timeout=240,
+        data=json.dumps({"question": frage, "history": verlauf}).encode("utf-8"),
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json",
+                 "Accept": "text/event-stream"},
+        method="POST",
     )
-    antwort.raise_for_status()
     text: list[str] = []
     quellen: list[dict] = []
     zitiert: list[int] = []
-    for zeile in antwort.iter_lines(decode_unicode=True):
-        if not zeile or not zeile.startswith("data:"):
-            continue
-        try:
-            ereignis = json.loads(zeile[5:].strip())
-        except ValueError:
-            continue
-        art = ereignis.get("type")
-        if art == "token":
-            text.append(ereignis.get("text") or "")
-        elif art == "sources":
-            quellen = ereignis.get("sources") or ereignis.get("items") or []
-        elif art == "done":
-            zitiert = ereignis.get("cited") or []
+    with urllib.request.urlopen(anfrage, timeout=240) as antwort:
+        for roh in antwort:
+            zeile = roh.decode("utf-8", "replace").strip()
+            if not zeile.startswith("data:"):
+                continue
+            try:
+                ereignis = json.loads(zeile[5:].strip())
+            except ValueError:
+                continue
+            art = ereignis.get("type")
+            if art == "token":
+                text.append(ereignis.get("text") or "")
+            elif art == "sources":
+                quellen = ereignis.get("sources") or ereignis.get("items") or []
+            elif art == "done":
+                zitiert = ereignis.get("cited") or []
     ganz = "".join(text)
     print("=" * 78)
     print("FRAGE:", frage)
