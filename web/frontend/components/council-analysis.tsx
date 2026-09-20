@@ -9,6 +9,7 @@ import { POLICY_FIELD_LABELS, PartyBadge, DecisionLinkCard, formatEuro } from "@
 import { useFetch } from "@/lib/use-fetch";
 import { ChartExplainer } from "@/components/chart-explainer";
 import { AnalysisIntro } from "@/components/analysis-intro";
+import { FrageChips } from "@/components/frage-chips";
 import { TrendsView } from "@/components/council-trends";
 import { GoalsView } from "@/components/council-goals";
 import { PersonenView } from "@/components/council-members";
@@ -380,6 +381,16 @@ const SUB_TABS: [AnalysisSub, string, typeof Users][] = [
   ["ziele", "Ziele", Target],
 ];
 
+/** Fragen, die zum jeweiligen Unterreiter passen — und die die Beschlüsse
+ *  hergeben. Wer hier eine Sackgasse einbaut, zeigt sie Neuen als Erstes. */
+const ANALYSE_FRAGEN: Record<AnalysisSub, readonly string[]> = {
+  trends: ["Welche Themen hat der Rat 2026 am häufigsten behandelt?", "Was hat der Rat zuletzt beschlossen?"],
+  parties: ["Wobei stimmen SPD und CDU gegeneinander?", "Was hat die FDP zuletzt beantragt?"],
+  personen: ["Wer hat sich zum Stadionneubau geäußert?", "Was sagte der Oberbürgermeister zur Cäcilienbrücke?"],
+  finanzen: ["Wie viele Schulden hat die Stadt Oldenburg?", "Wofür gibt die Stadt am meisten Geld aus?"],
+  ziele: ["Welche Klimaziele hat sich der Rat gesetzt?", "Bis wann will Oldenburg klimaneutral sein?"],
+};
+
 export function AnalysisTab() {
   const sp = useSearchParams();
   const router = useRouter();
@@ -400,6 +411,10 @@ export function AnalysisTab() {
         onChange={setSub}
         options={SUB_TABS.map(([s, lbl, Icon]) => ({ value: s, label: lbl, icon: Icon }))}
       />
+      {/* Die Auswertungen sind das, was Neue nach dem Wahlabend als Erstes
+          anklicken (BartVZ, Neele — Auswertung 17.09.2026), und dort endete
+          es. Zwei Fragen je Reiter, die die Zahlen darunter zur Sprache bringen. */}
+      <FrageChips fragen={ANALYSE_FRAGEN[sub]} />
       {sub === "parties" ? <PartiesView /> : sub === "personen" ? <PersonenView />
         : sub === "finanzen" ? <FinanceView /> : sub === "trends" ? <TrendsView /> : <GoalsView />}
     </div>
