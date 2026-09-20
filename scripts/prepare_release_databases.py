@@ -39,6 +39,19 @@ from scripts.verify_release_runtime import verify_quiescent  # noqa: E402
 
 LABEL_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,159}$")
 
+#: So viele Release-Snapshots bleiben liegen — die jüngsten, je Deploy einer.
+#:
+#: Die Snapshots sind bewusst von der Tages-Rotation in ``backup_db.py``
+#: ausgenommen (kein Datum im Namen): Sie sind die Rücksprung-Basis für GENAU
+#: den Deploy, der sie angelegt hat. Nur räumte sie deshalb auch niemand weg.
+#: Gemessen am 20.09.2026 auf Prod: 97 Deploys seit dem 03.09., je 740 MB,
+#: zusammen 71 GB — die Platte war zu 99 % voll, und der nächste Deploy
+#: scheiterte schon an seiner eigenen Sicherung („database or disk is full").
+#:
+#: Drei reichen: Ein Rollback geht auf den letzten Stand, allenfalls den
+#: davor. Was älter ist, deckt die Tages-Rotation mit Tagesgenauigkeit ab.
+SNAPSHOT_RETENTION = 3
+
 
 class PreparationError(RuntimeError):
     """The release must stay inside the maintenance barrier."""
@@ -124,6 +137,49 @@ def _write_manifest(backup_dir: Path, label: str, databases: list[dict]) -> Path
     )
     temporary.replace(path)
     return path
+
+
+def _snapshot_label(manifest: Path) -> str:
+    return manifest.name[len("predeploy_"):-len(".json")]
+
+
+def prune_snapshots(backup_dir: Path, keep: int = SNAPSHOT_RETENTION) -> list[Path]:
+    """Ältere Release-Snapshots samt Manifest entfernen, die jüngsten ``keep``
+    bleiben. Gibt zurück, was gelöscht wurde.
+
+    Maßgeblich ist das Manifest: Es nennt die Snapshot-Dateien, die zu ihm
+    gehören, und sein ``created_at`` ordnet die Deploys — nicht die mtime, die
+    ein ``touch`` oder ein rsync-Rücklauf verstellen kann. Ein Manifest, das
+    sich nicht lesen lässt, bleibt samt allem stehen: Aufräumen darf nie
+    raten, welche Datei zu welchem Deploy gehört.
+
+    Gelöscht wird nur, was ``_predeploy_`` im Namen trägt (plus die
+    SQLite-Nebendateien ``-wal``/``-shm``, die ein Leser hinterlassen kann) —
+    die datierten Tagesstände der Rotation fasst das hier nie an.
+    """
+    manifeste: list[tuple[str, Path, list[str]]] = []
+    for manifest in backup_dir.glob("predeploy_*.json"):
+        try:
+            document = json.loads(manifest.read_text(encoding="utf-8"))
+            created = str(document["created_at"])
+            dateien = [str(entry["snapshot"]) for entry in document["databases"]]
+        except (OSError, ValueError, KeyError, TypeError):
+            continue
+        manifeste.append((created, manifest, dateien))
+    manifeste.sort(key=lambda eintrag: eintrag[0])
+
+    geloescht: list[Path] = []
+    for _created, manifest, dateien in manifeste[:-keep] if keep > 0 else manifeste:
+        for name in dateien:
+            if "_predeploy_" not in name:
+                continue
+            for pfad in (backup_dir / name, backup_dir / f"{name}-wal", backup_dir / f"{name}-shm"):
+                if pfad.is_file():
+                    pfad.unlink()
+                    geloescht.append(pfad)
+        manifest.unlink()
+        geloescht.append(manifest)
+    return geloescht
 
 
 def _lock_sources(states: list[DatabaseState]) -> list[sqlite3.Connection]:
@@ -243,6 +299,12 @@ def prepare(root: Path, snapshot_label: str) -> tuple[Path, Path, Path]:
         )
     finally:
         _release_locks(locks)
+
+    # Erst nachdem der neue Satz vollständig und verifiziert daliegt: Die
+    # älteren Sätze sind damit überholt, und die Platte gehört nicht ihnen.
+    veraltet = prune_snapshots(backup_dir)
+    if veraltet:
+        print(f"Ältere Release-Snapshots entfernt: {len(veraltet)} Dateien")
 
     # The marker still blocks every ordinary Store user. This process alone has
     # the explicit bypass and runs both migration stacks before service start.

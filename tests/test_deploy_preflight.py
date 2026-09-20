@@ -22,6 +22,7 @@ from scripts.verify_predeploy_backup import PreflightError, verify  # noqa: E402
 from scripts.verify_release_runtime import (  # noqa: E402
     PreflightError as RuntimePreflightError,
     running_repo_python_processes,
+    verify_no_cron_running,
     verify_configuration,
     verify_crontab,
     verify_systemd_permissions,
@@ -316,6 +317,41 @@ def test_process_scan_finds_old_repo_python_process(tmp_path):
     ) == [(4711, "check_council.py")]
 
 
+def _prozess(proc_root: Path, pid: int, root: Path, *args: str) -> None:
+    process = proc_root / str(pid)
+    process.mkdir(parents=True)
+    (process / "cmdline").write_bytes("\0".join(args).encode() + b"\0")
+    (process / "cwd").symlink_to(root, target_is_directory=True)
+
+
+def test_cron_guard_before_api_stop_ignores_the_api_itself(tmp_path):
+    """Vor dem Stopp läuft die API noch — und soll es. Nur ein Cron-/Ops-
+    Prozess des Checkouts blockiert; sonst wäre jeder Deploy blockiert.
+
+    13.09. und 20.09.2026: check_cities.py (sonntags 5 Uhr) ließ den Deploy
+    erst NACH dem API-Stopp scheitern — Barriere gesetzt, Prod 500."""
+    root = tmp_path / "app"
+    root.mkdir()
+    proc_root = tmp_path / "proc"
+    _prozess(proc_root, 100, root, str(root / ".venv/bin/uvicorn"), "app.main:app")
+
+    verify_no_cron_running(root, proc_root=proc_root)   # nur die API: frei
+    assert running_repo_python_processes(root, proc_root=proc_root, own_pid=9999) \
+        == [(100, "uvicorn")], "nach dem Stopp zählt die API weiterhin mit"
+
+    _prozess(proc_root, 200, root, ".venv/bin/python", "scripts/check_cities.py")
+    with pytest.raises(RuntimePreflightError, match=r"check_cities\.py.*BEVOR die API"):
+        verify_no_cron_running(root, proc_root=proc_root)
+
+
+def test_workflow_checks_for_running_crons_before_the_barrier():
+    """Der Wächter gehört vor Barriere und API-Stopp, sonst legt er Prod um."""
+    workflow = (Path(__file__).resolve().parents[1] / ".github/workflows/deploy.yml").read_text()
+    pruefung = workflow.index("--require-no-cron")
+    assert pruefung < workflow.index("name: Enter release maintenance barrier")
+    assert pruefung < workflow.index("systemctl stop nwz-web-api")
+
+
 def test_handle_scan_finds_database_opened_outside_repo(tmp_path):
     database = tmp_path / "app" / "data" / "council.sqlite"
     database.parent.mkdir(parents=True)
@@ -403,6 +439,80 @@ def test_release_preparation_requires_marker_and_explicit_bypass(
         "council.sqlite",
     }
     assert all(len(entry["sha256"]) == 64 for entry in document["databases"])
+
+
+def _snapshot_satz(backup: Path, label: str, created: str) -> list[Path]:
+    """Ein Release-Snapshot-Satz, wie ihn ``prepare`` hinterlässt."""
+    dateien = [backup / f"nwz_predeploy_{label}.sqlite",
+               backup / f"council_predeploy_{label}.sqlite"]
+    for pfad in dateien:
+        pfad.write_bytes(b"x")
+    (backup / f"council_predeploy_{label}.sqlite-shm").write_bytes(b"")
+    manifest = backup / f"predeploy_{label}.json"
+    manifest.write_text(json.dumps({
+        "format": 1, "created_at": created, "label": label,
+        "databases": [{"snapshot": p.name} for p in dateien],
+    }), encoding="utf-8")
+    return dateien + [manifest]
+
+
+def test_release_snapshots_keep_only_the_newest_deploys(tmp_path):
+    """Gemessen am 20.09.2026: 97 Sätze zu je 740 MB, die Prod-Platte zu 99 %
+    voll, der Deploy scheiterte an seiner eigenen Sicherung. Die Sätze sind
+    die Rücksprung-Basis für IHREN Deploy — drei jüngere machen sie überholt."""
+    backup = tmp_path / "backups"
+    backup.mkdir()
+    for i in range(5):
+        _snapshot_satz(backup, f"deploy_{i}", f"2026-09-{10 + i:02d}T10:00:00+00:00")
+    # Ein Tagesstand der Rotation und ein Manifest, das sich nicht lesen
+    # lässt: Beides bleibt stehen — Aufräumen darf nicht raten.
+    (backup / "council_2026-09-14.sqlite").write_bytes(b"x")
+    (backup / "predeploy_kaputt.json").write_text("{", encoding="utf-8")
+    (backup / "council_predeploy_kaputt.sqlite").write_bytes(b"x")
+
+    geloescht = prepare_release_databases.prune_snapshots(backup)
+
+    uebrig = sorted(p.name for p in backup.iterdir())
+    assert "predeploy_deploy_0.json" not in uebrig and "predeploy_deploy_1.json" not in uebrig
+    assert "nwz_predeploy_deploy_1.sqlite" not in uebrig
+    assert "council_predeploy_deploy_1.sqlite-shm" not in uebrig
+    for i in (2, 3, 4):
+        assert f"predeploy_deploy_{i}.json" in uebrig
+        assert f"council_predeploy_deploy_{i}.sqlite" in uebrig
+    assert "council_2026-09-14.sqlite" in uebrig
+    assert "predeploy_kaputt.json" in uebrig and "council_predeploy_kaputt.sqlite" in uebrig
+    assert len(geloescht) == 2 * 4   # je Satz zwei Snapshots, shm, Manifest
+
+
+def test_release_preparation_prunes_older_snapshots(tmp_path, monkeypatch):
+    """Der Lauf selbst räumt auf — nach dem eigenen, verifizierten Satz."""
+    data = tmp_path / "data"
+    data.mkdir()
+    account_store = Store(data / "nwz.sqlite")
+    account_store.create_web_user("release@example.org", "hash")
+    account_store.close()
+    council_store = CouncilStore(
+        data / "council.sqlite", ratslotse_db_path=data / "nwz.sqlite"
+    )
+    council_store.save_session(
+        CouncilSession(4702, "Rat", "2026-09-03", "17:00", "Rathaus")
+    )
+    council_store.close()
+    backup = data / "backups"
+    backup.mkdir()
+    for i in range(3):
+        _snapshot_satz(backup, f"alt_{i}", f"2026-09-{10 + i:02d}T10:00:00+00:00")
+
+    (data / MARKER_NAME).touch()
+    monkeypatch.setenv(BYPASS_ENV, "1")
+    monkeypatch.setattr(prepare_release_databases, "verify_quiescent", lambda root: None)
+    monkeypatch.setattr(prepare_release_databases, "open_database_handles", lambda paths: [])
+    prepare_release_databases.prepare(tmp_path, "neu")
+
+    manifeste = sorted(p.name for p in backup.glob("predeploy_*.json"))
+    assert manifeste == ["predeploy_alt_1.json", "predeploy_alt_2.json", "predeploy_neu.json"]
+    assert not (backup / "council_predeploy_alt_0.sqlite").exists()
+    assert (backup / "council_predeploy_neu.sqlite").is_file()
 
 
 def test_workflow_guards_final_backup_and_migrations_at_cutover():
