@@ -101,9 +101,17 @@ function seiteZeichnen(variante: number): THREE.CanvasTexture {
   return t;
 }
 
-export default function LottiSzene({ className }: { className?: string }) {
+export default function LottiSzene({ className, onFehler }: {
+  className?: string;
+  /** Der Browser gibt keinen WebGL-Kontext her — die Bühne bleibt leer,
+   *  das Tor (lotti-hero) zeigt dann die gezeichnete Familie. */
+  onFehler?: () => void;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const huelleRef = useRef<HTMLDivElement>(null);
+  // Als Ref, damit ein neuer Callback die Szene nicht neu aufbaut.
+  const onFehlerRef = useRef(onFehler);
+  onFehlerRef.current = onFehler;
 
   useEffect(() => {
     const cv = canvasRef.current;
@@ -113,7 +121,18 @@ export default function LottiSzene({ className }: { className?: string }) {
     const mag = window.matchMedia("(prefers-reduced-motion: reduce)");
     let ruhe = mag.matches;
 
-    const renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true });
+    /* three wirft hier („Error creating WebGL context."), wenn der Browser
+       keinen Kontext hergibt. Aus einem Effekt heraus ist das kein
+       Render-Fehler, den eine Fehlergrenze fangen könnte, sondern einer, der
+       die ganze Route abräumt — deshalb nicht werfen, sondern melden. */
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true });
+    } catch (e) {
+      console.warn("Lotti-Szene: kein WebGL —", e);
+      onFehlerRef.current?.();
+      return;
+    }
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.setClearAlpha(0);
     renderer.shadowMap.enabled = true;
