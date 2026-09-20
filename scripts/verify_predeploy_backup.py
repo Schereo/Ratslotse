@@ -172,34 +172,41 @@ def _fresh_backup(source: DatabaseState, backup_dir: Path, marker: Path) -> Data
             f"Backup für {source.path.name} hat nicht dasselbe Schema wie die Quelle"
         )
     # Die Quelle LEBT: Der API-Dienst läuft während des Backups weiter und
-    # schreibt (Sitzungen, Nutzungszähler, Job-Läufe). Ein Zeilenvergleich
-    # gegen den Stand VOR dem Backup scheiterte deshalb am 06.09.2026 an
-    # einer Tabelle, die zwischen den beiden Blicken gewachsen war — und
-    # blockierte den vierten Anlauf eines Deploys, dessen Backup in Ordnung
-    # war. Deshalb ein zweiter Blick auf die Quelle NACH dem Backup: Was
-    # sich dazwischen nicht bewegt hat, muss im Backup genau so stehen; was
-    # sich bewegt hat, muss im Backup zwischen beiden Ständen liegen.
+    # schreibt (Sitzungen, Nutzungszähler, Job-Läufe), und ein Cron kann
+    # gerade Modellaufrufe zählen (`llm_usage`). Das Backup entsteht VOR dem
+    # ersten Blick dieses Skripts auf die Quelle — jede Tabelle darf sich
+    # also seither bewegt haben, nach oben (Einfügen) wie nach unten
+    # (Aufräumen). Ein Zeilenvergleich kann hier nichts beweisen: Am
+    # 06.09.2026 scheiterte er an einer Tabelle, die zwischen zwei Blicken
+    # gewachsen war; die Reparatur (zweiter Blick NACH dem Backup) übersah,
+    # dass das Backup vor dem ERSTEN Blick liegt — und am 20.09.2026
+    # blockierte er drei Deploys hintereinander, weil `check_cities.py`
+    # nebenher Modellaufrufe zählte (Backup 53.105 Zeilen, Quelle 53.151).
+    #
+    # Was das Backup wirklich ausweisen muss, prüfen die Zeilen darüber:
+    # in DIESEM Lauf entstanden (mtime nach der Startmarke), dasselbe Schema
+    # (Hash), die Pflichttabelle gefüllt. Hier bleibt nur die Tabellenmenge
+    # hart; Zeilenunterschiede werden genannt, nicht bestraft.
     source_now = inspect_database(source.path, source.required_table)
     before = dict(source.table_rows)
     after = dict(source_now.table_rows)
     backup_rows = dict(state.table_rows)
-    # Die Meldung nennt Tabelle und Zahlen: Am 20.09.2026 blieb ein Deploy
-    # hier stehen, und aus „abweichendes Tabellenmanifest" allein ließ sich
-    # nicht sagen, welche Tabelle sich in den 15 Sekunden bewegt hatte.
     if set(backup_rows) != set(before) or set(after) != set(before):
         fremd = sorted((set(backup_rows) ^ set(before)) | (set(after) ^ set(before)))
         raise PreflightError(
             f"Backup für {source.path.name} hat ein abweichendes Tabellenmanifest: "
             f"Tabellen nur auf einer Seite: {', '.join(fremd)}"
         )
-    for table, rows in backup_rows.items():
-        lo, hi = sorted((before[table], after[table]))
-        if not lo <= rows <= hi:
-            raise PreflightError(
-                f"Backup für {source.path.name} hat ein abweichendes Tabellenmanifest: "
-                f"{table} hat im Backup {rows} Zeilen, die Quelle davor {before[table]} "
-                f"und danach {after[table]}"
-            )
+    bewegt = [
+        f"{table} (Backup {rows}, Quelle {before[table]} → {after[table]})"
+        for table, rows in backup_rows.items()
+        if not (min(before[table], after[table]) <= rows <= max(before[table], after[table]))
+    ]
+    if bewegt:
+        print(
+            f"ℹ  {source.path.name}: Quelle hat sich seit dem Backup bewegt — "
+            + ", ".join(bewegt)
+        )
     return state
 
 
