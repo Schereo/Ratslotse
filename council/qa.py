@@ -329,6 +329,14 @@ def analyse_query(question: str, model: str = EXPAND_MODEL,
         )
         data = json.loads(_strip_fences(resp.choices[0].message.content or ""))
         umgeschrieben = " ".join(str(data.get("question") or "").split())[:300]
+        # Eine Nachfrage, die das Modell auf die VORIGE Frage zurückschreibt,
+        # ist keine Auflösung, sondern ein Rückfall: „Sag mir mehr zum
+        # Planfeststellungsbeschluss von 2023" darf nicht wieder „Was findest
+        # du zum Planfeststellungsbeschluss?" werden — dann sucht das Retrieval
+        # dasselbe wie eben und die Antwort wiederholt sich (09.09.2026). Dann
+        # lieber die Nachfrage, wie sie gestellt wurde.
+        if umgeschrieben and _wiederholt_vorige_frage(umgeschrieben, verlauf):
+            umgeschrieben = question
         begriffe = " ".join(str(data.get("terms") or "").split())
         typ = str(data.get("kind") or "").strip().lower()
         party = (str(data.get("party")).strip() or None) if data.get("party") else None
@@ -362,6 +370,18 @@ def analyse_query(question: str, model: str = EXPAND_MODEL,
         return out
     except Exception:  # noqa: BLE001
         return fallback
+
+
+def _wiederholt_vorige_frage(umgeschrieben: str, verlauf: list[dict] | None) -> bool:
+    """Ist die umgeschriebene Frage nur eine der vorigen Fragen des Gesprächs?"""
+    ziel = _falte(umgeschrieben).strip()
+    if not ziel:
+        return False
+    for runde in (verlauf or [])[-VERLAUF_MAX_RUNDEN:]:
+        vorher = _falte(str(runde.get("question") or "")).strip()
+        if vorher and vorher == ziel:
+            return True
+    return False
 
 
 def sort_verlauf(candidates: list[dict]) -> list[dict]:
@@ -1101,6 +1121,59 @@ _SITZUNG_ANLASS_RE = re.compile(
     r"ergebnis\w*)\b")
 _SITZUNG_ZURUECK_RE = re.compile(
     r"\b(letzt\w*|juengst\w*|vergangen\w*|vorig\w*)\s+(rats)?sitzung\b|\bzuletzt\b")
+#: Nur die ausdrückliche Sitzungs-Phrase („letzte Ratssitzung") — ohne das
+#: nackte „zuletzt". Der Unterschied entscheidet, ob eine Frage die SITZUNG
+#: meint oder ein THEMA, siehe `sitzungsfrage_ohne_thema`.
+_SITZUNG_LETZTE_RE = re.compile(
+    r"\b(letzt\w*|juengst\w*|vergangen\w*|vorig\w*)\s+(rats)?sitzung\b")
+
+#: Wörter, die in einer Sitzungsfrage stehen, ohne ein Thema zu sein. Was
+#: `extract_keywords` nach Abzug dieser Liste (und des Gremiums) übrig lässt,
+#: ist der Gegenstand der Frage — und dann ist es keine Sitzungsfrage mehr.
+_SITZUNG_FUELLWOERTER = frozenset({
+    "zuletzt", "letzte", "letzten", "letzter", "juengst", "juengste", "juengsten",
+    "sitzung", "sitzungen", "ratssitzung", "ratssitzungen", "plenum", "gremium",
+    "beschluesse", "beschluss", "entschieden", "entscheidung", "entscheidungen",
+    "tagesordnung", "ergebnis", "ergebnisse", "abgestimmt", "beraten", "getagt",
+    "oldenburg", "oldenburger", "rathaus", "dinge", "themen", "thema", "sachen",
+    "punkte", "alles", "eigentlich", "genau", "ueberhaupt",
+})
+
+
+def sitzungsfrage_ohne_thema(question: str, committee: str | None) -> bool:
+    """Meint „Was hat der Rat zuletzt beschlossen?" die SITZUNG — oder mit
+    „… zuletzt zum Radverkehr …" ein Thema?
+
+    Der Unterschied ist die ganze Antwort. Am 10.09.2026 fragte das Konto, mit
+    dem Apple die App prüft, „Was hat der Rat zuletzt zum Radverkehr
+    beschlossen?" — und bekam die komplette letzte Ratssitzung aufgezählt:
+    Jahresabschlüsse, Straßenbenennung, Wahlleitung, mit dem Satz, das „kann
+    auch den Radverkehr betreffen". Der Leitfaden Fahrradstraßen vom 01.06.
+    kam nicht vor. Ursache: Das nackte „zuletzt" neben einem Gremium schaltete
+    den Sitzungs-Fragetyp ein, und der lädt die Sitzung vollständig, egal
+    wonach gefragt war.
+
+    Deterministisch wie die Erkennung selbst: Die Substantive der Frage
+    (``extract_keywords``) minus Gremium und Sitzungs-Füllwörter. Bleibt
+    etwas übrig, ist das der Gegenstand — dann sucht das Retrieval danach,
+    und das Datum entscheidet die Reihenfolge (``latest_intent``), nicht die
+    Sitzungsgrenze. Die ausdrückliche Phrase „in der letzten Ratssitzung"
+    bleibt davon unberührt: Wer sie sagt, meint die Sitzung, auch mit Thema.
+    """
+    gremium = _falte(committee or "")
+    for kw in extract_keywords(question or ""):
+        if kw in _SITZUNG_FUELLWOERTER:
+            continue
+        if "sitzung" in kw or kw.endswith(("ausschuss", "ausschusses", "ausschuesse")):
+            continue
+        if gremium and (kw in gremium or gremium in kw):
+            continue
+        # Ein Gremium-Alias („Bauausschuss") ist oben schon abgefangen; ein
+        # Wort der Alias-Tabelle könnte anders enden — auch das ist kein Thema.
+        if kw in _GREMIUM_ALIASE:
+            continue
+        return False
+    return True
 _SITZUNG_VORAUS_RE = re.compile(
     r"\b(naechst\w*|kommend\w*)\s+((rats)?sitzung\w*|mal)\b|\bwann\s+tagt\b|"
     r"\btagesordnung\w*\b")
@@ -1147,6 +1220,12 @@ def _finde_sitzungen(store, question: str) -> list[dict]:
             # Datum ohne Gremium meint den TAG — alle Sitzungen dieses Tages.
             rows = store.sessions_on(rows[0]["session_date"])
     elif committee and _SITZUNG_ZURUECK_RE.search(frage_f):
+        # „zuletzt zum Radverkehr" ist eine Themenfrage mit Zeitbezug, keine
+        # Sitzungsfrage — siehe `sitzungsfrage_ohne_thema`. Nur die
+        # ausdrückliche Sitzungs-Phrase darf ein Thema mitführen.
+        if not _SITZUNG_LETZTE_RE.search(frage_f) \
+                and not sitzungsfrage_ohne_thema(question, committee):
+            return []
         rows = [r for r in store.recent_sessions(limit=80)
                 if _gremium_passt(committee, r.get("committee"))][:1]
         if rows and not store.decision_ids_der_sitzung(rows[0]["ksinr"]):
@@ -3220,6 +3299,25 @@ def steckbrief_karte_zeigen(question: str) -> bool:
         return True
     return bool(_EIGENES_PRAEDIKAT.search(question or ""))
 
+#: Was eine Anschlussfrage vom Modell verlangt — und was nicht.
+#:
+#: Am 09.09.2026 fragte jemand nach der Cäcilienbrücke, dann „Was findest du
+#: zum Planfeststellungsbeschluss?", dann „Sag mir mehr konkret zum
+#: Planfeststellungsbeschluss von 2023". Die dritte Antwort begann mit
+#: WORTGLEICH derselben „Kurz gesagt"-Zeile wie die zweite und erzählte die
+#: Chronologie ein zweites Mal. Der Grund steht im Prompt selbst: Das Modell
+#: sieht die vorige Antwort (gekürzt — also genau ihre Zusammenfassung) und
+#: hatte keine Anweisung, sie NICHT zu wiederholen. Wer nachfragt, hat die
+#: vorige Antwort gelesen; er will das Mehr, nicht das Nochmal.
+ANSCHLUSS_REGEL = (
+    "Beantworte NUR, was die neue Frage ZUSÄTZLICH wissen will. Wiederhole weder "
+    "die Zusammenfassung noch den Aufbau der vorigen Antwort — kein zweites "
+    "„Kurz gesagt“ mit demselben Inhalt, keine Chronologie, die schon erzählt "
+    "wurde. Steht das nachgefragte Detail (ein Jahr, ein Dokument, eine Zahl) "
+    "NICHT in den Unterlagen, sage das im ERSTEN Satz und nenne dann kurz, was "
+    "stattdessen belegt ist — statt die alte Antwort noch einmal zu geben."
+)
+
 #: Wenige und schwache Treffer → der Ton muss mitgehen. Ohne diese Regel klingt
 #: eine dünn belegte Antwort wie eine gut belegte; genau daran hing das einzige
 #: begründete 👎 („Falschinfo").
@@ -3247,7 +3345,8 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "topic",
                      ort: dict | None = None,
                      staedte: list[dict] | None = None) -> tuple[list[dict], dict]:
     vtext = _verlauf_zeilen(verlauf)
-    gespraech = (f"Dies ist eine Anschlussfrage in einem Gespräch. Bisher:\n{vtext}\n\n"
+    gespraech = (f"Dies ist eine Anschlussfrage in einem Gespräch. Bisher:\n{vtext}\n"
+                 f"{ANSCHLUSS_REGEL}\n\n"
                  if vtext else "")
     geld = _geld_vereinheitlichen(geld, haushalt, taxes, tax_capacity)
     ortsregel = ""

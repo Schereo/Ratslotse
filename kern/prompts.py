@@ -1020,8 +1020,11 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "Analysiere die Nutzerfrage an ein Stadtrats-Archiv (Oldenburg).{verlauf} Antworte NUR als JSON:\n"
             '{{"question": "die Frage als EIGENSTÄNDIGE Suchfrage — löse Rückbezüge wie „dazu“, '
             '„das“, „dort“ mit Hilfe des Gesprächsverlaufs auf (z. B. „Und was kostet das?“ nach '
-            'einer Brücken-Frage → „Was kostet der Neubau der Cäcilienbrücke?“); ohne Verlauf: die '
-            'Frage unverändert", '
+            'einer Brücken-Frage → „Was kostet der Neubau der Cäcilienbrücke?“). Behalte dabei '
+            'JEDE Präzisierung der neuen Frage — ein Jahr, ein Dokument, ein Detail („mehr zum '
+            'Planfeststellungsbeschluss von 2023“ → „Planfeststellungsbeschluss Cäcilienbrücke '
+            '2023“), denn sie ist der Zweck der Nachfrage; mache aus einer Nachfrage nie wieder '
+            'die vorige Frage. Ohne Verlauf: die Frage unverändert", '
             '"eng": true/false — true NUR bei einer Punktfrage, die eine einzelne '
             'Tatsache verlangt: ein Datum, eine Zahl, ein Name, ein Ja/Nein '
             '(\"Wann wurde X beschlossen?\", \"Wie viel kostet Y?\", \"Wer hat Z '

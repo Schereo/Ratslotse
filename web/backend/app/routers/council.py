@@ -4230,7 +4230,19 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 # nach dem Voll-Merge der Sitzung immer hoch.
                 gross = len(sitzung_ids) >= 12 and not einfach
             ctx = candidates[:QA_ANSWER_N]
-            if latest_place:
+            # Themenfrage mit „zuletzt" („Was hat der Rat zuletzt zum
+            # Radverkehr beschlossen?"): Die Relevanz wählt die Kandidaten,
+            # das Datum ordnet sie. Ohne diese Sortierung behauptete die
+            # CHRONOLOGIE-Regel im Antwort-Prompt eine Reihenfolge, die nur
+            # bei Ortsfragen wirklich hergestellt wurde — bei Themen stand
+            # der semantisch beste, oft ältere Treffer vorn (Befund 20.09.2026,
+            # nachdem die Frage nicht mehr als Sitzungsfrage läuft).
+            latest_topic = (typ in ("topic", "history") and not einfach
+                            and (qa.latest_intent(q_suche) or qa.latest_intent(q)))
+            if latest_topic:
+                ctx = sorted(ctx, key=lambda c: str(c.get("session_date") or ""),
+                             reverse=True)
+            if latest_place or latest_topic:
                 # Das Quellenband bleibt streng chronologisch. Für das Modell
                 # steht die jüngste echte Entscheidung zusätzlich ganz vorn:
                 # Die bloße Prompt-Regel reichte in der Produktionsprobe nicht
