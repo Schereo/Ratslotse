@@ -164,9 +164,27 @@ jobs:
             trap - EXIT
 
             sudo systemctl restart nwz-web-api nwz-web-frontend
-            sleep 3
+            # Auf den Dienst WARTEN statt drei Sekunden zu raten: Am 20.09.2026
+            # lief die Rauchprobe drei Sekunden nach dem Neustart gegen einen
+            # Dienst, der noch nicht lauschte — 47 × „Connection refused", der
+            # Deploy rot, der Code in Ordnung. Dieselbe Schleife wie bei der
+            # Vorprobe oben; bis zu 60 s, denn der Dienst lädt beim Start
+            # Modelle und Datenbanken.
+            api_bereit=
+            for i in $(seq 1 60); do
+              sleep 1
+              if curl -sf -o /dev/null http://127.0.0.1:8000/api/health; then
+                api_bereit=1
+                break
+              fi
+            done
+            if [ -z "$api_bereit" ]; then
+              echo "FEHLER: nwz-web-api antwortet 60 s nach dem Neustart nicht."
+              sudo systemctl status nwz-web-api --no-pager | tail -20 || true
+              exit 1
+            fi
+            echo "API OK nach $i s"
             curl -sf -o /dev/null http://127.0.0.1:3000 && echo "Frontend OK"
-            curl -sf http://127.0.0.1:8000/api/health && echo " API OK"
             # Dieselbe Probe noch einmal, jetzt gegen den ECHTEN Dienst: Die
             # Vorprobe oben hat den Code geprüft, diese hier die Unit — eine
             # falsche EnvironmentFile, ein fehlendes venv, ein belegter Port.

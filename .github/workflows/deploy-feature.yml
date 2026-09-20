@@ -104,9 +104,27 @@ jobs:
             NEXT_PUBLIC_CARTO_API_KEY="${{ secrets.CARTO_API_KEY }}" \
             npm run build
             sudo systemctl restart nwz-feature-api nwz-feature-frontend
-            sleep 3
+            # Auf den Dienst WARTEN statt drei Sekunden zu raten: Am 20.09.2026
+            # lief die Rauchprobe drei Sekunden nach dem Neustart gegen einen
+            # Dienst, der noch nicht lauschte — 47 × „Connection refused", der
+            # Deploy rot, der Code in Ordnung. Dieselbe Schleife wie bei der
+            # Vorprobe oben; bis zu 60 s, denn der Dienst lädt beim Start
+            # Modelle und Datenbanken.
+            api_bereit=
+            for i in $(seq 1 60); do
+              sleep 1
+              if curl -sf -o /dev/null http://127.0.0.1:8001/api/health; then
+                api_bereit=1
+                break
+              fi
+            done
+            if [ -z "$api_bereit" ]; then
+              echo "FEHLER: nwz-feature-api antwortet 60 s nach dem Neustart nicht."
+              sudo systemctl status nwz-feature-api --no-pager | tail -20 || true
+              exit 1
+            fi
+            echo "API OK nach $i s"
             curl -sf -o /dev/null http://127.0.0.1:3001 && echo "Frontend OK"
-            curl -sf http://127.0.0.1:8001/api/health && echo " API OK"
             # Dieselbe Rauchprobe wie auf dev und Prod: „der Prozess läuft" ist
             # nicht „er tut das Richtige".
             python3 ~/app-feature/scripts/rauchprobe.py --basis http://127.0.0.1:8001
