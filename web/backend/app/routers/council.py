@@ -4266,6 +4266,16 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 fehlend = [c for c in candidates[QA_ANSWER_N:] if c["id"] in partei_ids][:6]
                 if fehlend:
                     ctx = ctx[:QA_ANSWER_N - len(fehlend)] + fehlend
+            if typ in ("topic", "history", "money") and not einfach and not sitzung_ids:
+                # Treffer hinter dem Deckel, deren Titel ein SELTENES Fragewort
+                # trägt, rücken nach — der Sumpfeichen-Fall, s. qa.nachzuegler.
+                # Nicht bei Sitzungsfragen (dort ist der Kontext die Sitzung)
+                # und nicht beim Vereinfachen (dort nur die belegten Quellen).
+                nach = qa.nachzuegler(candidates, QA_ANSWER_N, q_suche, expanded)
+                if nach:
+                    im_ctx = {c["id"] for c in ctx}
+                    nach = [c for c in nach if c["id"] not in im_ctx]
+                    ctx = ctx[:QA_ANSWER_N - len(nach)] + nach
             if typ == "history":
                 ctx = qa.sort_verlauf(ctx)
             if typ == "session" and sitzung_ids and not einfach:

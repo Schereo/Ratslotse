@@ -99,3 +99,82 @@ def test_analyse_prompt_verlangt_praezisierung():
     text = prompts.get("qa_analysis")
     assert "Präzisierung" in text
     assert "nie wieder die vorige Frage" in text
+
+
+# ---- Suchbegriffe ohne Fragehülle -------------------------------------------
+
+def test_fragehuelle_fliegt_aus_den_suchbegriffen():
+    """„Radverkehr Beschlüsse Rat" fand den Leitfaden Fahrradstraßen nicht —
+    „Beschlüsse" und „Rat" stehen in jeder Vorlage (dev, 20.09.2026)."""
+    f = qa._ohne_fragehuelle
+    assert f("Radverkehr Beschlüsse Rat") == "Radverkehr"
+    assert f("Sumpfeichen Nadorster Straße entfernen Anzahl") == "Sumpfeichen Nadorster Straße entfernen"
+    assert f("Radverkehr Fahrrad Radweg Fahrradstraße") == "Radverkehr Fahrrad Radweg Fahrradstraße"
+    # Nur Hülle → lieber die Hülle als gar nichts.
+    assert f("Beschlüsse Rat") == "Beschlüsse Rat"
+
+
+def test_analyse_filtert_die_fragehuelle(monkeypatch):
+    _llm(monkeypatch, json.dumps({"terms": "Radverkehr Beschlüsse Rat", "kind": "topic"}))
+    a = qa.analyse_query("Was hat der Rat zuletzt zum Radverkehr beschlossen?")
+    assert a["terms"] == "Radverkehr"
+
+
+def test_analyse_prompt_verlangt_oberbegriff_und_verbietet_huelle():
+    from kern import prompts
+    text = prompts.get("qa_analysis")
+    assert "OBERBEGRIFF" in text
+    assert "Fragehülle" in text
+    assert "ganzer Fragesatz" in text
+
+
+# ---- Nachzügler: seltenes Fragewort im Titel hinter dem Deckel --------------
+
+def _kand(i, title, date="2025-01-01"):
+    return {"id": i, "title": title, "session_date": date}
+
+
+def test_nachzuegler_holt_den_baumfaellungs_beschluss():
+    """Sumpfeichen-Fall: 20 Bebauungsplan-Titel mit „Nadorster Straße" vorn,
+    die Baumfällung auf Rang 28 — sie rückt nach, die B-Pläne nicht."""
+    cands = [_kand(i, f"Bebauungsplan {800 + i} (Nadorster Straße) - Beschluss") for i in range(27)]
+    cands.append(_kand(100, "Baumfällungen an der unteren Nadorster Straße - Bericht"))
+    cands.append(_kand(101, "Sanierungsgebiet Untere Nadorster Straße - Bericht"))
+    cands.append(_kand(102, "Erhalt von Bäumen in der Nadorster Straße"))
+    nach = qa.nachzuegler(cands, 20, "Wie viele Sumpfeichen müssen an der Nadorster Straße entfernt werden?",
+                          "Sumpfeiche Baum Nadorster Straße Fällung")
+    assert [c["id"] for c in nach] == [100, 102]
+
+
+def test_nachzuegler_planfeststellung():
+    cands = [_kand(i, f"Cäcilienbrücke - Bericht {i}") for i in range(22)]
+    cands.append(_kand(50, "Bericht zum Planfeststellungsbeschluss vom 05.07.2019 zum PFA 1"))
+    nach = qa.nachzuegler(cands, 20, "Was steht im Planfeststellungsbeschluss zur Cäcilienbrücke?",
+                          "Planfeststellungsbeschluss Cäcilienbrücke Brücke")
+    assert [c["id"] for c in nach] == [50]
+
+
+def test_nachzuegler_schweigt_ohne_seltenes_wort():
+    """Trifft jedes Fragewort fast alle Titel, unterscheidet keins — nichts rückt nach."""
+    cands = [_kand(i, f"Radverkehr Fahrradstraße {i}") for i in range(30)]
+    assert qa.nachzuegler(cands, 20, "Was ist zum Radverkehr beschlossen?", "Radverkehr Fahrradstraße") == []
+    assert qa.nachzuegler(cands[:10], 20, "Was ist zum Radverkehr beschlossen?", "Radverkehr") == []
+
+
+def test_nachzuegler_hoechstens_vier():
+    cands = [_kand(i, f"Bebauungsplan {i} (Nadorster Straße)") for i in range(20)]
+    cands += [_kand(100 + i, f"Baumfällung {i} an der Nadorster Straße") for i in range(6)]
+    nach = qa.nachzuegler(cands, 20, "Welche Bäume werden an der Nadorster Straße gefällt?",
+                          "Baum Baumfällung Nadorster Straße")
+    assert len(nach) == qa.NACHZUEGLER_MAX
+
+
+def test_umlaut_mehrzahl():
+    f = qa._umlaut_mehrzahl
+    assert f("baum") == "baeum"        # Bäume
+    assert f("haus") == "haeus"        # Häuser
+    assert f("platz") == "plaetz"      # Plätze
+    assert f("kopf") == "koepf"        # Köpfe
+    assert f("brueck") == ""           # „ue" ist schon ein Umlaut
+    assert f("baeume") == ""           # letzte Gruppe ist ein „e"
+    assert f("xyz") == ""

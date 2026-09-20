@@ -337,7 +337,7 @@ def analyse_query(question: str, model: str = EXPAND_MODEL,
         # lieber die Nachfrage, wie sie gestellt wurde.
         if umgeschrieben and _wiederholt_vorige_frage(umgeschrieben, verlauf):
             umgeschrieben = question
-        begriffe = " ".join(str(data.get("terms") or "").split())
+        begriffe = _ohne_fragehuelle(" ".join(str(data.get("terms") or "").split()))
         typ = str(data.get("kind") or "").strip().lower()
         party = (str(data.get("party")).strip() or None) if data.get("party") else None
         # Multi-Query (Task 32): Perspektiv-Umformulierungen füllen Lücken,
@@ -370,6 +370,119 @@ def analyse_query(question: str, model: str = EXPAND_MODEL,
         return out
     except Exception:  # noqa: BLE001
         return fallback
+
+
+#: Wörter, die das Analyse-Modell gern in die Suchbegriffe schreibt und die
+#: in JEDER Vorlage stehen. Gemessen am 20.09.2026 auf dev: Für „Was hat der
+#: Rat zuletzt zum Radverkehr beschlossen?" lieferte es „Radverkehr Beschlüsse
+#: Rat" — damit fehlte der Leitfaden Fahrradstraßen (Rat 01.06.2026) in den
+#: 40 Kandidaten; mit „Radverkehr Fahrrad Radweg Fahrradstraße" stand er auf
+#: Rang 8. Der Prompt verbietet die Wörter jetzt; dieser Filter hält es fest,
+#: falls das Modell sie trotzdem schreibt.
+_FRAGEHUELLE = frozenset({
+    "beschluss", "beschlüsse", "beschluesse", "beschlossen", "entscheidung",
+    "entscheidungen", "entschieden", "rat", "rates", "stadtrat", "stadtrats", "stadt",
+    "oldenburg", "oldenburger", "zuletzt", "aktuell", "aktuelle", "aktueller",
+    "aktuellen", "neueste", "neuesten", "stand", "sachstand", "anzahl", "wie", "viele",
+})
+
+
+def _ohne_fragehuelle(terms: str) -> str:
+    """Suchbegriffe ohne die Wörter, die in jeder Vorlage stehen.
+
+    Bleibt nichts übrig, bleiben die Begriffe, wie sie waren — ein leerer
+    Suchstring wäre schlimmer als ein verwässerter.
+    """
+    woerter = terms.split()
+    rest = [w for w in woerter if w.lower().strip(",.;:") not in _FRAGEHUELLE]
+    return " ".join(rest) if rest else terms
+
+
+#: Wie viele Kandidaten von hinter dem Kontext-Deckel höchstens nachrücken.
+NACHZUEGLER_MAX = 4
+#: Ab diesem Anteil der Kandidaten gilt ein Fragewort als „steht überall" —
+#: es trägt dann nichts zur Unterscheidung bei.
+_NACHZUEGLER_HAEUFIG = 0.3
+
+
+def _umlaut_mehrzahl(gefaltet: str) -> str:
+    """„baum" → „baeum" (trifft „baeume", „baeumen"), „platz" → „plaetz",
+    „haus" → „haeus"; leer, wenn das Wort keinen umlautbaren Stammvokal hat.
+
+    Umgelautet wird der ERSTE Vokal der LETZTEN Vokalgruppe — so bildet das
+    Deutsche seine Umlaut-Mehrzahl, auch beim Zwielaut („au" → „äu"). Eine
+    Gruppe, die schon ein „e" hinter a/o/u trägt („ae", „ue"), ist bereits
+    ein Umlaut und bleibt leer.
+    """
+    vokale = "aeiou"
+    ende = len(gefaltet)
+    while ende > 0 and gefaltet[ende - 1] not in vokale:
+        ende -= 1
+    if ende == 0:
+        return ""
+    anfang = ende
+    while anfang > 0 and gefaltet[anfang - 1] in vokale:
+        anfang -= 1
+    gruppe = gefaltet[anfang:ende]
+    if gruppe[0] not in "aou" or (len(gruppe) > 1 and gruppe[1] == "e"):
+        return ""
+    return gefaltet[:anfang] + gruppe[0] + "e" + gefaltet[anfang + 1:]
+
+
+def nachzuegler(candidates: list[dict], ctx_n: int, question: str, terms: str,
+                max_n: int = NACHZUEGLER_MAX) -> list[dict]:
+    """Treffer hinter dem Kontext-Deckel, deren Titel ein SELTENES Fragewort trägt.
+
+    Der Fall dahinter (Konto 9, 11.09.2026): „Wie viele Sumpfeichen müssen an
+    der Nadorster Straße entfernt werden?" — die Antwort war „keine Auskunft",
+    obwohl „Baumfällungen an der unteren Nadorster Straße" (09/2025) und der
+    Bericht zur Baumbesichtigung (06/2026) im Bestand liegen. Sie standen auf
+    Rang 28 und 31 von 40: Der Reranker bevorzugte zwei Dutzend
+    Bebauungsplan-Beschlüsse, die ebenfalls „Nadorster Straße" im Titel
+    tragen, und das Modell sieht nur die ersten zwanzig.
+
+    Die Regel ist bewusst kein zweites Ranking, sondern ein Nachrücken: Ein
+    Fragewort, das in fast allen Kandidaten vorkommt („Nadorster", „Straße",
+    „Cäcilienbrücke"), unterscheidet nichts — eines, das nur wenige treffen
+    („Baum", „Fällung", „Planfeststellungsbeschluss"), ist genau das, wonach
+    gefragt war. Wer so ein seltenes Wort im Titel hat und hinter dem Deckel
+    liegt, rückt nach — höchstens ``max_n``, in Ranking-Reihenfolge.
+
+    Gefaltet und als Teilwort verglichen, damit „Baum" die „Baumfällungen"
+    trifft und „Fällung" die „Baumfällung"; Wörter unter vier Zeichen zählen
+    nicht (sonst träfe „Rat" jeden „Beirat").
+    """
+    if not candidates or len(candidates) <= ctx_n:
+        return []
+    woerter = {w for w in (extract_keywords(question) + [t.lower() for t in terms.split()])
+               if len(w) >= 4 and w not in _STOP and w not in _FRAGEHUELLE}
+    # Grundformen grob: „Sumpfeichen" → „sumpfeiche"; dazu die Umlaut-Mehrzahl
+    # („Baum" → „Bäume", „Platz" → „Plätze"), sonst träfe „Baum" den Titel
+    # „Erhalt von Bäumen" nicht.
+    formen: dict[str, tuple[str, ...]] = {}
+    for w in woerter:
+        g = _falte(w).rstrip("n") if w.endswith("en") else _falte(w)
+        formen[g] = (g, _umlaut_mehrzahl(g))
+    titel = {c["id"]: _falte(c.get("title") or "") for c in candidates}
+    haeufig_ab = max(2, int(len(candidates) * _NACHZUEGLER_HAEUFIG))
+
+    def trifft(w: str, t: str) -> bool:
+        return any(f and f in t for f in formen[w])
+
+    selten = {w for w in formen
+              if 0 < sum(1 for t in titel.values() if trifft(w, t)) < haeufig_ab}
+    if not selten:
+        return []
+    vorn = {c["id"] for c in candidates[:ctx_n]}
+    raus: list[dict] = []
+    for c in candidates[ctx_n:]:
+        if c["id"] in vorn:
+            continue
+        if any(trifft(w, titel[c["id"]]) for w in selten):
+            raus.append(c)
+            if len(raus) >= max_n:
+                break
+    return raus
 
 
 def _wiederholt_vorige_frage(umgeschrieben: str, verlauf: list[dict] | None) -> bool:
