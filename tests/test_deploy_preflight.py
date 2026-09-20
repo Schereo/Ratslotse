@@ -22,6 +22,7 @@ from scripts.verify_predeploy_backup import PreflightError, verify  # noqa: E402
 from scripts.verify_release_runtime import (  # noqa: E402
     PreflightError as RuntimePreflightError,
     running_repo_python_processes,
+    verify_no_cron_running,
     verify_configuration,
     verify_crontab,
     verify_systemd_permissions,
@@ -314,6 +315,41 @@ def test_process_scan_finds_old_repo_python_process(tmp_path):
     assert running_repo_python_processes(
         root, proc_root=proc_root, own_pid=9999
     ) == [(4711, "check_council.py")]
+
+
+def _prozess(proc_root: Path, pid: int, root: Path, *args: str) -> None:
+    process = proc_root / str(pid)
+    process.mkdir(parents=True)
+    (process / "cmdline").write_bytes("\0".join(args).encode() + b"\0")
+    (process / "cwd").symlink_to(root, target_is_directory=True)
+
+
+def test_cron_guard_before_api_stop_ignores_the_api_itself(tmp_path):
+    """Vor dem Stopp läuft die API noch — und soll es. Nur ein Cron-/Ops-
+    Prozess des Checkouts blockiert; sonst wäre jeder Deploy blockiert.
+
+    13.09. und 20.09.2026: check_cities.py (sonntags 5 Uhr) ließ den Deploy
+    erst NACH dem API-Stopp scheitern — Barriere gesetzt, Prod 500."""
+    root = tmp_path / "app"
+    root.mkdir()
+    proc_root = tmp_path / "proc"
+    _prozess(proc_root, 100, root, str(root / ".venv/bin/uvicorn"), "app.main:app")
+
+    verify_no_cron_running(root, proc_root=proc_root)   # nur die API: frei
+    assert running_repo_python_processes(root, proc_root=proc_root, own_pid=9999) \
+        == [(100, "uvicorn")], "nach dem Stopp zählt die API weiterhin mit"
+
+    _prozess(proc_root, 200, root, ".venv/bin/python", "scripts/check_cities.py")
+    with pytest.raises(RuntimePreflightError, match=r"check_cities\.py.*BEVOR die API"):
+        verify_no_cron_running(root, proc_root=proc_root)
+
+
+def test_workflow_checks_for_running_crons_before_the_barrier():
+    """Der Wächter gehört vor Barriere und API-Stopp, sonst legt er Prod um."""
+    workflow = (Path(__file__).resolve().parents[1] / ".github/workflows/deploy.yml").read_text()
+    pruefung = workflow.index("--require-no-cron")
+    assert pruefung < workflow.index("name: Enter release maintenance barrier")
+    assert pruefung < workflow.index("systemctl stop nwz-web-api")
 
 
 def test_handle_scan_finds_database_opened_outside_repo(tmp_path):

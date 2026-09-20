@@ -121,12 +121,18 @@ jobs:
       # nichts, schreibt keine .env und fasst die Crontab nicht an. Modellzugriff
       # und der echte HLS-Stream bleiben externe Canaries; hier werden die lokal
       # sicher prüfbaren Voraussetzungen vor rsync fail-closed validiert.
+      #
+      # --require-no-cron: Läuft ein Cron des Checkouts (sonntags 5 Uhr
+      # check_cities.py, gern sechs Stunden), bricht der Deploy HIER ab —
+      # vor Barriere, rsync und API-Stopp, also folgenlos. Bis 20.09.2026
+      # fiel das erst dem Wächter NACH dem Stopp auf (13.09. und 20.09.):
+      # Barriere gesetzt, API aus, Prod 500, bis jemand von Hand eingriff.
       - name: Verify release runtime prerequisites
         run: |
           ssh target '
             set -eu
             cd ~/app
-            .venv/bin/python - --root . --minimum-app-build 19
+            .venv/bin/python - --root . --minimum-app-build 19 --require-no-cron
           ' < scripts/verify_release_runtime.py
 
       # Der Marker liegt in data/ (vom rsync ausgeschlossen) und muss VOR dem
