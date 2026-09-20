@@ -26,6 +26,7 @@ from council.cities.registry import BodySpec
 from council.cities.store import CitiesStore
 from council.cities.text import (EXTRACTOR, MAX_CHARS, MAX_CHARS_PROTOKOLL, MAX_PAGES,
                                  MAX_PAGES_PROTOKOLL, VERSION, extract as extract_text)
+from kern.stopp import Stopp
 
 logger = logging.getLogger("council.cities.pipeline")
 
@@ -397,7 +398,8 @@ def extract_inline(main: CitiesStore, spec: BodySpec, raw_dir: str | Path) -> in
 # ---------------------------------------------------------------- annotate
 
 def annotate(main: CitiesStore, body_id: str | None = None,
-             limit: int | None = None, nach_index: bool = False) -> dict:
+             limit: int | None = None, nach_index: bool = False,
+             stopp: Stopp | None = None, nur_neu: bool = False) -> dict:
     """Die Annotatoren laufen lassen, die an dieser Stelle dran sind.
 
     **Zwei Stellen, nicht eine.** ``classify`` gibt einer fremden Vorlage ihr
@@ -414,14 +416,22 @@ def annotate(main: CitiesStore, body_id: str | None = None,
         if ann.needs_index != nach_index:
             continue
         if ann.key == "fit":
-            zahlen[f"{ann.key}/{ann.version}"] = _fit(main, ann, body_id, limit)
+            zahlen[f"{ann.key}/{ann.version}"] = _fit(main, ann, body_id, limit,
+                                                      stopp, nur_neu)
         else:
             zahlen[f"{ann.key}/{ann.version}"] = annotate_modul.run(
-                main, ann, body_id, limit)
+                main, ann, body_id, limit, stopp=stopp, nur_neu=nur_neu)
+        # Hat ein Annotator zur Seite treten müssen, tritt der nächste auch
+        # zur Seite: Der Deploy wartet auf den ganzen Prozess, nicht auf einen
+        # Schritt — und eine abgelaufene Frist gilt für alle.
+        if any(k.startswith("abgebrochen_")
+               for k in zahlen[f"{ann.key}/{ann.version}"]):
+            break
     return zahlen
 
 
-def _fit(main: CitiesStore, ann, body_id: str | None, limit: int | None) -> dict:
+def _fit(main: CitiesStore, ann, body_id: str | None, limit: int | None,
+         stopp: Stopp | None = None, nur_neu: bool = False) -> dict:
     """``fit`` braucht die Rats-Datenbank für die Belege — als einziger.
 
     Sie wird hier geöffnet und wieder geschlossen, nicht durchgereicht: Der
@@ -442,7 +452,8 @@ def _fit(main: CitiesStore, ann, body_id: str | None, limit: int | None) -> dict
                 "cost_usd": 0.0, "seconds": 0}
     rats = CouncilStore(pfad)
     try:
-        return fit_modul.run(main, rats, ann, EMBED_MODEL, body_id, limit)
+        return fit_modul.run(main, rats, ann, EMBED_MODEL, body_id, limit,
+                             stopp=stopp, nur_neu=nur_neu)
     finally:
         rats.close()
 

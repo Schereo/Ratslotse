@@ -505,6 +505,10 @@ COUNCIL_LIVE_TRACKER_MODEL=google/gemini-2.5-flash  # Modell der Live-Verfolgung
 COUNCIL_QA_MODEL=google/gemini-2.5-flash          # Antwort-Modell der KI-Frage (schnell; Default passt)
 COUNCIL_QA_EXPAND_MODEL=google/gemini-2.5-flash-lite  # Query-Expansion der KI-Frage (schnell; Default passt)
 COUNCIL_RETRIEVAL_KLASSISCH=0        # "1" = Notausschalter: Retrieval-Stand vor dem Vorlagen-Chunk-Ausbau
+# Städtevergleich (check_cities.py) — der teuerste und längste Cron
+CITIES_MAX_SECONDS=14400             # Frist je Lauf; 0 hebt sie auf (Nachlauf von Hand)
+CITIES_ANNOTATE_MAX=3000             # Stückzahl je Lauf (Deckel gegen den Rückstau)
+CITIES_FIT_WORKERS=8                 # gleichzeitige Urteile; mehr = schneller, nicht teurer
 # OpenRouter Provider-Routing (DSGVO) — schließt China-Anbieter aus, verlangt ZDR
 NWZ_OPENROUTER_ROUTING=on            # "off" = Notausschalter
 NWZ_OPENROUTER_IGNORE=deepseek,baidu,streamlake,siliconflow,alibaba
@@ -680,6 +684,23 @@ RATSLOTSE_PROXY_HOSTS=gisportal4ol.oldenburg.de,youtube.com         # nur diese 
   `main()`); das Admin-Panel zeigt das unter *Statistik → Cron-Jobs*. Der
   erwartete Takt je Job steht in **`kern/jobs.py`** — wer die crontab ändert,
   zieht ihn dort nach, sonst schlägt die Überfällig-Ampel falsch an.
+- **Ein Cron darf pausiert sein — aber mit Begründung.** Ein Eintrag in
+  `kern/jobs.py` kann `pausiert: "<warum, und woran man merkt, dass er wieder
+  anlaufen kann>"` tragen. Dann ist sein Schweigen der gewollte Zustand: keine
+  Überfällig-Ampel im Panel, keine Mail aus `check_herzschlag.py`. Ohne dieses
+  Feld hieße „Cron aus" entweder „jeden Tag eine Mail" oder „Eintrag löschen" —
+  und beim Wiedereinschalten fiele niemandem auf, dass er fehlt. **Pausiert
+  seit 20.09.2026: `check_cities`** (Städtevergleich noch nicht ausgeliefert,
+  stand aber für rund 70 % der Modellkosten). Wieder anschalten heißt: Zeile in
+  `kern/jobs.py` raus UND die crontab-Zeile auf dem Server wieder scharf
+  stellen.
+- **Lange Cron-Läufe treten dem Deploy zur Seite** (`kern/stopp.py`). Der
+  Deploy legt `data/.deploy-wartet`, bevor er irgendetwas anfasst; die
+  Stapelschleifen sehen an ihrer nächsten Grenze nach, behalten das
+  Geschriebene und hören auf. Anlass: `check_cities.py` lief am 20.09.2026
+  vierzehn Stunden und ließ sechs Deploys hintereinander abbrechen. Wer eine
+  neue lange Schleife baut, reicht `stopp` durch — und schreibt **stapelweise**,
+  nicht am Ende: Nur dann ist das Zur-Seite-Treten kostenlos.
 - **„Ähnliche Beschlüsse"** (`scripts/embed_decisions.py`): berechnet semantische
   Nachbarn per **fastembed** (ONNX, kein torch) — bewusst **nicht** in
   `requirements.txt`, damit Deploy + Web-Service unberührt bleiben.

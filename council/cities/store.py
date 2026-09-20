@@ -1322,19 +1322,31 @@ class CitiesStore:
                             body_id: str | None = None, limit: int | None = None,
                             source_hashes: dict[str, str] | None = None,
                             since: str | None = None,
-                            kinds: Sequence[str] = ()) -> list[dict]:
+                            kinds: Sequence[str] = (),
+                            nur_neu: bool = False) -> list[dict]:
         """Objekte ohne Annotation dieses Annotators.
 
         Mit ``source_hashes`` (id → Hash der Eingabe) kommen zusätzlich die
         Objekte zurück, deren Eingabe sich seit dem letzten Lauf geändert hat —
         so rechnet ein Lauf nur, was nötig ist.
+
+        ``nur_neu`` lässt aus, was ausschließlich wegen eines VERSIONSSPRUNGS
+        offen ist. Eine Zeile ``version="4"`` in ``annotators.py`` entwertet
+        sonst stillschweigend den ganzen Bestand: Am 15.09.2026 hob #1370
+        ``fit`` von 3 auf 4, und der Sonntagslauf darauf urteilte 9.560
+        Vorlagen neu — vierzehn Stunden, drei bis vier Sonntage, und niemand
+        hatte das entschieden. Geänderte Eingaben (``source_hashes``) bleiben
+        auch mit ``nur_neu`` dabei: Das ist neuer Inhalt, kein neuer Maßstab.
         """
         if object_kind != "paper":
             raise NotImplementedError("bisher nur für Papiere gebraucht")
+        # Ohne die Version: Wer von diesem Annotator ÜBERHAUPT schon ein Urteil
+        # hat, gilt als erledigt — auch mit einer älteren Versionsnummer.
+        bedingung = ("a.annotator=?" if nur_neu else "a.annotator=? AND a.version=?")
         sql = ("SELECT p.* FROM papers p WHERE NOT EXISTS ("
                "  SELECT 1 FROM annotations a WHERE a.object_kind='paper' AND a.object_id=p.id "
-               "    AND a.annotator=? AND a.version=?)")
-        args: list[Any] = [annotator, version]
+               f"    AND {bedingung})")
+        args: list[Any] = [annotator] if nur_neu else [annotator, version]
         if body_id:
             sql += " AND p.body_id=?"; args.append(body_id)
         # Dasselbe Fenster wie in `auswahl.papiere` — sonst holte diese
@@ -1358,6 +1370,48 @@ class CitiesStore:
                 offen += [dict(r) for r in self._conn.execute(
                     f"SELECT * FROM papers WHERE id IN ({marks})", veraltet)]
         return offen
+
+    # ------------------------------------------- Zwischenspeicher: Suchwörter
+
+    def evidence_terms(self) -> dict[str, tuple[str, list[str]]]:
+        """Alle gespeicherten Suchwörter: ``paper_id → (source_hash, Wörter)``.
+
+        Am Stück gelesen und nicht je Vorlage einzeln — ``fit`` fragt ohnehin
+        für den ganzen Kandidatensatz, und 33.000 Einzelabfragen wären der
+        teuerste Teil einer Schleife, die sonst nur wartet (dieselbe
+        Überlegung wie bei ``chunk_matrix``).
+        """
+        return {r["paper_id"]: (r["source_hash"], json.loads(r["terms"]))
+                for r in self._conn.execute(
+                    "SELECT paper_id, source_hash, terms FROM evidence_terms")}
+
+    def put_evidence_terms(self, eintraege: Sequence[tuple[str, str, list[str]]]) -> int:
+        """``(paper_id, source_hash, Wörter)`` schreiben — in EINER Transaktion."""
+        if not eintraege:
+            return 0
+        with self._write() as conn:
+            conn.executemany(
+                "INSERT INTO evidence_terms (paper_id, source_hash, terms, created_at) "
+                "VALUES (?,?,?,?) ON CONFLICT(paper_id) DO UPDATE SET "
+                "  source_hash=excluded.source_hash, terms=excluded.terms, "
+                "  created_at=excluded.created_at",
+                [(pid, quelle, json.dumps(woerter, ensure_ascii=False), now())
+                 for pid, quelle, woerter in eintraege])
+        return len(eintraege)
+
+    def annotations_altversion(self, annotator: str, version: str,
+                               object_kind: str = "paper") -> int:
+        """Wie viele Urteile dieses Annotators eine ÄLTERE Version tragen.
+
+        Die Zahl, die ein Versionssprung sichtbar macht: Sie steht als
+        Kennzahl im Cron-Lauf, damit „9.560 Urteile sind jetzt veraltet" eine
+        Entscheidung wird und keine Nebenwirkung. Nachgeholt wird sie mit
+        ``cities_backfill.py --run --stage annotate``, nicht vom Wochenlauf.
+        """
+        return int(self._conn.execute(
+            "SELECT COUNT(*) FROM annotations "
+            "WHERE object_kind=? AND annotator=? AND version<>?",
+            (object_kind, annotator, version)).fetchone()[0])
 
     def annotation_values(self, annotator: str, version: str, key: str,
                           object_kind: str = "paper") -> list[tuple[str, Any]]:

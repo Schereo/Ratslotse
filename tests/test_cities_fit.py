@@ -650,3 +650,104 @@ def test_der_aufwand_steht_im_vorlagentext():
         {"effort": "resolution", "addressee": "Bund"})
     assert "resolution" in text and "Bund" in text
     assert "nicht die Stadt selbst" in text
+
+
+# ------------------------------------------------- Grenzen des Wochenlaufs
+
+def test_ein_versionssprung_ist_kein_wochenlauf(cities, rats, monkeypatch):
+    """Eine Zeile ``version="4"`` darf nicht den ganzen Bestand neu urteilen.
+
+    Am 15.09.2026 hob #1370 den `fit`-Annotator von 3 auf 4. Der Sonntag
+    darauf beurteilte 9.560 Vorlagen neu — vierzehn Stunden, drei bis vier
+    Sonntage insgesamt, rund sechs Dollar, und entschieden hatte das niemand.
+    Mit `nur_neu` bleibt so ein Bestand liegen, bis ihn jemand ausdrücklich
+    nachzieht (`cities_backfill.py --run --stage annotate`).
+    """
+    ann = get("fit")
+    cities.put_annotation("paper", "os:p:1", "fit", "1", {"status": "partial"}, "alt")
+    monkeypatch.setattr(fit_modul.llm, "chat_complete", lambda **kw: _antwort(URTEIL))
+
+    stand = fit_modul.run(cities, rats, ann, MODELL, workers=1, nur_neu=True)
+    assert stand["annotated"] == 0, "eine ältere Fassung zählt als erledigt"
+    assert cities.annotations_altversion("fit", ann.version) == 1
+
+    stand = fit_modul.run(cities, rats, ann, MODELL, workers=1)
+    assert stand["annotated"] == 1, "der Backfill holt ihn sehr wohl nach"
+
+
+def test_geaenderte_eingabe_wird_auch_mit_nur_neu_geurteilt(cities, rats, monkeypatch):
+    """Neue EINGABE ist kein neuer Maßstab.
+
+    ``nur_neu`` lässt nur aus, was ein Versionssprung offen gemacht hat.
+    Bekommt Oldenburg einen neuen Beleg, ändert sich der ``source_hash`` der
+    fremden Vorlage — und dann gehört das Urteil erneuert, auch im Wochenlauf.
+    Sonst stünde nach dem ersten Urteil für immer der Stand von damals da.
+    """
+    ann = get("fit")
+    monkeypatch.setattr(fit_modul.llm, "chat_complete", lambda **kw: _antwort(URTEIL))
+    assert fit_modul.run(cities, rats, ann, MODELL, workers=1,
+                         nur_neu=True)["annotated"] == 1
+    assert fit_modul.run(cities, rats, ann, MODELL, workers=1,
+                         nur_neu=True)["annotated"] == 0
+
+    cities.upsert_batch(Batch(papers=[
+        Paper("oldenburg:paper:5000", "oldenburg", "Wärmenetz Oldenburg",
+              date="2026-02-01")]))
+    oldenburger_nachbar(cities, "oldenburg:paper:5000", 0.81)
+    assert fit_modul.run(cities, rats, ann, MODELL, workers=1,
+                         nur_neu=True)["annotated"] == 1
+
+
+def test_ein_wartender_deploy_stoppt_das_urteilen(cities, rats, monkeypatch, tmp_path):
+    """Der Lauf hört auf — und behält, was er schon geschrieben hat."""
+    from kern.stopp import WARTET_NAME, Stopp
+
+    (tmp_path / WARTET_NAME).touch()
+    monkeypatch.setattr(fit_modul.llm, "chat_complete", lambda **kw: _antwort(URTEIL))
+    stand = fit_modul.run(cities, rats, get("fit"), MODELL, workers=1,
+                          stopp=Stopp(tmp_path))
+    assert stand["abgebrochen_deploy"] == 1
+    assert stand["annotated"] == 0, "schon beim Sammeln der Belege zur Seite getreten"
+
+
+def test_suchbegriffe_werden_zwischengespeichert(cities, rats, monkeypatch):
+    """Der zweite Lauf fragt das Modell nicht noch einmal.
+
+    Am 20.09.2026 waren das 10.315 Aufrufe für 3.000 Urteile, am 13.09.2026
+    sogar 19.496 für 449 — die Begriffe werden für ALLE Kandidaten geholt,
+    bevor feststeht, wer überhaupt neu beurteilt werden muss (sie gehen in den
+    `source_hash`). Wichtiger als das Geld ist die Stabilität: Wechselnde
+    Begriffe wechseln den Hash und lassen `fit` Vorlagen neu urteilen, an
+    denen sich inhaltlich nichts getan hat.
+    """
+    from council.cities import evidence as ev
+    geholt: list[str] = []
+
+    def zaehlend(klasse, papier):
+        geholt.append(papier["id"])
+        return ["Waermenetz", "Fernwaerme"]
+
+    monkeypatch.setattr(ev, "search_terms", zaehlend)
+    monkeypatch.setattr(fit_modul.llm, "chat_complete", lambda **kw: _antwort(URTEIL))
+
+    fit_modul.run(cities, rats, get("fit"), MODELL, workers=1)
+    erster = len(geholt)
+    assert erster >= 1
+    assert cities.evidence_terms()["os:p:1"][1] == ["Waermenetz", "Fernwaerme"]
+
+    fit_modul.run(cities, rats, get("fit"), MODELL, workers=1)
+    assert len(geholt) == erster, "der zweite Lauf holt die Begriffe aus dem Speicher"
+
+
+def test_der_notnagel_wird_nicht_eingefroren(cities, rats, monkeypatch):
+    """Fällt der Modellaufruf aus, liefert `search_terms` die Wörter des
+    Instruments. Die gehören NICHT in den Zwischenspeicher — sonst macht ein
+    einzelner Ausfall den schlechteren Stand dauerhaft, und niemand sieht es
+    je wieder."""
+    from council.cities import evidence as ev
+
+    monkeypatch.setattr(ev, "search_terms",
+                        lambda klasse, papier: ev.woerter_des_instruments(klasse))
+    monkeypatch.setattr(fit_modul.llm, "chat_complete", lambda **kw: _antwort(URTEIL))
+    fit_modul.run(cities, rats, get("fit"), MODELL, workers=1)
+    assert cities.evidence_terms() == {}

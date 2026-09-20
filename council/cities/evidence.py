@@ -20,6 +20,7 @@ gerade überhaupt beschäftigt.
 """
 from __future__ import annotations
 
+import hashlib
 import logging
 import os
 from dataclasses import dataclass, replace
@@ -250,6 +251,32 @@ def _kurz_ganzwortig(text: str | None, n: int = 500) -> str:
     gekuerzt = sauber[:n]
     letzte = gekuerzt.rfind(" ")
     return (gekuerzt[:letzte] if letzte > n // 2 else gekuerzt) + " …"
+
+
+def terms_hash(classification: dict, paper: dict) -> str:
+    """Der Fingerabdruck der EINGABE von ``search_terms``.
+
+    Genau die drei Werte, die in den Prompt gehen — nicht mehr. Wer hier die
+    ganze Einordnung hineinrechnete, würde den Zwischenspeicher bei jedem
+    ``classify``-Lauf entwerten, auch wenn sich an Instrument, Kurzfassung und
+    Titel nichts geändert hat.
+    """
+    roh = "\u0000".join((
+        (classification.get("instrument") or "").strip(),
+        _kurz(classification.get("summary"), 300) or "",
+        _kurz(paper.get("name"), 200) or "",
+    ))
+    return hashlib.sha256(roh.encode("utf-8")).hexdigest()[:32]
+
+
+def woerter_des_instruments(classification: dict) -> list[str]:
+    """Der Notnagel von ``search_terms``, öffentlich.
+
+    ``fit`` muss ihn erkennen können: Ein Ergebnis, das nur so zustande kam,
+    gehört NICHT in den Zwischenspeicher — sonst friert ein einzelner
+    Modellausfall den schlechteren Stand für immer ein.
+    """
+    return _woerter((classification.get("instrument") or "").strip())
 
 
 def search_terms(classification: dict, paper: dict) -> list[str]:

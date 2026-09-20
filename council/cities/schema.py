@@ -25,7 +25,7 @@ frische Datenbank entsteht aus ``SCHEMA``, eine gewachsene aus
 """
 from __future__ import annotations
 
-SCHEMA_VERSION = 7
+SCHEMA_VERSION = 8
 
 SCHEMA = """
 -- ---------------------------------------------------------------- Schicht 0
@@ -181,6 +181,31 @@ CREATE TABLE IF NOT EXISTS annotations (
     PRIMARY KEY (object_kind, object_id, annotator, version)
 );
 CREATE INDEX IF NOT EXISTS idx_annotations_annotator ON annotations(annotator, version);
+
+-- Die Suchwörter, unter denen OLDENBURG dieselbe Sache führen würde
+-- (`evidence.search_terms`). **Ein Zwischenspeicher, kein Urteil** — deshalb
+-- eine eigene Tabelle und keine Zeile in `annotations`: Was dort steht, ist
+-- ein Befund mit Fassungsnummer und Kosten; was hier steht, ist eine
+-- Zwischenrechnung, die man jederzeit wegwerfen darf.
+--
+-- **Wozu.** `fit` braucht die Begriffe für ALLE Kandidaten, bevor feststeht,
+-- welche überhaupt neu beurteilt werden müssen — sie gehen in den
+-- `source_hash` ein. Am 20.09.2026 waren das 10.315 Modellaufrufe für 3.000
+-- Urteile, am 13.09.2026 sogar 19.496 für 449. Die Antwort hängt nur an
+-- Instrument, Kurzfassung und Titel; ändert sich davon nichts, ist sie
+-- dieselbe. `source_hash` hält genau das fest.
+--
+-- **Der zweite Grund ist wichtiger als das Geld:** Ein Modell antwortet auch
+-- bei `temperature=0` nicht garantiert gleich. Wechselnde Begriffe wechseln
+-- den `source_hash` der Vorlage — und dann urteilt `fit` sie neu, ohne dass
+-- sich inhaltlich etwas getan hätte. Der Zwischenspeicher macht die
+-- Arbeitsliste stabil.
+CREATE TABLE IF NOT EXISTS evidence_terms (
+    paper_id     TEXT NOT NULL PRIMARY KEY,
+    source_hash  TEXT NOT NULL,
+    terms        TEXT NOT NULL,
+    created_at   TEXT NOT NULL
+);
 
 -- ---------------------------------------------------------------- Schicht 4
 CREATE TABLE IF NOT EXISTS chunks (
@@ -540,5 +565,16 @@ MIGRATIONS: list[tuple[int, str]] = [
     );
     CREATE INDEX IF NOT EXISTS idx_idea_clusters
         ON idea_clusters(model, version, cluster_id);
+    """),
+    # 8 — Zwischenspeicher für die Beleg-Suchwörter (20.09.2026). Reines
+    # Anlegen; die Tabelle füllt sich beim nächsten `fit`-Lauf von selbst.
+    # Begründung samt Messung steht am SCHEMA oben.
+    (8, """
+    CREATE TABLE IF NOT EXISTS evidence_terms (
+        paper_id     TEXT NOT NULL PRIMARY KEY,
+        source_hash  TEXT NOT NULL,
+        terms        TEXT NOT NULL,
+        created_at   TEXT NOT NULL
+    );
     """),
 ]

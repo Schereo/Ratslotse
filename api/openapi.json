@@ -621,7 +621,8 @@
               "ok",
               "stale",
               "error",
-              "unknown"
+              "unknown",
+              "pausiert"
             ],
             "title": "State",
             "type": "string"

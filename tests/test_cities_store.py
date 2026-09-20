@@ -416,3 +416,41 @@ def test_hoechste_migration_und_schema_version_passen_zusammen():
     nummern = [v for v, _ in MIGRATIONS]
     assert len(nummern) == len(set(nummern)), "eine Nummer kommt doppelt vor"
     assert max(nummern) == SCHEMA_VERSION
+
+
+def test_altversion_zaehlt_was_ein_versionssprung_entwertet(tmp_path):
+    """Die Zahl, die aus einer Nebenwirkung eine Entscheidung macht.
+
+    Am 15.09.2026 hob #1370 den `fit`-Annotator von 3 auf 4 — 9.560 Urteile
+    galten damit als nicht vorhanden, und der nächste Sonntagslauf urteilte
+    sie neu: vierzehn Stunden, drei bis vier Sonntage, rund sechs Dollar.
+    Jetzt steht sie als Kennzahl `veraltet_<annotator>` im Cron-Lauf.
+    """
+    s = CitiesStore(tmp_path / "cities.sqlite")
+    try:
+        s.upsert_body(Body("osnabrueck", "Osnabrück", "NI", "allris4"))
+        s.upsert_batch(Batch(papers=[
+            Paper("os:p:1", "osnabrueck", "Eins", date="2026-05-01"),
+            Paper("os:p:2", "osnabrueck", "Zwei", date="2026-05-02")]))
+        s.put_annotation("paper", "os:p:1", "fit", "3", {"status": "partial"}, "h1")
+        s.put_annotation("paper", "os:p:2", "fit", "4", {"status": "partial"}, "h2")
+        assert s.annotations_altversion("fit", "4") == 1
+        assert s.annotations_altversion("fit", "3") == 1
+        assert s.annotations_altversion("classify", "2") == 0
+    finally:
+        s.close()
+
+
+def test_suchwoerter_ueberleben_den_lauf(tmp_path):
+    """Ein Zwischenspeicher, kein Urteil — deshalb eine eigene Tabelle."""
+    s = CitiesStore(tmp_path / "cities.sqlite")
+    try:
+        assert s.evidence_terms() == {}
+        assert s.put_evidence_terms([("os:p:1", "h1", ["Wärmenetz"])]) == 1
+        assert s.evidence_terms() == {"os:p:1": ("h1", ["Wärmenetz"])}
+        # Derselbe Schlüssel wird überschrieben, nicht verdoppelt.
+        s.put_evidence_terms([("os:p:1", "h2", ["Fernwärme"])])
+        assert s.evidence_terms() == {"os:p:1": ("h2", ["Fernwärme"])}
+        assert s.put_evidence_terms([]) == 0
+    finally:
+        s.close()
