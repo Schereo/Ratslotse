@@ -13,8 +13,9 @@
 # sich nicht von selbst neu.
 #
 # Dieser Workflow tut genau das: Er fragt alle 30 Minuten, ob `main` dem
-# letzten geglückten Deploy voraus ist, sieht auf dem Server nach, ob noch ein
-# Cron läuft — und stößt den Deploy an, sobald die Luft rein ist.
+# letzten geglückten Deploy voraus ist, ob nicht längst ein Deploy läuft, und
+# sieht auf dem Server nach, ob noch ein Cron blockiert — dann stößt er den
+# Deploy an, sobald die Luft rein ist.
 name: Ops – Deploy-Rückstand (Prod)
 
 on:
@@ -70,13 +71,24 @@ jobs:
                    --json conclusion,createdAt \
                    -q "[.[] | select(.createdAt > \"${erfolg:-1970-01-01T00:00:00Z}\")
                         | select(.conclusion == \"failure\")] | length" 2>/dev/null || echo 0)
+          # Läuft gerade schon einer? Ohne diese Frage holt der Wächter einen
+          # Deploy nach, der längst unterwegs ist — am 21.09.2026 geschehen:
+          # Der Lauf zu #1424 brauchte 26 Minuten, nach 20 stieß dieser
+          # Workflow denselben Commit ein zweites Mal an. Gefragt wird nach
+          # ALLEM, was nicht `completed` ist: Ein Lauf, der an der
+          # concurrency-Gruppe von deploy.yml wartet, steht auf `queued` und
+          # zählt genauso.
+          laufend=$(gh run list --workflow deploy.yml --limit 10 --json status \
+                      -q "[.[] | select(.status != \"completed\")] | length" 2>/dev/null || echo 0)
           echo "main-Commit:        ${commit:-unbekannt}"
           echo "letzter Erfolg:     ${erfolg:-keiner}"
           echo "Fehlversuche seit:  ${fehl:-0}"
+          echo "offene Deploys:     ${laufend:-0}"
           {
             echo "commit=$commit"
             echo "erfolg=$erfolg"
             echo "fehl=${fehl:-0}"
+            echo "laufend=${laufend:-0}"
           } >> "$GITHUB_OUTPUT"
 
       - name: Configure deployment SSH
@@ -132,12 +144,14 @@ jobs:
           ERFOLG: ${{ steps.stand.outputs.erfolg }}
           CRONS: ${{ steps.crons.outputs.rc }}
           FEHL: ${{ steps.stand.outputs.fehl }}
+          LAUFEND: ${{ steps.stand.outputs.laufend }}
         run: |
           python3 scripts/ops_deploy_rueckstand.py \
             --main-commit "$COMMIT" \
             --letzter-erfolg "$ERFOLG" \
             --crons "$CRONS" \
-            --fehlversuche "$FEHL"
+            --fehlversuche "$FEHL" \
+            --laufend "$LAUFEND"
 
       - name: Deploy nachholen
         if: steps.befund.outputs.aktion == 'nachholen'
