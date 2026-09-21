@@ -9,7 +9,7 @@ import { pfad } from "@/lib/utils";
 import { Anstupser, merkeBenutzung } from "./anstupser";
 import { ErklaerModus } from "./erklaer-modus";
 import { LottiKnopf } from "./knopf";
-import { LottiPanel, useMarkierung } from "./panel";
+import { LottiPanel, useMarkierung, useTastatur } from "./panel";
 import { ernteElement, routeAus, ueberschriftenPfad } from "@/lib/assistentin";
 import { anstupserErlaubt } from "@/lib/anstupser-seiten";
 import { knopfVersteckt, LOTTI_SICHT_EVENT } from "@/lib/lotti-sichtbar";
@@ -75,6 +75,9 @@ function LottiInner() {
   const [modus, setModus] = useState(false);
   const [element, setElement] = useState<ElementFrage | null>(null);
   const markierung = useMarkierung();
+  // Steht die Tastatur, liegt der Knopf hinter ihr — ein Knopf, den man nicht
+  // sieht und nicht trifft, ist kein Knopf. Dieselbe Regel wie in der App.
+  const tastatur = useTastatur();
   // Ausgeblendet heißt: kein Knopf und kein Anklopfen — aber das Fenster
   // bleibt erreichbar (⌘K). Sonst hieße „ausblenden" in Wahrheit „abschalten".
   const [versteckt, setVersteckt] = useState(false);
@@ -136,7 +139,7 @@ function LottiInner() {
         erlaubt={!versteckt && anstupserErlaubt(routeAus(pathname, sp.toString()))}
         onJa={() => setOffen(true)}
       />
-      {(!versteckt || offen || modus) && (
+      {(!versteckt || offen || modus) && tastatur === 0 && (
         <LottiKnopf
           offen={offen || modus}
           onToggle={() => {

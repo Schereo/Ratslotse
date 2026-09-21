@@ -333,6 +333,47 @@ test.describe("Lotti-Knopf und -Fenster", () => {
       await expect(page.locator("main").getByText(ANTWORT)).toBeHidden();
     });
 
+  test("die Tastatur verdeckt das Fenster nicht", async ({ page }) => {
+    // **Eine echte Tastatur lässt sich hier nicht öffnen** — Chromium im Test
+    // kennt keine. Nachgestellt wird deshalb genau das, was sie auslöst: ein
+    // geschrumpfter `visualViewport`. Die Rechnung dahinter prüft
+    // `lib/tastatur.test.ts`; hier geht es um die Verdrahtung, also darum,
+    // dass das Fenster wirklich hochrückt und der Knopf verschwindet.
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.addInitScript(() => {
+      const hoerer: Record<string, (() => void)[]> = { resize: [], scroll: [] };
+      const falsch = {
+        height: window.innerHeight, offsetTop: 0,
+        addEventListener: (n: string, f: () => void) => { hoerer[n]?.push(f); },
+        removeEventListener: () => { /* im Test nie nötig */ },
+      };
+      Object.defineProperty(window, "visualViewport", { value: falsch, configurable: true });
+      (window as unknown as { tastaturAuf: (h: number) => void }).tastaturAuf = (h) => {
+        falsch.height = window.innerHeight - h;
+        hoerer.resize.forEach((f) => f());
+      };
+    });
+    await page.goto("/dashboard");
+    await knopf(page).click();
+    const vorher = (await fenster(page).boundingBox())!;
+
+    await page.evaluate(() => (window as unknown as
+      { tastaturAuf: (h: number) => void }).tastaturAuf(320));
+    await expect(knopf(page)).toBeHidden();
+    // Die Messung braucht einen eigenen Takt: Wer im selben Aufruf umstellt
+    // und misst, bekommt die alte Geometrie zurück und hält den Umbau
+    // fälschlich für wirkungslos (eine Stunde am 21.09.2026).
+    await expect.poll(async () => {
+      const b = await fenster(page).boundingBox();
+      return b ? Math.round(b.y + b.height) : 0;
+    }).toBeLessThan(420);
+    const nachher = (await fenster(page).boundingBox())!;
+    // Der untere Rand des Fensters liegt jetzt über der Tastatur — und damit
+    // auch die Eingabezeile, in die man gerade tippt.
+    expect(nachher.y + nachher.height).toBeLessThan(vorher.y + vorher.height - 300);
+    await expect(fenster(page).getByLabel("Frage an Lotti")).toBeVisible();
+  });
+
   test("ohne Schalter gibt es keinen Knopf", async ({ page }) => {
     await schalterAn(page, false);
     await page.goto("/dashboard");

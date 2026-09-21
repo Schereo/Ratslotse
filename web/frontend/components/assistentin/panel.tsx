@@ -17,6 +17,7 @@ import { GespraecheEinwilligung } from "@/components/gespraeche-einwilligung";
 import { decisionHref, fragenHref } from "@/lib/routes";
 import type { ElementFrage } from "./index";
 import { leseSseStrom } from "@/lib/sse";
+import { tastaturHoehe } from "@/lib/tastatur";
 import { cn } from "@/lib/utils";
 
 /**
@@ -135,6 +136,7 @@ export function LottiPanel({
   const eingabeRef = useRef<HTMLInputElement>(null);
   const endeRef = useRef<HTMLDivElement>(null);
   const fensterRef = useRef<HTMLDivElement>(null);
+  const tastatur = useTastatur();
   const naechsterKey = useRef(1);
   /** Der zuletzt angetippte Baustein — die Ratsfrage schickt ihn mit, damit
    *  „und wer hat das beantragt?" ein „das" hat. */
@@ -457,16 +459,27 @@ export function LottiPanel({
       role="dialog"
       aria-label="Lotti fragen"
       data-lotti-fenster
+      // **Die Tastatur schiebt das Fenster hoch, statt es zu verdecken.**
+      // Als `margin-bottom` und nicht als eigene `bottom`-Klasse: Das Fenster
+      // rechnet seinen Abstand oben wie unten aus zwei Variablen zusammen,
+      // und zwar je Breakpoint verschieden. Ein Rand davor schiebt beide
+      // Fassungen gleich weit hoch, ohne dass hier eine dritte Rechnung
+      // entsteht, die mit der nächsten Änderung auseinanderläuft.
+      // Die Tastatur schiebt das Fenster hoch, statt es zu verdecken. Als
+      // Variable und nicht als fertige Klasse: Tailwind kennt den Wert nicht
+      // zur Bauzeit, er entsteht erst beim Tippen.
+      style={{ "--rl-tastatur": `${tastatur}px` } as React.CSSProperties}
       className={cn(
         "fixed z-50 flex flex-col overflow-hidden rounded-2xl border border-border",
         "bg-card shadow-lifted print:hidden",
         "animate-in fade-in-0 slide-in-from-bottom-4 duration-buehne ease-out-strong",
         // Handy: die Fläche zwischen Kopfleiste und Knopf.
         "inset-x-2 top-[calc(env(safe-area-inset-top)+4.5rem)]",
-        "bottom-[calc(var(--rl-unten,0px)+var(--rl-composer,0px)+5rem)]",
+        "bottom-[calc(var(--rl-unten,0px)+var(--rl-composer,0px)+5rem+var(--rl-tastatur,0px))]",
         // Schreibtisch: ein Fenster über dem Knopf.
         "desk:inset-x-auto desk:top-auto desk:right-6 desk:w-96",
-        "desk:bottom-[calc(var(--rl-composer,0px)+5.5rem)] desk:h-[min(40rem,100dvh-9rem)]",
+        "desk:bottom-[calc(var(--rl-composer,0px)+5.5rem+var(--rl-tastatur,0px))]",
+        "desk:h-[min(40rem,100dvh-9rem)]",
       )}
     >
       {/* Kopfzeile */}
@@ -712,6 +725,31 @@ function Chip({ children, onClick, disabled }: {
       {children}
     </button>
   );
+}
+
+/**
+ * Wie hoch die Bildschirmtastatur gerade steht.
+ *
+ * Nötig, weil das Fenster `position: fixed` ist: Auf iOS schrumpft der
+ * Layout-Viewport nicht, wenn die Tastatur aufgeht — die Eingabezeile läge
+ * dahinter, und der Browser kann ein fixiertes Fenster nicht hereinscrollen.
+ * Die Rechnung selbst steht in `lib/tastatur.ts` und ist dort geprüft.
+ */
+export function useTastatur(): number {
+  const [hoehe, setHoehe] = useState(0);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const messen = () => setHoehe(tastaturHoehe(vv, window.innerHeight));
+    messen();
+    vv.addEventListener("resize", messen);
+    vv.addEventListener("scroll", messen);
+    return () => {
+      vv.removeEventListener("resize", messen);
+      vv.removeEventListener("scroll", messen);
+    };
+  }, []);
+  return hoehe;
 }
 
 /** Der markierte Text der Seite — als Hook, damit Knopf und Fenster dieselbe

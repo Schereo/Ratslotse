@@ -44,7 +44,12 @@ async function lesen(page: Page, pfad: string) {
   });
   await page.clock.install();
   await page.goto(pfad);
-  await page.waitForLoadState("networkidle");
+  // **Kein `networkidle` bei stehender Uhr.** Playwright zählt dafür 500 ms
+  // ohne Netzverkehr — auf DER UHR, die `clock.install()` gerade angehalten
+  // hat. Wer eine Anfrage nach dem Anhalten abschließt, wartet damit
+  // unbegrenzt; in der CI ist genau das passiert (zweimal 30 s
+  // Zeitüberschreitung auf `/fragen`). Der sichtbare Knopf ist ohnehin das
+  // bessere Signal: Er beweist, dass der Schalter angekommen ist.
   // **Erst warten, bis Lotti überhaupt da ist.** Der Schalter kommt über
   // `/api/app-config`, also über das Netz; die Uhr des Anstupsers läuft erst
   // ab dem Effekt, der DANACH greift. Wer vorher 46 Sekunden vorspult,
@@ -90,7 +95,7 @@ test.describe("Lottis Anstupser", () => {
     await expect(page.locator(BLASE)).toBeHidden();
     // Dieselbe Seite noch einmal: Der Tages-Deckel hält.
     await page.goto("/haushalt/einnahmen");
-    await page.waitForLoadState("networkidle");
+    await expect(page.locator("[data-lotti-knopf]")).toBeVisible();
     await page.clock.runFor(46_000);
     await page.mouse.move(220, 320);
     await page.mouse.down();
