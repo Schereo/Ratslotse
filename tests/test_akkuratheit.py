@@ -204,8 +204,11 @@ def test_latest_place_answer_ist_deterministisch_und_unterscheidet_berichte():
          "session_date": "2026-04-21", "committee": "Rat"},
         {"id": 3, "title": "Alter Beschluss", "outcome": "accepted",
          "session_date": "2025-12-11", "committee": "Rat"},
-    ])
-    assert answer.startswith("Am 21.04.2026")
+    ], "Donnerschwee")
+    # Der Ort gehört in den Satz: Ohne ihn liest sich die knappe Antwort wie
+    # die Antwort auf eine ganz andere Frage (Befund 21.09.2026 — „zuletzt in
+    # Donnerschwee" führte mit dem Stadion und nannte Donnerschwee nie).
+    assert answer.startswith("Zuletzt mit Ortsbezug Donnerschwee hat der Rat am 21.04.2026")
     assert "Jüngster echter Beschluss" in answer and "[2]" in answer
     assert "28.04.2026" in answer and "kein neuer Beschluss" in answer and "[1]" in answer
     assert "Alter Beschluss" not in answer
@@ -215,6 +218,8 @@ def test_latest_place_answer_ist_deterministisch_und_unterscheidet_berichte():
          "session_date": "2026-05-02", "committee": "Bauausschuss"},
     ])
     assert "jüngste Abstimmungsentscheidung" in rejected
+    # Ohne Ortsnamen bleibt der Satz wie vorher — der Parameter ist optional.
+    assert "Ortsbezug" not in rejected
     assert "abgelehnt" in rejected and "nicht beschlossen [4]" in rejected
 
     report_only = qa.latest_place_answer([

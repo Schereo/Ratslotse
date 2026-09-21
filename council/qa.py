@@ -812,16 +812,26 @@ def latest_real_decision(candidates: list[dict]) -> dict | None:
                  if c.get("outcome") in ("accepted", "rejected")), None)
 
 
-def latest_place_answer(candidates: list[dict]) -> str:
+def latest_place_answer(candidates: list[dict], ort_name: str | None = None) -> str:
     """Kurze, deterministische Antwort auf „zuletzt beschlossen“.
 
     Bei diesem engen Fragetyp ist das Datum selbst die gesuchte Information.
     Ein Sprachmodell darf deshalb weder einen älteren, wörtlich ähnlich
     betitelten Beschluss bevorzugen noch eine Kenntnisnahme als Beschluss
     ausgeben. ``candidates`` kommt aus dem Ortsindex und ist neueste zuerst.
+
+    ``ort_name`` gehört in den Satz: Die knappe Antwort nennt sonst nur ein
+    Datum und einen Titel und liest sich wie die Antwort auf eine ganz andere
+    Frage. Gemessen am 21.09.2026 — „Was ist in Donnerschwee zuletzt
+    beschlossen worden?" führte mit dem Stadionneubau an der Maastrichter
+    Straße. Der gehört tatsächlich nach Donnerschwee (``council_locations``
+    führt die Straße mit ``district='Donnerschwee'``), nur stand das Wort
+    Donnerschwee in der ganzen Kurzfassung nicht.
     """
+    wo = f" mit Ortsbezug {ort_name}" if ort_name else ""
     if not candidates:
-        return "Dazu habe ich keine Ratsvorgänge mit belegtem Ortsbezug gefunden."
+        return (f"Dazu habe ich keine Ratsvorgänge{wo or ' mit belegtem Ortsbezug'} "
+                "gefunden.")
 
     from council import ergebnisse   # spät: ergebnisse zieht kern.notify
 
@@ -831,7 +841,7 @@ def latest_place_answer(candidates: list[dict]) -> str:
         date = _datum_de(latest.get("session_date"))
         title = " ".join(str(latest.get("title") or "Unbenannter Vorgang").split())[:300]
         return (
-            "Einen angenommenen oder abgelehnten Beschluss habe ich dazu nicht gefunden. "
+            f"Einen angenommenen oder abgelehnten Beschluss{wo} habe ich nicht gefunden. "
             f"Der jüngste Ratsvorgang war am {date}: „{title}“ "
             f"(Ergebnis: {ergebnisse.ERGEBNIS_WORT.get(latest.get('outcome') or '', 'nicht angegeben')})"
             f" [{latest['id']}]."
@@ -841,11 +851,12 @@ def latest_place_answer(candidates: list[dict]) -> str:
     title = " ".join(str(decision.get("title") or "Unbenannter Beschluss").split())[:300]
     if decision.get("outcome") == "rejected":
         answer = (
-            f"Die jüngste Abstimmungsentscheidung war am {date}: „{title}“ wurde "
+            f"Die jüngste Abstimmungsentscheidung{wo} war am {date}: „{title}“ wurde "
             f"abgelehnt, also nicht beschlossen [{decision['id']}]."
         )
     else:
-        answer = f"Am {date} wurde „{title}“ beschlossen [{decision['id']}]."
+        answer = (f"Zuletzt{wo} hat der Rat am {date} „{title}“ beschlossen "
+                  f"[{decision['id']}].")
 
     # Ein neuerer Bericht ist nützlich, darf aber nie als neuerer „Beschluss“
     # erscheinen. Höchstens einen nennen, damit die Antwort kurz bleibt.
