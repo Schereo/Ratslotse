@@ -17,7 +17,7 @@ und braucht bei einem Versionssprung des ``fit``-Annotators einen ganzen Tag.
 Solange er läuft, blockiert die Vorflug-Prüfung jeden Deploy — folgenlos, aber
 eben auch endlos, denn ein abgebrochener Lauf startet sich nicht von selbst neu.
 
-**Was dieses Skript entscheidet.** Es bekommt vier Tatsachen und nennt eine von
+**Was dieses Skript entscheidet.** Es bekommt fünf Tatsachen und nennt eine von
 vier Aktionen:
 
 ``aktuell``
@@ -27,8 +27,9 @@ vier Aktionen:
     ``main`` ist voraus und auf dem Server läuft kein Cron — der Deploy kann
     sofort angestoßen werden.
 ``warten``
-    ``main`` ist voraus, aber ein Lauf blockiert noch. Der nächste Takt fragt
-    wieder. Kein Alarm: Das ist der Normalfall an einem Sonntagvormittag.
+    ``main`` ist voraus, aber ein Lauf blockiert noch — ein Cron auf dem
+    Server, oder ein Deploy, der bereits läuft. Der nächste Takt fragt wieder.
+    Kein Alarm: Das ist der Normalfall an einem Sonntagvormittag.
 ``melden``
     Der Rückstand hält zu lange an, oder die Nachhol-Versuche scheitern
     wiederholt. Dann ist es kein Warten mehr, sondern ein Stau — und der
@@ -41,7 +42,7 @@ der beiden Hashes wäre also immer ungleich und meldete Dauer-Rückstand. Die
 Zeitachse ist hier die ehrlichere Größe: Ist auf ``main`` etwas committet
 worden, das der letzte geglückte Deploy noch nicht gesehen haben KANN?
 
-**Zwei Eigenschaften sind Absicht:**
+**Drei Eigenschaften sind Absicht:**
 
 * **Die Nachhol-Versuche haben eine Obergrenze** (``max_versuche``). Ohne sie
   stieße ein Deploy, der aus einem ganz anderen Grund scheitert, sich alle
@@ -51,6 +52,14 @@ worden, das der letzte geglückte Deploy noch nicht gesehen haben KANN?
   die Cron-Frage nicht antwortet, führt nicht zu ``nachholen`` (das könnte in
   einen laufenden Job hineindeployen) und nicht zu ``aktuell`` (das wäre
   Stille), sondern zu ``warten`` bzw. ``melden``.
+* **Ein laufender Deploy ist kein Rückstand.** Gemessen wird gegen den letzten
+  GEGLÜCKTEN Lauf; der gerade laufende kam in der Rechnung zuerst gar nicht
+  vor. Am 21.09.2026 brauchte der Deploy von #1424 sechsundzwanzig Minuten
+  (Docs-Build plus ``next build``, sonst zwölf bis vierzehn) — nach zwanzig
+  fragte dieser Wächter, sah „main ist voraus", und stieß denselben Commit
+  ein zweites Mal an. Die ``concurrency``-Gruppe von ``deploy.yml`` verhinderte
+  das Schlimmste (der zweite Lauf wartete brav), aber Prod bekam eine zweite
+  Wartungsbarriere und rund zwei Minuten 503 für nichts.
 """
 from __future__ import annotations
 
@@ -93,12 +102,17 @@ def _zeit(wert: str | None) -> datetime | None:
 def bewerten(main_commit: str, letzter_erfolg: str | None, jetzt: str,
              crons_frei: bool | None, fehlversuche: int = 0,
              melde_ab_stunden: float = MELDE_AB_STUNDEN,
-             max_versuche: int = MAX_VERSUCHE) -> Befund:
+             max_versuche: int = MAX_VERSUCHE,
+             deploy_laeuft: bool = False) -> Befund:
     """Die Entscheidung — als reine Funktion, damit sie einen Test hat.
 
     ``crons_frei`` ist ``None``, wenn der Server die Frage nicht beantwortet
     hat. Das ist ausdrücklich NICHT „frei": In einen laufenden Job hinein zu
     deployen ist der Zustand, den die Vorflug-Prüfung verhindern soll.
+
+    ``deploy_laeuft`` sagt, ob gerade ein Deploy-Lauf offen ist — egal, ob ihn
+    ein Merge, eine Hand oder dieser Wächter angestoßen hat. Dann gibt es
+    nichts nachzuholen: Der Rückstand ist bereits unterwegs.
     """
     commit = _zeit(main_commit)
     now = _zeit(jetzt)
@@ -117,6 +131,13 @@ def bewerten(main_commit: str, letzter_erfolg: str | None, jetzt: str,
     woher = ("noch nie erfolgreich deployt" if erfolg is None
              else f"main ist dem letzten geglückten Deploy voraus, {alter}")
 
+    # VOR der Fehlversuchs-Schranke: Solange ein Lauf offen ist, weiß niemand,
+    # ob er scheitert. Ihn mitzuzählen hieße, einen Stau zu melden, den der
+    # laufende Deploy vielleicht gerade auflöst — der nächste Takt sieht sein
+    # Ergebnis und entscheidet dann.
+    if deploy_laeuft:
+        return Befund(WARTEN, f"{woher}, aber ein Deploy-Lauf ist bereits offen. "
+                              "Der naechste Takt sieht sein Ergebnis.")
     if fehlversuche >= max_versuche:
         return Befund(MELDEN, f"{woher} — und {fehlversuche} Deploy-Versuche in "
                               "Folge sind gescheitert. Das holt sich nicht von "
@@ -158,6 +179,9 @@ def main(argv: list[str] | None = None) -> int:
                         "unbekannt")
     p.add_argument("--fehlversuche", type=int, default=0,
                    help="gescheiterte Deploy-Läufe seit dem letzten geglückten")
+    p.add_argument("--laufend", type=int, default=0,
+                   help="Deploy-Läufe, die gerade offen sind (jeder Status außer "
+                        "completed); > 0 heißt: nichts nachholen")
     p.add_argument("--melde-ab-stunden", type=float, default=MELDE_AB_STUNDEN)
     p.add_argument("--max-versuche", type=int, default=MAX_VERSUCHE)
     a = p.parse_args(argv)
@@ -165,7 +189,8 @@ def main(argv: list[str] | None = None) -> int:
     jetzt = a.jetzt or datetime.now(timezone.utc).isoformat()
     befund = bewerten(a.main_commit, a.letzter_erfolg or None, jetzt,
                       _crons_frei(a.crons), a.fehlversuche,
-                      a.melde_ab_stunden, a.max_versuche)
+                      a.melde_ab_stunden, a.max_versuche,
+                      deploy_laeuft=a.laufend > 0)
     print(f"{befund.aktion.upper()}: {befund.grund}")
 
     # Die Begründung geht über SSH durch eine einfach gequotete Shell-Zeile in
