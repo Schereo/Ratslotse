@@ -38,11 +38,42 @@ Fragetyp-Registry) und die Docstrings von `kern/glossar.py`,
 > Vorschlags-Chips stehen über dem Eingabefeld, eine Tipp-Anzeige läuft,
 > während Lotti schreibt.
 >
-> Was von den Sales-Bots **nicht** übernommen wird, bleibt Regel 5: Der
-> Knopf öffnet sich nie von selbst, keine Begrüßungs-Blase auf der Seite,
-> kein „1"-Abzeichen, kein „Kann ich helfen?" nach zehn Sekunden. Die
-> Begrüßung steht im Fenster, wenn man es öffnet. Wer das anders will, sagt
-> es — es ist ein Satz in `panel.tsx`, keine Architektur.
+> Was von den Sales-Bots zunächst **nicht** übernommen wurde, war Regel 5:
+> nie von selbst anklopfen. Tim hat sie noch am selben Tag gelockert —
+> siehe den zweiten Nachtrag. Geblieben ist: kein „1"-Abzeichen am Knopf,
+> kein Fenster, das sich von selbst öffnet.
+
+> ## Zweiter Nachtrag 21.09.2026 — anklopfen, speichern, messen
+>
+> Tim, kurz darauf: „Vielleicht kann man Lotti auch selten mal einblenden
+> mit ‚Hast du eine Frage zu dem, was du siehst?' oder so ähnlich? Außerdem
+> sollten wir Chats auch speichern, wenn die User das annehmen; wir sollten
+> gucken können, ob das Feature angenommen wird und welche Fragen gestellt
+> werden."
+>
+> Drei Dinge, die der erste Entwurf ausdrücklich nicht wollte und die jetzt
+> drin sind — mit Grenzen statt mit Verboten:
+>
+> - **Der Anstupser** (PR 8): Lotti darf selten anklopfen, mit genau diesem
+>   Satz. Regel 5 heißt nicht mehr „nie", sondern nennt die Grenzen
+>   (Lesezeit, Häufigkeit, Ablehnung, wo nie). Das Fenster öffnet sich
+>   weiterhin nur auf ein Ja.
+> - **Speichern mit Einwilligung** (PR 7): dieselbe Einwilligung wie bei
+>   „Frag den Rat" (`saves_conversations`), dieselben Tabellen, ein neues
+>   Feld `kind`. Regel 2 heißt jetzt „nichts ohne Einwilligung im Konto"
+>   statt „nichts".
+> - **Auswertung** (PR 7): ein Reiter „Lotti" im Admin-Panel — Annahme (wer
+>   öffnet, wer fragt, wer speichert), Antwortwege, Seiten, Elemente,
+>   Weiterreichungen, Daumen und die gestellten Fragen. Für die Fragen gibt
+>   es zwei Quellen, und die zweite ist **Tims Entscheidung**: die
+>   gespeicherten Gespräche (nur mit Einwilligung, also ein Ausschnitt) und
+>   ein anonymes Fragenprotokoll ohne Konto, maskiert, nach 90 Tagen
+>   gelöscht. Das wäre der erste freie Text, den Ratslotse ohne Einwilligung
+>   aufhebt; PR 7 nennt die Schutzmaßnahmen und den Satz für die
+>   Datenschutzerklärung.
+>
+> PR 7 und 8 tragen ihre Nummern nach der Entstehung, nicht nach der
+> Reihenfolge — sie gehören vor PR 4 (§ 4).
 
 ## 0. Der Auftrag
 
@@ -204,11 +235,16 @@ featuregleich; jede Zahl gemessen). Dazu kommen:
    Regel, dass sie keine Anweisungen sind. Kein Prompt dieses Plans nimmt
    Browsertext ohne Marker auf. Der Eval (PR 1) hält sechs
    Injektions-Fälle, und die bleiben grün, sonst ist der PR nicht fertig.
-2. **Nichts aus dem Browser wird gespeichert.** Kein Log, keine Tabelle,
-   kein Gesprächs-Snapshot für Markierung, Element-Text oder Frage. Gezählt
-   werden Aufrufe (`user_activity`) und Tokens (`llm_usage`).
-   `tests/test_assistant.py` hält das nach dem Muster von
-   `tests/test_fehlersammler.py` fest.
+2. **Nichts aus dem Browser wird ohne Einwilligung im Konto gespeichert.**
+   Mit `saves_conversations = 1` — derselben Einwilligung wie bei „Frag den
+   Rat" — landet das Gespräch im Konto (PR 7), sonst nicht. Was ohne
+   Einwilligung bleibt: Zählungen (`user_activity`), Tokens (`llm_usage`)
+   und, wenn Tim es freigibt, die gestellte Frage **ohne Konto**, maskiert
+   und nach 90 Tagen gelöscht (PR 7). Markierung und Element-Text werden in
+   keinem Fall aufgehoben — sie stehen auf der Seite, dort kann man sie
+   nachlesen. `tests/test_assistant.py` hält die Liste der erlaubten
+   Schreibwege nach dem Muster von `tests/test_fehlersammler.py` fest; PR 1
+   beginnt mit zwei Einträgen, PR 7 erweitert sie um genau zwei.
 3. **Das Modell erklärt nur, was im Kontext steht.** Keine Zahl, kein
    Datum, kein Ergebnis, das nicht im Prompt vorkommt. Braucht eine Frage
    das Archiv, sagt die Antwort das in einem Satz und setzt die Marke
@@ -220,9 +256,17 @@ featuregleich; jede Zahl gemessen). Dazu kommen:
    Kurzfassung. Hat die Seite einen Wissens-Eintrag und niemand hat etwas
    markiert oder gefragt, ist der Eintrag die Antwort. Diese drei Wege
    kosten nichts und laufen zuerst.
-5. **Lotti öffnet sich nie von selbst.** Kein Aufpoppen, kein Hinweis-Ballon,
-   kein „Soll ich dir das erklären?". Der Knopf ist da; alles Weitere ist
-   ein Klick der Person. (Designsprache § 1: „nicht aufdringlich".)
+5. **Das Fenster öffnet sich nie von selbst — anklopfen darf Lotti selten.**
+   Der Anstupser (PR 8) ist eine kleine Sprechblase am Knopf mit „Hast du
+   eine Frage zu dem, was du siehst?", und seine Grenzen stehen im Code,
+   nicht im Ermessen: nur auf Seiten mit Wissens-Eintrag, nie auf `/fragen`,
+   erst nach 45 s sichtbarer Lesezeit, nicht in den ersten zwei
+   Seitenaufrufen einer Sitzung, höchstens einmal am Tag und dreimal in 30
+   Tagen je Browser, nach zwei „×" 60 Tage Pause, nach einem „Ja" 14 Tage.
+   Kein Ton, kein Zähler am Knopf, kein zweiter Satz. Eigener Schalter
+   `lotti-anstupser`, damit er auf Prod getrennt von Lotti aus- und angeht.
+   (Designsprache § 1 „nicht aufdringlich": Selten und höflich ist die
+   Grenze, nicht nie.)
 6. **Kein zweiter Wahrheitsträger.** Die redaktionellen Haushalts-Texte
    bleiben im Frontend, wo sie sind; die Assistentin bekommt sie als Text des
    angeklickten Elements. Der einzige neue Bestand ist das Seiten-Wissen in
@@ -241,12 +285,16 @@ featuregleich; jede Zahl gemessen). Dazu kommen:
 
 ## 4. Die Pull Requests
 
-Reihenfolge: PR 1 (Backend, ohne Oberfläche) → PR 2 (Knopf und Panel) →
-PR 3 (Erklär-Modus und Anker im Haushalt) → PR 4 (Ratsfrage im Panel) →
-PR 5 (Konto-Kontext und Einstellungen) → PR 6 (iOS). PR 1 bis 3 sind das
-Feature, das Tim beschrieben hat; PR 4 ist der zweite Antwortweg; PR 5 und
-6 sind Ausbau. Nach PR 3 gehört eine Pause: zwei Wochen auf dev, Eval und
-Kostenmessung, dann Tims Entscheidung über PR 4 und den Prod-Schalter.
+Reihenfolge: PR 1 (Backend, ohne Oberfläche) → PR 2 (Knopf und Fenster) →
+PR 3 (Erklär-Modus und Anker im Haushalt) → **PR 7** (Speichern und
+Auswertung) → **PR 8** (Anstupser) → PR 4 (Ratsfrage im Fenster) → PR 5
+(Konto-Kontext und Einstellungen) → PR 6 (iOS). Die Nummern folgen der
+Entstehung, nicht der Reihenfolge: PR 7 und 8 kamen mit dem zweiten
+Nachtrag dazu und gehören vor PR 4, weil die Auswertung entscheidet, ob der
+zweite Antwortweg und der Anstupser etwas bringen. PR 1 bis 3 sind das
+Feature, das Tim beschrieben hat; nach PR 3 gehört eine Pause: zwei Wochen
+auf dev, Eval und Kostenmessung, dann Tims Entscheidung über den
+Prod-Schalter.
 
 ### PR 1 — Der Erklär-Endpunkt (Backend, ohne Oberfläche)
 
@@ -444,7 +492,8 @@ wird gepatcht und wirft, wenn es je gerufen wird, wo es nicht darf):
   Aufruf enthält keine geschriebene Zeile die Markierung, den Element-Text
   oder die Frage (Wortlaut-Suche über alle Aufrufe, wie in
   `test_fehlersammler.py`). Erlaubt sind genau `record_activity` und
-  `usage.record`.
+  `usage.record` — PR 7 erweitert die Liste um das Speichern mit
+  Einwilligung und das anonyme Fragenprotokoll, sonst nichts.
 - *`split_next`:* „…Satz.\nWEITER: ratsfrage" → („…Satz.", "ratsfrage");
   ohne Zeile → (text, None); die Zeile erscheint nie in einem `token`.
 - *Zähler:* 31. Aufruf in 600 s → 429; `limits_unlocked` umgeht ihn.
@@ -524,9 +573,8 @@ ihn von Sales- und Hilfe-Seiten kennt):
   über den Seiten: Wer navigiert, behält Turns und Eingabe, nur die
   Kontext-Pille wechselt. Innerhalb des Tabs übersteht der Verlauf ein
   Neuladen (`sessionStorage`, `ratslotse:lotti-verlauf`, ≤ 10 Turns, mit
-  `try/catch` wie `lib/qa-zuletzt.ts`); über den Tab hinaus nicht (PR 5
-  begründet, warum nichts gespeichert wird). An den Endpunkt gehen die
-  letzten drei.
+  `try/catch` wie `lib/qa-zuletzt.ts`); über den Tab hinaus erst mit PR 7
+  (Speichern mit Einwilligung). An den Endpunkt gehen die letzten drei.
 
 **Dateien.**
 
@@ -797,12 +845,9 @@ Bild an Tim (Ratsantwort mit Belegen im Panel).
 - **Anzeigename, E-Mail, Rolle als Wort: nie.** Das Modell soll niemanden
   ansprechen und nicht wissen, ob jemand im Rat sitzt; es weiß, ob die
   Person den Haushalt sieht.
-- **Gedächtnis:** die letzten drei Turns des Panels als `history` (PR 2
+- **Gedächtnis:** die letzten drei Turns des Fensters als `history` (PR 2
   hält sie schon im Zustand); beim Seitenwechsel bleibt der Verlauf, der
-  Bildschirm wechselt. Nicht persistiert — kein `qa_conversations`-Eintrag
-  aus dem Panel. Das ist eine Entscheidung, keine Lücke: Gespeicherte
-  Gespräche sind ein Feature mit Einwilligung (`saves_conversations`), und
-  Erklärungen zu einer Seite sind keine Gespräche, die man wiederfindet.
+  Bildschirm wechselt. Gespeichert wird er mit Einwilligung (PR 7).
 - **Einstellung „Lotti-Knopf ausblenden"** unter `/account`
   (`localStorage`, `ratslotse:lotti-versteckt`, je Browser — kein
   Konto-Feld, kein Endpunkt). Ausgeblendet bleibt die Assistentin über die
@@ -824,7 +869,8 @@ sparsamste, der die Frage „Was ist neu in meinem Viertel?" noch erlaubt).
 schwebenden Knopf unten rechts über der Tab-Leiste (Overlay auf der
 Root-View, Abstand über `safeAreaInset`, wie im Web) und ein Sheet mit „Was
 sehe ich hier?", Composer und Antwort — mit Verlauf, der beim Screen-Wechsel
-bleibt. Ohne Markierung und ohne
+bleibt; das Speichern läuft über dieselben Endpunkte wie im Web (PR 7), der
+Anstupser folgt mit denselben Grenzen in `UserDefaults` (PR 8). Ohne Markierung und ohne
 Erklär-Modus in v1: Textauswahl in SwiftUI-Listen gibt es nicht, und die
 Abzeichen brauchen eine eigene Ankerkonvention je View — das ist ein
 eigener Plan, wenn die Web-Fassung zwei Wochen gelaufen ist.
@@ -844,7 +890,187 @@ dunkel, große Schrift).
 **Fertig, wenn:** TestFlight-Build mit dem Knopf; `APP_MIN_BUILD`
 unverändert (nichts Bestehendes bricht).
 
-## 5. Die Designsprache, fortgeschrieben (Teil von PR 2 und PR 3)
+### PR 7 — Speichern mit Einwilligung, und die Auswertung
+
+**Was.** Tim: „Wir sollten Chats auch speichern, wenn die User das
+annehmen; wir sollten gucken können, ob das Feature angenommen wird und
+welche Fragen gestellt werden." Drei Teile: das Gespräch im Konto, die
+Zähler für die Annahme, und ein Reiter im Admin-Panel. Dazu die eine
+Entscheidung, die Tim treffen muss (Teil b).
+
+**a) Das Gespräch im Konto — dieselbe Einwilligung wie „Frag den Rat".**
+Es gibt schon alles: `web_users.saves_conversations` (null = nie gefragt,
+1 = ja, 0 = nein), die Tabellen `qa_conversations` und
+`qa_conversation_turns` (beide in `USER_OWNED_TABLES`, die Konto-Löschung
+nimmt sie mit), `_turn_speichern` im `/ask`-Router, die Liste unter
+`/fragen` und `GET /council/conversations/{id}`. Neu ist eine Spalte:
+
+```sql
+-- qa_conversations
+kind TEXT NOT NULL DEFAULT 'ask'      -- 'ask' | 'lotti'
+```
+
+ins `SCHEMA` **und** nach `_migrate()` (der AST-Wächter verlangt, dass die
+Guard-Bedingung die Spalte nennt; `tests/test_migration_bestand.py` läuft
+sie gegen die eingecheckten dev- und Prod-Auszüge mit zwei Zeilen je
+Tabelle). `_turn_speichern` bekommt `kind: str = "ask"`; `ExplainBody`
+bekommt `conversation_id: int | None` wie `AskBody`, `done` liefert es
+zurück. Ein Lotti-Turn speichert in `sources` als JSON `{route,
+element_key, element_title, selection (≤ 200), mode, next, glossary}` —
+**nicht** den Element-Text (Regel 2). Der Ratsweg aus dem Fenster (PR 4)
+schreibt seinen Turn in dasselbe Lotti-Gespräch.
+
+Die Einwilligung: Ist sie **null**, zeigt das leere Fenster dieselbe Karte
+wie `/fragen` („Soll ich mir deine Gespräche merken?"), die dafür aus
+`council-qa.tsx` in `components/gespraeche-einwilligung.tsx` gezogen und
+an beiden Stellen benutzt wird — ein Satz kommt dazu: „Das gilt auch für
+das, was du Lotti fragst." Ist sie **1**, steht beim ersten Öffnen einmal
+in der Kontextzeile: „Ich merke mir auch das hier — wie bei Frag den Rat.
+Ausschalten unter Konto." Ist sie **0**, wird nichts gespeichert und
+nichts gesagt, wie auf `/fragen`. Die Liste „Gespräche" auf `/fragen`
+zeigt Lotti-Gespräche mit einem Lotti-Abzeichen und der Seite; Öffnen lädt
+sie ins Lotti-Fenster (`GET /council/conversations/{id}` liefert die Turns,
+das Fenster rendert sie wie eigene).
+
+**b) Die Frage ohne Konto — Tims Entscheidung.** Die gespeicherten
+Gespräche zeigen nur, was Menschen mit Einwilligung fragen; bei „Frag den
+Rat" ist das ein Ausschnitt. Wer wissen will, *welche* Fragen gestellt
+werden, braucht mehr. Vorschlag: eine Tabelle ohne Konto,
+
+```sql
+CREATE TABLE IF NOT EXISTS assistant_questions (
+    id           INTEGER PRIMARY KEY,
+    day          TEXT NOT NULL,          -- Tag, keine Uhrzeit
+    route        TEXT NOT NULL,          -- normalisiert wie page_views
+    element_key  TEXT,                   -- data-erklaer oder NULL
+    mode         TEXT NOT NULL,          -- deterministic | explain | ask
+    next         TEXT,                   -- 'ratsfrage' oder NULL
+    client       TEXT NOT NULL,
+    question     TEXT NOT NULL           -- maskiert, ≤ 300 Zeichen
+);
+```
+
+mit drei Schutzmaßnahmen: **kein Konto, keine Uhrzeit, keine Markierung**;
+die Frage läuft durch `kern/fehler.py::saeubern` (maskiert Adressen, Token,
+lange Kennungen); Zeilen älter als 90 Tage werden beim Einfügen gelöscht
+(ein `DELETE` je Tag, über eine Marke in `assistant_questions` selbst —
+kein neuer Cron). Es ist der erste freie Text, den Ratslotse ohne
+Einwilligung aufhebt: `qa_feedback` speichert die Frage erst beim Daumen
+(eine Handlung), `page_views` gar keinen Text. Deshalb gehört ein Satz in
+`/datenschutz` („Was du Lotti fragst, bewahren wir 90 Tage ohne Bezug zu
+deinem Konto auf, um zu sehen, was erklärt werden muss") und die
+Entscheidung zu Tim. **Ohne sein Ja wird Teil b nicht gebaut**, und der
+Reiter zeigt die Fragen nur aus Teil a.
+
+**c) Zähler und der Reiter „Lotti".** Was heute schon zählt:
+`assistant_explain`, `assistant_deterministic`, `assistant_to_ask`
+(PR 1/4, je Konto und Tag in `user_activity`). Was fehlt, ist das Öffnen
+des Fensters — es ruft keinen Endpunkt. Dafür ein Zähler-Endpunkt nach dem
+Muster von `POST /onboarding/tour` (`kern/store.py::record_activity`,
+`client_kind`, kein Zustand):
+
+```python
+ASSISTANT_EVENTS = {"open": "assistant_open", "nudge_shown": "assistant_nudge_shown",
+                    "nudge_accepted": "assistant_nudge_accepted",
+                    "nudge_dismissed": "assistant_nudge_dismissed"}
+
+@router.post("/assistant/event", status_code=status.HTTP_204_NO_CONTENT)
+def assistant_event(body: AssistantEventBody, request: Request,
+                    user: dict = Depends(require_active),
+                    ratslotse: Store = Depends(get_store)) -> None
+```
+
+(`assistant_event_limiter` 60 je 600 s je Konto; ein unbekannter `kind`
+ist ein 422, kein neuer Zähler). Die Beschriftungen in `kern/store.py`
+neben `("ai_question", "Fragen gestellt")`, damit `store.ereignisse()`
+und die bestehende Ereignis-Karte sie zeigen. Der Daumen aus dem Fenster
+geht an `POST /council/qa-feedback` mit neuem optionalem Feld `source:
+"ask" | "lotti"` (Spalte `source` in `qa_feedback`, Vorgabe `ask`).
+
+Der Reiter: `GET /admin/stats/assistant?days=30` → Form `AdminLotti` in
+`antworten.py`:
+
+| Block | Woraus |
+|---|---|
+| Annahme-Trichter: aktive Konten → Fenster geöffnet → gefragt → gespeichert | `user_activity` (`session`, `assistant_open`, `assistant_explain`+`assistant_deterministic`, Konten mit Lotti-Gespräch) |
+| Verlauf je Tag, Web/App getrennt | `user_activity` mit `client` |
+| Antwortwege: ohne Modell / Modell / Ratsfrage; Weiterreichungs-Quote | `user_activity`, `assistant_questions.mode/next` |
+| Seiten und Elemente, Top 15 | `assistant_questions.route/element_key` (Teil b) oder aus den gespeicherten Turns (Teil a) |
+| Gestellte Fragen, gruppiert nach gefaltetem Wortlaut, Top 50 mit Zahl | Teil b, sonst Teil a |
+| Daumen hoch/runter mit Grund | `qa_feedback WHERE source='lotti'` |
+| Anstupser: gezeigt / ja / × | `user_activity` |
+| Kosten | `llm_usage WHERE feature='assistant_explain'` |
+
+im Frontend ein neuer Reiter unter *Statistik* neben Registrierungen und
+Cron-Jobs (`components/admin/statistics.tsx`), gegen `DESIGNSPRACHE.md`
+„Admin: vom Überblick zur Untersuchung".
+
+**Tests.** Migration gegen beide Auszüge, zweimal; Einwilligung: `1` →
+Lotti-Gespräch mit `kind='lotti'` und ohne Element-Text in `sources`, `0`
+und `null` → keine Zeile; Teil b: die Zeile trägt keine Konto-Spalte, eine
+Adresse in der Frage ist maskiert, eine 91 Tage alte Zeile ist nach dem
+nächsten Einfügen weg; der Wächter aus PR 1 kennt genau die vier
+Schreibwege; `assistant_event` weist unbekannte `kind` ab; der
+Admin-Endpunkt trägt `require_admin` (`tests/test_endpunkt_schutz.py`) und
+steht **nicht** in der Rauchprobe; Vertrag neu geschnitten. Playwright:
+Einwilligungs-Karte im Fenster bei `null`; Lotti-Gespräch in der Liste.
+**Bild an Tim:** der Reiter mit echten dev-Zahlen nach einer Woche.
+
+**Fertig, wenn:** Tim zu Teil b entschieden hat und der Datenschutz-Satz
+drin ist (oder Teil b weg); der Reiter zeigt nach einer Woche auf dev
+Zahlen, die die Frage „wird es angenommen?" beantworten.
+
+### PR 8 — Der Anstupser
+
+**Was.** Tim: „Vielleicht kann man Lotti auch selten mal einblenden mit
+‚Hast du eine Frage zu dem, was du siehst?'" Genau das, mit den Grenzen
+aus Regel 5 — und mit Zählern, damit nach vier Wochen feststeht, ob er
+etwas bringt.
+
+**Form.** Eine Sprechblase am Knopf (über ihm, rechtsbündig, max 260 px,
+`bg-card`, Rahmen, Radius 12, `shadow-lifted`, kleiner Pfeil zum Knopf),
+Lotti 32 px mit Regung `hebt-hand`, der Satz in `text-hinweis`: „Hast du
+eine Frage zu dem, was du siehst?", darunter zwei Aktionen: **Ja, frag
+Lotti** (Primär; öffnet das Fenster mit Kontext-Pille und Fokus im
+Composer) und **×** (`aria-label="Nicht jetzt"`). `role="status"`, kein
+Fokus-Diebstahl, Eintritt `--takt-buehne`, bei `prefers-reduced-motion`
+sofort da. Sie verschwindet von selbst nach 15 s (zählt **nicht** als
+Ablehnung), beim Scrollen um mehr als 300 px, beim Öffnen des Fensters und
+beim Routenwechsel. Kein Ton, keine Vibration, kein Zähler am Knopf.
+
+**Grenzen** — alle in `lib/anstupser.ts` als reine Funktion
+`darfAnstupsen(stand, kontext, jetzt)`, damit sie testbar sind, Stand im
+`localStorage` (`ratslotse:lotti-anstupser` = `{zuletzt, tage30: [],
+abgelehnt, angenommen}`), Sitzungszähler im `sessionStorage`:
+
+| Grenze | Wert |
+|---|---|
+| Wo | nur Routen mit `PageKnowledge.nudge = True` (Haushalt, Beschluss, Sitzung, Thema, Ort, Karte); nie `/fragen`, nie `OHNE_ERKLAERUNG`, nie `/dashboard` |
+| Wann | nach 45 s **sichtbarer** Zeit (`visibilityState`) und einer Interaktion in den letzten 10 s (Scroll/Klick — die Person liest, sie ist nicht weg) |
+| Nicht | in den ersten zwei Seitenaufrufen einer Sitzung; wenn das Fenster in dieser Sitzung schon offen war; wenn Lotti heute schon benutzt wurde; bei fokussiertem Eingabefeld oder aktiver Markierung |
+| Wie oft | höchstens 1× am Tag, 3× in 30 Tagen je Browser |
+| Nach × | zweimal × → 60 Tage Pause |
+| Nach Ja | 14 Tage Pause |
+| Schalter | `lotti-anstupser` in `kern/features.py` (eigener, damit Prod ihn getrennt von Lotti schaltet), `fertig_wenn`: „Vier Wochen gemessen; liegt die Ja-Quote unter 5 %, wird er seltener oder abgeschafft — Tims Entscheidung" |
+
+Die Zähler (`nudge_shown`, `nudge_accepted`, `nudge_dismissed`) gehen über
+`POST /council/assistant/event` aus PR 7.
+
+**Dateien.** `lib/anstupser.ts` + Test, `components/assistentin/anstupser.tsx`,
+`kern/knowledge.py` (`nudge`), `kern/features.py`, `DESIGNSPRACHE.md` § 5
+(„Anstupser" als Baustein: Form, Satz, Grenzen-Verweis), Changelog-Fragment.
+
+**Tests.** vitest: jede Zeile der Grenzen-Tabelle ein Fall (Tag-Deckel,
+30-Tage-Deckel, zweimal ×, nach Ja, erste zwei Aufrufe, Fenster war offen).
+Playwright mit `page.clock`: 45 s auf `/haushalt` → Blase da; Neuladen am
+selben Tag → keine; zweimal × → keine; `/fragen` → nie; Blase stiehlt den
+Fokus nicht (`document.activeElement` unverändert). **Bild an Tim:** die
+Blase auf `/haushalt/schulden`, Desktop und Handy.
+
+**Fertig, wenn:** der Reiter aus PR 7 die drei Anstupser-Zahlen zeigt und
+das Bild gegengelesen ist.
+
+## 5. Die Designsprache, fortgeschrieben (Teil von PR 2, PR 3 und PR 8)
 
 **§ 1, Absatz Lotti — neuer Wortlaut:**
 
@@ -853,11 +1079,13 @@ unverändert (nichts Bestehendes bricht).
 > eine Zahl, einen Baustein, eine Seite — und reicht Ratsfragen an „Frag
 > den Rat" weiter; deren Antworten kommen weiterhin „aus den Beschlüssen",
 > nicht „von Lotti". Erlaubt bleiben Empty States, Ladezustände, „nichts
-> gefunden", Consent-Momente und die Tour. **Sie öffnet sich nie von
-> selbst.** Regungen bleiben an Zustände gebunden: `erklaert` während eine
-> Erklärung geschrieben wird, `denkt` während der Kontext lädt, `hat-idee`
-> beim Start des Erklär-Modus, `fragt`, wenn sie an „Frag den Rat"
-> weiterreicht — von selbst blinzelt und nickt sie nur.
+> gefunden", Consent-Momente und die Tour. **Das Fenster öffnet sich nie
+> von selbst; anklopfen darf sie selten** — der Anstupser mit seinen festen
+> Grenzen (Plan Lotti, Regel 5). Regungen bleiben an Zustände gebunden:
+> `erklaert` während eine Erklärung geschrieben wird, `denkt` während der
+> Kontext lädt, `hat-idee` beim Start des Erklär-Modus, `fragt`, wenn sie an
+> „Frag den Rat" weiterreicht, `hebt-hand` beim Anstupser — von selbst
+> blinzelt und nickt sie nur.
 
 **§ 5, neuer Baustein „Lotti-Knopf und Lotti-Fenster":** Der Knopf
 schwebt unten rechts auf jeder angemeldeten Seite, 56 px rund, Lotti-Kopf
@@ -885,9 +1113,10 @@ primary/30, Lotti-Kopf 16 px oder „?" in primary; oben rechts am Element,
 Klick außerhalb; Fokusring wie Dialoge (BITV). Nur auf Elementen mit
 `data-erklaer` — nie geraten.
 
-**§ 8 Anti-Patterns, drei Zeilen dazu:** keine Lotti-Sprechblase, die von
-selbst erscheint · kein Zähler oder Abzeichen am geschlossenen Lotti-Knopf
-· kein Element ohne `data-erklaer`, das ein Abzeichen trägt.
+**§ 8 Anti-Patterns, drei Zeilen dazu:** keine Lotti-Sprechblase außerhalb
+der Anstupser-Grenzen (Plan Lotti, Regel 5) · kein Zähler oder Abzeichen am
+geschlossenen Lotti-Knopf · kein Element ohne `data-erklaer`, das ein
+Abzeichen trägt.
 
 ## 6. Kosten, Risiken und was der Plan NICHT baut
 
@@ -911,7 +1140,7 @@ betroffen (kein Cron).
 | Prompt-Injektion über Markierung oder Element-Text (RIS-Inhalte!) | Marker + Regel (§ 2.5); kein Werkzeugzugriff des Modells; Antwort ist nur Text; nichts wird gespeichert | `test_assistant.py`, 6 Eval-Fälle |
 | Erfundene Zahlen | nur Kontext; `must_not_number` im Eval; Geld-Zahlen kommen aus `geld_kontext` mit Jahr und Quelle | Eval |
 | Persönliche Daten im Prompt | Konto nur als Rechte; Themen/Viertel nur bei „mein"; Routen mit fremden Daten gesperrt | `test_assistant.py` (Wortlaut-Suche), Regel 9 |
-| Datenabfluss beim Speichern | keine Speicherung von Browsertext | `test_assistant.py` nach `test_fehlersammler`-Muster |
+| Datenabfluss beim Speichern | im Konto nur mit Einwilligung; das anonyme Fragenprotokoll ohne Konto, maskiert (`kern/fehler.py::saeubern`), 90 Tage; Markierung und Element-Text nie | `test_assistant.py` nach `test_fehlersammler`-Muster |
 | Falsche Seite nach Navigation | Strom bricht bei `pathname`-Wechsel ab | Playwright |
 | Kosten laufen davon | Zähler, Token-Deckel, Abkürzungen, Admin-Zeile | `test_assistant.py` (429), Admin |
 | Barrierefreiheit (Abzeichen, Panel) | `button`, `aria-label`, Fokusring, `Esc`, `aria-live="polite"` auf der Antwort | Playwright (Tab-Reihenfolge) |
@@ -931,10 +1160,11 @@ betroffen (kein Cron).
   `innerText`; das wäre je Klick eine KI-Frage in Kosten und trüge alles
   mit, was gerade nicht gemeint ist. Element und Markierung sind die
   Auswahl der Person.
-- **Kein Gedächtnis über die Sitzung hinaus**, keine Speicherung der
-  Panel-Gespräche (PR 5 begründet das).
-- **Kein Ansprechen von selbst**, keine Hinweise, keine Tipps beim
-  Betreten einer Seite (Regel 5).
+- **Kein Speichern ohne Einwilligung im Konto** (Regel 2, PR 7). Das
+  anonyme Fragenprotokoll ist Tims Entscheidung und trägt kein Konto.
+- **Kein Ansprechen außerhalb der Anstupser-Grenzen** (Regel 5, PR 8):
+  keine Tipps beim Betreten einer Seite, kein Fenster, das sich öffnet,
+  kein zweiter Anlauf am selben Tag.
 - **Kein Erklär-Modus in der App** in v1 (PR 6 begründet das).
 - **Kein eigener Wissensbestand außer dem Seiten-Wissen.** Kein zweites
   Glossar, keine Kopie der redaktionellen Haushalts-Texte (Regel 6).
@@ -952,6 +1182,8 @@ betroffen (kein Cron).
 | 3 | `lib/assistentin.ts` (`ernteElement`) → `components/assistentin/erklaer-modus.tsx` → die Bausteine aus der Tabelle in PR 3 → `council/decision/view.tsx`, Sitzungs-Seite → `panel.tsx` (dritter Chip) → Playwright-Zählung → `DESIGNSPRACHE.md` § 5, § 7, § 8 → Bild an Tim |
 | 4 | `council/qa.py` (`_answer_messages`, letztes Argument) → `kern/prompts.py` (`qa_answer`, Block `{screen}`) → `routers/council.py` (`ScreenContext`, `AskBody.screen`, Zählung) → `tests/test_qa_screen_context.py`, `test_api_vertrag.py` → `panel.tsx` (Ratsweg, Quellenliste) → `ios_vertrag.py --ausgeliefert` → Bild an Tim |
 | 5 | `council/assistant.py` (`requires`, „mein") → `kern/knowledge.py` (`requires`) → `tests/test_assistant.py` → `account`-Seite (Schalter) → `command-palette.tsx` → Playwright |
+| 7 | `kern/store.py` (Spalte `kind`, `_migrate`, Beschriftungen, `assistant_questions`) → `routers/council.py` (`_turn_speichern(kind)`, `ExplainBody.conversation_id`, `/assistant/event`, `qa-feedback.source`) → `routers/admin.py` (`/stats/assistant`) + `antworten.py` (`AdminLotti`) → `tests/test_assistant.py`, `test_migration_bestand.py`, `test_endpunkt_schutz.py` → `components/gespraeche-einwilligung.tsx` (aus `council-qa.tsx` gezogen) → `panel.tsx` → `components/admin/statistics.tsx` → `/datenschutz` (nur mit Tims Ja zu Teil b) → Vertrag → Bild an Tim |
+| 8 | `lib/anstupser.ts` + Test → `kern/knowledge.py` (`nudge`) → `kern/features.py` (`lotti-anstupser`) → `components/assistentin/anstupser.tsx` → Playwright → `DESIGNSPRACHE.md` § 5 → Bild an Tim |
 | 6 | `RatslotseAPI` (Modelle, Routen-Tabelle) → `RatslotseFeatures/AssistantSheet.swift` → Toolbar → `xcodegen generate` → `ios_vertrag.py` → Simulator-Bild |
 
 ## Anhang B — Der Prompt `assistant_explain` (Entwurf für PR 1)
