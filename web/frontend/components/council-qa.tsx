@@ -3329,9 +3329,16 @@ function SteckbriefBaustein({ steckbriefe }: {
 /** Ehrlichkeits-Hinweis bei ALTEM Stand — das Gegenstück zur dünnen Beleglage.
  *
  *  Dort sind es zu wenige Belege, hier sind es alte: Zu Neu-Donnerschwee endet
- *  die Aktenlage im Februar 2023, die Antwort erzählte trotzdem im Präsens vom
+ *  die Aktenlage 2021/2023, die Antwort erzählte trotzdem im Präsens vom
  *  „geplanten" Wohnquartier (echte Nutzerfrage, 21.09.2026). Die Daten stehen
  *  ohnehin an jeder Quelle — dieser Satz sagt, was sie zusammen bedeuten.
+ *
+ *  Der Satz spricht ausdrücklich über die ANTWORT („die jüngste Quelle dieser
+ *  Antwort"), nicht über den Rat. Der Wert kommt seit dem Nachtrag aus den
+ *  ZITIERTEN Beschlüssen; ein „seit über vier Jahren hat der Rat dazu nichts
+ *  entschieden" wäre damit zu weit gegriffen — im Bestand kann sehr wohl ein
+ *  jüngerer Beschluss liegen, den diese Antwort nur nicht zitiert.
+ *
  *  Kein Ausweg-Knopf: Eine gründlichere Recherche findet keine Beschlüsse, die
  *  es nicht gibt. */
 function AlterStand({ stand }: { stand: NonNullable<Turn["records_state"]> }) {
@@ -3343,9 +3350,9 @@ function AlterStand({ stand }: { stand: NonNullable<Turn["records_state"]> }) {
     <p className="flex items-start gap-2 rounded-xl border border-border bg-card px-3.5 py-3 text-[12.5px] leading-relaxed text-muted-foreground">
       <History className="mt-0.5 h-3.5 w-3.5 shrink-0 text-signal" aria-hidden />
       <span>
-        Ältere Aktenlage: Der jüngste Beschluss dazu ist vom{" "}
+        Ältere Aktenlage: Die jüngste Quelle dieser Antwort ist vom{" "}
         <strong className="font-medium text-foreground">{fmtDatum(stand.latest)}</strong>{" "}
-        — seit über {dauer} hat der Rat dazu nichts mehr entschieden.
+        — über {dauer} alt.
       </span>
     </p>
   );
