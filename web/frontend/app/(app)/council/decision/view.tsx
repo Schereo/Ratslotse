@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 import { useFetch } from "@/lib/use-fetch";
 import { useAuth } from "@/lib/auth";
 import { darfHaushalt } from "@/lib/rechte";
+import { useErklaerAnker } from "@/lib/erklaer-anker";
 
 function MetaCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -67,8 +68,12 @@ function Section({
  *  Der amtliche Wortlaut bleibt verbindlich (siehe OfficialTextCard), rückt
  *  aber eine Position nach unten. */
 function SimpleSummaryHero({ text }: { text: string }) {
+  // Erklär-Anker: Hier fragt man am ehesten nach — obwohl (oder weil) hier
+  // schon die einfache Fassung steht. Lotti bekommt sie als Element-Text und
+  // kann daran anknüpfen, statt bei null zu beginnen.
+  const anker = useErklaerAnker("kurzfassung", "Lotti erklärt's einfach");
   return (
-    <div className="rounded-2xl border border-signal/30 bg-gradient-to-br from-signal/[0.07] to-transparent p-4 sm:p-5">
+    <div {...anker} className="rounded-2xl border border-signal/30 bg-gradient-to-br from-signal/[0.07] to-transparent p-4 sm:p-5">
       <div className="flex items-center gap-2.5">
         <Mascot pose="point" decorative className="h-11 w-11 shrink-0" />
         <div className="min-w-0">
@@ -92,8 +97,12 @@ function SimpleSummaryHero({ text }: { text: string }) {
  *  wer die Kurzfassung gelesen hat, klappt selbst zu. */
 function OfficialTextCard({ text }: { text: string }) {
   const [open, setOpen] = useState(true);
+  // Erklär-Anker am sperrigsten Text der Seite. Er trägt ausdrücklich FREMDEN
+  // Text (den Wortlaut aus der Vorlage) — genau der Fall, für den die Marker
+  // im Prompt gebaut sind (council/assistant.py).
+  const anker = useErklaerAnker("wortlaut", "Amtlicher Wortlaut");
   return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-card">
+    <div {...anker} className="overflow-hidden rounded-2xl border border-border bg-card">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}

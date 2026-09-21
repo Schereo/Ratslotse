@@ -376,8 +376,12 @@ iOS-Schrift.
   Fläche verdeckt"). Die Andockkante ist `TABLEISTE_HOEHE` aus
   `components/nav.tsx` — nie eine eigene Zahl.
 - **Lotti-Knopf und Lotti-Fenster**: Der Knopf schwebt unten rechts auf jeder
-  angemeldeten Seite, 56 px rund, Lotti-Kopf auf Hafenblau, `shadow-lifted`,
-  `z-50` — über Tab-Leiste und Andock-Composer, deren Höhen als Variablen
+  angemeldeten Seite, 56 px rund, darin der **Kopf der 3D-Lotti**
+  (`public/lotti/kopf.png`, aus der Ruhe-Pose geschnitten) auf Hafenblau,
+  `shadow-lifted`, `z-50`. Das Bild ist größer als der Kreis und wird von ihm
+  beschnitten wie ein Porträt; die runde Fläche kommt aus dem CSS und nicht
+  aus dem Bild, damit sie im Dunkelmodus den dortigen Primärton nimmt. Er liegt
+  über Tab-Leiste und Andock-Composer, deren Höhen als Variablen
   (`--rl-unten`, `--rl-composer`) in seiner Position stehen, nie als eigene
   Zahl. Offen wird er zum Schließen-Kreuz. **Design 9a③ steht dem nicht
   entgegen:** Es hat den *Navigations*-FAB aus der Tab-Leiste genommen; ein
@@ -398,6 +402,15 @@ iOS-Schrift.
   Haushaltsdaten. Keine Rechtsberatung, keine Bewertung."
   Kein Emoji, kein KI-Vokabular — in der Oberfläche heißt sie nur „Lotti".
   **Kein Zähler und kein Abzeichen am geschlossenen Knopf.**
+- **Erklär-Abzeichen**: 28 px rund, `bg-card`, Rahmen primary/30, „?" in
+  primary, oben rechts am Baustein (4 px eingerückt), `z-40`. Erscheint im
+  Erklär-Modus mit `--takt-fluss`, verschwindet mit `Esc` oder nach der Wahl.
+  **Nur auf Elementen mit `data-erklaer`** (`lib/erklaer-anker.ts`) — kein
+  Fallback auf „die nächste Karte": Ein geratener Ausschnitt sieht aus, als
+  wüsste Lotti, worauf gezeigt wurde. Abzeichen statt Zeigerhand, weil das
+  Handy kein Hover hat und eine Zeigerhand ohne Ziel gegen § 6 verstößt. Der
+  Modus schließt das Fenster: Die Abzeichen stehen auf der Seite, und mobil
+  deckt das Fenster genau sie ab.
 - **Turn-Fußzeile**: KI-Hinweis 14 px + stille Icon-Aktionen 15 px
   (Teilen, Drucken, Vorlesen, 👍/👎) — keine gerahmten Buttons.
 - **Schritt-Zeichen (Haushalt)**: Jeder Schritt des Haushalts-Wegs trägt ein

@@ -58,6 +58,7 @@ import {
 import { rampenText } from "@/components/grafik/kachelflaeche";
 import { Treemap, type TreemapKnoten } from "@/components/grafik/treemap";
 import { Beleg } from "@/components/haushalt/source";
+import { useErklaerAnker } from "@/lib/erklaer-anker";
 
 /** Eine Zeile der Vorhaben-Liste.
  *
@@ -131,6 +132,7 @@ export function Vorhaben({
    *  Kachel (`grafik/kachelflaeche.ts`, `rampenText`). */
   stufeVonThh: (thhNr: number) => number;
 }) {
+  const anker = useErklaerAnker("vorhaben", "Vorhaben");
   // `?vorhaben=` und `?year=` — der Landeplatz für Links von außen.
   //
   // Von den Änderungslisten zum Finanzhaushalt (/haushalt/mitreden#streit)
@@ -217,7 +219,7 @@ export function Vorhaben({
   if (!bereiche.length) return null;
 
   return (
-    <section
+    <section {...anker}
       id="vorhaben"
       className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5"
     >

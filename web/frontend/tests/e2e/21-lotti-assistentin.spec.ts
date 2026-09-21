@@ -31,20 +31,33 @@ const STROM = (opts: { next?: string | null } = {}) => [
   })}\n\n`,
 ].join("");
 
-/** Der Schalter kommt aus `/api/app-config`; ohne ihn gibt es keinen Knopf. */
+/** Der Schalter kommt aus `/api/app-config`; ohne ihn gibt es keinen Knopf.
+ *
+ *  **Der try/catch ist nicht Vorsicht, sondern gemessen** (CI, 21.09.2026):
+ *  Beendet ein `test.skip()` den Test, während dieser Handler noch auf die
+ *  echte Antwort wartet, wirft Playwright „Response has been disposed" — und
+ *  zwar in JEDEM danach laufenden Test derselben Datei, weil die Route
+ *  weiterhin registriert ist. Ein Handler, der den Fehler schluckt und die
+ *  Anfrage durchlässt, macht die ganze Datei gegen diesen Abbruch immun.
+ */
 async function schalterAn(page: Page, an = true) {
   await page.route("**/api/app-config", async (route) => {
-    const antwort = await route.fetch();
-    const body = await antwort.json();
-    const features: string[] = (body.features ?? []).filter((f: string) => f !== "lotti-assistentin");
-    if (an) features.push("lotti-assistentin");
-    await route.fulfill({ json: { ...body, features } });
+    try {
+      const antwort = await route.fetch();
+      const body = await antwort.json();
+      const features: string[] = (body.features ?? []).filter((f: string) => f !== "lotti-assistentin");
+      if (an) features.push("lotti-assistentin");
+      await route.fulfill({ json: { ...body, features } });
+    } catch {
+      await route.fallback().catch(() => { /* der Test ist schon zu Ende */ });
+    }
   });
 }
 
 async function stromStubben(page: Page, opts: { next?: string | null } = {}) {
   await page.route("**/api/council/explain", (route) =>
-    route.fulfill({ status: 200, contentType: "text/event-stream", body: STROM(opts) }),
+    route.fulfill({ status: 200, contentType: "text/event-stream", body: STROM(opts) })
+      .catch(() => { /* der Test ist schon zu Ende */ }),
   );
 }
 
@@ -132,6 +145,66 @@ test.describe("Lotti-Knopf und -Fenster", () => {
         && a.y < b.y + b.height && a.y + a.height > b.y;
       expect(ueberlappt, `Knopf überdeckt den Composer bei ${grosse.width} px`).toBe(false);
     }
+  });
+
+  test("der Erklär-Modus sagt in jedem Fall, woran man ist", async ({ page }) => {
+    // **Die CI-Ratsdatenbank ist LEER**, und der Haushalt zeigt ohne Daten
+    // keine Bühne (Designsprache: „Ohne Datengrundlage entfällt die Bühne")
+    // — also auch keine Anker. Geprüft wird deshalb eine Zusage, die in
+    // beiden Welten gilt: Entweder es gibt Abzeichen, oder der Modus sagt
+    // ehrlich, dass er hier nichts einzeln erklären kann. Der zweite Zweig
+    // ist kein Notbehelf, sondern der Fall, den jemand mit leerer Seite
+    // wirklich sieht.
+    await page.goto("/haushalt/schulden");
+    await knopf(page).click();
+    await fenster(page).getByRole("button", { name: "Etwas auf der Seite zeigen" }).click();
+    // Der Modus schließt das Fenster: Die Abzeichen stehen auf der SEITE,
+    // und auf dem Handy deckt das Fenster genau sie ab.
+    await expect(fenster(page)).toBeHidden();
+    const marken = page.locator("[data-erklaer-marke]");
+    const hinweis = page.getByText(/nichts einzeln erklären/);
+    await expect(marken.first().or(hinweis)).toBeVisible();
+  });
+
+  test("ein angetipptes Abzeichen schickt NUR diesen Baustein", async ({ page }) => {
+    let geschickt: Record<string, unknown> | null = null;
+    await page.route("**/api/council/explain", async (route) => {
+      geschickt = route.request().postDataJSON();
+      await route.fulfill({ status: 200, contentType: "text/event-stream", body: STROM() });
+    });
+    await page.goto("/haushalt/schulden");
+    // ERST die Daten abwarten, dann den Modus starten: Sonst entscheidet ein
+    // Rennen zwischen Nachladen und Messen, ob es Anker gibt — und der Test
+    // übersprang sich auch dort, wo Daten da waren.
+    await page.waitForLoadState("networkidle");
+    const anker = page.locator("[data-erklaer]");
+    // Ohne Ratsdaten (so läuft die CI) gibt es keinen Baustein zum Antippen —
+    // sichtbar überspringen statt etwas anderes messen.
+    test.skip(await anker.count() === 0,
+      "Diese Datenbank hat keine Haushaltsdaten — also auch keine Anker.");
+    await knopf(page).click();
+    await fenster(page).getByRole("button", { name: "Etwas auf der Seite zeigen" }).click();
+    const marken = page.locator("[data-erklaer-marke]");
+    await expect(marken.first()).toBeVisible();
+    await marken.first().click();
+    await expect(fenster(page).getByText(ANTWORT)).toBeVisible();
+    expect(geschickt).toBeTruthy();
+    const el = (geschickt as { element?: { key?: string; text?: string } }).element!;
+    expect(el.key).toMatch(/^haushalt-schulden\./);
+    expect(el.text!.length).toBeGreaterThan(0);
+    expect(el.text!.length).toBeLessThanOrEqual(1202);
+  });
+
+  test("Esc beendet den Erklär-Modus", async ({ page }) => {
+    await page.goto("/haushalt/schulden");
+    await knopf(page).click();
+    await fenster(page).getByRole("button", { name: "Etwas auf der Seite zeigen" }).click();
+    const marken = page.locator("[data-erklaer-marke]");
+    // Egal ob Anker oder Hinweis — eines von beiden steht da, bevor Esc kommt.
+    await page.getByText(/nichts einzeln erklären/).or(marken.first()).first().waitFor();
+    await page.keyboard.press("Escape");
+    await expect(marken).toHaveCount(0);
+    await expect(page.getByText(/nichts einzeln erklären/)).toBeHidden();
   });
 
   test("auf der Konto-Seite gibt es Lotti nicht", async ({ page }) => {

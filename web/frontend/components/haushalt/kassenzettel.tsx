@@ -66,6 +66,7 @@ import type { RuecklageJahr } from "@/lib/haushalt";
 import { cn } from "@/lib/utils";
 import { Zeitreihe } from "@/components/grafik/zeitreihe";
 import type { JahrPunkt } from "@/components/grafik/daten";
+import { useErklaerAnker } from "@/lib/erklaer-anker";
 
 const de = (n: number) => n.toLocaleString("de-DE");
 
@@ -209,6 +210,7 @@ export function Kassenzettel({ daten, year, population, className }: {
   population: { year: number; population: number };
   className?: string;
 }) {
+  const anker = useErklaerAnker("kassenzettel", "Der Kassenzettel");
   const zeilen = daten.years[String(year)] ?? [];
   const gesamt = summe(zeilen);
   const kopf = population.population;
@@ -257,7 +259,7 @@ export function Kassenzettel({ daten, year, population, className }: {
   ] : undefined;
 
   return (
-    <section
+    <section {...anker}
       aria-labelledby="kassenzettel-title"
       className={cn("rounded-2xl border border-border bg-background p-4 sm:p-5", className)}
     >

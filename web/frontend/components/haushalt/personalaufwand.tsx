@@ -22,6 +22,7 @@
 
 import { Hantel, type HantelZeile } from "@/components/grafik/hantel";
 import { Einordnung } from "@/components/grafik/einordnung";
+import { useErklaerAnker } from "@/lib/erklaer-anker";
 import {
   PLAN_ART_LABEL, amount, deMio,
   type ErgebnishaushaltZeile, type ErgebnisPosten,
@@ -42,6 +43,11 @@ export function Personalaufwand({ statement, budget, beleg, belegPlan }: {
   beleg?: React.ReactNode;
   belegPlan?: React.ReactNode;
 }) {
+  // Der Schlüssel heißt „aufwand" und nicht „personalaufwand": Die Seite
+  // steht ohnehin davor (`haushalt-personal.aufwand`), und „personalaufwand"
+  // ist zugleich ein umbenannter Datenbankwert — der Wächter gegen tote
+  // Vergleiche (scripts/pruefe_alte_werte.py) kann beides nicht trennen.
+  const anker = useErklaerAnker("aufwand", "Personalaufwand");
   const kern = statement.filter((z) => z.sub_budget_no === null);
   const posten = (nr: number, year: number) =>
     kern.find((z) => z.nr === nr && z.year === year) ?? null;
@@ -95,7 +101,7 @@ export function Personalaufwand({ statement, budget, beleg, belegPlan }: {
   const kern1 = amount(ist.result);
 
   return (
-    <section className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
+    <section {...anker} className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <h2 className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
           Was das Personal kostet{beleg}
