@@ -3728,6 +3728,32 @@ SSE_FRAGE: dict[int | str, dict[str, Any]] = {
     },
 }
 
+#: ``POST /api/council/explain`` — Lottis Erklärung zum Bildschirm.
+#:
+#: Bewusst dieselben Rahmennamen wie ``SSE_FRAGE`` (``step``, ``token``,
+#: ``replace``, ``done``, ``error``): Beide Clients parsen den Strom von Hand,
+#: und ein zweites Vokabular für dieselbe Sache wäre ein zweiter Parser.
+#: Neu sind nur die Felder von ``done``.
+SSE_ERKLAERUNG: dict[int | str, dict[str, Any]] = {
+    200: {
+        "description": (
+            "Server-Sent Events (`text/event-stream`). Jeder Rahmen ist eine "
+            "`data:`-Zeile mit einem JSON-Objekt, das ein Feld `type` trägt:\n\n"
+            "- `step` — Fortschritt, `step` ist `context` oder `answer`\n"
+            "- `token` — ein Stück Erklärungstext (`text`)\n"
+            "- `replace` — ersetzt den bisher gesendeten Text vollständig\n"
+            "- `done` — Schluss-Ereignis mit `mode` (`deterministic` für die "
+            "Wege ohne Modell, sonst `explain`), `next` (`ratsfrage`, wenn die "
+            "Frage ins Beschluss-Archiv gehört, sonst `null`), `glossary` "
+            "(die geprüften Fachwörter im Kontext) und `timings`\n"
+            "- `error` — die Erklärung ist fehlgeschlagen (`message`)\n\n"
+            "Ein Verbindungsabriss ist folgenlos: Der Client kann erneut fragen."
+        ),
+        "content": {"text/event-stream": {"schema": {"type": "string"}}},
+    },
+    400: {"description": "Zu dieser Seite gibt es keine Erklärung (mit Grund im `detail`)."},
+}
+
 #: ``GET /api/admin/live-probe`` — der O1-Stream als Transkript, live.
 SSE_LIVE_PROBE: dict[int | str, dict[str, Any]] = {
     200: {

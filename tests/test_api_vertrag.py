@@ -33,6 +33,7 @@ OFFEN: set[tuple[str, str]] = set()
 # dort auch wirklich ankommen.
 KEIN_JSON = {
     ("post", "/api/council/ask"),
+    ("post", "/api/council/explain"),
     ("get", "/api/council/deep-research/{job_id}/events"),
     ("get", "/api/council/plan-bild/{document_id}"),
     ("get", "/api/calendar/{token}.ics"),
@@ -45,6 +46,7 @@ KEIN_JSON = {
 #: Welchen Medientyp diese Endpunkte liefern MÜSSEN.
 KEIN_JSON_MEDIENTYP = {
     ("post", "/api/council/ask"): "text/event-stream",
+    ("post", "/api/council/explain"): "text/event-stream",
     ("get", "/api/council/deep-research/{job_id}/events"): "text/event-stream",
     ("get", "/api/council/plan-bild/{document_id}"): "image/jpeg",
     ("get", "/api/calendar/{token}.ics"): "text/calendar",

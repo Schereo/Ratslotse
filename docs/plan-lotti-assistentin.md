@@ -67,10 +67,11 @@ Fragetyp-Registry) und die Docstrings von `kern/glossar.py`,
 >   Weiterreichungen, Daumen und die gestellten Fragen. Für die Fragen gibt
 >   es zwei Quellen, und die zweite ist **Tims Entscheidung**: die
 >   gespeicherten Gespräche (nur mit Einwilligung, also ein Ausschnitt) und
->   ein anonymes Fragenprotokoll ohne Konto, maskiert, nach 90 Tagen
->   gelöscht. Das wäre der erste freie Text, den Ratslotse ohne Einwilligung
->   aufhebt; PR 7 nennt die Schutzmaßnahmen und den Satz für die
->   Datenschutzerklärung.
+>   ein anonymes Fragenprotokoll ohne Konto. **Tim hat am 21.09.2026
+>   entschieden: das Fragenprotokoll fällt weg.** Die Auswertung sieht damit
+>   nur, was Menschen mit Einwilligung fragen — ein Ausschnitt, aber einer
+>   ohne freien Text, den niemand abgenickt hat. Teil b von PR 7 ist
+>   gestrichen; der Rest wird gebaut.
 >
 > PR 7 und 8 tragen ihre Nummern nach der Entstehung, nicht nach der
 > Reihenfolge — sie gehören vor PR 4 (§ 4).
@@ -174,12 +175,22 @@ deckelt den Geld-Block auf 3.000 Zeichen (§ 4, PR 1). Er bleibt damit bei
 
 ### 2.3 Was ein Aufruf kostet
 
-`kern/usage.py::PRICES`: `google/gemini-2.5-flash` 0,30 $ je 1 M Eingabe-,
-2,50 $ je 1 M Ausgabe-Tokens. Ein Erklär-Aufruf mit 1.500 Eingabe- und 250
-Ausgabe-Tokens kostet damit **≈ 0,11 Cent**; mit Geld-Block am Deckel
-≈ 0,15 Cent. Tausend Klicks im Monat: **1,50 $**. Das ist die Schätzung —
-PR 1 misst sie mit zwanzig echten Aufrufen nach (Regel 7) und trägt die
-Zahl hier ein.
+**Gemessen am 21.09.2026** (PR 1, 20 echte Aufrufe gegen Gemini 2.5 Flash,
+Befehl in Anhang C) — nicht geschätzt:
+
+| | Wert |
+|---|---:|
+| Eingabe-Tokens je Aufruf | 1.583 |
+| Ausgabe-Tokens je Aufruf | 88 |
+| **Kosten je Aufruf** | **0,070 Cent** |
+| teuerster Aufruf | 0,101 Cent |
+| Latenz (Modellweg) | 0,8–1,9 s |
+| Latenz (ohne Modell) | < 1 ms |
+
+Tausend Modell-Aufrufe im Monat kosten damit **0,70 $** — halb so viel wie
+die Schätzung vor der Messung (0,11–0,15 Cent). Der Grund ist der
+Ausgabe-Deckel: 88 Tokens im Mittel, nicht 250. Und ein Drittel aller
+Aufrufe kostet gar nichts (10 von 30 Eval-Fällen laufen deterministisch).
 
 ### 2.4 Was die Designsprache heute sagt
 
@@ -296,7 +307,18 @@ Feature, das Tim beschrieben hat; nach PR 3 gehört eine Pause: zwei Wochen
 auf dev, Eval und Kostenmessung, dann Tims Entscheidung über den
 Prod-Schalter.
 
-### PR 1 — Der Erklär-Endpunkt (Backend, ohne Oberfläche)
+### PR 1 — Der Erklär-Endpunkt (Backend, ohne Oberfläche) ✅ gebaut 21.09.2026
+
+> **Ergebnis.** 66 Wächter-Tests grün; Eval 30/30 ohne harten Befund, **6/6
+> Injektionen abgewehrt**, 10/30 ohne Modell beantwortet. Kosten gemessen
+> (§ 2.3). Zwei Dinge kamen aus der Messung dazu und standen nicht im Plan:
+> die **deterministische Weiterreichung** (`assistant.archivfrage` — das
+> Modell vergaß die Marke in einem von drei Läufen und ließ eine Absage ohne
+> Ausweg stehen) und die Trennung des Evals in **harte und weiche Befunde**
+> (die Länge schwankt mit dem Modell; ein Eval, der daran rot wird, wird
+> weggeklickt). Ein dritter Befund betraf den Eval selbst: Ein Verbotswort
+> trifft auch die Ablehnung, die es zitiert — „Ich kann dir nicht sagen,
+> welche Partei die besseren Vorschläge hat" enthält „die besseren".
 
 **Was.** `POST /api/council/explain` liefert als SSE-Strom eine Erklärung zu
 dem, was eine Person gerade sieht: Seite, angeklicktes Element oder
@@ -1125,7 +1147,7 @@ Abzeichen trägt.
 | Weg | je Aufruf | bei 1.000 Aufrufen/Monat |
 |---|---:|---:|
 | Erklären, deterministisch (Glossar, Kurzfassung, Seiten-Wissen) | 0 | 0 |
-| Erklären, Modell (≈ 1.500 / 250 Tokens, Flash) | ≈ 0,11–0,15 Cent | ≈ 1,50 $ |
+| Erklären, Modell (gemessen: 1.583 / 88 Tokens, Flash) | 0,070 Cent | 0,70 $ |
 | Ratsfrage aus dem Panel (PR 4) | wie `/ask` heute | wie heute |
 
 Drei Bremsen: der eigene Zähler (30 je 10 min je Konto), `MAX_TOKENS = 350`,

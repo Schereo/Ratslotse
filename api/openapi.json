@@ -10144,6 +10144,169 @@
         "title": "EntityHead",
         "type": "object"
       },
+      "ExplainBody": {
+        "description": "Was Lotti zu sehen bekommt.",
+        "properties": {
+          "element": {
+            "description": "Das angeklickte Element — Schlüssel, Überschrift und sein Text.\n\nDer Text wird aus dem DOM geerntet (``innerText`` des Elements mit dem\n``data-erklaer``-Anker). Er ist damit **Fremdtext**: Auf Beschluss-Seiten\nsteht darin, was jemand in eine Ratsvorlage geschrieben hat. Behandelt\nwird er ausschließlich als Daten, siehe ``council/assistant.py``.",
+            "properties": {
+              "key": {
+                "maxLength": 80,
+                "title": "Key",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "text": {
+                "default": "",
+                "maxLength": 1200,
+                "title": "Text",
+                "type": "string"
+              },
+              "title": {
+                "default": "",
+                "maxLength": 200,
+                "title": "Title",
+                "type": "string"
+              }
+            },
+            "title": "ExplainElement",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "heading": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Heading",
+            "type": "string"
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/AskTurn"
+            },
+            "maxItems": 3,
+            "title": "History",
+            "type": "array"
+          },
+          "page_title": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Page Title",
+            "type": "string"
+          },
+          "question": {
+            "default": "",
+            "maxLength": 300,
+            "title": "Question",
+            "type": "string"
+          },
+          "refs": {
+            "$ref": "#/components/schemas/ExplainRefs"
+          },
+          "route": {
+            "maxLength": 200,
+            "title": "Route",
+            "type": "string"
+          },
+          "selection": {
+            "default": "",
+            "maxLength": 1000,
+            "title": "Selection",
+            "type": "string"
+          }
+        },
+        "required": [
+          "route"
+        ],
+        "title": "ExplainBody",
+        "type": "object"
+      },
+      "ExplainElement": {
+        "description": "Das angeklickte Element — Schlüssel, Überschrift und sein Text.\n\nDer Text wird aus dem DOM geerntet (``innerText`` des Elements mit dem\n``data-erklaer``-Anker). Er ist damit **Fremdtext**: Auf Beschluss-Seiten\nsteht darin, was jemand in eine Ratsvorlage geschrieben hat. Behandelt\nwird er ausschließlich als Daten, siehe ``council/assistant.py``.",
+        "properties": {
+          "key": {
+            "maxLength": 80,
+            "title": "Key",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "text": {
+            "default": "",
+            "maxLength": 1200,
+            "title": "Text",
+            "type": "string"
+          },
+          "title": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "title": "ExplainElement",
+        "type": "object"
+      },
+      "ExplainRefs": {
+        "description": "Die Kennungen aus der Adresszeile — nie Inhalte.\n\nOhne sie müsste das Backend erraten, welchen Beschluss die Seite zeigt;\nmit ihnen schlägt es ihn nach. Die Query selbst kommt NICHT mit (dieselbe\nRegel wie bei den Seitenaufrufen): Der Client zerlegt sie und schickt nur\ndie Felder, die hier stehen.",
+        "properties": {
+          "area": {
+            "maxLength": 120,
+            "title": "Area",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "decision_id": {
+            "minimum": 1.0,
+            "title": "Decision Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "ksinr": {
+            "minimum": 1.0,
+            "title": "Ksinr",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "place_id": {
+            "maxLength": 120,
+            "title": "Place Id",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "slug": {
+            "maxLength": 120,
+            "title": "Slug",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "year": {
+            "maximum": 2100.0,
+            "minimum": 1990.0,
+            "title": "Year",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "title": "ExplainRefs",
+        "type": "object"
+      },
       "FactionPhase": {
         "description": "Eine Phase der Fraktions-/Gruppenzugehörigkeit aus den\nAnwesenheitslisten — die einzige echte Zeitreihe, denn das\nRatsinformationssystem überschreibt Fraktionen rückwirkend.",
         "properties": {
@@ -25607,6 +25770,51 @@
           }
         },
         "summary": "Entity",
+        "tags": [
+          "council"
+        ]
+      }
+    },
+    "/api/council/explain": {
+      "post": {
+        "description": "Erklärt, was gerade auf dem Bildschirm steht — als SSE-Strom.\n\nDer Unterschied zu ``/ask``: **keine Suche**. Der Gegenstand steht auf der\nSeite, die Person zeigt selbst darauf; gesucht werden muss nichts. Drei\nWege kommen ohne Modell aus (Glossar, Beschluss-Kurzfassung,\nSeiten-Wissen) und antworten in wenigen Millisekunden.\n\n**Gespeichert wird hier nichts** außer zwei Zählern: Markierung,\nElement-Text und Frage stehen auf der Seite und bleiben dort.",
+        "operationId": "explain_api_council_explain_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExplainBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Server-Sent Events (`text/event-stream`). Jeder Rahmen ist eine `data:`-Zeile mit einem JSON-Objekt, das ein Feld `type` trägt:\n\n- `step` — Fortschritt, `step` ist `context` oder `answer`\n- `token` — ein Stück Erklärungstext (`text`)\n- `replace` — ersetzt den bisher gesendeten Text vollständig\n- `done` — Schluss-Ereignis mit `mode` (`deterministic` für die Wege ohne Modell, sonst `explain`), `next` (`ratsfrage`, wenn die Frage ins Beschluss-Archiv gehört, sonst `null`), `glossary` (die geprüften Fachwörter im Kontext) und `timings`\n- `error` — die Erklärung ist fehlgeschlagen (`message`)\n\nEin Verbindungsabriss ist folgenlos: Der Client kann erneut fragen."
+          },
+          "400": {
+            "description": "Zu dieser Seite gibt es keine Erklärung (mit Grund im `detail`)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Explain",
         "tags": [
           "council"
         ]

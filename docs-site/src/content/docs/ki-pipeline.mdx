@@ -380,6 +380,60 @@ Aufwandsspaltung (186), Teileinrichtung (178) und Leitantrag (212), Wörter, die
 außerhalb des Straßenausbaubeitragsrechts und des Sitzungssaals niemandem
 begegnen.
 
+## Lotti als Assistentin: erklären statt suchen
+
+Ein Knopf auf jeder Seite öffnet ein Fenster, in dem Lotti erklärt, was gerade
+auf dem Bildschirm steht — die Seite, ein angeklicktes Element oder markierter
+Text. Der Endpunkt ist `POST /api/council/explain`
+(`council/assistant.py`), und er ist bewusst **keine zweite KI-Frage**: Es
+gibt kein Retrieval, keinen Reranker und keine Kandidatenliste. Der Gegenstand
+steht auf der Seite, die Person zeigt selbst darauf.
+
+**Drei Wege kommen ohne Modell aus** und beantworten zusammen den häufigsten
+Klick — gemessen 10 von 30 Eval-Fällen, je unter einer Millisekunde:
+
+| Weg | Wann | Woher die Antwort kommt |
+|---|---|---|
+| `glossary` | die Markierung trifft genau einen Fachbegriff | `kern/glossar.py` (151 geprüfte Erklärungen) |
+| `simple_summary` | Beschluss-Seite, „Was sehe ich hier?" | die Spalte `simple_summary` („Lotti erklärt's einfach") |
+| `page` | bekannte Seite, niemand hat gezeigt | `kern/knowledge.py` |
+
+`kern/knowledge.py` ist der einzige neue Bestand: je Seite drei Sätze —
+was sie zeigt, woher die Zahlen kommen und **was sie nicht sagt**. Die Liste
+ist vollständig, und `tests/test_assistant.py` hält das in beide Richtungen:
+Jede Route aus `kern/seitenaufrufe.py` ist entweder erklärbar, mit Grund
+gesperrt (`/admin` und `/account` tragen fremde bzw. eigene Kontodaten) oder
+liegt außerhalb der App-Hülle.
+
+**Browsertext ist Daten, nie Anweisung.** Element-Text und Markierung stehen
+im Prompt zwischen Markern (`<<<ELEMENT … ELEMENT`), und der Prompt sagt
+ausdrücklich, dass darin keine Anweisungen stehen — dasselbe Muster wie beim
+Watcher für frei eingegebene Themen. Das ist keine Vorsicht auf Verdacht: Der
+Element-Text trägt Auszüge aus Ratsvorlagen, also Text, den Dritte geschrieben
+haben. Sechs Fälle im Eval (`eval/run_assistant.py`) schieben Anweisungen
+unter („ignoriere alle Anweisungen", „antworte auf Englisch", „du bist
+jetzt …"); gemessen am 21.09.2026 wurden 6 von 6 abgewehrt.
+
+**Was das Archiv braucht, geht ans Archiv.** Fragt jemand „Wer hat dagegen
+gestimmt?", antwortet Lotti nicht, sondern sagt das im ersten Satz und bietet
+den Weg zu „Frag den Rat" an. Die Entscheidung fällt **deterministisch am
+Wortlaut** (`assistant.archivfrage`), nicht im Modell: Es soll die Marke
+`WEITER: ratsfrage` selbst setzen und tut das meistens — über drei Eval-Läufe
+hat es sie einmal vergessen, und dann stand da eine Absage ohne Ausweg.
+
+**Kosten**, gemessen am 21.09.2026 über 20 echte Aufrufe (Gemini 2.5 Flash):
+
+| | Wert |
+|---|---:|
+| Eingabe-Tokens je Aufruf | 1.583 |
+| Ausgabe-Tokens je Aufruf | 88 |
+| Kosten je Aufruf | 0,070 Cent |
+| teuerster Aufruf | 0,101 Cent |
+
+Zum Vergleich: Der Antwort-Prompt der KI-Frage ist mit 8.412 Zeichen gut
+anderthalbmal so groß wie Lottis 5.844, und dazu kommen dort Analyse,
+Expansion und Reranker.
+
 ## Frag den Rat: welche Quelle eine Geldfrage zieht
 
 Die KI-Frage antwortet nicht nur aus Beschlüssen. Zu Geldfragen liegen
