@@ -3812,6 +3812,7 @@ SSE_ERKLAERUNG: dict[int | str, dict[str, Any]] = {
         "content": {"text/event-stream": {"schema": {"type": "string"}}},
     },
     400: {"description": "Zu dieser Seite gibt es keine Erklärung (mit Grund im `detail`)."},
+    403: {"description": "Die Seite gehört zu einem Recht, das dieses Konto nicht hat."},
 }
 
 #: ``GET /api/admin/live-probe`` — der O1-Stream als Transkript, live.

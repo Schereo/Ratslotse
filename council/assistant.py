@@ -289,6 +289,28 @@ def _record_block(store, screen: Screen) -> str:
             teile.append(f"Die Sitzung auf dieser Seite: {s.get('committee') or ''} "
                          f"am {s.get('session_date') or 'unbekanntem Datum'}")
 
+    # `slug` bedeutet je Seite etwas anderes: auf `/council/person` eine
+    # Person, auf `/council/thema` ein Themenfeld. Ohne diesen Zweig zählte
+    # der Slug als Gegenstand (`_GEGENSTAND_REFS`), der deterministische
+    # Seitenweg fiel weg UND das Modell bekam nichts über ihn — ein bezahlter
+    # Aufruf für eine dünnere Antwort, als das Seiten-Wissen allein gegeben
+    # hätte.
+    slug = refs.get("slug")
+    if slug and screen.route == "/council/person":
+        try:
+            name = store.member_name(str(slug)) or store.verwaltung_name(str(slug))
+        except Exception:  # noqa: BLE001
+            name = None
+        if name:
+            teile.append(f"Die Person auf dieser Seite: {name}")
+    elif slug and screen.route == "/council/thema":
+        # Kuratierter Text aus der Registry, keine Abfrage: Label und
+        # Beschreibung des Themenfelds stehen in `council/topics.py`.
+        from council.topics import POLICY_FIELDS
+        feld = POLICY_FIELDS.get(str(slug))
+        if feld:
+            teile.append(f"Das Themenfeld auf dieser Seite: {feld[0]} — {feld[1]}")
+
     place_id = refs.get("place_id")
     if place_id:
         try:
@@ -345,11 +367,26 @@ def _screen_block(screen: Screen) -> str:
     Leere Blöcke fallen weg, statt als leere Marker dazustehen: Ein
     ``<<<AUSWAHL AUSWAHL`` ohne Inhalt liest sich für das Modell wie eine
     leere Markierung, und es kommentiert sie.
+
+    **Auch die Überschrift steht zwischen Markern**, und das ist kein
+    Übereifer: Auf einer Beschluss-Seite IST die ``h1`` der Vorlagentitel,
+    also Text, den jemand in der Verwaltung geschrieben hat. Sie stand bis
+    21.09.2026 ungefenced in der Kopfzeile — geschützt nur dadurch, dass
+    :func:`kuerze` Zeilenumbrüche faltet. Das ist ein Zufall, keine Zusage.
+
+    Die **Route** bleibt draußen: Sie kommt aus
+    ``kern.seitenaufrufe.normalisieren`` und ist damit unsere eigene, geprüfte
+    Zeichenkette — kein Fremdtext.
     """
-    kopf = f"Seite: {screen.route}"
-    if screen.heading:
-        kopf += f" — {kuerze(screen.heading, HEADING_MAX)}"
-    teile = [kopf]
+    teile = [f"Seite: {screen.route}"]
+    # Der Titel des Fensters ist der Ersatz, wenn es keine Überschrift gibt:
+    # Die App hat keine `h1` und schickt ihren Screen-Namen als `page_title`.
+    # Ohne diesen Rückfall bekam Lotti dort GAR KEINE Überschrift.
+    ueberschrift = screen.heading or screen.page_title
+    if ueberschrift:
+        teile.append("<<<UEBERSCHRIFT\n"
+                     f"{kuerze(ueberschrift, HEADING_MAX)}\n"
+                     "UEBERSCHRIFT")
     if screen.element_text or screen.element_title:
         titel = kuerze(screen.element_title, ELEMENT_TITLE_MAX) or "Baustein"
         teile.append("<<<ELEMENT\n"

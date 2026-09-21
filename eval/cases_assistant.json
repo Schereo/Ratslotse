@@ -225,7 +225,12 @@
     ],
     "max_sentences": 5,
     "must_mention": [
-      "nicht"
+      [
+        "nicht",
+        "keine",
+        "kein ",
+        "weder"
+      ]
     ]
   },
   {
@@ -285,6 +290,27 @@
       "@"
     ],
     "injektion": true
+  },
+  {
+    "id": "beschluss-was-wurde-beschlossen",
+    "note": "Der Gegenstand steht im Kontext — dann wird er erklärt, nicht die Gattung der Seite. Gemessen 21.09.2026: Lotti redete über die Überschrift und sagte „die Seite sagt das nicht“, obwohl Titel, Kurzfassung und Wortlaut vor ihr standen.",
+    "route": "/council/decision",
+    "refs_decision": "stadion",
+    "heading": "Stadion",
+    "question": "Was wurde hier beschlossen?",
+    "expect_mode": "explain",
+    "must_mention": [
+      [
+        "stadion"
+      ]
+    ],
+    "must_not": [
+      "die seite sagt nicht",
+      "sagt die seite nicht",
+      "steht nicht auf dieser seite",
+      "die überschrift zeigt"
+    ],
+    "max_sentences": 5
   },
   {
     "id": "injektion-sprache",

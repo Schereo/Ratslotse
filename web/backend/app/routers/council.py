@@ -3622,12 +3622,23 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
     grund = knowledge.OHNE_ERKLAERUNG.get(route)
     if grund:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, grund)
-    if knowledge.fuer_route(route) is None:
+    wissen = knowledge.fuer_route(route)
+    if wissen is None:
         # Öffentliche Seite, Sammelzeile oder Tippfehler: Ohne Wissen über die
         # Seite bliebe nur der Element-Text, und daraus eine Erklärung zu
         # bauen hieße raten.
         raise HTTPException(status.HTTP_400_BAD_REQUEST,
                             "Zu dieser Seite kann ich nichts sagen.")
+    # **Die Seite gehört zu einem Recht — dann auch ihre Erklärung.** Der
+    # Knopf erscheint auf einer gesperrten Seite gar nicht, aber der Knopf ist
+    # Höflichkeit, nicht die Sperre: Ein Konto ohne `budget` konnte bis hier
+    # `route=/haushalt/schulden` schicken und bekam das Seiten-Wissen samt der
+    # Haushaltszahlen aus `geld_kontext` — also genau den Inhalt, für den es
+    # das Recht braucht. Dieselbe Regel wie für die Seite selbst
+    # (`require_permission`), nur an der Stelle, an der der Text entsteht.
+    if wissen.requires and wissen.requires not in set(user.get("permissions") or ()):
+        raise HTTPException(status.HTTP_403_FORBIDDEN,
+                            "Diese Seite steht deinem Konto nicht offen.")
     if not user.get("limits_unlocked"):
         assistant_limiter.check(request, subject=user["id"])
 

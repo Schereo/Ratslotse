@@ -26219,6 +26219,9 @@
           "400": {
             "description": "Zu dieser Seite gibt es keine Erklärung (mit Grund im `detail`)."
           },
+          "403": {
+            "description": "Die Seite gehört zu einem Recht, das dieses Konto nicht hat."
+          },
           "422": {
             "content": {
               "application/json": {
