@@ -154,8 +154,14 @@ def _pruefe(fall: dict, text: str, modus: str, weiter: str | None,
         aus.append(f"Weiterreichung: {weiter!r} statt {fall['expect_next']!r}")
     klein = text.lower()
     for wort in fall.get("must_mention", []):
-        if wort.lower() not in klein:
-            aus.append(f"fehlt: {wort!r}")
+        # **Eine Liste heißt „eines davon reicht".** Geprüft werden soll das
+        # VERHALTEN, nicht die Wortwahl: „Die Seite bewertet keine Vorschläge"
+        # ist dieselbe Absage wie „bewertet nicht, welche …" — die erste
+        # Fassung ließ die zweite durchfallen und sah aus wie ein Rückschritt
+        # im Modell (gemessen 21.09.2026, dreimal derselbe saubere Satz).
+        varianten = wort if isinstance(wort, list) else [wort]
+        if not any(v.lower() in klein for v in varianten):
+            aus.append(f"fehlt: {' / '.join(varianten)!r}")
     for wort in fall.get("must_not", []):
         if wort.lower() in klein:
             aus.append(f"steht drin: {wort!r}")

@@ -17810,6 +17810,13 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Die Seite gehört zu einem Recht, das dieses Konto nicht hat. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -21412,4 +21419,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 58ec6a533fb5875315f374bc4cd131acc8f399f82aa72e5eb2e0931ebd5b0790
+// vertrag-sha256: 1afcf0c1edf13f064a0e1c882c0959f228cbe25e9448c6f28747d0c173b8833f
