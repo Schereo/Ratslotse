@@ -45,6 +45,13 @@ async function lesen(page: Page, pfad: string) {
   await page.clock.install();
   await page.goto(pfad);
   await page.waitForLoadState("networkidle");
+  // **Erst warten, bis Lotti überhaupt da ist.** Der Schalter kommt über
+  // `/api/app-config`, also über das Netz; die Uhr des Anstupsers läuft erst
+  // ab dem Effekt, der DANACH greift. Wer vorher 46 Sekunden vorspult,
+  // verschenkt sie: Die Lesezeit zählt ab null, und die Blase bleibt aus.
+  // Genau daran ist der erste Anlauf in der CI gescheitert (#1445) — lokal
+  // war der Abruf schnell genug, um es zu verdecken.
+  await expect(page.locator("[data-lotti-knopf]")).toBeVisible();
   await page.clock.runFor(46_000);        // gelesen …
   await page.mouse.move(200, 300);        // … und noch da
   await page.mouse.down();
