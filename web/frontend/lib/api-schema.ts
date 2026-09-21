@@ -3018,6 +3018,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/council/explain": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Explain
+         * @description Erklärt, was gerade auf dem Bildschirm steht — als SSE-Strom.
+         *
+         *     Der Unterschied zu ``/ask``: **keine Suche**. Der Gegenstand steht auf der
+         *     Seite, die Person zeigt selbst darauf; gesucht werden muss nichts. Drei
+         *     Wege kommen ohne Modell aus (Glossar, Beschluss-Kurzfassung,
+         *     Seiten-Wissen) und antworten in wenigen Millisekunden.
+         *
+         *     **Gespeichert wird hier nichts** außer zwei Zählern: Markierung,
+         *     Element-Text und Frage stehen auf der Seite und bleiben dort.
+         */
+        post: operations["explain_api_council_explain_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/council/field-recaps": {
         parameters: {
             query?: never;
@@ -9590,6 +9618,106 @@ export interface components {
             name: string;
             /** Slug */
             slug: string;
+        };
+        /**
+         * ExplainBody
+         * @description Was Lotti zu sehen bekommt.
+         */
+        ExplainBody: {
+            /**
+             * ExplainElement
+             * @description Das angeklickte Element — Schlüssel, Überschrift und sein Text.
+             *
+             *     Der Text wird aus dem DOM geerntet (``innerText`` des Elements mit dem
+             *     ``data-erklaer``-Anker). Er ist damit **Fremdtext**: Auf Beschluss-Seiten
+             *     steht darin, was jemand in eine Ratsvorlage geschrieben hat. Behandelt
+             *     wird er ausschließlich als Daten, siehe ``council/assistant.py``.
+             */
+            element?: {
+                /** Key */
+                key?: string | null;
+                /**
+                 * Text
+                 * @default
+                 */
+                text: string;
+                /**
+                 * Title
+                 * @default
+                 */
+                title: string;
+            } | null;
+            /**
+             * Heading
+             * @default
+             */
+            heading: string;
+            /** History */
+            history?: components["schemas"]["AskTurn"][];
+            /**
+             * Page Title
+             * @default
+             */
+            page_title: string;
+            /**
+             * Question
+             * @default
+             */
+            question: string;
+            refs?: components["schemas"]["ExplainRefs"];
+            /** Route */
+            route: string;
+            /**
+             * Selection
+             * @default
+             */
+            selection: string;
+        };
+        /**
+         * ExplainElement
+         * @description Das angeklickte Element — Schlüssel, Überschrift und sein Text.
+         *
+         *     Der Text wird aus dem DOM geerntet (``innerText`` des Elements mit dem
+         *     ``data-erklaer``-Anker). Er ist damit **Fremdtext**: Auf Beschluss-Seiten
+         *     steht darin, was jemand in eine Ratsvorlage geschrieben hat. Behandelt
+         *     wird er ausschließlich als Daten, siehe ``council/assistant.py``.
+         */
+        ExplainElement: {
+            /** Key */
+            key?: string | null;
+            /**
+             * Text
+             * @default
+             */
+            text: string;
+            /**
+             * Title
+             * @default
+             */
+            title: string;
+        };
+        /**
+         * ExplainRefs
+         * @description Die Kennungen aus der Adresszeile — nie Inhalte.
+         *
+         *     Ohne sie müsste das Backend erraten, welchen Beschluss die Seite zeigt;
+         *     mit ihnen schlägt es ihn nach. Die Query selbst kommt NICHT mit (dieselbe
+         *     Regel wie bei den Seitenaufrufen): Der Client zerlegt sie und schickt nur
+         *     die Felder, die hier stehen.
+         */
+        ExplainRefs: {
+            /** Area */
+            area?: string | null;
+            /** Decision Id */
+            decision_id?: number | null;
+            /** Ksinr */
+            ksinr?: number | null;
+            /** Place Id */
+            place_id?: string | null;
+            /** Slug */
+            slug?: string | null;
+            /** Year */
+            year?: number | null;
         };
         /**
          * FactionPhase
@@ -17353,6 +17481,56 @@ export interface operations {
             };
         };
     };
+    explain_api_council_explain_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExplainBody"];
+            };
+        };
+        responses: {
+            /**
+             * @description Server-Sent Events (`text/event-stream`). Jeder Rahmen ist eine `data:`-Zeile mit einem JSON-Objekt, das ein Feld `type` trägt:
+             *
+             *     - `step` — Fortschritt, `step` ist `context` oder `answer`
+             *     - `token` — ein Stück Erklärungstext (`text`)
+             *     - `replace` — ersetzt den bisher gesendeten Text vollständig
+             *     - `done` — Schluss-Ereignis mit `mode` (`deterministic` für die Wege ohne Modell, sonst `explain`), `next` (`ratsfrage`, wenn die Frage ins Beschluss-Archiv gehört, sonst `null`), `glossary` (die geprüften Fachwörter im Kontext) und `timings`
+             *     - `error` — die Erklärung ist fehlgeschlagen (`message`)
+             *
+             *     Ein Verbindungsabriss ist folgenlos: Der Client kann erneut fragen.
+             */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": string;
+                };
+            };
+            /** @description Zu dieser Seite gibt es keine Erklärung (mit Grund im `detail`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     field_recaps_api_council_field_recaps_get: {
         parameters: {
             query?: never;
@@ -20944,4 +21122,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 2211af94dffabd2a492491201149554b2de22a00cdb2e66d03434d48b0d5f474
+// vertrag-sha256: 2fd7c472fbb2ae690dde125b2dea4967c59ffa3434c261edb635159512deece6

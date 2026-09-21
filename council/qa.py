@@ -3586,15 +3586,28 @@ def _geld_vereinheitlichen(geld: dict | None, haushalt, taxes, tax_capacity) -> 
     return {"haushalt": haushalt, "taxes": taxes, "tax_capacity": tax_capacity}
 
 
-def geld_block(geld: dict | None) -> str:
+def geld_block(geld: dict | None, max_chars: int | None = None) -> str:
     """Alle vorhandenen Geld-Bausteine als EIN Prompt-Abschnitt, gedeckelt.
 
     Der Deckel ist keine Vorsichtsmaßnahme, sondern der Grund, warum die
     Facetten eine Reihenfolge haben: Wenn eine Frage sechs Quellen zieht,
     sollen die vorderen ganz drinstehen und die hinteren fehlen — nicht alle
-    sechs in der Mitte abgeschnitten."""
+    sechs in der Mitte abgeschnitten.
+
+    ``max_chars`` ist für Aufrufer, bei denen die Zahlen NICHT die Antwort
+    tragen: Lottis Erklärung (``council/assistant.py``) erklärt einen
+    Baustein, auf den jemand gezeigt hat, und nimmt dafür 3.000 statt 6.500
+    Zeichen. Die Vorgabe bleibt der gemessene Wert der KI-Frage.
+
+    ``None`` und nicht ``GELD_MAX_CHARS`` als Vorgabe, damit der Wert zur
+    LAUFZEIT aufgelöst wird: Ein Vorgabewert wird beim Definieren gebunden,
+    und ein Test, der die Konstante umsetzt, hätte danach keine Wirkung mehr
+    (genau daran ist ``test_budget_kappt_ganze_bausteine_statt_saetze``
+    aufgefallen)."""
     if not geld:
         return ""
+    if max_chars is None:
+        max_chars = GELD_MAX_CHARS
     teile: list[str] = []
     laenge = 0
     for facette in GELD_FACETTEN:
@@ -3602,7 +3615,7 @@ def geld_block(geld: dict | None) -> str:
         text = bauer(geld.get(key))
         if not text:
             continue
-        if laenge + len(text) > GELD_MAX_CHARS and teile:
+        if laenge + len(text) > max_chars and teile:
             break
         teile.append(text)
         laenge += len(text)

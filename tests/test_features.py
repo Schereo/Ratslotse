@@ -31,9 +31,22 @@ EIGENE_SACHE = {"lib/features.ts", "lib/features.test.ts"}
 
 
 def _verwendete_namen() -> dict[str, set[str]]:
-    """``{name: {datei, …}}`` — alle ``useFeature("…")``/``featureAktiv(…, "…")``."""
+    """``{name: {datei, …}}`` — jede Verwendung eines Schalters.
+
+    Im Frontend ``useFeature("…")`` / ``featureAktiv(…, "…")``, im Backend
+    ``features.an("…")``. **Beide Seiten**, seit 09/2026: Ein Schalter, der
+    nur im Backend gilt — etwa vor einem Endpunkt, der Geld kostet —, sah
+    vorher aus wie einer, den niemand liest, und der Wächter verlangte seine
+    Löschung. Gemessen an ``lotti-assistentin``, der genau so gebaut ist.
+    """
     muster = re.compile(r'(?:useFeature|featureAktiv)\([^)"\']*["\']([a-z0-9-]+)["\']')
     aus: dict[str, set[str]] = {}
+    backend = re.compile(r'features\.an\(\s*["\']([a-z0-9-]+)["\']')
+    for pfad in sorted(list(WURZEL.rglob("*.py"))):
+        if any(t in pfad.parts for t in (".venv", "node_modules", "__pycache__", "tests")):
+            continue
+        for treffer in backend.findall(pfad.read_text(encoding="utf-8")):
+            aus.setdefault(treffer, set()).add(pfad.relative_to(WURZEL).as_posix())
     for pfad in sorted(list(FRONTEND.rglob("*.ts")) + list(FRONTEND.rglob("*.tsx"))):
         if "node_modules" in pfad.parts or ".next" in str(pfad):
             continue

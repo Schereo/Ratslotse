@@ -26,9 +26,10 @@ from council import supplementary_approvals as nachbewilligungen_mod
 from council import donations as spenden_mod
 from council import steuertabellen
 from council import trade_tax_statistics as gewst
+from council import assistant as lotti
 from council import beteiligungsbericht, qa
 from council import ernte
-from kern import features
+from kern import features, knowledge, seitenaufrufe
 from council import importance
 from council import live as live_mod
 from council import sitzungspause as pause_mod
@@ -60,13 +61,14 @@ from ..antworten import (AnalysisData, BudgetAmendmentLists, BudgetAuditReports,
                          PublicNumbers, QaExampleSession, QaExamples,
                          QaShare, QaShareToken, ResearchCurrent, ResearchSnapshot, ResearchStarted,
                          ResearchStopped, SessionDetail, SessionList, SharePreview, Speeches,
-                         SSE_FRAGE, SSE_RECHERCHE,
+                         SSE_ERKLAERUNG, SSE_FRAGE, SSE_RECHERCHE,
                          TemplateFollowed, TemplateFollows, TemplateUnfollowed, ThisWeek,
                          TodayBriefing, TrendData)
 from ..clients import client_kind
 from ..deps import (get_cities_store, get_council_store, get_current_user, get_store,
                     optional_user, require_active, require_permission)
 from ..ratelimit import (
+    assistant_limiter,
     partei_meinungen_limiter,
     qa_feedback_limiter,
     qa_limiter,
@@ -3445,6 +3447,172 @@ def goal_detail(key: str, _user: dict = Depends(require_active),
         "summary": store.goal_summary().get(key, _EMPTY_GOAL),
         "decisions": store.goal_detail(key),
     }
+
+
+class ExplainElement(BaseModel):
+    """Das angeklickte Element — Schlüssel, Überschrift und sein Text.
+
+    Der Text wird aus dem DOM geerntet (``innerText`` des Elements mit dem
+    ``data-erklaer``-Anker). Er ist damit **Fremdtext**: Auf Beschluss-Seiten
+    steht darin, was jemand in eine Ratsvorlage geschrieben hat. Behandelt
+    wird er ausschließlich als Daten, siehe ``council/assistant.py``.
+    """
+    key: str | None = Field(default=None, max_length=lotti.ELEMENT_KEY_MAX)
+    title: str = Field(default="", max_length=lotti.ELEMENT_TITLE_MAX)
+    text: str = Field(default="", max_length=lotti.ELEMENT_TEXT_MAX)
+
+
+class ExplainRefs(BaseModel):
+    """Die Kennungen aus der Adresszeile — nie Inhalte.
+
+    Ohne sie müsste das Backend erraten, welchen Beschluss die Seite zeigt;
+    mit ihnen schlägt es ihn nach. Die Query selbst kommt NICHT mit (dieselbe
+    Regel wie bei den Seitenaufrufen): Der Client zerlegt sie und schickt nur
+    die Felder, die hier stehen.
+    """
+    decision_id: int | None = Field(default=None, ge=1)
+    ksinr: int | None = Field(default=None, ge=1)
+    slug: str | None = Field(default=None, max_length=120)
+    place_id: str | None = Field(default=None, max_length=120)
+    year: int | None = Field(default=None, ge=1990, le=2100)
+    area: str | None = Field(default=None, max_length=120)
+
+
+class ExplainBody(BaseModel):
+    """Was Lotti zu sehen bekommt."""
+    route: str = Field(max_length=200)
+    page_title: str = Field(default="", max_length=200)
+    heading: str = Field(default="", max_length=lotti.HEADING_MAX)
+    element: ExplainElement | None = None
+    selection: str = Field(default="", max_length=lotti.SELECTION_MAX)
+    question: str = Field(default="", max_length=lotti.QUESTION_MAX)
+    refs: ExplainRefs = Field(default_factory=ExplainRefs)
+    history: list[AskTurn] = Field(default_factory=list, max_length=3)
+
+
+@router.post("/explain", response_class=EventStreamResponse, responses=SSE_ERKLAERUNG)
+def explain(body: ExplainBody, request: Request, user: dict = Depends(require_active),
+            store: CouncilStore = Depends(get_council_store),
+            ratslotse: Store = Depends(get_store)) -> StreamingResponse:
+    """Erklärt, was gerade auf dem Bildschirm steht — als SSE-Strom.
+
+    Der Unterschied zu ``/ask``: **keine Suche**. Der Gegenstand steht auf der
+    Seite, die Person zeigt selbst darauf; gesucht werden muss nichts. Drei
+    Wege kommen ohne Modell aus (Glossar, Beschluss-Kurzfassung,
+    Seiten-Wissen) und antworten in wenigen Millisekunden.
+
+    **Gespeichert wird hier nichts** außer zwei Zählern: Markierung,
+    Element-Text und Frage stehen auf der Seite und bleiben dort.
+    """
+    # Der Schalter gilt HIER und nicht nur in der Oberfläche: Jeder Aufruf
+    # kostet ein Sprachmodell. Ein Endpunkt, der vor der Freigabe antwortet,
+    # ist kein halbfertiges Feature, sondern eine offene Rechnung.
+    if not features.an("lotti-assistentin"):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Nicht gefunden.")
+    route = seitenaufrufe.normalisieren(body.route)
+    grund = knowledge.OHNE_ERKLAERUNG.get(route)
+    if grund:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, grund)
+    if knowledge.fuer_route(route) is None:
+        # Öffentliche Seite, Sammelzeile oder Tippfehler: Ohne Wissen über die
+        # Seite bliebe nur der Element-Text, und daraus eine Erklärung zu
+        # bauen hieße raten.
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            "Zu dieser Seite kann ich nichts sagen.")
+    if not user.get("limits_unlocked"):
+        assistant_limiter.check(request, subject=user["id"])
+
+    screen = lotti.Screen(
+        route=route,
+        page_title=body.page_title,
+        heading=body.heading,
+        element_key=(body.element.key if body.element else None),
+        element_title=(body.element.title if body.element else ""),
+        element_text=(body.element.text if body.element else ""),
+        selection=body.selection,
+        refs={k: v for k, v in body.refs.model_dump().items() if v is not None},
+    )
+    frage = body.question.strip()
+    verlauf = [r.model_dump() for r in body.history]
+
+    def gen():
+        try:
+            t0 = time.perf_counter()
+            zeiten: dict = {}
+            # Erst die Wege ohne Modell. Sie sind der häufigste Klick, und die
+            # geprüfte Antwort liegt bereits im Haus — ein Modell darauf
+            # kostet Geld und kann sie nur verschlechtern.
+            fertig = lotti.deterministic_answer(store, screen, frage)
+            if fertig:
+                text, art = fertig
+                zeiten["total_ms"] = round((time.perf_counter() - t0) * 1000)
+                yield _sse({"type": "token", "text": text})
+                ratslotse.record_activity(user["id"], "assistant_deterministic",
+                                          client_kind(request))
+                yield _sse({"type": "done", "mode": "deterministic", "kind": art,
+                            "next": None, "glossary": [], "timings": zeiten})
+                return
+
+            yield _sse({"type": "step", "step": "context"})
+            ctx = lotti.screen_context(store, screen, frage,
+                                       permissions=frozenset(user.get("permissions") or ()))
+            zeiten["context_ms"] = round((time.perf_counter() - t0) * 1000)
+            yield _sse({"type": "step", "step": "answer"})
+
+            buf = ""
+            sent = 0
+            marker = lotti.NEXT_MARKER
+            try:
+                for delta in lotti.explain_stream(store, screen, frage, ctx=ctx,
+                                                  verlauf=verlauf):
+                    if not buf and delta:
+                        zeiten["ttft_ms"] = round((time.perf_counter() - t0) * 1000)
+                    buf += delta
+                    cut = buf.find(marker)
+                    # Vor der Marke: senden. Ab der Marke: nur noch sammeln —
+                    # „WEITER: ratsfrage" ist eine Anweisung an den Client,
+                    # kein Satz für Leser*innen.
+                    limit = cut if cut != -1 else max(0, len(buf) - len(marker))
+                    if limit > sent:
+                        yield _sse({"type": "token", "text": buf[sent:limit]})
+                        sent = limit
+                if marker not in buf and len(buf) > sent:
+                    yield _sse({"type": "token", "text": buf[sent:]})
+                    sent = len(buf)
+            except Exception:  # noqa: BLE001 — Strom riss mitten in der Erklärung
+                # Dasselbe Verhalten wie bei der KI-Frage: einmal komplett neu
+                # erzeugen und den Torso ersetzen, statt ihn stehen zu lassen.
+                _log.warning("explain_stream brach nach %d Zeichen ab — one-shot Ersatz",
+                             len(buf), exc_info=True)
+                ans = lotti.explain_question(store, screen, frage, ctx=ctx, verlauf=verlauf)
+                buf = ans
+                yield _sse({"type": "replace", "text": lotti.split_next(ans)[0]})
+
+            text, weiter = lotti.split_next(buf)
+            # Die Weiterreichung ist deterministisch, das Modell darf sie nur
+            # ERGÄNZEN: Es vergisst die Marke gelegentlich, und dann stünde da
+            # „das kann ich dir nicht sagen" ohne einen Weg weiter — die
+            # Sackgasse, gegen die die Designsprache schreibt.
+            if lotti.archivfrage(frage):
+                weiter = "ratsfrage"
+            zeiten["total_ms"] = round((time.perf_counter() - t0) * 1000)
+            _log.info("assistant_timings route=%s element=%s %s", route,
+                      screen.element_key or "-",
+                      " ".join(f"{k}={v}" for k, v in sorted(zeiten.items())))
+            ratslotse.record_activity(user["id"], "assistant_explain", client_kind(request))
+            yield _sse({"type": "done", "mode": "explain", "kind": "model",
+                        "next": weiter,
+                        # Die Fachwörter, die im Kontext standen — das Fenster
+                        # macht daraus Verweise aufs Glossar.
+                        "glossary": [b["begriff"] for b in ctx.get("glossary") or []],
+                        "timings": zeiten})
+        except Exception:  # noqa: BLE001 — Fehler beim Client sichtbar machen
+            _log.exception("Lottis Erklärung fehlgeschlagen")
+            yield _sse({"type": "error", "message": "Erklärung fehlgeschlagen."})
+
+    return StreamingResponse(
+        gen(), media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
 class AskBody(BaseModel):
