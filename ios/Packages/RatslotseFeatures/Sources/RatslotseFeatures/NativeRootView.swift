@@ -356,6 +356,9 @@ private struct MainTabsView: View {
     /// als eigenen Safe-Area-Rand; steht die Tastatur, ist die Leiste weg
     /// und der Rand null.
     @State private var bottomBarHeight: CGFloat = 0
+    /// Lottis Blatt. Der Bildschirm wird beim ÖFFNEN festgehalten: Wer im
+    /// Blatt weiterfragt, fragt weiter zu der Seite, von der er kam.
+    @State private var lotti: LottiSitzung?
 
     private var tabBarClearance: CGFloat {
         horizontalSizeClass == .regular || keyboardVisible ? 0 : bottomBarHeight
@@ -406,6 +409,25 @@ private struct MainTabsView: View {
                 keyboardVisible = false
             }
         }
+        // Der schwebende Knopf liegt ÜBER allem, auch über der Tab-Leiste —
+        // wie im Web. Er erscheint nur, wo es zur Seite etwas zu sagen gibt
+        // (auf dem Konto gibt es ihn nicht, `currentExplainScreen`).
+        .overlay(alignment: .bottomTrailing) {
+            if model.feature("lotti-assistentin"), !keyboardVisible,
+               let screen = model.currentExplainScreen {
+                LottiFloatingButton(
+                    open: { lotti = LottiSitzung(screen: screen, title: model.currentScreenTitle) },
+                    bottomClearance: tabBarClearance
+                )
+                .transition(.scale.combined(with: .opacity))
+            }
+        }
+        .animation(RatsMotion.flow, value: keyboardVisible)
+        .sheet(item: $lotti) { sitzung in
+            AssistantSheet(model: model, screen: sitzung.screen, title: sitzung.title,
+                           fixture: sitzung.fixture)
+                .ratsLargeSheet()
+        }
         .sheet(isPresented: $showsMore) {
             MoreHubView(
                 model: model,
@@ -436,6 +458,8 @@ private struct MainTabsView: View {
         .onAppear {
             if horizontalSizeClass == .regular { showsMore = false }
 #if DEBUG
+            // Für die Sichtprobe: das Lotti-Blatt offen, ohne es antippen zu
+            // müssen (der Knopf hängt am Feature-Schalter des Servers).
             switch ratsDebugValue("RATSLOTSE_DEBUG_MAIN") {
             case "decision-detail":
                 model.selectedTab = .council
@@ -502,6 +526,20 @@ private struct MainTabsView: View {
                     model.navigation.append(.quiz(area: nil))
                 }
             default: break
+            }
+            // NACH der Screen-Wahl: Das Blatt hält den Bildschirm fest, den
+            // es beim Öffnen vorfindet — davor wäre es immer „Heute".
+            if let lottiModus = ratsDebugValue("RATSLOTSE_DEBUG_LOTTI") {
+                // Der Knopf hängt am Feature-Schalter des Servers; ohne
+                // Backend wäre er unsichtbar und die Sichtprobe leer.
+                model.features.insert("lotti-assistentin")
+                if lottiModus != "knopf" {
+                    lotti = LottiSitzung(
+                        screen: model.currentExplainScreen ?? ExplainScreen(route: "/dashboard"),
+                        title: model.currentScreenTitle,
+                        fixture: lottiModus == "fixture"
+                    )
+                }
             }
 #endif
         }

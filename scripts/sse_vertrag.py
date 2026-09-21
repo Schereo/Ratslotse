@@ -45,8 +45,15 @@ WEB_LESER = (
     WURZEL / "web" / "frontend" / "components" / "assistentin" / "panel.tsx",
 )
 WEB = WEB_LESER[0]
-APP = (WURZEL / "ios" / "Packages" / "RatslotseFeatures" / "Sources"
-       / "RatslotseFeatures" / "QuestionsView.swift")
+#: Die App-Leser des Stroms. Seit 09/2026 zwei — wie im Web: das
+#: Ratsgespräch und Lottis Blatt.
+APP_LESER = (
+    WURZEL / "ios" / "Packages" / "RatslotseFeatures" / "Sources"
+    / "RatslotseFeatures" / "QuestionsView.swift",
+    WURZEL / "ios" / "Packages" / "RatslotseFeatures" / "Sources"
+    / "RatslotseFeatures" / "AssistantSheet.swift",
+)
+APP = APP_LESER[0]
 SSE_CLIENT = (WURZEL / "ios" / "Packages" / "RatslotseAPI" / "Sources"
               / "RatslotseAPI" / "SSEClient.swift")
 
@@ -177,7 +184,9 @@ def app_gelesen() -> set[str]:
     in der Ansicht, sondern als abgeleitete Eigenschaften im `SSEEvent`. Wer
     nur die Ansicht liest, prüft die Hälfte.
     """
-    aus = set(re.findall(r'event\.fields\["([a-z_]+)"\]', APP.read_text()))
+    aus: set[str] = set()
+    for datei in APP_LESER:
+        aus |= set(re.findall(r'event\.fields\["([a-z_]+)"\]', datei.read_text()))
     aus |= set(re.findall(r'fields\["([a-z_]+)"\]', SSE_CLIENT.read_text()))
     kodier = _block(SSE_CLIENT.read_text(), "enum CodingKeys", "\n    }")
     aus |= set(re.findall(r'=\s*"([a-z_]+)"', kodier))
