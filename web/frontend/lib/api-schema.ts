@@ -12581,7 +12581,7 @@ export interface components {
              * Key
              * @enum {string}
              */
-            key: "user" | "council_member" | "admin";
+            key: "user" | "expert" | "council_member" | "admin";
             /** Label */
             label: string;
             /** Permissions */
@@ -13733,9 +13733,9 @@ export interface components {
              * Role
              * @enum {string}
              */
-            role: "user" | "council_member" | "admin";
+            role: "user" | "expert" | "council_member" | "admin";
             /** Roles */
-            roles: ("user" | "council_member" | "admin")[];
+            roles: ("user" | "expert" | "council_member" | "admin")[];
             /** Saves Conversations */
             saves_conversations?: number | null;
             /**
@@ -13915,12 +13915,12 @@ export interface components {
              * Role
              * @enum {string}
              */
-            role: "user" | "council_member" | "admin";
+            role: "user" | "expert" | "council_member" | "admin";
             /**
              * Roles
              * @default []
              */
-            roles: ("user" | "council_member" | "admin")[];
+            roles: ("user" | "expert" | "council_member" | "admin")[];
             /**
              * Status
              * @default pending
@@ -20944,4 +20944,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: acabb1a401df749ba4a0c3f446fc5e016aeed88abb15b4afea602c53ac7f30ed
+// vertrag-sha256: 473b0cd52694372d464dfcfaeee8767d070430bd8ebb1cf57b1794e450492070

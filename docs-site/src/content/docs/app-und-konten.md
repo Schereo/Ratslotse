@@ -517,7 +517,9 @@ einschaltet — ein Abo ohne Sofort-Meldung ist kein Widerspruch, das Gremium
 steht in der Ratswoche und im Wochenüberblick, der jetzt ab Werk kommt. Ein
 Konto mit Ratsmandat (Recht `mandate`, Rolle *Ratsmitglied*) bekommt alle
 abonnierten Gremien sofort. Entschieden wird über das Recht
-(`kern.notify.vorgaben_fuer`), nie über den Rollennamen. Gemessen war das
+(`kern.notify.vorgaben_fuer`), nie über den Rollennamen — weshalb die Rolle
+*Fachpublikum* (seit 09/2026) den Haushalt öffnet, ohne an diesen Vorgaben
+etwas zu ändern: Sie trägt `budget`, aber nicht `mandate`. Gemessen war das
 Gegenteil im Bestand: Die Tagesordnungs-Meldungen machten 41 % aller Posten
 aus, getrieben von Konten mit im Mittel neun Abos, während der
 Wochenüberblick bei fast allen aus war.

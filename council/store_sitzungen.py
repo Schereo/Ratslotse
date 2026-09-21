@@ -285,6 +285,21 @@ class SitzungenMixin(StoreBasis):
             "SELECT * FROM council_sessions WHERE session_date = ? ORDER BY session_time",
             (tag,))]
 
+    def letzte_beschluss_sitzung(self) -> str | None:
+        """Datum der jüngsten Sitzung, in der überhaupt etwas entschieden wurde.
+
+        NICHT ``MAX(session_date)`` über alle Sitzungen: Im Kalender stehen
+        auch künftige Termine, und in den Ferien steht dort oft eine Sitzung,
+        die noch keine Tagesordnung hat. Gefragt ist der letzte Tag, an dem
+        der Rat tatsächlich etwas beschlossen hat — die Bezugsgröße für die
+        Frage „hat sich seitdem überhaupt etwas tun KÖNNEN?" (``qa.aktenstand``).
+        """
+        row = self._conn.execute(
+            "SELECT MAX(cs.session_date) AS d FROM council_decisions d "
+            "JOIN council_sessions cs ON cs.ksinr = d.ksinr"
+        ).fetchone()
+        return str(row["d"]) if row and row["d"] else None
+
     def upcoming_sessions(self, limit: int = 20, offset: int = 0) -> list[dict]:
         """Kommende Sitzungen: echte (mit ksinr/Tagesordnung) plus terminierte
         aus dem Kalender (ksinr NULL), solange keine echte Sitzung desselben

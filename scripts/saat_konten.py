@@ -14,10 +14,14 @@ Was entsteht:
   Konto, mit dem sich der **Haushalts-Bereich** lokal öffnen lässt (er hängt
   seit 09/2026 am Recht ``budget``, siehe ``kern/roles.py``). Ohne dieses
   Konto stünde man vor zwanzig 404-Seiten und suchte den Fehler im Code;
+* ``fachpublikum@example.org`` mit der Rolle ``expert`` — dieselbe
+  Haushalts-Sicht wie die Ratsfrau, aber ohne das Recht ``mandate``. Das ist
+  der ganze Unterschied zwischen den beiden Rollen, und lokal nachsehen kann
+  man ihn nur, wenn es beide Konten gibt;
 * ``nutzerin@example.org`` als normales Konto mit Themen und deren echten
   Treffern aus dem Abzug — bewusst OHNE Zusatzrolle, damit man die Sicht
   eines gewöhnlichen Kontos auch wirklich sehen kann;
-* alle drei bestätigt und aktiv, Passwort ``password123``;
+* alle vier bestätigt und aktiv, Passwort ``password123``;
 * dazu **zwölf stille Konten über acht Wochen verteilt**, mit
   unterschiedlichem Fortschritt (manche haben eingerichtet, manche kamen
   wieder, die meisten nicht). Ohne sie zeigt der Kohorten-Trichter im
@@ -83,9 +87,14 @@ def saat(db: Path, council_db: Path | None) -> dict:
                                          status="active", email_verified=True,
                                          display_name="Ratsfrau")
         store.set_web_user_roles(ratsfrau, ["council_member"])
+        fachpublikum = store.create_web_user("fachpublikum@example.org", pw,
+                                             status="active", email_verified=True,
+                                             display_name="Fachpublikum")
+        store.set_web_user_roles(fachpublikum, ["expert"])
         bericht["admin_id"] = admin
         bericht["nutzerin_id"] = nutzerin
         bericht["ratsfrau_id"] = ratsfrau
+        bericht["fachpublikum_id"] = fachpublikum
 
         themen = [store.add_topic(nutzerin, name, beschreibung)
                   for name, beschreibung in THEMEN]
@@ -205,7 +214,8 @@ def main() -> int:
     args.db.parent.mkdir(parents=True, exist_ok=True)
     bericht = saat(args.db, args.council_db)
     print(f"✓ {args.db}")
-    print(f"  chef@example.org (Admin), ratsfrau@example.org (Ratsmitglied → Haushalt) "
+    print(f"  chef@example.org (Admin), ratsfrau@example.org (Ratsmitglied → Haushalt), "
+          f"fachpublikum@example.org (Fachpublikum → Haushalt, ohne Mandats-Abos) "
           f"und nutzerin@example.org — Passwort {PASSWORT}")
     print(f"  {bericht['themen']} Themen, {bericht['treffer']} Treffer, "
           f"{bericht['kohorte']} stille Konten über acht Wochen")

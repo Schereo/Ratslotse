@@ -221,6 +221,12 @@ type Turn = {
   /** Wie tragfähig die gefundenen Beschlüsse sind (deterministisch aus den
    *  Relevanz-Werten) — „duenn" blendet einen Ehrlichkeits-Hinweis ein. */
   evidence_level?: "solide" | "duenn";
+  /** Wie ALT die gefundenen Beschlüsse sind (deterministisch aus ihren Daten
+   *  und dem Sitzungskalender) — „alt" blendet den Stand-Hinweis ein. */
+  records_state?: {
+    latest: string; months: number; level: "fresh" | "quiet" | "old";
+    last_session: string | null; next_session: string | null;
+  } | null;
   /** Hintergrund zu den in der Frage genannten Objekten („Was ist die GSG?"). */
   steckbriefe?: { name: string; slug: string; beschreibung: string }[];
   /** Die Grafik zur Antwort — Rohreihen aus dem Store, nie vom Modell. */
@@ -727,6 +733,8 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   // die Einwilligung, an der die Erstnutzungs-Karte hängt.
   const { user: konto } = useAuth();
   const [q, setQ] = useState("");
+  /** Eine Chip-Frage, die auf die Einwilligung wartet (s. den ?q=-Effekt). */
+  const chipFrageRef = useRef<string | null>(null);
   const sp = useSearchParams();
   const pathname = pfad(usePathname());
   const router = useRouter();
@@ -739,9 +747,25 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     // Seit dem Split wohnt das Ratsgespräch auf /fragen — der frühere
     // mode=fragen-Guard hängt jetzt am Pfad.
     if (!urlQ || pathname !== "/fragen") return;
-    setQ((prev) => prev || urlQ);
+    // `chip=1`: Die Frage kommt von einem Frage-Chip auf einer anderen Seite
+    // (components/frage-chips.tsx). Dann wird sie sofort gestellt — wie ein
+    // Chip im Gespräch — und als Chip-Frage gezählt. Ohne die Marke bleibt es
+    // beim Vorbelegen: Ein geteilter oder getippter Link soll keine Frage
+    // auslösen, die niemand angetippt hat.
+    const ausChip = sp.get("chip") === "1";
+    if (!ausChip) setQ((prev) => prev || urlQ);
+    else if (einstellung === null || einstellung === undefined) {
+      // Noch keine Einwilligung — genau der Fall des NEUEN Kontos, für das
+      // der Chip gebaut ist. `ask` schwiege dann, und die Frage wäre weg
+      // (lokal gemessen: leerer Composer unter der Einwilligungs-Karte).
+      // Also vorbelegen und merken; sobald die Einwilligung steht, geht
+      // sie von selbst raus (Effekt weiter unten).
+      chipFrageRef.current = urlQ;
+      setQ(urlQ);
+    } else void ask(urlQ, true);
     const params = new URLSearchParams(sp.toString());
     params.delete("q");
+    params.delete("chip");
     // Auf dem EIGENEN Pfad bleiben: Das fest verdrahtete /council stammte aus
     // der Zeit vor dem Split — es warf jeden /fragen-Besucher nach dem
     // q-Verbrauch zurück in die Suche (im Browser gemessen: Alt-Link →
@@ -931,6 +955,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             planning_procedures: (msg.planning_procedures as Planung[]) ?? [],
             sessions: (msg.sessions as SitzungsInfo[]) ?? [],
             evidence_level: (msg.evidence_level as "solide" | "duenn") ?? undefined,
+            records_state: (msg.records_state as Turn["records_state"]) ?? null,
             steckbriefe: (msg.steckbriefe as Turn["steckbriefe"]) ?? [],
             chart: (msg.chart as QaGrafik | null) ?? null,
           });
@@ -1357,6 +1382,14 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     () => (konto ? konto.saves_conversations ?? null : undefined),
   );
   const [gespraechId, setGespraechId] = useState<number | null>(null);
+  useEffect(() => {
+    // Die wartende Chip-Frage stellen, sobald die Einwilligung da ist.
+    if (einstellung === null || einstellung === undefined || !chipFrageRef.current) return;
+    const frage = chipFrageRef.current;
+    chipFrageRef.current = null;
+    void ask(frage, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [einstellung]);
   const [gespraeche, setGespraeche] = useState<GespraechEintrag[]>([]);
   // Der Bestand des Kontos — bewusst NICHT `gespraeche.length`: die Liste ist
   // seit 30.08. eine Seite (SEITE Zeilen) und schrumpft während einer Suche
@@ -2445,6 +2478,14 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
             </p>
           )}
 
+          {/* Alter Stand: Die Antwort ist belegt, aber das Jüngste daran ist
+              Jahre her. Ohne diesen Hinweis liest sich ein Beschluss von 2018
+              wie ein aktueller Plan — genau das ist am 21.09.2026 passiert. */}
+          {!beschaeftigt && turn.records_state?.level === "old"
+            && !turn.fehler && !turn.abgebrochen && (
+            <AlterStand stand={turn.records_state} />
+          )}
+
           {/* Dünne Beleglage: ehrlicher Hinweis + der Ausweg, der hier hilft. */}
           {!beschaeftigt && turn.evidence_level === "duenn" && !turn.research
             && !turn.fehler && !turn.abgebrochen && (
@@ -3272,6 +3313,31 @@ function SteckbriefBaustein({ steckbriefe }: {
         </div>
       )}
     </div>
+  );
+}
+
+/** Ehrlichkeits-Hinweis bei ALTEM Stand — das Gegenstück zur dünnen Beleglage.
+ *
+ *  Dort sind es zu wenige Belege, hier sind es alte: Zu Neu-Donnerschwee endet
+ *  die Aktenlage im Februar 2023, die Antwort erzählte trotzdem im Präsens vom
+ *  „geplanten" Wohnquartier (echte Nutzerfrage, 21.09.2026). Die Daten stehen
+ *  ohnehin an jeder Quelle — dieser Satz sagt, was sie zusammen bedeuten.
+ *  Kein Ausweg-Knopf: Eine gründlichere Recherche findet keine Beschlüsse, die
+ *  es nicht gibt. */
+function AlterStand({ stand }: { stand: NonNullable<Turn["records_state"]> }) {
+  const jahre = Math.floor(stand.months / 12);
+  const dauer = jahre >= 1
+    ? `${jahre === 1 ? "einem Jahr" : `${jahre} Jahren`}`
+    : `${stand.months} Monaten`;
+  return (
+    <p className="flex items-start gap-2 rounded-xl border border-border bg-card px-3.5 py-3 text-[12.5px] leading-relaxed text-muted-foreground">
+      <History className="mt-0.5 h-3.5 w-3.5 shrink-0 text-signal" aria-hidden />
+      <span>
+        Ältere Aktenlage: Der jüngste Beschluss dazu ist vom{" "}
+        <strong className="font-medium text-foreground">{fmtDatum(stand.latest)}</strong>{" "}
+        — seit über {dauer} hat der Rat dazu nichts mehr entschieden.
+      </span>
+    </p>
   );
 }
 

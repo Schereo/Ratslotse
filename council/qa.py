@@ -171,10 +171,27 @@ _EXPLICIT_DEBATE_RE = re.compile(
 )
 
 
+#: Punktfragen, deren Antwort eine ZAHL oder ein Datum ist. Die steht selten
+#: im Beschlusstext („nimmt den Bericht zur Kenntnis"), fast immer in der
+#: Vorlage dahinter — Sumpfeichen-Fall vom 11.09.2026: Die Beschlüsse zu den
+#: Baumfällungen an der Nadorster Straße standen im Kontext, die Antwort
+#: blieb „ohne Angabe zur Zahl", weil der Vorlagentext nicht mitkam.
+_ZAHL_FRAGE_RE = re.compile(
+    r"\b(wie\s*viele?|wieviel\w*|wie\s+hoch|wie\s+teuer|wie\s+lang\w*|wie\s+gro(?:ß|ss)\w*|"
+    r"wie\s+oft|wann|seit\s+wann|bis\s+wann|welche[rs]?\s+(?:betrag|summe|zahl|anzahl|h(?:ö|oe)he))\b",
+    re.IGNORECASE)
+
+
+def zahlfrage(question: str) -> bool:
+    """Verlangt die Frage eine Zahl oder ein Datum als Antwort?"""
+    return bool(_ZAHL_FRAGE_RE.search(question or ""))
+
+
 def research_plan_with_mandatory(plan: dict, *, typ: str, question: str = "",
                                  person: bool = False,
                                  place: bool = False, sessions: bool = False,
-                                 latest_decision: bool = False) -> dict:
+                                 latest_decision: bool = False,
+                                 eng: bool = False) -> dict:
     """LLM-Auswahl konsistent und mit harten Entitätskanälen machen.
 
     Das ist die zentrale Hybrid-Leitplanke: Ein expliziter Ort, eine Person
@@ -201,6 +218,12 @@ def research_plan_with_mandatory(plan: dict, *, typ: str, question: str = "",
         mandatory.append("places")
     if typ == "session" or sessions:
         mandatory.append("sessions")
+    # Eine enge Frage nach einer Zahl: Die Vorlage ist die Quelle, nicht der
+    # Beschluss — Kanal UND Bedarf, damit die Negativregeln unten sie nicht
+    # als „vorsorglich gewählt" wieder entfernen.
+    zahl = bool(eng and zahlfrage(question))
+    if zahl:
+        mandatory.append("documents")
     mandatory = list(dict.fromkeys(mandatory))
 
     need_channels = {
@@ -216,6 +239,8 @@ def research_plan_with_mandatory(plan: dict, *, typ: str, question: str = "",
     }
     model_needs = list(plan.get("needs") or [])
     inferred_needs: list[str] = []
+    if zahl and "documents" not in model_needs:
+        inferred_needs.append("documents")
     if (_OFFICIAL_UPDATE_WORDS_RE.search(question or "")
             and ("presse" in (question or "").lower()
                  or _OFFICIAL_SOURCE_RE.search(question or ""))
@@ -248,14 +273,14 @@ def research_plan_with_mandatory(plan: dict, *, typ: str, question: str = "",
         # obwohl es den feineren Bedarf ``future_dates`` korrekt erkannt hatte.
         selected.remove("press")
         suppressed.append("press")
-    if "documents" not in need_set and "documents" in selected:
+    if "documents" not in need_set and "documents" in selected and "documents" not in mandatory:
         # Kanal und Bedarf müssen bei Dokumenten bewusst zusammenpassen. Das
         # Modell setzte den Kanal in der Produktionsmatrix oft vorsorglich bei
         # einfachen Datums-/Abstimmungsfragen, ohne selbst einen Bedarf an
         # Dokumentinhalten zu erkennen.
         selected.remove("documents")
         suppressed.append("documents")
-    elif ("documents" in selected and question
+    elif ("documents" in selected and "documents" not in mandatory and question
           and not _EXPLICIT_DOCUMENT_RE.search(question)
           and (typ in ("person", "party", "session")
                or latest_decision or definition_only or finance_facets
@@ -329,7 +354,15 @@ def analyse_query(question: str, model: str = EXPAND_MODEL,
         )
         data = json.loads(_strip_fences(resp.choices[0].message.content or ""))
         umgeschrieben = " ".join(str(data.get("question") or "").split())[:300]
-        begriffe = " ".join(str(data.get("terms") or "").split())
+        # Eine Nachfrage, die das Modell auf die VORIGE Frage zurückschreibt,
+        # ist keine Auflösung, sondern ein Rückfall: „Sag mir mehr zum
+        # Planfeststellungsbeschluss von 2023" darf nicht wieder „Was findest
+        # du zum Planfeststellungsbeschluss?" werden — dann sucht das Retrieval
+        # dasselbe wie eben und die Antwort wiederholt sich (09.09.2026). Dann
+        # lieber die Nachfrage, wie sie gestellt wurde.
+        if umgeschrieben and _wiederholt_vorige_frage(umgeschrieben, verlauf):
+            umgeschrieben = question
+        begriffe = _ohne_fragehuelle(" ".join(str(data.get("terms") or "").split()))
         typ = str(data.get("kind") or "").strip().lower()
         party = (str(data.get("party")).strip() or None) if data.get("party") else None
         # Multi-Query (Task 32): Perspektiv-Umformulierungen füllen Lücken,
@@ -364,6 +397,194 @@ def analyse_query(question: str, model: str = EXPAND_MODEL,
         return fallback
 
 
+#: Wörter, die das Analyse-Modell gern in die Suchbegriffe schreibt und die
+#: in JEDER Vorlage stehen. Gemessen am 20.09.2026 auf dev: Für „Was hat der
+#: Rat zuletzt zum Radverkehr beschlossen?" lieferte es „Radverkehr Beschlüsse
+#: Rat" — damit fehlte der Leitfaden Fahrradstraßen (Rat 01.06.2026) in den
+#: 40 Kandidaten; mit „Radverkehr Fahrrad Radweg Fahrradstraße" stand er auf
+#: Rang 8. Der Prompt verbietet die Wörter jetzt; dieser Filter hält es fest,
+#: falls das Modell sie trotzdem schreibt.
+_FRAGEHUELLE = frozenset({
+    "beschluss", "beschlüsse", "beschluesse", "beschlossen", "entscheidung",
+    "entscheidungen", "entschieden", "rat", "rates", "stadtrat", "stadtrats", "stadt",
+    "oldenburg", "oldenburger", "zuletzt", "aktuell", "aktuelle", "aktueller",
+    "aktuellen", "neueste", "neuesten", "stand", "sachstand", "anzahl", "wie", "viele",
+})
+
+
+def _ohne_fragehuelle(terms: str) -> str:
+    """Suchbegriffe ohne die Wörter, die in jeder Vorlage stehen.
+
+    Bleibt nichts übrig, bleiben die Begriffe, wie sie waren — ein leerer
+    Suchstring wäre schlimmer als ein verwässerter.
+    """
+    woerter = terms.split()
+    rest = [w for w in woerter if w.lower().strip(",.;:") not in _FRAGEHUELLE]
+    return " ".join(rest) if rest else terms
+
+
+#: Satzende ODER Zeilenumbruch: Vorlagen tragen Kopfzeilen und Abschnitts-
+#: Etiketten („Anlass:", „Bericht:") ohne Punkt — als EIN Riesensatz sammelten
+#: sie sonst alle Fragewörter ein und gewannen (dev, 20.09.2026: die
+#: Kopfzeile „Ausdruck vom … Untere Nadorster Straße – Bericht …" schlug den
+#: Sachverhalt).
+_SATZ_RE = re.compile(r"(?<=[.!?:])\s+(?=[A-ZÄÖÜ0-9„])|\n+")
+#: Länger als das ist kein Satz, sondern ein Block ohne Satzzeichen.
+_SATZ_MAX = 320
+
+
+def fundstelle(text: str, question: str, terms: str = "", breite: int = 500,
+               saetze: int = 2) -> str:
+    """Die Sätze einer Vorlage, in denen die Fragewörter stehen.
+
+    Der übliche Auszug (``vorlagen.excerpt``) nimmt die ersten 350 Zeichen ab
+    „Sachverhalt" — für „Was ist geplant?" richtig, für „Wie viele Bäume?"
+    meist am Ziel vorbei: Die Zahl steht auf Seite drei. Hier zählt je Satz,
+    wie viele Fragewörter er trifft (gefaltet, Teilwort, Umlaut-Mehrzahl wie
+    beim Nachzügler); die besten ``saetze`` Sätze kommen in Textreihenfolge,
+    gekappt auf ``breite``. Leer, wenn kein Satz ein Fragewort trägt — dann
+    bleibt es beim normalen Auszug.
+    """
+    if not text:
+        return ""
+    woerter = {w for w in (extract_keywords(question) + [t.lower() for t in (terms or "").split()])
+               if len(w) >= 4 and w not in _STOP and w not in _FRAGEHUELLE}
+    formen = []
+    for w in woerter:
+        g = _falte(w).rstrip("n") if w.endswith("en") else _falte(w)
+        formen.append((g, _umlaut_mehrzahl(g)))
+    if not formen:
+        return ""
+    kandidaten = [" ".join(s.split()) for s in _SATZ_RE.split(text)
+                  if 20 < len(s.strip()) <= _SATZ_MAX]
+    bewertet = []
+    for i, satz in enumerate(kandidaten):
+        f = _falte(satz)
+        treffer = sum(1 for g, u in formen if g in f or (u and u in f))
+        if treffer:
+            # Ein Satz mit einer Zahl darin ist bei einer Zahl-Frage mehr wert.
+            bewertet.append((treffer + (0.5 if re.search(r"\d", satz) else 0), i, satz))
+    if not bewertet:
+        return ""
+    beste = sorted(sorted(bewertet, key=lambda x: -x[0])[:saetze], key=lambda x: x[1])
+    raus = " ".join(s for _, _, s in beste)
+    return raus[:breite].rstrip() + ("…" if len(raus) > breite else "")
+
+
+#: Wie viele Kandidaten von hinter dem Kontext-Deckel höchstens nachrücken.
+NACHZUEGLER_MAX = 4
+#: Ab diesem Anteil der Kandidaten gilt ein Fragewort als „steht überall" —
+#: es trägt dann nichts zur Unterscheidung bei.
+_NACHZUEGLER_HAEUFIG = 0.3
+
+
+def _umlaut_mehrzahl(gefaltet: str) -> str:
+    """„baum" → „baeum" (trifft „baeume", „baeumen"), „platz" → „plaetz",
+    „haus" → „haeus"; leer, wenn das Wort keinen umlautbaren Stammvokal hat.
+
+    Umgelautet wird der ERSTE Vokal der LETZTEN Vokalgruppe — so bildet das
+    Deutsche seine Umlaut-Mehrzahl, auch beim Zwielaut („au" → „äu"). Eine
+    Gruppe, die schon ein „e" hinter a/o/u trägt („ae", „ue"), ist bereits
+    ein Umlaut und bleibt leer.
+    """
+    vokale = "aeiou"
+    ende = len(gefaltet)
+    while ende > 0 and gefaltet[ende - 1] not in vokale:
+        ende -= 1
+    if ende == 0:
+        return ""
+    anfang = ende
+    while anfang > 0 and gefaltet[anfang - 1] in vokale:
+        anfang -= 1
+    gruppe = gefaltet[anfang:ende]
+    if gruppe[0] not in "aou" or (len(gruppe) > 1 and gruppe[1] == "e"):
+        return ""
+    return gefaltet[:anfang] + gruppe[0] + "e" + gefaltet[anfang + 1:]
+
+
+def nachzuegler(candidates: list[dict], ctx_n: int, question: str, terms: str,
+                max_n: int = NACHZUEGLER_MAX) -> list[dict]:
+    """Treffer hinter dem Kontext-Deckel, deren Titel ein SELTENES Fragewort trägt.
+
+    Der Fall dahinter (Konto 9, 11.09.2026): „Wie viele Sumpfeichen müssen an
+    der Nadorster Straße entfernt werden?" — die Antwort war „keine Auskunft",
+    obwohl „Baumfällungen an der unteren Nadorster Straße" (09/2025) und der
+    Bericht zur Baumbesichtigung (06/2026) im Bestand liegen. Sie standen auf
+    Rang 28 und 31 von 40: Der Reranker bevorzugte zwei Dutzend
+    Bebauungsplan-Beschlüsse, die ebenfalls „Nadorster Straße" im Titel
+    tragen, und das Modell sieht nur die ersten zwanzig.
+
+    Die Regel ist bewusst kein zweites Ranking, sondern ein Nachrücken: Ein
+    Fragewort, das in fast allen Kandidaten vorkommt („Nadorster", „Straße",
+    „Cäcilienbrücke"), unterscheidet nichts — eines, das nur wenige treffen
+    („Baum", „Fällung", „Planfeststellungsbeschluss"), ist genau das, wonach
+    gefragt war. Wer so ein seltenes Wort im Titel hat und hinter dem Deckel
+    liegt, rückt nach — höchstens ``max_n``, in Ranking-Reihenfolge.
+
+    Gefaltet und als Teilwort verglichen, damit „Baum" die „Baumfällungen"
+    trifft und „Fällung" die „Baumfällung"; Wörter unter vier Zeichen zählen
+    nicht (sonst träfe „Rat" jeden „Beirat").
+    """
+    if not candidates or len(candidates) <= ctx_n:
+        return []
+    woerter = {w for w in (extract_keywords(question) + [t.lower() for t in terms.split()])
+               if len(w) >= 4 and w not in _STOP and w not in _FRAGEHUELLE}
+    # Grundformen grob: „Sumpfeichen" → „sumpfeiche"; dazu die Umlaut-Mehrzahl
+    # („Baum" → „Bäume", „Platz" → „Plätze"), sonst träfe „Baum" den Titel
+    # „Erhalt von Bäumen" nicht.
+    formen: dict[str, tuple[str, ...]] = {}
+    for w in woerter:
+        g = _falte(w).rstrip("n") if w.endswith("en") else _falte(w)
+        formen[g] = (g, _umlaut_mehrzahl(g))
+    # Titel plus Anfang der Kurzfassung: Der Bericht zur Ortsbegehung an der
+    # Nadorster Straße trägt „Bäume" nur in der Kurzfassung — mit dem Titel
+    # allein blieb er hinter dem Deckel (dev, 20.09.2026).
+    titel = {c["id"]: _falte(c.get("title") or "") for c in candidates}
+    texte = {c["id"]: _falte(f"{c.get('title') or ''} {(c.get('summary') or '')[:300]}")
+             for c in candidates}
+    haeufig_ab = max(2, int(len(candidates) * _NACHZUEGLER_HAEUFIG))
+
+    def trifft(w: str, t: str) -> bool:
+        return any(f and f in t for f in formen[w])
+
+    # Selten heißt: in den TITELN selten — die Kurzfassung ist zum Zählen zu
+    # breit. Ein Wort, das in keinem Titel steht, ist erst recht selten (es
+    # kann dann nur noch über die Kurzfassung treffen).
+    selten = {w for w in formen
+              if sum(1 for t in titel.values() if trifft(w, t)) < haeufig_ab}
+    if not selten:
+        return []
+    vorn = {c["id"] for c in candidates[:ctx_n]}
+    bewertet: list[tuple[int, int, dict]] = []
+    for rang, c in enumerate(candidates[ctx_n:]):
+        if c["id"] in vorn:
+            continue
+        seltene = sum(1 for w in selten if trifft(w, texte[c["id"]]))
+        if not seltene:
+            continue
+        # Wer MEHR Fragewörter trägt, steht weiter vorn: „Baumfällungen an
+        # der unteren Nadorster Straße" (Baum, Fällung, Nadorster, Straße)
+        # vor „Fällung einer Sumpfeiche in der Stedinger Straße" (Sumpfeiche,
+        # Fällung, Straße). Vorher entschied allein der Rang, und das Modell
+        # zitierte die Stedinger Straße als Antwort auf die Nadorster.
+        alle = sum(1 for w in formen if trifft(w, texte[c["id"]]))
+        bewertet.append((-alle, rang, c))
+    bewertet.sort(key=lambda x: (x[0], x[1]))
+    return [c for _, _, c in bewertet[:max_n]]
+
+
+def _wiederholt_vorige_frage(umgeschrieben: str, verlauf: list[dict] | None) -> bool:
+    """Ist die umgeschriebene Frage nur eine der vorigen Fragen des Gesprächs?"""
+    ziel = _falte(umgeschrieben).strip()
+    if not ziel:
+        return False
+    for runde in (verlauf or [])[-VERLAUF_MAX_RUNDEN:]:
+        vorher = _falte(str(runde.get("question") or "")).strip()
+        if vorher and vorher == ziel:
+            return True
+    return False
+
+
 def sort_verlauf(candidates: list[dict]) -> list[dict]:
     """Chronik-Reihenfolge für Verlaufsfragen: älteste zuerst, damit die
     Antwort den Werdegang erzählen kann (das Relevanz-Ranking bleibt in der
@@ -388,8 +609,18 @@ ENG_REGEL = (
     "nötig ist, den einen wichtigsten Bezug (etwa die Bestätigung im Rat). "
     "KEIN Absatz zur Debatte, KEINE Vorgeschichte, KEINE Aufzählung weiterer "
     "Beschlüsse — auch dann nicht, wenn der Kontext mehr hergibt. Fehlt die "
-    "Tatsache in den Quellen, sage das in einem Satz."
+    "Tatsache in den Quellen, sage das im ERSTEN Satz — und nenne dann in EINEM "
+    "weiteren Satz die Beschlüsse, die den gefragten Gegenstand (den Ort, das "
+    "Vorhaben, die Sache) betreffen, mit [id], damit man weiß, wo es "
+    "weitergeht. Eine Antwort ohne einen einzigen Beleg gibt es nur, wenn KEIN "
+    "Beschluss im Kontext den Gegenstand berührt."
 )
+# Der letzte Satz kam am 20.09.2026 dazu: „Wie viele Sumpfeichen müssen an der
+# Nadorster Straße entfernt werden?" bekam auf dev eine EINZEILIGE Antwort
+# ohne Beleg — die Zahl fehlt in den Unterlagen, das stimmt, aber die
+# Beschlüsse zu den Baumfällungen an genau dieser Straße standen im Kontext
+# und blieben unerwähnt. Für die Person ist das eine Sackgasse; ein Satz mit
+# zwei Belegen macht daraus einen Weg.
 
 EXTRA_REGELN = {
     "topic": "",
@@ -420,13 +651,28 @@ EXTRA_REGELN = {
         "Summen aus verschiedenen Jahren auf, benenne die Entwicklung mit "
         "Ausgangs- und Endwert samt Datum und zitiere beide Beschlüsse."
     ),
+    # Die letzte Regel kommt aus einer echten Antwort vom 21.09.2026. Der
+    # Kontext trug, wörtlich:
+    #   [15159] Straßenbenennung nach Rosa Lazarus (Rat · 28.09.2020): Die
+    #   Benennung einer Straße nach Rosa Lazarus im zukünftigen Wohnbereich des
+    #   ehemaligen FLIEGERHORSTES wird beschlossen. — Ortsbezug:
+    #   NEU-DONNERSCHWEE; Fundstelle: Gelände in Neu-Donnerschwee
+    # Beide Hälften stimmen (die Vorlage benennt mehrere Straßen), aber das
+    # Modell nahm die Zusammenfassung und schrieb den Fliegerhorst in eine
+    # Neu-Donnerschwee-Antwort. Für die lesende Person sieht das wie ein
+    # Fehler aus. Es fehlte nur die Ansage, welche Hälfte für den ORT zählt.
     "place": (
         "Diese Frage zielt auf EINEN KONKRETEN ORT aus dem Ratslotse-Ortskatalog. "
         "Im Kontext stehen nur Beschlüsse mit belegtem Bezug zu diesem Ort. "
         "Unterscheide den Ort von seinem größeren Ortsbereich und behaupte nicht, "
         "dass jeder Beschluss des Elternbereichs auch den kleineren Ort betrifft. "
         "Nenne bei einem Überblick die wichtigsten Vorgänge mit Datum und Ergebnis; "
-        "ist der Bestand dünn, sage das ausdrücklich."
+        "ist der Bestand dünn, sage das ausdrücklich.\n"
+        "Steht im Beschlusstext ein ANDERER Ortsname als der gefragte, gilt für die "
+        "Ortsangabe die „Fundstelle“ hinter dem Ortsbezug, nicht der Text: Eine "
+        "Vorlage kann mehrere Orte betreffen. Schreibe dann, was sie für den "
+        "GEFRAGTEN Ort besagt, und nenne den anderen Ort nicht als Ort des "
+        "Vorhabens."
     ),
     # Personen-Fragetyp (10.08.26): deterministisch gesetzt, wenn die Frage
     # eine Ratsperson nennt — die Debatten-Zeilen sind dann deren Beiträge.
@@ -500,6 +746,56 @@ _LATEST_RE = re.compile(
 )
 
 
+#: Fragt die Frage nach dem, was NOCH KOMMT? Deutsche Komposita verschieben
+#: die hintere Wortgrenze, deshalb steht `\b` nur vorn (s. council/CLAUDE.md).
+#: „war geplant" ist ausdrücklich KEINE Zukunftsfrage — sie fragt danach, was
+#: einmal vorgesehen war.
+_ZUKUNFT_RE = re.compile(
+    r"\b(geplant|planung|vorgesehen|k[üo]nftig|zuk[üu]nftig|zukunft|"
+    r"demn[äa]chst|bald|als\s+n[äa]chstes|wie\s+geht\s+es\s+weiter|"
+    r"was\s+(kommt|passiert)\s+(als\s+n[äa]chstes|noch|jetzt)|"
+    # Bis zu vier Wörter zwischen Hilfsverb und Partizip: „soll AM
+    # FLIEGERHORST entstehen" und „wird DORT EIN RADWEG gebaut" sind beide
+    # Zukunft, und beide fielen durch eine Fassung mit genau einem `\w+`.
+    r"soll(?:en)?[^.?!]{0,40}?\b(werden|entstehen|kommen|gebaut|gebaut\s+werden)|"
+    r"wird[^.?!]{0,40}?\b(gebaut|entstehen|kommen|errichtet))",
+    re.IGNORECASE)
+#: „was WAR geplant", „was war für das Gelände vorgesehen" — dieselbe
+#: Wortspanne wie oben, damit auch ein Zwischensatz dazwischen passt.
+_ZUKUNFT_VERGANGEN_RE = re.compile(
+    r"\b(war|waren|wurde|wurden)[^.?!]{0,40}?\b(geplant|vorgesehen)\b",
+    re.IGNORECASE)
+
+
+def zukunftsfrage(question: str) -> bool:
+    """Zielt die Frage auf das, was noch kommt?
+
+    Deterministisch statt über den Rechercheplan: Der Bedarf ``future_dates``
+    kommt aus dem Analysemodell und ist damit dieselbe Münze, die schon bei
+    ``latest_place`` gekippt ist (s. ``latest_intent``). Gebraucht wird das
+    Signal für den Gegenfall — eine Zukunftsfrage, zu der es keine einzige
+    kommende Beratung gibt. Genau der lag am 21.09.2026 vor: „Was ist für
+    Neu-Donnerschwee geplant?" hatte in BEIDEN Zukunftswegen des Routers leere
+    Listen, und die Antwort erzählte trotzdem im Futur — über einen
+    Bebauungsplan von 2018.
+    """
+    frage = question or ""
+    if _ZUKUNFT_VERGANGEN_RE.search(frage):
+        return False
+    return bool(_ZUKUNFT_RE.search(frage))
+
+
+#: Zukunftsfrage, aber kein einziger kommender Termin im Kontext. Ohne diese
+#: Regel füllt das Modell die Lücke mit alten Beschlüssen im Futur.
+ZUKUNFT_LEER_REGEL = (
+    "\n\nACHTUNG, KEINE ZUKUNFT IM KONTEXT: Diese Frage zielt auf das, was noch "
+    "kommt — und zu dieser Sache steht keine einzige kommende Beratung in den "
+    "Unterlagen. Sage das ausdrücklich im ersten Satz und schreibe die "
+    "vorhandenen Beschlüsse in der VERGANGENHEIT. Ein Beschluss ist kein Plan: "
+    "Er sagt, was der Rat entschieden hat, nicht, was als Nächstes passiert."
+)
+
+
 def recency_intent(question: str) -> bool:
     """Fragt jemand nach dem HEUTIGEN Stand? Wortliste statt LLM-Feld —
     deterministisch, kostenlos, testbar. Eine konkrete Jahreszahl in der
@@ -531,16 +827,26 @@ def latest_real_decision(candidates: list[dict]) -> dict | None:
                  if c.get("outcome") in ("accepted", "rejected")), None)
 
 
-def latest_place_answer(candidates: list[dict]) -> str:
+def latest_place_answer(candidates: list[dict], ort_name: str | None = None) -> str:
     """Kurze, deterministische Antwort auf „zuletzt beschlossen“.
 
     Bei diesem engen Fragetyp ist das Datum selbst die gesuchte Information.
     Ein Sprachmodell darf deshalb weder einen älteren, wörtlich ähnlich
     betitelten Beschluss bevorzugen noch eine Kenntnisnahme als Beschluss
     ausgeben. ``candidates`` kommt aus dem Ortsindex und ist neueste zuerst.
+
+    ``ort_name`` gehört in den Satz: Die knappe Antwort nennt sonst nur ein
+    Datum und einen Titel und liest sich wie die Antwort auf eine ganz andere
+    Frage. Gemessen am 21.09.2026 — „Was ist in Donnerschwee zuletzt
+    beschlossen worden?" führte mit dem Stadionneubau an der Maastrichter
+    Straße. Der gehört tatsächlich nach Donnerschwee (``council_locations``
+    führt die Straße mit ``district='Donnerschwee'``), nur stand das Wort
+    Donnerschwee in der ganzen Kurzfassung nicht.
     """
+    wo = f" mit Ortsbezug {ort_name}" if ort_name else ""
     if not candidates:
-        return "Dazu habe ich keine Ratsvorgänge mit belegtem Ortsbezug gefunden."
+        return (f"Dazu habe ich keine Ratsvorgänge{wo or ' mit belegtem Ortsbezug'} "
+                "gefunden.")
 
     from council import ergebnisse   # spät: ergebnisse zieht kern.notify
 
@@ -550,7 +856,7 @@ def latest_place_answer(candidates: list[dict]) -> str:
         date = _datum_de(latest.get("session_date"))
         title = " ".join(str(latest.get("title") or "Unbenannter Vorgang").split())[:300]
         return (
-            "Einen angenommenen oder abgelehnten Beschluss habe ich dazu nicht gefunden. "
+            f"Einen angenommenen oder abgelehnten Beschluss{wo} habe ich nicht gefunden. "
             f"Der jüngste Ratsvorgang war am {date}: „{title}“ "
             f"(Ergebnis: {ergebnisse.ERGEBNIS_WORT.get(latest.get('outcome') or '', 'nicht angegeben')})"
             f" [{latest['id']}]."
@@ -560,11 +866,12 @@ def latest_place_answer(candidates: list[dict]) -> str:
     title = " ".join(str(decision.get("title") or "Unbenannter Beschluss").split())[:300]
     if decision.get("outcome") == "rejected":
         answer = (
-            f"Die jüngste Abstimmungsentscheidung war am {date}: „{title}“ wurde "
+            f"Die jüngste Abstimmungsentscheidung{wo} war am {date}: „{title}“ wurde "
             f"abgelehnt, also nicht beschlossen [{decision['id']}]."
         )
     else:
-        answer = f"Am {date} wurde „{title}“ beschlossen [{decision['id']}]."
+        answer = (f"Zuletzt{wo} hat der Rat am {date} „{title}“ beschlossen "
+                  f"[{decision['id']}].")
 
     # Ein neuerer Bericht ist nützlich, darf aber nie als neuerer „Beschluss“
     # erscheinen. Höchstens einen nennen, damit die Antwort kurz bleibt.
@@ -958,6 +1265,103 @@ def steckbriefe_fuer(store, question: str, max_n: int = 2) -> list[dict]:
         return []
 
 
+#: Ab wann ein Beleg „ruhig" heißt und ab wann „alt" — in Monaten. Gemessen am
+#: 21.09.2026 gegen den Prod-Bestand: Die 31 flächendeckenden Ortsbereiche
+#: tragen alle einen Beschluss aus 2026, SECHS der neun benannten Quartiere
+#: nicht (Eversten-West zuletzt 10/2021). Sechs Monate sind eine Sitzungsrunde
+#: samt Ferien; bei anderthalb Jahren kippt „ist geplant" in „war geplant".
+AKTEN_RUHIG_MONATE = 6
+AKTEN_ALT_MONATE = 18
+
+
+def _monate_her(datum: str, heute) -> int:
+    """Volle Monate zwischen einem ISO-Datum und heute; negativ wird zu 0."""
+    from datetime import date as _d
+    try:
+        d = _d.fromisoformat(str(datum)[:10])
+    except ValueError:
+        return 0
+    monate = (heute.year - d.year) * 12 + (heute.month - d.month)
+    if heute.day < d.day:
+        monate -= 1
+    return max(0, monate)
+
+
+def aktenstand(store, candidates: list[dict], heute=None) -> dict:
+    """Wie alt ist der jüngste Beleg — und hat der Rat seitdem überhaupt getagt?
+
+    Der Antwort-Prompt kennt das heutige Datum nicht. Das Datum steht zwar an
+    jedem Beschluss, aber ohne Bezugspunkt liest ein Modell „Satzungsbeschluss
+    Oktober 2018" als Gegenwart — gemessen am 21.09.2026 auf Prod, echte
+    Nutzerfrage: „Für Neu-Donnerschwee ist … **geplant**", jüngster Beleg der
+    ganzen Antwort von Februar 2023, das Quartier steht längst.
+
+    Deterministisch wie ``beleglage``: Das Modell darf formulieren, nicht
+    rechnen. Leer bei Fehlern oder ohne datierte Kandidaten — der Zeitbezug ist
+    Zusatz, nie Blocker.
+
+    ``{"latest": "2023-02-09", "months": 43, "level": "old",
+       "last_session": "2026-06-29", "next_session": "2026-09-21"}``
+    """
+    from datetime import date as _date
+    try:
+        tag = heute or _date.today()
+        daten = sorted(str(c.get("session_date"))[:10] for c in candidates
+                       if c.get("session_date"))
+        if not daten:
+            return {}
+        juengster = daten[-1]
+        monate = _monate_her(juengster, tag)
+        stufe = ("fresh" if monate < AKTEN_RUHIG_MONATE
+                 else "quiet" if monate < AKTEN_ALT_MONATE else "old")
+        stand = {"latest": juengster, "months": monate, "level": stufe,
+                 "last_session": None, "next_session": None}
+        try:
+            stand["last_session"] = store.letzte_beschluss_sitzung()
+            kommend = store.upcoming_sessions(limit=1)
+            if kommend:
+                stand["next_session"] = str(kommend[0]["session_date"])[:10]
+        except Exception:  # noqa: BLE001 — der Kalender ist die Kür, das Alter die Pflicht
+            pass
+        return stand
+    except Exception:  # noqa: BLE001
+        return {}
+
+
+def aktenstand_regel(stand: dict | None) -> str:
+    """Die gemessenen Zeit-Tatsachen samt der Regel, was daraus folgt.
+
+    Steht bei den übrigen Antwort-Regeln (``extra_regeln``) und nicht im
+    Kontext: Eine Tatsache zwischen zwanzig Beschlusszeilen liest das Modell
+    nicht — Kontextposition 17–20 ist praktisch unsichtbar (gemessen 20.09.2026
+    am Nachzügler-Umbau).
+    """
+    if not stand or not stand.get("latest"):
+        return ""
+    zeilen = [f"\n\nSTAND DER AKTEN (gemessen, nicht geschätzt): Der jüngste Beschluss "
+              f"im Kontext ist vom {_datum_de(stand['latest'])} — "
+              f"{stand['months']} Monate her."]
+    letzte, naechste = stand.get("last_session"), stand.get("next_session")
+    if letzte:
+        zeilen.append(f" Der Rat hat zuletzt am {_datum_de(letzte)} überhaupt etwas "
+                      f"beschlossen.")
+    if naechste:
+        zeilen.append(f" Die nächste Sitzung ist am {_datum_de(naechste)}.")
+    if stand["level"] == "old":
+        zeilen.append(
+            " Das ist ein ALTER Stand: Sage im ERSTEN Satz, wann der Rat zuletzt "
+            "dazu entschieden hat, und schreibe nichts davon im Präsens oder "
+            "Futur. Was 2018 beschlossen wurde, ist heute kein Plan mehr, sondern "
+            "ein Beschluss von 2018 — ob er umgesetzt ist, steht nicht in den "
+            "Akten, also behaupte es in keine Richtung.")
+    elif stand["level"] == "quiet" and letzte and letzte > stand["latest"]:
+        zeilen.append(
+            " Der Rat hat seitdem getagt, aber nichts zu dieser Sache entschieden "
+            "— wenn die Frage auf den aktuellen Stand zielt, gehört das in die "
+            "Antwort.")
+    return "".join(zeilen)
+
+
 def steckbriefe_mit_ort(steckbriefe: list[dict], ort: dict | None) -> list[dict]:
     """Den Katalogort vorn einreihen — mit ``slug`` und ohne Dublette.
 
@@ -1124,6 +1528,59 @@ _SITZUNG_ANLASS_RE = re.compile(
     r"ergebnis\w*)\b")
 _SITZUNG_ZURUECK_RE = re.compile(
     r"\b(letzt\w*|juengst\w*|vergangen\w*|vorig\w*)\s+(rats)?sitzung\b|\bzuletzt\b")
+#: Nur die ausdrückliche Sitzungs-Phrase („letzte Ratssitzung") — ohne das
+#: nackte „zuletzt". Der Unterschied entscheidet, ob eine Frage die SITZUNG
+#: meint oder ein THEMA, siehe `sitzungsfrage_ohne_thema`.
+_SITZUNG_LETZTE_RE = re.compile(
+    r"\b(letzt\w*|juengst\w*|vergangen\w*|vorig\w*)\s+(rats)?sitzung\b")
+
+#: Wörter, die in einer Sitzungsfrage stehen, ohne ein Thema zu sein. Was
+#: `extract_keywords` nach Abzug dieser Liste (und des Gremiums) übrig lässt,
+#: ist der Gegenstand der Frage — und dann ist es keine Sitzungsfrage mehr.
+_SITZUNG_FUELLWOERTER = frozenset({
+    "zuletzt", "letzte", "letzten", "letzter", "juengst", "juengste", "juengsten",
+    "sitzung", "sitzungen", "ratssitzung", "ratssitzungen", "plenum", "gremium",
+    "beschluesse", "beschluss", "entschieden", "entscheidung", "entscheidungen",
+    "tagesordnung", "ergebnis", "ergebnisse", "abgestimmt", "beraten", "getagt",
+    "oldenburg", "oldenburger", "rathaus", "dinge", "themen", "thema", "sachen",
+    "punkte", "alles", "eigentlich", "genau", "ueberhaupt",
+})
+
+
+def sitzungsfrage_ohne_thema(question: str, committee: str | None) -> bool:
+    """Meint „Was hat der Rat zuletzt beschlossen?" die SITZUNG — oder mit
+    „… zuletzt zum Radverkehr …" ein Thema?
+
+    Der Unterschied ist die ganze Antwort. Am 10.09.2026 fragte das Konto, mit
+    dem Apple die App prüft, „Was hat der Rat zuletzt zum Radverkehr
+    beschlossen?" — und bekam die komplette letzte Ratssitzung aufgezählt:
+    Jahresabschlüsse, Straßenbenennung, Wahlleitung, mit dem Satz, das „kann
+    auch den Radverkehr betreffen". Der Leitfaden Fahrradstraßen vom 01.06.
+    kam nicht vor. Ursache: Das nackte „zuletzt" neben einem Gremium schaltete
+    den Sitzungs-Fragetyp ein, und der lädt die Sitzung vollständig, egal
+    wonach gefragt war.
+
+    Deterministisch wie die Erkennung selbst: Die Substantive der Frage
+    (``extract_keywords``) minus Gremium und Sitzungs-Füllwörter. Bleibt
+    etwas übrig, ist das der Gegenstand — dann sucht das Retrieval danach,
+    und das Datum entscheidet die Reihenfolge (``latest_intent``), nicht die
+    Sitzungsgrenze. Die ausdrückliche Phrase „in der letzten Ratssitzung"
+    bleibt davon unberührt: Wer sie sagt, meint die Sitzung, auch mit Thema.
+    """
+    gremium = _falte(committee or "")
+    for kw in extract_keywords(question or ""):
+        if kw in _SITZUNG_FUELLWOERTER:
+            continue
+        if "sitzung" in kw or kw.endswith(("ausschuss", "ausschusses", "ausschuesse")):
+            continue
+        if gremium and (kw in gremium or gremium in kw):
+            continue
+        # Ein Gremium-Alias („Bauausschuss") ist oben schon abgefangen; ein
+        # Wort der Alias-Tabelle könnte anders enden — auch das ist kein Thema.
+        if kw in _GREMIUM_ALIASE:
+            continue
+        return False
+    return True
 _SITZUNG_VORAUS_RE = re.compile(
     r"\b(naechst\w*|kommend\w*)\s+((rats)?sitzung\w*|mal)\b|\bwann\s+tagt\b|"
     r"\btagesordnung\w*\b")
@@ -1170,6 +1627,12 @@ def _finde_sitzungen(store, question: str) -> list[dict]:
             # Datum ohne Gremium meint den TAG — alle Sitzungen dieses Tages.
             rows = store.sessions_on(rows[0]["session_date"])
     elif committee and _SITZUNG_ZURUECK_RE.search(frage_f):
+        # „zuletzt zum Radverkehr" ist eine Themenfrage mit Zeitbezug, keine
+        # Sitzungsfrage — siehe `sitzungsfrage_ohne_thema`. Nur die
+        # ausdrückliche Sitzungs-Phrase darf ein Thema mitführen.
+        if not _SITZUNG_LETZTE_RE.search(frage_f) \
+                and not sitzungsfrage_ohne_thema(question, committee):
+            return []
         rows = [r for r in store.recent_sessions(limit=80)
                 if _gremium_passt(committee, r.get("committee"))][:1]
         if rows and not store.decision_ids_der_sitzung(rows[0]["ksinr"]):
@@ -3243,6 +3706,25 @@ def steckbrief_karte_zeigen(question: str) -> bool:
         return True
     return bool(_EIGENES_PRAEDIKAT.search(question or ""))
 
+#: Was eine Anschlussfrage vom Modell verlangt — und was nicht.
+#:
+#: Am 09.09.2026 fragte jemand nach der Cäcilienbrücke, dann „Was findest du
+#: zum Planfeststellungsbeschluss?", dann „Sag mir mehr konkret zum
+#: Planfeststellungsbeschluss von 2023". Die dritte Antwort begann mit
+#: WORTGLEICH derselben „Kurz gesagt"-Zeile wie die zweite und erzählte die
+#: Chronologie ein zweites Mal. Der Grund steht im Prompt selbst: Das Modell
+#: sieht die vorige Antwort (gekürzt — also genau ihre Zusammenfassung) und
+#: hatte keine Anweisung, sie NICHT zu wiederholen. Wer nachfragt, hat die
+#: vorige Antwort gelesen; er will das Mehr, nicht das Nochmal.
+ANSCHLUSS_REGEL = (
+    "Beantworte NUR, was die neue Frage ZUSÄTZLICH wissen will. Wiederhole weder "
+    "die Zusammenfassung noch den Aufbau der vorigen Antwort — kein zweites "
+    "„Kurz gesagt“ mit demselben Inhalt, keine Chronologie, die schon erzählt "
+    "wurde. Steht das nachgefragte Detail (ein Jahr, ein Dokument, eine Zahl) "
+    "NICHT in den Unterlagen, sage das im ERSTEN Satz und nenne dann kurz, was "
+    "stattdessen belegt ist — statt die alte Antwort noch einmal zu geben."
+)
+
 #: Wenige und schwache Treffer → der Ton muss mitgehen. Ohne diese Regel klingt
 #: eine dünn belegte Antwort wie eine gut belegte; genau daran hing das einzige
 #: begründete 👎 („Falschinfo").
@@ -3268,9 +3750,16 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "topic",
                      geld: dict | None = None,
                      sitzungen: list[dict] | None = None,
                      ort: dict | None = None,
-                     staedte: list[dict] | None = None) -> tuple[list[dict], dict]:
+                     staedte: list[dict] | None = None,
+                     # ANS ENDE, nicht in die Mitte: Die beiden Aufrufer unten
+                     # reichen alles POSITIONSWEISE durch — ein neues Argument
+                     # zwischen `eng` und `taxes` verschöbe stillschweigend
+                     # jeden folgenden Wert um eine Stelle.
+                     zukunft_leer: bool = False,
+                     stand: dict | None = None) -> tuple[list[dict], dict]:
     vtext = _verlauf_zeilen(verlauf)
-    gespraech = (f"Dies ist eine Anschlussfrage in einem Gespräch. Bisher:\n{vtext}\n\n"
+    gespraech = (f"Dies ist eine Anschlussfrage in einem Gespräch. Bisher:\n{vtext}\n"
+                 f"{ANSCHLUSS_REGEL}\n\n"
                  if vtext else "")
     geld = _geld_vereinheitlichen(geld, haushalt, taxes, tax_capacity)
     ortsregel = ""
@@ -3311,7 +3800,12 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "topic",
                             + ortsregel
                             + ("" if eng else (GROSS_REGEL if gross else ""))
                             + (DUENN_REGEL if duenn else "")
-                            + geld_regeln(geld, eng),
+                            + (ZUKUNFT_LEER_REGEL if zukunft_leer else "")
+                            + geld_regeln(geld, eng)
+                            # Zuletzt, damit die Zeit-Tatsachen direkt über der
+                            # FRAGE stehen und nicht zwischen den Fachregeln
+                            # verschwinden.
+                            + aktenstand_regel(stand),
                             presse=_sitzungen_block(sitzungen)
                             + _glossar_block(begriffe_fuer(question))
                             + _steckbrief_block(steckbriefe) + _presse_block(presse)
@@ -3462,12 +3956,13 @@ def answer_question(question: str, candidates: list[dict], model: str = MODEL, t
                     duenn: bool = False, eng: bool = False,
                     taxes: list[dict] | None = None, tax_capacity: dict | None = None,
                     geld: dict | None = None, sitzungen: list[dict] | None = None,
-                    ort: dict | None = None, staedte: list[dict] | None = None):
+                    ort: dict | None = None, staedte: list[dict] | None = None,
+                    zukunft_leer: bool = False, stand: dict | None = None):
     """Synthesise an answer from retrieved candidates. Returns ``(answer, cited_ids)``."""
     messages, extra = _answer_messages(question, candidates, typ, model, presse, verlauf,
                                        haushalt, debatten, anlagen, gross, steckbriefe, duenn, eng,
                                        taxes, tax_capacity, geld, sitzungen, ort,
-                                       staedte)
+                                       staedte, zukunft_leer, stand)
     resp = llm.chat_complete(model=model, _feature="qa_answer", temperature=0.2,
                              max_tokens=_answer_tokens(typ, gross, eng), messages=messages, **extra)
     answer = (resp.choices[0].message.content or "").strip()
@@ -3482,14 +3977,15 @@ def answer_stream(question: str, candidates: list[dict], model: str = MODEL, typ
                   duenn: bool = False, eng: bool = False,
                   taxes: list[dict] | None = None, tax_capacity: dict | None = None,
                   geld: dict | None = None, sitzungen: list[dict] | None = None,
-                  ort: dict | None = None, staedte: list[dict] | None = None):
+                  ort: dict | None = None, staedte: list[dict] | None = None,
+                  zukunft_leer: bool = False, stand: dict | None = None):
     """Stream the answer text deltas (same prompt/context as answer_question) so the
     UI can render the answer as it is written. Citation resolution is the caller's
     job once the full text is assembled (see resolve_citations)."""
     messages, extra = _answer_messages(question, candidates, typ, model, presse, verlauf,
                                        haushalt, debatten, anlagen, gross, steckbriefe, duenn, eng,
                                        taxes, tax_capacity, geld, sitzungen, ort,
-                                       staedte)
+                                       staedte, zukunft_leer, stand)
     yield from llm.chat_stream(model=model, _feature="qa_answer", temperature=0.2,
                                max_tokens=_answer_tokens(typ, gross, eng), messages=messages, **extra)
 

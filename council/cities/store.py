@@ -765,7 +765,7 @@ class CitiesStore:
     #: es den Fassungs-Schlüssel. Sie blieb es auch danach noch einen halben
     #: Tag, weil niemand die Zeile umstellte; seitdem hält
     #: ``tests/test_cities_guards.py`` sie an der Fassung des Annotators.
-    IDEEN_FIT = ("fit", "4")
+    IDEEN_FIT = ("fit", "5")
     #: Die Aufwandsklasse hängt als LEFT JOIN dran, nicht als JOIN: Sie ist
     #: jünger als die Urteile, und eine Idee ohne sie soll sichtbar bleiben,
     #: statt aus der Liste zu fallen, bis der Cron nachgezogen hat.

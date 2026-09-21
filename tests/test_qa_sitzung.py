@@ -297,3 +297,50 @@ def test_store_decision_ids_der_sitzung_und_monatstag(tmp_path):
     tage = store.sitzungen_am_monatstag("-06-17")
     assert {r["ksinr"] for r in tage} == {1, 2}
     store.close()
+
+
+# ---- „zuletzt" mit Thema ist keine Sitzungsfrage ---------------------------
+
+def test_zuletzt_mit_thema_ist_keine_sitzungsfrage(tmp_path):
+    """Echte Nutzerfrage 10.09.2026 (das Konto, mit dem Apple die App prüft):
+    „Was hat der Rat zuletzt zum Radverkehr beschlossen?" bekam die komplette
+    letzte Ratssitzung — Jahresabschlüsse, Straßenbenennung, Wahlleitung —
+    statt des Leitfadens Fahrradstraßen. Das nackte „zuletzt" neben „Rat"
+    schaltete den Sitzungs-Fragetyp ein."""
+    store = _store_mit_sitzungen(tmp_path)
+    assert qa.finde_sitzungen(store, "Was hat der Rat zuletzt zum Radverkehr beschlossen?") == []
+    assert qa.finde_sitzungen(
+        store, "Was hat der Bauausschuss zuletzt zu Fahrradstraßen beschlossen?") == []
+    # Die Themenfrage behält ihren Zeitbezug — das Datum ordnet dann die Treffer.
+    assert qa.latest_intent("Was hat der Rat zuletzt zum Radverkehr beschlossen?")
+    store.close()
+
+
+def test_zuletzt_ohne_thema_bleibt_sitzungsfrage(tmp_path):
+    """Ohne Gegenstand meint „zuletzt" die Sitzung — genau wie bisher."""
+    store = _store_mit_sitzungen(tmp_path)
+    for frage in ("Was hat der Rat zuletzt beschlossen?",
+                  "Was hat der Bauausschuss zuletzt entschieden?",
+                  "Was wurde im Rat zuletzt alles beraten?"):
+        s = qa.finde_sitzungen(store, frage)
+        assert s and s[0]["committee"] in ("Rat", "Ausschuss für Stadtplanung und Bauen"), frage
+    store.close()
+
+
+def test_letzte_sitzung_phrase_darf_ein_thema_mitfuehren(tmp_path):
+    """„In der letzten Ratssitzung zum Radverkehr" meint die SITZUNG mit
+    Themenfilter — die ausdrückliche Phrase bleibt eine Sitzungsfrage."""
+    store = _store_mit_sitzungen(tmp_path)
+    s = qa.finde_sitzungen(store, "Was wurde in der letzten Ratssitzung zum Radverkehr beschlossen?")
+    assert s and s[0]["committee"] == "Rat"
+    store.close()
+
+
+def test_sitzungsfrage_ohne_thema_erkennt_gegenstand():
+    f = qa.sitzungsfrage_ohne_thema
+    assert f("Was hat der Rat zuletzt beschlossen?", "rat")
+    assert f("Was wurde zuletzt im Jugendhilfeausschuss entschieden?", "jugendhilfeausschuss")
+    assert f("Was hat der Bauausschuss zuletzt so gemacht?", "stadtplanung und bauen")
+    assert not f("Was hat der Rat zuletzt zum Radverkehr beschlossen?", "rat")
+    assert not f("Was hat der Rat zuletzt zur Cäcilienbrücke entschieden?", "rat")
+    assert not f("Was hat der Sozialausschuss zuletzt zu Kita-Gebühren beschlossen?", "sozialausschuss")

@@ -448,6 +448,28 @@ def test_ein_ratsmandat_bekommt_alle_abos_sofort(store):
     assert notify.vorgaben_fuer(store, normalo)[notify.N1_TAGESORDNUNG] is False
 
 
+def test_fachpublikum_bekommt_den_haushalt_aber_nicht_jede_tagesordnung(store):
+    """Die Rolle *Fachpublikum* (Recht ``budget``, kein ``mandate``) ist genau
+    deshalb eine eigene Rolle: erweiterte Zahlen ja, Post über jedes
+    abonnierte Gremium nein (Tim, 21.09.2026).
+
+    Der Test steht hier und nicht nur in ``tests/test_rollen.py``, weil er die
+    Stelle prüft, an der es schiefgehen WÜRDE: ``vorgaben_fuer`` fragt das
+    Recht ``mandate`` ab. Würde dort je auf ``budget`` oder auf einen
+    Rollennamen geprüft, fiele es genau hier auf.
+    """
+    fach = _frisch(store, "f@example.org")
+    store.set_web_user_roles(fach, ["expert"])
+    assert notify.vorgaben_fuer(store, fach)[notify.N1_TAGESORDNUNG] is False
+    assert notify.gewuenscht(store, fach, notify.N1_TAGESORDNUNG) is False
+    # Sonst alles wie bei allen anderen — die Rolle greift NUR in den Haushalt.
+    normalo = _frisch(store, "n2@example.org")
+    assert notify.vorgaben_fuer(store, fach) == notify.vorgaben_fuer(store, normalo)
+    # Wer sie doch will, schaltet sie selbst ein.
+    store.set_notify_prefs(fach, {notify.N1_TAGESORDNUNG: True})
+    assert notify.gewuenscht(store, fach, notify.N1_TAGESORDNUNG) is True
+
+
 def test_bestandskonten_behalten_die_alten_vorgaben(tmp_path):
     """Tims Entscheidung 06.09.2026: „Bestandskonten so lassen, wie sie sind."
     Ein Konto, das vor dem Umbau nie einen Schalter angefasst hat, bekommt

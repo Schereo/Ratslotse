@@ -7,6 +7,201 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [2.7.0] – 2026-09-21
+
+### Hinzugefügt
+- **Fertige Fragen an Lotti stehen jetzt dort, wo neue Leute tatsächlich sind.**
+  Auf dem Wahlabend, in den Auswertungen und über der Beschlussliste liegen
+  zwei, drei Fragen zum Antippen — passend zu dem, was gerade zu sehen ist: Ist
+  auf dem Wahlabend eine Liste angetippt, fragt der erste Chip nach ihr; wer in
+  der Suche ein Stichwort eingibt, bekommt es als Frage angeboten. Ein Tipp
+  stellt die Frage sofort; wer nicht angemeldet ist, landet nach der Anmeldung
+  genau dort. Anlass: Sechs neue Konten in einer Woche, null Fragen — der Weg
+  über Wahlabend und Auswertungen führte an der KI-Frage vorbei, und die beiden
+  Fragen, die dann doch kamen, kamen beide über einen Chip. (#1409)
+- **Drei kurze Wege dorthin, wo neue Leute bisher hängen blieben.** In den
+  Auswertungen steht an jedem Kernpunkt des Rückblicks ein „folgen“-Chip — wer
+  liest, dass der Wärmeplan beschlossen ist, kann ihn mit einem Tipp als Thema
+  anlegen, statt den Weg über den Assistenten zu suchen. Im Quiz führt nach
+  jeder Antwort ein Chip zu Lotti („Mehr dazu aus den Ratsbeschlüssen“). Und
+  Punktfragen nach einer Zahl oder einem Datum („Wie viele Sumpfeichen müssen an
+  der Nadorster Straße entfernt werden?“) ziehen jetzt die Sätze aus der
+  Vorlage, in denen die Fragewörter stehen — bisher blieb es beim Beschlusstext,
+  der bei solchen Fragen meist nur „Bericht zur Kenntnis genommen“ sagt. (#1415)
+- **Neue Rolle „Fachpublikum": der Haushalt ohne die Post eines Ratsmandats.**
+  Bis jetzt gab es den Haushalts-Bereich mit allen Zahlen, Belegen und
+  Auswertungen nur zusammen mit der Rolle *Ratsmitglied* — und die schaltet ab
+  Werk auch die Tagesordnung jedes abonnierten Gremiums an. Wer die Zahlen
+  braucht, aber nicht im Rat sitzt (Verwaltung, Presse, sachkundige
+  Bürger*innen, Fraktionsmitarbeit), musste damit beides nehmen oder bekam gar
+  nichts. *Fachpublikum* trennt das: derselbe Haushalt, aber die gewöhnlichen
+  Benachrichtigungs-Vorgaben. Wer Tagesordnungen will, schaltet sie wie alle
+  anderen selbst ein. Vergeben wird die Rolle im Admin-Panel unter
+  *Web-Nutzer*innen*. (#1429)
+- **Das Tippspiel zur OB-Stichwahl am 27. September ist offen.** Unter
+  ratslotse.de/tipp?runde=stichwahl tippt man ohne Konto, wie viel Prozent Ulf
+  Prange und Jascha Rohr bekommen — und neu bei jeder Wahl: die Wahlbeteiligung
+  (bis zu 6 Punkte, mit der Beteiligung des ersten Wahlgangs als Anhaltspunkt).
+  Beim Beitritt lässt sich freiwillig die Parteizugehörigkeit angeben; sie steht
+  als kleines Etikett neben dem Namen in der Rangliste. Der Einstieg bittet um
+  den richtigen Namen, damit die anderen einen wiedererkennen. Getippt wird bis
+  18 Uhr am Wahlsonntag, wenn die Wahllokale schließen — dann fällt die
+  Tippfrist von selbst, spätestens. Wer heute noch über einen alten
+  Ratswahl-Link auf /tipp landet, wird zur laufenden Runde weitergeleitet; wer
+  dort mitgespielt hat, sieht weiter sein Ergebnis. Behoben wurde dabei, was die
+  Stichwahl-Runde bisher unbrauchbar machte: Sie verglich gegen den ersten
+  Wahlgang statt gegen die Stichwahl, hielt einen Prozent-Tipp ohne Sitze für
+  „keinen Tipp“ und schloss die Tippfrist nie automatisch. Der Beamer hat für
+  die Stichwahl einen eigenen Vergleichs-Screen, das Admin-Panel eine Zeile für
+  die Wahlbeteiligung und „Jetzt abfragen“ holt die Zahlen der richtigen Wahl.
+  (#1400)
+- **Vom Wahlabend direkt ins Tippspiel.** Auf der Startseite, auf „Heute“, am
+  Wahlabend und auf der Stichwahl-Seite steht jetzt der Weg zum Tippspiel der
+  jeweiligen Wahl — und zwar nur dann, wenn es dort auch eines gibt: Ob eine
+  Runde läuft, ob sie offen ist oder ein Konto braucht, entscheidet der Server.
+  Läuft sie nur mit Konto, führt die Einladung zur Anmeldung statt gegen eine
+  Wand. **Wer hinter Jascha Rohr steht, steht jetzt genau da.** Er ist
+  parteilos, wurde von den Grünen und der CDU jeweils auf einer eigenen
+  Versammlung aufgestellt und wird seit dem 15. September von Volt unterstützt.
+  Auf dem Stimmzettel steht trotzdem nur „GRÜNE“: Das Kommunalwahlgesetz kennt
+  je Person nur einen Wahlvorschlag, einen gemeinsamen zweier Parteien gibt es
+  nicht — die Seite erklärt das in einem Satz und verlinkt für jede Aussage
+  ihren eigenen Beleg. **Behoben:** In der Generalprobe stand vor dem ersten
+  gezählten Bezirk „Noch nichts ausgezählt“ und daneben trotzdem eine
+  Wahlbeteiligung. Jetzt bleibt sie leer, bis wirklich gezählt wird — wie am
+  echten Abend um 18 Uhr. (#1401)
+
+### Geändert
+- **Antworten sagen jetzt, wie alt ihre Beschlüsse sind.** „Was ist für
+  Neu-Donnerschwee geplant?" bekam bisher eine Antwort im Präsens über einen
+  Bebauungsplan, der 2018 beschlossen und längst gebaut ist — der jüngste Beleg
+  war von 2023, und kein Satz sagte das. Die Antwort rechnet jetzt nach, wie alt
+  ihr jüngster Beschluss ist und ob der Rat seitdem überhaupt getagt hat: Ist
+  die Aktenlage älter als anderthalb Jahre, nennt der erste Satz das Datum, und
+  über der Antwort steht ein Hinweis dazu. Aktuelle Antworten bleiben, wie sie
+  waren. (#1427)
+- **Fragen nach dem, was noch kommt, bekommen eine ehrliche Antwort, wenn nichts
+  kommt.** Steht zu einer Sache keine einzige Beratung mehr an, sagt die Antwort
+  das jetzt im ersten Satz — statt alte Beschlüsse in die Zukunftsform zu
+  setzen. Anlass: „Was ist für Neu-Donnerschwee geplant?" erzählte im Futur von
+  einem Bebauungsplan, der 2018 beschlossen wurde und dessen Häuser längst
+  stehen. (#1430)
+- **Die Tagesordnungs-Mail nennt jeden Punkt beim Namen.** Bisher stand je
+  Tagesordnungspunkt nur „Ö 6.3: Beantragt sind 9,5 Millionen Euro zusätzlich …"
+  — der Satz aus Vorlage und Anlagen, aber nicht, wie der Punkt heißt. Jetzt
+  steht über jedem Satz Nummer und Titel des Punktes, so wie in der Tagesordnung
+  in der App; ein Dringlichkeitsantrag heißt in der Überschrift, was er ist.
+  Schon gebaute Mails werden beim nächsten Versand aus den gespeicherten Sätzen
+  neu gesetzt, ohne einen weiteren Modell-Aufruf. (#1403)
+
+### Behoben
+- **Ein abgebrochener Deploy weckt nur noch, wenn die Seite betroffen ist.**
+  Bisher schickte jeder Abbruch dieselbe Alarm-Mail — auch die Abbrüche, die vor
+  dem Umschalten passieren und die laufende Seite gar nicht anfassen. Am
+  20.09.2026 waren das fünf von sechs an einem Tag, alle mit dem Satz „die Seite
+  ist unten", während sie lief; die eine Mail, die zählte, ging darin unter.
+  Jetzt misst der Alarm vorher, ob Wartungsbarriere und Dienste überhaupt
+  betroffen sind, und bleibt sonst still. Damit dabei nichts unbemerkt liegen
+  bleibt, holt ein neuer Wächter halbstündlich nach, was liegen geblieben ist:
+  Ist ein Stand nicht auf ratslotse.de angekommen und blockiert kein langer
+  Hintergrundlauf mehr, startet die Veröffentlichung von selbst — und meldet
+  sich, wenn das über Stunden nicht klappt. Kurze Hintergrundläufe wartet die
+  Veröffentlichung jetzt außerdem ab, statt an ihnen zu scheitern. (#1416)
+- **Deploy blockierte sich selbst.** Die Prüfung „läuft noch ein Cron?" vor dem
+  Deploy hielt den laufenden API-Dienst für einen Cron, weil er auf dem Server
+  als `python3 …/uvicorn` in der Prozessliste steht — damit war jeder Deploy
+  blockiert. Und der Backup-Vergleich davor nennt jetzt Tabelle und
+  Zeilenzahlen, wenn er abbricht, statt nur „abweichendes Tabellenmanifest".
+  (#1412)
+- **„Für Oldenburg nicht anwendbar" hat Ideen versteckt statt sie zu zeigen.**
+  Die Stufe war für Dinge gedacht, die es in Oldenburg nicht geben kann — keine
+  Stadtbahn, kein Hafen. Sie traf aber auch Einrichtungen, die der Rat
+  beschließen könnte: Fünfmal verschwand ein Jugendparlament aus der Liste, das
+  sechs Vergleichsstädte haben, mit der Begründung, Oldenburg habe keins.
+  Entscheidend ist jetzt eine einzige Frage — könnte der Rat sich diese
+  Voraussetzung selbst beschaffen? (#1404)
+- **Kein fremder Stadtteil mehr in einer Ortsantwort.** Betrifft eine Vorlage
+  mehrere Orte, stand in der Antwort bisher der Ort aus dem Beschlusstext — auch
+  wenn der belegte Bezug auf den gefragten Ort zeigte. Eine Frage nach
+  Neu-Donnerschwee bekam so einen Satz über den Fliegerhorst. Jetzt zählt für
+  die Ortsangabe der Beleg, und die Antwort sagt, was die Vorlage für den
+  gefragten Ort besagt. (#1431)
+- **Fragen nach einem Ort mit Steckbrief endeten mit „Frage fehlgeschlagen.".**
+  Nennt eine Frage einen Ort, zu dem der Ortskatalog eine Kurzbeschreibung führt
+  — „Neu-Donnerschwee", „Fußgängerzone", „Alter Stadthafen" und rund 45 weitere
+  —, brach die KI-Frage ab, bevor die Antwort begann. Der Ort kam ohne Kennung
+  in den Steckbrief-Baustein, und daran starb der ganze Antwortstrom statt nur
+  der Karte. Zugleich steht der Ort jetzt nur noch einmal im Hintergrund:
+  Ortskatalog und Themenseite tragen denselben Namen, bisher zählte er doppelt
+  und verdrängte den zweiten Steckbrief. (#1424)
+- **„Was wurde hier zuletzt beschlossen?" bekommt wieder die knappe
+  Faktenantwort.** Für Fragen nach der jüngsten Entscheidung an einem Ort gibt
+  es eine deterministische Antwort aus Datum und Abstimmungsergebnis — sie wurde
+  aber nur erreicht, wenn ein Sprachmodell die Frage vorher als Ortsfrage
+  eingeordnet hatte. „Was ist in Donnerschwee zuletzt beschlossen worden?" galt
+  ihm als Verlaufsfrage; die Antwort führte daraufhin mit dem größten Beschluss
+  statt mit dem jüngsten. Jetzt entscheidet die Frage selbst. Und der Ort steht
+  im Satz: „Zuletzt mit Ortsbezug Donnerschwee hat der Rat am …". (#1428)
+- **Startseite ohne WebGL zeigte die Fehlerseite.** Die 3D-Lotti-Szene baut auf
+  dem Desktop einen WebGL-Renderer, und wenn der Browser keinen Kontext hergibt
+  (Hardware-Beschleunigung aus, ein Browser ohne WebGL), warf das eine Ausnahme
+  mitten im Aufbau — statt der Startseite stand „Etwas ist schiefgelaufen".
+  Jetzt wird vorher geprüft, ob WebGL überhaupt geht, und die Szene meldet einen
+  Fehlschlag, statt zu werfen; in beiden Fällen bleibt die gezeichnete
+  Lotti-Familie stehen, wie auf dem Handy. (#1411)
+- **Deploy scheiterte am Backup-Vergleich, sobald nebenher ein Cron schrieb.**
+  Das Sicherungs-Backup vor dem Deploy wurde Zeile für Zeile gegen die laufende
+  Datenbank gehalten — aber das Backup entsteht, bevor das Prüfskript zum ersten
+  Mal hinsieht, und bis dahin darf sich jede Tabelle bewegt haben. Am 20.09.
+  blockierte das drei Deploys hintereinander, weil der Städte-Lauf nebenher
+  Modellaufrufe zählte. Geprüft wird weiter, dass das Backup in diesem Lauf
+  entstand, dasselbe Schema hat und gefüllt ist; Zeilenunterschiede werden nur
+  noch genannt. (#1413)
+- **Kein zweiter Deploy mehr über einen laufenden.** Der Wächter, der
+  liegengebliebene Prod-Deploys nachholt, verglich `main` nur mit dem letzten
+  *geglückten* Lauf — ein gerade laufender kam in der Rechnung nicht vor.
+  Dauerte ein Deploy länger als zwanzig Minuten, stieß der Wächter denselben
+  Stand ein zweites Mal an: zweite Wartungsbarriere, rund zwei Minuten, in denen
+  die Seite für nichts und wieder nichts pausierte. Er fragt jetzt zuerst, ob
+  schon einer unterwegs ist. (#1426)
+- **„database is locked" bei gleichzeitigen Anfragen.** Jede Anfrage baut ihren
+  Datenbank-Zugriff neu auf und ließ dabei die Werte-Migrationen noch einmal
+  laufen — Dutzende `UPDATE`-Anweisungen ohne Treffer, von denen sich trotzdem
+  jede die Schreibsperre der Datei holte (41 je Anfrage an der Konten-Datenbank,
+  385 an der Rats-Datenbank). Eine reine Leseanfrage war damit ein Schreiber,
+  und wenn Startseite und Admin-Panel gleichzeitig luden, lief ein Teil der
+  Anfragen nach fünf Sekunden Wartezeit in den Fehler. Die Migrationen fragen
+  jetzt erst lesend nach, ob es etwas umzuschreiben gibt, und schreiben nur
+  dann; ein Wächter-Test öffnet beide Stores neben einem laufenden Schreiber.
+  (#1410)
+- **Die KI-Frage findet Beschlüsse, die das Gefragte nur unter seinem
+  Oberbegriff führen.** „Wie viele Sumpfeichen müssen an der Nadorster Straße
+  entfernt werden?“ bekam „keine Auskunft“, obwohl die Beschlüsse zu den
+  Baumfällungen an der unteren Nadorster Straße vorliegen — sie standen hinter
+  zwei Dutzend Bebauungsplan-Beschlüssen mit demselben Straßennamen, außerhalb
+  dessen, was das Modell sieht. Zwei Änderungen: Die Suchbegriffe tragen jetzt
+  den Oberbegriff des Gefragten (Sumpfeiche → Baum, Baumfällung) und keine
+  Wörter der Fragehülle mehr („Beschlüsse“, „Rat“ — die stehen in jeder Vorlage
+  und finden nichts); und ein Treffer, dessen Titel ein seltenes Fragewort
+  trägt, rückt in den Antwortkontext nach, auch wenn das Ranking ihn hinter den
+  Deckel gesetzt hat. Gemessen: Der Leitfaden Fahrradstraßen stand für „zuletzt
+  zum Radverkehr“ vorher gar nicht in den Kandidaten, jetzt auf Rang 7. (#1408)
+- **„Was hat der Rat zuletzt zum Radverkehr beschlossen?“ bekommt jetzt den
+  Radverkehr, nicht die ganze Sitzung.** Das Wort „zuletzt“ neben einem Gremium
+  machte aus jeder Themenfrage eine Sitzungsfrage — die Antwort zählte dann die
+  komplette letzte Ratssitzung auf, Jahresabschlüsse und Straßenbenennung
+  eingeschlossen, und der Leitfaden Fahrradstraßen kam nicht vor. Jetzt gilt:
+  Nennt die Frage ein Thema, wird danach gesucht, und das Datum ordnet die
+  Treffer — die jüngste echte Entscheidung steht vorn. „Was hat der Rat zuletzt
+  beschlossen?“ ohne Thema meint weiter die Sitzung. Nachfragen im Gespräch
+  bekommen das Mehr statt das Nochmal: Auf „Sag mir mehr zum
+  Planfeststellungsbeschluss von 2023“ kam bisher wortgleich dieselbe
+  Zusammenfassung wie auf die Frage davor. Die Analyse behält jetzt die
+  Präzisierung der Nachfrage (Jahr, Dokument, Detail), statt sie auf die vorige
+  Frage zurückzuschreiben, und die Antwort sagt im ersten Satz, wenn das
+  nachgefragte Detail in den Unterlagen fehlt — statt die alte Antwort zu
+  wiederholen. (#1406)
+
 ## [2.6.7] – 2026-09-18
 
 ### Behoben
@@ -8394,7 +8589,8 @@ Open-Source-Go-Live von Ratslotse.
 *Dieser Changelog beginnt mit dem Open-Source-Release von Ratslotse. Die
 Entwicklungshistorie davor ist nicht Teil dieses Repositories.*
 
-[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v2.6.7...main
+[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v2.7.0...main
+[2.7.0]: https://github.com/Schereo/Ratslotse/compare/v2.6.7...v2.7.0
 [2.6.7]: https://github.com/Schereo/Ratslotse/compare/v2.6.6...v2.6.7
 [2.6.6]: https://github.com/Schereo/Ratslotse/compare/v2.6.5...v2.6.6
 [2.6.5]: https://github.com/Schereo/Ratslotse/compare/v2.6.4...v2.6.5

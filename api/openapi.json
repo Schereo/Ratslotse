@@ -17386,6 +17386,7 @@
           "key": {
             "enum": [
               "user",
+              "expert",
               "council_member",
               "admin"
             ],
@@ -20164,6 +20165,7 @@
           "role": {
             "enum": [
               "user",
+              "expert",
               "council_member",
               "admin"
             ],
@@ -20174,6 +20176,7 @@
             "items": {
               "enum": [
                 "user",
+                "expert",
                 "council_member",
                 "admin"
               ],
@@ -20648,6 +20651,7 @@
           "role": {
             "enum": [
               "user",
+              "expert",
               "council_member",
               "admin"
             ],
@@ -20659,6 +20663,7 @@
             "items": {
               "enum": [
                 "user",
+                "expert",
                 "council_member",
                 "admin"
               ],

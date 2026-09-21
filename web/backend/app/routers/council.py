@@ -3813,12 +3813,22 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 yield _sse({"type": "done", "cited": [], "unclear": True,
                             "conversation_id": conversation_id})
                 return
-            latest_place = bool(ort and typ == "place"
-                                and (qa.latest_intent(q_suche) or qa.latest_intent(q)))
+            # NICHT an `typ == "place"` hängen: Der Fragetyp kommt aus einem
+            # Sprachmodell, „zuletzt" aus einer Regex. „Was ist in
+            # Donnerschwee zuletzt beschlossen worden?" wurde am 21.09.2026 als
+            # `history` eingeordnet — vertretbar, die Frage ist beides —, und
+            # damit fiel sie aus dem deterministischen Weg heraus: Die freie
+            # Antwort führte mit dem Stadionneubau und nannte den Ort nie.
+            # Ausgenommen bleiben die Typen, für die das Datum NICHT die
+            # Antwort ist: „Was wurde zuletzt für X ausgegeben?" braucht die
+            # Beträge, eine Personen- oder Fraktionsfrage ihre Belege.
+            latest_place = bool(
+                ort and typ not in ("money", "person", "party", "session")
+                and (qa.latest_intent(q_suche) or qa.latest_intent(q)))
             shadow_plan = qa.research_plan_with_mandatory(
                 analyse.get("rechercheplan") or {}, typ=typ, question=q_suche,
                 person=bool(person), place=bool(ort), sessions=bool(sitzungen),
-                latest_decision=latest_place)
+                latest_decision=latest_place, eng=eng)
             yield _sse({"type": "step", "step": "search"})
             t0 = time.perf_counter()
             place_ids = (store.decision_ids_for_place(ort["id"], limit=120)
@@ -4088,11 +4098,22 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                   if p["kvonr"] not in gesehen]
                 except Exception:  # noqa: BLE001 — Ausblick ist Zusatz, nie Blocker
                     pass
+            # Zukunftsfrage ohne Zukunft: Fragt jemand, was NOCH KOMMT, und
+            # liefern beide Ausblick-Wege nichts, füllt das Modell die Lücke
+            # sonst mit alten Beschlüssen im Futur — am 21.09.2026 mit einem
+            # Bebauungsplan von 2018 („ist geplant"). Deterministisch am
+            # Fragewortlaut, nicht am Bedarf des Analysemodells.
+            zukunft_leer = qa.zukunftsfrage(q_suche) and not planungen
             # Hintergrund zu den genannten Objekten („Was ist die GSG?").
             steckbriefe = qa.steckbriefe_mit_ort(
                 qa.steckbriefe_fuer(store, q_suche), ort)
             # Wie tragfähig ist der Fund? Deterministisch aus den Scores.
             lage = qa.beleglage(candidates)
+            # Und wie ALT ist er? Der Antwort-Prompt kennt das heutige Datum
+            # nicht; ohne Bezugspunkt liest ein Modell „Satzungsbeschluss
+            # Oktober 2018" als Gegenwart (gemessen 21.09.2026, echte
+            # Nutzerfrage nach Neu-Donnerschwee).
+            stand = qa.aktenstand(store, candidates)
             if anlagen_rows and not candidates:
                 # Ein konkreter Gutachten-/Anlagenfund ist ein direkter Beleg,
                 # auch wenn keine verknüpfte Beschlussstation vorhanden ist.
@@ -4151,6 +4172,9 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                         # Sitzungs-Fragetyps — deterministisch, nie vom Modell.
                         "sessions": _sitzungen_kompakt(sitzungen),
                         "evidence_level": lage,
+                        # Alter des jüngsten Belegs samt Sitzungskalender —
+                        # dieselbe Rolle wie die Beleglage, nur für die Zeit.
+                        "records_state": stand or None,
                         # Welche Haushalts-Quellen diese Frage gezogen hat.
                         # Steht im Ereignis, damit im Log ohne Rätselraten zu
                         # sehen ist, warum eine Antwort eine Zahl kannte —
@@ -4232,7 +4256,19 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 # nach dem Voll-Merge der Sitzung immer hoch.
                 gross = len(sitzung_ids) >= 12 and not einfach
             ctx = candidates[:QA_ANSWER_N]
-            if latest_place:
+            # Themenfrage mit „zuletzt" („Was hat der Rat zuletzt zum
+            # Radverkehr beschlossen?"): Die Relevanz wählt die Kandidaten,
+            # das Datum ordnet sie. Ohne diese Sortierung behauptete die
+            # CHRONOLOGIE-Regel im Antwort-Prompt eine Reihenfolge, die nur
+            # bei Ortsfragen wirklich hergestellt wurde — bei Themen stand
+            # der semantisch beste, oft ältere Treffer vorn (Befund 20.09.2026,
+            # nachdem die Frage nicht mehr als Sitzungsfrage läuft).
+            latest_topic = (typ in ("topic", "history") and not einfach
+                            and (qa.latest_intent(q_suche) or qa.latest_intent(q)))
+            if latest_topic:
+                ctx = sorted(ctx, key=lambda c: str(c.get("session_date") or ""),
+                             reverse=True)
+            if latest_place or latest_topic:
                 # Das Quellenband bleibt streng chronologisch. Für das Modell
                 # steht die jüngste echte Entscheidung zusätzlich ganz vorn:
                 # Die bloße Prompt-Regel reichte in der Produktionsprobe nicht
@@ -4256,6 +4292,22 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 fehlend = [c for c in candidates[QA_ANSWER_N:] if c["id"] in partei_ids][:6]
                 if fehlend:
                     ctx = ctx[:QA_ANSWER_N - len(fehlend)] + fehlend
+            if typ in ("topic", "history", "money") and not einfach and not sitzung_ids:
+                # Treffer hinter dem Deckel, deren Titel ein SELTENES Fragewort
+                # trägt, rücken nach — der Sumpfeichen-Fall, s. qa.nachzuegler.
+                # Nicht bei Sitzungsfragen (dort ist der Kontext die Sitzung)
+                # und nicht beim Vereinfachen (dort nur die belegten Quellen).
+                nach = qa.nachzuegler(candidates, QA_ANSWER_N, q_suche, expanded)
+                if nach:
+                    im_ctx = {c["id"] for c in ctx}
+                    nach = [c for c in nach if c["id"] not in im_ctx]
+                    # Nach VORN, nicht ans Ende: Auf den Plätzen 17–20 sah das
+                    # Modell die Baumfällungen an der Nadorster Straße und
+                    # zitierte trotzdem die Tannen an der Wehdestraße von
+                    # Platz 0 (dev, 20.09.2026). Nur die deterministisch
+                    # gesetzte neueste Entscheidung bleibt davor.
+                    anker = 1 if (latest_place or latest_topic) and ctx else 0
+                    ctx = ctx[:anker] + nach + ctx[anker:QA_ANSWER_N - len(nach)]
             if typ == "history":
                 ctx = qa.sort_verlauf(ctx)
             if typ == "session" and sitzung_ids and not einfach:
@@ -4267,10 +4319,18 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             if documents_enabled and not einfach:
                 try:  # Vorlagen-Auszüge (Sachverhalt) beilegen — best-effort
                     texts = store.vorlage_texts_for([c.get("template_number") or "" for c in ctx])
+                    # Bei einer engen Zahl-Frage („Wie viele Bäume?") die Sätze
+                    # mit den Fragewörtern statt der ersten 350 Zeichen — die
+                    # Zahl steht selten am Anfang der Vorlage (qa.fundstelle).
+                    zahl = eng and qa.zahlfrage(q_suche)
                     for c in ctx:
                         t = texts.get((c.get("template_number") or "").strip())
                         if t:
-                            c["vorlage_excerpt"] = vorlagen_mod.excerpt(t, 350)
+                            # Auf dem GEPUTZTEN Text (ohne Kopfzeilen und
+                            # Anlagenliste, `chars=None` = vollständig).
+                            stelle = (qa.fundstelle(vorlagen_mod.excerpt(t, None), q_suche, expanded)
+                                      if zahl else "")
+                            c["vorlage_excerpt"] = stelle or vorlagen_mod.excerpt(t, 350)
                 except Exception:  # noqa: BLE001
                     pass
             try:  # Läuft zu einem Kandidaten gerade eine Bauleitplan-Beteiligung?
@@ -4327,7 +4387,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 # dass selbst ein expliziter Prompt-Anker vom Modell zugunsten
                 # eines älteren Titels ignoriert werden kann. Deshalb kommt
                 # diese enge Faktenantwort ohne generative Auswahl aus.
-                strom = iter([qa.latest_place_answer(candidates[:QA_ANSWER_N])])
+                strom = iter([qa.latest_place_answer(
+                    candidates[:QA_ANSWER_N], (ort or {}).get("name"))])
             else:
                 strom = (qa.vereinfachen_stream(frage_thema, body.previous_answer, ctx)
                          if einfach else
@@ -4337,7 +4398,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                           anlagen=anlagen_rows,
                                           gross=gross, steckbriefe=steckbriefe,
                                           duenn=(lage == "duenn"), eng=eng,
-                                          sitzungen=sitzungen, ort=ort))
+                                          sitzungen=sitzungen, ort=ort,
+                                          zukunft_leer=zukunft_leer, stand=stand))
             try:
                 for delta in strom:
                     if not buf and delta:
@@ -4372,7 +4434,9 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                                  anlagen=anlagen_rows,
                                                  gross=gross, steckbriefe=steckbriefe,
                                                  duenn=(lage == "duenn"), eng=eng,
-                                                 sitzungen=sitzungen, ort=ort))
+                                                 sitzungen=sitzungen, ort=ort,
+                                                 zukunft_leer=zukunft_leer,
+                                                 stand=stand))
                     buf = ans
                     yield _sse({"type": "replace", "text": qa.split_followups(ans)[0]})
                     sent = len(ans)

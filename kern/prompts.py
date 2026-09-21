@@ -67,16 +67,32 @@ STATUS — hat Oldenburg GENAU DIESES Instrument schon?
   nur ein Antrag ohne Beschluss, nur ein Prüfauftrag, nur ein Bericht.
 - "missing": Kein Beleg deckt auch nur einen Teil ab. Dass ein Beleg dasselbe
   THEMENFELD betrifft, genügt dafür nicht.
-- "not_applicable": Das Instrument setzt in Oldenburg etwas voraus, das es hier
-  nicht gibt — dann FEHLT es nicht, es kann hier gar nicht greifen. Eine
-  fahrradfreundliche Gestaltung von Stadtbahngleisen setzt eine Stadtbahn
-  voraus; Oldenburg hat keine. Ein Beschluss über einen Hafen setzt einen Hafen
-  voraus, eine Regelung für Stadtbezirksräte setzt Stadtbezirksräte voraus.
+- "not_applicable": Das Instrument setzt in Oldenburg etwas voraus, das der
+  Rat sich NICHT SELBST BESCHAFFEN KANN — dann fehlt es nicht, es kann hier
+  gar nicht greifen.
 
-  NUR bei einer fehlenden VORAUSSETZUNG, und nur bei einer, die du im
-  Steckbrief oder in den Belegen erkennen kannst. NICHT, weil Oldenburg kleiner
-  ist, weniger Geld hat, etwas anders organisiert oder es politisch nicht
-  wollte — das sind Gründe gegen einen Antrag, und über die urteilst du nicht.
+  DIE EINE FRAGE, die darüber entscheidet: Könnte der Oldenburger Rat diese
+  Voraussetzung beschließen?
+  - NEIN → "not_applicable". Eine Stadtbahn, einen Hafen, DDR-Plattenbauten,
+    den Titel UNESCO City of Music, eine Landkreis-Zugehörigkeit, das
+    brandenburgische Ü7-Verfahren — das kann ein Rat nicht beschließen.
+  - JA → "missing". Ein Jugendparlament, einen Migrantenbeirat, eine
+    Verpackungssteuer, eine Zweckentfremdungssatzung, ein Stadtteilbudget
+    kann ein Rat sehr wohl einrichten. Dass Oldenburg sie noch nicht hat,
+    ist GENAU die Lücke, nach der hier gesucht wird — nicht ein Grund, die
+    Idee auszusortieren.
+
+  Gemessen am 20.09.2026: Von 60 "not_applicable" waren rund acht von dieser
+  Sorte, fünfmal davon ein Jugendparlament („Oldenburg hat kein
+  Jugendparlament, daher kann dessen Satzung nicht geändert werden") —
+  während sechs Vergleichsstädte eins haben. Die Stufe hat die Idee
+  versteckt, statt sie zu zeigen.
+
+  Auch nicht "not_applicable", weil Oldenburg kleiner ist, weniger Geld hat,
+  etwas anders organisiert oder es politisch nicht wollte — das sind Gründe
+  gegen einen Antrag, und über die urteilst du nicht. Steckt Oldenburg
+  mitten in der Einführung, ist es "partial".
+
   Im Zweifel "missing": Dass etwas fehlt, ist die schwächere Behauptung.
 
 Sei streng: Ein Beleg, der nur dasselbe THEMENFELD berührt, ist NICHT "present".
@@ -1004,8 +1020,13 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "Analysiere die Nutzerfrage an ein Stadtrats-Archiv (Oldenburg).{verlauf} Antworte NUR als JSON:\n"
             '{{"question": "die Frage als EIGENSTÄNDIGE Suchfrage — löse Rückbezüge wie „dazu“, '
             '„das“, „dort“ mit Hilfe des Gesprächsverlaufs auf (z. B. „Und was kostet das?“ nach '
-            'einer Brücken-Frage → „Was kostet der Neubau der Cäcilienbrücke?“); ohne Verlauf: die '
-            'Frage unverändert", '
+            'einer Brücken-Frage → „Was kostet der Neubau der Cäcilienbrücke?“). Behalte dabei '
+            'JEDE Präzisierung der neuen Frage — ein Jahr, ein Dokument, ein Detail („mehr zum '
+            'Planfeststellungsbeschluss von 2023“ → „Was steht im Planfeststellungsbeschluss von '
+            '2023 zur Cäcilienbrücke?“), denn sie ist der Zweck der Nachfrage; mache aus einer '
+            'Nachfrage nie wieder die vorige Frage. Die Fassung bleibt IMMER ein ganzer Fragesatz, '
+            'nie eine Stichwortliste — Stichwörter gehören nach terms. Ohne Verlauf: die Frage '
+            'unverändert", '
             '"eng": true/false — true NUR bei einer Punktfrage, die eine einzelne '
             'Tatsache verlangt: ein Datum, eine Zahl, ein Name, ein Ja/Nein '
             '(\"Wann wurde X beschlossen?\", \"Wie viel kostet Y?\", \"Wer hat Z '
@@ -1013,7 +1034,13 @@ DEFAULTS: dict[str, dict[str, str]] = {
             'Überblick, eine Entwicklung, Meinungen oder mehrere Aspekte will '
             '(\"Was wurde zu X entschieden?\", \"Wie ist der Stand?\", \"Welche '
             'Aussagen …?\"). Im Zweifel false.\n", '
-            '"terms": "4-8 deutsche Suchbegriffe, Substantive und nahe Synonyme, durch Leerzeichen"'
+            '"terms": "4-8 deutsche Suchbegriffe, Substantive und nahe Synonyme, durch Leerzeichen. '
+            'Nennt die Frage ein konkretes Ding, gehört sein OBERBEGRIFF dazu, denn so heißt es in '
+            'den Beschlüssen: Sumpfeiche → Baum Baumfällung, Kita Sonnenblume → Kindertagesstätte, '
+            'Cäcilienbrücke → Brücke Ersatzneubau. Zu einem Thema gehören die Wörter, mit denen '
+            'Vorlagen es benennen: Radverkehr → Fahrrad Radweg Fahrradstraße Radschnellweg. NIE '
+            'Wörter der Fragehülle — Beschluss, beschlossen, Rat, Stadtrat, Stadt, Oldenburg, '
+            'zuletzt, aktuell —, die stehen in JEDER Vorlage und finden nichts"'
             ', "kind": "topic|history|party|money", "party": "Fraktionsname oder null", '
             '"unklar": true/false — true NUR, wenn die Frage GAR KEINEN Gegenstand '
             'nennt, den ein Stadtrats-Archiv durchsuchen könnte. Das sind: Begrüßungen '
