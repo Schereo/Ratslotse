@@ -21,11 +21,12 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Sparkles, ArrowUp, Loader2, ChevronDown, ChevronRight, ChevronUp, ArrowRight, Plus,
   Square, CircleSlash, ExternalLink, FlaskConical, History, Pencil, RotateCcw, ChevronLeft,
-  MessageSquarePlus, MoreHorizontal, Share2, ThumbsDown, ThumbsUp, Trash2, Volume2, X,
+  MessageSquarePlus, MoreHorizontal, Share2, Trash2, Volume2, X,
   BookOpen, Check, MapPin, SearchX, Bell } from "lucide-react";
 import dynamic from "next/dynamic";
 import { Mascot } from "@/components/mascot";
 import { openLotti } from "@/components/assistentin";
+import { FeedbackDaumen } from "@/components/feedback-daumen";
 import type { QaOrtPin } from "@/components/qa-orte-karte";
 
 // 5a/I-10: Leaflet kennt kein SSR — die Mini-Karte kommt nur im Browser.
@@ -370,81 +371,6 @@ function BelegPeek({ source, nummer, onClose, onListe }: {
       </div>
     </div>,
     document.body,
-  );
-}
-
-/** Daumen hoch/runter zur KI-Antwort (5a/I-03) — der einzige Qualitätsmesser
- *  außerhalb der Eval-Gold-Fälle. 👎 fragt optional nach dem Grund; gesendet
- *  wird fire-and-forget, der Dank kommt sofort. */
-function FeedbackDaumen({ turn }: { turn: Turn }) {
-  const [abgegeben, setAbgegeben] = useState<"up" | "down" | null>(null);
-  const [frageGrund, setFrageGrund] = useState(false);
-  const [reason, setGrund] = useState("");
-  const post = (rating: "up" | "down", grundText?: string) =>
-    void fetch(apiUrl("/council/qa-feedback"), {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json", ...authHeaders() },
-      body: JSON.stringify({
-        question: turn.question.slice(0, 300),
-        answer_excerpt: turn.answer.slice(0, 500) || null,
-        rating,
-        reason: grundText?.trim() || null,
-      }),
-    }).catch(() => {});
-  const senden = (rating: "up" | "down") => {
-    // Nochmal auf denselben Daumen: nichts zu melden, nichts zu senden — das
-    // spart eine Zeile in der Tabelle und einen Schlag aufs Rate-Limit.
-    if (rating === abgegeben) return;
-    const korrektur = abgegeben !== null;
-    setAbgegeben(rating);
-    setFrageGrund(rating === "down");
-    // Beim Umschwenken auf „hilfreich" ist der alte Grund hinfällig.
-    if (rating === "up") setGrund("");
-    // Der Daumen zählt sofort — auch wenn der Grund nie kommt.
-    post(rating);
-    if (rating === "up") toast.success(korrektur ? "Danke — Bewertung geändert." : "Danke für die Rückmeldung!");
-  };
-  const grundNachreichen = () => {
-    setFrageGrund(false);
-    // Nur mit echtem Text nachsenden — die Grund-Zeile ersetzt beim Auswerten
-    // den nackten Daumen (gleiche Frage, jüngerer Zeitstempel).
-    if (reason.trim()) post("down", reason);
-    toast.success("Danke für die Rückmeldung!");
-  };
-  return (
-    <span className="flex items-center gap-0.5">
-      {/* Beide Daumen bleiben anklickbar: Wer sich vertippt oder es sich
-          anders überlegt, muss die Bewertung ändern können (Tims Befund).
-          Der nicht gewählte Daumen tritt nur zurück, statt zu erstarren. */}
-      <button type="button" aria-label="Antwort war hilfreich" title="Hilfreich"
-        aria-pressed={abgegeben === "up"}
-        onClick={() => senden("up")}
-        className={cn("rounded-md p-1 transition-colors",
-          abgegeben === "up" ? "text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground",
-          abgegeben === "down" && "opacity-40 hover:opacity-100")}>
-        <ThumbsUp className="h-3.5 w-3.5" aria-hidden />
-      </button>
-      <button type="button" aria-label="Antwort war nicht hilfreich" title="Nicht hilfreich"
-        aria-pressed={abgegeben === "down"}
-        onClick={() => senden("down")}
-        className={cn("rounded-md p-1 transition-colors",
-          abgegeben === "down" ? "text-signal" : "text-muted-foreground hover:bg-muted hover:text-foreground",
-          abgegeben === "up" && "opacity-40 hover:opacity-100")}>
-        <ThumbsDown className="h-3.5 w-3.5" aria-hidden />
-      </button>
-      {frageGrund && (
-        <form className="ml-1 flex min-w-0 items-center gap-1"
-          onSubmit={(e) => { e.preventDefault(); grundNachreichen(); }}>
-          {/* 16px auf Touch: Unter 16px zoomt iOS-Safari beim Fokus in das
-              Feld hinein (Tims Befund beim Daumen runter). */}
-          <input value={reason} onChange={(e) => setGrund(e.target.value)} autoFocus
-            placeholder="Was war falsch? (optional)" maxLength={500}
-            className="h-7 w-44 min-w-0 rounded-md border border-border bg-card px-2 text-[16px] outline-none placeholder:text-muted-foreground/60 focus:border-primary sm:h-6 sm:w-40 sm:text-[11px]" />
-          <button type="submit" className="text-[11px] font-medium text-primary hover:underline">Senden</button>
-        </form>
-      )}
-    </span>
   );
 }
 
@@ -2616,7 +2542,8 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
               )}
               <PrintButton iconOnly />
               {turn.answer && !turn.fehler && <VorlesenKnopf text={turn.answer} />}
-              {turn.answer && !turn.fehler && <FeedbackDaumen turn={turn} />}
+              {turn.answer && !turn.fehler
+                && <FeedbackDaumen question={turn.question} answer={turn.answer} />}
               <span role="status" className="min-w-0 basis-full text-hinweis text-muted-foreground sm:flex-1 sm:basis-auto sm:text-right">
                 {/* 5a/I-02 bzw. RG-10: ehrlich sagen, worauf die Antwort fußt. */}
                 {turn.unclear

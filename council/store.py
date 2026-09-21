@@ -4194,33 +4194,49 @@ class CouncilStore(BplanMixin, FundstueckeMixin, HaushaltMixin, OrteMixin, Perso
                          user_id: int | None = None, source: str = "ask") -> None:
         """Daumen hoch/runter zu einer KI-Antwort (5a/I-03).
 
-        Ein Konto hat je Frage **eine** Stimme: Der nachgereichte Grund und die
-        korrigierte Bewertung (Daumen runter → hoch) überschreiben die frühere
-        Zeile, statt sich als widersprüchliches Paar in der Tabelle zu stapeln —
-        sonst zählte jede Meinungsänderung doppelt. Anonyme Rückmeldungen haben
-        keinen Schlüssel und werden weiterhin angehängt.
+        Ein Konto hat je **Antwort** eine Stimme: Der nachgereichte Grund und
+        die korrigierte Bewertung (Daumen runter → hoch) überschreiben die
+        frühere Zeile, statt sich als widersprüchliches Paar in der Tabelle zu
+        stapeln — sonst zählte jede Meinungsänderung doppelt. Anonyme
+        Rückmeldungen haben keinen Schlüssel und werden weiterhin angehängt.
+
+        **Der Schlüssel ist die Antwort, nicht die Frage** — seit Lottis
+        Fenster (09/2026) einen Daumen hat. Dort heißt die häufigste Frage auf
+        jeder Seite gleich: „Was sehe ich hier?" steht als Vorschlags-Chip
+        unter jeder Erklärung. Mit dem alten Schlüssel (Konto + Frage) hätte
+        ein Konto über alle Seiten hinweg **eine einzige** Lotti-Stimme
+        abgeben können, und jede weitere hätte die vorige überschrieben — die
+        Quote wäre dauerhaft zu klein gewesen, ohne dass es auffällt. Der
+        Antwort-Auszug unterscheidet die Seiten; ``source`` gehört mit in den
+        Schlüssel, weil dieselbe Frage im Archiv etwas anderes beantwortet als
+        im Fenster.
         """
         if rating not in ("up", "down"):
             raise ValueError(f"rating muss up/down sein, nicht {rating!r}")
         now = datetime.utcnow().isoformat(timespec="seconds")
+        quelle = source if source in ("ask", "lotti") else "ask"
         werte = (question[:300], (answer_excerpt or "")[:500] or None, rating,
                  (reason or "").strip()[:500] or None, user_id, now)
         with self._conn:
             if user_id is not None:
+                # `IS` statt `=`: Eine Antwort ohne Auszug ist NULL, und NULL
+                # ist mit `=` zu nichts gleich — auch nicht zu sich selbst.
                 vorher = self._conn.execute(
                     "SELECT id FROM council_qa_feedback WHERE user_id = ? AND question = ? "
-                    "ORDER BY id DESC LIMIT 1", (user_id, werte[0])).fetchone()
+                    "AND answer_excerpt IS ? AND COALESCE(source, 'ask') = ? "
+                    "ORDER BY id DESC LIMIT 1",
+                    (user_id, werte[0], werte[1], quelle)).fetchone()
                 if vorher:
                     self._conn.execute(
-                        "UPDATE council_qa_feedback SET answer_excerpt = ?, rating = ?, "
+                        "UPDATE council_qa_feedback SET rating = ?, "
                         "reason = ?, created = ? WHERE id = ?",
-                        (werte[1], rating, werte[3], now, vorher[0]))
+                        (rating, werte[3], now, vorher[0]))
                     return
             self._conn.execute(
                 "INSERT INTO council_qa_feedback "
                 "(question, answer_excerpt, rating, reason, user_id, created, source) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (*werte, source if source in ("ask", "lotti") else "ask"),
+                (*werte, quelle),
             )
 
 

@@ -20,6 +20,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { zustandsDatei } from "./konten";
 
 const ANTWORT = "Die Treppe zeigt, wie viel die Stadt in jedem Jahr zurückzahlt.";
+const GEPRUEFTE_ANTWORT = "Tilgung ist die Rückzahlung eines Kredits.";
 
 const STROM = (opts: { next?: string | null } = {}) => [
   `data: ${JSON.stringify({ type: "step", step: "context" })}\n\n`,
@@ -53,6 +54,17 @@ async function schalterAn(page: Page, an = true) {
     }
   });
 }
+
+/** Der Weg OHNE Modell: Glossar, Seiten-Wissen, „Lotti erklärt's einfach".
+ *  Ein Token, ein `done` mit `mode: "deterministic"` — genau so schickt es
+ *  `POST /council/explain`, wenn `deterministic_answer` getroffen hat. */
+const STROM_GEPRUEFT = [
+  `data: ${JSON.stringify({ type: "token", text: GEPRUEFTE_ANTWORT })}\n\n`,
+  `data: ${JSON.stringify({
+    type: "done", mode: "deterministic", kind: "glossary",
+    next: null, glossary: [], timings: { total_ms: 4 },
+  })}\n\n`,
+].join("");
 
 async function stromStubben(page: Page, opts: { next?: string | null } = {}) {
   await page.route("**/api/council/explain", (route) =>
@@ -103,6 +115,49 @@ test.describe("Lotti-Knopf und -Fenster", () => {
     await knopf(page).click();
     await fenster(page).getByRole("button", { name: "Was sehe ich hier?" }).click();
     await expect(fenster(page).getByText(ANTWORT)).toBeVisible();
+  });
+
+  test("unter der Modell-Antwort stehen zwei Daumen, und sie melden die Quelle",
+    async ({ page }) => {
+      // B6 der zweiten Durchsicht: Der Endpunkt nimmt `source = "lotti"` seit
+      // PR 7 an, im Fenster gab es keinen Daumen. Gezählt war die Annahme,
+      // nie die Güte.
+      let gemeldet: Record<string, unknown> | null = null;
+      await page.route("**/api/council/qa-feedback", async (route) => {
+        gemeldet = route.request().postDataJSON();
+        await route.fulfill({ status: 201, json: { ok: true } })
+          .catch(() => { /* Test ist schon zu Ende */ });
+      });
+      await page.goto("/dashboard");
+      await knopf(page).click();
+      await fenster(page).getByRole("button", { name: "Was sehe ich hier?" }).click();
+      await expect(fenster(page).getByText(ANTWORT)).toBeVisible();
+      const hoch = fenster(page).getByRole("button", { name: "Antwort war hilfreich" });
+      await expect(hoch).toBeVisible();
+      await expect(fenster(page).getByRole("button", { name: "Antwort war nicht hilfreich" }))
+        .toBeVisible();
+      await hoch.click();
+      await expect.poll(() => gemeldet).not.toBeNull();
+      expect(gemeldet!.source).toBe("lotti");
+      expect(gemeldet!.rating).toBe("up");
+      expect(gemeldet!.question).toBe("Was sehe ich hier?");
+      expect(gemeldet!.answer_excerpt).toBe(ANTWORT);
+    });
+
+  test("unter einer geprüften Antwort steht KEIN Daumen", async ({ page }) => {
+    // Glossar, Seiten-Wissen und Kurzfassung sind geprüfter Text, den das
+    // Fenster nur durchreicht. Ein Daumen darunter bewertete das Glossar —
+    // und stünde in derselben Quote wie Lottis eigene Erklärungen.
+    await page.route("**/api/council/explain", (route) =>
+      route.fulfill({ status: 200, contentType: "text/event-stream", body: STROM_GEPRUEFT })
+        .catch(() => { /* Test ist schon zu Ende */ }),
+    );
+    await page.goto("/dashboard");
+    await knopf(page).click();
+    await fenster(page).getByRole("button", { name: "Was sehe ich hier?" }).click();
+    await expect(fenster(page).getByText(GEPRUEFTE_ANTWORT)).toBeVisible();
+    await expect(fenster(page).getByRole("button", { name: "Antwort war hilfreich" }))
+      .toHaveCount(0);
   });
 
   test("eine Archivfrage wird IM Fenster beantwortet — mit Belegen", async ({ page }) => {
