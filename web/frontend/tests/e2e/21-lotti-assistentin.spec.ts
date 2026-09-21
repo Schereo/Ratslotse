@@ -105,21 +105,39 @@ test.describe("Lotti-Knopf und -Fenster", () => {
     await expect(fenster(page).getByText(ANTWORT)).toBeVisible();
   });
 
-  test("bei einer Archivfrage führt der Weg zu „Frag den Rat“", async ({ page }) => {
+  test("eine Archivfrage wird IM Fenster beantwortet — mit Belegen", async ({ page }) => {
+    // Bis PR 4 führte der Knopf weg auf `/fragen`, und der Zusammenhang war
+    // hin: Wer auf der Schulden-Seite „wer hat das beantragt?" fragt, landete
+    // auf einer leeren Fragen-Seite, und das „das" war weg.
+    let geschickt: Record<string, unknown> | null = null;
+    await page.route("**/api/council/ask", async (route) => {
+      geschickt = route.request().postDataJSON();
+      await route.fulfill({
+        status: 200, contentType: "text/event-stream",
+        body: [
+          `data: ${JSON.stringify({ type: "sources", sources: [
+            { id: 8525, title: "Stadionneubau Maastrichter Straße", committee: "Rat",
+              session_date: "2026-06-01" },
+          ] })}\n\n`,
+          `data: ${JSON.stringify({ type: "token", text: "Der Rat hat 2026 zugestimmt." })}\n\n`,
+          `data: ${JSON.stringify({ type: "done", cited: [8525] })}\n\n`,
+        ].join(""),
+      }).catch(() => { /* Test ist schon zu Ende */ });
+    });
     await stromStubben(page, { next: "ratsfrage" });
     await page.goto("/dashboard");
     await knopf(page).click();
     await fenster(page).getByLabel("Frage an Lotti").fill("Wer hat dagegen gestimmt?");
     await fenster(page).getByRole("button", { name: "Fragen" }).click();
-    const weiter = fenster(page).getByRole("button", { name: /Den Rat fragen/ });
-    await expect(weiter).toBeVisible();
-    await weiter.click();
-    // NICHT die Adresse prüfen: Die Fragen-Seite übernimmt `?q=` in den
-    // Composer und räumt den Parameter danach weg (Befund F5 dort). Geprüft
-    // gehört, was ankommt — die Frage steht im Eingabefeld.
-    await expect(page).toHaveURL(/\/fragen/);
-    await expect(page.getByPlaceholder(/Deine Frage/).first())
-      .toHaveValue("Wer hat dagegen gestimmt?");
+    await fenster(page).getByRole("button", { name: /Den Rat fragen/ }).click();
+    await expect(fenster(page).getByText("Der Rat hat 2026 zugestimmt.")).toBeVisible();
+    await expect(fenster(page).getByText("Stadionneubau Maastrichter Straße")).toBeVisible();
+    // Der Bildschirm reist mit — sonst sucht das Archiv nach nichts.
+    const screen = (geschickt as { screen?: { route?: string } })?.screen;
+    expect(screen?.route).toBe("/dashboard");
+    // Und der Weg ins volle Ratsgespräch steht darunter.
+    await expect(fenster(page).getByRole("button", { name: /Im Ratsgespräch weiterführen/ }))
+      .toBeVisible();
   });
 
   test("der Verlauf überlebt den Seitenwechsel", async ({ page }) => {

@@ -3731,6 +3731,24 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
+class ScreenContext(BaseModel):
+    """Was die Person vor sich hatte, als sie die Ratsfrage gestellt hat.
+
+    **Wozu.** Eine Frage aus Lottis Fenster trägt ihren Gegenstand oft nicht
+    im Wortlaut: „Und wer hat das beantragt?" steht neben einer Tabellenzeile,
+    die das „das" benennt. Ohne den Bildschirm sucht das Archiv nach nichts.
+
+    **Kürzer gedeckelt als bei ``/explain``** (600 statt 1.200 Zeichen): Dort
+    TRÄGT der Element-Text die Antwort, hier ist er Beiwerk — die Antwort
+    kommt aus den Beschlüssen, und ein langer Baustein verdrängte sie nur.
+    """
+    route: str = Field(max_length=200)
+    heading: str = Field(default="", max_length=200)
+    element_title: str = Field(default="", max_length=200)
+    element_text: str = Field(default="", max_length=qa.SCREEN_ELEMENT_MAX)
+    selection: str = Field(default="", max_length=qa.SCREEN_SELECTION_MAX)
+
+
 class AskBody(BaseModel):
     question: str
     # Chat-Modus (Paket A): die letzten Runden erlauben Anschlussfragen wie
@@ -3754,6 +3772,10 @@ class AskBody(BaseModel):
     # wörtlich aus einem Chip; ob das an guten Vorschlägen liegt oder daran,
     # dass niemand ins Feld tippt, ist die Frage dahinter.
     from_suggestion: bool = False
+    # Kam die Frage aus Lottis Fenster? Dann reist der Bildschirm mit — und
+    # ANS ENDE, optional und nullbar: Die ausgelieferte iOS-App schickt das
+    # Feld nicht, und ein Pflichtfeld hier bräche sie (ios/CLAUDE.md).
+    screen: ScreenContext | None = None
 
 
 # Q&A sizing: show up to QA_TOP_K reranked decisions as sources, feed the most
@@ -3996,6 +4018,12 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
         # der faire, stabile Schlüssel für das Kosten-Limit.
         qa_limiter.check(request, subject=user["id"])
     ratslotse.record_activity(user["id"], "ai_question")  # Admin-Statistik (20a)
+    # Kam die Frage aus Lottis Fenster? Eigener Zähler — „wie oft führt eine
+    # Erklärung ins Archiv?" ist die Frage, an der hängt, ob der zweite
+    # Antwortweg etwas bringt.
+    bildschirm = body.screen.model_dump() if body.screen else None
+    if bildschirm:
+        ratslotse.record_activity(user["id"], "assistant_to_ask", client_kind(request))
     # ZUSÄTZLICH, nicht statt: `ai_question` bleibt die Gesamtzahl, sonst
     # verlören alle bestehenden Auswertungen die Chip-Fragen.
     if body.from_suggestion:
@@ -4687,7 +4715,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                           gross=gross, steckbriefe=steckbriefe,
                                           duenn=(lage == "duenn"), eng=eng,
                                           sitzungen=sitzungen, ort=ort,
-                                          zukunft_leer=zukunft_leer, stand=stand))
+                                          zukunft_leer=zukunft_leer, stand=stand,
+                                          screen=bildschirm))
             try:
                 for delta in strom:
                     if not buf and delta:
@@ -4724,7 +4753,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                                  duenn=(lage == "duenn"), eng=eng,
                                                  sitzungen=sitzungen, ort=ort,
                                                  zukunft_leer=zukunft_leer,
-                                                 stand=stand))
+                                                 stand=stand, screen=bildschirm))
                     buf = ans
                     yield _sse({"type": "replace", "text": qa.split_followups(ans)[0]})
                     sent = len(ans)

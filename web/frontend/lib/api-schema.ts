@@ -6827,6 +6827,42 @@ export interface components {
             previous_answer: string;
             /** Question */
             question: string;
+            /**
+             * ScreenContext
+             * @description Was die Person vor sich hatte, als sie die Ratsfrage gestellt hat.
+             *
+             *     **Wozu.** Eine Frage aus Lottis Fenster trägt ihren Gegenstand oft nicht
+             *     im Wortlaut: „Und wer hat das beantragt?" steht neben einer Tabellenzeile,
+             *     die das „das" benennt. Ohne den Bildschirm sucht das Archiv nach nichts.
+             *
+             *     **Kürzer gedeckelt als bei ``/explain``** (600 statt 1.200 Zeichen): Dort
+             *     TRÄGT der Element-Text die Antwort, hier ist er Beiwerk — die Antwort
+             *     kommt aus den Beschlüssen, und ein langer Baustein verdrängte sie nur.
+             */
+            screen?: {
+                /**
+                 * Element Text
+                 * @default
+                 */
+                element_text: string;
+                /**
+                 * Element Title
+                 * @default
+                 */
+                element_title: string;
+                /**
+                 * Heading
+                 * @default
+                 */
+                heading: string;
+                /** Route */
+                route: string;
+                /**
+                 * Selection
+                 * @default
+                 */
+                selection: string;
+            } | null;
         };
         /**
          * AskTurn
@@ -13182,6 +13218,42 @@ export interface components {
             first: number;
             /** Runoff */
             runoff: number;
+        };
+        /**
+         * ScreenContext
+         * @description Was die Person vor sich hatte, als sie die Ratsfrage gestellt hat.
+         *
+         *     **Wozu.** Eine Frage aus Lottis Fenster trägt ihren Gegenstand oft nicht
+         *     im Wortlaut: „Und wer hat das beantragt?" steht neben einer Tabellenzeile,
+         *     die das „das" benennt. Ohne den Bildschirm sucht das Archiv nach nichts.
+         *
+         *     **Kürzer gedeckelt als bei ``/explain``** (600 statt 1.200 Zeichen): Dort
+         *     TRÄGT der Element-Text die Antwort, hier ist er Beiwerk — die Antwort
+         *     kommt aus den Beschlüssen, und ein langer Baustein verdrängte sie nur.
+         */
+        ScreenContext: {
+            /**
+             * Element Text
+             * @default
+             */
+            element_text: string;
+            /**
+             * Element Title
+             * @default
+             */
+            element_title: string;
+            /**
+             * Heading
+             * @default
+             */
+            heading: string;
+            /** Route */
+            route: string;
+            /**
+             * Selection
+             * @default
+             */
+            selection: string;
         };
         /**
          * SessionDetail
@@ -21340,4 +21412,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: fc0de236f1b7df3ce5f5530e782e2eb2acb434da451e740fbf19e4f1f635fa3f
+// vertrag-sha256: 58ec6a533fb5875315f374bc4cd131acc8f399f82aa72e5eb2e0931ebd5b0790
