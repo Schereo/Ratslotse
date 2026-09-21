@@ -1,8 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import { X } from "lucide-react";
 
-import { BrandMark } from "@/components/brand";
 import { cn } from "@/lib/utils";
 
 /**
@@ -25,6 +25,15 @@ import { cn } from "@/lib/utils";
  *   der Fragen-Seite gar nicht erst erscheint.
  *
  * `z-50`, damit er über der Tab-Leiste (`z-40`) und dem Composer liegt.
+ *
+ * **Das Gesicht ist die 3D-Lotti, nicht das flache Logo** (Tims Wunsch
+ * 21.09.2026). Der Kopf ist aus dem Standbild der Ruhe-Pose geschnitten
+ * (`public/lotti/kopf.png`, 192 px, aus `standbild-ruht.png`) — die anderen
+ * Posen taugen nicht: `mag-das` hat geschlossene Augen und sähe auf einem
+ * Knopf aus wie eingeschlafen, bei `lacht` verdeckt die Mütze die Augen.
+ * Die runde Fläche kommt aus dem CSS und nicht aus dem Bild, damit sie im
+ * Dunkelmodus den dortigen Primärton nimmt; der Kopf ist etwas größer als
+ * der Kreis und wird von ihm beschnitten — wie ein Porträt.
  */
 export function LottiKnopf({ offen, onToggle, className }: {
   offen: boolean;
@@ -41,7 +50,7 @@ export function LottiKnopf({ offen, onToggle, className }: {
       data-lotti-knopf
       className={cn(
         "fixed right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full",
-        "bg-primary text-primary-foreground shadow-lifted print:hidden",
+        "overflow-hidden bg-primary text-primary-foreground shadow-lifted print:hidden",
         "transition-[transform,background-color] duration-tipp ease-out-strong",
         "hover:bg-primary/90 active:scale-95",
         "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
@@ -54,7 +63,20 @@ export function LottiKnopf({ offen, onToggle, className }: {
     >
       {offen
         ? <X className="h-6 w-6" aria-hidden />
-        : <BrandMark className="h-8 w-8" />}
+        : (
+          <Image
+            src="/lotti/kopf.png"
+            alt=""
+            width={192}
+            height={192}
+            priority
+            // Größer als der Kreis (70 px in 56 px) und leicht nach unten gerückt:
+            // Der Kopf soll die Fläche FÜLLEN und vom Rand beschnitten werden wie
+            // ein Porträt. Passgenau eingesetzt bliebe rundherum Blau stehen, und
+            // die Figur sähe verloren aus.
+            className="pointer-events-none h-[4.4rem] w-[4.4rem] translate-y-[3px] select-none"
+          />
+        )}
     </button>
   );
 }
