@@ -108,9 +108,40 @@ class CitiesStore:
     # ------------------------------------------------------------------ Basis
 
     def _migrate(self) -> None:
+        """Alles nachholen, was die Datenbank noch nicht gesehen hat.
+
+        **Sortiert, und das ist keine Kosmetik.** Diese Schleife setzt nach
+        jedem Schritt ``stand = version``. Stünde eine kleinere Nummer HINTER
+        einer größeren, gälte sie danach als erledigt und liefe nie — auf einer
+        gewachsenen Datenbank, also auf dev und Prod, wo es keinen Test gibt.
+        ``MIGRATIONS`` war bis zum 21.09.2026 von neu nach alt sortiert (die
+        neue Migration kam oben dazu); damit lief für jede Datenbank unterhalb
+        von Stand 7 ausschließlich Migration 7, und 2 bis 6 wurden stumm
+        übersprungen.
+
+        Aufgefallen ist es beim Einbau von Migration 8: vorangestellt, hat sie
+        Migration 7 verschluckt, und ``test_migration_fuehrt_den_bestand_
+        zusammen`` fiel darüber. Statt die Liste umzusortieren und die
+        Reihenfolge damit zu einer Regel zu machen, die jemand beim nächsten
+        Eintrag wieder brechen kann, entscheidet hier die NUMMER — wo der
+        Eintrag steht, ist egal.
+
+        **Was das auf den echten Datenbanken ändert: nichts.** Gemessen am
+        21.09.2026 stehen Prod und dev beide auf Stand 7, es läuft dort also
+        weiterhin nur, was größer ist. Und ihr Schema ist vollständig: Es
+        entsteht aus ``SCHEMA``, und die übersprungenen Migrationen 2 bis 6
+        sind ausnahmslos ``CREATE TABLE/INDEX IF NOT EXISTS`` — ein Abgleich
+        des Prod-Schemas gegen eine frische Datenbank zeigte keinen einzigen
+        fehlenden Tisch.
+
+        Die beiden anderen Stores (``council/store_schema.py``,
+        ``kern/store.py``) haben diese Falle nicht: Sie führen keine
+        nummerierte Liste, sondern lauter einzeln abgesicherte Schritte
+        (``if "spalte" not in cols``), die bei jedem Start durchlaufen.
+        """
         row = self._conn.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()
         stand = int(row["value"]) if row else 0
-        for version, sql in MIGRATIONS:
+        for version, sql in sorted(MIGRATIONS, key=lambda eintrag: eintrag[0]):
             if version <= stand:
                 continue
             with self._conn:

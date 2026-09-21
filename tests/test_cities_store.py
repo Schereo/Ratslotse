@@ -294,3 +294,125 @@ def test_stats_zeigen_den_rueckstand(store):
     # Nachbarschaften sind modellspezifisch — die Zahl muss es auch sein.
     andere = {r["id"]: r for r in store.stats("modell-b")}["osnabrueck"]
     assert andere["papers_unembedded"] == 2
+
+
+# --------------------------------------------------- Die Migrationsschleife
+
+def _form(pfad) -> dict[str, set[str]]:
+    """``{tabelle: {spalte, …}}`` — die vergleichbare Form einer Datenbank.
+
+    Dasselbe Maß wie in ``tests/test_migration_bestand.py``: Tabellen und ihre
+    Spalten, ohne Rücksicht auf den Wortlaut der CREATE-Anweisung (der trägt
+    Kommentare, die sich ändern dürfen).
+    """
+    import sqlite3
+
+    conn = sqlite3.connect(pfad)
+    try:
+        tabellen = [r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' "
+            "AND name NOT LIKE 'sqlite_%'")]
+        return {t: {r[1] for r in conn.execute(f'PRAGMA table_info("{t}")')}
+                for t in tabellen}
+    finally:
+        conn.close()
+
+
+def _stand_setzen(pfad, stand: int) -> None:
+    import sqlite3
+
+    conn = sqlite3.connect(pfad)
+    try:
+        with conn:
+            conn.execute("INSERT INTO meta (key, value) VALUES ('schema_version', ?) "
+                         "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                         (str(stand),))
+    finally:
+        conn.close()
+
+
+def _marken(pfad) -> set[str]:
+    import sqlite3
+
+    conn = sqlite3.connect(pfad)
+    try:
+        return {r[0] for r in conn.execute(
+            "SELECT key FROM meta WHERE key LIKE 'probe_%'")}
+    finally:
+        conn.close()
+
+
+#: Fünf erfundene Migrationen, **absichtlich verdreht** und jede mit einer
+#: sichtbaren Spur. Sie prüfen den MECHANISMUS, nicht ein Symptom — und das
+#: ist hier nicht Bequemlichkeit, sondern notwendig: Die echten Migrationen 2
+#: bis 6 legen ausschließlich Tabellen an, die ``SCHEMA`` bei jedem Öffnen
+#: ohnehin anlegt. Ob sie liefen, ist an der Datenbank deshalb gar nicht
+#: abzulesen (genau deshalb ist Prod heil geblieben, gemessen am 21.09.2026).
+#: Die nächste Migration, die Zeilen anfasst statt Tabellen — Migration 7 ist
+#: so eine —, wäre dagegen unwiederbringlich verloren.
+VERDREHTE_PROBEN: list[tuple[int, str]] = [
+    (n, f"INSERT INTO meta (key, value) VALUES ('probe_{n}', '1');")
+    for n in (5, 2, 4, 1, 3)
+]
+
+
+def test_jede_migration_laeuft_egal_wo_sie_in_der_liste_steht(tmp_path, monkeypatch):
+    """Der Fehler vom 21.09.2026, in einem Test.
+
+    ``_migrate`` setzt nach jedem Schritt ``stand = version``. Stand eine
+    kleinere Nummer HINTER einer größeren, galt sie danach als erledigt und
+    lief nie. ``MIGRATIONS`` war von neu nach alt sortiert — für jede
+    Datenbank unterhalb von Stand 7 lief damit ausschließlich Migration 7.
+    Aufgefallen ist es erst, als Migration 8 vorangestellt die 7 verschluckte.
+    """
+    from council.cities import store as store_modul
+
+    monkeypatch.setattr(store_modul, "MIGRATIONS", VERDREHTE_PROBEN)
+    pfad = tmp_path / "cities.sqlite"
+    CitiesStore(pfad).close()
+    assert _marken(pfad) == {f"probe_{n}" for n in range(1, 6)}
+
+
+def test_eine_gewachsene_datenbank_holt_nur_das_neuere_nach(tmp_path, monkeypatch):
+    """Die Gegenrichtung: Was die Datenbank schon gesehen hat, läuft NICHT
+    noch einmal. Sonst wäre aus der Reparatur ein doppelter Lauf geworden —
+    bei einer Migration, die Zeilen löscht, ein Datenverlust."""
+    from council.cities import store as store_modul
+
+    monkeypatch.setattr(store_modul, "MIGRATIONS", VERDREHTE_PROBEN)
+    pfad = tmp_path / "cities.sqlite"
+    CitiesStore(pfad).close()
+    _stand_setzen(pfad, 3)
+    import sqlite3
+    conn = sqlite3.connect(pfad)
+    with conn:
+        conn.execute("DELETE FROM meta WHERE key LIKE 'probe_%'")
+    conn.close()
+
+    CitiesStore(pfad).close()
+    assert _marken(pfad) == {"probe_4", "probe_5"}, (
+        "nur was größer als der Stand ist, darf nachlaufen")
+
+
+def test_die_echten_migrationen_sind_wiederholbar(tmp_path):
+    """Eine Migration, die beim zweiten Lauf stolpert, bricht den nächsten
+    Deploy (``tests/CLAUDE.md``). Seit sie sortiert laufen, laufen auf einer
+    frischen Datenbank ALLE — vorher war es nur die höchste, die übrigen sind
+    also zum ersten Mal in diesem Pfad."""
+    pfad = tmp_path / "cities.sqlite"
+    CitiesStore(pfad).close()
+    soll = _form(pfad)
+    for stand in range(8):
+        _stand_setzen(pfad, stand)
+        CitiesStore(pfad).close()
+        assert _form(pfad) == soll, f"nach einem Lauf ab Stand {stand}"
+
+
+def test_hoechste_migration_und_schema_version_passen_zusammen():
+    """Sonst entsteht eine Tabelle auf einer frischen Datenbank, aber auf
+    keiner gewachsenen — oder umgekehrt."""
+    from council.cities.schema import MIGRATIONS, SCHEMA_VERSION
+
+    nummern = [v for v, _ in MIGRATIONS]
+    assert len(nummern) == len(set(nummern)), "eine Nummer kommt doppelt vor"
+    assert max(nummern) == SCHEMA_VERSION
