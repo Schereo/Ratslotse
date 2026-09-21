@@ -9,8 +9,8 @@ import { Mascot } from "@/components/mascot";
 import { AntwortText } from "@/components/qa-bausteine";
 import { apiUrl, authHeaders } from "@/lib/api";
 import {
-  auswahlText, kuerze, refsAus, routeAus, seitenTitel, seitenUeberschrift,
-  trenneWeiter, ueberschriftenPfad,
+  auswahlText, gedaechtnis, kuerze, refsAus, routeAus, seitenName, seitenTitel,
+  seitenUeberschrift, trenneWeiter, ueberschriftenPfad, zaesur,
   type Bildschirm,
 } from "@/lib/assistentin";
 import { useAuth } from "@/lib/auth";
@@ -64,13 +64,27 @@ export type LottiTurn = {
   quellen?: LottiQuelle[];
   cited?: number[];
   next: "ratsfrage" | null;
-  glossary: string[];
   /** Kam die Antwort ohne Modell? Nur fürs Protokoll, nicht sichtbar. */
   mode: string | null;
   fehler?: boolean;
   /** Was auf dem Bildschirm stand, als die Frage gestellt wurde. */
   kontext: string;
+  /** Auf welcher Seite gefragt wurde — die normalisierte Route. Sie trägt die
+   *  Zäsur im Verlauf UND die Auswahl des Gedächtnisses (`gedaechtnis`).
+   *  Runden aus einem älteren Tab-Speicher haben sie nicht; sie gelten dann
+   *  als fremd. Eine Migration braucht das nicht: Der Verlauf lebt einen Tab
+   *  lang, und die schlimmste Folge ist eine Zäsur zu viel. */
+  route?: string;
+  /** Wie die Seite damals hieß — für die Zäsur. */
+  seite?: string;
 };
+
+/** **`glossary` ist hier bewusst weg** (B7 der zweiten Durchsicht): Der
+ *  `done`-Rahmen schickt die Fachwörter weiterhin, das Fenster speicherte sie
+ *  je Runde und zeigte sie nirgends. Leisten tun das die Unterstreichungen in
+ *  `AntwortText` — sie stehen im Antworttext selbst, also an der Stelle, an
+ *  der man das Wort liest. Ein zweiter Ort für dieselben Wörter wäre
+ *  Doppelung; der Rahmen bleibt, falls jemand sie später als Chips will. */
 
 function leseVerlauf(): LottiTurn[] {
   try {
@@ -217,7 +231,8 @@ export function LottiPanel({
     if (baustein) letzterBaustein.current = baustein;
     const key = naechsterKey.current++;
     setTurns((ts) => [...ts, {
-      key, question: sauber, answer: "", next: null, glossary: [], mode: null, kontext,
+      key, question: sauber, answer: "", next: null, mode: null, kontext,
+      route, seite: seitenName(document, anzeigename),
     }]);
 
     const bildschirm: Bildschirm = {
@@ -248,7 +263,9 @@ export function LottiPanel({
           selection: bildschirm.selection,
           question: sauber,
           refs: bildschirm.refs,
-          history: turns.filter((t) => t.answer && !t.fehler).slice(-MAX_TURNS_KONTEXT)
+          // **Nur Runden DIESER Seite** — der Verlauf überlebt den
+          // Seitenwechsel, das Gedächtnis nicht (lib/assistentin.ts).
+          history: gedaechtnis(turns, route, MAX_TURNS_KONTEXT)
             .map((t) => ({ question: t.question.slice(0, 200), answer: t.answer.slice(0, 300) })),
           // Das laufende Gespräch. Das Feld MUSS mit, auch als `null`: Der
           // Server speichert nur, wenn der Client es überhaupt geschickt hat
@@ -277,7 +294,6 @@ export function LottiPanel({
         } else if (msg.type === "done") {
           patch((t) => ({
             next: (msg.next as "ratsfrage" | null) ?? t.next,
-            glossary: (msg.glossary as string[]) ?? [],
             mode: (msg.mode as string) ?? null,
           }));
           // `null` heißt: Der Server konnte oder durfte nicht (mehr) in dieses
@@ -301,7 +317,7 @@ export function LottiPanel({
         abbruch.current = null;
       }
     }
-  }, [markierung, refs, route, turns, gespraechId, merken, setGespraechId]);
+  }, [markierung, refs, route, turns, gespraechId, merken, setGespraechId, anzeigename]);
 
   // Ein im Erklär-Modus angetippter Baustein fragt von selbst — der Tipp auf
   // das Abzeichen IST die Frage, ein zweiter Klick im Fenster wäre einer zu
@@ -330,8 +346,9 @@ export function LottiPanel({
     setLaden(true);
     const key = naechsterKey.current++;
     setTurns((ts) => [...ts, {
-      key, question: frageText, answer: "", next: null, glossary: [], mode: null,
+      key, question: frageText, answer: "", next: null, mode: null,
       kontext: "im Ratsarchiv gesucht", ratsfrage: true, quellen: [], cited: [],
+      route, seite: seitenName(document, anzeigename),
     }]);
     const patch = (fn: (t: LottiTurn) => Partial<LottiTurn>) =>
       setTurns((ts) => ts.map((t) => (t.key === key ? { ...t, ...fn(t) } : t)));
@@ -347,7 +364,8 @@ export function LottiPanel({
           // beiden Felder blieb er ungespeichert, und der Verlauf hatte ein
           // Loch genau an der interessantesten Stelle.
           conversation_id: gespraechId,
-          history: turns.filter((t) => t.answer && !t.fehler).slice(-MAX_TURNS_KONTEXT)
+          // Wie bei `/explain`: nur Runden dieser Seite.
+          history: gedaechtnis(turns, route, MAX_TURNS_KONTEXT)
             .map((t) => ({ question: t.question.slice(0, 200), answer: t.answer.slice(0, 300) })),
           screen: {
             route,
@@ -401,7 +419,7 @@ export function LottiPanel({
         abbruch.current = null;
       }
     }
-  }, [markierung, refs, route, gespraechId, turns, setGespraechId]);
+  }, [markierung, refs, route, gespraechId, turns, setGespraechId, anzeigename]);
 
   // Ein gespeichertes Lotti-Gespräch aus der Liste „Gespräche".
   useEffect(() => {
@@ -416,14 +434,16 @@ export function LottiPanel({
         if (abgebrochen) return;
         type Gespeichert = { question: string; answer: string; sources: {
           route?: string; element_title?: string; selection?: string;
-          mode?: string; next?: string | null; glossary?: string[] } | null };
+          mode?: string; next?: string | null } | null };
         setTurns((g.turns as Gespeichert[]).map((tn) => ({
           key: naechsterKey.current++,
           question: tn.question,
           answer: tn.answer,
           next: (tn.sources?.next as "ratsfrage" | null) ?? null,
-          glossary: tn.sources?.glossary ?? [],
           mode: tn.sources?.mode ?? null,
+          // Der Schnappschuss trägt die Route, aber keinen Seitennamen —
+          // dann steht in der Zäsur die Route. Sie ist immerhin wahr.
+          route: tn.sources?.route,
           // Wo gefragt wurde, steht im Schnappschuss — der Element-TEXT nicht
           // (Regel 2: Seiteninhalt wird nicht im Konto verdoppelt).
           kontext: tn.sources?.element_title || tn.sources?.route || "",
@@ -462,7 +482,7 @@ export function LottiPanel({
     // `/dashboard` ist die `h1` nur „Moin, …!"), steht hier der Seitentitel:
     // „Du bist auf: Heute". Eine zweite Tabelle mit Seitennamen entsteht so
     // nicht — der Titel steht ohnehin im Fenstertitel der Seite.
-    seitenUeberschrift(document, anzeigename) || seitenTitel(document),
+    seitenName(document, anzeigename),
     markierung ? `markiert: „${kuerze(markierung, 40)}“` : null,
   ].filter(Boolean).join(" · ");
 
@@ -549,8 +569,21 @@ export function LottiPanel({
             </p>
           </div>
         )}
-        {turns.map((t) => (
+        {turns.map((t, i) => (
           <div key={t.key} className="space-y-2">
+            {/* Die Zäsur: Ab hier wurde auf einer anderen Seite gefragt.
+                Dieselbe stille Bauform wie die Kontextzeile an der Frage
+                (mono, 10 px, Versalien, Muted), dazu eine Linie darüber —
+                sie ordnet ein, sie ruft nicht. Die Linie steht OBEN und nicht
+                links und rechts daneben: Ein Beschlusstitel füllt die 384 px
+                allein und schiebt beide Striche auf null (gemessen am
+                Weitenmesser-Beschluss, 21.09.2026). */}
+            {zaesur(turns, i) && (
+              <p data-lotti-zaesur
+                className="mt-1 border-t border-border pt-2 text-center font-mono text-[10px] uppercase leading-relaxed tracking-[0.1em] text-muted-foreground">
+                Jetzt auf: {zaesur(turns, i)}
+              </p>
+            )}
             {t.question && (
               <p className="ml-6 rounded-xl rounded-br-sm border border-primary/[0.18] bg-primary/[0.07] px-2.5 py-1.5 text-[13.5px] text-foreground">
                 {t.question}

@@ -194,6 +194,67 @@ export function seitenTitel(dok: Document): string {
 }
 
 /**
+ * Wie die Seite im Fenster heißt — in der Kontext-Pille und in der Zäsur.
+ *
+ * Die `h1` ohne Namen und ohne Gruß, sonst der Fenstertitel. **Eine
+ * Route→Titel-Tabelle entsteht hier bewusst nicht**: Die kuratierten Namen
+ * stehen in `kern/knowledge.py::PAGES`, und eine zweite Liste im Client
+ * veraltete lautlos — genau die Doppelung, die PR 10 vermieden hat.
+ */
+export function seitenName(dok: Document, name?: string | null): string {
+  return seitenUeberschrift(dok, name) || seitenTitel(dok);
+}
+
+/** Eine Runde im Verlauf, soweit die reine Logik sie braucht. */
+export type VerlaufsRunde = {
+  /** Die normalisierte Route, auf der gefragt wurde (`routeAus`). Alte Runden
+   *  aus dem `sessionStorage` haben sie nicht — sie zählen als fremd. */
+  route?: string;
+  /** Wie die Seite damals hieß (`seitenName`). Fehlt sie, tut es die Route. */
+  seite?: string;
+  answer: string;
+  fehler?: boolean;
+};
+
+/**
+ * Die Runden, die als Gedächtnis in den Prompt gehen — **nur die dieser
+ * Seite**.
+ *
+ * **Warum nicht einfach die letzten drei.** Der Verlauf überlebt den
+ * Seitenwechsel (das ist gewollt), das Gedächtnis darf es nicht: Auf der
+ * Schulden-Seite standen am 21.09.2026 als Vorgeschichte drei Runden von der
+ * Personen-Seite im Prompt — Lotti bezog „das" und „dieser Beschluss" dann
+ * auf etwas, was gar nicht mehr auf dem Bildschirm war. Fremde Runden bleiben
+ * **sichtbar** (man hat sie ja gestellt), sie reisen nur nicht mit.
+ *
+ * Leere und fehlgeschlagene Runden fallen wie bisher heraus: Eine
+ * Fehlermeldung als „Antwort" im Prompt lehrt das Modell nichts.
+ */
+export function gedaechtnis<T extends VerlaufsRunde>(
+  turns: T[], route: string, max = 3,
+): T[] {
+  return turns.filter((t) => t.answer && !t.fehler && t.route === route).slice(-max);
+}
+
+/**
+ * Die Zäsur über einer Runde: „Jetzt auf: Schulden" — oder nichts.
+ *
+ * Gesetzt wird sie genau dann, wenn diese Runde auf einer **anderen** Seite
+ * gestellt wurde als die davor. Über der ersten Runde steht keine: Dort ist
+ * noch nichts gewechselt, und „Jetzt auf: Heute" als erste Zeile eines leeren
+ * Verlaufs wäre Zierrat.
+ */
+export function zaesur<T extends VerlaufsRunde>(turns: T[], i: number): string | null {
+  if (i <= 0 || i >= turns.length) return null;
+  const jetzt = turns[i];
+  if (jetzt.route === turns[i - 1].route) return null;
+  // Gekürzt: Ein Beschlusstitel ist gern 90 Zeichen lang, und in Versalien
+  // über drei Zeilen wäre die stille Zeile lauter als die Antwort darunter.
+  const name = jetzt.seite || jetzt.route || "";
+  return name ? kuerze(name, 60) : null;
+}
+
+/**
  * Der Überschriften-Pfad über einem Element: „Schulden › Rate-Treppe".
  *
  * Gesucht wird die nächste Überschrift ÜBER dem Element (in Dokument-
