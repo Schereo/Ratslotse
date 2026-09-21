@@ -290,6 +290,26 @@ besser machen; 18 bis 20 warten auf Zahlen oder Termine.
 Vor dem Prod-Schalter: PR 9 und 10 gemergt, Tims Gegenlesen der Bilder aus
 allen PRs, und ein Blick in den Admin-Reiter nach einer Woche auf `dev`.
 
+## 5. Stand der Umsetzung (22.09.2026, nachts)
+
+Gebaut von Opus 5 in Folge, je ein PR, jeder mit Browsertests gegen echte
+und gegen leere Daten, `pruefe.py` grün, Bilder an Tim:
+
+| PR | Nummer | Was dabei zusätzlich herauskam |
+|---|---|---|
+| 9 Gegenstand ins Archiv | #1455 | `qa.answer_*` reichte `screen` nie an den Prompt durch — der Bildschirm-Block aus PR 7 hatte bis dahin keinen Prompt erreicht. Gemessen: erste Quelle vorher 0/3, nachher 3/3 der Beschluss der Seite. Die Eval hat jetzt einen Ratsweg-Arm. |
+| 10 Anzeigename | #1456 | zwei Riegel (Client und Server), Namen kürzer als drei Zeichen bleiben, nur an Wortgrenzen; `/dashboard` hat jetzt den Tab-Titel „Heute" |
+| 11 Abstimmung | #1457 | `vote = unanimous` braucht den Zusatz „also keine Gegenstimmen", sonst antwortete das Modell weiter „steht hier nicht"; Eval 34/34 |
+| 12 Assistent/Tour | #1458 | neues Ereignis `ratslotse:vollbild` als Satz von Marken, weil Assistent und Tour-Einladung überlappen |
+| 13 + 15 Zäsur, `glossary` | #1459 | je Turn `route` und `seite`; Gedächtnis nur aus Runden derselben Route (Netzmitschnitt: 1 → 0 fremde Runden) |
+| 14 Daumen | #1460 | Schlüssel der Stimme ist die Antwort, nicht die Frage — „Was sehe ich hier?" steht unter jeder Seite, sonst gäbe es je Konto genau eine Lotti-Stimme |
+| 16 „Zeig mir" | #1461 | 0 Netzaufrufe für die Lotsen-Runde; zwei Zeitreihen der Schulden-Seite trugen denselben Anker-Schlüssel; Eval 35/35 |
+| 17 Anschlussfragen | #1462 | Glossar-Chip antwortet ohne Modell (0 ms Serverzeit statt 1.028 ms) über `selection`; „Tilgung" fehlt im Glossar |
+
+PR 18 bis 20 warten wie geplant auf Zahlen (vier Wochen Admin-Reiter) bzw.
+auf den nächsten Wahltermin. Offen bleibt Tims Gegenlesen der Bilder und der
+Prod-Schalter.
+
 ## Anhang — Was in der Durchsicht gemessen wurde
 
 | Probe | Ergebnis |
