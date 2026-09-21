@@ -83,6 +83,8 @@ struct AssistantSheet: View {
     @State private var turns: [AssistantTurn] = []
     @State private var input = ""
     @State private var streaming: Task<Void, Never>?
+    @State private var einwilligungLaeuft = false
+    @State private var einwilligungFehler: String?
     @FocusState private var composerFocused: Bool
 
     var body: some View {
@@ -92,7 +94,20 @@ struct AssistantSheet: View {
                     ScrollView {
                         VStack(alignment: .leading, spacing: RatsSpacing.lg) {
                             kontextZeile
-                            if turns.isEmpty { leeresBlatt }
+                            if model.conversationSavingPreference == nil {
+                                // **Derselbe Satz wie im Ratsgespräch, vor der
+                                // ersten Frage.** Ohne ihn stünde der Hinweis
+                                // auf die externe Verarbeitung in der App
+                                // nirgends — das Web zeigt ihn seit PR 7 an
+                                // genau dieser Stelle.
+                                ConversationMemoryConsentCard(
+                                    isSaving: einwilligungLaeuft,
+                                    error: einwilligungFehler,
+                                    choose: einwilligen
+                                )
+                            } else if turns.isEmpty {
+                                leeresBlatt
+                            }
                             ForEach(turns) { turn in
                                 runde(turn).id(turn.id)
                             }
@@ -116,10 +131,22 @@ struct AssistantSheet: View {
                 }
             }
         }
+        .task {
+            // **Auch die App zählt das Öffnen.** Ohne diesen Ruf misst die
+            // Auswertung im Admin-Panel nur den Browser, und „wird es
+            // angenommen?" hätte für die halbe Nutzerschaft keine Antwort.
+            await model.reportAssistantEvent("open")
+        }
         .onAppear {
 #if DEBUG
             guard fixture, turns.isEmpty else { return }
             turns = [AssistantTurn(
+                question: "Was heißt Tilgung?",
+                // Die häufigste Antwort überhaupt: eine geprüfte Erklärung
+                // aus dem Glossar, und sie beginnt mit Fettung.
+                answer: "**Tilgung** — der Teil einer Rate, mit dem die Stadt "
+                    + "ihre Schulden wirklich abbaut. Der Rest sind Zinsen."
+            ), AssistantTurn(
                 question: "Was bedeutet die Rate-Treppe?",
                 answer: """
                 Die Rate-Treppe zeigt, wie viel die Stadt in den nächsten \
@@ -162,6 +189,7 @@ struct AssistantSheet: View {
             }
             Button("Was sehe ich hier?") { frage("") }
                 .buttonStyle(SecondaryButtonStyle())
+                .disabled(!darfFragen)
         }
     }
 
@@ -191,11 +219,8 @@ struct AssistantSheet: View {
                     LottiSpriteView(animation: .explain, animated: false)
                         .frame(width: 28, height: 28)
                         .accessibilityHidden(true)
-                    Text(turn.answer)
-                        .font(.callout)
-                        .foregroundStyle(RatsColor.text)
+                    LottiAnswerText(text: turn.answer)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .textSelection(.enabled)
                 }
             }
             if turn.leadsToCouncilQuestion {
@@ -218,12 +243,17 @@ struct AssistantSheet: View {
         }
     }
 
+    /// Ohne beantwortete Einwilligung bleibt alles gesperrt — die Karte
+    /// darüber sagt, warum.
+    private var darfFragen: Bool { model.conversationSavingPreference != nil }
+
     private var composer: some View {
         HStack(spacing: RatsSpacing.sm) {
             TextField("Frag Lotti zu dieser Seite …", text: $input, axis: .vertical)
                 .lineLimit(1...4)
                 .focused($composerFocused)
                 .submitLabel(.send)
+                .disabled(!darfFragen)
                 .onSubmit { frage(input) }
             Button {
                 frage(input)
@@ -231,20 +261,39 @@ struct AssistantSheet: View {
                 RatsIcon(.arrowUp, size: 20)
                     // Leer ist leer: Ein voll deckender Pfeil sieht aus, als
                     // ließe sich etwas abschicken.
-                    .foregroundStyle(input.trimmed.isEmpty
+                    .foregroundStyle(input.trimmed.isEmpty || !darfFragen
                                      ? RatsColor.muted.opacity(0.35) : RatsColor.primary)
             }
-            .disabled(input.trimmed.isEmpty || streaming != nil)
+            .disabled(input.trimmed.isEmpty || streaming != nil || !darfFragen)
             .accessibilityLabel("Fragen")
         }
         .padding(RatsSpacing.lg)
         .background(RatsColor.card)
     }
 
+    // MARK: Die Einwilligung
+
+    private func einwilligen(_ ja: Bool) {
+        guard !einwilligungLaeuft else { return }
+        einwilligungLaeuft = true
+        einwilligungFehler = nil
+        Task {
+            defer { einwilligungLaeuft = false }
+            do {
+                try await model.setConversationSaving(ja)
+            } catch {
+                einwilligungFehler = "Das konnte gerade nicht gespeichert werden."
+            }
+        }
+    }
+
     // MARK: Die Frage
 
     private func frage(_ roh: String) {
         guard streaming == nil else { return }
+        // Ohne beantwortete Einwilligung wird nicht gefragt — dieselbe Regel
+        // wie im Ratsgespräch und im Web.
+        guard model.conversationSavingPreference != nil else { return }
         let frage = roh.trimmed
         input = ""
         composerFocused = false
@@ -267,7 +316,7 @@ struct AssistantSheet: View {
                         question: frage,
                         refs: screen.refs,
                         history: verlauf,
-                        conversationID: model.activeConversationID
+                        conversationID: model.lottiConversationID
                     )
                 )
                 for try await event in model.sse.events(for: request) {
@@ -290,7 +339,9 @@ struct AssistantSheet: View {
                         turns[index].status = nil
                         let done = try? event.decodedDone()
                         turns[index].leadsToCouncilQuestion = done?.leadsToCouncilQuestion ?? false
-                        if let id = event.conversationID { model.setActiveConversationID(id) }
+                        // In LOTTIS Gespräch, nicht ins Ratsgespräch: Die
+                        // beiden tragen im Konto verschiedene Arten.
+                        if let id = event.conversationID { model.lottiConversationID = id }
                     default: break
                     }
                 }
@@ -316,4 +367,59 @@ extension SSEEvent {
 
 private extension String {
     var trimmed: String { trimmingCharacters(in: .whitespacesAndNewlines) }
+}
+
+/// Lottis Antwort mit ihren Absätzen und ihrer Fettung.
+///
+/// **Ein einziger `Text` reicht nicht**, und das ist keine Feinheit: Die
+/// Antworten ohne Modell beginnen mit `**Begriff** — …` und `**Titel**`, und
+/// als roher String standen dort Sternchen. Ein `AttributedString` über den
+/// ganzen Text löst das nur halb — SwiftUI setzt ihn in EINE Zeile und
+/// verliert dabei jede Blockgrenze („… vergeben.Die Zahlen …", gemessen im
+/// Simulator am 21.09.2026). Deshalb dieselbe Zerlegung wie im Ratsgespräch
+/// (`questionAnswerBlocks`); wer sie ändert, ändert beide Flächen zugleich.
+struct LottiAnswerText: View {
+    let text: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: RatsSpacing.sm) {
+            ForEach(Array(questionAnswerBlocks(text).enumerated()), id: \.offset) { _, block in
+                switch block {
+                case .heading(let s), .subheading(let s):
+                    // Überschriften verbietet der Prompt — käme doch eine,
+                    // ist sie ein normaler Satz und keine Zwischenzeile.
+                    absatz(s)
+                case .paragraph(let s):
+                    absatz(s)
+                case .list(let zeilen):
+                    VStack(alignment: .leading, spacing: RatsSpacing.xs) {
+                        ForEach(Array(zeilen.enumerated()), id: \.offset) { _, zeile in
+                            HStack(alignment: .firstTextBaseline, spacing: RatsSpacing.xs) {
+                                Text("·").foregroundStyle(RatsColor.muted)
+                                absatz(zeile)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func absatz(_ s: String) -> some View {
+        Text(inline(s))
+            .font(.callout)
+            .foregroundStyle(RatsColor.text)
+            .textSelection(.enabled)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    /// Inline-Markdown EINES Blocks. Scheitert das Parsen — ein halber Strom
+    /// trägt ein offenes `**` —, bleibt der rohe Text; lesbar ist er allemal.
+    private func inline(_ s: String) -> AttributedString {
+        (try? AttributedString(
+            markdown: s,
+            options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace,
+                           failurePolicy: .returnPartiallyParsedIfPossible)
+        )) ?? AttributedString(s)
+    }
 }

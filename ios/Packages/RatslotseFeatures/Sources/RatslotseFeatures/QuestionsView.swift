@@ -1151,7 +1151,11 @@ private struct EmptyQuestionsView: View {
     }
 }
 
-private struct ConversationMemoryConsentCard: View {
+/// Die Einwilligung, einmal gebaut und an zwei Stellen benutzt: im
+/// Ratsgespräch und in Lottis Blatt. Im Web ist das seit PR 7 dieselbe
+/// Komponente (`components/gespraeche-einwilligung.tsx`) — zwei Fassungen
+/// desselben Rechtstexts liefen unweigerlich auseinander.
+struct ConversationMemoryConsentCard: View {
     let isSaving: Bool
     let error: String?
     let choose: (Bool) -> Void
