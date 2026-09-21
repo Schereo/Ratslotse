@@ -181,6 +181,35 @@ test.describe("Lotti-Knopf und -Fenster", () => {
     await expect(fenster(page).getByText(ANTWORT)).toBeVisible();
   });
 
+  test("nach dem Seitenwechsel: Zäsur im Verlauf, und das Gedächtnis bleibt hier",
+    async ({ page }) => {
+      // B5 der zweiten Durchsicht: Auf der neuen Seite stand die Erklärung der
+      // alten als erste Runde — ohne Trennlinie — und ihre Runden gingen als
+      // `history` in den Prompt, obwohl sie zu einer anderen Seite gehörten.
+      await page.goto("/dashboard");
+      await knopf(page).click();
+      await fenster(page).getByRole("button", { name: "Was sehe ich hier?" }).click();
+      await expect(fenster(page).getByText(ANTWORT)).toBeVisible();
+      await expect(fenster(page).locator("[data-lotti-zaesur]")).toHaveCount(0);
+
+      await page.goto("/bookmarks");
+      await knopf(page).click();
+      // Der Netzmitschnitt der NÄCHSTEN Frage — vor dem Klick registriert.
+      const anfrage = page.waitForRequest("**/api/council/explain");
+      await fenster(page).getByRole("button", { name: "Was sehe ich hier?" }).click();
+      const koerper = (await anfrage).postDataJSON() as {
+        route?: string; history?: { question: string }[] };
+      expect(koerper.route).toBe("/bookmarks");
+      // Die Runde von `/dashboard` bleibt sichtbar, reist aber nicht mit.
+      expect(koerper.history ?? []).toEqual([]);
+
+      const zaesur = fenster(page).locator("[data-lotti-zaesur]");
+      await expect(zaesur).toHaveCount(1);
+      await expect(zaesur).toContainText("Jetzt auf:");
+      // Sie steht VOR der neuen Runde, nicht am Ende des Verlaufs.
+      await expect(fenster(page).getByText(ANTWORT)).toHaveCount(2);
+    });
+
   test("auf der Fragen-Seite schneidet der Knopf den Composer nicht an", async ({ page }) => {
     for (const grosse of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) {
       await page.setViewportSize(grosse);

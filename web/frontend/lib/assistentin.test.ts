@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  auswahlText, ernteElement, kuerze, ohneNamen, refsAus, routeAus, seitenTitel,
-  seitenUeberschrift, trenneWeiter, ueberschriftenPfad,
+  auswahlText, ernteElement, gedaechtnis, kuerze, ohneNamen, refsAus, routeAus,
+  seitenTitel, seitenUeberschrift, trenneWeiter, ueberschriftenPfad, zaesur,
 } from "./assistentin";
 
 describe("routeAus", () => {
@@ -255,5 +255,71 @@ describe("ueberschriftenPfad mit Anzeigenamen", () => {
 
   it("schickt auf der Startseite gar keine Überschrift", () => {
     expect(ueberschriftenPfad(null, dok("Moin, Ratsfrau!"), "Ratsfrau")).toBe("");
+  });
+});
+
+describe("gedaechtnis", () => {
+  const runde = (route: string | undefined, answer = "A") => ({ route, answer });
+
+  it("nimmt nur Runden derselben Seite", () => {
+    // Der Befund vom 21.09.2026: Auf der Schulden-Seite standen drei Runden
+    // von der Personen-Seite als Vorgeschichte im Prompt.
+    const turns = [
+      runde("/council/person", "Margrit Conty …"),
+      runde("/haushalt/schulden", "Die Rate-Treppe …"),
+    ];
+    expect(gedaechtnis(turns, "/haushalt/schulden"))
+      .toEqual([runde("/haushalt/schulden", "Die Rate-Treppe …")]);
+  });
+
+  it("zählt eine Runde ohne Route als fremd", () => {
+    // So sehen Runden aus einem älteren Tab-Speicher aus — kein
+    // Migrationscode, sie fallen einfach aus dem Gedächtnis.
+    expect(gedaechtnis([runde(undefined)], "/dashboard")).toEqual([]);
+  });
+
+  it("lässt leere und fehlgeschlagene Runden draußen", () => {
+    const turns = [
+      { route: "/dashboard", answer: "" },
+      { route: "/dashboard", answer: "Das hat nicht geklappt.", fehler: true },
+      { route: "/dashboard", answer: "Hier steht …" },
+    ];
+    expect(gedaechtnis(turns, "/dashboard")).toEqual([{ route: "/dashboard", answer: "Hier steht …" }]);
+  });
+
+  it("nimmt höchstens die letzten drei — und zwar die letzten", () => {
+    const turns = [1, 2, 3, 4].map((n) => runde("/dashboard", `A${n}`));
+    expect(gedaechtnis(turns, "/dashboard", 3).map((t) => t.answer))
+      .toEqual(["A2", "A3", "A4"]);
+  });
+
+  it("unterscheidet die vier Register von /council", () => {
+    const turns = [runde("/council?tab=sessions"), runde("/council?tab=themen")];
+    expect(gedaechtnis(turns, "/council?tab=themen")).toHaveLength(1);
+  });
+});
+
+describe("zaesur", () => {
+  const t = (route: string, seite?: string) => ({ route, seite, answer: "A" });
+
+  it("steht vor der ersten Runde einer neuen Seite", () => {
+    const turns = [t("/dashboard", "Heute"), t("/haushalt/schulden", "Schulden")];
+    expect(zaesur(turns, 1)).toBe("Schulden");
+  });
+
+  it("steht nicht über der ersten Runde überhaupt", () => {
+    expect(zaesur([t("/dashboard", "Heute")], 0)).toBeNull();
+  });
+
+  it("wiederholt sich nicht innerhalb derselben Seite", () => {
+    const turns = [t("/dashboard", "Heute"), t("/dashboard", "Heute")];
+    expect(zaesur(turns, 1)).toBeNull();
+  });
+
+  it("nimmt die Route, wenn der Seitenname fehlt", () => {
+    // Ein aus der Liste geladenes Gespräch trägt die Route im Schnappschuss,
+    // aber keinen Seitennamen.
+    const turns = [t("/dashboard", "Heute"), t("/council/decision")];
+    expect(zaesur(turns, 1)).toBe("/council/decision");
   });
 });

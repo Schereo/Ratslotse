@@ -400,6 +400,14 @@ iOS-Schrift.
   Ghost) → Vorschlags-Chips über dem Eingabefeld → Composer (s. u.) →
   Fußzeile in `text-hinweis`, fest: „Erklärt aus Glossar, Seite und
   Haushaltsdaten. Keine Rechtsberatung, keine Bewertung."
+  **Zäsur im Verlauf**: Weil der Verlauf den Seitenwechsel überlebt, steht vor
+  der ersten Runde einer neuen Seite eine stille Zwischenzeile „Jetzt auf:
+  Schulden" — mono 10 px, Versalien, `tracking-[0.1em]`, Muted, zentriert
+  unter einer `border`-dünnen Linie; dieselbe Bauform wie die Kontextzeile an
+  einer Frage. Die Linie steht OBEN, nicht links und rechts daneben: Ein
+  Beschlusstitel füllt die 384 px allein. Sie ordnet ein, sie ruft nicht:
+  keine Farbe, kein Abzeichen, kein Datum; der Name wird bei 60 Zeichen
+  gekappt.
   Kein Emoji, kein KI-Vokabular — in der Oberfläche heißt sie nur „Lotti".
   **Kein Zähler und kein Abzeichen am geschlossenen Knopf.**
 - **Erklär-Abzeichen**: 28 px rund, `bg-card`, Rahmen primary/30, „?" in
