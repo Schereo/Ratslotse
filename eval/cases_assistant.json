@@ -77,6 +77,26 @@
     "max_sentences": 5
   },
   {
+    "id": "beschluss-wie-viele-dagegen",
+    "note": "B3 (21.09.2026): Diese Frage bekam „Die Seite sagt nichts dazu“, obwohl get_decision Ergebnis und Stimmen liefert. Die 18 stehen in der Datenbank am Stadion-Beschluss (8677: angenommen, mehrheitlich, 18 Gegenstimmen, 2 Enthaltungen) — trägt ein anderer Bestand dort andere Zahlen, ist der Fall anzupassen, nicht der Block.",
+    "route": "/council/decision",
+    "refs_decision": "stadion",
+    "heading": "Stadion Oldenburg GmbH & Co. KG: Stadionneubau Maastrichter Straße",
+    "question": "Wie viele haben dagegen gestimmt?",
+    "expect_mode": "explain",
+    "must_mention": [
+      [
+        "18"
+      ]
+    ],
+    "must_not": [
+      "sagt nichts dazu",
+      "die seite sagt nicht",
+      "steht nicht auf dieser seite"
+    ],
+    "max_sentences": 5
+  },
+  {
     "id": "element-rate-treppe",
     "route": "/haushalt/schulden",
     "heading": "Schulden › Tilgung",

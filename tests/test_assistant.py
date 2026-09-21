@@ -994,3 +994,93 @@ def test_weder_prompt_noch_gespraechstitel_tragen_den_namen(
     assert "Testperson" not in msgs[0]["content"]
     titel = [g["title"] for g in client.ratslotse.gespraeche.values()]
     assert titel == ["Heute"]
+
+
+# --- 12. Das Abstimmungsergebnis gehört zum Gegenstand (B3) -----------------
+#
+# Gemessen am 21.09.2026: „Wie viele haben dagegen gestimmt?" auf einer
+# Beschluss-Seite bekam „Die Seite sagt nichts dazu" — obwohl die Seite das
+# Ergebnis zeigte und `get_decision` es lieferte. Der Gegenstands-Block reichte
+# `outcome`, `vote`, `no_votes` und `abstentions` nicht durch.
+
+class _MitBeschluss:
+    """Ein Ratsspeicher mit genau einem Beschluss."""
+
+    def __init__(self, decision: dict) -> None:
+        self._decision = decision
+
+    def get_decision(self, i): return self._decision
+    def get_session(self, i): return None
+    def resolve_place(self, i): return None
+    def member_name(self, s): return None
+    def verwaltung_name(self, s): return None
+
+
+def _block(**felder) -> str:
+    grund = {"title": "Ausfallbürgschaft für die Stadion Oldenburg GmbH",
+             "committee": "Rat", "session_date": "2026-06-01"}
+    return lotti._record_block(_MitBeschluss(grund | felder), lotti.Screen(
+        route="/council/decision", refs={"decision_id": 8679}))
+
+
+def test_der_gegenstand_nennt_die_stimmen():
+    block = _block(outcome="accepted", vote="majority", no_votes=18, abstentions=2)
+    assert "Abstimmung: angenommen, mehrheitlich, 18 Gegenstimmen, 2 Enthaltungen" in block
+
+
+def test_eine_einzelne_gegenstimme_bleibt_im_singular():
+    block = _block(outcome="accepted", no_votes=1, abstentions=1)
+    assert "1 Gegenstimme, 1 Enthaltung" in block
+    assert "Gegenstimmen" not in block
+
+
+def test_das_sitzungsdatum_steht_in_worten():
+    """ISO-Datum ist Maschinenschrift; Lotti soll es vorlesen können."""
+    block = _block(outcome="accepted")
+    assert "1. Juni 2026" in block
+    assert "2026-06-01" not in block
+
+
+def test_ohne_zahlen_wird_keine_einstimmigkeit_erfunden():
+    """Kein `vote`, keine Zahlen — dann steht dort das Ergebnis und sonst
+    nichts. „Einstimmig" wäre eine Behauptung über eine Leerstelle."""
+    block = _block(outcome="accepted")
+    assert "Abstimmung: angenommen" in block
+    assert "einstimmig" not in block
+    assert "Gegenstimme" not in block
+
+
+def test_ganz_ohne_ergebnis_keine_zeile():
+    block = _block()
+    assert "Abstimmung" not in block
+
+
+def test_einstimmig_kommt_aus_dem_feld_vote():
+    """Und sagt ausdrücklich, was es für die Frage „wie viele dagegen?" heißt.
+
+    Ohne den Zusatz antwortete Lotti am 21.09.2026 auf Beschluss 2982 „Auf
+    dieser Seite steht nicht, wie viele dagegen gestimmt haben" und reichte
+    ins Archiv weiter — wo es erst recht nicht steht.
+    """
+    block = _block(outcome="accepted", vote="unanimous")
+    assert "Abstimmung: angenommen, einstimmig, also keine Gegenstimmen" in block
+
+
+def test_einstimmig_mit_enthaltungen_behauptet_keine_null():
+    """Das Protokoll kennt „einstimmig bei 2 Enthaltungen" — dann zählt die Zahl."""
+    block = _block(outcome="accepted", vote="unanimous", abstentions=2)
+    assert "einstimmig, 2 Enthaltungen" in block
+    assert "keine Enthaltungen" not in block
+
+
+def test_belegte_nullen_heissen_ohne_gegenstimmen():
+    block = _block(outcome="accepted", no_votes=0, abstentions=0)
+    assert "ohne Gegenstimmen und Enthaltungen" in block
+
+
+def test_wie_viele_dagegen_ist_keine_archivfrage():
+    """Die Zahl steht im Kontext — wer sie erfragt, soll sie bekommen und
+    nicht einen Chip ins Archiv. „Wer" bleibt dagegen Archivfrage."""
+    assert not lotti.archivfrage("Wie viele haben dagegen gestimmt?")
+    assert not lotti.archivfrage("Wie viele waren dagegen?")
+    assert lotti.archivfrage("Wer hat dagegen gestimmt?")
