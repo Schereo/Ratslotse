@@ -39,6 +39,7 @@ import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { ausblick, type Antwort as DatenstandAntwort } from "@/components/haushalt/datenstand";
 import { useFetch } from "@/lib/use-fetch";
 import { cn } from "@/lib/utils";
+import { useErklaerAnker } from "@/lib/erklaer-anker";
 
 /** Ein Band bekommt nur dann eine eigene Beschriftung, wenn es mindestens so
  *  viel der Skala trägt — sonst steht es im Sammelposten. Lesbarkeits-, keine
@@ -293,6 +294,7 @@ export function Flussbild({ daten, year, onJahrWechsel }: {
    *  die Pillen-Notlösung unten. */
   onJahrWechsel?: (year: number) => void;
 }) {
+  const anker = useErklaerAnker("flussbild", "Woher das Geld kommt und wohin es geht");
   const [as_of, setStand] = useState<"plan" | "ist">("ist");
   const [tabelle, setTabelle] = useState(false);
 
@@ -396,7 +398,7 @@ export function Flussbild({ daten, year, onJahrWechsel }: {
       .gezeigt.map((b) => `${b.lang} ${format(b.value)}`).join(", ");
 
   return (
-    <div>
+    <div {...anker}>
       {/* Der Hinweis steht ÜBER dem Bild und nennt beides: dass hier ein
           anderes Jahr steht, und wann das gewählte zu erwarten ist. Der
           Termin kommt aus demselben Endpunkt wie der Datenstand am Seitenfuß

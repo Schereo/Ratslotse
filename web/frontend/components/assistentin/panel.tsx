@@ -12,6 +12,7 @@ import {
   type Bildschirm,
 } from "@/lib/assistentin";
 import { fragenHref } from "@/lib/routes";
+import type { ElementFrage } from "./index";
 import { leseSseStrom } from "@/lib/sse";
 import { cn } from "@/lib/utils";
 
@@ -67,11 +68,18 @@ function merkeVerlauf(turns: LottiTurn[]): void {
   } catch { /* privates Fenster, gesperrter Speicher — dann eben nicht */ }
 }
 
-export function LottiPanel({ offen, onSchliessen, markierung }: {
+export function LottiPanel({
+  offen, onSchliessen, markierung, element, onElementVerbraucht, onModus,
+}: {
   offen: boolean;
   onSchliessen: () => void;
   /** Der gerade markierte Text der Seite — er wandert in die Kontext-Pille. */
   markierung: string;
+  /** Ein im Erklär-Modus angetippter Baustein. Gesetzt heißt: sofort fragen. */
+  element: ElementFrage | null;
+  onElementVerbraucht: () => void;
+  /** „Etwas auf der Seite zeigen" — der Modus lebt eine Ebene höher. */
+  onModus: () => void;
 }) {
   const pathname = usePathname();
   const sp = useSearchParams();
@@ -132,18 +140,20 @@ export function LottiPanel({ offen, onSchliessen, markierung }: {
     if (offen) endeRef.current?.scrollIntoView({ block: "end" });
   }, [offen, turns.length]);
 
-  const fragen = useCallback(async (text: string, mitMarkierung: boolean) => {
+  const fragen = useCallback(async (
+    text: string, mitMarkierung: boolean, baustein: ElementFrage | null = null,
+  ) => {
     const sauber = text.trim();
-    if (!sauber && !mitMarkierung) return;
+    if (!sauber && !mitMarkierung && !baustein) return;
     abbruch.current?.abort();
     const ctrl = new AbortController();
     abbruch.current = ctrl;
     setFrage("");
     setLaden(true);
 
-    const kontext = mitMarkierung && markierung
-      ? `Markiert: „${kuerze(markierung, 40)}“`
-      : "";
+    const kontext = baustein
+      ? (baustein.title || "Baustein auf der Seite")
+      : (mitMarkierung && markierung ? `Markiert: „${kuerze(markierung, 40)}“` : "");
     const key = naechsterKey.current++;
     setTurns((ts) => [...ts, {
       key, question: sauber, answer: "", next: null, glossary: [], mode: null, kontext,
@@ -153,7 +163,7 @@ export function LottiPanel({ offen, onSchliessen, markierung }: {
       route,
       page_title: document.title.replace(/\s*[–|]\s*Ratslotse\s*$/, ""),
       heading: document.querySelector("h1")?.textContent?.trim().slice(0, 200) ?? "",
-      element: null,
+      element: baustein,
       selection: mitMarkierung ? markierung : "",
       refs,
     };
@@ -170,6 +180,7 @@ export function LottiPanel({ offen, onSchliessen, markierung }: {
           route: bildschirm.route,
           page_title: bildschirm.page_title,
           heading: bildschirm.heading,
+          element: bildschirm.element,
           selection: bildschirm.selection,
           question: sauber,
           refs: bildschirm.refs,
@@ -217,6 +228,18 @@ export function LottiPanel({ offen, onSchliessen, markierung }: {
       }
     }
   }, [markierung, refs, route, turns]);
+
+  // Ein im Erklär-Modus angetippter Baustein fragt von selbst — der Tipp auf
+  // das Abzeichen IST die Frage, ein zweiter Klick im Fenster wäre einer zu
+  // viel. Danach wird er verbraucht, sonst feuerte jedes Neuzeichnen erneut.
+  useEffect(() => {
+    if (!element || !offen) return;
+    void fragen("", false, element);
+    onElementVerbraucht();
+    // `fragen` hängt am Verlauf und wechselt mit jeder Runde — in der
+    // Abhängigkeitsliste stünde es für „bei jeder Antwort noch einmal fragen".
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [element, offen]);
 
   const neuAnfangen = () => {
     abbruch.current?.abort();
@@ -364,6 +387,9 @@ export function LottiPanel({ offen, onSchliessen, markierung }: {
             Markiertes erklären
           </Chip>
         )}
+        <Chip onClick={onModus} disabled={laden}>
+          Etwas auf der Seite zeigen
+        </Chip>
       </div>
 
       {/* Composer */}

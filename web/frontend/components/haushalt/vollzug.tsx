@@ -29,6 +29,7 @@ import {
 } from "@/lib/haushalt-vollzug";
 import type { Herkunft } from "@/lib/herkunft";
 import { cn } from "@/lib/utils";
+import { useErklaerAnker } from "@/lib/erklaer-anker";
 
 export function Vollzug({ daten, year, onYear, beleg }: {
   daten: VollzugDaten;
@@ -40,6 +41,7 @@ export function Vollzug({ daten, year, onYear, beleg }: {
    *  des gewählten Stichtags, nicht der des Seiten-Jahrgangs. */
   beleg?: (herkunft: Herkunft | null) => ReactNode;
 }) {
+  const anker = useErklaerAnker("vollzug", "Der Haushaltsvollzug");
   const stichtage = useMemo(() => stichtageDesJahres(daten, year), [daten, year]);
   const [asOfWahl, setAsOf] = useState<string | null>(null);
   const [haushalt, setHaushalt] = useState<VollzugHaushalt>("result");
@@ -84,7 +86,7 @@ export function Vollzug({ daten, year, onYear, beleg }: {
   const herkunft = kern ? herkunftVon(daten, kern.herkunft_id) : null;
 
   return (
-    <section id="vollzug" className="scroll-mt-20 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
+    <section {...anker} id="vollzug" className="scroll-mt-20 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <h2 className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
           Haushaltsvollzug · was die Verwaltung erwartet{beleg?.(herkunft)}

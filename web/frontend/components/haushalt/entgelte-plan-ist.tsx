@@ -24,6 +24,7 @@
 
 import { Hantel, type HantelZeile } from "@/components/grafik/hantel";
 import { PLAN_ART_LABEL, type ErgebnisPosten } from "@/lib/haushalt";
+import { useErklaerAnker } from "@/lib/erklaer-anker";
 
 export function EntgeltePlanIst({ zeilen, beleg, keineWertung }: {
   /** Die Gesamt-Zeilen (thh_nr = null) EINES Postens, ein Eintrag je Jahr. */
@@ -34,6 +35,7 @@ export function EntgeltePlanIst({ zeilen, beleg, keineWertung }: {
    *  ohne ihn gilt die Gebühren-Fassung unten. */
   keineWertung?: React.ReactNode;
 }) {
+  const anker = useErklaerAnker("entgelte-plan-ist", "Entgelte: geplant und geworden");
   // Beide Werte müssen da sein: Eine Hantel mit einem Ende ist keine Hantel,
   // sondern ein Punkt, der so tut, als wäre er ein Vergleich.
   const sortiert = zeilen
@@ -57,7 +59,7 @@ export function EntgeltePlanIst({ zeilen, beleg, keineWertung }: {
   }));
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+    <div {...anker} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
           Geplant und geworden

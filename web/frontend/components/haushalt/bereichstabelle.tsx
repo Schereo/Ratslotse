@@ -39,6 +39,7 @@ import { Beleg } from "@/components/haushalt/source";
 import { bereichKanon } from "@/lib/haushalt-bereiche";
 import { HaushaltZeile, bereichSlug, bereiche, deMio, mio } from "@/lib/haushalt";
 import { cn } from "@/lib/utils";
+import { useErklaerAnker } from "@/lib/erklaer-anker";
 
 type Sortierung = "stadt" | "gesamt";
 
@@ -149,6 +150,7 @@ function Grund({ title, text }: { title: string; text: string }) {
 }
 
 export function Bereichstabelle({ zeilen, year }: { zeilen: HaushaltZeile[]; year: number }) {
+  const anker = useErklaerAnker("bereiche", "Die Teilhaushalte");
   const [sortierung, setSortierung] = useState<Sortierung>("stadt");
   const [alle, setAlle] = useState(false);
 
@@ -213,7 +215,7 @@ export function Bereichstabelle({ zeilen, year }: { zeilen: HaushaltZeile[]; yea
     && groessteAusgabe.roh !== groesstenKosten.roh;
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
+    <div {...anker} className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
       <div className="flex flex-col gap-5 breit:flex-row breit:items-start breit:gap-7">
         <div className="min-w-0 flex-1">
           <h2 className="max-w-[46ch] text-[17px] font-bold leading-snug tracking-tight sm:text-[20px]">

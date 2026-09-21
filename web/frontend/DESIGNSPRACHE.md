@@ -398,6 +398,15 @@ iOS-Schrift.
   Haushaltsdaten. Keine Rechtsberatung, keine Bewertung."
   Kein Emoji, kein KI-Vokabular — in der Oberfläche heißt sie nur „Lotti".
   **Kein Zähler und kein Abzeichen am geschlossenen Knopf.**
+- **Erklär-Abzeichen**: 28 px rund, `bg-card`, Rahmen primary/30, „?" in
+  primary, oben rechts am Baustein (4 px eingerückt), `z-40`. Erscheint im
+  Erklär-Modus mit `--takt-fluss`, verschwindet mit `Esc` oder nach der Wahl.
+  **Nur auf Elementen mit `data-erklaer`** (`lib/erklaer-anker.ts`) — kein
+  Fallback auf „die nächste Karte": Ein geratener Ausschnitt sieht aus, als
+  wüsste Lotti, worauf gezeigt wurde. Abzeichen statt Zeigerhand, weil das
+  Handy kein Hover hat und eine Zeigerhand ohne Ziel gegen § 6 verstößt. Der
+  Modus schließt das Fenster: Die Abzeichen stehen auf der Seite, und mobil
+  deckt das Fenster genau sie ab.
 - **Turn-Fußzeile**: KI-Hinweis 14 px + stille Icon-Aktionen 15 px
   (Teilen, Drucken, Vorlesen, 👍/👎) — keine gerahmten Buttons.
 - **Schritt-Zeichen (Haushalt)**: Jeder Schritt des Haushalts-Wegs trägt ein

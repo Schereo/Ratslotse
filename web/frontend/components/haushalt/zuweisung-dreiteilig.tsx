@@ -23,6 +23,7 @@
 import { FinanzausgleichJahr, deMio } from "@/lib/haushalt";
 import { Beleg } from "@/components/haushalt/source";
 import { GlossaryText } from "@/components/glossary-text";
+import { useErklaerAnker } from "@/lib/erklaer-anker";
 
 /** Die drei Komponenten in der Reihenfolge, in der das Blatt sie führt. */
 const TEILE: {
@@ -56,6 +57,7 @@ const TEILE: {
 ];
 
 export function ZuweisungDreiteilig({ series }: { series?: FinanzausgleichJahr[] }) {
+  const anker = useErklaerAnker("zuweisungen", "Zuweisungen");
   const years = (series ?? []).filter((j) => j.nettobetrag != null);
   if (!years.length) return null;
   const j = years[years.length - 1];
@@ -70,7 +72,7 @@ export function ZuweisungDreiteilig({ series }: { series?: FinanzausgleichJahr[]
   const anteil = j.nettobetrag ? Math.round((dritter / j.nettobetrag) * 100) : 0;
 
   return (
-    <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+    <section {...anker} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
       <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
         Ausgleichsjahr {j.year}
       </p>

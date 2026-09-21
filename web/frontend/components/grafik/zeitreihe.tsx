@@ -50,6 +50,7 @@ import { istLuecke, type JahrLuecke, type JahrPunkt, type JahrWert } from "./dat
 import { achsenStellen, ySpanne } from "./skala";
 import { deZahl } from "./format";
 import { LueckenFeld } from "./luecken-field";
+import { useErklaerAnker } from "@/lib/erklaer-anker";
 import {
   AbleseBeschreibung, AbleseFlaeche, Ableseleiste, useAblesen,
   type AbleseStelle, type AbleseWert,
@@ -265,6 +266,7 @@ export function Zeitreihe({
     onAktivesJahr(aktivesJahrHier);
   }, [aktivesJahrHier, onAktivesJahr]);
 
+  const anker = useErklaerAnker("zeitreihe", title || ariaTitel);
   const fmt = format ?? ((v: number) => deZahl(v, nachkomma));
   const fmtZweit = zweitreihe?.format ?? fmt;
   const schmal = breite < 520;
@@ -550,8 +552,12 @@ export function Zeitreihe({
     ...(annotationen ?? []).map((a) => a.text),
   ].filter(Boolean).join(" ");
 
+  // Erklär-Anker: Eine Zeitreihe ist auf elf Seiten derselbe Baustein und auf
+  // jeder eine andere Aussage — der Schlüssel trägt deshalb die Seite
+  // (lib/erklaer-anker.ts). Der Titel kommt aus `title`/`ariaTitel`: Letzterer
+  // ist ohnehin Pflicht und beschreibt die Grafik in einem Satz.
   return (
-    <div ref={box} className={cn("min-w-0", className)}>
+    <div ref={box} {...anker} className={cn("min-w-0", className)}>
       {umschalter && (
         <div
           role="group" aria-label="Ansicht wählen"

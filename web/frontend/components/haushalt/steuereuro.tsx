@@ -24,6 +24,7 @@ import { useState } from "react";
 import { bereichKanon } from "@/lib/haushalt-bereiche";
 import { HaushaltZeile, deMio, mio } from "@/lib/haushalt";
 import { cn } from "@/lib/utils";
+import { useErklaerAnker } from "@/lib/erklaer-anker";
 
 /** Ganze Euro je Bereich per größtem Rest auf exakt 100 bringen —
  *  simple Rundung ergäbe je nach Jahr 98–102 Felder. */
@@ -41,6 +42,7 @@ function verteile100<T extends { value: number }>(rows: T[], gesamt: number) {
 }
 
 export function Steuereuro({ zeilen, year }: { zeilen: HaushaltZeile[]; year: number }) {
+  const anker = useErklaerAnker("steuereuro", "Der Steuer-Euro");
   // Welcher Bereich gerade hervorgehoben ist — null = keiner, der Ruhezustand.
   const [hervor, setHervor] = useState<number | null>(null);
   const parts = zeilen.filter((z) => z.is_total !== 1);
@@ -84,7 +86,7 @@ export function Steuereuro({ zeilen, year }: { zeilen: HaushaltZeile[]; year: nu
   const zweit = felder[1];
 
   return (
-    <div>
+    <div {...anker}>
       <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
         Von 100 Euro geplanter Ausgaben · {year}
       </p>

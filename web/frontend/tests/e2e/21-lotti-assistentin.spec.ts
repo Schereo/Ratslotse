@@ -134,6 +134,40 @@ test.describe("Lotti-Knopf und -Fenster", () => {
     }
   });
 
+  test("der Erklär-Modus zeigt Abzeichen und fragt nach dem angetippten Baustein",
+    async ({ page }) => {
+      let geschickt: Record<string, unknown> | null = null;
+      await page.route("**/api/council/explain", async (route) => {
+        geschickt = route.request().postDataJSON();
+        await route.fulfill({ status: 200, contentType: "text/event-stream", body: STROM() });
+      });
+      await page.goto("/haushalt/schulden");
+      await knopf(page).click();
+      await fenster(page).getByRole("button", { name: "Etwas auf der Seite zeigen" }).click();
+      // Der Modus schließt das Fenster: Die Abzeichen stehen auf der SEITE,
+      // und auf dem Handy deckt das Fenster genau sie ab.
+      await expect(fenster(page)).toBeHidden();
+      const marken = page.locator("[data-erklaer-marke]");
+      await expect(marken.first()).toBeVisible();
+      await marken.first().click();
+      await expect(fenster(page).getByText(ANTWORT)).toBeVisible();
+      // Was mitgeht: NUR dieses Element — nicht die Seite, nicht die Nachbarn.
+      expect(geschickt).toBeTruthy();
+      const el = (geschickt as { element?: { key?: string; text?: string } }).element!;
+      expect(el.key).toMatch(/^haushalt-schulden\./);
+      expect(el.text!.length).toBeGreaterThan(0);
+      expect(el.text!.length).toBeLessThanOrEqual(1202);
+    });
+
+  test("Esc beendet den Erklär-Modus", async ({ page }) => {
+    await page.goto("/haushalt/schulden");
+    await knopf(page).click();
+    await fenster(page).getByRole("button", { name: "Etwas auf der Seite zeigen" }).click();
+    await expect(page.locator("[data-erklaer-marke]").first()).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.locator("[data-erklaer-marke]")).toHaveCount(0);
+  });
+
   test("auf der Konto-Seite gibt es Lotti nicht", async ({ page }) => {
     // Dort stehen die eigene Adresse und die Kontodaten — sie dürfen nicht
     // als Seitentext in einen Prompt wandern (kern/knowledge.py).
