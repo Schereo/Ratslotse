@@ -314,6 +314,54 @@ def deterministic_answer(store, screen: Screen, question: str) -> tuple[str, str
     return None
 
 
+def _abstimmung(d: dict) -> str:
+    """„angenommen, 18 Gegenstimmen, 2 Enthaltungen" — nur, was belegt ist.
+
+    **Warum überhaupt.** Am 21.09.2026 gemessen (B3): „Wie viele haben dagegen
+    gestimmt?" auf der Stadion-Seite bekam „Das Ratsarchiv kann dir sagen, wie
+    viele dagegen gestimmt haben" — während die Seite das Ergebnis zeigte und
+    ``get_decision`` es lieferte. Der Gegenstands-Block reichte Ergebnis und
+    Stimmen schlicht nicht durch; die Zahl stand also nie im Prompt.
+
+    **Warum keine zweite Abbildung.** Ergebnis- und Stimmwörter stehen
+    kuratiert in :mod:`council.ergebnisse` (die Ergebnis-Meldung N3); eine
+    eigene Kopie hier liefe unbemerkt auseinander. Der Import steht in der
+    Funktion, weil ``ergebnisse`` die Benachrichtigungen mitzieht und dieses
+    Modul sonst nichts davon braucht.
+
+    Erfunden wird nichts: Ohne ``vote`` und ohne Zahlen steht dort kein
+    „einstimmig" — dass niemand dagegen war, wäre dann eine Behauptung über
+    eine Leerstelle. „ohne Gegenstimmen" gibt es nur, wenn die Zahlen
+    ausdrücklich 0 sind.
+    """
+    from council.ergebnisse import ERGEBNIS_WORT, VOTE_WORT
+
+    teile: list[str] = []
+    if d.get("outcome"):
+        teile.append(ERGEBNIS_WORT.get(str(d["outcome"]), str(d["outcome"])))
+    if d.get("vote"):
+        teile.append(VOTE_WORT.get(str(d["vote"]), str(d["vote"])))
+
+    nein, enth = d.get("no_votes"), d.get("abstentions")
+    if nein:
+        teile.append(f"{int(nein)} Gegenstimme" + ("n" if int(nein) != 1 else ""))
+    if enth:
+        teile.append(f"{int(enth)} Enthaltung" + ("en" if int(enth) != 1 else ""))
+    if not nein and not enth:
+        # „Einstimmig" IST die Antwort auf „wie viele waren dagegen?" — sie
+        # steht nur nicht als Zahl da. Ohne diesen Zusatz antwortete Lotti am
+        # 21.09.2026 auf Beschluss 2982 „Auf dieser Seite steht nicht, wie
+        # viele dagegen gestimmt haben" und reichte ins Archiv weiter, wo es
+        # erst recht nicht steht. Der Zusatz gilt nur, solange keine Zahl
+        # dagegensteht (das Protokoll kennt „einstimmig bei 2 Enthaltungen").
+        if d.get("vote") == "unanimous":
+            teile.append("also keine Gegenstimmen und keine Enthaltungen")
+        elif not d.get("vote") and nein == 0 and enth == 0:
+            teile.append("ohne Gegenstimmen und Enthaltungen")
+
+    return ", ".join(teile)
+
+
 def _record_block(store, screen: Screen) -> str:
     """Der Gegenstand hinter den Kennungen — Beschluss, Sitzung oder Ort.
 
@@ -331,10 +379,15 @@ def _record_block(store, screen: Screen) -> str:
         except Exception:  # noqa: BLE001 — ein fehlender Beleg ist kein Fehler
             d = None
         if d:
-            kopf = " · ".join(str(x) for x in (d.get("committee"), d.get("session_date"),
-                                               d.get("outcome")) if x)
+            from council.ergebnisse import datum_lang
+
+            kopf = " · ".join(str(x) for x in (d.get("committee"),
+                                               datum_lang(d.get("session_date") or "")) if x)
             zeilen = [f"Der Beschluss auf dieser Seite: „{kuerze(d.get('title') or '', 200)}“"
                       + (f" ({kopf})" if kopf else "")]
+            abstimmung = _abstimmung(d)
+            if abstimmung:
+                zeilen.append(f"  Abstimmung: {abstimmung}")
             if d.get("simple_summary"):
                 zeilen.append(f"  Kurzfassung: {kuerze(d['simple_summary'], 500)}")
             if d.get("official_text"):
