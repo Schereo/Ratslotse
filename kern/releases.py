@@ -14,8 +14,14 @@ Abfrage, ein aufgeräumtes Layout gehören in den Changelog und nicht auf die
 Karte. Drei Schranken halten das, statt es zu erbitten — ``tests/test_releases.py``
 prüft alle drei:
 
-1. **Nur Minor- und Major-Versionen.** Ein Eintrag für ``2.3.1`` fliegt raus:
-   Ein Patch-Release ist definitionsgemäß Reparatur.
+1. **Nur Major-Versionen.** Ein Eintrag für ``2.3.1`` fliegt raus — ein
+   Patch-Release ist definitionsgemäß Reparatur — und seit 09/2026 auch einer
+   für ``2.7.0``: Die Karte galt bis dahin für jede Minor, und **gehalten hat
+   sich das nicht**. 2.3.0 bis 2.7.0 gingen alle ohne Karte raus, weil die
+   Kuratierung Handarbeit ist und die Clips eine eigene Runde brauchen; die
+   Regel stand also fünf Releases lang als Vorwurf im Raum, statt etwas zu
+   bewirken. Tims Entscheidung 21.09.2026: lieber vier Karten im Jahr, die
+   jemand gemacht hat.
 2. **Höchstens vier Highlights.** Wer ein fünftes will, streicht ein anderes.
    Ein Release ganz ohne Eintrag ist erlaubt und der Normalfall für kleine.
 3. **Jedes Highlight braucht ein Ziel in der App.** Was man sich nirgends
@@ -263,12 +269,29 @@ def version_key(version: str) -> tuple[int, int, int]:
     return int(m.group(1)), int(m.group(2)), int(m.group(3))
 
 
+#: Der Bestand aus der Zeit, als jede Minor eine Karte bekam. Diese Einträge
+#: bleiben stehen: Die Karte stand auf Prod, Leute haben sie gesehen, und die
+#: Liste ist eine Geschichte und kein Aushang (siehe „Alte Einträge bleiben
+#: stehen" oben). Die Liste wächst nicht — ein neuer Eintrag hier wäre eine
+#: Ausnahme von einer Regel, die gerade erst aufgeräumt wurde.
+KARTE_BESTAND: frozenset[str] = frozenset({"2.2.0"})
+
+
 def is_feature_release(version: str) -> bool:
-    """Darf diese Version eine Karte haben? Nur ``x.y.0``."""
+    """Darf diese Version eine Karte haben? Nur ``x.0.0`` — plus der Bestand.
+
+    Die engere Regel seit 09/2026 (vorher: jedes ``x.y.0``) steht im
+    Modul-Docstring unter Schranke 1. Sie hier zu prüfen statt im Review
+    daran zu erinnern, ist der Unterschied zwischen einer Regel und einer
+    Bitte — die Minor-Fassung war eine Bitte und wurde fünf Mal übergangen.
+    """
+    if version in KARTE_BESTAND:
+        return True
     try:
-        return version_key(version)[2] == 0
+        major, minor, patch = version_key(version)
     except ValueError:
         return False
+    return minor == 0 and patch == 0
 
 
 def latest() -> Release | None:

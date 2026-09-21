@@ -357,12 +357,21 @@ schon mit dem neuen Stand — die Meldung ist der Alarm, keine Rücknahme). Loka
 gegen einen eigenen Server: `python3 scripts/rauchprobe.py --basis
 http://127.0.0.1:8000`.
 
-**Rückmerge nach jedem Fix auf `main`** (hält den nächsten Release-PR
-konfliktfrei, v. a. im Changelog):
+**Der Rückmerge nach `dev` läuft von selbst.** Jeder Push auf `main` stößt
+`.github/workflows/sync-main-to-dev.yml` an, der den Produktionsstand als
+normalen Merge nach `dev` zurückführt — gemessen am 21.09.2026: 15 Sekunden
+nach dem Merge war der Abstand 0. Bei einem Konflikt überschreibt er nichts,
+sondern wird **rot** und macht die Auflösung von Hand sichtbar; nur dann ist
+etwas zu tun:
 
 ```bash
 git fetch origin && git checkout dev && git merge origin/main && git push origin dev
 ```
+
+Bis 09/2026 stand hier dieser Befehl als Pflicht nach jedem Fix. Er schadet
+nicht, sagt aber inzwischen nur noch „Already up to date" — und eine Regel,
+die nie etwas bewirkt, liest man irgendwann über die eine Gelegenheit hinweg,
+bei der sie zählt.
 
 **Umgebungs-Gate:** Features, die (noch) nicht auf Prod sichtbar sein sollen,
 prüfen `process.env.NEXT_PUBLIC_RATSLOTSE_ENV === "dev"` und liefern sonst
@@ -591,14 +600,20 @@ RATSLOTSE_PROXY_HOSTS=gisportal4ol.oldenburg.de,youtube.com         # nur diese 
   .venv/bin/python scripts/changelog_schnitt.py x.y.z --release --titel "vx.y.z — …"
   ```
 
-  **Eine Minor-Version bekommt zusätzlich eine Karte.** „Neu bei Ratslotse"
+  **Eine Major-Version bekommt zusätzlich eine Karte.** „Neu bei Ratslotse"
   zeigt Nutzer*innen beim nächsten Öffnen, was dazugekommen ist, und geht auf
   Knopfdruck als Mail und Push raus. Der Text steht kuratiert als Code in
   [`kern/releases.py`](kern/releases.py) und gehört in denselben Commit wie der
   Schnitt; `changelog_schnitt.py x.y.0 --highlights` schlägt einen Entwurf aus
   den Fragmenten vor. **Nur die großen Sachen** — höchstens vier, jede mit
-  einem Ziel in der App, Patch-Versionen gar keine (`tests/test_releases.py`
-  hält das). Der Titel ist ein **Name nach dem Hauptfeature** („Das
+  einem Ziel in der App; Minor- und Patch-Versionen bekommen gar keine
+  (`tests/test_releases.py` hält das). **Bis 09/2026 galt die Karte für jede
+  Minor** — gehalten hat sich das nicht: 2.3.0 bis 2.7.0 gingen alle ohne
+  raus, weil die Kuratierung Handarbeit ist und die Clips eine eigene Runde
+  brauchen. Tims Entscheidung 21.09.2026: lieber vier Karten im Jahr, die
+  jemand gemacht hat, als eine Regel, die zwanzig Mal gebrochen wird.
+  `2.2.0` bleibt als Bestand stehen (`KARTE_BESTAND` in `kern/releases.py`) —
+  die Karte stand auf Prod, und die Liste ist eine Geschichte. Der Titel ist ein **Name nach dem Hauptfeature** („Das
   Teilen-Update"), kein Halbsatz. Jedes Highlight bringt einen **kurzen Clip**
   mit, in dem man das Feature bedient sieht — aus einem Drehbuch in
   `web/frontend/release-clips/<version>.mjs`, aufgenommen und geschnitten von
