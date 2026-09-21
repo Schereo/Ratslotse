@@ -433,5 +433,26 @@
     "must_not": [
       "Richtlinien"
     ]
+  },
+  {
+    "id": "ortsfrage-zinsen-anker",
+    "note": "PR 16: Trifft der Wortabgleich im Browser nicht, bekommt das Modell die Bausteine der Seite als Liste — und muss den richtigen beim Titel nennen, statt die Seite im Ungefähren zu beschreiben. Die Titel sind die echten der Seite (im Browser abgelesen, 22.09.2026).",
+    "route": "/haushalt/schulden",
+    "heading": "Wie viel Schulden hat Oldenburg?",
+    "question": "Wo steht, was die Stadt an Zinsen zahlt?",
+    "anchors": [
+      "Drei Zählweisen, eine Stadt · Stand 31.12.2024",
+      "Kredite und Zinsen",
+      "Schulden total",
+      "Verbürgt und selbst geschuldet",
+      "Liquiditätsstand"
+    ],
+    "expect_mode": "explain",
+    "expect_next": null,
+    "must_mention": [
+      "Kredite und Zinsen"
+    ],
+    "must_not_number": true,
+    "max_sentences": 5
   }
 ]

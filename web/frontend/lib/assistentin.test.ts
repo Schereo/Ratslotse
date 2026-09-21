@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  auswahlText, daumenZeigen, ernteElement, gedaechtnis, kuerze, ohneNamen, refsAus,
-  routeAus, seitenTitel, seitenUeberschrift, trenneWeiter, ueberschriftenPfad, zaesur,
+  ankerListe, ankerTreffer, auswahlText, daumenZeigen, ernteElement, gedaechtnis,
+  kuerze, ohneNamen, ortsfrage, refsAus, routeAus, seitenTitel, seitenUeberschrift,
+  trenneWeiter, ueberschriftenPfad, zaesur,
 } from "./assistentin";
 
 describe("routeAus", () => {
@@ -350,5 +351,131 @@ describe("daumenZeigen", () => {
 
   it("steht nicht unter einer Fehlermeldung", () => {
     expect(daumenZeigen({ answer: "Erklärung fehlgeschlagen.", mode: "explain", fehler: true })).toBe(false);
+  });
+});
+
+/* ── „Zeig mir": die Lotsin ─────────────────────────────────────────────── */
+
+describe("ortsfrage", () => {
+  it.each([
+    "Wo finde ich die Rate-Treppe?",
+    "wo steht, was die Stadt an Zinsen zahlt",
+    "Wo sehe ich die Schulden je Einwohner?",
+    "Wo ist der Kassenzettel?",
+    "Gibt es hier eine Tabelle mit den Teilhaushalten?",
+    "Zeig mir die Anzeigetafel",
+    "zeige mir bitte die Kredite",
+    "Finde ich hier die Zinsen?",
+  ])("erkennt %j als Frage nach dem Ort", (frage) => {
+    expect(ortsfrage(frage)).toBe(true);
+  });
+
+  it.each([
+    "Was ist eine Rate-Treppe?",
+    "Wie hoch sind die Schulden?",
+    // Die Abgrenzung, auf die es ankommt: Das ist eine ARCHIV-Frage. Sie
+    // gehört ans Modell samt Weiterreichung, nicht an einen Chip.
+    "Wo wurde das beschlossen?",
+    "Warum steigen die Zinsen?",
+    "",
+  ])("lässt %j ans Modell", (frage) => {
+    expect(ortsfrage(frage)).toBe(false);
+  });
+});
+
+const ANKER = [
+  { key: "haushalt-schulden.tafel", titel: "Die Anzeigetafel" },
+  { key: "haushalt-schulden.kredite", titel: "Kredite und Zinsen" },
+  { key: "haushalt-schulden.rate-treppe", titel: "Rate-Treppe" },
+  { key: "haushalt-schulden.buergschaften", titel: "Bürgschaften" },
+];
+
+describe("ankerTreffer", () => {
+  it("findet den Baustein am gemeinsamen Inhaltswort", () => {
+    expect(ankerTreffer("Wo steht, was die Stadt an Zinsen zahlt?", ANKER))
+      .toEqual([ANKER[1]]);
+  });
+
+  it("lässt sich von „Stadt“ nicht ablenken", () => {
+    // Gemessen im Browser (22.09.2026): Die Bühne heißt „Drei Zählweisen,
+    // eine Stadt · Stand 31.12.2024" — über „Stadt" traf sie dieselbe Frage
+    // und stand als erster Chip vor dem richtigen Baustein.
+    const mitBuehne = [{ key: "hh.buehne", titel: "Drei Zählweisen, eine Stadt" }, ...ANKER];
+    expect(ankerTreffer("Wo steht, was die Stadt an Zinsen zahlt?", mitBuehne))
+      .toEqual([ANKER[1]]);
+  });
+
+  it("findet auch über Umlaute — die Faltung ist dieselbe wie im Backend", () => {
+    expect(ankerTreffer("Wo finde ich die Bürgschaften?", ANKER)).toEqual([ANKER[3]]);
+    // Und ohne Umlaut getippt: „buergschaften" fällt auf denselben Stamm.
+    expect(ankerTreffer("wo sind die Buergschaften", ANKER)).toEqual([ANKER[3]]);
+  });
+
+  it("reiht die beste Übereinstimmung nach vorn", () => {
+    const treffer = ankerTreffer("Wo finde ich die Rate-Treppe?", ANKER);
+    expect(treffer[0]).toEqual(ANKER[2]);
+  });
+
+  it("gibt höchstens drei zurück", () => {
+    const viele = Array.from({ length: 8 }, (_, i) => (
+      { key: `k${i}`, titel: `Zinsen Teil ${i}` }));
+    expect(ankerTreffer("Wo stehen die Zinsen?", viele)).toHaveLength(3);
+  });
+
+  it("trifft lieber nichts als das Falsche", () => {
+    // Kein gemeinsames Inhaltswort — dann geht die Frage ans Modell, statt
+    // einen Chip anzubieten, der woandershin führt.
+    expect(ankerTreffer("Wo finde ich die Sitzungstermine?", ANKER)).toEqual([]);
+    // Nur Stoppwörter: „die" steht in zwei Titeln, sagt aber nichts.
+    expect(ankerTreffer("Wo ist das hier auf der Seite?", ANKER)).toEqual([]);
+  });
+});
+
+describe("ankerListe", () => {
+  function fakeDok(eintraege: [string, string | null][]): Document {
+    return {
+      querySelectorAll: () => eintraege.map(([key, titel]) => ({
+        getAttribute: (n: string) => (n === "data-erklaer" ? key : titel),
+      })),
+    } as unknown as Document;
+  }
+
+  it("sammelt Schlüssel und Titel in Dokumentreihenfolge", () => {
+    const dok = fakeDok([["a.eins", "Eins"], ["a.zwei", "Zwei"]]);
+    expect(ankerListe(dok)).toEqual([
+      { key: "a.eins", titel: "Eins" }, { key: "a.zwei", titel: "Zwei" }]);
+  });
+
+  it("lässt titellose Anker aus — ein Schlüssel ist kein Chip-Text", () => {
+    expect(ankerListe(fakeDok([["a.eins", null], ["a.zwei", "Zwei"]])))
+      .toEqual([{ key: "a.zwei", titel: "Zwei" }]);
+  });
+
+  it("behält zwei Bausteine mit demselben Schlüssel, aber eigenem Titel", () => {
+    // Genau so steht es auf /haushalt/schulden: zwei Zeitreihen, ein
+    // Schlüssel, zwei Titel (gemessen im Browser am 22.09.2026). Eine
+    // Entdopplung nur über den Schlüssel hätte die zweite verschluckt.
+    const dok = fakeDok([
+      ["hh.zeitreihe", "Schulden total"],
+      ["hh.zeitreihe", "Verbürgt und selbst geschuldet"],
+    ]);
+    expect(ankerListe(dok)).toHaveLength(2);
+  });
+
+  it("nimmt denselben Baustein nur einmal und deckelt bei 20", () => {
+    const viele: [string, string][] = Array.from({ length: 30 },
+      (_, i) => [`a.k${i}`, `Titel ${i}`]);
+    expect(ankerListe(fakeDok([...viele, ["a.k0", "Titel 0"]]))).toHaveLength(20);
+  });
+
+  it("kürzt einen langen Titel auf 80 Zeichen", () => {
+    const lang = ankerListe(fakeDok([["a.x", "T".repeat(300)]]))[0];
+    expect(lang.titel.length).toBeLessThanOrEqual(82);
+  });
+});
+
+describe("daumenZeigen — die Lotsen-Runde", () => {
+  it("bekommt keinen Daumen: kein Server, kein Modell, nichts zu benoten", () => {
+    expect(daumenZeigen({ answer: "Das findest du hier:", mode: "local" })).toBe(false);
   });
 });

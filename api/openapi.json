@@ -10444,6 +10444,15 @@
       "ExplainBody": {
         "description": "Was Lotti zu sehen bekommt.",
         "properties": {
+          "anchors": {
+            "items": {
+              "maxLength": 80,
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Anchors",
+            "type": "array"
+          },
           "conversation_id": {
             "minimum": 1.0,
             "title": "Conversation Id",

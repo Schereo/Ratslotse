@@ -339,6 +339,52 @@ test.describe("Lotti-Knopf und -Fenster", () => {
     await expect(page.getByText(/nichts einzeln erklären/)).toBeHidden();
   });
 
+  test("„Wo finde ich …?“ zeigt hin — ohne einen einzigen Netzaufruf", async ({ page }) => {
+    // Die Zusage dieses PRs: Die Anker der Seite sind eine Landkarte, die der
+    // Client schon hat. Trifft ein Titel, entsteht die Antwort im Browser —
+    // kein `/explain`, keine Kosten, unter einer Millisekunde.
+    let rufe = 0;
+    await page.route("**/api/council/explain", async (route) => {
+      rufe += 1;
+      await route.fulfill({ status: 200, contentType: "text/event-stream", body: STROM() });
+    });
+    await page.goto("/haushalt/schulden");
+    // Erst die Daten, dann messen — sonst entscheidet ein Rennen, ob es Anker
+    // gibt (dieselbe Falle wie beim Erklär-Modus-Test oben).
+    await page.waitForLoadState("networkidle");
+    const anker = page.locator("[data-erklaer][data-erklaer-titel]");
+    test.skip(await anker.count() === 0,
+      "Diese Datenbank hat keine Haushaltsdaten — also auch keine Anker.");
+    // **Der Titel kommt aus der Seite, nicht aus diesem Test.** Ein fest
+    // eingetippter („Rate-Treppe“) misst, ob die Seite ihn heute noch so
+    // nennt — nicht, ob die Lotsin funktioniert.
+    const titel = (await anker.first().getAttribute("data-erklaer-titel"))!;
+    const key = (await anker.first().getAttribute("data-erklaer"))!;
+
+    await knopf(page).click();
+    await fenster(page).getByRole("textbox", { name: "Frage an Lotti" })
+      .fill(`Wo finde ich ${titel}?`);
+    await page.keyboard.press("Enter");
+
+    const chip = fenster(page).getByRole("button", { name: `Zeig mir: ${titel}` });
+    await expect(chip).toBeVisible();
+    expect(rufe, "die Lotsen-Runde darf das Backend nicht anfassen").toBe(0);
+    // Kein Daumen: Es gibt hier nichts zu benoten und niemanden, der die Note
+    // entgegennähme.
+    await expect(fenster(page).getByRole("button", { name: /hilfreich/i })).toHaveCount(0);
+
+    await chip.click();
+    // Der Baustein steht danach im Bild — und trägt zwei Sekunden lang den
+    // Ring, an dem man ihn findet.
+    const ziel = page.locator(`[data-erklaer="${key}"]`);
+    await expect(ziel).toHaveClass(/lotti-zeigt/);
+    const box = (await ziel.boundingBox())!;
+    const hoehe = page.viewportSize()!.height;
+    expect(box.y).toBeLessThan(hoehe);
+    expect(box.y + box.height).toBeGreaterThan(0);
+    expect(rufe).toBe(0);
+  });
+
   test("ohne beantwortete Einwilligung fragt Lotti nichts", async ({ page }) => {
     // Die Saat-Konten haben die Frage längst beantwortet — für diesen Fall
     // muss sie zurückgesetzt werden. Geprüft wird die Zusage, die dahinter

@@ -262,6 +262,46 @@ def test_der_prompt_kennt_die_weiter_marke():
     assert "WEITER: ratsfrage" in _prompt(lotti.Screen(route="/haushalt"))
 
 
+def test_die_bausteine_der_seite_stehen_im_prompt():
+    """„Wo steht …?" kann Lotti nur beantworten, wenn sie die Überschriften
+    der Seite kennt — der Client schickt sie als ``anchors``."""
+    screen = lotti.Screen(route="/haushalt/schulden",
+                          anchors=("Rate-Treppe", "Kredite und Zinsen"))
+    p = _prompt(screen, "Wo steht, was die Stadt an Zinsen zahlt?")
+    assert "BAUSTEINE AUF DIESER SEITE" in p
+    assert "· Rate-Treppe" in p and "· Kredite und Zinsen" in p
+    assert "erfinde keine" in p
+
+
+def test_ohne_bausteine_steht_kein_leerer_block_da():
+    """Dieselbe Regel wie bei den Markern: ein leerer Block wird kommentiert,
+    statt ignoriert zu werden."""
+    assert "BAUSTEINE AUF DIESER SEITE" not in _prompt(lotti.Screen(route="/haushalt"))
+
+
+def test_die_bausteine_stehen_NICHT_zwischen_markern():
+    """**Und das ist eine Entscheidung, keine Lücke.** Anker-Titel sind kein
+    Fremdtext: Sie stehen als Zeichenkette in unseren eigenen Komponenten
+    (``useErklaerAnker("rate-treppe", "Rate-Treppe")``) und kommen weder aus
+    der Datenbank noch aus einer Ratsvorlage noch aus einer Eingabe. Marker
+    wirken, weil sie selten sind — sie um eigenen Text zu legen, macht sie
+    billiger, ohne etwas zu sichern. Der Deckel gilt trotzdem (s. u.)."""
+    p = _prompt(lotti.Screen(route="/haushalt/schulden", anchors=("Rate-Treppe",)))
+    assert "<<<ANKER" not in p
+
+
+def test_die_bausteine_halten_ihren_deckel():
+    """Ein Client schickt, was er will — 500 Titel wären ein Prompt von der
+    Größe des Seitenwissens."""
+    screen = lotti.Screen(route="/haushalt/schulden",
+                          anchors=tuple(f"Baustein {i}" for i in range(60))
+                          + ("Z" * 300,))
+    p = _prompt(screen)
+    block = p.split("BAUSTEINE AUF DIESER SEITE")[1]
+    assert block.count("  · ") == lotti.ANKER_MAX
+    assert "Z" * (lotti.ANKER_TITEL_MAX + 5) not in p
+
+
 def test_der_prompt_traegt_das_wissen_der_seite():
     p = _prompt(lotti.Screen(route="/haushalt/schulden"))
     assert knowledge.PAGES["/haushalt/schulden"].what[:40] in p
@@ -462,6 +502,15 @@ def test_ein_zu_langer_element_text_wird_abgewiesen_statt_gekuerzt(client):
     r = client.post("/api/council/explain", json={
         "route": "/haushalt", "element": {"text": "x" * (lotti.ELEMENT_TEXT_MAX + 1)}})
     assert r.status_code == 422
+
+
+def test_zu_viele_oder_zu_lange_bausteine_werden_abgewiesen(client):
+    """Derselbe Riegel für die Anker-Titel: Der Deckel steht im Vertrag, nicht
+    in einer stillen Kürzung im Prompt-Bau."""
+    zu_viele = {"route": "/haushalt", "anchors": ["x"] * (lotti.ANKER_MAX + 1)}
+    assert client.post("/api/council/explain", json=zu_viele).status_code == 422
+    zu_lang = {"route": "/haushalt", "anchors": ["x" * (lotti.ANKER_TITEL_MAX + 1)]}
+    assert client.post("/api/council/explain", json=zu_lang).status_code == 422
 
 
 def test_eine_zu_lange_markierung_wird_abgewiesen(client):

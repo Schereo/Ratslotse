@@ -9814,6 +9814,8 @@ export interface components {
          * @description Was Lotti zu sehen bekommt.
          */
         ExplainBody: {
+            /** Anchors */
+            anchors?: string[];
             /** Conversation Id */
             conversation_id?: number | null;
             /**
@@ -21425,4 +21427,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: aacde7b50bb8d9a7107f8622c0831d91cf834e37785b067e596b297ee933a49f
+// vertrag-sha256: 4dd89dce338a8dfc28bf09070b5492f1f2d03e923b369bac2a416bb507f16931
