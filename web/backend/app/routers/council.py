@@ -68,6 +68,7 @@ from ..clients import client_kind
 from ..deps import (get_cities_store, get_council_store, get_current_user, get_store,
                     optional_user, require_active, require_permission)
 from ..ratelimit import (
+    assistant_event_limiter,
     assistant_limiter,
     partei_meinungen_limiter,
     qa_feedback_limiter,
@@ -2471,6 +2472,10 @@ class QaFeedbackBody(BaseModel):
     answer_excerpt: str | None = Field(default=None, max_length=500)
     rating: str = Field(pattern="^(up|down)$")
     reason: str | None = Field(default=None, max_length=500)
+    # Aus welcher Fläche der Daumen kommt. Ohne das Feld stünden Lottis
+    # Erklärungen und die Archiv-Antworten in einem Topf — und die Frage
+    # „taugen Lottis Antworten?" wäre nicht mehr zu stellen.
+    source: str = Field(default="ask", pattern="^(ask|lotti)$")
 
 
 @router.post("/qa-feedback", status_code=status.HTTP_201_CREATED)
@@ -2486,7 +2491,8 @@ def qa_feedback(
     Rate-Limit hält Skript-Flutung von Tabelle und Backups fern."""
     qa_feedback_limiter.check(request)
     store.save_qa_feedback(body.question, body.answer_excerpt, body.rating,
-                           body.reason, user_id=(user or {}).get("id"))
+                           body.reason, user_id=(user or {}).get("id"),
+                           source=body.source)
     return {"ok": True}
 
 
@@ -3449,6 +3455,18 @@ def goal_detail(key: str, _user: dict = Depends(require_active),
     }
 
 
+#: Was Lottis Fenster melden darf — und wie es im Zähler heißt. Eine
+#: Positivliste, damit die Tabelle nicht mit erfundenen Namen wächst.
+#: Heute nur das Öffnen des Fensters — es ruft sonst keinen Endpunkt auf, und
+#: ohne diesen Zähler ließe sich „wird überhaupt draufgeklickt?" nicht
+#: beantworten. Der Anstupser trägt seine drei Ereignisse selbst ein, wenn er
+#: gebaut wird: Ein Zähler, den niemand schreibt, steht dauerhaft auf 0 und
+#: sieht aus wie ein Ausfall (tests/test_ereignisse.py hält beide Richtungen).
+ASSISTANT_EVENTS: dict[str, str] = {
+    "open": "assistant_open",
+}
+
+
 class ExplainElement(BaseModel):
     """Das angeklickte Element — Schlüssel, Überschrift und sein Text.
 
@@ -3488,6 +3506,91 @@ class ExplainBody(BaseModel):
     question: str = Field(default="", max_length=lotti.QUESTION_MAX)
     refs: ExplainRefs = Field(default_factory=ExplainRefs)
     history: list[AskTurn] = Field(default_factory=list, max_length=3)
+    # Wie bei ``/ask``: das laufende Gespräch, an das die Runde gehängt wird —
+    # nur wirksam mit ``saves_conversations = 1``. Ein Client, der das Feld
+    # gar nicht schickt, speichert nichts (``model_fields_set``).
+    conversation_id: int | None = Field(default=None, ge=1)
+
+
+def _lotti_turn_speichern(ratslotse: Store, user: dict, body: ExplainBody,
+                          screen: lotti.Screen, frage: str, antwort: str,
+                          modus: str, weiter: str | None,
+                          glossar: list[str]) -> int | None:
+    """Lottis Runde ins Konto — **nur mit derselben Einwilligung wie „Frag den
+    Rat"** (``web_users.saves_conversations``).
+
+    **Was im Snapshot steht und was nicht.** Gespeichert wird, wo die Frage
+    gestellt wurde (Route, Element-Schlüssel und -Titel), wie geantwortet
+    wurde (``mode``, ``next``) und welche Fachwörter im Kontext standen. Der
+    **Element-TEXT steht nicht darin**, und die Markierung nur gekürzt: Beide
+    sind Seiteninhalt, den man auf der Seite nachlesen kann — sie im Konto zu
+    verdoppeln brächte nichts und legte Fremdtext ab, den niemand dort sucht.
+
+    Wirft nie: Speichern ist Zusatz, kein Blocker.
+    """
+    try:
+        if "conversation_id" not in body.model_fields_set:
+            return None
+        if not antwort.strip() or ratslotse.get_qa_speichern(user["id"]) != 1:
+            return None
+        conversation_id = body.conversation_id
+        neu = conversation_id is None
+        if neu:
+            # Der Titel ist die Seite, nicht die Frage: „Was sehe ich hier?"
+            # wäre als Name jedes zweiten Gesprächs unbrauchbar.
+            titel = screen.heading or knowledge.PAGES[screen.route].title
+            conversation_id = ratslotse.qa_gespraech_start(user["id"], titel, kind="lotti")
+            if conversation_id is None:
+                return None
+        quellen_json = json.dumps({
+            "route": screen.route,
+            "element_key": screen.element_key,
+            "element_title": screen.element_title,
+            "selection": screen.selection[:200],
+            "mode": modus,
+            "next": weiter,
+            "glossary": glossar,
+        }, ensure_ascii=False)
+        frage_text = frage or (screen.element_title
+                               and f"Erklär mir: {screen.element_title}") or "Was sehe ich hier?"
+        if not ratslotse.qa_turn_speichern(conversation_id, user["id"],
+                                           frage_text, antwort, quellen_json):
+            if neu:
+                ratslotse.qa_gespraech_loeschen(conversation_id, user["id"])
+            return None
+        return conversation_id
+    except Exception:  # noqa: BLE001 — Speichern ist Zusatz, nie Blocker
+        return None
+
+
+class AssistantEventBody(BaseModel):
+    """Ein Ereignis aus Lottis Fenster, das sonst keinen Endpunkt hätte.
+
+    Das Öffnen des Fensters ruft nichts auf — ohne diesen Zähler ließe sich
+    „wird es überhaupt angeklickt?" nicht beantworten. Gebaut wie
+    ``POST /onboarding/tour``: ein Zähler, kein Zustand.
+    """
+    kind: str = Field(max_length=40)
+
+
+@router.post("/assistant/event", status_code=status.HTTP_204_NO_CONTENT)
+def assistant_event(body: AssistantEventBody, request: Request,
+                    user: dict = Depends(require_active),
+                    ratslotse: Store = Depends(get_store)) -> None:
+    """Ein Ereignis zählen — je Konto und Tag, wie jeder andere Funktionszähler.
+
+    **Was NICHT mitgeht:** kein Zeitpunkt, keine Seite, keine Frage. Nur
+    welche Handlung es war.
+    """
+    zaehler = ASSISTANT_EVENTS.get(body.kind)
+    if not zaehler:
+        # Ein unbekannter Name wird abgewiesen statt stillschweigend gezählt:
+        # Sonst entstünde aus einem Tippfehler eine eigene Zeile, die in
+        # keiner Auswertung auftaucht und trotzdem wie ein Wert aussieht.
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
+                            f"Unbekanntes Ereignis: {body.kind!r}")
+    assistant_event_limiter.check(request, subject=user["id"])
+    ratslotse.record_activity(user["id"], zaehler, client_kind(request))
 
 
 @router.post("/explain", response_class=EventStreamResponse, responses=SSE_ERKLAERUNG)
@@ -3549,8 +3652,11 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
                 yield _sse({"type": "token", "text": text})
                 ratslotse.record_activity(user["id"], "assistant_deterministic",
                                           client_kind(request))
+                conversation_id = _lotti_turn_speichern(
+                    ratslotse, user, body, screen, frage, text, "deterministic", None, [])
                 yield _sse({"type": "done", "mode": "deterministic", "kind": art,
-                            "next": None, "glossary": [], "timings": zeiten})
+                            "next": None, "glossary": [], "timings": zeiten,
+                            "conversation_id": conversation_id})
                 return
 
             yield _sse({"type": "step", "step": "context"})
@@ -3600,12 +3706,16 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
                       screen.element_key or "-",
                       " ".join(f"{k}={v}" for k, v in sorted(zeiten.items())))
             ratslotse.record_activity(user["id"], "assistant_explain", client_kind(request))
+            begriffe = [b["begriff"] for b in ctx.get("glossary") or []]
+            conversation_id = _lotti_turn_speichern(
+                ratslotse, user, body, screen, frage, text, "explain", weiter, begriffe)
             yield _sse({"type": "done", "mode": "explain", "kind": "model",
                         "next": weiter,
                         # Die Fachwörter, die im Kontext standen — das Fenster
                         # macht daraus Verweise aufs Glossar.
-                        "glossary": [b["begriff"] for b in ctx.get("glossary") or []],
-                        "timings": zeiten})
+                        "glossary": begriffe,
+                        "timings": zeiten,
+                        "conversation_id": conversation_id})
         except Exception:  # noqa: BLE001 — Fehler beim Client sichtbar machen
             _log.exception("Lottis Erklärung fehlgeschlagen")
             yield _sse({"type": "error", "message": "Erklärung fehlgeschlagen."})

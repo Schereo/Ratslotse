@@ -354,10 +354,32 @@ def test_der_router_ergaenzt_die_marke_wenn_das_modell_sie_vergisst(monkeypatch)
 # --- 6. Der Endpunkt --------------------------------------------------------
 
 class _Ratslotse:
-    """Ein Konto-Speicher, der jeden Schreibweg mitschreibt."""
+    """Ein Konto-Speicher, der jeden Schreibweg mitschreibt.
 
-    def __init__(self) -> None:
+    ``einwilligung`` ist der Wert von ``web_users.saves_conversations``:
+    ``None`` = nie gefragt, ``1`` = ja, ``0`` = nein. Er entscheidet, ob
+    überhaupt gespeichert wird — dieselbe Regel wie bei „Frag den Rat".
+    """
+
+    def __init__(self, einwilligung: int | None = 0) -> None:
         self.aufrufe: list[tuple[str, tuple, dict]] = []
+        self.einwilligung = einwilligung
+        self.gespraeche: dict[int, dict] = {}
+        self.turns: list[dict] = []
+
+    def get_qa_speichern(self, user_id: int) -> int | None:
+        return self.einwilligung
+
+    def qa_gespraech_start(self, user_id: int, title: str, kind: str = "ask") -> int:
+        gid = len(self.gespraeche) + 1
+        self.gespraeche[gid] = {"title": title, "kind": kind}
+        return gid
+
+    def qa_turn_speichern(self, conversation_id: int, user_id: int, question: str,
+                          answer: str, quellen_json: str | None) -> bool:
+        self.turns.append({"conversation_id": conversation_id, "question": question,
+                           "answer": answer, "sources": quellen_json})
+        return True
 
     def __getattr__(self, name):
         def merken(*a, **k):
@@ -373,11 +395,12 @@ def konto():
 
 
 @pytest.fixture
-def client(konto, monkeypatch):
+def client(konto, monkeypatch, request):
     # Der Schalter gilt auch im Backend — ohne ihn antwortet der Endpunkt mit
     # 404, und genau das prüft `test_ohne_schalter_gibt_es_den_endpunkt_nicht`.
     monkeypatch.setenv("FEATURE_FLAGS", "lotti-assistentin")
-    ratslotse = _Ratslotse()
+    marke = request.node.get_closest_marker("einwilligung")
+    ratslotse = _Ratslotse(einwilligung=(marke.args[0] if marke else 0))
     store = _Store({"title": "Stadionneubau", "simple_summary": "Die Stadt baut ein Stadion."})
     app.dependency_overrides[require_active] = lambda: konto
     app.dependency_overrides[get_store] = lambda: ratslotse
@@ -518,3 +541,115 @@ def test_knowledge_und_seitenaufrufe_benutzen_dieselben_schluessel():
     Schreibweise hier wäre eine zweite Wahrheit."""
     for route in knowledge.PAGES:
         assert seitenaufrufe.normalisieren(route) == route, route
+
+
+# --- 8. Speichern — nur mit Einwilligung ------------------------------------
+
+def test_ohne_einwilligung_wird_nichts_gespeichert(client):
+    """`saves_conversations = 0` heißt Nein, und zwar auch hier: Es ist
+    dieselbe Einwilligung wie bei „Frag den Rat", ein Schalter am Konto."""
+    r = client.post("/api/council/explain", json={
+        "route": "/haushalt", "question": "Was sehe ich hier?", "conversation_id": None})
+    assert r.status_code == 200
+    assert client.ratslotse.turns == []
+    assert _rahmen(r)[-1]["conversation_id"] is None
+
+
+@pytest.mark.einwilligung(1)
+def test_mit_einwilligung_entsteht_ein_lotti_gespraech(client):
+    r = client.post("/api/council/explain", json={
+        "route": "/haushalt/schulden", "heading": "Wie viel Schulden hat Oldenburg?",
+        "question": "Was sehe ich hier?", "conversation_id": None})
+    assert r.status_code == 200
+    (gid, g), = client.ratslotse.gespraeche.items()
+    # Eigene Art — sonst stünde Lottis Runde in der Liste von „Frag den Rat"
+    # und niemand könnte die beiden je auseinanderhalten.
+    assert g["kind"] == "lotti"
+    # Der Titel ist die SEITE, nicht die Frage: „Was sehe ich hier?" wäre als
+    # Name jedes zweiten Gesprächs unbrauchbar.
+    assert g["title"] == "Wie viel Schulden hat Oldenburg?"
+    assert _rahmen(r)[-1]["conversation_id"] == gid
+
+
+@pytest.mark.einwilligung(1)
+def test_ohne_das_feld_wird_nicht_gespeichert(client):
+    """Ein Client, der `conversation_id` gar nicht schickt, legt nichts an.
+
+    Dieselbe Regel wie bei ``/ask``: Sonst begänne eine alte App-Version
+    ungefragt, Gespräche im Konto zu sammeln.
+    """
+    client.post("/api/council/explain", json={"route": "/haushalt",
+                                              "question": "Was sehe ich hier?"})
+    assert client.ratslotse.gespraeche == {}
+
+
+@pytest.fixture
+def modell(monkeypatch):
+    """Ein Modell, das immer denselben Satz sagt.
+
+    Für die Speicher-Tests: Sie brauchen eine Antwort, nicht ihren Inhalt —
+    und ein Weg mit Modell, weil der deterministische gar nicht erst in den
+    Kontext schaut.
+    """
+    monkeypatch.setattr(lotti, "explain_stream",
+                        lambda *a, **k: iter(["Das ist die Erklärung."]))
+    monkeypatch.setattr(lotti, "explain_question",
+                        lambda *a, **k: "Das ist die Erklärung.")
+
+
+@pytest.mark.einwilligung(1)
+def test_der_snapshot_traegt_den_ort_aber_nicht_den_fremdtext(client, modell):
+    """Was gespeichert wird, ist WO gefragt wurde — nicht, was dort stand.
+
+    Element-Text und Markierung sind Seiteninhalt; sie im Konto zu verdoppeln
+    brächte nichts und legte Fremdtext ab, den dort niemand sucht.
+    """
+    import json as _json
+    geheim = "Ein langer Elementtext mit " + FREMDE_ADRESSE
+    client.post("/api/council/explain", json={
+        "route": "/haushalt/schulden", "question": "Was sehe ich hier?",
+        "conversation_id": None,
+        "element": {"key": "haushalt-schulden.buehne", "title": "Die Bühne", "text": geheim}})
+    (turn,) = client.ratslotse.turns
+    quelle = _json.loads(turn["sources"])
+    assert quelle["route"] == "/haushalt/schulden"
+    assert quelle["element_key"] == "haushalt-schulden.buehne"
+    assert quelle["element_title"] == "Die Bühne"
+    assert geheim not in turn["sources"]
+    assert FREMDE_ADRESSE not in turn["sources"]
+
+
+@pytest.mark.einwilligung(1)
+def test_eine_lange_markierung_wird_im_snapshot_gekuerzt(client, modell):
+    import json as _json
+    client.post("/api/council/explain", json={
+        "route": "/haushalt", "question": "Was sehe ich hier?", "conversation_id": None,
+        "selection": "x" * 900})
+    quelle = _json.loads(client.ratslotse.turns[0]["sources"])
+    assert len(quelle["selection"]) <= 200
+
+
+# --- 9. Der Ereignis-Zähler -------------------------------------------------
+
+def test_das_oeffnen_wird_gezaehlt(client):
+    """Das Fenster ruft sonst keinen Endpunkt auf — ohne diesen Zähler ließe
+    sich „wird überhaupt draufgeklickt?" nicht beantworten."""
+    r = client.post("/api/council/assistant/event", json={"kind": "open"})
+    assert r.status_code == 204
+    zaehler = [a[1] for name, a, _ in client.ratslotse.aufrufe if name == "record_activity"]
+    assert zaehler == ["assistant_open"]
+
+
+def test_ein_erfundenes_ereignis_wird_abgewiesen(client):
+    """Sonst entstünde aus einem Tippfehler eine eigene Zeile, die in keiner
+    Auswertung auftaucht und trotzdem wie ein Wert aussieht."""
+    r = client.post("/api/council/assistant/event", json={"kind": "heimlich"})
+    assert r.status_code == 422
+    assert not client.ratslotse.aufrufe
+
+
+def test_der_ereignis_endpunkt_verlangt_ein_konto():
+    import inspect
+    from app.routers import council as router_modul
+    vorgabe = inspect.signature(router_modul.assistant_event).parameters["user"].default
+    assert getattr(vorgabe, "dependency", None) is require_active

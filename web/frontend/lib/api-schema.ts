@@ -695,6 +695,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/stats/assistant": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stats Assistant
+         * @description Wird Lotti angenommen — und wofür?
+         *
+         *     Die Fragen kommen aus den gespeicherten Gesprächen, also von den Konten
+         *     mit Einwilligung. Das anonyme Fragenprotokoll aus dem Plan ist gestrichen
+         *     (Tim, 21.09.2026): Ein freier Text, den niemand abgenickt hat, wird nicht
+         *     aufgehoben — auch nicht für eine gute Frage.
+         */
+        get: operations["stats_assistant_api_admin_stats_assistant_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/stats/cohorts": {
         parameters: {
             query?: never;
@@ -1456,6 +1481,29 @@ export interface paths {
          *     proxy buffers it (the client then renders the same final state at once).
          */
         post: operations["ask_api_council_ask_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/assistant/event": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Assistant Event
+         * @description Ein Ereignis zählen — je Konto und Tag, wie jeder andere Funktionszähler.
+         *
+         *     **Was NICHT mitgeht:** kein Zeitpunkt, keine Seite, keine Frage. Nur
+         *     welche Handlung es war.
+         */
+        post: operations["assistant_event_api_council_assistant_event_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5956,6 +6004,95 @@ export interface components {
             /** Prompt Tokens */
             prompt_tokens: number;
         };
+        /**
+         * AdminLotti
+         * @description Was der Reiter „Lotti" im Admin-Panel zeigt.
+         *
+         *     Die Fragen stammen **nur aus gespeicherten Gesprächen**, also von Konten
+         *     mit Einwilligung — ein Ausschnitt, und die Oberfläche sagt das auch.
+         */
+        AdminLotti: {
+            calls: components["schemas"]["AdminLottiAufrufe"];
+            /** Days */
+            days: number;
+            /** Elements */
+            elements: components["schemas"]["AdminLottiZeile"][];
+            feedback: components["schemas"]["AdminLottiDaumen"];
+            funnel: components["schemas"]["AdminLottiTrichter"];
+            nudge: components["schemas"]["AdminLottiAnstupser"];
+            /** Pages */
+            pages: components["schemas"]["AdminLottiZeile"][];
+            /** Questions */
+            questions: components["schemas"]["AdminLottiFrage"][];
+            /** Timeline */
+            timeline: components["schemas"]["AdminLottiTag"][];
+        };
+        /** AdminLottiAnstupser */
+        AdminLottiAnstupser: {
+            /** Accepted */
+            accepted: number;
+            /** Dismissed */
+            dismissed: number;
+            /** Shown */
+            shown: number;
+        };
+        /** AdminLottiAufrufe */
+        AdminLottiAufrufe: {
+            /** Handed Over */
+            handed_over: number;
+            /** Opened */
+            opened: number;
+            /** With Model */
+            with_model: number;
+            /** Without Model */
+            without_model: number;
+        };
+        /** AdminLottiDaumen */
+        AdminLottiDaumen: {
+            /** Down */
+            down: number;
+            /** Reasons */
+            reasons: string[];
+            /** Up */
+            up: number;
+        };
+        /** AdminLottiFrage */
+        AdminLottiFrage: {
+            /** N */
+            n: number;
+            /** Question */
+            question: string;
+        };
+        /** AdminLottiTag */
+        AdminLottiTag: {
+            /** Client */
+            client: string;
+            /** Day */
+            day: string;
+            /** N */
+            n: number;
+        };
+        /**
+         * AdminLottiTrichter
+         * @description Von „war da" bis „speichert" — die vier Stufen der Annahme.
+         */
+        AdminLottiTrichter: {
+            /** Active */
+            active: number;
+            /** Asked */
+            asked: number;
+            /** Opened */
+            opened: number;
+            /** Saving */
+            saving: number;
+        };
+        /** AdminLottiZeile */
+        AdminLottiZeile: {
+            /** Key */
+            key: string;
+            /** N */
+            n: number;
+        };
         /** AdminMailAnlass */
         AdminMailAnlass: {
             /** Anlass */
@@ -6774,6 +6911,18 @@ export interface components {
             write_ups: number;
             /** Year */
             year: number;
+        };
+        /**
+         * AssistantEventBody
+         * @description Ein Ereignis aus Lottis Fenster, das sonst keinen Endpunkt hätte.
+         *
+         *     Das Öffnen des Fensters ruft nichts auf — ohne diesen Zähler ließe sich
+         *     „wird es überhaupt angeklickt?" nicht beantworten. Gebaut wie
+         *     ``POST /onboarding/tour``: ein Zähler, kein Zustand.
+         */
+        AssistantEventBody: {
+            /** Kind */
+            kind: string;
         };
         /**
          * Attendance
@@ -9624,6 +9773,8 @@ export interface components {
          * @description Was Lotti zu sehen bekommt.
          */
         ExplainBody: {
+            /** Conversation Id */
+            conversation_id?: number | null;
             /**
              * ExplainElement
              * @description Das angeklickte Element — Schlüssel, Überschrift und sein Text.
@@ -11922,6 +12073,11 @@ export interface components {
             rating: string;
             /** Reason */
             reason?: string | null;
+            /**
+             * Source
+             * @default ask
+             */
+            source: string;
         };
         /**
          * QaShare
@@ -15122,6 +15278,37 @@ export interface operations {
             };
         };
     };
+    stats_assistant_api_admin_stats_assistant_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminLotti"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     stats_cohorts_api_admin_stats_cohorts_get: {
         parameters: {
             query?: {
@@ -16178,6 +16365,37 @@ export interface operations {
                 content: {
                     "text/event-stream": string;
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    assistant_event_api_council_assistant_event_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssistantEventBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -21122,4 +21340,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 2fd7c472fbb2ae690dde125b2dea4967c59ffa3434c261edb635159512deece6
+// vertrag-sha256: fc0de236f1b7df3ce5f5530e782e2eb2acb434da451e740fbf19e4f1f635fa3f

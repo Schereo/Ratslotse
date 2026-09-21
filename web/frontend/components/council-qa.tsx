@@ -38,6 +38,7 @@ import { type ApiAntwort } from "@/lib/vertrag";
 import { useAuth } from "@/lib/auth";
 import { entwurfAbholen, entwurfMelden } from "@/lib/draft";
 import { leseSseStrom } from "@/lib/sse";
+import { GespraecheEinwilligung } from "@/components/gespraeche-einwilligung";
 import { leseHatGespraeche, leseQaBeispiele, merkeHatGespraeche, merkeQaBeispiele } from "@/lib/qa-zuletzt";
 import { Button, Input, toast } from "@/components/ui";
 // Die beiden Kanten, an denen der fixierte Composer und die Belege-Spalte
@@ -1852,38 +1853,13 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             {/* 6a①: Erstnutzungs-Frage — einmalig, solange nie beantwortet. */}
             {einstellung === null && (
               <div className="mb-5 w-full max-w-md rounded-2xl border border-primary/25 bg-primary/[0.04] p-4 text-left">
-                <div className="flex flex-col items-start gap-3 sm:flex-row">
-                  <Mascot pose="wave" className="h-10 w-10 shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-foreground">Soll ich mir deine Gespräche merken?</p>
-                    <p className="mt-1 text-hinweis text-muted-foreground">
-                      Wenn du magst, speichere ich deine Verläufe in deinem Konto — du findest
-                      sie dann auf allen Geräten oben unter „Gespräche". Wenn nicht, wird das
-                      Gespräch gelöscht, sobald du es schließt.
-                    </p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <button type="button" onClick={() => void einwilligen(true)}
-                        className="min-h-11 rounded-full bg-primary px-3.5 py-2 text-hinweis font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
-                        KI nutzen & merken
-                      </button>
-                      <button type="button" onClick={() => void einwilligen(false)}
-                        className="min-h-11 rounded-full border border-border px-3.5 py-2 text-hinweis font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-                        KI nutzen, nicht merken
-                      </button>
-                    </div>
-                    {/* V-01: Der Datenschutz-Hinweis zog aus dem Composer in die
-                        Einstellungen (gegen den Dauer-Lärm) — ein Neuling sah ihn
-                        damit nie vor seiner ersten Frage. Diese Karte unterbricht
-                        ohnehin genau einmal; hier gehört der Satz hin. */}
-                    <p className="mt-3 text-hinweis text-muted-foreground">
-                      Frage und passende Ratsauszüge werden über OpenRouter extern verarbeitet;
-                      eine Drittlandverarbeitung ist möglich. Mit einer Auswahl erlaubst du
-                      diese Übermittlung. Ohne sie kann „Frag den Rat“ keine Antwort erzeugen.
-                      Bitte keine personenbezogenen oder sensiblen Daten eingeben. Ob der Verlauf
-                      zusätzlich im Konto gespeichert wird, entscheidest du mit den beiden Optionen.
-                    </p>
-                  </div>
-                </div>
+                {/* Die Karte steht in `components/gespraeche-einwilligung.tsx`:
+                    Lottis Fenster stellt dieselbe Frage, und es ist wirklich
+                    DIESELBE — ein Schalter am Konto, eine Tabelle. Zwei Texte
+                    liefen auseinander. Der Fehlerfall bleibt hier lauter
+                    (Toast + Rücknahme), weil die Karte hier den Composer
+                    blockiert (Befund F12). */}
+                <GespraecheEinwilligung onEntschieden={(merken) => void einwilligen(merken)} />
               </div>
             )}
             {/* Design 15a: EIN Erklärsatz statt drei fast gleicher (Seiten-

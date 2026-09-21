@@ -325,7 +325,13 @@ CREATE TABLE IF NOT EXISTS qa_conversations (
     user_id  INTEGER NOT NULL,
     title    TEXT NOT NULL,
     created  TEXT NOT NULL,
-    updated  TEXT NOT NULL
+    updated  TEXT NOT NULL,
+    -- Woher das Gespräch stammt: 'ask' = „Frag den Rat", 'lotti' = Lottis
+    -- Fenster. EINE Tabelle für beide, weil es dieselbe Sache ist — eine
+    -- Unterhaltung, die jemand wiederfinden will — und dieselbe Einwilligung
+    -- (`web_users.saves_conversations`) sie deckt. Zwei Tabellen hießen zwei
+    -- Löschwege, zwei Listen und zwei Migrationen.
+    kind     TEXT NOT NULL DEFAULT 'ask'
 );
 CREATE INDEX IF NOT EXISTS idx_qa_gespraeche_user ON qa_conversations(user_id, updated DESC);
 
@@ -1717,6 +1723,13 @@ class Store:
                         self._conn.execute(f"ALTER TABLE user_quiz_questions ADD COLUMN {col} {ddl}")
         # Geteilte Antworten tragen seit dem Bausteine-Nachtrag auch Debatten,
         # Presse, Anlagen und Parteien-Positionen — alte Zeilen bleiben ohne.
+        # Lottis Gespräche teilen sich die Tabelle mit „Frag den Rat" — sie
+        # brauchen nur ein Kennzeichen, welcher Fläche ein Gespräch gehört.
+        qc_cols = self._table_cols("qa_conversations")
+        if qc_cols and "kind" not in qc_cols:
+            with self._conn:
+                self._conn.execute(
+                    "ALTER TABLE qa_conversations ADD COLUMN kind TEXT NOT NULL DEFAULT 'ask'")
         qs_cols = self._table_cols("qa_shares")
         if qs_cols and "extras" not in qs_cols:
             with self._conn:
@@ -3370,7 +3383,7 @@ class Store:
                 "WHERE status = 'laeuft'", (now,))
             return cur.rowcount
 
-    def qa_gespraech_start(self, user_id: int, title: str) -> int | None:
+    def qa_gespraech_start(self, user_id: int, title: str, kind: str = "ask") -> int | None:
         """None, wenn es das Konto (nicht mehr) gibt — schließt das Fenster,
         in dem eine Konto-Löschung zwischen Einwilligungs-Check und Insert
         verwaiste Gesprächsdaten hinterließe (Review-Befund B3)."""
@@ -3379,8 +3392,10 @@ class Store:
             if not self._conn.execute("SELECT 1 FROM web_users WHERE id = ?", (user_id,)).fetchone():
                 return None
             cur = self._conn.execute(
-                "INSERT INTO qa_conversations (user_id, title, created, updated) VALUES (?, ?, ?, ?)",
-                (user_id, (title or "Gespräch").strip()[:120], now, now))
+                "INSERT INTO qa_conversations (user_id, title, created, updated, kind) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (user_id, (title or "Gespräch").strip()[:120], now, now,
+                 kind if kind in self.QA_GESPRAECHS_ARTEN else "ask"))
             return neue_id(cur)
 
     def qa_turn_speichern(self, conversation_id: int, user_id: int, question: str,
@@ -3431,7 +3446,7 @@ class Store:
         filt = " AND unicode_lower(g.title) LIKE ? ESCAPE '\\'" if muster else ""
         werte: list = [user_id] + ([muster] if muster else []) + [max(0, limit), max(0, offset)]
         rows = self._conn.execute(
-            f"""SELECT g.id, g.title, g.updated,
+            f"""SELECT g.id, g.title, g.updated, g.kind,
                       (SELECT COUNT(*) FROM qa_conversation_turns t WHERE t.conversation_id = g.id) AS n_turns
                FROM qa_conversations g WHERE g.user_id = ?{filt}
                ORDER BY g.updated DESC, g.id DESC LIMIT ? OFFSET ?""", werte).fetchall()
@@ -3448,7 +3463,7 @@ class Store:
 
     def qa_gespraech(self, conversation_id: int, user_id: int) -> dict | None:
         g = self._conn.execute(
-            "SELECT id, title, updated FROM qa_conversations WHERE id = ? AND user_id = ?",
+            "SELECT id, title, updated, kind FROM qa_conversations WHERE id = ? AND user_id = ?",
             (conversation_id, user_id)).fetchone()
         if not g:
             return None
@@ -4360,6 +4375,11 @@ class Store:
             "clients": clients,
         }
 
+    #: Die Flächen, aus denen ein gespeichertes Gespräch stammen kann.
+    #: Ein unbekannter Wert wird beim Anlegen zu ``ask`` — sonst entstünde aus
+    #: einem Tippfehler eine dritte Art, die keine Liste je zeigt.
+    QA_GESPRAECHS_ARTEN: frozenset[str] = frozenset({"ask", "lotti"})
+
     #: Was der Zähler ``user_activity.feature`` kennt — und wie es auf Deutsch
     #: heißt. Die Liste steht hier, damit ein neuer Wert nicht als stille Null
     #: irgendwo auftaucht: ``tests/test_ereignisse.py`` hält sie gegen die
@@ -4372,6 +4392,7 @@ class Store:
         ("ai_question_unclear", "Rückfragen statt Antwort"),
         ("assistant_explain", "Lotti: erklärt"),
         ("assistant_deterministic", "Lotti: ohne Modell beantwortet"),
+        ("assistant_open", "Lotti: Fenster geöffnet"),
         ("search", "Suchbegriffe eingegeben"),
         ("research", "Tiefen-Recherchen"),
         ("analysis", "Auswertungen geöffnet"),
@@ -4380,6 +4401,124 @@ class Store:
         ("bookmark", "Lesezeichen gesetzt"),
         ("template_follow", "Vorgängen gefolgt"),
     )
+
+    def lotti_auswertung(self, tage: int = 30, council_db: str | None = None) -> dict:
+        """Wird Lotti angenommen — und wofür?
+
+        **Die eine Frage, die der Reiter beantworten soll** (Tim, 21.09.2026):
+        „ob das Feature angenommen wird und welche Fragen gestellt werden".
+        Dafür braucht es einen Trichter, keine Einzelzahlen: Wie viele aktive
+        Konten öffnen das Fenster, wie viele davon fragen, und wie viele
+        speichern ihre Gespräche.
+
+        **Die Fragen kommen nur aus gespeicherten Gesprächen**, also von den
+        Konten mit Einwilligung — ein Ausschnitt, und der Reiter sagt das
+        auch. Das anonyme Fragenprotokoll aus dem Plan hat Tim am 21.09.2026
+        gestrichen: „lass das anonyme Fragenprotokoll weg".
+        """
+        from datetime import date
+        seit = (date.today() - timedelta(days=max(1, tage) - 1)).isoformat()
+
+        def zahl(feature: str) -> tuple[int, int]:
+            r = self._conn.execute(
+                "SELECT COALESCE(SUM(count), 0) n, COUNT(DISTINCT owner_id) k "
+                "FROM user_activity WHERE day >= ? AND feature = ?",
+                (seit, feature)).fetchone()
+            return (r["n"] or 0, r["k"] or 0)
+
+        aktiv = zahl("session")[1]
+        geoeffnet = zahl("assistant_open")
+        mit_modell = zahl("assistant_explain")
+        ohne_modell = zahl("assistant_deterministic")
+        weitergereicht = zahl("assistant_to_ask")
+        gefragt_konten = self._conn.execute(
+            "SELECT COUNT(DISTINCT owner_id) k FROM user_activity WHERE day >= ? "
+            "AND feature IN ('assistant_explain', 'assistant_deterministic')",
+            (seit,)).fetchone()["k"] or 0
+        speichernd = self._conn.execute(
+            "SELECT COUNT(DISTINCT user_id) k FROM qa_conversations "
+            "WHERE kind = 'lotti' AND updated >= ?", (seit,)).fetchone()["k"] or 0
+
+        verlauf = [dict(r) for r in self._conn.execute(
+            "SELECT day, client, SUM(count) n FROM user_activity WHERE day >= ? "
+            "AND feature IN ('assistant_explain', 'assistant_deterministic') "
+            "GROUP BY day, client ORDER BY day", (seit,)).fetchall()]
+
+        # Wo und wonach gefragt wurde — aus den gespeicherten Lotti-Turns.
+        seiten: dict[str, int] = {}
+        elemente: dict[str, int] = {}
+        fragen: dict[str, dict] = {}
+        for r in self._conn.execute(
+                "SELECT t.question, t.sources FROM qa_conversation_turns t "
+                "JOIN qa_conversations g ON g.id = t.conversation_id "
+                "WHERE g.kind = 'lotti' AND t.created >= ? ORDER BY t.id DESC LIMIT 2000",
+                (seit,)).fetchall():
+            try:
+                quelle = json.loads(r["sources"] or "{}")
+            except (ValueError, TypeError):
+                quelle = {}
+            route = quelle.get("route")
+            if route:
+                seiten[route] = seiten.get(route, 0) + 1
+            key = quelle.get("element_key")
+            if key:
+                elemente[key] = elemente.get(key, 0) + 1
+            frage = " ".join((r["question"] or "").split())
+            if frage:
+                schluessel = frage.lower()
+                eintrag = fragen.setdefault(schluessel, {"question": frage, "n": 0})
+                eintrag["n"] += 1
+
+        def oben(d: dict[str, int], n: int) -> list[dict]:
+            return [{"key": k, "n": v} for k, v in
+                    sorted(d.items(), key=lambda p: -p[1])[:n]]
+
+        daumen = {"up": 0, "down": 0, "reasons": []}
+        if council_db:
+            try:
+                import sqlite3
+                conn = sqlite3.connect(f"file:{council_db}?mode=ro", uri=True, timeout=5)
+                conn.row_factory = sqlite3.Row
+                for r in conn.execute(
+                        "SELECT rating, COUNT(*) n FROM council_qa_feedback "
+                        "WHERE source = 'lotti' AND created >= ? GROUP BY rating", (seit,)):
+                    daumen[r["rating"]] = r["n"]
+                daumen["reasons"] = [r["reason"] for r in conn.execute(
+                    "SELECT reason FROM council_qa_feedback WHERE source = 'lotti' "
+                    "AND reason IS NOT NULL AND reason != '' AND created >= ? "
+                    "ORDER BY id DESC LIMIT 20", (seit,))]
+                conn.close()
+            except Exception:  # noqa: BLE001 — der Daumen ist Zusatz, nie Blocker
+                pass
+
+        return {
+            "days": max(1, tage),
+            "funnel": {
+                "active": aktiv,
+                "opened": geoeffnet[1],
+                "asked": gefragt_konten,
+                "saving": speichernd,
+            },
+            "calls": {
+                "with_model": mit_modell[0],
+                "without_model": ohne_modell[0],
+                "handed_over": weitergereicht[0],
+                "opened": geoeffnet[0],
+            },
+            "timeline": verlauf,
+            "pages": oben(seiten, 15),
+            "elements": oben(elemente, 15),
+            "questions": sorted(fragen.values(), key=lambda f: -f["n"])[:50],
+            "feedback": daumen,
+            # Der Anstupser ist noch nicht gebaut; die drei Zahlen stehen
+            # deshalb auf 0 und die Oberfläche sagt das. Sie hier schon zu
+            # lesen kostet nichts und erspart später eine Vertragsänderung.
+            "nudge": {
+                "shown": zahl("assistant_nudge_shown")[0],
+                "accepted": zahl("assistant_nudge_accepted")[0],
+                "dismissed": zahl("assistant_nudge_dismissed")[0],
+            },
+        }
 
     def ereignisse(self, tage: int = 30) -> dict:
         """Was in den letzten ``tage`` Tagen wie oft passiert ist.
