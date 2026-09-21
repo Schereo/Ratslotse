@@ -921,3 +921,76 @@ def test_ein_slug_auf_der_falschen_seite_wird_nicht_aufgeloest():
     block = lotti._record_block(_MitPersonUndFeld(), lotti.Screen(
         route="/council/decision", refs={"slug": "anne-beispiel"}))
     assert "Anne Beispiel" not in block
+
+
+# --- 11. Der Anzeigename kommt nicht aus der Seite (B2) ---------------------
+#
+# Auf `/dashboard` ist die `h1` ein Gruß mit dem Anzeigenamen („Moin,
+# Ratsfrau!"). Sie ging als `heading` in den Prompt und als Titel ins
+# gespeicherte Gespräch — Regel 9 („Anzeigename nie") war damit auf der
+# meistbesuchten Seite verletzt, nicht durch das Konto, sondern durch die
+# Seite. Der Client streicht den Namen inzwischen selbst; hier steht die
+# Sperre, die hält, wenn er es vergisst.
+
+def test_der_anzeigename_wird_aus_der_ueberschrift_gestrichen():
+    assert lotti.ohne_namen("Moin, Ratsfrau!", "Ratsfrau") == "Moin!"
+    assert lotti.ohne_namen("Moin, Anna!", "Anna Musterfrau") == "Moin!"
+
+
+def test_ein_kurzer_name_bleibt_stehen():
+    """**Sonst zerstört der Riegel die Seite, statt sie zu schützen.**
+
+    Ein Konto namens „Al" hätte aus „Alexanderfeld" ein „exanderfeld"
+    gemacht — Lotti erklärte einen Stadtteil, den es nicht gibt.
+    """
+    assert lotti.ohne_namen("Beschluss zu Alexanderfeld", "Al") \
+        == "Beschluss zu Alexanderfeld"
+
+
+def test_der_name_wird_nur_als_ganzes_wort_gestrichen():
+    """„Ina" steckt in „Inanspruchnahme", „Jan" in „Januar" — drei Zeichen
+    allein reichen als Schutz nicht, die Wortgrenze schon."""
+    assert lotti.ohne_namen("Inanspruchnahme im Januar", "Ina") \
+        == "Inanspruchnahme im Januar"
+    assert lotti.ohne_namen("Ina fragt", "Ina") == "fragt"
+
+
+def test_ein_reiner_gruss_ist_keine_ueberschrift():
+    """Bleibt nach dem Streichen nur „Moin!", sagt das nichts über die Seite —
+    dann lieber gar keine Überschrift und der Seitentitel als Rückfall."""
+    assert lotti.ueberschrift_ohne_konto("Moin, Ratsfrau!", "Ratsfrau") == ""
+    assert lotti.ueberschrift_ohne_konto("Schulden", "Ratsfrau") == "Schulden"
+
+
+@pytest.mark.einwilligung(1)
+def test_weder_prompt_noch_gespraechstitel_tragen_den_namen(
+        client, konto, monkeypatch):
+    """Der Wortlaut-Test am ganzen Weg: Ein Client, der die Überschrift roh
+    schickt, bekommt sie trotzdem nicht in den Prompt — und das gespeicherte
+    Gespräch heißt „Heute", nicht „Moin, …!"."""
+    konto["display_name"] = "Testperson Musterfrau"
+    gefangen: dict = {}
+
+    def merke(store, screen, question, *, ctx=None, verlauf=None, **k):
+        gefangen["ctx"] = ctx
+        gefangen["screen"] = screen
+        gefangen["question"] = question
+        return iter(["Antwort."])
+
+    monkeypatch.setattr(lotti, "explain_stream", merke)
+    r = client.post("/api/council/explain", json={
+        "route": "/dashboard",
+        "heading": "Moin, Testperson Musterfrau!",
+        "page_title": "Moin, Testperson Musterfrau!",
+        # Bewusst KEINE generische Frage: „Was sehe ich hier?" beantwortet
+        # der deterministische Seitenweg, und dann liefe kein Prompt.
+        "question": "Wo finde ich die Sitzungen dieser Woche?",
+        "conversation_id": None,
+    })
+    assert r.status_code == 200
+    msgs, _ = lotti.explain_messages(gefangen["screen"], gefangen["question"],
+                                     gefangen["ctx"])
+    assert "Musterfrau" not in msgs[0]["content"]
+    assert "Testperson" not in msgs[0]["content"]
+    titel = [g["title"] for g in client.ratslotse.gespraeche.values()]
+    assert titel == ["Heute"]

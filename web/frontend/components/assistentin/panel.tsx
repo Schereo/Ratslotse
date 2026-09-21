@@ -9,7 +9,8 @@ import { Mascot } from "@/components/mascot";
 import { AntwortText } from "@/components/qa-bausteine";
 import { apiUrl, authHeaders } from "@/lib/api";
 import {
-  auswahlText, kuerze, refsAus, routeAus, trenneWeiter, ueberschriftenPfad,
+  auswahlText, kuerze, refsAus, routeAus, seitenTitel, seitenUeberschrift,
+  trenneWeiter, ueberschriftenPfad,
   type Bildschirm,
 } from "@/lib/assistentin";
 import { useAuth } from "@/lib/auth";
@@ -121,6 +122,8 @@ export function LottiPanel({
   // Eine hier getroffene Wahl gilt trotzdem sofort, auch bevor `user` neu
   // geladen ist — deshalb nur nachziehen, was wirklich neu ist.
   const kontoWahl = user ? user.saves_conversations ?? null : undefined;
+  // Der Anzeigename geht NIE mit — er wird aus der Überschrift gestrichen.
+  const anzeigename = user?.display_name ?? null;
   useEffect(() => { setMerken(kontoWahl); }, [kontoWahl]);
   const [gespraechId, _setGespraechId] = useState<number | null>(null);
   const setGespraechId = useCallback((id: number | null) => {
@@ -219,11 +222,11 @@ export function LottiPanel({
 
     const bildschirm: Bildschirm = {
       route,
-      page_title: document.title.replace(/\s*[–|]\s*Ratslotse\s*$/, ""),
+      page_title: seitenTitel(document),
       // Der PFAD, nicht nur die `h1`: „Schulden › Rate-Treppe" sagt Lotti,
       // wo auf der Seite sie steht, ohne den Seitentext mitzuschicken. Er
       // wird beim Antippen berechnet — nur dort liegt der Knoten noch vor.
-      heading: baustein?.pfad || ueberschriftenPfad(null, document),
+      heading: baustein?.pfad || ueberschriftenPfad(null, document, anzeigename),
       element: baustein,
       selection: mitMarkierung ? markierung : "",
       refs,
@@ -348,7 +351,7 @@ export function LottiPanel({
             .map((t) => ({ question: t.question.slice(0, 200), answer: t.answer.slice(0, 300) })),
           screen: {
             route,
-            heading: document.querySelector("h1")?.textContent?.trim().slice(0, 200) ?? "",
+            heading: seitenUeberschrift(document, anzeigename).slice(0, 200),
             element_title: letzterBaustein.current?.title ?? "",
             element_text: (letzterBaustein.current?.text ?? "").slice(0, 600),
             selection: markierung.slice(0, 600),
@@ -454,7 +457,12 @@ export function LottiPanel({
   if (!offen) return null;
 
   const kontextZeile = [
-    document.querySelector("h1")?.textContent?.trim(),
+    // **Dieselbe Überschrift, die auch das Backend bekommt** — ohne den
+    // Anzeigenamen und ohne einen reinen Gruß. Bleibt nichts übrig (auf
+    // `/dashboard` ist die `h1` nur „Moin, …!"), steht hier der Seitentitel:
+    // „Du bist auf: Heute". Eine zweite Tabelle mit Seitennamen entsteht so
+    // nicht — der Titel steht ohnehin im Fenstertitel der Seite.
+    seitenUeberschrift(document, anzeigename) || seitenTitel(document),
     markierung ? `markiert: „${kuerze(markierung, 40)}“` : null,
   ].filter(Boolean).join(" · ");
 
@@ -519,7 +527,7 @@ export function LottiPanel({
 
       {/* Kontext-Pille: worüber reden wir gerade? */}
       {kontextZeile && (
-        <p className="border-b border-border/60 bg-muted/40 px-3 py-1.5 text-meta text-muted-foreground">
+        <p data-lotti-kontext className="border-b border-border/60 bg-muted/40 px-3 py-1.5 text-meta text-muted-foreground">
           <span className="font-medium text-foreground/80">Du bist auf:</span> {kontextZeile}
         </p>
       )}

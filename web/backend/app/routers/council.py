@@ -3650,10 +3650,18 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
     if not user.get("limits_unlocked"):
         assistant_limiter.check(request, subject=user["id"])
 
+    # **Der Anzeigename fällt hier heraus, nicht erst im Prompt.** Auf
+    # `/dashboard` ist die `h1` „Moin, <Name>!" — der Client streicht den Namen
+    # inzwischen selbst, aber der Client ist Höflichkeit und diese Zeile die
+    # Sperre (dieselbe Aufteilung wie beim Rechte-Gate). Gestrichen, nicht
+    # maskiert: ein „[NAME]" im Prompt wäre neuer Text, den das Modell
+    # vorlesen kann. Ab hier trägt `screen` den Namen nirgends mehr — weder im
+    # Prompt (`_screen_block`) noch im Titel des gespeicherten Gesprächs.
+    name = user.get("display_name")
     screen = lotti.Screen(
         route=route,
-        page_title=body.page_title,
-        heading=body.heading,
+        page_title=lotti.ohne_namen(body.page_title, name),
+        heading=lotti.ueberschrift_ohne_konto(body.heading, name),
         element_key=(body.element.key if body.element else None),
         element_title=(body.element.title if body.element else ""),
         element_text=(body.element.text if body.element else ""),
@@ -4053,6 +4061,11 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
     # Antwortweg etwas bringt.
     bildschirm = body.screen.model_dump() if body.screen else None
     if bildschirm:
+        # Derselbe Riegel wie bei `/explain`: Die Überschrift der Seite kann
+        # den Anzeigenamen tragen („Moin, <Name>!" auf `/dashboard`), und von
+        # hier geht sie in `qa.screen_block` — also in den Prompt.
+        bildschirm["heading"] = lotti.ueberschrift_ohne_konto(
+            bildschirm.get("heading") or "", user.get("display_name"))
         ratslotse.record_activity(user["id"], "assistant_to_ask", client_kind(request))
     # ZUSÄTZLICH, nicht statt: `ai_question` bleibt die Gesamtzahl, sonst
     # verlören alle bestehenden Auswertungen die Chip-Fragen.

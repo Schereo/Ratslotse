@@ -121,15 +121,91 @@ export function kuerze(text: string, max: number): string {
   return [...sauber].slice(0, max).join("").trimEnd() + " …";
 }
 
+/** Ein Name ist erst ab drei Zeichen ein Name.
+ *
+ *  **Sonst zerstört er die Seite, statt sich zu schützen:** Ein Konto, das
+ *  „Al" heißt, hätte aus „Alexanderfeld" ein „exanderfeld" gemacht — und
+ *  Lotti hätte über einen Stadtteil geredet, den es nicht gibt. Dieselbe
+ *  Grenze steht im Backend (`council/assistant.py::ohne_namen`); laufen die
+ *  beiden auseinander, streicht der eine, was der andere stehen lässt.
+ */
+const NAME_MIN = 3;
+
+/** Regex-Sonderzeichen entschärfen — ein Anzeigename ist freier Text. */
+function maskiere(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Den Anzeigenamen des Kontos aus einem Seitentext streichen.
+ *
+ * **Warum überhaupt.** Auf `/dashboard` ist die `h1` „Moin, Ratsfrau!" — der
+ * Anzeigename steht also in der Überschrift, und die geht als `heading` ans
+ * Backend, in die Kontext-Pille und in den Titel des gespeicherten Gesprächs.
+ * Regel 9 des Assistentin-Plans („Anzeigename, E-Mail, Rolle als Wort: nie")
+ * war damit auf der meistbesuchten Seite verletzt — nicht durch das Konto,
+ * sondern durch die Seite.
+ *
+ * **An den Wortgrenzen**, nicht als blinder Textersatz: „Ina" steckt in
+ * „Inanspruchnahme", „Jan" in „Januar". Ein Buchstabe davor oder dahinter
+ * heißt: Das ist ein anderes Wort.
+ */
+export function ohneNamen(text: string, name?: string | null): string {
+  const roh = (name ?? "").trim();
+  if (!text || roh.length < NAME_MIN) return text;
+  // Jeder Bestandteil einzeln: „Anna Musterfrau" steht in der Überschrift
+  // oft nur als „Anna". Kurze Teile („de", „van") bleiben stehen.
+  const teile = [roh, ...roh.split(/\s+/)].filter((t) => t.length >= NAME_MIN);
+  let aus = text;
+  for (const teil of teile) {
+    aus = aus.replace(new RegExp(`(^|[^\\p{L}])${maskiere(teil)}(?![\\p{L}])`, "giu"), "$1");
+  }
+  // Was der Name hinterlässt: „Moin, !" → „Moin!"
+  return aus.replace(/\s+([,;:!?.])/g, "$1").replace(/[,;:]\s*([!?.])/g, "$1")
+    .replace(/\s{2,}/g, " ").trim();
+}
+
+/** Eine Überschrift, die nur grüßt — „Moin!", „Hallo!", „Guten Morgen!". */
+const GRUSS_RE = /^(moin|hallo|hi|hey|guten (morgen|tag|abend)|willkommen)\b[\s!.,…]*$/i;
+
+/**
+ * Die Seitenüberschrift, wie Lotti sie sehen darf.
+ *
+ * Die `h1` ohne den Anzeigenamen — und ist danach nur noch ein Gruß übrig,
+ * gar nichts: „Moin!" sagt nicht, auf welcher Seite jemand steht. Das
+ * Fenster schickt dann `heading = ""`, und das Backend fällt auf den
+ * Seitentitel zurück (dort „Heute").
+ */
+export function seitenUeberschrift(dok: Document, name?: string | null): string {
+  const h1 = ohneNamen(dok.querySelector("h1")?.textContent?.trim() ?? "", name);
+  return GRUSS_RE.test(h1) ? "" : h1;
+}
+
+/**
+ * Der Titel des Browserfensters ohne den Namen der Anwendung.
+ *
+ * Er ist der Ersatz für eine Seite, deren `h1` nur grüßt — und die einzige
+ * Stelle, an der der Client den kuratierten Seitennamen bekommt, ohne die
+ * Titel aus `kern/knowledge.py` ein zweites Mal zu führen. Deshalb trägt
+ * `/dashboard` seit diesem Riegel ein eigenes `metadata.title = "Heute"`.
+ */
+export function seitenTitel(dok: Document): string {
+  return (dok.title ?? "").replace(/\s*[–—|]\s*Ratslotse\s*$/, "").trim();
+}
+
 /**
  * Der Überschriften-Pfad über einem Element: „Schulden › Rate-Treppe".
  *
  * Gesucht wird die nächste Überschrift ÜBER dem Element (in Dokument-
  * reihenfolge rückwärts) und die `h1` der Seite. Beides zusammen sagt
  * Lotti, wo auf der Seite sie gerade ist — ohne den Seitentext mitzuschicken.
+ *
+ * `name` ist der Anzeigename des Kontos; er wird gestrichen (s.
+ * :func:`seitenUeberschrift`).
  */
-export function ueberschriftenPfad(el: Element | null, dok: Document): string {
-  const h1 = dok.querySelector("h1")?.textContent?.trim() ?? "";
+export function ueberschriftenPfad(el: Element | null, dok: Document,
+                                   name?: string | null): string {
+  const h1 = seitenUeberschrift(dok, name);
   if (!el) return kuerze(h1, 200);
   const koepfe = [...dok.querySelectorAll("h2, h3")];
   let naechster = "";
@@ -139,7 +215,7 @@ export function ueberschriftenPfad(el: Element | null, dok: Document): string {
       naechster = k.textContent?.trim() ?? "";
     }
   }
-  const teile = [h1, naechster].filter(Boolean);
+  const teile = [h1, ohneNamen(naechster, name)].filter(Boolean);
   return kuerze(teile.join(" › "), 200);
 }
 
