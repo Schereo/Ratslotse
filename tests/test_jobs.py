@@ -354,3 +354,49 @@ def test_nachsichtige_schritte_gibt_es_wirklich():
 
     namen = {name for name, _ in we.STEPS}
     assert set(we.NACHSICHTIG) <= namen, set(we.NACHSICHTIG) - namen
+
+
+# ---------------------------------------------- Ein absichtlich stiller Job
+
+def test_ein_pausierter_job_ist_kein_befund():
+    """Sein Schweigen ist der gewollte Zustand.
+
+    Ohne dieses Feld hieße „Cron aus" entweder „jeden Tag eine Mail, dass er
+    schweigt" (`check_herzschlag.py` meldet `stale` und `unknown`) oder
+    „Eintrag aus der Registry löschen" — und beim Wiedereinschalten fiele
+    niemandem auf, dass er fehlt. Anlass war `check_cities` am 20.09.2026:
+    Der Städtevergleich ist noch nicht ausgeliefert und stand trotzdem für
+    rund 70 % der Modellkosten.
+    """
+    from kern.jobs import zustand
+
+    job = {"key": "x", "max_age_h": 1, "pausiert": "aus Gründen"}
+    assert zustand(job, None) == ("pausiert", None)
+    # Auch mit einem uralten Lauf: Die Ampel darf daraus keinen Ausfall machen.
+    alt = {"started_at": "2020-01-01T00:00:00", "status": "ok"}
+    assert zustand(job, alt)[0] == "pausiert"
+    # Und ohne das Feld bleibt alles beim Alten.
+    assert zustand({"key": "x", "max_age_h": 1}, alt)[0] == "stale"
+
+
+def test_der_herzschlag_weckt_niemanden_wegen_eines_pausierten_jobs():
+    """Der eine Ort, an dem `pausiert` wirklich zählt — sonst wäre die Pause
+    teurer als der Job."""
+    quelltext = (Path(__file__).resolve().parents[1]
+                 / "scripts" / "check_herzschlag.py").read_text()
+    assert '("stale", "unknown")' in quelltext, (
+        "wenn sich die Liste ändert, muss 'pausiert' ausdrücklich draußen "
+        "bleiben — sonst meldet der Herzschlag einen Job, den jemand "
+        "absichtlich abgeschaltet hat")
+
+
+def test_pausierte_jobs_tragen_ihren_grund():
+    """Eine Pause ohne Begründung ist eine Leiche: Niemand weiß mehr, woran
+    sie hing und wann sie endet."""
+    for job in JOBS:
+        grund = job.get("pausiert")
+        if grund is None:
+            continue
+        assert isinstance(grund, str) and len(grund) > 20, (
+            f"{job['key']}: `pausiert` braucht einen Satz, der sagt, warum — "
+            "und woran man merkt, dass er wieder anlaufen kann")

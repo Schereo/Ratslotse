@@ -47,6 +47,7 @@ from council.cities.evidence import (
     OLDENBURG_STECKBRIEF, Evidence, cluster_zeile, evidence_for)
 from council.cities.store import CitiesStore
 from kern import llm, prompts
+from kern.stopp import Stopp
 
 if TYPE_CHECKING:
     from council.store import CouncilStore
@@ -57,7 +58,13 @@ logger = logging.getLogger("council.cities.fit")
 #: für den Wochen-Cron; ein BACKFILL über den ganzen Bestand braucht mehr —
 #: 9.675 Kandidaten mal drei Stimmen sind bei vier Arbeitern Tage statt
 #: Stunden. Über die Umgebung, damit ein Nachlauf nicht Code ändern muss.
-WORKERS = int(os.environ.get("CITIES_FIT_WORKERS", "4"))
+#: Vier waren es bis 20.09.2026 — und ein Urteil dauert rund 30 Sekunden
+#: (`batch_size=1`, drei Stimmen je Vorlage). 3.000 Urteile brauchten damit
+#: 6,5 Stunden Wanduhr. Acht halbieren das, ohne einen Cent mehr zu kosten:
+#: Die Rechnung hängt an der Zahl der Vorlagen, nicht an der Gleichzeitigkeit.
+#: Obergrenze ist das Ratenlimit von OpenRouter, nicht die VM — die Arbeiter
+#: warten fast nur.
+WORKERS = int(os.environ.get("CITIES_FIT_WORKERS", "8"))
 
 #: Wie viele Suchwort-Aufrufe gleichzeitig unterwegs sind — und warum das
 #: ein eigener Regler ist. Die Belegsammlung sieht nach Rechenarbeit aus
@@ -348,8 +355,15 @@ def _probe(main: CitiesStore, rats: CouncilStore, papiere: list[dict],
 
 def run(main: CitiesStore, rats: CouncilStore, ann: Annotator,
         model: str, body_id: str | None = None, limit: int | None = None,
-        workers: int = WORKERS, probe_after: int | None = None) -> dict:
-    """Jede übertragbare fremde Vorlage einmal gegen Oldenburg halten."""
+        workers: int = WORKERS, probe_after: int | None = None,
+        stopp: Stopp | None = None, nur_neu: bool = False) -> dict:
+    """Jede übertragbare fremde Vorlage einmal gegen Oldenburg halten.
+
+    ``stopp`` wird an beiden Stapelgrenzen gefragt — beim Sammeln der Belege
+    und beim Urteilen (s. ``kern/stopp.py``). ``nur_neu`` lässt aus, was nur
+    ein Versionssprung offen gemacht hat; das ist ein Backfill
+    (``cities_backfill.py --run --stage annotate``) und kein Wochenlauf.
+    """
     einordnung = main.annotations_for("classify", "2")
     aufwand = main.annotations_for("effort", "1")
     kandidaten = candidates_for(main, body_id)
@@ -366,8 +380,38 @@ def run(main: CitiesStore, rats: CouncilStore, ann: Annotator,
     # seit 09.09.2026 selbst gegen sie, statt die Tabelle `neighbors` zu
     # lesen — die hält je Objekt nur die acht nächsten über ALLE Städte.
     papier_matrix = main.paper_matrix(model, "oldenburg")
-    logger.info("fit: %s Oldenburger Textabschnitte, %s Vorlagen im Speicher",
-                len(matrix[0]), len(papier_matrix[0]))
+    # Der Zwischenspeicher der Suchwörter (`evidence_terms`): am Stück
+    # gelesen, blockweise geschrieben. Er spart nicht nur Aufrufe — er macht
+    # die Arbeitsliste STABIL. Die Wörter gehen in den `source_hash` ein, und
+    # ein Modell antwortet auch bei `temperature=0` nicht garantiert gleich;
+    # ohne Zwischenspeicher urteilt `fit` Vorlagen neu, an denen sich
+    # inhaltlich nichts getan hat.
+    gespeicherte_begriffe = main.evidence_terms()
+    begriffs_sperre = threading.Lock()
+    frische_begriffe: list[tuple[str, str, list[str]]] = []
+    logger.info("fit: %s Oldenburger Textabschnitte, %s Vorlagen im Speicher, "
+                "%s Suchwort-Sätze gespeichert",
+                len(matrix[0]), len(papier_matrix[0]), len(gespeicherte_begriffe))
+
+    def begriffe_fuer(p: dict) -> list[str]:
+        klasse = einordnung.get(p["id"]) or {}
+        quelle = beleg_modul.terms_hash(klasse, p)
+        bekannt = gespeicherte_begriffe.get(p["id"])
+        if bekannt and bekannt[0] == quelle:
+            return bekannt[1]
+        # Über das MODUL gerufen, nicht als importierter Name: `evidence_for`
+        # tut es auch so, und ein Prüfstand, der `evidence.search_terms`
+        # ersetzt, träfe eine hier festgehaltene Kopie sonst nicht.
+        woerter = beleg_modul.search_terms(klasse, p)
+        # Den Notnagel NICHT einfrieren: Fällt der Modellaufruf aus, liefert
+        # `search_terms` die Wörter des Instruments. Die gehören nicht in den
+        # Zwischenspeicher — sonst macht ein einzelner Ausfall den schlechteren
+        # Stand dauerhaft, und niemand sieht es je wieder.
+        if woerter and woerter != beleg_modul.woerter_des_instruments(klasse):
+            with begriffs_sperre:
+                frische_begriffe.append((p["id"], quelle, woerter))
+        return woerter
+
     belege_je: dict[str, list[Evidence]] = {}
     cluster_je: dict[str, str] = {}
     # Der Vorlagentext, hier und nicht im Arbeiter. Siehe `texte_je` unten.
@@ -381,9 +425,12 @@ def run(main: CitiesStore, rats: CouncilStore, ann: Annotator,
         # tut es auch so, und ein Prüfstand, der `evidence.search_terms`
         # ersetzt, träfe eine hier festgehaltene Kopie sonst nicht.
         with ThreadPoolExecutor(max_workers=TERM_WORKERS) as pool:
-            begriffe_je = list(pool.map(
-                lambda p: beleg_modul.search_terms(einordnung.get(p["id"]) or {}, p),
-                block))
+            begriffe_je = list(pool.map(begriffe_fuer, block))
+        # Blockweise schreiben und nicht am Ende: Tritt der Lauf gleich zur
+        # Seite, ist die Arbeit dieses Blocks trotzdem bezahlt und behalten.
+        with begriffs_sperre:
+            stand_neu, frische_begriffe = frische_begriffe, []
+        main.put_evidence_terms(stand_neu)
         for p, begriffe in zip(block, begriffe_je):
             klasse = einordnung.get(p["id"]) or {}
             belege = evidence_for(main, rats, p, klasse, model,
@@ -396,9 +443,19 @@ def run(main: CitiesStore, rats: CouncilStore, ann: Annotator,
                                           cluster_je[p["id"]], aufwand.get(p["id"]))
         logger.info("  Belege %s/%s", min(start + TERM_BLOCK, len(kandidaten)),
                     len(kandidaten))
+        # Auch HIER, nicht erst beim Urteilen: Das Sammeln der Suchwörter ist
+        # selbst ein Modelllauf über alle Kandidaten (20.09.2026: 10.315
+        # Aufrufe). Ein Stopp, der erst danach greift, käme für einen
+        # wartenden Deploy Stunden zu spät.
+        abbruch = stopp.grund() if stopp else None
+        if abbruch:
+            stand_leer = _leer()
+            stand_leer[f"abgebrochen_{abbruch.schluessel}"] = 1
+            logger.info("fit: %s", abbruch.text)
+            return stand_leer
 
     offen = main.annotations_missing("paper", ann.key, ann.version, body_id=body_id,
-                                     source_hashes=hashes)
+                                     source_hashes=hashes, nur_neu=nur_neu)
     offen = [p for p in offen if p["id"] in belege_je]
     if limit:
         offen = offen[:limit]
@@ -535,6 +592,7 @@ def run(main: CitiesStore, rats: CouncilStore, ann: Annotator,
 
     logger.info("fit/%s: %s Vorlagen zu beurteilen", ann.version, len(offen))
     puffer: list[tuple[str, dict, float]] = []
+    abbruch = None
     with ThreadPoolExecutor(workers) as pool:
         for n, ergebnis in enumerate(pool.map(eine, offen), 1):
             if ergebnis:
@@ -545,6 +603,14 @@ def run(main: CitiesStore, rats: CouncilStore, ann: Annotator,
             if n % 50 == 0:
                 logger.info("  %s/%s · %.0fs · $%.4f", n, len(offen),
                             time.time() - t0, stand["cost_usd"])
+            abbruch = stopp.grund() if stopp else None
+            if abbruch:
+                # `pool.map` hat ALLE Vorlagen sofort eingereicht; ohne
+                # `cancel_futures` dauerte das Aufhören so lange wie das
+                # Weitermachen. Das Geschriebene bleibt, der nächste Lauf
+                # macht weiter — die Arbeitsliste fragt „was fehlt noch?".
+                pool.shutdown(wait=False, cancel_futures=True)
+                break
             if n == (PROBE_NACH if probe_after is None else probe_after):
                 fehlend = _probe(main, rats, stichprobe(offen), einordnung, model,
                                  matrix, papier_matrix, stand)
@@ -554,6 +620,9 @@ def run(main: CitiesStore, rats: CouncilStore, ann: Annotator,
                         "Der Unterbau ist unvollständig — erst `cities_backfill.py "
                         "--run --stage index --stage cluster`, dann neu urteilen.")
     schreiben(puffer)
+    if abbruch:
+        stand[f"abgebrochen_{abbruch.schluessel}"] = 1
+        logger.info("fit: %s", abbruch.text)
 
     stand["seconds"] = round(time.time() - t0)
     logger.info("fit fertig: %s Urteile, %s ohne Belege, %s verworfen, $%.4f, %ss",

@@ -5720,7 +5720,7 @@ export interface components {
              * State
              * @enum {string}
              */
-            state: "ok" | "stale" | "error" | "unknown";
+            state: "ok" | "stale" | "error" | "unknown" | "pausiert";
             /** Steps */
             steps: components["schemas"]["AdminJobStep"][];
         };
@@ -20944,4 +20944,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 473b0cd52694372d464dfcfaeee8767d070430bd8ebb1cf57b1794e450492070
+// vertrag-sha256: 2211af94dffabd2a492491201149554b2de22a00cdb2e66d03434d48b0d5f474

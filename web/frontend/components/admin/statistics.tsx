@@ -664,6 +664,9 @@ const JOB_STATE: Record<AdminJob["state"], { dot: string; label: string }> = {
   stale: { dot: "bg-amber-500", label: "überfällig" },
   error: { dot: "bg-red-500", label: "fehlgeschlagen" },
   unknown: { dot: "bg-muted-foreground/40", label: "noch kein Lauf erfasst" },
+  // Absichtlich abgeschaltet — sein Schweigen ist der gewollte Zustand und
+  // darf nicht wie ein Ausfall aussehen (kern/jobs.py, Feld `pausiert`).
+  pausiert: { dot: "bg-muted-foreground/40", label: "pausiert" },
 };
 
 /** Cron-Übersicht: was läuft wann, wie lange, und was kam dabei heraus. */
@@ -692,7 +695,7 @@ export function JobsSection() {
 
   const auffaellig = data.filter(jobAuffaellig);
   const ohneLauf = data.filter((j) => j.state === "unknown");
-  const order = { error: 0, stale: 1, unknown: 2, ok: 3 };
+  const order = { error: 0, stale: 1, unknown: 2, ok: 3, pausiert: 4 };
   const prioritaet = (job: AdminJob) => job.state === "ok" && jobAuffaellig(job) ? 1.5 : order[job.state];
   const sichtbar = [...(filter === "issues" ? auffaellig : filter === "unknown" ? ohneLauf : data)].sort((a, b) => prioritaet(a) - prioritaet(b));
   return (

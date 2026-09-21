@@ -20,6 +20,25 @@ Objekte ohnehin, ein zweiter Blick kostet also nur Abrufe, keine Zeilen.
 
 **Oldenburg läuft ohne Zeitfenster und ohne Netz** — der Adapter liest die
 Rats-Datenbank, die der tägliche Protokoll-Cron ohnehin füllt.
+
+**Der Wochenlauf urteilt nur über NEUES** (``nur_neu=True``). Ein
+Versionssprung in ``council/cities/annotators.py`` entwertet sonst
+stillschweigend den ganzen Bestand: Am 15.09.2026 hob #1370 den
+``fit``-Annotator von 3 auf 4, und der Sonntag darauf urteilte 9.560 Vorlagen
+neu — vierzehn Stunden Laufzeit, drei bis vier Sonntage insgesamt, rund
+sechs Dollar, und entschieden hatte das niemand. Wie viele Urteile eine
+ältere Version tragen, steht jetzt als Kennzahl ``veraltet_<annotator>`` im
+Lauf. Nachgeholt wird so ein Bestand ausdrücklich von Hand::
+
+    python scripts/cities_backfill.py --run --stage annotate
+
+Geänderte Vorlagentexte bleiben auch im Wochenlauf dabei — das ist neuer
+Inhalt, kein neuer Maßstab.
+
+**Und er hört von selbst auf** (``kern/stopp.py``): wenn ein Deploy wartet
+(``data/.deploy-wartet``) oder ``CITIES_MAX_SECONDS`` um ist. Das
+Geschriebene bleibt, der nächste Lauf macht weiter — die Arbeitslisten
+fragen ohnehin „was fehlt noch?", nicht „wo war ich?".
 """
 from __future__ import annotations
 
@@ -39,6 +58,7 @@ from council.cities import default_paths, pipeline  # noqa: E402
 from council.cities.registry import active_bodies  # noqa: E402
 from council.cities.store import CitiesStore  # noqa: E402
 from kern.alerts import run_guarded  # noqa: E402
+from kern.stopp import aus_umgebung  # noqa: E402
 
 logger = logging.getLogger("check_cities")
 
@@ -57,18 +77,46 @@ ANNOTATE_MAX = int(os.environ.get("CITIES_ANNOTATE_MAX", "3000"))
 #: Stadt teilt: Nur dort zeigt die Karte das „Warum" überhaupt an.
 REASON_MAX = int(os.environ.get("CITIES_REASON_MAX", "400"))
 
+#: **Wie lange dieser Lauf höchstens dauern darf.** Der Deckel oben begrenzt
+#: die STÜCKZAHL, nicht die Uhr — und `fit` braucht rund 30 Sekunden je Urteil.
+#: Am 20.09.2026 lief der Sonntagslauf dadurch vierzehn Stunden (5:00 bis weit
+#: nach 19:00) und blockierte solange jeden Prod-Deploy: sechs an einem Tag.
+#: Vier Stunden reichen für einen gewöhnlichen Sonntag (13.09.2026: 449
+#: Urteile, 191 Einordnungen, 861 Aufwandsschätzungen) und machen aus dem
+#: Rückstau wieder das, was er sein soll — etwas, das über Wochen abgebaut
+#: wird. `0` hebt die Frist auf (für einen Nachlauf von Hand).
+MAX_SEKUNDEN = "CITIES_MAX_SECONDS"
+MAX_SEKUNDEN_VORGABE = 4 * 3600
+
 
 def main() -> dict:
     from datetime import date, timedelta
 
     db, files_dir, raw_dir = default_paths()
     seit = (date.today() - timedelta(days=RUECKSCHAU_TAGE)).isoformat()
+    # Zwei Gründe, freiwillig aufzuhören: Ein Deploy wartet, oder die Frist ist
+    # um. Beide werden an den Stapelgrenzen der langen Schleifen gefragt; das
+    # bereits Geschriebene bleibt, der nächste Lauf macht dort weiter.
+    stopp = aus_umgebung(db.parent, MAX_SEKUNDEN, MAX_SEKUNDEN_VORGABE)
     # Zahlen und Fehlertexte getrennt: So bleibt der Zähler-Teil ein
     # sauberes dict[str, int], und die Klartext-Gründe kommen erst am Ende dazu.
     zaehler = {"bodies": 0, "papers_new": 0, "files_fetched": 0, "files_failed": 0,
                "texts_new": 0, "errors": 0, "papers_total": 0}
     gruende: dict[str, str] = {}
     t0 = time.time()
+
+    def wartet() -> bool:
+        """Wartet jemand auf diesen Prozess? Dann keine Stufe mehr BEGINNEN.
+
+        Vor jeder Stufe neu gefragt und nicht einmal am Anfang: Die Frist kann
+        mitten im Index ablaufen, und ein Deploy kommt, wann er kommt.
+        """
+        grund = stopp.grund()
+        if grund:
+            zaehler[f"abgebrochen_{grund.schluessel}"] = 1
+            gruende["abgebrochen"] = grund.text
+            logger.info("%s", grund.text)
+        return grund is not None
 
     main_store = CitiesStore(db)
     try:
@@ -104,12 +152,18 @@ def main() -> dict:
                 zaehler["errors"] += 1
                 gruende[f"error_{spec.id}"] = f"{type(e).__name__}: {e}"
                 logger.warning("%s: %s", spec.id, e)
+            # Nach jeder Stadt: Eine Ernte ist Netzarbeit und dauert. Wer hier
+            # nicht nachsieht, lässt einen wartenden Deploy durch alle fünf
+            # Städte hindurch warten.
+            if wartet():
+                break
 
         # Einordnen läuft über ALLE Städte zusammen — der Deckel gilt für den
         # Lauf, nicht je Stadt, sonst bekäme die erste Stadt alles.
         try:
             for schluessel, ergebnis in pipeline.annotate(
-                    main_store, limit=ANNOTATE_MAX).items():
+                    main_store, limit=ANNOTATE_MAX, stopp=stopp,
+                    nur_neu=True).items():
                 zaehler["annotated"] = zaehler.get("annotated", 0) + ergebnis["annotated"]
                 zaehler["annotate_errors"] = (zaehler.get("annotate_errors", 0)
                                               + ergebnis["errors"])
@@ -118,9 +172,16 @@ def main() -> dict:
             zaehler["errors"] += 1
             gruende["error_annotate"] = f"{type(e).__name__}: {e}"
 
+        # Ab hier bekommt jede Stufe dieselbe Frage vorgeschaltet. Index und
+        # Cluster rechnen ohne Modell, aber nicht ohne Zeit — und wer wartet,
+        # wartet auf den PROZESS, nicht auf einen Schritt. Als Bedingung im
+        # Ausdruck und nicht als eingerückter Block: So bleiben die Stufen und
+        # ihre Begründungen da stehen, wo sie stehen.
+
         # Dann der Index: Er baut auf Text UND Einordnung auf.
         try:
-            for name, wert in pipeline.index_all(main_store).items():
+            for name, wert in ({} if wartet()
+                               else pipeline.index_all(main_store)).items():
                 zaehler[f"index_{name}"] = wert
         except Exception as e:  # noqa: BLE001
             zaehler["errors"] += 1
@@ -130,7 +191,8 @@ def main() -> dict:
         # sagt, was eine Idee ist) und liefern die Zahl, die kein Einzelurteil
         # liefern kann — in wie vielen Städten dieselbe Sache vorkommt.
         try:
-            for name, wert in pipeline.cluster_all(main_store).items():
+            for name, wert in ({} if wartet()
+                               else pipeline.cluster_all(main_store)).items():
                 zaehler[f"cluster_{name}"] = wert
         except Exception as e:  # noqa: BLE001
             zaehler["errors"] += 1
@@ -141,7 +203,8 @@ def main() -> dict:
         # eine Zeile weiter oben. Vorher gefragt, urteilte es ins Leere.
         try:
             for schluessel, ergebnis in pipeline.annotate(
-                    main_store, limit=ANNOTATE_MAX, nach_index=True).items():
+                    main_store, limit=ANNOTATE_MAX, nach_index=True, stopp=stopp,
+                    nur_neu=True).items():
                 zaehler["judged"] = zaehler.get("judged", 0) + ergebnis["annotated"]
                 for name in ("skipped_no_evidence", "hallucinated_evidence",
                              "claim_without_evidence"):
@@ -158,8 +221,9 @@ def main() -> dict:
             from council.cities.annotators import get as get_annotator
             from council.cities.clusters import CLUSTER_VERSION
             from council.cities.index import EMBED_MODEL
-            zaehler["group_status"] = main_store.rebuild_group_status(
-                EMBED_MODEL, CLUSTER_VERSION, get_annotator("fit").version)
+            if not wartet():
+                zaehler["group_status"] = main_store.rebuild_group_status(
+                    EMBED_MODEL, CLUSTER_VERSION, get_annotator("fit").version)
         except Exception as e:  # noqa: BLE001 — Kennzahl, nicht der Lauf
             gruende["error_group_status"] = f"{type(e).__name__}: {e}"
 
@@ -174,8 +238,8 @@ def main() -> dict:
             # keinen belastbaren Maßstab hat (s. dort). Ein Cron, der Geld
             # ausgibt, ohne dass jemand die Qualität messen kann, ist genau
             # das, was `gut_wenn` verhindern soll.
-            ergebnis = (reasons.run(main_store, limit=REASON_MAX)
-                        if get_annotator("reason").active
+            ergebnis = (reasons.run(main_store, limit=REASON_MAX, stopp=stopp)
+                        if get_annotator("reason").active and not wartet()
                         else {"annotated": 0, "grounded": 0, "cost_usd": 0.0})
             zaehler["reasons"] = ergebnis["annotated"]
             zaehler["reasons_grounded"] = ergebnis["grounded"]
@@ -193,7 +257,7 @@ def main() -> dict:
             from council.cities import pruefung
             from council.cities.index import EMBED_MODEL
 
-            befunde = pruefung.pruefe(main_store, EMBED_MODEL)
+            befunde = [] if wartet() else pruefung.pruefe(main_store, EMBED_MODEL)
             zaehler["implausibel"] = len(befunde)
             for b in befunde:
                 logger.warning("unplausibel: %s", b)
@@ -201,6 +265,21 @@ def main() -> dict:
         except Exception as e:  # noqa: BLE001 — eine Prüfung kippt den Lauf nicht
             zaehler["errors"] += 1
             gruende["error_pruefung"] = f"{type(e).__name__}: {e}"
+
+        # Was ein Versionssprung entwertet hat — als ZAHL im Lauf, nicht als
+        # Nebenwirkung, die erst in der Laufzeit des nächsten Sonntags auffällt.
+        try:
+            from council.cities.annotators import active_annotators
+            for ann in active_annotators("paper"):
+                veraltet = main_store.annotations_altversion(ann.key, ann.version)
+                if veraltet:
+                    zaehler[f"veraltet_{ann.key}"] = veraltet
+                    logger.warning(
+                        "%s: %s Urteile tragen eine aeltere Version als %s — "
+                        "Backfill faellig (cities_backfill.py --run --stage annotate)",
+                        ann.key, veraltet, ann.version)
+        except Exception as e:  # noqa: BLE001 — Kennzahl, nicht der Lauf
+            gruende["error_veraltet"] = f"{type(e).__name__}: {e}"
 
         nachher = {z["id"]: z["papers"] for z in main_store.stats()}
         zaehler["papers_new"] = sum(nachher.get(k, 0) - vorher.get(k, 0) for k in nachher)

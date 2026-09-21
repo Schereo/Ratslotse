@@ -32,6 +32,7 @@ from council.cities.annotators import USABLE, Annotator
 from council.cities.store import CitiesStore
 from council.topics import POLICY_FIELDS
 from kern import llm, prompts
+from kern.stopp import Grund, Stopp
 
 logger = logging.getLogger("council.cities.annotate")
 
@@ -114,8 +115,15 @@ def batch_text(rows: Sequence[dict], texte: dict[str, str], ann: Annotator) -> s
 
 
 def run(main: CitiesStore, ann: Annotator, body_id: str | None = None,
-        limit: int | None = None, workers: int = WORKERS) -> dict:
-    """Alles annotieren, was noch keine oder eine veraltete Annotation hat."""
+        limit: int | None = None, workers: int = WORKERS,
+        stopp: Stopp | None = None, nur_neu: bool = False) -> dict:
+    """Alles annotieren, was noch keine oder eine veraltete Annotation hat.
+
+    ``stopp`` wird an jeder Stapelgrenze gefragt (s. ``kern/stopp.py``): Wartet
+    ein Deploy oder ist die Frist um, hört der Lauf auf und behält, was schon
+    geschrieben ist. ``nur_neu`` lässt aus, was nur wegen eines
+    Versionssprungs offen ist — das ist ein Backfill und kein Wochenlauf.
+    """
     # Fenster und Vorlagenarten je Stadt — eine Regel, drei Aufrufer
     # (hier, `fit.candidates_for`, und der Bericht in `cities_backfill`).
     from council.cities import auswahl
@@ -134,7 +142,8 @@ def run(main: CitiesStore, ann: Annotator, body_id: str | None = None,
 
     offen = main.annotations_missing("paper", ann.key, ann.version, body_id=body_id,
                                      source_hashes=hashes,
-                                     since=f.since, kinds=f.kinds)
+                                     since=f.since, kinds=f.kinds,
+                                     nur_neu=nur_neu)
     if limit:
         offen = offen[:limit]
     if not offen:
@@ -217,6 +226,7 @@ def run(main: CitiesStore, ann: Annotator, body_id: str | None = None,
 
     chunks = [offen[i:i + ann.batch_size] for i in range(0, len(offen), ann.batch_size)]
     ausgelassen: list[str] = []
+    abbruch: Grund | None = None
     with ThreadPoolExecutor(workers) as pool:
         for n, (fertig, fehlend, fehler) in enumerate(pool.map(einen_batch, chunks), 1):
             schreiben(fertig)
@@ -227,6 +237,24 @@ def run(main: CitiesStore, ann: Annotator, body_id: str | None = None,
             if n % 20 == 0:
                 logger.info("  %s/%s Batches · %.0fs · $%.4f",
                             n, len(chunks), time.time() - t0, stand["cost_usd"])
+            abbruch = stopp.grund() if stopp else None
+            if abbruch:
+                # `pool.map` reicht ALLE Stapel sofort ein. Ohne
+                # `cancel_futures` liefe der Rest trotzdem zu Ende, und das
+                # Aufhören dauerte genauso lange wie das Weitermachen — dann
+                # wäre für einen wartenden Deploy nichts gewonnen. Die bereits
+                # LAUFENDEN Stapel (höchstens `workers`) werden noch fertig;
+                # ihr Ergebnis geht verloren, ihr Geld ist ausgegeben. Der
+                # Preis ist gemessen klein: acht Stapel gegen Stunden.
+                pool.shutdown(wait=False, cancel_futures=True)
+                break
+
+    if abbruch:
+        stand[f"abgebrochen_{abbruch.schluessel}"] = 1
+        logger.info("%s/%s: %s", ann.key, ann.version, abbruch.text)
+        stand["seconds"] = round(time.time() - t0)
+        stand["skipped"] = len(ausgelassen)
+        return stand
 
     # Nachlauf: Was das Modell ausgelassen hat, einzeln nachreichen. Im
     # Probelauf betraf das bis zu einem Viertel der Einträge.
