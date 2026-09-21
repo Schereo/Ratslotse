@@ -66,6 +66,22 @@ const STROM_GEPRUEFT = [
   })}\n\n`,
 ].join("");
 
+/** Eine Modell-Antwort, in der ein Fachwort aus dem Glossar steht.
+ *
+ *  **„Tilgung" tut es nicht**, so naheliegend es auf der Schulden-Seite wäre:
+ *  Das Glossar ist kuratiert (`kern/glossar.py`, 149 Begriffe) und kennt das
+ *  Wort nicht. Ein Test auf ein Wort, das gar kein Begriff ist, prüfte die
+ *  eigene Erwartung statt die Erkennung. */
+const ANTWORT_FACHWORT = "Die Stadt zahlt jedes Jahr zurück; eine Umschuldung ändert daran nichts.";
+
+const STROM_FACHWORT = [
+  `data: ${JSON.stringify({ type: "token", text: ANTWORT_FACHWORT })}\n\n`,
+  `data: ${JSON.stringify({
+    type: "done", mode: "explain", kind: "model", next: null,
+    glossary: ["Umschuldung"], timings: { total_ms: 900 },
+  })}\n\n`,
+].join("");
+
 async function stromStubben(page: Page, opts: { next?: string | null } = {}) {
   await page.route("**/api/council/explain", (route) =>
     route.fulfill({ status: 200, contentType: "text/event-stream", body: STROM(opts) })
@@ -384,6 +400,78 @@ test.describe("Lotti-Knopf und -Fenster", () => {
     expect(box.y + box.height).toBeGreaterThan(0);
     expect(rufe).toBe(0);
   });
+
+  test("nach einer Antwort steht ein Chip zum Fachwort — und er kostet nichts",
+    async ({ page }) => {
+      // Die Zusage dieses PRs: Die Anschlussfrage entsteht deterministisch aus
+      // dem, was das Fenster schon hat — hier aus dem Fachwort in der Antwort,
+      // erkannt mit derselben Regel wie die Unterstreichung darin
+      // (`lib/glossar-treffer.ts`). Und der Klick schickt den Begriff als
+      // `selection` mit: Genau dort sucht `deterministic_answer` nach einem
+      // Glossar-Eintrag und antwortet ohne Modell.
+      const gefragt: Record<string, unknown>[] = [];
+      await page.route("**/api/council/explain", async (route) => {
+        gefragt.push(route.request().postDataJSON());
+        await route.fulfill({
+          status: 200, contentType: "text/event-stream",
+          body: gefragt.length === 1 ? STROM_FACHWORT : STROM_GEPRUEFT,
+        }).catch(() => { /* Test ist schon zu Ende */ });
+      });
+      await page.goto("/dashboard");
+      await knopf(page).click();
+      await fenster(page).getByRole("button", { name: "Was sehe ich hier?" }).click();
+
+      const chip = fenster(page).getByRole("button", { name: "Was heißt Umschuldung?" });
+      await expect(chip).toBeVisible();
+      await chip.click();
+      await expect(fenster(page).getByText(GEPRUEFTE_ANTWORT)).toBeVisible();
+
+      expect(gefragt).toHaveLength(2);
+      expect(gefragt[1].question).toBe("Was heißt Umschuldung?");
+      expect(gefragt[1].selection).toBe("Umschuldung");
+      // Nichts zweimal: Der Begriff ist gefragt, der Chip ist weg.
+      await expect(fenster(page).getByRole("button", { name: "Was heißt Umschuldung?" }))
+        .toHaveCount(0);
+    });
+
+  test("auf einer Seite mit Bausteinen führt ein Chip zum nächsten",
+    async ({ page }) => {
+      const gefragt: Record<string, unknown>[] = [];
+      await page.route("**/api/council/explain", async (route) => {
+        gefragt.push(route.request().postDataJSON());
+        await route.fulfill({ status: 200, contentType: "text/event-stream", body: STROM() })
+          .catch(() => { /* Test ist schon zu Ende */ });
+      });
+      await page.goto("/haushalt/schulden");
+      // Erst die Daten, dann messen (dieselbe Falle wie bei den Anker-Tests).
+      await page.waitForLoadState("networkidle");
+      const anker = page.locator("[data-erklaer][data-erklaer-titel]");
+      test.skip(await anker.count() === 0,
+        "Diese Datenbank hat keine Haushaltsdaten — also auch keine Anker.");
+      const titel = (await anker.first().getAttribute("data-erklaer-titel"))!;
+      const key = (await anker.first().getAttribute("data-erklaer"))!;
+      // Der Chip nennt nur den NAMEN des Bausteins: Was hinter dem `·` steht,
+      // ist ein Stand („… · Stand 31.12.2024") und machte aus dem Chip einen
+      // zweizeiligen Klotz (`lib/assistentin.ts::chipTitel`). Geprüft wird
+      // deshalb der Anfang, nicht der ganze Titel.
+      const kurz = titel.split(" · ")[0].slice(0, 20);
+      const chipName = new RegExp(`^Erklär mir: ${kurz.replace(/[.*+?^${}()|[\]\\-]/g, "\\$&")}`);
+
+      await knopf(page).click();
+      await fenster(page).getByRole("button", { name: "Was sehe ich hier?" }).click();
+      const chip = fenster(page).getByRole("button", { name: chipName });
+      await expect(chip).toBeVisible();
+      await chip.click();
+      await expect.poll(() => gefragt.length).toBe(2);
+
+      // Geerntet wird genau dieser Baustein, mit seinem Schlüssel — derselbe
+      // Weg wie beim Abzeichen im Erklär-Modus.
+      const el = (gefragt[1] as { element?: { key?: string; text?: string } }).element!;
+      expect(el.key).toBe(key);
+      expect(el.text!.length).toBeGreaterThan(0);
+      // Und er wird nicht ein zweites Mal angeboten.
+      await expect(fenster(page).getByRole("button", { name: chipName })).toHaveCount(0);
+    });
 
   test("ohne beantwortete Einwilligung fragt Lotti nichts", async ({ page }) => {
     // Die Saat-Konten haben die Frage längst beantwortet — für diesen Fall
