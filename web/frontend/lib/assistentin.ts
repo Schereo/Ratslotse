@@ -336,3 +336,38 @@ export function trenneWeiter(text: string): { text: string; next: "ratsfrage" | 
   const ziel = text.slice(i + 7).trim().split(/\s/)[0]?.replace(/[.,;:]$/, "").toLowerCase();
   return { text: text.slice(0, i).trim(), next: ziel === "ratsfrage" ? "ratsfrage" : null };
 }
+
+/** Eine Runde, soweit die Daumen-Regel sie braucht. */
+export type BewertbareRunde = {
+  answer: string;
+  fehler?: boolean;
+  /** Der Modus aus dem `done`-Rahmen: `"explain"` (Modell) oder
+   *  `"deterministic"` (Glossar, Seiten-Wissen, Kurzfassung). Während des
+   *  Stroms `null` — dann steht der Daumen noch nicht. */
+  mode?: string | null;
+  /** Kam die Antwort aus dem Ratsarchiv (der zweite Antwortweg im Fenster)? */
+  ratsfrage?: boolean;
+};
+
+/**
+ * Bekommt diese Runde einen Daumen?
+ *
+ * **Nur unter einer Antwort, die ein Modell geschrieben hat** — Lottis
+ * Erklärung (`mode === "explain"`) und die Ratsantwort aus dem Fenster
+ * (`ratsfrage`, die denselben Weg wie „Frag den Rat" nimmt und dort seit
+ * jeher bewertbar ist).
+ *
+ * **Nicht unter deterministischen Antworten** (`mode === "deterministic"`:
+ * Glossar-Eintrag, Seiten-Wissen, „Lotti erklärt's einfach"). Die sind
+ * geprüfter Text, den das Fenster nur durchreicht; ein Daumen darunter
+ * bewertete das Glossar, nicht die Assistentin — und landete in derselben
+ * Quote wie ihre Erklärungen, die damit nicht mehr zu lesen wäre.
+ *
+ * Während des Stroms ist `mode` noch `null`: Der Daumen erscheint erst mit
+ * dem `done`-Rahmen, und das ist richtig so — bewerten kann man erst, was
+ * fertig dasteht.
+ */
+export function daumenZeigen(t: BewertbareRunde): boolean {
+  if (!t.answer || t.fehler) return false;
+  return t.ratsfrage === true || t.mode === "explain";
+}

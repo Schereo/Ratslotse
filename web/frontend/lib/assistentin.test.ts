@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  auswahlText, ernteElement, gedaechtnis, kuerze, ohneNamen, refsAus, routeAus,
-  seitenTitel, seitenUeberschrift, trenneWeiter, ueberschriftenPfad, zaesur,
+  auswahlText, daumenZeigen, ernteElement, gedaechtnis, kuerze, ohneNamen, refsAus,
+  routeAus, seitenTitel, seitenUeberschrift, trenneWeiter, ueberschriftenPfad, zaesur,
 } from "./assistentin";
 
 describe("routeAus", () => {
@@ -321,5 +321,34 @@ describe("zaesur", () => {
     // aber keinen Seitennamen.
     const turns = [t("/dashboard", "Heute"), t("/council/decision")];
     expect(zaesur(turns, 1)).toBe("/council/decision");
+  });
+});
+
+describe("daumenZeigen", () => {
+  it("steht unter einer Erklärung des Modells", () => {
+    expect(daumenZeigen({ answer: "Die Stadt baut …", mode: "explain" })).toBe(true);
+  });
+
+  it("steht NICHT unter geprüftem Text ohne Modell", () => {
+    // Glossar, Seiten-Wissen, „Lotti erklärt's einfach": Ein Daumen darunter
+    // bewertete das Glossar, nicht die Assistentin.
+    expect(daumenZeigen({ answer: "Ein Haushaltsplan ist …", mode: "deterministic" })).toBe(false);
+  });
+
+  it("steht auch unter einer Ratsantwort aus dem Fenster", () => {
+    // Der zweite Antwortweg nimmt denselben Weg wie „Frag den Rat" und ist
+    // dort seit jeher bewertbar; `mode` bleibt dabei leer.
+    expect(daumenZeigen({ answer: "Der Rat hat …", mode: null, ratsfrage: true })).toBe(true);
+  });
+
+  it("steht erst, wenn der Strom durch ist", () => {
+    // Während des Stroms steht die Antwort schon da, `mode` kommt erst mit
+    // dem `done`-Rahmen — bewerten kann man nur, was fertig ist.
+    expect(daumenZeigen({ answer: "Die Sta", mode: null })).toBe(false);
+    expect(daumenZeigen({ answer: "", mode: "explain" })).toBe(false);
+  });
+
+  it("steht nicht unter einer Fehlermeldung", () => {
+    expect(daumenZeigen({ answer: "Erklärung fehlgeschlagen.", mode: "explain", fehler: true })).toBe(false);
   });
 });

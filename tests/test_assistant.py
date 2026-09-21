@@ -1084,3 +1084,84 @@ def test_wie_viele_dagegen_ist_keine_archivfrage():
     assert not lotti.archivfrage("Wie viele haben dagegen gestimmt?")
     assert not lotti.archivfrage("Wie viele waren dagegen?")
     assert lotti.archivfrage("Wer hat dagegen gestimmt?")
+
+
+# --- 8. Der Daumen im Fenster (B6) ------------------------------------------
+
+def _daumen_store(tmp_path):
+    """Eine leere Rats- und Konto-Datenbank nebeneinander — wie im Betrieb.
+
+    Die Daumen stehen in ``council.sqlite``, die Auswertung läuft auf
+    ``ratslotse.sqlite``; ``lotti_auswertung`` liest die Rats-Datei
+    lesend dazu.
+    """
+    from council.store import CouncilStore
+    from kern.store import Store
+    rat = CouncilStore(tmp_path / "council.sqlite")
+    konto = Store(tmp_path / "ratslotse.sqlite")
+    return rat, konto
+
+
+def test_die_daumen_quote_zaehlt_nur_lottis_fenster(tmp_path):
+    """Der Reiter „Lotti" misst Lotti — nicht das Ratsgespräch.
+
+    Beide Flächen schreiben in dieselbe Tabelle; ohne den Filter auf
+    ``source`` stünde die Quote des Archivs unter Lottis Überschrift, und
+    „taugen ihre Erklärungen?" wäre nicht mehr zu beantworten.
+    """
+    rat, konto = _daumen_store(tmp_path)
+    rat.save_qa_feedback("Was sehe ich hier?", "Die Schulden …", "up", None,
+                         user_id=1, source="lotti")
+    rat.save_qa_feedback("Was heißt Kernhaushalt?", "Der Kern …", "down", "zu knapp",
+                         user_id=1, source="lotti")
+    rat.save_qa_feedback("Wie viel kostet das Stadion?", "Rund 30 …", "up", None,
+                         user_id=1, source="ask")
+    rat.save_qa_feedback("Und wer war dagegen?", "Die Fraktion …", "down", "daneben",
+                         user_id=2)  # Vorgabe: ask
+
+    d = konto.lotti_auswertung(30, council_db=str(tmp_path / "council.sqlite"))
+
+    assert d["feedback"]["up"] == 1 and d["feedback"]["down"] == 1
+    assert d["feedback"]["reasons"] == ["zu knapp"], "Ein Grund aus dem Archiv gehört nicht hierher"
+    rat.close()
+    konto.close()
+
+
+def test_dieselbe_frage_auf_zwei_seiten_sind_zwei_stimmen(tmp_path):
+    """„Was sehe ich hier?" steht als Chip unter JEDER Seite.
+
+    Mit dem alten Schlüssel (Konto + Frage) hätte ein Konto über alle Seiten
+    hinweg genau eine Lotti-Stimme gehabt, und jede weitere hätte die vorige
+    überschrieben — die Quote wäre dauerhaft zu klein gewesen, ohne dass
+    jemand es merkt. Unterschieden werden die Seiten am Antwort-Auszug.
+    """
+    rat, konto = _daumen_store(tmp_path)
+    rat.save_qa_feedback("Was sehe ich hier?", "Die Schulden …", "up", None,
+                         user_id=1, source="lotti")
+    rat.save_qa_feedback("Was sehe ich hier?", "Die Personen …", "up", None,
+                         user_id=1, source="lotti")
+    # Dieselbe Antwort nochmal: eine Meinungsänderung, keine zweite Stimme.
+    rat.save_qa_feedback("Was sehe ich hier?", "Die Schulden …", "down", "doch nicht",
+                         user_id=1, source="lotti")
+
+    d = konto.lotti_auswertung(30, council_db=str(tmp_path / "council.sqlite"))
+
+    assert d["feedback"]["up"] == 1 and d["feedback"]["down"] == 1
+    rat.close()
+    konto.close()
+
+
+def test_dieselbe_frage_in_beiden_flaechen_bleibt_getrennt(tmp_path):
+    """Eine Frage im Archiv und dieselbe im Fenster sind zwei Antworten."""
+    rat, konto = _daumen_store(tmp_path)
+    rat.save_qa_feedback("Was wurde beschlossen?", None, "up", None,
+                         user_id=1, source="ask")
+    rat.save_qa_feedback("Was wurde beschlossen?", None, "down", None,
+                         user_id=1, source="lotti")
+
+    zeilen = rat._conn.execute(
+        "SELECT source, rating FROM council_qa_feedback ORDER BY id").fetchall()
+
+    assert [(z["source"], z["rating"]) for z in zeilen] == [("ask", "up"), ("lotti", "down")]
+    rat.close()
+    konto.close()

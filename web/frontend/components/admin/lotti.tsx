@@ -104,11 +104,19 @@ export function LottiTab() {
 
       <section className="space-y-3">
         <AbschnittKopf titel="Was die Leute dazu sagen">
-          Daumen an Lottis Antworten. Der Grund steht nur da, wo jemand einen
-          getippt hat.
+          Daumen an Lottis Antworten — nur aus ihrem Fenster (<code>source =
+          lotti</code>), die des Ratsgesprächs stehen nicht darin. Der Grund
+          steht nur da, wo jemand einen getippt hat.
         </AbschnittKopf>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Zahl label="Daumen hoch" n={data.feedback.up} />
+          {/* Die Quote am Daumen-hoch: Zwei nackte Zahlen beantworten
+              „taugt das?" nicht — 12 zu 3 und 12 zu 40 sehen nebeneinander
+              gleich aus. Ohne eine einzige Stimme steht sie nicht da: Ein
+              „0 %" aus null Rückmeldungen wäre eine Behauptung. */}
+          <Zahl label="Daumen hoch" n={data.feedback.up}
+            note={data.feedback.up + data.feedback.down > 0
+              ? `${Math.round(data.feedback.up * 100 / (data.feedback.up + data.feedback.down))} % der Daumen`
+              : undefined} />
           <Zahl label="Daumen runter" n={data.feedback.down} />
           <Zahl label="Anstupser gezeigt" n={data.nudge.shown} />
           <Zahl label="davon angenommen" n={data.nudge.accepted} />

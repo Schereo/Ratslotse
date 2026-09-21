@@ -7,10 +7,11 @@ import { ArrowRight, RotateCcw, Sparkles, X } from "lucide-react";
 
 import { Mascot } from "@/components/mascot";
 import { AntwortText } from "@/components/qa-bausteine";
+import { FeedbackDaumen } from "@/components/feedback-daumen";
 import { apiUrl, authHeaders } from "@/lib/api";
 import {
-  auswahlText, gedaechtnis, kuerze, refsAus, routeAus, seitenName, seitenTitel,
-  seitenUeberschrift, trenneWeiter, ueberschriftenPfad, zaesur,
+  auswahlText, daumenZeigen, gedaechtnis, kuerze, refsAus, routeAus, seitenName,
+  seitenTitel, seitenUeberschrift, trenneWeiter, ueberschriftenPfad, zaesur,
   type Bildschirm,
 } from "@/lib/assistentin";
 import { useAuth } from "@/lib/auth";
@@ -627,6 +628,23 @@ export function LottiPanel({
                       Den Rat fragen
                       <ArrowRight className="h-3.5 w-3.5" aria-hidden />
                     </button>
+                  </div>
+                )}
+                {/* Die Turn-Fußzeile: Daumen nur unter einer Antwort, die ein
+                    MODELL geschrieben hat (B6 der zweiten Durchsicht). Der
+                    Endpunkt nimmt `source = "lotti"` seit PR 7 an — gezählt
+                    wurde bisher nur die Annahme, nie die Güte.
+
+                    **Deterministische Antworten bekommen keinen Daumen**
+                    (`mode === "deterministic"`: Glossar, Seiten-Wissen,
+                    „Lotti erklärt's einfach"). Das ist geprüfter, von
+                    Menschen bzw. in einem eigenen Lauf erzeugter Text, den
+                    das Fenster nur durchreicht; ein Daumen darunter bewertete
+                    das Glossar, nicht die Assistentin — und stünde in
+                    derselben Quote wie ihre Erklärungen. */}
+                {daumenZeigen(t) && (
+                  <div className="mt-1.5">
+                    <FeedbackDaumen question={t.question} answer={t.answer} source="lotti" />
                   </div>
                 )}
               </div>
