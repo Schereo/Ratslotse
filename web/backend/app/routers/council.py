@@ -4089,10 +4089,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 except Exception:  # noqa: BLE001 — Ausblick ist Zusatz, nie Blocker
                     pass
             # Hintergrund zu den genannten Objekten („Was ist die GSG?").
-            steckbriefe = qa.steckbriefe_fuer(store, q_suche)
-            if ort and ort.get("description"):
-                steckbriefe = [{"name": ort["name"],
-                                "description": ort["description"]}, *steckbriefe]
+            steckbriefe = qa.steckbriefe_mit_ort(
+                qa.steckbriefe_fuer(store, q_suche), ort)
             # Wie tragfähig ist der Fund? Deterministisch aus den Scores.
             lage = qa.beleglage(candidates)
             if anlagen_rows and not candidates:
@@ -4162,7 +4160,11 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                         # Der Hintergrund geht IMMER in die Antwort; als eigene
                         # Karte erscheint er nur, wenn die Antwort ihn nicht
                         # ohnehin wiederholt (Definitionsfragen, Tims Befund).
-                        "steckbriefe": [{"name": s["name"], "slug": s["slug"],
+                        # `slug` nur als Schlüssel der Karte — ein Eintrag
+                        # ohne eigenen slug (Katalogort) darf die Antwort
+                        # nicht kosten, deshalb mit Rückfallwert.
+                        "steckbriefe": [{"name": s["name"],
+                                         "slug": s.get("slug") or s["name"],
                                          "beschreibung": s["description"]}
                                         for s in steckbriefe]
                         if qa.steckbrief_karte_zeigen(q_suche) else []})
