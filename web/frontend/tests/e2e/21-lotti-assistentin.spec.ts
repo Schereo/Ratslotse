@@ -270,6 +270,110 @@ test.describe("Lotti-Knopf und -Fenster", () => {
     await expect(fenster(page)).toBeVisible();
   });
 
+  test("eine anderswo getroffene Einwilligung gilt auch hier", async ({ page }) => {
+    // Die Karte erschien ein zweites Mal, wenn man die Frage auf `/fragen`
+    // beantwortet hatte und danach Lotti öffnete: Das Fenster las den Stand
+    // des Kontos nur EINMAL, beim Einhängen.
+    let gefragt = false;
+    await page.route("**/api/auth/me", async (route) => {
+      try {
+        const antwort = await route.fetch();
+        const body = await antwort.json();
+        await route.fulfill({
+          json: { ...body, saves_conversations: gefragt ? 1 : null },
+        });
+      } catch {
+        await route.fallback().catch(() => { /* Test ist schon zu Ende */ });
+      }
+    });
+    await page.goto("/dashboard");
+    await knopf(page).click();
+    await expect(fenster(page).getByText(/Soll ich mir deine Gespräche merken/)).toBeVisible();
+
+    // Die Wahl fällt woanders — hier kommt sie nur als neuer Kontostand an.
+    gefragt = true;
+    await page.getByRole("button", { name: "Lotti schließen" }).click().catch(() => {});
+    await page.goto("/bookmarks");
+    await knopf(page).click();
+    await expect(fenster(page).getByText(/Soll ich mir deine Gespräche merken/)).toBeHidden();
+    await expect(fenster(page).getByRole("button", { name: "Was sehe ich hier?" }))
+      .toBeEnabled();
+  });
+
+  test("ein Lotti-Gespräch öffnet sich in ihrem Fenster, nicht im Ratsgespräch",
+    async ({ page }) => {
+      await page.route("**/api/council/conversations?**", async (route) => {
+        await route.fulfill({ json: {
+          saves_conversations: 1, total: 1, matches: 1, has_more: false,
+          conversations: [{ id: 77, title: "Schulden › Rate-Treppe",
+                            updated: new Date().toISOString(), n_turns: 1,
+                            kind: "lotti" }],
+        } });
+      });
+      await page.route("**/api/council/conversations/77", async (route) => {
+        await route.fulfill({ json: {
+          id: 77, title: "Schulden › Rate-Treppe", kind: "lotti",
+          updated: new Date().toISOString(),
+          turns: [{ question: "Was ist die Rate-Treppe?", answer: ANTWORT,
+                    sources: { route: "/haushalt/schulden", mode: "explain",
+                               glossary: ["Tilgung"], next: null } }],
+        } });
+      });
+      await page.goto("/fragen");
+      await page.getByRole("button", { name: /Gespräche/ }).first().click();
+      await expect(page.getByRole("dialog", { name: "Gespräche" })
+        .getByText("Mit Lotti ·").first()).toBeVisible();
+      // Der Titel selbst, nicht die Zeile drumherum: Über ihr liegt die
+      // Gruppen-Überschrift des Sheets und fängt den Klick ab.
+      await page.getByRole("dialog", { name: "Gespräche" })
+        .getByText("Schulden › Rate-Treppe", { exact: true }).click();
+      // Die Runde steht in LOTTIS Fenster …
+      await expect(fenster(page).getByText(ANTWORT)).toBeVisible();
+      // … und nicht im Ratsgespräch darunter.
+      await expect(page.locator("main").getByText(ANTWORT)).toBeHidden();
+    });
+
+  test("die Tastatur verdeckt das Fenster nicht", async ({ page }) => {
+    // **Eine echte Tastatur lässt sich hier nicht öffnen** — Chromium im Test
+    // kennt keine. Nachgestellt wird deshalb genau das, was sie auslöst: ein
+    // geschrumpfter `visualViewport`. Die Rechnung dahinter prüft
+    // `lib/tastatur.test.ts`; hier geht es um die Verdrahtung, also darum,
+    // dass das Fenster wirklich hochrückt und der Knopf verschwindet.
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.addInitScript(() => {
+      const hoerer: Record<string, (() => void)[]> = { resize: [], scroll: [] };
+      const falsch = {
+        height: window.innerHeight, offsetTop: 0,
+        addEventListener: (n: string, f: () => void) => { hoerer[n]?.push(f); },
+        removeEventListener: () => { /* im Test nie nötig */ },
+      };
+      Object.defineProperty(window, "visualViewport", { value: falsch, configurable: true });
+      (window as unknown as { tastaturAuf: (h: number) => void }).tastaturAuf = (h) => {
+        falsch.height = window.innerHeight - h;
+        hoerer.resize.forEach((f) => f());
+      };
+    });
+    await page.goto("/dashboard");
+    await knopf(page).click();
+    const vorher = (await fenster(page).boundingBox())!;
+
+    await page.evaluate(() => (window as unknown as
+      { tastaturAuf: (h: number) => void }).tastaturAuf(320));
+    await expect(knopf(page)).toBeHidden();
+    // Die Messung braucht einen eigenen Takt: Wer im selben Aufruf umstellt
+    // und misst, bekommt die alte Geometrie zurück und hält den Umbau
+    // fälschlich für wirkungslos (eine Stunde am 21.09.2026).
+    await expect.poll(async () => {
+      const b = await fenster(page).boundingBox();
+      return b ? Math.round(b.y + b.height) : 0;
+    }).toBeLessThan(420);
+    const nachher = (await fenster(page).boundingBox())!;
+    // Der untere Rand des Fensters liegt jetzt über der Tastatur — und damit
+    // auch die Eingabezeile, in die man gerade tippt.
+    expect(nachher.y + nachher.height).toBeLessThan(vorher.y + vorher.height - 300);
+    await expect(fenster(page).getByLabel("Frage an Lotti")).toBeVisible();
+  });
+
   test("ohne Schalter gibt es keinen Knopf", async ({ page }) => {
     await schalterAn(page, false);
     await page.goto("/dashboard");

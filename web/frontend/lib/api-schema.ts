@@ -8008,6 +8008,8 @@ export interface components {
         ConversationDetail: {
             /** Id */
             id: number;
+            /** Kind */
+            kind: string;
             /** Title */
             title: string;
             /** Turns */
@@ -8041,6 +8043,8 @@ export interface components {
         ConversationRow: {
             /** Id */
             id: number;
+            /** Kind */
+            kind: string;
             /** N Turns */
             n_turns: number;
             /** Title */
@@ -21419,4 +21423,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 1afcf0c1edf13f064a0e1c882c0959f228cbe25e9448c6f28747d0c173b8833f
+// vertrag-sha256: 696817fb2a46ec72815b146e594b141910b3ad107f8cd6d2b8bbb162d201e056

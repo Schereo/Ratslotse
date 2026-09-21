@@ -5732,6 +5732,10 @@
             "title": "Id",
             "type": "integer"
           },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
           "title": {
             "title": "Title",
             "type": "string"
@@ -5752,6 +5756,7 @@
           "id",
           "title",
           "updated",
+          "kind",
           "turns"
         ],
         "title": "ConversationDetail",
@@ -5818,6 +5823,10 @@
             "title": "Id",
             "type": "integer"
           },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
           "n_turns": {
             "title": "N Turns",
             "type": "integer"
@@ -5835,7 +5844,8 @@
           "id",
           "title",
           "updated",
-          "n_turns"
+          "n_turns",
+          "kind"
         ],
         "title": "ConversationRow",
         "type": "object"
