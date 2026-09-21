@@ -49,8 +49,16 @@ jobs:
           # auf Prod, 0.139 auf dev, in der CI wieder etwas Drittes).
           pip install -r requirements.txt -r requirements-dev.txt -c constraints.txt
 
+      # `-n auto` wie in `test.yml` und `scripts/pruefe.py` (pytest-xdist,
+      # steht in requirements-dev.txt). Es fehlte hier seit #1162, das die
+      # Parallelisierung eingeführt, aber diesen Workflow nicht mitgenommen
+      # hat — gemessen am Release 2.7.0 (21.09.2026): 7:25 seriell, während
+      # derselbe Lauf auf dem PR parallel gut zwei Minuten brauchte. Der Test
+      # ist dem Deploy vorgeschaltet, die fünf Minuten lagen also vor JEDEM
+      # Prod-Deploy. `tests/test_testlauf_parallel.py` hält die drei Aufrufe
+      # jetzt beieinander.
       - name: Run tests
-        run: python -m pytest tests/ -q
+        run: python -m pytest tests/ -q -n auto
 
   deploy:
     needs: test
