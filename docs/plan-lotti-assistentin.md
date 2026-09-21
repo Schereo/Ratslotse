@@ -19,6 +19,31 @@ Fragetyp-Registry) und die Docstrings von `kern/glossar.py`,
 `kern/seitenaufrufe.py`, `kern/features.py` und `web/frontend/components/haushalt/lotti-erklaert.tsx`
 — das sind die vier Bausteine, auf denen dieser Plan aufsetzt.
 
+> ## Nachtrag 21.09.2026, nach Tims Rückmeldung — die Form des Knopfs
+>
+> Tim, nachdem er den Plan gelesen hatte: „Ich hätte mir das fast eher als
+> dauerhaften floating Lotti-Knopf vorgestellt, den man jederzeit drücken
+> kann — so ähnlich wie die Sales-Seiten, wo man über das Produkt chatten
+> oder sich per Chatbot Hilfe holen kann."
+>
+> Der erste Entwurf hatte den schwebenden Knopf nur am Schreibtisch und auf
+> dem Handy ein Icon in der Kopfleiste, mit Verweis auf Design 9a③ („kein
+> FAB mehr"). Das war zu vorsichtig gelesen: 9a③ hat den **Navigations**-FAB
+> aus der Tab-Leiste genommen (den angehobenen „Fragen"-Knopf); ein
+> Chat-Knopf ist keine Navigation. PR 2, PR 6 und § 5 sind deshalb
+> umgeschrieben: **ein schwebender Lotti-Knopf unten rechts, auf jeder
+> Seite und jedem Gerät, der ein Chat-Fenster öffnet** — die Bauform, die
+> man von Intercom & Co. kennt: Der Knopf wird zum Schließen-Kreuz, das
+> Fenster sitzt über dem Knopf, der Verlauf bleibt beim Seitenwechsel,
+> Vorschlags-Chips stehen über dem Eingabefeld, eine Tipp-Anzeige läuft,
+> während Lotti schreibt.
+>
+> Was von den Sales-Bots **nicht** übernommen wird, bleibt Regel 5: Der
+> Knopf öffnet sich nie von selbst, keine Begrüßungs-Blase auf der Seite,
+> kein „1"-Abzeichen, kein „Kann ich helfen?" nach zehn Sekunden. Die
+> Begrüßung steht im Fenster, wenn man es öffnet. Wer das anders will, sagt
+> es — es ist ein Satz in `panel.tsx`, keine Architektur.
+
 ## 0. Der Auftrag
 
 Tim am 21.09.2026:
@@ -94,7 +119,7 @@ Endpunkte, zwei Kostenklassen:
 | `kern/seitenaufrufe.py::ROUTEN` | Positivliste aller Seiten, `normalisieren(pfad)` | dieselbe Liste bestimmt, welche Seite der Assistentin bekannt ist |
 | `components/tour.tsx` | `data-tour`-Anker, **8** Stück, „erstes SICHTBARES Element" | Vorbild für `data-erklaer` (PR 3) |
 | `components/lotti.tsx` | **31** Regungen (`erklaert`, `denkt`, `fragt`, `hat-idee`, …) | jede Regung an einen Zustand gebunden (§ 5) |
-| `components/ui/sheet.tsx` | Seiten `left` und `bottom` | PR 2 ergänzt `right` |
+| `components/ui/sheet.tsx` | Seiten `left` und `bottom` | bleibt unberührt: das Chat-Fenster ist kein Sheet und kein Dialog (Nachtrag) |
 | `components/command-palette.tsx` | Öffnen per Fenster-Ereignis, ⌘K | Muster für `openLottiPanel()` |
 | `qa-bausteine.tsx::AntwortText` | rendert Antworttext mit Fußnoten-Chips und Glossar | Renderer beider Antwortwege im Panel |
 | `web/backend/app/ratelimit.py::qa_limiter` | **10 Aufrufe je 600 s je Konto** | zu eng für Klicks; die Assistentin bekommt einen eigenen Zähler |
@@ -459,25 +484,49 @@ nichts (neuer Endpunkt, keine Änderung an bestehenden Formen).
 Panel mit dem Seitenkontext, drei Einstiegen und einem Eingabefeld. Der
 markierte Text bekommt einen Chip. Hinter dem Schalter `lotti-assistentin`.
 
-**Form** (gegen `DESIGNSPRACHE.md` gebaut; Anatomie in § 5 dieses Plans):
+**Form** (gegen `DESIGNSPRACHE.md` gebaut; Anatomie in § 5 dieses Plans;
+die Bauform ist Tims Wunsch aus dem Nachtrag — der Chat-Knopf, wie man
+ihn von Sales- und Hilfe-Seiten kennt):
 
-- **Desktop:** runder Knopf, 52 px, Lotti-Kopf (`BrandMark` aus
-  `components/brand.tsx`), `fixed bottom-6 right-6`, `z-40`, `shadow-lifted`
-  — dieselbe Ecke wie `BackToTop`, der dafür um die Knopfhöhe nach oben
-  rückt (`desk:bottom-[5.75rem]`), **nur wenn der Schalter an ist**. Das
-  Panel ist ein `Sheet side="right"` (neu in `ui/sheet.tsx`: `inset-y-0
-  right-0 w-[400px] max-w-[92vw]`), **nicht modal** (`modal={false}`, ohne
-  Scrim): Die Seite bleibt bedienbar, man kann weiterscrollen und in PR 3
-  Anker anklicken, während das Panel offen ist.
-- **Mobil (unter `desk`):** kein schwebender Knopf — die Tab-Leiste hat
-  bewusst keinen FAB mehr (Design 9a③), und über dem Composer auf `/fragen`
-  wäre er im Weg. Stattdessen der Lotti-Kopf in der `MobileTopbar` rechts
-  neben der Lupe (28 px, 44 px Bedienfläche). Das Panel ist das bestehende
-  `Sheet side="bottom"` (max 85 dvh), modal wie die Filter.
-- `PeekingChick` pausiert, solange das Panel offen ist (zwei Möwen in
-  derselben Ecke sind eine zu viel).
-- Der Knopf fehlt auf den Routen aus `OHNE_ERKLAERUNG` (Regel 9) und im
-  Druck (`print:hidden`).
+- **Der Knopf, überall gleich:** rund, 56 px (44 px Bedienfläche sind die
+  Pflicht, 56 der übliche Chat-Knopf), Lotti-Kopf (`BrandMark` aus
+  `components/brand.tsx`) auf Hafenblau, `shadow-lifted`, `fixed right-4
+  desk:right-6`, unten `bottom-[calc(var(--rl-unten)+0.75rem)] desk:bottom-6`
+  — dieselbe Variable, mit der `layout.tsx` den Inhalt über der Tab-Leiste
+  hält, keine zweite Zahl. Offen wird er zum Schließen-Kreuz (Ikone tauscht
+  mit `--takt-tipp`). `z-50`, damit er über Tab-Leiste (`z-40`) und
+  Andock-Composer liegt. `print:hidden`. Er fehlt **nur** auf den Routen aus
+  `OHNE_ERKLAERUNG` (Regel 9).
+- **Auf `/fragen`** bleibt er da („jederzeit"), muss aber über den
+  Andock-Composer: Die Fragen-Bühne setzt `--rl-composer` auf ihre gemessene
+  Composer-Höhe (`getBoundingClientRect`, `ResizeObserver`), der Knopf
+  rechnet die Variable in sein `bottom` ein. Am Schreibtisch liegt der
+  Composer auf der Lesespalte und der Knopf am Rand — kein Konflikt, aber
+  messen (Tablet hochkant, 834 px, Tims iPad-Befund vom 16.08. gilt).
+- **`BackToTop`** rückt über den Knopf: `bottom` = Knopf-Unterkante + 56 px +
+  0,5 rem, auf allen Breiten (heute mobil `bottom-[…+5rem] right-4`, am
+  Schreibtisch `bottom-14 right-6`; beide Zahlen weichen der Variablen des
+  Knopfs). `PeekingChick` pausiert, solange das Fenster offen ist, und lässt
+  die rechten 96 px der Unterkante frei.
+- **Das Fenster** ist kein Sheet und kein Dialog, sondern ein Chat-Fenster
+  über dem Knopf: am Schreibtisch `fixed right-6
+  bottom-[calc(1.5rem+56px+0.75rem)]`, 384 px breit, Höhe `min(640px,
+  100dvh - 8rem)`, Radius 16, `bg-card`, Rahmen, `shadow-lifted`, **nicht
+  modal** (kein Scrim; die Seite bleibt bedienbar, in PR 3 klickt man
+  Abzeichen bei offenem Fenster); Eintritt mit `--takt-buehne` von unten
+  (§ 7: „das Blatt fährt von unten ein"), Austritt `--takt-abgang`. Unter
+  `desk` füllt es die Fläche zwischen Kopfleiste und Knopf (`inset-x-2`,
+  `top-[calc(env(safe-area-inset-top)+4.5rem)]`), mit Scrim (`.scrim`) und
+  Wischen nach unten zum Schließen — auf dem Handy ist ein halbes Fenster
+  keins. Fokus geht beim Öffnen in den Composer, `Esc` schließt, der Fokus
+  kehrt zum Knopf zurück.
+- **Der Verlauf bleibt.** Das Fenster lebt in `app/(app)/layout.tsx`, also
+  über den Seiten: Wer navigiert, behält Turns und Eingabe, nur die
+  Kontext-Pille wechselt. Innerhalb des Tabs übersteht der Verlauf ein
+  Neuladen (`sessionStorage`, `ratslotse:lotti-verlauf`, ≤ 10 Turns, mit
+  `try/catch` wie `lib/qa-zuletzt.ts`); über den Tab hinaus nicht (PR 5
+  begründet, warum nichts gespeichert wird). An den Endpunkt gehen die
+  letzten drei.
 
 **Dateien.**
 
@@ -495,14 +544,16 @@ export function auswahlText(sel: Selection | null, wurzel: HTMLElement): string 
 export function trenneWeiter(text: string): { text: string; next: "ratsfrage" | null }
 ```
 
-`web/frontend/components/assistentin/knopf.tsx` — `LottiKnopf` (Desktop-
-Ecke und Topbar-Variante, beide dispatchen `ratslotse:lotti-oeffnen`; das
-Muster ist `openCommandPalette()`).
+`web/frontend/components/assistentin/knopf.tsx` — `LottiKnopf` (der
+schwebende Knopf; öffnet und schließt über das Fenster-Ereignis
+`ratslotse:lotti-oeffnen`, das Muster ist `openCommandPalette()`, damit
+auch die ⌘K-Palette in PR 5 ihn rufen kann).
 
-`web/frontend/components/assistentin/panel.tsx` — `LottiPanel`: liest
-`useFeature("lotti-assistentin")`, `usePathname()`, `useSearchParams()` (in
-`Suspense`, wie `BackToTop`); hält die Turns der Sitzung im Zustand (≤ 3,
-nicht persistiert); streamt `/council/explain` über `apiUrl()` +
+`web/frontend/components/assistentin/panel.tsx` — `LottiPanel`, das
+Chat-Fenster: liest `useFeature("lotti-assistentin")`, `usePathname()`,
+`useSearchParams()` (in `Suspense`, wie `BackToTop`); hält die Turns im
+Zustand und im `sessionStorage` des Tabs (≤ 10; an den Endpunkt gehen die
+letzten 3); streamt `/council/explain` über `apiUrl()` +
 `authHeaders()` mit demselben Rahmen-Parser wie `council-qa.tsx` (der Parser
 wird dafür nach `lib/sse.ts` gezogen, **nicht** kopiert — zwei Parser
 desselben Stroms sind der Fehler, gegen den `pruefe.py strom` gebaut ist);
@@ -522,26 +573,36 @@ der Markierung als Kontext und stellt ohne weitere Eingabe die Frage
 `web/frontend/components/assistentin/index.tsx` — `LottiAssistentin`,
 eingehängt in `app/(app)/layout.tsx` direkt hinter `<CommandPalette />`.
 
-`ui/sheet.tsx` (Seite `right`), `nav.tsx` (Topbar-Knopf), `back-to-top.tsx`
-(Versatz), `peeking-chick.tsx` (Pause über ein Fenster-Ereignis
-`ratslotse:lotti-offen`), `DESIGNSPRACHE.md` (§ 1 und § 5, Wortlaut in
+`app/(app)/fragen/view.tsx` (setzt `--rl-composer`), `back-to-top.tsx`
+(Versatz über den Knopf), `peeking-chick.tsx` (Pause über ein
+Fenster-Ereignis `ratslotse:lotti-offen`, rechte 96 px frei), `DESIGNSPRACHE.md` (§ 1 und § 5, Wortlaut in
 § 5 dieses Plans), Changelog-Fragment `changelog.d/lotti-assistentin.md`
 (`hinzugefuegt`).
 
-**Panel-Inhalt, von oben:** Kopf (Lotti 40 px, Regung nach Zustand;
-„Lotti"; Schließen) → Kontextzeile in Leserolle `meta`: „Du bist auf:
-Schulden · Rate-Treppe" (aus `page_title` und `heading`; mit Markierung
-zusätzlich „Markiert: ‚Verpflichtungsermächtigung …'") → drei Chips im
-Stil der Vorschlags-Chips (§ 6): **Was sehe ich hier?** · **Markierten
-Text erklären** (nur mit Markierung) · **Etwas auf der Seite zeigen**
-(erst ab PR 3 aktiv, davor nicht gerendert) → die Antwort(en) in
-`text-lese`, darunter je Turn die Chips **Den Rat fragen →** (immer; bei
-`next: "ratsfrage"` als Primäraktion, sonst als Ghost) und die
-Glossar-Begriffe aus `done.glossary` als stille Verweise → Composer wie in
-§ 5 der Designsprache (h 48, Radius 16, Funken-Icon), Platzhalter „Frag
-mich zu dieser Seite …" → Fußzeile in `text-hinweis`: „Erklärt aus
+**Fenster-Inhalt, von oben:** Kopfzeile (Lotti 32 px mit Regung nach
+Zustand · „Lotti" Bricolage 16/700 · rechts „Neu anfangen" als stilles
+Icon) → **Kontext-Pille** in Leserolle `meta`, klebt unter dem Kopf: „Du
+bist auf: Schulden · Rate-Treppe", mit Markierung dahinter „Markiert:
+‚Verpflichtungs…'" (gekürzt auf 40 Zeichen) — sie beantwortet „worüber
+reden wir gerade?" und wechselt beim Navigieren → der **Verlauf**: Fragen
+als Nutzer-Bubble rechts (bg primary/7, Rahmen /18), Lottis Antworten
+links in `text-lese` mit Lotti 24 px daneben; während sie schreibt, drei
+Punkte in Signal-Orange und die Regung `schreibt` (die Tipp-Anzeige der
+Chat-Bots, hier an einen echten Zustand gebunden); unter jeder Antwort
+stille Chip-Aktionen: **Den Rat fragen →** (bei `next: "ratsfrage"`
+gefüllt, sonst Ghost), die Glossar-Begriffe aus `done.glossary`, 👍/👎 wie
+in der Turn-Fußzeile → **Vorschlags-Chips** direkt über dem Eingabefeld,
+wie die Schnellantworten der Chat-Bots: **Was sehe ich hier?** ·
+**Markierten Text erklären** (nur mit Markierung) · **Etwas auf der Seite
+zeigen** (ab PR 3, davor nicht gerendert) → **Composer** (§ 5: h 48,
+Radius 16, Funken-Icon, Senden 36 ⌀), Platzhalter „Frag mich zu dieser
+Seite …", `Enter` sendet, `Shift+Enter` bricht um → Fußzeile
+`text-hinweis`, fest, nicht wegklickbar (§ 1 Ehrlichkeit): „Erklärt aus
 Glossar, Seite und Haushaltsdaten. Keine Rechtsberatung, keine
-Bewertung." Der Hinweis ist fest, nicht wegklickbar (§ 1 Ehrlichkeit).
+Bewertung." Der **leere Zustand** (noch kein Turn) zeigt Lotti `winkt` mit
+einem Satz — „Moin! Ich erkläre dir, was du hier siehst. Markier etwas,
+tipp auf ein Element oder frag mich." — und die Chips; das ist die einzige
+Begrüßung, und sie steht im Fenster, nie auf der Seite (Regel 5).
 
 „Den Rat fragen" führt in PR 2 nach `fragenHref({ q })` — die Frage
 vorbefüllt, der Bildschirm noch nicht dabei (das ist PR 4).
@@ -562,17 +623,21 @@ Weiterreichung nicht gezählt. Das steht hier, damit es niemand nachbaut.
   einem `textarea`; `trenneWeiter` entfernt die Zeile und nur die Zeile.
 - `tests/e2e/21-lotti-assistentin.spec.ts` (Strom gestubbt wie in
   `08-glossar.spec.ts`, läuft gegen die **leere** CI-Datenbank): Knopf auf
-  `/dashboard` sichtbar (Desktop unten rechts, mobil in der Topbar);
-  `Esc` schließt; „Was sehe ich hier?" rendert den Stub-Text; Text in
+  `/dashboard` unten rechts sichtbar, bei 1280 px wie bei 390 px, über der
+  Tab-Leiste, und auf `/fragen` schneidet seine Bounding-Box weder den
+  Senden-Knopf noch das Eingabefeld (beide Breiten); offen wird er zum
+  Kreuz; `Esc` schließt und der Fokus liegt wieder auf dem Knopf; „Was sehe ich hier?" rendert den Stub-Text; Text in
   `#main` markieren → Chip erscheint, Klick öffnet das Panel mit der
   Markierung in der Kontextzeile; App-Config ohne den Schalter (per
   `page.route` auf `/api/app-config`) → **kein** Knopf; auf `/account`
-  kein Knopf; `14-layout.spec.ts` bleibt grün (das Panel darf nicht
-  seitwärts scrollen, auch nicht bei 320 px — die Bottom-Sheet-Variante
-  wird dort gemessen).
-- **Bild an Tim vor dem Merge** (Regel 10): Panel offen mit einer echten
-  Antwort auf `/haushalt/schulden`, Desktop und Handy, hell und dunkel,
-  Ausschnitt statt ganzer Seite.
+  kein Knopf; `14-layout.spec.ts` bleibt grün (das Fenster darf nicht
+  seitwärts scrollen, auch nicht bei 320 px); nach einem Seitenwechsel bei
+  offenem Fenster steht der Verlauf noch, die Kontext-Pille zeigt die neue
+  Seite.
+- **Bild an Tim vor dem Merge** (Regel 10): der geschlossene Knopf über
+  der Tab-Leiste, und das Fenster offen mit einer echten Antwort auf
+  `/haushalt/schulden`, Desktop und Handy, hell und dunkel, Ausschnitt
+  statt ganzer Seite.
 
 **Kosten.** Keine neuen Modellaufrufe gegenüber PR 1; das Panel macht sie
 nur erreichbar.
@@ -755,9 +820,11 @@ sparsamste, der die Frage „Was ist neu in meinem Viertel?" noch erlaubt).
 
 ### PR 6 — Die App (iOS)
 
-**Was.** Regel 11: Web und App featuregleich. Die App bekommt den Knopf in
-der Toolbar jedes Screens (Lotti-Kopf, wie im Web) und ein Sheet mit „Was
-sehe ich hier?", Composer und Antwort. Ohne Markierung und ohne
+**Was.** Regel 11: Web und App featuregleich. Die App bekommt denselben
+schwebenden Knopf unten rechts über der Tab-Leiste (Overlay auf der
+Root-View, Abstand über `safeAreaInset`, wie im Web) und ein Sheet mit „Was
+sehe ich hier?", Composer und Antwort — mit Verlauf, der beim Screen-Wechsel
+bleibt. Ohne Markierung und ohne
 Erklär-Modus in v1: Textauswahl in SwiftUI-Listen gibt es nicht, und die
 Abzeichen brauchen eine eigene Ankerkonvention je View — das ist ein
 eigener Plan, wenn die Web-Fassung zwei Wochen gelaufen ist.
@@ -767,8 +834,8 @@ eigener Plan, wenn die Web-Fassung zwei Wochen gelaufen ist.
 prüft sie), der SSE-Parser der App ist schon da (`QuestionsView`);
 `RatslotseFeatures/AssistantSheet.swift`; eine Tabelle Screen → Web-Route
 (die App kennt die Routen schon fürs Push-Routing — dort nachsehen und
-**nicht** eine zweite Tabelle anlegen); der Toolbar-Knopf in der
-Screen-Hülle; `xcodegen generate` und die `.xcodeproj` mitcommitten.
+**nicht** eine zweite Tabelle anlegen); der schwebende Knopf als
+Overlay der Root-View; `xcodegen generate` und die `.xcodeproj` mitcommitten.
 
 **Tests.** `RatslotseAPI`-Tests decodieren `done` mit und ohne `next`;
 `ios_vertrag.py` grün; Simulator-Bild an Tim (Sheet offen, hell und
@@ -792,15 +859,25 @@ unverändert (nichts Bestehendes bricht).
 > beim Start des Erklär-Modus, `fragt`, wenn sie an „Frag den Rat"
 > weiterreicht — von selbst blinzelt und nickt sie nur.
 
-**§ 5, neuer Baustein „Lotti-Panel":** Desktop rechts andockend (400 px,
-nicht modal, Rahmen links, `bg-card`, kein Scrim), mobil Bottom-Sheet
-(85 dvh, modal). Anatomie von oben: Kopf (Lotti 40 px · „Lotti" Bricolage
-16/700 · Schließen) → Kontextzeile `meta` („Du bist auf: … · …") →
-Einstiegs-Chips (Vorschlags-Chip-Stil, § 6) → Turns (Frage als
-Nutzer-Bubble bg primary/7, Antwort `text-lese`, darunter stille
-Chip-Aktionen) → Composer (§ 5) → Fußzeile `text-hinweis`, fest. Kein
-Emoji, kein KI-Vokabular („Assistentin" ist das Wort, nicht „KI-Assistent";
-in der Oberfläche heißt sie nur „Lotti").
+**§ 5, neuer Baustein „Lotti-Knopf und Lotti-Fenster":** Der Knopf
+schwebt unten rechts auf jeder angemeldeten Seite, 56 px rund, Lotti-Kopf
+auf Hafenblau, `shadow-lifted`, über der Tab-Leiste und über dem
+Andock-Composer (beide Höhen als Variablen `--rl-unten`, `--rl-composer`,
+nie als Zahl); offen wird er zum Schließen-Kreuz. **Design 9a③ steht dem
+nicht entgegen: Es hat den Navigations-FAB aus der Tab-Leiste genommen;
+der Lotti-Knopf ist keine Navigation, sondern der Chat-Knopf, wie man ihn
+von Hilfe-Seiten kennt.** Das Fenster sitzt über dem Knopf (Schreibtisch
+384 × max 640 px, nicht modal, Radius 16, `bg-card`, Rahmen,
+`shadow-lifted`; Handy: Fläche zwischen Kopfleiste und Knopf, Scrim,
+Wischen schließt). Anatomie von oben: Kopfzeile (Lotti 32 px · „Lotti"
+Bricolage 16/700 · Neu anfangen) → Kontext-Pille `meta` („Du bist auf: …
+· …") → Verlauf (Nutzer-Bubble bg primary/7 rechts, Antwort `text-lese`
+links mit Lotti 24 px; Tipp-Anzeige = drei Punkte Signal-Orange + Regung
+`schreibt`; stille Chip-Aktionen unter jeder Antwort) → Vorschlags-Chips
+(Vorschlags-Chip-Stil, § 6) → Composer (§ 5) → Fußzeile `text-hinweis`,
+fest. Kein Emoji, kein KI-Vokabular („Assistentin" ist das Wort, nicht
+„KI-Assistent"; in der Oberfläche heißt sie nur „Lotti"). Kein Zähler,
+kein Abzeichen, keine Blase am geschlossenen Knopf.
 
 **§ 5, neuer Baustein „Erklär-Abzeichen":** 28 px rund, `bg-card`, Rahmen
 primary/30, Lotti-Kopf 16 px oder „?" in primary; oben rechts am Element,
@@ -808,9 +885,9 @@ primary/30, Lotti-Kopf 16 px oder „?" in primary; oben rechts am Element,
 Klick außerhalb; Fokusring wie Dialoge (BITV). Nur auf Elementen mit
 `data-erklaer` — nie geraten.
 
-**§ 8 Anti-Patterns, zwei Zeilen dazu:** keine Lotti-Sprechblase, die von
-selbst erscheint · kein Element ohne `data-erklaer`, das ein Abzeichen
-trägt.
+**§ 8 Anti-Patterns, drei Zeilen dazu:** keine Lotti-Sprechblase, die von
+selbst erscheint · kein Zähler oder Abzeichen am geschlossenen Lotti-Knopf
+· kein Element ohne `data-erklaer`, das ein Abzeichen trägt.
 
 ## 6. Kosten, Risiken und was der Plan NICHT baut
 
@@ -871,7 +948,7 @@ betroffen (kein Cron).
 | PR | Reihenfolge |
 |---|---|
 | 1 | `kern/knowledge.py` → `kern/prompts.py` (`SIMPLE_STYLE_RULES`, `assistant_explain`) → `council/assistant.py` → `web/backend/app/ratelimit.py` → `web/backend/app/antworten.py` (`SSE_ERKLAERUNG`) → `web/backend/app/routers/council.py` → `kern/features.py` → `kern/store.py` (Beschriftungen) → `admin/page.tsx` (`FEATURE_LABELS`) → `tests/test_assistant.py`, `tests/test_sse_vertrag.py` → `eval/cases_assistant.json`, `eval/run_assistant.py` → `scripts/openapi_schnitt.py`, `npm run api:typen` → `CLAUDE.md` (`.env`), `docs-site/…/ki-pipeline.mdx` → `changelog.d/lotti-erklaert-endpunkt.md` |
-| 2 | `lib/sse.ts` (Parser aus `council-qa.tsx` herausziehen, dort einsetzen) → `lib/assistentin.ts` + Test → `ui/sheet.tsx` (`right`) → `components/assistentin/knopf.tsx`, `panel.tsx`, `auswahl-chip.tsx`, `index.tsx` → `nav.tsx`, `back-to-top.tsx`, `peeking-chick.tsx` → `app/(app)/layout.tsx` → `tests/e2e/21-lotti-assistentin.spec.ts` → `DESIGNSPRACHE.md` § 1, § 5 → Bild an Tim → `changelog.d/lotti-assistentin.md` |
+| 2 | `lib/sse.ts` (Parser aus `council-qa.tsx` herausziehen, dort einsetzen) → `lib/assistentin.ts` + Test → `components/assistentin/knopf.tsx`, `panel.tsx`, `auswahl-chip.tsx`, `index.tsx` → `app/(app)/fragen/view.tsx` (`--rl-composer`), `back-to-top.tsx`, `peeking-chick.tsx` → `app/(app)/layout.tsx` → `tests/e2e/21-lotti-assistentin.spec.ts` → `DESIGNSPRACHE.md` § 1, § 5 → Bild an Tim → `changelog.d/lotti-assistentin.md` |
 | 3 | `lib/assistentin.ts` (`ernteElement`) → `components/assistentin/erklaer-modus.tsx` → die Bausteine aus der Tabelle in PR 3 → `council/decision/view.tsx`, Sitzungs-Seite → `panel.tsx` (dritter Chip) → Playwright-Zählung → `DESIGNSPRACHE.md` § 5, § 7, § 8 → Bild an Tim |
 | 4 | `council/qa.py` (`_answer_messages`, letztes Argument) → `kern/prompts.py` (`qa_answer`, Block `{screen}`) → `routers/council.py` (`ScreenContext`, `AskBody.screen`, Zählung) → `tests/test_qa_screen_context.py`, `test_api_vertrag.py` → `panel.tsx` (Ratsweg, Quellenliste) → `ios_vertrag.py --ausgeliefert` → Bild an Tim |
 | 5 | `council/assistant.py` (`requires`, „mein") → `kern/knowledge.py` (`requires`) → `tests/test_assistant.py` → `account`-Seite (Schalter) → `command-palette.tsx` → Playwright |
