@@ -140,6 +140,36 @@ test.describe("Lotti-Knopf und -Fenster", () => {
       .toBeVisible();
   });
 
+  test("die Kontext-Pille zeigt die Seite, nicht den Anzeigenamen", async ({ page }) => {
+    // Auf `/dashboard` ist die `h1` „Moin, <Anzeigename>!" — sie ging bis
+    // 21.09.2026 als Überschrift in die Pille, in den Prompt und in den Titel
+    // des gespeicherten Gesprächs. Regel 9 des Assistentin-Plans
+    // („Anzeigename nie") war damit auf der meistbesuchten Seite verletzt.
+    let geschickt: Record<string, unknown> | null = null;
+    await page.route("**/api/council/explain", (route) => {
+      geschickt = route.request().postDataJSON();
+      return route.fulfill({ status: 200, contentType: "text/event-stream", body: STROM() })
+        .catch(() => { /* der Test ist schon zu Ende */ });
+    });
+    await page.goto("/dashboard");
+    // Der Anzeigename kommt aus der Saat und heißt nicht überall gleich —
+    // deshalb aus der Überschrift gelesen statt hier festgenagelt.
+    const h1 = (await page.getByRole("heading", { level: 1 }).innerText()).trim();
+    const name = h1.replace(/^Moin,?\s*/i, "").replace(/!$/, "").trim();
+    expect(name.length, `Die h1 von /dashboard grüßt nicht: „${h1}“`).toBeGreaterThan(2);
+    await knopf(page).click();
+    const pille = fenster(page).locator("[data-lotti-kontext]");
+    await expect(pille).toBeVisible();
+    await expect(pille).not.toContainText(name);
+    await expect(pille).toContainText("Heute");
+    // Und der Name geht auch nicht als `heading` ans Backend.
+    await fenster(page).getByRole("button", { name: "Was sehe ich hier?" }).click();
+    await expect(fenster(page).getByText(ANTWORT)).toBeVisible();
+    const körper = geschickt as { heading?: string; page_title?: string } | null;
+    expect(körper?.heading).toBe("");
+    expect(körper?.page_title ?? "").not.toContain(name);
+  });
+
   test("der Verlauf überlebt den Seitenwechsel", async ({ page }) => {
     await page.goto("/dashboard");
     await knopf(page).click();

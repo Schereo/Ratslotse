@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  auswahlText, ernteElement, kuerze, refsAus, routeAus, trenneWeiter, ueberschriftenPfad,
+  auswahlText, ernteElement, kuerze, ohneNamen, refsAus, routeAus, seitenTitel,
+  seitenUeberschrift, trenneWeiter, ueberschriftenPfad,
 } from "./assistentin";
 
 describe("routeAus", () => {
@@ -194,5 +195,65 @@ describe("ueberschriftenPfad", () => {
 
   it("nimmt ohne Element nur die Seitenüberschrift", () => {
     expect(ueberschriftenPfad(null, dok("Schulden", []))).toBe("Schulden");
+  });
+});
+
+describe("ohneNamen", () => {
+  it("streicht den Anzeigenamen aus dem Gruß", () => {
+    expect(ohneNamen("Moin, Ratsfrau!", "Ratsfrau")).toBe("Moin!");
+  });
+
+  it("streicht auch den Vornamen allein", () => {
+    expect(ohneNamen("Moin, Anna!", "Anna Musterfrau")).toBe("Moin!");
+  });
+
+  it("lässt einen kurzen Namen stehen", () => {
+    // Ein Konto namens „Al" hätte aus „Alexanderfeld" ein „exanderfeld"
+    // gemacht — der Riegel zerstörte die Seite, statt sie zu schützen.
+    expect(ohneNamen("Beschluss zu Alexanderfeld", "Al"))
+      .toBe("Beschluss zu Alexanderfeld");
+  });
+
+  it("streicht nur ganze Wörter", () => {
+    expect(ohneNamen("Inanspruchnahme im Januar", "Ina"))
+      .toBe("Inanspruchnahme im Januar");
+    expect(ohneNamen("Ina fragt", "Ina")).toBe("fragt");
+  });
+
+  it("kommt ohne Namen zurecht", () => {
+    expect(ohneNamen("Schulden", null)).toBe("Schulden");
+  });
+});
+
+describe("seitenUeberschrift und seitenTitel", () => {
+  const dok = (h1: string, titel = "Heute"): Document => ({
+    title: titel,
+    querySelector: () => (h1 ? { textContent: h1 } : null),
+  } as unknown as Document);
+
+  it("lässt einen reinen Gruß ganz weg", () => {
+    // Auf `/dashboard` ist die `h1` „Moin, Ratsfrau!" — bleibt nach dem
+    // Streichen nur „Moin!", sagt das nichts über die Seite.
+    expect(seitenUeberschrift(dok("Moin, Ratsfrau!"), "Ratsfrau")).toBe("");
+  });
+
+  it("behält eine echte Überschrift", () => {
+    expect(seitenUeberschrift(dok("Schulden"), "Ratsfrau")).toBe("Schulden");
+  });
+
+  it("nimmt den Anwendungsnamen aus dem Fenstertitel", () => {
+    expect(seitenTitel(dok("", "Heute — Ratslotse"))).toBe("Heute");
+  });
+});
+
+describe("ueberschriftenPfad mit Anzeigenamen", () => {
+  const dok = (h1: string): Document => ({
+    title: "Heute",
+    querySelector: () => ({ textContent: h1 }),
+    querySelectorAll: () => [],
+  } as unknown as Document);
+
+  it("schickt auf der Startseite gar keine Überschrift", () => {
+    expect(ueberschriftenPfad(null, dok("Moin, Ratsfrau!"), "Ratsfrau")).toBe("");
   });
 });

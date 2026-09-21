@@ -127,6 +127,68 @@ def kuerze(text: str, max_len: int) -> str:
     return sauber if len(sauber) <= max_len else sauber[:max_len].rstrip() + " …"
 
 
+#: Ein Name ist erst ab drei Zeichen ein Name.
+#:
+#: **Sonst zerstört er die Seite, statt sie zu schützen:** Ein Konto namens
+#: „Al" machte aus „Alexanderfeld" ein „exanderfeld", und Lotti erklärte einen
+#: Stadtteil, den es nicht gibt. Dieselbe Grenze steht im Client
+#: (``web/frontend/lib/assistentin.ts::ohneNamen``).
+NAME_MIN = 3
+
+
+def ohne_namen(text: str, name: str | None) -> str:
+    """Den Anzeigenamen des Kontos aus einem Seitentext streichen.
+
+    **Der Riegel, der hält, wenn der Client vergisst.** Auf ``/dashboard`` ist
+    die ``h1`` ein Gruß mit dem Anzeigenamen („Moin, Ratsfrau!"); sie ging bis
+    21.09.2026 als ``heading`` in den Prompt (zwischen ``<<<UEBERSCHRIFT``) und
+    als Titel ins gespeicherte Gespräch. Regel 9 des Assistentin-Plans
+    („Anzeigename, E-Mail, Rolle als Wort: nie") war damit auf der
+    meistbesuchten Seite verletzt — nicht durch das Konto, sondern durch die
+    Seite. Der Client streicht den Namen bereits; hier steht die zweite Sperre,
+    denn ein alter oder eigener Client schickt, was er will.
+
+    **Entfernt, nicht maskiert.** Ein ``[NAME]`` im Prompt wäre neuer Text, über
+    den das Modell stolpern (und den es vorlesen) kann; der Name soll schlicht
+    nie dagewesen sein.
+
+    **An den Wortgrenzen**, nicht als blinder Textersatz: „Ina" steckt in
+    „Inanspruchnahme", „Jan" in „Januar".
+    """
+    roh = (name or "").strip()
+    if not text or len(roh) < NAME_MIN:
+        return text
+    # Jeder Bestandteil einzeln: „Anna Musterfrau" steht in der Überschrift oft
+    # nur als „Anna". Kurze Teile („de", „van") bleiben stehen.
+    teile = [t for t in [roh, *roh.split()] if len(t) >= NAME_MIN]
+    aus = text
+    for teil in teile:
+        aus = re.sub(rf"(?<![^\W\d_]){re.escape(teil)}(?![^\W\d_])", "", aus,
+                     flags=re.IGNORECASE)
+    # Was der Name hinterlässt: „Moin, !" → „Moin!"
+    aus = re.sub(r"\s+([,;:!?.])", r"\1", aus)
+    aus = re.sub(r"[,;:]\s*([!?.])", r"\1", aus)
+    return " ".join(aus.split())
+
+
+#: Eine Überschrift, die nur grüßt — „Moin!", „Hallo!", „Guten Morgen!".
+_NUR_GRUSS_RE = re.compile(
+    r"^(?:moin|hallo|hi|hey|guten (?:morgen|tag|abend)|willkommen)\b[\s!.,…]*$",
+    re.IGNORECASE)
+
+
+def ueberschrift_ohne_konto(heading: str, name: str | None) -> str:
+    """Die Überschrift, wie sie in den Prompt darf: ohne Namen, ohne Gruß.
+
+    Bleibt nach dem Streichen nur noch „Moin!" stehen, ist das keine
+    Überschrift, sondern eine Begrüßung — sie sagt nicht, auf welcher Seite
+    jemand steht. Dann lieber gar keine: ``_screen_block`` und der Titel des
+    Gesprächs fallen auf den Seitentitel zurück.
+    """
+    sauber = ohne_namen(heading or "", name)
+    return "" if _NUR_GRUSS_RE.match(sauber) else sauber
+
+
 #: Fragen, die nichts Eigenes wollen, sondern nur „erklär mir das da".
 #: Genau diese Fälle dürfen ohne Modell beantwortet werden — sie sind die
 #: Chips des Fensters und die häufigste getippte Frage.

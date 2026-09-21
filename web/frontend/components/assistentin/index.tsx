@@ -11,6 +11,7 @@ import { ErklaerModus } from "./erklaer-modus";
 import { LottiKnopf } from "./knopf";
 import { LottiPanel, useMarkierung, useTastatur } from "./panel";
 import { ernteElement, routeAus, ueberschriftenPfad } from "@/lib/assistentin";
+import { useAuth } from "@/lib/auth";
 import { anstupserErlaubt } from "@/lib/anstupser-seiten";
 import { knopfVersteckt, LOTTI_SICHT_EVENT } from "@/lib/lotti-sichtbar";
 
@@ -75,6 +76,10 @@ function LottiInner() {
   const [modus, setModus] = useState(false);
   const [element, setElement] = useState<ElementFrage | null>(null);
   const markierung = useMarkierung();
+  // Nur zum STREICHEN, nie zum Mitschicken: Der Anzeigename steht auf
+  // `/dashboard` in der `h1` und wäre sonst über den Überschriften-Pfad im
+  // Prompt gelandet (lib/assistentin.ts::ohneNamen).
+  const anzeigename = useAuth().user?.display_name ?? null;
   // Steht die Tastatur, liegt der Knopf hinter ihr — ein Knopf, den man nicht
   // sieht und nicht trifft, ist kein Knopf. Dieselbe Regel wie in der App.
   const tastatur = useTastatur();
@@ -130,7 +135,9 @@ function LottiInner() {
         aktiv={modus}
         onBeenden={() => setModus(false)}
         onWaehlen={(el) => {
-          setElement({ ...ernteElement(el), pfad: ueberschriftenPfad(el, document) });
+          // Der Anzeigename des Kontos wird aus dem Pfad gestrichen — auf
+          // `/dashboard` steht er in der `h1` („Moin, Ratsfrau!").
+          setElement({ ...ernteElement(el), pfad: ueberschriftenPfad(el, document, anzeigename) });
           setModus(false);
           setOffen(true);
         }}
