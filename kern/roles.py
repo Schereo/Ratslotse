@@ -31,6 +31,10 @@ from dataclasses import dataclass, field
 #:   (jede Tagesordnung jedes abonnierten Gremiums sofort; Tims Entscheidung
 #:   06.09.2026: „Leute mit Ratsmitgliedsstatus kriegen per Default alle Abos")
 #: - ``admin``:   das Admin-Panel samt allem darunter
+#:
+#: Dass ``budget`` und ``mandate`` **zwei** Rechte sind und nicht eines, ist
+#: der Grund, warum es die Rolle *Fachpublikum* ohne einen einzigen weiteren
+#: Handgriff geben kann: Sie nimmt das eine und lässt das andere liegen.
 PERMISSIONS: tuple[str, ...] = ("budget", "mandate", "admin")
 
 
@@ -61,6 +65,20 @@ ROLES: dict[str, Role] = {
         permissions=frozenset(),
         assignable=False,
     ),
+    "expert": Role(
+        key="expert",
+        label="Fachpublikum",
+        description="Zusätzlich der Haushalts-Bereich mit allen Zahlen, Belegen und Auswertungen. "
+                    "Benachrichtigungen bleiben die normalen — wer hier Tagesordnungen will, "
+                    "schaltet sie selbst ein.",
+        # Bewusst NUR `budget`. Wer den Haushalt braucht, aber nicht im Rat
+        # sitzt — Verwaltung, Presse, sachkundige Bürger*innen,
+        # Fraktionsmitarbeit — will die Zahlen, nicht die Tagesordnung jedes
+        # abonnierten Gremiums am Tag ihrer Veröffentlichung. Tims Auftrag
+        # 21.09.2026: „erweiterte Informationen wie den Haushalt, aber nicht
+        # Updates über jeden abonnierten Ausschuss."
+        permissions=frozenset({"budget"}),
+    ),
     "council_member": Role(
         key="council_member",
         label="Ratsmitglied",
@@ -81,7 +99,11 @@ ROLES: dict[str, Role] = {
 
 #: Die Reihenfolge, in der Rollen angezeigt und in die Kompatibilitäts-Spalte
 #: `web_users.role` geschrieben werden — schwächste zuerst.
-ROLE_ORDER: tuple[str, ...] = ("user", "council_member", "admin")
+#:
+#: „Schwächste zuerst" heißt hier: nach Umfang der Rechte. *Fachpublikum*
+#: trägt eine echte Teilmenge dessen, was *Ratsmitglied* trägt, und steht
+#: deshalb davor — wer beide Rollen hat, erscheint als Ratsmitglied.
+ROLE_ORDER: tuple[str, ...] = ("user", "expert", "council_member", "admin")
 
 
 def known_roles(roles) -> list[str]:

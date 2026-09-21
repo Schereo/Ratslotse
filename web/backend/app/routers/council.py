@@ -3813,8 +3813,18 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 yield _sse({"type": "done", "cited": [], "unclear": True,
                             "conversation_id": conversation_id})
                 return
-            latest_place = bool(ort and typ == "place"
-                                and (qa.latest_intent(q_suche) or qa.latest_intent(q)))
+            # NICHT an `typ == "place"` hängen: Der Fragetyp kommt aus einem
+            # Sprachmodell, „zuletzt" aus einer Regex. „Was ist in
+            # Donnerschwee zuletzt beschlossen worden?" wurde am 21.09.2026 als
+            # `history` eingeordnet — vertretbar, die Frage ist beides —, und
+            # damit fiel sie aus dem deterministischen Weg heraus: Die freie
+            # Antwort führte mit dem Stadionneubau und nannte den Ort nie.
+            # Ausgenommen bleiben die Typen, für die das Datum NICHT die
+            # Antwort ist: „Was wurde zuletzt für X ausgegeben?" braucht die
+            # Beträge, eine Personen- oder Fraktionsfrage ihre Belege.
+            latest_place = bool(
+                ort and typ not in ("money", "person", "party", "session")
+                and (qa.latest_intent(q_suche) or qa.latest_intent(q)))
             shadow_plan = qa.research_plan_with_mandatory(
                 analyse.get("rechercheplan") or {}, typ=typ, question=q_suche,
                 person=bool(person), place=bool(ort), sessions=bool(sitzungen),
@@ -4088,6 +4098,12 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                   if p["kvonr"] not in gesehen]
                 except Exception:  # noqa: BLE001 — Ausblick ist Zusatz, nie Blocker
                     pass
+            # Zukunftsfrage ohne Zukunft: Fragt jemand, was NOCH KOMMT, und
+            # liefern beide Ausblick-Wege nichts, füllt das Modell die Lücke
+            # sonst mit alten Beschlüssen im Futur — am 21.09.2026 mit einem
+            # Bebauungsplan von 2018 („ist geplant"). Deterministisch am
+            # Fragewortlaut, nicht am Bedarf des Analysemodells.
+            zukunft_leer = qa.zukunftsfrage(q_suche) and not planungen
             # Hintergrund zu den genannten Objekten („Was ist die GSG?").
             steckbriefe = qa.steckbriefe_mit_ort(
                 qa.steckbriefe_fuer(store, q_suche), ort)
@@ -4363,7 +4379,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 # dass selbst ein expliziter Prompt-Anker vom Modell zugunsten
                 # eines älteren Titels ignoriert werden kann. Deshalb kommt
                 # diese enge Faktenantwort ohne generative Auswahl aus.
-                strom = iter([qa.latest_place_answer(candidates[:QA_ANSWER_N])])
+                strom = iter([qa.latest_place_answer(
+                    candidates[:QA_ANSWER_N], (ort or {}).get("name"))])
             else:
                 strom = (qa.vereinfachen_stream(frage_thema, body.previous_answer, ctx)
                          if einfach else
@@ -4373,7 +4390,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                           anlagen=anlagen_rows,
                                           gross=gross, steckbriefe=steckbriefe,
                                           duenn=(lage == "duenn"), eng=eng,
-                                          sitzungen=sitzungen, ort=ort))
+                                          sitzungen=sitzungen, ort=ort,
+                                          zukunft_leer=zukunft_leer))
             try:
                 for delta in strom:
                     if not buf and delta:
@@ -4408,7 +4426,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                                  anlagen=anlagen_rows,
                                                  gross=gross, steckbriefe=steckbriefe,
                                                  duenn=(lage == "duenn"), eng=eng,
-                                                 sitzungen=sitzungen, ort=ort))
+                                                 sitzungen=sitzungen, ort=ort,
+                                                 zukunft_leer=zukunft_leer))
                     buf = ans
                     yield _sse({"type": "replace", "text": qa.split_followups(ans)[0]})
                     sent = len(ans)

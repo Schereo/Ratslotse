@@ -746,6 +746,56 @@ _LATEST_RE = re.compile(
 )
 
 
+#: Fragt die Frage nach dem, was NOCH KOMMT? Deutsche Komposita verschieben
+#: die hintere Wortgrenze, deshalb steht `\b` nur vorn (s. council/CLAUDE.md).
+#: „war geplant" ist ausdrücklich KEINE Zukunftsfrage — sie fragt danach, was
+#: einmal vorgesehen war.
+_ZUKUNFT_RE = re.compile(
+    r"\b(geplant|planung|vorgesehen|k[üo]nftig|zuk[üu]nftig|zukunft|"
+    r"demn[äa]chst|bald|als\s+n[äa]chstes|wie\s+geht\s+es\s+weiter|"
+    r"was\s+(kommt|passiert)\s+(als\s+n[äa]chstes|noch|jetzt)|"
+    # Bis zu vier Wörter zwischen Hilfsverb und Partizip: „soll AM
+    # FLIEGERHORST entstehen" und „wird DORT EIN RADWEG gebaut" sind beide
+    # Zukunft, und beide fielen durch eine Fassung mit genau einem `\w+`.
+    r"soll(?:en)?[^.?!]{0,40}?\b(werden|entstehen|kommen|gebaut|gebaut\s+werden)|"
+    r"wird[^.?!]{0,40}?\b(gebaut|entstehen|kommen|errichtet))",
+    re.IGNORECASE)
+#: „was WAR geplant", „was war für das Gelände vorgesehen" — dieselbe
+#: Wortspanne wie oben, damit auch ein Zwischensatz dazwischen passt.
+_ZUKUNFT_VERGANGEN_RE = re.compile(
+    r"\b(war|waren|wurde|wurden)[^.?!]{0,40}?\b(geplant|vorgesehen)\b",
+    re.IGNORECASE)
+
+
+def zukunftsfrage(question: str) -> bool:
+    """Zielt die Frage auf das, was noch kommt?
+
+    Deterministisch statt über den Rechercheplan: Der Bedarf ``future_dates``
+    kommt aus dem Analysemodell und ist damit dieselbe Münze, die schon bei
+    ``latest_place`` gekippt ist (s. ``latest_intent``). Gebraucht wird das
+    Signal für den Gegenfall — eine Zukunftsfrage, zu der es keine einzige
+    kommende Beratung gibt. Genau der lag am 21.09.2026 vor: „Was ist für
+    Neu-Donnerschwee geplant?" hatte in BEIDEN Zukunftswegen des Routers leere
+    Listen, und die Antwort erzählte trotzdem im Futur — über einen
+    Bebauungsplan von 2018.
+    """
+    frage = question or ""
+    if _ZUKUNFT_VERGANGEN_RE.search(frage):
+        return False
+    return bool(_ZUKUNFT_RE.search(frage))
+
+
+#: Zukunftsfrage, aber kein einziger kommender Termin im Kontext. Ohne diese
+#: Regel füllt das Modell die Lücke mit alten Beschlüssen im Futur.
+ZUKUNFT_LEER_REGEL = (
+    "\n\nACHTUNG, KEINE ZUKUNFT IM KONTEXT: Diese Frage zielt auf das, was noch "
+    "kommt — und zu dieser Sache steht keine einzige kommende Beratung in den "
+    "Unterlagen. Sage das ausdrücklich im ersten Satz und schreibe die "
+    "vorhandenen Beschlüsse in der VERGANGENHEIT. Ein Beschluss ist kein Plan: "
+    "Er sagt, was der Rat entschieden hat, nicht, was als Nächstes passiert."
+)
+
+
 def recency_intent(question: str) -> bool:
     """Fragt jemand nach dem HEUTIGEN Stand? Wortliste statt LLM-Feld —
     deterministisch, kostenlos, testbar. Eine konkrete Jahreszahl in der
@@ -777,16 +827,26 @@ def latest_real_decision(candidates: list[dict]) -> dict | None:
                  if c.get("outcome") in ("accepted", "rejected")), None)
 
 
-def latest_place_answer(candidates: list[dict]) -> str:
+def latest_place_answer(candidates: list[dict], ort_name: str | None = None) -> str:
     """Kurze, deterministische Antwort auf „zuletzt beschlossen“.
 
     Bei diesem engen Fragetyp ist das Datum selbst die gesuchte Information.
     Ein Sprachmodell darf deshalb weder einen älteren, wörtlich ähnlich
     betitelten Beschluss bevorzugen noch eine Kenntnisnahme als Beschluss
     ausgeben. ``candidates`` kommt aus dem Ortsindex und ist neueste zuerst.
+
+    ``ort_name`` gehört in den Satz: Die knappe Antwort nennt sonst nur ein
+    Datum und einen Titel und liest sich wie die Antwort auf eine ganz andere
+    Frage. Gemessen am 21.09.2026 — „Was ist in Donnerschwee zuletzt
+    beschlossen worden?" führte mit dem Stadionneubau an der Maastrichter
+    Straße. Der gehört tatsächlich nach Donnerschwee (``council_locations``
+    führt die Straße mit ``district='Donnerschwee'``), nur stand das Wort
+    Donnerschwee in der ganzen Kurzfassung nicht.
     """
+    wo = f" mit Ortsbezug {ort_name}" if ort_name else ""
     if not candidates:
-        return "Dazu habe ich keine Ratsvorgänge mit belegtem Ortsbezug gefunden."
+        return (f"Dazu habe ich keine Ratsvorgänge{wo or ' mit belegtem Ortsbezug'} "
+                "gefunden.")
 
     from council import ergebnisse   # spät: ergebnisse zieht kern.notify
 
@@ -796,7 +856,7 @@ def latest_place_answer(candidates: list[dict]) -> str:
         date = _datum_de(latest.get("session_date"))
         title = " ".join(str(latest.get("title") or "Unbenannter Vorgang").split())[:300]
         return (
-            "Einen angenommenen oder abgelehnten Beschluss habe ich dazu nicht gefunden. "
+            f"Einen angenommenen oder abgelehnten Beschluss{wo} habe ich nicht gefunden. "
             f"Der jüngste Ratsvorgang war am {date}: „{title}“ "
             f"(Ergebnis: {ergebnisse.ERGEBNIS_WORT.get(latest.get('outcome') or '', 'nicht angegeben')})"
             f" [{latest['id']}]."
@@ -806,11 +866,12 @@ def latest_place_answer(candidates: list[dict]) -> str:
     title = " ".join(str(decision.get("title") or "Unbenannter Beschluss").split())[:300]
     if decision.get("outcome") == "rejected":
         answer = (
-            f"Die jüngste Abstimmungsentscheidung war am {date}: „{title}“ wurde "
+            f"Die jüngste Abstimmungsentscheidung{wo} war am {date}: „{title}“ wurde "
             f"abgelehnt, also nicht beschlossen [{decision['id']}]."
         )
     else:
-        answer = f"Am {date} wurde „{title}“ beschlossen [{decision['id']}]."
+        answer = (f"Zuletzt{wo} hat der Rat am {date} „{title}“ beschlossen "
+                  f"[{decision['id']}].")
 
     # Ein neuerer Bericht ist nützlich, darf aber nie als neuerer „Beschluss“
     # erscheinen. Höchstens einen nennen, damit die Antwort kurz bleibt.
@@ -3592,7 +3653,12 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "topic",
                      geld: dict | None = None,
                      sitzungen: list[dict] | None = None,
                      ort: dict | None = None,
-                     staedte: list[dict] | None = None) -> tuple[list[dict], dict]:
+                     staedte: list[dict] | None = None,
+                     # ANS ENDE, nicht in die Mitte: Die beiden Aufrufer unten
+                     # reichen alles POSITIONSWEISE durch — ein neues Argument
+                     # zwischen `eng` und `taxes` verschöbe jeden folgenden
+                     # Wert um eine Stelle.
+                     zukunft_leer: bool = False) -> tuple[list[dict], dict]:
     vtext = _verlauf_zeilen(verlauf)
     gespraech = (f"Dies ist eine Anschlussfrage in einem Gespräch. Bisher:\n{vtext}\n"
                  f"{ANSCHLUSS_REGEL}\n\n"
@@ -3636,6 +3702,7 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "topic",
                             + ortsregel
                             + ("" if eng else (GROSS_REGEL if gross else ""))
                             + (DUENN_REGEL if duenn else "")
+                            + (ZUKUNFT_LEER_REGEL if zukunft_leer else "")
                             + geld_regeln(geld, eng),
                             presse=_sitzungen_block(sitzungen)
                             + _glossar_block(begriffe_fuer(question))
@@ -3787,12 +3854,13 @@ def answer_question(question: str, candidates: list[dict], model: str = MODEL, t
                     duenn: bool = False, eng: bool = False,
                     taxes: list[dict] | None = None, tax_capacity: dict | None = None,
                     geld: dict | None = None, sitzungen: list[dict] | None = None,
-                    ort: dict | None = None, staedte: list[dict] | None = None):
+                    ort: dict | None = None, staedte: list[dict] | None = None,
+                    zukunft_leer: bool = False):
     """Synthesise an answer from retrieved candidates. Returns ``(answer, cited_ids)``."""
     messages, extra = _answer_messages(question, candidates, typ, model, presse, verlauf,
                                        haushalt, debatten, anlagen, gross, steckbriefe, duenn, eng,
                                        taxes, tax_capacity, geld, sitzungen, ort,
-                                       staedte)
+                                       staedte, zukunft_leer)
     resp = llm.chat_complete(model=model, _feature="qa_answer", temperature=0.2,
                              max_tokens=_answer_tokens(typ, gross, eng), messages=messages, **extra)
     answer = (resp.choices[0].message.content or "").strip()
@@ -3807,14 +3875,15 @@ def answer_stream(question: str, candidates: list[dict], model: str = MODEL, typ
                   duenn: bool = False, eng: bool = False,
                   taxes: list[dict] | None = None, tax_capacity: dict | None = None,
                   geld: dict | None = None, sitzungen: list[dict] | None = None,
-                  ort: dict | None = None, staedte: list[dict] | None = None):
+                  ort: dict | None = None, staedte: list[dict] | None = None,
+                  zukunft_leer: bool = False):
     """Stream the answer text deltas (same prompt/context as answer_question) so the
     UI can render the answer as it is written. Citation resolution is the caller's
     job once the full text is assembled (see resolve_citations)."""
     messages, extra = _answer_messages(question, candidates, typ, model, presse, verlauf,
                                        haushalt, debatten, anlagen, gross, steckbriefe, duenn, eng,
                                        taxes, tax_capacity, geld, sitzungen, ort,
-                                       staedte)
+                                       staedte, zukunft_leer)
     yield from llm.chat_stream(model=model, _feature="qa_answer", temperature=0.2,
                                max_tokens=_answer_tokens(typ, gross, eng), messages=messages, **extra)
 
