@@ -106,6 +106,15 @@ FEATURES: dict[str, Feature] = {
                     "grün, die sechs Injektions-Fälle eingeschlossen; Tim hat den Knopf "
                     "freigegeben.",
     ),
+    "lotti-anstupser": Feature(
+        key="lotti-anstupser",
+        description="Lotti klopft selten von selbst an („Hast du eine Frage zu dem, "
+                    "was du siehst?“) — auf Leseseiten, nach 45 s Lesezeit, höchstens "
+                    "einmal am Tag und dreimal in 30 Tagen.",
+        fertig_wenn="Vier Wochen gemessen (Admin-Panel, Reiter „Lotti“): Liegt die "
+                    "Ja-Quote unter 5 %, wird er seltener oder abgeschafft — Tims "
+                    "Entscheidung. Bleibt er, fliegt der Schalter raus.",
+    ),
     "tippspiel": Feature(
         key="tippspiel",
         description="Das Tippspiel zu den Wahlen 2026: zur Ratswahl am 13.09. Sitze je "

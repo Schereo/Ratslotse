@@ -1,15 +1,17 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 
 import { useFeature } from "@/lib/features";
 import { pfad } from "@/lib/utils";
 
+import { Anstupser, merkeBenutzung } from "./anstupser";
 import { ErklaerModus } from "./erklaer-modus";
 import { LottiKnopf } from "./knopf";
 import { LottiPanel, useMarkierung } from "./panel";
-import { ernteElement } from "@/lib/assistentin";
+import { ernteElement, routeAus } from "@/lib/assistentin";
+import { anstupserErlaubt } from "@/lib/anstupser-seiten";
 
 /**
  * Lotti als Assistentin — Knopf und Fenster, eingehängt in die App-Hülle.
@@ -51,6 +53,7 @@ export function LottiAssistentin() {
 function LottiInner() {
   const an = useFeature("lotti-assistentin");
   const pathname = pfad(usePathname());
+  const sp = useSearchParams();
   const [offen, setOffen] = useState(false);
   // Der Erklär-Modus SCHLIESST das Fenster, statt neben ihm zu laufen: Die
   // Abzeichen stehen auf der Seite, und auf dem Handy deckt das Fenster genau
@@ -72,6 +75,9 @@ function LottiInner() {
   // derselben Ecke sind eine zu viel.
   useEffect(() => {
     window.dispatchEvent(new CustomEvent("ratslotse:lotti-offen", { detail: { offen } }));
+    // Wer das Fenster geöffnet hat, braucht heute kein Anklopfen mehr — und
+    // in dieser Sitzung gar keins.
+    if (offen) merkeBenutzung();
   }, [offen]);
 
   const gesperrt = OHNE_LOTTI.some((p) => pathname === p || pathname.startsWith(`${p}/`));
@@ -95,6 +101,10 @@ function LottiInner() {
           setModus(false);
           setOffen(true);
         }}
+      />
+      <Anstupser
+        erlaubt={anstupserErlaubt(routeAus(pathname, sp.toString()))}
+        onJa={() => setOffen(true)}
       />
       <LottiKnopf
         offen={offen || modus}

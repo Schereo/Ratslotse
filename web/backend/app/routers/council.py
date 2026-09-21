@@ -3464,6 +3464,12 @@ def goal_detail(key: str, _user: dict = Depends(require_active),
 #: sieht aus wie ein Ausfall (tests/test_ereignisse.py hält beide Richtungen).
 ASSISTANT_EVENTS: dict[str, str] = {
     "open": "assistant_open",
+    # Der Anstupser: gezeigt, angenommen, weggeklickt. Die drei zusammen
+    # beantworten die einzige Frage, die über ihn zu stellen ist — bringt er
+    # etwas, oder stört er nur?
+    "nudge_shown": "assistant_nudge_shown",
+    "nudge_accepted": "assistant_nudge_accepted",
+    "nudge_dismissed": "assistant_nudge_dismissed",
 }
 
 

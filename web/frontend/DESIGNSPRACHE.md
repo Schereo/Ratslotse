@@ -411,6 +411,18 @@ iOS-Schrift.
   Handy kein Hover hat und eine Zeigerhand ohne Ziel gegen § 6 verstößt. Der
   Modus schließt das Fenster: Die Abzeichen stehen auf der Seite, und mobil
   deckt das Fenster genau sie ab.
+- **Anstupser**: eine Sprechblase über dem Lotti-Knopf, max 16 rem, `bg-card`,
+  Rahmen, Radius 16, `shadow-lifted`; Lotti 32 px mit `hebt-hand`, der Satz in
+  `text-hinweis` („Hast du eine Frage zu dem, was du siehst?"), darunter
+  **Ja, frag Lotti** (primary, gefüllt) und oben rechts ein **×**.
+  `role="status"` — sie meldet sich, ohne den Fokus zu nehmen. Sie verschwindet
+  nach 15 s oder nach 300 px Scrollen von selbst, und **das zählt nicht als
+  Ablehnung**: Wer nicht hinsieht, hat nicht Nein gesagt. Kein Ton, keine
+  Vibration, kein Zähler am Knopf. **Ihre Grenzen stehen im Code, nicht im
+  Ermessen** (`lib/anstupser.ts`): nur auf Leseseiten, nach 45 s sichtbarer
+  Lesezeit, nicht in den ersten zwei Seitenaufrufen einer Sitzung, höchstens
+  einmal am Tag und dreimal in 30 Tagen, nach zwei × 60 Tage Pause, nach einem
+  Ja 14 Tage.
 - **Turn-Fußzeile**: KI-Hinweis 14 px + stille Icon-Aktionen 15 px
   (Teilen, Drucken, Vorlesen, 👍/👎) — keine gerahmten Buttons.
 - **Schritt-Zeichen (Haushalt)**: Jeder Schritt des Haushalts-Wegs trägt ein
@@ -589,8 +601,8 @@ eine Wirkung der einzelnen Mail zu behaupten.
 
 ## 8. Anti-Patterns
 
-Keine Lotti-Sprechblase, die von selbst erscheint · kein Zähler oder Abzeichen
-am geschlossenen Lotti-Knopf ·
+Keine Lotti-Sprechblase außerhalb der Anstupser-Grenzen (§ 5) · kein Zähler
+oder Abzeichen am geschlossenen Lotti-Knopf ·
 keine Anführungszeichen um Paraphrasen · keine Stimm-/Abstimmungsgrafiken ·
 kein Signal-Orange als Flächenfarbe · keine Parteifarben-Flächen (Ausnahme:
 Stichwahl-Karte, s. § 2) · kein Emoji
