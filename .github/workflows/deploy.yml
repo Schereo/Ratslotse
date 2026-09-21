@@ -104,6 +104,21 @@ jobs:
             > ~/.ssh/config
           chmod 600 ~/.ssh/config
 
+      # UM PLATZ BITTEN, bevor irgendetwas angefasst wird. Lange Cron-Läufe
+      # sehen an ihrer nächsten Stapelgrenze nach diesem Marker, behalten das
+      # bereits Geschriebene und hören auf (kern/stopp.py). Das ersetzt den
+      # Holzhammer: Ein `kill` träfe den Lauf mitten im Stapel, und ein
+      # Abbruch des DEPLOYS wiederum hat am 20.09.2026 sechs Läufe gekostet,
+      # weil `check_cities.py` vierzehn Stunden lief.
+      #
+      # `data/` wird vom rsync nicht angefasst, der Marker überlebt also den
+      # ganzen Lauf. Weggeräumt wird er am Ende IMMER (letzter Schritt); bleibt
+      # er trotzdem liegen, verfällt er nach 30 Minuten von selbst — sonst
+      # träte jeder Wochenlauf danach sofort zur Seite und täte nie wieder
+      # etwas, und zwar still.
+      - name: Laufende Jobs um Platz bitten
+        run: ssh target 'cd ~/app && mkdir -p data && touch data/.deploy-wartet'
+
       # Erste Rückfalllinie noch VOR jeder Codeübertragung. Der finale Snapshot
       # folgt nach dem Build bei gestopptem API-Dienst direkt an der
       # Migrationsgrenze. Hier läuft absichtlich der bisher installierte,
@@ -476,6 +491,15 @@ jobs:
       # neues GitHub-Secret. Das Skript kommt über stdin aus dem Checkout des
       # Runners — so wirkt es auch dann, wenn der rsync gar nicht erst lief.
       # Scheitert auch das (kein SSH), bleibt GitHubs eigene Fehlermeldung.
+      # IMMER: auch wenn oben etwas gescheitert ist. Ein liegengebliebener
+      # Marker würde jeden folgenden Cron-Lauf sofort zur Seite treten lassen.
+      # Die 30-Minuten-Kappe in `kern/stopp.py` ist die zweite Sicherung, nicht
+      # die erste.
+      - name: Platz-Bitte zurücknehmen
+        if: always()
+        continue-on-error: true
+        run: ssh target 'rm -f ~/app/data/.deploy-wartet'
+
       - name: Alarm schlagen, wenn der Deploy abbricht
         if: failure()
         continue-on-error: true

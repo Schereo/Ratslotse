@@ -1966,7 +1966,7 @@ class AdminJob(TypedDict):
     label: str
     description: str
     schedule: str
-    state: Literal["ok", "stale", "error", "unknown"]
+    state: Literal["ok", "stale", "error", "unknown", "pausiert"]
     age_h: float | None
     last: dict[str, Any] | None
     history: list[AdminJobRun]

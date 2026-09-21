@@ -5,6 +5,14 @@ ist ihre lesbare Entsprechung fürs Admin-Panel. Wer einen Cron-Eintrag ändert,
 zieht ``schedule``/``max_age_h`` hier nach — sonst schlägt die Überfällig-Ampel
 falsch an. ``max_age_h`` ist bewusst großzügiger als der Abstand zweier Läufe,
 damit ein einzelner verspäteter Lauf nicht sofort Alarm auslöst.
+
+Ein Job kann ``"pausiert"`` tragen — mit dem Grund im Klartext. Dann ist sein
+Schweigen der GEWOLLTE Zustand: keine Überfällig-Ampel, keine Herzschlag-Mail.
+Anlass war ``check_cities`` am 20.09.2026: Der Städtevergleich ist noch nicht
+ausgeliefert und stand trotzdem für rund 70 % der Modellkosten. Ohne dieses
+Feld hieße „Cron aus" entweder „jeden Tag eine Mail, dass er schweigt" oder
+„Eintrag aus der Registry löschen" — und beim Wiedereinschalten fiele
+niemandem auf, dass er fehlt.
 """
 from __future__ import annotations
 
@@ -78,6 +86,13 @@ JOBS: list[dict] = [
         # zwei Läufe, die beide ein Embedding-Modell laden, gehören nicht auf
         # dieselbe Stunde einer VM mit zwei Kernen.
         "schedule": "sonntags 5 Uhr",
+        # PAUSIERT seit 20.09.2026 (Tims Entscheidung). Der Städtevergleich
+        # ist noch nicht ausgeliefert, und der Lauf stand für rund 70 % der
+        # gesamten Modellkosten ($3,83 von $5,44 zwischen dem 07. und
+        # 20.09.2026). Wieder anschalten heißt: diese Zeile entfernen UND die
+        # crontab-Zeile auf dem Server wieder scharf stellen.
+        "pausiert": "Städtevergleich noch nicht ausgeliefert; Kosten gespart "
+                    "(Tim, 20.09.2026). Erst mit dem Feature wieder anschalten.",
         # Großzügig: Der Lauf ist wöchentlich, und ein einzelner ausgefallener
         # Sonntag ist kein Alarm — erst zwei hintereinander.
         "max_age_h": 8 * 24,
@@ -209,12 +224,19 @@ def zustand(job: dict, letzter: dict | None,
                     es sonst gar keine Meldung gibt: Ein Job, der gar nicht
                     startet, stürzt auch nicht ab.
     * ``unknown`` — noch kein einziger Lauf verzeichnet.
+    * ``pausiert`` — absichtlich abgeschaltet (Feld ``pausiert`` in ``JOBS``).
+                    Sein Schweigen ist der gewollte Zustand und kein Befund.
 
     Steht bewusst HIER und nicht im Admin-Router: Seit 09/2026 fragt auch
     ``scripts/check_herzschlag.py`` danach, und zwei Fassungen derselben Regel
     liefen unweigerlich auseinander — die Ampel im Panel zeigte dann etwas
     anderes als die Mail.
     """
+    if job.get("pausiert"):
+        # Zuerst, noch vor „noch kein Lauf": Ein pausierter Job SOLL schweigen.
+        # Die Ampel darf daraus keinen Ausfall machen, sonst kommt jeden Tag
+        # eine Mail über einen Zustand, den jemand absichtlich hergestellt hat.
+        return "pausiert", None
     if not letzter:
         return "unknown", None
     jetzt = jetzt or datetime.utcnow()

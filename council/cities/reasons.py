@@ -23,6 +23,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from council.cities.protocol import SPLITTER_VERSION
 from council.cities.store import CitiesStore, text_hash
+from kern.stopp import Stopp
 
 logger = logging.getLogger("council.cities.reasons")
 
@@ -37,8 +38,14 @@ BLOCK = 25
 
 
 def run(main: CitiesStore, body_id: str | None = None, limit: int | None = None,
-        workers: int = 0, nur_mit_gruppe: bool = True) -> dict:
-    """Für jeden geschnittenen Abschnitt wiedergeben, was dort steht."""
+        workers: int = 0, nur_mit_gruppe: bool = True,
+        stopp: Stopp | None = None) -> dict:
+    """Für jeden geschnittenen Abschnitt wiedergeben, was dort steht.
+
+    ``stopp`` wird an der Schreibgrenze gefragt (s. ``kern/stopp.py``): Wartet
+    ein Deploy oder ist die Frist um, hört der Lauf auf und behält, was schon
+    geschrieben ist.
+    """
     from council.cities.annotate import parse_json
     from council.cities.annotators import get as get_annotator
     from kern import llm, prompts
@@ -92,6 +99,7 @@ def run(main: CitiesStore, body_id: str | None = None, limit: int | None = None,
         kosten = float(getattr(verbrauch, "cost", 0) or 0) if verbrauch else 0.0
         return a["agenda_item_id"], daten, text_hash(abschnitt), kosten
 
+    abbruch = None
     with ThreadPoolExecutor(workers or REASON_WORKERS) as pool:
         puffer: list[tuple] = []
         for ergebnis in pool.map(einer, auftraege):
@@ -104,10 +112,20 @@ def run(main: CitiesStore, body_id: str | None = None, limit: int | None = None,
                 _schreiben(main, ann, puffer)
                 stand["annotated"] += len(puffer)
                 puffer = []
+            abbruch = stopp.grund() if stopp else None
+            if abbruch:
+                # `pool.map` hat alles sofort eingereicht — ohne
+                # `cancel_futures` dauerte das Aufhören so lange wie das
+                # Weitermachen.
+                pool.shutdown(wait=False, cancel_futures=True)
+                break
         if puffer:
             _schreiben(main, ann, puffer)
             stand["annotated"] += len(puffer)
 
+    if abbruch:
+        stand[f"abgebrochen_{abbruch.schluessel}"] = 1
+        logger.info("reason: %s", abbruch.text)
     stand["seconds"] = round(time.time() - t0)
     logger.info("reason fertig: %s Abschnitte, davon %s mit Begründung, "
                 "%s Fehler, $%.4f, %ss", stand["annotated"], stand["grounded"],
