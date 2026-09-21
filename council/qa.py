@@ -1189,6 +1189,103 @@ def steckbriefe_fuer(store, question: str, max_n: int = 2) -> list[dict]:
         return []
 
 
+#: Ab wann ein Beleg „ruhig" heißt und ab wann „alt" — in Monaten. Gemessen am
+#: 21.09.2026 gegen den Prod-Bestand: Die 31 flächendeckenden Ortsbereiche
+#: tragen alle einen Beschluss aus 2026, SECHS der neun benannten Quartiere
+#: nicht (Eversten-West zuletzt 10/2021). Sechs Monate sind eine Sitzungsrunde
+#: samt Ferien; bei anderthalb Jahren kippt „ist geplant" in „war geplant".
+AKTEN_RUHIG_MONATE = 6
+AKTEN_ALT_MONATE = 18
+
+
+def _monate_her(datum: str, heute) -> int:
+    """Volle Monate zwischen einem ISO-Datum und heute; negativ wird zu 0."""
+    from datetime import date as _d
+    try:
+        d = _d.fromisoformat(str(datum)[:10])
+    except ValueError:
+        return 0
+    monate = (heute.year - d.year) * 12 + (heute.month - d.month)
+    if heute.day < d.day:
+        monate -= 1
+    return max(0, monate)
+
+
+def aktenstand(store, candidates: list[dict], heute=None) -> dict:
+    """Wie alt ist der jüngste Beleg — und hat der Rat seitdem überhaupt getagt?
+
+    Der Antwort-Prompt kennt das heutige Datum nicht. Das Datum steht zwar an
+    jedem Beschluss, aber ohne Bezugspunkt liest ein Modell „Satzungsbeschluss
+    Oktober 2018" als Gegenwart — gemessen am 21.09.2026 auf Prod, echte
+    Nutzerfrage: „Für Neu-Donnerschwee ist … **geplant**", jüngster Beleg der
+    ganzen Antwort von Februar 2023, das Quartier steht längst.
+
+    Deterministisch wie ``beleglage``: Das Modell darf formulieren, nicht
+    rechnen. Leer bei Fehlern oder ohne datierte Kandidaten — der Zeitbezug ist
+    Zusatz, nie Blocker.
+
+    ``{"latest": "2023-02-09", "months": 43, "level": "old",
+       "last_session": "2026-06-29", "next_session": "2026-09-21"}``
+    """
+    from datetime import date as _date
+    try:
+        tag = heute or _date.today()
+        daten = sorted(str(c.get("session_date"))[:10] for c in candidates
+                       if c.get("session_date"))
+        if not daten:
+            return {}
+        juengster = daten[-1]
+        monate = _monate_her(juengster, tag)
+        stufe = ("fresh" if monate < AKTEN_RUHIG_MONATE
+                 else "quiet" if monate < AKTEN_ALT_MONATE else "old")
+        stand = {"latest": juengster, "months": monate, "level": stufe,
+                 "last_session": None, "next_session": None}
+        try:
+            stand["last_session"] = store.letzte_beschluss_sitzung()
+            kommend = store.upcoming_sessions(limit=1)
+            if kommend:
+                stand["next_session"] = str(kommend[0]["session_date"])[:10]
+        except Exception:  # noqa: BLE001 — der Kalender ist die Kür, das Alter die Pflicht
+            pass
+        return stand
+    except Exception:  # noqa: BLE001
+        return {}
+
+
+def aktenstand_regel(stand: dict | None) -> str:
+    """Die gemessenen Zeit-Tatsachen samt der Regel, was daraus folgt.
+
+    Steht bei den übrigen Antwort-Regeln (``extra_regeln``) und nicht im
+    Kontext: Eine Tatsache zwischen zwanzig Beschlusszeilen liest das Modell
+    nicht — Kontextposition 17–20 ist praktisch unsichtbar (gemessen 20.09.2026
+    am Nachzügler-Umbau).
+    """
+    if not stand or not stand.get("latest"):
+        return ""
+    zeilen = [f"\n\nSTAND DER AKTEN (gemessen, nicht geschätzt): Der jüngste Beschluss "
+              f"im Kontext ist vom {_datum_de(stand['latest'])} — "
+              f"{stand['months']} Monate her."]
+    letzte, naechste = stand.get("last_session"), stand.get("next_session")
+    if letzte:
+        zeilen.append(f" Der Rat hat zuletzt am {_datum_de(letzte)} überhaupt etwas "
+                      f"beschlossen.")
+    if naechste:
+        zeilen.append(f" Die nächste Sitzung ist am {_datum_de(naechste)}.")
+    if stand["level"] == "old":
+        zeilen.append(
+            " Das ist ein ALTER Stand: Sage im ERSTEN Satz, wann der Rat zuletzt "
+            "dazu entschieden hat, und schreibe nichts davon im Präsens oder "
+            "Futur. Was 2018 beschlossen wurde, ist heute kein Plan mehr, sondern "
+            "ein Beschluss von 2018 — ob er umgesetzt ist, steht nicht in den "
+            "Akten, also behaupte es in keine Richtung.")
+    elif stand["level"] == "quiet" and letzte and letzte > stand["latest"]:
+        zeilen.append(
+            " Der Rat hat seitdem getagt, aber nichts zu dieser Sache entschieden "
+            "— wenn die Frage auf den aktuellen Stand zielt, gehört das in die "
+            "Antwort.")
+    return "".join(zeilen)
+
+
 def steckbriefe_mit_ort(steckbriefe: list[dict], ort: dict | None) -> list[dict]:
     """Den Katalogort vorn einreihen — mit ``slug`` und ohne Dublette.
 
@@ -3577,7 +3674,12 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "topic",
                      geld: dict | None = None,
                      sitzungen: list[dict] | None = None,
                      ort: dict | None = None,
-                     staedte: list[dict] | None = None) -> tuple[list[dict], dict]:
+                     staedte: list[dict] | None = None,
+                     # ANS ENDE, nicht in die Mitte: Die beiden Aufrufer unten
+                     # reichen alles POSITIONSWEISE durch — ein neues Argument
+                     # zwischen `eng` und `taxes` verschöbe stillschweigend
+                     # jeden folgenden Wert um eine Stelle.
+                     stand: dict | None = None) -> tuple[list[dict], dict]:
     vtext = _verlauf_zeilen(verlauf)
     gespraech = (f"Dies ist eine Anschlussfrage in einem Gespräch. Bisher:\n{vtext}\n"
                  f"{ANSCHLUSS_REGEL}\n\n"
@@ -3621,7 +3723,11 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "topic",
                             + ortsregel
                             + ("" if eng else (GROSS_REGEL if gross else ""))
                             + (DUENN_REGEL if duenn else "")
-                            + geld_regeln(geld, eng),
+                            + geld_regeln(geld, eng)
+                            # Zuletzt, damit die Zeit-Tatsachen direkt über der
+                            # FRAGE stehen und nicht zwischen den Fachregeln
+                            # verschwinden.
+                            + aktenstand_regel(stand),
                             presse=_sitzungen_block(sitzungen)
                             + _glossar_block(begriffe_fuer(question))
                             + _steckbrief_block(steckbriefe) + _presse_block(presse)
@@ -3772,12 +3878,13 @@ def answer_question(question: str, candidates: list[dict], model: str = MODEL, t
                     duenn: bool = False, eng: bool = False,
                     taxes: list[dict] | None = None, tax_capacity: dict | None = None,
                     geld: dict | None = None, sitzungen: list[dict] | None = None,
-                    ort: dict | None = None, staedte: list[dict] | None = None):
+                    ort: dict | None = None, staedte: list[dict] | None = None,
+                    stand: dict | None = None):
     """Synthesise an answer from retrieved candidates. Returns ``(answer, cited_ids)``."""
     messages, extra = _answer_messages(question, candidates, typ, model, presse, verlauf,
                                        haushalt, debatten, anlagen, gross, steckbriefe, duenn, eng,
                                        taxes, tax_capacity, geld, sitzungen, ort,
-                                       staedte)
+                                       staedte, stand)
     resp = llm.chat_complete(model=model, _feature="qa_answer", temperature=0.2,
                              max_tokens=_answer_tokens(typ, gross, eng), messages=messages, **extra)
     answer = (resp.choices[0].message.content or "").strip()
@@ -3792,14 +3899,15 @@ def answer_stream(question: str, candidates: list[dict], model: str = MODEL, typ
                   duenn: bool = False, eng: bool = False,
                   taxes: list[dict] | None = None, tax_capacity: dict | None = None,
                   geld: dict | None = None, sitzungen: list[dict] | None = None,
-                  ort: dict | None = None, staedte: list[dict] | None = None):
+                  ort: dict | None = None, staedte: list[dict] | None = None,
+                  stand: dict | None = None):
     """Stream the answer text deltas (same prompt/context as answer_question) so the
     UI can render the answer as it is written. Citation resolution is the caller's
     job once the full text is assembled (see resolve_citations)."""
     messages, extra = _answer_messages(question, candidates, typ, model, presse, verlauf,
                                        haushalt, debatten, anlagen, gross, steckbriefe, duenn, eng,
                                        taxes, tax_capacity, geld, sitzungen, ort,
-                                       staedte)
+                                       staedte, stand)
     yield from llm.chat_stream(model=model, _feature="qa_answer", temperature=0.2,
                                max_tokens=_answer_tokens(typ, gross, eng), messages=messages, **extra)
 

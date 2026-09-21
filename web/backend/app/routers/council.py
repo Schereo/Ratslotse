@@ -4093,6 +4093,11 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 qa.steckbriefe_fuer(store, q_suche), ort)
             # Wie tragfähig ist der Fund? Deterministisch aus den Scores.
             lage = qa.beleglage(candidates)
+            # Und wie ALT ist er? Der Antwort-Prompt kennt das heutige Datum
+            # nicht; ohne Bezugspunkt liest ein Modell „Satzungsbeschluss
+            # Oktober 2018" als Gegenwart (gemessen 21.09.2026, echte
+            # Nutzerfrage nach Neu-Donnerschwee).
+            stand = qa.aktenstand(store, candidates)
             if anlagen_rows and not candidates:
                 # Ein konkreter Gutachten-/Anlagenfund ist ein direkter Beleg,
                 # auch wenn keine verknüpfte Beschlussstation vorhanden ist.
@@ -4151,6 +4156,9 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                         # Sitzungs-Fragetyps — deterministisch, nie vom Modell.
                         "sessions": _sitzungen_kompakt(sitzungen),
                         "evidence_level": lage,
+                        # Alter des jüngsten Belegs samt Sitzungskalender —
+                        # dieselbe Rolle wie die Beleglage, nur für die Zeit.
+                        "records_state": stand or None,
                         # Welche Haushalts-Quellen diese Frage gezogen hat.
                         # Steht im Ereignis, damit im Log ohne Rätselraten zu
                         # sehen ist, warum eine Antwort eine Zahl kannte —
@@ -4373,7 +4381,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                           anlagen=anlagen_rows,
                                           gross=gross, steckbriefe=steckbriefe,
                                           duenn=(lage == "duenn"), eng=eng,
-                                          sitzungen=sitzungen, ort=ort))
+                                          sitzungen=sitzungen, ort=ort,
+                                          stand=stand))
             try:
                 for delta in strom:
                     if not buf and delta:
@@ -4408,7 +4417,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                                  anlagen=anlagen_rows,
                                                  gross=gross, steckbriefe=steckbriefe,
                                                  duenn=(lage == "duenn"), eng=eng,
-                                                 sitzungen=sitzungen, ort=ort))
+                                                 sitzungen=sitzungen, ort=ort,
+                                                 stand=stand))
                     buf = ans
                     yield _sse({"type": "replace", "text": qa.split_followups(ans)[0]})
                     sent = len(ans)

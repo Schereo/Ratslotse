@@ -3700,6 +3700,55 @@ def test_ask_kombiniert_geldfrage_mit_ort_und_liefert_fundstelle(client, monkeyp
     assert sources["sources"][0]["ort_name"] == "Kreyenbrück"
 
 
+def test_ask_schickt_den_aktenstand_mit(client, monkeypatch):
+    """Eine Antwort, deren jüngster Beleg von 2018 ist, sagt das — im Ereignis
+    für den Hinweis über der Antwort UND im Prompt für das Modell.
+
+    Anlass: „Was ist für Neu-Donnerschwee geplant?" (21.09.2026) bekam eine
+    Antwort im Präsens über einen Satzungsbeschluss vom Oktober 2018. Der
+    Antwort-Prompt kennt das heutige Datum nicht; ohne Bezugspunkt liest sich
+    ein alter Beschluss wie ein aktueller Plan. Die Rechnung selbst hat ihre
+    Tests in `test_qa_zeitbezug.py`.
+    """
+    from app.routers import council as council_router
+    from council import qa as qa_mod
+
+    _register(client)
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_session(CouncilSession(91, "Rat", "2018-10-22", "17:00", "Rathaus"))
+    with cs._conn:
+        cs._conn.execute(
+            "INSERT INTO council_decisions "
+            "(id,ksinr,position,item_number,title,summary,outcome,kind) "
+            "VALUES (4711,91,1,'5','Bebauungsplan 58','Satzungsbeschluss',"
+            "'accepted','decision')")
+    cs.close()
+    alt = [{"id": 4711, "title": "Bebauungsplan 58", "summary": "Satzungsbeschluss",
+            "session_date": "2018-10-22", "committee": "Rat", "outcome": "accepted",
+            "score": 1.0}]
+    monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (alt, "semantisch"))
+    monkeypatch.setattr(qa_mod, "expand_query", lambda q, **k: q)
+    gesehen: dict = {}
+
+    def fake_stream(*args, **kwargs):
+        gesehen["stand"] = kwargs.get("stand")
+        yield "Der Rat hat 2018 entschieden [4711]."
+
+    monkeypatch.setattr(qa_mod, "answer_stream", fake_stream)
+
+    with client.stream("POST", "/api/council/ask",
+                       json={"question": "Was ist am Bebauungsplan 58 geplant?"}) as r:
+        assert r.status_code == 200
+        body = "".join(r.iter_text())
+
+    events = [json.loads(z[6:]) for z in body.splitlines() if z.startswith("data: ")]
+    sources = next(e for e in events if e["type"] == "sources")
+    assert sources["records_state"]["level"] == "old"
+    assert sources["records_state"]["latest"] == "2018-10-22"
+    # Und dasselbe dict geht an das Antwort-Modell, nicht nur ans Frontend.
+    assert gesehen["stand"]["level"] == "old"
+
+
 def test_ask_ortssteckbrief_traegt_slug_und_verdraengt_die_dublette(client, monkeypatch):
     """Produktionsfehler 21.09.2026: Die Frage nach „Neu-Donnerschwee" endete
     für die fragende Person mit „Frage fehlgeschlagen.".
