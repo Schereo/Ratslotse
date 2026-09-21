@@ -92,3 +92,16 @@ def source():
         return Herkunft(kind="ris", probe=probe, label=label, url=url, **rest)
 
     return bauen
+
+
+def pytest_configure(config):
+    """Eigene Marker anmelden — sonst warnt pytest bei jedem Lauf.
+
+    ``einwilligung(wert)`` setzt für einen Test, was
+    ``web_users.saves_conversations`` liefert: ``None`` = nie gefragt,
+    ``1`` = ja, ``0`` = nein. Der Wert entscheidet, ob ein Gespräch überhaupt
+    gespeichert wird (``tests/test_assistant.py``).
+    """
+    config.addinivalue_line(
+        "markers",
+        "einwilligung(wert): saves_conversations dieses Kontos (None | 0 | 1)")

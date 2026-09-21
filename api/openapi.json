@@ -1145,6 +1145,233 @@
         "title": "AdminLlmUsageFeature",
         "type": "object"
       },
+      "AdminLotti": {
+        "description": "Was der Reiter „Lotti\" im Admin-Panel zeigt.\n\nDie Fragen stammen **nur aus gespeicherten Gesprächen**, also von Konten\nmit Einwilligung — ein Ausschnitt, und die Oberfläche sagt das auch.",
+        "properties": {
+          "calls": {
+            "$ref": "#/components/schemas/AdminLottiAufrufe"
+          },
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "elements": {
+            "items": {
+              "$ref": "#/components/schemas/AdminLottiZeile"
+            },
+            "title": "Elements",
+            "type": "array"
+          },
+          "feedback": {
+            "$ref": "#/components/schemas/AdminLottiDaumen"
+          },
+          "funnel": {
+            "$ref": "#/components/schemas/AdminLottiTrichter"
+          },
+          "nudge": {
+            "$ref": "#/components/schemas/AdminLottiAnstupser"
+          },
+          "pages": {
+            "items": {
+              "$ref": "#/components/schemas/AdminLottiZeile"
+            },
+            "title": "Pages",
+            "type": "array"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/AdminLottiFrage"
+            },
+            "title": "Questions",
+            "type": "array"
+          },
+          "timeline": {
+            "items": {
+              "$ref": "#/components/schemas/AdminLottiTag"
+            },
+            "title": "Timeline",
+            "type": "array"
+          }
+        },
+        "required": [
+          "days",
+          "funnel",
+          "calls",
+          "timeline",
+          "pages",
+          "elements",
+          "questions",
+          "feedback",
+          "nudge"
+        ],
+        "title": "AdminLotti",
+        "type": "object"
+      },
+      "AdminLottiAnstupser": {
+        "properties": {
+          "accepted": {
+            "title": "Accepted",
+            "type": "integer"
+          },
+          "dismissed": {
+            "title": "Dismissed",
+            "type": "integer"
+          },
+          "shown": {
+            "title": "Shown",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "shown",
+          "accepted",
+          "dismissed"
+        ],
+        "title": "AdminLottiAnstupser",
+        "type": "object"
+      },
+      "AdminLottiAufrufe": {
+        "properties": {
+          "handed_over": {
+            "title": "Handed Over",
+            "type": "integer"
+          },
+          "opened": {
+            "title": "Opened",
+            "type": "integer"
+          },
+          "with_model": {
+            "title": "With Model",
+            "type": "integer"
+          },
+          "without_model": {
+            "title": "Without Model",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "with_model",
+          "without_model",
+          "handed_over",
+          "opened"
+        ],
+        "title": "AdminLottiAufrufe",
+        "type": "object"
+      },
+      "AdminLottiDaumen": {
+        "properties": {
+          "down": {
+            "title": "Down",
+            "type": "integer"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "up": {
+            "title": "Up",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "up",
+          "down",
+          "reasons"
+        ],
+        "title": "AdminLottiDaumen",
+        "type": "object"
+      },
+      "AdminLottiFrage": {
+        "properties": {
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question",
+          "n"
+        ],
+        "title": "AdminLottiFrage",
+        "type": "object"
+      },
+      "AdminLottiTag": {
+        "properties": {
+          "client": {
+            "title": "Client",
+            "type": "string"
+          },
+          "day": {
+            "title": "Day",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "day",
+          "client",
+          "n"
+        ],
+        "title": "AdminLottiTag",
+        "type": "object"
+      },
+      "AdminLottiTrichter": {
+        "description": "Von „war da\" bis „speichert\" — die vier Stufen der Annahme.",
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "integer"
+          },
+          "asked": {
+            "title": "Asked",
+            "type": "integer"
+          },
+          "opened": {
+            "title": "Opened",
+            "type": "integer"
+          },
+          "saving": {
+            "title": "Saving",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "active",
+          "opened",
+          "asked",
+          "saving"
+        ],
+        "title": "AdminLottiTrichter",
+        "type": "object"
+      },
+      "AdminLottiZeile": {
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key",
+          "n"
+        ],
+        "title": "AdminLottiZeile",
+        "type": "object"
+      },
       "AdminMailAnlass": {
         "properties": {
           "anlass": {
@@ -3036,6 +3263,21 @@
           "fetched_at"
         ],
         "title": "AssetRow",
+        "type": "object"
+      },
+      "AssistantEventBody": {
+        "description": "Ein Ereignis aus Lottis Fenster, das sonst keinen Endpunkt hätte.\n\nDas Öffnen des Fensters ruft nichts auf — ohne diesen Zähler ließe sich\n„wird es überhaupt angeklickt?\" nicht beantworten. Gebaut wie\n``POST /onboarding/tour``: ein Zähler, kein Zustand.",
+        "properties": {
+          "kind": {
+            "maxLength": 40,
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "AssistantEventBody",
         "type": "object"
       },
       "Attendance": {
@@ -10147,6 +10389,14 @@
       "ExplainBody": {
         "description": "Was Lotti zu sehen bekommt.",
         "properties": {
+          "conversation_id": {
+            "minimum": 1.0,
+            "title": "Conversation Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
           "element": {
             "description": "Das angeklickte Element — Schlüssel, Überschrift und sein Text.\n\nDer Text wird aus dem DOM geerntet (``innerText`` des Elements mit dem\n``data-erklaer``-Anker). Er ist damit **Fremdtext**: Auf Beschluss-Seiten\nsteht darin, was jemand in eine Ratsvorlage geschrieben hat. Behandelt\nwird er ausschließlich als Daten, siehe ``council/assistant.py``.",
             "properties": {
@@ -15693,6 +15943,12 @@
               "string",
               "null"
             ]
+          },
+          "source": {
+            "default": "ask",
+            "pattern": "^(ask|lotti)$",
+            "title": "Source",
+            "type": "string"
           }
         },
         "required": [
@@ -22376,6 +22632,50 @@
         ]
       }
     },
+    "/api/admin/stats/assistant": {
+      "get": {
+        "description": "Wird Lotti angenommen — und wofür?\n\nDie Fragen kommen aus den gespeicherten Gesprächen, also von den Konten\nmit Einwilligung. Das anonyme Fragenprotokoll aus dem Plan ist gestrichen\n(Tim, 21.09.2026): Ein freier Text, den niemand abgenickt hat, wird nicht\naufgehoben — auch nicht für eine gute Frage.",
+        "operationId": "stats_assistant_api_admin_stats_assistant_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminLotti"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stats Assistant",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/admin/stats/cohorts": {
       "get": {
         "description": "Der Trichter je Registrierungswoche — wer bleibt, und wo es abreißt.\n\nBetreiber- und Testkonten fallen heraus; welche das sind, entscheidet die\nAdminrolle plus ``STATS_EXCLUDE_DOMAINS``. Ohne diesen Schnitt zeigte die\nStatistik zum großen Teil das eigene Klicken.",
@@ -23783,6 +24083,41 @@
           }
         },
         "summary": "Ask",
+        "tags": [
+          "council"
+        ]
+      }
+    },
+    "/api/council/assistant/event": {
+      "post": {
+        "description": "Ein Ereignis zählen — je Konto und Tag, wie jeder andere Funktionszähler.\n\n**Was NICHT mitgeht:** kein Zeitpunkt, keine Seite, keine Frage. Nur\nwelche Handlung es war.",
+        "operationId": "assistant_event_api_council_assistant_event_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssistantEventBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Assistant Event",
         "tags": [
           "council"
         ]

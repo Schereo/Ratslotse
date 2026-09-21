@@ -96,6 +96,10 @@ qa_limiter = RateLimiter(max_calls=10, window_seconds=600)
 # die zehn der KI-Frage wären nach einer Minute Stöbern aufgebraucht.
 # 30 in zehn Minuten deckt das, darüber ist es kein Mensch mehr.
 assistant_limiter = RateLimiter(max_calls=30, window_seconds=600)
+# Die Ereignis-Meldungen aus Lottis Fenster kosten nichts (ein INSERT je
+# Konto und Tag) und kommen häufiger: Öffnen, Anstupser gezeigt, Ja, Nein.
+# 60 in zehn Minuten deckt jede ehrliche Sitzung.
+assistant_event_limiter = RateLimiter(max_calls=60, window_seconds=600)
 # Daumen-Feedback ist anonym beschreibbar — ohne Limit ließe sich die Tabelle
 # (und mit ihr Backups + Off-Site-Mirror) per Skript um Gigabytes aufblähen.
 # 20 pro 10 Minuten deckt jedes ehrliche Gespräch, auch mit Grund-Nachträgen.

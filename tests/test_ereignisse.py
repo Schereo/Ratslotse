@@ -18,11 +18,24 @@ BACKEND = WURZEL / "web" / "backend" / "app"
 
 
 def _geschrieben() -> set[str]:
-    """Jeder Wert, den das Backend tatsächlich in ``user_activity`` schreibt."""
+    """Jeder Wert, den das Backend tatsächlich in ``user_activity`` schreibt.
+
+    Zwei Schreibweisen, und beide müssen gesehen werden: der direkte Aufruf
+    ``record_activity(uid, "…")`` und die Positivlisten, aus denen ein
+    Endpunkt seinen Zähler NACHSCHLÄGT — Lottis Fenster meldet ein Ereignis
+    über ``ASSISTANT_EVENTS``, und ein Regex auf die Aufrufstelle sähe dort
+    nur eine Variable. Ohne die zweite Form stünden die Zähler hier als
+    „schreibt niemand", obwohl sie laufen.
+    """
     werte = set()
     for datei in BACKEND.rglob("*.py"):
-        for treffer in re.finditer(r'record_activity\(\s*[^,]+,\s*"([a-z_]+)"', datei.read_text(encoding="utf-8")):
+        text = datei.read_text(encoding="utf-8")
+        for treffer in re.finditer(r'record_activity\(\s*[^,]+,\s*"([a-z_]+)"', text):
             werte.add(treffer.group(1))
+        # Die Werte der Positivlisten: `"open": "assistant_open",`
+        for block in re.finditer(r"^[A-Z_]+_EVENTS: dict\[str, str\] = \{(.*?)^\}",
+                                 text, re.M | re.S):
+            werte |= set(re.findall(r':\s*"([a-z_]+)"', block.group(1)))
     return werte
 
 

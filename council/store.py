@@ -4191,7 +4191,7 @@ class CouncilStore(BplanMixin, FundstueckeMixin, HaushaltMixin, OrteMixin, Perso
 
     def save_qa_feedback(self, question: str, answer_excerpt: str | None,
                          rating: str, reason: str | None,
-                         user_id: int | None = None) -> None:
+                         user_id: int | None = None, source: str = "ask") -> None:
         """Daumen hoch/runter zu einer KI-Antwort (5a/I-03).
 
         Ein Konto hat je Frage **eine** Stimme: Der nachgereichte Grund und die
@@ -4217,8 +4217,10 @@ class CouncilStore(BplanMixin, FundstueckeMixin, HaushaltMixin, OrteMixin, Perso
                         (werte[1], rating, werte[3], now, vorher[0]))
                     return
             self._conn.execute(
-                "INSERT INTO council_qa_feedback (question, answer_excerpt, rating, reason, user_id, created) "
-                "VALUES (?, ?, ?, ?, ?, ?)", werte,
+                "INSERT INTO council_qa_feedback "
+                "(question, answer_excerpt, rating, reason, user_id, created, source) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (*werte, source if source in ("ask", "lotti") else "ask"),
             )
 
 

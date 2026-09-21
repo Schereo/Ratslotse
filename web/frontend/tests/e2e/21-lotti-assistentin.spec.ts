@@ -207,6 +207,28 @@ test.describe("Lotti-Knopf und -Fenster", () => {
     await expect(page.getByText(/nichts einzeln erklären/)).toBeHidden();
   });
 
+  test("ohne beantwortete Einwilligung fragt Lotti nichts", async ({ page }) => {
+    // Die Saat-Konten haben die Frage längst beantwortet — für diesen Fall
+    // muss sie zurückgesetzt werden. Geprüft wird die Zusage, die dahinter
+    // steht: Der Satz über die externe Verarbeitung steht VOR der ersten
+    // Frage, nicht danach.
+    await page.route("**/api/auth/me", async (route) => {
+      try {
+        const antwort = await route.fetch();
+        const body = await antwort.json();
+        await route.fulfill({ json: { ...body, saves_conversations: null } });
+      } catch {
+        await route.fallback().catch(() => { /* Test ist schon zu Ende */ });
+      }
+    });
+    await page.goto("/dashboard");
+    await knopf(page).click();
+    await expect(fenster(page).getByText(/Soll ich mir deine Gespräche merken/)).toBeVisible();
+    await expect(fenster(page).getByText(/OpenRouter/)).toBeVisible();
+    await expect(fenster(page).getByRole("button", { name: "Fragen" })).toBeDisabled();
+    await expect(fenster(page).getByRole("button", { name: "Was sehe ich hier?" })).toBeDisabled();
+  });
+
   test("auf der Konto-Seite gibt es Lotti nicht", async ({ page }) => {
     // Dort stehen die eigene Adresse und die Kontodaten — sie dürfen nicht
     // als Seitentext in einen Prompt wandern (kern/knowledge.py).

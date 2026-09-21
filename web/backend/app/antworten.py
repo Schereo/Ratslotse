@@ -1880,6 +1880,66 @@ class AdminEreignisse(TypedDict):
     previous_empty_share: float | None
 
 
+class AdminLottiTrichter(TypedDict):
+    """Von „war da" bis „speichert" — die vier Stufen der Annahme."""
+    active: int
+    opened: int
+    asked: int
+    saving: int
+
+
+class AdminLottiAufrufe(TypedDict):
+    with_model: int
+    without_model: int
+    handed_over: int
+    opened: int
+
+
+class AdminLottiTag(TypedDict):
+    day: str
+    client: str
+    n: int
+
+
+class AdminLottiZeile(TypedDict):
+    key: str
+    n: int
+
+
+class AdminLottiFrage(TypedDict):
+    question: str
+    n: int
+
+
+class AdminLottiDaumen(TypedDict):
+    up: int
+    down: int
+    reasons: list[str]
+
+
+class AdminLottiAnstupser(TypedDict):
+    shown: int
+    accepted: int
+    dismissed: int
+
+
+class AdminLotti(TypedDict):
+    """Was der Reiter „Lotti" im Admin-Panel zeigt.
+
+    Die Fragen stammen **nur aus gespeicherten Gesprächen**, also von Konten
+    mit Einwilligung — ein Ausschnitt, und die Oberfläche sagt das auch.
+    """
+    days: int
+    funnel: AdminLottiTrichter
+    calls: AdminLottiAufrufe
+    timeline: list[AdminLottiTag]
+    pages: list[AdminLottiZeile]
+    elements: list[AdminLottiZeile]
+    questions: list[AdminLottiFrage]
+    feedback: AdminLottiDaumen
+    nudge: AdminLottiAnstupser
+
+
 class AdminSackgasse(TypedDict):
     """Eine Frage, die keine Quelle gefunden hat.
 

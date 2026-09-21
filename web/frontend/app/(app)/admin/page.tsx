@@ -22,6 +22,7 @@ import { UsersTab } from "@/components/admin/users";
 import { MailDashboard } from "@/components/admin/mail";
 import { AdminOverview } from "@/components/admin/overview";
 import { StatsTab, OperationsTab } from "@/components/admin/statistics";
+import { LottiTab } from "@/components/admin/lotti";
 
 export default function AdminPage() {
   const { user, loading } = useAuth();
@@ -41,6 +42,7 @@ export default function AdminPage() {
       <div className="mt-6 min-w-0">
         {tab === "stats" && <AdminOverview />}
         {(["aktivitaet", "konten", "reichweite", "antworten"] as string[]).includes(tab) && <StatsTab view={tab} />}
+        {tab === "lotti" && <LottiTab />}
         {tab === "jobs" && <OperationsTab />}
         {tab === "fehler" && <FehlerTab />}
         {tab === "feedback" && <FeedbackTab />}

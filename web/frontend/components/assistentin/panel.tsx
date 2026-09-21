@@ -11,6 +11,8 @@ import {
   auswahlText, kuerze, refsAus, routeAus, trenneWeiter,
   type Bildschirm,
 } from "@/lib/assistentin";
+import { useAuth } from "@/lib/auth";
+import { GespraecheEinwilligung } from "@/components/gespraeche-einwilligung";
 import { fragenHref } from "@/lib/routes";
 import type { ElementFrage } from "./index";
 import { leseSseStrom } from "@/lib/sse";
@@ -85,6 +87,13 @@ export function LottiPanel({
   const sp = useSearchParams();
   const router = useRouter();
   const [turns, setTurns] = useState<LottiTurn[]>([]);
+  // Dieselbe Einwilligung wie „Frag den Rat" — ein Schalter am Konto, eine
+  // Tabelle. `null` heißt „noch nie gefragt" und ist der einzige Zustand, in
+  // dem die Karte erscheint; eine getroffene Wahl gilt auf beiden Flächen.
+  const { user, refresh } = useAuth();
+  const [merken, setMerken] = useState<number | null | undefined>(
+    () => (user ? user.saves_conversations ?? null : undefined));
+  const [gespraechId, setGespraechId] = useState<number | null>(null);
   const [frage, setFrage] = useState("");
   const [laden, setLaden] = useState(false);
   const abbruch = useRef<AbortController | null>(null);
@@ -145,6 +154,10 @@ export function LottiPanel({
   ) => {
     const sauber = text.trim();
     if (!sauber && !mitMarkierung && !baustein) return;
+    // Ohne beantwortete Einwilligung wird nicht gefragt: Der Satz über die
+    // externe Verarbeitung steht in der Karte, und sie ist die einzige Stelle,
+    // an der er VOR der ersten Frage steht.
+    if (merken === null || merken === undefined) return;
     abbruch.current?.abort();
     const ctrl = new AbortController();
     abbruch.current = ctrl;
@@ -186,6 +199,11 @@ export function LottiPanel({
           refs: bildschirm.refs,
           history: turns.filter((t) => t.answer && !t.fehler).slice(-MAX_TURNS_KONTEXT)
             .map((t) => ({ question: t.question.slice(0, 200), answer: t.answer.slice(0, 300) })),
+          // Das laufende Gespräch. Das Feld MUSS mit, auch als `null`: Der
+          // Server speichert nur, wenn der Client es überhaupt geschickt hat
+          // (`model_fields_set`) — so bleibt ein alter Client stumm, statt
+          // ungefragt Gespräche anzulegen.
+          conversation_id: gespraechId,
         }),
         signal: ctrl.signal,
       });
@@ -211,6 +229,11 @@ export function LottiPanel({
             glossary: (msg.glossary as string[]) ?? [],
             mode: (msg.mode as string) ?? null,
           }));
+          // `null` heißt: Der Server konnte oder durfte nicht (mehr) in dieses
+          // Gespräch speichern — die tote Kennung nicht weiter mitschicken,
+          // die nächste Frage eröffnet frisch.
+          if (msg.conversation_id != null) setGespraechId(msg.conversation_id as number);
+          else if ("conversation_id" in msg) setGespraechId(null);
         } else if (msg.type === "error") {
           patch(() => ({ answer: (msg.message as string) ?? "Erklärung fehlgeschlagen.", fehler: true }));
         }
@@ -227,7 +250,7 @@ export function LottiPanel({
         abbruch.current = null;
       }
     }
-  }, [markierung, refs, route, turns]);
+  }, [markierung, refs, route, turns, gespraechId, merken]);
 
   // Ein im Erklär-Modus angetippter Baustein fragt von selbst — der Tipp auf
   // das Abzeichen IST die Frage, ein zweiter Klick im Fenster wäre einer zu
@@ -245,6 +268,7 @@ export function LottiPanel({
     abbruch.current?.abort();
     setTurns([]);
     setFrage("");
+    setGespraechId(null);
     try { sessionStorage.removeItem(SPEICHER); } catch { /* egal */ }
     eingabeRef.current?.focus();
   };
@@ -318,7 +342,13 @@ export function LottiPanel({
 
       {/* Verlauf */}
       <div className="flex-1 space-y-3 overflow-y-auto px-3 py-3">
-        {turns.length === 0 && (
+        {merken === null && (
+          <GespraecheEinwilligung
+            kompakt
+            onEntschieden={(ja) => { setMerken(ja ? 1 : 0); refresh(); }}
+          />
+        )}
+        {turns.length === 0 && merken !== null && (
           <div className="flex flex-col items-center gap-2 px-2 pt-4 text-center">
             <Mascot pose="wave" decorative className="h-16 w-16" />
             <p className="text-hinweis text-muted-foreground">
@@ -379,15 +409,15 @@ export function LottiPanel({
 
       {/* Vorschlags-Chips */}
       <div className="flex flex-wrap gap-1.5 px-3 pb-1.5">
-        <Chip onClick={() => void fragen("Was sehe ich hier?", false)} disabled={laden}>
+        <Chip onClick={() => void fragen("Was sehe ich hier?", false)} disabled={laden || merken == null}>
           Was sehe ich hier?
         </Chip>
         {markierung && (
-          <Chip onClick={() => void fragen("Was heißt das?", true)} disabled={laden}>
+          <Chip onClick={() => void fragen("Was heißt das?", true)} disabled={laden || merken == null}>
             Markiertes erklären
           </Chip>
         )}
-        <Chip onClick={onModus} disabled={laden}>
+        <Chip onClick={onModus} disabled={laden || merken == null}>
           Etwas auf der Seite zeigen
         </Chip>
       </div>
@@ -408,7 +438,7 @@ export function LottiPanel({
         />
         <button
           type="submit"
-          disabled={laden || !frage.trim()}
+          disabled={laden || !frage.trim() || merken == null}
           aria-label="Fragen"
           className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors disabled:bg-primary/35"
         >
