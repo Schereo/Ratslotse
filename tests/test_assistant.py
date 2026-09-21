@@ -161,6 +161,33 @@ def test_eine_markierung_mit_zwei_begriffen_geht_ans_modell(kein_modell):
     assert lotti.deterministic_answer(_Store(), screen, "") is None
 
 
+def test_der_anschluss_chip_fragt_nach_seinem_wort_und_bleibt_kostenlos(kein_modell):
+    """„Was heißt Umschuldung?" mit dem Wort als Markierung — der Weg des
+    Anschluss-Chips in Lottis Fenster.
+
+    Ohne diesen Zweig kostete der Chip einen Modellaufruf für eine Erklärung,
+    die kuratiert im Haus liegt: ``generische_frage`` verlangt „was heißt
+    DAS", und genau dieses Wort will der Chip ja nennen.
+    """
+    screen = lotti.Screen(route="/haushalt/schulden", selection="Umschuldung")
+    text, art = lotti.deterministic_answer(_Store(), screen, "Was heißt Umschuldung?")
+    assert art == "glossary"
+    assert "Umschuldung" in text
+
+
+def test_eine_echte_frage_zum_markierten_wort_geht_ans_modell(kein_modell):
+    """Der Riegel dahinter: Nur die Frage nach dem WORT selbst zählt.
+
+    „Wer hat über die Umschuldung abgestimmt?" mit derselben Markierung ist
+    eine Archivfrage — eine Definition wäre dort die Antwort auf etwas
+    anderes.
+    """
+    screen = lotti.Screen(route="/haushalt/schulden", selection="Umschuldung")
+    for frage in ("Wer hat über die Umschuldung abgestimmt?",
+                  "Was heißt Umschuldung für den Haushalt?"):
+        assert lotti.deterministic_answer(_Store(), screen, frage) is None
+
+
 def test_beschluss_seite_antwortet_mit_der_kurzfassung(kein_modell):
     store = _Store({"title": "Stadionneubau", "simple_summary": "Die Stadt baut ein Stadion."})
     screen = lotti.Screen(route="/council/decision", refs={"decision_id": 8525})

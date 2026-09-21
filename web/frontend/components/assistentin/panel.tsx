@@ -10,10 +10,13 @@ import { AntwortText } from "@/components/qa-bausteine";
 import { FeedbackDaumen } from "@/components/feedback-daumen";
 import { apiUrl, authHeaders } from "@/lib/api";
 import {
-  ankerListe, ankerTreffer, auswahlText, daumenZeigen, gedaechtnis, kuerze, ortsfrage,
-  refsAus, routeAus, seitenName, seitenTitel, seitenUeberschrift, trenneWeiter,
-  ueberschriftenPfad, zaesur, type Anker, type Bildschirm,
+  ankerKennung, ankerListe, ankerTreffer, anschlussfragen, auswahlText, chipTitel,
+  daumenZeigen,
+  ernteElement, gedaechtnis, kuerze, ortsfrage, refsAus, routeAus, seitenName,
+  seitenTitel, seitenUeberschrift, trenneWeiter, ueberschriftenPfad, zaesur,
+  type Anker, type Bildschirm,
 } from "@/lib/assistentin";
+import { begriffeIn } from "@/lib/glossar-treffer";
 import { useAuth } from "@/lib/auth";
 import { GespraecheEinwilligung } from "@/components/gespraeche-einwilligung";
 import { decisionHref, fragenHref } from "@/lib/routes";
@@ -81,6 +84,14 @@ export type LottiTurn = {
   /** Die Bausteine, zu denen diese Runde hinführt („Zeig mir: …"). Gesetzt
    *  nur in der Lotsen-Runde (`mode === "local"`). */
   zeigen?: Anker[];
+  /** Der Baustein, den diese Runde ERKLÄRT — aus dem Erklär-Modus oder aus
+   *  einem „Erklär mir: …"-Chip. Er ist das Gedächtnis der Anschlussfragen:
+   *  Was einmal erklärt wurde, wird nicht noch einmal vorgeschlagen. Der
+   *  Schlüssel allein reichte dafür nicht (zwei Bausteine dürfen sich einen
+   *  teilen), deshalb steht hier der ganze Anker. */
+  baustein?: Anker;
+  /** Das Fachwort, nach dem diese Runde gefragt hat („Was heißt …?"). */
+  begriff?: string;
 };
 
 /** Der Breakpoint `desk` aus `tailwind.config.ts`, als Medienabfrage.
@@ -120,14 +131,18 @@ const SCROLL_MAX_MS = 1500;
  * weg (eine Seite lädt nach, ein Reiter wurde gewechselt), passiert nichts —
  * eine Fehlermeldung über einen verschwundenen Kasten hülfe niemandem.
  */
-function zeigeBaustein(anker: Anker): void {
+function ankerKnoten(anker: Anker): HTMLElement | undefined {
   // Schlüssel UND Titel, nicht nur der Schlüssel: Auf `/haushalt/schulden`
   // tragen zwei Zeitreihen denselben (`…zeitreihe`). Ein Selektor auf den
   // Schlüssel allein sprang immer die erste an — also im halben Fall auf den
   // falschen Kasten (gemessen im Browser am 22.09.2026).
-  const el = [...document.querySelectorAll<HTMLElement>(
+  return [...document.querySelectorAll<HTMLElement>(
     `[data-erklaer="${CSS.escape(anker.key)}"]`)]
     .find((k) => k.getAttribute("data-erklaer-titel") === anker.titel);
+}
+
+function zeigeBaustein(anker: Anker): void {
+  const el = ankerKnoten(anker);
   if (!el) return;
   // Sanft nur, wer das will: Ein geschmeidiger Sprung über eine halbe
   // Haushaltsseite ist genau die Bewegung, die `prefers-reduced-motion`
@@ -278,6 +293,11 @@ export function LottiPanel({
 
   const fragen = useCallback(async (
     text: string, mitMarkierung: boolean, baustein: ElementFrage | null = null,
+    /** Was ein Anschluss-Chip zusätzlich mitbringt: `auswahl` geht als
+     *  `selection` mit (der Weg zur kostenlosen Glossar-Antwort, s.
+     *  `begriffFragen`), `anker` und `begriff` merken sich nur, was schon
+     *  gefragt wurde — damit derselbe Chip nicht zweimal erscheint. */
+    chip: { auswahl?: string; anker?: Anker; begriff?: string } = {},
   ) => {
     const sauber = text.trim();
     if (!sauber && !mitMarkierung && !baustein) return;
@@ -321,14 +341,17 @@ export function LottiPanel({
     setFrage("");
     setLaden(true);
 
-    const kontext = baustein
-      ? (baustein.title || "Baustein auf der Seite")
-      : (mitMarkierung && markierung ? `Markiert: „${kuerze(markierung, 40)}“` : "");
+    const kontext = chip.begriff
+      ? "im Glossar nachgeschlagen"
+      : baustein
+        ? (baustein.title || "Baustein auf der Seite")
+        : (mitMarkierung && markierung ? `Markiert: „${kuerze(markierung, 40)}“` : "");
     if (baustein) letzterBaustein.current = baustein;
     const key = naechsterKey.current++;
     setTurns((ts) => [...ts, {
       key, question: sauber, answer: "", next: null, mode: null, kontext,
       route, seite: seitenName(document, anzeigename),
+      baustein: chip.anker, begriff: chip.begriff,
     }]);
 
     const bildschirm: Bildschirm = {
@@ -339,7 +362,13 @@ export function LottiPanel({
       // wird beim Antippen berechnet — nur dort liegt der Knoten noch vor.
       heading: baustein?.pfad || ueberschriftenPfad(null, document, anzeigename),
       element: baustein,
-      selection: mitMarkierung ? markierung : "",
+      // **Der Begriff reist als `selection`, und das ist kein Trick.** Genau
+      // dort sucht `council/assistant.py::deterministic_answer` nach einem
+      // Fachwort: Trifft die Markierung GENAU einen Glossar-Eintrag, kommt
+      // die geprüfte Erklärung zurück — ohne Modell, ohne Kosten, in
+      // Millisekunden. Ein „Was heißt Umschuldung?" ohne `selection` wäre
+      // dieselbe Antwort für 0,07 Cent und eine Sekunde Wartezeit.
+      selection: chip.auswahl ?? (mitMarkierung ? markierung : ""),
       refs,
     };
 
@@ -426,7 +455,10 @@ export function LottiPanel({
   // viel. Danach wird er verbraucht, sonst feuerte jedes Neuzeichnen erneut.
   useEffect(() => {
     if (!element || !offen) return;
-    void fragen("", false, element);
+    // Der angetippte Baustein gilt danach als erklärt — der Anschluss-Chip
+    // „Erklär mir: …" bietet ihn nicht noch einmal an.
+    void fragen("", false, element,
+      element.key ? { anker: { key: element.key, titel: element.title } } : {});
     onElementVerbraucht();
     // `fragen` hängt am Verlauf und wechselt mit jeder Runde — in der
     // Abhängigkeitsliste stünde es für „bei jeder Antwort noch einmal fragen".
@@ -589,7 +621,48 @@ export function LottiPanel({
     void ratsfrageStellen(t.question || "Was wurde dazu beschlossen?");
   };
 
+  /** „Erklär mir: <Titel>" — genau der Weg, den auch das Abzeichen im
+   *  Erklär-Modus nimmt: den Baustein am DOM-Knoten ernten und samt
+   *  `element_key` schicken. **Ohne Scrollen**: Wer hier fragt, will die
+   *  Erklärung im Fenster lesen, nicht an eine andere Stelle der Seite
+   *  gebracht werden — dafür gibt es „Zeig mir". */
+  const erklaerAnker = (a: Anker) => {
+    const el = ankerKnoten(a);
+    // Weg (nachgeladen, Reiter gewechselt)? Dann passiert nichts — eine
+    // Meldung über einen verschwundenen Kasten hülfe niemandem.
+    if (!el) return;
+    void fragen("", false,
+      { ...ernteElement(el), pfad: ueberschriftenPfad(el, document, anzeigename) },
+      { anker: a });
+  };
+
+  /** „Was heißt <Begriff>?" — als getippte Frage MIT dem Begriff als
+   *  Markierung. Beides zusammen trifft im Backend den Glossar-Weg ohne
+   *  Modell (s. den Kommentar an `selection` in `fragen`). */
+  const begriffFragen = (b: string) => {
+    void fragen(`Was heißt ${b}?`, false, null, { auswahl: b, begriff: b });
+  };
+
   if (!offen) return null;
+
+  /** Was in dieser Sitzung schon erklärt wurde — Anker und Fachwörter.
+   *
+   *  Der Verlauf IST dieses Gedächtnis; ein eigener Zustand daneben liefe
+   *  beim Seitenwechsel und beim Laden eines gespeicherten Gesprächs
+   *  auseinander. */
+  const erklaert = new Set<string>();
+  for (const t of turns) {
+    if (t.baustein) erklaert.add(ankerKennung(t.baustein));
+    if (t.begriff) erklaert.add(t.begriff.toLowerCase());
+  }
+  // Die Landkarte der AKTUELLEN Seite. Sie steht nur der letzten Runde zu:
+  // Ein „Erklär mir: …" unter einer Antwort von vor drei Seiten zeigte auf
+  // Bausteine, die dort gar nicht stehen.
+  //
+  // **Nicht während des Stroms.** Jedes Token zeichnet das Fenster neu; ein
+  // `querySelectorAll` je Zeichen wäre Arbeit für eine Antwort, die noch gar
+  // nicht fertig ist — und Chips unter einem halben Satz sind ohnehin falsch.
+  const ankerJetzt = laden ? [] : ankerListe(document);
 
   const kontextZeile = [
     // **Dieselbe Überschrift, die auch das Backend bekommt** — ohne den
@@ -684,7 +757,20 @@ export function LottiPanel({
             </p>
           </div>
         )}
-        {turns.map((t, i) => (
+        {turns.map((t, i) => {
+          // Die Anschlussfragen gehören der LETZTEN Runde auf DIESER Seite:
+          // Sie sagen, was als Nächstes kommt, und „als Nächstes" gibt es nur
+          // einmal. Ältere Runden behalten ihren „Den Rat fragen"-Knopf.
+          const jetzt = i === turns.length - 1 && t.route === route;
+          const vorschlaege = anschlussfragen(
+            t, jetzt ? ankerJetzt : [], erklaert,
+            // Die Fachwörter kommen aus der Antwort SELBST, nicht aus dem
+            // `glossary`-Feld des Schluss-Rahmens: So meinen Chip und
+            // Unterstreichung in `AntwortText` garantiert dasselbe Wort
+            // (beide über `lib/glossar-treffer.ts`).
+            jetzt && !t.fehler ? begriffeIn(t.answer, 3) : [],
+          );
+          return (
           <div key={t.key} className="space-y-2">
             {/* Die Zäsur: Ab hier wurde auf einer anderen Seite gefragt.
                 Dieselbe stille Bauform wie die Kontextzeile an der Frage
@@ -743,8 +829,13 @@ export function LottiPanel({
                     „Wo finde ich die Rate-Treppe?" ist keine Frage an 9.000
                     Beschlüsse, und eine Antwort darauf wäre mit Sicherheit
                     eine falsche mit richtigen Quellen. */}
-                {t.answer && !t.fehler && !t.ratsfrage && t.mode !== "local" && (
+                {t.answer && !t.fehler && t.mode !== "local"
+                  && (!t.ratsfrage || vorschlaege.length > 0) && (
                   <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                    {/* Unter einer Ratsantwort steht er NICHT: Sie kommt aus
+                        dem Archiv, ein „Den Rat fragen" darunter wäre ein
+                        Kreis. Die Anschluss-Chips stehen dort trotzdem. */}
+                    {!t.ratsfrage && (
                     <button
                       type="button"
                       onClick={() => zurRatsfrage(t)}
@@ -759,6 +850,35 @@ export function LottiPanel({
                       Den Rat fragen
                       <ArrowRight className="h-3.5 w-3.5" aria-hidden />
                     </button>
+                    )}
+                    {/* Die Anschlussfragen in DERSELBEN Reihe — deterministisch
+                        aus den Ankern der Seite und den Fachwörtern der
+                        Antwort, ohne zweiten Modellaufruf.
+
+                        **„Den Rat fragen" bleibt der Knopf von oben** und wird
+                        kein neutraler Chip: Reicht die Antwort weiter
+                        (`next === "ratsfrage"`), ist er die gefüllte
+                        Hauptaktion der Reihe, und die Designsprache will genau
+                        einen solchen nächsten Schritt. Er belegt dann einen der
+                        beiden Plätze (`anschlussfragen` gibt ihn als Eintrag
+                        zurück), sodass höchstens ein weiterer Chip danebensteht. */}
+                    {vorschlaege.map((v) => (
+                      v.art === "anker"
+                        ? (
+                          <Chip key={`a-${ankerKennung(v.anker)}`}
+                            onClick={() => erklaerAnker(v.anker)} disabled={laden}>
+                            Erklär mir: {chipTitel(v.anker.titel)}
+                          </Chip>
+                        )
+                        : v.art === "begriff"
+                          ? (
+                            <Chip key={`b-${v.begriff}`}
+                              onClick={() => begriffFragen(v.begriff)} disabled={laden}>
+                              Was heißt {v.begriff}?
+                            </Chip>
+                          )
+                          : null
+                    ))}
                   </div>
                 )}
                 {/* Die Turn-Fußzeile: Daumen nur unter einer Antwort, die ein
@@ -781,7 +901,8 @@ export function LottiPanel({
               </div>
             </div>
           </div>
-        ))}
+          );
+        })}
         <div ref={endeRef} />
       </div>
 

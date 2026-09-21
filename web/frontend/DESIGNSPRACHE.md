@@ -408,6 +408,16 @@ iOS-Schrift.
   Beschlusstitel füllt die 384 px allein. Sie ordnet ein, sie ruft nicht:
   keine Farbe, kein Abzeichen, kein Datum; der Name wird bei 60 Zeichen
   gekappt.
+  **Anschlussfragen**: In derselben Chip-Reihe stehen unter der LETZTEN
+  Antwort höchstens **zwei** weiterführende Angebote — „Erklär mir: <der
+  nächste Baustein der Seite, der noch nicht erklärt wurde>" und „Was heißt
+  <Fachwort aus der Antwort>?", in diesem Vorrang und nie zweimal dasselbe.
+  Reicht die Antwort ins Archiv weiter, ist das gefüllte „Den Rat fragen"
+  selbst der erste der beiden, und es bleibt genau ein Chip daneben. Der
+  Baustein-Name wird bei 38 Zeichen und am ersten `·` gekappt — ein
+  zweizeiliger Chip ist keiner. Die Vorschläge entstehen im Browser aus
+  Ankern und Glossar, **nicht aus einem zweiten Modellaufruf**; unter einer
+  Fehler-Runde und unter der „Zeig mir"-Runde steht keiner.
   Kein Emoji, kein KI-Vokabular — in der Oberfläche heißt sie nur „Lotti".
   **Kein Zähler und kein Abzeichen am geschlossenen Knopf.**
 - **Erklär-Abzeichen**: 28 px rund, `bg-card`, Rahmen primary/30, „?" in

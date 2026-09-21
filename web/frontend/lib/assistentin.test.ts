@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  ankerListe, ankerTreffer, auswahlText, daumenZeigen, ernteElement, gedaechtnis,
-  kuerze, ohneNamen, ortsfrage, refsAus, routeAus, seitenTitel, seitenUeberschrift,
-  trenneWeiter, ueberschriftenPfad, zaesur,
+  ankerListe, ankerTreffer, anschlussfragen, auswahlText, chipTitel, daumenZeigen, ernteElement,
+  gedaechtnis, kuerze, ohneNamen, ortsfrage, refsAus, routeAus, seitenTitel,
+  seitenUeberschrift, trenneWeiter, ueberschriftenPfad, zaesur,
 } from "./assistentin";
 
 describe("routeAus", () => {
@@ -477,5 +477,86 @@ describe("ankerListe", () => {
 describe("daumenZeigen — die Lotsen-Runde", () => {
   it("bekommt keinen Daumen: kein Server, kein Modell, nichts zu benoten", () => {
     expect(daumenZeigen({ answer: "Das findest du hier:", mode: "local" })).toBe(false);
+  });
+});
+
+describe("anschlussfragen", () => {
+  const ANKER = [
+    { key: "hh.rate", titel: "Rate-Treppe" },
+    { key: "hh.zins", titel: "Kredite und Zinsen" },
+  ];
+  const FERTIG = { answer: "Fünf Sätze.", mode: "explain" as const };
+
+  it("bietet den nächsten Baustein und das erste Fachwort an", () => {
+    expect(anschlussfragen(FERTIG, ANKER, new Set(), ["Umschuldung"])).toEqual([
+      { art: "anker", anker: ANKER[0] },
+      { art: "begriff", begriff: "Umschuldung" },
+    ]);
+  });
+
+  it("gibt dem Archiv den Vorrang — und deckelt bei zwei", () => {
+    // Die Antwort hat weitergereicht: Das ist der dringendste nächste
+    // Schritt, das Fachwort fällt dafür heraus.
+    expect(anschlussfragen({ ...FERTIG, next: "ratsfrage" }, ANKER, new Set(),
+                           ["Umschuldung", "Haushalt"])).toEqual([
+      { art: "ratsfrage" },
+      { art: "anker", anker: ANKER[0] },
+    ]);
+  });
+
+  it("wiederholt nichts, was schon gefragt wurde", () => {
+    const erklaert = new Set(["hh.rate\u0000Rate-Treppe", "umschuldung"]);
+    expect(anschlussfragen(FERTIG, ANKER, erklaert, ["Umschuldung", "Haushalt"]))
+      .toEqual([
+        { art: "anker", anker: ANKER[1] },
+        { art: "begriff", begriff: "Haushalt" },
+      ]);
+  });
+
+  it("unterscheidet zwei Bausteine mit demselben Schlüssel", () => {
+    // Auf /haushalt/schulden tragen zwei Zeitreihen denselben Schlüssel. Wer
+    // die erste erklärt bekommen hat, soll die zweite noch angeboten kriegen.
+    const zwei = [
+      { key: "hh.zeitreihe", titel: "Schulden total" },
+      { key: "hh.zeitreihe", titel: "Verbürgt und selbst geschuldet" },
+    ];
+    expect(anschlussfragen(FERTIG, zwei, new Set(["hh.zeitreihe\u0000Schulden total"]), []))
+      .toEqual([{ art: "anker", anker: zwei[1] }]);
+  });
+
+  it("schweigt unter einer Fehler-Runde und unter der Lotsen-Runde", () => {
+    expect(anschlussfragen({ answer: "Das hat nicht geklappt.", fehler: true },
+                           ANKER, new Set(), ["Umschuldung"])).toEqual([]);
+    expect(anschlussfragen({ answer: "Das steht hier:", mode: "local" },
+                           ANKER, new Set(), ["Umschuldung"])).toEqual([]);
+    // Und während der Strom noch läuft, steht noch keine Antwort da.
+    expect(anschlussfragen({ answer: "", mode: null }, ANKER, new Set(), [])).toEqual([]);
+  });
+
+  it("reicht die Ratsantwort nicht noch einmal ans Archiv weiter", () => {
+    expect(anschlussfragen({ answer: "Der Rat hat zugestimmt.", ratsfrage: true,
+                            next: "ratsfrage" }, [], new Set(), ["Haushalt"]))
+      .toEqual([{ art: "begriff", begriff: "Haushalt" }]);
+  });
+
+  it("gibt nichts aus, wo es nichts gibt", () => {
+    expect(anschlussfragen(FERTIG, [], new Set(), [])).toEqual([]);
+  });
+});
+
+describe("chipTitel", () => {
+  it("lässt kurze Titel in Ruhe", () => {
+    expect(chipTitel("Rate-Treppe")).toBe("Rate-Treppe");
+  });
+
+  it("wirft den Stand hinter dem Mittelpunkt weg", () => {
+    // Gemessen im Browser (22.09.2026): So heißt die Bühne auf
+    // /haushalt/schulden, und als Chip war sie zweizeilig.
+    expect(chipTitel("Drei Zählweisen, eine Stadt · Stand 31.12.2024"))
+      .toBe("Drei Zählweisen, eine Stadt");
+  });
+
+  it("kappt, was auch danach zu lang ist", () => {
+    expect(chipTitel("W".repeat(90)).length).toBeLessThanOrEqual(40);
   });
 });

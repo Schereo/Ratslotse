@@ -257,6 +257,29 @@ _ARCHIV_RE = re.compile(
 )
 
 
+#: „Was heißt Umschuldung?" — die Frage nach GENAU EINEM Wort.
+#:
+#: **Warum sie nicht unter :data:`_GENERISCH_RE` fällt.** Dort steht das
+#: Objekt fest („was heisst DAS"), und das ist Absicht: „Was bedeutet das für
+#: die Schulen?" darf nicht als „erklär mir die Seite" durchgehen. Hier ist
+#: der Riegel ein anderer — die Frage muss genau das Wort nennen, das
+#: gleichzeitig als Markierung mitkommt (s. :func:`begriffsfrage`). Ein
+#: Halbsatz dahinter bricht die Übereinstimmung, also fällt er ans Modell.
+_BEGRIFFSFRAGE_RE = re.compile(r"^was (?:heisst|bedeutet|ist) (.{2,60}?)\s*$")
+
+
+def begriffsfrage(question: str, begriff: str) -> bool:
+    """Fragt diese Frage nach genau diesem Wort — und nach nichts sonst?
+
+    Der Anschluss-Chip „Was heißt <Begriff>?" in Lottis Fenster schickt den
+    Begriff zusätzlich als Markierung. Beides zusammen ist der Beleg, dass
+    hier eine Vokabel gemeint ist und nicht der Sachverhalt dahinter: Die
+    geprüfte Glossar-Erklärung darf dann ohne Modell zurückgehen.
+    """
+    m = _BEGRIFFSFRAGE_RE.match(" ".join(falte(question).split()))
+    return bool(m and m.group(1) == " ".join(falte(begriff).split()))
+
+
 def archivfrage(question: str) -> bool:
     """Braucht diese Frage das Beschluss-Archiv statt des Bildschirms?
 
@@ -289,17 +312,24 @@ def deterministic_answer(store, screen: Screen, question: str) -> tuple[str, str
     Die Reihenfolge ist die vom Genauen zum Allgemeinen: Markierung schlägt
     Beschluss schlägt Seite.
     """
-    if not generische_frage(question):
-        return None
+    generisch = generische_frage(question)
 
     # 1. Eine Markierung, die GENAU EINEN Fachbegriff trifft. Zwei Treffer
     #    heißen, dass die Person einen Satz markiert hat — dann ist nicht
     #    klar, was sie wissen will, und das Modell entscheidet.
+    #
+    #    Neben „Was heißt das?" zählt hier auch die Frage, die das Wort selbst
+    #    nennt (:func:`begriffsfrage`) — so schickt der Anschluss-Chip „Was
+    #    heißt Umschuldung?" die Frage, die dastehen soll, und bekommt
+    #    trotzdem die geprüfte Erklärung ohne Modell.
     if screen.selection:
         treffer = glossar.finde(screen.selection, max_n=2)
-        if len(treffer) == 1:
+        if len(treffer) == 1 and (generisch or begriffsfrage(question, screen.selection)):
             b = treffer[0]
             return f"**{b['begriff']}** — {b['erklaerung']}", "glossary"
+
+    if not generisch:
+        return None
 
     # 2. Eine Beschluss-Seite ohne Markierung: Die Kurzfassung ist genau die
     #    Antwort auf „Was sehe ich hier?" und steht bereits in der Datenbank.

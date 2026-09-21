@@ -2,14 +2,10 @@
 
 import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import { GLOSSARY } from "@/lib/glossary";
-
-// Begriffe längster zuerst, damit „Doppelhaushalt" vor „Haushalt" greift.
-const KEYS = Object.keys(GLOSSARY).sort((a, b) => b.length - a.length);
-const CANON = new Map(KEYS.map((k) => [k.toLowerCase(), k]));
-const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-// Wortanfang (nicht von einem Buchstaben vorangestellt) + Begriff + Buchstaben-
-// Suffix (\p{L} mit u-Flag fängt Umlaute; deckt Beugungen wie -s/-en ab).
-const RE = new RegExp(`(?<!\\p{L})(${KEYS.map(esc).join("|")})(\\p{L}*)`, "giu");
+// Die Erkennung steht in `lib/glossar-treffer.ts` — dieselbe, die Lottis
+// Anschluss-Chip „Was heißt …?" benutzt. Zwei Fassungen hätten unterstrichen,
+// was kein Chip anbietet, und umgekehrt.
+import { BEGRIFF_KANON as CANON, BEGRIFF_RE as RE } from "@/lib/glossar-treffer";
 
 /** Ein erklärter Fachbegriff: gepunktet unterstrichen, zeigt beim Überfahren
  *  (Desktop) bzw. Antippen (mobil) eine kurze Erklärung. */

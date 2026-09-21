@@ -536,3 +536,96 @@ export function ankerListe(dok: Document): Anker[] {
   }
   return aus;
 }
+
+/* ── Anschlussfragen: zwei Chips, die weiterführen ─────────────────────────
+ *
+ * **Deterministisch, ohne zweiten Modellaufruf.** Das Ratsgespräch lässt sich
+ * seine Vorschläge vom Modell schreiben und bezahlt dafür eine eigene Runde.
+ * Hier wäre das bei 0,07 Cent je Antwort ein Verdoppeln der Kosten für einen
+ * Chip, den niemand drücken muss — und alles, was ein Modell vorschlagen
+ * könnte, weiß das Fenster ohnehin schon: die Bausteine der Seite (die Anker)
+ * und die Fachwörter der Antwort (das Glossar).
+ */
+
+/** Ein Anschluss-Chip unter einer Antwort. */
+export type Anschluss =
+  /** „Den Rat fragen" — die Antwort hat ans Archiv weitergereicht. */
+  | { art: "ratsfrage" }
+  /** „Erklär mir: <Titel>" — der nächste Baustein der Seite. */
+  | { art: "anker"; anker: Anker }
+  /** „Was heißt <Begriff>?" — ein Fachwort aus der Antwort. */
+  | { art: "begriff"; begriff: string };
+
+/** Die Kennung eines Ankers: Schlüssel UND Titel.
+ *
+ *  Zwei Bausteine dürfen denselben Schlüssel tragen (s. :type:`Anker`) — über
+ *  den Schlüssel allein gälte der zweite als „schon erklärt", sobald jemand
+ *  den ersten angetippt hat. */
+export function ankerKennung(a: Anker): string {
+  return `${a.key} ${a.titel}`;
+}
+
+/** So lang darf der Baustein-Name auf einem Chip sein. */
+export const CHIP_TITEL_MAX = 38;
+
+/**
+ * Der Anker-Titel, wie er auf einen Chip passt.
+ *
+ * **Gemessen am 22.09.2026 auf `/haushalt/schulden`:** Die Bühne heißt dort
+ * „Drei Zählweisen, eine Stadt · Stand 31.12.2024" — als „Erklär mir: …" war
+ * das ein zweizeiliger, zentrierter Klotz, der die Chip-Reihe sprengte. Was
+ * hinter dem `·` steht, ist in diesen Titeln durchweg Beiwerk (ein Stand, ein
+ * Jahrgang); der Name davor ist das, was man anspricht. Der Chip nennt
+ * deshalb nur ihn — gezeigt und erklärt wird trotzdem der ganze Baustein.
+ */
+export function chipTitel(titel: string): string {
+  return kuerze((titel ?? "").split(" · ")[0], CHIP_TITEL_MAX);
+}
+
+/** Höchstens so viele Chips je Runde. Drei Angebote unter fünf Sätzen sind
+ *  keine Hilfe mehr, sondern ein Menü (Designsprache: ein nächster Schritt,
+ *  höchstens zwei). */
+export const ANSCHLUSS_MAX = 2;
+
+/**
+ * Die Chips unter einer Antwort — höchstens zwei, Vorrang Archiv › Anker ›
+ * Fachwort.
+ *
+ * **Der Vorrang ist die Reihenfolge des Nutzens.** Eine Antwort, die ans
+ * Archiv weiterreicht, hat ihre eigentliche Auskunft noch gar nicht gegeben —
+ * das ist der dringendste nächste Schritt. Danach kommt der nächste Baustein
+ * der Seite (er ist der Grund, warum jemand hier ist), zuletzt die Vokabel.
+ *
+ * **Nichts zweimal.** `erklaert` trägt, was in dieser Sitzung schon gefragt
+ * wurde: Anker als :func:`ankerKennung`, Fachwörter kleingeschrieben. Ein
+ * Chip, der die Antwort wiederholt, die zwei Zeilen höher steht, ist
+ * schlimmer als kein Chip.
+ *
+ * **Keine Chips** unter einer Fehler-Runde (dort ist der Ausweg das
+ * Wiederholen, nicht das Weitergehen) und unter der Lotsen-Runde
+ * (`mode === "local"`, die „Zeig mir"-Antwort aus dem Browser — sie trägt ihre
+ * eigenen Chips, und ein zweites Angebot darunter wäre eine Chip-Wand).
+ *
+ * `{ art: "ratsfrage" }` steht für den Knopf „Den Rat fragen", den das Fenster
+ * ohnehin zeichnet — er ist chip-förmig und steht in derselben Reihe. Der
+ * Eintrag belegt also einen der beiden Plätze, statt einen zweiten Knopf
+ * daneben zu stellen.
+ */
+export function anschlussfragen(
+  turn: { answer: string; fehler?: boolean; mode?: string | null;
+          next?: "ratsfrage" | null; ratsfrage?: boolean },
+  anker: Anker[],
+  erklaert: ReadonlySet<string>,
+  glossar: string[],
+): Anschluss[] {
+  if (!turn.answer || turn.fehler || turn.mode === "local") return [];
+  const aus: Anschluss[] = [];
+  // Die Ratsantwort selbst reicht nicht noch einmal weiter — sie IST das
+  // Archiv, und ein „Den Rat fragen" unter ihren Quellen wäre ein Kreis.
+  if (turn.next === "ratsfrage" && !turn.ratsfrage) aus.push({ art: "ratsfrage" });
+  const naechster = anker.find((a) => !erklaert.has(ankerKennung(a)));
+  if (naechster && aus.length < ANSCHLUSS_MAX) aus.push({ art: "anker", anker: naechster });
+  const begriff = glossar.find((b) => !erklaert.has(b.toLowerCase()));
+  if (begriff && aus.length < ANSCHLUSS_MAX) aus.push({ art: "begriff", begriff });
+  return aus;
+}
