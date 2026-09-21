@@ -14,6 +14,14 @@ import { cn } from "@/lib/utils";
 export function PeekingChick() {
   const theme = useMascotTheme();
   const [visible, setVisible] = useState(false);
+  // Solange Lottis Fenster offen ist, bleibt das Küken weg: Zwei Möwen in
+  // derselben Ecke sind eine zu viel, und die eine davon erklärt gerade etwas.
+  const [lottiOffen, setLottiOffen] = useState(false);
+  useEffect(() => {
+    const auf = (e: Event) => setLottiOffen(!!(e as CustomEvent).detail?.offen);
+    window.addEventListener("ratslotse:lotti-offen", auf);
+    return () => window.removeEventListener("ratslotse:lotti-offen", auf);
+  }, []);
   const [side, setSide] = useState<"left" | "right">("right");
   const [tone, setTone] = useState<"orange" | "gold">("orange");
 
@@ -35,13 +43,16 @@ export function PeekingChick() {
     return () => { clearTimeout(show); clearTimeout(hide); };
   }, []);
 
-  if (!visible) return null;
+  if (!visible || lottiOffen) return null;
   return (
     <div
       aria-hidden
       className={cn(
         "pointer-events-none fixed bottom-0 z-30 print-hidden",
-        side === "right" ? "right-3 sm:right-8" : "left-3 sm:left-8",
+        // Rechts weiter innen als früher (war right-3/sm:right-8): Dort
+        // schwebt der Lotti-Knopf, und ein Küken halb dahinter sieht aus
+        // wie ein Darstellungsfehler.
+        side === "right" ? "right-24 sm:right-28" : "left-3 sm:left-8",
       )}
     >
       <div className="animate-peek">

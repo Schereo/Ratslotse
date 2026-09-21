@@ -37,7 +37,14 @@ from pathlib import Path
 WURZEL = Path(__file__).resolve().parents[1]
 FRAGE = WURZEL / "web" / "backend" / "app" / "routers" / "council.py"
 RECHERCHE = WURZEL / "web" / "backend" / "app" / "deepresearch.py"
-WEB = WURZEL / "web" / "frontend" / "components" / "council-qa.tsx"
+#: Die Web-Leser des Stroms. Seit 09/2026 zwei: das Ratsgespräch und
+#: Lottis Fenster — beide parsen dieselben Rahmen, und beide können ein
+#: Feld lesen, das niemand schickt.
+WEB_LESER = (
+    WURZEL / "web" / "frontend" / "components" / "council-qa.tsx",
+    WURZEL / "web" / "frontend" / "components" / "assistentin" / "panel.tsx",
+)
+WEB = WEB_LESER[0]
 APP = (WURZEL / "ios" / "Packages" / "RatslotseFeatures" / "Sources"
        / "RatslotseFeatures" / "QuestionsView.swift")
 SSE_CLIENT = (WURZEL / "ios" / "Packages" / "RatslotseAPI" / "Sources"
@@ -150,8 +157,12 @@ def _block(text: str, von: str, bis: str) -> str:
 
 
 def web_gelesen() -> set[str]:
-    """Jedes ``msg.<feld>`` aus den Strom-Blöcken."""
-    return set(re.findall(r"\bmsg\.([a-z_]+)\b", WEB.read_text())) - {"type"}
+    """Jedes ``msg.<feld>`` aus den Strom-Blöcken — aus BEIDEN Web-Lesern."""
+    aus: set[str] = set()
+    for pfad in WEB_LESER:
+        if pfad.exists():
+            aus |= set(re.findall(r"\bmsg\.([a-z_]+)\b", pfad.read_text()))
+    return aus - {"type"}
 
 
 def web_blob_gelesen() -> set[str]:
