@@ -3085,6 +3085,48 @@
           "question": {
             "title": "Question",
             "type": "string"
+          },
+          "screen": {
+            "description": "Was die Person vor sich hatte, als sie die Ratsfrage gestellt hat.\n\n**Wozu.** Eine Frage aus Lottis Fenster trägt ihren Gegenstand oft nicht\nim Wortlaut: „Und wer hat das beantragt?\" steht neben einer Tabellenzeile,\ndie das „das\" benennt. Ohne den Bildschirm sucht das Archiv nach nichts.\n\n**Kürzer gedeckelt als bei ``/explain``** (600 statt 1.200 Zeichen): Dort\nTRÄGT der Element-Text die Antwort, hier ist er Beiwerk — die Antwort\nkommt aus den Beschlüssen, und ein langer Baustein verdrängte sie nur.",
+            "properties": {
+              "element_text": {
+                "default": "",
+                "maxLength": 600,
+                "title": "Element Text",
+                "type": "string"
+              },
+              "element_title": {
+                "default": "",
+                "maxLength": 200,
+                "title": "Element Title",
+                "type": "string"
+              },
+              "heading": {
+                "default": "",
+                "maxLength": 200,
+                "title": "Heading",
+                "type": "string"
+              },
+              "route": {
+                "maxLength": 200,
+                "title": "Route",
+                "type": "string"
+              },
+              "selection": {
+                "default": "",
+                "maxLength": 600,
+                "title": "Selection",
+                "type": "string"
+              }
+            },
+            "required": [
+              "route"
+            ],
+            "title": "ScreenContext",
+            "type": [
+              "object",
+              "null"
+            ]
           }
         },
         "required": [
@@ -18605,6 +18647,45 @@
           "change_pct"
         ],
         "title": "RunoffStrengthGroup",
+        "type": "object"
+      },
+      "ScreenContext": {
+        "description": "Was die Person vor sich hatte, als sie die Ratsfrage gestellt hat.\n\n**Wozu.** Eine Frage aus Lottis Fenster trägt ihren Gegenstand oft nicht\nim Wortlaut: „Und wer hat das beantragt?\" steht neben einer Tabellenzeile,\ndie das „das\" benennt. Ohne den Bildschirm sucht das Archiv nach nichts.\n\n**Kürzer gedeckelt als bei ``/explain``** (600 statt 1.200 Zeichen): Dort\nTRÄGT der Element-Text die Antwort, hier ist er Beiwerk — die Antwort\nkommt aus den Beschlüssen, und ein langer Baustein verdrängte sie nur.",
+        "properties": {
+          "element_text": {
+            "default": "",
+            "maxLength": 600,
+            "title": "Element Text",
+            "type": "string"
+          },
+          "element_title": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Element Title",
+            "type": "string"
+          },
+          "heading": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Heading",
+            "type": "string"
+          },
+          "route": {
+            "maxLength": 200,
+            "title": "Route",
+            "type": "string"
+          },
+          "selection": {
+            "default": "",
+            "maxLength": 600,
+            "title": "Selection",
+            "type": "string"
+          }
+        },
+        "required": [
+          "route"
+        ],
+        "title": "ScreenContext",
         "type": "object"
       },
       "SessionDetail": {

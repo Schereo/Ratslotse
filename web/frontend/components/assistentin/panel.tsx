@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, RotateCcw, Sparkles, X } from "lucide-react";
@@ -13,7 +14,7 @@ import {
 } from "@/lib/assistentin";
 import { useAuth } from "@/lib/auth";
 import { GespraecheEinwilligung } from "@/components/gespraeche-einwilligung";
-import { fragenHref } from "@/lib/routes";
+import { decisionHref, fragenHref } from "@/lib/routes";
 import type { ElementFrage } from "./index";
 import { leseSseStrom } from "@/lib/sse";
 import { cn } from "@/lib/utils";
@@ -40,10 +41,22 @@ const SPEICHER = "ratslotse:lotti-verlauf";
 const MAX_TURNS_SPEICHER = 10;
 const MAX_TURNS_KONTEXT = 3;
 
+/** Eine Quelle unter einer Ratsantwort — nur, was die schlanke Liste braucht. */
+export type LottiQuelle = {
+  id: number;
+  title: string | null;
+  committee?: string | null;
+  session_date?: string | null;
+};
+
 export type LottiTurn = {
   key: number;
   question: string;
   answer: string;
+  /** Kam die Antwort aus dem Archiv? Dann trägt sie Belege. */
+  ratsfrage?: boolean;
+  quellen?: LottiQuelle[];
+  cited?: number[];
   next: "ratsfrage" | null;
   glossary: string[];
   /** Kam die Antwort ohne Modell? Nur fürs Protokoll, nicht sichtbar. */
@@ -101,6 +114,9 @@ export function LottiPanel({
   const endeRef = useRef<HTMLDivElement>(null);
   const fensterRef = useRef<HTMLDivElement>(null);
   const naechsterKey = useRef(1);
+  /** Der zuletzt angetippte Baustein — die Ratsfrage schickt ihn mit, damit
+   *  „und wer hat das beantragt?" ein „das" hat. */
+  const letzterBaustein = useRef<ElementFrage | null>(null);
 
   const route = routeAus(pathname, sp.toString());
   // Die Route MUSS mit: `?id=` ist auf der Ort-Seite ein Kürzel, sonst eine
@@ -167,6 +183,7 @@ export function LottiPanel({
     const kontext = baustein
       ? (baustein.title || "Baustein auf der Seite")
       : (mitMarkierung && markierung ? `Markiert: „${kuerze(markierung, 40)}“` : "");
+    if (baustein) letzterBaustein.current = baustein;
     const key = naechsterKey.current++;
     setTurns((ts) => [...ts, {
       key, question: sauber, answer: "", next: null, glossary: [], mode: null, kontext,
@@ -264,6 +281,74 @@ export function LottiPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [element, offen]);
 
+  /** Dieselbe Frage, aber ans Archiv — mit dem Bildschirm als Kontext.
+   *
+   *  **Warum nicht einfach nach `/fragen` schicken.** Das war PR 2, und es
+   *  kostete den Zusammenhang: Wer auf der Schulden-Seite fragt „wer hat das
+   *  beantragt?", landete auf einer leeren Fragen-Seite, und das „das" war
+   *  weg. Jetzt reist der Bildschirm mit, und die Antwort erscheint dort, wo
+   *  gefragt wurde. Der Weg ins volle Ratsgespräch bleibt darunter stehen.
+   */
+  const ratsfrageStellen = useCallback(async (frageText: string) => {
+    abbruch.current?.abort();
+    const ctrl = new AbortController();
+    abbruch.current = ctrl;
+    setLaden(true);
+    const key = naechsterKey.current++;
+    setTurns((ts) => [...ts, {
+      key, question: frageText, answer: "", next: null, glossary: [], mode: null,
+      kontext: "im Ratsarchiv gesucht", ratsfrage: true, quellen: [], cited: [],
+    }]);
+    const patch = (fn: (t: LottiTurn) => Partial<LottiTurn>) =>
+      setTurns((ts) => ts.map((t) => (t.key === key ? { ...t, ...fn(t) } : t)));
+    try {
+      const res = await fetch(apiUrl("/council/ask"), {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({
+          question: frageText,
+          screen: {
+            route,
+            heading: document.querySelector("h1")?.textContent?.trim().slice(0, 200) ?? "",
+            element_title: letzterBaustein.current?.title ?? "",
+            element_text: (letzterBaustein.current?.text ?? "").slice(0, 600),
+            selection: markierung.slice(0, 600),
+          },
+        }),
+        signal: ctrl.signal,
+      });
+      if (!res.ok || !res.body) {
+        patch(() => ({
+          answer: res.status === 429
+            ? "Du hast gerade viele Fragen gestellt — probier es in ein paar Minuten noch mal."
+            : "Das hat gerade nicht geklappt.",
+          fehler: true,
+        }));
+        return;
+      }
+      await leseSseStrom(res.body, (msg) => {
+        if (msg.type === "token") patch((t) => ({ answer: t.answer + (msg.text as string) }));
+        else if (msg.type === "replace") patch(() => ({ answer: (msg.text as string) ?? "" }));
+        else if (msg.type === "sources") {
+          patch(() => ({ quellen: (msg.sources as LottiQuelle[]) ?? [] }));
+        } else if (msg.type === "done") {
+          patch(() => ({ cited: (msg.cited as number[]) ?? [] }));
+        } else if (msg.type === "error") {
+          patch(() => ({ answer: (msg.message as string) ?? "Frage fehlgeschlagen.", fehler: true }));
+        }
+      });
+    } catch (e) {
+      if ((e as Error)?.name === "AbortError") return;
+      patch(() => ({ answer: "Das hat gerade nicht geklappt.", fehler: true }));
+    } finally {
+      if (abbruch.current === ctrl) {
+        setLaden(false);
+        abbruch.current = null;
+      }
+    }
+  }, [markierung, route]);
+
   const neuAnfangen = () => {
     abbruch.current?.abort();
     setTurns([]);
@@ -274,8 +359,7 @@ export function LottiPanel({
   };
 
   const zurRatsfrage = (t: LottiTurn) => {
-    onSchliessen();
-    router.push(fragenHref({ q: t.question }));
+    void ratsfrageStellen(t.question || "Was wurde dazu beschlossen?");
   };
 
   if (!offen) return null;
@@ -383,13 +467,17 @@ export function LottiPanel({
                     </div>
                   )
                   : <Tippt />}
-                {t.answer && !t.fehler && (
+                {t.answer && !t.fehler && t.ratsfrage && (
+                  <Quellen turn={t} onSchliessen={onSchliessen} />
+                )}
+                {t.answer && !t.fehler && !t.ratsfrage && (
                   <div className="mt-2 flex flex-wrap items-center gap-1.5">
                     <button
                       type="button"
                       onClick={() => zurRatsfrage(t)}
+                      disabled={laden}
                       className={cn(
-                        "inline-flex min-h-8 items-center gap-1 rounded-full px-2.5 text-[12px] font-medium transition-colors",
+                        "inline-flex min-h-8 items-center gap-1 rounded-full px-2.5 text-[12px] font-medium transition-colors disabled:opacity-50",
                         t.next === "ratsfrage"
                           ? "bg-primary text-primary-foreground hover:bg-primary/90"
                           : "border border-primary/30 bg-primary/[0.04] text-primary hover:bg-primary/10",
@@ -450,6 +538,67 @@ export function LottiPanel({
         Erklärt aus Glossar, Seite und Haushaltsdaten. Keine Rechtsberatung,
         keine Bewertung.
       </p>
+    </div>
+  );
+}
+
+/** Die Belege unter einer Ratsantwort — schlank.
+ *
+ *  **Was hier NICHT steht:** Presse, Debatten, der Parteien-Baustein, die
+ *  Grafik. Dafür ist das Ratsgespräch da, und der Link dorthin steht
+ *  darunter. In 384 px Breite wäre das alles eine Bleiwüste; die Frage, die
+ *  hier beantwortet wird, ist „worauf beruht das?", nicht „zeig mir alles".
+ */
+function Quellen({ turn, onSchliessen }: { turn: LottiTurn; onSchliessen: () => void }) {
+  const [alle, setAlle] = useState(false);
+  const router = useRouter();
+  const zitiert = new Set(turn.cited ?? []);
+  // Zitierte zuerst: Sie tragen die Antwort, die übrigen sind Fundsachen.
+  const quellen = [...(turn.quellen ?? [])].sort(
+    (a, b) => Number(zitiert.has(b.id)) - Number(zitiert.has(a.id)));
+  const sichtbar = alle ? quellen : quellen.slice(0, 3);
+  return (
+    <div className="mt-2 space-y-1.5">
+      {quellen.length > 0 && (
+        <>
+          <p className="font-mono text-[9.5px] uppercase tracking-[0.11em] text-muted-foreground">
+            Quellen · {zitiert.size} zitiert · {quellen.length} gefunden
+          </p>
+          <ul className="space-y-1">
+            {sichtbar.map((q) => (
+              <li key={q.id}>
+                <Link
+                  href={decisionHref(q.id)}
+                  onClick={onSchliessen}
+                  className="block rounded-lg px-1.5 py-1 transition-colors hover:bg-primary/[0.06]"
+                >
+                  <span className={cn("text-[12.5px] leading-snug",
+                    zitiert.has(q.id) ? "font-medium text-foreground" : "text-foreground/80")}>
+                    {q.title ?? "Ohne Titel"}
+                  </span>
+                  <span className="mt-0.5 block font-mono text-[10px] text-muted-foreground">
+                    {[q.committee, q.session_date].filter(Boolean).join(" · ")}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          {quellen.length > sichtbar.length && (
+            <button type="button" onClick={() => setAlle(true)}
+              className="text-[11.5px] font-medium text-primary hover:underline">
+              Alle {quellen.length} Quellen
+            </button>
+          )}
+        </>
+      )}
+      <button
+        type="button"
+        onClick={() => { onSchliessen(); router.push(fragenHref({ q: turn.question })); }}
+        className="inline-flex min-h-8 items-center gap-1 text-[12px] font-medium text-primary hover:underline"
+      >
+        Im Ratsgespräch weiterführen
+        <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+      </button>
     </div>
   );
 }

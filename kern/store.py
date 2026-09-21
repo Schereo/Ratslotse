@@ -4393,6 +4393,7 @@ class Store:
         ("assistant_explain", "Lotti: erklärt"),
         ("assistant_deterministic", "Lotti: ohne Modell beantwortet"),
         ("assistant_open", "Lotti: Fenster geöffnet"),
+        ("assistant_to_ask", "Lotti: an Frag den Rat weitergereicht"),
         ("assistant_nudge_shown", "Lotti: angeklopft"),
         ("assistant_nudge_accepted", "Lotti: Anklopfen angenommen"),
         ("assistant_nudge_dismissed", "Lotti: Anklopfen weggeklickt"),
