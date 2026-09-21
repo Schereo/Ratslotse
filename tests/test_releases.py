@@ -60,13 +60,32 @@ def test_der_bestand_ist_wohlgeformt():
 
 
 def test_nur_grosse_releases_bekommen_eine_karte():
-    """Ein Eintrag für x.y.Z ist ein Fix — der gehört in den Changelog."""
+    """Seit 09/2026: nur ``x.0.0``. Vorher galt jedes ``x.y.0``.
+
+    Die Minor-Fassung war eine Bitte und wurde fünf Releases lang übergangen
+    (2.3.0 bis 2.7.0 gingen alle ohne Karte raus) — die Kuratierung ist
+    Handarbeit, die Clips sind eine eigene Runde. Tims Entscheidung
+    21.09.2026: lieber vier Karten im Jahr, die jemand gemacht hat, als eine
+    Regel, die zwanzig Mal gebrochen wird.
+    """
     schlecht = [r.version for r in releases.RELEASES
                 if not releases.is_feature_release(r.version)]
     assert not schlecht, (
-        "Diese Einträge sind Patch-Releases und dürfen keine Karte haben: "
-        f"{schlecht}. Nur x.y.0 kündigt etwas an — alles andere steht im "
-        "Changelog.")
+        f"Diese Einträge dürfen keine Karte haben: {schlecht}. Nur eine "
+        "Major-Version (x.0.0) kündigt an — Minor und Patch stehen im "
+        "Changelog. Bestand aus der Minor-Zeit: "
+        f"{sorted(releases.KARTE_BESTAND)}.")
+
+
+def test_der_kartenbestand_waechst_nicht():
+    """``KARTE_BESTAND`` trägt die Einträge aus der Zeit, als jede Minor eine
+    Karte bekam — er ist ein Denkmal, keine Hintertür. Wer eine neue Version
+    hineinschreibt, hebt die Regel von oben still wieder auf, und zwar an der
+    Stelle, an der niemand sie sucht."""
+    assert releases.KARTE_BESTAND == frozenset({"2.2.0"}), (
+        "Der Kartenbestand hat sich geändert. Er soll nur schrumpfen: "
+        "Eine neue Minor mit Karte gehört nicht hier hinein, sondern ist "
+        "eine Entscheidung gegen die Regel in `kern/releases.py`.")
 
 
 def test_hoechstens_vier_highlights():
