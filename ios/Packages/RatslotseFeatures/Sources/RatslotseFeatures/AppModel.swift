@@ -357,6 +357,71 @@ public final class AppModel {
         if !enabled { setActiveConversationID(nil) }
     }
 
+    /// Was Lotti erklären soll — der aktuelle Screen als Web-Route.
+    ///
+    /// **Keine zweite Tabelle** (`ExplainScreen.from`): Die Abbildung Screen
+    /// → Adresse ist dieselbe, die das Teilen benutzt. Hier wird nur
+    /// entschieden, WELCHE Route gerade gilt — die oberste der Navigation,
+    /// sonst die Seite des Tabs.
+    ///
+    /// `nil` heißt: Hier gibt es Lotti nicht (Konto, Admin) — dann steht auch
+    /// kein Knopf da.
+    public var currentExplainScreen: ExplainScreen? {
+        if let route = navigation.last { return ExplainScreen.from(route) }
+        if let tabletPage {
+            switch tabletPage {
+            case .analysis: return ExplainScreen.from(.analysis)
+            case .subscriptions: return ExplainScreen.from(.subscriptions)
+            case .quiz: return ExplainScreen.from(.quiz(area: nil))
+            // Die Merkliste hat im Web eine eigene Seite, aber keine eigene
+            // App-Route — deshalb von Hand, und nur hier.
+            case .saved: return ExplainScreen(route: "/bookmarks")
+            }
+        }
+        switch selectedTab {
+        case .today: return ExplainScreen.from(.tab(.today))
+        case .questions: return ExplainScreen.from(.tab(.questions))
+        case .topics: return ExplainScreen.from(.tab(.topics))
+        case .account: return nil
+        case .council:
+            switch councilSection {
+            case .decisions: return ExplainScreen(route: "/council?tab=decisions")
+            case .sessions: return ExplainScreen(route: "/council?tab=sessions")
+            case .map: return ExplainScreen.from(.district(id: nil))
+            }
+        }
+    }
+
+    /// Die Überschrift, die im Lotti-Blatt als „Du bist auf: …" steht.
+    public var currentScreenTitle: String {
+        if let route = navigation.last {
+            switch route {
+            case .decision: return "Ein Beschluss"
+            case .sessions: return "Eine Sitzung"
+            case .person: return "Eine Person im Rat"
+            case .topic: return "Ein Themenfeld"
+            case .place: return "Ein Ort in Oldenburg"
+            case .district: return "Mein Viertel"
+            case .quiz: return "Quiz"
+            case .subscriptions: return "Abos"
+            case .analysis: return "Auswertung"
+            default: break
+            }
+        }
+        switch selectedTab {
+        case .today: return "Heute"
+        case .questions: return "Frag den Rat"
+        case .topics: return "Meine Themen"
+        case .account: return "Mein Konto"
+        case .council:
+            switch councilSection {
+            case .decisions: return "Beschlüsse"
+            case .sessions: return "Sitzungen"
+            case .map: return "Stadtkarte"
+            }
+        }
+    }
+
     public func setActiveConversationID(_ id: Int?) {
         activeConversationID = id
         guard let user else { return }
