@@ -37,6 +37,7 @@ import { api, apiUrl, authHeaders } from "@/lib/api";
 import { type ApiAntwort } from "@/lib/vertrag";
 import { useAuth } from "@/lib/auth";
 import { entwurfAbholen, entwurfMelden } from "@/lib/draft";
+import { leseSseStrom } from "@/lib/sse";
 import { leseHatGespraeche, leseQaBeispiele, merkeHatGespraeche, merkeQaBeispiele } from "@/lib/qa-zuletzt";
 import { Button, Input, toast } from "@/components/ui";
 // Die beiden Kanten, an denen der fixierte Composer und die Belege-Spalte
@@ -929,20 +930,10 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         try { const b = await res.json(); if (b?.detail) msg = typeof b.detail === "string" ? b.detail : msg; } catch { /* ignore */ }
         throw new Error(msg);
       }
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buf = "";
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buf += decoder.decode(value, { stream: true });
-        const chunks = buf.split("\n\n");
-        buf = chunks.pop() ?? "";
-        for (const chunk of chunks) {
-          const line = chunk.replace(/^data: ?/, "").trim();
-          if (!line) continue;
-          let msg: { type: string; [k: string]: unknown };
-          try { msg = JSON.parse(line); } catch { continue; }
+      // Das Zerlegen des Stroms steht in `lib/sse.ts` — eine Stelle für alle
+      // Leser (seit Lottis Fenster sind es zwei). Was ein Rahmen BEDEUTET,
+      // bleibt hier: Das weiß nur diese Ansicht.
+      await leseSseStrom(res.body, (msg) => {
           if (msg.type === "step") setStep(msg.step as Step);
           else if (msg.type === "sources") patchLast({
             sources: msg.sources as QaSource[],
@@ -983,8 +974,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             else if ("conversation_id" in msg) setGespraechId(null);
           }
           else if (msg.type === "error") throw new Error((msg.message as string) ?? "Frage fehlgeschlagen.");
-        }
-      }
+      });
     } catch (e) {
       if ((e as Error)?.name === "AbortError") return;
       // Fehler-Turn: Die Frage ist nicht verloren — zurück ins Eingabefeld.
@@ -1175,25 +1165,13 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             return;
           }
           if (!res.ok || !res.body) throw new Error(String(res.status));
-          const reader = res.body.getReader();
-          const decoder = new TextDecoder();
-          let buf = "";
-          for (;;) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            buf += decoder.decode(value, { stream: true });
-            const chunks = buf.split("\n\n");
-            buf = chunks.pop() ?? "";
-            for (const chunk of chunks) {
-              if (chunk.startsWith(":")) continue; // Keepalive
-              const line = chunk.replace(/^data: ?/, "").trim();
-              if (!line) continue;
-              let msg: { type: string; [k: string]: unknown };
-              try { msg = JSON.parse(line); } catch { continue; }
-              deepAb.current.set(jobId, (deepAb.current.get(jobId) ?? 0) + 1);
-              if (verarbeite(msg)) beendet = true;
-            }
-          }
+          // Derselbe Leser wie bei der schnellen Frage (lib/sse.ts); die
+          // Keepalive-Zeilen dieses Stroms (`: …`) fallen dort als
+          // ungültiges JSON heraus.
+          await leseSseStrom(res.body, (msg) => {
+            deepAb.current.set(jobId, (deepAb.current.get(jobId) ?? 0) + 1);
+            if (verarbeite(msg)) beendet = true;
+          });
         } catch (e) {
           if ((e as Error)?.name === "AbortError") return;
         }
@@ -1639,10 +1617,25 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   useEffect(() => {
     const el = composerRef.current;
     if (!el) return;
-    const ro = new ResizeObserver(() => setComposerHoehe(el.offsetHeight));
+    // Die Höhe geht ZUSÄTZLICH als CSS-Variable ans Wurzelelement: Der
+    // schwebende Lotti-Knopf liegt in der App-Hülle, also außerhalb dieses
+    // Baums, und muss trotzdem über dem Composer bleiben — sonst deckt er
+    // den Senden-Pfeil ab (derselbe Konflikt, wegen dem `BackToTop` auf
+    // dieser Seite gar nicht erst erscheint).
+    const melden = (h: number) => {
+      setComposerHoehe(h);
+      document.documentElement.style.setProperty("--rl-composer", `${h}px`);
+    };
+    const ro = new ResizeObserver(() => melden(el.offsetHeight));
     ro.observe(el);
-    setComposerHoehe(el.offsetHeight);
-    return () => ro.disconnect();
+    melden(el.offsetHeight);
+    return () => {
+      ro.disconnect();
+      // Beim Verlassen der Fragen-Seite zurücksetzen: Sonst hielte der Knopf
+      // auf jeder anderen Seite weiter Abstand zu einem Composer, der dort
+      // gar nicht steht.
+      document.documentElement.style.removeProperty("--rl-composer");
+    };
   }, []);
 
   // Brücke zum History-Knopf im Seitenkopf (Tims TestFlight-Feedback 11.08.):

@@ -37,7 +37,12 @@ export function BackToTop() {
       onClick={toTop}
       aria-label="Nach oben scrollen"
       className={cn(
-        "fixed bottom-[calc(env(safe-area-inset-bottom)+5rem)] right-4 z-40 flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-lifted transition-[opacity,transform,color] duration-200 ease-out-strong hover:text-foreground active:scale-95 desk:bottom-14 desk:right-6 print:hidden",
+        // Über dem Lotti-Knopf, nicht neben ihm: Der schwebt seit 09/2026 in
+        // derselben Ecke (components/assistentin/knopf.tsx, 56 px hoch). Die
+        // Höhen stehen als Variablen da, damit hier keine dritte Zahl entsteht.
+        "fixed right-4 z-40 flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-lifted transition-[opacity,transform,color] duration-200 ease-out-strong hover:text-foreground active:scale-95 desk:right-6 print:hidden",
+        "bottom-[calc(var(--rl-unten,0px)+var(--rl-composer,0px)+5.25rem)]",
+        "desk:bottom-[calc(var(--rl-composer,0px)+5.5rem)]",
         show ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-3 opacity-0",
       )}
     >

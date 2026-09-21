@@ -14,6 +14,7 @@ import { SlashSearchShortcut } from "@/components/keyboard-shortcuts";
 import { GuidedTour } from "@/components/tour";
 import { TourEinladung } from "@/components/tour-einladung";
 import { CommandPalette } from "@/components/command-palette";
+import { LottiAssistentin } from "@/components/assistentin";
 import { FeedbackDialog } from "@/components/feedback";
 import { BesuchErfassen } from "@/components/besuch-erfassen";
 import { OnboardingTracker } from "@/components/onboarding";
@@ -108,7 +109,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   if (loading || !user) return <ShellSkeleton />;
 
   return (
-    <div className="flex min-h-screen flex-col desk:flex-row">
+    // `--rl-unten` steht HIER und nicht nur auf <main>: CSS-Variablen vererben
+    // sich nach unten, und der schwebende Lotti-Knopf ist ein GESCHWISTER von
+    // <main>. Am 21.09.2026 im Browsertest gemessen — er sah die Variable nicht
+    // und lag auf dem Handy über dem Composer der Fragen-Seite.
+    <div style={{ "--rl-unten": TABLEISTE_HOEHE } as React.CSSProperties}
+      className="flex min-h-screen flex-col desk:flex-row">
       {/* Screenreader/Tastatur: direkt zum Inhalt, an Sidebar und Topbar vorbei. */}
       <a
         href="#main"
@@ -123,6 +129,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           einem vollen „Heute" stehen zu lassen. */}
       <TourEinladung />
       <CommandPalette />
+      {/* Lotti als Assistentin: der schwebende Knopf und ihr Fenster.
+          HIER und nicht je Seite — der Verlauf soll den Seitenwechsel
+          überleben (components/assistentin/index.tsx). */}
+      <LottiAssistentin />
       <FeedbackDialog />
       {/* useSearchParams braucht eine Suspense-Grenze (CSR-Bailout beim Prerender). */}
       <Suspense fallback={null}>

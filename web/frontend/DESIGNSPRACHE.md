@@ -12,13 +12,17 @@ Bei jedem neuen Screen gegen diese Datei bauen; die Artboards zeigen die Anwendu
 - **Ehrlichkeit ist Designprinzip:** Disclaimer haben feste Orte (nicht wegklickbar,
   nicht aufdringlich); Paraphrasen kursiv ohne Anführungszeichen; keine erfundenen
   Grafiken (kein Stimmverhalten — das RIS kennt keins); Externes klar markiert.
-- **Lotti (Maskottchen):** Beobachterin, nie Chat-Autorin. Erlaubt: Empty States,
-  Ladezustände, „nichts gefunden", Consent-Momente. Posen via mascot.tsx:
-  wave / search / confused / point — feiner über `regung` aus dem Sprite-Katalog
-  (/lotti/katalog.html). **Jede Regung ist an einen Zustand gebunden:** Was etwas
-  bedeutet (jongliert = Recherche läuft, erklärt = Erklär-Kasten, klatscht =
-  geschafft), darf nie zufällig passieren — von selbst blinzelt und nickt die
-  Figur nur. Antworten kommen „aus den Beschlüssen", nicht „von Lotti".
+- **Lotti (Maskottchen):** Beobachterin und **Erklärerin**, nie Autorin einer
+  Ratsauskunft. Sie erklärt, was auf dem Bildschirm steht — ein Fachwort, eine
+  Zahl, einen Baustein, eine Seite — und reicht Ratsfragen an „Frag den Rat"
+  weiter; deren Antworten kommen weiterhin „aus den Beschlüssen", nicht „von
+  Lotti". Erlaubt bleiben Empty States, Ladezustände, „nichts gefunden",
+  Consent-Momente und die Tour. **Ihr Fenster öffnet sich nie von selbst.**
+  Posen via mascot.tsx: wave / search / confused / point — feiner über `regung`
+  aus dem Sprite-Katalog (/lotti/katalog.html). **Jede Regung ist an einen
+  Zustand gebunden:** Was etwas bedeutet (jongliert = Recherche läuft, erklärt =
+  Erklär-Kasten, schreibt = Lotti antwortet gerade, klatscht = geschafft), darf
+  nie zufällig passieren — von selbst blinzelt und nickt die Figur nur.
 
 ## 2. Farben
 
@@ -371,6 +375,29 @@ iOS-Schrift.
   anschneiden (Tims iPad-Befund 16.08.: „der ganze Bereich wird von dieser
   Fläche verdeckt"). Die Andockkante ist `TABLEISTE_HOEHE` aus
   `components/nav.tsx` — nie eine eigene Zahl.
+- **Lotti-Knopf und Lotti-Fenster**: Der Knopf schwebt unten rechts auf jeder
+  angemeldeten Seite, 56 px rund, Lotti-Kopf auf Hafenblau, `shadow-lifted`,
+  `z-50` — über Tab-Leiste und Andock-Composer, deren Höhen als Variablen
+  (`--rl-unten`, `--rl-composer`) in seiner Position stehen, nie als eigene
+  Zahl. Offen wird er zum Schließen-Kreuz. **Design 9a③ steht dem nicht
+  entgegen:** Es hat den *Navigations*-FAB aus der Tab-Leiste genommen; ein
+  Chat-Knopf ist keine Navigation, sondern die Bauform, die man von
+  Hilfe-Seiten kennt (Tim, 21.09.2026). `BackToTop` rückt über ihn, das
+  Küken hält die rechte Ecke frei.
+  Das Fenster sitzt über dem Knopf (Schreibtisch 384 px × max 40 rem, **nicht
+  modal**, kein Scrim — die Seite bleibt lesbar und bedienbar; Handy: die
+  Fläche zwischen Kopfleiste und Knopf). Anatomie von oben: Kopfzeile (Lotti
+  32 px mit Regung nach Zustand · „Lotti" Bricolage 16/700 · Neu anfangen) →
+  **Kontext-Pille** in Leserolle `meta` („Du bist auf: … · markiert: …") →
+  Verlauf (Frage als Bubble rechts, bg primary/7 + Rahmen /18; Antwort links
+  in 13,5 px mit Lotti 24 px daneben; **Tipp-Anzeige** = drei Punkte in
+  Signal-Orange, solange geschrieben wird) → stille Chip-Aktionen unter jeder
+  Antwort („Den Rat fragen" gefüllt, wenn die Frage ins Archiv gehört, sonst
+  Ghost) → Vorschlags-Chips über dem Eingabefeld → Composer (s. u.) →
+  Fußzeile in `text-hinweis`, fest: „Erklärt aus Glossar, Seite und
+  Haushaltsdaten. Keine Rechtsberatung, keine Bewertung."
+  Kein Emoji, kein KI-Vokabular — in der Oberfläche heißt sie nur „Lotti".
+  **Kein Zähler und kein Abzeichen am geschlossenen Knopf.**
 - **Turn-Fußzeile**: KI-Hinweis 14 px + stille Icon-Aktionen 15 px
   (Teilen, Drucken, Vorlesen, 👍/👎) — keine gerahmten Buttons.
 - **Schritt-Zeichen (Haushalt)**: Jeder Schritt des Haushalts-Wegs trägt ein
@@ -549,7 +576,9 @@ eine Wirkung der einzelnen Mail zu behaupten.
 
 ## 8. Anti-Patterns
 
-Keine Anführungszeichen um Paraphrasen · keine Stimm-/Abstimmungsgrafiken ·
+Keine Lotti-Sprechblase, die von selbst erscheint · kein Zähler oder Abzeichen
+am geschlossenen Lotti-Knopf ·
+keine Anführungszeichen um Paraphrasen · keine Stimm-/Abstimmungsgrafiken ·
 kein Signal-Orange als Flächenfarbe · keine Parteifarben-Flächen (Ausnahme:
 Stichwahl-Karte, s. § 2) · kein Emoji
 im UI-Text · keine gerahmten Button-Reihen unter Antworten (stille Icons) ·
