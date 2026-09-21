@@ -6558,9 +6558,22 @@ def test_admin_verwaltet_rollen_und_sperrt_sich_nicht_selbst_aus(client):
     ziel_id = ziel.json()["id"]
     client.post("/api/auth/login", json={"email": "admin@test.de", "password": "password123"})
 
+    # Der Katalog ist die Registry und keine zweite Liste — gegen `kern.roles`
+    # geprüft und nicht gegen abgetippte Namen: Sonst wäre jede neue Rolle hier
+    # ein roter Test, obwohl nichts kaputt ist. Was es an Rollen GEBEN soll,
+    # hält `tests/test_rollen.py`.
+    from kern import roles as _roles
+
     katalog = client.get("/api/admin/roles").json()
-    assert {r["key"] for r in katalog} == {"user", "council_member", "admin"}
-    assert [r for r in katalog if r["key"] == "council_member"][0]["permissions"] == ["budget", "mandate"]
+    assert {r["key"] for r in katalog} == set(_roles.ROLES)
+    assert [r["key"] for r in katalog] == list(_roles.ROLE_ORDER)
+    nach_key = {r["key"]: r for r in katalog}
+    assert nach_key["council_member"]["permissions"] == ["budget", "mandate"]
+    # Fachpublikum: derselbe Haushalt, aber kein Mandat. Der Unterschied muss
+    # bis in den Katalog durchkommen, denn daraus baut das Panel seine Kästchen.
+    assert nach_key["expert"]["permissions"] == ["budget"]
+    assert nach_key["expert"]["assignable"] is True
+    assert nach_key["user"]["assignable"] is False
 
     r = client.put(f"/api/admin/users/{ziel_id}/roles", json={"roles": ["council_member"]})
     assert r.status_code == 200 and r.json()["roles"] == ["council_member"]
