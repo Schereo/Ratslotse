@@ -3630,6 +3630,7 @@ def _turn_speichern(ratslotse: Store, user: dict, body: AskBody, q_suche: str,
                     planungen: list[dict] | None = None,
                     grafik: dict | None = None,
                     sitzungen: list[dict] | None = None,
+                    stand: dict | None = None,
                     unclear: bool = False) -> int | None:
     """„Meine Gespräche" (6a): Turn ins laufende Gespräch hängen (oder eines
     eröffnen) — nur mit ausdrücklicher Einwilligung, nie als Blocker.
@@ -3679,6 +3680,9 @@ def _turn_speichern(ratslotse: Store, user: dict, body: AskBody, q_suche: str,
              "chart": grafik,
              # Der Tagesordnungs-Baustein ebenso (Sitzungs-Fragetyp).
              "sessions": _sitzungen_kompakt(sitzungen or []),
+             # Und das Alter der Belege: Ein gespeichertes Gespräch zeigte
+             # sonst dieselbe Antwort ohne den Hinweis „Ältere Aktenlage".
+             "records_state": stand or None,
              # Und die Marke der Rückfrage: Ohne sie sähe der Turn beim
              # Wiederöffnen aus wie eine Antwort ohne Treffer.
              **({"unclear": True} if unclear else {})}, ensure_ascii=False)
@@ -4451,6 +4455,20 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             if followups:
                 yield _sse({"type": "suggestions", "questions": followups})
             _, cited = qa.resolve_citations(answer_text, {c["id"] for c in candidates})
+            # Der Hinweis über der Antwort beschreibt, worauf die ANTWORT ruht —
+            # nicht, was der Bestand zum Thema hergibt. Am 21.09.2026 auf dev
+            # gemessen: Zu „Neu-Donnerschwee geplant?" lagen 26 Kandidaten im
+            # Ortsindex, der jüngste war ein Klima-Wettbewerb vom 12.02.2026,
+            # den die Antwort nicht einmal zitierte. Über alle Kandidaten
+            # gerechnet hieß der Stand deshalb „quiet" (7 Monate); über die
+            # zitierten sind es 43 Monate und „old". Der Prompt braucht den
+            # Stand VOR der Antwort (da gibt es noch keine Zitate) — die
+            # Anzeige bekommt ihn danach, aus den Belegen, die wirklich
+            # dastehen.
+            stand_zitiert = stand
+            if cited:
+                zitierte = [c for c in candidates if c["id"] in set(cited)]
+                stand_zitiert = qa.aktenstand(store, zitierte) or stand
             zeiten["antwort_ms"] = round((time.perf_counter() - t0) * 1000)
             zeiten["total_ms"] = (zeiten.get("expand_ms", 0) + zeiten.get("retrieve_ms", 0)
                                   + zeiten.get("antwort_ms", 0))
@@ -4463,10 +4481,16 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                            anlagen_rows=anlagen_rows,
                                            planungen=planungen,
                                            grafik=grafik,
-                                           sitzungen=sitzungen)
+                                           sitzungen=sitzungen,
+                                           stand=stand_zitiert)
             if not cited:
                 ratslotse.record_activity(user["id"], "ai_answer_empty", client_kind(request))
             yield _sse({"type": "done", "cited": cited, "timings": zeiten,
+                        # Korrigiert den Wert aus dem sources-Ereignis: dort
+                        # über alle Kandidaten gerechnet, hier über die
+                        # zitierten. Die Karte erscheint ohnehin erst nach dem
+                        # done, es flackert also nichts.
+                        "records_state": stand_zitiert or None,
                         "conversation_id": conversation_id})
         except Exception:  # noqa: BLE001 — surface a terminal error to the client
             _log.exception("KI-Frage fehlgeschlagen")

@@ -967,6 +967,14 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
           else if (msg.type === "suggestions") patchLast({ followups: (msg.questions as string[]) ?? [] });
           else if (msg.type === "done") {
             patchLast({ cited: (msg.cited as number[]) ?? [],
+                        // Der Stand aus dem sources-Ereignis ist über ALLE
+                        // Kandidaten gerechnet, dieser hier über die
+                        // zitierten — er beschreibt also die Antwort, die
+                        // darüber steht. Fehlt er (ältere Fassung, keine
+                        // Zitate), bleibt der erste Wert stehen.
+                        ...(msg.records_state !== undefined
+                          ? { records_state: msg.records_state as Turn["records_state"] }
+                          : {}),
                         unclear: Boolean(msg.unclear) });
             // null heißt: Server konnte/durfte nicht (mehr) in dieses Gespräch
             // speichern (z. B. auf anderem Gerät gelöscht) — die tote id nicht
@@ -1524,6 +1532,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         sources?: QaSource[]; cited?: number[]; press_releases?: PresseHinweis[];
         debates?: DebattenHinweis[]; attachments?: AnlagenHinweis[];
         planning_procedures?: Planung[]; sessions?: SitzungsInfo[];
+        records_state?: Turn["records_state"];
         research?: boolean; context?: string | null; unclear?: boolean;
         documents_read?: number; period?: string;
         chart?: QaGrafik | null } | null };
@@ -1537,6 +1546,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         planning_procedures: t.sources?.planning_procedures ?? [],
         sessions: t.sources?.sessions ?? [],
         chart: t.sources?.chart ?? null,
+        records_state: t.sources?.records_state ?? null,
         cited: t.sources?.cited ?? [],
         // Die kondensierte Frage aus dem Snapshot, sonst die Originalfrage.
         // Sie ist der Schlüssel, unter dem nachladende Bausteine ihr Ergebnis
