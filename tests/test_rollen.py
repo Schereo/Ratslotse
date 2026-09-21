@@ -48,6 +48,30 @@ def test_ratsmitglied_darf_den_haushalt_und_sonst_nichts_besonderes():
     assert "admin" not in roles.permissions_for(["council_member"])
 
 
+def test_fachpublikum_bekommt_den_haushalt_aber_kein_mandat():
+    """Der ganze Zweck der Rolle, und zugleich das, was ein Griff in die
+    falsche Zeile still kaputt macht.
+
+    Stünde hier ``mandate`` mit drin, bekäme das Fachpublikum ab Werk die
+    Tagesordnung jedes abonnierten Gremiums — und gemerkt würde es erst, wenn
+    sich jemand über die Post beschwert. Umgekehrt: fehlte ``budget``, wäre
+    die Rolle eine Rolle ohne Wirkung, und der Haushalt bliebe zu.
+    """
+    assert roles.permissions_for(["expert"]) == frozenset({"budget"})
+    assert "mandate" not in roles.permissions_for(["expert"])
+    assert "admin" not in roles.permissions_for(["expert"])
+
+
+def test_fachpublikum_ist_eine_echte_teilmenge_des_ratsmitglieds():
+    """Darauf beruht die Reihenfolge in ROLE_ORDER: Wer beide Rollen trägt,
+    soll in der Alt-Spalte als Ratsmitglied erscheinen, nicht als
+    Fachpublikum. Kippt die Teilmengen-Beziehung (weil Fachpublikum ein Recht
+    bekommt, das Ratsmitglied nicht hat), ist die Sortierung eine Lüge und
+    gehört überdacht."""
+    assert roles.ROLES["expert"].permissions < roles.ROLES["council_member"].permissions
+    assert roles.primary_role(["expert", "council_member"]) == "council_member"
+
+
 def test_jede_rolle_steht_in_der_reihenfolge_und_umgekehrt():
     """Eine Rolle, die in ROLE_ORDER fehlt, ist unsichtbar: `known_roles`
     filtert sie weg, das Konto verliert seine Rechte, und nichts meldet sich."""

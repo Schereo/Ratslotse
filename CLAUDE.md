@@ -544,8 +544,11 @@ RATSLOTSE_PROXY_HOSTS=gisportal4ol.oldenburg.de,youtube.com         # nur diese 
   **Recht**, nie gegen einen Rollennamen: im Backend über
   `Depends(require_permission("…"))`, im Web über `lib/rechte.ts`, in der App
   über `User.can(_:)`. Eine neue Rolle ist damit ein Eintrag in der Registry —
-  ohne Frontend-Release und ohne App-Update im Store. Heute gibt es zwei
-  Rechte: `budget` (der Haushalts-Bereich, Rolle *Ratsmitglied*) und `admin`.
+  ohne Frontend-Release und ohne App-Update im Store. Heute gibt es drei
+  Rechte: `budget` (der Haushalts-Bereich), `mandate` (Benachrichtigungen ab
+  Werk vollständig) und `admin`. Dass die ersten beiden getrennt sind, ist der
+  Grund, warum *Fachpublikum* (nur `budget`) und *Ratsmitglied* (beide) sich
+  ohne eine einzige weitere Codezeile unterscheiden lassen.
   Vergeben werden Rollen im Admin-Panel unter *Web-Nutzer*innen*; auf der
   Kommandozeile ergänzt `scripts/grant_admin.py` die Adminrolle, ohne die
   übrigen anzutasten. `web_users.role` daneben ist nur noch ein abgeleitetes
