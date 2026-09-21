@@ -651,13 +651,28 @@ EXTRA_REGELN = {
         "Summen aus verschiedenen Jahren auf, benenne die Entwicklung mit "
         "Ausgangs- und Endwert samt Datum und zitiere beide Beschlüsse."
     ),
+    # Die letzte Regel kommt aus einer echten Antwort vom 21.09.2026. Der
+    # Kontext trug, wörtlich:
+    #   [15159] Straßenbenennung nach Rosa Lazarus (Rat · 28.09.2020): Die
+    #   Benennung einer Straße nach Rosa Lazarus im zukünftigen Wohnbereich des
+    #   ehemaligen FLIEGERHORSTES wird beschlossen. — Ortsbezug:
+    #   NEU-DONNERSCHWEE; Fundstelle: Gelände in Neu-Donnerschwee
+    # Beide Hälften stimmen (die Vorlage benennt mehrere Straßen), aber das
+    # Modell nahm die Zusammenfassung und schrieb den Fliegerhorst in eine
+    # Neu-Donnerschwee-Antwort. Für die lesende Person sieht das wie ein
+    # Fehler aus. Es fehlte nur die Ansage, welche Hälfte für den ORT zählt.
     "place": (
         "Diese Frage zielt auf EINEN KONKRETEN ORT aus dem Ratslotse-Ortskatalog. "
         "Im Kontext stehen nur Beschlüsse mit belegtem Bezug zu diesem Ort. "
         "Unterscheide den Ort von seinem größeren Ortsbereich und behaupte nicht, "
         "dass jeder Beschluss des Elternbereichs auch den kleineren Ort betrifft. "
         "Nenne bei einem Überblick die wichtigsten Vorgänge mit Datum und Ergebnis; "
-        "ist der Bestand dünn, sage das ausdrücklich."
+        "ist der Bestand dünn, sage das ausdrücklich.\n"
+        "Steht im Beschlusstext ein ANDERER Ortsname als der gefragte, gilt für die "
+        "Ortsangabe die „Fundstelle“ hinter dem Ortsbezug, nicht der Text: Eine "
+        "Vorlage kann mehrere Orte betreffen. Schreibe dann, was sie für den "
+        "GEFRAGTEN Ort besagt, und nenne den anderen Ort nicht als Ort des "
+        "Vorhabens."
     ),
     # Personen-Fragetyp (10.08.26): deterministisch gesetzt, wenn die Frage
     # eine Ratsperson nennt — die Debatten-Zeilen sind dann deren Beiträge.
