@@ -14,6 +14,7 @@ import { Button, Card, ConfirmDialog, Input, Label, PageHeader, PasswordInput, t
 import { DeliverySettings } from "@/components/delivery-settings";
 import { BadgesCard } from "@/components/badges";
 import { GespraecheCard } from "@/components/gespraeche-settings";
+import { LottiCard } from "@/components/assistentin/einstellung";
 import { cn } from "@/lib/utils";
 
 /**
@@ -205,6 +206,10 @@ export default function AccountPage() {
             {/* Design 6a②: „Gespräche speichern" — beidseitig änderbar zur
                 Erstnutzungs-Frage im Ratsgespräch. */}
             <GespraecheCard />
+
+            {/* Lotti schwebt über dem Inhalt — wer sie stört, bekommt hier
+                den Weg, sie wegzuräumen (und den Weg zurück über ⌘K). */}
+            <LottiCard />
           </div>
 
           <div className="flex flex-col gap-6">

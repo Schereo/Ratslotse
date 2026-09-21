@@ -6,11 +6,13 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import {
   BarChart3, Bookmark, CalendarDays, CornerDownLeft, Gavel, History, Home, Landmark,
   Play, Scale, Search, Settings, Sparkles, SunMoon, Tag, Tags, UserCircle, type LucideIcon,
-  MapPinned,
+  MapPinned, MessageCircleQuestion,
 } from "lucide-react";
 import { api, qs } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { darfAdmin } from "@/lib/rechte";
+import { useFeature } from "@/lib/features";
+import { openLotti } from "@/components/assistentin";
 import { useDebounce } from "@/lib/use-debounce";
 import { decisionHref } from "@/lib/routes";
 import { getRecentDecisions } from "@/lib/recent";
@@ -45,6 +47,7 @@ type Item = {
 export function CommandPalette() {
   const router = useRouter();
   const { user } = useAuth();
+  const lotti = useFeature("lotti-assistentin");
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
@@ -153,6 +156,15 @@ export function CommandPalette() {
         key: "act-tour", section: "Aktionen", label: "Lotti-Tour starten", sub: "Einmal durch alles, was Ratslotse kann",
         icon: Play, run: () => { close(); startGuidedTour(); },
       },
+      // Der Weg zu Lotti, der auch dann bleibt, wenn der Knopf ausgeblendet
+      // ist (Konto → Lotti). Ausblenden heißt wegräumen, nicht abschalten.
+      ...(lotti
+        ? [{
+            key: "act-lotti", section: "Aktionen", label: "Lotti fragen",
+            sub: "Sie erklärt, was gerade auf der Seite steht",
+            icon: MessageCircleQuestion, run: () => { close(); openLotti(); },
+          } as Item]
+        : []),
     ].filter((i) => match(i.label));
 
     // V-02: Die Lupe im Kopf öffnet diese Palette, nicht die Suche — seit dem
@@ -192,7 +204,7 @@ export function CommandPalette() {
     }
 
     return [...zurSuche, ...recent, ...found, ...nav, ...actions];
-  }, [query, debounced, decisions, user, go, close]);
+  }, [query, debounced, decisions, user, lotti, go, close]);
 
   // Aktiven Eintrag im gültigen Bereich halten + sichtbar scrollen.
   useEffect(() => {

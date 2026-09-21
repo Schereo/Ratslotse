@@ -3666,8 +3666,11 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
                 return
 
             yield _sse({"type": "step", "step": "context"})
+            # Das Konto geht als RECHTE und — nur bei „mein…" — als Themen
+            # mit; nie als Name, Adresse oder Rollenwort.
             ctx = lotti.screen_context(store, screen, frage,
-                                       permissions=frozenset(user.get("permissions") or ()))
+                                       permissions=frozenset(user.get("permissions") or ()),
+                                       ratslotse=ratslotse, user_id=user["id"])
             zeiten["context_ms"] = round((time.perf_counter() - t0) * 1000)
             yield _sse({"type": "step", "step": "answer"})
 
