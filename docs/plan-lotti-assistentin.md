@@ -885,6 +885,25 @@ Umschalten, Paletten-Eintrag da.
 Daten mitgehen ist seine Entscheidung; der Vorschlag oben ist der
 sparsamste, der die Frage „Was ist neu in meinem Viertel?" noch erlaubt).
 
+**Nachtrag beim Bauen (21.09.2026).** Zwei Abweichungen vom Plan, beide
+beim Nachsehen entstanden:
+
+1. **Die gewählten Viertel fallen weg.** Der Plan sagte „die Quelle, die
+   `/districts/projects` benutzt — beim Bauen nachsehen". Nachgesehen:
+   Dieser Endpunkt liefert **alle** Ortsteile, nicht die gewählten; „Mein
+   Viertel" wählt im Browser, das Backend kennt die Auswahl gar nicht. Eine
+   Auswahl dafür erst durchs Backend zu reichen wäre ein eigener Umbau und
+   nicht der, für den dieser PR angetreten ist. Die eigenen **Themen**
+   gehen wie geplant mit.
+2. **Der Konto-Block steht als eigener Platzhalter `{konto}` im Prompt**,
+   nicht an das Glossar gehängt: Dort landete er mitten zwischen den
+   Stilregeln und las sich wie eine.
+
+Die vitest-Prüfung der Einstellung entfällt ebenfalls: `vitest.config.ts`
+lässt bewusst nur `lib/`-LOGIK ohne DOM zu, und ein `localStorage`-Modul
+braucht einen. Geprüft wird sie stattdessen im Browsertest — samt dem Weg
+zurück über ⌘K, der ohnehin nur dort zu sehen ist.
+
 ### PR 6 — Die App (iOS)
 
 **Was.** Regel 11: Web und App featuregleich. Die App bekommt denselben

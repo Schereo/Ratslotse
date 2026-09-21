@@ -254,6 +254,22 @@ test.describe("Lotti-Knopf und -Fenster", () => {
     await expect(knopf(page)).toBeHidden();
   });
 
+  test("der Knopf lässt sich ausblenden — und Lotti bleibt erreichbar", async ({ page }) => {
+    // Die Einstellung wohnt im Gerät, nicht im Konto: Wem Lotti auf dem
+    // Telefon im Weg ist, dem ist sie am Monitor vielleicht recht.
+    await page.goto("/account");
+    await page.getByRole("switch", { name: "Lotti-Knopf ausblenden" }).click();
+    await page.goto("/dashboard");
+    await expect(page.getByRole("heading").first()).toBeVisible();
+    await expect(knopf(page)).toBeHidden();
+
+    // „Ausblenden" heißt wegräumen, nicht abschalten — über die Palette
+    // öffnet sie sich weiterhin.
+    await page.keyboard.press("ControlOrMeta+k");
+    await page.getByRole("option", { name: "Lotti fragen" }).click();
+    await expect(fenster(page)).toBeVisible();
+  });
+
   test("ohne Schalter gibt es keinen Knopf", async ({ page }) => {
     await schalterAn(page, false);
     await page.goto("/dashboard");

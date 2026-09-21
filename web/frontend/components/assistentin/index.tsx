@@ -12,6 +12,7 @@ import { LottiKnopf } from "./knopf";
 import { LottiPanel, useMarkierung } from "./panel";
 import { ernteElement, routeAus } from "@/lib/assistentin";
 import { anstupserErlaubt } from "@/lib/anstupser-seiten";
+import { knopfVersteckt, LOTTI_SICHT_EVENT } from "@/lib/lotti-sichtbar";
 
 /**
  * Lotti als Assistentin — Knopf und Fenster, eingehängt in die App-Hülle.
@@ -62,6 +63,15 @@ function LottiInner() {
   const [modus, setModus] = useState(false);
   const [element, setElement] = useState<ElementFrage | null>(null);
   const markierung = useMarkierung();
+  // Ausgeblendet heißt: kein Knopf und kein Anklopfen — aber das Fenster
+  // bleibt erreichbar (⌘K). Sonst hieße „ausblenden" in Wahrheit „abschalten".
+  const [versteckt, setVersteckt] = useState(false);
+  useEffect(() => {
+    const sync = () => setVersteckt(knopfVersteckt());
+    sync();
+    window.addEventListener(LOTTI_SICHT_EVENT, sync);
+    return () => window.removeEventListener(LOTTI_SICHT_EVENT, sync);
+  }, []);
 
   const schliessen = useCallback(() => setOffen(false), []);
 
@@ -103,16 +113,18 @@ function LottiInner() {
         }}
       />
       <Anstupser
-        erlaubt={anstupserErlaubt(routeAus(pathname, sp.toString()))}
+        erlaubt={!versteckt && anstupserErlaubt(routeAus(pathname, sp.toString()))}
         onJa={() => setOffen(true)}
       />
-      <LottiKnopf
-        offen={offen || modus}
-        onToggle={() => {
-          if (modus) { setModus(false); return; }
-          setOffen((o) => !o);
-        }}
-      />
+      {(!versteckt || offen || modus) && (
+        <LottiKnopf
+          offen={offen || modus}
+          onToggle={() => {
+            if (modus) { setModus(false); return; }
+            setOffen((o) => !o);
+          }}
+        />
+      )}
     </>
   );
 }

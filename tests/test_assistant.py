@@ -653,3 +653,139 @@ def test_der_ereignis_endpunkt_verlangt_ein_konto():
     from app.routers import council as router_modul
     vorgabe = inspect.signature(router_modul.assistant_event).parameters["user"].default
     assert getattr(vorgabe, "dependency", None) is require_active
+
+
+# --- 9. Das Konto im Kontext (PR 5) -----------------------------------------
+#
+# Die Regel dahinter in einem Satz: Lotti erfährt, was dieses Konto DARF, und
+# — nur auf ausdrückliche Nachfrage — was es HAT. Nie, WER es ist.
+
+class _Thema:
+    def __init__(self, name: str, description: str = "") -> None:
+        self.name = name
+        self.description = description
+
+
+class _MitThemen:
+    """Ein Konto-Speicher, der Themen kennt und jeden Abruf mitzählt."""
+
+    def __init__(self, namen: list[str]) -> None:
+        self.themen = [_Thema(n, f"Beschreibung zu {n}") for n in namen]
+        self.abrufe = 0
+
+    def get_topics(self, user_id: int):
+        self.abrufe += 1
+        return self.themen
+
+
+@pytest.mark.parametrize("frage", [
+    "Wie steht es um meine Themen?",
+    "Betrifft das mein Viertel?",
+    "Ist einer meiner Punkte dabei?",
+])
+def test_mein_wird_erkannt(frage):
+    assert lotti.meint_eigenes(frage)
+
+
+@pytest.mark.parametrize("frage", [
+    "Was ist das hier?",
+    "Wie hoch sind die Schulden?",
+    # Kein Treffer mitten im Wort: „gemeinsam" und „Gemeinde" tragen kein
+    # „mein" im Sinne der Frage.
+    "Was macht die Gemeinde gemeinsam mit dem Land?",
+])
+def test_ohne_mein_bleibt_es_aus(frage):
+    assert not lotti.meint_eigenes(frage)
+
+
+def test_eigene_themen_nur_auf_nachfrage():
+    speicher = _MitThemen(["Radwege", "Schulen"])
+    screen = lotti.Screen(route="/haushalt/schulden")
+    ohne = lotti.screen_context(_Store(), screen, "Wie hoch sind die Schulden?",
+                                ratslotse=speicher, user_id=7)
+    assert ohne["topics"] == []
+    assert speicher.abrufe == 0  # gar nicht erst nachgesehen
+
+    mit = lotti.screen_context(_Store(), screen, "Betrifft das meine Themen?",
+                               ratslotse=speicher, user_id=7)
+    assert mit["topics"] == ["Radwege", "Schulen"]
+
+
+def test_nur_die_namen_nie_die_beschreibung():
+    """Die Beschreibung ist frei eingegebener Text — im Prompt hätte sie
+    nichts verloren, solange sie nichts erklärt."""
+    speicher = _MitThemen(["Radwege"])
+    ctx = lotti.screen_context(_Store(), lotti.Screen(route="/haushalt"),
+                               "Was ist mit meinen Themen?",
+                               ratslotse=speicher, user_id=7)
+    p = _prompt(lotti.Screen(route="/haushalt"), "Was ist mit meinen Themen?", **ctx)
+    assert "Radwege" in p
+    assert "Beschreibung zu Radwege" not in p
+
+
+def test_die_themenliste_ist_gedeckelt():
+    speicher = _MitThemen([f"Thema {i}" for i in range(30)])
+    ctx = lotti.screen_context(_Store(), lotti.Screen(route="/haushalt"),
+                               "Und meine Themen?", ratslotse=speicher, user_id=7)
+    assert len(ctx["topics"]) == lotti.THEMEN_MAX
+
+
+def test_ein_kaputter_konto_speicher_bricht_die_erklaerung_nicht():
+    class _Kaputt:
+        def get_topics(self, user_id):
+            raise RuntimeError("Datenbank weg")
+
+    ctx = lotti.screen_context(_Store(), lotti.Screen(route="/haushalt"),
+                               "Und meine Themen?", ratslotse=_Kaputt(), user_id=7)
+    assert ctx["topics"] == []
+
+
+def test_ohne_recht_verweist_lotti_nicht_in_den_haushalt():
+    """Ein Verweis auf eine gesperrte Seite führt ins Leere — schlimmer als
+    gar kein Verweis, weil er wie ein Angebot aussieht."""
+    screen = lotti.Screen(route="/council/decision", refs={"id": 1})
+    ohne = _prompt(screen, permissions=frozenset())
+    assert "KEINEN Zugang zum Haushalts-Bereich" in ohne
+    mit = _prompt(screen, permissions=frozenset({"budget"}))
+    assert "KEINEN Zugang" not in mit
+
+
+def test_verwandte_seiten_stehen_nur_mit_recht_im_prompt():
+    screen = lotti.Screen(route="/haushalt/schulden")
+    ctx_mit = lotti.screen_context(_Store(), screen, "Was ist das?",
+                                   permissions=frozenset({"budget"}))
+    ctx_ohne = lotti.screen_context(_Store(), screen, "Was ist das?",
+                                    permissions=frozenset())
+    assert ctx_mit["related"]
+    assert all(z not in ctx_ohne["related"] for z in ctx_mit["related"]
+               if z.startswith("/haushalt"))
+
+
+def test_kein_name_und_keine_adresse_im_prompt(client, monkeypatch, konto):
+    """Der Endpunkt reicht das Konto durch — aber nur Rechte und Themen.
+
+    Geprüft wird am fertigen Prompt, nicht an der Signatur: Ein Feld, das
+    jemand später ergänzt, fiele hier auf.
+    """
+    konto["display_name"] = "Testperson Musterfrau"
+    konto["email"] = FREMDE_ADRESSE
+    konto["roles"] = ["council"]
+    gefangen: dict = {}
+
+    def merke(store, screen, question, *, ctx=None, verlauf=None, **k):
+        gefangen["ctx"] = ctx
+        gefangen["screen"] = screen
+        gefangen["question"] = question
+        return iter(["Antwort."])
+
+    monkeypatch.setattr(lotti, "explain_stream", merke)
+    client.post("/api/council/explain", json={
+        "route": "/haushalt/schulden", "question": "Wie steht es um meine Themen?",
+    })
+    msgs, _ = lotti.explain_messages(gefangen["screen"], gefangen["question"],
+                                     gefangen["ctx"])
+    prompt = msgs[0]["content"]
+    assert "Musterfrau" not in prompt
+    assert FREMDE_ADRESSE not in prompt
+    # Die Rolle steht als RECHT im Kontext, nicht als Wort im Prompt:
+    assert "council" not in prompt and "Ratsmitglied" not in prompt
