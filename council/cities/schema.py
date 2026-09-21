@@ -354,6 +354,16 @@ CREATE TABLE IF NOT EXISTS meta (
 #: muss ein zweites Mal folgenlos bleiben (``CREATE … IF NOT EXISTS``,
 #: ``ALTER TABLE`` nur nach Prüfung per ``PRAGMA table_info``).
 #:
+#: **Die Reihenfolge in dieser Liste ist egal — die NUMMER entscheidet.**
+#: ``CitiesStore._migrate`` sortiert danach, bevor es läuft (s. dort, samt der
+#: Messung vom 21.09.2026). Bis dahin stand die Liste von neu nach alt und die
+#: Schleife lief sie so ab, wie sie dastand: Für jede Datenbank unterhalb von
+#: Stand 7 lief damit nur Migration 7, und 2 bis 6 wurden stumm übersprungen.
+#:
+#: Was dagegen NICHT egal ist: Die höchste Nummer hier und ``SCHEMA_VERSION``
+#: müssen zusammenpassen. Sonst entsteht eine Tabelle auf einer frischen
+#: Datenbank, aber auf keiner gewachsenen — oder umgekehrt.
+#: ``tests/test_cities_store.py`` hält beides.
 MIGRATIONS: list[tuple[int, str]] = [
     # 7 — Doppelt abgelegte Tagesordnungspunkte zusammenführen (10.09.2026).
     #
