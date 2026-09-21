@@ -390,8 +390,11 @@ class _Ratslotse:
 
 @pytest.fixture
 def konto():
-    return {"id": 7, "status": "active", "permissions": ["budget"],
-            "limits_unlocked": True, "roles": ["expert"]}
+    # **Wie das echte Konto-Dict: mit `roles`, ohne `permissions`.** Die erste
+    # Fassung brachte ein Feld `permissions` mit, das der Router nie bekommt —
+    # und genau deshalb fiel nicht auf, dass er es las: Der Riegel war für
+    # jedes echte Konto zu, der Test grün.
+    return {"id": 7, "status": "active", "limits_unlocked": True, "roles": ["expert"]}
 
 
 @pytest.fixture
@@ -769,7 +772,9 @@ def test_kein_name_und_keine_adresse_im_prompt(client, monkeypatch, konto):
     """
     konto["display_name"] = "Testperson Musterfrau"
     konto["email"] = FREMDE_ADRESSE
-    konto["roles"] = ["council"]
+    # Eine ECHTE Rolle, damit der Riegel die Haushalts-Seite durchlässt — die
+    # Probe ist ja, dass die Rolle als Wort trotzdem nirgends im Prompt steht.
+    konto["roles"] = ["council_member"]
     gefangen: dict = {}
 
     def merke(store, screen, question, *, ctx=None, verlauf=None, **k):
@@ -787,8 +792,9 @@ def test_kein_name_und_keine_adresse_im_prompt(client, monkeypatch, konto):
     prompt = msgs[0]["content"]
     assert "Musterfrau" not in prompt
     assert FREMDE_ADRESSE not in prompt
-    # Die Rolle steht als RECHT im Kontext, nicht als Wort im Prompt:
-    assert "council" not in prompt and "Ratsmitglied" not in prompt
+    # Die Rolle steht als RECHT im Kontext, nicht als Wort im Prompt. („council"
+    # allein taugt nicht als Probe — es steckt in jeder Route.)
+    assert "council_member" not in prompt and "Ratsmitglied" not in prompt
 
 
 # --- 10. Die Befunde der Durchsicht vom 21.09.2026 --------------------------
@@ -801,7 +807,7 @@ def test_ohne_das_recht_gibt_es_keine_erklaerung(client, konto):
     Gemessen vor dem Riegel: Status 200 samt Seiten-Wissen und, bei einer
     eigenen Frage, den Haushaltszahlen aus `geld_kontext`.
     """
-    konto["permissions"] = []
+    konto["roles"] = ["user"]
     r = client.post("/api/council/explain", json={
         "route": "/haushalt/schulden", "question": "Was sehe ich hier?"})
     assert r.status_code == 403
@@ -809,15 +815,33 @@ def test_ohne_das_recht_gibt_es_keine_erklaerung(client, konto):
 
 
 def test_mit_dem_recht_antwortet_dieselbe_seite(client, konto):
-    konto["permissions"] = ["budget"]
+    konto["roles"] = ["expert"]
     r = client.post("/api/council/explain", json={
         "route": "/haushalt/schulden", "question": "Was sehe ich hier?"})
     assert r.status_code == 200
 
 
+def test_ein_ratsmitglied_bekommt_den_haushalt_erklaert(client, konto, modell, monkeypatch):
+    """Die Rolle, mit der es am 21.09.2026 im Browser gescheitert ist — und
+    dazu die Probe, dass der Konto-Block nicht jedem „kein Zugang" sagt."""
+    konto["roles"] = ["council_member"]
+    gesehen: dict = {}
+
+    def merke(store, screen, question, *, ctx=None, **k):
+        gesehen["ctx"] = ctx
+        return iter(["Antwort."])
+
+    monkeypatch.setattr(lotti, "explain_stream", merke)
+    r = client.post("/api/council/explain", json={
+        "route": "/haushalt/schulden", "question": "Wie lese ich die Rate-Treppe?"})
+    assert r.status_code == 200
+    assert "budget" in gesehen["ctx"]["permissions"]
+    assert "KEINEN Zugang" not in lotti._konto_block(gesehen["ctx"])
+
+
 def test_eine_freie_seite_braucht_kein_recht(client, konto):
     """Die Sperre gilt nur, wo die Seite selbst eine trägt."""
-    konto["permissions"] = []
+    konto["roles"] = ["user"]
     r = client.post("/api/council/explain", json={
         "route": "/council?tab=decisions", "question": "Was sehe ich hier?"})
     assert r.status_code == 200
