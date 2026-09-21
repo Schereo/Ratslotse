@@ -4088,6 +4088,12 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                   if p["kvonr"] not in gesehen]
                 except Exception:  # noqa: BLE001 — Ausblick ist Zusatz, nie Blocker
                     pass
+            # Zukunftsfrage ohne Zukunft: Fragt jemand, was NOCH KOMMT, und
+            # liefern beide Ausblick-Wege nichts, füllt das Modell die Lücke
+            # sonst mit alten Beschlüssen im Futur — am 21.09.2026 mit einem
+            # Bebauungsplan von 2018 („ist geplant"). Deterministisch am
+            # Fragewortlaut, nicht am Bedarf des Analysemodells.
+            zukunft_leer = qa.zukunftsfrage(q_suche) and not planungen
             # Hintergrund zu den genannten Objekten („Was ist die GSG?").
             steckbriefe = qa.steckbriefe_mit_ort(
                 qa.steckbriefe_fuer(store, q_suche), ort)
@@ -4373,7 +4379,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                           anlagen=anlagen_rows,
                                           gross=gross, steckbriefe=steckbriefe,
                                           duenn=(lage == "duenn"), eng=eng,
-                                          sitzungen=sitzungen, ort=ort))
+                                          sitzungen=sitzungen, ort=ort,
+                                          zukunft_leer=zukunft_leer))
             try:
                 for delta in strom:
                     if not buf and delta:
@@ -4408,7 +4415,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                                  anlagen=anlagen_rows,
                                                  gross=gross, steckbriefe=steckbriefe,
                                                  duenn=(lage == "duenn"), eng=eng,
-                                                 sitzungen=sitzungen, ort=ort))
+                                                 sitzungen=sitzungen, ort=ort,
+                                                 zukunft_leer=zukunft_leer))
                     buf = ans
                     yield _sse({"type": "replace", "text": qa.split_followups(ans)[0]})
                     sent = len(ans)
