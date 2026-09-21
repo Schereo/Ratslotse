@@ -9,7 +9,7 @@ import { Mascot } from "@/components/mascot";
 import { AntwortText } from "@/components/qa-bausteine";
 import { apiUrl, authHeaders } from "@/lib/api";
 import {
-  auswahlText, kuerze, refsAus, routeAus, trenneWeiter,
+  auswahlText, kuerze, refsAus, routeAus, trenneWeiter, ueberschriftenPfad,
   type Bildschirm,
 } from "@/lib/assistentin";
 import { useAuth } from "@/lib/auth";
@@ -38,6 +38,10 @@ import { cn } from "@/lib/utils";
  */
 
 const SPEICHER = "ratslotse:lotti-verlauf";
+/** Die Kennung des laufenden Gesprächs. Ohne sie riss nach einem Neuladen
+ *  des Tabs der Faden: Der Verlauf stand noch da, die nächste Frage eröffnete
+ *  serverseitig aber ein zweites Gespräch zu derselben Sache. */
+const SPEICHER_ID = "ratslotse:lotti-gespraech";
 const MAX_TURNS_SPEICHER = 10;
 const MAX_TURNS_KONTEXT = 3;
 
@@ -84,7 +88,8 @@ function merkeVerlauf(turns: LottiTurn[]): void {
 }
 
 export function LottiPanel({
-  offen, onSchliessen, markierung, element, onElementVerbraucht, onModus,
+  offen, onSchliessen, markierung, element, onElementVerbraucht,
+  ladeGespraech, onGespraechGeladen, onModus,
 }: {
   offen: boolean;
   onSchliessen: () => void;
@@ -93,6 +98,9 @@ export function LottiPanel({
   /** Ein im Erklär-Modus angetippter Baustein. Gesetzt heißt: sofort fragen. */
   element: ElementFrage | null;
   onElementVerbraucht: () => void;
+  /** Ein gespeichertes Lotti-Gespräch, das geladen werden soll. */
+  ladeGespraech?: number | null;
+  onGespraechGeladen?: () => void;
   /** „Etwas auf der Seite zeigen" — der Modus lebt eine Ebene höher. */
   onModus: () => void;
 }) {
@@ -106,7 +114,21 @@ export function LottiPanel({
   const { user, refresh } = useAuth();
   const [merken, setMerken] = useState<number | null | undefined>(
     () => (user ? user.saves_conversations ?? null : undefined));
-  const [gespraechId, setGespraechId] = useState<number | null>(null);
+  // **Und sie folgt ihm weiter.** Der Anfangswert allein reichte nicht: Wer
+  // die Frage auf `/fragen` beantwortet und danach Lotti öffnet, sah die
+  // Karte ein zweites Mal und konnte bis zur zweiten Antwort nicht fragen.
+  // Eine hier getroffene Wahl gilt trotzdem sofort, auch bevor `user` neu
+  // geladen ist — deshalb nur nachziehen, was wirklich neu ist.
+  const kontoWahl = user ? user.saves_conversations ?? null : undefined;
+  useEffect(() => { setMerken(kontoWahl); }, [kontoWahl]);
+  const [gespraechId, _setGespraechId] = useState<number | null>(null);
+  const setGespraechId = useCallback((id: number | null) => {
+    _setGespraechId(id);
+    try {
+      if (id) sessionStorage.setItem(SPEICHER_ID, String(id));
+      else sessionStorage.removeItem(SPEICHER_ID);
+    } catch { /* privates Fenster — dann eben nicht */ }
+  }, []);
   const [frage, setFrage] = useState("");
   const [laden, setLaden] = useState(false);
   const abbruch = useRef<AbortController | null>(null);
@@ -130,6 +152,10 @@ export function LottiPanel({
       setTurns(alt);
       naechsterKey.current = Math.max(...alt.map((t) => t.key)) + 1;
     }
+    try {
+      const id = Number(sessionStorage.getItem(SPEICHER_ID));
+      if (id > 0) _setGespraechId(id);
+    } catch { /* egal */ }
   }, []);
   useEffect(() => { if (turns.length) merkeVerlauf(turns); }, [turns]);
 
@@ -192,7 +218,10 @@ export function LottiPanel({
     const bildschirm: Bildschirm = {
       route,
       page_title: document.title.replace(/\s*[–|]\s*Ratslotse\s*$/, ""),
-      heading: document.querySelector("h1")?.textContent?.trim().slice(0, 200) ?? "",
+      // Der PFAD, nicht nur die `h1`: „Schulden › Rate-Treppe" sagt Lotti,
+      // wo auf der Seite sie steht, ohne den Seitentext mitzuschicken. Er
+      // wird beim Antippen berechnet — nur dort liegt der Knoten noch vor.
+      heading: baustein?.pfad || ueberschriftenPfad(null, document),
       element: baustein,
       selection: mitMarkierung ? markierung : "",
       refs,
@@ -267,7 +296,7 @@ export function LottiPanel({
         abbruch.current = null;
       }
     }
-  }, [markierung, refs, route, turns, gespraechId, merken]);
+  }, [markierung, refs, route, turns, gespraechId, merken, setGespraechId]);
 
   // Ein im Erklär-Modus angetippter Baustein fragt von selbst — der Tipp auf
   // das Abzeichen IST die Frage, ein zweiter Klick im Fenster wäre einer zu
@@ -308,6 +337,13 @@ export function LottiPanel({
         headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify({
           question: frageText,
+          // **Dasselbe Gespräch wie die Erklärungen.** Der Plan sagt, der
+          // Ratsweg aus dem Fenster hängt seinen Turn dort an; ohne diese
+          // beiden Felder blieb er ungespeichert, und der Verlauf hatte ein
+          // Loch genau an der interessantesten Stelle.
+          conversation_id: gespraechId,
+          history: turns.filter((t) => t.answer && !t.fehler).slice(-MAX_TURNS_KONTEXT)
+            .map((t) => ({ question: t.question.slice(0, 200), answer: t.answer.slice(0, 300) })),
           screen: {
             route,
             heading: document.querySelector("h1")?.textContent?.trim().slice(0, 200) ?? "",
@@ -334,6 +370,13 @@ export function LottiPanel({
           patch(() => ({ quellen: (msg.sources as LottiQuelle[]) ?? [] }));
         } else if (msg.type === "done") {
           patch(() => ({ cited: (msg.cited as number[]) ?? [] }));
+          // **Nur in ein Gespräch, das es schon gab.** Ohne eines legt `/ask`
+          // ein neues der Art `ask` an — die nächste Erklärung liefe dann in
+          // ein Ratsgespräch, und die Liste zeigte ein Mischwesen. Der
+          // Ratsturn steht dann für sich, und das ist er ja auch.
+          if (msg.conversation_id != null && gespraechId != null) {
+            setGespraechId(msg.conversation_id as number);
+          }
         } else if (msg.type === "error") {
           patch(() => ({ answer: (msg.message as string) ?? "Frage fehlgeschlagen.", fehler: true }));
         }
@@ -347,7 +390,45 @@ export function LottiPanel({
         abbruch.current = null;
       }
     }
-  }, [markierung, route]);
+  }, [markierung, route, gespraechId, turns, setGespraechId]);
+
+  // Ein gespeichertes Lotti-Gespräch aus der Liste „Gespräche".
+  useEffect(() => {
+    if (!ladeGespraech || !offen) return;
+    let abgebrochen = false;
+    (async () => {
+      try {
+        const r = await fetch(apiUrl(`/council/conversations/${ladeGespraech}`),
+                              { credentials: "include", headers: authHeaders() });
+        if (!r.ok) throw new Error();
+        const g = await r.json();
+        if (abgebrochen) return;
+        type Gespeichert = { question: string; answer: string; sources: {
+          route?: string; element_title?: string; selection?: string;
+          mode?: string; next?: string | null; glossary?: string[] } | null };
+        setTurns((g.turns as Gespeichert[]).map((tn) => ({
+          key: naechsterKey.current++,
+          question: tn.question,
+          answer: tn.answer,
+          next: (tn.sources?.next as "ratsfrage" | null) ?? null,
+          glossary: tn.sources?.glossary ?? [],
+          mode: tn.sources?.mode ?? null,
+          // Wo gefragt wurde, steht im Schnappschuss — der Element-TEXT nicht
+          // (Regel 2: Seiteninhalt wird nicht im Konto verdoppelt).
+          kontext: tn.sources?.element_title || tn.sources?.route || "",
+        })));
+        setGespraechId(ladeGespraech);
+      } catch {
+        // Kein Toast: Das Fenster steht offen, und eine leere Fläche mit
+        // dem Begrüßungssatz ist eine ehrlichere Antwort als eine Meldung,
+        // die man wegklickt. Die Liste „Gespräche" bleibt, wo sie war.
+      } finally {
+        if (!abgebrochen) onGespraechGeladen?.();
+      }
+    })();
+    return () => { abgebrochen = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ladeGespraech, offen]);
 
   const neuAnfangen = () => {
     abbruch.current?.abort();

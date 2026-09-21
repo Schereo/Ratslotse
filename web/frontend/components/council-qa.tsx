@@ -25,6 +25,7 @@ import { Sparkles, ArrowUp, Loader2, ChevronDown, ChevronRight, ChevronUp, Arrow
   BookOpen, Check, MapPin, SearchX, Bell } from "lucide-react";
 import dynamic from "next/dynamic";
 import { Mascot } from "@/components/mascot";
+import { openLotti } from "@/components/assistentin";
 import type { QaOrtPin } from "@/components/qa-orte-karte";
 
 // 5a/I-10: Leaflet kennt kein SSR — die Mini-Karte kommt nur im Browser.
@@ -173,7 +174,13 @@ const OUTCOME_LABEL: Record<string, string> = {
 };
 
 /** Gesprächs-Zeile der „Meine Gespräche"-Liste (5a/I-04). */
-type GespraechEintrag = { id: number; title: string; updated: string; n_turns: number };
+type GespraechEintrag = {
+  id: number; title: string; updated: string; n_turns: number;
+  /** `ask` (hier entstanden) oder `lotti` (in ihrem Fenster). Ohne dieses
+   *  Feld sahen beide gleich aus, und ein Lotti-Gespräch öffnete sich hier —
+   *  mit einem Verlauf, der so nie entstanden ist. */
+  kind?: string;
+};
 /** Wie viele Gesprächszeilen eine Seite bringt — der Rest kommt über
  *  „Ältere anzeigen" nach. */
 const GESPRAECHE_SEITE = 30;
@@ -1833,7 +1840,17 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             onMehr={() => void mehrGespraeche()}
             aktivId={gespraechId}
             onNeu={() => { setSheetOffen(false); neuesGespraech(); }}
-            onLaden={(id) => void gespraechLaden(id)}
+            onLaden={(id, kind) => {
+              // **Ein Lotti-Gespräch gehört in ihr Fenster.** Hier geladen
+              // stünde ein Verlauf, der so nie entstanden ist: ohne
+              // Bildschirm-Bezug und ohne die Chips, die zu ihm gehören.
+              if (kind === "lotti") {
+                setSheetOffen(false);
+                openLotti(id);
+                return;
+              }
+              void gespraechLaden(id);
+            }}
             onLoeschen={(id) => void gespraechLoeschen(id)}
             onUmbenennen={(id, title) => void gespraechUmbenennen(id, title)}
             onClose={() => { setSheetOffen(false); setSuche(""); setSucheListe(null); }}
@@ -2718,8 +2735,16 @@ function SheetZeile({ g, aktiv, offen, inAelter, aufklappen, onLaden, onLoeschen
         <button type="button" className="flex min-w-0 flex-1 items-center gap-2 text-left"
           onClick={() => { if (offen) aufklappen(null); else onLaden(); }}>
           <span className="min-w-0 flex-1">
-            <span className={cn("block truncate text-[14.5px] text-foreground", aktiv && "font-semibold")}>{g.title}</span>
+            <span className={cn("flex items-center gap-1.5 text-[14.5px] text-foreground", aktiv && "font-semibold")}>
+              {g.kind === "lotti" && (
+                <Mascot regung="ruht" decorative className="h-4 w-4 flex-none" />
+              )}
+              <span className="min-w-0 truncate">{g.title}</span>
+            </span>
             <span className="mt-px block text-[11.5px] text-muted-foreground">
+              {/* Woher es stammt, steht vorn: Wer die Liste überfliegt, sucht
+                  nicht die Möwe, sondern das Wort. */}
+              {g.kind === "lotti" ? "Mit Lotti · " : ""}
               {aktiv ? `${fragen} · gerade offen`
                 : inAelter ? `${relativTag(g.updated)} · ${fragen}` : fragen}
             </span>
@@ -2777,7 +2802,8 @@ function GespraecheSheet({ gespraeche, gesamt, treffer, weitere, laedtMehr, such
   sucht: boolean;
   suche: string; onSuche: (q: string) => void; onMehr: () => void;
   aktivId: number | null;
-  onNeu: () => void; onLaden: (id: number) => void; onLoeschen: (id: number) => void;
+  onNeu: () => void; onLaden: (id: number, kind?: string) => void;
+  onLoeschen: (id: number) => void;
   onUmbenennen: (id: number, title: string) => void; onClose: () => void;
 }) {
   const [offenId, setOffenId] = useState<number | null>(null);
@@ -2857,7 +2883,7 @@ function GespraecheSheet({ gespraeche, gesamt, treffer, weitere, laedtMehr, such
                   <SheetZeile key={g.id} g={g} aktiv={g.id === aktivId} offen={offenId === g.id}
                     inAelter={gr.name === "Älter"}
                     aufklappen={setOffenId}
-                    onLaden={() => onLaden(g.id)}
+                    onLaden={() => onLaden(g.id, g.kind)}
                     onLoeschen={() => { setOffenId(null); onLoeschen(g.id); }}
                     onUmbenennen={(title) => onUmbenennen(g.id, title)} />
                 ))}

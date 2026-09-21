@@ -648,6 +648,11 @@ class ConversationRow(TypedDict):
     title: str
     updated: str
     n_turns: int
+    #: ``ask`` (Frag den Rat) oder ``lotti`` (ihr Fenster). Die Spalte gibt es
+    #: seit PR 7; ohne sie in der Antwort sah die Liste beide gleich aus und
+    #: öffnete ein Lotti-Gespräch im Ratsgespräch — mit einem Verlauf, der
+    #: dort nie entstanden ist.
+    kind: str
 
 
 class ConversationList(TypedDict):
@@ -674,6 +679,7 @@ class ConversationDetail(TypedDict):
     id: int
     title: str
     updated: str
+    kind: str
     turns: list[ConversationTurn]
 
 

@@ -10,7 +10,7 @@ import { Anstupser, merkeBenutzung } from "./anstupser";
 import { ErklaerModus } from "./erklaer-modus";
 import { LottiKnopf } from "./knopf";
 import { LottiPanel, useMarkierung } from "./panel";
-import { ernteElement, routeAus } from "@/lib/assistentin";
+import { ernteElement, routeAus, ueberschriftenPfad } from "@/lib/assistentin";
 import { anstupserErlaubt } from "@/lib/anstupser-seiten";
 import { knopfVersteckt, LOTTI_SICHT_EVENT } from "@/lib/lotti-sichtbar";
 
@@ -29,16 +29,28 @@ import { knopfVersteckt, LOTTI_SICHT_EVENT } from "@/lib/lotti-sichtbar";
  * Zwei Stellen, aber die vordere ist Höflichkeit und die hintere die Sperre —
  * dieselbe Aufteilung wie beim Rechte-Gate (web/frontend/CLAUDE.md).
  */
-/** Ein angeklickter Baustein, so wie er ans Backend geht. */
-export type ElementFrage = { key: string | null; title: string; text: string };
+/** Ein angeklickter Baustein, so wie er ans Backend geht.
+ *
+ *  `pfad` gehört nicht zum Element, sondern sagt, WO auf der Seite es steht
+ *  („Schulden › Rate-Treppe"). Er wird beim Antippen berechnet, weil nur dort
+ *  der DOM-Knoten noch vorliegt. */
+export type ElementFrage = {
+  key: string | null; title: string; text: string; pfad?: string;
+};
 
 const OHNE_LOTTI = ["/admin", "/account"];
 
 /** Öffnen von außen — dasselbe Muster wie `openCommandPalette()`. */
 const EREIGNIS = "ratslotse:lotti-oeffnen";
 
-export function openLotti() {
-  window.dispatchEvent(new Event(EREIGNIS));
+/** Lottis Fenster öffnen; mit `gespraech` lädt es ein gespeichertes Gespräch.
+ *
+ *  **Warum überhaupt mit Kennung.** Ein Lotti-Gespräch in der Liste „Gespräche"
+ *  gehört hierher, nicht ins Ratsgespräch: Dort erschiene ein Verlauf, der
+ *  nie so entstanden ist — ohne Bildschirm-Bezug, ohne die Chips, die zu ihm
+ *  gehören. */
+export function openLotti(gespraech?: number) {
+  window.dispatchEvent(new CustomEvent(EREIGNIS, { detail: { gespraech } }));
 }
 
 export function LottiAssistentin() {
@@ -75,8 +87,14 @@ function LottiInner() {
 
   const schliessen = useCallback(() => setOffen(false), []);
 
+  const [ladeGespraech, setLadeGespraech] = useState<number | null>(null);
+
   useEffect(() => {
-    const auf = () => setOffen(true);
+    const auf = (e: Event) => {
+      const id = (e as CustomEvent<{ gespraech?: number }>).detail?.gespraech;
+      if (id) setLadeGespraech(id);
+      setOffen(true);
+    };
     window.addEventListener(EREIGNIS, auf);
     return () => window.removeEventListener(EREIGNIS, auf);
   }, []);
@@ -101,13 +119,15 @@ function LottiInner() {
         markierung={markierung}
         element={element}
         onElementVerbraucht={() => setElement(null)}
+        ladeGespraech={ladeGespraech}
+        onGespraechGeladen={() => setLadeGespraech(null)}
         onModus={() => setModus(true)}
       />
       <ErklaerModus
         aktiv={modus}
         onBeenden={() => setModus(false)}
         onWaehlen={(el) => {
-          setElement(ernteElement(el));
+          setElement({ ...ernteElement(el), pfad: ueberschriftenPfad(el, document) });
           setModus(false);
           setOffen(true);
         }}

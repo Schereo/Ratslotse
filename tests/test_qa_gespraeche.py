@@ -254,3 +254,25 @@ def test_suchwort_mit_platzhaltern_bleibt_text(tmp_path):
     assert store.qa_gespraeche_anzahl(uid, suche="100 %") == 1
     assert store.qa_gespraeche_anzahl(uid, suche="_") == 0
     store.close()
+
+
+def test_die_liste_sagt_woher_ein_gespraech_stammt(tmp_path):
+    """**Die Art gehört in die Antwort, nicht nur in die Tabelle.**
+
+    Die Spalte ``kind`` gibt es seit PR 7. Sie fehlte in ``ConversationRow``,
+    und damit sahen in der Liste „Gespräche" beide gleich aus: Ein Klick auf
+    ein Lotti-Gespräch öffnete es im Ratsgespräch — mit einem Verlauf, der
+    dort nie entstanden ist.
+    """
+    store = Store(tmp_path / "ratslotse.sqlite")
+    uid = _user(store)
+    store.qa_gespraech_start(uid, "Wer hat für den Radweg gestimmt?")
+    store.qa_gespraech_start(uid, "Schulden › Rate-Treppe", kind="lotti")
+    arten = {g["title"]: g["kind"] for g in store.qa_conversations(uid)}
+    assert arten == {"Wer hat für den Radweg gestimmt?": "ask",
+                     "Schulden › Rate-Treppe": "lotti"}
+    # Auch am einzelnen Gespräch — das Fenster entscheidet daran, ob es die
+    # Runden überhaupt laden darf.
+    gid = [g["id"] for g in store.qa_conversations(uid) if g["kind"] == "lotti"][0]
+    assert store.qa_gespraech(gid, uid)["kind"] == "lotti"
+    store.close()
