@@ -30,6 +30,7 @@ from council import assistant as lotti
 from council import beteiligungsbericht, qa
 from council import ernte
 from kern import features, knowledge, seitenaufrufe
+from kern import roles as rollen
 from council import importance
 from council import live as live_mod
 from council import sitzungspause as pause_mod
@@ -3636,7 +3637,14 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
     # Haushaltszahlen aus `geld_kontext` — also genau den Inhalt, für den es
     # das Recht braucht. Dieselbe Regel wie für die Seite selbst
     # (`require_permission`), nur an der Stelle, an der der Text entsteht.
-    if wissen.requires and wissen.requires not in set(user.get("permissions") or ()):
+    # **Rechte kommen aus den Rollen, nicht aus einem Feld `permissions`.**
+    # Das Konto-Dict trägt `roles`; ein `permissions`-Schlüssel steht nur in
+    # der Antwort von `/auth/me`. Die erste Fassung las das Feld hier trotzdem
+    # — es war immer leer, der Riegel sperrte damit den Haushalts-Bereich für
+    # JEDES Konto, und der Konto-Block sagte jedem „kein Zugang". Der Test
+    # hatte es verdeckt, weil seine Attrappe das Feld einfach mitbrachte.
+    rechte = rollen.permissions_for(user.get("roles"))
+    if wissen.requires and wissen.requires not in rechte:
         raise HTTPException(status.HTTP_403_FORBIDDEN,
                             "Diese Seite steht deinem Konto nicht offen.")
     if not user.get("limits_unlocked"):
@@ -3680,7 +3688,7 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
             # Das Konto geht als RECHTE und — nur bei „mein…" — als Themen
             # mit; nie als Name, Adresse oder Rollenwort.
             ctx = lotti.screen_context(store, screen, frage,
-                                       permissions=frozenset(user.get("permissions") or ()),
+                                       permissions=rechte,
                                        ratslotse=ratslotse, user_id=user["id"])
             zeiten["context_ms"] = round((time.perf_counter() - t0) * 1000)
             yield _sse({"type": "step", "step": "answer"})
