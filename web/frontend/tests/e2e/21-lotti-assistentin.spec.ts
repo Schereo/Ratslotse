@@ -31,20 +31,33 @@ const STROM = (opts: { next?: string | null } = {}) => [
   })}\n\n`,
 ].join("");
 
-/** Der Schalter kommt aus `/api/app-config`; ohne ihn gibt es keinen Knopf. */
+/** Der Schalter kommt aus `/api/app-config`; ohne ihn gibt es keinen Knopf.
+ *
+ *  **Der try/catch ist nicht Vorsicht, sondern gemessen** (CI, 21.09.2026):
+ *  Beendet ein `test.skip()` den Test, während dieser Handler noch auf die
+ *  echte Antwort wartet, wirft Playwright „Response has been disposed" — und
+ *  zwar in JEDEM danach laufenden Test derselben Datei, weil die Route
+ *  weiterhin registriert ist. Ein Handler, der den Fehler schluckt und die
+ *  Anfrage durchlässt, macht die ganze Datei gegen diesen Abbruch immun.
+ */
 async function schalterAn(page: Page, an = true) {
   await page.route("**/api/app-config", async (route) => {
-    const antwort = await route.fetch();
-    const body = await antwort.json();
-    const features: string[] = (body.features ?? []).filter((f: string) => f !== "lotti-assistentin");
-    if (an) features.push("lotti-assistentin");
-    await route.fulfill({ json: { ...body, features } });
+    try {
+      const antwort = await route.fetch();
+      const body = await antwort.json();
+      const features: string[] = (body.features ?? []).filter((f: string) => f !== "lotti-assistentin");
+      if (an) features.push("lotti-assistentin");
+      await route.fulfill({ json: { ...body, features } });
+    } catch {
+      await route.fallback().catch(() => { /* der Test ist schon zu Ende */ });
+    }
   });
 }
 
 async function stromStubben(page: Page, opts: { next?: string | null } = {}) {
   await page.route("**/api/council/explain", (route) =>
-    route.fulfill({ status: 200, contentType: "text/event-stream", body: STROM(opts) }),
+    route.fulfill({ status: 200, contentType: "text/event-stream", body: STROM(opts) })
+      .catch(() => { /* der Test ist schon zu Ende */ }),
   );
 }
 
