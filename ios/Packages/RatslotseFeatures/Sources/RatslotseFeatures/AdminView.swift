@@ -216,10 +216,12 @@ private struct AdminUserRow: Decodable, Sendable, Identifiable { let id: Int; le
 ///
 /// Bewusst hier abgetippt und nicht aus `/api/admin/roles` geholt: Die App
 /// verwaltet Rollen nur nebenbei (der Ort dafür ist das Web-Panel), und ein
-/// Katalog-Abruf für ein Menü mit zwei Einträgen wäre mehr Fläche als Nutzen.
-/// Kommt eine dritte Rolle dazu, gehört sie hier ergänzt — die App zeigt
+/// Katalog-Abruf für ein Menü mit drei Einträgen wäre mehr Fläche als Nutzen.
+/// Kommt eine weitere Rolle dazu, gehört sie hier ergänzt — die App zeigt
 /// vorhandene Rollen aber auch ohne Eintrag an (`roles` oben).
-private let ADMIN_ROLLEN: [(String, String)] = [("council_member", "Ratsmitglied"), ("admin", "Admin")]
+///
+/// Reihenfolge wie `ROLE_ORDER` in `kern/roles.py`: schwächste zuerst.
+private let ADMIN_ROLLEN: [(String, String)] = [("expert", "Fachpublikum"), ("council_member", "Ratsmitglied"), ("admin", "Admin")]
 private struct AdminUsersView: View {
     let model: AppModel; @State private var users: [AdminUserRow] = []; @State private var query = ""; @State private var error: String?
     // Name UND Adresse durchsuchen: Man erinnert sich an „Anne", nicht an ihre

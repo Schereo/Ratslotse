@@ -9,14 +9,22 @@ Ebenen. Der Bereich unter `/haushalt` übersetzt ihn — und macht dabei an jede
 Stelle sichtbar, welche Zahl amtlich ist, welche wir gerechnet haben und
 welche schlicht fehlt.
 
-:::note[Ratsmitgliedern vorbehalten]
+:::note[Einer Rolle vorbehalten]
 Der Bereich hängt seit 09/2026 am Recht `budget`: Wer die Rolle
-*Ratsmitglied* trägt (oder Admin ist), sieht ihn — alle anderen bekommen ein
+*Ratsmitglied* oder *Fachpublikum* trägt (oder Admin ist), sieht ihn — alle
+anderen bekommen ein
 404, und die Anker dorthin (Seitenleiste, „Mehr"-Sheet, der Verweis auf den
 Beschluss-Seiten) stehen erst gar nicht da; ein Gate ohne seine Einstiege
 hinterließe Links ins Leere. Die eigentliche Sperre sitzt im Backend: Alle
 zwanzig `/api/council/budget…`-Routen verlangen dasselbe Recht, und
 `tests/test_rollen.py` hält fest, dass keine vergessen wird.
+
+*Fachpublikum* ist seit 09/2026 die Rolle für alle, die die Zahlen brauchen,
+aber nicht im Rat sitzen — Verwaltung, Presse, sachkundige Bürger*innen,
+Fraktionsmitarbeit. Sie trägt `budget` und **nicht** `mandate`: derselbe
+Haushalt, aber die gewöhnlichen Benachrichtigungs-Vorgaben statt der
+vollständigen eines Mandats (siehe [Konten und
+Benachrichtigungen](/app-und-konten/)).
 
 Vorher lag der Bereich hinter einem Umgebungs-Gate und war auf ratslotse.de
 für **alle** unsichtbar. Die Rolle leistet dasselbe, aber richtig herum: Er

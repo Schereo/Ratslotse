@@ -3700,6 +3700,110 @@ def test_ask_kombiniert_geldfrage_mit_ort_und_liefert_fundstelle(client, monkeyp
     assert sources["sources"][0]["ort_name"] == "Kreyenbrück"
 
 
+def test_zuletzt_plus_ort_nimmt_den_deterministischen_weg_auch_als_history(client, monkeypatch):
+    """Der Fragetyp kommt aus einem Sprachmodell, „zuletzt" aus einer Regex.
+
+    „Was ist in Donnerschwee zuletzt beschlossen worden?" wurde am 21.09.2026
+    als `history` eingeordnet — vertretbar, die Frage ist beides. Damit fiel
+    sie aber aus dem deterministischen Weg (`qa.latest_place_answer`), und die
+    freie Antwort führte mit dem Stadionneubau, ohne Donnerschwee je zu nennen.
+    """
+    from app.routers import council as council_router
+    from council import qa as qa_mod
+
+    _register(client)
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_session(CouncilSession(93, "Rat", "2026-06-01", "17:00", "Rathaus"))
+    with cs._conn:
+        cs._conn.execute(
+            "INSERT INTO council_decisions "
+            "(id,ksinr,position,item_number,title,summary,outcome,kind) "
+            "VALUES (5150,93,1,'3','Sporthalle Donnerschwee','Sanierung',"
+            "'accepted','decision')")
+    cs.save_decision_locations(5150, [{
+        "name": "Donnerschwee", "kind": "district", "source": "title",
+        "evidence": "Sporthalle Donnerschwee", "method": "place_catalog",
+        "confidence": 0.99,
+    }], "local")
+    cs.close()
+    treffer = [{"id": 5150, "title": "Sporthalle Donnerschwee", "summary": "Sanierung",
+                "session_date": "2026-06-01", "committee": "Rat", "outcome": "accepted",
+                "score": 1.0}]
+    monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (treffer, "semantisch"))
+    monkeypatch.setattr(qa_mod, "expand_query", lambda q, **k: q)
+    # Genau der gemessene Fall: Ortsfrage, aber vom Analysemodell als Verlauf
+    # eingeordnet.
+    monkeypatch.setattr(qa_mod, "analyse_query", lambda *a, **k: {
+        "question": "Was ist in Donnerschwee zuletzt beschlossen worden?",
+        "terms": "Donnerschwee Beschluss", "kind": "history", "party": None,
+        "variants": [], "eng": False,
+    })
+    def darf_nicht(*args, **kwargs):
+        raise AssertionError("Die Antwort kam aus dem Modell statt aus den Daten")
+
+    monkeypatch.setattr(qa_mod, "answer_stream", darf_nicht)
+
+    with client.stream("POST", "/api/council/ask", json={
+            "question": "Was ist in Donnerschwee zuletzt beschlossen worden?"}) as r:
+        assert r.status_code == 200
+        body = "".join(r.iter_text())
+
+    events = [json.loads(z[6:]) for z in body.splitlines() if z.startswith("data: ")]
+    antwort = "".join(e["text"] for e in events if e["type"] == "token")
+    assert "01.06.2026" in antwort and "[5150]" in antwort
+    # Und der Ort steht im Satz — sonst liest sich die knappe Antwort wie die
+    # Antwort auf eine ganz andere Frage.
+    assert "Donnerschwee" in antwort
+
+
+def test_zuletzt_plus_geldfrage_bleibt_beim_modell(client, monkeypatch):
+    """Die Gegenrichtung und der Grund für die Ausnahmeliste: „Was wurde
+    zuletzt für X ausgegeben?" braucht die Beträge, nicht nur ein Datum."""
+    from app.routers import council as council_router
+    from council import qa as qa_mod
+
+    _register(client)
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_session(CouncilSession(94, "Rat", "2026-06-01", "17:00", "Rathaus"))
+    with cs._conn:
+        cs._conn.execute(
+            "INSERT INTO council_decisions "
+            "(id,ksinr,position,item_number,title,summary,outcome,kind,amount_eur) "
+            "VALUES (5151,94,1,'4','Sporthalle Donnerschwee','1,2 Mio. Euro',"
+            "'accepted','decision',1200000)")
+    # Ohne belegten Ortsbezug entfernt die Orts-Schranke den Treffer, und die
+    # Antwort wäre „keine Beschlüsse gefunden" — dann prüfte der Test nichts.
+    cs.save_decision_locations(5151, [{
+        "name": "Donnerschwee", "kind": "district", "source": "title",
+        "evidence": "Sporthalle Donnerschwee", "method": "place_catalog",
+        "confidence": 0.99,
+    }], "local")
+    cs.close()
+    treffer = [{"id": 5151, "title": "Sporthalle Donnerschwee", "summary": "1,2 Mio. Euro",
+                "session_date": "2026-06-01", "committee": "Rat", "outcome": "accepted",
+                "score": 1.0, "amount_eur": 1200000}]
+    monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (treffer, "semantisch"))
+    monkeypatch.setattr(qa_mod, "expand_query", lambda q, **k: q)
+    monkeypatch.setattr(qa_mod, "analyse_query", lambda *a, **k: {
+        "question": "Was wurde zuletzt in Donnerschwee an Geld bewilligt?",
+        "terms": "Donnerschwee Geld", "kind": "money", "party": None,
+        "variants": [], "eng": False,
+    })
+    gerufen: dict = {}
+
+    def fake_stream(*args, **kwargs):
+        gerufen["ja"] = True
+        yield "1,2 Millionen Euro [5151]."
+
+    monkeypatch.setattr(qa_mod, "answer_stream", fake_stream)
+
+    with client.stream("POST", "/api/council/ask", json={
+            "question": "Was wurde zuletzt in Donnerschwee an Geld bewilligt?"}) as r:
+        assert r.status_code == 200
+        "".join(r.iter_text())
+    assert gerufen.get("ja"), "Geldfragen gehören weiterhin ans Modell"
+
+
 def test_ask_schickt_den_aktenstand_mit(client, monkeypatch):
     """Eine Antwort, deren jüngster Beleg von 2018 ist, sagt das — im Ereignis
     für den Hinweis über der Antwort UND im Prompt für das Modell.
@@ -3925,7 +4029,9 @@ def test_ask_neueste_ortsfrage_sortiert_strikt_chronologisch(client, monkeypatch
     tokens = "".join(event["text"] for event in events if event["type"] == "token")
     # Quellenband streng nach Datum, Faktenantwort deterministisch aus der
     # jüngsten echten Entscheidung statt aus einer LLM-Auswahl.
-    assert tokens.startswith("Am 21.04.2026")
+    # Der Ort steht seit 09/2026 im Satz — ohne ihn liest sich die knappe
+    # Antwort wie die Antwort auf eine ganz andere Frage.
+    assert tokens.startswith("Zuletzt mit Ortsbezug Kreyenbrück hat der Rat am 21.04.2026")
     assert "Neuer echter Beschluss" in tokens and "[102]" in tokens
     assert "28.04.2026" in tokens and "kein neuer Beschluss" in tokens
 
@@ -6501,9 +6607,22 @@ def test_admin_verwaltet_rollen_und_sperrt_sich_nicht_selbst_aus(client):
     ziel_id = ziel.json()["id"]
     client.post("/api/auth/login", json={"email": "admin@test.de", "password": "password123"})
 
+    # Der Katalog ist die Registry und keine zweite Liste — gegen `kern.roles`
+    # geprüft und nicht gegen abgetippte Namen: Sonst wäre jede neue Rolle hier
+    # ein roter Test, obwohl nichts kaputt ist. Was es an Rollen GEBEN soll,
+    # hält `tests/test_rollen.py`.
+    from kern import roles as _roles
+
     katalog = client.get("/api/admin/roles").json()
-    assert {r["key"] for r in katalog} == {"user", "council_member", "admin"}
-    assert [r for r in katalog if r["key"] == "council_member"][0]["permissions"] == ["budget", "mandate"]
+    assert {r["key"] for r in katalog} == set(_roles.ROLES)
+    assert [r["key"] for r in katalog] == list(_roles.ROLE_ORDER)
+    nach_key = {r["key"]: r for r in katalog}
+    assert nach_key["council_member"]["permissions"] == ["budget", "mandate"]
+    # Fachpublikum: derselbe Haushalt, aber kein Mandat. Der Unterschied muss
+    # bis in den Katalog durchkommen, denn daraus baut das Panel seine Kästchen.
+    assert nach_key["expert"]["permissions"] == ["budget"]
+    assert nach_key["expert"]["assignable"] is True
+    assert nach_key["user"]["assignable"] is False
 
     r = client.put(f"/api/admin/users/{ziel_id}/roles", json={"roles": ["council_member"]})
     assert r.status_code == 200 and r.json()["roles"] == ["council_member"]
