@@ -354,8 +354,21 @@ public final class AppModel {
             body: Body(an: enabled)
         )
         conversationSavingPreferenceOverride = response.setting
-        if !enabled { setActiveConversationID(nil) }
+        if !enabled {
+            setActiveConversationID(nil)
+            lottiConversationID = nil
+        }
     }
+
+    /// Lottis laufendes Gespräch — **nicht** das des Ratsgesprächs.
+    ///
+    /// **Warum getrennt.** Ein Gespräch trägt im Konto eine Art (`kind`:
+    /// `ask` oder `lotti`). Wer beide Flächen durch dieselbe Kennung
+    /// schickte, hängte Lotti-Runden an ein Ratsgespräch und umgekehrt — die
+    /// Liste „Gespräche" zeigte dann Mischwesen, und das Abzeichen log.
+    /// Gemerkt wird sie nur für die Laufzeit: Das Blatt ist ein Gespräch über
+    /// EINEN Screen, kein Protokoll über Tage.
+    var lottiConversationID: Int?
 
     /// Was Lotti erklären soll — der aktuelle Screen als Web-Route.
     ///
@@ -455,6 +468,17 @@ public final class AppModel {
         }
     }
 
+    /// Ein Ereignis aus Lottis Blatt zählen — je Konto und Tag, sonst nichts.
+    ///
+    /// Dieselben Namen wie im Web (`ASSISTANT_EVENTS` im Router): `open`,
+    /// `nudge_shown`, `nudge_accepted`, `nudge_dismissed`. Ein unbekannter
+    /// Name wird vom Server abgewiesen, statt still gezählt zu werden.
+    public func reportAssistantEvent(_ kind: String) async {
+        struct Body: Codable, Sendable { let kind: String }
+        // Fire-and-forget: Ein Zähler darf nichts kosten, auch keine Meldung.
+        try? await api.sendVoid("/api/council/assistant/event", body: Body(kind: kind))
+    }
+
     public func markExplorationStep(_ step: String) async {
         struct Body: Codable, Sendable { let steps: [String]; let celebrated: Bool? }
         guard let current: JSONValue = try? await api.get("/api/onboarding") else { return }
@@ -493,6 +517,9 @@ public final class AppModel {
         try? await api.setAccessToken(nil)
         pendingPushToken = nil
         conversationSavingPreferenceOverride = nil
+        // Auch Lottis Gespräch: Ein neues Konto darf nicht in das alte
+        // weiterschreiben.
+        lottiConversationID = nil
         badgeSnapshot = nil
         badgeCelebration = nil
         badgeCelebrationQueue.removeAll()

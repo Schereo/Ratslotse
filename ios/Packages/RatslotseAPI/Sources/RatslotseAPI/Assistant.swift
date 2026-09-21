@@ -215,3 +215,49 @@ public struct ExplainScreen: Sendable, Equatable {
         return ExplainScreen(route: pfad, refs: refs, heading: heading)
     }
 }
+
+// MARK: - Wo Lotti von selbst anklopfen darf
+
+extension ExplainScreen {
+    /// Die Screens, auf denen der Anstupser erscheinen darf.
+    ///
+    /// **Die dritte Kopie derselben Liste** — nach `kern/knowledge.py`
+    /// (`PageKnowledge.nudge`, die Wahrheit) und
+    /// `web/frontend/lib/anstupser-seiten.ts`. Ein Abruf nur für die Frage
+    /// „darf ich hier?" wäre ein Netzaufruf je Screen für eine Antwort, die
+    /// sich nie ändert; der Anstupser entscheidet ja gerade, BEVOR irgendein
+    /// Endpunkt gerufen wird.
+    ///
+    /// Auseinanderlaufen kann sie trotzdem nicht:
+    /// `tests/test_anstupser_seiten.py` hält alle drei gegeneinander.
+    public static let nudgeRoutes: Set<String> = [
+        "/council/decision",
+        "/council/ideen",
+        "/council/ort",
+        "/council/person",
+        "/council/sitzung",
+        "/council/thema",
+        "/council?tab=analysis",
+        "/council?tab=decisions",
+        "/council?tab=sessions",
+        "/council?tab=themen",
+        "/haushalt",
+        "/haushalt/bereich",
+        "/haushalt/einnahmen",
+        "/haushalt/investitionen",
+        "/haushalt/konzern",
+        "/haushalt/mitreden",
+        "/haushalt/personal",
+        "/haushalt/pflicht",
+        "/haushalt/plan-ist",
+        "/haushalt/produkte",
+        "/haushalt/pruefung",
+        "/haushalt/schulden",
+        "/haushalt/steuer",
+        "/haushalt/vergleich",
+        "/karte",
+    ]
+
+    /// Darf auf diesem Screen angeklopft werden?
+    public var allowsNudge: Bool { Self.nudgeRoutes.contains(route) }
+}

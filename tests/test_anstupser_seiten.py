@@ -6,9 +6,13 @@ Liste der erlaubten Seiten zweimal da: als ``PageKnowledge.nudge`` in
 ``kern/knowledge.py`` und als Aufzählung in
 ``web/frontend/lib/anstupser-seiten.ts``.
 
-Zwei Wahrheiten laufen auseinander, und zwar lautlos: Eine Seite, die im
-Backend freigegeben ist und im Frontend fehlt, klopft nie an — das sieht aus
-wie „der Anstupser wird kaum angenommen" und ist ein Tippfehler.
+Seit die App mitklopft, sind es **drei** Kopien: dazu
+``ExplainScreen.nudgeRoutes`` in ``ios/Packages/RatslotseAPI``. Dieselbe
+Begründung, dasselbe Risiko.
+
+Drei Wahrheiten laufen auseinander, und zwar lautlos: Eine Seite, die im
+Backend freigegeben ist und in einem Client fehlt, klopft dort nie an — das
+sieht aus wie „der Anstupser wird kaum angenommen" und ist ein Tippfehler.
 """
 from __future__ import annotations
 
@@ -19,11 +23,20 @@ from kern import knowledge
 
 WURZEL = Path(__file__).resolve().parents[1]
 LISTE = WURZEL / "web" / "frontend" / "lib" / "anstupser-seiten.ts"
+SWIFT = (WURZEL / "ios" / "Packages" / "RatslotseAPI" / "Sources" / "RatslotseAPI"
+         / "Assistant.swift")
 
 
 def _frontend() -> set[str]:
     text = LISTE.read_text(encoding="utf-8")
     block = text[text.index("ANSTUPSER_SEITEN"):text.index("] as const")]
+    return set(re.findall(r'"([^"]+)"', block))
+
+
+def _app() -> set[str]:
+    text = SWIFT.read_text(encoding="utf-8")
+    block = text[text.index("nudgeRoutes: Set<String> = ["):]
+    block = block[:block.index("]")]
     return set(re.findall(r'"([^"]+)"', block))
 
 
@@ -40,6 +53,17 @@ def test_beide_listen_sind_gleich():
         f"  Im Frontend, aber im Backend nicht: {sorted(zu_viel)}\n"
         "Die Wahrheit ist kern/knowledge.py (`nudge=True`); zieh "
         "web/frontend/lib/anstupser-seiten.ts nach.")
+
+
+def test_die_app_kennt_dieselben_seiten():
+    fehlt = _backend() - _app()
+    zu_viel = _app() - _backend()
+    assert not fehlt and not zu_viel, (
+        "Die Anstupser-Seiten der App laufen auseinander.\n"
+        f"  Im Backend freigegeben, in der App nicht: {sorted(fehlt)}\n"
+        f"  In der App, aber im Backend nicht: {sorted(zu_viel)}\n"
+        "Die Wahrheit ist kern/knowledge.py (`nudge=True`); zieh "
+        "ios/Packages/RatslotseAPI/Sources/RatslotseAPI/Assistant.swift nach.")
 
 
 def test_keine_gesperrte_seite_klopft_an():
