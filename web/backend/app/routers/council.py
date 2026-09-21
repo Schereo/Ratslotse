@@ -3769,6 +3769,14 @@ class ScreenContext(BaseModel):
     element_title: str = Field(default="", max_length=200)
     element_text: str = Field(default="", max_length=qa.SCREEN_ELEMENT_MAX)
     selection: str = Field(default="", max_length=qa.SCREEN_SELECTION_MAX)
+    # Die Kennungen aus der Adresszeile — dieselbe Form wie bei ``/explain``.
+    # **Ohne sie verliert der Weg ins Archiv seinen Gegenstand:** Auf der Seite
+    # des Beschlusses „Weitenmesser im Marschwegstadion" (Nr. 2982) beantwortete
+    # „Wer hat dagegen gestimmt?" am 21.09.2026 eine Frage zu den
+    # Stadion-Richtlinien von 2025 — der Text allein reicht zur Ähnlichkeit,
+    # nicht zur Identität. Optional mit leerem Default: Die ausgelieferte
+    # iOS-App schickt das Feld nicht (ios/CLAUDE.md).
+    refs: ExplainRefs = Field(default_factory=ExplainRefs)
 
 
 class AskBody(BaseModel):
@@ -4220,6 +4228,34 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # Ortsfilter umgehen.
             if allowed_place_ids is not None:
                 candidates = [c for c in candidates if c["id"] in allowed_place_ids]
+            # Der Gegenstand der Seite reist mit — NACH dem Ortsfilter, denn er
+            # ist kein nachgeladener Fund, sondern das, was die Person
+            # nachweislich vor sich hat. Ihn hier zu streichen, hieße genau den
+            # Fehler zu wiederholen, für den dieser Block gebaut ist (B1).
+            if bildschirm:
+                gegenstand = qa.screen_decision(store, bildschirm)
+                if gegenstand:
+                    have = {c["id"] for c in candidates}
+                    if gegenstand["id"] not in have:
+                        candidates.append(gegenstand)
+                    # Zuerst — außer wenn die Frage ausdrücklich das NEUESTE
+                    # will: Dort liest `qa.latest_real_decision` den ersten
+                    # echten Beschluss der Liste als Antwort, und ein
+                    # vorangestellter Seiten-Beschluss von 2020 wäre eine
+                    # falsche Tatsachenbehauptung im Prompt.
+                    if not (qa.latest_intent(q_suche) or qa.latest_intent(q)):
+                        candidates = qa.mit_gegenstand_zuerst(candidates, gegenstand)
+                    # Der Titel gehört in den Prompt-Block: „das" und „dieser
+                    # Beschluss" sollen ihn meinen, nicht den ähnlichsten Fund.
+                    bildschirm["decision_id"] = gegenstand["id"]
+                    bildschirm["decision_title"] = gegenstand.get("title") or ""
+                elif not allowed_place_ids:
+                    # Sitzungsseite: die ganze Tagesordnung sicher in den Pool,
+                    # aber ohne Vorrang (qa.screen_session_ids sagt, warum).
+                    have = {c["id"] for c in candidates}
+                    candidates += store.get_decisions_by_ids(
+                        [i for i in qa.screen_session_ids(store, bildschirm)
+                         if i not in have])
             # Beim Vereinfachen zählen die Belege der VORIGEN Antwort: Ihre ids
             # müssen im Kandidatenset stehen, sonst streicht resolve_citations
             # genau die Fußnoten weg, die die einfache Fassung übernehmen soll —

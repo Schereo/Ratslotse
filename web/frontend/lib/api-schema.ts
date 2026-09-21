@@ -6855,6 +6855,7 @@ export interface components {
                  * @default
                  */
                 heading: string;
+                refs?: components["schemas"]["ExplainRefs"];
                 /** Route */
                 route: string;
                 /**
@@ -13251,6 +13252,7 @@ export interface components {
              * @default
              */
             heading: string;
+            refs?: components["schemas"]["ExplainRefs"];
             /** Route */
             route: string;
             /**
@@ -21423,4 +21425,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 696817fb2a46ec72815b146e594b141910b3ad107f8cd6d2b8bbb162d201e056
+// vertrag-sha256: aacde7b50bb8d9a7107f8622c0831d91cf834e37785b067e596b297ee933a49f

@@ -352,6 +352,12 @@ export function LottiPanel({
             element_title: letzterBaustein.current?.title ?? "",
             element_text: (letzterBaustein.current?.text ?? "").slice(0, 600),
             selection: markierung.slice(0, 600),
+            // **Die Kennung, nicht nur der Text.** Ohne sie suchte das Archiv
+            // nach Ähnlichkeit: Auf der Seite des Beschlusses „Weitenmesser im
+            // Marschwegstadion" (2020) beantwortete „Wer hat dagegen gestimmt?"
+            // eine Frage zu den Stadion-Richtlinien von 2025. Dieselben `refs`
+            // wie bei `/assistant/explain` — der Client kennt sie ohnehin.
+            refs,
           },
         }),
         signal: ctrl.signal,
@@ -392,7 +398,7 @@ export function LottiPanel({
         abbruch.current = null;
       }
     }
-  }, [markierung, route, gespraechId, turns, setGespraechId]);
+  }, [markierung, refs, route, gespraechId, turns, setGespraechId]);
 
   // Ein gespeichertes Lotti-Gespräch aus der Liste „Gespräche".
   useEffect(() => {

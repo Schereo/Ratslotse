@@ -61,6 +61,7 @@ from dotenv import load_dotenv  # noqa: E402
 load_dotenv(Path(__file__).parent.parent / ".env")
 
 from council import assistant as lotti  # noqa: E402
+from council import qa  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 
 FAELLE = Path(__file__).parent / "cases_assistant.json"
@@ -71,6 +72,10 @@ ERGEBNISSE = Path(__file__).parent / "results"
 #: (dieselbe Regel wie ``expected_keys`` in ``run_qa.py``).
 BESCHLUESSE = {
     "stadion": "%Stadion%Maastrichter%",
+    # B1 (21.09.2026): Auf DIESER Seite beantwortete der Weg ins Archiv eine
+    # Frage über einen anderen Beschluss — die Stadion-Richtlinien vom
+    # 15.12.2025, ähnlich im Wortfeld, fünf Jahre jünger.
+    "weitenmesser": "%Weitenmesser%",
 }
 
 #: Satzende — aber NICHT hinter einer Zahl („31. Dezember", „Nr. 1024",
@@ -144,6 +149,55 @@ def _screen(fall: dict, store: CouncilStore) -> tuple[lotti.Screen, str | None]:
     ), None
 
 
+#: So viele Kandidaten bekommt das Antwort-Modell im Ratsweg — wie QA_ANSWER_N
+#: im Router. Mehr misst nicht den Weg, sondern den Reranker.
+RATSWEG_KONTEXT = 20
+
+
+def _ratsweg(store: CouncilStore, fall: dict, screen: lotti.Screen) -> tuple[str, str]:
+    """Der ZWEITE Weg: „Den Rat fragen" — Lotti reicht die Frage ins Archiv.
+
+    **Warum der Eval ihn kennen muss.** Bis hierher maß er nur Lottis eigene
+    Erklärungen. Der teuerste Fehler der Durchsicht vom 21.09.2026 lag aber
+    genau hinter der Weiterreichung: Auf der Seite „Weitenmesser im
+    Marschwegstadion" (2020) beantwortete „Wer hat dagegen gestimmt?" eine
+    Frage zu den Stadion-Richtlinien von 2025 — richtige Quellen, falscher
+    Vorgang. Ein Fall, der nur die Marke ``WEITER: ratsfrage`` prüft, ist an
+    genau dieser Stelle grün.
+
+    Der Pfad spiegelt den ``/ask``-Endpunkt in dem, worauf es hier ankommt:
+    Analyse, Hybrid-Retrieval, Gegenstand der Seite dazu und nach vorn,
+    Antwort. Nicht dabei sind die Zusatzkanäle (Presse, Debatten, Geld) — sie
+    kosten Zeit und ändern an der Identität des Gegenstands nichts.
+    """
+    from council import embeddings as emb
+
+    bildschirm = {"route": screen.route, "heading": screen.heading,
+                  "element_title": screen.element_title,
+                  "element_text": screen.element_text,
+                  "selection": screen.selection, "refs": screen.refs}
+    analyse = qa.analyse_query(fall["question"])
+    hits = emb.hybrid_search(store, analyse["question"], analyse["terms"],
+                             top_k=40, pool=55, varianten=analyse.get("variants"),
+                             anker_ids=qa.anker_ids_fuer(store, analyse["question"]))
+    kandidaten = store.get_decisions_by_ids([h[0] for h in hits])
+    gegenstand = qa.screen_decision(store, bildschirm)
+    if gegenstand:
+        if gegenstand["id"] not in {c["id"] for c in kandidaten}:
+            kandidaten.append(gegenstand)
+        kandidaten = qa.mit_gegenstand_zuerst(kandidaten, gegenstand)
+        bildschirm["decision_id"] = gegenstand["id"]
+        bildschirm["decision_title"] = gegenstand.get("title") or ""
+    ctx = kandidaten[:RATSWEG_KONTEXT]
+    # Den Prompt getrennt bauen, damit `must_not_number` gegen ihn prüfen kann
+    # — derselbe Grund wie beim Erklär-Arm.
+    msgs, _ = qa._answer_messages(fall["question"], ctx, analyse["kind"],
+                                  screen=bildschirm)
+    text, _cited = qa.answer_question(fall["question"], ctx, typ=analyse["kind"],
+                                      screen=bildschirm)
+    return text, msgs[0]["content"]
+
+
 def _pruefe(fall: dict, text: str, modus: str, weiter: str | None,
             kontext: str = "") -> list[str]:
     """Die Befunde eines Falls — leer heißt grün."""
@@ -186,6 +240,21 @@ def lauf(faelle: list[dict], store: CouncilStore, *, nur_deterministisch: bool) 
         frage = fall.get("question", "")
         t0 = time.perf_counter()
         kontext = ""
+        if fall.get("arm") == "ratsfrage":
+            # Der Weg hinter der Weiterreichung — er kostet immer ein Modell.
+            if nur_deterministisch:
+                aus.append({"id": fall["id"], "uebersprungen": "braucht ein Modell"})
+                continue
+            text, kontext = _ratsweg(store, fall, screen)
+            modus, weiter = "ratsfrage", None
+            aus.append({
+                "id": fall["id"], "modus": modus, "weiter": weiter,
+                "ms": round((time.perf_counter() - t0) * 1000),
+                "zeichen": len(text),
+                "befunde": _pruefe(fall, text, modus, weiter, kontext),
+                "injektion": bool(fall.get("injektion")), "text": text,
+            })
+            continue
         fertig = lotti.deterministic_answer(store, screen, frage)
         if fertig:
             text, _art = fertig

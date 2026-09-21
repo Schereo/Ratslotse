@@ -398,5 +398,20 @@
       "banane"
     ],
     "max_sentences": 6
+  },
+  {
+    "id": "ratsweg-weitenmesser-wer-dagegen",
+    "note": "B1: der Gegenstand reist mit ins Archiv. Ohne die Kennung antwortete der Ratsweg über die Stadion-Richtlinien von 2025 statt über den Weitenmesser von 2020.",
+    "arm": "ratsfrage",
+    "route": "/council/decision",
+    "refs_decision": "weitenmesser",
+    "heading": "Weitenmesser im Marschwegstadion (SPD-/CDU-Fraktion vom 28.10.2020)",
+    "question": "Wer hat dagegen gestimmt?",
+    "must_mention": [
+      "Weitenmesser"
+    ],
+    "must_not": [
+      "Richtlinien"
+    ]
   }
 ]
