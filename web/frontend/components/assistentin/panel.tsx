@@ -10,9 +10,9 @@ import { AntwortText } from "@/components/qa-bausteine";
 import { FeedbackDaumen } from "@/components/feedback-daumen";
 import { apiUrl, authHeaders } from "@/lib/api";
 import {
-  auswahlText, daumenZeigen, gedaechtnis, kuerze, refsAus, routeAus, seitenName,
-  seitenTitel, seitenUeberschrift, trenneWeiter, ueberschriftenPfad, zaesur,
-  type Bildschirm,
+  ankerListe, ankerTreffer, auswahlText, daumenZeigen, gedaechtnis, kuerze, ortsfrage,
+  refsAus, routeAus, seitenName, seitenTitel, seitenUeberschrift, trenneWeiter,
+  ueberschriftenPfad, zaesur, type Anker, type Bildschirm,
 } from "@/lib/assistentin";
 import { useAuth } from "@/lib/auth";
 import { GespraecheEinwilligung } from "@/components/gespraeche-einwilligung";
@@ -78,7 +78,72 @@ export type LottiTurn = {
   route?: string;
   /** Wie die Seite damals hieß — für die Zäsur. */
   seite?: string;
+  /** Die Bausteine, zu denen diese Runde hinführt („Zeig mir: …"). Gesetzt
+   *  nur in der Lotsen-Runde (`mode === "local"`). */
+  zeigen?: Anker[];
 };
+
+/** Der Breakpoint `desk` aus `tailwind.config.ts`, als Medienabfrage.
+ *
+ *  **Warum der Client ihn kennen muss.** Am Schreibtisch steht das Fenster
+ *  NEBEN der Seite — nach einem „Zeig mir" bleibt es offen, man sieht beides.
+ *  Auf dem Handy füllt es die Fläche zwischen Kopfleiste und Knopf und deckt
+ *  damit genau das ab, wohin gescrollt wird; dort schließt es sich, wie schon
+ *  beim Erklär-Modus. Die Zeichenkette ist dieselbe wie in
+ *  `tailwind.config.ts` — laufen die beiden auseinander, schließt sich das
+ *  Fenster genau auf den Breiten falsch, auf denen niemand nachsieht. */
+const DESK = "(pointer: fine) and (min-width: 1024px)";
+
+/** Wie lange der Ring am gezeigten Baustein stehen bleibt — **ab dem
+ *  Ankommen**, nicht ab dem Klick. Zwei Sekunden: lang genug, um ihn nach dem
+ *  Scrollen zu finden, kurz genug, um nicht als dauerhafte Auswahl gelesen zu
+ *  werden (Designsprache, „Bewegungs-Grammatik": Hinweise verblassen, sie
+ *  bleiben nicht stehen). */
+const ZEIG_MS = 2000;
+
+/** Bis hierhin wird auf `scrollend` gewartet, dann läuft die Zeit trotzdem.
+ *
+ *  **Warum überhaupt gewartet wird:** Ein sanfter Sprung über eine
+ *  Haushaltsseite dauert. Gemessen am 22.09.2026 auf `/haushalt/schulden`:
+ *  2.500 px brauchten rund 1,3 s — von zwei Sekunden Ring wäre eine halbe
+ *  übrig gewesen, und zwar genau beim weitesten Sprung, bei dem man den
+ *  Hinweis am nötigsten hat. Der Notausgang ist dieser Deckel: `scrollend`
+ *  kennt nicht jeder Browser, und wo gar nicht gescrollt wird (der Baustein
+ *  steht schon im Bild), kommt es nie. */
+const SCROLL_MAX_MS = 1500;
+
+/**
+ * Zum Baustein scrollen und ihn kurz hervorheben.
+ *
+ * **Nur über den Anker-Schlüssel**, nie über eine freie DOM-Suche: Der Chip
+ * verspricht genau den Baustein, den Lotti genannt hat. Ist er inzwischen
+ * weg (eine Seite lädt nach, ein Reiter wurde gewechselt), passiert nichts —
+ * eine Fehlermeldung über einen verschwundenen Kasten hülfe niemandem.
+ */
+function zeigeBaustein(anker: Anker): void {
+  // Schlüssel UND Titel, nicht nur der Schlüssel: Auf `/haushalt/schulden`
+  // tragen zwei Zeitreihen denselben (`…zeitreihe`). Ein Selektor auf den
+  // Schlüssel allein sprang immer die erste an — also im halben Fall auf den
+  // falschen Kasten (gemessen im Browser am 22.09.2026).
+  const el = [...document.querySelectorAll<HTMLElement>(
+    `[data-erklaer="${CSS.escape(anker.key)}"]`)]
+    .find((k) => k.getAttribute("data-erklaer-titel") === anker.titel);
+  if (!el) return;
+  // Sanft nur, wer das will: Ein geschmeidiger Sprung über eine halbe
+  // Haushaltsseite ist genau die Bewegung, die `prefers-reduced-motion`
+  // meint. Der Ring selbst steht in beiden Fällen (globals.css).
+  const ruhig = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  el.scrollIntoView({ block: "center", behavior: ruhig ? "auto" : "smooth" });
+  el.classList.add("lotti-zeigt");
+  let gestartet = false;
+  const abnehmen = () => {
+    if (gestartet) return;
+    gestartet = true;
+    window.setTimeout(() => el.classList.remove("lotti-zeigt"), ZEIG_MS);
+  };
+  window.addEventListener("scrollend", abnehmen, { once: true });
+  window.setTimeout(abnehmen, SCROLL_MAX_MS);
+}
 
 /** **`glossary` ist hier bewusst weg** (B7 der zweiten Durchsicht): Der
  *  `done`-Rahmen schickt die Fachwörter weiterhin, das Fenster speicherte sie
@@ -220,6 +285,36 @@ export function LottiPanel({
     // externe Verarbeitung steht in der Karte, und sie ist die einzige Stelle,
     // an der er VOR der ersten Frage steht.
     if (merken === null || merken === undefined) return;
+
+    // **Die Lotsin, bevor das Modell dran ist.** „Wo finde ich …?" ist keine
+    // Ermessensfrage: Die Anker der Seite sind eine Landkarte, die der Client
+    // schon hat. Trifft ein Titel, entsteht die Antwort hier — in unter einer
+    // Millisekunde, ohne Netz, ohne Kosten.
+    //
+    // **Kein Aufruf heißt auch kein Turn im Konto.** Die Runde steht im
+    // Verlauf des Tabs und verschwindet mit ihm; gespeichert wird nur, was
+    // über `/council/explain` läuft (dort hängt die Einwilligung). Das ist
+    // vertretbar: Gespeichert würde „Wo finde ich X?" → „unter X" — ein
+    // Gesprächsverlauf, den niemand nachliest, zum Preis eines Schreibwegs
+    // durchs ganze Backend.
+    const anker = ankerListe(document);
+    if (!baustein && !mitMarkierung && ortsfrage(sauber)) {
+      const treffer = ankerTreffer(sauber, anker);
+      if (treffer.length) {
+        abbruch.current?.abort();
+        setFrage("");
+        setTurns((ts) => [...ts, {
+          key: naechsterKey.current++, question: sauber, next: null, mode: "local",
+          kontext: "auf dieser Seite gefunden", route,
+          seite: seitenName(document, anzeigename), zeigen: treffer,
+          answer: treffer.length === 1
+            ? `Das steht auf dieser Seite unter „${treffer[0].titel}“.`
+            : "Das steht auf dieser Seite — ich vermute hier:",
+        }]);
+        return;
+      }
+    }
+
     abbruch.current?.abort();
     const ctrl = new AbortController();
     abbruch.current = ctrl;
@@ -264,6 +359,12 @@ export function LottiPanel({
           selection: bildschirm.selection,
           question: sauber,
           refs: bildschirm.refs,
+          // **Die Landkarte der Seite — nur die Titel.** Trifft der Abgleich
+          // oben nichts, soll die Antwort wenigstens sagen können „das steht
+          // unter „Rate-Treppe", weiter unten". Ohne diese Liste kennt das
+          // Modell die Bausteine nicht und beschreibt die Seite im Ungefähren.
+          // Kein Seiteninhalt: ein Titel ist unser eigener Komponententext.
+          anchors: anker.map((a) => a.titel),
           // **Nur Runden DIESER Seite** — der Verlauf überlebt den
           // Seitenwechsel, das Gedächtnis nicht (lib/assistentin.ts).
           history: gedaechtnis(turns, route, MAX_TURNS_KONTEXT)
@@ -471,6 +572,19 @@ export function LottiPanel({
     eingabeRef.current?.focus();
   };
 
+  /** Ein „Zeig mir"-Chip: hinscrollen, hervorheben — und auf dem Handy das
+   *  Fenster schließen, weil es genau die Fläche bedeckt, auf die gezeigt
+   *  wird (dieselbe Entscheidung wie beim Erklär-Modus). Am Schreibtisch
+   *  bleibt es offen: Dort steht es neben der Seite, und das Gespräch geht
+   *  weiter. */
+  const zeigMir = (anker: Anker) => {
+    const handy = !window.matchMedia?.(DESK).matches;
+    if (handy) onSchliessen();
+    // Erst schließen, dann scrollen: Solange das Fenster steht, rechnet der
+    // Browser die Mitte des Viewports mit ihm.
+    window.setTimeout(() => zeigeBaustein(anker), handy ? 60 : 0);
+  };
+
   const zurRatsfrage = (t: LottiTurn) => {
     void ratsfrageStellen(t.question || "Was wurde dazu beschlossen?");
   };
@@ -612,7 +726,24 @@ export function LottiPanel({
                 {t.answer && !t.fehler && t.ratsfrage && (
                   <Quellen turn={t} onSchliessen={onSchliessen} />
                 )}
-                {t.answer && !t.fehler && !t.ratsfrage && (
+                {/* „Zeig mir": der Weg zum Baustein — dieselbe Chip-Bauform
+                    wie die Vorschläge unten, damit ein Chip überall dasselbe
+                    verspricht. Ein Klick scrollt hin und setzt für zwei
+                    Sekunden einen Ring. */}
+                {t.zeigen?.length ? (
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                    {t.zeigen.map((a) => (
+                      <Chip key={`${a.key}|${a.titel}`} onClick={() => zeigMir(a)}>
+                        Zeig mir: {a.titel}
+                      </Chip>
+                    ))}
+                  </div>
+                ) : null}
+                {/* Der Weg ins Archiv — aber nicht unter der Lotsen-Runde:
+                    „Wo finde ich die Rate-Treppe?" ist keine Frage an 9.000
+                    Beschlüsse, und eine Antwort darauf wäre mit Sicherheit
+                    eine falsche mit richtigen Quellen. */}
+                {t.answer && !t.fehler && !t.ratsfrage && t.mode !== "local" && (
                   <div className="mt-2 flex flex-wrap items-center gap-1.5">
                     <button
                       type="button"

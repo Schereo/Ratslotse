@@ -366,8 +366,173 @@ export type BewertbareRunde = {
  * Während des Stroms ist `mode` noch `null`: Der Daumen erscheint erst mit
  * dem `done`-Rahmen, und das ist richtig so — bewerten kann man erst, was
  * fertig dasteht.
+ *
+ * **Auch die Lotsen-Runde (`mode === "local"`) bekommt keinen.** Sie entsteht
+ * im Browser aus den Anker-Titeln der Seite, ohne Server und ohne Modell — es
+ * gibt dort nichts zu benoten und niemanden, der die Note entgegennähme (der
+ * Endpunkt wird nicht gerufen).
  */
 export function daumenZeigen(t: BewertbareRunde): boolean {
   if (!t.answer || t.fehler) return false;
   return t.ratsfrage === true || t.mode === "explain";
+}
+
+/* ── „Zeig mir": Lotti als Lotsin auf der Seite ────────────────────────────
+ *
+ * Die Anker (`data-erklaer` samt `data-erklaer-titel`, gesetzt über
+ * `useErklaerAnker`) sind eine **Landkarte der Seite, die der Client schon
+ * hat**. Die häufigste Frage nach „Was ist das?" ist „Wo finde ich …?" — und
+ * die lässt sich damit ohne einen einzigen Modellaufruf beantworten: Titel
+ * gegen Frage halten, Chip anbieten, hinscrollen.
+ *
+ * **Warum ein Wortabgleich und kein Modell.** Derselbe Grund wie bei
+ * `generische_frage` im Backend: Wo etwas steht, ist keine Ermessensfrage.
+ * Ein Modell dafür kostet je Klick Geld und kann die Antwort nur
+ * verschlechtern — es kennt die Titel nicht besser als der Abgleich, es
+ * könnte sie aber erfinden.
+ *
+ * **Die Grenze:** nur Anker, nie freie DOM-Suche. Trifft nichts, geht die
+ * Frage wie bisher ans Modell — mit der Ankerliste im Kontext, damit die
+ * Antwort wenigstens den Baustein beim Titel nennen kann.
+ */
+
+/** Ein Baustein der Seite: sein `data-erklaer`-Schlüssel und sein Titel.
+ *
+ *  **Beides identifiziert ihn, nicht der Schlüssel allein.** Der Schlüssel
+ *  kommt aus `useErklaerAnker(name, titel)` und ist nur so eindeutig, wie der
+ *  Name es ist — auf `/haushalt/schulden` tragen zwei Zeitreihen denselben
+ *  (`haushalt-schulden.zeitreihe`, „Schulden total" und „Verbürgt und selbst
+ *  geschuldet"; gemessen im Browser am 22.09.2026). Ein Abgleich nur über den
+ *  Schlüssel hätte die zweite verschluckt und beim Zeigen immer die erste
+ *  angesprungen. */
+export type Anker = { key: string; titel: string };
+
+/** Höchstens so viele Anker gehen mit — in den Abgleich wie in den Prompt.
+ *  Dieselbe Zahl wie `assistant.ANKER_MAX` im Backend; eine Seite mit 40
+ *  Bausteinen (der Kassenzettel-Haushalt) machte aus der Liste sonst einen
+ *  eigenen Prompt-Block von der Größe des Seitenwissens. */
+export const ANKER_MAX = 20;
+/** Und so lang darf ein Titel sein (Backend: `ANKER_TITEL_MAX`). */
+export const ANKER_TITEL_MAX = 80;
+
+/** Kleinschreibung ohne Umlaute — dieselbe Faltung wie
+ *  `council/assistant.py::falte`. Läuft sie auseinander, erkennt der eine
+ *  „Zinsen", was der andere als „zinsen" nicht findet. */
+export function falte(text: string): string {
+  return (text ?? "").toLowerCase()
+    .replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/ß/g, "ss")
+    .replace(/[^a-z0-9 ]+/g, " ");
+}
+
+/** Fragt jemand nach dem ORT einer Sache auf dieser Seite?
+ *
+ *  Gebaut wie `generische_frage`/`archivfrage` im Backend: gefaltet, am
+ *  Wortlaut, deterministisch. **Bewusst eng:** „Wo wurde das beschlossen?"
+ *  trifft hier nicht — das ist eine Archivfrage, und sie gehört ans Modell
+ *  samt Weiterreichung, nicht an einen Chip.
+ */
+const _ORTSFRAGE_RE = new RegExp(
+  "(?:^|\\b)(?:"
+  + "wo (?:finde?|find|steht|stehen|sehe|seh|ist|sind|gibt|kann|koennte|hab|habe)\\b"
+  + "|wo (?:auf|in) der seite\\b"
+  + "|gibt es (?:hier|auf dieser seite)\\b"
+  + "|(?:zeig|zeige|zeigst) (?:du )?(?:mir|mal)\\b"
+  + "|(?:wo )?finde ich\\b"
+  + ")",
+);
+
+export function ortsfrage(frage: string): boolean {
+  return _ORTSFRAGE_RE.test(" " + falte(frage).split(/\s+/).join(" ").trim());
+}
+
+/** Wörter, die nichts über den gesuchten Baustein sagen.
+ *
+ *  Ohne sie träfe „wo finde ich die Zahlen zur Stadt" jeden Anker, in dessen
+ *  Titel „die" oder „der" steckt — also die halbe Seite, und die beste
+ *  Antwort stünde zufällig obenan. */
+const _STOPP = new Set([
+  "wo", "was", "wie", "wer", "wann", "warum", "welche", "welcher", "welches",
+  "finde", "find", "findet", "steht", "stehen", "sehe", "seh", "sieht", "zeig",
+  "zeige", "zeigst", "gibt", "kann", "koennte", "hab", "habe", "ist", "sind",
+  "der", "die", "das", "den", "dem", "des", "ein", "eine", "einen", "einem",
+  "einer", "eines", "ich", "mir", "mich", "mal", "man", "es", "hier", "auf",
+  "in", "im", "an", "am", "zu", "zur", "zum", "fuer", "mit", "von", "vom",
+  "bei", "beim", "und", "oder", "aber", "denn", "seite", "dieser", "diese",
+  "dieses", "du", "sie", "etwas", "ueber", "nach", "aus", "dazu", "davon",
+  "genau", "eigentlich", "bitte", "wieviel",
+  // **„Stadt" und „Oldenburg" sagen hier nichts.** Sie benennen den
+  // Gegenstand der ganzen Anwendung, nicht einen Baustein — und sie stehen in
+  // vielen Titeln. Gemessen am 22.09.2026 auf `/haushalt/schulden`: „Wo
+  // steht, was die Stadt an Zinsen zahlt?" bot vor dieser Zeile zwei Chips an
+  // und den richtigen („Kredite und Zinsen") erst an zweiter Stelle, weil
+  // „Stadt" in der Bühnenüberschrift steckt.
+  "stadt", "oldenburg", "stadtverwaltung", "verwaltung", "ratslotse",
+]);
+
+/** Die Inhaltswörter eines Textes — gefaltet, ohne Stoppwörter, ab 3 Zeichen. */
+function inhaltswoerter(text: string): string[] {
+  return falte(text).split(/\s+/)
+    .filter((w) => w.length >= 3 && !_STOPP.has(w));
+}
+
+/** Ein grober Stammabgleich: gleich, oder ab fünf Zeichen Präfix des anderen.
+ *
+ *  **Warum fünf.** „Zins" steckt in „Zinsen" (4 Zeichen) — das soll treffen,
+ *  deshalb auch das kürzere Wort als Präfix. Bei drei Zeichen träfe „ver" in
+ *  „Verfahrensweg" und „Vermögen" gleichermaßen; fünf ist die Grenze, ab der
+ *  ein Präfix im Deutschen meist schon der Stamm ist. Kein Stemmer: Der wäre
+ *  ein Paket für eine Frage, die ein Chip beantwortet. */
+function passt(a: string, b: string): boolean {
+  if (a === b) return true;
+  const kurz = a.length <= b.length ? a : b;
+  const lang = a.length <= b.length ? b : a;
+  return kurz.length >= 4 && lang.startsWith(kurz) && lang.length >= 5;
+}
+
+/**
+ * Die Anker, die zur Frage passen — beste zuerst, höchstens drei.
+ *
+ * Gezählt werden **gemeinsame Inhaltswörter**; bei Gleichstand gewinnt die
+ * Reihenfolge auf der Seite (von oben nach unten), denn die ist die einzige
+ * Ordnung, die die Person selbst sieht. Ohne ein gemeinsames Inhaltswort
+ * gibt es keinen Treffer — lieber ans Modell als der falsche Chip.
+ */
+export function ankerTreffer(frage: string, anker: Anker[]): Anker[] {
+  const gesucht = inhaltswoerter(frage);
+  if (!gesucht.length) return [];
+  const bewertet = anker.map((a, i) => {
+    const woerter = inhaltswoerter(a.titel);
+    const punkte = gesucht.filter((g) => woerter.some((w) => passt(g, w))).length;
+    return { a, i, punkte };
+  }).filter((b) => b.punkte > 0);
+  bewertet.sort((x, y) => y.punkte - x.punkte || x.i - y.i);
+  return bewertet.slice(0, 3).map((b) => b.a);
+}
+
+/**
+ * Alle Anker der Seite — **auch die, die gerade nicht zu sehen sind.**
+ *
+ * Das ist der Unterschied zum Erklär-Modus (`erklaer-modus.tsx`): Dort
+ * bekommt nur ein sichtbarer Baustein ein Abzeichen, denn ein Abzeichen zeigt
+ * auf etwas. Hier ist der weggescrollte Baustein genau der Punkt — „Wo finde
+ * ich …?" fragt man über das, was man NICHT sieht.
+ *
+ * Ohne Titel kein Eintrag: Ein Schlüssel wie `haushalt-schulden.tabelle` ist
+ * kein Satz, den man jemandem auf einen Chip schreibt.
+ */
+export function ankerListe(dok: Document): Anker[] {
+  const aus: Anker[] = [];
+  const gesehen = new Set<string>();
+  for (const el of dok.querySelectorAll("[data-erklaer]")) {
+    const key = el.getAttribute("data-erklaer") ?? "";
+    const titel = kuerze(el.getAttribute("data-erklaer-titel") ?? "", ANKER_TITEL_MAX);
+    // Schlüssel UND Titel: Zwei Bausteine dürfen denselben Schlüssel tragen
+    // (s. `Anker`), derselbe Baustein steht aber nicht zweimal auf der Seite.
+    const kennung = `${key}\u0000${titel}`;
+    if (!key || !titel || gesehen.has(kennung)) continue;
+    gesehen.add(kennung);
+    aus.push({ key, titel });
+    if (aus.length >= ANKER_MAX) break;
+  }
+  return aus;
 }

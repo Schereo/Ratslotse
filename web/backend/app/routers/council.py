@@ -10,6 +10,7 @@ import unicodedata
 from collections import Counter, defaultdict
 from datetime import date, timedelta
 from collections.abc import Callable
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
@@ -3512,6 +3513,14 @@ class ExplainBody(BaseModel):
     selection: str = Field(default="", max_length=lotti.SELECTION_MAX)
     question: str = Field(default="", max_length=lotti.QUESTION_MAX)
     refs: ExplainRefs = Field(default_factory=ExplainRefs)
+    #: Die Überschriften der erklärbaren Bausteine dieser Seite, von oben nach
+    #: unten — die „Landkarte", mit der Lotti auf „Wo steht …?" den Baustein
+    #: beim Namen nennen kann. Kein Seiteninhalt: Diese Titel stehen als
+    #: Zeichenkette in unseren eigenen Komponenten (``useErklaerAnker``).
+    #: Gedeckelt wie alles aus dem Browser — 20 Titel à 80 Zeichen, längeres
+    #: wird mit 422 abgewiesen statt still gekürzt.
+    anchors: list[Annotated[str, Field(max_length=lotti.ANKER_TITEL_MAX)]] = Field(
+        default_factory=list, max_length=lotti.ANKER_MAX)
     history: list[AskTurn] = Field(default_factory=list, max_length=3)
     # Wie bei ``/ask``: das laufende Gespräch, an das die Runde gehängt wird —
     # nur wirksam mit ``saves_conversations = 1``. Ein Client, der das Feld
@@ -3667,6 +3676,7 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
         element_text=(body.element.text if body.element else ""),
         selection=body.selection,
         refs={k: v for k, v in body.refs.model_dump().items() if v is not None},
+        anchors=tuple(body.anchors),
     )
     frage = body.question.strip()
     verlauf = [r.model_dump() for r in body.history]

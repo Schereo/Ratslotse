@@ -1436,3 +1436,20 @@ lotti-figur {
   .animate-podium-glanz { animation: podium-glanz 4.5s ease-in-out infinite; }
 }
 .viertel-popup button:hover { background: hsl(var(--primary) / 0.08); }
+
+/* ── Lotti zeigt hin („Zeig mir: …") ──────────────────────────────────────
+   Der Chip in Lottis Fenster scrollt zum Baustein und setzt für zwei
+   Sekunden diesen Ring (components/assistentin/panel.tsx::zeigeBaustein).
+
+   **Ein Ring statt einer Animation, und das ist Absicht.** Der globale
+   `prefers-reduced-motion`-Block oben stutzt jede `animation-duration` auf
+   0,01 ms — ein Aufblitzen wäre dort ersatzlos weg, und der Baustein bliebe
+   ohne jeden Hinweis stehen. Ein Ring, den JavaScript nach zwei Sekunden
+   wieder abnimmt, steht in beiden Welten; bewegt ist nur sein Ein- und
+   Ausblenden, und genau das legt der Block still. */
+.lotti-zeigt {
+  border-radius: 14px;
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.55),
+              0 0 0 8px hsl(var(--primary) / 0.12);
+  transition: box-shadow 220ms var(--ease-out-strong, ease-out);
+}

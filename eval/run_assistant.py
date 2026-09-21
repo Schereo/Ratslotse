@@ -146,6 +146,11 @@ def _screen(fall: dict, store: CouncilStore) -> tuple[lotti.Screen, str | None]:
         element_text=fall.get("element_text", ""),
         selection=fall.get("selection", ""),
         refs=refs,
+        # Die Anker-Titel der Seite. Im Browser erkennt das Fenster eine
+        # Ortsfrage selbst und antwortet OHNE Modell (lib/assistentin.ts);
+        # hier wird der andere Fall gemessen — der, in dem der Wortabgleich
+        # nicht trifft und das Modell die Landkarte im Kontext bekommt.
+        anchors=tuple(fall.get("anchors", [])),
     ), None
 
 

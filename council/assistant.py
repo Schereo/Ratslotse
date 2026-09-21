@@ -59,6 +59,23 @@ ELEMENT_KEY_MAX = 80
 QUESTION_MAX = 300
 HEADING_MAX = 200
 
+#: Die Anker-Titel der Seite („Rate-Treppe", „Kredite und Zinsen") — die
+#: Landkarte, die der Client ohnehin hat. Sie geht mit, damit Lotti auf „Wo
+#: steht …?" den Baustein beim Namen nennen kann, statt die Seite im
+#: Ungefähren zu beschreiben.
+#:
+#: **Ohne Marker, aber mit Deckel.** Anders als Element-Text und Markierung
+#: sind diese Titel KEIN Fremdtext: Sie stehen als Zeichenkette in unseren
+#: eigenen Komponenten (``useErklaerAnker("rate-treppe", "Rate-Treppe")``) und
+#: kommen nicht aus der Datenbank, nicht aus einer Ratsvorlage und nicht aus
+#: einer Eingabe. Zwischen ``<<<ANKER``-Marken zu setzen, was wir selbst
+#: geschrieben haben, machte die Marker billiger, ohne etwas zu sichern —
+#: sie wirken, weil sie selten sind. Der Deckel bleibt trotzdem: Ein Client
+#: schickt, was er will, und 500 Titel wären ein Prompt von der Größe des
+#: Seitenwissens.
+ANKER_MAX = 20
+ANKER_TITEL_MAX = 80
+
 #: Eigener, engerer Deckel als ``qa.GELD_MAX_CHARS`` (6.500): Dort trägt der
 #: Haushalts-Block die ganze Antwort, hier ist er Beiwerk zu einem Element,
 #: auf das jemand gezeigt hat.
@@ -101,6 +118,8 @@ class Screen:
     #: Nur Kennungen, nie Inhalte: ``decision_id``, ``ksinr``, ``slug``,
     #: ``place_id``, ``year``, ``area``.
     refs: dict[str, Any] = field(default_factory=dict)
+    #: Die Titel der erklärbaren Bausteine, von oben nach unten.
+    anchors: tuple[str, ...] = ()
 
     @property
     def gegenstand(self) -> str:
@@ -476,6 +495,20 @@ def _glossar_block(begriffe: list[dict]) -> str:
             f"  kurzen Alltagssatz machen):\n{zeilen}\n")
 
 
+def _anker_block(screen: Screen) -> str:
+    """Die Bausteine der Seite, von oben nach unten — Titel, sonst nichts.
+
+    Der Prompt macht daraus die Antwort auf „Wo steht …?". Dass er sie NICHT
+    zwischen Marker setzt, ist begründet, wo :data:`ANKER_MAX` steht.
+    """
+    titel = [kuerze(t, ANKER_TITEL_MAX) for t in screen.anchors[:ANKER_MAX]]
+    zeilen = "\n".join(f"  · {t}" for t in titel if t)
+    if not zeilen:
+        return ""
+    return ("\nBAUSTEINE AUF DIESER SEITE (ihre Überschriften, von oben nach unten):\n"
+            + zeilen + "\n")
+
+
 def _screen_block(screen: Screen) -> str:
     """Was auf dem Bildschirm steht — jeder Fremdtext zwischen Markern.
 
@@ -619,6 +652,7 @@ def explain_messages(screen: Screen, question: str, ctx: dict,
         konto=_konto_block(ctx),
         geld=_geld_block(ctx.get("geld")),
         screen=_screen_block(screen),
+        anker=_anker_block(screen),
         question=kuerze(question, QUESTION_MAX) or "(keine eigene Frage — erklär das Gezeigte)",
         gespraech=_verlauf_block(verlauf),
     )
