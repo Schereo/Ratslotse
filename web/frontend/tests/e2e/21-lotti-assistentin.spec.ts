@@ -411,3 +411,74 @@ test.describe("Lotti-Knopf und -Fenster", () => {
     await expect(knopf(page)).toBeHidden();
   });
 });
+
+/**
+ * B4 der zweiten Durchsicht (21.09.2026): Der Knopf stand auch dann im DOM,
+ * wenn der Einrichtungs-Assistent als Vollfläche (`fixed inset-0`) davor lag —
+ * mit Tab erreichbar, vom Auge nicht zu sehen. Wer ihn traf, öffnete ein
+ * Fenster HINTER der Fläche und bekam Seitenwissen zu einer Seite, die gerade
+ * gar nicht zu sehen war.
+ */
+test.describe("Vollbild-Abläufe lassen keinen Lotti-Knopf daneben", () => {
+  // Ohne gespeicherte Anmeldung: Der Assistent zeigt sich nur einem FRISCHEN
+  // Konto — die Identitäten der Suite sind in `auth.setup.ts` längst
+  // abgehakt (s. helpers.ts).
+  test.use({ storageState: { cookies: [], origins: [] } });
+
+  test("der Einrichtungs-Assistent: kein Knopf, nach dem Überspringen wieder da", async ({ page }) => {
+    await schalterAn(page);
+    await stromStubben(page);
+    await page.goto("/register");
+    await page.locator("#display-name").fill("Testkonto");
+    await page.locator("#email").fill(`lotti-${Date.now()}-${Math.floor(Math.random() * 1e4)}@example.org`);
+    await page.locator("#password").fill("password123");
+    await page.getByRole("button", { name: "Konto erstellen" }).click();
+    await page.waitForURL(/\/(link|dashboard)/, { timeout: 15_000 });
+
+    // Der Auftakt des Assistenten steht — und Lotti nicht daneben. Geprüft
+    // wird `toHaveCount(0)`, nicht `toBeHidden()`: Der Befund war gerade,
+    // dass der Knopf UNSICHTBAR, aber vorhanden und tab-bar war.
+    await expect(page.getByRole("button", { name: /Los geht/ })).toBeVisible({ timeout: 15_000 });
+    await expect(knopf(page)).toHaveCount(0);
+
+    // Durch den Assistenten hindurch: Auftakt, dann jeden Schritt überspringen.
+    await page.getByRole("button", { name: /Los geht/ }).click();
+    for (let i = 0; i < 6; i++) {
+      const weiter = page.getByRole("button", { name: /^(Überspringen|Später|Fertig)$/ });
+      if (!(await weiter.count())) break;
+      await weiter.first().click();
+      await page.waitForTimeout(400);
+      if (await knopf(page).count()) break;
+    }
+    // Die Tour-Einladung kann als letzter Takt folgen — auch sie ist eine
+    // Vollfläche, also wird sie weggeklickt.
+    const spaeter = page.getByRole("button", { name: /Erst mal selbst|Später/ });
+    if (await spaeter.count()) await spaeter.first().click().catch(() => { /* schon zu */ });
+
+    await expect(knopf(page)).toBeVisible({ timeout: 15_000 });
+  });
+});
+
+test.describe("Die geführte Tour", () => {
+  test.use({ storageState: zustandsDatei("ratsfrau") });
+
+  test("räumt den Lotti-Knopf weg und gibt ihn danach zurück", async ({ page }) => {
+    await schalterAn(page);
+    await stromStubben(page);
+    await page.goto("/dashboard");
+    await expect(knopf(page)).toBeVisible();
+    // Ein offenes Fenster muss sich dabei schließen — die Tour lässt sich aus
+    // der ⌘K-Palette starten, also auch bei offenem Lotti.
+    await knopf(page).click();
+    await expect(fenster(page)).toBeVisible();
+
+    // Dasselbe Signal, das die Palette („Lotti-Tour starten") sendet.
+    await page.evaluate(() => window.dispatchEvent(new Event("ratslotse:start-tour")));
+    await expect(page.getByRole("dialog", { name: /^Tour:/ })).toBeVisible({ timeout: 15_000 });
+    await expect(knopf(page)).toHaveCount(0);
+    await expect(fenster(page)).toHaveCount(0);
+
+    await page.keyboard.press("Escape");
+    await expect(knopf(page)).toBeVisible({ timeout: 15_000 });
+  });
+});
