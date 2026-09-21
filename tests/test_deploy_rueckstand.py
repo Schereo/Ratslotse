@@ -64,6 +64,39 @@ def test_melden_wenn_der_cron_zu_lange_blockiert():
     assert "blockiert" in befund.grund
 
 
+def test_ein_laufender_deploy_ist_kein_rueckstand():
+    """Der Vorfall vom 21.09.2026: Der Deploy zu #1424 brauchte 26 Minuten
+    (Docs-Build plus `next build`), der Wächter fragte nach 20 — und stieß
+    denselben Commit ein zweites Mal an. Prod bekam eine zweite
+    Wartungsbarriere und zwei Minuten 503 für nichts. Gemessen wird gegen den
+    letzten GEGLÜCKTEN Lauf; der gerade laufende kam darin nicht vor."""
+    befund = bewerten(main_commit="2026-09-20T18:40:00Z",
+                      letzter_erfolg="2026-09-19T10:12:00Z",
+                      jetzt=JETZT, crons_frei=True, deploy_laeuft=True)
+    assert befund.aktion == WARTEN
+    assert "Deploy-Lauf" in befund.grund
+
+
+def test_laufender_deploy_meldet_auch_nach_fehlversuchen_nicht():
+    """Solange ein Lauf offen ist, weiß niemand, ob er scheitert — ihn
+    mitzuzählen hieße, einen Stau zu melden, den er gerade auflöst. Der
+    nächste Takt sieht sein Ergebnis."""
+    befund = bewerten(main_commit="2026-09-20T05:00:00Z",
+                      letzter_erfolg="2026-09-19T10:12:00Z",
+                      jetzt=JETZT, crons_frei=True, fehlversuche=9,
+                      deploy_laeuft=True)
+    assert befund.aktion == WARTEN
+
+
+def test_ohne_laufenden_deploy_bleibt_alles_wie_vorher():
+    """Die Gegenrichtung: Der neue Schalter darf den Regelfall nicht
+    anfassen."""
+    befund = bewerten(main_commit="2026-09-20T18:01:00Z",
+                      letzter_erfolg="2026-09-19T10:12:00Z",
+                      jetzt=JETZT, crons_frei=True, deploy_laeuft=False)
+    assert befund.aktion == NACHHOLEN
+
+
 def test_melden_statt_endlos_nachholen():
     """Ohne Obergrenze stieße ein Deploy, der aus einem ganz anderen Grund rot
     ist, sich alle dreißig Minuten selbst neu an — und die abgestufte Stille
@@ -128,6 +161,11 @@ def test_workflow_holt_nach_und_meldet_nur_den_stau():
     # Die Cron-Frage über den schlanken Blick, nicht über die volle Freigabe:
     # Eine fehlende .env darf den Nachhol-Wächter nicht lahmlegen.
     assert "--nur-crons" in lauf
+    # Und die Frage, die am 21.09.2026 gefehlt hat: Läuft schon einer? Gefragt
+    # wird nach allem, was nicht `completed` ist — ein an der
+    # concurrency-Gruppe wartender Lauf steht auf `queued`.
+    assert "--workflow deploy.yml --limit 10 --json status" in lauf
+    assert "--laufend" in lauf
     # Gemeldet wird nur der Stau; „warten" bleibt grün, sonst läse die
     # Erster-Befund-Bremse den nächsten echten Stau als Wiederholung.
     nachholen = next(s for s in schritte if s.get("name") == "Deploy nachholen")
