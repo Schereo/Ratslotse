@@ -14,6 +14,7 @@ import { ernteElement, routeAus, ueberschriftenPfad } from "@/lib/assistentin";
 import { useAuth } from "@/lib/auth";
 import { anstupserErlaubt } from "@/lib/anstupser-seiten";
 import { knopfVersteckt, LOTTI_SICHT_EVENT } from "@/lib/lotti-sichtbar";
+import { useVollbild } from "@/lib/vollbild";
 
 /**
  * Lotti als Assistentin — Knopf und Fenster, eingehängt in die App-Hülle.
@@ -29,6 +30,11 @@ import { knopfVersteckt, LOTTI_SICHT_EVENT } from "@/lib/lotti-sichtbar";
  * Knopf gar nicht erst erscheint; das Backend weist die Route zusätzlich ab.
  * Zwei Stellen, aber die vordere ist Höflichkeit und die hintere die Sperre —
  * dieselbe Aufteilung wie beim Rechte-Gate (web/frontend/CLAUDE.md).
+ *
+ * **Und nicht, solange ein Vollbild-Ablauf läuft** — Einrichtungs-Assistent,
+ * Tour-Einladung, geführte Tour. Das Signal kommt als `window`-Ereignis
+ * (`lib/vollbild.ts`), nicht als Kontext: Die Assistentin hängt in der
+ * App-Hülle, die Abläufe daneben.
  */
 /** Ein angeklickter Baustein, so wie er ans Backend geht.
  *
@@ -93,6 +99,19 @@ function LottiInner() {
     return () => window.removeEventListener(LOTTI_SICHT_EVENT, sync);
   }, []);
 
+  // Läuft ein Vollbild-Ablauf (Einrichtungs-Assistent, Tour-Einladung, Tour),
+  // tritt Lotti komplett weg: kein Knopf, kein Anklopfen, kein Fenster.
+  // Vorher stand der Knopf im DOM, war mit Tab erreichbar und von der Fläche
+  // verdeckt — wer ihn traf, öffnete ein Fenster HINTER dem Assistenten und
+  // bekam Seitenwissen zu einer Seite, die gerade gar nicht zu sehen war
+  // (Befund B4 der zweiten Durchsicht, 21.09.2026).
+  const vollbild = useVollbild();
+  useEffect(() => {
+    // Ein bereits offenes Fenster schließt sich — die Tour startet aus der
+    // ⌘K-Palette heraus, also auch bei offenem Lotti.
+    if (vollbild) { setOffen(false); setModus(false); }
+  }, [vollbild]);
+
   const schliessen = useCallback(() => setOffen(false), []);
 
   const [ladeGespraech, setLadeGespraech] = useState<number | null>(null);
@@ -117,7 +136,7 @@ function LottiInner() {
   }, [offen]);
 
   const gesperrt = OHNE_LOTTI.some((p) => pathname === p || pathname.startsWith(`${p}/`));
-  if (!an || gesperrt) return null;
+  if (!an || gesperrt || vollbild) return null;
 
   return (
     <>
