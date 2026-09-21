@@ -221,6 +221,12 @@ type Turn = {
   /** Wie tragfähig die gefundenen Beschlüsse sind (deterministisch aus den
    *  Relevanz-Werten) — „duenn" blendet einen Ehrlichkeits-Hinweis ein. */
   evidence_level?: "solide" | "duenn";
+  /** Wie ALT die gefundenen Beschlüsse sind (deterministisch aus ihren Daten
+   *  und dem Sitzungskalender) — „alt" blendet den Stand-Hinweis ein. */
+  records_state?: {
+    latest: string; months: number; level: "fresh" | "quiet" | "old";
+    last_session: string | null; next_session: string | null;
+  } | null;
   /** Hintergrund zu den in der Frage genannten Objekten („Was ist die GSG?"). */
   steckbriefe?: { name: string; slug: string; beschreibung: string }[];
   /** Die Grafik zur Antwort — Rohreihen aus dem Store, nie vom Modell. */
@@ -949,6 +955,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             planning_procedures: (msg.planning_procedures as Planung[]) ?? [],
             sessions: (msg.sessions as SitzungsInfo[]) ?? [],
             evidence_level: (msg.evidence_level as "solide" | "duenn") ?? undefined,
+            records_state: (msg.records_state as Turn["records_state"]) ?? null,
             steckbriefe: (msg.steckbriefe as Turn["steckbriefe"]) ?? [],
             chart: (msg.chart as QaGrafik | null) ?? null,
           });
@@ -2471,6 +2478,14 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
             </p>
           )}
 
+          {/* Alter Stand: Die Antwort ist belegt, aber das Jüngste daran ist
+              Jahre her. Ohne diesen Hinweis liest sich ein Beschluss von 2018
+              wie ein aktueller Plan — genau das ist am 21.09.2026 passiert. */}
+          {!beschaeftigt && turn.records_state?.level === "old"
+            && !turn.fehler && !turn.abgebrochen && (
+            <AlterStand stand={turn.records_state} />
+          )}
+
           {/* Dünne Beleglage: ehrlicher Hinweis + der Ausweg, der hier hilft. */}
           {!beschaeftigt && turn.evidence_level === "duenn" && !turn.research
             && !turn.fehler && !turn.abgebrochen && (
@@ -3298,6 +3313,31 @@ function SteckbriefBaustein({ steckbriefe }: {
         </div>
       )}
     </div>
+  );
+}
+
+/** Ehrlichkeits-Hinweis bei ALTEM Stand — das Gegenstück zur dünnen Beleglage.
+ *
+ *  Dort sind es zu wenige Belege, hier sind es alte: Zu Neu-Donnerschwee endet
+ *  die Aktenlage im Februar 2023, die Antwort erzählte trotzdem im Präsens vom
+ *  „geplanten" Wohnquartier (echte Nutzerfrage, 21.09.2026). Die Daten stehen
+ *  ohnehin an jeder Quelle — dieser Satz sagt, was sie zusammen bedeuten.
+ *  Kein Ausweg-Knopf: Eine gründlichere Recherche findet keine Beschlüsse, die
+ *  es nicht gibt. */
+function AlterStand({ stand }: { stand: NonNullable<Turn["records_state"]> }) {
+  const jahre = Math.floor(stand.months / 12);
+  const dauer = jahre >= 1
+    ? `${jahre === 1 ? "einem Jahr" : `${jahre} Jahren`}`
+    : `${stand.months} Monaten`;
+  return (
+    <p className="flex items-start gap-2 rounded-xl border border-border bg-card px-3.5 py-3 text-[12.5px] leading-relaxed text-muted-foreground">
+      <History className="mt-0.5 h-3.5 w-3.5 shrink-0 text-signal" aria-hidden />
+      <span>
+        Ältere Aktenlage: Der jüngste Beschluss dazu ist vom{" "}
+        <strong className="font-medium text-foreground">{fmtDatum(stand.latest)}</strong>{" "}
+        — seit über {dauer} hat der Rat dazu nichts mehr entschieden.
+      </span>
+    </p>
   );
 }
 

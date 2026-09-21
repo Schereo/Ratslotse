@@ -206,9 +206,8 @@ def aktenstand(store, candidates: list[dict], heute: date | None = None) -> dict
     Deterministisch aus den Kandidaten und dem Sitzungskalender. Leer bei
     Fehlern: Der Zeitbezug ist Zusatz, nie Blocker (wie `steckbriefe_fuer`).
 
-    {"juengster": "2023-02-09", "monate": 31, "stufe": "alt",
-     "letzte_sitzung": "2026-06-29", "naechste_sitzung": "2026-09-21",
-     "pause": "Sommerpause"}   # pause aus council.sitzungspause, sonst None
+    {"juengster": "2023-02-09", "monate": 43, "stufe": "alt",
+     "letzte_sitzung": "2026-06-29", "naechste_sitzung": "2026-09-21"}
     """
 ```
 
@@ -232,7 +231,7 @@ Beispielausgabe für die Anlassfrage:
 ```
 STAND DER AKTEN (deterministisch, nicht aus den Beschlüssen geschlossen):
 Heute ist der 21. September 2026. Der jüngste Beschluss in diesem Kontext ist
-vom 9. Februar 2023, also 31 Monate alt. Der Rat hat zuletzt am 29. Juni 2026
+vom 9. Februar 2023, also 43 Monate alt. Der Rat hat zuletzt am 29. Juni 2026
 Beschlüsse gefasst, die nächste Sitzung ist am 21. September 2026.
 ```
 
