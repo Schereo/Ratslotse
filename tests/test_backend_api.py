@@ -3700,6 +3700,55 @@ def test_ask_kombiniert_geldfrage_mit_ort_und_liefert_fundstelle(client, monkeyp
     assert sources["sources"][0]["ort_name"] == "Kreyenbrück"
 
 
+def test_ask_ortssteckbrief_traegt_slug_und_verdraengt_die_dublette(client, monkeypatch):
+    """Produktionsfehler 21.09.2026: Die Frage nach „Neu-Donnerschwee" endete
+    für die fragende Person mit „Frage fehlgeschlagen.".
+
+    Der Katalogort kam als ``{name, description}`` in die Steckbrief-Liste, der
+    Ereignis-Aufbau las aber ``s["slug"]`` — ``KeyError: 'slug'`` im
+    SSE-Generator, und der reißt die ganze Antwort mit, nicht nur die Karte.
+    Unbemerkt blieb das knapp einen Monat, weil nur 47 von rund 80 Orten eine
+    Beschreibung tragen; alle anderen Ortsfragen liefen weiter.
+
+    Zweite Hälfte derselben Zeile: Ortskatalog-id und Entitäts-slug sind
+    dieselbe Zeichenkette (``neu-donnerschwee``) — ohne Dublettenprüfung stünde
+    der Ort zweimal in der Liste und verdrängte den zweiten Steckbrief aus dem
+    Hintergrund-Block des Prompts, der nur zwei Einträge fasst.
+    """
+    from app.routers import council as council_router
+    from council import qa as qa_mod
+
+    _register(client)
+    cs = CouncilStore(COUNCIL_DB)
+    with cs._conn:
+        cs._conn.executemany(
+            "INSERT INTO council_entities (id, slug, name, kind, n) VALUES (?,?,?,?,?)",
+            [(1, "neu-donnerschwee", "Neu-Donnerschwee", "place", 12),
+             (2, "stadtbibliothek", "Stadtbibliothek", "org", 4)])
+        cs._conn.executemany(
+            "INSERT INTO council_entity_meta (slug, description) VALUES (?,?)",
+            [("neu-donnerschwee", "Neubauquartier auf der ehemaligen Kaserne."),
+             ("stadtbibliothek", "Öffentliche Bibliothek am Pferdemarkt.")])
+    cs.close()
+
+    monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: ([], "semantisch"))
+    monkeypatch.setattr(qa_mod, "expand_query", lambda q, **k: q)
+    monkeypatch.setattr(qa_mod, "answer_stream", lambda *a, **k: iter(["Dazu liegt nichts vor."]))
+
+    frage = "Was wurde für Neu-Donnerschwee und die Stadtbibliothek beschlossen?"
+    with client.stream("POST", "/api/council/ask", json={"question": frage}) as response:
+        assert response.status_code == 200
+        body = "".join(response.iter_text())
+
+    events = [json.loads(line[6:]) for line in body.splitlines() if line.startswith("data: ")]
+    assert not [e for e in events if e["type"] == "error"]
+    sources = next(e for e in events if e["type"] == "sources")
+    # Der Ort steht vorn, trägt seine Katalog-id als slug — und steht genau einmal da.
+    assert [(s["name"], s["slug"]) for s in sources["steckbriefe"]] == [
+        ("Neu-Donnerschwee", "neu-donnerschwee"), ("Stadtbibliothek", "stadtbibliothek")]
+    assert sources["steckbriefe"][0]["beschreibung"].startswith("Wohnquartier")
+
+
 def test_ask_kombiniert_person_mit_ort_ueber_beschlussanker(client, monkeypatch):
     """Regression aus der Produktionsprobe: Die freie Personensuche lieferte
     Beiträge ohne ``zu_beschluss``; der Orts-Guard entfernte sie anschließend

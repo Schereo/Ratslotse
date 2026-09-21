@@ -1189,6 +1189,29 @@ def steckbriefe_fuer(store, question: str, max_n: int = 2) -> list[dict]:
         return []
 
 
+def steckbriefe_mit_ort(steckbriefe: list[dict], ort: dict | None) -> list[dict]:
+    """Den Katalogort vorn einreihen — mit ``slug`` und ohne Dublette.
+
+    Zwei Fallen, beide am 21.09.2026 auf Prod aufgeschlagen:
+
+    * Der Ort kam bis dahin als ``{"name", "description"}`` in die Liste, der
+      Ereignis-Aufbau liest aber ``s["slug"]``. Eine Frage nach
+      „Neu-Donnerschwee" beendete die KI-Frage deshalb mit ``KeyError: 'slug'``
+      — für die fragende Person ein blankes „Frage fehlgeschlagen.".
+    * Ortskatalog-id und Entitäts-slug sind dieselbe Zeichenkette
+      (``neu-donnerschwee``). Ohne die Dublettenprüfung stünde derselbe Ort
+      zweimal da: einmal als Karte, einmal im Hintergrund-Block des Prompts,
+      der nur zwei Einträge fasst.
+    """
+    if not (ort and ort.get("description")):
+        return steckbriefe
+    slug = ort.get("id") or ort["name"]
+    name = (ort.get("name") or "").casefold()
+    return [{"name": ort["name"], "slug": slug, "description": ort["description"]},
+            *(s for s in steckbriefe
+              if s.get("slug") != slug and (s.get("name") or "").casefold() != name)]
+
+
 # ---- Sitzungs-Fragetyp (25.08.26) ------------------------------------------
 # „Was hat der Jugendhilfeausschuss am 17.06.2026 beschlossen?" lief bisher
 # rein über die Ähnlichkeitssuche — die fand die drei Kita-TOPs und ließ die
