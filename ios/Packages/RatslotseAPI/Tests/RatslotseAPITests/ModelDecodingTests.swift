@@ -484,3 +484,62 @@ import Testing
     #expect(media.poster == "/neuigkeiten/2.2.0/teilen-ios.webp")
     #expect(release.highlights.last?.media == nil)
 }
+
+// MARK: - Bewegungen (Plan PR 54)
+
+@Test func bewegungenDecodierenSamtAchseUndUrteil() throws {
+    let json = #"""
+    {
+      "items": [{
+        "cluster_id": 14, "label": "Hitzeaktionsplan aufstellen", "field": "klima_umwelt",
+        "cities": [{"body_id": "osnabrueck", "city": "Osnabrück", "first_date": "2023-06-01",
+                    "members": 2, "outcomes": {"accepted": 1}}],
+        "members": 2, "oldenburg_members": 0,
+        "first_date": "2023-06-01", "last_date": "2025-02-01",
+        "outcomes": {"accepted": 1},
+        "timeline": [{"paper_id": "p1", "body_id": "osnabrueck", "city": "Osnabrück",
+                      "date": "2023-06-01", "outcome": "accepted", "kind": "motion"}],
+        "oldenburg": {"status": "partial", "situation": "Oldenburg hat informiert.",
+                      "confidence": "medium",
+                      "evidence": [{"decision_id": 1, "kvonr": 4711, "title": "Hitze-Informationen",
+                                    "date": "2023-06-13", "outcome": "noted"}],
+                      "related": []}
+      }, {
+        "cluster_id": 4, "label": "Verpackungssteuer einführen", "field": null,
+        "cities": [], "members": 1, "oldenburg_members": 0,
+        "first_date": null, "last_date": null, "outcomes": {}, "timeline": [],
+        "oldenburg": null
+      }],
+      "total": 2, "page": 1, "per_page": 12,
+      "axis": {"start": "2023-01-01", "end": "2026-01-01"},
+      "counts": {"partial": 1, "unjudged": 1}
+    }
+    """#
+    let antwort = try JSONDecoder().decode(MovementsResponse.self, from: Data(json.utf8))
+    #expect(antwort.items.count == 2)
+    #expect(antwort.axis.start == "2023-01-01")
+    #expect(antwort.items[0].oldenburg?.evidence.first?.decisionID == 1)
+    #expect(antwort.items[1].oldenburg == nil, "ohne Urteil steht nil da, kein erfundener Stand")
+    #expect(antwort.counts["unjudged"] == 1)
+}
+
+@Test func eineLeereBewegungsantwortKipptNicht() throws {
+    let leer = try JSONDecoder().decode(MovementsResponse.self, from: Data(#"{}"#.utf8))
+    #expect(leer.items.isEmpty && leer.total == 0 && leer.axis.start == nil)
+}
+
+@Test func dieIdeenSeiteDecodiert() throws {
+    let json = #"""
+    {"movement": {"cluster_id": 3, "label": "Kommunale Wärmeplanung erstellen"},
+     "axis": {"start": "2022-01-01", "end": "2027-01-01"},
+     "documents": [{"paper_id": "p1", "body_id": "potsdam", "city": "Potsdam", "name": "Wärmeplan",
+                    "date": "2024-05-01", "kind": "proposal", "web": null, "outcome": "accepted",
+                    "originator": null, "instrument": "Wärmeplan beschließen", "summary": null,
+                    "protocol": null, "protocol_source": "withheld"}],
+     "oldenburg_documents": [], "similar": [{"cluster_id": 7, "label": "Smart City", "cities": 6, "members": 17}]}
+    """#
+    let d = try JSONDecoder().decode(MovementDetail.self, from: Data(json.utf8))
+    #expect(d.movement.clusterID == 3)
+    #expect(d.documents.first?.protocolSource == "withheld")
+    #expect(d.similar.first?.cities == 6)
+}

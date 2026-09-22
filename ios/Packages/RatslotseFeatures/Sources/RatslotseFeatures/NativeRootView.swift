@@ -1080,6 +1080,7 @@ struct RouteDestinationView: View {
     var body: some View {
         switch route {
         case .decision(let id): DecisionDetailView(model: model, decisionID: id)
+        case .movement(let id): MovementDetailView(model: model, clusterID: id)
         case let .sessions(ksinr, tops): SessionRouteView(model: model, ksinr: ksinr, tops: tops)
         case .person(let slug): PublicProfileView(model: model, kind: .person, key: slug)
         case .topic(let slug): PublicProfileView(model: model, kind: .topic, key: slug)

@@ -16,12 +16,15 @@
  * **Keine Prozentzahl, kein Rang.** Wie sicher sich das Modell ist, steht als
  * Wort da, wo es etwas ändert — und sonst gar nicht.
  */
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
-import { ArrowUpRight, Building2, ChevronLeft, Search } from "lucide-react";
+import { ArrowUpRight, Building2, ChevronLeft, ChevronRight, Search } from "lucide-react";
 
 import { DecisionLinkCard, POLICY_FIELD_LABELS } from "@/components/decision-ui";
+import { BewegungKarte, type Bewegung } from "@/components/ideen/bewegung-karte";
+import { STAND } from "@/components/ideen/stand";
+import { ZeitleisteLegende } from "@/components/ideen/zeitleiste";
+import { Lotti } from "@/components/lotti";
 import { Card } from "@/components/ui/card";
 import { api } from "@/lib/api";
 import { useFeature } from "@/lib/features";
@@ -31,32 +34,12 @@ import { useQuery } from "@tanstack/react-query";
 type Felder = ApiAntwort<"/council/cities/ideas/fields">;
 type Ideen = ApiAntwort<"/council/cities/ideas">;
 type Suche = ApiAntwort<"/council/cities/search">;
+type Bewegungen = ApiAntwort<"/council/cities/movements">;
 type Idee = Ideen["items"][number];
 
-/** Was das Urteil auf der Karte sagt.
- *
- *  Die Töne kommen aus derselben Palette wie „vertagt" und „umstritten"
- *  (`council-goals.tsx`, `decision-ui.tsx`) — Anzeigetafel-Tönung, nie eine
- *  dunkle Karte im Hellmodus. `bg-warning` gibt es in diesem Projekt nicht;
- *  die erste Fassung hier benutzte es und die Marke blieb ungetönt. */
-const STATUS: Record<string, { text: string; ton: string }> = {
-  missing: { text: "In Oldenburg nicht gefunden", ton: "bg-primary/10 text-primary" },
-  partial: {
-    text: "Teilweise vorhanden",
-    ton: "bg-amber-500/15 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300",
-  },
-  present: { text: "Oldenburg hat das", ton: "bg-muted text-muted-foreground" },
-  // Nicht „fehlt", sondern „kann hier gar nicht greifen": Eine
-  // fahrradfreundliche Gestaltung von Stadtbahngleisen setzt eine Stadtbahn
-  // voraus. Bis 14.09.2026 gab es diese Stufe nicht, und die Karte
-  // widersprach sich selbst — „In Oldenburg nicht gefunden" stand über
-  // „Oldenburg hat kein Stadtbahnsystem, daher gibt es keine Gleise, die
-  // fahrradfreundlich gestaltet werden könnten."
-  not_applicable: {
-    text: "Für Oldenburg nicht anwendbar",
-    ton: "bg-muted text-muted-foreground",
-  },
-};
+/** Was das Urteil auf der Karte sagt — dieselben Stufen wie auf der Bewegung
+ *  (`components/ideen/stand.tsx`). */
+const STATUS = STAND;
 
 /**
  * Was die Idee den Rat kosten würde — von der Frage bis zum Haushaltsposten.
@@ -98,17 +81,10 @@ function datum(iso: string | null): string {
 
 // ------------------------------------------------------------- Übersicht
 
-function Uebersicht() {
-  const router = useRouter();
-  const { data, isPending } = useQuery({
-    queryKey: ["ideen-felder"],
-    queryFn: () => api.get<Felder>("/council/cities/ideas/fields"),
-    staleTime: 60 * 60 * 1000,
-  });
-
-  if (isPending) return null;
-  const felder = data?.fields ?? [];
-  if (!felder.length) {
+function Uebersicht({ felder, onFeld }: { felder: Felder | undefined; onFeld: (f: string) => void }) {
+  const liste = felder?.fields ?? [];
+  if (!felder) return null;
+  if (!liste.length) {
     return (
       <p className="text-sm text-muted-foreground">
         Noch keine Ideen eingelesen. Sobald der wöchentliche Abgleich mit den
@@ -119,30 +95,24 @@ function Uebersicht() {
 
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {felder.map((f) => (
+      {liste.map((f) => (
         <button
           key={f.field}
           type="button"
-          onClick={() => router.push(`/council/ideen?feld=${f.field}`)}
+          onClick={() => onFeld(f.field)}
           className="text-left"
         >
           <Card className="card-interactive h-full p-4">
             <div className="text-sm font-semibold text-foreground">
               {POLICY_FIELD_LABELS[f.field] ?? f.field}
             </div>
-            {/* Die große Zahl ist eine TATSACHE: Ideen, die mehrere andere
-                Städte haben und Oldenburg nicht. Vorher stand hier „Ideen,
-                die sich lohnen könnten" — gezählt aus einem Werturteil, das
-                das Modell zu 46–58 % traf. */}
             <div className="mt-2 text-2xl font-semibold tabular-nums text-primary">
-              {f.multi_city}
+              {f.total}
             </div>
             <div className="text-xs text-muted-foreground">
-              {f.multi_city === 1
-                ? "Idee aus mehreren Städten, die Oldenburg fehlt"
-                : "Ideen aus mehreren Städten, die Oldenburg fehlen"}
+              {f.total === 1 ? "Idee aus einer anderen Stadt" : "Ideen aus anderen Städten"}
             </div>
-            <div className="mt-2 text-xs text-muted-foreground/80">
+            <div className="mt-2 text-xs text-muted-foreground">
               {f.missing + f.partial} fehlen ganz oder halb · {f.present} hat Oldenburg schon
             </div>
           </Card>
@@ -471,10 +441,10 @@ function IdeenKarte({ idee }: { idee: Idee }) {
   );
 }
 
+
 // -------------------------------------------------------------- Ein Feld
 
-function Feld({ feld }: { feld: string }) {
-  const router = useRouter();
+function Feld({ feld, zurueck }: { feld: string; zurueck: () => void }) {
   const { data, isPending } = useQuery({
     queryKey: ["ideen", feld],
     queryFn: () => api.get<Ideen>(`/council/cities/ideas?field=${encodeURIComponent(feld)}`),
@@ -486,13 +456,13 @@ function Feld({ feld }: { feld: string }) {
     <div>
       <button
         type="button"
-        onClick={() => router.push("/council/ideen")}
+        onClick={zurueck}
         className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
       >
         <ChevronLeft className="h-3 w-3" aria-hidden />
         Alle Themenfelder
       </button>
-      <h2 className="mt-2 text-lg font-semibold text-foreground">{label}</h2>
+      <h3 className="mt-2 text-lg font-semibold text-foreground">{label}</h3>
       {!isPending && (
         <p className="text-xs text-muted-foreground">
           {data?.total ?? 0} Ideen aus anderen Städten. Zuerst, was mehrere
@@ -515,38 +485,7 @@ function Feld({ feld }: { feld: string }) {
 
 // --------------------------------------------------------------- Suche
 
-/**
- * Eine Zeile, keine eigene Seite.
- *
- * Der Volltextindex hat kein Fenster nach vorn: Wer eine Sache im Kopf hat,
- * soll nicht erst das richtige Themenfeld raten müssen. Die Ergebnisse sehen
- * aus wie die Ideen darunter — es ist dieselbe Karte.
- */
-function Suchzeile({ onTreffer }: { onTreffer: (q: string) => void }) {
-  const [text, setText] = useState("");
-  return (
-    <form
-      onSubmit={(e) => { e.preventDefault(); onTreffer(text.trim()); }}
-      className="flex items-center gap-2"
-    >
-      <div className="relative flex-1">
-        <Search
-          className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-          aria-hidden
-        />
-        <input
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="Was haben andere Städte zu …?"
-          aria-label="Ideen anderer Städte durchsuchen"
-          className="h-10 w-full rounded-lg border border-border bg-card pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-        />
-      </div>
-    </form>
-  );
-}
-
-function Suchergebnis({ frage, zurueck }: { frage: string; zurueck: () => void }) {
+function Suchergebnis({ frage }: { frage: string }) {
   const { data, isPending } = useQuery({
     queryKey: ["ideen-suche", frage],
     queryFn: () => api.get<Suche>(`/council/cities/search?q=${encodeURIComponent(frage)}`),
@@ -554,18 +493,10 @@ function Suchergebnis({ frage, zurueck }: { frage: string; zurueck: () => void }
   });
   return (
     <div>
-      <button
-        type="button"
-        onClick={zurueck}
-        className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
-      >
-        <ChevronLeft className="h-3 w-3" aria-hidden />
-        Alle Themenfelder
-      </button>
-      <h2 className="mt-2 text-lg font-semibold text-foreground">„{frage}"</h2>
       {!isPending && (
         <p className="text-xs text-muted-foreground">
-          {data?.total ?? 0} Treffer in den Ratsinformationssystemen der anderen Städte.
+          {data?.total ?? 0} einzelne Vorlagen zu „{frage}" in den
+          Ratsinformationssystemen der anderen Städte.
         </p>
       )}
       <div className="mt-4 space-y-3">
@@ -582,13 +513,321 @@ function Suchergebnis({ frage, zurueck }: { frage: string; zurueck: () => void }
   );
 }
 
+// ---------------------------------------------------------- Bewegungen
+
+/** Der Stand in Oldenburg als Filter. „Noch offen" ist die Vorgabe: Was
+ *  Oldenburg schon hat, gehört zur Antwort, aber nicht in die erste Ansicht. */
+const STAENDE: { wert: string; text: string; zaehlt: string[] }[] = [
+  { wert: "offen", text: "Noch offen", zaehlt: ["missing", "partial"] },
+  { wert: "vorhanden", text: "Hat Oldenburg", zaehlt: ["present"] },
+  { wert: "alle", text: "Alle", zaehlt: [] },
+];
+const STAND_PARAM: Record<string, string> = {
+  offen: "missing,partial",
+  vorhanden: "present",
+  alle: "",
+};
+
+const PRO_SEITE = 12;
+
+/** Der Zustand der Übersicht steht in der ADRESSE, nicht im Speicher: Wer
+ *  von einer Ideen-Seite zurückkommt, findet Feld, Filter und Suche wieder,
+ *  und ein geteilter Link zeigt dasselbe. */
+type Zustand = { feld: string; stand: string; q: string; sort: string; seite: number };
+
+function zustandAus(params: URLSearchParams | null): Zustand {
+  const stand = params?.get("stand") ?? "offen";
+  return {
+    feld: params?.get("feld") ?? "",
+    stand: STAND_PARAM[stand] !== undefined ? stand : "offen",
+    q: params?.get("q") ?? "",
+    sort: params?.get("sort") === "zuletzt" ? "zuletzt" : "staedte",
+    seite: Math.max(1, Number(params?.get("seite") ?? "1") || 1),
+  };
+}
+
+function adresse(z: Zustand): string {
+  const p = new URLSearchParams();
+  if (z.feld) p.set("feld", z.feld);
+  if (z.stand !== "offen") p.set("stand", z.stand);
+  if (z.q) p.set("q", z.q);
+  if (z.sort !== "staedte") p.set("sort", z.sort);
+  if (z.seite > 1) p.set("seite", String(z.seite));
+  const s = p.toString();
+  return s ? `/council/ideen?${s}` : "/council/ideen";
+}
+
+function bewegungsAnfrage(z: Zustand, extra: Record<string, string> = {}): string {
+  const p = new URLSearchParams({
+    oldenburg: STAND_PARAM[z.stand],
+    sort: z.sort,
+    page: String(z.seite),
+    per_page: String(PRO_SEITE),
+    ...extra,
+  });
+  if (z.feld) p.set("field", z.feld);
+  if (z.q) p.set("q", z.q);
+  return `/council/cities/movements?${p.toString()}`;
+}
+
+function zielFuer(b: Bewegung, z: Zustand): string {
+  const von = adresse(z).split("?")[1] ?? "";
+  return `/council/ideen/bewegung?id=${b.cluster_id}${von ? `&von=${encodeURIComponent(von)}` : ""}`;
+}
+
+/** „Gerade in Bewegung": die großen — ab fünf Städten, Oldenburg noch offen.
+ *
+ *  Anzeigetafel, hell getönt, nie eine dunkle Karte im Hellmodus (Tims
+ *  Regel). Sie steht nur in der ungefilterten Ansicht: Mit einem Feld oder
+ *  einer Suche gewählt wäre sie eine zweite, kleinere Kopie der Liste. */
+function Tafel({ zustand }: { zustand: Zustand }) {
+  const { data } = useQuery({
+    queryKey: ["bewegungen-tafel"],
+    queryFn: () =>
+      api.get<Bewegungen>(
+        "/council/cities/movements?min_cities=5&oldenburg=missing,partial&sort=staedte&per_page=3"),
+    staleTime: 60 * 60 * 1000,
+  });
+  if (!data || data.items.length === 0) return null;
+  return (
+    <section aria-labelledby="tafel-titel" className="hh-tafel grid gap-3.5 rounded-[18px] p-4 sm:p-5">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <h2 id="tafel-titel" className="font-display text-[19px] font-bold text-foreground">
+          Gerade in Bewegung
+        </h2>
+        <span className="text-sm text-muted-foreground">
+          Ideen aus fünf und mehr Räten, die Oldenburg nicht oder nur halb hat
+        </span>
+      </div>
+      <div className="grid gap-3 md:grid-cols-3">
+        {data.items.map((b) => (
+          <BewegungKarte
+            key={b.cluster_id}
+            bewegung={b}
+            achse={data.axis}
+            href={zielFuer(b, zustand)}
+            gross
+          />
+        ))}
+      </div>
+      <ZeitleisteLegende />
+    </section>
+  );
+}
+
+function Chip({
+  an, onClick, children, zahl,
+}: { an: boolean; onClick: () => void; children: React.ReactNode; zahl?: number }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={an}
+      onClick={onClick}
+      className={
+        "inline-flex flex-none items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1.5 text-sm transition-colors duration-tipp " +
+        (an
+          ? "border-primary bg-primary text-primary-foreground"
+          : "border-border bg-card text-foreground hover:border-primary/30")
+      }
+    >
+      {children}
+      {zahl !== undefined && (
+        <span className={"font-mono text-xs " + (an ? "opacity-85" : "text-muted-foreground")}>
+          {zahl}
+        </span>
+      )}
+    </button>
+  );
+}
+
+function Steuerung({
+  zustand, setze, felder, zaehler,
+}: {
+  zustand: Zustand;
+  setze: (z: Partial<Zustand>) => void;
+  felder: Felder | undefined;
+  zaehler: Record<string, number> | undefined;
+}) {
+  const [text, setText] = useState(zustand.q);
+  useEffect(() => setText(zustand.q), [zustand.q]);
+  const mitBewegungen = (felder?.fields ?? []).filter((f) => f.movements > 0)
+    .sort((a, b) => b.movements - a.movements);
+  const alle = mitBewegungen.reduce((n, f) => n + f.movements, 0);
+  const zahlFuer = (zaehlt: string[]) =>
+    zaehler
+      ? (zaehlt.length ? zaehlt : Object.keys(zaehler)).reduce((n, k) => n + (zaehler[k] ?? 0), 0)
+      : undefined;
+  return (
+    <div className="grid gap-3">
+      <div
+        className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 [mask-image:linear-gradient(90deg,#000_92%,transparent)] [scrollbar-width:thin]"
+        role="group"
+        aria-label="Themenfeld"
+      >
+        <Chip an={!zustand.feld} onClick={() => setze({ feld: "", seite: 1 })} zahl={alle || undefined}>
+          Alle Felder
+        </Chip>
+        {mitBewegungen.map((f) => (
+          <Chip
+            key={f.field}
+            an={zustand.feld === f.field}
+            onClick={() => setze({ feld: f.field, seite: 1 })}
+            zahl={f.movements}
+          >
+            {POLICY_FIELD_LABELS[f.field] ?? f.field}
+          </Chip>
+        ))}
+      </div>
+      <div className="flex flex-wrap items-center gap-2.5">
+        <div
+          role="group"
+          aria-label="Stand in Oldenburg"
+          className="inline-flex rounded-full border border-border bg-card p-[3px]"
+        >
+          {STAENDE.map((s) => (
+            <button
+              key={s.wert}
+              type="button"
+              aria-pressed={zustand.stand === s.wert}
+              onClick={() => setze({ stand: s.wert, seite: 1 })}
+              className={
+                "rounded-full px-3 py-1 text-sm transition-colors duration-tipp " +
+                (zustand.stand === s.wert
+                  ? "bg-primary/10 font-semibold text-primary"
+                  : "text-muted-foreground hover:text-foreground")
+              }
+            >
+              {s.text}
+              {zahlFuer(s.zaehlt) !== undefined && (
+                <span className="ml-1.5 font-mono text-xs">{zahlFuer(s.zaehlt)}</span>
+              )}
+            </button>
+          ))}
+        </div>
+        <form
+          role="search"
+          className="relative min-w-0 flex-[1_1_220px]"
+          onSubmit={(e) => { e.preventDefault(); setze({ q: text.trim(), seite: 1 }); }}
+        >
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden
+          />
+          <input
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="Was haben andere Städte zu …?"
+            aria-label="Ideen anderer Städte durchsuchen"
+            className="h-10 w-full rounded-full border border-border bg-card pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+        </form>
+        <label className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+          <span className="sr-only sm:not-sr-only">Sortieren</span>
+          <select
+            value={zustand.sort}
+            onChange={(e) => setze({ sort: e.target.value, seite: 1 })}
+            className="h-10 rounded-full border border-border bg-card px-3 text-sm text-foreground"
+          >
+            <option value="staedte">meiste Städte</option>
+            <option value="zuletzt">zuletzt bewegt</option>
+          </select>
+        </label>
+      </div>
+    </div>
+  );
+}
+
+function Leer({ gefiltert, zuruecksetzen }: { gefiltert: boolean; zuruecksetzen: () => void }) {
+  return (
+    <div className="flex flex-col items-center gap-3 rounded-[18px] border-2 border-dashed border-border px-4 py-8 text-center">
+      <Lotti regung="sucht" className="h-20 w-20" decorative />
+      <p className="max-w-prose text-sm text-muted-foreground">
+        {gefiltert
+          ? "Unter diesen Filtern gibt es keine Idee, die mehrere Räte hatten."
+          : "Noch keine Bewegungen — sobald der Abgleich mit den anderen Städten gelaufen ist, stehen sie hier."}
+      </p>
+      {gefiltert && (
+        <button type="button" onClick={zuruecksetzen} className="text-sm font-semibold text-primary hover:underline">
+          Filter zurücksetzen
+        </button>
+      )}
+    </div>
+  );
+}
+
+function Blaettern({
+  seite, gesamt, setze,
+}: { seite: number; gesamt: number; setze: (z: Partial<Zustand>) => void }) {
+  const seiten = Math.max(1, Math.ceil(gesamt / PRO_SEITE));
+  if (seiten <= 1) return null;
+  const knopf =
+    "inline-flex h-10 items-center gap-1 rounded-full border border-border bg-card px-4 text-sm font-medium text-foreground disabled:opacity-40 enabled:hover:border-primary/30";
+  return (
+    <nav aria-label="Seiten" className="flex items-center justify-center gap-3">
+      <button type="button" className={knopf} disabled={seite <= 1}
+              onClick={() => setze({ seite: seite - 1 })}>
+        <ChevronLeft className="h-4 w-4" aria-hidden /> Zurück
+      </button>
+      <span className="font-mono text-meta text-muted-foreground">
+        Seite {seite} von {seiten}
+      </span>
+      <button type="button" className={knopf} disabled={seite >= seiten}
+              onClick={() => setze({ seite: seite + 1 })}>
+        Weiter <ChevronRight className="h-4 w-4" aria-hidden />
+      </button>
+    </nav>
+  );
+}
+
+function BewegungenListe({
+  zustand, setze, felder,
+}: { zustand: Zustand; setze: (z: Partial<Zustand>) => void; felder: Felder | undefined }) {
+  const { data, isPending } = useQuery({
+    queryKey: ["bewegungen", zustand.feld, zustand.stand, zustand.q, zustand.sort, zustand.seite],
+    queryFn: () => api.get<Bewegungen>(bewegungsAnfrage(zustand)),
+    staleTime: 10 * 60 * 1000,
+    placeholderData: (vorher) => vorher,
+  });
+  const gefiltert = Boolean(zustand.feld || zustand.q || zustand.stand !== "offen");
+  return (
+    <section aria-labelledby="bewegungen-titel" className="grid gap-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <h2 id="bewegungen-titel" className="font-display text-[19px] font-bold text-foreground">
+          Ideen, die mehrere Räte hatten
+        </h2>
+        {data && (
+          <span className="font-mono text-meta text-muted-foreground">
+            {data.total} {data.total === 1 ? "Idee" : "Ideen"} · ab 2 Städten
+          </span>
+        )}
+      </div>
+      <Steuerung zustand={zustand} setze={setze} felder={felder} zaehler={data?.counts} />
+      <ZeitleisteLegende />
+      {isPending && !data ? null : data && data.items.length > 0 ? (
+        <>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {data.items.map((b) => (
+              <BewegungKarte key={b.cluster_id} bewegung={b} achse={data.axis} href={zielFuer(b, zustand)} />
+            ))}
+          </div>
+          <Blaettern seite={zustand.seite} gesamt={data.total} setze={setze} />
+        </>
+      ) : (
+        <Leer gefiltert={gefiltert} zuruecksetzen={() => setze({ feld: "", stand: "offen", q: "", seite: 1 })} />
+      )}
+    </section>
+  );
+}
+
 // ---------------------------------------------------------------- Seite
 
 export default function View() {
   const an = useFeature("ideen-anderswo");
+  const router = useRouter();
   const params = useSearchParams();
-  const feld = useMemo(() => params?.get("feld") ?? null, [params]);
-  const [frage, setFrage] = useState("");
+  const zustand = useMemo(() => zustandAus(params), [params]);
+  const setze = (neu: Partial<Zustand>) =>
+    router.replace(adresse({ ...zustand, ...neu }), { scroll: false });
   const { data: felder } = useQuery({
     queryKey: ["ideen-felder"],
     queryFn: () => api.get<Felder>("/council/cities/ideas/fields"),
@@ -603,29 +842,55 @@ export default function View() {
   }, [felder]);
 
   if (!an) return null;
+  const ungefiltert = !zustand.feld && !zustand.q;
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">Ideen aus anderen Städten</h1>
-        <p className="mt-1 max-w-prose text-sm text-muted-foreground">
+    <div className="space-y-6">
+      <div className="max-w-3xl">
+        <h1 className="font-display text-[28px] font-bold leading-tight text-foreground sm:text-[34px]">
+          Ideen aus anderen Städten
+        </h1>
+        <p className="mt-2 text-lese text-foreground/90">
           {/* Die Städte kommen aus den DATEN, nicht aus diesem Satz. Fest
               aufgezählt stand hier bis zum 13.09.2026 „Osnabrück,
               Braunschweig, Münster, Potsdam und Magdeburg" — und das war
-              falsch, sobald Hannover, Wolfsburg und Hildesheim dazukamen.
-              Eine Aufzählung als Prosa veraltet beim nächsten Adapter. */}
-          Was Räte in {staedte} beschlossen haben — und ob Oldenburg dasselbe
-          schon hat. Das prüft ein Sprachmodell an Oldenburger Beschlüssen;
-          sie stehen unter jeder Idee. Ob sich ein Antrag lohnt, sagt hier
-          bewusst niemand: Das hängt an Mehrheiten und Haushaltslage.
+              falsch, sobald Hannover, Wolfsburg und Hildesheim dazukamen. */}
+          Was Räte in {staedte} beantragt und beschlossen haben — und ob
+          Oldenburg dasselbe schon hat.
+        </p>
+        <p className="mt-2 text-hinweis text-muted-foreground">
+          Den Stand in Oldenburg prüft ein Sprachmodell an Oldenburger
+          Beschlüssen; sie stehen auf jeder Ideen-Seite. Ob sich ein Antrag
+          lohnt, sagt hier bewusst niemand: Das hängt an Mehrheiten und
+          Haushaltslage.
         </p>
       </div>
-      <Suchzeile onTreffer={setFrage} />
-      {frage
-        ? <Suchergebnis frage={frage} zurueck={() => setFrage("")} />
-        : feld
-          ? <Feld feld={feld} />
-          : <Uebersicht />}
+
+      {ungefiltert && zustand.stand === "offen" && <Tafel zustand={zustand} />}
+
+      <BewegungenListe zustand={zustand} setze={setze} felder={felder} />
+
+      {/* Die einzelnen Ideen: was bisher EIN anderer Rat hatte — und jede
+          Vorlage einzeln. Sie bleiben (Tims Entscheidung vom 22.09.2026),
+          stehen aber unter den Bewegungen: 89 % aller Ideen stehen nur in
+          einer Stadt, und eine Stadt ist eine Beobachtung, noch kein Trend. */}
+      <section aria-labelledby="einzeln-titel" className="grid gap-3 border-t border-border pt-6">
+        <div>
+          <h2 id="einzeln-titel" className="font-display text-[19px] font-bold text-foreground">
+            Einzelne Ideen
+          </h2>
+          <p className="mt-1 max-w-prose text-sm text-muted-foreground">
+            Jede Vorlage für sich — auch, was bisher nur ein anderer Rat hatte.
+          </p>
+        </div>
+        {zustand.q ? (
+          <Suchergebnis frage={zustand.q} />
+        ) : zustand.feld ? (
+          <Feld feld={zustand.feld} zurueck={() => setze({ feld: "", seite: 1 })} />
+        ) : (
+          <Uebersicht felder={felder} onFeld={(f) => setze({ feld: f, seite: 1 })} />
+        )}
+      </section>
     </div>
   );
 }
