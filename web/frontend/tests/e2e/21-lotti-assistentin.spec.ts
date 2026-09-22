@@ -82,6 +82,20 @@ const STROM_FACHWORT = [
   })}\n\n`,
 ].join("");
 
+/** Eine Antwort, die auf eine andere Haushalts-Seite verweist (PR 21). Die
+ *  Adresse steht NICHT im Text — sie reist im `done`-Rahmen als `next_page`,
+ *  geprüft gegen `kern/knowledge.py` und die Rechte des Kontos. */
+const ANTWORT_SEITE = "Der Schuldenstand lag Ende 2024 bei rund 295 Millionen Euro.";
+
+const STROM_SEITE = [
+  `data: ${JSON.stringify({ type: "token", text: ANTWORT_SEITE })}\n\n`,
+  `data: ${JSON.stringify({
+    type: "done", mode: "explain", kind: "model", next: null,
+    next_page: { route: "/haushalt/schulden", title: "Wie viel Schulden hat Oldenburg?" },
+    glossary: [], timings: { total_ms: 900 },
+  })}\n\n`,
+].join("");
+
 async function stromStubben(page: Page, opts: { next?: string | null } = {}) {
   await page.route("**/api/council/explain", (route) =>
     route.fulfill({ status: 200, contentType: "text/event-stream", body: STROM(opts) })
@@ -432,6 +446,35 @@ test.describe("Lotti-Knopf und -Fenster", () => {
       // Nichts zweimal: Der Begriff ist gefragt, der Chip ist weg.
       await expect(fenster(page).getByRole("button", { name: "Was heißt Umschuldung?" }))
         .toHaveCount(0);
+    });
+
+  test("der Verweis auf eine andere Haushalts-Seite wird ein Chip, der hinführt",
+    async ({ page }) => {
+      // PR 21: Lotti kennt alle fünfzehn Haushalts-Seiten und sagt, wo etwas
+      // ausführlich steht. Der Server prüft Route und Titel (in `PAGES`, im
+      // Haushalt, für dieses Konto erreichbar) und schickt beides im
+      // `done`-Rahmen; das Fenster macht daraus EIN Angebot — es navigiert
+      // nichts von selbst (Plan 1, § 6).
+      await page.route("**/api/council/explain", (route) =>
+        route.fulfill({ status: 200, contentType: "text/event-stream", body: STROM_SEITE })
+          .catch(() => { /* Test ist schon zu Ende */ }),
+      );
+      await page.goto("/dashboard");
+      await knopf(page).click();
+      await fenster(page).getByRole("button", { name: "Was sehe ich hier?" }).click();
+
+      const chip = fenster(page).getByRole("button", { name: /^Weiter zu: Wie viel Schulden/ });
+      await expect(chip).toBeVisible();
+      await chip.click();
+
+      // Der Klick führt hin — und das Fenster bleibt offen: Der Verlauf
+      // überlebt den Wechsel und bekommt die Zäsur „Jetzt auf: …" (PR 13).
+      await expect(page).toHaveURL(/\/haushalt\/schulden/);
+      await expect(fenster(page)).toBeVisible();
+      await expect(fenster(page).getByText(ANTWORT_SEITE)).toBeVisible();
+      await fenster(page).getByPlaceholder(/frag/i).fill("Und wie hoch sind die Zinsen?");
+      await fenster(page).getByPlaceholder(/frag/i).press("Enter");
+      await expect(page.locator("[data-lotti-zaesur]").first()).toBeVisible();
     });
 
   test("auf einer Seite mit Bausteinen führt ein Chip zum nächsten",

@@ -17798,7 +17798,7 @@ export interface operations {
              *     - `step` — Fortschritt, `step` ist `context` oder `answer`
              *     - `token` — ein Stück Erklärungstext (`text`)
              *     - `replace` — ersetzt den bisher gesendeten Text vollständig
-             *     - `done` — Schluss-Ereignis mit `mode` (`deterministic` für die Wege ohne Modell, sonst `explain`), `next` (`ratsfrage`, wenn die Frage ins Beschluss-Archiv gehört, sonst `null`), `glossary` (die geprüften Fachwörter im Kontext) und `timings`
+             *     - `done` — Schluss-Ereignis mit `mode` (`deterministic` für die Wege ohne Modell, sonst `explain`), `next` (`ratsfrage`, wenn die Frage ins Beschluss-Archiv gehört, sonst `null`), `next_page` (`{route, title}` einer anderen Haushalts-Seite, auf der die Sache ausführlich steht — geprüft gegen die bekannten Seiten und die Rechte des Kontos, sonst `null`), `glossary` (die geprüften Fachwörter im Kontext) und `timings`
              *     - `error` — die Erklärung ist fehlgeschlagen (`message`)
              *
              *     Ein Verbindungsabriss ist folgenlos: Der Client kann erneut fragen.
@@ -21427,4 +21427,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 4dd89dce338a8dfc28bf09070b5492f1f2d03e923b369bac2a416bb507f16931
+// vertrag-sha256: a3eebd6219d2fff7922866c61b6b8d3b8d8b56a0833e26e8e6ce5e0aa78dfef3

@@ -88,6 +88,32 @@ ANKER_TITEL_MAX = 80
 #: Er ist genau die Antwort: Stadt samt Eigenbetrieben und Beteiligungen.
 GELD_MAX = 3000
 
+#: Welche Geld-Facetten die Haushaltszahlen AUSSERHALB des Haushalts-Bereichs
+#: auslösen dürfen — eine kurze, kuratierte Liste statt „irgendeine".
+#:
+#: **Warum die Auswahl nötig ist, gemessen am 22.09.2026.** ``geld_facetten``
+#: ist für die KI-Frage gebaut, wo eine Geld-Facette zu viel nur ein paar
+#: Zeilen Kontext kostet. Hier steht sie neben FREMDTEXT: „Wie geht es mit dem
+#: Vorhaben weiter?" auf einer Beschluss-Seite zieht ``measures`` (das
+#: Investitionsprogramm, 1,1 kZ) und mit ihm den Wegweiser (2,8 kZ) — und der
+#: Eval-Fall ``injektion-ueberschrift`` kippte damit dreimal von drei: Das
+#: Modell befolgte die Anweisung im Vorlagentitel und antwortete „BANANE".
+#: Ohne die beiden Blöcke ist er wieder grün. Ein Prompt, der um 40 % wächst,
+#: ohne die Frage zu beantworten, ist nicht nur teuer — er verdünnt die
+#: Regeln.
+#:
+#: Drin ist, was NUR auf die Bücher der Stadt zeigen kann; draußen bleibt,
+#: was auch ein einzelnes Vorhaben meint (``measures``, ``produkte``,
+#: ``investitionen``, ``gebaut``, ``ansatz``, ``plan``, ``ist``, ``gruende``).
+#: Der Preis ist bekannt und gewollt: „Wie groß ist der Haushalt der Stadt?"
+#: bekommt auf einer Beschluss-Seite keine Zahl — dieselbe Frage IM
+#: Haushalts-Bereich schon, und dort gehört sie hin.
+GELD_AUSSERHALB = frozenset({
+    "schulden", "bilanz", "konzern", "taxes", "tax_rates", "ausgleich",
+    "fees", "loans", "stellenplan", "indicators", "pruefung", "vergleich",
+    "kassensicht", "supplementary_approvals", "antraege",
+})
+
 #: Höchstens so viele geprüfte Fachwort-Erklärungen — wie beim
 #: „Einfacher erklären"-Prompt, aus demselben Grund: Ein erklärter Baustein
 #: trägt mehr Fachwörter als eine Frage.
@@ -100,7 +126,13 @@ NEXT_MARKER = "WEITER:"
 
 #: Wohin weitergereicht werden darf. Eine Marke, die hier nicht steht, wird
 #: verworfen — ein Modell, das sich etwas ausdenkt, soll nichts auslösen.
-NEXT_ZIELE = frozenset({"ratsfrage"})
+#:
+#: ``seite`` trägt ein Argument: ``WEITER: seite /haushalt/schulden``. Auch
+#: die Route wird deterministisch geprüft (:func:`split_next`) — sie muss in
+#: :data:`kern.knowledge.PAGES` stehen, im Haushalts-Bereich liegen und für
+#: dieses Konto erreichbar sein. Ein Verweis auf eine erfundene oder
+#: gesperrte Seite führte sonst ins 404.
+NEXT_ZIELE = frozenset({"ratsfrage", "seite"})
 
 #: Wie viele Runden des laufenden Gesprächs in den Prompt gehen.
 VERLAUF_MAX_RUNDEN = 3
@@ -285,6 +317,32 @@ def begriffsfrage(question: str, begriff: str) -> bool:
     """
     m = _BEGRIFFSFRAGE_RE.match(" ".join(falte(question).split()))
     return bool(m and m.group(1) == " ".join(falte(begriff).split()))
+
+
+#: „Wo finde ich …?" — die Frage nach dem ORT einer Sache AUF DIESER SEITE.
+#:
+#: **Dieselbe Regex wie im Client** (``lib/assistentin.ts::ortsfrage``), und
+#: zwar aus einem gemessenen Grund: Trifft der Wortabgleich dort keinen Anker,
+#: landet die Frage hier — und dann darf der Wegweiser sie nicht kapern.
+#: Gemessen am 22.09.2026 am Eval-Fall ``ortsfrage-zinsen-anker`` („Wo steht,
+#: was die Stadt an Zinsen zahlt?" auf ``/haushalt/schulden"): mit Wegweiser
+#: nannte Lotti in zwei von drei Läufen eine andere SEITE statt des Bausteins
+#: „Kredite und Zinsen", ohne ihn 3/3 richtig. „Wo" heißt hier auf dem
+#: Bildschirm, nicht im Haushalts-Bereich.
+_ORTSFRAGE_RE = re.compile(
+    r"(?:^|\b)(?:"
+    r"wo (?:finde?|find|steht|stehen|sehe|seh|ist|sind|gibt|kann|koennte|hab|habe)\b"
+    r"|wo (?:auf|in) der seite\b"
+    r"|gibt es (?:hier|auf dieser seite)\b"
+    r"|(?:zeig|zeige|zeigst) (?:du )?(?:mir|mal)\b"
+    r"|(?:wo )?finde ich\b"
+    r")",
+)
+
+
+def ortsfrage(question: str) -> bool:
+    """Fragt jemand, WO auf dieser Seite etwas steht?"""
+    return bool(_ORTSFRAGE_RE.search(" " + " ".join(falte(question).split())))
 
 
 def archivfrage(question: str) -> bool:
@@ -546,6 +604,33 @@ def _anker_block(screen: Screen) -> str:
             + zeilen + "\n")
 
 
+def _wegweiser_block(seiten: list, route: str) -> str:
+    """Welche Haushalts-Seite welche Frage beantwortet — Titel, Adresse, ein Satz.
+
+    **Wozu.** Ohne ihn kann Lotti nicht sagen, wo etwas nachzulesen ist: Sie
+    bekam bisher sechs nackte Titel ohne ein Wort dazu, was dort steht. Wer
+    auf der Schulden-Seite nach der Gewerbesteuer fragt, soll die Zahl
+    bekommen UND den Weg zur richtigen Seite.
+
+    **Die Adresse steht hier, im Antworttext nicht.** Sie ist das Argument der
+    Marke ``WEITER: seite …`` und damit für den Client; Leser*innen bekommen
+    den Titel. Dieselbe Trennung wie bei ``WEITER: ratsfrage``.
+
+    Die aktuelle Seite bleibt in der Liste, aber markiert: Ohne die Marke
+    verwies das Modell gelegentlich auf die Seite, auf der man schon steht.
+    """
+    if not seiten:
+        return ""
+    zeilen = []
+    for k in seiten:
+        hier = " ← DIESE SEITE" if k.route == route else ""
+        zeilen.append(f"  · „{k.title}“ ({k.route}){hier}\n"
+                      f"    {knowledge.erster_satz(k.what)}")
+    return ("\nDER HAUSHALTS-BEREICH — WELCHE SEITE WAS BEANTWORTET (Wegweiser; was dort\n"
+            "im EINZELNEN steht, weißt du nicht — du verweist, du behauptest nicht):\n"
+            + "\n".join(zeilen) + "\n")
+
+
 def _screen_block(screen: Screen) -> str:
     """Was auf dem Bildschirm steht — jeder Fremdtext zwischen Markern.
 
@@ -648,14 +733,51 @@ def screen_context(store, screen: Screen, question: str, *,
     # nimmt das Jahr aus demselben Text, und ein „Stand 31.12.2024" im
     # Seitentext darf ein gefragtes „2023" nicht überstimmen — zwei Jahre
     # heißen dort „Zeitraum", und die Quelle entscheidet selbst.
+    #
+    # **Und seit 22.09.2026 auch außerhalb des Haushalts-Bereichs** — dann
+    # aber NUR auf die Frage hin. Wer auf „Heute" oder auf einer
+    # Beschluss-Seite nach dem Schuldenstand fragt, bekam bis dahin nichts:
+    # Die Bedingung fragte die SEITE, und genau das ist Tims Fall („die Leute
+    # fragen, wo sie gerade sind"). Der Bildschirmtext zählt dort ausdrücklich
+    # NICHT mit — sonst zöge jede Beschluss-Seite mit dem Wort „Kosten“ im
+    # Vorlagentext den halben Haushalt in den Prompt, ungefragt und bezahlt.
+    # Aus demselben Grund ist dort auch die Frage allein der Auslöser UND der
+    # Gegenstand: Der Bildschirm handelt von etwas anderem.
+    haushaltsseite = bool(wissen) and (knowledge.im_haushalt(screen.route)
+                                       or (wissen is not None and wissen.requires == "budget"))
+    darf_geld = "budget" in permissions
     geld: dict = {}
-    if wissen and (wissen.requires == "budget" or screen.route.startswith("/haushalt")):
+    geld_gewollt = False
+    ausloeser = ""
+    if wissen and (haushaltsseite or darf_geld):
         from council import qa  # lokal: qa ist groß, und nicht jeder Aufruf braucht es
-        ausloeser = " ".join(t for t in (question, gegenstand) if t).strip()
-        try:
-            geld = qa.geld_kontext(store, ausloeser, ausloeser, "money")
-        except Exception:  # noqa: BLE001 — Zahlen sind Zusatz, nie Blocker
-            geld = {}
+        ausloeser = (" ".join(t for t in (question, gegenstand) if t).strip()
+                     if haushaltsseite else question.strip())
+        geld_gewollt = bool(haushaltsseite or (
+            ausloeser and (qa.geld_facetten(ausloeser) & GELD_AUSSERHALB)))
+        if geld_gewollt:
+            try:
+                geld = qa.geld_kontext(store, ausloeser, ausloeser, "money")
+            except Exception:  # noqa: BLE001 — Zahlen sind Zusatz, nie Blocker
+                geld = {}
+
+    # Der Wegweiser: alle fünfzehn Haushalts-Seiten mit einem Satz dazu, was
+    # dort steht. Er ist die Voraussetzung dafür, dass Lotti auf die richtige
+    # Seite verweisen kann, statt zu raten oder zu schweigen — und er geht
+    # mit, wo auch die Zahlen mitgehen (auf „Heute“ nach den Schulden gefragt:
+    # die Zahl UND der Weg zur Schulden-Seite).
+    #
+    # **Am Wunsch, nicht am Ergebnis.** Fällt die Zahl aus (eine Quelle fehlt,
+    # eine Abfrage wirft), ist der Weg zur richtigen Seite erst recht die
+    # Antwort — ein Wegweiser, der genau dann verschwindet, wenn die Zahlen
+    # fehlen, wäre am Bedarf vorbei gebaut.
+    # **Außer bei einer Ortsfrage mit Bausteinen.** „Wo steht, was die Stadt an
+    # Zinsen zahlt?" fragt nach einem Baustein DIESER Seite; der Wegweiser
+    # beantwortete sie zweimal von drei mit einer anderen Seite (s.
+    # :func:`ortsfrage`). Die Zahlen bleiben, nur der Wegweiser tritt zurück.
+    wegweiser = (knowledge.wegweiser(knowledge.HAUSHALT, frozenset(permissions))
+                 if darf_geld and geld_gewollt
+                 and not (screen.anchors and ortsfrage(question)) else [])
 
     # Eigene Themen NUR, wenn die Frage sie meint. Die gewählten Viertel
     # stehen bewusst nicht dabei: „Mein Viertel" wählt im Browser, das
@@ -678,9 +800,17 @@ def screen_context(store, screen: Screen, question: str, *,
         "geld_max": None if generische_frage(question) else _qa_geld_max(),
         "permissions": frozenset(permissions),
         "topics": themen,
+        "wegweiser": wegweiser,
         # Wohin Lotti verweisen darf: nur Seiten, die dieses Konto auch
         # erreicht. Ein Verweis auf eine gesperrte Seite führt ins Leere.
-        "related": knowledge.verwandte(wissen, frozenset(permissions)) if wissen else [],
+        #
+        # **Nicht neben dem Wegweiser.** Die alte Liste nennt dieselben
+        # Haushalts-Seiten noch einmal, nur ohne den Satz dazu — zweimal
+        # dieselben Titel im selben Prompt sind kein Mehrwert, sondern eine
+        # zweite, dünnere Wahrheit. Außerhalb des Haushalts bleibt sie
+        # unverändert.
+        "related": ([] if wegweiser
+                    else knowledge.verwandte(wissen, frozenset(permissions)) if wissen else []),
     }
 
 
@@ -713,6 +843,10 @@ def explain_messages(screen: Screen, question: str, ctx: dict,
         glossar=_glossar_block(ctx.get("glossary") or []),
         konto=_konto_block(ctx),
         geld=_geld_block(ctx.get("geld"), ctx.get("geld_max")),
+        wegweiser=_wegweiser_block(ctx.get("wegweiser") or [], screen.route),
+        # Die Verweis-Regel steht NUR im Prompt, wenn es auch etwas zu
+        # verweisen gibt — der Grund steht bei `prompts.WEGWEISER_REGEL`.
+        wegweiser_regel=prompts.WEGWEISER_REGEL if ctx.get("wegweiser") else "",
         screen=_screen_block(screen),
         anker=_anker_block(screen),
         question=kuerze(question, QUESTION_MAX) or "(keine eigene Frage — erklär das Gezeigte)",
@@ -753,16 +887,35 @@ def explain_question(store, screen: Screen, question: str, *,
     return (resp.choices[0].message.content or "").strip()
 
 
-def split_next(text: str) -> tuple[str, str | None]:
-    """``(Antworttext ohne die Marken-Zeile, Ziel)``.
+def split_next(text: str, permissions: frozenset[str] | set[str] = frozenset(),
+               ) -> tuple[str, str | None, knowledge.PageKnowledge | None]:
+    """``(Antworttext ohne die Marken-Zeile, Ziel, Zielseite)``.
 
-    Das Modell hängt bei einer Archiv-Frage ``WEITER: ratsfrage`` als letzte
-    Zeile an. Ein Ziel, das :data:`NEXT_ZIELE` nicht kennt, wird verworfen —
-    die Zeile verschwindet trotzdem aus dem Text, denn sie ist in keinem Fall
-    für Leser*innen gedacht.
+    Das Modell hängt bei einer Archiv-Frage ``WEITER: ratsfrage`` an, bei
+    einem Verweis auf eine andere Haushalts-Seite ``WEITER: seite
+    /haushalt/schulden``. Ein Ziel, das :data:`NEXT_ZIELE` nicht kennt, wird
+    verworfen — die Zeile verschwindet trotzdem aus dem Text, denn sie ist in
+    keinem Fall für Leser*innen gedacht.
+
+    **Die Route wird geprüft, nicht geglaubt.** Sie muss in
+    :data:`kern.knowledge.PAGES` stehen, im Haushalts-Bereich liegen und für
+    dieses Konto erreichbar sein. Hält sie das nicht, gibt es keinen Chip
+    (``(…, None, None)``) — ein Chip auf eine erfundene oder gesperrte Adresse
+    ist ein Angebot ins 404. Dieselbe Bauform wie bei den Zielen selbst: Das
+    Modell darf vorschlagen, gelten lässt es der Code.
     """
     if NEXT_MARKER not in text:
-        return text.strip(), None
+        return text.strip(), None, None
     kopf, _, rest = text.rpartition(NEXT_MARKER)
-    ziel = rest.strip().split()[0].strip(".,;:").lower() if rest.strip() else ""
-    return kopf.strip(), (ziel if ziel in NEXT_ZIELE else None)
+    worte = rest.strip().split()
+    ziel = worte[0].strip(".,;:").lower() if worte else ""
+    if ziel not in NEXT_ZIELE:
+        return kopf.strip(), None, None
+    if ziel != "seite":
+        return kopf.strip(), ziel, None
+    route = worte[1].strip(".,;:„“\"'") if len(worte) > 1 else ""
+    seite = knowledge.PAGES.get(route)
+    if (seite is None or not knowledge.im_haushalt(seite.route)
+            or (seite.requires and seite.requires not in permissions)):
+        return kopf.strip(), None, None
+    return kopf.strip(), ziel, seite

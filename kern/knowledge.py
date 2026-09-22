@@ -326,6 +326,54 @@ def block(wissen: PageKnowledge | None) -> str:
             f"  Was die Seite NICHT sagt: {wissen.limits}")
 
 
+#: Der Haushalts-Bereich, an einer Stelle. Die Seiten darin gehören
+#: zusammen: Eine Frage nach dem Geld landet oft auf der falschen von
+#: fünfzehn, und nur hier lohnt der ausführliche Wegweiser (s.
+#: :func:`wegweiser`).
+HAUSHALT = "/haushalt"
+
+
+def im_haushalt(route: str) -> bool:
+    """Gehört diese Route zum Haushalts-Bereich?
+
+    Über den Pfad UND nicht über ``requires``: Das Haushalts-Labor verlangt
+    dasselbe Recht, ist aber ein Werkzeug — die Unterscheidung fällt an
+    anderer Stelle (``wegweiser`` nimmt es mit, weil man dorthin verweisen
+    darf).
+    """
+    return route == HAUSHALT or route.startswith(HAUSHALT + "/")
+
+
+def erster_satz(text: str) -> str:
+    """Der erste Satz eines ``what`` — für den Wegweiser.
+
+    **Warum nur einer.** Alle fünfzehn Seiten vollständig wären rund 6.000
+    Zeichen in jedem Aufruf; der erste Satz sagt bereits, WAS dort steht, und
+    genau das soll Lotti wissen. Was im Einzelnen dort steht, weiß sie
+    nicht — sie verweist, sie behauptet nicht.
+    """
+    sauber = " ".join((text or "").split())
+    punkt = sauber.find(". ")
+    return sauber if punkt < 0 else sauber[:punkt + 1]
+
+
+def wegweiser(bereich: str, permissions: frozenset[str] | set[str]) -> list[PageKnowledge]:
+    """Alle Seiten eines Bereichs, die dieses Konto erreichen kann.
+
+    **Warum nicht** :func:`verwandte`. Die liefert sechs nackte Titel ohne ein
+    Wort dazu, was dort steht — damit lässt sich nicht sagen, wo etwas
+    nachzulesen ist, und sechs von fünfzehn Haushalts-Seiten sind eine
+    Auswahl, die niemand getroffen hat. Sie bleibt trotzdem: Außerhalb des
+    Haushalts tut sie weiter ihren Dienst, und dort ist die Liste kurz.
+
+    Gemessen am 22.09.2026 für ``/haushalt``: 15 Seiten, 2.509 Zeichen, rund
+    600 Tokens, etwa +0,015 Cent je Aufruf.
+    """
+    return [k for k in PAGES.values()
+            if k.route == bereich or k.route.startswith(bereich + "/")
+            if not (k.requires and k.requires not in permissions)]
+
+
 def verwandte(wissen: PageKnowledge | None, permissions: frozenset[str] | set[str]) -> list[str]:
     """Seiten, auf die eine Erklärung verweisen darf — nur erreichbare.
 

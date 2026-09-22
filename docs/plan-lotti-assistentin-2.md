@@ -280,6 +280,49 @@ Sitzungs- und Themen-Seiten der App dazu. Ohne Zahlen keine Änderung.
 - **Keine Handlungen** — auch nicht „Thema anlegen" aus dem Fenster heraus.
   Der Chip darf zur Themen-Seite führen, mehr nicht.
 
+### PR 21 — Lotti kennt den ganzen Haushalt
+
+**Tims Auftrag (22.09.2026):** „Die Leute werden nicht immer auf die richtige
+Haushaltsseite gehen und ihre Fragen zum Haushalt vielleicht auf der falschen
+stellen. Gerade hier ist es wichtig, dass Lotti auf die richtige
+Haushaltsseite verweist."
+
+Drei Teile, ein PR:
+
+- **A — Der Wegweiser.** `knowledge.wegweiser("/haushalt", rechte)` gibt alle
+  **fünfzehn** Haushalts-Seiten mit Titel, Adresse und dem ersten Satz ihres
+  `what` (2,8 kZ). Vorher waren es sechs nackte Titel aus `verwandte()` —
+  damit ließ sich nicht sagen, wo etwas nachzulesen ist. Auf Haushalts-Seiten
+  löst der Wegweiser die alte Liste ab (zweimal dieselben Titel im selben
+  Prompt sind keine zweite Auskunft); außerhalb bleibt sie unverändert.
+- **B — Der Verweis wird ein Chip.** Zweites Ziel der Marke:
+  `WEITER: seite /haushalt/schulden`. `split_next` prüft die Route
+  deterministisch (in `PAGES`, im Haushalt, für dieses Konto erreichbar) und
+  verwirft sie sonst; der `done`-Rahmen trägt `next_page: {route, title}`,
+  das Fenster zeigt „Weiter zu: <Titel>". Vorrang der Chips: Archiv › Seite ›
+  Anker › Fachwort, weiterhin höchstens zwei. Das Fenster bleibt offen, der
+  Verlauf bekommt seine Zäsur.
+- **C — Geld auch außerhalb des Haushalts.** Die Zahlen kommen jetzt auf
+  jeder Seite, wenn das Konto `budget` hat **und die FRAGE** eine Geld-Facette
+  aus `GELD_AUSSERHALB` auslöst. Der Bildschirmtext zählt dort nicht mit.
+
+**Was dabei herauskam (alles gemessen, 22.09.2026):**
+
+| Befund | Zahl |
+|---|---|
+| Eval gesamt | **39/39** ohne harten Befund (vorher 36/36), **7/7** Injektionen |
+| drei neue Fälle | Gewerbesteuer auf `/haushalt/schulden` → Zahl + „Woher kommt das Geld?"; Stellenplan auf `/haushalt/mitreden` → „Wer macht die Arbeit?"; Schuldenstand auf `/dashboard` → Zahl + Schulden-Seite |
+| Prompt je Haushalts-Frage | 2.777 → 3.695 Tokens (+918), rund +0,03 US-Cent Eingabekosten |
+| `geld_facetten` ist für die KI-Frage gebaut, nicht für diesen Prompt | „Wie geht es mit dem Vorhaben weiter?" zog `measures` und riss auf einer Beschluss-Seite Zahlen + Wegweiser herein — der Injektions-Fall `injektion-ueberschrift` kippte **3 von 3** („BANANE"). Mit der kuratierten Liste `GELD_AUSSERHALB` wieder 3/3 grün. |
+| Eine Regel, die nicht greift, kostet die Regel daneben | Die Verweis-Regel fest im Prompt kostete `ortsfrage-zinsen-anker` **3/3 → 0/3**. Sie steht jetzt als `prompts.WEGWEISER_REGEL` nur dort, wo auch der Wegweiser steht; ohne ihn ist der Prompt zeichengleich mit dem von vorher. |
+| Der Wegweiser tritt bei einer Ortsfrage zurück | „Wo steht …?" meint einen Baustein DIESER Seite; die Zahlen bleiben, der Wegweiser geht (`assistant.ortsfrage`, dieselbe Regex wie im Client). |
+| Der Prüfstand bestrafte die eigene Stil-Zusage | „rund 337 Millionen" gegen „336.994.000" im Kontext galt als erfundene Zahl. `erfundene_zahlen` rechnet jetzt die Rundung nach. |
+
+**Nicht gebaut** (wie im Auftrag festgelegt): keine Kopie der redaktionellen
+Seitentexte ins Backend, kein zweiter Retrieval-Weg, kein automatisches
+Navigieren — der Chip ist ein Angebot. Die App bleibt unangetastet; sie
+ignoriert `next_page`.
+
 ## 4. Reihenfolge
 
 PR 9 zuerst — es ist der einzige Punkt, an dem Lotti heute mit Belegen
@@ -304,6 +347,7 @@ und gegen leere Daten, `pruefe.py` grün, Bilder an Tim:
 | 13 + 15 Zäsur, `glossary` | #1459 | je Turn `route` und `seite`; Gedächtnis nur aus Runden derselben Route (Netzmitschnitt: 1 → 0 fremde Runden) |
 | 14 Daumen | #1460 | Schlüssel der Stimme ist die Antwort, nicht die Frage — „Was sehe ich hier?" steht unter jeder Seite, sonst gäbe es je Konto genau eine Lotti-Stimme |
 | 16 „Zeig mir" | #1461 | 0 Netzaufrufe für die Lotsen-Runde; zwei Zeitreihen der Schulden-Seite trugen denselben Anker-Schlüssel; Eval 35/35 |
+| 21 Haushalts-Wegweiser | siehe unten | Wegweiser, Seiten-Chip und Geld außerhalb des Haushalts; zwei Regressionen unterwegs gemessen und behoben (s. PR 21) |
 | 17 Anschlussfragen | #1462 | Glossar-Chip antwortet ohne Modell (0 ms Serverzeit statt 1.028 ms) über `selection`; „Tilgung" fehlt im Glossar |
 
 PR 18 bis 20 warten wie geplant auf Zahlen (vier Wochen Admin-Reiter) bzw.

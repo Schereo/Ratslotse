@@ -14,7 +14,7 @@ import {
   daumenZeigen,
   ernteElement, gedaechtnis, kuerze, ortsfrage, refsAus, routeAus, seitenName,
   seitenTitel, seitenUeberschrift, trenneWeiter, ueberschriftenPfad, zaesur,
-  type Anker, type Bildschirm,
+  type Anker, type Bildschirm, type NaechsteSeite,
 } from "@/lib/assistentin";
 import { begriffeIn } from "@/lib/glossar-treffer";
 import { useAuth } from "@/lib/auth";
@@ -68,6 +68,11 @@ export type LottiTurn = {
   quellen?: LottiQuelle[];
   cited?: number[];
   next: "ratsfrage" | null;
+  /** Die Haushalts-Seite, auf der die Sache ausführlich steht — aus dem
+   *  `done`-Rahmen (`next_page`). Sie trägt den Chip „Weiter zu: …"; das
+   *  Fenster bleibt dabei offen, der Verlauf überlebt den Seitenwechsel und
+   *  bekommt die Zäsur „Jetzt auf: …". */
+  nextPage?: NaechsteSeite | null;
   /** Kam die Antwort ohne Modell? Nur fürs Protokoll, nicht sichtbar. */
   mode: string | null;
   fehler?: boolean;
@@ -425,6 +430,11 @@ export function LottiPanel({
         } else if (msg.type === "done") {
           patch((t) => ({
             next: (msg.next as "ratsfrage" | null) ?? t.next,
+            // Geprüft hat der Server: in `kern/knowledge.py`, im
+            // Haushalts-Bereich, für dieses Konto erreichbar. Der Client
+            // navigiert nur — er prüft die Route nicht ein zweites Mal und
+            // baut sie auch nicht selbst.
+            nextPage: (msg.next_page as NaechsteSeite | null) ?? null,
             mode: (msg.mode as string) ?? null,
           }));
           // `null` heißt: Der Server konnte oder durfte nicht (mehr) in dieses
@@ -863,7 +873,18 @@ export function LottiPanel({
                         beiden Plätze (`anschlussfragen` gibt ihn als Eintrag
                         zurück), sodass höchstens ein weiterer Chip danebensteht. */}
                     {vorschlaege.map((v) => (
-                      v.art === "anker"
+                      v.art === "seite"
+                        ? (
+                          /* Der Weg zur richtigen Haushalts-Seite. Das Fenster
+                             bleibt OFFEN: Der Verlauf überlebt den Wechsel und
+                             bekommt die Zäsur „Jetzt auf: …" (PR 13) — wer
+                             dort weiterfragt, fragt auf der neuen Seite. */
+                          <Chip key={`s-${v.seite.route}`}
+                            onClick={() => router.push(v.seite.route)} disabled={laden}>
+                            Weiter zu: {chipTitel(v.seite.title)}
+                          </Chip>
+                        )
+                        : v.art === "anker"
                         ? (
                           <Chip key={`a-${ankerKennung(v.anker)}`}
                             onClick={() => erklaerAnker(v.anker)} disabled={laden}>
