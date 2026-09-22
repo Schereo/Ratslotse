@@ -1,0 +1,219 @@
+{
+ "_hinweis": "VORLÄUFIGER Maßstab, gesetzt von Claude am 22.09.2026 aus den Oldenburger Ratsdaten (council.sqlite, Abzug vom 06.09.2026) — NICHT von Tim. Der Plan (§7, Frage 5) sieht 20 von Tim beurteilte Gruppen vor; bis dahin misst dieser Satz nur grob. Jeder Fall nennt, woran das Urteil hängt (`warum`). `akzeptiert` trägt die vertretbaren Nachbarstufen, `status` die eine, die ich für richtig halte. `nur_verwandt`: Kennungen, die als Beleg (`evidence`) ein Fehler wären. Kein Fall für `not_applicable`: Unter den Bewegungen ab zwei Städten gibt es keinen (die Straßenbahn-Fälle aus §2.6 stehen je in nur einer Stadt).",
+ "faelle": [
+  {
+   "label": "Hitzeaktionsplan aufstellen",
+   "anker": "https://www.osnabrueck.sitzung-online.de/oparl/papers/1019558",
+   "status": "partial",
+   "akzeptiert": [
+    "partial"
+   ],
+   "warum": "Oldenburg nahm 2023 „Hitze-Informationen“ zur Kenntnis (Sozial- und Umweltausschuss); ein Hitzeaktionsplan ist nicht beschlossen, das Klimaanpassungskonzept (KLAK) ist in Arbeit.",
+   "nur_verwandt": [
+    "oldenburg:paper:27481",
+    "oldenburg:paper:29685",
+    "oldenburg:paper:24699",
+    "oldenburg:paper:29886",
+    "oldenburg:decision:1100"
+   ]
+  },
+  {
+   "label": "Arbeitsgelegenheiten für Asylbewerber",
+   "anker": "https://www.potsdam.sitzung-online.de/oparl/papers/2002626",
+   "status": "missing",
+   "akzeptiert": [
+    "missing"
+   ],
+   "warum": "Keine Oldenburger Vorlage und kein Beschluss zu Arbeitsgelegenheiten nach § 5 AsylbLG gefunden.",
+   "nur_verwandt": []
+  },
+  {
+   "label": "Kommunale Wärmeplanung erstellen",
+   "anker": "https://www.potsdam.sitzung-online.de/oparl/papers/36731",
+   "status": "present",
+   "akzeptiert": [
+    "present"
+   ],
+   "warum": "Der Rat beschloss am 01.06.2026 den Oldenburger Wärmeplan.",
+   "nur_verwandt": []
+  },
+  {
+   "label": "Verpackungssteuer einführen",
+   "anker": "https://www.ratsinfo.braunschweig.sitzung-online.de/oparl/papers/1034960",
+   "status": "partial",
+   "akzeptiert": [
+    "partial",
+    "missing"
+   ],
+   "warum": "Zwei Berichte im Finanzausschuss (2023, 2025) zur Kenntnis genommen, kein Beschluss. Nach der Prompt-Regel „nur ein Bericht“ teilweise; „fehlt“ ist vertretbar.",
+   "nur_verwandt": []
+  },
+  {
+   "label": "Kulturförderrichtlinie anpassen",
+   "anker": "https://www.osnabrueck.sitzung-online.de/oparl/papers/2002975",
+   "status": "present",
+   "akzeptiert": [
+    "present",
+    "partial"
+   ],
+   "warum": "Oldenburg hat seine Kulturförderung 2022/23 neu ausgerichtet und neue Kulturförderrichtlinien vorgelegt; fünf Oldenburger Vorlagen liegen in der Gruppe.",
+   "nur_verwandt": []
+  },
+  {
+   "label": "Jugendparlament einrichten",
+   "anker": "https://www.ratsinfo.braunschweig.sitzung-online.de/oparl/papers/1033954",
+   "status": "missing",
+   "akzeptiert": [
+    "missing",
+    "partial"
+   ],
+   "warum": "Kein Jugendparlament; 2024 beschloss der Rat nur ein Konzept zur Kinder- und Jugendbeteiligung. Achtung: Die Gruppe mischt Jugendhilfeausschuss-Satzungen bei.",
+   "nur_verwandt": []
+  },
+  {
+   "label": "Zweckentfremdungssatzung erlassen",
+   "anker": "https://www.ratsinfo.braunschweig.sitzung-online.de/oparl/papers/2002082",
+   "status": "partial",
+   "akzeptiert": [
+    "partial"
+   ],
+   "warum": "Rat beauftragte am 01.12.2025 die Verwaltung mit einem Entwurf; der Entwurf wurde am 01.06.2026 vertagt — mitten in der Einführung.",
+   "nur_verwandt": []
+  },
+  {
+   "label": "Baumschutzsatzung erlassen",
+   "anker": "https://oparl.stadt-muenster.de/bodies/0001/papers/vo/2004052620",
+   "status": "present",
+   "akzeptiert": [
+    "present"
+   ],
+   "warum": "Oldenburg hat eine Baumschutzsatzung (Berichte zur Praxis 2025/26, Änderungen 06/2026 vertagt).",
+   "nur_verwandt": []
+  },
+  {
+   "label": "Bezahlkarte für Geflüchtete einführen",
+   "anker": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/papers/vo/243044",
+   "status": "present",
+   "akzeptiert": [
+    "present",
+    "partial"
+   ],
+   "warum": "Berichte 2025 über Sachstand und „Auswirkungen der Einführung der Bezahlkarte“ in Oldenburg; eingeführt, aber nicht durch einen Ratsbeschluss.",
+   "nur_verwandt": []
+  },
+  {
+   "label": "Straßenausbaubeiträge abschaffen",
+   "anker": "https://www.osnabrueck.sitzung-online.de/oparl/papers/1019412",
+   "status": "present",
+   "akzeptiert": [
+    "present"
+   ],
+   "warum": "Rat beschloss am 14.01.2019 die Abschaffung der Straßenausbaubeitragssatzung.",
+   "nur_verwandt": []
+  },
+  {
+   "label": "Cannabis-Modellkommune bewerben",
+   "anker": "https://e-government.hannover-stadt.de/lhhsimwebre.nsf/DS/0854-2023N1",
+   "status": "partial",
+   "akzeptiert": [
+    "partial",
+    "missing"
+   ],
+   "warum": "Antrag FDP/Volt 2023 im Rat vertagt, 2024 im Sozialausschuss ohne Beschluss — nur ein Antrag ohne Beschluss.",
+   "nur_verwandt": []
+  },
+  {
+   "label": "Kostenlose Menstruationsprodukte an Schulen bereitstellen",
+   "anker": "https://www.ratsinfo.braunschweig.sitzung-online.de/oparl/papers/1035664",
+   "status": "partial",
+   "akzeptiert": [
+    "partial",
+    "present"
+   ],
+   "warum": "Rat beschloss am 29.09.2025 die kostenlose Bereitstellung — nur an Berufsbildenden Schulen.",
+   "nur_verwandt": []
+  },
+  {
+   "label": "Smart City Strategie beschließen",
+   "anker": "https://www.stadt-hildesheim.de/allris/vo020.asp?VOLFDNR=8125",
+   "status": "partial",
+   "akzeptiert": [
+    "partial",
+    "missing"
+   ],
+   "warum": "Bewerbung als Smart-City-Modellprojekt 2021 beschlossen, Berichte 2021/22; eine beschlossene Strategie ist in den Ratsdaten nicht zu sehen.",
+   "nur_verwandt": []
+  },
+  {
+   "label": "Lärmaktionsplan fortschreiben",
+   "anker": "https://www.ratsinfo.braunschweig.sitzung-online.de/oparl/papers/1031559",
+   "status": "present",
+   "akzeptiert": [
+    "present"
+   ],
+   "warum": "Rat beschloss am 30.09.2024 die Fortschreibung des Lärmaktionsplans.",
+   "nur_verwandt": []
+  },
+  {
+   "label": "Grundsteuerhebesätze anpassen",
+   "anker": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/papers/vo/244372",
+   "status": "present",
+   "akzeptiert": [
+    "present"
+   ],
+   "warum": "Hebesatzsatzung Grundsteuer A/B am 25.11.2024 beschlossen (die Fassung 12/2025 wurde abgelehnt).",
+   "nur_verwandt": []
+  },
+  {
+   "label": "Nachtfahrverbot für Mähroboter",
+   "anker": "https://oparl.stadt-muenster.de/bodies/0001/papers/vo/2004055238",
+   "status": "missing",
+   "akzeptiert": [
+    "missing"
+   ],
+   "warum": "Nichts dazu in den Oldenburger Ratsdaten.",
+   "nur_verwandt": []
+  },
+  {
+   "label": "Grünpfeil für Radverkehr",
+   "anker": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/papers/vo/243377",
+   "status": "missing",
+   "akzeptiert": [
+    "missing"
+   ],
+   "warum": "Kein Antrag und kein Beschluss zum Grünpfeil für Radfahrende gefunden.",
+   "nur_verwandt": []
+  },
+  {
+   "label": "Nachhaltigen urbanen Mobilitätsplan erstellen",
+   "anker": "https://ratsinfob.stadt.wolfsburg.de/vo020?VOLFDNR=1010938",
+   "status": "present",
+   "akzeptiert": [
+    "present",
+    "partial"
+   ],
+   "warum": "Oldenburg hat den Mobilitätsplan Oldenburg 2030 (Sachstandsberichte 2025/26); eine Anfrage zu einem SUMP 2040 lag 04/2026 vor.",
+   "nur_verwandt": []
+  },
+  {
+   "label": "Jobticket für Beschäftigte einführen",
+   "anker": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/papers/vo/243804",
+   "status": "present",
+   "akzeptiert": [
+    "present"
+   ],
+   "warum": "Rat beschloss am 26.06.2023 das Jobticket für Beschäftigte der Stadtverwaltung und der Mehrheitsbeteiligungen.",
+   "nur_verwandt": []
+  },
+  {
+   "label": "Lachgasabgabe an Minderjährige verbieten",
+   "anker": "https://www.osnabrueck.sitzung-online.de/oparl/papers/1021172",
+   "status": "present",
+   "akzeptiert": [
+    "present"
+   ],
+   "warum": "Rat beschloss 2025 eine Verordnung zum Verbot der Abgabe von Lachgas an Minderjährige.",
+   "nur_verwandt": []
+  }
+ ]
+}

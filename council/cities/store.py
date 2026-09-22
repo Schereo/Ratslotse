@@ -1811,12 +1811,50 @@ class CitiesStore:
             (model, version, min_cities)).fetchone()
         return (row[0], row[1]) if row else (None, None)
 
-    def idea_group_counts(self, model: str, version: str, min_cities: int) -> dict[str, int]:
-        """Themenfeld → Zahl der Bewegungen — für die Kacheln der Übersicht."""
+    def idea_group_counts(self, model: str, version: str, min_cities: int,
+                          oldenburg: Sequence[str] = ()) -> dict[str, int]:
+        """Themenfeld → Zahl der Bewegungen — für die Kacheln der Übersicht.
+
+        Mit ``oldenburg`` nur die mit diesem Urteil — dieselbe Vorgabe wie die
+        Liste, sonst verspräche die Kachel mehr, als die Liste dann zeigt.
+        """
+        f_ann, f_ver = self.IDEEN_IDEA_FIT
+        status = ("," + ",".join(oldenburg) + ",") if oldenburg else ""
         return {r[0]: int(r[1]) for r in self._conn.execute(
-            "SELECT field, COUNT(*) FROM idea_groups "
-            "WHERE model=? AND version=? AND stable=1 AND cities >= ? AND field IS NOT NULL "
-            "GROUP BY field", (model, version, min_cities))}
+            "SELECT g.field, COUNT(*) FROM idea_groups g "
+            "LEFT JOIN annotations j ON j.object_kind='cluster' "
+            "  AND j.object_id = g.version || ':' || g.cluster_id "
+            "  AND j.annotator=? AND j.version=? "
+            "WHERE g.model=? AND g.version=? AND g.stable=1 AND g.cities >= ? "
+            "  AND g.field IS NOT NULL "
+            "  AND (? = '' OR instr(?, ',' || json_extract(j.payload, '$.status') || ',') > 0) "
+            "GROUP BY g.field",
+            (f_ann, f_ver, model, version, min_cities, status, status))}
+
+    def idea_group_verdict_counts(self, model: str, version: str, *,
+                                  field: str | None = None, min_cities: int = 2,
+                                  q: str = "") -> dict[str, int]:
+        """Je Oldenburg-Urteil die Zahl der Bewegungen — für die Filter-Chips.
+
+        Unter denselben Filtern wie die Liste, nur ohne den Status selbst;
+        ``unjudged`` zählt, was noch kein Urteil hat.
+        """
+        f_ann, f_ver = self.IDEEN_IDEA_FIT
+        q = (q or "").strip()
+        treffer = self._bewegungen_treffer(model, version, q) if q else []
+        return {r[0]: int(r[1]) for r in self._conn.execute(
+            "SELECT COALESCE(json_extract(j.payload, '$.status'), 'unjudged'), COUNT(*) "
+            "FROM idea_groups g "
+            "LEFT JOIN annotations j ON j.object_kind='cluster' "
+            "  AND j.object_id = g.version || ':' || g.cluster_id "
+            "  AND j.annotator=? AND j.version=? "
+            "WHERE g.model=? AND g.version=? AND g.stable=1 AND g.cities >= ? "
+            "  AND (? = '' OR g.field = ?) "
+            "  AND (? = 0 OR g.cluster_id IN (SELECT value FROM json_each(?)) "
+            "       OR lower(g.label) LIKE ?) "
+            "GROUP BY 1",
+            (f_ann, f_ver, model, version, min_cities, field or "", field or "",
+             1 if q else 0, json.dumps(treffer), "%" + q.lower() + "%" if q else ""))}
 
     def similar_idea_groups(self, model: str, version: str, field: str | None,
                             cluster_id: int, min_cities: int, limit: int = 3) -> list[dict]:

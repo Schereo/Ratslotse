@@ -97,6 +97,11 @@ OEFFENTLICH = {
     # darüber, ob Oldenburg dasselbe schon hat — nichts Persönliches,
     # nichts Kontobezogenes. Hinter dem Schalter `ideen-anderswo`.
     ("get", "/api/council/cities/ideas/fields"),
+    # Die Bewegungen (Plan PR 50): dieselben Dokumente, je Idee gebündelt,
+    # samt EINEM Urteil je Idee. Ohne Rückmeldung je Konto — deshalb kein
+    # `optional_user`, sondern hier.
+    ("get", "/api/council/cities/movements"),
+    ("get", "/api/council/cities/movements/detail"),
     # Die Liste und die Suche standen bis 09/2026 auch hier. Sie sind WEITER
     # ohne Konto erreichbar — sie hängen aber jetzt an `optional_user`, weil
     # sie die eigene Rückmeldung mitliefern („stimmt / stimmt nicht"), und
