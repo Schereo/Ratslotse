@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  ankerListe, ankerTreffer, anschlussfragen, auswahlText, chipTitel, daumenZeigen, ernteElement,
+  ankerListe, ankerTreffer, anschlussfragen, auswahlText, chipTitel, daumenZeigen,
+  erklaerAktion, ernteElement,
   gedaechtnis, kuerze, ohneNamen, ortsfrage, refsAus, routeAus, seitenTitel,
   seitenUeberschrift, trenneWeiter, ueberschriftenPfad, zaesur,
 } from "./assistentin";
@@ -487,19 +488,11 @@ describe("anschlussfragen", () => {
   ];
   const FERTIG = { answer: "Fünf Sätze.", mode: "explain" as const };
 
-  it("bietet den nächsten Baustein und das erste Fachwort an", () => {
+  it("bietet genau EINEN nächsten Schritt an", () => {
+    // Tim, 22.09.2026: „Es ist für den User sehr überfordernd, wenn man hier
+    // tausend verschiedene Sachen anklicken kann." Vorher standen hier zwei
+    // Chips — plus Archiv-Knopf, Daumen und Grund-Chips.
     expect(anschlussfragen(FERTIG, ANKER, new Set(), ["Umschuldung"])).toEqual([
-      { art: "anker", anker: ANKER[0] },
-      { art: "begriff", begriff: "Umschuldung" },
-    ]);
-  });
-
-  it("gibt dem Archiv den Vorrang — und deckelt bei zwei", () => {
-    // Die Antwort hat weitergereicht: Das ist der dringendste nächste
-    // Schritt, das Fachwort fällt dafür heraus.
-    expect(anschlussfragen({ ...FERTIG, next: "ratsfrage" }, ANKER, new Set(),
-                           ["Umschuldung", "Haushalt"])).toEqual([
-      { art: "ratsfrage" },
       { art: "anker", anker: ANKER[0] },
     ]);
   });
@@ -510,27 +503,30 @@ describe("anschlussfragen", () => {
     // Lotti hat gerade gesagt, dass es dort ausführlich steht; der Weg
     // dorthin ist damit nützlicher als der nächste Baustein DIESER Seite.
     expect(anschlussfragen({ ...FERTIG, nextPage: SCHULDEN }, ANKER, new Set(),
-                           ["Umschuldung"])).toEqual([
+                           ["Umschuldung"], "/dashboard")).toEqual([
       { art: "seite", seite: SCHULDEN },
+    ]);
+  });
+
+  it("nennt nie die Seite, auf der man steht", () => {
+    // Tims Bild vom 22.09.2026: „Weiter zu: Bereichs-Steckbrief" auf dem
+    // Bereichs-Steckbrief. Der Server streicht die eigene Seite schon aus
+    // dem Wegweiser — das hier ist der Hosenträger zum Gürtel.
+    expect(anschlussfragen({ ...FERTIG, nextPage: SCHULDEN }, ANKER, new Set(),
+                           ["Umschuldung"], "/haushalt/schulden")).toEqual([
       { art: "anker", anker: ANKER[0] },
     ]);
   });
 
-  it("lässt dem Archiv den Vorrang vor der Seite — und deckelt bei zwei", () => {
-    expect(anschlussfragen({ ...FERTIG, next: "ratsfrage", nextPage: SCHULDEN },
-                           ANKER, new Set(), ["Umschuldung"])).toEqual([
-      { art: "ratsfrage" },
-      { art: "seite", seite: SCHULDEN },
-    ]);
+  it("fällt auf das Fachwort zurück, wenn es keinen Baustein mehr gibt", () => {
+    expect(anschlussfragen(FERTIG, [], new Set(), ["Umschuldung", "Haushalt"]))
+      .toEqual([{ art: "begriff", begriff: "Umschuldung" }]);
   });
 
   it("wiederholt nichts, was schon gefragt wurde", () => {
     const erklaert = new Set(["hh.rate\u0000Rate-Treppe", "umschuldung"]);
     expect(anschlussfragen(FERTIG, ANKER, erklaert, ["Umschuldung", "Haushalt"]))
-      .toEqual([
-        { art: "anker", anker: ANKER[1] },
-        { art: "begriff", begriff: "Haushalt" },
-      ]);
+      .toEqual([{ art: "anker", anker: ANKER[1] }]);
   });
 
   it("unterscheidet zwei Bausteine mit demselben Schlüssel", () => {
@@ -553,14 +549,35 @@ describe("anschlussfragen", () => {
     expect(anschlussfragen({ answer: "", mode: null }, ANKER, new Set(), [])).toEqual([]);
   });
 
-  it("reicht die Ratsantwort nicht noch einmal ans Archiv weiter", () => {
-    expect(anschlussfragen({ answer: "Der Rat hat zugestimmt.", ratsfrage: true,
-                            next: "ratsfrage" }, [], new Set(), ["Haushalt"]))
+  it("bietet auch unter einer Ratsantwort einen nächsten Schritt", () => {
+    // Der Weg ins Archiv ist seit PR 23 kein Chip mehr — eine Ratsantwort
+    // trägt deshalb dieselben Anschlüsse wie jede andere.
+    expect(anschlussfragen({ answer: "Der Rat hat zugestimmt.", ratsfrage: true },
+                           [], new Set(), ["Haushalt"]))
       .toEqual([{ art: "begriff", begriff: "Haushalt" }]);
   });
 
   it("gibt nichts aus, wo es nichts gibt", () => {
     expect(anschlussfragen(FERTIG, [], new Set(), [])).toEqual([]);
+  });
+});
+
+describe("erklaerAktion", () => {
+  it("macht aus dem Etikett eine Handlung", () => {
+    // Tim, 22.09.2026: „man weiß nicht, was man anklicken soll".
+    expect(erklaerAktion("Die Anzeigetafel")).toBe("Anzeigetafel erklären");
+    expect(erklaerAktion("Rate-Treppe")).toBe("Rate-Treppe erklären");
+  });
+
+  it("wirft den Stand hinter dem Mittelpunkt mit weg", () => {
+    expect(erklaerAktion("Drei Zählweisen, eine Stadt · Stand 31.12.2024"))
+      .toBe("Drei Zählweisen, eine Stadt erklären");
+  });
+
+  it("lässt einen Artikel stehen, hinter dem kein Name kommt", () => {
+    // „die letzten Jahre erklären" ist ein Satz, „letzten Jahre erklären"
+    // keiner — der Artikel fällt nur vor einem Großbuchstaben weg.
+    expect(erklaerAktion("die letzten Jahre")).toBe("die letzten Jahre erklären");
   });
 });
 

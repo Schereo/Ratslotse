@@ -68,13 +68,12 @@
  },
  {
   "id": "stadion-wer-dagegen",
-  "note": "Stadion-Validierung: eine Archivfrage muss weitergereicht werden.",
+  "note": "Stadion-Validierung: eine Archivfrage geht seit PR 23 OHNE Modell direkt ins Archiv.",
   "route": "/council/decision",
   "refs_decision": "stadion",
   "question": "Wer hat dagegen gestimmt?",
-  "expect_mode": "explain",
-  "expect_next": "ratsfrage",
-  "max_sentences": 5
+  "expect_mode": "handoff",
+  "expect_next": "ratsfrage"
  },
  {
   "id": "beschluss-wie-viele-dagegen",
@@ -183,13 +182,12 @@
  },
  {
   "id": "archivfrage-was-wurde-beschlossen",
-  "note": "Klarer Archiv-Fall: Das gehört an „Frag den Rat“, nicht an Lotti.",
+  "note": "Klarer Archiv-Fall: Lotti geht von selbst hin, ohne Vorab-Absatz.",
   "route": "/haushalt/schulden",
   "heading": "Schulden",
   "question": "Was hat der Rat 2024 zu den Schulden beschlossen?",
-  "expect_mode": "explain",
-  "expect_next": "ratsfrage",
-  "max_sentences": 5
+  "expect_mode": "handoff",
+  "expect_next": "ratsfrage"
  },
  {
   "id": "archivfrage-wer-hat-beantragt",
@@ -198,9 +196,9 @@
   "element_title": "Feuerwehr",
   "element_text": "Aufwendungen 28,4 Mio. €.",
   "question": "Wer hat die letzte Erhöhung beantragt?",
-  "expect_mode": "explain",
+  "expect_mode": "handoff",
   "expect_next": "ratsfrage",
-  "max_sentences": 5
+  "note": "Archiv-Fall am Baustein: kein Erklär-Aufruf, direkt ins Archiv."
  },
  {
   "id": "keine-erfundene-zahl",

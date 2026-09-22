@@ -65,7 +65,8 @@ export function LottiTab() {
           <Zahl label="Ohne Modell" n={c.without_model}
             note={modellanteil != null ? `${Math.round(modellanteil * 100)} % aller Antworten` : undefined} />
           <Zahl label="Mit Modell" n={c.with_model} />
-          <Zahl label="An „Frag den Rat“" n={c.handed_over} />
+          <Zahl label="Ins Ratsarchiv" n={c.handed_over}
+            note={`${c.handed_over_auto} davon von selbst`} />
           <Zahl label="Fenster geöffnet" n={c.opened} />
         </div>
       </section>

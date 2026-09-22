@@ -4409,7 +4409,12 @@ class Store:
         ("assistant_explain", "Lotti: erklärt"),
         ("assistant_deterministic", "Lotti: ohne Modell beantwortet"),
         ("assistant_open", "Lotti: Fenster geöffnet"),
-        ("assistant_to_ask", "Lotti: an Frag den Rat weitergereicht"),
+        ("assistant_to_ask", "Lotti: ins Ratsarchiv gegangen"),
+        # Seit 22.09.2026 geht Lotti von selbst ins Archiv, statt einen Knopf
+        # „Den Rat fragen" hinzustellen. Der Zähler daneben sagt, wie oft —
+        # die Differenz zu `assistant_to_ask` ist, wie oft jemand den stillen
+        # Textlink „Im Ratsarchiv nachsehen" selbst gedrückt hat.
+        ("assistant_to_ask_auto", "Lotti: davon von selbst"),
         ("assistant_nudge_shown", "Lotti: angeklopft"),
         ("assistant_nudge_accepted", "Lotti: Anklopfen angenommen"),
         ("assistant_nudge_dismissed", "Lotti: Anklopfen weggeklickt"),
@@ -4451,6 +4456,7 @@ class Store:
         mit_modell = zahl("assistant_explain")
         ohne_modell = zahl("assistant_deterministic")
         weitergereicht = zahl("assistant_to_ask")
+        von_selbst = zahl("assistant_to_ask_auto")
         gefragt_konten = self._conn.execute(
             "SELECT COUNT(DISTINCT owner_id) k FROM user_activity WHERE day >= ? "
             "AND feature IN ('assistant_explain', 'assistant_deterministic')",
@@ -4523,6 +4529,10 @@ class Store:
                 "with_model": mit_modell[0],
                 "without_model": ohne_modell[0],
                 "handed_over": weitergereicht[0],
+                # Davon ohne Zutun der Person (seit 22.09.2026 der
+                # Normalfall); die Differenz ist der stille Textlink
+                # „Im Ratsarchiv nachsehen" unter einer Erklärung.
+                "handed_over_auto": von_selbst[0],
                 "opened": geoeffnet[0],
             },
             "timeline": verlauf,

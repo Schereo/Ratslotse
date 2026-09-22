@@ -3685,6 +3685,40 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
         try:
             t0 = time.perf_counter()
             zeiten: dict = {}
+            # **Gehört die Frage ins Archiv, geht Lotti dorthin — sofort.**
+            # Bis 22.09.2026 schrieb sie erst eine Erklärung („Wer wie
+            # gestimmt hat, kann nur das Archiv sagen") und stellte darunter
+            # einen Knopf „Den Rat fragen"; Tim: „warum passiert das nicht
+            # automatisch, wenn das sinnvoll ist?". Der Vorab-Absatz war ein
+            # leerer Absatz vor der eigentlichen Antwort — er kostete einen
+            # Modellaufruf (0,07 Cent) und rund eine Sekunde, und die
+            # Entscheidung, welchen Weg die Frage nimmt, ist unsere, nicht die
+            # der fragenden Person.
+            #
+            # **Die Regel bleibt an EINER Stelle.** Der Client könnte dieselbe
+            # Regex spiegeln und sich den Roundtrip sparen — dann gäbe es sie
+            # zweimal, und zwei Fassungen laufen auseinander (dieselbe
+            # Begründung wie bei `falte`/`ortsfrage`). Der Roundtrip kostet
+            # kein Modell: gemessen lokal am 22.09.2026 rund 25 ms.
+            #
+            # **Vor `deterministic_answer`**, weil eine Archivfrage keiner der
+            # drei Wege ohne Modell ist: Die verlangen eine generische Frage
+            # („Was sehe ich hier?") oder eine Vokabelfrage, und keine davon
+            # trifft `archiv_sofort` (tests/test_assistant.py hält beides).
+            if lotti.archiv_sofort(frage):
+                yield _sse({"type": "step", "step": "archiv"})
+                ratslotse.record_activity(user["id"], "assistant_to_ask_auto",
+                                          client_kind(request))
+                # **Kein `conversation_id` im Rahmen.** Es gibt nichts zu
+                # speichern (keine Antwort), und ein `null` hieße für das
+                # Fenster „vergiss das laufende Gespräch" — die nächste Frage
+                # eröffnete dann ein zweites zur selben Sache.
+                yield _sse({"type": "done", "mode": "handoff", "kind": "archiv",
+                            "next": "ratsfrage", "next_page": None,
+                            "glossary": [],
+                            "timings": {"total_ms": round(
+                                (time.perf_counter() - t0) * 1000)}})
+                return
             # Erst die Wege ohne Modell. Sie sind der häufigste Klick, und die
             # geprüfte Antwort liegt bereits im Haus — ein Modell darauf
             # kostet Geld und kann sie nur verschlechtern.
@@ -3739,15 +3773,19 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
                              len(buf), exc_info=True)
                 ans = lotti.explain_question(store, screen, frage, ctx=ctx, verlauf=verlauf)
                 buf = ans
-                yield _sse({"type": "replace", "text": lotti.split_next(ans, rechte)[0]})
+                yield _sse({"type": "replace",
+                            "text": lotti.split_next(ans, rechte, route)[0]})
 
-            text, weiter, zielseite = lotti.split_next(buf, rechte)
-            # Die Weiterreichung ist deterministisch, das Modell darf sie nur
-            # ERGÄNZEN: Es vergisst die Marke gelegentlich, und dann stünde da
-            # „das kann ich dir nicht sagen" ohne einen Weg weiter — die
-            # Sackgasse, gegen die die Designsprache schreibt.
-            if lotti.archivfrage(frage):
-                weiter = "ratsfrage"
+            text, weiter, zielseite = lotti.split_next(buf, rechte, route)
+            # Die Weiterreichung bleibt dem Modell überlassen — die
+            # deterministische Ergänzung steht jetzt GANZ OBEN und hat den
+            # Aufruf dann gar nicht erst gemacht. Setzt das Modell die Marke
+            # trotzdem (die Regex hat nicht gegriffen), geht das Fenster von
+            # selbst ins Archiv: als zweiter Schritt derselben Runde, unter
+            # der Erklärung, die stehen bleibt.
+            if weiter == "ratsfrage":
+                ratslotse.record_activity(user["id"], "assistant_to_ask_auto",
+                                          client_kind(request))
             # `seite` ist kein Wert für das Feld `next`: Dort steht, ob die
             # Frage ins Archiv gehört — der Seiten-Verweis reist in
             # `next_page`. Zwei Bedeutungen in einem Feld hätten den Client

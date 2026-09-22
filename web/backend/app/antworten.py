@@ -1898,6 +1898,9 @@ class AdminLottiAufrufe(TypedDict):
     with_model: int
     without_model: int
     handed_over: int
+    #: Davon ohne Zutun der Person — seit 22.09.2026 geht Lotti bei einer
+    #: Archivfrage von selbst ins Archiv, statt einen Knopf hinzustellen.
+    handed_over_auto: int
     opened: int
 
 
@@ -3805,11 +3808,15 @@ SSE_ERKLAERUNG: dict[int | str, dict[str, Any]] = {
         "description": (
             "Server-Sent Events (`text/event-stream`). Jeder Rahmen ist eine "
             "`data:`-Zeile mit einem JSON-Objekt, das ein Feld `type` trägt:\n\n"
-            "- `step` — Fortschritt, `step` ist `context` oder `answer`\n"
+            "- `step` — Fortschritt, `step` ist `context`, `answer` oder "
+            "`archiv` (die Frage geht ins Beschluss-Archiv)\n"
             "- `token` — ein Stück Erklärungstext (`text`)\n"
             "- `replace` — ersetzt den bisher gesendeten Text vollständig\n"
             "- `done` — Schluss-Ereignis mit `mode` (`deterministic` für die "
-            "Wege ohne Modell, sonst `explain`), `next` (`ratsfrage`, wenn die "
+            "Wege ohne Modell, `handoff` für eine Archivfrage, die ohne "
+            "Modellaufruf direkt an `POST /council/ask` geht — der Strom "
+            "trägt dann keinen Text und kein `conversation_id` —, sonst "
+            "`explain`), `next` (`ratsfrage`, wenn die "
             "Frage ins Beschluss-Archiv gehört, sonst `null`), `next_page` "
             "(`{route, title}` einer anderen Haushalts-Seite, auf der die "
             "Sache ausführlich steht — geprüft gegen die bekannten Seiten und "

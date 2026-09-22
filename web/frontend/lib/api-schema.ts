@@ -6040,6 +6040,8 @@ export interface components {
         AdminLottiAufrufe: {
             /** Handed Over */
             handed_over: number;
+            /** Handed Over Auto */
+            handed_over_auto: number;
             /** Opened */
             opened: number;
             /** With Model */
@@ -17795,10 +17797,10 @@ export interface operations {
             /**
              * @description Server-Sent Events (`text/event-stream`). Jeder Rahmen ist eine `data:`-Zeile mit einem JSON-Objekt, das ein Feld `type` trägt:
              *
-             *     - `step` — Fortschritt, `step` ist `context` oder `answer`
+             *     - `step` — Fortschritt, `step` ist `context`, `answer` oder `archiv` (die Frage geht ins Beschluss-Archiv)
              *     - `token` — ein Stück Erklärungstext (`text`)
              *     - `replace` — ersetzt den bisher gesendeten Text vollständig
-             *     - `done` — Schluss-Ereignis mit `mode` (`deterministic` für die Wege ohne Modell, sonst `explain`), `next` (`ratsfrage`, wenn die Frage ins Beschluss-Archiv gehört, sonst `null`), `next_page` (`{route, title}` einer anderen Haushalts-Seite, auf der die Sache ausführlich steht — geprüft gegen die bekannten Seiten und die Rechte des Kontos, sonst `null`), `glossary` (die geprüften Fachwörter im Kontext) und `timings`
+             *     - `done` — Schluss-Ereignis mit `mode` (`deterministic` für die Wege ohne Modell, `handoff` für eine Archivfrage, die ohne Modellaufruf direkt an `POST /council/ask` geht — der Strom trägt dann keinen Text und kein `conversation_id` —, sonst `explain`), `next` (`ratsfrage`, wenn die Frage ins Beschluss-Archiv gehört, sonst `null`), `next_page` (`{route, title}` einer anderen Haushalts-Seite, auf der die Sache ausführlich steht — geprüft gegen die bekannten Seiten und die Rechte des Kontos, sonst `null`), `glossary` (die geprüften Fachwörter im Kontext) und `timings`
              *     - `error` — die Erklärung ist fehlgeschlagen (`message`)
              *
              *     Ein Verbindungsabriss ist folgenlos: Der Client kann erneut fragen.
@@ -21427,4 +21429,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: a3eebd6219d2fff7922866c61b6b8d3b8d8b56a0833e26e8e6ce5e0aa78dfef3
+// vertrag-sha256: 872abcfaead5740c292a0e37f3af382b5be176c0ec6356ea26658c3ae41fb57d

@@ -313,6 +313,19 @@ def lauf(faelle: list[dict], store: CouncilStore, *, nur_deterministisch: bool) 
             })
             continue
         zielseite: str | None = None
+        # **Wie im Router: Erst der Weg ins Archiv.** Gehört die Frage
+        # deterministisch dorthin, gibt es gar keinen Erklär-Aufruf mehr
+        # (PR 23) — ein Eval, der das nicht nachbaut, misst einen Text, den
+        # in der Produktion niemand zu sehen bekommt.
+        if lotti.archiv_sofort(frage):
+            aus.append({
+                "id": fall["id"], "modus": "handoff", "weiter": "ratsfrage",
+                "seite": None, "ms": round((time.perf_counter() - t0) * 1000),
+                "zeichen": 0,
+                "befunde": _pruefe(fall, "", "handoff", "ratsfrage"),
+                "injektion": bool(fall.get("injektion")), "text": "",
+            })
+            continue
         fertig = lotti.deterministic_answer(store, screen, frage)
         if fertig:
             text, _art = fertig
@@ -329,12 +342,11 @@ def lauf(faelle: list[dict], store: CouncilStore, *, nur_deterministisch: bool) 
             msgs, _ = lotti.explain_messages(screen, frage, ctx)
             kontext = msgs[0]["content"]
             roh = lotti.explain_question(store, screen, frage, ctx=ctx)
-            text, weiter, seite = lotti.split_next(roh, RECHTE)
-            # Wie im Router: Die Weiterreichung entscheidet der Wortlaut, das
-            # Modell darf sie nur ergänzen. Ein Eval, der das nicht nachbaut,
-            # misst etwas anderes als die Produktion.
-            if lotti.archivfrage(frage):
-                weiter = "ratsfrage"
+            # Die Route MUSS mit: Ein `WEITER: seite` auf die Seite, auf der
+            # man steht, wird verworfen (Tims Befund 22.09.2026 — „Weiter zu:
+            # Bereichs-Steckbrief" auf dem Bereichs-Steckbrief). Ein Eval ohne
+            # diesen Riegel misst etwas anderes als die Produktion.
+            text, weiter, seite = lotti.split_next(roh, RECHTE, screen.route)
             if weiter == "seite":
                 weiter = None
             zielseite = seite.route if seite else None
