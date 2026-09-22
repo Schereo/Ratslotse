@@ -467,7 +467,38 @@ def _fit(main: CitiesStore, ann, body_id: str | None, limit: int | None,
         from council.cities.clusters import CLUSTER_VERSION
         stand["group_status"] = main.rebuild_group_status(
             EMBED_MODEL, CLUSTER_VERSION, ann.version)
+    # Das Urteil je IDEE (Plan PR 48) hängt an den Einzelurteilen als
+    # Hinweis — also danach. Es läuft auch ohne neue Einzelurteile: Eine
+    # Gruppe, die eine Stadt dazubekommen hat, ist neu zu beurteilen. Was
+    # sich nicht geändert hat, kostet nichts (Quell-Hash).
+    if not any(k.startswith("abgebrochen_") for k in stand) and body_id is None:
+        stand["idea_fit"] = idea_fit_all(main, stopp=stopp)
     return stand
+
+
+def idea_fit_all(main: CitiesStore, limit: int | None = None,
+                 stopp: Stopp | None = None, nur: list[int] | None = None) -> dict:
+    """Jede Idee ab zwei Städten einmal gegen Oldenburg halten (``idea_fit``).
+
+    Öffnet die Rats-Datenbank selbst, aus demselben Grund wie ``_fit``.
+    """
+    import os
+
+    from council.cities import ROOT
+    from council.cities import idea_fit as idea_fit_modul
+    from council.cities.index import EMBED_MODEL
+    from council.store import CouncilStore
+
+    pfad = Path(os.environ.get("COUNCIL_DB") or ROOT / "data" / "council.sqlite")
+    if not pfad.exists():
+        logger.warning("idea_fit übersprungen: %s gibt es nicht", pfad)
+        return {"annotated": 0, "skipped_no_council_db": 1, "cost_usd": 0.0}
+    rats = CouncilStore(pfad)
+    try:
+        return idea_fit_modul.run(main, rats, EMBED_MODEL, limit=limit,
+                                  stopp=stopp, nur=nur)
+    finally:
+        rats.close()
 
 
 # ------------------------------------------------------------------- index

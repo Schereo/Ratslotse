@@ -11696,6 +11696,10 @@
             "title": "Missing",
             "type": "integer"
           },
+          "movements": {
+            "title": "Movements",
+            "type": "integer"
+          },
           "multi_city": {
             "title": "Multi City",
             "type": "integer"
@@ -11724,7 +11728,8 @@
           "partial",
           "present",
           "not_applicable",
-          "multi_city"
+          "multi_city",
+          "movements"
         ],
         "title": "IdeaFieldSummary",
         "type": "object"
@@ -13323,6 +13328,421 @@
         "title": "MoneyDriver",
         "type": "object"
       },
+      "Movement": {
+        "description": "Eine Idee, die mehrere andere Räte hatten.",
+        "properties": {
+          "cities": {
+            "items": {
+              "$ref": "#/components/schemas/MovementCity"
+            },
+            "title": "Cities",
+            "type": "array"
+          },
+          "cluster_id": {
+            "title": "Cluster Id",
+            "type": "integer"
+          },
+          "field": {
+            "title": "Field",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "first_date": {
+            "title": "First Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "last_date": {
+            "title": "Last Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "members": {
+            "title": "Members",
+            "type": "integer"
+          },
+          "oldenburg": {
+            "description": "Hat Oldenburg diese Idee schon? — EIN Urteil je Idee (``idea_fit``).\n\n``evidence`` stützt den Status; ``related`` ist Lesestoff und belegt\nnichts. Die Trennung ist der Grund für das Urteil je Idee: Im Entwurf\nstand beides unter „Belege\" und las sich wie eine Begründung für\n„vorhanden\".",
+            "properties": {
+              "confidence": {
+                "title": "Confidence",
+                "type": "string"
+              },
+              "evidence": {
+                "items": {
+                  "$ref": "#/components/schemas/IdeaEvidence"
+                },
+                "title": "Evidence",
+                "type": "array"
+              },
+              "related": {
+                "items": {
+                  "$ref": "#/components/schemas/IdeaEvidence"
+                },
+                "title": "Related",
+                "type": "array"
+              },
+              "situation": {
+                "title": "Situation",
+                "type": "string"
+              },
+              "status": {
+                "title": "Status",
+                "type": "string"
+              }
+            },
+            "required": [
+              "status",
+              "situation",
+              "confidence",
+              "evidence",
+              "related"
+            ],
+            "title": "OldenburgVerdict",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "oldenburg_members": {
+            "title": "Oldenburg Members",
+            "type": "integer"
+          },
+          "outcomes": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Outcomes",
+            "type": "object"
+          },
+          "timeline": {
+            "items": {
+              "$ref": "#/components/schemas/TimelinePoint"
+            },
+            "title": "Timeline",
+            "type": "array"
+          }
+        },
+        "required": [
+          "cluster_id",
+          "label",
+          "field",
+          "cities",
+          "members",
+          "oldenburg_members",
+          "first_date",
+          "last_date",
+          "outcomes",
+          "timeline",
+          "oldenburg"
+        ],
+        "title": "Movement",
+        "type": "object"
+      },
+      "MovementCity": {
+        "description": "Eine Stadt in einer Bewegung: wann sie zuerst dabei war und wie es ausging.",
+        "properties": {
+          "body_id": {
+            "title": "Body Id",
+            "type": "string"
+          },
+          "city": {
+            "title": "City",
+            "type": "string"
+          },
+          "first_date": {
+            "title": "First Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "members": {
+            "title": "Members",
+            "type": "integer"
+          },
+          "outcomes": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Outcomes",
+            "type": "object"
+          }
+        },
+        "required": [
+          "body_id",
+          "city",
+          "first_date",
+          "members",
+          "outcomes"
+        ],
+        "title": "MovementCity",
+        "type": "object"
+      },
+      "MovementDetail": {
+        "description": "Eine Bewegung mit allen Vorlagen — die Ideen-Seite.",
+        "properties": {
+          "axis": {
+            "$ref": "#/components/schemas/TimeAxis"
+          },
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/MovementDocument"
+            },
+            "title": "Documents",
+            "type": "array"
+          },
+          "movement": {
+            "$ref": "#/components/schemas/Movement"
+          },
+          "oldenburg_documents": {
+            "items": {
+              "$ref": "#/components/schemas/IdeaEvidence"
+            },
+            "title": "Oldenburg Documents",
+            "type": "array"
+          },
+          "similar": {
+            "items": {
+              "$ref": "#/components/schemas/MovementSimilar"
+            },
+            "title": "Similar",
+            "type": "array"
+          }
+        },
+        "required": [
+          "movement",
+          "axis",
+          "documents",
+          "oldenburg_documents",
+          "similar"
+        ],
+        "title": "MovementDetail",
+        "type": "object"
+      },
+      "MovementDocument": {
+        "description": "Eine Vorlage einer Bewegung, für die Ideen-Seite.",
+        "properties": {
+          "body_id": {
+            "title": "Body Id",
+            "type": "string"
+          },
+          "city": {
+            "title": "City",
+            "type": "string"
+          },
+          "date": {
+            "title": "Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "instrument": {
+            "title": "Instrument",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "originator": {
+            "title": "Originator",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          },
+          "paper_id": {
+            "title": "Paper Id",
+            "type": "string"
+          },
+          "protocol": {
+            "description": "Was die Niederschrift der Sitzung zu dieser Vorlage sagt.\n\nDas „Warum\" — der Grund, aus dem der Städtevergleich überhaupt gebaut\nwurde: Dass Magdeburg die Verpackungssteuer-Prüfung eingestellt hat, sagt\ndie Karte schon; *warum* der Rat das tat, ist das, was eine Oldenburger\nFraktion in ihrer eigenen Sitzung braucht.\n\n**``grounded`` entscheidet, ob überhaupt etwas gezeigt wird.** Steht im\nAbschnitt nur ein Ergebnis und keine Begründung — der häufigere Fall —,\nist es ``False``, ``why`` bleibt leer, und die Oberfläche zeigt an dieser\nStelle nichts. Eine erfundene Begründung wäre schlimmer als gar keine.",
+            "properties": {
+              "date": {
+                "title": "Date",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "decided": {
+                "title": "Decided",
+                "type": "string"
+              },
+              "discussed": {
+                "title": "Discussed",
+                "type": "string"
+              },
+              "grounded": {
+                "title": "Grounded",
+                "type": "boolean"
+              },
+              "organization": {
+                "title": "Organization",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "vote": {
+                "title": "Vote",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "why": {
+                "title": "Why",
+                "type": "string"
+              }
+            },
+            "required": [
+              "discussed",
+              "decided",
+              "vote",
+              "why",
+              "grounded",
+              "organization",
+              "date"
+            ],
+            "title": "IdeaProtocol",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "protocol_source": {
+            "title": "Protocol Source",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "web": {
+            "title": "Web",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "paper_id",
+          "body_id",
+          "city",
+          "name",
+          "date",
+          "kind",
+          "web",
+          "outcome",
+          "originator",
+          "instrument",
+          "summary",
+          "protocol",
+          "protocol_source"
+        ],
+        "title": "MovementDocument",
+        "type": "object"
+      },
+      "MovementSimilar": {
+        "description": "Eine andere Bewegung desselben Themenfelds.",
+        "properties": {
+          "cities": {
+            "title": "Cities",
+            "type": "integer"
+          },
+          "cluster_id": {
+            "title": "Cluster Id",
+            "type": "integer"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "members": {
+            "title": "Members",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cluster_id",
+          "label",
+          "cities",
+          "members"
+        ],
+        "title": "MovementSimilar",
+        "type": "object"
+      },
+      "MovementsResponse": {
+        "properties": {
+          "axis": {
+            "$ref": "#/components/schemas/TimeAxis"
+          },
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Counts",
+            "type": "object"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Movement"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "per_page": {
+            "title": "Per Page",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "per_page",
+          "axis",
+          "counts"
+        ],
+        "title": "MovementsResponse",
+        "type": "object"
+      },
       "MyTopicItem": {
         "description": "„n TOPs zu deinen Themen\" — Treffer der Tagesordnungs-Klassifikation.",
         "properties": {
@@ -13647,6 +14067,46 @@
           "id"
         ],
         "title": "OkWithId",
+        "type": "object"
+      },
+      "OldenburgVerdict": {
+        "description": "Hat Oldenburg diese Idee schon? — EIN Urteil je Idee (``idea_fit``).\n\n``evidence`` stützt den Status; ``related`` ist Lesestoff und belegt\nnichts. Die Trennung ist der Grund für das Urteil je Idee: Im Entwurf\nstand beides unter „Belege\" und las sich wie eine Begründung für\n„vorhanden\".",
+        "properties": {
+          "confidence": {
+            "title": "Confidence",
+            "type": "string"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/IdeaEvidence"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "related": {
+            "items": {
+              "$ref": "#/components/schemas/IdeaEvidence"
+            },
+            "title": "Related",
+            "type": "array"
+          },
+          "situation": {
+            "title": "Situation",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "situation",
+          "confidence",
+          "evidence",
+          "related"
+        ],
+        "title": "OldenburgVerdict",
         "type": "object"
       },
       "OnboardingState": {
@@ -19834,6 +20294,73 @@
         "title": "ThisWeekNone",
         "type": "object"
       },
+      "TimeAxis": {
+        "description": "EINE Zeitachse für alle Bewegungen, vom Server bestimmt.\n\nVom Jahresanfang der frühesten bis zum Jahresende der spätesten Vorlage\nim GANZEN Bestand — nicht der Seite: Sonst verschöbe sich die Achse beim\nBlättern, und derselbe Punkt stünde woanders. Web und App zeichnen damit\ndieselbe Achse, ohne sie je selbst auszurechnen.",
+        "properties": {
+          "end": {
+            "title": "End",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "start": {
+            "title": "Start",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "start",
+          "end"
+        ],
+        "title": "TimeAxis",
+        "type": "object"
+      },
+      "TimelinePoint": {
+        "description": "Ein Punkt der Zeitleiste — eine Vorlage.",
+        "properties": {
+          "body_id": {
+            "title": "Body Id",
+            "type": "string"
+          },
+          "city": {
+            "title": "City",
+            "type": "string"
+          },
+          "date": {
+            "title": "Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          },
+          "paper_id": {
+            "title": "Paper Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "paper_id",
+          "body_id",
+          "city",
+          "date",
+          "outcome",
+          "kind"
+        ],
+        "title": "TimelinePoint",
+        "type": "object"
+      },
       "TodaySession": {
         "description": "Eine Sitzung des heutigen Tages im „Heute im Rat\"-Briefing.",
         "properties": {
@@ -25150,6 +25677,219 @@
           }
         },
         "summary": "Cities Idea Feedback",
+        "tags": [
+          "council"
+        ]
+      }
+    },
+    "/api/council/cities/movements": {
+      "get": {
+        "description": "Ideen, die mehrere andere Räte hatten — je Idee EINE Zeile.\n\n**Öffentlich**, wie die übrigen Städte-Endpunkte: Es stehen nur\nRatsdokumente anderer Städte darin und ein Urteil darüber, ob Oldenburg\ndasselbe hat. Der Schalter sitzt an der Seite, nicht hier.\n\n``oldenburg`` filtert nach dem Urteil je Idee (``idea_fit``); leer heißt\nalle, auch die noch unbeurteilten. ``sort`` ist ``staedte`` (die meisten\nStädte zuerst) oder ``zuletzt`` (die jüngste Vorlage zuerst).",
+        "operationId": "cities_movements_api_council_cities_movements_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "field",
+            "required": false,
+            "schema": {
+              "title": "Field",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "oldenburg",
+            "required": false,
+            "schema": {
+              "default": "missing,partial",
+              "title": "Oldenburg",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "min_cities",
+            "required": false,
+            "schema": {
+              "default": 2,
+              "title": "Min Cities",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "staedte",
+              "title": "Sort",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "per_page",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "title": "Per Page",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MovementsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cities Movements",
+        "tags": [
+          "council"
+        ]
+      }
+    },
+    "/api/council/cities/movements/detail": {
+      "get": {
+        "description": "Eine Bewegung mit allen Vorlagen — die Ideen-Seite.\n\nDie Kennung als Query-Parameter, nicht als Pfadsegment: Der statische\nExport des Frontends kennt keine dynamischen Pfade\n(``web/frontend/CLAUDE.md``). Auch eine unbelegte Gruppe (``stable=0``)\nist abrufbar — sie steht nur in keiner Liste.",
+        "operationId": "cities_movement_detail_api_council_cities_movements_detail_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "title": "Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MovementDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cities Movement Detail",
+        "tags": [
+          "council"
+        ]
+      }
+    },
+    "/api/council/cities/movements/feedback": {
+      "post": {
+        "description": "„Stimmt\" oder „stimmt nicht\" zum Urteil über Oldenburg JE IDEE.\n\nDerselbe Rückkanal wie an der Einzelkarte, nur am Urteil ``idea_fit``\n(``object_kind='cluster'``) — die Tabelle ``feedback`` kennt die Art\nschon. Die Antwort trägt die Gruppen-Kennung als ``paper_id``, damit die\nForm dieselbe bleibt.",
+        "operationId": "cities_movement_feedback_api_council_cities_movements_feedback_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "title": "Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "verdict",
+            "required": true,
+            "schema": {
+              "title": "Verdict",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "note",
+            "required": false,
+            "schema": {
+              "title": "Note",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackAck"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cities Movement Feedback",
         "tags": [
           "council"
         ]

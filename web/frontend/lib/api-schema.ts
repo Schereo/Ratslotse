@@ -2610,6 +2610,84 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/council/cities/movements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Cities Movements
+         * @description Ideen, die mehrere andere Räte hatten — je Idee EINE Zeile.
+         *
+         *     **Öffentlich**, wie die übrigen Städte-Endpunkte: Es stehen nur
+         *     Ratsdokumente anderer Städte darin und ein Urteil darüber, ob Oldenburg
+         *     dasselbe hat. Der Schalter sitzt an der Seite, nicht hier.
+         *
+         *     ``oldenburg`` filtert nach dem Urteil je Idee (``idea_fit``); leer heißt
+         *     alle, auch die noch unbeurteilten. ``sort`` ist ``staedte`` (die meisten
+         *     Städte zuerst) oder ``zuletzt`` (die jüngste Vorlage zuerst).
+         */
+        get: operations["cities_movements_api_council_cities_movements_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/cities/movements/detail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Cities Movement Detail
+         * @description Eine Bewegung mit allen Vorlagen — die Ideen-Seite.
+         *
+         *     Die Kennung als Query-Parameter, nicht als Pfadsegment: Der statische
+         *     Export des Frontends kennt keine dynamischen Pfade
+         *     (``web/frontend/CLAUDE.md``). Auch eine unbelegte Gruppe (``stable=0``)
+         *     ist abrufbar — sie steht nur in keiner Liste.
+         */
+        get: operations["cities_movement_detail_api_council_cities_movements_detail_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/cities/movements/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cities Movement Feedback
+         * @description „Stimmt" oder „stimmt nicht" zum Urteil über Oldenburg JE IDEE.
+         *
+         *     Derselbe Rückkanal wie an der Einzelkarte, nur am Urteil ``idea_fit``
+         *     (``object_kind='cluster'``) — die Tabelle ``feedback`` kennt die Art
+         *     schon. Die Antwort trägt die Gruppen-Kennung als ``paper_id``, damit die
+         *     Form dieselbe bleibt.
+         */
+        post: operations["cities_movement_feedback_api_council_cities_movements_feedback_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/council/cities/search": {
         parameters: {
             query?: never;
@@ -10413,6 +10491,8 @@ export interface components {
             field: string;
             /** Missing */
             missing: number;
+            /** Movements */
+            movements: number;
             /** Multi City */
             multi_city: number;
             /** Not Applicable */
@@ -11052,6 +11132,177 @@ export interface components {
             title: string;
         };
         /**
+         * Movement
+         * @description Eine Idee, die mehrere andere Räte hatten.
+         */
+        Movement: {
+            /** Cities */
+            cities: components["schemas"]["MovementCity"][];
+            /** Cluster Id */
+            cluster_id: number;
+            /** Field */
+            field: string | null;
+            /** First Date */
+            first_date: string | null;
+            /** Label */
+            label: string;
+            /** Last Date */
+            last_date: string | null;
+            /** Members */
+            members: number;
+            /**
+             * OldenburgVerdict
+             * @description Hat Oldenburg diese Idee schon? — EIN Urteil je Idee (``idea_fit``).
+             *
+             *     ``evidence`` stützt den Status; ``related`` ist Lesestoff und belegt
+             *     nichts. Die Trennung ist der Grund für das Urteil je Idee: Im Entwurf
+             *     stand beides unter „Belege" und las sich wie eine Begründung für
+             *     „vorhanden".
+             */
+            oldenburg: {
+                /** Confidence */
+                confidence: string;
+                /** Evidence */
+                evidence: components["schemas"]["IdeaEvidence"][];
+                /** Related */
+                related: components["schemas"]["IdeaEvidence"][];
+                /** Situation */
+                situation: string;
+                /** Status */
+                status: string;
+            } | null;
+            /** Oldenburg Members */
+            oldenburg_members: number;
+            /** Outcomes */
+            outcomes: {
+                [key: string]: number;
+            };
+            /** Timeline */
+            timeline: components["schemas"]["TimelinePoint"][];
+        };
+        /**
+         * MovementCity
+         * @description Eine Stadt in einer Bewegung: wann sie zuerst dabei war und wie es ausging.
+         */
+        MovementCity: {
+            /** Body Id */
+            body_id: string;
+            /** City */
+            city: string;
+            /** First Date */
+            first_date: string | null;
+            /** Members */
+            members: number;
+            /** Outcomes */
+            outcomes: {
+                [key: string]: number;
+            };
+        };
+        /**
+         * MovementDetail
+         * @description Eine Bewegung mit allen Vorlagen — die Ideen-Seite.
+         */
+        MovementDetail: {
+            axis: components["schemas"]["TimeAxis"];
+            /** Documents */
+            documents: components["schemas"]["MovementDocument"][];
+            movement: components["schemas"]["Movement"];
+            /** Oldenburg Documents */
+            oldenburg_documents: components["schemas"]["IdeaEvidence"][];
+            /** Similar */
+            similar: components["schemas"]["MovementSimilar"][];
+        };
+        /**
+         * MovementDocument
+         * @description Eine Vorlage einer Bewegung, für die Ideen-Seite.
+         */
+        MovementDocument: {
+            /** Body Id */
+            body_id: string;
+            /** City */
+            city: string;
+            /** Date */
+            date: string | null;
+            /** Instrument */
+            instrument: string | null;
+            /** Kind */
+            kind: string;
+            /** Name */
+            name: string;
+            /** Originator */
+            originator: string | null;
+            /** Outcome */
+            outcome: string;
+            /** Paper Id */
+            paper_id: string;
+            /**
+             * IdeaProtocol
+             * @description Was die Niederschrift der Sitzung zu dieser Vorlage sagt.
+             *
+             *     Das „Warum" — der Grund, aus dem der Städtevergleich überhaupt gebaut
+             *     wurde: Dass Magdeburg die Verpackungssteuer-Prüfung eingestellt hat, sagt
+             *     die Karte schon; *warum* der Rat das tat, ist das, was eine Oldenburger
+             *     Fraktion in ihrer eigenen Sitzung braucht.
+             *
+             *     **``grounded`` entscheidet, ob überhaupt etwas gezeigt wird.** Steht im
+             *     Abschnitt nur ein Ergebnis und keine Begründung — der häufigere Fall —,
+             *     ist es ``False``, ``why`` bleibt leer, und die Oberfläche zeigt an dieser
+             *     Stelle nichts. Eine erfundene Begründung wäre schlimmer als gar keine.
+             */
+            protocol: {
+                /** Date */
+                date: string | null;
+                /** Decided */
+                decided: string;
+                /** Discussed */
+                discussed: string;
+                /** Grounded */
+                grounded: boolean;
+                /** Organization */
+                organization: string | null;
+                /** Vote */
+                vote: string | null;
+                /** Why */
+                why: string;
+            } | null;
+            /** Protocol Source */
+            protocol_source: string;
+            /** Summary */
+            summary: string | null;
+            /** Web */
+            web: string | null;
+        };
+        /**
+         * MovementSimilar
+         * @description Eine andere Bewegung desselben Themenfelds.
+         */
+        MovementSimilar: {
+            /** Cities */
+            cities: number;
+            /** Cluster Id */
+            cluster_id: number;
+            /** Label */
+            label: string;
+            /** Members */
+            members: number;
+        };
+        /** MovementsResponse */
+        MovementsResponse: {
+            axis: components["schemas"]["TimeAxis"];
+            /** Counts */
+            counts: {
+                [key: string]: number;
+            };
+            /** Items */
+            items: components["schemas"]["Movement"][];
+            /** Page */
+            page: number;
+            /** Per Page */
+            per_page: number;
+            /** Total */
+            total: number;
+        };
+        /**
          * MyTopicItem
          * @description „n TOPs zu deinen Themen" — Treffer der Tagesordnungs-Klassifikation.
          */
@@ -11206,6 +11457,27 @@ export interface components {
             id: number;
             /** Ok */
             ok: boolean;
+        };
+        /**
+         * OldenburgVerdict
+         * @description Hat Oldenburg diese Idee schon? — EIN Urteil je Idee (``idea_fit``).
+         *
+         *     ``evidence`` stützt den Status; ``related`` ist Lesestoff und belegt
+         *     nichts. Die Trennung ist der Grund für das Urteil je Idee: Im Entwurf
+         *     stand beides unter „Belege" und las sich wie eine Begründung für
+         *     „vorhanden".
+         */
+        OldenburgVerdict: {
+            /** Confidence */
+            confidence: string;
+            /** Evidence */
+            evidence: components["schemas"]["IdeaEvidence"][];
+            /** Related */
+            related: components["schemas"]["IdeaEvidence"][];
+            /** Situation */
+            situation: string;
+            /** Status */
+            status: string;
         };
         /** OnboardingState */
         OnboardingState: {
@@ -13757,6 +14029,39 @@ export interface components {
              * @constant
              */
             found: false;
+        };
+        /**
+         * TimeAxis
+         * @description EINE Zeitachse für alle Bewegungen, vom Server bestimmt.
+         *
+         *     Vom Jahresanfang der frühesten bis zum Jahresende der spätesten Vorlage
+         *     im GANZEN Bestand — nicht der Seite: Sonst verschöbe sich die Achse beim
+         *     Blättern, und derselbe Punkt stünde woanders. Web und App zeichnen damit
+         *     dieselbe Achse, ohne sie je selbst auszurechnen.
+         */
+        TimeAxis: {
+            /** End */
+            end: string | null;
+            /** Start */
+            start: string | null;
+        };
+        /**
+         * TimelinePoint
+         * @description Ein Punkt der Zeitleiste — eine Vorlage.
+         */
+        TimelinePoint: {
+            /** Body Id */
+            body_id: string;
+            /** City */
+            city: string;
+            /** Date */
+            date: string | null;
+            /** Kind */
+            kind: string;
+            /** Outcome */
+            outcome: string;
+            /** Paper Id */
+            paper_id: string;
         };
         /**
          * TodaySession
@@ -17118,6 +17423,107 @@ export interface operations {
             path: {
                 paper_id: string;
             };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedbackAck"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cities_movements_api_council_cities_movements_get: {
+        parameters: {
+            query?: {
+                field?: string | null;
+                oldenburg?: string;
+                min_cities?: number;
+                q?: string;
+                sort?: string;
+                page?: number;
+                per_page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MovementsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cities_movement_detail_api_council_cities_movements_detail_get: {
+        parameters: {
+            query: {
+                id: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MovementDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cities_movement_feedback_api_council_cities_movements_feedback_post: {
+        parameters: {
+            query: {
+                id: number;
+                verdict: string;
+                note?: string | null;
+            };
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -21508,4 +21914,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 08dcbe3314cce3e17d3f9e268d8f51bb6d44d62e8ff16d1924b6c52bcda4bdea
+// vertrag-sha256: b0fc47a366049cd5f4276fe321a4894841555979a98de4ca12c5220d0dc26c24

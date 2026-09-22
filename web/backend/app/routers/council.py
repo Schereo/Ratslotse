@@ -54,7 +54,9 @@ from ..antworten import (AnalysisData, AssistantStarters, BudgetAmendmentLists, 
                          ElsewhereItem, ElsewhereResponse, EntitiesMap, EntityDetail,
                          FeedbackAck,
                          Idea, IdeaEvidence, IdeaFields, IdeaFieldSummary, IdeaProtocol,
-                         IdeaSibling,
+                         IdeaSibling, Movement, MovementCity, MovementDetail,
+                         MovementDocument, MovementSimilar, MovementsResponse,
+                         OldenburgVerdict, TimeAxis, TimelinePoint,
                          IdeaSearchResponse, IdeasResponse,
                          EventStreamResponse, Finances, GoalDetail,
                          Goals, JpegResponse, NumberOfTheWeek, Ok,
@@ -106,6 +108,13 @@ ELSEWHERE_MIN_SCORE = 0.70
 #: Ansicht.
 IDEEN_STATUS_VORGABE = ("missing", "partial")
 IDEEN_PRO_SEITE = 30
+
+#: Ab wie vielen ANDEREN Städten eine Idee eine Bewegung ist (Tims
+#: Entscheidung vom 22.09.2026, Plan §7 Frage 1). Die Tafel oben zeigt die
+#: großen ab fünf; das entscheidet die Oberfläche, nicht der Endpunkt.
+BEWEGUNG_AB_STAEDTEN = 2
+BEWEGUNGEN_PRO_SEITE = 30
+BEWEGUNGEN_HOECHSTENS = 50
 
 #: Das Modell, unter dem die Nachbarschaften liegen. `council.cities.index`
 #: lädt numpy erst in den Funktionen, der Import hier ist also leicht — und
@@ -1835,6 +1844,33 @@ def _eigene_rueckmeldungen(cities: CitiesStore, user: dict | None) -> dict[str, 
     return cities.feedback_by_paper(ann, ver, int(user["id"]))
 
 
+@router.post("/cities/movements/feedback")
+def cities_movement_feedback(
+    id: int,
+    verdict: str,
+    note: str | None = None,
+    user: dict = Depends(get_current_user),
+    cities: CitiesStore = Depends(get_cities_store),
+) -> FeedbackAck:
+    """„Stimmt" oder „stimmt nicht" zum Urteil über Oldenburg JE IDEE.
+
+    Derselbe Rückkanal wie an der Einzelkarte, nur am Urteil ``idea_fit``
+    (``object_kind='cluster'``) — die Tabelle ``feedback`` kennt die Art
+    schon. Die Antwort trägt die Gruppen-Kennung als ``paper_id``, damit die
+    Form dieselbe bleibt.
+    """
+    from council.cities.clusters import CLUSTER_VERSION
+
+    if verdict not in ("right", "wrong"):
+        raise HTTPException(400, "verdict muss 'right' oder 'wrong' sein")
+    if not cities.idea_group(EMBED_MODEL_FUER_SUCHE, CLUSTER_VERSION, id):
+        raise HTTPException(404, "unbekannte Bewegung")
+    ann, ver = CitiesStore.IDEEN_IDEA_FIT
+    cities.put_feedback("cluster", f"{CLUSTER_VERSION}:{id}", ann, ver, int(user["id"]),
+                        verdict, (note or "").strip()[:500] or None)
+    return {"paper_id": f"{CLUSTER_VERSION}:{id}", "verdict": verdict}
+
+
 @router.post("/cities/ideas/{paper_id:path}/feedback")
 def cities_idea_feedback(
     paper_id: str,
@@ -1876,12 +1912,20 @@ def cities_idea_fields(cities: CitiesStore = Depends(get_cities_store)) -> IdeaF
     Ratsdokumente anderer Städte darin und ein Urteil darüber, ob Oldenburg
     dasselbe schon hat.
     """
+    from council.cities.clusters import CLUSTER_VERSION
+
+    # ALLE Bewegungen des Feldes, nicht nur die offenen: Solange `idea_fit`
+    # noch nicht gelaufen ist, stand sonst überall 0, und die Feld-Chips
+    # verschwanden ganz (gemessen am ersten Bild, 22.09.2026).
+    bewegungen = cities.idea_group_counts(EMBED_MODEL_FUER_SUCHE, CLUSTER_VERSION,
+                                          BEWEGUNG_AB_STAEDTEN)
     felder: list[IdeaFieldSummary] = [
         {"field": r["field"], "total": int(r["total"] or 0),
          "missing": int(r["missing"] or 0), "partial": int(r["partial"] or 0),
          "present": int(r["present"] or 0),
          "not_applicable": int(r["not_applicable"] or 0),
-         "multi_city": int(r["multi_city"] or 0)}
+         "multi_city": int(r["multi_city"] or 0),
+         "movements": bewegungen.get(r["field"], 0)}
         for r in cities.idea_fields()]
     from council.cities.registry import BODIES
     namen = sorted({(BODIES[b].name if b in BODIES else b)
@@ -1958,6 +2002,147 @@ def cities_ideas(
              for r in zeilen]
     return {"field": field, "total": gesamt, "page": page, "per_page": per_page,
             "counts": {k: int(v) for k, v in zaehler.items()}, "items": items}
+
+
+@router.get("/cities/movements")
+def cities_movements(
+    field: str | None = None,
+    oldenburg: str = ",".join(IDEEN_STATUS_VORGABE),
+    min_cities: int = BEWEGUNG_AB_STAEDTEN,
+    q: str = "",
+    sort: str = "staedte",
+    page: int = 1,
+    per_page: int = BEWEGUNGEN_PRO_SEITE,
+    store: CouncilStore = Depends(get_council_store),
+    cities: CitiesStore = Depends(get_cities_store),
+) -> MovementsResponse:
+    """Ideen, die mehrere andere Räte hatten — je Idee EINE Zeile.
+
+    **Öffentlich**, wie die übrigen Städte-Endpunkte: Es stehen nur
+    Ratsdokumente anderer Städte darin und ein Urteil darüber, ob Oldenburg
+    dasselbe hat. Der Schalter sitzt an der Seite, nicht hier.
+
+    ``oldenburg`` filtert nach dem Urteil je Idee (``idea_fit``); leer heißt
+    alle, auch die noch unbeurteilten. ``sort`` ist ``staedte`` (die meisten
+    Städte zuerst) oder ``zuletzt`` (die jüngste Vorlage zuerst).
+    """
+    from council.cities.clusters import CLUSTER_VERSION
+
+    if sort not in ("staedte", "zuletzt"):
+        raise HTTPException(400, "sort muss 'staedte' oder 'zuletzt' sein")
+    per_page = max(1, min(per_page, BEWEGUNGEN_HOECHSTENS))
+    page = max(1, page)
+    min_cities = max(1, min_cities)
+    status = tuple(x for x in oldenburg.split(",") if x)
+    zeilen, gesamt = cities.idea_groups(
+        EMBED_MODEL_FUER_SUCHE, CLUSTER_VERSION, field=field, min_cities=min_cities,
+        oldenburg=status, q=q, sort=sort, limit=per_page, offset=(page - 1) * per_page)
+    zaehler = cities.idea_group_verdict_counts(
+        EMBED_MODEL_FUER_SUCHE, CLUSTER_VERSION, field=field, min_cities=min_cities, q=q)
+    return {"items": [_bewegung(store, z) for z in zeilen], "total": gesamt,
+            "page": page, "per_page": per_page,
+            "axis": _achse(cities, CLUSTER_VERSION, min_cities),
+            "counts": zaehler}
+
+
+@router.get("/cities/movements/detail")
+def cities_movement_detail(
+    id: int,
+    store: CouncilStore = Depends(get_council_store),
+    cities: CitiesStore = Depends(get_cities_store),
+) -> MovementDetail:
+    """Eine Bewegung mit allen Vorlagen — die Ideen-Seite.
+
+    Die Kennung als Query-Parameter, nicht als Pfadsegment: Der statische
+    Export des Frontends kennt keine dynamischen Pfade
+    (``web/frontend/CLAUDE.md``). Auch eine unbelegte Gruppe (``stable=0``)
+    ist abrufbar — sie steht nur in keiner Liste.
+    """
+    from council.cities.clusters import CLUSTER_VERSION
+    from council.cities.model import display_originator
+
+    zeile = cities.idea_group(EMBED_MODEL_FUER_SUCHE, CLUSTER_VERSION, id)
+    if not zeile:
+        raise HTTPException(404, "unbekannte Bewegung")
+    abschnitte = cities.section_counts()
+    namen = _stadtnamen()
+    dokumente: list[MovementDocument] = []
+    oldenburger: list[str] = []
+    for m in cities.idea_group_members(EMBED_MODEL_FUER_SUCHE, CLUSTER_VERSION, id):
+        if m["body_id"] == "oldenburg":
+            oldenburger.append(m["id"])
+            continue
+        klasse = json.loads(m.get("classify_json") or "{}")
+        dokumente.append({
+            "paper_id": m["id"], "body_id": m["body_id"],
+            "city": namen.get(m["body_id"]) or m.get("body_name") or m["body_id"],
+            "name": m.get("name") or "", "date": (m.get("date") or "")[:10] or None,
+            "kind": m.get("kind") or "other", "web": m.get("web"),
+            "outcome": (cities.outcome_for_paper(m["id"]) or {}).get("outcome") or "none",
+            "originator": display_originator(klasse.get("originator"), m.get("kind")),
+            "instrument": klasse.get("instrument"), "summary": klasse.get("summary"),
+            "protocol": _protokoll(cities, m["id"]),
+            "protocol_source": _protokoll_quelle(m["body_id"], abschnitte),
+        })
+    aehnliche: list[MovementSimilar] = [
+        {"cluster_id": int(a["cluster_id"]), "label": a["label"],
+         "cities": int(a["cities"]), "members": int(a["members"])}
+        for a in cities.similar_idea_groups(EMBED_MODEL_FUER_SUCHE, CLUSTER_VERSION,
+                                            zeile["field"], id, BEWEGUNG_AB_STAEDTEN)]
+    return {"movement": _bewegung(store, zeile, namen),
+            "axis": _achse(cities, CLUSTER_VERSION, BEWEGUNG_AB_STAEDTEN),
+            "documents": dokumente,
+            "oldenburg_documents": _belege_aufloesen(store, oldenburger, hoechstens=6),
+            "similar": aehnliche}
+
+
+def _stadtnamen() -> dict[str, str]:
+    from council.cities.registry import BODIES
+    return {k: v.name for k, v in BODIES.items()}
+
+
+def _achse(cities: CitiesStore, version: str, min_cities: int) -> TimeAxis:
+    """Vom Jahresanfang der frühesten bis zum Jahresende der spätesten Vorlage."""
+    frueh, spaet = cities.idea_groups_axis(EMBED_MODEL_FUER_SUCHE, version, min_cities)
+    return {"start": f"{frueh[:4]}-01-01" if frueh else None,
+            "end": f"{int(spaet[:4]) + 1}-01-01" if spaet else None}
+
+
+def _bewegung(store: CouncilStore, z: dict,
+              namen: dict[str, str] | None = None) -> Movement:
+    """Eine Zeile aus ``idea_groups`` als Bewegung für die Oberfläche."""
+    namen = namen if namen is not None else _stadtnamen()
+    staedte = [
+        MovementCity(body_id=str(c["body_id"]),
+                     city=namen.get(c["body_id"], str(c["body_id"])),
+                     first_date=c.get("first_date"), members=int(c.get("members") or 0),
+                     outcomes={str(k): int(v) for k, v in (c.get("outcomes") or {}).items()})
+        for c in json.loads(z.get("per_city") or "[]")]
+    punkte = [
+        TimelinePoint(paper_id=str(p["paper_id"]), body_id=str(p["body_id"]),
+                      city=namen.get(p["body_id"], str(p["body_id"])), date=p.get("date"),
+                      outcome=p.get("outcome") or "none", kind=p.get("kind") or "other")
+        for p in json.loads(z.get("timeline") or "[]")]
+    return {
+        "cluster_id": int(z["cluster_id"]), "label": z.get("label") or "",
+        "field": z.get("field"), "cities": staedte, "members": int(z["members"]),
+        "oldenburg_members": int(z.get("oldenburg_members") or 0),
+        "first_date": z.get("first_date"), "last_date": z.get("last_date"),
+        "outcomes": {k: int(v) for k, v in json.loads(z.get("outcomes") or "{}").items()},
+        "timeline": punkte,
+        "oldenburg": _urteil_je_idee(store, z.get("verdict_json")),
+    }
+
+
+def _urteil_je_idee(store: CouncilStore, roh: str | None) -> OldenburgVerdict | None:
+    """Das ``idea_fit``-Urteil mit aufgelösten Belegen — oder ``None``."""
+    if not roh:
+        return None
+    u = json.loads(roh)
+    return {"status": u.get("status") or "", "situation": u.get("situation") or "",
+            "confidence": u.get("confidence") or "",
+            "evidence": _belege_aufloesen(store, u.get("evidence") or []),
+            "related": _belege_aufloesen(store, u.get("related") or [])}
 
 
 def _protokoll_quelle(body_id: str, abschnitte: dict[str, int] | None) -> str:
@@ -2084,7 +2269,8 @@ def _geschwister(roh: str | None) -> list[IdeaSibling]:
              "date": z.get("date")} for z in zeilen]
 
 
-def _belege_aufloesen(store: CouncilStore, kennungen: list) -> list[IdeaEvidence]:
+def _belege_aufloesen(store: CouncilStore, kennungen: list,
+                      hoechstens: int = 3) -> list[IdeaEvidence]:
     """``oldenburg:paper:28119`` → der Beschluss dahinter, wenn es einen gibt.
 
     Anträge aus Anlagen (``…:att:…``) und der Themenfeld-Rückblick tragen
@@ -2094,7 +2280,21 @@ def _belege_aufloesen(store: CouncilStore, kennungen: list) -> list[IdeaEvidence
     from council.cities.evidence import kvonr_aus
 
     aus: list[IdeaEvidence] = []
-    for kennung in kennungen[:3]:
+    for kennung in kennungen[:hoechstens]:
+        if str(kennung).startswith("oldenburg:decision:"):
+            # Ein Beschluss als Beleg — `idea_fit` und `fit` dürfen ihn nennen.
+            # Bis 22.09.2026 fiel er hier still weg: Die Karte zeigte dann
+            # „vorhanden" ohne die Zeile, die es belegt.
+            try:
+                beschluss = store.get_decision(int(str(kennung).rsplit(":", 1)[1]))
+            except ValueError:
+                beschluss = None
+            if beschluss:
+                aus.append({"decision_id": beschluss["id"], "kvonr": beschluss.get("kvonr"),
+                            "title": beschluss.get("title") or "",
+                            "date": beschluss.get("session_date"),
+                            "outcome": beschluss.get("outcome")})
+            continue
         kvonr = kvonr_aus(str(kennung))
         if kvonr is None:
             continue

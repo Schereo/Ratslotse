@@ -47,6 +47,7 @@ def run(main: CitiesStore, body_id: str | None = None, limit: int | None = None,
     geschrieben ist.
     """
     from council.cities.annotate import parse_json
+    from council.cities.annotators import LLM_TIMEOUT_S
     from council.cities.annotators import get as get_annotator
     from kern import llm, prompts
     from council.cities.registry import BODIES
@@ -79,7 +80,7 @@ def run(main: CitiesStore, body_id: str | None = None, limit: int | None = None,
                               abschnitt=abschnitt)}],
                 max_tokens=ann.max_tokens, temperature=ann.temperature,
                 extra_body={"provider": {}} if ann.routing_free else {},
-                _feature=ann.feature)
+                timeout=LLM_TIMEOUT_S, _feature=ann.feature)
             nutzlast = ann.payload.model_validate(
                 parse_json(antwort.choices[0].message.content or ""))
         except Exception as e:  # noqa: BLE001 — ein Abschnitt, nicht der Lauf

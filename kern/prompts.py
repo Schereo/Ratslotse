@@ -159,6 +159,87 @@ nicht sich selbst misst.
      beim Rat, ändert am Status nichts — es steht als Adressat an anderer
      Stelle."""
 
+#: Die Abgrenzung von „nicht anwendbar" — WÖRTLICH aus dem `fit`-Prompt
+#: geschnitten, nicht abgeschrieben (Plan PR 48). Zwei Fassungen derselben
+#: Regel liefen auseinander, und die Trennlinie aus #1404 („Könnte der Rat
+#: diese Voraussetzung beschließen?") ist die teuerste Lehre des Features:
+#: Ohne sie versteckte die Stufe genau die Ideen, für die es gebaut ist.
+REGEL_NICHT_ANWENDBAR = PROMPT_CITIES_FIT[
+    PROMPT_CITIES_FIT.index('- "not_applicable":'):
+    PROMPT_CITIES_FIT.index("Sei streng:")].rstrip()
+
+PROMPT_CITIES_IDEA_FIT = """Du prüfst, ob die Stadt Oldenburg (Oldb) eine Idee schon umgesetzt
+hat, die mehrere andere Räte beantragt oder beschlossen haben.
+
+Du bekommst:
+- DIE IDEE: eine Überschrift und die VORLAGEN aus den anderen Städten (Stadt,
+  Datum, Art, Instrument, Zusammenfassung).
+- HINWEISE: wie ein früherer Durchgang JEDE Vorlage einzeln beurteilt hat. Er
+  sah jeweils nur eine Vorlage und ihre eigenen Belege; die Hinweise
+  widersprechen sich deshalb oft. Sie sind Hinweise, kein Maßstab — du siehst
+  alles auf einmal und entscheidest selbst.
+- BELEGE AUS OLDENBURG, jeder mit KENNUNG und in Klammern seiner ART:
+  - "Oldenburgs Vorlage zur GLEICHEN Idee": Die Gruppierung hat sie derselben
+    Idee zugeordnet. Meist stimmt das; prüfe es trotzdem am Inhalt.
+  - "Beschluss": ein Beschluss des Oldenburger Rates, mit Ergebnis. Der
+    stärkste Beleg — hier steht, was entschieden wurde.
+  - "Vorlage": eine Oldenburger Ratsvorlage. Sie belegt eine Befassung, keinen
+    Beschluss.
+  - "Fundstelle in einer Vorlage": ein Abschnitt aus einem größeren Dokument;
+    der Rest kann von etwas anderem handeln.
+
+{steckbrief}
+
+Antworte NUR mit diesem JSON:
+{{"status": "present" | "partial" | "missing" | "not_applicable",
+  "situation": "<ein Satz, max. 300 Zeichen>",
+  "evidence": ["<Kennung>", …],
+  "related": ["<Kennung>", …],
+  "confidence": "high" | "medium" | "low"}}
+
+STATUS — hat Oldenburg DIESE Idee schon? Miss am KERN, den die Vorlagen
+gemeinsam haben — nicht an der weitestgehenden einzelnen.
+- "present": Oldenburg hat die Sache beschlossen oder eingeführt.
+- "partial": Ein Beleg deckt einen TEIL ab oder eine frühere Stufe — anderer
+  Zuschnitt, kleinerer Umfang, nur ein Prüfauftrag, nur ein Bericht, oder
+  Oldenburg steckt mitten in der Einführung.
+- "missing": Kein Beleg deckt auch nur einen Teil ab. Dass ein Beleg dasselbe
+  THEMENFELD betrifft, genügt dafür nicht.
+{regel_nicht_anwendbar}
+
+Sei streng: Ein Beleg, der nur dasselbe THEMENFELD berührt, ist NICHT
+"present". Wärmeplanung und Wärmenetz-Ausbau sind zwei Sachen; ein
+Radverkehrskonzept belegt keine Fahrradstraße. Ein ÄLTERER Beleg zählt: Was
+Oldenburg 2019 eingeführt hat, hat es.
+
+EVIDENCE — höchstens drei Kennungen, die den Status STÜTZEN. Nennst du einen
+Beleg unter "evidence", muss er den Status stützen. Was nur dasselbe
+Themenfeld berührt, gehört unter "related". Bei "present" und "partial" ist
+mindestens eine Kennung Pflicht; bei "missing" und "not_applicable" bleibt die
+Liste leer. Eine Kennung ist die Zeichenkette am Anfang einer Beleg-Zeile,
+etwa "oldenburg:paper:28119" — nicht die Position und nicht der Titel. Nenne
+nur Kennungen, die wirklich dastehen.
+
+RELATED — höchstens drei Kennungen, die mit der Idee verwandt sind, den Status
+aber nicht belegen: ein Nachbarinstrument, eine frühere Debatte, dasselbe
+Feld. Leer, wenn nichts wirklich passt. Keine Kennung in beiden Listen.
+
+SITUATION — EIN Satz über die Lage in Oldenburg, formuliert als AUSKUNFT, wie
+ihn eine Ratsreferentin einem Ratsmitglied sagen würde:
+- gut: „Oldenburg hat 2023 Hitze-Informationen veröffentlicht; einen
+  Hitzeaktionsplan mit Maßnahmen hat der Rat nicht beschlossen."
+- gut: „In den Oldenburger Ratsunterlagen findet sich dazu weder ein Antrag
+  noch ein Beschluss."
+- schlecht: „Kein Beleg zeigt einen Hitzeaktionsplan." — das ist ein
+  Prüfvermerk, keine Auskunft.
+Keine Vermutung über Gründe, keine Empfehlung, keine Personennamen. Nenne ein
+Jahr nur, wenn es in einem Beleg steht.
+
+CONFIDENCE — "high" nur, wenn die Belege die Frage wirklich beantworten.
+Wenige oder unspezifische Belege heißen "low"; das ist ein brauchbares
+Ergebnis, keine Schwäche."""
+
+
 
 PROMPT_CITIES_CLUSTER_CHECK = """Du prüfst, ob mehrere Ratsvorlagen wirklich DIESELBE Idee
 meinen — oder ob eine darunter etwas anderes ist.
@@ -703,6 +784,25 @@ DEFAULTS: dict[str, dict[str, str]] = {
                        "(die nummerierten Belege mit ihren Kennungen).",
         "template": ("FREMDE VORLAGE:\n{paper}\n\n"
                      "{cluster}\n\n"
+                     "BELEGE AUS OLDENBURG:\n{evidence}"),
+    },
+    "cities_idea_fit_system": {
+        "title": "Ideen-Gruppe: Hat Oldenburg diese Idee schon?",
+        "description":
+            "Der Annotator `idea_fit` (Plan PR 48): EIN Urteil je Idee statt je "
+            "Vorlage, mit allen Mitgliedern und der Vereinigung ihrer Belege im "
+            "Blick. Platzhalter: {steckbrief}, {regel_nicht_anwendbar} (wörtlich "
+            "aus dem `fit`-Prompt geschnitten). Trennt Beleg (`evidence`) und "
+            "Verwandtes (`related`).",
+        "template": PROMPT_CITIES_IDEA_FIT,
+    },
+    "cities_idea_fit_user": {
+        "title": "Die Idee, ihre Vorlagen und die Belege aus Oldenburg",
+        "description": "Platzhalter: {idee} (Überschrift), {vorlagen}, "
+                       "{hinweise} (Einzelurteile je Vorlage), {evidence}.",
+        "template": ("DIE IDEE: {idee}\n\n"
+                     "VORLAGEN AUS ANDEREN STÄDTEN:\n{vorlagen}\n\n"
+                     "HINWEISE — Einzelurteile je Vorlage:\n{hinweise}\n\n"
                      "BELEGE AUS OLDENBURG:\n{evidence}"),
     },
     "deep_decomposition": {
