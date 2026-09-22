@@ -440,6 +440,18 @@ class OldenburgFit(BaseModel):
         return self.status in ("present", "partial")
 
 
+#: Sekunden, nach denen ein Aufruf als hängend gilt. **Gemessen, nicht
+#: geschätzt:** Am 22.09.2026 standen die Probe dieses Laufs und der
+#: `fit`-Restlauf auf dev zugleich über eine halbe Stunde still — CPU 99 %
+#: frei, vier offene Verbindungen zu OpenRouter, keine Antwort, während ein
+#: frischer Aufruf in 1,6 s zurückkam. Das SDK wartet ohne eigene Angabe
+#: 600 s je Versuch. Ein gewöhnliches Urteil braucht 20–40 s; nach 120 s ist
+#: es kein langsames mehr, sondern ein hängendes, und die Wiederholung in
+#: `llm.chat_complete` (Timeout zählt als vorübergehend) übernimmt. Gilt für
+#: `idea_fit` und `reason`; `fit` läuft (noch) ohne.
+LLM_TIMEOUT_S = float(os.environ.get("CITIES_LLM_TIMEOUT", "120"))
+
+
 class IdeaVerdict(BaseModel):
     """Hat Oldenburg diese IDEE schon? — einmal je Gruppe, nicht je Vorlage.
 

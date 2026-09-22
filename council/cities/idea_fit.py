@@ -41,7 +41,7 @@ from pydantic import ValidationError
 from council.cities import evidence as beleg_modul
 from council.cities import fit
 from council.cities.annotate import parse_json
-from council.cities.annotators import Annotator, IdeaVerdict
+from council.cities.annotators import LLM_TIMEOUT_S, Annotator, IdeaVerdict
 from council.cities.annotators import get as get_annotator
 from council.cities.clusters import CLUSTER_VERSION
 from council.cities.evidence import (OLDENBURG_STECKBRIEF, Evidence, EvidenceKind,
@@ -69,15 +69,8 @@ SUCHE_FUER = 3
 
 WORKERS = int(os.environ.get("CITIES_IDEA_FIT_WORKERS", "4"))
 
-#: Sekunden, nach denen ein Aufruf als hängend gilt. **Gemessen, nicht
-#: geschätzt:** Am 22.09.2026 standen die Probe dieses Laufs und der
-#: `fit`-Restlauf auf dev zugleich über eine halbe Stunde still — CPU 99 %
-#: frei, vier offene Verbindungen zu OpenRouter, keine Antwort, während ein
-#: frischer Aufruf in 1,6 s zurückkam. Das SDK wartet ohne eigene Angabe
-#: 600 s je Versuch. Ein gewöhnliches Urteil braucht 20–40 s; nach 120 s ist
-#: es kein langsames mehr, sondern ein hängendes, und die Wiederholung in
-#: `llm.chat_complete` (Timeout zählt als vorübergehend) übernimmt.
-TIMEOUT_S = float(os.environ.get("CITIES_LLM_TIMEOUT", "120"))
+#: Hängende Aufrufe abbrechen statt zehn Minuten warten (s. `annotators.LLM_TIMEOUT_S`).
+TIMEOUT_S = LLM_TIMEOUT_S
 
 #: Die Einzelurteile im Klartext, für die Hinweis-Zeilen.
 _STATUS_TEXT = {"present": "vorhanden", "partial": "teilweise",
