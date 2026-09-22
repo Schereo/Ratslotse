@@ -415,10 +415,24 @@ iOS-Schrift.
   Composer (s. u.).
   **Was unter einer Antwort steht — und was nicht.** Seit 22.09.2026 ist das
   eine Entscheidung über die SUMME, nicht je Element: **ein** Chip mit dem
-  nächsten Schritt (Wegweiser › Baustein › Fachwort, `anschlussfragen`),
-  darunter die zwei Daumen und — nur unter einer Antwort, die nicht schon aus
-  dem Archiv kam — der stille Textlink „Im Ratsarchiv nachsehen". Alles
-  gehört der **letzten** Runde auf dieser Seite; ältere tragen nichts.
+  nächsten Schritt (Wegweiser › Baustein, `anschlussfragen`), darunter die
+  zwei Daumen und — nur unter einer Antwort, die nicht schon aus dem Archiv
+  kam — der stille Textlink „Im Ratsarchiv nachsehen". Alles gehört der
+  **letzten** Runde auf dieser Seite; ältere tragen nichts.
+  **Einen Fachwort-Chip gibt es nicht.** „Was heißt Aufwendung?" stand unter
+  einer Antwort, in der „Aufwendungen" zwei Zeilen höher schon unterstrichen
+  war und sich dort aufklappen ließ — zwei Wege zu derselben geprüften
+  Erklärung. Der Weg AM WORT gewinnt: Er beantwortet die Frage da, wo sie
+  entsteht.
+  **Unter einer Antwort aus dem Archiv steht gar kein Chip** — sie kommt aus
+  9.000 Beschlüssen, ein Kasten DIESER Seite daneben wäre ein Themenwechsel —
+  und **ihre Belege sind nur die zitierten** (mindestens einer); der Rest
+  bleibt hinter „Alle N Quellen". Drei Zeilen, von denen zwei zur Frage fremd
+  wirken, sind dieselbe Sorte Rauschen wie drei Chips.
+  **Ein Chip entsteht nur aus einem Namen, der als Handlung trägt**
+  (`chipTauglich`): kein Apostroph, kein Doppelpunkt, höchstens vier Wörter.
+  „Lotti erklärt's einfach erklären" ist der Fall, gegen den die Regel
+  gebaut ist — lieber kein Chip als ein alberner.
   Chip-Namen sind Handlungen („Anzeigetafel erklären", „Weiter zu: Woher
   kommt das Geld?"), keine Etiketten. Die **Grund-Chips** („Was sehe ich
   hier?", „Etwas auf der Seite zeigen") stehen nur im leeren Fenster; danach

@@ -17,7 +17,6 @@ import {
   seitenTitel, seitenUeberschrift, trenneWeiter, ueberschriftenPfad, zaesur,
   type Anker, type Bildschirm, type NaechsteSeite,
 } from "@/lib/assistentin";
-import { begriffeIn } from "@/lib/glossar-treffer";
 import { useAuth } from "@/lib/auth";
 import { GespraecheEinwilligung } from "@/components/gespraeche-einwilligung";
 import { decisionHref, fragenHref } from "@/lib/routes";
@@ -97,8 +96,6 @@ export type LottiTurn = {
    *  Schlüssel allein reichte dafür nicht (zwei Bausteine dürfen sich einen
    *  teilen), deshalb steht hier der ganze Anker. */
   baustein?: Anker;
-  /** Das Fachwort, nach dem diese Runde gefragt hat („Was heißt …?"). */
-  begriff?: string;
   /** Woran der Strom gerade arbeitet — aus dem SSE-Rahmen `step`. Steht nur
    *  neben der Tipp-Anzeige, also solange noch kein Wort da ist; danach ist
    *  der Text selbst die Auskunft. */
@@ -410,11 +407,16 @@ export function LottiPanel({
           patch(() => ({ quellen: (msg.sources as LottiQuelle[]) ?? [] }));
         } else if (msg.type === "done") {
           patch(() => ({ cited: (msg.cited as number[]) ?? [] }));
-          // **Nur in ein Gespräch, das es schon gab.** Ohne eines legt `/ask`
-          // ein neues der Art `ask` an — die nächste Erklärung liefe dann in
-          // ein Ratsgespräch, und die Liste zeigte ein Mischwesen. Der
-          // Ratsturn steht dann für sich, und das ist er ja auch.
-          if (msg.conversation_id != null && gespraechId != null) {
+          // **Auch das erste Gespräch entsteht hier.** Bis 22.09.2026 stand
+          // hier ein `&& gespraechId != null`: Ohne laufendes Gespräch legte
+          // `/ask` eines der Art `ask` an, und die Liste hätte ein
+          // Mischwesen gezeigt. Das Backend kennt Lottis Fenster inzwischen
+          // am mitgeschickten `screen` und legt dann ein `lotti`-Gespräch an
+          // — die Sperre schützte also vor etwas, das es nicht mehr gibt,
+          // und kostete den Faden: Ist die erste Frage im Fenster eine
+          // Archivfrage (seit PR 23 der Normalfall), lief die nächste
+          // Erklärung in ein zweites Gespräch zur selben Sache.
+          if (msg.conversation_id != null) {
             setGespraechId(msg.conversation_id as number);
           }
         } else if (msg.type === "error") {
@@ -434,11 +436,10 @@ export function LottiPanel({
 
   const fragen = useCallback(async (
     text: string, mitMarkierung: boolean, baustein: ElementFrage | null = null,
-    /** Was ein Anschluss-Chip zusätzlich mitbringt: `auswahl` geht als
-     *  `selection` mit (der Weg zur kostenlosen Glossar-Antwort, s.
-     *  `begriffFragen`), `anker` und `begriff` merken sich nur, was schon
-     *  gefragt wurde — damit derselbe Chip nicht zweimal erscheint. */
-    chip: { auswahl?: string; anker?: Anker; begriff?: string } = {},
+    /** Welchen Baustein dieser Aufruf ERKLÄRT — aus dem Erklär-Modus oder
+     *  aus einem „… erklären"-Chip. Gemerkt wird er nur, damit derselbe Chip
+     *  nicht zweimal erscheint. */
+    chip: { anker?: Anker } = {},
   ) => {
     const sauber = text.trim();
     if (!sauber && !mitMarkierung && !baustein) return;
@@ -482,17 +483,15 @@ export function LottiPanel({
     setFrage("");
     setLaden(true);
 
-    const kontext = chip.begriff
-      ? "im Glossar nachgeschlagen"
-      : baustein
-        ? (baustein.title || "Baustein auf der Seite")
-        : (mitMarkierung && markierung ? `Markiert: „${kuerze(markierung, 40)}“` : "");
+    const kontext = baustein
+      ? (baustein.title || "Baustein auf der Seite")
+      : (mitMarkierung && markierung ? `Markiert: „${kuerze(markierung, 40)}“` : "");
     if (baustein) letzterBaustein.current = baustein;
     const key = naechsterKey.current++;
     setTurns((ts) => [...ts, {
       key, question: sauber, answer: "", next: null, mode: null, kontext,
       route, seite: seitenName(document, anzeigename),
-      baustein: chip.anker, begriff: chip.begriff,
+      baustein: chip.anker,
     }]);
 
     const bildschirm: Bildschirm = {
@@ -503,13 +502,7 @@ export function LottiPanel({
       // wird beim Antippen berechnet — nur dort liegt der Knoten noch vor.
       heading: baustein?.pfad || ueberschriftenPfad(null, document, anzeigename),
       element: baustein,
-      // **Der Begriff reist als `selection`, und das ist kein Trick.** Genau
-      // dort sucht `council/assistant.py::deterministic_answer` nach einem
-      // Fachwort: Trifft die Markierung GENAU einen Glossar-Eintrag, kommt
-      // die geprüfte Erklärung zurück — ohne Modell, ohne Kosten, in
-      // Millisekunden. Ein „Was heißt Umschuldung?" ohne `selection` wäre
-      // dieselbe Antwort für 0,07 Cent und eine Sekunde Wartezeit.
-      selection: chip.auswahl ?? (mitMarkierung ? markierung : ""),
+      selection: mitMarkierung ? markierung : "",
       refs,
     };
 
@@ -737,16 +730,9 @@ export function LottiPanel({
       { anker: a });
   };
 
-  /** „Was heißt <Begriff>?" — als getippte Frage MIT dem Begriff als
-   *  Markierung. Beides zusammen trifft im Backend den Glossar-Weg ohne
-   *  Modell (s. den Kommentar an `selection` in `fragen`). */
-  const begriffFragen = (b: string) => {
-    void fragen(`Was heißt ${b}?`, false, null, { auswahl: b, begriff: b });
-  };
-
   if (!offen) return null;
 
-  /** Was in dieser Sitzung schon erklärt wurde — Anker und Fachwörter.
+  /** Welche Bausteine in dieser Sitzung schon erklärt wurden.
    *
    *  Der Verlauf IST dieses Gedächtnis; ein eigener Zustand daneben liefe
    *  beim Seitenwechsel und beim Laden eines gespeicherten Gesprächs
@@ -754,7 +740,6 @@ export function LottiPanel({
   const erklaert = new Set<string>();
   for (const t of turns) {
     if (t.baustein) erklaert.add(ankerKennung(t.baustein));
-    if (t.begriff) erklaert.add(t.begriff.toLowerCase());
   }
   // Die Landkarte der AKTUELLEN Seite. Sie steht nur der letzten Runde zu:
   // Ein „Erklär mir: …" unter einer Antwort von vor drei Seiten zeigte auf
@@ -865,14 +850,8 @@ export function LottiPanel({
           // eigenen „Den Rat fragen"-Knopf, und zusammen war das die Wand,
           // die Tim gesehen hat.
           const jetzt = i === turns.length - 1 && t.route === route;
-          const vorschlaege = jetzt ? anschlussfragen(
-            t, ankerJetzt, erklaert,
-            // Die Fachwörter kommen aus der Antwort SELBST, nicht aus dem
-            // `glossary`-Feld des Schluss-Rahmens: So meinen Chip und
-            // Unterstreichung in `AntwortText` garantiert dasselbe Wort
-            // (beide über `lib/glossar-treffer.ts`).
-            t.fehler ? [] : begriffeIn(t.answer, 3), route,
-          ) : [];
+          const vorschlaege = jetzt
+            ? anschlussfragen(t, ankerJetzt, erklaert, route) : [];
           // Der Nachweg ins Archiv — nur unter einer Runde, die NICHT schon
           // von dort kam (das wäre ein Kreis), und nur unter der letzten.
           const archivLink = jetzt && t.answer && !t.fehler
@@ -969,14 +948,7 @@ export function LottiPanel({
                             {erklaerAktion(v.anker.titel)}
                           </Chip>
                         )
-                        : v.art === "begriff"
-                          ? (
-                            <Chip key={`b-${v.begriff}`}
-                              onClick={() => begriffFragen(v.begriff)} disabled={laden}>
-                              Was heißt {v.begriff}?
-                            </Chip>
-                          )
-                          : null
+                        : null
                     ))}
                   </div>
                 )}
@@ -1125,7 +1097,18 @@ function Quellen({ turn, onSchliessen }: { turn: LottiTurn; onSchliessen: () => 
   // Zitierte zuerst: Sie tragen die Antwort, die übrigen sind Fundsachen.
   const quellen = [...(turn.quellen ?? [])].sort(
     (a, b) => Number(zitiert.has(b.id)) - Number(zitiert.has(a.id)));
-  const sichtbar = alle ? quellen : quellen.slice(0, 3);
+  // **Standard: nur die ZITIERTEN.** Bis 22.09.2026 standen die ersten drei
+  // Fundstücke da — gemessen auf `/council/decision?id=2982`: „1 zitiert · 41
+  // gefunden" und darunter drei Zeilen, von denen zwei (Toleranz-Fonds,
+  // Bebauungsplan Nr. 56) nichts mit der Frage zu tun hatten. Eine Quelle,
+  // die falsch wirkt, beschädigt die beiden richtigen mit; es ist dieselbe
+  // Sorte Rauschen, gegen die die Chip-Regel oben gebaut ist. Der Rest bleibt
+  // erreichbar — hinter „Alle N Quellen", wie bisher.
+  //
+  // **Mindestens eine.** Zitiert das Modell nichts (es kommt vor), wäre eine
+  // Antwort ganz ohne Beleg schlechter als die beste Fundsache.
+  const belege = quellen.filter((q) => zitiert.has(q.id));
+  const sichtbar = alle ? quellen : (belege.length ? belege : quellen.slice(0, 1));
   return (
     <div className="mt-2 space-y-1.5">
       {quellen.length > 0 && (
@@ -1153,8 +1136,14 @@ function Quellen({ turn, onSchliessen }: { turn: LottiTurn; onSchliessen: () => 
             ))}
           </ul>
           {quellen.length > sichtbar.length && (
+            /* `block`, nicht inline: Der Abstandshalter des Elterndivs
+               (`space-y-1.5`) greift nur zwischen BLOCK-Kindern — als
+               inline-block stand „Alle 3 Quellen" ohne Lücke direkt vor
+               „Im Ratsgespräch weiterführen" (gesehen am 22.09.2026, seit
+               die Belege auf die zitierten zusammengeschrumpft sind und der
+               Knopf damit überhaupt erscheint). */
             <button type="button" onClick={() => setAlle(true)}
-              className="text-[11.5px] font-medium text-primary hover:underline">
+              className="block text-[11.5px] font-medium text-primary hover:underline">
               Alle {quellen.length} Quellen
             </button>
           )}

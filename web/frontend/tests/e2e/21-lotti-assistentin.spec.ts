@@ -108,13 +108,20 @@ const STROM_HANDOFF = [
   })}\n\n`,
 ].join("");
 
-/** Die Ratsantwort aus dem Archiv — Quellen, Text, zitierte Nummern. */
+/** Die Ratsantwort aus dem Archiv — Quellen, Text, zitierte Nummern.
+ *
+ *  **Drei Fundstücke, eines zitiert**: genau die Lage, die Tim am
+ *  22.09.2026 auf `/council/decision?id=2982` gesehen hat („1 zitiert · 41
+ *  gefunden", darunter drei Zeilen, zwei davon zur Sache fremd). */
 const RATS_ANTWORT = "Der Rat hat 2026 zugestimmt.";
+const FUNDSTUECKE = [
+  { id: 8525, title: "Stadionneubau Maastrichter Straße", committee: "Rat",
+    session_date: "2026-06-01" },
+  { id: 11, title: "Toleranz-Fonds 2026", committee: "Rat", session_date: "2026-03-01" },
+  { id: 12, title: "Bebauungsplan Nr. 56", committee: "Rat", session_date: "2026-02-01" },
+];
 const STROM_ARCHIV = [
-  `data: ${JSON.stringify({ type: "sources", sources: [
-    { id: 8525, title: "Stadionneubau Maastrichter Straße", committee: "Rat",
-      session_date: "2026-06-01" },
-  ] })}\n\n`,
+  `data: ${JSON.stringify({ type: "sources", sources: FUNDSTUECKE })}\n\n`,
   `data: ${JSON.stringify({ type: "token", text: RATS_ANTWORT })}\n\n`,
   `data: ${JSON.stringify({ type: "done", cited: [8525] })}\n\n`,
 ].join("");
@@ -252,6 +259,92 @@ test.describe("Lotti-Knopf und -Fenster", () => {
       .toHaveCount(0);
   });
 
+  test("die erste Archivfrage eröffnet das Gespräch — die Erklärung danach landet darin",
+    async ({ page }) => {
+      // Bis 22.09.2026 nahm das Fenster die Kennung aus `/ask` nur an, wenn
+      // schon ein Gespräch lief — ein Riegel gegen das `ask`-Gespräch, das
+      // `/ask` ohne Bildschirm anlegt. Das Backend kennt Lottis Fenster
+      // inzwischen am `screen` und legt ein `lotti`-Gespräch an; der Riegel
+      // kostete nur noch den Faden (gemessen: Gespräch 51, kind=ask).
+      await page.route("**/api/council/ask", (route) =>
+        route.fulfill({ status: 200, contentType: "text/event-stream", body: [
+          `data: ${JSON.stringify({ type: "sources", sources: FUNDSTUECKE })}\n\n`,
+          `data: ${JSON.stringify({ type: "token", text: RATS_ANTWORT })}\n\n`,
+          `data: ${JSON.stringify({ type: "done", cited: [8525], conversation_id: 4242 })}\n\n`,
+        ].join("") }).catch(() => { /* Test ist schon zu Ende */ }),
+      );
+      const gefragt: Record<string, unknown>[] = [];
+      await page.route("**/api/council/explain", async (route) => {
+        gefragt.push(route.request().postDataJSON());
+        await route.fulfill({
+          status: 200, contentType: "text/event-stream",
+          body: gefragt.length === 1 ? STROM_HANDOFF : STROM(),
+        }).catch(() => { /* Test ist schon zu Ende */ });
+      });
+      await page.goto("/dashboard");
+      await knopf(page).click();
+      // Erste Frage im LEEREN Fenster, und sie geht ins Archiv.
+      await fenster(page).getByLabel("Frage an Lotti").fill("Wer hat dagegen gestimmt?");
+      await fenster(page).getByRole("button", { name: "Fragen" }).click();
+      await expect(fenster(page).getByText(RATS_ANTWORT)).toBeVisible();
+      expect(gefragt[0].conversation_id).toBeNull();
+
+      // Die nächste Erklärung hängt sich an DASSELBE Gespräch.
+      await fenster(page).getByLabel("Frage an Lotti").fill("Und was steht hier?");
+      await fenster(page).getByRole("button", { name: "Fragen" }).click();
+      await expect(fenster(page).getByText(ANTWORT)).toBeVisible();
+      expect(gefragt[1].conversation_id).toBe(4242);
+    });
+
+  test("unter einer Archiv-Antwort stehen nur die ZITIERTEN Quellen", async ({ page }) => {
+    // Gemessen auf /council/decision?id=2982: „1 zitiert · 41 gefunden" und
+    // darunter drei Zeilen, von denen zwei nichts mit der Frage zu tun
+    // hatten. Eine Quelle, die falsch wirkt, beschädigt die richtige mit.
+    await page.route("**/api/council/ask", (route) =>
+      route.fulfill({ status: 200, contentType: "text/event-stream", body: STROM_ARCHIV })
+        .catch(() => { /* Test ist schon zu Ende */ }),
+    );
+    await page.route("**/api/council/explain", (route) =>
+      route.fulfill({ status: 200, contentType: "text/event-stream", body: STROM_HANDOFF })
+        .catch(() => { /* Test ist schon zu Ende */ }),
+    );
+    await page.goto("/dashboard");
+    await knopf(page).click();
+    await fenster(page).getByLabel("Frage an Lotti").fill("Wer hat dagegen gestimmt?");
+    await fenster(page).getByRole("button", { name: "Fragen" }).click();
+    await expect(fenster(page).getByText(RATS_ANTWORT)).toBeVisible();
+
+    await expect(fenster(page).getByText("Stadionneubau Maastrichter Straße")).toBeVisible();
+    await expect(fenster(page).getByText("Toleranz-Fonds 2026")).toHaveCount(0);
+    await expect(fenster(page).getByText("Bebauungsplan Nr. 56")).toHaveCount(0);
+    // Erreichbar bleiben sie — hinter einem Klick, wie bisher.
+    await fenster(page).getByRole("button", { name: /Alle 3 Quellen/ }).click();
+    await expect(fenster(page).getByText("Toleranz-Fonds 2026")).toBeVisible();
+  });
+
+  test("unter einer Archiv-Antwort steht kein Baustein-Chip dieser Seite",
+    async ({ page }) => {
+      // Gemessen auf /council/decision?id=2982: „Lotti erklärt's einfach
+      // erklären" unter der Auskunft, wer dagegen gestimmt hat. Die Antwort
+      // kommt aus 9.000 Beschlüssen; ein Kasten DIESER Seite daneben ist ein
+      // Themenwechsel — und die Kurzfassung IST schon Lottis Erklärung.
+      await page.route("**/api/council/ask", (route) =>
+        route.fulfill({ status: 200, contentType: "text/event-stream", body: STROM_ARCHIV })
+          .catch(() => { /* Test ist schon zu Ende */ }),
+      );
+      await page.route("**/api/council/explain", (route) =>
+        route.fulfill({ status: 200, contentType: "text/event-stream", body: STROM_HANDOFF })
+          .catch(() => { /* Test ist schon zu Ende */ }),
+      );
+      await page.goto("/haushalt/schulden");
+      await page.waitForLoadState("networkidle");
+      await knopf(page).click();
+      await fenster(page).getByLabel("Frage an Lotti").fill("Wer hat dagegen gestimmt?");
+      await fenster(page).getByRole("button", { name: "Fragen" }).click();
+      await expect(fenster(page).getByText(RATS_ANTWORT)).toBeVisible();
+      await expect(fenster(page).getByRole("button", { name: /erklären$/ })).toHaveCount(0);
+    });
+
   test("reicht das Modell weiter, bleibt die Erklärung stehen und das Archiv kommt darunter",
     async ({ page }) => {
       // Der zweite Fall: Die Regex hat nicht gegriffen, das Modell setzt
@@ -317,8 +410,8 @@ test.describe("Lotti-Knopf und -Fenster", () => {
 
   test("unter einer Antwort steht höchstens EIN Chip", async ({ page }) => {
     // Tims Bild: drei Chips, zwei Daumen, zwei Grund-Chips — sieben
-    // Bedienelemente für eine Antwort. Der Strom hier bietet beides an
-    // (Zielseite UND Fachwort); stehen darf nur das Wichtigere.
+    // Bedienelemente für eine Antwort. Der Strom hier böte zwei an
+    // (Zielseite UND Fachwort); stehen darf genau der Wegweiser.
     await page.route("**/api/council/explain", (route) =>
       route.fulfill({ status: 200, contentType: "text/event-stream", body: [
         `data: ${JSON.stringify({ type: "token", text: ANTWORT_FACHWORT })}\n\n`,
@@ -548,37 +641,25 @@ test.describe("Lotti-Knopf und -Fenster", () => {
     expect(rufe).toBe(0);
   });
 
-  test("nach einer Antwort steht ein Chip zum Fachwort — und er kostet nichts",
+  test("zum Fachwort gibt es KEINEN Chip — es steht im Text und klappt dort auf",
     async ({ page }) => {
-      // Die Zusage dieses PRs: Die Anschlussfrage entsteht deterministisch aus
-      // dem, was das Fenster schon hat — hier aus dem Fachwort in der Antwort,
-      // erkannt mit derselben Regel wie die Unterstreichung darin
-      // (`lib/glossar-treffer.ts`). Und der Klick schickt den Begriff als
-      // `selection` mit: Genau dort sucht `deterministic_answer` nach einem
-      // Glossar-Eintrag und antwortet ohne Modell.
-      const gefragt: Record<string, unknown>[] = [];
-      await page.route("**/api/council/explain", async (route) => {
-        gefragt.push(route.request().postDataJSON());
-        await route.fulfill({
-          status: 200, contentType: "text/event-stream",
-          body: gefragt.length === 1 ? STROM_FACHWORT : STROM_GEPRUEFT,
-        }).catch(() => { /* Test ist schon zu Ende */ });
-      });
+      // Bis 22.09.2026 stand unter der Antwort „Was heißt Umschuldung?",
+      // während „Umschuldung" zwei Zeilen darüber schon unterstrichen war
+      // (PR 22). Zwei Wege zu derselben geprüften Erklärung, einer davon als
+      // Bedienelement in der Fußzeile — der Weg AM WORT ist der bessere.
+      await page.route("**/api/council/explain", (route) =>
+        route.fulfill({ status: 200, contentType: "text/event-stream", body: STROM_FACHWORT })
+          .catch(() => { /* Test ist schon zu Ende */ }),
+      );
       await page.goto("/dashboard");
       await knopf(page).click();
       await fenster(page).getByRole("button", { name: "Was sehe ich hier?" }).click();
+      await expect(fenster(page).getByText(ANTWORT_FACHWORT)).toBeVisible();
 
-      const chip = fenster(page).getByRole("button", { name: "Was heißt Umschuldung?" });
-      await expect(chip).toBeVisible();
-      await chip.click();
-      await expect(fenster(page).getByText(GEPRUEFTE_ANTWORT)).toBeVisible();
-
-      expect(gefragt).toHaveLength(2);
-      expect(gefragt[1].question).toBe("Was heißt Umschuldung?");
-      expect(gefragt[1].selection).toBe("Umschuldung");
-      // Nichts zweimal: Der Begriff ist gefragt, der Chip ist weg.
-      await expect(fenster(page).getByRole("button", { name: "Was heißt Umschuldung?" }))
-        .toHaveCount(0);
+      await expect(fenster(page).getByRole("button", { name: /^Was heißt/ })).toHaveCount(0);
+      // Der verbliebene Weg: das Wort selbst.
+      await expect(fenster(page).getByRole("button", { name: "Was bedeutet Umschuldung?" }))
+        .toBeVisible();
     });
 
   test("ein Fachwort klappt IM Fenster auf, statt am Rand abgeschnitten zu werden",

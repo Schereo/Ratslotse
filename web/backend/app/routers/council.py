@@ -4056,7 +4056,17 @@ def _turn_speichern(ratslotse: Store, user: dict, body: AskBody, q_suche: str,
         conversation_id = body.conversation_id
         neu = conversation_id is None
         if neu:
-            conversation_id = ratslotse.qa_gespraech_start(user["id"], q_suche or body.question)
+            # **Kam die Frage aus Lottis Fenster, ist es ein Lotti-Gespräch.**
+            # Nur dort reist ein `screen` mit (die Fragen-Seite und die App
+            # schicken keinen). Bis 22.09.2026 entstand hier immer ein
+            # `ask`-Gespräch — solange der Weg ins Archiv an einem Knopf hing,
+            # war das ein Randfall; seit Lotti von selbst hingeht, ist es der
+            # Normalfall: Die ERSTE Frage im Fenster legte dann ein Gespräch
+            # der falschen Art an, und die nächste Erklärung landete nicht
+            # darin (gemessen am 22.09.2026: Gespräch 51, kind=ask).
+            conversation_id = ratslotse.qa_gespraech_start(
+                user["id"], q_suche or body.question,
+                kind="lotti" if body.screen else "ask")
             if conversation_id is None:
                 return None
         zitiert = set(cited)

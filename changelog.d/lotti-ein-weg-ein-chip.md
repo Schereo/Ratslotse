@@ -14,7 +14,13 @@ tiefer will, findet darunter den stillen Textlink „Im Ratsarchiv nachsehen".
 Gleichzeitig ist das Fenster ruhiger geworden: Statt bis zu sieben
 Bedienelementen unter einer Antwort steht dort jetzt höchstens ein Vorschlag,
 und er sagt als Handlung, was passiert („Anzeigetafel erklären" statt „Erklär
-mir: Die Anzeigetafel"). Die Einstiegs-Chips stehen nur noch im leeren
-Fenster; „Etwas auf der Seite zeigen" wohnt danach als Icon neben dem
-Eingabefeld. Und der Verweis auf eine andere Haushalts-Seite zeigt nie mehr
-auf die Seite, auf der man gerade steht.
+mir: Die Anzeigetafel"). Ein Fachwort führt nicht mehr zusätzlich einen Chip
+mit sich — es steht unterstrichen im Antworttext und klappt dort auf. Die
+Einstiegs-Chips stehen nur noch im leeren Fenster; „Etwas auf der Seite
+zeigen" wohnt danach als Icon neben dem Eingabefeld. Und der Verweis auf eine
+andere Haushalts-Seite zeigt nie mehr auf die Seite, auf der man gerade steht.
+
+Eine Antwort aus dem Ratsarchiv zeigt außerdem nur noch die Quellen, auf die
+sie sich wirklich beruft; die übrigen Fundstücke stehen wie gehabt hinter
+„Alle … Quellen". Und ein Gespräch, das mit einer Archivfrage beginnt, bleibt
+eines: Es landet bei Lotti und nimmt die folgenden Erklärungen mit auf.
