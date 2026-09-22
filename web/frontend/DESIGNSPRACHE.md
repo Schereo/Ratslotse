@@ -402,8 +402,15 @@ iOS-Schrift.
   32 px mit Regung nach Zustand · „Lotti" Bricolage 16/700 · Neu anfangen) →
   **Kontext-Pille** in Leserolle `meta` („Du bist auf: … · markiert: …") →
   Verlauf (Frage als Bubble rechts, bg primary/7 + Rahmen /18; Antwort links
-  in 13,5 px mit Lotti 24 px daneben; **Tipp-Anzeige** = drei Punkte in
-  Signal-Orange, solange geschrieben wird) → stille Chip-Aktionen unter jeder
+  in 13,5 px mit Lotti 24 px daneben; **Tipp-Anzeige** = drei 8-px-Punkte in
+  Signal-Orange, die sich mit 160 ms Versatz um 3,5 px heben und senken
+  (`lotti-tippt`, 1,1 s, `ease-in-out`), **daneben der Schritt** in
+  `text-hinweis`/Muted — „Lotti liest die Seite …", dann „Lotti schreibt …";
+  auf dem Ratsweg die drei Schritte der KI-Frage. Die Texte stehen in
+  `lib/qa-schritte.ts`, die Schritte selbst meldet der Server als SSE-Rahmen
+  `step`. Bis 22.09.2026 waren es 6-px-Punkte mit `animate-pulse` und kein
+  Text — „man sieht fast nicht, dass da was lädt" (Tim). Bei reduzierter
+  Bewegung blinkt nur die Deckkraft. `role="status"`) → stille Chip-Aktionen unter jeder
   Antwort („Den Rat fragen" gefüllt, wenn die Frage ins Archiv gehört, sonst
   Ghost) → Vorschlags-Chips über dem Eingabefeld → Composer (s. u.).
   **Darunter nichts mehr.** Bis 22.09.2026 stand dort eine feste Fußzeile
@@ -423,6 +430,21 @@ iOS-Schrift.
   Beschlusstitel füllt die 384 px allein. Sie ordnet ein, sie ruft nicht:
   keine Farbe, kein Abzeichen, kein Datum; der Name wird bei 60 Zeichen
   gekappt.
+  **Fachwörter klappen hier auf, statt zu überlagern.** Ein erklärter Begriff
+  (`glossary-text.tsx`) zeigt seine Erklärung sonst als Popover am Wort,
+  `absolute left-0 top-full`, bis zu 17 rem breit. Das ist die Form für breite
+  Flächen — Haushalts-Seiten, Ratsgespräch. **In Lottis Fenster nicht**: 384 px
+  mit `overflow-hidden` schneiden jede Ebene ab, die rechts übersteht, und ein
+  Begriff am rechten Rand ist dort halb zu lesen (Tim, 22.09.2026,
+  „Wirtschaftsplan"). Ein nach links ausgerichteter Popover löst das nicht —
+  beschnitten wird am Fenster, nicht am Wort. Deshalb: `GlossarAufklappBereich`
+  um die Antwort, und ein Tipp/Klick (am Zeigergerät auch der Hover nach
+  220 ms) klappt **unter dem Absatz** einen stillen Block auf — Radius 8,
+  `bg-muted/40`, Rahmen `border`, Begriff fett in Foreground, Erklärung in
+  12 px Muted; dieselbe Typo wie im Popover. Höchstens **einer je Antwort**:
+  ein zweites Wort ersetzt das erste. Esc schließt ihn (und nur ihn, nicht
+  gleich das Fenster), `aria-expanded` sagt, woran man ist. Faustregel: unter
+  ~28 rem Textbreite klappt es auf, darüber überlagert es.
   **Anschlussfragen**: In derselben Chip-Reihe stehen unter der LETZTEN
   Antwort höchstens **zwei** weiterführende Angebote — „Erklär mir: <der
   nächste Baustein der Seite, der noch nicht erklärt wurde>" und „Was heißt

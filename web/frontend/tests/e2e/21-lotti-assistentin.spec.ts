@@ -448,6 +448,99 @@ test.describe("Lotti-Knopf und -Fenster", () => {
         .toHaveCount(0);
     });
 
+  test("ein Fachwort klappt IM Fenster auf, statt am Rand abgeschnitten zu werden",
+    async ({ page }) => {
+      // Tims Befund 22.09.2026: Die Glossar-Erklärung war ein Popover am Wort
+      // (`absolute left-0 top-full`, bis 17 rem breit). Lottis Fenster ist
+      // 384 px breit und `overflow-hidden` — steht das Wort rechts, schnitt
+      // der Fensterrand die Erklärung ab („Wirtschaftsplan" halb sichtbar).
+      // Geprüft wird die Zusage, nicht die Bauform: Was aufklappt, liegt
+      // GANZ im Fenster.
+      await page.route("**/api/council/explain", (route) =>
+        route.fulfill({ status: 200, contentType: "text/event-stream", body: STROM_FACHWORT })
+          .catch(() => { /* Test ist schon zu Ende */ }),
+      );
+      await page.goto("/dashboard");
+      await knopf(page).click();
+      await fenster(page).getByRole("button", { name: "Was sehe ich hier?" }).click();
+
+      const wort = fenster(page).getByRole("button", { name: "Was bedeutet Umschuldung?" });
+      await expect(wort).toBeVisible();
+      await expect(wort).toHaveAttribute("aria-expanded", "false");
+      const block = fenster(page).locator("[data-glossar-aufklapp]");
+      await expect(block).toHaveCount(0);
+
+      await wort.click();
+      await expect(block).toBeVisible();
+      await expect(wort).toHaveAttribute("aria-expanded", "true");
+      await expect(block).toContainText("Umschuldung");
+
+      const b = (await block.boundingBox())!;
+      const f = (await fenster(page).boundingBox())!;
+      expect(b.x, "linker Rand").toBeGreaterThanOrEqual(f.x - 1);
+      expect(b.x + b.width, "rechter Rand").toBeLessThanOrEqual(f.x + f.width + 1);
+      expect(b.y, "oberer Rand").toBeGreaterThanOrEqual(f.y - 1);
+      expect(b.y + b.height, "unterer Rand").toBeLessThanOrEqual(f.y + f.height + 1);
+
+      // Esc schließt die Erklärung — und NUR sie: Das Fenster bleibt stehen,
+      // sonst verschwände mit dem ersten Esc gleich das ganze Gespräch.
+      await page.keyboard.press("Escape");
+      await expect(block).toHaveCount(0);
+      await expect(fenster(page)).toBeVisible();
+    });
+
+  test("während der Strom läuft, steht da, woran Lotti gerade arbeitet",
+    async ({ page }) => {
+      // Tims zweiter Befund: drei 6-px-Punkte mit `animate-pulse` — „man sieht
+      // fast nicht, dass da was lädt". Der Server meldet seine Schritte
+      // längst als SSE-Rahmen `step`; das Fenster warf sie weg.
+      //
+      // **Warum `window.fetch` und nicht `page.route`.** `route.fulfill` kennt
+      // nur einen fertigen Körper — einen LANGSAMEN Strom kann es nicht
+      // liefern, und genau der ist hier der Prüfgegenstand: Die Schritt-Texte
+      // stehen nur zwischen zwei Rahmen. Ein Prüfen nach dem `done` ginge am
+      // Befund vorbei. Der Ersatz liegt deshalb eine Schicht tiefer, in der
+      // Seite selbst, und baut den Strom Rahmen für Rahmen auf.
+      await page.addInitScript(() => {
+        const echt = window.fetch.bind(window);
+        window.fetch = async (eingabe: RequestInfo | URL, init?: RequestInit) => {
+          const url = typeof eingabe === "string" ? eingabe
+            : eingabe instanceof URL ? eingabe.href : eingabe.url;
+          if (!url.includes("/council/explain")) return echt(eingabe as RequestInfo, init);
+          const rahmen = [
+            { type: "step", step: "context" },
+            { type: "step", step: "answer" },
+            { type: "token", text: "Die Treppe zeigt die Tilgung." },
+            { type: "done", mode: "explain", kind: "model", next: null, glossary: [] },
+          ];
+          const enc = new TextEncoder();
+          const koerper = new ReadableStream<Uint8Array>({
+            async start(c) {
+              for (const r of rahmen) {
+                await new Promise((fertig) => setTimeout(fertig, 800));
+                c.enqueue(enc.encode(`data: ${JSON.stringify(r)}\n\n`));
+              }
+              c.close();
+            },
+          });
+          return new Response(koerper, {
+            status: 200, headers: { "Content-Type": "text/event-stream" },
+          });
+        };
+      });
+      await page.goto("/dashboard");
+      await knopf(page).click();
+      await fenster(page).getByRole("button", { name: "Was sehe ich hier?" }).click();
+
+      // Vor dem ersten Rahmen: der Satz, der in jedem Fall wahr ist.
+      await expect(fenster(page).getByText(/Lotti überlegt/)).toBeVisible();
+      await expect(fenster(page).getByText(/Lotti liest die Seite/)).toBeVisible();
+      await expect(fenster(page).getByText(/Lotti schreibt/)).toBeVisible();
+      // Sobald Worte da sind, ist der Text selbst die Auskunft.
+      await expect(fenster(page).getByText("Die Treppe zeigt die Tilgung.")).toBeVisible();
+      await expect(fenster(page).getByText(/Lotti schreibt …/)).toHaveCount(0);
+    });
+
   test("der Verweis auf eine andere Haushalts-Seite wird ein Chip, der hinführt",
     async ({ page }) => {
       // PR 21: Lotti kennt alle fünfzehn Haushalts-Seiten und sagt, wo etwas
