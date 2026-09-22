@@ -1656,3 +1656,109 @@ def test_startfragen_mit_dem_recht(client, konto):
     r = client.get("/api/council/assistant/starters", params={"route": "/haushalt/schulden"})
     assert r.status_code == 200
     assert r.json()["starters"] == list(knowledge.PAGES["/haushalt/schulden"].starters)
+
+
+# --- 13. Zwei Zählweisen, immer beide (PR 27) -------------------------------
+#
+# Tims eigene Frage vom 22.09.2026: „der Haushalt" heißt für die Verwaltung
+# den Kernhaushalt, für alle anderen die ganze Stadt. Der Auslöser ist
+# deterministisch, nicht dem Modell überlassen: (a) die Frage nennt
+# „Haushalt"/„Etat"/„Budget"/„Gesamthaushalt" OHNE „Kern"/„Konzern"/
+# „Eigenbetrieb(e)"/„Beteiligung(en)"/„Gesamtabschluss" zu nennen, UND (b)
+# danach stehen beide Zahlen wirklich im Kontext.
+
+@pytest.mark.parametrize("frage", [
+    "Wie groß ist der Haushalt der Stadt?",
+    "Wie hoch ist der Gesamthaushalt?",
+    "Was kostet der Etat insgesamt?",
+    "Wie hoch ist das Budget der Stadt?",
+])
+def test_zwei_zaehlweisen_frage_erkennt_haushalt_ohne_zaehlweise(frage):
+    assert lotti.zwei_zaehlweisen_frage(frage)
+
+
+@pytest.mark.parametrize("frage", [
+    "Wie groß ist der Konzernhaushalt?",
+    "Wie hoch ist der Kernhaushalt?",
+    "Wie groß ist der Haushalt inkl. der Eigenbetriebe?",
+    "Was zeigt der Gesamtabschluss?",
+    "Wie hoch sind die Beteiligungen der Stadt?",
+    "Wie hoch sind die Schulden?",  # kein Haushalts-Wort
+    "",
+])
+def test_zwei_zaehlweisen_frage_verlangt_ein_unbestimmtes_haushaltswort(frage):
+    assert not lotti.zwei_zaehlweisen_frage(frage)
+
+
+def test_zwei_zaehlweisen_holt_die_konzernzahl_dazu(monkeypatch):
+    """Der Kernhaushalt kommt über `haushalt` (Facette `plan`) ohnehin mit —
+    dasselbe Wort „Haushalt" löst ihn über `qa._F_PLAN` aus. Der Konzern hat
+    sein eigenes, engeres Wort und bliebe ohne den Zusatz aus."""
+    gesehen: dict = {}
+
+    def merke(store, frage, begriffe="", typ="topic"):
+        gesehen["frage"] = frage
+        gesehen["begriffe"] = begriffe
+        return {"facets": ["plan", "konzern"], "haushalt": ["…"], "konzern": {"…": 1}}
+
+    monkeypatch.setattr(qa, "geld_kontext", merke)
+    ctx = lotti.screen_context(_Store(), lotti.Screen(route="/haushalt"),
+                               "Wie groß ist der Haushalt der Stadt?",
+                               permissions=BUDGET)
+    assert "konzern" in gesehen["frage"]
+    # Die Suchbegriffe bleiben unverändert — `konzern_kontext` braucht keine.
+    assert gesehen["begriffe"] == "Wie groß ist der Haushalt der Stadt?"
+    assert ctx["zwei_zaehlweisen"] is True
+
+
+def test_zwei_zaehlweisen_auch_ausserhalb_des_haushalts_bereichs(monkeypatch):
+    """Dieselbe Frage von /dashboard aus — seit PR 21 kommen Zahlen dort nur
+    mit dem Recht UND einer Geldfrage. „Konzern" steht in GELD_AUSSERHALB und
+    öffnet das Tor genau wie eine ausdrückliche Konzern-Frage es täte."""
+    monkeypatch.setattr(qa, "geld_kontext", lambda *a, **k: {
+        "facets": ["plan", "konzern"], "haushalt": ["…"], "konzern": {"…": 1}})
+    ctx = lotti.screen_context(_Store(), lotti.Screen(route="/dashboard"),
+                               "Wie groß ist der Haushalt der Stadt?",
+                               permissions=BUDGET)
+    assert ctx["geld"] and ctx["zwei_zaehlweisen"] is True
+
+
+def test_zwei_zaehlweisen_braucht_beide_zahlen_wirklich(monkeypatch):
+    """Bedingung (a) allein reicht nicht: Fehlt die Konzernzahl (keine
+    Daten, kein Ingest-Lauf), gibt es auch keine Regel, die eine verspricht."""
+    monkeypatch.setattr(qa, "geld_kontext", lambda *a, **k: {
+        "facets": ["plan"], "haushalt": ["…"]})  # kein konzern
+    ctx = lotti.screen_context(_Store(), lotti.Screen(route="/haushalt"),
+                               "Wie hoch ist der Haushalt?",
+                               permissions=BUDGET)
+    assert ctx["zwei_zaehlweisen"] is False
+
+
+@pytest.mark.parametrize("frage", [
+    "Wie groß ist der Konzernhaushalt?",
+    "Wie hoch ist der Kernhaushalt?",
+])
+def test_zwei_zaehlweisen_nie_wenn_die_frage_die_zaehlweise_selbst_nennt(monkeypatch, frage):
+    monkeypatch.setattr(qa, "geld_kontext", lambda *a, **k: {
+        "facets": ["plan", "konzern"], "haushalt": ["…"], "konzern": {"…": 1}})
+    ctx = lotti.screen_context(_Store(), lotti.Screen(route="/haushalt"), frage,
+                               permissions=BUDGET)
+    assert ctx["zwei_zaehlweisen"] is False
+
+
+def test_zwei_zaehlweisen_regel_steht_nur_mit_flag_im_prompt():
+    screen = lotti.Screen(route="/haushalt")
+    mit = _prompt(screen, "Wie groß ist der Haushalt?", zwei_zaehlweisen=True)
+    ohne = _prompt(screen, "Wie groß ist der Haushalt?", zwei_zaehlweisen=False)
+    assert "ZWEI Zählweisen" in mit
+    assert "ZWEI Zählweisen" not in ohne
+
+
+def test_prompt_bleibt_ohne_das_flag_zeichengleich():
+    """Regel aus PR 21: Eine Regel, die immer im Prompt steht, kostet die
+    Fälle, für die sie nicht gilt — der Prompt ohne das Flag muss deshalb
+    exakt der von vorher bleiben (kein `ctx`-Eintrag vs. ausdrücklich aus)."""
+    screen = lotti.Screen(route="/haushalt/schulden")
+    ohne_eintrag = _prompt(screen)  # kein "zwei_zaehlweisen" in ctx_extra
+    ausdruecklich_aus = _prompt(screen, zwei_zaehlweisen=False)
+    assert ohne_eintrag == ausdruecklich_aus

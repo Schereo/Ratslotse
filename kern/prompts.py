@@ -534,6 +534,24 @@ WEGWEISER_REGEL = (
 )
 
 
+#: Der Absatz für „Haushalt" ohne Zählweise (PR 27) — bedingt eingesetzt,
+#: nur wenn ``council/assistant.py::screen_context`` das Flag
+#: ``zwei_zaehlweisen`` gesetzt hat (``{zwei_zaehlweisen}``).
+#:
+#: **Bedingt aus demselben Grund wie** :data:`WEGWEISER_REGEL` **(Regel aus
+#: PR 21):** Eine Regel, die IMMER im Prompt steht, kostet die Fälle, für
+#: die sie nicht gilt — hier jede Frage, die den Kernhaushalt oder den
+#: Konzern schon selbst benennt. Ohne das Flag ist der Prompt zeichengleich
+#: mit dem von vorher.
+ZWEI_ZAEHLWEISEN_REGEL = (
+    "- „Der Haushalt“ hat hier ZWEI Zählweisen, und die Person hat nicht\n"
+    "  gesagt, welche sie meint. Nenne BEIDE, je mit einem Satz: den\n"
+    "  Kernhaushalt (die Stadtverwaltung allein) und den Konzern (Stadt samt\n"
+    "  Eigenbetrieben und Beteiligungen). Dieselbe Figur wie „Drei\n"
+    "  Zählweisen, eine Stadt“ auf der Schulden-Seite.\n"
+)
+
+
 DEFAULTS: dict[str, dict[str, str]] = {
     # --- Städte-Speicher (council/cities): fremde Ratsvorlagen einordnen ------
     "cities_classify_system": {
@@ -1331,7 +1349,8 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "Erklärt die aktuelle Seite, ein angeklicktes Element oder markierten "
             "Text in Alltagssprache — ohne Suche im Beschluss-Archiv. Platzhalter: "
             "{knowledge}, {record}, {konto}, {glossar}, {geld}, {wegweiser}, "
-            "{wegweiser_regel}, {screen}, {anker}, {question}, {gespraech}."
+            "{wegweiser_regel}, {zwei_zaehlweisen}, {screen}, {anker}, {question}, "
+            "{gespraech}."
         ),
         "template": (
             "Du bist Lotti, die Lotsenmöwe von Ratslotse. Du erklärst einer erwachsenen\n"
@@ -1356,6 +1375,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "- Erkläre NUR, was oben steht. Keine Zahl, kein Datum, kein Ergebnis, das\n"
             "  dort nicht vorkommt. Eine Haushaltszahl bekommt immer ihr Jahr und ihre\n"
             "  Quelle mit („laut Jahresabschluss 2024“).\n"
+            "{zwei_zaehlweisen}"
             "- Steht oben ein GEGENSTAND DER SEITE (ein Beschluss, eine Sitzung, eine\n"
             "  Person, ein Ort, ein Themenfeld), dann ist DAS gemeint, wenn jemand\n"
             "  „das hier“ sagt — erklär ihn, statt die Gattung der Seite zu\n"
