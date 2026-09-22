@@ -79,7 +79,7 @@ def run(main: CitiesStore, body_id: str | None = None, limit: int | None = None,
                               punkt=f"{a.get('number') or ''} {a.get('title') or ''}".strip(),
                               abschnitt=abschnitt)}],
                 max_tokens=ann.max_tokens, temperature=ann.temperature,
-                extra_body={"provider": {}} if ann.routing_free else {},
+                extra_body={},
                 timeout=LLM_TIMEOUT_S, _feature=ann.feature)
             nutzlast = ann.payload.model_validate(
                 parse_json(antwort.choices[0].message.content or ""))

@@ -481,7 +481,7 @@ def run(main: CitiesStore, rats: CouncilStore, ann: Annotator,
         was in derselben Zeitspanne alle anderen verbraucht haben.
         """
         try:
-            extra = {"provider": {}} if ann.routing_free else {}
+            extra = {}
             antwort = llm.chat_complete(
                 model=ann.model, response_format={"type": "json_object"},
                 messages=[{"role": "system", "content": system},

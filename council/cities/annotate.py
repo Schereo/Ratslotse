@@ -171,7 +171,7 @@ def run(main: CitiesStore, ann: Annotator, body_id: str | None = None,
         """
         erwartet = {r["id"] for r in chunk}
         try:
-            extra = {"provider": {}} if ann.routing_free else {}
+            extra = {}
             antwort = llm.chat_complete(
                 model=ann.model, response_format={"type": "json_object"},
                 messages=[{"role": "system", "content": system},

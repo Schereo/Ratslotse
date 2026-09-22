@@ -275,7 +275,7 @@ class Richter:
                 messages=[{"role": "system", "content": self.system},
                           {"role": "user", "content": self.nutzer_text(g, mitglieder, belege)}],
                 max_tokens=ann.max_tokens, temperature=ann.temperature,
-                extra_body={"provider": {}} if ann.routing_free else {},
+                extra_body={},
                 timeout=TIMEOUT_S, _feature=ann.feature)
             daten = parse_json(antwort.choices[0].message.content or "")
         except Exception as e:  # noqa: BLE001 — eine Idee, nicht der Lauf
