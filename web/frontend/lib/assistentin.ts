@@ -562,7 +562,13 @@ export type Anschluss =
  *  den Schlüssel allein gälte der zweite als „schon erklärt", sobald jemand
  *  den ersten angetippt hat. */
 export function ankerKennung(a: Anker): string {
-  return `${a.key} ${a.titel}`;
+  // Das Trennzeichen ist ein `\u0000` als ESCAPE, nicht als Zeichen im
+  // Quelltext: Ein echtes Nullbyte macht die Datei für `grep`, `git diff`
+  // und jede Code-Ansicht zu einer Binärdatei — sie fiel damit aus jeder
+  // Durchsicht heraus (gemerkt am 22.09.2026, als kein `grep` hier mehr
+  // etwas fand). Gewählt, weil es in keinem Anker-Schlüssel und in keinem
+  // Titel vorkommen kann.
+  return `${a.key}\u0000${a.titel}`;
 }
 
 /** So lang darf der Baustein-Name auf einem Chip sein. */

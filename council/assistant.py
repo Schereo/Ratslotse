@@ -76,9 +76,16 @@ HEADING_MAX = 200
 ANKER_MAX = 20
 ANKER_TITEL_MAX = 80
 
-#: Eigener, engerer Deckel als ``qa.GELD_MAX_CHARS`` (6.500): Dort trägt der
-#: Haushalts-Block die ganze Antwort, hier ist er Beiwerk zu einem Element,
-#: auf das jemand gezeigt hat.
+#: Eigener, engerer Deckel als ``qa.GELD_MAX_CHARS`` (6.500): Beim Erklären
+#: eines Bausteins, auf den jemand gezeigt hat, ist der Haushalts-Block
+#: Beiwerk.
+#:
+#: **Bei einer eigenen Frage gilt er nicht**, und zwar aus demselben Grund:
+#: Dann tragen die Zahlen die Antwort. Gemessen am 22.09.2026 auf der
+#: Haushalts-Übersicht mit „Wie groß ist der Gesamthaushalt inkl. der
+#: Eigenbetriebe?" — die Wirtschaftspläne (1.738 Zeichen) und der Plan (380)
+#: passten, der KONZERN-Baustein (1.085) fiel als dritter aus dem Deckel.
+#: Er ist genau die Antwort: Stadt samt Eigenbetrieben und Beteiligungen.
 GELD_MAX = 3000
 
 #: Höchstens so viele geprüfte Fachwort-Erklärungen — wie beim
@@ -625,13 +632,28 @@ def screen_context(store, screen: Screen, question: str, *,
 
     # Haushaltszahlen: nur, wo sie hingehören. Der Auslöser ist derselbe wie
     # in der KI-Frage (der Wortlaut entscheidet, nicht der Seitentyp) — aber
-    # gefragt wird mit dem BILDSCHIRM, nicht mit der Frage: „Was sehe ich
-    # hier?" nennt keinen Gegenstand, die Rate-Treppe schon.
+    # gefragt wird mit **beidem**, Frage UND Bildschirm.
+    #
+    # **Warum beides.** Der Bildschirm allein reicht für „Was sehe ich hier?"
+    # (die Frage nennt keinen Gegenstand, die Rate-Treppe schon). Für eine
+    # eigene Frage reicht er nicht, und bis 22.09.2026 wurde sie hier
+    # vollständig ignoriert: „Wie groß ist der Gesamthaushalt inkl. der
+    # Eigenbetriebe?" auf der Haushalts-Übersicht ergab die Facetten des
+    # SEITENTEXTES („Oldenburg plant Ausgaben von 883,9 Millionen Euro") —
+    # also nur `plan`. Die Frage selbst hätte `konzern` und `business_plans`
+    # gezogen, also genau die Eigenbetriebe, nach denen gefragt war. Gemessen:
+    # `{plan}` statt `{ansatz, business_plans, konzern, plan}`.
+    #
+    # **Die Frage steht vorn**, und das ist keine Kosmetik: `haushaltsjahr`
+    # nimmt das Jahr aus demselben Text, und ein „Stand 31.12.2024" im
+    # Seitentext darf ein gefragtes „2023" nicht überstimmen — zwei Jahre
+    # heißen dort „Zeitraum", und die Quelle entscheidet selbst.
     geld: dict = {}
     if wissen and (wissen.requires == "budget" or screen.route.startswith("/haushalt")):
         from council import qa  # lokal: qa ist groß, und nicht jeder Aufruf braucht es
+        ausloeser = " ".join(t for t in (question, gegenstand) if t).strip()
         try:
-            geld = qa.geld_kontext(store, gegenstand or question, gegenstand, "money")
+            geld = qa.geld_kontext(store, ausloeser, ausloeser, "money")
         except Exception:  # noqa: BLE001 — Zahlen sind Zusatz, nie Blocker
             geld = {}
 
@@ -650,6 +672,10 @@ def screen_context(store, screen: Screen, question: str, *,
         "record": _record_block(store, screen),
         "glossary": begriffe,
         "geld": geld,
+        # Wer selbst fragt, bekommt den vollen Deckel der KI-Frage: Dann
+        # tragen die Zahlen die Antwort und dürfen nicht als dritter
+        # Baustein herausfallen (s. GELD_MAX).
+        "geld_max": None if generische_frage(question) else _qa_geld_max(),
         "permissions": frozenset(permissions),
         "topics": themen,
         # Wohin Lotti verweisen darf: nur Seiten, die dieses Konto auch
@@ -658,12 +684,18 @@ def screen_context(store, screen: Screen, question: str, *,
     }
 
 
-def _geld_block(geld: dict | None) -> str:
-    """Die Haushaltszahlen samt ihrer Regeln, auf ``GELD_MAX`` gedeckelt."""
+def _qa_geld_max() -> int:
+    """Der Deckel der KI-Frage — lokal geholt, weil ``qa`` groß ist."""
+    from council import qa
+    return qa.GELD_MAX_CHARS
+
+
+def _geld_block(geld: dict | None, max_chars: int | None = None) -> str:
+    """Die Haushaltszahlen samt ihrer Regeln, gedeckelt (s. :data:`GELD_MAX`)."""
     if not geld:
         return ""
     from council import qa
-    block = qa.geld_block(geld, max_chars=GELD_MAX)
+    block = qa.geld_block(geld, max_chars=max_chars or GELD_MAX)
     if not block:
         return ""
     return ("\nZAHLEN AUS DEM HAUSHALT (geprüft, mit Jahr und Beleg — nenne beides,\n"
@@ -680,7 +712,7 @@ def explain_messages(screen: Screen, question: str, ctx: dict,
         record=ctx.get("record") or "",
         glossar=_glossar_block(ctx.get("glossary") or []),
         konto=_konto_block(ctx),
-        geld=_geld_block(ctx.get("geld")),
+        geld=_geld_block(ctx.get("geld"), ctx.get("geld_max")),
         screen=_screen_block(screen),
         anker=_anker_block(screen),
         question=kuerze(question, QUESTION_MAX) or "(keine eigene Frage — erklär das Gezeigte)",
