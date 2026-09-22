@@ -3,13 +3,15 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, MousePointerClick, RotateCcw, Sparkles, X } from "lucide-react";
 
 import { Mascot } from "@/components/mascot";
 import { AntwortText } from "@/components/qa-bausteine";
 import { GlossarAufklappBereich } from "@/components/glossary-text";
 import { FeedbackDaumen } from "@/components/feedback-daumen";
-import { apiUrl, authHeaders } from "@/lib/api";
+import { api, apiUrl, authHeaders, qs } from "@/lib/api";
+import type { ApiAntwort } from "@/lib/vertrag";
 import {
   ankerKennung, ankerListe, ankerTreffer, anschlussfragen, auswahlText, chipTitel,
   daumenZeigen, erklaerAktion,
@@ -256,6 +258,23 @@ export function LottiPanel({
   // Die Route MUSS mit: `?id=` ist auf der Ort-Seite ein Kürzel, sonst eine
   // Nummer (lib/assistentin.ts).
   const refs = useMemo(() => refsAus(sp.toString(), route), [sp, route]);
+
+  /** Die zwei Startfragen dieser Route (PR 25) — React Query statt eines
+   *  eigenen Caches: derselbe Baustein wie `ThemenBruecke` in
+   *  `council-qa.tsx`, und die Fragen ändern sich nur mit einem Deploy, nie
+   *  während einer Sitzung — `staleTime` darf deshalb großzügig sein. Geholt
+   *  wird nur, solange das Fenster offen UND leer ist: Nach der ersten Runde
+   *  braucht niemand sie mehr, und geschlossen sieht sie ohnehin niemand.
+   *  Kein Modellaufruf auf dem Server, kostet also nichts außer der Anfrage
+   *  selbst. */
+  const startfragenAntwort = useQuery({
+    queryKey: ["lotti-starters", route],
+    queryFn: () => api.get<ApiAntwort<"/council/assistant/starters">>(
+      `/council/assistant/starters${qs({ route })}`),
+    enabled: offen && turns.length === 0,
+    staleTime: 60 * 60_000,
+  });
+  const startfragen = startfragenAntwort.data?.starters ?? [];
 
   // Der Verlauf des Tabs — einmal beim Aufbauen, danach bei jeder Änderung.
   useEffect(() => {
@@ -1001,26 +1020,49 @@ export function LottiPanel({
           sie dauerhaft unter jedem Gespräch und waren zwei der sieben
           Bedienelemente unter Tims Antwort.
 
+          **Die zwei Startfragen (PR 25) stehen an der Stelle, an der bis
+          22.09.2026 „Was sehe ich hier?" allein stand** — wer nicht weiß, was
+          er fragen kann, fragt nichts, und zwei kuratierte Fragen sagen das
+          vor. „Was sehe ich hier?" bleibt, aber als DRITTER, kleinerer Chip
+          im Sekundärstil darunter: Sie ist immer noch die richtige Antwort
+          auf „ich weiß gar nicht, was ich fragen soll", nur nicht mehr die
+          lauteste. Ohne geladene Startfragen (kurz beim Öffnen, oder eine
+          Seite ohne welche) bleibt „Was sehe ich hier?" allein und im
+          gewohnten Stil — sie ist der Fall, der IMMER geht.
+
           **„Markiertes erklären" ist kein Grund-Chip** und bleibt: Er
           erscheint nur, wenn gerade etwas markiert ist, also als Antwort auf
           eine Handlung, die eben passiert ist — kein Dauerangebot. */}
       {(turns.length === 0 || markierung) && (
-        <div className="flex flex-wrap gap-1.5 px-3 pb-1.5">
-          {turns.length === 0 && (
-            <Chip onClick={() => void fragen("Was sehe ich hier?", false)} disabled={laden || merken == null}>
-              Was sehe ich hier?
-            </Chip>
+        <div className="flex flex-col gap-1.5 px-3 pb-1.5">
+          {turns.length === 0 && startfragen.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {startfragen.map((frage) => (
+                <Chip key={frage} onClick={() => void fragen(frage, false)}
+                     disabled={laden || merken == null}>
+                  {frage}
+                </Chip>
+              ))}
+            </div>
           )}
-          {markierung && (
-            <Chip onClick={() => void fragen("Was heißt das?", true)} disabled={laden || merken == null}>
-              Markiertes erklären
-            </Chip>
-          )}
-          {turns.length === 0 && (
-            <Chip onClick={onModus} disabled={laden || merken == null}>
-              Etwas auf der Seite zeigen
-            </Chip>
-          )}
+          <div className="flex flex-wrap gap-1.5">
+            {turns.length === 0 && (
+              <Chip onClick={() => void fragen("Was sehe ich hier?", false)}
+                   disabled={laden || merken == null} sekundaer={startfragen.length > 0}>
+                Was sehe ich hier?
+              </Chip>
+            )}
+            {markierung && (
+              <Chip onClick={() => void fragen("Was heißt das?", true)} disabled={laden || merken == null}>
+                Markiertes erklären
+              </Chip>
+            )}
+            {turns.length === 0 && (
+              <Chip onClick={onModus} disabled={laden || merken == null}>
+                Etwas auf der Seite zeigen
+              </Chip>
+            )}
+          </div>
         </div>
       )}
 
@@ -1195,15 +1237,24 @@ function Tippt({ schritt, ratsfrage }: { schritt?: string | null; ratsfrage?: bo
   );
 }
 
-function Chip({ children, onClick, disabled }: {
+function Chip({ children, onClick, disabled, sekundaer }: {
   children: React.ReactNode; onClick: () => void; disabled?: boolean;
+  /** Kleiner und blasser — für einen Chip, der neben den Startfragen (PR 25)
+   *  nicht mehr der lauteste im Raum sein soll, aber trotzdem der Fall
+   *  bleibt, der immer geht. */
+  sekundaer?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="inline-flex min-h-8 items-center rounded-full border border-primary/30 bg-primary/[0.04] px-2.5 text-[12px] font-medium text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
+      className={cn(
+        "inline-flex items-center rounded-full border transition-colors disabled:opacity-50",
+        sekundaer
+          ? "min-h-7 border-border bg-transparent px-2 text-[11px] font-medium text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+          : "min-h-8 border-primary/30 bg-primary/[0.04] px-2.5 text-[12px] font-medium text-primary hover:bg-primary/10",
+      )}
     >
       {children}
     </button>

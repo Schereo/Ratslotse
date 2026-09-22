@@ -42,7 +42,7 @@ from kern.store import Store
 
 from .. import deepresearch
 from ..config import get_settings
-from ..antworten import (AnalysisData, BudgetAmendmentLists, BudgetAuditReports,
+from ..antworten import (AnalysisData, AssistantStarters, BudgetAmendmentLists, BudgetAuditReports,
                          BudgetBalanceSheet, BudgetComparison, BudgetDataState, BudgetDebt, BudgetLiquidity, BudgetLoans,
                          BudgetDispute, BudgetDocuments, BudgetExecution,
                          BudgetFixedAssets, BudgetGroup,
@@ -3607,6 +3607,41 @@ def assistant_event(body: AssistantEventBody, request: Request,
                             f"Unbekanntes Ereignis: {body.kind!r}")
     assistant_event_limiter.check(request, subject=user["id"])
     ratslotse.record_activity(user["id"], zaehler, client_kind(request))
+
+
+@router.get("/assistant/starters")
+def assistant_starters(
+    route: Annotated[str, Query(max_length=200)] = "",
+    user: dict = Depends(require_active),
+) -> AssistantStarters:
+    """Die zwei kuratierten Startfragen fürs leere Lotti-Fenster dieser Seite.
+
+    **Kein Modellaufruf, keine Datenbank** — die Fragen stehen als Code in
+    ``kern/knowledge.py``; dieser Endpunkt normalisiert nur die Route wie
+    ``/explain`` und liefert sie route-genau aus. Der Client holt ihn einmal
+    je Route (React Query, wie ``ThemenBruecke`` in ``council-qa.tsx``) und
+    fragt ihn danach nicht mehr an, solange das Fenster offen bleibt.
+
+    **Ohne das Recht der Seite: leere Liste, kein 403.** Anders als bei
+    ``/explain`` steckt hier kein geschützter Inhalt hinter dem Riegel — die
+    beiden Fragen sind derselbe kuratierte Text, der in diesem Modul im
+    öffentlichen Repo steht, keine Haushaltszahl. Ein 403 wäre außerdem eine
+    Fehlermeldung für einen Aufruf, den niemand ausgelöst hat: Das Fenster
+    holt die Startfragen VON SELBST beim Öffnen, nicht auf einen Klick, und
+    ein Konto ohne `budget` sieht den Haushalts-Knopf ohnehin nie. Eine leere
+    Liste lässt den Client einfach bei „Was sehe ich hier?" — dieselbe
+    Oberfläche wie auf einer Seite, die dieses Modul gar nicht kennt.
+    """
+    if not features.an("lotti-assistentin"):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Nicht gefunden.")
+    normalisiert = seitenaufrufe.normalisieren(route)
+    wissen = knowledge.fuer_route(normalisiert)
+    if wissen is None or knowledge.OHNE_ERKLAERUNG.get(normalisiert):
+        return {"starters": []}
+    rechte = rollen.permissions_for(user.get("roles"))
+    if wissen.requires and wissen.requires not in rechte:
+        return {"starters": []}
+    return {"starters": list(wissen.starters)}
 
 
 @router.post("/explain", response_class=EventStreamResponse, responses=SSE_ERKLAERUNG)
