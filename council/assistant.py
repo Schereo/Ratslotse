@@ -1089,32 +1089,38 @@ def _vergleichs_zeile(vergleich: dict | None) -> str:
     ``store.staedtevergleich_kontext`` — dort steht, wie die Einwohnerzahl
     überhaupt in diesen Baustein geriet.
     """
-    if (vergleich or {}).get("unit") == "count":
+    v = vergleich or {}
+    if v.get("unit") == "count":
         return ""
-    staedte = [s for s in (vergleich or {}).get("staedte") or []
-               if s.get("value") is not None]
+    staedte = [s for s in v.get("staedte") or [] if s.get("value") is not None]
     ol = next((s for s in staedte if "oldenburg" in (s.get("city") or "").lower()), None)
     if not ol or len(staedte) < 2:
         return ""
     from council import geld as _geld
 
-    def wert(v: float) -> str:
+    def wert(zahl: float) -> str:
         # „teur" heißt Tausend Euro. So stehen zu lassen wie im Geld-Block
         # hieße, dem Modell „348.164" neben ein Kürzel zu legen, das es als
         # Euro abschreiben kann — die Zahl wäre dann um den Faktor 1.000
         # falsch und gälte dem Eval trotzdem als belegt (sie steht ja da).
-        if vergleich.get("unit") == "teur":
-            return _geld.de_betrag(v * 1000)
-        return _geld.de_zahl(v) + (f" {vergleich['unit']}" if vergleich.get("unit") else "")
+        if v.get("unit") == "teur":
+            return _geld.de_betrag(zahl * 1000)
+        return _geld.de_zahl(zahl) + (f" {v['unit']}" if v.get("unit") else "")
 
     drueber = sum(1 for s in staedte if s["value"] > ol["value"])
     drunter = sum(1 for s in staedte if s["value"] < ol["value"])
     hoch = max(staedte, key=lambda s: s["value"])
     tief = min(staedte, key=lambda s: s["value"])
+    # Der Rang ausdrücklich, und die Zählrichtung dazu: Ohne ihn machte das
+    # Modell aus „1 Stadt darüber, 6 darunter" ein „im Mittelfeld" (gemessen
+    # 22.09.2026, zwei von drei Antworten) — aus zwei richtigen Zahlen eine
+    # falsche Aussage. Kein „Platz 2" ohne „von oben gezählt": Bei den
+    # Schulden wäre oben das andere Ende.
     return (f"- In der Reihe der kreisfreien Städte Niedersachsens "
-            f"({vergleich['indicator']}, {vergleich['year']}): Oldenburg "
-            f"{wert(ol['value'])} — darüber {_staedte(drueber)}, darunter "
-            f"{_staedte(drunter)}; die Reihe reicht von {tief['city']} "
+            f"({v['indicator']}, {v['year']}): Oldenburg "
+            f"{wert(ol['value'])} — Rang {drueber + 1} von {len(staedte)}, vom "
+            f"HÖCHSTEN Wert an gezählt ({_staedte(drueber)} darüber, "
+            f"{_staedte(drunter)} darunter); die Reihe reicht von {tief['city']} "
             f"({wert(tief['value'])}) bis {hoch['city']} ({wert(hoch['value'])})")
 
 

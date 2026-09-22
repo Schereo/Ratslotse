@@ -3169,11 +3169,21 @@ def _konzern_block(k: dict | None) -> str:
 
 
 def _vergleich_block(v: dict | None) -> str:
-    """Die anderen kreisfreien Städte — Einordnung statt nackter Zahl."""
+    """Die anderen kreisfreien Städte — Einordnung statt nackter Zahl.
+
+    **„teur" wird zu Euro ausgeschrieben.** Die Reihe ``tax_capacity``
+    speichert die Steuerkraftmesszahl in TAUSEND Euro; als „348.164 teur" im
+    Prompt ist das eine Zahl neben einem Kürzel, und was ein Modell daraus
+    macht, ist Glück: Am 22.09.2026 schrieb es „rund 274 Millionen Euro" für
+    „273.609 teur" — richtig geraten. „273.609.000 €" lässt nichts zu raten.
+    """
     if not v or not v.get("staedte"):
         return ""
-    unit = f" {v['unit']}" if v.get("unit") else ""
-    zeilen = [f"- {s['city']}: {s['value']:,.0f}{unit}".replace(",", ".")
+    teur = v.get("unit") == "teur"
+    unit = "" if teur else (f" {v['unit']}" if v.get("unit") else "")
+    zeilen = [f"- {s['city']}: "
+              + (_eur(s["value"] * 1000) if teur
+                 else f"{s['value']:,.0f}".replace(",", ".")) + unit
               for s in v["staedte"][:8] if s.get("value") is not None]
     return (f"\nIM VERGLEICH ({v['indicator']}, {v['year']}, amtliche Statistik des\n"
             "Landesamts für Statistik Niedersachsen — alle kreisfreien Städte\n"

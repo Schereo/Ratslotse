@@ -1896,7 +1896,10 @@ def test_die_vergleichszeile_zaehlt_darueber_und_darunter():
                      {"city": "Oldenburg", "value": 348164.0},
                      {"city": "Emden", "value": 74287.0}]}
     zeile = lotti._vergleichs_zeile(v)
-    assert "darüber 1 Stadt" in zeile and "darunter 1 Stadt" in zeile
+    # Der Rang ausdrücklich: Aus „1 darüber, 1 darunter" machte das Modell
+    # sonst ein „im Mittelfeld" (gemessen 22.09.2026).
+    assert "Rang 2 von 3" in zeile and "HÖCHSTEN Wert an gezählt" in zeile
+    assert "1 Stadt darüber" in zeile and "1 Stadt darunter" in zeile
     # „teur" heißt Tausend Euro — als „348.164" neben dem Kürzel schriebe das
     # Modell die Zahl um den Faktor 1.000 falsch ab.
     assert "348,2 Mio. €" in zeile and "teur" not in zeile
