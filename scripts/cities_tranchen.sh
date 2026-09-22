@@ -14,7 +14,7 @@ cd "$(dirname "$0")/.." || exit 1
 STUFE="${1:?Stufe: fit | reason | idea_fit}"
 LIMIT="${2:-1000}"
 MAX="${3:-50}"
-shift 3 2>/dev/null || true
+shift $(( $# < 3 ? $# : 3 ))
 for i in $(seq 1 "$MAX"); do
   echo "=== $STUFE Durchgang $i, $(date '+%F %T') ==="
   nice -n 10 .venv/bin/python scripts/cities_tranche.py "$STUFE" --limit "$LIMIT" "$@"
