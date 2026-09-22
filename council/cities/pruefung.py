@@ -102,9 +102,39 @@ REGELN: dict[str, tuple[tuple[float, float], str]] = {
 }
 
 
+def gruppenstatus_fehlt(main: CitiesStore) -> Befund | None:
+    """Urteile der aktuellen `fit`-Fassung, aber kein Gruppen-Status dazu?
+
+    Die Ideen-Liste verbindet `idea_group_status` über die Fassung. Fehlt sie,
+    ist `peers` überall 0 — „auch in N Städten" verschwindet, die Sortierung
+    nach Städten greift nicht, und nichts meldet sich (dev, 20.–22.09.2026).
+    """
+    from council.cities.annotators import get as get_annotator
+
+    fassung = get_annotator("fit").version
+    urteile = main._conn.execute(
+        "SELECT COUNT(*) FROM annotations WHERE annotator = 'fit' AND version = ?",
+        (fassung,)).fetchone()[0]
+    if not urteile:
+        return None
+    zeilen = main._conn.execute(
+        "SELECT COUNT(*) FROM idea_group_status WHERE fit_version = ?",
+        (fassung,)).fetchone()[0]
+    if zeilen:
+        return None
+    return Befund(
+        "alle", "gruppenstatus_fehlt", 0.0, (1.0, float("inf")),
+        f"{urteile} Urteile der Fassung {fassung}, aber kein Gruppen-Status "
+        "dazu — die Ideen-Liste zeigt überall „auch in 0 Städten“. Beheben: "
+        "`main.rebuild_group_status(EMBED_MODEL, CLUSTER_VERSION, "
+        f"\"{fassung}\")` bzw. `cities_backfill.py --run --stage cluster`.")
+
+
 def pruefe(main: CitiesStore, embed_model: str = "") -> list[Befund]:
     """Jede Stadt gegen die Bänder halten. Leere Liste heißt: unauffällig."""
     befunde: list[Befund] = []
+    if (b := gruppenstatus_fehlt(main)) is not None:
+        befunde.append(b)
     # Einmal für alle Städte: die Abfrage geht über den ganzen Bestand.
     doppelt = main.duplicate_agenda_items()
     for z in main.stats(embed_model):
