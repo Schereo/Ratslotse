@@ -7,7 +7,7 @@ import secrets
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from collections.abc import Iterable
 from types import EllipsisType
 from kern.dbfehler import neue_id, tabelle_fehlt
@@ -837,6 +837,19 @@ class TopicRow:
     description: str
     created_at: str
 
+
+
+def today_utc() -> date:
+    """Der heutige Tag im Kalender der gespeicherten Zeitstempel — UTC.
+
+    ``created_at``, ``created`` und die Tageszähler werden über
+    ``datetime.utcnow()`` geschrieben. Wer eine Tagesreihe dagegen mit
+    ``date.today()`` (Ortszeit) bildet, hat zwischen 22 und 24 Uhr CEST einen
+    Tag Versatz: Der jüngste Eintrag liegt dann im „morgen" der Reihe und
+    fehlt im „heute". Genau so scheiterten zwei Tests abends reproduzierbar
+    und in der CI (UTC) nie.
+    """
+    return datetime.now(timezone.utc).date()
 
 
 def _tagesbeginn_utc() -> str:
@@ -3890,10 +3903,12 @@ class Store:
         Alles ohne Betreiber- und Testkonten (``_stats_ausschluss``). Wie viele
         das waren, steht als ``excluded`` in der Antwort — eine Statistik, die
         stillschweigend Zeilen wegwirft, ist selbst eine Falle.
-        """
-        from datetime import date
 
-        heute = date.today()
+        „Heute" ist der UTC-Tag (``today_utc``): ``created_at`` steht in UTC,
+        und die Frage „ist die Kohorte schon 30 Tage alt?" darf abends nicht
+        anders ausfallen als morgens.
+        """
+        heute = today_utc()
         raus = self._stats_ausschluss(ausschluss_domains)
 
         # Ein Query je Tabelle statt eines Unterausdrucks je Konto: Der Bestand
@@ -4262,13 +4277,12 @@ class Store:
         """
         if reason not in SIGNUP_REJECTION_REASONS:
             return
-        from datetime import date
         try:
             with self._conn:
                 self._conn.execute(
                     "INSERT INTO signup_rejections (day, reason, count) VALUES (?, ?, 1) "
                     "ON CONFLICT(day, reason) DO UPDATE SET count = count + 1",
-                    (date.today().isoformat(), reason),
+                    (today_utc().isoformat(), reason),
                 )
         except Exception:  # noqa: BLE001 — Zählung darf nie einen Request brechen
             pass
@@ -4299,9 +4313,12 @@ class Store:
         bestätigt) und die Abweisungen, dazu die Summen und die Aufteilung nach
         Grund. Beide Seiten gehören in **ein** Bild — die Zahl der neuen Konten
         allein sagt nicht, ob gerade jemand anklopft und abprallt.
+
+        Die Tagesreihe läuft in UTC (``today_utc``), weil ``created_at`` und
+        ``signup_rejections.day`` so geschrieben werden.
         """
-        from datetime import date
-        seit = (date.today() - timedelta(days=max(1, tage) - 1)).isoformat()
+        heute = today_utc()
+        seit = (heute - timedelta(days=max(1, tage) - 1)).isoformat()
         je_tag: dict[str, dict[str, int]] = {}
         for r in self._conn.execute(
                 "SELECT substr(created_at, 1, 10) d, COUNT(*) n, "
@@ -4314,7 +4331,6 @@ class Store:
                 "GROUP BY d", (seit,)).fetchall():
             je_tag.setdefault(r["d"], {})["rejected"] = int(r["n"] or 0)
 
-        heute = date.today()
         tage_liste = [(heute - timedelta(days=i)).isoformat() for i in range(max(1, tage) - 1, -1, -1)]
         series = [{"day": d,
                    "created": je_tag.get(d, {}).get("created", 0),
@@ -4577,8 +4593,7 @@ class Store:
         ist es ohne Belang, und eine Liste mit Kontokennung neben der Frage
         wäre ein Leseprotokoll.
         """
-        from datetime import date
-        seit = (date.today() - timedelta(days=max(1, tage) - 1)).isoformat()
+        seit = (today_utc() - timedelta(days=max(1, tage) - 1)).isoformat()
         raus: list[dict] = []
         for r in self._conn.execute(
                 "SELECT question, answer, sources, created FROM qa_conversation_turns "
