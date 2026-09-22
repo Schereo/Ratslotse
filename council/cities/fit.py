@@ -41,7 +41,7 @@ from typing import TYPE_CHECKING
 from pydantic import ValidationError
 
 from council.cities.annotate import parse_json
-from council.cities.annotators import USABLE, Annotator, OldenburgStatus
+from council.cities.annotators import LLM_TIMEOUT_S, USABLE, Annotator, OldenburgStatus
 from council.cities import evidence as beleg_modul
 from council.cities.evidence import (
     OLDENBURG_STECKBRIEF, Evidence, cluster_zeile, evidence_for)
@@ -492,7 +492,7 @@ def run(main: CitiesStore, rats: CouncilStore, ann: Annotator,
                               cluster=cluster_je.get(p["id"], ""),
                               evidence=evidence_text(belege))}],
                 max_tokens=ann.max_tokens, temperature=ann.temperature,
-                extra_body=extra, _feature=ann.feature)
+                extra_body=extra, timeout=LLM_TIMEOUT_S, _feature=ann.feature)
             daten = parse_json(antwort.choices[0].message.content or "")
         except Exception as e:  # noqa: BLE001 — eine Vorlage, nicht der Lauf
             with sperre:
