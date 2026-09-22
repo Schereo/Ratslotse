@@ -7,6 +7,7 @@ import { ArrowRight, RotateCcw, Sparkles, X } from "lucide-react";
 
 import { Mascot } from "@/components/mascot";
 import { AntwortText } from "@/components/qa-bausteine";
+import { GlossarAufklappBereich } from "@/components/glossary-text";
 import { FeedbackDaumen } from "@/components/feedback-daumen";
 import { apiUrl, authHeaders } from "@/lib/api";
 import {
@@ -22,6 +23,7 @@ import { GespraecheEinwilligung } from "@/components/gespraeche-einwilligung";
 import { decisionHref, fragenHref } from "@/lib/routes";
 import type { ElementFrage } from "./index";
 import { leseSseStrom } from "@/lib/sse";
+import { lottiSchrittText } from "@/lib/qa-schritte";
 import { tastaturHoehe } from "@/lib/tastatur";
 import { cn } from "@/lib/utils";
 
@@ -97,6 +99,10 @@ export type LottiTurn = {
   baustein?: Anker;
   /** Das Fachwort, nach dem diese Runde gefragt hat („Was heißt …?"). */
   begriff?: string;
+  /** Woran der Strom gerade arbeitet — aus dem SSE-Rahmen `step`. Steht nur
+   *  neben der Tipp-Anzeige, also solange noch kein Wort da ist; danach ist
+   *  der Text selbst die Auskunft. */
+  schritt?: string | null;
 };
 
 /** Der Breakpoint `desk` aus `tailwind.config.ts`, als Medienabfrage.
@@ -423,7 +429,11 @@ export function LottiPanel({
         return;
       }
       await leseSseStrom(res.body, (msg) => {
-        if (msg.type === "token") patch((t) => ({ answer: t.answer + (msg.text as string) }));
+        // **Der Schritt, den das Fenster bis 22.09.2026 wegwarf.** Der Server
+        // meldet `context` und `answer`, seit es den Endpunkt gibt; angezeigt
+        // wurden drei blasse Punkte, an denen man nicht sah, dass etwas läuft.
+        if (msg.type === "step") patch(() => ({ schritt: msg.step as string }));
+        else if (msg.type === "token") patch((t) => ({ answer: t.answer + (msg.text as string) }));
         else if (msg.type === "replace") {
           const { text: rein, next } = trenneWeiter((msg.text as string) ?? "");
           patch(() => ({ answer: rein, next }));
@@ -537,7 +547,10 @@ export function LottiPanel({
         return;
       }
       await leseSseStrom(res.body, (msg) => {
-        if (msg.type === "token") patch((t) => ({ answer: t.answer + (msg.text as string) }));
+        // Die Ratsfrage meldet drei Schritte (`expand`, `search`, `answer`) —
+        // dieselbe Abbildung wie auf der Fragen-Seite, aus `lib/qa-schritte.ts`.
+        if (msg.type === "step") patch(() => ({ schritt: msg.step as string }));
+        else if (msg.type === "token") patch((t) => ({ answer: t.answer + (msg.text as string) }));
         else if (msg.type === "replace") patch(() => ({ answer: (msg.text as string) ?? "" }));
         else if (msg.type === "sources") {
           patch(() => ({ quellen: (msg.sources as LottiQuelle[]) ?? [] }));
@@ -814,11 +827,17 @@ export function LottiPanel({
               <div className="min-w-0 flex-1">
                 {t.answer
                   ? (
-                    <div className="text-[13.5px] leading-relaxed text-foreground/90">
+                    /* **Fachwörter klappen hier auf, statt zu überlagern.**
+                       Der Popover aus `glossary-text.tsx` ist bis zu 17 rem
+                       breit und liegt am Wort; im 384-px-Fenster mit
+                       `overflow-hidden` schneidet ihn der Rand ab, sobald das
+                       Wort rechts steht (Tim, 22.09.2026). Der Bereich steht
+                       um EINE Antwort: ein zweites Wort ersetzt das erste. */
+                    <GlossarAufklappBereich className="text-[13.5px] leading-relaxed text-foreground/90">
                       <AntwortText text={t.answer} idToNum={new Map()} />
-                    </div>
+                    </GlossarAufklappBereich>
                   )
-                  : <Tippt />}
+                  : <Tippt schritt={t.schritt} ratsfrage={t.ratsfrage} />}
                 {t.answer && !t.fehler && t.ratsfrage && (
                   <Quellen turn={t} onSchliessen={onSchliessen} />
                 )}
@@ -1045,17 +1064,36 @@ function Quellen({ turn, onSchliessen }: { turn: LottiTurn; onSchliessen: () => 
   );
 }
 
-/** Die Tipp-Anzeige der Chat-Fenster — hier an einen echten Zustand gebunden. */
-function Tippt() {
+/**
+ * Die Tipp-Anzeige der Chat-Fenster — hier an einen echten Zustand gebunden.
+ *
+ * **Sie war bis 22.09.2026 kaum zu sehen**: drei 6-px-Punkte mit
+ * `animate-pulse`, also eine reine Deckkraft-Welle, die sich im Fenster
+ * verlor („man sieht fast nicht, dass da was lädt", Tim). Jetzt 8 px, eine
+ * echte Hüpf-Animation mit Versatz (`lotti-tippt` in `app/globals.css`) —
+ * und daneben der SCHRITT, den der Server ohnehin meldet. Ein Satz, der sagt
+ * „Lotti liest die Seite", erklärt eine Sekunde Wartezeit; drei Punkte nicht.
+ *
+ * `role="status"` bleibt: Die Anzeige meldet sich, ohne den Fokus zu nehmen —
+ * und mit dem Text meldet sie jetzt auch etwas Sagbares.
+ */
+function Tippt({ schritt, ratsfrage }: { schritt?: string | null; ratsfrage?: boolean }) {
   return (
-    <span className="inline-flex items-center gap-1 py-1" role="status" aria-label="Lotti schreibt">
-      {[0, 1, 2].map((i) => (
-        <span
-          key={i}
-          className="h-1.5 w-1.5 animate-pulse rounded-full bg-signal"
-          style={{ animationDelay: `${i * 160}ms` }}
-        />
-      ))}
+    <span className="flex items-center gap-2 py-1" role="status">
+      <span className="inline-flex flex-none items-center gap-1" aria-hidden>
+        {[0, 1, 2].map((i) => (
+          <span
+            key={i}
+            className="lotti-tippt-punkt h-2 w-2 rounded-full bg-signal"
+            // Der Versatz macht aus drei gleichen Punkten eine Welle. Als
+            // Stil und nicht als Klasse: Tailwind kennt keine Staffelung.
+            style={{ animationDelay: `${i * 160}ms` }}
+          />
+        ))}
+      </span>
+      <span className="min-w-0 text-hinweis text-muted-foreground">
+        {lottiSchrittText(schritt, ratsfrage)} …
+      </span>
     </span>
   );
 }

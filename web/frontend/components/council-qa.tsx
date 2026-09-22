@@ -40,6 +40,7 @@ import { type ApiAntwort } from "@/lib/vertrag";
 import { useAuth } from "@/lib/auth";
 import { entwurfAbholen, entwurfMelden } from "@/lib/draft";
 import { leseSseStrom } from "@/lib/sse";
+import { ASK_SCHRITTE, type AskSchritt } from "@/lib/qa-schritte";
 import { GespraecheEinwilligung } from "@/components/gespraeche-einwilligung";
 import { leseHatGespraeche, leseQaBeispiele, merkeHatGespraeche, merkeQaBeispiele } from "@/lib/qa-zuletzt";
 import { Button, Input, toast } from "@/components/ui";
@@ -142,12 +143,10 @@ function waehleBeispiele(frisch: string[], count: number): string[] {
   return [...frei, ...pool.filter((f) => !frei.includes(f))].slice(0, count);
 }
 
-type Step = "expand" | "search" | "answer";
-const STEP_LABELS: Record<Step, string> = {
-  expand: "Frage wird in Suchbegriffe übersetzt",
-  search: "Beschlüsse werden durchsucht und sortiert",
-  answer: "Antwort wird formuliert",
-};
+// Die Schritt-Texte stehen seit 22.09.2026 in `lib/qa-schritte.ts` — Lottis
+// Fenster zeigt dieselben Rahmen, und zwei Fassungen liefen auseinander.
+type Step = AskSchritt;
+const STEP_LABELS = ASK_SCHRITTE;
 
 // Playful rotating status words (Claude-Code-style) shown while the model works.
 const PLAYFUL = [
