@@ -32,12 +32,32 @@ benotet, ist bei jedem Lauf woanders — und die Frage hier ist nicht „ist das
 schön formuliert", sondern „hält es die Zusagen". Zusagen lassen sich
 buchstäblich prüfen.
 
+**Was der Lauf zusätzlich meldet** (seit PR 29, für den Modellvergleich):
+Latenz p50/p95 über die MODELL-Fälle — die deterministischen Wege messen
+SQLite, nicht das Modell, und zögen den Median nach unten —, dazu die
+**echten** Kosten dieses Laufs aus ``llm_usage`` (``kern/usage.seit``), also
+die Zahl, die OpenRouter mitgeschickt hat. Liefert ein Provider keine
+Kosten mit, sagt der Bericht das und schätzt NICHT: Eine Schätzung aus
+``PRICES`` misst, was jemand von Hand eingetragen hat, und wäre in einem
+Modellvergleich genau die falsche Zahl.
+
+**Das Modell ist wählbar** (``--modell``), aber nur für Lottis eigenen
+Erklär-Arm. Der Ratsweg-Fall (``arm: ratsfrage``) hängt an
+``COUNCIL_QA_MODEL`` und bleibt, wo er ist — er misst die Weiterreichung ins
+Archiv, nicht die Erklärung. Ein Env-Override VOR dem Import reicht dafür
+nicht: ``council.assistant`` bindet ``MODEL`` als **Default-Argument** von
+``explain_question``, und Defaults werden beim ``def`` festgezurrt. Deshalb
+geht das Modell hier als Argument mit, statt ein Modulattribut zu
+überschreiben.
+
 Aufruf::
 
     python eval/run_assistant.py                      # alles, braucht OPENROUTER_API_KEY
     python eval/run_assistant.py --nur-deterministisch # ohne Schlüssel: die Wege ohne Modell
     python eval/run_assistant.py --nur injektion       # nur die Injektions-Fälle
-    python eval/run_assistant.py --save                # Ergebnis nach eval/results/
+    python eval/run_assistant.py --nur schwer          # nur die schweren Haushalts-Fälle
+    python eval/run_assistant.py --modell google/gemini-2.5-pro --save
+    python eval/run_assistant.py --save                # Ergebnis nach eval/results/assistant/
 
 Braucht die echte ``council.sqlite`` (``COUNCIL_DB``); ohne sie fehlen die
 Beschluss- und Haushalts-Fälle und werden sichtbar übersprungen statt falsch
@@ -47,6 +67,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import re
 import sys
@@ -63,9 +84,17 @@ load_dotenv(Path(__file__).parent.parent / ".env")
 from council import assistant as lotti  # noqa: E402
 from council import qa  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
+from kern import usage  # noqa: E402
 
 FAELLE = Path(__file__).parent / "cases_assistant.json"
-ERGEBNISSE = Path(__file__).parent / "results"
+#: Läufe mit Modell-Id im Namen liegen in einem eigenen Ordner — der alte
+#: ``results/`` trug schon dreißig Dateien aus den Runden davor, und ein
+#: Vergleich, dessen Rohdaten man erst heraussuchen muss, wird nicht gelesen.
+ERGEBNISSE = Path(__file__).parent / "results" / "assistant"
+
+#: Das Feature, unter dem ``council/assistant.py`` seine Aufrufe verbucht.
+#: Über diesen Namen findet der Lauf seine eigenen Kosten wieder.
+FEATURE = "assistant_explain"
 
 #: Beschlüsse, auf die ein Fall über ``refs_decision`` zeigt — gesucht über
 #: einen natürlichen Schlüssel, damit der Eval gegen jede Datenbankkopie läuft
@@ -287,7 +316,8 @@ def _pruefe(fall: dict, text: str, modus: str, weiter: str | None,
     return aus
 
 
-def lauf(faelle: list[dict], store: CouncilStore, *, nur_deterministisch: bool) -> list[dict]:
+def lauf(faelle: list[dict], store: CouncilStore, *, nur_deterministisch: bool,
+         modell: str = lotti.MODEL) -> list[dict]:
     aus = []
     for fall in faelle:
         screen, grund = _screen(fall, store)
@@ -339,9 +369,9 @@ def lauf(faelle: list[dict], store: CouncilStore, *, nur_deterministisch: bool) 
             # ist oder erfunden.
             ctx = lotti.screen_context(store, screen, frage,
                                        permissions=frozenset({"budget"}))
-            msgs, _ = lotti.explain_messages(screen, frage, ctx)
+            msgs, _ = lotti.explain_messages(screen, frage, ctx, model=modell)
             kontext = msgs[0]["content"]
-            roh = lotti.explain_question(store, screen, frage, ctx=ctx)
+            roh = lotti.explain_question(store, screen, frage, ctx=ctx, model=modell)
             # Die Route MUSS mit: Ein `WEITER: seite` auf die Seite, auf der
             # man steht, wird verworfen (Tims Befund 22.09.2026 — „Weiter zu:
             # Bereichs-Steckbrief" auf dem Bereichs-Steckbrief). Ein Eval ohne
@@ -368,6 +398,69 @@ def lauf(faelle: list[dict], store: CouncilStore, *, nur_deterministisch: bool) 
 def hart(befunde: list[str]) -> list[str]:
     """Die Befunde, die den Lauf rot färben — alles außer der Länge."""
     return [b for b in befunde if not b.startswith(WEICH)]
+
+
+def _quantil(werte: list[int], anteil: float) -> int:
+    """Das ``anteil``-Quantil, nearest-rank — ohne numpy und ohne Interpolation.
+
+    Nearest-rank, weil bei 20 Messpunkten jede Interpolation eine Zahl
+    erfindet, die niemand gemessen hat. p95 ist hier der zweitlangsamste
+    Aufruf, und genau so soll er zu lesen sein.
+    """
+    if not werte:
+        return 0
+    geordnet = sorted(werte)
+    rang = max(1, min(len(geordnet), math.ceil(anteil * len(geordnet))))
+    return geordnet[rang - 1]
+
+
+def kennzahlen(zeilen: list[dict], modell: str, marke: str | None) -> dict:
+    """Latenz und echte Kosten der MODELL-Fälle dieses Laufs.
+
+    Nur ``explain``: Die deterministischen Wege messen SQLite und ein paar
+    Regexe — sie in denselben Median zu werfen, halbiert ihn und macht aus
+    jedem Modell einen schnellen. Der Ratsweg bleibt ebenfalls draußen, er
+    hängt an einem anderen Modell (``COUNCIL_QA_MODEL``).
+    """
+    ms = [z["ms"] for z in zeilen if z.get("modus") == "explain"]
+    aus: dict = {
+        "modell": modell,
+        "modellfaelle": len(ms),
+        "p50_ms": _quantil(ms, 0.50),
+        "p95_ms": _quantil(ms, 0.95),
+    }
+    if marke is None:
+        return aus
+    k = usage.seit(FEATURE, marke)
+    aus["aufrufe"] = k["calls"]
+    aus["kosten_usd"] = round(k["cost_usd"], 6)
+    aus["ohne_kostenwert"] = k["ohne_kosten"]
+    aus["prompt_tokens"] = k["prompt_tokens"]
+    aus["completion_tokens"] = k["completion_tokens"]
+    aus["modelle_laut_tabelle"] = k["models"]
+    # Cent je Aufruf — die Einheit, in der über einen Wechsel geredet wird.
+    # Nur aus den Zeilen MIT Kostenwert; sonst stünde hier ein Mittel, das
+    # die stummen Aufrufe als 0 € mitzählt.
+    mit = k["calls"] - k["ohne_kosten"]
+    aus["cent_je_aufruf"] = round(k["cost_usd"] / mit * 100, 4) if mit else None
+    return aus
+
+
+def kennzahl_zeile(k: dict) -> str:
+    teile = [f"Modell {k['modell']}",
+             f"{k['modellfaelle']} Modell-Fälle",
+             f"p50 {k['p50_ms']} ms", f"p95 {k['p95_ms']} ms"]
+    if "aufrufe" in k:
+        teile.append(f"{k['aufrufe']} Aufrufe")
+        if k["cent_je_aufruf"] is None:
+            teile.append("Kosten: der Provider lieferte für KEINEN Aufruf "
+                         "einen Wert mit — nicht geschätzt")
+        else:
+            teile.append(f"{k['kosten_usd']:.4f} $ = {k['cent_je_aufruf']:.4f} ct/Aufruf")
+            if k["ohne_kostenwert"]:
+                teile.append(f"ACHTUNG: {k['ohne_kostenwert']} Aufrufe ohne "
+                             "Kostenwert — die Summe ist eine Untergrenze")
+    return " · ".join(teile)
 
 
 def bericht(zeilen: list[dict]) -> str:
@@ -408,7 +501,11 @@ def main() -> int:
                     help="nur die Wege ohne Modell — läuft ohne API-Schlüssel")
     ap.add_argument("--nur", metavar="TEIL",
                     help="nur Fälle, deren id oder Notiz diesen Text enthält")
-    ap.add_argument("--save", action="store_true", help="Ergebnis nach eval/results/")
+    ap.add_argument("--save", action="store_true",
+                    help="Ergebnis nach eval/results/assistant/ (Modell-Id im Namen)")
+    ap.add_argument("--modell", default=lotti.MODEL,
+                    help=f"Modell für Lottis Erklärungen (Vorgabe: {lotti.MODEL}); "
+                         "der Ratsweg-Fall bleibt bei COUNCIL_QA_MODEL")
     ap.add_argument("--db", help="Pfad zur council.sqlite (sonst COUNCIL_DB/.env)")
     args = ap.parse_args()
 
@@ -425,16 +522,27 @@ def main() -> int:
     # Bestand im Repo — `CouncilStore()` ohne Pfad gibt es nicht.
     store = CouncilStore(Path(args.db or os.environ.get("COUNCIL_DB")
                               or Path(__file__).parent.parent / "data" / "council.sqlite"))
-    zeilen = lauf(faelle, store, nur_deterministisch=args.nur_deterministisch)
+    # Die Marke VOR dem ersten Aufruf setzen, sonst fehlt der erste in der
+    # Kostenzeile. Ohne Modell gibt es keine Aufrufe und damit nichts zu
+    # zählen — dann bleibt die Marke weg und die Kostenzeile still.
+    marke = None if args.nur_deterministisch else usage.jetzt_utc()
+    zeilen = lauf(faelle, store, nur_deterministisch=args.nur_deterministisch,
+                  modell=args.modell)
     text = bericht(zeilen)
     print(text)
+    kz = kennzahlen(zeilen, args.modell, marke)
+    print("\n" + kennzahl_zeile(kz))
 
     if args.save:
-        ERGEBNISSE.mkdir(exist_ok=True)
+        ERGEBNISSE.mkdir(parents=True, exist_ok=True)
         stempel = datetime.now().strftime("%Y%m%d-%H%M%S")
-        ziel = ERGEBNISSE / f"assistant-{stempel}.json"
-        ziel.write_text(json.dumps(zeilen, ensure_ascii=False, indent=1))
-        print(f"\ngeschrieben: {ziel}")
+        # Das Modell gehört in den DATEINAMEN, nicht nur ins JSON: Bei sechs
+        # Läufen desselben Vergleichs ist die Liste sonst sechsmal dasselbe
+        # Wort mit verschiedenen Uhrzeiten.
+        ziel = ERGEBNISSE / f"assistant-{args.modell.replace('/', '-')}-{stempel}.json"
+        ziel.write_text(json.dumps({"kennzahlen": kz, "faelle": zeilen},
+                                   ensure_ascii=False, indent=1))
+        print(f"geschrieben: {ziel}")
 
     gemessen = [z for z in zeilen if "modus" in z]
     return 0 if all(not hart(z["befunde"]) for z in gemessen) else 1

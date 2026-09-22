@@ -141,3 +141,52 @@ def test_zeitstempel_werden_als_lokale_tage_gezaehlt(usage_db):
     assert series.get(erwartet) == pytest.approx(0.5), (
         f"Eintrag von {utc_ts:%Y-%m-%d %H:%M} UTC gehört zum lokalen Tag "
         f"{erwartet}, steht aber nicht dort: {series}")
+
+
+def test_seit_zaehlt_nur_das_eigene_fenster(usage_db):
+    """``usage.seit`` misst EINEN Lauf, nicht die Tabelle.
+
+    Der Modellvergleich für Lottis Erklärungen (PR 29) fährt sechs Läufe
+    hintereinander gegen dieselbe Datenbank. Eine Summe über alle Zeilen
+    schriebe jedem Lauf die Kosten seiner Vorgänger zu — das Modell mit den
+    höchsten Kosten wäre dann immer das letzte.
+    """
+    import sqlite3
+
+    usage.record("assistant_explain", "google/gemini-2.5-flash", 100, 10, cost_usd=0.001)
+    # Eine Minute zurückdatieren: ``ts`` und die Marke haben Sekunden-
+    # Auflösung, und im Test fällt beides sonst in dieselbe Sekunde. Im
+    # Messlauf liegen Minuten dazwischen — die Grenze ist dort kein Thema.
+    conn = sqlite3.connect(usage_db)
+    conn.execute("UPDATE llm_usage SET ts = datetime('now', '-1 minute')")
+    conn.commit()
+    conn.close()
+
+    marke = usage.jetzt_utc()
+    usage.record("assistant_explain", "google/gemini-2.5-pro", 200, 20, cost_usd=0.004)
+    usage.record("qa_antwort", "google/gemini-2.5-flash", 300, 30, cost_usd=0.009)
+
+    k = usage.seit("assistant_explain", marke)
+    assert k["calls"] == 1                      # der Aufruf VOR der Marke zählt nicht
+    assert k["cost_usd"] == pytest.approx(0.004)
+    assert k["models"] == ["google/gemini-2.5-pro"]   # das fremde Feature auch nicht
+    assert k["prompt_tokens"] == 200 and k["completion_tokens"] == 20
+    assert k["ohne_kosten"] == 0
+
+
+def test_seit_meldet_aufrufe_ohne_kostenwert(usage_db):
+    """Eine Zeile ohne ``cost_usd`` wird GEZÄHLT, nicht geschätzt.
+
+    Der Preis aus ``PRICES`` ist ein von Hand gepflegter Wert; ihn in einen
+    Modellvergleich zu mischen hieße, die eigene Tabelle zu messen statt den
+    Anbieter. Deshalb meldet ``seit`` die stummen Aufrufe getrennt — der
+    Bericht sagt dann „Untergrenze“ statt einer erfundenen Genauigkeit.
+    """
+    marke = usage.jetzt_utc()
+    usage.record("assistant_explain", "neu/modell", 100, 10, cost_usd=0.002)
+    usage.record("assistant_explain", "neu/modell", 100, 10)   # Provider ohne Kostenfeld
+
+    k = usage.seit("assistant_explain", marke)
+    assert k["calls"] == 2
+    assert k["ohne_kosten"] == 1
+    assert k["cost_usd"] == pytest.approx(0.002)

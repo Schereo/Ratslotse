@@ -184,6 +184,113 @@ welcher Bereich trägt das?"), weil die heutigen Fälle für Flash gebaut sind
 und ein stärkeres Modell dort nichts zeigen kann. Ergebnis als Tabelle im
 Plan; die Entscheidung ist Tims. Ohne diese Messung kein Modellwechsel.
 
+#### Das Ergebnis (gemessen 22.09.2026)
+
+Aufbau: `eval/run_assistant.py --modell <id> --save`, **53 Fälle** (die 43
+aus den Runden davor, darunter der Ratsweg-Fall und sieben Injektionen, plus
+zehn neue `schwer-*`), je Modell **zwei Läufe** gegen dieselbe
+`data/council.sqlite`. Die Roh-JSONs liegen unter `eval/results/assistant/`.
+Die Kosten sind die **echten** Werte, die OpenRouter je Aufruf mitliefert
+(`llm_usage.cost_usd`, auf den jeweiligen Lauf gefiltert über
+`kern/usage.seit`) — nichts geschätzt, und keine einzige Zeile kam ohne
+Kostenwert zurück.
+
+| Modell | Lauf | hart sauber | weich | `schwer-*` | Injektionen | p50 | p95 | ct/Aufruf |
+|---|---|---|---|---|---|---:|---:|---:|
+| `google/gemini-2.5-flash` (heute) | 1 | 50/53 | 0 | 7/10 | 7/7 | 1.093 ms | 2.013 ms | 0,117 |
+| | 2 | 49/53 | 0 | 7/10 | 7/7 | 1.050 ms | 1.952 ms | 0,068 |
+| `google/gemini-3.1-pro-preview` | 1 | 47/53 | 0 | 8/10 | 7/7 | 14.657 ms | 30.364 ms | 2,891 |
+| | 2 | 50/53 | 0 | 9/10 | 7/7 | 14.658 ms | 22.633 ms | 2,874 |
+| `anthropic/claude-sonnet-4.6` | 1 | 46/53 | 2 | 8/10 | 7/7 | 4.379 ms | 6.435 ms | 1,560 |
+| | 2 | 46/53 | 1 | 8/10 | 7/7 | 4.067 ms | 7.247 ms | 1,553 |
+
+p50/p95 zählen nur die **Modell**-Fälle (39 von 53): Die deterministischen
+Wege messen SQLite und ein paar Regexe, und der Ratsweg-Fall hängt an
+`COUNCIL_QA_MODEL` — er lief in allen sechs Läufen unverändert mit und ist
+deshalb keine Vergleichsgröße.
+
+**Was nur ein stärkeres Modell schafft:**
+
+| Fall | Flash | 3.1 Pro | Sonnet | worum es geht |
+|---|:--:|:--:|:--:|---|
+| `schwer-eigenbetrieb-groesstes-minus` | 0/2 | 2/2 | 2/2 | Das größte Minus unter fünf Wirtschaftsplänen in GEMISCHTEN Einheiten („-10,1 Mio. €" neben „-15.621 €"). Flash nimmt beide Male die Zahl, die größer **aussieht**. |
+| `schwer-investitionen-plan-ist` | 1/2 | 2/2 | 2/2 | Plan (109 Mio.) und Ist (68 Mio.) nennen **und** sagen, dass die beiden Zahlenwerke nicht gegeneinander zu rechnen sind. |
+| `schwer-stellen-unbesetzt-anteil` | 0/2 | 0/2 | 2/2 | 357,48 von 1.749 Stellen = 20,4 %. Flash **und** 3.1 Pro rechnen gegen 1.769 (den Jahrgang 2026) statt gegen 1.749 (die Vorjahresspalte) — genau der Stichtags-Fehler, vor dem der Baustein warnt. |
+
+Das ist die ganze Ausbeute: zwei Fälle, bei denen beide großen Modelle
+besser sind, und einer, den nur Sonnet kann.
+
+**Und was ein stärkeres Modell kaputt macht** — der Teil, der gegen einen
+Wechsel spricht:
+
+| Fall | Flash | 3.1 Pro | Sonnet | worum es geht |
+|---|:--:|:--:|:--:|---|
+| `keine-erfundene-zahl` | 2/2 | 0/2 | 0/2 | Der Kontext trägt **keine** Zahl. Beide großen Modelle erfinden eine — 3.1 Pro zweimal „1.971 Euro", Sonnet zweimal „1.970 Euro". Der teuerste Fehler, den Lotti machen kann. |
+| `einordnung-schulden-viel` | 2/2 | 1/2 | 0/2 | Die von Ratslotse GERECHNETEN 1.908 € je Kopf übernehmen. Sonnet rundet sie beide Male zu „1.900"/„1.910 Euro" — der Baustein sagt ausdrücklich „rechne selbst nichts nach". |
+| `haushalt-zwei-zaehlweisen` | 2/2 | 1/2 | 0/2 | „Der Haushalt" ohne Zusatz: Kern **und** Konzern nennen (PR 27). |
+| `geld-ausserhalb-dashboard` | 2/2 | 2/2 | 0/2 | Der Schuldenstand auf „Heute". Sonnet gibt beide Male „1.900 Euro" statt der 1.908 € aus dem Kontext. |
+| `schwer-schulden-hochrechnung` | 2/2 | 2/2 | 0/2 | Nicht fortschreiben. Sonnet nennt beide Male eine Steigerung von „42 Millionen", die nirgends steht. |
+| `element-eigenkapitalquote` | 2/2 | 2/2 | 1/2 | Keine Bewertung. Sonnet nennt die Quote einmal „besorgniserregend". |
+
+**Die Einordnung.**
+
+*Erstens die Streuung.* Zwischen zwei Läufen desselben Modells liegen bis zu
+drei Fälle (3.1 Pro: 47 und 50). Die Abstände zwischen den Modellen auf den
+43 alten Fällen liegen in derselben Größenordnung — **auf dem Bestandskorpus
+misst diese Eval keinen Modellunterschied, sondern Rauschen.** Aussagekräftig
+sind allein die `schwer-*`-Fälle, und dort steht es 7 : 8–9 : 8. Ein Gewinn
+von ein bis zwei Fällen von zehn.
+
+*Zweitens die Latenz.* Lotti **streamt** ins Fenster. Flash antwortet nach
+gut einer Sekunde, 3.1 Pro nach knapp fünfzehn — und der größte Teil davon
+ist Denken, bei dem nichts ankommt: 73.291 Completion-Tokens im Lauf gegen
+3.352 bei Flash, also 22-mal so viel erzeugter Text, von dem die Nutzerin
+keine Zeile sieht. Tim hat gesagt, es dürfe „einen Ticken länger dauern";
+ein p95 von 22–30 Sekunden ist kein Ticken, das ist ein Ladebalken. Sonnet
+liegt mit gut vier Sekunden dazwischen — und ist dabei das schlechteste der
+drei.
+
+*Drittens das Geld.* 0,07–0,12 ct je Aufruf heute gegen 2,87 ct (3.1 Pro)
+und 1,56 ct (Sonnet), also das 25- bis 43-Fache. Bei 5.000 Erklärungen im
+Monat wären das 144 $ statt 5 $ — gemessen am Monatsbudget von 40 $
+(`usage.dashboard`) ist das der ganze Topf für ein Feature. Die Kasse ist
+damit **doch** ein Argument, aber nicht das erste: Latenz und erfundene
+Zahlen sind es.
+
+**Empfehlung — die Entscheidung ist Tims:** bei `google/gemini-2.5-flash`
+bleiben. Die Fälle, die ein stärkeres Modell zusätzlich schafft, sind
+Rechenfehler an gemischten Einheiten und an zwei Stichtagen. Beides ist im
+**Baustein** lösbar — die Wirtschaftspläne in einer Einheit ausgeben, den
+Anteil unbesetzter Stellen vorrechnen, so wie PR 26 es mit der Pro-Kopf-Zahl
+gemacht hat —, und zwar für null Millisekunden und null Cent. Ein Modell,
+das dafür vierzehn Sekunden braucht und dabei anfängt, Pro-Kopf-Zahlen zu
+erfinden, ist der teurere Weg zum schlechteren Ergebnis. Wenn mehr Compute,
+dann nicht hier: Lotti sucht nicht, sie liest vor, was im Prompt steht.
+Der Ratsweg (`COUNCIL_QA_MODEL`) sucht wirklich — dort wäre es zu messen.
+
+**Zwei Befunde nebenbei.**
+
+1. Die großen Geminis (Pro der 2.5/3.x-Reihe, 3.8-flash) **denken zwingend**:
+   `reasoning.enabled=false` beantwortet OpenRouter mit HTTP 400 „Reasoning
+   is mandatory for this endpoint". Mit Lottis Budget von 350 Tokens
+   (`assistant.MAX_TOKENS`) kam die Antwort abgeschnitten zurück —
+   completion_tokens 346, sichtbarer Text 53 Zeichen, **ohne Fehler**. Sie
+   brauchen deshalb einen Token-Boden in `MODEL_PARAMS`
+   (`GEMINI_DENK_MIN_MAX_TOKENS`, 4.000, in diesem PR eingetragen). Wer eins
+   von ihnen einstellt, ohne den Eintrag zu haben, bekommt kaputte Antworten
+   und keinen Hinweis darauf.
+2. Alle drei Modelle liefen unter dem Haus-Routing
+   (`NWZ_OPENROUTER_ROUTING=on`, ZDR-Pflicht, China-Anbieter ausgeschlossen)
+   ohne eine einzige Ausnahme. Keins fiel mangels ZDR-Anbieter aus der Wahl,
+   und keine Zeile blieb ohne Kostenwert.
+
+**Was die Zahlen NICHT hergeben.** Zwei rote Fälle hängen an der Wortwahl,
+nicht am Verhalten: `sitzung-tagesordnung` verlangt das Wort „Gremien", und
+3.1 Pro schreibt stattdessen „Gruppen" — also genau das, was der Prompt mit
+„kein Fachwort ohne Erklärung" verlangt. Die Erwartung stammt aus einer
+früheren Runde und bleibt hier unangetastet, damit der Vergleich gegen die
+bekannte Basislinie gilt; wer sie anfasst, misst neu.
+
 ### PR 30 — Der Baustein-Text der anderen Seite
 
 **Was — nur, wenn PR 21 gemessen nicht reicht.** Lotti weiß seit PR 21, WO

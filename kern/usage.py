@@ -24,6 +24,13 @@ PRICES: dict[str, tuple[float, float]] = {
     "google/gemini-2.5-flash": (0.30, 2.50),
     "google/gemini-2.5-flash-lite": (0.10, 0.40),
     "meta-llama/llama-4-maverick": (0.15, 0.60),
+    # Die Modelle aus dem Lotti-Vergleich (PR 29). Listenpreise von OpenRouter,
+    # Stand 22.09.2026 — sie greifen nur für Zeilen OHNE cost_usd; jeder neue
+    # Aufruf trägt die echten Kosten mit.
+    "google/gemini-2.5-pro": (1.25, 10.0),
+    "google/gemini-3.1-pro-preview": (2.0, 12.0),
+    "google/gemini-3.8-flash": (0.75, 3.75),
+    "anthropic/claude-sonnet-4.6": (3.0, 15.0),
 }
 
 
@@ -66,6 +73,60 @@ def record(feature: str, model: str | None, prompt_tokens: int, completion_token
         conn.close()
     except Exception:  # noqa: BLE001 — usage tracking must never break an LLM call
         pass
+
+
+def jetzt_utc() -> str:
+    """Der Zeitstempel, den ``ts`` gerade schreiben würde.
+
+    ``ts`` steht als ``datetime('now')`` in der Tabelle, also UTC — wer mit
+    einer lokalen Uhr dagegen vergleicht, greift in Deutschland zwei Stunden
+    daneben (derselbe Fehler, den ``cost_timeseries`` unten mit
+    ``date(ts,'localtime')`` einfängt). Deshalb gibt es die Marke hier und
+    nicht an der Aufrufstelle.
+    """
+    from datetime import datetime, timezone
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+
+
+def seit(feature: str, marke: str) -> dict:
+    """Was ``feature`` seit der Zeitmarke ``marke`` (aus :func:`jetzt_utc`) kostete.
+
+    Für Messläufe: Ein Eval merkt sich seinen Startzeitpunkt und fragt
+    danach, was SEIN Lauf gekostet hat — die Summe über die ganze Tabelle
+    trüge jeden früheren Lauf mit.
+
+    ``ohne_kosten`` ist der wichtigste Wert im Rückgabe-dict: Es sind die
+    Zeilen, für die der Provider **keinen** Kostenwert mitgeliefert hat. Ist
+    die Zahl größer als 0, ist ``cost_usd`` eine UNTERGRENZE und darf nicht
+    als Gesamtkosten ausgewiesen werden — eine Schätzung aus :data:`PRICES`
+    wäre für einen Modellvergleich das falsche Werkzeug, weil sie genau das
+    misst, was man von Hand eingetragen hat.
+    """
+    leer = {"calls": 0, "cost_usd": 0.0, "ohne_kosten": 0,
+            "prompt_tokens": 0, "completion_tokens": 0, "models": []}
+    try:
+        conn = _connect()
+        rows = conn.execute(
+            "SELECT model, COUNT(*) calls, COALESCE(SUM(cost_usd),0) cost, "
+            "SUM(CASE WHEN cost_usd IS NULL THEN 1 ELSE 0 END) ohne, "
+            "COALESCE(SUM(prompt_tokens),0) pin, COALESCE(SUM(completion_tokens),0) pout "
+            "FROM llm_usage WHERE feature = ? AND ts >= ? GROUP BY model",
+            (feature, marke)).fetchall()
+        conn.close()
+    except Exception:  # noqa: BLE001 — Kostenmessung ist nie load-bearing
+        return leer
+    aus = dict(leer)
+    modelle: list[str] = []
+    for r in rows:
+        aus["calls"] += r["calls"]
+        aus["cost_usd"] += r["cost"]
+        aus["ohne_kosten"] += r["ohne"]
+        aus["prompt_tokens"] += r["pin"]
+        aus["completion_tokens"] += r["pout"]
+        if r["model"]:
+            modelle.append(r["model"])
+    aus["models"] = sorted(modelle)
+    return aus
 
 
 def _cost(model: str | None, pin: int, pout: int) -> float:
