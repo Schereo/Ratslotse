@@ -547,10 +547,18 @@ export function ankerListe(dok: Document): Anker[] {
  * und die Fachwörter der Antwort (das Glossar).
  */
 
+/** Die Seite, auf der die Sache ausführlich steht — aus dem `done`-Rahmen
+ *  (`next_page`). Route und Titel kommen aus `kern/knowledge.py`; der Server
+ *  hat beides gegen die bekannten Seiten und die Rechte des Kontos geprüft,
+ *  der Client navigiert nur noch. */
+export type NaechsteSeite = { route: string; title: string };
+
 /** Ein Anschluss-Chip unter einer Antwort. */
 export type Anschluss =
   /** „Den Rat fragen" — die Antwort hat ans Archiv weitergereicht. */
   | { art: "ratsfrage" }
+  /** „Weiter zu: <Titel>" — die Haushalts-Seite, auf der es ausführlich steht. */
+  | { art: "seite"; seite: NaechsteSeite }
   /** „Erklär mir: <Titel>" — der nächste Baustein der Seite. */
   | { art: "anker"; anker: Anker }
   /** „Was heißt <Begriff>?" — ein Fachwort aus der Antwort. */
@@ -594,13 +602,16 @@ export function chipTitel(titel: string): string {
 export const ANSCHLUSS_MAX = 2;
 
 /**
- * Die Chips unter einer Antwort — höchstens zwei, Vorrang Archiv › Anker ›
- * Fachwort.
+ * Die Chips unter einer Antwort — höchstens zwei, Vorrang Archiv › Seite ›
+ * Anker › Fachwort.
  *
  * **Der Vorrang ist die Reihenfolge des Nutzens.** Eine Antwort, die ans
  * Archiv weiterreicht, hat ihre eigentliche Auskunft noch gar nicht gegeben —
- * das ist der dringendste nächste Schritt. Danach kommt der nächste Baustein
- * der Seite (er ist der Grund, warum jemand hier ist), zuletzt die Vokabel.
+ * das ist der dringendste nächste Schritt. Dann die andere Haushalts-Seite:
+ * Lotti hat gerade gesagt, dass es dort ausführlich steht, und der Chip ist
+ * der Weg dorthin — er schlägt den nächsten Baustein DIESER Seite, weil die
+ * Antwort ihn schon benannt hat. Danach kommt dieser Baustein (er ist der
+ * Grund, warum jemand hier ist), zuletzt die Vokabel.
  *
  * **Nichts zweimal.** `erklaert` trägt, was in dieser Sitzung schon gefragt
  * wurde: Anker als :func:`ankerKennung`, Fachwörter kleingeschrieben. Ein
@@ -619,7 +630,8 @@ export const ANSCHLUSS_MAX = 2;
  */
 export function anschlussfragen(
   turn: { answer: string; fehler?: boolean; mode?: string | null;
-          next?: "ratsfrage" | null; ratsfrage?: boolean },
+          next?: "ratsfrage" | null; nextPage?: NaechsteSeite | null;
+          ratsfrage?: boolean },
   anker: Anker[],
   erklaert: ReadonlySet<string>,
   glossar: string[],
@@ -629,6 +641,9 @@ export function anschlussfragen(
   // Die Ratsantwort selbst reicht nicht noch einmal weiter — sie IST das
   // Archiv, und ein „Den Rat fragen" unter ihren Quellen wäre ein Kreis.
   if (turn.next === "ratsfrage" && !turn.ratsfrage) aus.push({ art: "ratsfrage" });
+  if (turn.nextPage && aus.length < ANSCHLUSS_MAX) {
+    aus.push({ art: "seite", seite: turn.nextPage });
+  }
   const naechster = anker.find((a) => !erklaert.has(ankerKennung(a)));
   if (naechster && aus.length < ANSCHLUSS_MAX) aus.push({ art: "anker", anker: naechster });
   const begriff = glossar.find((b) => !erklaert.has(b.toLowerCase()));

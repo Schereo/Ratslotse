@@ -504,6 +504,26 @@ describe("anschlussfragen", () => {
     ]);
   });
 
+  const SCHULDEN = { route: "/haushalt/schulden", title: "Wie viel Schulden hat Oldenburg?" };
+
+  it("führt zur richtigen Haushalts-Seite — vor dem nächsten Baustein", () => {
+    // Lotti hat gerade gesagt, dass es dort ausführlich steht; der Weg
+    // dorthin ist damit nützlicher als der nächste Baustein DIESER Seite.
+    expect(anschlussfragen({ ...FERTIG, nextPage: SCHULDEN }, ANKER, new Set(),
+                           ["Umschuldung"])).toEqual([
+      { art: "seite", seite: SCHULDEN },
+      { art: "anker", anker: ANKER[0] },
+    ]);
+  });
+
+  it("lässt dem Archiv den Vorrang vor der Seite — und deckelt bei zwei", () => {
+    expect(anschlussfragen({ ...FERTIG, next: "ratsfrage", nextPage: SCHULDEN },
+                           ANKER, new Set(), ["Umschuldung"])).toEqual([
+      { art: "ratsfrage" },
+      { art: "seite", seite: SCHULDEN },
+    ]);
+  });
+
   it("wiederholt nichts, was schon gefragt wurde", () => {
     const erklaert = new Set(["hh.rate\u0000Rate-Treppe", "umschuldung"]);
     expect(anschlussfragen(FERTIG, ANKER, erklaert, ["Umschuldung", "Haushalt"]))

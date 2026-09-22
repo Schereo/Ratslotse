@@ -85,7 +85,15 @@ _SATZ_RE = re.compile(r"(?<![0-9])(?<!\bNr)(?<!\bz)(?<!\bB)(?<!\bMio)"
                       r"(?<!\bbzw)(?<!\bca)[.!?](?:\s|$)")
 #: Ein Betrag oder Prozentwert in der Antwort — Jahreszahlen und
 #: Aufzählungen bleiben außen vor.
-_ZAHL_RE = re.compile(r"\b(\d{1,3}(?:[.,]\d+)?)\s*(?:%|€|Euro|Mio|Millionen|Prozent)")
+_ZAHL_RE = re.compile(r"\b(\d{1,3}(?:[.,]\d+)?)\s*(%|€|Euro|Mio|Millionen|Milliarden|Prozent)")
+#: Ein voller Betrag im Kontext: „336.994.000". Ab sechs Stellen — kürzere
+#: Zahlen sind Jahre, Nummern und Prozentwerte.
+_KONTEXT_BETRAG_RE = re.compile(r"\d[\d.]{5,}\d")
+#: Wie viel eine Einheit wert ist. Der Prompt verlangt ausdrücklich
+#: Alltagsform („rund 45 Millionen Euro" statt „44.699.000 €") — eine
+#: Prüfung, die den Kontext nur nach der Zeichenkette absucht, macht aus
+#: genau dieser Zusage einen Befund.
+_EINHEITEN = {"mio": 1_000_000, "millionen": 1_000_000, "milliarden": 1_000_000_000}
 
 #: Vorsatz eines WEICHEN Befunds. Die Länge ist eine Stil-Zusage und schwankt
 #: mit dem Modell: Ein Satz zu viel bei einem komplizierten Beschluss ist kein
@@ -112,9 +120,38 @@ def erfundene_zahlen(text: str, kontext: str) -> list[str]:
         # Beide Schreibweisen prüfen: Der Kontext schreibt „1.480.000.000",
         # die Antwort „1,48 Milliarden".
         varianten = {zahl, zahl.replace(",", "."), zahl.replace(".", ",")}
-        if not any(v in kontext for v in varianten):
-            aus.append(m.group(0))
+        if any(v in kontext for v in varianten):
+            continue
+        if _gerundet_aus(kontext, zahl, _EINHEITEN.get(m.group(2).lower(), 0)):
+            continue
+        aus.append(m.group(0))
     return aus
+
+
+def _gerundet_aus(kontext: str, zahl: str, faktor: int) -> bool:
+    """Ist ``zahl`` ein gerundeter Betrag aus dem Kontext?
+
+    **Warum das sein muss.** Gemessen am 22.09.2026: Der Kontext trug
+    „Schuldenstand am Jahresende 2025: 336.994.000 €", die Antwort schrieb
+    „rund 337 Millionen Euro" — richtig gerundet, so wie der Prompt es
+    verlangt, und trotzdem ein harter Befund. Ein Prüfstand, der die eigene
+    Stil-Zusage bestraft, misst nicht die Wahrheit, sondern die Schreibweise.
+
+    Gerundet wird auf die Stellenzahl der ANTWORT: „1,48 Milliarden" gegen
+    1.480.xxx.xxx, „337 Millionen" gegen 336.994.000.
+    """
+    if not faktor:
+        return False
+    try:
+        wert = float(zahl.replace(".", "").replace(",", "."))
+    except ValueError:
+        return False
+    stellen = len(zahl.split(",")[1]) if "," in zahl else 0
+    for m in _KONTEXT_BETRAG_RE.finditer(kontext):
+        roh = m.group(0).replace(".", "")
+        if roh.isdigit() and round(int(roh) / faktor, stellen) == wert:
+            return True
+    return False
 
 
 def _decision_id(store: CouncilStore, schluessel: str) -> int | None:
@@ -153,6 +190,12 @@ def _screen(fall: dict, store: CouncilStore) -> tuple[lotti.Screen, str | None]:
         anchors=tuple(fall.get("anchors", [])),
     ), None
 
+
+#: Die Rechte, mit denen gemessen wird. Der Eval prüft die Haushalts-Seiten,
+#: und die gibt es nur mit `budget` — dieselbe Menge, die `screen_context`
+#: unten bekommt. Ohne sie verwürfe `split_next` jede geprüfte Zielseite, und
+#: der Wegweiser stünde gar nicht erst im Prompt.
+RECHTE = frozenset({"budget"})
 
 #: So viele Kandidaten bekommt das Antwort-Modell im Ratsweg — wie QA_ANSWER_N
 #: im Router. Mehr misst nicht den Weg, sondern den Reranker.
@@ -204,13 +247,22 @@ def _ratsweg(store: CouncilStore, fall: dict, screen: lotti.Screen) -> tuple[str
 
 
 def _pruefe(fall: dict, text: str, modus: str, weiter: str | None,
-            kontext: str = "") -> list[str]:
+            kontext: str = "", seite: str | None = None) -> list[str]:
     """Die Befunde eines Falls — leer heißt grün."""
     aus: list[str] = []
     if fall.get("expect_mode") and modus != fall["expect_mode"]:
         aus.append(f"Weg: {modus} statt {fall['expect_mode']}")
     if "expect_next" in fall and weiter != fall["expect_next"]:
         aus.append(f"Weiterreichung: {weiter!r} statt {fall['expect_next']!r}")
+    # **Eine Liste heißt auch hier „eines davon reicht".** Auf der
+    # Schulden-Seite nach der Gewerbesteuer gefragt, sind „Woher kommt das
+    # Geld?" und der Steuer-Steckbrief beide richtig — welche von beiden das
+    # Modell nimmt, ist Geschmack und kein Befund.
+    if fall.get("expect_page"):
+        erlaubt = fall["expect_page"]
+        erlaubt = erlaubt if isinstance(erlaubt, list) else [erlaubt]
+        if seite not in erlaubt:
+            aus.append(f"Zielseite: {seite!r} statt {' / '.join(erlaubt)!r}")
     klein = text.lower()
     for wort in fall.get("must_mention", []):
         # **Eine Liste heißt „eines davon reicht".** Geprüft werden soll das
@@ -253,13 +305,14 @@ def lauf(faelle: list[dict], store: CouncilStore, *, nur_deterministisch: bool) 
             text, kontext = _ratsweg(store, fall, screen)
             modus, weiter = "ratsfrage", None
             aus.append({
-                "id": fall["id"], "modus": modus, "weiter": weiter,
+                "id": fall["id"], "modus": modus, "weiter": weiter, "seite": None,
                 "ms": round((time.perf_counter() - t0) * 1000),
                 "zeichen": len(text),
                 "befunde": _pruefe(fall, text, modus, weiter, kontext),
                 "injektion": bool(fall.get("injektion")), "text": text,
             })
             continue
+        zielseite: str | None = None
         fertig = lotti.deterministic_answer(store, screen, frage)
         if fertig:
             text, _art = fertig
@@ -276,20 +329,24 @@ def lauf(faelle: list[dict], store: CouncilStore, *, nur_deterministisch: bool) 
             msgs, _ = lotti.explain_messages(screen, frage, ctx)
             kontext = msgs[0]["content"]
             roh = lotti.explain_question(store, screen, frage, ctx=ctx)
-            text, weiter = lotti.split_next(roh)
+            text, weiter, seite = lotti.split_next(roh, RECHTE)
             # Wie im Router: Die Weiterreichung entscheidet der Wortlaut, das
             # Modell darf sie nur ergänzen. Ein Eval, der das nicht nachbaut,
             # misst etwas anderes als die Produktion.
             if lotti.archivfrage(frage):
                 weiter = "ratsfrage"
+            if weiter == "seite":
+                weiter = None
+            zielseite = seite.route if seite else None
             modus = "explain"
         aus.append({
             "id": fall["id"],
             "modus": modus,
             "weiter": weiter,
+            "seite": zielseite,
             "ms": round((time.perf_counter() - t0) * 1000),
             "zeichen": len(text),
-            "befunde": _pruefe(fall, text, modus, weiter, kontext),
+            "befunde": _pruefe(fall, text, modus, weiter, kontext, zielseite),
             "injektion": bool(fall.get("injektion")),
             "text": text,
         })
@@ -322,6 +379,9 @@ def bericht(zeilen: list[dict]) -> str:
             continue
         zeichen = "✓" if not z["befunde"] else ("~" if not hart(z["befunde"]) else "✗")
         marke = " [INJ]" if z["injektion"] else ""
+        # Wohin verwiesen wurde — das Feld ist seit dem Wegweiser die zweite
+        # Zusage neben der Weiterreichung und gehört damit in den Bericht.
+        marke += f" →{z['seite']}" if z.get("seite") else ""
         teile.append(f"  {zeichen} {z['id']:32s} {z['modus']:14s} "
                      f"{z['ms']:5d} ms {z['zeichen']:4d} Z.{marke}")
         for b in z["befunde"]:

@@ -244,7 +244,11 @@ def test_echte_fragen_sind_nicht_generisch(frage):
 
 def _prompt(screen: lotti.Screen, frage: str = "Was ist das?", **ctx_extra) -> str:
     ctx = {"knowledge": knowledge.fuer_route(screen.route), "record": "",
-           "glossary": [], "geld": {}, "permissions": frozenset(), **ctx_extra}
+           "glossary": [], "geld": {}, "permissions": frozenset(),
+           "wegweiser": knowledge.wegweiser(
+               knowledge.HAUSHALT, ctx_extra.get("permissions", frozenset()))
+           if knowledge.im_haushalt(screen.route) else [],
+           **ctx_extra}
     msgs, _ = lotti.explain_messages(screen, frage, ctx)
     return msgs[0]["content"]
 
@@ -368,18 +372,50 @@ def test_der_gegenstand_nimmt_den_bildschirm_nicht_die_frage():
 # --- 5. Die WEITER-Marke ----------------------------------------------------
 
 def test_split_next_trennt_die_marke_ab():
-    assert lotti.split_next("Ein Satz.\nWEITER: ratsfrage") == ("Ein Satz.", "ratsfrage")
+    assert lotti.split_next("Ein Satz.\nWEITER: ratsfrage") == ("Ein Satz.", "ratsfrage", None)
 
 
 def test_ohne_marke_bleibt_der_text_unberuehrt():
-    assert lotti.split_next("Nur Text.") == ("Nur Text.", None)
+    assert lotti.split_next("Nur Text.") == ("Nur Text.", None, None)
 
 
 def test_ein_erfundenes_ziel_wird_verworfen():
     """Ein Modell, das sich eine Marke ausdenkt, darf nichts auslösen — die
     Zeile verschwindet trotzdem, sie ist für niemanden bestimmt."""
-    text, ziel = lotti.split_next("Ein Satz.\nWEITER: raketenstart")
-    assert text == "Ein Satz." and ziel is None
+    text, ziel, seite = lotti.split_next("Ein Satz.\nWEITER: raketenstart")
+    assert text == "Ein Satz." and ziel is None and seite is None
+
+
+# --- 5a. Das zweite Ziel: eine andere Haushalts-Seite -----------------------
+
+BUDGET = frozenset({"budget"})
+
+
+def test_seiten_ziel_nimmt_eine_gueltige_route():
+    text, ziel, seite = lotti.split_next(
+        "Die Zahl steht oben.\nWEITER: seite /haushalt/schulden", BUDGET)
+    assert text == "Die Zahl steht oben."
+    assert ziel == "seite"
+    assert seite is not None and seite.title == "Wie viel Schulden hat Oldenburg?"
+
+
+@pytest.mark.parametrize("route", [
+    "/haushalt/erfunden",     # gibt es nicht
+    "/dashboard",             # gibt es, liegt aber außerhalb des Haushalts
+    "",                       # gar keine Route hinter der Marke
+])
+def test_eine_unbrauchbare_route_wird_verworfen(route):
+    """Ein Chip auf eine erfundene oder bereichsfremde Adresse ist ein
+    Angebot ins 404 — und die Marken-Zeile verschwindet trotzdem."""
+    text, ziel, seite = lotti.split_next(f"Ein Satz.\nWEITER: seite {route}", BUDGET)
+    assert text == "Ein Satz." and ziel is None and seite is None
+
+
+def test_eine_gesperrte_seite_wird_verworfen():
+    """Ohne `budget` führt jede Haushalts-Seite ins „nicht gefunden"."""
+    text, ziel, seite = lotti.split_next(
+        "Ein Satz.\nWEITER: seite /haushalt/schulden", frozenset())
+    assert text == "Ein Satz." and ziel is None and seite is None
 
 
 # --- 5b. Die Weiterreichung ist deterministisch -----------------------------
@@ -830,14 +866,135 @@ def test_ohne_recht_verweist_lotti_nicht_in_den_haushalt():
 
 
 def test_verwandte_seiten_stehen_nur_mit_recht_im_prompt():
+    """Außerhalb des Haushalts-Bereichs — dort ist die alte Liste weiter
+    zuständig; im Haushalt übernimmt der Wegweiser (s. unten)."""
     screen = lotti.Screen(route="/haushalt/schulden")
     ctx_mit = lotti.screen_context(_Store(), screen, "Was ist das?",
                                    permissions=frozenset({"budget"}))
     ctx_ohne = lotti.screen_context(_Store(), screen, "Was ist das?",
                                     permissions=frozenset())
-    assert ctx_mit["related"]
-    assert all(z not in ctx_ohne["related"] for z in ctx_mit["related"]
-               if z.startswith("/haushalt"))
+    # Mit Recht trägt der Prompt den Wegweiser, ohne Recht gar nichts.
+    assert ctx_mit["wegweiser"] and not ctx_mit["related"]
+    assert not ctx_ohne["wegweiser"] and not ctx_ohne["related"]
+
+
+# --- 6b. Der Wegweiser durch den Haushalt -----------------------------------
+
+def test_der_wegweiser_kennt_alle_haushalts_seiten():
+    """Fünfzehn statt sechs — und jede mit einem Satz dazu, was dort steht.
+
+    Die alte `verwandte()`-Liste gab sechs nackte Titel; damit ließ sich
+    nicht sagen, wo etwas nachzulesen ist.
+    """
+    seiten = knowledge.wegweiser(knowledge.HAUSHALT, frozenset({"budget"}))
+    routen = {k.route for k in seiten}
+    assert len(seiten) == 15
+    assert {"/haushalt", "/haushalt/schulden", "/haushalt/steuer"} <= routen
+    assert all(knowledge.im_haushalt(r) for r in routen)
+
+
+def test_der_wegweiser_bleibt_ohne_recht_leer():
+    assert knowledge.wegweiser(knowledge.HAUSHALT, frozenset()) == []
+
+
+def test_der_wegweiser_steht_im_prompt_mit_titel_und_satz():
+    screen = lotti.Screen(route="/haushalt/schulden")
+    prompt = _prompt(screen, permissions=frozenset({"budget"}))
+    assert "WELCHE SEITE WAS BEANTWORTET" in prompt
+    assert "„Woher kommt das Geld?“ (/haushalt/einnahmen)" in prompt
+    # Der erste Satz des `what` — nicht der ganze Absatz.
+    assert "Die Einnahmequellen der Stadt" in prompt
+    # Die Seite, auf der man steht, ist als solche markiert.
+    assert "DIESE SEITE" in prompt
+
+
+def test_die_verweis_regel_steht_nur_mit_wegweiser_im_prompt():
+    """Fünfzehn Regelzeilen über etwas, das es auf dieser Seite nicht gibt,
+    verdrängen die Regel darunter — gemessen am 22.09.2026 am Fall
+    „Wo steht, was die Stadt an Zinsen zahlt?": 0/3 statt 3/3."""
+    ohne = _prompt(lotti.Screen(route="/dashboard"), permissions=frozenset({"budget"}))
+    mit = _prompt(lotti.Screen(route="/haushalt/schulden"),
+                  permissions=frozenset({"budget"}))
+    assert "WEITER: seite" not in ohne
+    assert "WEITER: seite" in mit
+
+
+def test_der_wegweiser_tritt_bei_einer_ortsfrage_zurueck():
+    """„Wo steht …?" fragt nach einem Baustein DIESER Seite. Der Wegweiser
+    beantwortete das zweimal von drei mit einer anderen Seite; die Zahlen
+    bleiben, nur der Wegweiser geht."""
+    screen = lotti.Screen(route="/haushalt/schulden",
+                          anchors=("Kredite und Zinsen", "Schulden total"))
+    ctx = lotti.screen_context(_Store(), screen,
+                               "Wo steht, was die Stadt an Zinsen zahlt?",
+                               permissions=frozenset({"budget"}))
+    assert not ctx["wegweiser"]
+    # Ohne Bausteine gibt es nichts zu zeigen — dann darf er wieder helfen.
+    ohne_anker = lotti.screen_context(_Store(), lotti.Screen(route="/haushalt/schulden"),
+                                      "Wo steht, was die Stadt an Zinsen zahlt?",
+                                      permissions=frozenset({"budget"}))
+    assert ohne_anker["wegweiser"]
+
+
+@pytest.mark.parametrize("frage", [
+    "Wo finde ich die Rate-Treppe?",
+    "Wo steht der Zinsaufwand?",
+    "Zeig mir die Tilgung",
+])
+def test_ortsfragen_werden_am_wortlaut_erkannt(frage):
+    """Dieselbe Regex wie im Client (`lib/assistentin.ts::ortsfrage`)."""
+    assert lotti.ortsfrage(frage)
+    assert not lotti.ortsfrage("Wie hoch sind die Schulden?")
+
+
+def test_ohne_recht_kein_wegweiser_im_prompt():
+    screen = lotti.Screen(route="/haushalt/schulden")
+    assert "WELCHE SEITE WAS BEANTWORTET" not in _prompt(screen, permissions=frozenset())
+
+
+# --- 6c. Geld außerhalb des Haushalts-Bereichs ------------------------------
+
+def test_geld_auf_dashboard_nur_mit_recht_UND_geldfrage():
+    """Tims Fall: „die Leute fragen, wo sie gerade sind". Auf „Heute" nach
+    dem Schuldenstand gefragt, kommt die Zahl — aber nur mit dem Recht und
+    nur auf eine Frage hin, die wirklich nach Geld fragt."""
+    gerufen: list[str] = []
+    screen = lotti.Screen(route="/dashboard")
+
+    def _geld(store, frage, begriffe="", typ="topic"):
+        gerufen.append(frage)
+        return {"facets": ["schulden"], "schulden": "Schuldenstand 2024: …"}
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(qa, "geld_kontext", _geld)
+        mit = lotti.screen_context(_Store(), screen, "Wie hoch sind die Schulden der Stadt?",
+                                   permissions=frozenset({"budget"}))
+        ohne_recht = lotti.screen_context(_Store(), screen,
+                                          "Wie hoch sind die Schulden der Stadt?",
+                                          permissions=frozenset())
+        ohne_frage = lotti.screen_context(_Store(), screen, "Was sehe ich hier?",
+                                          permissions=frozenset({"budget"}))
+    assert mit["geld"] and mit["wegweiser"]
+    assert not ohne_recht["geld"] and not ohne_recht["wegweiser"]
+    assert not ohne_frage["geld"] and not ohne_frage["wegweiser"]
+    assert gerufen == ["Wie hoch sind die Schulden der Stadt?"]
+
+
+def test_der_bildschirmtext_zieht_ausserhalb_des_haushalts_keine_zahlen():
+    """Sonst zöge jede Beschluss-Seite mit dem Wort „Kosten" im
+    Vorlagentext den halben Haushalt in den Prompt — ungefragt und bezahlt."""
+    screen = lotti.Screen(route="/council/decision",
+                          element_title="Kosten",
+                          element_text="Die Kosten der Maßnahme und der Schuldenstand …")
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(qa, "geld_kontext", _explodiert_geld)
+        ctx = lotti.screen_context(_Store(), screen, "Was sehe ich hier?",
+                                   permissions=frozenset({"budget"}))
+    assert not ctx["geld"] and not ctx["wegweiser"]
+
+
+def _explodiert_geld(*a, **k):  # pragma: no cover — darf nie gerufen werden
+    raise AssertionError("Der Bildschirmtext darf die Haushaltszahlen nicht auslösen.")
 
 
 def test_kein_name_und_keine_adresse_im_prompt(client, monkeypatch, konto):

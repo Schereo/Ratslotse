@@ -3698,7 +3698,8 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
                 conversation_id = _lotti_turn_speichern(
                     ratslotse, user, body, screen, frage, text, "deterministic", None, [])
                 yield _sse({"type": "done", "mode": "deterministic", "kind": art,
-                            "next": None, "glossary": [], "timings": zeiten,
+                            "next": None, "next_page": None,
+                            "glossary": [], "timings": zeiten,
                             "conversation_id": conversation_id})
                 return
 
@@ -3738,15 +3739,22 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
                              len(buf), exc_info=True)
                 ans = lotti.explain_question(store, screen, frage, ctx=ctx, verlauf=verlauf)
                 buf = ans
-                yield _sse({"type": "replace", "text": lotti.split_next(ans)[0]})
+                yield _sse({"type": "replace", "text": lotti.split_next(ans, rechte)[0]})
 
-            text, weiter = lotti.split_next(buf)
+            text, weiter, zielseite = lotti.split_next(buf, rechte)
             # Die Weiterreichung ist deterministisch, das Modell darf sie nur
             # ERGÄNZEN: Es vergisst die Marke gelegentlich, und dann stünde da
             # „das kann ich dir nicht sagen" ohne einen Weg weiter — die
             # Sackgasse, gegen die die Designsprache schreibt.
             if lotti.archivfrage(frage):
                 weiter = "ratsfrage"
+            # `seite` ist kein Wert für das Feld `next`: Dort steht, ob die
+            # Frage ins Archiv gehört — der Seiten-Verweis reist in
+            # `next_page`. Zwei Bedeutungen in einem Feld hätten den Client
+            # (und das gespeicherte Gespräch) „Den Rat fragen" anbieten
+            # lassen, wo auf eine Haushalts-Seite verwiesen wurde.
+            if weiter == "seite":
+                weiter = None
             zeiten["total_ms"] = round((time.perf_counter() - t0) * 1000)
             _log.info("assistant_timings route=%s element=%s %s", route,
                       screen.element_key or "-",
@@ -3757,6 +3765,13 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
                 ratslotse, user, body, screen, frage, text, "explain", weiter, begriffe)
             yield _sse({"type": "done", "mode": "explain", "kind": "model",
                         "next": weiter,
+                        # Der Verweis auf eine andere Haushalts-Seite, als Ziel
+                        # für den Chip „Weiter zu: …". Route und Titel kommen
+                        # aus `kern/knowledge.py`, nicht aus dem Antworttext:
+                        # Das Modell darf die Seite VORSCHLAGEN, gelten lässt
+                        # sie `split_next` (in PAGES, im Haushalt, erreichbar).
+                        "next_page": ({"route": zielseite.route, "title": zielseite.title}
+                                      if zielseite else None),
                         # Die Fachwörter, die im Kontext standen — das Fenster
                         # macht daraus Verweise aufs Glossar.
                         "glossary": begriffe,

@@ -26239,7 +26239,7 @@
                 }
               }
             },
-            "description": "Server-Sent Events (`text/event-stream`). Jeder Rahmen ist eine `data:`-Zeile mit einem JSON-Objekt, das ein Feld `type` trägt:\n\n- `step` — Fortschritt, `step` ist `context` oder `answer`\n- `token` — ein Stück Erklärungstext (`text`)\n- `replace` — ersetzt den bisher gesendeten Text vollständig\n- `done` — Schluss-Ereignis mit `mode` (`deterministic` für die Wege ohne Modell, sonst `explain`), `next` (`ratsfrage`, wenn die Frage ins Beschluss-Archiv gehört, sonst `null`), `glossary` (die geprüften Fachwörter im Kontext) und `timings`\n- `error` — die Erklärung ist fehlgeschlagen (`message`)\n\nEin Verbindungsabriss ist folgenlos: Der Client kann erneut fragen."
+            "description": "Server-Sent Events (`text/event-stream`). Jeder Rahmen ist eine `data:`-Zeile mit einem JSON-Objekt, das ein Feld `type` trägt:\n\n- `step` — Fortschritt, `step` ist `context` oder `answer`\n- `token` — ein Stück Erklärungstext (`text`)\n- `replace` — ersetzt den bisher gesendeten Text vollständig\n- `done` — Schluss-Ereignis mit `mode` (`deterministic` für die Wege ohne Modell, sonst `explain`), `next` (`ratsfrage`, wenn die Frage ins Beschluss-Archiv gehört, sonst `null`), `next_page` (`{route, title}` einer anderen Haushalts-Seite, auf der die Sache ausführlich steht — geprüft gegen die bekannten Seiten und die Rechte des Kontos, sonst `null`), `glossary` (die geprüften Fachwörter im Kontext) und `timings`\n- `error` — die Erklärung ist fehlgeschlagen (`message`)\n\nEin Verbindungsabriss ist folgenlos: Der Client kann erneut fragen."
           },
           "400": {
             "description": "Zu dieser Seite gibt es keine Erklärung (mit Grund im `detail`)."
