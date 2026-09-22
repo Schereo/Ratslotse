@@ -153,3 +153,18 @@ def test_die_uebersicht_zaehlt_bewegungen(client):
     felder = {f["field"]: f for f in client.get(
         "/api/council/cities/ideas/fields").json()["fields"]}
     assert felder["klima_umwelt"]["movements"] == 1
+
+
+def test_rueckmeldung_zum_urteil_je_idee(client, cities_db):
+    from web.backend.app.deps import get_current_user
+    app.dependency_overrides[get_current_user] = lambda: {"id": 7}
+    try:
+        r = client.post("/api/council/cities/movements/feedback?id=1&verdict=wrong")
+        assert r.status_code == 200 and r.json() == {"paper_id": "1:1", "verdict": "wrong"}
+        zeile = cities_db._conn.execute(
+            "SELECT object_kind, annotator, verdict FROM feedback").fetchone()
+        assert tuple(zeile) == ("cluster", "idea_fit", "wrong")
+        assert client.post("/api/council/cities/movements/feedback?id=999&verdict=wrong").status_code == 404
+        assert client.post("/api/council/cities/movements/feedback?id=1&verdict=hm").status_code == 400
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)

@@ -1844,6 +1844,33 @@ def _eigene_rueckmeldungen(cities: CitiesStore, user: dict | None) -> dict[str, 
     return cities.feedback_by_paper(ann, ver, int(user["id"]))
 
 
+@router.post("/cities/movements/feedback")
+def cities_movement_feedback(
+    id: int,
+    verdict: str,
+    note: str | None = None,
+    user: dict = Depends(get_current_user),
+    cities: CitiesStore = Depends(get_cities_store),
+) -> FeedbackAck:
+    """„Stimmt" oder „stimmt nicht" zum Urteil über Oldenburg JE IDEE.
+
+    Derselbe Rückkanal wie an der Einzelkarte, nur am Urteil ``idea_fit``
+    (``object_kind='cluster'``) — die Tabelle ``feedback`` kennt die Art
+    schon. Die Antwort trägt die Gruppen-Kennung als ``paper_id``, damit die
+    Form dieselbe bleibt.
+    """
+    from council.cities.clusters import CLUSTER_VERSION
+
+    if verdict not in ("right", "wrong"):
+        raise HTTPException(400, "verdict muss 'right' oder 'wrong' sein")
+    if not cities.idea_group(EMBED_MODEL_FUER_SUCHE, CLUSTER_VERSION, id):
+        raise HTTPException(404, "unbekannte Bewegung")
+    ann, ver = CitiesStore.IDEEN_IDEA_FIT
+    cities.put_feedback("cluster", f"{CLUSTER_VERSION}:{id}", ann, ver, int(user["id"]),
+                        verdict, (note or "").strip()[:500] or None)
+    return {"paper_id": f"{CLUSTER_VERSION}:{id}", "verdict": verdict}
+
+
 @router.post("/cities/ideas/{paper_id:path}/feedback")
 def cities_idea_feedback(
     paper_id: str,

@@ -2663,6 +2663,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/council/cities/movements/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cities Movement Feedback
+         * @description „Stimmt" oder „stimmt nicht" zum Urteil über Oldenburg JE IDEE.
+         *
+         *     Derselbe Rückkanal wie an der Einzelkarte, nur am Urteil ``idea_fit``
+         *     (``object_kind='cluster'``) — die Tabelle ``feedback`` kennt die Art
+         *     schon. Die Antwort trägt die Gruppen-Kennung als ``paper_id``, damit die
+         *     Form dieselbe bleibt.
+         */
+        post: operations["cities_movement_feedback_api_council_cities_movements_feedback_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/council/cities/search": {
         parameters: {
             query?: never;
@@ -17490,6 +17515,39 @@ export interface operations {
             };
         };
     };
+    cities_movement_feedback_api_council_cities_movements_feedback_post: {
+        parameters: {
+            query: {
+                id: number;
+                verdict: string;
+                note?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedbackAck"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     cities_search_api_council_cities_search_get: {
         parameters: {
             query: {
@@ -21856,4 +21914,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 4bd8739255a672869245c84cfea15b05fe6a9ab0ba5efae7c123b1c570fff24f
+// vertrag-sha256: b0fc47a366049cd5f4276fe321a4894841555979a98de4ca12c5220d0dc26c24

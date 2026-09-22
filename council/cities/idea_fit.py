@@ -69,6 +69,16 @@ SUCHE_FUER = 3
 
 WORKERS = int(os.environ.get("CITIES_IDEA_FIT_WORKERS", "4"))
 
+#: Sekunden, nach denen ein Aufruf als hängend gilt. **Gemessen, nicht
+#: geschätzt:** Am 22.09.2026 standen die Probe dieses Laufs und der
+#: `fit`-Restlauf auf dev zugleich über eine halbe Stunde still — CPU 99 %
+#: frei, vier offene Verbindungen zu OpenRouter, keine Antwort, während ein
+#: frischer Aufruf in 1,6 s zurückkam. Das SDK wartet ohne eigene Angabe
+#: 600 s je Versuch. Ein gewöhnliches Urteil braucht 20–40 s; nach 120 s ist
+#: es kein langsames mehr, sondern ein hängendes, und die Wiederholung in
+#: `llm.chat_complete` (Timeout zählt als vorübergehend) übernimmt.
+TIMEOUT_S = float(os.environ.get("CITIES_LLM_TIMEOUT", "120"))
+
 #: Die Einzelurteile im Klartext, für die Hinweis-Zeilen.
 _STATUS_TEXT = {"present": "vorhanden", "partial": "teilweise",
                 "missing": "fehlt", "not_applicable": "nicht anwendbar"}
@@ -273,7 +283,7 @@ class Richter:
                           {"role": "user", "content": self.nutzer_text(g, mitglieder, belege)}],
                 max_tokens=ann.max_tokens, temperature=ann.temperature,
                 extra_body={"provider": {}} if ann.routing_free else {},
-                _feature=ann.feature)
+                timeout=TIMEOUT_S, _feature=ann.feature)
             daten = parse_json(antwort.choices[0].message.content or "")
         except Exception as e:  # noqa: BLE001 — eine Idee, nicht der Lauf
             self._zaehle("errors")

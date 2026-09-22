@@ -25831,6 +25831,70 @@
         ]
       }
     },
+    "/api/council/cities/movements/feedback": {
+      "post": {
+        "description": "„Stimmt\" oder „stimmt nicht\" zum Urteil über Oldenburg JE IDEE.\n\nDerselbe Rückkanal wie an der Einzelkarte, nur am Urteil ``idea_fit``\n(``object_kind='cluster'``) — die Tabelle ``feedback`` kennt die Art\nschon. Die Antwort trägt die Gruppen-Kennung als ``paper_id``, damit die\nForm dieselbe bleibt.",
+        "operationId": "cities_movement_feedback_api_council_cities_movements_feedback_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "title": "Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "verdict",
+            "required": true,
+            "schema": {
+              "title": "Verdict",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "note",
+            "required": false,
+            "schema": {
+              "title": "Note",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackAck"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cities Movement Feedback",
+        "tags": [
+          "council"
+        ]
+      }
+    },
     "/api/council/cities/search": {
       "get": {
         "description": "„Was haben andere Städte zu …?\" — frei durchsuchbar.\n\n**Zwei Hälften, keine Vektor-Suche über die Anfrage.** Die bräuchte\n``fastembed`` im Web-Dienst, und das ist es bewusst nicht. Stattdessen\nVolltext plus die schon berechneten Nachbarschaften der besten Treffer;\ndie Einzelheiten stehen an ``CitiesStore.search_ideas``.\n\nÖffentlich wie die Ideen-Liste, und hinter demselben Schalter.",
