@@ -2,7 +2,7 @@
 # Ein teurer Städte-Lauf in Tranchen — EIN frischer Prozess je Tranche
 # (Begründung in scripts/cities_tranche.py).
 #
-#   scripts/cities_tranchen.sh reason 1000 20      # Stufe, Tranche, höchstens so viele Durchgänge
+#   scripts/cities_tranchen.sh reason 1000 20 --alle   # Stufe, Tranche, Durchgänge, weitere Schalter
 #
 # Auf dev in tmux starten, damit er einen getrennten Laptop überlebt:
 #   tmux new -d -s reason 'cd ~/app && scripts/cities_tranchen.sh reason 1000 20 2>&1 | tee -a ~/reason.log'
@@ -14,9 +14,10 @@ cd "$(dirname "$0")/.." || exit 1
 STUFE="${1:?Stufe: fit | reason | idea_fit}"
 LIMIT="${2:-1000}"
 MAX="${3:-50}"
+shift 3 2>/dev/null || true
 for i in $(seq 1 "$MAX"); do
   echo "=== $STUFE Durchgang $i, $(date '+%F %T') ==="
-  nice -n 10 .venv/bin/python scripts/cities_tranche.py "$STUFE" --limit "$LIMIT"
+  nice -n 10 .venv/bin/python scripts/cities_tranche.py "$STUFE" --limit "$LIMIT" "$@"
   code=$?
   if [ $code -eq 9 ]; then echo "=== ALLES FERTIG ==="; exit 0; fi
   if [ $code -ne 0 ]; then echo "=== ABGEBROCHEN mit Code $code — Schleife hält an ==="; exit $code; fi
