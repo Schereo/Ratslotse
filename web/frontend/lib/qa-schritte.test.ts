@@ -31,6 +31,14 @@ describe("lottiSchrittText", () => {
     }
   });
 
+  it("sagt beim Gang ins Archiv, WARUM jetzt etwas anderes passiert", () => {
+    // PR 23: Lotti geht bei einer Archivfrage von selbst ins Archiv. Ohne
+    // diesen Satz sähe man nur, dass es plötzlich länger dauert.
+    expect(lottiSchrittText("archiv")).toMatch(/Ratsarchiv/);
+    // Er gilt auch auf dem Ratsweg — dort läuft die Frage ja weiter.
+    expect(lottiSchrittText("archiv", true)).toBe(lottiSchrittText("archiv"));
+  });
+
   it("ein Schritt des einen Wegs gilt nicht auf dem anderen", () => {
     // `context` gibt es nur bei `/explain`, `search` nur bei `/ask`.
     expect(lottiSchrittText("context", true)).toBe("Lotti überlegt");
@@ -40,7 +48,7 @@ describe("lottiSchrittText", () => {
   it("deckt genau die Schritte ab, die die beiden Ströme senden", () => {
     // Kommt im Backend ein Schritt dazu, fällt er hier auf — und nicht erst
     // als „Lotti überlegt" im Fenster, wo niemand ihn vermisst.
-    expect(Object.keys(ERKLAER_SCHRITTE).sort()).toEqual(["answer", "context"]);
+    expect(Object.keys(ERKLAER_SCHRITTE).sort()).toEqual(["answer", "archiv", "context"]);
     expect(Object.keys(ASK_SCHRITTE).sort()).toEqual(["answer", "expand", "search"]);
   });
 });

@@ -6041,6 +6041,51 @@ def test_gespraech_snapshot_traegt_presse_und_debatten(client, monkeypatch):
         store.close()
 
 
+def test_eine_frage_aus_lottis_fenster_wird_ein_lotti_gespraech(client, monkeypatch):
+    """Nur Lottis Fenster schickt einen ``screen`` mit — dann gehört das
+    Gespräch auch dorthin.
+
+    **Warum das jetzt zählt:** Solange der Weg ins Archiv an einem Knopf hing,
+    war die erste Frage im Fenster fast nie eine Archivfrage. Seit Lotti von
+    selbst hingeht (PR 23), ist genau das der Normalfall — und bis zum
+    22.09.2026 entstand dabei ein Gespräch der Art ``ask``, das Lottis Fenster
+    nicht übernahm (gemessen: Gespräch 51, ``kind=ask``). Die nächste
+    Erklärung lief dann in ein zweites Gespräch zur selben Sache.
+    """
+    from app.routers import council as council_router
+    from council import qa as qa_mod
+
+    _register(client)
+    cand = [{"id": 5, "title": "Stadionneubau", "summary": "Grundsatz", "policy_field": "sport",
+             "outcome": "accepted", "session_date": "2026-06-01",
+             "committee": "Rat", "score": 1.0}]
+    monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (cand, "semantisch"))
+    monkeypatch.setattr(qa_mod, "expand_query", lambda q, **k: q)
+    monkeypatch.setattr(qa_mod, "answer_stream", lambda *a, **k: iter(["Beschlossen [5]."]))
+
+    store = Store(RATSLOTSE_DB)
+    try:
+        uid = store._conn.execute("SELECT id FROM web_users").fetchone()[0]
+        store.set_qa_speichern(uid, True)
+
+        def frage(koerper: dict) -> int:
+            with client.stream("POST", "/api/council/ask", json=koerper) as r:
+                ereignisse = [json.loads(z[6:]) for z in "".join(r.iter_text()).splitlines()
+                              if z.startswith("data: ")]
+            return next(e for e in ereignisse if e["type"] == "done")["conversation_id"]
+
+        aus_fenster = frage({"question": "Wer hat dagegen gestimmt?", "conversation_id": None,
+                             "screen": {"route": "/council/decision",
+                                        "refs": {"decision_id": 5}}})
+        assert store.qa_gespraech(aus_fenster, uid)["kind"] == "lotti"
+
+        # Ohne Bildschirm bleibt es die Fragen-Seite — und damit ein `ask`.
+        von_der_seite = frage({"question": "Was ist mit dem Stadion?", "conversation_id": None})
+        assert store.qa_gespraech(von_der_seite, uid)["kind"] == "ask"
+    finally:
+        store.close()
+
+
 def test_gespraeche_liste_blaettert_und_sucht(client):
     """Tims Befund 30.08.2026: „Frag den Rat" zeigte dauerhaft 50 Gespräche.
 

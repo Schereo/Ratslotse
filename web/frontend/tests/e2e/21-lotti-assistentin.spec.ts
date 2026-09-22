@@ -96,6 +96,36 @@ const STROM_SEITE = [
   })}\n\n`,
 ].join("");
 
+/** Der Strom, mit dem `/explain` eine Archivfrage beantwortet: **gar nicht.**
+ *  Seit PR 23 entscheidet der Server am Wortlaut und schickt ohne einen
+ *  einzigen Modellaufruf den Schritt plus `mode: "handoff"` — das Fenster
+ *  stellt dann von selbst die Ratsfrage, als zweiten Schritt derselben Runde. */
+const STROM_HANDOFF = [
+  `data: ${JSON.stringify({ type: "step", step: "archiv" })}\n\n`,
+  `data: ${JSON.stringify({
+    type: "done", mode: "handoff", kind: "archiv",
+    next: "ratsfrage", next_page: null, glossary: [], timings: { total_ms: 3 },
+  })}\n\n`,
+].join("");
+
+/** Die Ratsantwort aus dem Archiv — Quellen, Text, zitierte Nummern.
+ *
+ *  **Drei Fundstücke, eines zitiert**: genau die Lage, die Tim am
+ *  22.09.2026 auf `/council/decision?id=2982` gesehen hat („1 zitiert · 41
+ *  gefunden", darunter drei Zeilen, zwei davon zur Sache fremd). */
+const RATS_ANTWORT = "Der Rat hat 2026 zugestimmt.";
+const FUNDSTUECKE = [
+  { id: 8525, title: "Stadionneubau Maastrichter Straße", committee: "Rat",
+    session_date: "2026-06-01" },
+  { id: 11, title: "Toleranz-Fonds 2026", committee: "Rat", session_date: "2026-03-01" },
+  { id: 12, title: "Bebauungsplan Nr. 56", committee: "Rat", session_date: "2026-02-01" },
+];
+const STROM_ARCHIV = [
+  `data: ${JSON.stringify({ type: "sources", sources: FUNDSTUECKE })}\n\n`,
+  `data: ${JSON.stringify({ type: "token", text: RATS_ANTWORT })}\n\n`,
+  `data: ${JSON.stringify({ type: "done", cited: [8525] })}\n\n`,
+].join("");
+
 async function stromStubben(page: Page, opts: { next?: string | null } = {}) {
   await page.route("**/api/council/explain", (route) =>
     route.fulfill({ status: 200, contentType: "text/event-stream", body: STROM(opts) })
@@ -190,39 +220,232 @@ test.describe("Lotti-Knopf und -Fenster", () => {
       .toHaveCount(0);
   });
 
-  test("eine Archivfrage wird IM Fenster beantwortet — mit Belegen", async ({ page }) => {
-    // Bis PR 4 führte der Knopf weg auf `/fragen`, und der Zusammenhang war
-    // hin: Wer auf der Schulden-Seite „wer hat das beantragt?" fragt, landete
-    // auf einer leeren Fragen-Seite, und das „das" war weg.
+  test("eine Archivfrage beantwortet Lotti selbst — ein Weg, eine Runde", async ({ page }) => {
+    // PR 23. Tim, 22.09.2026: „Den Rat fragen — da frage ich mich manchmal,
+    // warum passiert das nicht automatisch, wenn das sinnvoll ist? Ich weiß
+    // als User gar nicht, was heißt denn ‚den Rat fragen'?" Der Knopf ist weg;
+    // die Entscheidung, welchen Weg eine Frage nimmt, ist unsere.
     let geschickt: Record<string, unknown> | null = null;
     await page.route("**/api/council/ask", async (route) => {
       geschickt = route.request().postDataJSON();
-      await route.fulfill({
-        status: 200, contentType: "text/event-stream",
-        body: [
-          `data: ${JSON.stringify({ type: "sources", sources: [
-            { id: 8525, title: "Stadionneubau Maastrichter Straße", committee: "Rat",
-              session_date: "2026-06-01" },
-          ] })}\n\n`,
-          `data: ${JSON.stringify({ type: "token", text: "Der Rat hat 2026 zugestimmt." })}\n\n`,
-          `data: ${JSON.stringify({ type: "done", cited: [8525] })}\n\n`,
-        ].join(""),
-      }).catch(() => { /* Test ist schon zu Ende */ });
+      await route.fulfill({ status: 200, contentType: "text/event-stream",
+                            body: STROM_ARCHIV })
+        .catch(() => { /* Test ist schon zu Ende */ });
     });
-    await stromStubben(page, { next: "ratsfrage" });
+    await page.route("**/api/council/explain", (route) =>
+      route.fulfill({ status: 200, contentType: "text/event-stream", body: STROM_HANDOFF })
+        .catch(() => { /* Test ist schon zu Ende */ }),
+    );
     await page.goto("/dashboard");
     await knopf(page).click();
     await fenster(page).getByLabel("Frage an Lotti").fill("Wer hat dagegen gestimmt?");
     await fenster(page).getByRole("button", { name: "Fragen" }).click();
-    await fenster(page).getByRole("button", { name: /Den Rat fragen/ }).click();
-    await expect(fenster(page).getByText("Der Rat hat 2026 zugestimmt.")).toBeVisible();
+
+    // Kein Knopf dazwischen: die Antwort steht einfach da, mit Belegen.
+    await expect(fenster(page).getByText(RATS_ANTWORT)).toBeVisible();
     await expect(fenster(page).getByText("Stadionneubau Maastrichter Straße")).toBeVisible();
+    await expect(fenster(page).getByRole("button", { name: /Den Rat fragen/ }))
+      .toHaveCount(0);
+    // EINE Runde: die Frage steht genau einmal da, nicht zweimal.
+    await expect(fenster(page).getByText("Wer hat dagegen gestimmt?")).toHaveCount(1);
     // Der Bildschirm reist mit — sonst sucht das Archiv nach nichts.
     const screen = (geschickt as { screen?: { route?: string } })?.screen;
     expect(screen?.route).toBe("/dashboard");
     // Und der Weg ins volle Ratsgespräch steht darunter.
     await expect(fenster(page).getByRole("button", { name: /Im Ratsgespräch weiterführen/ }))
       .toBeVisible();
+    // Unter einer Antwort AUS dem Archiv steht kein Weg noch einmal dorthin.
+    await expect(fenster(page).getByRole("button", { name: "Im Ratsarchiv nachsehen" }))
+      .toHaveCount(0);
+  });
+
+  test("die erste Archivfrage eröffnet das Gespräch — die Erklärung danach landet darin",
+    async ({ page }) => {
+      // Bis 22.09.2026 nahm das Fenster die Kennung aus `/ask` nur an, wenn
+      // schon ein Gespräch lief — ein Riegel gegen das `ask`-Gespräch, das
+      // `/ask` ohne Bildschirm anlegt. Das Backend kennt Lottis Fenster
+      // inzwischen am `screen` und legt ein `lotti`-Gespräch an; der Riegel
+      // kostete nur noch den Faden (gemessen: Gespräch 51, kind=ask).
+      await page.route("**/api/council/ask", (route) =>
+        route.fulfill({ status: 200, contentType: "text/event-stream", body: [
+          `data: ${JSON.stringify({ type: "sources", sources: FUNDSTUECKE })}\n\n`,
+          `data: ${JSON.stringify({ type: "token", text: RATS_ANTWORT })}\n\n`,
+          `data: ${JSON.stringify({ type: "done", cited: [8525], conversation_id: 4242 })}\n\n`,
+        ].join("") }).catch(() => { /* Test ist schon zu Ende */ }),
+      );
+      const gefragt: Record<string, unknown>[] = [];
+      await page.route("**/api/council/explain", async (route) => {
+        gefragt.push(route.request().postDataJSON());
+        await route.fulfill({
+          status: 200, contentType: "text/event-stream",
+          body: gefragt.length === 1 ? STROM_HANDOFF : STROM(),
+        }).catch(() => { /* Test ist schon zu Ende */ });
+      });
+      await page.goto("/dashboard");
+      await knopf(page).click();
+      // Erste Frage im LEEREN Fenster, und sie geht ins Archiv.
+      await fenster(page).getByLabel("Frage an Lotti").fill("Wer hat dagegen gestimmt?");
+      await fenster(page).getByRole("button", { name: "Fragen" }).click();
+      await expect(fenster(page).getByText(RATS_ANTWORT)).toBeVisible();
+      expect(gefragt[0].conversation_id).toBeNull();
+
+      // Die nächste Erklärung hängt sich an DASSELBE Gespräch.
+      await fenster(page).getByLabel("Frage an Lotti").fill("Und was steht hier?");
+      await fenster(page).getByRole("button", { name: "Fragen" }).click();
+      await expect(fenster(page).getByText(ANTWORT)).toBeVisible();
+      expect(gefragt[1].conversation_id).toBe(4242);
+    });
+
+  test("unter einer Archiv-Antwort stehen nur die ZITIERTEN Quellen", async ({ page }) => {
+    // Gemessen auf /council/decision?id=2982: „1 zitiert · 41 gefunden" und
+    // darunter drei Zeilen, von denen zwei nichts mit der Frage zu tun
+    // hatten. Eine Quelle, die falsch wirkt, beschädigt die richtige mit.
+    await page.route("**/api/council/ask", (route) =>
+      route.fulfill({ status: 200, contentType: "text/event-stream", body: STROM_ARCHIV })
+        .catch(() => { /* Test ist schon zu Ende */ }),
+    );
+    await page.route("**/api/council/explain", (route) =>
+      route.fulfill({ status: 200, contentType: "text/event-stream", body: STROM_HANDOFF })
+        .catch(() => { /* Test ist schon zu Ende */ }),
+    );
+    await page.goto("/dashboard");
+    await knopf(page).click();
+    await fenster(page).getByLabel("Frage an Lotti").fill("Wer hat dagegen gestimmt?");
+    await fenster(page).getByRole("button", { name: "Fragen" }).click();
+    await expect(fenster(page).getByText(RATS_ANTWORT)).toBeVisible();
+
+    await expect(fenster(page).getByText("Stadionneubau Maastrichter Straße")).toBeVisible();
+    await expect(fenster(page).getByText("Toleranz-Fonds 2026")).toHaveCount(0);
+    await expect(fenster(page).getByText("Bebauungsplan Nr. 56")).toHaveCount(0);
+    // Erreichbar bleiben sie — hinter einem Klick, wie bisher.
+    await fenster(page).getByRole("button", { name: /Alle 3 Quellen/ }).click();
+    await expect(fenster(page).getByText("Toleranz-Fonds 2026")).toBeVisible();
+  });
+
+  test("unter einer Archiv-Antwort steht kein Baustein-Chip dieser Seite",
+    async ({ page }) => {
+      // Gemessen auf /council/decision?id=2982: „Lotti erklärt's einfach
+      // erklären" unter der Auskunft, wer dagegen gestimmt hat. Die Antwort
+      // kommt aus 9.000 Beschlüssen; ein Kasten DIESER Seite daneben ist ein
+      // Themenwechsel — und die Kurzfassung IST schon Lottis Erklärung.
+      await page.route("**/api/council/ask", (route) =>
+        route.fulfill({ status: 200, contentType: "text/event-stream", body: STROM_ARCHIV })
+          .catch(() => { /* Test ist schon zu Ende */ }),
+      );
+      await page.route("**/api/council/explain", (route) =>
+        route.fulfill({ status: 200, contentType: "text/event-stream", body: STROM_HANDOFF })
+          .catch(() => { /* Test ist schon zu Ende */ }),
+      );
+      await page.goto("/haushalt/schulden");
+      await page.waitForLoadState("networkidle");
+      await knopf(page).click();
+      await fenster(page).getByLabel("Frage an Lotti").fill("Wer hat dagegen gestimmt?");
+      await fenster(page).getByRole("button", { name: "Fragen" }).click();
+      await expect(fenster(page).getByText(RATS_ANTWORT)).toBeVisible();
+      await expect(fenster(page).getByRole("button", { name: /erklären$/ })).toHaveCount(0);
+    });
+
+  test("reicht das Modell weiter, bleibt die Erklärung stehen und das Archiv kommt darunter",
+    async ({ page }) => {
+      // Der zweite Fall: Die Regex hat nicht gegriffen, das Modell setzt
+      // `WEITER: ratsfrage`. Dann ist der Archivweg der ZWEITE Schritt
+      // derselben Runde — die Frage-Blase steht schon oben.
+      await page.route("**/api/council/ask", (route) =>
+        route.fulfill({ status: 200, contentType: "text/event-stream", body: STROM_ARCHIV })
+          .catch(() => { /* Test ist schon zu Ende */ }),
+      );
+      await stromStubben(page, { next: "ratsfrage" });
+      await page.goto("/dashboard");
+      await knopf(page).click();
+      await fenster(page).getByLabel("Frage an Lotti").fill("Und wie ging das aus?");
+      await fenster(page).getByRole("button", { name: "Fragen" }).click();
+
+      await expect(fenster(page).getByText(ANTWORT)).toBeVisible();
+      await expect(fenster(page).getByText(RATS_ANTWORT)).toBeVisible();
+      await expect(fenster(page).getByText("Und wie ging das aus?")).toHaveCount(1);
+      await expect(fenster(page).getByRole("button", { name: /Den Rat fragen/ }))
+        .toHaveCount(0);
+    });
+
+  test("unter einer Erklärung steht ein stiller Textlink ins Archiv", async ({ page }) => {
+    // Der Nachweg, wenn Lotti geantwortet hat und die Person trotzdem tiefer
+    // will — ein Verb, das sagt, was passiert, statt „Den Rat fragen".
+    await page.route("**/api/council/ask", (route) =>
+      route.fulfill({ status: 200, contentType: "text/event-stream", body: STROM_ARCHIV })
+        .catch(() => { /* Test ist schon zu Ende */ }),
+    );
+    await page.goto("/dashboard");
+    await knopf(page).click();
+    await fenster(page).getByRole("button", { name: "Was sehe ich hier?" }).click();
+    await expect(fenster(page).getByText(ANTWORT)).toBeVisible();
+
+    const link = fenster(page).getByRole("button", { name: "Im Ratsarchiv nachsehen" });
+    await expect(link).toBeVisible();
+    await link.click();
+    await expect(fenster(page).getByText(RATS_ANTWORT)).toBeVisible();
+  });
+
+  test("nach der ersten Runde sind die Grund-Chips weg — der Zeiger bleibt",
+    async ({ page }) => {
+      // PR 24: „Was sehe ich hier?" und „Etwas auf der Seite zeigen" sagen,
+      // was man hier tun kann. Das braucht, wer noch nichts gefragt hat;
+      // danach stehen sie nur im Weg (Tim: „viel zu viele von diesen Pills").
+      await page.goto("/dashboard");
+      await knopf(page).click();
+      const grund = fenster(page).getByRole("button", { name: "Was sehe ich hier?" });
+      await expect(grund).toBeVisible();
+      await grund.click();
+      await expect(fenster(page).getByText(ANTWORT)).toBeVisible();
+
+      await expect(fenster(page).getByRole("button", { name: "Was sehe ich hier?" }))
+        .toHaveCount(0);
+      // Der Erklär-Modus bleibt erreichbar — als stilles Icon am Composer.
+      const zeiger = fenster(page).getByRole("button", { name: "Etwas auf der Seite zeigen" });
+      await expect(zeiger).toHaveCount(1);
+      await expect(zeiger).toBeVisible();
+      // Und die Aufforderung steht im Platzhalter, nicht auf einem Chip.
+      await expect(fenster(page).getByPlaceholder(/Frag mich zu dieser Seite/))
+        .toBeVisible();
+    });
+
+  test("unter einer Antwort steht höchstens EIN Chip", async ({ page }) => {
+    // Tims Bild: drei Chips, zwei Daumen, zwei Grund-Chips — sieben
+    // Bedienelemente für eine Antwort. Der Strom hier böte zwei an
+    // (Zielseite UND Fachwort); stehen darf genau der Wegweiser.
+    await page.route("**/api/council/explain", (route) =>
+      route.fulfill({ status: 200, contentType: "text/event-stream", body: [
+        `data: ${JSON.stringify({ type: "token", text: ANTWORT_FACHWORT })}\n\n`,
+        `data: ${JSON.stringify({
+          type: "done", mode: "explain", kind: "model", next: null,
+          next_page: { route: "/haushalt/schulden", title: "Wie viel Schulden hat Oldenburg?" },
+          glossary: ["Umschuldung"], timings: { total_ms: 900 },
+        })}\n\n`,
+      ].join("") }).catch(() => { /* Test ist schon zu Ende */ }),
+    );
+    await page.goto("/dashboard");
+    await knopf(page).click();
+    await fenster(page).getByRole("button", { name: "Was sehe ich hier?" }).click();
+    await expect(fenster(page).getByText(ANTWORT_FACHWORT)).toBeVisible();
+
+    await expect(fenster(page).getByRole("button", { name: /^Weiter zu:/ })).toHaveCount(1);
+    await expect(fenster(page).getByRole("button", { name: /^Was heißt/ })).toHaveCount(0);
+  });
+
+  test("der Wegweiser zeigt nie auf die Seite, auf der man steht", async ({ page }) => {
+    // Tims Bild vom 22.09.2026: „Weiter zu: Bereichs-Steckbrief" auf dem
+    // Bereichs-Steckbrief. Der Server streicht die eigene Seite inzwischen
+    // aus dem Wegweiser — das hier ist der Hosenträger zum Gürtel, für den
+    // Fall, dass ein Rahmen sie trotzdem trägt.
+    await page.route("**/api/council/explain", (route) =>
+      route.fulfill({ status: 200, contentType: "text/event-stream", body: STROM_SEITE })
+        .catch(() => { /* Test ist schon zu Ende */ }),
+    );
+    await page.goto("/haushalt/schulden");
+    await knopf(page).click();
+    await fenster(page).getByRole("button", { name: "Was sehe ich hier?" }).click();
+    await expect(fenster(page).getByText(ANTWORT_SEITE)).toBeVisible();
+    await expect(fenster(page).getByRole("button", { name: /^Weiter zu: Wie viel Schulden/ }))
+      .toHaveCount(0);
   });
 
   test("die Kontext-Pille zeigt die Seite, nicht den Anzeigenamen", async ({ page }) => {
@@ -279,9 +502,12 @@ test.describe("Lotti-Knopf und -Fenster", () => {
 
       await page.goto("/bookmarks");
       await knopf(page).click();
-      // Der Netzmitschnitt der NÄCHSTEN Frage — vor dem Klick registriert.
+      // Der Netzmitschnitt der NÄCHSTEN Frage — vor dem Absenden registriert.
+      // **Über den Composer**, nicht über den Grund-Chip: Der steht seit
+      // PR 24 nur noch im leeren Fenster, und hier liegt schon eine Runde.
       const anfrage = page.waitForRequest("**/api/council/explain");
-      await fenster(page).getByRole("button", { name: "Was sehe ich hier?" }).click();
+      await fenster(page).getByLabel("Frage an Lotti").fill("Was sehe ich hier?");
+      await fenster(page).getByRole("button", { name: "Fragen" }).click();
       const koerper = (await anfrage).postDataJSON() as {
         route?: string; history?: { question: string }[] };
       expect(koerper.route).toBe("/bookmarks");
@@ -415,37 +641,25 @@ test.describe("Lotti-Knopf und -Fenster", () => {
     expect(rufe).toBe(0);
   });
 
-  test("nach einer Antwort steht ein Chip zum Fachwort — und er kostet nichts",
+  test("zum Fachwort gibt es KEINEN Chip — es steht im Text und klappt dort auf",
     async ({ page }) => {
-      // Die Zusage dieses PRs: Die Anschlussfrage entsteht deterministisch aus
-      // dem, was das Fenster schon hat — hier aus dem Fachwort in der Antwort,
-      // erkannt mit derselben Regel wie die Unterstreichung darin
-      // (`lib/glossar-treffer.ts`). Und der Klick schickt den Begriff als
-      // `selection` mit: Genau dort sucht `deterministic_answer` nach einem
-      // Glossar-Eintrag und antwortet ohne Modell.
-      const gefragt: Record<string, unknown>[] = [];
-      await page.route("**/api/council/explain", async (route) => {
-        gefragt.push(route.request().postDataJSON());
-        await route.fulfill({
-          status: 200, contentType: "text/event-stream",
-          body: gefragt.length === 1 ? STROM_FACHWORT : STROM_GEPRUEFT,
-        }).catch(() => { /* Test ist schon zu Ende */ });
-      });
+      // Bis 22.09.2026 stand unter der Antwort „Was heißt Umschuldung?",
+      // während „Umschuldung" zwei Zeilen darüber schon unterstrichen war
+      // (PR 22). Zwei Wege zu derselben geprüften Erklärung, einer davon als
+      // Bedienelement in der Fußzeile — der Weg AM WORT ist der bessere.
+      await page.route("**/api/council/explain", (route) =>
+        route.fulfill({ status: 200, contentType: "text/event-stream", body: STROM_FACHWORT })
+          .catch(() => { /* Test ist schon zu Ende */ }),
+      );
       await page.goto("/dashboard");
       await knopf(page).click();
       await fenster(page).getByRole("button", { name: "Was sehe ich hier?" }).click();
+      await expect(fenster(page).getByText(ANTWORT_FACHWORT)).toBeVisible();
 
-      const chip = fenster(page).getByRole("button", { name: "Was heißt Umschuldung?" });
-      await expect(chip).toBeVisible();
-      await chip.click();
-      await expect(fenster(page).getByText(GEPRUEFTE_ANTWORT)).toBeVisible();
-
-      expect(gefragt).toHaveLength(2);
-      expect(gefragt[1].question).toBe("Was heißt Umschuldung?");
-      expect(gefragt[1].selection).toBe("Umschuldung");
-      // Nichts zweimal: Der Begriff ist gefragt, der Chip ist weg.
-      await expect(fenster(page).getByRole("button", { name: "Was heißt Umschuldung?" }))
-        .toHaveCount(0);
+      await expect(fenster(page).getByRole("button", { name: /^Was heißt/ })).toHaveCount(0);
+      // Der verbliebene Weg: das Wort selbst.
+      await expect(fenster(page).getByRole("button", { name: "Was bedeutet Umschuldung?" }))
+        .toBeVisible();
     });
 
   test("ein Fachwort klappt IM Fenster auf, statt am Rand abgeschnitten zu werden",
@@ -591,7 +805,11 @@ test.describe("Lotti-Knopf und -Fenster", () => {
       // zweizeiligen Klotz (`lib/assistentin.ts::chipTitel`). Geprüft wird
       // deshalb der Anfang, nicht der ganze Titel.
       const kurz = titel.split(" · ")[0].slice(0, 20);
-      const chipName = new RegExp(`^Erklär mir: ${kurz.replace(/[.*+?^${}()|[\]\\-]/g, "\\$&")}`);
+      // **Der Chip ist eine Handlung** (PR 24): „Anzeigetafel erklären" statt
+      // „Erklär mir: Die Anzeigetafel"; der führende Artikel fällt weg.
+      const chipName = new RegExp(
+        `^${kurz.replace(/^[Dd](er|ie|as|en|em|es)\s+/, "")
+          .replace(/[.*+?^${}()|[\]\\-]/g, "\\$&")}`);
 
       await knopf(page).click();
       await fenster(page).getByRole("button", { name: "Was sehe ich hier?" }).click();

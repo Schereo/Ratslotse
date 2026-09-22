@@ -553,16 +553,25 @@ export function ankerListe(dok: Document): Anker[] {
  *  der Client navigiert nur noch. */
 export type NaechsteSeite = { route: string; title: string };
 
-/** Ein Anschluss-Chip unter einer Antwort. */
+/** Ein Anschluss-Chip unter einer Antwort.
+ *
+ *  **`{ art: "ratsfrage" }` gibt es seit 22.09.2026 nicht mehr.** Der Weg ins
+ *  Archiv ist kein Angebot an die Person, sondern eine Entscheidung des
+ *  Fensters: Gehört die Frage dorthin, geht Lotti von selbst (PR 23). Was
+ *  bleibt, ist der stille Textlink „Im Ratsarchiv nachsehen" unter einer
+ *  Erklärung — und der ist kein Chip. */
 export type Anschluss =
-  /** „Den Rat fragen" — die Antwort hat ans Archiv weitergereicht. */
-  | { art: "ratsfrage" }
   /** „Weiter zu: <Titel>" — die Haushalts-Seite, auf der es ausführlich steht. */
   | { art: "seite"; seite: NaechsteSeite }
-  /** „Erklär mir: <Titel>" — der nächste Baustein der Seite. */
-  | { art: "anker"; anker: Anker }
-  /** „Was heißt <Begriff>?" — ein Fachwort aus der Antwort. */
-  | { art: "begriff"; begriff: string };
+  /** „<Titel> erklären" — der nächste Baustein der Seite. */
+  | { art: "anker"; anker: Anker };
+
+/** **Auch den Fachwort-Chip gibt es seit 22.09.2026 nicht mehr.** Er bot
+ *  „Was heißt Aufwendung?" an, während „Aufwendungen" zwei Zeilen darüber
+ *  im Antworttext schon unterstrichen war und sich dort aufklappen ließ
+ *  (PR 22) — zwei Wege zu derselben geprüften Erklärung, einer davon als
+ *  Bedienelement in der Fußzeile. Der Weg, der am Wort steht, ist der
+ *  bessere: Er beantwortet die Frage da, wo sie entsteht. */
 
 /** Die Kennung eines Ankers: Schlüssel UND Titel.
  *
@@ -596,57 +605,126 @@ export function chipTitel(titel: string): string {
   return kuerze((titel ?? "").split(" · ")[0], CHIP_TITEL_MAX);
 }
 
-/** Höchstens so viele Chips je Runde. Drei Angebote unter fünf Sätzen sind
- *  keine Hilfe mehr, sondern ein Menü (Designsprache: ein nächster Schritt,
- *  höchstens zwei). */
-export const ANSCHLUSS_MAX = 2;
+/** Der führende Artikel eines Baustein-Titels — „Die Anzeigetafel". */
+//  **Ohne `i`-Flag, und das ist kein Versehen:** JavaScript faltet mit `i`
+//  auch `\p{Lu}` — die Lookahead-Bedingung „danach kommt ein Großbuchstabe"
+//  träfe dann jeden Buchstaben, und aus „die letzten Jahre" würde „letzten
+//  Jahre". Der Artikel steht deshalb in beiden Schreibweisen da.
+const ARTIKEL_RE = /^[Dd](?:er|ie|as|en|em|es)\s+(?=\p{Lu})/u;
 
 /**
- * Die Chips unter einer Antwort — höchstens zwei, Vorrang Archiv › Seite ›
- * Anker › Fachwort.
+ * Der Chip-Text zu einem Baustein — eine **Handlung**, kein Etikett.
  *
- * **Der Vorrang ist die Reihenfolge des Nutzens.** Eine Antwort, die ans
- * Archiv weiterreicht, hat ihre eigentliche Auskunft noch gar nicht gegeben —
- * das ist der dringendste nächste Schritt. Dann die andere Haushalts-Seite:
- * Lotti hat gerade gesagt, dass es dort ausführlich steht, und der Chip ist
- * der Weg dorthin — er schlägt den nächsten Baustein DIESER Seite, weil die
- * Antwort ihn schon benannt hat. Danach kommt dieser Baustein (er ist der
- * Grund, warum jemand hier ist), zuletzt die Vokabel.
+ * „Erklär mir: Die Anzeigetafel" wird „Anzeigetafel erklären" (Tim,
+ * 22.09.2026: „man weiß nicht, was man anklicken soll"). Ein Chip sagt, was
+ * passiert, wenn man ihn drückt; das Präfix „Erklär mir:" war die
+ * Innensicht — es beschrieb, was das Fenster ans Backend schickt.
  *
- * **Nichts zweimal.** `erklaert` trägt, was in dieser Sitzung schon gefragt
- * wurde: Anker als :func:`ankerKennung`, Fachwörter kleingeschrieben. Ein
- * Chip, der die Antwort wiederholt, die zwei Zeilen höher steht, ist
- * schlimmer als kein Chip.
+ * Der führende Artikel fällt weg, damit der Satz nicht „Die Anzeigetafel
+ * erklären" heißt: Auf einem 384 px breiten Chip zählt jedes Wort, und der
+ * nächste Buchstabe ist ohnehin groß. **Nur vor einem Großbuchstaben**
+ * — „Der Rat" verliert seinen Artikel, „die letzten Jahre" behält ihn, weil
+ * dort kein Name folgt.
+ */
+export function erklaerAktion(titel: string): string | null {
+  const name = chipTitel(titel).replace(ARTIKEL_RE, "");
+  return name && chipTauglich(name) ? `${name} erklären` : null;
+}
+
+/** Höchstens so viele Wörter — danach ist es kein Name mehr, sondern ein Satz. */
+export const CHIP_WORTE_MAX = 4;
+
+/**
+ * Taugt dieser Baustein-Name als Handlung auf einem Chip?
+ *
+ * **Gemessen am 22.09.2026 auf `/council/decision?id=2982`:** Dort heißt die
+ * Kurzfassungs-Box „Lotti erklärt's einfach" — als Chip stand da „Lotti
+ * erklärt's einfach erklären". Ein Titel, der selbst schon ein Satz ist, wird
+ * durch das angehängte Verb albern, und ein alberner Chip beschädigt das
+ * Angebot mehr, als der fehlende es kostet.
+ *
+ * Drei Merkmale, alle am Bestand geprüft (24 Anker-Titel im Repo): ein
+ * **Apostroph** („erklärt's") und ein **Doppelpunkt** („Entgelte: geplant und
+ * geworden") heißen, dass der Titel eine eigene Satzstruktur hat; **mehr als
+ * vier Wörter** (nach dem Artikel) heißen dasselbe ohne Satzzeichen („Woher
+ * das Geld kommt und wohin es geht").
+ *
+ * Gezählt wird NACH dem Artikel: „Der Weg durch die Gremien" sind vier Wörter
+ * und ergibt „Weg durch die Gremien erklären" — ein Satz, den man sagen kann.
+ */
+export function chipTauglich(name: string): boolean {
+  if (/['’:]/.test(name)) return false;
+  return name.trim().split(/\s+/).filter(Boolean).length <= CHIP_WORTE_MAX;
+}
+
+/** Bausteine, die nie auf einem Chip landen — über den Namensteil ihres
+ *  Schlüssels (`useErklaerAnker(name, …)`), nicht über den Titel.
+ *
+ *  **`kurzfassung`** ist die Box „Lotti erklärt's einfach" auf der
+ *  Beschluss-Seite. Sie IST bereits Lottis Erklärung, und zwar der
+ *  deterministische Weg (`assistant.deterministic_answer`) — ein Chip
+ *  „erklär mir die Erklärung" ist ein Kreis. Im Erklär-Modus bleibt sie
+ *  antippbar; hier geht es nur um das unaufgeforderte Angebot. */
+const ANKER_OHNE_CHIP = new Set(["kurzfassung"]);
+
+/** Der Namensteil eines Anker-Schlüssels: `council-decision.kurzfassung` →
+ *  `kurzfassung`. Die Seite davor wechselt, der Name nicht. */
+function ankerName(key: string): string {
+  return key.slice(key.lastIndexOf(".") + 1);
+}
+
+/** Höchstens so viele Chips je Runde.
+ *
+ *  **Eins, seit 22.09.2026.** Vorher zwei — plus der Archiv-Knopf, plus die
+ *  Grund-Chips, plus die Daumen: sieben Bedienelemente unter EINER Antwort
+ *  (Tims Bild vom Bereichs-Steckbrief). „Es ist für den User sehr
+ *  überfordernd, wenn man hier tausend verschiedene Sachen anklicken kann."
+ *  Jeder Chip war einzeln begründet; keiner hat die Summe angesehen. */
+export const ANSCHLUSS_MAX = 1;
+
+/**
+ * Der Chip unter einer Antwort — **höchstens einer**, Vorrang Seite › Anker.
+ *
+ * **Der Vorrang ist die Reihenfolge des Nutzens.** Zuerst die andere
+ * Haushalts-Seite: Lotti hat gerade gesagt, dass es dort ausführlich steht,
+ * und der Chip ist der Weg dorthin — er schlägt den nächsten Baustein DIESER
+ * Seite, weil die Antwort ihn schon benannt hat. Danach kommt dieser
+ * Baustein: Er ist der Grund, warum jemand hier ist.
+ *
+ * **Der Wegweiser zeigt nie auf die Seite, auf der man steht** (`route`).
+ * „Weiter zu: Bereichs-Steckbrief" auf dem Bereichs-Steckbrief war genau der
+ * Befund; der Server streicht die eigene Seite schon aus dem Prompt und
+ * verwirft die Marke — dies hier ist der Hosenträger zum Gürtel, und er
+ * greift auch für eine Runde, die von einer anderen Seite stammt und deren
+ * `nextPage` inzwischen hierher zeigt.
+ *
+ * **Nichts zweimal.** `erklaert` trägt, was in dieser Sitzung schon als
+ * Baustein gefragt wurde (:func:`ankerKennung`). Ein Chip, der die Antwort
+ * wiederholt, die zwei Zeilen höher steht, ist schlimmer als kein Chip.
  *
  * **Keine Chips** unter einer Fehler-Runde (dort ist der Ausweg das
- * Wiederholen, nicht das Weitergehen) und unter der Lotsen-Runde
+ * Wiederholen, nicht das Weitergehen), unter der Lotsen-Runde
  * (`mode === "local"`, die „Zeig mir"-Antwort aus dem Browser — sie trägt ihre
- * eigenen Chips, und ein zweites Angebot darunter wäre eine Chip-Wand).
- *
- * `{ art: "ratsfrage" }` steht für den Knopf „Den Rat fragen", den das Fenster
- * ohnehin zeichnet — er ist chip-förmig und steht in derselben Reihe. Der
- * Eintrag belegt also einen der beiden Plätze, statt einen zweiten Knopf
- * daneben zu stellen.
+ * eigenen Chips) und **unter einer Antwort aus dem Archiv**: Sie beantwortet
+ * eine Frage an 9.000 Beschlüsse; ein Baustein DIESER Seite daneben ist ein
+ * Themenwechsel, kein nächster Schritt (gemessen am 22.09.2026 auf
+ * `/council/decision?id=2982`: „Lotti erklärt's einfach erklären" unter der
+ * Auskunft, wer dagegen gestimmt hat).
  */
 export function anschlussfragen(
   turn: { answer: string; fehler?: boolean; mode?: string | null;
-          next?: "ratsfrage" | null; nextPage?: NaechsteSeite | null;
-          ratsfrage?: boolean },
+          nextPage?: NaechsteSeite | null; ratsfrage?: boolean },
   anker: Anker[],
   erklaert: ReadonlySet<string>,
-  glossar: string[],
+  route = "",
 ): Anschluss[] {
-  if (!turn.answer || turn.fehler || turn.mode === "local") return [];
+  if (!turn.answer || turn.fehler || turn.mode === "local" || turn.ratsfrage) return [];
   const aus: Anschluss[] = [];
-  // Die Ratsantwort selbst reicht nicht noch einmal weiter — sie IST das
-  // Archiv, und ein „Den Rat fragen" unter ihren Quellen wäre ein Kreis.
-  if (turn.next === "ratsfrage" && !turn.ratsfrage) aus.push({ art: "ratsfrage" });
-  if (turn.nextPage && aus.length < ANSCHLUSS_MAX) {
+  if (turn.nextPage && turn.nextPage.route !== route) {
     aus.push({ art: "seite", seite: turn.nextPage });
   }
-  const naechster = anker.find((a) => !erklaert.has(ankerKennung(a)));
+  const naechster = anker.find((a) => !erklaert.has(ankerKennung(a))
+    && !ANKER_OHNE_CHIP.has(ankerName(a.key)) && erklaerAktion(a.titel));
   if (naechster && aus.length < ANSCHLUSS_MAX) aus.push({ art: "anker", anker: naechster });
-  const begriff = glossar.find((b) => !erklaert.has(b.toLowerCase()));
-  if (begriff && aus.length < ANSCHLUSS_MAX) aus.push({ art: "begriff", begriff });
-  return aus;
+  return aus.slice(0, ANSCHLUSS_MAX);
 }

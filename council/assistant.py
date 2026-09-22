@@ -281,10 +281,20 @@ def generische_frage(question: str) -> bool:
 #: Sackgasse, gegen die die Designsprache „Fehler/Limits: immer mit Ausweg"
 #: schreibt. Die Regex entscheidet deshalb mit; das Modell kann die
 #: Weiterreichung nur noch HINZUFÜGEN, nie wegnehmen.
+#:
+#: **Die Fraktions-Zeile verlangt seit 22.09.2026 ein Verfahrenswort.** Vorher
+#: stand dort nur ``welche (fraktion|partei|mehrheit)`` — und damit galt
+#: „Welche Partei hat die besseren Vorschläge?" als Archivfrage. Solange das
+#: nur einen Knopf kostete, fiel es nicht auf; seit Lotti von selbst ins
+#: Archiv geht (:func:`archiv_sofort`), würde eine **Bewertungsfrage** eine
+#: Archivsuche auslösen, statt die Absage zu bekommen, die sie verdient
+#: (Eval-Fall ``keine-parteienbewertung``).
 _ARCHIV_RE = re.compile(
     r"\b("
     r"wer (?:hat|hatte|stimmte|war)"
-    r"|welche (?:fraktion|partei|mehrheit)"
+    r"|welche (?:fraktion|partei|mehrheit)(?:en)? .{0,40}?"
+    r"(?:gestimmt|stimmte|beantragt|beschlossen|abgelehnt|zugestimmt|dagegen"
+    r"|dafuer|antrag|eingebracht|entschieden|durchgesetzt)"
     r"|wie (?:hat|haben) (?:der rat|die|das|er|sie)"
     r"|(?:was|wann|warum|wieso|weshalb) (?:wurde|wurden|hat|haben|ist) .{0,30}"
     r"(?:beschlossen|entschieden|abgestimmt|beantragt|abgelehnt|zugestimmt)"
@@ -346,12 +356,34 @@ def ortsfrage(question: str) -> bool:
 
 
 def archivfrage(question: str) -> bool:
-    """Braucht diese Frage das Beschluss-Archiv statt des Bildschirms?
-
-    Bewusst großzügig: Eine Frage zu viel weiterzureichen kostet einen Chip,
-    den niemand drücken muss. Eine zu wenig ist eine Sackgasse.
-    """
+    """Braucht diese Frage das Beschluss-Archiv statt des Bildschirms?"""
     return bool(_ARCHIV_RE.search(" ".join(falte(question).split())))
+
+
+#: „hier", „auf dieser Seite" — die Frage zeigt auf den Bildschirm.
+_HIERHER_RE = re.compile(r"\b(hier|auf dieser seite|(?:diese|dieser) seite)\b")
+
+
+def archiv_sofort(question: str) -> bool:
+    """Geht diese Frage OHNE Umweg ins Archiv — ohne einen Erklär-Aufruf?
+
+    **Der Unterschied zu** :func:`archivfrage` **ist der Preis.** Solange die
+    Weiterreichung nur einen Chip aufstellte, war Großzügigkeit richtig: Eine
+    Frage zu viel weiterzureichen kostete einen Knopf, den niemand drücken
+    muss. Seit 22.09.2026 geht Lotti von selbst — und dann kostet jede
+    Fehlauslösung eine ganze Archivsuche (Retrieval, Reranker, Antwort) und
+    ersetzt eine Erklärung, die auf dem Bildschirm gestanden hätte.
+
+    **Deshalb der Riegel „hier".** Wer „Was wurde **hier** beschlossen?"
+    fragt, zeigt auf die Seite; auf einer Beschluss-Seite steht die Antwort
+    im Kontext (``_record_block``), und ein Archivlauf wäre teurer und
+    schlechter (Eval-Fall ``beschluss-was-wurde-beschlossen``). Vergisst das
+    Modell dann die Marke, ist das keine Sackgasse mehr: Unter jeder
+    Erklärung steht der stille Textlink „Im Ratsarchiv nachsehen".
+    """
+    if not archivfrage(question):
+        return False
+    return not _HIERHER_RE.search(" ".join(falte(question).split()))
 
 
 #: Kennungen, die auf EINEN Gegenstand zeigen — dann erklärt Lotti den, nicht
@@ -604,7 +636,7 @@ def _anker_block(screen: Screen) -> str:
             + zeilen + "\n")
 
 
-def _wegweiser_block(seiten: list, route: str) -> str:
+def _wegweiser_block(seiten: list) -> str:
     """Welche Haushalts-Seite welche Frage beantwortet — Titel, Adresse, ein Satz.
 
     **Wozu.** Ohne ihn kann Lotti nicht sagen, wo etwas nachzulesen ist: Sie
@@ -616,16 +648,19 @@ def _wegweiser_block(seiten: list, route: str) -> str:
     Marke ``WEITER: seite …`` und damit für den Client; Leser*innen bekommen
     den Titel. Dieselbe Trennung wie bei ``WEITER: ratsfrage``.
 
-    Die aktuelle Seite bleibt in der Liste, aber markiert: Ohne die Marke
-    verwies das Modell gelegentlich auf die Seite, auf der man schon steht.
+    **Die eigene Seite steht gar nicht erst darin** (seit 22.09.2026). Bis
+    dahin stand sie mit der Marke „← DIESE SEITE" in der Liste — und das
+    reichte nicht: Auf dem Bereichs-Steckbrief schlug Lotti „Weiter zu:
+    Bereichs-Steckbrief" vor, also die Seite, auf der man schon stand (Tims
+    Bild, 22.09.2026). Eine Zeile, die das Modell nur nicht benutzen soll,
+    ist eine Einladung; :func:`screen_context` streicht sie deshalb, und
+    :func:`split_next` verwirft die Marke zusätzlich (Gürtel und
+    Hosenträger).
     """
     if not seiten:
         return ""
-    zeilen = []
-    for k in seiten:
-        hier = " ← DIESE SEITE" if k.route == route else ""
-        zeilen.append(f"  · „{k.title}“ ({k.route}){hier}\n"
-                      f"    {knowledge.erster_satz(k.what)}")
+    zeilen = [f"  · „{k.title}“ ({k.route})\n    {knowledge.erster_satz(k.what)}"
+              for k in seiten]
     return ("\nDER HAUSHALTS-BEREICH — WELCHE SEITE WAS BEANTWORTET (Wegweiser; was dort\n"
             "im EINZELNEN steht, weißt du nicht — du verweist, du behauptest nicht):\n"
             + "\n".join(zeilen) + "\n")
@@ -775,7 +810,12 @@ def screen_context(store, screen: Screen, question: str, *,
     # Zinsen zahlt?" fragt nach einem Baustein DIESER Seite; der Wegweiser
     # beantwortete sie zweimal von drei mit einer anderen Seite (s.
     # :func:`ortsfrage`). Die Zahlen bleiben, nur der Wegweiser tritt zurück.
-    wegweiser = (knowledge.wegweiser(knowledge.HAUSHALT, frozenset(permissions))
+    # **Ohne die Seite, auf der man steht.** „Weiter zu: Bereichs-Steckbrief"
+    # auf dem Bereichs-Steckbrief war Tims Befund vom 22.09.2026 — ein
+    # Wegweiser, der auf den eigenen Standort zeigt, ist keiner.
+    wegweiser = ([k for k in knowledge.wegweiser(knowledge.HAUSHALT,
+                                                 frozenset(permissions))
+                  if k.route != screen.route]
                  if darf_geld and geld_gewollt
                  and not (screen.anchors and ortsfrage(question)) else [])
 
@@ -843,7 +883,7 @@ def explain_messages(screen: Screen, question: str, ctx: dict,
         glossar=_glossar_block(ctx.get("glossary") or []),
         konto=_konto_block(ctx),
         geld=_geld_block(ctx.get("geld"), ctx.get("geld_max")),
-        wegweiser=_wegweiser_block(ctx.get("wegweiser") or [], screen.route),
+        wegweiser=_wegweiser_block(ctx.get("wegweiser") or []),
         # Die Verweis-Regel steht NUR im Prompt, wenn es auch etwas zu
         # verweisen gibt — der Grund steht bei `prompts.WEGWEISER_REGEL`.
         wegweiser_regel=prompts.WEGWEISER_REGEL if ctx.get("wegweiser") else "",
@@ -888,6 +928,7 @@ def explain_question(store, screen: Screen, question: str, *,
 
 
 def split_next(text: str, permissions: frozenset[str] | set[str] = frozenset(),
+               route: str = "",
                ) -> tuple[str, str | None, knowledge.PageKnowledge | None]:
     """``(Antworttext ohne die Marken-Zeile, Ziel, Zielseite)``.
 
@@ -903,6 +944,12 @@ def split_next(text: str, permissions: frozenset[str] | set[str] = frozenset(),
     (``(…, None, None)``) — ein Chip auf eine erfundene oder gesperrte Adresse
     ist ein Angebot ins 404. Dieselbe Bauform wie bei den Zielen selbst: Das
     Modell darf vorschlagen, gelten lässt es der Code.
+
+    **Und sie darf nicht die Seite sein, auf der man steht** (``route``):
+    „Weiter zu: Bereichs-Steckbrief" auf dem Bereichs-Steckbrief war Tims
+    Befund vom 22.09.2026. Der Wegweiser nennt die eigene Seite seither gar
+    nicht mehr (:func:`screen_context`); dieser Riegel hier fängt den Fall,
+    dass das Modell sie trotzdem aus dem Bildschirm-Block abschreibt.
     """
     if NEXT_MARKER not in text:
         return text.strip(), None, None
@@ -913,9 +960,10 @@ def split_next(text: str, permissions: frozenset[str] | set[str] = frozenset(),
         return kopf.strip(), None, None
     if ziel != "seite":
         return kopf.strip(), ziel, None
-    route = worte[1].strip(".,;:„“\"'") if len(worte) > 1 else ""
-    seite = knowledge.PAGES.get(route)
+    ziel_route = worte[1].strip(".,;:„“\"'") if len(worte) > 1 else ""
+    seite = knowledge.PAGES.get(ziel_route)
     if (seite is None or not knowledge.im_haushalt(seite.route)
-            or (seite.requires and seite.requires not in permissions)):
+            or (seite.requires and seite.requires not in permissions)
+            or seite.route == route):
         return kopf.strip(), None, None
     return kopf.strip(), ziel, seite

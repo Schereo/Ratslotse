@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ArrowRight, RotateCcw, Sparkles, X } from "lucide-react";
+import { ArrowRight, MousePointerClick, RotateCcw, Sparkles, X } from "lucide-react";
 
 import { Mascot } from "@/components/mascot";
 import { AntwortText } from "@/components/qa-bausteine";
@@ -12,12 +12,11 @@ import { FeedbackDaumen } from "@/components/feedback-daumen";
 import { apiUrl, authHeaders } from "@/lib/api";
 import {
   ankerKennung, ankerListe, ankerTreffer, anschlussfragen, auswahlText, chipTitel,
-  daumenZeigen,
+  daumenZeigen, erklaerAktion,
   ernteElement, gedaechtnis, kuerze, ortsfrage, refsAus, routeAus, seitenName,
   seitenTitel, seitenUeberschrift, trenneWeiter, ueberschriftenPfad, zaesur,
   type Anker, type Bildschirm, type NaechsteSeite,
 } from "@/lib/assistentin";
-import { begriffeIn } from "@/lib/glossar-treffer";
 import { useAuth } from "@/lib/auth";
 import { GespraecheEinwilligung } from "@/components/gespraeche-einwilligung";
 import { decisionHref, fragenHref } from "@/lib/routes";
@@ -97,12 +96,14 @@ export type LottiTurn = {
    *  Schlüssel allein reichte dafür nicht (zwei Bausteine dürfen sich einen
    *  teilen), deshalb steht hier der ganze Anker. */
   baustein?: Anker;
-  /** Das Fachwort, nach dem diese Runde gefragt hat („Was heißt …?"). */
-  begriff?: string;
   /** Woran der Strom gerade arbeitet — aus dem SSE-Rahmen `step`. Steht nur
    *  neben der Tipp-Anzeige, also solange noch kein Wort da ist; danach ist
    *  der Text selbst die Auskunft. */
   schritt?: string | null;
+  /** Diese Runde ist der ZWEITE Schritt derselben Frage (Erklärung, dann
+   *  Archiv): Die Frage-Blase steht schon darüber. Die Frage selbst bleibt
+   *  gesetzt — der Daumen und das gespeicherte Gespräch brauchen sie. */
+  frageVerborgen?: boolean;
 };
 
 /** Der Breakpoint `desk` aus `tailwind.config.ts`, als Medienabfrage.
@@ -302,13 +303,143 @@ export function LottiPanel({
     if (offen) endeRef.current?.scrollIntoView({ block: "end" });
   }, [offen, turns.length]);
 
+  /** Dieselbe Frage, aber ans Archiv — mit dem Bildschirm als Kontext.
+   *
+   *  **Warum nicht einfach nach `/fragen` schicken.** Das war PR 2, und es
+   *  kostete den Zusammenhang: Wer auf der Schulden-Seite fragt „wer hat das
+   *  beantragt?", landete auf einer leeren Fragen-Seite, und das „das" war
+   *  weg. Jetzt reist der Bildschirm mit, und die Antwort erscheint dort, wo
+   *  gefragt wurde. Der Weg ins volle Ratsgespräch bleibt darunter stehen.
+   *
+   *  **Seit 22.09.2026 ruft das meist niemand mehr von Hand auf.** Gehört die
+   *  Frage ins Archiv, sagt das der Server (`mode: "handoff"`), und diese
+   *  Funktion läuft von selbst — `inTurn` ist dann die Runde, die schon
+   *  dasteht: Die Frage bleibt oben stehen, darunter kommt die Archivantwort.
+   *  EINE Runde, ein Weg. Ohne `inTurn` entsteht eine neue Runde — so, wenn
+   *  das Modell erst erklärt und dann `WEITER: ratsfrage` setzt (die
+   *  Erklärung bleibt stehen), und so beim Textlink „Im Ratsarchiv
+   *  nachsehen".
+   */
+  const ratsfrageStellen = useCallback(async (frageText: string, opts: {
+    /** Die bestehende Runde, in die geantwortet wird (statt einer neuen). */
+    inTurn?: number;
+    /** Die Erklärung, die gerade darüber entstanden ist — sie gehört ins
+     *  Gedächtnis der Ratsfrage („und wer hat das beantragt?"). Der Zustand
+     *  `turns` trägt sie zu diesem Zeitpunkt noch nicht: React hat den
+     *  Setzer erst eingereiht, und dieser `useCallback` hält den Stand vom
+     *  letzten Zeichnen. Gesetzt heißt außerdem: Diese Runde ist der ZWEITE
+     *  Schritt derselben Frage — die Frage-Blase steht schon darüber und
+     *  wird nicht wiederholt. */
+    dazu?: { question: string; answer: string };
+  } = {}) => {
+    abbruch.current?.abort();
+    const ctrl = new AbortController();
+    abbruch.current = ctrl;
+    setLaden(true);
+    const key = opts.inTurn ?? naechsterKey.current++;
+    const rahmen = {
+      question: frageText, answer: "", next: null, mode: null,
+      kontext: "im Ratsarchiv gesucht", ratsfrage: true, quellen: [], cited: [],
+      route, seite: seitenName(document, anzeigename),
+      // Die Frage steht schon über der Erklärung — ein zweites Mal wäre sie
+      // eine neue Runde, und es ist dieselbe.
+      frageVerborgen: opts.dazu != null,
+    } satisfies Partial<LottiTurn>;
+    setTurns((ts) => (opts.inTurn != null
+      // Die Runde steht schon da (die Frage, die Tipp-Anzeige) — sie wird
+      // zur Archiv-Runde, statt eine zweite daneben zu stellen.
+      ? ts.map((t) => (t.key === key ? { ...t, ...rahmen, schritt: t.schritt } : t))
+      : [...ts, { key, ...rahmen }]));
+    const patch = (fn: (t: LottiTurn) => Partial<LottiTurn>) =>
+      setTurns((ts) => ts.map((t) => (t.key === key ? { ...t, ...fn(t) } : t)));
+    try {
+      const res = await fetch(apiUrl("/council/ask"), {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({
+          question: frageText,
+          // **Dasselbe Gespräch wie die Erklärungen.** Der Plan sagt, der
+          // Ratsweg aus dem Fenster hängt seinen Turn dort an; ohne diese
+          // beiden Felder blieb er ungespeichert, und der Verlauf hatte ein
+          // Loch genau an der interessantesten Stelle.
+          conversation_id: gespraechId,
+          // Wie bei `/explain`: nur Runden dieser Seite — plus die Erklärung,
+          // die gerade darüber entstanden ist und noch nicht im Zustand steht.
+          history: [
+            ...gedaechtnis(turns, route, MAX_TURNS_KONTEXT).map((t) => ({
+              question: t.question, answer: t.answer })),
+            ...(opts.dazu ? [opts.dazu] : []),
+          ].slice(-MAX_TURNS_KONTEXT)
+            .map((t) => ({ question: t.question.slice(0, 200), answer: t.answer.slice(0, 300) })),
+          screen: {
+            route,
+            heading: seitenUeberschrift(document, anzeigename).slice(0, 200),
+            element_title: letzterBaustein.current?.title ?? "",
+            element_text: (letzterBaustein.current?.text ?? "").slice(0, 600),
+            selection: markierung.slice(0, 600),
+            // **Die Kennung, nicht nur der Text.** Ohne sie suchte das Archiv
+            // nach Ähnlichkeit: Auf der Seite des Beschlusses „Weitenmesser im
+            // Marschwegstadion" (2020) beantwortete „Wer hat dagegen gestimmt?"
+            // eine Frage zu den Stadion-Richtlinien von 2025. Dieselben `refs`
+            // wie bei `/assistant/explain` — der Client kennt sie ohnehin.
+            refs,
+          },
+        }),
+        signal: ctrl.signal,
+      });
+      if (!res.ok || !res.body) {
+        patch(() => ({
+          answer: res.status === 429
+            ? "Du hast gerade viele Fragen gestellt — probier es in ein paar Minuten noch mal."
+            : "Das hat gerade nicht geklappt.",
+          fehler: true,
+        }));
+        return;
+      }
+      await leseSseStrom(res.body, (msg) => {
+        // Die Ratsfrage meldet drei Schritte (`expand`, `search`, `answer`) —
+        // dieselbe Abbildung wie auf der Fragen-Seite, aus `lib/qa-schritte.ts`.
+        if (msg.type === "step") patch(() => ({ schritt: msg.step as string }));
+        else if (msg.type === "token") patch((t) => ({ answer: t.answer + (msg.text as string) }));
+        else if (msg.type === "replace") patch(() => ({ answer: (msg.text as string) ?? "" }));
+        else if (msg.type === "sources") {
+          patch(() => ({ quellen: (msg.sources as LottiQuelle[]) ?? [] }));
+        } else if (msg.type === "done") {
+          patch(() => ({ cited: (msg.cited as number[]) ?? [] }));
+          // **Auch das erste Gespräch entsteht hier.** Bis 22.09.2026 stand
+          // hier ein `&& gespraechId != null`: Ohne laufendes Gespräch legte
+          // `/ask` eines der Art `ask` an, und die Liste hätte ein
+          // Mischwesen gezeigt. Das Backend kennt Lottis Fenster inzwischen
+          // am mitgeschickten `screen` und legt dann ein `lotti`-Gespräch an
+          // — die Sperre schützte also vor etwas, das es nicht mehr gibt,
+          // und kostete den Faden: Ist die erste Frage im Fenster eine
+          // Archivfrage (seit PR 23 der Normalfall), lief die nächste
+          // Erklärung in ein zweites Gespräch zur selben Sache.
+          if (msg.conversation_id != null) {
+            setGespraechId(msg.conversation_id as number);
+          }
+        } else if (msg.type === "error") {
+          patch(() => ({ answer: (msg.message as string) ?? "Frage fehlgeschlagen.", fehler: true }));
+        }
+      });
+    } catch (e) {
+      if ((e as Error)?.name === "AbortError") return;
+      patch(() => ({ answer: "Das hat gerade nicht geklappt.", fehler: true }));
+    } finally {
+      if (abbruch.current === ctrl) {
+        setLaden(false);
+        abbruch.current = null;
+      }
+    }
+  }, [markierung, refs, route, gespraechId, turns, setGespraechId, anzeigename]);
+
   const fragen = useCallback(async (
     text: string, mitMarkierung: boolean, baustein: ElementFrage | null = null,
-    /** Was ein Anschluss-Chip zusätzlich mitbringt: `auswahl` geht als
-     *  `selection` mit (der Weg zur kostenlosen Glossar-Antwort, s.
-     *  `begriffFragen`), `anker` und `begriff` merken sich nur, was schon
-     *  gefragt wurde — damit derselbe Chip nicht zweimal erscheint. */
-    chip: { auswahl?: string; anker?: Anker; begriff?: string } = {},
+    /** Welchen Baustein dieser Aufruf ERKLÄRT — aus dem Erklär-Modus oder
+     *  aus einem „… erklären"-Chip. Gemerkt wird er nur, damit derselbe Chip
+     *  nicht zweimal erscheint. */
+    chip: { anker?: Anker } = {},
   ) => {
     const sauber = text.trim();
     if (!sauber && !mitMarkierung && !baustein) return;
@@ -352,17 +483,15 @@ export function LottiPanel({
     setFrage("");
     setLaden(true);
 
-    const kontext = chip.begriff
-      ? "im Glossar nachgeschlagen"
-      : baustein
-        ? (baustein.title || "Baustein auf der Seite")
-        : (mitMarkierung && markierung ? `Markiert: „${kuerze(markierung, 40)}“` : "");
+    const kontext = baustein
+      ? (baustein.title || "Baustein auf der Seite")
+      : (mitMarkierung && markierung ? `Markiert: „${kuerze(markierung, 40)}“` : "");
     if (baustein) letzterBaustein.current = baustein;
     const key = naechsterKey.current++;
     setTurns((ts) => [...ts, {
       key, question: sauber, answer: "", next: null, mode: null, kontext,
       route, seite: seitenName(document, anzeigename),
-      baustein: chip.anker, begriff: chip.begriff,
+      baustein: chip.anker,
     }]);
 
     const bildschirm: Bildschirm = {
@@ -373,18 +502,24 @@ export function LottiPanel({
       // wird beim Antippen berechnet — nur dort liegt der Knoten noch vor.
       heading: baustein?.pfad || ueberschriftenPfad(null, document, anzeigename),
       element: baustein,
-      // **Der Begriff reist als `selection`, und das ist kein Trick.** Genau
-      // dort sucht `council/assistant.py::deterministic_answer` nach einem
-      // Fachwort: Trifft die Markierung GENAU einen Glossar-Eintrag, kommt
-      // die geprüfte Erklärung zurück — ohne Modell, ohne Kosten, in
-      // Millisekunden. Ein „Was heißt Umschuldung?" ohne `selection` wäre
-      // dieselbe Antwort für 0,07 Cent und eine Sekunde Wartezeit.
-      selection: chip.auswahl ?? (mitMarkierung ? markierung : ""),
+      selection: mitMarkierung ? markierung : "",
       refs,
     };
 
     const patch = (fn: (t: LottiTurn) => Partial<LottiTurn>) =>
       setTurns((ts) => ts.map((t) => (t.key === key ? { ...t, ...fn(t) } : t)));
+
+    /** Der Weg ins Archiv, sobald dieser Strom durch ist.
+     *
+     *  `"statt"`: Der Server hat gar nicht erst erklärt (`mode: "handoff"`) —
+     *  die Runde, die schon dasteht, wird zur Archiv-Runde.
+     *  `"danach"`: Die Erklärung steht, und das Modell hat weitergereicht —
+     *  die Archivantwort kommt als zweiter Schritt darunter. */
+    let archivWeg: "statt" | "danach" | null = null;
+    /** Der Antworttext, wie er hier entsteht — der Zustand `turns` trägt ihn
+     *  erst nach dem nächsten Zeichnen, die Ratsfrage braucht ihn aber sofort
+     *  als Gedächtnis. */
+    let antwort = "";
 
     try {
       const res = await fetch(apiUrl("/council/explain"), {
@@ -433,11 +568,21 @@ export function LottiPanel({
         // meldet `context` und `answer`, seit es den Endpunkt gibt; angezeigt
         // wurden drei blasse Punkte, an denen man nicht sah, dass etwas läuft.
         if (msg.type === "step") patch(() => ({ schritt: msg.step as string }));
-        else if (msg.type === "token") patch((t) => ({ answer: t.answer + (msg.text as string) }));
-        else if (msg.type === "replace") {
+        else if (msg.type === "token") {
+          antwort += msg.text as string;
+          patch((t) => ({ answer: t.answer + (msg.text as string) }));
+        } else if (msg.type === "replace") {
           const { text: rein, next } = trenneWeiter((msg.text as string) ?? "");
+          antwort = rein;
+          if (next === "ratsfrage") archivWeg = "danach";
           patch(() => ({ answer: rein, next }));
         } else if (msg.type === "done") {
+          // **Der Weg ins Archiv ist unsere Entscheidung, nicht ihre.** Bis
+          // 22.09.2026 stand hier ein Knopf „Den Rat fragen" — Tim: „Ich weiß
+          // als User gar nicht, was heißt denn ‚den Rat fragen‘? Ich dachte,
+          // ich frage gerade die Informationen aus dem Rat."
+          if (msg.mode === "handoff") archivWeg = "statt";
+          else if ((msg.next as string | null) === "ratsfrage") archivWeg = "danach";
           patch((t) => ({
             next: (msg.next as "ratsfrage" | null) ?? t.next,
             // Geprüft hat der Server: in `kern/knowledge.py`, im
@@ -453,6 +598,7 @@ export function LottiPanel({
           if (msg.conversation_id != null) setGespraechId(msg.conversation_id as number);
           else if ("conversation_id" in msg) setGespraechId(null);
         } else if (msg.type === "error") {
+          archivWeg = null;
           patch(() => ({ answer: (msg.message as string) ?? "Erklärung fehlgeschlagen.", fehler: true }));
         }
       });
@@ -462,13 +608,23 @@ export function LottiPanel({
       // (Designsprache § 6: „Fehler/Limits: immer mit Ausweg").
       patch(() => ({ answer: "Das hat gerade nicht geklappt.", fehler: true }));
       setFrage(sauber);
+      return;
     } finally {
       if (abbruch.current === ctrl) {
         setLaden(false);
         abbruch.current = null;
       }
     }
-  }, [markierung, refs, route, turns, gespraechId, merken, setGespraechId, anzeigename]);
+
+    // **Erst NACH dem Strom**, nicht im `done`-Rahmen: Dort liefe der
+    // Abbruch-Wächter von `ratsfrageStellen` in den noch offenen
+    // Erklär-Strom und risse ihn mitten im Satz ab.
+    if (archivWeg === "statt") await ratsfrageStellen(sauber, { inTurn: key });
+    else if (archivWeg === "danach") {
+      await ratsfrageStellen(sauber, { dazu: { question: sauber, answer: antwort } });
+    }
+  }, [markierung, refs, route, turns, gespraechId, merken, setGespraechId,
+      anzeigename, ratsfrageStellen]);
 
   // Ein im Erklär-Modus angetippter Baustein fragt von selbst — der Tipp auf
   // das Abzeichen IST die Frage, ein zweiter Klick im Fenster wäre einer zu
@@ -484,99 +640,6 @@ export function LottiPanel({
     // Abhängigkeitsliste stünde es für „bei jeder Antwort noch einmal fragen".
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [element, offen]);
-
-  /** Dieselbe Frage, aber ans Archiv — mit dem Bildschirm als Kontext.
-   *
-   *  **Warum nicht einfach nach `/fragen` schicken.** Das war PR 2, und es
-   *  kostete den Zusammenhang: Wer auf der Schulden-Seite fragt „wer hat das
-   *  beantragt?", landete auf einer leeren Fragen-Seite, und das „das" war
-   *  weg. Jetzt reist der Bildschirm mit, und die Antwort erscheint dort, wo
-   *  gefragt wurde. Der Weg ins volle Ratsgespräch bleibt darunter stehen.
-   */
-  const ratsfrageStellen = useCallback(async (frageText: string) => {
-    abbruch.current?.abort();
-    const ctrl = new AbortController();
-    abbruch.current = ctrl;
-    setLaden(true);
-    const key = naechsterKey.current++;
-    setTurns((ts) => [...ts, {
-      key, question: frageText, answer: "", next: null, mode: null,
-      kontext: "im Ratsarchiv gesucht", ratsfrage: true, quellen: [], cited: [],
-      route, seite: seitenName(document, anzeigename),
-    }]);
-    const patch = (fn: (t: LottiTurn) => Partial<LottiTurn>) =>
-      setTurns((ts) => ts.map((t) => (t.key === key ? { ...t, ...fn(t) } : t)));
-    try {
-      const res = await fetch(apiUrl("/council/ask"), {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json", ...authHeaders() },
-        body: JSON.stringify({
-          question: frageText,
-          // **Dasselbe Gespräch wie die Erklärungen.** Der Plan sagt, der
-          // Ratsweg aus dem Fenster hängt seinen Turn dort an; ohne diese
-          // beiden Felder blieb er ungespeichert, und der Verlauf hatte ein
-          // Loch genau an der interessantesten Stelle.
-          conversation_id: gespraechId,
-          // Wie bei `/explain`: nur Runden dieser Seite.
-          history: gedaechtnis(turns, route, MAX_TURNS_KONTEXT)
-            .map((t) => ({ question: t.question.slice(0, 200), answer: t.answer.slice(0, 300) })),
-          screen: {
-            route,
-            heading: seitenUeberschrift(document, anzeigename).slice(0, 200),
-            element_title: letzterBaustein.current?.title ?? "",
-            element_text: (letzterBaustein.current?.text ?? "").slice(0, 600),
-            selection: markierung.slice(0, 600),
-            // **Die Kennung, nicht nur der Text.** Ohne sie suchte das Archiv
-            // nach Ähnlichkeit: Auf der Seite des Beschlusses „Weitenmesser im
-            // Marschwegstadion" (2020) beantwortete „Wer hat dagegen gestimmt?"
-            // eine Frage zu den Stadion-Richtlinien von 2025. Dieselben `refs`
-            // wie bei `/assistant/explain` — der Client kennt sie ohnehin.
-            refs,
-          },
-        }),
-        signal: ctrl.signal,
-      });
-      if (!res.ok || !res.body) {
-        patch(() => ({
-          answer: res.status === 429
-            ? "Du hast gerade viele Fragen gestellt — probier es in ein paar Minuten noch mal."
-            : "Das hat gerade nicht geklappt.",
-          fehler: true,
-        }));
-        return;
-      }
-      await leseSseStrom(res.body, (msg) => {
-        // Die Ratsfrage meldet drei Schritte (`expand`, `search`, `answer`) —
-        // dieselbe Abbildung wie auf der Fragen-Seite, aus `lib/qa-schritte.ts`.
-        if (msg.type === "step") patch(() => ({ schritt: msg.step as string }));
-        else if (msg.type === "token") patch((t) => ({ answer: t.answer + (msg.text as string) }));
-        else if (msg.type === "replace") patch(() => ({ answer: (msg.text as string) ?? "" }));
-        else if (msg.type === "sources") {
-          patch(() => ({ quellen: (msg.sources as LottiQuelle[]) ?? [] }));
-        } else if (msg.type === "done") {
-          patch(() => ({ cited: (msg.cited as number[]) ?? [] }));
-          // **Nur in ein Gespräch, das es schon gab.** Ohne eines legt `/ask`
-          // ein neues der Art `ask` an — die nächste Erklärung liefe dann in
-          // ein Ratsgespräch, und die Liste zeigte ein Mischwesen. Der
-          // Ratsturn steht dann für sich, und das ist er ja auch.
-          if (msg.conversation_id != null && gespraechId != null) {
-            setGespraechId(msg.conversation_id as number);
-          }
-        } else if (msg.type === "error") {
-          patch(() => ({ answer: (msg.message as string) ?? "Frage fehlgeschlagen.", fehler: true }));
-        }
-      });
-    } catch (e) {
-      if ((e as Error)?.name === "AbortError") return;
-      patch(() => ({ answer: "Das hat gerade nicht geklappt.", fehler: true }));
-    } finally {
-      if (abbruch.current === ctrl) {
-        setLaden(false);
-        abbruch.current = null;
-      }
-    }
-  }, [markierung, refs, route, gespraechId, turns, setGespraechId, anzeigename]);
 
   // Ein gespeichertes Lotti-Gespräch aus der Liste „Gespräche".
   useEffect(() => {
@@ -640,6 +703,14 @@ export function LottiPanel({
     window.setTimeout(() => zeigeBaustein(anker), handy ? 60 : 0);
   };
 
+  /** „Im Ratsarchiv nachsehen" — der Nachweg, wenn Lotti geantwortet hat und
+   *  die Person trotzdem tiefer will.
+   *
+   *  **Ein Verb, das sagt, was passiert.** Der Knopf hieß bis 22.09.2026 „Den
+   *  Rat fragen" und war ein Name aus der Innensicht: Für uns ist „Frag den
+   *  Rat" das andere Feature, für die Person ist Lotti *die* Stelle, an der
+   *  sie den Rat fragt (Tim: „Ich dachte, ich frage gerade die Informationen
+   *  aus dem Rat"). */
   const zurRatsfrage = (t: LottiTurn) => {
     void ratsfrageStellen(t.question || "Was wurde dazu beschlossen?");
   };
@@ -659,16 +730,9 @@ export function LottiPanel({
       { anker: a });
   };
 
-  /** „Was heißt <Begriff>?" — als getippte Frage MIT dem Begriff als
-   *  Markierung. Beides zusammen trifft im Backend den Glossar-Weg ohne
-   *  Modell (s. den Kommentar an `selection` in `fragen`). */
-  const begriffFragen = (b: string) => {
-    void fragen(`Was heißt ${b}?`, false, null, { auswahl: b, begriff: b });
-  };
-
   if (!offen) return null;
 
-  /** Was in dieser Sitzung schon erklärt wurde — Anker und Fachwörter.
+  /** Welche Bausteine in dieser Sitzung schon erklärt wurden.
    *
    *  Der Verlauf IST dieses Gedächtnis; ein eigener Zustand daneben liefe
    *  beim Seitenwechsel und beim Laden eines gespeicherten Gesprächs
@@ -676,7 +740,6 @@ export function LottiPanel({
   const erklaert = new Set<string>();
   for (const t of turns) {
     if (t.baustein) erklaert.add(ankerKennung(t.baustein));
-    if (t.begriff) erklaert.add(t.begriff.toLowerCase());
   }
   // Die Landkarte der AKTUELLEN Seite. Sie steht nur der letzten Runde zu:
   // Ein „Erklär mir: …" unter einer Antwort von vor drei Seiten zeigte auf
@@ -781,18 +844,18 @@ export function LottiPanel({
           </div>
         )}
         {turns.map((t, i) => {
-          // Die Anschlussfragen gehören der LETZTEN Runde auf DIESER Seite:
-          // Sie sagen, was als Nächstes kommt, und „als Nächstes" gibt es nur
-          // einmal. Ältere Runden behalten ihren „Den Rat fragen"-Knopf.
+          // **Alles, was weiterführt, gehört der LETZTEN Runde auf DIESER
+          // Seite** — der Chip wie der Textlink ins Archiv. „Als Nächstes"
+          // gibt es nur einmal; bis 22.09.2026 trug jede ältere Runde ihren
+          // eigenen „Den Rat fragen"-Knopf, und zusammen war das die Wand,
+          // die Tim gesehen hat.
           const jetzt = i === turns.length - 1 && t.route === route;
-          const vorschlaege = anschlussfragen(
-            t, jetzt ? ankerJetzt : [], erklaert,
-            // Die Fachwörter kommen aus der Antwort SELBST, nicht aus dem
-            // `glossary`-Feld des Schluss-Rahmens: So meinen Chip und
-            // Unterstreichung in `AntwortText` garantiert dasselbe Wort
-            // (beide über `lib/glossar-treffer.ts`).
-            jetzt && !t.fehler ? begriffeIn(t.answer, 3) : [],
-          );
+          const vorschlaege = jetzt
+            ? anschlussfragen(t, ankerJetzt, erklaert, route) : [];
+          // Der Nachweg ins Archiv — nur unter einer Runde, die NICHT schon
+          // von dort kam (das wäre ein Kreis), und nur unter der letzten.
+          const archivLink = jetzt && t.answer && !t.fehler
+            && !t.ratsfrage && t.mode !== "local";
           return (
           <div key={t.key} className="space-y-2">
             {/* Die Zäsur: Ab hier wurde auf einer anderen Seite gefragt.
@@ -808,7 +871,7 @@ export function LottiPanel({
                 Jetzt auf: {zaesur(turns, i)}
               </p>
             )}
-            {t.question && (
+            {t.question && !t.frageVerborgen && (
               <p className="ml-6 rounded-xl rounded-br-sm border border-primary/[0.18] bg-primary/[0.07] px-2.5 py-1.5 text-[13.5px] text-foreground">
                 {t.question}
               </p>
@@ -854,43 +917,15 @@ export function LottiPanel({
                     ))}
                   </div>
                 ) : null}
-                {/* Der Weg ins Archiv — aber nicht unter der Lotsen-Runde:
-                    „Wo finde ich die Rate-Treppe?" ist keine Frage an 9.000
-                    Beschlüsse, und eine Antwort darauf wäre mit Sicherheit
-                    eine falsche mit richtigen Quellen. */}
-                {t.answer && !t.fehler && t.mode !== "local"
-                  && (!t.ratsfrage || vorschlaege.length > 0) && (
+                {/* **Höchstens EIN Chip** (PR 24) — deterministisch aus dem
+                    Wegweiser, den Ankern der Seite und den Fachwörtern der
+                    Antwort, ohne zweiten Modellaufruf. Bis 22.09.2026 standen
+                    hier bis zu zwei Chips PLUS der Archiv-Knopf, darunter die
+                    Daumen und darunter die Grund-Chips: sieben Bedienelemente
+                    für eine Antwort. Jedes war einzeln begründet; die Summe
+                    hat sich niemand angesehen. */}
+                {vorschlaege.length > 0 && (
                   <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                    {/* Unter einer Ratsantwort steht er NICHT: Sie kommt aus
-                        dem Archiv, ein „Den Rat fragen" darunter wäre ein
-                        Kreis. Die Anschluss-Chips stehen dort trotzdem. */}
-                    {!t.ratsfrage && (
-                    <button
-                      type="button"
-                      onClick={() => zurRatsfrage(t)}
-                      disabled={laden}
-                      className={cn(
-                        "inline-flex min-h-8 items-center gap-1 rounded-full px-2.5 text-[12px] font-medium transition-colors disabled:opacity-50",
-                        t.next === "ratsfrage"
-                          ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                          : "border border-primary/30 bg-primary/[0.04] text-primary hover:bg-primary/10",
-                      )}
-                    >
-                      Den Rat fragen
-                      <ArrowRight className="h-3.5 w-3.5" aria-hidden />
-                    </button>
-                    )}
-                    {/* Die Anschlussfragen in DERSELBEN Reihe — deterministisch
-                        aus den Ankern der Seite und den Fachwörtern der
-                        Antwort, ohne zweiten Modellaufruf.
-
-                        **„Den Rat fragen" bleibt der Knopf von oben** und wird
-                        kein neutraler Chip: Reicht die Antwort weiter
-                        (`next === "ratsfrage"`), ist er die gefüllte
-                        Hauptaktion der Reihe, und die Designsprache will genau
-                        einen solchen nächsten Schritt. Er belegt dann einen der
-                        beiden Plätze (`anschlussfragen` gibt ihn als Eintrag
-                        zurück), sodass höchstens ein weiterer Chip danebensteht. */}
                     {vorschlaege.map((v) => (
                       v.art === "seite"
                         ? (
@@ -905,19 +940,15 @@ export function LottiPanel({
                         )
                         : v.art === "anker"
                         ? (
+                          /* **Eine Handlung, kein Etikett.** „Erklär mir: Die
+                             Anzeigetafel" war die Innensicht — es beschrieb,
+                             was das Fenster verschickt. */
                           <Chip key={`a-${ankerKennung(v.anker)}`}
                             onClick={() => erklaerAnker(v.anker)} disabled={laden}>
-                            Erklär mir: {chipTitel(v.anker.titel)}
+                            {erklaerAktion(v.anker.titel)}
                           </Chip>
                         )
-                        : v.art === "begriff"
-                          ? (
-                            <Chip key={`b-${v.begriff}`}
-                              onClick={() => begriffFragen(v.begriff)} disabled={laden}>
-                              Was heißt {v.begriff}?
-                            </Chip>
-                          )
-                          : null
+                        : null
                     ))}
                   </div>
                 )}
@@ -933,9 +964,26 @@ export function LottiPanel({
                     das Fenster nur durchreicht; ein Daumen darunter bewertete
                     das Glossar, nicht die Assistentin — und stünde in
                     derselben Quote wie ihre Erklärungen. */}
-                {daumenZeigen(t) && (
-                  <div className="mt-1.5">
-                    <FeedbackDaumen question={t.question} answer={t.answer} source="lotti" />
+                {(daumenZeigen(t) || archivLink) && (
+                  <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+                    {daumenZeigen(t) && (
+                      <FeedbackDaumen question={t.question} answer={t.answer} source="lotti" />
+                    )}
+                    {/* **Kein Chip, ein Textlink.** Der Chip war die laute
+                        Bauform für einen Weg, den Lotti seit PR 23 von selbst
+                        geht; was hier steht, ist der Nachweg für den Fall,
+                        dass die Erklärung nicht gereicht hat — still, wie die
+                        Icon-Aktionen einer Turn-Fußzeile. */}
+                    {archivLink && (
+                      <button
+                        type="button"
+                        onClick={() => zurRatsfrage(t)}
+                        disabled={laden}
+                        className="text-[11.5px] font-medium text-primary hover:underline disabled:opacity-50"
+                      >
+                        Im Ratsarchiv nachsehen
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -946,27 +994,59 @@ export function LottiPanel({
         <div ref={endeRef} />
       </div>
 
-      {/* Vorschlags-Chips */}
-      <div className="flex flex-wrap gap-1.5 px-3 pb-1.5">
-        <Chip onClick={() => void fragen("Was sehe ich hier?", false)} disabled={laden || merken == null}>
-          Was sehe ich hier?
-        </Chip>
-        {markierung && (
-          <Chip onClick={() => void fragen("Was heißt das?", true)} disabled={laden || merken == null}>
-            Markiertes erklären
-          </Chip>
-        )}
-        <Chip onClick={onModus} disabled={laden || merken == null}>
-          Etwas auf der Seite zeigen
-        </Chip>
-      </div>
+      {/* **Die Grund-Chips stehen nur im LEEREN Fenster** (PR 24). Sie sagen,
+          was man hier tun kann — das braucht, wer noch nichts gefragt hat.
+          Danach steht dieselbe Aufforderung im Composer-Platzhalter, und der
+          Erklär-Modus wohnt als stilles Icon daneben. Bis 22.09.2026 standen
+          sie dauerhaft unter jedem Gespräch und waren zwei der sieben
+          Bedienelemente unter Tims Antwort.
+
+          **„Markiertes erklären" ist kein Grund-Chip** und bleibt: Er
+          erscheint nur, wenn gerade etwas markiert ist, also als Antwort auf
+          eine Handlung, die eben passiert ist — kein Dauerangebot. */}
+      {(turns.length === 0 || markierung) && (
+        <div className="flex flex-wrap gap-1.5 px-3 pb-1.5">
+          {turns.length === 0 && (
+            <Chip onClick={() => void fragen("Was sehe ich hier?", false)} disabled={laden || merken == null}>
+              Was sehe ich hier?
+            </Chip>
+          )}
+          {markierung && (
+            <Chip onClick={() => void fragen("Was heißt das?", true)} disabled={laden || merken == null}>
+              Markiertes erklären
+            </Chip>
+          )}
+          {turns.length === 0 && (
+            <Chip onClick={onModus} disabled={laden || merken == null}>
+              Etwas auf der Seite zeigen
+            </Chip>
+          )}
+        </div>
+      )}
 
       {/* Composer */}
       <form
         onSubmit={(e) => { e.preventDefault(); void fragen(frage, !!markierung); }}
         className="flex items-center gap-2 border-t border-border px-3 py-2"
       >
-        <Sparkles className="h-4 w-4 flex-none text-signal" aria-hidden />
+        {/* Der Erklär-Modus, sobald das Fenster nicht mehr leer ist — als
+            stilles Icon statt als Chip. Es steht, wo vorher der dekorative
+            Funke stand: Der hat nichts getan, und die Breite braucht das
+            Icon. Dieselbe Bauform wie die Icon-Aktionen der Kopfzeile. */}
+        {turns.length > 0 ? (
+          <button
+            type="button"
+            onClick={onModus}
+            disabled={laden || merken == null}
+            aria-label="Etwas auf der Seite zeigen"
+            title="Etwas auf der Seite zeigen"
+            className="flex-none rounded-md p-0.5 text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+          >
+            <MousePointerClick className="h-4 w-4" aria-hidden />
+          </button>
+        ) : (
+          <Sparkles className="h-4 w-4 flex-none text-signal" aria-hidden />
+        )}
         <input
           ref={eingabeRef}
           value={frage}
@@ -1017,7 +1097,18 @@ function Quellen({ turn, onSchliessen }: { turn: LottiTurn; onSchliessen: () => 
   // Zitierte zuerst: Sie tragen die Antwort, die übrigen sind Fundsachen.
   const quellen = [...(turn.quellen ?? [])].sort(
     (a, b) => Number(zitiert.has(b.id)) - Number(zitiert.has(a.id)));
-  const sichtbar = alle ? quellen : quellen.slice(0, 3);
+  // **Standard: nur die ZITIERTEN.** Bis 22.09.2026 standen die ersten drei
+  // Fundstücke da — gemessen auf `/council/decision?id=2982`: „1 zitiert · 41
+  // gefunden" und darunter drei Zeilen, von denen zwei (Toleranz-Fonds,
+  // Bebauungsplan Nr. 56) nichts mit der Frage zu tun hatten. Eine Quelle,
+  // die falsch wirkt, beschädigt die beiden richtigen mit; es ist dieselbe
+  // Sorte Rauschen, gegen die die Chip-Regel oben gebaut ist. Der Rest bleibt
+  // erreichbar — hinter „Alle N Quellen", wie bisher.
+  //
+  // **Mindestens eine.** Zitiert das Modell nichts (es kommt vor), wäre eine
+  // Antwort ganz ohne Beleg schlechter als die beste Fundsache.
+  const belege = quellen.filter((q) => zitiert.has(q.id));
+  const sichtbar = alle ? quellen : (belege.length ? belege : quellen.slice(0, 1));
   return (
     <div className="mt-2 space-y-1.5">
       {quellen.length > 0 && (
@@ -1045,8 +1136,14 @@ function Quellen({ turn, onSchliessen }: { turn: LottiTurn; onSchliessen: () => 
             ))}
           </ul>
           {quellen.length > sichtbar.length && (
+            /* `block`, nicht inline: Der Abstandshalter des Elterndivs
+               (`space-y-1.5`) greift nur zwischen BLOCK-Kindern — als
+               inline-block stand „Alle 3 Quellen" ohne Lücke direkt vor
+               „Im Ratsgespräch weiterführen" (gesehen am 22.09.2026, seit
+               die Belege auf die zitierten zusammengeschrumpft sind und der
+               Knopf damit überhaupt erscheint). */
             <button type="button" onClick={() => setAlle(true)}
-              className="text-[11.5px] font-medium text-primary hover:underline">
+              className="block text-[11.5px] font-medium text-primary hover:underline">
               Alle {quellen.length} Quellen
             </button>
           )}

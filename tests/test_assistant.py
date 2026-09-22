@@ -454,6 +454,53 @@ def test_der_router_ergaenzt_die_marke_wenn_das_modell_sie_vergisst(monkeypatch)
     assert lotti.archivfrage("Wer hat dagegen gestimmt?")
 
 
+# --- 5c. Der Weg, den Lotti von selbst geht (PR 23) -------------------------
+
+@pytest.mark.parametrize("frage", [
+    "Wer hat dagegen gestimmt?",
+    "Wer hat die letzte Erhöhung beantragt?",
+    "Was hat der Rat 2024 zu den Schulden beschlossen?",
+    "Welche Fraktion hat den Antrag eingebracht?",
+    "Gab es dazu einen Beschluss?",
+])
+def test_diese_fragen_gehen_ohne_umweg_ins_archiv(frage):
+    """Sie kosten seit 22.09.2026 keinen Erklär-Aufruf mehr: Der Vorab-Absatz
+    („Wer wie gestimmt hat, kann nur das Archiv sagen") war ein leerer Absatz
+    vor der eigentlichen Antwort."""
+    assert lotti.archiv_sofort(frage)
+
+
+@pytest.mark.parametrize("frage", [
+    # Auf dem Bildschirm beantwortbar — „hier" zeigt auf die Seite.
+    "Was wurde hier beschlossen?",
+    "Wer hat hier dagegen gestimmt?",
+    # Eine BEWERTUNG. Sie gehört weder auf die Seite noch ins Archiv, sondern
+    # bekommt die Absage, die der Prompt vorschreibt.
+    "Welche Partei hat die besseren Vorschläge?",
+    "Welche Mehrheit ist besser für die Stadt?",
+    # Und die üblichen Bildschirmfragen.
+    "Was sehe ich hier?", "Was heißt Tilgung?", "Ist das viel Geld?",
+    "Wie viel nimmt die Stadt an Gewerbesteuer ein?",
+])
+def test_diese_fragen_bleiben_beim_bildschirm(frage):
+    """**Der Preis hat sich geändert, also auch die Großzügigkeit.** Solange
+    die Weiterreichung nur einen Chip aufstellte, kostete eine Fehlauslösung
+    nichts; jetzt kostet sie eine ganze Archivsuche und verdrängt eine
+    Erklärung, die dagestanden hätte."""
+    assert not lotti.archiv_sofort(frage)
+
+
+@pytest.mark.parametrize("frage", [
+    "Was sehe ich hier?", "Was ist das?", "Erklär mir das",
+    "Was heißt Umschuldung?", "Was bedeutet Tilgung?",
+])
+def test_kein_weg_ohne_modell_ist_zugleich_eine_archivfrage(frage):
+    """Der Router prüft `archiv_sofort` VOR `deterministic_answer`. Das ist
+    nur dann harmlos, wenn sich die beiden Mengen nicht überschneiden — sonst
+    verlöre eine geprüfte Antwort aus dem Glossar an eine Archivsuche."""
+    assert not lotti.archiv_sofort(frage)
+
+
 # --- 6. Der Endpunkt --------------------------------------------------------
 
 class _Ratslotse:
@@ -589,6 +636,29 @@ def test_der_deterministische_weg_zaehlt_seinen_eigenen_zaehler(client):
                                               "question": "Was sehe ich hier?"})
     zaehler = [a[1] for name, a, _ in client.ratslotse.aufrufe if name == "record_activity"]
     assert zaehler == ["assistant_deterministic"]
+
+
+def test_eine_archivfrage_reicht_sofort_weiter_ohne_modell(client):
+    """PR 23: Gehört die Frage ins Archiv, geht Lotti dorthin — der Strom
+    trägt keinen Text, nur den Schritt und den Rahmen `mode: "handoff"`.
+
+    **Kein `conversation_id` im Rahmen**, und das ist die zweite Zusage: Ein
+    `null` hieße für das Fenster „vergiss das laufende Gespräch", und die
+    nächste Frage eröffnete ein zweites zur selben Sache."""
+    r = client.post("/api/council/explain", json={
+        "route": "/haushalt/schulden", "question": "Wer hat dagegen gestimmt?",
+        "conversation_id": 7})
+    assert r.status_code == 200
+    rahmen = _rahmen(r)
+    assert [f["type"] for f in rahmen] == ["step", "done"]
+    assert rahmen[0]["step"] == "archiv"
+    assert rahmen[-1]["mode"] == "handoff" and rahmen[-1]["next"] == "ratsfrage"
+    assert "conversation_id" not in rahmen[-1]
+    # Kein Text, kein gespeicherter Turn — es gibt nichts zu speichern.
+    assert not any(f["type"] in ("token", "replace") for f in rahmen)
+    assert not any(n == "qa_turn_speichern" for n, _, _ in client.ratslotse.aufrufe)
+    zaehler = [a[1] for n, a, _ in client.ratslotse.aufrufe if n == "record_activity"]
+    assert zaehler == ["assistant_to_ask_auto"]
 
 
 def test_nichts_aus_dem_browser_wird_gespeichert(client):
@@ -904,8 +974,31 @@ def test_der_wegweiser_steht_im_prompt_mit_titel_und_satz():
     assert "„Woher kommt das Geld?“ (/haushalt/einnahmen)" in prompt
     # Der erste Satz des `what` — nicht der ganze Absatz.
     assert "Die Einnahmequellen der Stadt" in prompt
-    # Die Seite, auf der man steht, ist als solche markiert.
-    assert "DIESE SEITE" in prompt
+
+
+def test_der_wegweiser_nennt_die_eigene_seite_nicht():
+    """Tims Bild vom 22.09.2026: „Weiter zu: Bereichs-Steckbrief" auf dem
+    Bereichs-Steckbrief. Bis dahin stand die eigene Seite mit der Marke
+    „← DIESE SEITE" in der Liste — eine Zeile, die das Modell nur nicht
+    benutzen soll, ist eine Einladung."""
+    ctx = lotti.screen_context(_Store(), lotti.Screen(route="/haushalt/schulden"),
+                               "Wie hoch sind die Schulden?",
+                               permissions=frozenset({"budget"}))
+    routen = [k.route for k in ctx["wegweiser"]]
+    assert routen, "ohne Wegweiser misst dieser Test nichts"
+    assert "/haushalt/schulden" not in routen
+    assert "/haushalt/einnahmen" in routen
+
+
+def test_die_marke_auf_die_eigene_seite_wird_verworfen():
+    """Der Hosenträger zum Gürtel: Das Modell kann die Route auch aus dem
+    Bildschirm-Block abschreiben, nicht nur aus dem Wegweiser."""
+    text, ziel, seite = lotti.split_next(
+        "Steht oben.\nWEITER: seite /haushalt/schulden", BUDGET, "/haushalt/schulden")
+    assert text == "Steht oben." and ziel is None and seite is None
+    # Von einer ANDEREN Seite aus bleibt derselbe Verweis gültig.
+    assert lotti.split_next("Steht oben.\nWEITER: seite /haushalt/schulden",
+                            BUDGET, "/dashboard")[2] is not None
 
 
 def test_die_verweis_regel_steht_nur_mit_wegweiser_im_prompt():

@@ -23,7 +23,18 @@ export const ASK_SCHRITTE: Record<AskSchritt, string> = {
 };
 
 /** Die Schritte der Erklärung (`POST /api/council/explain`). */
-export type ErklaerSchritt = "context" | "answer";
+export type ErklaerSchritt = "context" | "answer" | "archiv";
+
+/**
+ * Der Schritt, der auf BEIDEN Wegen gilt: Lotti geht ins Archiv.
+ *
+ * Er kommt aus `/explain` (die Frage gehört deterministisch ins Archiv, der
+ * Strom endet sofort mit `mode: "handoff"`) und bleibt stehen, während die
+ * Ratsfrage anläuft — bis sie ihren ersten eigenen Schritt meldet. Er sagt
+ * damit genau das, was die Person wissen will, wenn plötzlich etwas anderes
+ * passiert als „Lotti erklärt die Seite": **warum**.
+ */
+export const ARCHIV_SCHRITT = "archiv";
 
 /**
  * In Lottis Stimme, weil sie im Chat-Fenster neben ihrem Kopf stehen: „Lotti
@@ -33,6 +44,7 @@ export type ErklaerSchritt = "context" | "answer";
 export const ERKLAER_SCHRITTE: Record<ErklaerSchritt, string> = {
   context: "Lotti liest die Seite",
   answer: "Lotti schreibt",
+  archiv: "Das steht nicht auf der Seite — ich sehe im Ratsarchiv nach",
 };
 
 /**
@@ -44,6 +56,10 @@ export const ERKLAER_SCHRITTE: Record<ErklaerSchritt, string> = {
  */
 export function lottiSchrittText(schritt: string | null | undefined,
                                  ratsfrage = false): string {
+  // **Zuerst und auf beiden Wegen.** Der Archiv-Schritt kommt aus `/explain`
+  // und bleibt stehen, während die Ratsfrage anläuft — dort gilt sonst die
+  // Tabelle der KI-Frage, und die kennt ihn nicht.
+  if (schritt === ARCHIV_SCHRITT) return ERKLAER_SCHRITTE.archiv;
   if (ratsfrage && schritt && schritt in ASK_SCHRITTE) {
     return ASK_SCHRITTE[schritt as AskSchritt];
   }
