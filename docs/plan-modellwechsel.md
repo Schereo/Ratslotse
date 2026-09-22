@@ -62,8 +62,8 @@ und ist trotzdem kein Beleg für den einzelnen Einsatz.
 | Rest (Protokolle, Themen, Ziele, Rückblicke, …) | `COUNCIL_*_MODEL` | deepseek-v4-pro | Cron | teils |
 | Städtevergleich | `CITIES_*_MODEL` | deepseek-v4-flash | Cron (pausiert) | `eval/run_cities_*` |
 
-DeepSeek-Modelle laufen nicht aus und stehen deshalb nur im `:batch`-Teil
-(PR P3) zur Wahl.
+DeepSeek-Modelle laufen nicht aus. In P3 standen sie für `:batch` zur
+Wahl, aber DeepSeek v4 Pro hat weder Batch noch Flex (s. § 4, P3).
 
 **Falle vor jedem Umstellen:** Setzt die `.env` auf dem Server ein Modell
 ausdrücklich, ändert ein neuer Vorgabewert im Code dort nichts. Vor dem
@@ -168,6 +168,29 @@ bis zum Ergebnis, Ausfälle, echte Kosten.
 - DeepSeek hat keinen Batch-Tarif. Dort ist die billigere Stellschraube
   das Denken: V4 Flash ohne Denken ist das billigste Modell der Auswahl.
 
+**Stand 22.09.2026 (PR #1476):**
+
+- **Flex: gebaut.** `llm.chat_complete(_tarif="flex")` ist verfügbar, aber
+  noch an keiner Aufrufstelle eingeschaltet. Auf dem Golden Set lieferte
+  Flex dieselbe Qualität zum halben Preis, war nicht langsamer, und 24
+  Aufrufe liefen ohne eine Abweisung durch. Erlaubt ist Flex nur für
+  Features aus `OHNE_NUTZEREINGABE`, sonst fliegt `FlexNichtErlaubt`. Das
+  Umschalten der Aufrufstellen ist Tims Entscheidung (Kandidaten s. § 5).
+- **Batch: verworfen**, aus fünf Gründen:
+  - Batch kostet dasselbe wie Flex, also die Hälfte, ohne weitere
+    Ersparnis.
+  - Das Ergebnis kommt erst nach Minuten bis Stunden (gemessen 1 bis 9,5
+    min, zwei Stapel nach 48 bzw. 50 min noch offen, laut OpenRouter p99 10 h).
+  - Ein laufender Stapel lässt sich nicht abbrechen (409/404). Das verträgt
+    sich nicht mit `kern/stopp.py`.
+  - Das Routing kennt nur `provider.only`: `ignore`, `data_collection` und
+    `zdr` weist die Schnittstelle mit 400 ab.
+  - Die Eingaben liegen 30 Tage bei OpenRouter, und bei OpenAI lassen sie
+    sich nicht löschen.
+
+  Einen `:batch`-Endpunkt ohne Flex-Endpunkt hat keins der Modelle, die
+  hier laufen. DeepSeek v4 Pro hat keinen von beiden.
+
 ### P4 — Gemini 2.5 ablösen (Frist: 13.10.)
 
 Web-Pfade (Lotti, KI-Frage, Erweiterung) und Pipelines (Transkription,
@@ -222,3 +245,36 @@ nachgeprüft (s. u.); die Zahlen hier zählen sie schon mit.
   Denken erzeugt es im Schnitt rund 170 Tokens je Antwort; die 6–8 s kommen
   von den Anbietern, die nach dem China-Ausschluss bleiben. Für Lotti ist es
   auch inhaltlich zu schwach.
+
+### P3 — Batch und Flex (gemessen 22.09.2026)
+
+Die Messung lief am Tragweite-Golden-Set: 30 Beschlüsse, der Prompt aus
+`council/impact.py`, zwei Aufrufe je Lauf. Die Kosten sind die echten Werte
+aus `usage.cost`. Einzelläufe, alle Belege und die Batch-Schnittstelle im
+Detail stehen in [`docs/modell-batch-flex.md`](modell-batch-flex.md).
+
+| Modell | Tarif | Läufe | ⌀ ρ | ⌀ Treffer | ⌀ ct/Aufruf | Ausfälle |
+|---|---|---:|---:|---:|---:|---:|
+| gpt-5.6-luna | normal (ZDR, Azure) | 4 | 0,839 | 27,2/30 | 0,105 | 1× 429 upstream |
+| gpt-5.6-luna | **flex** | 5 | 0,866 | 27,8/30 | **0,055** | 0 |
+| gpt-5.6-luna | batch | 1 | 0,862 | 27,0/30 | 0,074 | 0 |
+| gpt-6-luna | normal (ohne ZDR) | 4 | 0,810 | 26,5/30 | 0,048 | 0 |
+| gpt-6-luna | **flex** | 5 | 0,855 | 26,8/30 | **0,023** | 0 |
+| gpt-6-luna | batch | 2 | 0,819 | 24,5/30 | 0,023 | 0 |
+| gemini-2.5-flash | normal | 2 | 0,831 | 25,5/30 | 0,362 | 0 |
+| gemini-2.5-flash | **flex** | 2 | 0,821 | 26,0/30 | **0,190** | 0 |
+
+**Was daraus folgt:**
+
+- **Flex ist dasselbe Modell zum halben Listenpreis, bei gleicher
+  Qualität.** Die Unterschiede liegen im Rauschen: Die Einzelläufe von
+  GPT-6 normal streuen zwischen ρ 0,756 und 0,861. Flex war nicht langsamer
+  (Luna 5.6 31 s gegen 41 s). Mit `zdr: true` ignoriert OpenRouter den
+  Tarif still, deshalb braucht Flex die Freigabeliste.
+- **Batch hat denselben Listenpreis wie Flex.** Dazu kommen die Nachteile
+  aus § 4, P3. Es gibt deshalb kein Batch-Modul.
+- **Kandidaten für Flex:** die Luna-Crons aus der Freigabeliste
+  (`impact_rating(_agenda)`, `committee_summary`, `video_results`,
+  `district_projects`, `social_*`) und `speeches` (Gemini 2.5 Flash).
+  **Offen:** ihr Kostenanteil. Den zeigt nur das Admin-Panel auf Prod.
+

@@ -1,7 +1,7 @@
 # P3 — Batch und Flex, gemessen
 
-Teil des Modellwechsel-Plans (`docs/plan-modellwechsel.md`, lag bei diesem
-PR noch nicht auf `dev` — deshalb eine eigene Datei). Frage von Tim: *„Batch
+Langfassung zu P3 des Modellwechsel-Plans; die Kurzfassung steht in
+[`docs/plan-modellwechsel.md`](plan-modellwechsel.md), § 5. Frage von Tim: *„Batch
 sollten wir auf jeden Fall prüfen, ob das die Kosten günstiger macht, ohne die
 Leistungen zu mindern.“*
 
@@ -123,7 +123,7 @@ Probeaufrufe.
 | Endpunkt, Format | `POST /api/v1/batches` mit `{"endpoint": "/v1/chat/completions", "model", "requests": [{"custom_id", "body"}]}` als Liste im Body. Ein JSONL-Upload entfällt. Antwort: 202, `status: validating` | Doku; Probe: 202 für 1, 10, 100 Anfragen |
 | `:batch`-Slug? | Nein. Der Stapel nennt das **normale** Modell, und OpenRouter wählt die `:batch`-Variante selbst (Antwort: `openai/gpt-6-luna-20260922`). Über `chat/completions` antwortet ein `:batch`-Slug mit 404 (Befund aus dem Plan) | Probe |
 | Abholen | `GET /api/v1/batches/{id}`, Ergebnisse stehen **inline** im Objekt, sobald `status: completed`. Es gibt keinen eigenen Download | Doku; Probe |
-| Dauer | 1 Anfrage: 7,9 min · 10 Anfragen: 9,2 min · 100 Anfragen: 9,5 min (alle GPT-6 Luna) · Golden Set (2 Anfragen): 8,5 min und 63 s (GPT-6), 79 s und über 28 min (bei Abgabe noch nicht fertig) (Luna 5.6) · Gemini 3.1 Flash Lite (Vertex), 10 Anfragen: über 30 min, bei Abgabe noch nicht fertig. OpenRouter selbst nennt über 230.000 Stapel: Median 7 min, p90 1 h, p99 10,3 h, Frist 24 h (die einzige erlaubte) | Probe; Blog |
+| Dauer | 1 Anfrage: 7,9 min · 10 Anfragen: 9,2 min · 100 Anfragen: 9,5 min (alle GPT-6 Luna) · Golden Set (2 Anfragen): 8,5 min und 63 s (GPT-6), 79 s und nach 48 min noch nicht fertig (Luna 5.6) · Gemini 3.1 Flash Lite (Vertex), 10 Anfragen: nach 50 min noch nicht fertig (0 von 10). OpenRouter selbst nennt über 230.000 Stapel: Median 7 min, p90 1 h, p99 10,3 h, Frist 24 h (die einzige erlaubte) | Probe; Blog |
 | Anbieter dahinter | Für Luna **OpenAI** selbst (`provider: OpenAI`, `service_tier: default` im Ergebnis). Ein Stapel läuft immer bei genau einem Anbieter; genannt werden OpenAI, Anthropic, xAI, Mistral, Google Vertex, Google AI Studio, Together, Parasail, DeepInfra und Fireworks. 71 `:batch`-Varianten, darunter **keine** für `deepseek-v4-pro` (nur `deepseek-v4.1-flash:batch`) | Probe; Doku; `/api/v1/models` |
 | Routing / DSGVO | **Nur `provider.only`** wird angenommen. `data_collection`, `ignore` und `zdr` weist die Schnittstelle mit 400 ab („provider: Unrecognized keys: "data_collection", "ignore", "zdr"“). Die China-Liste lässt sich also nur über eine **Positivliste** ausdrücken. Laut Doku greifen die Datenschutz-Einstellungen **des Kontos** | Probe; Doku: „after applying your account's provider allowlist, data policy, and BYOK settings“ |
 | Speicherung | OpenRouter legt Eingaben und Ergebnisse als JSONL in Google Cloud Storage ab und löscht sie nach **30 Tagen**, oder sofort per `DELETE`. Beim Löschen meldete OpenRouter `"openrouter": "deleted"`, beim Anbieter aber `"upstream": {"provider": "OpenAI", "status": "unsupported"}`, das heißt: bei OpenAI bleibt es liegen | Doku; Probe |
@@ -134,26 +134,27 @@ Probeaufrufe.
 ## Was gebaut ist
 
 - **`llm.chat_complete(_tarif="flex")`** in `kern/llm.py`. Der Parameter setzt
-  `service_tier: "flex"` und nimmt `zdr` aus dem Routing-Block. Der Grund:
+  `service_tier: "flex"`. Das Routing ohne `zdr` kommt aus dem vorhandenen
+  Pfad `_create(_zdr=False)`, den `chat_complete` aus `zdr_pflicht(feature)`
+  setzt. Einen zweiten ZDR-Weg gibt es nicht. Der Grund, warum `zdr` fehlen muss:
   Mit `zdr: true` ignoriert OpenRouter den Tarif **still**. Luna 5.6 ging
   dann an Azure, mit `service_tier: default` und vollem Preis, und GPT-6
   Luna bekam 404. `data_collection: deny` und die China-Liste bleiben.
-  - Für ein Feature, für das `llm.zdr_pflicht(feature)` gilt, wirft der
-    Aufruf `FlexNichtErlaubt` und fällt nicht still in den normalen Tarif
-    zurück.
+  - Flex ist nur für Features aus `llm.OHNE_NUTZEREINGABE` erlaubt, zum
+    Beispiel `impact_rating`. Bei allen anderen, etwa `qa_answer`, und bei
+    Aufrufen ohne `_feature` wirft der Aufruf `FlexNichtErlaubt` und fällt
+    nicht still in den normalen Tarif zurück.
   - Weist der Anbieter ab (jeder Fehler außer einem Inhaltsfilter-Treffer),
-    läuft derselbe Aufruf noch einmal im normalen Tarif und mit dessen
-    Routing. `_geduld` und `_ersatz` greifen danach wie bisher.
+    läuft derselbe Aufruf noch einmal im normalen Tarif, weiterhin ohne
+    ZDR, wie es für das Feature gilt. `_geduld` und `_ersatz` greifen danach wie bisher.
   - Modelle ohne Flex-Endpunkt beantwortet OpenRouter im normalen Tarif,
     ohne Fehler. Gemessen an `deepseek-v4-flash`: `service_tier: null`.
-- **`llm.zdr_pflicht`** ist vorerst ein **Platzhalter**, der für jedes
-  Feature `True` zurückgibt. Die Freigabeliste `OHNE_NUTZEREINGABE` kommt in
-  einem eigenen PR. Bis dahin ist Flex **nirgends** erlaubt, und das ist die
-  sichere Seite. Beim Zusammenführen gewinnt die Fassung mit der Liste.
-- `openai/gpt-6-luna` steht jetzt in `MODEL_PARAMS`, mit demselben Token-Boden
-  wie die 5.6-Familie.
-- Tests: `tests/test_llm.py` (Flex-Block, Fehler bei ZDR-Pflicht, Rückfall,
-  kein Rückfall bei Inhaltsfilter, unbekannter Tarif).
+- Tests: `tests/test_llm.py` prüft vier Fälle:
+  - `impact_rating` bekommt Flex, und die Anfrage trägt kein `zdr`.
+  - `qa_answer` und ein Aufruf ohne `_feature` werfen `FlexNichtErlaubt`.
+  - Nach einer Abweisung fällt der Aufruf auf den normalen Tarif zurück,
+    aber nicht bei einem Inhaltsfilter-Treffer.
+  - Ein unbekannter Tarif wird abgewiesen.
 
 ## Was bewusst nicht gebaut ist
 
@@ -187,7 +188,7 @@ Ratsdaten sehen:
 
 Dasselbe gilt für die Gemini-2.5-Flash-Wortbeiträge (`speeches`). Das spart
 dort die Hälfte, und nach dieser Messung verliert die Qualität nichts.
-Voraussetzung ist, dass `OHNE_NUTZEREINGABE` diese Features freigibt. Danach
+Alle diese Features stehen bereits in `OHNE_NUTZEREINGABE`. Deshalb
 genügt je Aufrufstelle `_tarif="flex"`. Für die Flash-Lite-Modelle (OCR,
 Orte) ist nicht geprüft, ob es einen Flex-Endpunkt gibt. Ohne einen solchen
 Endpunkt läuft der Aufruf einfach normal. Die Tragweite ist für den Anfang
