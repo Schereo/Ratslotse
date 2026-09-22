@@ -20,6 +20,7 @@
 export const ANSTUPSER_SEITEN: readonly string[] = [
   "/council/decision",
   "/council/ideen",
+  "/council/ideen/bewegung",
   "/council/ort",
   "/council/person",
   "/council/sitzung",

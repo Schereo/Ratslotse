@@ -233,6 +233,7 @@ extension ExplainScreen {
     public static let nudgeRoutes: Set<String> = [
         "/council/decision",
         "/council/ideen",
+        "/council/ideen/bewegung",
         "/council/ort",
         "/council/person",
         "/council/sitzung",

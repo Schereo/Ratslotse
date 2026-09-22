@@ -26,7 +26,7 @@ const TON: Record<Stufe, string> = {
   ok: "border-transparent bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-300",
   no: "border-red-200 bg-red-50 text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300",
   wait: "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300",
-  neu: "border-transparent bg-muted text-muted-foreground",
+  noted: "border-transparent bg-muted text-muted-foreground",
   open: "border-dashed border-border bg-transparent text-muted-foreground",
 };
 

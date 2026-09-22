@@ -28,7 +28,7 @@ const PUNKT: Record<Stufe, string> = {
   ok: "bg-green-600 dark:bg-green-400",
   no: "bg-red-600 dark:bg-red-400",
   wait: "bg-amber-500 dark:bg-amber-400",
-  neu: "bg-[hsl(209_18%_48%)] dark:bg-[hsl(206_20%_68%)]",
+  noted: "bg-[hsl(209_18%_48%)] dark:bg-[hsl(206_20%_68%)]",
   open: "bg-card ring-[1.5px] ring-muted-foreground",
 };
 

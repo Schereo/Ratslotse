@@ -50,7 +50,7 @@ describe("stufe", () => {
     expect(stufe("amended")).toBe("ok");
     expect(stufe("rejected")).toBe("no");
     expect(stufe("referred")).toBe("wait");
-    expect(stufe("noted")).toBe("neu");
+    expect(stufe("noted")).toBe("noted");
     expect(stufe("withdrawn")).toBe("open");
     expect(stufe(null)).toBe("open");
     expect(stufe("unbekannt")).toBe("open");

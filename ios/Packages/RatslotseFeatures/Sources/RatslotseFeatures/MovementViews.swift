@@ -10,14 +10,14 @@ import SwiftUI
 // in der App an einer anderen Stelle als im Web.
 
 enum ZeitleisteStufe: CaseIterable {
-    case ok, no, wait, neu, open
+    case ok, no, wait, noted, open
 
     init(outcome: String) {
         switch outcome {
         case "accepted", "amended": self = .ok
         case "rejected": self = .no
         case "postponed", "referred": self = .wait
-        case "noted": self = .neu
+        case "noted": self = .noted
         default: self = .open
         }
     }
@@ -27,7 +27,7 @@ enum ZeitleisteStufe: CaseIterable {
         case .ok: "beschlossen"
         case .no: "abgelehnt"
         case .wait: "vertagt oder verwiesen"
-        case .neu: "zur Kenntnis"
+        case .noted: "zur Kenntnis"
         case .open: "ohne Ergebnis"
         }
     }
@@ -37,7 +37,7 @@ enum ZeitleisteStufe: CaseIterable {
         case .ok: RatsColor.success
         case .no: RatsColor.danger
         case .wait: Color(red: 0.85, green: 0.47, blue: 0.02)
-        case .neu: RatsColor.muted
+        case .noted: RatsColor.muted
         case .open: .clear
         }
     }

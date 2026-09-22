@@ -23,7 +23,7 @@ export type Punkt = {
 /** Fünf Stufen, nicht acht: Wer eine Leiste überfliegt, unterscheidet
  *  „beschlossen", „abgelehnt", „hängt", „zur Kenntnis" und „offen" — ob
  *  vertagt oder verwiesen, sagt der Titel des Punktes. */
-export type Stufe = "ok" | "no" | "wait" | "neu" | "open";
+export type Stufe = "ok" | "no" | "wait" | "noted" | "open";
 
 const STUFEN: Record<string, Stufe> = {
   accepted: "ok",
@@ -31,7 +31,7 @@ const STUFEN: Record<string, Stufe> = {
   rejected: "no",
   postponed: "wait",
   referred: "wait",
-  noted: "neu",
+  noted: "noted",
   withdrawn: "open",
   none: "open",
 };
@@ -44,12 +44,12 @@ export const STUFE_TEXT: Record<Stufe, string> = {
   ok: "beschlossen",
   no: "abgelehnt",
   wait: "vertagt oder verwiesen",
-  neu: "zur Kenntnis",
+  noted: "zur Kenntnis",
   open: "ohne Ergebnis",
 };
 
 /** Die Reihenfolge der Legende — vom Klaren zum Offenen. */
-export const STUFEN_REIHE: Stufe[] = ["ok", "no", "wait", "neu", "open"];
+export const STUFEN_REIHE: Stufe[] = ["ok", "no", "wait", "noted", "open"];
 
 function tage(iso: string): number {
   return Date.UTC(Number(iso.slice(0, 4)), Number(iso.slice(5, 7) || "1") - 1,

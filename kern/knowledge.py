@@ -317,6 +317,23 @@ PAGES: dict[str, PageKnowledge] = dict([
            "Bewertet die Seite, ob eine Idee zu Oldenburg passt?",
        ),
     ),
+    _p("/council/ideen/bewegung", "Eine Idee aus anderen Städten",
+       "Eine Idee, die mehrere andere Räte beantragt oder beschlossen haben: "
+       "je Stadt eine Zeitleiste, alle Vorlagen nach Datum mit Ergebnis und — "
+       "wo die Niederschrift eine nennt — der Begründung, dazu ein Urteil, ob "
+       "Oldenburg die Idee schon hat.",
+       "Die Vorlagen stammen aus den Ratsinformationssystemen der Städte. Das "
+       "Urteil über Oldenburg fällt ein Sprachmodell an Oldenburger "
+       "Ratsunterlagen; die Belege stehen darunter, getrennt von bloß "
+       "Verwandtem.",
+       "Die Seite sagt nicht, ob sich ein Antrag lohnt. Ein Warum steht nur, wo "
+       "die Niederschrift selbst eine Begründung nennt; manche Städte "
+       "veröffentlichen ihre Niederschriften nicht.", nudge=True,
+       starters=(
+           "Woran erkennt die Seite, ob Oldenburg das schon hat?",
+           "Warum steht bei manchen Vorlagen kein Warum?",
+       ),
+    ),
 
     # ── Haushalt ────────────────────────────────────────────────────────
     _p("/haushalt", "Haushalt — Übersicht",
