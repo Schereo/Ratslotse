@@ -735,3 +735,35 @@ export function anschlussfragen(
   if (naechster && aus.length < ANSCHLUSS_MAX) aus.push({ art: "anker", anker: naechster });
   return aus.slice(0, ANSCHLUSS_MAX);
 }
+
+/** So lang darf der Name eines Belegs unter einer Antwort sein.
+ *
+ *  Gemessen im Browser am 22.09.2026 auf `/haushalt/schulden`: Die beiden
+ *  echten Belege heißen „Statistisches Jahrbuch der Stadt Oldenburg, Tabelle
+ *  1108 — Stand der Verschuldung 1995 bis 2025" (99 Zeichen) und
+ *  „Jahresabschluss 2024 der Kernverwaltung und ihrer nicht rechtsfähigen
+ *  Stiftungen" (80). Ungekürzt füllten sie im 384-px-Fenster VIER Zeilen
+ *  unter einer sechszeiligen Antwort — der Apparat wog dann fast so schwer
+ *  wie die Auskunft, und genau dagegen ist diese Runde gebaut (Tim: „viel zu
+ *  viele Pills … sehr überfordernd"). */
+export const BELEG_NAME_MAX = 44;
+
+/** Der Name eines Belegs, wie er unter die Antwort passt: „Jahresabschluss 2024".
+ *
+ *  Drei Schritte, jeder aus einem echten Titel begründet:
+ *
+ *  1. **Der Untertitel hinter dem Gedankenstrich fällt weg.** In den
+ *     Provenienz-Titeln steht dort durchweg Beiwerk („— Stand der
+ *     Verschuldung 1995 bis 2025"); das Papier heißt davor. Dieselbe Regel
+ *     wie beim `·` in {@link chipTitel}.
+ *  2. **Das Jahr nur, wo es fehlt.** Die RIS-Titel heißen „Beschlossener
+ *     Haushaltsplan 2020"; „… 2020 2020" liest niemand als Sorgfalt.
+ *  3. **Dann kappen.** Der volle Name bleibt erreichbar — er steht im
+ *     `title` des Links.
+ */
+export function belegName(beleg: { label: string; year?: number | null }): string {
+  const ohneUntertitel = (beleg.label ?? "").split(/\s[—–]\s/)[0].trim();
+  const jahr = beleg.year != null && !ohneUntertitel.includes(String(beleg.year))
+    ? ` ${beleg.year}` : "";
+  return kuerze(ohneUntertitel + jahr, BELEG_NAME_MAX);
+}

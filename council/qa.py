@@ -3614,22 +3614,127 @@ def geld_block(geld: dict | None, max_chars: int | None = None) -> str:
     und ein Test, der die Konstante umsetzt, hätte danach keine Wirkung mehr
     (genau daran ist ``test_budget_kappt_ganze_bausteine_statt_saetze``
     aufgefallen)."""
+    return "".join(text for _key, text in geld_auswahl(geld, max_chars))
+
+
+def geld_auswahl(geld: dict | None,
+                 max_chars: int | None = None) -> list[tuple[str, str]]:
+    """``[(Datenschlüssel, Bausteintext)]`` — was WIRKLICH in den Prompt geht.
+
+    Eine Schleife für zwei Leser: ``geld_block`` klebt die Texte aneinander,
+    ``geld_belege`` holt die Fundstellen **derselben** Auswahl. Zwei
+    Schleifen liefen spätestens bei der nächsten Facette auseinander — und
+    ein Beleg unter der Antwort verspräche dann eine Quelle, die im Prompt
+    nie stand. Genau das ist der Unterschied zwischen „Grundlage" und
+    Dekoration.
+    """
     if not geld:
-        return ""
+        return []
     if max_chars is None:
         max_chars = GELD_MAX_CHARS
-    teile: list[str] = []
+    aus: list[tuple[str, str]] = []
     laenge = 0
     for facette in GELD_FACETTEN:
         key, bauer = _GELD_BAUSTEINE[facette]
         text = bauer(geld.get(key))
         if not text:
             continue
-        if laenge + len(text) > max_chars and teile:
+        if laenge + len(text) > max_chars and aus:
             break
-        teile.append(text)
+        aus.append((key, text))
         laenge += len(text)
-    return "".join(teile)
+    return aus
+
+
+#: Höchstens so viele Belege reisen unter einer Antwort mit. Fünf, weil das
+#: Fenster 384 px breit ist: Mehr Chips wären zwei Zeilen Apparat unter drei
+#: Zeilen Antwort — und die Frage „woher weiß sie das?" beantwortet die
+#: sechste Quelle nicht besser als die fünfte.
+GELD_BELEGE_MAX = 5
+
+
+def _beleg_jahr(daten: dict) -> int | None:
+    """Das Jahr, das über einer Zahl steht — ``year`` oder ``budget_year``.
+
+    Der Beleg selbst trägt keins: ``council_provenance`` kennt ``as_of``
+    („Gesamtabschluss zum 31.12.2020"), und daraus eine Jahreszahl zu
+    schneiden hieße raten. Die Bausteine dagegen führen ihr Jahr als Feld —
+    es steht im Kontext neben der Zahl, also gehört es auch unter die
+    Antwort.
+    """
+    for schluessel in ("year", "budget_year"):
+        wert = daten.get(schluessel)
+        if isinstance(wert, bool):
+            continue
+        try:
+            jahr = int(wert)  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            continue
+        if 1900 <= jahr <= 2100:
+            return jahr
+    return None
+
+
+def _belege_von(daten, jahr: int | None = None,
+                aus: list[dict] | None = None) -> list[dict]:
+    """Jede Fundstelle in einem Baustein, in Lesereihenfolge.
+
+    Rekursiv und nicht je Baustein von Hand: Die zwanzig Bausteine tragen
+    ihre ``beleg``-Felder in zwanzig verschiedenen Formen (mal am Gesamt-Dict,
+    mal je Zeile, bei den Gebühren zwei Ebenen tief). Eine Liste von
+    Sonderfällen wäre beim nächsten Modul-Baustein (``council/geld/``) schon
+    wieder unvollständig — und ein fehlender Beleg sieht aus wie „dafür gibt
+    es keine Quelle".
+
+    Das Jahr wird beim Absteigen mitgenommen: Steht es am Gesamt-Dict, gilt
+    es auch für die Zeilen darunter, bis eine ein eigenes trägt.
+    """
+    if aus is None:
+        aus = []
+    if isinstance(daten, dict):
+        jahr = _beleg_jahr(daten) or jahr
+        beleg = daten.get("beleg")
+        if isinstance(beleg, dict) and beleg.get("label"):
+            # Die Striche am Ende sind keine Kosmetik: Die RIS-Titel heißen
+            # „Prüfbericht GA 2024 - GESAMTDOKUMENT -", und ein Chip, der auf
+            # einem Trennstrich endet, sieht nach abgeschnitten aus.
+            aus.append({"label": str(beleg["label"]).strip().strip("-–—·").strip(),
+                        "year": jahr,
+                        "url": beleg.get("url") or None})
+        for schluessel, wert in daten.items():
+            if schluessel != "beleg":
+                _belege_von(wert, jahr, aus)
+    elif isinstance(daten, (list, tuple)):
+        for wert in daten:
+            _belege_von(wert, jahr, aus)
+    return aus
+
+
+def geld_belege(geld: dict | None, max_chars: int | None = None,
+                max_n: int = GELD_BELEGE_MAX) -> list[dict]:
+    """``[{label, year, url}]`` — die Quellen, die im Prompt STANDEN.
+
+    Ehrlich gelesen sind das die Belege des KONTEXTS, nicht die einer
+    einzelnen Zahl: Welchen Satz das Modell auf welche Zeile stützt, weiß
+    niemand. Die Beschriftung sagt das (``Grundlage:``); was hier gezählt
+    wird, ist nachprüfbar — diese Papiere lagen vor.
+
+    ``max_chars`` ist derselbe Deckel wie bei ``geld_block``. Ein Baustein,
+    der aus dem Deckel gefallen ist, bringt seine Belege nicht mit: Er stand
+    nicht im Prompt.
+    """
+    aus: list[dict] = []
+    gesehen: set[tuple] = set()
+    for key, _text in geld_auswahl(geld, max_chars):
+        for beleg in _belege_von((geld or {}).get(key)):
+            kennung = (beleg["label"], beleg["year"], beleg["url"])
+            if kennung in gesehen:
+                continue
+            gesehen.add(kennung)
+            aus.append(beleg)
+            if len(aus) >= max_n:
+                return aus
+    return aus
 
 
 def geld_regeln(geld: dict | None, eng: bool = False) -> str:

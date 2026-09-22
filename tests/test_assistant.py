@@ -1936,3 +1936,119 @@ def test_ausserhalb_des_haushalts_oeffnet_die_einordnung_kein_tor(monkeypatch):
                                "Ist das viel?", permissions=BUDGET)
     assert gerufen == []
     assert ctx["geld"] == {}
+
+
+# --- 13. Belege unter Zahlen (PR 28) ----------------------------------------
+#
+# Lotti nennt Jahr und Quelle im Satz (Prompt-Regel 4 der Haushaltsregeln) —
+# aber ein Dokumentname im Fließtext ist kein Link. Der `done`-Rahmen trägt
+# deshalb die Papiere mit, die im Prompt STANDEN: `evidence`.
+#
+# Die eine Zusage, an der alles hängt: Was hier gezählt wird, muss der Auswahl
+# entsprechen, die den Prompt gefüllt hat. Ein Beleg zu einem Baustein, der
+# aus dem Deckel gefallen ist, wäre eine Quelle, die das Modell nie gesehen
+# hat — und damit genau die Sorte Nachweis, gegen die dieses Feature steht.
+
+def _schulden_geld(url: str = "https://example.org/jahrbuch.pdf") -> dict:
+    return {"facets": ["schulden"], "schulden": {
+        "year": 2024, "total": 295_000_000, "abgrenzung": "Kernhaushalt",
+        "beleg": {"label": "Statistisches Jahrbuch, Tabelle 1108", "url": url},
+    }}
+
+
+def test_belege_kommen_nur_aus_bausteinen_die_im_prompt_stehen():
+    """Der Deckel schneidet Bausteine ganz weg (`geld_auswahl`) — ihre Belege
+    gehen mit. Sonst stünde unter der Antwort ein Papier, das im Prompt nie
+    aufgetaucht ist."""
+    geld = _schulden_geld()
+    geld["bilanz"] = {"year": 2024, "bilanzsumme": 1_480_000_000,
+                      "beleg": {"label": "Jahresabschluss 2024",
+                                "url": "https://example.org/ja2024.pdf"}}
+    # Ohne Deckel: beide Bausteine, beide Belege.
+    beide = qa.geld_belege(geld)
+    assert [b["label"] for b in beide] == ["Statistisches Jahrbuch, Tabelle 1108",
+                                           "Jahresabschluss 2024"]
+    # Die Reihenfolge ist die des BLOCKS (GELD_FACETTEN), nicht die des Dicts.
+    block = qa.geld_block(geld)
+    assert block.index("SCHULDENSTAND") < block.index("Bilanzsumme")
+    # Mit engem Deckel: nur der vordere Baustein steht im Prompt — und nur
+    # sein Beleg unter der Antwort.
+    assert len(qa.geld_block(geld, max_chars=1)) < len(block)
+    eng = qa.geld_belege(geld, max_chars=1)
+    assert [b["label"] for b in eng] == ["Statistisches Jahrbuch, Tabelle 1108"]
+
+
+def test_ein_beleg_traegt_jahr_und_adresse():
+    belege = qa.geld_belege(_schulden_geld())
+    assert belege == [{"label": "Statistisches Jahrbuch, Tabelle 1108",
+                       "year": 2024, "url": "https://example.org/jahrbuch.pdf"}]
+
+
+def test_ein_beleg_ohne_adresse_bleibt_ein_beleg():
+    """„Wir wissen, aus welchem Papier das stammt, nur nicht, wo es liegt" ist
+    eine Auskunft — das Fenster zeigt den Namen dann ohne Link."""
+    geld = _schulden_geld()
+    geld["schulden"]["beleg"].pop("url")
+    assert qa.geld_belege(geld)[0]["url"] is None
+
+
+def test_belege_werden_dedupliziert():
+    """Ein Baustein trägt seinen Beleg an jeder Zeile — der Jahresabschluss
+    2024 stünde sonst achtmal unter derselben Antwort."""
+    beleg = {"label": "Jahresabschluss 2024", "url": "https://example.org/ja.pdf"}
+    geld = {"facets": ["fees"], "fees": {"year": 2023, "bereiche": [{"werte": [
+        {"area_name": "Abfall", "year": 2023, "cost_calculation": 1.0,
+         "deductions": 0.0, "costs_to_cover": 1.0, "beleg": dict(beleg)},
+        {"area_name": "Straßenreinigung", "year": 2023, "cost_calculation": 2.0,
+         "deductions": 0.0, "costs_to_cover": 2.0, "beleg": dict(beleg)},
+    ]}]}}
+    assert len(qa.geld_belege(geld)) == 1
+
+
+def test_hoechstens_fuenf_belege():
+    """Fünf, weil das Fenster 384 px breit ist: Die sechste Quelle beantwortet
+    „woher weiß sie das?" nicht besser als die fünfte."""
+    zeilen = [{"area_name": f"Bereich {i}", "year": 2023, "cost_calculation": 1.0,
+               "deductions": 0.0, "costs_to_cover": 1.0,
+               "beleg": {"label": f"Anlage {i}", "url": f"https://example.org/{i}.pdf"}}
+              for i in range(9)]
+    geld = {"facets": ["fees"], "fees": {"year": 2023, "bereiche": [{"werte": zeilen}]}}
+    assert len(qa.geld_belege(geld)) == qa.GELD_BELEGE_MAX == 5
+
+
+def test_ohne_haushaltszahlen_keine_belege():
+    """Die Wege ohne Modell (Glossar, Seitenwissen, Kurzfassung) ruhen auf
+    keiner Haushaltszahl — ein Chip darunter hätte keinen Gegenstand."""
+    assert qa.geld_belege(None) == []
+    assert qa.geld_belege({}) == []
+    assert qa.geld_belege({"facets": ["plan"], "haushalt": []}) == []
+    assert lotti.kontext_belege({"geld": {}}) == []
+    assert lotti.kontext_belege(None) == []
+
+
+def test_kontext_belege_nimmt_denselben_deckel_wie_der_block():
+    """Block und Belege hinter EINEM Deckel (`_deckel`). Liefen sie
+    auseinander, stünde unter einer Erklärung eine Quelle, die das Modell nie
+    gesehen hat."""
+    geld = _schulden_geld()
+    geld["bilanz"] = {"year": 2024, "bilanzsumme": 1_480_000_000,
+                      "beleg": {"label": "Jahresabschluss 2024",
+                                "url": "https://example.org/ja2024.pdf"}}
+    # Die generische Frage nimmt den engen Deckel (geld_max = None → GELD_MAX),
+    # die eigene den weiten. Hier zählt, dass beide Seiten denselben sehen.
+    for geld_max in (None, qa.GELD_MAX_CHARS, 1):
+        ctx = {"geld": geld, "geld_max": geld_max}
+        deckel = geld_max or lotti.GELD_MAX
+        erwartet = [k for k, _t in qa.geld_auswahl(geld, deckel)]
+        gesehen = {b["label"] for b in lotti.kontext_belege(ctx)}
+        assert gesehen == {
+            "Jahresabschluss 2024" if k == "bilanz" else "Statistisches Jahrbuch, Tabelle 1108"
+            for k in erwartet}
+
+
+def test_der_beleg_titel_traegt_keinen_trennstrich_am_ende():
+    """Die RIS-Titel heißen „Prüfbericht GA 2024 - GESAMTDOKUMENT -"; ein Chip,
+    der auf einem Trennstrich endet, sieht nach abgeschnitten aus."""
+    geld = _schulden_geld()
+    geld["schulden"]["beleg"]["label"] = "Prüfbericht GA 2024 - GESAMTDOKUMENT -"
+    assert qa.geld_belege(geld)[0]["label"] == "Prüfbericht GA 2024 - GESAMTDOKUMENT"
