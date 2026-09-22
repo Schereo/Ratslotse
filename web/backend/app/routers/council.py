@@ -1914,8 +1914,11 @@ def cities_idea_fields(cities: CitiesStore = Depends(get_cities_store)) -> IdeaF
     """
     from council.cities.clusters import CLUSTER_VERSION
 
+    # ALLE Bewegungen des Feldes, nicht nur die offenen: Solange `idea_fit`
+    # noch nicht gelaufen ist, stand sonst überall 0, und die Feld-Chips
+    # verschwanden ganz (gemessen am ersten Bild, 22.09.2026).
     bewegungen = cities.idea_group_counts(EMBED_MODEL_FUER_SUCHE, CLUSTER_VERSION,
-                                          BEWEGUNG_AB_STAEDTEN, IDEEN_STATUS_VORGABE)
+                                          BEWEGUNG_AB_STAEDTEN)
     felder: list[IdeaFieldSummary] = [
         {"field": r["field"], "total": int(r["total"] or 0),
          "missing": int(r["missing"] or 0), "partial": int(r["partial"] or 0),

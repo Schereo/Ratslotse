@@ -1679,9 +1679,9 @@ class IdeaFieldSummary(TypedDict):
     #: Oldenburg fehlen. Danach ist ein Themenfeld interessant — vorher stand
     #: hier die Zahl der „lohnt sich"-Urteile, also eine Modellmeinung.
     multi_city: int
-    #: Bewegungen dieses Feldes — Ideen ab zwei anderen Städten, die Oldenburg
-    #: fehlen oder halb hat (Vorgabe der Übersicht). Die Kachel zählt damit,
-    #: ohne die Liste zu laden.
+    #: Bewegungen dieses Feldes — Ideen ab zwei anderen Städten, gleich wie
+    #: Oldenburg dazu steht. Die Feld-Chips zählen damit, ohne die Liste zu
+    #: laden.
     movements: int
 
 
