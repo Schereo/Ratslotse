@@ -454,5 +454,25 @@
     ],
     "must_not_number": true,
     "max_sentences": 5
+  },
+  {
+    "id": "haushalt-uebersicht-eigenbetriebe",
+    "note": "Tims Frage vom 22.09.2026 auf der Haushalts-Übersicht. Sie ging daneben, weil die Facetten mit dem SEITENTEXT ermittelt wurden und die Frage dem Kontext gleichgültig war: „Oldenburg plant Ausgaben von 883,9 Millionen Euro“ zieht `plan`, die Frage selbst zieht `konzern` und `business_plans` — also genau die Eigenbetriebe. Der KONZERN-Baustein fiel zusätzlich aus dem engeren Lotti-Deckel; bei einer eigenen Frage gilt er nicht mehr.",
+    "route": "/haushalt",
+    "heading": "Oldenburg plant Ausgaben von 883,9 Millionen Euro.",
+    "question": "Wie groß ist der Gesamthaushalt der Stadt inkl. der Eigenbetriebe?",
+    "expect_mode": "explain",
+    "must_mention": [
+      [
+        "konzern",
+        "eigenbetrieb"
+      ]
+    ],
+    "must_not": [
+      "die seite sagt nicht",
+      "sagt die seite nicht"
+    ],
+    "must_not_number": true,
+    "max_sentences": 5
   }
 ]

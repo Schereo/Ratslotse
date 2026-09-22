@@ -1241,3 +1241,59 @@ def test_dieselbe_frage_in_beiden_flaechen_bleibt_getrennt(tmp_path):
     assert [(z["source"], z["rating"]) for z in zeilen] == [("ask", "up"), ("lotti", "down")]
     rat.close()
     konto.close()
+
+
+# --- 11. Die Haushaltszahlen richten sich nach der FRAGE --------------------
+
+class _GeldStore(_Store):
+    """Ein Ratsspeicher, der jede Geld-Abfrage mitschreibt."""
+
+    def __getattr__(self, name):
+        def merken(*a, **k):
+            return {}
+        return merken
+
+
+def test_die_facetten_kommen_aus_frage_und_bildschirm(monkeypatch):
+    """**Der Befund vom 22.09.2026.** Auf der Haushalts-Übersicht fragte Tim
+    „Wie groß ist der Gesamthaushalt der Stadt inkl. der Eigenbetriebe?" — und
+    bekam nur die Plan-Zahlen der Seite. Die Facetten wurden mit dem
+    SEITENTEXT ermittelt („Oldenburg plant Ausgaben von 883,9 Millionen
+    Euro"), die Frage war dem Kontext vollständig gleichgültig.
+    """
+    gesehen: dict = {}
+
+    def merke(store, question, begriffe="", typ="topic"):
+        gesehen["question"] = question
+        gesehen["begriffe"] = begriffe
+        return {"facets": []}
+
+    from council import qa
+    monkeypatch.setattr(qa, "geld_kontext", merke)
+    lotti.screen_context(
+        _GeldStore(), lotti.Screen(route="/haushalt",
+                                   heading="Oldenburg plant Ausgaben von 883,9 Millionen Euro."),
+        "Wie groß ist der Gesamthaushalt inkl. der Eigenbetriebe?",
+        permissions=frozenset({"budget"}))
+    assert "Eigenbetriebe" in gesehen["question"]
+    assert "883,9" in gesehen["question"]
+    # Die Frage steht VORN: `qa.haushaltsjahr` liest das Jahr aus demselben
+    # Text, und ein „Stand 31.12.2024" der Seite darf ein gefragtes Jahr
+    # nicht überstimmen.
+    assert gesehen["question"].index("Eigenbetriebe") < gesehen["question"].index("883,9")
+
+
+def test_eine_eigene_frage_hebt_den_geld_deckel(monkeypatch):
+    """Beim Erklären eines Bausteins sind die Zahlen Beiwerk, bei einer
+    eigenen Frage tragen sie die Antwort — gemessen fiel sonst der
+    KONZERN-Baustein als dritter aus dem Deckel, und der war die Antwort."""
+    from council import qa
+    monkeypatch.setattr(qa, "geld_kontext", lambda *a, **k: {"facets": ["plan"]})
+    eigen = lotti.screen_context(_GeldStore(), lotti.Screen(route="/haushalt"),
+                                 "Wie hoch ist der Konzernhaushalt?",
+                                 permissions=frozenset({"budget"}))
+    generisch = lotti.screen_context(_GeldStore(), lotti.Screen(route="/haushalt"),
+                                     "Was sehe ich hier?",
+                                     permissions=frozenset({"budget"}))
+    assert eigen["geld_max"] == qa.GELD_MAX_CHARS
+    assert generisch["geld_max"] is None  # dann gilt der engere GELD_MAX
