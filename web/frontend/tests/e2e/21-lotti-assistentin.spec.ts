@@ -622,6 +622,49 @@ test.describe("Lotti-Knopf und -Fenster", () => {
     await expect(fenster(page).getByLabel("Frage an Lotti")).toBeVisible();
   });
 
+  test("unter dem Zeiger schaut Lotti auf", async ({ page }) => {
+    // Tims Wunsch 22.09.2026: „dass ich außerhalb des Mauszeigers weiß, dass
+    // ich den anklicken kann". Geprüft wird die ZUSAGE (es tut sich etwas
+    // unter dem Zeiger, der Fokus bleibt sichtbar), nicht die Gestaltung —
+    // kein Grad, kein Pixel, keine Klassennamen. Sonst meldet der Test jede
+    // Politur als Fehler und wird beim dritten Mal weggeklickt.
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto("/dashboard");
+    await expect(knopf(page)).toBeVisible();
+    const kopf = knopf(page).locator("img");
+
+    const ruhe = await kopf.evaluate((el) => getComputedStyle(el).transform);
+    await knopf(page).hover();
+    // Die Bewegung läuft `duration-fluss` (180 ms) — poll statt einer
+    // einzelnen Messung, sonst misst man den ersten Frame.
+    await expect.poll(async () => kopf.evaluate((el) => getComputedStyle(el).transform))
+      .not.toBe(ruhe);
+
+    // Der Schatten des Knopfs selbst wechselt mit — das ist der Teil, der
+    // auch bei `prefers-reduced-motion` stehen bleibt.
+    const gehoben = await knopf(page).evaluate((el) => getComputedStyle(el).boxShadow);
+    await page.mouse.move(5, 5);
+    await expect.poll(async () => knopf(page).evaluate((el) => getComputedStyle(el).boxShadow))
+      .not.toBe(gehoben);
+
+    // **Nicht hier geprüft: der Fokus-Ring.** `:focus-visible` hängt in
+    // Chromium an der zuletzt benutzten Eingabeart; nach einem `hover()` im
+    // selben Test ist ein `focus()` kein Tastatur-Fokus mehr, und der Test
+    // würde mal so, mal so ausgehen. Dass der Ring bleibt, hängt ohnehin
+    // nicht an dieser Änderung: Er sitzt in `--tw-ring-shadow`, der
+    // Hover-Schatten in `--tw-shadow` — zwei Kanäle desselben `box-shadow`.
+  });
+
+  test("unter dem Composer steht keine Fußzeile mehr", async ({ page }) => {
+    // 22.09.2026 gestrichen (Tim: „nimmt nur unnötig Platz weg"). Der Test
+    // hält, dass sie nicht zurückkommt; wo der rechtliche Hinweis jetzt
+    // steht, sagt der Kommentar in `panel.tsx`.
+    await page.goto("/dashboard");
+    await knopf(page).click();
+    await expect(fenster(page)).toBeVisible();
+    await expect(fenster(page).getByText(/Keine Rechtsberatung/)).toHaveCount(0);
+  });
+
   test("ohne Schalter gibt es keinen Knopf", async ({ page }) => {
     await schalterAn(page, false);
     await page.goto("/dashboard");
