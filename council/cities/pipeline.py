@@ -452,10 +452,22 @@ def _fit(main: CitiesStore, ann, body_id: str | None, limit: int | None,
                 "cost_usd": 0.0, "seconds": 0}
     rats = CouncilStore(pfad)
     try:
-        return fit_modul.run(main, rats, ann, EMBED_MODEL, body_id, limit,
-                             stopp=stopp, nur_neu=nur_neu)
+        stand = fit_modul.run(main, rats, ann, EMBED_MODEL, body_id, limit,
+                              stopp=stopp, nur_neu=nur_neu)
     finally:
         rats.close()
+    # **Der Gruppen-Status gehört zur Fassung** (Regel 30). Die Ideen-Liste
+    # verbindet über `fit_version`; fehlen die Zeilen der aktuellen Fassung,
+    # steht auf jeder Karte „auch in 0 Städten", und die Sortierung nach
+    # Städten greift nicht — ohne Fehler. So lag dev nach dem Sprung auf
+    # Fassung 5 vom 20. bis 22.09.2026: 1.499 Zeilen für Fassung 3, null für 5.
+    # Bisher rechnete ihn nur der Cluster-Schritt; ein Lauf mit `--stage fit`
+    # ließ die Tabelle zurück.
+    if stand.get("annotated"):
+        from council.cities.clusters import CLUSTER_VERSION
+        stand["group_status"] = main.rebuild_group_status(
+            EMBED_MODEL, CLUSTER_VERSION, ann.version)
+    return stand
 
 
 # ------------------------------------------------------------------- index
