@@ -1585,18 +1585,26 @@ def test_startfragen_sind_ueberall_eindeutig():
     assert not dubletten, f"mehrfach vergeben: {dubletten}"
 
 
-def test_haushaltsseiten_ziehen_mit_mindestens_einer_startfrage_eine_facette():
-    """Eine Startfrage ohne Facette bekäme auf einer Haushalts-Seite keine
-    Zahl in den Kontext (`screen_context`) — die Antwort wäre entweder eine
-    Seitenbeschreibung oder geraten. Nicht BEIDE müssen ziehen: „Wie hat sich
-    das seit 2015 entwickelt?" darf an der ersten Frage derselben Seite
-    hängen, solange die erste eine Facette zieht (Plan-Beispiel Schulden)."""
+def test_haushaltsseiten_ziehen_mit_beiden_startfragen_eine_facette():
+    """Beide Startfragen einer Haushalts-Seite müssen eine Facette ziehen —
+    nicht nur eine. Erst „mindestens eine" galt (Plan-Beispiel Schulden:
+    „Wie hat sich das seit 2015 entwickelt?" ohne Facette neben „Wie viel
+    Schulden … pro Kopf?" mit einer); im Browser gegen echte Daten gemessen
+    (22.09.2026) bekam die facettenlose Frage dann tatsächlich nur die
+    Seitenbeschreibung — genau das, was eine Startfrage nicht soll. Seither
+    braucht JEDE Startfrage ihre eigene Facette, auch auf Schulden.
+
+    Geprüft wird der ROHE Fragewortlaut, wie ihn `screen_context` ohne
+    Bildschirm-Zusatz (Überschrift, Element) auch sähe — dieselbe Zusage wie
+    im Prompt: Eine Startfrage muss aus sich selbst heraus etwas ziehen,
+    nicht erst durch den Titel der Seite, auf der sie steht.
+    """
     for route, k in knowledge.PAGES.items():
         if not knowledge.im_haushalt(route):
             continue
-        facetten = [qa.geld_facetten(frage) for frage in k.starters]
-        assert any(facetten), f"{route}: keine der beiden Startfragen zieht eine Facette " \
-                              f"({dict(zip(k.starters, facetten))})"
+        for frage in k.starters:
+            assert qa.geld_facetten(frage), \
+                f"{route}: Startfrage ohne Facette: {frage!r}"
 
 
 def test_ohne_schalter_gibt_es_auch_keine_startfragen(client, monkeypatch):

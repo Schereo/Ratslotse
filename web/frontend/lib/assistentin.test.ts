@@ -579,8 +579,8 @@ describe("erklaerAktion", () => {
   });
 
   it("wirft den Stand hinter dem Mittelpunkt mit weg", () => {
-    expect(erklaerAktion("Drei Zählweisen, eine Stadt · Stand 31.12.2024"))
-      .toBe("Drei Zählweisen, eine Stadt erklären");
+    expect(erklaerAktion("Anteil an allen Ausgaben · Plan 2026"))
+      .toBe("Anteil an allen Ausgaben erklären");
   });
 
   it("lässt einen Artikel stehen, hinter dem kein Name kommt", () => {
@@ -594,6 +594,14 @@ describe("erklaerAktion", () => {
     expect(erklaerAktion("Lotti erklärt's einfach")).toBeNull();
     expect(erklaerAktion("Entgelte: geplant und geworden")).toBeNull();
     expect(erklaerAktion("Woher das Geld kommt und wohin es geht")).toBeNull();
+  });
+
+  it("gibt auch bei einem Komma nichts zurück — zwei Gedanken sind kein Name", () => {
+    // Die Bühne auf /haushalt/schulden: „Drei Zählweisen, eine Stadt · Stand
+    // 31.12.2024" hat vier Wörter und keinen Apostroph, wurde also als Chip
+    // zugelassen — „Drei Zählweisen, eine Stadt erklären" liest sich trotzdem
+    // wie zwei Halbsätze hintereinander (Tim, 22.09.2026).
+    expect(erklaerAktion("Drei Zählweisen, eine Stadt · Stand 31.12.2024")).toBeNull();
   });
 
   it("zählt die Wörter NACH dem Artikel", () => {

@@ -649,11 +649,18 @@ export const CHIP_WORTE_MAX = 4;
  * vier Wörter** (nach dem Artikel) heißen dasselbe ohne Satzzeichen („Woher
  * das Geld kommt und wohin es geht").
  *
+ * **Seit 22.09.2026 auch ein Komma.** „Drei Zählweisen, eine Stadt" (die
+ * Bühne auf `/haushalt/schulden`) hat vier Wörter und kein Apostroph, wurde
+ * also als Chip zugelassen — „Drei Zählweisen, eine Stadt erklären" liest
+ * sich trotzdem wie zwei Halbsätze hintereinander, nicht wie eine Handlung.
+ * Dasselbe Zeichen, derselbe Grund wie beim Doppelpunkt: Ein Komma im Titel
+ * heißt, dass er selbst schon zwei Gedanken trägt.
+ *
  * Gezählt wird NACH dem Artikel: „Der Weg durch die Gremien" sind vier Wörter
  * und ergibt „Weg durch die Gremien erklären" — ein Satz, den man sagen kann.
  */
 export function chipTauglich(name: string): boolean {
-  if (/['’:]/.test(name)) return false;
+  if (/['’:,]/.test(name)) return false;
   return name.trim().split(/\s+/).filter(Boolean).length <= CHIP_WORTE_MAX;
 }
 

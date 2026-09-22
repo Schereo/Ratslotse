@@ -97,7 +97,7 @@ PAGES: dict[str, PageKnowledge] = dict([
        "Die Seite entscheidet nichts vor — sie sortiert nur, was ohnehin öffentlich ist.",
        starters=(
            "Werden auch meine eigenen Viertel berücksichtigt?",
-           "Wählt die Seite selbst aus, was wichtig ist?",
+           "Woher stammen die Angaben auf dieser Seite?",
        ),
     ),
     _p("/fragen", "Frag den Rat",
@@ -185,7 +185,7 @@ PAGES: dict[str, PageKnowledge] = dict([
        "Die Zahlen sind privat; es gibt keine Rangliste mit anderen Konten.",
        starters=(
            "Woher kommen meine Quiz-Zahlen?",
-           "Gibt es eine Rangliste mit anderen Konten?",
+           "In welchen Gebieten habe ich schon gespielt?",
        ),
     ),
 
@@ -289,7 +289,7 @@ PAGES: dict[str, PageKnowledge] = dict([
        "abgestimmt wurde, nicht wer wie gestimmt hat.", nudge=True,
        starters=(
            "Was zeigen die Wortbeiträge einer Person?",
-           "Sehe ich hier, wie diese Person abgestimmt hat?",
+           "Woher stammen die Angaben zu einer Person?",
        ),
     ),
     _p("/council/ort", "Ort",
@@ -335,7 +335,7 @@ PAGES: dict[str, PageKnowledge] = dict([
        _HH_QUELLE, _HH_GRENZE, requires="budget", nudge=True,
        starters=(
            "Wie viel Einfluss hat der Rat auf die Steuern?",
-           "Woher kommt das meiste Geld der Stadt?",
+           "Wie viel Gebühren nimmt die Stadt ein?",
        ),
     ),
     _p("/haushalt/pflicht", "Muss oder kann?",
@@ -354,7 +354,7 @@ PAGES: dict[str, PageKnowledge] = dict([
        _HH_QUELLE, _HH_GRENZE, requires="budget", nudge=True,
        starters=(
            "Was kostet die Feuerwehr im Jahr?",
-           "Welche Aufgabe steckt hinter diesem Produkt?",
+           "Was kostet der Klimaschutz im Jahr?",
        ),
     ),
     _p("/haushalt/personal", "Wer macht die Arbeit?",
@@ -371,8 +371,8 @@ PAGES: dict[str, PageKnowledge] = dict([
        "davon tatsächlich umgesetzt wurde.",
        _HH_QUELLE, _HH_GRENZE, requires="budget", nudge=True,
        starters=(
-           "Was wird gerade neu gebaut?",
-           "Wie viel wird in Neubauten investiert?",
+           "Wie viel investiert die Stadt insgesamt?",
+           "Wie viel wurde 2025 tatsächlich investiert?",
        ),
     ),
     _p("/haushalt/plan-ist", "Geplant und geworden",
@@ -380,8 +380,8 @@ PAGES: dict[str, PageKnowledge] = dict([
        "Ergebnis in den Jahresabschlüssen auseinanderliegen.",
        _HH_QUELLE, _HH_GRENZE, requires="budget", nudge=True,
        starters=(
-           "Wie weit weicht das Ergebnis vom Plan ab?",
-           "Warum sind Ausgabenvergleiche schwierig?",
+           "Wie stark wich das Ergebnis 2024 vom Ansatz ab?",
+           "Wie viel hat die Stadt 2024 tatsächlich ausgegeben?",
        ),
     ),
     _p("/haushalt/pruefung", "Geprüft und zusammengefasst",
@@ -399,7 +399,7 @@ PAGES: dict[str, PageKnowledge] = dict([
        _HH_QUELLE, _HH_GRENZE, requires="budget", nudge=True,
        starters=(
            "Welche Betriebe gehören zum Konzern?",
-           "Warum tauchen die Schulden der Betriebe nicht auf?",
+           "Wie hoch sind die Aufwendungen des Klinikums?",
        ),
     ),
     _p("/haushalt/vergleich", "Steht Oldenburg besser da?",
@@ -418,7 +418,7 @@ PAGES: dict[str, PageKnowledge] = dict([
        _HH_QUELLE, _HH_GRENZE, requires="budget", nudge=True,
        starters=(
            "Wie viel Schulden hat Oldenburg pro Kopf?",
-           "Wie haben sich die Schulden seit 2015 entwickelt?",
+           "Wie hoch ist der Schuldenstand des Kernhaushalts allein?",
        ),
     ),
     _p("/haushalt/mitreden", "Mitreden",
@@ -437,8 +437,8 @@ PAGES: dict[str, PageKnowledge] = dict([
        "Die Ergebnisse sind Gedankenspiele, keine Prognose und kein Vorschlag "
        "der Stadt.", requires="budget",
        starters=(
-           "Was passiert, wenn ich Ausgaben verschiebe?",
-           "Rechnet das Labor mit den echten Zahlen?",
+           "Mit welchem Jahresergebnis startet das Labor?",
+           "Wie hoch ist der Ansatz, mit dem das Labor rechnet?",
        ),
     ),
     _p("/haushalt/bereich", "Bereichs-Steckbrief",
@@ -447,7 +447,7 @@ PAGES: dict[str, PageKnowledge] = dict([
        _HH_QUELLE, _HH_GRENZE, requires="budget", nudge=True,
        starters=(
            "Was kostet dieser Bereich im Jahr?",
-           "Welche Aufgaben stecken in diesem Bereich?",
+           "Nimmt dieser Bereich auch eigene Einnahmen ein?",
        ),
     ),
     _p("/haushalt/steuer", "Steuer-Steckbrief",

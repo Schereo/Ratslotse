@@ -191,7 +191,7 @@ test.describe("Lotti-Knopf und -Fenster", () => {
           status: 200, contentType: "application/json",
           body: JSON.stringify({
             starters: ["Werden auch meine eigenen Viertel berücksichtigt?",
-                      "Wählt die Seite selbst aus, was wichtig ist?"],
+                      "Woher stammen die Angaben auf dieser Seite?"],
           }),
         }).catch(() => { /* Test ist schon zu Ende */ }),
       );
@@ -204,7 +204,7 @@ test.describe("Lotti-Knopf und -Fenster", () => {
       await page.goto("/dashboard");
       await knopf(page).click();
       const erste = fenster(page).getByRole("button", { name: "Werden auch meine eigenen Viertel berücksichtigt?" });
-      const zweite = fenster(page).getByRole("button", { name: "Wählt die Seite selbst aus, was wichtig ist?" });
+      const zweite = fenster(page).getByRole("button", { name: "Woher stammen die Angaben auf dieser Seite?" });
       await expect(erste).toBeVisible();
       await expect(zweite).toBeVisible();
       await expect(fenster(page).getByRole("button", { name: "Was sehe ich hier?" })).toBeVisible();
@@ -838,10 +838,26 @@ test.describe("Lotti-Knopf und -Fenster", () => {
       // Erst die Daten, dann messen (dieselbe Falle wie bei den Anker-Tests).
       await page.waitForLoadState("networkidle");
       const anker = page.locator("[data-erklaer][data-erklaer-titel]");
-      test.skip(await anker.count() === 0,
+      const anzahl = await anker.count();
+      test.skip(anzahl === 0,
         "Diese Datenbank hat keine Haushaltsdaten — also auch keine Anker.");
-      const titel = (await anker.first().getAttribute("data-erklaer-titel"))!;
-      const key = (await anker.first().getAttribute("data-erklaer"))!;
+      // **Nicht einfach der ERSTE Anker** — die Bühne („Drei Zählweisen, eine
+      // Stadt · Stand …") steht meist zuerst und ist seit dem Komma-Ausschluss
+      // (`chipTauglich`) kein Chip mehr (PR 25, Nachbesserung 22.09.2026). Der
+      // Test sucht deshalb denselben ersten CHIP-TAUGLICHEN Anker, den auch
+      // `anschlussfragen` vorschlägt: kein Komma, kein Doppelpunkt, kein
+      // Apostroph im Namen vor dem `·`.
+      let titel = "";
+      let key = "";
+      for (let i = 0; i < anzahl; i++) {
+        const t = (await anker.nth(i).getAttribute("data-erklaer-titel"))!;
+        const kurzTitel = t.split(" · ")[0];
+        if (/['’:,]/.test(kurzTitel)) continue;
+        titel = t;
+        key = (await anker.nth(i).getAttribute("data-erklaer"))!;
+        break;
+      }
+      test.skip(!titel, "Keiner der Anker dieser Seite taugt als Chip.");
       // Der Chip nennt nur den NAMEN des Bausteins: Was hinter dem `·` steht,
       // ist ein Stand („… · Stand 31.12.2024") und machte aus dem Chip einen
       // zweizeiligen Klotz (`lib/assistentin.ts::chipTitel`). Geprüft wird
