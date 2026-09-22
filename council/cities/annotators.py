@@ -448,7 +448,7 @@ class OldenburgFit(BaseModel):
 #: 600 s je Versuch. Ein gewöhnliches Urteil braucht 20–40 s; nach 120 s ist
 #: es kein langsames mehr, sondern ein hängendes, und die Wiederholung in
 #: `llm.chat_complete` (Timeout zählt als vorübergehend) übernimmt. Gilt für
-#: `idea_fit` und `reason`; `fit` läuft (noch) ohne.
+#: `fit`, `idea_fit` und `reason`.
 LLM_TIMEOUT_S = float(os.environ.get("CITIES_LLM_TIMEOUT", "120"))
 
 
