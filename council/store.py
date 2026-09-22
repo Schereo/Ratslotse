@@ -3511,7 +3511,17 @@ class CouncilStore(BplanMixin, FundstueckeMixin, HaushaltMixin, OrteMixin, Perso
 
         Eine Kennzahl, nicht alle: Der Vergleich soll die Antwort einordnen
         („Oldenburg liegt auf Platz 5 von 8"), nicht eine Tabelle in den
-        Prompt schreiben."""
+        Prompt schreiben.
+
+        **``population`` ist keine Kennzahl, sondern der Nenner.** Die Reihe
+        ``tax_capacity`` speichert Messzahl und Einwohnerzahl bewusst getrennt
+        (``staedtevergleich.zeilen_steuerkraft`` — die Division ist unsere,
+        nicht die des Landesamts). Beide Indikatoren haben acht Zeilen, und
+        die Auswahl unten entschied den Gleichstand alphabetisch: „population"
+        vor „steuerkraftmesszahl". Gemessen am 22.09.2026 kam als „IM
+        VERGLEICH"-Baustein deshalb die EINWOHNERZAHL der acht Städte — eine
+        Einordnung, die über die Frage nichts sagt. Der Nenner steht deshalb
+        hinten an; gibt es nur ihn, kommt er weiterhin."""
         gefragt = year
         year, abweicht = _geld.jahrgang(self._conn, "council_city_comparison", "year", gefragt,
                                         f"series = '{series}'")
@@ -3519,7 +3529,8 @@ class CouncilStore(BplanMixin, FundstueckeMixin, HaushaltMixin, OrteMixin, Perso
             return None
         indicator = self._conn.execute(
             "SELECT indicator FROM council_city_comparison WHERE series = ? AND year = ? "
-            "GROUP BY indicator ORDER BY COUNT(*) DESC, indicator LIMIT 1",
+            "GROUP BY indicator "
+            "ORDER BY (indicator = 'population'), COUNT(*) DESC, indicator LIMIT 1",
             (series, year)).fetchone()
         if not indicator:
             return None

@@ -760,6 +760,53 @@ def zwei_zaehlweisen_frage(question: str) -> bool:
     return bool(_HAUSHALT_WORT_RE.search(t)) and not _ZAEHLWEISE_GENANNT_RE.search(t)
 
 
+#: Die Frage will eine EINORDNUNG, keine nackte Zahl (PR 26, 22.09.2026).
+#:
+#: Fünf Zweige, und die Trennung zwischen dem ersten und dem, was NICHT
+#: auslösen darf, ist der ganze Punkt: „Wie **viel** Schulden hat die Stadt?"
+#: ist eine Mengenfrage und bekommt eine Zahl; „**Ist das** viel?" fragt nach
+#: dem Maßstab. Beide tragen dasselbe Wort. Deshalb steht „viel" nie für sich,
+#: sondern immer HINTER einem ``ist``/``sind`` (Zweig A) oder VOR einem
+#: ``für``/``im Vergleich`` (Zweig C) — in „wie viel" steht es davor und
+#: allein, und genau das trifft keiner der Zweige.
+#:
+#: Aus demselben Grund ist ``gut``/``schlecht`` auf „ist **das** gut" verengt
+#: (Zweig B): „Sind die Zahlen gut lesbar?" ist keine Einordnungsfrage.
+_EINORDNUNG_RE = re.compile(
+    # A — „Ist das viel?", „Sind 337 Millionen Euro Schulden viel?"
+    r"\b(?:ist|sind|war|waren)\b.{0,40}?"
+    r"\b(?:viel|viele|wenig|hoch|niedrig|normal|ueblich)\b"
+    # B — „Ist das gut oder schlecht?" (enger: nur mit Zeigewort)
+    r"|\bist (?:das|es|dies|die|der)\b.{0,30}?\b(?:gut|schlecht)\b"
+    # C — „viel für eine Stadt dieser Größe", „wenig im Vergleich"
+    r"|\b(?:viel|wenig|hoch|niedrig|normal|ueblich) (?:fuer|im vergleich)\b"
+    # D — der Vergleich, ausdrücklich
+    r"|\bwie (?:steht|stehen|schneidet|schneiden|liegt|liegen)\b"
+    r"|\bim vergleich\b|\bverglichen\b|\bandere[nr]? staedte[n]?\b"
+    r"|\bdurchschnitt|\brangliste\b|\bbesser oder schlechter\b"
+    # E — die Pro-Kopf-Frage
+    r"|\bpro kopf\b|\bje kopf\b|\bpro einwohner|\bje einwohner|\bpro person\b",
+)
+
+
+def einordnungsfrage(question: str) -> bool:
+    """Will diese Frage eine EINORDNUNG — einen Maßstab statt einer Zahl?
+
+    **Warum überhaupt.** „Keine Bewertung" ist eine feste Regel des Prompts
+    und bleibt es: Ob 337 Mio. € Schulden viel sind, entscheidet nicht Lotti.
+    Die Frage bleibt aber gestellt, und sie hat eine Antwort, die keine
+    Bewertung ist — der Betrag je Einwohner*in und die Zahlen der anderen
+    kreisfreien Städte. Bis 22.09.2026 bekam „Ist das viel?" die Absage ohne
+    das Angebot.
+
+    Deterministisch am Wortlaut, nicht dem Modell überlassen — dieselbe
+    Bauform wie :func:`archivfrage` und :func:`zwei_zaehlweisen_frage`: Der
+    Auslöser entscheidet, ob :func:`_einordnung` überhaupt rechnet, und eine
+    Rechnung, die vom Urteil des Modells abhinge, wäre mal da und mal nicht.
+    """
+    return bool(_EINORDNUNG_RE.search(" ".join(falte(question).split())))
+
+
 #: Höchstens so viele eigene Themen — als NAMEN, nie mit Beschreibung. Die
 #: Beschreibung ist frei eingegebener Text und hätte im Prompt nichts
 #: verloren, solange sie nichts erklärt.
@@ -813,6 +860,7 @@ def screen_context(store, screen: Screen, question: str, *,
     geld_gewollt = False
     ausloeser = ""
     zwei_zaehlweisen_frage_ = zwei_zaehlweisen_frage(question)
+    einordnung_frage_ = einordnungsfrage(question)
     if wissen and (haushaltsseite or darf_geld):
         from council import qa  # lokal: qa ist groß, und nicht jeder Aufruf braucht es
         ausloeser = (" ".join(t for t in (question, gegenstand) if t).strip()
@@ -830,6 +878,20 @@ def screen_context(store, screen: Screen, question: str, *,
         facetten_text = f"{ausloeser} konzern" if zwei_zaehlweisen_frage_ else ausloeser
         geld_gewollt = bool(haushaltsseite or (
             facetten_text and (qa.geld_facetten(facetten_text) & GELD_AUSSERHALB)))
+        # PR 26: Eine Einordnungsfrage braucht den Nenner (`population`) und
+        # die anderen Städte (`vergleich`) — beide haben ihre eigenen, engen
+        # Wörter und kämen von „Ist das viel?" nie von selbst mit. Wie in
+        # PR 27 wächst dafür nur der Text der FACETTEN-Erkennung, nicht die
+        # Suchbegriffe: Beide Quellen brauchen keine.
+        #
+        # **Aber erst hinter dem Tor, nicht davor** — anders als „konzern"
+        # in PR 27. „vergleich" steht in GELD_AUSSERHALB; vor der Zeile
+        # eingesetzt, hätte ein „Ist das viel?" auf einer BESCHLUSS-Seite den
+        # Städtevergleich in den Prompt gezogen, ohne dass dort eine einzige
+        # Haushaltszahl steht, auf die er sich bezieht. Genau die Sorte
+        # Baustein, die neben Fremdtext die Regeln verdünnt (s. GELD_AUSSERHALB).
+        if einordnung_frage_ and geld_gewollt:
+            facetten_text = f"{facetten_text} einwohner vergleich"
         if geld_gewollt:
             try:
                 geld = qa.geld_kontext(store, facetten_text, ausloeser, "money")
@@ -885,6 +947,10 @@ def screen_context(store, screen: Screen, question: str, *,
         # PR 27: beide Bedingungen erfüllt — der Prompt bekommt den Absatz
         # „Zwei Zählweisen" (kern/prompts.py::ZWEI_ZAEHLWEISEN_REGEL).
         "zwei_zaehlweisen": zwei_zaehlweisen,
+        # PR 26: Die Frage will einen Maßstab. Ob daraus wirklich ein
+        # Baustein wird, entscheidet `_einordnung_block` an den Daten — ohne
+        # Einwohnerzahl gibt es weder Rechnung noch Regel.
+        "einordnung": einordnung_frage_,
         # Wer selbst fragt, bekommt den vollen Deckel der KI-Frage: Dann
         # tragen die Zahlen die Antwort und dürfen nicht als dritter
         # Baustein herausfallen (s. GELD_MAX).
@@ -923,10 +989,167 @@ def _geld_block(geld: dict | None, max_chars: int | None = None) -> str:
             "wenn du eine Zahl verwendest):\n" + block + "\n")
 
 
+def _stadtsummen(geld: dict) -> list[tuple[str, float, int | None]]:
+    """``(Beschriftung, Betrag, Jahr)`` je Zahl, die die GANZE Stadt meint.
+
+    Nur Gesamtsummen — kein Produkt, kein Teilhaushalt, kein Einzelposten.
+    „Verkehr und Straßenbau je Einwohner*in" wäre eine Zahl, die so niemand
+    ausweist und die niemand nachrechnen kann: Ein Teilhaushalt trägt die
+    Kosten einer Aufgabe, nicht einen Anteil, der auf Köpfe entfiele.
+
+    Die vier Quellen sind dieselben, die auch sonst die ganze Stadt meinen —
+    der Kernhaushalt als Plan (``haushalt``) und als Abrechnung (``ist``),
+    der Schuldenstand (``schulden``) und der Konzern (``konzern``).
+    """
+    aus: list[tuple[str, float, int | None]] = []
+    for zeile in geld.get("haushalt") or []:
+        if not zeile.get("is_total"):
+            continue
+        jahr = zeile.get("year")
+        if zeile.get("expenses"):
+            aus.append(("geplante Aufwendungen des Kernhaushalts", zeile["expenses"], jahr))
+        if zeile.get("revenues"):
+            aus.append(("geplante Erträge des Kernhaushalts", zeile["revenues"], jahr))
+    ist = geld.get("ist") or {}
+    gesamt = ist.get("gesamt") or {}
+    if gesamt.get("expenses_actual"):
+        aus.append(("tatsächliche Aufwendungen des Kernhaushalts (Jahresabschluss)",
+                    gesamt["expenses_actual"], ist.get("year")))
+    schulden = geld.get("schulden") or {}
+    if schulden.get("total"):
+        aus.append(("Schuldenstand der Stadt als Rechtsträger",
+                    schulden["total"], schulden.get("year")))
+    konzern = geld.get("konzern") or {}
+    if konzern.get("expenses"):
+        aus.append(("Aufwendungen des Konzerns Stadt (mit Eigenbetrieben und "
+                    "Beteiligungen)", konzern["expenses"], konzern.get("year")))
+    return aus
+
+
+def _einwohner_zu(einwohner: dict, jahr: int | None) -> dict | None:
+    """Die Einwohnerzahl DESSELBEN Jahres — sonst die jüngste.
+
+    Der Jahrgang ist keine Feinheit: Zwischen 2022 und 2025 ist Oldenburg um
+    gut 6.000 Menschen gewachsen, und eine Konzern-Zahl von 2024 durch die
+    Einwohner von 2025 geteilt ergibt einen Wert, den die Stadt selbst
+    nirgends so ausweist. Beide Jahre stehen deshalb in der Zeile.
+    """
+    juengst = einwohner.get("latest") or {}
+    reihe = [*(einwohner.get("series") or []), juengst]
+    if jahr:
+        treffer = next((r for r in reihe if r.get("year") == jahr and r.get("population")), None)
+        if treffer:
+            return treffer
+    return juengst if juengst.get("population") else None
+
+
+def _einordnung(geld: dict | None, einwohner: dict | None) -> list[str]:
+    """Die gerechneten Pro-Kopf-Zeilen — **hier** wird geteilt, nicht im Modell.
+
+    **Warum der Server rechnet.** Ein Sprachmodell, das 336.994.000 durch
+    176.614 teilt, liefert eine Zahl, die richtig aussieht und es manchmal
+    ist. Der Eval prüft mit ``must_not_number`` jede Zahl der Antwort gegen
+    den Prompt; eine im Kopf gerechnete steht dort nicht und ist damit
+    ununterscheidbar von einer erfundenen — zu Recht. Steht sie dagegen
+    gerechnet im Kontext, ist sie belegt wie jede andere.
+
+    Gerundet auf **volle Euro**: Nachkommastellen bei einem Pro-Kopf-Wert
+    täuschen eine Genauigkeit vor, die der Nenner (Melderegister zum
+    Jahresende) nicht hat.
+    """
+    if not geld or not einwohner or not einwohner.get("latest"):
+        return []
+    from council import geld as _geld  # lokal: das Paket zieht alle Facetten
+
+    zeilen: list[str] = []
+    for label, betrag, jahr in _stadtsummen(geld):
+        ew = _einwohner_zu(einwohner, jahr)
+        if not ew or not ew.get("population"):
+            continue
+        pro_kopf = round(betrag / ew["population"])
+        zeilen.append(
+            f"- {label} {jahr}: {_geld.de_betrag(betrag)} geteilt durch "
+            f"{_geld.de_zahl(ew['population'])} Einwohner*innen (Ende {ew['year']}) "
+            f"= {_geld.de_euro(pro_kopf)} je Einwohner*in")
+    return zeilen
+
+
+def _vergleichs_zeile(vergleich: dict | None) -> str:
+    """Wo Oldenburg in der Reihe der acht kreisfreien Städte steht.
+
+    **Keine zweite Tabelle.** Die Städte samt Werten stehen schon im
+    Geld-Block (``qa._vergleich_block``); sie hier zu wiederholen wäre eine
+    zweite, dünnere Wahrheit im selben Prompt. Was dort NICHT steht, ist die
+    Einordnung — wie viele Städte über und unter Oldenburg liegen und wie
+    weit die Reihe insgesamt spannt. Genau das steht hier, gerechnet.
+
+    **Eine Einwohnerzahl ist keine Einordnung** (``unit == "count"``): Dass
+    Oldenburg die zweitgrößte kreisfreie Stadt ist, sagt über den
+    Schuldenstand nichts. Der Riegel ist der zweite neben dem in
+    ``store.staedtevergleich_kontext`` — dort steht, wie die Einwohnerzahl
+    überhaupt in diesen Baustein geriet.
+    """
+    if (vergleich or {}).get("unit") == "count":
+        return ""
+    staedte = [s for s in (vergleich or {}).get("staedte") or []
+               if s.get("value") is not None]
+    ol = next((s for s in staedte if "oldenburg" in (s.get("city") or "").lower()), None)
+    if not ol or len(staedte) < 2:
+        return ""
+    from council import geld as _geld
+
+    def wert(v: float) -> str:
+        # „teur" heißt Tausend Euro. So stehen zu lassen wie im Geld-Block
+        # hieße, dem Modell „348.164" neben ein Kürzel zu legen, das es als
+        # Euro abschreiben kann — die Zahl wäre dann um den Faktor 1.000
+        # falsch und gälte dem Eval trotzdem als belegt (sie steht ja da).
+        if vergleich.get("unit") == "teur":
+            return _geld.de_betrag(v * 1000)
+        return _geld.de_zahl(v) + (f" {vergleich['unit']}" if vergleich.get("unit") else "")
+
+    drueber = sum(1 for s in staedte if s["value"] > ol["value"])
+    drunter = sum(1 for s in staedte if s["value"] < ol["value"])
+    hoch = max(staedte, key=lambda s: s["value"])
+    tief = min(staedte, key=lambda s: s["value"])
+    return (f"- In der Reihe der kreisfreien Städte Niedersachsens "
+            f"({vergleich['indicator']}, {vergleich['year']}): Oldenburg "
+            f"{wert(ol['value'])} — darüber {_staedte(drueber)}, darunter "
+            f"{_staedte(drunter)}; die Reihe reicht von {tief['city']} "
+            f"({wert(tief['value'])}) bis {hoch['city']} ({wert(hoch['value'])})")
+
+
+def _staedte(n: int) -> str:
+    """„1 Stadt" / „6 Städte" — ein „1 Städte" im Prompt schreibt das Modell ab."""
+    return f"{n} Stadt" if n == 1 else f"{n} Städte"
+
+
+def _einordnung_block(geld: dict | None) -> str:
+    """Der Prompt-Absatz „ZUR EINORDNUNG" — leer, wenn nichts zu rechnen war.
+
+    Die Vergleichs-Zeile kommt nur ZUSÄTZLICH: Ohne eine Pro-Kopf-Zeile gibt
+    es den Absatz gar nicht, und damit auch die Regel nicht
+    (:data:`kern.prompts.EINORDNUNG_REGEL`). Eine Regel, die „sag es je
+    Einwohner*in" verlangt, während im Kontext keine solche Zahl steht, ist
+    eine Einladung zum Erfinden.
+    """
+    zeilen = _einordnung(geld, (geld or {}).get("population"))
+    if not zeilen:
+        return ""
+    vergleich = _vergleichs_zeile((geld or {}).get("vergleich"))
+    return ("\nZUR EINORDNUNG (von Ratslotse GERECHNET, nicht vom Modell — übernimm\n"
+            "diese Zahlen, wie sie dastehen, und rechne selbst nichts nach):\n"
+            + "\n".join([*zeilen, *([vergleich] if vergleich else [])]) + "\n")
+
+
 def explain_messages(screen: Screen, question: str, ctx: dict,
                      verlauf: list[dict] | None = None,
                      model: str = MODEL) -> tuple[list[dict], dict]:
     """Der fertige Prompt — ``(messages, extra)`` wie in ``qa``."""
+    # PR 26: Erst rechnen, dann entscheiden. Der Absatz und seine Regel
+    # hängen an DERSELBEN Bedingung — kommt keine Zahl heraus (keine
+    # Einwohnerreihe, keine Gesamtsumme im Kontext), steht auch die Regel
+    # nicht da.
+    einordnung = _einordnung_block(ctx.get("geld")) if ctx.get("einordnung") else ""
     prompt = prompts.render(
         "assistant_explain",
         knowledge=knowledge.block(ctx.get("knowledge")),
@@ -934,6 +1157,7 @@ def explain_messages(screen: Screen, question: str, ctx: dict,
         glossar=_glossar_block(ctx.get("glossary") or []),
         konto=_konto_block(ctx),
         geld=_geld_block(ctx.get("geld"), ctx.get("geld_max")),
+        einordnung=einordnung,
         wegweiser=_wegweiser_block(ctx.get("wegweiser") or []),
         # Die Verweis-Regel steht NUR im Prompt, wenn es auch etwas zu
         # verweisen gibt — der Grund steht bei `prompts.WEGWEISER_REGEL`.
@@ -943,6 +1167,9 @@ def explain_messages(screen: Screen, question: str, ctx: dict,
         # gilt (Regel aus PR 21). Ohne das Flag ist der Prompt zeichengleich
         # mit dem von vorher.
         zwei_zaehlweisen=prompts.ZWEI_ZAEHLWEISEN_REGEL if ctx.get("zwei_zaehlweisen") else "",
+        # PR 26: dieselbe Bauform noch einmal — an der Rechnung, nicht an der
+        # Frage. Ohne Absatz keine Regel (s. oben).
+        einordnung_regel=prompts.EINORDNUNG_REGEL if einordnung else "",
         screen=_screen_block(screen),
         anker=_anker_block(screen),
         question=kuerze(question, QUESTION_MAX) or "(keine eigene Frage — erklär das Gezeigte)",

@@ -548,5 +548,91 @@
   "must_not": [
    "/haushalt"
   ]
+ },
+ {
+  "id": "einordnung-schulden-viel",
+  "note": "PR 26: Die Nachfrage zum Schuldenstand. Lotti darf nicht bewerten — aber einordnen: 336.994.000 € / 176.614 Einwohner*innen = 1.908 € je Kopf, gerechnet in council/assistant.py::_einordnung, nicht vom Modell.",
+  "route": "/haushalt/schulden",
+  "heading": "Wie viel Schulden hat Oldenburg?",
+  "question": "Sind 337 Millionen Euro Schulden viel für Oldenburg?",
+  "expect_mode": "explain",
+  "expect_next": null,
+  "must_mention": [
+   [
+    "1.908"
+   ],
+   [
+    "Einwohner",
+    "Kopf"
+   ]
+  ],
+  "must_not": [
+   "ist viel",
+   "ist wenig",
+   "ziemlich viel",
+   "sehr hoch",
+   "sehr niedrig",
+   "besonders hoch",
+   "gut aufgestellt",
+   "schlecht da",
+   "besorgniserregend",
+   "alarmierend",
+   "im grünen Bereich"
+  ],
+  "must_not_number": true,
+  "max_sentences": 6
+ },
+ {
+  "id": "einordnung-vergleich-haushalt",
+  "note": "PR 26: die Vergleichsfrage auf der Vergleichsseite. Die Pro-Kopf-Zahlen des Kernhaushalts (2026) und des Konzerns (2024) stehen gerechnet im Kontext; eine davon zu nennen reicht.",
+  "route": "/haushalt/vergleich",
+  "heading": "Steht Oldenburg besser da?",
+  "question": "Wie steht Oldenburg beim Haushalt im Vergleich da?",
+  "expect_mode": "explain",
+  "expect_next": null,
+  "must_not": [
+   "ist viel",
+   "ist wenig",
+   "ziemlich viel",
+   "sehr hoch",
+   "sehr niedrig",
+   "besonders hoch",
+   "gut aufgestellt",
+   "schlecht da",
+   "besorgniserregend",
+   "alarmierend",
+   "im grünen Bereich"
+  ],
+  "must_not_number": true,
+  "max_sentences": 6
+ },
+ {
+  "id": "startfrage-schulden-pro-kopf",
+  "note": "PR 25 legt diese Startfrage auf /haushalt/schulden; PR 26 rechnet ihre Antwort. Muss weiter stimmen: 1.908 € je Einwohner*in, dieselbe Zahl, die council_debt.per_capita führt.",
+  "route": "/haushalt/schulden",
+  "heading": "Wie viel Schulden hat Oldenburg?",
+  "question": "Wie viel Schulden hat Oldenburg pro Kopf?",
+  "expect_mode": "explain",
+  "expect_next": null,
+  "must_mention": [
+   [
+    "1.908"
+   ]
+  ],
+  "must_not": [
+   "ist viel",
+   "ist wenig",
+   "ziemlich viel",
+   "sehr hoch",
+   "sehr niedrig",
+   "besonders hoch",
+   "gut aufgestellt",
+   "schlecht da",
+   "besorgniserregend",
+   "alarmierend",
+   "im grünen Bereich"
+  ],
+  "must_not_number": true,
+  "max_sentences": 6
  }
 ]
