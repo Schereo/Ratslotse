@@ -669,10 +669,13 @@ wie die Schnellantworten der Chat-Bots: **Was sehe ich hier?** ·
 **Markierten Text erklären** (nur mit Markierung) · **Etwas auf der Seite
 zeigen** (ab PR 3, davor nicht gerendert) → **Composer** (§ 5: h 48,
 Radius 16, Funken-Icon, Senden 36 ⌀), Platzhalter „Frag mich zu dieser
-Seite …", `Enter` sendet, `Shift+Enter` bricht um → Fußzeile
-`text-hinweis`, fest, nicht wegklickbar (§ 1 Ehrlichkeit): „Erklärt aus
-Glossar, Seite und Haushaltsdaten. Keine Rechtsberatung, keine
-Bewertung." Der **leere Zustand** (noch kein Turn) zeigt Lotti `winkt` mit
+Seite …", `Enter` sendet, `Shift+Enter` bricht um. (Hier stand bis
+22.09.2026 eine feste Fußzeile „Erklärt aus Glossar, Seite und
+Haushaltsdaten. Keine Rechtsberatung, keine Bewertung." — **gestrichen**,
+Tim: „nimmt nur unnötig Platz weg". § 1 Ehrlichkeit bleibt gewahrt: Die
+externe Verarbeitung steht in der Einwilligungs-Karte, in der Konto-Karte
+„Gespräche" und unter /datenschutz; die Zurückhaltung beim Bewerten setzt
+der Prompt durch.) Der **leere Zustand** (noch kein Turn) zeigt Lotti `winkt` mit
 einem Satz — „Moin! Ich erkläre dir, was du hier siehst. Markier etwas,
 tipp auf ein Element oder frag mich." — und die Chips; das ist die einzige
 Begrüßung, und sie steht im Fenster, nie auf der Seite (Regel 5).

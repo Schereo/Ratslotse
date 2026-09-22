@@ -132,6 +132,12 @@ const config: Config = {
       boxShadow: {
         // Weicher Ambient-Schatten für angehobene Karten (statt hartem shadow-md).
         lifted: "0 6px 24px -8px hsl(var(--primary) / 0.18), 0 2px 8px -4px hsl(var(--foreground) / 0.08)",
+        // Der Zeiger-Zustand des Lotti-Knopfs: derselbe Ambient-Schatten,
+        // eine Stufe weiter geöffnet und deutlicher im Primärton. Als Token
+        // und nicht als arbitrary value, weil er zu `lifted` gehört — wer den
+        // einen anfasst, sieht den anderen.
+        "knopf-hover":
+          "0 12px 30px -8px hsl(var(--primary) / 0.34), 0 4px 12px -4px hsl(var(--foreground) / 0.12)",
       },
       borderRadius: {
         lg: "var(--radius)",

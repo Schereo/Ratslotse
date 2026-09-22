@@ -944,11 +944,21 @@ export function LottiPanel({
           <ArrowRight className="h-4 w-4" aria-hidden />
         </button>
       </form>
+      {/* **Hier stand bis 22.09.2026 eine feste Fußzeile** („Erklärt aus
+          Glossar, Seite und Haushaltsdaten. Keine Rechtsberatung, keine
+          Bewertung."). Sie ist ersatzlos weg — Tims Befund: „der nimmt nur
+          unnötig Platz weg". Zwei Zeilen à 11 px plus Trennlinie kosten im
+          384-px-Fenster gut 30 px Verlaufshöhe, und zwar dauerhaft, für einen
+          Satz, den man einmal liest.
 
-      <p className="border-t border-border/60 px-3 py-1.5 text-[11px] leading-snug text-muted-foreground">
-        Erklärt aus Glossar, Seite und Haushaltsdaten. Keine Rechtsberatung,
-        keine Bewertung.
-      </p>
+          **Der rechtliche Hinweis hängt nicht daran** — er stand hier nie:
+          Dass Frage und Auszüge über OpenRouter extern verarbeitet werden,
+          sagt die Einwilligungs-Karte (`components/gespraeche-einwilligung.tsx`),
+          die genau einmal und VOR der ersten Frage erscheint — auch in diesem
+          Fenster; dauerhaft nachlesbar steht es in der Konto-Karte
+          (`components/gespraeche-settings.tsx`) und unter /datenschutz. Dass
+          Lotti nicht bewertet und nicht berät, setzt der Prompt durch
+          (`kern/prompts.py`), nicht eine Zeile Kleingedrucktes. */}
     </div>
   );
 }

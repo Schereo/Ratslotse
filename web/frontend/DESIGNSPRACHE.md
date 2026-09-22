@@ -388,6 +388,14 @@ iOS-Schrift.
   Chat-Knopf ist keine Navigation, sondern die Bauform, die man von
   Hilfe-Seiten kennt (Tim, 21.09.2026). `BackToTop` rückt über ihn, das
   Küken hält die rechte Ecke frei.
+  **Unter dem Zeiger schaut Lotti auf**: Der Knopf hebt sich 2 px, der
+  Schatten öffnet sich (`shadow-knopf-hover`), und der Kopf darin richtet sich
+  auf — aus seinen +3 px auf 0, 6° geneigt, 5 % größer; `duration-fluss`,
+  `ease-out-strong`. Nur unter `maus:` (Touch lässt den Hover kleben) und die
+  Bewegung nur unter `motion-safe:` — Farbe und Schatten bleiben auch bei
+  reduzierter Bewegung, sonst wäre der Knopf dort gar nicht mehr als
+  anklickbar erkennbar. Der Fokus-Ring bleibt der lauteste Zustand; er sitzt
+  in `--tw-ring-shadow` und wird vom Hover-Schatten nicht verdrängt.
   Das Fenster sitzt über dem Knopf (Schreibtisch 384 px × max 40 rem, **nicht
   modal**, kein Scrim — die Seite bleibt lesbar und bedienbar; Handy: die
   Fläche zwischen Kopfleiste und Knopf). Anatomie von oben: Kopfzeile (Lotti
@@ -397,9 +405,16 @@ iOS-Schrift.
   in 13,5 px mit Lotti 24 px daneben; **Tipp-Anzeige** = drei Punkte in
   Signal-Orange, solange geschrieben wird) → stille Chip-Aktionen unter jeder
   Antwort („Den Rat fragen" gefüllt, wenn die Frage ins Archiv gehört, sonst
-  Ghost) → Vorschlags-Chips über dem Eingabefeld → Composer (s. u.) →
-  Fußzeile in `text-hinweis`, fest: „Erklärt aus Glossar, Seite und
-  Haushaltsdaten. Keine Rechtsberatung, keine Bewertung."
+  Ghost) → Vorschlags-Chips über dem Eingabefeld → Composer (s. u.).
+  **Darunter nichts mehr.** Bis 22.09.2026 stand dort eine feste Fußzeile
+  („Erklärt aus Glossar, Seite und Haushaltsdaten. Keine Rechtsberatung, keine
+  Bewertung."); sie ist ersatzlos weg — zwei Zeilen plus Trennlinie kosteten
+  dauerhaft gut 30 px Verlaufshöhe für einen Satz, den man einmal liest (Tim,
+  22.09.2026). Der **rechtliche** Hinweis hing nie daran: Dass Frage und
+  Auszüge extern verarbeitet werden, sagt die Einwilligungs-Karte (einmal,
+  vor der ersten Frage, auch in diesem Fenster), dauerhaft nachlesbar die
+  Konto-Karte „Gespräche" und die Datenschutzseite. Dass Lotti nicht bewertet
+  und nicht berät, setzt der Prompt durch, nicht das Kleingedruckte.
   **Zäsur im Verlauf**: Weil der Verlauf den Seitenwechsel überlebt, steht vor
   der ersten Runde einer neuen Seite eine stille Zwischenzeile „Jetzt auf:
   Schulden" — mono 10 px, Versalien, `tracking-[0.1em]`, Muted, zentriert
