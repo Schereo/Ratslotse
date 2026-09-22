@@ -38,3 +38,23 @@ gehen oder bei Anbietern landen, die Eingaben zum Training speichern.
   konfiguriert sind, werden über OpenRouter bei DSGVO-konformen Hostern geroutet —
   der Ausschluss betrifft den Anbieter-Slug `deepseek` (direktes Hosting), nicht
   das Modellgewicht als solches. Beim Tunen beider Stellschrauben aufeinander achten.
+
+## Nachtrag 22.09.2026: ZDR nur, wo Nutzereingaben im Prompt stehen
+
+Die ZDR-Pflicht galt bis hierhin für jeden Aufruf. Sie schützt aber nur
+etwas, wenn der Prompt Text enthält, den eine Nutzerin selbst geschrieben
+hat — eine Frage, ein Thema, Lottis Seitenkontext. Die meisten Crons lesen
+ausschließlich öffentliche Ratsdokumente.
+
+Anlass war ein gemessener Ausschluss: GPT-6 Luna bieten bisher nur OpenAI
+direkt und Amazon Bedrock an, beide ohne ZDR; jeder Aufruf endete mit 404.
+Dasselbe gilt für OpenAIs Flex-Tarif.
+
+**Entscheidung (Tim):** Features, die nur öffentliche Daten verarbeiten,
+dürfen an Anbieter ohne ZDR. Sie stehen einzeln in
+`kern/llm.py::OHNE_NUTZEREINGABE` (dazu alle `cities_*`-Annotatoren). Die
+Liste ist eine **Freigabe**: Ein Feature, das dort fehlt — auch ein Aufruf
+ohne `_feature` —, bleibt bei ZDR. `data_collection: deny` (kein Training)
+und der China-Ausschluss gelten für **alle** Aufrufe unverändert.
+`tests/test_llm.py` hält fest, dass die Nutzer-Pfade (KI-Frage, Deep, Lotti,
+Themen-Beschreibung, Vagheits-Prüfung) nie in der Liste landen.

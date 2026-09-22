@@ -91,6 +91,14 @@ MODEL_PARAMS: dict[str, dict[str, Any]] = {
     # OCR, council/ocr.py::MODEL_ZWEIT) — der leere Eintrag ist trotzdem
     # Pflicht: Er ist die Liste der Modelle, die hier je gemessen wurden.
     "anthropic/claude-sonnet-4.6": {},
+    # Nachfolger-Kandidaten (Messung 22.09.2026, s. docs/plan-modellwechsel.md):
+    # Gemini 2.5 Flash/Flash Lite laufen bei OpenRouter am 20.10.2026 aus.
+    # Boden vorsorglich, bis gemessen ist, welche davon denken.
+    **{m: {"min_max_tokens": GEMINI_DENK_MIN_MAX_TOKENS} for m in (
+        "google/gemini-3.1-flash-lite", "google/gemini-3.5-flash-lite",
+        "google/gemini-3-flash-preview", "google/gemini-3.5-flash",
+    )},
+    **{m: {"min_max_tokens": GPT56_MIN_MAX_TOKENS} for m in ("openai/gpt-6-luna",)},
 }
 
 
@@ -155,22 +163,68 @@ def _with_model_params(kwargs: dict[str, Any]) -> dict[str, Any]:
 _IGNORE_CN_DEFAULT = "deepseek,baidu,streamlake,siliconflow,alibaba"
 
 
-def _routing_extra_body() -> dict[str, Any]:
+#: Features, die NUR öffentliche Ratsdaten verarbeiten — keine Frage, kein
+#: Thema, keinen Text, den eine Nutzerin selbst geschrieben hat. Für sie
+#: entfällt die ZDR-Pflicht (Tims Entscheidung 22.09.2026: „für alles, was
+#: keinen direkten User-Input verarbeitet, sind nicht-ZDR-Provider auch
+#: fine"). Was bleibt: kein Training auf unseren Daten (`data_collection:
+#: deny`) und kein Anbieter aus China.
+#:
+#: Anlass: GPT-6 Luna bieten bisher nur OpenAI direkt und Amazon Bedrock an,
+#: beide ohne ZDR — unter der Pflicht endete jeder Aufruf mit 404 „No
+#: endpoints found matching your data policy".
+#:
+#: **Die Liste ist eine Freigabe, keine Sperre.** Ein Feature, das hier
+#: fehlt, bleibt bei ZDR — auch ein Aufruf ganz ohne `_feature` (der Watcher
+#: trug bis heute keinen und verarbeitet die Themenbeschreibungen der
+#: Nutzer*innen). Wer ein Feature einträgt, prüft vorher, was im Prompt
+#: steht; `tests/test_llm.py` hält fest, dass die Nutzer-Pfade nie hier landen.
+OHNE_NUTZEREINGABE: frozenset[str] = frozenset({
+    # Bewertungen und Kurzfassungen von Beschlüssen und Tagesordnungen
+    "impact_rating", "impact_rating_agenda", "interest_rating", "goal_rating",
+    "simple_summary", "committee_summary", "topic_classification", "field_recap",
+    "daily_find_story", "quiz_generation", "quiz_verify",
+    # Protokolle, Anlagen, Sitzungs-Mitschnitt
+    "minutes_extraction", "attachment_ocr", "speeches", "video_results",
+    "livestream_transcript", "live_top_tracker",
+    # Entitäten, Orte, Viertel
+    "entity_ner", "entity_duplicates", "entity_description", "decision_places",
+    "district_projects",
+    # Social-Texte über Beschlüsse
+    "social_card_text", "social_critic",
+    # Städtevergleich: fremde Ratsdokumente
+    "cities_evidence_terms",
+})
+
+#: Die Städte-Annotatoren bilden ihren Namen als ``cities_<key>``
+#: (``council/cities/annotators.py``); ``kern`` darf ihre Liste nicht
+#: importieren (Schichtenregel). Alle verarbeiten fremde Ratsdokumente.
+_OHNE_NUTZEREINGABE_PRAEFIX = "cities_"
+
+
+def zdr_pflicht(feature: str | None) -> bool:
+    """Ob ein Aufruf dieses Features nur an ZDR-Anbieter gehen darf."""
+    if not feature:
+        return True
+    return not (feature in OHNE_NUTZEREINGABE or feature.startswith(_OHNE_NUTZEREINGABE_PRAEFIX))
+
+
+def _routing_extra_body(zdr: bool = True) -> dict[str, Any]:
     if os.environ.get("NWZ_OPENROUTER_ROUTING", "on").strip().lower() == "off":
         return {}
     provider: dict[str, Any] = {"data_collection": "deny"}
     ignore = [s.strip() for s in os.environ.get("NWZ_OPENROUTER_IGNORE", _IGNORE_CN_DEFAULT).split(",") if s.strip()]
     if ignore:
         provider["ignore"] = ignore
-    if os.environ.get("NWZ_OPENROUTER_ZDR", "1").strip().lower() not in ("0", "false", "off", "no"):
+    if zdr and os.environ.get("NWZ_OPENROUTER_ZDR", "1").strip().lower() not in ("0", "false", "off", "no"):
         provider["zdr"] = True
     return {"provider": provider}
 
 
-def _with_routing(kwargs: dict[str, Any]) -> dict[str, Any]:
+def _with_routing(kwargs: dict[str, Any], zdr: bool = True) -> dict[str, Any]:
     """Merge the OpenRouter provider-routing block into the request's extra_body
     (a caller-supplied 'provider' wins, so call sites can still override)."""
-    rb = _routing_extra_body()
+    rb = _routing_extra_body(zdr)
     if not rb:
         return kwargs
     extra_body = {**rb, **(kwargs.get("extra_body") or {})}
@@ -275,8 +329,8 @@ def _is_transient(exc: BaseException) -> bool:
     stop=stop_after_attempt(4),
     reraise=True,
 )
-def _create(*, _allow_empty_response: bool = False, **kwargs: Any):
-    merged = _with_model_params(_with_routing(kwargs))
+def _create(*, _allow_empty_response: bool = False, _zdr: bool = True, **kwargs: Any):
+    merged = _with_model_params(_with_routing(kwargs, _zdr))
     # OpenRouter soll die ECHTEN Kosten des Aufrufs mitliefern (usage.cost, in
     # USD, inkl. Provider-Routing) — Modellpreise von Hand pflegen entfällt
     # damit dort, wo der Wert ankommt (Admin-Statistik, Eval-Kostenzeile).
@@ -355,6 +409,7 @@ def chat_complete(**kwargs: Any):
     für Cron-Läufe gedacht — eine Web-Anfrage darf nicht minutenlang hängen.
     """
     feature = kwargs.pop("_feature", None)
+    kwargs["_zdr"] = zdr_pflicht(feature)
     geduld = bool(kwargs.pop("_geduld", False))
     ersatz = list(kwargs.pop("_ersatz", None) or [])
     modelle = [kwargs.get("model"), *ersatz]
@@ -399,7 +454,7 @@ def chat_stream(**kwargs: Any):
     feature = kwargs.pop("_feature", None)
     if feature:
         kwargs.setdefault("stream_options", {"include_usage": True})
-    for chunk in _create(stream=True, **kwargs):
+    for chunk in _create(stream=True, _zdr=zdr_pflicht(feature), **kwargs):
         if getattr(chunk, "usage", None):
             _record_usage(feature, kwargs.get("model"), chunk.usage)
         if chunk.choices and chunk.choices[0].delta.content:

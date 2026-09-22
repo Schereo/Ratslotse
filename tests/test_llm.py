@@ -287,3 +287,60 @@ def test_ersatz_fuer_kennt_luna_und_sonst_nichts():
     assert llm.ersatz_fuer("openai/gpt-5.6-luna")
     assert llm.ersatz_fuer("google/gemini-2.5-flash") == []
     assert llm.ersatz_fuer(None) == []
+
+
+# --------------------------------------------------------------------------- #
+# ZDR je Feature (Tims Entscheidung 22.09.2026)
+# --------------------------------------------------------------------------- #
+
+#: Features, die Text verarbeiten, den eine Nutzerin selbst geschrieben hat:
+#: Fragen, Themen, Lottis Kontext. Sie dürfen NIE ohne ZDR laufen.
+NUTZER_PFADE = ("qa_answer", "qa_simple", "qa_analysis", "qa_query_expansion",
+                "deep_report", "deep_decomposition", "party_opinions",
+                "assistant_explain", "topic_auto_description", "vagueness_check")
+
+
+def test_nutzer_pfade_behalten_zdr(monkeypatch):
+    monkeypatch.delenv("NWZ_OPENROUTER_ZDR", raising=False)
+    for f in NUTZER_PFADE:
+        assert llm.zdr_pflicht(f), f
+        assert f not in llm.OHNE_NUTZEREINGABE
+    assert llm.zdr_pflicht(None), "ohne _feature bleibt es bei ZDR (der Watcher)"
+    assert llm.zdr_pflicht("ein_neues_feature"), "unbekannt heißt ZDR"
+
+
+def test_oeffentliche_daten_ohne_zdr_aber_ohne_training_und_china(monkeypatch):
+    for var in ("NWZ_OPENROUTER_ROUTING", "NWZ_OPENROUTER_IGNORE", "NWZ_OPENROUTER_ZDR"):
+        monkeypatch.delenv(var, raising=False)
+    assert not llm.zdr_pflicht("impact_rating")
+    assert not llm.zdr_pflicht("cities_fit")
+    provider = llm._routing_extra_body(zdr=False)["provider"]
+    assert "zdr" not in provider
+    assert provider["data_collection"] == "deny"
+    assert {"deepseek", "baidu", "alibaba"} <= set(provider["ignore"])
+
+
+def test_freigabeliste_nennt_nur_echte_features():
+    """Ein Name in der Liste, den kein Aufruf trägt, ist ein Tippfehler oder
+    ein Rest — beides soll auffallen, statt still mitzulaufen."""
+    import re
+    from pathlib import Path
+    wurzel = Path(__file__).resolve().parent.parent
+    code = "\n".join(p.read_text() for d in ("council", "scripts", "kern")
+                     for p in (wurzel / d).rglob("*.py"))
+    benutzt = set(re.findall(r'_feature="([a-z_]+)"', code))
+    assert llm.OHNE_NUTZEREINGABE <= benutzt, llm.OHNE_NUTZEREINGABE - benutzt
+
+
+def test_chat_complete_reicht_die_zdr_entscheidung_durch(monkeypatch):
+    gesehen = []
+
+    def fake_create(**kw):
+        gesehen.append(kw.get("_zdr"))
+        raise RuntimeError("stop")
+
+    monkeypatch.setattr(llm, "_create", fake_create)
+    for feature, erwartet in (("impact_rating", False), ("qa_answer", True), (None, True)):
+        with pytest.raises(RuntimeError):
+            llm.chat_complete(model="x", messages=[], _feature=feature)
+        assert gesehen[-1] is erwartet
