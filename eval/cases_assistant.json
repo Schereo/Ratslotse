@@ -474,6 +474,25 @@
   "max_sentences": 5
  },
  {
+  "id": "haushalt-zwei-zaehlweisen",
+  "note": "PR 27: Tims eigene Frage vom 22.09.2026 als Normalfall — „der Haushalt“ ohne Zählweise heißt für die Verwaltung den Kernhaushalt, für alle anderen die ganze Stadt. Lotti soll BEIDE Zahlen nennen, nicht nur die Plan-Zahl der Seite.",
+  "route": "/haushalt",
+  "heading": "Oldenburg plant Ausgaben von 883,9 Millionen Euro.",
+  "question": "Wie groß ist der Haushalt der Stadt?",
+  "expect_mode": "explain",
+  "must_mention": [
+   [
+    "kernhaushalt",
+    "kern"
+   ],
+   [
+    "konzern"
+   ]
+  ],
+  "must_not_number": true,
+  "max_sentences": 6
+ },
+ {
   "id": "wegweiser-gewerbesteuer",
   "note": "Wegweiser: auf der Schulden-Seite nach den Einnahmen gefragt — die Zahl UND der Weg zur richtigen Seite.",
   "route": "/haushalt/schulden",

@@ -732,6 +732,34 @@ def meint_eigenes(question: str) -> bool:
     return bool(_MEIN_RE.search(falte(question)))
 
 
+#: „Haushalt", „Gesamthaushalt", „Etat", „Budget" — die Frage meint die
+#: Bücher der Stadt, ohne zu sagen, welche Zählweise (PR 27, 22.09.2026).
+_HAUSHALT_WORT_RE = re.compile(r"\b(?:gesamthaushalt|haushalt|etat|budget)\b")
+
+#: „Kern", „Konzern", „Eigenbetrieb(e)", „Beteiligung(en)", „Gesamtabschluss"
+#: — nennt die Frage eines davon, hat sie sich SELBST für eine Zählweise
+#: entschieden.
+_ZAEHLWEISE_GENANNT_RE = re.compile(
+    r"\bkern|\bkonzern|eigenbetrieb|beteiligung|gesamtabschluss")
+
+
+def zwei_zaehlweisen_frage(question: str) -> bool:
+    """Nennt die Frage „den Haushalt", ohne zu sagen, welche Zählweise?
+
+    **Tims eigene Frage vom 22.09.2026 ist der Normalfall:** „der Haushalt"
+    heißt für die Verwaltung den Kernhaushalt (Facette ``plan``), für alle
+    anderen die ganze Stadt samt Eigenbetrieben und Beteiligungen
+    (``konzern``). :func:`screen_context` benutzt das Ergebnis zweifach —
+    als Auslöser dafür, den Konzern-Baustein überhaupt zu holen (er hat sein
+    eigenes, engeres Wort und kommt sonst nicht von selbst, anders als der
+    Kernhaushalt: „Haushalt" löst ``plan`` über ``qa._F_PLAN`` ohnehin aus),
+    und als eine von zwei Bedingungen für das Flag ``zwei_zaehlweisen`` (die
+    andere: beide Zahlen sind danach wirklich im Kontext, s. dort).
+    """
+    t = " ".join(falte(question).split())
+    return bool(_HAUSHALT_WORT_RE.search(t)) and not _ZAEHLWEISE_GENANNT_RE.search(t)
+
+
 #: Höchstens so viele eigene Themen — als NAMEN, nie mit Beschreibung. Die
 #: Beschreibung ist frei eingegebener Text und hätte im Prompt nichts
 #: verloren, solange sie nichts erklärt.
@@ -784,17 +812,37 @@ def screen_context(store, screen: Screen, question: str, *,
     geld: dict = {}
     geld_gewollt = False
     ausloeser = ""
+    zwei_zaehlweisen_frage_ = zwei_zaehlweisen_frage(question)
     if wissen and (haushaltsseite or darf_geld):
         from council import qa  # lokal: qa ist groß, und nicht jeder Aufruf braucht es
         ausloeser = (" ".join(t for t in (question, gegenstand) if t).strip()
                      if haushaltsseite else question.strip())
+        # PR 27: „Haushalt" ohne Zählweise soll denselben Weg nehmen wie eine
+        # Frage, die „Konzern" ausdrücklich nennt — der Kernhaushalt kommt
+        # über dasselbe Wort ohnehin mit (`qa._F_PLAN` kennt „haushalt"), der
+        # Konzern NICHT von selbst. Der Zusatz wirkt NUR auf die
+        # Facetten-Erkennung; die Suchbegriffe (`begriffe=ausloeser` unten)
+        # bleiben unverändert — `store.konzern_kontext` braucht ohnehin
+        # keine. Weil „konzern" in GELD_AUSSERHALB steht, öffnet das
+        # zugleich das Tor außerhalb des Haushalts-Bereichs (Tims Frage kam
+        # nicht von einer Haushalts-Seite): dieselbe Regel, die einer
+        # ausdrücklichen Konzern-Frage dort schon heute die Zahl gibt.
+        facetten_text = f"{ausloeser} konzern" if zwei_zaehlweisen_frage_ else ausloeser
         geld_gewollt = bool(haushaltsseite or (
-            ausloeser and (qa.geld_facetten(ausloeser) & GELD_AUSSERHALB)))
+            facetten_text and (qa.geld_facetten(facetten_text) & GELD_AUSSERHALB)))
         if geld_gewollt:
             try:
-                geld = qa.geld_kontext(store, ausloeser, ausloeser, "money")
+                geld = qa.geld_kontext(store, facetten_text, ausloeser, "money")
             except Exception:  # noqa: BLE001 — Zahlen sind Zusatz, nie Blocker
                 geld = {}
+
+    # Beide Bedingungen des Prompt-Absatzes (kern/prompts.py::
+    # ZWEI_ZAEHLWEISEN_REGEL): die Frage nennt „Haushalt" ohne Zählweise
+    # UND beide Zahlen stehen danach wirklich im Kontext — fällt eine Quelle
+    # aus (keine Konzern-Daten ohne Ingest-Lauf), gibt es auch keine Regel,
+    # die eine Zahl verspricht, die gar nicht da ist.
+    zwei_zaehlweisen = bool(
+        zwei_zaehlweisen_frage_ and geld.get("haushalt") and geld.get("konzern"))
 
     # Der Wegweiser: alle fünfzehn Haushalts-Seiten mit einem Satz dazu, was
     # dort steht. Er ist die Voraussetzung dafür, dass Lotti auf die richtige
@@ -834,6 +882,9 @@ def screen_context(store, screen: Screen, question: str, *,
         "record": _record_block(store, screen),
         "glossary": begriffe,
         "geld": geld,
+        # PR 27: beide Bedingungen erfüllt — der Prompt bekommt den Absatz
+        # „Zwei Zählweisen" (kern/prompts.py::ZWEI_ZAEHLWEISEN_REGEL).
+        "zwei_zaehlweisen": zwei_zaehlweisen,
         # Wer selbst fragt, bekommt den vollen Deckel der KI-Frage: Dann
         # tragen die Zahlen die Antwort und dürfen nicht als dritter
         # Baustein herausfallen (s. GELD_MAX).
@@ -887,6 +938,11 @@ def explain_messages(screen: Screen, question: str, ctx: dict,
         # Die Verweis-Regel steht NUR im Prompt, wenn es auch etwas zu
         # verweisen gibt — der Grund steht bei `prompts.WEGWEISER_REGEL`.
         wegweiser_regel=prompts.WEGWEISER_REGEL if ctx.get("wegweiser") else "",
+        # PR 27: derselbe bedingte Bau wie `wegweiser_regel` — eine Regel,
+        # die IMMER im Prompt steht, kostet die Fälle, für die sie nicht
+        # gilt (Regel aus PR 21). Ohne das Flag ist der Prompt zeichengleich
+        # mit dem von vorher.
+        zwei_zaehlweisen=prompts.ZWEI_ZAEHLWEISEN_REGEL if ctx.get("zwei_zaehlweisen") else "",
         screen=_screen_block(screen),
         anker=_anker_block(screen),
         question=kuerze(question, QUESTION_MAX) or "(keine eigene Frage — erklär das Gezeigte)",
