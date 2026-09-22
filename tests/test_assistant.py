@@ -1762,3 +1762,177 @@ def test_prompt_bleibt_ohne_das_flag_zeichengleich():
     ohne_eintrag = _prompt(screen)  # kein "zwei_zaehlweisen" in ctx_extra
     ausdruecklich_aus = _prompt(screen, zwei_zaehlweisen=False)
     assert ohne_eintrag == ausdruecklich_aus
+
+
+# --- 14. Einordnung statt Bewertung (PR 26) ---------------------------------
+#
+# „Keine Bewertung" bleibt die Regel: Ob 337 Mio. € Schulden viel sind,
+# entscheidet nicht Lotti. Die Frage hat aber eine Antwort, die keine
+# Bewertung ist — der Betrag je Einwohner*in und die anderen kreisfreien
+# Städte. Gerechnet wird SERVERSEITIG; das Modell bekommt die fertige Zahl.
+
+@pytest.mark.parametrize("frage", [
+    "Ist das viel?",
+    "Sind 337 Millionen Euro Schulden viel für Oldenburg?",
+    "Ist das normal?",
+    "Ist der Schuldenstand hoch?",
+    "Ist das gut oder schlecht?",
+    "Wie steht Oldenburg beim Haushalt im Vergleich da?",
+    "Wie schneidet Oldenburg ab?",
+    "Wie viel Schulden hat Oldenburg pro Kopf?",
+    "Wie hoch sind die Ausgaben je Einwohner?",
+    "Liegt Oldenburg über dem Durchschnitt?",
+    "Verglichen mit Osnabrück?",
+])
+def test_einordnungsfrage_wird_erkannt(frage):
+    assert lotti.einordnungsfrage(frage)
+
+
+@pytest.mark.parametrize("frage", [
+    # DER Fall: „wie viel" ist eine Mengenfrage, keine Einordnungsfrage. Das
+    # Wort „viel" steht darin vor dem Verb und allein — kein Zweig trifft.
+    "Wie viel Schulden hat die Stadt?",
+    "Wie viel nimmt die Stadt an Gewerbesteuer ein?",
+    "Wie viel ist das in Oldenburg?",
+    "Wie viele Stellen stehen im Stellenplan der Stadt?",
+    # „Wie hoch ist …" fragt nach dem Betrag, nicht nach dem Maßstab.
+    "Wie hoch ist der Schuldenstand der Stadt?",
+    "Wie groß ist der Haushalt der Stadt?",
+    "Wie groß ist der Gesamthaushalt der Stadt inkl. der Eigenbetriebe?",
+    "Was sehe ich hier?",
+    "Was ist eine Beratungsfolge?",
+    "Wer hat dagegen gestimmt?",
+    "",
+])
+def test_eine_mengenfrage_ist_keine_einordnungsfrage(frage):
+    assert not lotti.einordnungsfrage(frage)
+
+
+#: Eine Attrappe des Geld-Kontexts mit echten Zahlen vom 22.09.2026: der
+#: Schuldenstand 2025, die Konzern-Aufwendungen 2024 und die Einwohnerreihe.
+_GELD_ATTRAPPE = {
+    # `abgrenzung` und `weitere` gehören zum Schulden-Baustein und sind hier
+    # nicht Zierrat: `qa._schulden_block` läuft über dieselbe Attrappe.
+    "schulden": {"year": 2025, "total": 336_994_000.0, "weitere": [],
+                 "abgrenzung": "Stadt als Rechtsträger, ohne Beteiligungen"},
+    "konzern": {"year": 2024, "expenses": 1_234_483_072.81},
+    "population": {"latest": {"year": 2025, "population": 176_614},
+                   "series": [{"year": 2024, "population": 176_242},
+                              {"year": 2025, "population": 176_614}]},
+}
+
+
+def test_die_pro_kopf_zahl_wird_gerechnet_und_nennt_beide_jahre():
+    """336.994.000 € ÷ 176.614 = 1.908 € — dieselbe Zahl, die auch die Quelle
+    selbst als `per_capita` führt (Probe gegen `council_debt`, 22.09.2026)."""
+    zeilen = lotti._einordnung(_GELD_ATTRAPPE, _GELD_ATTRAPPE["population"])
+    schulden = next(z for z in zeilen if "Schuldenstand" in z)
+    assert "1.908 € je Einwohner*in" in schulden
+    # Beide Jahre: das der Summe und das des Nenners.
+    assert "2025:" in schulden and "Ende 2025" in schulden
+    assert "," not in schulden.split("= ")[1].split(" €")[0]  # keine Nachkommastellen
+
+
+def test_der_nenner_kommt_aus_dem_jahr_der_summe():
+    """Zwischen 2022 und 2025 ist Oldenburg um gut 6.000 Menschen gewachsen.
+    Eine Konzern-Zahl von 2024 durch die Einwohner von 2025 geteilt ergäbe
+    einen Wert, den die Stadt nirgends so ausweist."""
+    zeilen = lotti._einordnung(_GELD_ATTRAPPE, _GELD_ATTRAPPE["population"])
+    konzern = next(z for z in zeilen if "Konzern" in z)
+    assert "176.242" in konzern and "Ende 2024" in konzern
+    assert "7.004 € je Einwohner*in" in konzern
+
+
+def test_ohne_einwohnerzahl_wird_nichts_gerechnet():
+    ohne = {k: v for k, v in _GELD_ATTRAPPE.items() if k != "population"}
+    assert lotti._einordnung(ohne, None) == []
+    assert lotti._einordnung_block(ohne) == ""
+
+
+def test_ohne_einwohnerzahl_steht_auch_die_regel_nicht_im_prompt():
+    """Der Absatz und seine Regel hängen an DERSELBEN Bedingung: Eine Regel,
+    die „sag es je Einwohner*in" verlangt, während keine solche Zahl im
+    Kontext steht, ist eine Einladung zum Erfinden."""
+    screen = lotti.Screen(route="/haushalt/schulden")
+    ohne = {k: v for k, v in _GELD_ATTRAPPE.items() if k != "population"}
+    p = _prompt(screen, "Ist das viel?", einordnung=True, geld=ohne)
+    assert "ZUR EINORDNUNG" not in p
+    assert "MASSSTAB" not in p
+
+
+def test_mit_zahlen_stehen_absatz_und_regel_im_prompt():
+    screen = lotti.Screen(route="/haushalt/schulden")
+    p = _prompt(screen, "Ist das viel?", einordnung=True, geld=_GELD_ATTRAPPE)
+    assert "ZUR EINORDNUNG" in p and "1.908 €" in p
+    assert "MASSSTAB" in p
+    # Der Eval prüft `must_not_number` gegen genau diesen Text — die
+    # gerechnete Zahl muss also IM PROMPT stehen, nicht nur im Kopf.
+    assert "1.908" in p
+
+
+def test_ohne_das_einordnungs_flag_bleibt_der_prompt_zeichengleich():
+    """Regel aus PR 21, dieselbe wie bei PR 27: Eine Regel, die immer im
+    Prompt steht, kostet die Fälle, für die sie nicht gilt."""
+    screen = lotti.Screen(route="/haushalt/schulden")
+    ohne_eintrag = _prompt(screen, geld=_GELD_ATTRAPPE)
+    ausdruecklich_aus = _prompt(screen, geld=_GELD_ATTRAPPE, einordnung=False)
+    assert ohne_eintrag == ausdruecklich_aus
+    assert "ZUR EINORDNUNG" not in ohne_eintrag
+
+
+def test_eine_einwohnerzahl_ist_keine_einordnung():
+    """Dass Oldenburg die zweitgrößte kreisfreie Stadt ist, sagt über den
+    Schuldenstand nichts — der Riegel neben dem in
+    `store.staedtevergleich_kontext`."""
+    count = {"indicator": "population", "year": 2026, "unit": "count",
+             "staedte": [{"city": "Braunschweig", "value": 253016.0},
+                         {"city": "Oldenburg", "value": 176410.0}]}
+    assert lotti._vergleichs_zeile(count) == ""
+
+
+def test_die_vergleichszeile_zaehlt_darueber_und_darunter():
+    v = {"indicator": "steuerkraftmesszahl", "year": 2026, "unit": "teur",
+         "staedte": [{"city": "Braunschweig", "value": 384070.0},
+                     {"city": "Oldenburg", "value": 348164.0},
+                     {"city": "Emden", "value": 74287.0}]}
+    zeile = lotti._vergleichs_zeile(v)
+    # Der Rang ausdrücklich: Aus „1 darüber, 1 darunter" machte das Modell
+    # sonst ein „im Mittelfeld" (gemessen 22.09.2026).
+    assert "Rang 2 von 3" in zeile and "HÖCHSTEN Wert an gezählt" in zeile
+    assert "1 Stadt darüber" in zeile and "1 Stadt darunter" in zeile
+    # „teur" heißt Tausend Euro — als „348.164" neben dem Kürzel schriebe das
+    # Modell die Zahl um den Faktor 1.000 falsch ab.
+    assert "348,2 Mio. €" in zeile and "teur" not in zeile
+
+
+def test_eine_einordnungsfrage_zieht_einwohner_und_vergleich(monkeypatch):
+    """Beide Facetten haben ihre eigenen, engen Wörter und kämen von „Ist das
+    viel?" nie von selbst mit. Wie in PR 27 wächst nur der Text der
+    FACETTEN-Erkennung, nicht die Suchbegriffe."""
+    gesehen: dict = {}
+
+    def merke(store, frage, begriffe="", typ="topic"):
+        gesehen["frage"] = frage
+        gesehen["begriffe"] = begriffe
+        return {"facets": ["schulden", "population", "vergleich"]}
+
+    monkeypatch.setattr(qa, "geld_kontext", merke)
+    ctx = lotti.screen_context(_Store(), lotti.Screen(route="/haushalt/schulden"),
+                               "Ist das viel?", permissions=BUDGET)
+    assert "einwohner" in gesehen["frage"] and "vergleich" in gesehen["frage"]
+    assert gesehen["begriffe"] == "Ist das viel?"
+    assert ctx["einordnung"] is True
+
+
+def test_ausserhalb_des_haushalts_oeffnet_die_einordnung_kein_tor(monkeypatch):
+    """„vergleich" steht in GELD_AUSSERHALB. Vor dem Tor eingesetzt, hätte
+    ein „Ist das viel?" auf einer BESCHLUSS-Seite den Städtevergleich in den
+    Prompt gezogen — neben Fremdtext, ohne eine Haushaltszahl, auf die er
+    sich bezieht."""
+    gerufen: list = []
+    monkeypatch.setattr(qa, "geld_kontext",
+                        lambda *a, **k: gerufen.append(a) or {"facets": []})
+    ctx = lotti.screen_context(_Store(), lotti.Screen(route="/council/decision"),
+                               "Ist das viel?", permissions=BUDGET)
+    assert gerufen == []
+    assert ctx["geld"] == {}

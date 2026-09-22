@@ -603,3 +603,22 @@ def test_endpunkt_liefert_werte_und_den_beleg(tmp_path, kfa2026):
         assert answer["citation"]["decision_id"] is None
     finally:
         store.close()
+
+
+def test_der_kontext_nimmt_die_kennzahl_nicht_den_nenner(tmp_path, kfa2026):
+    """Die Reihe speichert Messzahl UND Einwohnerzahl (die Division ist
+    unsere, nicht die des Landesamts). Beide haben acht Zeilen, und die
+    Auswahl entschied den Gleichstand alphabetisch: „population" vor
+    „steuerkraftmesszahl". Gemessen am 22.09.2026 kam als „IM VERGLEICH"-
+    Baustein der KI-Frage deshalb die EINWOHNERZAHL der acht Städte — eine
+    Einordnung, die über die Frage nichts sagt.
+    """
+    store = CouncilStore(tmp_path / "c.sqlite")
+    try:
+        store.save_staedtevergleich(
+            "tax_capacity", sv.zeilen_steuerkraft(sv.lies_kfa(kfa2026)), _herkunft())
+        ctx = store.staedtevergleich_kontext()
+        assert ctx and ctx["indicator"] == "steuerkraftmesszahl"
+        assert ctx["unit"] == "teur"
+    finally:
+        store.close()
