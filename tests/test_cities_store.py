@@ -401,8 +401,10 @@ def test_die_echten_migrationen_sind_wiederholbar(tmp_path):
     also zum ersten Mal in diesem Pfad."""
     pfad = tmp_path / "cities.sqlite"
     CitiesStore(pfad).close()
+    from council.cities.schema import SCHEMA_VERSION
+
     soll = _form(pfad)
-    for stand in range(8):
+    for stand in range(SCHEMA_VERSION):
         _stand_setzen(pfad, stand)
         CitiesStore(pfad).close()
         assert _form(pfad) == soll, f"nach einem Lauf ab Stand {stand}"
