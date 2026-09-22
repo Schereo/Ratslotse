@@ -231,6 +231,47 @@ def _with_routing(kwargs: dict[str, Any], zdr: bool = True) -> dict[str, Any]:
     return {**kwargs, "extra_body": extra_body}
 
 
+# Flex-Tarif: derselbe Aufruf, halber Preis, dafür darf der Anbieter ihn bei
+# Engpass abweisen. Gemessen am 22.09.2026 am Tragweite-Golden-Set (30
+# Beschlüsse, je 5 Läufe; Tabelle in docs/modell-batch-flex.md):
+#
+#   gpt-5.6-luna   normal ρ 0,839  27,2/30  0,105 ct/Aufruf   flex ρ 0,866  27,8/30  0,055 ct
+#   gpt-6-luna     normal ρ 0,810  26,5/30  0,048 ct/Aufruf   flex ρ 0,855  26,8/30  0,023 ct
+#
+# Gleiche Qualität, gleiche Dauer, keine einzige Abweisung in 24 Flex-Aufrufen.
+# Zwei Bedingungen hängen daran:
+#
+# ① Flex-Endpunkte haben KEIN ZDR. Mit `zdr: true` im Routing-Block ignoriert
+#   OpenRouter `service_tier` still (Luna 5.6 ging an Azure, `service_tier:
+#   default`, voller Preis) oder findet gar keinen Endpunkt (GPT-6 Luna: 404).
+#   Deshalb fällt `zdr` hier weg — und deshalb ist Flex nur für Features
+#   erlaubt, für die `zdr_pflicht` nein sagt. `data_collection: deny` und die
+#   China-Liste bleiben.
+# ② Eine Abweisung darf keinen Stapel kosten: Dann läuft derselbe Aufruf im
+#   normalen Tarif (und dessen Routing) noch einmal.
+TARIFE = ("normal", "flex")
+
+
+class FlexNichtErlaubt(ValueError):
+    """Flex für ein Feature, dessen Aufrufe nur an ZDR-Anbieter dürfen.
+
+    Ein Fehler statt eines stillen Rückfalls: Wer ``_tarif="flex"`` schreibt,
+    glaubt, die Hälfte zu sparen. Sähe er stattdessen den vollen Preis, fiele
+    das erst in der Monatsabrechnung auf.
+    """
+
+
+def _flex_kwargs(kwargs: dict[str, Any]) -> dict[str, Any]:
+    """Die Anfrage im Flex-Tarif: nur ``service_tier`` dazu.
+
+    Das Routing ohne ZDR baut ``_create`` selbst (``_zdr=False``, von
+    ``chat_complete`` aus ``zdr_pflicht`` gesetzt). Flex kommt nur für
+    solche Features hierher, ein zweiter ZDR-Pfad wäre also doppelt.
+    """
+    extra_body = {**(kwargs.get("extra_body") or {}), "service_tier": "flex"}
+    return {**kwargs, "extra_body": extra_body}
+
+
 _client: OpenAI | None = None
 
 
@@ -407,16 +448,30 @@ def chat_complete(**kwargs: Any):
     gewünschte auch dann nicht antwortet (``ersatz_fuer(MODEL)``). Die
     Kostenzählung trägt das Modell, das wirklich geantwortet hat. Beides ist
     für Cron-Läufe gedacht — eine Web-Anfrage darf nicht minutenlang hängen.
+
+    ``_tarif="flex"`` ruft im Flex-Tarif (halber Preis, s. ``TARIFE``). Nur
+    für Features ohne ZDR-Pflicht — sonst ``FlexNichtErlaubt``. Weist der
+    Anbieter ab, läuft derselbe Aufruf im normalen Tarif.
     """
     feature = kwargs.pop("_feature", None)
     kwargs["_zdr"] = zdr_pflicht(feature)
     geduld = bool(kwargs.pop("_geduld", False))
     ersatz = list(kwargs.pop("_ersatz", None) or [])
+    tarif = kwargs.pop("_tarif", None) or "normal"
+    if tarif not in TARIFE:
+        raise ValueError(f"unbekannter Tarif {tarif!r} — erlaubt: {', '.join(TARIFE)}")
+    if tarif == "flex" and zdr_pflicht(feature):
+        raise FlexNichtErlaubt(
+            f"Flex für {feature or 'einen Aufruf ohne _feature'!r}: Das Feature darf nur "
+            "an ZDR-Anbieter, und Flex-Endpunkte haben kein ZDR.")
     modelle = [kwargs.get("model"), *ersatz]
     for i, model in enumerate(modelle):
         versuch = {**kwargs, "model": model}
         try:
-            resp = _create_geduldig(versuch) if geduld else _create(**versuch)
+            if tarif == "flex":
+                resp = _create_flex(versuch, geduld)
+            else:
+                resp = _create_geduldig(versuch) if geduld else _create(**versuch)
         except Exception as exc:  # noqa: BLE001 — nur Vorübergehendes wird ersetzt
             if i == len(modelle) - 1 or not _is_transient(exc):
                 raise
@@ -425,6 +480,27 @@ def chat_complete(**kwargs: Any):
         _record_usage(feature, model, getattr(resp, "usage", None))
         return resp
     raise AssertionError("unerreichbar: kein Modell")  # pragma: no cover
+
+
+def _create_flex(kwargs: dict[str, Any], geduld: bool):
+    """Erst Flex, bei Abweisung derselbe Aufruf im normalen Tarif.
+
+    Wie eine Abweisung aussieht, ließ sich am 22.09.2026 nicht provozieren
+    (0 von 24 Aufrufen). OpenAI dokumentiert 429 „Resource Unavailable";
+    OpenRouter kann ebenso 404 (kein Endpunkt) oder einen 200er ohne
+    ``choices`` liefern. Deshalb fängt der Rückfall jeden Fehler — außer einem
+    Inhaltsfilter-Treffer: Der hinge am Text und träfe den normalen Tarif
+    genauso. Modelle ganz ohne Flex-Endpunkt (DeepSeek) beantwortet OpenRouter
+    ohne Fehler im normalen Tarif; dort gibt es nichts zurückzufallen.
+    """
+    try:
+        return _create(**_flex_kwargs(kwargs))
+    except Exception as exc:  # noqa: BLE001 — Rückfall, s. o.
+        if is_content_filter(exc):
+            raise
+        print(f"  ↩️ {kwargs.get('model')}: Flex abgewiesen ({exc!r}) — normaler Tarif",
+              flush=True)
+    return _create_geduldig(kwargs) if geduld else _create(**kwargs)
 
 
 def _create_geduldig(kwargs: dict[str, Any]):
