@@ -643,6 +643,16 @@ class BookmarkList(TypedDict):
 # --------------------------------------------------------------------------
 
 
+class AssistantStarters(TypedDict):
+    """Die zwei kuratierten Fragen fürs leere Lotti-Fenster einer Seite.
+
+    Kein Modellaufruf: Die Fragen stehen als Code in ``kern/knowledge.py``
+    (``PageKnowledge.starters``); der Endpunkt liefert sie nur route-genau
+    aus, damit Web und App dieselben zeigen.
+    """
+    starters: list[str]
+
+
 class ConversationRow(TypedDict):
     id: int
     title: str

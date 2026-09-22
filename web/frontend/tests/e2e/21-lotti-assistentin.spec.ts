@@ -177,6 +177,48 @@ test.describe("Lotti-Knopf und -Fenster", () => {
     await expect(fenster(page).getByText(ANTWORT)).toBeVisible();
   });
 
+  test("das leere Fenster zeigt zwei Startfragen plus „Was sehe ich hier?“ (PR 25)",
+    async ({ page }) => {
+      // Die Fragen stehen als Code in `kern/knowledge.py::PAGES["/dashboard"]`
+      // — kein Modellaufruf. `GET /assistant/starters` selbst wird trotzdem
+      // gestubbt: Der Schalter `lotti-assistentin` gilt hier nur CLIENTSEITIG
+      // (`schalterAn` fälscht `/api/app-config`) — der echte Testserver läuft
+      // ohne ihn, und ein Aufruf, der wirklich bei ihm ankommt, bekäme 404.
+      // Genau dasselbe gilt für `/explain`, nur läuft der in jedem Test dieser
+      // Datei ohnehin schon gestubbt.
+      await page.route("**/api/council/assistant/starters*", (route) =>
+        route.fulfill({
+          status: 200, contentType: "application/json",
+          body: JSON.stringify({
+            starters: ["Werden auch meine eigenen Viertel berücksichtigt?",
+                      "Wählt die Seite selbst aus, was wichtig ist?"],
+          }),
+        }).catch(() => { /* Test ist schon zu Ende */ }),
+      );
+      let geschickt: Record<string, unknown> | null = null;
+      await page.route("**/api/council/explain", async (route) => {
+        geschickt = route.request().postDataJSON();
+        await route.fulfill({ status: 200, contentType: "text/event-stream", body: STROM() })
+          .catch(() => { /* Test ist schon zu Ende */ });
+      });
+      await page.goto("/dashboard");
+      await knopf(page).click();
+      const erste = fenster(page).getByRole("button", { name: "Werden auch meine eigenen Viertel berücksichtigt?" });
+      const zweite = fenster(page).getByRole("button", { name: "Wählt die Seite selbst aus, was wichtig ist?" });
+      await expect(erste).toBeVisible();
+      await expect(zweite).toBeVisible();
+      await expect(fenster(page).getByRole("button", { name: "Was sehe ich hier?" })).toBeVisible();
+
+      await erste.click();
+      await expect(fenster(page).getByText(ANTWORT)).toBeVisible();
+      expect(geschickt!.question).toBe("Werden auch meine eigenen Viertel berücksichtigt?");
+
+      // Nach einer Antwort ist das Fenster nicht mehr leer — keine Startfragen
+      // mehr, dieselbe Regel wie bei den Grund-Chips (PR 24).
+      await expect(erste).toHaveCount(0);
+      await expect(zweite).toHaveCount(0);
+    });
+
   test("unter der Modell-Antwort stehen zwei Daumen, und sie melden die Quelle",
     async ({ page }) => {
       // B6 der zweiten Durchsicht: Der Endpunkt nimmt `source = "lotti"` seit

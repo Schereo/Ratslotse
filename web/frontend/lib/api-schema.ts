@@ -1510,6 +1510,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/council/assistant/starters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Assistant Starters
+         * @description Die zwei kuratierten Startfragen fürs leere Lotti-Fenster dieser Seite.
+         *
+         *     **Kein Modellaufruf, keine Datenbank** — die Fragen stehen als Code in
+         *     ``kern/knowledge.py``; dieser Endpunkt normalisiert nur die Route wie
+         *     ``/explain`` und liefert sie route-genau aus. Der Client holt ihn einmal
+         *     je Route (React Query, wie ``ThemenBruecke`` in ``council-qa.tsx``) und
+         *     fragt ihn danach nicht mehr an, solange das Fenster offen bleibt.
+         *
+         *     **Ohne das Recht der Seite: leere Liste, kein 403.** Anders als bei
+         *     ``/explain`` steckt hier kein geschützter Inhalt hinter dem Riegel — die
+         *     beiden Fragen sind derselbe kuratierte Text, der in diesem Modul im
+         *     öffentlichen Repo steht, keine Haushaltszahl. Ein 403 wäre außerdem eine
+         *     Fehlermeldung für einen Aufruf, den niemand ausgelöst hat: Das Fenster
+         *     holt die Startfragen VON SELBST beim Öffnen, nicht auf einen Klick, und
+         *     ein Konto ohne `budget` sieht den Haushalts-Knopf ohnehin nie. Eine leere
+         *     Liste lässt den Client einfach bei „Was sehe ich hier?" — dieselbe
+         *     Oberfläche wie auf einer Seite, die dieses Modul gar nicht kennt.
+         */
+        get: operations["assistant_starters_api_council_assistant_starters_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/council/budget": {
         parameters: {
             query?: never;
@@ -6962,6 +6998,18 @@ export interface components {
         AssistantEventBody: {
             /** Kind */
             kind: string;
+        };
+        /**
+         * AssistantStarters
+         * @description Die zwei kuratierten Fragen fürs leere Lotti-Fenster einer Seite.
+         *
+         *     Kein Modellaufruf: Die Fragen stehen als Code in ``kern/knowledge.py``
+         *     (``PageKnowledge.starters``); der Endpunkt liefert sie nur route-genau
+         *     aus, damit Web und App dieselben zeigen.
+         */
+        AssistantStarters: {
+            /** Starters */
+            starters: string[];
         };
         /**
          * Attendance
@@ -16490,6 +16538,37 @@ export interface operations {
             };
         };
     };
+    assistant_starters_api_council_assistant_starters_get: {
+        parameters: {
+            query?: {
+                route?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssistantStarters"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     haushalt_uebersicht_api_council_budget_get: {
         parameters: {
             query?: {
@@ -21429,4 +21508,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 872abcfaead5740c292a0e37f3af382b5be176c0ec6356ea26658c3ae41fb57d
+// vertrag-sha256: 0c69756c60d6d4ffc1e0ece493abbd4c887d4b5608b75d5c459508792c170d25

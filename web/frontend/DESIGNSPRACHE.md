@@ -434,12 +434,18 @@ iOS-Schrift.
   „Lotti erklärt's einfach erklären" ist der Fall, gegen den die Regel
   gebaut ist — lieber kein Chip als ein alberner.
   Chip-Namen sind Handlungen („Anzeigetafel erklären", „Weiter zu: Woher
-  kommt das Geld?"), keine Etiketten. Die **Grund-Chips** („Was sehe ich
-  hier?", „Etwas auf der Seite zeigen") stehen nur im leeren Fenster; danach
-  trägt der Composer-Platzhalter die Aufforderung und der Erklär-Modus wohnt
-  als stilles Icon (`MousePointerClick`) an seiner linken Seite. „Markiertes
-  erklären" bleibt, solange etwas markiert ist — er antwortet auf eine
-  Handlung, er ist kein Dauerangebot.
+  kommt das Geld?"), keine Etiketten. Die **Grund-Chips** stehen nur im
+  leeren Fenster; danach trägt der Composer-Platzhalter die Aufforderung und
+  der Erklär-Modus wohnt als stilles Icon (`MousePointerClick`) an seiner
+  linken Seite. „Markiertes erklären" bleibt, solange etwas markiert ist — er
+  antwortet auf eine Handlung, er ist kein Dauerangebot. **Seit 22.09.2026
+  (PR 25) stehen an oberster Stelle zwei kuratierte Startfragen der Seite**
+  (`kern/knowledge.py::PageKnowledge.starters`, z. B. auf der Schulden-Seite
+  „Wie viel Schulden hat Oldenburg pro Kopf?") — wer nicht weiß, was er
+  fragen kann, fragt nichts, und zwei gute Fragen sagen das vor. „Was sehe
+  ich hier?" bleibt darunter als dritter, kleinerer Chip im Sekundärstil
+  (Rahmen `border-border`, blasser Text, kein gefüllter Primary-Ton): immer
+  noch die richtige Antwort, nur nicht mehr die lauteste.
   **Und was es NICHT mehr gibt: den Knopf „Den Rat fragen".** Er stand
   gefüllt unter jeder Runde, die ins Archiv weiterreichte. Tims Bild vom
   Bereichs-Steckbrief zeigte ihn zusammen mit zwei weiteren Chips, zwei

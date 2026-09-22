@@ -1547,3 +1547,104 @@ def test_eine_eigene_frage_hebt_den_geld_deckel(monkeypatch):
                                      permissions=frozenset({"budget"}))
     assert eigen["geld_max"] == qa.GELD_MAX_CHARS
     assert generisch["geld_max"] is None  # dann gilt der engere GELD_MAX
+
+
+# --- 11. Startfragen je Seite (PR 25) ---------------------------------------
+#
+# Das leere Fenster zeigt zwei kuratierte Fragen statt allein „Was sehe ich
+# hier?" — die häufigste Hürde ist nicht die Antwort, sondern die Frage. Jede
+# muss Lotti mit ihren heutigen Mitteln beantworten können: deterministisch
+# (Glossar, Kurzfassung, Seiten-Wissen, der Gegenstands-Block aus `refs`)
+# oder über eine Haushalts-Facette. Der zweite Weg lässt sich messen —
+# `qa.geld_facetten` ist deterministisch —, der erste nicht automatisiert;
+# dafür steht Regel 13 (im Browser mit echten Daten durchklicken).
+
+def test_jede_seite_hat_genau_zwei_startfragen():
+    for route, k in knowledge.PAGES.items():
+        assert len(k.starters) == 2, f"{route}: nicht genau zwei Startfragen"
+        for frage in k.starters:
+            assert frage.strip(), f"{route}: eine Startfrage ist leer"
+            assert frage.endswith("?"), f"{route}: keine Frage: {frage!r}"
+
+
+def test_startfragen_sind_hoechstens_60_zeichen():
+    for route, k in knowledge.PAGES.items():
+        for frage in k.starters:
+            assert len(frage) <= 60, f"{route}: zu lang ({len(frage)}): {frage!r}"
+
+
+def test_startfragen_sind_ueberall_eindeutig():
+    """Weder innerhalb einer Seite noch über alle Seiten hinweg — zwei
+    identische Fragen wären ein Zeichen, dass eine davon nur die Seite
+    beschreibt statt etwas Eigenes zu fragen."""
+    alle: list[str] = []
+    for route, k in knowledge.PAGES.items():
+        assert k.starters[0] != k.starters[1], f"{route}: dieselbe Frage doppelt"
+        alle.extend(k.starters)
+    dubletten = {f for f in alle if alle.count(f) > 1}
+    assert not dubletten, f"mehrfach vergeben: {dubletten}"
+
+
+def test_haushaltsseiten_ziehen_mit_mindestens_einer_startfrage_eine_facette():
+    """Eine Startfrage ohne Facette bekäme auf einer Haushalts-Seite keine
+    Zahl in den Kontext (`screen_context`) — die Antwort wäre entweder eine
+    Seitenbeschreibung oder geraten. Nicht BEIDE müssen ziehen: „Wie hat sich
+    das seit 2015 entwickelt?" darf an der ersten Frage derselben Seite
+    hängen, solange die erste eine Facette zieht (Plan-Beispiel Schulden)."""
+    for route, k in knowledge.PAGES.items():
+        if not knowledge.im_haushalt(route):
+            continue
+        facetten = [qa.geld_facetten(frage) for frage in k.starters]
+        assert any(facetten), f"{route}: keine der beiden Startfragen zieht eine Facette " \
+                              f"({dict(zip(k.starters, facetten))})"
+
+
+def test_ohne_schalter_gibt_es_auch_keine_startfragen(client, monkeypatch):
+    monkeypatch.setenv("FEATURE_FLAGS", "")
+    r = client.get("/api/council/assistant/starters", params={"route": "/dashboard"})
+    assert r.status_code == 404
+
+
+def test_startfragen_einer_bekannten_seite(client):
+    r = client.get("/api/council/assistant/starters", params={"route": "/dashboard"})
+    assert r.status_code == 200
+    assert r.json()["starters"] == list(knowledge.PAGES["/dashboard"].starters)
+
+
+def test_startfragen_werden_wie_bei_explain_normalisiert(client):
+    """Derselbe Weg wie `/explain`: Der Pfad zählt, `?tab=` nur als eine der
+    vier bekannten Kennungen."""
+    r = client.get("/api/council/assistant/starters",
+                   params={"route": "/council?tab=sessions&irrelevant=1"})
+    assert r.status_code == 200
+    assert r.json()["starters"] == list(knowledge.PAGES["/council?tab=sessions"].starters)
+
+
+def test_startfragen_einer_unbekannten_seite_sind_leer(client):
+    r = client.get("/api/council/assistant/starters", params={"route": "/gibtsnicht"})
+    assert r.status_code == 200
+    assert r.json()["starters"] == []
+
+
+def test_startfragen_einer_gesperrten_seite_sind_leer(client):
+    r = client.get("/api/council/assistant/starters", params={"route": "/account"})
+    assert r.status_code == 200
+    assert r.json()["starters"] == []
+
+
+def test_startfragen_ohne_das_recht_sind_leer_nicht_403(client, konto):
+    """Anders als `/explain`: Hier steckt kein geschützter Inhalt hinter dem
+    Riegel, nur derselbe kuratierte Text, der schon im Repo steht — und das
+    Fenster ruft diesen Endpunkt von selbst beim Öffnen auf, nicht auf einen
+    Klick. Ein 403 wäre eine Fehlermeldung für nichts, was passiert ist."""
+    konto["roles"] = ["user"]
+    r = client.get("/api/council/assistant/starters", params={"route": "/haushalt/schulden"})
+    assert r.status_code == 200
+    assert r.json()["starters"] == []
+
+
+def test_startfragen_mit_dem_recht(client, konto):
+    konto["roles"] = ["expert"]
+    r = client.get("/api/council/assistant/starters", params={"route": "/haushalt/schulden"})
+    assert r.status_code == 200
+    assert r.json()["starters"] == list(knowledge.PAGES["/haushalt/schulden"].starters)

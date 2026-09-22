@@ -3330,6 +3330,23 @@
         "title": "AssistantEventBody",
         "type": "object"
       },
+      "AssistantStarters": {
+        "description": "Die zwei kuratierten Fragen fürs leere Lotti-Fenster einer Seite.\n\nKein Modellaufruf: Die Fragen stehen als Code in ``kern/knowledge.py``\n(``PageKnowledge.starters``); der Endpunkt liefert sie nur route-genau\naus, damit Web und App dieselben zeigen.",
+        "properties": {
+          "starters": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Starters",
+            "type": "array"
+          }
+        },
+        "required": [
+          "starters"
+        ],
+        "title": "AssistantStarters",
+        "type": "object"
+      },
       "Attendance": {
         "description": "Eine Zeile der Anwesenheitsliste (``CouncilStore.get_attendance``).",
         "properties": {
@@ -24229,6 +24246,51 @@
           }
         },
         "summary": "Assistant Event",
+        "tags": [
+          "council"
+        ]
+      }
+    },
+    "/api/council/assistant/starters": {
+      "get": {
+        "description": "Die zwei kuratierten Startfragen fürs leere Lotti-Fenster dieser Seite.\n\n**Kein Modellaufruf, keine Datenbank** — die Fragen stehen als Code in\n``kern/knowledge.py``; dieser Endpunkt normalisiert nur die Route wie\n``/explain`` und liefert sie route-genau aus. Der Client holt ihn einmal\nje Route (React Query, wie ``ThemenBruecke`` in ``council-qa.tsx``) und\nfragt ihn danach nicht mehr an, solange das Fenster offen bleibt.\n\n**Ohne das Recht der Seite: leere Liste, kein 403.** Anders als bei\n``/explain`` steckt hier kein geschützter Inhalt hinter dem Riegel — die\nbeiden Fragen sind derselbe kuratierte Text, der in diesem Modul im\nöffentlichen Repo steht, keine Haushaltszahl. Ein 403 wäre außerdem eine\nFehlermeldung für einen Aufruf, den niemand ausgelöst hat: Das Fenster\nholt die Startfragen VON SELBST beim Öffnen, nicht auf einen Klick, und\nein Konto ohne `budget` sieht den Haushalts-Knopf ohnehin nie. Eine leere\nListe lässt den Client einfach bei „Was sehe ich hier?\" — dieselbe\nOberfläche wie auf einer Seite, die dieses Modul gar nicht kennt.",
+        "operationId": "assistant_starters_api_council_assistant_starters_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "route",
+            "required": false,
+            "schema": {
+              "default": "",
+              "maxLength": 200,
+              "title": "Route",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssistantStarters"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Assistant Starters",
         "tags": [
           "council"
         ]
