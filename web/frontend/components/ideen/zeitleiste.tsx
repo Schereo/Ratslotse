@@ -69,13 +69,16 @@ export function Zeitleiste({
       aria-label={label ?? satz(punkte)}
       className={cn("relative h-9", className)}
     >
-      <div className="absolute inset-x-0 top-1/2 h-px bg-border" aria-hidden />
+      {/* An die gedämpfte TEXTfarbe gebunden, nicht an `border`: Auf der
+          Anzeigetafel im Dunkelmodus liegt der Rahmenton einen Punkt neben
+          der Kartenfarbe, und die Linie verschwand (Bild vom 22.09.2026). */}
+      <div className="absolute inset-x-0 top-1/2 h-px bg-muted-foreground/35" aria-hidden />
       {jahre &&
         jahresmarken(achse).map((m) => (
           <div
             key={m.jahr}
             aria-hidden
-            className="absolute inset-y-0.5 border-l border-dashed border-border/80"
+            className="absolute inset-y-0.5 border-l border-dashed border-muted-foreground/25"
             style={{ left: `${m.anteil * 100}%` }}
           />
         ))}

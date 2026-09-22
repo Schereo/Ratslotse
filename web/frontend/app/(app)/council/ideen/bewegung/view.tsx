@@ -82,7 +82,7 @@ function Buehne({ detail }: { detail: Detail }) {
         {b.cities.map((c) => {
           const punkte = b.timeline.filter((p) => p.body_id === c.body_id);
           return (
-            <div key={c.body_id} className="grid grid-cols-[84px_minmax(0,1fr)] items-center gap-3 sm:grid-cols-[130px_minmax(0,1fr)]">
+            <div key={c.body_id} className="grid grid-cols-[100px_minmax(0,1fr)] items-center gap-3 sm:grid-cols-[130px_minmax(0,1fr)]">
               <span className="truncate text-[13px] font-semibold text-foreground sm:text-sm" title={c.city}>
                 {c.city}
               </span>
@@ -94,7 +94,7 @@ function Buehne({ detail }: { detail: Detail }) {
             </div>
           );
         })}
-        <div className="grid grid-cols-[84px_minmax(0,1fr)] gap-3 sm:grid-cols-[130px_minmax(0,1fr)]">
+        <div className="grid grid-cols-[100px_minmax(0,1fr)] gap-3 sm:grid-cols-[130px_minmax(0,1fr)]">
           <span />
           <Jahresskala achse={detail.axis} />
         </div>
@@ -211,13 +211,13 @@ function Rueckmeldung({ id }: { id: number }) {
   );
 }
 
-function UndInOldenburg({ detail }: { detail: Detail }) {
+function UndInOldenburg({ detail, kennung }: { detail: Detail; kennung: string }) {
   const u = detail.movement.oldenburg;
   const schonGezeigt = new Set([...(u?.evidence ?? []), ...(u?.related ?? [])].map((b) => b.kvonr));
   const eigene = detail.oldenburg_documents.filter((b) => !schonGezeigt.has(b.kvonr));
   return (
-    <section aria-labelledby="ol-titel" className="hh-tafel grid gap-3 rounded-[18px] p-4">
-      <h2 id="ol-titel" className="flex items-center gap-2 font-display text-base font-bold text-foreground">
+    <section aria-labelledby={kennung} className="hh-tafel grid gap-3 rounded-[18px] p-4">
+      <h2 id={kennung} className="flex items-center gap-2 font-display text-base font-bold text-foreground">
         <span aria-hidden className="h-2 w-2 rounded-[2px] bg-signal" />
         Und in Oldenburg?
       </h2>
@@ -373,15 +373,19 @@ export default function View() {
         <h1 className="font-display text-[26px] font-bold leading-tight text-foreground [text-wrap:balance] sm:text-[34px]">
           {b.label}
         </h1>
-        <p className="flex flex-wrap gap-x-4 gap-y-1 font-mono text-sm text-muted-foreground">
-          <span><b className="font-medium text-foreground">{b.cities.length}</b> Städte</span>
-          <span>{bilanz(b)}</span>
-          {zeitraum(b) && <span>{zeitraum(b)}</span>}
+        <p className="font-mono text-sm text-muted-foreground">
+          <b className="font-medium text-foreground">{b.cities.length}</b> Städte ·{" "}
+          {[bilanz(b), zeitraum(b)].filter(Boolean).join(" · ")}
         </p>
       </header>
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_330px]">
         <div className="grid min-w-0 gap-6">
+          {/* Auf dem Handy steht die Antwort, für die es die Seite gibt, oben —
+              in der Seitenspalte stünde sie unter der ganzen Chronik. */}
+          <div className="lg:hidden">
+            <UndInOldenburg detail={data} kennung="ol-titel-schmal" />
+          </div>
           <Buehne detail={data} />
           <section aria-labelledby="chronik-titel" className="grid gap-3">
             <h2 id="chronik-titel" className="font-display text-base font-bold text-foreground">
@@ -404,7 +408,9 @@ export default function View() {
           </section>
         </div>
         <aside className="grid gap-4 lg:sticky lg:top-[calc(env(safe-area-inset-top,0px)+16px)]">
-          <UndInOldenburg detail={data} />
+          <div className="hidden lg:block">
+            <UndInOldenburg detail={data} kennung="ol-titel" />
+          </div>
           <RaeteBilanz detail={data} />
           <Hinweis />
           <Aehnliche detail={data} von={von} />

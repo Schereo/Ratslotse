@@ -575,7 +575,9 @@ function zielFuer(b: Bewegung, z: Zustand): string {
   return `/council/ideen/bewegung?id=${b.cluster_id}${von ? `&von=${encodeURIComponent(von)}` : ""}`;
 }
 
-/** „Gerade in Bewegung": die großen — ab fünf Städten, Oldenburg noch offen.
+/** „Gerade in Bewegung": die großen — ab fünf Städten, Oldenburg noch offen,
+ *  die zuletzt bewegten zuerst. Nach „meiste Städte" sortiert zeigte sie
+ *  dieselben drei Karten, mit denen die Liste darunter beginnt.
  *
  *  Anzeigetafel, hell getönt, nie eine dunkle Karte im Hellmodus (Tims
  *  Regel). Sie steht nur in der ungefilterten Ansicht: Mit einem Feld oder
@@ -585,7 +587,7 @@ function Tafel({ zustand }: { zustand: Zustand }) {
     queryKey: ["bewegungen-tafel"],
     queryFn: () =>
       api.get<Bewegungen>(
-        "/council/cities/movements?min_cities=5&oldenburg=missing,partial&sort=staedte&per_page=3"),
+        "/council/cities/movements?min_cities=5&oldenburg=missing,partial&sort=zuletzt&per_page=3"),
     staleTime: 60 * 60 * 1000,
   });
   if (!data || data.items.length === 0) return null;
@@ -596,7 +598,7 @@ function Tafel({ zustand }: { zustand: Zustand }) {
           Gerade in Bewegung
         </h2>
         <span className="text-sm text-muted-foreground">
-          Ideen aus fünf und mehr Räten, die Oldenburg nicht oder nur halb hat
+          Zuletzt beraten: Ideen aus fünf und mehr Räten, die Oldenburg nicht oder nur halb hat
         </span>
       </div>
       <div className="grid gap-3 md:grid-cols-3">

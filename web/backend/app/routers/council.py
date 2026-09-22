@@ -2309,7 +2309,33 @@ def _belege_aufloesen(store: CouncilStore, kennungen: list,
             "date": (beschluss or {}).get("session_date"),
             "outcome": (beschluss or {}).get("outcome"),
         })
-    return [b for b in aus if b["title"]]
+    return _ohne_doppelte([b for b in aus if b["title"]])
+
+
+def _ohne_doppelte(belege: list[IdeaEvidence]) -> list[IdeaEvidence]:
+    """Denselben Vorgang nur einmal zeigen.
+
+    Ein Urteil nennt oft die Vorlage UND ihren Beschluss — beim Oldenburger
+    Wärmeplan standen so drei Zeilen für einen Ratsbeschluss (gesehen am
+    22.09.2026). Doppelt ist, was auf denselben Beschluss führt, oder ohne
+    Beschluss denselben Titel trägt wie ein schon gezeigter Beleg.
+    """
+    def norm(t: str) -> str:
+        return " ".join(t.lower().replace("- beschluss", "").split())
+
+    ids: set[int] = set()
+    titel: set[str] = set()
+    aus: list[IdeaEvidence] = []
+    for b in belege:
+        if b["decision_id"] is not None and b["decision_id"] in ids:
+            continue
+        if b["decision_id"] is None and norm(b["title"]) in titel:
+            continue
+        if b["decision_id"] is not None:
+            ids.add(b["decision_id"])
+        titel.add(norm(b["title"]))
+        aus.append(b)
+    return aus
 
 
 @router.get("/decision/{decision_id}/elsewhere")

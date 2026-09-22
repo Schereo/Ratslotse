@@ -482,6 +482,9 @@ struct MovementsSection: View {
                 "/api/council/cities/movements",
                 query: [URLQueryItem(name: "min_cities", value: "5"),
                         URLQueryItem(name: "oldenburg", value: "missing,partial"),
+                        // Die zuletzt bewegten — nach Städten sortiert stünden
+                        // hier dieselben drei wie oben in der Liste.
+                        URLQueryItem(name: "sort", value: "zuletzt"),
                         URLQueryItem(name: "per_page", value: "3")])
             tafel = r
         } catch {
