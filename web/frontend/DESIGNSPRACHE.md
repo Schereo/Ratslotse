@@ -410,9 +410,32 @@ iOS-Schrift.
   `lib/qa-schritte.ts`, die Schritte selbst meldet der Server als SSE-Rahmen
   `step`. Bis 22.09.2026 waren es 6-px-Punkte mit `animate-pulse` und kein
   Text — „man sieht fast nicht, dass da was lädt" (Tim). Bei reduzierter
-  Bewegung blinkt nur die Deckkraft. `role="status"`) → stille Chip-Aktionen unter jeder
-  Antwort („Den Rat fragen" gefüllt, wenn die Frage ins Archiv gehört, sonst
-  Ghost) → Vorschlags-Chips über dem Eingabefeld → Composer (s. u.).
+  Bewegung blinkt nur die Deckkraft. `role="status"`) → **höchstens ein
+  Chip** unter der letzten Antwort → Turn-Fußzeile (Daumen, Textlink) →
+  Composer (s. u.).
+  **Was unter einer Antwort steht — und was nicht.** Seit 22.09.2026 ist das
+  eine Entscheidung über die SUMME, nicht je Element: **ein** Chip mit dem
+  nächsten Schritt (Wegweiser › Baustein › Fachwort, `anschlussfragen`),
+  darunter die zwei Daumen und — nur unter einer Antwort, die nicht schon aus
+  dem Archiv kam — der stille Textlink „Im Ratsarchiv nachsehen". Alles
+  gehört der **letzten** Runde auf dieser Seite; ältere tragen nichts.
+  Chip-Namen sind Handlungen („Anzeigetafel erklären", „Weiter zu: Woher
+  kommt das Geld?"), keine Etiketten. Die **Grund-Chips** („Was sehe ich
+  hier?", „Etwas auf der Seite zeigen") stehen nur im leeren Fenster; danach
+  trägt der Composer-Platzhalter die Aufforderung und der Erklär-Modus wohnt
+  als stilles Icon (`MousePointerClick`) an seiner linken Seite. „Markiertes
+  erklären" bleibt, solange etwas markiert ist — er antwortet auf eine
+  Handlung, er ist kein Dauerangebot.
+  **Und was es NICHT mehr gibt: den Knopf „Den Rat fragen".** Er stand
+  gefüllt unter jeder Runde, die ins Archiv weiterreichte. Tims Bild vom
+  Bereichs-Steckbrief zeigte ihn zusammen mit zwei weiteren Chips, zwei
+  Daumen und zwei Grund-Chips — sieben Bedienelemente für eine Antwort, jedes
+  einzeln begründet („Es ist für den User sehr überfordernd"). Und er
+  verlangte eine Entscheidung, die niemand treffen kann: „Ich dachte, ich
+  frage gerade die Informationen aus dem Rat." Gehört eine Frage ins Archiv,
+  geht Lotti seither **von selbst** dorthin — sichtbar (Schritt-Text „Das
+  steht nicht auf der Seite — ich sehe im Ratsarchiv nach"), als eine Runde,
+  mit Belegen.
   **Darunter nichts mehr.** Bis 22.09.2026 stand dort eine feste Fußzeile
   („Erklärt aus Glossar, Seite und Haushaltsdaten. Keine Rechtsberatung, keine
   Bewertung."); sie ist ersatzlos weg — zwei Zeilen plus Trennlinie kosteten
