@@ -3831,7 +3831,10 @@ SSE_ERKLAERUNG: dict[int | str, dict[str, Any]] = {
             "(`{route, title}` einer anderen Haushalts-Seite, auf der die "
             "Sache ausführlich steht — geprüft gegen die bekannten Seiten und "
             "die Rechte des Kontos, sonst `null`), `glossary` "
-            "(die geprüften Fachwörter im Kontext) und `timings`\n"
+            "(die geprüften Fachwörter im Kontext), `evidence` (die Papiere "
+            "hinter den Haushaltszahlen, die im Prompt standen — je Eintrag "
+            "`label`, `year` und `url`; höchstens fünf, leer bei den Wegen "
+            "ohne Modell) und `timings`\n"
             "- `error` — die Erklärung ist fehlgeschlagen (`message`)\n\n"
             "Ein Verbindungsabriss ist folgenlos: Der Client kann erneut fragen."
         ),

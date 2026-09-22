@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, MousePointerClick, RotateCcw, Sparkles, X } from "lucide-react";
+import { ArrowRight, ExternalLink, MousePointerClick, RotateCcw, Sparkles, X } from "lucide-react";
 
 import { Mascot } from "@/components/mascot";
 import { AntwortText } from "@/components/qa-bausteine";
@@ -13,8 +13,8 @@ import { FeedbackDaumen } from "@/components/feedback-daumen";
 import { api, apiUrl, authHeaders, qs } from "@/lib/api";
 import type { ApiAntwort } from "@/lib/vertrag";
 import {
-  ankerKennung, ankerListe, ankerTreffer, anschlussfragen, auswahlText, chipTitel,
-  daumenZeigen, erklaerAktion,
+  ankerKennung, ankerListe, ankerTreffer, anschlussfragen, auswahlText, belegName,
+  chipTitel, daumenZeigen, erklaerAktion,
   ernteElement, gedaechtnis, kuerze, ortsfrage, refsAus, routeAus, seitenName,
   seitenTitel, seitenUeberschrift, trenneWeiter, ueberschriftenPfad, zaesur,
   type Anker, type Bildschirm, type NaechsteSeite,
@@ -62,6 +62,18 @@ export type LottiQuelle = {
   session_date?: string | null;
 };
 
+/** Ein Papier, das Lotti beim Antworten vorlag — aus dem `done`-Rahmen
+ *  (`evidence`) und aus dem gespeicherten Gespräch.
+ *
+ *  **Belege des KONTEXTS, nicht der einzelnen Zahl.** Welchen Satz das Modell
+ *  auf welche Zeile stützt, weiß niemand; was im Prompt stand, schon. Die
+ *  Zeile heißt deshalb „Grundlage:" und nicht „Quelle dieser Zahl". */
+export type LottiBeleg = {
+  label: string;
+  year?: number | null;
+  url?: string | null;
+};
+
 export type LottiTurn = {
   key: number;
   question: string;
@@ -69,6 +81,8 @@ export type LottiTurn = {
   /** Kam die Antwort aus dem Archiv? Dann trägt sie Belege. */
   ratsfrage?: boolean;
   quellen?: LottiQuelle[];
+  /** Die Papiere hinter den Haushaltszahlen im Prompt (höchstens fünf). */
+  evidence?: LottiBeleg[];
   cited?: number[];
   next: "ratsfrage" | null;
   /** Die Haushalts-Seite, auf der die Sache ausführlich steht — aus dem
@@ -610,6 +624,12 @@ export function LottiPanel({
             // baut sie auch nicht selbst.
             nextPage: (msg.next_page as NaechsteSeite | null) ?? null,
             mode: (msg.mode as string) ?? null,
+            // Die Papiere, die im Prompt standen. `?? []` und nicht
+            // `?? t.evidence`: Der `done`-Rahmen ist die vollständige
+            // Auskunft dieser Runde — käme er ohne Belege, wäre ein
+            // stehengebliebener Chip aus einem früheren Zustand eine
+            // Quellenangabe, die zu nichts mehr gehört.
+            evidence: (msg.evidence as LottiBeleg[]) ?? [],
           }));
           // `null` heißt: Der Server konnte oder durfte nicht (mehr) in dieses
           // Gespräch speichern — die tote Kennung nicht weiter mitschicken,
@@ -673,13 +693,17 @@ export function LottiPanel({
         if (abgebrochen) return;
         type Gespeichert = { question: string; answer: string; sources: {
           route?: string; element_title?: string; selection?: string;
-          mode?: string; next?: string | null } | null };
+          mode?: string; next?: string | null; evidence?: LottiBeleg[] } | null };
         setTurns((g.turns as Gespeichert[]).map((tn) => ({
           key: naechsterKey.current++,
           question: tn.question,
           answer: tn.answer,
           next: (tn.sources?.next as "ratsfrage" | null) ?? null,
           mode: tn.sources?.mode ?? null,
+          // Die Grundlage gehört zum Gespräch, nicht zur Sitzung: Ein
+          // geladener Verlauf, der die Zahlen zeigt und die Papiere
+          // verschweigt, wäre die schlechtere Hälfte davon.
+          evidence: tn.sources?.evidence ?? [],
           // Der Schnappschuss trägt die Route, aber keinen Seitennamen —
           // dann steht in der Zäsur die Route. Sie ist immerhin wahr.
           route: tn.sources?.route,
@@ -983,6 +1007,13 @@ export function LottiPanel({
                     das Fenster nur durchreicht; ein Daumen darunter bewertete
                     das Glossar, nicht die Assistentin — und stünde in
                     derselben Quote wie ihre Erklärungen. */}
+                {/* **Die Grundlage steht VOR den Daumen** — sie gehört zur
+                    Antwort, der Daumen ist das Urteil darüber. Wer wissen
+                    will, worauf das beruht, soll es lesen, bevor er bewertet.
+                    Sie ist kein Chip im Sinne von PR 24: Diese Regel zählt
+                    Angebote, die eine neue Runde auslösen; ein Beleg löst
+                    nichts aus, er öffnet ein Dokument. */}
+                {t.answer && !t.fehler && <Grundlage belege={t.evidence} />}
                 {(daumenZeigen(t) || archivLink) && (
                   <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
                     {daumenZeigen(t) && (
@@ -1122,6 +1153,64 @@ export function LottiPanel({
           Lotti nicht bewertet und nicht berät, setzt der Prompt durch
           (`kern/prompts.py`), nicht eine Zeile Kleingedrucktes. */}
     </div>
+  );
+}
+
+/** Worauf die Zahlen ruhen: „Grundlage: Jahresabschluss 2024 · …"
+ *
+ *  **Ehrlich beschriftet.** Das sind die Papiere, die im Prompt STANDEN —
+ *  nicht die Quelle einer bestimmten Zahl. Welchen Satz das Modell auf welche
+ *  Zeile stützt, weiß niemand; die Auswahl dagegen ist nachprüfbar (sie kommt
+ *  aus `qa.geld_auswahl`, derselben Schleife, die den Prompt füllt). Der
+ *  `title` sagt es noch einmal für alle, die hovern.
+ *
+ *  **Dieselbe Bauform wie der Dokumentbeleg der Haushalts-Seiten**
+ *  (`components/haushalt/source.tsx::Dokumentbeleg`): 11 px, gedämpfter
+ *  Fließtext, das Dokument als halbfetter Primärlink mit dem
+ *  Außen-Pfeil-Symbol. **Bewusst nachgebaut statt importiert**, und das ist
+ *  kein Versehen: Dieses Fenster lebt in der App-Hülle und lädt damit auf
+ *  JEDER Seite mit — `source.tsx` zöge `haushalt-quellen.ts` (50 KB),
+ *  `haushalt-dokumente.ts` und `haushalt-streit.ts` in das Bündel jeder
+ *  öffentlichen Seite, für zwölf Zeilen Markup. Wer die Optik dort ändert,
+ *  ändert sie hier mit.
+ *
+ *  Wie aus einem Provenienz-Titel ein Chip-Name wird (Untertitel weg, Jahr
+ *  nur wo es fehlt, dann kappen), steht in `lib/assistentin.ts::belegName` —
+ *  mit den gemessenen Titeln, an denen es sich entschieden hat.
+ */
+function Grundlage({ belege }: { belege?: LottiBeleg[] }) {
+  if (!belege?.length) return null;
+  return (
+    <p
+      data-lotti-grundlage
+      title="Quellen, die Lotti für diese Antwort vorlagen"
+      className="mt-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[11px] leading-relaxed text-muted-foreground"
+    >
+      <span className="font-medium">Grundlage:</span>
+      {belege.map((b, i) => {
+        const name = belegName(b);
+        return (
+          <span key={`${b.label}|${b.year ?? ""}|${b.url ?? ""}|${i}`}
+            className="inline-flex items-baseline gap-1">
+            {b.url ? (
+              <a href={b.url} target="_blank" rel="noopener noreferrer"
+                // Der volle Name im `title`: Gekappt wird, was nicht ins
+                // Fenster passt, nicht was wir wissen.
+                title={b.label}
+                className="inline-flex items-baseline gap-1 font-semibold text-primary hover:underline">
+                {name}
+                <ExternalLink className="h-3 w-3 flex-none self-center" aria-hidden />
+              </a>
+            ) : (
+              /* Kein Link, aber der Name bleibt — genau wie beim
+                 Dokumentbeleg: „Wir wissen, aus welchem Papier das stammt,
+                 nur nicht, wo es liegt" ist eine Auskunft. */
+              <span className="font-semibold text-foreground/80" title={b.label}>{name}</span>
+            )}
+          </span>
+        );
+      })}
+    </p>
   );
 }
 

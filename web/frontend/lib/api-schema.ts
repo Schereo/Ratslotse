@@ -17879,7 +17879,7 @@ export interface operations {
              *     - `step` — Fortschritt, `step` ist `context`, `answer` oder `archiv` (die Frage geht ins Beschluss-Archiv)
              *     - `token` — ein Stück Erklärungstext (`text`)
              *     - `replace` — ersetzt den bisher gesendeten Text vollständig
-             *     - `done` — Schluss-Ereignis mit `mode` (`deterministic` für die Wege ohne Modell, `handoff` für eine Archivfrage, die ohne Modellaufruf direkt an `POST /council/ask` geht — der Strom trägt dann keinen Text und kein `conversation_id` —, sonst `explain`), `next` (`ratsfrage`, wenn die Frage ins Beschluss-Archiv gehört, sonst `null`), `next_page` (`{route, title}` einer anderen Haushalts-Seite, auf der die Sache ausführlich steht — geprüft gegen die bekannten Seiten und die Rechte des Kontos, sonst `null`), `glossary` (die geprüften Fachwörter im Kontext) und `timings`
+             *     - `done` — Schluss-Ereignis mit `mode` (`deterministic` für die Wege ohne Modell, `handoff` für eine Archivfrage, die ohne Modellaufruf direkt an `POST /council/ask` geht — der Strom trägt dann keinen Text und kein `conversation_id` —, sonst `explain`), `next` (`ratsfrage`, wenn die Frage ins Beschluss-Archiv gehört, sonst `null`), `next_page` (`{route, title}` einer anderen Haushalts-Seite, auf der die Sache ausführlich steht — geprüft gegen die bekannten Seiten und die Rechte des Kontos, sonst `null`), `glossary` (die geprüften Fachwörter im Kontext), `evidence` (die Papiere hinter den Haushaltszahlen, die im Prompt standen — je Eintrag `label`, `year` und `url`; höchstens fünf, leer bei den Wegen ohne Modell) und `timings`
              *     - `error` — die Erklärung ist fehlgeschlagen (`message`)
              *
              *     Ein Verbindungsabriss ist folgenlos: Der Client kann erneut fragen.
@@ -21508,4 +21508,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 0c69756c60d6d4ffc1e0ece493abbd4c887d4b5608b75d5c459508792c170d25
+// vertrag-sha256: 08dcbe3314cce3e17d3f9e268d8f51bb6d44d62e8ff16d1924b6c52bcda4bdea

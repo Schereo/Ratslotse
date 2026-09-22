@@ -3531,7 +3531,8 @@ class ExplainBody(BaseModel):
 def _lotti_turn_speichern(ratslotse: Store, user: dict, body: ExplainBody,
                           screen: lotti.Screen, frage: str, antwort: str,
                           modus: str, weiter: str | None,
-                          glossar: list[str]) -> int | None:
+                          glossar: list[str],
+                          belege: list[dict] | None = None) -> int | None:
     """Lottis Runde ins Konto — **nur mit derselben Einwilligung wie „Frag den
     Rat"** (``web_users.saves_conversations``).
 
@@ -3566,6 +3567,12 @@ def _lotti_turn_speichern(ratslotse: Store, user: dict, body: ExplainBody,
             "mode": modus,
             "next": weiter,
             "glossary": glossar,
+            # Die Papiere, die im Prompt standen. Sie gehören in den
+            # Schnappschuss, weil sie die Antwort tragen: Ein geladenes
+            # Gespräch, das die Zahlen zeigt und die Quellen verschweigt,
+            # wäre die schlechtere Hälfte davon. Kein Seiteninhalt — Titel
+            # und Adresse eines öffentlichen Dokuments.
+            "evidence": belege or [],
         }, ensure_ascii=False)
         frage_text = frage or (screen.element_title
                                and f"Erklär mir: {screen.element_title}") or "Was sehe ich hier?"
@@ -3751,6 +3758,11 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
                 yield _sse({"type": "done", "mode": "handoff", "kind": "archiv",
                             "next": "ratsfrage", "next_page": None,
                             "glossary": [],
+                            # Kein Text, keine Zahlen, keine Grundlage. Das
+                            # Feld reist trotzdem mit: Ein `done`, dem es
+                            # fehlt, unterscheidet sich für den Client nicht
+                            # von einem, bei dem die Quellen verlorengingen.
+                            "evidence": [],
                             "timings": {"total_ms": round(
                                 (time.perf_counter() - t0) * 1000)}})
                 return
@@ -3768,6 +3780,11 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
                     ratslotse, user, body, screen, frage, text, "deterministic", None, [])
                 yield _sse({"type": "done", "mode": "deterministic", "kind": art,
                             "next": None, "next_page": None,
+                            # Geprüfter Text aus dem Haus (Glossar,
+                            # Seitenwissen, „Lotti erklärt's einfach") — er
+                            # ruht auf keiner Haushaltszahl, also steht auch
+                            # keine Grundlage darunter.
+                            "evidence": [],
                             "glossary": [], "timings": zeiten,
                             "conversation_id": conversation_id})
                 return
@@ -3834,8 +3851,15 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
                       " ".join(f"{k}={v}" for k, v in sorted(zeiten.items())))
             ratslotse.record_activity(user["id"], "assistant_explain", client_kind(request))
             begriffe = [b["begriff"] for b in ctx.get("glossary") or []]
+            # **Aus dem KONTEXT, nicht aus dem Antworttext.** Welche Zeile das
+            # Modell benutzt hat, weiß niemand — was ihm vorlag, schon. Die
+            # Liste kommt deshalb aus derselben Auswahl, die den Prompt
+            # gefüllt hat (`qa.geld_auswahl`), und die Beschriftung im Fenster
+            # sagt genau das: „Grundlage:".
+            belege = lotti.kontext_belege(ctx)
             conversation_id = _lotti_turn_speichern(
-                ratslotse, user, body, screen, frage, text, "explain", weiter, begriffe)
+                ratslotse, user, body, screen, frage, text, "explain", weiter, begriffe,
+                belege)
             yield _sse({"type": "done", "mode": "explain", "kind": "model",
                         "next": weiter,
                         # Der Verweis auf eine andere Haushalts-Seite, als Ziel
@@ -3848,6 +3872,9 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
                         # Die Fachwörter, die im Kontext standen — das Fenster
                         # macht daraus Verweise aufs Glossar.
                         "glossary": begriffe,
+                        # Die Papiere hinter den Zahlen im Prompt, höchstens
+                        # fünf (`qa.GELD_BELEGE_MAX`).
+                        "evidence": belege,
                         "timings": zeiten,
                         "conversation_id": conversation_id})
         except Exception:  # noqa: BLE001 — Fehler beim Client sichtbar machen

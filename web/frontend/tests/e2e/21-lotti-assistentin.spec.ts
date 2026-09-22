@@ -96,6 +96,28 @@ const STROM_SEITE = [
   })}\n\n`,
 ].join("");
 
+/** Eine Antwort mit Haushaltszahlen (PR 28). Die Papiere reisen NICHT im
+ *  Text, sondern im `done`-Rahmen als `evidence` — dieselbe Auswahl, die den
+ *  Prompt gefüllt hat (`qa.geld_auswahl`).
+ *
+ *  Drei Belege, drei Fälle: einer, dessen Jahr noch fehlt (es kommt aus dem
+ *  Baustein), einer, der es schon im Titel trägt, und einer ohne Adresse. */
+const ANTWORT_ZAHL = "Der Schuldenstand lag Ende 2024 bei rund 295 Millionen Euro.";
+const BELEGE = [
+  { label: "Statistisches Jahrbuch, Tabelle 1108", year: 2024,
+    url: "https://example.org/jahrbuch-1108.pdf" },
+  { label: "Jahresabschluss 2023", year: 2023, url: "https://example.org/ja-2023.pdf" },
+  { label: "Prüfbericht 2022", year: 2022, url: null },
+];
+
+const STROM_BELEGE = [
+  `data: ${JSON.stringify({ type: "token", text: ANTWORT_ZAHL })}\n\n`,
+  `data: ${JSON.stringify({
+    type: "done", mode: "explain", kind: "model", next: null, next_page: null,
+    glossary: [], evidence: BELEGE, timings: { total_ms: 900 },
+  })}\n\n`,
+].join("");
+
 /** Der Strom, mit dem `/explain` eine Archivfrage beantwortet: **gar nicht.**
  *  Seit PR 23 entscheidet der Server am Wortlaut und schickt ohne einen
  *  einzigen Modellaufruf den Schritt plus `mode: "handoff"` — das Fenster
@@ -1075,6 +1097,69 @@ test.describe("Lotti-Knopf und -Fenster", () => {
     await knopf(page).click();
     await expect(fenster(page)).toBeVisible();
     await expect(fenster(page).getByText(/Keine Rechtsberatung/)).toHaveCount(0);
+  });
+
+  test("unter einer Antwort mit Zahlen steht die Grundlage — und sie führt hin",
+    async ({ page }) => {
+      // PR 28: Lotti nennt Jahr und Quelle im Satz (Prompt-Regel 4), aber ein
+      // Dokumentname im Fließtext ist kein Link. Die Papiere, die im Prompt
+      // STANDEN, reisen im `done`-Rahmen als `evidence` mit; das Fenster macht
+      // daraus die Zeile „Grundlage:".
+      await page.route("**/api/council/explain", (route) =>
+        route.fulfill({ status: 200, contentType: "text/event-stream", body: STROM_BELEGE })
+          .catch(() => { /* Test ist schon zu Ende */ }),
+      );
+      await page.goto("/dashboard");
+      await knopf(page).click();
+      await fenster(page).getByRole("button", { name: "Was sehe ich hier?" }).click();
+
+      await expect(fenster(page).getByText(ANTWORT_ZAHL)).toBeVisible();
+      const grundlage = fenster(page).locator("[data-lotti-grundlage]");
+      await expect(grundlage).toBeVisible();
+      await expect(grundlage).toContainText("Grundlage:");
+      // **Ehrlich beschriftet**: Belege des KONTEXTS, nicht der einzelnen Zahl.
+      await expect(grundlage).toHaveAttribute(
+        "title", "Quellen, die Lotti für diese Antwort vorlagen");
+      // Das Jahr steht nur dort, wo es nicht schon im Titel steht — sonst
+      // hieße der zweite Chip „Jahresabschluss 2023 2023".
+      const chip = fenster(page).getByRole("link", { name: /Statistisches Jahrbuch/ });
+      await expect(chip).toHaveText(/Tabelle 1108 2024/);
+      await expect(fenster(page).getByRole("link", { name: /Jahresabschluss/ }))
+        .toHaveText(/^Jahresabschluss 2023$/);
+      // Ohne Adresse bleibt der Name stehen, aber ohne Link: „Wir wissen, aus
+      // welchem Papier das stammt, nur nicht, wo es liegt" ist eine Auskunft.
+      await expect(fenster(page).getByText("Prüfbericht 2022")).toBeVisible();
+      await expect(fenster(page).getByRole("link", { name: "Prüfbericht 2022" }))
+        .toHaveCount(0);
+
+      // Der Klick öffnet das Dokument in einem neuen Tab.
+      const [neu] = await Promise.all([
+        page.context().waitForEvent("page"),
+        chip.click(),
+      ]);
+      expect(neu.url()).toBe("https://example.org/jahrbuch-1108.pdf");
+      await neu.close();
+
+      // **Vor den Daumen**: Erst lesen, worauf das beruht, dann urteilen.
+      const grundlageBox = (await grundlage.boundingBox())!;
+      const daumenBox = (await fenster(page)
+        .getByRole("button", { name: /hilfreich|Daumen/i }).first().boundingBox())!;
+      expect(grundlageBox.y).toBeLessThan(daumenBox.y);
+    });
+
+  test("ohne Zahlen steht keine Grundlage darunter", async ({ page }) => {
+    // Die Wege ohne Modell (Glossar, Seitenwissen, „Lotti erklärt's einfach")
+    // ruhen auf keiner Haushaltszahl — `evidence` ist leer, und eine leere
+    // Zeile „Grundlage:" wäre ein Apparat ohne Gegenstand.
+    await page.route("**/api/council/explain", (route) =>
+      route.fulfill({ status: 200, contentType: "text/event-stream", body: STROM_GEPRUEFT })
+        .catch(() => { /* Test ist schon zu Ende */ }),
+    );
+    await page.goto("/dashboard");
+    await knopf(page).click();
+    await fenster(page).getByRole("button", { name: "Was sehe ich hier?" }).click();
+    await expect(fenster(page).getByText(GEPRUEFTE_ANTWORT)).toBeVisible();
+    await expect(fenster(page).locator("[data-lotti-grundlage]")).toHaveCount(0);
   });
 
   test("ohne Schalter gibt es keinen Knopf", async ({ page }) => {

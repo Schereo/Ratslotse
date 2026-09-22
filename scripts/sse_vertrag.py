@@ -173,8 +173,27 @@ def web_gelesen() -> set[str]:
 
 
 def web_blob_gelesen() -> set[str]:
-    """Jedes ``t.sources?.<feld>`` — was das Web aus einem geladenen Gespräch holt."""
-    return set(re.findall(r"t\.sources\?\.([a-z_]+)", WEB.read_text()))
+    """Jedes ``…sources?.<feld>`` — was das Web aus einem geladenen Gespräch holt.
+
+    Aus BEIDEN Lesern, wie beim Strom. Bis 22.09.2026 stand hier nur das
+    Ratsgespräch (``WEB``); Lottis Fenster war ungeprüft — ausgerechnet der
+    Leser, der zuletzt dazugekommen ist.
+
+    **Warum die Variablennamen trotzdem in der Regex stehen.** Im
+    Ratsgespräch gibt es ein ZWEITES ``sources``: der Schnappschuss eines
+    Recherche-AUFTRAGS (``job.sources``), geschrieben von
+    ``deep_job_update`` und nicht von ``qa_turn_speichern``. Er trägt
+    eigene Felder (``facets``, ``facets_done``), die in diesem Blob nichts
+    verloren haben — eine Regex auf jedes ``*.sources?.`` meldete sie als
+    Leichen, und zwei falsche Befunde machen die Prüfung stumpf. Gesucht
+    wird deshalb, was eine RUNDE heißt.
+    """
+    aus: set[str] = set()
+    for pfad in WEB_LESER:
+        if pfad.exists():
+            aus |= set(re.findall(r"\b(?:t|tn|turn)\.sources\?\.([a-z_]+)",
+                                  pfad.read_text()))
+    return aus
 
 
 def app_gelesen() -> set[str]:

@@ -977,12 +977,38 @@ def _qa_geld_max() -> int:
     return qa.GELD_MAX_CHARS
 
 
+def _deckel(max_chars: int | None) -> int:
+    """Der Zeichen-Deckel dieser Runde — für Block UND Belege derselbe.
+
+    Eine Funktion und nicht zweimal derselbe Ausdruck: Der Beleg unter der
+    Antwort darf nur nennen, was in den Prompt gepasst hat. Liefen die beiden
+    Deckel auseinander, stünde unter einer Erklärung eine Quelle, die das
+    Modell nie gesehen hat (s. ``qa.geld_auswahl``).
+    """
+    return max_chars or GELD_MAX
+
+
+def kontext_belege(ctx: dict | None) -> list[dict]:
+    """``[{label, year, url}]`` — die Papiere hinter den Zahlen im Prompt.
+
+    Nur aus dem Haushalts-Kontext: Die anderen Bausteine (Seitenwissen,
+    Glossar, Beschluss-Kurzfassung) sind entweder unser eigener kuratierter
+    Text oder tragen ihre Quelle schon im Text. Ein Beleg unter einer
+    Glossar-Antwort wäre ein Chip ohne Gegenstand.
+    """
+    geld = (ctx or {}).get("geld")
+    if not geld:
+        return []
+    from council import qa
+    return qa.geld_belege(geld, max_chars=_deckel((ctx or {}).get("geld_max")))
+
+
 def _geld_block(geld: dict | None, max_chars: int | None = None) -> str:
     """Die Haushaltszahlen samt ihrer Regeln, gedeckelt (s. :data:`GELD_MAX`)."""
     if not geld:
         return ""
     from council import qa
-    block = qa.geld_block(geld, max_chars=max_chars or GELD_MAX)
+    block = qa.geld_block(geld, max_chars=_deckel(max_chars))
     if not block:
         return ""
     return ("\nZAHLEN AUS DEM HAUSHALT (geprüft, mit Jahr und Beleg — nenne beides,\n"

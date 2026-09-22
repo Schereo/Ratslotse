@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  ankerListe, ankerTreffer, anschlussfragen, auswahlText, chipTitel, daumenZeigen,
+  ankerListe, ankerTreffer, anschlussfragen, auswahlText, belegName, BELEG_NAME_MAX,
+  chipTitel, daumenZeigen,
   erklaerAktion, ernteElement,
   gedaechtnis, kuerze, ohneNamen, ortsfrage, refsAus, routeAus, seitenTitel,
   seitenUeberschrift, trenneWeiter, ueberschriftenPfad, zaesur,
@@ -625,5 +626,42 @@ describe("chipTitel", () => {
 
   it("kappt, was auch danach zu lang ist", () => {
     expect(chipTitel("W".repeat(90)).length).toBeLessThanOrEqual(40);
+  });
+});
+
+describe("belegName", () => {
+  it("lässt einen kurzen Namen in Ruhe und hängt das Jahr an", () => {
+    expect(belegName({ label: "Jahresabschluss", year: 2024 }))
+      .toBe("Jahresabschluss 2024");
+  });
+
+  it("hängt das Jahr NICHT zweimal an", () => {
+    // So heißen die Haushaltspläne im Ratsinformationssystem.
+    expect(belegName({ label: "Beschlossener Haushaltsplan 2020", year: 2020 }))
+      .toBe("Beschlossener Haushaltsplan 2020");
+  });
+
+  it("wirft den Untertitel hinter dem Gedankenstrich weg", () => {
+    // Gemessen im Browser (22.09.2026) auf /haushalt/schulden.
+    expect(belegName({
+      label: "Statistisches Jahrbuch der Stadt Oldenburg, Tabelle 1108 — "
+        + "Stand der Verschuldung 1995 bis 2025",
+      year: 2025,
+    })).toBe("Statistisches Jahrbuch der Stadt Oldenburg, …");
+  });
+
+  it("kappt, was auch danach zu lang ist", () => {
+    const lang = belegName({
+      label: "Jahresabschluss 2024 der Kernverwaltung und ihrer nicht "
+        + "rechtsfähigen Stiftungen",
+      year: 2024,
+    });
+    expect(lang.length).toBeLessThanOrEqual(BELEG_NAME_MAX + 2);
+    expect(lang.startsWith("Jahresabschluss 2024 der Kernverwaltung")).toBe(true);
+  });
+
+  it("kommt ohne Jahr aus", () => {
+    expect(belegName({ label: "Prüfbericht" })).toBe("Prüfbericht");
+    expect(belegName({ label: "Prüfbericht", year: null })).toBe("Prüfbericht");
   });
 });
