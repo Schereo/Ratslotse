@@ -325,7 +325,7 @@ def stance_all(main: CitiesStore, model: str = EMBED_MODEL,
                               ann.prompt_user, gruppe=gruppe,
                               paper=text[:ann.input_chars * 4])}],
                 max_tokens=ann.max_tokens, temperature=ann.temperature,
-                extra_body={"provider": {}} if ann.routing_free else {},
+                extra_body={},
                 _feature=ann.feature)
             nutzlast = ann.payload.model_validate(
                 parse_json(antwort.choices[0].message.content or ""))
@@ -485,7 +485,7 @@ def check_clusters(main: CitiesStore, model: str = EMBED_MODEL,
                       {"role": "user", "content": prompts.render(
                           ann.prompt_user, items=zeilen)}],
             max_tokens=ann.max_tokens, temperature=ann.temperature,
-            extra_body={"provider": {}} if ann.routing_free else {},
+            extra_body={},
             _feature=ann.feature)
         last = ann.payload.model_validate(
             parse_json(antwort.choices[0].message.content or ""))

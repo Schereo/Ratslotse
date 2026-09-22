@@ -466,3 +466,21 @@ def test_ohne_tarif_bleibt_der_aufruf_unveraendert(monkeypatch):
     aufrufe = _stub_create_kwargs(monkeypatch, [_Antwort()])
     llm.chat_complete(model="openai/gpt-6-luna", messages=[], _feature="impact_rating")
     assert "service_tier" not in (aufrufe[0].get("extra_body") or {})
+
+
+def test_kein_aufruf_leert_das_routing():
+    """Ein aufrufereigener ``provider``-Block ersetzt das Routing GANZ.
+
+    Die Städte-Annotatoren schickten bis 23.09.2026 ``provider: {}``, um ZDR
+    loszuwerden — und warfen damit den China-Ausschluss und das
+    Trainingsverbot gleich mit weg. ZDR regelt jetzt ``zdr_pflicht``; wer
+    einen eigenen Block braucht, baut ihn aus ``_routing_extra_body``.
+    """
+    import re
+    from pathlib import Path
+    wurzel = Path(__file__).resolve().parent.parent
+    treffer = [f"{p.relative_to(wurzel)}"
+               for d in ("council", "scripts", "kern", "eval", "web/backend/app")
+               for p in (wurzel / d).rglob("*.py")
+               if re.search(r'["\']provider["\']\s*:\s*\{\s*\}', p.read_text())]
+    assert not treffer, treffer

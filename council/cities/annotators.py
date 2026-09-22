@@ -513,12 +513,13 @@ class Annotator:
     #: Probelauf der Punkt, an dem mehr Text die Trefferquote nicht mehr hob.
     input_chars: int = 2200
     active: bool = True
-    #: Darf dieser Annotator ohne die ZDR-Provider-Beschränkung laufen?
-    #: Hier gehen ausschließlich öffentliche Ratsdokumente anderer Städte
-    #: durchs Modell, kein Nutzertext — anders als bei der KI-Frage. Die
-    #: Beschränkung kostete messbar: ``gpt-5.6-luna`` lieferte mit ihr 53 %
-    #: der Ergebnisse, ohne sie 100 % bei doppelter Geschwindigkeit.
-    routing_free: bool = True
+    # Ohne ZDR laufen die Annotatoren über ``kern/llm.py::zdr_pflicht``
+    # (Präfix ``cities_``): Hier gehen ausschließlich öffentliche
+    # Ratsdokumente anderer Städte durchs Modell. Bis 23.09.2026 stand dafür
+    # ``routing_free`` hier und die Aufrufe schickten ``provider: {}`` — das
+    # warf mit ZDR auch den China-Ausschluss und ``data_collection: deny``
+    # weg. Gemessen hatte sich die Lockerung an ZDR allein (``gpt-5.6-luna``
+    # lieferte mit ZDR 53 % der Ergebnisse, ohne 100 %).
     #: Braucht der Annotator die Nachbarschaften? Dann läuft er NACH dem Index,
     #: nicht davor — sonst urteilt er über eine Stadt, deren nächste Verwandte
     #: er noch gar nicht kennt.
