@@ -1,0 +1,130 @@
+{
+ "suite": "cities-fit",
+ "titel": "Städtevergleich: hat Oldenburg das schon?",
+ "kennzahl": "Status (drei Klassen) richtig",
+ "modell": "deepseek/deepseek-v4-flash",
+ "variante": null,
+ "tarif": null,
+ "lauf": 2,
+ "zeitstempel": "2026-09-23T00:25:20",
+ "db_stand": "Sitzungen bis 2026-09-16, 9078 Beschlüsse",
+ "qualitaet": 0.7,
+ "harte_befunde": 0,
+ "warnung": null,
+ "faelle": 40,
+ "p50_ms": 9886,
+ "p95_ms": 40543,
+ "aufrufe": 40,
+ "kosten_usd": 0.017636,
+ "ohne_kostenwert": 0,
+ "ct_je_aufruf": 0.0441,
+ "ct_je_lauf": 1.7636,
+ "kosten_gesamt_usd": 0.017636,
+ "ausfaelle": 0,
+ "nicht_zulaessig": false,
+ "abbruch": null,
+ "modelle_laut_tabelle": [
+  "deepseek/deepseek-v4-flash"
+ ],
+ "ersatz": [],
+ "dauer_s": 735.3,
+ "nebenkennzahlen": {
+  "geliefert": 40,
+  "beleg_disziplin": 100.0
+ },
+ "fehler_beispiele": [],
+ "roh": {
+  "n_cases": 40,
+  "n_answered": 40,
+  "false_present": 0,
+  "missed_present": 1,
+  "status_accuracy": 70.0,
+  "evidence_discipline": 100.0,
+  "evidence_invented": 0,
+  "evidence_violations": [],
+  "confusion": {
+   "missing→missing": 13,
+   "missing→partial": 1,
+   "partial→missing": 6,
+   "partial→partial": 8,
+   "partial→present": 1,
+   "present→missing": 1,
+   "present→partial": 3,
+   "present→present": 7
+  },
+  "mistakes": [
+   {
+    "case": "Blockierte Fußwege durch ausladende Außengastronomie",
+    "erwartet": "missing",
+    "bekommen": "partial",
+    "grund": "Oldenburg hat eine Sondernutzungssatzung, die Außengastronomie regelt, aber kein spezifisc"
+   },
+   {
+    "case": "Förderung freier Kulturträger – Verlängerung der Zuschussvereinbarunge",
+    "erwartet": "partial",
+    "bekommen": "missing",
+    "grund": "Oldenburg hat keine mehrjährigen institutionellen Zuschussvereinbarungen mit freien Kultur"
+   },
+   {
+    "case": "Transparenz im Konzern Stadt Braunschweig für die Politik",
+    "erwartet": "partial",
+    "bekommen": "present",
+    "grund": "Oldenburg hat mit dem aktualisierten Handbuch Beteiligungen (Beschluss Nov. 2023) eine ver"
+   },
+   {
+    "case": "Online-Meldung von Hinweisen zu Zweckentfremdungen",
+    "erwartet": "partial",
+    "bekommen": "missing",
+    "grund": "Oldenburg hat kein Online-Meldeportal für Zweckentfremdung eingerichtet; die Belege betref"
+   },
+   {
+    "case": "Situation und Einsatz von Lernbegleiter:innen an Osnabrücker Schulen –",
+    "erwartet": "present",
+    "bekommen": "missing",
+    "grund": "Oldenburg hat ein pauschaliertes Schulbegleitungsmodell, aber kein Pool-Modell für Lernbeg"
+   },
+   {
+    "case": "Stand der Umsetzung des Ratsbeschlusses „Lokaler Aktionsplan gegen Rec",
+    "erwartet": "present",
+    "bekommen": "partial",
+    "grund": "Oldenburg hat eine Koordinierungsstelle und einen Fonds gegen Rechtsextremismus, aber kein"
+   },
+   {
+    "case": "Änderungsantrag des Jugendhilfeausschusses - Präventive Jugendarbeit",
+    "erwartet": "partial",
+    "bekommen": "missing",
+    "grund": "Kein Beleg zeigt, dass Oldenburg ein spezifisches schulisches Präventionsprogramm wie PLuS"
+   },
+   {
+    "case": "Überarbeitung der Satzung über die Pflege des Sports und des Badewesen",
+    "erwartet": "present",
+    "bekommen": "partial",
+    "grund": "Oldenburg hat wiederholt seine Sportförderrichtlinien überarbeitet, aber keine Satzung übe"
+   },
+   {
+    "case": "Wirkung von Haushaltskennzahlen",
+    "erwartet": "partial",
+    "bekommen": "missing",
+    "grund": "Kein Beleg zeigt eine Überarbeitung oder Entwicklung wirkungsorientierter Haushaltskennzah"
+   },
+   {
+    "case": "Richtlinie der Stadt Braunschweig über die Gewährung von Zuwendungen z",
+    "erwartet": "partial",
+    "bekommen": "missing",
+    "grund": "Oldenburg hat keine Richtlinie oder Fonds zur gezielten Bezuschussung der Mittagsverpflegu"
+   },
+   {
+    "case": "Umsetzung der kommunalen Wärmeplanung für Wärmepumpen in Individualver",
+    "erwartet": "partial",
+    "bekommen": "missing",
+    "grund": "Kein Beleg belegt ein flächendeckendes Monitoring oder eine Beratungsstruktur für Wärmepum"
+   },
+   {
+    "case": "Verkehrs- und Straßenbaumaßnahmenprogramm 2026-2027 des Amtes für Mobi",
+    "erwartet": "present",
+    "bekommen": "partial",
+    "grund": "Oldenburg hat ein jährliches Arbeitsprogramm für Straßenbaumaßnahmen, aber keine explizite"
+   }
+  ]
+ }
+}

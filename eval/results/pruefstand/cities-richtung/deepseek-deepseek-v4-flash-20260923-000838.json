@@ -1,0 +1,65 @@
+{
+ "suite": "cities-richtung",
+ "titel": "Städtevergleich: wollte der Rat die Idee?",
+ "kennzahl": "Richtung (for/against/review) richtig",
+ "modell": "deepseek/deepseek-v4-flash",
+ "variante": null,
+ "tarif": null,
+ "lauf": 1,
+ "zeitstempel": "2026-09-23T00:08:38",
+ "db_stand": "Sitzungen bis 2026-09-16, 9078 Beschlüsse",
+ "qualitaet": 0.9348,
+ "harte_befunde": 0,
+ "warnung": null,
+ "faelle": 46,
+ "p50_ms": 10283,
+ "p95_ms": 73444,
+ "aufrufe": 46,
+ "kosten_usd": 0.009854,
+ "ohne_kostenwert": 0,
+ "ct_je_aufruf": 0.0214,
+ "ct_je_lauf": 0.9854,
+ "kosten_gesamt_usd": 0.009854,
+ "ausfaelle": 0,
+ "nicht_zulaessig": false,
+ "abbruch": null,
+ "modelle_laut_tabelle": [
+  "deepseek/deepseek-v4-flash"
+ ],
+ "ersatz": [],
+ "dauer_s": 877.9,
+ "nebenkennzahlen": {},
+ "fehler_beispiele": [],
+ "roh": {
+  "quote": 0.9347826086956522,
+  "treffer": 43,
+  "gesamt": 46,
+  "verwechslung": {
+   "for→review": 2,
+   "review→for": 1
+  },
+  "daneben": [
+   {
+    "instrument": "Klimaschutzprojektfonds für Bürger",
+    "erwartet": "for",
+    "bekommen": "review",
+    "why": "Dasselbe Instrument unter anderem Namen."
+   },
+   {
+    "instrument": "Fahrradstaffel Ordnungsamt einsetzen",
+    "erwartet": "for",
+    "bekommen": "review",
+    "why": "Die Fahrradstaffel soll kommen."
+   },
+   {
+    "instrument": "Verkehrssicherheit an Einmündungen prüfen",
+    "erwartet": "review",
+    "bekommen": "for",
+    "why": "Prüfauftrag zur Verkehrssicherheit."
+   }
+  ],
+  "cost_usd": 0.009854326980000001,
+  "stop_quote": 1.0,
+  "stop_gesamt": 6
+ }
+}

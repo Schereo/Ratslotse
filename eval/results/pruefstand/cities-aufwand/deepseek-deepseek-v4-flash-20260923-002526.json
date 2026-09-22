@@ -1,0 +1,74 @@
+{
+ "suite": "cities-aufwand",
+ "titel": "Städtevergleich: was kostet die Idee?",
+ "kennzahl": "Aufwandsklasse richtig",
+ "modell": "deepseek/deepseek-v4-flash",
+ "variante": null,
+ "tarif": null,
+ "lauf": 2,
+ "zeitstempel": "2026-09-23T00:25:26",
+ "db_stand": "Sitzungen bis 2026-09-16, 9078 Beschlüsse",
+ "qualitaet": 0.925,
+ "harte_befunde": 0,
+ "warnung": null,
+ "faelle": 40,
+ "p50_ms": 25006,
+ "p95_ms": 880754,
+ "aufrufe": 15,
+ "kosten_usd": 0.020715,
+ "ohne_kostenwert": 0,
+ "ct_je_aufruf": 0.1381,
+ "ct_je_lauf": 2.0715,
+ "kosten_gesamt_usd": 0.020715,
+ "ausfaelle": 0,
+ "nicht_zulaessig": false,
+ "abbruch": null,
+ "modelle_laut_tabelle": [
+  "deepseek/deepseek-v4-flash"
+ ],
+ "ersatz": [],
+ "dauer_s": 1572.9,
+ "nebenkennzahlen": {
+  "geliefert": 40,
+  "adressat": 97.5
+ },
+ "fehler_beispiele": [],
+ "roh": {
+  "n_cases": 40,
+  "nachgereicht": 10,
+  "n": 40,
+  "effort": 92.5,
+  "addressee": 97.5,
+  "matrix": {
+   "inquiry→inquiry": 12,
+   "decision→decision": 10,
+   "budget→budget": 6,
+   "review→review": 8,
+   "resolution→resolution": 1,
+   "review→decision": 1,
+   "decision→review": 1,
+   "decision→budget": 1
+  },
+  "fehler": [
+   {
+    "name": "Ein Hundewanderweg für Magdeburg",
+    "erwartet": "review",
+    "bekommen": "decision",
+    "grund": "Die Einrichtung soll geprüft werden — ein Prüfauftrag, kein Beschluss."
+   },
+   {
+    "name": "Online-Meldung von Hinweisen zu Zweckentfremdungen",
+    "erwartet": "decision",
+    "bekommen": "review",
+    "grund": "Ein Meldeportal einzurichten ist ein Beschluss mit unmittelbarer Wirkung."
+   },
+   {
+    "name": "Änderung der Richtlinienförderung",
+    "erwartet": "decision",
+    "bekommen": "budget",
+    "grund": "Förderrichtlinien zu ändern wirkt unmittelbar; die Fördersumme bleibt dieselbe."
+   }
+  ],
+  "erfundene_adressaten": []
+ }
+}

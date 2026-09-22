@@ -251,6 +251,16 @@ def _with_routing(kwargs: dict[str, Any], zdr: bool = True) -> dict[str, Any]:
 #   normalen Tarif (und dessen Routing) noch einmal.
 TARIFE = ("normal", "flex")
 
+#: **Ein reiner Messschalter, nicht für den Betrieb.** Der Modell-Prüfstand
+#: (``eval/pruefstand.py --tarif flex``) muss Aufrufe tief in ``council/``
+#: umschalten, ohne jede Aufrufstelle anzufassen — er setzt diese Variable
+#: im Unterprozess eines Messlaufs. Sie ist nur die VORGABE: Ein ausdrückliches
+#: ``_tarif`` gewinnt, und für ein Feature mit ZDR-Pflicht wirft sie wie der
+#: Parameter ``FlexNichtErlaubt``, statt still auf den Normaltarif zu fallen.
+#: In eine ``.env`` gehört sie nicht: Dort stellte sie jedes Feature auf
+#: einmal um, und jeder Nutzerpfad würfe den Fehler.
+TARIF_ENV = "RATSLOTSE_LLM_TARIF"
+
 
 class FlexNichtErlaubt(ValueError):
     """Flex für ein Feature, dessen Aufrufe nur an ZDR-Anbieter dürfen.
@@ -457,7 +467,7 @@ def chat_complete(**kwargs: Any):
     kwargs["_zdr"] = zdr_pflicht(feature)
     geduld = bool(kwargs.pop("_geduld", False))
     ersatz = list(kwargs.pop("_ersatz", None) or [])
-    tarif = kwargs.pop("_tarif", None) or "normal"
+    tarif = kwargs.pop("_tarif", None) or os.environ.get(TARIF_ENV, "").strip() or "normal"
     if tarif not in TARIFE:
         raise ValueError(f"unbekannter Tarif {tarif!r} — erlaubt: {', '.join(TARIFE)}")
     if tarif == "flex" and zdr_pflicht(feature):

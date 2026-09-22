@@ -1,0 +1,100 @@
+{
+ "suite": "cities-aufwand",
+ "titel": "Städtevergleich: was kostet die Idee?",
+ "kennzahl": "Aufwandsklasse richtig",
+ "modell": "deepseek/deepseek-v4-flash",
+ "variante": null,
+ "tarif": null,
+ "lauf": 1,
+ "zeitstempel": "2026-09-22T23:59:13",
+ "db_stand": "Sitzungen bis 2026-09-16, 9078 Beschlüsse",
+ "qualitaet": 0.825,
+ "harte_befunde": 0,
+ "warnung": null,
+ "faelle": 40,
+ "p50_ms": 22812,
+ "p95_ms": 107950,
+ "aufrufe": 9,
+ "kosten_usd": 0.00622,
+ "ohne_kostenwert": 0,
+ "ct_je_aufruf": 0.0691,
+ "ct_je_lauf": 0.622,
+ "kosten_gesamt_usd": 0.00622,
+ "ausfaelle": 0,
+ "nicht_zulaessig": false,
+ "abbruch": null,
+ "modelle_laut_tabelle": [
+  "deepseek/deepseek-v4-flash"
+ ],
+ "ersatz": [],
+ "dauer_s": 312.5,
+ "nebenkennzahlen": {
+  "geliefert": 40,
+  "adressat": 97.5
+ },
+ "fehler_beispiele": [],
+ "roh": {
+  "n_cases": 40,
+  "nachgereicht": 4,
+  "n": 40,
+  "effort": 82.5,
+  "addressee": 97.5,
+  "matrix": {
+   "inquiry→inquiry": 9,
+   "decision→review": 1,
+   "budget→budget": 5,
+   "review→review": 9,
+   "decision→decision": 9,
+   "inquiry→review": 3,
+   "decision→budget": 1,
+   "resolution→resolution": 1,
+   "decision→resolution": 1,
+   "budget→decision": 1
+  },
+  "fehler": [
+   {
+    "name": "Dringlichkeitsantrag - Stärkung von Qualität, Transparenz und Be",
+    "erwartet": "decision",
+    "bekommen": "review",
+    "grund": "Ein Qualitätshandbuch für den ASD ist ein Beschluss der Stadt mit unmittelbarer Wirkung; Personal da"
+   },
+   {
+    "name": "Sichere und bedarfsgerechte Unterbringung queerer Geflüchteter i",
+    "erwartet": "inquiry",
+    "bekommen": "review",
+    "grund": "Eine MITTEILUNGSvorlage — die Verwaltung informiert, der Rat beschließt nichts. Korrigiert von „deci"
+   },
+   {
+    "name": "Mehrweg fördern – Müll, Kosten und Personal für alle reduzieren ",
+    "erwartet": "decision",
+    "bekommen": "budget",
+    "grund": "Ein Mehrweg-Pilot und eine Verpackungssteuersatzung wirken unmittelbar; die Steuer nimmt ein, statt "
+   },
+   {
+    "name": "SOS MVB – Hausverbote für Kriminelle in Bussen und Bahnen der MV",
+    "erwartet": "decision",
+    "bekommen": "resolution",
+    "grund": "Hausverbote im Nahverkehr spricht das Verkehrsunternehmen aus, nicht der Rat."
+   },
+   {
+    "name": "Klimaneutrale Verwaltung: Treibhausgasbilanzen und CO2-Zielpfada",
+    "erwartet": "inquiry",
+    "bekommen": "review",
+    "grund": "Der Bericht LIEGT VOR und wird vorgelegt; ein Prüfauftrag wäre er nur, wenn der Rat ihn erst noch be"
+   },
+   {
+    "name": "1. Fortschreibung Bericht zum Zeitplan der aus dem Brandschutzbe",
+    "erwartet": "inquiry",
+    "bekommen": "review",
+    "grund": "Dieselbe Sache: Die Verwaltung schreibt den Zeitplan fort und legt ihn vor. Korrigiert von „review“ "
+   },
+   {
+    "name": "Verkehrs- und Straßenbaumaßnahmenprogramm 2026-2027 des Amtes fü",
+    "erwartet": "budget",
+    "bekommen": "decision",
+    "grund": "Ein Straßenbauprogramm ist die Verteilung von Haushaltsmitteln auf Maßnahmen."
+   }
+  ],
+  "erfundene_adressaten": []
+ }
+}
