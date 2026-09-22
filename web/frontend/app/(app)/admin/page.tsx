@@ -93,6 +93,7 @@ const FEATURE_LABELS: Record<string, string> = {
   eval_cities_fit: "Prüfstand: Hat Oldenburg das schon?",
   attachment_ocr: "Anlagen-Texterkennung",
   committee_summary: "Ausschuss-Zusammenfassung",
+  council_watcher: "Themen-Wächter (Tagesordnung ↔ Thema)",
   daily_find_story: "Fundstück des Tages",
   decision_places: "Orte eines Beschlusses",
   district_projects: "Mein Viertel — Vorhaben",

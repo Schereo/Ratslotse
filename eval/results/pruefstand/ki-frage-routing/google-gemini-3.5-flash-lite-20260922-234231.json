@@ -1,0 +1,671 @@
+{
+ "suite": "ki-frage-routing",
+ "titel": "KI-Frage: Analyse & Routing",
+ "kennzahl": "Anteil der Fälle, in denen Fragetyp, Plan, Kanäle, Haushaltsfacetten UND Klarheitsurteil stimmen (pass_rates.all)",
+ "modell": "google/gemini-3.5-flash-lite",
+ "variante": null,
+ "tarif": null,
+ "lauf": 1,
+ "zeitstempel": "2026-09-22T23:42:31",
+ "db_stand": "Sitzungen bis 2026-09-16, 9078 Beschlüsse",
+ "qualitaet": 0.9,
+ "harte_befunde": 0,
+ "warnung": null,
+ "faelle": 30,
+ "p50_ms": 1045,
+ "p95_ms": 1565,
+ "aufrufe": 30,
+ "kosten_usd": 0.028122,
+ "ohne_kostenwert": 0,
+ "ct_je_aufruf": 0.0937,
+ "ct_je_lauf": 2.8122,
+ "kosten_gesamt_usd": 0.028122,
+ "ausfaelle": 0,
+ "nicht_zulaessig": false,
+ "abbruch": null,
+ "modelle_laut_tabelle": [
+  "google/gemini-3.5-flash-lite"
+ ],
+ "ersatz": [],
+ "dauer_s": 32.4,
+ "nebenkennzahlen": {
+  "pass_rates": {
+   "type": 0.9333,
+   "valid_plan": 1.0,
+   "channels": 1.0,
+   "facets": 0.9667,
+   "clarity": 1.0,
+   "all": 0.9
+  },
+  "f1": 0.9908
+ },
+ "fehler_beispiele": [],
+ "roh": {
+  "timestamp": "2026-09-22T23:42:31",
+  "suite": "qa_routing",
+  "cases": 30,
+  "tp": 161,
+  "fp": 1,
+  "tn": null,
+  "fn": 2,
+  "precision": 0.9938,
+  "recall": 0.9877,
+  "f1": 0.9908,
+  "pass_rates": {
+   "type": 0.9333,
+   "valid_plan": 1.0,
+   "channels": 1.0,
+   "facets": 0.9667,
+   "clarity": 1.0,
+   "all": 0.9
+  },
+  "mistakes": [
+   {
+    "id": "plan-vs-actual",
+    "note": "",
+    "missed": [],
+    "spurious": [
+     "facet:ansatz"
+    ]
+   },
+   {
+    "id": "whole-city-cost",
+    "note": "",
+    "missed": [
+     "type∈['money']"
+    ],
+    "spurious": []
+   },
+   {
+    "id": "person-position",
+    "note": "",
+    "missed": [
+     "type∈['person', 'topic']"
+    ],
+    "spurious": []
+   }
+  ],
+  "details": [
+   {
+    "id": "fee-waste-why",
+    "type": "money",
+    "type_ok": true,
+    "plan_valid": true,
+    "channels": [
+     "budget",
+     "decisions"
+    ],
+    "facets": [
+     "fee_rates",
+     "fees"
+    ],
+    "all_ok": true,
+    "unclear": false,
+    "clarity_ok": true,
+    "missing_channels": [],
+    "forbidden_channels": [],
+    "missing_facets": [],
+    "extra_facets": []
+   },
+   {
+    "id": "fee-street-amount",
+    "type": "money",
+    "type_ok": true,
+    "plan_valid": true,
+    "channels": [
+     "budget",
+     "decisions"
+    ],
+    "facets": [
+     "fee_rates",
+     "fees"
+    ],
+    "all_ok": true,
+    "unclear": false,
+    "clarity_ok": true,
+    "missing_channels": [],
+    "forbidden_channels": [],
+    "missing_facets": [],
+    "extra_facets": []
+   },
+   {
+    "id": "fee-waste-method",
+    "type": "money",
+    "type_ok": true,
+    "plan_valid": true,
+    "channels": [
+     "budget",
+     "decisions"
+    ],
+    "facets": [
+     "fee_rates",
+     "fees"
+    ],
+    "all_ok": true,
+    "unclear": false,
+    "clarity_ok": true,
+    "missing_channels": [],
+    "forbidden_channels": [],
+    "missing_facets": [],
+    "extra_facets": []
+   },
+   {
+    "id": "debt-current",
+    "type": "money",
+    "type_ok": true,
+    "plan_valid": true,
+    "channels": [
+     "budget",
+     "decisions"
+    ],
+    "facets": [
+     "schulden"
+    ],
+    "all_ok": true,
+    "unclear": false,
+    "clarity_ok": true,
+    "missing_channels": [],
+    "forbidden_channels": [],
+    "missing_facets": [],
+    "extra_facets": []
+   },
+   {
+    "id": "audit-findings",
+    "type": "money",
+    "type_ok": true,
+    "plan_valid": true,
+    "channels": [
+     "budget",
+     "decisions"
+    ],
+    "facets": [
+     "pruefung"
+    ],
+    "all_ok": true,
+    "unclear": false,
+    "clarity_ok": true,
+    "missing_channels": [],
+    "forbidden_channels": [],
+    "missing_facets": [],
+    "extra_facets": []
+   },
+   {
+    "id": "mandatory-theatre",
+    "type": "topic",
+    "type_ok": true,
+    "plan_valid": true,
+    "channels": [
+     "budget",
+     "decisions"
+    ],
+    "facets": [
+     "produkte"
+    ],
+    "all_ok": true,
+    "unclear": false,
+    "clarity_ok": true,
+    "missing_channels": [],
+    "forbidden_channels": [],
+    "missing_facets": [],
+    "extra_facets": []
+   },
+   {
+    "id": "investments-total",
+    "type": "money",
+    "type_ok": true,
+    "plan_valid": true,
+    "channels": [
+     "budget",
+     "decisions"
+    ],
+    "facets": [
+     "gebaut",
+     "investitionen",
+     "measures"
+    ],
+    "all_ok": true,
+    "unclear": false,
+    "clarity_ok": true,
+    "missing_channels": [],
+    "forbidden_channels": [],
+    "missing_facets": [],
+    "extra_facets": []
+   },
+   {
+    "id": "plan-vs-actual",
+    "type": "money",
+    "type_ok": true,
+    "plan_valid": true,
+    "channels": [
+     "budget",
+     "decisions"
+    ],
+    "facets": [
+     "ansatz",
+     "ist",
+     "kassensicht",
+     "plan"
+    ],
+    "all_ok": false,
+    "unclear": false,
+    "clarity_ok": true,
+    "missing_channels": [],
+    "forbidden_channels": [],
+    "missing_facets": [],
+    "extra_facets": [
+     "ansatz"
+    ]
+   },
+   {
+    "id": "tax-income",
+    "type": "money",
+    "type_ok": true,
+    "plan_valid": true,
+    "channels": [
+     "budget",
+     "decisions"
+    ],
+    "facets": [
+     "ansatz",
+     "ausgleich",
+     "plan",
+     "taxes"
+    ],
+    "all_ok": true,
+    "unclear": false,
+    "clarity_ok": true,
+    "missing_channels": [],
+    "forbidden_channels": [],
+    "missing_facets": [],
+    "extra_facets": []
+   },
+   {
+    "id": "whole-city-cost",
+    "type": "topic",
+    "type_ok": false,
+    "plan_valid": true,
+    "channels": [
+     "budget",
+     "decisions"
+    ],
+    "facets": [
+     "ansatz",
+     "konzern",
+     "plan",
+     "produkte"
+    ],
+    "all_ok": false,
+    "unclear": false,
+    "clarity_ok": true,
+    "missing_channels": [],
+    "forbidden_channels": [],
+    "missing_facets": [],
+    "extra_facets": []
+   },
+   {
+    "id": "budget-amendments",
+    "type": "money",
+    "type_ok": true,
+    "plan_valid": true,
+    "channels": [
+     "budget",
+     "decisions"
+    ],
+    "facets": [
+     "amendments",
+     "ansatz",
+     "antraege",
+     "plan"
+    ],
+    "all_ok": true,
+    "unclear": false,
+    "clarity_ok": true,
+    "missing_channels": [],
+    "forbidden_channels": [],
+    "missing_facets": [],
+    "extra_facets": []
+   },
+   {
+    "id": "latest-kreyenbrueck",
+    "type": "topic",
+    "type_ok": true,
+    "plan_valid": true,
+    "channels": [
+     "decisions",
+     "places",
+     "press"
+    ],
+    "facets": [],
+    "all_ok": true,
+    "unclear": false,
+    "clarity_ok": true,
+    "missing_channels": [],
+    "forbidden_channels": [],
+    "missing_facets": [],
+    "extra_facets": []
+   },
+   {
+    "id": "place-topic",
+    "type": "topic",
+    "type_ok": true,
+    "plan_valid": true,
+    "channels": [
+     "decisions",
+     "places"
+    ],
+    "facets": [],
+    "all_ok": true,
+    "unclear": false,
+    "clarity_ok": true,
+    "missing_channels": [],
+    "forbidden_channels": [],
+    "missing_facets": [],
+    "extra_facets": []
+   },
+   {
+    "id": "explicit-study",
+    "type": "topic",
+    "type_ok": true,
+    "plan_valid": true,
+    "channels": [
+     "debates",
+     "decisions",
+     "documents"
+    ],
+    "facets": [],
+    "all_ok": true,
+    "unclear": false,
+    "clarity_ok": true,
+    "missing_channels": [],
+    "forbidden_channels": [],
+    "missing_facets": [],
+    "extra_facets": []
+   },
+   {
+    "id": "party-position",
+    "type": "party",
+    "type_ok": true,
+    "plan_valid": true,
+    "channels": [
+     "debates",
+     "decisions"
+    ],
+    "facets": [],
+    "all_ok": true,
+    "unclear": false,
+    "clarity_ok": true,
+    "missing_channels": [],
+    "forbidden_channels": [],
+    "missing_facets": [],
+    "extra_facets": []
+   },
+   {
+    "id": "person-position",
+    "type": "party",
+    "type_ok": false,
+    "plan_valid": true,
+    "channels": [
+     "debates",
+     "decisions"
+    ],
+    "facets": [],
+    "all_ok": false,
+    "unclear": false,
+    "clarity_ok": true,
+    "missing_channels": [],
+    "forbidden_channels": [],
+    "missing_facets": [],
+    "extra_facets": []
+   },
+   {
+    "id": "future-council",
+    "type": "topic",
+    "type_ok": true,
+    "plan_valid": true,
+    "channels": [
+     "decisions",
+     "future_agenda",
+     "sessions"
+    ],
+    "facets": [],
+    "all_ok": true,
+    "unclear": false,
+    "clarity_ok": true,
+    "missing_channels": [],
+    "forbidden_channels": [],
+    "missing_facets": [],
+    "extra_facets": []
+   },
+   {
+    "id": "past-session",
+    "type": "topic",
+    "type_ok": true,
+    "plan_valid": true,
+    "channels": [
+     "decisions",
+     "sessions"
+    ],
+    "facets": [],
+    "all_ok": true,
+    "unclear": false,
+    "clarity_ok": true,
+    "missing_channels": [],
+    "forbidden_channels": [],
+    "missing_facets": [],
+    "extra_facets": []
+   },
+   {
+    "id": "official-update",
+    "type": "history",
+    "type_ok": true,
+    "plan_valid": true,
+    "channels": [
+     "decisions",
+     "press"
+    ],
+    "facets": [],
+    "all_ok": true,
+    "unclear": false,
+    "clarity_ok": true,
+    "missing_channels": [],
+    "forbidden_channels": [],
+    "missing_facets": [],
+    "extra_facets": []
+   },
+   {
+    "id": "committee-metadata",
+    "type": "topic",
+    "type_ok": true,
+    "plan_valid": true,
+    "channels": [
+     "decisions",
+     "sessions"
+    ],
+    "facets": [],
+    "all_ok": true,
+    "unclear": false,
+    "clarity_ok": true,
+    "missing_channels": [],
+    "forbidden_channels": [],
+    "missing_facets": [],
+    "extra_facets": []
+   },
+   {
+    "id": "vote-metadata",
+    "type": "topic",
+    "type_ok": true,
+    "plan_valid": true,
+    "channels": [
+     "decisions",
+     "sessions"
+    ],
+    "facets": [],
+    "all_ok": true,
+    "unclear": false,
+    "clarity_ok": true,
+    "missing_channels": [],
+    "forbidden_channels": [],
+    "missing_facets": [],
+    "extra_facets": []
+   },
+   {
+    "id": "project-timeline",
+    "type": "history",
+    "type_ok": true,
+    "plan_valid": true,
+    "channels": [
+     "debates",
+     "decisions",
+     "press"
+    ],
+    "facets": [],
+    "all_ok": true,
+    "unclear": false,
+    "clarity_ok": true,
+    "missing_channels": [],
+    "forbidden_channels": [],
+    "missing_facets": [],
+    "extra_facets": []
+   },
+   {
+    "id": "plain-decision",
+    "type": "topic",
+    "type_ok": true,
+    "plan_valid": true,
+    "channels": [
+     "decisions"
+    ],
+    "facets": [],
+    "all_ok": true,
+    "unclear": false,
+    "clarity_ok": true,
+    "missing_channels": [],
+    "forbidden_channels": [],
+    "missing_facets": [],
+    "extra_facets": []
+   },
+   {
+    "id": "definition",
+    "type": "topic",
+    "type_ok": true,
+    "plan_valid": true,
+    "channels": [
+     "decisions"
+    ],
+    "facets": [],
+    "all_ok": true,
+    "unclear": false,
+    "clarity_ok": true,
+    "missing_channels": [],
+    "forbidden_channels": [],
+    "missing_facets": [],
+    "extra_facets": []
+   },
+   {
+    "id": "unclear-smalltalk",
+    "type": "topic",
+    "type_ok": true,
+    "plan_valid": true,
+    "channels": [
+     "decisions"
+    ],
+    "facets": [],
+    "all_ok": true,
+    "unclear": true,
+    "clarity_ok": true,
+    "missing_channels": [],
+    "forbidden_channels": [],
+    "missing_facets": [],
+    "extra_facets": []
+   },
+   {
+    "id": "unclear-about-lotti",
+    "type": "topic",
+    "type_ok": true,
+    "plan_valid": true,
+    "channels": [
+     "decisions"
+    ],
+    "facets": [],
+    "all_ok": true,
+    "unclear": true,
+    "clarity_ok": true,
+    "missing_channels": [],
+    "forbidden_channels": [],
+    "missing_facets": [],
+    "extra_facets": []
+   },
+   {
+    "id": "unclear-greeting",
+    "type": "topic",
+    "type_ok": true,
+    "plan_valid": true,
+    "channels": [
+     "decisions"
+    ],
+    "facets": [],
+    "all_ok": true,
+    "unclear": true,
+    "clarity_ok": true,
+    "missing_channels": [],
+    "forbidden_channels": [],
+    "missing_facets": [],
+    "extra_facets": []
+   },
+   {
+    "id": "unclear-dangling-reference",
+    "type": "topic",
+    "type_ok": true,
+    "plan_valid": true,
+    "channels": [
+     "decisions",
+     "documents"
+    ],
+    "facets": [],
+    "all_ok": true,
+    "unclear": true,
+    "clarity_ok": true,
+    "missing_channels": [],
+    "forbidden_channels": [],
+    "missing_facets": [],
+    "extra_facets": []
+   },
+   {
+    "id": "unclear-gibberish",
+    "type": "topic",
+    "type_ok": true,
+    "plan_valid": true,
+    "channels": [
+     "decisions"
+    ],
+    "facets": [],
+    "all_ok": true,
+    "unclear": true,
+    "clarity_ok": true,
+    "missing_channels": [],
+    "forbidden_channels": [],
+    "missing_facets": [],
+    "extra_facets": []
+   },
+   {
+    "id": "broad-but-answerable",
+    "type": "history",
+    "type_ok": true,
+    "plan_valid": true,
+    "channels": [
+     "decisions",
+     "future_agenda",
+     "sessions"
+    ],
+    "facets": [],
+    "all_ok": true,
+    "unclear": false,
+    "clarity_ok": true,
+    "missing_channels": [],
+    "forbidden_channels": [],
+    "missing_facets": [],
+    "extra_facets": []
+   }
+  ]
+ }
+}

@@ -1,0 +1,61 @@
+{
+ "suite": "orte",
+ "titel": "Ortszuordnung",
+ "kennzahl": "F1 über die Orte je Beschluss (Regex-Baseline + Modell, wie im Backfill)",
+ "modell": "google/gemini-2.5-flash-lite",
+ "variante": null,
+ "tarif": null,
+ "lauf": 2,
+ "zeitstempel": "2026-09-22T23:38:20",
+ "db_stand": "Sitzungen bis 2026-09-16, 9078 Beschlüsse",
+ "qualitaet": 0.8966,
+ "harte_befunde": 1,
+ "faelle": 20,
+ "p50_ms": 605,
+ "p95_ms": 1721,
+ "aufrufe": 2,
+ "kosten_usd": 0.000427,
+ "ohne_kostenwert": 0,
+ "ct_je_aufruf": 0.0214,
+ "ct_je_lauf": 0.0427,
+ "kosten_gesamt_usd": 0.000427,
+ "ausfaelle": 0,
+ "nicht_zulaessig": false,
+ "abbruch": null,
+ "modelle_laut_tabelle": [
+  "google/gemini-2.5-flash-lite"
+ ],
+ "ersatz": [],
+ "dauer_s": 2.3,
+ "nebenkennzahlen": {
+  "precision": 0.9285714285714286,
+  "recall": 0.8666666666666667
+ },
+ "fehler_beispiele": [],
+ "roh": {
+  "cases": 20,
+  "tp": 13,
+  "fp": 1,
+  "fn": 2,
+  "precision": 0.9285714285714286,
+  "recall": 0.8666666666666667,
+  "f1": 0.896551724137931,
+  "misses": [
+   {
+    "id": "mehrere-orte-beschlusstext",
+    "expected": [
+     "nadorster-strasse",
+     "stedinger-weg"
+    ],
+    "predicted": []
+   },
+   {
+    "id": "wohnquartiere-generisch",
+    "expected": [],
+    "predicted": [
+     "wohnquartieren"
+    ]
+   }
+  ]
+ }
+}

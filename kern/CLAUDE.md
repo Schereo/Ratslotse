@@ -47,6 +47,14 @@ Zustell-Ausfall lautlos für immer.
   weiter. Die Batch-Schnittstelle von OpenRouter ist bewusst nicht
   angeschlossen: Sie ist genauso teuer wie Flex, braucht Minuten bis
   Stunden, lässt sich nicht abbrechen und nimmt kein `ignore` im Routing an.
+- **`RATSLOTSE_LLM_TARIF` ist ein Messschalter, keine Einstellung.** Der
+  Modell-Prüfstand (`eval/pruefstand.py --tarif flex`) setzt ihn im
+  Unterprozess eines Messlaufs; `chat_complete` nimmt ihn als Vorgabe für
+  `_tarif`. Ein ausdrückliches `_tarif` gewinnt, und für ZDR-Features wirft
+  er wie der Parameter `FlexNichtErlaubt`. In eine `.env` gehört er nie —
+  dort stellte er alle Features auf einmal um.
+- **Neues Modell? Erst der Prüfstand:** `python eval/pruefstand.py --modell
+  <id> --laeufe 2`, dann `bericht` (`docs/modell-pruefstand.md`).
 
 ## Prompts sind Code
 

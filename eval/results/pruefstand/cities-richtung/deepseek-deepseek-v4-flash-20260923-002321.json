@@ -1,0 +1,71 @@
+{
+ "suite": "cities-richtung",
+ "titel": "Städtevergleich: wollte der Rat die Idee?",
+ "kennzahl": "Richtung (for/against/review) richtig",
+ "modell": "deepseek/deepseek-v4-flash",
+ "variante": null,
+ "tarif": null,
+ "lauf": 2,
+ "zeitstempel": "2026-09-23T00:23:21",
+ "db_stand": "Sitzungen bis 2026-09-16, 9078 Beschlüsse",
+ "qualitaet": 0.913,
+ "harte_befunde": 0,
+ "warnung": null,
+ "faelle": 46,
+ "p50_ms": 7117,
+ "p95_ms": 89481,
+ "aufrufe": 46,
+ "kosten_usd": 0.011488,
+ "ohne_kostenwert": 0,
+ "ct_je_aufruf": 0.025,
+ "ct_je_lauf": 1.1488,
+ "kosten_gesamt_usd": 0.011488,
+ "ausfaelle": 0,
+ "nicht_zulaessig": false,
+ "abbruch": null,
+ "modelle_laut_tabelle": [
+  "deepseek/deepseek-v4-flash"
+ ],
+ "ersatz": [],
+ "dauer_s": 882.5,
+ "nebenkennzahlen": {},
+ "fehler_beispiele": [],
+ "roh": {
+  "quote": 0.9130434782608695,
+  "treffer": 42,
+  "gesamt": 46,
+  "verwechslung": {
+   "for→review": 3,
+   "for→FEHLER:ValidationError": 1
+  },
+  "daneben": [
+   {
+    "instrument": "Klimaschutzprojektfonds für Bürger",
+    "erwartet": "for",
+    "bekommen": "review",
+    "why": "Dasselbe Instrument unter anderem Namen."
+   },
+   {
+    "instrument": "Fahrradstaffel Ordnungsamt einsetzen",
+    "erwartet": "for",
+    "bekommen": "review",
+    "why": "Die Fahrradstaffel soll kommen."
+   },
+   {
+    "instrument": "Zweckentfremdungssatzung erlassen",
+    "erwartet": "for",
+    "bekommen": "FEHLER:ValidationError",
+    "why": "Wortgleich mit der vorigen."
+   },
+   {
+    "instrument": "Maßnahmenplan Klimaneutralität 2035 erstellen",
+    "erwartet": "for",
+    "bekommen": "review",
+    "why": "Der Maßnahmenplan soll erstellt werden."
+   }
+  ],
+  "cost_usd": 0.0114880874,
+  "stop_quote": 1.0,
+  "stop_gesamt": 6
+ }
+}

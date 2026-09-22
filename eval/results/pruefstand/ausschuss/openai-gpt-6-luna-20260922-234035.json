@@ -1,0 +1,47 @@
+{
+ "suite": "ausschuss",
+ "titel": "Ausschuss-Zusammenfassung (Routine-Filter)",
+ "kennzahl": "Trefferquote (TP+TN)/Fälle — beide Fehler kosten: leere Mails und verschluckter Inhalt",
+ "modell": "openai/gpt-6-luna",
+ "variante": null,
+ "tarif": null,
+ "lauf": 2,
+ "zeitstempel": "2026-09-22T23:40:35",
+ "db_stand": "Sitzungen bis 2026-09-16, 9078 Beschlüsse",
+ "qualitaet": 1.0,
+ "harte_befunde": 0,
+ "faelle": 3,
+ "p50_ms": 1792,
+ "p95_ms": 2780,
+ "aufrufe": 2,
+ "kosten_usd": 0.000172,
+ "ohne_kostenwert": 0,
+ "ct_je_aufruf": 0.0086,
+ "ct_je_lauf": 0.0172,
+ "kosten_gesamt_usd": 0.000172,
+ "ausfaelle": 0,
+ "nicht_zulaessig": false,
+ "abbruch": null,
+ "modelle_laut_tabelle": [
+  "openai/gpt-6-luna"
+ ],
+ "ersatz": [],
+ "dauer_s": 4.6,
+ "nebenkennzahlen": {
+  "f1": 1.0
+ },
+ "fehler_beispiele": [],
+ "roh": {
+  "timestamp": "2026-09-22T23:40:35",
+  "suite": "committee",
+  "cases": 3,
+  "tp": 1,
+  "fp": 0,
+  "tn": 2,
+  "fn": 0,
+  "precision": 1.0,
+  "recall": 1.0,
+  "f1": 1.0,
+  "mistakes": []
+ }
+}

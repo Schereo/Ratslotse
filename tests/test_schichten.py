@@ -50,7 +50,10 @@ ERLAUBT: dict[str, set[str]] = {
     # Cron-Jobs stehen ganz oben und dürfen alles darunter benutzen.
     "scripts": {"kern", "council", "app"},
     # Der Eval-Aufbau ist ein Blatt wie `scripts`, kommt aber ohne die API aus.
-    "eval": {"kern", "council"},
+    # `scripts` darf er lesen, seit der Modell-Prüfstand (eval/pruefstand.py)
+    # die Tragweite-Golden-Sets aus scripts/eval_*impact.py misst — kein Ring,
+    # weil `scripts` nie nach `eval` zeigt.
+    "eval": {"kern", "council", "scripts"},
 }
 
 UEBERSPRINGEN = ("node_modules", ".venv", "__pycache__", ".next", ".claude", "/tests/")

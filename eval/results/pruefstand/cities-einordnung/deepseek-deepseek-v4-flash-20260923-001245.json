@@ -1,0 +1,83 @@
+{
+ "suite": "cities-einordnung",
+ "titel": "Städtevergleich: taugt die Vorlage?",
+ "kennzahl": "„taugt / taugt nicht“ richtig — die eine Entscheidung, die das Produkt trifft",
+ "modell": "deepseek/deepseek-v4-flash",
+ "variante": null,
+ "tarif": null,
+ "lauf": 2,
+ "zeitstempel": "2026-09-23T00:12:45",
+ "db_stand": "Sitzungen bis 2026-09-16, 9078 Beschlüsse",
+ "qualitaet": 0.86,
+ "harte_befunde": null,
+ "warnung": null,
+ "faelle": 45,
+ "p50_ms": 35507,
+ "p95_ms": 773178,
+ "aufrufe": 8,
+ "kosten_usd": 0.016018,
+ "ohne_kostenwert": 0,
+ "ct_je_aufruf": 0.2002,
+ "ct_je_lauf": 1.6018,
+ "kosten_gesamt_usd": 0.016018,
+ "ausfaelle": 0,
+ "nicht_zulaessig": false,
+ "abbruch": null,
+ "modelle_laut_tabelle": [
+  "deepseek/deepseek-v4-flash"
+ ],
+ "ersatz": [],
+ "dauer_s": 1154.6,
+ "nebenkennzahlen": {
+  "geliefert": 43,
+  "transfer": 69.8,
+  "feld": 76.7
+ },
+ "fehler_beispiele": [],
+ "roh": {
+  "n_cases": 45,
+  "n_answered": 43,
+  "usable_accuracy": 86.0,
+  "transfer_accuracy": 69.8,
+  "field_accuracy": 76.7,
+  "competence_accuracy": 65.1,
+  "mistakes": [
+   {
+    "case": "Besetzung der Stelle der Kinderbeauftragten",
+    "erwartet": "adaptable",
+    "bekommen": "one_off",
+    "instrument": null
+   },
+   {
+    "case": "Rassistische Gewalt in Braunschweig - Geeignete Maßnahmen und Handlung",
+    "erwartet": "one_off",
+    "bekommen": "adaptable",
+    "instrument": "Prüfung von Maßnahmen gegen rassistische Gewalt"
+   },
+   {
+    "case": "Einheitliches Anmeldeverfahren für mehr Chancengerechtigkeit!",
+    "erwartet": "jurisdiction",
+    "bekommen": "adaptable",
+    "instrument": "Einheitliches Anmeldeverfahren für weiterführende Schulen"
+   },
+   {
+    "case": "Gewährung von Zuschüssen an Sportvereine | Braunschweiger Tanz-Sport-C",
+    "erwartet": "local",
+    "bekommen": "adaptable",
+    "instrument": "Leistungszentrum-Zuschuss nach Sportförderrichtlinie"
+   },
+   {
+    "case": "Maßnahmen für ein stabiles und nachhaltiges Bildungs- und Betreuungsan",
+    "erwartet": "adaptable",
+    "bekommen": "local",
+    "instrument": "Kita-Schließungen und Personalerhalt"
+   },
+   {
+    "case": "Grundsatzbeschluss zur Zukunft der Abfallwirtschaft und Straßenreinigu",
+    "erwartet": "local",
+    "bekommen": "adaptable",
+    "instrument": "Abfallwirtschaft in Eigenbetrieb überführen"
+   }
+  ]
+ }
+}
