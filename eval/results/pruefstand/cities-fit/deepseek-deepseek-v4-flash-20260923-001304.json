@@ -1,0 +1,153 @@
+{
+ "suite": "cities-fit",
+ "titel": "Städtevergleich: hat Oldenburg das schon?",
+ "kennzahl": "Status (drei Klassen) richtig",
+ "modell": "deepseek/deepseek-v4-flash",
+ "variante": null,
+ "tarif": null,
+ "lauf": 1,
+ "zeitstempel": "2026-09-23T00:13:04",
+ "db_stand": "Sitzungen bis 2026-09-16, 9078 Beschlüsse",
+ "qualitaet": 0.6,
+ "harte_befunde": 0,
+ "warnung": null,
+ "faelle": 40,
+ "p50_ms": 10138,
+ "p95_ms": 82867,
+ "aufrufe": 40,
+ "kosten_usd": 0.02363,
+ "ohne_kostenwert": 0,
+ "ct_je_aufruf": 0.0591,
+ "ct_je_lauf": 2.363,
+ "kosten_gesamt_usd": 0.02363,
+ "ausfaelle": 0,
+ "nicht_zulaessig": false,
+ "abbruch": null,
+ "modelle_laut_tabelle": [
+  "deepseek/deepseek-v4-flash"
+ ],
+ "ersatz": [],
+ "dauer_s": 1143.6,
+ "nebenkennzahlen": {
+  "geliefert": 40,
+  "beleg_disziplin": 100.0
+ },
+ "fehler_beispiele": [],
+ "roh": {
+  "n_cases": 40,
+  "n_answered": 40,
+  "false_present": 0,
+  "missed_present": 2,
+  "status_accuracy": 60.0,
+  "evidence_discipline": 100.0,
+  "evidence_invented": 0,
+  "evidence_violations": [],
+  "confusion": {
+   "missing→missing": 14,
+   "partial→missing": 6,
+   "partial→partial": 5,
+   "partial→present": 4,
+   "present→missing": 2,
+   "present→partial": 4,
+   "present→present": 5
+  },
+  "mistakes": [
+   {
+    "case": "Förderung freier Kulturträger – Verlängerung der Zuschussvereinbarunge",
+    "erwartet": "partial",
+    "bekommen": "present",
+    "grund": "Oldenburg hat mit der Neufassung der Förderrichtlinie für Kultureinrichtungen und bestehen"
+   },
+   {
+    "case": "Gutes Schulessen in Potsdam nachhaltig sichern - Qualitätsrahmen, Verg",
+    "erwartet": "partial",
+    "bekommen": "present",
+    "grund": "Oldenburg hat mit dem Rahmenkonzept 'Schulverpflegung in Oldenburg' (Beschluss 2019, mehrf"
+   },
+   {
+    "case": "Transparenz im Konzern Stadt Braunschweig für die Politik",
+    "erwartet": "partial",
+    "bekommen": "present",
+    "grund": "Oldenburg hat mit dem aktualisierten Handbuch Beteiligungen ein Instrument zur Transparenz"
+   },
+   {
+    "case": "Geschäftsführungen der Energie & Wasser GmbH (EWP) und Stadtwerke GmbH",
+    "erwartet": "partial",
+    "bekommen": "missing",
+    "grund": "Oldenburg entlastet Geschäftsführungen von Beteiligungen regelmäßig nach geprüften Jahresa"
+   },
+   {
+    "case": "Weitere Maßnahmen zur Unterstützung wohnungsloser Personen",
+    "erwartet": "partial",
+    "bekommen": "missing",
+    "grund": "Kein Beleg zeigt einen differenzierten Bericht zu Entlassungen freier Träger, Haustierhalt"
+   },
+   {
+    "case": "Online-Meldung von Hinweisen zu Zweckentfremdungen",
+    "erwartet": "partial",
+    "bekommen": "missing",
+    "grund": "Oldenburg hat kein Online-Meldeportal für Zweckentfremdung; die Belege betreffen nur die Z"
+   },
+   {
+    "case": "Stand der Umsetzung des Ratsbeschlusses „Lokaler Aktionsplan gegen Rec",
+    "erwartet": "present",
+    "bekommen": "partial",
+    "grund": "Oldenburg unterhält eine Koordinierungsstelle und einen Förderfonds gegen Rechtsextremismu"
+   },
+   {
+    "case": "Kommunale Wärmeplanung (KWP) für Braunschweig – Endbericht",
+    "erwartet": "present",
+    "bekommen": "partial",
+    "grund": "Oldenburg hat eine Vorlage zur Beschlussfassung des Wärmeplans vorgelegt und eine Machbark"
+   },
+   {
+    "case": "Änderungsantrag des Jugendhilfeausschusses - Präventive Jugendarbeit",
+    "erwartet": "partial",
+    "bekommen": "missing",
+    "grund": "Kein Beleg zeigt ein spezifisches schulisches Präventionsprogramm wie PLuS, das in Oldenbu"
+   },
+   {
+    "case": "Angebote der offenen Kinder- und Jugendarbeit - Anfrage der Gruppe Grü",
+    "erwartet": "present",
+    "bekommen": "missing",
+    "grund": "Oldenburg hat keine Bestandserhebung der offenen Jugendarbeit nach Stadtteilen durchgeführ"
+   },
+   {
+    "case": "Überarbeitung der Satzung über die Pflege des Sports und des Badewesen",
+    "erwartet": "present",
+    "bekommen": "partial",
+    "grund": "Oldenburg überarbeitet regelmäßig seine Sportförderrichtlinien, aber eine Überarbeitung ei"
+   },
+   {
+    "case": "Wirkung von Haushaltskennzahlen",
+    "erwartet": "partial",
+    "bekommen": "missing",
+    "grund": "Kein Beleg zeigt, dass Oldenburg bereits wirkungsorientierte Haushaltskennzahlen entwickel"
+   },
+   {
+    "case": "Richtlinie der Stadt Braunschweig über die Gewährung von Zuwendungen z",
+    "erwartet": "partial",
+    "bekommen": "missing",
+    "grund": "Oldenburg hat Satzungen zur Mittagsverpflegung und erwähnt BuT-Leistungen, aber keinen eig"
+   },
+   {
+    "case": "Klimaneutrale Verwaltung: Treibhausgasbilanzen und CO2-Zielpfadanalyse",
+    "erwartet": "partial",
+    "bekommen": "present",
+    "grund": "Oldenburg hat mehrfach Energie- und Treibhausgasbilanzen erstellt (2019/2020, 2021, 2022) "
+   },
+   {
+    "case": "Neufassung der Ordnung über die Erhebung von Entgelten für die Mittags",
+    "erwartet": "present",
+    "bekommen": "partial",
+    "grund": "Oldenburg hat eine Entgeltordnung für Mittagsverpflegung, aber nur für Grundschulen, nicht"
+   },
+   {
+    "case": "Verkehrs- und Straßenbaumaßnahmenprogramm 2026-2027 des Amtes für Mobi",
+    "erwartet": "present",
+    "bekommen": "missing",
+    "grund": "Kein Beleg zeigt ein priorisiertes Verkehrsbaumaßnahmenprogramm mit Kriteriengewichtung fü"
+   }
+  ]
+ }
+}

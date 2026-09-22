@@ -440,6 +440,22 @@ def test_flex_rueckfall_nicht_bei_inhaltsfilter(monkeypatch):
     assert len(aufrufe) == 1
 
 
+def test_tarif_aus_der_umgebung_ist_nur_die_vorgabe(monkeypatch):
+    """Der Messschalter des Prüfstands (``RATSLOTSE_LLM_TARIF``): wirkt ohne
+    ``_tarif``, weicht einem ausdrücklichen, und bleibt bei ZDR-Pflicht ein
+    Fehler — wie der Parameter, kein stiller Normaltarif."""
+    monkeypatch.setenv(llm.TARIF_ENV, "flex")
+    aufrufe = _stub_create_kwargs(monkeypatch, [_Antwort(), _Antwort()])
+    llm.chat_complete(model="openai/gpt-6-luna", messages=[], _feature="impact_rating")
+    llm.chat_complete(model="openai/gpt-6-luna", messages=[], _feature="impact_rating",
+                      _tarif="normal")
+    assert [(a.get("extra_body") or {}).get("service_tier") for a in aufrufe] == ["flex", None]
+    for feature in ("qa_answer", None):
+        with pytest.raises(llm.FlexNichtErlaubt):
+            llm.chat_complete(model="openai/gpt-6-luna", messages=[], _feature=feature)
+    assert len(aufrufe) == 2
+
+
 def test_unbekannter_tarif_wird_abgewiesen(monkeypatch):
     _stub_create_kwargs(monkeypatch, [_Antwort()])
     with pytest.raises(ValueError, match="batch"):

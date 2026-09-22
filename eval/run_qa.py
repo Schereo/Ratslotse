@@ -363,6 +363,38 @@ def main() -> int:
     ap.add_argument("--db", default=None, help="Pfad zur council.sqlite (Default: data/council.sqlite)")
     args = ap.parse_args()
 
+    if args.emit_keys:
+        from council.store import CouncilStore
+        root = Path(__file__).parent.parent
+        import os
+        store = CouncilStore(Path(args.db or os.environ.get("COUNCIL_DB") or root / "data" / "council.sqlite"))
+        emit_keys(store, harness.load_cases("cases_qa.json"))
+        store.close()
+        return 0
+    try:
+        result = messen(args)
+    except KeineHybridsuche as e:
+        print(str(e), file=sys.stderr)
+        return 1
+
+    prev, prev_path = harness.load_last("qa")
+    print_qa_report(result)
+    if prev:
+        print_latency_compare(result, prev, prev_path.name)
+    if args.save:
+        out = harness.save_result(result)
+        print(f"\n  gespeichert -> {out}")
+    return 0
+
+
+class KeineHybridsuche(RuntimeError):
+    """fastembed/Reranker fehlen — ohne Hybrid-Retrieval misst der Lauf nichts."""
+
+
+def messen(args: argparse.Namespace) -> dict:
+    """Der eigentliche Lauf — ohne Ausgabe des Berichts, für ``main`` und den
+    Modell-Prüfstand (``eval/pruefstand.py``). ``args`` braucht ``db``,
+    ``nur_portable``, ``rate_missing`` und ``nur_retrieval``."""
     import os
 
     from council import qa
@@ -378,11 +410,6 @@ def main() -> int:
     root = Path(__file__).parent.parent
     store = CouncilStore(Path(args.db or os.environ.get("COUNCIL_DB") or root / "data" / "council.sqlite"))
     cases = harness.load_cases("cases_qa.json")
-
-    if args.emit_keys:
-        emit_keys(store, cases)
-        store.close()
-        return 0
 
     if args.nur_portable:
         cases = [c for c in cases if c.get("expected_keys")]
@@ -400,10 +427,10 @@ def main() -> int:
     try:
         emb.hybrid_search(store, "Radverkehr", "Radverkehr Fahrrad", top_k=1, pool=5)
         cold_start_ms: int | None = round((time.perf_counter() - t0) * 1000)
-    except Exception:  # noqa: BLE001 — ohne fastembed misst der Lauf nichts Sinnvolles
-        print("fastembed/Reranker nicht verfuegbar — Hybrid-Retrieval ist Pflicht fuer die Eval.", file=sys.stderr)
+    except Exception as e:  # noqa: BLE001 — ohne fastembed misst der Lauf nichts Sinnvolles
         store.close()
-        return 1
+        raise KeineHybridsuche("fastembed/Reranker nicht verfuegbar — Hybrid-Retrieval "
+                               "ist Pflicht fuer die Eval.") from e
 
     # Ein Retrieval je Fall, von beiden Armen geteilt (identische Kandidaten,
     # nur der Kontext unterscheidet sich) — sonst misst man Retrieval-Rauschen.
@@ -544,15 +571,7 @@ def main() -> int:
     result["kosten"] = {"lauf_usd": round(sc["usd"], 4), "calls_ohne_cost": sc["calls_ohne"]}
     result["skipped"] = len(skipped)
     result["skipped_ids"] = skipped
-
-    prev, prev_path = harness.load_last("qa")
-    print_qa_report(result)
-    if prev:
-        print_latency_compare(result, prev, prev_path.name)
-    if args.save:
-        out = harness.save_result(result)
-        print(f"\n  gespeichert -> {out}")
-    return 0
+    return result
 
 
 if __name__ == "__main__":

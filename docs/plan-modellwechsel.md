@@ -143,6 +143,28 @@ Ausschuss, Orte, Tragweite (`scripts/eval_impact.py`,
 mit Attrappe wie in `harness.py`. Erster Bericht mit dem heutigen Stand
 aller angeschlossenen Suiten, je zwei Läufe.
 
+**Stand 23.09.2026 (PR P1): gebaut.** 13 Suiten im Register, zwölf lokal
+lauffähig; `ki-frage` braucht die Embeddings und läuft nur auf dem Server.
+Der erste Bericht steht in [`docs/modell-pruefstand.md`](modell-pruefstand.md),
+die Lotti-Messung von oben ist übernommen, nicht neu gefahren. Kurz:
+
+- **Tragweite:** GPT-6 Luna liegt mit 5.6 gleichauf (91,7 % ± 3,3 beide), im
+  Flex-Tarif zum Viertel des heutigen Preises je Aufruf. 5.6 im Flex-Tarif
+  brauchte 24–27 s je Aufruf statt 9 s.
+- **Ausschuss:** beide Luna 100 %. Die Suite hat aber nur drei Fälle, ein
+  Unterschied wäre dort gar nicht messbar.
+- **Watcher:** GPT-6 Luna ist nicht zulässig (ZDR). Der Watcher trägt jetzt
+  `_feature="council_watcher"` und taucht damit in der Kostenstatistik auf.
+- **KI-Frage-Routing:** 3.1 Flash Lite schlechter (80 % gegen 90 %), 3.5
+  Flash Lite im Rauschen (± 6,7), DeepSeek V4 Flash ohne Denken gleichauf,
+  aber 8–9 s statt 0,8 s je Analyse. Für einen Web-Pfad kommt das nicht in
+  Frage.
+- **Orte:** alle Kandidaten im Rauschen. 3.1 und 3.5 Flash Lite kosten das
+  Sechs- bis Neunfache.
+- **`RATSLOTSE_LLM_TARIF`** (`llm.TARIF_ENV`) ist der Messschalter, über den
+  `--tarif flex` die Aufrufe in `council/` erreicht. In den Betrieb gehört er
+  nicht.
+
 ### P2 — Evals für die Features ohne Eval
 
 Zuerst die, die ein Wechsel ohnehin trifft: Transkription, Live-Verfolgung,
