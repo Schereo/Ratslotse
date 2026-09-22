@@ -25,7 +25,7 @@ frische Datenbank entsteht aus ``SCHEMA``, eine gewachsene aus
 """
 from __future__ import annotations
 
-SCHEMA_VERSION = 8
+SCHEMA_VERSION = 9
 
 SCHEMA = """
 -- ---------------------------------------------------------------- Schicht 0
@@ -316,6 +316,37 @@ CREATE TABLE IF NOT EXISTS idea_group_status (
 );
 
 
+-- Die IDEE als Ganzes: je Gruppe Städte, Zeitraum, Ergebnisse, Themenfeld
+-- und eine Überschrift (Plan PR 47/49). Abgeleitet wie `idea_group_status`,
+-- vom Cluster-Schritt ganz neu geschrieben, und ohne Meinung: Das Urteil über
+-- Oldenburg steht als `idea_fit` in `annotations`, nicht hier.
+--
+-- Warum eine Tabelle: Die Übersicht braucht je Idee die Zeitleiste über alle
+-- Städte. Aus `idea_clusters` im Request gerechnet hieße das 4.500 Zeilen
+-- samt Ergebnis je Aufruf — der Gruppen-Status kostete so schon 0,65 s.
+-- `per_city` und `timeline` sind JSON, weil sie nur gezeigt, nie gefiltert
+-- werden. Oldenburger Mitglieder zählen weder bei `cities` noch in der
+-- Zeitleiste; `oldenburg_members` sagt nur, dass es welche gibt.
+CREATE TABLE IF NOT EXISTS idea_groups (
+    model              TEXT NOT NULL,
+    version            TEXT NOT NULL,
+    cluster_id         INTEGER NOT NULL,
+    field              TEXT,
+    cities             INTEGER NOT NULL,
+    members            INTEGER NOT NULL,
+    oldenburg_members  INTEGER NOT NULL DEFAULT 0,
+    first_date         TEXT,
+    last_date          TEXT,
+    outcomes           TEXT NOT NULL,
+    per_city           TEXT NOT NULL,
+    timeline           TEXT NOT NULL,
+    stable             INTEGER NOT NULL,
+    label              TEXT NOT NULL,
+    top_paper          TEXT,
+    PRIMARY KEY (model, version, cluster_id)
+);
+CREATE INDEX IF NOT EXISTS idx_idea_groups_field ON idea_groups(field, cities);
+
 -- ---------------------------------------------------------------- Schicht 5
 -- Was MENSCHEN zu einem Urteil sagen. Die einzige Tabelle hier, die weder aus
 -- einer Quelle noch aus einem Modell entsteht.
@@ -576,5 +607,28 @@ MIGRATIONS: list[tuple[int, str]] = [
         terms        TEXT NOT NULL,
         created_at   TEXT NOT NULL
     );
+    """),
+    # 9 — Die Idee als Ganzes (22.09.2026, Plan PR 47). Reines Anlegen; die
+    # Tabelle füllt der nächste Cluster-Schritt (`clusters.rebuild_idea_groups`).
+    (9, """
+    CREATE TABLE IF NOT EXISTS idea_groups (
+        model              TEXT NOT NULL,
+        version            TEXT NOT NULL,
+        cluster_id         INTEGER NOT NULL,
+        field              TEXT,
+        cities             INTEGER NOT NULL,
+        members            INTEGER NOT NULL,
+        oldenburg_members  INTEGER NOT NULL DEFAULT 0,
+        first_date         TEXT,
+        last_date          TEXT,
+        outcomes           TEXT NOT NULL,
+        per_city           TEXT NOT NULL,
+        timeline           TEXT NOT NULL,
+        stable             INTEGER NOT NULL,
+        label              TEXT NOT NULL,
+        top_paper          TEXT,
+        PRIMARY KEY (model, version, cluster_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_idea_groups_field ON idea_groups(field, cities);
     """),
 ]

@@ -432,6 +432,12 @@ hält die Grenze, und `tests/test_sql_spalten.py` verlangt, dass Abfragen als
 **ganze statische Anweisungen** geschrieben sind (zusammengesetztes SQL
 überspringt es und prüft dann nichts).
 
+**Abgeleitete Tabellen tragen auch keine.** `idea_group_status` und
+`idea_groups` (die Idee als Ganzes: Städte, Zeitleiste, Überschrift) schreibt
+der Cluster-Schritt aus Clustern, Prüfurteilen und Ergebnissen neu — nur
+Zählen, kein Modell. Das Urteil über Oldenburg je Idee steht als `idea_fit`
+in `annotations`, nie als Spalte an `idea_groups`.
+
 ## Kein `sqlite3.connect` außerhalb von `store.py`
 
 Auch nicht in Skripten. Über den Store laufen Schema, Migration und
