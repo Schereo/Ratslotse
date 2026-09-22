@@ -634,5 +634,273 @@
   ],
   "must_not_number": true,
   "max_sentences": 6
+ },
+ {
+  "id": "schwer-plan-ist-abweichung",
+  "note": "PR 29. Zwei Subtraktionen aus EINER Zeile des Kontexts: Aufwendungen 764.416.064 − 727.883.665 = 36,5 Mio. €, Erträge 799.057.203 − 693.619.186 = 105,4 Mio. €. Absichtlich OHNE must_not_number — die richtige Antwort trägt zwei gerechnete Zahlen, die im Kontext nicht stehen; der Zahlen-Wächter würde genau sie bestrafen.",
+  "route": "/haushalt/plan-ist",
+  "heading": "Geplant und geworden",
+  "question": "Um wie viel lagen die Aufwendungen 2024 über dem Plan, und wie war es bei den Erträgen?",
+  "expect_mode": "explain",
+  "must_mention": [
+   [
+    "36,5 Mio",
+    "36,5 Millionen",
+    "36 Millionen",
+    "37 Millionen",
+    "37 Mio"
+   ],
+   [
+    "105,4",
+    "105 Mio",
+    "105 Millionen",
+    "106 Millionen",
+    "106 Mio"
+   ]
+  ],
+  "max_sentences": 6
+ },
+ {
+  "id": "schwer-jahresergebnis-zwei-rechnungen",
+  "note": "PR 29. Drei Zahlen aus ZWEI Bausteinen, alle im Kontext: ordentliches Ergebnis 34.641.139 €, außerordentliches -28.504.888 € (der Baustein sagt ausdrücklich „nenne beide“) und der Finanzmittel-Fehlbetrag -22.378.427 € aus der Kassensicht. Wer nur die erste Zahl nennt, hat aus einem Überschuss von 6 Mio. einen von 35 Mio. gemacht.",
+  "route": "/haushalt/plan-ist",
+  "heading": "Geplant und geworden",
+  "question": "Wie fiel das Jahresergebnis 2024 tatsächlich aus, und was sagt die Kassensicht dazu?",
+  "expect_mode": "explain",
+  "must_mention": [
+   [
+    "34,6",
+    "34.6",
+    "35 Mio",
+    "35 Millionen"
+   ],
+   [
+    "28,5",
+    "28.5",
+    "29 Mio",
+    "29 Millionen"
+   ],
+   [
+    "Kasse",
+    "Finanzrechnung",
+    "Finanzmittel",
+    "Zahlungsmittel"
+   ]
+  ],
+  "must_not_number": true,
+  "max_sentences": 6
+ },
+ {
+  "id": "schwer-eigenbetrieb-groesstes-minus",
+  "note": "PR 29. Fünf Wirtschaftspläne im Kontext, unsortiert und in GEMISCHTEN Einheiten — „-10,1 Mio. €“ neben „-15.621 €“. Gesucht ist das größte Minus: die Bäderbetriebsgesellschaft mbH. Alle drei gemessenen Modelle nannten in der ersten Fassung die 15.621 €, weil die Zahl größer AUSSIEHT. Geprüft wird nur die ZAHL, nicht der Name: „Eigenbetrieb“ ist im Baustein die Sammelbezeichnung, juristisch sind zwei der fünf GmbHs — eine Erwartung auf den Namen bestrafte ein Modell, das genau hinsieht. Der zweite Teil („wie wird es gedeckt?“) steht nirgends im Kontext; dagegen steht `must_not_number`. Der Wortlaut ist mit Bedacht so und nicht „plant für 2026 das größte Minus“: Mit dieser Fassung kamen nur ZWEI der fünf Pläne in den Prompt (`geld_kontext` wählt an den Begriffen aus) — und ein Fall, der an einem fehlenden Baustein scheitert, misst den Kontext und nicht das Modell.",
+  "route": "/haushalt/konzern",
+  "heading": "Ist das die ganze Stadt?",
+  "question": "Welcher Eigenbetrieb hat das größte Defizit, und wie wird es gedeckt?",
+  "expect_mode": "explain",
+  "must_mention": [
+   [
+    "10,1",
+    "10.1",
+    "10 Mio",
+    "10 Millionen"
+   ]
+  ],
+  "must_not_number": true,
+  "max_sentences": 5
+ },
+ {
+  "id": "schwer-konzern-ohne-kern",
+  "note": "PR 29. Eine Subtraktion über zwei Zeilen desselben Bausteins: Konzern 1.234.483.073 € minus Kernverwaltung 764.416.064 € = rund 470 Mio. €, und der Baustein sagt selbst, dass die Differenz die Eigenbetriebe und Beteiligungen sind. Ohne must_not_number, s. schwer-plan-ist-abweichung.",
+  "route": "/haushalt/konzern",
+  "heading": "Ist das die ganze Stadt?",
+  "question": "Wie viel von den Aufwendungen des Konzerns 2024 entfällt nicht auf die Kernverwaltung?",
+  "expect_mode": "explain",
+  "must_mention": [
+   [
+    "470 Mio",
+    "470 Millionen",
+    "471 Millionen",
+    "471 Mio",
+    "0,47 Milliarden"
+   ]
+  ],
+  "max_sentences": 5
+ },
+ {
+  "id": "schwer-stellen-unbesetzt-anteil",
+  "note": "PR 29. Teil B des Stellenplans: 357,48 von 1.749,00 Stellen nicht besetzt = gut 20 %. Beide Zahlen stehen in derselben Zeile, der Anteil nicht — er muss gerechnet werden. Teil A daneben (143,71 von 796,00) ist die Falle für ein Modell, das die Zeilen verwechselt. Ohne must_not_number wegen der gerechneten Quote.",
+  "route": "/haushalt/personal",
+  "heading": "Wer macht die Arbeit?",
+  "question": "Wie viele Stellen der Arbeitnehmerinnen und Arbeitnehmer waren nicht besetzt, und welcher Anteil aller Stellen dieses Teils war das?",
+  "expect_mode": "explain",
+  "must_mention": [
+   [
+    "357,48",
+    "357,5",
+    "357"
+   ],
+   [
+    "20 %",
+    "20,4",
+    "20,44",
+    "20 Prozent",
+    "rund 20",
+    "ein Fünftel",
+    "einem Fünftel"
+   ]
+  ],
+  "max_sentences": 6
+ },
+ {
+  "id": "schwer-gewerbesteuer-jahr-fehlt",
+  "note": "PR 29. Zwei Grenzen auf einmal: Für 2026 liegt die Steuer-Quelle nicht vor (der Baustein sagt das als ACHTUNG-Zeile und verlangt, es dazuzusagen), und die Gewerbesteuerumlage ist in der Zahl 222.117.000 € (2025) schon saldiert — was davon „übrig bleibt“, steht nirgends. Richtig ist: das Jahr richtigstellen, die 2025er Zahl nennen, die Umlage offenlassen.",
+  "route": "/haushalt/einnahmen",
+  "heading": "Woher kommt das Geld?",
+  "question": "Wie viel nimmt die Stadt 2026 an Gewerbesteuer ein, und wie viel bleibt nach der Gewerbesteuerumlage übrig?",
+  "expect_mode": "explain",
+  "must_mention": [
+   [
+    "2025"
+   ],
+   [
+    "222"
+   ],
+   [
+    "für 2026 liegt",
+    "für 2026 liegen",
+    "2026 liegt",
+    "2026 liegen",
+    "noch nicht vor",
+    "nicht vor",
+    "liegen mir nicht",
+    "habe ich nicht",
+    "noch keine"
+   ]
+  ],
+  "must_not_number": true,
+  "max_sentences": 6
+ },
+ {
+  "id": "schwer-schulden-andere-staedte",
+  "note": "PR 29. Der Vergleichs-Baustein beantwortet eine ANDERE Frage: Er führt die Steuerkraftmesszahl der kreisfreien Städte, nicht ihre Schulden. Richtig ist, Oldenburgs 1.908 € je Einwohner*in zu nennen und für Osnabrück keine Zahl zu erfinden — das fängt `must_not_number`, auch den Umweg über 273,6 Mio. € geteilt durch die Einwohnerzahl. Geprüft wird die HANDLUNG, nicht die Formel der Absage: Die erste Fassung verlangte bestimmte Absage-Wörter und ließ „Die Seite zeigt keine Angaben …“ durchfallen.",
+  "route": "/haushalt/vergleich",
+  "heading": "Steht Oldenburg besser da?",
+  "question": "Wie hoch sind die Schulden je Einwohner in Osnabrück, verglichen mit Oldenburg?",
+  "expect_mode": "explain",
+  "must_mention": [
+   [
+    "1.908"
+   ]
+  ],
+  "must_not": [
+   "ist viel",
+   "ist wenig",
+   "ziemlich viel",
+   "sehr hoch",
+   "sehr niedrig"
+  ],
+  "must_not_number": true,
+  "max_sentences": 6
+ },
+ {
+  "id": "schwer-schuldendienst",
+  "note": "PR 29. Die richtige Antwort ist „das steht so nicht in meinen Daten“: Der Kredit-Baustein trägt Zinssätze einzelner Aufnahmen, der Schuldenstand ist ein Bestand („nie mit Aufwendungen verrechnen“), eine Tilgungssumme gibt es nirgends. must_not_number fängt die erfundene Gesamtsumme; ein Verbotswort wäre hier falsch, weil es auch in der richtigen Absage stünde.",
+  "route": "/haushalt/schulden",
+  "heading": "Wie viel Schulden hat Oldenburg?",
+  "question": "Was kostet die Stadt der Schuldendienst insgesamt, also Zinsen und Tilgung zusammen?",
+  "expect_mode": "explain",
+  "must_mention": [
+   [
+    "liegen mir nicht",
+    "liegt mir nicht",
+    "habe ich nicht",
+    "nicht vor",
+    "steht nicht",
+    "stehen nicht",
+    "kenne ich nicht",
+    "weiß ich nicht",
+    "nicht bekannt",
+    "kann ich nicht",
+    "keine Angaben",
+    "keine Zahlen",
+    "keine Informationen",
+    "sagt nichts",
+    "sagen nichts",
+    "zeigt keine",
+    "zeigen keine",
+    "gibt keine",
+    "geben keine",
+    "liegen keine",
+    "liegt keine",
+    "nichts dazu",
+    "nicht enthalten",
+    "nicht aufgeführt",
+    "nicht ausgewiesen",
+    "steht hier nicht",
+    "nicht ausrechnen",
+    "nicht erfinden",
+    "keine eigenen",
+    "nicht ermitteln",
+    "nicht beziffern",
+    "nicht auslesen",
+    "nicht ablesen"
+   ]
+  ],
+  "must_not_number": true,
+  "max_sentences": 6
+ },
+ {
+  "id": "schwer-schulden-hochrechnung",
+  "note": "PR 29. Eine Hochrechnung ist keine Auskunft: 2024 294.851.000 €, 2025 336.994.000 € stehen im Kontext, 2027 nicht. Geprüft wird beides zugleich — beide Stände nennen UND keine dritte Zahl erfinden. Dass damit auch die bloße Differenz (42,1 Mio.) als Befund zählt, ist gewollt: Der Prompt sagt „keine Zahl, die dort nicht vorkommt“, und der Wächter kann eine Zwischenrechnung nicht von einer Prognose unterscheiden.",
+  "route": "/haushalt/schulden",
+  "heading": "Wie viel Schulden hat Oldenburg?",
+  "question": "Wenn die Schulden weiter so steigen wie von 2024 auf 2025 — wie hoch wären sie dann 2027?",
+  "expect_mode": "explain",
+  "must_mention": [
+   [
+    "294",
+    "295"
+   ],
+   [
+    "336",
+    "337"
+   ]
+  ],
+  "max_sentences": 6,
+  "must_not_number": true
+ },
+ {
+  "id": "schwer-investitionen-plan-ist",
+  "note": "PR 29. Zwei Zahlenwerke, die nebeneinander stehen und nicht gegeneinander gerechnet werden dürfen: Finanzhaushalt 2024 (Plan) 109.052.867 € Auszahlungen und Jahrbuch-Tabelle 1107-1 (Ist) 67.954.000 €. Der Baustein verbietet Differenz, Quote und Prozentsatz ausdrücklich; must_not_number fängt beides, weil jede solche Zahl im Kontext fehlt. Die dritte Liste nennt EINZELNE Wörter und keine Halbsätze: „lassen sich nicht einfach gegeneinander rechnen“ enthält „nicht gegeneinander“ nicht, und eine richtige Antwort fiel daran durch (gemessen 22.09.2026, Sonnet).",
+  "route": "/haushalt/investitionen",
+  "heading": "Was gebaut wird",
+  "question": "Wie viel wollte die Stadt 2024 investieren, und wie viel ist davon tatsächlich abgeflossen?",
+  "expect_mode": "explain",
+  "must_mention": [
+   [
+    "109"
+   ],
+   [
+    "67,9",
+    "68 Mio",
+    "68 Millionen",
+    "68,0"
+   ],
+   [
+    "gegeneinander",
+    "abgegrenzt",
+    "Abgrenzung",
+    "Zuschnitt",
+    "nicht vergleich",
+    "nicht direkt",
+    "unterschiedlich",
+    "verschieden",
+    "nicht verrechnen",
+    "nicht miteinander",
+    "nicht einfach"
+   ]
+  ],
+  "must_not_number": true,
+  "max_sentences": 6
  }
 ]

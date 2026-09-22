@@ -54,6 +54,16 @@ DEEPSEEK_MIN_MAX_TOKENS = int(os.environ.get("NWZ_DEEPSEEK_MIN_MAX_TOKENS", "240
 # finish_reason='length'-Leere.
 GPT56_MIN_MAX_TOKENS = int(os.environ.get("NWZ_GPT56_MIN_MAX_TOKENS", "16000"))
 
+# Die großen Geminis (Pro der 2.5/3.x-Reihe und 3.8-flash) denken ebenfalls —
+# und anders als bei DeepSeek lässt sich das NICHT abschalten: OpenRouter
+# antwortet auf `reasoning.enabled=false` mit HTTP 400 „Reasoning is mandatory
+# for this endpoint". Gemessen am 22.09.2026 mit Lottis Budget von 350 Tokens
+# (council/assistant.py::MAX_TOKENS): completion_tokens 346 von 350, sichtbarer
+# Text 53 Zeichen — die Antwort war abgeschnitten, ohne Fehler. Bleibt nur der
+# Boden. Beobachtet wurden 530–1.220 Denk-Tokens; 4.000 lassen Luft, und
+# max_tokens ist eine Decke, keine Bestellung — bezahlt wird, was erzeugt wird.
+GEMINI_DENK_MIN_MAX_TOKENS = int(os.environ.get("NWZ_GEMINI_DENK_MIN_MAX_TOKENS", "4000"))
+
 MODEL_PARAMS: dict[str, dict[str, Any]] = {
     "openai/gpt-4o": {},
     "openai/gpt-4o-mini": {},
@@ -70,6 +80,17 @@ MODEL_PARAMS: dict[str, dict[str, Any]] = {
         "openai/gpt-5.6-sol", "openai/gpt-5.6-sol-pro",
         "openai/gpt-5.6-terra", "openai/gpt-5.6-terra-pro",
     )},
+    # Der Modellvergleich für Lottis Erklärungen (PR 29, Tabelle in
+    # docs/plan-lotti-assistentin-3.md). Gemini 2.5 Flash braucht keinen
+    # Eintrag — es denkt bei dieser Aufgabe nicht —, die drei hier schon.
+    **{m: {"min_max_tokens": GEMINI_DENK_MIN_MAX_TOKENS} for m in (
+        "google/gemini-3.1-pro-preview", "google/gemini-2.5-pro",
+        "google/gemini-3.8-flash",
+    )},
+    # Claude Sonnet läuft ohne Sonderbehandlung (und schon als Zweitmodell der
+    # OCR, council/ocr.py::MODEL_ZWEIT) — der leere Eintrag ist trotzdem
+    # Pflicht: Er ist die Liste der Modelle, die hier je gemessen wurden.
+    "anthropic/claude-sonnet-4.6": {},
 }
 
 
