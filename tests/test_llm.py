@@ -344,3 +344,109 @@ def test_chat_complete_reicht_die_zdr_entscheidung_durch(monkeypatch):
         with pytest.raises(RuntimeError):
             llm.chat_complete(model="x", messages=[], _feature=feature)
         assert gesehen[-1] is erwartet
+
+
+# --------------------------------------------------------------------------- #
+# Flex-Tarif (Messung 22.09.2026: halber Preis, gleiche Qualität, ohne ZDR)
+# --------------------------------------------------------------------------- #
+def _stub_create_kwargs(monkeypatch, plan):
+    """Wie ``_stub_create``, zeichnet aber die vollständigen kwargs auf."""
+    aufrufe = []
+    def fake_create(**kwargs):
+        aufrufe.append(kwargs)
+        ergebnis = plan.pop(0)
+        if isinstance(ergebnis, BaseException):
+            raise ergebnis
+        return ergebnis
+    monkeypatch.setattr(llm, "_create", fake_create)
+    monkeypatch.setattr(llm.time, "sleep", lambda s: None)
+    return aufrufe
+
+
+def test_flex_fuer_freigegebenes_feature(monkeypatch):
+    """impact_rating steht in OHNE_NUTZEREINGABE → Flex, über den ZDR-Pfad
+    von _create (``_zdr=False``), kein zweiter Routing-Weg."""
+    aufrufe = _stub_create_kwargs(monkeypatch, [_Antwort()])
+    llm.chat_complete(model="openai/gpt-6-luna", messages=[], _feature="impact_rating",
+                      _tarif="flex", extra_body={"reasoning": {"effort": "low"}})
+    (kw,) = aufrufe
+    assert kw["_zdr"] is False
+    assert kw["extra_body"] == {"reasoning": {"effort": "low"}, "service_tier": "flex"}
+    assert "_tarif" not in kw
+
+
+def test_flex_anfrage_traegt_routing_ohne_zdr(monkeypatch):
+    """Durch das echte _create: Mit zdr=True ignoriert OpenRouter service_tier
+    still (gemessen) — also fällt nur zdr weg, die übrigen Schranken bleiben."""
+    for var in ("NWZ_OPENROUTER_ROUTING", "NWZ_OPENROUTER_IGNORE", "NWZ_OPENROUTER_ZDR"):
+        monkeypatch.delenv(var, raising=False)
+    gesendet = []
+
+    class _FakeCompletions:
+        def create(self, **kwargs):
+            gesendet.append(kwargs)
+            return _Antwort()
+
+    class _FakeClient:
+        chat = type("", (), {"completions": _FakeCompletions()})()
+
+    monkeypatch.setattr(llm, "get_client", lambda: _FakeClient())
+    monkeypatch.setattr(llm, "_record_usage", lambda f, m, u: None)
+    llm.chat_complete(model="openai/gpt-6-luna", messages=[], _feature="impact_rating",
+                      _tarif="flex")
+    body = gesendet[0]["extra_body"]
+    assert body["service_tier"] == "flex"
+    assert "zdr" not in body["provider"]
+    assert body["provider"]["data_collection"] == "deny"
+    assert {"deepseek", "baidu", "alibaba"} <= set(body["provider"]["ignore"])
+
+
+def test_flex_fuer_zdr_pflichtiges_feature_ist_ein_fehler(monkeypatch):
+    """Nicht still im normalen Tarif laufen — wer Flex schreibt, rechnet mit
+    der Hälfte des Preises. Ein Nutzerpfad und ein Aufruf ohne _feature."""
+    aufrufe = _stub_create_kwargs(monkeypatch, [_Antwort()])
+    for feature in ("qa_answer", None):
+        with pytest.raises(llm.FlexNichtErlaubt):
+            llm.chat_complete(model="openai/gpt-6-luna", messages=[], _feature=feature,
+                              _tarif="flex")
+    with pytest.raises(llm.FlexNichtErlaubt):
+        llm.chat_complete(model="openai/gpt-6-luna", messages=[], _tarif="flex")
+    assert aufrufe == []
+
+
+def test_flex_abweisung_faellt_auf_den_normalen_tarif_zurueck(monkeypatch):
+    aufgezeichnet = []
+    monkeypatch.setattr(llm, "_record_usage", lambda f, m, u: aufgezeichnet.append((f, m)))
+    aufrufe = _stub_create_kwargs(monkeypatch, [
+        llm.EmptyResponseError("429 Resource Unavailable"), _Antwort("normal")])
+    resp = llm.chat_complete(model="openai/gpt-6-luna", messages=[], _feature="impact_rating",
+                             _tarif="flex")
+    assert resp.choices[0].message.content == "normal"
+    assert [(a.get("extra_body") or {}).get("service_tier") for a in aufrufe] == ["flex", None]
+    # Der Rückfall behält die ZDR-Entscheidung des Features.
+    assert [a["_zdr"] for a in aufrufe] == [False, False]
+    assert aufgezeichnet == [("impact_rating", "openai/gpt-6-luna")]
+
+
+def test_flex_rueckfall_nicht_bei_inhaltsfilter(monkeypatch):
+    import httpx
+    from openai import BadRequestError
+    filter_fehler = BadRequestError(
+        "content_filter", response=httpx.Response(400, request=_make_request()), body={})
+    aufrufe = _stub_create_kwargs(monkeypatch, [filter_fehler, _Antwort()])
+    with pytest.raises(BadRequestError):
+        llm.chat_complete(model="openai/gpt-6-luna", messages=[], _feature="impact_rating",
+                          _tarif="flex")
+    assert len(aufrufe) == 1
+
+
+def test_unbekannter_tarif_wird_abgewiesen(monkeypatch):
+    _stub_create_kwargs(monkeypatch, [_Antwort()])
+    with pytest.raises(ValueError, match="batch"):
+        llm.chat_complete(model="openai/gpt-6-luna", messages=[], _tarif="batch")
+
+
+def test_ohne_tarif_bleibt_der_aufruf_unveraendert(monkeypatch):
+    aufrufe = _stub_create_kwargs(monkeypatch, [_Antwort()])
+    llm.chat_complete(model="openai/gpt-6-luna", messages=[], _feature="impact_rating")
+    assert "service_tier" not in (aufrufe[0].get("extra_body") or {})

@@ -39,6 +39,14 @@ Zustell-Ausfall lautlos für immer.
   danach übernimmt das gemessene Ersatzmodell (`ERSATZ` in `llm.py`, Golden-
   Set-Messung im Kommentar). **Nie in einer Web-Anfrage** — die darf nicht
   minutenlang hängen.
+- **`_tarif="flex"` halbiert den Preis bei gleicher Qualität**, gemessen am
+  Tragweite-Golden-Set in `docs/modell-batch-flex.md`. Der Tarif gilt nur
+  für Features ohne `zdr_pflicht`, denn Flex-Endpunkte haben kein ZDR. Sonst
+  fliegt `FlexNichtErlaubt`, und der Aufruf fällt **nicht** still in den
+  normalen Tarif. Weist der Anbieter ab, läuft der Aufruf im normalen Tarif
+  weiter. Die Batch-Schnittstelle von OpenRouter ist bewusst nicht
+  angeschlossen: Sie ist genauso teuer wie Flex, braucht Minuten bis
+  Stunden, lässt sich nicht abbrechen und nimmt kein `ignore` im Routing an.
 
 ## Prompts sind Code
 
