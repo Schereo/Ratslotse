@@ -7022,3 +7022,22 @@ def test_quiz_order_never_reaches_the_app(client):
     app = client.get("/api/quiz/round?areas=topic:haushalt", headers={"X-Client": "ios"}).json()["questions"]
     assert [q["qtype"] for q in web] == ["order"] and app == []
     assert client.get("/api/quiz/daily").json()["questions"] == []
+def test_quiz_stats_map_of_everyone(client):
+    """„Wie gut kennt Oldenburg …" (Plan Q11): über alle Konten, erst ab 20
+    Antworten je Ortsbereich, darunter ohne Zahlen."""
+    from app.routers import quiz as quiz_router
+    quiz_router._ALL_CACHE.update(at=0.0, value=None)
+    _register(client)
+    store = Store(RATSLOTSE_DB)
+    for owner in range(700, 725):                       # 25 Antworten in Eversten, 80 % richtig
+        store.record_quiz_answer(owner, 1, "district", "Eversten", "places", owner % 5 != 0, 1)
+    for owner in range(700, 705):                       # 5 in Osternburg: zu wenige
+        store.record_quiz_answer(owner, 2, "district", "Osternburg", "places", True, 1)
+    store.close()
+    s = client.get("/api/quiz/stats").json()
+    alle = {d["district"]: d for d in s["districts_all"]}
+    assert alle["Eversten"]["level"] == 3 and alle["Eversten"]["level_label"] == "gut bekannt"
+    assert alle["Osternburg"] == {"district": "Osternburg", "answered": 0, "correct": 0,
+                                  "level": 0, "level_label": "zu wenige Antworten"}
+    assert s["district_legend"]["all"][3] == "gut bekannt" and len(s["district_legend"]["mine"]) == 4
+    quiz_router._ALL_CACHE.update(at=0.0, value=None)

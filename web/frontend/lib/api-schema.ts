@@ -13357,8 +13357,14 @@ export interface components {
             by_area: components["schemas"]["QuizAreaScore"][];
             /** Daily Done */
             daily_done: boolean;
+            /** District Legend */
+            district_legend?: {
+                [key: string]: string[];
+            };
             /** Districts */
             districts?: components["schemas"]["QuizDistrictProgress"][];
+            /** Districts All */
+            districts_all?: components["schemas"]["QuizDistrictProgress"][];
             /** Streak */
             streak: number;
             total: components["schemas"]["QuizTotal"];
@@ -22468,4 +22474,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: d20da510fff69979f5cf86a4b86ba618dd8c297abe92a78dce35d0a4b09f9c4a
+// vertrag-sha256: 509679b189913af5163f30593ecd2938ed17ecb95ceea90e290b5b1ce3808200

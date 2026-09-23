@@ -615,7 +615,7 @@ function QuizInner() {
           </div>
 
           {stats?.districts && stats.total.answered > 0 && (
-            <QuizProgressMap districts={stats.districts}
+            <QuizProgressMap districts={stats.districts} districtsAll={stats.districts_all} legend={stats.district_legend}
               onPlay={(name) => { if (!starting) void startRound([`district:${name}`], []); }} />
           )}
         </div>

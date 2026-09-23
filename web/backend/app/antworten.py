@@ -1190,6 +1190,10 @@ class QuizScore(TypedDict):
     badges: list[QuizBadge]
     daily_done: bool
     districts: NotRequired[list[QuizDistrictProgress]]
+    # Dieselbe Karte über alle Mitspielenden (anonym, erst ab 20 Antworten).
+    districts_all: NotRequired[list[QuizDistrictProgress]]
+    # Die Wörter der Stufen 0–3 je Ansicht: {"mine": [...], "all": [...]}.
+    district_legend: NotRequired[dict[str, list[str]]]
 
 
 class QuizFlaggedQuestion(TypedDict):

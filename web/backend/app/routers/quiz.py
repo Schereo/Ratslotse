@@ -35,6 +35,16 @@ OTHERS_MIN = 5
 #: Stufen der Fortschrittskarte: (ab beantwortet, ab Quote, Wort). Die oberste
 #: ist dieselbe Schwelle wie das „Kenner"-Abzeichen in ``_badges``.
 DISTRICT_LEVELS = [(5, 0.8, "gemeistert"), (3, 0.5, "vertraut"), (1, 0.0, "entdeckt")]
+#: Dieselbe Karte für alle (Plan Q11): Stufe nach der Trefferquote aller
+#: Mitspielenden — erst ab so vielen Antworten je Ortsbereich, darunter sagt
+#: eine Quote nichts und verriete bei zwei Leuten, wie jemand gespielt hat.
+ALL_MIN_ANSWERS = 20
+ALL_LEVELS = [(0.75, "gut bekannt"), (0.5, "bekannt"), (0.0, "wenig bekannt")]
+ALL_NONE = "zu wenige Antworten"
+#: Die Wörter je Stufe 0–3, damit Web und App dieselbe Legende zeigen.
+LEGEND = {"mine": ["unentdeckt", "entdeckt", "vertraut", "gemeistert"],
+          "all": [ALL_NONE, "wenig bekannt", "bekannt", "gut bekannt"]}
+_ALL_CACHE: dict = {"at": 0.0, "value": None}
 
 
 def _today() -> str:
@@ -101,6 +111,38 @@ def _district_progress(by_area: list[dict], council: CouncilStore) -> list[dict]
                 break
         out.append({"district": name, "answered": answered, "correct": correct,
                     "level": level, "level_label": label})
+    return out
+
+
+def _district_all(store: Store, council: CouncilStore) -> list[dict]:
+    """Die Karte aller: je Ortsbereich die Trefferquote aller Mitspielenden,
+    zehn Minuten zwischengespeichert (die Summe läuft über alle Antworten)."""
+    import time
+    if _ALL_CACHE["value"] is not None and time.time() - _ALL_CACHE["at"] < 600:
+        return _ALL_CACHE["value"]
+    names = geo.ortsbereiche()
+    ob = set(names)
+    agg = {n: [0, 0] for n in names}
+    for a in store.quiz_area_totals():
+        if a["area_type"] != "district":
+            continue
+        name = _ortsbereich_of(a["area_key"], council, ob)
+        if name:
+            agg[name][0] += a["answered"]
+            agg[name][1] += a["correct"]
+    out = []
+    for name in sorted(names):
+        answered, correct = agg[name]
+        level, label = 0, ALL_NONE
+        if answered >= ALL_MIN_ANSWERS:
+            for i, (min_q, word) in enumerate(ALL_LEVELS):
+                if correct / answered >= min_q:
+                    level, label = len(ALL_LEVELS) - i, word
+                    break
+        # Unter der Schwelle keine Zahlen — nur „zu wenige Antworten".
+        out.append({"district": name, "answered": answered if level else 0,
+                    "correct": correct if level else 0, "level": level, "level_label": label})
+    _ALL_CACHE.update(at=time.time(), value=out)
     return out
 
 
@@ -473,6 +515,8 @@ def stats(user: dict = Depends(require_active),
     s["badges"] = _badges(s, streak, theme_labels)
     s["daily_done"] = store.quiz_daily_result(user["id"], _today()) is not None
     s["districts"] = _district_progress(s["by_area"], council)
+    s["districts_all"] = _district_all(store, council)
+    s["district_legend"] = LEGEND
     return s
 
 

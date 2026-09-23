@@ -18551,11 +18551,28 @@
             "title": "Daily Done",
             "type": "boolean"
           },
+          "district_legend": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": "District Legend",
+            "type": "object"
+          },
           "districts": {
             "items": {
               "$ref": "#/components/schemas/QuizDistrictProgress"
             },
             "title": "Districts",
+            "type": "array"
+          },
+          "districts_all": {
+            "items": {
+              "$ref": "#/components/schemas/QuizDistrictProgress"
+            },
+            "title": "Districts All",
             "type": "array"
           },
           "streak": {

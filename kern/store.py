@@ -2515,6 +2515,13 @@ class Store:
             (question_id, owner_id)).fetchone()
         return int(row["n"]), int(row["ok"])
 
+    def quiz_area_totals(self) -> list[dict]:
+        """Beantwortet/richtig je Gebiet über ALLE Konten — ohne Kontobezug,
+        für „Wie gut kennt Oldenburg …" auf der Stadtkarte (Plan Q11)."""
+        return [dict(r) for r in self._conn.execute(
+            "SELECT area_type, area_key, COUNT(*) answered, COALESCE(SUM(correct), 0) correct "
+            "FROM quiz_answers GROUP BY area_type, area_key").fetchall()]
+
     def quiz_answered_ids(self, owner_id: int) -> list[int]:
         return [r[0] for r in self._conn.execute(
             "SELECT DISTINCT question_id FROM quiz_answers WHERE owner_id = ?", (owner_id,)).fetchall()]
