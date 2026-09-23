@@ -24,6 +24,7 @@ import { TippspielEinladung, useWahlzeile } from "@/components/tipp/einladung";
 import { AuszaehlungsSimulator } from "@/components/wahlabend/simulator";
 import { StichwahlKarte } from "@/components/wahlabend/stichwahl-karte";
 import { Mitfiebern, StichwahlMomente } from "@/components/wahlabend/stichwahl-momente";
+import { BezirksTicker, BildTeilen, Countdown } from "@/components/wahlabend/stichwahl-bausteine";
 import { StichwahlVerlauf } from "@/components/wahlabend/stichwahl-verlauf";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -36,6 +37,7 @@ import {
   TAKT_LIVE_MS,
   abrufTakt,
   abstandStimmen,
+  aufholText,
   bezirkeText,
   chanceText,
   datumLang,
@@ -70,7 +72,12 @@ function farbe(k: StichwahlKandidat): { hell: string; dunkel: string } {
 
 /* ── Anzeigetafel ───────────────────────────────────────────────────────── */
 
-function Tafel({ daten, aktualisiert }: { daten: Stichwahl; aktualisiert: number }) {
+function Tafel({ daten, aktualisiert, probe, counted }: {
+  daten: Stichwahl;
+  aktualisiert: number;
+  probe: string | null;
+  counted: string | null;
+}) {
   const zeit = zeitlage(daten.election.polls_close);
   const beteiligung = useTween(daten.turnout_pct, ZAEHLEN_MS);
   const gueltig = useTween(daten.valid_votes, ZAEHLEN_MS);
@@ -120,6 +127,7 @@ function Tafel({ daten, aktualisiert }: { daten: Stichwahl; aktualisiert: number
                   : `Ab ${zeit.tage === 0 ? "heute" : "Sonntag"} 18 Uhr fragt die Seite alle 15 Sekunden nach.`
                 : (daten.error ?? "Der Votemanager antwortet gerade nicht.")}
           </p>
+          <BildTeilen daten={daten} probe={probe} counted={counted} />
         </div>
         <dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-left sm:text-right">
           <div>
@@ -472,7 +480,7 @@ function Meldung({ daten }: { daten: Stichwahl }) {
 
 /* ── Bühnen: vor 18 Uhr, und wenn es entschieden ist ────────────────────── */
 
-function BuehneVorher({ daten }: { daten: Stichwahl }) {
+function BuehneVorher({ daten, vorbei }: { daten: Stichwahl; vorbei: () => void }) {
   const zeit = zeitlage(daten.election.polls_close);
   return (
     <section className="mt-5 flex flex-col items-center gap-5 rounded-2xl border border-border bg-card p-6 text-center sm:flex-row sm:text-left" data-testid="buehne-vorher">
@@ -480,6 +488,7 @@ function BuehneVorher({ daten }: { daten: Stichwahl }) {
       <div className="min-w-0">
         <p className={KICKER} suppressHydrationWarning>{zeit.kicker}</p>
         <h2 className="mt-1 font-display text-[20px] font-bold tracking-tight">Was ab 18 Uhr passiert</h2>
+        <Countdown pollsClose={daten.election.polls_close} vorbei={vorbei} />
         <p className="mt-2 max-w-[60ch] text-[13.5px] leading-relaxed text-muted-foreground">
           Am 13. September hat niemand die absolute Mehrheit erreicht; am {datumLang(daten.election.date)} entscheidet die
           Stichwahl zwischen den beiden Bestplatzierten. Ab 18 Uhr melden die 133 Wahlbezirke nach und nach — die Seite
@@ -528,6 +537,7 @@ function Hochrechnung({ daten, p }: { daten: Stichwahl; p: StichwahlHochrechnung
   const fuehrt = daten.candidates.find((k) => k.slug === p.leader);
   const vorn = daten.candidates.find((k) => k.slug === p.actual_leader);
   const chance = chanceText(p, fuehrt?.name);
+  const aufholen = aufholText(p, daten.candidates);
   const fertig = p.open_ballot + p.open_postal === 0;
   return (
     <section
@@ -565,13 +575,22 @@ function Hochrechnung({ daten, p }: { daten: Stichwahl; p: StichwahlHochrechnung
             ? `Alle Bezirke sind gezählt; ${vorn?.name ?? p.actual_leader} liegt ${zahl(p.actual_lead_votes)} Stimmen vorn.`
             : `Rechnerisch entschieden: ${zahl(p.actual_lead_votes)} Stimmen Vorsprung, höchstens ${zahl(p.open_votes_max)} noch offen.`}
         </p>
-      ) : chance ? (
+      ) : null}
+      {p.decided ? null : chance ? (
         <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1">
           <p className={cn("text-[14px]", p.chance_pct === null ? "text-muted-foreground" : "font-semibold")} data-testid="chance">
             {chance}
           </p>
           <p className="text-[12px] text-muted-foreground">Modell aus dem ersten Wahlgang je Bezirk</p>
         </div>
+      ) : null}
+      {/* Die Aufholrechnung (Tim 23.09.2026): die spannendste Zahl des
+          Abends, solange es nicht entschieden ist — und reine Arithmetik
+          auf der Hochrechnung, keine zweite Vorhersage. */}
+      {aufholen ? (
+        <p className="mt-2 text-[13.5px] leading-relaxed text-foreground" data-testid="aufholrechnung">
+          {aufholen}
+        </p>
       ) : null}
 
       <Sheet>
@@ -679,7 +698,7 @@ export function StichwahlView() {
   const counted = params.get("counted");
   const frei = useFeature("wahlabend");
 
-  const { data, isLoading, isError, dataUpdatedAt } = useQuery({
+  const { data, isLoading, isError, dataUpdatedAt, refetch } = useQuery({
     queryKey: ["stichwahl", probe, counted],
     queryFn: () => api.get<Stichwahl>(abfragePfad(probe, counted)),
     enabled: frei,
@@ -697,6 +716,8 @@ export function StichwahlView() {
   // Wem man die Daumen drückt — erst nach dem Laden gelesen: Der Speicher
   // gehört dem Browser, der Server-Durchlauf kennt ihn nicht.
   const [favorit, setFavorit] = useState<string | null>(null);
+  // Was der Ticker auf der Karte gezeigt haben will.
+  const [kartenAuswahl, setKartenAuswahl] = useState<{ nr: number; n: number } | null>(null);
   const wahlSlug = data?.election.slug;
   const slugs = data?.candidates.map((k) => k.slug).join(",");
   useEffect(() => {
@@ -749,15 +770,16 @@ export function StichwahlView() {
           </p>
         ) : null}
 
-        <Tafel daten={data} aktualisiert={dataUpdatedAt} />
+        <Tafel daten={data} aktualisiert={dataUpdatedAt} probe={probe} counted={counted} />
         <Meldung daten={data} />
+        <BezirksTicker daten={data} zeigen={(nr) => setKartenAuswahl((a) => ({ nr, n: (a?.n ?? 0) + 1 }))} />
         {/* Der Weg ins Tippspiel dieser Wahl — nur, solange getippt werden
             kann. Ab 18 Uhr gehört die Fläche dem Stand (Tim 23.09.2026: „ab
             18 Uhr weg"); die Rangliste steht dann leise im Fuß. Ob es ein
             Spiel gibt, sagt das Backend. */}
         {!zu ? <TippspielEinladung slug={data.election.slug} phase={data.phase} /> : null}
         {entschieden && data.projection ? <BuehneEntschieden daten={data} p={data.projection} /> : null}
-        {data.phase === "before" ? <BuehneVorher daten={data} /> : null}
+        {data.phase === "before" ? <BuehneVorher daten={data} vorbei={() => void refetch()} /> : null}
 
         <Duell daten={data} vorn={vorn} fertig={fertig} frisch={frisch} entschieden={entschieden} />
         <Abstand daten={data} />
@@ -774,7 +796,7 @@ export function StichwahlView() {
 
         {data.projection ? <Hochrechnung daten={data} p={data.projection} /> : null}
         {data.phase !== "before" ? <StichwahlVerlauf daten={data} /> : null}
-        <StichwahlKarte daten={data} probe={probe} counted={counted} />
+        <StichwahlKarte daten={data} probe={probe} counted={counted} auswahl={kartenAuswahl} />
 
         <RatslotseEinladung />
         <Mitfiebern daten={data} favorit={favorit} setFavorit={setFavorit} />

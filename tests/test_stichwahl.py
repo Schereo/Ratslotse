@@ -252,3 +252,34 @@ def test_der_takt_haengt_am_eigenen_wahlschluss():
     assert mayor.ttl_seconds(w, datetime(2026, 9, 27, 15, 59, tzinfo=timezone.utc)) == 15 * 60
     assert mayor.ttl_seconds(w, datetime(2026, 9, 27, 16, 0, tzinfo=timezone.utc)) == mayor.TTL_LIVE
     assert mayor.TTL_LIVE <= 20
+
+
+# ---------------------------------------------------------------- das Bild zum Teilen (23.09.2026)
+
+@pytest.mark.parametrize(("fmt", "groesse"), [("beitrag", (1080, 1350)), ("story", (1080, 1920)), ("quer", (1200, 630))])
+def test_das_bild_der_stichwahl_hat_seine_masse(monkeypatch, fmt, groesse):
+    """Jedes Format in seiner Größe, vor, während und nach der Auszählung —
+    ein Stand, bei dem das Zeichnen wirft, wäre am Abend ein 500er in jeder
+    Link-Vorschau."""
+    import io
+
+    from PIL import Image
+
+    from app.routers import wahlabend as router
+
+    monkeypatch.setenv("FEATURE_FLAGS", "wahlabend")
+    for n in (0, 60, 133):
+        antwort = router.stichwahl_bild(format=fmt, probe="1", counted=n)
+        assert antwort.media_type == "image/png"
+        with Image.open(io.BytesIO(antwort.body)) as bild:
+            assert bild.size == groesse
+
+
+def test_das_bild_sagt_wer_gewaehlt_ist_erst_wenn_es_entschieden_ist(monkeypatch):
+    from app.election import runoff_image
+    from app.routers import wahlabend as router
+
+    monkeypatch.setenv("FEATURE_FLAGS", "wahlabend")
+    assert runoff_image._titel(router.stichwahl(probe="1", counted=60)) == "Stichwahl: Prange vorn"
+    assert runoff_image._titel(router.stichwahl(probe="1", counted=133)) == "Ulf Prange ist gewählt"
+    assert runoff_image._titel(router.stichwahl(probe="1", counted=0)).startswith("Stichwahl — ab 18 Uhr")

@@ -465,6 +465,62 @@ test.describe("Stichwahl: Momente", () => {
   });
 });
 
+/* ── Ticker, Aufholrechnung, Teilen, Countdown (23.09.2026) ─────────────── */
+
+test.describe("Stichwahl: Ticker, Aufholen, Teilen, Countdown", () => {
+  test.beforeEach(async ({ page }) => {
+    await appConfig(page, ["wahlabend"]);
+  });
+
+  test("der Ticker nennt die jüngsten Bezirke, ein Tipp zeigt sie auf der Karte", async ({ page }) => {
+    stichwahlMock(page, [60]);
+    await page.route("**/api/wahlabend/stichwahl/bezirke*", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(STICHWAHL_BEZIRKE) }),
+    );
+    await page.goto("/wahlabend/stichwahl?probe=1");
+    const ticker = page.getByTestId("bezirks-ticker");
+    await expect(ticker).toContainText("Zuletzt gemeldet");
+    await expect(ticker.getByRole("listitem")).toHaveCount(6);
+    // Der jüngste zuerst: 416 kam mit dem letzten Stand (s. Abschrift).
+    await expect(ticker.getByRole("listitem").first()).toContainText("Grundschule Ohmstede");
+    await expect.poll(() => page.getByTestId("stichwahl-karte").locator("svg path").count()).toBe(91);
+    await ticker.getByRole("button").first().click();
+    await expect(page.getByTestId("bezirkstafel")).toContainText("416");
+  });
+
+  test("die Aufholrechnung nennt, was der Zurückliegende bräuchte", async ({ page }) => {
+    stichwahlMock(page, [60]);
+    await page.goto("/wahlabend/stichwahl?probe=1");
+    await expect(page.getByTestId("aufholrechnung")).toContainText(/^Rohr bräuchte \d+,\d % der noch offenen Stimmen/);
+  });
+
+  test("entschieden: keine Aufholrechnung mehr", async ({ page }) => {
+    stichwahlMock(page, [133]);
+    await page.goto("/wahlabend/stichwahl?probe=1");
+    await expect(page.getByTestId("entschieden")).toBeVisible();
+    await expect(page.getByTestId("aufholrechnung")).toHaveCount(0);
+  });
+
+  test("drei Formate zum Teilen", async ({ page }) => {
+    // Das Bild selbst prüft tests/test_stichwahl.py (Maße je Format und Stand).
+    stichwahlMock(page, [60]);
+    await page.goto("/wahlabend/stichwahl?probe=1");
+    await expect(page.getByTestId("bild-teilen").getByRole("button")).toHaveText(["Beitrag", "Story", "quer"]);
+  });
+
+  test("am Wahltag läuft der Countdown sekundengenau", async ({ page }) => {
+    await page.clock.setFixedTime(new Date("2026-09-27T13:45:53Z"));
+    const vorher = { ...(STICHWAHL[40] as Record<string, unknown>), phase: "before", reports_received: 0, history: [],
+      lead_changes: [], recent_districts: [], candidates: (STICHWAHL[40] as { candidates: Record<string, unknown>[] }).candidates.map((k) => ({ ...k, votes: null, share_pct: null })) };
+    delete (vorher as Record<string, unknown>).projection;
+    await page.route("**/api/wahlabend/stichwahl*", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(vorher) }));
+    await page.goto("/wahlabend/stichwahl?probe=1");
+    await expect(page.getByTestId("countdown")).toContainText("2:14:07");
+    await expect(page.getByTestId("bild-teilen")).toHaveCount(0);
+  });
+});
+
 /* ── Die Karte der Stichwahl (S5) ──────────────────────────────────────── */
 
 const STICHWAHL_BEZIRKE = JSON.parse(readFileSync(path.join(__dirname, "fixtures", "stichwahl-bezirke-probe-60.json"), "utf8"));

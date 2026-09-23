@@ -4,11 +4,15 @@ import {
   TAKT_LIVE_MS,
   TAKT_RUHE_MS,
   abrufTakt,
+  aufholText,
+  countdown,
   ladeFavorit,
   meldungsGewinner,
   speichereFavorit,
   type Meldung,
   type Stichwahl,
+  type StichwahlHochrechnung,
+  type StichwahlKandidat,
 } from "./stichwahl";
 
 const m = (zuwachs: Record<string, number>, bezirke = 3): Meldung => ({ at: "2026-09-27T16:40:00Z", bezirke, zuwachs });
@@ -73,5 +77,33 @@ describe("Favorit", () => {
     speicher.kaputt(true);
     expect(() => speichereFavorit("ob-stichwahl-2026", "rohr")).not.toThrow();
     expect(ladeFavorit("ob-stichwahl-2026", beide)).toBeNull();
+  });
+});
+
+describe("countdown", () => {
+  const schluss = "2026-09-27T18:00:00+02:00";
+  it("zählt am Wahltag sekundengenau", () => {
+    expect(countdown(schluss, new Date("2026-09-27T13:45:53Z"))).toMatchObject({ text: "2:14:07", sekundengenau: true });
+  });
+  it("sagt davor Tage und Stunden", () => {
+    expect(countdown(schluss, new Date("2026-09-24T12:00:00Z"))?.text).toBe("3 Tage, 4 Stunden");
+    expect(countdown(schluss, new Date("2026-09-26T15:00:00Z"))?.text).toBe("1 Tag, 1 Stunde");
+  });
+  it("ist nach Wahlschluss vorbei", () => {
+    expect(countdown(schluss, new Date("2026-09-27T16:00:00Z"))).toBeNull();
+  });
+});
+
+describe("aufholText", () => {
+  const p = (x: Partial<StichwahlHochrechnung>) =>
+    ({ decided: false, trailing: "rohr", needed_share_pct: 51.1, trailing_expected_share_pct: 47.4, ...x }) as StichwahlHochrechnung;
+  const kandidaten = [{ slug: "rohr", name: "Jascha Rohr" }, { slug: "prange", name: "Ulf Prange" }] as StichwahlKandidat[];
+  it("nennt, was der Zurückliegende bräuchte und was das Modell erwartet", () => {
+    expect(aufholText(p({}), kandidaten)).toBe("Rohr bräuchte 51,1 % der noch offenen Stimmen — das Modell erwartet dort 47,4 %.");
+  });
+  it("sagt es anders, wenn nicht einmal alles reicht, und schweigt, wenn es entschieden ist", () => {
+    expect(aufholText(p({ needed_share_pct: 112.3 }), kandidaten)).toMatch(/mehr als alle Stimmen/);
+    expect(aufholText(p({ decided: true }), kandidaten)).toBeNull();
+    expect(aufholText(p({ trailing: null, needed_share_pct: null }), kandidaten)).toBeNull();
   });
 });

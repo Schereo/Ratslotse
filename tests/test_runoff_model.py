@@ -327,3 +327,20 @@ def test_die_stichwahl_antwort_traegt_die_hochrechnung(_frei):
     assert v["leader"] == v["actual_leader"] == "prange"
     # Der erste Wahlgang (keine Stichwahl) trägt keine Hochrechnung.
     assert "projection" not in router.ob_wahl(probe="1", counted=None)
+
+
+def test_die_aufholrechnung_geht_auf(erster, stichwahl):
+    """„Fuhrhop bräuchte 58 % der offenen Stimmen" — geprüft, indem man es
+    ausrechnet: Mit genau diesem Anteil an den erwarteten offenen Stimmen
+    stünde es am Ende gleich. Entschieden oder fertig gibt es sie nicht."""
+    r = [d.number for d in stichwahl]
+    p = runoff_model.project(_stand(stichwahl, set(r[:40])), erster, SLUGS)
+    assert p is not None and p.trailing is not None and p.needed_share_pct is not None
+    vorn = p.actual_leader
+    assert p.trailing != vorn
+    n = p.open_votes_expected
+    aufgeholt = p.needed_share_pct / 100 * n - (1 - p.needed_share_pct / 100) * n
+    assert abs(aufgeholt - p.actual_lead_votes) <= 0.001 * n + 1
+    assert p.trailing_expected_share_pct is not None and 0 < p.trailing_expected_share_pct < 100
+    voll = runoff_model.project(stichwahl, erster, SLUGS)
+    assert voll is not None and voll.trailing is None and voll.needed_share_pct is None

@@ -90,6 +90,18 @@ class RunoffProjection:
     #: Streuung des hochgerechneten Vorsprungs in Stimmen.
     sigma_votes: float
     caveats: tuple[str, ...]
+    #: Die Aufholrechnung (Tims Wunsch 23.09.2026): Wer nach den gezählten
+    #: Stimmen zurückliegt, wie viel Prozent der noch ERWARTETEN Stimmen er
+    #: oder sie bräuchte, und wie viel das Modell dort erwartet. ``None``,
+    #: wenn nichts mehr offen ist, es rechnerisch entschieden ist oder
+    #: Gleichstand herrscht. Über 100 heißt: selbst alle erwarteten Stimmen
+    #: reichten nicht — entschieden ist es erst, wenn die Obergrenze
+    #: (``open_votes_max``) es sagt.
+    trailing: str | None = None
+    needed_share_pct: float | None = None
+    trailing_expected_share_pct: float | None = None
+    #: Wie viele Stimmen der beiden das Modell in den offenen Bezirken erwartet.
+    open_votes_expected: int = 0
 
 
 def _share(a: int | None, b: int | None) -> float | None:
@@ -249,6 +261,18 @@ def project(current: Sequence[MayorDistrict], first_round: Sequence[MayorDistric
                    "schon gezählten Bezirke — Urne und Briefwahl getrennt. Über die Wähler*innen der "
                    "ausgeschiedenen Kandidaturen weiß es nichts.")
 
+    # Die Aufholrechnung — Arithmetik auf dem Modell, kein zweites Modell:
+    # Rückstand r, erwartete offene Stimmen N; nötig ist x mit
+    # x·N − (1−x)·N = r, also x = (N + r) / 2N.
+    offen_erwartet = erw_a + erw_b
+    trailing: str | None = None
+    needed: float | None = None
+    erwartet_trailing: float | None = None
+    if not decided and offen_erwartet > 0 and ist_a != ist_b:
+        trailing = b if actual_leader == a else a
+        needed = round(100 * (offen_erwartet + actual_lead) / (2 * offen_erwartet), 1)
+        erwartet_trailing = round(100 * (erw_b if trailing == b else erw_a) / offen_erwartet, 1)
+
     return RunoffProjection(
         shares={a: round(100 * proj_a / gesamt, 1) if gesamt else 0.0,
                 b: round(100 * proj_b / gesamt, 1) if gesamt else 0.0},
@@ -260,4 +284,6 @@ def project(current: Sequence[MayorDistrict], first_round: Sequence[MayorDistric
         open_postal=sum(1 for d, _ in offen if d.postal),
         decided=decided, actual_leader=actual_leader, actual_lead_votes=actual_lead,
         open_votes_max=open_max, sigma_votes=sigma, caveats=tuple(caveats),
+        trailing=trailing, needed_share_pct=needed, trailing_expected_share_pct=erwartet_trailing,
+        open_votes_expected=int(round(offen_erwartet)),
     )

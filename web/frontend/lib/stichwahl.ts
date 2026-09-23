@@ -284,3 +284,55 @@ export function speichereFavorit(wahl: string, slug: string | null): void {
     // Privates Fenster: Die Wahl gilt dann eben nur bis zum Neuladen.
   }
 }
+
+/* ── Countdown bis 18 Uhr (Tims Wunsch 23.09.2026) ─────────────────────── */
+
+/** Wie lange noch bis Wahlschluss, als Text — `null`, sobald die Wahllokale
+ *  zu sind. Am Wahltag selbst sekundengenau („2:14:07“), davor in Tagen und
+ *  Stunden: Wer eine Woche vorher die Seite aufruft, braucht keine Sekunden. */
+export function countdown(pollsClose: string, jetzt: Date = new Date()): { rest: number; text: string; sekundengenau: boolean } | null {
+  const schluss = new Date(pollsClose).getTime();
+  if (!Number.isFinite(schluss)) return null;
+  const rest = schluss - jetzt.getTime();
+  if (rest <= 0) return null;
+  const s = Math.floor(rest / 1000);
+  const tage = Math.floor(s / 86_400);
+  const std = Math.floor((s % 86_400) / 3600);
+  const min = Math.floor((s % 3600) / 60);
+  const sek = s % 60;
+  if (rest < 86_400_000) {
+    const zwei = (n: number) => String(n).padStart(2, "0");
+    return { rest, text: `${std}:${zwei(min)}:${zwei(sek)}`, sekundengenau: true };
+  }
+  return { rest, text: `${tage} ${tage === 1 ? "Tag" : "Tage"}, ${std} ${std === 1 ? "Stunde" : "Stunden"}`, sekundengenau: false };
+}
+
+/* ── Die Aufholrechnung ─────────────────────────────────────────────────── */
+
+/** „Rohr bräuchte 51,1 % der noch offenen Stimmen — das Modell erwartet dort
+ *  47,4 %.“ Die Zahlen rechnet das Backend (`runoff_model`); hier steht nur
+ *  der Satz. `null`, wenn es nichts aufzuholen gibt. */
+export function aufholText(p: StichwahlHochrechnung, kandidaten: readonly StichwahlKandidat[]): string | null {
+  if (p.decided || !p.trailing || p.needed_share_pct === null) return null;
+  const k = kandidaten.find((x) => x.slug === p.trailing);
+  const wer = k ? nachname(k) : p.trailing;
+  const zahl = (v: number) => `${v.toFixed(1).replace(".", ",")} %`;
+  if (p.needed_share_pct > 100) {
+    return `${wer} bräuchte mehr als alle Stimmen, die das Modell in den offenen Bezirken erwartet.`;
+  }
+  const erwartet = p.trailing_expected_share_pct;
+  return erwartet === null
+    ? `${wer} bräuchte ${zahl(p.needed_share_pct)} der noch offenen Stimmen.`
+    : `${wer} bräuchte ${zahl(p.needed_share_pct)} der noch offenen Stimmen — das Modell erwartet dort ${zahl(erwartet)}.`;
+}
+
+/* ── Das Bild zum Teilen ────────────────────────────────────────────────── */
+
+export type BildFormat = "beitrag" | "story" | "quer";
+
+export function stichwahlBildPfad(format: BildFormat, probe: string | null, counted: string | null): string {
+  const q = new URLSearchParams({ format });
+  if (probe) q.set("probe", probe);
+  if (counted && /^\d+$/.test(counted)) q.set("counted", counted);
+  return `/wahlabend/stichwahl/bild.png?${q.toString()}`;
+}

@@ -28,6 +28,7 @@ from kern import features
 from kern.store import Store
 
 from ..antworten import (
+    STICHWAHL_PNG,
     WAHLABEND_KARTE_PNG,
     WAHLABEND_PNG,
     ElectionCandidateDetail,
@@ -43,6 +44,7 @@ from ..antworten import (
     MayorCandidate,
     MayorDistrictEntry,
     MayorDistrictList,
+    MayorDistrictReport,
     MayorElectionInfo,
     MayorHistoryPoint,
     MayorNight,
@@ -50,7 +52,19 @@ from ..antworten import (
     RunoffProjection,
 )
 from ..deps import get_store, optional_user, require_active
-from ..election import archive, candidates, elections, history, image, mayor, potential, runoff_model, service, share
+from ..election import (
+    archive,
+    candidates,
+    elections,
+    history,
+    image,
+    mayor,
+    potential,
+    runoff_image,
+    runoff_model,
+    service,
+    share,
+)
 from ..prediction import rounds
 
 _log = logging.getLogger("ratslotse.web.wahlabend")
@@ -344,7 +358,7 @@ def _mayor_night(w: elections.Election, probe: str | None, counted: int | None) 
         vorher = {c.slug: c.share_pct for c in erster.candidates} if erster else {}
         hochrechnung = _runoff_projection(stand, known, w)
     antwort = MayorNight(
-        history=[], lead_changes=[],
+        history=[], lead_changes=[], recent_districts=[],
         dataset="probe" if probe else "live",
         phase=stand.phase,
         election=MayorElectionInfo(
@@ -370,12 +384,14 @@ def _mayor_night(w: elections.Election, probe: str | None, counted: int | None) 
         antwort["projection"] = hochrechnung
     if w.first_round:
         try:
-            antwort["history"] = _probe_mayor_history(w, counted) if probe else history.record_mayor(w.slug, antwort)
+            antwort["history"] = (_probe_mayor_history(w, counted) if probe else
+                                  history.record_mayor(w.slug, antwort, (d.number for d in stand.districts if d.counted)))
             antwort["lead_changes"] = history.lead_changes(antwort["history"])
+            antwort["recent_districts"] = _zuletzt_gemeldet(antwort["history"], stand, w)
         except Exception:
             # Der Verlauf ist Zugabe; er darf den Abend nicht mitnehmen.
             _log.exception("Stichwahl: der Verlauf ließ sich nicht fortschreiben.")
-            antwort["history"], antwort["lead_changes"] = [], []
+            antwort["history"], antwort["lead_changes"], antwort["recent_districts"] = [], [], []
     return antwort
 
 
@@ -388,8 +404,11 @@ def _probe_mayor_history(w: elections.Election, counted: int | None) -> list[May
     if ziel > 0 and (not stops or stops[-1] != ziel):
         stops.append(ziel)
     out: list[MayorHistoryPoint] = []
+    schon: set[int] = set()
     for i, n in enumerate(stops):
         stand = mayor.probe(n, w)
+        jetzt = {d.number for d in stand.districts if d.counted}
+        neu, schon = sorted(jetzt - schon), schon | jetzt
         proj = _runoff_projection(stand, known, w)
         at = (service.PROBE_START + i * service.PROBE_STEP).astimezone(timezone.utc).isoformat(timespec="seconds")
         shares = {c.slug: c.share_pct for c in stand.candidates if c.votes and c.share_pct is not None}
@@ -399,7 +418,50 @@ def _probe_mayor_history(w: elections.Election, counted: int | None) -> list[May
             projected_shares=dict(proj["shares"]) if proj else {},
             chance_pct=proj["chance_pct"] if proj else None,
             leader=history.mayor_leader(shares, {c.slug: c.votes for c in stand.candidates}),
+            new_districts=neu,
         ))
+    return out
+
+
+#: So viele Zeilen hat der Ticker der Stichwahl-Seite.
+TICKER_MAX = 8
+
+
+def _zwei_anteile(stimmen: dict[str, int | None]) -> dict[str, float]:
+    """Slug → Anteil an den Stimmen der beiden, eine Nachkommastelle —
+    leer, solange eine Zahl fehlt."""
+    if any(v is None for v in stimmen.values()):
+        return {}
+    summe = sum(v or 0 for v in stimmen.values())
+    return {slug: round(100 * (v or 0) / summe, 1) for slug, v in stimmen.items()} if summe else {}
+
+
+def _zuletzt_gemeldet(punkte: list[MayorHistoryPoint], stand: mayor.MayorResult,
+                      w: elections.Election) -> list[MayorDistrictReport]:
+    """Die jüngsten gemeldeten Bezirke, neuester zuerst: Wann aus dem
+    Verlauf (``new_districts``), Zahlen aus dem Stand, der Vergleich aus dem
+    ersten Wahlgang desselben Bezirks. Ein Bezirk, den der Stand nicht mehr
+    als gezählt führt, fällt heraus — der Ticker zeigt nie eine Zahl, die
+    die Seite sonst nicht zeigt."""
+    bezirke = {d.number: d for d in stand.districts if d.counted}
+    if not bezirke:
+        return []
+    vorher = {d.number: d.votes for d in mayor.probe_districts(None, mayor.candidates(w), w)}
+    out: list[MayorDistrictReport] = []
+    for p in reversed(punkte):
+        for nr in reversed(p.get("new_districts", [])):
+            d = bezirke.get(nr)
+            if d is None:
+                continue
+            anteile = _zwei_anteile(d.votes)
+            out.append(MayorDistrictReport(
+                number=d.number, name=d.name, area=d.area, postal=d.postal, at=p["at"],
+                votes={slug: v for slug, v in d.votes.items() if v is not None},
+                shares=anteile, first_round_shares=_zwei_anteile(vorher.get(nr, {})),
+                leader=history.mayor_leader(anteile, dict(d.votes)),
+            ))
+            if len(out) >= TICKER_MAX:
+                return out
     return out
 
 
@@ -419,6 +481,9 @@ def _runoff_projection(stand: mayor.MayorResult, known: tuple[mayor.MayorCandida
         open_ballot=p.open_ballot, open_postal=p.open_postal, decided=p.decided,
         actual_leader=p.actual_leader, actual_lead_votes=p.actual_lead_votes,
         open_votes_max=p.open_votes_max, caveats=list(p.caveats),
+        trailing=p.trailing, needed_share_pct=p.needed_share_pct,
+        trailing_expected_share_pct=p.trailing_expected_share_pct,
+        open_votes_expected=p.open_votes_expected,
     )
 
 
@@ -640,6 +705,41 @@ def stichwahl_potenzial(
         turnout_rohr=turnout_rohr, turnout_prange=turnout_prange, turnout_pool=turnout_pool,
     )
     return potential.compute(regler)
+
+
+_stichwahl_bilder: dict[tuple[str, int | None, str, int, str | None, bool], tuple[float, bytes]] = {}
+
+
+@router.get("/api/wahlabend/stichwahl/bild.png", response_class=Response, responses=STICHWAHL_PNG)
+def stichwahl_bild(
+    format: str = Query(default="beitrag", pattern="^(beitrag|story|quer)$",
+                        description="„beitrag“ = 1080×1350 (4:5), „story“ = 1080×1920 (9:16), „quer“ = 1200×630"),
+    probe: str | None = Query(default=None, description="gesetzt = Generalprobe mit den Zahlen des ersten Wahlgangs"),
+    counted: int | None = Query(default=None, ge=0, le=133, description="Generalprobe: nur die ersten N Wahlbezirke ausgezählt"),
+) -> Response:
+    """Der Stand der Stichwahl als Bild zum Teilen (PNG) — dieselben Zahlen
+    wie ``/api/wahlabend/stichwahl``, mit Lotti. Öffentlich wie die Seite:
+    Messenger holen es ohne Konto ab, wenn sie den Link auspacken."""
+    _frei()
+    w = elections.runoff()
+    if w is None:
+        raise HTTPException(status_code=404, detail="Es steht keine Stichwahl an.")
+    night = _mayor_night(w, probe, counted)
+    p = night.get("projection")
+    schluessel = (night["dataset"], counted, format, night["reports_received"], night["fetched_at"],
+                  bool(p and p["decided"]))
+    jetzt = time.monotonic()
+    with _bild_lock:
+        treffer = _stichwahl_bilder.get(schluessel)
+        png = treffer[1] if treffer and jetzt - treffer[0] < BILD_TTL else None
+    if png is None:
+        png = runoff_image.render(night, format)
+        with _bild_lock:
+            while len(_stichwahl_bilder) >= KARTEN_MAX:
+                del _stichwahl_bilder[min(_stichwahl_bilder, key=lambda k: _stichwahl_bilder[k][0])]
+            _stichwahl_bilder[schluessel] = (jetzt, png)
+    return Response(content=png, media_type="image/png",
+                    headers={"Cache-Control": "public, max-age=15"})
 
 
 @router.get("/api/wahlabend/stichwahl/bezirke")

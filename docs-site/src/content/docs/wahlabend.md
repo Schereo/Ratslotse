@@ -474,6 +474,14 @@ bleibt — das CDN vor dem Votemanager hält jede Datei bis zu 60 s
 anderthalb. Am CDN vorbei zu fragen ginge technisch, wäre am Wahlabend der
 Stadt gegenüber aber unhöflich.
 
+Dazu kamen am selben Tag: `recent_districts` in der Antwort (die jüngsten
+gemeldeten Bezirke; der Verlauf merkt sich je Stand `new_districts`, damit
+der Ticker auch nach einem Neustart stimmt), die Aufholrechnung in der
+Hochrechnung (`trailing`, `needed_share_pct` — Arithmetik auf dem Modell:
+x = (N + Rückstand) / 2N über die erwarteten offenen Stimmen N) und
+`GET /api/wahlabend/stichwahl/bild.png?format=beitrag|story|quer`
+(`election/runoff_image.py`), das die Seite auch als `og:image` nennt.
+
 **5. Den Votemanager-Pfad übersteuern.** Falls die Stadt eine andere Adresse
 oder Wahl-ID benutzt als erwartet, muss dafür kein Code geändert werden:
 

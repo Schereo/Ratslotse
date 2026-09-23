@@ -19,6 +19,7 @@ import json
 import logging
 import os
 import threading
+from collections.abc import Iterable
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -233,6 +234,7 @@ def _mayor_point_from(raw: Any) -> MayorHistoryPoint | None:
     votes: dict[Any, Any] = votes_raw if isinstance(votes_raw, dict) else {}
     chance = raw.get("chance_pct")
     leader = raw.get("leader")
+    neu = raw.get("new_districts")
     return MayorHistoryPoint(
         at=at, reports_received=n,
         shares={str(k): float(v) for k, v in shares.items() if isinstance(v, (int, float))},
@@ -240,6 +242,7 @@ def _mayor_point_from(raw: Any) -> MayorHistoryPoint | None:
         projected_shares={str(k): float(v) for k, v in proj.items() if isinstance(v, (int, float))},
         chance_pct=int(chance) if isinstance(chance, int) and not isinstance(chance, bool) else None,
         leader=leader if isinstance(leader, str) else None,
+        new_districts=[n for n in neu if isinstance(n, int) and not isinstance(n, bool)] if isinstance(neu, list) else [],
     )
 
 
@@ -280,8 +283,10 @@ def mayor_leader(shares: dict[str, float], votes: dict[str, int | None]) -> str 
     return mit[0][1]
 
 
-def from_mayor_night(night: MayorNight, at: str | None = None) -> MayorHistoryPoint:
-    """Der Auszug eines fertigen Standes: Ist, Hochrechnung, Chance, Führung."""
+def from_mayor_night(night: MayorNight, at: str | None = None,
+                     new_districts: list[int] | None = None) -> MayorHistoryPoint:
+    """Der Auszug eines fertigen Standes: Ist, Hochrechnung, Chance, Führung —
+    und welche Bezirke mit ihm dazukamen."""
     shares = {c["slug"]: c["share_pct"] for c in night["candidates"]
               if c["votes"] and c["votes"] > 0 and c["share_pct"] is not None}
     proj = night.get("projection")
@@ -293,6 +298,7 @@ def from_mayor_night(night: MayorNight, at: str | None = None) -> MayorHistoryPo
         projected_shares=dict(proj["shares"]) if proj else {},
         chance_pct=proj["chance_pct"] if proj else None,
         leader=mayor_leader(shares, {c["slug"]: c["votes"] for c in night["candidates"]}),
+        new_districts=list(new_districts or []),
     )
 
 
@@ -314,12 +320,19 @@ def add_mayor(slug: str, point: MayorHistoryPoint) -> list[MayorHistoryPoint]:
         return list(rows)
 
 
-def record_mayor(slug: str, night: MayorNight) -> list[MayorHistoryPoint]:
+def record_mayor(slug: str, night: MayorNight, counted: Iterable[int] = ()) -> list[MayorHistoryPoint]:
     """Den Punkt eines Live-Standes anhängen und den Verlauf liefern; vor
-    der Auszählung nur lesen."""
+    der Auszählung nur lesen.
+
+    ``counted``: die Nummern der jetzt gezählten Bezirke. Neu ist, was in
+    keinem früheren Punkt stand — so kennt der Ticker auch nach einem
+    Neustart des Dienstes, wann welcher Bezirk kam (die Datei überlebt ihn)."""
     if night["phase"] == "before" or night["reports_received"] <= 0:
         return mayor_points(slug)
-    return add_mayor(slug, from_mayor_night(night))
+    with _lock:
+        schon = {n for p in _mayor_store(slug) for n in p.get("new_districts", [])}
+        neu = sorted(set(counted) - schon)
+        return add_mayor(slug, from_mayor_night(night, new_districts=neu))
 
 
 def lead_changes(points: list[MayorHistoryPoint]) -> list[MayorLeadChange]:
