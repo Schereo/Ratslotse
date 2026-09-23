@@ -651,6 +651,16 @@ describe("chipTitel", () => {
 });
 
 describe("belegName", () => {
+  it("behält eine Vorlagennummer im Untertitel — und stellt sie nach vorn", () => {
+    // Zwei Kredit-Unterrichtungen unter einer Antwort hießen sonst gleich.
+    const titel = "Unterrichtung des Rates über Kreditaufnahmen, Derivatabschlüsse und Umschuldungen";
+    const mai = belegName({ label: `${titel} — Vorlage 26/0397`, year: 2026 });
+    const aug = belegName({ label: `${titel} — Vorlage 26/0629`, year: 2026 });
+    expect(mai.startsWith("Vorlage 26/0397 · Unterrichtung")).toBe(true);
+    expect(aug.startsWith("Vorlage 26/0629")).toBe(true);
+    expect(mai.length).toBeLessThanOrEqual(BELEG_NAME_MAX);
+  });
+
   it("lässt einen kurzen Namen in Ruhe und hängt das Jahr an", () => {
     expect(belegName({ label: "Jahresabschluss", year: 2024 }))
       .toBe("Jahresabschluss 2024");

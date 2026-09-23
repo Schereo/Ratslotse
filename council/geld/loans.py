@@ -117,15 +117,32 @@ class Store(StoreBasis):
         posten = getroffen or im_jahr or rows[:3]
         umschuldung = next((r for r in rows if r["kind"] == "refinancing" and r.get("amount")), None)
         ersparnis = [n for n in notices if n.get("interest_saving")]
-        beleg_id = (posten[0] if posten else rows[0]).get("herkunft_id")
+        # **Der Beleg je ZEILE, nicht einer für den Baustein.** Bis 23.09.2026
+        # stand hier ein einziges ``beleg`` — die Herkunft des ersten Postens,
+        # meist die jüngste Unterrichtung. Unter Lottis Antwort zum Kredit aus
+        # dem Mai (Vorlage 26/0397) stand deshalb als „Grundlage" die Vorlage
+        # 26/0629 des anderen 8-Mio.-Kredits. ``qa._belege_von`` sammelt jedes
+        # ``beleg`` in Lesereihenfolge; so bringt jede Zeile ihr Papier mit.
+        belege: dict[int, dict | None] = {}
+
+        def mit_beleg(r: dict | None) -> dict | None:
+            if not r:
+                return r
+            hid = r.get("herkunft_id")
+            if hid is not None and hid not in belege:
+                belege[hid] = self._beleg(hid)
+            return {**r, "beleg": belege.get(hid)} if hid is not None and belege.get(hid) else r
+
+        zins = [mit_beleg(r) for r in zins]
+        posten = [mit_beleg(r) for r in posten]
+        umschuldung = mit_beleg(umschuldung)
         return {
             "year": jahr,
             "rates": zins,
             "positions": posten,
             "latest_refinancing": umschuldung,
-            "saving": ersparnis[-1] if ersparnis else None,
+            "saving": mit_beleg(ersparnis[-1]) if ersparnis else None,
             "coverage": (notices[0]["period_from"], notices[-1]["period_to"]) if notices else None,
-            "beleg": self._beleg(beleg_id),
             "kapitaldienst": kapitaldienst,
             **({"year_asked": year} if abweicht else {}),
         }

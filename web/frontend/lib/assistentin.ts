@@ -783,7 +783,16 @@ export const BELEG_NAME_MAX = 44;
  *     `title` des Links.
  */
 export function belegName(beleg: { label: string; year?: number | null }): string {
-  const ohneUntertitel = (beleg.label ?? "").split(/\s[—–]\s/)[0].trim();
+  const [titel, ...rest] = (beleg.label ?? "").split(/\s[—–]\s/);
+  // **Ausnahme: Ist der Untertitel eine Vorlagennummer, IST er der Name.**
+  // Die Kredit-Unterrichtungen heißen alle „Unterrichtung des Rates über
+  // Kreditaufnahmen … — Vorlage 26/0397"; ohne die Nummer stünden unter
+  // einer Antwort zwei gleichlautende Chips, und welcher Bericht welcher ist,
+  // sähe man nur am Link (Review zu #1528, 23.09.2026). Die Nummer steht
+  // VORN, weil hinten gekappt wird.
+  const vorlage = rest.map((t) => t.trim()).find((t) => /^Vorlage \d{2}\/\d{4}$/.test(t));
+  if (vorlage) return kuerze(`${vorlage} · ${titel.trim()}`, BELEG_NAME_MAX);
+  const ohneUntertitel = (titel ?? "").trim();
   const jahr = beleg.year != null && !ohneUntertitel.includes(String(beleg.year))
     ? ` ${beleg.year}` : "";
   return kuerze(ohneUntertitel + jahr, BELEG_NAME_MAX);
