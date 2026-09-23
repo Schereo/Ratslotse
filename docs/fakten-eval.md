@@ -205,10 +205,14 @@ Teillauf behobene Fehler eines älteren Gesamtlaufs nicht stehen lässt.
 
 - **google/gemini-2.5-flash (vor #1493)** (20260923-080106, `eval/results/fakten/google-gemini-2.5-flash-20260923-080106.json`): 142/233 (61%) ok, Kontext stimmte in 169 Fällen, 27 Modellfehler (davon 0 erfunden), 64 Kontextfehler, 0 Ausfälle, p50 2874 ms, Kosten 0.44 $
 - **openai/gpt-6-luna (vor K1)** (20260923-090851, `eval/results/fakten/openai-gpt-6-luna-20260923-090851.json`): 104/142 (73%) ok, Kontext stimmte in 113 Fällen, 9 Modellfehler (davon 0 erfunden), 29 Kontextfehler, 0 Ausfälle, p50 6672 ms, Kosten 0.13 $
+- **openai/gpt-6-luna (vor Azure EU (dev 370b4203))** (20260923-150033, `eval/results/fakten/openai-gpt-6-luna-20260923-150033.json`): 177/233 (76%) ok, Kontext stimmte in 211 Fällen, 34 Modellfehler (davon 0 erfunden), 22 Kontextfehler, 0 Ausfälle, p50 8667 ms, Kosten 0.26 $
 - **google/gemini-2.5-flash (nach #1493)** (20260923-081455, `eval/results/fakten/google-gemini-2.5-flash-20260923-081455.json`): 148/233 (64%) ok, Kontext stimmte in 174 Fällen, 26 Modellfehler (davon 0 erfunden), 59 Kontextfehler, 0 Ausfälle, p50 2913 ms, Kosten 0.43 $
 - **openai/gpt-6-luna (nach #1493)** (20260923-081458, `eval/results/fakten/openai-gpt-6-luna-20260923-081458.json`): 143/233 (61%) ok, Kontext stimmte in 173 Fällen, 30 Modellfehler (davon 0 erfunden), 60 Kontextfehler, 0 Ausfälle, p50 7826 ms, Kosten 0.22 $
 - **openai/gpt-6-luna (nach K1, Lauf 1)** (20260923-100126, `eval/results/fakten/openai-gpt-6-luna-20260923-100126.json`): 134/142 (94%) ok, Kontext stimmte in 142 Fällen, 8 Modellfehler (davon 0 erfunden), 0 Kontextfehler, 0 Ausfälle, p50 7328 ms, Kosten 0.07 $
 - **openai/gpt-6-luna (nach K1, Lauf 2)** (20260923-100157, `eval/results/fakten/openai-gpt-6-luna-20260923-100157.json`): 131/142 (92%) ok, Kontext stimmte in 142 Fällen, 11 Modellfehler (davon 0 erfunden), 0 Kontextfehler, 0 Ausfälle, p50 6960 ms, Kosten 0.10 $
+- **openai/gpt-6-luna (P4a Luna low)** (20260923-104716, `eval/results/fakten/openai-gpt-6-luna-20260923-104716.json`): 167/233 (72%) ok, Kontext stimmte in 211 Fällen, 44 Modellfehler (davon 0 erfunden), 22 Kontextfehler, 0 Ausfälle, p50 4533 ms, Kosten 0.20 $
+- **openai/gpt-6-luna (P4a Luna Vorgabe)** (20260923-110647, `eval/results/fakten/openai-gpt-6-luna-20260923-110647.json`): 176/233 (76%) ok, Kontext stimmte in 213 Fällen, 37 Modellfehler (davon 0 erfunden), 20 Kontextfehler, 0 Ausfälle, p50 7940 ms, Kosten 0.27 $
+- **openai/gpt-6-luna (Azure EU zuerst)** (20260923-150039, `eval/results/fakten/openai-gpt-6-luna-20260923-150039.json`): 176/233 (76%) ok, Kontext stimmte in 213 Fällen, 37 Modellfehler (davon 0 erfunden), 20 Kontextfehler, 0 Ausfälle, p50 6678 ms, Kosten 0.29 $
 
 ### Je Fallsatz
 
@@ -217,12 +221,20 @@ Teillauf behobene Fehler eines älteren Gesamtlaufs nicht stehen lässt.
 | google/gemini-2.5-flash (vor #1493) | Haushalt | 142 | 101/142 (71%) | 33 | 8 | 1 |
 | google/gemini-2.5-flash (vor #1493) | Rat | 91 | 41/91 (45%) | 31 | 19 | 1 |
 | openai/gpt-6-luna (vor K1) | Haushalt | 142 | 104/142 (73%) | 29 | 9 | 0 |
+| openai/gpt-6-luna (vor Azure EU (dev 370b4203)) | Haushalt | 142 | 129/142 (91%) | 3 | 10 | 1 |
+| openai/gpt-6-luna (vor Azure EU (dev 370b4203)) | Rat | 91 | 48/91 (53%) | 19 | 24 | 1 |
 | google/gemini-2.5-flash (nach #1493) | Haushalt | 142 | 105/142 (74%) | 29 | 8 | 1 |
 | google/gemini-2.5-flash (nach #1493) | Rat | 91 | 43/91 (47%) | 30 | 18 | 1 |
 | openai/gpt-6-luna (nach #1493) | Haushalt | 142 | 106/142 (75%) | 29 | 7 | 0 |
 | openai/gpt-6-luna (nach #1493) | Rat | 91 | 37/91 (41%) | 31 | 23 | 0 |
 | openai/gpt-6-luna (nach K1, Lauf 1) | Haushalt | 142 | 134/142 (94%) | 0 | 8 | 0 |
 | openai/gpt-6-luna (nach K1, Lauf 2) | Haushalt | 142 | 131/142 (92%) | 0 | 11 | 0 |
+| openai/gpt-6-luna (P4a Luna low) | Haushalt | 142 | 126/142 (89%) | 2 | 14 | 1 |
+| openai/gpt-6-luna (P4a Luna low) | Rat | 91 | 41/91 (45%) | 20 | 30 | 4 |
+| openai/gpt-6-luna (P4a Luna Vorgabe) | Haushalt | 142 | 131/142 (92%) | 1 | 10 | 1 |
+| openai/gpt-6-luna (P4a Luna Vorgabe) | Rat | 91 | 45/91 (49%) | 19 | 27 | 2 |
+| openai/gpt-6-luna (Azure EU zuerst) | Haushalt | 142 | 130/142 (92%) | 1 | 11 | 1 |
+| openai/gpt-6-luna (Azure EU zuerst) | Rat | 91 | 46/91 (51%) | 19 | 26 | 1 |
 
 ### Je Kanal und Fehlerart
 
@@ -234,6 +246,9 @@ Teillauf behobene Fehler eines älteren Gesamtlaufs nicht stehen lässt.
 | openai/gpt-6-luna (vor K1) | lotti | 86 | 61/86 (71%) | 67 | 19 | 0 | 4 | 0 | 0 | 2 |
 | openai/gpt-6-luna (vor K1) | rat | 56 | 43/56 (77%) | 46 | 10 | 0 | 3 | 0 | 0 | 0 |
 | openai/gpt-6-luna (vor K1) | alle | 142 | 104/142 (73%) | 113 | 29 | 0 | 7 | 0 | 0 | 2 |
+| openai/gpt-6-luna (vor Azure EU (dev 370b4203)) | lotti | 121 | 110/121 (91%) | 120 | 1 | 0 | 9 | 0 | 0 | 1 |
+| openai/gpt-6-luna (vor Azure EU (dev 370b4203)) | rat | 112 | 67/112 (60%) | 91 | 21 | 0 | 21 | 2 | 0 | 1 |
+| openai/gpt-6-luna (vor Azure EU (dev 370b4203)) | alle | 233 | 177/233 (76%) | 211 | 22 | 0 | 30 | 2 | 0 | 2 |
 | google/gemini-2.5-flash (nach #1493) | lotti | 121 | 80/121 (66%) | 90 | 31 | 0 | 9 | 1 | 0 | 0 |
 | google/gemini-2.5-flash (nach #1493) | rat | 112 | 68/112 (61%) | 84 | 28 | 0 | 15 | 1 | 0 | 0 |
 | google/gemini-2.5-flash (nach #1493) | alle | 233 | 148/233 (64%) | 174 | 59 | 0 | 24 | 2 | 0 | 0 |
@@ -246,116 +261,92 @@ Teillauf behobene Fehler eines älteren Gesamtlaufs nicht stehen lässt.
 | openai/gpt-6-luna (nach K1, Lauf 2) | lotti | 86 | 77/86 (90%) | 86 | 0 | 0 | 8 | 0 | 0 | 1 |
 | openai/gpt-6-luna (nach K1, Lauf 2) | rat | 56 | 54/56 (96%) | 56 | 0 | 0 | 2 | 0 | 0 | 0 |
 | openai/gpt-6-luna (nach K1, Lauf 2) | alle | 142 | 131/142 (92%) | 142 | 0 | 0 | 10 | 0 | 0 | 1 |
+| openai/gpt-6-luna (P4a Luna low) | lotti | 121 | 106/121 (88%) | 119 | 2 | 0 | 12 | 0 | 0 | 1 |
+| openai/gpt-6-luna (P4a Luna low) | rat | 112 | 61/112 (54%) | 92 | 20 | 0 | 23 | 5 | 0 | 3 |
+| openai/gpt-6-luna (P4a Luna low) | alle | 233 | 167/233 (72%) | 211 | 22 | 0 | 35 | 5 | 0 | 4 |
+| openai/gpt-6-luna (P4a Luna Vorgabe) | lotti | 121 | 109/121 (90%) | 119 | 2 | 0 | 8 | 0 | 0 | 2 |
+| openai/gpt-6-luna (P4a Luna Vorgabe) | rat | 112 | 67/112 (60%) | 94 | 18 | 0 | 23 | 3 | 0 | 1 |
+| openai/gpt-6-luna (P4a Luna Vorgabe) | alle | 233 | 176/233 (76%) | 213 | 20 | 0 | 31 | 3 | 0 | 3 |
+| openai/gpt-6-luna (Azure EU zuerst) | lotti | 121 | 105/121 (87%) | 119 | 2 | 0 | 12 | 1 | 0 | 1 |
+| openai/gpt-6-luna (Azure EU zuerst) | rat | 112 | 71/112 (63%) | 94 | 18 | 0 | 20 | 1 | 0 | 2 |
+| openai/gpt-6-luna (Azure EU zuerst) | alle | 233 | 176/233 (76%) | 213 | 20 | 0 | 32 | 2 | 0 | 3 |
 
 ### Je Kategorie
 
-| Kategorie | Fälle | google/gemini-2.5-flash (vor #1493) ok | Kontextfehler | openai/gpt-6-luna (vor K1) ok | Kontextfehler | google/gemini-2.5-flash (nach #1493) ok | Kontextfehler | openai/gpt-6-luna (nach #1493) ok | Kontextfehler | openai/gpt-6-luna (nach K1, Lauf 1) ok | Kontextfehler | openai/gpt-6-luna (nach K1, Lauf 2) ok | Kontextfehler |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| beschluss/abstimmung | 0 | 3/6 (50%) | 2 | — | 0 | 3/6 (50%) | 2 | 2/6 (33%) | 3 | — | 0 | — | 0 |
-| beschluss/ergebnis | 0 | 6/10 (60%) | 2 | — | 0 | 6/10 (60%) | 2 | 5/10 (50%) | 2 | — | 0 | — | 0 |
-| beschluss/kosten | 0 | 4/9 (44%) | 5 | — | 0 | 4/9 (44%) | 5 | 4/9 (44%) | 5 | — | 0 | — | 0 |
-| haushalt/begriffe | 1 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 |
-| haushalt/eigenbetriebe | 7 | 6/7 (86%) | 1 | 6/7 (86%) | 1 | 6/7 (86%) | 1 | 6/7 (86%) | 1 | 6/7 (86%) | 0 | 6/7 (86%) | 0 |
-| haushalt/gebuehren | 6 | 5/6 (83%) | 1 | 5/6 (83%) | 1 | 5/6 (83%) | 1 | 5/6 (83%) | 1 | 6/6 (100%) | 0 | 6/6 (100%) | 0 |
-| haushalt/investitionen | 14 | 7/14 (50%) | 6 | 10/14 (71%) | 4 | 8/14 (57%) | 4 | 10/14 (71%) | 4 | 12/14 (86%) | 0 | 11/14 (79%) | 0 |
-| haushalt/ist | 10 | 7/10 (70%) | 1 | 7/10 (70%) | 1 | 7/10 (70%) | 1 | 7/10 (70%) | 1 | 9/10 (90%) | 0 | 9/10 (90%) | 0 |
-| haushalt/konzern | 7 | 5/7 (71%) | 2 | 5/7 (71%) | 2 | 5/7 (71%) | 2 | 5/7 (71%) | 2 | 6/7 (86%) | 0 | 6/7 (86%) | 0 |
-| haushalt/mitreden | 3 | 3/3 (100%) | 0 | 3/3 (100%) | 0 | 3/3 (100%) | 0 | 3/3 (100%) | 0 | 3/3 (100%) | 0 | 3/3 (100%) | 0 |
-| haushalt/nachbewilligungen | 1 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 |
-| haushalt/nicht-in-daten | 15 | 13/15 (87%) | 1 | 14/15 (93%) | 1 | 13/15 (87%) | 1 | 14/15 (93%) | 1 | 15/15 (100%) | 0 | 15/15 (100%) | 0 |
-| haushalt/plan | 12 | 8/12 (67%) | 3 | 9/12 (75%) | 3 | 9/12 (75%) | 3 | 9/12 (75%) | 3 | 12/12 (100%) | 0 | 12/12 (100%) | 0 |
-| haushalt/produkte | 8 | 5/8 (62%) | 2 | 4/8 (50%) | 2 | 5/8 (62%) | 2 | 4/8 (50%) | 2 | 8/8 (100%) | 0 | 8/8 (100%) | 0 |
-| haushalt/pruefung | 6 | 5/6 (83%) | 1 | 4/6 (67%) | 1 | 5/6 (83%) | 1 | 5/6 (83%) | 1 | 5/6 (83%) | 0 | 6/6 (100%) | 0 |
-| haushalt/satzung | 5 | 3/5 (60%) | 1 | 2/5 (40%) | 1 | 3/5 (60%) | 1 | 2/5 (40%) | 1 | 5/5 (100%) | 0 | 3/5 (60%) | 0 |
-| haushalt/schulden | 18 | 13/18 (72%) | 5 | 15/18 (83%) | 3 | 15/18 (83%) | 3 | 15/18 (83%) | 3 | 18/18 (100%) | 0 | 18/18 (100%) | 0 |
-| haushalt/spenden | 1 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 |
-| haushalt/stellenplan | 5 | 4/5 (80%) | 1 | 4/5 (80%) | 1 | 4/5 (80%) | 1 | 4/5 (80%) | 1 | 5/5 (100%) | 0 | 4/5 (80%) | 0 |
-| haushalt/steuern | 15 | 13/15 (87%) | 2 | 12/15 (80%) | 2 | 13/15 (87%) | 2 | 13/15 (87%) | 2 | 14/15 (93%) | 0 | 14/15 (93%) | 0 |
-| haushalt/vergleich | 5 | 1/5 (20%) | 3 | 1/5 (20%) | 3 | 1/5 (20%) | 3 | 1/5 (20%) | 3 | 4/5 (80%) | 0 | 4/5 (80%) | 0 |
-| haushalt/vollzug | 3 | 0/3 (0%) | 3 | 0/3 (0%) | 3 | 0/3 (0%) | 3 | 0/3 (0%) | 3 | 3/3 (100%) | 0 | 3/3 (100%) | 0 |
-| nicht-in-daten/abstimmung | 0 | 5/5 (100%) | 0 | — | 0 | 5/5 (100%) | 0 | 5/5 (100%) | 0 | — | 0 | — | 0 |
-| nicht-in-daten/offen | 0 | 4/4 (100%) | 0 | — | 0 | 4/4 (100%) | 0 | 4/4 (100%) | 0 | — | 0 | — | 0 |
-| nicht-in-daten/sonstiges | 0 | 2/2 (100%) | 0 | — | 0 | 2/2 (100%) | 0 | 2/2 (100%) | 0 | — | 0 | — | 0 |
-| ort | 0 | 2/6 (33%) | 3 | — | 0 | 2/6 (33%) | 3 | 2/6 (33%) | 3 | — | 0 | — | 0 |
-| person/ausschuss | 0 | 0/6 (0%) | 4 | — | 0 | 0/6 (0%) | 4 | 0/6 (0%) | 4 | — | 0 | — | 0 |
-| person/fraktion | 0 | 2/4 (50%) | 2 | — | 0 | 2/4 (50%) | 2 | 2/4 (50%) | 2 | — | 0 | — | 0 |
-| sitzung/beschluesse | 0 | 2/3 (67%) | 1 | — | 0 | 2/3 (67%) | 1 | 2/3 (67%) | 1 | — | 0 | — | 0 |
-| sitzung/tagesordnung | 0 | 1/2 (50%) | 1 | — | 0 | 1/2 (50%) | 1 | 1/2 (50%) | 1 | — | 0 | — | 0 |
-| sitzung/termin | 0 | 1/3 (33%) | 1 | — | 0 | 2/3 (67%) | 1 | 2/3 (67%) | 1 | — | 0 | — | 0 |
-| verlauf/baumschutz | 0 | 0/1 (0%) | 1 | — | 0 | 0/1 (0%) | 1 | 0/1 (0%) | 1 | — | 0 | — | 0 |
-| verlauf/fliegerhorst | 0 | 0/2 (0%) | 1 | — | 0 | 0/2 (0%) | 1 | 0/2 (0%) | 1 | — | 0 | — | 0 |
-| verlauf/grundsteuer | 0 | 0/2 (0%) | 1 | — | 0 | 1/2 (50%) | 0 | 1/2 (50%) | 0 | — | 0 | — | 0 |
-| verlauf/klima | 0 | 0/1 (0%) | 0 | — | 0 | 0/1 (0%) | 0 | 0/1 (0%) | 0 | — | 0 | — | 0 |
-| verlauf/radverkehr | 0 | 0/3 (0%) | 1 | — | 0 | 0/3 (0%) | 1 | 0/3 (0%) | 1 | — | 0 | — | 0 |
-| verlauf/schwimmbad | 0 | 0/1 (0%) | 1 | — | 0 | 0/1 (0%) | 1 | 0/1 (0%) | 1 | — | 0 | — | 0 |
-| verlauf/stadion | 0 | 0/4 (0%) | 3 | — | 0 | 0/4 (0%) | 3 | 0/4 (0%) | 3 | — | 0 | — | 0 |
-| verwechslung/abgelehnt-als-angenommen | 0 | 1/3 (33%) | 0 | — | 0 | 0/3 (0%) | 0 | 1/3 (33%) | 0 | — | 0 | — | 0 |
-| verwechslung/fliegerhorst | 0 | 0/1 (0%) | 1 | — | 0 | 0/1 (0%) | 1 | 0/1 (0%) | 1 | — | 0 | — | 0 |
-| verwechslung/grundsteuer | 0 | 2/2 (100%) | 0 | — | 0 | 2/2 (100%) | 0 | 1/2 (50%) | 0 | — | 0 | — | 0 |
-| verwechslung/praemisse | 0 | 0/1 (0%) | 0 | — | 0 | 1/1 (100%) | 0 | 0/1 (0%) | 0 | — | 0 | — | 0 |
-| verwechslung/radverkehr | 0 | 0/1 (0%) | 0 | — | 0 | 0/1 (0%) | 0 | 0/1 (0%) | 0 | — | 0 | — | 0 |
-| verwechslung/schwimmbad | 0 | 0/1 (0%) | 1 | — | 0 | 0/1 (0%) | 1 | 0/1 (0%) | 1 | — | 0 | — | 0 |
-| verwechslung/sechsfeldhalle | 0 | 0/1 (0%) | 0 | — | 0 | 0/1 (0%) | 0 | 0/1 (0%) | 0 | — | 0 | — | 0 |
-| verwechslung/stadion | 0 | 2/2 (100%) | 0 | — | 0 | 2/2 (100%) | 0 | 1/2 (50%) | 0 | — | 0 | — | 0 |
-| verwechslung/weser-ems-halle | 0 | 3/4 (75%) | 0 | — | 0 | 3/4 (75%) | 0 | 2/4 (50%) | 0 | — | 0 | — | 0 |
-| verwechslung/zweckentfremdung | 0 | 1/1 (100%) | 0 | — | 0 | 1/1 (100%) | 0 | 0/1 (0%) | 0 | — | 0 | — | 0 |
+| Kategorie | Fälle | google/gemini-2.5-flash (vor #1493) ok | Kontextfehler | openai/gpt-6-luna (vor K1) ok | Kontextfehler | openai/gpt-6-luna (vor Azure EU (dev 370b4203)) ok | Kontextfehler | google/gemini-2.5-flash (nach #1493) ok | Kontextfehler | openai/gpt-6-luna (nach #1493) ok | Kontextfehler | openai/gpt-6-luna (nach K1, Lauf 1) ok | Kontextfehler | openai/gpt-6-luna (nach K1, Lauf 2) ok | Kontextfehler | openai/gpt-6-luna (P4a Luna low) ok | Kontextfehler | openai/gpt-6-luna (P4a Luna Vorgabe) ok | Kontextfehler | openai/gpt-6-luna (Azure EU zuerst) ok | Kontextfehler |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| beschluss/abstimmung | 6 | 3/6 (50%) | 2 | — | 0 | 4/6 (67%) | 2 | 3/6 (50%) | 2 | 2/6 (33%) | 3 | — | 0 | — | 0 | 4/6 (67%) | 2 | 4/6 (67%) | 2 | 4/6 (67%) | 2 |
+| beschluss/ergebnis | 10 | 6/10 (60%) | 2 | — | 0 | 6/10 (60%) | 1 | 6/10 (60%) | 2 | 5/10 (50%) | 2 | — | 0 | — | 0 | 5/10 (50%) | 2 | 6/10 (60%) | 1 | 6/10 (60%) | 1 |
+| beschluss/kosten | 9 | 4/9 (44%) | 5 | — | 0 | 5/9 (56%) | 4 | 4/9 (44%) | 5 | 4/9 (44%) | 5 | — | 0 | — | 0 | 5/9 (56%) | 4 | 5/9 (56%) | 4 | 5/9 (56%) | 4 |
+| haushalt/begriffe | 1 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 |
+| haushalt/eigenbetriebe | 7 | 6/7 (86%) | 1 | 6/7 (86%) | 1 | 7/7 (100%) | 0 | 6/7 (86%) | 1 | 6/7 (86%) | 1 | 6/7 (86%) | 0 | 6/7 (86%) | 0 | 6/7 (86%) | 0 | 6/7 (86%) | 0 | 7/7 (100%) | 0 |
+| haushalt/gebuehren | 6 | 5/6 (83%) | 1 | 5/6 (83%) | 1 | 6/6 (100%) | 0 | 5/6 (83%) | 1 | 5/6 (83%) | 1 | 6/6 (100%) | 0 | 6/6 (100%) | 0 | 6/6 (100%) | 0 | 5/6 (83%) | 0 | 6/6 (100%) | 0 |
+| haushalt/investitionen | 14 | 7/14 (50%) | 6 | 10/14 (71%) | 4 | 11/14 (79%) | 1 | 8/14 (57%) | 4 | 10/14 (71%) | 4 | 12/14 (86%) | 0 | 11/14 (79%) | 0 | 10/14 (71%) | 1 | 12/14 (86%) | 0 | 11/14 (79%) | 0 |
+| haushalt/ist | 10 | 7/10 (70%) | 1 | 7/10 (70%) | 1 | 7/10 (70%) | 1 | 7/10 (70%) | 1 | 7/10 (70%) | 1 | 9/10 (90%) | 0 | 9/10 (90%) | 0 | 7/10 (70%) | 1 | 7/10 (70%) | 1 | 7/10 (70%) | 1 |
+| haushalt/konzern | 7 | 5/7 (71%) | 2 | 5/7 (71%) | 2 | 6/7 (86%) | 0 | 5/7 (71%) | 2 | 5/7 (71%) | 2 | 6/7 (86%) | 0 | 6/7 (86%) | 0 | 5/7 (71%) | 0 | 6/7 (86%) | 0 | 6/7 (86%) | 0 |
+| haushalt/mitreden | 3 | 3/3 (100%) | 0 | 3/3 (100%) | 0 | 3/3 (100%) | 0 | 3/3 (100%) | 0 | 3/3 (100%) | 0 | 3/3 (100%) | 0 | 3/3 (100%) | 0 | 3/3 (100%) | 0 | 3/3 (100%) | 0 | 3/3 (100%) | 0 |
+| haushalt/nachbewilligungen | 1 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 |
+| haushalt/nicht-in-daten | 15 | 13/15 (87%) | 1 | 14/15 (93%) | 1 | 14/15 (93%) | 0 | 13/15 (87%) | 1 | 14/15 (93%) | 1 | 15/15 (100%) | 0 | 15/15 (100%) | 0 | 14/15 (93%) | 0 | 15/15 (100%) | 0 | 14/15 (93%) | 0 |
+| haushalt/plan | 12 | 8/12 (67%) | 3 | 9/12 (75%) | 3 | 11/12 (92%) | 1 | 9/12 (75%) | 3 | 9/12 (75%) | 3 | 12/12 (100%) | 0 | 12/12 (100%) | 0 | 12/12 (100%) | 0 | 12/12 (100%) | 0 | 12/12 (100%) | 0 |
+| haushalt/produkte | 8 | 5/8 (62%) | 2 | 4/8 (50%) | 2 | 6/8 (75%) | 0 | 5/8 (62%) | 2 | 4/8 (50%) | 2 | 8/8 (100%) | 0 | 8/8 (100%) | 0 | 7/8 (88%) | 0 | 7/8 (88%) | 0 | 6/8 (75%) | 0 |
+| haushalt/pruefung | 6 | 5/6 (83%) | 1 | 4/6 (67%) | 1 | 6/6 (100%) | 0 | 5/6 (83%) | 1 | 5/6 (83%) | 1 | 5/6 (83%) | 0 | 6/6 (100%) | 0 | 6/6 (100%) | 0 | 5/6 (83%) | 0 | 6/6 (100%) | 0 |
+| haushalt/satzung | 5 | 3/5 (60%) | 1 | 2/5 (40%) | 1 | 4/5 (80%) | 0 | 3/5 (60%) | 1 | 2/5 (40%) | 1 | 5/5 (100%) | 0 | 3/5 (60%) | 0 | 3/5 (60%) | 0 | 5/5 (100%) | 0 | 4/5 (80%) | 0 |
+| haushalt/schulden | 18 | 13/18 (72%) | 5 | 15/18 (83%) | 3 | 18/18 (100%) | 0 | 15/18 (83%) | 3 | 15/18 (83%) | 3 | 18/18 (100%) | 0 | 18/18 (100%) | 0 | 17/18 (94%) | 0 | 18/18 (100%) | 0 | 18/18 (100%) | 0 |
+| haushalt/spenden | 1 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 |
+| haushalt/stellenplan | 5 | 4/5 (80%) | 1 | 4/5 (80%) | 1 | 5/5 (100%) | 0 | 4/5 (80%) | 1 | 4/5 (80%) | 1 | 5/5 (100%) | 0 | 4/5 (80%) | 0 | 5/5 (100%) | 0 | 5/5 (100%) | 0 | 5/5 (100%) | 0 |
+| haushalt/steuern | 15 | 13/15 (87%) | 2 | 12/15 (80%) | 2 | 15/15 (100%) | 0 | 13/15 (87%) | 2 | 13/15 (87%) | 2 | 14/15 (93%) | 0 | 14/15 (93%) | 0 | 15/15 (100%) | 0 | 15/15 (100%) | 0 | 15/15 (100%) | 0 |
+| haushalt/vergleich | 5 | 1/5 (20%) | 3 | 1/5 (20%) | 3 | 4/5 (80%) | 0 | 1/5 (20%) | 3 | 1/5 (20%) | 3 | 4/5 (80%) | 0 | 4/5 (80%) | 0 | 4/5 (80%) | 0 | 4/5 (80%) | 0 | 4/5 (80%) | 0 |
+| haushalt/vollzug | 3 | 0/3 (0%) | 3 | 0/3 (0%) | 3 | 3/3 (100%) | 0 | 0/3 (0%) | 3 | 0/3 (0%) | 3 | 3/3 (100%) | 0 | 3/3 (100%) | 0 | 3/3 (100%) | 0 | 3/3 (100%) | 0 | 3/3 (100%) | 0 |
+| nicht-in-daten/abstimmung | 5 | 5/5 (100%) | 0 | — | 0 | 5/5 (100%) | 0 | 5/5 (100%) | 0 | 5/5 (100%) | 0 | — | 0 | — | 0 | 4/5 (80%) | 0 | 4/5 (80%) | 0 | 5/5 (100%) | 0 |
+| nicht-in-daten/offen | 4 | 4/4 (100%) | 0 | — | 0 | 4/4 (100%) | 0 | 4/4 (100%) | 0 | 4/4 (100%) | 0 | — | 0 | — | 0 | 2/4 (50%) | 0 | 4/4 (100%) | 0 | 4/4 (100%) | 0 |
+| nicht-in-daten/sonstiges | 2 | 2/2 (100%) | 0 | — | 0 | 1/2 (50%) | 0 | 2/2 (100%) | 0 | 2/2 (100%) | 0 | — | 0 | — | 0 | 1/2 (50%) | 0 | 1/2 (50%) | 0 | 1/2 (50%) | 0 |
+| ort | 6 | 2/6 (33%) | 3 | — | 0 | 3/6 (50%) | 1 | 2/6 (33%) | 3 | 2/6 (33%) | 3 | — | 0 | — | 0 | 2/6 (33%) | 1 | 3/6 (50%) | 1 | 3/6 (50%) | 2 |
+| person/ausschuss | 6 | 0/6 (0%) | 4 | — | 0 | 2/6 (33%) | 2 | 0/6 (0%) | 4 | 0/6 (0%) | 4 | — | 0 | — | 0 | 2/6 (33%) | 2 | 2/6 (33%) | 2 | 2/6 (33%) | 2 |
+| person/fraktion | 4 | 2/4 (50%) | 2 | — | 0 | 4/4 (100%) | 0 | 2/4 (50%) | 2 | 2/4 (50%) | 2 | — | 0 | — | 0 | 4/4 (100%) | 0 | 4/4 (100%) | 0 | 4/4 (100%) | 0 |
+| sitzung/beschluesse | 3 | 2/3 (67%) | 1 | — | 0 | 2/3 (67%) | 0 | 2/3 (67%) | 1 | 2/3 (67%) | 1 | — | 0 | — | 0 | 2/3 (67%) | 1 | 2/3 (67%) | 1 | 1/3 (33%) | 0 |
+| sitzung/tagesordnung | 2 | 1/2 (50%) | 1 | — | 0 | 2/2 (100%) | 0 | 1/2 (50%) | 1 | 1/2 (50%) | 1 | — | 0 | — | 0 | 0/2 (0%) | 0 | 0/2 (0%) | 0 | 1/2 (50%) | 0 |
+| sitzung/termin | 3 | 1/3 (33%) | 1 | — | 0 | 3/3 (100%) | 0 | 2/3 (67%) | 1 | 2/3 (67%) | 1 | — | 0 | — | 0 | 3/3 (100%) | 0 | 3/3 (100%) | 0 | 3/3 (100%) | 0 |
+| verlauf/baumschutz | 1 | 0/1 (0%) | 1 | — | 0 | 0/1 (0%) | 1 | 0/1 (0%) | 1 | 0/1 (0%) | 1 | — | 0 | — | 0 | 0/1 (0%) | 1 | 0/1 (0%) | 1 | 0/1 (0%) | 1 |
+| verlauf/fliegerhorst | 2 | 0/2 (0%) | 1 | — | 0 | 0/2 (0%) | 1 | 0/2 (0%) | 1 | 0/2 (0%) | 1 | — | 0 | — | 0 | 0/2 (0%) | 1 | 0/2 (0%) | 1 | 0/2 (0%) | 1 |
+| verlauf/grundsteuer | 2 | 0/2 (0%) | 1 | — | 0 | 0/2 (0%) | 0 | 1/2 (50%) | 0 | 1/2 (50%) | 0 | — | 0 | — | 0 | 0/2 (0%) | 0 | 0/2 (0%) | 0 | 0/2 (0%) | 0 |
+| verlauf/klima | 1 | 0/1 (0%) | 0 | — | 0 | 0/1 (0%) | 0 | 0/1 (0%) | 0 | 0/1 (0%) | 0 | — | 0 | — | 0 | 0/1 (0%) | 0 | 0/1 (0%) | 0 | 0/1 (0%) | 0 |
+| verlauf/radverkehr | 3 | 0/3 (0%) | 1 | — | 0 | 1/3 (33%) | 1 | 0/3 (0%) | 1 | 0/3 (0%) | 1 | — | 0 | — | 0 | 1/3 (33%) | 1 | 1/3 (33%) | 1 | 1/3 (33%) | 1 |
+| verlauf/schwimmbad | 1 | 0/1 (0%) | 1 | — | 0 | 0/1 (0%) | 1 | 0/1 (0%) | 1 | 0/1 (0%) | 1 | — | 0 | — | 0 | 0/1 (0%) | 0 | 0/1 (0%) | 0 | 0/1 (0%) | 0 |
+| verlauf/stadion | 4 | 0/4 (0%) | 3 | — | 0 | 0/4 (0%) | 3 | 0/4 (0%) | 3 | 0/4 (0%) | 3 | — | 0 | — | 0 | 0/4 (0%) | 3 | 0/4 (0%) | 3 | 0/4 (0%) | 3 |
+| verwechslung/abgelehnt-als-angenommen | 3 | 1/3 (33%) | 0 | — | 0 | 1/3 (33%) | 0 | 0/3 (0%) | 0 | 1/3 (33%) | 0 | — | 0 | — | 0 | 1/3 (33%) | 0 | 1/3 (33%) | 0 | 1/3 (33%) | 0 |
+| verwechslung/fliegerhorst | 1 | 0/1 (0%) | 1 | — | 0 | 0/1 (0%) | 1 | 0/1 (0%) | 1 | 0/1 (0%) | 1 | — | 0 | — | 0 | 0/1 (0%) | 1 | 0/1 (0%) | 1 | 0/1 (0%) | 1 |
+| verwechslung/grundsteuer | 2 | 2/2 (100%) | 0 | — | 0 | 1/2 (50%) | 0 | 2/2 (100%) | 0 | 1/2 (50%) | 0 | — | 0 | — | 0 | 1/2 (50%) | 0 | 1/2 (50%) | 0 | 1/2 (50%) | 0 |
+| verwechslung/praemisse | 1 | 0/1 (0%) | 0 | — | 0 | 0/1 (0%) | 0 | 1/1 (100%) | 0 | 0/1 (0%) | 0 | — | 0 | — | 0 | 0/1 (0%) | 0 | 0/1 (0%) | 0 | 0/1 (0%) | 0 |
+| verwechslung/radverkehr | 1 | 0/1 (0%) | 0 | — | 0 | 0/1 (0%) | 0 | 0/1 (0%) | 0 | 0/1 (0%) | 0 | — | 0 | — | 0 | 0/1 (0%) | 0 | 0/1 (0%) | 0 | 0/1 (0%) | 0 |
+| verwechslung/schwimmbad | 1 | 0/1 (0%) | 1 | — | 0 | 0/1 (0%) | 1 | 0/1 (0%) | 1 | 0/1 (0%) | 1 | — | 0 | — | 0 | 0/1 (0%) | 1 | 0/1 (0%) | 1 | 0/1 (0%) | 1 |
+| verwechslung/sechsfeldhalle | 1 | 0/1 (0%) | 0 | — | 0 | 0/1 (0%) | 0 | 0/1 (0%) | 0 | 0/1 (0%) | 0 | — | 0 | — | 0 | 0/1 (0%) | 0 | 0/1 (0%) | 0 | 0/1 (0%) | 0 |
+| verwechslung/stadion | 2 | 2/2 (100%) | 0 | — | 0 | 1/2 (50%) | 0 | 2/2 (100%) | 0 | 1/2 (50%) | 0 | — | 0 | — | 0 | 1/2 (50%) | 0 | 1/2 (50%) | 0 | 1/2 (50%) | 0 |
+| verwechslung/weser-ems-halle | 4 | 3/4 (75%) | 0 | — | 0 | 3/4 (75%) | 0 | 3/4 (75%) | 0 | 2/4 (50%) | 0 | — | 0 | — | 0 | 3/4 (75%) | 0 | 3/4 (75%) | 0 | 3/4 (75%) | 0 |
+| verwechslung/zweckentfremdung | 1 | 1/1 (100%) | 0 | — | 0 | 0/1 (0%) | 0 | 1/1 (100%) | 0 | 0/1 (0%) | 0 | — | 0 | — | 0 | 0/1 (0%) | 0 | 0/1 (0%) | 0 | 0/1 (0%) | 0 |
 
 ## Kontextfehler — die Arbeitsliste
 
 Gruppiert nach dem Codeteil, der den Fakt hätte liefern müssen. Je Eintrag: Frage, Goldfakt, und was im Prompt stand (bei „falsch zugeordnet“ die Zeile samt dem Jahr, unter dem sie steht; bei „fehlt“ die Bausteine, die da waren).
 
-### `Lotti-Seitenblock (/council/sitzung)` — 6
+### `Retrieval/Beschlusskontext (beschluss/kosten)` — 5
 
-- `lotti-sitzung-2809-wann-wo` (lotti `/council/sitzung`): „Wann und wo findet diese Sitzung statt?“ — Gold: PFL — fehlt: nicht da; Bausteine im Prompt: WAS DU WEISST, WAS DIE PERSON GERADE VOR SICH HAT, SO ANTWORTEST DU, WEITER, FRAGE
-- `lotti-sitzung-2809-tagesordnung` (lotti `/council/sitzung`): „Welche Punkte stehen hier auf der Tagesordnung?“ — Gold: Klinikum — fehlt: nicht da; Bausteine im Prompt: WAS DU WEISST, WAS DIE PERSON GERADE VOR SICH HAT, SO ANTWORTEST DU, WEITER, FRAGE
-- `lotti-sitzung-2809-tagesordnung` (lotti `/council/sitzung`): „Welche Punkte stehen hier auf der Tagesordnung?“ — Gold: überplanmäßige Bewilligung Teilhaushalt 10 : 9512500 — fehlt: nicht da; Bausteine im Prompt: WAS DU WEISST, WAS DIE PERSON GERADE VOR SICH HAT, SO ANTWORTEST DU, WEITER, FRAGE
-- `lotti-sitzung-0106-stadion` (lotti `/council/sitzung`): „Was wurde hier in der Sitzung zum Stadion entschieden?“ — Gold: Beschluss 8677 — fehlt: nicht da; Bausteine im Prompt: WAS DU WEISST, WAS DIE PERSON GERADE VOR SICH HAT, SO ANTWORTEST DU, WEITER, FRAGE
-- `lotti-sitzung-0106-stadion` (lotti `/council/sitzung`): „Was wurde hier in der Sitzung zum Stadion entschieden?“ — Gold: Beschluss 8679 — fehlt: nicht da; Bausteine im Prompt: WAS DU WEISST, WAS DIE PERSON GERADE VOR SICH HAT, SO ANTWORTEST DU, WEITER, FRAGE
-- `lotti-sitzung-0106-stadion` (lotti `/council/sitzung`): „Was wurde hier in der Sitzung zum Stadion entschieden?“ — Gold: angenommen | beschlossen | zugestimmt | beschloss | Zustimmung | accepted — fehlt: nicht da; Bausteine im Prompt: WAS DU WEISST, WAS DIE PERSON GERADE VOR SICH HAT, SO ANTWORTEST DU, WEITER, FRAGE
-
-### `Retrieval/Beschlusskontext (verlauf/stadion)` — 5
-
-- `rat-stadion-was-beschlossen` (rat): „Was hat der Rat zum Stadion an der Maastrichter Straße beschlossen?“ — Gold: Eigenkapitalzuschuss der Stadt (bis zu) : 15000000 — fehlt: nicht da; Bausteine im Prompt: STAND DER AKTEN, BESCHLÜSSE, AUS DEN RATSDEBATTEN, FOLGEFRAGEN
-- `rat-stadion-eu-genehmigung` (rat): „Hat die EU-Kommission die Finanzierung des Stadions genehmigt?“ — Gold: 12.08.2026 | 12.8.2026 | 12. August 2026 | 2026-08-12 — fehlt: nicht da; Bausteine im Prompt: DIESE FRAGE IST ENG GESTELLT, STAND DER AKTEN, BESCHLÜSSE, FOLGEFRAGEN
-- `rat-stadion-eu-genehmigung` (rat): „Hat die EU-Kommission die Finanzierung des Stadions genehmigt?“ — Gold: genehmigte Beihilfen : 75000000 — fehlt: nicht da; Bausteine im Prompt: DIESE FRAGE IST ENG GESTELLT, STAND DER AKTEN, BESCHLÜSSE, FOLGEFRAGEN
-- `rat-stadion-fertigstellung` (rat): „Wann soll das neue Stadion fertig sein?“ — Gold: 2028 + 2029 — fehlt: nicht da; Bausteine im Prompt: DIESE FRAGE IST ENG GESTELLT, STAND DER AKTEN, BESCHLÜSSE, FOLGEFRAGEN
-- `rat-stadion-fertigstellung` (rat): „Wann soll das neue Stadion fertig sein?“ — Gold: 1. Juli 2027 | 01.07.2027 | Juli 2027 — fehlt: nicht da; Bausteine im Prompt: DIESE FRAGE IST ENG GESTELLT, STAND DER AKTEN, BESCHLÜSSE, FOLGEFRAGEN
-
-### `Retrieval/Beschlusskontext (beschluss/kosten)` — 4
-
-- `rat-stadion-kosten-wer-zahlt` (rat): „Wie viel kostet das neue Stadion und wer bezahlt es?“ — Gold: Baunebenkosten netto : 2360000 — fehlt: nicht da; Bausteine im Prompt: ZU DIESER FRAGE LIEGEN HAUSHALTSDATEN IM KONTEXT, STAND DER AKTEN, BESCHLÜSSE, AUFGABEN DER STADT MIT KOSTEN UND RECHTSGRUNDLAGE, STADTHAUSHALT, PASSEND ZUR FRAGE
-- `rat-stadion-kosten-wer-zahlt` (rat): „Wie viel kostet das neue Stadion und wer bezahlt es?“ — Gold: Eigenkapitalzuschuss der Stadt (bis zu) : 15000000 — fehlt: nicht da; Bausteine im Prompt: ZU DIESER FRAGE LIEGEN HAUSHALTSDATEN IM KONTEXT, STAND DER AKTEN, BESCHLÜSSE, AUFGABEN DER STADT MIT KOSTEN UND RECHTSGRUNDLAGE, STADTHAUSHALT, PASSEND ZUR FRAGE
+- `rat-stadion-kosten-wer-zahlt` (rat): „Wie viel kostet das neue Stadion und wer bezahlt es?“ — Gold: Baunebenkosten netto : 2360000 — fehlt: nicht da; Bausteine im Prompt: ZU DIESER FRAGE LIEGEN HAUSHALTSDATEN IM KONTEXT, STAND DER AKTEN, BESCHLÜSSE, AUFGABEN DER STADT MIT KOSTEN UND RECHTSGRUNDLAGE, STADTHAUSHALT, FOLGEFRAGEN
+- `rat-stadion-kosten-wer-zahlt` (rat): „Wie viel kostet das neue Stadion und wer bezahlt es?“ — Gold: Eigenkapitalzuschuss der Stadt (bis zu) : 15000000 — fehlt: nicht da; Bausteine im Prompt: ZU DIESER FRAGE LIEGEN HAUSHALTSDATEN IM KONTEXT, STAND DER AKTEN, BESCHLÜSSE, AUFGABEN DER STADT MIT KOSTEN UND RECHTSGRUNDLAGE, STADTHAUSHALT, FOLGEFRAGEN
+- `rat-stadion-kosten-wer-zahlt` (rat): „Wie viel kostet das neue Stadion und wer bezahlt es?“ — Gold: Bürgschaft | bürgt | Ausfallbürgschaft — fehlt: nicht da; Bausteine im Prompt: ZU DIESER FRAGE LIEGEN HAUSHALTSDATEN IM KONTEXT, STAND DER AKTEN, BESCHLÜSSE, AUFGABEN DER STADT MIT KOSTEN UND RECHTSGRUNDLAGE, STADTHAUSHALT, FOLGEFRAGEN
 - `rat-grundsteuer-mehrertrag` (rat): „Wie viel Mehrertrag hätte die im Dezember 2025 abgelehnte Grundsteuer-Anhebung gebracht?“ — Gold: erwartete Mehrerträge ab 2026 2026: 4420000 — fehlt: nicht da; Bausteine im Prompt: DIESE FRAGE IST ENG GESTELLT, STAND DER AKTEN, BESCHLÜSSE, WAS DIE FACHWÖRTER BEDEUTEN, ÄNDERUNGSLISTEN ZUM HAUSHALT 2025, DER STREIT UM DEN HAUSHALT 2025
 - `rat-sechsfeldhalle-kosten` (rat): „Was soll die Sechsfeldhalle an der Kennedystraße kosten?“ — Gold: erste Kostenschätzung : 31300000 — fehlt: nicht da; Bausteine im Prompt: DIESE FRAGE IST ENG GESTELLT, STAND DER AKTEN, BESCHLÜSSE, GEPLANT UND TATSÄCHLICH, AUFGABEN DER STADT MIT KOSTEN UND RECHTSGRUNDLAGE, STADTHAUSHALT
 
-### `Lotti-Seitenblock (/council/person)` — 4
+### `Retrieval/Beschlusskontext (verlauf/stadion)` — 4
 
-- `lotti-person-luekermann-partei` (lotti `/council/person`): „Für welche Partei sitzt er im Rat?“ — Gold: Volt — fehlt: nicht da; Bausteine im Prompt: WAS DU WEISST, WAS DIE PERSON GERADE VOR SICH HAT, SO ANTWORTEST DU, WEITER, FRAGE
-- `lotti-person-druegemoeller-ausschuesse` (lotti `/council/person`): „In welchen Ausschüssen sitzt sie?“ — Gold: Gebäudewirtschaft + Stadtplanung + Finanzen — fehlt: nicht da; Bausteine im Prompt: WAS DU WEISST, WAS DIE PERSON GERADE VOR SICH HAT, SO ANTWORTEST DU, WEITER, FRAGE
-- `lotti-person-adler-fraktion` (lotti `/council/person`): „Welcher Fraktion gehört er heute an?“ — Gold: BSW — fehlt: nicht da; Bausteine im Prompt: WAS DU WEISST, WAS DIE PERSON GERADE VOR SICH HAT, SO ANTWORTEST DU, WEITER, FRAGE
-- `lotti-person-meerbothe-vorsitz` (lotti `/council/person`): „Welchen Ausschuss leitet er?“ — Gold: Verkehrsausschuss — fehlt: nicht da; Bausteine im Prompt: WAS DU WEISST, WAS DIE PERSON GERADE VOR SICH HAT, SO ANTWORTEST DU, WEITER, FRAGE
-
-### `Lotti-Seitenblock (/council/ort)` — 3
-
-- `lotti-ort-hallensichel` (lotti `/council/ort`): „Wie weit ist der Bebauungsplan hier?“ — Gold: 13.04.2026 | 13.4.2026 | 13. April 2026 | 2026-04-13 — fehlt: nicht da; Bausteine im Prompt: WAS DU WEISST, WAS DIE PERSON GERADE VOR SICH HAT, SO ANTWORTEST DU, WEITER, FRAGE
-- `lotti-ort-alte-fleiwa` (lotti `/council/ort`): „Was wurde hier zuletzt beschlossen?“ — Gold: 01.06.2026 | 1.6.2026 | 1. Juni 2026 | 01. Juni 2026 | 2026-06-01 — fehlt: nicht da; Bausteine im Prompt: WAS DU WEISST, WAS DIE PERSON GERADE VOR SICH HAT, SO ANTWORTEST DU, WEITER, FRAGE
-- `lotti-ort-alte-fleiwa` (lotti `/council/ort`): „Was wurde hier zuletzt beschlossen?“ — Gold: 855 — fehlt: nicht da; Bausteine im Prompt: WAS DU WEISST, WAS DIE PERSON GERADE VOR SICH HAT, SO ANTWORTEST DU, WEITER, FRAGE
-
-### `Lotti-Seitenblock (/council/decision)` — 3
-
-- `lotti-btb-betrag` (lotti `/council/decision`): „Wie viel Geld bekommt der BTB hier im Jahr 2027?“ — Gold: Zuschuss BTB-Bad (Maximalbetrag) 2027: 177500 — fehlt: nicht da; Bausteine im Prompt: WAS DU WEISST, WAS DIE PERSON GERADE VOR SICH HAT, SO ANTWORTEST DU, WEITER, FRAGE
-- `lotti-sechsfeldhalle-kosten` (lotti `/council/decision`): „Was kostet die Halle, um die es hier geht?“ — Gold: erste Kostenschätzung : 31300000 — fehlt: nicht da; Bausteine im Prompt: WAS DU WEISST, WAS DIE PERSON GERADE VOR SICH HAT, SO ANTWORTEST DU, WEITER, FRAGE
-- `lotti-schulbezirke-gegenstimmen` (lotti `/council/decision`): „Gab es hier Gegenstimmen?“ — Gold: Enthaltungen : 9 — fehlt: nicht da; Bausteine im Prompt: DER GEGENSTAND DER SEITE, WAS DIE PERSON GERADE AUF DEM BILDSCHIRM HAT, SCREEN, STAND DER AKTEN, BESCHLÜSSE, FOLGEFRAGEN
+- `rat-stadion-was-beschlossen` (rat): „Was hat der Rat zum Stadion an der Maastrichter Straße beschlossen?“ — Gold: Eigenkapitalzuschuss der Stadt (bis zu) : 15000000 — fehlt: nicht da; Bausteine im Prompt: STAND DER AKTEN, BESCHLÜSSE, AKTUELLES VON DER STADT, FOLGEFRAGEN
+- `rat-stadion-eu-genehmigung` (rat): „Hat die EU-Kommission die Finanzierung des Stadions genehmigt?“ — Gold: genehmigte Beihilfen : 75000000 — fehlt: nicht da; Bausteine im Prompt: DIESE FRAGE IST ENG GESTELLT, STAND DER AKTEN, BESCHLÜSSE, AKTUELLES VON DER STADT, STADTHAUSHALT, FOLGEFRAGEN
+- `rat-stadion-fertigstellung` (rat): „Wann soll das neue Stadion fertig sein?“ — Gold: 2028 + 2029 — fehlt: nicht da; Bausteine im Prompt: DIESE FRAGE IST ENG GESTELLT, STAND DER AKTEN, BESCHLÜSSE, AKTUELLES VON DER STADT, FOLGEFRAGEN
+- `rat-stadion-fertigstellung` (rat): „Wann soll das neue Stadion fertig sein?“ — Gold: 1. Juli 2027 | 01.07.2027 | Juli 2027 — fehlt: nicht da; Bausteine im Prompt: DIESE FRAGE IST ENG GESTELLT, STAND DER AKTEN, BESCHLÜSSE, AKTUELLES VON DER STADT, FOLGEFRAGEN
 
 ### `Retrieval/Beschlusskontext (beschluss/abstimmung)` — 2
 
-- `rat-stadion-wer-dagegen` (rat): „Welche Fraktionen haben im Juni 2026 gegen die Stadion-Vergabe gestimmt?“ — Gold: Grüne | Grünen + Für Oldenburg — fehlt: nicht da; Bausteine im Prompt: DIESE FRAGE IST ENG GESTELLT, STAND DER AKTEN, BESCHLÜSSE, WAS DIE FACHWÖRTER BEDEUTEN, AUS DEN RATSDEBATTEN, FOLGEFRAGEN
-- `rat-schulbezirke-abstimmung` (rat): „Wie wurde über die neuen Schulbezirke der Grundschulen abgestimmt?“ — Gold: Enthaltungen : 9 — fehlt: nicht da; Bausteine im Prompt: STAND DER AKTEN, BESCHLÜSSE, FOLGEFRAGEN
-
-### `Retrieval/Beschlusskontext (beschluss/ergebnis)` — 2
-
-- `rat-stadion-baufirma` (rat): „Welche Firma baut das neue Stadion?“ — Gold: Hellmich — fehlt: nicht da; Bausteine im Prompt: DIESE FRAGE IST ENG GESTELLT, STAND DER AKTEN, BESCHLÜSSE, AUS DEN RATSDEBATTEN, FOLGEFRAGEN
-- `rat-lachgas-verbot` (rat): „Hat Oldenburg ein Lachgas-Verbot für Minderjährige beschlossen?“ — Gold: einstimmig — fehlt: nicht da; Bausteine im Prompt: DIESE FRAGE IST ENG GESTELLT, STAND DER AKTEN, BESCHLÜSSE, FOLGEFRAGEN
+- `rat-stadion-wer-dagegen` (rat): „Welche Fraktionen haben im Juni 2026 gegen die Stadion-Vergabe gestimmt?“ — Gold: Grüne | Grünen + Für Oldenburg — fehlt: nicht da; Bausteine im Prompt: DIESE FRAGE IST ENG GESTELLT, STAND DER AKTEN, BESCHLÜSSE, WAS DIE FACHWÖRTER BEDEUTEN, FOLGEFRAGEN
+- `rat-schulbezirke-abstimmung` (rat): „Wie wurde über die neuen Schulbezirke der Grundschulen abgestimmt?“ — Gold: Enthaltungen : 9 — fehlt: nicht da; Bausteine im Prompt: DIESE FRAGE IST ENG GESTELLT, STAND DER AKTEN, BESCHLÜSSE, FOLGEFRAGEN
 
 ### `Retrieval/Beschlusskontext (verlauf/fliegerhorst)` — 2
 
@@ -364,8 +355,8 @@ Gruppiert nach dem Codeteil, der den Fakt hätte liefern müssen. Je Eintrag: Fr
 
 ### `Retrieval/Beschlusskontext (verlauf/baumschutz)` — 2
 
-- `rat-baumschutzsatzung` (rat): „Gilt die Baumschutzsatzung in Oldenburg noch?“ — Gold: bleibt bestehen | gilt weiterhin | weiterhin | bleibt in Kraft | gilt noch — fehlt: nicht da; Bausteine im Prompt: DIESE FRAGE IST ENG GESTELLT, STAND DER AKTEN, BESCHLÜSSE, FOLGEFRAGEN
-- `rat-baumschutzsatzung` (rat): „Gilt die Baumschutzsatzung in Oldenburg noch?“ — Gold: 22.02.2026 | 22.2.2026 | 22. Februar 2026 | 2026-02-22 — fehlt: nicht da; Bausteine im Prompt: DIESE FRAGE IST ENG GESTELLT, STAND DER AKTEN, BESCHLÜSSE, FOLGEFRAGEN
+- `rat-baumschutzsatzung` (rat): „Gilt die Baumschutzsatzung in Oldenburg noch?“ — Gold: bleibt bestehen | gilt weiterhin | weiterhin | bleibt in Kraft | gilt noch — fehlt: nicht da; Bausteine im Prompt: DIESE FRAGE IST ENG GESTELLT, STAND DER AKTEN, BESCHLÜSSE, AKTUELLES VON DER STADT, FOLGEFRAGEN
+- `rat-baumschutzsatzung` (rat): „Gilt die Baumschutzsatzung in Oldenburg noch?“ — Gold: 22.02.2026 | 22.2.2026 | 22. Februar 2026 | 2026-02-22 — fehlt: nicht da; Bausteine im Prompt: DIESE FRAGE IST ENG GESTELLT, STAND DER AKTEN, BESCHLÜSSE, AKTUELLES VON DER STADT, FOLGEFRAGEN
 
 ### `Retrieval/Beschlusskontext (person/ausschuss)` — 2
 
@@ -377,21 +368,33 @@ Gruppiert nach dem Codeteil, der den Fakt hätte liefern müssen. Je Eintrag: Fr
 - `rat-ort-eversten-west` (rat): „Was ist zuletzt in Eversten-West beschlossen worden?“ — Gold: 24.06.2019 | 24.6.2019 | 24. Juni 2019 | 2019-06-24 — fehlt: nicht da; keine Haushalts-Bausteine im Prompt
 - `rat-ort-eversten-west` (rat): „Was ist zuletzt in Eversten-West beschlossen worden?“ — Gold: 2019 — fehlt: nicht da; keine Haushalts-Bausteine im Prompt
 
+### `store.abweichungsgruende_fuer_begriffe (qa: gruende)` — 1
+
+- `hh-ist-gruende-2024-rat` (rat): „Warum war das Ergebnis 2024 besser als geplant?“ — Gold: Mehrertrag Steuern 2024 2024: 75100000.0 — fehlt: nicht da; Bausteine im Prompt: ACHTUNG, DÜNNE BELEGLAGE, ZU DIESER FRAGE LIEGEN HAUSHALTSDATEN IM KONTEXT, STAND DER AKTEN, BESCHLÜSSE, GEPLANT UND TATSÄCHLICH, WARUM DER PLAN NICHT AUFGING
+
 ### `Retrieval/Beschlusskontext (verwechslung/fliegerhorst)` — 1
 
 - `rat-fliegerhorst-dreifeldhalle-kosten` (rat): „Was soll die Dreifeldhalle auf dem Fliegerhorst kosten?“ — Gold: orientierende Kosten Dreifeldhalle („knapp unter“) : 20000000 — fehlt: nicht da; Bausteine im Prompt: DIESE FRAGE IST ENG GESTELLT, ORTSFILTER, STAND DER AKTEN, BESCHLÜSSE, GEPLANT UND TATSÄCHLICH, AUFGABEN DER STADT MIT KOSTEN UND RECHTSGRUNDLAGE
 
-### `Retrieval/Beschlusskontext (verlauf/schwimmbad)` — 1
+### `Lotti-Seitenblock (/council/ort)` — 1
 
-- `rat-schwimmbad-zuletzt` (rat): „Was wurde zuletzt zum Thema Schwimmbad beschlossen?“ — Gold: einstimmig — fehlt: nicht da; Bausteine im Prompt: CHRONOLOGIE, STAND DER AKTEN, BESCHLÜSSE, AUS DEN RATSDEBATTEN, FOLGEFRAGEN
+- `lotti-ort-hallensichel` (lotti `/council/ort`): „Wie weit ist der Bebauungsplan hier?“ — Gold: 13.04.2026 | 13.4.2026 | 13. April 2026 | 2026-04-13 — fehlt: nicht da; Bausteine im Prompt: WAS DIE PERSON GERADE AUF DEM BILDSCHIRM HAT, SCREEN, STAND DER AKTEN, BESCHLÜSSE, WAS DIE FACHWÖRTER BEDEUTEN, AKTUELLES VON DER STADT
+
+### `Retrieval/Beschlusskontext (verlauf/radverkehr)` — 1
+
+- `rat-radverkehr-plaene` (rat): „Was plant die Stadt für den Radverkehr?“ — Gold: Leitfaden — fehlt: nicht da; Bausteine im Prompt: STAND DER AKTEN, BESCHLÜSSE, AKTUELLES VON DER STADT, FOLGEFRAGEN
 
 ### `Retrieval/Beschlusskontext (verwechslung/schwimmbad)` — 1
 
 - `rat-btb-zuschuss-2027` (rat): „Mit wie viel Geld unterstützt die Stadt das BTB-Schwimmbad im Jahr 2027?“ — Gold: Zuschuss BTB-Bad (Maximalbetrag) 2027: 177500 — fehlt: nicht da; Bausteine im Prompt: DIESE FRAGE IST ENG GESTELLT, STAND DER AKTEN, BESCHLÜSSE, STADTHAUSHALT, FOLGEFRAGEN
 
-### `Lotti-Seitenblock (/council/thema)` — 1
+### `Retrieval/Beschlusskontext (beschluss/ergebnis)` — 1
 
-- `lotti-thema-verkehr-zuletzt` (lotti `/council/thema`): „Was wurde hier im Verkehr zuletzt beschlossen?“ — Gold: 29.06.2026 | 29.6.2026 | 29. Juni 2026 | 2026-06-29 — fehlt: nicht da; Bausteine im Prompt: WAS DU WEISST, WAS DIE PERSON GERADE VOR SICH HAT, SO ANTWORTEST DU, WEITER, FRAGE
+- `rat-lachgas-verbot` (rat): „Hat Oldenburg ein Lachgas-Verbot für Minderjährige beschlossen?“ — Gold: einstimmig — fehlt: nicht da; Bausteine im Prompt: STAND DER AKTEN, BESCHLÜSSE, AKTUELLES VON DER STADT, AUS DEN RATSDEBATTEN, FOLGEFRAGEN
+
+### `Lotti-Seitenblock (/council/decision)` — 1
+
+- `lotti-sechsfeldhalle-kosten` (lotti `/council/decision`): „Was kostet die Halle, um die es hier geht?“ — Gold: erste Kostenschätzung : 31300000 — fehlt: nicht da; Bausteine im Prompt: WAS DU WEISST, WAS DIE PERSON GERADE VOR SICH HAT, SO ANTWORTEST DU, WEITER, FRAGE
 <!-- fakten-eval:ende -->
 
 ## Nachtrag: Lottis Seitenkontext auf den Rats-Seiten (23.09.2026)

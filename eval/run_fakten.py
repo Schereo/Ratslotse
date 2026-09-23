@@ -43,7 +43,12 @@ Aufruf::
 
 ``--ohne-zdr`` setzt ``NWZ_OPENROUTER_ZDR=0`` NUR im Mess-Backend: GPT-6
 Luna hat keinen ZDR-Anbieter (Tims Entscheidung vom 23.09. für Lotti und Frag
-den Rat); die Fälle sind eigene Fragen, keine Nutzerdaten.
+den Rat); die Fälle sind eigene Fragen, keine Nutzerdaten. **Für GPT-6 Luna
+seit dem 23.09.2026 abends überflüssig und irreführend:** Lotti und Frag den
+Rat gehen zuerst an Azure EU mit ZDR (``kern/llm.py::EU_ZUERST``); der
+Schalter nähme diesem Weg das ZDR-Merkmal, und der Lauf mäße nicht mehr das
+Routing des Betriebs. Ob ein Fall über den Rückfall lief, steht im
+Mitschnitt (``provider``, ``fallback``).
 
 **Die ausführliche Recherche** (``--kanal deep``, 23.09.2026): Jeder Fall
 geht dann, egal welchem Kanal er gehört, als Job an ``POST

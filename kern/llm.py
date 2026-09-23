@@ -15,6 +15,7 @@ from typing import Any
 
 from openai import (
     OpenAI,
+    APIError,
     BadRequestError,
     RateLimitError,
     APIStatusError,
@@ -296,6 +297,9 @@ _OHNE_NUTZEREINGABE_PRAEFIX = ("cities_", "eval_cities_")
 #: die Themen-Beschreibung. **Was bleibt, auch hier:** kein Training
 #: (``data_collection: deny``), kein Anbieter aus China, nie Flex/Batch
 #: (:func:`nutzereingabe`). ``tests/test_llm.py`` hält alle drei fest.
+#:
+#: **Seit dem Abend des 23.09. nur noch der Rückfall:** Für die Modelle aus
+#: :data:`EU_ZUERST` geht der erste Versuch an Azure EU mit ZDR.
 ZDR_VERZICHT: frozenset[str] = frozenset({
     "assistant_explain", "qa_answer", "qa_simple", "deep_report", "party_opinions",
 })
@@ -317,7 +321,64 @@ def zdr_pflicht(feature: str | None) -> bool:
     return nutzereingabe(feature) and feature not in ZDR_VERZICHT
 
 
-def _routing_extra_body(zdr: bool = True) -> dict[str, Any]:
+#: **EU zuerst, mit ZDR** — für die Features aus :data:`ZDR_VERZICHT`, wenn
+#: das Modell einen EU-Endpunkt mit ZDR hat. Erst dieser Weg; nur wenn er
+#: ausfällt, derselbe Aufruf mit dem Verzicht-Routing (OpenAI direkt u. a.,
+#: ohne ZDR). **Tims Entscheidung 23.09.2026**; der Verzicht von vorher gilt
+#: seitdem nur noch als Rückfall.
+#:
+#: Anlass: OpenRouter führt GPT-6 Luna seit dem 23.09.2026 auch bei Azure,
+#: mit dem Endpunkt ``azure/eu`` (ZDR). Gemessen mit ``zdr: true``,
+#: ``data_collection: deny`` und ``only: ["azure/eu"]``: 20/20 Aufrufe ok, p50
+#: 3,4 s, max 5,0 s. Mit ``zdr: true`` OHNE Anbietervorgabe kam einmal
+#: „temporarily rate-limited upstream“ — deshalb die feste Vorgabe. ``only``
+#: und ``ignore`` gehen zusammen (Probe 23.09.: Antwort von Azure).
+#: ``azure/eu`` kostet 10 % mehr als OpenAI direkt (0,11 statt 0,10 $ je
+#: Million Eingabe-Tokens). Fakten-Eval (233 Fälle, zwei Läufe gleichzeitig,
+#: 23.09.): gleiche Qualität (177/34 gegen 176/37 ok/Modellfehler — ein
+#: früherer Lauf über OpenAI hatte ebenfalls 176/37), p50 8,7 → 6,7 s, p95
+#: 28,4 → 17,7 s; 0 Rückfälle bei 236 Luna-Aufrufen.
+#:
+#: GPT-6 Sol steht mit drin, weil es dieselben Features bedienen kann
+#: (``COUNCIL_DEEP_MODEL``) und ``azure/eu`` ebenfalls anbietet (Probe
+#: 23.09.: Antwort von Azure, Einmal-Aufruf und Strom). Ein Modell OHNE
+#: Eintrag hier bleibt beim bisherigen Routing — ein EU-Versuch bei einem
+#: Modell, das dort nicht angeboten wird, wäre ein sicherer 404 und würde
+#: jeden Aufruf als Rückfall zählen.
+EU_ZUERST: dict[str, tuple[str, ...]] = {
+    "openai/gpt-6-luna": ("azure/eu",),
+    "openai/gpt-6-sol": ("azure/eu",),
+}
+
+#: **Ein reiner Messschalter** wie ``TARIF_ENV``: ersetzt die Anbieterliste
+#: aus :data:`EU_ZUERST` (kommagetrennt). Ein Anbieter, den es nicht gibt
+#: (``gibtsnicht/eu``), erzwingt den Rückfall — so prüft man den zweiten Weg
+#: am echten Codepfad. In eine ``.env`` gehört er nicht.
+EU_ANBIETER_ENV = "RATSLOTSE_EU_ANBIETER"
+
+#: So steht ein Rückfall in ``llm_usage.model`` — ein eigener Modellname, damit
+#: er im Admin-Panel (``by_model`` je Feature: Aufrufe und Kosten) als eigene
+#: Zeile auftaucht und sich zählen lässt:
+#: ``SELECT COUNT(*) FROM llm_usage WHERE model LIKE '%@fallback-no-zdr'``.
+RUECKFALL_MARKE = "@fallback-no-zdr"
+
+
+def eu_zuerst(feature: str | None, model: str | None) -> tuple[str, ...] | None:
+    """Die EU-Anbieter für den ersten Weg — ``None``: nur das bisherige Routing."""
+    if feature not in ZDR_VERZICHT:
+        return None
+    if os.environ.get("NWZ_OPENROUTER_ROUTING", "on").strip().lower() == "off":
+        return None
+    anbieter = EU_ZUERST.get(model or "")
+    if not anbieter:
+        return None
+    mess = os.environ.get(EU_ANBIETER_ENV, "").strip()
+    if mess:
+        anbieter = tuple(s.strip() for s in mess.split(",") if s.strip())
+    return anbieter or None
+
+
+def _routing_extra_body(zdr: bool = True, only: tuple[str, ...] | None = None) -> dict[str, Any]:
     if os.environ.get("NWZ_OPENROUTER_ROUTING", "on").strip().lower() == "off":
         return {}
     provider: dict[str, Any] = {"data_collection": "deny"}
@@ -326,13 +387,16 @@ def _routing_extra_body(zdr: bool = True) -> dict[str, Any]:
         provider["ignore"] = ignore
     if zdr and os.environ.get("NWZ_OPENROUTER_ZDR", "1").strip().lower() not in ("0", "false", "off", "no"):
         provider["zdr"] = True
+    if only:
+        provider["only"] = list(only)
     return {"provider": provider}
 
 
-def _with_routing(kwargs: dict[str, Any], zdr: bool = True) -> dict[str, Any]:
+def _with_routing(kwargs: dict[str, Any], zdr: bool = True,
+                  only: tuple[str, ...] | None = None) -> dict[str, Any]:
     """Merge the OpenRouter provider-routing block into the request's extra_body
     (a caller-supplied 'provider' wins, so call sites can still override)."""
-    rb = _routing_extra_body(zdr)
+    rb = _routing_extra_body(zdr, only)
     if not rb:
         return kwargs
     extra_body = {**rb, **(kwargs.get("extra_body") or {})}
@@ -412,7 +476,8 @@ MITSCHNITT_ENV = "RATSLOTSE_PROMPT_MITSCHNITT"
 
 def _mitschnitt(feature: str | None, kwargs: dict[str, Any], antwort: str | None, *,
                 antwort_modell: str | None = None, abgebrochen: bool = False,
-                finish_reason: str | None = None, usage_obj: Any = None) -> None:
+                finish_reason: str | None = None, usage_obj: Any = None,
+                anbieter: str | None = None, rueckfall: bool = False) -> None:
     """Eine Zeile ins Mitschnitt-Protokoll — nur wenn der Messschalter gesetzt ist."""
     ordner = os.environ.get(MITSCHNITT_ENV, "").strip()
     if not ordner:
@@ -428,6 +493,11 @@ def _mitschnitt(feature: str | None, kwargs: dict[str, Any], antwort: str | None
             # Wer wirklich geantwortet hat (OpenRouter trägt es in der Antwort) —
             # der Nachweis, dass die Umschaltung gewirkt hat.
             "response_model": antwort_modell,
+            # Welcher Anbieter geantwortet hat (``Azure``, ``OpenAI`` …) und ob
+            # der EU-Weg ausgefallen war (:data:`EU_ZUERST`) — die Fakten-Eval
+            # zählt daraus die Rückfälle ihres Laufs.
+            "provider": anbieter,
+            "fallback": rueckfall,
             # Der Denkaufwand, der wirklich rausging — der Nachweis, dass
             # `WEB_DENKAUFWAND_ENV` im Mess-Backend angekommen ist (P4a).
             "reasoning": (kwargs.get("extra_body") or {}).get("reasoning"),
@@ -568,8 +638,9 @@ def _is_transient(exc: BaseException) -> bool:
     stop=stop_after_attempt(4),
     reraise=True,
 )
-def _create(*, _allow_empty_response: bool = False, _zdr: bool = True, **kwargs: Any):
-    merged = _with_model_params(_with_routing(kwargs, _zdr))
+def _create(*, _allow_empty_response: bool = False, _zdr: bool = True,
+            _only: tuple[str, ...] | None = None, **kwargs: Any):
+    merged = _with_model_params(_with_routing(kwargs, _zdr, _only))
     # OpenRouter soll die ECHTEN Kosten des Aufrufs mitliefern (usage.cost, in
     # USD, inkl. Provider-Routing) — Modellpreise von Hand pflegen entfällt
     # damit dort, wo der Wert ankommt (Admin-Statistik, Eval-Kostenzeile).
@@ -584,6 +655,88 @@ def _create(*, _allow_empty_response: bool = False, _zdr: bool = True, **kwargs:
     if not merged.get("stream") and not _allow_empty_response:
         _pruefe_choices(resp, merged.get("model"))
     return resp
+
+
+def _inhaltsfilter(exc: BaseException) -> bool:
+    """Inhaltsfilter-Treffer — auch als Fehler MITTEN im Strom.
+
+    :func:`is_content_filter` kennt nur den 400er beim Verbindungsaufbau. Im
+    Strom meldet OpenRouter Fehler als eigenes Ereignis, und das SDK wirft
+    daraus ein nacktes ``APIError`` — dieselbe Textsuche, anderer Typ.
+    """
+    if is_content_filter(exc):
+        return True
+    if isinstance(exc, APIError) and not isinstance(exc, APIStatusError):
+        blob = f"{getattr(exc, 'message', '')} {getattr(exc, 'body', '')} {exc}".lower()
+        return "content_filter" in blob or "content management policy" in blob or "responsibleai" in blob
+    return False
+
+
+def _eu_rueckfall_erlaubt(exc: BaseException) -> bool:
+    """Darf ein Fehler des EU-Wegs zum Verzicht-Routing führen?
+
+    Ja bei allem, was am Anbieter hängt: Vorübergehendes (:func:`_is_transient`
+    — 429, 5xx, Netz, 200er ohne ``choices``), ein 404 („No allowed providers“,
+    wenn ``azure/eu`` das Modell nicht mehr führt) und ein Fehler-Ereignis im
+    Strom. **Nein bei einem Inhaltsfilter-Treffer:** Der hängt am Text der
+    Anfrage — Azures Filter ist strenger als OpenAIs, und ein Rückfall schickte
+    genau den Text, den ein Anbieter gerade abgelehnt hat, in die USA.
+    """
+    if _inhaltsfilter(exc):
+        return False
+    if _is_transient(exc):
+        return True
+    if isinstance(exc, APIStatusError):
+        return exc.status_code == 404
+    return isinstance(exc, APIError)  # Fehler-Ereignis im Strom
+
+
+def _anbieter(obj: Any) -> str | None:
+    """Welcher Anbieter geantwortet hat — OpenRouter trägt es als ``provider``."""
+    extra = getattr(obj, "model_extra", None)
+    wert = extra.get("provider") if isinstance(extra, dict) else None
+    return wert if isinstance(wert, str) else getattr(obj, "provider", None)
+
+
+def _melde_rueckfall(feature: str | None, model: str | None, exc: BaseException) -> None:
+    """Der Rückfall steht im Log — die Zählung übernimmt ``llm_usage``."""
+    print(f"  🇪🇺↩️ {feature}/{model}: EU-Weg ausgefallen ({exc!r}) — "
+          "Rückfall auf das Routing ohne ZDR", flush=True)
+
+
+def _create_eu_zuerst(kwargs: dict[str, Any], anbieter: tuple[str, ...],
+                      feature: str | None, geduld: bool) -> tuple[Any, bool]:
+    """Erst der EU-Weg mit ZDR, bei Ausfall derselbe Aufruf ohne ZDR.
+
+    Gibt ``(Antwort, Rückfall?)`` zurück. Der EU-Weg ist das normale
+    ``_create`` mit seinen vier schnellen Anläufen — keine Geduld, auch nicht
+    im Batch: Pausen von Minuten vor einem Rückfall helfen niemandem, der auf
+    eine Antwort wartet. **Was der EU-Weg im Fehlerfall höchstens kostet:**
+    bei einem Fehler, den ``_is_transient`` kennt, 2 + 2 + 4 = 8 s Pause plus
+    die Dauer der vier Anläufe (bei einem sofortigen 429 zusammen gut 9 s);
+    ein 404 fällt ohne Anlauf sofort zurück (Probe: 0,1 s). Ein Anbieter,
+    der gar nicht antwortet, läuft wie heute bis ins Zeitlimit des Clients —
+    das gilt für den Verzicht-Weg genauso und ist nicht Teil dieser Änderung.
+
+    Ein 200er ohne ``choices`` fällt auch dann zurück, wenn der Aufrufer
+    Leerantworten selbst behandelt (``_allow_empty_response``, die
+    Partei-Meinungen): Leer aus der EU heißt „Anbieter gestört“, nicht „das
+    Modell hatte nichts zu sagen“. Der zweite Weg behält die Regel des
+    Aufrufers.
+    """
+    eu = {**kwargs, "_zdr": True, "_only": anbieter}
+    try:
+        resp = _create(**eu)
+        if getattr(resp, "choices", None):
+            return resp, False
+        grund: BaseException = EmptyResponseError(
+            f"{kwargs.get('model')}: EU-Antwort ohne choices — {_antwort_fehlertext(resp)}")
+    except Exception as exc:  # noqa: BLE001 — was zurückfällt, entscheidet _eu_rueckfall_erlaubt
+        if not _eu_rueckfall_erlaubt(exc):
+            raise
+        grund = exc
+    _melde_rueckfall(feature, kwargs.get("model"), grund)
+    return (_create_geduldig(kwargs) if geduld else _create(**kwargs)), True
 
 
 # Kosten-Zähler je Prozess: die Eval-Suite bildet daraus Deltas je Frage.
@@ -669,9 +822,14 @@ def chat_complete(**kwargs: Any):
     modelle = [kwargs.get("model"), *ersatz]
     for i, model in enumerate(modelle):
         versuch = {**kwargs, "model": model}
+        # Flex gibt es für die EU-Features nie (s. o., FlexNichtErlaubt).
+        anbieter = eu_zuerst(feature, model) if tarif == "normal" else None
+        rueckfall = False
         try:
             if tarif == "flex":
                 resp = _create_flex(versuch, geduld)
+            elif anbieter:
+                resp, rueckfall = _create_eu_zuerst(versuch, anbieter, feature, geduld)
             else:
                 resp = _create_geduldig(versuch) if geduld else _create(**versuch)
         except Exception as exc:  # noqa: BLE001 — nur Vorübergehendes wird ersetzt
@@ -679,10 +837,12 @@ def chat_complete(**kwargs: Any):
                 raise
             print(f"  ⚠️ {model}: {exc!r} — weiche auf {modelle[i + 1]} aus", flush=True)
             continue
-        _record_usage(feature, model, getattr(resp, "usage", None))
+        _record_usage(feature, f"{model}{RUECKFALL_MARKE}" if rueckfall else model,
+                      getattr(resp, "usage", None))
         _mitschnitt(feature, versuch, _antworttext(resp),
                     antwort_modell=getattr(resp, "model", None),
-                    finish_reason=_finish_reason(resp), usage_obj=getattr(resp, "usage", None))
+                    finish_reason=_finish_reason(resp), usage_obj=getattr(resp, "usage", None),
+                    anbieter=_anbieter(resp), rueckfall=rueckfall)
         return resp
     raise AssertionError("unerreichbar: kein Modell")  # pragma: no cover
 
@@ -740,22 +900,49 @@ def chat_stream(**kwargs: Any):
     mit = bool(os.environ.get(MITSCHNITT_ENV, "").strip())
     teile: list[str] = []
     antwort_modell: str | None = None
+    antwort_anbieter: str | None = None
     grund: str | None = None
     verbrauch: Any = None
     fertig = False
+    # Die Wege, der Reihe nach: für die EU-Features (EU_ZUERST) erst EU mit
+    # ZDR, dann das Verzicht-Routing — sonst nur der eine Weg wie bisher.
+    anbieter = eu_zuerst(feature, kwargs.get("model"))
+    wege: list[tuple[bool, tuple[str, ...] | None]] = (
+        [(True, anbieter), (False, None)] if anbieter else [(zdr_pflicht(feature), None)])
+    rueckfall = False
     try:
-        for chunk in _create(stream=True, _zdr=zdr_pflicht(feature), **kwargs):
-            if mit and antwort_modell is None:
-                antwort_modell = getattr(chunk, "model", None)
-            if getattr(chunk, "usage", None):
-                verbrauch = chunk.usage
-                _record_usage(feature, kwargs.get("model"), chunk.usage)
-            if mit and chunk.choices and getattr(chunk.choices[0], "finish_reason", None):
-                grund = chunk.choices[0].finish_reason
-            if chunk.choices and chunk.choices[0].delta.content:
-                if mit:
-                    teile.append(chunk.choices[0].delta.content)
-                yield chunk.choices[0].delta.content
+        for nr, (zdr, only) in enumerate(wege):
+            ausgeliefert = False
+            try:
+                for chunk in _create(stream=True, _zdr=zdr, _only=only, **kwargs):
+                    if antwort_anbieter is None:
+                        antwort_anbieter = _anbieter(chunk)
+                    if mit and antwort_modell is None:
+                        antwort_modell = getattr(chunk, "model", None)
+                    if getattr(chunk, "usage", None):
+                        verbrauch = chunk.usage
+                        modell = kwargs.get("model")
+                        _record_usage(feature, f"{modell}{RUECKFALL_MARKE}" if rueckfall else modell,
+                                      chunk.usage)
+                    if mit and chunk.choices and getattr(chunk.choices[0], "finish_reason", None):
+                        grund = chunk.choices[0].finish_reason
+                    if chunk.choices and chunk.choices[0].delta.content:
+                        if mit:
+                            teile.append(chunk.choices[0].delta.content)
+                        ausgeliefert = True
+                        yield chunk.choices[0].delta.content
+            except Exception as exc:  # noqa: BLE001 — Rückfall nur vor dem ersten Token
+                # Ist schon Text beim Leser, hieße ein zweiter Weg eine zweite,
+                # andere Antwort im selben Fenster. Dann reißt der Strom wie
+                # bisher, und der Router erzeugt einmal neu (chat_complete —
+                # das seinerseits wieder EU zuerst versucht).
+                if ausgeliefert or nr == len(wege) - 1 or not _eu_rueckfall_erlaubt(exc):
+                    raise
+                _melde_rueckfall(feature, kwargs.get("model"), exc)
+                rueckfall = True
+                antwort_anbieter = antwort_modell = None
+                continue
+            break
         fertig = True
     finally:
         # Auch ein abgerissener Strom wird festgehalten: Der Router erzeugt
@@ -763,4 +950,5 @@ def chat_stream(**kwargs: Any):
         # sehen, dass es zwei Aufrufe waren.
         if mit:
             _mitschnitt(feature, kwargs, "".join(teile), antwort_modell=antwort_modell,
-                        abgebrochen=not fertig, finish_reason=grund, usage_obj=verbrauch)
+                        abgebrochen=not fertig, finish_reason=grund, usage_obj=verbrauch,
+                        anbieter=antwort_anbieter, rueckfall=rueckfall)

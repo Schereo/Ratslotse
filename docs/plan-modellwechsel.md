@@ -314,6 +314,20 @@ gelten weiter, Flex bleibt für Nutzereingaben gesperrt (`llm.nutzereingabe`),
 die Analyse behält ZDR. ADR 0002 hat einen Nachtrag, die Datenschutzerklärung
 nennt Lotti und OpenAI ohne ZDR (**Tim: bitte gegenlesen**).
 
+**Nachtrag 23.09.2026 abends: erst Azure EU mit ZDR.** OpenRouter führt
+GPT-6 Luna seitdem auch bei Azure (`azure/eu`, ZDR; 20/20 ok, p50 3,4 s).
+Tims Entscheidung: Für die Features aus `ZDR_VERZICHT` geht der erste
+Versuch dorthin (`kern/llm.py::EU_ZUERST`, auch GPT-6 Sol). Nur bei einem
+Ausfall läuft derselbe Aufruf ohne ZDR (OpenAI direkt). Das gilt für den
+Einmal-Aufruf und für den Strom, dort nur vor dem ersten Token.
+Inhaltsfilter-Treffer fallen nicht zurück. Jeder Rückfall steht in
+`llm_usage` als `<modell>@fallback-no-zdr` und im Log. Die Fakten-Eval
+(233 Fälle, zwei Läufe gleichzeitig) zeigt dieselbe Qualität: 177/34
+vorher, 176/37 nachher (ok/Modellfehler), innerhalb der Streuung. Der p50
+sank von 8,7 auf 6,7 s. Im Lauf gab es 0 Rückfälle bei 236 Luna-Aufrufen.
+Einzelheiten stehen im Nachtrag zu ADR 0002. Die Datenschutzerklärung sagt
+jetzt „Regelfall EU, bei Störung ausnahmsweise OpenAI USA“.
+
 **Gebaut, modellunabhängig:**
 
 - **Anweisungsfilter** (`kern/foreign_text.py`): Sätze in Element-Text,
