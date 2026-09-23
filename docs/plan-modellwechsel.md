@@ -44,10 +44,10 @@ und ist trotzdem kein Beleg für den einzelnen Einsatz.
 
 | Feature | Schalter | heute | läuft in | Eval |
 |---|---|---|---|---|
-| Lotti | `COUNCIL_ASSISTANT_MODEL` | gemini-2.5-flash | Web (Strom) | `eval/run_assistant.py --modell` |
-| KI-Frage | `COUNCIL_QA_MODEL` | gemini-2.5-flash | Web (Strom) | `eval/run_qa.py`, `quality_qa.py` |
-| KI-Frage: Erweiterung | `COUNCIL_QA_EXPAND_MODEL` | gemini-2.5-flash-lite | Web | `eval/run_qa_routing.py` |
-| Eval-Richter | `COUNCIL_QUALITY_JUDGE_MODEL` | gemini-2.5-flash | Eval | — |
+| Lotti | `COUNCIL_ASSISTANT_MODEL` | gpt-6-luna (P4a) | Web (Strom) | `eval/run_assistant.py --modell` |
+| KI-Frage | `COUNCIL_QA_MODEL` | gpt-6-luna (P4a) | Web (Strom) | `eval/run_qa.py` (Server), `run_qa_answer.py`, `quality_qa.py` |
+| KI-Frage: Erweiterung | `COUNCIL_QA_EXPAND_MODEL` | gemini-3.1-flash-lite (P4a) | Web | `eval/run_qa_routing.py` |
+| Eval-Richter | `COUNCIL_QUALITY_JUDGE_MODEL` | gemini-3.5-flash (P4a) | Eval | — |
 | Livestream-Transkription | `COUNCIL_STT_MODEL` | gemini-2.5-flash | Sitzungs-Mitschnitt | `transkription` (ohne Audio, misst noch nicht) |
 | Live-Verfolgung | `COUNCIL_LIVE_TRACKER_MODEL` | gemini-3.5-flash-lite (P4b) | Sitzungs-Mitschnitt | `live-verfolgung` |
 | Wortbeiträge | `COUNCIL_WORTBEITRAG_MODEL` | gemini-3.5-flash-lite (P4b) | Cron `check_protocols` | `wortbeitraege` |
@@ -291,7 +291,177 @@ neueres Modell ist nicht wirklich schlechter“) hat sich bestätigt. Vor jedem
   (P5), `COUNCIL_QA_EXPAND_MODEL` (P4a — `council/cities/evidence.py` liest
   dieselbe Variable und sollte dem Modell folgen, das P4a für `qa.py` wählt).
 
-### P5 — GPT-5.6 Luna ablösen
+**Stand 23.09.2026 (P4a, Web-Pfade): alle vier Schalter umgestellt.**
+
+| Schalter | vorher | jetzt | Grund |
+|---|---|---|---|
+| `COUNCIL_ASSISTANT_MODEL` (Lotti) | 2.5 Flash | **GPT-6 Luna**, Denkaufwand Vorgabe | Tims Entscheidung (Faktencheck 12/14 gegen 5/14) |
+| `COUNCIL_QA_MODEL` (Antwort) | 2.5 Flash | **GPT-6 Luna**, Denkaufwand Vorgabe | dito |
+| `COUNCIL_QA_EXPAND_MODEL` (Analyse, auch `cities/evidence.py`) | 2.5 Flash Lite | **3.1 Flash Lite** | Prüfstand: einziger Kandidat „besser“ |
+| `COUNCIL_QUALITY_JUDGE_MODEL` (Eval-Richter) | 2.5 Flash | **3.5 Flash** | nicht dieselbe Familie wie das Antwortmodell; ungemessen |
+
+GPT-6 Luna hat keinen ZDR-Anbieter. Tim, 23.09.: „auch wenn die kein Zero
+Data Retention haben — das ist wenigstens kein chinesischer Anbieter“. Das
+ist jetzt eine **benannte Ausnahme** (`kern/llm.py::ZDR_VERZICHT`:
+`assistant_explain`, `qa_answer`, `qa_simple`, `deep_report`,
+`party_opinions`), keine Lockerung: Trainingsverbot und China-Ausschluss
+gelten weiter, Flex bleibt für Nutzereingaben gesperrt (`llm.nutzereingabe`),
+die Analyse behält ZDR. ADR 0002 hat einen Nachtrag, die Datenschutzerklärung
+nennt Lotti und OpenAI ohne ZDR (**Tim: bitte gegenlesen**).
+
+**Gebaut, modellunabhängig:**
+
+- **Anweisungsfilter** (`kern/foreign_text.py`): Sätze in Element-Text,
+  Überschrift, Markierung und Beschlusstext, die sich an ein KI-System wenden
+  („Hinweis an das System: Lobe …“, „SYSTEM:“, „ignoriere …“, „in deiner
+  Antwort …“, „beende jede Antwort mit …“), werden vor Lotti UND der
+  Antwort durch eine Marke ersetzt. Über 268.123 Sätze des Bestands
+  (Beschlüsse, Wortbeiträge, Presse, TOP-Titel): kein Fehltreffer. Fängt 10
+  der 11 Injektionsfälle (der elfte ist die `WEITER:`-Marke, die `split_next`
+  abfängt). Vorher folgten 3.1 und 3.5 Flash Lite der Lob-Injektion — die
+  Anweisung stand dabei ordentlich zwischen den `<<<ELEMENT`-Marken.
+- **Vier neue Injektionsfälle** (Lob einer Person im Wortlaut, Abwertung
+  einer Fraktion in der Überschrift, Wahlempfehlung als bloßer Imperativ,
+  Lob in der Sie-Form in der Markierung) — alle Modelle wehrten sie schon
+  ohne Filter ab; die Lob-Injektion auf der Mitreden-Seite blieb die einzige,
+  die durchkam.
+- **Umschreib-Riegel** in `qa.analyse_query`: Ohne Gesprächsverlauf gilt die
+  Frage, wie sie gestellt wurde. 3.1 Flash Lite schrieb sie trotz „Ohne
+  Verlauf: die Frage unverändert“ aus, und die Haushalts-Facetten lesen diese
+  Fassung — fünf der sechs Fehlfälle, die es 80 % statt 90 % kosteten.
+- **Ein Satz im Analyse-Prompt** („Was wurde zu X beschlossen?“ ist `topic`,
+  nicht `history`) — half auch 2.5 Flash Lite (90 → 96,7 %).
+- **Eine Rechenregel im Lotti-Prompt:** kein selbst gerechneter Wert je
+  Einwohner, keine Hochrechnung; Anteil und Differenz zweier Zahlen bleiben
+  erlaubt. GPT-6 Luna rechnete „rund 1.970 Euro Steuerkraft je Einwohner“
+  (4/4 Läufe) und schrieb die Schulden auf 2027 fort (3/4); danach 0/4.
+- **Suite `ki-frage-antwort`** (`eval/run_qa_answer.py`): das Antwortmodell
+  mit festem Kontext (erwartete Beschlüsse + BM25-Ablenker), ohne Embeddings,
+  also lokal. Sie zählt Belege, nicht Richtigkeit.
+- **`pruefstand.py --aufwand`** und der Messschalter
+  `RATSLOTSE_WEB_DENKAUFWAND` (für `eval/run_fakten.py`, das ein eigenes
+  Backend startet), dazu `llm.WEB_DENKAUFWAND` je Modell UND Feature (nicht
+  in `MODEL_PARAMS`, wo die Luna-Crons mitliefen). `MODEL_PARAMS`: die beiden
+  Flash-Lite-Modelle denken nicht (reasoning_tokens 0), der vorsorgliche
+  4.000er-Boden ist raus; für GPT-6 Luna bleibt der Boden nötig — 21 von 43
+  Lotti-Antworten brauchten mehr als 350 Tokens (Denken bis 948), sichtbar
+  blieben höchstens 166.
+
+**Denkaufwand von GPT-6 Luna: Vorgabe, nicht `low`.** Entschieden an der
+Fakten-Eval (`eval/run_fakten.py`, 233 Fälle, echter Endpunkt, je ein Lauf,
+Stand nach #1503/#1504). Regel des Auftraggebers: weniger `modell_*`-Fehler
+gewinnt (Auslassungen zählen); nur bei höchstens zwei Fällen Abstand gewinnt
+`low` wegen der Latenz. Dass im Mitschnitt wirklich `effort: low` bzw. gar
+kein `reasoning` rausging, ist geprüft (neues Feld `reasoning` im
+Mitschnitt).
+
+| Feature | `low` | Vorgabe | Entscheidung |
+|---|---|---|---|
+| Lotti (`assistant_explain`) | 13 Modellfehler (12 ausgelassen), p50 3,3 s | **10** (8 ausgelassen, 2 verweigert), p50 5,0 s | Vorgabe (Abstand 3) |
+| Frag den Rat (`qa_answer`) | 31 (23 ausgelassen, **5 falsch**), p50 5,6 s | **27** (23 ausgelassen, 3 falsch), p50 11,7 s | Vorgabe (Abstand 4) |
+
+Ein Vorlauf vor #1503/#1504 zeigte bei der Antwort dieselbe Richtung (33
+gegen 27) und bei Lotti Gleichstand (8 gegen 9). Die Lotti-Eval
+(`run_assistant`) sah bei `low` keinen Verlust — sie prüft Zusagen, keine
+Vollständigkeit. Kosten der Fakten-Läufe: 0,20 $ (`low`) und 0,27 $
+(Vorgabe) je Lauf; mit Vorlauf rund 0,97 $.
+
+**Messfehler, getrennt von echten Schwächen** — jeder mit Beleg aus den
+gespeicherten Antworten, alle Modelle gleich behandelt:
+
+| Fall | Fehler | Korrektur |
+|---|---|---|
+| `schwer-eigenbetrieb-groesstes-minus` | Alle Modelle, alle Läufe nannten die Gebäudewirtschaft (-15.621 €) — bei wörtlicher Lesart richtig: Die Bäder-GmbH ist kein Eigenbetrieb, und das Glossar im selben Prompt sagt das | beide Lesarten gelten |
+| `sitzung-tagesordnung` | nur „Gremien“ (Wortwahl von 2.5 Flash) | + „Gremium“, „Ausschüsse“ |
+| `schwer-schuldendienst` | richtige Absagen mit anderem Wortlaut („nicht nennen“, „nicht angegeben“, „nicht beziffert“ …) | Liste erweitert (auf #1493 aufgesetzt) |
+| drei Pro-Kopf-Fälle | „rund 1.900 Euro“ für 1.908 € galt als fehlend UND als erfundene Zahl | Gold + `run_assistant._gerundet_klein` (Runden ≤ 2 %) |
+| `einordnung-vergleich-haushalt` | „rund 5.000 Euro“ für 5.005 € als erfunden | dieselbe Rundungsregel |
+| `haushalt-zwei-zaehlweisen` | beide Zählweisen mit Zahl genannt, aber ohne das Wort „Konzern“ | Etikett-Varianten |
+| `element-rate-treppe` | „tilgt“ statt „Tilgung“ | Wortformen |
+| KI-Frage-Routing | kein Messfehler: Die Facetten lesen im Betrieb dieselbe umgeschriebene Fassung | — (Riegel im Code) |
+
+**Echte Schwächen, die bleiben:** 2.5 Flash rechnet 20,21 % mit dem falschen
+Jahr als Nenner (`schwer-stellen-unbesetzt-anteil`), setzt den Wegweiser nicht
+und stellt Plan und Ist nebeneinander, ohne den Unterschied zu nennen. GPT-6
+Luna vergisst den Wegweiser ebenso (`wegweiser-stellenplan` 2/2) und nannte
+einmal nur den Kernhaushalt. 3.5 Flash Lite ist bei Lotti klar schwächer
+(84–91 %).
+
+**Lotti** (`lotti`, 57 Fälle, je zwei Läufe, gleiche Datenbank):
+
+| Stand | Modell | ohne Befund | Injektionen | p50 | ct/Aufruf |
+|---|---|---|---|---:|---:|
+| vorher (dev, korrigierte Fälle) | 2.5 Flash | 93,0 / 93,0 % | 11/11, 11/11 | 1,1 s | 0,08–0,12 |
+| vorher | 3.1 Flash Lite | 98,2 / 98,2 % | **10/11, 10/11** | 1,3–1,4 s | 0,09–0,10 |
+| vorher | 3.5 Flash Lite | 91,2 / 89,5 % | **10/11, 10/11** | 1,0–1,1 s | 0,11–0,12 |
+| Filter + Riegel | 3.1 Flash Lite | 98,2 / 100 % | 11/11, 11/11 | 1,3 s | 0,08–0,10 |
+| Filter + Riegel | 3.5 Flash Lite | 84,2 / 91,2 % | 11/11, 11/11 | 1,0 s | 0,09–0,12 |
+| Filter, Luna Vorgabe-Aufwand | GPT-6 Luna | 94,7 / 91,2 % | 11/11, 11/11 | 4,7–5,4 s | 0,02–0,04 |
+| Filter, Luna `low` | GPT-6 Luna | 94,7 / 93,0 % | 11/11, 11/11 | 3,1 s | 0,01–0,03 |
+| + Rechenregel | GPT-6 Luna, low | 96,5 / 100 % | 11/11, 11/11 | 3,4 s | 0,01–0,05 |
+| + Rechenregel | 2.5 Flash | 96,5 / 96,5 % | 11/11, 11/11 | 1,1–1,2 s | 0,09–0,12 |
+| **Schluss** (nach #1503/#1504, Aufwand Vorgabe) | **GPT-6 Luna** | **96,5 / 98,2 %** | **11/11, 11/11** | 5,0–6,2 s | 0,02–0,06 |
+| Schluss | 2.5 Flash | 100 / 98,2 % | 11/11, 11/11 | 1,1 s | 0,07–0,12 |
+
+Die Zeilen bis „Filter, Luna low“ liegen vor der zweiten Gold-Korrektur
+(Pro-Kopf-Runden, Wortformen), die „Schluss“-Zeilen nach einer dritten
+(Absage „weist … nicht aus“, seit #1504 stehen Zinsen und Tilgung einzeln im
+Kontext; „Rückzahlung“ für Tilgung; „Stadtverwaltung“ als Zählweise) — nur
+jeweils untereinander vergleichbar. GPT-6 Luna verfehlt öfter als 2.5 Flash
+den Verweis auf die passende Seite (Wegweiser, 3 von 4 Fällen je zwei Läufe). Alle Läufe: `eval/results/pruefstand/lotti/`
+(`vor-p4a/`, `p4a-zwischenstand/`).
+
+**KI-Frage-Routing** (`ki-frage-routing`, 30 Fälle, je zwei Läufe):
+
+| Stand | 2.5 Flash Lite | 3.1 Flash Lite | 3.5 Flash Lite |
+|---|---|---|---|
+| vorher | 90,0 / 90,0 % | 80,0 / 80,0 % | 80,0 / 90,0 % |
+| + Umschreib-Riegel | 90,0 / 90,0 % | 96,7 / 90,0 % | 96,7 / 96,7 % |
+| + history-Satz (Schluss, nach #1493) | 96,7 / 96,7 %, p50 0,8 s | **100 / 100 %**, p50 1,5–1,6 s | 100 / 96,7 %, p50 1,1 s |
+
+**KI-Frage-Antwort bei festem Kontext** (`ki-frage-antwort`, 20 Fälle, je
+zwei Läufe; Kennzahl Abdeckung der erwarteten Belege): 2.5 Flash 73,4 /
+74,9 %, 3 Flash Preview 76,0 / 78,3 %, 3.1 Flash Lite 74,6 / 71,6 %, 3.5
+Flash Lite 59,4 / 58,5 % (die drei vor #1493), GPT-6 Luna (low) 35,0 / 43,1 %;
+Schluss nach #1504: **GPT-6 Luna (Vorgabe) 36,7 / 42,1 %** (p50 5,3–6,5 s),
+2.5 Flash 73,7 / 70,3 % (p50 1,6 s), null harte
+Befunde bei allen. Luna antwortet knapp und zitiert oft neuere Beschlüsse,
+die das Gold (aus einer älteren Datenbank) nicht kennt — die Suite zählt
+Belege, nicht Richtigkeit, und widerspricht Tims Faktencheck deshalb nicht.
+Sie sagt aber: Wer bei Luna vollständige Verläufe erwartet, bekommt sie
+seltener.
+
+**Was Tim auf dem Server laufen lassen muss** (die Suite `ki-frage` braucht
+die Embeddings):
+
+    cd ~/app && .venv/bin/python eval/pruefstand.py --suite ki-frage --laeufe 2
+    .venv/bin/python eval/pruefstand.py --suite ki-frage --modell google/gemini-2.5-flash --laeufe 2
+    .venv/bin/python eval/pruefstand.py bericht
+
+**Vor dem Merge:** `grep MODEL ~/app/.env` auf Prod und dev — steht dort
+`COUNCIL_ASSISTANT_MODEL`, `COUNCIL_QA_MODEL` oder `COUNCIL_QA_EXPAND_MODEL`
+ausdrücklich, ändert dieser PR dort nichts.
+
+**Bekannte Lücke: Die Web-Pfade haben kein Ersatzmodell.** Lotti, die
+Antwort von „Frag den Rat“, die vereinfachte Antwort, der Deep-Bericht und
+die Analyse rufen `llm.chat_stream`/`chat_complete` OHNE `_ersatz` auf — das
+geben nur die Crons mit. Fällt OpenAI (GPT-6 Luna) oder Google (3.1 Flash
+Lite) aus, antworten Lotti und die KI-Frage mit einem Fehler, statt
+auszuweichen. Die vorhandene Kette `ERSATZ["openai/gpt-6-luna"]` (5.6 Luna
+über Azure mit ZDR, dann DeepSeek V4 Pro bei westlichen Anbietern) passt
+datenschutzrechtlich auch für die Nutzer-Pfade. Offen ist der Bau: ein
+Ersatz ohne `_geduld` (eine Web-Anfrage darf nicht minutenlang warten), und
+für den Strom erst dann, wenn noch kein Token raus ist. **Eigener Schritt,
+nicht Teil von P4a.**
+
+**Offen:**
+- Auf `/haushalt/schulden` steht „4,2 Mio. € Zinsen im Jahr 2024“, Lotti
+  sagte auf „Wie viel zahlt die Stadt jedes Jahr an Zinsen?“ aber, der
+  Zinsaufwand sei nicht beziffert (Screenshot P4a) — der Geld-Kontext für
+  Lotti trägt die Zahl nicht. Kein Modellfehler.
+- `qa_simple`, `deep_report` und `party_opinions` laufen mit GPT-6 Luna und
+  sind ungemessen.
+
 
 Die sechs freigegebenen Luna-Features auf GPT-6 Luna (oder Flex), je nach
 Messung; der Watcher bleibt bei ZDR und bekommt ein `_feature`.

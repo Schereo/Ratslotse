@@ -153,8 +153,44 @@ def erfundene_zahlen(text: str, kontext: str) -> list[str]:
             continue
         if _gerundet_aus(kontext, zahl, _EINHEITEN.get(m.group(2).lower(), 0)):
             continue
+        if _gerundet_klein(kontext, zahl):
+            continue
         aus.append(m.group(0))
     return aus
+
+
+#: Ein Betrag MIT Tausenderpunkt im Kontext („1.908 €“, „5.005 €“). Ohne
+#: Punkt wären Jahreszahlen dabei — und „rund 2.000 Euro“ fände in „seit
+#: 1995“ seinen Beleg.
+_KONTEXT_TAUSENDER_RE = re.compile(r"\d{1,3}(?:\.\d{3})+")
+
+
+def _gerundet_klein(kontext: str, zahl: str) -> bool:
+    """Ist ``zahl`` ein gerundeter Euro-Betrag ohne Einheit aus dem Kontext?
+
+    **Messfehler, gefunden in P4a (23.09.2026):** Der Kontext rechnet „1.908 €
+    je Einwohner*in“ und „5.005 € je Einwohner*in“ vor, GPT-6 Luna schrieb
+    „rund 1.900 Euro“ bzw. „rund 5.000 Euro“ — die Alltagsform, die der
+    Prompt verlangt — und bekam dafür einen harten Befund „Zahl steht nicht
+    im Kontext“, in 6 von 8 Läufen. :func:`_gerundet_aus` kannte das Runden
+    nur für Mio./Mrd.
+
+    Gerundet heißt: auf die Stellen, die in der Antwort auf Null enden, UND
+    höchstens 2 % daneben. Die zweite Bedingung verhindert, dass „rund 5.000
+    Euro“ an 4.602 € (8,6 % daneben) einen Beleg findet.
+    """
+    roh = zahl.replace(".", "")
+    if not roh.isdigit():
+        return False
+    wert = int(roh)
+    nullen = len(roh) - len(roh.rstrip("0"))
+    if not wert or not nullen:
+        return False
+    for m in _KONTEXT_TAUSENDER_RE.finditer(kontext):
+        v = int(m.group(0).replace(".", ""))
+        if v and round(v, -nullen) == wert and abs(v - wert) <= 0.02 * v:
+            return True
+    return False
 
 
 def _gerundet_aus(kontext: str, zahl: str, faktor: int) -> bool:

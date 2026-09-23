@@ -74,7 +74,7 @@ def test_das_modell_aktuell_ist_das_des_moduls():
 
 def test_nutzereingabe_stimmt_mit_der_zdr_freigabe_ueberein():
     for s in ps.REGISTER:
-        pflicht = {f: llm.zdr_pflicht(f) for f in s.features}
+        pflicht = {f: llm.nutzereingabe(f) for f in s.features}
         # Eine Suite, deren Features verschieden entschieden sind, hätte keine
         # eindeutige Antwort auf „darf das an Flex?" — dann gehört sie geteilt.
         assert len(set(pflicht.values())) == 1, f"{s.name}: uneinheitlich {pflicht}"

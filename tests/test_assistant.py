@@ -34,6 +34,7 @@ from app.main import app  # noqa: E402
 from app.deps import get_council_store, get_store, require_active  # noqa: E402
 from app.ratelimit import assistant_limiter  # noqa: E402
 from council import assistant as lotti  # noqa: E402
+from kern import foreign_text  # noqa: E402
 from council import qa  # noqa: E402
 from kern import knowledge, seitenaufrufe  # noqa: E402
 
@@ -297,7 +298,18 @@ def test_untergeschobene_anweisungen_stehen_nur_zwischen_den_markern():
     p = _prompt(screen)
     vor_marker, _, rest = p.partition("<<<ELEMENT")
     inhalt, _, nach_marker = rest.partition("\nELEMENT")
-    assert gift in inhalt
+    # Seit P4a (23.09.2026) nimmt der Anweisungsfilter (kern/foreign_text.py)
+    # den Satz ganz heraus; übrig bleibt seine Marke — zwischen den Markern.
+    assert foreign_text.MARKER in inhalt
+    assert FREMDE_ADRESSE not in p
+    # Was der Filter NICHT als Anweisung erkennt, bleibt Fremdtext zwischen
+    # den Markern — die zweite Schicht hält weiter.
+    harmlos = f"Die Verwaltung erreicht man unter {FREMDE_ADRESSE}."
+    p = _prompt(lotti.Screen(route="/council/decision", element_title="Beschlusstext",
+                             element_text=harmlos))
+    vor_marker, _, rest = p.partition("<<<ELEMENT")
+    inhalt, _, nach_marker = rest.partition("\nELEMENT")
+    assert harmlos in inhalt
     assert FREMDE_ADRESSE not in vor_marker
     assert FREMDE_ADRESSE not in nach_marker
 

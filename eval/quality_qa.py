@@ -41,7 +41,15 @@ RESULTS = ROOT / "eval" / "results" / "quality"
 # flash statt pro: gemini-2.5-pro verbrennt sein max_tokens-Budget im
 # Pflicht-Reasoning und liefert dann abgerissenes JSON (11/12 Fälle am
 # 10.08.); flash urteilt die klar rubrizierte Aufgabe zuverlässig.
-JUDGE_MODEL = os.environ.get("COUNCIL_QUALITY_JUDGE_MODEL", "google/gemini-2.5-flash")
+#
+# P4a (23.09.2026): Gemini 2.5 Flash läuft am 20.10.2026 aus. Der Richter
+# folgt der Antwort NICHT auf GPT-6 Luna, mit Absicht: Ein Richter aus
+# derselben Familie wie das Antwortmodell bevorzugt dessen Stil, und ein
+# A/B-Vergleich „alt gegen Luna“ würde von Luna selbst benotet. Also die
+# nächste Flash-Generation derselben Familie wie bisher; sie denkt, der
+# Boden dafür steht in kern/llm.py::MODEL_PARAMS. Gemessen ist der Richter
+# nicht — die Suite läuft nur auf dem Server und hat keinen Goldstandard.
+JUDGE_MODEL = os.environ.get("COUNCIL_QUALITY_JUDGE_MODEL", "google/gemini-3.5-flash")
 
 # Das Fragenset deckt die Akkuratheits-Hebel ab: Stadion (Standing-Direktive),
 # Entitäten (inkl. Umgangssprache „Cäci" für den Glossar-Anker), Sachstands-

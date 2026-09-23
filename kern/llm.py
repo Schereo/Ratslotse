@@ -95,9 +95,16 @@ MODEL_PARAMS: dict[str, dict[str, Any]] = {
     # Gemini 2.5 Flash/Flash Lite laufen bei OpenRouter am 20.10.2026 aus.
     # Boden vorsorglich, bis gemessen ist, welche davon denken.
     **{m: {"min_max_tokens": GEMINI_DENK_MIN_MAX_TOKENS} for m in (
-        "google/gemini-3.1-flash-lite", "google/gemini-3.5-flash-lite",
         "google/gemini-3-flash-preview", "google/gemini-3.5-flash",
     )},
+    # Die beiden Flash-Lite-Modelle denken NICHT — gemessen 23.09.2026 (P4a)
+    # ohne Boden mit 350 Tokens Budget: reasoning_tokens 0, 96–103
+    # completion_tokens, finish_reason `stop`; in der Lotti-Eval höchstens
+    # 800 Zeichen (≈ 200 Tokens) je Antwort. Der vorsorgliche Boden von 4.000
+    # hob Lottis zweite Bremse (MAX_TOKENS 350) still auf. Der leere Eintrag
+    # bleibt: Er sagt, dass hier gemessen wurde.
+    "google/gemini-3.1-flash-lite": {},
+    "google/gemini-3.5-flash-lite": {},
     **{m: {"min_max_tokens": GPT56_MIN_MAX_TOKENS} for m in ("openai/gpt-6-luna",)},
 }
 
@@ -144,6 +151,48 @@ ERSATZ: dict[str, tuple[str, ...]] = {
     "openai/gpt-5.6-luna": ("google/gemini-3.1-flash-lite", "deepseek/deepseek-v4-pro"),
     "openai/gpt-6-luna": ("openai/gpt-5.6-luna", "deepseek/deepseek-v4-pro"),
 }
+
+
+#: Denkaufwand je Modell UND Feature für die Web-Antworten (Lotti, „Frag den
+#: Rat“) — NICHT in ``MODEL_PARAMS``, weil derselbe Modellname dort auch für
+#: die Crons gilt. Leer heißt: der Aufwand, den der Anbieter ohne Angabe wählt.
+#:
+#: **GPT-6 Luna läuft mit der Vorgabe, nicht mit ``low``** — entschieden an
+#: der Fakten-Eval (``eval/run_fakten.py``, 233 Fälle, 23.09.2026, Stand nach
+#: #1503/#1504, je ein Lauf; Regel: weniger ``modell_*``-Fehler gewinnt,
+#: Auslassungen zählen, nur bei höchstens zwei Fällen Abstand gewinnt ``low``
+#: wegen der Latenz):
+#:
+#:   Lotti (assistant_explain)   low 13 Modellfehler, p50 3,3 s — Vorgabe 10, p50 5,0 s
+#:   Frag den Rat (qa_answer)    low 31 (5 falsch),  p50 5,6 s — Vorgabe 27 (3 falsch), p50 11,7 s
+#:
+#: Ein Vorlauf vor #1503/#1504 zeigte dieselbe Richtung bei der Antwort (33
+#: gegen 27) und Gleichstand bei Lotti (8 gegen 9). Die Lotti-Eval
+#: (``run_assistant``) sah bei ``low`` keinen Verlust — sie prüft Zusagen,
+#: nicht Vollständigkeit; die Fakten-Eval zählt jede ausgelassene Pflicht-
+#: Angabe. Tims Regel: „Akkuratheit schlägt Geschwindigkeit“.
+WEB_DENKAUFWAND: dict[tuple[str, str], str] = {}
+
+#: **Ein reiner Messschalter** wie ``TARIF_ENV``: überschreibt den Denkaufwand
+#: aller Web-Antworten, damit die Fakten-Eval (``eval/run_fakten.py``, die ein
+#: eigenes Backend startet) beide Stufen messen kann. ``vorgabe`` = der
+#: Aufwand, den der Anbieter ohne Angabe wählt. In eine ``.env`` gehört er nicht.
+WEB_DENKAUFWAND_ENV = "RATSLOTSE_WEB_DENKAUFWAND"
+
+
+def web_denk_extra(model: str, feature: str) -> dict[str, Any]:
+    """Die ``extra_body``-Einstellung zum Denken für eine Web-Antwort.
+
+    DeepSeek ohne Denken (wie bisher an jeder Aufrufstelle), sonst der
+    gemessene Aufwand aus :data:`WEB_DENKAUFWAND` je Modell UND Feature.
+    """
+    if "deepseek" in model:
+        return {"extra_body": {"reasoning": {"enabled": False}}}
+    aufwand: str | None = WEB_DENKAUFWAND.get((model, feature))
+    mess = os.environ.get(WEB_DENKAUFWAND_ENV, "").strip()
+    if mess:
+        aufwand = None if mess == "vorgabe" else mess
+    return {"extra_body": {"reasoning": {"effort": aufwand}}} if aufwand else {}
 
 
 def ersatz_fuer(model: str | None) -> list[str]:
@@ -221,11 +270,46 @@ OHNE_NUTZEREINGABE: frozenset[str] = frozenset({
 _OHNE_NUTZEREINGABE_PRAEFIX = ("cities_", "eval_cities_")
 
 
-def zdr_pflicht(feature: str | None) -> bool:
-    """Ob ein Aufruf dieses Features nur an ZDR-Anbieter gehen darf."""
+#: Features MIT Nutzereingabe, die trotzdem ohne ZDR laufen dürfen — eine
+#: ausdrückliche, benannte Ausnahme, keine Lockerung der Regel oben.
+#:
+#: **Tims Entscheidung 23.09.2026:** Lotti und die Antwort von „Frag den Rat“
+#: laufen auf GPT-6 Luna, „auch wenn die kein Zero Data Retention haben —
+#: das ist wenigstens kein chinesischer Anbieter“. Anlass war ein
+#: Faktencheck an 14 echten Antworten, Aussage für Aussage gegen Kontext und
+#: Datenbank: GPT-6 Luna in 12 von 14 fehlerfrei, Gemini 2.5 Flash in 5
+#: von 14 („Akkuratheit schlägt Geschwindigkeit“). GPT-6 Luna bieten bei
+#: OpenRouter nur OpenAI direkt und Amazon Bedrock an, beide ohne ZDR — unter
+#: der Pflicht endete jeder Aufruf mit 404.
+#:
+#: Genau die Features, die ``COUNCIL_ASSISTANT_MODEL`` bzw.
+#: ``COUNCIL_QA_MODEL`` lesen (Stand 23.09.2026): Lottis Erklärung, die
+#: Antwort, die vereinfachte Antwort, der Deep-Research-Bericht und die
+#: Partei-Meinungen. NICHT dabei ist die Analyse vor der Suche
+#: (``qa_analysis``, ``qa_query_expansion``, ``deep_decomposition`` — sie
+#: laufen auf ``COUNCIL_QA_EXPAND_MODEL`` und behalten ZDR), der Watcher und
+#: die Themen-Beschreibung. **Was bleibt, auch hier:** kein Training
+#: (``data_collection: deny``), kein Anbieter aus China, nie Flex/Batch
+#: (:func:`nutzereingabe`). ``tests/test_llm.py`` hält alle drei fest.
+ZDR_VERZICHT: frozenset[str] = frozenset({
+    "assistant_explain", "qa_answer", "qa_simple", "deep_report", "party_opinions",
+})
+
+
+def nutzereingabe(feature: str | None) -> bool:
+    """Trägt der Prompt dieses Features Text, den eine Nutzerin geschrieben hat?
+
+    Unabhängig von :data:`ZDR_VERZICHT`: Der Verzicht betrifft nur ZDR. Für
+    Flex/Batch und den Prüfstand bleibt ein solches Feature Nutzereingabe.
+    """
     if not feature:
         return True
     return not (feature in OHNE_NUTZEREINGABE or feature.startswith(_OHNE_NUTZEREINGABE_PRAEFIX))
+
+
+def zdr_pflicht(feature: str | None) -> bool:
+    """Ob ein Aufruf dieses Features nur an ZDR-Anbieter gehen darf."""
+    return nutzereingabe(feature) and feature not in ZDR_VERZICHT
 
 
 def _routing_extra_body(zdr: bool = True) -> dict[str, Any]:
@@ -264,8 +348,9 @@ def _with_routing(kwargs: dict[str, Any], zdr: bool = True) -> dict[str, Any]:
 #   OpenRouter `service_tier` still (Luna 5.6 ging an Azure, `service_tier:
 #   default`, voller Preis) oder findet gar keinen Endpunkt (GPT-6 Luna: 404).
 #   Deshalb fällt `zdr` hier weg — und deshalb ist Flex nur für Features
-#   erlaubt, für die `zdr_pflicht` nein sagt. `data_collection: deny` und die
-#   China-Liste bleiben.
+#   ohne Nutzereingabe erlaubt (`nutzereingabe`, NICHT `zdr_pflicht`: Der
+#   ZDR-Verzicht für Lotti und die Antwort gibt Flex nicht frei).
+#   `data_collection: deny` und die China-Liste bleiben.
 # ② Eine Abweisung darf keinen Stapel kosten: Dann läuft derselbe Aufruf im
 #   normalen Tarif (und dessen Routing) noch einmal.
 TARIFE = ("normal", "flex")
@@ -274,7 +359,7 @@ TARIFE = ("normal", "flex")
 #: (``eval/pruefstand.py --tarif flex``) muss Aufrufe tief in ``council/``
 #: umschalten, ohne jede Aufrufstelle anzufassen — er setzt diese Variable
 #: im Unterprozess eines Messlaufs. Sie ist nur die VORGABE: Ein ausdrückliches
-#: ``_tarif`` gewinnt, und für ein Feature mit ZDR-Pflicht wirft sie wie der
+#: ``_tarif`` gewinnt, und für ein Feature mit Nutzereingabe wirft sie wie der
 #: Parameter ``FlexNichtErlaubt``, statt still auf den Normaltarif zu fallen.
 #: In eine ``.env`` gehört sie nicht: Dort stellte sie jedes Feature auf
 #: einmal um, und jeder Nutzerpfad würfe den Fehler.
@@ -282,7 +367,7 @@ TARIF_ENV = "RATSLOTSE_LLM_TARIF"
 
 
 class FlexNichtErlaubt(ValueError):
-    """Flex für ein Feature, dessen Aufrufe nur an ZDR-Anbieter dürfen.
+    """Flex für ein Feature mit Nutzereingabe (:func:`nutzereingabe`).
 
     Ein Fehler statt eines stillen Rückfalls: Wer ``_tarif="flex"`` schreibt,
     glaubt, die Hälfte zu sparen. Sähe er stattdessen den vollen Preis, fiele
@@ -337,6 +422,9 @@ def _mitschnitt(feature: str | None, kwargs: dict[str, Any], antwort: str | None
             # Wer wirklich geantwortet hat (OpenRouter trägt es in der Antwort) —
             # der Nachweis, dass die Umschaltung gewirkt hat.
             "response_model": antwort_modell,
+            # Der Denkaufwand, der wirklich rausging — der Nachweis, dass
+            # `WEB_DENKAUFWAND_ENV` im Mess-Backend angekommen ist (P4a).
+            "reasoning": (kwargs.get("extra_body") or {}).get("reasoning"),
             "messages": kwargs.get("messages"),
             "answer": antwort,
             "aborted": abgebrochen,
@@ -542,10 +630,14 @@ def chat_complete(**kwargs: Any):
     tarif = kwargs.pop("_tarif", None) or os.environ.get(TARIF_ENV, "").strip() or "normal"
     if tarif not in TARIFE:
         raise ValueError(f"unbekannter Tarif {tarif!r} — erlaubt: {', '.join(TARIFE)}")
-    if tarif == "flex" and zdr_pflicht(feature):
+    # An `nutzereingabe`, nicht an `zdr_pflicht`: Der ZDR-Verzicht für Lotti
+    # und die Antwort (ZDR_VERZICHT) ist keine Freigabe für Flex — das ist ein
+    # Cron-Tarif mit Wartezeiten, und Tims Freigabe galt dem Modell, nicht dem
+    # Tarif.
+    if tarif == "flex" and nutzereingabe(feature):
         raise FlexNichtErlaubt(
-            f"Flex für {feature or 'einen Aufruf ohne _feature'!r}: Das Feature darf nur "
-            "an ZDR-Anbieter, und Flex-Endpunkte haben kein ZDR.")
+            f"Flex für {feature or 'einen Aufruf ohne _feature'!r}: Das Feature trägt "
+            "Nutzereingaben, und Flex ist nur für öffentliche Ratsdaten freigegeben.")
     modelle = [kwargs.get("model"), *ersatz]
     for i, model in enumerate(modelle):
         versuch = {**kwargs, "model": model}
