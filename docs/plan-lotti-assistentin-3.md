@@ -321,6 +321,19 @@ Markierung (nächster `data-erklaer`-Vorfahr) geht als Kontext mit; das
 Zitat reist im Gedächtnis mit, damit „und warum so viel?" danach ein „das"
 hat.
 
+**Die Markierung geht in ihrer Zeile mit** (Review, 23.09.2026). Das erste
+Bild zeigte den Fehler: Markiert war „8,0 Mio. €" in der Zeile „Mai 2026 ·
+Kreditaufnahme · Bäderbetrieb Oldenburg · 8,0 Mio. € · 3,43 %"; Lotti
+erklärte den ANDEREN 8-Mio.-Kredit desselben Bausteins (06.08.2026, 3,46 %).
+Die drei Wörter plus der ganze Baustein waren mehrdeutig. Seitdem schickt
+der Client im bestehenden Feld `selection` die Zeile mit, den markierten
+Teil zwischen »…« (`lib/markieren.ts::markierungInZeile`, Zeile = nächstes
+`li`/`tr`/`p`/…); das Backend erklärt die Marken in einem Satz vor dem
+Block und nimmt für die Glossar-Abkürzung nur den markierten Teil
+(`assistant.markierter_teil`). Kein Vertragswechsel. Gemessen mit echten
+Aufrufen: vorher 2 von 2 Antworten zum falschen Kredit, danach 4 von 4 mit
+„Mai 2026" und „3,43 %".
+
 **Behalten:** die `data-erklaer`-Anker. Sie tragen weiter die Landkarte für
 „Wo finde ich …?", die Anschluss-Chips „… erklären" und jetzt den
 Baustein-Kontext einer Markierung.

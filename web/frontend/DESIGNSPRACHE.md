@@ -533,7 +533,9 @@ iOS-Schrift.
   daneben und wenn die Auswahl aus dem Bild gescrollt ist. Die erste
   Tabulatortaste nach dem Markieren führt zu ihr. Ein Klick öffnet das
   Fenster und fragt sofort „Was bedeutet das?"; im Verlauf steht die Frage
-  mit Zitat („„391,5 Mio. €“ — Was bedeutet das?"). Nicht in Lottis Fenster,
+  mit Zitat („„391,5 Mio. €“ — Was bedeutet das?"); mitgeschickt wird die
+  ganze ZEILE mit dem markierten Teil zwischen »…« — nur sie sagt, welche
+  von zwei gleichen Zahlen gemeint ist. Nicht in Lottis Fenster,
   nicht in Eingabefeldern, nicht unter zwei Zeichen, nicht bei
   ausgeblendetem Lotti-Knopf. **Warum statt der „?"-Abzeichen des
   Erklär-Modus** (Tim, 23.09.2026: „keiner versteht, wie das funktioniert,

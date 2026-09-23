@@ -3,8 +3,10 @@
 import Image from "next/image";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
-import { auswahlErlaubt, ernteElement, ueberschriftenPfad } from "@/lib/assistentin";
-import { knopfPosition, markierungAufbereiten, type KnopfLage, type Rechteck } from "@/lib/markieren";
+import { auswahlErlaubt, ernteElement, ohneNamen, ueberschriftenPfad } from "@/lib/assistentin";
+import {
+  knopfPosition, markierungAufbereiten, markierungInZeile, type KnopfLage, type Rechteck,
+} from "@/lib/markieren";
 import { cn } from "@/lib/utils";
 
 import type { ElementFrage } from "./index";
@@ -19,8 +21,9 @@ import type { ElementFrage } from "./index";
  * Knopf erscheint als ANTWORT auf diese Handlung, direkt an ihr, und
  * verschwindet mit ihr.
  *
- * **Was mitgeht.** Der markierte Text (gekürzt auf `SELECTION_MAX`, s.
- * `lib/markieren.ts`), der Überschriften-Pfad darüber und — falls die
+ * **Was mitgeht.** Der markierte Text IN SEINER ZEILE (`»8,0 Mio. €«` samt
+ * „Mai 2026 · … · 3,43 %" drumherum, gekürzt auf `SELECTION_MAX`, s.
+ * `lib/markieren.ts::markierungInZeile`), der Überschriften-Pfad darüber und — falls die
  * Markierung in einem erklärbaren Baustein liegt — dieser Baustein als
  * Kontext (nächster `data-erklaer`-Vorfahr). Liegt sie in keinem, geht
  * keiner mit: Ein geratener Ausschnitt sähe aus, als wüsste Lotti mehr, als
@@ -53,8 +56,12 @@ const ABSTAND_TOUCH = 34;
 const SCHAETZUNG = { breite: 132, hoehe: 36 };
 
 export type MarkierFrage = {
-  /** Die Markierung, aufbereitet — so geht sie ans Backend. */
+  /** Die Markierung, aufbereitet — so steht sie als Zitat im Verlauf. */
   text: string;
+  /** Was ans Backend geht: die Markierung IN IHRER ZEILE
+   *  („… Bäderbetrieb Oldenburg · »8,0 Mio. €« 3,43 %"), s.
+   *  `lib/markieren.ts::markierungInZeile`. */
+  auswahl: string;
   /** Wurde sie gekürzt? Dann sagt es das Fenster dazu. */
   gekuerzt: boolean;
   /** Der erklärbare Baustein um die Markierung, falls es einen gibt. */
@@ -64,6 +71,73 @@ export type MarkierFrage = {
 };
 
 type Stand = { frage: MarkierFrage; range: Range };
+
+/** Was als „eine Zeile" gilt: eine Listen- oder Tabellenzeile, ein Absatz,
+ *  eine Überschrift. `td` steht bewusst NICHT darin — die Zelle allein wäre
+ *  „8,0 Mio. €", erst die Tabellenzeile sagt, wessen. */
+const ZEILE = "li, tr, p, dt, dd, h1, h2, h3, h4, h5, h6, figcaption, caption, blockquote, summary, label";
+
+/** Die Zeile, in der die Markierung steht — oder `null`.
+ *
+ *  Erst die ausdrücklichen Zeilen-Elemente; sonst das nächste Element, das
+ *  als Block gesetzt ist (eine `div`-Zeile in einem Raster). Nie über den
+ *  Baustein hinaus: Dessen ganzen Text schickt `element` ohnehin mit. */
+function zeileVon(range: Range): Element | null {
+  const knoten = range.commonAncestorContainer;
+  const start = knoten.nodeType === 1 ? (knoten as Element) : knoten.parentElement;
+  if (!start) return null;
+  const grenze = start.closest("[data-erklaer]");
+  const ausdruecklich = start.closest(ZEILE);
+  if (ausdruecklich && (!grenze || grenze.contains(ausdruecklich))) return ausdruecklich;
+  for (let el: Element | null = start; el && el !== grenze && el !== document.body;
+    el = el.parentElement) {
+    const d = getComputedStyle(el).display;
+    if (!d.startsWith("inline") && d !== "contents") return el;
+  }
+  return null;
+}
+
+/** Ist dieses Element als eigene Zeile oder Spalte gesetzt? Flex- und
+ *  Grid-Kinder sind es immer („blockified") — genau so stehen in „Kredite
+ *  und Zinsen" Betrag und Zinssatz nebeneinander, ohne ein Leerzeichen im
+ *  Quelltext. */
+function eigenerBlock(el: Element): boolean {
+  return !getComputedStyle(el).display.startsWith("inline");
+}
+
+/** Der Text der Zeile VOR und NACH der Markierung.
+ *
+ *  **Nicht `Range.toString()`**: Das klebt die Texte nebeneinanderstehender
+ *  Blöcke ohne Trenner zusammen — aus „8,0 Mio. €" und „3,43 %" würde
+ *  „8,0 Mio. €3,43 %". Zwischen zwei Textstücken aus verschiedenen Blöcken
+ *  steht hier deshalb ein Leerzeichen. */
+function zeilenText(zeile: Element, range: Range): { vor: string; nach: string } {
+  let vor = "";
+  let nach = "";
+  let letzterBlock: Element | null = null;
+  const gang = document.createTreeWalker(zeile, NodeFilter.SHOW_TEXT);
+  for (let n = gang.nextNode() as Text | null; n; n = gang.nextNode() as Text | null) {
+    const eltern = n.parentElement;
+    if (!eltern || eltern.closest("script, style, [aria-hidden='true'], [hidden]")) continue;
+    let block: Element = eltern;
+    while (block !== zeile && !eigenerBlock(block) && block.parentElement) block = block.parentElement;
+    const trenner = letzterBlock && block !== letzterBlock ? " " : "";
+    letzterBlock = block;
+    const daten = n.data;
+    const istStart = n === range.startContainer;
+    const istEnde = n === range.endContainer;
+    if (istStart || istEnde) {
+      if (istStart) vor += trenner + daten.slice(0, range.startOffset);
+      if (istEnde) nach += (istStart ? "" : trenner) + daten.slice(range.endOffset);
+      continue;
+    }
+    const lage = range.comparePoint(n, 0);
+    if (lage < 0) vor += trenner + daten;
+    else if (lage > 0) nach += trenner + daten;
+    // lage === 0: ganz innerhalb der Markierung — die kommt aus `toString()`.
+  }
+  return { vor, nach };
+}
 
 /** Anfang und Ende einer Auswahl als Rechtecke. `getClientRects` liefert je
  *  Zeile eines — plus leere an Zeilenenden, die hier nichts zu suchen haben. */
@@ -133,8 +207,17 @@ export function MarkierKnopf({ aktiv, anzeigename, onFragen }: {
     const baustein = drin?.closest<HTMLElement>("[data-erklaer]") ?? null;
     const startEl = range.startContainer.nodeType === 1
       ? (range.startContainer as Element) : range.startContainer.parentElement;
+    // Die Zeile drumherum — nur sie sagt, WELCHE „8,0 Mio. €" gemeint sind.
+    const zeile = zeileVon(range);
+    const { vor, nach } = zeile ? zeilenText(zeile, range) : { vor: "", nach: "" };
+    // Der Anzeigename geht auch über die Zeile nicht mit (auf `/dashboard`
+    // steht er in der `h1`) — dieselbe Regel wie beim Überschriften-Pfad.
+    // Gestrichen wird im FERTIGEN Text: `ohneNamen` putzt die Ränder, und an
+    // den Rändern von `vor`/`nach` stehen die Leerzeichen zur Markierung.
+    const mitZeile = markierungInZeile(vor, sel.toString(), nach) ?? aufbereitet;
     const frage: MarkierFrage = {
       ...aufbereitet,
+      auswahl: ohneNamen(mitZeile.text, anzeigename) || aufbereitet.text,
       element: baustein ? ernteElement(baustein) : null,
       pfad: ueberschriftenPfad(baustein ?? startEl, document, anzeigename),
     };

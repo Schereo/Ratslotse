@@ -493,7 +493,7 @@ export function LottiPanel({
   ) => {
     const sauber = text.trim();
     const markiert = opts.markiert ?? null;
-    const auswahl = markiert ? markiert.text : (mitMarkierung ? markierung : "");
+    const auswahl = markiert ? markiert.auswahl : (mitMarkierung ? markierung : "");
     if (!sauber && !auswahl && !baustein) return;
     // Ohne beantwortete Einwilligung wird nicht gefragt: Der Satz über die
     // externe Verarbeitung steht in der Karte, und sie ist die einzige Stelle,
@@ -685,11 +685,15 @@ export function LottiPanel({
     // **Erst NACH dem Strom**, nicht im `done`-Rahmen: Dort liefe der
     // Abbruch-Wächter von `ratsfrageStellen` in den noch offenen
     // Erklär-Strom und risse ihn mitten im Satz ab.
-    if (archivWeg === "statt") await ratsfrageStellen(sauber, { inTurn: key, auswahl });
+    // Die Ratsfrage nimmt nur 600 Zeichen (`qa.SCREEN_SELECTION_MAX`). Passt
+    // die Zeile samt Marken nicht, geht nur der markierte Teil — ein bei 600
+    // abgeschnittenes „»" ohne „«" wäre schlechter als keine Zeile.
+    const auswahlRat = [...auswahl].length <= 600 ? auswahl : (markiert?.text ?? auswahl);
+    if (archivWeg === "statt") await ratsfrageStellen(sauber, { inTurn: key, auswahl: auswahlRat });
     else if (archivWeg === "danach") {
       await ratsfrageStellen(sauber, {
         dazu: { question: frageMitZitat({ question: sauber, zitat: markiert?.text }), answer: antwort },
-        auswahl,
+        auswahl: auswahlRat,
       });
     }
   }, [markierung, refs, route, turns, gespraechId, merken, setGespraechId,

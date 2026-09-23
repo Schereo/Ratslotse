@@ -162,6 +162,38 @@ def test_eine_markierung_mit_zwei_begriffen_geht_ans_modell(kein_modell):
     assert lotti.deterministic_answer(_Store(), screen, "") is None
 
 
+def test_markierung_in_ihrer_zeile_bleibt_eine_glossar_frage(kein_modell):
+    """Seit 23.09.2026 schickt der Markier-Knopf die ZEILE mit, der markierte
+    Teil steht zwischen »…«. Die Glossar-Abkürzung sieht nur ihn — sonst
+    träfe sie in „Der Bebauungsplan … »Umschuldung« …" zwei Begriffe und
+    kostete einen Modellaufruf für eine kuratierte Erklärung."""
+    screen = lotti.Screen(
+        route="/haushalt/schulden",
+        selection="Der Bebauungsplan und die »Umschuldung« liegen vor.")
+    text, art = lotti.deterministic_answer(_Store(), screen, "Was bedeutet das?")
+    assert art == "glossary"
+    assert "Umschuldung" in text
+
+
+def test_markierter_teil_ohne_und_mit_marken():
+    assert lotti.markierter_teil("Mai 2026 · »8,0 Mio. €« 3,43 %") == "8,0 Mio. €"
+    assert lotti.markierter_teil("8,0 Mio. €") == "8,0 Mio. €"
+    assert lotti.markierter_teil("") == ""
+
+
+def test_die_zeile_bekommt_genau_einen_erklaersatz():
+    """Das Modell muss wissen, was die Marken heißen — ein Satz, UNSER Text,
+    vor dem Fremdtext-Block. Ohne Marken steht er nicht da."""
+    mit = lotti._screen_block(lotti.Screen(
+        route="/haushalt/schulden",
+        selection="Mai 2026 · Bäderbetrieb Oldenburg · »8,0 Mio. €« 3,43 %"))
+    assert "Markiert ist nur der Teil zwischen » und «" in mit
+    assert mit.index("Markiert ist nur") < mit.index("<<<AUSWAHL")
+    assert "»8,0 Mio. €« 3,43 %" in mit
+    ohne = lotti._screen_block(lotti.Screen(route="/haushalt/schulden", selection="8,0 Mio. €"))
+    assert "Markiert ist nur" not in ohne
+
+
 def test_der_anschluss_chip_fragt_nach_seinem_wort_und_bleibt_kostenlos(kein_modell):
     """„Was heißt Umschuldung?" mit dem Wort als Markierung — der Weg des
     Anschluss-Chips in Lottis Fenster.

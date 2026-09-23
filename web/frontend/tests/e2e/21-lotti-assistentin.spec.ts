@@ -1216,7 +1216,9 @@ test.describe("Markieren statt Modus", () => {
       element: { key: string; title: string; text: string } | null;
     };
     expect(body.question).toBe("Was bedeutet das?");
-    expect(body.selection).toBe("391,5 Mio. €");
+    // Die Markierung geht IN IHRER ZEILE mit, der markierte Teil zwischen
+    // »…« — das Zitat im Verlauf (oben) bleibt der markierte Text allein.
+    expect(body.selection).toBe("Im Haushalt 2026 stehen »391,5 Mio. €« an Aufwendungen.");
     // Der Baustein, in dem die Markierung liegt, geht als Kontext mit.
     expect(body.element?.key).toBe("test.probe");
     expect(body.element?.text).toContain("Aufwendungen");
@@ -1234,8 +1236,56 @@ test.describe("Markieren statt Modus", () => {
     await markierKnopf(page).click();
     await expect(fenster(page).getByText(ANTWORT)).toBeVisible();
     const body = geschickt as unknown as { selection: string; element: unknown };
-    expect(body.selection).toBe("Aufwendungen");
+    expect(body.selection).toBe("Im Haushalt 2026 stehen 391,5 Mio. € an »Aufwendungen«.");
     expect(body.element).toBeNull();
+  });
+
+  test("in einer Listenzeile geht die ZEILE mit — nicht nur die drei Wörter", async ({ page }) => {
+    // Review zu #1517: Im Baustein „Kredite und Zinsen" stehen zwei Kredite
+    // über 8,0 Mio. €. Markiert war der aus dem Mai; ohne die Zeile erklärte
+    // Lotti den anderen. Die Zeile ist dort eine Flex-`li` mit zwei `span` —
+    // OHNE Leerzeichen dazwischen im Quelltext; `Range.toString()` hätte
+    // „8,0 Mio. €3,43 %" daraus gemacht.
+    let geschickt: { selection: string } | null = null;
+    await page.route("**/api/council/explain", async (route) => {
+      geschickt = route.request().postDataJSON();
+      await route.fulfill({ status: 200, contentType: "text/event-stream", body: STROM() });
+    });
+    await page.goto("/dashboard");
+    await expect(knopf(page)).toBeVisible();
+    await page.evaluate(() => {
+      const ul = document.createElement("ul");
+      ul.id = "markier-liste";
+      Object.assign(ul.style, {
+        position: "fixed", top: "140px", left: "16px", width: "520px", zIndex: "30",
+        background: "white", color: "black", padding: "8px", fontSize: "14px",
+      });
+      for (const [a, b] of [["Mai 2026 · Bäderbetrieb Oldenburg · 8,0 Mio. €", "3,43 %"],
+        ["Juni 2026 · Bäderbetrieb Oldenburg · 8,0 Mio. €", "3,46 %"]]) {
+        const li = document.createElement("li");
+        li.style.display = "flex";
+        li.style.justifyContent = "space-between";
+        const s1 = document.createElement("span");
+        s1.textContent = a;
+        const s2 = document.createElement("span");
+        s2.textContent = b;
+        li.append(s1, s2);
+        ul.append(li);
+      }
+      document.body.appendChild(ul);
+      const t = ul.firstElementChild!.firstElementChild!.firstChild as Text;
+      const i = t.data.indexOf("8,0 Mio. €");
+      const r = document.createRange();
+      r.setStart(t, i);
+      r.setEnd(t, i + "8,0 Mio. €".length);
+      document.getSelection()!.removeAllRanges();
+      document.getSelection()!.addRange(r);
+    });
+    await markierKnopf(page).click();
+    await expect(fenster(page).locator("[data-lotti-frage]").last())
+      .toHaveText("„8,0 Mio. €“ — Was bedeutet das?");
+    await expect(fenster(page).getByText(ANTWORT)).toBeVisible();
+    expect(geschickt!.selection).toBe("Mai 2026 · Bäderbetrieb Oldenburg · »8,0 Mio. €« 3,43 %");
   });
 
   test("nach der Antwort fragt man direkt nach — das Zitat reist als Gedächtnis mit",

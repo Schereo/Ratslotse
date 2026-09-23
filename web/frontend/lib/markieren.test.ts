@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   auswahlText, frageMitZitat, knopfPosition, MARKIERUNG_MIN, markierungAufbereiten,
+  markierungInZeile,
   SELECTION_MAX, ZITAT_ANZEIGE_MAX,
 } from "./markieren";
 
@@ -31,14 +32,74 @@ describe("markierungAufbereiten", () => {
   });
 
   it("kürzt eine lange Markierung so, dass sie samt „ …“ in die Grenze passt", () => {
-    // **Der Fehler, gegen den das steht:** `kuerze(text, 1000)` lieferte
-    // 1.002 Zeichen, und der Server wies jede lange Markierung mit 422 ab
-    // (`ExplainBody.selection`, max_length = SELECTION_MAX).
+    // Der Server nimmt höchstens SELECTION_MAX (`ExplainBody.selection`);
+    // darüber gäbe es 422 statt einer Antwort.
     const lang = "Wort ".repeat(700);
     const aus = markierungAufbereiten(lang)!;
     expect(aus.gekuerzt).toBe(true);
     expect([...aus.text].length).toBeLessThanOrEqual(SELECTION_MAX);
     expect(aus.text.endsWith(" …")).toBe(true);
+  });
+});
+
+describe("markierungInZeile", () => {
+  it("setzt die Markierung in ihre Zeile — so ist klar, WELCHE 8,0 Mio. gemeint sind", () => {
+    // Der Fall aus dem Review zu #1517: zwei Kredite über 8,0 Mio. € im
+    // selben Baustein, markiert war der aus dem Mai.
+    expect(markierungInZeile(
+      "Mai 2026 · Kreditaufnahme · Bäderbetrieb Oldenburg · ", "8,0 Mio. €", " 3,43 %",
+    )).toEqual({
+      text: "Mai 2026 · Kreditaufnahme · Bäderbetrieb Oldenburg · »8,0 Mio. €« 3,43 %",
+      gekuerzt: false,
+    });
+  });
+
+  it("lässt eine Markierung, die die ganze Zeile ist, unverändert", () => {
+    expect(markierungInZeile("", "Mai 2026 · Kreditaufnahme", "")).toEqual({
+      text: "Mai 2026 · Kreditaufnahme", gekuerzt: false,
+    });
+    // Nur Leerraum drumherum zählt nicht als Zeile.
+    expect(markierungInZeile("  \n", "Kreditaufnahme", " ")?.text).toBe("Kreditaufnahme");
+  });
+
+  it("setzt keine Leerzeichen, die nicht da waren — ein halbes Wort bleibt ein Wort", () => {
+    expect(markierungInZeile("Kredit", "aufnahme", "n 2026")?.text).toBe("Kredit»aufnahme«n 2026");
+  });
+
+  it("entschärft Marken-Zeichen, die schon auf der Seite stehen", () => {
+    expect(markierungInZeile("Das »Bäderbad« ", "kostet", " viel")?.text)
+      .toBe("Das \"Bäderbad\" »kostet« viel");
+  });
+
+  it("kürzt eine zu lange Zeile um die Markierung herum — die Markierung nie", () => {
+    const vor = "links ".repeat(300);
+    const nach = " rechts".repeat(300);
+    const aus = markierungInZeile(vor, "8,0 Mio. €", nach)!;
+    expect([...aus.text].length).toBeLessThanOrEqual(SELECTION_MAX);
+    expect(aus.text).toContain("»8,0 Mio. €«");
+    expect(aus.text.startsWith("… ")).toBe(true);
+    expect(aus.text.endsWith(" …")).toBe(true);
+    // Was direkt an der Markierung steht, bleibt: Es ist der Kontext.
+    expect(aus.text).toContain("links »8,0 Mio. €« rechts");
+    expect(aus.gekuerzt).toBe(false);
+  });
+
+  it("gibt einer kurzen Seite nur, was sie braucht — den Rest bekommt die andere", () => {
+    const aus = markierungInZeile("Mai 2026 · ", "8,0 Mio. €", " x".repeat(800))!;
+    expect(aus.text.startsWith("Mai 2026 · »8,0 Mio. €«")).toBe(true);
+    expect([...aus.text].length).toBeLessThanOrEqual(SELECTION_MAX);
+    expect([...aus.text].length).toBeGreaterThan(SELECTION_MAX - 5);
+  });
+
+  it("schickt eine schon zu lange Markierung allein, gekürzt", () => {
+    const aus = markierungInZeile("vor ", "y".repeat(3000), " nach")!;
+    expect(aus.gekuerzt).toBe(true);
+    expect(aus.text).not.toContain("»");
+    expect([...aus.text].length).toBeLessThanOrEqual(SELECTION_MAX);
+  });
+
+  it("verwirft ein einzelnes Zeichen auch mit Zeile", () => {
+    expect(markierungInZeile("Mai 2026 ", "€", " x")).toBeNull();
   });
 });
 

@@ -48,6 +48,64 @@ export function markierungAufbereiten(roh: string | null | undefined):
   return { text: kuerze(sauber, SELECTION_MAX), gekuerzt: true };
 }
 
+/** Die Marken um den markierten Teil in seiner Zeile. **Dieselben Zeichen wie
+ *  in `council/assistant.py::MARKE_AUF/MARKE_ZU`** — dort wird der Teil
+ *  wieder herausgelöst (Glossar-Abkürzung) und dem Modell erklärt. */
+export const MARKE_AUF = "»";
+export const MARKE_ZU = "«";
+
+/** Leerraum falten, aber die Ränder zur Markierung stehen lassen: „Oldenburg
+ *  · »8,0 Mio. €«" braucht das Leerzeichen vor der Marke, „Kredit»aufnahme«"
+ *  darf keins bekommen. Stehen die Marken-Zeichen schon auf der Seite, werden
+ *  sie zu einfachen Anführungszeichen — sonst wüsste der Server nicht mehr,
+ *  welches Paar unseres ist. */
+function falteKontext(text: string): string {
+  return (text ?? "").replace(/\s+/g, " ").replace(/[»«]/g, "\"");
+}
+
+/**
+ * Die Markierung IN IHRER ZEILE: `Mai 2026 · Kreditaufnahme · Bäderbetrieb
+ * Oldenburg · »8,0 Mio. €« · 3,43 %`.
+ *
+ * **Der Fehler, gegen den das steht** (Review zu #1517, 23.09.2026): Auf
+ * `/haushalt/schulden` stehen im Baustein „Kredite und Zinsen" ZWEI Kredite
+ * über 8,0 Mio. € des Bäderbetriebs. Markiert war der aus der Zeile „Mai 2026
+ * … 3,43 %"; mitgeschickt wurden die drei Wörter und der ganze Baustein —
+ * und Lotti erklärte den anderen (06.08.2026, 3,46 %). Die Frage war
+ * mehrdeutig, nicht das Modell schlecht: Nur die Zeile sagt, WELCHE 8,0 Mio.
+ * gemeint sind.
+ *
+ * `vor` und `nach` sind der Text der Zeile vor und nach der Markierung.
+ * Ist beides leer (die Markierung IST die Zeile), bleibt es beim markierten
+ * Text allein. Passt die Zeile samt Marken nicht in `SELECTION_MAX`, wird
+ * sie um die Markierung herum gekürzt — die Markierung selbst nie. Ist schon
+ * die Markierung zu lang, geht nur sie (gekürzt) mit.
+ */
+export function markierungInZeile(vor: string, markiert: string, nach: string):
+  { text: string; gekuerzt: boolean } | null {
+  const m = markierungAufbereiten(markiert);
+  if (!m) return null;
+  let links = [...falteKontext(vor).trimStart()];
+  let rechts = [...falteKontext(nach).trimEnd()];
+  if (!links.join("").trim() && !rechts.join("").trim()) return m;
+  if (m.gekuerzt) return m;
+  const kern = [...`${MARKE_AUF}${m.text}${MARKE_ZU}`];
+  const frei = SELECTION_MAX - kern.length;
+  if (links.length + rechts.length > frei) {
+    // Beide Seiten bekommen die Hälfte; was eine nicht braucht, bekommt die
+    // andere. Je gekürzter Seite kostet das „… " zwei Zeichen.
+    const ELL = 2;
+    let l = Math.min(links.length, Math.floor(frei / 2));
+    let r = Math.min(rechts.length, frei - l);
+    l = Math.min(links.length, frei - r);
+    if (l < links.length) l = Math.max(0, l - ELL);
+    if (r < rechts.length) r = Math.max(0, r - ELL);
+    links = l < links.length ? [..."… ", ...links.slice(links.length - l)] : links;
+    rechts = r < rechts.length ? [...rechts.slice(0, r), ..." …"] : rechts;
+  }
+  return { text: [...links, ...kern, ...rechts].join(""), gekuerzt: false };
+}
+
 /** Der markierte Text der Seite, bereit für den Prompt — oder "".
  *
  *  Die Ausschlüsse (Lottis Fenster, Eingabefelder) stehen in
