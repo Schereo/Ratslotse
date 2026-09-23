@@ -605,3 +605,41 @@ def test_sweep_keeps_the_newest_of_exact_and_near_duplicates():
     ]
     pairs = {(drop["id"], keep["id"]) for drop, keep in sweep_quiz.find_duplicates(qs)}
     assert pairs == {(643, 1093), (35, 338)}
+
+
+# ---- Aus den letzten Sitzungen (Plan Q10) -----------------------------------
+
+def test_recent_facts_carry_the_outcome():
+    """Ein abgelehnter Antrag trägt sein Ergebnis, und seine Kurzfassung (die
+    den Vorschlag beschreiben könnte, als gälte er) bleibt weg."""
+    class _Store:
+        def quiz_recent_decisions(self, sessions, min_interest):
+            return [
+                {"session_date": "2026-06-29", "committee": "Rat", "title": "Mehr Bänke", "outcome": "accepted",
+                 "amount_eur": 50000, "simple_summary": "Es gibt mehr Bänke.", "raw_result": None, "interest": 70},
+                {"session_date": "2026-06-29", "committee": "Rat", "title": "Grundsteuer senken", "outcome": "rejected",
+                 "amount_eur": None, "simple_summary": "Die Grundsteuer sinkt.", "raw_result": "abgelehnt", "interest": 80},
+            ]
+    text = quiz.recent_facts(_Store())
+    assert "Mehr Bänke [beschlossen] 50.000 €" in text and "Es gibt mehr Bänke." in text
+    assert "Grundsteuer senken [ABGELEHNT]" in text and "Die Grundsteuer sinkt." not in text
+
+
+def test_recent_area_is_kept_fresh(tmp_path):
+    store = CouncilStore(tmp_path / "c.sqlite")
+    row = {**_row("x", "Alte aktuelle Frage?"), "area_type": "topic", "area_key": "aktuell",
+           "content_hash": "akt-1"}
+    store.save_quiz_questions([row])
+    with store._conn:
+        store._conn.execute("UPDATE council_quiz_questions SET generated_at = '2026-01-01T00:00:00'")
+    assert store.retire_stale_quiz_area("topic", "aktuell", "2026-06-01T00:00:00") == 1
+    assert store.quiz_area_counts() == {}
+    store.close()
+
+
+def test_backfill_has_the_recent_area(tmp_path):
+    store = CouncilStore(tmp_path / "c.sqlite")
+    areas = generate_quiz._areas(store)
+    store.close()
+    recent = [a for a in areas if a.get("recent")]
+    assert [(a["area_type"], a["area_key"]) for a in recent] == [quiz.RECENT_AREA]

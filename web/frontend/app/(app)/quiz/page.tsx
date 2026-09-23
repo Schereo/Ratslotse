@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Search, Play, MapPin, Sparkles, Check, X, ChevronDown, ChevronUp, PencilLine, Zap, Flame, RotateCcw, Timer, Crosshair } from "lucide-react";
+import { Search, Play, MapPin, Sparkles, Check, X, ChevronDown, ChevronUp, PencilLine, Zap, Flame, RotateCcw, Timer, Crosshair, Newspaper } from "lucide-react";
 import { QuizAreas, QuizAreaEntry, QuizQuestion, QuizStats, QuizDaily, UserQuizQuestion } from "@/lib/types";
 import { Button, Input, Spinner, EmptyState, toast } from "@/components/ui";
 import { Mascot } from "@/components/mascot";
@@ -607,6 +607,16 @@ function QuizInner() {
         </span>
       ),
       onClick: dailyOpen ? startDaily : () => toast.info("Heute schon erledigt — morgen gibt's neue Fragen."),
+    });
+  }
+  // Aus den letzten Sitzungen (Plan Q10) — nur, wenn es dort Fragen gibt.
+  const recent = catalog.topics.find((t) => t.key === "aktuell" && t.questions > 0);
+  if (recent) {
+    tiles.push({
+      key: "aktuell", icon: <Newspaper className="h-[18px] w-[18px]" />,
+      iconClass: "bg-primary/10 text-primary",
+      title: "Aus den letzten Sitzungen", sub: "Was der Rat gerade beschlossen hat",
+      onClick: () => void startRound(["topic:aktuell"], []),
     });
   }
   tiles.push({
