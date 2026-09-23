@@ -168,3 +168,16 @@ def test_rueckmeldung_zum_urteil_je_idee(client, cities_db):
         assert client.post("/api/council/cities/movements/feedback?id=1&verdict=hm").status_code == 400
     finally:
         app.dependency_overrides.pop(get_current_user, None)
+
+
+def test_derselbe_vorgang_steht_nur_einmal_unter_den_belegen():
+    """Vorlage und ihr Beschluss sind EIN Beleg, nicht zwei (Wärmeplan, 22.09.2026)."""
+    from web.backend.app.routers.council import _ohne_doppelte
+
+    belege = [
+        {"decision_id": 8683, "kvonr": None, "title": "Oldenburger Wärmeplan", "date": None, "outcome": None},
+        {"decision_id": 8683, "kvonr": 29685, "title": "Oldenburger Wärmeplan", "date": None, "outcome": None},
+        {"decision_id": None, "kvonr": 29685, "title": "Oldenburger Wärmeplan - Beschluss", "date": None, "outcome": None},
+        {"decision_id": 8549, "kvonr": None, "title": "Wärmeplan im Ausschuss", "date": None, "outcome": None},
+    ]
+    assert [b["decision_id"] for b in _ohne_doppelte(belege)] == [8683, 8549]

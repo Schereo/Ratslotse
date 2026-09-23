@@ -410,6 +410,7 @@ public final class AppModel {
         if let route = navigation.last {
             switch route {
             case .decision: return "Ein Beschluss"
+            case .movement: return "Eine Idee aus anderen Städten"
             case .sessions: return "Eine Sitzung"
             case .person: return "Eine Person im Rat"
             case .topic: return "Ein Themenfeld"
@@ -709,7 +710,7 @@ public final class AppModel {
 
     private func tab(for route: AppRoute) -> AppTab {
         switch route {
-        case .decision, .sessions, .person, .topic, .place: .council
+        case .decision, .movement, .sessions, .person, .topic, .place: .council
         case .quiz, .subscriptions: .today
         case .analysis: .council
         case .admin: .account
