@@ -29,6 +29,12 @@ CATEGORIES = ["history", "places", "people", "council_politics", "estimation"]
 _POINTS = {"easy": 1, "medium": 2, "hard": 3}
 DAILY_N = 5
 MAP_POINTS = 2  # feste Punkte je richtig verorteten Stadtteil
+#: Ab so vielen anderen Mitspielenden zeigt die Auflösung, wie sie lagen.
+#: Darunter sagt eine Quote nichts („100 % lagen richtig" heißt: eine Person).
+OTHERS_MIN = 5
+#: Stufen der Fortschrittskarte: (ab beantwortet, ab Quote, Wort). Die oberste
+#: ist dieselbe Schwelle wie das „Kenner"-Abzeichen in ``_badges``.
+DISTRICT_LEVELS = [(5, 0.8, "gemeistert"), (3, 0.5, "vertraut"), (1, 0.0, "entdeckt")]
 
 
 def _today() -> str:
@@ -55,6 +61,46 @@ def _badges(stats: dict, streak: int, theme_labels: dict[str, str]) -> list[dict
             name = theme_labels.get(a["area_key"], a["area_key"]) if a["area_type"] == "topic" else a["area_key"]
             out.append({"key": f"kenner:{a['area_type']}:{a['area_key']}",
                         "label": f"{name}-Kenner", "tier": "bronze"})
+    return out
+
+
+def _ortsbereich_of(key: str, council: CouncilStore, ob: set[str]) -> str | None:
+    """Der Ortsbereich, zu dem ein Quiz-Gebiet gehört — Unterorte wie das
+    Eversten Holz zählen für Eversten, sonst blieben sie auf der Karte
+    unsichtbar."""
+    place = council.resolve_place(key)
+    seen: set[str] = set()
+    while place and place.id not in seen:
+        if place.name in ob:
+            return place.name
+        seen.add(place.id)
+        place = council.resolve_place(place.parent_ids[0]) if place.parent_ids else None
+    return key if key in ob else None
+
+
+def _district_progress(by_area: list[dict], council: CouncilStore) -> list[dict]:
+    """Alle Ortsbereiche mit Stufe 0–3 — auch die unentdeckten, sonst kann die
+    Karte nicht zeigen, was noch fehlt."""
+    names = geo.ortsbereiche()
+    ob = set(names)
+    agg = {n: [0, 0] for n in names}
+    for a in by_area:
+        if a["area_type"] != "district":
+            continue
+        name = _ortsbereich_of(a["area_key"], council, ob)
+        if name:
+            agg[name][0] += a["answered"]
+            agg[name][1] += a["correct"]
+    out = []
+    for name in sorted(names):
+        answered, correct = agg[name]
+        level, label = 0, "unentdeckt"
+        for i, (min_n, min_q, word) in enumerate(DISTRICT_LEVELS):
+            if answered >= min_n and correct / answered >= min_q:
+                level, label = len(DISTRICT_LEVELS) - i, word
+                break
+        out.append({"district": name, "answered": answered, "correct": correct,
+                    "level": level, "level_label": label})
     return out
 
 
@@ -184,6 +230,10 @@ def answer(payload: QuizAnswerIn,
         correct = payload.selected_index == q["correct_index"]
         pts = diff_pts if correct else 0
         resp.update({"correct": correct, "correct_index": q["correct_index"], "points": pts})
+    # Vor dem Buchen gezählt und ohne die eigene Antwort: „wie lagen die anderen?"
+    players, ok = store.quiz_others_result(q["id"], user["id"])
+    if players >= OTHERS_MIN:
+        resp["others"] = {"players": players, "correct_pct": round(100 * ok / players)}
     store.record_quiz_answer(user["id"], q["id"], q["area_type"], q["area_key"],
                              q["category"], correct, pts)
     return resp
@@ -422,6 +472,7 @@ def stats(user: dict = Depends(require_active),
     s["streak"] = streak
     s["badges"] = _badges(s, streak, theme_labels)
     s["daily_done"] = store.quiz_daily_result(user["id"], _today()) is not None
+    s["districts"] = _district_progress(s["by_area"], council)
     return s
 
 

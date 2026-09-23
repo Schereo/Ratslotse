@@ -571,6 +571,8 @@ export interface QuizAnswerResult {
     unit: string;
     items: { label: string; value: number; highlight?: boolean }[];
   } | null;
+  /** Wie die anderen lagen — erst ab fünf Mitspielenden (Server entscheidet). */
+  others?: { players: number; correct_pct: number };
 }
 export interface QuizBadge {
   key: string;

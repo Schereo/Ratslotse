@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { QuizPlay, CATEGORY_LABEL } from "@/components/quiz-play";
 import { QuizMapPlay } from "@/components/quiz-map-play";
 import { OwnQuestionsView } from "@/components/quiz-own";
+import { QuizProgressMap } from "@/components/quiz-progress-map";
 
 type RoundKind = "normal" | "review" | "daily" | "own";
 
@@ -612,6 +613,11 @@ function QuizInner() {
           <div className={cn("grid grid-cols-2 gap-3", lgCols)}>
             {tiles.map(({ key, ...rest }) => <ModeTile key={key} {...rest} />)}
           </div>
+
+          {stats?.districts && stats.total.answered > 0 && (
+            <QuizProgressMap districts={stats.districts}
+              onPlay={(name) => { if (!starting) void startRound([`district:${name}`], []); }} />
+          )}
         </div>
       )}
     </div>
