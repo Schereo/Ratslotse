@@ -882,3 +882,76 @@ hier, nicht im Code.
    NKomVG einrichten)?
 7. **Gefällt der Entwurf?** Was bleibt, was fliegt — Tafel, Zeitleiste,
    Farben, Aufteilung der Ideen-Seite.
+
+
+## Umsetzung und Bewertung (23.09.2026)
+
+Tims Vorgaben (22.09.2026): Bewegungen ab **2** Städten (Tafel ab 5), Weg **A**,
+die übrigen Vorschläge aus §7 wie vorgeschlagen.
+
+### Stand
+
+| PR | Was | Stand |
+|---|---|---|
+| 46 | Gruppen-Status je `fit`-Fassung | #1478, dev |
+| 47+49 | `idea_groups`, Überschrift | #1480, dev |
+| 48+50 | `idea_fit`, Endpunkte `/cities/movements…` | #1481, dev |
+| 51 | Werkzeug `scripts/cities_tranchen.sh`, `--alle` | #1481, #1486; Lauf auf dev |
+| — | Timeout 120 s für `fit`, `idea_fit`, `reason` | #1481, #1484 |
+| 52–54 | Web, Ideen-Seite, iOS; Städtevergleich als Reiter „Andere Städte" der Analyse (Tims Wunsch 23.09.) | #1483, **wartet auf Tims Gegenlesen** |
+| 55 | Weg A: dev-Datenbank nach Prod | **erledigt 23.09.**, alte als `cities.sqlite.vor-2026-09-23` |
+| 55 | Release dev → main, Schalter auf Prod | Tims Entscheidung |
+
+### Gemessen
+
+- **Bewegungen:** 207 ab 2 Städten, 59 ab 3, 20 ab 5 (Oldenburg nicht
+  mitgezählt, nur Ideen-Arten; die 292 aus §2.2 zählten beides mit).
+  Aufbau 0,5 s, Listenabfrage 1 ms; Endpunkte lokal 34–110 ms.
+- **`idea_fit`:** Probe 20 Ideen $0,053; alle 207 auf der Kopie $0,33, auf
+  dev $0,46 (Wiederholungen nach Timeouts). 0 erfundene Kennungen im
+  Ergebnis. Verteilung dev: 105 fehlt, 41 teilweise, 61 vorhanden, 0 nicht
+  anwendbar.
+- **Prüfstand** (`eval/run_cities_idea_fit.py`, 20 Fälle, **vorläufig von
+  Claude gesetzt**): 17/20 streng, 19/20 nachsichtig, 0 erfunden, 0 falsches
+  „vorhanden", 0 „nur verwandt" als Beleg; $0,034 je Lauf.
+- **Reproduzierbarkeit:** Zwei unabhängige Läufe (Kopie und dev, leicht
+  verschiedene Belege) geben bei 185 von 207 Ideen (89 %) denselben Stand.
+  Die Abweichungen liegen fast alle an der Grenze zu „teilweise"; einer
+  springt über zwei Stufen (Betriebskostenzuschüsse für Sportvereine).
+- **`reason`:** Probe 20 Abschnitte $0,0067, 3 mit Begründung; Durchgang 1
+  (995) $0,34, 42 mit Begründung. Alle gelesenen Begründungen stehen so im
+  Abschnitt, keine nennt Personen.
+
+### Befunde, die unterwegs behoben wurden
+
+1. **Hängende Modellaufrufe.** Das SDK wartet ohne Angabe 600 s je Versuch;
+   eine Probe stand über eine halbe Stunde still. Jetzt 120 s.
+2. **`reason` hätte fast nichts bearbeitet.** Ohne Schalter nur Abschnitte
+   mit Ideen-Gruppe — auf dev 157 von 6.962. Jetzt `--alle`.
+3. **Dev fehlten 900 Niederschriften.** Prod hatte 1.164 gelesen und 22.048
+   Abschnitte geschnitten, dev 278 und 6.962 (auf dev laufen keine Crons).
+   Weg A hätte Prod diese Abschnitte genommen. Vor der Kopie wurden sie
+   ergänzend von Prod nach dev übertragen (25.222 Abschnitte). §2.9 und
+   PR 55 hatten angenommen, Prod habe nichts, was dev fehlt — das stimmte
+   nicht.
+4. **Belege doppelt** (Vorlage und ihr Beschluss) — jetzt einmal.
+5. **Oberfläche nach den ersten Bildern:** Feld-Chips fehlten ohne Urteile,
+   Tafel wiederholte den Listenanfang, Punkte stapelten oder wanderten in der
+   Zeit, „Und in Oldenburg?" stand auf dem Handy unten, die Markierung einer
+   gerollten Reiter-Leiste stand daneben.
+
+### Vorschläge
+
+1. **Globaler Timeout in `kern/llm.py`** statt je Aufrufer — betrifft auch
+   die KI-Frage, deshalb nicht ohne Tim.
+2. **Prüfstand von Tim beurteilen lassen** (§7, Frage 5); bis dahin misst er
+   meinen Maßstab.
+3. **Die Stufe „teilweise" schärfen**: bei uneinigen drei Stimmen zwei
+   weitere einholen, oder im Prompt an Beispielen trennen, was „erste Stufe"
+   und was „nur verwandt" ist.
+4. **Gruppen nachschärfen:** „Jugendparlament einrichten" enthält Satzungen
+   zum Jugendhilfeausschuss, die Wärmeplanung hängt an einem
+   „Wärmewende-Beirat".
+5. **dev-VM:** 2 GB im Swap, der API-Prozess belegt 2,5 GB.
+6. **Die ~200 neueren Prod-Vorlagen** stehen nur in Prods Rohablage und
+   kommen erst mit dem nächsten `check_cities`-Lauf zurück.
