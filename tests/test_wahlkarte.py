@@ -49,6 +49,7 @@ def test_ratswahl_wer_vorn_lag(rat):
     assert siege == {"spd": 48, "gruene": 39, "afd": 2, "linke": 1}
     d = {x["number"]: x for x in rat["districts"]}
     assert d[400]["counted"] and d[400]["leader"] is None and d[400]["margin_pct"] == 0.0
+    assert rat["ties"] == 1
     assert d[515]["leader"] == "afd" and d[515]["runner_up"] == "spd"
     assert d[515]["margin_pct"] == pytest.approx(8.9, abs=0.05)
     assert d[515]["name"] == "Grundschule Krusenbusch"
@@ -80,7 +81,7 @@ def test_ortsbereich_innenstadt_hat_bezirke():
     # Nur die Wahlbereiche, die die Bezirke berühren — und die Stadtzahlen
     # (Siege, Briefwahl) bleiben die der ganzen Stadt.
     assert {a["number"] for a in k["areas"]} == {x["area"] for x in k["districts"]}
-    assert sum(w["districts"] for w in k["wins"]) == 90
+    assert sum(w["districts"] for w in k["wins"]) == 90 and k["ties"] == 1
 
 
 def test_ob_wahl_personen_statt_listen():

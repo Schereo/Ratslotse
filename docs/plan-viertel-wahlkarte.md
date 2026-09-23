@@ -336,3 +336,20 @@ r = list(csv.DictReader(open("kommunalwahl/referenz-2026/ratswahl-2026-wahlbezir
   vermutlich die Stichwahl. Die Tönung nach der „stärksten Liste im
   Wahlbereich“ ist aber für Listenwahlen gebaut. Auf dev und Prod prüfen, was
   die Ebene gerade zeigt. Mit PR 3 ist die Frage ohnehin erledigt.
+
+## Anhang C – Umsetzung (23.09.2026)
+
+Tim hat die Empfehlungen E1–E5 am 23.09. angenommen („passt alles").
+
+- **PR 1 + 2** zusammen als #1511: Die Überlappung wird auf einem 20-m-Raster
+  gerechnet, die größte Abweichung gegen shapely beträgt 0,79 Punkte. Dazu
+  kommt `GET /api/wahlabend/karte`. Nachgemessen: SPD **48** statt 49, weil
+  Bezirk 400 ein Gleichstand ist (Grüne und SPD je 361 Stimmen). Die Karte
+  strichelt ihn und zählt ihn in `ties`.
+- **PR 3–5** zusammen, weil die Stadt- und die Viertel-Stufe dieselbe Abfrage
+  teilen. Die Antwort kennt je Bezirk seine Ortsbereiche, deshalb braucht die
+  Viertel-Stufe kein zweites `?place=`. Der Parameter bleibt für die App.
+  Die Legende steht mit eingeschalteter Ebene oben in der Tafel.
+- **Abweichung:** `stichwahl-karte.tsx` behält seine Farbregel. Vier Tage vor
+  der Stichwahl wird die Seite nicht angefasst. Das Backend rechnet dieselbe
+  Regel (`district_map.RUNOFF_SECOND`).

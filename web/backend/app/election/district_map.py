@@ -280,6 +280,7 @@ def build(slug: str | None = None, place: str | None = None,
         if d["leader"]:
             siege[d["leader"]] = siege.get(d["leader"], 0) + 1
     gezaehlt = sum(1 for d in bezirke if d["counted"])
+    gleich = sum(1 for d in bezirke if d["counted"] and not d["leader"])
     if place is not None:
         bezirke = [d for d in bezirke if any(p["name"] == place for p in d["places"])]
         # Größter Anteil im Ortsbereich zuerst — der Bezirk, der „am meisten"
@@ -292,6 +293,7 @@ def build(slug: str | None = None, place: str | None = None,
         postal_share_pct=round(100 * brief / alle, 1) if alle else None,
         total=len(urne), counted=gezaehlt,
         wins=[ElectionMapWin(slug=s, districts=n) for s, n in sorted(siege.items(), key=lambda t: (-t[1], t[0]))],
+        ties=gleich,
         place=place, districts=bezirke,
         areas=_areas(zeilen, {d["area"] for d in bezirke} if place is not None else None),
     )

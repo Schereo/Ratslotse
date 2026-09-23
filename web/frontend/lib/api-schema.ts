@@ -9611,6 +9611,8 @@ export interface components {
             place: string | null;
             /** Postal Share Pct */
             postal_share_pct: number | null;
+            /** Ties */
+            ties: number;
             /** Total */
             total: number;
             /** Wins */
@@ -22236,4 +22238,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: c709fe9819483674db9fbb6e0e163357ff553e4d924b4049bfed7112167e0e24
+// vertrag-sha256: 1d84f1f6b9a8e24126c7189495c9e9f5cf2cc8e965149749a439a9fa4a9e7e2c

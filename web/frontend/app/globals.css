@@ -1445,6 +1445,11 @@ lotti-figur {
 .viertel-tip .stand { display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 999px; color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); margin-right: 6px; }
 .viertel-tip .wann { font-weight: 600; color: hsl(var(--signal)); font-size: 12px; }
 .viertel-tip b { display: block; margin-top: 4px; font-family: var(--font-display, inherit); font-size: 13px; line-height: 1.25; }
+.viertel-tip .leise { color: hsl(var(--muted-foreground)); font-size: 12px; }
+/* Die Nummer eines Wahlbezirks in seiner Fläche (Ebene „Wahlergebnis" auf
+   der Viertel-Stufe). Ein Marker der Größe 0, der Text hängt mittig daran. */
+.wahl-nr > span { position: absolute; transform: translate(-50%, -50%); font: 700 11px/1 var(--font-mono, ui-monospace), monospace; font-variant-numeric: tabular-nums; color: hsl(var(--foreground)); background: hsl(var(--card) / 0.85); border-radius: 6px; padding: 2px 4px; white-space: nowrap; pointer-events: none; }
+.wahl-nr > span.an { background: hsl(var(--foreground)); color: hsl(var(--background)); }
 /* Namensschild am gewählten Pin. */
 .viertel-schild { font: 600 12px/1.2 inherit; color: hsl(var(--foreground)); background: hsl(var(--card)); border: 1px solid hsl(var(--border)); border-radius: 8px; padding: 4px 8px; box-shadow: 0 6px 18px -8px rgb(0 0 0 / 0.35); max-width: 220px; white-space: normal; }
 .viertel-schild::before { border-top-color: hsl(var(--card)); }
