@@ -445,6 +445,10 @@ NOCH_NICHT = ("Die Zahlen dieser Wahl stehen beim Votemanager noch nicht bereit 
 #: an; mit 15 s sind es höchstens anderthalb. Schneller geht es nur am CDN
 #: vorbei — und das wäre am Wahlabend der Stadt gegenüber unhöflich.
 TTL_LIVE = 15
+#: Ist eine Wahl fertig ausgezählt, ändert sich höchstens noch eine Korrektur
+#: — der erste Wahlgang (das Tippspiel liest ihn weiter) muss dafür nicht
+#: alle 15 Sekunden beim Votemanager anklopfen.
+TTL_COMPLETE = 300
 
 
 def ttl_seconds(w: elections.Election, now: datetime | None = None) -> int:
@@ -493,7 +497,10 @@ def fetch(force: bool = False, w: elections.Election | None = None) -> MayorResu
     with _lock:
         now = time.monotonic()
         gemerkt = _cache.get(w.slug)
-        if gemerkt and not force and now - gemerkt[0] < ttl_seconds(w):
+        takt = ttl_seconds(w)
+        if gemerkt and gemerkt[1].phase == "complete" and gemerkt[1].ok:
+            takt = max(takt, TTL_COMPLETE)
+        if gemerkt and not force and now - gemerkt[0] < takt:
             return gemerkt[1]
         known = candidates(w)
         base = base_url(w)

@@ -344,3 +344,55 @@ def test_die_aufholrechnung_geht_auf(erster, stichwahl):
     assert p.trailing_expected_share_pct is not None and 0 < p.trailing_expected_share_pct < 100
     voll = runoff_model.project(stichwahl, erster, SLUGS)
     assert voll is not None and voll.trailing is None and voll.needed_share_pct is None
+
+
+# ---------------------------------------------------------------- „entschieden“ ist Arithmetik (Gegenprüfung 23.09.2026)
+
+def test_ein_bezirk_ohne_ersten_wahlgang_haelt_die_entscheidung_offen(erster, stichwahl):
+    """Schneidet die Stadt für die Stichwahl einen Briefwahlbezirk neu zu,
+    kennt der erste Wahlgang ihn nicht. Bis 09/2026 fiel er still heraus:
+    Waren alle BEKANNTEN Bezirke gezählt, hieß es „entschieden“ — während
+    er noch offen war. Ist er gezählt, zählen seine Stimmen mit."""
+    from dataclasses import replace
+
+    brief = next(d for d in stichwahl if d.postal)
+    neu = replace(brief, number=999)
+    mit = tuple(d for d in stichwahl if d.number != brief.number) + (neu,)
+    offen = _stand(mit, {d.number for d in mit if d.number != 999})
+    p = runoff_model.project(offen, erster, SLUGS)
+    assert p is not None
+    assert not p.decided, "ein offener Bezirk ohne Obergrenze — da ist nichts entschieden"
+    assert p.open_postal == 1 and p.chance_pct is not None
+    assert any("im ersten Wahlgang nicht" in c for c in p.caveats)
+    voll = runoff_model.project(mit, erster, SLUGS)
+    assert voll is not None and voll.decided
+    assert voll.actual_lead_votes == 6544, "seine Stimmen zählen im Ist mit"
+
+
+def test_die_obergrenze_zaehlt_auch_bezirke_ohne_hochrechnung(erster, stichwahl):
+    """Ein offener Bezirk, dessen erster Wahlgang für die beiden keine
+    Stimmen hat, gibt keine Hochrechnung her — seine Wahlberechtigten
+    können trotzdem noch kommen."""
+    from dataclasses import replace
+
+    urne = next(d for d in stichwahl if not d.postal)
+    leer = {d.number: (replace(d, votes={k: 0 for k in d.votes}) if d.number == urne.number else d) for d in erster}
+    p = runoff_model.project(_stand(stichwahl, {d.number for d in stichwahl} - {urne.number}),
+                             tuple(leer.values()), SLUGS)
+    assert p is not None and p.open_votes_max == urne.eligible
+
+
+def test_gleichstand_am_ende_ist_nicht_entschieden(erster, stichwahl):
+    """Bei Stimmengleichheit entscheidet das Los (§ 45c Abs. 2 NKWG) — nicht,
+    wer in der Registry zuerst steht."""
+    from dataclasses import replace
+
+    gleich = []
+    for i, d in enumerate(stichwahl):
+        n = (d.votes["krogmann"] or 0) + (d.votes["fuhrhop"] or 0)
+        n -= n % 2
+        gleich.append(replace(d, votes={"krogmann": n // 2, "fuhrhop": n // 2}))
+    p = runoff_model.project(tuple(gleich), erster, SLUGS)
+    assert p is not None
+    assert not p.decided and p.chance_pct is None and p.actual_lead_votes == 0
+    assert any("Los" in c for c in p.caveats)

@@ -283,3 +283,23 @@ def test_das_bild_sagt_wer_gewaehlt_ist_erst_wenn_es_entschieden_ist(monkeypatch
     assert runoff_image._titel(router.stichwahl(probe="1", counted=60)) == "Stichwahl: Prange vorn"
     assert runoff_image._titel(router.stichwahl(probe="1", counted=133)) == "Ulf Prange ist gewählt"
     assert runoff_image._titel(router.stichwahl(probe="1", counted=0)).startswith("Stichwahl — ab 18 Uhr")
+
+
+def test_eine_fertige_wahl_wird_nicht_im_sekundentakt_abgefragt(monkeypatch):
+    """Der erste Wahlgang ist seit dem 13.09. ausgezählt; das Tippspiel
+    liest ihn weiter. Er fällt nicht unter den 15-Sekunden-Takt."""
+    import time as zeit
+
+    from app.election import elections as e
+
+    w = e.get("ob-2026")
+    assert w is not None
+    fertig = mayor.parse(mayor.probe_payload(w)[0], mayor.candidates(w))
+    assert fertig is not None and fertig.phase == "complete"
+    aufrufe = []
+    monkeypatch.setattr(mayor.requests, "Session", lambda: aufrufe.append(1) or _Sitzung())
+    mayor._cache[w.slug] = (zeit.monotonic() - 60, fertig)
+    assert mayor.fetch(w=w) is fertig and aufrufe == []
+    mayor._cache[w.slug] = (zeit.monotonic() - mayor.TTL_COMPLETE - 1, fertig)
+    mayor.fetch(w=w)
+    assert aufrufe == [1]
