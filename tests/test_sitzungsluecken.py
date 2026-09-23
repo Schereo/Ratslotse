@@ -140,3 +140,53 @@ def test_watcher_traegt_nur_unbekannte_sitzungen_nach(tmp_path, monkeypatch):
     assert store.known_session_ids([100, 101, 102]) == {100, 101}
     assert store.known_session_ids([]) == set()
     store.close()
+
+
+# ------------------------------------------- Tiefer Nachlauf (23.09.2026)
+#
+# Der Rückblick über drei Monate fängt nur NEUE Lücken. Was davor fehlte,
+# blieb weg: 48 öffentliche Sitzungen seit 2018, gemessen gegen die
+# Monatsübersichten des Ratsinfos. `scripts/nachlauf_sitzungen.py` läuft
+# deshalb wöchentlich über 24 Monate und einmalig ab 2018.
+
+def test_nachlauf_monate_und_jahreswechsel():
+    from scripts.nachlauf_sitzungen import monate, seit_fuer
+
+    assert monate("2025-11", date(2026, 2, 5)) == [(2025, 11), (2025, 12), (2026, 1), (2026, 2)]
+    assert seit_fuer(24, date(2026, 9, 23)) == "2024-09"
+    assert seit_fuer(3, date(2026, 2, 1)) == "2025-11"
+
+
+def test_nachlauf_holt_nur_fehlende_sitzungen(tmp_path):
+    from council.scraper import AgendaItem, CouncilSession
+    from council.store import CouncilStore
+    from scripts.nachlauf_sitzungen import nachlauf
+
+    db = tmp_path / "council.sqlite"
+    store = CouncilStore(db)
+    store.save_session(CouncilSession(
+        ksinr=1, committee="Rat", session_date="2021-10-04",
+        session_time="18:00", location="", agenda_items=[]))
+    store.close()
+
+    heute = date.today()
+
+    class Doppel(_KalenderDoppel):
+        geholt: list[int] = []
+
+        def fetch_session(self, ksinr):
+            self.geholt.append(ksinr)
+            return CouncilSession(
+                ksinr=ksinr, committee="Betriebsausschuss Abfallwirtschaftsbetrieb",
+                session_date="2021-10-13", session_time="17:00", location="",
+                agenda_items=[AgendaItem(item_number="Ö 5",
+                                         title="Gebührenbedarfsberechnungen 2022 - Bericht",
+                                         template_number="21/0713")])
+
+    doppel = Doppel({(2021, 10): [1, 3648], (heute.year, heute.month): [3648]})
+    stats = nachlauf(db, "2021-10", scraper=doppel)
+
+    assert doppel.geholt == [3648]              # bekannt bleibt unberührt, doppelt nur einmal
+    assert stats["Nachgetragen"] == 1
+    store = CouncilStore(db)
+    assert store.known_session_ids([1, 3648]) == {1, 3648}
