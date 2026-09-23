@@ -14,6 +14,7 @@
  * gestrichelter Rahmen für Externes, Paraphrasen kursiv ohne Anführungszeichen.
  */
 
+import { teileKursiv } from "@/lib/kursiv";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, CalendarDays, ChevronDown, ExternalLink, FileDown, MessageSquarePlus } from "lucide-react";
@@ -446,7 +447,7 @@ export type ParteiMeinung = {
 
 /**
  * Antworttext mit Fußnoten und SPARSAMEM Markdown: "[id]" → nummerierte Chips;
- * "**fett**" → <strong>; "- "-Zeilen → echte Liste; "## " → Zwischen-
+ * "**fett**" → <strong>; "*kursiv*" → <em> (lib/kursiv.ts); "- "-Zeilen → echte Liste; "## " → Zwischen-
  * überschrift (NUR diese eine Zeile, nicht der Rest des Absatzes);
  * Leerzeilen → Absätze. Streaming-fest: ein offenes "**" bleibt Text.
  *
@@ -613,7 +614,9 @@ export function AntwortText({ text: rohtext, idToNum, onJump, quelleHref,
       return seg.map((s, j) =>
         /^\*\*[^*]+\*\*$/.test(s)
           ? <strong key={`${keyBase}-${i}-${j}`} className="font-semibold">{mitLexika(s.slice(2, -2), `${keyBase}-${i}-${j}`)}</strong>
-          : <span key={`${keyBase}-${i}-${j}`}>{mitLexika(s, `${keyBase}-${i}-${j}`)}</span>);
+          : <span key={`${keyBase}-${i}-${j}`}>{teileKursiv(s).map((k, n) => k.kursiv
+              ? <em key={n}>{mitLexika(k.text, `${keyBase}-${i}-${j}-${n}`)}</em>
+              : <span key={n}>{mitLexika(k.text, `${keyBase}-${i}-${j}-${n}`)}</span>)}</span>);
     });
   };
 
