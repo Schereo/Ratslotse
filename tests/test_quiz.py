@@ -118,7 +118,7 @@ def test_generate_for_area_parses_and_tags(monkeypatch):
     monkeypatch.setattr(quiz.llm, "chat_complete", _fake_llm(qs))
     rows = quiz.generate_for_area("district", "Osternburg", "Stadtteil Osternburg",
                                   "x" * 500, n=3, source_type="wikipedia", source_ref="http://w",
-                                  verify=False)
+                                  verify=False, judge=False)
     assert len(rows) == 2  # die ungültige Kategorie fliegt raus
     r = rows[0]
     assert r["area_type"] == "district" and r["area_key"] == "Osternburg"
@@ -135,14 +135,16 @@ def test_generate_does_not_cut_explanation_mid_sentence(monkeypatch):
     monkeypatch.setattr(quiz.llm, "chat_complete", _fake_llm(qs))
     rows = quiz.generate_for_area("district", "Osternburg", "Osternburg", "x" * 500,
                                   n=1, source_type="wikipedia", source_ref="http://w",
-                                  verify=False)
+                                  verify=False, judge=False)
     assert rows[0]["explanation"].endswith((".", "…"))
     assert len(rows[0]["explanation"]) <= 600
 
 
-def test_quiz_backfill_requests_only_missing_count(tmp_path, monkeypatch):
+def test_quiz_backfill_overorders_but_saves_only_the_gap(tmp_path, monkeypatch):
+    """Drei fehlen → sechs werden bestellt (die Filter lassen nur einen Teil
+    durch), gespeichert werden aber nur drei, die bestbenoteten zuerst."""
     store = CouncilStore(tmp_path / "c.sqlite")
-    store.save_quiz_questions([_row("Testort", f"Frage {i}?") for i in range(7)])
+    store.save_quiz_questions([_row("Testort", f"Alte Frage Nummer {i}?") for i in range(7)])
     store.close()
     area = {"area_type": "district", "area_key": "Testort", "label": "Testort",
             "place_name": "Testort", "place_id": None, "slug": None}
@@ -150,19 +152,26 @@ def test_quiz_backfill_requests_only_missing_count(tmp_path, monkeypatch):
     monkeypatch.setattr(generate_quiz.quiz, "council_facts", lambda *args, **kwargs: "")
     requested = []
 
-    def fake_gen(_area, _facts, n, _verify):
+    def fake_gen(_area, _facts, n, _verify, _existing=None):
         requested.append(n)
-        return {"status": "ok", "label": "Testort", "rows": []}
+        rows = [{**_row("Testort", f"Ganz neue Kandidatin {k}?"), "appeal": k % 5 + 1}
+                for k in range(n)]
+        return {"status": "ok", "label": "Testort", "rows": rows}
 
     monkeypatch.setattr(generate_quiz, "_gen", fake_gen)
-    generate_quiz.process(tmp_path / "c.sqlite", target=10, per_run=8, workers=1)
-    assert requested == [3]
+    stats = generate_quiz.process(tmp_path / "c.sqlite", target=10, per_run=8, workers=1)
+    assert requested == [6]
+    assert stats["neue_fragen"] == 3
+    store = CouncilStore(tmp_path / "c.sqlite")
+    notes = sorted(q["appeal"] for q in store.quiz_active_rows() if q["appeal"])
+    store.close()
+    assert notes == [3, 4, 5]
 
 
 def test_generate_skips_thin_sources(monkeypatch):
     monkeypatch.setattr(quiz.llm, "chat_complete", _fake_llm([]))  # würde nie aufgerufen
     assert quiz.generate_for_area("district", "X", "X", "zu kurz", n=3,
-                                  source_type="wikipedia", source_ref="", verify=False) == []
+                                  source_type="wikipedia", source_ref="", verify=False, judge=False) == []
 
 
 # ---- Store-Roundtrip --------------------------------------------------------
@@ -238,7 +247,7 @@ def test_generate_estimate_question(monkeypatch):
            "explanation": "rund 12.000"}]
     monkeypatch.setattr(quiz.llm, "chat_complete", _fake_llm(qs))
     rows = quiz.generate_for_area("district", "Osternburg", "Osternburg", "x" * 500,
-                                  n=1, source_type="wikipedia", source_ref="http://w", verify=False)
+                                  n=1, source_type="wikipedia", source_ref="http://w", verify=False, judge=False)
     assert len(rows) == 1
     r = rows[0]
     assert r["qtype"] == "estimate" and r["answer_value"] == 12000.0
@@ -338,7 +347,7 @@ def test_generate_attaches_detail_and_media(monkeypatch):
     monkeypatch.setattr(quiz, "geocode_place", lambda s: (53.14, 8.21))
     monkeypatch.setattr(quiz, "wikipedia_page_url", lambda s: None)  # kein Netz
     rows = quiz.generate_for_area("district", "Oldenburg", "Oldenburg", "x" * 500,
-                                  n=1, source_type="wikipedia", source_ref="http://w", verify=False)
+                                  n=1, source_type="wikipedia", source_ref="http://w", verify=False, judge=False)
     r = rows[0]
     assert r["detail"] == "Das Schloss war die Residenz der Großherzöge."
     assert r["image_url"] == "http://img" and r["image_license"] == "CC BY 4.0"
@@ -415,7 +424,7 @@ def test_generate_attaches_hint(monkeypatch):
     monkeypatch.setattr(quiz, "wikipedia_page_url", lambda s: None)
     rows = quiz.generate_for_area("district", "Bloherfelde", "Bloherfelde", "x" * 500,
                                   n=1, source_type="wikipedia", source_ref="http://w",
-                                  verify=False, enrich=False)
+                                  verify=False, judge=False, enrich=False)
     assert rows[0]["hint"] == "Ein Politiker des 19. Jahrhunderts."
 
 
@@ -437,7 +446,7 @@ def test_generate_attaches_topic(monkeypatch):
     monkeypatch.setattr(quiz.llm, "chat_complete", _fake_llm(qs))
     rows = quiz.generate_for_area("district", "Bloherfelde", "Bloherfelde", "x" * 500,
                                   n=1, source_type="wikipedia", source_ref="http://w",
-                                  verify=False, enrich=False)
+                                  verify=False, judge=False, enrich=False)
     assert rows[0]["topic"] == "Fliegerhorst"
 
 
@@ -481,3 +490,118 @@ def test_enrich_row_skips_city_generic_subject(monkeypatch):
     row2 = {}
     quiz.enrich_row(row2, "Stadt Oldenburg", area_type="district", area_key="Bürgerfelde")
     assert json.loads(row2["geojson"])["type"] in ("Polygon", "MultiPolygon")
+
+
+# ---- Richter, Dubletten, Deckel (09/2026) -----------------------------------
+
+def _mc(question: str, cat: str = "places") -> dict:
+    return {"category": cat, "difficulty": "easy", "question": question,
+            "options": ["Eins", "Zwei", "Drei", "Vier"], "correct_index": 0,
+            "explanation": "Weil es so ist."}
+
+
+def test_judge_drops_dull_questions_and_keeps_the_note(monkeypatch):
+    qs = [_mc("Welches Wahrzeichen steht am Schlossplatz?"),
+          _mc("Wie breit wird die Fahrbahn der Ziegelhofstraße nach dem Ausbau?")]
+    monkeypatch.setattr(quiz.llm, "chat_complete", _fake_llm(qs))
+    monkeypatch.setattr(quiz, "rate_appeal",
+                        lambda q: 4 if "Wahrzeichen" in q["question"] else 2)
+    rows = quiz.generate_for_area("district", "Innenstadt", "Innenstadt", "x" * 500, n=2,
+                                  source_type="wikipedia", source_ref="", verify=False,
+                                  enrich=False)
+    assert [r["question"] for r in rows] == ["Welches Wahrzeichen steht am Schlossplatz?"]
+    assert rows[0]["appeal"] == 4
+
+
+def test_judge_outage_is_no_verdict(monkeypatch):
+    """Fällt der Richter aus, bleibt die Frage — unbenotet, nicht verworfen."""
+    monkeypatch.setattr(quiz.llm, "chat_complete", _fake_llm([_mc("Welcher Fluss fließt durch die Stadt?")]))
+    monkeypatch.setattr(quiz, "rate_appeal", lambda q: None)
+    rows = quiz.generate_for_area("district", "Innenstadt", "Innenstadt", "x" * 500, n=1,
+                                  source_type="wikipedia", source_ref="", verify=False,
+                                  enrich=False)
+    assert len(rows) == 1 and rows[0]["appeal"] is None
+
+
+def test_rate_appeal_reads_the_digit(monkeypatch):
+    def chat(**kwargs):
+        assert kwargs["_feature"] == "quiz_appeal"
+        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=" 4\n"))])
+    monkeypatch.setattr(quiz.llm, "chat_complete", chat)
+    assert quiz.rate_appeal(_mc("Welcher Fluss fließt durch die Stadt?")) == 4
+
+    def broken(**kwargs):
+        raise RuntimeError("weg")
+    monkeypatch.setattr(quiz.llm, "chat_complete", broken)
+    assert quiz.rate_appeal(_mc("Welcher Fluss fließt durch die Stadt?")) is None
+
+
+def test_near_duplicates_are_caught_siblings_are_not():
+    # Beide Paare stehen so im Bestand vom 23.09.2026.
+    assert quiz.is_near_duplicate(
+        "Wie viele Personen können die beiden neuen, jeweils teilbaren Säle jeweils aufnehmen?",
+        ["Wie viele Personen können in den neuen teilbaren Festsälen jeweils untergebracht werden?"])
+    assert not quiz.is_near_duplicate(
+        "Was ist der Hauptzweck der Klävemann-Stiftung?",
+        ["Wer verwaltet die Klävemann-Stiftung?"])
+
+
+def test_generate_skips_rephrasings_of_existing_questions(monkeypatch):
+    qs = [_mc("Wodurch sind die Bornhorster Seen ursprünglich entstanden?")]
+    monkeypatch.setattr(quiz.llm, "chat_complete", _fake_llm(qs))
+    rows = quiz.generate_for_area("district", "Ohmstede", "Ohmstede", "x" * 500, n=1,
+                                  source_type="wikipedia", source_ref="", verify=False,
+                                  judge=False, enrich=False,
+                                  existing=["Wodurch entstanden die beiden Bornhorster Seen?"])
+    assert rows == []
+
+
+def test_council_politics_is_capped_per_delivery(monkeypatch):
+    qs = [_mc(f"Welche Entscheidung traf der Rat zum Projekt Nummer {w}?", "council_politics")
+          for w in ("eins", "zwei", "drei", "vier", "fünf", "sechs")]
+    qs.append(_mc("Welches Wahrzeichen steht am Schlossplatz?"))
+    monkeypatch.setattr(quiz.llm, "chat_complete", _fake_llm(qs))
+    monkeypatch.setattr(quiz, "is_near_duplicate", lambda *a, **k: False)
+    rows = quiz.generate_for_area("district", "Innenstadt", "Innenstadt", "x" * 500, n=6,
+                                  source_type="wikipedia", source_ref="", verify=False,
+                                  judge=False, enrich=False)
+    cats = [r["category"] for r in rows]
+    assert cats.count("council_politics") == 2 and "places" in cats
+
+
+def test_questions_about_the_sources_are_invalid():
+    q = _mc("Welches Thema wurde in den Quellen neben der Quartiersentwicklung diskutiert?")
+    assert not quiz._valid(q)
+
+
+def test_appeal_orders_the_round_and_gates_the_daily(tmp_path):
+    store = CouncilStore(tmp_path / "c.sqlite")
+    store.save_quiz_questions([
+        {**_row("Osternburg", "Reizvolle Frage?"), "appeal": 4},
+        {**_row("Osternburg", "Unbenotete Frage?")},
+        {**_row("Osternburg", "Dröge Frage?"), "appeal": 2},
+    ])
+    for _ in range(5):
+        picked = store.pick_quiz_questions([("district", "Osternburg")], None, [], 3)
+        assert picked[-1]["question"] == "Dröge Frage?"
+    daily = {q["question"] for q in store.daily_quiz_questions("2026-09-23", n=5)}
+    assert daily == {"Reizvolle Frage?", "Unbenotete Frage?"}
+    store.set_quiz_appeal({store.quiz_active_rows()[1]["id"]: 1})
+    assert {q["question"] for q in store.daily_quiz_questions("2026-09-23", n=5)} == {"Reizvolle Frage?"}
+    store.close()
+
+
+def test_sweep_keeps_the_newest_of_exact_and_near_duplicates():
+    from scripts import sweep_quiz
+    qs = [
+        {"id": 643, "area_type": "topic", "area_key": "haushalt", "question": "Wofür gibt die Stadt am meisten aus?"},
+        {"id": 1093, "area_type": "topic", "area_key": "haushalt", "question": "Wofür gibt die Stadt am meisten aus?"},
+        # Haushalt: „fast gleich" zählt dort nicht — die Bereichsfragen
+        # unterscheiden sich nur im Namen.
+        {"id": 640, "area_type": "topic", "area_key": "haushalt", "question": "Wie viel plant Oldenburg für „Soziales und Gesundheit“?"},
+        {"id": 641, "area_type": "topic", "area_key": "haushalt", "question": "Wie viel plant Oldenburg für „Jugend und Familie“?"},
+        {"id": 35, "area_type": "district", "area_key": "Ohmstede", "question": "Wodurch entstanden die beiden Bornhorster Seen?"},
+        {"id": 338, "area_type": "district", "area_key": "Ohmstede", "question": "Wodurch sind die Bornhorster Seen ursprünglich entstanden?"},
+    ]
+    pairs = {(drop["id"], keep["id"]) for drop, keep in sweep_quiz.find_duplicates(qs)}
+    assert pairs == {(643, 1093), (35, 338)}

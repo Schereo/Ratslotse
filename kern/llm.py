@@ -253,7 +253,7 @@ OHNE_NUTZEREINGABE: frozenset[str] = frozenset({
     # Bewertungen und Kurzfassungen von Beschlüssen und Tagesordnungen
     "impact_rating", "impact_rating_agenda", "interest_rating", "goal_rating",
     "simple_summary", "committee_summary", "topic_classification", "field_recap",
-    "daily_find_story", "quiz_generation", "quiz_verify",
+    "daily_find_story", "quiz_generation", "quiz_verify", "quiz_appeal",
     # Protokolle, Anlagen, Sitzungs-Mitschnitt
     "minutes_extraction", "attachment_ocr", "speeches", "video_results",
     "livestream_transcript", "live_top_tracker",

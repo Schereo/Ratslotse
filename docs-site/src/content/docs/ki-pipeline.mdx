@@ -255,7 +255,21 @@ Erklärung, Kategorie und **Quellenangabe**; es erfindet nichts frei.
 Ein zweiter, günstiger **Verify-Pass** (kleines Modell) verwirft Fragen, die
 nicht eindeutig aus der Quelle belegbar sind. Antwortoptionen werden gemischt
 (die richtige Antwort liegt sonst gern auf Position A), Dubletten fängt ein
-`content_hash`. Zusätzlich bewerten **Nutzer*innen** jede Frage nach dem
+`content_hash`.
+
+Danach kommt der **Richter** (seit 09/2026, `quiz.rate_appeal`): Er fragt
+nicht, ob eine Frage stimmt, sondern ob man sie gern spielt, und benotet sie
+von 1 bis 5. Unter 3 wird eine neue Frage gar nicht erst gespeichert; im
+Bestand kommen knappe Fälle in der Runde erst nach den reizvollen dran und
+nie in die Tages-Challenge. Umformulierungen einer schon vorhandenen Frage
+fallen über einen Wortvergleich heraus, und Ratspolitik macht höchstens ein
+Drittel einer Lieferung aus. Anlass: Im Bestand waren 48 % der Fragen
+Ratspolitik, und viele davon fragten Straßenabschnitte oder
+Aufstellungsbeschlüsse ab, obwohl der Erzeugungs-Prompt genau das seit Juli
+verbietet. Den Bestand räumt `scripts/sweep_quiz.py` auf (Trockenlauf ohne
+`--retire`; alle rund 700 Fragen kosten gemessen $0,03).
+
+Zusätzlich bewerten **Nutzer*innen** jede Frage nach dem
 Beantworten (👍/👎) — schlecht bewertete erscheinen in einer Admin-Liste und
 werden ausgemustert; da der Backfill nur Gebiete **unter** der Ziel-Fragenzahl
 auffüllt, erzeugt der nächste Lauf automatisch Ersatz.
