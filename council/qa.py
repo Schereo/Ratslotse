@@ -2385,7 +2385,12 @@ def _haushalt_block(zeilen: list[dict] | None) -> str:
         return ""
     teile = []
     for r in zeilen:
-        s = (f"- {r['area']} ({r['year']}): Aufwendungen {_eur(r.get('expenses'))}, "
+        # Eine Rangfolge (`geld.rangfrage`) sagt, WAS für eine Liste das ist:
+        # die größten Teilhaushalte, nicht die zur Frage passenden. Ohne den
+        # Platz stünde „Soziales und Gesundheit" wie ein Suchtreffer da.
+        platz = (f"Platz {r['rang']} der Teilhaushalte nach Aufwendungen: "
+                 if r.get("rang") else "")
+        s = (f"- {platz}{r['area']} ({r['year']}): Aufwendungen {_eur(r.get('expenses'))}, "
              f"Erträge {_eur(r.get('revenues'))}")
         if r.get("year_before"):
             s += (f" — {r['year_before']} waren es {_eur(r.get('expenses_before'))} "
@@ -2407,6 +2412,12 @@ def _steuern_block(zeilen: list[dict] | None) -> str:
     teile = []
     for r in zeilen:
         name = "Steuereinnahmen insgesamt" if r["kind"] == "total" else r["kind"]
+        if r["kind"] == "sonstige Steuern":
+            # Nach der Hunde- oder Zweitwohnungsteuer gefragt, kommt diese
+            # Sammelzeile — und ohne den Zusatz läse sich ihr Betrag wie der
+            # der gefragten Steuer.
+            name += (" (Sammelposten der kleinen Gemeindesteuern, z. B. Hundesteuer — "
+                     "einzeln weist die Quelle keine davon aus)")
         s = f"- {name} ({r['year']}, tatsächlich eingenommen): {_eur(r.get('amount'))}"
         if r.get("year_before") and r.get("amount_before"):
             s += f" — {r['year_before']} waren es {_eur(r['amount_before'])}"
@@ -2533,11 +2544,15 @@ _F_AUFGABE = re.compile(
 # „Betriebskosten" gingen leer aus, obwohl sie dieselbe Frage stellen. Die
 # Endung fängt sie, ohne die Falle zu öffnen, die `\bteuer` schließt: Ein Wort
 # wie „Kostüm" endet nicht auf „kosten".
+# 60 statt 40 Zeichen zwischen „gibt" und „aus" (Fakten-Eval 23.09.2026):
+# „Wie viel gibt die Stadt 2026 für Transferleistungen wie Sozialhilfe aus?"
+# hat 52 dazwischen und zog deshalb GAR NICHTS — der Plan kam nur über den
+# Auffang für den Fragetyp `money`, ohne Ansatz und ohne Produkte.
 _F_AUFGABE_FUER = re.compile(
     r"(?:haushalt|etat|budget|ansatz|geplant|eingeplant|vorgesehen|veranschlagt)"
     r"[^.?!]{0,30}\bfuer\b")
 _F_KOSTEN = re.compile(
-    r"\bkost|kosten\b|\bteuer|\bpreis|gibt.{0,40}\baus\b|geben.{0,40}\baus\b|"
+    r"\bkost|kosten\b|\bteuer|\bpreis|gibt.{0,60}\baus\b|geben.{0,60}\baus\b|"
     r"ausgegeben fuer|ausgaben fuer|aufwend")
 # Zwei Wörter sind hier am 17.08. HERAUSGEFALLEN, und beide waren gemessene
 # Fehlleitungen — nicht Kosmetik:
@@ -2549,7 +2564,7 @@ _F_KOSTEN = re.compile(
 #   Auch sie hat jetzt ihre eigene (`_F_INVEST`).
 _F_PLAN = re.compile(
     r"haushalt|\betat\b|budget|\bansatz|\bkost|kosten\b|\bteuer|\bpreis|\bausga[bp]|ausgeb|"
-    r"ausgeg|ausgib|gibt.{0,40}\baus\b|geben.{0,40}\baus\b|"
+    r"ausgeg|ausgib|gibt.{0,60}\baus\b|geben.{0,60}\baus\b|"
     r"aufwend|einnahm|ertrag|ertraeg|finanziert|zuschuss|foerder|"
     r"million|\bmio\b|\beuro\b|defizit|ueberschuss")
 # Enger als `_F_PLAN`, und das mit Absicht: `ansatz_fuer_begriffe` fällt ohne
@@ -2569,12 +2584,23 @@ _F_IST_HART = re.compile(
     # „Jahresergebnis" zog bis 09/2026 gar nichts — die schlichteste Frage an
     # den Abschluss bekam keinen Abschluss.
     r"jahresergebnis|ordentliche[sn]? ergebnis|"
-    r"ueberschritten|fehlbetrag|\bdefizit|ueberschuss|\bbilanz")
+    r"ueberschritten|fehlbetrag|\bdefizit|ueberschuss|\bbilanz|"
+    # „Warum war das Ergebnis 2024 besser als geplant?" zog bis 09/2026
+    # nichts: „Ergebnis" allein ist kein Ist-Wort, und „geplant" ist nur ein
+    # weiches — ohne Plan-Anker. Der Vergleich mit dem Plan IST die Frage an
+    # den Jahresabschluss (Fakten-Eval 23.09.2026).
+    # Bis zu zwei Wörter dazwischen: „2024 besser LIEF als geplant". Nur
+    # besser/schlechter — „mehr rein als geplant" ist die Frage an den
+    # Steuerplan (`tax_plan`), und dort bleibt sie (tests/test_geld_tax_plan.py).
+    r"(?:besser|schlechter)(?: \w+){0,2} als (?:geplant|erwartet|veranschlagt|angesetzt)")
 _F_IST_WEICH = re.compile(
     r"tatsaechlich|wirklich|am ende|unterm strich|eingehalten|abweich|"
-    r"geplant|\bplan\b|\bsoll\b|herausgekommen|geworden")
+    r"geplant|\bplan\b|\bsoll\b|herausgekommen|geworden|"
+    # „Wie ist das Haushaltsjahr 2025 ausgegangen?" — dieselbe Frage wie
+    # „herausgekommen", und für ein Jahr ohne Abschluss die an den Vollzug.
+    r"ausgegangen")
 # `\bgrund\b` statt `\bgrund`: „GRUNDsteuer" ist kein Warum (gemessen 16.08.).
-_F_GRUND = re.compile(r"\bwarum|weshalb|wieso|woran liegt|wie kommt|"
+_F_GRUND = re.compile(r"\bwarum|weshalb|wieso|woran liegt|woran lag|wie kommt|"
                       r"\bgrund\b|\bgruende\b|\bursach|erklaer.{0,12}(sich|das|warum)")
 _F_STEUERN = re.compile(r"steuer|hebesatz|gewerbe|grundbesitz")
 _F_GEBUEHREN = re.compile(
@@ -2598,7 +2624,9 @@ _F_AUSGLEICH = re.compile(
 #   „buergschaft". Ein negativer Vorgriff auf „er" allein reicht nicht, weil
 #   er die Bürger*innen zwar aussperrt, „Oldenburg" aber durchlässt.
 _F_SCHULDEN = re.compile(
-    r"schulden|verschuld|entschuld|schuldenstand|\bkredit|darlehen|tilgung|"
+    # `\btilg` statt „tilgung": „Wie viel tilgt die Stadt jedes Jahr?" hat
+    # kein Substantiv und zog bis 09/2026 nur den Plan (Fakten-Eval 23.09.).
+    r"schulden|verschuld|entschuld|schuldenstand|\bkredit|darlehen|\btilg|"
     r"\bbuergschaft|\bverbuergt|\bbuergt\b|\bbuergen\b|"
     r"eventualverbindlichkeit|geradesteh|geradezusteh")
 # Gesucht wird auf dem GEFALTETEN Text (`_falte`: ä→ae, ö→oe, ü→ue, ß→ss) —
@@ -2621,7 +2649,9 @@ _F_NACHBEWILLIGUNG = re.compile(
 _F_KENNZAHL = re.compile(
     r"kennzahl|eigenkapitalquote|anlagenintensitaet|infrastrukturquote|"
     r"steuerquote|personalintensitaet|reinvestitionsquote|"
-    r"vermoegen je einwohner|vermoegen pro einwohner")
+    # Nicht mehr am Stück: „Wie viel Vermögen hat die Stadt pro Einwohner?"
+    # hat vier Wörter dazwischen und fand die Kennzahl bis 09/2026 nicht.
+    r"vermoegen[^.?!]{0,40}\b(?:je|pro) einwohner")
 _F_INVEST = re.compile(
     r"investit|investier|investiv|\bgebaut\b|\bbauen\b|neubau|baumassnahm|"
     r"finanzhaushalt|auszahlung")
@@ -2634,7 +2664,11 @@ _F_STELLEN_HART = re.compile(
     r"stellenplan|planstelle|stellenbesetzung|besetzungsgrad|unbesetzt|\bvakan|"
     # „personal" ohne den Ausweis: „Wo bekomme ich einen Personalausweis?" ist
     # keine Stellenplan-Frage und hätte ihn sonst im Kontext gehabt.
-    r"personal(?!ausweis)|beschaeftigt|mitarbeiter|mitarbeitende|belegschaft|\bbeamt")
+    r"personal(?!ausweis)|beschaeftigt|mitarbeiter|mitarbeitende|belegschaft|\bbeamt|"
+    # „Wie viele Leute arbeiten bei der Stadt?" — die Alltagsfassung derselben
+    # Frage, bis 09/2026 ohne jeden Stellenplan (Fakten-Eval 23.09.2026).
+    r"(?:leute|menschen|personen)[^.?!]{0,20}\barbeiten|"
+    r"arbeiten[^.?!]{0,20}(?:bei|fuer) der stadt|angestellte")
 _F_STELLEN_ZAHL = re.compile(
     r"(?:viele|anzahl|zahl der|wie hoch)[^.?!]{0,30}\bstellen\b|"
     r"\bstellen\b[^.?!]{0,30}(?:besetzt|frei|gestrichen|geschaffen|abgebaut)")
@@ -2672,6 +2706,18 @@ def haushaltsjahr(question: str) -> int | None:
     if re.search(r"\b(seit|ab|nach|zwischen|bis)\s+" + str(jahre[0]) + r"\b", t):
         return None
     return jahre[0]
+
+
+def reihen_anfang(question: str) -> int | None:
+    """Das Anfangsjahr einer gefragten Reihe — „seit 2015", „ab 2015".
+
+    Das Gegenstück zu :func:`haushaltsjahr`, das genau diese Jahre verwirft
+    (sie sind kein Jahrgang). Für eine Reihe sind sie der eine Punkt, den die
+    Frage ausdrücklich nennt: „Wie haben sich die Schulden seit 2015
+    entwickelt?" bekam bis 09/2026 das jüngste Jahr, das Vorjahr und den
+    Höchststand — und 2015 nicht (Fakten-Eval 23.09.2026)."""
+    m = re.search(r"\b(?:seit|ab|von)\s+(19[89]\d|20[0-4]\d)\b", _falte(question or ""))
+    return int(m.group(1)) if m else None
 
 
 def geld_facetten(question: str, typ: str = "topic") -> set[str]:
@@ -2834,6 +2880,11 @@ def geld_kontext(store, question: str, begriffe: str = "", typ: str = "topic") -
     facetten = geld_facetten(question, typ)
     # Die Begriffe kommen aus der Expansion; ohne sie tut es die Frage selbst.
     woerter = [w for w in (begriffe or question or "").split() if w]
+    # Ein Rangfolge-Wort aus der FRAGE („am meisten", „größte") reist als
+    # Begriff mit, auch wenn die Expansion es weggelassen hat — die Quellen,
+    # die eine Rangfolge bilden können, erkennen es daran (`geld.rangfrage`).
+    woerter += [w for w in (question or "").split()
+                if _geld.RANG_WORT.match(_geld.falte(w)) and w not in woerter]
     # Das Jahr aus der FRAGE, nicht aus den Begriffen: Die Expansion streut
     # Jahreszahlen ein, die niemand getippt hat. Jede Quelle bekommt es und
     # liefert den Jahrgang, wenn sie ihn hat — sonst den jüngsten, mit Vermerk.
@@ -2861,7 +2912,10 @@ def geld_kontext(store, question: str, begriffe: str = "", typ: str = "topic") -
     if "konzern" in facetten:
         aus["konzern"] = _sicher(store.konzern_kontext, year=jahr)
     if "vergleich" in facetten:
-        aus["vergleich"] = _sicher(store.staedtevergleich_kontext, year=jahr)
+        # Die Begriffe wählen die Kennzahl (Hebesatz, Einnahmekraft je
+        # Einwohner); ohne Treffer bleibt es bei der Steuerkraft.
+        aus["vergleich"] = _sicher(store.staedtevergleich_kontext, year=jahr,
+                                   terms=woerter + (question or "").split())
     if "ansatz" in facetten:
         # Der Ergebnishaushalt ist die feinere Plan-Quelle (Ertrags- und
         # Aufwandsarten), die gröbere (`council_budget`, Teilhaushalte) die
@@ -2879,7 +2933,8 @@ def geld_kontext(store, question: str, begriffe: str = "", typ: str = "topic") -
         if a and (a.get("treffer") or (eigen and not aus.get("haushalt"))):
             aus["ansatz"] = a
     if "schulden" in facetten:
-        aus["schulden"] = _sicher(store.schulden_kontext, year=jahr)
+        aus["schulden"] = _sicher(store.schulden_kontext, year=jahr,
+                                  seit=reihen_anfang(question))
     if "bilanz" in facetten:
         aus["bilanz"] = _sicher(store.bilanz_kontext, year=jahr)
     if "kassensicht" in facetten:
@@ -3108,7 +3163,11 @@ def _gruende_block(gruende: list[dict] | None) -> str:
         return ""
     zeilen = []
     for g in gruende:
-        delta = f" ({g['delta_meur']:+.1f} Mio. €)" if g.get("delta_meur") is not None else ""
+        # Mit Dezimalkomma: „+75.1 Mio. €" liest ein deutscher Leser — und die
+        # Fakten-Eval — als 751 Mio. € (Fund vom 23.09.2026).
+        delta = (f" ({'+' if g['delta_meur'] >= 0 else '-'}"
+                 f"{_geld.de_mio(abs(g['delta_meur']) * 1e6)} Abweichung zum Plan)"
+                 if g.get("delta_meur") is not None else "")
         zeilen.append(f"- {g['label']} {g['year']}{delta}: "
                       f"{' '.join((g.get('text') or '').split())[:400]}"
                       + _beleg_text(g.get("beleg")))
@@ -3182,10 +3241,10 @@ def _konzern_block(k: dict | None) -> str:
     # Bis 09/2026 standen sie ohne Jahr auf derselben Ebene wie der Konzern.
     einheiten = [t for t in (k.get("entity") or []) if (t.get("amount_keur") or 0) > 0]
     if einheiten:
-        zeilen.append(f"- Die größten Einheiten {jahr}, je ihr eigener Abschluss, "
-                      "bevor der Konzern ihre Geschäfte untereinander herausrechnet "
-                      "(zusammen mehr als der Konzern — nie addieren):")
-        for t in einheiten[:4]:
+        zeilen.append(f"- Die Einheiten des Gesamtabschlusses {jahr}, je ihr eigener "
+                      "Abschluss, bevor der Konzern ihre Geschäfte untereinander "
+                      "herausrechnet (zusammen mehr als der Konzern — nie addieren):")
+        for t in einheiten:
             zeilen.append(f"  - {t['entity']} {jahr}: "
                           f"{_eur((t.get('amount_keur') or 0) * 1000)} Aufwendungen "
                           "(auf Tausend Euro genau, mehr gibt der Bericht nicht her)")
@@ -3207,16 +3266,54 @@ def _vergleich_block(v: dict | None) -> str:
     """
     if not v or not v.get("staedte"):
         return ""
-    teur = v.get("unit") == "teur"
-    unit = "" if teur else (f" {v['unit']}" if v.get("unit") else "")
-    zeilen = [f"- {s['city']}: "
-              + (_eur(s["value"] * 1000) if teur
-                 else f"{s['value']:,.0f}".replace(",", ".")) + unit
-              for s in v["staedte"][:8] if s.get("value") is not None]
-    return (f"\nIM VERGLEICH ({v['indicator']}, {v['year']}, amtliche Statistik des\n"
-            "Landesamts für Statistik Niedersachsen — alle kreisfreien Städte\n"
-            "Niedersachsens). Für die Einordnung „wo steht Oldenburg?“; NIE mit [id]"
-            + _beleg_text(v.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n" + _jahr_hinweis(v))
+    teile = [_vergleich_kennzahl_zeilen(k) for k in [v, *(v.get("weitere") or [])]]
+    return ("\nIM VERGLEICH (amtliche Statistik des Landesamts für Statistik "
+            "Niedersachsen —\nalle kreisfreien Städte Niedersachsens). Für die "
+            "Einordnung „wo steht\nOldenburg?“; NIE mit [id]"
+            + _beleg_text(v.get("beleg")) + ":\n" + "\n".join(t for t in teile if t)
+            + "\n" + _jahr_hinweis(v))
+
+
+#: Die Kennzahlen des Städtevergleichs so, wie ein Mensch sie nennt.
+_VERGLEICH_NAMEN = {
+    "steuerkraftmesszahl": "Steuerkraftmesszahl",
+    "population": "Einwohnerzahl",
+    "steuereinnahmekraft_je_ew": "Steuereinnahmekraft je Einwohner",
+    "hebesatz_gewerbesteuer": "Hebesatz Gewerbesteuer",
+    "hebesatz_grundsteuer_a": "Hebesatz Grundsteuer A",
+    "hebesatz_grundsteuer_b": "Hebesatz Grundsteuer B",
+    "ist_je_ew_gewerbesteuer": "Gewerbesteuer-Aufkommen je Einwohner",
+    "ist_je_ew_grundsteuer_a": "Grundsteuer-A-Aufkommen je Einwohner",
+    "ist_je_ew_grundsteuer_b": "Grundsteuer-B-Aufkommen je Einwohner",
+}
+
+
+def _vergleich_wert(value: float, unit: str | None) -> str:
+    """Ein Wert in seiner Einheit — Prozent, Euro je Einwohner, Euro, Anzahl."""
+    if unit == "teur":
+        return _eur(value * 1000)
+    if unit == "percent":
+        return f"{value:,.0f} %".replace(",", ".")
+    if unit == "eur_je_ew":
+        return (f"{value:,.2f} € je Einwohner".replace(",", "\x00")
+                .replace(".", ",").replace("\x00", "."))
+    return f"{value:,.0f}".replace(",", ".") + (f" {unit}" if unit and unit != "count" else "")
+
+
+def _vergleich_kennzahl_zeilen(k: dict) -> str:
+    """Eine Kennzahl: Kopfzeile mit Jahr, darunter die Städte absteigend.
+
+    Die Städte tragen das Jahr selbst (Regel aus tests/test_geld_gliederung.py):
+    Stehen zwei Kennzahlen verschiedener Jahrgänge untereinander, gehört
+    jede Zahl erkennbar zu ihrem."""
+    staedte = [s for s in (k.get("staedte") or [])[:8] if s.get("value") is not None]
+    if not staedte:
+        return ""
+    name = _VERGLEICH_NAMEN.get(k["indicator"], k["indicator"])
+    zeilen = [f"- {name} {k['year']}, absteigend:"]
+    zeilen += [f"  - {s['city']} {k['year']}: {_vergleich_wert(s['value'], k.get('unit'))}"
+               for s in staedte]
+    return "\n".join(zeilen)
 
 
 def _ansatz_block(a: dict | None) -> str:
@@ -3441,6 +3538,9 @@ def _schulden_block(s: dict | None) -> str:
     if s.get("hoch"):
         zeilen.append(f"- Höchster Stand der Reihe seit {s['reihe_ab']}, Jahresende "
                       f"{s['hoch']['year']}: {_eur(s['hoch']['total'])} (ohne Aufteilung)")
+    if s.get("anfang"):
+        zeilen.append(f"- Stand im gefragten Anfangsjahr, Jahresende {s['anfang']['year']}: "
+                      f"{_eur(s['anfang']['total'])} (ohne Aufteilung)")
     zeilen.append(f"- Abgrenzung, gehört an jede dieser Zahlen: {s['abgrenzung']}")
     # DIE ANDEREN BEIDEN ZAHLEN. Ohne sie beantwortet die KI-Frage „Wie hoch
     # sind die Schulden?" mit einer von dreien, und welche es wird, entscheidet
@@ -3494,6 +3594,26 @@ def _investitionen_block(i: dict | None) -> str:
         zeilen.append(f"  - davon {r['label']} ({jahr}): Auszahlungen "
                       f"{_geld.de_betrag(r.get('outflows'))}, Einzahlungen "
                       f"{_geld.de_betrag(r.get('inflows'))}")
+    n = i.get("neuer_plan")
+    if n:
+        # Eigene Zeile auf oberster Ebene, mit eigenem Jahr und eigener
+        # Quelle: Sie ist KEIN Teil der Summe darüber, sondern der nächste
+        # Jahrgang, den es nur als Summe gibt (s. Store-Methode).
+        stand = n.get("as_of") or ""
+        tag = f"{stand[8:10]}.{stand[5:7]}.{stand[:4]}" if len(stand) >= 10 else stand
+        zeilen.append(
+            f"- Neuerer Plan {n['budget_year']} (nur als Summe, noch ohne Teilhaushalte): "
+            f"Investitionsauszahlungen geplant {_eur(n['budgeted'])}"
+            + (f", erwartet {_eur(n['forecast'])}" if n.get("forecast") is not None else "")
+            + f" — laut Finanz- und Leistungsbericht, Stand {tag}"
+            + _beleg_text(n.get("beleg")))
+    hinweis = _jahr_hinweis(i)
+    if n and i.get("year_asked") == n["budget_year"]:
+        # Der allgemeine Hinweis („gib die Zahlen nicht für 2026 aus")
+        # widerspräche der Zeile darüber, die genau das Jahr trägt.
+        hinweis = (f"- Für {n['budget_year']} gibt es nur die Summe „Neuerer Plan "
+                   f"{n['budget_year']}“; die Zeilen nach Teilhaushalten gelten für "
+                   f"{jahr} — nenne sie nicht als {n['budget_year']}.\n")
     return (f"\nINVESTITIONEN (Finanzhaushalt des Haushaltsplans {i['year']} — GEPLANT).\n"
             "ES SIND ZWEI HAUSHALTE, NICHT EINER: Hier steht, was die Stadt bauen und\n"
             "kaufen will. Im Ergebnishaushalt (Aufwendungen und Erträge, eigener\n"
@@ -3502,7 +3622,7 @@ def _investitionen_block(i: dict | None) -> str:
             "beiden nie addieren, nie voneinander abziehen, nie als Anteil "
             "gegeneinander\nrechnen. Und diese Zeilen nennen KEIN einzelnes Vorhaben: "
             "„Verkehr und\nStraßenbau: 10,5 Mio. €“ sagt nicht, welche Straße. NIE mit [id]"
-            + _beleg_text(i.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n" + _jahr_hinweis(i))
+            + _beleg_text(i.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n" + hinweis)
 
 
 def _gebaut_block(g: dict | None) -> str:
@@ -3716,7 +3836,17 @@ def geld_auswahl(geld: dict | None,
         max_chars = GELD_MAX_CHARS
     aus: list[tuple[str, str]] = []
     laenge = 0
-    for facette in GELD_FACETTEN:
+    # `vorrang`: die Facetten, die die FRAGE selbst gezogen hat, stehen vorn
+    # (Lotti setzt das — dort zieht auch der Bildschirm Facetten). „Wie viel
+    # hat die Stadt 2025 tatsächlich investiert?" auf der Schulden-Seite hatte
+    # den Schuldenstand der Seite vor den Investitionen im Kontext, und das
+    # Ist 2025 fiel als letzter Baustein aus dem Deckel (Fakten-Eval
+    # 23.09.2026). Innerhalb beider Gruppen gilt die Reihenfolge von
+    # GELD_FACETTEN unverändert.
+    vorrang = set(geld.get("vorrang") or ())
+    reihenfolge = ([f for f in GELD_FACETTEN if f in vorrang]
+                   + [f for f in GELD_FACETTEN if f not in vorrang])
+    for facette in reihenfolge:
         key, bauer = _GELD_BAUSTEINE[facette]
         text = bauer(geld.get(key))
         if not text:

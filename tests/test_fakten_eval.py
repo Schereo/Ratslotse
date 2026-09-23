@@ -145,6 +145,32 @@ def test_kontextfehler_werden_nach_baustein_gruppiert():
     assert "store.schulden_kontext" in text and "bekannt, Fix unterwegs" in text
 
 
+def test_arbeitsliste_nimmt_je_fall_den_neuesten_stand():
+    """Ein Teillauf nach einem Kontext-Nachzug (nur die Haushaltsfälle)
+    überstimmt den älteren Gesamtlauf für SEINE Fälle — die übrigen Fälle
+    behalten ihren Befund aus dem Gesamtlauf. Zwei Läufe desselben Stands
+    („nach K1, Lauf 1" und „…, Lauf 2") zählen beide."""
+    faelle = [{"id": i, "kanal": "rat", "frage": "?", "kategorie": "k", "baustein": "b",
+               "gold": [{"art": "zahl", "wert": 5, "quelle": "q"}]} for i in ("hh", "rat")]
+    fehlt = {"fehlerart": "kontext_fehlt", "kanal": "rat", "frage": "?", "weg": "ask",
+             "kontext_ok": False, "antwort_ok": False, "ms": 1, "erfunden": [],
+             "gold": [{"fakt": "x", "kontext": {"status": "fehlt", "fundstellen": [],
+                                                "jahre": []}}]}
+    ok = {**fehlt, "fehlerart": "ok", "kontext_ok": True, "antwort_ok": True}
+
+    def lauf(stempel, etikett, zeilen):
+        return {**_lauf("m", zeilen), "zeitstempel": stempel, "etikett": etikett}
+    alt = lauf("20260923-08", "nach #1493", [{**fehlt, "id": "hh"}, {**fehlt, "id": "rat"}])
+    neu1 = lauf("20260923-12", "nach K1, Lauf 1", [{**ok, "id": "hh"}])
+    neu2 = lauf("20260923-13", "nach K1, Lauf 2", [{**ok, "id": "hh"}])
+    ids = [e["id"] for es in rf.kontextfehler([alt, neu1, neu2], faelle).values() for e in es]
+    assert ids == ["rat"]
+    # Fehlt der Fakt in EINEM der beiden neuen Läufe, steht der Fall drauf.
+    neu2 = lauf("20260923-13", "nach K1, Lauf 2", [{**fehlt, "id": "hh"}])
+    ids = [e["id"] for es in rf.kontextfehler([alt, neu1, neu2], faelle).values() for e in es]
+    assert sorted(ids) == ["hh", "rat"]
+
+
 def test_bericht_ersetzt_nur_den_erzeugten_teil(tmp_path):
     ziel = tmp_path / "b.md"
     ziel.write_text(f"# Kopf\nvon Hand\n\n{rf.MARKE_AN}\nalt\n{rf.MARKE_AUS}\n\nFuß von Hand\n")

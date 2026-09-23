@@ -2294,6 +2294,11 @@ class HaushaltMixin(StoreBasis):
         probes = herkunft.probe
         if not isinstance(probes, str):
             probes = ",".join(probes)
+        # Das Beschlussdatum kommt aus den Ratsbeschlüssen, nicht aus dem
+        # Entwurf (council/budget_bylaw.py, Modulkopf): Der Parser liefert bei
+        # einem Entwurf keins, und der Rat hat oft Wochen später beschlossen
+        # als geplant — 2026 am 09.02. statt am 15.12.2025.
+        sitzung = satzung.session_date or self.bylaw_session_date(satzung.year)
 
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self.transaktion():
@@ -2320,9 +2325,18 @@ class HaushaltMixin(StoreBasis):
                  satzung.commitment_authorizations,
                  satzung.liquidity_loans,
                  satzung.property_tax_a_rate, satzung.property_tax_b_rate,
-                 satzung.trade_tax_rate, satzung.session_date,
+                 satzung.trade_tax_rate, sitzung,
                  satzung.template_number, probes, hid, now))
         return 1
+
+    def bylaw_session_date(self, year: int) -> str | None:
+        """Das Datum des Ratsbeschlusses zur Haushaltssatzung, ``TT.MM.JJJJ``.
+
+        Dieselbe Schreibweise, die die Spalte ``session_date`` immer hatte;
+        die Quelle ist ``budget_adoption`` (``council/geld/bylaw.py``)."""
+        b = self.budget_adoption(year)
+        d = (b or {}).get("date") or ""
+        return f"{d[8:10]}.{d[5:7]}.{d[:4]}" if len(d) >= 10 and d[4] == "-" else None
 
     def save_haushaltsvollzug(self, bericht, herkunft) -> int:
         """Eine Übersichtstabelle eines Finanz- und Leistungsberichts ersetzen.
@@ -2983,8 +2997,14 @@ class HaushaltMixin(StoreBasis):
                  for f in feststellungen])
         return len(feststellungen)
 
-    def schulden_kontext(self, year: int | None = None) -> dict | None:
+    def schulden_kontext(self, year: int | None = None,
+                         seit: int | None = None) -> dict | None:
         """Der Schuldenstand: jüngstes Jahr, Vorjahr, höchster Stand der Reihe.
+
+        ``seit`` ist das Anfangsjahr einer gefragten Entwicklung („seit
+        2015"): Dann steht auch dieser Punkt da. Die drei festen Punkte allein
+        beantworten „Wie haben sich die Schulden seit 2015 entwickelt?" ohne
+        2015 (Fakten-Eval 23.09.2026).
 
         Ein **Bestand**, kein Jahresverlauf — und genau deshalb eine eigene
         Quelle. Der Haushaltsplan sagt, was die Stadt in einem Jahr einnimmt
@@ -3023,6 +3043,11 @@ class HaushaltMixin(StoreBasis):
         # Bewertung: Er sagt, ob die jüngste Zahl im historischen Vergleich
         # oben oder unten liegt — sonst schwebt sie ohne jeden Maßstab.
         hoch = max(rows, key=lambda r: r["total"])
+        # Der Anfangspunkt nur, wenn er nicht schon als einer der anderen
+        # dasteht — zweimal dieselbe Zahl ist keine zweite Auskunft.
+        schon = {neu["year"], hoch["year"]} | (
+            {rows_bis[-2]["year"]} if len(rows_bis) > 1 else set())
+        anfang = next((r for r in rows if r["year"] == seit), None) if seit else None
         return {
             "year": neu["year"],
             "total": neu["total"],
@@ -3035,6 +3060,8 @@ class HaushaltMixin(StoreBasis):
             "hoch": ({"year": hoch["year"], "total": hoch["total"]}
                      if hoch["year"] != neu["year"] else None),
             "reihe_ab": rows[0]["year"],
+            "anfang": ({"year": anfang["year"], "total": anfang["total"]}
+                       if anfang and anfang["year"] not in schon else None),
             "abgrenzung": _schulden.ABGRENZUNG,
             **({"year_asked": year} if abweicht else {}),
             "beleg": self._beleg(neu.get("herkunft_id")),

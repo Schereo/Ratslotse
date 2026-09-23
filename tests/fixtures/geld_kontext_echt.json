@@ -283,6 +283,28 @@
    },
    "posten": [
     {
+     "actual": 42691302.14,
+     "actual_year": 2024,
+     "amount": 53098053.0,
+     "herkunft_id": 324,
+     "is_total": 0,
+     "label": "Aufwendungen für Sach- und Dienstleistungen",
+     "nr": 15
+    }
+   ],
+   "treffer": true,
+   "year": 2026
+  },
+  {
+   "beleg": {
+    "as_of": "Haushaltsplan 2026, Anlage 005 — Stand der Einbringung",
+    "citation": "Gesamtergebnishaushalt, Posten 1–24 — Spalte „Ansatz 2026“ und die drei Finanzplanungsjahre",
+    "label": "2026 005 Vw Gesamtergebnishaushalt Haushalt 2026 Verwaltungsentwurf",
+    "page": null,
+    "url": "https://buergerinfo.oldenburg.de/getfile.php?id=297441&type=do"
+   },
+   "posten": [
+    {
      "actual": 377878954.16,
      "actual_year": 2024,
      "amount": 388377600.0,
@@ -294,6 +316,47 @@
    ],
    "treffer": true,
    "year": 2026
+  },
+  {
+   "beleg": {
+    "as_of": "Haushaltsplan 2025, Anlage 005 — Stand der Einbringung",
+    "citation": "Gesamtergebnishaushalt, Posten 1–24 — Spalte „Ansatz 2025“ und die drei Finanzplanungsjahre",
+    "label": "2025 005 Vw Gesamtergebnishaushalt Haushalt 2025 Verwaltungsentwurf",
+    "page": null,
+    "url": "https://buergerinfo.oldenburg.de/getfile.php?id=282812&type=do"
+   },
+   "posten": [
+    {
+     "amount": 747259256.0,
+     "herkunft_id": 323,
+     "is_total": 1,
+     "label": "Summe ordentliche Erträge",
+     "nr": 12
+    },
+    {
+     "amount": 805216345.0,
+     "herkunft_id": 323,
+     "is_total": 1,
+     "label": "Summe ordentliche Aufwendungen",
+     "nr": 20
+    },
+    {
+     "amount": -57957089.0,
+     "herkunft_id": 323,
+     "is_total": 1,
+     "label": "ordentliches Ergebnis",
+     "nr": 21
+    },
+    {
+     "amount": 5332000.0,
+     "herkunft_id": 323,
+     "is_total": 1,
+     "label": "außerordentliches Ergebnis",
+     "nr": 24
+    }
+   ],
+   "treffer": false,
+   "year": 2025
   }
  ],
  "antraege": [
@@ -1275,6 +1338,11 @@
     "page": null,
     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=300533&type=do"
    },
+   "beschluss": {
+    "date": "2026-02-09",
+    "decision_id": 8286,
+    "title": "Haushaltssatzung und Haushaltsplan 2026 (Kernhaushalt) mit der mittelfristigen Ergebnis- und Finanzplanung und dem Investitionsprogramm 2027-2029"
+   },
    "fehlend": [],
    "reihe": null,
    "year": 2026,
@@ -1299,7 +1367,7 @@
     "probes": "bylaw_cash_budget",
     "property_tax_a_rate": null,
     "property_tax_b_rate": null,
-    "session_date": "15.12.2025",
+    "session_date": "09.02.2026",
     "supplement": 0,
     "template_number": null,
     "trade_tax_rate": 439,
@@ -1312,63 +1380,83 @@
   {
    "beleg": {
     "as_of": "Beteiligungsbericht 2024",
-    "citation": "Abschnitt 2.2.1 — Eigenbetrieb Gebäudewirtschaft und Hochbau",
+    "citation": "Abschnitt 2.4.9 — GSG Oldenburg Bau- und Wohngesellschaft mbH",
     "label": "Beteiligungsbericht 2024 (oldenburg.de)",
-    "page": 16,
+    "page": 190,
     "url": "https://www.oldenburg.de/fileadmin/oldenburg/Benutzer/Dateien/20_Controlling_und_Finanzen/Beteiligungsbericht/Beteiligungsbericht_2024_kombiniert_final.pdf"
    },
-   "companies": [],
-   "overview": {
-    "count": 16,
-    "forms": [
-     [
-      "Anstalt öffentlichen Rechts",
-      2
+   "companies": [
+    {
+     "body": {
+      "chair": {
+       "chair_role": "chair",
+       "committee": "Aufsichtsrat",
+       "name": "Jürgen Krogmann",
+       "position": "Oberbürgermeister",
+       "roles_assignable": 1
+      },
+      "committee": "Aufsichtsorgan",
+      "council_members": 6,
+      "count": 24,
+      "roles_assignable": true
+     },
+     "budget_impact": "Die GSG zahlt jährlich eine Dividende von 12 Prozent bezogen auf das Stammkapital an die Stadt \nOldenburg aus – für das Jahr 2024 waren es 1.311.402,32 Euro.",
+     "classification": "2.4.9",
+     "company": "gsg",
+     "indicators": [
+      {
+       "kind": "jahresergebnis",
+       "unit": "eur",
+       "value": 8236483.57,
+       "year": 2024
+      },
+      {
+       "kind": "bilanzsumme",
+       "unit": "eur",
+       "value": 363583688.69,
+       "year": 2024
+      },
+      {
+       "kind": "eigenkapitalquote",
+       "unit": "percent",
+       "value": 36.7,
+       "year": 2023
+      }
      ],
-     [
-      "Eigenbetrieb",
-      3
+     "legal_form": "GmbH / Co. KG",
+     "name": "GSG Oldenburg Bau- und Wohngesellschaft mbH",
+     "owners": [
+      {
+       "amount_eur": 3770266.33,
+       "name": "Stadt Oldenburg",
+       "share_pct": 34.5
+      },
+      {
+       "amount_eur": 2428636.44,
+       "name": "Norddeutsche Landesbank Girozentrale",
+       "share_pct": 22.22
+      },
+      {
+       "amount_eur": 1278229.7,
+       "name": "Deutsche Rentenversicherung",
+       "share_pct": 11.7
+      },
+      {
+       "amount_eur": 2428636.44,
+       "name": "Landessparkasse zu Oldenburg",
+       "share_pct": 22.22
+      },
+      {
+       "amount_eur": 1022583.76,
+       "name": "Landkreis Oldenburg",
+       "share_pct": 9.36
+      }
      ],
-     [
-      "GmbH / Co. KG",
-      11
-     ]
-    ],
-    "largest": [
-     {
-      "bilanzsumme": 580193968.91,
-      "name": "Eigenbetrieb Gebäudewirtschaft und Hochbau",
-      "share_pct": 100.0,
-      "year": 2024
-     },
-     {
-      "bilanzsumme": 384510059.67,
-      "name": "Klinikum Oldenburg AöR",
-      "share_pct": 100.0,
-      "year": 2024
-     },
-     {
-      "bilanzsumme": 363583688.69,
-      "name": "GSG Oldenburg Bau- und Wohngesellschaft mbH",
-      "share_pct": 34.5,
-      "year": 2024
-     },
-     {
-      "bilanzsumme": 68966726.15,
-      "name": "Verkehr und Wasser GmbH",
-      "share_pct": 74.0,
-      "year": 2024
-     },
-     {
-      "bilanzsumme": 56584562.72,
-      "name": "Bäderbetrieb der Stadt Oldenburg",
-      "share_pct": 100.0,
-      "year": 2024
-     }
-    ],
-    "results_n": 13,
-    "results_sum": -33045425.44
-   },
+     "page": 190,
+     "purpose": "Zweck der Gesellschaft ist vorrangig eine sichere und sozial verantwortbare Wohnungsversorgung der \nbreiten Schichten der Bevölkerung (gemeinnütziger Zweck). \n  \nDie Gesellschaft errichtet, betreut, bewirtschaftet und verwaltet Bauten in allen Rechts- und Nutzungs-\nformen, darunter Eigenheime und Eigentumswohnungen. Sie kann alle im Bereich der Wohnungswirt-\nschaft, des Städtebaus und der Infrastruktur anfallenden Aufgaben übernehmen, Grundstücke erwer-\nben, belasten und veräußern sowie Erbbaurechte ausgeben. Sie kann Gemeinschaftsanlagen, Folgeein-\nrichtungen, Läden und Gewerbebauten, soziale, wirtschaftliche und kulturelle Einrichtungen und \nDienstleistungen bereitstellen. Die Gesellschaft ist berechtigt, Zweigniederlassungen zu errichten, an-\ndere Unternehmen zu erwerben oder sich an solchen zu beteiligen. \n \nDie Gesellschaft darf auch sonstige Geschäfte betreiben, sofern diese dem Gesellschaftszweck dienlich \nsind.  \n \nDie Gesellschaft führt ihre Geschäfte nach Grundsätzen der Wohnungsgemeinnützigkeit im Sinne des \nGesellschaftsvertrages."
+    }
+   ],
+   "overview": null,
    "report_year": 2024,
    "year": 2024
   },
@@ -1627,6 +1715,69 @@
     }
    ],
    "year": 2026
+  },
+  {
+   "anderer_jahrgang": false,
+   "as_of": "2025-12-31",
+   "aufwand": {
+    "budget": "result",
+    "budgeted": 818835096.0,
+    "carryover": 6003089.0,
+    "deviation": 5893520.0,
+    "forecast": 824728616.0,
+    "herkunft_id": 1584,
+    "kind": "expense",
+    "plan_basis": "budget"
+   },
+   "beleg": {
+    "as_of": "Finanz- und Leistungsbericht zum 31.12.2025",
+    "citation": "Auswertung der Berichte zum 31.12.2025, 1. Ergebnishaushalt",
+    "label": "FLB 31.12.2025 final",
+    "page": null,
+    "url": "https://buergerinfo.oldenburg.de/getfile.php?id=302593&type=do"
+   },
+   "bereiche": [],
+   "ergebnis": {
+    "budget": "result",
+    "budgeted": -91474677.0,
+    "carryover": null,
+    "deviation": 73325732.0,
+    "forecast": -18148945.0,
+    "herkunft_id": 1584,
+    "kind": "result",
+    "plan_basis": "budget"
+   },
+   "ertrag": {
+    "budget": "result",
+    "budgeted": 727360419.0,
+    "carryover": null,
+    "deviation": 79219252.0,
+    "forecast": 806579671.0,
+    "herkunft_id": 1584,
+    "kind": "revenue",
+    "plan_basis": "budget"
+   },
+   "finanzhaushalt": null,
+   "plan_basis": "budget",
+   "verlauf": [
+    {
+     "as_of": "2025-03-31",
+     "forecast": -48766677.0
+    },
+    {
+     "as_of": "2025-06-30",
+     "forecast": -64102864.0
+    },
+    {
+     "as_of": "2025-09-30",
+     "forecast": -29702080.0
+    },
+    {
+     "as_of": "2025-12-31",
+     "forecast": -18148945.0
+    }
+   ],
+   "year": 2025
   }
  ],
  "expense_series": [
@@ -2250,6 +2401,57 @@
    "reihe_ab": 2010,
    "total": 48253000.0,
    "year": 2018
+  },
+  {
+   "abgrenzung": "Rechnungsergebnisse der Kernverwaltung: was im Haushaltsjahr tatsächlich für Investitionen abgeflossen ist. Ohne die Eigenbetriebe und ohne die städtischen Gesellschaften — was etwa die Gebäudewirtschaft baut, steht hier nicht.",
+   "arten": [
+    [
+     "Aktivierbare Zuwendungen",
+     14790000.0
+    ],
+    [
+     "Erwerb von Grundstücken und Gebäuden",
+     219000.0
+    ],
+    [
+     "Baumaßnahmen",
+     16208000.0
+    ],
+    [
+     "Erwerb von beweglichem Sachvermögen",
+     8528000.0
+    ],
+    [
+     "Erwerb von Finanzanlagevermögen",
+     945000.0
+    ],
+    [
+     "Sonstige Investitionstätigkeit",
+     20083000.0
+    ]
+   ],
+   "beleg": {
+    "as_of": "Rechnungsergebnisse 2010–2025",
+    "citation": "Kapitel 11 „Verwaltung und Finanzen“, Tabelle 1107-1 — je Jahr die Auszahlungsarten (Aktivierbare Zuwendungen, Erwerb von Grundstücken und Gebäuden, Baumaßnahmen, Erwerb von beweglichem Sachvermögen, Erwerb von Finanzanlagevermögen, Sonstige Investitionstätigkeit) und ihre Summe",
+    "label": "Statistisches Jahrbuch der Stadt Oldenburg, Tabelle 1107-1 — Investitionen 2010 bis 2025",
+    "page": null,
+    "url": "https://www.oldenburg.de/fileadmin/oldenburg/Benutzer/Dateien/40_Stadtplanungsamt/402_Geo_und_Daten/Statistik/1107-1107-1-2025-AZ.pdf"
+   },
+   "davor": {
+    "total": 67954000.0,
+    "year": 2024
+   },
+   "fehlend": [
+    2019
+   ],
+   "hoch": {
+    "total": 70481000.0,
+    "year": 2020
+   },
+   "reihe_ab": 2010,
+   "total": 60773000.0,
+   "year": 2025,
+   "year_asked": 2026
   }
  ],
  "gruende": [
@@ -2342,6 +2544,43 @@
     "revenues_before": 633803.0,
     "year": 2026,
     "year_before": 2020
+   }
+  ],
+  [
+   {
+    "area": "Summe",
+    "expenses": 883918387.0,
+    "is_total": 1,
+    "result": -71057496.0,
+    "revenues": 812860891.0,
+    "year": 2026
+   },
+   {
+    "area": "Soziales und Gesundheit",
+    "expenses": 283120052.0,
+    "is_total": 0,
+    "rang": 1,
+    "result": -113195538.0,
+    "revenues": 169924514.0,
+    "year": 2026
+   },
+   {
+    "area": "Jugend und Familie",
+    "expenses": 169215200.0,
+    "is_total": 0,
+    "rang": 2,
+    "result": -129875119.0,
+    "revenues": 39340080.0,
+    "year": 2026
+   },
+   {
+    "area": "Finanzmanagement und Recht",
+    "expenses": 100677045.0,
+    "is_total": 0,
+    "rang": 3,
+    "result": 428605849.0,
+    "revenues": 529282894.0,
+    "year": 2026
    }
   ],
   [
@@ -2545,6 +2784,20 @@
     "outflows": 80781520.0,
     "sub_budget_no": 0
    },
+   "neuer_plan": {
+    "as_of": "2026-06-30",
+    "beleg": {
+     "as_of": "Finanz- und Leistungsbericht zum 30.06.2026",
+     "citation": "Auswertung der Berichte zum 30.06.2026, 2. Finanzhaushalt",
+     "label": "1 Finanz- und Leistungsbericht zum 30. Juni 2026 Berichtsvorlage (AFB 2. September 2026)",
+     "page": null,
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312599&type=do"
+    },
+    "budget_year": 2026,
+    "budgeted": 70273312.0,
+    "forecast": 70404408.0,
+    "herkunft_id": 1585
+   },
    "teilhaushalte": [
     {
      "herkunft_id": 115,
@@ -2669,6 +2922,7 @@
     "outflows": 80781520.0,
     "sub_budget_no": 0
    },
+   "neuer_plan": null,
    "teilhaushalte": [
     {
      "herkunft_id": 115,
@@ -2794,6 +3048,7 @@
     "outflows": 80781520.0,
     "sub_budget_no": 0
    },
+   "neuer_plan": null,
    "teilhaushalte": [
     {
      "herkunft_id": 115,
@@ -2902,6 +3157,270 @@
    ],
    "year": 2025,
    "year_asked": 2018
+  },
+  {
+   "beleg": {
+    "as_of": "Haushaltsplan 2025 — Plan, nicht Ist",
+    "citation": "Datensatz 1101, Tabellenblatt „Finanzhaushalt“ — je Teilhaushalt eine Zeile mit Ein- und Auszahlungen aus Investitionstätigkeit, darunter die Summenzeile „Finanzhaushalt Gesamtinvestitionen“. Für welches Jahr die Datei gilt, steht nicht in ihr, sondern in ihrem Dateinamen (…_2025_Finanzhaushalt.csv)",
+    "label": "Finanzhaushalt der Stadt Oldenburg 2025",
+    "page": null,
+    "url": "https://opendata.oldenburg.de/sites/default/files/1101_Haushaltsplan_StadtOL_2025_Finanzhaushalt.csv"
+   },
+   "gesamt": {
+    "herkunft_id": 115,
+    "inflows": 39672063.0,
+    "label": "Finanzhaushalt Gesamtinvestitionen",
+    "level": "investments",
+    "outflows": 80781520.0,
+    "sub_budget_no": 0
+   },
+   "neuer_plan": null,
+   "teilhaushalte": [
+    {
+     "herkunft_id": 115,
+     "inflows": 21065300.0,
+     "label": "Finanzmanagement und Recht",
+     "level": "sub_budget",
+     "outflows": 36813610.0,
+     "sub_budget_no": 4
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 13878863.0,
+     "label": "Wirtschaftsförderung, Liegenschaften",
+     "level": "sub_budget",
+     "outflows": 14130150.0,
+     "sub_budget_no": 3
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 145000.0,
+     "label": "Verkehr und Straßenbau",
+     "level": "sub_budget",
+     "outflows": 10451500.0,
+     "sub_budget_no": 8
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 141000.0,
+     "label": "Umwelt, Bauordnung, Grün und Friedhöfe",
+     "level": "sub_budget",
+     "outflows": 5918860.0,
+     "sub_budget_no": 9
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 4206000.0,
+     "label": "Stadtplanung",
+     "level": "sub_budget",
+     "outflows": 4259000.0,
+     "sub_budget_no": 7
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 0.0,
+     "label": "Schule und Bildung",
+     "level": "sub_budget",
+     "outflows": 1912500.0,
+     "sub_budget_no": 12
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 80000.0,
+     "label": "Sicherheit und Ordnung",
+     "level": "sub_budget",
+     "outflows": 1855000.0,
+     "sub_budget_no": 5
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 0.0,
+     "label": "Jugend und Familie",
+     "level": "sub_budget",
+     "outflows": 1715500.0,
+     "sub_budget_no": 11
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 8000.0,
+     "label": "Personal- und Verwaltungsmanagement",
+     "level": "sub_budget",
+     "outflows": 1542500.0,
+     "sub_budget_no": 2
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 120000.0,
+     "label": "Kultur, Museen, Sport",
+     "level": "sub_budget",
+     "outflows": 1356400.0,
+     "sub_budget_no": 6
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 0.0,
+     "label": "Soziales und Gesundheit",
+     "level": "sub_budget",
+     "outflows": 782000.0,
+     "sub_budget_no": 10
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 0.0,
+     "label": "Verwaltungsführung",
+     "level": "sub_budget",
+     "outflows": 44500.0,
+     "sub_budget_no": 1
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 27900.0,
+     "label": "Nicht rechtsfähige Stiftungen",
+     "level": "sub_budget",
+     "outflows": 0.0,
+     "sub_budget_no": 13
+    }
+   ],
+   "year": 2025
+  },
+  {
+   "beleg": {
+    "as_of": "Haushaltsplan 2025 — Plan, nicht Ist",
+    "citation": "Datensatz 1101, Tabellenblatt „Finanzhaushalt“ — je Teilhaushalt eine Zeile mit Ein- und Auszahlungen aus Investitionstätigkeit, darunter die Summenzeile „Finanzhaushalt Gesamtinvestitionen“. Für welches Jahr die Datei gilt, steht nicht in ihr, sondern in ihrem Dateinamen (…_2025_Finanzhaushalt.csv)",
+    "label": "Finanzhaushalt der Stadt Oldenburg 2025",
+    "page": null,
+    "url": "https://opendata.oldenburg.de/sites/default/files/1101_Haushaltsplan_StadtOL_2025_Finanzhaushalt.csv"
+   },
+   "gesamt": {
+    "herkunft_id": 115,
+    "inflows": 39672063.0,
+    "label": "Finanzhaushalt Gesamtinvestitionen",
+    "level": "investments",
+    "outflows": 80781520.0,
+    "sub_budget_no": 0
+   },
+   "neuer_plan": {
+    "as_of": "2026-06-30",
+    "beleg": {
+     "as_of": "Finanz- und Leistungsbericht zum 30.06.2026",
+     "citation": "Auswertung der Berichte zum 30.06.2026, 2. Finanzhaushalt",
+     "label": "1 Finanz- und Leistungsbericht zum 30. Juni 2026 Berichtsvorlage (AFB 2. September 2026)",
+     "page": null,
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312599&type=do"
+    },
+    "budget_year": 2026,
+    "budgeted": 70273312.0,
+    "forecast": 70404408.0,
+    "herkunft_id": 1585
+   },
+   "teilhaushalte": [
+    {
+     "herkunft_id": 115,
+     "inflows": 21065300.0,
+     "label": "Finanzmanagement und Recht",
+     "level": "sub_budget",
+     "outflows": 36813610.0,
+     "sub_budget_no": 4
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 13878863.0,
+     "label": "Wirtschaftsförderung, Liegenschaften",
+     "level": "sub_budget",
+     "outflows": 14130150.0,
+     "sub_budget_no": 3
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 145000.0,
+     "label": "Verkehr und Straßenbau",
+     "level": "sub_budget",
+     "outflows": 10451500.0,
+     "sub_budget_no": 8
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 141000.0,
+     "label": "Umwelt, Bauordnung, Grün und Friedhöfe",
+     "level": "sub_budget",
+     "outflows": 5918860.0,
+     "sub_budget_no": 9
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 4206000.0,
+     "label": "Stadtplanung",
+     "level": "sub_budget",
+     "outflows": 4259000.0,
+     "sub_budget_no": 7
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 0.0,
+     "label": "Schule und Bildung",
+     "level": "sub_budget",
+     "outflows": 1912500.0,
+     "sub_budget_no": 12
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 80000.0,
+     "label": "Sicherheit und Ordnung",
+     "level": "sub_budget",
+     "outflows": 1855000.0,
+     "sub_budget_no": 5
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 0.0,
+     "label": "Jugend und Familie",
+     "level": "sub_budget",
+     "outflows": 1715500.0,
+     "sub_budget_no": 11
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 8000.0,
+     "label": "Personal- und Verwaltungsmanagement",
+     "level": "sub_budget",
+     "outflows": 1542500.0,
+     "sub_budget_no": 2
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 120000.0,
+     "label": "Kultur, Museen, Sport",
+     "level": "sub_budget",
+     "outflows": 1356400.0,
+     "sub_budget_no": 6
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 0.0,
+     "label": "Soziales und Gesundheit",
+     "level": "sub_budget",
+     "outflows": 782000.0,
+     "sub_budget_no": 10
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 0.0,
+     "label": "Verwaltungsführung",
+     "level": "sub_budget",
+     "outflows": 44500.0,
+     "sub_budget_no": 1
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 27900.0,
+     "label": "Nicht rechtsfähige Stiftungen",
+     "level": "sub_budget",
+     "outflows": 0.0,
+     "sub_budget_no": 13
+    }
+   ],
+   "year": 2025,
+   "year_asked": 2026
   }
  ],
  "ist": [
@@ -2935,6 +3454,38 @@
    },
    "posten": [],
    "year": 2024
+  },
+  {
+   "beleg": {
+    "as_of": "Jahresabschluss 2024",
+    "citation": "Ergebnisrechnung der Kernverwaltung, Posten 1–24",
+    "label": "Jahresabschluss 2024 der Kernverwaltung und ihrer nicht rechtsfähigen Stiftungen",
+    "page": null,
+    "url": "https://buergerinfo.oldenburg.de/getfile.php?id=295294&type=do"
+   },
+   "bereiche": [],
+   "ergebnis": {
+    "ausserordentlich": [
+     2310000.0,
+     -28504888.19
+    ],
+    "ordentlich": [
+     -34264479.49,
+     34641139.1
+    ]
+   },
+   "gesamt": {
+    "expenses_actual": 764416063.76,
+    "expenses_planned": 727883665.27,
+    "herkunft_id": 223,
+    "name": null,
+    "plan_kind": "budget",
+    "revenues_actual": 799057202.86,
+    "revenues_planned": 693619185.78
+   },
+   "posten": [],
+   "year": 2024,
+   "year_asked": 2025
   }
  ],
  "kassensicht": [
@@ -2947,6 +3498,79 @@
     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=295294&type=do"
    },
    "year": 2024,
+   "zeilen": [
+    [
+     "Summe der Einzahlungen aus laufender Verwaltungstätigkeit",
+     771035001.41,
+     "total_in_operating"
+    ],
+    [
+     "Summe der Auszahlungen aus laufender Verwaltungstätigkeit",
+     712730971.14,
+     "total_out_operating"
+    ],
+    [
+     "Saldo aus laufender Verwaltungstätigkeit",
+     58304030.27,
+     "balance_operating"
+    ],
+    [
+     "Summe der Einzahlungen für Investitionstätigkeit",
+     15687818.38,
+     "total_in_capital"
+    ],
+    [
+     "Summe der Auszahlungen aus Investitionstätigkeit",
+     96370276.14,
+     "total_out_capital"
+    ],
+    [
+     "Saldo aus Investitionstätigkeit",
+     -80682457.76,
+     "balance_capital"
+    ],
+    [
+     "Finanzmittel-Überschuss/-Fehlbetrag",
+     -22378427.49,
+     "cash_surplus"
+    ],
+    [
+     "Saldo aus Finanzierungstätigkeit",
+     -2886146.04,
+     "balance_financing"
+    ],
+    [
+     "Finanzmittelveränderung",
+     -25264573.53,
+     "cash_change"
+    ],
+    [
+     "Saldo aus haushaltsunwirksamen Vorgängen 5)",
+     189082.35,
+     "balance_non_budgetary"
+    ],
+    [
+     "+/- Anfangsbestand an Zahlungsmitteln zu Beginn des Jahres 5)",
+     143077382.44,
+     "opening_balance"
+    ],
+    [
+     "Endbestand an Zahlungsmitteln (Liquide Mittel am Ende d. Jahres) 5)",
+     118001891.26,
+     "closing_balance"
+    ]
+   ]
+  },
+  {
+   "beleg": {
+    "as_of": "Jahresabschluss 2024",
+    "citation": "Abschnitt 4.1 — Finanzrechnung der Kernverwaltung (Ein- und Auszahlungen)",
+    "label": "Jahresabschluss 2024 der Kernverwaltung und ihrer nicht rechtsfähigen Stiftungen",
+    "page": null,
+    "url": "https://buergerinfo.oldenburg.de/getfile.php?id=295294&type=do"
+   },
+   "year": 2024,
+   "year_asked": 2025,
    "zeilen": [
     [
      "Summe der Einzahlungen aus laufender Verwaltungstätigkeit",
@@ -3044,6 +3668,21 @@
     {
      "amount_keur": 24265.0,
      "entity": "Abfallwirtschaftsbetrieb",
+     "kind": "expenses"
+    },
+    {
+     "amount_keur": 13792.0,
+     "entity": "Bäderbetriebsgesellschaft",
+     "kind": "expenses"
+    },
+    {
+     "amount_keur": 10761.0,
+     "entity": "Weser-Ems Halle",
+     "kind": "expenses"
+    },
+    {
+     "amount_keur": 8020.0,
+     "entity": "Bäderbetrieb",
      "kind": "expenses"
     }
    ],
@@ -3358,6 +3997,24 @@
     "2018-02",
     "2026-08"
    ],
+   "kapitaldienst": {
+    "finanzierung_ist": {
+     "wert": -2886146.04,
+     "year": 2024
+    },
+    "tilgung_plan": {
+     "wert": 2905300.0,
+     "year": 2026
+    },
+    "zins_ist": {
+     "wert": 4225401.18,
+     "year": 2024
+    },
+    "zins_plan": {
+     "wert": 2468350.0,
+     "year": 2026
+    }
+   },
    "latest_refinancing": {
     "amount": 48241251.34,
     "borrower": null,
@@ -3603,6 +4260,7 @@
      "sub_budget_no": 8
     }
    ],
+   "ranking": false,
    "year": 2026,
    "year_deviates": false
   },
@@ -3617,151 +4275,224 @@
    },
    "measures": [
     {
-     "code": "I10.160021",
+     "code": "I10.089901",
      "davor": {
-      "grand_total": 1710000.0,
+      "grand_total": 35850000.0,
       "year": 2025
      },
-     "details": "Inv. Zusch. 2025 für HPK",
-     "grand_total": 1710000.0,
+     "details": "Fliegerhorst Kampfmittel",
+     "grand_total": 36850000.0,
      "herkunft_id": 339,
-     "label": "Inv. Zusch. 2025 für HPK",
-     "sub_budget": "Soziales und Gesundheit",
-     "sub_budget_no": 10
-    },
-    {
-     "code": "I10.210072",
-     "davor": {
-      "grand_total": 290000.0,
-      "year": 2025
-     },
-     "details": "Schlepper (Ersatz für OL - GA 558)",
-     "grand_total": 290000.0,
-     "herkunft_id": 339,
-     "label": "Schlepper (Ersatz für OL - GA 558)",
-     "sub_budget": "Klima/Umwelt/Mobilität/Bau/Grün/Friedh.",
-     "sub_budget_no": 9
-    },
-    {
-     "code": "I10.210626",
-     "davor": {
-      "grand_total": 50000.0,
-      "year": 2025
-     },
-     "details": "Zuschüsse für Baudenkmäler, 2026",
-     "grand_total": 50000.0,
-     "herkunft_id": 339,
-     "label": "Zuschüsse für Baudenkmäler, 2026",
-     "sub_budget": "Klima/Umwelt/Mobilität/Bau/Grün/Friedh.",
-     "sub_budget_no": 9
-    },
-    {
-     "code": "I10.210627",
-     "davor": {
-      "grand_total": 50000.0,
-      "year": 2025
-     },
-     "details": "Zuschüsse für Baudenkmäler, 2027",
-     "grand_total": 50000.0,
-     "herkunft_id": 339,
-     "label": "Zuschüsse für Baudenkmäler, 2027",
-     "sub_budget": "Klima/Umwelt/Mobilität/Bau/Grün/Friedh.",
-     "sub_budget_no": 9
-    },
-    {
-     "code": "I10.210628",
-     "davor": {
-      "grand_total": 50000.0,
-      "year": 2025
-     },
-     "details": "Zuschüsse für Baudenkmäler, 2028",
-     "grand_total": 50000.0,
-     "herkunft_id": 339,
-     "label": "Zuschüsse für Baudenkmäler, 2028",
-     "sub_budget": "Klima/Umwelt/Mobilität/Bau/Grün/Friedh.",
-     "sub_budget_no": 9
-    }
-   ],
-   "year": 2026,
-   "year_deviates": false
-  },
-  {
-   "asked_year": 2020,
-   "beleg": {
-    "as_of": "Haushaltsplan 2020, Anlage 004 — Stand der Einbringung",
-    "citation": "Investitionsprogramm — Gesamtinvestitionsprogramm und die Abschnitte je Teilhaushalt, Spalte „Gesamtinvestitionssumme“",
-    "label": "004 Investitionsprogramm",
-    "page": null,
-    "url": "https://buergerinfo.oldenburg.de/getfile.php?id=208088&type=do"
-   },
-   "measures": [
-    {
-     "code": "I10.093120",
-     "davor": {
-      "grand_total": -2850466.0,
-      "year": 2019
-     },
-     "details": "Ausleihung an Beteiligungen, 2020 · Tilgung -Ausleihung Beteiligungen, 2020",
-     "grand_total": 44745300.0,
-     "herkunft_id": 333,
-     "label": "Ausleihung an Beteiligungen, 2020",
-     "sub_budget": "Finanzmanagement und Recht",
-     "sub_budget_no": 4
-    },
-    {
-     "code": "I10.080220",
-     "davor": {
-      "grand_total": 2500000.0,
-      "year": 2019
-     },
-     "details": "Ausz. aus Grundstücksverträgen, 2020",
-     "grand_total": 4400000.0,
-     "herkunft_id": 333,
-     "label": "Ausz. aus Grundstücksverträgen, 2020",
+     "label": "Fliegerhorst Kampfmittelsondierung",
      "sub_budget": "Wirtschaftsförderung, Liegenschaften",
      "sub_budget_no": 3
     },
     {
-     "code": "I10.090120",
+     "code": "I10.780999",
      "davor": {
-      "grand_total": 2768600.0,
-      "year": 2019
+      "grand_total": 24889900.0,
+      "year": 2025
      },
-     "details": "Umlage nach dem KHG, 2020",
-     "grand_total": 2768600.0,
-     "herkunft_id": 333,
-     "label": "Umlage nach dem KHG, 2020",
+     "details": "BA N-777 D · BA N-777 E, Straßenbau · BA N-777 F, Straßenbau · Entlastungsstraße, Straßenbau · Entlastungsstraße, Planungskosten · Entlastungsstraße, GVFG-Mittel",
+     "grand_total": 24775700.0,
+     "herkunft_id": 339,
+     "label": "Fliegerhorst: Straßenbaumaßnahmen",
+     "sub_budget": "Wirtschaftsförderung, Liegenschaften",
+     "sub_budget_no": 3
+    },
+    {
+     "code": "I10.093751",
+     "davor": {
+      "grand_total": 15000000.0,
+      "year": 2025
+     },
+     "details": "Eig.kap. Zusch.Stadion Oldb GmbH & Co KG",
+     "grand_total": 15000000.0,
+     "herkunft_id": 339,
+     "label": "Eigenkapitalzuschuss",
      "sub_budget": "Finanzmanagement und Recht",
      "sub_budget_no": 4
     },
     {
-     "code": "I10.192020",
+     "code": "I10.000035",
      "davor": {
-      "grand_total": 815000.0,
-      "year": 2019
+      "grand_total": 10316602.0,
+      "year": 2025
      },
-     "details": "Pauschalm. aktivierende Eigenl., 2020",
-     "grand_total": 1000000.0,
-     "herkunft_id": 333,
-     "label": "Pauschalm. aktivierende Eigenl., 2020",
-     "sub_budget": "Verkehr und Straßenbau",
-     "sub_budget_no": 8
+     "details": "SG Kreyenbrück Nord, Inv.Zusch.",
+     "grand_total": 14764602.0,
+     "herkunft_id": 339,
+     "label": "SG Kreyenbrück Nord",
+     "sub_budget": "Stadtplanung",
+     "sub_budget_no": 7
     },
     {
-     "code": "I10.170068",
+     "code": "I10.000034",
      "davor": {
-      "grand_total": 880000.0,
-      "year": 2019
+      "grand_total": 10910340.0,
+      "year": 2025
      },
-     "details": "Ausbau Krippe 2020 Nr. 1 · Ausbau Krippe 2020 Nr. 2",
-     "grand_total": 880000.0,
-     "herkunft_id": 333,
-     "label": "Krippenausbau 2020",
+     "details": "SUG Alter Stadthafen, Inv.Zusch. · SUG Alter Stadthafen, Str.Ausbaubeiträge",
+     "grand_total": 12710340.0,
+     "herkunft_id": 339,
+     "label": "SUG Alter Stadthafen",
+     "sub_budget": "Stadtplanung",
+     "sub_budget_no": 7
+    }
+   ],
+   "ranking": true,
+   "year": 2026,
+   "year_deviates": false
+  },
+  {
+   "asked_year": 2025,
+   "beleg": {
+    "as_of": "Haushaltsplan 2025, Anlage 004 — Stand der Einbringung",
+    "citation": "Investitionsprogramm — Gesamtinvestitionsprogramm und die Abschnitte je Teilhaushalt, Spalte „Gesamtinvestitionssumme“",
+    "label": "2025 004 Vw Investitionsprogramm Haushalt 2025 Verwaltungsentwurf",
+    "page": null,
+    "url": "https://buergerinfo.oldenburg.de/getfile.php?id=282811&type=do"
+   },
+   "measures": [
+    {
+     "code": "I10.089901",
+     "davor": {
+      "grand_total": 35850000.0,
+      "year": 2024
+     },
+     "details": "Fliegerhorst Kampfmittel",
+     "grand_total": 35850000.0,
+     "herkunft_id": 338,
+     "label": "Fliegerhorst Kampfmittelsondierung",
+     "sub_budget": "Wirtschaftsförderung, Liegenschaften",
+     "sub_budget_no": 3
+    },
+    {
+     "code": "I10.093125",
+     "davor": {
+      "grand_total": -5304700.0,
+      "year": 2024
+     },
+     "details": "Ausleihung an Beteiligungen, 2025 · Tilgung -Ausleihung Beteiligungen, 2025",
+     "grand_total": 26559810.0,
+     "herkunft_id": 338,
+     "label": "Ausleihung an Beteiligungen, 2025",
+     "sub_budget": "Finanzmanagement und Recht",
+     "sub_budget_no": 4
+    },
+    {
+     "code": "I10.780999",
+     "davor": {
+      "grand_total": 22176300.0,
+      "year": 2024
+     },
+     "details": "Straßenbaumaßnahmen, Planungskosten · BA N-777 D, Straßenbau · BA N-777 E, Straßenbau · BA N-777 F, Straßenbau · Entlastungsstraße, Straßenbau · Entlastungsstraße, Planungskosten · Entlastungsstraße, GVFG-Mittel",
+     "grand_total": 24889900.0,
+     "herkunft_id": 338,
+     "label": "Fliegerhorst: Straßenbaumaßnahmen",
+     "sub_budget": "Wirtschaftsförderung, Liegenschaften",
+     "sub_budget_no": 3
+    },
+    {
+     "code": "I10.093751",
+     "davor": null,
+     "details": "Eig.kap. Zusch.Stadion Oldb GmbH & Co KG",
+     "grand_total": 15000000.0,
+     "herkunft_id": 338,
+     "label": "Eigenkapitalzuschuss",
+     "sub_budget": "Finanzmanagement und Recht",
+     "sub_budget_no": 4
+    },
+    {
+     "code": "I10.170075",
+     "davor": null,
+     "details": "Kita Ausbau, 5. Fortschreibung 2025-2028",
+     "grand_total": 12000000.0,
+     "herkunft_id": 338,
+     "label": "Krippenausbau 2022",
      "sub_budget": "Jugend und Familie",
      "sub_budget_no": 11
     }
    ],
-   "year": 2020,
+   "ranking": true,
+   "year": 2025,
+   "year_deviates": false
+  },
+  {
+   "asked_year": 2026,
+   "beleg": {
+    "as_of": "Haushaltsplan 2026, Anlage 004 — Stand der Einbringung",
+    "citation": "Investitionsprogramm — Gesamtinvestitionsprogramm und die Abschnitte je Teilhaushalt, Spalte „Gesamtinvestitionssumme“",
+    "label": "2026 004 Vw Investitionsprogramm Haushalt 2026 Verwaltungsentwurf",
+    "page": null,
+    "url": "https://buergerinfo.oldenburg.de/getfile.php?id=297440&type=do"
+   },
+   "measures": [
+    {
+     "code": "I10.140032",
+     "davor": {
+      "grand_total": 3900000.0,
+      "year": 2025
+     },
+     "details": "Investitionszuschuss BTB",
+     "grand_total": 3900000.0,
+     "herkunft_id": 339,
+     "label": "Investitionszuschuss BTB",
+     "sub_budget": "Kultur, Museen, Sport",
+     "sub_budget_no": 6
+    },
+    {
+     "code": "I10.080000",
+     "davor": null,
+     "details": "Investive Anlagen",
+     "grand_total": 58500.0,
+     "herkunft_id": 339,
+     "label": "Investive Anlagen",
+     "sub_budget": "Wirtschaftsförderung, Liegenschaften",
+     "sub_budget_no": 3
+    },
+    {
+     "code": "I10.172026",
+     "davor": {
+      "grand_total": 30000.0,
+      "year": 2025
+     },
+     "details": "Investitionen 17, Einr./Ausst., 2026",
+     "grand_total": 30000.0,
+     "herkunft_id": 339,
+     "label": "Investitionen 17, 2026",
+     "sub_budget": "Jugend und Familie",
+     "sub_budget_no": 11
+    },
+    {
+     "code": "I10.172027",
+     "davor": {
+      "grand_total": 30000.0,
+      "year": 2025
+     },
+     "details": "Investitionen 17",
+     "grand_total": 30000.0,
+     "herkunft_id": 339,
+     "label": "Investitionen 17, 2027",
+     "sub_budget": "Jugend und Familie",
+     "sub_budget_no": 11
+    },
+    {
+     "code": "I10.172028",
+     "davor": {
+      "grand_total": 30000.0,
+      "year": 2025
+     },
+     "details": "Investitionen 17, Einr./Ausst., 2028",
+     "grand_total": 30000.0,
+     "herkunft_id": 339,
+     "label": "Investitionen 17, 2028",
+     "sub_budget": "Jugend und Familie",
+     "sub_budget_no": 11
+    }
+   ],
+   "ranking": false,
+   "year": 2026,
    "year_deviates": false
   }
  ],
@@ -3822,83 +4553,6 @@
   }
  ],
  "produkte": [
-  {
-   "produkte": [
-    {
-     "beleg": {
-      "as_of": "Haushaltsplan 2026 — Stand der Einbringung",
-      "citation": "Teilergebnishaushalt THH09, Produktebene mit Steckbrief",
-      "label": "2026 015 Vw THH09 Haushalt 2026 Verwaltungsentwurf",
-      "page": null,
-      "url": "https://buergerinfo.oldenburg.de/getfile.php?id=297451&type=do"
-     },
-     "controllability": "high",
-     "expenses": 2969965.0,
-     "herkunft_id": 1457,
-     "legal_basis": "Straßenverkehrsordnung, Niedersächsisches Nahverkehrsgesetz, Nationaler Radverkehrsplan 3.0, Klimaschutzgesetz, Ratsbeschluss zum Ziel „Oldenburg Klimaneutral 2035“ vom 26.04.2021 58 Ratsbeschlüsse im Zeitraum 26.10.2020 – 28.06.2021 zu Beschlussvorschlägen aus dem Fridays for Future Leitantrag „Ein zukunftsfähiges Oldenburg - Ansätze für wirksamen Klima- und Umweltschutz auf lokaler Ebene“, Ratsbeschluss smv2025 vom 31.03.2014 und 27.08.2018 Ratsbeschluss Mobilitätsplan 2030 Oldenburg vom 26.06.2023",
-     "office": "Amt für Klimaschutz und Mobilität",
-     "product_name": "Mobilität u.Verkehrsplanung",
-     "product_no": "P10.541100",
-     "result": -2857865.0,
-     "short_description": "Dieses Produkt definiert grundsätzliche Ziele der Mobilitätswende sowie deren Umsetzung. Weitere Leistungen widmen sich dem öffentlichen Personennahverkehr (ÖPNV), dem Rad- und Fußverkehr sowie dem Wirtschaftsverkehr und einer neuen Mobilität. Dieses Produkt ist Bestandteil der allgemeinen Gesamtplanung für Verkehr, Städtebau, Umwelt und Wirtschaft. - Planungen für kurz-, mittel- und langfristige Maßnahmen und Investitionsprogramme auf Grundlage von Prognosen und Analysen zur Verkehrsentwicklung - Grundlage der Verkehrsplanung ist ein integrativer Ansatz für alle Verkehrsarten und Beteiligten - Erarbeitung von Maßgaben für den ÖPNV, den innerstädtischen Verkehr und sonstige Infrastrukturen sowie den gesamtstädtischen Mobilitätsplan Oldenburg 2030 - Öffentlicher Dienstleistungsvertrag mit der VWG / VBN / ZVBN - optimale, stadtverträgliche und umweltfreundliche Verkehrsgestaltung sowie Sicherung der Teilhabe aller Bevölkerungsgruppen entsprechend angestrebtem Modal Split (Anteile ÖPNV, Fußgänger, Radfahrer, motorisierter Individualverkehr (MIV)), die Erfassung der Verkehrsmittelanteile erfolgt in einem regelmäßigen Erfassungszyklus"
-    },
-    {
-     "beleg": {
-      "as_of": "Haushaltsplan 2026 — Stand der Einbringung",
-      "citation": "Teilergebnishaushalt THH07, Produktebene mit Steckbrief",
-      "label": "2026 013 Vw THH07 Haushalt 2026 Verwaltungsentwurf",
-      "page": null,
-      "url": "https://buergerinfo.oldenburg.de/getfile.php?id=297449&type=do"
-     },
-     "controllability": "medium",
-     "expenses": 1891803.0,
-     "herkunft_id": 1455,
-     "legal_basis": "Nds. Gesetz über das amtliche Vermessungswesen (NVermG), Baugesetzbuch, Luftverkehrsordnung, Nds. Bauordnung, Nds. Statistikgesetz, Abschottungssatzung, Satzung über die Bevölkerungsstatistik sowie auf diese Vorschriften aufbauende weitere Regelungen, Informationsfreiheitssatzung, Aufträge des Rates, Aufträge anderer Ämter und Einrichtungen",
-     "office": "Stadtplanungsamt",
-     "product_name": "Geoinformation, Vermessung u. Statistik",
-     "product_no": "P10.511003",
-     "result": -1866457.0,
-     "short_description": "Führung und Weiterentwicklung des städtischen Geografischen Informationssystems (GIS), Beratung und Support. Aufbereitung und Bereitstellen von Daten für die einzelnen Raumbezugsebenen des GIS. Festlegen von Normen und Standards wie Datenform, Datenstruktur, Schnittstellenformat. Beratung der Fachdienste beim Einsatz von GIS sowie beim Aufbau von Fachdateien mit Raumbezug. Führung und Bereitstellung der Sekundärnachweise des Liegenschaftskatasters als Service. Erstellung von thematischen Karten und Übersichtsplänen, Reproduktion und Führung des digitalen Archivs. Bereitstellung der offenen Daten (Open Data Oldenburg). Die Vermessung sichert das Eigentum an Grund und Boden und liefert Grundlagedaten auf der einheitlichen Raumbezugsbasis für das Planen und Bauen. Die Bodenordnung dient der schnelleren Realisierung eines Bebauungsplanes in eigentumsrechtlich schwierigen Gebieten (Umlegung) und beseitigt oder verhindert baurechtswidrige Zustände durch Tausch von Grundstücken oder Zuteilung von Grundstücksteilen, die nicht selbständig bebaubar wären (vereinfachte Umlegung). Erfassen, Sammeln, Auswerten und Abgeben von statistischem Datenmaterial, Interpretieren der Daten. Treffen programmatischer Aussagen zur Stadtentwicklung, Stadtforschungsprojekte, Prognosen, Statistik online."
-    },
-    {
-     "beleg": {
-      "as_of": "Haushaltsplan 2026 — Stand der Einbringung",
-      "citation": "Teilergebnishaushalt THH09, Produktebene mit Steckbrief",
-      "label": "2026 015 Vw THH09 Haushalt 2026 Verwaltungsentwurf",
-      "page": null,
-      "url": "https://buergerinfo.oldenburg.de/getfile.php?id=297451&type=do"
-     },
-     "controllability": "low",
-     "expenses": 1934498.0,
-     "herkunft_id": 1457,
-     "legal_basis": "Bundesnaturschutzgesetz (BNatSchG), Bundeswaldgesetz (BWaldG), Nds. Gesetz über den Wald und die Landschaftsordnung (NWaldLG), Washingtoner Artenschutzübereinkommen, Bundesartenschutzverordnung (BArtSchV), EU-Richtlinien (FFH, WRRL, VRL), UNCED-Beschlüsse Rio 1992 und Rio +20-Konferenz; Ratsbeschlüsse vom Januar 1997 und Mai 2001; Deutsche Nachhaltigkeitsstrategie vom Januar 2017, sonstige Verordnungen, Satzungen und Beschlüsse des Rates.",
-     "office": "Amt für Umweltschutz und Bauordnung",
-     "product_name": "Natur- und Landschaftspflege",
-     "product_no": "P10.554000",
-     "result": -1792340.0,
-     "short_description": "Fachliche Beurteilung von Planungen und Maßnahmen, die Eingriffe in den Naturhaushalt vorbereiten und nach sich ziehen (allgemeiner Schutz von Natur und Landschaft). Schutz, Entwicklung und Pflege bestimmter Teile von Natur und Landschaft (zum Beispiel Umsetzung der sich aus europäischem, nationalem und Landesrecht ergebenden Verpflichtungen zum Aufbau und Schutz des zusammenhängenden europäischen ökologischen Netzes „Natura 2000“, wie zum Beispiel Erlass und Neufassung von Naturschutzgebietsverordnungen, Planung und Umsetzung von Maßnahmen zum Erreichen des Schutzzweckes dieser Verordnungen; Ausweisung, Schutz, und Betreuung von NSG, LSG, GLB, Wallhecken, besonders geschützten Biotopen et cetera). Baumschutz; Schutz von wild lebenden Tier- und Pflanzenarten und ihrer Lebensstätten (zum Beispiel durch die Fortschreibung des Landschaftsrahmenplanes, die Erstellung von Artenschutzkonzepten, die Beratung und Unterstützung Dritter bei der Planung und Umsetzung von Maßnahmen, die naturschutzrechtliche Veranlassung gegebenenfalls notwendiger naturschutzfachlicher Maßnahmen; die Organisation und Betreuung ehrenamtlich Tätiger für die Betreuung von Schutzgebieten und für die Beratung der Bürgerinnen und Bürger bei Problemen mit Bienen, Wespen, Hummeln und Hornissen et cetera). Bearbeitung aller im Zusammenhang mit dem Flächenmanagement stehenden Aufgaben gemeinsam mit dem Fachdienst Liegenschaften im gemeinsamen Projektteam Flächenagentur (Planung und Umsetzung von Kompensationsmaßnahmen in Ökokonten, Flächenerwerb und -tausch, Vorbereitung und Abschluss von Dienstleistungsverträgen). Betreuung und Unterstützung der Agenda 21-Arbeitsgruppen bei der Umsetzung lokaler Aktivitäten als kommunaler Beitrag einer nachhaltigen Entwicklung in der Stadt Oldenburg."
-    },
-    {
-     "beleg": {
-      "as_of": "Haushaltsplan 2026 — Stand der Einbringung",
-      "citation": "Teilergebnishaushalt THH11, Produktebene mit Steckbrief",
-      "label": "2026 017 Vw THH11 Haushalt 2026 Verwaltungsentwurf",
-      "page": null,
-      "url": "https://buergerinfo.oldenburg.de/getfile.php?id=297453&type=do"
-     },
-     "controllability": "low",
-     "expenses": 87915525.0,
-     "herkunft_id": 1459,
-     "legal_basis": "Sozialgesetzbuch (SGB) VIII, Niedersächsisches Gesetz über Tageseinrichtungen für Kinder (Nds. KiTaG)",
-     "office": "Amt für Jugend und Familie",
-     "product_name": "Kindertagesbetreuung",
-     "product_no": "P10.360001",
-     "result": -73738117.0,
-     "short_description": "Bedarfsgerechte Bildung (inkl. alltagsintegrierter Sprachbildung und –förderung), Erziehung, Förderung und Betreuung von Kindern in Kitas inkl. der Förderung in Integrationsgruppen sowie in der Kindertagespflege. Sicherstellung der Rechtsansprüche auf Kindertagesbetreuung. Werbung, Auswahl und Qualifizierung von Kindertagespflegepersonen. Beratung von Sorgeberechtigten, die einen Platz in Kindertagesbetreuung suchen und ggfs. Vermittlung. Familien werden in Ihrem Erziehungs-, Bildungs- und Betreuungsauftragt unterstützt. Planungen im Rahmen der Ausbaukonzepte und des Musterraumkonzeptes (Erweiterungen, Umbauten, Neubauten) und pädagogische Begleitung der Planungsgespräche für städtische Einrichtungen, Bereitstellung der notwendigen Ausstattung für Kita-Einrichtungen. Qualitätssicherung durch Fachberatung und Förderung freier Träger."
-    }
-   ],
-   "year": 2026
-  },
   {
    "produkte": [
     {
@@ -3981,6 +4635,83 @@
     {
      "beleg": {
       "as_of": "Haushaltsplan 2026 — Stand der Einbringung",
+      "citation": "Teilergebnishaushalt THH10, Produktebene mit Steckbrief",
+      "label": "2026 016 Vw THH10 Haushalt 2026 Verwaltungsentwurf",
+      "page": null,
+      "url": "https://buergerinfo.oldenburg.de/getfile.php?id=297452&type=do"
+     },
+     "controllability": "low",
+     "expenses": 63980400.0,
+     "herkunft_id": 1458,
+     "legal_basis": "SGB II, Niedersächsisches Ausführungsgesetz zum SGB II",
+     "office": "Amt für Teilhabe und Soziales",
+     "product_name": "Grundsicherung für Arbeitsuchende SGB II",
+     "product_no": "P10.312001",
+     "result": -27636400.0,
+     "short_description": "Leistungen für Unterkunft und Heizung Eingliederungsleistungen Einmalige Leistungen für Unterkunft und Heizung Einmalige Eingliederungsleistungen Ausgleichsleistungen des Landes Verwaltung Grundsicherung für Arbeitsuchende"
+    },
+    {
+     "beleg": {
+      "as_of": "Haushaltsplan 2026 — Stand der Einbringung",
+      "citation": "Teilergebnishaushalt THH11, Produktebene mit Steckbrief",
+      "label": "2026 017 Vw THH11 Haushalt 2026 Verwaltungsentwurf",
+      "page": null,
+      "url": "https://buergerinfo.oldenburg.de/getfile.php?id=297453&type=do"
+     },
+     "controllability": "low",
+     "expenses": 7893073.0,
+     "herkunft_id": 1459,
+     "legal_basis": "§§ 16 – 21 Sozialgesetzbuch (SGB) VIII",
+     "office": "Amt für Jugend und Familie",
+     "product_name": "Hilfen für Familien",
+     "product_no": "P10.360003",
+     "result": -7525602.0,
+     "short_description": "Beratungs-, Bildungs- und Entlastungsangebote zur Stärkung von Familiensystemen und von Erziehungskompetenzen von Eltern(teilen)"
+    },
+    {
+     "beleg": {
+      "as_of": "Haushaltsplan 2026 — Stand der Einbringung",
+      "citation": "Teilergebnishaushalt THH11, Produktebene mit Steckbrief",
+      "label": "2026 017 Vw THH11 Haushalt 2026 Verwaltungsentwurf",
+      "page": null,
+      "url": "https://buergerinfo.oldenburg.de/getfile.php?id=297453&type=do"
+     },
+     "controllability": "medium",
+     "expenses": 7259784.0,
+     "herkunft_id": 1459,
+     "legal_basis": "§§ 11-14 Sozialgesetzbuch (SGB) VIII",
+     "office": "Amt für Jugend und Familie",
+     "product_name": "Hilfen für junge Menschen",
+     "product_no": "P10.360002",
+     "result": -6378365.0,
+     "short_description": "Förderung der individuellen, sozialen, schulischen und beruflichen Entwicklung von Kindern, Jugendlichen und jungen Erwachsenen"
+    },
+    {
+     "beleg": {
+      "as_of": "Haushaltsplan 2026 — Stand der Einbringung",
+      "citation": "Teilergebnishaushalt THH10, Produktebene mit Steckbrief",
+      "label": "2026 016 Vw THH10 Haushalt 2026 Verwaltungsentwurf",
+      "page": null,
+      "url": "https://buergerinfo.oldenburg.de/getfile.php?id=297452&type=do"
+     },
+     "controllability": "low",
+     "expenses": 7540173.0,
+     "herkunft_id": 1458,
+     "legal_basis": "Asylbewerberleistungsgesetz (AsylbLG), Aufenthaltsgesetz (AufenthG), Gesetz zur Aufnahme von ausländischen Flüchtlingen (AufnG)",
+     "office": "Amt für Zuwanderung und Integration",
+     "product_name": "Hilfen für Asylbewerber",
+     "product_no": "P10.313000",
+     "result": -3777873.0,
+     "short_description": "Aufgabe ist die Gewährung von Leistungen zur Sicherung des notwendigen Lebensunterhalts für Asylbewerber/Asylbewerberinnen sowie sonstigen Anspruchsberechtigten nach dem AsylbLG inklusive der Unterbringung dieses Personenkreises in kommunalen Gemeinschaftsunterkünften und dezentralen Unterkünften der Stadt Oldenburg."
+    }
+   ],
+   "year": 2026
+  },
+  {
+   "produkte": [
+    {
+     "beleg": {
+      "as_of": "Haushaltsplan 2026 — Stand der Einbringung",
       "citation": "Teilergebnishaushalt THH05, Produktebene mit Steckbrief",
       "label": "2026 011 Vw THH05 Haushalt 2026 Verwaltungsentwurf",
       "page": null,
@@ -4022,74 +4753,20 @@
     {
      "beleg": {
       "as_of": "Haushaltsplan 2026 — Stand der Einbringung",
-      "citation": "Teilergebnishaushalt THH09, Produktebene mit Steckbrief",
-      "label": "2026 015 Vw THH09 Haushalt 2026 Verwaltungsentwurf",
+      "citation": "Teilergebnishaushalt THH06, Produktebene mit Steckbrief",
+      "label": "2026 012 Vw THH06 Haushalt 2026 Verwaltungsentwurf",
       "page": null,
-      "url": "https://buergerinfo.oldenburg.de/getfile.php?id=297451&type=do"
-     },
-     "controllability": "medium",
-     "expenses": 9493078.0,
-     "herkunft_id": 1457,
-     "legal_basis": "Bundesnaturschutzgesetz (BNatSchG), Baugesetzbuch (BauGB), Bundeskleingartengesetz (BKleingG), Nds. Naturschutzgesetz (NNatG), Nds. Spielplatzgesetz (NdsSpielplG), Nds. Gesetz über den Wald und die Landschaftsordnung (NWaldLG), § 823 BGB (Verkehrssicherungspflicht), Bebauungspläne, gesamtstädtischen Planungen, Kontraktvereinbarungen mit den städtisch zuständigen Stellen der Anlagen, Pachtverträge",
-     "office": "Amt für Umweltschutz und Bauordnung",
-     "product_name": "Unterh. von öffentlichem Grün",
-     "product_no": "P10.551200",
-     "result": -8647813.0,
-     "short_description": "Das Produkt umfasst die Pflege, Unterhaltung und Instandsetzung von öffentlichen Grün- und Freiflächen. Hierzu zählen Grünanlagen, Spielplätze, Freizeit- und Verkehrsgrünflächen sowie Sportfreianlagen. Darüber hinaus erfolgt die Bewirtschaftung der städtischen Wälder. Insgesamt ergibt sich eine Gesamtpflegefläche von rund 750 Hektar. Zum Produkt gehören außerdem die Wartung und Instandhaltung des Maschinen- und Geräteparks sowie die Ausbildung im Berufsfeld Garten- und Landschaftsbau. Ergänzend werden die Auswirkungen privater Baumaßnahmen auf den städtischen Baum- und Gehölzbestand geprüft. Hierzu werden Vorschläge zur Vermeidung oder Minimierung von Schäden erarbeitet sowie Gehölzwertgutachten erstellt. · Unterhaltung von öffentlichen Grünanlagen · Unterhaltung von Kinderspielplätzen · Unterhaltung von Verkehrsgrün · Unterhaltung von Sportfreianlagen und Sportanlagen des EGH · Bewirtschaftung von Forstflächen · Unterhaltung von Anlagen verbundener Unternehmen · Pflege des Rahmengrüns in Kleingartenanlagen · Landschaftspflegeflächen · Unterstützende Grünflächenpflege an Schulen, Kitas und städtischen Gebäuden im Auftrag des EGH · Unterstützende Durchführung des Winterdienstes im Auftrag des AWB"
-    },
-    {
-     "beleg": {
-      "as_of": "Haushaltsplan 2026 — Stand der Einbringung",
-      "citation": "Teilergebnishaushalt THH09, Produktebene mit Steckbrief",
-      "label": "2026 015 Vw THH09 Haushalt 2026 Verwaltungsentwurf",
-      "page": null,
-      "url": "https://buergerinfo.oldenburg.de/getfile.php?id=297451&type=do"
+      "url": "https://buergerinfo.oldenburg.de/getfile.php?id=297448&type=do"
      },
      "controllability": "high",
-     "expenses": 2969965.0,
-     "herkunft_id": 1457,
-     "legal_basis": "Straßenverkehrsordnung, Niedersächsisches Nahverkehrsgesetz, Nationaler Radverkehrsplan 3.0, Klimaschutzgesetz, Ratsbeschluss zum Ziel „Oldenburg Klimaneutral 2035“ vom 26.04.2021 58 Ratsbeschlüsse im Zeitraum 26.10.2020 – 28.06.2021 zu Beschlussvorschlägen aus dem Fridays for Future Leitantrag „Ein zukunftsfähiges Oldenburg - Ansätze für wirksamen Klima- und Umweltschutz auf lokaler Ebene“, Ratsbeschluss smv2025 vom 31.03.2014 und 27.08.2018 Ratsbeschluss Mobilitätsplan 2030 Oldenburg vom 26.06.2023",
-     "office": "Amt für Klimaschutz und Mobilität",
-     "product_name": "Mobilität u.Verkehrsplanung",
-     "product_no": "P10.541100",
-     "result": -2857865.0,
-     "short_description": "Dieses Produkt definiert grundsätzliche Ziele der Mobilitätswende sowie deren Umsetzung. Weitere Leistungen widmen sich dem öffentlichen Personennahverkehr (ÖPNV), dem Rad- und Fußverkehr sowie dem Wirtschaftsverkehr und einer neuen Mobilität. Dieses Produkt ist Bestandteil der allgemeinen Gesamtplanung für Verkehr, Städtebau, Umwelt und Wirtschaft. - Planungen für kurz-, mittel- und langfristige Maßnahmen und Investitionsprogramme auf Grundlage von Prognosen und Analysen zur Verkehrsentwicklung - Grundlage der Verkehrsplanung ist ein integrativer Ansatz für alle Verkehrsarten und Beteiligten - Erarbeitung von Maßgaben für den ÖPNV, den innerstädtischen Verkehr und sonstige Infrastrukturen sowie den gesamtstädtischen Mobilitätsplan Oldenburg 2030 - Öffentlicher Dienstleistungsvertrag mit der VWG / VBN / ZVBN - optimale, stadtverträgliche und umweltfreundliche Verkehrsgestaltung sowie Sicherung der Teilhabe aller Bevölkerungsgruppen entsprechend angestrebtem Modal Split (Anteile ÖPNV, Fußgänger, Radfahrer, motorisierter Individualverkehr (MIV)), die Erfassung der Verkehrsmittelanteile erfolgt in einem regelmäßigen Erfassungszyklus"
-    },
-    {
-     "beleg": {
-      "as_of": "Haushaltsplan 2026 — Stand der Einbringung",
-      "citation": "Teilergebnishaushalt THH03, Produktebene mit Steckbrief",
-      "label": "2026 009 Vw THH03 Haushalt 2026 Verwaltungsentwurf",
-      "page": null,
-      "url": "https://buergerinfo.oldenburg.de/getfile.php?id=297445&type=do"
-     },
-     "controllability": "medium",
-     "expenses": 467998.0,
-     "herkunft_id": 1451,
-     "legal_basis": "Ratsbeschluss vom 29.06.2020, Niedersächsische Hafenordnung, Niedersächsisches Hafensicherheitsgesetz, Niedersächsisches Kommunalabgabengesetz",
-     "office": "Amt für Wirtschaftsförderung",
-     "product_name": "BgA Hafenbetrieb",
-     "product_no": "P10.552000",
-     "result": -315720.0,
-     "short_description": "Der Gesamthafen am Standort Oldenburg wird als kommunaler See- und Binnenhafen geführt, wobei sich die Hafen- und Kaianlage teilweise im Eigentum der Hafenumschlagsfirmen und teilweise im Eigentum der Stadt Oldenburg (Oldb) befinden. Zum städtischen Hafen gehören der Alte Stadthafen und der Osthafen sowie die Gleisanlage Dalbenstraße."
-    },
-    {
-     "beleg": {
-      "as_of": "Haushaltsplan 2026 — Stand der Einbringung",
-      "citation": "Teilergebnishaushalt THH10, Produktebene mit Steckbrief",
-      "label": "2026 016 Vw THH10 Haushalt 2026 Verwaltungsentwurf",
-      "page": null,
-      "url": "https://buergerinfo.oldenburg.de/getfile.php?id=297452&type=do"
-     },
-     "controllability": "low",
-     "expenses": 7540173.0,
-     "herkunft_id": 1458,
-     "legal_basis": "Asylbewerberleistungsgesetz (AsylbLG), Aufenthaltsgesetz (AufenthG), Gesetz zur Aufnahme von ausländischen Flüchtlingen (AufnG)",
-     "office": "Amt für Zuwanderung und Integration",
-     "product_name": "Hilfen für Asylbewerber",
-     "product_no": "P10.313000",
-     "result": -3777873.0,
-     "short_description": "Aufgabe ist die Gewährung von Leistungen zur Sicherung des notwendigen Lebensunterhalts für Asylbewerber/Asylbewerberinnen sowie sonstigen Anspruchsberechtigten nach dem AsylbLG inklusive der Unterbringung dieses Personenkreises in kommunalen Gemeinschaftsunterkünften und dezentralen Unterkünften der Stadt Oldenburg."
+     "expenses": 3577245.0,
+     "herkunft_id": 1454,
+     "legal_basis": "Satzung für die Musikschule der Stadt Oldenburg, Entgeltordnung für die Musikschule der Stadt Oldenburg, Unterrichtsbedingungen für die Musikschule der Stadt Oldenburg, politische Entscheidungen, Weisungen des Oberbürgermeisters",
+     "office": "Amt für Kultur, Museen und Sport",
+     "product_name": "Musikunterricht und Veranstaltungen",
+     "product_no": "P10.263001",
+     "result": -2620623.0,
+     "short_description": "Die Musikschule hat als Ort des Lernens und der Begegnung einen öffentlichen Bildungsauftrag. Durch die Angebote der Musikschule werden Kinder und Jugendliche sowie Erwachsene an die Musik herangeführt, Begabungen frühzeitig erkannt und individuell gefördert. Aufführungen und Konzerte sind dabei ein wesentlicher Bestandteil der täglichen Arbeit bzw. Ausbildung."
     }
    ],
    "year": 2026
@@ -4117,56 +4794,20 @@
     {
      "beleg": {
       "as_of": "Haushaltsplan 2026 — Stand der Einbringung",
-      "citation": "Teilergebnishaushalt THH11, Produktebene mit Steckbrief",
-      "label": "2026 017 Vw THH11 Haushalt 2026 Verwaltungsentwurf",
-      "page": null,
-      "url": "https://buergerinfo.oldenburg.de/getfile.php?id=297453&type=do"
-     },
-     "controllability": "low",
-     "expenses": 39772703.0,
-     "herkunft_id": 1459,
-     "legal_basis": "§§ 27 – 41 Sozialgesetzbuch (SGB) VIII",
-     "office": "Amt für Jugend und Familie",
-     "product_name": "Erzieherische Hilfen",
-     "product_no": "P10.360004",
-     "result": -33688271.0,
-     "short_description": "Individuelle Hilfen zur Erziehung für Sorgeberechtigte, wenn eine das Kindeswohl gewährleistende Erziehung nicht gegeben ist und die Hilfe für die Entwicklung geeignet und notwendig ist. Bei jungen Volljährigen auch Hilfen für die Persönlichkeitsentwicklung und zur eigenverantwortlichen Lebensführung."
-    },
-    {
-     "beleg": {
-      "as_of": "Haushaltsplan 2026 — Stand der Einbringung",
       "citation": "Teilergebnishaushalt THH09, Produktebene mit Steckbrief",
       "label": "2026 015 Vw THH09 Haushalt 2026 Verwaltungsentwurf",
       "page": null,
       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=297451&type=do"
      },
      "controllability": "medium",
-     "expenses": 9493078.0,
+     "expenses": 2550308.0,
      "herkunft_id": 1457,
-     "legal_basis": "Bundesnaturschutzgesetz (BNatSchG), Baugesetzbuch (BauGB), Bundeskleingartengesetz (BKleingG), Nds. Naturschutzgesetz (NNatG), Nds. Spielplatzgesetz (NdsSpielplG), Nds. Gesetz über den Wald und die Landschaftsordnung (NWaldLG), § 823 BGB (Verkehrssicherungspflicht), Bebauungspläne, gesamtstädtischen Planungen, Kontraktvereinbarungen mit den städtisch zuständigen Stellen der Anlagen, Pachtverträge",
+     "legal_basis": "Niedersächsisches Bestattungsgesetz (BestattG), Friedhofssatzung, Gebührensatzung, § 823 BGB, (Verkehrssicherungspflicht)",
      "office": "Amt für Umweltschutz und Bauordnung",
-     "product_name": "Unterh. von öffentlichem Grün",
-     "product_no": "P10.551200",
-     "result": -8647813.0,
-     "short_description": "Das Produkt umfasst die Pflege, Unterhaltung und Instandsetzung von öffentlichen Grün- und Freiflächen. Hierzu zählen Grünanlagen, Spielplätze, Freizeit- und Verkehrsgrünflächen sowie Sportfreianlagen. Darüber hinaus erfolgt die Bewirtschaftung der städtischen Wälder. Insgesamt ergibt sich eine Gesamtpflegefläche von rund 750 Hektar. Zum Produkt gehören außerdem die Wartung und Instandhaltung des Maschinen- und Geräteparks sowie die Ausbildung im Berufsfeld Garten- und Landschaftsbau. Ergänzend werden die Auswirkungen privater Baumaßnahmen auf den städtischen Baum- und Gehölzbestand geprüft. Hierzu werden Vorschläge zur Vermeidung oder Minimierung von Schäden erarbeitet sowie Gehölzwertgutachten erstellt. · Unterhaltung von öffentlichen Grünanlagen · Unterhaltung von Kinderspielplätzen · Unterhaltung von Verkehrsgrün · Unterhaltung von Sportfreianlagen und Sportanlagen des EGH · Bewirtschaftung von Forstflächen · Unterhaltung von Anlagen verbundener Unternehmen · Pflege des Rahmengrüns in Kleingartenanlagen · Landschaftspflegeflächen · Unterstützende Grünflächenpflege an Schulen, Kitas und städtischen Gebäuden im Auftrag des EGH · Unterstützende Durchführung des Winterdienstes im Auftrag des AWB"
-    },
-    {
-     "beleg": {
-      "as_of": "Haushaltsplan 2026 — Stand der Einbringung",
-      "citation": "Teilergebnishaushalt THH07, Produktebene mit Steckbrief",
-      "label": "2026 013 Vw THH07 Haushalt 2026 Verwaltungsentwurf",
-      "page": null,
-      "url": "https://buergerinfo.oldenburg.de/getfile.php?id=297449&type=do"
-     },
-     "controllability": "medium",
-     "expenses": 1891803.0,
-     "herkunft_id": 1455,
-     "legal_basis": "Nds. Gesetz über das amtliche Vermessungswesen (NVermG), Baugesetzbuch, Luftverkehrsordnung, Nds. Bauordnung, Nds. Statistikgesetz, Abschottungssatzung, Satzung über die Bevölkerungsstatistik sowie auf diese Vorschriften aufbauende weitere Regelungen, Informationsfreiheitssatzung, Aufträge des Rates, Aufträge anderer Ämter und Einrichtungen",
-     "office": "Stadtplanungsamt",
-     "product_name": "Geoinformation, Vermessung u. Statistik",
-     "product_no": "P10.511003",
-     "result": -1866457.0,
-     "short_description": "Führung und Weiterentwicklung des städtischen Geografischen Informationssystems (GIS), Beratung und Support. Aufbereitung und Bereitstellen von Daten für die einzelnen Raumbezugsebenen des GIS. Festlegen von Normen und Standards wie Datenform, Datenstruktur, Schnittstellenformat. Beratung der Fachdienste beim Einsatz von GIS sowie beim Aufbau von Fachdateien mit Raumbezug. Führung und Bereitstellung der Sekundärnachweise des Liegenschaftskatasters als Service. Erstellung von thematischen Karten und Übersichtsplänen, Reproduktion und Führung des digitalen Archivs. Bereitstellung der offenen Daten (Open Data Oldenburg). Die Vermessung sichert das Eigentum an Grund und Boden und liefert Grundlagedaten auf der einheitlichen Raumbezugsbasis für das Planen und Bauen. Die Bodenordnung dient der schnelleren Realisierung eines Bebauungsplanes in eigentumsrechtlich schwierigen Gebieten (Umlegung) und beseitigt oder verhindert baurechtswidrige Zustände durch Tausch von Grundstücken oder Zuteilung von Grundstücksteilen, die nicht selbständig bebaubar wären (vereinfachte Umlegung). Erfassen, Sammeln, Auswerten und Abgeben von statistischem Datenmaterial, Interpretieren der Daten. Treffen programmatischer Aussagen zur Stadtentwicklung, Stadtforschungsprojekte, Prognosen, Statistik online."
+     "product_name": "Friedhofs- und Bestattungswesen",
+     "product_no": "P10.553000",
+     "result": -310998.0,
+     "short_description": "Betrieb der Friedhöfe und des Krematoriums. Im Rahmen der Leistungserbringung werden schwerpunktmäßig folgende Arbeiten und Leistungen durchgeführt: - Vorhalten von Beisetzungsflächen und öffentlichen Grünflächen, Andachtshallen, einem Krematorium, Kühlräumen, Urnenübergaberäumen und sonstigen Gebäuden - Pflege und Unterhaltung der Friedhofsanlagen - Durchführen von Einäscherungen - Versand von Urnen - Beisetzung von Särgen und Urnen - Beratung von Angehörigen bei der Auswahl von Gräbern - Vergabe von Nutzungs- und Verfügungsrechten - Verlängerung von Nutzungsrechten - Prüfung und Genehmigung von Grabmalanträgen und sonstigen Anträgen - Überprüfung von Grabstellen im Hinblick auf den Pflegezustand und die Standsicherheit von Grabmalen - Nutzungsberechtigte zur Beseitigung von Mängeln auffordern, Kontrolle der eingeforderten Maßnahmen - Erstellen von Gebührenbescheiden"
     }
    ],
    "year": 2026
@@ -4239,6 +4880,7 @@
  "schulden": [
   {
    "abgrenzung": "Stadt Oldenburg als Rechtsträger: Kernhaushalt und Eigenbetriebe. Ohne die rechtlich selbstständigen Beteiligungen wie das Klinikum (AöR) oder die städtischen Gesellschaften.",
+   "anfang": null,
    "arten": [
     [
      "Schulden aus Kreditmarktmitteln",
@@ -4305,6 +4947,7 @@
   },
   {
    "abgrenzung": "Stadt Oldenburg als Rechtsträger: Kernhaushalt und Eigenbetriebe. Ohne die rechtlich selbstständigen Beteiligungen wie das Klinikum (AöR) oder die städtischen Gesellschaften.",
+   "anfang": null,
    "arten": [],
    "beleg": {
     "as_of": "Schuldenstand zum 31.12.2025",
@@ -4357,6 +5000,7 @@
   },
   {
    "abgrenzung": "Stadt Oldenburg als Rechtsträger: Kernhaushalt und Eigenbetriebe. Ohne die rechtlich selbstständigen Beteiligungen wie das Klinikum (AöR) oder die städtischen Gesellschaften.",
+   "anfang": null,
    "arten": [
     [
      "Schulden aus Kreditmarktmitteln",
@@ -4423,6 +5067,76 @@
     }
    ],
    "year": 2024
+  },
+  {
+   "abgrenzung": "Stadt Oldenburg als Rechtsträger: Kernhaushalt und Eigenbetriebe. Ohne die rechtlich selbstständigen Beteiligungen wie das Klinikum (AöR) oder die städtischen Gesellschaften.",
+   "anfang": {
+    "total": 211503000.0,
+    "year": 2015
+   },
+   "arten": [
+    [
+     "Schulden aus Kreditmarktmitteln",
+     40804000.0
+    ],
+    [
+     "Schulden aus öffentlichen Sondermitteln",
+     0.0
+    ],
+    [
+     "Schulden bei Gebietskörperschaften",
+     0.0
+    ],
+    [
+     "Schulden der Eigenbetriebe einschließlich Kliniken und innere Darlehen",
+     296190000.0
+    ]
+   ],
+   "beleg": {
+    "as_of": "Schuldenstand zum 31.12.2025",
+    "citation": "Kapitel 11 „Verwaltung und Finanzen“, Tabelle 1108 — je Jahr die vier Schuldenarten (Spalten S 2 bis S 5), ihre Summe (S 6) und der Betrag je Einwohner*in (S 7)",
+    "label": "Statistisches Jahrbuch der Stadt Oldenburg, Tabelle 1108 — Stand der Verschuldung 1995 bis 2025",
+    "page": null,
+    "url": "https://www.oldenburg.de/fileadmin/oldenburg/Benutzer/Dateien/40_Stadtplanungsamt/402_Geo_und_Daten/Statistik/1108-2025-AZ.pdf"
+   },
+   "breakdown_rejected": null,
+   "buergschaften": {
+    "balance": 220300000.0,
+    "beleg": {
+     "as_of": "Jahresabschluss 2024",
+     "citation": "6.2.10 Eventualverbindlichkeiten",
+     "label": "Jahresabschluss 2024 der Kernverwaltung und ihrer nicht rechtsfähigen Stiftungen",
+     "page": null,
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=295294&type=do"
+    },
+    "reason": "Hintergrund ist, dass die verbürgten Bestandsdarlehen seitens der Beteiligungen getilgt wurden.",
+    "rueckstellung": 1301337.58,
+    "year": 2024
+   },
+   "davor": {
+    "total": 294851000.0,
+    "year": 2024
+   },
+   "hoch": null,
+   "per_capita": 1908.0,
+   "reihe_ab": 1995,
+   "revised": false,
+   "total": 336994000.0,
+   "weitere": [
+    {
+     "amount": 43690971.71,
+     "art": "Kernhaushalt (nur Geldschulden)",
+     "source": "Bilanz des Jahresabschlusses",
+     "year": 2024
+    },
+    {
+     "amount": 740330162.9999998,
+     "art": "Konzern Stadt (anteilig, mit Beteiligungen)",
+     "source": "Integrierte Schulden der Statistischen Ämter",
+     "year": 2024
+    }
+   ],
+   "year": 2025
   }
  ],
  "stellenplan": [
@@ -4962,6 +5676,198 @@
    ],
    "unit": "teur",
    "year": 2026
+  },
+  {
+   "beleg": {
+    "as_of": "Korrigierte Version vom 30.07.2026",
+    "citation": "Blatt 2.1 — Grundbeträge, Hebesätze und Ist-Aufkommen je kreisfreier Stadt; Blatt 5.1 — durchschnittliche Steuereinnahmekraft, drei Jahre",
+    "label": "Realsteuervergleich 2025 (Statistischer Bericht L II 7 / L II 9)",
+    "page": null,
+    "url": "https://www.statistik.niedersachsen.de/download/230730"
+   },
+   "indicator": "hebesatz_gewerbesteuer",
+   "series": "real_taxes",
+   "staedte": [
+    {
+     "city": "Braunschweig",
+     "herkunft_id": 124,
+     "unit": "percent",
+     "value": 450.0
+    },
+    {
+     "city": "Salzgitter",
+     "herkunft_id": 124,
+     "unit": "percent",
+     "value": 440.0
+    },
+    {
+     "city": "Osnabrück",
+     "herkunft_id": 124,
+     "unit": "percent",
+     "value": 440.0
+    },
+    {
+     "city": "Oldenburg",
+     "herkunft_id": 124,
+     "unit": "percent",
+     "value": 439.0
+    },
+    {
+     "city": "Delmenhorst",
+     "herkunft_id": 124,
+     "unit": "percent",
+     "value": 435.0
+    },
+    {
+     "city": "Emden",
+     "herkunft_id": 124,
+     "unit": "percent",
+     "value": 420.0
+    },
+    {
+     "city": "Wilhelmshaven",
+     "herkunft_id": 124,
+     "unit": "percent",
+     "value": 420.0
+    },
+    {
+     "city": "Wolfsburg",
+     "herkunft_id": 124,
+     "unit": "percent",
+     "value": 360.0
+    }
+   ],
+   "unit": "percent",
+   "weitere": [
+    {
+     "beleg": {
+      "as_of": "Korrigierte Version vom 30.07.2026",
+      "citation": "Blatt 2.1 — Grundbeträge, Hebesätze und Ist-Aufkommen je kreisfreier Stadt; Blatt 5.1 — durchschnittliche Steuereinnahmekraft, drei Jahre",
+      "label": "Realsteuervergleich 2025 (Statistischer Bericht L II 7 / L II 9)",
+      "page": null,
+      "url": "https://www.statistik.niedersachsen.de/download/230730"
+     },
+     "indicator": "ist_je_ew_gewerbesteuer",
+     "series": "real_taxes",
+     "staedte": [
+      {
+       "city": "Oldenburg",
+       "herkunft_id": 124,
+       "unit": "eur_je_ew",
+       "value": 1233.36
+      },
+      {
+       "city": "Wolfsburg",
+       "herkunft_id": 124,
+       "unit": "eur_je_ew",
+       "value": 989.24
+      },
+      {
+       "city": "Wilhelmshaven",
+       "herkunft_id": 124,
+       "unit": "eur_je_ew",
+       "value": 931.24
+      },
+      {
+       "city": "Osnabrück",
+       "herkunft_id": 124,
+       "unit": "eur_je_ew",
+       "value": 896.26
+      },
+      {
+       "city": "Emden",
+       "herkunft_id": 124,
+       "unit": "eur_je_ew",
+       "value": 818.24
+      },
+      {
+       "city": "Braunschweig",
+       "herkunft_id": 124,
+       "unit": "eur_je_ew",
+       "value": 687.81
+      },
+      {
+       "city": "Delmenhorst",
+       "herkunft_id": 124,
+       "unit": "eur_je_ew",
+       "value": 417.56
+      },
+      {
+       "city": "Salzgitter",
+       "herkunft_id": 124,
+       "unit": "eur_je_ew",
+       "value": 364.3
+      }
+     ],
+     "unit": "eur_je_ew",
+     "year": 2025
+    }
+   ],
+   "year": 2025
+  },
+  {
+   "beleg": {
+    "as_of": "Korrigierte Version vom 30.07.2026",
+    "citation": "Blatt 2.1 — Grundbeträge, Hebesätze und Ist-Aufkommen je kreisfreier Stadt; Blatt 5.1 — durchschnittliche Steuereinnahmekraft, drei Jahre",
+    "label": "Realsteuervergleich 2025 (Statistischer Bericht L II 7 / L II 9)",
+    "page": null,
+    "url": "https://www.statistik.niedersachsen.de/download/230730"
+   },
+   "indicator": "steuereinnahmekraft_je_ew",
+   "series": "real_taxes",
+   "staedte": [
+    {
+     "city": "Wolfsburg",
+     "herkunft_id": 124,
+     "unit": "eur_je_ew",
+     "value": 2259.77
+    },
+    {
+     "city": "Oldenburg",
+     "herkunft_id": 124,
+     "unit": "eur_je_ew",
+     "value": 2033.66
+    },
+    {
+     "city": "Osnabrück",
+     "herkunft_id": 124,
+     "unit": "eur_je_ew",
+     "value": 1714.21
+    },
+    {
+     "city": "Emden",
+     "herkunft_id": 124,
+     "unit": "eur_je_ew",
+     "value": 1700.34
+    },
+    {
+     "city": "Wilhelmshaven",
+     "herkunft_id": 124,
+     "unit": "eur_je_ew",
+     "value": 1667.48
+    },
+    {
+     "city": "Braunschweig",
+     "herkunft_id": 124,
+     "unit": "eur_je_ew",
+     "value": 1601.05
+    },
+    {
+     "city": "Salzgitter",
+     "herkunft_id": 124,
+     "unit": "eur_je_ew",
+     "value": 1120.98
+    },
+    {
+     "city": "Delmenhorst",
+     "herkunft_id": 124,
+     "unit": "eur_je_ew",
+     "value": 1039.72
+    }
+   ],
+   "unit": "eur_je_ew",
+   "weitere": [],
+   "year": 2025
   }
  ]
 }

@@ -172,6 +172,27 @@ def beleg_text(b: dict | None, stand: bool = False) -> str:
     return f" — Beleg: {', '.join(teile)}{as_of}"
 
 
+#: Ein Wort, das nach einer RANGFOLGE fragt — gefaltet (ö → oe).
+#:
+#: „Wofür gibt die Stadt am meisten aus?" und „Welches ist das größte
+#: Vorhaben?" suchen nicht nach einem Begriff, sondern nach dem Größten. Ein
+#: Begriffsabgleich findet dafür nichts (oder, schlimmer, das Zufällige), und
+#: bis 09/2026 fehlte in beiden Fällen die Antwort — Soziales und Gesundheit
+#: (283,1 Mio. €) und die Kampfmittelsondierung am Fliegerhorst (35,9 Mio. €)
+#: (Fakten-Eval 23.09.2026). Das Wort reist deshalb als SUCHBEGRIFF mit
+#: (``qa.geld_kontext`` hängt es an), und die Store-Methoden, die eine Rangfolge
+#: bilden können, erkennen es daran — dieselbe Signatur ``(terms, year)``.
+RANG_WORT = re.compile(
+    r"^(?:meisten|meiste|groesste[nrs]?|teuerste[nrs]?|hoechste[nrs]?|"
+    r"wichtigste[nrs]?|groesster|dickste[nrs]?)$")
+
+
+def rangfrage(terms) -> bool:
+    """Trägt ``terms`` (Liste oder Text) ein Rangfolge-Wort?"""
+    woerter = terms.split() if isinstance(terms, str) else list(terms or [])
+    return any(RANG_WORT.match(falte(w)) for w in woerter)
+
+
 _JAHR = re.compile(r"\b(19[89]\d|20[0-4]\d)\b")
 _ZEITRAUM = ("seit", "ab", "nach", "zwischen", "bis")
 

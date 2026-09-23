@@ -87,6 +87,19 @@ FRAGEN = [
     "Wie viel Geld hatte die Stadt 2024 auf dem Konto?",
     "Wie viele Betriebe zahlen Gewerbesteuer?",
     "Was steht im Wirtschaftsplan des Bäderbetriebs?",
+    # Die Zeilen, die der Kontext-Nachzug vom 23.09.2026 dazugebracht hat
+    # (Fakten-Eval): Rangfolgen, Kapitaldienst, der neuere Investitionsplan,
+    # das Beschlussdatum der Satzung, Kennzahlen des Städtevergleichs, der
+    # Anfangspunkt einer Schuldenreihe.
+    "Wofür gibt die Stadt am meisten aus?",
+    "Welches ist das größte einzelne Vorhaben im Investitionsprogramm 2025?",
+    "Wie viel will die Stadt 2026 investieren?",
+    "Wie viel Zinsen zahlt die Stadt, und wie viel tilgt sie jedes Jahr?",
+    "Wann hat der Rat den Haushalt 2026 beschlossen?",
+    "Hat Oldenburg einen höheren Gewerbesteuer-Hebesatz als Osnabrück?",
+    "Wie hoch ist die Steuereinnahmekraft je Einwohner im Vergleich?",
+    "Wie haben sich die Schulden der Stadt seit 2015 entwickelt?",
+    "Wie ist das Haushaltsjahr 2025 ausgegangen?",
 ]
 
 

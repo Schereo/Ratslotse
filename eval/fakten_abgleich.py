@@ -188,8 +188,15 @@ def passt(z: Zahl, gold: float, toleranz: float = TOLERANZ_STANDARD,
     if rel > rundung_max:
         return False
     # Gerundet oder abgeschnitten („über 336 Mio.“) — beides ist ehrlich.
+    # Kaufmännisch gerundet, nicht mit Pythons `round`: Das rundet die Hälfte
+    # zur GERADEN Ziffer, und „35,9 Mio. €“ für 35.850.000 € (das größte
+    # Vorhaben 2025) galt damit als falsch — `round(358.5)` ist 358
+    # (Fund vom 23.09.2026). Die kleine Zugabe fängt die Binärdarstellung ab
+    # (35.850.000 / 100.000 ist nicht genau 358,5).
+    def kaufmaennisch(x: float) -> float:
+        return math.floor(x + 0.5 + 1e-9)
     return any(math.isclose(f(g / stufe) * stufe, w, rel_tol=1e-9, abs_tol=stufe * 1e-6)
-               for f in (round, math.floor))
+               for f in (round, kaufmaennisch, math.floor))
 
 
 def einheit_passt(z: Zahl, einheit: str | None) -> bool:
@@ -412,6 +419,11 @@ _VERWEIGERT = re.compile("|".join([
     # „ist in den vorliegenden Angaben nicht aufgeschlüsselt“
     # „… ist in den hier vorliegenden Angaben nicht genannt“ (GPT-6 Luna, 23.09.)
     r"\bnicht (aufgeschluesselt|ausgewiesen|enthalten|angegeben|verfuegbar|vorhanden|genannt)\b",
+    # GPT-6 Luna nach dem Kontext-Nachzug (23.09.2026): „Die Hundesteuer ist
+    # nicht einzeln ausgewiesen“, „Ein Schuldenvergleich … ist anhand der
+    # vorliegenden Zahlen nicht möglich“ — beides richtige Absagen.
+    r"\bnicht einzeln (aufgeschluesselt|ausgewiesen|aufgefuehrt|genannt)\b",
+    r"\banhand der\b[^.!?\n]{0,60}\bnicht moeglich\b",
     # GPT-6 Luna, 23.09.: „geben dazu wenig her“, „lässt sich nicht feststellen“,
     # „geht aus den Unterlagen nicht hervor“, „ist nicht belegt“, „steht kein
     # Gehalt“, „ein Wolfsburger Vergleichswert fehlt“

@@ -397,6 +397,38 @@ def _hat_gegenstand(screen: Screen) -> bool:
     return any(screen.refs.get(k) for k in _GEGENSTAND_REFS)
 
 
+#: Der Steuer-Steckbrief (`/haushalt/steuer?art=…`): Kürzel → Name, wie die
+#: Seite sie führt (`web/frontend/lib/haushalt-taxes.ts`). Eine feste Liste
+#: und kein Durchreichen, weil ``refs.area`` aus der Adresszeile kommt — ein
+#: unbekanntes Kürzel landet so nie im Prompt.
+STEUER_ARTEN = {
+    "gewerbesteuer": "Gewerbesteuer",
+    "grundsteuer": "Grundsteuer",
+    "einkommensteueranteil": "Einkommensteueranteil",
+    "umsatzsteueranteil": "Gemeindeanteil an der Umsatzsteuer",
+    "kleine-steuern": "kleine Steuern (Vergnügungssteuer und sonstige Steuern)",
+    "schluesselzuweisungen": "Schlüsselzuweisungen des Landes",
+    "gebuehren": "Gebühren",
+    "kostenerstattungen": "Kostenerstattungen und Kostenumlagen",
+    "zuweisungen": "Zuweisungen und allgemeine Umlagen",
+}
+#: Ohne `?art=` zeigt die Seite die Gewerbesteuer (`steuer/page.tsx`).
+STEUER_STANDARD = "gewerbesteuer"
+
+
+def steuer_auf_seite(screen: Screen) -> str:
+    """Welche Steuer der Steckbrief zeigt — ``""`` auf jeder anderen Seite.
+
+    Bis 09/2026 kam ``?art=`` zwar als ``refs.area`` im Backend an, wurde
+    aber nirgends gelesen: Auf „Wie hat sich diese Steuer zuletzt
+    entwickelt?" wusste Lotti nicht, welche Steuer gemeint ist, und bekam
+    die Steuersumme statt der Gewerbesteuer (Fakten-Eval 23.09.2026)."""
+    if screen.route != "/haushalt/steuer":
+        return ""
+    art = str((screen.refs or {}).get("area") or STEUER_STANDARD).strip().lower()
+    return STEUER_ARTEN.get(art, "")
+
+
 def deterministic_answer(store, screen: Screen, question: str) -> tuple[str, str] | None:
     """Die drei Wege ohne Modell — ``(Text, Art)`` oder ``None``.
 
@@ -593,6 +625,10 @@ def _record_block(store, screen: Screen) -> str:
         # kuratiert in `council/topics.py`, Rückblick und Beschlüsse dazu.
         teile.append("\n".join(page_context.entity_lines(store, str(slug))
                                or page_context.field_lines(store, str(slug))))
+
+    steuer = steuer_auf_seite(screen)
+    if steuer:
+        teile.append(f"Die Einnahmeart auf diesem Steckbrief: {steuer}")
 
     place_id = refs.get("place_id")
     if place_id:
@@ -838,7 +874,10 @@ def screen_context(store, screen: Screen, question: str, *,
     optional: Ohne sie verhält sich der Aufruf genau wie vorher.
     """
     wissen = knowledge.fuer_route(screen.route)
-    gegenstand = screen.gegenstand
+    # Der Ausschnitt der Seite gehört zum Gegenstand: Auf dem Steuer-
+    # Steckbrief sagt erst `?art=`, UM WELCHE Steuer es geht (s.
+    # :func:`steuer_auf_seite`).
+    gegenstand = " ".join(t for t in (screen.gegenstand, steuer_auf_seite(screen)) if t)
     begriffe = glossar.finde(f"{gegenstand}\n{question}", max_n=GLOSSAR_MAX)
 
     # Haushaltszahlen: nur, wo sie hingehören. Der Auslöser ist derselbe wie
@@ -913,6 +952,14 @@ def screen_context(store, screen: Screen, question: str, *,
                 geld = qa.geld_kontext(store, facetten_text, ausloeser, "money")
             except Exception:  # noqa: BLE001 — Zahlen sind Zusatz, nie Blocker
                 geld = {}
+            # Was die FRAGE zieht, geht vor dem, was nur der Bildschirm zieht
+            # (s. `qa.geld_auswahl`): Die Seite ist Kontext, die Frage ist die
+            # Frage. Nur bei einer eigenen Frage — „Was sehe ich hier?" meint
+            # den Bildschirm.
+            if geld and haushaltsseite and question.strip() and not generische_frage(question):
+                eigen = qa.geld_facetten(question) & set(geld.get("facets") or ())
+                if eigen:
+                    geld["vorrang"] = sorted(eigen)
 
     # Beide Bedingungen des Prompt-Absatzes (kern/prompts.py::
     # ZWEI_ZAEHLWEISEN_REGEL): die Frage nennt „Haushalt" ohne Zählweise

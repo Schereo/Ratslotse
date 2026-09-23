@@ -166,12 +166,41 @@ und der Unterschied liegt im Rauschen (Haushalt 105 gegen 106 ok). Belastbar
 sind die Kontextfehler — sie hängen nicht am Modell und waren in beiden Läufen
 dieselben.
 
+## Nachzug K1 (23.09.2026) — die Arbeitsliste der Haushaltsfälle abgearbeitet
+
+Alle elf Ursachen oben plus der Datenbefund, gemessen mit GPT-6 Luna nur an
+den 142 Haushaltsfällen (Ratsfälle unverändert): ein Lauf **vor** dem Nachzug
+auf demselben Stand und demselben Abzug, zwei **danach**.
+
+| | ok | Kontextfehler | Modellfehler | davon falsch/erfunden | Prompt Lotti (Tokens, Mittel) | Prompt Frag den Rat |
+|---|---:|---:|---:|---:|---:|---:|
+| vor K1 | 104/142 (73 %) | 29 | 9 | 0 | 3.386 | 5.202 |
+| nach K1, Lauf 1 | 134/142 (94 %) | **0** | 8 | 0 | 3.450 | 5.225 |
+| nach K1, Lauf 2 | 131/142 (92 %) | **0** | 11 | 0 | 3.450 | 5.281 |
+
+Was blieb, sind Auslassungen des Modells (knappe Antworten ohne den zweiten
+Goldfakt), keine fehlenden oder falsch zugeordneten Zahlen. Der Prompt wuchs
+im Mittel um knapp 2 % (Lotti) bzw. unter 2 % (Frag den Rat): Die neuen
+Zeilen kommen über engere Auslösung und eine Vorrangregel (die Facetten der
+FRAGE vor denen der Seite), nicht über einen größeren Deckel —
+`GELD_MAX_CHARS` und `GELD_MAX` sind unverändert.
+
+Zwei Regeln der Auswertung wurden dabei nachgezogen, beide mit Beleg:
+Gerundet wird kaufmännisch (Pythons `round` rundete „35,9 Mio. €“ für
+35.850.000 € als falsch), und „nicht einzeln ausgewiesen“ / „anhand der …
+nicht möglich“ zählen als Absage. Die Arbeitsliste nimmt je Fall den
+jüngsten Stand, der ihn gemessen hat (`run_fakten._stand`), damit ein
+Teillauf behobene Fehler eines älteren Gesamtlaufs nicht stehen lässt.
+
 <!-- fakten-eval:anfang -->
 ## Ergebnis
 
 - **google/gemini-2.5-flash (vor #1493)** (20260923-080106, `eval/results/fakten/google-gemini-2.5-flash-20260923-080106.json`): 142/233 (61%) ok, Kontext stimmte in 169 Fällen, 27 Modellfehler (davon 0 erfunden), 64 Kontextfehler, 0 Ausfälle, p50 2874 ms, Kosten 0.44 $
+- **openai/gpt-6-luna (vor K1)** (20260923-090851, `eval/results/fakten/openai-gpt-6-luna-20260923-090851.json`): 104/142 (73%) ok, Kontext stimmte in 113 Fällen, 9 Modellfehler (davon 0 erfunden), 29 Kontextfehler, 0 Ausfälle, p50 6672 ms, Kosten 0.13 $
 - **google/gemini-2.5-flash (nach #1493)** (20260923-081455, `eval/results/fakten/google-gemini-2.5-flash-20260923-081455.json`): 148/233 (64%) ok, Kontext stimmte in 174 Fällen, 26 Modellfehler (davon 0 erfunden), 59 Kontextfehler, 0 Ausfälle, p50 2913 ms, Kosten 0.43 $
 - **openai/gpt-6-luna (nach #1493)** (20260923-081458, `eval/results/fakten/openai-gpt-6-luna-20260923-081458.json`): 143/233 (61%) ok, Kontext stimmte in 173 Fällen, 30 Modellfehler (davon 0 erfunden), 60 Kontextfehler, 0 Ausfälle, p50 7826 ms, Kosten 0.22 $
+- **openai/gpt-6-luna (nach K1, Lauf 1)** (20260923-100126, `eval/results/fakten/openai-gpt-6-luna-20260923-100126.json`): 134/142 (94%) ok, Kontext stimmte in 142 Fällen, 8 Modellfehler (davon 0 erfunden), 0 Kontextfehler, 0 Ausfälle, p50 7328 ms, Kosten 0.07 $
+- **openai/gpt-6-luna (nach K1, Lauf 2)** (20260923-100157, `eval/results/fakten/openai-gpt-6-luna-20260923-100157.json`): 131/142 (92%) ok, Kontext stimmte in 142 Fällen, 11 Modellfehler (davon 0 erfunden), 0 Kontextfehler, 0 Ausfälle, p50 6960 ms, Kosten 0.10 $
 
 ### Je Fallsatz
 
@@ -179,10 +208,13 @@ dieselben.
 |---|---|---:|---:|---:|---:|---:|
 | google/gemini-2.5-flash (vor #1493) | Haushalt | 142 | 101/142 (71%) | 33 | 8 | 1 |
 | google/gemini-2.5-flash (vor #1493) | Rat | 91 | 41/91 (45%) | 31 | 19 | 1 |
+| openai/gpt-6-luna (vor K1) | Haushalt | 142 | 104/142 (73%) | 29 | 9 | 0 |
 | google/gemini-2.5-flash (nach #1493) | Haushalt | 142 | 105/142 (74%) | 29 | 8 | 1 |
 | google/gemini-2.5-flash (nach #1493) | Rat | 91 | 43/91 (47%) | 30 | 18 | 1 |
 | openai/gpt-6-luna (nach #1493) | Haushalt | 142 | 106/142 (75%) | 29 | 7 | 0 |
 | openai/gpt-6-luna (nach #1493) | Rat | 91 | 37/91 (41%) | 31 | 23 | 0 |
+| openai/gpt-6-luna (nach K1, Lauf 1) | Haushalt | 142 | 134/142 (94%) | 0 | 8 | 0 |
+| openai/gpt-6-luna (nach K1, Lauf 2) | Haushalt | 142 | 131/142 (92%) | 0 | 11 | 0 |
 
 ### Je Kanal und Fehlerart
 
@@ -191,65 +223,74 @@ dieselben.
 | google/gemini-2.5-flash (vor #1493) | lotti | 121 | 79/121 (65%) | 88 | 32 | 1 | 8 | 1 | 0 | 0 |
 | google/gemini-2.5-flash (vor #1493) | rat | 112 | 63/112 (56%) | 81 | 28 | 3 | 16 | 1 | 0 | 1 |
 | google/gemini-2.5-flash (vor #1493) | alle | 233 | 142/233 (61%) | 169 | 60 | 4 | 24 | 2 | 0 | 1 |
+| openai/gpt-6-luna (vor K1) | lotti | 86 | 61/86 (71%) | 67 | 19 | 0 | 4 | 0 | 0 | 2 |
+| openai/gpt-6-luna (vor K1) | rat | 56 | 43/56 (77%) | 46 | 10 | 0 | 3 | 0 | 0 | 0 |
+| openai/gpt-6-luna (vor K1) | alle | 142 | 104/142 (73%) | 113 | 29 | 0 | 7 | 0 | 0 | 2 |
 | google/gemini-2.5-flash (nach #1493) | lotti | 121 | 80/121 (66%) | 90 | 31 | 0 | 9 | 1 | 0 | 0 |
 | google/gemini-2.5-flash (nach #1493) | rat | 112 | 68/112 (61%) | 84 | 28 | 0 | 15 | 1 | 0 | 0 |
 | google/gemini-2.5-flash (nach #1493) | alle | 233 | 148/233 (64%) | 174 | 59 | 0 | 24 | 2 | 0 | 0 |
 | openai/gpt-6-luna (nach #1493) | lotti | 121 | 80/121 (66%) | 89 | 32 | 0 | 8 | 0 | 0 | 1 |
 | openai/gpt-6-luna (nach #1493) | rat | 112 | 63/112 (56%) | 84 | 28 | 0 | 20 | 0 | 0 | 1 |
 | openai/gpt-6-luna (nach #1493) | alle | 233 | 143/233 (61%) | 173 | 60 | 0 | 28 | 0 | 0 | 2 |
+| openai/gpt-6-luna (nach K1, Lauf 1) | lotti | 86 | 79/86 (92%) | 86 | 0 | 0 | 6 | 0 | 0 | 1 |
+| openai/gpt-6-luna (nach K1, Lauf 1) | rat | 56 | 55/56 (98%) | 56 | 0 | 0 | 1 | 0 | 0 | 0 |
+| openai/gpt-6-luna (nach K1, Lauf 1) | alle | 142 | 134/142 (94%) | 142 | 0 | 0 | 7 | 0 | 0 | 1 |
+| openai/gpt-6-luna (nach K1, Lauf 2) | lotti | 86 | 77/86 (90%) | 86 | 0 | 0 | 8 | 0 | 0 | 1 |
+| openai/gpt-6-luna (nach K1, Lauf 2) | rat | 56 | 54/56 (96%) | 56 | 0 | 0 | 2 | 0 | 0 | 0 |
+| openai/gpt-6-luna (nach K1, Lauf 2) | alle | 142 | 131/142 (92%) | 142 | 0 | 0 | 10 | 0 | 0 | 1 |
 
 ### Je Kategorie
 
-| Kategorie | Fälle | google/gemini-2.5-flash (vor #1493) ok | Kontextfehler | google/gemini-2.5-flash (nach #1493) ok | Kontextfehler | openai/gpt-6-luna (nach #1493) ok | Kontextfehler |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| beschluss/abstimmung | 6 | 3/6 (50%) | 2 | 3/6 (50%) | 2 | 2/6 (33%) | 3 |
-| beschluss/ergebnis | 10 | 6/10 (60%) | 2 | 6/10 (60%) | 2 | 5/10 (50%) | 2 |
-| beschluss/kosten | 9 | 4/9 (44%) | 5 | 4/9 (44%) | 5 | 4/9 (44%) | 5 |
-| haushalt/begriffe | 1 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 |
-| haushalt/eigenbetriebe | 7 | 6/7 (86%) | 1 | 6/7 (86%) | 1 | 6/7 (86%) | 1 |
-| haushalt/gebuehren | 6 | 5/6 (83%) | 1 | 5/6 (83%) | 1 | 5/6 (83%) | 1 |
-| haushalt/investitionen | 14 | 7/14 (50%) | 6 | 8/14 (57%) | 4 | 10/14 (71%) | 4 |
-| haushalt/ist | 10 | 7/10 (70%) | 1 | 7/10 (70%) | 1 | 7/10 (70%) | 1 |
-| haushalt/konzern | 7 | 5/7 (71%) | 2 | 5/7 (71%) | 2 | 5/7 (71%) | 2 |
-| haushalt/mitreden | 3 | 3/3 (100%) | 0 | 3/3 (100%) | 0 | 3/3 (100%) | 0 |
-| haushalt/nachbewilligungen | 1 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 |
-| haushalt/nicht-in-daten | 15 | 13/15 (87%) | 1 | 13/15 (87%) | 1 | 14/15 (93%) | 1 |
-| haushalt/plan | 12 | 8/12 (67%) | 3 | 9/12 (75%) | 3 | 9/12 (75%) | 3 |
-| haushalt/produkte | 8 | 5/8 (62%) | 2 | 5/8 (62%) | 2 | 4/8 (50%) | 2 |
-| haushalt/pruefung | 6 | 5/6 (83%) | 1 | 5/6 (83%) | 1 | 5/6 (83%) | 1 |
-| haushalt/satzung | 5 | 3/5 (60%) | 1 | 3/5 (60%) | 1 | 2/5 (40%) | 1 |
-| haushalt/schulden | 18 | 13/18 (72%) | 5 | 15/18 (83%) | 3 | 15/18 (83%) | 3 |
-| haushalt/spenden | 1 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 |
-| haushalt/stellenplan | 5 | 4/5 (80%) | 1 | 4/5 (80%) | 1 | 4/5 (80%) | 1 |
-| haushalt/steuern | 15 | 13/15 (87%) | 2 | 13/15 (87%) | 2 | 13/15 (87%) | 2 |
-| haushalt/vergleich | 5 | 1/5 (20%) | 3 | 1/5 (20%) | 3 | 1/5 (20%) | 3 |
-| haushalt/vollzug | 3 | 0/3 (0%) | 3 | 0/3 (0%) | 3 | 0/3 (0%) | 3 |
-| nicht-in-daten/abstimmung | 5 | 5/5 (100%) | 0 | 5/5 (100%) | 0 | 5/5 (100%) | 0 |
-| nicht-in-daten/offen | 4 | 4/4 (100%) | 0 | 4/4 (100%) | 0 | 4/4 (100%) | 0 |
-| nicht-in-daten/sonstiges | 2 | 2/2 (100%) | 0 | 2/2 (100%) | 0 | 2/2 (100%) | 0 |
-| ort | 6 | 2/6 (33%) | 3 | 2/6 (33%) | 3 | 2/6 (33%) | 3 |
-| person/ausschuss | 6 | 0/6 (0%) | 4 | 0/6 (0%) | 4 | 0/6 (0%) | 4 |
-| person/fraktion | 4 | 2/4 (50%) | 2 | 2/4 (50%) | 2 | 2/4 (50%) | 2 |
-| sitzung/beschluesse | 3 | 2/3 (67%) | 1 | 2/3 (67%) | 1 | 2/3 (67%) | 1 |
-| sitzung/tagesordnung | 2 | 1/2 (50%) | 1 | 1/2 (50%) | 1 | 1/2 (50%) | 1 |
-| sitzung/termin | 3 | 1/3 (33%) | 1 | 2/3 (67%) | 1 | 2/3 (67%) | 1 |
-| verlauf/baumschutz | 1 | 0/1 (0%) | 1 | 0/1 (0%) | 1 | 0/1 (0%) | 1 |
-| verlauf/fliegerhorst | 2 | 0/2 (0%) | 1 | 0/2 (0%) | 1 | 0/2 (0%) | 1 |
-| verlauf/grundsteuer | 2 | 0/2 (0%) | 1 | 1/2 (50%) | 0 | 1/2 (50%) | 0 |
-| verlauf/klima | 1 | 0/1 (0%) | 0 | 0/1 (0%) | 0 | 0/1 (0%) | 0 |
-| verlauf/radverkehr | 3 | 0/3 (0%) | 1 | 0/3 (0%) | 1 | 0/3 (0%) | 1 |
-| verlauf/schwimmbad | 1 | 0/1 (0%) | 1 | 0/1 (0%) | 1 | 0/1 (0%) | 1 |
-| verlauf/stadion | 4 | 0/4 (0%) | 3 | 0/4 (0%) | 3 | 0/4 (0%) | 3 |
-| verwechslung/abgelehnt-als-angenommen | 3 | 1/3 (33%) | 0 | 0/3 (0%) | 0 | 1/3 (33%) | 0 |
-| verwechslung/fliegerhorst | 1 | 0/1 (0%) | 1 | 0/1 (0%) | 1 | 0/1 (0%) | 1 |
-| verwechslung/grundsteuer | 2 | 2/2 (100%) | 0 | 2/2 (100%) | 0 | 1/2 (50%) | 0 |
-| verwechslung/praemisse | 1 | 0/1 (0%) | 0 | 1/1 (100%) | 0 | 0/1 (0%) | 0 |
-| verwechslung/radverkehr | 1 | 0/1 (0%) | 0 | 0/1 (0%) | 0 | 0/1 (0%) | 0 |
-| verwechslung/schwimmbad | 1 | 0/1 (0%) | 1 | 0/1 (0%) | 1 | 0/1 (0%) | 1 |
-| verwechslung/sechsfeldhalle | 1 | 0/1 (0%) | 0 | 0/1 (0%) | 0 | 0/1 (0%) | 0 |
-| verwechslung/stadion | 2 | 2/2 (100%) | 0 | 2/2 (100%) | 0 | 1/2 (50%) | 0 |
-| verwechslung/weser-ems-halle | 4 | 3/4 (75%) | 0 | 3/4 (75%) | 0 | 2/4 (50%) | 0 |
-| verwechslung/zweckentfremdung | 1 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 0/1 (0%) | 0 |
+| Kategorie | Fälle | google/gemini-2.5-flash (vor #1493) ok | Kontextfehler | openai/gpt-6-luna (vor K1) ok | Kontextfehler | google/gemini-2.5-flash (nach #1493) ok | Kontextfehler | openai/gpt-6-luna (nach #1493) ok | Kontextfehler | openai/gpt-6-luna (nach K1, Lauf 1) ok | Kontextfehler | openai/gpt-6-luna (nach K1, Lauf 2) ok | Kontextfehler |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| beschluss/abstimmung | 0 | 3/6 (50%) | 2 | — | 0 | 3/6 (50%) | 2 | 2/6 (33%) | 3 | — | 0 | — | 0 |
+| beschluss/ergebnis | 0 | 6/10 (60%) | 2 | — | 0 | 6/10 (60%) | 2 | 5/10 (50%) | 2 | — | 0 | — | 0 |
+| beschluss/kosten | 0 | 4/9 (44%) | 5 | — | 0 | 4/9 (44%) | 5 | 4/9 (44%) | 5 | — | 0 | — | 0 |
+| haushalt/begriffe | 1 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 |
+| haushalt/eigenbetriebe | 7 | 6/7 (86%) | 1 | 6/7 (86%) | 1 | 6/7 (86%) | 1 | 6/7 (86%) | 1 | 6/7 (86%) | 0 | 6/7 (86%) | 0 |
+| haushalt/gebuehren | 6 | 5/6 (83%) | 1 | 5/6 (83%) | 1 | 5/6 (83%) | 1 | 5/6 (83%) | 1 | 6/6 (100%) | 0 | 6/6 (100%) | 0 |
+| haushalt/investitionen | 14 | 7/14 (50%) | 6 | 10/14 (71%) | 4 | 8/14 (57%) | 4 | 10/14 (71%) | 4 | 12/14 (86%) | 0 | 11/14 (79%) | 0 |
+| haushalt/ist | 10 | 7/10 (70%) | 1 | 7/10 (70%) | 1 | 7/10 (70%) | 1 | 7/10 (70%) | 1 | 9/10 (90%) | 0 | 9/10 (90%) | 0 |
+| haushalt/konzern | 7 | 5/7 (71%) | 2 | 5/7 (71%) | 2 | 5/7 (71%) | 2 | 5/7 (71%) | 2 | 6/7 (86%) | 0 | 6/7 (86%) | 0 |
+| haushalt/mitreden | 3 | 3/3 (100%) | 0 | 3/3 (100%) | 0 | 3/3 (100%) | 0 | 3/3 (100%) | 0 | 3/3 (100%) | 0 | 3/3 (100%) | 0 |
+| haushalt/nachbewilligungen | 1 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 |
+| haushalt/nicht-in-daten | 15 | 13/15 (87%) | 1 | 14/15 (93%) | 1 | 13/15 (87%) | 1 | 14/15 (93%) | 1 | 15/15 (100%) | 0 | 15/15 (100%) | 0 |
+| haushalt/plan | 12 | 8/12 (67%) | 3 | 9/12 (75%) | 3 | 9/12 (75%) | 3 | 9/12 (75%) | 3 | 12/12 (100%) | 0 | 12/12 (100%) | 0 |
+| haushalt/produkte | 8 | 5/8 (62%) | 2 | 4/8 (50%) | 2 | 5/8 (62%) | 2 | 4/8 (50%) | 2 | 8/8 (100%) | 0 | 8/8 (100%) | 0 |
+| haushalt/pruefung | 6 | 5/6 (83%) | 1 | 4/6 (67%) | 1 | 5/6 (83%) | 1 | 5/6 (83%) | 1 | 5/6 (83%) | 0 | 6/6 (100%) | 0 |
+| haushalt/satzung | 5 | 3/5 (60%) | 1 | 2/5 (40%) | 1 | 3/5 (60%) | 1 | 2/5 (40%) | 1 | 5/5 (100%) | 0 | 3/5 (60%) | 0 |
+| haushalt/schulden | 18 | 13/18 (72%) | 5 | 15/18 (83%) | 3 | 15/18 (83%) | 3 | 15/18 (83%) | 3 | 18/18 (100%) | 0 | 18/18 (100%) | 0 |
+| haushalt/spenden | 1 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 | 1/1 (100%) | 0 |
+| haushalt/stellenplan | 5 | 4/5 (80%) | 1 | 4/5 (80%) | 1 | 4/5 (80%) | 1 | 4/5 (80%) | 1 | 5/5 (100%) | 0 | 4/5 (80%) | 0 |
+| haushalt/steuern | 15 | 13/15 (87%) | 2 | 12/15 (80%) | 2 | 13/15 (87%) | 2 | 13/15 (87%) | 2 | 14/15 (93%) | 0 | 14/15 (93%) | 0 |
+| haushalt/vergleich | 5 | 1/5 (20%) | 3 | 1/5 (20%) | 3 | 1/5 (20%) | 3 | 1/5 (20%) | 3 | 4/5 (80%) | 0 | 4/5 (80%) | 0 |
+| haushalt/vollzug | 3 | 0/3 (0%) | 3 | 0/3 (0%) | 3 | 0/3 (0%) | 3 | 0/3 (0%) | 3 | 3/3 (100%) | 0 | 3/3 (100%) | 0 |
+| nicht-in-daten/abstimmung | 0 | 5/5 (100%) | 0 | — | 0 | 5/5 (100%) | 0 | 5/5 (100%) | 0 | — | 0 | — | 0 |
+| nicht-in-daten/offen | 0 | 4/4 (100%) | 0 | — | 0 | 4/4 (100%) | 0 | 4/4 (100%) | 0 | — | 0 | — | 0 |
+| nicht-in-daten/sonstiges | 0 | 2/2 (100%) | 0 | — | 0 | 2/2 (100%) | 0 | 2/2 (100%) | 0 | — | 0 | — | 0 |
+| ort | 0 | 2/6 (33%) | 3 | — | 0 | 2/6 (33%) | 3 | 2/6 (33%) | 3 | — | 0 | — | 0 |
+| person/ausschuss | 0 | 0/6 (0%) | 4 | — | 0 | 0/6 (0%) | 4 | 0/6 (0%) | 4 | — | 0 | — | 0 |
+| person/fraktion | 0 | 2/4 (50%) | 2 | — | 0 | 2/4 (50%) | 2 | 2/4 (50%) | 2 | — | 0 | — | 0 |
+| sitzung/beschluesse | 0 | 2/3 (67%) | 1 | — | 0 | 2/3 (67%) | 1 | 2/3 (67%) | 1 | — | 0 | — | 0 |
+| sitzung/tagesordnung | 0 | 1/2 (50%) | 1 | — | 0 | 1/2 (50%) | 1 | 1/2 (50%) | 1 | — | 0 | — | 0 |
+| sitzung/termin | 0 | 1/3 (33%) | 1 | — | 0 | 2/3 (67%) | 1 | 2/3 (67%) | 1 | — | 0 | — | 0 |
+| verlauf/baumschutz | 0 | 0/1 (0%) | 1 | — | 0 | 0/1 (0%) | 1 | 0/1 (0%) | 1 | — | 0 | — | 0 |
+| verlauf/fliegerhorst | 0 | 0/2 (0%) | 1 | — | 0 | 0/2 (0%) | 1 | 0/2 (0%) | 1 | — | 0 | — | 0 |
+| verlauf/grundsteuer | 0 | 0/2 (0%) | 1 | — | 0 | 1/2 (50%) | 0 | 1/2 (50%) | 0 | — | 0 | — | 0 |
+| verlauf/klima | 0 | 0/1 (0%) | 0 | — | 0 | 0/1 (0%) | 0 | 0/1 (0%) | 0 | — | 0 | — | 0 |
+| verlauf/radverkehr | 0 | 0/3 (0%) | 1 | — | 0 | 0/3 (0%) | 1 | 0/3 (0%) | 1 | — | 0 | — | 0 |
+| verlauf/schwimmbad | 0 | 0/1 (0%) | 1 | — | 0 | 0/1 (0%) | 1 | 0/1 (0%) | 1 | — | 0 | — | 0 |
+| verlauf/stadion | 0 | 0/4 (0%) | 3 | — | 0 | 0/4 (0%) | 3 | 0/4 (0%) | 3 | — | 0 | — | 0 |
+| verwechslung/abgelehnt-als-angenommen | 0 | 1/3 (33%) | 0 | — | 0 | 0/3 (0%) | 0 | 1/3 (33%) | 0 | — | 0 | — | 0 |
+| verwechslung/fliegerhorst | 0 | 0/1 (0%) | 1 | — | 0 | 0/1 (0%) | 1 | 0/1 (0%) | 1 | — | 0 | — | 0 |
+| verwechslung/grundsteuer | 0 | 2/2 (100%) | 0 | — | 0 | 2/2 (100%) | 0 | 1/2 (50%) | 0 | — | 0 | — | 0 |
+| verwechslung/praemisse | 0 | 0/1 (0%) | 0 | — | 0 | 1/1 (100%) | 0 | 0/1 (0%) | 0 | — | 0 | — | 0 |
+| verwechslung/radverkehr | 0 | 0/1 (0%) | 0 | — | 0 | 0/1 (0%) | 0 | 0/1 (0%) | 0 | — | 0 | — | 0 |
+| verwechslung/schwimmbad | 0 | 0/1 (0%) | 1 | — | 0 | 0/1 (0%) | 1 | 0/1 (0%) | 1 | — | 0 | — | 0 |
+| verwechslung/sechsfeldhalle | 0 | 0/1 (0%) | 0 | — | 0 | 0/1 (0%) | 0 | 0/1 (0%) | 0 | — | 0 | — | 0 |
+| verwechslung/stadion | 0 | 2/2 (100%) | 0 | — | 0 | 2/2 (100%) | 0 | 1/2 (50%) | 0 | — | 0 | — | 0 |
+| verwechslung/weser-ems-halle | 0 | 3/4 (75%) | 0 | — | 0 | 3/4 (75%) | 0 | 2/4 (50%) | 0 | — | 0 | — | 0 |
+| verwechslung/zweckentfremdung | 0 | 1/1 (100%) | 0 | — | 0 | 1/1 (100%) | 0 | 0/1 (0%) | 0 | — | 0 | — | 0 |
 
 ## Kontextfehler — die Arbeitsliste
 
@@ -272,20 +313,6 @@ Gruppiert nach dem Codeteil, der den Fakt hätte liefern müssen. Je Eintrag: Fr
 - `rat-stadion-fertigstellung` (rat): „Wann soll das neue Stadion fertig sein?“ — Gold: 2028 + 2029 — fehlt: nicht da; Bausteine im Prompt: DIESE FRAGE IST ENG GESTELLT, STAND DER AKTEN, BESCHLÜSSE, FOLGEFRAGEN
 - `rat-stadion-fertigstellung` (rat): „Wann soll das neue Stadion fertig sein?“ — Gold: 1. Juli 2027 | 01.07.2027 | Juli 2027 — fehlt: nicht da; Bausteine im Prompt: DIESE FRAGE IST ENG GESTELLT, STAND DER AKTEN, BESCHLÜSSE, FOLGEFRAGEN
 
-### `council/geld/execution.py` — 4
-
-- `hh-vollzug-2026-lotti` (lotti `/haushalt/plan-ist`): „Was erwartet die Verwaltung für das laufende Jahr?“ — Gold: Prognose Ergebnis 2026 (Stand 30.06.2026) 2026: -66033353.0 — fehlt: nicht da; Bausteine im Prompt: WAS DU WEISST, ZAHLEN AUS DEM HAUSHALT, STADTHAUSHALT, DER HAUSHALTS-BEREICH, WAS DIE PERSON GERADE VOR SICH HAT, UEBERSCHRIFT
-- `hh-vollzug-2026-rat` (rat): „Wie entwickelt sich der Haushalt 2026 laut dem letzten Bericht der Verwaltung?“ — Gold: Prognose Ergebnis 2026 (Stand 30.06.2026) 2026: -66033353.0 — fehlt: nicht da; Bausteine im Prompt: ZU DIESER FRAGE LIEGEN HAUSHALTSDATEN IM KONTEXT, STAND DER AKTEN, BESCHLÜSSE, WAS DIE FACHWÖRTER BEDEUTEN, AKTUELLES VON DER STADT, STADTHAUSHALT
-- `hh-vollzug-2026-rat` (rat): „Wie entwickelt sich der Haushalt 2026 laut dem letzten Bericht der Verwaltung?“ — Gold: Ansatz Ergebnis 2026 2026: -68679446.0 — fehlt: nicht da; Bausteine im Prompt: ZU DIESER FRAGE LIEGEN HAUSHALTSDATEN IM KONTEXT, STAND DER AKTEN, BESCHLÜSSE, WAS DIE FACHWÖRTER BEDEUTEN, AKTUELLES VON DER STADT, STADTHAUSHALT
-- `hh-vollzug-2025-rat` (rat): „Wie ist das Haushaltsjahr 2025 ausgegangen?“ — Gold: Ergebnis 2025 laut Vollzugsbericht zum 31.12.2025 2025: -18148945.0 — fehlt: nicht da; Bausteine im Prompt: ZU DIESER FRAGE LIEGEN HAUSHALTSDATEN IM KONTEXT, STAND DER AKTEN, BESCHLÜSSE, WAS DIE FACHWÖRTER BEDEUTEN, STADTHAUSHALT, PASSEND ZUR FRAGE
-
-### `store.staedtevergleich_kontext (qa: vergleich)` — 4
-
-- `hh-vergleich-gewst-hebesatz-rat` (rat): „Hat Oldenburg einen höheren Gewerbesteuer-Hebesatz als Osnabrück?“ — Gold: Hebesatz Gewerbesteuer Osnabrück 2025: 440.0 — fehlt: nicht da; Bausteine im Prompt: DIESE FRAGE IST ENG GESTELLT, STAND DER AKTEN, BESCHLÜSSE, WAS DIE FACHWÖRTER BEDEUTEN, HEBESÄTZE DER REALSTEUERN, DIE REIHE IST EINE TREPPE
-- `hh-vergleich-einnahmekraft-lotti` (lotti `/haushalt/vergleich`): „Wie hoch ist die Steuereinnahmekraft je Einwohner in Oldenburg im Vergleich zu Wolfsburg?“ — Gold: Steuereinnahmekraft je EW Oldenburg 2025: 2033.66 — fehlt: nicht da; Bausteine im Prompt: WAS DU WEISST, ZAHLEN AUS DEM HAUSHALT, EINWOHNERZAHL, PASSEND ZUR FRAGE, IM VERGLEICH, DER HAUSHALTS-BEREICH
-- `hh-vergleich-einnahmekraft-lotti` (lotti `/haushalt/vergleich`): „Wie hoch ist die Steuereinnahmekraft je Einwohner in Oldenburg im Vergleich zu Wolfsburg?“ — Gold: Steuereinnahmekraft je EW Wolfsburg 2025: 2259.77 — fehlt: nicht da; Bausteine im Prompt: WAS DU WEISST, ZAHLEN AUS DEM HAUSHALT, EINWOHNERZAHL, PASSEND ZUR FRAGE, IM VERGLEICH, DER HAUSHALTS-BEREICH
-- `hh-vergleich-grundb-lotti` (lotti `/haushalt/vergleich`): „In welcher Stadt ist die Grundsteuer B am höchsten?“ — Gold: Hebesatz B Braunschweig 2025: 750.0 — fehlt: nicht da; Bausteine im Prompt: WAS DU WEISST, ZAHLEN AUS DEM HAUSHALT, HEBESÄTZE DER REALSTEUERN, DIE REIHE IST EINE TREPPE, EIN HEBESATZ IST KEIN AUFKOMMEN, STEUEREINNAHMEN
-
 ### `Retrieval/Beschlusskontext (beschluss/kosten)` — 4
 
 - `rat-stadion-kosten-wer-zahlt` (rat): „Wie viel kostet das neue Stadion und wer bezahlt es?“ — Gold: Baunebenkosten netto : 2360000 — fehlt: nicht da; Bausteine im Prompt: ZU DIESER FRAGE LIEGEN HAUSHALTSDATEN IM KONTEXT, STAND DER AKTEN, BESCHLÜSSE, AUFGABEN DER STADT MIT KOSTEN UND RECHTSGRUNDLAGE, STADTHAUSHALT, PASSEND ZUR FRAGE
@@ -300,30 +327,6 @@ Gruppiert nach dem Codeteil, der den Fakt hätte liefern müssen. Je Eintrag: Fr
 - `lotti-person-adler-fraktion` (lotti `/council/person`): „Welcher Fraktion gehört er heute an?“ — Gold: BSW — fehlt: nicht da; Bausteine im Prompt: WAS DU WEISST, WAS DIE PERSON GERADE VOR SICH HAT, SO ANTWORTEST DU, WEITER, FRAGE
 - `lotti-person-meerbothe-vorsitz` (lotti `/council/person`): „Welchen Ausschuss leitet er?“ — Gold: Verkehrsausschuss — fehlt: nicht da; Bausteine im Prompt: WAS DU WEISST, WAS DIE PERSON GERADE VOR SICH HAT, SO ANTWORTEST DU, WEITER, FRAGE
 
-### `store.ansatz_fuer_begriffe (qa: ansatz)` — 3
-
-- `hh-schulden-zinsen-lotti` (lotti `/haushalt/schulden`): „Wie viel Zinsen zahlt die Stadt für ihre Schulden?“ — Gold: Zinsaufwendungen Ist 2024 2024: 4225401.18 — fehlt: nicht da; Bausteine im Prompt: WAS DU WEISST, ZAHLEN AUS DEM HAUSHALT, KREDITE UND ZINSEN, SCHULDENSTAND, DER HAUSHALTS-BEREICH, WAS DIE PERSON GERADE VOR SICH HAT
-- `hh-plan-transfer-lotti` (lotti `/haushalt/pflicht`): „Wie viel gibt die Stadt 2026 für Transferleistungen wie Sozialhilfe aus?“ — Gold: Transferaufwendungen Plan 2026 2026: 390460256.0 — fehlt: nicht da; Bausteine im Prompt: WAS DU WEISST, ZAHLEN AUS DEM HAUSHALT, STADTHAUSHALT, DER HAUSHALTS-BEREICH, WAS DIE PERSON GERADE VOR SICH HAT, UEBERSCHRIFT
-- `hh-gebuehr-einnahmen-lotti` (lotti `/haushalt/einnahmen`): „Wie viel Gebühren nimmt die Stadt ein?“ — Gold: öffentlich-rechtliche Entgelte Plan 2026 2026: 26622594.0 — fehlt: nicht da; Bausteine im Prompt: WAS DU WEISST, ZAHLEN AUS DEM HAUSHALT, GEBÜHRENBEDARFSBERECHNUNGEN, DER HAUSHALTS-BEREICH, WAS DIE PERSON GERADE VOR SICH HAT, UEBERSCHRIFT
-
-### `council/geld/bylaw.py` — 3
-
-- `hh-schulden-tilgung-lotti` (lotti `/haushalt/schulden`): „Wie viel tilgt die Stadt Oldenburg jedes Jahr?“ — Gold: Auszahlungen Finanzierungstätigkeit 2026: 2905300.0 — fehlt: nicht da; Bausteine im Prompt: WAS DU WEISST, ZAHLEN AUS DEM HAUSHALT, SCHULDENSTAND, DER HAUSHALTS-BEREICH, WAS DIE PERSON GERADE VOR SICH HAT, UEBERSCHRIFT
-- `hh-kredite-2026-rat` (rat): „Wie viel Kredit darf die Stadt 2026 aufnehmen?“ — Gold: Höchstbetrag Liquiditätskredite 2026: 100000000.0 — fehlt: nicht da; Bausteine im Prompt: DIESE FRAGE IST ENG GESTELLT, ACHTUNG, DÜNNE BELEGLAGE, STAND DER AKTEN, BESCHLÜSSE, KREDITE UND ZINSEN, SCHULDENSTAND
-- `hh-kredite-2026-rat` (rat): „Wie viel Kredit darf die Stadt 2026 aufnehmen?“ — Gold: Liquiditätskredit | Liquiditätskredite | Kassenkredit — fehlt: nicht da; Bausteine im Prompt: DIESE FRAGE IST ENG GESTELLT, ACHTUNG, DÜNNE BELEGLAGE, STAND DER AKTEN, BESCHLÜSSE, KREDITE UND ZINSEN, SCHULDENSTAND
-
-### `store.haushalt_fuer_begriffe (qa: plan)` — 3
-
-- `hh-plan-groesster-bereich-rat` (rat): „Welcher Bereich des städtischen Haushalts kostet 2026 am meisten?“ — Gold: Aufwendungen Soziales und Gesundheit 2026: 283120052.0 — fehlt: nicht da; Bausteine im Prompt: ZU DIESER FRAGE LIEGEN HAUSHALTSDATEN IM KONTEXT, STAND DER AKTEN, BESCHLÜSSE, WAS DIE FACHWÖRTER BEDEUTEN, AUFGABEN DER STADT MIT KOSTEN UND RECHTSGRUNDLAGE, STADTHAUSHALT
-- `hh-plan-meiste-lotti` (lotti `/haushalt`): „Wofür gibt die Stadt am meisten aus?“ — Gold: Soziales — fehlt: nicht da; Bausteine im Prompt: WAS DU WEISST, ZAHLEN AUS DEM HAUSHALT, AUFGABEN DER STADT MIT KOSTEN UND RECHTSGRUNDLAGE, STADTHAUSHALT, PASSEND ZUR FRAGE, DER HAUSHALTS-BEREICH
-- `hh-plan-meiste-lotti` (lotti `/haushalt`): „Wofür gibt die Stadt am meisten aus?“ — Gold: Aufwendungen Soziales und Gesundheit 2026: 283120052.0 — fehlt: nicht da; Bausteine im Prompt: WAS DU WEISST, ZAHLEN AUS DEM HAUSHALT, AUFGABEN DER STADT MIT KOSTEN UND RECHTSGRUNDLAGE, STADTHAUSHALT, PASSEND ZUR FRAGE, DER HAUSHALTS-BEREICH
-
-### `store.steuern_fuer_begriffe (qa: taxes)` — 3
-
-- `hh-gewst-steckbrief-lotti` (lotti `/haushalt/steuer`): „Wie hat sich diese Steuer zuletzt entwickelt?“ — Gold: Gewerbesteuer 2025 2025: 222117000.0 — fehlt: nicht da; Bausteine im Prompt: WAS DU WEISST, ZAHLEN AUS DEM HAUSHALT, STEUEREINNAHMEN, FINANZAUSGLEICH, DER HAUSHALTS-BEREICH, WAS DIE PERSON GERADE VOR SICH HAT
-- `hh-gewst-steckbrief-lotti` (lotti `/haushalt/steuer`): „Wie hat sich diese Steuer zuletzt entwickelt?“ — Gold: Gewerbesteuer — fehlt: nicht da; Bausteine im Prompt: WAS DU WEISST, ZAHLEN AUS DEM HAUSHALT, STEUEREINNAHMEN, FINANZAUSGLEICH, DER HAUSHALTS-BEREICH, WAS DIE PERSON GERADE VOR SICH HAT
-- `hh-nd-hundesteuer-lotti` (lotti `/haushalt/einnahmen`): „Wie viel bringt die Hundesteuer?“ — Gold: sonstige Steuern 2025 (Hundesteuer nicht einzeln) 2025: 819000.0 — fehlt: nicht da; Bausteine im Prompt: WAS DU WEISST, DER HAUSHALTS-BEREICH, WAS DIE PERSON GERADE VOR SICH HAT, UEBERSCHRIFT, SO ANTWORTEST DU, WEITER
-
 ### `Lotti-Seitenblock (/council/ort)` — 3
 
 - `lotti-ort-hallensichel` (lotti `/council/ort`): „Wie weit ist der Bebauungsplan hier?“ — Gold: 13.04.2026 | 13.4.2026 | 13. April 2026 | 2026-04-13 — fehlt: nicht da; Bausteine im Prompt: WAS DU WEISST, WAS DIE PERSON GERADE VOR SICH HAT, SO ANTWORTEST DU, WEITER, FRAGE
@@ -335,26 +338,6 @@ Gruppiert nach dem Codeteil, der den Fakt hätte liefern müssen. Je Eintrag: Fr
 - `lotti-btb-betrag` (lotti `/council/decision`): „Wie viel Geld bekommt der BTB hier im Jahr 2027?“ — Gold: Zuschuss BTB-Bad (Maximalbetrag) 2027: 177500 — fehlt: nicht da; Bausteine im Prompt: WAS DU WEISST, WAS DIE PERSON GERADE VOR SICH HAT, SO ANTWORTEST DU, WEITER, FRAGE
 - `lotti-sechsfeldhalle-kosten` (lotti `/council/decision`): „Was kostet die Halle, um die es hier geht?“ — Gold: erste Kostenschätzung : 31300000 — fehlt: nicht da; Bausteine im Prompt: WAS DU WEISST, WAS DIE PERSON GERADE VOR SICH HAT, SO ANTWORTEST DU, WEITER, FRAGE
 - `lotti-schulbezirke-gegenstimmen` (lotti `/council/decision`): „Gab es hier Gegenstimmen?“ — Gold: Enthaltungen : 9 — fehlt: nicht da; Bausteine im Prompt: DER GEGENSTAND DER SEITE, WAS DIE PERSON GERADE AUF DEM BILDSCHIRM HAT, SCREEN, STAND DER AKTEN, BESCHLÜSSE, FOLGEFRAGEN
-
-### `store.investitionen_fuer_begriffe (qa: investitionen)` — 2
-
-- `hh-invest-gesamt-lotti` (lotti `/haushalt/investitionen`): „Wie viel investiert die Stadt insgesamt?“ — Gold: Investitionsauszahlungen Plan 2026 (Vollzugsbericht) 2026: 70273312.0 — fehlt: nicht da; Bausteine im Prompt: WAS DU WEISST, ZAHLEN AUS DEM HAUSHALT, INVESTITIONEN, ES SIND ZWEI HAUSHALTE, NICHT EINER, NIE GEGEN DEN PLAN RECHNEN, DER HAUSHALTS-BEREICH
-- `hh-invest-gesamt-rat` (rat): „Wie viel will die Stadt 2026 investieren?“ — Gold: Investitionsauszahlungen Plan 2026 (Vollzugsbericht) 2026: 70273312.0 — fehlt: nicht da; Bausteine im Prompt: DIESE FRAGE IST ENG GESTELLT, ACHTUNG, KEINE ZUKUNFT IM KONTEXT, STAND DER AKTEN, BESCHLÜSSE, INVESTITIONEN, ES SIND ZWEI HAUSHALTE, NICHT EINER
-
-### `council/geld/measures.py` — 2
-
-- `hh-invest-vorhaben-rat` (rat): „Welches ist das größte einzelne Vorhaben im Investitionsprogramm 2025?“ — Gold: Kampfmittel — fehlt: nicht da; Bausteine im Prompt: ZU DIESER FRAGE LIEGEN HAUSHALTSDATEN IM KONTEXT, STAND DER AKTEN, BESCHLÜSSE, EINZELNE INVESTITIONS-VORHABEN, SCHULGEBÄUDE FEHLEN HIER, INVESTITIONEN
-- `hh-invest-vorhaben-rat` (rat): „Welches ist das größte einzelne Vorhaben im Investitionsprogramm 2025?“ — Gold: Fliegerhorst Kampfmittelsondierung (Gesamtsumme) 2025: 35850000.0 — fehlt: nicht da; Bausteine im Prompt: ZU DIESER FRAGE LIEGEN HAUSHALTSDATEN IM KONTEXT, STAND DER AKTEN, BESCHLÜSSE, EINZELNE INVESTITIONS-VORHABEN, SCHULGEBÄUDE FEHLEN HIER, INVESTITIONEN
-
-### `council/geld/companies.py` — 2
-
-- `hh-konzern-liste-lotti` (lotti `/haushalt/konzern`): „Welche Betriebe gehören zum Konzern?“ — Gold: Klinikum + GSG + Verkehr und Wasser | VWG + Weser-Ems + Abfallwirtschaft | AWB — fehlt: nicht da; Bausteine im Prompt: WAS DU WEISST, ZAHLEN AUS DEM HAUSHALT, DER KONZERN STADT OLDENBURG, DER HAUSHALTS-BEREICH, WAS DIE PERSON GERADE VOR SICH HAT, UEBERSCHRIFT
-- `hh-gsg-ergebnis-rat` (rat): „Wie viel Gewinn hat die GSG Oldenburg 2024 gemacht?“ — Gold: GSG Jahresergebnis 2024 2024: 8236483.57 — fehlt: nicht da; Bausteine im Prompt: DIESE FRAGE IST ENG GESTELLT, STAND DER AKTEN, BESCHLÜSSE, STÄDTISCHE GESELLSCHAFTEN, FOLGEFRAGEN
-
-### `store.produkte_fuer_begriffe (qa: produkte)` — 2
-
-- `hh-produkt-sport-lotti` (lotti `/haushalt/produkte`): „Wie viel gibt die Stadt für Sportförderung aus?“ — Gold: Sportförderung Aufwand 2026 2026: 13177251.0 — fehlt: nicht da; Bausteine im Prompt: WAS DU WEISST, ZAHLEN AUS DEM HAUSHALT, AUFGABEN DER STADT MIT KOSTEN UND RECHTSGRUNDLAGE, STADTHAUSHALT, DER HAUSHALTS-BEREICH, WAS DIE PERSON GERADE VOR SICH HAT
-- `hh-produkt-archiv-lotti` (lotti `/haushalt/produkte`): „Was kostet das Stadtarchiv?“ — Gold: Archivierung Aufwand 2026 2026: 394887.0 — fehlt: nicht da; Bausteine im Prompt: WAS DU WEISST, ZAHLEN AUS DEM HAUSHALT, AUFGABEN DER STADT MIT KOSTEN UND RECHTSGRUNDLAGE, DER HAUSHALTS-BEREICH, WAS DIE PERSON GERADE VOR SICH HAT, UEBERSCHRIFT
 
 ### `Retrieval/Beschlusskontext (beschluss/abstimmung)` — 2
 
@@ -385,34 +368,6 @@ Gruppiert nach dem Codeteil, der den Fakt hätte liefern müssen. Je Eintrag: Fr
 
 - `rat-ort-eversten-west` (rat): „Was ist zuletzt in Eversten-West beschlossen worden?“ — Gold: 24.06.2019 | 24.6.2019 | 24. Juni 2019 | 2019-06-24 — fehlt: nicht da; keine Haushalts-Bausteine im Prompt
 - `rat-ort-eversten-west` (rat): „Was ist zuletzt in Eversten-West beschlossen worden?“ — Gold: 2019 — fehlt: nicht da; keine Haushalts-Bausteine im Prompt
-
-### `store.schulden_kontext (qa: schulden)` — 1
-
-- `hh-schulden-entwicklung-rat` (rat): „Wie haben sich die Schulden der Stadt seit 2015 entwickelt?“ — Gold: Schuldenstand 2015 2015: 211503000.0 — fehlt: nicht da; Bausteine im Prompt: ZU DIESER FRAGE LIEGEN HAUSHALTSDATEN IM KONTEXT, STAND DER AKTEN, BESCHLÜSSE, SCHULDENSTAND, FOLGEFRAGEN
-
-### `store.abweichungsgruende_fuer_begriffe (qa: gruende)` — 1
-
-- `hh-ist-gruende-2024-rat` (rat): „Warum war das Ergebnis 2024 besser als geplant?“ — Gold: Mehrertrag Steuern 2024 2024: 75100000.0 — fehlt: nicht da; Bausteine im Prompt: STAND DER AKTEN, BESCHLÜSSE, AUS DEN RATSDEBATTEN, FOLGEFRAGEN
-
-### `store.investitionen_ist_kontext (qa: gebaut)` — 1
-
-- `hh-invest-ist-auf-schulden` (lotti `/haushalt/schulden`): „Wie viel hat die Stadt 2025 tatsächlich investiert?“ — Gold: Investitionen Ist 2025 2025: 60773000.0 — fehlt: nicht da; Bausteine im Prompt: WAS DU WEISST, ZAHLEN AUS DEM HAUSHALT, EINZELNE INVESTITIONS-VORHABEN, SCHULGEBÄUDE FEHLEN HIER, SCHULDENSTAND, INVESTITIONEN
-
-### `store.konzern_kontext (qa: konzern)` — 1
-
-- `hh-eb-liste-lotti` (lotti `/haushalt/konzern`): „Welche Eigenbetriebe gibt es und wie viel geben sie aus?“ — Gold: Bäderbetrieb Aufwendungen 2024 (Gesamtabschluss) 2024: 8020000.0 — fehlt: nicht da; Bausteine im Prompt: WAS DU WEISST, ZAHLEN AUS DEM HAUSHALT, WIRTSCHAFTSPLÄNE DER EIGENBETRIEBE, JAHRESABSCHLUSS, AUFGABEN DER STADT MIT KOSTEN UND RECHTSGRUNDLAGE, DER KONZERN STADT OLDENBURG **(bekannt, Fix unterwegs)**
-
-### `Seitenwissen (kern/knowledge.py)` — 1
-
-- `hh-steuern-einfluss-lotti` (lotti `/haushalt/einnahmen`): „Wie viel Einfluss hat der Rat auf die Steuern?“ — Gold: Hebesatz | Hebesätze + Gewerbesteuer | Grundsteuer — fehlt: nicht da; Bausteine im Prompt: WAS DU WEISST, ZAHLEN AUS DEM HAUSHALT, STEUEREINNAHMEN, FINANZAUSGLEICH, DER HAUSHALTS-BEREICH, WAS DIE PERSON GERADE VOR SICH HAT
-
-### `store.stellenplan_kontext (qa: stellenplan)` — 1
-
-- `hh-stellen-auf-haushalt` (lotti `/haushalt`): „Wie viele Leute arbeiten bei der Stadt?“ — Gold: besetzte Stellen (Stand 30.06.2025) : 2043.83 — fehlt: nicht da; Bausteine im Prompt: WAS DU WEISST, ZAHLEN AUS DEM HAUSHALT, STADTHAUSHALT, DER HAUSHALTS-BEREICH, WAS DIE PERSON GERADE VOR SICH HAT, UEBERSCHRIFT
-
-### `store.kennzahlen_kontext (qa: indicators)` — 1
-
-- `hh-vermoegen-lotti` (lotti `/haushalt/pruefung`): „Wie viel Vermögen hat die Stadt pro Einwohner?“ — Gold: Vermögen je EW 2024 2024: 8294.05 — fehlt: nicht da; Bausteine im Prompt: WAS DU WEISST, ZAHLEN AUS DEM HAUSHALT, EINWOHNERZAHL, IM VERGLEICH, DER HAUSHALTS-BEREICH, WAS DIE PERSON GERADE VOR SICH HAT
 
 ### `Retrieval/Beschlusskontext (verwechslung/fliegerhorst)` — 1
 

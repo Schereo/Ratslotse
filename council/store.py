@@ -78,6 +78,75 @@ COUNCIL_USER_OWNED_TABLES: tuple[tuple[str, str], ...] = (
 
 
 
+
+#: Welche Kennzahl der Reihe ``real_taxes`` eine Frage meint — gefaltete
+#: Muster, die engste zuerst (``CouncilStore.staedtevergleich_kontext``). Bis
+#: 09/2026 kam IMMER die Steuerkraftmesszahl, obwohl Hebesätze und Einnahmen
+#: je Einwohner der acht Städte in derselben Tabelle stehen: „Hat Oldenburg
+#: einen höheren Gewerbesteuer-Hebesatz als Osnabrück?" bekam die Steuerkraft
+#: (Fakten-Eval 23.09.2026).
+_VERGLEICH_KENNZAHLEN: tuple[tuple[str, tuple[str, ...]], ...] = (
+    # Nicht „Steuerkraft je Einwohner": Das ist die Messzahl durch die
+    # Einwohner (die Leiter auf /haushalt/vergleich), eine ANDERE Größe als
+    # die Steuereinnahmekraft des Landesamts — Lotti nannte sonst deren Wert
+    # für die Leiter (Lotti-Eval `keine-erfundene-zahl`, 23.09.2026).
+    (r"einnahmekraft|einnahm\w*[^.?!]{0,30}\b(?:je|pro) (?:einwohner|kopf)",
+     ("steuereinnahmekraft_je_ew",)),
+    (r"grundsteuer a\b", ("hebesatz_grundsteuer_a", "ist_je_ew_grundsteuer_a")),
+    (r"grundsteuer|grundbesitz", ("hebesatz_grundsteuer_b", "ist_je_ew_grundsteuer_b")),
+    (r"gewerbe", ("hebesatz_gewerbesteuer", "ist_je_ew_gewerbesteuer")),
+    (r"hebesa", ("hebesatz_gewerbesteuer", "hebesatz_grundsteuer_b")),
+)
+
+
+def _vergleich_kennzahlen(terms: list[str] | None) -> tuple[str, ...]:
+    """Die Kennzahlen, die die Begriffe meinen — ``()`` für „keine bestimmte"."""
+    text = _geld.falte(" ".join(terms or []))
+    for muster, kennzahlen in _VERGLEICH_KENNZAHLEN:
+        if re.search(muster, text):
+            return kennzahlen
+    return ()
+
+
+#: Alltagswort (gefalteter Anfang) → das Wort, unter dem der Posten im
+#: Gesamtergebnishaushalt steht (``CouncilStore.ansatz_fuer_begriffe``). Die
+#: Posten heißen in der Sprache der KomHKVO, und die trifft kein Mensch: „Wie
+#: viel Gebühren nimmt die Stadt ein?" fand „öffentlich-rechtliche Entgelte"
+#: (26,6 Mio. €) nicht, und der Baustein brachte statt des Postens die
+#: Summenzeilen (Fakten-Eval 23.09.2026). Nur Wörter, die EINEN Posten meinen.
+_ANSATZ_SYNONYME = {
+    "gebuehr": "Entgelte",
+    "sozialhilfe": "Transferaufwendungen",
+    "sozialleistung": "Transferaufwendungen",
+    "transferleistung": "Transferaufwendungen",
+    "grundsicherung": "Transferaufwendungen",
+    "gehaelter": "Personalaufwendungen",
+    "gehalt": "Personalaufwendungen",
+    "loehne": "Personalaufwendungen",
+    "pension": "Versorgungsaufwendungen",
+}
+
+
+def _ansatz_synonyme(woerter: list[str]) -> list[str]:
+    """Die Wörter samt ihrer Posten-Namen (s. ``_ANSATZ_SYNONYME``)."""
+    dazu = [ziel for w in woerter for anfang, ziel in _ANSATZ_SYNONYME.items()
+            if _geld.falte(w).startswith(anfang)]
+    return list(woerter) + [z for z in dict.fromkeys(dazu) if z not in woerter]
+
+
+def _produkt_stufe(begriffe: list[str]) -> str | None:
+    """Fragt der Wortlaut nach Spielraum (``high``) oder Pflicht (``low``)?
+
+    Die beiden Werte der Spielraum-Selbstauskunft des Haushaltsplans
+    (``council_products.controllability``), s. ``produkte_fuer_begriffe``."""
+    gemeint = _geld.falte(" ".join(begriffe))
+    if re.search(r"spielraum|freiwillig|kuerz|einspar|\bspar|streich", gemeint):
+        return "high"
+    if re.search(r"pflicht|gesetzlich|vorgeschrieben|\bmuss", gemeint):
+        return "low"
+    return None
+
+
 # Die Store-Mixins der Modul-Facetten (council/geld/): je Facette eine
 # Methode `(woerter, year=None)`, die mit `_conn`, `_trifft` und `_beleg`
 # arbeitet. Der Stern ist Absicht — wer eine Facette baut, fasst diese
@@ -3060,6 +3129,22 @@ class CouncilStore(BplanMixin, FundstueckeMixin, HaushaltMixin, OrteMixin, Perso
             "SELECT year, area, revenues, expenses, result, is_total "
             "FROM council_budget WHERE year = ?", (year,)).fetchall()
         out = []
+        if _geld.rangfrage(begriffe):
+            # „Wofür gibt die Stadt am meisten aus?" — die Summe und die
+            # größten Teilhaushalte nach Aufwendungen, statt eines
+            # Begriffsabgleichs, der dort nur Zufallstreffer findet (s.
+            # `geld.RANG_WORT`). `rang` sagt dem Baustein, dass die Liste
+            # eine Rangfolge ist und keine Auswahl nach Begriffen.
+            summe = [dict(r) for r in rows if r["is_total"]][:1]
+            teile = sorted((dict(r) for r in rows if not r["is_total"]),
+                           key=lambda r: -(r["expenses"] or 0))[:limit]
+            for i, r in enumerate(teile, 1):
+                r["rang"] = i
+            out = summe + teile
+            if abweicht:
+                for r in out:
+                    r["year_asked"] = gefragt
+            return out
         for r in rows:
             if r["is_total"]:
                 if any(w in ("haushalt", "gesamthaushalt", "haushaltsplan") for w in woerter):
@@ -3107,6 +3192,11 @@ class CouncilStore(BplanMixin, FundstueckeMixin, HaushaltMixin, OrteMixin, Perso
         "vergnügungssteuer": "Vergnügungssteuer",
         "vergnuegungssteuer": "Vergnügungssteuer",
         "getränkesteuer": "Getränkesteuer",
+        # Die Hundesteuer weist die Quelle nicht einzeln aus; sie steckt in
+        # „sonstige Steuern" (der Baustein sagt das dazu, s. `_steuern_block`).
+        "hundesteuer": "sonstige Steuern",
+        "zweitwohnungsteuer": "sonstige Steuern",
+        "zweitwohnungssteuer": "sonstige Steuern",
     }
 
     def steuern_fuer_begriffe(self, begriffe: list[str],
@@ -3119,8 +3209,18 @@ class CouncilStore(BplanMixin, FundstueckeMixin, HaushaltMixin, OrteMixin, Perso
         Planwerte — der Prompt-Baustein muss das benennen."""
         woerter = {w.lower().strip(".,;:!?") for w in begriffe}
         arten: list[str] = []
-        for w in woerter:
-            art = self._STEUER_SYNONYME.get(w)
+        # Gefaltet und am ANFANG des Wortes: „Gewerbesteuereinnahmen" ist die
+        # Gewerbesteuer, traf als ganzes Wort aber keinen Schlüssel — „Wie
+        # hoch waren die Gewerbesteuereinnahmen 2025?" bekam ohne passende
+        # Expansion gar keine Steuerzahl (Fakten-Eval 23.09.2026).
+        synonyme = sorted(((self._falte_wort(k), v) for k, v in self._STEUER_SYNONYME.items()),
+                          key=lambda kv: -len(kv[0]))
+        for w in sorted(woerter):
+            gefaltet = self._falte_wort(w)
+            # Der Anfang nur bei den Steuer-Namen selbst: „gewerbe" als Anfang
+            # träfe auch „Gewerbegebiet".
+            art = next((v for k, v in synonyme if gefaltet == k
+                        or (k.endswith("steuer") and gefaltet.startswith(k))), None)
             if art and art not in arten:
                 arten.append(art)
         if not arten and woerter & {"steuern", "steuereinnahmen", "steuer",
@@ -3387,6 +3487,14 @@ class CouncilStore(BplanMixin, FundstueckeMixin, HaushaltMixin, OrteMixin, Perso
                 "beleg": self._beleg(gesamt.get("herkunft_id")),
                 **({"year_asked": gefragt} if abweicht else {})}
 
+    #: Fragewörter ans Warum — gefaltet (ä → ae), wie `_falte_wort` sie liefert.
+    _GRUENDE_ALLGEMEIN = frozenset({
+        "warum", "wieso", "weshalb", "grund", "gruende", "ursache", "ursachen",
+        "ergebnis", "jahresergebnis", "geplant", "plan", "planung", "besser",
+        "schlechter", "erwartet", "abweichung", "abweichungen", "abgewichen",
+        "haushalt", "haushalts", "stadt", "oldenburg", "jahr", "jahres",
+    })
+
     def abweichungsgruende_fuer_begriffe(self, begriffe: list[str],
                                          limit: int = 3, year: int | None = None) -> list[dict]:
         """Das *Warum* zu den Abweichungen, in den Worten der Verwaltung.
@@ -3402,8 +3510,21 @@ class CouncilStore(BplanMixin, FundstueckeMixin, HaushaltMixin, OrteMixin, Perso
         rows = [dict(r) for r in self._conn.execute(
             "SELECT year, nr, label, delta_meur, percent, text, herkunft_id "
             "FROM council_variance_reasons WHERE year = ? ORDER BY nr", (year,))]
-        treffer = [(self._trifft(f"{r['label']} {r['text']}", begriffe), r) for r in rows]
-        passend = [r for n, r in sorted(treffer, key=lambda x: -x[0]) if n][:limit]
+        # Die Wörter, mit denen man nach dem Warum ÜBERHAUPT fragt, sind kein
+        # Posten. „Warum war das Ergebnis 2024 besser als geplant?" traf über
+        # „Ergebnis" und „geplant" drei Erläuterungen, in deren Text die
+        # Wörter zufällig stehen — und die größte Abweichung des Jahres
+        # (Steuern, +75,1 Mio. €) fehlte (Fakten-Eval 23.09.2026). Bei
+        # Gleichstand entscheidet die Größe der Abweichung, nicht die Nummer.
+        # Jahreszahlen auch nicht: „2024" steht im Text der Versorgungs-
+        # aufwendungen („Besoldungserhöhungen 2024") und machte sie zum
+        # einzigen Treffer.
+        woerter = [w for w in begriffe
+                   if self._falte_wort(w) not in self._GRUENDE_ALLGEMEIN
+                   and not self._falte_wort(w).isdigit()]
+        treffer = [(self._trifft(f"{r['label']} {r['text']}", woerter), r) for r in rows]
+        passend = [r for n, r in sorted(
+            treffer, key=lambda x: (-x[0], -abs(x[1].get("delta_meur") or 0))) if n][:limit]
         if not passend:
             passend = sorted(rows, key=lambda r: -abs(r.get("delta_meur") or 0))[:limit]
         for r in passend:
@@ -3443,6 +3564,19 @@ class CouncilStore(BplanMixin, FundstueckeMixin, HaushaltMixin, OrteMixin, Perso
         return {"year": year, "feststellungen": passend, "gesamt": len(rows),
                 "nach_marke": zaehl, "beleg": self._beleg(rows[0].get("herkunft_id"))}
 
+    #: Wörter, mit denen man nach Kosten ÜBERHAUPT fragt — gefaltet.
+    _PRODUKT_ALLGEMEIN = frozenset({
+        "fuer", "gibt", "geben", "stadt", "oldenburg", "kostet", "kosten",
+        "eigentlich", "viel", "wieviel", "ausgaben", "aufwand", "jahr", "jahre",
+        "jahres", "haushalt", "haushalts", "euro", "geld", "welche", "welcher",
+        "welches", "dieser", "diese", "dieses", "insgesamt", "zahlt", "bezahlt",
+        # Füllwörter: Mit „hoch" und „sind" kamen zur Frage nach dem Klinikum
+        # die Sportförderung und die Einwohnerangelegenheiten — und drückten
+        # den Konzern-Baustein aus dem Deckel.
+        "sind", "hoch", "ganze", "ganzen", "wird", "wurde", "werden", "haben",
+        "nach", "eine", "einen", "einer", "dass", "noch", "diesem", "hier",
+    })
+
     def produkte_fuer_begriffe(self, begriffe: list[str], limit: int = 4,
                                year: int | None = None) -> dict | None:
         """Aufgaben der Stadt mit Kosten, Amt, **Rechtsgrundlage** und der
@@ -3465,11 +3599,42 @@ class CouncilStore(BplanMixin, FundstueckeMixin, HaushaltMixin, OrteMixin, Perso
             "SELECT product_no, product_name, office, expenses, result, "
             " short_description, legal_basis, controllability, herkunft_id "
             "FROM council_products WHERE year = ?", (year,))]
-        bewertet = [(self._trifft(f"{r['product_name']} {r.get('office') or ''} "
-                                  f"{r.get('short_description') or ''}", begriffe), r)
+        # Zwei Korrekturen aus der Fakten-Eval vom 23.09.2026, beide an
+        # echten Fehlgriffen gemessen:
+        # * Die Fragewörter zählen nicht. „für" wird gefaltet zu „fuer" (vier
+        #   Zeichen, also ein Begriff) und steckt in jeder zweiten
+        #   Kurzbeschreibung; „Stadt", „gibt", „kostet", „eigentlich" ebenso.
+        #   „Wie viel gibt die Stadt für Sportförderung aus?" bekam so das
+        #   Öffentliche Grün, den Klimaschutz und die Wirtschaftsförderung —
+        #   und die Sportförderung (13,2 Mio. €) nicht.
+        # * Ein Treffer im PRODUKTNAMEN zählt dreifach. „Stadtarchiv" trifft
+        #   „Archivierung" nur über den Namen; über Amt und Kurzbeschreibung
+        #   trafen dieselben Wortstämme die halbe Produktliste, und bei
+        #   Gleichstand gewann der größere Zuschussbedarf.
+        # Die Wörter, die nach Spielraum oder Pflicht fragen, sind die ART der
+        # Frage, kein Produkt: „Entscheidungsspielraum" traf über den Stamm
+        # „entsch" das „soz. Entschädigungsrecht" (s. unten).
+        stufe = _produkt_stufe(begriffe)
+        woerter = [w for w in begriffe
+                   if self._falte_wort(w) not in self._PRODUKT_ALLGEMEIN
+                   and not self._falte_wort(w).isdigit()
+                   and not (stufe and _produkt_stufe([w]))]
+        bewertet = [(3 * self._trifft(r["product_name"], woerter)
+                     + self._trifft(f"{r.get('office') or ''} "
+                                    f"{r.get('short_description') or ''}", woerter), r)
                     for r in rows]
         passend = [r for n, r in sorted(bewertet, key=lambda x: (-x[0], x[1].get("result") or 0))
                    if n][:limit]
+        # Die Frage nach dem SPIELRAUM (oder der Pflicht) nennt keine Aufgabe —
+        # sie fragt nach der Selbstauskunft des Plans (`controllability`).
+        # „Wo hat der Rat beim Haushalt echten Entscheidungsspielraum?" traf
+        # bis 09/2026 über „Haushalt" die größten Zuschüsse, also die Pflicht-
+        # aufgaben, und nach dem Füllwort-Filter oben gar nichts Passendes.
+        # Ohne Treffer im Produktnamen entscheidet deshalb die Auskunft: die
+        # größten Aufgaben mit hohem (bzw. geringem) Spielraum.
+        if stufe and not any(n >= 3 for n, _ in bewertet):
+            passend = sorted((r for r in rows if r.get("controllability") == stufe),
+                             key=lambda r: r.get("result") or 0)[:limit]
         if not passend:
             return None
         for r in passend:
@@ -3496,7 +3661,11 @@ class CouncilStore(BplanMixin, FundstueckeMixin, HaushaltMixin, OrteMixin, Perso
         entity = [dict(r) for r in self._conn.execute(
             "SELECT kind, entity, amount_keur FROM council_group_entities "
             "WHERE year = ? AND kind = 'expenses' AND entity_key != 'konsolidierung' "
-            "ORDER BY amount_keur DESC LIMIT 5", (year,))]
+            # ALLE Einheiten, nicht die fünf größten: Es sind neun Zeilen, und
+            # mit LIMIT 5 fehlten Bäder (8,0 Mio. €) und Weser-Ems-Halle —
+            # „Welche Eigenbetriebe gibt es und wie viel geben sie aus?" bekam
+            # den Bäderbetrieb ohne Zahl (Fakten-Eval 23.09.2026).
+            "ORDER BY amount_keur DESC", (year,))]
         if not summen and not entity:
             return None
         revenues = summen.get("revenues_total") or {}
@@ -3509,7 +3678,8 @@ class CouncilStore(BplanMixin, FundstueckeMixin, HaushaltMixin, OrteMixin, Perso
                 **({"year_asked": gefragt} if abweicht else {})}
 
     def staedtevergleich_kontext(self, series: str = "tax_capacity",
-                                 year: int | None = None) -> dict | None:
+                                 year: int | None = None,
+                                 terms: list[str] | None = None) -> dict | None:
         """Die jüngste Kennzahl einer Reihe für alle acht kreisfreien Städte.
 
         Eine Kennzahl, nicht alle: Der Vergleich soll die Antwort einordnen
@@ -3524,29 +3694,48 @@ class CouncilStore(BplanMixin, FundstueckeMixin, HaushaltMixin, OrteMixin, Perso
         vor „steuerkraftmesszahl". Gemessen am 22.09.2026 kam als „IM
         VERGLEICH"-Baustein deshalb die EINWOHNERZAHL der acht Städte — eine
         Einordnung, die über die Frage nichts sagt. Der Nenner steht deshalb
-        hinten an; gibt es nur ihn, kommt er weiterhin."""
+        hinten an; gibt es nur ihn, kommt er weiterhin.
+
+        ``terms`` wählen stattdessen bis zu zwei Kennzahlen der Realsteuer-
+        Reihe (``_VERGLEICH_KENNZAHLEN``): den Hebesatz UND das Aufkommen je
+        Einwohner derselben Steuer — der Satz allein sagt nicht, was er
+        bringt. Die zweite steht unter ``weitere`` in derselben Form."""
         gefragt = year
-        year, abweicht = _geld.jahrgang(self._conn, "council_city_comparison", "year", gefragt,
-                                        f"series = '{series}'")
-        if not year:
-            return None
-        indicator = self._conn.execute(
-            "SELECT indicator FROM council_city_comparison WHERE series = ? AND year = ? "
-            "GROUP BY indicator "
-            "ORDER BY (indicator = 'population'), COUNT(*) DESC, indicator LIMIT 1",
-            (series, year)).fetchone()
-        if not indicator:
-            return None
-        rows = [dict(r) for r in self._conn.execute(
-            "SELECT city, value, unit, herkunft_id FROM council_city_comparison "
-            "WHERE series = ? AND year = ? AND indicator = ? ORDER BY value DESC",
-            (series, year, indicator[0]))]
-        if not rows:
-            return None
-        return {"year": year, "series": series, "indicator": indicator[0],
-                "unit": rows[0].get("unit"), "staedte": rows,
-                "beleg": self._beleg(rows[0].get("herkunft_id")),
-                **({"year_asked": gefragt} if abweicht else {})}
+
+        def kennzahl(serie: str, indicator: str | None) -> dict | None:
+            """Eine Kennzahl für alle Städte — gefragtes Jahr, sonst das jüngste.
+            Ohne ``indicator`` die häufigste der Reihe, der Nenner zuletzt."""
+            wo = f"series = '{serie}'" + (f" AND indicator = '{indicator}'" if indicator else "")
+            jahr, abweicht = _geld.jahrgang(self._conn, "council_city_comparison", "year",
+                                            gefragt, wo)
+            if not jahr:
+                return None
+            if indicator is None:
+                gefunden = self._conn.execute(
+                    "SELECT indicator FROM council_city_comparison WHERE series = ? AND year = ? "
+                    "GROUP BY indicator "
+                    "ORDER BY (indicator = 'population'), COUNT(*) DESC, indicator LIMIT 1",
+                    (serie, jahr)).fetchone()
+                if not gefunden:
+                    return None
+                indicator = gefunden[0]
+            rows = [dict(r) for r in self._conn.execute(
+                "SELECT city, value, unit, herkunft_id FROM council_city_comparison "
+                "WHERE series = ? AND year = ? AND indicator = ? ORDER BY value DESC",
+                (serie, jahr, indicator))]
+            if not rows:
+                return None
+            return {"year": jahr, "series": serie, "indicator": indicator,
+                    "unit": rows[0].get("unit"), "staedte": rows,
+                    "beleg": self._beleg(rows[0].get("herkunft_id")),
+                    **({"year_asked": gefragt} if abweicht else {})}
+
+        gewaehlt = _vergleich_kennzahlen(terms)
+        if gewaehlt:
+            teile = [k for k in (kennzahl("real_taxes", ind) for ind in gewaehlt) if k]
+            if teile:
+                return {**teile[0], "weitere": teile[1:]}
+        return kennzahl(series, None)
 
     def ansatz_fuer_begriffe(self, begriffe: list[str], limit: int = 4,
                              year: int | None = None,
@@ -3569,6 +3758,9 @@ class CouncilStore(BplanMixin, FundstueckeMixin, HaushaltMixin, OrteMixin, Perso
             (year,))]
         if not rows:
             return None
+        begriffe = _ansatz_synonyme(begriffe)
+        if frage is not None:
+            frage = _ansatz_synonyme(frage)
         bewertet = [(self._trifft(r["label"], begriffe), r) for r in rows]
         passend = [r for n, r in sorted(bewertet, key=lambda x: -x[0]) if n][:limit]
         # `treffer` sagt dem Aufrufer, ob die Begriffe einen Posten getroffen
@@ -3859,7 +4051,28 @@ class CouncilStore(BplanMixin, FundstueckeMixin, HaushaltMixin, OrteMixin, Perso
         teile = sorted((r for r in rows if r["level"] == "sub_budget"
                         and (r["outflows"] or r["inflows"])),
                        key=lambda r: -(r["outflows"] or 0))
+        # Der NEUERE Plan, den es nur als Summe gibt. Der Finanzhaushalt je
+        # Teilhaushalt endet im Bestand 2025; „Wie viel will die Stadt 2026
+        # investieren?" bekam deshalb den Plan 2025 (Fakten-Eval 23.09.2026),
+        # obwohl der Finanz- und Leistungsbericht den Ansatz 2026 der
+        # Investitionsauszahlungen druckt (70,3 Mio. €). Nur ein JÜNGERER
+        # Jahrgang, und nur, wenn nicht nach einem älteren gefragt ist.
+        neuer = None
+        if gefragt is None or gefragt > year:
+            try:
+                n = self._conn.execute(
+                    "SELECT budget_year, as_of, budgeted, forecast, herkunft_id "
+                    "FROM council_budget_execution WHERE budget = 'cash' "
+                    "AND kind = 'outflow' AND is_total = 1 AND budget_year > ? "
+                    + ("AND budget_year = ? " if gefragt else "")
+                    + "ORDER BY budget_year DESC, as_of DESC LIMIT 1",
+                    (year, gefragt) if gefragt else (year,)).fetchone()
+            except sqlite3.OperationalError:
+                n = None
+            if n and n["budgeted"] is not None:
+                neuer = {**dict(n), "beleg": self._beleg(n["herkunft_id"])}
         return {"year": year, "gesamt": gesamt, "teilhaushalte": teile,
+                "neuer_plan": neuer,
                 "beleg": self._beleg(gesamt.get("herkunft_id")),
                 **({"year_asked": gefragt} if abweicht else {})}
 
