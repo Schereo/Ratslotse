@@ -95,6 +95,26 @@ FEATURES: dict[str, Feature] = {
                     "in der Woche nach dem 13.09.2026); danach ist die Seite ein "
                     "Rückblick und braucht keinen Schalter mehr.",
     ),
+    "lotti-assistentin": Feature(
+        key="lotti-assistentin",
+        description="Lotti als Assistentin: ein Knopf auf jeder Seite, der erklärt, was "
+                    "gerade auf dem Bildschirm steht — die Seite, ein angeklicktes "
+                    "Element oder markierter Text — und Ratsfragen an „Frag den Rat“ "
+                    "weiterreicht.",
+        fertig_wenn="Zwei Wochen auf dev; die Probe-Aufrufe aus docs/plan-lotti-assistentin.md "
+                    "kosten im Mittel unter 0,3 Cent; der Eval (eval/run_assistant.py) ist "
+                    "grün, die sechs Injektions-Fälle eingeschlossen; Tim hat den Knopf "
+                    "freigegeben.",
+    ),
+    "lotti-anstupser": Feature(
+        key="lotti-anstupser",
+        description="Lotti klopft selten von selbst an („Hast du eine Frage zu dem, "
+                    "was du siehst?“) — auf Leseseiten, nach 45 s Lesezeit, höchstens "
+                    "einmal am Tag und dreimal in 30 Tagen.",
+        fertig_wenn="Vier Wochen gemessen (Admin-Panel, Reiter „Lotti“): Liegt die "
+                    "Ja-Quote unter 5 %, wird er seltener oder abgeschafft — Tims "
+                    "Entscheidung. Bleibt er, fliegt der Schalter raus.",
+    ),
     "tippspiel": Feature(
         key="tippspiel",
         description="Das Tippspiel zu den Wahlen 2026: zur Ratswahl am 13.09. Sitze je "

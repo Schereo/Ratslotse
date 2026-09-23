@@ -115,10 +115,13 @@ def anmeldungen(store) -> dict:
     Tagessumme vor, ein 24-Stunden-Fenster gibt es dafür nicht. Die beiden
     Fenster sind also verschieden groß; die Mail sagt das auch so.
     """
-    from datetime import date, timedelta
+    from datetime import timedelta
+
+    from kern.store import today_utc
 
     frisch = store.signup_recent(24)
-    gruende = store.signup_rejections_since((date.today() - timedelta(days=1)).isoformat())
+    # Der UTC-Tag, weil die Abweisungen so gezählt werden (kern.store.today_utc).
+    gruende = store.signup_rejections_since((today_utc() - timedelta(days=1)).isoformat())
     return {
         "created": frisch["created"],
         "unverified": frisch["unverified"],

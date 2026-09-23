@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import os
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -23,7 +24,7 @@ sys.path.insert(0, str(_BACKEND))
 
 from fastapi.testclient import TestClient  # noqa: E402
 from app.main import app  # noqa: E402
-from kern.store import SIGNUP_REJECTION_REASONS, Store  # noqa: E402
+from kern.store import SIGNUP_REJECTION_REASONS, Store, today_utc  # noqa: E402
 
 RATSLOTSE_DB = os.environ["RATSLOTSE_DB"]
 COUNCIL_DB = os.environ["COUNCIL_DB"]
@@ -109,6 +110,40 @@ def test_signup_signals_zaehlt_beide_seiten(client):
     assert gruende == {"disposable_email": 1, "duplicate_email": 1}
     assert daten["series"][-1]["created"] == 1
     assert daten["series"][-1]["rejected"] == 2
+
+
+@pytest.fixture(params=["Pacific/Kiritimati", "Etc/GMT+12"])
+def ortszeit_neben_utc(request, monkeypatch):
+    """Stellt die Prozess-Uhr so, dass der örtliche Tag vom UTC-Tag abweicht
+    (UTC+14 und UTC-12: zu jeder Stunde trifft mindestens eine). So sah es in
+    Oldenburg zwischen 22 und 24 Uhr CEST aus — `created_at` wird in UTC
+    geschrieben, die Tagesreihe lief bis 09/2026 über `date.today()`, und
+    der jüngste Tag der Reihe blieb abends leer."""
+    monkeypatch.setenv("TZ", request.param)
+    time.tzset()
+    yield
+    monkeypatch.delenv("TZ")
+    time.tzset()
+
+
+def test_der_juengste_tag_bleibt_auch_abends_gefuellt(client, ortszeit_neben_utc):
+    """Der Grenzfall: Ortszeit und UTC liegen auf verschiedenen Tagen, und
+    trotzdem landen Konto und Abweisung im letzten Punkt der Reihe."""
+    assert client.post("/api/auth/register", json={
+        "display_name": "Testkonto", "email": "echt@example.org", "password": PASSWORT,
+    }).status_code == 201
+    client.post("/api/auth/register", json={
+        "display_name": "Nochmal", "email": "echt@example.org", "password": PASSWORT})
+
+    store = Store(RATSLOTSE_DB)
+    try:
+        daten = store.signup_signals(30)
+    finally:
+        store.close()
+    assert daten["series"][-1]["day"] == today_utc().isoformat()
+    assert daten["series"][-1]["created"] == 1
+    assert daten["series"][-1]["rejected"] == 1
+    assert daten["created"] == 1 and daten["rejected"] == 1
 
 
 def test_der_endpunkt_verlangt_adminrechte(client):

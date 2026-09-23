@@ -6,6 +6,7 @@
 import Link from "next/link";
 import { Calculator, Search } from "lucide-react";
 import type { SteuerArt } from "@/lib/haushalt-taxes";
+import { useErklaerAnker } from "@/lib/erklaer-anker";
 
 /** Was die Seite über diese Einnahmeart **nicht** sagt — in EINEM Block.
  *
@@ -22,6 +23,7 @@ import type { SteuerArt } from "@/lib/haushalt-taxes";
  *  nur den zweiten Eintrag — die Zahl steht dann oben in ihrer eigenen
  *  Karte. */
 export function Grenzen({ art }: { art: SteuerArt }) {
+  const anker = useErklaerAnker("grenzen", "Was die Stadt nicht entscheidet");
   const eintraege = [
     art.punktUnmoeglich && {
       key: "punkt",
@@ -56,7 +58,7 @@ export function Grenzen({ art }: { art: SteuerArt }) {
   }[];
 
   return (
-    <div className="rounded-2xl border border-dashed border-border bg-card p-4">
+    <div {...anker} className="rounded-2xl border border-dashed border-border bg-card p-4">
       <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
         Was hier nicht steht
       </p>

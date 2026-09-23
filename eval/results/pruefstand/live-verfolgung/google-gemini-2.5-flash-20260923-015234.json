@@ -1,0 +1,291 @@
+{
+ "suite": "live-verfolgung",
+ "titel": "Live-Verfolgung: welcher TOP läuft",
+ "kennzahl": "Anteil der Fenster mit richtigem TOP am Fensterende — Aufruf, Block, Aussprache; von Hand gelesen (eval/run_live_tracker.py)",
+ "modell": "google/gemini-2.5-flash",
+ "variante": null,
+ "tarif": null,
+ "lauf": 2,
+ "zeitstempel": "2026-09-23T01:52:34",
+ "db_stand": "Sitzungen bis 2026-09-16, 9078 Beschlüsse",
+ "qualitaet": 1.0,
+ "harte_befunde": 0,
+ "warnung": null,
+ "faelle": 30,
+ "p50_ms": 1911,
+ "p95_ms": 2891,
+ "aufrufe": 30,
+ "kosten_usd": 0.04903,
+ "ohne_kostenwert": 0,
+ "ct_je_aufruf": 0.1634,
+ "ct_je_lauf": 4.903,
+ "kosten_gesamt_usd": 0.04903,
+ "ausfaelle": 0,
+ "nicht_zulaessig": false,
+ "abbruch": null,
+ "modelle_laut_tabelle": [
+  "google/gemini-2.5-flash"
+ ],
+ "ersatz": [],
+ "dauer_s": 56.6,
+ "nebenkennzahlen": {
+  "je_art": {
+   "aufruf": "11/11",
+   "aussprache": "8/8",
+   "block": "11/11"
+  }
+ },
+ "fehler_beispiele": [],
+ "roh": {
+  "n_cases": 30,
+  "quote": 1.0,
+  "erfunden": 0,
+  "je_art": {
+   "aufruf": "11/11",
+   "aussprache": "8/8",
+   "block": "11/11"
+  },
+  "faelle": [
+   {
+    "id": "4695-960",
+    "art": "aufruf",
+    "top": "6.1",
+    "richtig": true,
+    "erfunden": false,
+    "phase": "abstimmung"
+   },
+   {
+    "id": "4695-995",
+    "art": "block",
+    "top": "6.4",
+    "richtig": true,
+    "erfunden": false,
+    "phase": "aufruf"
+   },
+   {
+    "id": "4695-1060",
+    "art": "block",
+    "top": "6.8",
+    "richtig": true,
+    "erfunden": false,
+    "phase": "aussprache"
+   },
+   {
+    "id": "4695-1535",
+    "art": "aufruf",
+    "top": "7.1",
+    "richtig": true,
+    "erfunden": false,
+    "phase": "aussprache"
+   },
+   {
+    "id": "4695-1580",
+    "art": "aussprache",
+    "top": "7.1",
+    "richtig": true,
+    "erfunden": false,
+    "phase": "aussprache"
+   },
+   {
+    "id": "4695-2360",
+    "art": "aufruf",
+    "top": "7.2",
+    "richtig": true,
+    "erfunden": false,
+    "phase": "aussprache"
+   },
+   {
+    "id": "4695-2600",
+    "art": "aussprache",
+    "top": "7.2",
+    "richtig": true,
+    "erfunden": false,
+    "phase": "aussprache"
+   },
+   {
+    "id": "4695-2975",
+    "art": "block",
+    "top": "10.1",
+    "richtig": true,
+    "erfunden": false,
+    "phase": "aussprache"
+   },
+   {
+    "id": "4695-3400",
+    "art": "aussprache",
+    "top": "10.1",
+    "richtig": true,
+    "erfunden": false,
+    "phase": "aussprache"
+   },
+   {
+    "id": "4695-3785",
+    "art": "aufruf",
+    "top": "11.1",
+    "richtig": true,
+    "erfunden": false,
+    "phase": "aussprache"
+   },
+   {
+    "id": "4695-4095",
+    "art": "block",
+    "top": "12.1",
+    "richtig": true,
+    "erfunden": false,
+    "phase": "aussprache"
+   },
+   {
+    "id": "4695-4400",
+    "art": "block",
+    "top": "14.1",
+    "richtig": true,
+    "erfunden": false,
+    "phase": "aufruf"
+   },
+   {
+    "id": "4695-4900",
+    "art": "aussprache",
+    "top": "14.1",
+    "richtig": true,
+    "erfunden": false,
+    "phase": "aussprache"
+   },
+   {
+    "id": "4695-5560",
+    "art": "aufruf",
+    "top": "14.2",
+    "richtig": true,
+    "erfunden": false,
+    "phase": "aussprache"
+   },
+   {
+    "id": "4695-5990",
+    "art": "block",
+    "top": "14.4",
+    "richtig": true,
+    "erfunden": false,
+    "phase": "aussprache"
+   },
+   {
+    "id": "4695-6640",
+    "art": "block",
+    "top": "14.6",
+    "richtig": true,
+    "erfunden": false,
+    "phase": "aussprache"
+   },
+   {
+    "id": "4695-7980",
+    "art": "aufruf",
+    "top": "14.12",
+    "richtig": true,
+    "erfunden": false,
+    "phase": "aussprache"
+   },
+   {
+    "id": "4692-11300",
+    "art": "block",
+    "top": "6.3",
+    "richtig": true,
+    "erfunden": false,
+    "phase": "aufruf"
+   },
+   {
+    "id": "4692-13200",
+    "art": "aufruf",
+    "top": "8.1",
+    "richtig": true,
+    "erfunden": false,
+    "phase": "aussprache"
+   },
+   {
+    "id": "4692-14040",
+    "art": "aufruf",
+    "top": "8.2",
+    "richtig": true,
+    "erfunden": false,
+    "phase": "aussprache"
+   },
+   {
+    "id": "4692-14300",
+    "art": "aussprache",
+    "top": "8.2",
+    "richtig": true,
+    "erfunden": false,
+    "phase": "aussprache"
+   },
+   {
+    "id": "4692-14950",
+    "art": "aufruf",
+    "top": "8.3",
+    "richtig": true,
+    "erfunden": false,
+    "phase": "aussprache"
+   },
+   {
+    "id": "4692-15300",
+    "art": "aussprache",
+    "top": "8.3",
+    "richtig": true,
+    "erfunden": false,
+    "phase": "aussprache"
+   },
+   {
+    "id": "4692-15705",
+    "art": "block",
+    "top": "10.1",
+    "richtig": true,
+    "erfunden": false,
+    "phase": "aufruf"
+   },
+   {
+    "id": "4692-15960",
+    "art": "block",
+    "top": "12.4",
+    "richtig": true,
+    "erfunden": false,
+    "phase": "aufruf"
+   },
+   {
+    "id": "4692-16200",
+    "art": "aussprache",
+    "top": "13.1",
+    "richtig": true,
+    "erfunden": false,
+    "phase": "aussprache"
+   },
+   {
+    "id": "4692-16440",
+    "art": "aufruf",
+    "top": "13.2",
+    "richtig": true,
+    "erfunden": false,
+    "phase": "aussprache"
+   },
+   {
+    "id": "4692-17745",
+    "art": "block",
+    "top": "14.4",
+    "richtig": true,
+    "erfunden": false,
+    "phase": "aussprache"
+   },
+   {
+    "id": "4692-17800",
+    "art": "aufruf",
+    "top": "15.2",
+    "richtig": true,
+    "erfunden": false,
+    "phase": "aussprache"
+   },
+   {
+    "id": "4692-2000",
+    "art": "aussprache",
+    "top": "5",
+    "richtig": true,
+    "erfunden": false,
+    "phase": "aussprache"
+   }
+  ]
+ }
+}

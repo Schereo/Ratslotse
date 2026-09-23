@@ -1436,3 +1436,53 @@ lotti-figur {
   .animate-podium-glanz { animation: podium-glanz 4.5s ease-in-out infinite; }
 }
 .viertel-popup button:hover { background: hsl(var(--primary) / 0.08); }
+
+/* ── Lotti zeigt hin („Zeig mir: …") ──────────────────────────────────────
+   Der Chip in Lottis Fenster scrollt zum Baustein und setzt für zwei
+   Sekunden diesen Ring (components/assistentin/panel.tsx::zeigeBaustein).
+
+   **Ein Ring statt einer Animation, und das ist Absicht.** Der globale
+   `prefers-reduced-motion`-Block oben stutzt jede `animation-duration` auf
+   0,01 ms — ein Aufblitzen wäre dort ersatzlos weg, und der Baustein bliebe
+   ohne jeden Hinweis stehen. Ein Ring, den JavaScript nach zwei Sekunden
+   wieder abnimmt, steht in beiden Welten; bewegt ist nur sein Ein- und
+   Ausblenden, und genau das legt der Block still. */
+.lotti-zeigt {
+  border-radius: 14px;
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.55),
+              0 0 0 8px hsl(var(--primary) / 0.12);
+  transition: box-shadow 220ms var(--ease-out-strong, ease-out);
+}
+
+/* ── Lottis Tipp-Anzeige („Lotti schreibt …") ─────────────────────────────
+   Drei Punkte, die sich heben und senken — mit 160 ms Versatz je Punkt
+   (gesetzt am Element in `components/assistentin/panel.tsx`), 1,1 s Zyklus,
+   `ease-in-out`.
+
+   **Warum eigene Keyframes und nicht `animate-pulse`.** Bis 22.09.2026 waren
+   es drei 6-px-Punkte mit Tailwinds Puls, also eine reine Deckkraft-Welle
+   zwischen 100 % und 50 %. Tims Befund: „die haben keine richtige Animation,
+   man sieht fast nicht, dass da was lädt." Ein Weg von 3,5 px ist an 8-px-
+   Punkten dagegen als Bewegung zu erkennen, auch aus dem Augenwinkel.
+
+   **Bei reduzierter Bewegung blinkt nur die Deckkraft** — dafür braucht es
+   `!important` samt höherer Spezifität: Der globale
+   `prefers-reduced-motion`-Block weiter oben setzt `animation-duration:
+   0.01ms !important` auf `*`, und bei gleichem `!important` entscheidet die
+   Spezifität (eine Klasse sticht den Universal-Selektor). Ohne diesen Griff
+   stünden die Punkte dort vollkommen still, und das ist keine Ladeanzeige
+   mehr, sondern drei Punkte. */
+@keyframes lotti-tippt {
+  0%, 62%, 100% { transform: translateY(0); opacity: 0.55; }
+  31% { transform: translateY(-3.5px); opacity: 1; }
+}
+@keyframes lotti-tippt-blinzeln {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+}
+.lotti-tippt-punkt { animation: lotti-tippt 1.1s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .lotti-tippt-punkt {
+    animation: lotti-tippt-blinzeln 1.8s ease-in-out infinite !important;
+  }
+}

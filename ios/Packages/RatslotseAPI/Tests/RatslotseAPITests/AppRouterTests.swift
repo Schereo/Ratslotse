@@ -8,6 +8,8 @@ private let router = AppRouter()
     ("https://ratslotse.de/dashboard", AppRoute.tab(.today)),
     ("https://ratslotse.de/fragen?q=Was%20wird%20gebaut%3F", .question(prefill: "Was wird gebaut?", share: nil)),
     ("https://ratslotse.de/council/decision?id=42", .decision(id: 42)),
+    // Eine Bewegung — dieselbe Idee in mehreren anderen Räten (Plan PR 54).
+    ("https://ratslotse.de/council/ideen/bewegung?id=14", .movement(id: 14)),
     ("https://ratslotse.de/council?tab=sessions&ksinr=123&top=%C3%96%206%2CN%206", .sessions(ksinr: 123, tops: ["Ö 6", "N 6"])),
     // Die geteilte Sitzungs-Seite — sie liest sich ohne Konto und ist deshalb
     // das Ziel der Teilen-Knöpfe; die Listen-Adresse darüber bleibt gültig

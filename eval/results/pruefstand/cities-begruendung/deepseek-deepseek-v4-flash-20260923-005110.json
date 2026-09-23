@@ -1,0 +1,306 @@
+{
+ "suite": "cities-begruendung",
+ "titel": "Städtevergleich: warum ging es so aus?",
+ "kennzahl": "Abstimmungsergebnis richtig wiedergegeben (das `why` prüft nur eine Handdurchsicht)",
+ "modell": "deepseek/deepseek-v4-flash",
+ "variante": null,
+ "tarif": null,
+ "lauf": 2,
+ "zeitstempel": "2026-09-23T00:51:10",
+ "db_stand": "Sitzungen bis 2026-09-16, 9078 Beschlüsse",
+ "qualitaet": 0.9333,
+ "harte_befunde": 0,
+ "warnung": null,
+ "faelle": 36,
+ "p50_ms": 14211,
+ "p95_ms": 265123,
+ "aufrufe": 36,
+ "kosten_usd": 0.033155,
+ "ohne_kostenwert": 0,
+ "ct_je_aufruf": 0.0921,
+ "ct_je_lauf": 3.3155,
+ "kosten_gesamt_usd": 0.033155,
+ "ausfaelle": 0,
+ "nicht_zulaessig": false,
+ "abbruch": null,
+ "modelle_laut_tabelle": [
+  "deepseek/deepseek-v4-flash"
+ ],
+ "ersatz": [],
+ "dauer_s": 2256.9,
+ "nebenkennzahlen": {
+  "fehlgeschlagen": 1,
+  "begruendung_gefunden": 4
+ },
+ "fehler_beispiele": [],
+ "roh": {
+  "n_cases": 36,
+  "erfunden": [],
+  "fehler": [
+   {
+    "item": "7.7 Mitteilungen und Anfragen der Mitglieder",
+    "warum": "ValueError: leere Antwort (meist: Token-Budget beim Denken verbraucht)"
+   }
+  ],
+  "namen": [],
+  "saetze": [
+   {
+    "item": "4.5.10 Verschiedenes",
+    "grounded": false,
+    "vote": "Einstimmig angenommen; einstimmig bei einer Enthaltung angenommen",
+    "why": "",
+    "decided": "Der Tagesordnungspunkt 4.5.1 wird vorgezogen; das Protokoll wird mit Anmerkung genehmigt."
+   },
+   {
+    "item": "6.5 \"Global Nachhaltige Kommune in NRW (GNK)\" – Nachhaltigkeitsstrategie Münster 2030 – Teil 4: Nachhaltigkeitsbericht 2019 – 2022, Stellungnahme des GNK-Beirats und nächste Meilensteine im Nachhaltigkeitsprozess",
+    "grounded": false,
+    "vote": "Änderungsantrag: bei einer Enthaltung einstimmig angenommen; Empfehlung: einstimmig",
+    "why": "",
+    "decided": "Der Änderungsantrag wurde angenommen; der Ausschuss beschloss, dem Rat die Annahme des geänderten Beschlussvorschlages zu empfehlen."
+   },
+   {
+    "item": "3 Wahl der/des stellvertretenden Vorsitzenden des Ausschusses für Finanzen und Wirtschaft",
+    "grounded": false,
+    "vote": "einstimmig",
+    "why": "",
+    "decided": "Frau N. wird einstimmig zur stellvertretenden Vorsitzenden des Ausschusses für Finanzen und Wirtschaft gewählt."
+   },
+   {
+    "item": "30 Schulentwicklungsplanung Primarstufe, geänderte bzw. neue Beschlussfassung",
+    "grounded": false,
+    "vote": "Mit Mehrheit abgelehnt (Ja: CDU; Nein: OB, Bündnis 90/Die Grünen/GAL, SPD, FDP, Die Linke, Internationale Fraktion Die PARTEI/ÖDP, Volt; Ent",
+    "why": "",
+    "decided": "Der Rat beschließt gemäß der Beschlussempfehlung des Ausschusses für Wohnen, Liegenschaften, Finanzen und Wirtschaft (gleichlautend BV Münster-Ost) die Schulentwicklungsplanung Primarstufe mit den darin enthaltenen Standortfestlegungen."
+   },
+   {
+    "item": "34 Trägervergabe für die fünfgruppige Kindertageseinrichtung an der Hammer Straße/ Städtisches Stadion Bezirk Hiltrup",
+    "grounded": false,
+    "vote": "mit Mehrheit (OB, CDU, Bündnis 90/Die Grünen/GAL, SPD, FDP, Die Linke, Internationale Fraktion Die PARTEI/ÖDP, Volt) bei einer Gegenstimme (",
+    "why": "",
+    "decided": "Der Rat überträgt die Trägerschaft für die fünfgruppige Kindertageseinrichtung an der Hammer Straße an die Outlaw gGmbH. Betriebsbeginn: 01.08.2027. Vertragliche Regelungen: Leistungsvereinbarung (4% Trägeranteil) und Mietvertrag (20 Jahre + Optionen)."
+   },
+   {
+    "item": "45 \"Global Nachhaltige Kommune in NRW (GNK)\" – Nachhaltigkeitsstrategie Münster 2030 – Teil 4: Nachhaltigkeitsbericht 2019 – 2022, Stellungnahme des GNK-Beirats und nächste Meilensteine im Nachhaltigkeitsprozess",
+    "grounded": false,
+    "vote": "mit Mehrheit (OB, CDU, Bündnis 90/Die Grünen/GAL, SPD, FDP, Die Linke, Internationale Fraktion Die PARTEI/ÖDP, Volt) bei einer Gegenstimme (",
+    "why": "",
+    "decided": "Kenntnisnahme von Nachhaltigkeitsbericht 2019–2022 und Stellungnahme des GNK-Beirats; Aufnahme nachhaltiger energetischer Ertüchtigung bei Bestandsimmobilien in den laufenden Prozess; Beauftragung der Verwaltung zur Erarbeitung einer Fortschreibungsempfehlung bis 2025."
+   },
+   {
+    "item": "20.6 Beantragung eines Wortprotokolles",
+    "grounded": false,
+    "vote": null,
+    "why": "",
+    "decided": ""
+   },
+   {
+    "item": "3 Entscheidung über eventuelle Einwendungen gegen das Protokoll des öffentlichen Teils der Sitzung vom 04.07.2024",
+    "grounded": false,
+    "vote": null,
+    "why": "",
+    "decided": ""
+   },
+   {
+    "item": "7.3.1 Konkrete Maßnahmen statt abstrakter Konzepte - Treibhausgasneutralität 2045 durch effiziente und generationengerechte Maßnahmen Stellungnahme der Verwaltung",
+    "grounded": false,
+    "vote": null,
+    "why": "",
+    "decided": "Die Ziele für die Treibhausgas-Reduktion in Braunschweig werden wie folgt neu festgesetzt:"
+   },
+   {
+    "item": "6.4 Erweiterung von Kinderbibliothek und Volkshochschule absichern",
+    "grounded": true,
+    "vote": "7 Ja-Stimmen und einer Enthaltung",
+    "why": "Die derzeitige Haushaltslage lässt eine Beschlussfassung zum jetzigen Zeitpunkt nicht empfehlenswert erscheinen.",
+    "decided": "Vertagung des Antrages bis zur Haushaltsplanung."
+   },
+   {
+    "item": "3 Berichte und Mitteilungen der Verwaltung",
+    "grounded": false,
+    "vote": null,
+    "why": "",
+    "decided": ""
+   },
+   {
+    "item": "7.5 Weiterentwicklung:  Kaiser-Otto-Preis",
+    "grounded": false,
+    "vote": "6 Ja, 34 Nein, 5 Enthaltungen; 7 Ja, 36 Nein, 3 Enthaltungen",
+    "why": "",
+    "decided": "Der Änderungsantrag A0008/24/1 wird abgelehnt. Der Beschluss-Nr. 092-003(VIII)24 wird abgelehnt."
+   },
+   {
+    "item": "6.4.1 Nachtfahrverbot für Mähroboter",
+    "grounded": true,
+    "vote": "0 – 2 – 4",
+    "why": "Ein Stadtrat sah keine gesetzliche Möglichkeit für ein Verbot seitens der Stadt; die Verwaltung teilte mit, dass die Lärmschutzvorgaben eingehalten werden und eine Tierschutz-Verursacherfeststellung schwierig ist.",
+    "decided": "Antrag A0113/24 mit 0-2-4 abgelehnt; Vorlage S0290/24 zur Kenntnis genommen."
+   },
+   {
+    "item": "5.1 Fortschreibung der Obergrenze für den Verlustausgleich aus dem Betrauungsakt der LHP zur Betrauung des KEvB mit Dienstleistungen von allgemeinem wirtschaftlichen Interesse bis 2028",
+    "grounded": true,
+    "vote": null,
+    "why": "Auf Grund der kurzfristigen Einreichung der Vorlage (Nachtragstagesordnung 09.09.2024) und der fehlenden inhaltlichen Informationen im Rahmen der Sitzung sehen die Ausschussmitglieder von einer Empfehlung zur Vorlage ab.",
+    "decided": "Die vorliegende Beschlussvorlage wird zur Kenntnis genommen."
+   },
+   {
+    "item": "15.1 Annahme oder Vermittlung von Zuwendungen über 2.000 €",
+    "grounded": false,
+    "vote": "einstimmig",
+    "why": "",
+    "decided": "Der Annahme bzw. Vermittlung der in den Anlagen aufgeführten Zuwendungen wird zugestimmt."
+   },
+   {
+    "item": "8 Einführung einer Klimawirkungsprüfung (\"Klima-Check\")",
+    "grounded": false,
+    "vote": "dafür: 6 dagegen: 0 Enthaltungen: 0",
+    "why": "",
+    "decided": "Der Einführung einer Klimawirkungsprüfung von Beschlussvorlagen entsprechend des unten dargestellten Verfahrens wird zugestimmt."
+   },
+   {
+    "item": "7.50 Beschleunigung der Baumaßnahme (DS0137/22) Lärmschutzwand Magdeburger Ring",
+    "grounded": false,
+    "vote": "41 Ja, 0 Neinstimmen",
+    "why": "",
+    "decided": "Der GO-Antrag auf Überweisung in den Ausschuss KRB wird abgelehnt; der Antrag A0203/24 wird angenommen."
+   },
+   {
+    "item": "20.4 Darstellung neuer Konsolidierungsmaßnahmen 2025 ff.",
+    "grounded": false,
+    "vote": null,
+    "why": "",
+    "decided": ""
+   },
+   {
+    "item": "7.7 Anfragen und Anregungen",
+    "grounded": false,
+    "vote": "Einstimmig angenommen",
+    "why": "",
+    "decided": "Die Verwaltung wird ermächtigt, bis zur Genehmigung des Haushalts 2025 Abschlagszahlungen auf Zuschüsse zur Förderung an die als Anlage beigefügten freien Träger zu bewilligen."
+   },
+   {
+    "item": "1 Eingänge und Mitteilungen",
+    "grounded": false,
+    "vote": null,
+    "why": "",
+    "decided": "Die Bezirksvertretung Münster-West stimmte dem Vorschlag zu, einen Ortstermin zu TOP 7.1 durchzuführen."
+   },
+   {
+    "item": "7.41 Personalabbau und Stundenreduzierungen in Magdeburger Kitas vermeiden: Sicherung der Betreuungsqualität und für Fachkräfte schaffen",
+    "grounded": false,
+    "vote": "42 Ja, 1 Neinstimme und 1 Enthaltung",
+    "why": "",
+    "decided": "Der Antrag A0193/24 wird in den BA KKM und in die Ausschüsse FG, Juhi und Geso überwiesen."
+   },
+   {
+    "item": "7.1.2 Neufassung der Berechnungsgrundlage für die Lehr- und Lernmittel für die Schulen in städtischer Trägerschaft",
+    "grounded": false,
+    "vote": null,
+    "why": "",
+    "decided": ""
+   },
+   {
+    "item": "24 Trägervergabe für die fünfgruppige Kindertageseinrichtung an der Hammer Straße/ Städtisches Stadion Bezirk Hiltrup",
+    "grounded": false,
+    "vote": "einstimmig",
+    "why": "",
+    "decided": "Der Hauptausschuss beschloss einstimmig, dem Rat die Annahme des Beschlussvorschlages zu empfehlen, die Trägerschaft für die fünfgruppige Kindertageseinrichtung an der Hammer Straße an die Outlaw gGmbH zu übertragen."
+   },
+   {
+    "item": "7.5.10 Verschiedenes",
+    "grounded": false,
+    "vote": null,
+    "why": "",
+    "decided": "Kein Beschluss im Abschnitt ersichtlich."
+   },
+   {
+    "item": "25 Trägerwechsel für die außerunterrichtlichen offenen Angebote an der Peter-Wust-Schule (OGS und BMB)",
+    "grounded": false,
+    "vote": "einstimmig",
+    "why": "",
+    "decided": "Der Hauptausschuss empfiehlt dem Rat, die Kündigung der Trägerschaft der OGS zur Kenntnis zu nehmen und die Überleitung zu SEHT Münster e. V. zum 01.10.2024 zu beschließen, sowie die BMB-Angebote zum 01.08.2025 überzuleiten."
+   },
+   {
+    "item": "7.11 Soziale Stadtentwicklung anpacken!",
+    "grounded": false,
+    "vote": "6 Ja-, 38 Neinstimmen und 4 Enthaltungen",
+    "why": "",
+    "decided": "Der Antrag A0020/24 wird abgelehnt."
+   },
+   {
+    "item": "20.1 Richtlinie für die außerschulische Nutzung von Sporthallen zu Übernachtungszwecken",
+    "grounded": false,
+    "vote": "einstimmig beschlossen",
+    "why": "",
+    "decided": "Die als Anlage 2 beigefügte Richtlinie für die außerschulische Nutzung von Sporthallen für Übernachtungszwecke wird beschlossen."
+   },
+   {
+    "item": "1 Eröffnung der Sitzung",
+    "grounded": false,
+    "vote": null,
+    "why": "",
+    "decided": "Die Tagesordnung wird in der vorliegenden Fassung genehmigt."
+   },
+   {
+    "item": "7.4.1 Umbau Ölper Kreuz Stellungnahme der Verwaltung",
+    "grounded": false,
+    "vote": null,
+    "why": "",
+    "decided": "Über Ziffer 1 und 2 des Beschlussvorschlags getrennt abgestimmt."
+   },
+   {
+    "item": "7.20 Awareness bei öffentlichen Veranstaltungen",
+    "grounded": false,
+    "vote": null,
+    "why": "",
+    "decided": ""
+   },
+   {
+    "item": "7.26 Umgestaltung der Straßenbahnanlagen in Alt Salbke (zwischen Blumenstraße und Ferdinand-Schrey-Str.)  überprüfen",
+    "grounded": true,
+    "vote": "21 Ja-, 24 Neinstimmen und 1 Enthaltung",
+    "why": "Es wurden Projektstudien erarbeitet und unterschiedliche Varianten untersucht; diese sollten abgewartet werden, bevor darüber diskutiert wird.",
+    "decided": "Der Änderungsantrag A0145/24/1 – Der Antrag wird wie folgt ersetzt."
+   },
+   {
+    "item": "21.7 Erarbeitung eines kommunalen Hitzeaktionsplans Anfrage der Fraktion Bündnis 90/Die GRÜNEN",
+    "grounded": false,
+    "vote": null,
+    "why": "",
+    "decided": "Die Beantwortung erfolgt durch die Stadträtin (Stellungnahme 24-24338-01). Eine Nachfrage wird beantwortet."
+   },
+   {
+    "item": "9 Anfragen und Anregungen der Ortschaftsräte",
+    "grounded": false,
+    "vote": null,
+    "why": "",
+    "decided": ""
+   },
+   {
+    "item": "5 Informationen der Ortsvorsteherin",
+    "grounded": false,
+    "vote": null,
+    "why": "",
+    "decided": "zur Kenntnis genommen"
+   },
+   {
+    "item": "5.4 TG Packhof Sachstand - Mitteilung",
+    "grounded": false,
+    "vote": null,
+    "why": "",
+    "decided": "Die Mitteilung 24-24277 wird zur Kenntnis genommen."
+   }
+  ],
+  "vote_daneben": [
+   {
+    "item": "7.50 Beschleunigung der Baumaßnahme (DS0137/22) Lärmschutzwand Magdeburger Ring",
+    "erwartet": "mit 0 Ja-, 42 Neinstimmen und 0 Enthaltungen",
+    "bekommen": "41 Ja, 0 Neinstimmen"
+   }
+  ],
+  "vote_quote": 0.9333333333333333,
+  "vote_gesamt": 15,
+  "gefunden": 4,
+  "verpasst": 6,
+  "cost_usd": 0.021113605980000002
+ }
+}

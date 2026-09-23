@@ -356,10 +356,34 @@ private struct MainTabsView: View {
     /// als eigenen Safe-Area-Rand; steht die Tastatur, ist die Leiste weg
     /// und der Rand null.
     @State private var bottomBarHeight: CGFloat = 0
+    /// Lottis Blatt. Der Bildschirm wird beim ÖFFNEN festgehalten: Wer im
+    /// Blatt weiterfragt, fragt weiter zu der Seite, von der er kam.
+    @State private var lotti: LottiSitzung?
+    /// Lottis Anklopfen: die Uhr je Screen und die Blase.
+    @State private var nudgeClock = NudgeClock()
+    @State private var nudgeVisible = false
+    @Environment(\.scenePhase) private var scenePhase
 
     private var tabBarClearance: CGFloat {
         horizontalSizeClass == .regular || keyboardVisible ? 0 : bottomBarHeight
     }
+
+    /// Wie hoch Lottis Knopf über der Tab-Leiste baut.
+    ///
+    /// **Die Seiten brauchen den Abstand, der Knopf nicht.** Er schwebt über
+    /// dem Inhalt; ohne diesen Zuschlag lag der letzte Eintrag einer Liste
+    /// unter ihm, egal wie weit man scrollte — derselbe Befund wie bei der
+    /// Tab-Leiste selbst (Tim, 09.09.2026), nur eine Ebene höher.
+    private var lottiClearance: CGFloat {
+        zeigtLotti && !keyboardVisible ? 58 : 0
+    }
+
+    private var zeigtLotti: Bool {
+        model.feature("lotti-assistentin") && model.currentExplainScreen != nil
+    }
+
+    /// Der Rand, den jede Seite unten freihält.
+    private var seitenAbstand: CGFloat { tabBarClearance + lottiClearance }
 
     var body: some View {
         Group {
@@ -406,6 +430,60 @@ private struct MainTabsView: View {
                 keyboardVisible = false
             }
         }
+        // Der schwebende Knopf liegt ÜBER allem, auch über der Tab-Leiste —
+        // wie im Web. Er erscheint nur, wo es zur Seite etwas zu sagen gibt
+        // (auf dem Konto gibt es ihn nicht, `currentExplainScreen`).
+        .overlay(alignment: .bottomTrailing) {
+            if zeigtLotti, !keyboardVisible, let screen = model.currentExplainScreen {
+                LottiFloatingButton(
+                    open: { oeffneLotti(screen) },
+                    bottomClearance: tabBarClearance
+                )
+                .transition(.scale.combined(with: .opacity))
+            }
+        }
+        // Die Blase über dem Knopf. Sie verschwindet von selbst wieder, und
+        // **das zählt nicht als Ablehnung**: Wer nicht hinsieht, hat nicht
+        // Nein gesagt.
+        .overlay(alignment: .bottomTrailing) {
+            if nudgeVisible, let screen = model.currentExplainScreen {
+                LottiNudgeBubble(
+                    accept: {
+                        let stand = AssistantNudge.afterAccept(NudgeStore().state,
+                                                               now: Date.now.timeIntervalSince1970)
+                        NudgeStore().state = stand
+                        nudgeVisible = false
+                        Task { await model.reportAssistantEvent("nudge_accepted") }
+                        oeffneLotti(screen)
+                    },
+                    dismiss: {
+                        NudgeStore().state = AssistantNudge.afterDismissal(NudgeStore().state)
+                        nudgeVisible = false
+                        Task { await model.reportAssistantEvent("nudge_dismissed") }
+                    },
+                    bottomClearance: tabBarClearance
+                )
+            }
+        }
+        .animation(RatsMotion.flow, value: nudgeVisible)
+        // Jede Berührung ist ein Lebenszeichen — `simultaneousGesture` nimmt
+        // sie mit, ohne sie zu verbrauchen: Listen scrollen weiter, Knöpfe
+        // drücken weiter.
+        .simultaneousGesture(DragGesture(minimumDistance: 0)
+            .onChanged { _ in nudgeClock.touched() })
+        // Ein Screen-Wechsel setzt die Uhr zurück und nimmt die Blase mit:
+        // Eine Frage zum ALTEN Screen wäre eine zur falschen Sache.
+        .onChange(of: model.currentExplainScreen?.route, initial: true) { _, _ in
+            nudgeClock.enteredScreen()
+            nudgeVisible = false
+        }
+        .task(id: model.feature("lotti-anstupser")) { await klopfUhr() }
+        .animation(RatsMotion.flow, value: keyboardVisible)
+        .sheet(item: $lotti) { sitzung in
+            AssistantSheet(model: model, screen: sitzung.screen, title: sitzung.title,
+                           fixture: sitzung.fixture)
+                .ratsLargeSheet()
+        }
         .sheet(isPresented: $showsMore) {
             MoreHubView(
                 model: model,
@@ -436,6 +514,8 @@ private struct MainTabsView: View {
         .onAppear {
             if horizontalSizeClass == .regular { showsMore = false }
 #if DEBUG
+            // Für die Sichtprobe: das Lotti-Blatt offen, ohne es antippen zu
+            // müssen (der Knopf hängt am Feature-Schalter des Servers).
             switch ratsDebugValue("RATSLOTSE_DEBUG_MAIN") {
             case "decision-detail":
                 model.selectedTab = .council
@@ -503,10 +583,73 @@ private struct MainTabsView: View {
                 }
             default: break
             }
+            // NACH der Screen-Wahl: Das Blatt hält den Bildschirm fest, den
+            // es beim Öffnen vorfindet — davor wäre es immer „Heute".
+            if let lottiModus = ratsDebugValue("RATSLOTSE_DEBUG_LOTTI") {
+                // Der Knopf hängt am Feature-Schalter des Servers; ohne
+                // Backend wäre er unsichtbar und die Sichtprobe leer.
+                model.features.insert("lotti-assistentin")
+                if lottiModus == "anstupser" {
+                    // Für die Sichtprobe: die Blase ohne 45 s Lesezeit — aber
+                    // NACH dem Screen-Wechsel, der sie sonst gleich wieder
+                    // wegnimmt (er ist ja ein Themawechsel).
+                    model.features.insert("lotti-anstupser")
+                    Task {
+                        try? await Task.sleep(for: .seconds(1))
+                        nudgeVisible = true
+                    }
+                }
+                if lottiModus != "knopf" && lottiModus != "anstupser" {
+                    lotti = LottiSitzung(
+                        screen: model.currentExplainScreen ?? ExplainScreen(route: "/dashboard"),
+                        title: model.currentScreenTitle,
+                        fixture: lottiModus == "fixture"
+                    )
+                }
+            }
 #endif
         }
         .onChange(of: horizontalSizeClass) { _, sizeClass in
             if sizeClass == .regular { showsMore = false }
+        }
+    }
+
+    /// Lottis Blatt öffnen — und sich merken, dass sie heute benutzt wurde.
+    private func oeffneLotti(_ screen: ExplainScreen) {
+        nudgeVisible = false
+        nudgeClock.sheetWasOpen = true
+        NudgeStore().markUsed()
+        lotti = LottiSitzung(screen: screen, title: model.currentScreenTitle)
+    }
+
+    /// Die Uhr, die alle fünf Sekunden nachsieht, ob angeklopft werden darf.
+    ///
+    /// Sie läuft nur mit dem eigenen Schalter (`lotti-anstupser`): Auf Prod
+    /// lässt sich das Anklopfen abstellen, ohne Lotti selbst abzuschalten.
+    private func klopfUhr() async {
+        guard model.feature("lotti-assistentin"), model.feature("lotti-anstupser") else { return }
+        while !Task.isCancelled {
+            try? await Task.sleep(for: .seconds(5))
+            nudgeClock.tick(visible: scenePhase == .active)
+            guard !nudgeVisible, let screen = model.currentExplainScreen, lotti == nil else { continue }
+            let store = NudgeStore()
+            let kontext = NudgeContext(
+                screenAllowed: screen.allowsNudge,
+                readingTime: nudgeClock.readingTime,
+                sinceInteraction: nudgeClock.sinceInteraction,
+                screensThisSession: nudgeClock.screensThisSession,
+                sheetWasOpen: nudgeClock.sheetWasOpen,
+                usedToday: store.usedToday,
+                busy: keyboardVisible || showsMore || showsTour)
+            let jetzt = Date.now.timeIntervalSince1970
+            guard AssistantNudge.mayAppear(store.state, kontext, now: jetzt) else { continue }
+            store.state = AssistantNudge.afterShowing(store.state, now: jetzt)
+            nudgeVisible = true
+            await model.reportAssistantEvent("nudge_shown")
+            // Nach 15 Sekunden ist sie von selbst wieder weg.
+            let gezeigt = nudgeVisible
+            try? await Task.sleep(for: .seconds(15))
+            if gezeigt { nudgeVisible = false }
         }
     }
 
@@ -523,26 +666,26 @@ private struct MainTabsView: View {
                 TodayView(model: model)
                     .tag(AppTab.today)
                     .toolbar(.hidden, for: .tabBar)
-                    .safeAreaPadding(.bottom, tabBarClearance)
+                    .safeAreaPadding(.bottom, seitenAbstand)
                 QuestionsView(model: model)
                     .tag(AppTab.questions)
                     .toolbar(.hidden, for: .tabBar)
-                    .safeAreaPadding(.bottom, tabBarClearance)
+                    .safeAreaPadding(.bottom, seitenAbstand)
                 CouncilBrowserView(model: model)
                     .tag(AppTab.council)
                     .toolbar(.hidden, for: .tabBar)
-                    .safeAreaPadding(.bottom, tabBarClearance)
+                    .safeAreaPadding(.bottom, seitenAbstand)
                 TopicsView(model: model)
                     .tag(AppTab.topics)
                     .toolbar(.hidden, for: .tabBar)
-                    .safeAreaPadding(.bottom, tabBarClearance)
+                    .safeAreaPadding(.bottom, seitenAbstand)
                 AccountView(model: model) {
                     model.selectedTab = accountReturnTab
                     showsMore = true
                 }
                     .tag(AppTab.account)
                     .toolbar(.hidden, for: .tabBar)
-                    .safeAreaPadding(.bottom, tabBarClearance)
+                    .safeAreaPadding(.bottom, seitenAbstand)
             }
             .toolbar(.hidden, for: .tabBar)
         }
@@ -937,6 +1080,7 @@ struct RouteDestinationView: View {
     var body: some View {
         switch route {
         case .decision(let id): DecisionDetailView(model: model, decisionID: id)
+        case .movement(let id): MovementDetailView(model: model, clusterID: id)
         case let .sessions(ksinr, tops): SessionRouteView(model: model, ksinr: ksinr, tops: tops)
         case .person(let slug): PublicProfileView(model: model, kind: .person, key: slug)
         case .topic(let slug): PublicProfileView(model: model, kind: .topic, key: slug)

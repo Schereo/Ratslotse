@@ -1,0 +1,91 @@
+{
+ "suite": "tragweite-tagesordnung",
+ "titel": "Tragweite eines Tagesordnungspunkts",
+ "kennzahl": "KEINE — die Suite hat keine Goldwerte. Sie misst Kosten und Latenz an echten Wochen und zeigt die Spitzenpunkte zum Nebeneinanderlegen",
+ "modell": "openai/gpt-5.6-luna",
+ "variante": null,
+ "tarif": null,
+ "lauf": 2,
+ "zeitstempel": "2026-09-22T23:48:17",
+ "db_stand": "Sitzungen bis 2026-09-16, 9078 Beschlüsse",
+ "qualitaet": null,
+ "harte_befunde": null,
+ "warnung": null,
+ "faelle": 265,
+ "p50_ms": 9608,
+ "p95_ms": 12103,
+ "aufrufe": 16,
+ "kosten_usd": 0.017268,
+ "ohne_kostenwert": 0,
+ "ct_je_aufruf": 0.1079,
+ "ct_je_lauf": 1.7268,
+ "kosten_gesamt_usd": 0.017268,
+ "ausfaelle": 0,
+ "nicht_zulaessig": false,
+ "abbruch": null,
+ "modelle_laut_tabelle": [
+  "openai/gpt-5.6-luna"
+ ],
+ "ersatz": [],
+ "dauer_s": 144.3,
+ "nebenkennzahlen": {
+  "wochen": 5,
+  "bewertet": 265,
+  "spitze_wie_regeln": 1
+ },
+ "fehler_beispiele": [],
+ "roh": {
+  "wochen": [
+   {
+    "start": "2026-09-09",
+    "ende": "2026-09-16",
+    "punkte": 39,
+    "bewertet": 39,
+    "alt": "Ermittlungen Abfallentsorgung Fliegerhorst",
+    "regeln": "Änderungen der Baumschutzsatzung",
+    "tragweite": "Ermittlungen Abfallentsorgung Fliegerhorst",
+    "tragweite_score": 70
+   },
+   {
+    "start": "2026-08-26",
+    "ende": "2026-09-02",
+    "punkte": 109,
+    "bewertet": 109,
+    "alt": "Verlängerung der Veränderungssperre 96 - (Vergnügungss",
+    "regeln": "Verlängerung der Veränderungssperre 96 - (Vergnügungss",
+    "tragweite": "Verlängerung des Liquiditätskreditvertrages mit der Kl",
+    "tragweite_score": 85
+   },
+   {
+    "start": "2026-08-12",
+    "ende": "2026-08-19",
+    "punkte": 33,
+    "bewertet": 33,
+    "alt": "Ermittlungen Abfallentsorgung Fliegerhorst",
+    "regeln": "Änderungen der Baumschutzsatzung",
+    "tragweite": "Änderungen der Baumschutzsatzung",
+    "tragweite_score": 65
+   },
+   {
+    "start": "2026-06-17",
+    "ende": "2026-06-24",
+    "punkte": 46,
+    "bewertet": 46,
+    "alt": "Umsetzung der Behindertenrechtskonvention in der Stadt",
+    "regeln": "Aktualisierung der Richtlinien der Stadt Oldenburg (Ol",
+    "tragweite": "Bebauungsplan 810 (Krugweg) mit örtlichen Bauvorschrif",
+    "tragweite_score": 78
+   },
+   {
+    "start": "2026-06-03",
+    "ende": "2026-06-10",
+    "punkte": 38,
+    "bewertet": 38,
+    "alt": "Verkehr und Wasser GmbH (VWG): Technologieentscheidung",
+    "regeln": "Umsetzung der Pflasterung am Rathausmarkt und Julius-M",
+    "tragweite": "Verkehr und Wasser GmbH (VWG): Technologieentscheidung",
+    "tragweite_score": 78
+   }
+  ]
+ }
+}

@@ -91,3 +91,45 @@ def test_die_uebernahme_laesst_die_strittigen_stehen(tmp_path):
         "Das `not_applicable`-Urteil wurde mit übernommen — dann wird es nie "
         "neu gefällt und der Fehler bleibt.")
 
+
+
+def test_die_uebernahme_zieht_auch_den_quellhash_nach():
+    """Der Wächter für den Fehler, der die Abkürzung wertlos gemacht hat.
+
+    `fit.source_hash` nimmt die Fassung UND die ersten 200 Zeichen des
+    Prompts mit hinein. Eine übernommene Zeile mit dem Hash aus Fassung 4
+    sieht für `annotations_missing` deshalb aus wie „Grundlage geändert" —
+    und der nächste Lauf beurteilt sie neu. Am 20.09.2026 hat er statt der
+    60 strittigen Urteile alle 12.307 angefangen und 1.766 davon für 1,21 $
+    abgearbeitet, bevor es auffiel.
+    """
+    import importlib.util
+    from pathlib import Path
+
+    pfad = Path(__file__).resolve().parents[1] / "scripts" / "cities_fit_fassung5.py"
+    spec = importlib.util.spec_from_file_location("cities_fit_fassung5", pfad)
+    assert spec and spec.loader
+    modul = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(modul)
+    assert hasattr(modul, "hashes_nachziehen"), (
+        "Ohne Hash-Nachzug wandert die Übernahme ins Leere: Der nächste Lauf "
+        "hält jede übernommene Zeile für veraltet und beurteilt sie neu.")
+
+
+def test_der_quellhash_haengt_wirklich_an_der_fassung():
+    """Die Annahme, auf der der Nachzug beruht — gegen den echten Code.
+
+    Hinge er NICHT an der Fassung, wäre der Nachzug überflüssig; hinge er an
+    mehr als Fassung und Prompt, wäre er zu wenig.
+    """
+    from council.cities import fit
+    from council.cities.annotators import get as get_annotator
+
+    ann = get_annotator("fit")
+    papier = {"name": "Radweg bauen", "date": "2024-01-01"}
+    klasse = {"instrument": "Radweg bauen", "field": "verkehr"}
+    a = fit.source_hash(papier, klasse, [], ann)
+    b = fit.source_hash(papier, klasse, [], ann.model_copy(update={"version": "4"})
+                        if hasattr(ann, "model_copy") else ann)
+    if hasattr(ann, "model_copy"):
+        assert a != b, "Die Fassung steckt nicht im Quell-Hash — dann ist der Nachzug unnötig."

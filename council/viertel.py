@@ -35,7 +35,13 @@ from council.locations import affects_whole_city
 from council.store_viertel import PROJECT_MIN_CONFIDENCE
 from kern import llm, prompts
 
-MODEL = os.environ.get("COUNCIL_DISTRICT_MODEL", "openai/gpt-5.6-luna")
+#: Tims Entscheidung 23.09.2026 (P5, docs/plan-modellwechsel.md): GPT-6 Luna
+#: ersetzt 5.6, im Flex-Tarif (kein Nutzereingabe-Feature). Prüfstand
+#: 23.09.2026 (`viertel`, 30 Fälle × 2 Läufe): 5.6 95,0 % ± 3,3 (0,090–
+#: 0,132 ct/Aufruf) — 6-Luna normal 93,3 % ± 0,0 (0,036–0,054 ct) — 6-Luna
+#: flex 95,0 % ± 3,3 (0,017–0,028 ct). Beide im Rauschen, Flex zu einem
+#: Fünftel bis Achtel des heutigen Preises.
+MODEL = os.environ.get("COUNCIL_DISTRICT_MODEL", "openai/gpt-6-luna")
 #: Kurzes Nachdenken reicht (wie bei der Tragweite): identische Urteile bei
 #: der Hälfte der Denk-Tokens.
 REASONING = {"reasoning": {"effort": "low"}}
@@ -101,6 +107,7 @@ def review_batch(place, batch: list[dict]) -> dict[int, dict]:
                   {"role": "user", "content": user}],
         max_tokens=6000, temperature=0, extra_body=dict(REASONING),
         _feature="district_projects", _geduld=True, _ersatz=llm.ersatz_fuer(MODEL),
+        _tarif="flex",
     )
     data = json.loads(resp.choices[0].message.content or "{}")
     valid = {k["id"] for k in batch}
@@ -211,6 +218,7 @@ def bundle_projects(place, hits: list[dict]) -> list[dict]:
                   {"role": "user", "content": user}],
         max_tokens=4000, temperature=0, extra_body=dict(REASONING),
         _feature="district_projects", _geduld=True, _ersatz=llm.ersatz_fuer(MODEL),
+        _tarif="flex",
     )
     data = json.loads(resp.choices[0].message.content or "{}")
     by_id = {k["id"]: k for k in hits}

@@ -157,7 +157,7 @@ def urteilen(faelle: list[dict], model: str) -> tuple[dict[str, dict], float]:
                               cluster=fall.get("cluster") or _KEIN_CLUSTER,
                               evidence=fit_modul.evidence_text(_belege(fall)))}],
                 max_tokens=ann.max_tokens, temperature=ann.temperature,
-                extra_body={"provider": {}} if ann.routing_free else {},
+                extra_body={},
                 _feature="eval_cities_fit")
             ergebnis[fall["id"]] = parse_json(antwort.choices[0].message.content or "")
             verbrauch = getattr(antwort, "usage", None)

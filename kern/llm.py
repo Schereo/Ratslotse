@@ -54,6 +54,16 @@ DEEPSEEK_MIN_MAX_TOKENS = int(os.environ.get("NWZ_DEEPSEEK_MIN_MAX_TOKENS", "240
 # finish_reason='length'-Leere.
 GPT56_MIN_MAX_TOKENS = int(os.environ.get("NWZ_GPT56_MIN_MAX_TOKENS", "16000"))
 
+# Die großen Geminis (Pro der 2.5/3.x-Reihe und 3.8-flash) denken ebenfalls —
+# und anders als bei DeepSeek lässt sich das NICHT abschalten: OpenRouter
+# antwortet auf `reasoning.enabled=false` mit HTTP 400 „Reasoning is mandatory
+# for this endpoint". Gemessen am 22.09.2026 mit Lottis Budget von 350 Tokens
+# (council/assistant.py::MAX_TOKENS): completion_tokens 346 von 350, sichtbarer
+# Text 53 Zeichen — die Antwort war abgeschnitten, ohne Fehler. Bleibt nur der
+# Boden. Beobachtet wurden 530–1.220 Denk-Tokens; 4.000 lassen Luft, und
+# max_tokens ist eine Decke, keine Bestellung — bezahlt wird, was erzeugt wird.
+GEMINI_DENK_MIN_MAX_TOKENS = int(os.environ.get("NWZ_GEMINI_DENK_MIN_MAX_TOKENS", "4000"))
+
 MODEL_PARAMS: dict[str, dict[str, Any]] = {
     "openai/gpt-4o": {},
     "openai/gpt-4o-mini": {},
@@ -70,6 +80,25 @@ MODEL_PARAMS: dict[str, dict[str, Any]] = {
         "openai/gpt-5.6-sol", "openai/gpt-5.6-sol-pro",
         "openai/gpt-5.6-terra", "openai/gpt-5.6-terra-pro",
     )},
+    # Der Modellvergleich für Lottis Erklärungen (PR 29, Tabelle in
+    # docs/plan-lotti-assistentin-3.md). Gemini 2.5 Flash braucht keinen
+    # Eintrag — es denkt bei dieser Aufgabe nicht —, die drei hier schon.
+    **{m: {"min_max_tokens": GEMINI_DENK_MIN_MAX_TOKENS} for m in (
+        "google/gemini-3.1-pro-preview", "google/gemini-2.5-pro",
+        "google/gemini-3.8-flash",
+    )},
+    # Claude Sonnet läuft ohne Sonderbehandlung (und schon als Zweitmodell der
+    # OCR, council/ocr.py::MODEL_ZWEIT) — der leere Eintrag ist trotzdem
+    # Pflicht: Er ist die Liste der Modelle, die hier je gemessen wurden.
+    "anthropic/claude-sonnet-4.6": {},
+    # Nachfolger-Kandidaten (Messung 22.09.2026, s. docs/plan-modellwechsel.md):
+    # Gemini 2.5 Flash/Flash Lite laufen bei OpenRouter am 20.10.2026 aus.
+    # Boden vorsorglich, bis gemessen ist, welche davon denken.
+    **{m: {"min_max_tokens": GEMINI_DENK_MIN_MAX_TOKENS} for m in (
+        "google/gemini-3.1-flash-lite", "google/gemini-3.5-flash-lite",
+        "google/gemini-3-flash-preview", "google/gemini-3.5-flash",
+    )},
+    **{m: {"min_max_tokens": GPT56_MIN_MAX_TOKENS} for m in ("openai/gpt-6-luna",)},
 }
 
 
@@ -83,22 +112,37 @@ MODEL_PARAMS: dict[str, dict[str, Any]] = {
 GEDULD_PAUSEN: tuple[int, ...] = (30, 90, 180)
 
 #: Ersatzmodelle, wenn das gewünschte Modell auch nach der Geduld nicht
-#: antwortet. Gemessen am Tragweite-Golden-Set (30 handbewertete Beschlüsse,
-#: scripts/eval_impact.py, 06.09.2026) — Spearman über die Band-Mitten und
-#: Band-Trefferquote, dazu die Dauer für 30 Beschlüsse:
+#: antwortet. Gemessen am Tragweite-Golden-Set (30 handbewertete Beschlüsse) —
+#: Spearman über die Band-Mitten und Band-Trefferquote, dazu die Dauer:
 #:
-#:   openai/gpt-5.6-luna           ρ 0,833   27/30   14 s   (das Original)
-#:   google/gemini-2.5-flash       ρ 0,831   26/30   21 s
-#:   deepseek/deepseek-v4-pro      ρ 0,820   23/30   75 s
-#:   google/gemini-3.1-flash-lite  ρ 0,786   27/30    6 s
+#:   openai/gpt-5.6-luna           ρ 0,833   27/30   14 s   (06.09.2026, scripts/eval_impact.py)
+#:   google/gemini-2.5-flash       ρ 0,831   26/30   21 s   (06.09.2026, scripts/eval_impact.py)
+#:   deepseek/deepseek-v4-pro      ρ 0,820   23/30   75 s   (06.09.2026, scripts/eval_impact.py)
+#:   google/gemini-3.1-flash-lite  ρ 0,786   27/30    6 s   (06.09.2026, scripts/eval_impact.py)
+#:   openai/gpt-6-luna             91,7 % ± 3,3 Band-Trefferquote — docs/modell-pruefstand.md (`tragweite`)
+#:   deepseek/deepseek-v4-pro      90,0 % (27/30), 40 s p50, 0,81 ct/Aufruf (23.09.2026,
+#:                                  eval/pruefstand.py --suite tragweite --modell deepseek/deepseek-v4-pro)
 #:
-#: Gemini 2.5 Flash ist damit praktisch gleichauf und läuft bei einem anderen
-#: Anbieter — genau der Sinn eines Ersatzes, wenn OpenAIs Pool voll ist.
-#: DeepSeek als zweite Reserve (anderer Anbieter, DSGVO-Routing greift).
-#: Die anderen GPT-5.6-Varianten (sol, terra) hängen am selben Pool und
-#: taugen deshalb NICHT als Ersatz. Wer die Reihenfolge ändert, misst neu.
+#: **Gemini 2.5 Flash fliegt aus der 5.6-Luna-Kette** (P5,
+#: docs/plan-modellwechsel.md): Es läuft bei OpenRouter am 20.10.2026 aus, ein
+#: Ersatz, der selbst ausfällt, taugt nichts. An seine Stelle tritt Gemini
+#: 3.1 Flash Lite (dieselbe 06.09.-Messung, ZDR-fähig wie 2.5 Flash) statt
+#: GPT-6 Luna: **GPT-5.6 Luna ist auch Ersatz für den Watcher**
+#: (``council/watcher.py``, Feature ``council_watcher``, ZDR-Pflicht), und
+#: GPT-6 Luna hat GAR KEINEN ZDR-Endpunkt (s. ``OHNE_NUTZEREINGABE``) — als
+#: Ersatz für ein ZDR-Feature würfe er sofort einen 404, statt weiterzureichen.
+#: Die Kette hier ist pro MODELL, nicht pro Feature, also muss sie für ihren
+#: strengsten Aufrufer stimmen.
+#:
+#: Für GPT-6 Luna selbst — nur an ZDR-freien Features im Einsatz (Social-Text,
+#: Kritiker, Viertel, Tragweite, Ausschuss, s. P5) — kommt zuerst GPT-5.6 Luna
+#: (anderer Anbieterpool: Azure statt OpenAI direkt/Bedrock, im Prüfstand
+#: gleichauf), dann dieselbe frisch nachgemessene DeepSeek-Reserve.
+#: Die anderen GPT-5.6-Varianten (sol, terra) hängen am selben Pool wie 5.6
+#: Luna und taugen deshalb NICHT als Ersatz. Wer die Reihenfolge ändert, misst neu.
 ERSATZ: dict[str, tuple[str, ...]] = {
-    "openai/gpt-5.6-luna": ("google/gemini-2.5-flash", "deepseek/deepseek-v4-pro"),
+    "openai/gpt-5.6-luna": ("google/gemini-3.1-flash-lite", "deepseek/deepseek-v4-pro"),
+    "openai/gpt-6-luna": ("openai/gpt-5.6-luna", "deepseek/deepseek-v4-pro"),
 }
 
 
@@ -134,25 +178,126 @@ def _with_model_params(kwargs: dict[str, Any]) -> dict[str, Any]:
 _IGNORE_CN_DEFAULT = "deepseek,baidu,streamlake,siliconflow,alibaba"
 
 
-def _routing_extra_body() -> dict[str, Any]:
+#: Features, die NUR öffentliche Ratsdaten verarbeiten — keine Frage, kein
+#: Thema, keinen Text, den eine Nutzerin selbst geschrieben hat. Für sie
+#: entfällt die ZDR-Pflicht (Tims Entscheidung 22.09.2026: „für alles, was
+#: keinen direkten User-Input verarbeitet, sind nicht-ZDR-Provider auch
+#: fine"). Was bleibt: kein Training auf unseren Daten (`data_collection:
+#: deny`) und kein Anbieter aus China.
+#:
+#: Anlass: GPT-6 Luna bieten bisher nur OpenAI direkt und Amazon Bedrock an,
+#: beide ohne ZDR — unter der Pflicht endete jeder Aufruf mit 404 „No
+#: endpoints found matching your data policy".
+#:
+#: **Die Liste ist eine Freigabe, keine Sperre.** Ein Feature, das hier
+#: fehlt, bleibt bei ZDR — auch ein Aufruf ganz ohne `_feature` (der Watcher
+#: trug bis heute keinen und verarbeitet die Themenbeschreibungen der
+#: Nutzer*innen). Wer ein Feature einträgt, prüft vorher, was im Prompt
+#: steht; `tests/test_llm.py` hält fest, dass die Nutzer-Pfade nie hier landen.
+OHNE_NUTZEREINGABE: frozenset[str] = frozenset({
+    # Bewertungen und Kurzfassungen von Beschlüssen und Tagesordnungen
+    "impact_rating", "impact_rating_agenda", "interest_rating", "goal_rating",
+    "simple_summary", "committee_summary", "topic_classification", "field_recap",
+    "daily_find_story", "quiz_generation", "quiz_verify",
+    # Protokolle, Anlagen, Sitzungs-Mitschnitt
+    "minutes_extraction", "attachment_ocr", "speeches", "video_results",
+    "livestream_transcript", "live_top_tracker",
+    # Entitäten, Orte, Viertel
+    "entity_ner", "entity_duplicates", "entity_description", "decision_places",
+    "district_projects",
+    # Social-Texte über Beschlüsse
+    "social_card_text", "social_critic",
+    # Städtevergleich: fremde Ratsdokumente
+    "cities_evidence_terms",
+})
+
+#: Die Städte-Annotatoren bilden ihren Namen als ``cities_<key>``
+#: (``council/cities/annotators.py``); ``kern`` darf ihre Liste nicht
+#: importieren (Schichtenregel). Alle verarbeiten fremde Ratsdokumente.
+#: Ihre Evals (``eval/run_cities_*.py``) rechnen unter ``eval_cities_<…>``
+#: ab, schicken aber dieselben Dokumente — und müssen unter demselben
+#: Routing messen wie der Cron, sonst misst die Eval die ZDR-Lücke mit
+#: (``gpt-5.6-luna``: 53 % Lieferquote mit ZDR, 100 % ohne).
+_OHNE_NUTZEREINGABE_PRAEFIX = ("cities_", "eval_cities_")
+
+
+def zdr_pflicht(feature: str | None) -> bool:
+    """Ob ein Aufruf dieses Features nur an ZDR-Anbieter gehen darf."""
+    if not feature:
+        return True
+    return not (feature in OHNE_NUTZEREINGABE or feature.startswith(_OHNE_NUTZEREINGABE_PRAEFIX))
+
+
+def _routing_extra_body(zdr: bool = True) -> dict[str, Any]:
     if os.environ.get("NWZ_OPENROUTER_ROUTING", "on").strip().lower() == "off":
         return {}
     provider: dict[str, Any] = {"data_collection": "deny"}
     ignore = [s.strip() for s in os.environ.get("NWZ_OPENROUTER_IGNORE", _IGNORE_CN_DEFAULT).split(",") if s.strip()]
     if ignore:
         provider["ignore"] = ignore
-    if os.environ.get("NWZ_OPENROUTER_ZDR", "1").strip().lower() not in ("0", "false", "off", "no"):
+    if zdr and os.environ.get("NWZ_OPENROUTER_ZDR", "1").strip().lower() not in ("0", "false", "off", "no"):
         provider["zdr"] = True
     return {"provider": provider}
 
 
-def _with_routing(kwargs: dict[str, Any]) -> dict[str, Any]:
+def _with_routing(kwargs: dict[str, Any], zdr: bool = True) -> dict[str, Any]:
     """Merge the OpenRouter provider-routing block into the request's extra_body
     (a caller-supplied 'provider' wins, so call sites can still override)."""
-    rb = _routing_extra_body()
+    rb = _routing_extra_body(zdr)
     if not rb:
         return kwargs
     extra_body = {**rb, **(kwargs.get("extra_body") or {})}
+    return {**kwargs, "extra_body": extra_body}
+
+
+# Flex-Tarif: derselbe Aufruf, halber Preis, dafür darf der Anbieter ihn bei
+# Engpass abweisen. Gemessen am 22.09.2026 am Tragweite-Golden-Set (30
+# Beschlüsse, je 5 Läufe; Tabelle in docs/modell-batch-flex.md):
+#
+#   gpt-5.6-luna   normal ρ 0,839  27,2/30  0,105 ct/Aufruf   flex ρ 0,866  27,8/30  0,055 ct
+#   gpt-6-luna     normal ρ 0,810  26,5/30  0,048 ct/Aufruf   flex ρ 0,855  26,8/30  0,023 ct
+#
+# Gleiche Qualität, gleiche Dauer, keine einzige Abweisung in 24 Flex-Aufrufen.
+# Zwei Bedingungen hängen daran:
+#
+# ① Flex-Endpunkte haben KEIN ZDR. Mit `zdr: true` im Routing-Block ignoriert
+#   OpenRouter `service_tier` still (Luna 5.6 ging an Azure, `service_tier:
+#   default`, voller Preis) oder findet gar keinen Endpunkt (GPT-6 Luna: 404).
+#   Deshalb fällt `zdr` hier weg — und deshalb ist Flex nur für Features
+#   erlaubt, für die `zdr_pflicht` nein sagt. `data_collection: deny` und die
+#   China-Liste bleiben.
+# ② Eine Abweisung darf keinen Stapel kosten: Dann läuft derselbe Aufruf im
+#   normalen Tarif (und dessen Routing) noch einmal.
+TARIFE = ("normal", "flex")
+
+#: **Ein reiner Messschalter, nicht für den Betrieb.** Der Modell-Prüfstand
+#: (``eval/pruefstand.py --tarif flex``) muss Aufrufe tief in ``council/``
+#: umschalten, ohne jede Aufrufstelle anzufassen — er setzt diese Variable
+#: im Unterprozess eines Messlaufs. Sie ist nur die VORGABE: Ein ausdrückliches
+#: ``_tarif`` gewinnt, und für ein Feature mit ZDR-Pflicht wirft sie wie der
+#: Parameter ``FlexNichtErlaubt``, statt still auf den Normaltarif zu fallen.
+#: In eine ``.env`` gehört sie nicht: Dort stellte sie jedes Feature auf
+#: einmal um, und jeder Nutzerpfad würfe den Fehler.
+TARIF_ENV = "RATSLOTSE_LLM_TARIF"
+
+
+class FlexNichtErlaubt(ValueError):
+    """Flex für ein Feature, dessen Aufrufe nur an ZDR-Anbieter dürfen.
+
+    Ein Fehler statt eines stillen Rückfalls: Wer ``_tarif="flex"`` schreibt,
+    glaubt, die Hälfte zu sparen. Sähe er stattdessen den vollen Preis, fiele
+    das erst in der Monatsabrechnung auf.
+    """
+
+
+def _flex_kwargs(kwargs: dict[str, Any]) -> dict[str, Any]:
+    """Die Anfrage im Flex-Tarif: nur ``service_tier`` dazu.
+
+    Das Routing ohne ZDR baut ``_create`` selbst (``_zdr=False``, von
+    ``chat_complete`` aus ``zdr_pflicht`` gesetzt). Flex kommt nur für
+    solche Features hierher, ein zweiter ZDR-Pfad wäre also doppelt.
+    """
+    extra_body = {**(kwargs.get("extra_body") or {}), "service_tier": "flex"}
     return {**kwargs, "extra_body": extra_body}
 
 
@@ -254,8 +399,8 @@ def _is_transient(exc: BaseException) -> bool:
     stop=stop_after_attempt(4),
     reraise=True,
 )
-def _create(*, _allow_empty_response: bool = False, **kwargs: Any):
-    merged = _with_model_params(_with_routing(kwargs))
+def _create(*, _allow_empty_response: bool = False, _zdr: bool = True, **kwargs: Any):
+    merged = _with_model_params(_with_routing(kwargs, _zdr))
     # OpenRouter soll die ECHTEN Kosten des Aufrufs mitliefern (usage.cost, in
     # USD, inkl. Provider-Routing) — Modellpreise von Hand pflegen entfällt
     # damit dort, wo der Wert ankommt (Admin-Statistik, Eval-Kostenzeile).
@@ -332,15 +477,30 @@ def chat_complete(**kwargs: Any):
     gewünschte auch dann nicht antwortet (``ersatz_fuer(MODEL)``). Die
     Kostenzählung trägt das Modell, das wirklich geantwortet hat. Beides ist
     für Cron-Läufe gedacht — eine Web-Anfrage darf nicht minutenlang hängen.
+
+    ``_tarif="flex"`` ruft im Flex-Tarif (halber Preis, s. ``TARIFE``). Nur
+    für Features ohne ZDR-Pflicht — sonst ``FlexNichtErlaubt``. Weist der
+    Anbieter ab, läuft derselbe Aufruf im normalen Tarif.
     """
     feature = kwargs.pop("_feature", None)
+    kwargs["_zdr"] = zdr_pflicht(feature)
     geduld = bool(kwargs.pop("_geduld", False))
     ersatz = list(kwargs.pop("_ersatz", None) or [])
+    tarif = kwargs.pop("_tarif", None) or os.environ.get(TARIF_ENV, "").strip() or "normal"
+    if tarif not in TARIFE:
+        raise ValueError(f"unbekannter Tarif {tarif!r} — erlaubt: {', '.join(TARIFE)}")
+    if tarif == "flex" and zdr_pflicht(feature):
+        raise FlexNichtErlaubt(
+            f"Flex für {feature or 'einen Aufruf ohne _feature'!r}: Das Feature darf nur "
+            "an ZDR-Anbieter, und Flex-Endpunkte haben kein ZDR.")
     modelle = [kwargs.get("model"), *ersatz]
     for i, model in enumerate(modelle):
         versuch = {**kwargs, "model": model}
         try:
-            resp = _create_geduldig(versuch) if geduld else _create(**versuch)
+            if tarif == "flex":
+                resp = _create_flex(versuch, geduld)
+            else:
+                resp = _create_geduldig(versuch) if geduld else _create(**versuch)
         except Exception as exc:  # noqa: BLE001 — nur Vorübergehendes wird ersetzt
             if i == len(modelle) - 1 or not _is_transient(exc):
                 raise
@@ -349,6 +509,27 @@ def chat_complete(**kwargs: Any):
         _record_usage(feature, model, getattr(resp, "usage", None))
         return resp
     raise AssertionError("unerreichbar: kein Modell")  # pragma: no cover
+
+
+def _create_flex(kwargs: dict[str, Any], geduld: bool):
+    """Erst Flex, bei Abweisung derselbe Aufruf im normalen Tarif.
+
+    Wie eine Abweisung aussieht, ließ sich am 22.09.2026 nicht provozieren
+    (0 von 24 Aufrufen). OpenAI dokumentiert 429 „Resource Unavailable";
+    OpenRouter kann ebenso 404 (kein Endpunkt) oder einen 200er ohne
+    ``choices`` liefern. Deshalb fängt der Rückfall jeden Fehler — außer einem
+    Inhaltsfilter-Treffer: Der hinge am Text und träfe den normalen Tarif
+    genauso. Modelle ganz ohne Flex-Endpunkt (DeepSeek) beantwortet OpenRouter
+    ohne Fehler im normalen Tarif; dort gibt es nichts zurückzufallen.
+    """
+    try:
+        return _create(**_flex_kwargs(kwargs))
+    except Exception as exc:  # noqa: BLE001 — Rückfall, s. o.
+        if is_content_filter(exc):
+            raise
+        print(f"  ↩️ {kwargs.get('model')}: Flex abgewiesen ({exc!r}) — normaler Tarif",
+              flush=True)
+    return _create_geduldig(kwargs) if geduld else _create(**kwargs)
 
 
 def _create_geduldig(kwargs: dict[str, Any]):
@@ -378,7 +559,7 @@ def chat_stream(**kwargs: Any):
     feature = kwargs.pop("_feature", None)
     if feature:
         kwargs.setdefault("stream_options", {"include_usage": True})
-    for chunk in _create(stream=True, **kwargs):
+    for chunk in _create(stream=True, _zdr=zdr_pflicht(feature), **kwargs):
         if getattr(chunk, "usage", None):
             _record_usage(feature, kwargs.get("model"), chunk.usage)
         if chunk.choices and chunk.choices[0].delta.content:

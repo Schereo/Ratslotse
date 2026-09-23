@@ -1,0 +1,68 @@
+{
+ "suite": "watcher",
+ "titel": "Themen-Wächter",
+ "kennzahl": "F1 über die (Thema, TOP)-Paare — Über- und Unter-Zuordnung zugleich",
+ "modell": "openai/gpt-5.6-luna",
+ "variante": null,
+ "tarif": null,
+ "lauf": 2,
+ "zeitstempel": "2026-09-22T23:42:39",
+ "db_stand": "Sitzungen bis 2026-09-16, 9078 Beschlüsse",
+ "qualitaet": 0.8571,
+ "harte_befunde": 5,
+ "faelle": 5,
+ "p50_ms": 50578,
+ "p95_ms": 142248,
+ "aufrufe": 5,
+ "kosten_usd": 0.002444,
+ "ohne_kostenwert": 0,
+ "ct_je_aufruf": 0.0489,
+ "ct_je_lauf": 0.2444,
+ "kosten_gesamt_usd": 0.002444,
+ "ausfaelle": 0,
+ "nicht_zulaessig": false,
+ "abbruch": null,
+ "modelle_laut_tabelle": [
+  "openai/gpt-5.6-luna"
+ ],
+ "ersatz": [],
+ "dauer_s": 280.0,
+ "nebenkennzahlen": {
+  "precision": 0.75,
+  "recall": 1.0
+ },
+ "fehler_beispiele": [],
+ "roh": {
+  "timestamp": "2026-09-22T23:42:39",
+  "suite": "watcher",
+  "cases": 5,
+  "tp": 15,
+  "fp": 5,
+  "tn": null,
+  "fn": 0,
+  "precision": 0.75,
+  "recall": 1.0,
+  "f1": 0.8571,
+  "mistakes": [
+   {
+    "id": "watcher_stadtplanung_bebauungsplaene",
+    "note": "Ausschuss für Stadtplanung: Flächen­nutzungsplanänderungen (Stadion, Fliegerhorst, Eßkamp) und Sanierungsgebiet Innenstadt sind klassische Stadtentwicklungs-TOPs. Ö 8 (Stellplatz-Satzung) ebenfalls. Ö 5 und Ö 7 sind Eltern-TOPs der Bebauungsplan-Unterlagen; Ö 10.1 (Baumoratorium) ist ebenfalls Stadtentwicklung. Ö 10.2+10.3 (Begrünung) sind Grenzfälle.",
+    "spurious": [
+     "t1:Ö 10.2",
+     "t1:Ö 10.3",
+     "t2:Ö 6",
+     "t2:Ö 8"
+    ],
+    "missed": []
+   },
+   {
+    "id": "watcher_finanzausschuss_zuwendungen_fp",
+    "note": "Finanzausschuss: Ö 5 (Stadionplanung) → Stadtentwicklung. Ö 6+7 (Annahme von Zuwendungen) sind Routine-Finanzadmin und matchen NICHT Wirtschaft & Einzelhandel. Ö 12.2 (Straßensanierung) → Verkehr, nicht Wirtschaft.",
+    "spurious": [
+     "t2:Ö 12"
+    ],
+    "missed": []
+   }
+  ]
+ }
+}

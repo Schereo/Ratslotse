@@ -12,6 +12,7 @@ import { Beleg } from "@/components/haushalt/source";
 import { Fundstelle } from "@/components/haushalt/fundstelle";
 import { deMio } from "@/lib/haushalt";
 import { deMonat, letzteMonate, type LiquiditaetsDaten } from "@/lib/haushalt-liquiditaet";
+import { useErklaerAnker } from "@/lib/erklaer-anker";
 
 function Skizze({ punkte }: { punkte: { month: string; amount: number }[] }) {
   if (punkte.length < 2) return null;
@@ -44,13 +45,14 @@ export function LiquiditaetsBlock({ daten, hoechstbetrag }: {
   /** § 4 der Haushaltssatzung des jüngsten Jahrgangs, Euro — die Grenze fürs Minus. */
   hoechstbetrag?: number | null;
 }) {
+  const anker = useErklaerAnker("liquiditaet", "Liquiditätsstand");
   if (!daten?.latest) return null;
   const lt = daten.latest;
   const h = lt.herkunft_id != null ? daten.provenance[String(lt.herkunft_id)] ?? null : null;
   const dez = daten.year_ends.slice(-4);
   const verlauf = letzteMonate(daten, 36);
   return (
-    <section id="liquiditaet" className="scroll-mt-20 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
+    <section {...anker} id="liquiditaet" className="scroll-mt-20 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
           Wie viel Geld am Monatsende auf dem Konto ist<Beleg q="liquidity" h={h} />

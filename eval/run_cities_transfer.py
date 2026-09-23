@@ -90,7 +90,7 @@ def einordnen(faelle: list[dict], model: str, batch_size: int,
                               ann.prompt_user,
                               items=annotate.batch_text(zeilen, texte, ann))}],
                 max_tokens=ann.max_tokens, temperature=ann.temperature,
-                extra_body={} if zdr else ({"provider": {}} if ann.routing_free else {}),
+                extra_body=llm._routing_extra_body(zdr=zdr),
                 _feature="eval_cities_transfer")
             daten = annotate.parse_json(antwort.choices[0].message.content or "")
             verbrauch = getattr(antwort, "usage", None)
@@ -103,6 +103,32 @@ def einordnen(faelle: list[dict], model: str, batch_size: int,
             print(f"  Batch {i} gescheitert: {type(e).__name__}: {str(e)[:100]}")
     ergebnis["__kosten__"] = {"cost_usd": kosten}  # type: ignore[assignment]
     return ergebnis
+
+
+def messen(faelle: list[dict], vorhersage: dict[str, dict]) -> dict:
+    """Die vier Trefferquoten (in Prozent) und die Fehlurteile bei „taugt"."""
+    n = feld = uebertrag = taugt = zust = 0
+    fehler: list[dict] = []
+    for f in faelle:
+        got = vorhersage.get(f["id"])
+        if not got:
+            continue
+        n += 1
+        erwartet = f["expected"]
+        feld += got.get("field") == erwartet["field"]
+        uebertrag += got.get("transfer") == erwartet["transfer"]
+        gleich = (got.get("transfer") in USABLE) == (erwartet["transfer"] in USABLE)
+        taugt += gleich
+        zust += got.get("competence") == erwartet["competence"]
+        if not gleich:
+            fehler.append({"case": f["name"][:70], "erwartet": erwartet["transfer"],
+                           "bekommen": got.get("transfer"),
+                           "instrument": got.get("instrument")})
+
+    quote = lambda x: round(100 * x / max(n, 1), 1)  # noqa: E731
+    return {"n_answered": n, "usable_accuracy": quote(taugt),
+            "transfer_accuracy": quote(uebertrag), "field_accuracy": quote(feld),
+            "competence_accuracy": quote(zust), "mistakes": fehler}
 
 
 def main() -> int:
@@ -129,31 +155,16 @@ def main() -> int:
     kosten = vorhersage.pop("__kosten__", {}).get("cost_usd", 0.0)  # type: ignore[union-attr]
     dauer = time.time() - t0
 
-    n = feld = uebertrag = taugt = zust = 0
-    fehler: list[dict] = []
-    for f in faelle:
-        got = vorhersage.get(f["id"])
-        if not got:
-            continue
-        n += 1
-        erwartet = f["expected"]
-        feld += got.get("field") == erwartet["field"]
-        uebertrag += got.get("transfer") == erwartet["transfer"]
-        gleich = (got.get("transfer") in USABLE) == (erwartet["transfer"] in USABLE)
-        taugt += gleich
-        zust += got.get("competence") == erwartet["competence"]
-        if not gleich:
-            fehler.append({"case": f["name"][:70], "erwartet": erwartet["transfer"],
-                           "bekommen": got.get("transfer"),
-                           "instrument": got.get("instrument")})
-
-    quote = lambda x: round(100 * x / max(n, 1), 1)  # noqa: E731
+    mass = messen(faelle, vorhersage)
+    n, fehler = mass["n_answered"], mass["mistakes"]
     ergebnis = {
         "suite": SUITE, "model": model, "prompt_version": ann.version,
         "routing": "zdr" if a.zdr else "frei",
         "n_cases": len(faelle), "n_answered": n,
-        "usable_accuracy": quote(taugt), "transfer_accuracy": quote(uebertrag),
-        "field_accuracy": quote(feld), "competence_accuracy": quote(zust),
+        "usable_accuracy": mass["usable_accuracy"],
+        "transfer_accuracy": mass["transfer_accuracy"],
+        "field_accuracy": mass["field_accuracy"],
+        "competence_accuracy": mass["competence_accuracy"],
         "cost_usd": round(kosten, 4), "seconds": round(dauer),
         "cost_per_1000": round(kosten / max(n, 1) * 1000, 3),
         "mistakes": fehler,

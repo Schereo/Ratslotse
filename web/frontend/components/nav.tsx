@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   Home, Tags, Search, Settings, LogOut, UserCircle, ChevronRight,
-  CalendarDays, BarChart3, Trophy, Sparkles, Command, Lightbulb,
+  CalendarDays, BarChart3, Trophy, Sparkles, Command,
   MoreHorizontal, MessageCircle, Bookmark, Euro, Bell, MapPinned,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -274,7 +274,12 @@ function NavLinksInner({ activeTab, onNavigate }: { activeTab: string; onNavigat
 }
 
 function NavLinksWithParams({ onNavigate }: { onNavigate?: () => void }) {
-  const tab = useSearchParams().get("tab") || "decisions";
+  const pathname = pfad(usePathname());
+  const param = useSearchParams().get("tab");
+  // Die Ideen aus anderen Städten sind ein Reiter der Analyse (Tim,
+  // 23.09.2026) — dort leuchtet „Analyse", nicht die Suche, unter der jeder
+  // andere Pfad in /council/ landet.
+  const tab = pathname.startsWith("/council/ideen") ? "analysis" : param || "decisions";
   return <NavLinksInner activeTab={tab} onNavigate={onNavigate} />;
 }
 
@@ -589,7 +594,6 @@ function MehrSheet({ abgang, onClose, onFertig }: { abgang: boolean; onClose: ()
   const { user, logout } = useAuth();
   const openFeedbackUnread = useUnreadFeedback(darfAdmin(user));
   const viertel = useFeature("mein-viertel");
-  const ideen = useFeature("ideen-anderswo");
   const viertelZiel = useViertelZiel(viertel && !!user);
   // Hintergrund einfrieren, solange das Sheet offen ist.
   useEffect(() => {
@@ -660,11 +664,10 @@ function MehrSheet({ abgang, onClose, onFertig }: { abgang: boolean; onClose: ()
               zuoberst im Sheet, vor Stadtkarte und Analyse. */}
           <MehrZeile href="/council" icon={Search} label="Suche" onClose={onClose} />
           {viertel && <MehrZeile href={viertelZiel} icon={MapPinned} label="Mein Viertel" onClose={onClose} />}
+          {/* Die Ideen aus anderen Städten stehen seit 23.09.2026 als Reiter
+              „Andere Städte" IN der Analyse, nicht mehr als eigene Zeile hier
+              (Tim: „ungern noch einen weiteren Punkt in die Navigation"). */}
           <MehrZeile href="/council?tab=analysis" icon={BarChart3} label="Analyse" onClose={onClose} />
-          {/* Kein Platz in der Tab-Leiste (Tim: „wir dürfen das Nav nicht
-              bloaten") — die Ideen stehen hier, direkt hinter der Analyse, weil
-              sie dieselbe Frage aus der anderen Richtung stellen. */}
-          {ideen && <MehrZeile href="/council/ideen" icon={Lightbulb} label="Ideen anderswo" onClose={onClose} />}
           {darfHaushalt(user) && <MehrZeile href="/haushalt" icon={Euro} label="Haushalt" onClose={onClose} />}
           {/* Direkt hinter „Themen" in der Tab-Leiste gedacht: Die Abos sind
               die zweite Art, dem Rat zu folgen, und hatten seit dem Split vom

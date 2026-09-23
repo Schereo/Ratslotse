@@ -15,6 +15,9 @@ public enum AppRoute: Sendable, Hashable {
     case question(prefill: String?, share: String?)
     case sharedAnswer(token: String?)
     case decision(id: Int)
+    /// Eine Bewegung — dieselbe Idee in mehreren anderen Räten
+    /// (`/council/ideen/bewegung?id=`).
+    case movement(id: Int)
     case sessions(ksinr: Int?, tops: [String])
     case person(slug: String)
     case topic(slug: String)
@@ -72,6 +75,9 @@ public struct AppRouter: Sendable {
         case "/council/decision":
             guard let raw = value("id"), let id = Int(raw), id > 0 else { return .tab(.council) }
             return .decision(id: id)
+        case "/council/ideen/bewegung":
+            guard let raw = value("id"), let id = Int(raw), id > 0 else { return .tab(.council) }
+            return .movement(id: id)
         case "/council/person":
             guard let slug = value("slug"), !slug.isEmpty else { return .tab(.council) }
             return .person(slug: slug)
@@ -133,6 +139,8 @@ public struct AppRouter: Sendable {
             components.path = "/g"; components.queryItems = [.init(name: "t", value: token)]
         case .decision(let id):
             components.path = "/council/decision"; components.queryItems = [.init(name: "id", value: String(id))]
+        case .movement(let id):
+            components.path = "/council/ideen/bewegung"; components.queryItems = [.init(name: "id", value: String(id))]
         case let .sessions(ksinr, tops):
             // Geteilt wird die eigenständige Sitzungs-Seite, nicht die Liste:
             // Sie ist ohne Konto lesbar, `/council?tab=sessions` nicht (die

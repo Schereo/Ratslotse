@@ -1985,7 +1985,11 @@ class SchemaMixin(StoreBasis):
             "CREATE TABLE IF NOT EXISTS council_qa_feedback ("
             "id INTEGER PRIMARY KEY AUTOINCREMENT, question TEXT NOT NULL, "
             "answer_excerpt TEXT, rating TEXT NOT NULL, reason TEXT, "
-            "user_id INTEGER, created TEXT NOT NULL)"
+            # Aus welcher Fläche der Daumen kommt: 'ask' = „Frag den Rat",
+            # 'lotti' = Lottis Fenster. In einem Topf ließe sich die Frage
+            # „taugen Lottis Erklärungen?" gar nicht mehr stellen.
+            "user_id INTEGER, created TEXT NOT NULL, "
+            "source TEXT NOT NULL DEFAULT 'ask')"
         )
         # Anlagen zu Vorlagen: alle als Label+Link, Fraktions-Anträge zusätzlich mit
         # PDF-Text und erkannten Antragstellern (council.vorlagen/_build_anlage_rows).
@@ -3791,6 +3795,7 @@ class SchemaMixin(StoreBasis):
         )
         self._migrate_quiz_estimate()
         self._migrate_quiz_media()
+        self._migrate_qa_feedback_source()
         self._migrate_quiz_hint()
         self._migrate_produkt_steckbrief()
         self._migrate_herkunft()
@@ -3819,6 +3824,20 @@ class SchemaMixin(StoreBasis):
             for name, decl in adds:
                 if name not in cols:
                     self._conn.execute(f"ALTER TABLE council_quiz_questions ADD COLUMN {name} {decl}")
+
+    def _migrate_qa_feedback_source(self) -> None:
+        """Woher ein Daumen kommt — „Frag den Rat" oder Lottis Fenster.
+
+        Bestandszeilen bleiben `ask`: Vor 09/2026 gab es Lotti nicht, jeder
+        Daumen kam aus dem Ratsgespräch.
+        """
+        cols = {r[1] for r in self._conn.execute(
+            "PRAGMA table_info(council_qa_feedback)").fetchall()}
+        if cols and "source" not in cols:
+            with self._conn:
+                self._conn.execute(
+                    "ALTER TABLE council_qa_feedback "
+                    "ADD COLUMN source TEXT NOT NULL DEFAULT 'ask'")
 
     def _migrate_quiz_hint(self) -> None:
         """„Tipp" (vor dem Auflösen) + „topic" (Such-Stichwort für „Beschlüsse

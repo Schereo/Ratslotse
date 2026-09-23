@@ -643,11 +643,26 @@ class BookmarkList(TypedDict):
 # --------------------------------------------------------------------------
 
 
+class AssistantStarters(TypedDict):
+    """Die zwei kuratierten Fragen fürs leere Lotti-Fenster einer Seite.
+
+    Kein Modellaufruf: Die Fragen stehen als Code in ``kern/knowledge.py``
+    (``PageKnowledge.starters``); der Endpunkt liefert sie nur route-genau
+    aus, damit Web und App dieselben zeigen.
+    """
+    starters: list[str]
+
+
 class ConversationRow(TypedDict):
     id: int
     title: str
     updated: str
     n_turns: int
+    #: ``ask`` (Frag den Rat) oder ``lotti`` (ihr Fenster). Die Spalte gibt es
+    #: seit PR 7; ohne sie in der Antwort sah die Liste beide gleich aus und
+    #: öffnete ein Lotti-Gespräch im Ratsgespräch — mit einem Verlauf, der
+    #: dort nie entstanden ist.
+    kind: str
 
 
 class ConversationList(TypedDict):
@@ -674,6 +689,7 @@ class ConversationDetail(TypedDict):
     id: int
     title: str
     updated: str
+    kind: str
     turns: list[ConversationTurn]
 
 
@@ -1663,6 +1679,10 @@ class IdeaFieldSummary(TypedDict):
     #: Oldenburg fehlen. Danach ist ein Themenfeld interessant — vorher stand
     #: hier die Zahl der „lohnt sich"-Urteile, also eine Modellmeinung.
     multi_city: int
+    #: Bewegungen dieses Feldes — Ideen ab zwei anderen Städten, gleich wie
+    #: Oldenburg dazu steht. Die Feld-Chips zählen damit, ohne die Liste zu
+    #: laden.
+    movements: int
 
 
 class FeedbackAck(TypedDict):
@@ -1681,6 +1701,132 @@ class IdeaFields(TypedDict):
     #: Wolfsburg und Hildesheim dazukamen. Eine Aufzählung, die eine Zeile
     #: Prosa ist, veraltet beim nächsten Adapter wieder.
     bodies: list[str]
+
+
+# ------------------------------------------------------------ Bewegungen
+#
+# Eine IDEE über Stadtgrenzen (Plan PR 50): dieselbe Sache, von mindestens
+# zwei anderen Räten beantragt oder beschlossen. Web und App bekommen sie
+# fertig geliefert — Städte, Zeitleiste, Urteil über Oldenburg —, damit keiner
+# der beiden Clients sie aus Einzelkarten zusammensetzt (zweimal gebaut hieße
+# zweimal verschieden falsch).
+
+
+class MovementCity(TypedDict):
+    """Eine Stadt in einer Bewegung: wann sie zuerst dabei war und wie es ausging."""
+    body_id: str
+    city: str
+    first_date: str | None
+    members: int
+    outcomes: dict[str, int]
+
+
+class TimelinePoint(TypedDict):
+    """Ein Punkt der Zeitleiste — eine Vorlage."""
+    paper_id: str
+    body_id: str
+    city: str
+    date: str | None
+    #: Kanonisches Ergebnis; ``none``, wenn die Stadt keins ausweist.
+    outcome: str
+    kind: str
+
+
+class TimeAxis(TypedDict):
+    """EINE Zeitachse für alle Bewegungen, vom Server bestimmt.
+
+    Vom Jahresanfang der frühesten bis zum Jahresende der spätesten Vorlage
+    im GANZEN Bestand — nicht der Seite: Sonst verschöbe sich die Achse beim
+    Blättern, und derselbe Punkt stünde woanders. Web und App zeichnen damit
+    dieselbe Achse, ohne sie je selbst auszurechnen.
+    """
+    start: str | None
+    end: str | None
+
+
+class OldenburgVerdict(TypedDict):
+    """Hat Oldenburg diese Idee schon? — EIN Urteil je Idee (``idea_fit``).
+
+    ``evidence`` stützt den Status; ``related`` ist Lesestoff und belegt
+    nichts. Die Trennung ist der Grund für das Urteil je Idee: Im Entwurf
+    stand beides unter „Belege" und las sich wie eine Begründung für
+    „vorhanden".
+    """
+    status: str
+    #: Ein Satz über die Lage in Oldenburg, als Auskunft formuliert.
+    situation: str
+    confidence: str
+    evidence: list[IdeaEvidence]
+    related: list[IdeaEvidence]
+
+
+class Movement(TypedDict):
+    """Eine Idee, die mehrere andere Räte hatten."""
+    cluster_id: int
+    #: Die Überschrift (``clusters.idea_label``) — kein Modell, sondern das
+    #: geprüfte Gruppen-Label oder das Instrument des typischsten Mitglieds.
+    label: str
+    field: str | None
+    #: Je Stadt, nach erstem Datum. Oldenburg zählt nie mit.
+    cities: list[MovementCity]
+    members: int
+    #: Wie viele Oldenburger Vorlagen dieselbe Idee tragen — ein Hinweis,
+    #: kein Urteil (das steht in ``oldenburg``).
+    oldenburg_members: int
+    first_date: str | None
+    last_date: str | None
+    outcomes: dict[str, int]
+    timeline: list[TimelinePoint]
+    #: ``None``, solange die Idee noch nicht beurteilt ist.
+    oldenburg: OldenburgVerdict | None
+
+
+class MovementsResponse(TypedDict):
+    items: list[Movement]
+    total: int
+    page: int
+    per_page: int
+    axis: TimeAxis
+    #: Je Oldenburg-Status die Zahl der Bewegungen unter den übrigen Filtern,
+    #: für die Filter-Chips; ``unjudged`` zählt die noch unbeurteilten.
+    counts: dict[str, int]
+
+
+class MovementDocument(TypedDict):
+    """Eine Vorlage einer Bewegung, für die Ideen-Seite."""
+    paper_id: str
+    body_id: str
+    city: str
+    name: str
+    date: str | None
+    kind: str
+    web: str | None
+    outcome: str
+    originator: str | None
+    instrument: str | None
+    summary: str | None
+    #: Das „Warum" aus der Niederschrift, nur wenn dort eine Begründung steht.
+    protocol: IdeaProtocol | None
+    #: ``available`` / ``none`` / ``withheld`` — warum hier kein „Warum" steht.
+    protocol_source: str
+
+
+class MovementSimilar(TypedDict):
+    """Eine andere Bewegung desselben Themenfelds."""
+    cluster_id: int
+    label: str
+    cities: int
+    members: int
+
+
+class MovementDetail(TypedDict):
+    """Eine Bewegung mit allen Vorlagen — die Ideen-Seite."""
+    movement: Movement
+    axis: TimeAxis
+    documents: list[MovementDocument]
+    #: Oldenburgs eigene Vorlagen in derselben Gruppe, aufgelöst wie Belege.
+    oldenburg_documents: list[IdeaEvidence]
+    similar: list[MovementSimilar]
 
 
 class ElsewhereResponse(TypedDict):
@@ -1878,6 +2024,69 @@ class AdminEreignisse(TypedDict):
     empty_share: float | None
     previous_chip_share: float | None
     previous_empty_share: float | None
+
+
+class AdminLottiTrichter(TypedDict):
+    """Von „war da" bis „speichert" — die vier Stufen der Annahme."""
+    active: int
+    opened: int
+    asked: int
+    saving: int
+
+
+class AdminLottiAufrufe(TypedDict):
+    with_model: int
+    without_model: int
+    handed_over: int
+    #: Davon ohne Zutun der Person — seit 22.09.2026 geht Lotti bei einer
+    #: Archivfrage von selbst ins Archiv, statt einen Knopf hinzustellen.
+    handed_over_auto: int
+    opened: int
+
+
+class AdminLottiTag(TypedDict):
+    day: str
+    client: str
+    n: int
+
+
+class AdminLottiZeile(TypedDict):
+    key: str
+    n: int
+
+
+class AdminLottiFrage(TypedDict):
+    question: str
+    n: int
+
+
+class AdminLottiDaumen(TypedDict):
+    up: int
+    down: int
+    reasons: list[str]
+
+
+class AdminLottiAnstupser(TypedDict):
+    shown: int
+    accepted: int
+    dismissed: int
+
+
+class AdminLotti(TypedDict):
+    """Was der Reiter „Lotti" im Admin-Panel zeigt.
+
+    Die Fragen stammen **nur aus gespeicherten Gesprächen**, also von Konten
+    mit Einwilligung — ein Ausschnitt, und die Oberfläche sagt das auch.
+    """
+    days: int
+    funnel: AdminLottiTrichter
+    calls: AdminLottiAufrufe
+    timeline: list[AdminLottiTag]
+    pages: list[AdminLottiZeile]
+    elements: list[AdminLottiZeile]
+    questions: list[AdminLottiFrage]
+    feedback: AdminLottiDaumen
+    nudge: AdminLottiAnstupser
 
 
 class AdminSackgasse(TypedDict):
@@ -3726,6 +3935,43 @@ SSE_FRAGE: dict[int | str, dict[str, Any]] = {
         ),
         "content": {"text/event-stream": {"schema": {"type": "string"}}},
     },
+}
+
+#: ``POST /api/council/explain`` — Lottis Erklärung zum Bildschirm.
+#:
+#: Bewusst dieselben Rahmennamen wie ``SSE_FRAGE`` (``step``, ``token``,
+#: ``replace``, ``done``, ``error``): Beide Clients parsen den Strom von Hand,
+#: und ein zweites Vokabular für dieselbe Sache wäre ein zweiter Parser.
+#: Neu sind nur die Felder von ``done``.
+SSE_ERKLAERUNG: dict[int | str, dict[str, Any]] = {
+    200: {
+        "description": (
+            "Server-Sent Events (`text/event-stream`). Jeder Rahmen ist eine "
+            "`data:`-Zeile mit einem JSON-Objekt, das ein Feld `type` trägt:\n\n"
+            "- `step` — Fortschritt, `step` ist `context`, `answer` oder "
+            "`archiv` (die Frage geht ins Beschluss-Archiv)\n"
+            "- `token` — ein Stück Erklärungstext (`text`)\n"
+            "- `replace` — ersetzt den bisher gesendeten Text vollständig\n"
+            "- `done` — Schluss-Ereignis mit `mode` (`deterministic` für die "
+            "Wege ohne Modell, `handoff` für eine Archivfrage, die ohne "
+            "Modellaufruf direkt an `POST /council/ask` geht — der Strom "
+            "trägt dann keinen Text und kein `conversation_id` —, sonst "
+            "`explain`), `next` (`ratsfrage`, wenn die "
+            "Frage ins Beschluss-Archiv gehört, sonst `null`), `next_page` "
+            "(`{route, title}` einer anderen Haushalts-Seite, auf der die "
+            "Sache ausführlich steht — geprüft gegen die bekannten Seiten und "
+            "die Rechte des Kontos, sonst `null`), `glossary` "
+            "(die geprüften Fachwörter im Kontext), `evidence` (die Papiere "
+            "hinter den Haushaltszahlen, die im Prompt standen — je Eintrag "
+            "`label`, `year` und `url`; höchstens fünf, leer bei den Wegen "
+            "ohne Modell) und `timings`\n"
+            "- `error` — die Erklärung ist fehlgeschlagen (`message`)\n\n"
+            "Ein Verbindungsabriss ist folgenlos: Der Client kann erneut fragen."
+        ),
+        "content": {"text/event-stream": {"schema": {"type": "string"}}},
+    },
+    400: {"description": "Zu dieser Seite gibt es keine Erklärung (mit Grund im `detail`)."},
+    403: {"description": "Die Seite gehört zu einem Recht, das dieses Konto nicht hat."},
 }
 
 #: ``GET /api/admin/live-probe`` — der O1-Stream als Transkript, live.

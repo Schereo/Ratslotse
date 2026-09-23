@@ -30,6 +30,7 @@ import { Anteilsbalken } from "@/components/haushalt/anteilsbalken";
 import { Beleg } from "@/components/haushalt/source";
 import { parteiDot } from "@/components/qa-bausteine";
 import { cn } from "@/lib/utils";
+import { useErklaerAnker } from "@/lib/erklaer-anker";
 
 const NEUTRAL = { bg: "hsl(209 18% 65%)", ring: false };
 
@@ -74,6 +75,7 @@ export function VerfahrensWegKarte({ daten, budget_year, className }: {
   budget_year: number | null;
   className?: string;
 }) {
+  const anker = useErklaerAnker("verfahrensweg", "Der Weg durch die Gremien");
   const weg: VerfahrensWeg | null = verfahrensWeg(daten, budget_year);
   if (!weg || weg.bewegt === 0) return null;
 
@@ -89,7 +91,7 @@ export function VerfahrensWegKarte({ daten, budget_year, className }: {
     ? Math.abs(weg.politik) / Math.abs(weg.bewegt) * 100 : 0;
 
   return (
-    <div className={cn("rounded-2xl border border-border bg-card p-4 shadow-sm", className)}>
+    <div {...anker} className={cn("rounded-2xl border border-border bg-card p-4 shadow-sm", className)}>
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <h2 className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
           Wie viel im echten Verfahren bewegt wurde

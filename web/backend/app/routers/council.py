@@ -10,6 +10,7 @@ import unicodedata
 from collections import Counter, defaultdict
 from datetime import date, timedelta
 from collections.abc import Callable
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
@@ -26,9 +27,11 @@ from council import supplementary_approvals as nachbewilligungen_mod
 from council import donations as spenden_mod
 from council import steuertabellen
 from council import trade_tax_statistics as gewst
+from council import assistant as lotti
 from council import beteiligungsbericht, qa
 from council import ernte
-from kern import features
+from kern import features, knowledge, seitenaufrufe
+from kern import roles as rollen
 from council import importance
 from council import live as live_mod
 from council import sitzungspause as pause_mod
@@ -39,7 +42,7 @@ from kern.store import Store
 
 from .. import deepresearch
 from ..config import get_settings
-from ..antworten import (AnalysisData, BudgetAmendmentLists, BudgetAuditReports,
+from ..antworten import (AnalysisData, AssistantStarters, BudgetAmendmentLists, BudgetAuditReports,
                          BudgetBalanceSheet, BudgetComparison, BudgetDataState, BudgetDebt, BudgetLiquidity, BudgetLoans,
                          BudgetDispute, BudgetDocuments, BudgetExecution,
                          BudgetFixedAssets, BudgetGroup,
@@ -51,7 +54,9 @@ from ..antworten import (AnalysisData, BudgetAmendmentLists, BudgetAuditReports,
                          ElsewhereItem, ElsewhereResponse, EntitiesMap, EntityDetail,
                          FeedbackAck,
                          Idea, IdeaEvidence, IdeaFields, IdeaFieldSummary, IdeaProtocol,
-                         IdeaSibling,
+                         IdeaSibling, Movement, MovementCity, MovementDetail,
+                         MovementDocument, MovementSimilar, MovementsResponse,
+                         OldenburgVerdict, TimeAxis, TimelinePoint,
                          IdeaSearchResponse, IdeasResponse,
                          EventStreamResponse, Finances, GoalDetail,
                          Goals, JpegResponse, NumberOfTheWeek, Ok,
@@ -60,13 +65,15 @@ from ..antworten import (AnalysisData, BudgetAmendmentLists, BudgetAuditReports,
                          PublicNumbers, QaExampleSession, QaExamples,
                          QaShare, QaShareToken, ResearchCurrent, ResearchSnapshot, ResearchStarted,
                          ResearchStopped, SessionDetail, SessionList, SharePreview, Speeches,
-                         SSE_FRAGE, SSE_RECHERCHE,
+                         SSE_ERKLAERUNG, SSE_FRAGE, SSE_RECHERCHE,
                          TemplateFollowed, TemplateFollows, TemplateUnfollowed, ThisWeek,
                          TodayBriefing, TrendData)
 from ..clients import client_kind
 from ..deps import (get_cities_store, get_council_store, get_current_user, get_store,
                     optional_user, require_active, require_permission)
 from ..ratelimit import (
+    assistant_event_limiter,
+    assistant_limiter,
     partei_meinungen_limiter,
     qa_feedback_limiter,
     qa_limiter,
@@ -101,6 +108,13 @@ ELSEWHERE_MIN_SCORE = 0.70
 #: Ansicht.
 IDEEN_STATUS_VORGABE = ("missing", "partial")
 IDEEN_PRO_SEITE = 30
+
+#: Ab wie vielen ANDEREN Städten eine Idee eine Bewegung ist (Tims
+#: Entscheidung vom 22.09.2026, Plan §7 Frage 1). Die Tafel oben zeigt die
+#: großen ab fünf; das entscheidet die Oberfläche, nicht der Endpunkt.
+BEWEGUNG_AB_STAEDTEN = 2
+BEWEGUNGEN_PRO_SEITE = 30
+BEWEGUNGEN_HOECHSTENS = 50
 
 #: Das Modell, unter dem die Nachbarschaften liegen. `council.cities.index`
 #: lädt numpy erst in den Funktionen, der Import hier ist also leicht — und
@@ -1830,6 +1844,33 @@ def _eigene_rueckmeldungen(cities: CitiesStore, user: dict | None) -> dict[str, 
     return cities.feedback_by_paper(ann, ver, int(user["id"]))
 
 
+@router.post("/cities/movements/feedback")
+def cities_movement_feedback(
+    id: int,
+    verdict: str,
+    note: str | None = None,
+    user: dict = Depends(get_current_user),
+    cities: CitiesStore = Depends(get_cities_store),
+) -> FeedbackAck:
+    """„Stimmt" oder „stimmt nicht" zum Urteil über Oldenburg JE IDEE.
+
+    Derselbe Rückkanal wie an der Einzelkarte, nur am Urteil ``idea_fit``
+    (``object_kind='cluster'``) — die Tabelle ``feedback`` kennt die Art
+    schon. Die Antwort trägt die Gruppen-Kennung als ``paper_id``, damit die
+    Form dieselbe bleibt.
+    """
+    from council.cities.clusters import CLUSTER_VERSION
+
+    if verdict not in ("right", "wrong"):
+        raise HTTPException(400, "verdict muss 'right' oder 'wrong' sein")
+    if not cities.idea_group(EMBED_MODEL_FUER_SUCHE, CLUSTER_VERSION, id):
+        raise HTTPException(404, "unbekannte Bewegung")
+    ann, ver = CitiesStore.IDEEN_IDEA_FIT
+    cities.put_feedback("cluster", f"{CLUSTER_VERSION}:{id}", ann, ver, int(user["id"]),
+                        verdict, (note or "").strip()[:500] or None)
+    return {"paper_id": f"{CLUSTER_VERSION}:{id}", "verdict": verdict}
+
+
 @router.post("/cities/ideas/{paper_id:path}/feedback")
 def cities_idea_feedback(
     paper_id: str,
@@ -1871,12 +1912,20 @@ def cities_idea_fields(cities: CitiesStore = Depends(get_cities_store)) -> IdeaF
     Ratsdokumente anderer Städte darin und ein Urteil darüber, ob Oldenburg
     dasselbe schon hat.
     """
+    from council.cities.clusters import CLUSTER_VERSION
+
+    # ALLE Bewegungen des Feldes, nicht nur die offenen: Solange `idea_fit`
+    # noch nicht gelaufen ist, stand sonst überall 0, und die Feld-Chips
+    # verschwanden ganz (gemessen am ersten Bild, 22.09.2026).
+    bewegungen = cities.idea_group_counts(EMBED_MODEL_FUER_SUCHE, CLUSTER_VERSION,
+                                          BEWEGUNG_AB_STAEDTEN)
     felder: list[IdeaFieldSummary] = [
         {"field": r["field"], "total": int(r["total"] or 0),
          "missing": int(r["missing"] or 0), "partial": int(r["partial"] or 0),
          "present": int(r["present"] or 0),
          "not_applicable": int(r["not_applicable"] or 0),
-         "multi_city": int(r["multi_city"] or 0)}
+         "multi_city": int(r["multi_city"] or 0),
+         "movements": bewegungen.get(r["field"], 0)}
         for r in cities.idea_fields()]
     from council.cities.registry import BODIES
     namen = sorted({(BODIES[b].name if b in BODIES else b)
@@ -1953,6 +2002,147 @@ def cities_ideas(
              for r in zeilen]
     return {"field": field, "total": gesamt, "page": page, "per_page": per_page,
             "counts": {k: int(v) for k, v in zaehler.items()}, "items": items}
+
+
+@router.get("/cities/movements")
+def cities_movements(
+    field: str | None = None,
+    oldenburg: str = ",".join(IDEEN_STATUS_VORGABE),
+    min_cities: int = BEWEGUNG_AB_STAEDTEN,
+    q: str = "",
+    sort: str = "staedte",
+    page: int = 1,
+    per_page: int = BEWEGUNGEN_PRO_SEITE,
+    store: CouncilStore = Depends(get_council_store),
+    cities: CitiesStore = Depends(get_cities_store),
+) -> MovementsResponse:
+    """Ideen, die mehrere andere Räte hatten — je Idee EINE Zeile.
+
+    **Öffentlich**, wie die übrigen Städte-Endpunkte: Es stehen nur
+    Ratsdokumente anderer Städte darin und ein Urteil darüber, ob Oldenburg
+    dasselbe hat. Der Schalter sitzt an der Seite, nicht hier.
+
+    ``oldenburg`` filtert nach dem Urteil je Idee (``idea_fit``); leer heißt
+    alle, auch die noch unbeurteilten. ``sort`` ist ``staedte`` (die meisten
+    Städte zuerst) oder ``zuletzt`` (die jüngste Vorlage zuerst).
+    """
+    from council.cities.clusters import CLUSTER_VERSION
+
+    if sort not in ("staedte", "zuletzt"):
+        raise HTTPException(400, "sort muss 'staedte' oder 'zuletzt' sein")
+    per_page = max(1, min(per_page, BEWEGUNGEN_HOECHSTENS))
+    page = max(1, page)
+    min_cities = max(1, min_cities)
+    status = tuple(x for x in oldenburg.split(",") if x)
+    zeilen, gesamt = cities.idea_groups(
+        EMBED_MODEL_FUER_SUCHE, CLUSTER_VERSION, field=field, min_cities=min_cities,
+        oldenburg=status, q=q, sort=sort, limit=per_page, offset=(page - 1) * per_page)
+    zaehler = cities.idea_group_verdict_counts(
+        EMBED_MODEL_FUER_SUCHE, CLUSTER_VERSION, field=field, min_cities=min_cities, q=q)
+    return {"items": [_bewegung(store, z) for z in zeilen], "total": gesamt,
+            "page": page, "per_page": per_page,
+            "axis": _achse(cities, CLUSTER_VERSION, min_cities),
+            "counts": zaehler}
+
+
+@router.get("/cities/movements/detail")
+def cities_movement_detail(
+    id: int,
+    store: CouncilStore = Depends(get_council_store),
+    cities: CitiesStore = Depends(get_cities_store),
+) -> MovementDetail:
+    """Eine Bewegung mit allen Vorlagen — die Ideen-Seite.
+
+    Die Kennung als Query-Parameter, nicht als Pfadsegment: Der statische
+    Export des Frontends kennt keine dynamischen Pfade
+    (``web/frontend/CLAUDE.md``). Auch eine unbelegte Gruppe (``stable=0``)
+    ist abrufbar — sie steht nur in keiner Liste.
+    """
+    from council.cities.clusters import CLUSTER_VERSION
+    from council.cities.model import display_originator
+
+    zeile = cities.idea_group(EMBED_MODEL_FUER_SUCHE, CLUSTER_VERSION, id)
+    if not zeile:
+        raise HTTPException(404, "unbekannte Bewegung")
+    abschnitte = cities.section_counts()
+    namen = _stadtnamen()
+    dokumente: list[MovementDocument] = []
+    oldenburger: list[str] = []
+    for m in cities.idea_group_members(EMBED_MODEL_FUER_SUCHE, CLUSTER_VERSION, id):
+        if m["body_id"] == "oldenburg":
+            oldenburger.append(m["id"])
+            continue
+        klasse = json.loads(m.get("classify_json") or "{}")
+        dokumente.append({
+            "paper_id": m["id"], "body_id": m["body_id"],
+            "city": namen.get(m["body_id"]) or m.get("body_name") or m["body_id"],
+            "name": m.get("name") or "", "date": (m.get("date") or "")[:10] or None,
+            "kind": m.get("kind") or "other", "web": m.get("web"),
+            "outcome": (cities.outcome_for_paper(m["id"]) or {}).get("outcome") or "none",
+            "originator": display_originator(klasse.get("originator"), m.get("kind")),
+            "instrument": klasse.get("instrument"), "summary": klasse.get("summary"),
+            "protocol": _protokoll(cities, m["id"]),
+            "protocol_source": _protokoll_quelle(m["body_id"], abschnitte),
+        })
+    aehnliche: list[MovementSimilar] = [
+        {"cluster_id": int(a["cluster_id"]), "label": a["label"],
+         "cities": int(a["cities"]), "members": int(a["members"])}
+        for a in cities.similar_idea_groups(EMBED_MODEL_FUER_SUCHE, CLUSTER_VERSION,
+                                            zeile["field"], id, BEWEGUNG_AB_STAEDTEN)]
+    return {"movement": _bewegung(store, zeile, namen),
+            "axis": _achse(cities, CLUSTER_VERSION, BEWEGUNG_AB_STAEDTEN),
+            "documents": dokumente,
+            "oldenburg_documents": _belege_aufloesen(store, oldenburger, hoechstens=6),
+            "similar": aehnliche}
+
+
+def _stadtnamen() -> dict[str, str]:
+    from council.cities.registry import BODIES
+    return {k: v.name for k, v in BODIES.items()}
+
+
+def _achse(cities: CitiesStore, version: str, min_cities: int) -> TimeAxis:
+    """Vom Jahresanfang der frühesten bis zum Jahresende der spätesten Vorlage."""
+    frueh, spaet = cities.idea_groups_axis(EMBED_MODEL_FUER_SUCHE, version, min_cities)
+    return {"start": f"{frueh[:4]}-01-01" if frueh else None,
+            "end": f"{int(spaet[:4]) + 1}-01-01" if spaet else None}
+
+
+def _bewegung(store: CouncilStore, z: dict,
+              namen: dict[str, str] | None = None) -> Movement:
+    """Eine Zeile aus ``idea_groups`` als Bewegung für die Oberfläche."""
+    namen = namen if namen is not None else _stadtnamen()
+    staedte = [
+        MovementCity(body_id=str(c["body_id"]),
+                     city=namen.get(c["body_id"], str(c["body_id"])),
+                     first_date=c.get("first_date"), members=int(c.get("members") or 0),
+                     outcomes={str(k): int(v) for k, v in (c.get("outcomes") or {}).items()})
+        for c in json.loads(z.get("per_city") or "[]")]
+    punkte = [
+        TimelinePoint(paper_id=str(p["paper_id"]), body_id=str(p["body_id"]),
+                      city=namen.get(p["body_id"], str(p["body_id"])), date=p.get("date"),
+                      outcome=p.get("outcome") or "none", kind=p.get("kind") or "other")
+        for p in json.loads(z.get("timeline") or "[]")]
+    return {
+        "cluster_id": int(z["cluster_id"]), "label": z.get("label") or "",
+        "field": z.get("field"), "cities": staedte, "members": int(z["members"]),
+        "oldenburg_members": int(z.get("oldenburg_members") or 0),
+        "first_date": z.get("first_date"), "last_date": z.get("last_date"),
+        "outcomes": {k: int(v) for k, v in json.loads(z.get("outcomes") or "{}").items()},
+        "timeline": punkte,
+        "oldenburg": _urteil_je_idee(store, z.get("verdict_json")),
+    }
+
+
+def _urteil_je_idee(store: CouncilStore, roh: str | None) -> OldenburgVerdict | None:
+    """Das ``idea_fit``-Urteil mit aufgelösten Belegen — oder ``None``."""
+    if not roh:
+        return None
+    u = json.loads(roh)
+    return {"status": u.get("status") or "", "situation": u.get("situation") or "",
+            "confidence": u.get("confidence") or "",
+            "evidence": _belege_aufloesen(store, u.get("evidence") or []),
+            "related": _belege_aufloesen(store, u.get("related") or [])}
 
 
 def _protokoll_quelle(body_id: str, abschnitte: dict[str, int] | None) -> str:
@@ -2079,7 +2269,8 @@ def _geschwister(roh: str | None) -> list[IdeaSibling]:
              "date": z.get("date")} for z in zeilen]
 
 
-def _belege_aufloesen(store: CouncilStore, kennungen: list) -> list[IdeaEvidence]:
+def _belege_aufloesen(store: CouncilStore, kennungen: list,
+                      hoechstens: int = 3) -> list[IdeaEvidence]:
     """``oldenburg:paper:28119`` → der Beschluss dahinter, wenn es einen gibt.
 
     Anträge aus Anlagen (``…:att:…``) und der Themenfeld-Rückblick tragen
@@ -2089,7 +2280,21 @@ def _belege_aufloesen(store: CouncilStore, kennungen: list) -> list[IdeaEvidence
     from council.cities.evidence import kvonr_aus
 
     aus: list[IdeaEvidence] = []
-    for kennung in kennungen[:3]:
+    for kennung in kennungen[:hoechstens]:
+        if str(kennung).startswith("oldenburg:decision:"):
+            # Ein Beschluss als Beleg — `idea_fit` und `fit` dürfen ihn nennen.
+            # Bis 22.09.2026 fiel er hier still weg: Die Karte zeigte dann
+            # „vorhanden" ohne die Zeile, die es belegt.
+            try:
+                beschluss = store.get_decision(int(str(kennung).rsplit(":", 1)[1]))
+            except ValueError:
+                beschluss = None
+            if beschluss:
+                aus.append({"decision_id": beschluss["id"], "kvonr": beschluss.get("kvonr"),
+                            "title": beschluss.get("title") or "",
+                            "date": beschluss.get("session_date"),
+                            "outcome": beschluss.get("outcome")})
+            continue
         kvonr = kvonr_aus(str(kennung))
         if kvonr is None:
             continue
@@ -2104,7 +2309,33 @@ def _belege_aufloesen(store: CouncilStore, kennungen: list) -> list[IdeaEvidence
             "date": (beschluss or {}).get("session_date"),
             "outcome": (beschluss or {}).get("outcome"),
         })
-    return [b for b in aus if b["title"]]
+    return _ohne_doppelte([b for b in aus if b["title"]])
+
+
+def _ohne_doppelte(belege: list[IdeaEvidence]) -> list[IdeaEvidence]:
+    """Denselben Vorgang nur einmal zeigen.
+
+    Ein Urteil nennt oft die Vorlage UND ihren Beschluss — beim Oldenburger
+    Wärmeplan standen so drei Zeilen für einen Ratsbeschluss (gesehen am
+    22.09.2026). Doppelt ist, was auf denselben Beschluss führt, oder ohne
+    Beschluss denselben Titel trägt wie ein schon gezeigter Beleg.
+    """
+    def norm(t: str) -> str:
+        return " ".join(t.lower().replace("- beschluss", "").split())
+
+    ids: set[int] = set()
+    titel: set[str] = set()
+    aus: list[IdeaEvidence] = []
+    for b in belege:
+        if b["decision_id"] is not None and b["decision_id"] in ids:
+            continue
+        if b["decision_id"] is None and norm(b["title"]) in titel:
+            continue
+        if b["decision_id"] is not None:
+            ids.add(b["decision_id"])
+        titel.add(norm(b["title"]))
+        aus.append(b)
+    return aus
 
 
 @router.get("/decision/{decision_id}/elsewhere")
@@ -2469,6 +2700,10 @@ class QaFeedbackBody(BaseModel):
     answer_excerpt: str | None = Field(default=None, max_length=500)
     rating: str = Field(pattern="^(up|down)$")
     reason: str | None = Field(default=None, max_length=500)
+    # Aus welcher Fläche der Daumen kommt. Ohne das Feld stünden Lottis
+    # Erklärungen und die Archiv-Antworten in einem Topf — und die Frage
+    # „taugen Lottis Antworten?" wäre nicht mehr zu stellen.
+    source: str = Field(default="ask", pattern="^(ask|lotti)$")
 
 
 @router.post("/qa-feedback", status_code=status.HTTP_201_CREATED)
@@ -2484,7 +2719,8 @@ def qa_feedback(
     Rate-Limit hält Skript-Flutung von Tabelle und Backups fern."""
     qa_feedback_limiter.check(request)
     store.save_qa_feedback(body.question, body.answer_excerpt, body.rating,
-                           body.reason, user_id=(user or {}).get("id"))
+                           body.reason, user_id=(user or {}).get("id"),
+                           source=body.source)
     return {"ok": True}
 
 
@@ -3447,6 +3683,461 @@ def goal_detail(key: str, _user: dict = Depends(require_active),
     }
 
 
+#: Was Lottis Fenster melden darf — und wie es im Zähler heißt. Eine
+#: Positivliste, damit die Tabelle nicht mit erfundenen Namen wächst.
+#: Heute nur das Öffnen des Fensters — es ruft sonst keinen Endpunkt auf, und
+#: ohne diesen Zähler ließe sich „wird überhaupt draufgeklickt?" nicht
+#: beantworten. Der Anstupser trägt seine drei Ereignisse selbst ein, wenn er
+#: gebaut wird: Ein Zähler, den niemand schreibt, steht dauerhaft auf 0 und
+#: sieht aus wie ein Ausfall (tests/test_ereignisse.py hält beide Richtungen).
+ASSISTANT_EVENTS: dict[str, str] = {
+    "open": "assistant_open",
+    # Der Anstupser: gezeigt, angenommen, weggeklickt. Die drei zusammen
+    # beantworten die einzige Frage, die über ihn zu stellen ist — bringt er
+    # etwas, oder stört er nur?
+    "nudge_shown": "assistant_nudge_shown",
+    "nudge_accepted": "assistant_nudge_accepted",
+    "nudge_dismissed": "assistant_nudge_dismissed",
+}
+
+
+class ExplainElement(BaseModel):
+    """Das angeklickte Element — Schlüssel, Überschrift und sein Text.
+
+    Der Text wird aus dem DOM geerntet (``innerText`` des Elements mit dem
+    ``data-erklaer``-Anker). Er ist damit **Fremdtext**: Auf Beschluss-Seiten
+    steht darin, was jemand in eine Ratsvorlage geschrieben hat. Behandelt
+    wird er ausschließlich als Daten, siehe ``council/assistant.py``.
+    """
+    key: str | None = Field(default=None, max_length=lotti.ELEMENT_KEY_MAX)
+    title: str = Field(default="", max_length=lotti.ELEMENT_TITLE_MAX)
+    text: str = Field(default="", max_length=lotti.ELEMENT_TEXT_MAX)
+
+
+class ExplainRefs(BaseModel):
+    """Die Kennungen aus der Adresszeile — nie Inhalte.
+
+    Ohne sie müsste das Backend erraten, welchen Beschluss die Seite zeigt;
+    mit ihnen schlägt es ihn nach. Die Query selbst kommt NICHT mit (dieselbe
+    Regel wie bei den Seitenaufrufen): Der Client zerlegt sie und schickt nur
+    die Felder, die hier stehen.
+    """
+    decision_id: int | None = Field(default=None, ge=1)
+    ksinr: int | None = Field(default=None, ge=1)
+    slug: str | None = Field(default=None, max_length=120)
+    place_id: str | None = Field(default=None, max_length=120)
+    year: int | None = Field(default=None, ge=1990, le=2100)
+    area: str | None = Field(default=None, max_length=120)
+
+
+class ExplainBody(BaseModel):
+    """Was Lotti zu sehen bekommt."""
+    route: str = Field(max_length=200)
+    page_title: str = Field(default="", max_length=200)
+    heading: str = Field(default="", max_length=lotti.HEADING_MAX)
+    element: ExplainElement | None = None
+    selection: str = Field(default="", max_length=lotti.SELECTION_MAX)
+    question: str = Field(default="", max_length=lotti.QUESTION_MAX)
+    refs: ExplainRefs = Field(default_factory=ExplainRefs)
+    #: Die Überschriften der erklärbaren Bausteine dieser Seite, von oben nach
+    #: unten — die „Landkarte", mit der Lotti auf „Wo steht …?" den Baustein
+    #: beim Namen nennen kann. Kein Seiteninhalt: Diese Titel stehen als
+    #: Zeichenkette in unseren eigenen Komponenten (``useErklaerAnker``).
+    #: Gedeckelt wie alles aus dem Browser — 20 Titel à 80 Zeichen, längeres
+    #: wird mit 422 abgewiesen statt still gekürzt.
+    anchors: list[Annotated[str, Field(max_length=lotti.ANKER_TITEL_MAX)]] = Field(
+        default_factory=list, max_length=lotti.ANKER_MAX)
+    history: list[AskTurn] = Field(default_factory=list, max_length=3)
+    # Wie bei ``/ask``: das laufende Gespräch, an das die Runde gehängt wird —
+    # nur wirksam mit ``saves_conversations = 1``. Ein Client, der das Feld
+    # gar nicht schickt, speichert nichts (``model_fields_set``).
+    conversation_id: int | None = Field(default=None, ge=1)
+
+
+def _lotti_turn_speichern(ratslotse: Store, user: dict, body: ExplainBody,
+                          screen: lotti.Screen, frage: str, antwort: str,
+                          modus: str, weiter: str | None,
+                          glossar: list[str],
+                          belege: list[dict] | None = None) -> int | None:
+    """Lottis Runde ins Konto — **nur mit derselben Einwilligung wie „Frag den
+    Rat"** (``web_users.saves_conversations``).
+
+    **Was im Snapshot steht und was nicht.** Gespeichert wird, wo die Frage
+    gestellt wurde (Route, Element-Schlüssel und -Titel), wie geantwortet
+    wurde (``mode``, ``next``) und welche Fachwörter im Kontext standen. Der
+    **Element-TEXT steht nicht darin**, und die Markierung nur gekürzt: Beide
+    sind Seiteninhalt, den man auf der Seite nachlesen kann — sie im Konto zu
+    verdoppeln brächte nichts und legte Fremdtext ab, den niemand dort sucht.
+
+    Wirft nie: Speichern ist Zusatz, kein Blocker.
+    """
+    try:
+        if "conversation_id" not in body.model_fields_set:
+            return None
+        if not antwort.strip() or ratslotse.get_qa_speichern(user["id"]) != 1:
+            return None
+        conversation_id = body.conversation_id
+        neu = conversation_id is None
+        if neu:
+            # Der Titel ist die Seite, nicht die Frage: „Was sehe ich hier?"
+            # wäre als Name jedes zweiten Gesprächs unbrauchbar.
+            titel = screen.heading or knowledge.PAGES[screen.route].title
+            conversation_id = ratslotse.qa_gespraech_start(user["id"], titel, kind="lotti")
+            if conversation_id is None:
+                return None
+        quellen_json = json.dumps({
+            "route": screen.route,
+            "element_key": screen.element_key,
+            "element_title": screen.element_title,
+            "selection": screen.selection[:200],
+            "mode": modus,
+            "next": weiter,
+            "glossary": glossar,
+            # Die Papiere, die im Prompt standen. Sie gehören in den
+            # Schnappschuss, weil sie die Antwort tragen: Ein geladenes
+            # Gespräch, das die Zahlen zeigt und die Quellen verschweigt,
+            # wäre die schlechtere Hälfte davon. Kein Seiteninhalt — Titel
+            # und Adresse eines öffentlichen Dokuments.
+            "evidence": belege or [],
+        }, ensure_ascii=False)
+        frage_text = frage or (screen.element_title
+                               and f"Erklär mir: {screen.element_title}") or "Was sehe ich hier?"
+        if not ratslotse.qa_turn_speichern(conversation_id, user["id"],
+                                           frage_text, antwort, quellen_json):
+            if neu:
+                ratslotse.qa_gespraech_loeschen(conversation_id, user["id"])
+            return None
+        return conversation_id
+    except Exception:  # noqa: BLE001 — Speichern ist Zusatz, nie Blocker
+        return None
+
+
+class AssistantEventBody(BaseModel):
+    """Ein Ereignis aus Lottis Fenster, das sonst keinen Endpunkt hätte.
+
+    Das Öffnen des Fensters ruft nichts auf — ohne diesen Zähler ließe sich
+    „wird es überhaupt angeklickt?" nicht beantworten. Gebaut wie
+    ``POST /onboarding/tour``: ein Zähler, kein Zustand.
+    """
+    kind: str = Field(max_length=40)
+
+
+@router.post("/assistant/event", status_code=status.HTTP_204_NO_CONTENT)
+def assistant_event(body: AssistantEventBody, request: Request,
+                    user: dict = Depends(require_active),
+                    ratslotse: Store = Depends(get_store)) -> None:
+    """Ein Ereignis zählen — je Konto und Tag, wie jeder andere Funktionszähler.
+
+    **Was NICHT mitgeht:** kein Zeitpunkt, keine Seite, keine Frage. Nur
+    welche Handlung es war.
+    """
+    zaehler = ASSISTANT_EVENTS.get(body.kind)
+    if not zaehler:
+        # Ein unbekannter Name wird abgewiesen statt stillschweigend gezählt:
+        # Sonst entstünde aus einem Tippfehler eine eigene Zeile, die in
+        # keiner Auswertung auftaucht und trotzdem wie ein Wert aussieht.
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
+                            f"Unbekanntes Ereignis: {body.kind!r}")
+    assistant_event_limiter.check(request, subject=user["id"])
+    ratslotse.record_activity(user["id"], zaehler, client_kind(request))
+
+
+@router.get("/assistant/starters")
+def assistant_starters(
+    route: Annotated[str, Query(max_length=200)] = "",
+    user: dict = Depends(require_active),
+) -> AssistantStarters:
+    """Die zwei kuratierten Startfragen fürs leere Lotti-Fenster dieser Seite.
+
+    **Kein Modellaufruf, keine Datenbank** — die Fragen stehen als Code in
+    ``kern/knowledge.py``; dieser Endpunkt normalisiert nur die Route wie
+    ``/explain`` und liefert sie route-genau aus. Der Client holt ihn einmal
+    je Route (React Query, wie ``ThemenBruecke`` in ``council-qa.tsx``) und
+    fragt ihn danach nicht mehr an, solange das Fenster offen bleibt.
+
+    **Ohne das Recht der Seite: leere Liste, kein 403.** Anders als bei
+    ``/explain`` steckt hier kein geschützter Inhalt hinter dem Riegel — die
+    beiden Fragen sind derselbe kuratierte Text, der in diesem Modul im
+    öffentlichen Repo steht, keine Haushaltszahl. Ein 403 wäre außerdem eine
+    Fehlermeldung für einen Aufruf, den niemand ausgelöst hat: Das Fenster
+    holt die Startfragen VON SELBST beim Öffnen, nicht auf einen Klick, und
+    ein Konto ohne `budget` sieht den Haushalts-Knopf ohnehin nie. Eine leere
+    Liste lässt den Client einfach bei „Was sehe ich hier?" — dieselbe
+    Oberfläche wie auf einer Seite, die dieses Modul gar nicht kennt.
+    """
+    if not features.an("lotti-assistentin"):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Nicht gefunden.")
+    normalisiert = seitenaufrufe.normalisieren(route)
+    wissen = knowledge.fuer_route(normalisiert)
+    if wissen is None or knowledge.OHNE_ERKLAERUNG.get(normalisiert):
+        return {"starters": []}
+    rechte = rollen.permissions_for(user.get("roles"))
+    if wissen.requires and wissen.requires not in rechte:
+        return {"starters": []}
+    return {"starters": list(wissen.starters)}
+
+
+@router.post("/explain", response_class=EventStreamResponse, responses=SSE_ERKLAERUNG)
+def explain(body: ExplainBody, request: Request, user: dict = Depends(require_active),
+            store: CouncilStore = Depends(get_council_store),
+            ratslotse: Store = Depends(get_store)) -> StreamingResponse:
+    """Erklärt, was gerade auf dem Bildschirm steht — als SSE-Strom.
+
+    Der Unterschied zu ``/ask``: **keine Suche**. Der Gegenstand steht auf der
+    Seite, die Person zeigt selbst darauf; gesucht werden muss nichts. Drei
+    Wege kommen ohne Modell aus (Glossar, Beschluss-Kurzfassung,
+    Seiten-Wissen) und antworten in wenigen Millisekunden.
+
+    **Gespeichert wird hier nichts** außer zwei Zählern: Markierung,
+    Element-Text und Frage stehen auf der Seite und bleiben dort.
+    """
+    # Der Schalter gilt HIER und nicht nur in der Oberfläche: Jeder Aufruf
+    # kostet ein Sprachmodell. Ein Endpunkt, der vor der Freigabe antwortet,
+    # ist kein halbfertiges Feature, sondern eine offene Rechnung.
+    if not features.an("lotti-assistentin"):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Nicht gefunden.")
+    route = seitenaufrufe.normalisieren(body.route)
+    grund = knowledge.OHNE_ERKLAERUNG.get(route)
+    if grund:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, grund)
+    wissen = knowledge.fuer_route(route)
+    if wissen is None:
+        # Öffentliche Seite, Sammelzeile oder Tippfehler: Ohne Wissen über die
+        # Seite bliebe nur der Element-Text, und daraus eine Erklärung zu
+        # bauen hieße raten.
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            "Zu dieser Seite kann ich nichts sagen.")
+    # **Die Seite gehört zu einem Recht — dann auch ihre Erklärung.** Der
+    # Knopf erscheint auf einer gesperrten Seite gar nicht, aber der Knopf ist
+    # Höflichkeit, nicht die Sperre: Ein Konto ohne `budget` konnte bis hier
+    # `route=/haushalt/schulden` schicken und bekam das Seiten-Wissen samt der
+    # Haushaltszahlen aus `geld_kontext` — also genau den Inhalt, für den es
+    # das Recht braucht. Dieselbe Regel wie für die Seite selbst
+    # (`require_permission`), nur an der Stelle, an der der Text entsteht.
+    # **Rechte kommen aus den Rollen, nicht aus einem Feld `permissions`.**
+    # Das Konto-Dict trägt `roles`; ein `permissions`-Schlüssel steht nur in
+    # der Antwort von `/auth/me`. Die erste Fassung las das Feld hier trotzdem
+    # — es war immer leer, der Riegel sperrte damit den Haushalts-Bereich für
+    # JEDES Konto, und der Konto-Block sagte jedem „kein Zugang". Der Test
+    # hatte es verdeckt, weil seine Attrappe das Feld einfach mitbrachte.
+    rechte = rollen.permissions_for(user.get("roles"))
+    if wissen.requires and wissen.requires not in rechte:
+        raise HTTPException(status.HTTP_403_FORBIDDEN,
+                            "Diese Seite steht deinem Konto nicht offen.")
+    if not user.get("limits_unlocked"):
+        assistant_limiter.check(request, subject=user["id"])
+
+    # **Der Anzeigename fällt hier heraus, nicht erst im Prompt.** Auf
+    # `/dashboard` ist die `h1` „Moin, <Name>!" — der Client streicht den Namen
+    # inzwischen selbst, aber der Client ist Höflichkeit und diese Zeile die
+    # Sperre (dieselbe Aufteilung wie beim Rechte-Gate). Gestrichen, nicht
+    # maskiert: ein „[NAME]" im Prompt wäre neuer Text, den das Modell
+    # vorlesen kann. Ab hier trägt `screen` den Namen nirgends mehr — weder im
+    # Prompt (`_screen_block`) noch im Titel des gespeicherten Gesprächs.
+    name = user.get("display_name")
+    screen = lotti.Screen(
+        route=route,
+        page_title=lotti.ohne_namen(body.page_title, name),
+        heading=lotti.ueberschrift_ohne_konto(body.heading, name),
+        element_key=(body.element.key if body.element else None),
+        element_title=(body.element.title if body.element else ""),
+        element_text=(body.element.text if body.element else ""),
+        selection=body.selection,
+        refs={k: v for k, v in body.refs.model_dump().items() if v is not None},
+        anchors=tuple(body.anchors),
+    )
+    frage = body.question.strip()
+    verlauf = [r.model_dump() for r in body.history]
+
+    def gen():
+        try:
+            t0 = time.perf_counter()
+            zeiten: dict = {}
+            # **Gehört die Frage ins Archiv, geht Lotti dorthin — sofort.**
+            # Bis 22.09.2026 schrieb sie erst eine Erklärung („Wer wie
+            # gestimmt hat, kann nur das Archiv sagen") und stellte darunter
+            # einen Knopf „Den Rat fragen"; Tim: „warum passiert das nicht
+            # automatisch, wenn das sinnvoll ist?". Der Vorab-Absatz war ein
+            # leerer Absatz vor der eigentlichen Antwort — er kostete einen
+            # Modellaufruf (0,07 Cent) und rund eine Sekunde, und die
+            # Entscheidung, welchen Weg die Frage nimmt, ist unsere, nicht die
+            # der fragenden Person.
+            #
+            # **Die Regel bleibt an EINER Stelle.** Der Client könnte dieselbe
+            # Regex spiegeln und sich den Roundtrip sparen — dann gäbe es sie
+            # zweimal, und zwei Fassungen laufen auseinander (dieselbe
+            # Begründung wie bei `falte`/`ortsfrage`). Der Roundtrip kostet
+            # kein Modell: gemessen lokal am 22.09.2026 rund 25 ms.
+            #
+            # **Vor `deterministic_answer`**, weil eine Archivfrage keiner der
+            # drei Wege ohne Modell ist: Die verlangen eine generische Frage
+            # („Was sehe ich hier?") oder eine Vokabelfrage, und keine davon
+            # trifft `archiv_sofort` (tests/test_assistant.py hält beides).
+            if lotti.archiv_sofort(frage):
+                yield _sse({"type": "step", "step": "archiv"})
+                ratslotse.record_activity(user["id"], "assistant_to_ask_auto",
+                                          client_kind(request))
+                # **Kein `conversation_id` im Rahmen.** Es gibt nichts zu
+                # speichern (keine Antwort), und ein `null` hieße für das
+                # Fenster „vergiss das laufende Gespräch" — die nächste Frage
+                # eröffnete dann ein zweites zur selben Sache.
+                yield _sse({"type": "done", "mode": "handoff", "kind": "archiv",
+                            "next": "ratsfrage", "next_page": None,
+                            "glossary": [],
+                            # Kein Text, keine Zahlen, keine Grundlage. Das
+                            # Feld reist trotzdem mit: Ein `done`, dem es
+                            # fehlt, unterscheidet sich für den Client nicht
+                            # von einem, bei dem die Quellen verlorengingen.
+                            "evidence": [],
+                            "timings": {"total_ms": round(
+                                (time.perf_counter() - t0) * 1000)}})
+                return
+            # Erst die Wege ohne Modell. Sie sind der häufigste Klick, und die
+            # geprüfte Antwort liegt bereits im Haus — ein Modell darauf
+            # kostet Geld und kann sie nur verschlechtern.
+            fertig = lotti.deterministic_answer(store, screen, frage)
+            if fertig:
+                text, art = fertig
+                zeiten["total_ms"] = round((time.perf_counter() - t0) * 1000)
+                yield _sse({"type": "token", "text": text})
+                ratslotse.record_activity(user["id"], "assistant_deterministic",
+                                          client_kind(request))
+                conversation_id = _lotti_turn_speichern(
+                    ratslotse, user, body, screen, frage, text, "deterministic", None, [])
+                yield _sse({"type": "done", "mode": "deterministic", "kind": art,
+                            "next": None, "next_page": None,
+                            # Geprüfter Text aus dem Haus (Glossar,
+                            # Seitenwissen, „Lotti erklärt's einfach") — er
+                            # ruht auf keiner Haushaltszahl, also steht auch
+                            # keine Grundlage darunter.
+                            "evidence": [],
+                            "glossary": [], "timings": zeiten,
+                            "conversation_id": conversation_id})
+                return
+
+            yield _sse({"type": "step", "step": "context"})
+            # Das Konto geht als RECHTE und — nur bei „mein…" — als Themen
+            # mit; nie als Name, Adresse oder Rollenwort.
+            ctx = lotti.screen_context(store, screen, frage,
+                                       permissions=rechte,
+                                       ratslotse=ratslotse, user_id=user["id"])
+            zeiten["context_ms"] = round((time.perf_counter() - t0) * 1000)
+            yield _sse({"type": "step", "step": "answer"})
+
+            buf = ""
+            sent = 0
+            marker = lotti.NEXT_MARKER
+            try:
+                for delta in lotti.explain_stream(store, screen, frage, ctx=ctx,
+                                                  verlauf=verlauf):
+                    if not buf and delta:
+                        zeiten["ttft_ms"] = round((time.perf_counter() - t0) * 1000)
+                    buf += delta
+                    cut = buf.find(marker)
+                    # Vor der Marke: senden. Ab der Marke: nur noch sammeln —
+                    # „WEITER: ratsfrage" ist eine Anweisung an den Client,
+                    # kein Satz für Leser*innen.
+                    limit = cut if cut != -1 else max(0, len(buf) - len(marker))
+                    if limit > sent:
+                        yield _sse({"type": "token", "text": buf[sent:limit]})
+                        sent = limit
+                if marker not in buf and len(buf) > sent:
+                    yield _sse({"type": "token", "text": buf[sent:]})
+                    sent = len(buf)
+            except Exception:  # noqa: BLE001 — Strom riss mitten in der Erklärung
+                # Dasselbe Verhalten wie bei der KI-Frage: einmal komplett neu
+                # erzeugen und den Torso ersetzen, statt ihn stehen zu lassen.
+                _log.warning("explain_stream brach nach %d Zeichen ab — one-shot Ersatz",
+                             len(buf), exc_info=True)
+                ans = lotti.explain_question(store, screen, frage, ctx=ctx, verlauf=verlauf)
+                buf = ans
+                yield _sse({"type": "replace",
+                            "text": lotti.split_next(ans, rechte, route)[0]})
+
+            text, weiter, zielseite = lotti.split_next(buf, rechte, route)
+            # Die Weiterreichung bleibt dem Modell überlassen — die
+            # deterministische Ergänzung steht jetzt GANZ OBEN und hat den
+            # Aufruf dann gar nicht erst gemacht. Setzt das Modell die Marke
+            # trotzdem (die Regex hat nicht gegriffen), geht das Fenster von
+            # selbst ins Archiv: als zweiter Schritt derselben Runde, unter
+            # der Erklärung, die stehen bleibt.
+            if weiter == "ratsfrage":
+                ratslotse.record_activity(user["id"], "assistant_to_ask_auto",
+                                          client_kind(request))
+            # `seite` ist kein Wert für das Feld `next`: Dort steht, ob die
+            # Frage ins Archiv gehört — der Seiten-Verweis reist in
+            # `next_page`. Zwei Bedeutungen in einem Feld hätten den Client
+            # (und das gespeicherte Gespräch) „Den Rat fragen" anbieten
+            # lassen, wo auf eine Haushalts-Seite verwiesen wurde.
+            if weiter == "seite":
+                weiter = None
+            zeiten["total_ms"] = round((time.perf_counter() - t0) * 1000)
+            _log.info("assistant_timings route=%s element=%s %s", route,
+                      screen.element_key or "-",
+                      " ".join(f"{k}={v}" for k, v in sorted(zeiten.items())))
+            ratslotse.record_activity(user["id"], "assistant_explain", client_kind(request))
+            begriffe = [b["begriff"] for b in ctx.get("glossary") or []]
+            # **Aus dem KONTEXT, nicht aus dem Antworttext.** Welche Zeile das
+            # Modell benutzt hat, weiß niemand — was ihm vorlag, schon. Die
+            # Liste kommt deshalb aus derselben Auswahl, die den Prompt
+            # gefüllt hat (`qa.geld_auswahl`), und die Beschriftung im Fenster
+            # sagt genau das: „Grundlage:".
+            belege = lotti.kontext_belege(ctx)
+            conversation_id = _lotti_turn_speichern(
+                ratslotse, user, body, screen, frage, text, "explain", weiter, begriffe,
+                belege)
+            yield _sse({"type": "done", "mode": "explain", "kind": "model",
+                        "next": weiter,
+                        # Der Verweis auf eine andere Haushalts-Seite, als Ziel
+                        # für den Chip „Weiter zu: …". Route und Titel kommen
+                        # aus `kern/knowledge.py`, nicht aus dem Antworttext:
+                        # Das Modell darf die Seite VORSCHLAGEN, gelten lässt
+                        # sie `split_next` (in PAGES, im Haushalt, erreichbar).
+                        "next_page": ({"route": zielseite.route, "title": zielseite.title}
+                                      if zielseite else None),
+                        # Die Fachwörter, die im Kontext standen — das Fenster
+                        # macht daraus Verweise aufs Glossar.
+                        "glossary": begriffe,
+                        # Die Papiere hinter den Zahlen im Prompt, höchstens
+                        # fünf (`qa.GELD_BELEGE_MAX`).
+                        "evidence": belege,
+                        "timings": zeiten,
+                        "conversation_id": conversation_id})
+        except Exception:  # noqa: BLE001 — Fehler beim Client sichtbar machen
+            _log.exception("Lottis Erklärung fehlgeschlagen")
+            yield _sse({"type": "error", "message": "Erklärung fehlgeschlagen."})
+
+    return StreamingResponse(
+        gen(), media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+class ScreenContext(BaseModel):
+    """Was die Person vor sich hatte, als sie die Ratsfrage gestellt hat.
+
+    **Wozu.** Eine Frage aus Lottis Fenster trägt ihren Gegenstand oft nicht
+    im Wortlaut: „Und wer hat das beantragt?" steht neben einer Tabellenzeile,
+    die das „das" benennt. Ohne den Bildschirm sucht das Archiv nach nichts.
+
+    **Kürzer gedeckelt als bei ``/explain``** (600 statt 1.200 Zeichen): Dort
+    TRÄGT der Element-Text die Antwort, hier ist er Beiwerk — die Antwort
+    kommt aus den Beschlüssen, und ein langer Baustein verdrängte sie nur.
+    """
+    route: str = Field(max_length=200)
+    heading: str = Field(default="", max_length=200)
+    element_title: str = Field(default="", max_length=200)
+    element_text: str = Field(default="", max_length=qa.SCREEN_ELEMENT_MAX)
+    selection: str = Field(default="", max_length=qa.SCREEN_SELECTION_MAX)
+    # Die Kennungen aus der Adresszeile — dieselbe Form wie bei ``/explain``.
+    # **Ohne sie verliert der Weg ins Archiv seinen Gegenstand:** Auf der Seite
+    # des Beschlusses „Weitenmesser im Marschwegstadion" (Nr. 2982) beantwortete
+    # „Wer hat dagegen gestimmt?" am 21.09.2026 eine Frage zu den
+    # Stadion-Richtlinien von 2025 — der Text allein reicht zur Ähnlichkeit,
+    # nicht zur Identität. Optional mit leerem Default: Die ausgelieferte
+    # iOS-App schickt das Feld nicht (ios/CLAUDE.md).
+    refs: ExplainRefs = Field(default_factory=ExplainRefs)
+
+
 class AskBody(BaseModel):
     question: str
     # Chat-Modus (Paket A): die letzten Runden erlauben Anschlussfragen wie
@@ -3470,6 +4161,10 @@ class AskBody(BaseModel):
     # wörtlich aus einem Chip; ob das an guten Vorschlägen liegt oder daran,
     # dass niemand ins Feld tippt, ist die Frage dahinter.
     from_suggestion: bool = False
+    # Kam die Frage aus Lottis Fenster? Dann reist der Bildschirm mit — und
+    # ANS ENDE, optional und nullbar: Die ausgelieferte iOS-App schickt das
+    # Feld nicht, und ein Pflichtfeld hier bräche sie (ios/CLAUDE.md).
+    screen: ScreenContext | None = None
 
 
 # Q&A sizing: show up to QA_TOP_K reranked decisions as sources, feed the most
@@ -3630,6 +4325,7 @@ def _turn_speichern(ratslotse: Store, user: dict, body: AskBody, q_suche: str,
                     planungen: list[dict] | None = None,
                     grafik: dict | None = None,
                     sitzungen: list[dict] | None = None,
+                    stand: dict | None = None,
                     unclear: bool = False) -> int | None:
     """„Meine Gespräche" (6a): Turn ins laufende Gespräch hängen (oder eines
     eröffnen) — nur mit ausdrücklicher Einwilligung, nie als Blocker.
@@ -3648,7 +4344,17 @@ def _turn_speichern(ratslotse: Store, user: dict, body: AskBody, q_suche: str,
         conversation_id = body.conversation_id
         neu = conversation_id is None
         if neu:
-            conversation_id = ratslotse.qa_gespraech_start(user["id"], q_suche or body.question)
+            # **Kam die Frage aus Lottis Fenster, ist es ein Lotti-Gespräch.**
+            # Nur dort reist ein `screen` mit (die Fragen-Seite und die App
+            # schicken keinen). Bis 22.09.2026 entstand hier immer ein
+            # `ask`-Gespräch — solange der Weg ins Archiv an einem Knopf hing,
+            # war das ein Randfall; seit Lotti von selbst hingeht, ist es der
+            # Normalfall: Die ERSTE Frage im Fenster legte dann ein Gespräch
+            # der falschen Art an, und die nächste Erklärung landete nicht
+            # darin (gemessen am 22.09.2026: Gespräch 51, kind=ask).
+            conversation_id = ratslotse.qa_gespraech_start(
+                user["id"], q_suche or body.question,
+                kind="lotti" if body.screen else "ask")
             if conversation_id is None:
                 return None
         zitiert = set(cited)
@@ -3679,6 +4385,9 @@ def _turn_speichern(ratslotse: Store, user: dict, body: AskBody, q_suche: str,
              "chart": grafik,
              # Der Tagesordnungs-Baustein ebenso (Sitzungs-Fragetyp).
              "sessions": _sitzungen_kompakt(sitzungen or []),
+             # Und das Alter der Belege: Ein gespeichertes Gespräch zeigte
+             # sonst dieselbe Antwort ohne den Hinweis „Ältere Aktenlage".
+             "records_state": stand or None,
              # Und die Marke der Rückfrage: Ohne sie sähe der Turn beim
              # Wiederöffnen aus wie eine Antwort ohne Treffer.
              **({"unclear": True} if unclear else {})}, ensure_ascii=False)
@@ -3708,6 +4417,17 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
         # der faire, stabile Schlüssel für das Kosten-Limit.
         qa_limiter.check(request, subject=user["id"])
     ratslotse.record_activity(user["id"], "ai_question")  # Admin-Statistik (20a)
+    # Kam die Frage aus Lottis Fenster? Eigener Zähler — „wie oft führt eine
+    # Erklärung ins Archiv?" ist die Frage, an der hängt, ob der zweite
+    # Antwortweg etwas bringt.
+    bildschirm = body.screen.model_dump() if body.screen else None
+    if bildschirm:
+        # Derselbe Riegel wie bei `/explain`: Die Überschrift der Seite kann
+        # den Anzeigenamen tragen („Moin, <Name>!" auf `/dashboard`), und von
+        # hier geht sie in `qa.screen_block` — also in den Prompt.
+        bildschirm["heading"] = lotti.ueberschrift_ohne_konto(
+            bildschirm.get("heading") or "", user.get("display_name"))
+        ratslotse.record_activity(user["id"], "assistant_to_ask", client_kind(request))
     # ZUSÄTZLICH, nicht statt: `ai_question` bleibt die Gesamtzahl, sonst
     # verlören alle bestehenden Auswertungen die Chip-Fragen.
     if body.from_suggestion:
@@ -3882,6 +4602,34 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # Ortsfilter umgehen.
             if allowed_place_ids is not None:
                 candidates = [c for c in candidates if c["id"] in allowed_place_ids]
+            # Der Gegenstand der Seite reist mit — NACH dem Ortsfilter, denn er
+            # ist kein nachgeladener Fund, sondern das, was die Person
+            # nachweislich vor sich hat. Ihn hier zu streichen, hieße genau den
+            # Fehler zu wiederholen, für den dieser Block gebaut ist (B1).
+            if bildschirm:
+                gegenstand = qa.screen_decision(store, bildschirm)
+                if gegenstand:
+                    have = {c["id"] for c in candidates}
+                    if gegenstand["id"] not in have:
+                        candidates.append(gegenstand)
+                    # Zuerst — außer wenn die Frage ausdrücklich das NEUESTE
+                    # will: Dort liest `qa.latest_real_decision` den ersten
+                    # echten Beschluss der Liste als Antwort, und ein
+                    # vorangestellter Seiten-Beschluss von 2020 wäre eine
+                    # falsche Tatsachenbehauptung im Prompt.
+                    if not (qa.latest_intent(q_suche) or qa.latest_intent(q)):
+                        candidates = qa.mit_gegenstand_zuerst(candidates, gegenstand)
+                    # Der Titel gehört in den Prompt-Block: „das" und „dieser
+                    # Beschluss" sollen ihn meinen, nicht den ähnlichsten Fund.
+                    bildschirm["decision_id"] = gegenstand["id"]
+                    bildschirm["decision_title"] = gegenstand.get("title") or ""
+                elif not allowed_place_ids:
+                    # Sitzungsseite: die ganze Tagesordnung sicher in den Pool,
+                    # aber ohne Vorrang (qa.screen_session_ids sagt, warum).
+                    have = {c["id"] for c in candidates}
+                    candidates += store.get_decisions_by_ids(
+                        [i for i in qa.screen_session_ids(store, bildschirm)
+                         if i not in have])
             # Beim Vereinfachen zählen die Belege der VORIGEN Antwort: Ihre ids
             # müssen im Kandidatenset stehen, sonst streicht resolve_citations
             # genau die Fußnoten weg, die die einfache Fassung übernehmen soll —
@@ -4399,7 +5147,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                           gross=gross, steckbriefe=steckbriefe,
                                           duenn=(lage == "duenn"), eng=eng,
                                           sitzungen=sitzungen, ort=ort,
-                                          zukunft_leer=zukunft_leer, stand=stand))
+                                          zukunft_leer=zukunft_leer, stand=stand,
+                                          screen=bildschirm))
             try:
                 for delta in strom:
                     if not buf and delta:
@@ -4436,7 +5185,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                                  duenn=(lage == "duenn"), eng=eng,
                                                  sitzungen=sitzungen, ort=ort,
                                                  zukunft_leer=zukunft_leer,
-                                                 stand=stand))
+                                                 stand=stand, screen=bildschirm))
                     buf = ans
                     yield _sse({"type": "replace", "text": qa.split_followups(ans)[0]})
                     sent = len(ans)
@@ -4451,6 +5200,20 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             if followups:
                 yield _sse({"type": "suggestions", "questions": followups})
             _, cited = qa.resolve_citations(answer_text, {c["id"] for c in candidates})
+            # Der Hinweis über der Antwort beschreibt, worauf die ANTWORT ruht —
+            # nicht, was der Bestand zum Thema hergibt. Am 21.09.2026 auf dev
+            # gemessen: Zu „Neu-Donnerschwee geplant?" lagen 26 Kandidaten im
+            # Ortsindex, der jüngste war ein Klima-Wettbewerb vom 12.02.2026,
+            # den die Antwort nicht einmal zitierte. Über alle Kandidaten
+            # gerechnet hieß der Stand deshalb „quiet" (7 Monate); über die
+            # zitierten sind es 43 Monate und „old". Der Prompt braucht den
+            # Stand VOR der Antwort (da gibt es noch keine Zitate) — die
+            # Anzeige bekommt ihn danach, aus den Belegen, die wirklich
+            # dastehen.
+            stand_zitiert = stand
+            if cited:
+                zitierte = [c for c in candidates if c["id"] in set(cited)]
+                stand_zitiert = qa.aktenstand(store, zitierte) or stand
             zeiten["antwort_ms"] = round((time.perf_counter() - t0) * 1000)
             zeiten["total_ms"] = (zeiten.get("expand_ms", 0) + zeiten.get("retrieve_ms", 0)
                                   + zeiten.get("antwort_ms", 0))
@@ -4463,10 +5226,16 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                            anlagen_rows=anlagen_rows,
                                            planungen=planungen,
                                            grafik=grafik,
-                                           sitzungen=sitzungen)
+                                           sitzungen=sitzungen,
+                                           stand=stand_zitiert)
             if not cited:
                 ratslotse.record_activity(user["id"], "ai_answer_empty", client_kind(request))
             yield _sse({"type": "done", "cited": cited, "timings": zeiten,
+                        # Korrigiert den Wert aus dem sources-Ereignis: dort
+                        # über alle Kandidaten gerechnet, hier über die
+                        # zitierten. Die Karte erscheint ohnehin erst nach dem
+                        # done, es flackert also nichts.
+                        "records_state": stand_zitiert or None,
                         "conversation_id": conversation_id})
         except Exception:  # noqa: BLE001 — surface a terminal error to the client
             _log.exception("KI-Frage fehlgeschlagen")

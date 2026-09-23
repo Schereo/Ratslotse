@@ -11,11 +11,13 @@
 import { Beleg } from "@/components/haushalt/source";
 import { Fundstelle } from "@/components/haushalt/fundstelle";
 import { deMio } from "@/lib/haushalt";
+import { useErklaerAnker } from "@/lib/erklaer-anker";
 import {
   deProzent, deZeitraum, istInnenfinanzierung, juengsteZinssaetze, type KrediteDaten,
 } from "@/lib/haushalt-kredite";
 
 export function KrediteBlock({ daten }: { daten: KrediteDaten | null }) {
+  const anker = useErklaerAnker("kredite", "Kredite und Zinsen");
   if (!daten || !daten.items.length) return null;
   const zins = juengsteZinssaetze(daten);
   const juengst = zins[0] ?? null;
@@ -23,7 +25,7 @@ export function KrediteBlock({ daten }: { daten: KrediteDaten | null }) {
   const mitErsparnis = [...daten.refinancing_by_year].reverse().find((j) => j.saving > 0) ?? null;
   const hKopf = juengst?.herkunft_id != null ? daten.provenance[String(juengst.herkunft_id)] ?? null : null;
   return (
-    <section id="kredite" className="scroll-mt-20 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
+    <section {...anker} id="kredite" className="scroll-mt-20 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
           Zu welchem Zins die Stadt sich Geld leiht<Beleg q="loans" h={hKopf} />

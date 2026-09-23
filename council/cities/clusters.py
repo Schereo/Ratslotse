@@ -215,7 +215,7 @@ def build_clusters(main: CitiesStore, model: str = EMBED_MODEL,
 
 
 def run(main: CitiesStore, model: str = EMBED_MODEL) -> dict:
-    """Alle fünf Schritte — für den Wochen-Cron und den Backfill.
+    """Alle Schritte — für den Wochen-Cron und den Backfill.
 
     Der Prüflauf gehört dazu und nicht daneben: Eine frisch gerechnete Gruppe
     ist ungeprüft, und ungeprüft steht sie auf der Karte als „auch in vier
@@ -239,6 +239,10 @@ def run(main: CitiesStore, model: str = EMBED_MODEL) -> dict:
     from council.cities.annotators import get as get_annotator
     zahlen["group_status"] = main.rebuild_group_status(
         model, CLUSTER_VERSION, get_annotator("fit").version)
+    # Sechster Schritt (22.09.2026, Plan PR 47): die Idee als Ganzes —
+    # Städte, Zeitleiste, Überschrift. Hängt an Gruppen und Prüfurteilen,
+    # nicht an `fit`; einmal nach dem Prüflauf genügt.
+    zahlen["idea_groups"] = rebuild_idea_groups(main, model)
     return zahlen
 
 
@@ -321,7 +325,7 @@ def stance_all(main: CitiesStore, model: str = EMBED_MODEL,
                               ann.prompt_user, gruppe=gruppe,
                               paper=text[:ann.input_chars * 4])}],
                 max_tokens=ann.max_tokens, temperature=ann.temperature,
-                extra_body={"provider": {}} if ann.routing_free else {},
+                extra_body={},
                 _feature=ann.feature)
             nutzlast = ann.payload.model_validate(
                 parse_json(antwort.choices[0].message.content or ""))
@@ -481,7 +485,7 @@ def check_clusters(main: CitiesStore, model: str = EMBED_MODEL,
                       {"role": "user", "content": prompts.render(
                           ann.prompt_user, items=zeilen)}],
             max_tokens=ann.max_tokens, temperature=ann.temperature,
-            extra_body={"provider": {}} if ann.routing_free else {},
+            extra_body={},
             _feature=ann.feature)
         last = ann.payload.model_validate(
             parse_json(antwort.choices[0].message.content or ""))
@@ -593,6 +597,140 @@ def _gruppen_mit_mitgliedern(main: CitiesStore, version: str) -> dict[int, list[
     for zeile in main.cluster_members(version):
         gruppen.setdefault(zeile["cluster_id"], []).append(zeile)
     return gruppen
+
+
+# ---------------------------------------------------------------------------
+# Die Idee als Ganzes (Plan PR 47/49)
+# ---------------------------------------------------------------------------
+
+#: Wortteile, die in einer Überschrift nichts tragen. „Einführung" steht in
+#: jedem zweiten Instrument; kommt ein Label nur über solche Wörter in zwei
+#: Instrumenten vor, ist es trotzdem ein Oberbegriff.
+_FUELLWOERTER = frozenset({
+    "und", "oder", "der", "die", "das", "des", "den", "dem", "für", "fuer",
+    "von", "zur", "zum", "mit", "bei", "auf", "aus", "ein", "eine", "einer",
+    "einführen", "einfuehren", "einführung", "einfuehrung", "prüfen",
+    "pruefen", "prüfung", "pruefung", "erstellen", "erstellung",
+})
+
+
+def _wortweise_in(label: str, instrument: str | None) -> bool:
+    """Steckt jedes tragende Wort des Labels im Instrument?
+
+    Als Teilzeichenkette, nicht als ganzes Wort: „Verpackungssteuer" steckt
+    in „Verpackungssteuersatzung einführen", und genau das soll zählen —
+    deutsche Komposita schreiben dieselbe Sache als ein Wort.
+    """
+    if not instrument:
+        return False
+    text = instrument.lower()
+    woerter = [w.strip("„“\"'()[],.;:!?-–").lower() for w in label.split()]
+    tragend = [w for w in woerter if len(w) >= 3 and w not in _FUELLWOERTER]
+    return bool(tragend) and all(w in text for w in tragend)
+
+
+def idea_label(members: list[dict], check_label: str | None, stable: bool = True) -> str:
+    """Die Überschrift einer Idee — ohne Modell (Plan PR 49).
+
+    1. Das Label aus ``cluster_check``, wenn die Gruppe stabil ist und das
+       Label in mindestens ZWEI Mitglieder-Instrumenten wortweise vorkommt.
+       Sonst ist es ein Oberbegriff, den keine Stadt so beschlossen hat —
+       gemessen am 22.09.2026 stand bei 94 von 292 Bewegungen gar keins.
+    2. Sonst das Instrument des typischsten Mitglieds: das mit dem höchsten
+       ``score`` (Nähe zum Gruppenmittel, s. ``build_clusters``).
+    3. Hat keins ein Instrument, der Titel des typischsten.
+
+    ``members`` wie aus ``idea_group_candidates``: je Zeile ``instrument``,
+    ``score`` und ``name``.
+    """
+    label = (check_label or "").strip()
+    if label and stable:
+        belegt = sum(1 for m in members if _wortweise_in(label, m.get("instrument")))
+        if belegt >= 2:
+            return label
+    nach_score = sorted(members, key=lambda m: -(m.get("score") or 0.0))
+    for m in nach_score:
+        if (m.get("instrument") or "").strip():
+            return m["instrument"].strip()
+    if label:
+        return label
+    return (nach_score[0].get("name") or "").strip() if nach_score else ""
+
+
+def rebuild_idea_groups(main: CitiesStore, model: str = EMBED_MODEL,
+                        version: str = CLUSTER_VERSION) -> int:
+    """``idea_groups`` aus Clustern, Prüfurteilen und Ergebnissen neu schreiben.
+
+    Kein Modell, nur Zählen. Oldenburger Mitglieder zählen weder bei den
+    Städten noch in der Zeitleiste: Eine Bewegung ist, was ANDERE Räte getan
+    haben — ob Oldenburg dabei ist, beantwortet ``idea_fit``.
+
+    Das Ergebnis je Vorlage kommt aus ``outcome_for_paper``, derselben
+    Herleitung wie auf der Einzelkarte. Zwei Herleitungen liefen auseinander,
+    und dann stünde auf der Übersicht „angenommen", auf der Karte „vertagt".
+    """
+    import json
+    from collections import Counter
+
+    from council.cities.annotators import get as get_annotator
+
+    pruefung = main.cluster_verdicts(version, get_annotator("cluster_check").version)
+    gruppen: dict[int, list[dict]] = {}
+    for zeile in main.idea_group_candidates(model, version):
+        gruppen.setdefault(zeile["cluster_id"], []).append(zeile)
+
+    zeilen: list[dict] = []
+    for cid, alle in gruppen.items():
+        fremde = [m for m in alle if m["body_id"] != "oldenburg"]
+        if not fremde:
+            continue
+        urteil = pruefung.get(cid) or {}
+        stabil = urteil.get("stable", True) is not False
+        punkte = []
+        je_stadt: dict[str, dict] = {}
+        gesamt: Counter[str] = Counter()
+        for m in sorted(fremde, key=lambda m: (m.get("date") or "", m["paper_id"])):
+            ergebnis = main.outcome_for_paper(m["paper_id"])
+            outcome = ergebnis["outcome"] if ergebnis else None
+            if outcome:
+                gesamt[outcome] += 1
+            punkte.append({"paper_id": m["paper_id"], "body_id": m["body_id"],
+                           "date": (m.get("date") or "")[:10] or None,
+                           "outcome": outcome, "kind": m["kind"]})
+            stadt = je_stadt.setdefault(m["body_id"], {
+                "body_id": m["body_id"], "first_date": None, "members": 0,
+                "outcomes": {}})
+            stadt["members"] += 1
+            datum = (m.get("date") or "")[:10] or None
+            if datum and (stadt["first_date"] is None or datum < stadt["first_date"]):
+                stadt["first_date"] = datum
+            if outcome:
+                stadt["outcomes"][outcome] = stadt["outcomes"].get(outcome, 0) + 1
+        daten = [p["date"] for p in punkte if p["date"]]
+        felder = Counter(m["field"] for m in fremde if m.get("field"))
+        typisch = max(fremde, key=lambda m: m.get("score") or 0.0)
+        # Das häufigste Feld; bei Gleichstand das des typischsten Mitglieds.
+        feld = None
+        if felder:
+            hoechst = max(felder.values())
+            kandidaten = {f for f, n in felder.items() if n == hoechst}
+            feld = typisch.get("field") if typisch.get("field") in kandidaten \
+                else sorted(kandidaten)[0]
+        zeilen.append({
+            "cluster_id": cid, "field": feld,
+            "cities": len(je_stadt), "members": len(fremde),
+            "oldenburg_members": len(alle) - len(fremde),
+            "first_date": min(daten) if daten else None,
+            "last_date": max(daten) if daten else None,
+            "outcomes": json.dumps(dict(gesamt), sort_keys=True),
+            "per_city": json.dumps(sorted(je_stadt.values(),
+                                          key=lambda s: (s["first_date"] or "9999", s["body_id"]))),
+            "timeline": json.dumps(punkte),
+            "stable": 1 if stabil else 0,
+            "label": idea_label(fremde, urteil.get("label"), stabil),
+            "top_paper": typisch["paper_id"],
+        })
+    return main.replace_idea_groups(model, version, zeilen)
 
 
 # ---------------------------------------------------------------------------

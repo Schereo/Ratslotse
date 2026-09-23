@@ -48,6 +48,7 @@ import { Beleg } from "@/components/haushalt/source";
 import { Gesetz } from "@/components/haushalt/gesetz";
 import { GlossaryText } from "@/components/glossary-text";
 import type { GewerbesteuerstatistikZeile } from "@/lib/haushalt";
+import { useErklaerAnker } from "@/lib/erklaer-anker";
 
 type SteuerZeile = { year: number; kind: string; amount: number | null };
 type Hebesatz = { year: number; rate: number; prior_rate: number | null };
@@ -153,6 +154,7 @@ export function WerZahlt({ taxes, art, vergleichArt, vergleichTitel, tax_rates,
    *  er gegen die Angabe an den Daten. */
   statistikAbgrenzung?: string;
 }) {
+  const anker = useErklaerAnker("wer-zahlt", "Wer zahlt das?");
   const eigen = series(taxes, art);
   const andere = series(taxes, vergleichArt);
 
@@ -222,7 +224,7 @@ export function WerZahlt({ taxes, art, vergleichArt, vergleichTitel, tax_rates,
   const zerlegtFaktor = jeZerlegt && jeOertlich ? jeZerlegt / jeOertlich : null;
 
   return (
-    <section className="@container rounded-2xl border border-border bg-card p-4 shadow-sm">
+    <section {...anker} className="@container rounded-2xl border border-border bg-card p-4 shadow-sm">
       <div className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
           Wer zahlt das eigentlich

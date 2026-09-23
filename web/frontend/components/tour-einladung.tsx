@@ -11,6 +11,7 @@ import {
   ONBOARDING_FINISHED_EVENT,
 } from "@/components/onboarding-flow";
 import { einladungStand, meldeTour, merkeEinladung } from "@/lib/tour-einladung";
+import { useVollbildMelden } from "@/lib/vollbild";
 
 /**
  * Lottis Einladung zur Tour — der Moment direkt nach der Einrichtung.
@@ -41,6 +42,9 @@ const VERZOEGERUNG_MS = 450;
 
 export function TourEinladung() {
   const [offen, setOffen] = useState(false);
+  // Die Einladung ist der letzte Takt der Einrichtung und deckt die Seite ab
+  // — auch hier kein zweiter Lotti daneben (lib/vollbild.ts).
+  useVollbildMelden("tour-einladung", offen);
 
   // Einmal beim Start (Neuladen mit ausstehender Einladung) und dann auf das
   // Abschluss-Ereignis des Assistenten.

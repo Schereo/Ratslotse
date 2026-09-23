@@ -11,15 +11,19 @@ Die Fallen, gegen die diese Tests gebaut sind, stammen aus der Auswertung vom
 """
 from __future__ import annotations
 
+import os
+import time
 from datetime import date, timedelta
 
-from kern.store import Store
+import pytest
+
+from kern.store import Store, today_utc
 
 
 def _konto(store: Store, uid: int, *, tage_her: int, email: str = "a@example.org",
            verified: int = 1, setup_started: str | None = None,
            setup_done: str | None = None, role: str = "user") -> date:
-    reg = date.today() - timedelta(days=tage_her)
+    reg = today_utc() - timedelta(days=tage_her)
     with store._conn:
         store._conn.execute(
             "INSERT INTO web_users (id, email, password_hash, role, status, created_at,"
@@ -117,7 +121,7 @@ def test_rolle_aus_der_rollentabelle_zaehlt_auch(tmp_path):
     with store._conn:
         store._conn.execute(
             "INSERT INTO web_user_roles (user_id, role, granted_at) VALUES (2, 'admin', ?)",
-            (date.today().isoformat(),))
+            (today_utc().isoformat(),))
 
     assert _stufe(store.admin_kohorten(), "registriert")["n"] == 1
     store.close()
@@ -136,7 +140,7 @@ def test_ratsmitglieder_bleiben_drin(tmp_path):
     with store._conn:
         store._conn.execute(
             "INSERT INTO web_user_roles (user_id, role, granted_at) VALUES (2, 'council_member', ?)",
-            (date.today().isoformat(),))
+            (today_utc().isoformat(),))
 
     daten = store.admin_kohorten()
 
@@ -162,7 +166,7 @@ def test_kohorten_liegen_auf_wochen(tmp_path):
 def test_sackgassen_quote_zaehlt_antworten_ohne_quelle(tmp_path):
     """Der Anteil der Antworten, die nichts belegen konnten."""
     store = Store(tmp_path / "r.sqlite")
-    heute = date.today().isoformat()
+    heute = today_utc().isoformat()
     with store._conn:
         store._conn.execute("INSERT INTO qa_conversations (id, user_id, title, created, updated)"
                             " VALUES (1, 1, 't', ?, ?)", (heute, heute))
@@ -178,7 +182,7 @@ def test_sackgassen_quote_zaehlt_antworten_ohne_quelle(tmp_path):
 def test_fragen_median_ignoriert_den_ausreisser(tmp_path):
     """Ein Konto mit 108 Fragen darf die Zahl nicht allein bestimmen."""
     store = Store(tmp_path / "r.sqlite")
-    heute = date.today()
+    heute = date.today()  # user_activity.day wird in Ortszeit gezählt
     for uid, fragen in ((1, 108), (2, 1), (3, 0)):
         _aktiv(store, uid, heute)
         if fragen:
@@ -212,9 +216,9 @@ def test_vorzeitraum_und_basis_liegen_bei(tmp_path):
 
 
 def test_sackgassen_basis_mit_versatz_trennt_die_zeitraeume(tmp_path):
-    from datetime import date, timedelta
+    from datetime import timedelta
     store = Store(tmp_path / "r.sqlite")
-    heute = date.today()
+    heute = today_utc()
     with store._conn:
         store._conn.execute("INSERT INTO qa_conversations (id, user_id, title, created, updated)"
                             " VALUES (1, 1, 't', ?, ?)", (heute.isoformat(), heute.isoformat()))
@@ -226,4 +230,64 @@ def test_sackgassen_basis_mit_versatz_trennt_die_zeitraeume(tmp_path):
 
     assert store.sackgassen_basis(90) == (1, 2)
     assert store.sackgassen_basis(90, versatz=90) == (1, 1)
+    store.close()
+
+
+@pytest.fixture(params=["Pacific/Kiritimati", "Etc/GMT+12"])
+def ortszeit_neben_utc(request, monkeypatch):
+    """Stellt die Prozess-Uhr so, dass der ÖRTLICHE Tag vom UTC-Tag abweicht.
+
+    UTC+14 und UTC-12 zusammen: Zu jeder Stunde liegt mindestens eine der
+    beiden auf einem anderen Kalendertag als UTC — wie Oldenburg zwischen 22
+    und 24 Uhr CEST. ``date.today()`` gibt dann nicht den Tag der gespeicherten
+    Zeitstempel zurück; genau daran scheiterten die Tests abends.
+    """
+    monkeypatch.setenv("TZ", request.param)
+    time.tzset()
+    yield
+    monkeypatch.delenv("TZ")
+    time.tzset()
+
+
+def test_die_uhr_ist_wirklich_gestellt(ortszeit_neben_utc):
+    zonen = {"Pacific/Kiritimati", "Etc/GMT+12"}
+    assert os.environ["TZ"] in zonen
+
+
+def test_sackgassen_zaehlen_bei_gestellter_uhr_in_utc(tmp_path, ortszeit_neben_utc):
+    """Eine Antwort, die eben (UTC) gespeichert wurde, gehört ins Fenster —
+    auch wenn die Ortszeit schon oder noch auf einem anderen Tag steht."""
+    store = Store(tmp_path / "r.sqlite")
+    jetzt = today_utc().isoformat() + "T23:59:00"
+    with store._conn:
+        store._conn.execute("INSERT INTO qa_conversations (id, user_id, title, created, updated)"
+                            " VALUES (1, 1, 't', ?, ?)", (jetzt, jetzt))
+        store._conn.execute(
+            "INSERT INTO qa_conversation_turns (conversation_id, user_id, question, answer,"
+            " sources, created) VALUES (1, 1, 'f', 'a', 'null', ?)", (jetzt,))
+
+    assert store.sackgassen_basis() == (1, 1)
+    assert [s["question"] for s in store.sackgassen()] == ["f"]
+    store.close()
+
+
+def test_kohorte_von_heute_bei_gestellter_uhr(tmp_path, ortszeit_neben_utc):
+    """Ein Konto, das um 23:59 UTC angelegt wurde, zählt in der Kohorte dieser
+    Woche mit — die Ortszeit darf es nicht in die Zukunft schieben."""
+    store = Store(tmp_path / "r.sqlite")
+    with store._conn:
+        store._conn.execute(
+            "INSERT INTO web_users (id, email, password_hash, role, status, created_at,"
+            " email_verified) VALUES (1, 'a@example.org', 'x', 'user', 'active', ?, 1)",
+            (today_utc().isoformat() + "T23:59:00",))
+
+    daten = store.admin_kohorten()
+    assert _stufe(daten, "registriert")["n"] == 1
+    assert _stufe(daten, "bestaetigt")["n"] == 1
+    # Und das Konto ist keinen Tag alt: Kein Fenster („24 h", „2. Tag") darf
+    # es schon als reif zählen, nur weil die Ortszeit einen Tag voraus ist.
+    assert _stufe(daten, "haken")["eligible"] == 0
+    assert _stufe(daten, "tag2")["eligible"] == 0
+    heute = today_utc()
+    assert daten["cohorts"][-1]["week"] == (heute - timedelta(days=heute.weekday())).isoformat()
     store.close()

@@ -79,9 +79,13 @@ export function useGleitMarker(schluessel: string, merkname?: string) {
       const g = gruppe.getBoundingClientRect();
       const z = ziel.getBoundingClientRect();
       if (z.width === 0 || z.height === 0) return null;
+      // Plus das Rollmaß: Der Marker liegt IM rollenden Inhalt, die
+      // Rechtecke messen aber gegen den sichtbaren Rahmen. Ohne die beiden
+      // Summanden stand er in einer seitwärts gerollten Reiter-Leiste (Analyse
+      // auf dem Handy, 23.09.2026) um genau die gerollte Strecke daneben.
       return {
-        x: z.left - g.left,
-        y: z.top - g.top,
+        x: z.left - g.left + gruppe.scrollLeft,
+        y: z.top - g.top + gruppe.scrollTop,
         breite: z.width,
         hoehe: z.height,
         rahmen: `${Math.round(g.width)}x${Math.round(g.height)}`,

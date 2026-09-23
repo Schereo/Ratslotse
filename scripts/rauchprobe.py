@@ -55,6 +55,12 @@ PROBEN: tuple[str, ...] = (
     "/api/council/heute",
     "/api/council/people-directory",
     "/api/council/qa-beispiele",
+    # Der Städtevergleich. `ideas/fields` öffnet `cities.sqlite` und zieht
+    # damit ihre Migration nach, die sonst erst der erste Besuch auslöst
+    # (#1418) — und prüft, dass danach die Tabellen da sind, die die
+    # Bewegungen lesen (Plan PR 50).
+    "/api/council/cities/ideas/fields",
+    "/api/council/cities/movements",
 )
 
 #: Endpunkte MIT Konto. Bewusst nur die, deren Antwort für alle gleich

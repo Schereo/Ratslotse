@@ -37,6 +37,7 @@ import { Einordnung } from "@/components/grafik/einordnung";
 import { deZahl, mitVorzeichen } from "@/components/grafik/format";
 import { deMio } from "@/lib/haushalt";
 import type { HebesatzZeile } from "@/lib/haushalt";
+import { useErklaerAnker } from "@/lib/erklaer-anker";
 
 /** Eine Änderung, mit dem, was sie im selben Jahr bewirkt hat. */
 type Stufe = {
@@ -77,6 +78,7 @@ export function HebesatzTreppe({
   beleg?: React.ReactNode;
   aufkommenBeleg?: React.ReactNode;
 }) {
+  const anker = useErklaerAnker("hebesatz-treppe", "Hebesatz-Treppe");
   // Bild ↔ Liste (seit 02.09.): `vonListe` ist das Jahr unter dem Zeiger in
   // der Liste (wählt die Stufe im Bild), `vomBild` das Jahr, das das Bild
   // gerade zeigt (hebt die Zeile hervor). Zwei Werte, damit nichts kreist.
@@ -110,7 +112,7 @@ export function HebesatzTreppe({
 
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+    <div {...anker} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
           Der Hebesatz im Rat

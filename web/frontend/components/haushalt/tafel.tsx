@@ -32,6 +32,7 @@ import type { ReactNode } from "react";
 import { Beleg } from "@/components/haushalt/source";
 import { HaushaltZeile, deMio, mio, summe } from "@/lib/haushalt";
 import { cn } from "@/lib/utils";
+import { useErklaerAnker } from "@/lib/erklaer-anker";
 
 /** Eine Kopfsumme der Tafel. Exportiert, weil auch der Bereichs-Steckbrief
  *  seine drei Zahlen in dieser Type setzt (bis 24.08. standen sie dort in
@@ -82,6 +83,7 @@ export function Tafel({ zeilen, year, aktuell, aktion, children }: {
   /** Das Kern-Visual (Gegenbalken bzw. 100-Euro-Ansicht). */
   children?: ReactNode;
 }) {
+  const anker = useErklaerAnker("tafel", "Die Anzeigetafel");
   const gesamt = summe(zeilen);
   const einMio = mio(gesamt?.revenues);
   const ausMio = mio(gesamt?.expenses);
@@ -96,7 +98,7 @@ export function Tafel({ zeilen, year, aktuell, aktion, children }: {
   const ueber = balance != null && balance > 0 ? balance : null;
 
   return (
-    <div className="hh-tafel rounded-2xl p-4 sm:p-6">
+    <div {...anker} className="hh-tafel rounded-2xl p-4 sm:p-6">
       <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between sm:gap-8">
         <div className="min-w-0">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-primary sm:text-[10.5px]">

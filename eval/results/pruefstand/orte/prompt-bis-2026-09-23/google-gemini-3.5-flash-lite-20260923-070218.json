@@ -1,0 +1,54 @@
+{
+ "suite": "orte",
+ "titel": "Ortszuordnung",
+ "kennzahl": "F1 über die Orte je Beschluss (Regex-Baseline + Modell, wie im Backfill)",
+ "modell": "google/gemini-3.5-flash-lite",
+ "variante": null,
+ "tarif": null,
+ "lauf": 2,
+ "zeitstempel": "2026-09-23T07:02:18",
+ "db_stand": "Sitzungen bis 2026-09-16, 9078 Beschlüsse",
+ "qualitaet": 0.9677,
+ "harte_befunde": 1,
+ "warnung": null,
+ "faelle": 20,
+ "p50_ms": 1005,
+ "p95_ms": 3435,
+ "aufrufe": 2,
+ "kosten_usd": 0.003886,
+ "ohne_kostenwert": 0,
+ "ct_je_aufruf": 0.1943,
+ "ct_je_lauf": 0.3886,
+ "kosten_gesamt_usd": 0.003886,
+ "ausfaelle": 0,
+ "nicht_zulaessig": false,
+ "abbruch": null,
+ "modelle_laut_tabelle": [
+  "google/gemini-3.5-flash-lite"
+ ],
+ "ersatz": [],
+ "dauer_s": 4.4,
+ "nebenkennzahlen": {
+  "precision": 0.9375,
+  "recall": 1.0
+ },
+ "fehler_beispiele": [],
+ "roh": {
+  "cases": 20,
+  "tp": 15,
+  "fp": 1,
+  "fn": 0,
+  "precision": 0.9375,
+  "recall": 1.0,
+  "f1": 0.967741935483871,
+  "misses": [
+   {
+    "id": "bplan-nur-nummer",
+    "expected": [],
+    "predicted": [
+     "bebauungsplan-n-777-g"
+    ]
+   }
+  ]
+ }
+}

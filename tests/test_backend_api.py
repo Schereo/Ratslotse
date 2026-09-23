@@ -3853,6 +3853,91 @@ def test_ask_schickt_den_aktenstand_mit(client, monkeypatch):
     assert gesehen["stand"]["level"] == "old"
 
 
+def test_aktenstand_wird_nach_den_zitaten_korrigiert(client, monkeypatch):
+    """Der Hinweis über der Antwort beschreibt die ANTWORT, nicht den Bestand.
+
+    Auf dev am 21.09.2026 gemessen: Zu „Was ist für Neu-Donnerschwee geplant?"
+    lagen 26 Kandidaten im Ortsindex; der jüngste war „Alle fürs Klima
+    Wettbewerb 2025" vom 12.02.2026 — ein Beschluss, den die Antwort nicht
+    einmal zitierte. Über alle Kandidaten gerechnet hieß der Stand deshalb
+    `quiet` (7 Monate) und der Hinweis blieb aus; über die ZITIERTEN sind es
+    43 Monate und `old`.
+    """
+    from app.routers import council as council_router
+    from council import qa as qa_mod
+
+    _register(client)
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_session(CouncilSession(95, "Rat", "2018-10-22", "17:00", "Rathaus"))
+    cs.save_session(CouncilSession(96, "Rat", "2026-02-12", "17:00", "Rathaus"))
+    with cs._conn:
+        cs._conn.executemany(
+            "INSERT INTO council_decisions "
+            "(id,ksinr,position,item_number,title,summary,outcome,kind) VALUES (?,?,?,?,?,?,?,?)",
+            [(6001, 95, 1, "5", "Bebauungsplan 58", "Satzungsbeschluss", "accepted", "decision"),
+             (6002, 96, 1, "6", "Klima-Wettbewerb", "Randtreffer", "accepted", "decision")])
+    cs.close()
+    kandidaten = [
+        {"id": 6001, "title": "Bebauungsplan 58", "summary": "Satzungsbeschluss",
+         "session_date": "2018-10-22", "committee": "Rat", "outcome": "accepted", "score": 1.0},
+        {"id": 6002, "title": "Klima-Wettbewerb", "summary": "Randtreffer",
+         "session_date": "2026-02-12", "committee": "Rat", "outcome": "accepted", "score": 0.4},
+    ]
+    monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (kandidaten, "semantisch"))
+    monkeypatch.setattr(qa_mod, "expand_query", lambda q, **k: q)
+    # Die Antwort zitiert NUR den alten Beschluss — genau der gemessene Fall.
+    monkeypatch.setattr(qa_mod, "answer_stream",
+                        lambda *a, **k: iter(["Der Rat hat 2018 entschieden [6001]."]))
+
+    with client.stream("POST", "/api/council/ask",
+                       json={"question": "Was ist am Bebauungsplan 58 geplant?"}) as r:
+        assert r.status_code == 200
+        body = "".join(r.iter_text())
+
+    events = [json.loads(z[6:]) for z in body.splitlines() if z.startswith("data: ")]
+    sources = next(e for e in events if e["type"] == "sources")
+    fertig = next(e for e in events if e["type"] == "done")
+    # Vorher, über alle Kandidaten: der Randtreffer von 2026 hält den Stand jung.
+    assert sources["records_state"]["latest"] == "2026-02-12"
+    assert sources["records_state"]["level"] != "old"
+    # Nachher, über die Zitate: der Stand beschreibt, was in der Antwort steht.
+    assert fertig["records_state"]["latest"] == "2018-10-22"
+    assert fertig["records_state"]["level"] == "old"
+
+
+def test_aktenstand_ohne_zitate_behaelt_den_ersten_wert(client, monkeypatch):
+    """Zitiert die Antwort nichts, gibt es nichts zu verfeinern — dann bleibt
+    der Wert aus dem sources-Ereignis stehen statt zu verschwinden."""
+    from app.routers import council as council_router
+    from council import qa as qa_mod
+
+    _register(client)
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_session(CouncilSession(97, "Rat", "2018-10-22", "17:00", "Rathaus"))
+    with cs._conn:
+        cs._conn.execute(
+            "INSERT INTO council_decisions "
+            "(id,ksinr,position,item_number,title,summary,outcome,kind) "
+            "VALUES (6003,97,1,'7','Bebauungsplan 58','Satzungsbeschluss',"
+            "'accepted','decision')")
+    cs.close()
+    kandidaten = [{"id": 6003, "title": "Bebauungsplan 58", "summary": "Satzungsbeschluss",
+                   "session_date": "2018-10-22", "committee": "Rat", "outcome": "accepted",
+                   "score": 1.0}]
+    monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (kandidaten, "semantisch"))
+    monkeypatch.setattr(qa_mod, "expand_query", lambda q, **k: q)
+    monkeypatch.setattr(qa_mod, "answer_stream",
+                        lambda *a, **k: iter(["Dazu geben die Unterlagen nichts her."]))
+
+    with client.stream("POST", "/api/council/ask",
+                       json={"question": "Was ist am Bebauungsplan 58 geplant?"}) as r:
+        body = "".join(r.iter_text())
+    events = [json.loads(z[6:]) for z in body.splitlines() if z.startswith("data: ")]
+    fertig = next(e for e in events if e["type"] == "done")
+    assert fertig["cited"] == []
+    assert fertig["records_state"]["latest"] == "2018-10-22"
+
+
 def test_ask_ortssteckbrief_traegt_slug_und_verdraengt_die_dublette(client, monkeypatch):
     """Produktionsfehler 21.09.2026: Die Frage nach „Neu-Donnerschwee" endete
     für die fragende Person mit „Frage fehlgeschlagen.".
@@ -5952,6 +6037,51 @@ def test_gespraech_snapshot_traegt_presse_und_debatten(client, monkeypatch):
         assert store.qa_gespraech(gid, uid)["title"] == "Stadion"
         assert client.patch("/api/council/conversations/999999",
                             json={"title": "x"}).status_code == 404
+    finally:
+        store.close()
+
+
+def test_eine_frage_aus_lottis_fenster_wird_ein_lotti_gespraech(client, monkeypatch):
+    """Nur Lottis Fenster schickt einen ``screen`` mit — dann gehört das
+    Gespräch auch dorthin.
+
+    **Warum das jetzt zählt:** Solange der Weg ins Archiv an einem Knopf hing,
+    war die erste Frage im Fenster fast nie eine Archivfrage. Seit Lotti von
+    selbst hingeht (PR 23), ist genau das der Normalfall — und bis zum
+    22.09.2026 entstand dabei ein Gespräch der Art ``ask``, das Lottis Fenster
+    nicht übernahm (gemessen: Gespräch 51, ``kind=ask``). Die nächste
+    Erklärung lief dann in ein zweites Gespräch zur selben Sache.
+    """
+    from app.routers import council as council_router
+    from council import qa as qa_mod
+
+    _register(client)
+    cand = [{"id": 5, "title": "Stadionneubau", "summary": "Grundsatz", "policy_field": "sport",
+             "outcome": "accepted", "session_date": "2026-06-01",
+             "committee": "Rat", "score": 1.0}]
+    monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (cand, "semantisch"))
+    monkeypatch.setattr(qa_mod, "expand_query", lambda q, **k: q)
+    monkeypatch.setattr(qa_mod, "answer_stream", lambda *a, **k: iter(["Beschlossen [5]."]))
+
+    store = Store(RATSLOTSE_DB)
+    try:
+        uid = store._conn.execute("SELECT id FROM web_users").fetchone()[0]
+        store.set_qa_speichern(uid, True)
+
+        def frage(koerper: dict) -> int:
+            with client.stream("POST", "/api/council/ask", json=koerper) as r:
+                ereignisse = [json.loads(z[6:]) for z in "".join(r.iter_text()).splitlines()
+                              if z.startswith("data: ")]
+            return next(e for e in ereignisse if e["type"] == "done")["conversation_id"]
+
+        aus_fenster = frage({"question": "Wer hat dagegen gestimmt?", "conversation_id": None,
+                             "screen": {"route": "/council/decision",
+                                        "refs": {"decision_id": 5}}})
+        assert store.qa_gespraech(aus_fenster, uid)["kind"] == "lotti"
+
+        # Ohne Bildschirm bleibt es die Fragen-Seite — und damit ein `ask`.
+        von_der_seite = frage({"question": "Was ist mit dem Stadion?", "conversation_id": None})
+        assert store.qa_gespraech(von_der_seite, uid)["kind"] == "ask"
     finally:
         store.close()
 

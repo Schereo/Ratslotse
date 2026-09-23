@@ -12,6 +12,7 @@
 import { useId, useState } from "react";
 import { useBreite } from "@/lib/use-breite";
 import { deMio } from "@/lib/haushalt";
+import { useErklaerAnker } from "@/lib/erklaer-anker";
 import {
   AbleseBeschreibung, AbleseFlaeche, AbleseStelle, Ableseleiste, useAblesen,
 } from "@/components/grafik/ablesen";
@@ -29,6 +30,7 @@ export function IstKurve({ series, unit = "Mio. Euro" }: {
   series: Punkt[];
   unit?: string;
 }) {
+  const anker = useErklaerAnker("ist-kurve", "Der Verlauf im Jahr");
   const [tabelle, setTabelle] = useState(false);
   // viewBox-Breite = Containerbreite, sonst staucht das SVG die Schrift mit:
   // Eine SVG-Einheit soll ein echtes Pixel sein. Wie gemessen wird und warum
@@ -143,7 +145,7 @@ export function IstKurve({ series, unit = "Mio. Euro" }: {
   });
 
   return (
-    <div ref={box}>
+    <div {...anker} ref={box}>
       <div className="mb-1.5 flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
           Tatsächlich eingenommen

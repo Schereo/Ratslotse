@@ -132,32 +132,30 @@ def kurz(p: dict, n: int = 54) -> str:
     return (p.get("titel_kurz") or p["title"])[:n]
 
 
-def main() -> int:
-    ap = argparse.ArgumentParser(description="Wochen-Auswahl gegen vergangene Wochen prüfen")
-    ap.add_argument("--wochen", type=int, default=8)
-    ap.add_argument("--abstand", type=int, default=14, help="Tage zwischen den Stichproben")
-    ap.add_argument("--ohne-llm", action="store_true")
-    ap.add_argument("--db", default=str(COUNCIL_DB))
-    args = ap.parse_args()
+def vergleich(store: CouncilStore, *, wochen: int, abstand: int, ohne_llm: bool,
+              bis: date | None = None) -> list[dict]:
+    """Je Stichprobenwoche die drei Spitzenpunkte (alt, regeln, tragweite).
 
-    store = CouncilStore(Path(args.db))
+    ``bis`` ist das Ende der jüngsten Woche (Vorgabe: vor einer Woche). Der
+    Modell-Prüfstand setzt es auf die letzte Sitzung der Datenbank — sonst
+    misst ein Lauf von morgen andere Wochen als einer von heute, und zwei
+    Modelle wären nicht mehr an denselben Punkten verglichen.
+    """
     entitaeten = [(store._falte_namen(r["name"]), r["n"]) for r in store._conn.execute(
         "SELECT name, n FROM council_entities WHERE n >= 5") if len(r["name"] or "") >= 4]
-
-    unterschiede = 0
-    geprueft = 0
-    for i in range(args.wochen):
-        ende = date.today() - timedelta(days=7 + i * args.abstand)
+    anker = bis or (date.today() - timedelta(days=7))
+    aus: list[dict] = []
+    for i in range(wochen):
+        ende = anker - timedelta(days=i * abstand)
         start = ende - timedelta(days=7)
         punkte = punkte_der_woche(store, start.isoformat(), ende.isoformat())
         if not punkte:
             continue
-        geprueft += 1
         store._punkte_bewerten(punkte)
         for p in punkte:
             p["alt"] = alte_heuristik(p, entitaeten, store)
 
-        if not args.ohne_llm:
+        if not ohne_llm:
             for start_i in range(0, len(punkte), BATCH_SIZE):
                 part = punkte[start_i : start_i + BATCH_SIZE]
                 for j, p in enumerate(part):
@@ -172,8 +170,29 @@ def main() -> int:
         neu_top = max(punkte, key=lambda p: p["wichtig"])
         llm_top = max((p for p in punkte if "tragweite" in p),
                       key=lambda p: p["tragweite"], default=None)
+        aus.append({
+            "start": start, "ende": ende, "punkte": len(punkte),
+            "bewertet": sum(1 for p in punkte if "tragweite" in p),
+            "alt": alt_top, "regeln": neu_top, "tragweite": llm_top,
+        })
+    return aus
 
-        print(f"\n=== {start:%d.%m.} – {ende:%d.%m.%Y} · {len(punkte)} Punkte ===")
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description="Wochen-Auswahl gegen vergangene Wochen prüfen")
+    ap.add_argument("--wochen", type=int, default=8)
+    ap.add_argument("--abstand", type=int, default=14, help="Tage zwischen den Stichproben")
+    ap.add_argument("--ohne-llm", action="store_true")
+    ap.add_argument("--db", default=str(COUNCIL_DB))
+    args = ap.parse_args()
+
+    store = CouncilStore(Path(args.db))
+    unterschiede = 0
+    wochen = vergleich(store, wochen=args.wochen, abstand=args.abstand,
+                       ohne_llm=args.ohne_llm)
+    for w in wochen:
+        alt_top, neu_top, llm_top = w["alt"], w["regeln"], w["tragweite"]
+        print(f"\n=== {w['start']:%d.%m.} – {w['ende']:%d.%m.%Y} · {w['punkte']} Punkte ===")
         print(f"  alt       {alt_top['alt']:>5}  {kurz(alt_top)}")
         print(f"  regeln    {neu_top['wichtig']:>5}  {kurz(neu_top)}")
         if llm_top:
@@ -183,7 +202,7 @@ def main() -> int:
             if kurz(llm_top) != kurz(alt_top):
                 unterschiede += 1
 
-    print(f"\n{unterschiede} von {geprueft} Wochen bekommen einen anderen Spitzenpunkt als bisher.")
+    print(f"\n{unterschiede} von {len(wochen)} Wochen bekommen einen anderen Spitzenpunkt als bisher.")
     store.close()
     return 0
 

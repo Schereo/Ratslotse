@@ -23,7 +23,20 @@ from council.protocols import _strip_fences
 # Default Flash, nicht das Protokoll-Modell: im A/B auf ksinr 4066 lieferte
 # gemini-2.5-flash MEHR Beiträge als deepseek-v4-pro (84 vs. 64, Fliegerhorst
 # 12 vs. 5) bei 8× Tempo (58 s vs. 483 s) und geringeren Kosten.
-MODEL = os.environ.get("COUNCIL_WORTBEITRAG_MODEL", "google/gemini-2.5-flash")
+#
+# Gemini 2.5 Flash läuft bei OpenRouter am 20.10.2026 aus. Prüfstand
+# `wortbeitraege` (16 Abschnitte, je zwei Läufe, 23.09.2026). Mit dem alten
+# Prompt lagen alle Nachfolger klar darunter (3.1 Flash Lite 86,6 %, 3.5 Flash
+# Lite 88,7 %, 3 Flash Preview 91,1 % gegen 97,8 %) — nicht, weil sie
+# Redner*innen übersahen, sondern weil sie Wortmeldungen einer Person
+# zusammenlegten und Antworten ins answer-Feld der Frage steckten (s. Prompt
+# `speeches_extract`). Mit dem neuen Prompt: 2.5 Flash 99,6 %, 3.5 Flash Lite
+# 99,3 % ± 0,6 (im Rauschen), 3.1 Flash Lite 99,1 % ± 0,2 (formal −0,5 Pp,
+# rund ein Beitrag von 250), 3 Flash Preview 98,5 %. 3.5 Flash Lite kostet
+# je Aufruf etwa so viel wie 2.5 Flash (0,50–0,53 statt 0,56–0,57 ct) und
+# braucht 5,8–6,0 s statt 9,2–9,6 s (p50).
+# 3.1 Flash Lite wäre halb so teuer (0,30 ct). Stand: docs/modell-pruefstand.md.
+MODEL = os.environ.get("COUNCIL_WORTBEITRAG_MODEL", "google/gemini-3.5-flash-lite")
 
 FENSTER = 48_000       # Zeichen je LLM-Fenster
 UEBERLAPP = 3_000

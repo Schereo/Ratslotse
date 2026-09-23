@@ -32,7 +32,7 @@ from ..config import get_settings
 from ..antworten import (CityStats, EventStreamResponse, SSE_LIVE_PROBE,
                          AdminAliasDeleted, AdminAliasList, AdminFeedbackList, AdminFeedbackRead,
                          AdminGrowth, AdminJob, AdminLimits, AdminLlmUsage, AdminPlaceCandidate,
-                         AdminEreignisse, AdminKohorten, AdminPlaceCandidates,
+                         AdminEreignisse, AdminKohorten, AdminLotti, AdminPlaceCandidates,
                          AdminQuizStats, AdminRequestFehler, AdminSackgasse,
                          AdminSeitenaufrufe, AdminAnmeldungen,
                          AdminFeedbackNotified,
@@ -189,6 +189,23 @@ def stats_events(
     """
     # `cast`: Der Store baut ein `dict`, die Form hält `antworten.py` fest.
     return cast("AdminEreignisse", store.ereignisse(max(1, min(days, 365))))
+
+
+@router.get("/stats/assistant")
+def stats_assistant(
+    days: int = 30,
+    _admin: dict = Depends(require_admin),
+    store: Store = Depends(get_store),
+) -> AdminLotti:
+    """Wird Lotti angenommen — und wofür?
+
+    Die Fragen kommen aus den gespeicherten Gesprächen, also von den Konten
+    mit Einwilligung. Das anonyme Fragenprotokoll aus dem Plan ist gestrichen
+    (Tim, 21.09.2026): Ein freier Text, den niemand abgenickt hat, wird nicht
+    aufgehoben — auch nicht für eine gute Frage.
+    """
+    return cast("AdminLotti", store.lotti_auswertung(
+        max(1, min(days, 365)), council_db=get_settings().council_db))
 
 
 @router.get("/stats/dead-ends")
