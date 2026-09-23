@@ -58,6 +58,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sqlite3
 import sys
 from datetime import date
@@ -210,7 +211,32 @@ def datum_varianten(iso: str) -> list[str]:
 
 
 def g_datum(iso: str, quelle: str) -> dict:
-    return {"art": "text", "muss": [datum_varianten(iso)], "quelle": quelle}
+    # `_iso` ist Bauhilfe für :func:`fall` und geht nicht in die Datei.
+    return {"art": "text", "muss": [datum_varianten(iso)], "quelle": quelle, "_iso": iso[:10]}
+
+
+#: „Wann …?", „Ab wann …?", „Seit wann …?" — die Frage WILL das Datum.
+_FRAGT_NACH_DATUM = re.compile(r"\bwann\b", re.IGNORECASE)
+
+
+def monat_reicht(frage: str, gold: dict) -> dict:
+    """Ein Datumsgold, das auch „im Juni 2026“ gelten lässt — wo die Frage es nicht will.
+
+    **Warum.** Die Messung vom 23.09.2026 (#1494/#1499) zählte viele
+    Auslassungen, die keine sind: „Was wurde hier zuletzt beschlossen?“ mit
+    „Im Juni 2026 hat der Rat den Bebauungsplan 855 beschlossen“ beantwortet
+    ist richtig — das Gold verlangte „01.06.2026“. Fragt die Frage dagegen
+    nach dem Wann („Wann tagt der Rat?“), bleibt der Tag Pflicht.
+
+    **Nur für die Antwort** (``antwort_auch``): Im Kontext muss das genaue
+    Datum stehen. „Juni 2026“ als Kontext-Treffer hieße, dass irgendein
+    Beschluss aus dem Juni schon reicht.
+    """
+    iso = gold.pop("_iso", None)
+    if iso and not _FRAGT_NACH_DATUM.search(frage):
+        j, m = int(iso[:4]), int(iso[5:7])
+        gold["antwort_auch"] = [f"{MONATE[m - 1]} {j}"]
+    return gold
 
 
 def g_zahl(wert: float, einheit: str, bezeichnung: str, quelle: str, *,
@@ -287,6 +313,7 @@ def fall(id: str, kanal: str, frage: str, kategorie: str, gold: list, *,
     if kanal == "lotti":
         f["route"] = route
         f["refs"] = refs or {}
+    gold = [monat_reicht(frage, g) for g in gold]
     f.update({"frage": frage, "kategorie": kategorie, "antwort_in_daten": antwort_in_daten,
               "gold": gold, "verboten": verboten or [], "notiz": notiz})
     return f
@@ -522,8 +549,8 @@ def fliegerhorst(q: Quelle) -> list[dict]:
              [g_sitzungsdatum(hallensichel), g_text([["Satzung", "beschlossen"]],
                                                     q_beschluss(hallensichel, "official_text"))],
              route="/council/ort", refs={"place_id": "hallensichel-ost"},
-             notiz="Der Orts-Block trägt Name und Beschreibung des Orts, keine Beschlüsse — "
-                   "erwartet: Kontextfehler. Falle: Ein Satzungsbeschluss zu N-777 G fiel schon "
+             notiz="Bis 23.09.2026 trug der Orts-Block nur Name und Beschreibung (Kontextfehler); "
+                   "seitdem die jüngsten Beschlüsse wie die Ortsseite. Falle: Ein Satzungsbeschluss zu N-777 G fiel schon "
                    "am 28.09.2020; der gültige ist der vom 13.04.2026."),
     ]
 
@@ -593,8 +620,9 @@ def radverkehr_und_baeder(q: Quelle) -> list[dict]:
              [g_zahl(177_500, "€", "Zuschuss BTB-Bad (Maximalbetrag)", q_vorlage(btb_v), jahr=2027)],
              verboten=[v_zahl(173_000, "Betrag für 2026"), v_zahl(191_000, "Betrag für 2030")],
              route="/council/decision", refs={"decision_id": btb["id"]},
-             notiz="Beschlusstext und Kurzfassung nennen keine Beträge, nur die Vorlage — "
-                   "erwartet: Kontextfehler (der Beschluss-Block reicht die Vorlage nicht durch)."),
+             notiz="Beschlusstext und Kurzfassung nennen keine Beträge, nur die Vorlage. Seit "
+                   "23.09.2026 trägt der Beschluss-Block deren finanzielle Auswirkungen (die "
+                   "Karte „Was kostet das?“ der Seite); vorher Kontextfehler."),
         fall("rat-vwg-elektrobusse", "rat",
              "Wie viele Elektrobusse soll die VWG bis 2030 anschaffen?",
              "beschluss/ergebnis",
@@ -732,9 +760,9 @@ def weitere_beschluesse(q: Quelle) -> list[dict]:
              [g_sitzungsdatum(waerme),
               g_zahl(18, "Maßnahmen", "Maßnahmen des Wärmeplans", q_beschluss(waerme, "official_text"))],
              route="/council/thema", refs={"slug": "klima_umwelt"},
-             notiz="Der Themenfeld-Block trägt nur Label und Beschreibung aus council/topics.py; "
-                   "der Rückblick (council_field_recaps) nennt den Wärmeplan, kommt aber nicht in "
-                   "Lottis Prompt — erwartet: Kontextfehler."),
+             notiz="Ein Feld-Schlüssel auf /council/thema (die echte Seite zeigt Entitäten, s. "
+                   "council/page_context.py). Seit 23.09.2026 trägt der Block Rückblick und "
+                   "jüngste Beschlüsse des Felds; vorher nur Label und Beschreibung."),
         fall("rat-lachgas-verbot", "rat",
              "Hat Oldenburg ein Lachgas-Verbot für Minderjährige beschlossen?",
              "beschluss/ergebnis",
@@ -751,7 +779,11 @@ def weitere_beschluesse(q: Quelle) -> list[dict]:
              "verwechslung/weser-ems-halle",
              [g_zahl(78_681_607.64, "€", "Pauschalpreis netto", q_beschluss(kongress, "official_text"),
                      toleranz=0.002)],
-             verboten=[v_zahl(79_000_000, "Höchstbetrag der Ausfallbürgschaft, nicht der Baupreis")],
+             verboten=[{**v_zahl(79_000_000, "Höchstbetrag der Ausfallbürgschaft, nicht der Baupreis"),
+                        # Richtig als Bürgschaft genannt ist sie keine Verwechslung.
+                        # Gemini, 23.09.: „… wurde die städtische Ausfallbürgschaft …
+                        # auf maximal 79 Millionen Euro erhöht“ — zählte als falsch.
+                        "ausser_im_satz_mit": ["Bürgschaft", "bürgt"]}],
              notiz="Baupreis (78,68 Mio. €) und Bürgschaft (79 Mio. €) wurden in derselben Sitzung "
                    "beschlossen und liegen 0,4 % auseinander — die Toleranz ist deshalb eng."),
         fall("rat-kongresshalle-buergschaft", "rat",
@@ -798,7 +830,8 @@ def weitere_beschluesse(q: Quelle) -> list[dict]:
              "beschluss/kosten",
              [g_zahl(31_300_000, "€", "erste Kostenschätzung", q_presse(sechs_presse), toleranz=0.01)],
              route="/council/decision", refs={"decision_id": sechs["id"]},
-             notiz="Erwartet: Kontextfehler — der Beschluss-Block kennt keine Pressemitteilungen."),
+             notiz="Erwartet: Kontextfehler — die Beschluss-Seite zeigt keine Pressemitteilung "
+                   "(nur eine NWZ-Suche), also auch Lottis Block nicht (bewusst, 23.09.2026)."),
         fall("rat-zweckentfremdungssatzung", "rat",
              "Gibt es in Oldenburg inzwischen eine Zweckentfremdungssatzung?",
              "verwechslung/zweckentfremdung",
@@ -847,7 +880,7 @@ def weitere_beschluesse(q: Quelle) -> list[dict]:
               g_enthaltungen(bezirke)],
              route="/council/decision", refs={"decision_id": bezirke["id"]},
              notiz="Lottis _abstimmung liest vote='majority' und schreibt „mehrheitlich, 9 "
-                   "Enthaltungen“ — raw_result sieht sie nicht. Erwartet: Kontext falsch "
+                   "Enthaltungen“ — raw_result sah sie bis 23.09.2026 nicht. Damals: Kontext falsch "
                    "zugeordnet (mehrheitlich statt einstimmig). Achtung beim Abgleich: Das Wort "
                    "„Einstimmig“ steht in einer Prompt-Regel — ein reiner Wortfund im Prompt "
                    "meldet hier fälschlich Abdeckung; gesucht werden muss in den Kontextblöcken."),
@@ -926,7 +959,8 @@ def personen(q: Quelle) -> list[dict]:
              [g_text(["Volt"], f"{q_p}; name='Jens Lükermann'")],
              route="/council/person", refs={"slug": "jens-luekermann"},
              notiz="Bis 12/2024 als „FDP/Volt“ geführt (Gruppe), seitdem Volt allein. Lottis "
-                   "Personen-Block trägt nur den Namen — erwartet: Kontextfehler."),
+                   "Personen-Block trug bis 23.09.2026 nur den Namen; seitdem Fraktion und "
+                   "laufende Mitgliedschaften wie die Personenseite."),
         fall("rat-person-druegemoeller-ausschuesse", "rat",
              "In welchen Ausschüssen sitzt Ruth Drügemöller?",
              "person/ausschuss",
@@ -945,8 +979,8 @@ def personen(q: Quelle) -> list[dict]:
              [g_text(["Gebäudewirtschaft", "Stadtplanung", "Finanzen"],
                      f"{q_m}; name='Ruth Regina Drügemöller'")],
              route="/council/person", refs={"slug": "ruth-regina-druegemoeller"},
-             notiz="Die Personenseite zeigt die Mitgliedschaften; Lottis Personen-Block trägt nur "
-                   "den Namen. Erwartet: Kontextfehler."),
+             notiz="Die Personenseite zeigt die Mitgliedschaften; Lottis Personen-Block trug bis "
+                   "23.09.2026 nur den Namen (Kontextfehler)."),
         fall("lotti-person-adler-fraktion", "lotti",
              "Welcher Fraktion gehört er heute an?",
              "person/fraktion",
@@ -997,8 +1031,8 @@ def orte(q: Quelle) -> list[dict]:
              "ort",
              [g_sitzungsdatum(fleiwa), g_text(["855"], q_beschluss(fleiwa, "title"))],
              route="/council/ort", refs={"place_id": "alte-fleiwa"},
-             notiz="Die Ortsseite listet die Beschlüsse; Lottis Orts-Block nur Name und "
-                   "Beschreibung. Erwartet: Kontextfehler."),
+             notiz="Die Ortsseite listet die Beschlüsse; Lottis Orts-Block trug bis 23.09.2026 "
+                   "nur Name und Beschreibung (Kontextfehler)."),
     ]
 
 
@@ -1064,8 +1098,8 @@ def sitzungen(q: Quelle) -> list[dict]:
              [g_datum(rat_2809["session_date"], f"council_sessions ksinr={rat_2809['ksinr']}"),
               g_text(["PFL"], f"council_sessions ksinr={rat_2809['ksinr']}; location")],
              route="/council/sitzung", refs={"ksinr": rat_2809["ksinr"]},
-             notiz="Lottis Sitzungs-Block trägt Gremium und Datum, keinen Ort und keine Uhrzeit — "
-                   "erwartet: Kontextfehler beim Ort."),
+             notiz="Lottis Sitzungs-Block trug bis 23.09.2026 Gremium und Datum, keinen Ort und "
+                   "keine Uhrzeit (Kontextfehler beim Ort)."),
         fall("lotti-sitzung-2809-tagesordnung", "lotti",
              "Welche Punkte stehen hier auf der Tagesordnung?",
              "sitzung/tagesordnung",
@@ -1073,14 +1107,17 @@ def sitzungen(q: Quelle) -> list[dict]:
               g_zahl(9_512_500, "€", "überplanmäßige Bewilligung Teilhaushalt 10",
                      f"{q_to}, TOP {top_ueber['item_number']}", toleranz=0.01)],
              route="/council/sitzung", refs={"ksinr": rat_2809["ksinr"]},
-             notiz="Die Seite zeigt die Tagesordnung, Lottis Block nicht. Erwartet: Kontextfehler."),
+             notiz="Die Seite zeigt die Tagesordnung; Lottis Block seit 23.09.2026 auch (vorher "
+                   "Kontextfehler)."),
         fall("lotti-sitzung-0106-stadion", "lotti",
              "Was wurde hier in der Sitzung zum Stadion entschieden?",
              "sitzung/beschluesse",
              [g_id(bau), g_id(buerg), g_ergebnis(bau)],
              route="/council/sitzung", refs={"ksinr": rat_0106["ksinr"]},
-             notiz="41 Beschlüsse in dieser Sitzung, fünf davon zum Stadion. Lottis Block kennt "
-                   "keinen davon."),
+             notiz="41 Beschlüsse in dieser Sitzung, fünf davon zum Stadion. Bis 23.09.2026 "
+                   "kannte Lottis Block keinen davon; seitdem die Tagesordnung mit Ergebnis und "
+                   "Nummer. Die Nummern verlangt das Gold auch in der Antwort — Lotti nennt sie "
+                   "selten (modell_ausgelassen), das ist hinnehmbar."),
         fall("lotti-sitzung-sport-1305", "lotti",
              "Was hat der Sportausschuss hier zum Schwimmbad beschlossen?",
              "sitzung/beschluesse",

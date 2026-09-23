@@ -430,3 +430,46 @@ Gruppiert nach dem Codeteil, der den Fakt hätte liefern müssen. Je Eintrag: Fr
 
 - `lotti-thema-verkehr-zuletzt` (lotti `/council/thema`): „Was wurde hier im Verkehr zuletzt beschlossen?“ — Gold: 29.06.2026 | 29.6.2026 | 29. Juni 2026 | 2026-06-29 — fehlt: nicht da; Bausteine im Prompt: WAS DU WEISST, WAS DIE PERSON GERADE VOR SICH HAT, SO ANTWORTEST DU, WEITER, FRAGE
 <!-- fakten-eval:ende -->
+
+## Nachtrag: Lottis Seitenkontext auf den Rats-Seiten (23.09.2026)
+
+Die Arbeitsliste oben (Stand vor dem Umbau) nannte 17 Kontextfehler in
+`Lotti-Seitenblock (…)`: Auf Sitzungs-, Personen-, Orts- und Themenseiten
+bekam Lotti einen Namen oder ein Datum, während die Seite Tagesordnung,
+Ausschüsse und Beschlüsse zeigte. Seitdem schlägt `council/page_context.py`
+über die Kennung nach, was die Seite selbst zeigt:
+
+| Seite | vorher im Prompt | nachher zusätzlich |
+|---|---|---|
+| Beschluss | Titel, Abstimmung, Kurzfassung, Wortlaut (600 Z.) | Wortlaut bis 1.500 Z., Protokoll-Wortlaut zur Abstimmung (`raw_result`), finanzielle Auswirkungen der Vorlage |
+| Sitzung | Gremium, Datum (ISO) | Uhrzeit, Sitzungsort, ob sie schon war, Vorsitz, öffentliche Tagesordnung mit Ergebnis und Nummer, Zahl der nichtöffentlichen Punkte |
+| Person | Name | Fraktion (heute und im Verlauf), laufende und frühere Mitgliedschaften aus dem RIS, Zahl der Wortbeiträge |
+| Ort | Name, Art, Beschreibung | Zahl der Beschlüsse, die jüngsten acht |
+| Thema | nur ein Themenfeld-Schlüssel (die Seite zeigt aber Entitäten) | Entität mit Art, Beschreibung, erkannten Beträgen, jüngsten Beschlüssen; bei einem Feld-Schlüssel Rückblick und jüngste Beschlüsse |
+
+Bewusst **nicht**: Pressemitteilungen auf der Beschluss-Seite (die Seite
+zeigt keine, eine Verknüpfung gibt es nicht — `lotti-sechsfeldhalle-kosten`
+und `lotti-stadion-wer-dagegen` bleiben Kontextfälle), Ergebnisse
+nichtöffentlicher Punkte, Wortbeiträge im Wortlaut, der Haushalts-Anschluss
+(Recht `budget`). Eine eigene Gremiums-Seite gibt es nicht.
+
+Gemessen mit GPT-6 Luna über die 91 Ratsfälle, je zwei Läufe, beide Stände
+mit demselben Abgleich gewertet:
+
+| | Lotti ok | Lotti Kontextfehler | Frag den Rat ok | Kosten je Lauf |
+|---|---:|---:|---:|---:|
+| vorher (dev) | 19/35, 19/35 | 13, 12 | 19/56, 17/56 | 0,06 $, 0,08 $ |
+| nachher | 31/35, 31/35 | 1, 2 | 18/56, 18/56 | 0,05 $, 0,04 $ |
+
+Frag den Rat ist unverändert (derselbe Codepfad; die Schwankung ist
+Rauschen). Weniger Aufrufe nachher (154 statt 170): Lotti reicht seltener ans
+Archiv weiter, weil die Antwort auf der Seite steht.
+
+Vier Abgleich-Regeln kamen dazu, alle mit Anlass aus echten Antworten
+(`tests/test_fakten_abgleich.py`): `antwort_auch` (Monat und Jahr reichen in
+der Antwort, wo die Frage nicht „wann“ fragt), `ausser_im_satz_mit` (die 79
+Mio. € als Bürgschaft genannt sind keine Verwechslung mit dem Baupreis),
+ausgeschriebene kleine Zahlen und ein geteiltes Vielfaches („von 50 auf 79
+Millionen“) in Antworten. Neu gewertet ändert das am letzten Luna-Lauf oben
+zwei Ratsfälle (beide Lotti, beide richtig beantwortet), keinen
+Haushaltsfall.

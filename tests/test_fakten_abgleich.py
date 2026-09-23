@@ -333,3 +333,103 @@ def test_optionaler_fakt_zaehlt_nur_im_kontext():
         {"art": "zahl", "wert": 740_330_163, "jahr": 2024, "pflicht": False}]}
     e = fa.bewerten(fall, KONTEXT_OK, "Ende 2025 rund 337 Mio. € (Eigenbetriebe).")
     assert e["fehlerart"] == "ok"
+
+
+# --- Datumsgold: Monat und Jahr genügen, wo die Frage nicht nach dem Tag fragt
+#
+# Messung 23.09.2026 (#1494/#1499): „Was wurde hier zuletzt beschlossen?“ mit
+# „Im Juni 2026 …“ beantwortet zählte als Auslassung, weil das Gold
+# „01.06.2026“ verlangte. `antwort_auch` lässt die gröbere Angabe in der
+# ANTWORT gelten — im Kontext bleibt das genaue Datum Pflicht.
+
+DATUM_GOLD = {"art": "text", "muss": [["01.06.2026", "1. Juni 2026", "2026-06-01"]],
+              "antwort_auch": ["Juni 2026"]}
+
+
+def test_monat_und_jahr_reichen_in_der_antwort():
+    assert fa.gold_im_text(DATUM_GOLD, "Im Juni 2026 hat der Rat das beschlossen.",
+                           satz=True).status == "ok"
+
+
+def test_monat_und_jahr_reichen_im_kontext_nicht():
+    """Sonst stünde jeder Beschluss aus dem Juni für diesen einen."""
+    assert fa.gold_im_text(DATUM_GOLD, "Rat, Juni 2026: Bebauungsplan 851").status == "fehlt"
+
+
+def test_ohne_antwort_auch_bleibt_der_tag_pflicht():
+    gold = {k: v for k, v in DATUM_GOLD.items() if k != "antwort_auch"}
+    assert fa.gold_im_text(gold, "Im Juni 2026 …", satz=True).status == "fehlt"
+
+
+# --- Ausgeschriebene kleine Zahlen -----------------------------------------
+#
+# GPT-6 Luna, 23.09.2026: „es gab fünf Gegenstimmen“, „bei neun
+# Enthaltungen“ — beide richtig, beide als Auslassung gezählt.
+
+def test_ausgeschriebene_zahl_zaehlt():
+    gold = {"art": "zahl", "wert": 5, "einheit": "Gegenstimmen"}
+    assert fa.gold_im_text(gold, "Mehrheitlich angenommen; es gab fünf Gegenstimmen.",
+                           satz=True).status == "ok"
+
+
+def test_ein_artikel_ist_keine_zahl():
+    assert [z.wert for z in fa.zahlen("Ein Beschluss, eine Enthaltung.", woerter=True)] == []
+
+
+def test_im_kontext_zaehlen_nur_ziffern():
+    """Ein „neun“ aus einem fremden Protokollsatz soll den Goldfakt nicht im
+    falschen Beschluss finden."""
+    assert fa.zahlen("einstimmig bei neun Enthaltungen") == []
+
+
+def test_ausgeschriebene_zahl_ist_nie_ein_erfundener_betrag():
+    assert fa.erfundene_zahlen("Es gab neun Enthaltungen.", "Kontext ohne Zahl") == []
+
+
+def test_das_vielfache_gilt_fuer_beide_zahlen():
+    """„von 50 auf höchstens 79 Millionen Euro“ nennt zwei Beträge (Luna, 23.09.)."""
+    gold = {"art": "zahl", "wert": 50_000_000, "einheit": "€"}
+    antwort = "Die Bürgschaft wurde von 50 auf höchstens 79 Millionen Euro erhöht."
+    assert fa.gold_im_text(gold, antwort, satz=True).status == "ok"
+
+
+def test_eine_nackte_zahl_ohne_bindewort_bleibt_nackt():
+    werte = [z.wert for z in fa.zahlen("Im Jahr 50 v. Chr. kostete es 79 Millionen Euro.")]
+    assert 50_000_000 not in werte
+
+
+def test_nicht_genannt_ist_eine_absage():
+    assert fa.verweigert("Die Einwohnerzahl von Bloherfelde ist in den hier vorliegenden "
+                         "Angaben nicht genannt.")
+
+
+# --- Verbot mit Ausnahme: dieselbe Zahl, richtig benannt ---------------------
+#
+# `rat-kongresshalle-kosten`: Die Ausfallbürgschaft (79 Mio. €) als Baupreis
+# ist die Verwechslung; als Bürgschaft genannt ist sie richtig — und traf bis
+# 23.09.2026 trotzdem (Gemini, zwei Läufe, `modell_falsch`).
+
+VERBOT_79 = {"art": "zahl", "wert": 79_000_000, "grund": "Bürgschaft, nicht Baupreis",
+             "ausser_im_satz_mit": ["Bürgschaft", "bürgt"]}
+
+
+def _verstoss(antwort: str) -> str | None:
+    return fa.verboten_im_text(VERBOT_79, antwort, fa.zahlen(antwort), fa.zeilen(antwort))
+
+
+def test_die_buergschaft_als_buergschaft_ist_kein_verstoss():
+    # Wortlaut der Gemini-Antwort vom 23.09.2026 (gekürzt).
+    assert _verstoss("Der Neubau kostet rund 78,68 Millionen Euro netto [7911]. Zur "
+                     "Finanzierung wurde die städtische Ausfallbürgschaft von 50 Millionen "
+                     "Euro auf maximal 79 Millionen Euro erhöht [7912].") is None
+
+
+def test_die_buergschaft_als_baupreis_bleibt_ein_verstoss():
+    assert _verstoss("Die Kongresshalle kostet 79 Mio. Euro. Die Bürgschaft ist ein "
+                     "eigener Beschluss.") is not None
+
+
+def test_eine_abkuerzung_beendet_den_satz_nicht():
+    """„50 Mio. Euro auf 79 Mio. Euro“ ist EIN Satz — sonst fiele das Wort
+    „Bürgschaft“ vor der ersten Zahl aus dem Satz der zweiten."""
+    assert _verstoss("Die Bürgschaft stieg von 50 Mio. Euro auf 79 Mio. Euro.") is None

@@ -92,8 +92,14 @@ def _aufloesung(ziffern: str, mult: float) -> float:
     return 10 ** nullen * mult
 
 
-def zahlen(text: str) -> list[Zahl]:
-    """Alle Zahlen eines Textes, Datumsangaben ohne Tag und Monat."""
+def zahlen(text: str, *, woerter: bool = False) -> list[Zahl]:
+    """Alle Zahlen eines Textes, Datumsangaben ohne Tag und Monat.
+
+    ``woerter=True`` (nur für Antworten) liest auch „fünf“, „neun“ als Zahl.
+    Im Kontext nicht: Dort stehen die Zahlen aus unserem Code als Ziffern,
+    und ein „neun“ aus einem fremden Protokollsatz fände sonst den Goldfakt
+    im falschen Beschluss.
+    """
     maskiert = _DATUM.sub(lambda m: " " * len(m.group(0)), text or "")
     aus: list[Zahl] = []
     for m in _ZAHL.finditer(maskiert):
@@ -113,7 +119,39 @@ def zahlen(text: str) -> list[Zahl]:
             art = ""
         aus.append(Zahl(wert, art, _aufloesung(ziffern, mult), m.start(), m.end(),
                         text[m.start():m.end()]))
+    # Kleine Zahlen schreibt man aus: „es gab fünf Gegenstimmen“, „bei neun
+    # Enthaltungen“ — GPT-6 Luna am 23.09.2026, zweimal als Auslassung
+    # gezählt. Erst ab „zwei“: „ein/eine“ ist meist ein Artikel. Als Zahl ohne
+    # Einheit, also nie ein Betrag (``_bedeutsam`` prüft sie nicht).
+    for m in (_ZAHLWORT.finditer(text or "") if woerter else ()):
+        aus.append(Zahl(float(_ZAHLWOERTER[m.group(1).lower()]), "", 1.0, m.start(), m.end(),
+                        m.group(0)))
+    aus.sort(key=lambda z: z.pos)
+    # „von 50 auf höchstens 79 Millionen Euro“: Das Vielfache steht einmal,
+    # es gilt für beide (GPT-6 Luna, 23.09.2026 — die 50 Mio. € zählten als
+    # ausgelassen). Die nackte Zahl bekommt das Vielfache der nächsten, wenn
+    # nur ein Bindewort dazwischen steht.
+    for i, z in enumerate(aus[:-1]):
+        nach = aus[i + 1]
+        if z.art != "" or nach.art != "€" or not _BINDEWORT.fullmatch(text[z.ende:nach.pos]):
+            continue
+        m_nach = _ZAHL.match(nach.text)
+        mult = _MULT.get(((m_nach and m_nach.group("mult")) or "").lower().rstrip("."), 1.0)
+        if mult > 1:
+            aus[i] = Zahl(z.wert * mult, "€", z.aufloesung * mult, z.pos, z.ende, z.text)
     return aus
+
+
+_BINDEWORT = re.compile(r"\s*(?:auf|bis|und|oder|bzw\.|–|-)\s*"
+                        r"(?:(?:höchstens|maximal|rund|knapp|etwa|über|gut)\s*)?", re.IGNORECASE)
+
+
+_ZAHLWOERTER = {w: i for i, w in enumerate(
+    ("null", "eins", "zwei", "drei", "vier", "fünf", "sechs", "sieben", "acht", "neun",
+     "zehn", "elf", "zwölf", "dreizehn", "vierzehn", "fünfzehn", "sechzehn", "siebzehn",
+     "achtzehn", "neunzehn", "zwanzig")) if i >= 2}
+_ZAHLWORT = re.compile(r"(?<![\wäöüß])(" + "|".join(
+    sorted(_ZAHLWOERTER, key=len, reverse=True)) + r")(?![\wäöüß])", re.IGNORECASE)
 
 
 #: Bis wohin eine gerundete Angabe als dieselbe Zahl gilt. „0,3 Mrd.“ für
@@ -372,7 +410,8 @@ _VERWEIGERT = re.compile("|".join([
     r"\b(nennen|enthalten|zeigen|haben|fuehren|liefern|weisen)\b[^.!?\n]{0,12}"
     r"\b(keine|keinen|kein|nichts)\b",
     # „ist in den vorliegenden Angaben nicht aufgeschlüsselt“
-    r"\bnicht (aufgeschluesselt|ausgewiesen|enthalten|angegeben|verfuegbar|vorhanden)\b",
+    # „… ist in den hier vorliegenden Angaben nicht genannt“ (GPT-6 Luna, 23.09.)
+    r"\bnicht (aufgeschluesselt|ausgewiesen|enthalten|angegeben|verfuegbar|vorhanden|genannt)\b",
     # GPT-6 Luna, 23.09.: „geben dazu wenig her“, „lässt sich nicht feststellen“,
     # „geht aus den Unterlagen nicht hervor“, „ist nicht belegt“, „steht kein
     # Gehalt“, „ein Wolfsburger Vergleichswert fehlt“
@@ -432,7 +471,7 @@ def zahl_im_text(gold: dict, text: str, *, satz: bool = False,
       beide nennt, hat die Summe genannt. Ebenso Plan und Ist für „wie weit
       lag es über dem Plan?“.
     """
-    zs = zahlen_ if zahlen_ is not None else zahlen(text)
+    zs = zahlen_ if zahlen_ is not None else zahlen(text, woerter=satz)
     zl = zeilen_ if zeilen_ is not None else zeilen(text)
     kandidaten = [gold] + [{**gold, "oder": None, "teile": None, **alt}
                            for alt in (gold.get("oder") or [])]
@@ -485,9 +524,34 @@ def gold_im_text(gold: dict, text: str, *, satz: bool = False,
     if art == "id":
         return id_im_text(gold, text)
     if art == "text":
-        fehlt = text_findet(text, gold.get("muss") or [])
+        muss = gold.get("muss") or []
+        # ``antwort_auch``: weitere Schreibweisen, die nur in der ANTWORT
+        # gelten — „Juni 2026“ für den 01.06.2026, wo die Frage nicht nach dem
+        # Tag fragt (``build_fakten_rat.monat_reicht``). Im Kontext muss das
+        # genaue Datum stehen; sonst reichte irgendein Beschluss aus dem Juni.
+        if satz and gold.get("antwort_auch"):
+            muss = [_alternativen(m) + [str(a) for a in gold["antwort_auch"]] for m in muss]
+        fehlt = text_findet(text, muss)
         return Befund("fehlt" if fehlt else "ok", fehlt)
     raise ValueError(f"unbekannte Goldart {art!r}")
+
+
+#: Ein Satzende: Punkt vor einem Großbuchstaben — aber nicht nach einer
+#: Abkürzung. „von 50 Mio. Euro auf 79 Mio. Euro“ ist EIN Satz.
+_SATZENDE = re.compile(
+    r"(?<!Mio)(?<!Mrd)(?<!Tsd)(?<!Nr)(?<!bzw)(?<!ca)(?<!rd)(?<!\d)[.!?](?=\s+[A-ZÄÖÜ*#\[(„\"])|\n")
+
+
+def _satz_um(text: str, z: Zahl) -> str:
+    """Der Satz, in dem die Zahl steht."""
+    von, bis = 0, len(text)
+    for m in _SATZENDE.finditer(text):
+        if m.end() <= z.pos:
+            von = m.end()
+        elif m.start() >= z.ende:
+            bis = m.start()
+            break
+    return text[von:bis]
 
 
 def verboten_im_text(verbot: dict, antwort: str, zahlen_: list[Zahl],
@@ -505,8 +569,15 @@ def verboten_im_text(verbot: dict, antwort: str, zahlen_: list[Zahl],
         return f"„{hit[0]}“ — {verbot.get('grund', '')}" if hit else None
     toleranz = float(verbot.get("toleranz") or TOLERANZ_STANDARD)
     als_jahr = verbot.get("als_jahr")
+    ausser = [falte(w) for w in verbot.get("ausser_im_satz_mit") or []]
     for z in zahlen_:
         if not einheit_passt(z, verbot.get("einheit")) or not passt(z, float(verbot["wert"]), toleranz):
+            continue
+        # ``ausser_im_satz_mit``: Die Zahl ist nur als DAS verboten, womit
+        # sie verwechselt wird. Die Ausfallbürgschaft von 79 Mio. € als
+        # Baupreis der Kongresshalle ist falsch, als Bürgschaft genannt
+        # richtig — und traf bis 23.09.2026 beides (Gemini, zweimal).
+        if ausser and any(w in falte(_satz_um(antwort, z)) for w in ausser):
             continue
         if als_jahr is not None:
             jahre = jahre_der_zahl(zeilen_, z, satz=True)
@@ -592,7 +663,7 @@ def bewerten(fall: dict, kontext: str | None, antwort: str) -> dict:
     in_daten = fall.get("antwort_in_daten", True)
     kt = _ohne_frage(kontext or "", frage)
     kz, kl = zahlen(kt), zeilen(kt)
-    az, al = zahlen(antwort), zeilen(antwort)
+    az, al = zahlen(antwort, woerter=True), zeilen(antwort)
 
     kontext_befunde = [gold_im_text(g, kt, zahlen_=kz, zeilen_=kl) for g in gold]
     antwort_befunde = [gold_im_text(g, antwort, satz=True, zahlen_=az, zeilen_=al) for g in gold]
