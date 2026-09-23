@@ -77,6 +77,26 @@ Ratssitzungen aus `~/.cache/ratslotse/transkripte` — nicht im Repo, weil es
 O1s Aufzeichnung ist. Einmal je Rechner: `python eval/transkripte.py` (braucht
 `yt-dlp`; YouTube sperrt Rechenzentren, auf dem Server also nur mit Proxy).
 
+### Fakten-Eval: Kontextfehler und Modellfehler getrennt (09/2026)
+
+`run_fakten.py` stellt jede Frage über den ECHTEN Weg — ein eigenes Backend,
+angemeldet als `ratsfrau@example.org`, `POST /api/council/explain` bzw.
+`/ask` — und liest den Prompt aus dem Mitschnitt (`RATSLOTSE_PROMPT_MITSCHNITT`
+in `kern/llm.py`). Je Fall zwei Messungen ohne Richter-Modell
+(`fakten_abgleich.py`): Stand der Goldfakt im Prompt, **unter dem richtigen
+Jahr**? Nennt die Antwort ihn? Fehlerarten: `kontext_fehlt`,
+`kontext_falsch_zugeordnet`, `modell_ausgelassen`, `modell_falsch`,
+`modell_erfunden`, `modell_verweigert_zu_unrecht`, `ok`. Goldwerte aus SQL
+(`build_fakten_haushalt.py`), nie aus einer Antwort. Bericht mit der
+Kontextfehler-Liste: `docs/fakten-eval.md`.
+
+```bash
+python eval/run_fakten.py --modell openai/gpt-6-luna --ohne-zdr   # ~0,1 ct je Fall
+python eval/run_fakten.py nachwerten eval/results/fakten/<lauf>.json  # Regeln geändert? ohne Aufrufe
+python eval/run_fakten.py bericht
+python eval/pruefstand.py --suite fakten-haushalt --modell google/gemini-2.5-flash
+```
+
 ## Suiten
 
 | Suite | Misst | Komponente | Scoring | Cases |

@@ -1,0 +1,661 @@
+#!/usr/bin/env python3
+"""Fakten-Eval für Lotti und Frag den Rat: Kontextfehler und Modellfehler getrennt.
+
+Tim, 23.09.2026: „Die Haushaltsfragen werden sehr, sehr wichtig werden in
+nächster Zeit. … Wenn wir im Kontext schon Mist haben, kann das beste Modell
+ja nichts Gutes draus machen.“ Diese Eval beantwortet deshalb je Fall zwei
+Fragen getrennt: **Stand der Goldfakt im Prompt** (unter dem richtigen Jahr)?
+Und **nennt die Antwort ihn**? Die Einteilung und ihre Regeln stehen in
+``eval/fakten_abgleich.py``; der Bericht in ``docs/fakten-eval.md``.
+
+**Der echte Codepfad, nicht ein Nachbau.** Der Lauf startet ein eigenes
+Backend (uvicorn, freier Port, eigene Konten-Datenbank aus
+``scripts/saat_konten.py``), meldet sich als ``ratsfrau@example.org`` an und
+stellt jede Frage über ``POST /api/council/explain`` (Lotti) bzw.
+``POST /api/council/ask`` (Frag den Rat) — genau wie das Fenster im Browser.
+Den Prompt liest er aus dem Mitschnitt (``RATSLOTSE_PROMPT_MITSCHNITT`` in
+``kern/llm.py``), also den, den das Modell wirklich bekam. Der Faktencheck
+vom 23.09. hatte Lottis Kontext noch rekonstruiert; den von Frag den Rat,
+den der Router aus Retrieval, Presse und Haushaltszahlen zusammensetzt,
+konnte er gar nicht nachbauen.
+
+**Beide Kanäle, ein Modell.** Der Lauf setzt ``COUNCIL_ASSISTANT_MODEL`` UND
+``COUNCIL_QA_MODEL`` auf das gewählte Modell. Die Analyse der Frage
+(``COUNCIL_QA_EXPAND_MODEL``) bleibt, wo sie ist: Sie gehört zum Kontext-
+Aufbau, und der soll zwischen zwei Modellen gleich sein. Welches Modell
+WIRKLICH geantwortet hat, prüft der Lauf am Mitschnitt (Feld ``model`` und
+das ``model`` der OpenRouter-Antwort) und bricht ab, wenn es nicht passt —
+die gemessene Falle: zsh spaltet ``$VAR`` mit mehreren ``A=b`` nicht auf,
+und ein Lauf maß dann still das heutige Modell.
+
+**Nacheinander, nicht parallel.** Welche Mitschnitt-Zeilen zu welchem Fall
+gehören, ergibt sich aus der Reihenfolge. Zwei Modelle parallel = zwei
+Prozesse mit zwei Backends.
+
+Aufruf::
+
+    python eval/run_fakten.py --modell openai/gpt-6-luna --ohne-zdr
+    python eval/run_fakten.py --modell google/gemini-2.5-flash --limit 10   # Kosten hochrechnen
+    python eval/run_fakten.py --modell … --nur hh-schulden-stand,hh-invest-ist-2025
+    python eval/run_fakten.py nachwerten eval/results/fakten/<lauf>.json  # ohne neue Aufrufe
+    python eval/run_fakten.py bericht                                      # docs/fakten-eval.md
+    python eval/pruefstand.py --suite fakten-haushalt --modell google/gemini-2.5-flash
+
+``--ohne-zdr`` setzt ``NWZ_OPENROUTER_ZDR=0`` NUR im Mess-Backend: GPT-6
+Luna hat keinen ZDR-Anbieter (Tims Entscheidung vom 23.09. für Lotti und Frag
+den Rat); die Fälle sind eigene Fragen, keine Nutzerdaten.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import shutil
+import socket
+import subprocess
+import sys
+import tempfile
+import time
+from collections import Counter, defaultdict
+from collections.abc import Iterator
+from contextlib import contextmanager
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+WURZEL = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(WURZEL))
+
+from eval import fakten_abgleich as fa  # noqa: E402
+
+FAELLE_DATEIEN = (WURZEL / "eval" / "cases_fakten_haushalt.json",
+                  WURZEL / "eval" / "cases_fakten_rat.json")
+ERGEBNISSE = WURZEL / "eval" / "results" / "fakten"
+BERICHT = WURZEL / "docs" / "fakten-eval.md"
+#: Die vollen Prompts eines Laufs — zu groß fürs Repo (rund 15 kB je Fall),
+#: aber nötig fürs Nachwerten ohne neue Aufrufe. Liegt neben den anderen
+#: lokalen Abzügen.
+MITSCHNITT_ABLAGE = Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") \
+    / "ratslotse" / "fakten-mitschnitt"
+KONTO = ("ratsfrau@example.org", "password123")
+MITSCHNITT_ENV = "RATSLOTSE_PROMPT_MITSCHNITT"
+#: Die Features, deren Prompt die Antwort trägt — je Kanal.
+ANTWORT_FEATURES = ("assistant_explain", "qa_answer", "qa_simple")
+
+
+def lade(pfade: list[Path] | None = None) -> list[dict]:
+    faelle: list[dict] = []
+    for pfad in pfade or [p for p in FAELLE_DATEIEN if p.exists()]:
+        faelle += json.loads(pfad.read_text(encoding="utf-8"))
+    return faelle
+
+
+# --------------------------------------------------------------------------- #
+# Das Mess-Backend
+# --------------------------------------------------------------------------- #
+
+def _freier_port() -> int:
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        return int(s.getsockname()[1])
+
+
+def _uvicorn() -> str:
+    kandidat = Path(sys.executable).parent / "uvicorn"
+    if kandidat.exists():
+        return str(kandidat)
+    gefunden = shutil.which("uvicorn")
+    if not gefunden:
+        raise SystemExit("Kein uvicorn neben diesem Python — im venv starten.")
+    return gefunden
+
+
+@contextmanager
+def backend(modell: str, mitschnitt: Path, *, ohne_zdr: bool,
+            protokoll: Path) -> Iterator[str]:
+    """Ein eigenes Backend für den Lauf; gibt die Basis-Adresse zurück."""
+    with tempfile.TemporaryDirectory(prefix="fakten-konten-") as tmp:
+        konten = Path(tmp) / "ratslotse.sqlite"
+        rat = Path(os.environ.get("COUNCIL_DB") or WURZEL / "data" / "council.sqlite")
+        subprocess.run([sys.executable, str(WURZEL / "scripts" / "saat_konten.py"),
+                        "--db", str(konten), "--council-db", str(rat)],
+                       check=True, capture_output=True, cwd=WURZEL)
+        port = _freier_port()
+        env = {
+            **os.environ,
+            "COUNCIL_DB": str(rat),
+            "RATSLOTSE_DB": str(konten),
+            "WEB_JWT_SECRET": "nur-fuer-die-fakten-eval",
+            "DISABLE_RATE_LIMIT": "1",
+            "FEATURE_FLAGS": "*",
+            MITSCHNITT_ENV: str(mitschnitt),
+            "COUNCIL_ASSISTANT_MODEL": modell,
+            "COUNCIL_QA_MODEL": modell,
+        }
+        # Die Kosten landen in der Datei des Aufrufers (Prüfstand: eigene
+        # je Lauf); ohne Vorgabe neben dem Mitschnitt, nie in der echten.
+        env["RATSLOTSE_SQLITE"] = str(kostendatei(mitschnitt))
+        if ohne_zdr:
+            env["NWZ_OPENROUTER_ZDR"] = "0"
+        with protokoll.open("w") as log:
+            proz = subprocess.Popen(
+                [_uvicorn(), "app.main:app", "--port", str(port), "--log-level", "warning"],
+                cwd=WURZEL / "web" / "backend", env=env, stdout=log, stderr=subprocess.STDOUT,
+                start_new_session=True)
+        basis = f"http://127.0.0.1:{port}"
+        try:
+            frist = time.time() + 60
+            while time.time() < frist:
+                if proz.poll() is not None:
+                    raise SystemExit(f"Backend ging sofort aus: {protokoll.read_text()[-1500:]}")
+                try:
+                    with socket.create_connection(("127.0.0.1", port), timeout=1):
+                        break
+                except OSError:
+                    time.sleep(0.5)
+            else:
+                raise SystemExit(f"Backend antwortet nach 60 s nicht ({protokoll})")
+            yield basis
+        finally:
+            proz.terminate()
+            try:
+                proz.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                proz.kill()
+
+
+def kostendatei(mitschnitt: Path) -> Path:
+    vorgabe = os.environ.get("RATSLOTSE_SQLITE")
+    return Path(vorgabe) if vorgabe else mitschnitt / "usage.sqlite"
+
+
+def kosten_seit(datei: Path, marke: str) -> dict:
+    """Was der Lauf laut ``llm_usage`` kostete — je Feature und Modell.
+
+    Die echten Kosten, die OpenRouter mitschickt (``kern/usage``), nicht
+    ``PRICES``. Ohne Kostenwert zählt der Aufruf in ``ohne_kosten``.
+    """
+    import sqlite3
+    if not datei.exists():
+        return {"usd": 0.0, "aufrufe": 0, "ohne_kosten": 0, "je": {}}
+    con = sqlite3.connect(f"file:{datei}?mode=ro", uri=True)
+    try:
+        zeilen = con.execute(
+            "SELECT feature, model, COUNT(*), SUM(COALESCE(cost_usd, 0)), "
+            "SUM(cost_usd IS NULL) FROM llm_usage WHERE ts >= ? GROUP BY feature, model",
+            (marke,)).fetchall()
+    except sqlite3.Error:
+        zeilen = []
+    finally:
+        con.close()
+    return {"usd": round(sum(z[3] for z in zeilen), 4), "aufrufe": sum(z[2] for z in zeilen),
+            "ohne_kosten": sum(z[4] for z in zeilen),
+            "je": {f"{z[0]} · {z[1]}": {"aufrufe": z[2], "usd": round(z[3], 4)} for z in zeilen}}
+
+
+def anmelden(basis: str) -> Any:
+    import httpx
+    client = httpx.Client(base_url=basis, timeout=httpx.Timeout(300, connect=10))
+    r = client.post("/api/auth/login", json={"email": KONTO[0], "password": KONTO[1]})
+    r.raise_for_status()
+    # Das Cookie ist „Secure“ und ginge über http nicht zurück — als Bearer.
+    token = r.cookies.get("access_token")
+    if not token:
+        raise SystemExit("Anmeldung ohne access_token-Cookie")
+    client.headers["Authorization"] = f"Bearer {token}"
+    return client
+
+
+def _strom(client: Any, pfad: str, body: dict) -> dict:
+    t0 = time.perf_counter()
+    text, done, fehler, ersetzt = "", {}, None, False
+    with client.stream("POST", pfad, json=body) as r:
+        if r.status_code != 200:
+            return {"text": "", "done": {}, "fehler": f"HTTP {r.status_code}: {r.read()[:300]!r}",
+                    "ms": round((time.perf_counter() - t0) * 1000)}
+        for zeile in r.iter_lines():
+            if not zeile.startswith("data:"):
+                continue
+            try:
+                d = json.loads(zeile[5:])
+            except ValueError:
+                continue
+            if d.get("type") == "token":
+                text += d.get("text", "")
+            elif d.get("type") == "replace":
+                text, ersetzt = d.get("text", ""), True
+            elif d.get("type") == "done":
+                done = d
+            elif d.get("type") == "error":
+                fehler = str(d.get("message") or d)
+    return {"text": text.strip(), "done": done, "fehler": fehler, "ersetzt": ersetzt,
+            "ms": round((time.perf_counter() - t0) * 1000)}
+
+
+class Mitschnitt:
+    """Liest die Zeilen, die seit dem letzten Aufruf dazugekommen sind."""
+
+    def __init__(self, ordner: Path) -> None:
+        self.ordner = ordner
+        self.stand: dict[str, int] = {}
+
+    def neu(self) -> list[dict]:
+        aus: list[dict] = []
+        for pfad in sorted(self.ordner.glob("*.jsonl")):
+            zeilen = pfad.read_text(encoding="utf-8").splitlines()
+            vorher = self.stand.get(pfad.name, 0)
+            aus += [json.loads(z) for z in zeilen[vorher:] if z.strip()]
+            self.stand[pfad.name] = len(zeilen)
+        return sorted(aus, key=lambda z: z.get("ts", 0))
+
+
+def prompt_text(aufruf: dict) -> str:
+    teile = []
+    for m in aufruf.get("messages") or []:
+        inhalt = m.get("content")
+        if isinstance(inhalt, list):
+            inhalt = "\n".join(str(t.get("text", "")) for t in inhalt if isinstance(t, dict))
+        teile.append(f"[{m.get('role')}]\n{inhalt}")
+    return "\n\n".join(teile)
+
+
+def frage_stellen(client: Any, fall: dict) -> dict:
+    """Eine Frage über den Weg, den das Fenster bzw. die Seite nimmt."""
+    if fall["kanal"] == "lotti":
+        # Das Fenster schickt Titel und Überschrift der Seite mit; auf den
+        # Haushalts-Seiten ziehen sie eigene Facetten („Wie viel Schulden hat
+        # Oldenburg?“ zieht die Schulden auch zu einer Investitionsfrage).
+        body = {"route": fall["route"], "question": fall["frage"], "refs": fall.get("refs") or {},
+                "page_title": fall.get("heading", ""), "heading": fall.get("heading", "")}
+        erg = _strom(client, "/api/council/explain", body)
+        erg["weg"] = (erg.get("done") or {}).get("mode") or "?"
+        # Gehört die Frage ins Archiv, geht das Fenster von selbst zu Frag den
+        # Rat — mit dem Bildschirm. Genau das tut die Eval auch.
+        if erg["weg"] == "handoff" or (erg.get("done") or {}).get("next") == "ratsfrage":
+            davor = erg["text"]
+            weiter = _strom(client, "/api/council/ask", {
+                "question": fall["frage"],
+                "screen": {"route": fall["route"], **({"refs": fall["refs"]} if fall.get("refs") else {})}})
+            weiter["weg"] = f"{erg['weg']}→ask"
+            weiter["text"] = (davor + "\n\n" + weiter["text"]).strip()
+            weiter["ms"] += erg["ms"]
+            return weiter
+        return erg
+    erg = _strom(client, "/api/council/ask", {"question": fall["frage"]})
+    erg["weg"] = "ask"
+    return erg
+
+
+def _antwort_aufruf(aufrufe: list[dict]) -> dict | None:
+    """Der Aufruf, dessen Antwort gezeigt wurde: der letzte eines Antwort-Features."""
+    passend = [a for a in aufrufe if a.get("feature") in ANTWORT_FEATURES and not a.get("aborted")]
+    return passend[-1] if passend else None
+
+
+def _kopfzeilen(kontext: str) -> list[str]:
+    """Die Bausteine, die im Prompt standen — ihre Überschriften in Großbuchstaben."""
+    aus = []
+    for zeile in kontext.splitlines():
+        m = re.match(r"^([A-ZÄÖÜ][A-ZÄÖÜ0-9 ,/()\-–—+.]{5,}?)(?=[.(:]|$| —| –)", zeile.strip())
+        if m and sum(c.isupper() for c in m.group(1)) >= 5:
+            aus.append(m.group(1).strip())
+    return list(dict.fromkeys(aus))
+
+
+def ein_lauf(modell: str, faelle: list[dict], *, ohne_zdr: bool = False,
+             basis: str | None = None, mitschnitt: Path | None = None,
+             laut: bool = True) -> dict:
+    """Alle Fälle einmal — gibt das Rohergebnis (ohne volle Prompts) zurück."""
+    stempel = datetime.now().strftime("%Y%m%d-%H%M%S")
+    lauf_name = f"{modell.replace('/', '-')}-{stempel}"
+    ordner = mitschnitt or (MITSCHNITT_ABLAGE / lauf_name)
+    ordner.mkdir(parents=True, exist_ok=True)
+    aus: dict = {"modell": modell, "zeitstempel": stempel, "mitschnitt": str(ordner),
+                 "ohne_zdr": ohne_zdr, "faelle": []}
+
+    def messen(basis_: str) -> None:
+        client = anmelden(basis_)
+        schnitt = Mitschnitt(ordner)
+        schnitt.neu()  # was vorher drinstand, gehört keinem Fall
+        for n, fall in enumerate(faelle, 1):
+            try:
+                erg = frage_stellen(client, fall)
+            except Exception as e:  # noqa: BLE001 — ein Ausfall ist ein Messergebnis
+                erg = {"text": "", "done": {}, "fehler": f"{type(e).__name__}: {e}", "ms": 0,
+                       "weg": "?"}
+            aufrufe = schnitt.neu()
+            antwort_aufruf = _antwort_aufruf(aufrufe)
+            kontext = prompt_text(antwort_aufruf) if antwort_aufruf else None
+            if antwort_aufruf is not None:
+                gefragt = antwort_aufruf.get("model")
+                geantwortet = antwort_aufruf.get("response_model") or gefragt or ""
+                if gefragt != modell or not geantwortet.startswith(modell.split(":")[0]):
+                    raise SystemExit(
+                        f"Falsches Modell: bestellt {modell}, angefragt {gefragt}, "
+                        f"geantwortet {geantwortet} — der Schalter wirkt nicht.")
+            (ordner / "kontexte").mkdir(exist_ok=True)
+            if kontext is not None:
+                (ordner / "kontexte" / f"{fall['id']}.txt").write_text(kontext, encoding="utf-8")
+            zeile = {
+                "id": fall["id"], "kanal": fall["kanal"], "kategorie": fall.get("kategorie"),
+                "frage": fall["frage"], "route": fall.get("route"),
+                "weg": erg.get("weg"), "ms": erg.get("ms"), "fehler": erg.get("fehler"),
+                "antwort": erg.get("text", ""),
+                "kontext_zeichen": len(kontext) if kontext is not None else None,
+                "bausteine": _kopfzeilen(kontext or ""),
+                "aufrufe": [a.get("feature") for a in aufrufe],
+                "modell_antwort": (antwort_aufruf or {}).get("response_model"),
+                "facetten": ((erg.get("done") or {}).get("facets")
+                             or (erg.get("done") or {}).get("geld_facets")),
+            }
+            zeile.update(fa.bewerten(fall, kontext, zeile["antwort"]))
+            aus["faelle"].append(zeile)
+            if laut:
+                print(f"[{n:3}/{len(faelle)}] {fall['id']:42} {zeile['fehlerart']:28} "
+                      f"{zeile['weg']:14} {zeile['ms'] or 0:6} ms", flush=True)
+
+    # Dieselbe Uhr wie `ts` in llm_usage: UTC (s. kern/usage.jetzt_utc).
+    marke = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    if basis:
+        messen(basis)
+    else:
+        with backend(modell, ordner, ohne_zdr=ohne_zdr, protokoll=ordner / "backend.log") as b:
+            messen(b)
+    aus["kosten"] = kosten_seit(kostendatei(ordner), marke)
+    aus["kosten_usd"] = aus["kosten"]["usd"]
+    aus["kennzahlen"] = kennzahlen(aus["faelle"])
+    # Immer auch neben den Mitschnitt — ein Probelauf mit --nicht-speichern
+    # soll sich trotzdem nachlesen lassen.
+    speichern(aus, ordner / "lauf.json")
+    return aus
+
+
+def nachwerten(erg: dict, faelle: list[dict]) -> dict:
+    """Ein gespeicherter Lauf neu bewertet — ohne einen einzigen Aufruf.
+
+    Braucht die vollen Prompts aus ``MITSCHNITT_ABLAGE``; die Regeln im
+    Abgleich dürfen sich ändern, ohne dass ein Lauf neu bezahlt wird.
+    """
+    nach_id = {f["id"]: f for f in faelle}
+    ordner = Path(erg["mitschnitt"]) / "kontexte"
+    for zeile in erg["faelle"]:
+        fall = nach_id.get(zeile["id"])
+        if fall is None:
+            continue
+        pfad = ordner / f"{zeile['id']}.txt"
+        kontext = pfad.read_text(encoding="utf-8") if pfad.exists() else None
+        if kontext is not None:
+            zeile["bausteine"] = _kopfzeilen(kontext)
+        zeile.update(fa.bewerten(fall, kontext, zeile["antwort"]))
+        zeile["kategorie"] = fall.get("kategorie")
+    erg["kennzahlen"] = kennzahlen(erg["faelle"])
+    return erg
+
+
+# --------------------------------------------------------------------------- #
+# Kennzahlen und Bericht
+# --------------------------------------------------------------------------- #
+
+def kennzahlen(zeilen: list[dict]) -> dict:
+    n = len(zeilen)
+    arten = Counter(z["fehlerart"] for z in zeilen)
+    ms = sorted(z["ms"] for z in zeilen if z.get("ms"))
+    return {
+        "n_cases": n,
+        "ok": arten.get("ok", 0),
+        "quote_ok": round(arten.get("ok", 0) / n, 4) if n else None,
+        "kontext_ok": sum(1 for z in zeilen if z["kontext_ok"]),
+        "fehlerarten": dict(arten),
+        "modellfehler": sum(v for k, v in arten.items() if k.startswith("modell_")),
+        "kontextfehler": arten.get("kontext_fehlt", 0) + arten.get("kontext_falsch_zugeordnet", 0),
+        "erfunden": arten.get("modell_erfunden", 0),
+        "ausfaelle": sum(1 for z in zeilen if z.get("fehler")),
+        "p50_ms": ms[len(ms) // 2] if ms else None,
+    }
+
+
+def speichern(erg: dict, ziel: Path | None = None) -> Path:
+    ziel = ziel or ERGEBNISSE / f"{erg['modell'].replace('/', '-')}-{erg['zeitstempel']}.json"
+    ziel.parent.mkdir(parents=True, exist_ok=True)
+    ziel.write_text(json.dumps(erg, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    return ziel
+
+
+def _pct(a: int, b: int) -> str:
+    return f"{a}/{b} ({a / b:.0%})".replace(".", ",") if b else "—"
+
+
+def laufname(e: dict) -> str:
+    """Modell, und wo es einen gibt, der Stand („vor #1493“)."""
+    return e["modell"] + (f" ({e['etikett']})" if e.get("etikett") else "")
+
+
+def _vergleichslauf(e: dict) -> bool:
+    """Ein Lauf auf einem ÄLTEREN Stand — er steht in den Tabellen zum
+    Vergleich, aber nicht in der Arbeitsliste: Die soll zeigen, was HEUTE fehlt."""
+    return str(e.get("etikett") or "").startswith("vor ")
+
+
+def tabelle_kategorien(laeufe: list[dict]) -> list[str]:
+    """Kategorie × Modell: Anteil ok, dazu die Kontextfehler."""
+    kategorien = sorted({z["kategorie"] or "?" for e in laeufe for z in e["faelle"]})
+    kopf = "| Kategorie | Fälle | " + " | ".join(
+        f"{laufname(e)} ok | Kontextfehler" for e in laeufe) + " |"
+    aus = [kopf, "|---|---:|" + "---:|---:|" * len(laeufe)]
+    for kat in kategorien:
+        zellen = []
+        n = 0
+        for e in laeufe:
+            zs = [z for z in e["faelle"] if (z["kategorie"] or "?") == kat]
+            n = len(zs)
+            ok = sum(1 for z in zs if z["fehlerart"] == "ok")
+            kf = sum(1 for z in zs if z["fehlerart"].startswith("kontext_"))
+            zellen += [_pct(ok, len(zs)), str(kf)]
+        aus.append(f"| {kat} | {n} | " + " | ".join(zellen) + " |")
+    return aus
+
+
+def tabelle_saetze(laeufe: list[dict]) -> list[str]:
+    """Haushaltsfälle und Ratsfälle getrennt — sie messen Verschiedenes."""
+    aus = ["| Lauf | Fallsatz | Fälle | ok | Kontextfehler | Modellfehler | davon falsch/erfunden |",
+           "|---|---|---:|---:|---:|---:|---:|"]
+    for e in laeufe:
+        for satz, pruef in (("Haushalt", True), ("Rat", False)):
+            zs = [z for z in e["faelle"] if z["id"].startswith("hh-") is pruef]
+            if not zs:
+                continue
+            arten = Counter(z["fehlerart"] for z in zs)
+            modell = sum(v for k, v in arten.items() if k.startswith("modell_"))
+            hart = arten.get("modell_falsch", 0) + arten.get("modell_erfunden", 0)
+            kf = arten.get("kontext_fehlt", 0) + arten.get("kontext_falsch_zugeordnet", 0)
+            aus.append(f"| {laufname(e)} | {satz} | {len(zs)} | {_pct(arten.get('ok', 0), len(zs))} "
+                       f"| {kf} | {modell} | {hart} |")
+    return aus
+
+
+def tabelle_kanaele(laeufe: list[dict]) -> list[str]:
+    aus = ["| Modell | Kanal | Fälle | ok | Kontext ok | " +
+           " | ".join(fa.FEHLERARTEN[1:]) + " |",
+           "|---|---|---:|---:|---:|" + "---:|" * (len(fa.FEHLERARTEN) - 1)]
+    for e in laeufe:
+        for kanal in ("lotti", "rat", "alle"):
+            zs = [z for z in e["faelle"] if kanal == "alle" or z["kanal"] == kanal]
+            if not zs:
+                continue
+            arten = Counter(z["fehlerart"] for z in zs)
+            ok = arten.get("ok", 0)
+            aus.append(f"| {laufname(e)} | {kanal} | {len(zs)} | {_pct(ok, len(zs))} | "
+                       f"{sum(1 for z in zs if z['kontext_ok'])} | "
+                       + " | ".join(str(arten.get(a, 0)) for a in fa.FEHLERARTEN[1:]) + " |")
+    return aus
+
+
+def kontextfehler(laeufe: list[dict], faelle: list[dict]) -> dict[str, list[dict]]:
+    """Die Arbeitsliste: je Baustein die Fälle, deren Kontext nicht stimmte.
+
+    Ein Kontextfehler hängt nicht am Modell — der Prompt ist bis auf die
+    Analyse derselbe. Gezählt wird deshalb, was in IRGENDEINEM Lauf fehlte,
+    mit dem Beispiel aus dem ersten.
+    """
+    nach_id = {f["id"]: f for f in faelle}
+    gruppen: dict[str, list[dict]] = defaultdict(list)
+    gesehen: set[str] = set()
+    for e in [e for e in laeufe if not _vergleichslauf(e)]:
+        for z in e["faelle"]:
+            if not z["fehlerart"].startswith("kontext_") or z["id"] in gesehen:
+                continue
+            gesehen.add(z["id"])
+            fall = nach_id.get(z["id"], {})
+            for g, gb in zip(fall.get("gold") or [], z["gold"]):
+                if gb["kontext"]["status"] == "ok":
+                    continue
+                # Die Ratsfälle tragen keinen Baustein: Dort liefert das
+                # Retrieval (bzw. Lottis Seitenblock) den Beschluss.
+                baustein = (g.get("baustein") or fall.get("baustein")
+                            or (f"Lotti-Seitenblock ({fall.get('route')})"
+                                if fall.get("kanal") == "lotti"
+                                else f"Retrieval/Beschlusskontext ({fall.get('kategorie')})"))
+                gruppen[baustein].append({
+                    "id": z["id"], "kanal": z["kanal"], "route": z.get("route"),
+                    "frage": z["frage"], "fakt": gb["fakt"], "status": gb["kontext"]["status"],
+                    "im_kontext": gb["kontext"]["fundstellen"], "jahre": gb["kontext"]["jahre"],
+                    "bausteine": z.get("bausteine") or [], "weg": z.get("weg"),
+                    "bekannt": fall.get("bekannt"), "quelle": g.get("quelle"),
+                })
+    return dict(sorted(gruppen.items(), key=lambda kv: -len(kv[1])))
+
+
+def letzte_laeufe(ordner: Path = ERGEBNISSE) -> list[dict]:
+    """Je Modell und Stand der jüngste Lauf — Vergleichsläufe zuerst."""
+    je: dict[str, dict] = {}
+    for pfad in sorted(ordner.glob("*.json")):
+        e = json.loads(pfad.read_text(encoding="utf-8"))
+        e["_datei"] = str(pfad.relative_to(WURZEL))
+        je[laufname(e)] = e
+    return sorted(je.values(), key=lambda e: (not _vergleichslauf(e), e["modell"]))
+
+
+def bericht_teil(laeufe: list[dict], faelle: list[dict]) -> str:
+    """Der erzeugte Teil von ``docs/fakten-eval.md`` (zwischen den Marken)."""
+    zeilen = ["## Ergebnis", ""]
+    for e in laeufe:
+        k = e["kennzahlen"]
+        zeilen.append(f"- **{laufname(e)}** ({e['zeitstempel']}, `{e.get('_datei', '')}`): "
+                      f"{_pct(k['ok'], k['n_cases'])} ok, Kontext stimmte in {k['kontext_ok']} "
+                      f"Fällen, {k['modellfehler']} Modellfehler (davon {k['erfunden']} erfunden), "
+                      f"{k['kontextfehler']} Kontextfehler, {k['ausfaelle']} Ausfälle, "
+                      f"p50 {k['p50_ms']} ms" + (f", Kosten {e['kosten_usd']:.2f} $"
+                                                  if e.get("kosten_usd") is not None else ""))
+    zeilen += ["", "### Je Fallsatz", ""] + tabelle_saetze(laeufe)
+    zeilen += ["", "### Je Kanal und Fehlerart", ""] + tabelle_kanaele(laeufe)
+    zeilen += ["", "### Je Kategorie", ""] + tabelle_kategorien(laeufe)
+    zeilen += ["", "## Kontextfehler — die Arbeitsliste", "",
+               "Gruppiert nach dem Codeteil, der den Fakt hätte liefern müssen. Je Eintrag: "
+               "Frage, Goldfakt, und was im Prompt stand (bei „falsch zugeordnet“ die Zeile "
+               "samt dem Jahr, unter dem sie steht; bei „fehlt“ die Bausteine, die da waren).",
+               ""]
+    for baustein, eintraege in kontextfehler(laeufe, faelle).items():
+        zeilen.append(f"### `{baustein}` — {len(eintraege)}")
+        zeilen.append("")
+        for x in eintraege:
+            wo = f"{x['kanal']}" + (f" `{x['route']}`" if x.get("route") else "")
+            if x["status"] == "falsch_zugeordnet":
+                stand = "; ".join(f"„{s}“ (Jahr {j})" for s, j in zip(x["im_kontext"], x["jahre"]))
+            else:
+                stand = ("nicht da; Bausteine im Prompt: " + ", ".join(x["bausteine"][:6])
+                         if x["bausteine"] else "nicht da; kein Modellaufruf" if x["weg"] == "deterministic"
+                         else "nicht da; keine Haushalts-Bausteine im Prompt")
+            bekannt = " **(bekannt, Fix unterwegs)**" if x.get("bekannt") else ""
+            zeilen.append(f"- `{x['id']}` ({wo}): „{x['frage']}“ — Gold: {x['fakt']} — "
+                          f"{x['status'].replace('_', ' ')}: {stand}{bekannt}")
+        zeilen.append("")
+    return "\n".join(zeilen).rstrip() + "\n"
+
+
+MARKE_AN, MARKE_AUS = "<!-- fakten-eval:anfang -->", "<!-- fakten-eval:ende -->"
+
+
+def bericht_schreiben(laeufe: list[dict], faelle: list[dict], ziel: Path = BERICHT) -> None:
+    teil = bericht_teil(laeufe, faelle)
+    alt = ziel.read_text(encoding="utf-8") if ziel.exists() else ""
+    if MARKE_AN in alt and MARKE_AUS in alt:
+        vor, rest = alt.split(MARKE_AN, 1)
+        _, nach = rest.split(MARKE_AUS, 1)
+        neu = f"{vor}{MARKE_AN}\n{teil}{MARKE_AUS}{nach}"
+    else:
+        neu = f"{alt.rstrip()}\n\n{MARKE_AN}\n{teil}{MARKE_AUS}\n"
+    ziel.write_text(neu, encoding="utf-8")
+
+
+# --------------------------------------------------------------------------- #
+# Aufruf
+# --------------------------------------------------------------------------- #
+
+def _faelle_waehlen(alle: list[dict], nur: str | None, limit: int | None) -> list[dict]:
+    if nur:
+        wahl = {x.strip() for x in nur.split(",") if x.strip()}
+        alle = [f for f in alle if f["id"] in wahl or (f.get("kategorie") or "") in wahl
+                or f["kanal"] in wahl]
+    return alle[:limit] if limit else alle
+
+
+def main(argv: list[str] | None = None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    befehl = argv.pop(0) if argv and argv[0] in ("messen", "nachwerten", "bericht") else "messen"
+    ap = argparse.ArgumentParser(description=(__doc__ or "").splitlines()[0])
+    ap.add_argument("datei", nargs="?", help="nachwerten: das gespeicherte Ergebnis")
+    ap.add_argument("--modell")
+    ap.add_argument("--faelle", help="Fall-Dateien, kommagetrennt (Vorgabe: beide, soweit da)")
+    ap.add_argument("--nur", help="Fall-IDs, Kategorien oder Kanal, kommagetrennt")
+    ap.add_argument("--limit", type=int)
+    ap.add_argument("--ohne-zdr", action="store_true")
+    ap.add_argument("--basis", help="ein laufendes Backend statt eines eigenen")
+    ap.add_argument("--mitschnitt", type=Path, help="mit --basis: dessen Mitschnitt-Ordner")
+    ap.add_argument("--dazu", action="append", default=[],
+                    help="weitere Fall-Datei zusätzlich zur Vorgabe (z. B. aus einem offenen PR)")
+    ap.add_argument("--etikett", help="Stand des Laufs für den Bericht; „vor …“ = Vergleichslauf")
+    ap.add_argument("--nicht-speichern", action="store_true")
+    a = ap.parse_args(argv)
+    pfade = [Path(p) for p in a.faelle.split(",")] if a.faelle else None
+    faelle = lade(pfade)
+    bekannt = {f["id"] for f in faelle}
+    for extra in a.dazu:
+        faelle += [f for f in lade([Path(extra)]) if f["id"] not in bekannt]
+
+    if befehl == "bericht":
+        laeufe = letzte_laeufe()
+        bericht_schreiben(laeufe, faelle)
+        print(f"✓ {BERICHT.relative_to(WURZEL)} ({len(laeufe)} Läufe)")
+        return 0
+    if befehl == "nachwerten":
+        if not a.datei:
+            ap.error("nachwerten braucht die Ergebnisdatei")
+        pfad = Path(a.datei)
+        erg = nachwerten(json.loads(pfad.read_text(encoding="utf-8")), faelle)
+        speichern(erg, pfad)
+        print(json.dumps(erg["kennzahlen"], ensure_ascii=False, indent=1))
+        return 0
+
+    if not a.modell:
+        ap.error("--modell fehlt")
+    if not os.environ.get("OPENROUTER_API_KEY"):
+        from dotenv import load_dotenv
+        load_dotenv(WURZEL / ".env")
+    if not os.environ.get("OPENROUTER_API_KEY"):
+        raise SystemExit("OPENROUTER_API_KEY fehlt")
+    auswahl = _faelle_waehlen(faelle, a.nur, a.limit)
+    erg = ein_lauf(a.modell, auswahl, ohne_zdr=a.ohne_zdr, basis=a.basis, mitschnitt=a.mitschnitt)
+    if a.etikett:
+        erg["etikett"] = a.etikett
+    print(json.dumps(erg["kennzahlen"], ensure_ascii=False, indent=1))
+    print(f"Kosten: {erg['kosten']['usd']:.4f} $ für {erg['kosten']['aufrufe']} Aufrufe "
+          f"({erg['kosten']['ohne_kosten']} ohne Kostenwert) — "
+          f"{erg['kosten']['usd'] / max(1, len(auswahl)):.4f} $ je Fall")
+    if not a.nicht_speichern:
+        print(f"✓ {speichern(erg).relative_to(WURZEL)}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

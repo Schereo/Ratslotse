@@ -1,0 +1,3874 @@
+[
+ {
+  "id": "hh-schulden-stand-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/schulden",
+  "refs": {},
+  "heading": "Wie viel Schulden hat Oldenburg?",
+  "frage": "Wie hoch sind die Schulden der Stadt?",
+  "kategorie": "haushalt/schulden",
+  "baustein": "store.schulden_kontext (qa: schulden)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 336994000.0,
+    "einheit": "€",
+    "bezeichnung": "Schuldenstand Kern + Eigenbetriebe",
+    "quelle": "SELECT total FROM council_debt WHERE year = 2025",
+    "jahr": 2025,
+    "label": [
+     "Schuld",
+     "Jahresende",
+     "Stand"
+    ]
+   },
+   {
+    "art": "text",
+    "muss": [
+     [
+      "Eigenbetrieb",
+      "Eigenbetriebe"
+     ]
+    ],
+    "quelle": "council_debt: Abgrenzung Tabelle 1108 (Kernhaushalt und Eigenbetriebe)"
+   }
+  ],
+  "verboten": [
+   {
+    "art": "zahl",
+    "wert": 294851000.0,
+    "einheit": "€",
+    "grund": "Wert von 2024 als Stand 2025",
+    "quelle": "SELECT total FROM council_debt WHERE year = 2024",
+    "als_jahr": 2025
+   }
+  ],
+  "notiz": "Faktencheck lotti[0]: beide Modelle richtig — der Fall hält das fest."
+ },
+ {
+  "id": "hh-schulden-stand-rat",
+  "kanal": "rat",
+  "frage": "Wie hoch sind die Schulden der Stadt Oldenburg?",
+  "kategorie": "haushalt/schulden",
+  "baustein": "store.schulden_kontext (qa: schulden)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 336994000.0,
+    "einheit": "€",
+    "bezeichnung": "Schuldenstand Kern + Eigenbetriebe",
+    "quelle": "SELECT total FROM council_debt WHERE year = 2025",
+    "jahr": 2025,
+    "label": [
+     "Schuld",
+     "Jahresende",
+     "Stand"
+    ]
+   },
+   {
+    "art": "text",
+    "muss": [
+     [
+      "Eigenbetrieb",
+      "Eigenbetriebe"
+     ]
+    ],
+    "quelle": "council_debt: Abgrenzung Tabelle 1108 (Kernhaushalt und Eigenbetriebe)"
+   }
+  ],
+  "verboten": [
+   {
+    "art": "zahl",
+    "wert": 294851000.0,
+    "einheit": "€",
+    "grund": "Wert von 2024 als Stand 2025",
+    "quelle": "SELECT total FROM council_debt WHERE year = 2024",
+    "als_jahr": 2025
+   }
+  ],
+  "notiz": "Faktencheck rat[5]: Gemini las die Aufschlüsselung 2025 als 2024."
+ },
+ {
+  "id": "hh-schulden-stand-heute",
+  "kanal": "lotti",
+  "route": "/dashboard",
+  "refs": {},
+  "heading": "Heute",
+  "frage": "Wie hoch sind die Schulden der Stadt?",
+  "kategorie": "haushalt/schulden",
+  "baustein": "store.schulden_kontext (qa: schulden)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 336994000.0,
+    "einheit": "€",
+    "bezeichnung": "Schuldenstand Kern + Eigenbetriebe",
+    "quelle": "SELECT total FROM council_debt WHERE year = 2025",
+    "jahr": 2025,
+    "label": [
+     "Schuld",
+     "Jahresende",
+     "Stand"
+    ]
+   }
+  ],
+  "verboten": [
+   {
+    "art": "zahl",
+    "wert": 294851000.0,
+    "einheit": "€",
+    "grund": "Wert von 2024 als Stand 2025",
+    "quelle": "SELECT total FROM council_debt WHERE year = 2024",
+    "als_jahr": 2025
+   }
+  ],
+  "notiz": "Außerhalb des Haushalts-Bereichs: seit 22.09. zieht die Frage allein die Zahlen."
+ },
+ {
+  "id": "hh-schulden-auf-investitionen",
+  "kanal": "lotti",
+  "route": "/haushalt/investitionen",
+  "refs": {},
+  "heading": "Was gebaut wird",
+  "frage": "Wie viel Schulden hat die Stadt?",
+  "kategorie": "haushalt/schulden",
+  "baustein": "store.schulden_kontext (qa: schulden)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 336994000.0,
+    "einheit": "€",
+    "bezeichnung": "Schuldenstand Kern + Eigenbetriebe",
+    "quelle": "SELECT total FROM council_debt WHERE year = 2025",
+    "jahr": 2025,
+    "label": [
+     "Schuld",
+     "Jahresende",
+     "Stand"
+    ]
+   }
+  ],
+  "verboten": [
+   {
+    "art": "zahl",
+    "wert": 294851000.0,
+    "einheit": "€",
+    "grund": "Wert von 2024 als Stand 2025",
+    "quelle": "SELECT total FROM council_debt WHERE year = 2024",
+    "als_jahr": 2025
+   }
+  ],
+  "notiz": "Unpassende Seite: die Überschrift zieht Investitionen."
+ },
+ {
+  "id": "hh-schulden-prokopf-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/schulden",
+  "refs": {},
+  "heading": "Wie viel Schulden hat Oldenburg?",
+  "frage": "Wie viel Schulden hat Oldenburg pro Kopf?",
+  "kategorie": "haushalt/schulden",
+  "baustein": "store.schulden_kontext (qa: schulden)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 1908.0,
+    "einheit": "€",
+    "bezeichnung": "Schulden je Einwohner*in",
+    "quelle": "SELECT per_capita FROM council_debt WHERE year = 2025",
+    "jahr": 2025
+   }
+  ],
+  "verboten": [
+   {
+    "art": "zahl",
+    "wert": 1673.0,
+    "einheit": "€",
+    "grund": "je EW 2024 als 2025",
+    "quelle": "SELECT per_capita FROM council_debt WHERE year = 2024",
+    "als_jahr": 2025
+   }
+  ]
+ },
+ {
+  "id": "hh-schulden-prokopf-rat",
+  "kanal": "rat",
+  "frage": "Wie hoch ist die Verschuldung je Einwohner in Oldenburg?",
+  "kategorie": "haushalt/schulden",
+  "baustein": "store.schulden_kontext (qa: schulden)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 1908.0,
+    "einheit": "€",
+    "bezeichnung": "Schulden je Einwohner*in",
+    "quelle": "SELECT per_capita FROM council_debt WHERE year = 2025",
+    "jahr": 2025
+   }
+  ],
+  "verboten": [
+   {
+    "art": "zahl",
+    "wert": 1673.0,
+    "einheit": "€",
+    "grund": "je EW 2024 als 2025",
+    "quelle": "SELECT per_capita FROM council_debt WHERE year = 2024",
+    "als_jahr": 2025
+   }
+  ]
+ },
+ {
+  "id": "hh-schulden-kreditmarkt-2025",
+  "kanal": "lotti",
+  "route": "/haushalt/schulden",
+  "refs": {},
+  "heading": "Wie viel Schulden hat Oldenburg?",
+  "frage": "Wie viel Schulden hatte die Stadt Ende 2025 am Kreditmarkt?",
+  "kategorie": "haushalt/schulden",
+  "baustein": "store.schulden_kontext (qa: schulden)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 40804000.0,
+    "einheit": "€",
+    "bezeichnung": "Kreditmarktschulden",
+    "quelle": "SELECT credit_market FROM council_debt WHERE year = 2025",
+    "jahr": 2025,
+    "label": [
+     "Kreditmarkt"
+    ]
+   }
+  ],
+  "verboten": [
+   {
+    "art": "zahl",
+    "wert": 43691000.0,
+    "einheit": "€",
+    "grund": "Kreditmarkt 2024 als 2025",
+    "quelle": "SELECT credit_market FROM council_debt WHERE year = 2024",
+    "als_jahr": 2025
+   }
+  ],
+  "notiz": "Die Aufschlüsselung des jüngsten Jahres — der bekannte Zuordnungsfehler.",
+  "bekannt": "Faktencheck 23.09.: „davon“-Zeilen 2025 stehen unter „Ein Jahr davor (2024)“"
+ },
+ {
+  "id": "hh-schulden-eigenbetriebe-2025",
+  "kanal": "rat",
+  "frage": "Wie viel der städtischen Schulden entfielen Ende 2025 auf die Eigenbetriebe?",
+  "kategorie": "haushalt/schulden",
+  "baustein": "store.schulden_kontext (qa: schulden)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 296190000.0,
+    "einheit": "€",
+    "bezeichnung": "Schulden der Eigenbetriebe",
+    "quelle": "SELECT municipal_enterprises FROM council_debt WHERE year = 2025",
+    "jahr": 2025,
+    "label": [
+     "Eigenbetrieb"
+    ]
+   }
+  ],
+  "verboten": [
+   {
+    "art": "zahl",
+    "wert": 251160000.0,
+    "einheit": "€",
+    "grund": "Eigenbetriebe 2024 als 2025",
+    "quelle": "SELECT municipal_enterprises FROM council_debt WHERE year = 2024",
+    "als_jahr": 2025
+   }
+  ],
+  "bekannt": "Faktencheck 23.09.: „davon“-Zeilen 2025 stehen unter „Ein Jahr davor (2024)“"
+ },
+ {
+  "id": "hh-schulden-kern-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/schulden",
+  "refs": {},
+  "heading": "Wie viel Schulden hat Oldenburg?",
+  "frage": "Wie hoch ist der Schuldenstand des Kernhaushalts allein?",
+  "kategorie": "haushalt/schulden",
+  "baustein": "store.schulden_kontext (qa: schulden)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 43690972.0,
+    "einheit": "€",
+    "bezeichnung": "Kernhaushalt (nur Geldschulden)",
+    "quelle": "SELECT core_budget FROM council_integrated_debt WHERE year = 2024",
+    "jahr": 2024,
+    "oder": [
+     {
+      "wert": 40804000.0,
+      "quelle": "SELECT credit_market FROM council_debt WHERE year = 2025",
+      "jahr": 2025
+     }
+    ]
+   }
+  ],
+  "verboten": [],
+  "notiz": "Startfrage der Seite. Zwei ehrliche Antworten: Bilanz 2024 oder Kreditmarkt 2025."
+ },
+ {
+  "id": "hh-schulden-konzern-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/konzern",
+  "refs": {},
+  "heading": "Ist das die ganze Stadt?",
+  "frage": "Wie hoch sind die Schulden, wenn man alle Beteiligungen mitzählt?",
+  "kategorie": "haushalt/schulden",
+  "baustein": "store.schulden_kontext (qa: schulden)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 740330163.0,
+    "einheit": "€",
+    "bezeichnung": "Integrierte Schulden Konzern Stadt",
+    "quelle": "SELECT total FROM council_integrated_debt WHERE year = 2024",
+    "jahr": 2024
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-schulden-konzern-rat",
+  "kanal": "rat",
+  "frage": "Wie hoch ist die Verschuldung des Konzerns Stadt Oldenburg mit allen Beteiligungen?",
+  "kategorie": "haushalt/schulden",
+  "baustein": "store.schulden_kontext (qa: schulden)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 740330163.0,
+    "einheit": "€",
+    "bezeichnung": "Integrierte Schulden Konzern Stadt",
+    "quelle": "SELECT total FROM council_integrated_debt WHERE year = 2024",
+    "jahr": 2024
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-schulden-2020-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/schulden",
+  "refs": {},
+  "heading": "Wie viel Schulden hat Oldenburg?",
+  "frage": "Wie hoch waren die Schulden der Stadt 2020?",
+  "kategorie": "haushalt/schulden",
+  "baustein": "store.schulden_kontext (qa: schulden)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 269230000.0,
+    "einheit": "€",
+    "bezeichnung": "Schuldenstand 2020",
+    "quelle": "SELECT total FROM council_debt WHERE year = 2020",
+    "jahr": 2020
+   }
+  ],
+  "verboten": [
+   {
+    "art": "zahl",
+    "wert": 336994000.0,
+    "einheit": "€",
+    "grund": "jüngster Stand statt 2020",
+    "quelle": "SELECT total FROM council_debt WHERE year = 2025",
+    "als_jahr": 2020
+   }
+  ],
+  "notiz": "Jahres-Falle: ein älteres Jahr, das die Reihe hat (1995–2025)."
+ },
+ {
+  "id": "hh-schulden-entwicklung-rat",
+  "kanal": "rat",
+  "frage": "Wie haben sich die Schulden der Stadt seit 2015 entwickelt?",
+  "kategorie": "haushalt/schulden",
+  "baustein": "store.schulden_kontext (qa: schulden)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 211503000.0,
+    "einheit": "€",
+    "bezeichnung": "Schuldenstand 2015",
+    "quelle": "SELECT total FROM council_debt WHERE year = 2015",
+    "jahr": 2015
+   },
+   {
+    "art": "zahl",
+    "wert": 336994000.0,
+    "einheit": "€",
+    "bezeichnung": "Schuldenstand Kern + Eigenbetriebe",
+    "quelle": "SELECT total FROM council_debt WHERE year = 2025",
+    "jahr": 2025,
+    "label": [
+     "Schuld",
+     "Jahresende",
+     "Stand"
+    ]
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-schulden-rekord-rat",
+  "kanal": "rat",
+  "frage": "In welchem Jahr hatte die Stadt die höchsten Schulden?",
+  "kategorie": "haushalt/schulden",
+  "baustein": "store.schulden_kontext (qa: schulden)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 336994000.0,
+    "einheit": "€",
+    "bezeichnung": "Höchster Schuldenstand der Reihe",
+    "quelle": "SELECT total FROM council_debt ORDER BY total DESC LIMIT 1",
+    "jahr": 2025
+   }
+  ],
+  "verboten": [],
+  "notiz": "Rekordjahr-Falle: 2025 knapp vor 1998 (325,5 Mio. €)."
+ },
+ {
+  "id": "hh-schulden-zinsen-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/schulden",
+  "refs": {},
+  "heading": "Wie viel Schulden hat Oldenburg?",
+  "frage": "Wie viel Zinsen zahlt die Stadt für ihre Schulden?",
+  "kategorie": "haushalt/schulden",
+  "baustein": "store.ansatz_fuer_begriffe (qa: ansatz)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 4225401.18,
+    "einheit": "€",
+    "bezeichnung": "Zinsaufwendungen Ist 2024",
+    "quelle": "SELECT result FROM council_income_statement WHERE year = 2024 AND sub_budget_no IS NULL AND nr = 17",
+    "jahr": 2024,
+    "oder": [
+     {
+      "wert": 2468350.0,
+      "quelle": "SELECT amount FROM council_income_budget WHERE plan_budget_year = 2026 AND year = 2026 AND nr = 17",
+      "jahr": 2026
+     }
+    ]
+   }
+  ],
+  "verboten": [],
+  "notiz": "Die Seite verspricht „was jährlich an Zinsen und Tilgung fällig wird“."
+ },
+ {
+  "id": "hh-schulden-tilgung-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/schulden",
+  "refs": {},
+  "heading": "Wie viel Schulden hat Oldenburg?",
+  "frage": "Wie viel tilgt die Stadt Oldenburg jedes Jahr?",
+  "kategorie": "haushalt/schulden",
+  "baustein": "council/geld/bylaw.py",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 2905300.0,
+    "einheit": "€",
+    "bezeichnung": "Auszahlungen Finanzierungstätigkeit",
+    "quelle": "SELECT out_financing FROM council_budget_bylaw WHERE year = 2026 AND supplement = 0",
+    "jahr": 2026,
+    "oder": [
+     {
+      "wert": -2886146.04,
+      "quelle": "SELECT result FROM council_cash_flow_statement WHERE year = 2024 AND role = 'balance_financing'",
+      "jahr": 2024
+     }
+    ]
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-buergschaften-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/schulden",
+  "refs": {},
+  "heading": "Wie viel Schulden hat Oldenburg?",
+  "frage": "Für wie viel Geld bürgt die Stadt?",
+  "kategorie": "haushalt/schulden",
+  "baustein": "store.schulden_kontext (qa: schulden)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 220300000.0,
+    "einheit": "€",
+    "bezeichnung": "Bürgschaften",
+    "quelle": "SELECT balance FROM council_buergschaften WHERE year = 2024",
+    "jahr": 2024
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-buergschaften-rat",
+  "kanal": "rat",
+  "frage": "Wofür bürgt die Stadt Oldenburg und in welcher Höhe?",
+  "kategorie": "haushalt/schulden",
+  "baustein": "store.schulden_kontext (qa: schulden)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 220300000.0,
+    "einheit": "€",
+    "bezeichnung": "Bürgschaften",
+    "quelle": "SELECT balance FROM council_buergschaften WHERE year = 2024",
+    "jahr": 2024
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-kredite-2026-rat",
+  "kanal": "rat",
+  "frage": "Wie viel Kredit darf die Stadt 2026 aufnehmen?",
+  "kategorie": "haushalt/satzung",
+  "baustein": "council/geld/bylaw.py",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 100000000.0,
+    "einheit": "€",
+    "bezeichnung": "Höchstbetrag Liquiditätskredite",
+    "quelle": "SELECT liquidity_loans FROM council_budget_bylaw WHERE year = 2026 AND supplement = 0",
+    "jahr": 2026
+   },
+   {
+    "art": "text",
+    "muss": [
+     [
+      "Liquiditätskredit",
+      "Liquiditätskredite",
+      "Kassenkredit"
+     ]
+    ],
+    "quelle": "council_budget_bylaw.liquidity_loans, year=2026"
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-satzung-liquiditaet-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/schulden",
+  "refs": {},
+  "heading": "Wie viel Schulden hat Oldenburg?",
+  "frage": "Wie hoch darf der Liquiditätskredit sein?",
+  "kategorie": "haushalt/satzung",
+  "baustein": "council/geld/bylaw.py",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 100000000.0,
+    "einheit": "€",
+    "bezeichnung": "Höchstbetrag Liquiditätskredite",
+    "quelle": "SELECT liquidity_loans FROM council_budget_bylaw WHERE year = 2026 AND supplement = 0",
+    "jahr": 2026
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-plan-aufwand-2026-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt",
+  "refs": {},
+  "heading": "Haushalt — Übersicht",
+  "frage": "Wie viel gibt die Stadt 2026 aus?",
+  "kategorie": "haushalt/plan",
+  "baustein": "store.haushalt_fuer_begriffe (qa: plan)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 883918387.0,
+    "einheit": "€",
+    "bezeichnung": "Aufwendungen Plan 2026",
+    "quelle": "SELECT expenses FROM council_budget WHERE year = 2026 AND is_total = 1",
+    "jahr": 2026,
+    "oder": [
+     {
+      "wert": 880775058.0,
+      "quelle": "SELECT amount FROM council_income_budget WHERE plan_budget_year = 2026 AND year = 2026 AND nr = 20",
+      "jahr": 2026
+     },
+     {
+      "wert": 885489388.0,
+      "quelle": "SELECT expenses FROM council_budget_amendments_totals WHERE budget_year = 2026 AND list_key = 'fc_decided' AND year = 2026 AND kind = 'final_total'",
+      "jahr": 2026
+     }
+    ]
+   }
+  ],
+  "verboten": [
+   {
+    "art": "zahl",
+    "wert": 817263097.0,
+    "einheit": "€",
+    "grund": "Plan 2025 als 2026",
+    "quelle": "SELECT expenses FROM council_budget WHERE year = 2025 AND is_total = 1",
+    "als_jahr": 2026
+   }
+  ]
+ },
+ {
+  "id": "hh-plan-aufwand-2026-rat",
+  "kanal": "rat",
+  "frage": "Wie viel Geld will die Stadt Oldenburg 2026 ausgeben?",
+  "kategorie": "haushalt/plan",
+  "baustein": "store.haushalt_fuer_begriffe (qa: plan)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 883918387.0,
+    "einheit": "€",
+    "bezeichnung": "Aufwendungen Plan 2026",
+    "quelle": "SELECT expenses FROM council_budget WHERE year = 2026 AND is_total = 1",
+    "jahr": 2026,
+    "oder": [
+     {
+      "wert": 880775058.0,
+      "quelle": "SELECT amount FROM council_income_budget WHERE plan_budget_year = 2026 AND year = 2026 AND nr = 20",
+      "jahr": 2026
+     },
+     {
+      "wert": 885489388.0,
+      "quelle": "SELECT expenses FROM council_budget_amendments_totals WHERE budget_year = 2026 AND list_key = 'fc_decided' AND year = 2026 AND kind = 'final_total'",
+      "jahr": 2026
+     }
+    ]
+   }
+  ],
+  "verboten": [
+   {
+    "art": "zahl",
+    "wert": 817263097.0,
+    "einheit": "€",
+    "grund": "Plan 2025 als 2026",
+    "quelle": "SELECT expenses FROM council_budget WHERE year = 2025 AND is_total = 1",
+    "als_jahr": 2026
+   }
+  ]
+ },
+ {
+  "id": "hh-plan-ertrag-2026-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/einnahmen",
+  "refs": {},
+  "heading": "Woher kommt das Geld?",
+  "frage": "Wie viel nimmt die Stadt 2026 ein?",
+  "kategorie": "haushalt/plan",
+  "baustein": "store.haushalt_fuer_begriffe (qa: plan)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 812860891.0,
+    "einheit": "€",
+    "bezeichnung": "Erträge Plan 2026",
+    "quelle": "SELECT revenues FROM council_budget WHERE year = 2026 AND is_total = 1",
+    "jahr": 2026,
+    "oder": [
+     {
+      "wert": 816750040.0,
+      "quelle": "SELECT revenues FROM council_budget_amendments_totals WHERE budget_year = 2026 AND list_key = 'fc_decided' AND year = 2026 AND kind = 'final_total'",
+      "jahr": 2026
+     },
+     {
+      "wert": 788574714.0,
+      "quelle": "SELECT amount FROM council_income_budget WHERE plan_budget_year = 2026 AND year = 2026 AND nr = 12",
+      "jahr": 2026
+     }
+    ]
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-plan-defizit-2026-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt",
+  "refs": {},
+  "heading": "Haushalt — Übersicht",
+  "frage": "Mit welchem Defizit plant die Stadt 2026?",
+  "kategorie": "haushalt/plan",
+  "baustein": "store.haushalt_fuer_begriffe (qa: plan)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": -71057496.0,
+    "einheit": "€",
+    "bezeichnung": "Fehlbetrag Plan 2026",
+    "quelle": "SELECT result FROM council_budget WHERE year = 2026 AND is_total = 1",
+    "jahr": 2026,
+    "oder": [
+     {
+      "wert": -68739348.0,
+      "quelle": "SELECT balance FROM council_budget_amendments_totals WHERE budget_year = 2026 AND list_key = 'fc_decided' AND year = 2026 AND kind = 'final_total'",
+      "jahr": 2026
+     },
+     {
+      "wert": -68679446.0,
+      "quelle": "SELECT budgeted FROM council_budget_execution WHERE budget_year = 2026 AND as_of = '2026-06-30' AND budget = 'result' AND kind = 'result' AND is_total = 1 AND label = 'Summen'",
+      "jahr": 2026
+     }
+    ]
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-plan-defizit-2026-rat",
+  "kanal": "rat",
+  "frage": "Wie groß ist das geplante Defizit im Haushalt 2026?",
+  "kategorie": "haushalt/plan",
+  "baustein": "store.haushalt_fuer_begriffe (qa: plan)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": -71057496.0,
+    "einheit": "€",
+    "bezeichnung": "Fehlbetrag Plan 2026",
+    "quelle": "SELECT result FROM council_budget WHERE year = 2026 AND is_total = 1",
+    "jahr": 2026,
+    "oder": [
+     {
+      "wert": -68739348.0,
+      "quelle": "SELECT balance FROM council_budget_amendments_totals WHERE budget_year = 2026 AND list_key = 'fc_decided' AND year = 2026 AND kind = 'final_total'",
+      "jahr": 2026
+     },
+     {
+      "wert": -68679446.0,
+      "quelle": "SELECT budgeted FROM council_budget_execution WHERE budget_year = 2026 AND as_of = '2026-06-30' AND budget = 'result' AND kind = 'result' AND is_total = 1 AND label = 'Summen'",
+      "jahr": 2026
+     }
+    ]
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-plan-groesster-bereich-rat",
+  "kanal": "rat",
+  "frage": "Welcher Bereich des städtischen Haushalts kostet 2026 am meisten?",
+  "kategorie": "haushalt/plan",
+  "baustein": "store.haushalt_fuer_begriffe (qa: plan)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     "Soziales"
+    ],
+    "quelle": "council_budget year=2026: größte expenses = Soziales und Gesundheit"
+   },
+   {
+    "art": "zahl",
+    "wert": 283120052.0,
+    "einheit": "€",
+    "bezeichnung": "Aufwendungen Soziales und Gesundheit",
+    "quelle": "SELECT expenses FROM council_budget WHERE year = 2026 AND area = 'Soziales und Gesundheit'",
+    "jahr": 2026
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-plan-meiste-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt",
+  "refs": {},
+  "heading": "Haushalt — Übersicht",
+  "frage": "Wofür gibt die Stadt am meisten aus?",
+  "kategorie": "haushalt/plan",
+  "baustein": "store.haushalt_fuer_begriffe (qa: plan)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     "Soziales"
+    ],
+    "quelle": "council_budget year=2026: größte expenses = Soziales und Gesundheit"
+   },
+   {
+    "art": "zahl",
+    "wert": 283120052.0,
+    "einheit": "€",
+    "bezeichnung": "Aufwendungen Soziales und Gesundheit",
+    "quelle": "SELECT expenses FROM council_budget WHERE year = 2026 AND area = 'Soziales und Gesundheit'",
+    "jahr": 2026,
+    "pflicht": false
+   }
+  ],
+  "verboten": [],
+  "notiz": "Startfrage der Übersicht."
+ },
+ {
+  "id": "hh-plan-jugend-2026-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/produkte",
+  "refs": {},
+  "heading": "Was kostet eigentlich …?",
+  "frage": "Was kostet der Bereich Jugend und Familie 2026?",
+  "kategorie": "haushalt/plan",
+  "baustein": "store.haushalt_fuer_begriffe (qa: plan)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 169215200.0,
+    "einheit": "€",
+    "bezeichnung": "Aufwendungen Jugend und Familie",
+    "quelle": "SELECT expenses FROM council_budget WHERE year = 2026 AND area = 'Jugend und Familie'",
+    "jahr": 2026,
+    "oder": [
+     {
+      "wert": 129875119.0,
+      "quelle": "SELECT -result FROM council_budget WHERE year = 2026 AND area = 'Jugend und Familie'",
+      "jahr": 2026
+     }
+    ]
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-plan-schule-2025-rat",
+  "kanal": "rat",
+  "frage": "Wie viel war 2025 für Schule und Bildung eingeplant?",
+  "kategorie": "haushalt/plan",
+  "baustein": "store.haushalt_fuer_begriffe (qa: plan)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 68890722.0,
+    "einheit": "€",
+    "bezeichnung": "Aufwendungen Schule und Bildung 2025",
+    "quelle": "SELECT expenses FROM council_budget WHERE year = 2025 AND area = 'Schule und Bildung'",
+    "jahr": 2025,
+    "oder": [
+     {
+      "wert": 59155571.0,
+      "quelle": "SELECT -result FROM council_budget WHERE year = 2025 AND area = 'Schule und Bildung'",
+      "jahr": 2025
+     }
+    ]
+   }
+  ],
+  "verboten": [
+   {
+    "art": "zahl",
+    "wert": 75319287.0,
+    "einheit": "€",
+    "grund": "Plan 2026 als 2025",
+    "quelle": "SELECT expenses FROM council_budget WHERE year = 2026 AND area = 'Schule und Bildung'",
+    "als_jahr": 2025
+   }
+  ],
+  "notiz": "Jahres-Falle: ein älterer Plan, der nicht der jüngste ist."
+ },
+ {
+  "id": "hh-plan-personal-rat",
+  "kanal": "rat",
+  "frage": "Was kostet das Personal der Stadt im Jahr 2026?",
+  "kategorie": "haushalt/plan",
+  "baustein": "store.ansatz_fuer_begriffe (qa: ansatz)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 209443324.0,
+    "einheit": "€",
+    "bezeichnung": "Personalaufwendungen Plan 2026",
+    "quelle": "SELECT amount FROM council_income_budget WHERE plan_budget_year = 2026 AND year = 2026 AND nr = 13",
+    "jahr": 2026
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-plan-personal-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/personal",
+  "refs": {},
+  "heading": "Wer macht die Arbeit?",
+  "frage": "Wie viel gibt die Stadt 2026 für Personal aus?",
+  "kategorie": "haushalt/plan",
+  "baustein": "store.ansatz_fuer_begriffe (qa: ansatz)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 209443324.0,
+    "einheit": "€",
+    "bezeichnung": "Personalaufwendungen Plan 2026",
+    "quelle": "SELECT amount FROM council_income_budget WHERE plan_budget_year = 2026 AND year = 2026 AND nr = 13",
+    "jahr": 2026
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-plan-transfer-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/pflicht",
+  "refs": {},
+  "heading": "Muss oder kann?",
+  "frage": "Wie viel gibt die Stadt 2026 für Transferleistungen wie Sozialhilfe aus?",
+  "kategorie": "haushalt/plan",
+  "baustein": "store.ansatz_fuer_begriffe (qa: ansatz)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 390460256.0,
+    "einheit": "€",
+    "bezeichnung": "Transferaufwendungen Plan 2026",
+    "quelle": "SELECT amount FROM council_income_budget WHERE plan_budget_year = 2026 AND year = 2026 AND nr = 18",
+    "jahr": 2026
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-ergebnis-finanz-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt",
+  "refs": {},
+  "heading": "Haushalt — Übersicht",
+  "frage": "Was ist der Unterschied zwischen Ergebnishaushalt und Finanzhaushalt?",
+  "kategorie": "haushalt/begriffe",
+  "baustein": "kern/glossar.py + Seitenwissen (kern/knowledge.py)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "Ertrag",
+      "Erträge",
+      "einnimmt",
+      "Einnahmen"
+     ],
+     [
+      "Aufwand",
+      "Aufwendungen"
+     ],
+     [
+      "Einzahlung",
+      "Auszahlung",
+      "ein- und ausgeht",
+      "tatsächlich fließt",
+      "tatsächlich geflossen"
+     ]
+    ],
+    "quelle": "Glossar (kern/glossar.py): Ergebnishaushalt, Finanzhaushalt"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Faktencheck lotti[3]: beide richtig."
+ },
+ {
+  "id": "hh-konzern-groesse-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt",
+  "refs": {},
+  "heading": "Haushalt — Übersicht",
+  "frage": "Wie groß ist der Haushalt mit den Eigenbetrieben?",
+  "kategorie": "haushalt/konzern",
+  "baustein": "store.konzern_kontext (qa: konzern)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 1234483072.81,
+    "einheit": "€",
+    "bezeichnung": "Konzern: Summe ordentliche Aufwendungen (Gesamtabschluss)",
+    "quelle": "SELECT amount FROM council_group_items WHERE year = 2024 AND role = 'expenses_total'",
+    "jahr": 2024
+   },
+   {
+    "art": "zahl",
+    "wert": 764416000.0,
+    "einheit": "€",
+    "bezeichnung": "Kernverwaltung: Aufwendungen 2024",
+    "quelle": "SELECT amount_keur FROM council_group_entities WHERE year = 2024 AND kind = 'expenses' AND entity = 'Kernverwaltung (Stadt Oldenburg)' × 1000",
+    "jahr": 2024,
+    "pflicht": false
+   }
+  ],
+  "verboten": [],
+  "notiz": "Startfrage der Übersicht; PR 27 „zwei Zählweisen“."
+ },
+ {
+  "id": "hh-ist-abweichung-2024-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/plan-ist",
+  "refs": {},
+  "heading": "Geplant und geworden",
+  "frage": "Wie stark wich das Ergebnis 2024 vom Ansatz ab?",
+  "kategorie": "haushalt/ist",
+  "baustein": "store.result_actual_for_terms (qa: ist)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 34641139.1,
+    "einheit": "€",
+    "bezeichnung": "ordentliches Ergebnis Ist 2024",
+    "quelle": "SELECT result FROM council_income_statement WHERE year = 2024 AND sub_budget_no IS NULL AND nr = 21",
+    "jahr": 2024
+   },
+   {
+    "art": "zahl",
+    "wert": -34264479.49,
+    "einheit": "€",
+    "bezeichnung": "ordentliches Ergebnis Ansatz 2024",
+    "quelle": "SELECT budgeted FROM council_income_statement WHERE year = 2024 AND sub_budget_no IS NULL AND nr = 21",
+    "jahr": 2024
+   }
+  ],
+  "verboten": [],
+  "notiz": "Startfrage der Seite."
+ },
+ {
+  "id": "hh-ist-aufwand-2024-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/plan-ist",
+  "refs": {},
+  "heading": "Geplant und geworden",
+  "frage": "Wie viel hat die Stadt 2024 tatsächlich ausgegeben?",
+  "kategorie": "haushalt/ist",
+  "baustein": "store.result_actual_for_terms (qa: ist)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 764416063.76,
+    "einheit": "€",
+    "bezeichnung": "Summe ordentliche Aufwendungen Ist 2024",
+    "quelle": "SELECT result FROM council_income_statement WHERE year = 2024 AND sub_budget_no IS NULL AND nr = 20",
+    "jahr": 2024,
+    "oder": [
+     {
+      "wert": 764745000.0,
+      "quelle": "SELECT amount FROM council_expense_series WHERE year = 2024",
+      "jahr": 2024
+     }
+    ]
+   }
+  ],
+  "verboten": [],
+  "notiz": "Startfrage der Seite. Plan-statt-Ist-Falle."
+ },
+ {
+  "id": "hh-ist-aufwand-2024-rat",
+  "kanal": "rat",
+  "frage": "Wie viel hat die Stadt Oldenburg 2024 tatsächlich ausgegeben?",
+  "kategorie": "haushalt/ist",
+  "baustein": "store.result_actual_for_terms (qa: ist)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 764416063.76,
+    "einheit": "€",
+    "bezeichnung": "Summe ordentliche Aufwendungen Ist 2024",
+    "quelle": "SELECT result FROM council_income_statement WHERE year = 2024 AND sub_budget_no IS NULL AND nr = 20",
+    "jahr": 2024,
+    "oder": [
+     {
+      "wert": 764745000.0,
+      "quelle": "SELECT amount FROM council_expense_series WHERE year = 2024",
+      "jahr": 2024
+     }
+    ]
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-ist-aufwand-2023-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/plan-ist",
+  "refs": {},
+  "heading": "Geplant und geworden",
+  "frage": "Wie viel hat die Stadt 2023 tatsächlich ausgegeben?",
+  "kategorie": "haushalt/ist",
+  "baustein": "store.result_actual_for_terms (qa: ist)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 683032270.32,
+    "einheit": "€",
+    "bezeichnung": "Summe ordentliche Aufwendungen Ist 2023",
+    "quelle": "SELECT result FROM council_income_statement WHERE year = 2023 AND sub_budget_no IS NULL AND nr = 20",
+    "jahr": 2023,
+    "oder": [
+     {
+      "wert": 683319000.0,
+      "quelle": "SELECT amount FROM council_expense_series WHERE year = 2023",
+      "jahr": 2023
+     }
+    ]
+   }
+  ],
+  "verboten": [
+   {
+    "art": "zahl",
+    "wert": 764416063.76,
+    "einheit": "€",
+    "grund": "Ist 2024 als 2023",
+    "quelle": "SELECT result FROM council_income_statement WHERE year = 2024 AND sub_budget_no IS NULL AND nr = 20",
+    "als_jahr": 2023
+   }
+  ]
+ },
+ {
+  "id": "hh-ist-ergebnis-2024-rat",
+  "kanal": "rat",
+  "frage": "Mit welchem Ergebnis hat die Stadt 2024 abgeschlossen?",
+  "kategorie": "haushalt/ist",
+  "baustein": "store.result_actual_for_terms (qa: ist)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 34641139.1,
+    "einheit": "€",
+    "bezeichnung": "ordentliches Ergebnis Ist 2024",
+    "quelle": "SELECT result FROM council_income_statement WHERE year = 2024 AND sub_budget_no IS NULL AND nr = 21",
+    "jahr": 2024
+   }
+  ],
+  "verboten": [
+   {
+    "art": "zahl",
+    "wert": -34264479.49,
+    "einheit": "€",
+    "grund": "Ansatz statt Ergebnis",
+    "quelle": "SELECT budgeted FROM council_income_statement WHERE year = 2024 AND sub_budget_no IS NULL AND nr = 21",
+    "als_jahr": 2024
+   }
+  ]
+ },
+ {
+  "id": "hh-ist-gruende-2024-rat",
+  "kanal": "rat",
+  "frage": "Warum war das Ergebnis 2024 besser als geplant?",
+  "kategorie": "haushalt/ist",
+  "baustein": "store.abweichungsgruende_fuer_begriffe (qa: gruende)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "Steuer",
+      "Gewerbesteuer"
+     ]
+    ],
+    "quelle": "council_variance_reasons year=2024 nr=1: +75,1 Mio. €"
+   },
+   {
+    "art": "zahl",
+    "wert": 75100000.0,
+    "einheit": "€",
+    "bezeichnung": "Mehrertrag Steuern 2024",
+    "quelle": "SELECT delta_meur FROM council_variance_reasons WHERE year = 2024 AND nr = 1 × 1e+06",
+    "jahr": 2024,
+    "toleranz": 0.01
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-ist-gruende-2024-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/plan-ist",
+  "refs": {},
+  "heading": "Geplant und geworden",
+  "frage": "Woran lag es, dass 2024 besser lief als geplant?",
+  "kategorie": "haushalt/ist",
+  "baustein": "store.abweichungsgruende_fuer_begriffe (qa: gruende)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "Steuer",
+      "Gewerbesteuer"
+     ]
+    ],
+    "quelle": "council_variance_reasons year=2024 nr=1: +75,1 Mio. €"
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-ist-reihe-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/plan-ist",
+  "refs": {},
+  "heading": "Geplant und geworden",
+  "frage": "Wie haben sich die Ausgaben der Stadt seit 2020 entwickelt?",
+  "kategorie": "haushalt/ist",
+  "baustein": "council/geld/expense_series.py",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 588167000.0,
+    "einheit": "€",
+    "bezeichnung": "Ordentliche Aufwendungen 2020",
+    "quelle": "SELECT amount FROM council_expense_series WHERE year = 2020",
+    "jahr": 2020
+   },
+   {
+    "art": "zahl",
+    "wert": 850170000.0,
+    "einheit": "€",
+    "bezeichnung": "Ordentliche Aufwendungen 2025",
+    "quelle": "SELECT amount FROM council_expense_series WHERE year = 2025",
+    "jahr": 2025
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-kasse-2024-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/plan-ist",
+  "refs": {},
+  "heading": "Geplant und geworden",
+  "frage": "Wie viel Geld ist 2024 in der Kasse tatsächlich geflossen — gab es ein Plus oder Minus?",
+  "kategorie": "haushalt/ist",
+  "baustein": "store.kassensicht_kontext (qa: kassensicht)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": -22378427.49,
+    "einheit": "€",
+    "bezeichnung": "Finanzmittelfehlbetrag 2024",
+    "quelle": "SELECT result FROM council_cash_flow_statement WHERE year = 2024 AND role = 'cash_surplus'",
+    "jahr": 2024
+   }
+  ],
+  "verboten": [],
+  "notiz": "Die zweite Rechnung desselben Abschlusses: Ergebnis +34,6 Mio., Kasse −22,4 Mio."
+ },
+ {
+  "id": "hh-liquide-mittel-rat",
+  "kanal": "rat",
+  "frage": "Wie viel Geld hat die Stadt auf dem Konto?",
+  "kategorie": "haushalt/ist",
+  "baustein": "council/geld/liquidity.py",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 136100000.0,
+    "einheit": "€",
+    "bezeichnung": "Liquidität Mai 2026",
+    "quelle": "SELECT amount FROM council_liquidity WHERE month = '2026-05'",
+    "jahr": 2026,
+    "oder": [
+     {
+      "wert": 118001891.26,
+      "quelle": "SELECT value FROM council_balance_sheet WHERE year = 2024 AND role = 'cash_and_equivalents'",
+      "jahr": 2024
+     }
+    ]
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-vollzug-2026-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/plan-ist",
+  "refs": {},
+  "heading": "Geplant und geworden",
+  "frage": "Was erwartet die Verwaltung für das laufende Jahr?",
+  "kategorie": "haushalt/vollzug",
+  "baustein": "council/geld/execution.py",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": -66033353.0,
+    "einheit": "€",
+    "bezeichnung": "Prognose Ergebnis 2026 (Stand 30.06.2026)",
+    "quelle": "SELECT forecast FROM council_budget_execution WHERE budget_year = 2026 AND as_of = '2026-06-30' AND budget = 'result' AND kind = 'result' AND is_total = 1 AND label = 'Summen'",
+    "jahr": 2026
+   }
+  ],
+  "verboten": [],
+  "notiz": "Die Seite verspricht genau das."
+ },
+ {
+  "id": "hh-vollzug-2026-rat",
+  "kanal": "rat",
+  "frage": "Wie entwickelt sich der Haushalt 2026 laut dem letzten Bericht der Verwaltung?",
+  "kategorie": "haushalt/vollzug",
+  "baustein": "council/geld/execution.py",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": -66033353.0,
+    "einheit": "€",
+    "bezeichnung": "Prognose Ergebnis 2026 (Stand 30.06.2026)",
+    "quelle": "SELECT forecast FROM council_budget_execution WHERE budget_year = 2026 AND as_of = '2026-06-30' AND budget = 'result' AND kind = 'result' AND is_total = 1 AND label = 'Summen'",
+    "jahr": 2026
+   },
+   {
+    "art": "zahl",
+    "wert": -68679446.0,
+    "einheit": "€",
+    "bezeichnung": "Ansatz Ergebnis 2026",
+    "quelle": "SELECT budgeted FROM council_budget_execution WHERE budget_year = 2026 AND as_of = '2026-06-30' AND budget = 'result' AND kind = 'result' AND is_total = 1 AND label = 'Summen'",
+    "jahr": 2026,
+    "pflicht": false
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-vollzug-2025-rat",
+  "kanal": "rat",
+  "frage": "Wie ist das Haushaltsjahr 2025 ausgegangen?",
+  "kategorie": "haushalt/vollzug",
+  "baustein": "council/geld/execution.py",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": -18148945.0,
+    "einheit": "€",
+    "bezeichnung": "Ergebnis 2025 laut Vollzugsbericht zum 31.12.2025",
+    "quelle": "SELECT forecast FROM council_budget_execution WHERE budget_year = 2025 AND as_of = '2025-12-31' AND budget = 'result' AND kind = 'result' AND is_total = 1 AND label = 'Summen'",
+    "jahr": 2025
+   }
+  ],
+  "verboten": [],
+  "notiz": "Der Jahresabschluss 2025 fehlt noch; der Vollzugsbericht zum 31.12. hat das Ergebnis."
+ },
+ {
+  "id": "hh-invest-gesamt-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/investitionen",
+  "refs": {},
+  "heading": "Was gebaut wird",
+  "frage": "Wie viel investiert die Stadt insgesamt?",
+  "kategorie": "haushalt/investitionen",
+  "baustein": "store.investitionen_fuer_begriffe (qa: investitionen)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 70273312.0,
+    "einheit": "€",
+    "bezeichnung": "Investitionsauszahlungen Plan 2026 (Vollzugsbericht)",
+    "quelle": "SELECT budgeted FROM council_budget_execution WHERE budget_year = 2026 AND as_of = '2026-06-30' AND budget = 'cash' AND kind = 'outflow' AND is_total = 1 AND label = 'Summen'",
+    "jahr": 2026,
+    "oder": [
+     {
+      "wert": 69059840.0,
+      "quelle": "SELECT out_capital FROM council_budget_bylaw WHERE year = 2026 AND supplement = 0",
+      "jahr": 2026
+     }
+    ]
+   }
+  ],
+  "verboten": [],
+  "notiz": "Startfrage. Der Finanzhaushalt je Teilhaushalt reicht nur bis 2025; der Plan 2026 steht in Satzung und Vollzugsbericht."
+ },
+ {
+  "id": "hh-invest-gesamt-rat",
+  "kanal": "rat",
+  "frage": "Wie viel will die Stadt 2026 investieren?",
+  "kategorie": "haushalt/investitionen",
+  "baustein": "store.investitionen_fuer_begriffe (qa: investitionen)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 70273312.0,
+    "einheit": "€",
+    "bezeichnung": "Investitionsauszahlungen Plan 2026 (Vollzugsbericht)",
+    "quelle": "SELECT budgeted FROM council_budget_execution WHERE budget_year = 2026 AND as_of = '2026-06-30' AND budget = 'cash' AND kind = 'outflow' AND is_total = 1 AND label = 'Summen'",
+    "jahr": 2026,
+    "oder": [
+     {
+      "wert": 69059840.0,
+      "quelle": "SELECT out_capital FROM council_budget_bylaw WHERE year = 2026 AND supplement = 0",
+      "jahr": 2026
+     }
+    ]
+   }
+  ],
+  "verboten": [
+   {
+    "art": "zahl",
+    "wert": 80781520.0,
+    "einheit": "€",
+    "grund": "Plan 2025 als 2026",
+    "quelle": "SELECT outflows FROM council_investments WHERE year = 2025 AND label = 'Finanzhaushalt Gesamtinvestitionen'",
+    "als_jahr": 2026
+   }
+  ]
+ },
+ {
+  "id": "hh-invest-ist-2025-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/investitionen",
+  "refs": {},
+  "heading": "Was gebaut wird",
+  "frage": "Wie viel wurde 2025 tatsächlich investiert?",
+  "kategorie": "haushalt/investitionen",
+  "baustein": "store.investitionen_ist_kontext (qa: gebaut)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 60773000.0,
+    "einheit": "€",
+    "bezeichnung": "Investitionen Ist 2025",
+    "quelle": "SELECT total FROM council_investments_actual WHERE year = 2025",
+    "jahr": 2025
+   }
+  ],
+  "verboten": [
+   {
+    "art": "zahl",
+    "wert": 67954000.0,
+    "einheit": "€",
+    "grund": "Ist 2024 als 2025",
+    "quelle": "SELECT total FROM council_investments_actual WHERE year = 2024",
+    "als_jahr": 2025
+   }
+  ],
+  "notiz": "Startfrage der Seite."
+ },
+ {
+  "id": "hh-invest-ist-2025-rat",
+  "kanal": "rat",
+  "frage": "Wie viel hat die Stadt 2025 wirklich investiert?",
+  "kategorie": "haushalt/investitionen",
+  "baustein": "store.investitionen_ist_kontext (qa: gebaut)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 60773000.0,
+    "einheit": "€",
+    "bezeichnung": "Investitionen Ist 2025",
+    "quelle": "SELECT total FROM council_investments_actual WHERE year = 2025",
+    "jahr": 2025
+   }
+  ],
+  "verboten": [
+   {
+    "art": "zahl",
+    "wert": 67954000.0,
+    "einheit": "€",
+    "grund": "Ist 2024 als 2025",
+    "quelle": "SELECT total FROM council_investments_actual WHERE year = 2024",
+    "als_jahr": 2025
+   }
+  ]
+ },
+ {
+  "id": "hh-invest-ist-auf-schulden",
+  "kanal": "lotti",
+  "route": "/haushalt/schulden",
+  "refs": {},
+  "heading": "Wie viel Schulden hat Oldenburg?",
+  "frage": "Wie viel hat die Stadt 2025 tatsächlich investiert?",
+  "kategorie": "haushalt/investitionen",
+  "baustein": "store.investitionen_ist_kontext (qa: gebaut)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 60773000.0,
+    "einheit": "€",
+    "bezeichnung": "Investitionen Ist 2025",
+    "quelle": "SELECT total FROM council_investments_actual WHERE year = 2025",
+    "jahr": 2025
+   }
+  ],
+  "verboten": [
+   {
+    "art": "zahl",
+    "wert": 67954000.0,
+    "einheit": "€",
+    "grund": "Ist 2024 als 2025",
+    "quelle": "SELECT total FROM council_investments_actual WHERE year = 2024",
+    "als_jahr": 2025
+   }
+  ],
+  "notiz": "Unpassende Seite: die Überschrift zieht Schulden."
+ },
+ {
+  "id": "hh-invest-meiste-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/investitionen",
+  "refs": {},
+  "heading": "Was gebaut wird",
+  "frage": "Wofür gibt die Stadt bei den Investitionen am meisten aus?",
+  "kategorie": "haushalt/investitionen",
+  "baustein": "store.investitionen_ist_kontext (qa: gebaut)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 20083000.0,
+    "einheit": "€",
+    "bezeichnung": "Ist 2025: Sonstige Investitionstätigkeit",
+    "quelle": "SELECT amount FROM council_investments_actual_kinds WHERE year = 2025 AND title = 'Sonstige Investitionstätigkeit'",
+    "jahr": 2025,
+    "label": [
+     "Sonstige"
+    ]
+   },
+   {
+    "art": "zahl",
+    "wert": 36813610.0,
+    "einheit": "€",
+    "bezeichnung": "Plan 2025: größter Teilhaushalt",
+    "quelle": "SELECT outflows FROM council_investments WHERE year = 2025 AND label = 'Finanzmanagement und Recht'",
+    "jahr": 2025,
+    "pflicht": false,
+    "baustein": "store.investitionen_fuer_begriffe (qa: investitionen)"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Faktencheck lotti[4].",
+  "bekannt": "Faktencheck 23.09.: Auszahlungsarten 2025 stehen unter „Höchster Wert (2020)“"
+ },
+ {
+  "id": "hh-invest-bau-2025-rat",
+  "kanal": "rat",
+  "frage": "Wie viel hat die Stadt 2025 für Baumaßnahmen ausgegeben?",
+  "kategorie": "haushalt/investitionen",
+  "baustein": "store.investitionen_ist_kontext (qa: gebaut)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 16208000.0,
+    "einheit": "€",
+    "bezeichnung": "Ist 2025: Baumaßnahmen",
+    "quelle": "SELECT amount FROM council_investments_actual_kinds WHERE year = 2025 AND title = 'Baumaßnahmen'",
+    "jahr": 2025,
+    "label": [
+     "Baumaßnahmen"
+    ]
+   }
+  ],
+  "verboten": [
+   {
+    "art": "zahl",
+    "wert": 14951000.0,
+    "einheit": "€",
+    "grund": "Baumaßnahmen 2024 als 2025",
+    "quelle": "SELECT amount FROM council_investments_actual_kinds WHERE year = 2024 AND title = 'Baumaßnahmen'",
+    "als_jahr": 2025
+   }
+  ],
+  "bekannt": "Faktencheck 23.09.: Auszahlungsarten 2025 stehen unter „Höchster Wert (2020)“"
+ },
+ {
+  "id": "hh-invest-rekord-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/investitionen",
+  "refs": {},
+  "heading": "Was gebaut wird",
+  "frage": "In welchem Jahr hat die Stadt am meisten investiert?",
+  "kategorie": "haushalt/investitionen",
+  "baustein": "store.investitionen_ist_kontext (qa: gebaut)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 70481000.0,
+    "einheit": "€",
+    "bezeichnung": "Höchster Wert der Reihe (2020)",
+    "quelle": "SELECT total FROM council_investments_actual ORDER BY total DESC LIMIT 1",
+    "jahr": 2020
+   }
+  ],
+  "verboten": [
+   {
+    "art": "zahl",
+    "wert": 60773000.0,
+    "einheit": "€",
+    "grund": "jüngstes Jahr als Rekord",
+    "quelle": "SELECT total FROM council_investments_actual WHERE year = 2025",
+    "als_jahr": 2020
+   }
+  ]
+ },
+ {
+  "id": "hh-invest-2022-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/investitionen",
+  "refs": {},
+  "heading": "Was gebaut wird",
+  "frage": "Wie viel wurde 2022 tatsächlich investiert?",
+  "kategorie": "haushalt/investitionen",
+  "baustein": "store.investitionen_ist_kontext (qa: gebaut)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 57045000.0,
+    "einheit": "€",
+    "bezeichnung": "Investitionen Ist 2022",
+    "quelle": "SELECT total FROM council_investments_actual WHERE year = 2022",
+    "jahr": 2022
+   }
+  ],
+  "verboten": [
+   {
+    "art": "zahl",
+    "wert": 60773000.0,
+    "einheit": "€",
+    "grund": "jüngstes Jahr als 2022",
+    "quelle": "SELECT total FROM council_investments_actual WHERE year = 2025",
+    "als_jahr": 2022
+   }
+  ]
+ },
+ {
+  "id": "hh-invest-verkehr-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/investitionen",
+  "refs": {},
+  "heading": "Was gebaut wird",
+  "frage": "Wie viel wollte die Stadt 2025 in Verkehr und Straßenbau investieren?",
+  "kategorie": "haushalt/investitionen",
+  "baustein": "store.investitionen_fuer_begriffe (qa: investitionen)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 10451500.0,
+    "einheit": "€",
+    "bezeichnung": "Plan 2025: Investitionen Verkehr und Straßenbau",
+    "quelle": "SELECT outflows FROM council_investments WHERE year = 2025 AND label = 'Verkehr und Straßenbau'",
+    "jahr": 2025
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-invest-teilhaushalt-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/investitionen",
+  "refs": {},
+  "heading": "Was gebaut wird",
+  "frage": "Welcher Teilhaushalt hatte 2025 den größten Investitionsplan?",
+  "kategorie": "haushalt/investitionen",
+  "baustein": "store.investitionen_fuer_begriffe (qa: investitionen)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     "Finanzmanagement"
+    ],
+    "quelle": "council_investments year=2025 level=sub_budget: größte outflows"
+   },
+   {
+    "art": "zahl",
+    "wert": 36813610.0,
+    "einheit": "€",
+    "bezeichnung": "Plan 2025: Finanzmanagement und Recht",
+    "quelle": "SELECT outflows FROM council_investments WHERE year = 2025 AND label = 'Finanzmanagement und Recht'",
+    "jahr": 2025
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-invest-schule-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/investitionen",
+  "refs": {},
+  "heading": "Was gebaut wird",
+  "frage": "Wie viel investiert die Stadt 2025 in Schulen?",
+  "kategorie": "haushalt/investitionen",
+  "baustein": "store.investitionen_fuer_begriffe (qa: investitionen)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "Gebäudewirtschaft",
+      "Eigenbetrieb",
+      "Wirtschaftsplan"
+     ]
+    ],
+    "quelle": "Schulbau liegt beim Eigenbetrieb Gebäudewirtschaft und Hochbau (Hinweis im Baustein)"
+   },
+   {
+    "art": "zahl",
+    "wert": 1912500.0,
+    "einheit": "€",
+    "bezeichnung": "Plan 2025: Teilhaushalt Schule",
+    "quelle": "SELECT outflows FROM council_investments WHERE year = 2025 AND label = 'Schule und Bildung'",
+    "jahr": 2025,
+    "pflicht": false
+   }
+  ],
+  "verboten": [],
+  "notiz": "Falle: Der Teilhaushalt Schule ist klein (1,9 Mio.), weil Schulbau im Eigenbetrieb liegt."
+ },
+ {
+  "id": "hh-invest-vorhaben-rat",
+  "kanal": "rat",
+  "frage": "Welches ist das größte einzelne Vorhaben im Investitionsprogramm 2025?",
+  "kategorie": "haushalt/investitionen",
+  "baustein": "council/geld/measures.py",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     "Kampfmittel"
+    ],
+    "quelle": "council_investment_measures year=2025 level=measure: größte grand_total"
+   },
+   {
+    "art": "zahl",
+    "wert": 35850000.0,
+    "einheit": "€",
+    "bezeichnung": "Fliegerhorst Kampfmittelsondierung (Gesamtsumme)",
+    "quelle": "SELECT grand_total FROM council_investment_measures WHERE year = 2025 AND level = 'measure' ORDER BY grand_total DESC LIMIT 1",
+    "jahr": 2025
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-invest-plan-ist-rat",
+  "kanal": "rat",
+  "frage": "Wie viel hat die Stadt 2025 geplant zu investieren und wie viel wurde es tatsächlich?",
+  "kategorie": "haushalt/investitionen",
+  "baustein": "store.investitionen_fuer_begriffe (qa: investitionen)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 80781520.0,
+    "einheit": "€",
+    "bezeichnung": "Plan 2025: Gesamtinvestitionen",
+    "quelle": "SELECT outflows FROM council_investments WHERE year = 2025 AND label = 'Finanzhaushalt Gesamtinvestitionen'",
+    "jahr": 2025
+   },
+   {
+    "art": "zahl",
+    "wert": 60773000.0,
+    "einheit": "€",
+    "bezeichnung": "Investitionen Ist 2025",
+    "quelle": "SELECT total FROM council_investments_actual WHERE year = 2025",
+    "jahr": 2025,
+    "baustein": "store.investitionen_ist_kontext (qa: gebaut)"
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-eb-liste-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/konzern",
+  "refs": {},
+  "heading": "Ist das die ganze Stadt?",
+  "frage": "Welche Eigenbetriebe gibt es und wie viel geben sie aus?",
+  "kategorie": "haushalt/eigenbetriebe",
+  "baustein": "council/geld/business_plans.py",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "Abfall"
+     ],
+     [
+      "Gebäudewirtschaft"
+     ],
+     [
+      "Bäder",
+      "Bäderbetrieb"
+     ]
+    ],
+    "quelle": "council_business_plans: awb, egh, bbo"
+   },
+   {
+    "art": "zahl",
+    "wert": 26036000.0,
+    "einheit": "€",
+    "bezeichnung": "AWB Aufwendungen Plan 2026",
+    "quelle": "SELECT expenses FROM council_business_plans WHERE enterprise = 'awb' AND year = 2026",
+    "jahr": 2026
+   },
+   {
+    "art": "zahl",
+    "wert": 82824771.0,
+    "einheit": "€",
+    "bezeichnung": "EGH Aufwendungen Plan 2026",
+    "quelle": "SELECT expenses FROM council_business_plans WHERE enterprise = 'egh' AND year = 2026",
+    "jahr": 2026,
+    "oder": [
+     {
+      "wert": 72590000.0,
+      "quelle": "SELECT amount_keur FROM council_group_entities WHERE year = 2024 AND kind = 'expenses' AND entity = 'Eigenbetrieb Gebäudewirtschaft und Hochbau'",
+      "jahr": 2024
+     }
+    ]
+   },
+   {
+    "art": "zahl",
+    "wert": 8020000.0,
+    "einheit": "€",
+    "bezeichnung": "Bäderbetrieb Aufwendungen 2024 (Gesamtabschluss)",
+    "quelle": "SELECT amount_keur FROM council_group_entities WHERE year = 2024 AND kind = 'expenses' AND entity = 'Bäderbetrieb' × 1000",
+    "jahr": 2024,
+    "baustein": "store.konzern_kontext (qa: konzern)"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Faktencheck lotti[2]. Der Bäderbetrieb hat eine Aufwandszahl — im Gesamtabschluss.",
+  "bekannt": "Faktencheck 23.09.: Eigenbetriebe ohne Aufwendungen im Kontext"
+ },
+ {
+  "id": "hh-eb-awb-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/konzern",
+  "refs": {},
+  "heading": "Ist das die ganze Stadt?",
+  "frage": "Wie viel gibt der Abfallwirtschaftsbetrieb 2026 aus?",
+  "kategorie": "haushalt/eigenbetriebe",
+  "baustein": "council/geld/business_plans.py",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 26036000.0,
+    "einheit": "€",
+    "bezeichnung": "AWB Aufwendungen Plan 2026",
+    "quelle": "SELECT expenses FROM council_business_plans WHERE enterprise = 'awb' AND year = 2026",
+    "jahr": 2026
+   }
+  ],
+  "verboten": [
+   {
+    "art": "zahl",
+    "wert": 24570285.0,
+    "einheit": "€",
+    "grund": "Plan 2025 als 2026",
+    "quelle": "SELECT expenses FROM council_business_plans WHERE enterprise = 'awb' AND year = 2025",
+    "als_jahr": 2026
+   }
+  ]
+ },
+ {
+  "id": "hh-eb-egh-ergebnis-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/konzern",
+  "refs": {},
+  "heading": "Ist das die ganze Stadt?",
+  "frage": "Welches Ergebnis plant die Gebäudewirtschaft für 2026?",
+  "kategorie": "haushalt/eigenbetriebe",
+  "baustein": "council/geld/business_plans.py",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": -15621.0,
+    "einheit": "€",
+    "bezeichnung": "EGH Ergebnis Plan 2026",
+    "quelle": "SELECT result FROM council_business_plans WHERE enterprise = 'egh' AND year = 2026",
+    "jahr": 2026
+   }
+  ],
+  "verboten": [
+   {
+    "art": "zahl",
+    "wert": -5401285.0,
+    "einheit": "€",
+    "grund": "Plan 2025 als 2026",
+    "quelle": "SELECT result FROM council_business_plans WHERE enterprise = 'egh' AND year = 2025",
+    "als_jahr": 2026
+   }
+  ]
+ },
+ {
+  "id": "hh-eb-egh-ist-2024-rat",
+  "kanal": "rat",
+  "frage": "Mit welchem Jahresergebnis hat der Eigenbetrieb Gebäudewirtschaft 2024 abgeschlossen?",
+  "kategorie": "haushalt/eigenbetriebe",
+  "baustein": "council/geld/business_plans.py",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": -2726000.0,
+    "einheit": "€",
+    "bezeichnung": "EGH Jahresergebnis 2024",
+    "quelle": "SELECT value FROM council_enterprise_accounts WHERE enterprise = 'egh' AND year = 2024 AND metric = 'result'",
+    "jahr": 2024
+   }
+  ],
+  "verboten": [
+   {
+    "art": "zahl",
+    "wert": -4751235.0,
+    "einheit": "€",
+    "grund": "Plan statt Abschluss",
+    "quelle": "SELECT result FROM council_business_plans WHERE enterprise = 'egh' AND year = 2024",
+    "als_jahr": 2024
+   }
+  ]
+ },
+ {
+  "id": "hh-eb-egh-invest-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/konzern",
+  "refs": {},
+  "heading": "Ist das die ganze Stadt?",
+  "frage": "Wie viel will der Eigenbetrieb Gebäudewirtschaft und Hochbau 2026 investieren?",
+  "kategorie": "haushalt/eigenbetriebe",
+  "baustein": "council/geld/business_plans.py",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 51134100.0,
+    "einheit": "€",
+    "bezeichnung": "EGH Vermögensplan 2026",
+    "quelle": "SELECT capital_plan FROM council_business_plans WHERE enterprise = 'egh' AND year = 2026",
+    "jahr": 2026
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-eb-baeder-invest-rat",
+  "kanal": "rat",
+  "frage": "Wie viel investiert der Bäderbetrieb 2026?",
+  "kategorie": "haushalt/eigenbetriebe",
+  "baustein": "council/geld/business_plans.py",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 10752000.0,
+    "einheit": "€",
+    "bezeichnung": "Bäderbetrieb Investitionen 2026",
+    "quelle": "SELECT investments FROM council_business_plans WHERE enterprise = 'bbo' AND year = 2026",
+    "jahr": 2026
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-baeder-verlust-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/konzern",
+  "refs": {},
+  "heading": "Ist das die ganze Stadt?",
+  "frage": "Wie hoch ist der Verlust der Bäderbetriebsgesellschaft?",
+  "kategorie": "haushalt/eigenbetriebe",
+  "baustein": "council/geld/business_plans.py",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": -10128335.0,
+    "einheit": "€",
+    "bezeichnung": "BBGO Ergebnis Plan 2026",
+    "quelle": "SELECT result FROM council_business_plans WHERE enterprise = 'bbgo' AND year = 2026",
+    "jahr": 2026,
+    "oder": [
+     {
+      "wert": -5709452.79,
+      "quelle": "SELECT value FROM council_company_indicators WHERE company = 'bbgo' AND indicator = 'jahresergebnis' AND year = 2024",
+      "jahr": 2024
+     }
+    ]
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-klinikum-aufwand-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/konzern",
+  "refs": {},
+  "heading": "Ist das die ganze Stadt?",
+  "frage": "Wie hoch sind die Aufwendungen des Klinikums?",
+  "kategorie": "haushalt/konzern",
+  "baustein": "store.konzern_kontext (qa: konzern)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 395232000.0,
+    "einheit": "€",
+    "bezeichnung": "Klinikum Aufwendungen 2024 (Gesamtabschluss)",
+    "quelle": "SELECT amount_keur FROM council_group_entities WHERE year = 2024 AND kind = 'expenses' AND entity = 'Klinikum Oldenburg AöR' × 1000",
+    "jahr": 2024
+   }
+  ],
+  "verboten": [],
+  "notiz": "Startfrage der Seite."
+ },
+ {
+  "id": "hh-klinikum-ergebnis-rat",
+  "kanal": "rat",
+  "frage": "Welches Jahresergebnis hatte das Klinikum Oldenburg 2024?",
+  "kategorie": "haushalt/konzern",
+  "baustein": "council/geld/companies.py",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": -27131986.8,
+    "einheit": "€",
+    "bezeichnung": "Klinikum Jahresergebnis 2024",
+    "quelle": "SELECT value FROM council_company_indicators WHERE company = 'klinikum' AND indicator = 'jahresergebnis' AND year = 2024",
+    "jahr": 2024
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-konzern-liste-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/konzern",
+  "refs": {},
+  "heading": "Ist das die ganze Stadt?",
+  "frage": "Welche Betriebe gehören zum Konzern?",
+  "kategorie": "haushalt/konzern",
+  "baustein": "council/geld/companies.py",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "Klinikum"
+     ],
+     [
+      "GSG"
+     ],
+     [
+      "Verkehr und Wasser",
+      "VWG"
+     ],
+     [
+      "Weser-Ems"
+     ],
+     [
+      "Abfallwirtschaft",
+      "AWB"
+     ]
+    ],
+    "quelle": "council_companies report_year=2024"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Startfrage der Seite."
+ },
+ {
+  "id": "hh-gsg-ergebnis-rat",
+  "kanal": "rat",
+  "frage": "Wie viel Gewinn hat die GSG Oldenburg 2024 gemacht?",
+  "kategorie": "haushalt/konzern",
+  "baustein": "council/geld/companies.py",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 8236483.57,
+    "einheit": "€",
+    "bezeichnung": "GSG Jahresergebnis 2024",
+    "quelle": "SELECT value FROM council_company_indicators WHERE company = 'gsg' AND indicator = 'jahresergebnis' AND year = 2024",
+    "jahr": 2024
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-stadion-gesellschaft-rat",
+  "kanal": "rat",
+  "frage": "Welchen Verlust plant die Stadion Oldenburg GmbH & Co. KG für 2026?",
+  "kategorie": "haushalt/konzern",
+  "baustein": "council/geld/business_plans.py",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": -651500.0,
+    "einheit": "€",
+    "bezeichnung": "Stadion-KG Ergebnis Plan 2026",
+    "quelle": "SELECT result FROM council_business_plans WHERE enterprise = 'stadion' AND year = 2026",
+    "jahr": 2026
+   }
+  ],
+  "verboten": [
+   {
+    "art": "zahl",
+    "wert": -240000.0,
+    "einheit": "€",
+    "grund": "Plan 2025 als 2026",
+    "quelle": "SELECT result FROM council_business_plans WHERE enterprise = 'stadion' AND year = 2025",
+    "als_jahr": 2026
+   }
+  ]
+ },
+ {
+  "id": "hh-konzern-aufwand-rat",
+  "kanal": "rat",
+  "frage": "Wie viel gibt der gesamte Konzern Stadt Oldenburg mit Klinikum und Betrieben aus?",
+  "kategorie": "haushalt/konzern",
+  "baustein": "store.konzern_kontext (qa: konzern)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 1234483072.81,
+    "einheit": "€",
+    "bezeichnung": "Konzern: Summe ordentliche Aufwendungen 2024",
+    "quelle": "SELECT amount FROM council_group_items WHERE year = 2024 AND role = 'expenses_total'",
+    "jahr": 2024
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-steuern-gesamt-2025-rat",
+  "kanal": "rat",
+  "frage": "Wie viel Steuern hat die Stadt 2025 eingenommen?",
+  "kategorie": "haushalt/steuern",
+  "baustein": "store.steuern_fuer_begriffe (qa: taxes)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 387208000.0,
+    "einheit": "€",
+    "bezeichnung": "Steuern gesamt 2025 (vorläufig)",
+    "quelle": "SELECT amount FROM council_taxes WHERE year = 2025 AND kind = 'total'",
+    "jahr": 2025
+   }
+  ],
+  "verboten": [
+   {
+    "art": "zahl",
+    "wert": 360649000.0,
+    "einheit": "€",
+    "grund": "2024 als 2025",
+    "quelle": "SELECT amount FROM council_taxes WHERE year = 2024 AND kind = 'total'",
+    "als_jahr": 2025
+   }
+  ]
+ },
+ {
+  "id": "hh-gewst-2025-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/einnahmen",
+  "refs": {},
+  "heading": "Woher kommt das Geld?",
+  "frage": "Wie viel Gewerbesteuer hat die Stadt 2025 eingenommen?",
+  "kategorie": "haushalt/steuern",
+  "baustein": "store.steuern_fuer_begriffe (qa: taxes)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 222117000.0,
+    "einheit": "€",
+    "bezeichnung": "Gewerbesteuer 2025",
+    "quelle": "SELECT amount FROM council_taxes WHERE year = 2025 AND kind = 'Gewerbesteuer (-umlage)'",
+    "jahr": 2025
+   }
+  ],
+  "verboten": [
+   {
+    "art": "zahl",
+    "wert": 202918000.0,
+    "einheit": "€",
+    "grund": "2024 als 2025",
+    "quelle": "SELECT amount FROM council_taxes WHERE year = 2024 AND kind = 'Gewerbesteuer (-umlage)'",
+    "als_jahr": 2025
+   }
+  ]
+ },
+ {
+  "id": "hh-gewst-2025-rat",
+  "kanal": "rat",
+  "frage": "Wie hoch waren die Gewerbesteuereinnahmen 2025?",
+  "kategorie": "haushalt/steuern",
+  "baustein": "store.steuern_fuer_begriffe (qa: taxes)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 222117000.0,
+    "einheit": "€",
+    "bezeichnung": "Gewerbesteuer 2025",
+    "quelle": "SELECT amount FROM council_taxes WHERE year = 2025 AND kind = 'Gewerbesteuer (-umlage)'",
+    "jahr": 2025
+   }
+  ],
+  "verboten": [
+   {
+    "art": "zahl",
+    "wert": 202918000.0,
+    "einheit": "€",
+    "grund": "2024 als 2025",
+    "quelle": "SELECT amount FROM council_taxes WHERE year = 2024 AND kind = 'Gewerbesteuer (-umlage)'",
+    "als_jahr": 2025
+   }
+  ]
+ },
+ {
+  "id": "hh-gewst-steckbrief-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/steuer",
+  "refs": {},
+  "heading": "Steuer-Steckbrief",
+  "frage": "Wie hat sich diese Steuer zuletzt entwickelt?",
+  "kategorie": "haushalt/steuern",
+  "baustein": "store.steuern_fuer_begriffe (qa: taxes)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 222117000.0,
+    "einheit": "€",
+    "bezeichnung": "Gewerbesteuer 2025",
+    "quelle": "SELECT amount FROM council_taxes WHERE year = 2025 AND kind = 'Gewerbesteuer (-umlage)'",
+    "jahr": 2025,
+    "pflicht": false
+   },
+   {
+    "art": "text",
+    "muss": [
+     "Gewerbesteuer"
+    ],
+    "quelle": "Steckbrief-Seite /haushalt/steuer"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Ohne ?art= weiß die Seite nicht, welche Steuer — ein Fall für die Rückfrage."
+ },
+ {
+  "id": "hh-gewst-plan-ist-2024-rat",
+  "kanal": "rat",
+  "frage": "Wie weit lag die Gewerbesteuer 2024 über dem Plan?",
+  "kategorie": "haushalt/steuern",
+  "baustein": "council/geld/tax_plan.py",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 133440000.0,
+    "einheit": "€",
+    "bezeichnung": "Gewerbesteuer Plan 2024",
+    "quelle": "SELECT plan FROM council_tax_plan WHERE year = 2024 AND kind = 'Gewerbesteuer (-umlage)'",
+    "jahr": 2024
+   },
+   {
+    "art": "zahl",
+    "wert": 69478000.0,
+    "einheit": "€",
+    "bezeichnung": "Gewerbesteuer Ist über Plan 2024",
+    "quelle": "SELECT actual - plan FROM council_tax_plan WHERE year = 2024 AND kind = 'Gewerbesteuer (-umlage)'",
+    "jahr": 2024,
+    "teile": [
+     133440000.0,
+     202918000.0
+    ]
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-gewst-auf-schulden",
+  "kanal": "lotti",
+  "route": "/haushalt/schulden",
+  "refs": {},
+  "heading": "Wie viel Schulden hat Oldenburg?",
+  "frage": "Wie viel Gewerbesteuer hat die Stadt 2024 eingenommen?",
+  "kategorie": "haushalt/steuern",
+  "baustein": "store.steuern_fuer_begriffe (qa: taxes)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 202918000.0,
+    "einheit": "€",
+    "bezeichnung": "Gewerbesteuer 2024",
+    "quelle": "SELECT amount FROM council_taxes WHERE year = 2024 AND kind = 'Gewerbesteuer (-umlage)'",
+    "jahr": 2024
+   }
+  ],
+  "verboten": [],
+  "notiz": "Unpassende Seite."
+ },
+ {
+  "id": "hh-grundsteuer-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/steuer",
+  "refs": {},
+  "heading": "Steuer-Steckbrief",
+  "frage": "Wie viel Grundsteuer nimmt die Stadt ein?",
+  "kategorie": "haushalt/steuern",
+  "baustein": "store.steuern_fuer_begriffe (qa: taxes)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 32585000.0,
+    "einheit": "€",
+    "bezeichnung": "Grundsteuer 2025 (vorläufig)",
+    "quelle": "SELECT amount FROM council_taxes WHERE year = 2025 AND kind = 'Grundsteuer A+B'",
+    "jahr": 2025,
+    "oder": [
+     {
+      "wert": 34171000.0,
+      "quelle": "SELECT amount FROM council_taxes WHERE year = 2024 AND kind = 'Grundsteuer A+B'",
+      "jahr": 2024
+     }
+    ]
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-est-anteil-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/einnahmen",
+  "refs": {},
+  "heading": "Woher kommt das Geld?",
+  "frage": "Wie viel bekommt die Stadt aus der Einkommensteuer?",
+  "kategorie": "haushalt/steuern",
+  "baustein": "store.steuern_fuer_begriffe (qa: taxes)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 106086000.0,
+    "einheit": "€",
+    "bezeichnung": "Einkommensteueranteil 2025",
+    "quelle": "SELECT amount FROM council_taxes WHERE year = 2025 AND kind = 'Einkommensteueranteil'",
+    "jahr": 2025,
+    "oder": [
+     {
+      "wert": 99621000.0,
+      "quelle": "SELECT amount FROM council_taxes WHERE year = 2024 AND kind = 'Einkommensteueranteil'",
+      "jahr": 2024
+     }
+    ]
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-steuer-vergnuegung-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/einnahmen",
+  "refs": {},
+  "heading": "Woher kommt das Geld?",
+  "frage": "Wie viel bringt die Vergnügungssteuer der Stadt ein?",
+  "kategorie": "haushalt/steuern",
+  "baustein": "store.steuern_fuer_begriffe (qa: taxes)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 3368000.0,
+    "einheit": "€",
+    "bezeichnung": "Vergnügungssteuer 2025",
+    "quelle": "SELECT amount FROM council_taxes WHERE year = 2025 AND kind = 'Vergnügungssteuer'",
+    "jahr": 2025,
+    "oder": [
+     {
+      "wert": 2233000.0,
+      "quelle": "SELECT amount FROM council_taxes WHERE year = 2024 AND kind = 'Vergnügungssteuer'",
+      "jahr": 2024
+     }
+    ]
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-hebesatz-grundb-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/steuer",
+  "refs": {},
+  "heading": "Steuer-Steckbrief",
+  "frage": "Wie hoch ist der Hebesatz der Grundsteuer B?",
+  "kategorie": "haushalt/steuern",
+  "baustein": "council/geld/tax_rates.py",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 539.0,
+    "einheit": "%",
+    "bezeichnung": "Hebesatz Grundsteuer B",
+    "quelle": "SELECT rate FROM council_tax_rates WHERE year = 2025 AND kind = 'Grundsteuer B'",
+    "jahr": 2025
+   }
+  ],
+  "verboten": [
+   {
+    "art": "zahl",
+    "wert": 445.0,
+    "einheit": "%",
+    "grund": "alter Hebesatz als aktueller",
+    "quelle": "SELECT rate FROM council_tax_rates WHERE year = 2015 AND kind = 'Grundsteuer B'",
+    "als_jahr": 2025
+   }
+  ]
+ },
+ {
+  "id": "hh-hebesatz-gewst-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/steuer",
+  "refs": {},
+  "heading": "Steuer-Steckbrief",
+  "frage": "Wie hoch ist der Gewerbesteuer-Hebesatz in Oldenburg?",
+  "kategorie": "haushalt/steuern",
+  "baustein": "council/geld/tax_rates.py",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 439.0,
+    "einheit": "%",
+    "bezeichnung": "Hebesatz Gewerbesteuer",
+    "quelle": "SELECT rate FROM council_tax_rates WHERE year = 2025 AND kind = 'Gewerbesteuer'",
+    "jahr": 2025
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-hebesatz-entwicklung-rat",
+  "kanal": "rat",
+  "frage": "Wie haben sich die Hebesätze der Grundsteuer in Oldenburg entwickelt?",
+  "kategorie": "haushalt/steuern",
+  "baustein": "council/geld/tax_rates.py",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 539.0,
+    "einheit": "%",
+    "bezeichnung": "Hebesatz B ab 2025",
+    "quelle": "SELECT rate FROM council_tax_rates WHERE year = 2025 AND kind = 'Grundsteuer B'",
+    "jahr": 2025
+   },
+   {
+    "art": "zahl",
+    "wert": 445.0,
+    "einheit": "%",
+    "bezeichnung": "Hebesatz B ab 2015",
+    "quelle": "SELECT rate FROM council_tax_rates WHERE year = 2015 AND kind = 'Grundsteuer B'",
+    "jahr": 2015
+   },
+   {
+    "art": "zahl",
+    "wert": 500.0,
+    "einheit": "%",
+    "bezeichnung": "Hebesatz A ab 2025",
+    "quelle": "SELECT rate FROM council_tax_rates WHERE year = 2025 AND kind = 'Grundsteuer A'",
+    "jahr": 2025,
+    "pflicht": false
+   }
+  ],
+  "verboten": [],
+  "notiz": "Faktencheck rat[3]."
+ },
+ {
+  "id": "hh-steuern-einfluss-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/einnahmen",
+  "refs": {},
+  "heading": "Woher kommt das Geld?",
+  "frage": "Wie viel Einfluss hat der Rat auf die Steuern?",
+  "kategorie": "haushalt/steuern",
+  "baustein": "Seitenwissen (kern/knowledge.py)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "Hebesatz",
+      "Hebesätze"
+     ],
+     [
+      "Gewerbesteuer",
+      "Grundsteuer"
+     ]
+    ],
+    "quelle": "Seitenwissen /haushalt/einnahmen; council_tax_rates"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Startfrage der Seite."
+ },
+ {
+  "id": "hh-schluesselzuweisung-rat",
+  "kanal": "rat",
+  "frage": "Wie viel Schlüsselzuweisungen bekommt Oldenburg vom Land?",
+  "kategorie": "haushalt/steuern",
+  "baustein": "store.steuerkraft_kontext (qa: ausgleich)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 82278144.0,
+    "einheit": "€",
+    "bezeichnung": "Schlüsselzuweisungen 2026",
+    "quelle": "SELECT allocations FROM council_tax_capacity WHERE year = 2026",
+    "jahr": 2026
+   }
+  ],
+  "verboten": [
+   {
+    "art": "zahl",
+    "wert": 69209992.0,
+    "einheit": "€",
+    "grund": "2025 als 2026",
+    "quelle": "SELECT allocations FROM council_tax_capacity WHERE year = 2025",
+    "als_jahr": 2026
+   }
+  ]
+ },
+ {
+  "id": "hh-gewst-betriebe-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/steuer",
+  "refs": {},
+  "heading": "Steuer-Steckbrief",
+  "frage": "Wie viele Betriebe zahlen in Oldenburg Gewerbesteuer?",
+  "kategorie": "haushalt/steuern",
+  "baustein": "Gewerbesteuerstatistik (council_trade_tax_statistics)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 3642.0,
+    "einheit": "",
+    "bezeichnung": "Steuerpflichtige mit positivem Messbetrag 2021",
+    "quelle": "SELECT cases_positive FROM council_trade_tax_statistics WHERE city = 'Oldenburg' AND year = 2021",
+    "jahr": 2021,
+    "oder": [
+     {
+      "wert": 8421.0,
+      "quelle": "SELECT cases FROM council_trade_tax_statistics WHERE city = 'Oldenburg' AND year = 2021",
+      "jahr": 2021
+     }
+    ]
+   }
+  ],
+  "verboten": [],
+  "notiz": "Die Statistik endet 2021 — die Antwort muss das Jahr nennen."
+ },
+ {
+  "id": "hh-gebuehr-grund-2026-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/einnahmen",
+  "refs": {},
+  "heading": "Woher kommt das Geld?",
+  "frage": "Wie hoch ist die Grundgebühr für den Müll 2026?",
+  "kategorie": "haushalt/gebuehren",
+  "baustein": "council/geld/fee_rates.py",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 62.0,
+    "einheit": "€",
+    "bezeichnung": "Grundgebühr Abfall 2026",
+    "quelle": "SELECT amount FROM council_fee_rates WHERE year = 2026 AND key = 'base_fee'",
+    "jahr": 2026
+   }
+  ],
+  "verboten": [
+   {
+    "art": "zahl",
+    "wert": 50.0,
+    "einheit": "€",
+    "grund": "Grundgebühr 2025 als 2026",
+    "quelle": "SELECT amount FROM council_fee_rates WHERE year = 2025 AND key = 'base_fee'",
+    "als_jahr": 2026
+   }
+  ]
+ },
+ {
+  "id": "hh-gebuehr-strasse-rat",
+  "kanal": "rat",
+  "frage": "Was kostet die Straßenreinigung pro Meter?",
+  "kategorie": "haushalt/gebuehren",
+  "baustein": "council/geld/fee_rates.py",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 4.04,
+    "einheit": "€",
+    "bezeichnung": "Straßenreinigung je Meter 2026",
+    "quelle": "SELECT amount FROM council_fee_rates WHERE year = 2026 AND key = 'street_cleaning_per_metre'",
+    "jahr": 2026
+   }
+  ],
+  "verboten": [
+   {
+    "art": "zahl",
+    "wert": 3.74,
+    "einheit": "€",
+    "grund": "Satz 2025 als aktueller",
+    "quelle": "SELECT amount FROM council_fee_rates WHERE year = 2025 AND key = 'street_cleaning_per_metre'",
+    "als_jahr": 2026
+   }
+  ]
+ },
+ {
+  "id": "hh-gebuehr-liter-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/einnahmen",
+  "refs": {},
+  "heading": "Woher kommt das Geld?",
+  "frage": "Wie hoch ist die Litergebühr für die Mülltonne?",
+  "kategorie": "haushalt/gebuehren",
+  "baustein": "council/geld/fee_rates.py",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 1.34,
+    "einheit": "€",
+    "bezeichnung": "Allgemeine Litergebühr 2026",
+    "quelle": "SELECT amount FROM council_fee_rates WHERE year = 2026 AND key = 'per_litre_fee'",
+    "jahr": 2026
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-gebuehr-abfall-kosten-rat",
+  "kanal": "rat",
+  "frage": "Welche Kosten muss die Abfallgebühr 2026 decken?",
+  "kategorie": "haushalt/gebuehren",
+  "baustein": "store.gebuehren_fuer_begriffe (qa: fees)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 13762012.0,
+    "einheit": "€",
+    "bezeichnung": "Abfallsammlung: zu deckende Kosten 2026",
+    "quelle": "SELECT costs_to_cover FROM council_fees WHERE year = 2026 AND area = 'waste_collection'",
+    "jahr": 2026
+   },
+   {
+    "art": "zahl",
+    "wert": 8163280.0,
+    "einheit": "€",
+    "bezeichnung": "Abfallbehandlung: zu deckende Kosten 2026",
+    "quelle": "SELECT costs_to_cover FROM council_fees WHERE year = 2026 AND area = 'waste_treatment'",
+    "jahr": 2026,
+    "pflicht": false
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-gebuehr-einnahmen-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/einnahmen",
+  "refs": {},
+  "heading": "Woher kommt das Geld?",
+  "frage": "Wie viel Gebühren nimmt die Stadt ein?",
+  "kategorie": "haushalt/gebuehren",
+  "baustein": "store.ansatz_fuer_begriffe (qa: ansatz)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 26622594.0,
+    "einheit": "€",
+    "bezeichnung": "öffentlich-rechtliche Entgelte Plan 2026",
+    "quelle": "SELECT amount FROM council_income_budget WHERE plan_budget_year = 2026 AND year = 2026 AND nr = 5",
+    "jahr": 2026,
+    "oder": [
+     {
+      "wert": 25880028.87,
+      "quelle": "SELECT result FROM council_income_statement WHERE year = 2024 AND sub_budget_no IS NULL AND nr = 5",
+      "jahr": 2024
+     }
+    ]
+   }
+  ],
+  "verboten": [],
+  "notiz": "Startfrage der Seite."
+ },
+ {
+  "id": "hh-gebuehr-strasse-auf-personal",
+  "kanal": "lotti",
+  "route": "/haushalt/personal",
+  "refs": {},
+  "heading": "Wer macht die Arbeit?",
+  "frage": "Wie stark ist die Straßenreinigungsgebühr 2026 gestiegen?",
+  "kategorie": "haushalt/gebuehren",
+  "baustein": "council/geld/fee_rates.py",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 4.04,
+    "einheit": "€",
+    "bezeichnung": "Satz 2026",
+    "quelle": "SELECT amount FROM council_fee_rates WHERE year = 2026 AND key = 'street_cleaning_per_metre'",
+    "jahr": 2026
+   },
+   {
+    "art": "zahl",
+    "wert": 3.74,
+    "einheit": "€",
+    "bezeichnung": "Satz 2025",
+    "quelle": "SELECT amount FROM council_fee_rates WHERE year = 2025 AND key = 'street_cleaning_per_metre'",
+    "jahr": 2025
+   }
+  ],
+  "verboten": [],
+  "notiz": "Unpassende Seite."
+ },
+ {
+  "id": "hh-stellen-gesamt-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/personal",
+  "refs": {},
+  "heading": "Wer macht die Arbeit?",
+  "frage": "Wie viele Stellen plant die Stadt insgesamt?",
+  "kategorie": "haushalt/stellenplan",
+  "baustein": "store.stellenplan_kontext (qa: stellenplan)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 2584.0,
+    "einheit": "Stellen",
+    "bezeichnung": "Stellen im Stellenplan 2026",
+    "teile": [
+     815.0,
+     1769.0
+    ],
+    "toleranz": 0.005,
+    "quelle": "council_staff_plan budget_year=2026, kind='group', Spalte positions_planned: Laufbahngruppe 1 + 2 + Beamte auf Zeit (Beamte) und Beschäftigte TVöD",
+    "jahr": 2026
+   }
+  ],
+  "verboten": [],
+  "notiz": "Startfrage der Seite."
+ },
+ {
+  "id": "hh-stellen-unbesetzt-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/personal",
+  "refs": {},
+  "heading": "Wer macht die Arbeit?",
+  "frage": "Wie viele Stellen sind unbesetzt?",
+  "kategorie": "haushalt/stellenplan",
+  "baustein": "store.stellenplan_kontext (qa: stellenplan)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 501.19,
+    "einheit": "Stellen",
+    "bezeichnung": "unbesetzte Stellen (Stand 30.06.2025)",
+    "teile": [
+     143.71,
+     357.48
+    ],
+    "toleranz": 0.01,
+    "quelle": "council_staff_plan budget_year=2026, kind='group', Spalte vacant: Laufbahngruppe 1 + 2 + Beamte auf Zeit (Beamte) und Beschäftigte TVöD"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Startfrage der Seite."
+ },
+ {
+  "id": "hh-stellen-besetzt-rat",
+  "kanal": "rat",
+  "frage": "Wie viele Stellen der Stadtverwaltung sind besetzt?",
+  "kategorie": "haushalt/stellenplan",
+  "baustein": "store.stellenplan_kontext (qa: stellenplan)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 2043.83,
+    "einheit": "Stellen",
+    "bezeichnung": "besetzte Stellen (Stand 30.06.2025)",
+    "teile": [
+     652.31,
+     1391.52
+    ],
+    "toleranz": 0.01,
+    "quelle": "council_staff_plan budget_year=2026, kind='group', Spalte filled: Laufbahngruppe 1 + 2 + Beamte auf Zeit (Beamte) und Beschäftigte TVöD"
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-stellen-2025-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/personal",
+  "refs": {},
+  "heading": "Wer macht die Arbeit?",
+  "frage": "Wie viele Stellen hatte der Stellenplan 2025?",
+  "kategorie": "haushalt/stellenplan",
+  "baustein": "store.stellenplan_kontext (qa: stellenplan)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 2533.0,
+    "einheit": "Stellen",
+    "bezeichnung": "Stellen im Stellenplan 2025",
+    "teile": [
+     794.0,
+     1739.0
+    ],
+    "toleranz": 0.005,
+    "quelle": "council_staff_plan budget_year=2025, kind='group', Spalte positions_planned: Laufbahngruppe 1 + 2 + Beamte auf Zeit (Beamte) und Beschäftigte TVöD",
+    "jahr": 2025
+   }
+  ],
+  "verboten": [],
+  "notiz": "Jahres-Falle: nicht der jüngste Stellenplan."
+ },
+ {
+  "id": "hh-stellen-auf-haushalt",
+  "kanal": "lotti",
+  "route": "/haushalt",
+  "refs": {},
+  "heading": "Haushalt — Übersicht",
+  "frage": "Wie viele Leute arbeiten bei der Stadt?",
+  "kategorie": "haushalt/stellenplan",
+  "baustein": "store.stellenplan_kontext (qa: stellenplan)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 2043.83,
+    "einheit": "Stellen",
+    "bezeichnung": "besetzte Stellen (Stand 30.06.2025)",
+    "teile": [
+     652.31,
+     1391.52
+    ],
+    "toleranz": 0.01,
+    "quelle": "council_staff_plan budget_year=2026, kind='group', Spalte filled: Laufbahngruppe 1 + 2 + Beamte auf Zeit (Beamte) und Beschäftigte TVöD"
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-satzung-vpe-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/mitreden",
+  "refs": {},
+  "heading": "Mitreden",
+  "frage": "Wie hoch sind die Verpflichtungsermächtigungen in der Haushaltssatzung 2026?",
+  "kategorie": "haushalt/satzung",
+  "baustein": "council/geld/bylaw.py",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 41489000.0,
+    "einheit": "€",
+    "bezeichnung": "Verpflichtungsermächtigungen 2026",
+    "quelle": "SELECT commitment_authorizations FROM council_budget_bylaw WHERE year = 2026 AND supplement = 0",
+    "jahr": 2026
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-satzung-beschluss-rat",
+  "kanal": "rat",
+  "frage": "Wann hat der Rat den Haushalt 2026 beschlossen?",
+  "kategorie": "haushalt/satzung",
+  "baustein": "council/geld/bylaw.py",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "09.02.2026",
+      "9.2.2026",
+      "9. Februar 2026",
+      "09. Februar 2026",
+      "2026-02-09"
+     ]
+    ],
+    "quelle": "council_decisions id=8286 (Rat, council_sessions.session_date 2026-02-09, outcome accepted)"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Datenbefund: council_budget_bylaw.session_date sagt 15.12.2025 — an dem Tag wurde vertagt (council_decisions 9283, postponed); beschlossen hat der Rat am 09.02.2026."
+ },
+ {
+  "id": "hh-satzung-ergebnis-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/mitreden",
+  "refs": {},
+  "heading": "Mitreden",
+  "frage": "Welche Summe an Erträgen und Aufwendungen setzt die Haushaltssatzung 2026 fest?",
+  "kategorie": "haushalt/satzung",
+  "baustein": "council/geld/bylaw.py",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 788574714.0,
+    "einheit": "€",
+    "bezeichnung": "Satzung: ordentliche Erträge",
+    "quelle": "SELECT ordinary_revenues FROM council_budget_bylaw WHERE year = 2026 AND supplement = 0",
+    "jahr": 2026
+   },
+   {
+    "art": "zahl",
+    "wert": 880775058.0,
+    "einheit": "€",
+    "bezeichnung": "Satzung: ordentliche Aufwendungen",
+    "quelle": "SELECT ordinary_expenses FROM council_budget_bylaw WHERE year = 2026 AND supplement = 0",
+    "jahr": 2026
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-vergleich-steuerkraft-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/vergleich",
+  "refs": {},
+  "heading": "Steht Oldenburg besser da?",
+  "frage": "Wie steht Oldenburg bei der Steuerkraft da?",
+  "kategorie": "haushalt/vergleich",
+  "baustein": "store.staedtevergleich_kontext (qa: vergleich)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 348164000.0,
+    "einheit": "€",
+    "bezeichnung": "Steuerkraftmesszahl Oldenburg 2026",
+    "quelle": "SELECT value FROM council_city_comparison WHERE year = 2026 AND city = 'Oldenburg' AND indicator = 'steuerkraftmesszahl' × 1000",
+    "jahr": 2026
+   },
+   {
+    "art": "text",
+    "muss": [
+     "Braunschweig"
+    ],
+    "quelle": "council_city_comparison 2026: Braunschweig vor Oldenburg"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Startfrage der Seite."
+ },
+ {
+  "id": "hh-vergleich-gewst-hebesatz-rat",
+  "kanal": "rat",
+  "frage": "Hat Oldenburg einen höheren Gewerbesteuer-Hebesatz als Osnabrück?",
+  "kategorie": "haushalt/vergleich",
+  "baustein": "store.staedtevergleich_kontext (qa: vergleich)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 439.0,
+    "einheit": "%",
+    "bezeichnung": "Hebesatz Gewerbesteuer Oldenburg",
+    "quelle": "SELECT value FROM council_city_comparison WHERE year = 2025 AND city = 'Oldenburg' AND indicator = 'hebesatz_gewerbesteuer'",
+    "jahr": 2025
+   },
+   {
+    "art": "zahl",
+    "wert": 440.0,
+    "einheit": "%",
+    "bezeichnung": "Hebesatz Gewerbesteuer Osnabrück",
+    "quelle": "SELECT value FROM council_city_comparison WHERE year = 2025 AND city = 'Osnabrück' AND indicator = 'hebesatz_gewerbesteuer'",
+    "jahr": 2025
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-vergleich-einnahmekraft-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/vergleich",
+  "refs": {},
+  "heading": "Steht Oldenburg besser da?",
+  "frage": "Wie hoch ist die Steuereinnahmekraft je Einwohner in Oldenburg im Vergleich zu Wolfsburg?",
+  "kategorie": "haushalt/vergleich",
+  "baustein": "store.staedtevergleich_kontext (qa: vergleich)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 2033.66,
+    "einheit": "€",
+    "bezeichnung": "Steuereinnahmekraft je EW Oldenburg",
+    "quelle": "SELECT value FROM council_city_comparison WHERE year = 2025 AND city = 'Oldenburg' AND indicator = 'steuereinnahmekraft_je_ew'",
+    "jahr": 2025
+   },
+   {
+    "art": "zahl",
+    "wert": 2259.77,
+    "einheit": "€",
+    "bezeichnung": "Steuereinnahmekraft je EW Wolfsburg",
+    "quelle": "SELECT value FROM council_city_comparison WHERE year = 2025 AND city = 'Wolfsburg' AND indicator = 'steuereinnahmekraft_je_ew'",
+    "jahr": 2025
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-vergleich-grundb-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/vergleich",
+  "refs": {},
+  "heading": "Steht Oldenburg besser da?",
+  "frage": "In welcher Stadt ist die Grundsteuer B am höchsten?",
+  "kategorie": "haushalt/vergleich",
+  "baustein": "store.staedtevergleich_kontext (qa: vergleich)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     "Braunschweig"
+    ],
+    "quelle": "council_city_comparison 2025 hebesatz_grundsteuer_b: Maximum"
+   },
+   {
+    "art": "zahl",
+    "wert": 750.0,
+    "einheit": "%",
+    "bezeichnung": "Hebesatz B Braunschweig",
+    "quelle": "SELECT value FROM council_city_comparison WHERE year = 2025 AND city = 'Braunschweig' AND indicator = 'hebesatz_grundsteuer_b'",
+    "jahr": 2025
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-vergleich-grenzen-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/vergleich",
+  "refs": {},
+  "heading": "Steht Oldenburg besser da?",
+  "frage": "Warum hat ein Ausgabenvergleich Grenzen?",
+  "kategorie": "haushalt/vergleich",
+  "baustein": "Seitenwissen (kern/knowledge.py)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "Aufgaben",
+      "aufgaben"
+     ]
+    ],
+    "quelle": "Seitenwissen /haushalt/vergleich"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Startfrage der Seite."
+ },
+ {
+  "id": "hh-antraege-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/mitreden",
+  "refs": {},
+  "heading": "Mitreden",
+  "frage": "Welche Anträge gab es zum Haushalt?",
+  "kategorie": "haushalt/mitreden",
+  "baustein": "store.haushaltsantraege_kontext (qa: antraege) / council/geld/amendments.py",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "SPD"
+     ],
+     [
+      "CDU"
+     ],
+     [
+      "Grüne"
+     ]
+    ],
+    "quelle": "Änderungslisten zum Haushalt 2026 (Rat 09.02.2026): Anträge von SPD, CDU, FDP, Grünen, BSW, Für Oldenburg — council_budget_amendments_totals list_key='fc_decided', Sitzungs-Änderungslisten"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Startfrage der Seite."
+ },
+ {
+  "id": "hh-aenderungsliste-2026-rat",
+  "kanal": "rat",
+  "frage": "Wie hat die erste Änderungsliste der Verwaltung das Ergebnis 2026 verändert?",
+  "kategorie": "haushalt/mitreden",
+  "baustein": "store.haushaltsantraege_kontext (qa: antraege) / council/geld/amendments.py",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 16629632.0,
+    "einheit": "€",
+    "bezeichnung": "Änderungsliste Verw. I: Verbesserung 2026",
+    "quelle": "SELECT balance FROM council_budget_amendments_totals WHERE budget_year = 2026 AND list_key = 'fc_decided' AND year = 2026 AND label LIKE 'Änderungsliste v. 24.11.2025%'",
+    "jahr": 2026
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-haushalt-entwurf-final-rat",
+  "kanal": "rat",
+  "frage": "Um wie viel hat sich das Defizit 2026 zwischen Verwaltungsentwurf und Beschluss verändert?",
+  "kategorie": "haushalt/mitreden",
+  "baustein": "store.haushaltsantraege_kontext (qa: antraege) / council/geld/amendments.py",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": -89291295.0,
+    "einheit": "€",
+    "bezeichnung": "Fehlbetrag Verwaltungsentwurf 2026",
+    "quelle": "SELECT balance FROM council_budget_amendments_totals WHERE budget_year = 2026 AND list_key = 'fc_decided' AND year = 2026 AND kind = 'draft'",
+    "jahr": 2026
+   },
+   {
+    "art": "zahl",
+    "wert": -68739348.0,
+    "einheit": "€",
+    "bezeichnung": "Fehlbetrag nach Beschluss 2026",
+    "quelle": "SELECT balance FROM council_budget_amendments_totals WHERE budget_year = 2026 AND list_key = 'fc_decided' AND year = 2026 AND kind = 'final_total'",
+    "jahr": 2026
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-produkt-feuerwehr-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/produkte",
+  "refs": {},
+  "heading": "Was kostet eigentlich …?",
+  "frage": "Was kostet die Feuerwehr im Jahr?",
+  "kategorie": "haushalt/produkte",
+  "baustein": "store.produkte_fuer_begriffe (qa: produkte)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 19487937.0,
+    "einheit": "€",
+    "bezeichnung": "Brand- und Katastrophenschutz Aufwand 2026",
+    "quelle": "SELECT expenses FROM council_products WHERE year = 2026 AND product_name = 'Brand- und Katastrophenschutz'",
+    "jahr": 2026,
+    "oder": [
+     {
+      "wert": 18267049.0,
+      "quelle": "SELECT -result FROM council_products WHERE year = 2026 AND product_name = 'Brand- und Katastrophenschutz'",
+      "jahr": 2026
+     }
+    ]
+   }
+  ],
+  "verboten": [],
+  "notiz": "Startfrage der Seite."
+ },
+ {
+  "id": "hh-produkt-klimaschutz-rat",
+  "kanal": "rat",
+  "frage": "Was kostet der Klimaschutz die Stadt im Jahr?",
+  "kategorie": "haushalt/produkte",
+  "baustein": "store.produkte_fuer_begriffe (qa: produkte)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 3680862.0,
+    "einheit": "€",
+    "bezeichnung": "Klimaschutz Aufwand 2026",
+    "quelle": "SELECT expenses FROM council_products WHERE year = 2026 AND product_name = 'Klimaschutz'",
+    "jahr": 2026,
+    "oder": [
+     {
+      "wert": 3353526.0,
+      "quelle": "SELECT -result FROM council_products WHERE year = 2026 AND product_name = 'Klimaschutz'",
+      "jahr": 2026
+     }
+    ]
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-produkt-kita-rat",
+  "kanal": "rat",
+  "frage": "Was kostet die Kinderbetreuung in Kitas die Stadt?",
+  "kategorie": "haushalt/produkte",
+  "baustein": "store.produkte_fuer_begriffe (qa: produkte)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 87915525.0,
+    "einheit": "€",
+    "bezeichnung": "Kindertagesbetreuung Aufwand 2026",
+    "quelle": "SELECT expenses FROM council_products WHERE year = 2026 AND product_name = 'Kindertagesbetreuung'",
+    "jahr": 2026,
+    "oder": [
+     {
+      "wert": 73738117.0,
+      "quelle": "SELECT -result FROM council_products WHERE year = 2026 AND product_name = 'Kindertagesbetreuung'",
+      "jahr": 2026
+     }
+    ]
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-produkt-sport-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/produkte",
+  "refs": {},
+  "heading": "Was kostet eigentlich …?",
+  "frage": "Wie viel gibt die Stadt für Sportförderung aus?",
+  "kategorie": "haushalt/produkte",
+  "baustein": "store.produkte_fuer_begriffe (qa: produkte)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 13177251.0,
+    "einheit": "€",
+    "bezeichnung": "Sportförderung Aufwand 2026",
+    "quelle": "SELECT expenses FROM council_products WHERE year = 2026 AND product_name = 'Sportförderung'",
+    "jahr": 2026,
+    "oder": [
+     {
+      "wert": 12794097.0,
+      "quelle": "SELECT -result FROM council_products WHERE year = 2026 AND product_name = 'Sportförderung'",
+      "jahr": 2026
+     }
+    ]
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-produkt-archiv-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/produkte",
+  "refs": {},
+  "heading": "Was kostet eigentlich …?",
+  "frage": "Was kostet das Stadtarchiv?",
+  "kategorie": "haushalt/produkte",
+  "baustein": "store.produkte_fuer_begriffe (qa: produkte)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 394887.0,
+    "einheit": "€",
+    "bezeichnung": "Archivierung Aufwand 2026",
+    "quelle": "SELECT expenses FROM council_products WHERE year = 2026 AND product_name = 'Archivierung'",
+    "jahr": 2026,
+    "oder": [
+     {
+      "wert": 389887.0,
+      "quelle": "SELECT -result FROM council_products WHERE year = 2026 AND product_name = 'Archivierung'",
+      "jahr": 2026
+     }
+    ]
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-produkt-feuerwehr-auf-schulden",
+  "kanal": "lotti",
+  "route": "/haushalt/schulden",
+  "refs": {},
+  "heading": "Wie viel Schulden hat Oldenburg?",
+  "frage": "Was kostet die Feuerwehr im Jahr?",
+  "kategorie": "haushalt/produkte",
+  "baustein": "store.produkte_fuer_begriffe (qa: produkte)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 19487937.0,
+    "einheit": "€",
+    "bezeichnung": "Brand- und Katastrophenschutz Aufwand 2026",
+    "quelle": "SELECT expenses FROM council_products WHERE year = 2026 AND product_name = 'Brand- und Katastrophenschutz'",
+    "jahr": 2026,
+    "oder": [
+     {
+      "wert": 18267049.0,
+      "quelle": "SELECT -result FROM council_products WHERE year = 2026 AND product_name = 'Brand- und Katastrophenschutz'",
+      "jahr": 2026
+     }
+    ]
+   }
+  ],
+  "verboten": [],
+  "notiz": "Unpassende Seite."
+ },
+ {
+  "id": "hh-pflicht-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/pflicht",
+  "refs": {},
+  "heading": "Muss oder kann?",
+  "frage": "Was muss die Stadt gesetzlich bezahlen?",
+  "kategorie": "haushalt/produkte",
+  "baustein": "store.produkte_fuer_begriffe (qa: produkte)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "SGB",
+      "Sozialgesetzbuch"
+     ],
+     [
+      "Eingliederungshilfe",
+      "Grundsicherung",
+      "Kindertagesbetreuung",
+      "Jugendhilfe"
+     ]
+    ],
+    "quelle": "council_products year=2026 controllability='low' (größte: Kindertagesbetreuung, Grundsicherung SGB II, Eingliederungshilfe SGB IX)"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Startfrage der Seite."
+ },
+ {
+  "id": "hh-spielraum-rat",
+  "kanal": "rat",
+  "frage": "Wo hat der Rat beim Haushalt echten Entscheidungsspielraum?",
+  "kategorie": "haushalt/produkte",
+  "baustein": "store.produkte_fuer_begriffe (qa: produkte)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "Kultur",
+      "Sportförderung",
+      "Klimaschutz",
+      "Wirtschaftsförderung"
+     ]
+    ],
+    "quelle": "council_products year=2026 controllability='high'"
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-kennzahl-ekq-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/pruefung",
+  "refs": {},
+  "heading": "Geprüft und zusammengefasst",
+  "frage": "Wie hoch ist die Eigenkapitalquote der Stadt?",
+  "kategorie": "haushalt/pruefung",
+  "baustein": "store.kennzahlen_kontext (qa: indicators)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 50.11,
+    "einheit": "%",
+    "bezeichnung": "Eigenkapitalquote I 2024",
+    "quelle": "SELECT value FROM council_indicators WHERE report_year = 2024 AND year = 2024 AND indicator = 'eigenkapitalquote_1'",
+    "jahr": 2024,
+    "oder": [
+     {
+      "wert": 62.63,
+      "quelle": "SELECT value FROM council_indicators WHERE report_year = 2024 AND year = 2024 AND indicator = 'eigenkapitalquote_2'",
+      "jahr": 2024
+     }
+    ]
+   }
+  ],
+  "verboten": [
+   {
+    "art": "zahl",
+    "wert": 54.62,
+    "einheit": "%",
+    "grund": "2023 als 2024",
+    "quelle": "SELECT value FROM council_indicators WHERE report_year = 2024 AND year = 2023 AND indicator = 'eigenkapitalquote_1'",
+    "als_jahr": 2024
+   }
+  ]
+ },
+ {
+  "id": "hh-kennzahl-personal-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/pruefung",
+  "refs": {},
+  "heading": "Geprüft und zusammengefasst",
+  "frage": "Wie hoch ist die Personalintensität der Stadt Oldenburg?",
+  "kategorie": "haushalt/pruefung",
+  "baustein": "store.kennzahlen_kontext (qa: indicators)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 24.17,
+    "einheit": "%",
+    "bezeichnung": "Personalintensität 2024",
+    "quelle": "SELECT value FROM council_indicators WHERE report_year = 2024 AND year = 2024 AND indicator = 'personalintensitaet'",
+    "jahr": 2024
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-vermoegen-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/pruefung",
+  "refs": {},
+  "heading": "Geprüft und zusammengefasst",
+  "frage": "Wie viel Vermögen hat die Stadt pro Einwohner?",
+  "kategorie": "haushalt/pruefung",
+  "baustein": "store.kennzahlen_kontext (qa: indicators)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 8294.05,
+    "einheit": "€",
+    "bezeichnung": "Vermögen je EW 2024",
+    "quelle": "SELECT value FROM council_indicators WHERE report_year = 2024 AND year = 2024 AND indicator = 'vermoegen_je_einwohner'",
+    "jahr": 2024
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-rpa-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/pruefung",
+  "refs": {},
+  "heading": "Geprüft und zusammengefasst",
+  "frage": "Was hat das Rechnungsprüfungsamt beanstandet?",
+  "kategorie": "haushalt/pruefung",
+  "baustein": "store.pruefberichte_fuer_begriffe (qa: pruefung)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "Vier-Augen",
+      "Funktionstrennung",
+      "Inventur",
+      "Verpflichtungsermächtigung",
+      "Haushaltsreste",
+      "außerplanmäßig",
+      "überplanmäßig"
+     ]
+    ],
+    "quelle": "council_audit_reports year=2024 mark in ('B','WB')"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Startfrage der Seite."
+ },
+ {
+  "id": "hh-rpa-rat",
+  "kanal": "rat",
+  "frage": "Was hat das Rechnungsprüfungsamt beim Jahresabschluss 2024 beanstandet?",
+  "kategorie": "haushalt/pruefung",
+  "baustein": "store.pruefberichte_fuer_begriffe (qa: pruefung)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "Vier-Augen",
+      "Funktionstrennung",
+      "Inventur",
+      "Verpflichtungsermächtigung",
+      "Haushaltsreste",
+      "außerplanmäßig",
+      "überplanmäßig"
+     ]
+    ],
+    "quelle": "council_audit_reports year=2024 mark in ('B','WB')"
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-bilanz-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/pruefung",
+  "refs": {},
+  "heading": "Geprüft und zusammengefasst",
+  "frage": "Was besitzt die Stadt laut Bilanz?",
+  "kategorie": "haushalt/pruefung",
+  "baustein": "store.bilanz_kontext (qa: bilanz)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 926869052.49,
+    "einheit": "€",
+    "bezeichnung": "Nettoposition (Eigenkapital) 2024",
+    "quelle": "SELECT value FROM council_balance_sheet WHERE year = 2024 AND role = 'net_position'",
+    "jahr": 2024,
+    "oder": [
+     {
+      "wert": 605573107.06,
+      "quelle": "SELECT value FROM council_balance_sheet WHERE year = 2024 AND role = 'tangible_assets'",
+      "jahr": 2024
+     }
+    ]
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-nachbewilligung-2025-rat",
+  "kanal": "rat",
+  "frage": "Welche größte überplanmäßige Ausgabe hat der Rat 2025 nachbewilligt?",
+  "kategorie": "haushalt/nachbewilligungen",
+  "baustein": "store.nachbewilligungen_kontext (qa: supplementary_approvals)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 19420500.0,
+    "einheit": "€",
+    "bezeichnung": "größte über-/außerplanmäßige Bewilligung 2025 (Teilhaushalt 10)",
+    "quelle": "SELECT amount FROM council_supplementary_approvals WHERE year = 2025 AND kind = 'approval' ORDER BY amount DESC LIMIT 1",
+    "jahr": 2025
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-spenden-2025-rat",
+  "kanal": "rat",
+  "frage": "Wie viel Geld hat die Stadt 2025 an Spenden angenommen?",
+  "kategorie": "haushalt/spenden",
+  "baustein": "council/geld/donations.py",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 788669.01,
+    "einheit": "€",
+    "bezeichnung": "Spenden 2025 (Summe)",
+    "quelle": "SELECT SUM(amount) FROM council_donations WHERE year = 2025",
+    "jahr": 2025,
+    "toleranz": 0.01
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-nd-schulden-vergleich-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/schulden",
+  "refs": {},
+  "heading": "Wie viel Schulden hat Oldenburg?",
+  "frage": "Ist das viel im Vergleich zu anderen Städten?",
+  "kategorie": "haushalt/nicht-in-daten",
+  "baustein": "— (die Daten geben es nicht her)",
+  "antwort_in_daten": false,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 348164000.0,
+    "einheit": "€",
+    "bezeichnung": "Steuerkraftmesszahl (nur zur Einordnung)",
+    "quelle": "SELECT value FROM council_city_comparison WHERE year = 2026 AND city = 'Oldenburg' AND indicator = 'steuerkraftmesszahl' × 1000",
+    "jahr": 2026,
+    "pflicht": false,
+    "baustein": "store.staedtevergleich_kontext (qa: vergleich)"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Faktencheck lotti[1]: Gemini beantwortete die Schuldenfrage mit der Steuerkraft. Schulden gibt es nur für Oldenburg (council_integrated_debt: 1 Zeile, ARS Oldenburg)."
+ },
+ {
+  "id": "hh-nd-schulden-osnabrueck-rat",
+  "kanal": "rat",
+  "frage": "Wie hoch sind die Schulden von Osnabrück?",
+  "kategorie": "haushalt/nicht-in-daten",
+  "baustein": "— (die Daten geben es nicht her)",
+  "antwort_in_daten": false,
+  "gold": [],
+  "verboten": []
+ },
+ {
+  "id": "hh-nd-schulden-wolfsburg-rat",
+  "kanal": "rat",
+  "frage": "Hat Oldenburg mehr Schulden pro Kopf als Wolfsburg?",
+  "kategorie": "haushalt/nicht-in-daten",
+  "baustein": "— (die Daten geben es nicht her)",
+  "antwort_in_daten": false,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 1908.0,
+    "einheit": "€",
+    "bezeichnung": "Schulden je Einwohner*in",
+    "quelle": "SELECT per_capita FROM council_debt WHERE year = 2025",
+    "jahr": 2025,
+    "pflicht": false
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-nd-kita-vergleich-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/vergleich",
+  "refs": {},
+  "heading": "Steht Oldenburg besser da?",
+  "frage": "Gibt Oldenburg mehr für Kitas aus als Braunschweig?",
+  "kategorie": "haushalt/nicht-in-daten",
+  "baustein": "— (die Daten geben es nicht her)",
+  "antwort_in_daten": false,
+  "gold": [],
+  "verboten": []
+ },
+ {
+  "id": "hh-nd-defizit-delmenhorst-rat",
+  "kanal": "rat",
+  "frage": "Wie hoch ist das Haushaltsdefizit von Delmenhorst?",
+  "kategorie": "haushalt/nicht-in-daten",
+  "baustein": "— (die Daten geben es nicht her)",
+  "antwort_in_daten": false,
+  "gold": [],
+  "verboten": []
+ },
+ {
+  "id": "hh-nd-gewst-firma-rat",
+  "kanal": "rat",
+  "frage": "Wie viel Gewerbesteuer zahlt die EWE in Oldenburg?",
+  "kategorie": "haushalt/nicht-in-daten",
+  "baustein": "— (die Daten geben es nicht her)",
+  "antwort_in_daten": false,
+  "gold": [],
+  "verboten": [],
+  "notiz": "Steuergeheimnis: einzelne Zahler stehen in keiner Quelle."
+ },
+ {
+  "id": "hh-nd-schulden-1990-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/schulden",
+  "refs": {},
+  "heading": "Wie viel Schulden hat Oldenburg?",
+  "frage": "Wie hoch waren die Schulden 1990?",
+  "kategorie": "haushalt/nicht-in-daten",
+  "baustein": "— (die Daten geben es nicht her)",
+  "antwort_in_daten": false,
+  "gold": [],
+  "verboten": [],
+  "notiz": "Die Reihe beginnt 1995 (council_debt MIN(year))."
+ },
+ {
+  "id": "hh-nd-gewst-2026-rat",
+  "kanal": "rat",
+  "frage": "Wie viel Gewerbesteuer hat die Stadt 2026 bis jetzt tatsächlich eingenommen?",
+  "kategorie": "haushalt/nicht-in-daten",
+  "baustein": "— (die Daten geben es nicht her)",
+  "antwort_in_daten": false,
+  "gold": [],
+  "verboten": [],
+  "notiz": "council_taxes endet 2025; der Vollzugsbericht nennt keine Steuerarten."
+ },
+ {
+  "id": "hh-nd-hundesteuer-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/einnahmen",
+  "refs": {},
+  "heading": "Woher kommt das Geld?",
+  "frage": "Wie viel bringt die Hundesteuer?",
+  "kategorie": "haushalt/nicht-in-daten",
+  "baustein": "— (die Daten geben es nicht her)",
+  "antwort_in_daten": false,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 819000.0,
+    "einheit": "€",
+    "bezeichnung": "sonstige Steuern 2025 (Hundesteuer nicht einzeln)",
+    "quelle": "SELECT amount FROM council_taxes WHERE year = 2025 AND kind = 'sonstige Steuern'",
+    "jahr": 2025,
+    "pflicht": false,
+    "baustein": "store.steuern_fuer_begriffe (qa: taxes)"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Die Hundesteuer steht nicht einzeln in council_taxes, nur „sonstige Steuern“."
+ },
+ {
+  "id": "hh-nd-stellen-2028-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/personal",
+  "refs": {},
+  "heading": "Wer macht die Arbeit?",
+  "frage": "Wie viele Stellen will die Stadt 2028 schaffen?",
+  "kategorie": "haushalt/nicht-in-daten",
+  "baustein": "— (die Daten geben es nicht her)",
+  "antwort_in_daten": false,
+  "gold": [],
+  "verboten": []
+ },
+ {
+  "id": "hh-nd-abwasser-rat",
+  "kanal": "rat",
+  "frage": "Wie hoch ist die Abwassergebühr in Oldenburg?",
+  "kategorie": "haushalt/nicht-in-daten",
+  "baustein": "— (die Daten geben es nicht her)",
+  "antwort_in_daten": false,
+  "gold": [],
+  "verboten": [],
+  "notiz": "council_fees/council_fee_rates kennen nur Abfall und Straßenreinigung."
+ },
+ {
+  "id": "hh-nd-ekq-2025-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/pruefung",
+  "refs": {},
+  "heading": "Geprüft und zusammengefasst",
+  "frage": "Wie hoch war die Eigenkapitalquote 2025?",
+  "kategorie": "haushalt/nicht-in-daten",
+  "baustein": "— (die Daten geben es nicht her)",
+  "antwort_in_daten": false,
+  "gold": [],
+  "verboten": [
+   {
+    "art": "zahl",
+    "wert": 50.11,
+    "einheit": "%",
+    "grund": "2024 als 2025",
+    "quelle": "SELECT value FROM council_indicators WHERE report_year = 2024 AND year = 2024 AND indicator = 'eigenkapitalquote_1'",
+    "als_jahr": 2025
+   }
+  ],
+  "notiz": "Der Jahresabschluss 2025 liegt nicht vor; jüngster Kennzahlen-Jahrgang ist 2024."
+ },
+ {
+  "id": "hh-nd-schulden-2030-rat",
+  "kanal": "rat",
+  "frage": "Wie hoch werden die Schulden der Stadt 2030 sein?",
+  "kategorie": "haushalt/nicht-in-daten",
+  "baustein": "— (die Daten geben es nicht her)",
+  "antwort_in_daten": false,
+  "gold": [],
+  "verboten": []
+ },
+ {
+  "id": "hh-nd-zinsen-braunschweig-rat",
+  "kanal": "rat",
+  "frage": "Wie viel Zinsen zahlt Braunschweig für seine Kredite?",
+  "kategorie": "haushalt/nicht-in-daten",
+  "baustein": "— (die Daten geben es nicht her)",
+  "antwort_in_daten": false,
+  "gold": [],
+  "verboten": []
+ },
+ {
+  "id": "hh-nd-klinikum-gehaelter-lotti",
+  "kanal": "lotti",
+  "route": "/haushalt/konzern",
+  "refs": {},
+  "heading": "Ist das die ganze Stadt?",
+  "frage": "Wie viel verdient die Geschäftsführung des Klinikums?",
+  "kategorie": "haushalt/nicht-in-daten",
+  "baustein": "— (die Daten geben es nicht her)",
+  "antwort_in_daten": false,
+  "gold": [],
+  "verboten": []
+ }
+]

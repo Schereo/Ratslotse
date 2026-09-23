@@ -430,6 +430,44 @@ def _lauf_viertel() -> dict:
     return r.ein_lauf(r.lade())
 
 
+# ---- Fakten-Eval: Kontextfehler und Modellfehler getrennt (23.09.2026) ------ #
+# Läuft über ein eigenes Backend (eval/run_fakten.py) — der echte Codepfad
+# beider Kanäle. Das Backend erbt die Umgebung dieses Unterprozesses: den
+# Schalter (``COUNCIL_ASSISTANT_MODEL``; der Lauf setzt ``COUNCIL_QA_MODEL``
+# gleich), die eigene Kostendatei (``RATSLOTSE_SQLITE``) und ein gesetztes
+# ``NWZ_OPENROUTER_ZDR=0`` — ohne das ist GPT-6 Luna hier „nicht zulässig“.
+
+def _fakten_datei(name: str) -> Path:
+    return WURZEL / "eval" / name
+
+
+def _lauf_fakten(name: str) -> Callable[[], dict]:
+    def lauf() -> dict:
+        from council import assistant
+        from eval import run_fakten as rf
+        erg = rf.ein_lauf(assistant.MODEL, rf.lade([_fakten_datei(name)]), laut=False)
+        pfad = rf.speichern(erg)
+        # Die Antworten stehen im eigenen Ergebnis (eval/results/fakten/); hier
+        # nur, was der Bericht braucht — sonst trüge jeder Prüfstandslauf
+        # Hunderte Antworten ins Repo.
+        return {"kennzahlen": erg["kennzahlen"], "datei": str(pfad.relative_to(WURZEL)),
+                "faelle": [{"id": z["id"], "fehlerart": z["fehlerart"],
+                            "kontext_ok": z["kontext_ok"]} for z in erg["faelle"]]}
+    return lauf
+
+
+def _braucht_fakten(name: str) -> Callable[[], str | None]:
+    def pruefen() -> str | None:
+        if not _fakten_datei(name).exists():
+            return f"eval/{name} fehlt"
+        return _braucht_council_db()
+    return pruefen
+
+
+def _fakten_kz(schluessel: str) -> Callable[[dict], Any]:
+    return lambda roh: (roh.get("kennzahlen") or {}).get(schluessel)
+
+
 def _anteil(zaehler: str, nenner: str = "n_cases") -> Callable[[dict], float | None]:
     def lesen(roh: dict) -> float | None:
         return roh[zaehler] / roh[nenner] if roh.get(nenner) else None
@@ -761,6 +799,29 @@ REGISTER: tuple[Suite, ...] = (
                                      "fehler": roh.get("fehler")},
         lokal=_braucht_council_db, hart_sperrt=True,
     ),
+    *(Suite(
+        name=name, titel=titel,
+        features=("assistant_explain", "qa_answer"), schalter="COUNCIL_ASSISTANT_MODEL",
+        modell_aktuell=_attr("council.assistant", "MODEL"),
+        kennzahl="Anteil der Fälle „ok“: Goldfakt im Prompt unter dem richtigen Jahr UND in der "
+                 "Antwort, keine Verwechslung, keine erfundene Zahl (eval/fakten_abgleich.py). "
+                 "Kontextfehler zählen als nicht ok — sie trifft jedes Modell gleich",
+        eingabe=f"eval/{datei} + data/council.sqlite, über ein eigenes Backend "
+                "(beide Kanäle, COUNCIL_QA_MODEL = COUNCIL_ASSISTANT_MODEL)",
+        laufen=_lauf_fakten(datei), web=True,
+        qualitaet=_fakten_kz("quote_ok"),
+        harte_befunde=_fakten_kz("erfunden"),
+        hart_heisst="Antworten mit einer Zahl, die weder im Prompt steht noch sich daraus "
+                    "rechnen lässt — oder einer Zahl, wo die Daten keine hergeben",
+        faelle=_fakten_kz("n_cases"),
+        nebenkennzahlen=lambda roh: {k: (roh.get("kennzahlen") or {}).get(k) for k in (
+            "kontextfehler", "modellfehler", "fehlerarten", "p50_ms")},
+        lokal=_braucht_fakten(datei), hart_sperrt=True,
+    ) for name, titel, datei in (
+        ("fakten-haushalt", "Fakten-Eval: Haushaltsfragen (Lotti + Frag den Rat)",
+         "cases_fakten_haushalt.json"),
+        ("fakten-rat", "Fakten-Eval: Ratsfragen (Lotti + Frag den Rat)", "cases_fakten_rat.json"),
+    )),
 )
 
 SUITEN: dict[str, Suite] = {s.name: s for s in REGISTER}

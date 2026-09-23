@@ -528,3 +528,86 @@ def test_kein_aufruf_leert_das_routing():
                for p in (wurzel / d).rglob("*.py")
                if re.search(r'["\']provider["\']\s*:\s*\{\s*\}', p.read_text())]
     assert not treffer, treffer
+
+
+# --------------------------------------------------------------------------- #
+# Prompt-Mitschnitt (Messschalter der Fakten-Eval)
+# --------------------------------------------------------------------------- #
+def _zeilen(ordner, feature):
+    import json
+    pfad = ordner / f"{feature}.jsonl"
+    return [json.loads(z) for z in pfad.read_text().splitlines()] if pfad.exists() else []
+
+
+def _strom_teil(text, model=None):
+    delta = type("D", (), {"content": text})()
+    return type("K", (), {"choices": [type("C", (), {"delta": delta})()], "usage": None,
+                          "model": model})()
+
+
+def test_mitschnitt_aus_schreibt_nichts(monkeypatch, tmp_path):
+    monkeypatch.delenv(llm.MITSCHNITT_ENV, raising=False)
+    monkeypatch.chdir(tmp_path)
+    _stub_create(monkeypatch, [_Antwort("hallo")])
+    llm.chat_complete(model="m", messages=[{"role": "user", "content": "x"}], _feature="qa_answer")
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_mitschnitt_haelt_prompt_modell_und_antwort_fest(monkeypatch, tmp_path):
+    """Die Eval muss den ECHTEN Prompt sehen — Nachrichten, Modell, Antwort, je Feature."""
+    monkeypatch.setenv(llm.MITSCHNITT_ENV, str(tmp_path))
+    _stub_create(monkeypatch, [_Antwort("Die Antwort")])
+    msgs = [{"role": "system", "content": "Kontext 336.994.000 €"},
+            {"role": "user", "content": "Frage"}]
+    llm.chat_complete(model="openai/gpt-6-luna", messages=msgs, _feature="assistant_explain")
+    (z,) = _zeilen(tmp_path, "assistant_explain")
+    assert z["model"] == "openai/gpt-6-luna"
+    assert z["messages"] == msgs
+    assert z["answer"] == "Die Antwort"
+    assert z["aborted"] is False
+
+
+def test_mitschnitt_auch_beim_strom(monkeypatch, tmp_path):
+    monkeypatch.setenv(llm.MITSCHNITT_ENV, str(tmp_path))
+    monkeypatch.setattr(llm, "_create", lambda **kw: iter([
+        _strom_teil("Rund ", "google/gemini-2.5-flash"), _strom_teil("337 Mio. €")]))
+    teile = list(llm.chat_stream(model="google/gemini-2.5-flash",
+                                 messages=[{"role": "user", "content": "q"}],
+                                 _feature="qa_answer"))
+    assert "".join(teile) == "Rund 337 Mio. €"
+    (z,) = _zeilen(tmp_path, "qa_answer")
+    assert z["answer"] == "Rund 337 Mio. €"
+    assert z["response_model"] == "google/gemini-2.5-flash"
+
+
+def test_mitschnitt_haelt_einen_abgerissenen_strom_fest(monkeypatch, tmp_path):
+    """Reißt der Strom, erzeugt der Router neu — die Eval muss beide Aufrufe sehen."""
+    monkeypatch.setenv(llm.MITSCHNITT_ENV, str(tmp_path))
+
+    def strom(**kw):
+        yield _strom_teil("Anfang")
+        raise RuntimeError("Strom weg")
+
+    monkeypatch.setattr(llm, "_create", strom)
+    with pytest.raises(RuntimeError):
+        list(llm.chat_stream(model="m", messages=[], _feature="qa_answer"))
+    (z,) = _zeilen(tmp_path, "qa_answer")
+    assert z["aborted"] is True and z["answer"] == "Anfang"
+
+
+def test_mitschnitt_fehler_bricht_den_aufruf_nicht_ab(monkeypatch, tmp_path):
+    datei = tmp_path / "keinordner"
+    datei.write_text("")  # eine DATEI, wo ein Ordner sein müsste
+    monkeypatch.setenv(llm.MITSCHNITT_ENV, str(datei))
+    _stub_create(monkeypatch, [_Antwort("ok")])
+    resp = llm.chat_complete(model="m", messages=[], _feature="qa_answer")
+    assert resp.choices[0].message.content == "ok"
+
+
+def test_mitschnitt_steht_in_keiner_env_vorlage():
+    """Der Schalter schreibt Nutzerfragen im Klartext auf die Platte — nie im Betrieb."""
+    from pathlib import Path
+    wurzel = Path(__file__).resolve().parent.parent
+    for vorlage in wurzel.glob(".env*"):
+        if vorlage.is_file():
+            assert llm.MITSCHNITT_ENV not in vorlage.read_text(errors="ignore"), vorlage
