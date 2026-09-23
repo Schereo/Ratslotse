@@ -677,7 +677,7 @@ Alle optional — greift keine Variable, gilt der Default aus dem Code.
 | `COUNCIL_ENTITY_MODEL` | Entitäten-NER und -Beschreibungen | `deepseek/deepseek-v4-pro` |
 | `COUNCIL_SIMPLE_MODEL` | „Einfach erklärt"-Kurzfassungen | `deepseek/deepseek-v4-pro` |
 | `COUNCIL_INTEREST_MODEL` | Gesprächswert-Score | `deepseek/deepseek-v4-pro` |
-| `COUNCIL_IMPACT_MODEL` | Tragweite-Score | `deepseek/deepseek-v4-pro` |
+| `COUNCIL_IMPACT_MODEL` | Tragweite-Score | `openai/gpt-6-luna` (Flex-Tarif) |
 | `COUNCIL_FUNDSTUECK_MODEL` | Story zum „Fundstück des Tages" | `deepseek/deepseek-v4-pro` |
 | `COUNCIL_RECAP_MODEL` | Themenfeld-Rückblicke | `deepseek/deepseek-v4-pro` |
 | `COUNCIL_QA_MODEL` | „Frag den Rat" (Antwort + Query-Expansion) | `deepseek/deepseek-v4-pro` |

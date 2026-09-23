@@ -112,22 +112,37 @@ MODEL_PARAMS: dict[str, dict[str, Any]] = {
 GEDULD_PAUSEN: tuple[int, ...] = (30, 90, 180)
 
 #: Ersatzmodelle, wenn das gewünschte Modell auch nach der Geduld nicht
-#: antwortet. Gemessen am Tragweite-Golden-Set (30 handbewertete Beschlüsse,
-#: scripts/eval_impact.py, 06.09.2026) — Spearman über die Band-Mitten und
-#: Band-Trefferquote, dazu die Dauer für 30 Beschlüsse:
+#: antwortet. Gemessen am Tragweite-Golden-Set (30 handbewertete Beschlüsse) —
+#: Spearman über die Band-Mitten und Band-Trefferquote, dazu die Dauer:
 #:
-#:   openai/gpt-5.6-luna           ρ 0,833   27/30   14 s   (das Original)
-#:   google/gemini-2.5-flash       ρ 0,831   26/30   21 s
-#:   deepseek/deepseek-v4-pro      ρ 0,820   23/30   75 s
-#:   google/gemini-3.1-flash-lite  ρ 0,786   27/30    6 s
+#:   openai/gpt-5.6-luna           ρ 0,833   27/30   14 s   (06.09.2026, scripts/eval_impact.py)
+#:   google/gemini-2.5-flash       ρ 0,831   26/30   21 s   (06.09.2026, scripts/eval_impact.py)
+#:   deepseek/deepseek-v4-pro      ρ 0,820   23/30   75 s   (06.09.2026, scripts/eval_impact.py)
+#:   google/gemini-3.1-flash-lite  ρ 0,786   27/30    6 s   (06.09.2026, scripts/eval_impact.py)
+#:   openai/gpt-6-luna             91,7 % ± 3,3 Band-Trefferquote — docs/modell-pruefstand.md (`tragweite`)
+#:   deepseek/deepseek-v4-pro      90,0 % (27/30), 40 s p50, 0,81 ct/Aufruf (23.09.2026,
+#:                                  eval/pruefstand.py --suite tragweite --modell deepseek/deepseek-v4-pro)
 #:
-#: Gemini 2.5 Flash ist damit praktisch gleichauf und läuft bei einem anderen
-#: Anbieter — genau der Sinn eines Ersatzes, wenn OpenAIs Pool voll ist.
-#: DeepSeek als zweite Reserve (anderer Anbieter, DSGVO-Routing greift).
-#: Die anderen GPT-5.6-Varianten (sol, terra) hängen am selben Pool und
-#: taugen deshalb NICHT als Ersatz. Wer die Reihenfolge ändert, misst neu.
+#: **Gemini 2.5 Flash fliegt aus der 5.6-Luna-Kette** (P5,
+#: docs/plan-modellwechsel.md): Es läuft bei OpenRouter am 20.10.2026 aus, ein
+#: Ersatz, der selbst ausfällt, taugt nichts. An seine Stelle tritt Gemini
+#: 3.1 Flash Lite (dieselbe 06.09.-Messung, ZDR-fähig wie 2.5 Flash) statt
+#: GPT-6 Luna: **GPT-5.6 Luna ist auch Ersatz für den Watcher**
+#: (``council/watcher.py``, Feature ``council_watcher``, ZDR-Pflicht), und
+#: GPT-6 Luna hat GAR KEINEN ZDR-Endpunkt (s. ``OHNE_NUTZEREINGABE``) — als
+#: Ersatz für ein ZDR-Feature würfe er sofort einen 404, statt weiterzureichen.
+#: Die Kette hier ist pro MODELL, nicht pro Feature, also muss sie für ihren
+#: strengsten Aufrufer stimmen.
+#:
+#: Für GPT-6 Luna selbst — nur an ZDR-freien Features im Einsatz (Social-Text,
+#: Kritiker, Viertel, Tragweite, Ausschuss, s. P5) — kommt zuerst GPT-5.6 Luna
+#: (anderer Anbieterpool: Azure statt OpenAI direkt/Bedrock, im Prüfstand
+#: gleichauf), dann dieselbe frisch nachgemessene DeepSeek-Reserve.
+#: Die anderen GPT-5.6-Varianten (sol, terra) hängen am selben Pool wie 5.6
+#: Luna und taugen deshalb NICHT als Ersatz. Wer die Reihenfolge ändert, misst neu.
 ERSATZ: dict[str, tuple[str, ...]] = {
-    "openai/gpt-5.6-luna": ("google/gemini-2.5-flash", "deepseek/deepseek-v4-pro"),
+    "openai/gpt-5.6-luna": ("google/gemini-3.1-flash-lite", "deepseek/deepseek-v4-pro"),
+    "openai/gpt-6-luna": ("openai/gpt-5.6-luna", "deepseek/deepseek-v4-pro"),
 }
 
 

@@ -62,7 +62,14 @@ from kern import llm, prompts
 #: Nachmittag „91,84 Hektar", „69/89 Hektar" und „94 Hektar". Ein zweiter
 #: Lauf desselben Modells sieht deshalb sehr wohl, was der erste erfand.
 #: Wer es getrennt haben will, setzt COUNCIL_KRITIKER_MODEL.
-MODEL = os.environ.get("COUNCIL_KRITIKER_MODEL", "openai/gpt-5.6-luna")
+#:
+#: Tims Entscheidung 23.09.2026 (P5, docs/plan-modellwechsel.md): GPT-6 Luna
+#: ersetzt 5.6, im Flex-Tarif (kein Nutzereingabe-Feature). Prüfstand
+#: 23.09.2026 (`kritiker`, 18 Fälle × 2 Läufe): 5.6 94,4 % ± 11,1 (0,051–
+#: 0,061 ct/Aufruf) — 6-Luna normal 94,4 % ± 0,0 (0,027–0,047 ct) — 6-Luna
+#: flex 100,0 % ± 0,0 (0,013–0,023 ct). Alle im Rauschen, Flex zu einem
+#: Viertel bis Fünftel des heutigen Preises.
+MODEL = os.environ.get("COUNCIL_KRITIKER_MODEL", "openai/gpt-6-luna")
 
 #: Wertende Wörter. Dieselbe Liste, die der Prompt verbietet — hier noch
 #: einmal als Netz: Ein Prompt ist eine Bitte, das hier ist eine Prüfung.
@@ -247,7 +254,8 @@ def pruefe_llm(text: str, source: str) -> tuple[bool, str]:
             model=MODEL, response_format={"type": "json_object"},
             messages=[{"role": "system", "content": system},
                       {"role": "user", "content": user}],
-            max_tokens=600, _feature="social_critic", _geduld=True, _ersatz=llm.ersatz_fuer(MODEL))
+            max_tokens=600, _feature="social_critic", _geduld=True, _ersatz=llm.ersatz_fuer(MODEL),
+            _tarif="flex")
         roh = (resp.choices[0].message.content or "").strip()
         if roh.startswith("```"):
             roh = roh.strip("`")

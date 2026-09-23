@@ -150,8 +150,9 @@ außerhalb 0–100 verwirft der Parser; `save_impact` klemmt zusätzlich auf 0�
 und schneidet die Begründung bei 300 Zeichen ab. Der Satz erscheint als
 „Warum wichtig: …" auf der Beschluss-Seite.
 
-Modell: `COUNCIL_IMPACT_MODEL` (Default `deepseek/deepseek-v4-pro`), wie alle
-LLM-Aufrufe über OpenRouter ([ADR 0001](/docs/adr/0001-openrouter/)).
+Modell: `COUNCIL_IMPACT_MODEL` (Default `openai/gpt-6-luna`, im Flex-Tarif —
+Prüfstand-Zahlen in `docs/modell-pruefstand.md`), wie alle LLM-Aufrufe über
+OpenRouter ([ADR 0001](/docs/adr/0001-openrouter/)).
 
 ## 3. Gesprächswert — bewusst nicht Wichtigkeit
 
