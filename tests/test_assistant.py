@@ -196,6 +196,25 @@ def test_beschluss_seite_antwortet_mit_der_kurzfassung(kein_modell):
     assert "Die Stadt baut ein Stadion." in text
 
 
+def test_abgelehnt_mit_falscher_kurzfassung_geht_ans_modell(kein_modell):
+    """Gemessen am 23.09.2026: 5988 „einstimmig abgelehnt" trug die
+    Kurzfassung „Der Satz für die Grundsteuer B steigt von 445 auf 490
+    Prozent", und dieser Weg gab sie ohne Modell als Antwort aus. Eine
+    Kurzfassung, die das Ergebnis verschweigt, ist keine geprüfte Antwort."""
+    store = _Store({"title": "Hebesatzung 2024", "outcome": "rejected",
+                    "simple_summary": "Der Satz für die Grundsteuer B steigt von 445 auf 490 Prozent."})
+    screen = lotti.Screen(route="/council/decision", refs={"decision_id": 5988})
+    assert lotti.deterministic_answer(store, screen, "Was sehe ich hier?") is None
+
+
+def test_abgelehnt_mit_richtiger_kurzfassung_bleibt_ohne_modell(kein_modell):
+    kurz = "Der Ausschuss hat den Vorschlag einstimmig abgelehnt, die Grundsteuer B anzuheben."
+    store = _Store({"title": "Hebesatzung 2024", "outcome": "rejected", "simple_summary": kurz})
+    screen = lotti.Screen(route="/council/decision", refs={"decision_id": 5988})
+    text, art = lotti.deterministic_answer(store, screen, "Was sehe ich hier?")
+    assert art == "simple_summary" and kurz in text
+
+
 def test_beschluss_ohne_kurzfassung_geht_ans_modell(kein_modell):
     """Und NICHT in den Seiten-Weg: Der allgemeine Text „hier steht ein
     Beschluss" wäre die Antwort auf eine andere Frage als „was steht hier?"."""
@@ -2052,3 +2071,23 @@ def test_der_beleg_titel_traegt_keinen_trennstrich_am_ende():
     geld = _schulden_geld()
     geld["schulden"]["beleg"]["label"] = "Prüfbericht GA 2024 - GESAMTDOKUMENT -"
     assert qa.geld_belege(geld)[0]["label"] == "Prüfbericht GA 2024 - GESAMTDOKUMENT"
+
+
+def test_abgelehnt_der_wortlaut_ist_nur_der_vorschlag():
+    """5988: „Abstimmung: abgelehnt" und darunter die Kurzfassung „steigt auf
+    490 Prozent" — ein Kontext, der sich selbst widerspricht (23.09.2026).
+    Die falsche Kurzfassung fällt weg, der Wortlaut heißt, was er ist."""
+    block = _block(outcome="rejected", vote="unanimous",
+                   simple_summary="Der Satz für die Grundsteuer B steigt von 445 auf 490 Prozent.",
+                   official_text="Der Hebesatz wird auf 490 Prozent angehoben.")
+    assert "Abstimmung: abgelehnt" in block
+    assert "Kurzfassung" not in block
+    assert "Beschlussvorschlag — gilt NICHT" in block
+    assert "Amtlicher Wortlaut" not in block
+
+
+def test_angenommen_behaelt_kurzfassung_und_wortlaut():
+    block = _block(outcome="accepted", simple_summary="Die Stadt baut ein Stadion.",
+                   official_text="Der Rat beschließt den Neubau.")
+    assert "Kurzfassung: Die Stadt baut ein Stadion." in block
+    assert "Amtlicher Wortlaut (Auszug): Der Rat beschließt den Neubau." in block

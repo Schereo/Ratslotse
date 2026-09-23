@@ -1565,6 +1565,9 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "Regeln:\n"
             "- 2–3 natürlich formulierte Sätze, aktiv, ohne Schachtelsätze oder Floskeln.\n"
             "- Erkläre, WAS entschieden wurde und was es für die Stadt konkret bedeutet.\n"
+            "- Steht über dem Beschlusstext ein ERGEBNIS (abgelehnt, vertagt, kein Beschluss), "
+            "ist der Beschlusstext nur der VORSCHLAG. Dann nennst du das Ergebnis im ersten "
+            "Satz und beschreibst den Inhalt als Vorschlag — nie als etwas, das jetzt gilt.\n"
             "- Erfinde NICHTS: keine Zahlen, Daten, Orte oder Folgen, die nicht im Text stehen.\n"
             "- Übersetze Fachbegriffe (z. B. 'Aufstellungsbeschluss' → 'die Stadt beginnt offiziell "
             "mit der Planung'), statt sie zu wiederholen.\n"
@@ -1575,10 +1578,14 @@ DEFAULTS: dict[str, dict[str, str]] = {
     },
     "simple_summary_user": {
         "title": "Einfach erklärt – Auftrag (RL-904)",
-        "description": "Der zu erklärende Beschluss (Titel, Gremium, Datum, Beschlusstext).",
+        "description": (
+            "Der zu erklärende Beschluss (Titel, Gremium, Datum, Ergebnis-Hinweis, "
+            "Beschlusstext). {outcome_note} ist bei angenommenen Beschlüssen leer."
+        ),
         "template": (
             "Beschluss: {title}\n"
             "Gremium: {committee} · Sitzung vom {session_date}\n\n"
+            "{outcome_note}"
             "Beschlusstext:\n{official_text}"
         ),
     },

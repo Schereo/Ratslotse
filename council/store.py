@@ -365,13 +365,14 @@ class CouncilStore(BplanMixin, FundstueckeMixin, HaushaltMixin, OrteMixin, Perso
     def _insert_decision(self, ksinr, position, kind, parent_item, item_number, title,
                          official_text, outcome, vote, no_votes, abstentions, factions,
                          template_number, kvonr, raw_result) -> None:
+        from council.votes import normalize_vote
         cur = self._conn.execute(
             "INSERT INTO council_decisions "
             "(ksinr, position, kind, parent_item, item_number, title, official_text, outcome, "
             " vote, no_votes, abstentions, factions, template_number, kvonr, raw_result) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (ksinr, position, kind, parent_item, item_number, title, official_text, outcome,
-             vote, _int_or_none(no_votes), _int_or_none(abstentions),
+             normalize_vote(vote, raw_result), _int_or_none(no_votes), _int_or_none(abstentions),
              json.dumps(factions or [], ensure_ascii=False),
              template_number, _int_or_none(kvonr), raw_result),
         )
@@ -727,7 +728,8 @@ class CouncilStore(BplanMixin, FundstueckeMixin, HaushaltMixin, OrteMixin, Perso
         """Beschlüsse ohne „einfach erklärt"-Kurzfassung (RL-904): nur echte
         Beschlüsse mit substanziellem Beschlusstext, neueste zuerst — so holt
         ein limitierter Backfill die relevantesten zuerst nach."""
-        sql = """SELECT d.id, d.title, d.official_text, d.summary, cs.committee, cs.session_date
+        sql = """SELECT d.id, d.title, d.official_text, d.summary, d.outcome, d.raw_result,
+                        cs.committee, cs.session_date
                  FROM council_decisions d
                  JOIN council_sessions cs ON cs.ksinr = d.ksinr
                  WHERE d.kind = 'decision' AND d.simple_summary IS NULL
@@ -2074,8 +2076,9 @@ class CouncilStore(BplanMixin, FundstueckeMixin, HaushaltMixin, OrteMixin, Perso
 
     def get_unclassified_decisions(self, limit: int | None = None) -> list[dict]:
         """Decisions without a policy field yet — for the classification backfill/cron.
-        Returns id + the fields the classifier needs (title, official_text, committee)."""
-        sql = ("SELECT d.id, d.title, d.official_text, cs.committee "
+        Returns id + the fields the classifier needs (title, official_text, committee,
+        and outcome/raw_result — official_text of a rejected item is only the proposal)."""
+        sql = ("SELECT d.id, d.title, d.official_text, d.outcome, d.raw_result, cs.committee "
                "FROM council_decisions d JOIN council_sessions cs ON cs.ksinr = d.ksinr "
                "WHERE d.policy_field IS NULL ORDER BY d.id")
         if limit:
