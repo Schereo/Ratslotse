@@ -1110,6 +1110,9 @@ class QuizDayCompleted(TypedDict):
     ok: bool
     day: str
     streak: int
+    # Zum Teilen, fertig gesetzt (``routers.quiz._share_text``) — nur, wenn
+    # der Client die Einzelergebnisse mitschickt.
+    share_text: NotRequired[str]
 
 
 class QuizMapQuestion(TypedDict):

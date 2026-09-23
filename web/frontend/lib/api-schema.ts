@@ -13132,6 +13132,8 @@ export interface components {
             correct: number;
             /** Points */
             points: number;
+            /** Results */
+            results?: boolean[] | null;
             /** Total */
             total: number;
         };
@@ -13178,6 +13180,8 @@ export interface components {
             day: string;
             /** Ok */
             ok: boolean;
+            /** Share Text */
+            share_text?: string;
             /** Streak */
             streak: number;
         };
@@ -22546,4 +22550,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: b6477e34424c62cd6dacc8b26595aaeac16477c1a0d00c3ffc5096c1cb9e0e8e
+// vertrag-sha256: bd909a78bdd59958a2d49ef53faf4f82fe800bb351d79b85cd1f55997e4ad81a

@@ -339,6 +339,16 @@ def daily(user: dict = Depends(require_active),
             "questions": [] if done else council.daily_quiz_questions(day, DAILY_N)}
 
 
+def _share_text(day: str, results: list[bool], base_url: str) -> str:
+    """Das Teil-Raster der Tages-Challenge — wie bei Wordle ein Kästchen je
+    Frage, ohne die Fragen zu verraten. Die Emoji stehen NUR im geteilten
+    Text; im UI gilt „kein Emoji" (DESIGNSPRACHE § 8)."""
+    y, m, d = day.split("-")
+    grid = "".join("🟩" if ok else "🟥" for ok in results)
+    host = base_url.removeprefix("https://").removeprefix("http://").rstrip("/")
+    return f"Ratslotse-Quiz {int(d):02d}.{int(m):02d}.\n{grid}  {sum(results)} von {len(results)}\n{host}/quiz"
+
+
 @router.post("/daily/complete")
 def daily_complete(payload: QuizDailyIn,
                    user: dict = Depends(require_active),
@@ -347,7 +357,11 @@ def daily_complete(payload: QuizDailyIn,
     hier nur Abschluss festhalten für „heute erledigt" + Serie)."""
     day = _today()
     store.record_quiz_daily(user["id"], day, payload.correct, payload.total, payload.points)
-    return {"ok": True, "day": day, "streak": store.quiz_streak(user["id"])}
+    out: dict = {"ok": True, "day": day, "streak": store.quiz_streak(user["id"])}
+    if payload.results:
+        from ..config import get_settings
+        out["share_text"] = _share_text(day, payload.results, get_settings().app_base_url)
+    return out
 
 
 @router.get("/map-round")

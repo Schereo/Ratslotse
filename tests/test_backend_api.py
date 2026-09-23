@@ -7065,3 +7065,16 @@ def test_quiz_joker_refuses_estimates(client):
     qid = store.quiz_active_rows()[0]["id"]
     store.close()
     assert client.post("/api/quiz/joker", json={"question_id": qid}).status_code == 400
+def test_quiz_daily_share_text(client):
+    """Das Teil-Raster: ein Kästchen je Frage, Datum, Treffer — und ohne
+    Einzelergebnisse bleibt die Antwort, wie sie war (die App)."""
+    _register(client)
+    r = client.post("/api/quiz/daily/complete", json={
+        "correct": 4, "total": 5, "points": 6, "results": [True, False, True, True, True]}).json()
+    day = r["day"]
+    lines = r["share_text"].split("\n")
+    assert lines[0] == f"Ratslotse-Quiz {day[8:10]}.{day[5:7]}."
+    assert lines[1] == "🟩🟥🟩🟩🟩  4 von 5"
+    assert lines[2].endswith("/quiz")
+    r2 = client.post("/api/quiz/daily/complete", json={"correct": 1, "total": 5, "points": 1}).json()
+    assert "share_text" not in r2

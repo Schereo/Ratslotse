@@ -484,7 +484,12 @@ function QuizInner() {
       : kind === "review" ? "Meine Fehler"
         : kind === "own" ? "Meine Fragen üben" : undefined;
     const onComplete = kind === "daily"
-      ? (r: { correct: number; total: number; points: number }) => { void api.post("/quiz/daily/complete", r).catch(() => {}); }
+      ? async (r: { correct: number; total: number; points: number; results: boolean[] }) => {
+          try {
+            const res = await api.post<{ share_text?: string }>("/quiz/daily/complete", r);
+            return res.share_text;
+          } catch { return undefined; }
+        }
       : undefined;
     return (
       <QuizPlay questions={round} title={title} onComplete={onComplete}

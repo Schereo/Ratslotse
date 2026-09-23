@@ -17931,6 +17931,17 @@
             "title": "Points",
             "type": "integer"
           },
+          "results": {
+            "items": {
+              "type": "boolean"
+            },
+            "maxItems": 10,
+            "title": "Results",
+            "type": [
+              "array",
+              "null"
+            ]
+          },
           "total": {
             "maximum": 50.0,
             "minimum": 1.0,
@@ -18053,6 +18064,10 @@
           "ok": {
             "title": "Ok",
             "type": "boolean"
+          },
+          "share_text": {
+            "title": "Share Text",
+            "type": "string"
           },
           "streak": {
             "title": "Streak",
