@@ -1,0 +1,191 @@
+{
+ "suite": "kritiker",
+ "titel": "Kritiker der Social-Karten",
+ "kennzahl": "Anteil richtig: gedeckt / nicht gedeckt, an 9 belegten und 9 gezielt verfälschten Sätzen",
+ "modell": "openai/gpt-6-luna",
+ "variante": null,
+ "tarif": null,
+ "lauf": 2,
+ "zeitstempel": "2026-09-23T01:56:45",
+ "db_stand": "Sitzungen bis 2026-09-16, 9078 Beschlüsse",
+ "qualitaet": 0.9444,
+ "harte_befunde": 0,
+ "warnung": null,
+ "faelle": 18,
+ "p50_ms": 4504,
+ "p95_ms": 8392,
+ "aufrufe": 18,
+ "kosten_usd": 0.004846,
+ "ohne_kostenwert": 0,
+ "ct_je_aufruf": 0.0269,
+ "ct_je_lauf": 0.4846,
+ "kosten_gesamt_usd": 0.004846,
+ "ausfaelle": 0,
+ "nicht_zulaessig": false,
+ "abbruch": null,
+ "modelle_laut_tabelle": [
+  "openai/gpt-6-luna"
+ ],
+ "ersatz": [],
+ "dauer_s": 81.6,
+ "nebenkennzahlen": {
+  "zu_unrecht_verworfen": 1,
+  "ausfaelle": 0
+ },
+ "fehler_beispiele": [],
+ "roh": {
+  "n_cases": 18,
+  "quote": 0.9444,
+  "durchgelassen": [],
+  "zu_unrecht_verworfen": [
+   "4667 Ö 8.1.1 gedeckt"
+  ],
+  "ausfaelle": 0,
+  "faelle": [
+   {
+    "id": "4640 Ö 10 gedeckt",
+    "soll": true,
+    "ist": true,
+    "richtig": true,
+    "durchgelassen": false,
+    "grund": ""
+   },
+   {
+    "id": "4646 Ö 7 gedeckt",
+    "soll": true,
+    "ist": true,
+    "richtig": true,
+    "durchgelassen": false,
+    "grund": ""
+   },
+   {
+    "id": "4646 Ö 6 gedeckt",
+    "soll": true,
+    "ist": true,
+    "richtig": true,
+    "durchgelassen": false,
+    "grund": ""
+   },
+   {
+    "id": "4667 Ö 8.1.1 gedeckt",
+    "soll": true,
+    "ist": false,
+    "richtig": false,
+    "durchgelassen": false,
+    "grund": "Die Quelle nennt 99 genehmigte Anträge, nicht 99 Genehmigungen, und belegt nur, dass eine Ausgleichszahlung viermal notwendig war, nicht dass tatsächlich vier Ausgleichszahlungen geleistet wurden."
+   },
+   {
+    "id": "4667 Ö 8.3 gedeckt",
+    "soll": true,
+    "ist": true,
+    "richtig": true,
+    "durchgelassen": false,
+    "grund": ""
+   },
+   {
+    "id": "4618 Ö 9.6 gedeckt",
+    "soll": true,
+    "ist": true,
+    "richtig": true,
+    "durchgelassen": false,
+    "grund": ""
+   },
+   {
+    "id": "4675 Ö 8 gedeckt",
+    "soll": true,
+    "ist": true,
+    "richtig": true,
+    "durchgelassen": false,
+    "grund": ""
+   },
+   {
+    "id": "4646 Ö 5 gedeckt",
+    "soll": true,
+    "ist": true,
+    "richtig": true,
+    "durchgelassen": false,
+    "grund": ""
+   },
+   {
+    "id": "4640 Ö 10 erfunden",
+    "soll": false,
+    "ist": false,
+    "richtig": true,
+    "durchgelassen": false,
+    "grund": "Die Angabe, dass es sich um einen Kredit der Stadtwerke handelt, ist nicht gedeckt; laut Vorlage hat die Klinikum Oldenburg AöR das Darlehen aufgenommen."
+   },
+   {
+    "id": "4646 Ö 7 erfunden",
+    "soll": false,
+    "ist": false,
+    "richtig": true,
+    "durchgelassen": false,
+    "grund": "Die Angabe „51 Turnhallen“ ist nicht belegt; die Quelle nennt „51 Objekte“."
+   },
+   {
+    "id": "4646 Ö 6 erfunden",
+    "soll": false,
+    "ist": false,
+    "richtig": true,
+    "durchgelassen": false,
+    "grund": "Die Angabe, dass die Demokratiekonferenz in der Weser-Ems-Halle stattfindet, ist nicht belegt; als Ort nennt die Quelle das EWE Forum Alte Fleiwa."
+   },
+   {
+    "id": "4667 Ö 8.1.1 erfunden",
+    "soll": false,
+    "ist": false,
+    "richtig": true,
+    "durchgelassen": false,
+    "grund": "Die Angabe, CDU und FDP beantragten dies, ist nicht belegt; die Quelle nennt die SPD- und BSW-Fraktionen als Antragsteller."
+   },
+   {
+    "id": "4667 Ö 8.3 erfunden",
+    "soll": false,
+    "ist": false,
+    "richtig": true,
+    "durchgelassen": false,
+    "grund": "Die Angabe, das Landgericht habe die Verantwortlichen verurteilt, ist in der Quelle nicht belegt."
+   },
+   {
+    "id": "4618 Ö 9.6 erfunden",
+    "soll": false,
+    "ist": false,
+    "richtig": true,
+    "durchgelassen": false,
+    "grund": "Die Angabe, dass die SPD-Fraktion den Antrag stellt, fehlt; als Antragstellerin nennt die Quelle die Gruppe Für Oldenburg."
+   },
+   {
+    "id": "4675 Ö 8 erfunden",
+    "soll": false,
+    "ist": false,
+    "richtig": true,
+    "durchgelassen": false,
+    "grund": "Die Angabe „Kinder im Kindergartenalter“ ist nicht belegt; die Quelle nennt Kinder im Grundschulalter."
+   },
+   {
+    "id": "4646 Ö 5 erfunden",
+    "soll": false,
+    "ist": false,
+    "richtig": true,
+    "durchgelassen": false,
+    "grund": "Die Angabe, dass die 10.000 Euro aus Landesmitteln stammen, findet sich in der Quelle nicht."
+   },
+   {
+    "id": "4702 Ö 9.1 erfunden",
+    "soll": false,
+    "ist": false,
+    "richtig": true,
+    "durchgelassen": false,
+    "grund": "Nicht belegt ist, dass der Teilflächennutzungsplan jeweils 69 und 89 Hektar als Windenergiegebiete ausweist; die Quelle nennt diese Flächen als Teilflächenziele."
+   },
+   {
+    "id": "4702 Ö 9.1 gedeckt",
+    "soll": true,
+    "ist": true,
+    "richtig": true,
+    "durchgelassen": false,
+    "grund": ""
+   }
+  ]
+ }
+}

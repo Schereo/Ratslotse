@@ -57,7 +57,7 @@
   {
     "id": "mehrere-orte-beschlusstext",
     "title": "Straßenbaumaßnahmen",
-    "beschluss": "Die Maßnahmen an der Nadorster Straße und am Stedinger Weg werden umgesetzt.",
+    "official_text": "Die Maßnahmen an der Nadorster Straße und am Stedinger Weg werden umgesetzt.",
     "expected_locations": ["Nadorster Straße", "Stedinger Weg"]
   },
   {

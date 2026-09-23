@@ -39,6 +39,31 @@ def test_fenster_splitting():
     assert teile[0][-wb.UEBERLAPP:] == teile[1][:wb.UEBERLAPP]
 
 
+def test_prompt_nennt_die_arten_wie_das_schema():
+    """Bis 09/2026 sagte das Schema `"kind": "speech"|"inquiry"|…`, die Regeln
+    darunter aber noch „rede", „anfrage", „einwohnerfrage", „zusage" — ein Rest
+    der Umbenennung ins Englische. Gemini 2.5 Flash las darüber hinweg; die
+    Nachfolger legten u. a. deshalb Wortmeldungen zusammen (s. Prompt)."""
+    from kern import prompts
+    text = prompts.DEFAULTS["speeches_extract"]["template"]
+    for art in wb.ARTEN:
+        assert f'"{art}"' in text, art
+    for alt in ("rede", "anfrage", "einwohnerfrage", "zusage"):
+        assert f'"{alt}"' not in text, alt
+
+
+def test_prompt_verlangt_jede_wortmeldung_einzeln():
+    """Die Messung vom 23.09.2026: Mit „Ein Eintrag je Beitrag" plus „Fasse
+    zusammen" legten die Gemini-Nachfolger mehrere Wortmeldungen einer Person
+    zusammen und steckten Antworten ins answer-Feld der Frage (3.1 Flash Lite:
+    49 answer-Felder statt 16, 195 statt 246 Einträge). Beides steht jetzt
+    ausdrücklich im Prompt — dieser Test hält die Sätze fest."""
+    from kern import prompts
+    text = prompts.DEFAULTS["speeches_extract"]["template"]
+    assert "nie zu einem Eintrag zusammenlegen" in text
+    assert "EIGENEN Eintrag mit eigenem Namen" in text
+
+
 def test_extract_validierung(monkeypatch):
     rows = [
         {"kind": "inquiry", "top": "Ö 5", "speaker": "Ratsfrau Meyer", "party": "SPD",

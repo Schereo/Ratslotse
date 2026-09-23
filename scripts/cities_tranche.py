@@ -3,7 +3,7 @@
 Schleife (`scripts/cities_tranchen.sh`).
 
 ```bash
-python scripts/cities_tranche.py reason --limit 1000
+python scripts/cities_tranche.py reason --limit 1000 [--alle]
 python scripts/cities_tranche.py idea_fit --limit 100
 python scripts/cities_tranche.py fit --limit 2000
 ```
@@ -54,6 +54,10 @@ def main() -> int:
     ap.add_argument("stufe", choices=("fit", "reason", "idea_fit"))
     ap.add_argument("--limit", type=int, default=1000)
     ap.add_argument("--workers", type=int, default=4)
+    ap.add_argument("--alle", action="store_true",
+                    help="reason: alle Abschnitte, nicht nur die mit Ideen-Gruppe "
+                         "(157 gegen 6.962 auf dev, 23.09.2026) — das Warum lohnt "
+                         "sich vor allem für die Einzelideen (Plan §2.5)")
     args = ap.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
@@ -72,7 +76,8 @@ def main() -> int:
     with CitiesStore(cities) as m:
         if args.stufe == "reason":
             from council.cities import reasons
-            stand = reasons.run(m, limit=args.limit, workers=args.workers)
+            stand = reasons.run(m, limit=args.limit, workers=args.workers,
+                                nur_mit_gruppe=not args.alle)
         else:
             rats = CouncilStore(council)
             try:

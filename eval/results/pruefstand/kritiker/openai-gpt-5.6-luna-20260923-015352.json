@@ -1,0 +1,189 @@
+{
+ "suite": "kritiker",
+ "titel": "Kritiker der Social-Karten",
+ "kennzahl": "Anteil richtig: gedeckt / nicht gedeckt, an 9 belegten und 9 gezielt verfälschten Sätzen",
+ "modell": "openai/gpt-5.6-luna",
+ "variante": null,
+ "tarif": null,
+ "lauf": 2,
+ "zeitstempel": "2026-09-23T01:53:52",
+ "db_stand": "Sitzungen bis 2026-09-16, 9078 Beschlüsse",
+ "qualitaet": 1.0,
+ "harte_befunde": 0,
+ "warnung": null,
+ "faelle": 18,
+ "p50_ms": 4877,
+ "p95_ms": 8528,
+ "aufrufe": 18,
+ "kosten_usd": 0.00926,
+ "ohne_kostenwert": 0,
+ "ct_je_aufruf": 0.0514,
+ "ct_je_lauf": 0.926,
+ "kosten_gesamt_usd": 0.00926,
+ "ausfaelle": 0,
+ "nicht_zulaessig": false,
+ "abbruch": null,
+ "modelle_laut_tabelle": [
+  "openai/gpt-5.6-luna"
+ ],
+ "ersatz": [],
+ "dauer_s": 96.3,
+ "nebenkennzahlen": {
+  "zu_unrecht_verworfen": 0,
+  "ausfaelle": 0
+ },
+ "fehler_beispiele": [],
+ "roh": {
+  "n_cases": 18,
+  "quote": 1.0,
+  "durchgelassen": [],
+  "zu_unrecht_verworfen": [],
+  "ausfaelle": 0,
+  "faelle": [
+   {
+    "id": "4640 Ö 10 gedeckt",
+    "soll": true,
+    "ist": true,
+    "richtig": true,
+    "durchgelassen": false,
+    "grund": ""
+   },
+   {
+    "id": "4646 Ö 7 gedeckt",
+    "soll": true,
+    "ist": true,
+    "richtig": true,
+    "durchgelassen": false,
+    "grund": ""
+   },
+   {
+    "id": "4646 Ö 6 gedeckt",
+    "soll": true,
+    "ist": true,
+    "richtig": true,
+    "durchgelassen": false,
+    "grund": ""
+   },
+   {
+    "id": "4667 Ö 8.1.1 gedeckt",
+    "soll": true,
+    "ist": true,
+    "richtig": true,
+    "durchgelassen": false,
+    "grund": ""
+   },
+   {
+    "id": "4667 Ö 8.3 gedeckt",
+    "soll": true,
+    "ist": true,
+    "richtig": true,
+    "durchgelassen": false,
+    "grund": ""
+   },
+   {
+    "id": "4618 Ö 9.6 gedeckt",
+    "soll": true,
+    "ist": true,
+    "richtig": true,
+    "durchgelassen": false,
+    "grund": ""
+   },
+   {
+    "id": "4675 Ö 8 gedeckt",
+    "soll": true,
+    "ist": true,
+    "richtig": true,
+    "durchgelassen": false,
+    "grund": ""
+   },
+   {
+    "id": "4646 Ö 5 gedeckt",
+    "soll": true,
+    "ist": true,
+    "richtig": true,
+    "durchgelassen": false,
+    "grund": ""
+   },
+   {
+    "id": "4640 Ö 10 erfunden",
+    "soll": false,
+    "ist": false,
+    "richtig": true,
+    "durchgelassen": false,
+    "grund": "Die Quelle nennt als Darlehensnehmerin und Begünstigte die Klinikum Oldenburg AöR, nicht die Stadtwerke."
+   },
+   {
+    "id": "4646 Ö 7 erfunden",
+    "soll": false,
+    "ist": false,
+    "richtig": true,
+    "durchgelassen": false,
+    "grund": "Die Angabe, dass es sich bei den 51 Objekten um Turnhallen handelt, ist in der Quelle nicht belegt."
+   },
+   {
+    "id": "4646 Ö 6 erfunden",
+    "soll": false,
+    "ist": false,
+    "richtig": true,
+    "durchgelassen": false,
+    "grund": "Die Angabe, dass die Demokratiekonferenz in der Weser-Ems-Halle stattfindet, ist in der Quelle nicht belegt; dort steht als Ort „EWE Forum Alte Fleiwa“."
+   },
+   {
+    "id": "4667 Ö 8.1.1 erfunden",
+    "soll": false,
+    "ist": false,
+    "richtig": true,
+    "durchgelassen": false,
+    "grund": "Die Angabe, dass CDU und FDP die Ersatzbäume mit 12–14 statt 20–25 cm Stammumfang und 400 Euro Ausgleich je Baum beantragen, fehlt; als Antragstellerinnen werden in der Quelle vielmehr SPD und BSW gen"
+   },
+   {
+    "id": "4667 Ö 8.3 erfunden",
+    "soll": false,
+    "ist": false,
+    "richtig": true,
+    "durchgelassen": false,
+    "grund": "Die Angabe, dass das Landgericht die Verantwortlichen verurteilte, ist in der Quelle nicht belegt."
+   },
+   {
+    "id": "4618 Ö 9.6 erfunden",
+    "soll": false,
+    "ist": false,
+    "richtig": true,
+    "durchgelassen": false,
+    "grund": "Die Quelle belegt als antragstellenden Akteur die Gruppe Für Oldenburg, nicht die SPD-Fraktion."
+   },
+   {
+    "id": "4675 Ö 8 erfunden",
+    "soll": false,
+    "ist": false,
+    "richtig": true,
+    "durchgelassen": false,
+    "grund": "Die Angabe „Kinder im Kindergartenalter“ ist nicht gedeckt; die Quelle nennt „Kinder im Grundschulalter“."
+   },
+   {
+    "id": "4646 Ö 5 erfunden",
+    "soll": false,
+    "ist": false,
+    "richtig": true,
+    "durchgelassen": false,
+    "grund": "Die Angabe, dass die 10.000 Euro aus Landesmitteln stammen, fehlt in der Quelle; dort werden sie als im Haushalt vorgesehene Mittel bezeichnet."
+   },
+   {
+    "id": "4702 Ö 9.1 erfunden",
+    "soll": false,
+    "ist": false,
+    "richtig": true,
+    "durchgelassen": false,
+    "grund": "Nicht gedeckt ist die Aussage, dass der Plan selbst 69 beziehungsweise 89 Hektar als Windenergiegebiete ausweist; die Quelle belegt nur kommunale Teilflächenziele und deren Erreichung durch die Beschl"
+   },
+   {
+    "id": "4702 Ö 9.1 gedeckt",
+    "soll": true,
+    "ist": true,
+    "richtig": true,
+    "durchgelassen": false,
+    "grund": ""
+   }
+  ]
+ }
+}

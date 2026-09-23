@@ -48,17 +48,17 @@ und ist trotzdem kein Beleg für den einzelnen Einsatz.
 | KI-Frage | `COUNCIL_QA_MODEL` | gemini-2.5-flash | Web (Strom) | `eval/run_qa.py`, `quality_qa.py` |
 | KI-Frage: Erweiterung | `COUNCIL_QA_EXPAND_MODEL` | gemini-2.5-flash-lite | Web | `eval/run_qa_routing.py` |
 | Eval-Richter | `COUNCIL_QUALITY_JUDGE_MODEL` | gemini-2.5-flash | Eval | — |
-| Livestream-Transkription | `COUNCIL_STT_MODEL` | gemini-2.5-flash | Sitzungs-Mitschnitt | **keine** — Audio-Eingabe, GPT-6 Luna kann das nicht |
-| Live-Verfolgung | `COUNCIL_LIVE_TRACKER_MODEL` | gemini-2.5-flash | Sitzungs-Mitschnitt | **keine** |
-| Wortbeiträge | `COUNCIL_WORTBEITRAG_MODEL` | gemini-2.5-flash | Cron `check_protocols` | **keine** |
-| Ortszuordnung | `COUNCIL_LOCATION_MODEL` | gemini-2.5-flash-lite | Cron | `eval/run_locations.py` |
+| Livestream-Transkription | `COUNCIL_STT_MODEL` | gemini-2.5-flash | Sitzungs-Mitschnitt | `transkription` (ohne Audio, misst noch nicht) |
+| Live-Verfolgung | `COUNCIL_LIVE_TRACKER_MODEL` | gemini-3.5-flash-lite (P4b) | Sitzungs-Mitschnitt | `live-verfolgung` |
+| Wortbeiträge | `COUNCIL_WORTBEITRAG_MODEL` | gemini-3.5-flash-lite (P4b) | Cron `check_protocols` | `wortbeitraege` |
+| Ortszuordnung | `COUNCIL_LOCATION_MODEL` | gemini-3.1-flash-lite (P4b) | Cron | `eval/run_locations.py` |
 | Watcher | `COUNCIL_WATCHER_MODEL` | gpt-5.6-luna | Cron `check_council` | `eval/run_watcher.py` |
 | Tragweite | `COUNCIL_IMPACT_MODEL` | gpt-5.6-luna | Cron | `scripts/eval_impact.py` (Golden Set, 30) |
 | Ausschuss-Zusammenfassung | `COUNCIL_COMMITTEE_MODEL` | gpt-5.6-luna | Cron | `eval/run_committee.py` |
-| Video-Ergebnisse | `COUNCIL_VIDEO_MODEL` | gpt-5.6-luna | Cron + Mitschnitt | **keine** |
-| Social-Texte | `COUNCIL_SOCIAL_MODEL` | gpt-5.6-luna | Cron | **keine** |
-| Kritiker | `COUNCIL_KRITIKER_MODEL` | gpt-5.6-luna | Cron | **keine** |
-| Viertel | `COUNCIL_DISTRICT_MODEL` | gpt-5.6-luna | Cron | **keine** |
+| Video-Ergebnisse | `COUNCIL_VIDEO_MODEL` | gpt-5.6-luna | Cron + Mitschnitt | `video-ergebnisse` |
+| Social-Texte | `COUNCIL_SOCIAL_MODEL` | gpt-5.6-luna | Cron | `social-text` |
+| Kritiker | `COUNCIL_KRITIKER_MODEL` | gpt-5.6-luna | Cron | `kritiker` |
+| Viertel | `COUNCIL_DISTRICT_MODEL` | gpt-5.6-luna | Cron | `viertel` |
 | Rest (Protokolle, Themen, Ziele, Rückblicke, …) | `COUNCIL_*_MODEL` | deepseek-v4-pro | Cron | teils |
 | Städtevergleich | `CITIES_*_MODEL` | deepseek-v4-flash | Cron (pausiert) | `eval/run_cities_*` |
 
@@ -174,6 +174,32 @@ Kritiker, Viertel (Luna). Danach die DeepSeek-Pro-Crons nach Kostenanteil
 Eingaben aus `data/council.sqlite`, die Erwartung aus den Daten, nicht aus
 der alten Modellausgabe allein.
 
+**Stand 23.09.2026 (PR P2): sieben Suiten gebaut, sechs gemessen**, je zwei
+Läufe heute und je Kandidat, zusammen 1,35 $. Dazu die Regel im Bericht:
+Ein Kandidat, der häufiger einer Injektion folgt oder mehr erfindet als das
+heutige Modell, heißt „nicht zulässig“ statt „besser“ (`pruefstand.sperre`).
+Gemini 3.1 Flash Lite steht bei Lotti deshalb jetzt so da. Kurz:
+
+- **Wortbeiträge:** alle drei Gemini-Nachfolger **schlechter** (86,6 bis
+  91,1 % gegen 97,8 %). Sie erfinden nichts, lassen aber Redner*innen aus
+  und legen Beiträge zusammen (Recall 0,77 bis 0,84 gegen 0,97). Vorbehalt:
+  Die Erwartung stützt sich zur Hälfte auf die gespeicherte Extraktion von
+  2.5 Flash, das heutige Modell ist also leicht im Vorteil. Für den Wechsel
+  im Oktober braucht es hier einen Prompt-Nachzug oder ein anderes Modell.
+- **Live-Verfolgung:** alle im Rauschen, 3.5 Flash Lite gleichauf zum
+  gleichen Preis und mit 1,1 s statt 1,8 s. Die Suite ist fast gesättigt
+  (100 % heute): Sie sagt „kein Rückschritt“, nicht „besser“.
+- **Transkription:** keine Messung. Es gibt nirgends Sitzungs-Audio, auch
+  nicht auf dem Server (s. `eval/run_stt.py`, was gebraucht wird).
+- **Video-Ergebnisse:** GPT-6 Luna **schlechter** (85,2 gegen 89,3 %), im
+  Flex-Tarif im Rauschen. Kein Kandidat gab ein falsches Ergebnis aus.
+- **Social-Text, Kritiker, Viertel:** GPT-6 Luna normal und Flex im
+  Rauschen, im Flex-Tarif zu einem Fünftel bis Viertel des heutigen Preises
+  je Aufruf. Social-Text und Kritiker streuen stark (± 10 bzw. 11 Pp).
+- **Nicht gemacht:** die DeepSeek-Pro-Crons (Kurzfassung, Themenfeld,
+  Protokolle, Interesse, Ziele). Die Reihenfolge nach Aufrufen je Lauf steht
+  noch aus.
+
 ### P3 — Batch und Flex, gemessen
 
 Die Frage ist nicht „ist es billiger“ (ja, halb so teuer), sondern „bleibt
@@ -217,6 +243,53 @@ bis zum Ergebnis, Ausfälle, echte Kosten.
 
 Web-Pfade (Lotti, KI-Frage, Erweiterung) und Pipelines (Transkription,
 Live-Verfolgung, Wortbeiträge, Orte, Eval-Richter), je nach P1/P2 gemessen.
+
+**Stand 23.09.2026 (P4b, Pipelines): drei Features umgestellt.** Der
+wichtigste Befund zuerst: **Wo ein Nachfolger schlechter aussah
+(Wortbeiträge, Orte), lag es an einem Prompt- oder Messfehler, nicht am
+Modell** — ein mehrdeutiger Prompt, ein Fall, dessen Text nie ankam, und
+zwei Regeln, die nie aufgeschrieben waren. Tims Vermutung („ein ein Jahr
+neueres Modell ist nicht wirklich schlechter“) hat sich bestätigt. Vor jedem
+„schlechter“ gehört deshalb der Blick auf die verfehlten Fälle.
+
+- **Wortbeiträge → 3.5 Flash Lite.** Die Nachfolger ließen niemanden weg,
+  sie legten Wortmeldungen einer Person zusammen und steckten Antworten ins
+  `answer`-Feld der Frage (3.1 Flash Lite: 195 statt 246 Einträge, 49 statt
+  16 `answer`-Felder). Der Prompt sagte „ein Eintrag je Beitrag“ UND „fasse
+  zusammen“, und seine Regeln nannten die Arten noch deutsch („rede“,
+  „anfrage“ …), während das Schema englisch war. Neuer Prompt: jede
+  Wortmeldung ein Eintrag, Antworten mit eigenem Namen, `answer` nur bei
+  `inquiry`/`citizen_question`. Dazu eine Goldwert-Korrektur mit Beleg: Das
+  Muster kannte „Ausschussvorsitzende X“ nur mit Artikel.
+
+  | Modell | alter Prompt (P2) | neuer Prompt | ct/Aufruf | p50 |
+  |---|---|---|---:|---:|
+  | 2.5 Flash | 97,8 / 97,8 | 99,6 / 99,6 | 0,57 | 9,2–9,6 s |
+  | 3.5 Flash Lite | 86,7 / 90,6 | 99,6 / 99,0 / 99,2 | 0,50–0,53 | 5,5–6,0 s |
+  | 3.1 Flash Lite | 86,7 / 86,5 | 99,2 / 99,0 | 0,30 | 5,3–5,7 s |
+  | 3 Flash Preview | 91,2 / 91,0 | 98,5 / 98,5 | 0,64 | 10,9–11,5 s |
+
+  An ganzen Protokollen (volle 48k-Fenster) nachgeprüft: 3.5 Flash Lite
+  liefert MEHR Beiträge mit Namen (ksinr 3852: 55 statt 37), aber nicht mehr
+  die namenlosen „Es wird bemängelt …“-Einträge, die 2.5 Flash aus
+  Abwägungstabellen der Öffentlichkeitsbeteiligung zog (3852: 86, 4604: 82).
+  Das sind keine Wortbeiträge; wer sie vermisst, braucht eine eigene Art.
+  Alte Läufe: `eval/results/pruefstand/wortbeitraege/prompt-bis-2026-09-23/`.
+- **Live-Verfolgung → 3.5 Flash Lite.** Alle im Rauschen (100/100/100/98,3 %);
+  3.5 Flash Lite hat den kürzesten Verzug (1,1–1,3 s statt 1,8 s) zum selben
+  Preis. Prompt unverändert, keine Lücke gefunden.
+- **Orte → 3.1 Flash Lite.** Die Suite hatte einen Messfehler: Der einzige
+  Fall mit Beschlusstext trug ihn unter `beschluss`, gelesen wurde
+  `official_text` — kein Modell bekam ihn je zu sehen. Die Regex-Baseline
+  allein stand danach bei 100 %, jedes Modell fügte „Wohnquartieren“ als
+  Ort hinzu (jetzt als Gattung gesperrt, modellunabhängig), und die
+  Nachfolger nannten „Bebauungsplan N-777 G“ als Ort (jetzt eine
+  Prompt-Regel). Danach alle drei Modelle 100 % ohne falschen Ort; 3.1 Flash
+  Lite ist der billigere Nachfolger (0,12 ct gegen 0,18 ct je Aufruf).
+  Die Suite ist damit gesättigt: Sie sagt „kein Rückschritt“, nicht „besser“.
+- **Nicht angefasst:** Transkription (eigener Auftrag), `ERSATZ` für Luna
+  (P5), `COUNCIL_QA_EXPAND_MODEL` (P4a — `council/cities/evidence.py` liest
+  dieselbe Variable und sollte dem Modell folgen, das P4a für `qa.py` wählt).
 
 ### P5 — GPT-5.6 Luna ablösen
 

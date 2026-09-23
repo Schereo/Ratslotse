@@ -21,8 +21,18 @@ from council import locations  # noqa: E402
 
 CASES = ROOT / "eval" / "cases_locations.json"
 
+#: Die Felder, die :func:`evaluate` liest. Bis 09/2026 trug der einzige Fall
+#: mit Beschlusstext ihn unter ``beschluss`` — ein Name von vor der
+#: Umbenennung ins Englische. ``evaluate`` las ``official_text``, der Text kam
+#: also bei keinem Modell an, und „Nadorster Straße, Stedinger Weg“ stand bei
+#: jedem Modell als verfehlt da: 1 von 15 Orten Recall, für alle gleich.
+FELDER = {"id", "title", "official_text", "vorlage_text", "expected_locations"}
+
 
 def evaluate(cases: list[dict], *, use_llm: bool = False) -> dict:
+    fremd = sorted({f"{c.get('id')}: {k}" for c in cases for k in c if k not in FELDER})
+    if fremd:
+        raise ValueError(f"unbekannte Felder in {CASES.name} (werden nicht gelesen): {fremd}")
     rows = [{"id": pos + 1, "title": case.get("title", ""),
              "official_text": case.get("official_text", ""),
              "vorlage_text": case.get("vorlage_text", "")}

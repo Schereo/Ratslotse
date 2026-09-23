@@ -314,6 +314,7 @@ def test_oeffentliche_daten_ohne_zdr_aber_ohne_training_und_china(monkeypatch):
         monkeypatch.delenv(var, raising=False)
     assert not llm.zdr_pflicht("impact_rating")
     assert not llm.zdr_pflicht("cities_fit")
+    assert not llm.zdr_pflicht("eval_cities_fit"), "die Eval misst wie der Cron"
     provider = llm._routing_extra_body(zdr=False)["provider"]
     assert "zdr" not in provider
     assert provider["data_collection"] == "deny"
@@ -428,6 +429,49 @@ def test_flex_abweisung_faellt_auf_den_normalen_tarif_zurueck(monkeypatch):
     assert aufgezeichnet == [("impact_rating", "openai/gpt-6-luna")]
 
 
+def test_flex_abweisung_mit_geduld_faellt_geduldig_auf_normal_zurueck(monkeypatch):
+    """`_geduld=True` zusammen mit `_tarif="flex"`: Die Flex-Abweisung fällt
+    sofort auf den normalen Tarif zurück (kein Warten nötig, s.
+    ``_create_flex``); scheitert AUCH der normale Tarif vorübergehend, wartet
+    dieser Zweig wie jeder Batch-Job die ``GEDULD_PAUSEN`` ab, bevor er
+    aufgibt. Anlass P5 (docs/plan-modellwechsel.md): Alle fünf umgestellten
+    Cron-Features rufen mit `_geduld=True, _tarif="flex"` zusammen."""
+    aufgezeichnet = []
+    monkeypatch.setattr(llm, "_record_usage", lambda f, m, u: aufgezeichnet.append((f, m)))
+    aufrufe = _stub_create_kwargs(monkeypatch, [
+        llm.EmptyResponseError("429 Resource Unavailable"),  # Flex abgewiesen
+        llm.EmptyResponseError("429 upstream"),               # normal, 1. Versuch
+        _Antwort("normal nach Geduld"),                       # normal, nach einer Pause
+    ])
+    resp = llm.chat_complete(model="openai/gpt-6-luna", messages=[], _feature="impact_rating",
+                             _tarif="flex", _geduld=True)
+    assert resp.choices[0].message.content == "normal nach Geduld"
+    assert [(a.get("extra_body") or {}).get("service_tier") for a in aufrufe] == ["flex", None, None]
+    assert aufgezeichnet == [("impact_rating", "openai/gpt-6-luna")]
+
+
+def test_ersatzmodell_bei_flex_bleibt_im_flex_tarif(monkeypatch):
+    """Antwortet das gewünschte Modell (flex UND normal) gar nicht, übernimmt
+    das Ersatzmodell — und zwar wieder ERST im Flex-Tarif, mit demselben
+    Rückfallverhalten. Die fünf P5-Features rufen mit
+    `_ersatz=llm.ersatz_fuer(MODEL)`; der Ersatz darf den Kostenvorteil von
+    Flex nicht verlieren."""
+    aufgezeichnet = []
+    monkeypatch.setattr(llm, "_record_usage", lambda f, m, u: aufgezeichnet.append((f, m)))
+    aufrufe = _stub_create_kwargs(monkeypatch, [
+        llm.EmptyResponseError("429"),  # gpt-6-luna, flex
+        llm.EmptyResponseError("429"),  # gpt-6-luna, normal
+        _Antwort("vom Ersatz, flex"),   # gpt-5.6-luna (Ersatz), flex — sofort ok
+    ])
+    resp = llm.chat_complete(model="openai/gpt-6-luna", messages=[], _feature="impact_rating",
+                             _tarif="flex", _ersatz=["openai/gpt-5.6-luna"])
+    assert resp.choices[0].message.content == "vom Ersatz, flex"
+    assert [a.get("model") for a in aufrufe] == ["openai/gpt-6-luna", "openai/gpt-6-luna",
+                                                  "openai/gpt-5.6-luna"]
+    assert [(a.get("extra_body") or {}).get("service_tier") for a in aufrufe] == ["flex", None, "flex"]
+    assert aufgezeichnet == [("impact_rating", "openai/gpt-5.6-luna")]
+
+
 def test_flex_rueckfall_nicht_bei_inhaltsfilter(monkeypatch):
     import httpx
     from openai import BadRequestError
@@ -466,3 +510,21 @@ def test_ohne_tarif_bleibt_der_aufruf_unveraendert(monkeypatch):
     aufrufe = _stub_create_kwargs(monkeypatch, [_Antwort()])
     llm.chat_complete(model="openai/gpt-6-luna", messages=[], _feature="impact_rating")
     assert "service_tier" not in (aufrufe[0].get("extra_body") or {})
+
+
+def test_kein_aufruf_leert_das_routing():
+    """Ein aufrufereigener ``provider``-Block ersetzt das Routing GANZ.
+
+    Die Städte-Annotatoren schickten bis 23.09.2026 ``provider: {}``, um ZDR
+    loszuwerden — und warfen damit den China-Ausschluss und das
+    Trainingsverbot gleich mit weg. ZDR regelt jetzt ``zdr_pflicht``; wer
+    einen eigenen Block braucht, baut ihn aus ``_routing_extra_body``.
+    """
+    import re
+    from pathlib import Path
+    wurzel = Path(__file__).resolve().parent.parent
+    treffer = [f"{p.relative_to(wurzel)}"
+               for d in ("council", "scripts", "kern", "eval", "web/backend/app")
+               for p in (wurzel / d).rglob("*.py")
+               if re.search(r'["\']provider["\']\s*:\s*\{\s*\}', p.read_text())]
+    assert not treffer, treffer

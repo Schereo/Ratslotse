@@ -74,7 +74,7 @@ def _ein_batch(block: list[dict], model: str, ann, system: str,
                       {"role": "user", "content": prompts.render(
                           ann.prompt_user, items=items)}],
             max_tokens=ann.max_tokens, temperature=ann.temperature,
-            extra_body={"provider": {}} if ann.routing_free else {},
+            extra_body={},
             _feature="eval_cities_effort")
         daten = parse_json(antwort.choices[0].message.content or "")
         for eintrag in daten.get("results") or []:

@@ -31,6 +31,12 @@ PRICES: dict[str, tuple[float, float]] = {
     "google/gemini-3.1-pro-preview": (2.0, 12.0),
     "google/gemini-3.8-flash": (0.75, 3.75),
     "anthropic/claude-sonnet-4.6": (3.0, 15.0),
+    # Die Nachfolger von Gemini 2.5 (läuft am 20.10.2026 aus), Listenpreise
+    # von OpenRouter am 23.09.2026. 3.5 Flash Lite kostet so viel wie 2.5
+    # Flash, nicht wie 2.5 Flash Lite — „Lite" ist kein Preisschild.
+    "google/gemini-3.1-flash-lite": (0.25, 1.50),
+    "google/gemini-3.5-flash-lite": (0.30, 2.50),
+    "google/gemini-3-flash-preview": (0.50, 3.00),
 }
 
 

@@ -90,7 +90,7 @@ def einordnen(faelle: list[dict], model: str, batch_size: int,
                               ann.prompt_user,
                               items=annotate.batch_text(zeilen, texte, ann))}],
                 max_tokens=ann.max_tokens, temperature=ann.temperature,
-                extra_body={} if zdr else ({"provider": {}} if ann.routing_free else {}),
+                extra_body=llm._routing_extra_body(zdr=zdr),
                 _feature="eval_cities_transfer")
             daten = annotate.parse_json(antwort.choices[0].message.content or "")
             verbrauch = getattr(antwort, "usage", None)

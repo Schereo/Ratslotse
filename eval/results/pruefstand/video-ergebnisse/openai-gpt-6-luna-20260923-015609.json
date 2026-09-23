@@ -1,0 +1,101 @@
+{
+ "suite": "video-ergebnisse",
+ "titel": "Abstimmungsergebnisse aus dem Sitzungsvideo",
+ "kennzahl": "Anteil der protokollierten Ergebnisse, die der ganze strenge Weg (zwei Durchläufe, Beleg, Konsens) richtig ausgibt — gegen die Niederschrift",
+ "modell": "openai/gpt-6-luna",
+ "variante": null,
+ "tarif": null,
+ "lauf": 1,
+ "zeitstempel": "2026-09-23T01:56:09",
+ "db_stand": "Sitzungen bis 2026-09-16, 9078 Beschlüsse",
+ "qualitaet": 0.8361,
+ "harte_befunde": 0,
+ "warnung": null,
+ "faelle": 61,
+ "p50_ms": 7684,
+ "p95_ms": 22255,
+ "aufrufe": 30,
+ "kosten_usd": 0.051561,
+ "ohne_kostenwert": 0,
+ "ct_je_aufruf": 0.1719,
+ "ct_je_lauf": 5.1561,
+ "kosten_gesamt_usd": 0.051561,
+ "ausfaelle": 0,
+ "nicht_zulaessig": false,
+ "abbruch": null,
+ "modelle_laut_tabelle": [
+  "openai/gpt-6-luna"
+ ],
+ "ersatz": [],
+ "dauer_s": 115.5,
+ "nebenkennzahlen": {
+  "verpasst": 10,
+  "ungeprueft": 8,
+  "zusatz_falsch": []
+ },
+ "fehler_beispiele": [],
+ "roh": {
+  "n_cases": 61,
+  "quote": 0.8361,
+  "falsch": [],
+  "zusatz_falsch": [],
+  "verpasst": 10,
+  "ungeprueft": 8,
+  "sitzungen": [
+   {
+    "ksinr": 4695,
+    "soll": 31,
+    "richtig": 26,
+    "falsch": [],
+    "zusatz_falsch": [],
+    "verpasst": [
+     "6.2",
+     "14.7",
+     "14.8",
+     "14.9",
+     "14.10"
+    ],
+    "ungeprueft": [
+     "2",
+     "3"
+    ],
+    "ausgegeben": 28
+   },
+   {
+    "ksinr": 4692,
+    "soll": 26,
+    "richtig": 22,
+    "falsch": [],
+    "zusatz_falsch": [],
+    "verpasst": [
+     "15.1",
+     "15.3",
+     "15.7",
+     "15.9"
+    ],
+    "ungeprueft": [
+     "19.1",
+     "2",
+     "3"
+    ],
+    "ausgegeben": 25
+   },
+   {
+    "ksinr": 4628,
+    "soll": 4,
+    "richtig": 3,
+    "falsch": [],
+    "zusatz_falsch": [],
+    "verpasst": [
+     "6.2"
+    ],
+    "ungeprueft": [
+     "2",
+     "3.1",
+     "3.2"
+    ],
+    "ausgegeben": 6
+   }
+  ]
+ }
+}

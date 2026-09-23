@@ -194,6 +194,13 @@ class Suite:
     #: Gemini 3.1 Flash Lite war bei Lotti das beste Modell der Messung UND
     #: folgte in beiden Läufen der Lob-Injektion (docs/plan-modellwechsel.md).
     warnung: Callable[[dict], str | None] = lambda roh: None
+    #: Die harten Befunde sind Sicherheitsbefunde (erfunden, befolgt,
+    #: durchgelassen) statt bloßer Fehlurteile. Dann sperrt ein Anstieg
+    #: gegenüber dem heutigen Modell das Urteil „besser" (:func:`sperre`).
+    hart_sperrt: bool = False
+    #: Läuft live im Sitzungs-Mitschnitt: Die Latenz ist der Verzug der
+    #: Anzeige, sie zählt wie im Web.
+    live: bool = False
 
     @property
     def nutzereingabe(self) -> bool:
@@ -374,6 +381,67 @@ def _lauf_cities_reason() -> dict:
     return {"n_cases": len(faelle), **r.ein_lauf(faelle, get("reason"))}
 
 
+# ---- P2: die Suiten für die Features, die vorher keine hatten ---------------- #
+# Je Suite ein Modul ``eval/run_*.py`` mit Modulkopf: woher die Erwartung
+# kommt, was nachgelesen ist, was hart zählt. Hier nur der Anschluss.
+
+def _braucht_transkripte() -> str | None:
+    from eval import transkripte
+    return _braucht_council_db() or transkripte.fehlend()
+
+
+def _braucht_stt_audio() -> str | None:
+    from eval import run_stt
+    return run_stt.fehlend()
+
+
+def _lauf_wortbeitraege() -> dict:
+    from eval import run_speeches as r
+    return r.ein_lauf(r.lade())
+
+
+def _lauf_live() -> dict:
+    from eval import run_live_tracker as r
+    return r.ein_lauf(r.lade())
+
+
+def _lauf_stt() -> dict:
+    from eval import run_stt
+    return run_stt.ein_lauf()
+
+
+def _lauf_video() -> dict:
+    from eval import run_video as r
+    return r.ein_lauf(r.lade())
+
+
+def _lauf_social_text() -> dict:
+    from eval import run_social
+    return run_social.lauf_text()
+
+
+def _lauf_kritiker() -> dict:
+    from eval import run_social
+    return run_social.lauf_kritiker()
+
+
+def _lauf_viertel() -> dict:
+    from eval import run_district as r
+    return r.ein_lauf(r.lade())
+
+
+def _anteil(zaehler: str, nenner: str = "n_cases") -> Callable[[dict], float | None]:
+    def lesen(roh: dict) -> float | None:
+        return roh[zaehler] / roh[nenner] if roh.get(nenner) else None
+    return lesen
+
+
+def _video_warnung(roh: dict) -> str | None:
+    # Die Zusage des Features ist NULL falsche Ergebnisse (council/videos.py:
+    # 111 von 111) — ein einziges steht deshalb neben der Quote.
+    return f"falsches Ergebnis: {', '.join(roh['falsch'])}" if roh.get("falsch") else None
+
+
 def _prozent(schluessel: str) -> Callable[[dict], float | None]:
     def lesen(roh: dict) -> float | None:
         wert = roh.get(schluessel)
@@ -395,6 +463,7 @@ REGISTER: tuple[Suite, ...] = (
                     "verletzte Zusage, falscher Weg",
         faelle=lambda roh: len(_lotti_gemessen(roh)) or None,
         nebenkennzahlen=_lotti_neben, lokal=_braucht_council_db, warnung=_lotti_warnung,
+        hart_sperrt=True,
     ),
     Suite(
         name="ki-frage", titel="KI-Frage: Antwort",
@@ -466,6 +535,7 @@ REGISTER: tuple[Suite, ...] = (
         hart_heisst="Orte, die im Beschluss nicht vorkommen",
         faelle=lambda roh: roh.get("cases"),
         nebenkennzahlen=lambda roh: {"precision": roh.get("precision"), "recall": roh.get("recall")},
+        hart_sperrt=True,
     ),
     Suite(
         name="tragweite", titel="Tragweite eines Beschlusses",
@@ -525,6 +595,7 @@ REGISTER: tuple[Suite, ...] = (
         faelle=lambda roh: roh.get("n_cases"),
         nebenkennzahlen=lambda roh: {"geliefert": roh.get("n_answered"),
                                      "beleg_disziplin": roh.get("evidence_discipline")},
+        hart_sperrt=True,
     ),
     Suite(
         name="cities-aufwand", titel="Städtevergleich: was kostet die Idee?",
@@ -538,6 +609,7 @@ REGISTER: tuple[Suite, ...] = (
         hart_heisst="Adressat genannt, wo die Stadt selbst entscheidet",
         faelle=lambda roh: roh.get("n_cases"),
         nebenkennzahlen=lambda roh: {"geliefert": roh.get("n"), "adressat": roh.get("addressee")},
+        hart_sperrt=True,
     ),
     Suite(
         name="cities-richtung", titel="Städtevergleich: wollte der Rat die Idee?",
@@ -566,6 +638,128 @@ REGISTER: tuple[Suite, ...] = (
         faelle=lambda roh: roh.get("n_cases"),
         nebenkennzahlen=lambda roh: {"fehlgeschlagen": len(roh.get("fehler", [])),
                                      "begruendung_gefunden": roh.get("gefunden")},
+        hart_sperrt=True,
+    ),
+    Suite(
+        name="wortbeitraege", titel="Wortbeiträge aus Niederschriften",
+        features=("speeches",), schalter="COUNCIL_WORTBEITRAG_MODEL",
+        modell_aktuell=_attr("council.wortbeitraege", "MODEL"),
+        kennzahl="F1 über die Beiträge je Person (Name UND Anzahl, gegen Protokoll-Muster und "
+                 "gespeicherte Extraktion; eval/run_speeches.py)",
+        eingabe="eval/cases_speeches.json (16 Abschnitte aus 8 Gremien, Text eingebettet)",
+        laufen=_lauf_wortbeitraege, web=False,
+        qualitaet=lambda roh: roh.get("f1"),
+        harte_befunde=lambda roh: roh.get("erfunden"),
+        hart_heisst="Redner*innen, deren Name im Abschnitt gar nicht vorkommt",
+        faelle=lambda roh: roh.get("n_cases"),
+        nebenkennzahlen=lambda roh: {"precision": roh.get("precision"), "recall": roh.get("recall"),
+                                     "top_richtig": roh.get("top_richtig"),
+                                     "partei_ohne_beleg": roh.get("partei_ohne_beleg"),
+                                     "fehlgeschlagen": roh.get("fehlgeschlagen")},
+        hart_sperrt=True,
+    ),
+    Suite(
+        name="live-verfolgung", titel="Live-Verfolgung: welcher TOP läuft",
+        features=("live_top_tracker",), schalter="COUNCIL_LIVE_TRACKER_MODEL",
+        modell_aktuell=_attr("council.livetracker", "TRACKER_MODEL"),
+        kennzahl="Anteil der Fenster mit richtigem TOP am Fensterende — Aufruf, Block, "
+                 "Aussprache; von Hand gelesen (eval/run_live_tracker.py)",
+        eingabe="eval/cases_live_tracker.json (30 Fenster aus 2 Ratssitzungen) + YouTube-"
+                "Untertitel (eval/transkripte.py) + data/council.sqlite",
+        laufen=_lauf_live, web=False, live=True,
+        qualitaet=lambda roh: roh.get("quote"),
+        harte_befunde=lambda roh: roh.get("erfunden"),
+        hart_heisst="ein TOP, den es auf der Tagesordnung nicht gibt",
+        faelle=lambda roh: roh.get("n_cases"),
+        nebenkennzahlen=lambda roh: {"je_art": roh.get("je_art")},
+        lokal=_braucht_transkripte, hart_sperrt=True,
+    ),
+    Suite(
+        name="transkription", titel="Transkription des Sitzungs-Mitschnitts (Audio)",
+        features=("livestream_transcript",), schalter="COUNCIL_STT_MODEL",
+        modell_aktuell=_attr("council.livestream", "STT_MODEL"),
+        kennzahl="Wort-F1 gegen einen Referenztext je Audio-Stück (eval/run_stt.py). "
+                 "Nur Modelle mit Audio-Eingabe — GPT-6 Luna kann das nicht",
+        eingabe="Audio-Stücke mit Referenz in ~/.cache/ratslotse/stt/ — gibt es noch nirgends",
+        laufen=_lauf_stt, web=False, live=True,
+        qualitaet=lambda roh: roh.get("f1"),
+        harte_befunde=lambda roh: roh.get("erfunden"),
+        hart_heisst="Stücke ohne Rede, zu denen Text durch die Wächter kommt",
+        faelle=lambda roh: roh.get("n_cases"),
+        nebenkennzahlen=lambda roh: {"leer_trotz_rede": roh.get("leer_trotz_rede")},
+        lokal=_braucht_stt_audio, hart_sperrt=True,
+    ),
+    Suite(
+        name="video-ergebnisse", titel="Abstimmungsergebnisse aus dem Sitzungsvideo",
+        features=("video_results",), schalter="COUNCIL_VIDEO_MODEL",
+        modell_aktuell=_attr("council.videos", "MODEL"),
+        kennzahl="Anteil der protokollierten Ergebnisse, die der ganze strenge Weg "
+                 "(zwei Durchläufe, Beleg, Konsens) richtig ausgibt — gegen die Niederschrift",
+        eingabe="eval/cases_video.json (61 Ergebnisse aus 3 Ratssitzungen) + YouTube-Untertitel "
+                "+ data/council.sqlite",
+        laufen=_lauf_video, web=False,
+        qualitaet=lambda roh: roh.get("quote"),
+        harte_befunde=lambda roh: (None if roh.get("falsch") is None else
+                                   len(roh["falsch"]) + len(roh.get("zusatz_falsch") or [])),
+        hart_heisst="falsche Ergebnisse und falsche Zusätze („einstimmig“ statt „mehrheitlich“)",
+        faelle=lambda roh: roh.get("n_cases"),
+        nebenkennzahlen=lambda roh: {"verpasst": roh.get("verpasst"),
+                                     "ungeprueft": roh.get("ungeprueft"),
+                                     "zusatz_falsch": roh.get("zusatz_falsch")},
+        lokal=_braucht_transkripte, warnung=_video_warnung, hart_sperrt=True,
+    ),
+    Suite(
+        name="social-text", titel="Social-Kartentext",
+        features=("social_card_text",), schalter="COUNCIL_SOCIAL_MODEL",
+        modell_aktuell=_attr("council.social_text", "MODEL"),
+        kennzahl="Anteil der Punkte, deren ERSTER Entwurf die Netze des Betriebs besteht "
+                 "(keine Zahl ohne Beleg, keine Wertung, kein Ergebnis, Länge, JSON)",
+        eingabe="eval/cases_social.json (20 Tagesordnungspunkte) + data/council.sqlite "
+                "(lokal ohne Anlagen-Volltexte)",
+        laufen=_lauf_social_text, web=False,
+        qualitaet=_anteil("sauber"),
+        harte_befunde=lambda roh: roh.get("hart"),
+        hart_heisst="inhaltliche Mängel: Zahl ohne Beleg, Wertung, vorweggenommenes Ergebnis",
+        faelle=lambda roh: roh.get("n_cases"),
+        nebenkennzahlen=lambda roh: {"zu_lang": roh.get("zu_lang"),
+                                     "fehlgeschlagen": roh.get("fehlgeschlagen")},
+        lokal=_braucht_council_db, hart_sperrt=True,
+    ),
+    Suite(
+        name="kritiker", titel="Kritiker der Social-Karten",
+        features=("social_critic",), schalter="COUNCIL_KRITIKER_MODEL",
+        modell_aktuell=_attr("council.kritiker", "MODEL"),
+        kennzahl="Anteil richtig: gedeckt / nicht gedeckt, an 9 belegten und 9 gezielt "
+                 "verfälschten Sätzen",
+        eingabe="eval/cases_critic.json (18 Sätze zu 9 Punkten) + data/council.sqlite",
+        laufen=_lauf_kritiker, web=False,
+        qualitaet=lambda roh: roh.get("quote"),
+        harte_befunde=lambda roh: (None if roh.get("durchgelassen") is None
+                                   else len(roh["durchgelassen"])),
+        hart_heisst="verfälschte Sätze, die als gedeckt durchgehen",
+        faelle=lambda roh: roh.get("n_cases"),
+        nebenkennzahlen=lambda roh: {"zu_unrecht_verworfen": len(roh.get("zu_unrecht_verworfen") or []),
+                                     "ausfaelle": roh.get("ausfaelle")},
+        lokal=_braucht_council_db, hart_sperrt=True,
+    ),
+    Suite(
+        name="viertel", titel="Mein Viertel: liegt der Beschluss hier?",
+        features=("district_projects",), schalter="COUNCIL_DISTRICT_MODEL",
+        modell_aktuell=_attr("council.viertel", "MODEL"),
+        kennzahl="Anteil richtig „im Viertel ja/nein“ (Richter-Stufe). Erwartung = gespeichertes "
+                 "Urteil von GPT-5.6 Luna, jeder Fall von Hand nachgelesen, Widersprüche raus",
+        eingabe="eval/cases_district.json (30 Beschlüsse aus Bloherfelde und Eversten) + "
+                "data/council.sqlite",
+        laufen=_lauf_viertel, web=False,
+        qualitaet=lambda roh: roh.get("quote"),
+        harte_befunde=lambda roh: (None if roh.get("fremd_auf_der_tafel") is None
+                                   else len(roh["fremd_auf_der_tafel"])),
+        hart_heisst="„im Viertel“ für einen Beschluss, der woanders liegt oder stadtweit gilt",
+        faelle=lambda roh: roh.get("n_cases"),
+        nebenkennzahlen=lambda roh: {"verpasst": len(roh.get("verpasst") or []),
+                                     "ohne_urteil": len(roh.get("ohne_urteil") or []),
+                                     "fehler": roh.get("fehler")},
+        lokal=_braucht_council_db, hart_sperrt=True,
     ),
 )
 
@@ -916,7 +1110,7 @@ def liste() -> str:
         grund = s.lokal()
         zeilen.append(
             f"{s.name:24} {s.schalter:26} heute {s.modell_aktuell():32} "
-            f"{'Web ' if s.web else 'Cron'} {'Nutzereingabe' if s.nutzereingabe else 'öffentlich   '} "
+            f"{'Web ' if s.web else 'Live' if s.live else 'Cron'} {'Nutzereingabe' if s.nutzereingabe else 'öffentlich   '} "
             f"{'lokal' if grund is None else '— ' + grund}")
     return "\n".join(zeilen)
 
@@ -982,6 +1176,48 @@ def urteil(heute: Gruppe, kandidat: Gruppe) -> str:
     return f"**{'besser' if abstand > 0 else 'schlechter'}** ({pp})"
 
 
+def sperre(suite: Suite, heute: Gruppe, kandidat: Gruppe) -> str | None:
+    """Warum ein Kandidat trotz Quote NICHT zulässig ist — oder ``None``.
+
+    **Eine Quote verrechnet, was sich nicht verrechnen lässt.** Gemini 3.1
+    Flash Lite war bei Lotti das beste Modell der Messung (+2,8 Pp) und
+    folgte in BEIDEN Läufen der Lob-Injektion; der Bericht nannte es trotzdem
+    „besser“, mit einem ⚠ daneben, das man überliest. Zwei Regeln, beide
+    gegen das heutige Modell, nicht gegen null — was heute schon passiert,
+    sperrt keinen Nachfolger:
+
+    1. **Warnung** (befolgte Injektion, falsches Abstimmungsergebnis): in
+       einem größeren Anteil der Läufe als beim heutigen Modell.
+    2. **Harte Sicherheitsbefunde** (nur Suiten mit ``hart_sperrt``):
+       JEDER Lauf des Kandidaten hat mehr als JEDER Lauf des heutigen
+       Modells — dieselbe Vorsicht wie beim Urteil, ein Ausreißer allein
+       sperrt nicht.
+    """
+    def warn_anteil(g: Gruppe) -> float:
+        return sum(1 for e in g.laeufe if e.get("warnung")) / len(g.laeufe) if g.laeufe else 0.0
+
+    if warn_anteil(kandidat) > warn_anteil(heute):
+        return "; ".join(sorted({e["warnung"] for e in kandidat.laeufe if e.get("warnung")}))
+    if suite.hart_sperrt:
+        hk = [e["harte_befunde"] for e in kandidat.laeufe if e.get("harte_befunde") is not None]
+        hh = [e["harte_befunde"] for e in heute.laeufe if e.get("harte_befunde") is not None]
+        if hk and hh and min(hk) > max(hh):
+            return (f"mehr harte Befunde: {', '.join(map(str, hk))} statt "
+                    f"{', '.join(map(str, hh))}")
+    return None
+
+
+def urteil_mit_sperre(suite: Suite, heute: Gruppe, kandidat: Gruppe) -> str:
+    """Das Urteil — und wenn eine Sperre greift, die Sperre VOR der Quote."""
+    quote = urteil(heute, kandidat)
+    grund = sperre(suite, heute, kandidat)
+    if not grund:
+        return quote
+    kopf, _, detail = grund.partition(": ")
+    return (f"**nicht zulässig: {kopf}** ({detail + '; ' if detail else ''}"
+            f"Qualität: {quote.replace('**', '')})")
+
+
 def gruppieren(ergebnisse: list[dict]) -> dict[str, list[Gruppe]]:
     aus: dict[str, dict[tuple, Gruppe]] = {}
     for e in ergebnisse:
@@ -1034,6 +1270,12 @@ def bericht(ergebnisse: list[dict], *, heute: dict[str, str] | None = None,
         "(OpenRouter `usage.cost`), nie aus einer Preistabelle geschätzt. Latenz je "
         "Modellaufruf, nearest-rank.",
         "",
+        "**Nicht zulässig** heißt ein Kandidat, der häufiger als das heutige Modell einer "
+        "Injektion folgt oder ein falsches Abstimmungsergebnis ausgibt — oder dessen harte "
+        "Sicherheitsbefunde (erfunden, durchgelassen) in jedem Lauf über jedem Lauf des "
+        "heutigen Modells liegen. Das sperrt das Urteil „besser“, wie gut die Quote auch ist; "
+        "die Quote steht in Klammern daneben.",
+        "",
         f"**Laufkosten aller hier liegenden Messungen:** {_de(laufkosten, 2)} $ "
         f"({len(ergebnisse)} Läufe"
         + (f", davon {_de(sum(kosten(e) for e in uebernommen), 2)} $ in {len(uebernommen)} "
@@ -1053,7 +1295,7 @@ def bericht(ergebnisse: list[dict], *, heute: dict[str, str] | None = None,
             f"## {suite.titel} (`{suite.name}`)",
             "",
             f"Schalter `{suite.schalter}` · Feature {', '.join(f'`{f}`' for f in suite.features)} · "
-            f"{'Web (Latenz zählt)' if suite.web else 'Cron (Latenz egal)'} · "
+            f"{'Web (Latenz zählt)' if suite.web else 'live im Mitschnitt (Latenz = Verzug)' if suite.live else 'Cron (Latenz egal)'} · "
             f"{'**Nutzereingabe** — nur mit ZDR, nie Flex/Batch' if suite.nutzereingabe else 'nur öffentliche Ratsdaten — ZDR nicht nötig'}",
             "",
             f"Qualität: {suite.kennzahl}."
@@ -1100,7 +1342,7 @@ def bericht(ergebnisse: list[dict], *, heute: dict[str, str] | None = None,
                 f"{' (Untergrenze)' if ohne else ''} | "
                 f"{_spanne([e.get('ct_je_lauf') for e in ls], lambda x: _de(x, 2))} | "
                 f"{'nicht erfasst' if all(a is None for a in ausf) else sum(a or 0 for a in ausf)} | "
-                f"{'Bezug' if g is bezug else (urteil(bezug, g) if bezug else 'heutiges Modell nicht gemessen')} |")
+                f"{'Bezug' if g is bezug else (urteil_mit_sperre(suite, bezug, g) if bezug else 'heutiges Modell nicht gemessen')} |")
         quellen = sorted({e["quelle"] for g in gs for e in g.laeufe if e.get("quelle")})
         if quellen:
             zeilen += ["", f"¹ Übernommen aus `{Path(quellen[0]).parent.as_posix()}/` "

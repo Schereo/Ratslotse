@@ -1,0 +1,209 @@
+{
+ "suite": "social-text",
+ "titel": "Social-Kartentext",
+ "kennzahl": "Anteil der Punkte, deren ERSTER Entwurf die Netze des Betriebs besteht (keine Zahl ohne Beleg, keine Wertung, kein Ergebnis, Länge, JSON)",
+ "modell": "openai/gpt-5.6-luna",
+ "variante": null,
+ "tarif": null,
+ "lauf": 1,
+ "zeitstempel": "2026-09-23T01:52:45",
+ "db_stand": "Sitzungen bis 2026-09-16, 9078 Beschlüsse",
+ "qualitaet": 0.95,
+ "harte_befunde": 1,
+ "warnung": null,
+ "faelle": 20,
+ "p50_ms": 6014,
+ "p95_ms": 8654,
+ "aufrufe": 20,
+ "kosten_usd": 0.015063,
+ "ohne_kostenwert": 0,
+ "ct_je_aufruf": 0.0753,
+ "ct_je_lauf": 1.5063,
+ "kosten_gesamt_usd": 0.015063,
+ "ausfaelle": 0,
+ "nicht_zulaessig": false,
+ "abbruch": null,
+ "modelle_laut_tabelle": [
+  "openai/gpt-5.6-luna"
+ ],
+ "ersatz": [],
+ "dauer_s": 126.1,
+ "nebenkennzahlen": {
+  "zu_lang": 0,
+  "fehlgeschlagen": 0
+ },
+ "fehler_beispiele": [],
+ "roh": {
+  "n_cases": 20,
+  "sauber": 19,
+  "hart": 1,
+  "zu_lang": 0,
+  "fehlgeschlagen": 0,
+  "faelle": [
+   {
+    "id": "4640 Ö 10",
+    "maengel": [],
+    "hart": [],
+    "text": "Beantragt sind eine Bürgschaft der Stadt und eine Patronatserklärung für das Klinikum. Das Darlehen finanziert medizinische Geräte, Bau- und IT-Maßnahmen; Tilgung ab Juli 2027: 139.880 Euro monatlich.",
+    "ueberschrift": "Bürgschaft für ein 13,5-Millionen-Euro-Darlehen",
+    "laenge": 200
+   },
+   {
+    "id": "4702 Ö 9.1",
+    "maengel": [],
+    "hart": [],
+    "text": "Vorgeschlagen ist eine 91,84 Hektar große Windenergiefläche bei den Bornhorster Seen. Sie soll die Flächenziele von 69 Hektar bis 2027 und 89 Hektar bis 2032 abdecken.",
+    "ueberschrift": "Windenergiefläche bei den Bornhorster Seen ausweisen",
+    "laenge": 167
+   },
+   {
+    "id": "4640 Ö 8",
+    "maengel": [],
+    "hart": [],
+    "text": "Vorgeschlagen sind 9.512.500 Euro für Bildung und Teilhabe, Sozialhilfe, Grundsicherung, Pflege- und Eingliederungshilfe. Die Deckung soll u. a. aus Kita-Landesmitteln und der EWE-Dividende erfolgen.",
+    "ueberschrift": "Zusätzliche 9,5 Millionen Euro für Sozialleistungen",
+    "laenge": 199
+   },
+   {
+    "id": "4702 Ö 9.3",
+    "maengel": [],
+    "hart": [],
+    "text": "Der Plan umfasst 8,6 Hektar nördlich des Eßkamps und östlich der Südbäke. Vorgesehen sind 110 Wohnungen auf 4,1 Hektar sowie 3,9 Hektar Grünfläche mit naturnahem Regenrückhaltebecken.",
+    "ueberschrift": "Wohngebiet mit 110 Wohnungen am Eßkamp vorsehen",
+    "laenge": 183
+   },
+   {
+    "id": "4607 Ö 32.1",
+    "maengel": [],
+    "hart": [],
+    "text": "Die BSW-Fraktion beantragt die Prüfung. Für baureife Grundstücke wären jährliche Prüfungen und eine höhere Steuer nötig; Aufwand und Mehrerträge sind noch nicht beziffert. Die Verwaltung rät davon ab.",
+    "ueberschrift": "Grundsteuer C für baureife Grundstücke",
+    "laenge": 200
+   },
+   {
+    "id": "4607 Ö 21",
+    "maengel": [],
+    "hart": [],
+    "text": "Zur Abstimmung steht die Veröffentlichung des Entwurfs. Vorgesehen sind der Ausschluss von Spielotheken und Wettbüros sowie Einzelhandel nur für Auto-, Brenn-, Kraft- und Schmierstoffe oder untergeordnet zu Gewerbebetrieben.",
+    "ueberschrift": "Nadorster Straße/Kreyenstraße: Spielotheken ausschließen",
+    "laenge": 224
+   },
+   {
+    "id": "4653 Ö 6",
+    "maengel": [
+     "Zahl steht nicht in der Quelle: 13"
+    ],
+    "hart": [
+     "Zahl steht nicht in der Quelle: 13"
+    ],
+    "text": "Vorgeschlagen ist, den Posthalterweg ins Hauptverkehrsstraßennetz aufzunehmen und 13 Straßen herauszunehmen. Für sechs weitere Straßen ist die Herausnahme erst nach Ende des Förderzeitraums vorgesehen.",
+    "ueberschrift": "Änderungen am städtischen Hauptverkehrsstraßennetz",
+    "laenge": 201
+   },
+   {
+    "id": "4675 Ö 5",
+    "maengel": [],
+    "hart": [],
+    "text": "Zur Abstimmung stehen die Evaluation und Fortschreibung des 2020 beschlossenen Plans. Vorgesehen sind sechs Fokusthemen mit je fünf Handlungsempfehlungen; kleinere Maßnahmen könnten 10.000 Euro kosten.",
+    "ueberschrift": "Aktionsplan: Gewalt an Frauen* und häusliche Gewalt",
+    "laenge": 201
+   },
+   {
+    "id": "4667 Ö 8.3",
+    "maengel": [],
+    "hart": [],
+    "text": "Ein unabhängiges Sachverständigenbüro soll vorhandene Unterlagen prüfen und weitere Maßnahmen bewerten. Die Kosten für Gutachten und Konzept sind noch nicht beziffert.",
+    "ueberschrift": "Ablagerungen am ehemaligen Schießstand untersuchen",
+    "laenge": 167
+   },
+   {
+    "id": "4640 Ö 11",
+    "maengel": [],
+    "hart": [],
+    "text": "Zur Abstimmung steht die Verlängerung des städtischen Kreditrahmens von bis zu 40 Millionen Euro bis zum 31. Dezember 2029. Zusätzlich bestehen Bank-Kreditlinien über 23,2 Millionen Euro.",
+    "ueberschrift": "Liquiditätskredit für das Klinikum bis 2029 verlängern",
+    "laenge": 187
+   },
+   {
+    "id": "4607 Ö 6",
+    "maengel": [],
+    "hart": [],
+    "text": "Zur Abstimmung stehen Satzungsentwurf und Öffentlichkeitsbeteiligung. Die Satzung soll Wohnraum vor Ferienwohnungen, Gewerbe und längerem Leerstand schützen; vorgesehen sind fünf Vollzeitstellen.",
+    "ueberschrift": "Satzung gegen Zweckentfremdung von Wohnraum",
+    "laenge": 195
+   },
+   {
+    "id": "4618 Ö 7",
+    "maengel": [],
+    "hart": [],
+    "text": "Vorgesehen ist, rund 3.280 m² im MediTech Oldenburg in zwei Losen (1.580 und 1.700 m²) anzubieten: für 275 €/m² zum Kauf oder im 60-jährigen Erbbaurecht mit 3 % Erbbauzins.",
+    "ueberschrift": "Grundstücke im MediTech-Quartier anbieten",
+    "laenge": 172
+   },
+   {
+    "id": "4667 Ö 8.1.1",
+    "maengel": [],
+    "hart": [],
+    "text": "Beantragt sind Ersatzbäume mit 12–14 statt 20–25 cm Stammumfang und 400 Euro Ausgleich je Baum. In einem Jahr gab es 99 genehmigte Anträge und vier Ausgleichszahlungen.",
+    "ueberschrift": "Baumschutzsatzung: Ersatzbaum und Ausgleichsgeld",
+    "laenge": 168
+   },
+   {
+    "id": "4653 Ö 5",
+    "maengel": [],
+    "hart": [],
+    "text": "Der Vorschlag sieht ab 1. Januar 2027 3,5 Prozent höhere VBN-Tarife vor. In Oldenburg soll das Einzelticket 3,10 statt 3,00 Euro kosten; erwartet werden rund 160.000 Euro Mehreinnahmen jährlich.",
+    "ueberschrift": "Fahrpreise in Oldenburg ab 2027 anpassen",
+    "laenge": 194
+   },
+   {
+    "id": "4640 Ö 17.3",
+    "maengel": [],
+    "hart": [],
+    "text": "Im Gebäude Stiller Weg 3, 3a und 3b entstehen 16 Wohnungen auf 828 m². Sie sollen im Sommer 2027 bezugsfertig sein; die Nettokaltmiete beträgt 6,40 Euro je m².",
+    "ueberschrift": "16 Wohnungen am Stillen Weg für 6,40 Euro pro m²",
+    "laenge": 159
+   },
+   {
+    "id": "4675 Ö 9",
+    "maengel": [],
+    "hart": [],
+    "text": "Vorgeschlagen sind ein dreijähriges Handlungskonzept, eine Satzung und eine Wahlordnung für ein Jugendparlament. Dafür sind 20.000 Euro Budget sowie Personal für Geschäftsstelle und Beteiligungsformate vorgesehen.",
+    "ueberschrift": "Jugendparlament und neue Beteiligungsformate planen",
+    "laenge": 213
+   },
+   {
+    "id": "4702 Ö 6.1",
+    "maengel": [],
+    "hart": [],
+    "text": "Vorgeschlagen ist, das Kronenvolumen gefällter Stadtbäume binnen zehn Jahren wiederherzustellen. Die Kosten für Ersatzpflanzungen können gegenüber der Baumschutzsatzung auf das Drei- bis Vierfache steigen.",
+    "ueberschrift": "Kronenvolumen-Modell bei städtischen Baumfällungen",
+    "laenge": 205
+   },
+   {
+    "id": "4661 Ö 9",
+    "maengel": [],
+    "hart": [],
+    "text": "Das Konzept nennt rund 207 Millionen Euro für 2027 bis 2035 und acht zusätzliche Stellen. Wärmepumpen und Photovoltaik sollen dabei Vorrang haben; eine genauere Prüfung soll im Februar 2027 folgen.",
+    "ueberschrift": "Stadtgebäude bis 2035 klimaneutral sanieren",
+    "laenge": 197
+   },
+   {
+    "id": "4646 Ö 7",
+    "maengel": [],
+    "hart": [],
+    "text": "Berichtet wird über 197 Menschen im Leistungsbezug. Zum 31. Juli 2026 waren 205 Plätze belegt, davon 71 durch Auszugsberechtigte; 27 unbegleitete Minderjährige wurden betreut.",
+    "ueberschrift": "Unterbringung von Asylsuchenden: aktuelle Daten",
+    "laenge": 175
+   },
+   {
+    "id": "4618 Ö 9.5",
+    "maengel": [],
+    "hart": [],
+    "text": "Geplant ist eine fünftägige bis siebentägige Begegnung im März 2027 in Kingston: zehn Jugendliche aus Oldenburg und zehn aus Kingston. Dafür sind 14.500 Euro Fördermittel vorgesehen.",
+    "ueberschrift": "Jugendaustausch mit Kingston upon Thames planen",
+    "laenge": 182
+   }
+  ]
+ }
+}
