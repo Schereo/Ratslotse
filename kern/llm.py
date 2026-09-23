@@ -301,6 +301,59 @@ def _flex_kwargs(kwargs: dict[str, Any]) -> dict[str, Any]:
     return {**kwargs, "extra_body": extra_body}
 
 
+#: **Ein reiner Messschalter, nicht für den Betrieb** — wie ``TARIF_ENV``.
+#: Gesetzt auf einen Ordner, schreibt jeder Aufruf von ``chat_complete`` und
+#: ``chat_stream`` eine JSON-Zeile nach ``<ordner>/<feature>.jsonl``: die
+#: ``messages``, das angefragte und das antwortende Modell, die Antwort.
+#:
+#: Anlass ist die Fakten-Eval (``eval/run_fakten.py``, 23.09.2026): Sie trennt
+#: Kontextfehler von Modellfehlern, und dafür muss sie den Prompt sehen, den
+#: das Modell WIRKLICH bekam. Den von Frag den Rat setzt der Router zusammen
+#: (Retrieval, Presse, Haushaltszahlen, Verlauf) — nachbauen hieße, genau die
+#: Stelle zu raten, an der der Fehler sitzen kann. Der Faktencheck davor
+#: hatte Lottis Kontext rekonstruiert und fand trotzdem nur, was die
+#: Rekonstruktion abbildete.
+#:
+#: In eine ``.env`` gehört er NIE: Er schriebe jede Nutzerfrage samt Kontext
+#: im Klartext auf die Platte — also genau das, was ZDR beim Anbieter
+#: ausschließen soll. Ein Schreibfehler hier bricht keinen Aufruf ab.
+MITSCHNITT_ENV = "RATSLOTSE_PROMPT_MITSCHNITT"
+
+
+def _mitschnitt(feature: str | None, kwargs: dict[str, Any], antwort: str | None, *,
+                antwort_modell: str | None = None, abgebrochen: bool = False) -> None:
+    """Eine Zeile ins Mitschnitt-Protokoll — nur wenn der Messschalter gesetzt ist."""
+    ordner = os.environ.get(MITSCHNITT_ENV, "").strip()
+    if not ordner:
+        return
+    try:
+        from pathlib import Path
+        ziel = Path(ordner)
+        ziel.mkdir(parents=True, exist_ok=True)
+        zeile = {
+            "ts": time.time(),
+            "feature": feature,
+            "model": kwargs.get("model"),
+            # Wer wirklich geantwortet hat (OpenRouter trägt es in der Antwort) —
+            # der Nachweis, dass die Umschaltung gewirkt hat.
+            "response_model": antwort_modell,
+            "messages": kwargs.get("messages"),
+            "answer": antwort,
+            "aborted": abgebrochen,
+        }
+        with open(ziel / f"{feature or 'ohne_feature'}.jsonl", "a", encoding="utf-8") as f:
+            f.write(json.dumps(zeile, ensure_ascii=False, default=str) + "\n")
+    except Exception:  # noqa: BLE001 — ein Messschalter bricht nie einen Aufruf ab
+        pass
+
+
+def _antworttext(resp: Any) -> str | None:
+    try:
+        return resp.choices[0].message.content
+    except (AttributeError, IndexError, TypeError):
+        return None
+
+
 _client: OpenAI | None = None
 
 
@@ -507,6 +560,8 @@ def chat_complete(**kwargs: Any):
             print(f"  ⚠️ {model}: {exc!r} — weiche auf {modelle[i + 1]} aus", flush=True)
             continue
         _record_usage(feature, model, getattr(resp, "usage", None))
+        _mitschnitt(feature, versuch, _antworttext(resp),
+                    antwort_modell=getattr(resp, "model", None))
         return resp
     raise AssertionError("unerreichbar: kein Modell")  # pragma: no cover
 
@@ -559,8 +614,27 @@ def chat_stream(**kwargs: Any):
     feature = kwargs.pop("_feature", None)
     if feature:
         kwargs.setdefault("stream_options", {"include_usage": True})
-    for chunk in _create(stream=True, _zdr=zdr_pflicht(feature), **kwargs):
-        if getattr(chunk, "usage", None):
-            _record_usage(feature, kwargs.get("model"), chunk.usage)
-        if chunk.choices and chunk.choices[0].delta.content:
-            yield chunk.choices[0].delta.content
+    # Der Mitschnitt sammelt nur, wenn der Messschalter gesetzt ist — sonst
+    # bleibt der Strom, wie er war.
+    mit = bool(os.environ.get(MITSCHNITT_ENV, "").strip())
+    teile: list[str] = []
+    antwort_modell: str | None = None
+    fertig = False
+    try:
+        for chunk in _create(stream=True, _zdr=zdr_pflicht(feature), **kwargs):
+            if mit and antwort_modell is None:
+                antwort_modell = getattr(chunk, "model", None)
+            if getattr(chunk, "usage", None):
+                _record_usage(feature, kwargs.get("model"), chunk.usage)
+            if chunk.choices and chunk.choices[0].delta.content:
+                if mit:
+                    teile.append(chunk.choices[0].delta.content)
+                yield chunk.choices[0].delta.content
+        fertig = True
+    finally:
+        # Auch ein abgerissener Strom wird festgehalten: Der Router erzeugt
+        # dann einmal neu (`chat_complete`, eigene Zeile), und die Eval muss
+        # sehen, dass es zwei Aufrufe waren.
+        if mit:
+            _mitschnitt(feature, kwargs, "".join(teile), antwort_modell=antwort_modell,
+                        abgebrochen=not fertig)

@@ -1,0 +1,335 @@
+"""Der Abgleich der Fakten-Eval (``eval/fakten_abgleich.py``) — offline.
+
+Jede Regel hier hat einen Anlass aus echten Antworten und echten Prompts:
+die deutschen Zahlformate aus dem Faktencheck vom 23.09.2026, die
+„davon“-Zeilen unter dem falschen Jahr (derselbe Faktencheck), die Rundung
+„rund 337 Millionen“. Wer eine Regel lockert, sieht hier, welchen Befund er
+damit nicht mehr sähe.
+"""
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+import pytest
+
+WURZEL = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(WURZEL))
+
+from eval import fakten_abgleich as fa  # noqa: E402
+
+# Der Schuldenblock, wie ihn qa.geld_block am 23.09.2026 baute — mit dem
+# Fehler: Die Aufschlüsselung von 2025 hängt unter „Ein Jahr davor (2024)“.
+SCHULDEN_KONTEXT = """SCHULDENSTAND (Statistisches Jahrbuch der Stadt, Tabelle 1108). Beleg: Tabelle 1108 — Stand der Verschuldung 1995 bis 2025, Stand Schuldenstand zum 31.12.2025:
+- Schuldenstand am Jahresende 2025: 336.994.000 € — das sind 1.908 € je Einwohner*in
+- Ein Jahr davor (2024): 294.851.000 €
+  - davon Schulden aus Kreditmarktmitteln: 40.804.000 €
+  - davon Schulden der Eigenbetriebe einschließlich Kliniken und innere Darlehen: 296.190.000 €
+- Dieselbe Frage, andere Abgrenzung — Kernhaushalt (nur Geldschulden) 2024: 43.690.972 € (Quelle: Bilanz)
+- Dieselbe Frage, andere Abgrenzung — Konzern Stadt (anteilig, mit Beteiligungen) 2024: 740.330.163 €
+"""
+
+INVEST_KONTEXT = """INVESTITIONEN — TATSÄCHLICH ABGEFLOSSEN, Stand Rechnungsergebnisse 2010–2025:
+- Tatsächliche Investitions-Auszahlungen 2025: 60.773.000 €
+- Ein Jahr davor (2024): 67.954.000 €
+- Höchster Wert der Reihe (sie beginnt 2010): 2020 mit 70.481.000 €
+  - davon Baumaßnahmen: 16.208.000 €
+  - davon Sonstige Investitionstätigkeit: 20.083.000 €
+
+EINZELNE VORHABEN:
+- Ausleihung an Beteiligungen, 2025 (Finanzmanagement und Recht): 26,6 Mio. € — im Programm 2024 noch -5,3 Mio. €
+"""
+
+
+def _werte(text):
+    return [(z.wert, z.art) for z in fa.zahlen(text)]
+
+
+# --------------------------------------------------------------------------- #
+# Zahlen lesen
+# --------------------------------------------------------------------------- #
+
+@pytest.mark.parametrize("text, wert, art", [
+    ("336.994.000 €", 336_994_000, "€"),
+    ("336,9 Mio. €", 336_900_000, "€"),
+    ("rund 337 Millionen Euro", 337_000_000, "€"),
+    ("1.908 €", 1908, "€"),
+    ("20,4 %", 20.4, "%"),
+    ("20,4 Prozent", 20.4, "%"),
+    ("0,3 Mrd. €", 300_000_000, "€"),
+    ("1,2 Milliarden", 1_200_000_000, "€"),
+    ("72.600 TEUR", 72_600_000, "€"),
+    ("rund 43,7 Mio €", 43_700_000, "€"),
+    ("Hebesatz 539", 539, ""),
+])
+def test_deutsche_zahlformate(text, wert, art):
+    (z,) = [z for z in fa.zahlen(text) if z.art != "jahr"]
+    assert z.wert == pytest.approx(wert)
+    assert z.art == art
+
+
+def test_jahre_und_daten_sind_keine_betraege():
+    assert _werte("Stand 31.12.2025") == [(2025, "jahr")]
+    assert _werte("2010–2025") == [(2010, "jahr"), (2025, "jahr")]
+    assert _werte("von 2019 bis 2024") == [(2019, "jahr"), (2024, "jahr")]
+
+
+def test_minus_nur_vor_der_ziffer():
+    assert _werte("noch -5,3 Mio. €") == [(-5_300_000, "€")]
+    assert _werte("2010-2025") == [(2010, "jahr"), (2025, "jahr")]
+
+
+def test_aufloesung_folgt_der_angabe():
+    (a,) = fa.zahlen("336,9 Mio. €")
+    (b,) = fa.zahlen("337 Mio. €")
+    (c,) = fa.zahlen("336.994.000 €")
+    assert a.aufloesung == pytest.approx(100_000)
+    assert b.aufloesung == pytest.approx(1_000_000)
+    assert c.aufloesung == pytest.approx(1_000)
+
+
+# --------------------------------------------------------------------------- #
+# Rundung
+# --------------------------------------------------------------------------- #
+
+@pytest.mark.parametrize("text, gold, erwartet", [
+    ("rund 337 Millionen Euro", 336_994_000, True),
+    ("336,9 Mio. €", 336_994_000, True),
+    ("0,3 Mrd. €", 294_851_000, True),
+    ("rund 300 Mio. €", 294_851_000, True),    # grob, aber eine Rundung
+    ("295 Mio. €", 294_851_000, True),
+    ("1 Mrd. €", 740_330_163, False),          # keine Rundung mehr
+    ("338 Mio. €", 336_994_000, False),        # falsch gerundet
+    ("20 %", 20.4, True),
+    ("21 %", 20.4, False),
+    ("1.908 €", 1908, True),
+    ("1.900 €", 1908, True),
+    ("1.800 €", 1908, False),
+])
+def test_rundung(text, gold, erwartet):
+    (z,) = fa.zahlen(text)
+    assert fa.passt(z, gold) is erwartet
+
+
+def test_zwei_genaue_zahlen_nah_beieinander_sind_verschieden():
+    """Gemessen am 23.09.: Der Rekordwert 2020 (70.481.000 €) galt bei 0,5 %
+    Toleranz als der Investitionsplan 2026 (70.273.312 €)."""
+    (z,) = fa.zahlen("70.481.000 €")
+    assert not fa.passt(z, 70_273_312)
+    # Zwei Quellen derselben Zahl dagegen schon (Jahrbuch / Abschluss 2024).
+    (z,) = fa.zahlen("764.745.000 €")
+    assert fa.passt(z, 764_416_063.76)
+
+
+def test_einheiten_werden_nicht_verwechselt():
+    (proz,) = fa.zahlen("20,4 %")
+    (euro,) = fa.zahlen("20,4 €")
+    assert not fa.einheit_passt(proz, "€")
+    assert not fa.einheit_passt(euro, "%")
+    (jahr,) = fa.zahlen("2025")
+    assert not fa.einheit_passt(jahr, "€") and not fa.einheit_passt(jahr, "Stellen")
+
+
+# --------------------------------------------------------------------------- #
+# Jahreszuordnung im Kontext
+# --------------------------------------------------------------------------- #
+
+def test_davon_zeilen_unter_dem_vorjahr_sind_falsch_zugeordnet():
+    """Der Befund des Faktenchecks: Die Aufschlüsselung 2025 unter „2024“."""
+    b = fa.zahl_im_text({"wert": 40_804_000, "jahr": 2025, "einheit": "€"}, SCHULDEN_KONTEXT)
+    assert b.status == "falsch_zugeordnet"
+    assert b.jahre == [[2024]]
+
+
+def test_zahl_mit_eigenem_jahr_ist_richtig_zugeordnet():
+    for wert in (336_994_000, 1908):
+        assert fa.zahl_im_text({"wert": wert, "jahr": 2025}, SCHULDEN_KONTEXT).status == "ok"
+    assert fa.zahl_im_text({"wert": 294_851_000, "jahr": 2024}, SCHULDEN_KONTEXT).status == "ok"
+    assert fa.zahl_im_text({"wert": 294_851_000, "jahr": 2025}, SCHULDEN_KONTEXT).status \
+        == "falsch_zugeordnet"
+
+
+def test_investitionen_unter_dem_rekordjahr():
+    """Zweiter Befund: Die Auszahlungsarten 2025 unter „Höchster Wert … 2020“."""
+    b = fa.zahl_im_text({"wert": 20_083_000, "jahr": 2025}, INVEST_KONTEXT)
+    assert b.status == "falsch_zugeordnet" and b.jahre == [[2020]]
+
+
+def test_zwei_jahre_in_einer_zeile():
+    assert fa.zahl_im_text({"wert": 26_600_000, "jahr": 2025}, INVEST_KONTEXT).status == "ok"
+    assert fa.zahl_im_text({"wert": 5_300_000, "jahr": 2024}, INVEST_KONTEXT).status == "ok"
+    assert fa.zahl_im_text({"wert": 5_300_000, "jahr": 2025}, INVEST_KONTEXT).status \
+        == "falsch_zugeordnet"
+
+
+def test_leerzeile_trennt_bloecke():
+    text = "Kopf 2024:\n- a: 5.000 €\n\n- b: 7.000 €"
+    zl = fa.zeilen(text)
+    (b,) = [z for z in fa.zahlen(text) if z.wert == 7000]
+    assert fa.jahre_der_zahl(zl, b) == set()
+
+
+def test_fehlt_ganz():
+    assert fa.zahl_im_text({"wert": 60_773_000, "jahr": 2025}, SCHULDEN_KONTEXT).status == "fehlt"
+
+
+def test_bezeichnung_muss_in_der_zeile_oder_darueber_stehen():
+    gold = {"wert": 296_190_000, "label": ["Eigenbetrieb"]}
+    assert fa.zahl_im_text(gold, SCHULDEN_KONTEXT).status == "ok"
+    gold = {"wert": 296_190_000, "label": ["Kreditmarkt"]}
+    assert fa.zahl_im_text(gold, SCHULDEN_KONTEXT).status == "falsch_zugeordnet"
+
+
+# --------------------------------------------------------------------------- #
+# Antworten
+# --------------------------------------------------------------------------- #
+
+def test_antwort_mit_vorjahr_im_selben_satz():
+    antwort = "Ende 2025 lag der Schuldenstand bei rund 337 Mio. €, 2024 waren es 295 Mio. €."
+    assert fa.zahl_im_text({"wert": 336_994_000, "jahr": 2025}, antwort, satz=True).status == "ok"
+    assert fa.zahl_im_text({"wert": 294_851_000, "jahr": 2024}, antwort, satz=True).status == "ok"
+
+
+def test_jahr_dahinter_nur_in_der_naehe():
+    antwort = "Rund 337 Mio. € Schulden hatte die Stadt zuletzt – 2024 waren es noch 295 Mio. €."
+    zl = fa.zeilen(antwort)
+    z = fa.zahlen(antwort)[0]
+    assert fa.jahre_der_zahl(zl, z, satz=True) == set()
+
+
+def test_angehaengtes_jahr_geht_vor():
+    """Gemessen 23.09. (Gemini): 850,2 Mio. galt als Wert von 2020."""
+    antwort = "Von 588,2 Millionen Euro im Jahr 2020 auf 850,2 Millionen Euro im Jahr 2025."
+    assert fa.zahl_im_text({"wert": 850_170_000, "jahr": 2025}, antwort, satz=True).status == "ok"
+    assert fa.zahl_im_text({"wert": 588_167_000, "jahr": 2020}, antwort, satz=True).status == "ok"
+
+
+def test_komma_trennt_in_antworten():
+    antwort = "Die Gebühr ist 2026 um 8,0 % gestiegen, von 3,74 € auf 4,04 € je Meter."
+    assert fa.zahl_im_text({"wert": 3.74, "jahr": 2025}, antwort, satz=True).status == "ok"
+
+
+def test_ausgangswert_einer_veraenderung_traegt_nicht_das_neue_jahr():
+    antwort = "Die Gebühr stieg 2026 um 8 Prozent: von 3,74 Euro auf 4,04 Euro je Meter."
+    assert fa.zahl_im_text({"wert": 3.74, "jahr": 2025}, antwort, satz=True).status == "ok"
+    assert fa.zahl_im_text({"wert": 4.04, "jahr": 2026}, antwort, satz=True).status == "ok"
+
+
+def test_elternzeile_zaehlt_ihr_erstes_jahr():
+    kontext = ("- Wirtschaftsplan 2026: Ergebnis 711.250 €; im Plan 2025 waren es 627.511 €\n"
+               "  - Erfolgsplan: Aufwendungen 26,0 Mio. €")
+    assert fa.zahl_im_text({"wert": 26_036_000, "jahr": 2026}, kontext).status == "ok"
+
+
+def test_verbot_mit_jahr_trifft_nur_die_verwechslung():
+    verbot = {"art": "zahl", "wert": 294_851_000, "als_jahr": 2025, "grund": "Vorjahr"}
+    richtig = "Ende 2025: 337 Mio. €. Im Jahr 2024 waren es 295 Mio. €."
+    falsch = "Der Schuldenstand 2025 beträgt 295 Mio. €."
+    for text, erwartet in ((richtig, None), (falsch, "295 Mio. € — Vorjahr")):
+        assert fa.verboten_im_text(verbot, text, fa.zahlen(text), fa.zeilen(text)) == erwartet
+
+
+@pytest.mark.parametrize("antwort, erwartet", [
+    ("Die Angaben nennen keine Schuldenzahlen anderer Städte, daher kann ich nicht sagen, "
+     "ob das viel ist.", True),
+    ("Dazu liegen mir keine Zahlen vor.", True),
+    ("Vergleichsdaten zu den Schulden anderer Städte sind nicht im Bestand.", True),
+    ("Das lässt sich mit den vorhandenen Daten nicht beantworten.", True),
+    ("Die Unterlagen nennen keinen Schuldenstand für Osnabrück.", True),
+    ("Die Ratsunterlagen geben keine Auskunft über die Schulden von Osnabrück.", True),
+    ("Die vorliegenden Unterlagen des Oldenburger Stadtrats enthalten keine Informationen.", True),
+    ("Die Seite sagt nichts dazu, wie viel Braunschweig ausgibt.", True),
+    ("Wer wie gestimmt hat, steht bei uns nicht.", True),
+    ("Die Ratsunterlagen geben dazu wenig her.", True),
+    ("Die Ratsunterlagen geben keine direkte Auskunft darüber.", True),
+    ("Angaben zum Gehalt stehen in den vorliegenden Informationen nicht.", True),
+    ("Wie viel er verdient, geht aus den vorliegenden Unterlagen nicht hervor.", True),
+    ("Ein Wolfsburger Vergleichswert fehlt.", True),
+    ("Aus den Unterlagen lässt sich kein Gewinner nennen.", True),
+    ("Wie viel davon auf Kredite entfiel, ist in den vorliegenden Angaben nicht aufgeschlüsselt.",
+     True),
+    ("Die Schulden lagen Ende 2025 bei 337 Mio. €.", False),
+    ("Die Stadt muss das nicht bezahlen, das trägt das Land.", False),
+])
+def test_verweigerung(antwort, erwartet):
+    assert fa.verweigert(antwort) is erwartet
+
+
+def test_erfundene_zahl_und_abgeleitete():
+    kontext = "Plan: 80.781.520 €\nIst: 60.773.000 €\nEinwohner: 176.614"
+    assert fa.erfundene_zahlen("Rund 81 Mio. € geplant, 60,8 Mio. € ausgegeben.", kontext) == []
+    # Differenz und Anteil sind Rechnungen aus zwei Kontextzahlen, keine Erfindung.
+    assert fa.erfundene_zahlen("Das sind 20 Mio. € weniger, rund 75 %.", kontext) == []
+    assert fa.erfundene_zahlen("Dazu kommen 12,5 Mio. € für Schulen.", kontext) == ["12,5 Mio. €"]
+
+
+# --------------------------------------------------------------------------- #
+# Die Einteilung
+# --------------------------------------------------------------------------- #
+
+FALL = {
+    "id": "t", "frage": "Wie hoch sind die Schulden?", "antwort_in_daten": True,
+    "gold": [{"art": "zahl", "wert": 336_994_000, "jahr": 2025, "einheit": "€"},
+             {"art": "text", "muss": [["Eigenbetrieb", "Eigenbetriebe"]]}],
+    "verboten": [{"art": "zahl", "wert": 294_851_000, "als_jahr": 2025, "grund": "Vorjahr"}],
+}
+KONTEXT_OK = SCHULDEN_KONTEXT + "\nAbgrenzung: Kernhaushalt und Eigenbetriebe."
+
+
+def test_einteilung_ok():
+    e = fa.bewerten(FALL, KONTEXT_OK, "Ende 2025 rund 337 Mio. € (Kernhaushalt und Eigenbetriebe).")
+    assert e["fehlerart"] == "ok" and e["kontext_ok"] and e["antwort_ok"]
+
+
+def test_einteilung_kontext_fehlt_geht_vor():
+    e = fa.bewerten(FALL, "gar nichts", "Ende 2025 rund 337 Mio. €, Eigenbetriebe.")
+    assert e["fehlerart"] == "kontext_fehlt" and not e["kontext_ok"]
+
+
+def test_einteilung_modell_ausgelassen_und_falsch():
+    e = fa.bewerten(FALL, KONTEXT_OK, "Die Stadt hat Schulden bei den Eigenbetrieben.")
+    assert e["fehlerart"] == "modell_ausgelassen"
+    e = fa.bewerten(FALL, KONTEXT_OK, "Der Schuldenstand 2025 beträgt 295 Mio. € (Eigenbetriebe).")
+    assert e["fehlerart"] == "modell_falsch"
+
+
+def test_einteilung_verweigert_zu_unrecht():
+    e = fa.bewerten(FALL, KONTEXT_OK, "Dazu liegen mir keine Zahlen vor.")
+    assert e["fehlerart"] == "modell_verweigert_zu_unrecht"
+
+
+def test_einteilung_erfunden():
+    e = fa.bewerten(FALL, KONTEXT_OK,
+                    "Ende 2025 rund 337 Mio. €, Eigenbetriebe; dazu 12,5 Mio. € Kassenkredite.")
+    assert e["fehlerart"] == "modell_erfunden" and e["erfunden"] == ["12,5 Mio. €"]
+
+
+def test_einteilung_ohne_modellaufruf():
+    e = fa.bewerten(FALL, None, "Auf dieser Seite siehst du den Schuldenstand.")
+    assert e["fehlerart"] == "kontext_fehlt"
+
+
+def test_einteilung_antwort_nicht_in_daten():
+    fall = {"frage": "Wie hoch sind die Schulden von Osnabrück?", "antwort_in_daten": False,
+            "gold": [], "verboten": []}
+    kontext = "Steuerkraftmesszahl 2026: Oldenburg 348.164.000 €, Osnabrück 273.609.000 €"
+    assert fa.bewerten(fall, kontext, "Dazu liegen mir keine Zahlen vor.")["fehlerart"] == "ok"
+    # Ersatzweise die Steuerkraft zu nennen, ohne zu sagen, dass es keine
+    # Schulden sind, ist der Befund des Faktenchecks (Gemini, rat[1]).
+    e = fa.bewerten(fall, kontext, "Osnabrück liegt bei 273,6 Mio. €.")
+    assert e["fehlerart"] == "modell_falsch"
+    e = fa.bewerten(fall, kontext, "Osnabrück hat rund 512 Mio. € Schulden.")
+    assert e["fehlerart"] == "modell_erfunden"
+
+
+def test_frage_zaehlt_nicht_als_kontext():
+    fall = {"frage": "Was macht der Eigenbetrieb?", "gold": [{"art": "text", "muss": ["Eigenbetrieb"]}]}
+    e = fa.bewerten(fall, "System: …\nFrage: Was macht der Eigenbetrieb?", "Der Eigenbetrieb …")
+    assert e["fehlerart"] == "kontext_fehlt"
+
+
+def test_optionaler_fakt_zaehlt_nur_im_kontext():
+    fall = {**FALL, "gold": FALL["gold"] + [
+        {"art": "zahl", "wert": 740_330_163, "jahr": 2024, "pflicht": False}]}
+    e = fa.bewerten(fall, KONTEXT_OK, "Ende 2025 rund 337 Mio. € (Eigenbetriebe).")
+    assert e["fehlerart"] == "ok"
