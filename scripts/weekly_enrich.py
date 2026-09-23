@@ -176,7 +176,7 @@ def main() -> list[dict]:
     hier nur die Namen der Fehlschläge, und in der Cron-Übersicht stand
     entsprechend eine einzige Zahl („16 Schritte, 0 fehlgeschlagen"). Welcher
     Schritt zwei Stunden brauchte und welcher stumm nichts tat, sah man nur im
-    Log auf dem Server — obwohl der Lauf es die ganze Zeit wusste. 20 der 22
+    Log auf dem Server — obwohl der Lauf es die ganze Zeit wusste. 21 der 23
     Schritte rufen kein ``run_guarded``, schreiben also auch keine eigene
     ``job_runs``-Zeile; ihre Bilanz kann nur von hier kommen.
 
