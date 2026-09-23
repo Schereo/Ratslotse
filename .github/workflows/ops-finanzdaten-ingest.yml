@@ -63,6 +63,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: "Ingests auf der VM (${{ inputs.umgebung }})"
+        env:
+          AUCH_SCHRUMPFEN: ${{ inputs.auch_schrumpfen }}
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ inputs.umgebung == 'prod' && secrets.VPS_HOST || secrets.VPS_DEV_HOST }}
@@ -77,6 +79,8 @@ jobs:
           # Seiten je Jahrgang; der Erstlauf über alle liegt deutlich über der
           # 10-Minuten-Vorgabe der Action.
           command_timeout: 90m
+          # Eingaben über `envs`, nicht als `${{ … }}` im Skripttext.
+          envs: AUCH_SCHRUMPFEN
           script: |
             set -e
             cd ~/app
@@ -148,7 +152,7 @@ jobs:
             # (#1524: 2021/THH10 fällt von 27 auf 20 Zeilen, weil sieben
             # Zeilen aus der Vorjahresspalte des Plans 2022 stammten). Ohne
             # den Schalter hält der Bestandsschutz den alten Stand.
-            if [ "${{ inputs.auch_schrumpfen }}" = "true" ]; then
+            if [ "$AUCH_SCHRUMPFEN" = "true" ]; then
               .venv/bin/python scripts/ingest_finanzberichte.py --auch-schrumpfen
             else
               .venv/bin/python scripts/ingest_finanzberichte.py

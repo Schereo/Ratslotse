@@ -34,6 +34,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Run backfill + FTS rebuild on server
+        env:
+          SEIT: ${{ inputs.seit }}
+          PROTOKOLLE: ${{ inputs.protokolle }}
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -47,12 +50,20 @@ jobs:
           # Der volle Erstlauf über ~5.000 Vorlagen dauert deutlich länger als
           # die 10-Minuten-Default-Grenze der Action.
           command_timeout: 120m
+          # Die Eingaben gehen über `envs` an die Shell und NICHT als
+          # `${{ … }}` in den Skripttext — ein interpolierter Wert ist eine
+          # Kommandozeile (wie in ops-anlagen-ocr.yml). `seit` wird zusätzlich
+          # auf JJJJ-MM geprüft, bevor es ein Argument wird.
+          envs: SEIT,PROTOKOLLE
           script: |
             set -e
             cd ~/app
-            .venv/bin/python scripts/nachlauf_sitzungen.py --seit "${{ inputs.seit }}"
-            if [ "${{ inputs.protokolle }}" = "true" ]; then
-              .venv/bin/python scripts/backfill_protocols.py --since "${{ inputs.seit }}-01" --workers 4
+            if ! echo "$SEIT" | grep -qE '^[0-9]{4}-[0-9]{2}$'; then
+              echo "seit muss JJJJ-MM sein, war: $SEIT"; exit 2
+            fi
+            .venv/bin/python scripts/nachlauf_sitzungen.py --seit "$SEIT"
+            if [ "$PROTOKOLLE" = "true" ]; then
+              .venv/bin/python scripts/backfill_protocols.py --since "${SEIT}-01" --workers 4
             fi
             .venv/bin/python scripts/backfill_vorlagen.py
             .venv/bin/python scripts/backfill_anlagen.py
