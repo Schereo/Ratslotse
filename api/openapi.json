@@ -18240,6 +18240,14 @@
             "title": "Difficulty",
             "type": "string"
           },
+          "format": {
+            "enum": [
+              "verdict",
+              "compare"
+            ],
+            "title": "Format",
+            "type": "string"
+          },
           "hint": {
             "title": "Hint",
             "type": [

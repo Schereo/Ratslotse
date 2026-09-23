@@ -1017,6 +1017,9 @@ class QuizQuestion(TypedDict):
     # Geschrieben ausschließlich von unserem eigenen Code („mc" beim Anlegen
     # eigener Fragen, „mc"/„estimate" bei den amtlichen) — deshalb benennbar.
     qtype: Literal["mc", "estimate"]
+    # Bauform aus ``council.quiz_formats`` — beide sind Multiple Choice mit
+    # zwei Antworten; wer das Feld nicht kennt (die App), zeigt sie so.
+    format: NotRequired[Literal["verdict", "compare"]]
     source_type: NotRequired[str | None]
     source_ref: NotRequired[str | None]
     hint: NotRequired[str | None]

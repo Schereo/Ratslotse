@@ -13232,6 +13232,11 @@ export interface components {
             category: string;
             /** Difficulty */
             difficulty: string;
+            /**
+             * Format
+             * @enum {string}
+             */
+            format?: "verdict" | "compare";
             /** Hint */
             hint?: string | null;
             /** Id */
@@ -22425,4 +22430,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 4923d817d1ad36931068a52f84269f8883f132f5671a2e6cc58bd2b9098cb874
+// vertrag-sha256: 336e81452516cc7993896fe3b9db4c9ec9dc42585baa148226777747fcd36050

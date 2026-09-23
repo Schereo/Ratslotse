@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { Check, X, ExternalLink, ThumbsUp, ThumbsDown, ArrowRight, RotateCcw, Send, ChevronDown, ChevronUp, Lightbulb, Scale } from "lucide-react";
 import { QuizQuestion, QuizAnswerResult } from "@/lib/types";
 import { Card, Button, Input } from "@/components/ui";
@@ -26,6 +27,12 @@ export const CATEGORY_LABEL: Record<string, string> = {
   council_politics: "Ratspolitik",
   estimation: "Schätzfrage",
 };
+/** Die Bauform sagt mehr als die Kategorie: Ein Haushaltsvergleich ist keine
+ *  Schätzfrage mit Schieber, ein Antrag keine gewöhnliche Ratspolitik-Frage. */
+const FORMAT_LABEL: Record<string, string> = {
+  verdict: "Antrag",
+  compare: "Vergleich",
+};
 const SOURCE_LABEL: Record<string, string> = {
   wikipedia: "Wikipedia",
   city: "Stadt Oldenburg",
@@ -34,6 +41,15 @@ const SOURCE_LABEL: Record<string, string> = {
 const DIFF_LABEL: Record<string, string> = { easy: "leicht", medium: "mittel", hard: "schwer" };
 
 const nf = new Intl.NumberFormat("de-DE");
+const nf1 = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 1 });
+
+/** Betrag einer Vergleichs-Antwort aus dem Diagramm der Auflösung — die
+ *  Balken tragen dieselben Beschriftungen wie die beiden Antworten. */
+function compareAmount(result: QuizAnswerResult | null, option: string): string | null {
+  const item = result?.chart?.items.find((it) => it.label === option);
+  if (!item || !result?.chart) return null;
+  return result.chart.unit === "Mio. Euro" ? `${nf1.format(item.value)} Mio. €` : `${nf1.format(item.value)} ${result.chart.unit}`;
+}
 const fmt = (n: number | null | undefined) => (n == null ? "?" : nf.format(Math.round(n)));
 
 // Lottis Reaktionen auf die Auflösung — kurz und aufmunternd, nie belehrend.
@@ -215,7 +231,7 @@ export function QuizPlay({ questions, onExit, onComplete, title, answerPath = "/
       <Card className="p-5">
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <span className="rounded-md bg-primary/10 px-2 py-0.5 font-medium text-primary">
-            {CATEGORY_LABEL[q.category] ?? q.category}
+            {(q.format && FORMAT_LABEL[q.format]) ?? CATEGORY_LABEL[q.category] ?? q.category}
           </span>
           <span className="text-muted-foreground">
             {practice ? `Eigene Frage${q.area_key && q.area_key !== "Stadtweit" ? ` · ${q.area_key}` : ""}` : (DIFF_LABEL[q.difficulty] ?? q.difficulty)}
@@ -260,6 +276,54 @@ export function QuizPlay({ questions, onExit, onComplete, title, answerPath = "/
               <Button className="mt-4 w-full" onClick={() => submitEstimate(eCurrent)}>
                 Schätzung abgeben
               </Button>
+            )}
+          </div>
+        ) : q.format === "verdict" || q.format === "compare" ? (
+          /* Zwei Antworten, zwei große Kacheln: Beim Antrag zählt der eine
+             Tipp, beim Vergleich das Nebeneinander — untereinander gestapelt
+             läse sich „Feuerwehr oder Stadtbibliothek?" wie eine Liste. */
+          <div className="relative mt-5 grid grid-cols-2 gap-3">
+            {q.options.map((opt, i) => {
+              const isChosen = chosen === i;
+              const isCorrect = result && i === result.correct_index;
+              const state = result ? (isCorrect ? "correct" : isChosen ? "wrong" : "idle") : "idle";
+              const amount = q.format === "compare" ? compareAmount(result, opt) : null;
+              const Icon = q.format === "verdict" ? (i === 0 ? Check : X) : null;
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  disabled={chosen !== null}
+                  onClick={() => choose(i)}
+                  className={cn(
+                    "flex min-h-28 flex-col items-center justify-center gap-2 rounded-xl border px-3 py-4 text-center transition-[transform,background-color,border-color] duration-tipp ease-out-strong active:scale-[0.98]",
+                    state === "idle" && "border-border bg-card hover:border-primary/40 hover:bg-primary/5 disabled:opacity-60",
+                    state === "correct" && "border-green-600/40 bg-green-500/10",
+                    state === "wrong" && "border-red-600/40 bg-red-500/10",
+                  )}
+                >
+                  {Icon && (
+                    <span className={cn("flex h-9 w-9 items-center justify-center rounded-full",
+                      state === "idle" ? "bg-muted text-muted-foreground"
+                        : state === "correct" ? "bg-green-600/15 text-green-700 dark:text-green-400"
+                        : "bg-red-600/15 text-red-700 dark:text-red-400")}>
+                      <Icon className="h-5 w-5" />
+                    </span>
+                  )}
+                  <span className="text-[15px] font-semibold leading-snug text-foreground">{opt}</span>
+                  {amount && (
+                    <span className={cn("text-sm font-medium tabular-nums",
+                      isCorrect ? "text-green-700 dark:text-green-400" : "text-muted-foreground")}>
+                      {amount}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+            {q.format === "compare" && (
+              <span aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-border bg-background px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                oder
+              </span>
             )}
           </div>
         ) : (
@@ -324,7 +388,7 @@ export function QuizPlay({ questions, onExit, onComplete, title, answerPath = "/
 
             {/* Diagramm der Auflösung (Haushalts-Fragen): Balken, Donut oder
                 Trendlinie — animiert, der gefragte Bereich hervorgehoben. */}
-            {result.chart && <QuizChart chart={result.chart} className="mt-3" />}
+            {result.chart && q.format !== "compare" && <QuizChart chart={result.chart} className="mt-3" />}
 
             {/* „Mehr dazu": ausführliche Erklärung, Foto (mit Bildnachweis) und
                 eine kleine Karte — nur wenn zur Frage vorhanden, aufklappbar. */}
@@ -379,7 +443,14 @@ export function QuizPlay({ questions, onExit, onComplete, title, answerPath = "/
             )}
             <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
               {result.source_ref && result.source_type ? (
-                result.source_ref.startsWith("http") ? (
+                result.source_ref.startsWith("/") ? (
+                  // Eigene Seite (der Beschluss hinter einer Antrags-Frage):
+                  // neuer Tab, damit die Runde nicht verloren geht.
+                  <Link href={result.source_ref} target="_blank"
+                     className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                    Zum Beschluss <ExternalLink className="h-3 w-3" />
+                  </Link>
+                ) : result.source_ref.startsWith("http") ? (
                   <a href={result.source_ref} target="_blank" rel="noreferrer"
                      className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
                     Quelle: {SOURCE_LABEL[result.source_type] ?? result.source_type}

@@ -44,6 +44,50 @@ test.describe("Quiz", () => {
   });
 });
 
+test.describe("Quiz — Antrag und Vergleich", () => {
+  test.use({ storageState: zustandsDatei("nutzerin") });
+
+  // Gemockt, weil die Ratsdatenbank in der CI leer ist: Katalog, eine
+  // Tages-Challenge mit je einer Frage beider Bauformen, und die Auflösung.
+  test("zwei Kacheln, beim Vergleich danach die Beträge", async ({ page }) => {
+    await page.route("**/api/quiz/areas", (r) => r.fulfill({ json: {
+      electoral_districts: [], districts: [], categories: [],
+      topics: [{ key: "antraege", label: "Anträge im Rat", questions: 1, points: 0, district: null }],
+    } }));
+    const base = { area_type: "topic", area_key: "antraege", difficulty: "easy", qtype: "mc" };
+    await page.route("**/api/quiz/daily*", (r) => r.fulfill({ json: { day: "2026-09-23", done: null, questions: [
+      { ...base, id: 901, category: "council_politics", format: "verdict",
+        question: "Die Fraktion Beispiel beantragte 2024: „Mehr Bänke am Wasser“. Wie hat der Rat entschieden?",
+        options: ["Angenommen", "Abgelehnt"] },
+      { ...base, id: 902, area_key: "haushalt", category: "estimation", format: "compare",
+        question: "Wofür plant Oldenburg 2026 mehr Geld ein?", options: ["Feuerwehr", "Stadtbibliothek"] },
+    ] } }));
+    await page.route("**/api/quiz/answer", (r) => {
+      const { question_id } = r.request().postDataJSON();
+      r.fulfill({ json: question_id === 901
+        ? { correct: false, correct_index: 1, points: 0, explanation: "Der Rat hat den Antrag abgelehnt.",
+            source_type: "ratsinfo", source_ref: "/council/decision?id=1" }
+        : { correct: true, correct_index: 0, points: 1, explanation: "Feuerwehr: 19,5 Mio. €.",
+            source_type: "city", source_ref: "https://example.org/haushalt.pdf",
+            chart: { type: "bars", title: "Geplante Ausgaben 2026", unit: "Mio. Euro",
+                     items: [{ label: "Feuerwehr", value: 19.5, highlight: true }, { label: "Stadtbibliothek", value: 3.6 }] } } });
+    });
+
+    await page.goto("/quiz");
+    await page.getByText("Tägliche Challenge").first().click();
+    await expect(page.getByText("Antrag", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Angenommen" }).click();
+    await expect(page.getByText("Leider daneben.")).toBeVisible();
+    await expect(page.getByRole("link", { name: /Zum Beschluss/ })).toHaveAttribute("href", "/council/decision?id=1");
+
+    await page.getByRole("button", { name: /Weiter/ }).click();
+    await expect(page.getByText("Vergleich", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Feuerwehr" }).click();
+    await expect(page.getByText("19,5 Mio. €", { exact: true })).toBeVisible();
+    await expect(page.getByText("3,6 Mio. €", { exact: true })).toBeVisible();
+  });
+});
+
 test.describe("Admin-Panel — die Grenze", () => {
   // Je Identität ein eigener Block: `test.use` gilt für einen ganzen Block,
   // nicht für einen einzelnen Test. Vorher meldete sich jeder Test hier selbst
