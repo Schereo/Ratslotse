@@ -50,7 +50,7 @@ import requests
 
 from . import crosscheck, elections, mayor_districts, presentation
 from .register import KOMMUNALWAHL
-from .votemanager import TIMEOUT, UA, ttl_seconds
+from .votemanager import TIMEOUT, TTL_SECONDS_BEFORE, UA
 
 
 def wahl() -> elections.Election:
@@ -437,6 +437,30 @@ def _bare(error: str, w: elections.Election | None = None) -> MayorResult:
 NOCH_NICHT = ("Die Zahlen dieser Wahl stehen beim Votemanager noch nicht bereit — "
               "die Seite versucht es weiter.")
 
+#: Wie lange ein Abruf der OB-Wahl gilt, sobald die Wahllokale zu sind.
+#: Kürzer als die Minute der Ratswahl: Der Votemanager liegt hinter einem
+#: CDN, das jede Datei selbst bis zu 60 s hält (``cache-control:
+#: max-age=60``, gemessen 23.09.2026). Mit einer Minute bei uns und einer
+#: Minute im Browser obendrauf kam eine Meldung bis zu drei Minuten zu spät
+#: an; mit 15 s sind es höchstens anderthalb. Schneller geht es nur am CDN
+#: vorbei — und das wäre am Wahlabend der Stadt gegenüber unhöflich.
+TTL_LIVE = 15
+
+
+def ttl_seconds(w: elections.Election, now: datetime | None = None) -> int:
+    """Der Takt einer OB-Wahl: 15 s ab IHREM Wahlschluss, davor eine
+    Viertelstunde. Nicht der der Ratswahl (``votemanager.ttl_seconds``) —
+    deren Wahlschluss ist für die Stichwahl zwei Wochen alt."""
+    now = now or datetime.now(timezone.utc)
+    return TTL_LIVE if now >= w.polls_close else TTL_SECONDS_BEFORE
+
+
+def _leer(payload: Any) -> bool:
+    """Ein Ergebnis-JSON, das nur Kopfdaten trägt (Zeitstempel, Titel) —
+    so liegt eine frisch angelegte Wahl beim Votemanager da, bevor es
+    Zahlen gibt (gemessen an der Stichwahl, 21.–23.09.2026)."""
+    return isinstance(payload, dict) and presentation._component(payload) is None
+
 
 def _fetch_districts(session: requests.Session, base: str, api: str,
                      known: tuple[MayorCandidate, ...]) -> tuple[mayor_districts.MayorDistrict, ...]:
@@ -469,7 +493,7 @@ def fetch(force: bool = False, w: elections.Election | None = None) -> MayorResu
     with _lock:
         now = time.monotonic()
         gemerkt = _cache.get(w.slug)
-        if gemerkt and not force and now - gemerkt[0] < ttl_seconds():
+        if gemerkt and not force and now - gemerkt[0] < ttl_seconds(w):
             return gemerkt[1]
         known = candidates(w)
         base = base_url(w)
@@ -484,7 +508,15 @@ def fetch(force: bool = False, w: elections.Election | None = None) -> MayorResu
                 api = w.source.api_path(wahl_id)
                 resp = session.get(f"{base}{api}/ergebnis_{city_id}_0.json", timeout=TIMEOUT)
                 resp.raise_for_status()
-                result = parse(resp.json(), known)
+                payload = resp.json()
+                if _leer(payload):
+                    # Keine Störung, sondern der Normalfall vor dem Abend:
+                    # Die Wahl ist angelegt, die Zahlen kommen noch. Bis
+                    # 09/2026 stand hier „Der Abruf klemmt" — auf Prod eine
+                    # Woche lang über einer Seite, der nichts fehlte.
+                    fehlt = True
+                    raise ValueError("Ergebnisdatei noch ohne Zahlen")
+                result = parse(payload, known)
                 if result is not None:
                     result = replace(result, districts=_fetch_districts(session, base, api, known))
         except (requests.RequestException, ValueError) as exc:
@@ -494,7 +526,11 @@ def fetch(force: bool = False, w: elections.Election | None = None) -> MayorResu
             result = None
         jetzt = datetime.now(timezone.utc).isoformat(timespec="seconds")
         vorher = _good.get(w.slug)
-        if result is None:
+        if result is None and fehlt and vorher is None and datetime.now(timezone.utc) < w.polls_close:
+            # Vor dem Wahlschluss ist „noch keine Zahlen" kein Fehler; die
+            # Seite sagt dann selbst, ab wann sie nachfragt.
+            out = replace(_bare("", w), ok=True, error=None)
+        elif result is None:
             out = vorher if vorher is not None else _bare(
                 NOCH_NICHT if fehlt else "Der Abruf der OB-Wahl klemmt gerade "
                                          "(keine Daten seit dem Start).", w)

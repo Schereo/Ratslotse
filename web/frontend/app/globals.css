@@ -423,6 +423,49 @@ lotti-figur {
   animation: qa-sparkle 5.6s ease-in-out infinite;
 }
 
+/* ── Stichwahl: Bewegung zwischen den Meldungen ────────────────────────────
+   Tims Wunsch 23.09.2026: Auch wenn gerade keine Zahl kommt, soll die Seite
+   lebendig wirken. Zwei Dinge, beide mit Pause (DESIGNSPRACHE §7 „Endlos
+   laufende Bewegung braucht eine Pause"): ein Glanz über die Balken der
+   beiden, der ~80 % des Loops ruht, und ein Puls am Live-Punkt. Bei
+   prefers-reduced-motion steht beides. */
+@media (prefers-reduced-motion: no-preference) {
+  .balken-glanz {
+    position: relative;
+    overflow: hidden;
+  }
+  .balken-glanz::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    width: 40%;
+    background: linear-gradient(100deg, transparent, rgb(255 255 255 / 0.45) 50%, transparent);
+    animation: balken-glanz 7s ease-in-out infinite;
+    pointer-events: none;
+  }
+  /* Der Ring ist ein eigenes Element, das wächst und verblasst — nur
+     transform und opacity, kein animierter Schatten. */
+  .live-punkt {
+    position: relative;
+  }
+  .live-punkt::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: inherit;
+    animation: live-punkt 2.4s ease-out infinite;
+  }
+}
+@keyframes balken-glanz {
+  0%, 80% { transform: translateX(-100%); }
+  100% { transform: translateX(260%); }
+}
+@keyframes live-punkt {
+  0% { transform: scale(1); opacity: 0.55; }
+  60%, 100% { transform: scale(2.8); opacity: 0; }
+}
+
 /* Motion-Paket (RL-1104, Motion-Spec 7a): nur transform/opacity, und alles
    ruht bei prefers-reduced-motion. */
 @media (prefers-reduced-motion: no-preference) {

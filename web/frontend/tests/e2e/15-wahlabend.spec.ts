@@ -361,7 +361,8 @@ test.describe("Handy (390px): der Wahlabend bleibt in der Breite", () => {
 /* ── Die Stichwahl (docs/plan-stichwahl-spannung.md S4) ─────────────────────
  * Zwei Stände nacheinander: erst 40 Bezirke (Rohr vorn), dann 60 (Prange
  * vorn, Führungswechsel beim 50.). `page.clock` dreht die Uhr eine Minute
- * vor, damit die Seite nachfragt — sie fragt alle 60 s. Der dritte Stand
+ * vor, damit die Seite nachfragt — in der Probe alle 60 s (live ab 18 Uhr
+ * alle 15 s, `abrufTakt`). Der dritte Stand
  * (133) ist entschieden. Die Abschriften kommen aus der Probe des Backends
  * (`tests/test_browsertest_fixtures.py` hält sie am Vertrag). */
 
@@ -414,6 +415,44 @@ test.describe("Stichwahl: Momente", () => {
     await expect.poll(erste).toBe("prange");
     await expect(page.locator("[data-slug=prange]")).toContainText("Vorn");
     await expect(page.locator("[data-slug=rohr]")).not.toContainText("Vorn");
+  });
+
+  test("neue Bezirke: Die Leiste nennt sie auch weit unten, der Gewinner zuerst", async ({ page }) => {
+    await page.clock.install();
+    stichwahlMock(page, [40, 60]);
+    await page.goto("/wahlabend/stichwahl?probe=1");
+    await expect(page.getByText("40 von 133 Wahlbezirken ausgezählt")).toBeVisible();
+    // Beim ersten Laden gibt es keine Leiste — der erste Auftritt bewegt sich nicht.
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await expect(page.getByTestId("neue-zahlen")).toHaveCount(0);
+    await page.clock.runFor(61_000);
+    // 40 → 60: Prange +4.350, Rohr +3.440 (aus den beiden Abschriften).
+    const leiste = page.getByTestId("neue-zahlen");
+    await expect(leiste).toContainText("+20 Bezirke");
+    await expect(leiste).toContainText(/Prange \+4\.350 · Rohr \+3\.440/);
+    await leiste.click();
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThan(50);
+  });
+
+  test("Mitfiebern: Die Wahl bleibt im Browser und übersteht das Neuladen", async ({ page }) => {
+    stichwahlMock(page, [60]);
+    await page.goto("/wahlabend/stichwahl?probe=1");
+    const gruppe = page.getByTestId("mitfiebern");
+    await expect(gruppe.getByRole("radio", { name: "Niemandem" })).toHaveAttribute("aria-checked", "true");
+    await gruppe.getByRole("radio", { name: "Ulf Prange" }).click();
+    await expect(gruppe.getByRole("radio", { name: "Ulf Prange" })).toHaveAttribute("aria-checked", "true");
+    await page.reload();
+    await expect(page.getByTestId("mitfiebern").getByRole("radio", { name: "Ulf Prange" })).toHaveAttribute("aria-checked", "true");
+  });
+
+  test("ohne Konto: ein leiser Hinweis auf Ratslotse, unter den Zahlen", async ({ page }) => {
+    stichwahlMock(page, [60]);
+    await page.goto("/wahlabend/stichwahl?probe=1");
+    const hinweis = page.getByTestId("ratslotse-einladung");
+    await expect(hinweis.getByRole("link", { name: "Kostenlos registrieren" })).toHaveAttribute("href", "/register");
+    // Unter der Hochrechnung, nicht darüber: Die Zahlen gehen vor.
+    const oben = async (id: string) => (await page.getByTestId(id).boundingBox())?.y ?? 0;
+    expect(await oben("ratslotse-einladung")).toBeGreaterThan(await oben("hochrechnung"));
   });
 
   test("rechnerisch entschieden: Lotti und „ist gewählt“", async ({ page }) => {
@@ -476,6 +515,9 @@ function wahlenMock(page: Page, zeile: { tipp_path: string; tipp_locked: boolean
 test.describe("Simulator und Tippspiel-Einladung", () => {
   test.beforeEach(async ({ page }) => {
     await appConfig(page, ["wahlabend", "tippspiel"]);
+    // Die Einladung hängt an der Uhr (bis 18 Uhr am Wahltag) — ohne feste
+    // Zeit fielen diese Tests am 27.09.2026 um 18 Uhr von selbst um.
+    await page.clock.setFixedTime(new Date("2026-09-26T10:00:00Z"));
   });
 
   test("der Auszählungs-Simulator taucht im Prod-Build nirgends auf", async ({ page }) => {
@@ -496,6 +538,17 @@ test.describe("Simulator und Tippspiel-Einladung", () => {
     const einladung = page.getByTestId("tippspiel-einladung");
     await expect(einladung).toBeVisible();
     await expect(einladung.getByRole("link")).toHaveAttribute("href", "/tipp?runde=stichwahl");
+  });
+
+  test("ab 18 Uhr ist die Einladung weg, die Rangliste steht leise im Fuß", async ({ page }) => {
+    // Tim 23.09.2026: Das Tippen ist ab dem Wahlschluss nur noch im Weg.
+    await page.clock.setFixedTime(new Date("2026-09-27T16:05:00Z"));
+    stichwahlMock(page, [60]);
+    await wahlenMock(page, { tipp_path: "/tipp?runde=stichwahl", tipp_locked: false });
+    await page.goto("/wahlabend/stichwahl?probe=1");
+    await expect(page.getByTestId("meldung")).toBeVisible();
+    await expect(page.getByTestId("tippspiel-einladung")).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /Tippspiel: Wer lag richtig/ })).toHaveAttribute("href", "/tipp?runde=stichwahl");
   });
 
   test("Konto-Runde: die Einladung führt zur Anmeldung, nicht gegen die Wand", async ({ page }) => {

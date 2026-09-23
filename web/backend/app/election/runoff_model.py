@@ -44,11 +44,25 @@ MIN_DISTRICTS = 15
 #: Die Chance wird hier gedeckelt, bis die Arithmetik entschieden hat.
 CHANCE_CAP = 99
 #: Streuung (Anteil, 0…1) des Schwungs eines Topfes, dessen Bezirke noch
-#: alle offen sind — 2021 lagen Urne und Brief 3,3 Punkte auseinander.
-POT_SWING_SD = 0.04
+#: alle offen sind — 2021 lagen Urne und Brief 3,3 Punkte auseinander. Bis
+#: 09/2026 stand hier 0,04; die Kalibrierung (s. ``SWING_SE_SCALE``) wollte
+#: mehr Luft.
+POT_SWING_SD = 0.06
 #: Obergrenze der Stimmen eines offenen Briefwahlbezirks, relativ zu seinen
 #: gültigen Stimmen im ersten Wahlgang.
 POSTAL_GROWTH_CAP = 1.6
+#: Untergrenze der Streuung (Anteil) um den Schwung, solange erst wenige
+#: Bezirke eines Topfes gezählt sind — mit zweien wäre die gemessene
+#: Streuung selbst Zufall. 2021 lag sie nach dem Schwung bei drei Punkten.
+SWING_SD_FLOOR = 0.03
+#: Aufschlag auf den Standardfehler des Schwungs: Bezirke melden nicht in
+#: zufälliger Reihenfolge, sondern nach Ort und Größe gebündelt. 1,5 und
+#: ``POT_SWING_SD`` 0,06 sind an 2021 gemessen, mit gleichmäßig verschobenen
+#: Anteilen, damit das Rennen knapp wird (vier Reihenfolge-Arten, zehn
+#: Endstände zwischen 48 und 51 %): „99 %" lag dann in 99,9 % der Fälle
+#: richtig, „90–98 %" in 93 %. Mit 1,0 und 0,04 waren es 98,7 und 88.
+#: Die Werte sind an EINER Stichwahl eingestellt — mehr gibt es nicht.
+SWING_SE_SCALE = 1.5
 
 
 @dataclass(frozen=True)
@@ -138,19 +152,35 @@ def project(current: Sequence[MayorDistrict], first_round: Sequence[MayorDistric
         caveats.append("Noch kein Briefwahlbezirk gezählt — der Schwung der Urne gilt vorläufig auch für die Briefwahl.")
     assert s_urne is not None and s_brief is not None
 
+    # Wie stark die Stimmen gegenüber dem ersten Wahlgang wachsen — je Topf:
+    # 2021 wuchsen die Zwei-Kandidaten-Stimmen an der Urne um 1,72, im Brief
+    # um 1,31. Ein gemeinsamer Faktor gewichtete die Urne falsch, sobald die
+    # Briefwahl zuerst kommt; und die Urne ist der Topf, in dem der eine
+    # Name stärker ist als der andere.
+    def faktor_von(paare: list[tuple[MayorDistrict, MayorDistrict]]) -> float | None:
+        n2 = sum((d.votes.get(a) or 0) + (d.votes.get(b) or 0) for d, _ in paare)
+        n1 = sum((v.votes.get(a) or 0) + (v.votes.get(b) or 0) for _, v in paare)
+        return n2 / n1 if n1 > 0 else None
+
+    faktor_alle = faktor_von(gezaehlt) or 1.0
+    faktor = {postal: faktor_von([(d, v) for d, v in gezaehlt if d.postal == postal]) or faktor_alle
+              for postal in (False, True)}
     n2 = sum((d.votes.get(a) or 0) + (d.votes.get(b) or 0) for d, _ in gezaehlt)
-    n1 = sum((v.votes.get(a) or 0) + (v.votes.get(b) or 0) for _, v in gezaehlt)
-    faktor = n2 / n1 if n1 > 0 else 1.0
 
     # Reste der gezählten Bezirke — in Stimmen, damit große Bezirke mehr wiegen.
     reste: list[float] = []
+    # Und als Anteil je Topf, (Rest, Gewicht): daraus die Unsicherheit des
+    # SCHWUNGS selbst.
+    reste_topf: dict[bool, list[tuple[float, int]]] = {False: [], True: []}
     for d, v in gezaehlt:
         p = _share(v.votes.get(a), v.votes.get(b))
         q = _share(d.votes.get(a), d.votes.get(b))
         if p is None or q is None:
             continue
         n = (d.votes.get(a) or 0) + (d.votes.get(b) or 0)
-        reste.append((q - (p + (s_brief if d.postal else s_urne))) * n)
+        rest = q - (p + (s_brief if d.postal else s_urne))
+        reste.append(rest * n)
+        reste_topf[d.postal].append((rest, n))
     sig_r = statistics.pstdev(reste) if len(reste) > 1 else 0.0
     n_bar = n2 / len(gezaehlt)
 
@@ -162,7 +192,7 @@ def project(current: Sequence[MayorDistrict], first_round: Sequence[MayorDistric
     open_max = 0
     for d, v in offen:
         p = _share(v.votes.get(a), v.votes.get(b))
-        n = ((v.votes.get(a) or 0) + (v.votes.get(b) or 0)) * faktor
+        n = ((v.votes.get(a) or 0) + (v.votes.get(b) or 0)) * faktor[d.postal]
         if p is None or n <= 0:
             continue
         s = s_brief if d.postal else s_urne
@@ -176,6 +206,20 @@ def project(current: Sequence[MayorDistrict], first_round: Sequence[MayorDistric
             open_max += int(round(POSTAL_GROWTH_CAP * (v.valid_votes or 0)))
         else:
             open_max += int(d.eligible or v.eligible or 0)
+    # Der Schwung ist selbst nur geschätzt — und ein Fehler darin trifft ALLE
+    # offenen Bezirke eines Topfes in dieselbe Richtung. Er wächst deshalb mit
+    # den offenen Stimmen, nicht mit ihrer Wurzel. Bis 09/2026 fehlte dieser
+    # Term, und die Chance war in knappen Rennen viel zu sicher: An 2021 mit
+    # verschobenen Anteilen gemessen, lag „99 %" in 12 von 100 Fällen daneben
+    # (tests/test_runoff_model.py, Kalibrierung).
+    for postal, zeilen in reste_topf.items():
+        if not zeilen or offen_topf_stimmen[postal] <= 0:
+            continue
+        gewicht = sum(n for _, n in zeilen)
+        streuung = math.sqrt(sum(n * r * r for r, n in zeilen) / gewicht) if gewicht else 0.0
+        streuung = max(streuung, SWING_SD_FLOOR)
+        k_eff = gewicht ** 2 / sum(n * n for _, n in zeilen)
+        varianz += (2 * SWING_SE_SCALE * streuung / math.sqrt(k_eff) * offen_topf_stimmen[postal]) ** 2
     # Der Topf ohne gezählten Bezirk: sein Schwung ist geliehen.
     if not urne and offen_topf_stimmen[False] > 0:
         varianz += (2 * POT_SWING_SD * offen_topf_stimmen[False]) ** 2

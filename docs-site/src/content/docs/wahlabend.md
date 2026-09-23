@@ -466,6 +466,14 @@ Wahlbezirk braucht entsprechend ein paar Minuten bis auf den Schirm — das ist
 so gewollt und steht der Anzeige nicht im Weg, weil sie ihren eigenen Stand
 ausweist.
 
+Die **Stichwahl** (`/wahlabend/stichwahl`) läuft seit 23.09.2026 schneller:
+Backend (`mayor.TTL_LIVE`) und Browser fragen ab Wahlschluss alle 15 Sekunden,
+auch im Hintergrund-Tab (der Fenstertitel trägt den Stand). Die erste Stufe
+bleibt — das CDN vor dem Votemanager hält jede Datei bis zu 60 s
+(`cache-control: max-age=60`). Aus bis zu drei Minuten werden so höchstens
+anderthalb. Am CDN vorbei zu fragen ginge technisch, wäre am Wahlabend der
+Stadt gegenüber aber unhöflich.
+
 **5. Den Votemanager-Pfad übersteuern.** Falls die Stadt eine andere Adresse
 oder Wahl-ID benutzt als erwartet, muss dafür kein Code geändert werden:
 

@@ -247,6 +247,48 @@ def test_die_hochrechnung_trifft_nach_30_bezirken_auf_zwei_punkte(erster, stichw
     assert sum(fehler) / len(fehler) <= 2.0, sum(fehler) / len(fehler)
 
 
+def test_die_chance_ist_in_knappen_rennen_ehrlich(erster, stichwahl):
+    """Kalibrierung: Wie oft stimmt „Chance 9x %"?
+
+    2021 war mit 54 : 46 nicht knapp — fast jede Chance war dort richtig,
+    egal wie falsch sie gerechnet war. Deshalb werden die Anteile JEDES
+    Bezirks um denselben Betrag verschoben, bis der Endstand zwischen 48
+    und 51 % liegt. Die echte Struktur (Streuung zwischen den Bezirken, der
+    Unterschied zwischen Urne und Brief) bleibt dabei erhalten.
+
+    Bis 09/2026 fehlte dem Modell die Unsicherheit des Schwungs selbst:
+    Dort lag „99 %" in 12 von 100 Fällen daneben, „90–98 %" in 19. Wer
+    die Chance anzeigt, darf sie nicht so viel zu sicher anzeigen."""
+    from dataclasses import replace
+
+    rnd = random.Random(23)
+    oben = [0, 0]      # „99 %": [Anzahl, richtig]
+    neunzig = [0, 0]   # 90–98 %
+    for delta in (0.030, 0.040, 0.045, 0.055, 0.060):
+        wahr = []
+        for d in stichwahl:
+            n = (d.votes["krogmann"] or 0) + (d.votes["fuhrhop"] or 0)
+            a = int(round(max(0, min(n, (d.votes["krogmann"] or 0) - delta * n))))
+            wahr.append(replace(d, votes={"krogmann": a, "fuhrhop": n - a}))
+        sieger = "krogmann" if sum(d.votes["krogmann"] for d in wahr) > sum(d.votes["fuhrhop"] for d in wahr) else "fuhrhop"
+        nummern = [d.number for d in wahr]
+        for _ in range(30):
+            r = nummern[:]
+            rnd.shuffle(r)
+            for k in (15, 20, 30, 50, 80, 110):
+                p = runoff_model.project(_stand(tuple(wahr), set(r[:k])), erster, SLUGS)
+                assert p is not None
+                if p.chance_pct is None:
+                    continue
+                topf = oben if p.chance_pct >= 99 else neunzig if p.chance_pct >= 90 else None
+                if topf is not None:
+                    topf[0] += 1
+                    topf[1] += p.leader == sieger
+    assert oben[0] > 50 and neunzig[0] > 50, (oben, neunzig)
+    assert oben[1] / oben[0] >= 0.98, f'„99 %" nur in {oben[1]}/{oben[0]} Fällen richtig'
+    assert neunzig[1] / neunzig[0] >= 0.85, f'„90–98 %" nur in {neunzig[1]}/{neunzig[0]} Fällen richtig'
+
+
 # ---------------------------------------------------------------- der Endpunkt
 
 @pytest.fixture

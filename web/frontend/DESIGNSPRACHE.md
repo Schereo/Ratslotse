@@ -67,6 +67,13 @@ Deckkraft trägt den Vorsprung (50 % = kaum Farbe), offene Bezirke halb so
 kräftig und gestrichelt. Bei Listenwahlen mit sieben Farben bleibt es bei
 der Primärtönung.
 
+**Und ihr Aufleuchten** (`stichwahl-momente.tsx`, Tims Wunsch 23.09.2026):
+Meldet ein Schwung Bezirke, glüht der Bildschirm einmal kurz (2,4 s, nur
+`opacity`) in der Farbe dessen, der diese Bezirke gewonnen hat — zum Rand hin
+kräftiger, in der Mitte kaum. Keine stehende Fläche, und bei
+`prefers-reduced-motion` gar nicht. Dieselbe Frage wie auf der Karte, nur
+zeitlich statt räumlich: „wer hat die neuen Bezirke geholt?"
+
 ## 3. Typografie
 
 - **Inter** 400/500/600/700 — UI und Fließtext. Die Leserollen unten gelten
@@ -550,8 +557,8 @@ eine Wirkung der einzelnen Mail zu behaupten.
 ## 8. Anti-Patterns
 
 Keine Anführungszeichen um Paraphrasen · keine Stimm-/Abstimmungsgrafiken ·
-kein Signal-Orange als Flächenfarbe · keine Parteifarben-Flächen (Ausnahme:
-Stichwahl-Karte, s. § 2) · kein Emoji
+kein Signal-Orange als Flächenfarbe · keine Parteifarben-Flächen (Ausnahmen:
+Stichwahl-Karte und ihr Aufleuchten, s. § 2) · kein Emoji
 im UI-Text · keine gerahmten Button-Reihen unter Antworten (stille Icons) ·
 Bricolage nie im Fließtext · Externes nie wie Beschlüsse stylen · Footer nie
 auf der Chat-Seite (Links im Sidebar-Fuß).

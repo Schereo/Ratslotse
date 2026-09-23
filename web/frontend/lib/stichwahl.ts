@@ -225,3 +225,62 @@ export function flaechenAlpha(share: number, max: number, live: boolean): number
   const a = 0.22 + 0.68 * anteil;
   return live ? a : a * 0.5;
 }
+
+/* ── Neue Zahlen sichtbar machen (Tims Wunsch 23.09.2026) ───────────────── */
+
+/** Wer die jüngste Meldung gewonnen hat: die Kandidatur mit dem größten
+ *  Zuwachs an Stimmen in den gerade dazugekommenen Bezirken. `null` bei
+ *  Gleichstand oder ohne Zuwachs — dann leuchtet nichts auf.
+ *
+ *  Bewusst der Zuwachs und nicht die Veränderung des Anteils: Wer mit 45 %
+ *  zurückliegt, gewinnt an Anteil schon mit einer 48-%-Meldung, obwohl der
+ *  andere darin mehr Stimmen holte. „Wer hat diese Bezirke gewonnen" ist die
+ *  Frage, die man beim Aufleuchten im Kopf hat. */
+export function meldungsGewinner(m: Meldung | null): string | null {
+  if (!m || m.bezirke <= 0) return null;
+  const reihe = Object.entries(m.zuwachs).sort((a, b) => b[1] - a[1]);
+  if (reihe.length === 0 || reihe[0][1] <= 0) return null;
+  if (reihe.length > 1 && reihe[0][1] === reihe[1][1]) return null;
+  return reihe[0][0];
+}
+
+/** Wie oft die Seite nachfragt: ab Wahlschluss alle 15 Sekunden, bis alles
+ *  gezählt ist; sonst jede Minute. Schneller hilft nicht — das Backend holt
+ *  selbst alle 15 s, und das CDN des Votemanagers hält jede Datei bis zu
+ *  60 s (`election/mayor.py`, `TTL_LIVE`). */
+export const TAKT_LIVE_MS = 15_000;
+export const TAKT_RUHE_MS = 60_000;
+
+export function abrufTakt(daten: Pick<Stichwahl, "phase" | "election" | "dataset"> | undefined, jetzt: Date = new Date()): number {
+  if (!daten) return TAKT_RUHE_MS;
+  if (daten.dataset === "probe") return TAKT_RUHE_MS;
+  if (daten.phase === "complete") return TAKT_RUHE_MS;
+  return zeitlage(daten.election.polls_close, jetzt).phase === "laeuft" ? TAKT_LIVE_MS : TAKT_RUHE_MS;
+}
+
+/* ── Mitfiebern: wem man die Daumen drückt ─────────────────────────────── */
+
+/** Nur im eigenen Browser: Wem jemand die Daumen drückt, geht niemanden
+ *  etwas an, und der Server erfährt es nie. Ein gesperrter Speicher
+ *  (privates Fenster) heißt „niemand" — nie ein Absturz. */
+const FAVORIT_SCHLUESSEL = "ratslotse:stichwahl-favorit";
+
+export function ladeFavorit(wahl: string, erlaubt: readonly string[]): string | null {
+  try {
+    const roh = localStorage.getItem(FAVORIT_SCHLUESSEL);
+    if (!roh) return null;
+    const { wahl: w, slug } = JSON.parse(roh) as { wahl?: unknown; slug?: unknown };
+    return w === wahl && typeof slug === "string" && erlaubt.includes(slug) ? slug : null;
+  } catch {
+    return null;
+  }
+}
+
+export function speichereFavorit(wahl: string, slug: string | null): void {
+  try {
+    if (slug === null) localStorage.removeItem(FAVORIT_SCHLUESSEL);
+    else localStorage.setItem(FAVORIT_SCHLUESSEL, JSON.stringify({ wahl, slug }));
+  } catch {
+    // Privates Fenster: Die Wahl gilt dann eben nur bis zum Neuladen.
+  }
+}
