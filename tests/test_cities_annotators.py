@@ -170,6 +170,36 @@ def test_lauf_schreibt_annotationen(store, monkeypatch):
     assert eintrag["model"] == get("classify").model
 
 
+def test_annotator_anfrage_traegt_routing_ohne_zdr(store, monkeypatch):
+    """Durch das echte ``chat_complete``: ZDR fällt weg, sonst nichts.
+
+    Bis 23.09.2026 schickten die Annotatoren ``provider: {}`` und warfen damit
+    den China-Ausschluss und ``data_collection: deny`` gleich mit weg
+    (#1485). Die Freigabe betrifft nur ZDR (``kern/llm.py::zdr_pflicht``).
+    """
+    from kern import llm
+    for var in ("NWZ_OPENROUTER_ROUTING", "NWZ_OPENROUTER_IGNORE", "NWZ_OPENROUTER_ZDR"):
+        monkeypatch.delenv(var, raising=False)
+    gesendet = []
+
+    class _Completions:
+        def create(self, **kwargs):
+            gesendet.append(kwargs)
+            return _antwort(["p0", "p1", "p2"])
+
+    class _Client:
+        chat = SimpleNamespace(completions=_Completions())
+
+    monkeypatch.setattr(llm, "get_client", lambda: _Client())
+    monkeypatch.setattr(llm, "_record_usage", lambda *a, **k: None)
+    stand = annotate.run(store, get("classify"), workers=1)
+    assert stand["annotated"] == 3
+    provider = gesendet[0]["extra_body"]["provider"]
+    assert provider["data_collection"] == "deny"
+    assert {"deepseek", "baidu", "streamlake", "siliconflow", "alibaba"} <= set(provider["ignore"])
+    assert "zdr" not in provider
+
+
 def test_zweiter_lauf_rechnet_nichts_neu(store, monkeypatch):
     aufrufe = []
     monkeypatch.setattr(annotate.llm, "chat_complete",
