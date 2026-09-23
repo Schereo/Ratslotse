@@ -564,7 +564,11 @@ def _satz_eur(roh: str) -> float:
 
 
 def _anlage_4(text: str) -> str | None:
-    flach = _glaetten(text)
+    # Tabellenstriche raus: Die OCR schreibt die Scans als Markdown-Tabelle
+    # („| Vorschläge | | … |\n| 2022 | 121,95 | …"). Mit den Strichen stünde
+    # zwischen „Vorschläge" und dem Jahr etwas anderes als Leerraum, und die
+    # Vorschlagszeile würde nie erkannt (Anlage 4 zu 21/0713, 09/2026).
+    flach = _glaetten(re.sub(r"[|\t]", " ", text or ""))
     treffer = list(re.finditer(r"\bAnlage\s+4\b", flach, re.I))
     return flach[treffer[-1].end():] if treffer else None
 
@@ -633,7 +637,35 @@ def _saetze_neues_layout(part: str, template_number: str | None) -> list[Gebuehr
     return aus
 
 
-def lies_gebuehrensaetze(text: str, template_number: str | None = None) -> list[Gebuehrensatz]:
+def lies_rueckschau(text: str, year: int,
+                    template_number: str | None = None) -> list[Gebuehrensatz]:
+    """Die zwölf Tarife eines VERGANGENEN Jahres aus der Rückschau-Tabelle.
+
+    Anlage 4 heißt „Entwicklung abfallwirtschaftlicher Gebühren im
+    langfristigen Vergleich" und führt vor der Vorschlagszeile je Vorjahr
+    eine Zeile mit den Sätzen, die galten. Das ist der Rückfall für einen
+    Jahrgang, dessen eigene Anlage 4 nicht lesbar ist — 2020 liegt nur als
+    Scan vor, dessen OCR die Tabelle nicht hergibt; die Anlage 2022 führt die
+    Zeile 2020 vollständig. Alle zwölf oder keine, wie bei der Vorschlagszeile.
+    Die Gegenprobe gegen die Bedarfsberechnung des Jahres macht der Aufrufer
+    (``ingest_gebuehren.py``), weil sie in einem anderen Dokument steht."""
+    part = _anlage_4(text)
+    if not part:
+        return []
+    for m in re.finditer(rf"(?<![\d,.]){year}\s+", part):
+        zeile = re.match(r"(?:\s*(?:/|" + _SATZ_BETRAG.pattern + r"))+", part[m.end():])
+        werte = [_satz_eur(x) for x in _SATZ_BETRAG.findall(zeile.group(0))] if zeile else []
+        if len(werte) == len(SATZARTEN):
+            return [Gebuehrensatz(
+                year=year, key=art.key, area=art.area, label=art.label,
+                amount=value, unit=art.unit, prior_year=None, change_pct=None,
+                template_number=template_number)
+                for art, value in zip(SATZARTEN, werte, strict=True)]
+    return []
+
+
+def lies_gebuehrensaetze(text: str, template_number: str | None = None,
+                         geschwister: str | None = None) -> list[Gebuehrensatz]:
     """Die Vorschläge aus Anlage 4 lesen und gegen Anlagen 1 und 3 halten.
 
     Ein bloßes „Anlage 4" ohne Tabelleninhalt (der OCR-Stand von 2020) ist
@@ -650,6 +682,12 @@ def lies_gebuehrensaetze(text: str, template_number: str | None = None) -> list[
 
     year = saetze[0].year
     bedarfe, risse = lies(text, template_number)
+    # Anlage 4 als EIGENES Dokument (2022: „Anlage 1 - 3" und „Anlage 4"
+    # getrennt hochgeladen): Die Eckwerte für die Gegenprobe stehen dann in
+    # den Geschwistern derselben Vorlage. Die Probe bleibt dieselbe — nur der
+    # Ort, an dem ihre zweite Hälfte steht, ist ein anderer.
+    if geschwister and not any(b.year == year for b in bedarfe):
+        bedarfe, risse = lies(geschwister, template_number)
     eckwerte = {
         b.area: b.fee_proposed for b in bedarfe
         if b.year == year and b.area in ("waste_treatment", "street_cleaning")
@@ -669,10 +707,22 @@ def lies_gebuehrensaetze(text: str, template_number: str | None = None) -> list[
 
 
 def herkunft_fuer_satz(satz: Gebuehrensatz, *, url: str | None,
-                       document_id: int | None, label: str | None) -> Herkunft:
+                       document_id: int | None, label: str | None,
+                       rueckschau: bool = False) -> Herkunft:
     probes = [PROBE_SATZANZAHL, PROBE_ECKWERTE]
     result = ("12 von 12 Tarifarten gelesen; Gebühren je Mg und je Meter "
                 "Quadratwurzel stimmen mit Anlagen 1 und 3 überein")
+    if rueckschau:
+        # Der geltende Satz aus der Rückschau-Tabelle einer späteren Anlage 4
+        # — kein Vorschlag, und die Gegenprobe lief gegen die
+        # Bedarfsberechnung desselben Jahres, nicht gegen dieses Dokument.
+        return Herkunft(
+            kind="ris", probe=probes, document_id=document_id, label=label,
+            url=url, citation=f"Anlage 4, Rückschau-Zeile {satz.year}, {satz.label}",
+            probe_result=("12 von 12 Tarifarten gelesen; Gebühren je Mg und je "
+                          f"Meter Quadratwurzel stimmen mit der Bedarfsberechnung "
+                          f"{satz.year} überein"),
+            as_of=f"geltender Satz {satz.year}")
     if satz.change_pct is not None:
         probes.append(PROBE_VORJAHRESVERGLEICH)
         result += (f"; {satz.amount:.2f} € gegen {satz.prior_year:.2f} € = "

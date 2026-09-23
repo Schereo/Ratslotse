@@ -33,6 +33,7 @@ from council.fees import (  # noqa: E402
     herkunft_fuer_satz,
     lies,
     lies_gebuehrensaetze,
+    lies_rueckschau,
 )
 from council import finanzquellen  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
@@ -61,6 +62,13 @@ def main() -> dict:
         print(f"{len(rows)} Anlage(n) als Gebührenbedarfsberechnung erkannt.", flush=True)
 
         gelesen, saetze_gelesen, risse, ohne_text = [], [], [], []
+        # Je Vorlage alle Volltexte — für eine Anlage 4, die als eigenes
+        # Dokument neben „Anlage 1 - 3" hängt (s. lies_gebuehrensaetze).
+        je_vorlage: dict[str, list[tuple[int, str]]] = {}
+        for r in rows:
+            if (r["raw_text"] or "").strip() and r["template_number"]:
+                je_vorlage.setdefault(r["template_number"], []).append(
+                    (r["document_id"], r["raw_text"]))
         for r in rows:
             if not (r["raw_text"] or "").strip():
                 ohne_text.append((r["document_id"], r["label"], r["status"]))
@@ -69,12 +77,37 @@ def main() -> dict:
             gelesen.extend((b, r) for b in bereiche)
             risse.extend(f"{r['document_id']}: {f}" for f in fehler)
             try:
-                saetze = lies_gebuehrensaetze(r["raw_text"], r["template_number"])
+                geschwister = "\n".join(
+                    text for did, text in je_vorlage.get(r["template_number"] or "", [])
+                    if did != r["document_id"]) or None
+                saetze = lies_gebuehrensaetze(r["raw_text"], r["template_number"],
+                                              geschwister=geschwister)
             except GebuehrenFehler as fehler:
                 risse.append(f"{r['document_id']}, Anlage 4: {fehler}")
             else:
                 if saetze:
                     saetze_gelesen.append((saetze, r))
+
+        # Rückfall für Jahrgänge ohne lesbare eigene Anlage 4: die Rückschau-
+        # Zeile einer späteren Anlage 4 (s. fees.lies_rueckschau), gehalten
+        # gegen die Bedarfsberechnung DESSELBEN Jahres — dieselbe Probe wie
+        # bei der Vorschlagszeile, nur aus zwei Dokumenten.
+        mit_saetzen = {s[0].year for s, _ in saetze_gelesen}
+        eckwerte = {(b.year, b.area): b.fee_proposed for b, _ in gelesen}
+        for year in sorted({b.year for b, _ in gelesen} - mit_saetzen):
+            for r in sorted(rows, key=lambda x: x["document_id"]):
+                saetze = lies_rueckschau(r["raw_text"] or "", year, r["template_number"])
+                if not saetze:
+                    continue
+                probe = {s.area: s.amount for s in saetze
+                         if s.key in ("waste_treatment_per_mg", "street_cleaning_per_metre")}
+                if all(eckwerte.get((year, area)) is not None
+                       and abs(amount - eckwerte[(year, area)]) <= 0.011
+                       for area, amount in probe.items()) and len(probe) == 2:
+                    saetze_gelesen.append((saetze, {**r, "rueckschau": True}))
+                    break
+                risse.append(f"{r['document_id']}, Rückschau {year}: Sätze passen "
+                             f"nicht zur Bedarfsberechnung {year}")
 
         if gelesen:
             print("\nGelesen:", flush=True)
@@ -120,7 +153,8 @@ def main() -> dict:
                 b, url=r["url"], document_id=r["document_id"], label=r["label"]))
         for saetze, r in saetze_gelesen:
             store.save_gebuehrensaetze(saetze, [herkunft_fuer_satz(
-                s, url=r["url"], document_id=r["document_id"], label=r["label"])
+                s, url=r["url"], document_id=r["document_id"], label=r["label"],
+                rueckschau=r.get("rueckschau", False))
                 for s in saetze])
         print(f"\n{len(gelesen)} Gebührenbereich(e) gespeichert über "
               f"{len({b.year for b, _ in gelesen})} Jahrgänge; "

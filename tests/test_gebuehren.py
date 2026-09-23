@@ -596,3 +596,48 @@ def test_tarife_werden_mit_eigener_fundstelle_gespeichert(tmp_path):
         assert store.herkunft_luecken() == {}
     finally:
         store.close()
+
+
+# --------------------------------------------------------------------------
+# (g) Anlage 4 als eigener Scan (2022) und die Rückschau-Zeile (2020)
+# --------------------------------------------------------------------------
+
+# OCR-Ausgabe von Anlage 240088 (21/0713), gekürzt: Markdown-Tabelle, und die
+# Zeile „Vorschläge" steht ALLEIN über der Jahreszeile.
+ANLAGE_4_2022_OCR = """Anlage 4
+
+Entwicklung abfallwirtschaftlicher Gebühren im langfristigen Vergleich
+
+Rückschau 2010 – 2021; Vorschläge für 2022; jeweils in €-Beträgen
+
+|\tJahr\t|\tGebühr je Mg\t|\tGG\t|\tallg. Litergebühr\t|\tBio-Grundmenge 60 L\t|
+|\t2020\t|\t121,95\t|\t50,--\t|\t1,34\t|\t15,--\t|\t25,--\t|\t20,--\t|\t8,--/16,--\t|\t3,-- / 6,-- / 12,--\t|\t3,42\t|
+|\t2021\t|\t121,95\t|\t50,--\t|\t1,34\t|\t15,--\t|\t25,--\t|\t20,--\t|\t8,--/16,--\t|\t3,-- / 6,-- / 12,--\t|\t3,42\t|
+|\tVorschläge\t|\t\t|\t\t|\t\t|\t\t|\t\t|\t\t|\t\t|\t\t|\t\t|
+|\t2022\t|\t121,95\t|\t50,--\t|\t1,34\t|\t15,--\t|\t25,--\t|\t20,--\t|\t8,--/16,--\t|\t3,-- / 6,-- / 12,--\t|\t3,42\t|
+"""
+
+
+def test_ocr_tabelle_mit_eigener_vorschlagszeile():
+    """Ohne die Striche zu entfernen, sah der Parser „unbekanntes
+    Tabellenlayout" — und 2022 blieb ohne Tarife."""
+    from council.fees import _anlage_4
+    teil = _anlage_4(ANLAGE_4_2022_OCR)
+    assert "Vorschläge 2022 121,95 50,--" in teil
+
+
+def test_anlage_4_als_eigenes_dokument_prueft_gegen_die_geschwister():
+    """Die Eckwerte der Gegenprobe stehen in „Anlage 1 - 3", einem anderen
+    Dokument derselben Vorlage. Ohne sie: Fehler statt geratener Tarife."""
+    with pytest.raises(GebuehrenFehler, match="Eckwerte"):
+        lies_gebuehrensaetze(ANLAGE_4_2022_OCR, "21/0713")
+
+
+def test_rueckschau_zeile_liefert_die_zwoelf_saetze_eines_vorjahres():
+    from council.fees import lies_rueckschau
+    saetze = lies_rueckschau(ANLAGE_4_2022_OCR, 2020, "21/0713")
+    assert len(saetze) == 12 and {s.year for s in saetze} == {2020}
+    assert next(s for s in saetze if s.key == "per_litre_fee").amount == 1.34
+    assert next(s for s in saetze if s.key == "street_cleaning_per_metre").amount == 3.42
+    # Ein Jahr, das die Tabelle nicht führt, liefert nichts.
+    assert lies_rueckschau(ANLAGE_4_2022_OCR, 2015) == []
