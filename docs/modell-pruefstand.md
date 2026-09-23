@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von `python eval/pruefstand.py bericht` — nicht von Hand ändern. -->
 
-Stand 23.09.2026 02:08. Datenbankstand der Läufe: Sitzungen bis 2026-09-16, 9078 Beschlüsse; wie am 22.09.2026 (nicht erfasst).
+Stand 23.09.2026 07:29. Datenbankstand der Läufe: Sitzungen bis 2026-09-16, 9078 Beschlüsse; wie am 22.09.2026 (nicht erfasst).
 
 **Nachmessen:** `python eval/pruefstand.py --suite <name> --modell <id> --laeufe 2`, danach `python eval/pruefstand.py bericht`. Ohne `--modell` misst er das heutige Modell. Rohdaten: `eval/results/pruefstand/<suite>/`.
 
@@ -10,7 +10,7 @@ Stand 23.09.2026 02:08. Datenbankstand der Läufe: Sitzungen bis 2026-09-16, 907
 
 **Nicht zulässig** heißt ein Kandidat, der häufiger als das heutige Modell einer Injektion folgt oder ein falsches Abstimmungsergebnis ausgibt — oder dessen harte Sicherheitsbefunde (erfunden, durchgelassen) in jedem Lauf über jedem Lauf des heutigen Modells liegen. Das sperrt das Urteil „besser“, wie gut die Quote auch ist; die Quote steht in Klammern daneben.
 
-**Laufkosten aller hier liegenden Messungen:** 6,31 $ (102 Läufe, davon 4,59 $ in 18 übernommenen Läufen).
+**Laufkosten aller hier liegenden Messungen:** 6,61 $ (107 Läufe, davon 4,59 $ in 18 übernommenen Läufen).
 
 ## Lotti erklärt (`lotti`)
 
@@ -127,21 +127,21 @@ Qualität: F1 über die Orte je Beschluss (Regex-Baseline + Modell, wie im Backf
 
 | Modell | Läufe | Qualität | hart | p50 | p95 | ct/Aufruf | ct/Lauf | Ausfälle | ggü. heute |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
-| google/gemini-2.5-flash-lite (heute) | 2 | 89,7 % ± 0,0 | 1, 1 | 0,6 s–0,7 s | 1,7 s–1,9 s | 0,021 | 0,04 | 0 | Bezug |
-| deepseek/deepseek-v4-flash (ohne Denken) | 2 | 91,3 % ± 3,2 | 1, 0 | 4,7 s–5,7 s | 10,7 s–138,2 s | 0,018–0,019 | 0,04 | 0 | im Rauschen (+1,6 Pp, Streuung 3,2 Pp) |
-| google/gemini-3.1-flash-lite | 2 | 89,7 % ± 0,0 | 1, 1 | 1,4 s–2,0 s | 3,0 s–3,4 s | 0,118 | 0,24 | 0 | im Rauschen (+0,0 Pp, Streuung 0,0 Pp) |
-| google/gemini-3.5-flash-lite | 2 | 89,7 % ± 0,0 | 1, 1 | 1,0 s | 2,8 s–2,9 s | 0,180 | 0,36 | 0 | im Rauschen (+0,0 Pp, Streuung 0,0 Pp) |
+| google/gemini-3.1-flash-lite (heute) | 5 | 100,0 % ± 0,0 | 0, 0, 0, 0, 0 | 1,1 s–1,3 s | 3,4 s–5,8 s | 0,121–0,124 | 0,24–0,25 | 0 | Bezug |
+| google/gemini-2.5-flash-lite | 2 | 100,0 % ± 0,0 | 0, 0 | 0,5 s–0,6 s | 1,7 s | 0,022 | 0,04 | 0 | im Rauschen (+0,0 Pp, Streuung 0,0 Pp) |
+| google/gemini-3.5-flash-lite | 2 | 100,0 % ± 0,0 | 0, 0 | 0,7 s–1,0 s | 3,3 s–3,6 s | 0,180–0,188 | 0,36–0,38 | 0 | im Rauschen (+0,0 Pp, Streuung 0,0 Pp) |
 
 <details><summary>Nebenkennzahlen je Lauf</summary>
 
-- deepseek/deepseek-v4-flash (ohne Denken), Lauf 1: `{"precision": 0.9285714285714286, "recall": 0.8666666666666667}`
-- deepseek/deepseek-v4-flash (ohne Denken), Lauf 2: `{"precision": 1.0, "recall": 0.8666666666666667}`
-- google/gemini-2.5-flash-lite, Lauf 1: `{"precision": 0.9285714285714286, "recall": 0.8666666666666667}`
-- google/gemini-2.5-flash-lite, Lauf 2: `{"precision": 0.9285714285714286, "recall": 0.8666666666666667}`
-- google/gemini-3.1-flash-lite, Lauf 1: `{"precision": 0.9285714285714286, "recall": 0.8666666666666667}`
-- google/gemini-3.1-flash-lite, Lauf 2: `{"precision": 0.9285714285714286, "recall": 0.8666666666666667}`
-- google/gemini-3.5-flash-lite, Lauf 1: `{"precision": 0.9285714285714286, "recall": 0.8666666666666667}`
-- google/gemini-3.5-flash-lite, Lauf 2: `{"precision": 0.9285714285714286, "recall": 0.8666666666666667}`
+- google/gemini-2.5-flash-lite, Lauf 1: `{"precision": 1.0, "recall": 1.0}`
+- google/gemini-2.5-flash-lite, Lauf 2: `{"precision": 1.0, "recall": 1.0}`
+- google/gemini-3.1-flash-lite, Lauf 1: `{"precision": 1.0, "recall": 1.0}`
+- google/gemini-3.1-flash-lite, Lauf 2: `{"precision": 1.0, "recall": 1.0}`
+- google/gemini-3.1-flash-lite, Lauf 1: `{"precision": 1.0, "recall": 1.0}`
+- google/gemini-3.1-flash-lite, Lauf 2: `{"precision": 1.0, "recall": 1.0}`
+- google/gemini-3.1-flash-lite, Lauf 1: `{"precision": 1.0, "recall": 1.0}`
+- google/gemini-3.5-flash-lite, Lauf 1: `{"precision": 1.0, "recall": 1.0}`
+- google/gemini-3.5-flash-lite, Lauf 2: `{"precision": 1.0, "recall": 1.0}`
 
 </details>
 
@@ -274,21 +274,22 @@ Qualität: F1 über die Beiträge je Person (Name UND Anzahl, gegen Protokoll-Mu
 
 | Modell | Läufe | Qualität | hart | p50 | p95 | ct/Aufruf | ct/Lauf | Ausfälle | ggü. heute |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
-| google/gemini-2.5-flash (heute) | 2 | 97,8 % ± 0,0 | 0, 0 | 8,5 s–8,9 s | 12,0 s–12,2 s | 0,527–0,545 | 8,44–8,72 | 0 | Bezug |
-| google/gemini-3-flash-preview | 2 | 91,1 % ± 0,2 | 0, 0 | 8,9 s–9,2 s | 14,5 s–15,1 s | 0,533–0,615 | 8,52–9,84 | 0 | **schlechter** (-6,6 Pp) |
-| google/gemini-3.5-flash-lite | 2 | 88,7 % ± 3,9 | 0, 0 | 4,3 s–4,4 s | 6,6 s–7,4 s | 0,435–0,463 | 6,96–7,41 | 0 | **schlechter** (-9,1 Pp) |
-| google/gemini-3.1-flash-lite | 2 | 86,6 % ± 0,3 | 0, 0 | 6,6 s–7,1 s | 8,9 s–9,5 s | 0,249 | 3,98 | 0 | **schlechter** (-11,2 Pp) |
+| google/gemini-3.5-flash-lite (heute) | 3 | 99,3 % ± 0,6 | 0, 0, 0 | 5,5 s–6,0 s | 7,4 s–10,5 s | 0,499–0,534 | 8,24–8,55 | 0 | Bezug |
+| google/gemini-2.5-flash | 2 | 99,6 % ± 0,0 | 0, 0 | 9,2 s–9,6 s | 12,4 s–13,2 s | 0,563–0,570 | 9,01–9,12 | 0 | im Rauschen (+0,3 Pp, Streuung 0,6 Pp) |
+| google/gemini-3.1-flash-lite | 2 | 99,1 % ± 0,2 | 0, 0 | 5,3 s–5,7 s | 10,9 s–11,3 s | 0,301–0,302 | 4,82–4,83 | 0 | im Rauschen (-0,2 Pp, Streuung 0,6 Pp) |
+| google/gemini-3-flash-preview | 2 | 98,5 % ± 0,0 | 0, 0 | 10,9 s–11,5 s | 14,9 s–15,4 s | 0,635 | 10,16 | 0 | **schlechter** (-0,8 Pp) |
 
 <details><summary>Nebenkennzahlen je Lauf</summary>
 
-- google/gemini-2.5-flash, Lauf 1: `{"precision": 0.9876, "recall": 0.9676, "top_richtig": 1.0, "partei_ohne_beleg": 0, "fehlgeschlagen": 0}`
-- google/gemini-2.5-flash, Lauf 2: `{"precision": 0.9876, "recall": 0.9676, "top_richtig": 1.0, "partei_ohne_beleg": 0, "fehlgeschlagen": 0}`
-- google/gemini-3-flash-preview, Lauf 1: `{"precision": 0.9951, "recall": 0.8423, "top_richtig": 1.0, "partei_ohne_beleg": 2, "fehlgeschlagen": 0}`
-- google/gemini-3-flash-preview, Lauf 2: `{"precision": 0.9951, "recall": 0.8382, "top_richtig": 1.0, "partei_ohne_beleg": 2, "fehlgeschlagen": 0}`
-- google/gemini-3.1-flash-lite, Lauf 1: `{"precision": 0.9894, "recall": 0.7718, "top_richtig": 1.0, "partei_ohne_beleg": 0, "fehlgeschlagen": 0}`
-- google/gemini-3.1-flash-lite, Lauf 2: `{"precision": 0.9893, "recall": 0.7676, "top_richtig": 1.0, "partei_ohne_beleg": 0, "fehlgeschlagen": 0}`
-- google/gemini-3.5-flash-lite, Lauf 1: `{"precision": 1.0, "recall": 0.7654, "top_richtig": 0.9301, "partei_ohne_beleg": 0, "fehlgeschlagen": 0}`
-- google/gemini-3.5-flash-lite, Lauf 2: `{"precision": 0.9951, "recall": 0.832, "top_richtig": 0.9265, "partei_ohne_beleg": 0, "fehlgeschlagen": 0}`
+- google/gemini-2.5-flash, Lauf 1: `{"precision": 0.9922, "recall": 1.0, "top_richtig": 1.0, "partei_ohne_beleg": 0, "fehlgeschlagen": 0}`
+- google/gemini-2.5-flash, Lauf 2: `{"precision": 0.9922, "recall": 1.0, "top_richtig": 1.0, "partei_ohne_beleg": 0, "fehlgeschlagen": 0}`
+- google/gemini-3-flash-preview, Lauf 1: `{"precision": 0.9733, "recall": 0.9961, "top_richtig": 1.0, "partei_ohne_beleg": 0, "fehlgeschlagen": 0}`
+- google/gemini-3-flash-preview, Lauf 2: `{"precision": 0.9733, "recall": 0.9961, "top_richtig": 1.0, "partei_ohne_beleg": 0, "fehlgeschlagen": 0}`
+- google/gemini-3.1-flash-lite, Lauf 1: `{"precision": 0.9882, "recall": 0.996, "top_richtig": 1.0, "partei_ohne_beleg": 0, "fehlgeschlagen": 0}`
+- google/gemini-3.1-flash-lite, Lauf 2: `{"precision": 0.9882, "recall": 0.9921, "top_richtig": 1.0, "partei_ohne_beleg": 0, "fehlgeschlagen": 0}`
+- google/gemini-3.5-flash-lite, Lauf 1: `{"precision": 0.9922, "recall": 1.0, "top_richtig": 0.9151, "partei_ohne_beleg": 0, "fehlgeschlagen": 0}`
+- google/gemini-3.5-flash-lite, Lauf 2: `{"precision": 0.9808, "recall": 1.0, "top_richtig": 0.9318, "partei_ohne_beleg": 0, "fehlgeschlagen": 0}`
+- google/gemini-3.5-flash-lite, Lauf 1: `{"precision": 0.9882, "recall": 0.996, "top_richtig": 0.9059, "partei_ohne_beleg": 0, "fehlgeschlagen": 0}`
 
 </details>
 
@@ -300,9 +301,9 @@ Qualität: Anteil der Fenster mit richtigem TOP am Fensterende — Aufruf, Block
 
 | Modell | Läufe | Qualität | hart | p50 | p95 | ct/Aufruf | ct/Lauf | Ausfälle | ggü. heute |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
-| google/gemini-2.5-flash (heute) | 2 | 100,0 % ± 0,0 | 0, 0 | 1,8 s–1,9 s | 2,9 s | 0,163–0,177 | 4,90–5,31 | 0 | Bezug |
+| google/gemini-3.5-flash-lite (heute) | 5 | 100,0 % ± 0,0 | 0, 0, 0, 0, 0 | 1,1 s–1,3 s | 1,6 s–2,2 s | 0,159–0,163 | 4,78–4,89 | 0 | Bezug |
+| google/gemini-2.5-flash | 2 | 100,0 % ± 0,0 | 0, 0 | 1,8 s–1,9 s | 2,9 s | 0,163–0,177 | 4,90–5,31 | 0 | im Rauschen (+0,0 Pp, Streuung 0,0 Pp) |
 | google/gemini-3-flash-preview | 2 | 100,0 % ± 0,0 | 0, 0 | 2,8 s–3,0 s | 4,7 s–4,9 s | 0,295–0,312 | 8,86–9,35 | 0 | im Rauschen (+0,0 Pp, Streuung 0,0 Pp) |
-| google/gemini-3.5-flash-lite | 2 | 100,0 % ± 0,0 | 0, 0 | 1,1 s–1,2 s | 1,6 s–1,9 s | 0,161–0,163 | 4,82–4,88 | 0 | im Rauschen (+0,0 Pp, Streuung 0,0 Pp) |
 | google/gemini-3.1-flash-lite | 2 | 98,3 % ± 3,3 | 0, 0 | 2,2 s | 3,5 s–3,6 s | 0,126–0,131 | 3,79–3,92 | 0 | im Rauschen (-1,7 Pp, Streuung 3,3 Pp) |
 
 <details><summary>Nebenkennzahlen je Lauf</summary>
@@ -315,6 +316,9 @@ Qualität: Anteil der Fenster mit richtigem TOP am Fensterende — Aufruf, Block
 - google/gemini-3.1-flash-lite, Lauf 2: `{"je_art": {"aufruf": "11/11", "aussprache": "8/8", "block": "11/11"}}`
 - google/gemini-3.5-flash-lite, Lauf 1: `{"je_art": {"aufruf": "11/11", "aussprache": "8/8", "block": "11/11"}}`
 - google/gemini-3.5-flash-lite, Lauf 2: `{"je_art": {"aufruf": "11/11", "aussprache": "8/8", "block": "11/11"}}`
+- google/gemini-3.5-flash-lite, Lauf 1: `{"je_art": {"aufruf": "11/11", "aussprache": "8/8", "block": "11/11"}}`
+- google/gemini-3.5-flash-lite, Lauf 2: `{"je_art": {"aufruf": "11/11", "aussprache": "8/8", "block": "11/11"}}`
+- google/gemini-3.5-flash-lite, Lauf 1: `{"je_art": {"aufruf": "11/11", "aussprache": "8/8", "block": "11/11"}}`
 
 </details>
 

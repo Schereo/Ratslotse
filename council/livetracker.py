@@ -53,7 +53,13 @@ from kern import llm
 
 log = logging.getLogger(__name__)
 
-TRACKER_MODEL = os.environ.get("COUNCIL_LIVE_TRACKER_MODEL", "google/gemini-2.5-flash")
+#: Gemini 2.5 Flash läuft bei OpenRouter am 20.10.2026 aus. Prüfstand
+#: `live-verfolgung` (30 Fenster, je zwei Läufe, 23.09.2026): 2.5 Flash 100 %,
+#: 3.5 Flash Lite 100 %, 3 Flash Preview 100 %, 3.1 Flash Lite 98,3 % — alle im
+#: Rauschen. Hier zählt der Verzug: 3.5 Flash Lite antwortet in 1,1 s (p50)
+#: statt 1,8 s, zum selben Preis je Aufruf (0,16 ct). 3.1 Flash Lite wäre ein
+#: Viertel billiger, braucht aber 2,2 s. Stand: docs/modell-pruefstand.md.
+TRACKER_MODEL = os.environ.get("COUNCIL_LIVE_TRACKER_MODEL", "google/gemini-3.5-flash-lite")
 #: Wie viel vom Vorgänger-Fenster mit ins Transkript geht — ein Aufruf, der
 #: kurz vor der Stück-Grenze fiel, steht sonst in keinem Fenster ganz.
 OVERLAP_SECONDS = 30
