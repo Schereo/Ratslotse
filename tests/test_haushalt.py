@@ -736,6 +736,30 @@ def test_teilergebnishaushalt_prueft_summe():
     assert finanzberichte.parse_teilergebnishaushalt(kaputt) == []
 
 
+def test_teilergebnishaushalt_ohne_ertraege_bleibt_drin():
+    """Eine leere Ertragszeile ist ein Produkt ohne Erträge, keine Lücke.
+
+    Bis 09/2026 fiel so ein Produkt ganz heraus — Personalrückstellungen
+    (−17 Mio. € je Jahr) standen in keinem Jahrgang. Die Erträge folgen aus
+    Aufwand und Ergebnis; die Gegenprobe ist die leere Zelle."""
+    ohne = THH_PLAN.replace("13.583,31 4.206 5.684 5.684 5.684 5.684", "13.583,31", 1)
+    ohne = ohne.replace("-405.485,45 -480.033 -430.598", "-405.485,45 -480.033 -436.282", 1)
+    p = finanzberichte.parse_teilergebnishaushalt(ohne)[0]
+    assert (p["revenues"], p["expenses"], p["result"]) == (0.0, 436_282.0, -436_282.0)
+
+
+def test_teilergebnishaushalt_leitet_kurze_zeile_mit_gegenprobe_ab():
+    """Fehlt in der Ertragszeile EIN Wert (etwa das Vorjahres-Ergebnis), ist
+    unklar, welche Zahl welcher Spalte gehört — der errechnete Betrag muss
+    aber darin vorkommen. Wirtschaftsförderung 2020 fehlte genau so."""
+    kurz = THH_PLAN.replace("13.583,31 4.206 5.684", "4.206 5.684", 1)
+    p = finanzberichte.parse_teilergebnishaushalt(kurz)[0]
+    assert p["revenues"] == 5684.0
+    # Steht der errechnete Betrag NICHT in der Zeile, wird nichts erfunden.
+    falsch = THH_PLAN.replace("13.583,31 4.206 5.684 5.684 5.684 5.684", "4.206 9.999", 1)
+    assert finanzberichte.parse_teilergebnishaushalt(falsch) == []
+
+
 def test_teilergebnishaushalt_nimmt_den_ansatz_des_haushaltsjahres():
     """Die dritte Kopfspalte, nicht die zweite: Der Plan 2020 nennt fünfmal
     „Ansatz", beschlossen wird davon 2020. Spalte 2 ist der fortgeschriebene
@@ -811,9 +835,11 @@ def test_wertezeile_nimmt_niemals_die_zahlen_der_naechsten_zeile():
     nächsten Zahlenkolonne."""
     assert finanzberichte._thh_wertezeile(
         THH_LEERE_ERTRAEGE, r"12\.\s*=?\s*Summe ordentliche\s*Erträge", 6) is None
-    # Und das Produkt fällt damit ganz weg, statt mit falschen Erträgen
-    # dazustehen: ohne Posten 12 geht die Rechenprobe nicht auf.
-    assert finanzberichte.parse_teilergebnishaushalt(THH_LEERE_ERTRAEGE) == []
+    # Das Produkt steht trotzdem da — mit Erträgen von 0, errechnet aus
+    # Aufwand und Ergebnis (seit 09/2026; vorher fiel es ganz weg), und nie
+    # mit den Personalaufwendungen als Erträgen.
+    p = finanzberichte.parse_teilergebnishaushalt(THH_LEERE_ERTRAEGE)[0]
+    assert (p["revenues"], p["expenses"], p["result"]) == (0.0, 153_327.0, -153_327.0)
 
 
 def test_wertezeile_haelt_betraege_nicht_fuer_postennummern():
@@ -933,6 +959,20 @@ def test_store_finanzberichte_roundtrip(tmp_path, source):
     assert gespeichert["controllability_raw"] == "niedrig"
     assert gespeichert["scope"] == "übertragender und eigener Wirkungskreis"
     assert "Archivwürdigkeit" in gespeichert["short_description"]
+    store.close()
+
+
+def test_produkte_ausduennen_trifft_nur_den_eigenen_teilhaushalt(tmp_path, source):
+    """Altzeilen, die das eigene Dokument nicht mehr hergibt, fliegen beim
+    vollständigen Neulauf raus — Zeilen anderer Teilhaushalte bleiben."""
+    store = CouncilStore(tmp_path / "c.sqlite")
+    store.save_produkte(2019, finanzberichte.parse_teilergebnishaushalt(THH_PLAN),
+                        source("THH06", "http://thh06", probe="product_row"))
+    store.save_produkte(2019, finanzberichte.parse_teilergebnishaushalt(THH_MIT_GRUNDDATEN),
+                        source("THH10", "http://thh10", probe="product_row"))
+    assert store.produkte_ausduennen(2019, 10, {"P10.999999"}) == 1
+    assert [p["product_no"] for p in store.get_produkte(2019)] == ["P10.111023"]
+    assert store.produkte_ausduennen(2019, 6, {"P10.111023"}) == 0
     store.close()
 
 

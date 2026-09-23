@@ -2016,7 +2016,7 @@ def lies_teilhaushalte(store: CouncilStore, p: Protokoll,
     je_jahr: dict[int, int] = {}
     neue_einheiten: set[tuple] = set()
     mit_feld: dict[str, int] = {f: 0 for f in STECKBRIEF}
-    ohne = geschuetzt = dubletten = 0
+    ohne = geschuetzt = dubletten = ausgeduennt = 0
     # (year, thh_nr) → (Signatur, Dokument), das den Teilhaushalt versorgt hat.
     versorgt: dict[tuple, tuple] = {}
     for r in rows:
@@ -2072,6 +2072,12 @@ def lies_teilhaushalte(store: CouncilStore, p: Protokoll,
                                           len(stueck), schuetzen):
                         geschuetzt += 1 if alt else 0
                         continue
+                    # Was das Dokument für diesen Teilhaushalt NICHT mehr
+                    # hergibt, fliegt raus (s. `produkte_ausduennen`) — aber
+                    # nur beim vollständigen Neulauf; der Cron ergänzt bloß.
+                    if not nur_fehlende:
+                        ausgeduennt += store.produkte_ausduennen(
+                            year, sub_budget_no, {x["product_no"] for x in stueck})
                     store.save_produkte(year, stueck, herkunft.Herkunft(
                         kind="ris", probe="product_row",
                         document_id=r["document_id"], label=r["label"], url=r["url"],
@@ -2098,6 +2104,9 @@ def lies_teilhaushalte(store: CouncilStore, p: Protokoll,
         # Vorlage mehrfach im Bestand, die vorher einmal dastand.
         p.sagen(f"  {dubletten}× ein zweites Dokument zu einem bereits "
                 f"versorgten Teilhaushalt — übersprungen")
+    if ausgeduennt:
+        p.sagen(f"  {ausgeduennt} Produkt-Zeile(n) entfernt, die ihr eigenes "
+                f"Dokument nicht mehr hergibt")
     if ohne:
         # Der eigentliche Frühwarnwert dieses Laufs: Dokumente, die aussehen
         # wie ein Teilhaushalts-Plan, aus denen der Parser aber nichts holt.
@@ -2121,7 +2130,8 @@ def lies_teilhaushalte(store: CouncilStore, p: Protokoll,
     return {"neue_jahrgaenge": sorted(je_jahr),
             "neue_einheiten": sorted(neue_einheiten), "dokumente": len(rows),
             "ohne_treffer": ohne, "bestand_geschuetzt": geschuetzt,
-            "dubletten": dubletten, "produkte": sum(je_jahr.values()),
+            "dubletten": dubletten, "ausgeduennt": ausgeduennt,
+            "produkte": sum(je_jahr.values()),
             "in_tabelle": gesamt, "steckbrief": abdeckung}
 
 

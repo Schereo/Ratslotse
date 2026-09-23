@@ -2924,6 +2924,22 @@ class HaushaltMixin(StoreBasis):
                 [tuple(z.get(s) for s in spalten) + (hid, now) for z in zeilen])
         return len(zeilen)
 
+    def produkte_ausduennen(self, year: int, sub_budget_no: int | None,
+                            behalten: set[str]) -> int:
+        """Zeilen eines Teilhaushalts löschen, die sein eigenes Dokument nicht
+        (mehr) hergibt. Nur für den Aufrufer, der den Teilhaushalt gerade
+        vollständig neu gelesen hat (``lies_teilhaushalte``).
+
+        Anlass (23.09.2026): Zehn Zeilen standen unter einem Jahrgang, dessen
+        Plan sie gar nicht führt — Überbleibsel des früheren Spaltenversatzes,
+        der den „Ansatz 2021" des Plans 2022 als Jahrgang 2021 einlas. Weil
+        ``save_produkte`` nichts löscht, überlebten sie jeden Neulauf."""
+        platz = ",".join("?" * len(behalten)) or "''"
+        return self._conn.execute(
+            f"DELETE FROM council_products WHERE year = ? AND sub_budget_no IS ? "
+            f"AND product_no NOT IN ({platz})",
+            [year, sub_budget_no, *sorted(behalten)]).rowcount
+
     def save_produkte(self, year: int, produkte: list[dict], herkunft) -> int:
         """Produkte eines Jahres einfügen/aktualisieren. Bewusst KEIN Löschen
         des Jahrgangs: Die Produkte eines Jahres verteilen sich auf mehrere
