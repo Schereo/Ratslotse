@@ -71,7 +71,9 @@ describe("kuerze", () => {
 
   it("schneidet hart und sagt es", () => {
     const aus = kuerze("x".repeat(300), 100);
-    expect(aus.length).toBeLessThanOrEqual(102);
+    // `max` ist die Feldgrenze des Backends — das „ …" zählt mit, sonst
+    // antwortet der Server mit 422 (der Kassenzettel, 23.09.2026).
+    expect(aus.length).toBeLessThanOrEqual(100);
     expect(aus.endsWith("…")).toBe(true);
   });
 
@@ -137,7 +139,7 @@ describe("ernteElement", () => {
 
   it("deckelt den Text bei 1200 Zeichen", () => {
     const el = fakeElement({ attrs: { "data-erklaer": "x" }, text: "y".repeat(5000) });
-    expect(ernteElement(el).text.length).toBeLessThanOrEqual(1202);
+    expect(ernteElement(el).text.length).toBeLessThanOrEqual(1200);
   });
 });
 
@@ -647,7 +649,7 @@ describe("belegName", () => {
       label: "Statistisches Jahrbuch der Stadt Oldenburg, Tabelle 1108 — "
         + "Stand der Verschuldung 1995 bis 2025",
       year: 2025,
-    })).toBe("Statistisches Jahrbuch der Stadt Oldenburg, …");
+    })).toBe("Statistisches Jahrbuch der Stadt Oldenburg …");
   });
 
   it("kappt, was auch danach zu lang ist", () => {
