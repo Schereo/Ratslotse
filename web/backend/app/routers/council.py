@@ -4129,7 +4129,10 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
             # Liste kommt deshalb aus derselben Auswahl, die den Prompt
             # gefüllt hat (`qa.geld_auswahl`), und die Beschriftung im Fenster
             # sagt genau das: „Grundlage:".
-            belege = lotti.kontext_belege(ctx)
+            # Die Antwort ist hier fertig: Sie ordnet die Belege (genannte
+            # Vorlagen zuerst, die markierte Zeile zählt als genannt), die
+            # Quellen selbst kommen weiter nur aus dem Kontext.
+            belege = lotti.kontext_belege(ctx, text, screen.selection)
             conversation_id = _lotti_turn_speichern(
                 ratslotse, user, body, screen, frage, text, "explain", weiter, begriffe,
                 belege)
@@ -4146,7 +4149,7 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
                         # macht daraus Verweise aufs Glossar.
                         "glossary": begriffe,
                         # Die Papiere hinter den Zahlen im Prompt, höchstens
-                        # fünf (`qa.GELD_BELEGE_MAX`).
+                        # drei (`assistant.BELEGE_MAX`), genannte zuerst.
                         "evidence": belege,
                         "timings": zeiten,
                         "conversation_id": conversation_id})

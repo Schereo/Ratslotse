@@ -1118,7 +1118,50 @@ def _deckel(max_chars: int | None) -> int:
     return max_chars or GELD_MAX
 
 
-def kontext_belege(ctx: dict | None) -> list[dict]:
+#: Höchstens so viele Chips unter einer Lotti-Antwort (Review zu #1531,
+#: 23.09.2026). Der Kredit-Baustein allein brachte fünf Unterrichtungen mit —
+#: fünf Zeilen Apparat unter einer Antwort zu EINEM Kredit.
+BELEGE_MAX = 3
+
+_VORLAGE_NR = re.compile(r"\b\d{2}/\d{4}\b")
+
+
+def _beleg_kennzeichen(beleg: dict) -> tuple[set[str], str]:
+    """Woran man einen Beleg im Text wiedererkennt: seine Vorlagennummern
+    und sein Titel (vor dem Gedankenstrich, gefaltet)."""
+    label = str(beleg.get("label") or "")
+    titel = re.split(r"\s[—–]\s", label)[0].strip()
+    return set(_VORLAGE_NR.findall(label)), " ".join(falte(titel).split())
+
+
+def belege_ordnen(belege: list[dict], antwort: str = "", auswahl: str = "",
+                  max_n: int = BELEGE_MAX) -> list[dict]:
+    """Die Belege des KONTEXTS — in der Reihenfolge, die die ANTWORT vorgibt.
+
+    **Die Quellen kommen nur aus dem Kontext** (Regel im Router: was dem
+    Modell vorlag, nicht was es schreibt). Die Antwort entscheidet nur die
+    Reihenfolge: Belege, deren Vorlagennummer oder Titel im Antworttext
+    steht, kommen zuerst, der Rest in Kontext-Reihenfolge. Eine Nummer in
+    der Antwort, zu der es keinen Beleg gibt, erzeugt keinen.
+
+    **Die Markierung zählt als genannt.** Wer „8,0 Mio. €" in der Zeile mit
+    „Vorlage 26/0397" markiert, fragt nach DIESEM Papier, auch wenn die
+    Antwort die Nummer nicht schreibt (seit #1517 geht die Zeile mit).
+
+    Anlass: Zum Kredit aus dem Mai stand die Vorlage 26/0397 an zweiter von
+    fünf Stellen, hinter 26/0629 — der Unterrichtung des ANDEREN Kredits.
+    """
+    antwort_f = " ".join(falte(antwort or "").split())
+    nummern = set(_VORLAGE_NR.findall(antwort or "")) | set(_VORLAGE_NR.findall(auswahl or ""))
+    vorn, hinten = [], []
+    for b in belege:
+        eigene, titel = _beleg_kennzeichen(b)
+        genannt = bool(eigene & nummern) or (len(titel) >= 8 and titel in antwort_f)
+        (vorn if genannt else hinten).append(b)
+    return (vorn + hinten)[:max_n]
+
+
+def kontext_belege(ctx: dict | None, antwort: str = "", auswahl: str = "") -> list[dict]:
     """``[{label, year, url}]`` — die Papiere hinter den Zahlen im Prompt.
 
     Nur aus dem Haushalts-Kontext: Die anderen Bausteine (Seitenwissen,
@@ -1130,7 +1173,10 @@ def kontext_belege(ctx: dict | None) -> list[dict]:
     if not geld:
         return []
     from council import qa
-    return qa.geld_belege(geld, max_chars=_deckel((ctx or {}).get("geld_max")))
+    # Erst ALLE Belege des Kontexts, dann ordnen, dann kappen: Sonst fiele
+    # ein genanntes Papier an sechster Stelle weg, bevor es nach vorn darf.
+    alle = qa.geld_belege(geld, max_chars=_deckel((ctx or {}).get("geld_max")), max_n=10_000)
+    return belege_ordnen(alle, antwort, auswahl)
 
 
 def _geld_block(geld: dict | None, max_chars: int | None = None) -> str:

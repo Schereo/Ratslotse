@@ -2089,6 +2089,64 @@ def test_ohne_haushaltszahlen_keine_belege():
     assert lotti.kontext_belege(None) == []
 
 
+_KREDIT = "Unterrichtung des Rates über Kreditaufnahmen — Vorlage "
+_FUENF = [{"label": _KREDIT + nr, "year": 2026, "url": f"https://example.org/{i}"}
+          for i, nr in enumerate(["26/0629", "26/0397", "26/0013", "25/0527", "22/0792"])]
+
+
+def _nummern(belege):
+    return [b["label"].rsplit(" ", 1)[1] for b in belege]
+
+
+def test_belege_genannte_zuerst_dann_kontext_reihenfolge_hoechstens_drei():
+    """Review zu #1531: Die Antwort ordnet, der Kontext liefert."""
+    aus = lotti.belege_ordnen(_FUENF, "Laut Vorlage 26/0397 lag der Zins bei 3,43 %.")
+    assert _nummern(aus) == ["26/0397", "26/0629", "26/0013"]
+    assert len(lotti.belege_ordnen(_FUENF)) == lotti.BELEGE_MAX == 3
+
+
+def test_belege_ohne_nennung_bleiben_in_kontext_reihenfolge():
+    assert _nummern(lotti.belege_ordnen(_FUENF, "Das ist ein Kredit.")) == \
+        ["26/0629", "26/0397", "26/0013"]
+
+
+def test_belege_die_markierte_zeile_zaehlt_als_genannt():
+    """Die Antwort schreibt keine Nummer — die markierte Zeile trägt sie."""
+    zeile = "Mai 2026 · Kreditaufnahme · Bäderbetrieb Oldenburg · »8,0 Mio. €« · Vorlage 25/0527 3,43 %"
+    aus = lotti.belege_ordnen(_FUENF, "Das sind acht Millionen Euro.", zeile)
+    assert _nummern(aus)[0] == "25/0527"
+
+
+def test_belege_eine_fremde_nummer_erzeugt_keinen_beleg():
+    """Nur Quellen aus dem Kontext: Nennt die Antwort eine Vorlage, die nicht
+    darin stand, entsteht kein Chip — und die Reihenfolge bleibt."""
+    aus = lotti.belege_ordnen(_FUENF, "Siehe Vorlage 99/9999.")
+    assert _nummern(aus) == ["26/0629", "26/0397", "26/0013"]
+    assert all(b in _FUENF for b in aus)
+
+
+def test_belege_ein_genannter_titel_zaehlt_auch():
+    belege = [{"label": "Statistisches Jahrbuch, Tabelle 1108", "year": 2024, "url": None},
+              {"label": "Jahresabschluss 2024", "year": 2024, "url": None}]
+    aus = lotti.belege_ordnen(belege, "Laut Jahresabschluss 2024 waren es 4,2 Mio. €.")
+    assert aus[0]["label"] == "Jahresabschluss 2024"
+
+
+def test_kontext_belege_ordnet_erst_und_kappt_dann():
+    """Ein genanntes Papier an sechster Stelle des Kontexts muss nach vorn
+    dürfen, statt vorher am Deckel zu scheitern."""
+    zeilen = [{"template_number": f"26/{i:04d}", "seq": 1, "year": 2026,
+               "beleg": {"label": _KREDIT + f"26/{i:04d}", "url": f"https://example.org/{i}"}}
+              for i in range(8)]
+    ctx = {"geld": {"facets": ["loans"], "loans": {"year": 2026, "rates": zeilen, "positions": []}}}
+    # Der Baustein braucht Zinssätze, sonst baut `loans.block` nichts.
+    for z in zeilen:
+        z.update(kind="loan", rate_pct=3.0, amount=1_000_000.0, period_from="2026-01",
+                 period_to="2026-01")
+    aus = lotti.kontext_belege(ctx, "Vorlage 26/0003 ist gemeint.")
+    assert _nummern(aus)[0] == "26/0003" and len(aus) == 3
+
+
 def test_kontext_belege_nimmt_denselben_deckel_wie_der_block():
     """Block und Belege hinter EINEM Deckel (`_deckel`). Liefen sie
     auseinander, stünde unter einer Erklärung eine Quelle, die das Modell nie

@@ -96,3 +96,47 @@ def test_begriffe_und_jahr(tmp_path):
     assert d["year"] == 2025 and d["year_asked"] == 2019
     assert "Für 2019 liegt keine Unterrichtung vor" in loans.block(d)
     st.close()
+
+
+def _store_zwei_kredite(tmp_path) -> CouncilStore:
+    """Der Fall aus dem Review zu #1528: zwei Kredite des Bäderbetriebs über
+    8,0 Mio. € aus ZWEI Unterrichtungen (Mai und Juni–August 2026)."""
+    st = CouncilStore(tmp_path / "c.sqlite")
+    lauf = h.Herkunft(kind="ris", url="https://example.org", label="Lauf", probe=[parser.ZEITRAUM], probe_result="x")
+
+    def unterrichtung(nr, von, bis):
+        return {"template_number": nr, "year": 2026, "period_from": von, "period_to": bis,
+                "document_date": None, "none_reported": 0, "items": 1, "probes": [parser.ZEITRAUM],
+                "herkunft": h.Herkunft(kind="ris", url=f"https://example.org/{nr.replace('/', '-')}",
+                                       label=f"Unterrichtung des Rates über Kreditaufnahmen — Vorlage {nr}",
+                                       citation=parser.FUNDSTELLE, probe=[parser.ZEITRAUM],
+                                       probe_result="ok")}
+
+    def kredit(nr, zins, am):
+        return {"template_number": nr, "seq": 1, "year": 2026, "kind": "loan",
+                "borrower": "Bäderbetrieb Oldenburg", "heading": "Kreditaufnahme des Bäderbetriebs",
+                "amount": 8_000_000.0, "rate_pct": zins, "decided_at": am, "summary": "…"}
+
+    st.save_loan_notices(
+        [unterrichtung("26/0629", "2026-06", "2026-08"), unterrichtung("26/0397", "2026-05", "2026-05")],
+        [kredit("26/0629", 3.46, "2026-08-06"), kredit("26/0397", 3.43, "2026-05-13")], lauf)
+    return st
+
+
+def test_grundlage_nennt_jede_vorlage_der_zeilen_nicht_nur_die_juengste(tmp_path):
+    """Die „Grundlage" unter Lottis Antwort (``qa.geld_belege``) kam bis
+    23.09.2026 aus EINEM Beleg am Baustein — der jüngsten Unterrichtung.
+    Zum Kredit aus dem Mai stand deshalb 26/0629 darunter, nicht 26/0397.
+    Jetzt bringt jede Zeile ihr Papier mit, in der Reihenfolge des Kontexts."""
+    st = _store_zwei_kredite(tmp_path)
+    try:
+        d = st.loans_context([], None)
+        assert "beleg" not in d, "kein Einzelbeleg mehr für den ganzen Baustein"
+        text = loans.block(d)
+        belege = qa.geld_belege({"loans": d, "facets": [NAME]})
+        urls = [b["url"] for b in belege]
+        assert urls == ["https://example.org/26-0629", "https://example.org/26-0397"]
+        # Reihenfolge wie im Kontext: die Zeile mit 26/0629 steht dort zuerst.
+        assert text.index("Vorlage 26/0629") < text.index("Vorlage 26/0397")
+    finally:
+        st.close()
