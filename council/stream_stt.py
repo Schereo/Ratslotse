@@ -310,10 +310,16 @@ def record_and_transcribe(on_window=None, source: str | None = None,
     (die Live-Probe im Admin-Panel); ``stop`` beendet die Aufnahme von außen.
 
     Mit ``ksinr`` und eingeschalteter Aufbewahrung (``stt_retain.enabled()``)
-    wird der gesendete Rohton nebenher in eine Datei mitgeschrieben und am
-    Ende in Stücke geschnitten (``stt_retain.retain_from_raw``) — es gibt
-    hier sonst keine Datei-Stücke wie beim Weg über ``livestream.py``. Ohne
-    ``ksinr`` (z. B. die Generalprobe ``--probe``) entfällt das."""
+    gibt es hier keine Datei-Stücke wie beim Weg über ``livestream.py`` — die
+    werden also gezielt mitgeschrieben: Welche 30-s-Fenster überhaupt
+    aufgehoben werden, steht schon VOR der Aufnahme fest
+    (``stt_retain.planned_indices``, an ``limit`` gedeckelt), nur für diese
+    Fenster wird der Rohton in eine eigene kleine Datei gepuffert — alles
+    andere wird verworfen, ohne je auf die Platte zu kommen. Eine Sitzung von
+    6 h ergäbe sonst ~690 MB Rohton für am Ende nur 20 Stücke von je 30 s;
+    das hatte am 24.09.2026 den Server-Datenträger bedroht (derselbe, den
+    schon einmal die Release-Snapshots gefüllt hatten). Ohne ``ksinr``
+    (z. B. die Generalprobe ``--probe``) entfällt das ganz."""
     vocab = vocabulary(people or [])
     url = open_session(vocab)  # wirft StreamUnavailable → Rückfall auf Stücke
     proc = ffmpeg_pcm(source or livestream.STREAM_URL)
@@ -327,17 +333,15 @@ def record_and_transcribe(on_window=None, source: str | None = None,
     session_started = 0.0
     closing = False
     t0 = time.monotonic()
-    raw_dir: Path | None = None
-    raw_path: Path | None = None
-    raw_file = None
+    retain_seconds = livestream.CHUNK_SECONDS
+    kept_indices: set[int] = set()
+    chunk_dir: Path | None = None
+    current_idx: int | None = None
+    current_file = None
     if ksinr is not None and stt_retain.enabled():
-        raw_dir = Path(tempfile.mkdtemp(prefix=f"stt-raw-{ksinr}-"))
-        raw_path = raw_dir / "raw.pcm"
-        try:
-            raw_file = raw_path.open("wb")
-        except OSError:
-            log.exception("STT-Aufbewahrung: Rohaudio-Datei nicht angelegt")
-            raw_file = None
+        kept_indices = stt_retain.planned_indices(limit, retain_seconds)
+        if kept_indices:
+            chunk_dir = Path(tempfile.mkdtemp(prefix=f"stt-raw-{ksinr}-"))
 
     def drain() -> None:
         nonlocal closing
@@ -377,13 +381,26 @@ def record_and_transcribe(on_window=None, source: str | None = None,
                 session_started = sent
                 threading.Thread(target=_retire, args=(old, drain), daemon=True).start()
             link.send(frame)
-            if raw_file is not None:
-                try:
-                    raw_file.write(frame)
-                except OSError:
-                    log.exception("STT-Aufbewahrung: Rohaudio-Schreibfehler — Aufbewahrung endet")
-                    raw_file.close()
-                    raw_file = None
+            if chunk_dir is not None:
+                idx = int(sent // retain_seconds)
+                if idx != current_idx:
+                    if current_file is not None:
+                        current_file.close()
+                        current_file = None
+                    current_idx = idx
+                    if idx in kept_indices:
+                        try:
+                            current_file = (chunk_dir / f"chunk_{idx:03d}.pcm").open("wb")
+                        except OSError:
+                            log.exception("STT-Aufbewahrung: Stück-Datei nicht angelegt")
+                            current_file = None
+                if current_file is not None:
+                    try:
+                        current_file.write(frame)
+                    except OSError:
+                        log.exception("STT-Aufbewahrung: Schreibfehler — Stück verworfen")
+                        current_file.close()
+                        current_file = None
             sent += FRAME_SECONDS
             drain()
             windower.advance(sent)
@@ -401,20 +418,18 @@ def record_and_transcribe(on_window=None, source: str | None = None,
         link.stop(30)
         drain()
         windower.close()
-        if raw_file is not None:
+        if current_file is not None:
             try:
-                raw_file.close()
+                current_file.close()
             except OSError:
                 pass
     segments.sort(key=lambda s: s[0])
     log.info("Streaming beendet: %.0f s Audio, %d Segmente, %d Fenster (%d ausgelöst)",
              sent, len(segments), windower.dispatched, windower.triggered)
-    if raw_path is not None and raw_dir is not None and ksinr is not None:
+    if chunk_dir is not None and ksinr is not None:
         try:
-            if raw_path.exists() and raw_path.stat().st_size > 0:
-                stt_retain.retain_from_raw(ksinr, raw_path, segments)
-        except OSError:
-            log.exception("STT-Aufbewahrung: Rohaudio nicht lesbar")
+            stt_retain.finalize_streaming_chunks(ksinr, chunk_dir, segments,
+                                                 chunk_seconds=retain_seconds)
         finally:
-            shutil.rmtree(raw_dir, ignore_errors=True)
+            shutil.rmtree(chunk_dir, ignore_errors=True)
     return segments

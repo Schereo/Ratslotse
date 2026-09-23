@@ -126,52 +126,93 @@ def test_cleanup_keeps_only_the_three_newest_sessions(tmp_path, monkeypatch):
     assert uebrig == ["2", "3", "4"]
 
 
-# ----------------------------------------------------------------- retain_from_raw
+# -------------------------------------------------------------- planned_indices
+
+def test_planned_indices_caps_keep_at_the_stream_cap(monkeypatch):
+    """Der Streaming-Weg puffert je geplantem Fenster eine eigene Datei
+    WÄHREND der Aufnahme — eine hoch gesetzte COUNCIL_STT_BEHALTEN darf den
+    Plattenbedarf trotzdem nicht sprengen (Review-Befund 24.09.2026: eine
+    frühere Fassung schrieb den GANZEN Rohton mit, ~690 MB bei 6 h)."""
+    monkeypatch.setenv("COUNCIL_STT_BEHALTEN", "500")
+    idx = stt_retain.planned_indices(6 * 3600, 30)
+    assert len(idx) == stt_retain.STREAM_KEEP_CAP
+
+
+def test_planned_indices_respects_a_lower_configured_count(monkeypatch):
+    monkeypatch.setenv("COUNCIL_STT_BEHALTEN", "5")
+    idx = stt_retain.planned_indices(6 * 3600, 30)
+    assert len(idx) == 5
+    assert {0, 1}.issubset(idx)          # Lead-Fenster immer dabei
+
+
+def test_planned_indices_disabled_or_invalid_input(monkeypatch):
+    monkeypatch.setenv("COUNCIL_STT_BEHALTEN", "0")
+    assert stt_retain.planned_indices(3600, 30) == set()
+    monkeypatch.setenv("COUNCIL_STT_BEHALTEN", "20")
+    assert stt_retain.planned_indices(0, 30) == set()
+    assert stt_retain.planned_indices(3600, 0) == set()
+
+
+def test_planned_indices_never_exceeds_the_actual_session_length(monkeypatch):
+    """Eine kurze Sitzung darf keine Indizes jenseits ihrer eigenen Länge
+    planen — sonst würde nie eine Datei für sie angelegt, aber die Auswahl
+    bliebe trotzdem kleiner als konfiguriert, ohne erkennbaren Grund."""
+    monkeypatch.setenv("COUNCIL_STT_BEHALTEN", "20")
+    idx = stt_retain.planned_indices(90, 30)          # 3 Fenster möglich
+    assert idx == {0, 1, 2}
+
+
+# ------------------------------------------------------- finalize_streaming_chunks
 
 def _ffmpeg_verfuegbar() -> bool:
     return livestream.ffmpeg_bin() is not None
 
 
+def _stille_pcm(pfad, sekunden: float) -> None:
+    exe = livestream.ffmpeg_bin()
+    subprocess.run([exe, "-nostdin", "-y", "-loglevel", "error",
+                    "-f", "lavfi", "-i", "anullsrc=r=16000:cl=mono",
+                    "-t", str(sekunden), "-f", "s16le", str(pfad)], check=True)
+
+
 @pytest.mark.skipif(not _ffmpeg_verfuegbar(), reason="kein ffmpeg installiert")
-def test_retain_from_raw_cuts_generated_silence_into_chunks(tmp_path, monkeypatch):
-    """Ohne echten Mitschnitt: ein 75-s-Stille-PCM (``anullsrc``) steht für
-    den mitgeschriebenen Rohton des Streaming-Wegs — muss in 30-s-Stücke
-    geschnitten, ausgewählt und mit dem passenden Gladia-Text abgelegt
-    werden."""
+def test_finalize_streaming_chunks_cuts_each_piece_and_matches_its_text(tmp_path, monkeypatch):
+    """Ohne echten Mitschnitt: drei kleine Stille-PCMs (``anullsrc``) stehen
+    für die schon während der Aufnahme ausgewählten Fenster — jede wird
+    einzeln zu MP3 geschnitten und bekommt den zu ihrem Zeitfenster
+    passenden Gladia-Text."""
     monkeypatch.setenv("RATSLOTSE_STT_AUDIO", str(tmp_path / "stt"))
     monkeypatch.setenv("COUNCIL_STT_BEHALTEN", "20")
     raw_dir = tmp_path / "raw"
     raw_dir.mkdir()
-    raw = raw_dir / "raw.pcm"
-    exe = livestream.ffmpeg_bin()
-    subprocess.run([exe, "-nostdin", "-y", "-loglevel", "error",
-                    "-f", "lavfi", "-i", "anullsrc=r=16000:cl=mono",
-                    "-t", "75", "-f", "s16le", str(raw)], check=True)
+    for idx in (0, 1, 4):        # eine Lücke, wie sie eine echte Auswahl hätte
+        _stille_pcm(raw_dir / f"chunk_{idx:03d}.pcm", 30)
     segmente = [(5.0, "Wir kommen zu Punkt 1."), (35.0, "Frau Drügemöller."),
-               (65.0, "Damit schließe ich die Sitzung.")]
+               (125.0, "Damit schließe ich die Sitzung.")]
 
-    stt_retain.retain_from_raw(4242, raw, segmente, weg="gladia", chunk_seconds=30)
+    stt_retain.finalize_streaming_chunks(4242, raw_dir, segmente, weg="gladia", chunk_seconds=30)
 
     ziel = stt_retain.session_dir(4242)
     stuecke = sorted(p.name for p in ziel.glob("*.mp3"))
-    assert stuecke == ["chunk_000.mp3", "chunk_001.mp3", "chunk_002.mp3"]
+    assert stuecke == ["chunk_000.mp3", "chunk_001.mp3", "chunk_004.mp3"]
     assert (ziel / "chunk_000.gladia.txt").read_text(encoding="utf-8") == "Wir kommen zu Punkt 1."
-    assert (ziel / "chunk_002.gladia.txt").read_text(encoding="utf-8") == "Damit schließe ich die Sitzung."
+    assert (ziel / "chunk_004.gladia.txt").read_text(encoding="utf-8") == "Damit schließe ich die Sitzung."
 
 
-def test_retain_from_raw_disabled_does_nothing(tmp_path, monkeypatch):
+def test_finalize_streaming_chunks_disabled_does_nothing(tmp_path, monkeypatch):
     monkeypatch.setenv("COUNCIL_STT_BEHALTEN", "0")
-    stt_retain.retain_from_raw(1, tmp_path / "nichtda.pcm", [])
+    stt_retain.finalize_streaming_chunks(1, tmp_path / "nichtda", [])
     # Kein Fehler, kein Verzeichnis — nur eine Aussage möglich: nichts passiert.
 
 
-def test_retain_from_raw_missing_ffmpeg_logs_and_returns(tmp_path, monkeypatch, caplog):
+def test_finalize_streaming_chunks_missing_ffmpeg_logs_and_returns(tmp_path, monkeypatch, caplog):
     monkeypatch.setenv("RATSLOTSE_STT_AUDIO", str(tmp_path / "stt"))
     monkeypatch.setenv("COUNCIL_STT_BEHALTEN", "20")
     monkeypatch.setattr(livestream, "ffmpeg_bin", lambda: None)
-    raw = tmp_path / "raw.pcm"
-    raw.write_bytes(b"\0" * 100)
+    raw_dir = tmp_path / "raw"
+    raw_dir.mkdir()
+    (raw_dir / "chunk_000.pcm").write_bytes(b"\0" * 100)
     with caplog.at_level("WARNING"):
-        stt_retain.retain_from_raw(1, raw, [])
+        stt_retain.finalize_streaming_chunks(1, raw_dir, [])
     assert "ffmpeg fehlt" in caplog.text
     assert not stt_retain.session_dir(1).exists()
