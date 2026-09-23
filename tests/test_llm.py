@@ -314,6 +314,7 @@ def test_oeffentliche_daten_ohne_zdr_aber_ohne_training_und_china(monkeypatch):
         monkeypatch.delenv(var, raising=False)
     assert not llm.zdr_pflicht("impact_rating")
     assert not llm.zdr_pflicht("cities_fit")
+    assert not llm.zdr_pflicht("eval_cities_fit"), "die Eval misst wie der Cron"
     provider = llm._routing_extra_body(zdr=False)["provider"]
     assert "zdr" not in provider
     assert provider["data_collection"] == "deny"

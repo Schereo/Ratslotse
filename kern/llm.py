@@ -199,7 +199,11 @@ OHNE_NUTZEREINGABE: frozenset[str] = frozenset({
 #: Die Städte-Annotatoren bilden ihren Namen als ``cities_<key>``
 #: (``council/cities/annotators.py``); ``kern`` darf ihre Liste nicht
 #: importieren (Schichtenregel). Alle verarbeiten fremde Ratsdokumente.
-_OHNE_NUTZEREINGABE_PRAEFIX = "cities_"
+#: Ihre Evals (``eval/run_cities_*.py``) rechnen unter ``eval_cities_<…>``
+#: ab, schicken aber dieselben Dokumente — und müssen unter demselben
+#: Routing messen wie der Cron, sonst misst die Eval die ZDR-Lücke mit
+#: (``gpt-5.6-luna``: 53 % Lieferquote mit ZDR, 100 % ohne).
+_OHNE_NUTZEREINGABE_PRAEFIX = ("cities_", "eval_cities_")
 
 
 def zdr_pflicht(feature: str | None) -> bool:
