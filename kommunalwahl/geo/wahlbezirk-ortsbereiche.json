@@ -1,0 +1,748 @@
+{
+ "about": "Welcher Wahlbezirk (Urne) in welchen Ortsbereichen liegt, als Flächenanteil. Gerechnet von scripts/wahl_geodaten.py ueberlappung auf einem 20-m-Raster aus public/geo/.",
+ "threshold": 0.05,
+ "districts": {
+  "101": [
+   {
+    "place": "Ziegelhof",
+    "share": 1.0
+   }
+  ],
+  "102": [
+   {
+    "place": "Ziegelhof",
+    "share": 0.627
+   },
+   {
+    "place": "Bürgerfelde",
+    "share": 0.264
+   },
+   {
+    "place": "Ehnernviertel",
+    "share": 0.109
+   }
+  ],
+  "103": [
+   {
+    "place": "Ziegelhof",
+    "share": 1.0
+   }
+  ],
+  "104": [
+   {
+    "place": "Ziegelhof",
+    "share": 1.0
+   }
+  ],
+  "105": [
+   {
+    "place": "Ehnernviertel",
+    "share": 0.818
+   },
+   {
+    "place": "Bürgerfelde",
+    "share": 0.182
+   }
+  ],
+  "106": [
+   {
+    "place": "Ehnernviertel",
+    "share": 1.0
+   }
+  ],
+  "107": [
+   {
+    "place": "Ehnernviertel",
+    "share": 0.723
+   },
+   {
+    "place": "Nadorst",
+    "share": 0.277
+   }
+  ],
+  "108": [
+   {
+    "place": "Bürgeresch",
+    "share": 1.0
+   }
+  ],
+  "109": [
+   {
+    "place": "Bürgeresch",
+    "share": 0.733
+   },
+   {
+    "place": "Donnerschwee",
+    "share": 0.194
+   },
+   {
+    "place": "Bahnhofsviertel",
+    "share": 0.073
+   }
+  ],
+  "110": [
+   {
+    "place": "Bürgeresch",
+    "share": 0.832
+   },
+   {
+    "place": "Nadorst",
+    "share": 0.111
+   },
+   {
+    "place": "Ohmstede",
+    "share": 0.058
+   }
+  ],
+  "111": [
+   {
+    "place": "Bürgeresch",
+    "share": 1.0
+   }
+  ],
+  "112": [
+   {
+    "place": "Donnerschwee",
+    "share": 1.0
+   }
+  ],
+  "113": [
+   {
+    "place": "Donnerschwee",
+    "share": 0.936
+   },
+   {
+    "place": "Bornhorst",
+    "share": 0.064
+   }
+  ],
+  "114": [
+   {
+    "place": "Donnerschwee",
+    "share": 1.0
+   }
+  ],
+  "115": [
+   {
+    "place": "Donnerschwee",
+    "share": 1.0
+   }
+  ],
+  "201": [
+   {
+    "place": "Dobbenviertel",
+    "share": 0.766
+   },
+   {
+    "place": "Eversten",
+    "share": 0.183
+   },
+   {
+    "place": "Haarenesch",
+    "share": 0.05
+   }
+  ],
+  "202": [
+   {
+    "place": "Haarenesch",
+    "share": 1.0
+   }
+  ],
+  "203": [
+   {
+    "place": "Haarenesch",
+    "share": 0.696
+   },
+   {
+    "place": "Innenstadt",
+    "share": 0.304
+   }
+  ],
+  "204": [
+   {
+    "place": "Eversten",
+    "share": 0.439
+   },
+   {
+    "place": "Innenstadt",
+    "share": 0.288
+   },
+   {
+    "place": "Dobbenviertel",
+    "share": 0.273
+   }
+  ],
+  "205": [
+   {
+    "place": "Bahnhofsviertel",
+    "share": 0.785
+   },
+   {
+    "place": "Innenstadt",
+    "share": 0.215
+   }
+  ],
+  "206": [
+   {
+    "place": "Gerichtsviertel",
+    "share": 0.543
+   },
+   {
+    "place": "Osternburg",
+    "share": 0.457
+   }
+  ],
+  "207": [
+   {
+    "place": "Gerichtsviertel",
+    "share": 0.731
+   },
+   {
+    "place": "Osternburg",
+    "share": 0.269
+   }
+  ],
+  "208": [
+   {
+    "place": "Osternburg",
+    "share": 1.0
+   }
+  ],
+  "209": [
+   {
+    "place": "Osternburg",
+    "share": 1.0
+   }
+  ],
+  "210": [
+   {
+    "place": "Drielaker-Moor",
+    "share": 0.699
+   },
+   {
+    "place": "Drielake",
+    "share": 0.301
+   }
+  ],
+  "211": [
+   {
+    "place": "Osternburg",
+    "share": 1.0
+   }
+  ],
+  "212": [
+   {
+    "place": "Neuenwege",
+    "share": 0.861
+   },
+   {
+    "place": "Drielake",
+    "share": 0.139
+   }
+  ],
+  "213": [
+   {
+    "place": "Tweelbäke",
+    "share": 0.483
+   },
+   {
+    "place": "Drielaker-Moor",
+    "share": 0.286
+   },
+   {
+    "place": "Neuenwege",
+    "share": 0.231
+   }
+  ],
+  "214": [
+   {
+    "place": "Drielaker-Moor",
+    "share": 1.0
+   }
+  ],
+  "301": [
+   {
+    "place": "Bloherfelde",
+    "share": 1.0
+   }
+  ],
+  "302": [
+   {
+    "place": "Bloherfelde",
+    "share": 1.0
+   }
+  ],
+  "303": [
+   {
+    "place": "Bloherfelde",
+    "share": 1.0
+   }
+  ],
+  "304": [
+   {
+    "place": "Bloherfelde",
+    "share": 1.0
+   }
+  ],
+  "305": [
+   {
+    "place": "Bloherfelde",
+    "share": 1.0
+   }
+  ],
+  "306": [
+   {
+    "place": "Wechloy",
+    "share": 0.834
+   },
+   {
+    "place": "Fliegerhorst",
+    "share": 0.166
+   }
+  ],
+  "307": [
+   {
+    "place": "Haarentor",
+    "share": 1.0
+   }
+  ],
+  "308": [
+   {
+    "place": "Haarentor",
+    "share": 0.627
+   },
+   {
+    "place": "Dietrichsfeld",
+    "share": 0.373
+   }
+  ],
+  "309": [
+   {
+    "place": "Dietrichsfeld",
+    "share": 0.679
+   },
+   {
+    "place": "Wechloy",
+    "share": 0.321
+   }
+  ],
+  "310": [
+   {
+    "place": "Fliegerhorst",
+    "share": 0.74
+   },
+   {
+    "place": "Dietrichsfeld",
+    "share": 0.26
+   }
+  ],
+  "311": [
+   {
+    "place": "Dietrichsfeld",
+    "share": 1.0
+   }
+  ],
+  "312": [
+   {
+    "place": "Dietrichsfeld",
+    "share": 1.0
+   }
+  ],
+  "313": [
+   {
+    "place": "Bürgerfelde",
+    "share": 0.816
+   },
+   {
+    "place": "Dietrichsfeld",
+    "share": 0.184
+   }
+  ],
+  "314": [
+   {
+    "place": "Bürgerfelde",
+    "share": 1.0
+   }
+  ],
+  "400": [
+   {
+    "place": "Alexandersfeld",
+    "share": 1.0
+   }
+  ],
+  "401": [
+   {
+    "place": "Alexandersfeld",
+    "share": 1.0
+   }
+  ],
+  "402": [
+   {
+    "place": "Alexandersfeld",
+    "share": 1.0
+   }
+  ],
+  "403": [
+   {
+    "place": "Alexandersfeld",
+    "share": 1.0
+   }
+  ],
+  "404": [
+   {
+    "place": "Ofenerdiek",
+    "share": 1.0
+   }
+  ],
+  "405": [
+   {
+    "place": "Ofenerdiek",
+    "share": 1.0
+   }
+  ],
+  "406": [
+   {
+    "place": "Ofenerdiek",
+    "share": 1.0
+   }
+  ],
+  "407": [
+   {
+    "place": "Ofenerdiek",
+    "share": 1.0
+   }
+  ],
+  "408": [
+   {
+    "place": "Ofenerdiek",
+    "share": 0.877
+   },
+   {
+    "place": "Nadorst",
+    "share": 0.123
+   }
+  ],
+  "409": [
+   {
+    "place": "Nadorst",
+    "share": 1.0
+   }
+  ],
+  "410": [
+   {
+    "place": "Etzhorn",
+    "share": 0.934
+   },
+   {
+    "place": "Ofenerdiek",
+    "share": 0.066
+   }
+  ],
+  "411": [
+   {
+    "place": "Etzhorn",
+    "share": 0.46
+   },
+   {
+    "place": "Ohmstede",
+    "share": 0.306
+   },
+   {
+    "place": "Nadorst",
+    "share": 0.234
+   }
+  ],
+  "412": [
+   {
+    "place": "Nadorst",
+    "share": 1.0
+   }
+  ],
+  "413": [
+   {
+    "place": "Nadorst",
+    "share": 0.541
+   },
+   {
+    "place": "Ohmstede",
+    "share": 0.459
+   }
+  ],
+  "414": [
+   {
+    "place": "Ohmstede",
+    "share": 1.0
+   }
+  ],
+  "415": [
+   {
+    "place": "Ohmstede",
+    "share": 1.0
+   }
+  ],
+  "416": [
+   {
+    "place": "Bornhorst",
+    "share": 0.82
+   },
+   {
+    "place": "Ohmstede",
+    "share": 0.096
+   },
+   {
+    "place": "Etzhorn",
+    "share": 0.084
+   }
+  ],
+  "501": [
+   {
+    "place": "Bümmerstede",
+    "share": 0.538
+   },
+   {
+    "place": "Kreyenbrück",
+    "share": 0.462
+   }
+  ],
+  "502": [
+   {
+    "place": "Kreyenbrück",
+    "share": 1.0
+   }
+  ],
+  "503": [
+   {
+    "place": "Kreyenbrück",
+    "share": 0.506
+   },
+   {
+    "place": "Bümmerstede",
+    "share": 0.494
+   }
+  ],
+  "504": [
+   {
+    "place": "Bümmerstede",
+    "share": 1.0
+   }
+  ],
+  "505": [
+   {
+    "place": "Bümmerstede",
+    "share": 1.0
+   }
+  ],
+  "506": [
+   {
+    "place": "Kreyenbrück",
+    "share": 1.0
+   }
+  ],
+  "507": [
+   {
+    "place": "Kreyenbrück",
+    "share": 1.0
+   }
+  ],
+  "508": [
+   {
+    "place": "Kreyenbrück",
+    "share": 0.554
+   },
+   {
+    "place": "Bümmerstede",
+    "share": 0.446
+   }
+  ],
+  "509": [
+   {
+    "place": "Bümmerstede",
+    "share": 1.0
+   }
+  ],
+  "510": [
+   {
+    "place": "Kreyenbrück",
+    "share": 1.0
+   }
+  ],
+  "511": [
+   {
+    "place": "Kreyenbrück",
+    "share": 1.0
+   }
+  ],
+  "512": [
+   {
+    "place": "Osternburg",
+    "share": 0.68
+   },
+   {
+    "place": "Kreyenbrück",
+    "share": 0.32
+   }
+  ],
+  "513": [
+   {
+    "place": "Osternburg",
+    "share": 0.82
+   },
+   {
+    "place": "Kreyenbrück",
+    "share": 0.18
+   }
+  ],
+  "514": [
+   {
+    "place": "Krusenbusch",
+    "share": 1.0
+   }
+  ],
+  "515": [
+   {
+    "place": "Krusenbusch",
+    "share": 0.817
+   },
+   {
+    "place": "Tweelbäke",
+    "share": 0.183
+   }
+  ],
+  "516": [
+   {
+    "place": "Tweelbäke",
+    "share": 0.7
+   },
+   {
+    "place": "Drielaker-Moor",
+    "share": 0.201
+   },
+   {
+    "place": "Krusenbusch",
+    "share": 0.099
+   }
+  ],
+  "517": [
+   {
+    "place": "Drielaker-Moor",
+    "share": 0.898
+   },
+   {
+    "place": "Drielake",
+    "share": 0.102
+   }
+  ],
+  "601": [
+   {
+    "place": "Nordmoslesfehn",
+    "share": 0.595
+   },
+   {
+    "place": "Eversten",
+    "share": 0.336
+   },
+   {
+    "place": "Kreyenbrück",
+    "share": 0.069
+   }
+  ],
+  "602": [
+   {
+    "place": "Eversten",
+    "share": 0.832
+   },
+   {
+    "place": "Nordmoslesfehn",
+    "share": 0.168
+   }
+  ],
+  "603": [
+   {
+    "place": "Eversten",
+    "share": 1.0
+   }
+  ],
+  "604": [
+   {
+    "place": "Eversten",
+    "share": 1.0
+   }
+  ],
+  "605": [
+   {
+    "place": "Eversten",
+    "share": 1.0
+   }
+  ],
+  "606": [
+   {
+    "place": "Eversten",
+    "share": 1.0
+   }
+  ],
+  "607": [
+   {
+    "place": "Eversten",
+    "share": 1.0
+   }
+  ],
+  "608": [
+   {
+    "place": "Eversten",
+    "share": 1.0
+   }
+  ],
+  "609": [
+   {
+    "place": "Eversten",
+    "share": 1.0
+   }
+  ],
+  "610": [
+   {
+    "place": "Eversten",
+    "share": 1.0
+   }
+  ],
+  "611": [
+   {
+    "place": "Eversten",
+    "share": 1.0
+   }
+  ],
+  "612": [
+   {
+    "place": "Eversten",
+    "share": 0.832
+   },
+   {
+    "place": "Bloherfelde",
+    "share": 0.109
+   },
+   {
+    "place": "Haarentor",
+    "share": 0.059
+   }
+  ],
+  "613": [
+   {
+    "place": "Haarentor",
+    "share": 0.563
+   },
+   {
+    "place": "Bloherfelde",
+    "share": 0.24
+   },
+   {
+    "place": "Eversten",
+    "share": 0.197
+   }
+  ],
+  "614": [
+   {
+    "place": "Eversten",
+    "share": 1.0
+   }
+  ]
+ }
+}
