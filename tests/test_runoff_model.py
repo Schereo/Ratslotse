@@ -247,6 +247,48 @@ def test_die_hochrechnung_trifft_nach_30_bezirken_auf_zwei_punkte(erster, stichw
     assert sum(fehler) / len(fehler) <= 2.0, sum(fehler) / len(fehler)
 
 
+def test_die_chance_ist_in_knappen_rennen_ehrlich(erster, stichwahl):
+    """Kalibrierung: Wie oft stimmt „Chance 9x %"?
+
+    2021 war mit 54 : 46 nicht knapp — fast jede Chance war dort richtig,
+    egal wie falsch sie gerechnet war. Deshalb werden die Anteile JEDES
+    Bezirks um denselben Betrag verschoben, bis der Endstand zwischen 48
+    und 51 % liegt. Die echte Struktur (Streuung zwischen den Bezirken, der
+    Unterschied zwischen Urne und Brief) bleibt dabei erhalten.
+
+    Bis 09/2026 fehlte dem Modell die Unsicherheit des Schwungs selbst:
+    Dort lag „99 %" in 12 von 100 Fällen daneben, „90–98 %" in 19. Wer
+    die Chance anzeigt, darf sie nicht so viel zu sicher anzeigen."""
+    from dataclasses import replace
+
+    rnd = random.Random(23)
+    oben = [0, 0]      # „99 %": [Anzahl, richtig]
+    neunzig = [0, 0]   # 90–98 %
+    for delta in (0.030, 0.040, 0.045, 0.055, 0.060):
+        wahr = []
+        for d in stichwahl:
+            n = (d.votes["krogmann"] or 0) + (d.votes["fuhrhop"] or 0)
+            a = int(round(max(0, min(n, (d.votes["krogmann"] or 0) - delta * n))))
+            wahr.append(replace(d, votes={"krogmann": a, "fuhrhop": n - a}))
+        sieger = "krogmann" if sum(d.votes["krogmann"] for d in wahr) > sum(d.votes["fuhrhop"] for d in wahr) else "fuhrhop"
+        nummern = [d.number for d in wahr]
+        for _ in range(30):
+            r = nummern[:]
+            rnd.shuffle(r)
+            for k in (15, 20, 30, 50, 80, 110):
+                p = runoff_model.project(_stand(tuple(wahr), set(r[:k])), erster, SLUGS)
+                assert p is not None
+                if p.chance_pct is None:
+                    continue
+                topf = oben if p.chance_pct >= 99 else neunzig if p.chance_pct >= 90 else None
+                if topf is not None:
+                    topf[0] += 1
+                    topf[1] += p.leader == sieger
+    assert oben[0] > 50 and neunzig[0] > 50, (oben, neunzig)
+    assert oben[1] / oben[0] >= 0.98, f'„99 %" nur in {oben[1]}/{oben[0]} Fällen richtig'
+    assert neunzig[1] / neunzig[0] >= 0.85, f'„90–98 %" nur in {neunzig[1]}/{neunzig[0]} Fällen richtig'
+
+
 # ---------------------------------------------------------------- der Endpunkt
 
 @pytest.fixture
@@ -285,3 +327,72 @@ def test_die_stichwahl_antwort_traegt_die_hochrechnung(_frei):
     assert v["leader"] == v["actual_leader"] == "prange"
     # Der erste Wahlgang (keine Stichwahl) trägt keine Hochrechnung.
     assert "projection" not in router.ob_wahl(probe="1", counted=None)
+
+
+def test_die_aufholrechnung_geht_auf(erster, stichwahl):
+    """„Fuhrhop bräuchte 58 % der offenen Stimmen" — geprüft, indem man es
+    ausrechnet: Mit genau diesem Anteil an den erwarteten offenen Stimmen
+    stünde es am Ende gleich. Entschieden oder fertig gibt es sie nicht."""
+    r = [d.number for d in stichwahl]
+    p = runoff_model.project(_stand(stichwahl, set(r[:40])), erster, SLUGS)
+    assert p is not None and p.trailing is not None and p.needed_share_pct is not None
+    vorn = p.actual_leader
+    assert p.trailing != vorn
+    n = p.open_votes_expected
+    aufgeholt = p.needed_share_pct / 100 * n - (1 - p.needed_share_pct / 100) * n
+    assert abs(aufgeholt - p.actual_lead_votes) <= 0.001 * n + 1
+    assert p.trailing_expected_share_pct is not None and 0 < p.trailing_expected_share_pct < 100
+    voll = runoff_model.project(stichwahl, erster, SLUGS)
+    assert voll is not None and voll.trailing is None and voll.needed_share_pct is None
+
+
+# ---------------------------------------------------------------- „entschieden“ ist Arithmetik (Gegenprüfung 23.09.2026)
+
+def test_ein_bezirk_ohne_ersten_wahlgang_haelt_die_entscheidung_offen(erster, stichwahl):
+    """Schneidet die Stadt für die Stichwahl einen Briefwahlbezirk neu zu,
+    kennt der erste Wahlgang ihn nicht. Bis 09/2026 fiel er still heraus:
+    Waren alle BEKANNTEN Bezirke gezählt, hieß es „entschieden“ — während
+    er noch offen war. Ist er gezählt, zählen seine Stimmen mit."""
+    from dataclasses import replace
+
+    brief = next(d for d in stichwahl if d.postal)
+    neu = replace(brief, number=999)
+    mit = tuple(d for d in stichwahl if d.number != brief.number) + (neu,)
+    offen = _stand(mit, {d.number for d in mit if d.number != 999})
+    p = runoff_model.project(offen, erster, SLUGS)
+    assert p is not None
+    assert not p.decided, "ein offener Bezirk ohne Obergrenze — da ist nichts entschieden"
+    assert p.open_postal == 1 and p.chance_pct is not None
+    assert any("im ersten Wahlgang nicht" in c for c in p.caveats)
+    voll = runoff_model.project(mit, erster, SLUGS)
+    assert voll is not None and voll.decided
+    assert voll.actual_lead_votes == 6544, "seine Stimmen zählen im Ist mit"
+
+
+def test_die_obergrenze_zaehlt_auch_bezirke_ohne_hochrechnung(erster, stichwahl):
+    """Ein offener Bezirk, dessen erster Wahlgang für die beiden keine
+    Stimmen hat, gibt keine Hochrechnung her — seine Wahlberechtigten
+    können trotzdem noch kommen."""
+    from dataclasses import replace
+
+    urne = next(d for d in stichwahl if not d.postal)
+    leer = {d.number: (replace(d, votes={k: 0 for k in d.votes}) if d.number == urne.number else d) for d in erster}
+    p = runoff_model.project(_stand(stichwahl, {d.number for d in stichwahl} - {urne.number}),
+                             tuple(leer.values()), SLUGS)
+    assert p is not None and p.open_votes_max == urne.eligible
+
+
+def test_gleichstand_am_ende_ist_nicht_entschieden(erster, stichwahl):
+    """Bei Stimmengleichheit entscheidet das Los (§ 45c Abs. 2 NKWG) — nicht,
+    wer in der Registry zuerst steht."""
+    from dataclasses import replace
+
+    gleich = []
+    for i, d in enumerate(stichwahl):
+        n = (d.votes["krogmann"] or 0) + (d.votes["fuhrhop"] or 0)
+        n -= n % 2
+        gleich.append(replace(d, votes={"krogmann": n // 2, "fuhrhop": n // 2}))
+    p = runoff_model.project(tuple(gleich), erster, SLUGS)
+    assert p is not None
+    assert not p.decided and p.chance_pct is None and p.actual_lead_votes == 0
+    assert any("Los" in c for c in p.caveats)

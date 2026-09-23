@@ -28,7 +28,18 @@ Vorsprung übersteigt die Obergrenze dessen, was in den offenen Bezirken
 noch kommen kann. Für Urnenbezirke sind das die Wahlberechtigten; für
 Briefwahlbezirke, die keine führen (gemessen in S1), das
 ``POSTAL_GROWTH_CAP``-Fache ihrer gültigen Stimmen im ersten Wahlgang
-(2021 wuchsen die Zwei-Kandidaten-Stimmen um 1,57).
+(2021 wuchsen die Zwei-Kandidaten-Stimmen um 1,57). Gegengeprüft am
+23.09.2026 je Briefwahlbezirk: Die gültigen Stimmen der Stichwahl lagen
+2021 beim 0,73- bis 1,15-Fachen des ersten Wahlgangs — obwohl die
+Stichwahl damals mit der Bundestagswahl zusammenfiel. Ein offener Bezirk
+ohne solche Grenze (keiner im ersten Wahlgang, keine Wahlberechtigten)
+hält die Entscheidung offen, und ohne Vorsprung ist nichts entschieden.
+
+**Gegengeprüft (23.09.2026)** zusätzlich zur Rückrechnung an 2021: eine
+Simulation auf den 133 Bezirken des ersten Wahlgangs 2026 mit bekannter
+Wahrheit (Topf-Schwünge, Bezirksrauschen, Beteiligungsrauschen, vier
+Reihenfolgen). Dort ist die Chance eher vorsichtig — „60–69 %" lag in 78 %
+der Fälle richtig, „90–98 %" in 99 %, „99 %" immer.
 """
 from __future__ import annotations
 
@@ -44,11 +55,28 @@ MIN_DISTRICTS = 15
 #: Die Chance wird hier gedeckelt, bis die Arithmetik entschieden hat.
 CHANCE_CAP = 99
 #: Streuung (Anteil, 0…1) des Schwungs eines Topfes, dessen Bezirke noch
-#: alle offen sind — 2021 lagen Urne und Brief 3,3 Punkte auseinander.
-POT_SWING_SD = 0.04
+#: alle offen sind — 2021 lagen Urne und Brief 3,3 Punkte auseinander. Bis
+#: 09/2026 stand hier 0,04; die Kalibrierung (s. ``SWING_SE_SCALE``) wollte
+#: mehr Luft.
+POT_SWING_SD = 0.06
 #: Obergrenze der Stimmen eines offenen Briefwahlbezirks, relativ zu seinen
 #: gültigen Stimmen im ersten Wahlgang.
 POSTAL_GROWTH_CAP = 1.6
+#: Streuung (Anteil) für einen offenen Bezirk, den der erste Wahlgang nicht
+#: kennt: Er bekommt den bisherigen Anteil seines Topfes, grob geschätzt.
+FREMD_SHARE_SD = 0.10
+#: Untergrenze der Streuung (Anteil) um den Schwung, solange erst wenige
+#: Bezirke eines Topfes gezählt sind — mit zweien wäre die gemessene
+#: Streuung selbst Zufall. 2021 lag sie nach dem Schwung bei drei Punkten.
+SWING_SD_FLOOR = 0.03
+#: Aufschlag auf den Standardfehler des Schwungs: Bezirke melden nicht in
+#: zufälliger Reihenfolge, sondern nach Ort und Größe gebündelt. 1,5 und
+#: ``POT_SWING_SD`` 0,06 sind an 2021 gemessen, mit gleichmäßig verschobenen
+#: Anteilen, damit das Rennen knapp wird (vier Reihenfolge-Arten, zehn
+#: Endstände zwischen 48 und 51 %): „99 %" lag dann in 99,9 % der Fälle
+#: richtig, „90–98 %" in 93 %. Mit 1,0 und 0,04 waren es 98,7 und 88.
+#: Die Werte sind an EINER Stichwahl eingestellt — mehr gibt es nicht.
+SWING_SE_SCALE = 1.5
 
 
 @dataclass(frozen=True)
@@ -76,6 +104,18 @@ class RunoffProjection:
     #: Streuung des hochgerechneten Vorsprungs in Stimmen.
     sigma_votes: float
     caveats: tuple[str, ...]
+    #: Die Aufholrechnung (Tims Wunsch 23.09.2026): Wer nach den gezählten
+    #: Stimmen zurückliegt, wie viel Prozent der noch ERWARTETEN Stimmen er
+    #: oder sie bräuchte, und wie viel das Modell dort erwartet. ``None``,
+    #: wenn nichts mehr offen ist, es rechnerisch entschieden ist oder
+    #: Gleichstand herrscht. Über 100 heißt: selbst alle erwarteten Stimmen
+    #: reichten nicht — entschieden ist es erst, wenn die Obergrenze
+    #: (``open_votes_max``) es sagt.
+    trailing: str | None = None
+    needed_share_pct: float | None = None
+    trailing_expected_share_pct: float | None = None
+    #: Wie viele Stimmen der beiden das Modell in den offenen Bezirken erwartet.
+    open_votes_expected: int = 0
 
 
 def _share(a: int | None, b: int | None) -> float | None:
@@ -104,11 +144,20 @@ def project(current: Sequence[MayorDistrict], first_round: Sequence[MayorDistric
 
     gezaehlt: list[tuple[MayorDistrict, MayorDistrict]] = []
     offen: list[tuple[MayorDistrict, MayorDistrict]] = []
+    # Bezirke, die der erste Wahlgang nicht kennt — etwa ein Briefwahlbezirk,
+    # den die Stadt für die Stichwahl neu zuschneidet. 2021 waren es keine
+    # (dieselben 133 Nummern); darauf verlassen darf sich die Rechnung nicht.
+    # Bis 09/2026 fielen sie still heraus: Ihre Stimmen fehlten im Ist, und
+    # „rechnerisch entschieden" hätte es geheißen, während sie noch offen waren.
+    fremd_gezaehlt: list[MayorDistrict] = []
+    fremd_offen: list[MayorDistrict] = []
     for d in current:
         v = vorher.get(d.number)
+        ist_gezaehlt = d.counted and d.votes.get(a) is not None and d.votes.get(b) is not None
         if v is None:
+            (fremd_gezaehlt if ist_gezaehlt else fremd_offen).append(d)
             continue
-        (gezaehlt if d.counted and d.votes.get(a) is not None and d.votes.get(b) is not None else offen).append((d, v))
+        (gezaehlt if ist_gezaehlt else offen).append((d, v))
     if not gezaehlt:
         return None
 
@@ -138,31 +187,58 @@ def project(current: Sequence[MayorDistrict], first_round: Sequence[MayorDistric
         caveats.append("Noch kein Briefwahlbezirk gezählt — der Schwung der Urne gilt vorläufig auch für die Briefwahl.")
     assert s_urne is not None and s_brief is not None
 
+    # Wie stark die Stimmen gegenüber dem ersten Wahlgang wachsen — je Topf:
+    # 2021 wuchsen die Zwei-Kandidaten-Stimmen an der Urne um 1,72, im Brief
+    # um 1,31. Ein gemeinsamer Faktor gewichtete die Urne falsch, sobald die
+    # Briefwahl zuerst kommt; und die Urne ist der Topf, in dem der eine
+    # Name stärker ist als der andere.
+    def faktor_von(paare: list[tuple[MayorDistrict, MayorDistrict]]) -> float | None:
+        n2 = sum((d.votes.get(a) or 0) + (d.votes.get(b) or 0) for d, _ in paare)
+        n1 = sum((v.votes.get(a) or 0) + (v.votes.get(b) or 0) for _, v in paare)
+        return n2 / n1 if n1 > 0 else None
+
+    faktor_alle = faktor_von(gezaehlt) or 1.0
+    faktor = {postal: faktor_von([(d, v) for d, v in gezaehlt if d.postal == postal]) or faktor_alle
+              for postal in (False, True)}
     n2 = sum((d.votes.get(a) or 0) + (d.votes.get(b) or 0) for d, _ in gezaehlt)
-    n1 = sum((v.votes.get(a) or 0) + (v.votes.get(b) or 0) for _, v in gezaehlt)
-    faktor = n2 / n1 if n1 > 0 else 1.0
 
     # Reste der gezählten Bezirke — in Stimmen, damit große Bezirke mehr wiegen.
     reste: list[float] = []
+    # Und als Anteil je Topf, (Rest, Gewicht): daraus die Unsicherheit des
+    # SCHWUNGS selbst.
+    reste_topf: dict[bool, list[tuple[float, int]]] = {False: [], True: []}
     for d, v in gezaehlt:
         p = _share(v.votes.get(a), v.votes.get(b))
         q = _share(d.votes.get(a), d.votes.get(b))
         if p is None or q is None:
             continue
         n = (d.votes.get(a) or 0) + (d.votes.get(b) or 0)
-        reste.append((q - (p + (s_brief if d.postal else s_urne))) * n)
+        rest = q - (p + (s_brief if d.postal else s_urne))
+        reste.append(rest * n)
+        reste_topf[d.postal].append((rest, n))
     sig_r = statistics.pstdev(reste) if len(reste) > 1 else 0.0
     n_bar = n2 / len(gezaehlt)
 
-    ist_a = sum(d.votes.get(a) or 0 for d, _ in gezaehlt)
-    ist_b = sum(d.votes.get(b) or 0 for d, _ in gezaehlt)
+    ist_a = sum(d.votes.get(a) or 0 for d, _ in gezaehlt) + sum(d.votes.get(a) or 0 for d in fremd_gezaehlt)
+    ist_b = sum(d.votes.get(b) or 0 for d, _ in gezaehlt) + sum(d.votes.get(b) or 0 for d in fremd_gezaehlt)
     erw_a = erw_b = 0.0
     varianz = 0.0
     offen_topf_stimmen = {False: 0.0, True: 0.0}
     open_max = 0
+    #: Ein offener Bezirk ohne Obergrenze — dann ist nichts „rechnerisch“ entschieden.
+    unbegrenzt = False
     for d, v in offen:
+        # Die Obergrenze ZUERST: Sie gilt für jeden offenen Bezirk, auch für
+        # einen, aus dem der erste Wahlgang keine Hochrechnung hergibt. Bis
+        # 09/2026 stand sie hinter dem `continue` unten.
+        if d.postal or not (d.eligible or v.eligible):
+            if not v.valid_votes:
+                unbegrenzt = True
+            open_max += int(round(POSTAL_GROWTH_CAP * (v.valid_votes or 0)))
+        else:
+            open_max += int(d.eligible or v.eligible or 0)
         p = _share(v.votes.get(a), v.votes.get(b))
-        n = ((v.votes.get(a) or 0) + (v.votes.get(b) or 0)) * faktor
+        n = ((v.votes.get(a) or 0) + (v.votes.get(b) or 0)) * faktor[d.postal]
         if p is None or n <= 0:
             continue
         s = s_brief if d.postal else s_urne
@@ -171,11 +247,40 @@ def project(current: Sequence[MayorDistrict], first_round: Sequence[MayorDistric
         erw_b += (1 - anteil) * n
         varianz += (2 * sig_r * n / n_bar) ** 2 if n_bar > 0 else 0.0
         offen_topf_stimmen[d.postal] += n
-        # Obergrenze dessen, was hier noch kommen kann.
-        if d.postal or not (d.eligible or v.eligible):
-            open_max += int(round(POSTAL_GROWTH_CAP * (v.valid_votes or 0)))
+    # Offene Bezirke ohne ersten Wahlgang: so groß wie ein gezählter Bezirk
+    # desselben Topfes, mit dem Anteil, den der Topf bisher hat — grob, und
+    # deshalb mit zehn Punkten Streuung. Eine Obergrenze haben sie nur als
+    # Urnenbezirk mit Wahlberechtigten.
+    for d in fremd_offen:
+        topf = [(dd.votes.get(a) or 0, dd.votes.get(b) or 0) for dd, _ in gezaehlt if dd.postal == d.postal]
+        topf += [(dd.votes.get(a) or 0, dd.votes.get(b) or 0) for dd in fremd_gezaehlt if dd.postal == d.postal]
+        summe_a, summe_b = sum(x for x, _ in topf), sum(y for _, y in topf)
+        n = (summe_a + summe_b) / len(topf) if topf else n_bar
+        anteil = summe_a / (summe_a + summe_b) if summe_a + summe_b > 0 else (ist_a / (ist_a + ist_b) if ist_a + ist_b else 0.5)
+        erw_a += anteil * n
+        erw_b += (1 - anteil) * n
+        varianz += (2 * FREMD_SHARE_SD * n) ** 2
+        if d.postal or not d.eligible:
+            unbegrenzt = True
         else:
-            open_max += int(d.eligible or v.eligible or 0)
+            open_max += int(d.eligible)
+    if fremd_gezaehlt or fremd_offen:
+        caveats.append(f"{len(fremd_gezaehlt) + len(fremd_offen)} Wahlbezirke gibt es im ersten Wahlgang nicht — "
+                       "ihre Stimmen zählen mit, ihre Hochrechnung ist grob.")
+    # Der Schwung ist selbst nur geschätzt — und ein Fehler darin trifft ALLE
+    # offenen Bezirke eines Topfes in dieselbe Richtung. Er wächst deshalb mit
+    # den offenen Stimmen, nicht mit ihrer Wurzel. Bis 09/2026 fehlte dieser
+    # Term, und die Chance war in knappen Rennen viel zu sicher: An 2021 mit
+    # verschobenen Anteilen gemessen, lag „99 %" in 12 von 100 Fällen daneben
+    # (tests/test_runoff_model.py, Kalibrierung).
+    for postal, zeilen in reste_topf.items():
+        if not zeilen or offen_topf_stimmen[postal] <= 0:
+            continue
+        gewicht = sum(n for _, n in zeilen)
+        streuung = math.sqrt(sum(n * r * r for r, n in zeilen) / gewicht) if gewicht else 0.0
+        streuung = max(streuung, SWING_SD_FLOOR)
+        k_eff = gewicht ** 2 / sum(n * n for _, n in zeilen)
+        varianz += (2 * SWING_SE_SCALE * streuung / math.sqrt(k_eff) * offen_topf_stimmen[postal]) ** 2
     # Der Topf ohne gezählten Bezirk: sein Schwung ist geliehen.
     if not urne and offen_topf_stimmen[False] > 0:
         varianz += (2 * POT_SWING_SD * offen_topf_stimmen[False]) ** 2
@@ -189,12 +294,18 @@ def project(current: Sequence[MayorDistrict], first_round: Sequence[MayorDistric
     sigma = math.sqrt(varianz)
     actual_leader = a if ist_a >= ist_b else b
     actual_lead = abs(ist_a - ist_b)
-    decided = not offen or actual_lead > open_max
+    alles_gezaehlt = not offen and not fremd_offen
+    # Entschieden heißt: Der Vorsprung ist größer als alles, was noch kommen
+    # kann — und es GIBT einen Vorsprung. Bei Gleichstand am Ende entscheidet
+    # das Los (§ 45c Abs. 2 NKWG), nicht die Reihenfolge der Slugs.
+    decided = actual_lead > 0 and (alles_gezaehlt or (not unbegrenzt and actual_lead > open_max))
     n_gezaehlt = len(gezaehlt)
 
     chance: int | None = None
     if decided:
         chance = None
+    elif alles_gezaehlt:
+        caveats.append("Gleichstand nach allen Bezirken — nach § 45c Abs. 2 NKWG entscheidet das Los.")
     elif n_gezaehlt < MIN_DISTRICTS:
         caveats.append(f"Erst {n_gezaehlt} von {n_gezaehlt + len(offen)} Bezirken gezählt — zu früh für eine Wahrscheinlichkeit.")
     elif sigma > 0:
@@ -205,15 +316,29 @@ def project(current: Sequence[MayorDistrict], first_round: Sequence[MayorDistric
                    "schon gezählten Bezirke — Urne und Briefwahl getrennt. Über die Wähler*innen der "
                    "ausgeschiedenen Kandidaturen weiß es nichts.")
 
+    # Die Aufholrechnung — Arithmetik auf dem Modell, kein zweites Modell:
+    # Rückstand r, erwartete offene Stimmen N; nötig ist x mit
+    # x·N − (1−x)·N = r, also x = (N + r) / 2N.
+    offen_erwartet = erw_a + erw_b
+    trailing: str | None = None
+    needed: float | None = None
+    erwartet_trailing: float | None = None
+    if not decided and offen_erwartet > 0 and ist_a != ist_b:
+        trailing = b if actual_leader == a else a
+        needed = round(100 * (offen_erwartet + actual_lead) / (2 * offen_erwartet), 1)
+        erwartet_trailing = round(100 * (erw_b if trailing == b else erw_a) / offen_erwartet, 1)
+
     return RunoffProjection(
         shares={a: round(100 * proj_a / gesamt, 1) if gesamt else 0.0,
                 b: round(100 * proj_b / gesamt, 1) if gesamt else 0.0},
         projected_votes={a: int(round(proj_a)), b: int(round(proj_b))},
         leader=leader, lead_votes=int(round(lead)), chance_pct=chance,
-        counted_ballot=sum(1 for d, _ in gezaehlt if not d.postal),
-        counted_postal=sum(1 for d, _ in gezaehlt if d.postal),
-        open_ballot=sum(1 for d, _ in offen if not d.postal),
-        open_postal=sum(1 for d, _ in offen if d.postal),
+        counted_ballot=sum(1 for d, _ in gezaehlt if not d.postal) + sum(1 for d in fremd_gezaehlt if not d.postal),
+        counted_postal=sum(1 for d, _ in gezaehlt if d.postal) + sum(1 for d in fremd_gezaehlt if d.postal),
+        open_ballot=sum(1 for d, _ in offen if not d.postal) + sum(1 for d in fremd_offen if not d.postal),
+        open_postal=sum(1 for d, _ in offen if d.postal) + sum(1 for d in fremd_offen if d.postal),
         decided=decided, actual_leader=actual_leader, actual_lead_votes=actual_lead,
         open_votes_max=open_max, sigma_votes=sigma, caveats=tuple(caveats),
+        trailing=trailing, needed_share_pct=needed, trailing_expected_share_pct=erwartet_trailing,
+        open_votes_expected=int(round(offen_erwartet)),
     )

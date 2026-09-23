@@ -5565,6 +5565,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/wahlabend/stichwahl/bild.png": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stichwahl Bild
+         * @description Der Stand der Stichwahl als Bild zum Teilen (PNG) — dieselben Zahlen
+         *     wie ``/api/wahlabend/stichwahl``, mit Lotti. Öffentlich wie die Seite:
+         *     Messenger holen es ohne Konto ab, wenn sie den Link auspacken.
+         */
+        get: operations["stichwahl_bild_api_wahlabend_stichwahl_bild_png_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/wahlabend/stichwahl/potenzial": {
         parameters: {
             query?: never;
@@ -10996,6 +11018,37 @@ export interface components {
             total: number;
         };
         /**
+         * MayorDistrictReport
+         * @description Ein gerade gemeldeter Wahlbezirk — eine Zeile im Ticker der
+         *     Stichwahl-Seite (Tims Wunsch 23.09.2026).
+         */
+        MayorDistrictReport: {
+            /** Area */
+            area: number;
+            /** At */
+            at: string;
+            /** First Round Shares */
+            first_round_shares: {
+                [key: string]: number;
+            };
+            /** Leader */
+            leader: string | null;
+            /** Name */
+            name: string;
+            /** Number */
+            number: number;
+            /** Postal */
+            postal: boolean;
+            /** Shares */
+            shares: {
+                [key: string]: number;
+            };
+            /** Votes */
+            votes: {
+                [key: string]: number;
+            };
+        };
+        /**
          * MayorElectionInfo
          * @description Welche Wahl das hier ist — aus ``kommunalwahl/wahlen/``.
          *
@@ -11031,6 +11084,8 @@ export interface components {
             chance_pct: number | null;
             /** Leader */
             leader: string | null;
+            /** New Districts */
+            new_districts: number[];
             /** Projected Shares */
             projected_shares: {
                 [key: string]: number;
@@ -11086,6 +11141,8 @@ export interface components {
             /** Phase */
             phase: string;
             projection?: components["schemas"]["RunoffProjection"];
+            /** Recent Districts */
+            recent_districts: components["schemas"]["MayorDistrictReport"][];
             /** Reports Expected */
             reports_expected: number;
             /** Reports Received */
@@ -13517,10 +13574,14 @@ export interface components {
             lead_votes: number;
             /** Leader */
             leader: string;
+            /** Needed Share Pct */
+            needed_share_pct: number | null;
             /** Open Ballot */
             open_ballot: number;
             /** Open Postal */
             open_postal: number;
+            /** Open Votes Expected */
+            open_votes_expected: number;
             /** Open Votes Max */
             open_votes_max: number;
             /** Projected Votes */
@@ -13531,6 +13592,10 @@ export interface components {
             shares: {
                 [key: string]: number;
             };
+            /** Trailing */
+            trailing: string | null;
+            /** Trailing Expected Share Pct */
+            trailing_expected_share_pct: number | null;
         };
         /**
          * RunoffStrengthGroup
@@ -21772,6 +21837,49 @@ export interface operations {
             };
         };
     };
+    stichwahl_bild_api_wahlabend_stichwahl_bild_png_get: {
+        parameters: {
+            query?: {
+                /** @description „beitrag“ = 1080×1350 (4:5), „story“ = 1080×1920 (9:16), „quer“ = 1200×630 */
+                format?: string;
+                /** @description gesetzt = Generalprobe mit den Zahlen des ersten Wahlgangs */
+                probe?: string | null;
+                /** @description Generalprobe: nur die ersten N Wahlbezirke ausgezählt */
+                counted?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Der Stand der Stichwahl als Bild zum Teilen (PNG): die beiden Namen mit Anteil, Balken und Stimmen, der Auszählungsstand, die Hochrechnung und Lotti. `?format=beitrag` (1080×1350, Vorgabe), `story` (1080×1920) oder `quer` (1200×630, Link-Vorschau). 15 Sekunden cachebar. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": string;
+                };
+            };
+            /** @description Wahlabend nicht freigeschaltet, oder es steht keine Stichwahl an. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     stichwahl_potenzial_api_wahlabend_stichwahl_potenzial_get: {
         parameters: {
             query?: {
@@ -21916,4 +22024,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 3e1b864b68766a78b561e7474d1ad9cdd9e1c77d16146000829f7a007c138242
+// vertrag-sha256: fef36442312ee30a6c8983071603ff5d088e3f40bbfe31fe3a501b09edd633ba

@@ -13,7 +13,12 @@ export const metadata: Metadata = {
     siteName: "Ratslotse",
     title: "Stichwahl zum Oberbürgermeisteramt — Oldenburg 2026",
     description: "Auszählungsstand und Ergebnis der Stichwahl, live aus den Zahlen der Stadt.",
+    // Das Bild zeigt den Stand von JETZT: Wer den Link am Abend in einen
+    // Chat stellt, bekommt die Zahlen als Vorschau (Backend rendert es,
+    // `runoff_image.py`). Relativ, `metadataBase` macht es absolut.
+    images: [{ url: "/api/wahlabend/stichwahl/bild.png?format=quer", width: 1200, height: 630, alt: "Stand der OB-Stichwahl in Oldenburg" }],
   },
+  twitter: { card: "summary_large_image" },
 };
 
 export default function StichwahlLayout({ children }: { children: React.ReactNode }) {

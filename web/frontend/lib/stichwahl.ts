@@ -225,3 +225,114 @@ export function flaechenAlpha(share: number, max: number, live: boolean): number
   const a = 0.22 + 0.68 * anteil;
   return live ? a : a * 0.5;
 }
+
+/* ── Neue Zahlen sichtbar machen (Tims Wunsch 23.09.2026) ───────────────── */
+
+/** Wer die jüngste Meldung gewonnen hat: die Kandidatur mit dem größten
+ *  Zuwachs an Stimmen in den gerade dazugekommenen Bezirken. `null` bei
+ *  Gleichstand oder ohne Zuwachs — dann leuchtet nichts auf.
+ *
+ *  Bewusst der Zuwachs und nicht die Veränderung des Anteils: Wer mit 45 %
+ *  zurückliegt, gewinnt an Anteil schon mit einer 48-%-Meldung, obwohl der
+ *  andere darin mehr Stimmen holte. „Wer hat diese Bezirke gewonnen" ist die
+ *  Frage, die man beim Aufleuchten im Kopf hat. */
+export function meldungsGewinner(m: Meldung | null): string | null {
+  if (!m || m.bezirke <= 0) return null;
+  const reihe = Object.entries(m.zuwachs).sort((a, b) => b[1] - a[1]);
+  if (reihe.length === 0 || reihe[0][1] <= 0) return null;
+  if (reihe.length > 1 && reihe[0][1] === reihe[1][1]) return null;
+  return reihe[0][0];
+}
+
+/** Wie oft die Seite nachfragt: ab Wahlschluss alle 15 Sekunden, bis alles
+ *  gezählt ist; sonst jede Minute. Schneller hilft nicht — das Backend holt
+ *  selbst alle 15 s, und das CDN des Votemanagers hält jede Datei bis zu
+ *  60 s (`election/mayor.py`, `TTL_LIVE`). */
+export const TAKT_LIVE_MS = 15_000;
+export const TAKT_RUHE_MS = 60_000;
+
+export function abrufTakt(daten: Pick<Stichwahl, "phase" | "election" | "dataset"> | undefined, jetzt: Date = new Date()): number {
+  if (!daten) return TAKT_RUHE_MS;
+  if (daten.dataset === "probe") return TAKT_RUHE_MS;
+  if (daten.phase === "complete") return TAKT_RUHE_MS;
+  return zeitlage(daten.election.polls_close, jetzt).phase === "laeuft" ? TAKT_LIVE_MS : TAKT_RUHE_MS;
+}
+
+/* ── Mitfiebern: wem man die Daumen drückt ─────────────────────────────── */
+
+/** Nur im eigenen Browser: Wem jemand die Daumen drückt, geht niemanden
+ *  etwas an, und der Server erfährt es nie. Ein gesperrter Speicher
+ *  (privates Fenster) heißt „niemand" — nie ein Absturz. */
+const FAVORIT_SCHLUESSEL = "ratslotse:stichwahl-favorit";
+
+export function ladeFavorit(wahl: string, erlaubt: readonly string[]): string | null {
+  try {
+    const roh = localStorage.getItem(FAVORIT_SCHLUESSEL);
+    if (!roh) return null;
+    const { wahl: w, slug } = JSON.parse(roh) as { wahl?: unknown; slug?: unknown };
+    return w === wahl && typeof slug === "string" && erlaubt.includes(slug) ? slug : null;
+  } catch {
+    return null;
+  }
+}
+
+export function speichereFavorit(wahl: string, slug: string | null): void {
+  try {
+    if (slug === null) localStorage.removeItem(FAVORIT_SCHLUESSEL);
+    else localStorage.setItem(FAVORIT_SCHLUESSEL, JSON.stringify({ wahl, slug }));
+  } catch {
+    // Privates Fenster: Die Wahl gilt dann eben nur bis zum Neuladen.
+  }
+}
+
+/* ── Countdown bis 18 Uhr (Tims Wunsch 23.09.2026) ─────────────────────── */
+
+/** Wie lange noch bis Wahlschluss, als Text — `null`, sobald die Wahllokale
+ *  zu sind. Am Wahltag selbst sekundengenau („2:14:07“), davor in Tagen und
+ *  Stunden: Wer eine Woche vorher die Seite aufruft, braucht keine Sekunden. */
+export function countdown(pollsClose: string, jetzt: Date = new Date()): { rest: number; text: string; sekundengenau: boolean } | null {
+  const schluss = new Date(pollsClose).getTime();
+  if (!Number.isFinite(schluss)) return null;
+  const rest = schluss - jetzt.getTime();
+  if (rest <= 0) return null;
+  const s = Math.floor(rest / 1000);
+  const tage = Math.floor(s / 86_400);
+  const std = Math.floor((s % 86_400) / 3600);
+  const min = Math.floor((s % 3600) / 60);
+  const sek = s % 60;
+  if (rest < 86_400_000) {
+    const zwei = (n: number) => String(n).padStart(2, "0");
+    return { rest, text: `${std}:${zwei(min)}:${zwei(sek)}`, sekundengenau: true };
+  }
+  return { rest, text: `${tage} ${tage === 1 ? "Tag" : "Tage"}, ${std} ${std === 1 ? "Stunde" : "Stunden"}`, sekundengenau: false };
+}
+
+/* ── Die Aufholrechnung ─────────────────────────────────────────────────── */
+
+/** „Rohr bräuchte 51,1 % der noch offenen Stimmen — das Modell erwartet dort
+ *  47,4 %.“ Die Zahlen rechnet das Backend (`runoff_model`); hier steht nur
+ *  der Satz. `null`, wenn es nichts aufzuholen gibt. */
+export function aufholText(p: StichwahlHochrechnung, kandidaten: readonly StichwahlKandidat[]): string | null {
+  if (p.decided || !p.trailing || p.needed_share_pct === null) return null;
+  const k = kandidaten.find((x) => x.slug === p.trailing);
+  const wer = k ? nachname(k) : p.trailing;
+  const zahl = (v: number) => `${v.toFixed(1).replace(".", ",")} %`;
+  if (p.needed_share_pct > 100) {
+    return `${wer} bräuchte mehr als alle Stimmen, die das Modell in den offenen Bezirken erwartet.`;
+  }
+  const erwartet = p.trailing_expected_share_pct;
+  return erwartet === null
+    ? `${wer} bräuchte ${zahl(p.needed_share_pct)} der noch offenen Stimmen.`
+    : `${wer} bräuchte ${zahl(p.needed_share_pct)} der noch offenen Stimmen — das Modell erwartet dort ${zahl(erwartet)}.`;
+}
+
+/* ── Das Bild zum Teilen ────────────────────────────────────────────────── */
+
+export type BildFormat = "beitrag" | "story" | "quer";
+
+export function stichwahlBildPfad(format: BildFormat, probe: string | null, counted: string | null): string {
+  const q = new URLSearchParams({ format });
+  if (probe) q.set("probe", probe);
+  if (counted && /^\d+$/.test(counted)) q.set("counted", counted);
+  return `/wahlabend/stichwahl/bild.png?${q.toString()}`;
+}
