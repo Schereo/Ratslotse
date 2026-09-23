@@ -195,11 +195,20 @@ def test_kennungen_existieren_in_der_datenbank():
 
 
 @braucht_daten
-def test_seiten_kennungen_loesen_auf():
-    """Personen-Slug und Orts-ID so, wie Lottis Gegenstands-Block sie auflöst."""
+def test_seiten_kennungen_loesen_auf(tmp_path):
+    """Personen-Slug und Orts-ID so, wie Lottis Gegenstands-Block sie auflöst.
+
+    Auf einer Kopie: ``CouncilStore`` migriert beim Öffnen, und die echte
+    Datei unter data/ fasst die Suite nicht schreibend an (conftest.py)."""
     from council.store import CouncilStore
 
-    store = CouncilStore(DB)
+    kopie = tmp_path / "council.sqlite"
+    quelle = sqlite3.connect(f"file:{DB}?mode=ro", uri=True)
+    ziel = sqlite3.connect(kopie)
+    quelle.backup(ziel)
+    quelle.close()
+    ziel.close()
+    store = CouncilStore(kopie)
     kaputt = []
     for f in FAELLE:
         refs, route = f.get("refs") or {}, f.get("route")
