@@ -459,6 +459,8 @@ class QuizAnswerIn(BaseModel):
     selected_index: int | None = Field(default=None, ge=0, le=3)  # Multiple Choice
     value: float | None = None                                    # Schätzfrage (Slider)
     time_ms: int | None = Field(default=None, ge=0)
+    # Reihenfolge-Frage: die vier Antworten in der getippten Reihenfolge.
+    order: list[int] | None = Field(default=None, min_length=4, max_length=4)
 
 
 class QuizRateIn(BaseModel):

@@ -9,15 +9,16 @@ from __future__ import annotations
 import random
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
-from council import geo, places
+from council import geo, places, quiz_formats
 from council.store import CouncilStore
 from kern.store import Store
 
 from ..antworten import (Ok, OkWithId, QuizAreas, QuizDailyRound, QuizDayCompleted, QuizFlagged,
                          QuizMapResult, QuizMapRound, QuizOwnQuestions, QuizResult, QuizRound,
                          QuizScore)
+from ..clients import is_app_client
 from ..deps import get_council_store, get_store, require_active, require_admin
 from ..schemas import (QuizAnswerIn, QuizDailyIn, QuizMapIn, QuizRateIn,
                        UserQuizAnswerIn, UserQuizQuestionIn)
@@ -121,7 +122,8 @@ def areas(user: dict = Depends(require_active),
 
 
 @router.get("/round")
-def round_(areas: str = Query(..., description="komma-separiert, z. B. electoral_district:3,district:Osternburg"),
+def round_(request: Request,
+           areas: str = Query(..., description="komma-separiert, z. B. electoral_district:3,district:Osternburg"),
            categories: str = "", n: int = Query(10, ge=1, le=30),
            user: dict = Depends(require_active),
            store: Store = Depends(get_store),
@@ -132,7 +134,8 @@ def round_(areas: str = Query(..., description="komma-separiert, z. B. electoral
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Kein gültiges Gebiet gewählt.")
     cats = [c for c in categories.split(",") if c in CATEGORIES]
     questions = council.pick_quiz_questions(
-        pairs, cats or None, store.quiz_answered_ids(user["id"]), n)
+        pairs, cats or None, store.quiz_answered_ids(user["id"]), n,
+        web=not is_app_client(request))
     return {"questions": questions}
 
 
@@ -162,7 +165,16 @@ def answer(payload: QuizAnswerIn,
             "source_type": q.get("source_type"), "source_ref": q.get("source_ref"),
             "detail": q.get("detail"), "topic": q.get("topic"),
             "map": q.get("map"), "image": q.get("image"), "chart": q.get("chart")}
-    if q.get("qtype") == "estimate":
+    if q.get("qtype") == "order":
+        guess = payload.order
+        if not guess or sorted(guess) != list(range(len(q["options"]))):
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Bitte alle vier in eine Reihenfolge bringen.")
+        right = quiz_formats.correct_order(q["options"], q["chart"])
+        dist = quiz_formats.order_distance(guess, right)
+        pts = {0: 3, 1: 2, 2: 1}.get(dist, 0)
+        correct = dist == 0
+        resp.update({"correct": correct, "correct_index": -1, "points": pts, "correct_order": right})
+    elif q.get("qtype") == "estimate":
         if payload.value is None:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "Schätzwert fehlt.")
         correct, pts = _estimate_score(payload.value, q.get("answer_value"), diff_pts)
@@ -190,14 +202,14 @@ def rate(payload: QuizRateIn,
 
 
 @router.get("/review")
-def review(n: int = Query(10, ge=1, le=30),
+def review(request: Request, n: int = Query(10, ge=1, le=30),
            user: dict = Depends(require_active),
            store: Store = Depends(get_store),
            council: CouncilStore = Depends(get_council_store)) -> QuizRound:
     """„Meine Fehler" — zuletzt falsch beantwortete Fragen zum Wiederholen
     (spaced repetition). Richtig beantwortet fliegt eine Frage aus dem Stapel."""
     ids = store.quiz_wrong_question_ids(user["id"])
-    return {"questions": council.pick_quiz_questions_by_ids(ids, n)}
+    return {"questions": council.pick_quiz_questions_by_ids(ids, n, web=not is_app_client(request))}
 
 
 @router.get("/daily")

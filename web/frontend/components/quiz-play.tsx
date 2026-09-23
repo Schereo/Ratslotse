@@ -32,6 +32,7 @@ export const CATEGORY_LABEL: Record<string, string> = {
 const FORMAT_LABEL: Record<string, string> = {
   verdict: "Antrag",
   compare: "Vergleich",
+  order: "Reihenfolge",
 };
 const SOURCE_LABEL: Record<string, string> = {
   wikipedia: "Wikipedia",
@@ -120,6 +121,8 @@ export function QuizPlay({ questions, onExit, onComplete, title, answerPath = "/
   const [guess, setGuess] = useState<number | null>(null);
   const [showMore, setShowMore] = useState(false);
   const [hintShown, setHintShown] = useState(false);
+  // Reihenfolge-Frage: die angetippten Antworten, Platz 1 zuerst.
+  const [orderPicks, setOrderPicks] = useState<number[]>([]);
 
   const q = questions[idx];
   const isEstimate = q.qtype === "estimate";
@@ -159,6 +162,25 @@ export function QuizPlay({ questions, onExit, onComplete, title, answerPath = "/
     }
   }
 
+  function tapOrder(i: number) {
+    if (chosen !== null) return;
+    // Nochmal antippen nimmt die Antwort (und alles danach) wieder heraus.
+    setOrderPicks((xs) => (xs.includes(i) ? xs.slice(0, xs.indexOf(i)) : [...xs, i]));
+  }
+
+  async function submitOrder() {
+    if (chosen !== null || orderPicks.length !== q.options.length) return;
+    setChosen(0);
+    try {
+      const r = await api.post<QuizAnswerResult>(answerPath, { question_id: q.id, order: orderPicks });
+      setResult(r);
+      setPoints((p) => p + r.points);
+      if (r.correct) setCorrect((c) => c + 1);
+    } catch {
+      setResult({ correct: false, correct_index: -1, points: 0, explanation: null, source_type: null, source_ref: null });
+    }
+  }
+
   function next() {
     if (idx + 1 >= questions.length) {
       setDone(true);
@@ -167,7 +189,7 @@ export function QuizPlay({ questions, onExit, onComplete, title, answerPath = "/
     }
     setIdx((i) => i + 1);
     setChosen(null); setResult(null); setRated(null); setGuess(null); setShowMore(false);
-    setHintShown(false); setComment(""); setCommentSent(false);
+    setHintShown(false); setComment(""); setCommentSent(false); setOrderPicks([]);
   }
 
   function rate(verdict: "gut" | "schlecht") {
@@ -276,6 +298,49 @@ export function QuizPlay({ questions, onExit, onComplete, title, answerPath = "/
               <Button className="mt-4 w-full" onClick={() => submitEstimate(eCurrent)}>
                 Schätzung abgeben
               </Button>
+            )}
+          </div>
+        ) : q.qtype === "order" ? (
+          /* Reihenfolge: nacheinander antippen = Platz 1, 2, 3, 4. Kein Ziehen —
+             auf dem Telefon unzuverlässig und ohne Tastatur nicht bedienbar. */
+          <div className="mt-4">
+            <div className="flex flex-col gap-2">
+              {q.options.map((opt, i) => {
+                const rank = orderPicks.indexOf(i);
+                const rightRank = result?.correct_order ? result.correct_order.indexOf(i) : -1;
+                const state = !result ? "idle" : rank === rightRank ? "correct" : "wrong";
+                const amount = result ? compareAmount(result, opt) : null;
+                return (
+                  <button key={i} type="button" disabled={chosen !== null} onClick={() => tapOrder(i)}
+                    aria-label={rank >= 0 ? `${opt}, Platz ${rank + 1}` : opt}
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg border px-3 py-3 text-left text-sm transition-colors duration-tipp",
+                      state === "idle" && (rank >= 0 ? "border-primary/40 bg-primary/5" : "border-border hover:border-primary/50 hover:bg-primary/5"),
+                      state === "correct" && "border-green-600/40 bg-green-500/10",
+                      state === "wrong" && "border-red-600/40 bg-red-500/10",
+                    )}>
+                    <span className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold tabular-nums",
+                      rank >= 0 ? "bg-primary text-primary-foreground" : "border border-dashed border-border text-muted-foreground")}>
+                      {rank >= 0 ? rank + 1 : ""}
+                    </span>
+                    <span className="flex-1 text-foreground">{opt}</span>
+                    {result && (
+                      <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                        Platz {rightRank + 1}{amount ? ` · ${amount}` : ""}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            {chosen === null && (
+              <div className="mt-3 flex items-center justify-between gap-2">
+                <button type="button" onClick={() => setOrderPicks([])} disabled={!orderPicks.length}
+                  className="text-sm text-muted-foreground hover:text-foreground disabled:opacity-40">Zurücksetzen</button>
+                <Button onClick={() => void submitOrder()} disabled={orderPicks.length !== q.options.length}>
+                  Reihenfolge prüfen
+                </Button>
+              </div>
             )}
           </div>
         ) : q.format === "verdict" || q.format === "compare" ? (
@@ -388,7 +453,7 @@ export function QuizPlay({ questions, onExit, onComplete, title, answerPath = "/
 
             {/* Diagramm der Auflösung (Haushalts-Fragen): Balken, Donut oder
                 Trendlinie — animiert, der gefragte Bereich hervorgehoben. */}
-            {result.chart && q.format !== "compare" && <QuizChart chart={result.chart} className="mt-3" />}
+            {result.chart && q.format !== "compare" && q.qtype !== "order" && <QuizChart chart={result.chart} className="mt-3" />}
 
             {/* „Mehr dazu": ausführliche Erklärung, Foto (mit Bildnachweis) und
                 eine kleine Karte — nur wenn zur Frage vorhanden, aufklappbar. */}

@@ -133,8 +133,13 @@ class QuizMixin(StoreBasis):
         ).fetchone()
         return self._quiz_row(r, with_answer=with_answer) if r else None
 
+    #: Fragetypen, die nur das Web darstellen kann. Die ausgelieferte App kennt
+    #: ``mc`` und ``estimate`` und zeigte eine Reihenfolge-Frage als Multiple
+    #: Choice mit einer richtigen Antwort — also falsch.
+    WEB_ONLY_QTYPES = ("order",)
+
     def pick_quiz_questions(self, areas: list[tuple[str, str]], categories: list[str] | None,
-                            exclude_ids: list[int] | None, limit: int) -> list[dict]:
+                            exclude_ids: list[int] | None, limit: int, *, web: bool = True) -> list[dict]:
         """Fragen für eine Runde: aus den gewählten Gebieten (area_type, area_key),
         optional auf Kategorien gefiltert, ohne die schon beantworteten
         (exclude_ids) — aufgefüllt mit beantworteten, falls sonst zu wenige.
@@ -147,6 +152,9 @@ class QuizMixin(StoreBasis):
         if categories:
             sql += f" AND category IN ({','.join('?' * len(categories))})"
             params += categories
+        if not web:
+            sql += f" AND qtype NOT IN ({','.join('?' * len(self.WEB_ONLY_QTYPES))})"
+            params += list(self.WEB_ONLY_QTYPES)
         rows = self._conn.execute(sql, params).fetchall()
         seen = set(exclude_ids or [])
         fresh = [r for r in rows if r["id"] not in seen]
@@ -161,15 +169,15 @@ class QuizMixin(StoreBasis):
         picked = (fresh + used)[:limit]
         return [self._quiz_row(r, with_answer=False) for r in picked]
 
-    def pick_quiz_questions_by_ids(self, ids: list[int], limit: int) -> list[dict]:
+    def pick_quiz_questions_by_ids(self, ids: list[int], limit: int, *, web: bool = True) -> list[dict]:
         """Aktive Fragen (OHNE Lösung) zu einer Id-Liste, gemischt und gedeckelt —
         für den „Meine Fehler"-Wiederholmodus. Retirte Fragen fallen raus."""
         if not ids:
             return []
         ph = ",".join("?" * len(ids))
-        rows = list(self._conn.execute(
+        rows = [r for r in self._conn.execute(
             f"SELECT * FROM council_quiz_questions WHERE id IN ({ph}) AND status = 'active'",
-            ids).fetchall())
+            ids).fetchall() if web or r["qtype"] not in self.WEB_ONLY_QTYPES]
         import random
         random.shuffle(rows)
         return [self._quiz_row(r, with_answer=False) for r in rows[:limit]]
@@ -179,7 +187,9 @@ class QuizMixin(StoreBasis):
         OHNE Lösung — derselbe Satz für alle an einem Tag. Über alle Gebiete,
         aber nur reizvolle: Sie ist das Schaufenster des Quiz."""
         ids = [r[0] for r in self._conn.execute(
-            "SELECT id FROM council_quiz_questions WHERE status = 'active' "
+            # Ohne Reihenfolge-Fragen: Die Challenge ist für alle dieselbe,
+            # auch für die App.
+            "SELECT id FROM council_quiz_questions WHERE status = 'active' AND qtype != 'order' "
             "AND (appeal IS NULL OR appeal >= ?) ORDER BY id", (MIN_APPEAL,)
         ).fetchall()]
         if not ids:

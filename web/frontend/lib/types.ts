@@ -562,6 +562,8 @@ export interface QuizAnswerResult {
   topic?: string | null;
   map?: { lat: number; lon: number; label: string | null; geojson?: object | null } | null;
   image?: QuizImageCredit | null;
+  /** Reihenfolge-Frage: die richtige Reihenfolge als Indizes, größter zuerst. */
+  correct_order?: number[];
   /** Diagramm der Auflösung (Haushalts-Fragen): Balken, Donut oder Trendlinie. */
   chart?: {
     type?: "bars" | "share" | "trend";

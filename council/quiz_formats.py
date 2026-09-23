@@ -283,5 +283,73 @@ def _cap(s: str) -> str:
     return s[:1].upper() + s[1:]
 
 
+# --- Reihenfolge: vier Posten nach Größe (Plan Q8) --------------------------
+
+#: Benachbarte Posten liegen mindestens so weit auseinander — darunter wäre
+#: die Reihenfolge Münzwurf.
+ORDER_MIN_STEP = 1.3
+ORDER_MAX = 12
+ORDER_PER_PRODUCT = 3
+
+
+def order_questions(store) -> list[dict]:
+    """Vier Haushaltsprodukte, zu sortieren vom größten zum kleinsten Posten.
+    ``qtype = 'order'``; die Lösung steht im Diagramm (Balken absteigend), das
+    die Auflösung ohnehin zeigt. Die App bekommt diese Fragen nicht
+    (``WEB_ONLY_QTYPES``)."""
+    import itertools
+    year, rows = store.quiz_product_rows(list(PRODUCTS))
+    if year is None:
+        return []
+    by_no = {r["product_no"]: r for r in rows}
+    fours = []
+    for combo in itertools.combinations(sorted(by_no), 4):
+        vals = sorted((by_no[n]["expenses"] for n in combo), reverse=True)
+        if all(a / b >= ORDER_MIN_STEP for a, b in zip(vals, vals[1:])):
+            fours.append(combo)
+    fours.sort(key=lambda c: _key("order-pick", *c))
+    used: dict[str, int] = {}
+    out = []
+    for combo in fours:
+        if len(out) >= ORDER_MAX:
+            break
+        if any(used.get(n, 0) >= ORDER_PER_PRODUCT for n in combo):
+            continue
+        for n in combo:
+            used[n] = used.get(n, 0) + 1
+        ranked = sorted(combo, key=lambda n: -by_no[n]["expenses"])
+        shown = sorted(combo, key=lambda n: _key("order-side", n, *combo))
+        chart = {"type": "bars", "title": f"Geplante Ausgaben {year}", "unit": "Mio. Euro",
+                 "items": [{"label": PRODUCTS[n][0], "value": round(by_no[n]["expenses"] / 1_000_000, 1)}
+                           for n in ranked]}
+        top, low = by_no[ranked[0]], by_no[ranked[-1]]
+        out.append({
+            "area_type": COMPARE_AREA[0], "area_key": COMPARE_AREA[1],
+            "category": "estimation", "difficulty": "medium",
+            "qtype": "order", "format": "order",
+            "question": f"Sortiere nach den geplanten Ausgaben {year} — der größte Posten zuerst.",
+            "options": [PRODUCTS[n][0] for n in shown], "correct_index": 0,
+            "explanation": (f"Vorn: {PRODUCTS[top['product_no']][0]} mit {_euro(top['expenses'])}, "
+                            f"hinten: {PRODUCTS[low['product_no']][0]} mit {_euro(low['expenses'])}."),
+            "chart": json.dumps(chart, ensure_ascii=False),
+            "source_type": "city", "source_ref": top["source_url"],
+            "content_hash": _key("order", *sorted(combo)),
+        })
+    return out
+
+
+def correct_order(options: list[str], chart: dict) -> list[int]:
+    """Die Lösung einer Reihenfolge-Frage als Indizes in ``options``, größter
+    Posten zuerst — aus dem Diagramm, das die Beträge absteigend trägt."""
+    return [options.index(it["label"]) for it in chart["items"]]
+
+
+def order_distance(guess: list[int], right: list[int]) -> int:
+    """Kendall-Abstand: wie viele Paare falsch herum liegen (0 = alles richtig)."""
+    pos = {v: i for i, v in enumerate(guess)}
+    return sum(1 for i in range(len(right)) for j in range(i + 1, len(right))
+               if pos[right[i]] > pos[right[j]])
+
+
 def build_all(store) -> list[dict]:
-    return verdict_questions(store) + compare_questions(store)
+    return verdict_questions(store) + compare_questions(store) + order_questions(store)

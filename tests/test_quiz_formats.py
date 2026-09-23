@@ -147,3 +147,32 @@ def test_compare_refreshes_to_the_new_year(tmp_path):
     store.close()
     assert "2026" in row["question"]
     assert row["options"][row["correct_index"]] == "Feuerwehr"
+
+
+# ---- Reihenfolge (Plan Q8) --------------------------------------------------
+
+def test_order_needs_clear_steps_and_carries_the_solution(tmp_path):
+    store = CouncilStore(tmp_path / "c.sqlite")
+    _seed_products(store, 2026, {
+        "P10.540002": (46_000_000, 0),   # Straßen
+        "P10.126001": (19_500_000, 0),   # Feuerwehr
+        "P10.281002": (12_100_000, 0),   # Kultur
+        "P10.561100": (3_700_000, 0),    # Klimaschutz
+        "P10.420000": (13_200_000, 0),   # Sport: zu nah an Kultur (1,09×)
+    })
+    qs = qf.order_questions(store)
+    store.close()
+    # Zwei Vierer tragen — keiner stellt Sport und Kultur (1,09×) nebeneinander.
+    assert len(qs) == 2
+    assert not any({"Sportförderung", "Kulturförderung"} <= set(q["options"]) for q in qs)
+    q = next(q for q in qs if "Kulturförderung" in q["options"])
+    assert q["qtype"] == "order" and len(q["options"]) == 4
+    right = qf.correct_order(q["options"], json.loads(q["chart"]))
+    assert [q["options"][i] for i in right] == ["Straßen, Wege und Plätze", "Feuerwehr", "Kulturförderung", "Klimaschutz"]
+
+
+def test_order_distance_counts_swapped_pairs():
+    right = [2, 0, 3, 1]
+    assert qf.order_distance([2, 0, 3, 1], right) == 0
+    assert qf.order_distance([0, 2, 3, 1], right) == 1
+    assert qf.order_distance([1, 3, 0, 2], right) == 6

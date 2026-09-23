@@ -17673,6 +17673,18 @@
       },
       "QuizAnswerIn": {
         "properties": {
+          "order": {
+            "items": {
+              "type": "integer"
+            },
+            "maxItems": 4,
+            "minItems": 4,
+            "title": "Order",
+            "type": [
+              "array",
+              "null"
+            ]
+          },
           "question_id": {
             "title": "Question Id",
             "type": "integer"
@@ -18243,7 +18255,8 @@
           "format": {
             "enum": [
               "verdict",
-              "compare"
+              "compare",
+              "order"
             ],
             "title": "Format",
             "type": "string"
@@ -18269,7 +18282,8 @@
           "qtype": {
             "enum": [
               "mc",
-              "estimate"
+              "estimate",
+              "order"
             ],
             "title": "Qtype",
             "type": "string"
@@ -18374,6 +18388,13 @@
           "correct_index": {
             "title": "Correct Index",
             "type": "integer"
+          },
+          "correct_order": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Correct Order",
+            "type": "array"
           },
           "detail": {
             "title": "Detail"
