@@ -2548,11 +2548,107 @@
    "teilhaushalte": [
     {
      "herkunft_id": 115,
+     "inflows": 21065300.0,
+     "label": "Finanzmanagement und Recht",
+     "level": "sub_budget",
+     "outflows": 36813610.0,
+     "sub_budget_no": 4
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 13878863.0,
+     "label": "Wirtschaftsförderung, Liegenschaften",
+     "level": "sub_budget",
+     "outflows": 14130150.0,
+     "sub_budget_no": 3
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 145000.0,
+     "label": "Verkehr und Straßenbau",
+     "level": "sub_budget",
+     "outflows": 10451500.0,
+     "sub_budget_no": 8
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 141000.0,
+     "label": "Umwelt, Bauordnung, Grün und Friedhöfe",
+     "level": "sub_budget",
+     "outflows": 5918860.0,
+     "sub_budget_no": 9
+    },
+    {
+     "herkunft_id": 115,
      "inflows": 4206000.0,
      "label": "Stadtplanung",
      "level": "sub_budget",
      "outflows": 4259000.0,
      "sub_budget_no": 7
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 0.0,
+     "label": "Schule und Bildung",
+     "level": "sub_budget",
+     "outflows": 1912500.0,
+     "sub_budget_no": 12
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 80000.0,
+     "label": "Sicherheit und Ordnung",
+     "level": "sub_budget",
+     "outflows": 1855000.0,
+     "sub_budget_no": 5
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 0.0,
+     "label": "Jugend und Familie",
+     "level": "sub_budget",
+     "outflows": 1715500.0,
+     "sub_budget_no": 11
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 8000.0,
+     "label": "Personal- und Verwaltungsmanagement",
+     "level": "sub_budget",
+     "outflows": 1542500.0,
+     "sub_budget_no": 2
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 120000.0,
+     "label": "Kultur, Museen, Sport",
+     "level": "sub_budget",
+     "outflows": 1356400.0,
+     "sub_budget_no": 6
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 0.0,
+     "label": "Soziales und Gesundheit",
+     "level": "sub_budget",
+     "outflows": 782000.0,
+     "sub_budget_no": 10
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 0.0,
+     "label": "Verwaltungsführung",
+     "level": "sub_budget",
+     "outflows": 44500.0,
+     "sub_budget_no": 1
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 27900.0,
+     "label": "Nicht rechtsfähige Stiftungen",
+     "level": "sub_budget",
+     "outflows": 0.0,
+     "sub_budget_no": 13
     }
    ],
    "year": 2025
@@ -2597,6 +2693,86 @@
      "level": "sub_budget",
      "outflows": 10451500.0,
      "sub_budget_no": 8
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 141000.0,
+     "label": "Umwelt, Bauordnung, Grün und Friedhöfe",
+     "level": "sub_budget",
+     "outflows": 5918860.0,
+     "sub_budget_no": 9
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 4206000.0,
+     "label": "Stadtplanung",
+     "level": "sub_budget",
+     "outflows": 4259000.0,
+     "sub_budget_no": 7
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 0.0,
+     "label": "Schule und Bildung",
+     "level": "sub_budget",
+     "outflows": 1912500.0,
+     "sub_budget_no": 12
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 80000.0,
+     "label": "Sicherheit und Ordnung",
+     "level": "sub_budget",
+     "outflows": 1855000.0,
+     "sub_budget_no": 5
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 0.0,
+     "label": "Jugend und Familie",
+     "level": "sub_budget",
+     "outflows": 1715500.0,
+     "sub_budget_no": 11
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 8000.0,
+     "label": "Personal- und Verwaltungsmanagement",
+     "level": "sub_budget",
+     "outflows": 1542500.0,
+     "sub_budget_no": 2
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 120000.0,
+     "label": "Kultur, Museen, Sport",
+     "level": "sub_budget",
+     "outflows": 1356400.0,
+     "sub_budget_no": 6
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 0.0,
+     "label": "Soziales und Gesundheit",
+     "level": "sub_budget",
+     "outflows": 782000.0,
+     "sub_budget_no": 10
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 0.0,
+     "label": "Verwaltungsführung",
+     "level": "sub_budget",
+     "outflows": 44500.0,
+     "sub_budget_no": 1
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 27900.0,
+     "label": "Nicht rechtsfähige Stiftungen",
+     "level": "sub_budget",
+     "outflows": 0.0,
+     "sub_budget_no": 13
     }
    ],
    "year": 2025,
@@ -2642,6 +2818,86 @@
      "level": "sub_budget",
      "outflows": 10451500.0,
      "sub_budget_no": 8
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 141000.0,
+     "label": "Umwelt, Bauordnung, Grün und Friedhöfe",
+     "level": "sub_budget",
+     "outflows": 5918860.0,
+     "sub_budget_no": 9
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 4206000.0,
+     "label": "Stadtplanung",
+     "level": "sub_budget",
+     "outflows": 4259000.0,
+     "sub_budget_no": 7
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 0.0,
+     "label": "Schule und Bildung",
+     "level": "sub_budget",
+     "outflows": 1912500.0,
+     "sub_budget_no": 12
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 80000.0,
+     "label": "Sicherheit und Ordnung",
+     "level": "sub_budget",
+     "outflows": 1855000.0,
+     "sub_budget_no": 5
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 0.0,
+     "label": "Jugend und Familie",
+     "level": "sub_budget",
+     "outflows": 1715500.0,
+     "sub_budget_no": 11
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 8000.0,
+     "label": "Personal- und Verwaltungsmanagement",
+     "level": "sub_budget",
+     "outflows": 1542500.0,
+     "sub_budget_no": 2
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 120000.0,
+     "label": "Kultur, Museen, Sport",
+     "level": "sub_budget",
+     "outflows": 1356400.0,
+     "sub_budget_no": 6
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 0.0,
+     "label": "Soziales und Gesundheit",
+     "level": "sub_budget",
+     "outflows": 782000.0,
+     "sub_budget_no": 10
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 0.0,
+     "label": "Verwaltungsführung",
+     "level": "sub_budget",
+     "outflows": 44500.0,
+     "sub_budget_no": 1
+    },
+    {
+     "herkunft_id": 115,
+     "inflows": 27900.0,
+     "label": "Nicht rechtsfähige Stiftungen",
+     "level": "sub_budget",
+     "outflows": 0.0,
+     "sub_budget_no": 13
     }
    ],
    "year": 2025,

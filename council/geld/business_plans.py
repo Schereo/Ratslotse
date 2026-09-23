@@ -191,36 +191,58 @@ class Store(StoreBasis):
                 "beleg": self._beleg(ergebnis["herkunft_id"]) if ergebnis else None}
 
 
-def _plan_zeilen(p: dict, detail: bool) -> list[str]:
-    kopf = (f"- {p['enterprise_name']}, Wirtschaftsplan {p['year']} "
-            f"(Vorlage {p['template_number']}): Ergebnis {geld.de_betrag(p['result'])}")
-    if p["result"] == 0:
-        kopf += " (ausgeglichener Plan — der Betrieb plant weder Gewinn noch Verlust)"
-    if p.get("prior"):
-        kopf += (f"; im Plan {p['prior']['year']} waren es "
-                 f"{geld.de_betrag(p['prior']['result'])}")
-    zeilen = [kopf]
-    if not detail:
-        return zeilen
-    if p.get("duty"):
-        zeilen.append(f"  - {p['duty']}")
+def _erfolgsplan(p: dict) -> str:
+    """„Erträge 26,7 Mio. €, Aufwendungen 26,0 Mio. €“ — oder der Satz, dass
+    der Plan sie nicht nennt. Eine leere Zelle bleibt leer (s. Modulkopf)."""
     if p.get("revenues") is not None and p.get("expenses") is not None:
-        zeilen.append(f"  - Erfolgsplan: Erträge {geld.de_betrag(p['revenues'])}, "
-                      f"Aufwendungen {geld.de_betrag(p['expenses'])}")
-    else:
-        zeilen.append("  - Erträge und Aufwendungen nennt diese Quelle nicht; "
-                      "geprüft ist allein das Jahresergebnis.")
+        return (f"Erträge {geld.de_betrag(p['revenues'])}, "
+                f"Aufwendungen {geld.de_betrag(p['expenses'])}")
+    return "Erträge und Aufwendungen nennt diese Quelle nicht"
+
+
+def _plan_zeilen(p: dict, detail: bool) -> list[str]:
+    """Ein Betrieb im Überblick (eine Zeile) oder im Detail (je Jahr eine).
+
+    **Die Aufwendungen stehen auch im Überblick.** Bis 09/2026 trug die
+    Überblickszeile nur das Plan-Ergebnis, und „Welche Eigenbetriebe gibt es
+    und wie viel geben sie aus?“ bekam für den Abfallwirtschaftsbetrieb
+    711.250 € — sein ERGEBNIS; die 26,0 Mio. € Aufwendungen standen in der
+    Datenbank, aber nicht im Kontext (Faktencheck 23.09.2026).
+
+    **Im Detail hat jedes Jahr seine eigene Zeile.** Vorher hingen Vorjahres-
+    plan, Vermögensplan und Jahresabschluss (ein anderes Jahr) unter der
+    Kopfzeile des Plans 2026 — eingerückt liest sich das als dessen
+    Aufschlüsselung. Jetzt ist der Kopf der BETRIEB, und jede Zeile darunter
+    nennt ihr Jahr selbst (tests/test_geld_gliederung.py)."""
+    ergebnis = f"Ergebnis {geld.de_betrag(p['result'])}"
+    if p["result"] == 0:
+        ergebnis += " (ausgeglichener Plan — der Betrieb plant weder Gewinn noch Verlust)"
+    if not detail:
+        kopf = (f"- {p['enterprise_name']}, Wirtschaftsplan {p['year']} "
+                f"(Vorlage {p['template_number']}): {ergebnis}; {_erfolgsplan(p)}")
+        if p.get("prior"):
+            kopf += (f"; im Plan {p['prior']['year']} waren es "
+                     f"{geld.de_betrag(p['prior']['result'])} Ergebnis")
+        return [kopf]
+    zeilen = [f"- {p['enterprise_name']}:"]
+    if p.get("duty"):
+        zeilen.append(f"  - Was der Betrieb tut: {p['duty']}")
+    zeilen.append(f"  - Wirtschaftsplan {p['year']} (Vorlage {p['template_number']}): "
+                  f"{ergebnis}; {_erfolgsplan(p)}")
     vermoegen = []
     if p.get("capital_plan") is not None:
-        vermoegen.append(f"Vermögensplan {geld.de_betrag(p['capital_plan'])} "
+        vermoegen.append(f"{geld.de_betrag(p['capital_plan'])} "
                          "(Einzahlungen = Auszahlungen)")
     if p.get("investments") is not None:
-        vermoegen.append(f"davon Investitionen {geld.de_betrag(p['investments'])}")
+        vermoegen.append(f"darin Investitionen {geld.de_betrag(p['investments'])}")
     if p.get("commitments") is not None:
         vermoegen.append("Verpflichtungsermächtigungen "
                          f"{geld.de_betrag(p['commitments'])}")
     if vermoegen:
-        zeilen.append("  - " + ", ".join(vermoegen))
+        zeilen.append(f"  - Vermögensplan {p['year']}: " + ", ".join(vermoegen))
+    if p.get("prior"):
+        zeilen.append(f"  - Wirtschaftsplan {p['prior']['year']} (der Plan davor): "
+                      f"Ergebnis {geld.de_betrag(p['prior']['result'])}")
     if p.get("ended"):
         zeilen.append("  - Danach legte dieser Betrieb keinen Wirtschaftsplan mehr "
                       "vor — das ist keine Lücke im Bestand, sondern das Ende der "
@@ -260,10 +282,12 @@ def block(data: dict | None) -> str:
                       f"{data['year_asked']} aus.")
     return (f"\nWIRTSCHAFTSPLÄNE DER EIGENBETRIEBE (Jahrgang {data['year']}, je eine "
             "eigene\nRatsvorlage). Nutze das, wenn nach einem Eigenbetrieb, seinem "
-            "Plan oder seinem\nErgebnis gefragt ist. DIE ERSTE ZEILE JE BETRIEB IST EIN "
+            "Plan oder seinem\nErgebnis gefragt ist. JEDER „Wirtschaftsplan“ IST EIN "
             "PLAN, KEIN\nJAHRESABSCHLUSS — der Vorsatz für ein Jahr, nicht sein Ergebnis; "
             "wo eine\nZeile „IST laut geprüftem Jahresabschluss“ dabeisteht, ist DAS das "
-            "Ergebnis. Und "
+            "Ergebnis. Das\nErgebnis ist NICHT, was ein Betrieb ausgibt — das sind "
+            "seine Aufwendungen.\nNamen mit „GmbH“ sind städtische Gesellschaften, "
+            "keine Eigenbetriebe. Und "
             "diese Betriebe stehen NICHT im Kernhaushalt:\nWer dort nach ihnen sucht, "
             "findet sie nicht, und ihre Beträge sind mit denen des\nStadthaushalts "
             "nicht verrechenbar. Die Betriebe untereinander NIE addieren —\nder "

@@ -93,8 +93,15 @@ def block(data: dict | None) -> str:
         zeilen.append(f"- Tiefster Stand der Reihe seit {data['coverage'][0][:4]}: "
                       f"{geld.de_mio(lo['amount'])} Ende {_monat(lo['month'])}"
                       + (" — unter null, also mit Liquiditätskredit überbrückt" if lo["amount"] < 0 else ""))
-    for r in data.get("asked_year_rows") or []:
-        if r["month"].endswith(("-03", "-06", "-09", "-12")):
+    # Die Quartalsstände des gefragten Jahres unter einer EIGENEN Kopfzeile.
+    # Bis 09/2026 hingen sie eingerückt unter „Tiefster Stand der Reihe seit
+    # 2015: … Juli 2016“ und lasen sich als dessen Aufschlüsselung.
+    quartale = [r for r in data.get("asked_year_rows") or []
+                if r["month"].endswith(("-03", "-06", "-09", "-12"))]
+    if quartale:
+        zeilen.append(f"- Im gefragten Jahr {quartale[0]['month'][:4]}, jeweils am "
+                      "Quartalsende:")
+        for r in quartale:
             zeilen.append(f"  - Ende {_monat(r['month'])}: {geld.de_mio(r['amount'])}")
     if lt.get("revised_from") is not None:
         zeilen.append(f"- Der Wert für {_monat(lt['month'])} wurde von der Verwaltung korrigiert "

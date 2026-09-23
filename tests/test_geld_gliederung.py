@@ -21,7 +21,10 @@ Deshalb prüft dieser Wächter für jeden Baustein jeder Facette die Gliederung:
 4. Jede eingerückte Zeile mit einem Euro-Betrag nennt ihr Jahr selbst — ein
    Betrag, dessen Jahr man aus der Zeile darüber erschließen muss, wird unter
    der falschen Zeile zum falschen Jahr.
-5. Nennt eine eingerückte Zeile ein Jahr, ist es eines der Zeile darüber.
+5. Nennt eine eingerückte Zeile mit Betrag ein Jahr, ist es eines der Zeile
+   darüber — oder die Zeile darüber nennt gar keins (dann ist sie ein Kopf
+   wie „- Abfallwirtschaftsbetrieb:“, und jede Zeile darunter trägt ihr
+   eigenes Jahr).
 
 **Woher die Daten kommen.** Zweimal, weil jede Quelle eine Lücke hat:
 
@@ -152,7 +155,9 @@ def gliederungsfehler(text: str) -> list[str]:
                               f"(unter: {oben[:70]})")
         if _betraege(inhalt) and not j_hier:
             fehler.append(f"Betrag ohne eigenes Jahr: {inhalt[:90]}  (unter: {oben[:70]})")
-        if j_hier and j_oben and not j_hier <= j_oben:
+        # Nur Zeilen mit Betrag: Ein Prosa-Satz darunter („der laufende
+        # Betrieb liegt seit 2005 dort“) datiert keine Zahl.
+        if _betraege(inhalt) and j_hier and j_oben and not j_hier <= j_oben:
             fehler.append(f"Jahr {sorted(j_hier)} unter fremdem Jahr {sorted(j_oben)}: "
                           f"{inhalt[:90]}  (unter: {oben[:70]})")
     for eltern, kinder in gruppen.items():

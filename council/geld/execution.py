@@ -207,8 +207,13 @@ def block(data: dict | None) -> str:
         zeilen.append("- Für das gefragte Jahr liegt kein Bericht vor; die "
                       f"Zahlen sind die des Haushaltsjahres {data['year']}.")
     if data.get("ertrag") and data.get("aufwand"):
+        # Kein „davon“: Das Ergebnis ist Erträge MINUS Aufwendungen, keine
+        # Summe aus beiden. „davon Erträge 816,7 Mio. €“ unter einem Ergebnis
+        # von −68,7 Mio. € las sich wie ein Teil davon — gefunden vom
+        # Gliederungs-Wächter (tests/test_geld_gliederung.py, 23.09.2026).
         zeilen.append(
-            f"  - davon Erträge: geplant {geld.de_mio(data['ertrag'].get('budgeted'))}, "
+            f"  - Zusammengesetzt aus (Erträge minus Aufwendungen) {data['year']}: "
+            f"Erträge geplant {geld.de_mio(data['ertrag'].get('budgeted'))}, "
             f"erwartet {geld.de_mio(data['ertrag'].get('forecast'))}; Aufwendungen: "
             f"geplant {geld.de_mio(data['aufwand'].get('budgeted'))}, erwartet "
             f"{geld.de_mio(data['aufwand'].get('forecast'))}")

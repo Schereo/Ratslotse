@@ -3813,9 +3813,20 @@ class CouncilStore(BplanMixin, FundstueckeMixin, HaushaltMixin, OrteMixin, Perso
 
 
     def investitionen_fuer_begriffe(self, begriffe: list[str],
-                                    limit: int = 3, year: int | None = None) -> dict | None:
-        """Was die Stadt bauen und kaufen will — Summenzeile und die
-        Teilhaushalte, die zur Frage passen.
+                                    year: int | None = None) -> dict | None:
+        """Was die Stadt bauen und kaufen will — Summenzeile und ALLE
+        Teilhaushalte, nach Auszahlungen absteigend.
+
+        **Alle, nicht die drei passendsten.** Bis 09/2026 kamen höchstens drei,
+        ausgewählt über einen Begriffsabgleich. „Wofür gibt die Stadt bei den
+        Investitionen am meisten aus?“ traf über „Stadt“ genau einen —
+        „Stadtplanung“ mit 4,3 Mio. € —, und der größte Teilhaushalt
+        („Finanzmanagement und Recht“, 36,8 Mio. € von 80,8 Mio. €) fehlte
+        (Faktencheck 23.09.2026). Zwölf Zeilen kosten rund 900 Zeichen; die
+        Reihenfolge nach Betrag sorgt dafür, dass ein Deckel das Kleinste
+        abschneidet und nicht das Größte. Einen Deckel gibt es hier aber
+        nicht: Die Zeilen ergeben zusammen die Summenzeile, und nur so lässt
+        sich jede als „davon“ darunter schreiben.
 
         Die andere Hälfte des Haushaltsplans. Sie mit dem Ergebnishaushalt in
         einem Satz zu verrechnen wäre der Fehler, gegen den diese Methode
@@ -3840,14 +3851,12 @@ class CouncilStore(BplanMixin, FundstueckeMixin, HaushaltMixin, OrteMixin, Perso
         gesamt = next((r for r in rows if r["level"] == "investments"), None)
         if not gesamt:
             return None
-        teile = [r for r in rows if r["level"] == "sub_budget"]
-        bewertet = [(self._trifft(r["label"], begriffe), r) for r in teile]
-        passend = [r for n, r in sorted(bewertet, key=lambda x: -x[0]) if n][:limit]
-        if not passend:
-            # Ohne Begriffs-Treffer die größten Brocken: „Was wird gebaut?"
-            # meint die, über die zu reden sich lohnt.
-            passend = sorted(teile, key=lambda r: -(r["outflows"] or 0))[:limit]
-        return {"year": year, "gesamt": gesamt, "teilhaushalte": passend,
+        # Leere Teilhaushalte (die Stiftungen: 0 € in beide Richtungen) sagen
+        # nichts und kosten eine Zeile.
+        teile = sorted((r for r in rows if r["level"] == "sub_budget"
+                        and (r["outflows"] or r["inflows"])),
+                       key=lambda r: -(r["outflows"] or 0))
+        return {"year": year, "gesamt": gesamt, "teilhaushalte": teile,
                 "beleg": self._beleg(gesamt.get("herkunft_id")),
                 **({"year_asked": gefragt} if abweicht else {})}
 
