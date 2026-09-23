@@ -110,6 +110,10 @@ const h = (teil: Partial<StichwahlHochrechnung>): StichwahlHochrechnung => ({
   actual_lead_votes: 900,
   open_votes_max: 60000,
   caveats: [],
+  trailing: "rohr",
+  needed_share_pct: 51.9,
+  trailing_expected_share_pct: 48.5,
+  open_votes_expected: 32000,
   ...teil,
 });
 

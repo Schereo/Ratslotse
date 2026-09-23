@@ -28,7 +28,7 @@ def _punkt(at: str, n: int = 10, prange: float = 52.0, leader: str | None = "pra
            proj: dict[str, float] | None = None) -> MayorHistoryPoint:
     return MayorHistoryPoint(at=at, reports_received=n, shares={"prange": prange, "rohr": round(100 - prange, 1)},
                              votes={"prange": round(prange * 100), "rohr": round((100 - prange) * 100)},
-                             projected_shares=proj or {}, chance_pct=None, leader=leader)
+                             projected_shares=proj or {}, chance_pct=None, leader=leader, new_districts=[])
 
 
 @pytest.fixture
@@ -146,3 +146,39 @@ def test_die_probe_der_stichwahl_zaehlt_bezirk_fuer_bezirk(datei):
     assert anteile[30] != anteile[133], "der Anteil bewegt sich über den Abend"
     assert anteile[91] > anteile[133], "nach 91 Urnenbezirken drückt die Briefwahl den Anteil"
     assert {c.slug: c.votes for c in mayor.probe(133, w).candidates} == {"prange": 28075, "rohr": 25850}
+
+
+# ---------------------------------------------------------------- der Ticker (Tims Wunsch 23.09.2026)
+
+def _live(n: int):
+    """Ein Live-Stand mit ``n`` gezählten Bezirken — die Probe, umgeschrieben."""
+    from app.election import elections
+
+    night = router.stichwahl(probe="1", counted=n)
+    night["dataset"] = "live"
+    w = elections.runoff()
+    return night, [d.number for d in mayor.probe(n, w).districts if d.counted]
+
+
+def test_jeder_punkt_kennt_seine_neuen_bezirke_auch_nach_dem_neustart(datei):
+    n10, z10 = _live(10)
+    n25, z25 = _live(25)
+    n40, z40 = _live(40)
+    assert history.record_mayor(SLUG, n10, z10)[-1]["new_districts"] == sorted(z10)
+    assert history.record_mayor(SLUG, n25, z25)[-1]["new_districts"] == sorted(set(z25) - set(z10))
+    # Der Dienst startet neu: Was schon gemeldet war, weiß die Datei.
+    history.reset()
+    assert history.record_mayor(SLUG, n40, z40)[-1]["new_districts"] == sorted(set(z40) - set(z25))
+
+
+def test_der_ticker_nennt_die_juengsten_bezirke_zuerst(datei):
+    d = router.stichwahl(probe="1", counted=60)
+    t = d["recent_districts"]
+    assert len(t) == router.TICKER_MAX
+    letzter = d["history"][-1]
+    assert [z["number"] for z in t[: len(letzter["new_districts"])]] == sorted(letzter["new_districts"], reverse=True)[: len(t)]
+    for z in t:
+        assert round(sum(z["shares"].values()), 1) == 100.0
+        assert z["leader"] == max(z["shares"], key=lambda s: z["shares"][s])
+        assert set(z["first_round_shares"]) == {"prange", "rohr"}
+    assert router.stichwahl(probe="1", counted=0)["recent_districts"] == []

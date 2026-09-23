@@ -11,31 +11,39 @@
 // Auszählungsstand, der Vergleich mit dem ersten Wahlgang. Hier steht nur, was
 // die Anzeige daraus macht.
 
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import { Info } from "lucide-react";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { ChevronDown, Info } from "lucide-react";
+import { Aufklapp } from "@/components/aufklapp";
 import { Mascot } from "@/components/mascot";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Kopf } from "@/components/wahlabend/kopf";
-import { TippspielEinladung } from "@/components/tipp/einladung";
+import { TippspielEinladung, useWahlzeile } from "@/components/tipp/einladung";
 import { AuszaehlungsSimulator } from "@/components/wahlabend/simulator";
 import { StichwahlKarte } from "@/components/wahlabend/stichwahl-karte";
+import { Mitfiebern, StichwahlMomente } from "@/components/wahlabend/stichwahl-momente";
+import { BezirksTicker, BildTeilen, Countdown } from "@/components/wahlabend/stichwahl-bausteine";
 import { StichwahlVerlauf } from "@/components/wahlabend/stichwahl-verlauf";
 import { api } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import { useFeature } from "@/lib/features";
 import { useFrisch, useTween } from "@/lib/use-tween";
 import { cn } from "@/lib/utils";
 import { prozent, uhrzeit, zahl } from "@/lib/wahlabend";
 import {
   abfragePfad,
+  TAKT_LIVE_MS,
+  abrufTakt,
   abstandStimmen,
+  aufholText,
   bezirkeText,
   chanceText,
   datumLang,
   fensterTitel,
   fuehrend,
+  ladeFavorit,
   letzteMeldung,
   letzterWechsel,
   nachStimmen,
@@ -50,6 +58,12 @@ import {
 
 const KICKER = "font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground";
 
+/** So lange zählen Stimmen und Prozente zum neuen Stand hoch. Länger als die
+ *  300 ms, die `useTween` sonst nimmt: Hier SOLL man zusehen, wie eine Zahl
+ *  wächst — das ist der Moment des Abends (Tim 23.09.2026: „wirklich so
+ *  hochzählen"). Die Balken laufen im selben Takt mit. */
+const ZAEHLEN_MS = 1200;
+
 /** Die Farbe der Liste — oder ein neutraler Ton, wenn die Kandidatur zu
  *  keiner gehört. Zwei Farbwerte, weil der Hellmodus einen dunkleren braucht. */
 function farbe(k: StichwahlKandidat): { hell: string; dunkel: string } {
@@ -58,9 +72,16 @@ function farbe(k: StichwahlKandidat): { hell: string; dunkel: string } {
 
 /* ── Anzeigetafel ───────────────────────────────────────────────────────── */
 
-function Tafel({ daten }: { daten: Stichwahl }) {
+function Tafel({ daten, aktualisiert, probe, counted }: {
+  daten: Stichwahl;
+  aktualisiert: number;
+  probe: string | null;
+  counted: string | null;
+}) {
   const zeit = zeitlage(daten.election.polls_close);
-  const beteiligung = useTween(daten.turnout_pct);
+  const beteiligung = useTween(daten.turnout_pct, ZAEHLEN_MS);
+  const gueltig = useTween(daten.valid_votes, ZAEHLEN_MS);
+  const takt = abrufTakt(daten);
   const anteil = daten.reports_expected > 0 ? Math.round((daten.reports_received / daten.reports_expected) * 100) : 0;
   const phase =
     daten.phase === "before"
@@ -86,17 +107,27 @@ function Tafel({ daten }: { daten: Stichwahl }) {
             {daten.fetched_at ? <span className="text-muted-foreground"> · Stand {uhrzeit(daten.fetched_at) ?? "–"} Uhr</span> : null}
           </p>
           <div className="mt-2 h-1.5 w-full max-w-md overflow-hidden rounded-full bg-foreground/10">
-            <div className="h-full rounded-full bg-primary transition-[width] duration-weg" style={{ width: `${anteil}%` }} />
+            <div
+              className="h-full w-full origin-left rounded-full bg-primary transition-transform ease-out-strong"
+              style={{ transform: `scaleX(${anteil / 100})`, transitionDuration: `${ZAEHLEN_MS}ms` }}
+            />
           </div>
-          <p className="mt-2 text-[11.5px] text-muted-foreground">
+          <p className="mt-2 flex flex-col items-start gap-1 text-[11.5px] text-muted-foreground">
+            {/* Live ab 18 Uhr — und in der Probe, die den Abend nachstellt. */}
+            {(takt === TAKT_LIVE_MS || daten.dataset === "probe") && daten.ok && daten.phase !== "complete" ? (
+              <AbfrageTakt seit={aktualisiert} ms={takt} />
+            ) : null}
             {daten.dataset === "probe"
-              ? "Geprobt wird mit den Zahlen des ersten Wahlgangs — live fragt die Seite jede Minute nach."
+              ? "Geprobt wird mit den Zahlen des ersten Wahlgangs — live fragt die Seite alle 15 Sekunden nach."
               : daten.ok
                 ? zeit.phase === "laeuft"
-                  ? "Die Seite fragt jede Minute nach."
-                  : `Ab ${zeit.tage === 0 ? "heute" : "Sonntag"} 18 Uhr fragt die Seite jede Minute nach.`
+                  ? daten.phase === "complete"
+                    ? "Alle Bezirke sind da — die Seite fragt nur noch jede Minute nach."
+                    : "Die Seite fragt alle 15 Sekunden nach."
+                  : `Ab ${zeit.tage === 0 ? "heute" : "Sonntag"} 18 Uhr fragt die Seite alle 15 Sekunden nach.`
                 : (daten.error ?? "Der Votemanager antwortet gerade nicht.")}
           </p>
+          <BildTeilen daten={daten} probe={probe} counted={counted} />
         </div>
         <dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-left sm:text-right">
           <div>
@@ -105,11 +136,39 @@ function Tafel({ daten }: { daten: Stichwahl }) {
           </div>
           <div>
             <dt className={KICKER}>Gültige Stimmen</dt>
-            <dd className="font-display text-[24px] font-bold tabular-nums">{zahl(daten.valid_votes)}</dd>
+            <dd className="font-display text-[24px] font-bold tabular-nums">{zahl(gueltig === null ? null : Math.round(gueltig))}</dd>
           </div>
         </dl>
       </div>
     </section>
+  );
+}
+
+/** Live-Punkt und ein Balken, der sich bis zur nächsten Abfrage füllt: Auch
+ *  zwischen zwei Meldungen sieht man, dass die Seite arbeitet — und wann sie
+ *  wieder nachsieht. Ein neuer Abruf setzt ihn zurück. */
+function AbfrageTakt({ seit, ms }: { seit: number; ms: number }) {
+  const balken = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    const el = balken.current;
+    if (!el || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const a = el.animate([{ transform: "scaleX(0)" }, { transform: "scaleX(1)" }], {
+      duration: ms,
+      easing: "linear",
+      fill: "forwards",
+    });
+    a.currentTime = Math.min(ms, Math.max(0, Date.now() - seit));
+    return () => a.cancel();
+  }, [seit, ms]);
+  return (
+    <span className="inline-flex items-center gap-2" aria-hidden data-testid="abfrage-takt">
+      <span className="live-punkt inline-block h-2 w-2 rounded-full bg-signal" />
+      <span className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-foreground">Live</span>
+      <span className="font-mono text-[10px] uppercase tracking-[0.11em]">· nächste Abfrage</span>
+      <span className="relative inline-block h-1 w-14 overflow-hidden rounded-full bg-foreground/10">
+        <span ref={balken} className="absolute inset-0 origin-left rounded-full bg-foreground/35" style={{ transform: "scaleX(0)" }} />
+      </span>
+    </span>
   );
 }
 
@@ -122,6 +181,11 @@ function Tafel({ daten }: { daten: Stichwahl }) {
  *  es nur mit eigener Quelle, und die steht hier als Beleg daneben. Ohne
  *  Angaben bleibt die Zeile weg; sie ist kein Platzhalter. */
 function Herkunft({ k }: { k: StichwahlKandidat }) {
+  // Eingeklappt, was nur Erklärung ist (Tim 23.09.2026: „sehr viel Text
+  // dafür, dass es eigentlich nur ein Disclaimer ist"): Die Zeile mit den
+  // Parteien bleibt stehen, die Begründung zum Stimmzettel und die Belege
+  // kommen auf Tipp.
+  const [offen, setOffen] = useState(false);
   // Drei Stufen, die der Stimmzettel nicht unterscheidet: aufgestellt (eine
   // eigene Versammlung, wie bei Grünen UND CDU für Rohr), unterstützt (ein
   // Beschluss ohne Aufstellung, wie Volt) — und darüber die Frage, warum
@@ -139,28 +203,42 @@ function Herkunft({ k }: { k: StichwahlKandidat }) {
   // (15.09.2026) neben der CDU steht, deckt EIN Link nicht mehr beide
   // Aussagen — und zwei gleich beschriftete „Beleg"-Links wären ein Rätsel.
   const mehrere = k.note_sources.length > 1;
+  const mehr = Boolean(k.ballot_note) || k.note_sources.length > 0;
   return (
-    <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted-foreground">
-      {teile.join(" · ")}
-      {k.ballot_note ? (
-        <span className="mt-1 block text-[12px] leading-relaxed">
-          {k.ballot_note}
-        </span>
-      ) : null}
-      {k.note_sources.map((quelle, i) => (
-        <span key={quelle}>
-          {i === 0 ? " " : " · "}
-          <a
-            href={quelle}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-medium text-primary underline-offset-2 hover:underline"
+    <div className="mt-1.5 text-[12.5px] leading-relaxed text-muted-foreground">
+      <p>{teile.join(" · ")}</p>
+      {mehr ? (
+        <>
+          <button
+            type="button"
+            onClick={() => setOffen((o) => !o)}
+            aria-expanded={offen}
+            className="mt-0.5 inline-flex items-center gap-1 rounded-md text-[12px] font-medium text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            {mehrere ? `${absender(quelle)} ↗` : "Beleg ↗"}
-          </a>
-        </span>
-      ))}
-    </p>
+            {k.ballot_note ? `Warum nur ${k.party || "eine Partei"} auf dem Stimmzettel?` : "Belege"}
+            <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-fluss", offen && "rotate-180")} aria-hidden />
+          </button>
+          <Aufklapp offen={offen}>
+            <p className="pt-1 text-[12px] leading-relaxed">
+              {k.ballot_note}
+              {k.note_sources.map((quelle, i) => (
+                <span key={quelle}>
+                  {i === 0 ? (k.ballot_note ? " " : "") : " · "}
+                  <a
+                    href={quelle}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium text-primary underline-offset-2 hover:underline"
+                  >
+                    {mehrere ? `${absender(quelle)} ↗` : "Beleg ↗"}
+                  </a>
+                </span>
+              ))}
+            </p>
+          </Aufklapp>
+        </>
+      ) : null}
+    </div>
   );
 }
 
@@ -195,14 +273,14 @@ function Person({
   entschieden: boolean;
 }) {
   const c = farbe(k);
-  const anteil = useTween(k.share_pct);
-  const stimmen = useTween(k.votes);
-  const erwartet = useTween(hochrechnung);
+  const anteil = useTween(k.share_pct, ZAEHLEN_MS);
+  const stimmen = useTween(k.votes, ZAEHLEN_MS);
+  const erwartet = useTween(hochrechnung, ZAEHLEN_MS);
   const diff = verschiebung(k);
   return (
     <article
       className={cn(
-        "relative overflow-hidden rounded-2xl border bg-card p-5 transition-[box-shadow,border-color] duration-fluss sm:p-6",
+        "relative h-full overflow-hidden rounded-2xl border bg-card p-5 transition-[box-shadow,border-color] duration-fluss sm:p-6",
         fuehrt ? "border-foreground/25 shadow-sm" : "border-border",
         frisch && "shadow-lifted ring-2 ring-primary/40",
       )}
@@ -240,15 +318,21 @@ function Person({
         </p>
       ) : null}
       <div className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-foreground/10">
+        {/* Über `transform` statt `width` (DESIGNSPRACHE §7), im Takt der
+            hochzählenden Zahl; der Glanz läuft in den Pausen darüber. */}
         <div
-          className="h-full rounded-full transition-[width] duration-weg"
-          style={{ width: `${Math.max(0, Math.min(100, k.share_pct ?? 0))}%`, background: `light-dark(${c.hell}, ${c.dunkel})` }}
+          className="balken-glanz h-full w-full origin-left rounded-full transition-transform ease-out-strong"
+          style={{
+            transform: `scaleX(${Math.max(0, Math.min(100, k.share_pct ?? 0)) / 100})`,
+            transitionDuration: `${ZAEHLEN_MS}ms`,
+            background: `light-dark(${c.hell}, ${c.dunkel})`,
+          }}
         />
       </div>
       <dl className="mt-4 flex flex-wrap gap-x-8 gap-y-2 text-[13px]">
         <div>
           <dt className={KICKER}>Stimmen</dt>
-          <dd className="mt-0.5 font-semibold tabular-nums">{zahl(stimmen)}</dd>
+          <dd className="mt-0.5 font-semibold tabular-nums">{zahl(stimmen === null ? null : Math.round(stimmen))}</dd>
         </div>
         <div>
           <dt className={KICKER}>1. Wahlgang</dt>
@@ -396,7 +480,7 @@ function Meldung({ daten }: { daten: Stichwahl }) {
 
 /* ── Bühnen: vor 18 Uhr, und wenn es entschieden ist ────────────────────── */
 
-function BuehneVorher({ daten }: { daten: Stichwahl }) {
+function BuehneVorher({ daten, vorbei }: { daten: Stichwahl; vorbei: () => void }) {
   const zeit = zeitlage(daten.election.polls_close);
   return (
     <section className="mt-5 flex flex-col items-center gap-5 rounded-2xl border border-border bg-card p-6 text-center sm:flex-row sm:text-left" data-testid="buehne-vorher">
@@ -404,10 +488,11 @@ function BuehneVorher({ daten }: { daten: Stichwahl }) {
       <div className="min-w-0">
         <p className={KICKER} suppressHydrationWarning>{zeit.kicker}</p>
         <h2 className="mt-1 font-display text-[20px] font-bold tracking-tight">Was ab 18 Uhr passiert</h2>
+        <Countdown pollsClose={daten.election.polls_close} vorbei={vorbei} />
         <p className="mt-2 max-w-[60ch] text-[13.5px] leading-relaxed text-muted-foreground">
           Am 13. September hat niemand die absolute Mehrheit erreicht; am {datumLang(daten.election.date)} entscheidet die
           Stichwahl zwischen den beiden Bestplatzierten. Ab 18 Uhr melden die 133 Wahlbezirke nach und nach — die Seite
-          fragt jede Minute nach. Ab dem ersten Bezirk rechnet sie hoch, ab dem 15. nennt sie eine Chance, und sobald der
+          fragt alle 15 Sekunden nach, und jede neue Meldung leuchtet einmal kurz auf. Ab dem ersten Bezirk rechnet sie hoch, ab dem 15. nennt sie eine Chance, und sobald der
           Vorsprung größer ist als alles, was noch offen ist, steht hier, wer gewählt ist.
         </p>
       </div>
@@ -452,6 +537,7 @@ function Hochrechnung({ daten, p }: { daten: Stichwahl; p: StichwahlHochrechnung
   const fuehrt = daten.candidates.find((k) => k.slug === p.leader);
   const vorn = daten.candidates.find((k) => k.slug === p.actual_leader);
   const chance = chanceText(p, fuehrt?.name);
+  const aufholen = aufholText(p, daten.candidates);
   const fertig = p.open_ballot + p.open_postal === 0;
   return (
     <section
@@ -489,13 +575,22 @@ function Hochrechnung({ daten, p }: { daten: Stichwahl; p: StichwahlHochrechnung
             ? `Alle Bezirke sind gezählt; ${vorn?.name ?? p.actual_leader} liegt ${zahl(p.actual_lead_votes)} Stimmen vorn.`
             : `Rechnerisch entschieden: ${zahl(p.actual_lead_votes)} Stimmen Vorsprung, höchstens ${zahl(p.open_votes_max)} noch offen.`}
         </p>
-      ) : chance ? (
+      ) : null}
+      {p.decided ? null : chance ? (
         <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1">
           <p className={cn("text-[14px]", p.chance_pct === null ? "text-muted-foreground" : "font-semibold")} data-testid="chance">
             {chance}
           </p>
           <p className="text-[12px] text-muted-foreground">Modell aus dem ersten Wahlgang je Bezirk</p>
         </div>
+      ) : null}
+      {/* Die Aufholrechnung (Tim 23.09.2026): die spannendste Zahl des
+          Abends, solange es nicht entschieden ist — und reine Arithmetik
+          auf der Hochrechnung, keine zweite Vorhersage. */}
+      {aufholen ? (
+        <p className="mt-2 text-[13.5px] leading-relaxed text-foreground" data-testid="aufholrechnung">
+          {aufholen}
+        </p>
       ) : null}
 
       <Sheet>
@@ -529,7 +624,7 @@ function Hochrechnung({ daten, p }: { daten: Stichwahl; p: StichwahlHochrechnung
 
 /** Eine Prozentzahl, die sich beim Wechsel bewegt. */
 function Zahl({ wert }: { wert: number | null }) {
-  const v = useTween(wert);
+  const v = useTween(wert, ZAEHLEN_MS);
   return <>{prozent(v)}</>;
 }
 
@@ -545,6 +640,56 @@ function Hinweisbild({ pose, titel, text }: { pose: "sleep" | "wave" | "confused
   );
 }
 
+/** Nach 18 Uhr: eine Zeile statt der Einladungskarte — wer getippt hat,
+ *  findet die Rangliste, wer nicht, wird nicht mehr gefragt. */
+function TippspielFussnote({ slug }: { slug: string }) {
+  const zeile = useWahlzeile(slug);
+  if (!zeile?.tipp_path) return null;
+  return (
+    <p className="mt-2">
+      <Link href={zeile.tipp_path} className="font-medium text-primary">
+        Tippspiel: Wer lag richtig? →
+      </Link>
+    </p>
+  );
+}
+
+/** Ein leiser Hinweis auf Ratslotse für alle ohne Konto (Tims Wunsch
+ *  23.09.2026): Am Stichwahl-Abend kommen viele zum ersten Mal hierher, und
+ *  was nach der Wahl kommt, entscheidet der Rat. Eine Karte zwischen Karte
+ *  und Einstellungen — kein Banner, nichts, das über den Zahlen steht, und
+ *  nichts für Angemeldete. Erst nach `loading`: Sonst blitzte sie bei jedem
+ *  Neuladen auch bei denen auf, die längst ein Konto haben. */
+function RatslotseEinladung() {
+  const { user, loading } = useAuth();
+  if (loading || user) return null;
+  return (
+    <section
+      className="mt-8 flex flex-col items-start gap-4 rounded-2xl border border-primary/20 bg-primary/[0.05] p-5 sm:flex-row sm:items-center"
+      data-testid="ratslotse-einladung"
+      aria-labelledby="ratslotse-einladung-titel"
+    >
+      <Mascot pose="point" className="hidden h-20 w-20 flex-none sm:block" decorative />
+      <div className="min-w-0 flex-1">
+        <p className={KICKER}>Nach der Wahl</p>
+        <h2 id="ratslotse-einladung-titel" className="mt-1 font-display text-[17px] font-bold tracking-tight">
+          Wer auch gewinnt: Entschieden wird im Rat.
+        </h2>
+        <p className="mt-1.5 max-w-[62ch] text-[13.5px] leading-relaxed text-muted-foreground">
+          Du möchtest mehr über den Rat und seine Arbeit in Oldenburg erfahren? Ratslotse erklärt Sitzungen und
+          Beschlüsse verständlich und meldet sich, wenn es um deine Themen oder dein Viertel geht. Kostenlos.
+        </p>
+      </div>
+      <Link
+        href="/register"
+        className="inline-flex w-full flex-none items-center justify-center rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors duration-fluss hover:bg-primary/90 sm:w-auto"
+      >
+        Kostenlos registrieren
+      </Link>
+    </section>
+  );
+}
+
 /* ── Seite ──────────────────────────────────────────────────────────────── */
 
 export function StichwahlView() {
@@ -553,13 +698,31 @@ export function StichwahlView() {
   const counted = params.get("counted");
   const frei = useFeature("wahlabend");
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, dataUpdatedAt, refetch } = useQuery({
     queryKey: ["stichwahl", probe, counted],
     queryFn: () => api.get<Stichwahl>(abfragePfad(probe, counted)),
     enabled: frei,
-    refetchInterval: 60_000,
+    // Ab 18 Uhr alle 15 s, sonst jede Minute (`abrufTakt`). Auch im
+    // Hintergrund-Tab: Der Fenstertitel trägt den Stand, und genau dafür
+    // hat man den Tab im Hintergrund (Standard wäre: dort anhalten).
+    refetchInterval: (q) => abrufTakt(q.state.data),
+    refetchIntervalInBackground: true,
+    // Der Simulator der Generalprobe wechselt den Schlüssel; ohne das stünde
+    // bei jedem Schritt kurz das Skelett da — und die Momente sähen nie
+    // einen Vorgängerstand.
+    placeholderData: keepPreviousData,
     retry: 1,
   });
+  // Wem man die Daumen drückt — erst nach dem Laden gelesen: Der Speicher
+  // gehört dem Browser, der Server-Durchlauf kennt ihn nicht.
+  const [favorit, setFavorit] = useState<string | null>(null);
+  // Was der Ticker auf der Karte gezeigt haben will.
+  const [kartenAuswahl, setKartenAuswahl] = useState<{ nr: number; n: number } | null>(null);
+  const wahlSlug = data?.election.slug;
+  const slugs = data?.candidates.map((k) => k.slug).join(",");
+  useEffect(() => {
+    if (wahlSlug && slugs) setFavorit(ladeFavorit(wahlSlug, slugs.split(",")));
+  }, [wahlSlug, slugs]);
   // Vor den frühen Ausstiegen — Hooks laufen in jeder Runde in derselben Reihenfolge.
   const frisch = useFrisch(data?.reports_received);
   useEffect(() => {
@@ -593,6 +756,7 @@ export function StichwahlView() {
 
   const vorn = fuehrend(data.candidates);
   const fertig = data.phase === "complete";
+  const zu = zeitlage(data.election.polls_close).phase === "laeuft";
   const entschieden = Boolean(data.projection?.decided);
 
   return (
@@ -606,13 +770,16 @@ export function StichwahlView() {
           </p>
         ) : null}
 
-        <Tafel daten={data} />
+        <Tafel daten={data} aktualisiert={dataUpdatedAt} probe={probe} counted={counted} />
         <Meldung daten={data} />
-        {/* Der Weg ins Tippspiel dieser Wahl — vor 18 Uhr die Einladung,
-            danach die Rangliste. Ob es eines gibt, sagt das Backend. */}
-        <TippspielEinladung slug={data.election.slug} phase={data.phase} />
+        <BezirksTicker daten={data} zeigen={(nr) => setKartenAuswahl((a) => ({ nr, n: (a?.n ?? 0) + 1 }))} />
+        {/* Der Weg ins Tippspiel dieser Wahl — nur, solange getippt werden
+            kann. Ab 18 Uhr gehört die Fläche dem Stand (Tim 23.09.2026: „ab
+            18 Uhr weg"); die Rangliste steht dann leise im Fuß. Ob es ein
+            Spiel gibt, sagt das Backend. */}
+        {!zu ? <TippspielEinladung slug={data.election.slug} phase={data.phase} /> : null}
         {entschieden && data.projection ? <BuehneEntschieden daten={data} p={data.projection} /> : null}
-        {data.phase === "before" ? <BuehneVorher daten={data} /> : null}
+        {data.phase === "before" ? <BuehneVorher daten={data} vorbei={() => void refetch()} /> : null}
 
         <Duell daten={data} vorn={vorn} fertig={fertig} frisch={frisch} entschieden={entschieden} />
         <Abstand daten={data} />
@@ -629,7 +796,10 @@ export function StichwahlView() {
 
         {data.projection ? <Hochrechnung daten={data} p={data.projection} /> : null}
         {data.phase !== "before" ? <StichwahlVerlauf daten={data} /> : null}
-        <StichwahlKarte daten={data} probe={probe} counted={counted} />
+        <StichwahlKarte daten={data} probe={probe} counted={counted} auswahl={kartenAuswahl} />
+
+        <RatslotseEinladung />
+        <Mitfiebern daten={data} favorit={favorit} setFavorit={setFavorit} />
 
         {data.notes.length > 0 ? (
           <ul className="mt-5 space-y-1.5 text-[12.5px] text-muted-foreground">
@@ -642,12 +812,13 @@ export function StichwahlView() {
         <footer className="mt-10 border-t border-border pt-4 text-[12.5px] leading-relaxed text-muted-foreground">
           <p className="max-w-[76ch]">
             <strong className="font-semibold text-foreground">Quelle:</strong> Ergebnisdarstellung des Votemanagers der
-            Stadt Oldenburg, jede Minute abgerufen. Die Stichwahl hat — anders als die Ratswahl — keine
+            Stadt Oldenburg, am Abend alle 15 Sekunden abgerufen. Die Stichwahl hat — anders als die Ratswahl — keine
             Open-Data-Datei. Kein amtliches Ergebnis; das stellt der Wahlausschuss fest.{" "}
             <a href={data.election.presentation_url} className="font-medium text-primary" target="_blank" rel="noopener noreferrer">
               Zur amtlichen Ergebnispräsentation
             </a>
           </p>
+          {zu ? <TippspielFussnote slug={data.election.slug} /> : null}
           <p className="mt-2">
             <Link href="/wahlabend" className="font-medium text-primary">
               ← Zum Wahlabend der Ratswahl
@@ -655,6 +826,7 @@ export function StichwahlView() {
           </p>
         </footer>
       </main>
+      <StichwahlMomente daten={data} favorit={favorit} />
       {/* Nur auf dev sichtbar — die Bedienung für die Generalprobe. */}
       <AuszaehlungsSimulator />
     </>

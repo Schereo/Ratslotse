@@ -126,6 +126,7 @@ export function Gebietskarte<P extends Gebiet>({
               // ist die Rangfolge daneben — sie nennt dieselben sechs.
               <path
                 key={nr}
+                data-nr={nr}
                 d={p.d}
                 className={cn(
                   "transition-[fill,stroke] duration-150",

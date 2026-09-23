@@ -12994,6 +12994,72 @@
         "title": "MayorDistrictList",
         "type": "object"
       },
+      "MayorDistrictReport": {
+        "description": "Ein gerade gemeldeter Wahlbezirk — eine Zeile im Ticker der\nStichwahl-Seite (Tims Wunsch 23.09.2026).",
+        "properties": {
+          "area": {
+            "title": "Area",
+            "type": "integer"
+          },
+          "at": {
+            "title": "At",
+            "type": "string"
+          },
+          "first_round_shares": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "First Round Shares",
+            "type": "object"
+          },
+          "leader": {
+            "title": "Leader",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "integer"
+          },
+          "postal": {
+            "title": "Postal",
+            "type": "boolean"
+          },
+          "shares": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Shares",
+            "type": "object"
+          },
+          "votes": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Votes",
+            "type": "object"
+          }
+        },
+        "required": [
+          "number",
+          "name",
+          "area",
+          "postal",
+          "at",
+          "votes",
+          "shares",
+          "first_round_shares",
+          "leader"
+        ],
+        "title": "MayorDistrictReport",
+        "type": "object"
+      },
       "MayorElectionInfo": {
         "description": "Welche Wahl das hier ist — aus ``kommunalwahl/wahlen/``.\n\nStand bis 09/2026 nicht in der Antwort: Es gab genau eine OB-Wahl, und\ndie Seite kannte sie auswendig. Mit der Stichwahl am 27.09. sind es zwei,\nund die Überschrift darf nicht mehr im Frontend stehen.",
         "properties": {
@@ -13059,6 +13125,13 @@
               "null"
             ]
           },
+          "new_districts": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "New Districts",
+            "type": "array"
+          },
           "projected_shares": {
             "additionalProperties": {
               "type": "number"
@@ -13092,7 +13165,8 @@
           "votes",
           "projected_shares",
           "chance_pct",
-          "leader"
+          "leader",
+          "new_districts"
         ],
         "title": "MayorHistoryPoint",
         "type": "object"
@@ -13202,6 +13276,13 @@
           "projection": {
             "$ref": "#/components/schemas/RunoffProjection"
           },
+          "recent_districts": {
+            "items": {
+              "$ref": "#/components/schemas/MayorDistrictReport"
+            },
+            "title": "Recent Districts",
+            "type": "array"
+          },
           "reports_expected": {
             "title": "Reports Expected",
             "type": "integer"
@@ -13249,7 +13330,8 @@
           "error",
           "notes",
           "history",
-          "lead_changes"
+          "lead_changes",
+          "recent_districts"
         ],
         "title": "MayorNight",
         "type": "object"
@@ -19073,12 +19155,23 @@
             "title": "Leader",
             "type": "string"
           },
+          "needed_share_pct": {
+            "title": "Needed Share Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
           "open_ballot": {
             "title": "Open Ballot",
             "type": "integer"
           },
           "open_postal": {
             "title": "Open Postal",
+            "type": "integer"
+          },
+          "open_votes_expected": {
+            "title": "Open Votes Expected",
             "type": "integer"
           },
           "open_votes_max": {
@@ -19098,6 +19191,20 @@
             },
             "title": "Shares",
             "type": "object"
+          },
+          "trailing": {
+            "title": "Trailing",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "trailing_expected_share_pct": {
+            "title": "Trailing Expected Share Pct",
+            "type": [
+              "number",
+              "null"
+            ]
           }
         },
         "required": [
@@ -19114,7 +19221,11 @@
           "actual_leader",
           "actual_lead_votes",
           "open_votes_max",
-          "caveats"
+          "caveats",
+          "trailing",
+          "needed_share_pct",
+          "trailing_expected_share_pct",
+          "open_votes_expected"
         ],
         "title": "RunoffProjection",
         "type": "object"
@@ -32348,6 +32459,87 @@
           }
         },
         "summary": "Stichwahl Bezirke",
+        "tags": [
+          "wahlabend"
+        ]
+      }
+    },
+    "/api/wahlabend/stichwahl/bild.png": {
+      "get": {
+        "description": "Der Stand der Stichwahl als Bild zum Teilen (PNG) — dieselben Zahlen\nwie ``/api/wahlabend/stichwahl``, mit Lotti. Öffentlich wie die Seite:\nMessenger holen es ohne Konto ab, wenn sie den Link auspacken.",
+        "operationId": "stichwahl_bild_api_wahlabend_stichwahl_bild_png_get",
+        "parameters": [
+          {
+            "description": "„beitrag“ = 1080×1350 (4:5), „story“ = 1080×1920 (9:16), „quer“ = 1200×630",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "default": "beitrag",
+              "description": "„beitrag“ = 1080×1350 (4:5), „story“ = 1080×1920 (9:16), „quer“ = 1200×630",
+              "pattern": "^(beitrag|story|quer)$",
+              "title": "Format",
+              "type": "string"
+            }
+          },
+          {
+            "description": "gesetzt = Generalprobe mit den Zahlen des ersten Wahlgangs",
+            "in": "query",
+            "name": "probe",
+            "required": false,
+            "schema": {
+              "description": "gesetzt = Generalprobe mit den Zahlen des ersten Wahlgangs",
+              "title": "Probe",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "Generalprobe: nur die ersten N Wahlbezirke ausgezählt",
+            "in": "query",
+            "name": "counted",
+            "required": false,
+            "schema": {
+              "description": "Generalprobe: nur die ersten N Wahlbezirke ausgezählt",
+              "maximum": 133,
+              "minimum": 0,
+              "title": "Counted",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/png": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Der Stand der Stichwahl als Bild zum Teilen (PNG): die beiden Namen mit Anteil, Balken und Stimmen, der Auszählungsstand, die Hochrechnung und Lotti. `?format=beitrag` (1080×1350, Vorgabe), `story` (1080×1920) oder `quer` (1200×630, Link-Vorschau). 15 Sekunden cachebar."
+          },
+          "404": {
+            "description": "Wahlabend nicht freigeschaltet, oder es steht keine Stichwahl an."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stichwahl Bild",
         "tags": [
           "wahlabend"
         ]

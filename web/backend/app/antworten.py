@@ -4059,6 +4059,21 @@ WAHLABEND_PNG: dict[int | str, dict[str, Any]] = {
     404: {"description": "Der Wahlabend ist noch nicht freigeschaltet (Feature-Schalter `wahlabend`)."},
 }
 
+STICHWAHL_PNG: dict[int | str, dict[str, Any]] = {
+    200: {
+        "description": (
+            "Der Stand der Stichwahl als Bild zum Teilen (PNG): die beiden "
+            "Namen mit Anteil, Balken und Stimmen, der Auszählungsstand, die "
+            "Hochrechnung und Lotti. `?format=beitrag` (1080×1350, Vorgabe), "
+            "`story` (1080×1920) oder `quer` (1200×630, Link-Vorschau). "
+            "15 Sekunden cachebar."
+        ),
+        "content": {"image/png": {"schema": {"type": "string", "format": "binary"}}},
+    },
+    404: {"description": "Wahlabend nicht freigeschaltet, oder es steht keine Stichwahl an."},
+}
+
+
 WAHLABEND_KARTE_PNG: dict[int | str, dict[str, Any]] = {
     200: {
         "description": (
@@ -4687,6 +4702,31 @@ class MayorHistoryPoint(TypedDict):
     chance_pct: int | None
     #: Wer nach Ist-Stimmen vorn liegt; ``None`` bei Gleichstand oder ohne Stimmen.
     leader: str | None
+    #: Nummern der Wahlbezirke, die mit DIESEM Stand zum ersten Mal gezählt
+    #: waren — daraus der Ticker (``recent_districts``). Leer bei Punkten
+    #: aus der Zeit, bevor der Verlauf sie kannte.
+    new_districts: list[int]
+
+
+class MayorDistrictReport(TypedDict):
+    """Ein gerade gemeldeter Wahlbezirk — eine Zeile im Ticker der
+    Stichwahl-Seite (Tims Wunsch 23.09.2026)."""
+    number: int
+    name: str
+    #: Wahlbereich 1…6.
+    area: int
+    #: Briefwahlbezirk — hat keine Fläche auf der Karte.
+    postal: bool
+    #: Wann der Dienst ihn zum ersten Mal gezählt sah (aus dem Verlauf).
+    at: str
+    #: Slug → Stimmen in der Stichwahl.
+    votes: dict[str, int]
+    #: Slug → Anteil an den Stimmen der beiden, in Prozent.
+    shares: dict[str, float]
+    #: Slug → Anteil derselben beiden im ersten Wahlgang — der Vergleich.
+    first_round_shares: dict[str, float]
+    #: Wer hier vorn liegt; ``None`` bei Gleichstand.
+    leader: str | None
 
 
 class MayorLeadChange(TypedDict):
@@ -4896,6 +4936,16 @@ class RunoffProjection(TypedDict):
     open_votes_max: int
     #: Menschentext: was das Modell annimmt und was nicht.
     caveats: list[str]
+    #: Die Aufholrechnung: wer nach gezählten Stimmen zurückliegt — ``null``
+    #: bei Gleichstand, ohne offene Bezirke oder wenn entschieden.
+    trailing: str | None
+    #: Anteil der noch erwarteten Stimmen, den ``trailing`` bräuchte, um
+    #: gleichzuziehen. Über 100: Nicht einmal alle erwarteten reichten.
+    needed_share_pct: float | None
+    #: Was das Modell ``trailing`` in den offenen Bezirken zutraut.
+    trailing_expected_share_pct: float | None
+    #: Erwartete Stimmen der beiden in den offenen Bezirken (Modell).
+    open_votes_expected: int
 
 
 class MayorNight(TypedDict):
@@ -4926,6 +4976,9 @@ class MayorNight(TypedDict):
     history: list[MayorHistoryPoint]
     #: Wann wechselte, wer vorn liegt — aus ``history`` gerechnet.
     lead_changes: list[MayorLeadChange]
+    #: Die zuletzt gemeldeten Wahlbezirke, jüngster zuerst (höchstens acht) —
+    #: aus ``history`` und dem Stand gerechnet. Leer vor der Auszählung.
+    recent_districts: list[MayorDistrictReport]
 
 
 # ------------------------------------------------------------------ Tippspiel (docs/plan-tippspiel-ratswahl.md)

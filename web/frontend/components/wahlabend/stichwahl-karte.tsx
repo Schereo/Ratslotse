@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils";
 import { prozent, zahl } from "@/lib/wahlabend";
 import { ladeWahlbezirke, roemisch, type Wahlbezirkflaeche } from "@/lib/wahlgebiete";
 import {
+  abrufTakt,
   bezirkAnteil,
   bezirkFuehrung,
   flaechenAlpha,
@@ -134,10 +135,13 @@ function Bezirkstafel({ zeile, kandidaten, schliessen }: {
   );
 }
 
-export function StichwahlKarte({ daten, probe, counted, className }: {
+export function StichwahlKarte({ daten, probe, counted, auswahl, className }: {
   daten: Stichwahl;
   probe: string | null;
   counted: string | null;
+  /** Ein Bezirk, den der Ticker gezeigt haben will — `n` zählt hoch, damit
+   *  derselbe Bezirk zweimal hintereinander gewählt werden kann. */
+  auswahl?: { nr: number; n: number } | null;
   className?: string;
 }) {
   const wer = bezugsperson(daten.candidates);
@@ -150,10 +154,51 @@ export function StichwahlKarte({ daten, probe, counted, className }: {
   const abfrage = useQuery({
     queryKey: ["stichwahl-bezirke", pfad],
     queryFn: () => api.get<StichwahlBezirke>(pfad),
-    refetchInterval: 60_000,
-    staleTime: 30_000,
+    // Im Takt der Tafel (`abrufTakt`) — mit einer Minute hinkte die Karte am
+    // Abend bis zu 45 s hinter den Zahlen darüber her.
+    refetchInterval: abrufTakt(daten),
+    refetchIntervalInBackground: true,
+    staleTime: 10_000,
   });
+  // Meldet die Tafel einen neuen Stand, zieht die Karte sofort nach, statt
+  // auf ihren eigenen Takt zu warten.
+  const { refetch } = abfrage;
+  const gemeldet = daten.reports_received;
+  const ersterStand = useRef(gemeldet);
+  useEffect(() => {
+    if (gemeldet !== ersterStand.current) void refetch();
+  }, [gemeldet, refetch]);
   const bezirke = useMemo(() => new Map((abfrage.data?.districts ?? []).map((d) => [d.number, d])), [abfrage.data]);
+
+  // Frisch gezählte Bezirke blitzen zweimal auf — nur was seit dem letzten
+  // Abruf DIESER Karte dazukam, nie beim ersten Laden (DESIGNSPRACHE §7).
+  const kasten = useRef<HTMLElement>(null);
+  const gezaehltVorher = useRef<Set<number> | null>(null);
+  useEffect(() => {
+    if (!abfrage.data) return;
+    const jetzt = new Set(abfrage.data.districts.filter((d) => d.counted).map((d) => d.number));
+    const vorher = gezaehltVorher.current;
+    gezaehltVorher.current = jetzt;
+    if (!vorher || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    for (const nr of jetzt) {
+      if (vorher.has(nr)) continue;
+      kasten.current?.querySelector<SVGPathElement>(`path[data-nr="${nr}"]`)?.animate(
+        [{ opacity: 1 }, { opacity: 0.2 }, { opacity: 1 }, { opacity: 0.2 }, { opacity: 1 }],
+        { duration: 1800, easing: "ease-in-out" },
+      );
+    }
+  }, [abfrage.data]);
+
+  // Der Ticker wählt einen Bezirk: ganze Stadt zeigen, ihn markieren, hinscrollen.
+  useEffect(() => {
+    if (!auswahl) return;
+    setFokus("city");
+    setGewaehlt(auswahl.nr);
+    kasten.current?.scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+      block: "start",
+    });
+  }, [auswahl]);
 
   // Je Bezirk: wer vorn liegt (Stichwahl, wo gezählt; sonst erster Wahlgang)
   // und wie deutlich. Die Deckkraft misst sich am deutlichsten Vorsprung der
@@ -226,7 +271,7 @@ export function StichwahlKarte({ daten, probe, counted, className }: {
   if (!wer) return null;
 
   return (
-    <section className={cn("mt-5 rounded-2xl border border-border bg-card p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)] @container sm:p-5", className)} data-testid="stichwahl-karte">
+    <section ref={kasten} className={cn("mt-5 scroll-mt-20 rounded-2xl border border-border bg-card p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)] @container sm:p-5", className)} data-testid="stichwahl-karte">
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
         <div className="min-w-0">
           <p className={KICKER}>Wahlbezirke</p>

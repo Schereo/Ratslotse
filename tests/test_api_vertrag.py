@@ -40,6 +40,7 @@ KEIN_JSON = {
     ("get", "/api/admin/live-probe"),
     ("get", "/api/wahlabend/bild.png"),
     ("get", "/api/wahlabend/karte.png"),
+    ("get", "/api/wahlabend/stichwahl/bild.png"),
     ("get", "/api/tipp/qr.png"),
 }
 
@@ -53,6 +54,7 @@ KEIN_JSON_MEDIENTYP = {
     ("get", "/api/admin/live-probe"): "text/event-stream",
     ("get", "/api/wahlabend/bild.png"): "image/png",
     ("get", "/api/wahlabend/karte.png"): "image/png",
+    ("get", "/api/wahlabend/stichwahl/bild.png"): "image/png",
     ("get", "/api/tipp/qr.png"): "image/png",
 }
 

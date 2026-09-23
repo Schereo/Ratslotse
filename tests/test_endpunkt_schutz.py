@@ -138,6 +138,9 @@ OEFFENTLICH = {
     # Die 133 Wahlbezirke der Stichwahl — dieselbe Ergebnisdarstellung der
     # Stadt, eine Ebene tiefer; ein Bezirk hat einige hundert Wählende.
     ("get", "/api/wahlabend/stichwahl/bezirke"),
+    # Und ihr Stand als Bild zum Teilen — dieselben Zahlen wie die Seite,
+    # abgeholt von Messengern ohne Konto.
+    ("get", "/api/wahlabend/stichwahl/bild.png"),
     # Die Potenzial-Rechnung der Stichwahl: kein Konto, aber ein Token aus
     # der .env (WAHLKAMPF_TOKEN) — ohne ihn 404, ein falscher ebenso. Die
     # Daten sind öffentliche Wahlergebnisse; der Token schützt vor Zufall,
