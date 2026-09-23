@@ -271,14 +271,23 @@ PAGES: dict[str, PageKnowledge] = dict([
            "Bekommt jeder Punkt sofort ein Ergebnis?",
        ),
     ),
+    # Der Titel bleibt „Themenfeld“ (so heißt die Seite in Statistik und
+    # Seitenaufrufen); der Text beschreibt seit 23.09.2026 aber, was sie
+    # wirklich zeigt. `themaHref` führt auf `/council/entity/{slug}` — ein
+    # Projekt, eine Organisation oder einen Ort mit allen Beschlüssen dazu.
+    # Vorher stand hier ein Sachgebiet mit Rückblick, und Lotti erklärte auf
+    # der Fliegerhorst-Seite einen Rückblick, den es dort nicht gibt.
     _p("/council/thema", "Themenfeld",
-       "Ein Sachgebiet im Überblick: die wichtigsten Beschlüsse der letzten "
-       "Jahre, ein Rückblick in Sätzen und die Orte, an denen etwas passiert ist.",
-       "Der Rückblick entsteht aus den Beschlüssen dieses Feldes.",
-       "Der Überblick ist eine Auswahl, keine vollständige Chronik.", nudge=True,
+       "Ein Thema, das den Rat beschäftigt — ein Projekt, eine Organisation oder "
+       "ein Ort — mit allen Beschlüssen dazu, neueste zuerst, einer kurzen "
+       "Beschreibung, den darin erkannten Beträgen und verwandten Themen.",
+       "Welche Beschlüsse zu einem Thema gehören, wird maschinell aus ihrem Text "
+       "erkannt; die Beschreibung ist eine maschinelle Zusammenfassung.",
+       "Die Zuordnung kann einen Beschluss übersehen oder einen zu viel "
+       "zeigen; die erkannten Beträge sind keine Haushaltszahlen.", nudge=True,
        starters=(
-           "Worum geht es in diesem Themenfeld?",
-           "Ist der Rückblick eine vollständige Chronik?",
+           "Worum geht es bei diesem Thema?",
+           "Wie kommen die Beschlüsse zu diesem Thema?",
        ),
     ),
     _p("/council/person", "Ratsmitglied",

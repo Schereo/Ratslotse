@@ -16,7 +16,10 @@
       "2024-04-15"
      ]
     ],
-    "quelle": "council_decisions id=6705, Rat 2024-04-15, TOP 8, Vorlage 24/0158; council_sessions.session_date"
+    "quelle": "council_decisions id=6705, Rat 2024-04-15, TOP 8, Vorlage 24/0158; council_sessions.session_date",
+    "antwort_auch": [
+     "April 2024"
+    ]
    },
    {
     "art": "text",
@@ -29,7 +32,10 @@
       "2026-06-01"
      ]
     ],
-    "quelle": "council_decisions id=8677, Rat 2026-06-01, TOP 6.1, Vorlage 26/0396; council_sessions.session_date"
+    "quelle": "council_decisions id=8677, Rat 2026-06-01, TOP 6.1, Vorlage 26/0396; council_sessions.session_date",
+    "antwort_auch": [
+     "Juni 2026"
+    ]
    },
    {
     "art": "zahl",
@@ -218,7 +224,10 @@
       "2026-08-12"
      ]
     ],
-    "quelle": "council_press id=3112 (2026-08-12, „Stadion-Neubau: EU und Kommunalaufsicht geben endgültig grünes Licht“)"
+    "quelle": "council_press id=3112 (2026-08-12, „Stadion-Neubau: EU und Kommunalaufsicht geben endgültig grünes Licht“)",
+    "antwort_auch": [
+     "August 2026"
+    ]
    },
    {
     "art": "zahl",
@@ -291,7 +300,10 @@
       "2026-02-23"
      ]
     ],
-    "quelle": "council_decisions id=8500, Rat 2026-02-23, TOP 12.7; council_sessions.session_date"
+    "quelle": "council_decisions id=8500, Rat 2026-02-23, TOP 12.7; council_sessions.session_date",
+    "antwort_auch": [
+     "Februar 2026"
+    ]
    },
    {
     "art": "zahl",
@@ -469,7 +481,10 @@
       "2026-06-01"
      ]
     ],
-    "quelle": "council_decisions id=9330, Rat 2026-06-01, TOP 15.10; council_sessions.session_date"
+    "quelle": "council_decisions id=9330, Rat 2026-06-01, TOP 15.10; council_sessions.session_date",
+    "antwort_auch": [
+     "Juni 2026"
+    ]
    },
    {
     "art": "zahl",
@@ -523,7 +538,10 @@
       "2026-04-13"
      ]
     ],
-    "quelle": "council_decisions id=8541, Rat 2026-04-13, TOP 6.3, Vorlage 26/0210; council_sessions.session_date"
+    "quelle": "council_decisions id=8541, Rat 2026-04-13, TOP 6.3, Vorlage 26/0210; council_sessions.session_date",
+    "antwort_auch": [
+     "April 2026"
+    ]
    },
    {
     "art": "text",
@@ -568,7 +586,10 @@
       "2026-02-23"
      ]
     ],
-    "quelle": "council_decisions id=8497, Rat 2026-02-23, TOP 12.1, Vorlage 26/0089/1; council_sessions.session_date"
+    "quelle": "council_decisions id=8497, Rat 2026-02-23, TOP 12.1, Vorlage 26/0089/1; council_sessions.session_date",
+    "antwort_auch": [
+     "Februar 2026"
+    ]
    }
   ],
   "verboten": [],
@@ -673,7 +694,10 @@
       "2026-04-13"
      ]
     ],
-    "quelle": "council_decisions id=8541, Rat 2026-04-13, TOP 6.3, Vorlage 26/0210; council_sessions.session_date"
+    "quelle": "council_decisions id=8541, Rat 2026-04-13, TOP 6.3, Vorlage 26/0210; council_sessions.session_date",
+    "antwort_auch": [
+     "April 2026"
+    ]
    },
    {
     "art": "text",
@@ -687,7 +711,7 @@
    }
   ],
   "verboten": [],
-  "notiz": "Der Orts-Block trägt Name und Beschreibung des Orts, keine Beschlüsse — erwartet: Kontextfehler. Falle: Ein Satzungsbeschluss zu N-777 G fiel schon am 28.09.2020; der gültige ist der vom 13.04.2026."
+  "notiz": "Bis 23.09.2026 trug der Orts-Block nur Name und Beschreibung (Kontextfehler); seitdem die jüngsten Beschlüsse wie die Ortsseite. Falle: Ein Satzungsbeschluss zu N-777 G fiel schon am 28.09.2020; der gültige ist der vom 13.04.2026."
  },
  {
   "id": "rat-radverkehr-plaene",
@@ -707,7 +731,10 @@
       "2026-06-01"
      ]
     ],
-    "quelle": "council_decisions id=9307, Rat 2026-06-01, TOP 9.1, Vorlage 26/0221; council_sessions.session_date"
+    "quelle": "council_decisions id=9307, Rat 2026-06-01, TOP 9.1, Vorlage 26/0221; council_sessions.session_date",
+    "antwort_auch": [
+     "Juni 2026"
+    ]
    },
    {
     "art": "text",
@@ -739,7 +766,10 @@
       "2022-09-26"
      ]
     ],
-    "quelle": "council_decisions id=5172, Rat 2022-09-26, TOP 13.1, Vorlage 22/0667; council_sessions.session_date"
+    "quelle": "council_decisions id=5172, Rat 2022-09-26, TOP 13.1, Vorlage 22/0667; council_sessions.session_date",
+    "antwort_auch": [
+     "September 2022"
+    ]
    },
    {
     "art": "text",
@@ -776,7 +806,10 @@
       "2025-02-24"
      ]
     ],
-    "quelle": "council_decisions id=7533, Rat 2025-02-24, TOP 10.1, Vorlage 24/0824; council_sessions.session_date"
+    "quelle": "council_decisions id=7533, Rat 2025-02-24, TOP 10.1, Vorlage 24/0824; council_sessions.session_date",
+    "antwort_auch": [
+     "Februar 2025"
+    ]
    },
    {
     "art": "zahl",
@@ -845,7 +878,10 @@
       "2026-06-01"
      ]
     ],
-    "quelle": "council_decisions id=9316, Rat 2026-06-01, TOP 13.2, Vorlage 26/0353; council_sessions.session_date"
+    "quelle": "council_decisions id=9316, Rat 2026-06-01, TOP 13.2, Vorlage 26/0353; council_sessions.session_date",
+    "antwort_auch": [
+     "Juni 2026"
+    ]
    },
    {
     "art": "text",
@@ -934,7 +970,7 @@
     "grund": "Betrag für 2030"
    }
   ],
-  "notiz": "Beschlusstext und Kurzfassung nennen keine Beträge, nur die Vorlage — erwartet: Kontextfehler (der Beschluss-Block reicht die Vorlage nicht durch)."
+  "notiz": "Beschlusstext und Kurzfassung nennen keine Beträge, nur die Vorlage. Seit 23.09.2026 trägt der Beschluss-Block deren finanzielle Auswirkungen (die Karte „Was kostet das?“ der Seite); vorher Kontextfehler."
  },
  {
   "id": "rat-vwg-elektrobusse",
@@ -961,7 +997,10 @@
       "2026-06-29"
      ]
     ],
-    "quelle": "council_decisions id=9356, Rat 2026-06-29, TOP 6.9, Vorlage 26/0414; council_sessions.session_date"
+    "quelle": "council_decisions id=9356, Rat 2026-06-29, TOP 6.9, Vorlage 26/0414; council_sessions.session_date",
+    "antwort_auch": [
+     "Juni 2026"
+    ]
    }
   ],
   "verboten": [],
@@ -1065,7 +1104,10 @@
       "2024-11-25"
      ]
     ],
-    "quelle": "council_decisions id=7293, Rat 2024-11-25, TOP 8.11, Vorlage 24/0645; council_sessions.session_date"
+    "quelle": "council_decisions id=7293, Rat 2024-11-25, TOP 8.11, Vorlage 24/0645; council_sessions.session_date",
+    "antwort_auch": [
+     "November 2024"
+    ]
    },
    {
     "art": "text",
@@ -1076,7 +1118,10 @@
       "2025-12-15"
      ]
     ],
-    "quelle": "council_decisions id=8468, Rat 2025-12-15, TOP 16.1, Vorlage 25/0615; council_sessions.session_date"
+    "quelle": "council_decisions id=8468, Rat 2025-12-15, TOP 16.1, Vorlage 25/0615; council_sessions.session_date",
+    "antwort_auch": [
+     "Dezember 2025"
+    ]
    }
   ],
   "verboten": [],
@@ -1110,7 +1155,10 @@
       "2025-12-15"
      ]
     ],
-    "quelle": "council_decisions id=8468, Rat 2025-12-15, TOP 16.1, Vorlage 25/0615; council_sessions.session_date"
+    "quelle": "council_decisions id=8468, Rat 2025-12-15, TOP 16.1, Vorlage 25/0615; council_sessions.session_date",
+    "antwort_auch": [
+     "Dezember 2025"
+    ]
    },
    {
     "art": "zahl",
@@ -1174,7 +1222,10 @@
       "2023-09-06"
      ]
     ],
-    "quelle": "council_decisions id=5988, Ausschuss für Finanzen und Beteiligungen 2023-09-06, TOP 20, Vorlage 23/0632; council_sessions.session_date"
+    "quelle": "council_decisions id=5988, Ausschuss für Finanzen und Beteiligungen 2023-09-06, TOP 20, Vorlage 23/0632; council_sessions.session_date",
+    "antwort_auch": [
+     "September 2023"
+    ]
    }
   ],
   "verboten": [],
@@ -1225,7 +1276,10 @@
       "2026-06-01"
      ]
     ],
-    "quelle": "council_decisions id=8683, Rat 2026-06-01, TOP 8.1, Vorlage 26/0236; council_sessions.session_date"
+    "quelle": "council_decisions id=8683, Rat 2026-06-01, TOP 8.1, Vorlage 26/0236; council_sessions.session_date",
+    "antwort_auch": [
+     "Juni 2026"
+    ]
    },
    {
     "art": "text",
@@ -1306,7 +1360,10 @@
       "2026-06-01"
      ]
     ],
-    "quelle": "council_decisions id=8683, Rat 2026-06-01, TOP 8.1, Vorlage 26/0236; council_sessions.session_date"
+    "quelle": "council_decisions id=8683, Rat 2026-06-01, TOP 8.1, Vorlage 26/0236; council_sessions.session_date",
+    "antwort_auch": [
+     "Juni 2026"
+    ]
    },
    {
     "art": "zahl",
@@ -1318,7 +1375,7 @@
    }
   ],
   "verboten": [],
-  "notiz": "Der Themenfeld-Block trägt nur Label und Beschreibung aus council/topics.py; der Rückblick (council_field_recaps) nennt den Wärmeplan, kommt aber nicht in Lottis Prompt — erwartet: Kontextfehler."
+  "notiz": "Ein Feld-Schlüssel auf /council/thema (die echte Seite zeigt Entitäten, s. council/page_context.py). Seit 23.09.2026 trägt der Block Rückblick und jüngste Beschlüsse des Felds; vorher nur Label und Beschreibung."
  },
  {
   "id": "rat-lachgas-verbot",
@@ -1337,7 +1394,10 @@
       "2025-09-29"
      ]
     ],
-    "quelle": "council_decisions id=9278, Rat 2025-09-29, TOP 11.6; council_sessions.session_date"
+    "quelle": "council_decisions id=9278, Rat 2025-09-29, TOP 11.6; council_sessions.session_date",
+    "antwort_auch": [
+     "September 2025"
+    ]
    },
    {
     "art": "text",
@@ -1399,7 +1459,11 @@
    {
     "art": "zahl",
     "wert": 79000000,
-    "grund": "Höchstbetrag der Ausfallbürgschaft, nicht der Baupreis"
+    "grund": "Höchstbetrag der Ausfallbürgschaft, nicht der Baupreis",
+    "ausser_im_satz_mit": [
+     "Bürgschaft",
+     "bürgt"
+    ]
    }
   ],
   "notiz": "Baupreis (78,68 Mio. €) und Bürgschaft (79 Mio. €) wurden in derselben Sitzung beschlossen und liegen 0,4 % auseinander — die Toleranz ist deshalb eng."
@@ -1429,7 +1493,10 @@
       "2025-06-30"
      ]
     ],
-    "quelle": "council_decisions id=7912, Rat 2025-06-30, TOP 9.5, Vorlage 25/0321; council_sessions.session_date"
+    "quelle": "council_decisions id=7912, Rat 2025-06-30, TOP 9.5, Vorlage 25/0321; council_sessions.session_date",
+    "antwort_auch": [
+     "Juni 2025"
+    ]
    }
   ],
   "verboten": [
@@ -1535,7 +1602,10 @@
       "2026-06-29"
      ]
     ],
-    "quelle": "council_decisions id=9368, Rat 2026-06-29, TOP 14.1; council_sessions.session_date"
+    "quelle": "council_decisions id=9368, Rat 2026-06-29, TOP 14.1; council_sessions.session_date",
+    "antwort_auch": [
+     "Juni 2026"
+    ]
    },
    {
     "art": "text",
@@ -1595,7 +1665,7 @@
    }
   ],
   "verboten": [],
-  "notiz": "Erwartet: Kontextfehler — der Beschluss-Block kennt keine Pressemitteilungen."
+  "notiz": "Erwartet: Kontextfehler — die Beschluss-Seite zeigt keine Pressemitteilung (nur eine NWZ-Suche), also auch Lottis Block nicht (bewusst, 23.09.2026)."
  },
  {
   "id": "rat-zweckentfremdungssatzung",
@@ -1615,7 +1685,10 @@
       "2025-12-01"
      ]
     ],
-    "quelle": "council_decisions id=8353, Rat 2025-12-01, TOP 17.6, Vorlage 25/0817; council_sessions.session_date"
+    "quelle": "council_decisions id=8353, Rat 2025-12-01, TOP 17.6, Vorlage 25/0817; council_sessions.session_date",
+    "antwort_auch": [
+     "Dezember 2025"
+    ]
    },
    {
     "art": "text",
@@ -1660,7 +1733,10 @@
       "2023-09-04"
      ]
     ],
-    "quelle": "council_decisions id=5914, Rat 2023-09-04, TOP 6.10, Vorlage 23/0537; council_sessions.session_date"
+    "quelle": "council_decisions id=5914, Rat 2023-09-04, TOP 6.10, Vorlage 23/0537; council_sessions.session_date",
+    "antwort_auch": [
+     "September 2023"
+    ]
    }
   ],
   "verboten": [],
@@ -1723,7 +1799,10 @@
       "2022-11-07"
      ]
     ],
-    "quelle": "council_decisions id=5253, Rat 2022-11-07, TOP 12.4; council_sessions.session_date"
+    "quelle": "council_decisions id=5253, Rat 2022-11-07, TOP 12.4; council_sessions.session_date",
+    "antwort_auch": [
+     "November 2022"
+    ]
    }
   ],
   "verboten": [],
@@ -1798,7 +1877,10 @@
       "2026-03-16"
      ]
     ],
-    "quelle": "council_decisions id=8426, Rat 2026-03-16, TOP 7.2, Vorlage 26/0179; council_sessions.session_date"
+    "quelle": "council_decisions id=8426, Rat 2026-03-16, TOP 7.2, Vorlage 26/0179; council_sessions.session_date",
+    "antwort_auch": [
+     "März 2026"
+    ]
    }
   ],
   "verboten": [],
@@ -1835,7 +1917,7 @@
    }
   ],
   "verboten": [],
-  "notiz": "Lottis _abstimmung liest vote='majority' und schreibt „mehrheitlich, 9 Enthaltungen“ — raw_result sieht sie nicht. Erwartet: Kontext falsch zugeordnet (mehrheitlich statt einstimmig). Achtung beim Abgleich: Das Wort „Einstimmig“ steht in einer Prompt-Regel — ein reiner Wortfund im Prompt meldet hier fälschlich Abdeckung; gesucht werden muss in den Kontextblöcken."
+  "notiz": "Lottis _abstimmung liest vote='majority' und schreibt „mehrheitlich, 9 Enthaltungen“ — raw_result sah sie bis 23.09.2026 nicht. Damals: Kontext falsch zugeordnet (mehrheitlich statt einstimmig). Achtung beim Abgleich: Das Wort „Einstimmig“ steht in einer Prompt-Regel — ein reiner Wortfund im Prompt meldet hier fälschlich Abdeckung; gesucht werden muss in den Kontextblöcken."
  },
  {
   "id": "rat-ort-kreuzung-muellersweg",
@@ -1862,7 +1944,10 @@
       "2024-08-26"
      ]
     ],
-    "quelle": "council_decisions id=7058, Rat 2024-08-26, TOP 7.7, Vorlage 24/0422; council_sessions.session_date"
+    "quelle": "council_decisions id=7058, Rat 2024-08-26, TOP 7.7, Vorlage 24/0422; council_sessions.session_date",
+    "antwort_auch": [
+     "August 2024"
+    ]
    }
   ],
   "verboten": [
@@ -1909,7 +1994,10 @@
       "2026-02-22"
      ]
     ],
-    "quelle": "council_press id=765 (2026-02-22, „Bürgerentscheid: Baumschutzsatzung bleibt bestehen“)"
+    "quelle": "council_press id=765 (2026-02-22, „Bürgerentscheid: Baumschutzsatzung bleibt bestehen“)",
+    "antwort_auch": [
+     "Februar 2026"
+    ]
    },
    {
     "art": "text",
@@ -1921,7 +2009,10 @@
       "2025-06-30"
      ]
     ],
-    "quelle": "council_decisions id=7920, Rat 2025-06-30, TOP 11.1, Vorlage 25/0387; council_sessions.session_date"
+    "quelle": "council_decisions id=7920, Rat 2025-06-30, TOP 11.1, Vorlage 25/0387; council_sessions.session_date",
+    "antwort_auch": [
+     "Juni 2025"
+    ]
    }
   ],
   "verboten": [],
@@ -2019,7 +2110,7 @@
    }
   ],
   "verboten": [],
-  "notiz": "Bis 12/2024 als „FDP/Volt“ geführt (Gruppe), seitdem Volt allein. Lottis Personen-Block trägt nur den Namen — erwartet: Kontextfehler."
+  "notiz": "Bis 12/2024 als „FDP/Volt“ geführt (Gruppe), seitdem Volt allein. Lottis Personen-Block trug bis 23.09.2026 nur den Namen; seitdem Fraktion und laufende Mitgliedschaften wie die Personenseite."
  },
  {
   "id": "rat-person-druegemoeller-ausschuesse",
@@ -2082,7 +2173,7 @@
    }
   ],
   "verboten": [],
-  "notiz": "Die Personenseite zeigt die Mitgliedschaften; Lottis Personen-Block trägt nur den Namen. Erwartet: Kontextfehler."
+  "notiz": "Die Personenseite zeigt die Mitgliedschaften; Lottis Personen-Block trug bis 23.09.2026 nur den Namen (Kontextfehler)."
  },
  {
   "id": "lotti-person-adler-fraktion",
@@ -2146,7 +2237,10 @@
       "2026-06-01"
      ]
     ],
-    "quelle": "council_decisions id=9319, Rat 2026-06-01, TOP 14.3, Vorlage 26/0302; council_sessions.session_date"
+    "quelle": "council_decisions id=9319, Rat 2026-06-01, TOP 14.3, Vorlage 26/0302; council_sessions.session_date",
+    "antwort_auch": [
+     "Juni 2026"
+    ]
    },
    {
     "art": "text",
@@ -2176,7 +2270,10 @@
       "2026-04-13"
      ]
     ],
-    "quelle": "council_decisions id=8541, Rat 2026-04-13, TOP 6.3, Vorlage 26/0210; council_sessions.session_date"
+    "quelle": "council_decisions id=8541, Rat 2026-04-13, TOP 6.3, Vorlage 26/0210; council_sessions.session_date",
+    "antwort_auch": [
+     "April 2026"
+    ]
    },
    {
     "art": "zahl",
@@ -2207,7 +2304,10 @@
       "2019-06-24"
      ]
     ],
-    "quelle": "store.decision_ids_for_place('eversten-west') — jüngster angenommener Beschluss, z. B. id 2226"
+    "quelle": "store.decision_ids_for_place('eversten-west') — jüngster angenommener Beschluss, z. B. id 2226",
+    "antwort_auch": [
+     "Juni 2019"
+    ]
    },
    {
     "art": "text",
@@ -2242,7 +2342,10 @@
       "2026-06-01"
      ]
     ],
-    "quelle": "council_decisions id=9319, Rat 2026-06-01, TOP 14.3, Vorlage 26/0302; council_sessions.session_date"
+    "quelle": "council_decisions id=9319, Rat 2026-06-01, TOP 14.3, Vorlage 26/0302; council_sessions.session_date",
+    "antwort_auch": [
+     "Juni 2026"
+    ]
    },
    {
     "art": "text",
@@ -2253,7 +2356,7 @@
    }
   ],
   "verboten": [],
-  "notiz": "Die Ortsseite listet die Beschlüsse; Lottis Orts-Block nur Name und Beschreibung. Erwartet: Kontextfehler."
+  "notiz": "Die Ortsseite listet die Beschlüsse; Lottis Orts-Block trug bis 23.09.2026 nur Name und Beschreibung (Kontextfehler)."
  },
  {
   "id": "rat-sitzung-naechster-rat",
@@ -2402,7 +2505,7 @@
    }
   ],
   "verboten": [],
-  "notiz": "Lottis Sitzungs-Block trägt Gremium und Datum, keinen Ort und keine Uhrzeit — erwartet: Kontextfehler beim Ort."
+  "notiz": "Lottis Sitzungs-Block trug bis 23.09.2026 Gremium und Datum, keinen Ort und keine Uhrzeit (Kontextfehler beim Ort)."
  },
  {
   "id": "lotti-sitzung-2809-tagesordnung",
@@ -2432,7 +2535,7 @@
    }
   ],
   "verboten": [],
-  "notiz": "Die Seite zeigt die Tagesordnung, Lottis Block nicht. Erwartet: Kontextfehler."
+  "notiz": "Die Seite zeigt die Tagesordnung; Lottis Block seit 23.09.2026 auch (vorher Kontextfehler)."
  },
  {
   "id": "lotti-sitzung-0106-stadion",
@@ -2471,7 +2574,7 @@
    }
   ],
   "verboten": [],
-  "notiz": "41 Beschlüsse in dieser Sitzung, fünf davon zum Stadion. Lottis Block kennt keinen davon."
+  "notiz": "41 Beschlüsse in dieser Sitzung, fünf davon zum Stadion. Bis 23.09.2026 kannte Lottis Block keinen davon; seitdem die Tagesordnung mit Ergebnis und Nummer. Die Nummern verlangt das Gold auch in der Antwort — Lotti nennt sie selten (modell_ausgelassen), das ist hinnehmbar."
  },
  {
   "id": "lotti-sitzung-sport-1305",
@@ -2533,7 +2636,10 @@
       "2026-06-29"
      ]
     ],
-    "quelle": "council_decisions policy_field='verkehr', jüngste angenommene (Rat 2026-06-29)"
+    "quelle": "council_decisions policy_field='verkehr', jüngste angenommene (Rat 2026-06-29)",
+    "antwort_auch": [
+     "Juni 2026"
+    ]
    }
   ],
   "verboten": [],
