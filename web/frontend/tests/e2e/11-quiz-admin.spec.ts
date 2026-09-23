@@ -50,7 +50,7 @@ test.describe("Quiz — Antrag und Vergleich", () => {
   // Gemockt, weil die Ratsdatenbank in der CI leer ist: Katalog, eine
   // Tages-Challenge mit je einer Frage beider Bauformen, und die Auflösung.
   test("zwei Kacheln, beim Vergleich danach die Beträge", async ({ page }) => {
-    await page.route("**/api/quiz/areas", (r) => r.fulfill({ json: {
+    await page.route("**/api/quiz/areas*", (r) => r.fulfill({ json: {
       electoral_districts: [], districts: [], categories: [],
       topics: [{ key: "antraege", label: "Anträge im Rat", questions: 1, points: 0, district: null }],
     } }));
