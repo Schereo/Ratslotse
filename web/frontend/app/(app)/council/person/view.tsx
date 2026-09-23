@@ -13,6 +13,7 @@ import { useFetch } from "@/lib/use-fetch";
 import { cn } from "@/lib/utils";
 import { shortCommittee } from "@/lib/committees";
 import { useZurueck } from "@/lib/zurueck";
+import { GewaehltProfil, NeuerRatHinweis, useGewaehlt, type Gewaehlt } from "@/components/neuer-rat";
 
 const sessionUrl = (ksinr: number) => `https://buergerinfo.oldenburg.de/si0057.php?__ksinr=${ksinr}`;
 
@@ -140,13 +141,21 @@ function PersonInner() {
     }
   }, [kanon, slug]);
 
-  if (loading) return <DetailSkeleton />;
-  if (!data) notFound();
+  // Der gewählte Rat (Ratswahl 2026): Wer neu gewählt ist, steht noch in
+  // keinem Protokoll und hätte sonst keine Seite; wer schon eine hat, bekommt
+  // darauf die Zeile „Wiedergewählt …". Beides hinter dem Schalter.
+  const { data: gewaehlt, laedt: gewaehltLaedt } = useGewaehlt<Gewaehlt>(slug);
+
+  if (loading || gewaehltLaedt) return <DetailSkeleton />;
+  if (!data) {
+    if (gewaehlt) return <GewaehltProfil g={gewaehlt} />;
+    notFound();
+  }
   if (data.type === "administration") return <VerwaltungProfil data={data} />;
-  return <RatsmitgliedProfil data={data} />;
+  return <RatsmitgliedProfil data={data} gewaehlt={gewaehlt} />;
 }
 
-function RatsmitgliedProfil({ data }: { data: MemberDetail }) {
+function RatsmitgliedProfil({ data, gewaehlt }: { data: MemberDetail; gewaehlt?: Gewaehlt | null }) {
   const { zeigen: zeigeZurueck, zurueck } = useZurueck();
   const [pastOpen, setPastOpen] = useState(false);
 
@@ -229,6 +238,8 @@ function RatsmitgliedProfil({ data }: { data: MemberDetail }) {
           </PopoverContent>
         </Popover>
       </div>
+
+      {gewaehlt && <NeuerRatHinweis g={gewaehlt} />}
 
       {/* Aktuelle Ämter als Gantt */}
       {current.length > 0 && (

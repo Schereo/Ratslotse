@@ -115,6 +115,15 @@ FEATURES: dict[str, Feature] = {
                     "Ja-Quote unter 5 %, wird er seltener oder abgeschafft — Tims "
                     "Entscheidung. Bleibt er, fliegt der Schalter raus.",
     ),
+    "neuer-rat": Feature(
+        key="neuer-rat",
+        description="Der gewählte Rat vor seiner ersten Sitzung: die Liste der 52 "
+                    "Gewählten aus dem Wahlergebnis, dazu eine Personen-Seite für "
+                    "alle, die noch in keinem Protokoll stehen.",
+        fertig_wenn="Tim hat die Liste nach dem amtlichen Endergebnis freigegeben. "
+                    "Nach der konstituierenden Sitzung (02.11.2026) prüfen, ob die "
+                    "Vorab-Liste noch gebraucht wird.",
+    ),
     "tippspiel": Feature(
         key="tippspiel",
         description="Das Tippspiel zu den Wahlen 2026: zur Ratswahl am 13.09. Sitze je "

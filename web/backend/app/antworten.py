@@ -3587,6 +3587,64 @@ class CouncilMembers(TypedDict):
     members: Any
 
 
+class ElectedMember(TypedDict):
+    """Eine Person mit Sitz im gewählten Rat (``app.election.elected``).
+
+    ``slug`` ist derselbe wie auf der Personen-Seite; ``has_profile`` sagt, ob
+    es dort schon ein Profil aus den Protokollen gibt, ``council_status``, ob
+    die Person dem Rat schon angehörte (und nicht nur einen Ausschuss beriet).
+    """
+    slug: str
+    name: str
+    list: str
+    list_short: str
+    color: str
+    color_dark: str
+    area: int
+    area_roman: str
+    area_name: str
+    #: Listenplatz im Wahlbereich; ``None``, wenn das Register ihn nicht kennt.
+    position: int | None
+    #: Personenstimmen; ``None`` bei einer Nachfolge.
+    votes: int | None
+    #: Wie der Sitz zustande kam: ``direct`` (Personenstimmen), ``list``
+    #: (Listenplatz), ``transfer`` (Sitz aus einem anderen Wahlbereich) oder
+    #: ``successor`` (nachgerückt).
+    mandate: Literal["direct", "list", "transfer", "unknown", "successor"]
+    occupation: str | None
+    born: int | None
+    has_profile: bool
+    #: ``current``: saß im Rat der ablaufenden Wahlperiode; ``former``: saß
+    #: früher einmal im Rat, zuletzt nicht; ``new``: nirgends gefunden.
+    council_status: Literal["new", "current", "former"]
+    #: Wahlperioden im Rat (Anfangsjahr, z. B. 2016 für 2016–2021). Vor 2018
+    #: nur für Personen, die das Ratsinformationssystem noch führt.
+    council_terms: list[int]
+
+
+class ElectedVacancy(TypedDict):
+    """Ein Sitz, dessen gewählte Person ihn nicht antritt."""
+    name: str
+    list_short: str
+    reason: str
+    #: Anzeigename der Nachfolge; ``None``, solange sie nicht bekannt ist.
+    successor: str | None
+
+
+class ElectedCouncil(TypedDict):
+    """Der gewählte Rat nach einer Ratswahl — bevor er in den Protokollen steht."""
+    election: str
+    title: str
+    date: str
+    #: Beginn der Wahlperiode (1. November des Wahljahres).
+    term_start: str
+    seats: int
+    #: ``vorlaeufig`` bis zur Feststellung durch den Wahlausschuss.
+    status: Literal["vorlaeufig", "amtlich"]
+    members: list[ElectedMember]
+    vacancies: list[ElectedVacancy]
+
+
 class GoalMetrics(TypedDict):
     """Wie viele Beschlüsse das Ziel voranbringen, bremsen oder nicht berühren."""
     advances: int

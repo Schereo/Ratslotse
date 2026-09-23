@@ -8165,6 +8165,218 @@
         "title": "Districts",
         "type": "object"
       },
+      "ElectedCouncil": {
+        "description": "Der gewählte Rat nach einer Ratswahl — bevor er in den Protokollen steht.",
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "election": {
+            "title": "Election",
+            "type": "string"
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/ElectedMember"
+            },
+            "title": "Members",
+            "type": "array"
+          },
+          "seats": {
+            "title": "Seats",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "vorlaeufig",
+              "amtlich"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "term_start": {
+            "title": "Term Start",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "vacancies": {
+            "items": {
+              "$ref": "#/components/schemas/ElectedVacancy"
+            },
+            "title": "Vacancies",
+            "type": "array"
+          }
+        },
+        "required": [
+          "election",
+          "title",
+          "date",
+          "term_start",
+          "seats",
+          "status",
+          "members",
+          "vacancies"
+        ],
+        "title": "ElectedCouncil",
+        "type": "object"
+      },
+      "ElectedMember": {
+        "description": "Eine Person mit Sitz im gewählten Rat (``app.election.elected``).\n\n``slug`` ist derselbe wie auf der Personen-Seite; ``has_profile`` sagt, ob\nes dort schon ein Profil aus den Protokollen gibt, ``council_status``, ob\ndie Person dem Rat schon angehörte (und nicht nur einen Ausschuss beriet).",
+        "properties": {
+          "area": {
+            "title": "Area",
+            "type": "integer"
+          },
+          "area_name": {
+            "title": "Area Name",
+            "type": "string"
+          },
+          "area_roman": {
+            "title": "Area Roman",
+            "type": "string"
+          },
+          "born": {
+            "title": "Born",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "color": {
+            "title": "Color",
+            "type": "string"
+          },
+          "color_dark": {
+            "title": "Color Dark",
+            "type": "string"
+          },
+          "council_status": {
+            "enum": [
+              "new",
+              "current",
+              "former"
+            ],
+            "title": "Council Status",
+            "type": "string"
+          },
+          "council_terms": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Council Terms",
+            "type": "array"
+          },
+          "has_profile": {
+            "title": "Has Profile",
+            "type": "boolean"
+          },
+          "list": {
+            "title": "List",
+            "type": "string"
+          },
+          "list_short": {
+            "title": "List Short",
+            "type": "string"
+          },
+          "mandate": {
+            "enum": [
+              "direct",
+              "list",
+              "transfer",
+              "unknown",
+              "successor"
+            ],
+            "title": "Mandate",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "occupation": {
+            "title": "Occupation",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "position": {
+            "title": "Position",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "votes": {
+            "title": "Votes",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "list",
+          "list_short",
+          "color",
+          "color_dark",
+          "area",
+          "area_roman",
+          "area_name",
+          "position",
+          "votes",
+          "mandate",
+          "occupation",
+          "born",
+          "has_profile",
+          "council_status",
+          "council_terms"
+        ],
+        "title": "ElectedMember",
+        "type": "object"
+      },
+      "ElectedVacancy": {
+        "description": "Ein Sitz, dessen gewählte Person ihn nicht antritt.",
+        "properties": {
+          "list_short": {
+            "title": "List Short",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "successor": {
+            "title": "Successor",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "list_short",
+          "reason",
+          "successor"
+        ],
+        "title": "ElectedVacancy",
+        "type": "object"
+      },
       "ElectionArea": {
         "properties": {
           "districts_counted": {
@@ -27069,6 +27281,71 @@
           }
         },
         "summary": "Districts",
+        "tags": [
+          "council"
+        ]
+      }
+    },
+    "/api/council/elected": {
+      "get": {
+        "description": "Der gewählte Rat nach der letzten Ratswahl, bevor er in den Protokollen\nsteht: wer ab dem 1. November einen Sitz hat, mit Liste, Wahlbereich und\nPersonenstimmen.\n\nOhne Anmeldung lesbar: Es ist das bekannt gemachte Wahlergebnis, und die\nAngaben (Name, Beruf, Jahrgang) stammen aus der amtlichen Bekanntmachung\nder Wahlvorschläge.",
+        "operationId": "elected_council_api_council_elected_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ElectedCouncil"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Elected Council",
+        "tags": [
+          "council"
+        ]
+      }
+    },
+    "/api/council/elected/{slug}": {
+      "get": {
+        "description": "Eine Person aus dem gewählten Rat — für die Personen-Seite, auch wenn\nes aus den Protokollen noch kein Profil gibt. Öffentlich wie ``/elected``.",
+        "operationId": "elected_member_api_council_elected__slug__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ElectedMember"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Elected Member",
         "tags": [
           "council"
         ]

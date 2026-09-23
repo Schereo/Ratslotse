@@ -562,6 +562,100 @@ class PersonenMixin(StoreBasis):
         toks = [t for t in re.split(r"[^a-z0-9]+", s) if t and t not in PersonenMixin._HONORIFICS]
         return "-".join(toks)
 
+    #: Beginn der Wahlperioden des Rats (jeweils am 1. November, § 47 NKomVG).
+    TERM_STARTS = (1991, 1996, 2001, 2006, 2011, 2016, 2021, 2026, 2031)
+
+    @classmethod
+    def _term_of(cls, day: str) -> int | None:
+        """Die Wahlperiode (Anfangsjahr), in die ein ISO-Datum fällt."""
+        hit = None
+        for s in cls.TERM_STARTS:
+            if f"{s}-11-01" <= day[:10]:
+                hit = s
+        return hit
+
+    def council_history(self, people: list[tuple[str, str]], before: str) -> list[dict]:
+        """Wer von ``people`` (Vorname, Nachname) schon im Rat saß, und in
+        welchen Wahlperioden — vor dem Stichtag ``before`` (ISO-Datum).
+
+        Je Person ``{"slug": …, "terms": [2016, 2021]}``; ``slug`` ist der
+        des Profils aus den Anwesenheitslisten oder ``None``.
+
+        **Warum nicht über den Slug.** Der Stimmzettel schreibt „Drügemöller,
+        Ruth", das Ratsinformationssystem und die Protokolle „Ruth Regina
+        Drügemöller" — ein Slug-Vergleich hielt sie für neu im Rat (Tims
+        Befund 23.09.2026). Verglichen wird deshalb: erster Vorname gleich,
+        Nachname gleich, weitere Vornamen dürfen dazwischen stehen. Passen zwei
+        verschiedene Personen, gilt keine — lieber „neu" als die Geschichte
+        eines Namensvetters.
+
+        **Zwei Quellen.** Die Anwesenheit in Ratssitzungen (erfasst ab 2018)
+        und die Ratsmandate aus dem Ratsinformationssystem, die für die dort
+        noch geführten Personen bis 1991 zurückreichen. Wer vor 2018 im Rat
+        saß und heute nicht mehr geführt wird, bleibt unsichtbar.
+        """
+        def toks(name: str) -> list[str]:
+            return [t for t in self._person_slug(name).split("-") if t]
+
+        def matches(cand: list[str], first: list[str], last: list[str]) -> bool:
+            return (len(cand) >= len(last) + 1 and cand[0] == first[0]
+                    and cand[-len(last):] == last)
+
+        stop = before[:10]
+        # Anwesenheit: je Namensform die Tage im Plenum, dazu alle Formen
+        # mit Mandat (für den Slug des Profils).
+        plenum: dict[str, set[str]] = {}
+        forms: set[str] = set()
+        for r in self._conn.execute(
+                "SELECT a.name, cs.committee, cs.session_date FROM council_attendance a "
+                "JOIN council_sessions cs ON cs.ksinr = a.ksinr "
+                "WHERE a.role IN ('member','chair') AND a.name IS NOT NULL AND a.name != ''"):
+            forms.add(r["name"])
+            if r["committee"] == self.PLENUM and r["session_date"] and r["session_date"] < stop:
+                plenum.setdefault(r["name"], set()).add(r["session_date"])
+        # Ratsinformationssystem: Mandate im Rat als Zeiträume.
+        ris: dict[int, tuple[str, list[tuple[str, str | None]]]] = {}
+        try:
+            for r in self._conn.execute(
+                    "SELECT p.kpenr, p.name, m.valid_from, m.valid_until FROM council_persons p "
+                    "JOIN council_memberships m ON m.kpenr = p.kpenr WHERE m.committee = ?",
+                    (self.PLENUM,)):
+                ris.setdefault(r["kpenr"], (r["name"], []))[1].append((r["valid_from"], r["valid_until"]))
+        except sqlite3.OperationalError as e:
+            if not tabelle_fehlt(e):
+                raise
+        # Ein offenes Mandat läuft bis zum Tag vor dem Stichtag — nicht in die
+        # neue Wahlperiode hinein.
+        from datetime import date, timedelta
+        cap = (date.fromisoformat(stop) - timedelta(days=1)).isoformat()
+
+        out: list[dict] = []
+        for first, last in people:
+            f, l = toks(first), toks(last)
+            if not f or not l:
+                out.append({"slug": None, "terms": []})
+                continue
+            hit_forms = [n for n in forms if matches(toks(n), f, l)]
+            slugs = {self.person_slug(n) for n in hit_forms}
+            hit_ris = [k for k, (n, _) in ris.items() if matches(toks(n), f, l)]
+            if len(slugs) > 1 or len(hit_ris) > 1:
+                out.append({"slug": None, "terms": []})
+                continue
+            terms: set[int] = set()
+            for n in hit_forms:
+                terms |= {t for d in plenum.get(n, ()) if (t := self._term_of(d)) is not None}
+            for k in hit_ris:
+                for von, bis in ris[k][1]:
+                    if not von or von[:10] >= stop:
+                        continue
+                    ende = min(bis[:10], cap) if bis else cap
+                    a, b = self._term_of(von), self._term_of(ende)
+                    if a is None or b is None:
+                        continue
+                    terms |= {t for t in self.TERM_STARTS if a <= t <= b}
+            out.append({"slug": next(iter(slugs), None), "terms": sorted(terms)})
+        return out
+
     def personen_kanon(self) -> dict[str, str]:
         """``{Namensform → kanonische Form}`` für die geführten Gruppen.
 
