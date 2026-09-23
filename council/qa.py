@@ -2806,6 +2806,16 @@ def _jahr_hinweis(d, jahr_key: str = "year") -> str:
             f"Zahlen nicht für {d['year_asked']} aus.\n")
 
 
+def _vorjahr_wort(jahr: int, davor: int) -> str:
+    """„Ein Jahr davor (2024)“ — oder, wenn die Reihe eine Lücke hat, was
+    wirklich davor steht. Die Investitionen 2020 hatten „Ein Jahr davor
+    (2018)“ im Kontext: 2019 fehlt im Bestand, und ein Jahr davor war 2018
+    nicht."""
+    if davor == jahr - 1:
+        return f"Ein Jahr davor ({davor})"
+    return f"Davor zuletzt im Bestand ({davor}; dazwischen fehlt die Reihe)"
+
+
 def geld_kontext(store, question: str, begriffe: str = "", typ: str = "topic") -> dict:
     """Alle einschlägigen Haushalts-Quellen zu einer Frage in EINEM Aufruf.
 
@@ -3151,16 +3161,28 @@ def _konzern_block(k: dict | None) -> str:
     """Der Konzern Stadt — was der Kernhaushalt nicht zeigt."""
     if not k or k.get("expenses") is None:
         return ""
-    zeilen = [f"- Konzern {k['year']}: Aufwendungen {_eur(k.get('expenses'))}, "
+    jahr = k["year"]
+    zeilen = [f"- Konzern {jahr}: Aufwendungen {_eur(k.get('expenses'))}, "
               f"Erträge {_eur(k.get('revenues'))}"]
     kern = k.get("kern") or {}
     if kern.get("expenses"):
-        zeilen.append(f"- Davon Kernverwaltung (der „normale“ Haushalt) {k['year']}: "
+        zeilen.append(f"  - davon Kernverwaltung (der „normale“ Haushalt) {jahr}: "
                       f"Aufwendungen {_eur(kern['expenses'])} — die Differenz sind "
                       f"Eigenbetriebe und Beteiligungen")
-    for t in (k.get("entity") or [])[:4]:
-        zeilen.append(f"- {t['entity']}: {_eur((t.get('amount_keur') or 0) * 1000)} "
-                      f"Aufwendungen (auf Tausend Euro exact, mehr gibt der Bericht nicht her)")
+    # Die Einheiten stehen NICHT als „davon“ darunter: Es sind ihre
+    # Einzelabschlüsse VOR der Konsolidierung, und zusammen ergeben sie mehr
+    # als der Konzern (2024: 1.288 Mio. € gegen 1.234 Mio. €) — was die
+    # Einheiten untereinander verrechnen, zählt der Konzern nur einmal.
+    # Bis 09/2026 standen sie ohne Jahr auf derselben Ebene wie der Konzern.
+    einheiten = [t for t in (k.get("entity") or []) if (t.get("amount_keur") or 0) > 0]
+    if einheiten:
+        zeilen.append(f"- Die größten Einheiten {jahr}, je ihr eigener Abschluss, "
+                      "bevor der Konzern ihre Geschäfte untereinander herausrechnet "
+                      "(zusammen mehr als der Konzern — nie addieren):")
+        for t in einheiten[:4]:
+            zeilen.append(f"  - {t['entity']} {jahr}: "
+                          f"{_eur((t.get('amount_keur') or 0) * 1000)} Aufwendungen "
+                          "(auf Tausend Euro genau, mehr gibt der Bericht nicht her)")
     return (f"\nDER KONZERN STADT OLDENBURG (konsolidierter Gesamtabschluss {k['year']} —\n"
             "Kernverwaltung PLUS Eigenbetriebe und Beteiligungen). Nutze das, wenn nach\n"
             "der Stadt ALS GANZES gefragt ist; die Zahlen sind mit denen des\n"
@@ -3232,20 +3254,43 @@ def _bilanz_block(b: dict | None) -> str:
     """
     if not b or not b.get("bilanzsumme"):
         return ""
+    # Zwei Seiten, und die „davon“-Posten eine Ebene tiefer unter IHREM
+    # Posten. Bis 09/2026 standen alle neun gleich eingerückt unter der
+    # Bilanzsumme: Aktiva neben Passiva, „davon Infrastruktur“ neben dem
+    # Finanzvermögen — und die Sonderposten neben der Nettoposition, obwohl
+    # sie darin STECKEN (Eigenkapitalquote I ohne, II mit Sonderposten:
+    # 741,6 + 185,2 = 926,9 Mio. €). Gelesen als Liste unter der Summe
+    # ergaben die Zeilen 3,1 Mrd. € bei 1,5 Mrd. € Bilanzsumme.
     namen = {
         "tangible_assets": "Sachvermögen (Grundstücke, Gebäude, Straßen, Fahrzeuge)",
         "infrastructure_assets": "davon Infrastruktur (Straßen, Wege, Brücken, Kanäle)",
         "financial_assets": "Finanzvermögen (Beteiligungen, Ausleihungen, Forderungen)",
         "cash_and_equivalents": "liquide Mittel",
-        "net_position": "Nettoposition (das Eigenkapital der Stadt)",
-        "special_items": "Sonderposten (erhaltene Zuschüsse, noch nicht aufgelöst)",
+        "net_position": "Nettoposition (das Eigenkapital der Stadt, samt Sonderposten)",
+        "special_items": "davon Sonderposten (erhaltene Zuschüsse, noch nicht aufgelöst)",
         "provisions": "Rückstellungen",
         "pension_provisions": "davon Pensionsrückstellungen",
         "liabilities": "Schulden und ähnliche Verbindlichkeiten",
     }
-    zeilen = [f"- Bilanzsumme zum 31.12.{b['year']}: {_eur(b['bilanzsumme'])}"]
-    for role, value in b.get("posten") or []:
-        zeilen.append(f"  - {namen.get(role, role)}: {_eur(value)}")
+    unter = {"infrastructure_assets", "special_items", "pension_provisions"}
+    seiten = (("Aktivseite", "was der Stadt gehört",
+               ("tangible_assets", "infrastructure_assets", "financial_assets",
+                "cash_and_equivalents")),
+              ("Passivseite", "womit das finanziert ist",
+               ("net_position", "special_items", "provisions", "pension_provisions",
+                "liabilities")))
+    tag = f"31.12.{b['year']}"
+    werte = dict(b.get("posten") or [])
+    zeilen = [f"- Bilanzsumme zum {tag}: {_eur(b['bilanzsumme'])} (Aktiv- und "
+              "Passivseite sind gleich groß; unten nur die großen Posten)"]
+    for seite, was, rollen in seiten:
+        da = [r for r in rollen if r in werte]
+        if not da:
+            continue
+        zeilen.append(f"- {seite} zum {tag} — {was}:")
+        for role in da:
+            tief = "    " if role in unter else "  "
+            zeilen.append(f"{tief}- {namen.get(role, role)} {tag}: {_eur(werte[role])}")
     return ("\nBILANZ (Jahresabschluss, Abschnitt 2.1). Das ist ein STICHTAG "
             f"(31.12.{b['year']}),\nkein Haushaltsjahr: Diese Beträge NIE mit "
             "Erträgen, Aufwendungen oder dem\nDefizit eines Jahres verrechnen. Nie "
@@ -3272,17 +3317,23 @@ def _nachbewilligungen_block(n: dict | None) -> str:
     """Was beschlossen wurde, nachdem der Haushalt beschlossen war (§ 117 NKomVG)."""
     if not n or not n.get("gesamt"):
         return ""
-    namen = {"rat": "vom Rat selbst beschlossen",
+    # „council“ ist der Wert, den der Ingest seit der Umbenennung (08/2026)
+    # schreibt; „rat“ der alte. Ohne den neuen Schlüssel stand im Prompt
+    # „- council: 42.171.646 €“ — ein englisches Wort ohne Sinn.
+    namen = {"council": "vom Rat selbst beschlossen",
+             "rat": "vom Rat selbst beschlossen",
              "mayor": "vom Oberbürgermeister",
              "department_200": "vom Fachdienst Finanzen",
              "urgent_decision": "als Eilentscheidung"}
-    zeilen = [f"- Nachbewilligt {n['year']} total: {_eur(n['gesamt'])} "
+    jahr = n["year"]
+    zeilen = [f"- Nachbewilligt {jahr} total: {_eur(n['gesamt'])} "
               f"(konsumtiv {_eur(n['konsumtiv'])}, investiv {_eur(n['investiv'])})"]
     for channel, kons, inv in n.get("channels") or []:
         summe = (kons or 0) + (inv or 0)
         if summe:
             anteil = f" — {summe / n['gesamt'] * 100:.0f} %" if n["gesamt"] else ""
-            zeilen.append(f"  - {namen.get(channel, channel)}: {_eur(summe)}{anteil}")
+            zeilen.append(f"  - davon {namen.get(channel, channel)} {jahr}: "
+                          f"{_eur(summe)}{anteil}")
     if n.get("commitments"):
         zeilen.append(f"- Verpflichtungsermächtigungen (binden KÜNFTIGE Jahre, "
                       f"gehören in KEINE Summe mit den Beträgen darüber): "
@@ -3294,6 +3345,13 @@ def _nachbewilligungen_block(n: dict | None) -> str:
             "bewilligt wurde. Nicht mit\ndem Haushaltsplan verrechnen — es kommt "
             "obendrauf. Nie mit [id] zitieren"
             + _beleg_text(n.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n" + _jahr_hinweis(n))
+
+
+#: Die Einheiten, die KEIN Euro sind und keine Quote. ``council/indicators.py``
+#: schreibt „anzahl“ (die Einwohnenden), der Baustein kannte nur „count“ —
+#: im Prompt stand deshalb „Einwohnende am 31.12. 2024: 176.068 €“
+#: (gefunden beim Durchsehen aller Facetten, 23.09.2026).
+_ANZAHL = frozenset({"count", "anzahl"})
 
 
 def _kennzahlen_block(k: dict | None) -> str:
@@ -3309,7 +3367,7 @@ def _kennzahlen_block(k: dict | None) -> str:
         """Eine Kennzahl so schreiben, wie der Bericht sie druckt."""
         if unit == "percent":
             return f"{value:.{stellen}f} %".replace(".", ",")
-        if unit == "count":
+        if unit in _ANZAHL:
             return f"{value:,.0f}".replace(",", ".")
         return (f"{value:,.{stellen}f} €".replace(",", "\u0001")
                 .replace(".", ",").replace("\u0001", "."))
@@ -3318,7 +3376,7 @@ def _kennzahlen_block(k: dict | None) -> str:
     for name, value, unit, stellen, formula in k["werte"]:
         if unit == "percent":
             gezeigt = f"{value:.{stellen}f} %".replace(".", ",")
-        elif unit == "count":
+        elif unit in _ANZAHL:
             gezeigt = f"{value:,.0f}".replace(",", ".")
         else:
             # Mit den GEDRUCKTEN Nachkommastellen, nicht mit `_eur`: Neben
@@ -3353,24 +3411,30 @@ def _schulden_block(s: dict | None) -> str:
     """
     if not s or s.get("total") is None:
         return ""
-    kopf = f"- Schuldenstand am Jahresende {s['year']}: {_eur(s['total'])}"
+    jahr = s["year"]
+    kopf = f"- Schuldenstand am Jahresende {jahr}: {_eur(s['total'])}"
     if s.get("per_capita"):
         kopf += f" — das sind {_eur(s['per_capita'])} je Einwohner*in"
     if s.get("revised"):
         kopf += " (von der Quelle als revidierter Wert gekennzeichnet)"
     zeilen = [kopf]
-    if s.get("davor"):
-        zeilen.append(f"- Ein Jahr davor ({s['davor']['year']}): "
-                      f"{_eur(s['davor']['total'])}")
-    if s.get("hoch"):
-        zeilen.append(f"- Höchster Stand der Reihe (sie beginnt {s['reihe_ab']}): "
-                      f"{s['hoch']['year']} mit {_eur(s['hoch']['total'])}")
-    for title, amount in s.get("arten") or []:
-        zeilen.append(f"  - davon {title}: {_eur(amount)}")
+    # Die Aufteilung DIREKT unter ihre Summe, mit dem Jahr in jeder Zeile.
+    # Bis 09/2026 stand sie hinter „Ein Jahr davor (2024)“ und „Höchster
+    # Stand“ — eingerückt darunter las sie sich als deren Aufschlüsselung,
+    # und Frag den Rat nannte die Werte 2025 als die von 2024 (Faktencheck
+    # 23.09.2026; `tests/test_geld_gliederung.py` hält die Form fest).
+    for title, amount in sorted(s.get("arten") or [], key=lambda a: -(a[1] or 0)):
+        zeilen.append(f"  - davon {title} {jahr}: {_eur(amount)}")
     if s.get("breakdown_rejected"):
-        zeilen.append("  - Die Aufteilung nach Schuldenarten fehlt für dieses Jahr: "
+        zeilen.append(f"  - Die Aufteilung nach Schuldenarten fehlt für {jahr}: "
                       "Sie ging in der Quelle selbst nicht auf und wurde deshalb "
                       "nicht übernommen. Die Gesamtsumme trägt eine eigene Probe.")
+    if s.get("davor"):
+        zeilen.append(f"- {_vorjahr_wort(jahr, s['davor']['year'])}: Schuldenstand "
+                      f"{_eur(s['davor']['total'])} (ohne Aufteilung)")
+    if s.get("hoch"):
+        zeilen.append(f"- Höchster Stand der Reihe seit {s['reihe_ab']}, Jahresende "
+                      f"{s['hoch']['year']}: {_eur(s['hoch']['total'])} (ohne Aufteilung)")
     zeilen.append(f"- Abgrenzung, gehört an jede dieser Zahlen: {s['abgrenzung']}")
     # DIE ANDEREN BEIDEN ZAHLEN. Ohne sie beantwortet die KI-Frage „Wie hoch
     # sind die Schulden?" mit einer von dreien, und welche es wird, entscheidet
@@ -3411,11 +3475,19 @@ def _investitionen_block(i: dict | None) -> str:
     if not i or not i.get("gesamt"):
         return ""
     g = i["gesamt"]
-    zeilen = [f"- {g['label']} ({i['year']}): Auszahlungen "
+    jahr = i["year"]
+    zeilen = [f"- {g['label']} ({jahr}): Auszahlungen "
               f"{_eur(g.get('outflows'))}, Einzahlungen {_eur(g.get('inflows'))}"]
+    # ALLE Teilhaushalte, nach Auszahlungen absteigend (s. Store-Methode):
+    # „Wofür gibt die Stadt am meisten aus?“ ist nur mit der ganzen Liste zu
+    # beantworten. In Mio. € (unter einer Million in vollen Euro, sonst stünde
+    # die Verwaltungsführung mit 44.500 € als „0,0 Mio. €“ da), weil zwölf
+    # Zeilen in vollen Euro rund 300 Zeichen mehr kosten und die Summenzeile
+    # darüber exakt bleibt.
     for r in i.get("teilhaushalte") or []:
-        zeilen.append(f"  - {r['label']}: Auszahlungen {_eur(r.get('outflows'))}, "
-                      f"Einzahlungen {_eur(r.get('inflows'))}")
+        zeilen.append(f"  - davon {r['label']} ({jahr}): Auszahlungen "
+                      f"{_geld.de_betrag(r.get('outflows'))}, Einzahlungen "
+                      f"{_geld.de_betrag(r.get('inflows'))}")
     return (f"\nINVESTITIONEN (Finanzhaushalt des Haushaltsplans {i['year']} — GEPLANT).\n"
             "ES SIND ZWEI HAUSHALTE, NICHT EINER: Hier steht, was die Stadt bauen und\n"
             "kaufen will. Im Ergebnishaushalt (Aufwendungen und Erträge, eigener\n"
@@ -3441,16 +3513,20 @@ def _gebaut_block(g: dict | None) -> str:
     als geschlossen und bildet Durchschnitte über ein Loch."""
     if not g or g.get("total") is None:
         return ""
-    zeilen = [f"- Tatsächliche Investitions-Auszahlungen {g['year']}: "
-              f"{_eur(g['total'])}"]
+    jahr = g["year"]
+    zeilen = [f"- Tatsächliche Investitions-Auszahlungen {jahr}: {_eur(g['total'])}"]
+    # Die Auszahlungsarten direkt unter IHRE Summe und nach Betrag, das
+    # Größte zuerst. Bis 09/2026 standen sie in Quellreihenfolge unter
+    # „Höchster Wert der Reihe: 2020“ — Lotti nannte die 20,1 Mio. €
+    # „Sonstige“ von 2025 als die von 2020 (dort 34,3 Mio. €).
+    for title, amount in sorted(g.get("arten") or [], key=lambda a: -(a[1] or 0)):
+        zeilen.append(f"  - davon {title} {jahr}: {_eur(amount)}")
     if g.get("davor"):
-        zeilen.append(f"- Ein Jahr davor ({g['davor']['year']}): "
-                      f"{_eur(g['davor']['total'])}")
+        zeilen.append(f"- {_vorjahr_wort(jahr, g['davor']['year'])}: Investitions-"
+                      f"Auszahlungen {_eur(g['davor']['total'])} (ohne Aufteilung)")
     if g.get("hoch"):
-        zeilen.append(f"- Höchster Wert der Reihe (sie beginnt {g['reihe_ab']}): "
-                      f"{g['hoch']['year']} mit {_eur(g['hoch']['total'])}")
-    for title, amount in g.get("arten") or []:
-        zeilen.append(f"  - davon {title}: {_eur(amount)}")
+        zeilen.append(f"- Höchster Wert der Reihe seit {g['reihe_ab']}, Jahr "
+                      f"{g['hoch']['year']}: {_eur(g['hoch']['total'])} (ohne Aufteilung)")
     if g.get("fehlend"):
         years = ", ".join(str(j) for j in g["fehlend"])
         zeilen.append(f"- NICHT im Bestand: {years}. Dort ergeben die "

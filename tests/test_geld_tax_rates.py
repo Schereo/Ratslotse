@@ -50,6 +50,10 @@ ZIEHT = [
     "Warum ist die Grundsteuer gestiegen?",
     "Wie viele Betriebe zahlen in Oldenburg Gewerbesteuer?",
     "Wie hoch war der Steuermessbetrag?",
+    # Faktencheck 23.09.2026: Die Entwicklung der Grundsteuer IST die Treppe
+    # der Hebesätze — das Aufkommen allein sank 2025, obwohl der Satz stieg.
+    "Wie hat sich die Grundsteuer in Oldenburg entwickelt?",
+    "Wie war die Entwicklung der Gewerbesteuer?",
 ]
 
 ZIEHT_NICHT = [

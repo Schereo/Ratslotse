@@ -65,6 +65,16 @@ Datensatz an und die Tabelle wüchse mit der Zahl der Läufe.
 Mehrschrittige Ingests laufen in `transaktion(...)`. Bricht ein Cron mitten
 drin ab, darf kein halber Jahrgang stehen bleiben.
 
+**Im Prompt-Baustein steht jede Zahl unter ihrem eigenen Jahr.** Eine
+eingerückte Zeile liest das Modell als Aufschlüsselung der Zeile darüber —
+am 23.09.2026 standen so die Schuldenarten 2025 unter „Ein Jahr davor
+(2024)“ und die Investitionsarten 2025 unter „Höchster Wert: 2020“, und
+beide Modelle gaben sie für das falsche Jahr aus. Deshalb: „davon“ nur direkt
+unter seiner Summe, mit demselben Jahr, zusammen gleich der Summe; jede
+eingerückte Zeile mit Betrag nennt ihr Jahr selbst. `tests/test_geld_gliederung.py`
+prüft das für jede Facette an echten Zahlen; eine neue Facette braucht dort
+eine Frage im Abzug (die Fehlermeldung nennt den Befehl).
+
 ## Zwei Namensräume, gleiche Wörter
 
 `qa_antwort`, `deep_bericht` und Geschwister sind **gleichzeitig**

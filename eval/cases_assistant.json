@@ -809,7 +809,7 @@
  },
  {
   "id": "schwer-schuldendienst",
-  "note": "PR 29. Die richtige Antwort ist „das steht so nicht in meinen Daten“: Der Kredit-Baustein trägt Zinssätze einzelner Aufnahmen, der Schuldenstand ist ein Bestand („nie mit Aufwendungen verrechnen“), eine Tilgungssumme gibt es nirgends. must_not_number fängt die erfundene Gesamtsumme; ein Verbotswort wäre hier falsch, weil es auch in der richtigen Absage stünde.",
+  "note": "PR 29. Die richtige Antwort ist „das steht so nicht in meinen Daten“: Der Kredit-Baustein trägt Zinssätze einzelner Aufnahmen, der Schuldenstand ist ein Bestand („nie mit Aufwendungen verrechnen“), eine Tilgungssumme gibt es nirgends. must_not_number fängt die erfundene Gesamtsumme; ein Verbotswort wäre hier falsch, weil es auch in der richtigen Absage stünde. Seit 23.09.2026 auch „sagt (aber) nicht“, „nicht gesagt“, „nicht die Summe“, „aber nicht, was“: Gemessen je zehnmal (Gemini 2.5 Flash) fiel „Die Seite zeigt, was an Zinsen und Tilgung fällig wird, aber nicht die Summe aus beidem“ durch — eine richtige Absage. Die drei Antworten, die nur die Seite beschreiben, bleiben rot.",
   "route": "/haushalt/schulden",
   "heading": "Wie viel Schulden hat Oldenburg?",
   "question": "Was kostet die Stadt der Schuldendienst insgesamt, also Zinsen und Tilgung zusammen?",
@@ -848,7 +848,12 @@
     "nicht ermitteln",
     "nicht beziffern",
     "nicht auslesen",
-    "nicht ablesen"
+    "nicht ablesen",
+    "sagt nicht",
+    "sagt aber nicht",
+    "nicht gesagt",
+    "nicht die Summe",
+    "aber nicht, was"
    ]
   ],
   "must_not_number": true,

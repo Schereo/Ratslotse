@@ -374,8 +374,8 @@ def _ueberblick_zeilen(u: dict, jahr: int | None) -> list[str]:
     for g in u["largest"]:
         anteil = (f", Anteil der Stadt {geld.de_prozent(g['share_pct'])}"
                   if g.get("share_pct") is not None else "")
-        zeilen.append(f"  - {g['name']}: Bilanzsumme {geld.de_betrag(g['bilanzsumme'])} "
-                      f"({g['year']}){anteil}")
+        zeilen.append(f"  - {g['name']} {g['year']}: Bilanzsumme "
+                      f"{geld.de_betrag(g['bilanzsumme'])}{anteil}")
     if u.get("results_sum") is not None and u.get("results_n"):
         zeilen.append(f"- Die {u['results_n']} Jahresergebnisse, die der Bericht für "
                       f"{jahr} nennt, ergeben zusammen {geld.de_betrag(u['results_sum'])}. "

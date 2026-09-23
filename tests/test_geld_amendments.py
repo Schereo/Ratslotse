@@ -186,8 +186,8 @@ def test_finanzhaushalt_kommt_nur_auf_anfrage(tmp_path):
         assert mit["cash"]["final"]["outflows"] == 81.4e6
         assert mit["cash"]["positions"][0]["label"] == "Feuerwache Süd, Neubau"
         text = amendments.block(mit)
-        assert "FINANZHAUSHALT (Investitionen)" in text
+        assert "FINANZHAUSHALT 2026 (Investitionen)" in text
         assert "Verwaltungsentwurf 2026: Einzahlungen 39,7 Mio. €, Auszahlungen 80,8 Mio. €" in text
-        assert "Feuerwache Süd, Neubau (I10.126001.500): Auszahlungen 0,4 Mio. €" in text
+        assert "Feuerwache Süd, Neubau (I10.126001.500) 2026: Auszahlungen 0,4 Mio. €" in text
     finally:
         st.close()

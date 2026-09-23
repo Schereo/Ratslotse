@@ -907,8 +907,13 @@ def test_schulden_block_traegt_die_abgrenzung_woertlich(tmp_path):
     assert s["year"] == 2025
     assert "337.400.000" in text and "1.932 €" in text        # Stand und Pro-Kopf
     assert "332.800.000" in text                              # das Jahr davor
-    assert "2013 mit 512.400.000" in text                     # Höchststand der Reihe
-    assert "sie beginnt 1995" in text
+    assert "Jahresende 2013: 512.400.000" in text             # Höchststand der Reihe
+    assert "Reihe seit 1995" in text
+    # Die Aufteilung steht unter IHREM Jahr, nicht unter dem Vorjahr oder
+    # dem Höchststand (Faktencheck 23.09.2026) — und jede Zeile nennt es.
+    kopf = text.index("Schuldenstand am Jahresende 2025")
+    assert kopf < text.index("davon Schulden aus Kreditmarktmitteln 2025: 219.400.000")
+    assert text.index("davon Schulden aus Kreditmarktmitteln 2025") < text.index("Ein Jahr davor (2024)")
     assert schulden.ABGRENZUNG in text                        # wörtlich, nicht nachgebaut
     assert "Eigenbetriebe" in text and "Klinikum" in text
     # Die Bestands-Regel steht ausdrücklich drin — sonst wird die Zahl als
@@ -939,6 +944,20 @@ def test_investitionen_block_warnt_vor_dem_zweiten_haushalt(tmp_path):
     # Zahlen und sähe aus wie eine von ihnen.
     assert "903.000.000" not in text and "Gesamtbetrag des Finanzhaushaltes" not in text
     assert qa._investitionen_block(None) == ""
+    store.close()
+
+
+def test_investitionen_kommen_vollstaendig_und_nach_betrag(tmp_path):
+    """Faktencheck 23.09.2026: „Wofür gibt die Stadt bei den Investitionen am
+    meisten aus?“ traf über „Stadt“ nur „Stadtplanung“ (4,3 Mio. €); der
+    größte Teilhaushalt (36,8 Mio. €) fehlte. Jetzt kommen alle, das Größte
+    zuerst — egal, welches Wort die Frage trifft."""
+    store = _befuellter_store(tmp_path)
+    for begriffe in (["Feuerwehr"], ["Stadt", "am", "meisten"], []):
+        text = qa._investitionen_block(store.investitionen_fuer_begriffe(begriffe))
+        pos = [text.index(f"davon {name} (2026)") for name in
+               ("Schule und Sport", "Verkehr und Straßenbau", "Feuerwehr")]
+        assert pos == sorted(pos), begriffe
     store.close()
 
 

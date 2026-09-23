@@ -75,13 +75,16 @@ class Store(StoreBasis):
                 "beleg": self._beleg(rows[0].get("herkunft_id"))}
 
 
-def _zeile(r: dict) -> str:
+def _zeile(r: dict, stichtag: str) -> str:
+    """Eine Anlagengruppe — mit dem Stichtag in der Zeile selbst, damit ein
+    eingerückter Posten sein Jahr nicht aus der Zeile darüber erraten muss
+    (Gliederungs-Wächter, tests/test_geld_gliederung.py)."""
     teile = [f"Buchwert {geld.de_mio(r.get('book_value'))}"]
     if r.get("additions"):
         teile.append(f"Zugänge {geld.de_mio(r['additions'])}")
     if r.get("depreciation"):
         teile.append(f"Abschreibung {geld.de_mio(abs(r['depreciation']))}")
-    return f"- {str(r.get('label') or '').strip()}: " + ", ".join(teile)
+    return f"- {str(r.get('label') or '').strip()} {stichtag}: " + ", ".join(teile)
 
 
 def block(data: dict | None) -> str:
@@ -90,10 +93,11 @@ def block(data: dict | None) -> str:
     zeilen = [f"- Anlagevermögen gesamt zum 31.12.{data['year']}: "
               f"{geld.de_mio(data['total_book_value'])} Buchwert; Abschreibungen im Jahr "
               f"{geld.de_mio(abs(data['depreciation']))}, Zugänge {geld.de_mio(data['additions'])}"]
-    zeilen += [_zeile(r) for r in data["main"]]
+    tag = f"31.12.{data['year']}"
+    zeilen += [_zeile(r, tag) for r in data["main"]]
     if data.get("largest"):
-        zeilen.append("- Die größten Posten darin:")
-        zeilen += ["  " + _zeile(r) for r in data["largest"]]
+        zeilen.append(f"- Die größten Posten darin zum {tag}:")
+        zeilen += ["  " + _zeile(r, tag) for r in data["largest"]]
     if data.get("groups"):
         zeilen.append("- Vermögensgruppen der Bilanz (Buchwert, Vorjahr): " + "; ".join(
             f"{g['group_name']} {geld.de_mio(g['book_value'])}"
