@@ -6,6 +6,7 @@ the FTS index. But the *LLM/embedding* enrichments behind the Themen pages, maps
 press links and "Ähnliche Beschlüsse" are heavier and run here, once a week, in order:
 
      0. Regex-Ernte            ernte_backfill.py           — Amt, Finanz-/Klima-Check, Beschlussvorschlag über den Bestand (kein LLM)
+    0b. Sitzungs-Nachlauf      nachlauf_sitzungen.py       — trägt Sitzungen der letzten 24 Monate nach, die der Tageslauf verpasst hat (kein LLM)
      1. Entitäten (NER)        extract_entities.py         — rebuilds council_entities
      2. Beschreibungen         describe_entities.py        — fills missing descriptions (slug-keyed meta survives the rebuild)
     2b. Vagheits-Urteile       warm_topic_vagueness.py     — beurteilt neue Vorschlags-Kandidaten vorab (sonst im Web-Request)
@@ -99,6 +100,11 @@ STEPS: list[tuple[str, str]] = [
     # diesen Schritt auf die schon gespeicherten Vorlagen. Kostet nichts
     # (~5 s, kein Netz) und schreibt nur, was sich wirklich ändert.
     ("Regex-Ernte", "ernte_backfill.py"),
+    # Sitzungen, die der tägliche Kalenderlauf verpasst hat (sein Rückblick
+    # reicht drei Monate): 24 Kalenderseiten, nur fehlende Sitzungen werden
+    # abgerufen. Am 23.09.2026 fehlten so 48 öffentliche Sitzungen seit 2018 —
+    # die Vorlagen darin holt danach der tägliche check_protocols.
+    ("Sitzungs-Nachlauf", "nachlauf_sitzungen.py --monate 24"),
     ("Entitäten (NER)", "extract_entities.py"),
     ("Beschreibungen", "describe_entities.py"),
     # Vagheits-Urteile der Vorschlags-Kandidaten VORRECHNEN (LLM, nur fehlende):
@@ -165,7 +171,7 @@ def main() -> list[dict]:
     hier nur die Namen der Fehlschläge, und in der Cron-Übersicht stand
     entsprechend eine einzige Zahl („16 Schritte, 0 fehlgeschlagen"). Welcher
     Schritt zwei Stunden brauchte und welcher stumm nichts tat, sah man nur im
-    Log auf dem Server — obwohl der Lauf es die ganze Zeit wusste. 19 der 21
+    Log auf dem Server — obwohl der Lauf es die ganze Zeit wusste. 20 der 22
     Schritte rufen kein ``run_guarded``, schreiben also auch keine eigene
     ``job_runs``-Zeile; ihre Bilanz kann nur von hier kommen.
 
