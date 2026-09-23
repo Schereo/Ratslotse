@@ -416,6 +416,18 @@ CREATE TABLE IF NOT EXISTS quiz_daily (
     PRIMARY KEY (owner_id, day)
 );
 
+-- Blitzrunde (Plan Q6): 60 Sekunden, je Lauf eine Zeile — die Bestmarke ist
+-- das MAX darüber. Einzelantworten stehen wie immer in quiz_answers.
+CREATE TABLE IF NOT EXISTS quiz_blitz (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    owner_id    INTEGER NOT NULL,
+    day         TEXT NOT NULL,          -- YYYY-MM-DD (UTC)
+    correct     INTEGER NOT NULL,
+    answered    INTEGER NOT NULL,
+    finished_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_quiz_blitz_owner ON quiz_blitz(owner_id, correct);
+
 -- Eigene Quizfragen (RL-U14): privat je Konto, zum Üben — geben bewusst
 -- KEINE Punkte und fließen nicht in Statistik/Abzeichen ein. Der Übungs-
 -- Fortschritt lebt als Zähler direkt an der Frage („3× geübt, 100 %").
@@ -819,6 +831,7 @@ USER_OWNED_TABLES: tuple[tuple[str, str], ...] = (
     ("quiz_answers", "owner_id"),
     ("quiz_ratings", "owner_id"),
     ("quiz_daily", "owner_id"),
+    ("quiz_blitz", "owner_id"),
     ("user_quiz_questions", "owner_id"),
     ("user_activity", "owner_id"),
     # Feedback wird mitgelöscht: Es ist eine Nachricht dieser Person. Die
@@ -2521,6 +2534,24 @@ class Store:
         return [dict(r) for r in self._conn.execute(
             "SELECT area_type, area_key, COUNT(*) answered, COALESCE(SUM(correct), 0) correct "
             "FROM quiz_answers GROUP BY area_type, area_key").fetchall()]
+    def record_quiz_blitz(self, owner_id: int, day: str, correct: int, answered: int) -> dict:
+        """Einen Blitz-Lauf buchen; zurück: Bestmarke gesamt und heute, und ob
+        dieser Lauf sie gerade gesetzt hat."""
+        before = self._conn.execute(
+            "SELECT COALESCE(MAX(correct), 0) FROM quiz_blitz WHERE owner_id = ?", (owner_id,)).fetchone()[0]
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute(
+                "INSERT INTO quiz_blitz (owner_id, day, correct, answered, finished_at) VALUES (?,?,?,?,?)",
+                (owner_id, day, correct, answered, now))
+        today = self._conn.execute(
+            "SELECT MAX(correct) FROM quiz_blitz WHERE owner_id = ? AND day = ?", (owner_id, day)).fetchone()[0]
+        return {"best": max(before, correct), "today_best": today or 0,
+                "new_best": correct > before}
+
+    def quiz_blitz_best(self, owner_id: int) -> int:
+        return self._conn.execute(
+            "SELECT COALESCE(MAX(correct), 0) FROM quiz_blitz WHERE owner_id = ?", (owner_id,)).fetchone()[0]
 
     def quiz_answered_ids(self, owner_id: int) -> list[int]:
         return [r[0] for r in self._conn.execute(

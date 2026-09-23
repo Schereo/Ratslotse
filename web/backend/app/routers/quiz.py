@@ -15,12 +15,13 @@ from council import geo, places, quiz_formats
 from council.store import CouncilStore
 from kern.store import Store
 
-from ..antworten import (Ok, OkWithId, QuizAreas, QuizDailyRound, QuizDayCompleted, QuizFlagged, QuizJoker,
+from ..antworten import (Ok, OkWithId, QuizAreas, QuizBlitzResult, QuizDailyRound, QuizDayCompleted, QuizFlagged,
+                         QuizJoker,
                          QuizMapResult, QuizMapRound, QuizOwnQuestions, QuizResult, QuizRound,
                          QuizScore)
 from ..clients import is_app_client
 from ..deps import get_council_store, get_store, require_active, require_admin
-from ..schemas import (QuizAnswerIn, QuizDailyIn, QuizJokerIn, QuizMapIn, QuizRateIn,
+from ..schemas import (QuizAnswerIn, QuizBlitzIn, QuizDailyIn, QuizJokerIn, QuizMapIn, QuizRateIn,
                        UserQuizAnswerIn, UserQuizQuestionIn)
 
 router = APIRouter(prefix="/api/quiz", tags=["quiz"])
@@ -364,6 +365,25 @@ def daily_complete(payload: QuizDailyIn,
     return out
 
 
+@router.get("/blitz-round")
+def blitz_round(n: int = Query(30, ge=5, le=40),
+                _user: dict = Depends(require_active),
+                council: CouncilStore = Depends(get_council_store)) -> QuizRound:
+    """Blitzrunde (Plan Q6): schnelle Fragen für 60 Sekunden, ohne Lösung.
+    Ausgewertet wird jede wie immer über ``/answer``."""
+    return {"questions": council.pick_blitz_questions(n)}
+
+
+@router.post("/blitz/complete")
+def blitz_complete(payload: QuizBlitzIn,
+                   user: dict = Depends(require_active),
+                   store: Store = Depends(get_store)) -> QuizBlitzResult:
+    """Einen Blitz-Lauf abschließen — bucht nur die Bestmarke."""
+    if payload.correct > payload.answered:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Mehr richtige als beantwortete Fragen.")
+    return store.record_quiz_blitz(user["id"], _today(), payload.correct, payload.answered)
+
+
 @router.get("/map-round")
 def map_round(n: int = Query(5, ge=1, le=15), _user: dict = Depends(require_active)) -> QuizMapRound:
     """Karten-Quiz: n zufällige Stadtteile zum Verorten. Deterministisch aus der
@@ -554,6 +574,7 @@ def stats(user: dict = Depends(require_active),
     s["districts"] = _district_progress(s["by_area"], council)
     s["districts_all"] = _district_all(store, council)
     s["district_legend"] = LEGEND
+    s["blitz_best"] = store.quiz_blitz_best(user["id"])
     return s
 
 

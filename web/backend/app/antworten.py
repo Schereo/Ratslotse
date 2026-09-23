@@ -1040,6 +1040,11 @@ class QuizOthers(TypedDict):
 class QuizJoker(TypedDict):
     """Die zwei falschen Antworten, die der 50:50-Joker streicht."""
     remove: list[int]
+class QuizBlitzResult(TypedDict):
+    """Abschluss einer Blitzrunde: Bestmarke gesamt und heute."""
+    best: int
+    today_best: int
+    new_best: bool
 
 
 class QuizResult(TypedDict):
@@ -1200,6 +1205,7 @@ class QuizScore(TypedDict):
     districts_all: NotRequired[list[QuizDistrictProgress]]
     # Die Wörter der Stufen 0–3 je Ansicht: {"mine": [...], "all": [...]}.
     district_legend: NotRequired[dict[str, list[str]]]
+    blitz_best: NotRequired[int]
 
 
 class QuizFlaggedQuestion(TypedDict):

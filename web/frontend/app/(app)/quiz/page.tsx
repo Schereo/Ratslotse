@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Search, Play, MapPin, Sparkles, Check, X, ChevronDown, ChevronUp, PencilLine, Zap, Flame, RotateCcw } from "lucide-react";
+import { Search, Play, MapPin, Sparkles, Check, X, ChevronDown, ChevronUp, PencilLine, Zap, Flame, RotateCcw, Timer } from "lucide-react";
 import { QuizAreas, QuizAreaEntry, QuizQuestion, QuizStats, QuizDaily, UserQuizQuestion } from "@/lib/types";
 import { Button, Input, Spinner, EmptyState, toast } from "@/components/ui";
 import { Mascot } from "@/components/mascot";
@@ -15,6 +15,7 @@ import { QuizPlay, CATEGORY_LABEL } from "@/components/quiz-play";
 import { QuizMapPlay } from "@/components/quiz-map-play";
 import { OwnQuestionsView } from "@/components/quiz-own";
 import { QuizProgressMap } from "@/components/quiz-progress-map";
+import { QuizBlitz } from "@/components/quiz-blitz";
 
 type RoundKind = "normal" | "review" | "daily" | "own";
 
@@ -123,14 +124,15 @@ type ModeTileData = {
   sub: string;
   badge?: React.ReactNode;
   onClick: () => void;
+  className?: string;
 };
 
 /** Modus-Kachel (Design 14a): ganze Fläche klickbar, Icon-Farbe unterscheidet
  *  den Modus, Sub-Text max. ein Satz. */
-function ModeTile({ icon, iconClass, title, sub, badge, onClick }: Omit<ModeTileData, "key">) {
+function ModeTile({ icon, iconClass, title, sub, badge, onClick, className }: Omit<ModeTileData, "key">) {
   return (
     <button type="button" onClick={onClick}
-      className="card-interactive relative flex flex-col items-start gap-2.5 rounded-2xl border border-border bg-card p-4 text-left shadow-sm">
+      className={cn("card-interactive relative flex flex-col items-start gap-2.5 rounded-2xl border border-border bg-card p-4 text-left shadow-sm", className)}>
       {badge}
       <span className={cn("flex h-10 w-10 items-center justify-center rounded-xl", iconClass)}>{icon}</span>
       <span>
@@ -391,7 +393,7 @@ function QuizInner() {
   const [round, setRound] = useState<QuizQuestion[] | null>(null);
   const [kind, setKind] = useState<RoundKind>("normal");
   const [mapTargets, setMapTargets] = useState<string[] | null>(null);
-  const [view, setView] = useState<"home" | "setup" | "own">("home");
+  const [view, setView] = useState<"home" | "setup" | "own" | "blitz">("home");
   const [ownAutoNew, setOwnAutoNew] = useState(false);
   const [last, setLast] = useState<LastSettings | null>(null);
   const [autoStarted, setAutoStarted] = useState(false);
@@ -474,6 +476,10 @@ function QuizInner() {
 
   if (loading) return <div className="py-10"><Spinner /></div>;
 
+  if (view === "blitz") {
+    return <QuizBlitz onExit={() => { setView("home"); setReloadKey((k) => k + 1); }} />;
+  }
+
   if (mapTargets) {
     return <QuizMapPlay targets={mapTargets}
       onExit={() => { setMapTargets(null); setReloadKey((k) => k + 1); }} />;
@@ -553,6 +559,13 @@ function QuizInner() {
     });
   }
   tiles.push({
+    key: "blitz", icon: <Timer className="h-[18px] w-[18px]" />,
+    iconClass: "bg-amber-500/15 text-amber-700 dark:text-amber-500",
+    title: "Blitzrunde",
+    sub: stats?.blitz_best ? `60 Sekunden · Bestmarke ${stats.blitz_best}` : "60 Sekunden, so viele wie möglich",
+    onClick: () => setView("blitz"),
+  });
+  tiles.push({
     key: "map", icon: <MapPin className="h-[18px] w-[18px]" />,
     iconClass: "bg-emerald-500/[0.12] text-emerald-700 dark:text-emerald-400",
     title: "Karten-Quiz", sub: "Ortsbereiche auf der Karte finden", onClick: () => void startMap(),
@@ -563,7 +576,10 @@ function QuizInner() {
     sub: "Anlegen & üben — ohne Punkte",
     onClick: () => { setOwnAutoNew(ownCount === 0); setView("own"); },
   });
-  const lgCols = tiles.length >= 4 ? "lg:grid-cols-4" : tiles.length === 3 ? "lg:grid-cols-3" : "lg:grid-cols-2";
+  // Keine Lücke im Raster: bei ungerader Zahl nimmt die letzte Kachel mobil
+  // die volle Breite; am Schreibtisch passt jede Zahl bis fünf in eine Zeile.
+  if (tiles.length % 2 === 1) tiles[tiles.length - 1].className = "col-span-2 lg:col-span-1";
+  const lgCols = { 5: "lg:grid-cols-5", 4: "lg:grid-cols-4", 3: "lg:grid-cols-3" }[tiles.length] ?? "lg:grid-cols-2";
 
   return (
     <div>

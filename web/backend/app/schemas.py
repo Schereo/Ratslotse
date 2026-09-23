@@ -470,6 +470,12 @@ class QuizJokerIn(BaseModel):
     question_id: int
 
 
+class QuizBlitzIn(BaseModel):
+    # 60 Sekunden: mehr als 40 Antworten schafft niemand, der liest.
+    correct: int = Field(ge=0, le=40)
+    answered: int = Field(ge=0, le=40)
+
+
 class QuizRateIn(BaseModel):
     question_id: int
     verdict: str = Field(pattern="^(gut|schlecht)$")
