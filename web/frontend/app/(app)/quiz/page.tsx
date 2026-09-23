@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Search, Play, MapPin, Sparkles, Check, X, ChevronDown, ChevronUp, PencilLine, Zap, Flame, RotateCcw, Timer } from "lucide-react";
+import { Search, Play, MapPin, Sparkles, Check, X, ChevronDown, ChevronUp, PencilLine, Zap, Flame, RotateCcw, Timer, Crosshair } from "lucide-react";
 import { QuizAreas, QuizAreaEntry, QuizQuestion, QuizStats, QuizDaily, UserQuizQuestion } from "@/lib/types";
 import { Button, Input, Spinner, EmptyState, toast } from "@/components/ui";
 import { Mascot } from "@/components/mascot";
@@ -16,6 +16,7 @@ import { QuizMapPlay } from "@/components/quiz-map-play";
 import { OwnQuestionsView } from "@/components/quiz-own";
 import { QuizProgressMap } from "@/components/quiz-progress-map";
 import { QuizBlitz } from "@/components/quiz-blitz";
+import { QuizPinPlay, type PinQuestion } from "@/components/quiz-pin-play";
 
 type RoundKind = "normal" | "review" | "daily" | "own";
 
@@ -393,6 +394,7 @@ function QuizInner() {
   const [round, setRound] = useState<QuizQuestion[] | null>(null);
   const [kind, setKind] = useState<RoundKind>("normal");
   const [mapTargets, setMapTargets] = useState<string[] | null>(null);
+  const [pinQuestions, setPinQuestions] = useState<PinQuestion[] | null>(null);
   const [view, setView] = useState<"home" | "setup" | "own" | "blitz">("home");
   const [ownAutoNew, setOwnAutoNew] = useState(false);
   const [last, setLast] = useState<LastSettings | null>(null);
@@ -464,6 +466,19 @@ function QuizInner() {
     }
   }, []);
 
+  const startPin = useCallback(async () => {
+    setStarting(true);
+    try {
+      const res = await api.get<{ questions: PinQuestion[] }>("/quiz/pin-round?n=5");
+      if (!res.questions.length) { toast.info("Gerade gibt es keine Orte zum Verorten."); return; }
+      setPinQuestions(res.questions);
+    } catch {
+      toast.error("„Wo liegt das?“ konnte nicht geladen werden.");
+    } finally {
+      setStarting(false);
+    }
+  }, []);
+
   // Auto-Start über Query (?review=1 / ?play=<area>) — von der Statistik-Seite.
   useEffect(() => {
     if (autoStarted || loading || !data) return;
@@ -478,6 +493,11 @@ function QuizInner() {
 
   if (view === "blitz") {
     return <QuizBlitz onExit={() => { setView("home"); setReloadKey((k) => k + 1); }} />;
+  }
+
+  if (pinQuestions) {
+    return <QuizPinPlay questions={pinQuestions}
+      onExit={() => { setPinQuestions(null); setReloadKey((k) => k + 1); }} />;
   }
 
   if (mapTargets) {
@@ -571,6 +591,11 @@ function QuizInner() {
     title: "Karten-Quiz", sub: "Ortsbereiche auf der Karte finden", onClick: () => void startMap(),
   });
   tiles.push({
+    key: "pin", icon: <Crosshair className="h-[18px] w-[18px]" />,
+    iconClass: "bg-orange-500/[0.12] text-orange-700 dark:text-orange-400",
+    title: "Wo liegt das?", sub: "Straßen und Orte mit einem Pin finden", onClick: () => void startPin(),
+  });
+  tiles.push({
     key: "own", icon: <PencilLine className="h-[18px] w-[18px]" />, iconClass: "bg-muted text-muted-foreground",
     title: <>Eigene Fragen{ownCount > 0 && <span className="font-medium text-muted-foreground"> · {ownCount}</span>}</>,
     sub: "Anlegen & üben — ohne Punkte",
@@ -578,8 +603,18 @@ function QuizInner() {
   });
   // Keine Lücke im Raster: bei ungerader Zahl nimmt die letzte Kachel mobil
   // die volle Breite; am Schreibtisch passt jede Zahl bis fünf in eine Zeile.
-  if (tiles.length % 2 === 1) tiles[tiles.length - 1].className = "col-span-2 lg:col-span-1";
-  const lgCols = { 5: "lg:grid-cols-5", 4: "lg:grid-cols-4", 3: "lg:grid-cols-3" }[tiles.length] ?? "lg:grid-cols-2";
+  // Am Schreibtisch höchstens fünf je Zeile (sechs werden zwei Dreier), und
+  // die letzte Kachel streckt sich über den Rest der Zeile.
+  const lgN = tiles.length <= 5 ? tiles.length : tiles.length === 6 ? 3 : 4;
+  const lgRest = tiles.length % lgN;
+  const LG_SPAN: Record<number, string> = { 1: "lg:col-span-1", 2: "lg:col-span-2", 3: "lg:col-span-3", 4: "lg:col-span-4" };
+  if (tiles.length) {
+    tiles[tiles.length - 1].className = cn(
+      tiles.length % 2 === 1 ? "col-span-2" : undefined,
+      lgRest ? LG_SPAN[lgN - lgRest + 1] : "lg:col-span-1",
+    );
+  }
+  const lgCols = ({ 1: "lg:grid-cols-1", 2: "lg:grid-cols-2", 3: "lg:grid-cols-3", 4: "lg:grid-cols-4", 5: "lg:grid-cols-5" } as Record<number, string>)[lgN];
 
   return (
     <div>
