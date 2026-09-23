@@ -2780,9 +2780,10 @@ for _q in (
         key="wirtschaftsplan",
         label="Wirtschaftspläne der Eigenbetriebe",
         was="Was der Rat den Eigenbetrieben für das kommende Jahr genehmigt — "
-            "eigene Erfolgs- und Vermögenspläne neben dem Kernhaushalt. Bisher "
-            "nur der Eigenbetrieb Gebäudewirtschaft und Hochbau; die übrigen "
-            "Betriebe nennen ihre Zahlen nur in einer Anlage.",
+            "eigene Erfolgs- und Vermögenspläne neben dem Kernhaushalt: "
+            "Gebäudewirtschaft, Abfallwirtschaft, Bäder, Hafen und Stadion. "
+            "Erträge und Aufwendungen stehen für Gebäudewirtschaft und "
+            "Abfallwirtschaft; von den übrigen das geplante Jahresergebnis.",
         tabelle="council_business_plans",
         # Gemessen an den acht Entwurfsdaten im Bestand, nicht geschätzt:
         # 04.09.2020, 17.09.2019, 01.10.2025, 02.10.2024, 04.10.2023,

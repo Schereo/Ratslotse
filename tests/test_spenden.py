@@ -225,7 +225,26 @@ def test_ein_abgesetzter_punkt_ist_keine_einnahme():
         "21/0694", None, "Der Tagesordnungspunkt wurde abgesetzt.",
         outcome="postponed")])
     assert erg["vorlagen"] == []
-    assert "nicht beschlossen" in erg["verworfen"][0]["reason"]
+    # Und er steht auch nicht unter „fehlen in dieser Reihe" — es gibt keinen
+    # Betrag, der fehlen könnte (bis 09/2026 stand er dort).
+    assert erg["verworfen"] == []
+    assert erg["probes"]["nicht_beschlossen"] == 1
+
+
+def test_ueber_den_rat_gezaehlt_fehlt_nicht():
+    """21/0003: Das Ausschuss-Protokoll nennt keinen Betrag, das des Rates
+    schon. Die Vorlage steht in der Summe — und darf dann nicht zugleich
+    unter „fehlen" stehen."""
+    erg = donations.lies([
+        row("21/0003", VORLAGE_NEU, "Einstimmig angenommen.",
+            sitzung="2021-01-20", gremiensitzung="Ausschuss für Finanzen und Beteiligungen"),
+        row("21/0003", VORLAGE_NEU,
+            "Die Stadt Oldenburg nimmt die angebotenen Zuwendungen in Höhe von "
+            "insgesamt 435.941 Euro gemäß der anliegenden Liste an.",
+            sitzung="2021-01-25"),
+    ])
+    assert [v["template_number"] for v in erg["vorlagen"]] == ["21/0003"]
+    assert erg["verworfen"] == []
 
 
 # --- Die drei Reparaturen am Textextrakt ------------------------------------

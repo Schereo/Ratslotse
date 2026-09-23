@@ -150,8 +150,15 @@ export function kernAnteil(
   const konzern = art === "revenues" ? jd?.revenues_total : jd?.expenses_total;
   const kern = daten.entity.find(
     (t) => t.year === year && t.kind === art && t.entity_key === "stadt");
-  if (!konzern || !kern) return null;
-  return { kern: kern.amount, konzern, anteil: kern.amount / konzern };
+  // Das Jahr VOR der ersten Trägeraufstellung steht in deren Vorjahresspalte:
+  // Der Bericht 2017 nennt die Kernverwaltung 2016 mit (494,7 Mio. € Erträge;
+  // die Trägerzeilen ergeben die Konzernsumme 2016 auf 1 Tsd. € genau). Bis
+  // 09/2026 stand 2016 deshalb als „nicht ausgewiesen" da, obwohl die Zahl im
+  // Bestand lag.
+  const kernBetrag = kern?.amount ?? daten.entity.find(
+    (t) => t.year === year + 1 && t.kind === art && t.entity_key === "stadt")?.prior_year ?? null;
+  if (!konzern || kernBetrag == null) return null;
+  return { kern: kernBetrag, konzern, anteil: kernBetrag / konzern };
 }
 
 /** Das jüngste Jahr, für das sich der Anteil überhaupt bilden lässt. */

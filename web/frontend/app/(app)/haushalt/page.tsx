@@ -152,13 +152,20 @@ export default function HaushaltPage() {
   // im Verzeichnis ein Beleg für nichts, und die seitenweise Nummerierung
   // zeigte ins Leere. Reihenfolge = Leserichtung der Seite: Tafel, Zettel,
   // Flussbild.
-  const quellen: QuellenSchluessel[] = [
+  // Die Zeitreihe (Plan gegen Ist) und der Abgleich der langen Reihe zitieren
+  // den Jahresabschluss unabhängig vom gewählten Jahr. Bis 09/2026 kam er nur
+  // über das Flussbild in die Liste — steht oben ein Planjahr, zitiert das den
+  // Gesamtergebnishaushalt, und 16 Belege auf den Abschluss blieben leer.
+  const hatAbschluss = (data.income_statement ?? []).some(
+    (p) => p.sub_budget_no == null && p.nr === 12);
+  const quellen: QuellenSchluessel[] = [...new Set<QuellenSchluessel>([
     "plan",
     ...(vollzug.data?.reporting_dates.length ? (["budget_execution"] as const) : []),
     ...(zeigtZettel ? kassenzettelQuellen(data, aktJahr) : []),
     ...flussbildQuellen(data, aktJahr),
+    ...(hatAbschluss ? (["jahresabschluss"] as const) : []),
     ...(langeJahre.length > 0 ? (["expense_series"] as const) : []),
-  ];
+  ])];
 
   // Die lange Reihe: Endpunkte, Naht und die beiden Befunde, die dazugehören.
   // Alles gerechnet, nichts geschrieben — ein fester Satz wäre beim nächsten

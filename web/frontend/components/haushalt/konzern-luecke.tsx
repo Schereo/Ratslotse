@@ -17,7 +17,8 @@
 // Stufen derselben blauen Rampe, nicht Grün gegen Rot.
 //
 // FEHLENDE JAHRE BLEIBEN LEER. Bis 2016 führen die Berichte die
-// Trägeraufstellung noch nicht; für diese Jahrgänge kennen wir die
+// Trägeraufstellung noch nicht; 2016 steht immerhin in der Vorjahresspalte
+// des Berichts 2017 (s. `kernAnteil`). Für 2014 und 2015 kennen wir die
 // Konzernsumme, aber nicht ihren Kernanteil. Der Balken steht dann ganz da
 // und trägt die Schraffur der Lücken-Konvention statt einer geschätzten
 // Trennlinie.
