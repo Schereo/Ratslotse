@@ -1309,6 +1309,26 @@ def _thh_wertezeile(block: str, muster: str, spalten: int) -> list[float] | None
     return None
 
 
+def _thh_teilzeile(block: str, muster: str) -> list[float] | None:
+    """Die Zahlen einer Postenzeile, auch wenn sie KÜRZER ist als der Kopf.
+
+    Gegenstück zu ``_thh_wertezeile`` für die Gegenprobe beim Ableiten
+    (s. ``parse_teilergebnishaushalt``): Welcher Spalte eine Zahl gehört,
+    sagt eine unvollständige Zeile nicht — ob ein errechneter Betrag in ihr
+    VORKOMMT, schon. ``[]`` heißt: Die Zelle ist ganz leer (die nächste
+    Tabellenzeile beginnt sofort). ``None``: Die Beschriftung fehlt."""
+    m = re.search(muster, block)
+    if not m:
+        return None
+    for row in block[m.end():].split("\n")[:_THH_MAX_ZEILEN]:
+        if _THH_NEUE_ZEILE.match(row):
+            return []
+        if not row.strip() or not _THH_NUR_ZAHLEN.fullmatch(row.rstrip()):
+            continue
+        return _thh_zahlen(row)
+    return []
+
+
 # --- Teilhaushalte: Produkt-Steckbrief ---------------------------------------
 #
 # Zu jedem Produkt führen die Pläne einen Steckbrief: was die Aufgabe umfasst,
@@ -1552,17 +1572,46 @@ def parse_teilergebnishaushalt(text: str) -> list[dict]:
         spalten = len(kopf)
 
         werte = {}
-        for key, muster in (
-            ("revenues", r"12\.\s*=?\s*Summe ordentliche\s*Erträge"),
-            ("expenses", r"20\.\s*=?\s*Summe ordentliche\s*Aufwendungen"),
-            ("result", r"21\.\s*ordentliches Ergebnis"),
-        ):
+        muster_je = {
+            "revenues": r"12\.\s*=?\s*Summe ordentliche\s*Erträge",
+            "expenses": r"20\.\s*=?\s*Summe ordentliche\s*Aufwendungen",
+            "result": r"21\.\s*ordentliches Ergebnis",
+        }
+        for key, muster in muster_je.items():
             # Mindestens so viele Werte wie Spalten — alles danach ist
             # Seitenzahl. Zur Suche siehe `_thh_wertezeile`.
             zahlen = _thh_wertezeile(block, muster, spalten)
             if zahlen is None:
                 continue
             werte[key] = zahlen[plan_idx]
+        # Fehlt GENAU eine der drei Zeilen, folgt sie aus den beiden anderen
+        # (Erträge − Aufwendungen = Ergebnis). Bis 09/2026 fiel das Produkt
+        # dann ganz heraus — 15 bis 25 je Jahrgang, gemessen am 23.09.2026 an
+        # allen 104 Teilhaushalts-PDFs: jedes Produkt ohne Erträge
+        # (Personalrückstellungen, −17 Mio. € je Jahr), jedes, dem in einem
+        # Jahr der Kopfspalten ein Wert fehlt (Wirtschaftsförderung 2020), und
+        # die Erstattungen des Landes ohne Aufwand (+72,6 Mio. € in 2026).
+        # Abgeleitet wird nur mit Gegenprobe: Der errechnete Betrag muss in
+        # der unvollständigen Zeile stehen — oder er ist 0 und eine Zelle leer.
+        # Welcher Spalte eine Zahl der kurzen Zeile gehört, sagt sie nicht;
+        # ob der Betrag darin vorkommt, schon.
+        fehlend = [k for k in muster_je if k not in werte]
+        if len(fehlend) == 1:
+            k = fehlend[0]
+            if k == "revenues":
+                abgeleitet = werte["expenses"] + werte["result"]
+            elif k == "expenses":
+                abgeleitet = werte["revenues"] - werte["result"]
+            else:
+                abgeleitet = werte["revenues"] - werte["expenses"]
+            teil = _thh_teilzeile(block, muster_je[k])
+            # Ein Betrag von 0 steht als LEERE Zelle da — die Zeile trägt dann
+            # weniger Zahlen als der Kopf Spalten (Personalrückstellungen:
+            # nur das Vorjahres-Ergebnis, alle Ansätze leer).
+            if teil is not None and (
+                    (abs(abgeleitet) <= 1.0 and len(teil) < spalten)
+                    or any(abs(z - abgeleitet) <= 1.0 for z in teil)):
+                werte[k] = abgeleitet
         if len(werte) < 3:
             continue
         # Prüfsumme des Dokuments: Erträge − Aufwendungen = Ergebnis.
