@@ -9429,6 +9429,10 @@
               "null"
             ]
           },
+          "ties": {
+            "title": "Ties",
+            "type": "integer"
+          },
           "total": {
             "title": "Total",
             "type": "integer"
@@ -9450,6 +9454,7 @@
           "total",
           "counted",
           "wins",
+          "ties",
           "place",
           "districts",
           "areas"

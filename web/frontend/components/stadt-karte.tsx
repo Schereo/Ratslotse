@@ -12,7 +12,9 @@ import { cn } from "@/lib/utils";
 import { ViertelZeichner, escapeHtml, type KartenBeteiligung, type KartenSperrung, type KartenVorhaben } from "@/components/viertel-zeichner";
 import { ThemenOrteZeichner } from "@/components/themen-orte-zeichner";
 import type { EbenenId } from "@/lib/karten-ebenen";
-import { prozent, toenungNachStaerke, type WahlFlaeche } from "@/lib/wahl-flaechen";
+import { WahlBezirkeZeichner } from "@/components/wahl-bezirke-zeichner";
+import type { Wahlkarte } from "@/lib/wahlkarte";
+import { isDarkNow, THEME_EVENT } from "@/lib/theme";
 import type { EntityMapPoint } from "@/lib/types";
 
 /** Die vereinte Stadtkarte — EINE Leaflet-Karte mit zwei Stufen
@@ -37,7 +39,7 @@ const VOYAGER = basemapUrl("voyager");
 const PRIMAER = "#0a63a8";
 const STADT_MITTE: [number, number] = [53.1435, 8.2146];
 
-export function StadtKarte({ stufe, ebenen, orte, gewaehlt, schwebtOrt, onOrt, onStadt, vorhaben, sperrungen, beteiligungen, themenOrte, onThemenOrt, wahl, aktiv, gedimmt, schwebt, onSelect, onHover, className }: {
+export function StadtKarte({ stufe, ebenen, orte, gewaehlt, schwebtOrt, onOrt, onStadt, vorhaben, sperrungen, beteiligungen, themenOrte, onThemenOrt, wahl, wahlBezirk, onWahlBezirk, aktiv, gedimmt, schwebt, onSelect, onHover, className }: {
   stufe: KartenStufe;
   /** Die eingeschalteten Ebenen (`lib/karten-ebenen.ts`). Ohne die Vorhaben-
    *  Ebene bleibt die Stadt-Stufe eine flache Umrisskarte. */
@@ -52,10 +54,14 @@ export function StadtKarte({ stufe, ebenen, orte, gewaehlt, schwebtOrt, onOrt, o
   /** Zurück auf die Stadt-Stufe — die Karte ruft es, wenn jemand aus dem
    *  Viertel herauszoomt (Tims Wunsch 07.09.2026: Zoom wechselt die Stufe). */
   onStadt?: () => void;
-  /** Die Ebene „Wahlergebnis": je Ortsbereich die Fläche seines Wahlbereichs
-   *  (lib/wahl-flaechen.ts) — die Stadt-Stufe tönt danach und sagt im Hinweis,
-   *  wer vorn liegt. Fehlt sie oder ist die Ebene aus, färbt die Zahl der Vorhaben. */
-  wahl?: ReadonlyMap<string, WahlFlaeche>;
+  /** Die Ebene „Wahlergebnis": das Ergebnis je Urnenbezirk
+   *  (`/api/wahlabend/karte`). Mit ihr zeichnet die Karte die Wahlbezirke in
+   *  der Farbe dessen, der vorn lag (components/wahl-bezirke-zeichner.ts);
+   *  die Ortsbereiche bleiben als Linien darüber. */
+  wahl?: Wahlkarte;
+  /** Der gewählte Wahlbezirk auf der Viertel-Stufe. */
+  wahlBezirk?: number | null;
+  onWahlBezirk?: (nr: number | null) => void;
   vorhaben: KartenVorhaben[];
   sperrungen?: KartenSperrung[];
   beteiligungen?: KartenBeteiligung[];
@@ -77,6 +83,7 @@ export function StadtKarte({ stufe, ebenen, orte, gewaehlt, schwebtOrt, onOrt, o
   const grenzeRef = useRef<LayerGroup | null>(null);
   const zeichnerRef = useRef<ViertelZeichner | null>(null);
   const themenRef = useRef<ThemenOrteZeichner | null>(null);
+  const wahlRef = useRef<WahlBezirkeZeichner | null>(null);
   const bereitRef = useRef(false);
   // Zoom wechselt die Stufe (Tim, 07.09.2026): Wer auf der Stadt-Stufe zwei
   // Stufen über die Stadtansicht hinein zoomt, landet im Ortsbereich unter der
@@ -94,11 +101,11 @@ export function StadtKarte({ stufe, ebenen, orte, gewaehlt, schwebtOrt, onOrt, o
     // Sperre nicht hängen bleiben — sonst schluckte sie den nächsten echten Zoom.
     eigenerFlugRef.current = setTimeout(() => { eigenerFlugRef.current = null; }, 1500);
   }
-  const rueckrufe = useRef({ onSelect, onHover, onOrt, onStadt, onThemenOrt });
-  rueckrufe.current = { onSelect, onHover, onOrt, onStadt, onThemenOrt };
+  const rueckrufe = useRef({ onSelect, onHover, onOrt, onStadt, onThemenOrt, onWahlBezirk });
+  rueckrufe.current = { onSelect, onHover, onOrt, onStadt, onThemenOrt, onWahlBezirk };
   // Der jüngste Zustand für die Effekte, die nach dem Laden nachziehen.
-  const standRef = useRef({ stufe, ebenen, orte, gewaehlt, vorhaben, sperrungen, beteiligungen, themenOrte, wahl, aktiv, gedimmt });
-  standRef.current = { stufe, ebenen, orte, gewaehlt, vorhaben, sperrungen, beteiligungen, themenOrte, wahl, aktiv, gedimmt };
+  const standRef = useRef({ stufe, ebenen, orte, gewaehlt, vorhaben, sperrungen, beteiligungen, themenOrte, wahl, wahlBezirk, aktiv, gedimmt });
+  standRef.current = { stufe, ebenen, orte, gewaehlt, vorhaben, sperrungen, beteiligungen, themenOrte, wahl, wahlBezirk, aktiv, gedimmt };
 
   // Karte einmal aufbauen.
   useEffect(() => {
@@ -120,6 +127,13 @@ export function StadtKarte({ stufe, ebenen, orte, gewaehlt, schwebtOrt, onOrt, o
         featuresRef.current = await loadOrtsbereiche();
       } catch { /* ohne Umrisse bleibt die Karte trotzdem eine Karte */ }
       if (cancelled) return;
+      wahlRef.current = new WahlBezirkeZeichner(L, map, L.layerGroup().addTo(map), {
+        onOrtBei: (lat, lng) => {
+          const name = ortsbereichFor(lat, lng, featuresRef.current);
+          if (name) rueckrufe.current.onOrt(name);
+        },
+        onBezirk: (nr) => rueckrufe.current.onWahlBezirk?.(nr),
+      });
       grenzeRef.current = L.layerGroup().addTo(map);
       zeichnerRef.current = new ViertelZeichner(L, map, L.layerGroup().addTo(map), {
         onSelect: (id) => rueckrufe.current.onSelect(id),
@@ -146,6 +160,7 @@ export function StadtKarte({ stufe, ebenen, orte, gewaehlt, schwebtOrt, onOrt, o
       stufeSetzen(true);
       viertelZeichnen();
       themenZeichnen();
+      void wahlZeichnen();
     })();
     return () => {
       cancelled = true;
@@ -157,37 +172,27 @@ export function StadtKarte({ stufe, ebenen, orte, gewaehlt, schwebtOrt, onOrt, o
       stadtRef.current = null;
       grenzeRef.current = null;
       zeichnerRef.current = null;
+      wahlRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /** Die Wahl-Fläche eines Ortsbereichs, wenn die Ebene an ist und Daten da sind. */
-  function wahlVon(name: string): WahlFlaeche | undefined {
+  /** Liegt die Wahl-Ebene auf der Karte? Dann tragen die Bezirke die Farbe,
+   *  und die Ortsbereiche sind nur noch Linien zur Orientierung. */
+  function wahlAn(): boolean {
     const { ebenen, wahl } = standRef.current;
-    return ebenen.has("wahlergebnis") ? wahl?.get(name) : undefined;
+    return ebenen.has("wahlergebnis") && !!wahl;
   }
 
-  /** Der Hinweis beim Zeigen: Vorhaben — und mit der Wahl-Ebene, wer im
-   *  Wahlbereich vorn liegt (Parteifarbe nur als Punkt, Designsprache). */
+  /** Der Hinweis beim Zeigen: Name und Zahl der Vorhaben. */
   function hinweisHtml(name: string): string {
     const n = standRef.current.orte.get(name) ?? 0;
-    const w = wahlVon(name);
-    let html = `<b>${escapeHtml(name)}</b><span class="wann">${n} Vorhaben</span>`;
-    if (w) {
-      const listen = w.listen.slice(0, 3).map((l) =>
-        `<span style="display:inline-flex;align-items:center;gap:4px;margin-right:8px"><span style="display:inline-block;width:8px;height:8px;border-radius:9999px;background:${l.color}"></span>${escapeHtml(l.short)} ${escapeHtml(prozent(l.share))}</span>`).join("");
-      html += `<span class="wann" style="display:block;margin-top:5px">Wahlbereich ${escapeHtml(w.roman)} · ${w.counted > 0 ? `${w.counted} von ${w.total} Bezirken` : "noch nichts ausgezählt"}</span>`
-        + (w.counted > 0 ? `<span style="display:block;margin-top:2px">${listen}</span>` : "");
-    }
-    return html;
+    return `<b>${escapeHtml(name)}</b><span class="wann">${n} Vorhaben</span>`;
   }
 
-  /** Tönung einer Fläche: mit der Wahl-Ebene nach Stärke der stärksten
-   *  Liste im Wahlbereich, sonst nach Zahl der Vorhaben — dieselbe
-   *  Wurzel-Skala wie die SVG-Karte. */
+  /** Tönung einer Fläche nach Zahl der Vorhaben — dieselbe Wurzel-Skala
+   *  wie die SVG-Karte. */
   function toenung(name: string): number {
-    const w = wahlVon(name);
-    if (w) return toenungNachStaerke(w.staerke);
     if (!standRef.current.ebenen.has("vorhaben")) return 0.04;
     const o = standRef.current.orte;
     const max = Math.max(0, ...o.values());
@@ -197,6 +202,13 @@ export function StadtKarte({ stufe, ebenen, orte, gewaehlt, schwebtOrt, onOrt, o
 
   function stadtStil(name: string, hell: boolean) {
     const eigen = standRef.current.gewaehlt?.has(name);
+    if (wahlAn()) {
+      // Nur die Grenze: Die Farbe gehört den Wahlbezirken darunter.
+      // Dunkler und kräftiger als die weißen Bezirksgrenzen darunter, sonst
+      // verschwimmen Stadtteil und Wahlbezirk zu einem Netz.
+      return { color: eigen ? PRIMAER : isDarkNow() ? "#e2e8f0" : "#1e293b", weight: eigen ? 2.5 : 1.6, opacity: eigen ? 0.95 : 0.6,
+        fillColor: PRIMAER, fillOpacity: 0 };
+    }
     return {
       color: eigen ? PRIMAER : "#fff", weight: eigen ? 2.5 : 1, opacity: 0.9,
       fillColor: PRIMAER, fillOpacity: hell ? Math.min(0.75, toenung(name) + 0.2) : toenung(name),
@@ -204,7 +216,7 @@ export function StadtKarte({ stufe, ebenen, orte, gewaehlt, schwebtOrt, onOrt, o
   }
 
   /** Die Stufe auf der Karte herstellen: Stadt-Flächen ODER Viertel-Umriss + Ausschnitt. */
-  function stufeSetzen(sofort = false) {
+  function stufeSetzen(sofort = false, fliegen = true) {
     const L = leafletRef.current, map = mapRef.current;
     if (!L || !map || !bereitRef.current) return;
     const { stufe } = standRef.current;
@@ -215,6 +227,10 @@ export function StadtKarte({ stufe, ebenen, orte, gewaehlt, schwebtOrt, onOrt, o
     if (stufe.art === "city") {
       zeichnerRef.current?.leeren();
       const stadt = L.geoJSON({ type: "FeatureCollection", features } as never, {
+        // Mit der Wahl-Ebene fangen die Bezirke darunter Zeiger und Tipp —
+        // sie wissen, welcher Bezirk gemeint ist, und öffnen trotzdem den
+        // Ortsbereich unter dem Finger.
+        interactive: !wahlAn(),
         style: (f) => stadtStil((f as OrtsbereichFeature).properties.name, false),
         onEachFeature: (f, layer) => {
           const name = (f as OrtsbereichFeature).properties.name;
@@ -225,7 +241,7 @@ export function StadtKarte({ stufe, ebenen, orte, gewaehlt, schwebtOrt, onOrt, o
         },
       }).addTo(map);
       stadtRef.current = stadt;
-      if (features.length) {
+      if (features.length && fliegen) {
         eigenerFlug();
         if (sofort) map.fitBounds(stadt.getBounds(), { padding: [8, 8] });
         else map.flyToBounds(stadt.getBounds(), { padding: [8, 8], duration: 0.6 });
@@ -239,10 +255,12 @@ export function StadtKarte({ stufe, ebenen, orte, gewaehlt, schwebtOrt, onOrt, o
           interactive: false,
         });
         grenzeRef.current?.addLayer(layer);
-        eigenerFlug();
-        if (sofort) map.fitBounds(layer.getBounds(), { padding: [16, 16] });
-        else map.flyToBounds(layer.getBounds(), { padding: [16, 16], duration: 0.7 });
-        stufenZoomRef.current.viertel = map.getBoundsZoom(layer.getBounds(), false, L.point(16, 16));
+        if (fliegen) {
+          eigenerFlug();
+          if (sofort) map.fitBounds(layer.getBounds(), { padding: [16, 16] });
+          else map.flyToBounds(layer.getBounds(), { padding: [16, 16], duration: 0.7 });
+          stufenZoomRef.current.viertel = map.getBoundsZoom(layer.getBounds(), false, L.point(16, 16));
+        }
       }
     }
   }
@@ -257,6 +275,18 @@ export function StadtKarte({ stufe, ebenen, orte, gewaehlt, schwebtOrt, onOrt, o
     if (z.aktivBounds) { eigenerFlug(); map.flyToBounds(z.aktivBounds.pad(0.6), { maxZoom: 16, duration: 0.5 }); }
   }
 
+  async function wahlZeichnen() {
+    const w = wahlRef.current;
+    if (!w || !bereitRef.current) return;
+    const { stufe, wahl, wahlBezirk } = standRef.current;
+    if (!wahlAn() || !wahl) { w.leeren(); return; }
+    try { await w.laden(); } catch { return; }
+    if (!bereitRef.current || wahlRef.current !== w) return;
+    const ort = stufe.art === "district" ? stufe.name : null;
+    const grenze = ort ? featuresRef.current.find((f) => f.properties.name === ort) : undefined;
+    w.zeichnen({ daten: wahl, ort, ortGeometrie: grenze?.geometry as GeoJSON.Geometry | undefined, gewaehlt: ort ? wahlBezirk ?? null : null, dunkel: isDarkNow() });
+  }
+
   function themenZeichnen() {
     if (!bereitRef.current) return;
     themenRef.current?.zeichnen(standRef.current.themenOrte ?? []);
@@ -268,7 +298,24 @@ export function StadtKarte({ stufe, ebenen, orte, gewaehlt, schwebtOrt, onOrt, o
   // Stufe oder Ortsbereich gewechselt → Karte umbauen.
   const stufeSchluessel = stufe.art === "district" ? `district:${stufe.name}` : "city";
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { stufeSetzen(); viertelZeichnen(); }, [stufeSchluessel]);
+  useEffect(() => { stufeSetzen(); viertelZeichnen(); void wahlZeichnen(); }, [stufeSchluessel]);
+  // Wahl-Ebene an/aus: Die Stadt-Flächen tauschen Interaktion und Stil
+  // (ohne Flug — die Karte bleibt, wo sie ist).
+  const wahlSchluessel = ebenen.has("wahlergebnis") && !!wahl;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (bereitRef.current && standRef.current.stufe.art === "city") stufeSetzen(false, false); }, [wahlSchluessel]);
+  // Daten, Auswahl, Ebene → Bezirke neu zeichnen; auch beim Wechsel hell/dunkel.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { void wahlZeichnen(); }, [wahl, wahlBezirk, wahlSchluessel]);
+  useEffect(() => {
+    const h = () => { void wahlZeichnen(); if (standRef.current.stufe.art === "city") stadtRef.current?.eachLayer((l) => {
+      const f = (l as unknown as { feature?: OrtsbereichFeature }).feature;
+      if (f) (l as Path).setStyle(stadtStil(f.properties.name, false));
+    }); };
+    window.addEventListener(THEME_EVENT, h);
+    return () => window.removeEventListener(THEME_EVENT, h);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // Tönung, eigene Stadtteile oder Wahl-Ebene neu → Stadt-Flächen nachfärben
   // und den Hinweis neu setzen (er nennt die Zahlen der Ebene).
   useEffect(() => {
@@ -280,7 +327,7 @@ export function StadtKarte({ stufe, ebenen, orte, gewaehlt, schwebtOrt, onOrt, o
       (layer as Path).setTooltipContent(hinweisHtml(f.properties.name));
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orte, gewaehlt, ebenen, wahl]);
+  }, [orte, gewaehlt, ebenen]);
   // Vorhaben, Auswahl, Filter, Ebenen → Viertel neu zeichnen.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { viertelZeichnen(); }, [vorhaben, sperrungen, beteiligungen, aktiv, gedimmt, ebenen]);
@@ -301,7 +348,9 @@ export function StadtKarte({ stufe, ebenen, orte, gewaehlt, schwebtOrt, onOrt, o
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [schwebtOrt]);
 
-  const label = stufe.art === "district" ? `Karte von ${stufe.name} mit den Vorhaben` : "Karte von Oldenburg mit den Vorhaben je Ortsbereich";
+  const label = wahlSchluessel
+    ? (stufe.art === "district" ? `Karte von ${stufe.name} mit dem Wahlergebnis je Wahlbezirk` : "Karte von Oldenburg mit dem Wahlergebnis je Wahlbezirk")
+    : stufe.art === "district" ? `Karte von ${stufe.name} mit den Vorhaben` : "Karte von Oldenburg mit den Vorhaben je Ortsbereich";
   return (
     <div className={cn("relative overflow-hidden bg-muted", className)}>
       <div ref={ref} className="h-full w-full" aria-label={label} role="region" />

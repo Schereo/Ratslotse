@@ -4794,6 +4794,8 @@ class ElectionMap(TypedDict):
     total: int
     counted: int
     wins: list[ElectionMapWin]
+    #: Gezählte Urnenbezirke ohne Sieger (Gleichstand an der Spitze).
+    ties: int
     #: Mit ``?place=``: nur die Bezirke, die den Ortsbereich berühren.
     place: str | None
     districts: list[ElectionMapDistrict]
