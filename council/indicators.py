@@ -211,6 +211,11 @@ def parse_kennzahlen(text: str, report_year: int) -> tuple[list[dict], list[str]
     schluss = ENDE.search(rest)
     tabelle = rest[:schluss.start()] if schluss else rest
     tabelle = SCHLUSSZEILE.sub(" ", SEITENMARKE.sub(" ", tabelle))
+    # Der Bericht 2025 setzt in der letzten Spalte ein Leerzeichen vor das
+    # Prozentzeichen („49,62 %"). Allein stehend wäre „%" ein Wort der
+    # Beschriftung — die Zeile risse, und der ganze Bericht fiele heraus
+    # (so geschehen am 24.09.2026: „7 unzuordenbare Zeilen").
+    tabelle = re.sub(r"(\d)[ \t]+%", r"\1%", tabelle)
 
     zeilen: list[dict] = []
     unbekannt: list[str] = []
