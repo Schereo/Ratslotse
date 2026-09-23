@@ -105,3 +105,53 @@ besteht.
 Dazu kommt eine Schutzschicht, die nicht vom Anbieter abhängt:
 `kern/foreign_text.py` nimmt Sätze aus Seiten- und Vorlagentext heraus, die
 sich an ein KI-System wenden, bevor Lotti oder die Antwort sie sehen.
+
+## Nachtrag 23.09.2026: erst Azure EU mit ZDR, OpenAI nur als Rückfall
+
+Am selben Tag hat OpenRouter GPT-6 Luna auch bei Microsoft Azure
+aufgenommen, darunter den Endpunkt `azure/eu` mit ZDR. Gemessen mit
+`zdr: true`, `data_collection: deny` und `only: ["azure/eu"]`: 20 von 20
+Aufrufen ok, p50 3,4 s. Ohne die feste Anbietervorgabe kam einmal
+„temporarily rate-limited upstream“.
+
+**Entscheidung (Tim):** Für die Features aus `ZDR_VERZICHT` geht der erste
+Versuch an `azure/eu`, mit ZDR, Trainingsverbot und China-Liste. Fällt
+dieser Weg aus, läuft derselbe Aufruf einmal mit dem Routing aus dem
+vorigen Nachtrag, also ohne ZDR (in der Regel OpenAI direkt, USA). Der
+Verzicht gilt damit nur noch für den Rückfall.
+
+- **Welche Modelle:** `kern/llm.py::EU_ZUERST` nennt sie, GPT-6 Luna und
+  GPT-6 Sol. Beide haben `azure/eu`, geprüft am 23.09. Für ein Modell ohne
+  Eintrag bleibt das bisherige Routing. Ein EU-Versuch dort wäre ein
+  sicherer 404, und jeder Aufruf würde als Rückfall gezählt.
+- **Wann zurückgefallen wird:** bei allem, was `_is_transient` als
+  vorübergehend kennt (429, 5xx, Netz, 200er ohne `choices`), bei einem 404
+  und bei einem Fehler-Ereignis im Strom. **Nicht** bei einem
+  Inhaltsfilter-Treffer. Der hängt am Text, und ein Rückfall schickte genau
+  diesen Text in die USA. Im Strom wird nur zurückgefallen, solange noch
+  kein Token beim Leser ist.
+- **Was der erste Weg im Fehlerfall kostet:** Er ist das normale `_create`
+  mit vier schnellen Anläufen, ohne Geduld. Bei einem vorübergehenden
+  Fehler sind das 2 + 2 + 4 = 8 s Pause plus die Anläufe selbst, bei einem
+  sofortigen 429 zusammen gut 9 s. Ein 404 fällt ohne Anlauf zurück
+  (gemessen 0,1 s).
+- **Gezählt:** Ein Rückfall steht in `llm_usage` unter dem Modellnamen mit
+  `@fallback-no-zdr`. Im Admin-Panel (*LLM-Kosten*) steht er damit als
+  eigenes Modell des Features, mit Zahl der Aufrufe und Kosten. Dazu kommt
+  eine Zeile im Dienst-Log. Wie oft Anfragen die EU
+  verlassen haben, zeigt
+  `SELECT feature, COUNT(*) FROM llm_usage WHERE model LIKE '%@fallback-no-zdr' GROUP BY feature`.
+- **Preis:** `azure/eu` kostet 10 % mehr als OpenAI direkt (0,11 statt
+  0,10 $ je Million Eingabe-Tokens).
+- **Gemessen** mit der Fakten-Eval (`eval/run_fakten.py`, alle 233 Fälle,
+  GPT-6 Luna, 23.09.2026). Beide Läufe liefen gleichzeitig, einer mit dem
+  alten Routing, einer mit dem neuen. Qualität gleich: vorher 177 ok und
+  34 Modellfehler, nachher 176 ok und 37 Modellfehler. Das liegt in der
+  Streuung, ein früherer Lauf mit dem alten Routing hatte ebenfalls 176 und
+  37. Es waren dieselben Gewichte und derselbe Denkaufwand. Schneller wurde
+  es trotzdem: p50 6,7 s statt 8,7 s, p95 17,7 s statt 28,4 s. Bei Lotti
+  sank der p50 von 6,0 auf 4,2 s, bei Frag den Rat von 13,6 auf 9,0 s.
+  Rückfälle im Lauf: 0 von 236 Luna-Aufrufen, alle gingen an Azure.
+
+Die Datenschutzerklärung sagt seitdem: im Regelfall EU ohne Speicherung,
+bei einer Störung ausnahmsweise OpenAI in den USA ohne diese Zusage.
