@@ -26,6 +26,7 @@ from bs4 import BeautifulSoup
 
 from kern import llm
 from council import geo, places
+from council.store_quiz import MIN_APPEAL
 
 MODEL = os.environ.get("COUNCIL_QUIZ_MODEL", "deepseek/deepseek-v4-pro")
 VERIFY_MODEL = os.environ.get("COUNCIL_QUIZ_VERIFY_MODEL", "openai/gpt-4o-mini")
@@ -544,7 +545,14 @@ def _valid_estimate(q: dict) -> bool:
     )
 
 
+# „Welches Thema wurde in den Quellen … diskutiert?" — die Frage spricht über
+# ihren Prompt statt über die Stadt. Die Prompt-Regel dagegen gab es schon.
+_META = re.compile(r"\bquell(e|en|text)\b", re.IGNORECASE)
+
+
 def _valid(q: dict) -> bool:
+    if _META.search(q.get("question") or ""):
+        return False
     # Schätzfragen MÜSSEN Slider sein — als MC mit vier Zahlen-Optionen sind sie
     # weder fair noch lehrreich (Review-Finding: 3 von 5 kamen als MC).
     if q.get("category") == "estimation" and q.get("qtype") != "estimate":
@@ -622,11 +630,103 @@ def verify_question(sources: str, q: dict) -> bool:
         return False
 
 
+# --- Richter-Pass: Ist die Frage überhaupt reizvoll? ------------------------
+#
+# Der Verify-Pass prüft, ob eine Frage STIMMT — nicht, ob jemand sie spielen
+# will. Der Prompt oben verbietet Verwaltungs-Trivia seit Juli, trotzdem stand
+# im Bestand (Abzug 23.09.2026) „Für welchen Abschnitt des Mühlenhofswegs
+# regelte der Stadtrat 2019 die beitragsrechtliche Abwicklung …?". Der
+# Generator liest die Regel und schreibt die Vorlage trotzdem nach; ein
+# getrennter Blick von außen, der nur diese eine Frage stellt, sortiert das
+# verlässlicher aus als ein weiterer Satz im Erzeugungs-Prompt.
+
+APPEAL_MODEL = os.environ.get("COUNCIL_QUIZ_APPEAL_MODEL", VERIFY_MODEL)
+
+_APPEAL_PROMPT = """Du bewertest eine Quizfrage für ein Oldenburg-Quiz, das Bürger*innen freiwillig in ihrer Freizeit spielen. Die eine Frage: Sagt man nach der Auflösung „Ach, interessant!" — oder „Na und?"?
+
+5 = Aha-Frage: bekanntes oder bedeutsames Ding, überraschende Antwort, erzählt man weiter.
+4 = gut: bringt etwas über die Stadt bei, klar formuliert, fair lösbar.
+3 = ordentlich, aber unspektakulär.
+2 = langweilig: Verwaltungsdetail, das nur Beteiligte kennen — Straßenabschnitte, Beitragsabwicklung, Haushaltsstellen, Mehrauszahlungen, Verfahrensschritte, Gremienzusammensetzung, das Baujahr einer Straße, die Kapazität eines Saals.
+1 = unbrauchbar: ohne Aktenstudium nicht zu beantworten, Bezug unklar („in den Quellen", „das Quartier", „die Maßnahme"), Namen von Randfiguren, oder die Antwort ist bloß geraten.
+
+Frage: {question}
+{answers}Erklärung nach der Auflösung: {explanation}
+
+Antworte NUR mit der Ziffer."""
+
+
+def rate_appeal(q: dict) -> int | None:
+    """Note 1–5, wie reizvoll eine Frage zum Spielen ist; ``None``, wenn der
+    Aufruf scheitert (der Aufrufer entscheidet, ob er dann behält)."""
+    if q.get("qtype") == "estimate":
+        answers = f"Richtige Zahl: {q.get('answer_value')} {q.get('unit') or q.get('answer_unit') or ''}\n"
+    else:
+        opts = q.get("options") or []
+        ci = q.get("correct_index", 0)
+        right = opts[ci] if 0 <= ci < len(opts) else ""
+        answers = (f"Antworten: {' | '.join(opts)}\n"
+                   f"Richtig: {right}\n")
+    prompt = _APPEAL_PROMPT.format(question=q.get("question", ""), answers=answers,
+                                   explanation=q.get("explanation") or "—")
+    try:
+        resp = llm.chat_complete(
+            model=APPEAL_MODEL, _feature="quiz_appeal", temperature=0, max_tokens=3,
+            timeout=120, messages=[{"role": "user", "content": prompt}],
+        )
+        m = re.search(r"[1-5]", resp.choices[0].message.content or "")
+        return int(m.group()) if m else None
+    except Exception:  # noqa: BLE001 — ein Ausfall hier ist kein Urteil
+        return None
+
+
+# --- Dubletten ---------------------------------------------------------------
+
+_STOP = frozenset("der die das den dem des ein eine einer eines einem einen und oder in im "
+                  "am an auf aus bei für mit nach von vom zu zum zur wie was welche welcher "
+                  "welches wer wo wann wurde wurden ist sind hat haben wird werden sich "
+                  "oldenburg oldenburger stadt".split())
+
+
+def _words(text: str) -> frozenset[str]:
+    return frozenset(w for w in re.findall(r"\w+", _norm(text)) if w not in _STOP and len(w) > 2)
+
+
+def is_near_duplicate(question: str, others: list[str], threshold: float = 0.52) -> bool:
+    """Fragt ``question`` fast wörtlich dasselbe wie eine aus ``others``?
+    Jaccard über die Inhaltswörter — der exakte content_hash hielt „Wie viele
+    Personen können die beiden neuen, jeweils teilbaren Säle jeweils
+    aufnehmen?" und „Wie viele Personen können in den neuen teilbaren
+    Festsälen jeweils untergebracht werden?" nicht auseinander.
+
+    Die Schwelle 0,52 ist am Bestand gemessen (23.09.2026): Darüber standen
+    ausschließlich Umformulierungen derselben Frage (das Säle-Paar liegt bei
+    0,545); ab 0,50 beginnen echte Geschwister („Hauptzweck der Stiftung?" /
+    „Wer verwaltet sie?")."""
+    a = _words(question)
+    if not a:
+        return False
+    for o in others:
+        b = _words(o)
+        if b and len(a & b) / len(a | b) >= threshold:
+            return True
+    return False
+
+
+#: Höchstens dieser Anteil einer Lieferung darf Ratspolitik sein. Im Bestand
+#: waren es 48 % — die Quellen bestehen zur Hälfte aus Beschlusslisten, und
+#: das Modell fragt ab, was vor ihm liegt.
+MAX_COUNCIL_SHARE = 0.34
+
+
 def generate_for_area(area_type: str, area_key: str, area_label: str, sources: str,
                       *, n: int = 8, source_type: str, source_ref: str,
-                      verify: bool = True, enrich: bool = True) -> list[dict]:
-    """Fragen für ein Gebiet generieren, validieren, (optional) verifizieren und
-    (optional) mit Bild/Karte anreichern. Gibt speicherfertige Dict-Zeilen
+                      verify: bool = True, enrich: bool = True, judge: bool = True,
+                      existing: list[str] | None = None) -> list[dict]:
+    """Fragen für ein Gebiet generieren, validieren, (optional) verifizieren,
+    auf Reiz prüfen (``judge``) und (optional) mit Bild/Karte anreichern.
+    ``existing`` sind die Fragetexte, die das Gebiet schon hat — was fast
+    wörtlich dasselbe fragt, fliegt raus. Gibt speicherfertige Dict-Zeilen
     zurück (mit content_hash)."""
     if len((sources or "").strip()) < 200:
         return []  # zu wenig Quellstoff für seriöse Fragen
@@ -640,15 +740,26 @@ def generate_for_area(area_type: str, area_key: str, area_label: str, sources: s
     raw = _parse(resp.choices[0].message.content or "")
     rows: list[dict] = []
     seen: set[str] = set()
+    known = list(existing or [])
+    council_cap = max(1, round(n * MAX_COUNCIL_SHARE))
+    n_council = 0
     for q in raw:
         if not _valid(q):
             continue
         h = _content_hash(area_type, area_key, q["question"])
-        if h in seen:
+        if h in seen or is_near_duplicate(q["question"], known):
+            continue
+        if q["category"] == "council_politics" and n_council >= council_cap:
             continue
         if verify and not verify_question(sources, q):
             continue
+        appeal = rate_appeal(q) if judge else None
+        if appeal is not None and appeal < MIN_APPEAL:
+            continue
         seen.add(h)
+        known.append(q["question"])
+        if q["category"] == "council_politics":
+            n_council += 1
         row = {
             "area_type": area_type, "area_key": area_key,
             "category": q["category"],
@@ -659,7 +770,7 @@ def generate_for_area(area_type: str, area_key: str, area_label: str, sources: s
             "hint": (q.get("hint") or "").strip()[:200] or None,
             "topic": (q.get("topic") or "").strip()[:80] or None,
             "source_type": source_type, "source_ref": source_ref,
-            "content_hash": h,
+            "content_hash": h, "appeal": appeal,
         }
         if q.get("qtype") == "estimate":
             row.update({

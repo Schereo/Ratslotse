@@ -36,6 +36,8 @@ from council.store import CouncilStore  # noqa: E402
 COUNCIL_DB = ROOT / "data" / "council.sqlite"
 N_THEMES = 12          # so viele große Themen (Entitäten mit den meisten Beschlüssen)
 THEME_MIN_DECISIONS = 8
+OVERORDER = 2          # so viele Kandidaten je fehlender Frage bestellen …
+OVERORDER_MIN = 4      # … aber nie weniger als diese
 
 
 def _areas(store: CouncilStore) -> list[dict]:
@@ -74,12 +76,13 @@ def _sources(area: dict, facts: str) -> tuple[str, str, str]:
     return "\n\n".join(parts), src_type, src_ref
 
 
-def _gen(area: dict, facts: str, n: int, verify: bool) -> dict:
+def _gen(area: dict, facts: str, n: int, verify: bool, existing: list[str] | None = None) -> dict:
     try:
         sources, src_type, src_ref = _sources(area, facts)
         rows = quiz.generate_for_area(
             area["area_type"], area["area_key"], area["label"], sources,
-            n=n, source_type=src_type, source_ref=src_ref, verify=verify)
+            n=n, source_type=src_type, source_ref=src_ref, verify=verify,
+            existing=existing)
         return {"status": "ok", "label": area["label"], "rows": rows}
     except Exception as exc:  # noqa: BLE001 — Einzelfehler ausweisen, weiterlaufen
         return {"status": "failed", "label": area["label"], "error": repr(exc)}
@@ -89,10 +92,17 @@ def process(council_db: Path, target: int = 10, per_run: int = 8, workers: int =
             limit: int | None = None, verify: bool = True) -> dict:
     store = CouncilStore(council_db)
     counts = store.quiz_area_counts()
+    missing = {(a["area_type"], a["area_key"]): target - counts.get((a["area_type"], a["area_key"]), 0)
+               for a in _areas(store)}
+    # Bestellt wird mehr, als fehlt, gespeichert höchstens, was fehlt: Richter,
+    # Dubletten- und Ratspolitik-Deckel lassen gemessen (23.09.2026, drei
+    # Stadtteile) nur jede vierte bis fünfte Frage durch. Genau die fehlende
+    # Zahl zu bestellen hieß, dass ein Gebiet mit einer Lücke Woche für Woche
+    # eine Frage anforderte und keine bekam.
     areas = [
-        (a, min(per_run, target - counts.get((a["area_type"], a["area_key"]), 0)))
+        (a, min(per_run, max(OVERORDER_MIN, OVERORDER * missing[(a["area_type"], a["area_key"])])))
         for a in _areas(store)
-        if counts.get((a["area_type"], a["area_key"]), 0) < target
+        if missing[(a["area_type"], a["area_key"])] > 0
     ]
     if limit:
         areas = areas[:limit]
@@ -101,11 +111,14 @@ def process(council_db: Path, target: int = 10, per_run: int = 8, workers: int =
     # Ratsdaten-Kontext je Gebiet vorab (Main-Thread, DB-Lesen).
     facts = {a["area_key"]: quiz.council_facts(
                 store, place_id=a.get("place_id"), slug=a["slug"]) for a, _ in areas}
+    # Was das Gebiet schon fragt (auch Ausgemustertes) — gegen Umformulierungen.
+    existing = {a["area_key"]: store.quiz_questions_of_area(a["area_type"], a["area_key"])
+                for a, _ in areas}
 
     saved = failed = 0
     with ThreadPoolExecutor(max_workers=workers) as ex:
         futs = {
-            ex.submit(_gen, a, facts[a["area_key"]], requested, verify): a
+            ex.submit(_gen, a, facts[a["area_key"]], requested, verify, existing[a["area_key"]]): a
             for a, requested in areas
         }
         for done, fut in enumerate(as_completed(futs), 1):
@@ -114,7 +127,10 @@ def process(council_db: Path, target: int = 10, per_run: int = 8, workers: int =
                 failed += 1
                 print(f"  [{done}/{len(areas)}] {r['label']}: FAILED {r['error']}", flush=True)
                 continue
-            n = store.save_quiz_questions(r["rows"])
+            area = futs[fut]
+            gap = missing[(area["area_type"], area["area_key"])]
+            best = sorted(r["rows"], key=lambda row: -(row.get("appeal") or 0))[:gap]
+            n = store.save_quiz_questions(best)
             saved += n
             print(f"  [{done}/{len(areas)}] {r['label']}: +{n} Fragen", flush=True)
 

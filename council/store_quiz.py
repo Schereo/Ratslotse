@@ -14,6 +14,17 @@ import sqlite3
 from datetime import datetime
 from council.store_basis import StoreBasis
 
+#: Ab dieser Richter-Note (1–5, ``council.quiz.rate_appeal``) gilt eine Frage
+#: als reizvoll: Sie kommt in einer Runde zuerst dran und darf in die
+#: Tages-Challenge. Darunter bleibt sie spielbar, aber nachrangig.
+MIN_APPEAL = 3
+
+
+def _appealing(appeal: int | None) -> bool:
+    """Unbenotet zählt als reizvoll — sonst verschwände der ganze Bestand aus
+    der Tages-Challenge, bis der Sweep einmal gelaufen ist."""
+    return appeal is None or appeal >= MIN_APPEAL
+
 class QuizMixin(StoreBasis):
     """Die Quiz-Abfragen — nur zum Mitvererben."""
 
@@ -33,8 +44,8 @@ class QuizMixin(StoreBasis):
                     " correct_index, explanation, source_type, source_ref, content_hash, "
                     " status, qtype, answer_value, answer_unit, range_min, range_max, "
                     " detail, hint, topic, chart, lat, lon, place_label, geojson, image_url, image_author, image_license, "
-                    " image_license_url, image_source_url, generated_at) "
-                    "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    " image_license_url, image_source_url, appeal, generated_at) "
+                    "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                     (r["area_type"], r["area_key"], r["category"], r.get("difficulty", "medium"),
                      r["question"], json.dumps(r.get("options", []), ensure_ascii=False),
                      int(r.get("correct_index", 0)), r.get("explanation"),
@@ -45,7 +56,7 @@ class QuizMixin(StoreBasis):
                      r.get("detail"), r.get("hint"), r.get("topic"), r.get("chart"),
                      r.get("lat"), r.get("lon"), r.get("place_label"), r.get("geojson"),
                      r.get("image_url"), r.get("image_author"), r.get("image_license"),
-                     r.get("image_license_url"), r.get("image_source_url"), now),
+                     r.get("image_license_url"), r.get("image_source_url"), r.get("appeal"), now),
                 )
                 new += cur.rowcount
         return new
@@ -138,6 +149,10 @@ class QuizMixin(StoreBasis):
         import random  # deterministische Reihenfolge ist hier unerwünscht
         random.shuffle(fresh)
         random.shuffle(used)
+        # Reizvolle zuerst; die Mischung bleibt innerhalb jeder Stufe erhalten
+        # (sort ist stabil).
+        fresh.sort(key=lambda r: not _appealing(r["appeal"]))
+        used.sort(key=lambda r: not _appealing(r["appeal"]))
         picked = (fresh + used)[:limit]
         return [self._quiz_row(r, with_answer=False) for r in picked]
 
@@ -156,9 +171,11 @@ class QuizMixin(StoreBasis):
 
     def daily_quiz_questions(self, day: str, n: int = 5) -> list[dict]:
         """Die Tages-Challenge: n aus dem Datum deterministisch geseedete Fragen,
-        OHNE Lösung — derselbe Satz für alle an einem Tag. Über alle Gebiete."""
+        OHNE Lösung — derselbe Satz für alle an einem Tag. Über alle Gebiete,
+        aber nur reizvolle: Sie ist das Schaufenster des Quiz."""
         ids = [r[0] for r in self._conn.execute(
-            "SELECT id FROM council_quiz_questions WHERE status = 'active' ORDER BY id"
+            "SELECT id FROM council_quiz_questions WHERE status = 'active' "
+            "AND (appeal IS NULL OR appeal >= ?) ORDER BY id", (MIN_APPEAL,)
         ).fetchall()]
         if not ids:
             return []
@@ -181,6 +198,34 @@ class QuizMixin(StoreBasis):
         """Aktive Fragenzahl je Gebiet (für idempotenten Backfill: nur Gebiete
         unter dem Ziel neu befüllen)."""
         return {k: v for k, v in self.quiz_area_counts().items() if v < target}
+
+    def set_quiz_appeal(self, notes: dict[int, int]) -> None:
+        """Richter-Noten speichern: {question_id: 1–5}."""
+        with self._conn:
+            self._conn.executemany(
+                "UPDATE council_quiz_questions SET appeal = ? WHERE id = ?",
+                [(n, qid) for qid, n in notes.items()])
+
+    def quiz_active_rows(self) -> list[dict]:
+        """Alle aktiven Fragen als rohe Zeilen (Optionen entpackt) — für den
+        Aufräum-Lauf ``scripts/sweep_quiz.py``, der auch Note und Gebiet sieht."""
+        out = []
+        for r in self._conn.execute(
+                "SELECT * FROM council_quiz_questions WHERE status = 'active' ORDER BY id"):
+            q = dict(r)
+            try:
+                q["options"] = json.loads(q["options"] or "[]")
+            except (json.JSONDecodeError, TypeError):
+                q["options"] = []
+            out.append(q)
+        return out
+
+    def quiz_questions_of_area(self, area_type: str, area_key: str) -> list[str]:
+        """Fragetexte eines Gebiets — auch ausgemusterte: Eine Frage, die
+        einmal rausflog, soll nicht als Umformulierung wiederkommen."""
+        return [r[0] for r in self._conn.execute(
+            "SELECT question FROM council_quiz_questions WHERE area_type = ? AND area_key = ?",
+            (area_type, area_key)).fetchall()]
 
     def retire_quiz_question(self, question_id: int) -> None:
         with self._conn:

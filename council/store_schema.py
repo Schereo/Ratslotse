@@ -2094,6 +2094,7 @@ class SchemaMixin(StoreBasis):
             "lat REAL, lon REAL, place_label TEXT, geojson TEXT, "  # Locator-Karte (Punkt, Linie oder Gebiets-Polygon)
             "image_url TEXT, image_author TEXT, image_license TEXT, "  # Foto (Wikimedia Commons)
             "image_license_url TEXT, image_source_url TEXT, "    # Bildnachweis
+            "appeal INTEGER, "                                    # Richter-Note 1–5 (council.quiz.rate_appeal); NULL = unbenotet
             "generated_at TEXT NOT NULL)"
         )
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_quiz_area ON council_quiz_questions(area_type, area_key)")
@@ -3797,6 +3798,7 @@ class SchemaMixin(StoreBasis):
         self._migrate_quiz_media()
         self._migrate_qa_feedback_source()
         self._migrate_quiz_hint()
+        self._migrate_quiz_appeal()
         self._migrate_produkt_steckbrief()
         self._migrate_herkunft()
         self._migrate_owner_id()
@@ -3899,6 +3901,15 @@ class SchemaMixin(StoreBasis):
             for name in ("hint", "topic", "chart"):
                 if name not in cols:
                     self._conn.execute(f"ALTER TABLE council_quiz_questions ADD COLUMN {name} TEXT")
+
+    def _migrate_quiz_appeal(self) -> None:
+        """Richter-Note je Frage (09/2026): wie reizvoll sie zum Spielen ist.
+        Leer auf dem Bestand, bis ``scripts/sweep_quiz.py`` gelaufen ist —
+        unbenotete Fragen gelten als spielbar."""
+        cols = {r[1] for r in self._conn.execute("PRAGMA table_info(council_quiz_questions)").fetchall()}
+        if cols and "appeal" not in cols:
+            with self._conn:
+                self._conn.execute("ALTER TABLE council_quiz_questions ADD COLUMN appeal INTEGER")
 
     def _migrate_produkt_steckbrief(self) -> None:
         """Produkt-Steckbrief (Kurzbeschreibung, Rechtsgrundlage, Spielraum,
