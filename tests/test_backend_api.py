@@ -5650,6 +5650,81 @@ def _deep_events(client, job_id, ab=0):
                 if line.startswith("data: ")]
 
 
+def test_recherche_plus_waehlt_das_groessere_modell(client, monkeypatch):
+    """Recherche Plus (23.09.2026): Das Recht `premium_models` entscheidet
+    beim EINREICHEN, welches Modell den Bericht schreibt — am Konto geprüft
+    (`roles`, nie ein erfundenes `permissions`-Feld), in der Job-Zeile
+    festgehalten und bis in den Bericht-Aufruf durchgereicht. Ohne das Recht
+    bleibt alles, wie es war: Standardmodell, kein Hinweis."""
+    from council import qa as qa_mod
+
+    _deep_mocks(monkeypatch)
+    monkeypatch.setattr(qa_mod, "DEEP_MODEL", "openai/gpt-6-luna")
+    monkeypatch.setattr(qa_mod, "DEEP_PLUS_MODEL", "openai/gpt-6-sol")
+    modelle: list[str | None] = []
+
+    def _bericht(question, cands, **k):
+        modelle.append(k.get("model"))
+        return iter(["Der Rat hat den Neubau beschlossen [5]."])
+
+    monkeypatch.setattr(qa_mod, "deep_bericht_stream", _bericht)
+    frage = {"question": "Wie ist der Stand beim Stadionneubau?"}
+
+    # Ein reguläres Konto — bewusst NICHT die Admin-Adresse der Suite: Admin
+    # erbt jedes Recht, also auch dieses.
+    _register(client, "leser@example.org")
+    client.post("/api/auth/login", json={"email": "leser@example.org", "password": "password123"})
+    job = client.post("/api/council/deep-research", json=frage).json()["job_id"]
+    done = next(e for e in _deep_events(client, job) if e["type"] == "done")
+    assert modelle == ["openai/gpt-6-luna"]
+    assert done["premium_model"] is False
+    assert client.get(f"/api/council/deep-research/{job}").json()["premium_model"] is False
+
+    store = Store(RATSLOTSE_DB)
+    try:
+        uid = store.get_web_user_by_email("leser@example.org")["id"]
+        store.set_web_user_roles(uid, ["research_plus"])
+    finally:
+        store.close()
+    job = client.post("/api/council/deep-research", json=frage).json()["job_id"]
+    done = next(e for e in _deep_events(client, job) if e["type"] == "done")
+    assert modelle[-1] == "openai/gpt-6-sol"
+    assert done["premium_model"] is True
+    assert client.get(f"/api/council/deep-research/{job}").json()["premium_model"] is True
+    # Für die Kostenrechnung steht das Modell in der Job-Zeile.
+    store = Store(RATSLOTSE_DB)
+    try:
+        zeile = store._conn.execute(
+            "SELECT model, premium FROM deep_research_jobs WHERE id = ?", (job,)).fetchone()
+    finally:
+        store.close()
+    assert tuple(zeile) == ("openai/gpt-6-sol", 1)
+    # Das Kontingent gilt für beide Modelle gleich: zwei von fünf verbraucht.
+    assert client.get("/api/council/deep-research/current").json()["remaining"] == 3
+
+
+def test_recherche_plus_ohne_eigenes_modell_ist_kein_plus(client, monkeypatch):
+    """Ist der Schalter leer (Plus-Modell = Standardmodell), zeigt der Client
+    keinen Hinweis — er wäre sonst eine Behauptung ohne Unterschied."""
+    from council import qa as qa_mod
+
+    _deep_mocks(monkeypatch)
+    monkeypatch.setattr(qa_mod, "DEEP_MODEL", "openai/gpt-6-luna")
+    monkeypatch.setattr(qa_mod, "DEEP_PLUS_MODEL", "openai/gpt-6-luna")
+    _register(client, "plus@example.org")
+    store = Store(RATSLOTSE_DB)
+    try:
+        store.set_web_user_roles(store.get_web_user_by_email("plus@example.org")["id"],
+                                 ["research_plus"])
+    finally:
+        store.close()
+    client.post("/api/auth/login", json={"email": "plus@example.org", "password": "password123"})
+    job = client.post("/api/council/deep-research",
+                      json={"question": "Wie ist der Stand beim Stadionneubau?"}).json()["job_id"]
+    done = next(e for e in _deep_events(client, job) if e["type"] == "done")
+    assert done["premium_model"] is False
+
+
 def test_deep_research_roundtrip_und_replay(client, monkeypatch):
     """Der komplette Job-Lauf: Phasen → Facetten → sources (mit Planungen und
     gelesen-Zahl) → Token → done. Der Events-Endpoint liefert beim ZWEITEN

@@ -62,6 +62,10 @@ export default function AdminPage() {
 type LlmFeature = {
   feature: string; calls: number; prompt_tokens: number; completion_tokens: number;
   cost: number; models: string[]; first: string; last: string;
+  /** Kosten je Modell im Feature, teuerstes zuerst — `deep_report` schreibt
+   *  seit „Recherche Plus“ mit zwei Modellen, die sich im Preis um das
+   *  13-Fache unterscheiden. */
+  by_model?: { model: string; calls: number; cost: number }[];
 };
 type LlmUsage = {
   features: LlmFeature[]; total_cost: number; total_calls: number;
@@ -632,7 +636,11 @@ function LlmUsageTab() {
               <tr key={f.feature} className="border-b border-border last:border-0">
                 <td className="px-4 py-2.5">
                   <span className="font-medium text-foreground">{FEATURE_LABELS[f.feature] ?? f.feature}</span>
-                  {f.models.length > 0 && <span className="ml-2 text-xs text-muted-foreground">{f.models.join(", ")}</span>}
+                  {(f.by_model?.length ?? 0) > 1
+                    ? <span className="ml-2 text-xs text-muted-foreground">
+                        {f.by_model!.map((m) => `${m.model} $${m.cost.toFixed(2)} (${m.calls.toLocaleString("de-DE")})`).join(" · ")}
+                      </span>
+                    : f.models.length > 0 && <span className="ml-2 text-xs text-muted-foreground">{f.models.join(", ")}</span>}
                 </td>
                 <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">{f.calls.toLocaleString("de-DE")}</td>
                 <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">{f.prompt_tokens.toLocaleString("de-DE")}</td>

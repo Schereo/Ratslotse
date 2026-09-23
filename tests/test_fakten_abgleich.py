@@ -247,6 +247,7 @@ def test_verbot_mit_jahr_trifft_nur_die_verwechslung():
     ("Die Seite sagt nichts dazu, wie viel Braunschweig ausgibt.", True),
     ("Wer wie gestimmt hat, steht bei uns nicht.", True),
     ("Die Ratsunterlagen geben dazu wenig her.", True),
+    ("Die Ratsunterlagen geben nicht her, wie viel Gewerbesteuer die EWE zahlt.", True),
     ("Die Ratsunterlagen geben keine direkte Auskunft darüber.", True),
     ("Angaben zum Gehalt stehen in den vorliegenden Informationen nicht.", True),
     ("Wie viel er verdient, geht aus den vorliegenden Unterlagen nicht hervor.", True),

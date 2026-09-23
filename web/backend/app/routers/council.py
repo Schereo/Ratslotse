@@ -3156,10 +3156,20 @@ def deep_research_start(body: DeepResearchBody, request: Request,
             {"detail": qa.RUECKFRAGE_TEXT, "unclear": True, "questions": vorschlaege},
             status_code=status.HTTP_400_BAD_REQUEST)
     ratslotse.record_activity(user["id"], "research")
-    job_id = ratslotse.deep_job_anlegen(user["id"], question)
+    # Recherche Plus: Das Recht wird HIER am Konto geprüft und mit dem Job
+    # festgehalten — der Hintergrundlauf fragt das Konto nicht noch einmal.
+    # Das Konto-Dict trägt `roles`, nie ein `permissions`-Feld. Das
+    # Kontingent oben gilt für beide Modelle gleich (Tim: keine Erhöhung).
+    premium = "premium_models" in rollen.permissions_for(user.get("roles"))
+    modell = qa.deep_model_for(premium)
+    # Ohne eigenes Plus-Modell (Schalter leer) ist es kein Plus-Bericht, und
+    # der Client soll auch keinen Hinweis darauf zeigen.
+    premium = premium and modell != qa.DEEP_MODEL
+    job_id = ratslotse.deep_job_anlegen(user["id"], question, model=modell, premium=premium)
     settings = get_settings()
     job = deepresearch.DeepJob(id=job_id, user_id=user["id"], question=question,
-                               conversation_id=body.conversation_id, verlauf=verlauf)
+                               conversation_id=body.conversation_id, verlauf=verlauf,
+                               model=modell, premium=premium)
     deepresearch.start_job(job, settings.ratslotse_db, settings.council_db)
     return {"job_id": job_id, "remaining": _deep_frei(ratslotse, user)}
 

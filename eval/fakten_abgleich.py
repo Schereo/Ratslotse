@@ -441,6 +441,9 @@ _VERWEIGERT = re.compile("|".join([
     # „geht aus den Unterlagen nicht hervor“, „ist nicht belegt“, „steht kein
     # Gehalt“, „ein Wolfsburger Vergleichswert fehlt“
     r"\bwenig her\b",
+    # GPT-6 Sol, 23.09. (Stichprobe Recherche Plus): „Die Ratsunterlagen geben
+    # nicht her, wie viel Gewerbesteuer die EWE zahlt“ — eine richtige Absage.
+    r"\b(geben|gibt)\b[^.!?\n]{0,20}\bnichts? her\b",
     r"laesst sich (daraus |damit |hier )?(nicht|kein|keine|keinen)\b",
     r"\bgeht\b[^.!?\n]{0,60}\bnicht hervor\b|\bnicht hervor\b",
     r"\bnicht belegt\b|\bbelegen (sie |die unterlagen )?nicht\b",

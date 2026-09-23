@@ -507,6 +507,7 @@ COUNCIL_ASSISTANT_MODEL=openai/gpt-6-luna        # Lottis Erklärungen (ohne ZDR
 COUNCIL_QA_MODEL=openai/gpt-6-luna               # Antwort-Modell der KI-Frage (genau vor schnell; Default passt)
 COUNCIL_QA_EXPAND_MODEL=google/gemini-3.1-flash-lite  # Frage-Analyse der KI-Frage (schnell, mit ZDR; Default passt)
 COUNCIL_DEEP_MODEL=                  # Bericht der ausführlichen Recherche; leer = COUNCIL_QA_MODEL
+COUNCIL_DEEP_PLUS_MODEL=openai/gpt-6-sol  # derselbe Bericht für Konten mit Recht premium_models (Rolle „Recherche Plus“); leer = wie COUNCIL_DEEP_MODEL
 COUNCIL_RETRIEVAL_KLASSISCH=0        # "1" = Notausschalter: Retrieval-Stand vor dem Vorlagen-Chunk-Ausbau
 # Städtevergleich (check_cities.py) — der teuerste und längste Cron
 CITIES_MAX_SECONDS=14400             # Frist je Lauf; 0 hebt sie auf (Nachlauf von Hand)
@@ -560,11 +561,17 @@ RATSLOTSE_PROXY_HOSTS=gisportal4ol.oldenburg.de,youtube.com         # nur diese 
   **Recht**, nie gegen einen Rollennamen: im Backend über
   `Depends(require_permission("…"))`, im Web über `lib/rechte.ts`, in der App
   über `User.can(_:)`. Eine neue Rolle ist damit ein Eintrag in der Registry —
-  ohne Frontend-Release und ohne App-Update im Store. Heute gibt es drei
+  ohne Frontend-Release und ohne App-Update im Store. Heute gibt es vier
   Rechte: `budget` (der Haushalts-Bereich), `mandate` (Benachrichtigungen ab
-  Werk vollständig) und `admin`. Dass die ersten beiden getrennt sind, ist der
+  Werk vollständig), `premium_models` (die ausführliche Recherche schreibt
+  ihren Bericht mit dem größeren Modell aus `COUNCIL_DEEP_PLUS_MODEL`,
+  Vorgabe GPT-6 Sol) und `admin`. Dass die ersten beiden getrennt sind, ist der
   Grund, warum *Fachpublikum* (nur `budget`) und *Ratsmitglied* (beide) sich
-  ohne eine einzige weitere Codezeile unterscheiden lassen.
+  ohne eine einzige weitere Codezeile unterscheiden lassen. *Recherche Plus*
+  (seit 09/2026) trägt nur `premium_models` und wird **zusätzlich** zu einer
+  anderen Rolle vergeben; das Recht wird beim Einreichen des Jobs geprüft und
+  in `deep_research_jobs.model`/`premium` festgehalten, das Tageskontingent
+  bleibt dasselbe. Admins erben es wie jedes Recht.
   Vergeben werden Rollen im Admin-Panel unter *Web-Nutzer*innen*; auf der
   Kommandozeile ergänzt `scripts/grant_admin.py` die Adminrolle, ohne die
   übrigen anzutasten. `web_users.role` daneben ist nur noch ein abgeleitetes

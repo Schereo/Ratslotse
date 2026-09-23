@@ -31,11 +31,19 @@ from dataclasses import dataclass, field
 #:   (jede Tagesordnung jedes abonnierten Gremiums sofort; Tims Entscheidung
 #:   06.09.2026: „Leute mit Ratsmitgliedsstatus kriegen per Default alle Abos")
 #: - ``admin``:   das Admin-Panel samt allem darunter
+#: - ``premium_models``: das größere Modell für die ausführliche Recherche
+#:   (``COUNCIL_DEEP_PLUS_MODEL``, Vorgabe GPT-6 Sol). Tims Wunsch
+#:   23.09.2026: „eine weitere Rolle, die größere Modelle für die
+#:   ausgewählten Nutzer erlaubt“. Gemessen: Sol 0 statt 2 Modellfehler je
+#:   Lauf über 55 Recherchen, 23 statt 30 s, aber 5,6 statt 0,42 ct je
+#:   Bericht (docs/plan-modellwechsel.md, „Ausführliche Recherche“). Das
+#:   Tageskontingent bleibt dasselbe — das Recht ändert das Modell, nicht
+#:   die Menge.
 #:
 #: Dass ``budget`` und ``mandate`` **zwei** Rechte sind und nicht eines, ist
 #: der Grund, warum es die Rolle *Fachpublikum* ohne einen einzigen weiteren
 #: Handgriff geben kann: Sie nimmt das eine und lässt das andere liegen.
-PERMISSIONS: tuple[str, ...] = ("budget", "mandate", "admin")
+PERMISSIONS: tuple[str, ...] = ("budget", "mandate", "premium_models", "admin")
 
 
 @dataclass(frozen=True)
@@ -64,6 +72,17 @@ ROLES: dict[str, Role] = {
         description="Der Standard: Ratsinhalte, eigene Themen, Benachrichtigungen, KI-Frage.",
         permissions=frozenset(),
         assignable=False,
+    ),
+    "research_plus": Role(
+        key="research_plus",
+        label="Recherche Plus",
+        description="Die ausführliche Recherche schreibt ihren Bericht mit einem größeren, "
+                    "gründlicheren Modell. Wird zusätzlich zu einer anderen Rolle vergeben; "
+                    "das Tageskontingent bleibt gleich.",
+        # Bewusst NUR dieses eine Recht: Die Rolle ist ein Zusatz, keine
+        # Stufe. Ein Ratsmitglied mit „Recherche Plus“ trägt beide Rollen —
+        # ohne eine vierte, die beides bündelt.
+        permissions=frozenset({"premium_models"}),
     ),
     "expert": Role(
         key="expert",
@@ -103,7 +122,12 @@ ROLES: dict[str, Role] = {
 #: „Schwächste zuerst" heißt hier: nach Umfang der Rechte. *Fachpublikum*
 #: trägt eine echte Teilmenge dessen, was *Ratsmitglied* trägt, und steht
 #: deshalb davor — wer beide Rollen hat, erscheint als Ratsmitglied.
-ROLE_ORDER: tuple[str, ...] = ("user", "expert", "council_member", "admin")
+#:
+#: *Recherche Plus* steht direkt nach dem Standard: Sie ist ein Zusatz, der
+#: neben jeder anderen Rolle vergeben wird, und soll in der Alt-Spalte nie
+#: eine davon verdrängen — ein Ratsmitglied mit Recherche Plus erscheint dort
+#: als Ratsmitglied, ein Admin als Admin.
+ROLE_ORDER: tuple[str, ...] = ("user", "research_plus", "expert", "council_member", "admin")
 
 
 def known_roles(roles) -> list[str]:

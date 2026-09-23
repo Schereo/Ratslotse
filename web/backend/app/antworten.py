@@ -1417,6 +1417,13 @@ class AdminPlaceCandidate(TypedDict):
     evidence: list[AdminPlaceCandidateEvidence]
 
 
+class AdminLlmUsageModel(TypedDict):
+    """Ein Modell innerhalb eines Features — Aufrufe und Kosten."""
+    model: str
+    calls: int
+    cost: float
+
+
 class AdminLlmUsageFeature(TypedDict):
     """Kosten und Verbrauch eines Features (``kern.usage.summary``)."""
     feature: str
@@ -1425,6 +1432,10 @@ class AdminLlmUsageFeature(TypedDict):
     completion_tokens: int
     cost: float
     models: list[str]
+    #: Dieselben Kosten je Modell, teuerstes zuerst — damit ein Feature mit
+    #: zwei Modellen (``deep_report`` mit und ohne Recherche Plus) zeigt, was
+    #: welches kostet.
+    by_model: list[AdminLlmUsageModel]
     first: str | None
     last: str | None
 
@@ -2662,7 +2673,7 @@ class QaShare(TypedDict):
 
 class ResearchSnapshot(TypedDict):
     """Persistierter Stand eines Deep-Research-Jobs (``Store.deep_job_get``,
-    fester SELECT über acht Spalten). ``report`` und ``sources`` sind ``None``,
+    fester SELECT über neun Spalten). ``report`` und ``sources`` sind ``None``,
     solange der Job läuft; der Router parst ``sources`` aus der JSON-Spalte.
 
     ``user_id`` steht bewusst NICHT hier — der Store wählt es gar nicht erst
@@ -2687,6 +2698,10 @@ class ResearchSnapshot(TypedDict):
     seen: int
     created: str
     updated: str
+    #: Schrieb das größere Modell den Bericht (Recht ``premium_models``,
+    #: beim Einreichen festgehalten)? Der Client zeigt dann einen Hinweis.
+    #: Welches Modell genau, bleibt serverseitig (Spalte ``model``).
+    premium_model: bool
 
 
 class AnalysisCoverage(TypedDict):
@@ -4008,7 +4023,9 @@ SSE_RECHERCHE: dict[int | str, dict[str, Any]] = {
             "- `sources` — die Quellen der Recherche\n"
             "- `token` — ein Stück Berichtstext (`text`)\n"
             "- `replace` — ersetzt den bisher gesendeten Text vollständig\n"
-            "- `done` — Schluss-Ereignis mit `cited` und `documents_read`\n"
+            "- `done` — Schluss-Ereignis mit `cited`, `documents_read` und "
+            "`premium_model` (`true`, wenn der Bericht mit dem größeren Modell "
+            "des Rechts `premium_models` entstand)\n"
             "- `gestoppt` — auf Wunsch abgebrochen (`facets_done`)\n"
             "- `fehler` — die Recherche ist fehlgeschlagen\n\n"
             "Ein Verbindungsabriss ist folgenlos — der Job läuft im Backend "

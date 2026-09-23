@@ -375,7 +375,9 @@ CREATE TABLE IF NOT EXISTS deep_research_jobs (
     sources  TEXT,                  -- JSON {sources, presse, debatten, planungen, cited, facetten, gelesen, zeitraum}
     seen     INTEGER NOT NULL DEFAULT 0,  -- Client hat den fertigen Bericht gerendert
     created  TEXT NOT NULL,
-    updated  TEXT NOT NULL
+    updated  TEXT NOT NULL,
+    model    TEXT,                  -- Modell des Berichts, beim Einreichen gewählt (NULL = vor 09/2026)
+    premium  INTEGER NOT NULL DEFAULT 0  -- 1 = mit dem Recht premium_models eingereicht
 );
 CREATE INDEX IF NOT EXISTS idx_deep_jobs_user ON deep_research_jobs(user_id, created DESC);
 
@@ -1743,6 +1745,17 @@ class Store:
             with self._conn:
                 self._conn.execute(
                     "ALTER TABLE qa_conversations ADD COLUMN kind TEXT NOT NULL DEFAULT 'ask'")
+        # Recherche Plus (23.09.2026): Welches Modell den Bericht schrieb und
+        # ob das Recht `premium_models` den Ausschlag gab — beim Einreichen
+        # festgehalten. Alte Zeilen bleiben ohne Modell und ohne Plus.
+        dj_cols = self._table_cols("deep_research_jobs")
+        if dj_cols and "model" not in dj_cols:
+            with self._conn:
+                self._conn.execute("ALTER TABLE deep_research_jobs ADD COLUMN model TEXT")
+        if dj_cols and "premium" not in dj_cols:
+            with self._conn:
+                self._conn.execute(
+                    "ALTER TABLE deep_research_jobs ADD COLUMN premium INTEGER NOT NULL DEFAULT 0")
         qs_cols = self._table_cols("qa_shares")
         if qs_cols and "extras" not in qs_cols:
             with self._conn:
@@ -3321,16 +3334,25 @@ class Store:
 
     # ---- „Gründliche Recherche" (RG-10, Task 34) ---------------------------
 
-    def deep_job_anlegen(self, user_id: int, question: str) -> str:
-        """Neuen Recherche-Job registrieren → unerratbare Job-ID."""
+    def deep_job_anlegen(self, user_id: int, question: str, model: str | None = None,
+                         premium: bool = False) -> str:
+        """Neuen Recherche-Job registrieren → unerratbare Job-ID.
+
+        ``model`` und ``premium`` halten fest, womit der Bericht geschrieben
+        wird — entschieden beim Einreichen aus den Rechten des Kontos, damit
+        die Kosten je Bericht nachvollziehbar bleiben und der Client den
+        Hinweis „mit erweitertem Modell“ auch nach einem Neustart zeigt.
+        """
         import secrets
 
         job_id = secrets.token_urlsafe(12)
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
             self._conn.execute(
-                "INSERT INTO deep_research_jobs (id, user_id, question, status, created, updated) "
-                "VALUES (?, ?, ?, 'laeuft', ?, ?)", (job_id, user_id, question[:300], now, now))
+                "INSERT INTO deep_research_jobs "
+                "(id, user_id, question, status, created, updated, model, premium) "
+                "VALUES (?, ?, ?, 'laeuft', ?, ?, ?, ?)",
+                (job_id, user_id, question[:300], now, now, model, 1 if premium else 0))
         return job_id
 
     def deep_job_update(self, job_id: str, status: str, bericht: str | None = None,
@@ -3346,10 +3368,15 @@ class Store:
     def deep_job_get(self, job_id: str, user_id: int) -> dict | None:
         """Job-Zeile — nur für den Eigentümer."""
         row = self._conn.execute(
-            "SELECT id, question, status, report, sources, seen, created, updated "
+            "SELECT id, question, status, report, sources, seen, created, updated, "
+            "premium AS premium_model "
             "FROM deep_research_jobs WHERE id = ? AND user_id = ?",
             (job_id, user_id)).fetchone()
-        return dict(row) if row else None
+        if not row:
+            return None
+        aus = dict(row)
+        aus["premium_model"] = bool(aus["premium_model"])
+        return aus
 
     def deep_job_aktuell(self, user_id: int) -> dict | None:
         """Der jüngste Job des Kontos — damit der Client nach Navigation oder

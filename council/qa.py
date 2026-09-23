@@ -41,6 +41,26 @@ MODEL = os.environ.get("COUNCIL_QA_MODEL", "openai/gpt-6-luna")
 # Frage. Ohne Angabe dasselbe Modell wie die Antwort. Messung und
 # Entscheidung: docs/plan-modellwechsel.md, „Ausführliche Recherche“.
 DEEP_MODEL = os.environ.get("COUNCIL_DEEP_MODEL") or MODEL
+# Der Bericht für Konten mit dem Recht `premium_models` (Rolle „Recherche
+# Plus“, kern/roles.py). GPT-6 Sol machte in der ausführlichen Recherche 0
+# statt 2 Modellfehler je Lauf (55 Fälle, je zwei Läufe) und war schneller
+# (p50 23 statt 30 s), kostet aber 5,6 statt 0,42 ct je Bericht — zu teuer
+# für alle, vertretbar für ausgewählte Konten (Tim, 23.09.2026). Dieselbe
+# Behandlung wie Luna: `deep_report` steht in `llm.ZDR_VERZICHT`, und Sol hat
+# wie Luna einen Azure-EU-Endpunkt, der auch ZDR annimmt (Probe 23.09.2026).
+# Leer gesetzt = das Recht wirkt nicht, alle bekommen `DEEP_MODEL`.
+DEEP_PLUS_MODEL = os.environ.get("COUNCIL_DEEP_PLUS_MODEL", "openai/gpt-6-sol").strip() or DEEP_MODEL
+
+
+def deep_model_for(premium: bool) -> str:
+    """Welches Modell den Recherche-Bericht schreibt — je nach Recht des Kontos.
+
+    Der Router entscheidet beim EINREICHEN und hält das Ergebnis in der
+    Job-Zeile fest; der Hintergrundlauf fragt das Konto nicht noch einmal.
+    Sonst schriebe ein Teilbericht nach einem Rollenwechsel mit einem anderen
+    Modell als der Job, zu dem er gehört.
+    """
+    return DEEP_PLUS_MODEL if premium else DEEP_MODEL
 # Die Query-Expansion ist ein Mini-Prompt auf dem kritischen Pfad JEDER
 # Frage, also ein schnelles Modell. Bis P4a (23.09.2026) gemini-2.5-flash-lite
 # (läuft am 20.10.2026 aus), seitdem 3.1 Flash Lite. Suite ki-frage-routing,
@@ -2120,7 +2140,7 @@ def deep_bericht_stream(question: str, candidates: list[dict],
                         haushalt: list[dict] | None = None,
                         planungen: list[dict] | None = None,
                         anlagen: list[dict] | None = None,
-                        model: str = DEEP_MODEL,
+                        model: str | None = None,
                         taxes: list[dict] | None = None,
                         tax_capacity: dict | None = None,
                         geld: dict | None = None):
@@ -2136,6 +2156,10 @@ def deep_bericht_stream(question: str, candidates: list[dict],
     Plan ist nicht Ist, Quelle nennen, nicht rechnen). Sie stehen VOR den
     Zahlen, weil ihr eigener Wortlaut auf „eigene Abschnitte unten" verweist.
     """
+    # Zur Laufzeit gelesen, nicht als Vorgabewert der Signatur: Der wäre beim
+    # Import eingefroren, und ein Test (oder Messlauf), der DEEP_MODEL setzt,
+    # liefe still am alten Modell vorbei.
+    model = model or DEEP_MODEL
     geld = _geld_vereinheitlichen(geld, haushalt, taxes, tax_capacity)
     # Der lange Bericht rendert im Frontend durch dieselbe Komponente wie die
     # kurze Antwort — die Fachwörter darin tragen also ohnehin ihre Erklärung

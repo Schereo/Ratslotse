@@ -190,3 +190,16 @@ def test_seit_meldet_aufrufe_ohne_kostenwert(usage_db):
     assert k["calls"] == 2
     assert k["ohne_kosten"] == 1
     assert k["cost_usd"] == pytest.approx(0.002)
+
+
+def test_summary_zeigt_kosten_je_modell(usage_db):
+    """Recherche Plus (23.09.2026): `deep_report` schreibt mit Luna ODER Sol.
+    Die Summe allein sagte nicht, was das Plus kostet — `by_model` schon."""
+    usage.record("deep_report", "openai/gpt-6-luna", 0, 0, cost_usd=0.004)
+    usage.record("deep_report", "openai/gpt-6-sol", 0, 0, cost_usd=0.056)
+    usage.record("deep_report", "openai/gpt-6-sol", 0, 0, cost_usd=0.056)
+    f = next(x for x in usage.summary()["features"] if x["feature"] == "deep_report")
+    assert f["cost"] == pytest.approx(0.116)
+    assert [(m["model"], m["calls"]) for m in f["by_model"]] == [
+        ("openai/gpt-6-sol", 2), ("openai/gpt-6-luna", 1)]
+    assert f["by_model"][0]["cost"] == pytest.approx(0.112)
