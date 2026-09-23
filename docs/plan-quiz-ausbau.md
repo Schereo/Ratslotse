@@ -58,11 +58,12 @@ und die Docstrings von `council/quiz.py`, `council/quiz_formats.py`,
 9. **Q12 Wahlfragen zur Ratswahl** — gebaut jetzt, **sichtbar erst ab dem
    28.09.2026** (Tag nach der Stichwahl).
 
-**Kein PR hängt an einem offenen.** Q4–Q10 und Q12 zweigen von `dev` ab; wo
+**Kein PR hängt an einem offenen.** Q4–Q7, Q9, Q10 und Q12 zweigen von `dev` ab; wo
 sie `quiz-play.tsx` anfassen, kollidieren sie mit #1518/#1519 höchstens in
-Nachbarzeilen — beim Rebase beide Seiten behalten. Q11 baut auf der Stadtkarte
-auf und kommt deshalb als zweiter Commit in #1519 (noch offen), nicht als
-gestapelter PR.
+Nachbarzeilen — beim Rebase beide Seiten behalten. Zwei Ausnahmen, weil sie auf
+Offenem aufbauen und ein gestapelter PR schlimmer wäre: **Q8** braucht
+`quiz_formats.PRODUCTS` und `format` und kommt als zweiter Commit in #1518;
+**Q11** baut auf der Stadtkarte auf und kommt als zweiter Commit in #1519.
 
 **Bilder vor dem Merge.** Jeder PR mit Oberfläche geht mit Screenshots an Tim
 (Schreibtisch + Handy, echte Daten) und wird erst nach seinem OK gemergt.
