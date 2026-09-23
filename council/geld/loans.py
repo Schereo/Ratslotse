@@ -136,6 +136,53 @@ def _zeitraum(r: dict) -> str:
     return a if a == b else f"{a} bis {b}"
 
 
+_MONATE = ("Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August",
+           "September", "Oktober", "November", "Dezember")
+
+
+def _monat(ym: str) -> str:
+    """„2026-05" → „Mai 2026"; was nicht so aussieht, bleibt stehen."""
+    try:
+        j, m = ym.split("-")[:2]
+        return f"{_MONATE[int(m) - 1]} {j}"
+    except (ValueError, IndexError):
+        return ym
+
+
+def _bericht(r: dict) -> str:
+    """„Bericht Mai 2026" bzw. „Bericht Juni bis August 2026" — dieselbe
+    Schreibweise wie die Schulden-Seite (``lib/haushalt-kredite.ts::deZeitraum``)."""
+    a, b = r.get("period_from") or "", r.get("period_to") or ""
+    if not a:
+        return ""
+    if not b or a == b:
+        return f"Bericht {_monat(a)}"
+    if a[:4] == b[:4]:
+        return f"Bericht {_monat(a).split(' ')[0]} bis {_monat(b)}"
+    return f"Bericht {_monat(a)} bis {_monat(b)}"
+
+
+def _vorlage(r: dict) -> str:
+    """Das Dokument DIESER Zeile: „ — Vorlage 26/0397, Bericht Mai 2026".
+
+    **Warum je Zeile** (Review zu #1517, 23.09.2026): Der Baustein trug im
+    Kopf EINEN Beleg — die jüngste Unterrichtung — und darunter Zeilen aus
+    fünf Berichten. Gefragt nach dem Kredit aus dem Mai (Vorlage 26/0397,
+    3,43 %) nannte Lotti richtig Monat und Zins, aber die Vorlage 26/0629 aus
+    dem Kopf: die des anderen 8-Mio.-Kredits. Dasselbe Muster wie #1493.
+    ``tests/test_geld_gliederung.py`` (Regel 6) hält das fest."""
+    teile = [t for t in (f"Vorlage {r['template_number']}" if r.get("template_number") else "",
+                         _bericht(r)) if t]
+    return f" — {', '.join(teile)}" if teile else ""
+
+
+def _entschieden(r: dict) -> str:
+    d = r.get("decided_at") or ""
+    if len(d) == 10 and d[4] == "-":
+        return f", Kreditentscheidung vom {d[8:10]}.{d[5:7]}.{d[:4]}"
+    return ""
+
+
 def _kapitaldienst_zeilen(k: dict | None) -> list[str]:
     """Zinsen und Tilgung im Jahr — jede Zahl mit Jahr und Quelle."""
     if not k:
@@ -183,23 +230,26 @@ def block(data: dict | None) -> str:
             s += f", Zinsbindung {r['fixed_years']} Jahre"
         if r.get("rate_pct") == 0:
             s += " (Innenfinanzierung durch die Kernverwaltung, kein Marktzins)"
-        zeilen.append(s)
+        zeilen.append(s + _entschieden(r) + _vorlage(r))
     for r in data.get("positions") or []:
         if r in (data.get("rates") or []):
             continue
         zeilen.append(f"- {_ART.get(r['kind'], r['kind'])} {_zeitraum(r)}"
                       + (f", {r['borrower']}" if r.get("borrower") else " (Grundgeschäfte der Stadt und ihrer Betriebe)")
-                      + (f": {geld.de_mio(r['amount'])}" if r.get("amount") is not None else ""))
+                      + (f": {geld.de_mio(r['amount'])}" if r.get("amount") is not None else "")
+                      + _vorlage(r))
     u = data.get("latest_refinancing")
     if u:
-        zeilen.append(f"- Zuletzt umgeschuldet ({_zeitraum(u)}): {geld.de_mio(u['amount'])} Kommunalkredite. "
+        zeilen.append(f"- Zuletzt umgeschuldet ({_zeitraum(u)}): {geld.de_mio(u['amount'])} Kommunalkredite"
+                      f"{_vorlage(u)}. "
                       "Diese Kredite laufen in Dreimonats-Tranchen und werden jedes Quartal neu "
                       "ausgeschrieben — Beträge verschiedener Quartale NIE addieren, es ist dasselbe Geld.")
     sp = data.get("saving")
     if sp:
         zeilen.append(f"- Zinsersparnis laut Verwaltung (Umschuldung, Zeitraum {sp['saving_from']} bis "
                       f"{sp['saving_to']}): {geld.de_euro(sp['interest_saving'])} gegenüber herkömmlicher "
-                      "Kommunalkreditfinanzierung — Angabe der Vorlage, keine Rechnung von uns")
+                      "Kommunalkreditfinanzierung — Angabe der Vorlage, keine Rechnung von uns"
+                      + _vorlage(sp))
     if data.get("year_asked"):
         zeilen.append(f"- ACHTUNG: Für {data['year_asked']} liegt keine Unterrichtung vor; oben stehen "
                       f"die jüngsten Vorgänge ({data['year']}). Sag das dazu.")
@@ -211,7 +261,9 @@ def block(data: dict | None) -> str:
             "verrechnen; Zinsaufwand und Tilgung im Jahr stehen oben, je mit Jahr und\n"
             "Quelle, Plan und Ist nie vermischen. Bank, Marge und Laufzeit je\n"
             "Darlehen stehen in den Anlagen und sind NICHT bekannt; sag das, wenn danach\n"
-            "gefragt wird. Nie mit [id]" + geld.beleg_text(data.get("beleg")) + ":\n"
+            "gefragt wird. Die Zeilen stammen aus VERSCHIEDENEN Berichten: Jede nennt\n"
+            "ihre eigene Vorlage und ihren Berichtszeitraum — nenne zu einer Zahl nur\n"
+            "die Vorlage IHRER Zeile. Nie mit [id]:\n"
             + "\n".join(zeilen) + "\n")
 
 

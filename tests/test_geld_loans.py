@@ -76,7 +76,13 @@ def test_baustein_nennt_zins_umschuldung_und_ersparnis(tmp_path):
     assert "Zuletzt umgeschuldet (2025-06 bis 2025-08): 52,4 Mio. € Kommunalkredite" in text
     assert "NIE addieren" in text
     assert "75.604 €" in text and "keine Rechnung von uns" in text
-    assert "Beleg: Unterrichtung — Vorlage 25/0527" in text
+    # Der Beleg steht je ZEILE, nicht im Kopf — der Kopf sprach sonst für
+    # Zeilen aus anderen Berichten (Review zu #1517).
+    assert "Zinssatz 3,03 %, Kreditentscheidung vom 05.06.2025 — Vorlage 25/0527, " \
+        "Bericht Juni bis August 2025" in text
+    assert "— Vorlage 22/0056, Bericht Januar bis Februar 2022" in text
+    assert "Beleg:" not in text
+    assert "nur\ndie Vorlage IHRER Zeile" in text
     assert "NICHT bekannt" in text
     st.close()
 

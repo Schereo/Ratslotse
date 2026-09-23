@@ -278,6 +278,86 @@ def test_keine_zahl_unter_fremdem_jahr(facette):
     assert not fehler, "\n".join(fehler)
 
 
+# ---------------------------------------------------------------------------
+# Regel 6: Zeilen aus mehreren Dokumenten tragen ihr Dokument selbst
+# ---------------------------------------------------------------------------
+#
+# **Der Anlass (Review zu #1517, 23.09.2026).** Der Baustein „Kredite und
+# Zinsen" nannte im Kopf EINEN Beleg — die jüngste Unterrichtung, Vorlage
+# 26/0629 — und darunter Zeilen aus fünf verschiedenen Berichten, ohne eigene
+# Vorlage. Lotti erklärte den Kredit aus dem Mai (Vorlage 26/0397, 3,43 %)
+# richtig und schrieb die Vorlagennummer des anderen dazu. Dasselbe Muster wie
+# #1493: Ein Kopf, der für alle spricht, liest sich wie die Quelle jeder Zeile.
+#
+# Die Regel: Enthalten die Daten eines Bausteins eine Liste von Zeilen aus
+# mindestens ZWEI Dokumenten (verschiedene ``template_number``), dann trägt
+# jede Zeile mit einem Betrag oder Prozentsatz ihr Dokument selbst — eine
+# Vorlagennummer, ein benanntes Dokument mit Jahr („Wirtschaftsplan 2025“),
+# „laut …“ oder „Beleg: …“. Ausgenommen sind Zeilen, die ausdrücklich über
+# Dokumente hinweg zusammenfassen („zusammen“, „Summe“, „insgesamt“) und
+# Schwellen („bis 2.000 €“) — sie gehören zu keinem einzelnen Papier.
+
+_BETRAG_ODER_SATZ = re.compile(r"\d\s*(Mio\. €|Mrd\. €|€|%)")
+_DOKUMENT = re.compile(
+    r"\b\d{2}/\d{4}\b|\blaut \w|Beleg:|"
+    r"\b(Wirtschaftsplan|Vermögensplan|Jahresabschluss|Haushaltssatzung|Haushaltsplan|"
+    r"Finanzrechnung) \d{4}\b")
+_UEBER_DOKUMENTE = re.compile(r"\bzusammen\b|\bSumme\b|\binsgesamt\b|\bbis \d[\d.]* €")
+
+
+def _mehrere_dokumente(daten) -> bool:
+    """Trägt irgendeine Liste in den Daten Zeilen aus ≥ 2 Vorlagen?"""
+    if isinstance(daten, dict):
+        return any(_mehrere_dokumente(v) for v in daten.values())
+    if isinstance(daten, list):
+        nummern = {x.get("template_number") for x in daten
+                   if isinstance(x, dict) and x.get("template_number")}
+        return len(nummern) >= 2 or any(_mehrere_dokumente(x) for x in daten)
+    return False
+
+
+def zeilen_ohne_dokument(text: str, daten) -> list[str]:
+    """Regel 6 — die Zeilen, die ihr Dokument nicht selbst nennen."""
+    if not _mehrere_dokumente(daten):
+        return []
+    return [f"Zeile ohne eigenes Dokument: {m.group(2)[:110]}"
+            for m in map(_ZEILE.match, text.splitlines())
+            if m and _BETRAG_ODER_SATZ.search(m.group(2))
+            and not _DOKUMENT.search(m.group(2)) and not _UEBER_DOKUMENTE.search(m.group(2))]
+
+
+#: Die Kredit-Zeilen, wie sie bis 23.09.2026 im Prompt standen — der Kopf
+#: nannte „Vorlage 26/0629“, die Zeilen nichts.
+_ALT_KREDITE = """
+- Kreditaufnahme 2026-06 bis 2026-08, Bäderbetrieb Oldenburg, 8,0 Mio. €: Zinssatz 3,46 %
+- Kreditaufnahme 2026-05, Bäderbetrieb Oldenburg, 8,0 Mio. €: Zinssatz 3,43 %
+"""
+_ALT_KREDITE_DATEN = {"rates": [{"template_number": "26/0629"}, {"template_number": "26/0397"}]}
+
+
+def test_regel_6_faengt_die_kreditzeilen_ohne_vorlage():
+    assert len(zeilen_ohne_dokument(_ALT_KREDITE, _ALT_KREDITE_DATEN)) == 2
+    richtig = _ALT_KREDITE.replace(": Zinssatz 3,46 %", ": Zinssatz 3,46 % — Vorlage 26/0629") \
+        .replace(": Zinssatz 3,43 %", ": Zinssatz 3,43 % — Vorlage 26/0397")
+    assert zeilen_ohne_dokument(richtig, _ALT_KREDITE_DATEN) == []
+    # Aus EINEM Dokument: Der Kopf-Beleg gilt für alle Zeilen, keine Pflicht.
+    assert zeilen_ohne_dokument(_ALT_KREDITE, {"rates": [{"template_number": "26/0629"}]}) == []
+    # Zusammenfassungen über Dokumente hinweg gehören zu keinem.
+    assert zeilen_ohne_dokument("- 2024: 21 Beschlüsse über zusammen 757.012 €",
+                                _ALT_KREDITE_DATEN) == []
+
+
+@pytest.mark.parametrize("facette", qa.GELD_FACETTEN)
+def test_zeilen_aus_mehreren_dokumenten_nennen_ihr_dokument(facette):
+    key, bauer = qa._GELD_BAUSTEINE[facette]
+    fehler = []
+    for nr, daten in enumerate(_fixture().get(key) or []):
+        text = bauer(daten)
+        if text:
+            fehler += [f"[{facette} #{nr}] {f}" for f in zeilen_ohne_dokument(text, daten)]
+    assert not fehler, "\n".join(fehler)
+
+
 @pytest.mark.skipif(not ECHTE_DB.exists(), reason="kein lokaler Abzug (scripts/lokale_daten.py)")
 def test_keine_zahl_unter_fremdem_jahr_am_bestand(tmp_path):
     """Derselbe Durchlauf gegen die lokale Datenbank — was der Abzug oben

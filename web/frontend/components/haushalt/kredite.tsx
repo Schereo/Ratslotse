@@ -8,13 +8,37 @@
 // Kreditaufnahmen mit Zinssatz, das Umschuldungsvolumen des Jahres mit der
 // Ersparnis, und die Lücke im Bestand als Satz.
 
+import { ExternalLink } from "lucide-react";
+
 import { Beleg } from "@/components/haushalt/source";
 import { Fundstelle } from "@/components/haushalt/fundstelle";
 import { deMio } from "@/lib/haushalt";
 import { useErklaerAnker } from "@/lib/erklaer-anker";
 import {
-  deProzent, deZeitraum, istInnenfinanzierung, juengsteZinssaetze, type KrediteDaten,
+  deProzent, deZeitraum, istInnenfinanzierung, juengsteZinssaetze, type KreditPosten,
+  type KrediteDaten,
 } from "@/lib/haushalt-kredite";
+
+/** Die Vorlage, aus der DIESE Zeile stammt — still, als Link aufs Papier.
+ *
+ *  **Warum je Zeile** (Review zu #1517, 23.09.2026): Der Block nannte im Kopf
+ *  und in „Woher diese Zahlen kommen" nur die jüngste Unterrichtung; die
+ *  Zeilen darunter stammen aus anderen Berichten und trugen keine eigene
+ *  Quelle. Wer „8,0 Mio. €" aus der Mai-Zeile markierte, gab Lotti den Block
+ *  als Kontext — und sie nannte die Vorlage des ANDEREN 8-Mio.-Kredits. Auch
+ *  wer nur liest, sah nicht, woher die Mai-Zeile kommt. */
+function VorlageVerweis({ p, daten }: { p: KreditPosten; daten: KrediteDaten }) {
+  const h = p.herkunft_id != null ? daten.provenance[String(p.herkunft_id)] ?? null : null;
+  const text = `Vorlage ${p.template_number}`;
+  if (!h?.url) return <span data-kredit-vorlage>{text}</span>;
+  return (
+    <a data-kredit-vorlage href={h.url} target="_blank" rel="noopener noreferrer"
+      className="inline-flex items-center gap-0.5 whitespace-nowrap text-primary hover:underline">
+      {text}
+      <ExternalLink className="h-3 w-3" aria-hidden />
+    </a>
+  );
+}
 
 export function KrediteBlock({ daten }: { daten: KrediteDaten | null }) {
   const anker = useErklaerAnker("kredite", "Kredite und Zinsen");
@@ -46,7 +70,8 @@ export function KrediteBlock({ daten }: { daten: KrediteDaten | null }) {
             {juengst.amount != null && <> · {deMio(juengst.amount / 1e6)}&#8239;Mio.&nbsp;€</>}
             {juengst.decided_at ? `, Kreditentscheidung vom ${juengst.decided_at.split("-").reverse().join(".")}` : ""}
             {juengst.fixed_years ? `, Zinsbindung ${juengst.fixed_years} Jahre` : ""}
-            {" — "}Bericht {deZeitraum(juengst.period_from, juengst.period_to)}.
+            {" — "}Bericht {deZeitraum(juengst.period_from, juengst.period_to)},{" "}
+            <VorlageVerweis p={juengst} daten={daten} />.
           </p>
         </>
       )}
@@ -59,6 +84,7 @@ export function KrediteBlock({ daten }: { daten: KrediteDaten | null }) {
                 {deZeitraum(p.period_from, p.period_to)} · {daten.kind_names[p.kind]}
                 {p.borrower ? ` · ${p.borrower}` : ""}
                 {p.amount != null ? ` · ${deMio(p.amount / 1e6)} Mio. €` : ""}
+                {" · "}<VorlageVerweis p={p} daten={daten} />
               </span>
               <span className="font-semibold tabular-nums text-foreground">
                 {deProzent(p.rate_pct)}{istInnenfinanzierung(p) ? " (Innenfinanzierung)" : ""}
@@ -72,7 +98,8 @@ export function KrediteBlock({ daten }: { daten: KrediteDaten | null }) {
         <p className="mt-3 max-w-[68ch] border-t border-dashed border-border pt-3 text-[12.5px] leading-relaxed text-foreground/85">
           <strong>Umschuldungen.</strong> Zuletzt hat die Stadt Kommunalkredite über{" "}
           {deMio(umschuldung.amount / 1e6)}&#8239;Mio.&nbsp;€ umgeschuldet
-          (Bericht {deZeitraum(umschuldung.period_from, umschuldung.period_to)}). Diese Kredite
+          (Bericht {deZeitraum(umschuldung.period_from, umschuldung.period_to)},{" "}
+          <VorlageVerweis p={umschuldung} daten={daten} />). Diese Kredite
           laufen in Dreimonats-Tranchen und werden jedes Quartal neu ausgeschrieben — eine
           Jahressumme zählte dasselbe Geld viermal.
           {mitErsparnis && (
