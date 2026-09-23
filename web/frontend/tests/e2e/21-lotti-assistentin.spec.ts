@@ -449,28 +449,37 @@ test.describe("Lotti-Knopf und -Fenster", () => {
     await expect(fenster(page).getByText(RATS_ANTWORT)).toBeVisible();
   });
 
-  test("nach der ersten Runde sind die Grund-Chips weg — der Zeiger bleibt",
-    async ({ page }) => {
-      // PR 24: „Was sehe ich hier?" und „Etwas auf der Seite zeigen" sagen,
-      // was man hier tun kann. Das braucht, wer noch nichts gefragt hat;
-      // danach stehen sie nur im Weg (Tim: „viel zu viele von diesen Pills").
-      await page.goto("/dashboard");
-      await knopf(page).click();
-      const grund = fenster(page).getByRole("button", { name: "Was sehe ich hier?" });
-      await expect(grund).toBeVisible();
-      await grund.click();
-      await expect(fenster(page).getByText(ANTWORT)).toBeVisible();
+  test("nach der ersten Runde sind die Grund-Chips weg", async ({ page }) => {
+    // PR 24: „Was sehe ich hier?" sagt, was man hier tun kann. Das braucht,
+    // wer noch nichts gefragt hat; danach steht es nur im Weg (Tim: „viel zu
+    // viele von diesen Pills").
+    await page.goto("/dashboard");
+    await knopf(page).click();
+    const grund = fenster(page).getByRole("button", { name: "Was sehe ich hier?" });
+    await expect(grund).toBeVisible();
+    await grund.click();
+    await expect(fenster(page).getByText(ANTWORT)).toBeVisible();
 
-      await expect(fenster(page).getByRole("button", { name: "Was sehe ich hier?" }))
-        .toHaveCount(0);
-      // Der Erklär-Modus bleibt erreichbar — als stilles Icon am Composer.
-      const zeiger = fenster(page).getByRole("button", { name: "Etwas auf der Seite zeigen" });
-      await expect(zeiger).toHaveCount(1);
-      await expect(zeiger).toBeVisible();
-      // Und die Aufforderung steht im Platzhalter, nicht auf einem Chip.
-      await expect(fenster(page).getByPlaceholder(/Frag mich zu dieser Seite/))
-        .toBeVisible();
-    });
+    await expect(fenster(page).getByRole("button", { name: "Was sehe ich hier?" }))
+      .toHaveCount(0);
+    // Die Aufforderung steht im Platzhalter, nicht auf einem Chip.
+    await expect(fenster(page).getByPlaceholder(/Frag mich zu dieser Seite/))
+      .toBeVisible();
+  });
+
+  test("den Erklär-Modus gibt es nicht mehr — weder als Chip noch als Icon", async ({ page }) => {
+    // Tim, 23.09.2026: „Dieses ‚Frag mich zu dieser Seite‘ und dann kann man
+    // irgendwas anklicken — das ist so mega komisch." Ersetzt durch „Lotti
+    // fragen" an der Markierung (s. unten, „Markieren statt Modus").
+    await page.goto("/dashboard");
+    await knopf(page).click();
+    await expect(fenster(page).getByRole("button", { name: "Was sehe ich hier?" })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Etwas auf der Seite zeigen/ })).toHaveCount(0);
+    await fenster(page).getByRole("button", { name: "Was sehe ich hier?" }).click();
+    await expect(fenster(page).getByText(ANTWORT)).toBeVisible();
+    await expect(page.getByRole("button", { name: /Etwas auf der Seite zeigen/ })).toHaveCount(0);
+    await expect(page.getByText(/nichts einzeln erklären/)).toHaveCount(0);
+  });
 
   test("unter einer Antwort steht höchstens EIN Chip", async ({ page }) => {
     // Tims Bild: drei Chips, zwei Daumen, zwei Grund-Chips — sieben
@@ -597,66 +606,6 @@ test.describe("Lotti-Knopf und -Fenster", () => {
         && a.y < b.y + b.height && a.y + a.height > b.y;
       expect(ueberlappt, `Knopf überdeckt den Composer bei ${grosse.width} px`).toBe(false);
     }
-  });
-
-  test("der Erklär-Modus sagt in jedem Fall, woran man ist", async ({ page }) => {
-    // **Die CI-Ratsdatenbank ist LEER**, und der Haushalt zeigt ohne Daten
-    // keine Bühne (Designsprache: „Ohne Datengrundlage entfällt die Bühne")
-    // — also auch keine Anker. Geprüft wird deshalb eine Zusage, die in
-    // beiden Welten gilt: Entweder es gibt Abzeichen, oder der Modus sagt
-    // ehrlich, dass er hier nichts einzeln erklären kann. Der zweite Zweig
-    // ist kein Notbehelf, sondern der Fall, den jemand mit leerer Seite
-    // wirklich sieht.
-    await page.goto("/haushalt/schulden");
-    await knopf(page).click();
-    await fenster(page).getByRole("button", { name: "Etwas auf der Seite zeigen" }).click();
-    // Der Modus schließt das Fenster: Die Abzeichen stehen auf der SEITE,
-    // und auf dem Handy deckt das Fenster genau sie ab.
-    await expect(fenster(page)).toBeHidden();
-    const marken = page.locator("[data-erklaer-marke]");
-    const hinweis = page.getByText(/nichts einzeln erklären/);
-    await expect(marken.first().or(hinweis)).toBeVisible();
-  });
-
-  test("ein angetipptes Abzeichen schickt NUR diesen Baustein", async ({ page }) => {
-    let geschickt: Record<string, unknown> | null = null;
-    await page.route("**/api/council/explain", async (route) => {
-      geschickt = route.request().postDataJSON();
-      await route.fulfill({ status: 200, contentType: "text/event-stream", body: STROM() });
-    });
-    await page.goto("/haushalt/schulden");
-    // ERST die Daten abwarten, dann den Modus starten: Sonst entscheidet ein
-    // Rennen zwischen Nachladen und Messen, ob es Anker gibt — und der Test
-    // übersprang sich auch dort, wo Daten da waren.
-    await page.waitForLoadState("networkidle");
-    const anker = page.locator("[data-erklaer]");
-    // Ohne Ratsdaten (so läuft die CI) gibt es keinen Baustein zum Antippen —
-    // sichtbar überspringen statt etwas anderes messen.
-    test.skip(await anker.count() === 0,
-      "Diese Datenbank hat keine Haushaltsdaten — also auch keine Anker.");
-    await knopf(page).click();
-    await fenster(page).getByRole("button", { name: "Etwas auf der Seite zeigen" }).click();
-    const marken = page.locator("[data-erklaer-marke]");
-    await expect(marken.first()).toBeVisible();
-    await marken.first().click();
-    await expect(fenster(page).getByText(ANTWORT)).toBeVisible();
-    expect(geschickt).toBeTruthy();
-    const el = (geschickt as { element?: { key?: string; text?: string } }).element!;
-    expect(el.key).toMatch(/^haushalt-schulden\./);
-    expect(el.text!.length).toBeGreaterThan(0);
-    expect(el.text!.length).toBeLessThanOrEqual(1202);
-  });
-
-  test("Esc beendet den Erklär-Modus", async ({ page }) => {
-    await page.goto("/haushalt/schulden");
-    await knopf(page).click();
-    await fenster(page).getByRole("button", { name: "Etwas auf der Seite zeigen" }).click();
-    const marken = page.locator("[data-erklaer-marke]");
-    // Egal ob Anker oder Hinweis — eines von beiden steht da, bevor Esc kommt.
-    await page.getByText(/nichts einzeln erklären/).or(marken.first()).first().waitFor();
-    await page.keyboard.press("Escape");
-    await expect(marken).toHaveCount(0);
-    await expect(page.getByText(/nichts einzeln erklären/)).toBeHidden();
   });
 
   test("„Wo finde ich …?“ zeigt hin — ohne einen einzigen Netzaufruf", async ({ page }) => {
@@ -1167,6 +1116,365 @@ test.describe("Lotti-Knopf und -Fenster", () => {
     await page.goto("/dashboard");
     await expect(page.getByRole("heading").first()).toBeVisible();
     await expect(knopf(page)).toBeHidden();
+  });
+});
+
+/**
+ * „Markieren statt Modus" (Tim, 23.09.2026): Wer Text markiert, bekommt an
+ * der Markierung einen Knopf „Lotti fragen"; ein Klick öffnet das Fenster und
+ * stellt sofort „Was bedeutet das?" — mit der Markierung als Zitat.
+ *
+ * **Der Text ist ein eigener Absatz**, kein Seiteninhalt: Die CI-Ratsdatenbank
+ * ist leer, und was dort auf einer Seite steht, hängt an Daten. Ein fester
+ * Absatz prüft die Mechanik überall gleich; wie es mit echten Zahlen aussieht,
+ * zeigen die Bilder im PR.
+ */
+const markierKnopf = (page: Page) => page.locator("[data-lotti-markierknopf]");
+const PROBE = "Im Haushalt 2026 stehen 391,5 Mio. € an Aufwendungen.";
+
+async function probeAbsatz(page: Page, opts: { anker?: boolean; text?: string } = {}) {
+  await page.evaluate(({ anker, text }) => {
+    document.getElementById("markier-probe")?.remove();
+    const p = document.createElement("p");
+    p.id = "markier-probe";
+    p.textContent = text;
+    if (anker) {
+      p.setAttribute("data-erklaer", "test.probe");
+      p.setAttribute("data-erklaer-titel", "Probe-Baustein");
+    }
+    // Fest oben links: Auf keiner Seite liegt der Knopf oder das Fenster
+    // darüber, und kein Nachladen verschiebt ihn.
+    Object.assign(p.style, {
+      position: "fixed", top: "140px", left: "16px", maxWidth: "340px", zIndex: "30",
+      background: "white", color: "black", padding: "8px", fontSize: "16px",
+      lineHeight: "1.5", maxHeight: "200px", overflow: "hidden",
+    });
+    document.body.appendChild(p);
+  }, { anker: opts.anker ?? false, text: opts.text ?? PROBE });
+}
+
+/** Markiert `teil` im Probe-Absatz (ohne Teil: alles). Programmatisch, also
+ *  OHNE Zeiger — genau der Weg, den eine Langdruck-Auswahl am Handy nimmt:
+ *  nur `selectionchange`, kein `pointerup`. */
+async function markiere(page: Page, teil?: string) {
+  await page.evaluate((teil) => {
+    const t = document.getElementById("markier-probe")!.firstChild as Text;
+    const i = teil ? t.data.indexOf(teil) : 0;
+    const r = document.createRange();
+    r.setStart(t, i);
+    r.setEnd(t, teil ? i + teil.length : t.data.length);
+    const sel = document.getSelection()!;
+    sel.removeAllRanges();
+    sel.addRange(r);
+  }, teil ?? null);
+}
+
+async function auswahlBox(page: Page) {
+  return page.evaluate(() => {
+    const r = document.getSelection()!.getRangeAt(0).getBoundingClientRect();
+    return { x: r.x, y: r.y, width: r.width, height: r.height };
+  });
+}
+
+test.describe("Markieren statt Modus", () => {
+  test.use({ storageState: zustandsDatei("ratsfrau") });
+
+  test.beforeEach(async ({ page }) => {
+    await schalterAn(page);
+  });
+
+  test("markieren → Knopf unter der Markierung → Fenster fragt mit Zitat", async ({ page }) => {
+    let geschickt: Record<string, unknown> | null = null;
+    await page.route("**/api/council/explain", async (route) => {
+      geschickt = route.request().postDataJSON();
+      await route.fulfill({ status: 200, contentType: "text/event-stream", body: STROM() });
+    });
+    await page.goto("/dashboard");
+    await expect(knopf(page)).toBeVisible();
+    await probeAbsatz(page, { anker: true });
+    await markiere(page, "391,5 Mio. €");
+
+    await expect(markierKnopf(page)).toBeVisible();
+    await expect(markierKnopf(page)).toContainText("Lotti fragen");
+    // Unter dem Ende der Markierung, nicht über dem Text — und im Fenster.
+    const auswahl = await auswahlBox(page);
+    const box = (await markierKnopf(page).boundingBox())!;
+    expect(box.y).toBeGreaterThanOrEqual(auswahl.y + auswahl.height);
+    expect(box.y - (auswahl.y + auswahl.height)).toBeLessThan(40);
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(1280);
+
+    await markierKnopf(page).click();
+    await expect(fenster(page)).toBeVisible();
+    await expect(markierKnopf(page)).toHaveCount(0);
+    await expect(fenster(page).locator("[data-lotti-frage]").last())
+      .toHaveText("„391,5 Mio. €“ — Was bedeutet das?");
+    await expect(fenster(page).getByText(ANTWORT)).toBeVisible();
+
+    const body = geschickt as unknown as {
+      question: string; selection: string; heading: string;
+      element: { key: string; title: string; text: string } | null;
+    };
+    expect(body.question).toBe("Was bedeutet das?");
+    // Die Markierung geht IN IHRER ZEILE mit, der markierte Teil zwischen
+    // »…« — das Zitat im Verlauf (oben) bleibt der markierte Text allein.
+    expect(body.selection).toBe("Im Haushalt 2026 stehen »391,5 Mio. €« an Aufwendungen.");
+    // Der Baustein, in dem die Markierung liegt, geht als Kontext mit.
+    expect(body.element?.key).toBe("test.probe");
+    expect(body.element?.text).toContain("Aufwendungen");
+  });
+
+  test("ohne Baustein drumherum geht nur die Markierung mit — nichts Geratenes", async ({ page }) => {
+    let geschickt: Record<string, unknown> | null = null;
+    await page.route("**/api/council/explain", async (route) => {
+      geschickt = route.request().postDataJSON();
+      await route.fulfill({ status: 200, contentType: "text/event-stream", body: STROM() });
+    });
+    await page.goto("/dashboard");
+    await probeAbsatz(page);
+    await markiere(page, "Aufwendungen");
+    await markierKnopf(page).click();
+    await expect(fenster(page).getByText(ANTWORT)).toBeVisible();
+    const body = geschickt as unknown as { selection: string; element: unknown };
+    expect(body.selection).toBe("Im Haushalt 2026 stehen 391,5 Mio. € an »Aufwendungen«.");
+    expect(body.element).toBeNull();
+  });
+
+  test("in einer Listenzeile geht die ZEILE mit — nicht nur die drei Wörter", async ({ page }) => {
+    // Review zu #1517: Im Baustein „Kredite und Zinsen" stehen zwei Kredite
+    // über 8,0 Mio. €. Markiert war der aus dem Mai; ohne die Zeile erklärte
+    // Lotti den anderen. Die Zeile ist dort eine Flex-`li` mit zwei `span` —
+    // OHNE Leerzeichen dazwischen im Quelltext; `Range.toString()` hätte
+    // „8,0 Mio. €3,43 %" daraus gemacht.
+    let geschickt: { selection: string } | null = null;
+    await page.route("**/api/council/explain", async (route) => {
+      geschickt = route.request().postDataJSON();
+      await route.fulfill({ status: 200, contentType: "text/event-stream", body: STROM() });
+    });
+    await page.goto("/dashboard");
+    await expect(knopf(page)).toBeVisible();
+    await page.evaluate(() => {
+      const ul = document.createElement("ul");
+      ul.id = "markier-liste";
+      Object.assign(ul.style, {
+        position: "fixed", top: "140px", left: "16px", width: "520px", zIndex: "30",
+        background: "white", color: "black", padding: "8px", fontSize: "14px",
+      });
+      for (const [a, b] of [["Mai 2026 · Bäderbetrieb Oldenburg · 8,0 Mio. €", "3,43 %"],
+        ["Juni 2026 · Bäderbetrieb Oldenburg · 8,0 Mio. €", "3,46 %"]]) {
+        const li = document.createElement("li");
+        li.style.display = "flex";
+        li.style.justifyContent = "space-between";
+        const s1 = document.createElement("span");
+        s1.textContent = a;
+        const s2 = document.createElement("span");
+        s2.textContent = b;
+        li.append(s1, s2);
+        ul.append(li);
+      }
+      document.body.appendChild(ul);
+      const t = ul.firstElementChild!.firstElementChild!.firstChild as Text;
+      const i = t.data.indexOf("8,0 Mio. €");
+      const r = document.createRange();
+      r.setStart(t, i);
+      r.setEnd(t, i + "8,0 Mio. €".length);
+      document.getSelection()!.removeAllRanges();
+      document.getSelection()!.addRange(r);
+    });
+    await markierKnopf(page).click();
+    await expect(fenster(page).locator("[data-lotti-frage]").last())
+      .toHaveText("„8,0 Mio. €“ — Was bedeutet das?");
+    await expect(fenster(page).getByText(ANTWORT)).toBeVisible();
+    expect(geschickt!.selection).toBe("Mai 2026 · Bäderbetrieb Oldenburg · »8,0 Mio. €« 3,43 %");
+  });
+
+  test("nach der Antwort fragt man direkt nach — das Zitat reist als Gedächtnis mit",
+    async ({ page }) => {
+      const bodies: Record<string, unknown>[] = [];
+      await page.route("**/api/council/explain", async (route) => {
+        bodies.push(route.request().postDataJSON());
+        await route.fulfill({ status: 200, contentType: "text/event-stream", body: STROM() });
+      });
+      await page.goto("/dashboard");
+      await probeAbsatz(page);
+      await markiere(page, "391,5 Mio. €");
+      await markierKnopf(page).click();
+      await expect(fenster(page).getByText(ANTWORT)).toBeVisible();
+      const eingabe = fenster(page).getByLabel("Frage an Lotti");
+      await eingabe.fill("Und warum so viel?");
+      await eingabe.press("Enter");
+      await expect.poll(() => bodies.length).toBe(2);
+      const history = (bodies[1] as { history: { question: string }[] }).history;
+      expect(history.at(-1)?.question).toBe("„391,5 Mio. €“ — Was bedeutet das?");
+    });
+
+  test("mit der Maus: Doppelklick auf ein Wort zeigt den Knopf", async ({ page }) => {
+    await stromStubben(page);
+    await page.goto("/dashboard");
+    await probeAbsatz(page);
+    const punkt = await page.evaluate(() => {
+      const t = document.getElementById("markier-probe")!.firstChild as Text;
+      const i = t.data.indexOf("Aufwendungen");
+      const r = document.createRange();
+      r.setStart(t, i + 2);
+      r.setEnd(t, i + 3);
+      const b = r.getBoundingClientRect();
+      return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+    });
+    await page.mouse.dblclick(punkt.x, punkt.y);
+    await expect(markierKnopf(page)).toBeVisible();
+    // Klick daneben: weg.
+    await page.mouse.click(700, 600);
+    await expect(markierKnopf(page)).toHaveCount(0);
+  });
+
+  test("Esc und eine leere Auswahl nehmen den Knopf weg", async ({ page }) => {
+    await page.goto("/dashboard");
+    await probeAbsatz(page);
+    await markiere(page, "Haushalt");
+    await expect(markierKnopf(page)).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(markierKnopf(page)).toHaveCount(0);
+
+    await markiere(page, "Aufwendungen");
+    await expect(markierKnopf(page)).toBeVisible();
+    await page.evaluate(() => document.getSelection()!.removeAllRanges());
+    await expect(markierKnopf(page)).toHaveCount(0);
+  });
+
+  test("Esc schließt bei offenem Fenster nur den Knopf, nicht auch das Fenster", async ({ page }) => {
+    await page.goto("/dashboard");
+    await knopf(page).click();
+    await expect(fenster(page)).toBeVisible();
+    await probeAbsatz(page);
+    // Das offene Fenster hat den Fokus in seiner Eingabezeile — und solange
+    // ein Eingabefeld ihn hat, zählt keine Auswahl. Wer mit der Maus auf der
+    // Seite markiert, nimmt ihn ihr mit dem ersten Klick; das hier stellt
+    // genau das nach.
+    await page.locator("#markier-probe").click();
+    await markiere(page, "Haushalt");
+    await expect(markierKnopf(page)).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(markierKnopf(page)).toHaveCount(0);
+    await expect(fenster(page)).toBeVisible();
+  });
+
+  test("per Tab erreichbar, solange eine Auswahl steht", async ({ page }) => {
+    await stromStubben(page);
+    await page.goto("/dashboard");
+    await probeAbsatz(page);
+    await markiere(page, "391,5 Mio. €");
+    await expect(markierKnopf(page)).toBeVisible();
+    await page.keyboard.press("Tab");
+    await expect(markierKnopf(page)).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(fenster(page).locator("[data-lotti-frage]").last())
+      .toHaveText("„391,5 Mio. €“ — Was bedeutet das?");
+  });
+
+  test("ein einzelnes Zeichen ist ein Klick, keine Auswahl", async ({ page }) => {
+    await page.goto("/dashboard");
+    await probeAbsatz(page);
+    await markiere(page, "€");
+    // Die Ruhepause abwarten, sonst prüft man zu früh.
+    await page.waitForTimeout(600);
+    await expect(markierKnopf(page)).toHaveCount(0);
+  });
+
+  test("eine Markierung in einem Eingabefeld zeigt keinen Knopf", async ({ page }) => {
+    await page.goto("/dashboard");
+    await page.evaluate(() => {
+      const i = document.createElement("input");
+      i.id = "markier-eingabe";
+      i.value = "mein eigener Text";
+      Object.assign(i.style, { position: "fixed", top: "140px", left: "16px", zIndex: "30" });
+      document.body.appendChild(i);
+    });
+    await page.locator("#markier-eingabe").selectText();
+    await page.waitForTimeout(600);
+    await expect(markierKnopf(page)).toHaveCount(0);
+  });
+
+  test("eine Markierung in Lottis Fenster zeigt keinen Knopf", async ({ page }) => {
+    await stromStubben(page);
+    await page.goto("/dashboard");
+    await knopf(page).click();
+    await fenster(page).getByRole("button", { name: "Was sehe ich hier?" }).click();
+    const antwort = fenster(page).getByText(ANTWORT);
+    await expect(antwort).toBeVisible();
+    await antwort.selectText();
+    await page.waitForTimeout(600);
+    await expect(markierKnopf(page)).toHaveCount(0);
+  });
+
+  test("eine zu lange Markierung wird gekürzt — und das Fenster sagt es", async ({ page }) => {
+    let geschickt: { selection: string } | null = null;
+    await page.route("**/api/council/explain", async (route) => {
+      geschickt = route.request().postDataJSON();
+      await route.fulfill({ status: 200, contentType: "text/event-stream", body: STROM() });
+    });
+    await page.goto("/dashboard");
+    await probeAbsatz(page, { text: "Aufwendungen und Erträge. ".repeat(80) });
+    await markiere(page);
+    await markierKnopf(page).click();
+    await expect(fenster(page).getByText(ANTWORT)).toBeVisible();
+    // Die Grenze des Servers (`ExplainBody.selection`, 1.000) — darüber gäbe
+    // es 422 statt einer Antwort.
+    expect([...geschickt!.selection].length).toBeLessThanOrEqual(1000);
+    await expect(fenster(page).getByText("Markierung gekürzt")).toBeVisible();
+  });
+
+  test("mit ausgeblendetem Lotti-Knopf gibt es auch keinen an der Markierung", async ({ page }) => {
+    await page.addInitScript(() => {
+      try { localStorage.setItem("ratslotse:lotti-knopf-aus", "1"); } catch { /* egal */ }
+    });
+    await page.goto("/dashboard");
+    await expect(page.getByRole("heading").first()).toBeVisible();
+    await probeAbsatz(page);
+    await markiere(page, "Aufwendungen");
+    await page.waitForTimeout(600);
+    await expect(markierKnopf(page)).toHaveCount(0);
+  });
+
+  test("ohne Schalter gibt es keinen Knopf an der Markierung", async ({ page }) => {
+    await schalterAn(page, false);
+    await page.goto("/dashboard");
+    await expect(page.getByRole("heading").first()).toBeVisible();
+    await probeAbsatz(page);
+    await markiere(page, "Aufwendungen");
+    await page.waitForTimeout(600);
+    await expect(markierKnopf(page)).toHaveCount(0);
+  });
+
+  test.describe("auf dem Handy", () => {
+    test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+
+    test("der Knopf lässt dem Anfasser Platz, und ein Tipp fragt", async ({ page }) => {
+      await stromStubben(page);
+      await page.goto("/dashboard");
+      await expect(knopf(page)).toBeVisible();
+      await probeAbsatz(page);
+      await markiere(page, "391,5 Mio. €");
+      await expect(markierKnopf(page)).toBeVisible();
+      const auswahl = await auswahlBox(page);
+      const box = (await markierKnopf(page).boundingBox())!;
+      // Unter der Auswahl — über ihr liegt das Menü des Systems — und mit
+      // Abstand: Direkt unter dem Ende sitzt der Anfasser.
+      expect(box.y - (auswahl.y + auswahl.height)).toBeGreaterThanOrEqual(30);
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(390);
+      // Volle Bedienhöhe für den Finger.
+      expect(box.height).toBeGreaterThanOrEqual(40);
+
+      await markierKnopf(page).tap();
+      await expect(fenster(page)).toBeVisible();
+      await expect(fenster(page).locator("[data-lotti-frage]").last())
+        .toHaveText("„391,5 Mio. €“ — Was bedeutet das?");
+      await expect(fenster(page).getByText(ANTWORT)).toBeVisible();
+      // Die Auswahl ist aufgehoben — sonst hinge das Menü des Systems über
+      // dem Fenster.
+      expect(await page.evaluate(() => document.getSelection()!.isCollapsed)).toBe(true);
+    });
   });
 });
 

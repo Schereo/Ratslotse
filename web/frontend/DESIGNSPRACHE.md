@@ -454,10 +454,10 @@ iOS-Schrift.
   gebaut ist — lieber kein Chip als ein alberner.
   Chip-Namen sind Handlungen („Anzeigetafel erklären", „Weiter zu: Woher
   kommt das Geld?"), keine Etiketten. Die **Grund-Chips** stehen nur im
-  leeren Fenster; danach trägt der Composer-Platzhalter die Aufforderung und
-  der Erklär-Modus wohnt als stilles Icon (`MousePointerClick`) an seiner
-  linken Seite. „Markiertes erklären" bleibt, solange etwas markiert ist — er
-  antwortet auf eine Handlung, er ist kein Dauerangebot. **Seit 22.09.2026
+  leeren Fenster; danach trägt der Composer-Platzhalter die Aufforderung.
+  Den Erklär-Modus („Etwas auf der Seite zeigen", Icon am Composer) und den
+  Chip „Markiertes erklären" gibt es seit 23.09.2026 nicht mehr — beides tut
+  der **Markier-Knopf** an der Auswahl selbst (s. u.). **Seit 22.09.2026
   (PR 25) stehen an oberster Stelle zwei kuratierte Startfragen der Seite**
   (`kern/knowledge.py::PageKnowledge.starters`, z. B. auf der Schulden-Seite
   „Wie viel Schulden hat Oldenburg pro Kopf?") — wer nicht weiß, was er
@@ -519,15 +519,31 @@ iOS-Schrift.
   Fehler-Runde und unter der „Zeig mir"-Runde steht keiner.
   Kein Emoji, kein KI-Vokabular — in der Oberfläche heißt sie nur „Lotti".
   **Kein Zähler und kein Abzeichen am geschlossenen Knopf.**
-- **Erklär-Abzeichen**: 28 px rund, `bg-card`, Rahmen primary/30, „?" in
-  primary, oben rechts am Baustein (4 px eingerückt), `z-40`. Erscheint im
-  Erklär-Modus mit `--takt-fluss`, verschwindet mit `Esc` oder nach der Wahl.
-  **Nur auf Elementen mit `data-erklaer`** (`lib/erklaer-anker.ts`) — kein
-  Fallback auf „die nächste Karte": Ein geratener Ausschnitt sieht aus, als
-  wüsste Lotti, worauf gezeigt wurde. Abzeichen statt Zeigerhand, weil das
-  Handy kein Hover hat und eine Zeigerhand ohne Ziel gegen § 6 verstößt. Der
-  Modus schließt das Fenster: Die Abzeichen stehen auf der Seite, und mobil
-  deckt das Fenster genau sie ab.
+- **Markier-Knopf „Lotti fragen"** (`components/assistentin/markier-knopf.tsx`,
+  seit 23.09.2026): Wer auf der Seite Text markiert, bekommt direkt unter dem
+  Ende der Auswahl eine Pille — `bg-card`, Rahmen primary/30, Text primary
+  13/500, `shadow-lifted`, links der Lotti-Kopf 28 px auf Hafenblau; Höhe
+  36 px an der Maus, 44 px am Touchgerät. Waagrecht mittig unter dem
+  Auswahl-Ende, im Fenster gehalten, **nie über dem Text**: Passt sie unten
+  nicht, steht sie über dem Anfang. Am Touchgerät 34 px Abstand, denn direkt
+  unter dem Ende sitzt der Anfasser des Systems, und ÜBER der Auswahl sein
+  Menü. Erscheint nach 250 ms Ruhe (`duration-fluss`, `ease-out-strong`,
+  ohne Bewegung bei reduzierter Bewegung), verschwindet sofort mit der
+  Auswahl, mit `Esc` (nur sie, nicht auch das Fenster), mit einem Klick
+  daneben und wenn die Auswahl aus dem Bild gescrollt ist. Die erste
+  Tabulatortaste nach dem Markieren führt zu ihr. Ein Klick öffnet das
+  Fenster und fragt sofort „Was bedeutet das?"; im Verlauf steht die Frage
+  mit Zitat („„391,5 Mio. €“ — Was bedeutet das?"); mitgeschickt wird die
+  ganze ZEILE mit dem markierten Teil zwischen »…« — nur sie sagt, welche
+  von zwei gleichen Zahlen gemeint ist. Nicht in Lottis Fenster,
+  nicht in Eingabefeldern, nicht unter zwei Zeichen, nicht bei
+  ausgeblendetem Lotti-Knopf. **Warum statt der „?"-Abzeichen des
+  Erklär-Modus** (Tim, 23.09.2026: „keiner versteht, wie das funktioniert,
+  selbst bei mir hat es gedauert"): Ein Modus muss man erst kennen, Markieren
+  kann jede*r — der Knopf antwortet auf eine Handlung, statt eine zu
+  verlangen. Die `data-erklaer`-Anker bleiben: Liegt die Markierung in einem
+  Baustein, geht dessen Text als Kontext mit — ohne Anker nur die
+  Markierung, kein geratener Ausschnitt.
 - **Anstupser**: eine Sprechblase über dem Lotti-Knopf, max 16 rem, `bg-card`,
   Rahmen, Radius 16, `shadow-lifted`; Lotti 32 px mit `hebt-hand`, der Satz in
   `text-hinweis` („Hast du eine Frage zu dem, was du siehst?"), darunter

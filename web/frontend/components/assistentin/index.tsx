@@ -7,10 +7,10 @@ import { useFeature } from "@/lib/features";
 import { pfad } from "@/lib/utils";
 
 import { Anstupser, merkeBenutzung } from "./anstupser";
-import { ErklaerModus } from "./erklaer-modus";
 import { LottiKnopf } from "./knopf";
+import { MarkierKnopf, type MarkierFrage } from "./markier-knopf";
 import { LottiPanel, useMarkierung, useTastatur } from "./panel";
-import { ernteElement, routeAus, ueberschriftenPfad } from "@/lib/assistentin";
+import { routeAus } from "@/lib/assistentin";
 import { useAuth } from "@/lib/auth";
 import { anstupserErlaubt } from "@/lib/anstupser-seiten";
 import { knopfVersteckt, LOTTI_SICHT_EVENT } from "@/lib/lotti-sichtbar";
@@ -36,7 +36,8 @@ import { useVollbild } from "@/lib/vollbild";
  * (`lib/vollbild.ts`), nicht als Kontext: Die Assistentin hängt in der
  * App-Hülle, die Abläufe daneben.
  */
-/** Ein angeklickter Baustein, so wie er ans Backend geht.
+/** Ein Baustein der Seite, so wie er ans Backend geht — aus einem „…
+ *  erklären"-Chip oder als Umgebung einer Markierung.
  *
  *  `pfad` gehört nicht zum Element, sondern sagt, WO auf der Seite es steht
  *  („Schulden › Rate-Treppe"). Er wird beim Antippen berechnet, weil nur dort
@@ -75,12 +76,13 @@ function LottiInner() {
   const pathname = pfad(usePathname());
   const sp = useSearchParams();
   const [offen, setOffen] = useState(false);
-  // Der Erklär-Modus SCHLIESST das Fenster, statt neben ihm zu laufen: Die
-  // Abzeichen stehen auf der Seite, und auf dem Handy deckt das Fenster genau
-  // die Seite ab, auf die man zeigen soll. Ein Tipp auf ein Abzeichen öffnet
-  // es wieder — mit der Antwort darin.
-  const [modus, setModus] = useState(false);
-  const [element, setElement] = useState<ElementFrage | null>(null);
+  // Eine Markierung, zu der gerade gefragt wurde („Lotti fragen" an der
+  // Auswahl). Gesetzt heißt: Das Fenster stellt die Frage sofort.
+  //
+  // **Bis 23.09.2026 stand hier der Erklär-Modus** — ein Knopf im Fenster,
+  // der es schloss und „?"-Abzeichen auf die Bausteine setzte. Tim: „keiner
+  // versteht, wie das funktioniert, selbst bei mir hat es gedauert."
+  const [markiert, setMarkiert] = useState<MarkierFrage | null>(null);
   const markierung = useMarkierung();
   // Nur zum STREICHEN, nie zum Mitschicken: Der Anzeigename steht auf
   // `/dashboard` in der `h1` und wäre sonst über den Überschriften-Pfad im
@@ -109,7 +111,7 @@ function LottiInner() {
   useEffect(() => {
     // Ein bereits offenes Fenster schließt sich — die Tour startet aus der
     // ⌘K-Palette heraus, also auch bei offenem Lotti.
-    if (vollbild) { setOffen(false); setModus(false); }
+    if (vollbild) setOffen(false);
   }, [vollbild]);
 
   const schliessen = useCallback(() => setOffen(false), []);
@@ -141,23 +143,26 @@ function LottiInner() {
   return (
     <>
       <LottiPanel
-        offen={offen && !modus}
+        offen={offen}
         onSchliessen={schliessen}
         markierung={markierung}
-        element={element}
-        onElementVerbraucht={() => setElement(null)}
+        markiert={markiert}
+        onMarkiertVerbraucht={() => setMarkiert(null)}
         ladeGespraech={ladeGespraech}
         onGespraechGeladen={() => setLadeGespraech(null)}
-        onModus={() => setModus(true)}
       />
-      <ErklaerModus
-        aktiv={modus}
-        onBeenden={() => setModus(false)}
-        onWaehlen={(el) => {
-          // Der Anzeigename des Kontos wird aus dem Pfad gestrichen — auf
-          // `/dashboard` steht er in der `h1` („Moin, Ratsfrau!").
-          setElement({ ...ernteElement(el), pfad: ueberschriftenPfad(el, document, anzeigename) });
-          setModus(false);
+      {/* „Lotti fragen" an der Markierung. **Dieselben Bedingungen wie der
+          schwebende Knopf**: ausgeblendet heißt auch hier ausgeblendet — wer
+          Lotti aus dem Weg haben will, will keinen Knopf an jeder Markierung.
+          Schalter, gesperrte Seiten und Vollbild-Abläufe greifen schon oben
+          (`return null`); ohne Konto gibt es die App-Hülle gar nicht. Steht
+          die Tastatur, markiert man in einem Eingabefeld — das zählt ohnehin
+          nicht. */}
+      <MarkierKnopf
+        aktiv={!versteckt && tastatur === 0}
+        anzeigename={anzeigename}
+        onFragen={(f) => {
+          setMarkiert(f);
           setOffen(true);
         }}
       />
@@ -165,13 +170,10 @@ function LottiInner() {
         erlaubt={!versteckt && anstupserErlaubt(routeAus(pathname, sp.toString()))}
         onJa={() => setOffen(true)}
       />
-      {(!versteckt || offen || modus) && tastatur === 0 && (
+      {(!versteckt || offen) && tastatur === 0 && (
         <LottiKnopf
-          offen={offen || modus}
-          onToggle={() => {
-            if (modus) { setModus(false); return; }
-            setOffen((o) => !o);
-          }}
+          offen={offen}
+          onToggle={() => setOffen((o) => !o)}
         />
       )}
     </>

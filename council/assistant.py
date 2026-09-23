@@ -274,6 +274,29 @@ _GENERISCH_RE = re.compile(
 )
 
 
+#: Die Marken um den markierten Teil in seiner Zeile — **dieselben Zeichen
+#: wie** ``web/frontend/lib/markieren.ts::MARKE_AUF/MARKE_ZU``. Der Client
+#: schickt seit 23.09.2026 nicht nur „8,0 Mio. €", sondern die Zeile drumherum
+#: („Mai 2026 · … · »8,0 Mio. €« 3,43 %"): Auf ``/haushalt/schulden`` stehen
+#: zwei Kredite über 8,0 Mio. € im selben Baustein, und Lotti erklärte ohne
+#: die Zeile den falschen. Eigene »« der Seite ersetzt der Client vorher.
+MARKE_AUF = "»"
+MARKE_ZU = "«"
+_MARKIERT_RE = re.compile(re.escape(MARKE_AUF) + r"(.+?)" + re.escape(MARKE_ZU), re.S)
+
+
+def markierter_teil(selection: str) -> str:
+    """Nur der markierte Teil einer Auswahl — ohne die Zeile drumherum.
+
+    Die Glossar-Abkürzung fragt „trifft die Markierung GENAU EINEN
+    Fachbegriff?"; mit der ganzen Zeile träfe sie oft zwei und fiele weg.
+    Ohne Marken (ältere Clients, getippte Frage bei stehender Auswahl) ist
+    die Auswahl selbst der markierte Teil.
+    """
+    m = _MARKIERT_RE.search(selection or "")
+    return m.group(1).strip() if m else (selection or "")
+
+
 def generische_frage(question: str) -> bool:
     """Bittet diese Frage nur darum, das Gezeigte zu erklären?
 
@@ -464,8 +487,9 @@ def deterministic_answer(store, screen: Screen, question: str) -> tuple[str, str
     #    heißt Umschuldung?" die Frage, die dastehen soll, und bekommt
     #    trotzdem die geprüfte Erklärung ohne Modell.
     if screen.selection:
-        treffer = glossar.finde(screen.selection, max_n=2)
-        if len(treffer) == 1 and (generisch or begriffsfrage(question, screen.selection)):
+        markiert = markierter_teil(screen.selection)
+        treffer = glossar.finde(markiert, max_n=2)
+        if len(treffer) == 1 and (generisch or begriffsfrage(question, markiert)):
             b = treffer[0]
             return f"**{b['begriff']}** — {b['erklaerung']}", "glossary"
 
@@ -787,6 +811,12 @@ def _screen_block(screen: Screen) -> str:
                      f"{titel}: {kuerze(_ohne_anweisung(screen.element_text), ELEMENT_TEXT_MAX)}\n"
                      "ELEMENT")
     if screen.selection:
+        # Der eine Satz, den das Modell zur Zeile braucht — UNSER Text, vor
+        # dem Fremdtext-Block, nur wenn die Marken wirklich da sind.
+        if _MARKIERT_RE.search(screen.selection):
+            teile.append(f"Markiert ist nur der Teil zwischen {MARKE_AUF} und {MARKE_ZU}; "
+                         "der Rest ist die Zeile, in der er steht — er sagt, "
+                         "welcher Eintrag gemeint ist.")
         teile.append("<<<AUSWAHL\n"
                      f"{kuerze(_ohne_anweisung(screen.selection), SELECTION_MAX)}\n"
                      "AUSWAHL")

@@ -291,27 +291,36 @@ export function ueberschriftenPfad(el: Element | null, dok: Document,
 }
 
 /**
- * Der markierte Text — aber nur, wenn er wirklich auf der Seite steht.
+ * Darf diese Auswahl zu Lotti — steht sie wirklich auf der Seite?
  *
- * Drei Ausschlüsse, alle gemessen an dem, was sonst passiert:
+ * Zwei Ausschlüsse, beide gemessen an dem, was sonst passiert:
  * - **Im Lotti-Fenster selbst** markiert man, um zu zitieren, nicht um zu
- *   fragen. Ohne diesen Ausschluss fragte Lotti sich selbst.
+ *   fragen. Ohne diesen Ausschluss fragte Lotti sich selbst. Geprüft werden
+ *   BEIDE Enden: Eine Auswahl, die auf der Seite beginnt und im Fenster
+ *   endet, trüge Lottis eigene Antwort in den Prompt.
  * - **In einem Eingabefeld** ist die Markierung getippter Text der Person;
- *   der gehört ihr, nicht dem Prompt.
- * - **Unter drei Zeichen** ist es ein Klick, keine Auswahl.
+ *   der gehört ihr, nicht dem Prompt. Dafür zählt auch der FOKUS (`fokus`,
+ *   `document.activeElement`): Eine Auswahl in einem `<input>` meldet
+ *   Chromium mit dem ELTERN-Element als Anker — die Frage „liegt sie in
+ *   einem Eingabefeld?" sähe sie gar nicht.
+ *
+ * Wie lang sie sein darf und wie sie gekürzt wird, steht in
+ * `lib/markieren.ts` (`auswahlText`).
  */
-export function auswahlText(sel: Selection | null, tabu: Element | null): string {
-  if (!sel || sel.isCollapsed || sel.rangeCount === 0) return "";
-  const knoten = sel.anchorNode;
-  if (!knoten) return "";
-  const el = knoten.nodeType === ELEMENT_NODE
-    ? (knoten as Element)
-    : knoten.parentElement;
-  if (!el) return "";
-  if (tabu && tabu.contains(el)) return "";
-  if (el.closest("input, textarea, [contenteditable='true']")) return "";
-  const text = kuerze(sel.toString(), 1000);
-  return text.length >= 3 ? text : "";
+export function auswahlErlaubt(sel: Selection | null, tabu: Element | null,
+                               fokus: Element | null = null): boolean {
+  if (!sel || sel.isCollapsed || sel.rangeCount === 0) return false;
+  if (fokus?.closest?.("input, textarea, [contenteditable='true']")) return false;
+  for (const knoten of [sel.anchorNode, sel.focusNode ?? sel.anchorNode]) {
+    if (!knoten) return false;
+    const el = knoten.nodeType === ELEMENT_NODE
+      ? (knoten as Element)
+      : knoten.parentElement;
+    if (!el) return false;
+    if (tabu && tabu.contains(el)) return false;
+    if (el.closest("input, textarea, [contenteditable='true']")) return false;
+  }
+  return true;
 }
 
 /**
@@ -522,10 +531,12 @@ export function ankerTreffer(frage: string, anker: Anker[]): Anker[] {
 /**
  * Alle Anker der Seite — **auch die, die gerade nicht zu sehen sind.**
  *
- * Das ist der Unterschied zum Erklär-Modus (`erklaer-modus.tsx`): Dort
- * bekommt nur ein sichtbarer Baustein ein Abzeichen, denn ein Abzeichen zeigt
- * auf etwas. Hier ist der weggescrollte Baustein genau der Punkt — „Wo finde
- * ich …?" fragt man über das, was man NICHT sieht.
+ Der weggescrollte Baustein ist genau der Punkt — „Wo finde ich …?" fragt
+ * man über das, was man NICHT sieht. (Bis 23.09.2026 gab es daneben den
+ * Erklär-Modus, der nur SICHTBARE Bausteine mit einem „?" versah; er ist
+ * durch das Markieren ersetzt, s. `lib/markieren.ts`. Die Anker tragen
+ * seither diese Landkarte, die Anschluss-Chips und den Baustein-Kontext einer
+ * Markierung.)
  *
  * Ohne Titel kein Eintrag: Ein Schlüssel wie `haushalt-schulden.tabelle` ist
  * kein Satz, den man jemandem auf einen Chip schreibt.
@@ -680,8 +691,8 @@ export function chipTauglich(name: string): boolean {
  *  **`kurzfassung`** ist die Box „Lotti erklärt's einfach" auf der
  *  Beschluss-Seite. Sie IST bereits Lottis Erklärung, und zwar der
  *  deterministische Weg (`assistant.deterministic_answer`) — ein Chip
- *  „erklär mir die Erklärung" ist ein Kreis. Im Erklär-Modus bleibt sie
- *  antippbar; hier geht es nur um das unaufgeforderte Angebot. */
+ *  „erklär mir die Erklärung" ist ein Kreis. Wer darin etwas markiert, fragt
+ *  trotzdem; hier geht es nur um das unaufgeforderte Angebot. */
 const ANKER_OHNE_CHIP = new Set(["kurzfassung"]);
 
 /** Der Namensteil eines Anker-Schlüssels: `council-decision.kurzfassung` →
