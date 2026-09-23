@@ -35,6 +35,9 @@ enum MapLayer: String, CaseIterable, Identifiable {
     case closures = "sperrungen"
     case participations = "mitreden"
     case topicPlaces = "themen-orte"
+    /// Das Wahlergebnis je Urnenbezirk (docs/plan-viertel-wahlkarte.md) —
+    /// hinter dem Schalter `wahlabend`, wie im Web.
+    case election = "wahlergebnis"
 
     var id: String { rawValue }
 
@@ -45,6 +48,7 @@ enum MapLayer: String, CaseIterable, Identifiable {
         case .closures: "Sperrungen"
         case .participations: "Mitreden"
         case .topicPlaces: "Themen-Orte"
+        case .election: "Wahlergebnis"
         }
     }
 
@@ -55,6 +59,7 @@ enum MapLayer: String, CaseIterable, Identifiable {
         case .closures: Color(red: 0.71, green: 0.33, blue: 0.04)
         case .participations: RatsColor.signal
         case .topicPlaces: Color(red: 0.49, green: 0.23, blue: 0.84)
+        case .election: Color(red: 0.28, green: 0.33, blue: 0.41)
         }
     }
 
@@ -63,7 +68,7 @@ enum MapLayer: String, CaseIterable, Identifiable {
     var districtOnly: Bool {
         switch self {
         case .plans, .closures, .participations: true
-        case .projects, .topicPlaces: false
+        case .projects, .topicPlaces, .election: false
         }
     }
 
@@ -95,6 +100,10 @@ struct CityMapView: View {
     @State private var drawerHeight: CGFloat = 96
     @State private var stageWidth: CGFloat = 390
     @State private var finder = LocationFinder()
+    /// Die Wahl-Ebene: Antwort, gewählte Wahl, gewählter Bezirk.
+    @State private var electionMap: ElectionMap?
+    @State private var electionSlug: String?
+    @State private var electionDistrict: Int?
 
     static let cityRegion = MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 53.1435, longitude: 8.2146),
@@ -138,6 +147,8 @@ struct CityMapView: View {
         .task { await loadOverview() }
         .task(id: placeID) { await enterStage() }
         .task(id: layers.contains(.topicPlaces)) { await loadPoints() }
+        .task(id: "\(electionOn)-\(electionSlug ?? "")") { await loadElection() }
+        .onChange(of: placeID) { _, _ in electionDistrict = nil }
         .onChange(of: board?.selected?.id) { _, _ in focusSelected() }
         .onChange(of: finder.arrivals) { _, _ in arrivedAtLocation() }
         .onChange(of: finder.denied) { _, denied in
@@ -202,6 +213,16 @@ struct CityMapView: View {
                     // Ein Tipp auf eine Fläche der Stadt-Stufe zoomt ins Viertel —
                     // die Fläche selbst ist in SwiftUI nicht tippbar, der Punkt wird
                     // gegen die 31 Umrisse geprüft.
+                    // Mit der Wahl-Ebene wählt ein Tipp im Viertel den Bezirk.
+                    if let place = districtName, electionOn, let map = electionMap,
+                       let coordinate = proxy.convert(point, from: .local) {
+                        let touching = Set(map.districts(in: place).map(\.number))
+                        if let hit = ElectionDistrictShapes.all().first(where: { touching.contains($0.number) && $0.contains(coordinate) }) {
+                            withAnimation(RatsMotion.flow) { electionDistrict = hit.number }
+                            if drawer == .peek { drawer = .half }
+                        }
+                        return
+                    }
                     guard placeID == nil, let coordinate = proxy.convert(point, from: .local),
                           let shape = DistrictShapes.containing(coordinate),
                           let entry = overview?.districts.first(where: { $0.name == shape.name }) else { return }
@@ -209,7 +230,15 @@ struct CityMapView: View {
                 }
             }
             HStack(alignment: .top, spacing: 8) {
-                layerChips
+                VStack(alignment: .leading, spacing: 6) {
+                    layerChips
+                    if electionOn, let electionMap {
+                        ElectionChoiceChips(map: electionMap) { slug in
+                            electionSlug = slug
+                            electionDistrict = nil
+                        }
+                    }
+                }
                 Spacer(minLength: 0)
                 mapButtons
             }
@@ -243,8 +272,61 @@ struct CityMapView: View {
     }
 
     /// Stadt-Stufe: Wärmekarte der Ortsbereiche plus Zahlen-Pin.
+    /// Ist die Wahl-Ebene an UND sind Zahlen da?
+    private var electionOn: Bool {
+        layers.contains(.election) && model.feature("wahlabend")
+    }
+
+    /// Die Wahlbezirke: auf der Stadt-Stufe alle, im Viertel die, die es
+    /// berühren — in voller Form, nicht zugeschnitten.
+    @MapContentBuilder
+    private func electionContent(_ map: ElectionMap, place: String?) -> some MapContent {
+        let byNumber = Dictionary(map.districts.map { ($0.number, $0) }, uniquingKeysWith: { a, _ in a })
+        let touching = place.map { Set(map.districts(in: $0).map(\.number)) }
+        ForEach(ElectionDistrictShapes.all().filter { touching?.contains($0.number) ?? true }) { shape in
+            let district = byNumber[shape.number]
+            let (color, opacity) = map.fill(for: district)
+            let chosen = electionDistrict == shape.number
+            let faded = electionDistrict != nil && !chosen
+            MapPolygon(coordinates: shape.ring)
+                .foregroundStyle(color.opacity(faded ? opacity * 0.35 : opacity))
+                .stroke(chosen ? RatsColor.text : RatsColor.card.opacity(0.9), lineWidth: chosen ? 2.5 : 0.7)
+        }
+        if let touching {
+            ForEach(ElectionDistrictShapes.all().filter { touching.contains($0.number) }) { shape in
+                Annotation("\(shape.number)", coordinate: shape.center, anchor: .center) {
+                    Text("\(shape.number)")
+                        .font(RatsFont.mono(10.5, weight: .bold))
+                        .monospacedDigit()
+                        .foregroundStyle(electionDistrict == shape.number ? RatsColor.card : RatsColor.text)
+                        .padding(.horizontal, 4).padding(.vertical, 2)
+                        .background(electionDistrict == shape.number ? RatsColor.text : RatsColor.card.opacity(0.85),
+                                    in: RoundedRectangle(cornerRadius: 5))
+                        .allowsHitTesting(false)
+                }
+                .annotationTitles(.hidden)
+            }
+        }
+    }
+
     @MapContentBuilder
     private var cityContent: some MapContent {
+        if electionOn, let electionMap {
+            electionContent(electionMap, place: nil)
+            // Die Ortsbereiche nur als Linien — die Farbe gehört den Bezirken.
+            ForEach(DistrictShapes.all()) { shape in
+                MapPolygon(coordinates: shape.ring)
+                    .foregroundStyle(Color.clear)
+                    .stroke(RatsColor.text.opacity(0.55), lineWidth: 1.4)
+            }
+        } else {
+            projectHeat
+        }
+    }
+
+    /// Stadt-Stufe: Wärmekarte der Ortsbereiche plus Zahlen-Pin.
+    @MapContentBuilder
+    private var projectHeat: some MapContent {
         let counts = Dictionary(uniqueKeysWithValues: (overview?.districts ?? []).map { ($0.name, $0.count) })
         let maxCount = max(1, counts.values.max() ?? 1)
         let showProjects = layers.contains(.projects)
@@ -285,6 +367,9 @@ struct CityMapView: View {
     @MapContentBuilder
     private func districtContent(_ board: DistrictBoardState) -> some MapContent {
         let outline = board.data.map { districtOutline(named: $0.place.name) } ?? []
+        if electionOn, let electionMap, let place = board.data?.place.name {
+            electionContent(electionMap, place: place)
+        }
         if outline.count > 2 {
             MapPolygon(coordinates: outline)
                 .foregroundStyle(RatsColor.primary.opacity(0.06))
@@ -478,7 +563,9 @@ struct CityMapView: View {
     // MARK: Chips, Knöpfe und Brotkrumen
 
     private var layerChips: some View {
-        let onStage = MapLayer.allCases.filter { placeID != nil || !$0.districtOnly }
+        let onStage = MapLayer.allCases.filter {
+            (placeID != nil || !$0.districtOnly) && ($0 != .election || model.feature("wahlabend"))
+        }
         return ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 6) {
                 ForEach(onStage) { layer in
@@ -571,6 +658,12 @@ struct CityMapView: View {
         case .closures: board?.data?.closures.count
         case .participations: board?.data?.participations.filter { $0.geometry != nil }.count
         case .topicPlaces: layers.contains(.topicPlaces) ? stagePoints.count : nil
+        case .election:
+            if let electionMap, electionOn {
+                districtName.map { electionMap.districts(in: $0).count } ?? electionMap.counted
+            } else {
+                nil
+            }
         }
     }
 
@@ -662,6 +755,29 @@ struct CityMapView: View {
 
     @ViewBuilder
     private func panel(compact: Bool) -> some View {
+        if electionOn, let electionMap, let place = districtName, let number = electionDistrict,
+           let district = electionMap.districts.first(where: { $0.number == number }) {
+            ElectionDistrictDetail(map: electionMap, district: district, place: place) {
+                withAnimation(RatsMotion.flow) { electionDistrict = nil }
+            }
+        } else {
+            VStack(alignment: .leading, spacing: 14) {
+                if electionOn, let electionMap {
+                    if let place = districtName {
+                        ElectionDistrictListPanel(map: electionMap, place: place) { number in
+                            withAnimation(RatsMotion.flow) { electionDistrict = number }
+                        }
+                    } else {
+                        ElectionCityPanel(map: electionMap)
+                    }
+                }
+                basePanel(compact: compact)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func basePanel(compact: Bool) -> some View {
         if let board, placeID != nil {
             DistrictBoardPanel(model: model, board: board, compact: compact, open: { select($0) })
         } else {
@@ -726,6 +842,18 @@ struct CityMapView: View {
             : outline
         if let region = regionAround(points, minSpan: 0.02) {
             withAnimation(.easeInOut(duration: 0.45)) { camera = .region(region) }
+        }
+    }
+
+    private func loadElection() async {
+        guard electionOn else { return }
+        var query: [URLQueryItem] = []
+        if let electionSlug { query.append(URLQueryItem(name: "wahl", value: electionSlug)) }
+        do {
+            let response: ElectionMap = try await model.api.get("/api/wahlabend/karte", query: query)
+            electionMap = response
+        } catch {
+            // Ohne Zahlen bleibt die Ebene leer; die Karte selbst trägt weiter.
         }
     }
 
