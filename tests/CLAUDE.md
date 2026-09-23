@@ -78,9 +78,21 @@ Import-Reihenfolge, parallel entschied der Zufall, und ein Modul schrieb seine
 Zeilen in eine andere Datei, als die App las.
 
 Deshalb setzt **`conftest.py`** diese Werte, einmal je Prozess:
-`RATSLOTSE_DB`, `COUNCIL_DB`, `WAHLABEND_HISTORY_FILE`, `WEB_JWT_SECRET`,
-`WEB_ADMIN_EMAIL`, `COOKIE_SECURE`, `DISABLE_RATE_LIMIT`. Ein Testmodul setzt
-sie nicht mehr — `test_testpfade.py` meldet jede neue Zuweisung.
+`RATSLOTSE_DB`, `COUNCIL_DB`, `RATSLOTSE_SQLITE` (LLM-Kosten), `CITIES_DB`
+samt Ablagen, `WAHLABEND_HISTORY_FILE`, `WEB_JWT_SECRET`, `WEB_ADMIN_EMAIL`,
+`COOKIE_SECURE`, `DISABLE_RATE_LIMIT`. Ein Testmodul setzt sie nicht mehr —
+`test_testpfade.py` meldet jede neue Zuweisung.
+
+**Kein Test öffnet eine Datenbank unter `data/`.** `conftest.py` ersetzt
+`sqlite3.connect` durch einen Wächter, der jeden Zugriff auf den
+`data/`-Ordner des Checkouts mit einem `RuntimeError` abweist — ausgenommen
+reines Lesen (`file:…?mode=ro`) für die Messtests am echten Bestand. Anlass
+(23.09.2026): `kern/usage.py` fällt ohne `RATSLOTSE_SQLITE` auf
+`data/ratslotse.sqlite` zurück, und jeder Lauf legte dort acht erfundene
+Kostenzeilen ab, die im Admin-Panel unter *LLM-Kosten* standen. Beim
+Einschalten fand der Wächter gleich den zweiten Fall: Die KI-Frage öffnete
+`data/cities.sqlite` beschreibbar. Weil `usage.record` Fehler bewusst
+schluckt, prüft `test_keine_echte_db.py` den Kostenpfad zusätzlich direkt.
 
 Braucht ein Test einen anderen Wert, nimmt er `monkeypatch.setenv` (wird nach
 dem Test zurückgenommen). Braucht er eine eigene Datenbank, legt er sie unter

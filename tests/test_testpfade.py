@@ -54,7 +54,8 @@ COUNCIL_DB_GELESEN = re.compile(r"""environ\.get\(\s*["']COUNCIL_DB["']""")
 #: Import-Reihenfolge (s. u.).
 NUR_IM_CONFTEST = ("RATSLOTSE_DB", "COUNCIL_DB", "WAHLABEND_HISTORY_FILE",
                    "WEB_JWT_SECRET", "WEB_ADMIN_EMAIL", "COOKIE_SECURE",
-                   "DISABLE_RATE_LIMIT")
+                   "DISABLE_RATE_LIMIT", "RATSLOTSE_SQLITE", "CITIES_DB",
+                   "CITIES_FILES_DIR", "CITIES_RAW_DIR")
 #: Nur das SETZEN ist gemeint — ``COUNCIL_DB = os.environ["COUNCIL_DB"]``
 #: liest den Wert der conftest und ist genau richtig so.
 GESETZT = re.compile(
