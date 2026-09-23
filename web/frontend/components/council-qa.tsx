@@ -217,6 +217,9 @@ type Turn = {
   deepFacetten?: DeepFacette[];
   deepFacettenFertig?: number;
   deepTeilberichtMoeglich?: boolean;
+  /** Recherche Plus: Der Bericht entstand mit dem größeren Modell (Recht
+   *  `premium_models`, beim Einreichen serverseitig festgehalten). */
+  deepPremium?: boolean;
   documents_read?: number;
   period?: string;
   planning_procedures?: Planung[];
@@ -976,6 +979,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
       planning_procedures?: Planung[]; attachments?: AnlagenHinweis[]; cited?: number[];
       documents_read?: number; period?: string; context?: string | null;
       facets?: string[]; facets_done?: number } | null;
+    premium_model?: boolean;
   }): Turn => ({
     key: naechsterKey(),
     question: job.question, answer: job.report ?? "", qtype: "deep", mode: "research",
@@ -989,6 +993,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     deepFacetten: (job.sources?.facets ?? []).map((name) => ({ name })),
     deepFacettenFertig: job.sources?.facets_done ?? 0,
     deepTeilberichtMoeglich: false,
+    deepPremium: Boolean(job.premium_model),
     documents_read: job.sources?.documents_read, period: job.sources?.period,
     planning_procedures: job.sources?.planning_procedures ?? [],
   });
@@ -1067,6 +1072,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         patchTurn(turnKey, { answer: (msg.text as string) ?? "" });
       } else if (msg.type === "done") {
         patchTurn(turnKey, { deepStatus: "fertig", cited: (msg.cited as number[]) ?? [],
+          deepPremium: Boolean(msg.premium_model),
           documents_read: (msg.documents_read as number) ?? undefined,
           period: (msg.period as string) ?? undefined });
         if (msg.conversation_id != null) setGespraechId(msg.conversation_id as number);
@@ -1445,7 +1451,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         planning_procedures?: Planung[]; sessions?: SitzungsInfo[];
         records_state?: Turn["records_state"];
         research?: boolean; context?: string | null; unclear?: boolean;
-        documents_read?: number; period?: string;
+        documents_read?: number; period?: string; premium_model?: boolean;
         chart?: QaGrafik | null } | null };
       setTurns((g.turns as DbTurn[]).map((t) => ({
         key: naechsterKey(),
@@ -1468,6 +1474,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         unclear: Boolean(t.sources?.unclear),
         ...(t.sources?.research ? {
           research: true, deepStatus: "fertig" as const,
+          deepPremium: Boolean(t.sources?.premium_model),
           documents_read: t.sources?.documents_read, period: t.sources?.period,
         } : {}),
       })));
@@ -2279,7 +2286,10 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
         {turn.research && (
           <span className="inline-flex items-center gap-1.5 text-[10.5px] text-muted-foreground/80">
             <FlaskConical className="h-3 w-3" aria-hidden />
-            Gründliche Recherche{deepFertig && turn.documents_read ? ` · ${turn.documents_read} Dokumente documents_read` : ""}
+            Gründliche Recherche{deepFertig && turn.documents_read ? ` · ${turn.documents_read} Dokumente gelesen` : ""}
+            {/* Recherche Plus: dezent, nur wenn der Bericht wirklich mit dem
+                größeren Modell entstand — Konten ohne das Recht sehen nichts. */}
+            {deepFertig && turn.deepPremium ? " · mit erweitertem Modell recherchiert" : ""}
           </span>
         )}
       </div>

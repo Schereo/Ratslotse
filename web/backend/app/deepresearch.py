@@ -70,6 +70,14 @@ class DeepJob:
     conversation_id: int | None = None
     #: Die letzten Gesprächsrunden (wie bei /ask), um Rückbezüge aufzulösen.
     verlauf: list[dict] = field(default_factory=list)
+    #: Das Modell des Berichts — beim Einreichen aus den Rechten des Kontos
+    #: bestimmt (``qa.deep_model_for``) und auch in der Job-Zeile vermerkt.
+    #: ``None`` = ``qa.DEEP_MODEL``. Ein Teilbericht nach Stopp schreibt mit
+    #: demselben Modell wie der Job, zu dem er gehört.
+    model: str | None = None
+    #: Lief der Job mit dem Recht ``premium_models``? Geht mit dem
+    #: ``done``-Ereignis an den Client, der daraus den Hinweis im Bericht macht.
+    premium: bool = False
     #: Eigenständige Fassung der Frage — wird zu Beginn des Laufs aus Frage +
     #: Verlauf gebildet. Leer, solange (oder wenn) nichts aufzulösen war.
     recherche_frage: str = ""
@@ -460,7 +468,8 @@ def _run(job: DeepJob, ratslotse_db: str, council_db: str) -> None:
                     "Versuche es mit einer konkreteren Frage — oder als schnelle Frage.")
             _emit(job, {"type": "token", "text": text})
             _emit(job, {"type": "done", "cited": [], "documents_read": gelesen,
-                        "period": zeitraum, "conversation_id": None})
+                        "period": zeitraum, "conversation_id": None,
+                        "premium_model": False})
             _db_update(ratslotse_db, job.id, "fertig", bericht=text,
                        quellen_json=json.dumps(_quellen_payload(m, []), ensure_ascii=False))
             _finish(job)
@@ -528,7 +537,8 @@ def _schreiben_und_abschliessen(job: DeepJob, ratslotse_db: str, council_db: str
                                                     debatten=m.get("debates"),
                                                     geld=m.get("money"),
                                                     planungen=m.get("planning_procedures"),
-                                                    anlagen=m.get("attachments")):
+                                                    anlagen=m.get("attachments"),
+                                                    model=job.model):
                     if job.stop.is_set():
                         break
                     buf += delta
@@ -568,7 +578,7 @@ def _schreiben_und_abschliessen(job: DeepJob, ratslotse_db: str, council_db: str
             ratslotse.close()
         _emit(job, {"type": "done", "cited": cited, "documents_read": m.get("documents_read", 0),
                     "period": m.get("period", ""), "conversation_id": conversation_id,
-                    "teilbericht": teilbericht})
+                    "teilbericht": teilbericht, "premium_model": job.premium})
         _finish(job)
         melden(job, ratslotse_db, status)
         registry_aufraeumen()
@@ -603,7 +613,7 @@ def _gespraech_anhaengen(ratslotse: Store, job: DeepJob, bericht: str,
              "attachments": m.get("anlagen_kompakt", []),
              "planning_procedures": m.get("planning_procedures", []),
              "documents_read": m.get("documents_read"), "period": m.get("period"),
-             "context": m.get("context")},
+             "context": m.get("context"), "premium_model": job.premium},
             ensure_ascii=False)
         if not ratslotse.qa_turn_speichern(conversation_id, job.user_id, job.question,
                                      bericht, quellen_json):

@@ -6123,6 +6123,8 @@ export interface components {
          * @description Kosten und Verbrauch eines Features (``kern.usage.summary``).
          */
         AdminLlmUsageFeature: {
+            /** By Model */
+            by_model: components["schemas"]["AdminLlmUsageModel"][];
             /** Calls */
             calls: number;
             /** Completion Tokens */
@@ -6139,6 +6141,18 @@ export interface components {
             models: string[];
             /** Prompt Tokens */
             prompt_tokens: number;
+        };
+        /**
+         * AdminLlmUsageModel
+         * @description Ein Modell innerhalb eines Features — Aufrufe und Kosten.
+         */
+        AdminLlmUsageModel: {
+            /** Calls */
+            calls: number;
+            /** Cost */
+            cost: number;
+            /** Model */
+            model: string;
         };
         /**
          * AdminLotti
@@ -13213,7 +13227,7 @@ export interface components {
         /**
          * ResearchSnapshot
          * @description Persistierter Stand eines Deep-Research-Jobs (``Store.deep_job_get``,
-         *     fester SELECT über acht Spalten). ``report`` und ``sources`` sind ``None``,
+         *     fester SELECT über neun Spalten). ``report`` und ``sources`` sind ``None``,
          *     solange der Job läuft; der Router parst ``sources`` aus der JSON-Spalte.
          *
          *     ``user_id`` steht bewusst NICHT hier — der Store wählt es gar nicht erst
@@ -13235,6 +13249,8 @@ export interface components {
             created: string;
             /** Id */
             id: string;
+            /** Premium Model */
+            premium_model: boolean;
             /** Question */
             question: string;
             /** Report */
@@ -13287,11 +13303,11 @@ export interface components {
              * Key
              * @enum {string}
              */
-            key: "user" | "expert" | "council_member" | "admin";
+            key: "user" | "research_plus" | "expert" | "council_member" | "admin";
             /** Label */
             label: string;
             /** Permissions */
-            permissions: ("budget" | "mandate" | "admin")[];
+            permissions: ("budget" | "mandate" | "premium_models" | "admin")[];
         };
         /**
          * RoleUpdate
@@ -14514,14 +14530,14 @@ export interface components {
             /** Pending Email */
             pending_email?: string | null;
             /** Permissions */
-            permissions: ("budget" | "mandate" | "admin")[];
+            permissions: ("budget" | "mandate" | "premium_models" | "admin")[];
             /**
              * Role
              * @enum {string}
              */
-            role: "user" | "expert" | "council_member" | "admin";
+            role: "user" | "research_plus" | "expert" | "council_member" | "admin";
             /** Roles */
-            roles: ("user" | "expert" | "council_member" | "admin")[];
+            roles: ("user" | "research_plus" | "expert" | "council_member" | "admin")[];
             /** Saves Conversations */
             saves_conversations?: number | null;
             /**
@@ -14701,12 +14717,12 @@ export interface components {
              * Role
              * @enum {string}
              */
-            role: "user" | "expert" | "council_member" | "admin";
+            role: "user" | "research_plus" | "expert" | "council_member" | "admin";
             /**
              * Roles
              * @default []
              */
-            roles: ("user" | "expert" | "council_member" | "admin")[];
+            roles: ("user" | "research_plus" | "expert" | "council_member" | "admin")[];
             /**
              * Status
              * @default pending
@@ -18086,7 +18102,7 @@ export interface operations {
              *     - `sources` — die Quellen der Recherche
              *     - `token` — ein Stück Berichtstext (`text`)
              *     - `replace` — ersetzt den bisher gesendeten Text vollständig
-             *     - `done` — Schluss-Ereignis mit `cited` und `documents_read`
+             *     - `done` — Schluss-Ereignis mit `cited`, `documents_read` und `premium_model` (`true`, wenn der Bericht mit dem größeren Modell des Rechts `premium_models` entstand)
              *     - `gestoppt` — auf Wunsch abgebrochen (`facets_done`)
              *     - `fehler` — die Recherche ist fehlgeschlagen
              *
@@ -22024,4 +22040,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: fef36442312ee30a6c8983071603ff5d088e3f40bbfe31fe3a501b09edd633ba
+// vertrag-sha256: 883a0153533580a01f9dfe8d123e1c519b8214cb174e979ad74bcd5e0b0ac163

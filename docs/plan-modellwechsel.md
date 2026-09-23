@@ -628,3 +628,52 @@ Kosten, `finish_reason`, Denk-Tokens). Die Kosten je Bericht der Läufe vom
 Fassung des Läufers zählte „alles seit der Marke des Falls“ und nahm dabei
 den Bericht des Vorgängers teils doppelt mit (6,5 statt 5,6 ct); die
 Laufsummen stimmten, und der Läufer rechnet jetzt über die Laufsumme.
+
+### Recherche Plus (umgesetzt 23.09.2026)
+
+Tim, 23.09.: „Können wir eine weitere Rolle einführen, die größere Modelle für
+die ausgewählten Nutzer erlaubt?“ Umgesetzt als Recht `premium_models` mit der
+Rolle *Recherche Plus* (`kern/roles.py`). Wirkung: Die ausführliche Recherche
+schreibt ihren Bericht mit `COUNCIL_DEEP_PLUS_MODEL` (Vorgabe GPT-6 Sol) statt
+mit `COUNCIL_DEEP_MODEL`. Das Recht prüft der Router beim Einreichen, die Job-
+Zeile hält `model` und `premium` fest; das Tageskontingent ist dasselbe. Eine
+echte Recherche mit dem Plus-Konto lief lokal auf Sol (`llm_usage`:
+`deep_report`, `openai/gpt-6-sol`, 19.386 + 1.434 Tokens, 6,3 ct, 30 s).
+
+**Routing:** `deep_report` steht in `ZDR_VERZICHT`, Sol läuft wie Luna ohne
+ZDR-Pflicht. Sol hat dieselben Endpunkte wie Luna, auch `azure/eu`. Eine Probe
+am 23.09. mit `provider.zdr = true` und `only: ["azure/eu"]` kam für beide
+Modelle durch. Baut der parallele PR „Azure EU zuerst“ die Reihenfolge je
+Modell, gehört Sol mit in die Liste; je Feature greift er ohne Zutun.
+
+**Lotti und Frag den Rat mit dem Recht? Nein, gemessen.** Die feste Stichprobe
+von 15 Fällen je Kanal (`eval/run_fakten.py --nur <kanal> --stichprobe 15
+--ohne-zdr`), je ein Lauf, gleiche Datenbank. Die Werte sind nachgewertet mit
+dem neuen Absage-Muster „geben nicht her“ (siehe unten):
+
+| Kanal | Modell | Modellfehler | davon falsch | Kontextfehler | p50 | p95 | $ je Fall |
+|---|---|---:|---:|---:|---:|---:|---:|
+| Lotti | GPT-6 Luna | 2 | 0 | 0 | 6,1 s | 13,1 s | 0,0006 |
+| Lotti | GPT-6 Sol | 3 | 0 | 0 | 4,6 s | 13,7 s | 0,0111 |
+| Frag den Rat | GPT-6 Luna | 3 | 0 | 2 | 15,2 s | 35,9 s | 0,0019 |
+| Frag den Rat | GPT-6 Sol | 3 | 0 | 2 | 15,1 s | 26,8 s | 0,0192 |
+
+Sol macht auf beiden Kanälen **nicht weniger** Modellfehler, kostet aber das
+10- bis 18-Fache. Bei Frag den Rat sind es dieselben drei Auslassungen
+(`rat-schwimmbad-zuletzt`, `rat-tangentialbus-praemisse`,
+`rat-person-druegemoeller-ausschuesse`). Bei Lotti fehlt Sol zusätzlich bei
+`hh-rpa-lotti` das Stichwort. Es schreibt „Aufgaben nicht ausreichend
+getrennt“ statt „Funktionstrennung“, der Fall ist also knapp. Umgestellt ist deshalb
+nichts; einen vollen Lauf gibt es nach der Regel oben nur bei einem Gewinn in
+der Stichprobe. Sol ist bei Lotti im Median 1,5 s schneller und bei Frag den
+Rat im p95 9 s — das allein trägt den Preis nicht.
+
+**Messfehler:** Sols Antwort auf `hh-nd-gewst-firma-rat` („Die Ratsunterlagen
+geben nicht her, wie viel Gewerbesteuer die EWE … zahlt“) ist eine richtige
+Absage, zählte aber als `modell_falsch`. Neues Muster in
+`eval/fakten_abgleich.py::_VERWEIGERT`, alle vier Läufe nachgewertet.
+
+**Kosten der Messung:** Sol 0,45 $ (Lotti 0,17 $, Frag den Rat 0,29 $), Luna
+0,04 $, dazu die eine echte Plus-Recherche 0,06 $. Ergebnisse:
+`eval/results/fakten/stichprobe/` (eigener Ordner, damit `bericht` sie nicht
+neben die Gesamtläufe stellt).

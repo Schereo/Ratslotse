@@ -72,6 +72,27 @@ def test_fachpublikum_ist_eine_echte_teilmenge_des_ratsmitglieds():
     assert roles.primary_role(["expert", "council_member"]) == "council_member"
 
 
+def test_recherche_plus_traegt_nur_das_modell_recht():
+    """Recherche Plus ist ein ZUSATZ zu einer anderen Rolle, keine Stufe.
+
+    Trüge sie ``budget`` mit, öffnete das größere Modell nebenbei den
+    Haushalt; trüge sie gar nichts, wäre sie eine Rolle ohne Wirkung.
+    """
+    assert roles.permissions_for(["research_plus"]) == frozenset({"premium_models"})
+    assert roles.permissions_for(["council_member", "research_plus"]) == frozenset(
+        {"budget", "mandate", "premium_models"})
+    assert roles.ROLES["research_plus"].assignable is True
+
+
+def test_recherche_plus_verdraengt_in_der_alt_spalte_keine_rolle():
+    """Die ausgelieferte App liest `role` — ein Ratsmitglied mit Recherche Plus
+    muss dort weiter als Ratsmitglied erscheinen, ein Admin als Admin."""
+    assert roles.primary_role(["research_plus", "council_member"]) == "council_member"
+    assert roles.primary_role(["research_plus", "expert"]) == "expert"
+    assert roles.primary_role(["research_plus", "admin"]) == "admin"
+    assert roles.ROLE_ORDER.index("research_plus") == 1
+
+
 def test_jede_rolle_steht_in_der_reihenfolge_und_umgekehrt():
     """Eine Rolle, die in ROLE_ORDER fehlt, ist unsichtbar: `known_roles`
     filtert sie weg, das Konto verliert seine Rechte, und nichts meldet sich."""

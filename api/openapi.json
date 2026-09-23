@@ -1090,6 +1090,13 @@
       "AdminLlmUsageFeature": {
         "description": "Kosten und Verbrauch eines Features (``kern.usage.summary``).",
         "properties": {
+          "by_model": {
+            "items": {
+              "$ref": "#/components/schemas/AdminLlmUsageModel"
+            },
+            "title": "By Model",
+            "type": "array"
+          },
           "calls": {
             "title": "Calls",
             "type": "integer"
@@ -1139,10 +1146,35 @@
           "completion_tokens",
           "cost",
           "models",
+          "by_model",
           "first",
           "last"
         ],
         "title": "AdminLlmUsageFeature",
+        "type": "object"
+      },
+      "AdminLlmUsageModel": {
+        "description": "Ein Modell innerhalb eines Features — Aufrufe und Kosten.",
+        "properties": {
+          "calls": {
+            "title": "Calls",
+            "type": "integer"
+          },
+          "cost": {
+            "title": "Cost",
+            "type": "number"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          }
+        },
+        "required": [
+          "model",
+          "calls",
+          "cost"
+        ],
+        "title": "AdminLlmUsageModel",
         "type": "object"
       },
       "AdminLotti": {
@@ -18300,7 +18332,7 @@
         "type": "object"
       },
       "ResearchSnapshot": {
-        "description": "Persistierter Stand eines Deep-Research-Jobs (``Store.deep_job_get``,\nfester SELECT über acht Spalten). ``report`` und ``sources`` sind ``None``,\nsolange der Job läuft; der Router parst ``sources`` aus der JSON-Spalte.\n\n``user_id`` steht bewusst NICHT hier — der Store wählt es gar nicht erst\naus, die Zeile gehört ohnehin dem anfragenden Konto.\n\n**``sources`` ist ein OBJEKT, keine Liste.** Es ist der ganze Quellen-Block\n(``deepresearch._quellen_payload``): unter ``sources`` die Beschlüsse,\ndaneben ``press_releases``, ``debates``, ``planning_procedures``,\n``attachments``, ``facets``, ``documents_read``, ``period``, ``cited`` und\n``context`` — deckungsgleich mit dem ``sources``-Ereignis des Stroms, damit\nder Client einen fertigen Job identisch rendern kann. Der Block bleibt hier\noffen, weil er ein gewachsener JSON-Blob in der Datenbank ist: Ältere\nZeilen tragen weniger Schlüssel, und eine Aufzählung schnitte die\nzusätzlichen still weg (dieselbe Erwägung wie bei ``ConversationTurn``).\nAls ``list`` deklariert war das ein 500 an jedem fertigen Job.",
+        "description": "Persistierter Stand eines Deep-Research-Jobs (``Store.deep_job_get``,\nfester SELECT über neun Spalten). ``report`` und ``sources`` sind ``None``,\nsolange der Job läuft; der Router parst ``sources`` aus der JSON-Spalte.\n\n``user_id`` steht bewusst NICHT hier — der Store wählt es gar nicht erst\naus, die Zeile gehört ohnehin dem anfragenden Konto.\n\n**``sources`` ist ein OBJEKT, keine Liste.** Es ist der ganze Quellen-Block\n(``deepresearch._quellen_payload``): unter ``sources`` die Beschlüsse,\ndaneben ``press_releases``, ``debates``, ``planning_procedures``,\n``attachments``, ``facets``, ``documents_read``, ``period``, ``cited`` und\n``context`` — deckungsgleich mit dem ``sources``-Ereignis des Stroms, damit\nder Client einen fertigen Job identisch rendern kann. Der Block bleibt hier\noffen, weil er ein gewachsener JSON-Blob in der Datenbank ist: Ältere\nZeilen tragen weniger Schlüssel, und eine Aufzählung schnitte die\nzusätzlichen still weg (dieselbe Erwägung wie bei ``ConversationTurn``).\nAls ``list`` deklariert war das ein 500 an jedem fertigen Job.",
         "properties": {
           "created": {
             "title": "Created",
@@ -18309,6 +18341,10 @@
           "id": {
             "title": "Id",
             "type": "string"
+          },
+          "premium_model": {
+            "title": "Premium Model",
+            "type": "boolean"
           },
           "question": {
             "title": "Question",
@@ -18350,7 +18386,8 @@
           "sources",
           "seen",
           "created",
-          "updated"
+          "updated",
+          "premium_model"
         ],
         "title": "ResearchSnapshot",
         "type": "object"
@@ -18434,6 +18471,7 @@
           "key": {
             "enum": [
               "user",
+              "research_plus",
               "expert",
               "council_member",
               "admin"
@@ -18450,6 +18488,7 @@
               "enum": [
                 "budget",
                 "mandate",
+                "premium_models",
                 "admin"
               ],
               "type": "string"
@@ -21346,6 +21385,7 @@
               "enum": [
                 "budget",
                 "mandate",
+                "premium_models",
                 "admin"
               ],
               "type": "string"
@@ -21356,6 +21396,7 @@
           "role": {
             "enum": [
               "user",
+              "research_plus",
               "expert",
               "council_member",
               "admin"
@@ -21367,6 +21408,7 @@
             "items": {
               "enum": [
                 "user",
+                "research_plus",
                 "expert",
                 "council_member",
                 "admin"
@@ -21842,6 +21884,7 @@
           "role": {
             "enum": [
               "user",
+              "research_plus",
               "expert",
               "council_member",
               "admin"
@@ -21854,6 +21897,7 @@
             "items": {
               "enum": [
                 "user",
+                "research_plus",
                 "expert",
                 "council_member",
                 "admin"
@@ -26827,7 +26871,7 @@
                 }
               }
             },
-            "description": "Server-Sent Events (`text/event-stream`). Erst ein Replay aller Ereignisse ab `ab`, dann live weiter. Jeder Rahmen ist eine `data:`-Zeile mit einem JSON-Objekt und einem Feld `type`:\n\n- `phase` — `zerlegen`, `lesen` (mit `dokumente`) oder `schreiben`\n- `facets` — die Namen der Facetten, in die die Frage zerfällt\n- `facette` — eine Facette ist fertig (`name`, `treffer`)\n- `sources` — die Quellen der Recherche\n- `token` — ein Stück Berichtstext (`text`)\n- `replace` — ersetzt den bisher gesendeten Text vollständig\n- `done` — Schluss-Ereignis mit `cited` und `documents_read`\n- `gestoppt` — auf Wunsch abgebrochen (`facets_done`)\n- `fehler` — die Recherche ist fehlgeschlagen\n\nEin Verbindungsabriss ist folgenlos — der Job läuft im Backend weiter, der Client verbindet sich einfach neu."
+            "description": "Server-Sent Events (`text/event-stream`). Erst ein Replay aller Ereignisse ab `ab`, dann live weiter. Jeder Rahmen ist eine `data:`-Zeile mit einem JSON-Objekt und einem Feld `type`:\n\n- `phase` — `zerlegen`, `lesen` (mit `dokumente`) oder `schreiben`\n- `facets` — die Namen der Facetten, in die die Frage zerfällt\n- `facette` — eine Facette ist fertig (`name`, `treffer`)\n- `sources` — die Quellen der Recherche\n- `token` — ein Stück Berichtstext (`text`)\n- `replace` — ersetzt den bisher gesendeten Text vollständig\n- `done` — Schluss-Ereignis mit `cited`, `documents_read` und `premium_model` (`true`, wenn der Bericht mit dem größeren Modell des Rechts `premium_models` entstand)\n- `gestoppt` — auf Wunsch abgebrochen (`facets_done`)\n- `fehler` — die Recherche ist fehlgeschlagen\n\nEin Verbindungsabriss ist folgenlos — der Job läuft im Backend weiter, der Client verbindet sich einfach neu."
           },
           "410": {
             "description": "Die Recherche ist nicht mehr aktiv — den Snapshot über `GET /api/council/deep-research/{job_id}` laden."
