@@ -339,3 +339,39 @@ def test_neueste_nimmt_den_juengsten_bericht():
     series = kz.neueste(zeilen)
     assert len(series) == 1
     assert series[0]["value"] == 45.92 and series[0]["report_year"] == 2023
+
+
+# Dok 313879, Rechenschaftsbericht 2025 — die letzte Spalte trägt ein
+# Leerzeichen vor dem Prozentzeichen. Ohne Zusammenziehen riss jede
+# Prozentzeile, und der ganze Bericht fiel heraus (24.09.2026).
+TABELLE_2025 = """Haushaltsjahr 2021 2022 2023 2024 
+
+2025 
+Eigenkapitalquote I  
+(ohne Sonderposten) 
+53,72%
+ 53,15% 54,62% 50,11% 49,62 % 
+Anzahl der 
+Einwohnenden (31.12. 
+HH-Jahr) 
+171.493
+ 
+ 
+173.987 175.878 176.068 176.530 
+Steuerquote 45,92% 44,00% 50,01% 49,43% 47,76 % 
+ 
+Einwohnerzahl Stand 31.12.2025
+*): 176.530 
+
+Eigenkapitalquote I  
+Ermittlung: 100 * Nettoposition (ohne Sonderposten) / Bilanzsumme 
+"""
+
+
+def test_prozentzeichen_mit_leerzeichen_2025():
+    zeilen, unbekannt = kz.parse_kennzahlen(TABELLE_2025, 2025)
+    assert unbekannt == []
+    werte = {(z["indicator"], z["year"]): z["value"] for z in zeilen}
+    assert werte[("eigenkapitalquote_1", 2025)] == 49.62
+    assert werte[("steuerquote", 2025)] == 47.76
+    assert werte[("einwohner", 2025)] == 176_530
