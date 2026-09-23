@@ -188,6 +188,9 @@ gekürzt). Nur wenn das Protokoll den Inhalt wirklich nicht nennt, reicht \
 'Änderungsantrag der X-Fraktion'.
 - Das Haupt-"outcome"/"vote"/"official_text" beschreibt das ENDergebnis des TOP, die \
 sub_votes die einzelnen Abstimmungen davor.
+- "vote": Enthaltungen sind keine Gegenstimmen. "einstimmig bei neun Enthaltungen" \
+ist "unanimous"; "majority" nur bei Gegenstimmen oder wenn das Protokoll \
+"mehrheitlich" sagt.
 - Zahlen als Zahl ausschreiben (z.B. "fünf" -> 5).
 - Erfinde nichts; fehlende Werte = null.
 

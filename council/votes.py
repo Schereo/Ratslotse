@@ -77,3 +77,39 @@ def parse_raw_result(raw_result: str | None) -> list[tuple[str, str]]:
             if (faction, stance) not in out:
                 out.append((faction, stance))
     return out
+
+
+# ---- Abstimmungsverhältnis (vote) -----------------------------------------
+
+VOTES = ("unanimous", "majority")
+
+# „- einstimmig bei neun Enthaltungen -": Enthaltungen sind keine
+# Gegenstimmen, der Beschluss ist einstimmig. Bewusst eng — nur der Satz, der
+# außer „einstimmig" und Enthaltungen NICHTS sagt. „einstimmig bei einer
+# Gegenstimme" (8590) steht wirklich so im Protokoll und bleibt, wie es ist.
+_EINSTIMMIG_MIT_ENTHALTUNGEN = re.compile(
+    r"^[\s\-–—.]*einstimmig(?:\s+(?:beschlossen|angenommen))?"
+    r"(?:\s*,?\s*(?:bei|mit)\s+(?:\w+\s+)?enthaltung(?:en)?)?[\s\-–—.]*$",
+    re.IGNORECASE,
+)
+
+
+def normalize_vote(vote: str | None, raw_result: str | None) -> str | None:
+    """``unanimous`` / ``majority`` / ``None`` — nie ein anderer Wert.
+
+    Das Protokoll-Modell schrieb bis 09/2026 zwei Fehler in die Spalte:
+    „einstimmig bei neun Enthaltungen" wurde ``majority`` (6444, 6606, 8426,
+    9388 — Lotti las dann „mehrheitlich"), und zweimal stand der Satz selbst
+    als Wert da (6929, 6930). Der Original-Abstimmungssatz ist die Quelle;
+    er entscheidet, wo er eindeutig ist.
+    """
+    if raw_result and _EINSTIMMIG_MIT_ENTHALTUNGEN.match(raw_result):
+        return "unanimous"
+    if vote in VOTES:
+        return vote
+    low = (vote or "").strip().lower()
+    if _EINSTIMMIG_MIT_ENTHALTUNGEN.match(low):
+        return "unanimous"
+    if low.startswith("mehrheitlich"):
+        return "majority"
+    return None

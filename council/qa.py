@@ -15,6 +15,7 @@ import re
 
 from kern import glossar, llm, prompts
 from council import ernte
+from council import outcome_note
 from council import geld as _geld
 from council.topics import _strip_fences  # noqa: F401  (kept for symmetry / future use)
 
@@ -1899,6 +1900,11 @@ def _build_context(candidates: list[dict]) -> str:
         date = _datum_de(c["session_date"]) if c.get("session_date") else None
         meta = " · ".join(p for p in (c.get("committee"), date, c.get("outcome")) if p)
         body = (c.get("summary") or c.get("official_text") or "").strip()[:450]
+        # Abgelehnt/vertagt: `official_text` ist nur der Vorschlag, und ältere
+        # `summary`-Sätze beschreiben ihn als beschlossen (23.09.2026: 5988
+        # „einstimmig abgelehnt" → „Hebesatz steigt auf 490 Prozent").
+        if body:
+            body = outcome_note.as_proposal(c.get("outcome"), body)
         vorlage = (c.get("vorlage_excerpt") or "").strip()
         suffix = f" — Aus der Vorlage: {vorlage}" if vorlage else ""
         applicants = _factions_of(c)

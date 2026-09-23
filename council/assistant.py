@@ -40,6 +40,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
+from council import outcome_note
 from kern import glossar, knowledge, llm, prompts
 
 MODEL = os.environ.get("COUNCIL_ASSISTANT_MODEL", "google/gemini-2.5-flash")
@@ -438,7 +439,11 @@ def deterministic_answer(store, screen: Screen, question: str) -> tuple[str, str
             except Exception:  # noqa: BLE001 — ohne Beschluss antwortet das Modell
                 d = {}
             kurz = (d.get("simple_summary") or "").strip()
-            if kurz:
+            # Eine Kurzfassung, die das Ergebnis eines abgelehnten oder
+            # vertagten Punkts verschweigt, erklärt den Vorschlag als
+            # beschlossen (23.09.2026: 5988, 5914, 5253) — dann soll das
+            # Modell antworten, das Ergebnis UND Wortlaut im Kontext hat.
+            if kurz and outcome_note.states_outcome(d.get("outcome"), kurz):
                 titel = (d.get("title") or "").strip()
                 kopf = f"**{titel}**\n\n" if titel else ""
                 return kopf + kurz, "simple_summary"
@@ -534,10 +539,14 @@ def _record_block(store, screen: Screen) -> str:
             abstimmung = _abstimmung(d)
             if abstimmung:
                 zeilen.append(f"  Abstimmung: {abstimmung}")
-            if d.get("simple_summary"):
+            outcome = d.get("outcome")
+            if d.get("simple_summary") and outcome_note.states_outcome(outcome, d["simple_summary"]):
                 zeilen.append(f"  Kurzfassung: {kuerze(d['simple_summary'], 500)}")
             if d.get("official_text"):
-                zeilen.append(f"  Amtlicher Wortlaut (Auszug): {kuerze(d['official_text'], 600)}")
+                # Bei abgelehnt/vertagt steht dort der Vorschlag, nicht was gilt.
+                art = ("Beschlussvorschlag — gilt NICHT, siehe Abstimmung"
+                       if outcome in outcome_note.NOT_ADOPTED else "Amtlicher Wortlaut")
+                zeilen.append(f"  {art} (Auszug): {kuerze(d['official_text'], 600)}")
             teile.append("\n".join(zeilen))
 
     ksinr = refs.get("ksinr")

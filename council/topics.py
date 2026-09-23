@@ -11,6 +11,7 @@ import json
 import logging
 import os
 
+from council import outcome_note
 from kern import llm
 
 MODEL = os.environ.get("COUNCIL_TOPIC_MODEL", "deepseek/deepseek-v4-pro")
@@ -43,7 +44,11 @@ Themenfelder (Schlüssel: Beschreibung):
 Für JEDEN Eintrag liefere:
 - "field": GENAU EIN Schlüssel aus der Liste (der am besten passende)
 - "tags": 1-3 feinere Schlagworte (frei, deutsch, z.B. "Radverkehr", "Kita-Ausbau"); [] wenn unklar
-- "summary": EIN knapper, neutraler Satz (max. 140 Zeichen), was beschlossen/berichtet wurde
+- "summary": EIN knapper, neutraler Satz (max. 140 Zeichen), was beschlossen/berichtet wurde.
+  Trägt ein Eintrag eine Zeile "Ergebnis:", ist "Beschluss" dort nur der VORSCHLAG:
+  Dann nennt "summary" das Ergebnis ausdrücklich ("… wurde abgelehnt", "… wurde vertagt",
+  "… in den Fachausschuss verwiesen", "kein Beschluss zu …") und beschreibt den Inhalt
+  als Vorschlag — nie so, als sei er beschlossen.
 
 Antworte mit NUR JSON in dieser Form:
 {{"results": [{{"id": <id>, "field": "<schlüssel>", "tags": ["..."], "summary": "..."}}]}}
@@ -90,7 +95,12 @@ def _render_items(decisions: list[dict]) -> str:
         if len(official_text) > 400:
             official_text = official_text[:400] + "…"
         committee = d.get("committee") or ""
-        lines.append(f'- id {d["id"]}: [{committee}] {title}\n  Beschluss: {official_text}')
+        line = f'- id {d["id"]}: [{committee}] {title}\n  Beschluss: {official_text}'
+        outcome = d.get("outcome")
+        if outcome in outcome_note.NOT_ADOPTED:
+            raw = " ".join((d.get("raw_result") or "").split())[:200]
+            line += f"\n  Ergebnis: {outcome_note.LABEL[outcome]}" + (f" ({raw})" if raw else "")
+        lines.append(line)
     return "\n".join(lines)
 
 
@@ -108,6 +118,7 @@ def classify_batch(decisions: list[dict], model: str = MODEL):
         extra = {"extra_body": {"reasoning": {"enabled": False}}}
     messages = [{"role": "user", "content": prompt}]
     valid_ids = {d["id"] for d in decisions}
+    outcomes = {d["id"]: d.get("outcome") for d in decisions}
     last_err: Exception = ValueError("no response")
     for _ in range(2):
         resp = llm.chat_complete(
@@ -139,6 +150,10 @@ def classify_batch(decisions: list[dict], model: str = MODEL):
                 tags = []
             tags = [str(t).strip() for t in tags if str(t).strip()][:3]
             summary = (r.get("summary") or "").strip()[:200] or None
+            # Ein abgelehnter Antrag, dessen Satz ihn als beschlossen darstellt,
+            # ist schlimmer als gar kein Satz: Frag den Rat liest `summary`.
+            if not outcome_note.states_outcome(outcomes.get(rid), summary):
+                summary = None
             out[rid] = {"field": field, "tags": tags, "summary": summary}
         if out:
             return out, resp.usage
