@@ -1,0 +1,362 @@
+[
+ {
+  "id": "4695-960",
+  "ksinr": 4695,
+  "von": 960,
+  "bis": 1000,
+  "stand": "5",
+  "erwartet": [
+   "6.1"
+  ],
+  "art": "aufruf",
+  "notiz": "„Tagesordnungspunkt 61“ = 6.1"
+ },
+ {
+  "id": "4695-995",
+  "ksinr": 4695,
+  "von": 995,
+  "bis": 1035,
+  "stand": "6.1",
+  "erwartet": [
+   "6.4"
+  ],
+  "art": "block",
+  "notiz": "6.2 zur Kenntnis, 63 abgestimmt, „Tagesordnungspunkt 64“ aufgerufen"
+ },
+ {
+  "id": "4695-1060",
+  "ksinr": 4695,
+  "von": 1060,
+  "bis": 1110,
+  "stand": "6.5",
+  "erwartet": [
+   "6.8"
+  ],
+  "art": "block",
+  "notiz": "6.6, 6.7, „6.8 Punkt 8“"
+ },
+ {
+  "id": "4695-1535",
+  "ksinr": 4695,
+  "von": 1535,
+  "bis": 1575,
+  "stand": "6.9",
+  "erwartet": [
+   "7.1"
+  ],
+  "art": "aufruf",
+  "notiz": "„Dann machen wir mit 7.1 weiter“"
+ },
+ {
+  "id": "4695-1580",
+  "ksinr": 4695,
+  "von": 1580,
+  "bis": 1640,
+  "stand": "7.1",
+  "erwartet": [
+   "7.1"
+  ],
+  "art": "aussprache",
+  "notiz": "Rede zum Bahnhofsvorplatz"
+ },
+ {
+  "id": "4695-2360",
+  "ksinr": 4695,
+  "von": 2360,
+  "bis": 2420,
+  "stand": "7.1",
+  "erwartet": [
+   "7.2"
+  ],
+  "art": "aufruf",
+  "notiz": "Abstimmung 7.1, Aufruf 7.2, erste Rede"
+ },
+ {
+  "id": "4695-2600",
+  "ksinr": 4695,
+  "von": 2600,
+  "bis": 2660,
+  "stand": "7.2",
+  "erwartet": [
+   "7.2"
+  ],
+  "art": "aussprache",
+  "notiz": "Debatte Uhlhornsweg"
+ },
+ {
+  "id": "4695-2975",
+  "ksinr": 4695,
+  "von": 2975,
+  "bis": 3035,
+  "stand": "7.2",
+  "erwartet": [
+   "10.1"
+  ],
+  "art": "block",
+  "notiz": "7.3, versprochen „81“, 9.1, „Dann 10.1“"
+ },
+ {
+  "id": "4695-3400",
+  "ksinr": 4695,
+  "von": 3400,
+  "bis": 3460,
+  "stand": "10.1",
+  "erwartet": [
+   "10.1"
+  ],
+  "art": "aussprache",
+  "notiz": "Debatte Jugendarbeit"
+ },
+ {
+  "id": "4695-3785",
+  "ksinr": 4695,
+  "von": 3785,
+  "bis": 3845,
+  "stand": "10.1",
+  "erwartet": [
+   "11.1"
+  ],
+  "art": "aufruf",
+  "notiz": "„Tagesordnungspunkt 111“ = 11.1"
+ },
+ {
+  "id": "4695-4095",
+  "ksinr": 4695,
+  "von": 4095,
+  "bis": 4135,
+  "stand": "11.2",
+  "erwartet": [
+   "12.1"
+  ],
+  "art": "block",
+  "notiz": "11.3, dann „121 Jahresabschluss“"
+ },
+ {
+  "id": "4695-4400",
+  "ksinr": 4695,
+  "von": 4400,
+  "bis": 4445,
+  "stand": "12.2",
+  "erwartet": [
+   "14.1"
+  ],
+  "art": "block",
+  "notiz": "13.1 abgestimmt, „141 Neubau Sechsfeldhalle“"
+ },
+ {
+  "id": "4695-4900",
+  "ksinr": 4695,
+  "von": 4900,
+  "bis": 4960,
+  "stand": "14.1",
+  "erwartet": [
+   "14.1"
+  ],
+  "art": "aussprache",
+  "notiz": "Debatte Sechsfeldhalle"
+ },
+ {
+  "id": "4695-5560",
+  "ksinr": 4695,
+  "von": 5560,
+  "bis": 5620,
+  "stand": "14.1",
+  "erwartet": [
+   "14.2"
+  ],
+  "art": "aufruf",
+  "notiz": "„143 … zurückgezogen … 14, Entschuldigung, 142“"
+ },
+ {
+  "id": "4695-5990",
+  "ksinr": 4695,
+  "von": 5990,
+  "bis": 6040,
+  "stand": "14.2",
+  "erwartet": [
+   "14.4"
+  ],
+  "art": "block",
+  "notiz": "14.3 zurückgezogen und geschlossen, „144 … Bauturbo“"
+ },
+ {
+  "id": "4695-6640",
+  "ksinr": 4695,
+  "von": 6640,
+  "bis": 6690,
+  "stand": "14.4",
+  "erwartet": [
+   "14.6"
+  ],
+  "art": "block",
+  "notiz": "14.4 abgelehnt, 14.5 zur Kenntnis, „146 … Pflasterung“"
+ },
+ {
+  "id": "4695-7980",
+  "ksinr": 4695,
+  "von": 7980,
+  "bis": 8020,
+  "stand": "14.13",
+  "erwartet": [
+   "14.12"
+  ],
+  "art": "aufruf",
+  "notiz": "nach 14.13 kommt „1412 … Zizilienbrücke“"
+ },
+ {
+  "id": "4692-11300",
+  "ksinr": 4692,
+  "von": 11300,
+  "bis": 11350,
+  "stand": "6.1",
+  "erwartet": [
+   "6.3"
+  ],
+  "art": "block",
+  "notiz": "6.2 abgestimmt, „Tagesordnungspunkt 6.3 Stadion …“"
+ },
+ {
+  "id": "4692-13200",
+  "ksinr": 4692,
+  "von": 13200,
+  "bis": 13260,
+  "stand": "7.1",
+  "erwartet": [
+   "8.1"
+  ],
+  "art": "aufruf",
+  "notiz": "„Tagesordnungspunkt 8.1 … Wärmeplanung“"
+ },
+ {
+  "id": "4692-14040",
+  "ksinr": 4692,
+  "von": 14040,
+  "bis": 14100,
+  "stand": "8.1",
+  "erwartet": [
+   "8.2"
+  ],
+  "art": "aufruf",
+  "notiz": "„weiter mit 8.2 Wärmewendebeirat“"
+ },
+ {
+  "id": "4692-14300",
+  "ksinr": 4692,
+  "von": 14300,
+  "bis": 14360,
+  "stand": "8.2",
+  "erwartet": [
+   "8.2"
+  ],
+  "art": "aussprache",
+  "notiz": "Debatte Wärmewende-Beirat"
+ },
+ {
+  "id": "4692-14950",
+  "ksinr": 4692,
+  "von": 14950,
+  "bis": 15010,
+  "stand": "8.2",
+  "erwartet": [
+   "8.3"
+  ],
+  "art": "aufruf",
+  "notiz": "„Tagesordnungspunkt 83 Spielleitplanung“"
+ },
+ {
+  "id": "4692-15300",
+  "ksinr": 4692,
+  "von": 15300,
+  "bis": 15360,
+  "stand": "8.3",
+  "erwartet": [
+   "8.3"
+  ],
+  "art": "aussprache",
+  "notiz": "Debatte Spielleitplanung"
+ },
+ {
+  "id": "4692-15705",
+  "ksinr": 4692,
+  "von": 15705,
+  "bis": 15765,
+  "stand": "8.3",
+  "erwartet": [
+   "10.1"
+  ],
+  "art": "block",
+  "notiz": "9.1, „92“, „101 Berufung“"
+ },
+ {
+  "id": "4692-15960",
+  "ksinr": 4692,
+  "von": 15960,
+  "bis": 16000,
+  "stand": "11.1",
+  "erwartet": [
+   "12.4"
+  ],
+  "art": "block",
+  "notiz": "121, 122, 123, „124 außerplanmäßige“"
+ },
+ {
+  "id": "4692-16200",
+  "ksinr": 4692,
+  "von": 16200,
+  "bis": 16260,
+  "stand": "13.1",
+  "erwartet": [
+   "13.1"
+  ],
+  "art": "aussprache",
+  "notiz": "Debatte Bewegungsförderung"
+ },
+ {
+  "id": "4692-16440",
+  "ksinr": 4692,
+  "von": 16440,
+  "bis": 16480,
+  "stand": "13.1",
+  "erwartet": [
+   "13.2"
+  ],
+  "art": "aufruf",
+  "notiz": "„weiter mit 132 Unterstützung Schwimmbad BTB“"
+ },
+ {
+  "id": "4692-17745",
+  "ksinr": 4692,
+  "von": 17745,
+  "bis": 17800,
+  "stand": "14.1",
+  "erwartet": [
+   "14.4"
+  ],
+  "art": "block",
+  "notiz": "142, 143 doppelt, „144 Vorhabenbezogener“"
+ },
+ {
+  "id": "4692-17800",
+  "ksinr": 4692,
+  "von": 17800,
+  "bis": 17860,
+  "stand": "14.4",
+  "erwartet": [
+   "15.2"
+  ],
+  "art": "aufruf",
+  "notiz": "„als letzten Tagesordnungspunkt … 152 Neubau 6 Feldhalle“"
+ },
+ {
+  "id": "4692-2000",
+  "ksinr": 4692,
+  "von": 2000,
+  "bis": 2060,
+  "stand": "5",
+  "erwartet": [
+   "5"
+  ],
+  "art": "aussprache",
+  "notiz": "Einwohnerfragestunde; die Antwort handelt vom Stadion-Vertrag (6.1, 15.10) — der Stand bleibt 5"
+ }
+]
