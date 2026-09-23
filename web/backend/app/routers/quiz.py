@@ -423,18 +423,18 @@ def pin_answer(payload: QuizPinIn,
 DUEL_DAYS = 14
 
 
-def _duel_view(duel: dict, user_id: int, council: CouncilStore) -> dict:
+def _duel_view(duel: dict, user_id: int, council: CouncilStore) -> QuizDuel:
     mine = duel["owner_id"] == user_id
     played = mine or any(p["owner_id"] == user_id for p in duel["players"])
     by_id = {q["id"]: q for q in council.pick_quiz_questions_by_ids(duel["question_ids"], 10)}
     questions = [by_id[i] for i in duel["question_ids"] if i in by_id]   # die Reihenfolge des Duells
-    return {
+    return cast(QuizDuel, {
         "code": duel["code"], "owner_name": duel["owner_name"] or "Jemand",
         "owner_correct": duel["owner_correct"], "total": len(duel["question_ids"]),
         "mine": mine, "played": played, "questions": questions,
         "players": [{"name": p["display_name"] or "Jemand", "correct": p["correct"],
                      "me": p["owner_id"] == user_id} for p in duel["players"]] if played else [],
-    }
+    })
 
 
 def _live_duel(code: str, store: Store) -> dict:
