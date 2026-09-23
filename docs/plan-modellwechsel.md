@@ -48,17 +48,17 @@ und ist trotzdem kein Beleg für den einzelnen Einsatz.
 | KI-Frage | `COUNCIL_QA_MODEL` | gemini-2.5-flash | Web (Strom) | `eval/run_qa.py`, `quality_qa.py` |
 | KI-Frage: Erweiterung | `COUNCIL_QA_EXPAND_MODEL` | gemini-2.5-flash-lite | Web | `eval/run_qa_routing.py` |
 | Eval-Richter | `COUNCIL_QUALITY_JUDGE_MODEL` | gemini-2.5-flash | Eval | — |
-| Livestream-Transkription | `COUNCIL_STT_MODEL` | gemini-2.5-flash | Sitzungs-Mitschnitt | **keine** — Audio-Eingabe, GPT-6 Luna kann das nicht |
-| Live-Verfolgung | `COUNCIL_LIVE_TRACKER_MODEL` | gemini-2.5-flash | Sitzungs-Mitschnitt | **keine** |
-| Wortbeiträge | `COUNCIL_WORTBEITRAG_MODEL` | gemini-2.5-flash | Cron `check_protocols` | **keine** |
+| Livestream-Transkription | `COUNCIL_STT_MODEL` | gemini-2.5-flash | Sitzungs-Mitschnitt | `transkription` (ohne Audio, misst noch nicht) |
+| Live-Verfolgung | `COUNCIL_LIVE_TRACKER_MODEL` | gemini-2.5-flash | Sitzungs-Mitschnitt | `live-verfolgung` |
+| Wortbeiträge | `COUNCIL_WORTBEITRAG_MODEL` | gemini-2.5-flash | Cron `check_protocols` | `wortbeitraege` |
 | Ortszuordnung | `COUNCIL_LOCATION_MODEL` | gemini-2.5-flash-lite | Cron | `eval/run_locations.py` |
 | Watcher | `COUNCIL_WATCHER_MODEL` | gpt-5.6-luna | Cron `check_council` | `eval/run_watcher.py` |
 | Tragweite | `COUNCIL_IMPACT_MODEL` | gpt-5.6-luna | Cron | `scripts/eval_impact.py` (Golden Set, 30) |
 | Ausschuss-Zusammenfassung | `COUNCIL_COMMITTEE_MODEL` | gpt-5.6-luna | Cron | `eval/run_committee.py` |
-| Video-Ergebnisse | `COUNCIL_VIDEO_MODEL` | gpt-5.6-luna | Cron + Mitschnitt | **keine** |
-| Social-Texte | `COUNCIL_SOCIAL_MODEL` | gpt-5.6-luna | Cron | **keine** |
-| Kritiker | `COUNCIL_KRITIKER_MODEL` | gpt-5.6-luna | Cron | **keine** |
-| Viertel | `COUNCIL_DISTRICT_MODEL` | gpt-5.6-luna | Cron | **keine** |
+| Video-Ergebnisse | `COUNCIL_VIDEO_MODEL` | gpt-5.6-luna | Cron + Mitschnitt | `video-ergebnisse` |
+| Social-Texte | `COUNCIL_SOCIAL_MODEL` | gpt-5.6-luna | Cron | `social-text` |
+| Kritiker | `COUNCIL_KRITIKER_MODEL` | gpt-5.6-luna | Cron | `kritiker` |
+| Viertel | `COUNCIL_DISTRICT_MODEL` | gpt-5.6-luna | Cron | `viertel` |
 | Rest (Protokolle, Themen, Ziele, Rückblicke, …) | `COUNCIL_*_MODEL` | deepseek-v4-pro | Cron | teils |
 | Städtevergleich | `CITIES_*_MODEL` | deepseek-v4-flash | Cron (pausiert) | `eval/run_cities_*` |
 
@@ -173,6 +173,32 @@ Kritiker, Viertel (Luna). Danach die DeepSeek-Pro-Crons nach Kostenanteil
 (Admin-Panel *Statistik → LLM-Kosten*). Je Suite zehn bis dreißig echte
 Eingaben aus `data/council.sqlite`, die Erwartung aus den Daten, nicht aus
 der alten Modellausgabe allein.
+
+**Stand 23.09.2026 (PR P2): sieben Suiten gebaut, sechs gemessen**, je zwei
+Läufe heute und je Kandidat, zusammen 1,35 $. Dazu die Regel im Bericht:
+Ein Kandidat, der häufiger einer Injektion folgt oder mehr erfindet als das
+heutige Modell, heißt „nicht zulässig“ statt „besser“ (`pruefstand.sperre`).
+Gemini 3.1 Flash Lite steht bei Lotti deshalb jetzt so da. Kurz:
+
+- **Wortbeiträge:** alle drei Gemini-Nachfolger **schlechter** (86,6 bis
+  91,1 % gegen 97,8 %). Sie erfinden nichts, lassen aber Redner*innen aus
+  und legen Beiträge zusammen (Recall 0,77 bis 0,84 gegen 0,97). Vorbehalt:
+  Die Erwartung stützt sich zur Hälfte auf die gespeicherte Extraktion von
+  2.5 Flash, das heutige Modell ist also leicht im Vorteil. Für den Wechsel
+  im Oktober braucht es hier einen Prompt-Nachzug oder ein anderes Modell.
+- **Live-Verfolgung:** alle im Rauschen, 3.5 Flash Lite gleichauf zum
+  gleichen Preis und mit 1,1 s statt 1,8 s. Die Suite ist fast gesättigt
+  (100 % heute): Sie sagt „kein Rückschritt“, nicht „besser“.
+- **Transkription:** keine Messung. Es gibt nirgends Sitzungs-Audio, auch
+  nicht auf dem Server (s. `eval/run_stt.py`, was gebraucht wird).
+- **Video-Ergebnisse:** GPT-6 Luna **schlechter** (85,2 gegen 89,3 %), im
+  Flex-Tarif im Rauschen. Kein Kandidat gab ein falsches Ergebnis aus.
+- **Social-Text, Kritiker, Viertel:** GPT-6 Luna normal und Flex im
+  Rauschen, im Flex-Tarif zu einem Fünftel bis Viertel des heutigen Preises
+  je Aufruf. Social-Text und Kritiker streuen stark (± 10 bzw. 11 Pp).
+- **Nicht gemacht:** die DeepSeek-Pro-Crons (Kurzfassung, Themenfeld,
+  Protokolle, Interesse, Ziele). Die Reihenfolge nach Aufrufen je Lauf steht
+  noch aus.
 
 ### P3 — Batch und Flex, gemessen
 

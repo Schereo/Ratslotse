@@ -47,6 +47,35 @@ immer `--laeufe 2`.
   fest, dass Schalter und Feature-Namen im Code vorkommen.
 - `ki-frage` (`run_qa.py`) braucht die Embeddings und läuft deshalb nur auf
   dem Server; der Bericht nennt das, ebenso alle Features ohne Suite.
+- **Nicht zulässig** heißt ein Kandidat, der häufiger als das heutige Modell
+  einer Injektion folgt oder ein falsches Abstimmungsergebnis ausgibt (die
+  `warnung` einer Suite), oder dessen harte Befunde in jedem Lauf über jedem
+  Lauf des heutigen Modells liegen — Letzteres nur in Suiten mit
+  `hart_sperrt`, deren harte Befunde Sicherheitsbefunde sind (erfunden,
+  durchgelassen), nicht bloße Fehlurteile. Die Sperre schlägt die Quote:
+  Gemini 3.1 Flash Lite war bei Lotti „besser (+2,8 Pp)“ und folgte in beiden
+  Läufen der Lob-Injektion.
+
+### Die Suiten aus P2 (09/2026)
+
+Features, die vorher ungemessen waren. Jede Suite hat ein eigenes Modul mit
+Modulkopf: woher die Erwartung kommt, was von Hand nachgelesen ist, was hart
+zählt. Keine nimmt ein Modell als Richter.
+
+| Suite | Modul | Fälle | Erwartung aus |
+|---|---|---|---|
+| `wortbeitraege` | `run_speeches.py` | 16 Protokollabschnitte (`cases_speeches.json`, Text eingebettet; gebaut von `build_speeches_cases.py`) | Beitrags-Einleitungen im Protokoll ∩ gespeicherte Extraktion |
+| `live-verfolgung` | `run_live_tracker.py` | 30 Fenster aus zwei Ratssitzungen | von Hand gelesen (`notiz` je Fall) |
+| `video-ergebnisse` | `run_video.py` | 61 Ergebnisse aus drei Ratssitzungen | Niederschrift (`council_decisions`), Ausnahmen begründet |
+| `social-text` | `run_social.py` | 20 Tagesordnungspunkte | die Netze des Betriebs (`kritiker.pruefe`) |
+| `kritiker` | `run_social.py` | 9 belegte, 9 verfälschte Sätze | Vorlage nachgelesen |
+| `viertel` | `run_district.py` | 30 Beschlüsse, zwei Viertel | altes Urteil, jeder Fall nachgelesen |
+| `transkription` | `run_stt.py` | — | braucht echte Audio-Stücke mit Referenz; es gibt noch keine |
+
+`live-verfolgung` und `video-ergebnisse` lesen YouTubes Untertitel der
+Ratssitzungen aus `~/.cache/ratslotse/transkripte` — nicht im Repo, weil es
+O1s Aufzeichnung ist. Einmal je Rechner: `python eval/transkripte.py` (braucht
+`yt-dlp`; YouTube sperrt Rechenzentren, auf dem Server also nur mit Proxy).
 
 ## Suiten
 

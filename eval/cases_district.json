@@ -1,0 +1,182 @@
+[
+ {
+  "place_id": "bloherfelde",
+  "decision_id": 7827,
+  "im_viertel": true,
+  "notiz": "B-Plan 860 Quellenweg/Hartenscher Damm, Orte ganz im Viertel"
+ },
+ {
+  "place_id": "bloherfelde",
+  "decision_id": 7300,
+  "im_viertel": true,
+  "notiz": "B-Plan 857 A östlich Schramperweg, Bloherfelde im Titel"
+ },
+ {
+  "place_id": "bloherfelde",
+  "decision_id": 7586,
+  "im_viertel": true,
+  "notiz": "Kita an der Bloherfelder Straße"
+ },
+ {
+  "place_id": "bloherfelde",
+  "decision_id": 7483,
+  "im_viertel": true,
+  "notiz": "Verkehrsberuhigung Schramperweg"
+ },
+ {
+  "place_id": "bloherfelde",
+  "decision_id": 7749,
+  "im_viertel": true,
+  "notiz": "Schulwegsicherheit, GS Bloherfelde"
+ },
+ {
+  "place_id": "bloherfelde",
+  "decision_id": 7936,
+  "im_viertel": false,
+  "notiz": "Grundschule Wechloy — anderer Stadtteil"
+ },
+ {
+  "place_id": "bloherfelde",
+  "decision_id": 7784,
+  "im_viertel": false,
+  "notiz": "Grundschule auf dem Fliegerhorst"
+ },
+ {
+  "place_id": "bloherfelde",
+  "decision_id": 8181,
+  "im_viertel": false,
+  "notiz": "Dreifeldhalle auf dem Fliegerhorst"
+ },
+ {
+  "place_id": "bloherfelde",
+  "decision_id": 7342,
+  "im_viertel": false,
+  "notiz": "Rathausmarkt, Innenstadt"
+ },
+ {
+  "place_id": "bloherfelde",
+  "decision_id": 8227,
+  "im_viertel": false,
+  "notiz": "Stadtteilbudgets, stadtweiter Bericht"
+ },
+ {
+  "place_id": "bloherfelde",
+  "decision_id": 8486,
+  "im_viertel": false,
+  "notiz": "Fahrradfreundliche Kommune, stadtweit"
+ },
+ {
+  "place_id": "bloherfelde",
+  "decision_id": 7631,
+  "im_viertel": false,
+  "notiz": "Grüne Welle Ammerländer Heerstraße, mehrere Viertel"
+ },
+ {
+  "place_id": "bloherfelde",
+  "decision_id": 7273,
+  "im_viertel": false,
+  "notiz": "Internationale Zusammenarbeit, Jahresrückblick"
+ },
+ {
+  "place_id": "eversten",
+  "decision_id": 8514,
+  "im_viertel": true,
+  "notiz": "Bolzplatz an der Hermann-Ehlers-Schule"
+ },
+ {
+  "place_id": "eversten",
+  "decision_id": 8420,
+  "im_viertel": true,
+  "notiz": "Schulwegsicherheit Hermann-Ehlers-Schule"
+ },
+ {
+  "place_id": "eversten",
+  "decision_id": 8309,
+  "im_viertel": true,
+  "notiz": "Dreifeld-Sporthalle am Brandsweg"
+ },
+ {
+  "place_id": "eversten",
+  "decision_id": 8134,
+  "im_viertel": true,
+  "notiz": "Entgelte Marschwegstadion"
+ },
+ {
+  "place_id": "eversten",
+  "decision_id": 7663,
+  "im_viertel": true,
+  "notiz": "Sportanlage Hundsmühler Höhe"
+ },
+ {
+  "place_id": "eversten",
+  "decision_id": 7952,
+  "im_viertel": true,
+  "notiz": "Umkleide Freiwillige Feuerwehr Eversten"
+ },
+ {
+  "place_id": "eversten",
+  "decision_id": 8697,
+  "im_viertel": true,
+  "notiz": "Kita Huntemannstraße"
+ },
+ {
+  "place_id": "eversten",
+  "decision_id": 7619,
+  "im_viertel": true,
+  "notiz": "Skateanlage Eversten"
+ },
+ {
+  "place_id": "eversten",
+  "decision_id": 9359,
+  "im_viertel": false,
+  "notiz": "Straßenbenennung Hahnenkampsmoor, nördlich Eßkamp"
+ },
+ {
+  "place_id": "eversten",
+  "decision_id": 8313,
+  "im_viertel": false,
+  "notiz": "Schulbezirke aller Grundschulen"
+ },
+ {
+  "place_id": "eversten",
+  "decision_id": 8708,
+  "im_viertel": false,
+  "notiz": "Schulentwicklungsplanung Grundschulen, stadtweit"
+ },
+ {
+  "place_id": "eversten",
+  "decision_id": 7746,
+  "im_viertel": false,
+  "notiz": "Grundschule Wechloy"
+ },
+ {
+  "place_id": "eversten",
+  "decision_id": 7739,
+  "im_viertel": false,
+  "notiz": "Schießstand auf dem Fliegerhorst — Namensvetter"
+ },
+ {
+  "place_id": "eversten",
+  "decision_id": 7151,
+  "im_viertel": false,
+  "notiz": "Rattenbekämpfung Innenstadt"
+ },
+ {
+  "place_id": "eversten",
+  "decision_id": 7794,
+  "im_viertel": false,
+  "notiz": "Ringbuslinien, ganzes Stadtgebiet"
+ },
+ {
+  "place_id": "eversten",
+  "decision_id": 7761,
+  "im_viertel": false,
+  "notiz": "Jahresabschluss Stadion-Beteiligungsgesellschaft"
+ },
+ {
+  "place_id": "eversten",
+  "decision_id": 8429,
+  "im_viertel": false,
+  "notiz": "Stadionplanung — Stadion in Donnerschwee, Namensvetter"
+ }
+]

@@ -1,0 +1,146 @@
+[
+ {
+  "id": "4640 Ö 10 gedeckt",
+  "ksinr": 4640,
+  "item_number": "Ö 10",
+  "text": "Beantragt sind eine Bürgschaft und die Zusage der Stadt, für die Rückzahlung eines 13,5-Millionen-Euro-Kredits des Klinikums einzustehen. Das Geld finanziert Medizintechnik, Bau und IT.",
+  "gedeckt": true,
+  "notiz": "gespeicherter Kartentext, jede Angabe in der Vorlage nachgelesen"
+ },
+ {
+  "id": "4646 Ö 7 gedeckt",
+  "ksinr": 4646,
+  "item_number": "Ö 7",
+  "text": "Bericht zum 31. Juli 2026: In der Gaußstraße, der Ratsherr-Schulze-Straße und 51 dezentralen Objekten sind 205 von 489 Plätzen belegt; 71 Personen sind auszugsberechtigt.",
+  "gedeckt": true,
+  "notiz": "gespeicherter Kartentext, jede Angabe in der Vorlage nachgelesen"
+ },
+ {
+  "id": "4646 Ö 6 gedeckt",
+  "ksinr": 4646,
+  "item_number": "Ö 6",
+  "text": "Vorgelegt wird der Sachstand zum Integrationskonzept: Seit 15. August läuft ein Kurs für Integrationslotsen. Geplant sind ein Fachtag am 10. Dezember im PFL und die Demokratiekonferenz am 30. Oktober im EWE Forum Alte Fleiwa.",
+  "gedeckt": true,
+  "notiz": "gespeicherter Kartentext, jede Angabe in der Vorlage nachgelesen"
+ },
+ {
+  "id": "4667 Ö 8.1.1 gedeckt",
+  "ksinr": 4667,
+  "item_number": "Ö 8.1.1",
+  "text": "SPD und BSW beantragen Ersatzbäume mit 12–14 statt 20–25 cm Stammumfang und 400 Euro Ausgleich je Baum. Die Verwaltung berichtet: 99 Genehmigungen, vier Ausgleichszahlungen.",
+  "gedeckt": true,
+  "notiz": "gespeicherter Kartentext, jede Angabe in der Vorlage nachgelesen"
+ },
+ {
+  "id": "4667 Ö 8.3 gedeckt",
+  "ksinr": 4667,
+  "item_number": "Ö 8.3",
+  "text": "Zur Abstimmung steht der weitere Umgang mit den Ratsbeschlüssen zum Fliegerhorst. Die Staatsanwaltschaft stellte das Verfahren ein; ein Sachverständigenbüro nimmt am 18. August die Arbeit auf, Kosten sind noch nicht beziffert.",
+  "gedeckt": true,
+  "notiz": "gespeicherter Kartentext mit einer Korrektur: dort stand „prüft seit 18. August“, die Vorlage sagt „wird … am 18. August 2026 aufnehmen“ (der Kritiker fand das im ersten Lauf zu Recht)"
+ },
+ {
+  "id": "4618 Ö 9.6 gedeckt",
+  "ksinr": 4618,
+  "item_number": "Ö 9.6",
+  "text": "Die Gruppe Für Oldenburg beantragt, das Abstimmungsverhalten bei Ratsbeschlüssen im Rats- und Bürgerinformationssystem transparent zu dokumentieren.",
+  "gedeckt": true,
+  "notiz": "aus dem Titel der Vorlage; der gespeicherte Kartentext („Es erfasst nur Ja, Nein und Enthaltungen“) ist strittig — die Vorlage nennt auch An- und Abwesenheiten — und steht deshalb nicht hier"
+ },
+ {
+  "id": "4675 Ö 8 gedeckt",
+  "ksinr": 4675,
+  "item_number": "Ö 8",
+  "text": "Vorgelegt wird der Bericht zum Rechtsanspruch auf Ganztagsbetreuung für Kinder im Grundschulalter.",
+  "gedeckt": true,
+  "notiz": "gespeicherter Kartentext, jede Angabe in der Vorlage nachgelesen"
+ },
+ {
+  "id": "4646 Ö 5 gedeckt",
+  "ksinr": 4646,
+  "item_number": "Ö 5",
+  "text": "Zur Abstimmung steht die Auswertung des Aktionsplans von 2020 und seine Fortschreibung: sechs Themenfelder mit je fünf Handlungsempfehlungen. Für kleinere Maßnahmen stehen 10.000 Euro im Haushalt.",
+  "gedeckt": true,
+  "notiz": "gespeicherter Kartentext, jede Angabe in der Vorlage nachgelesen"
+ },
+ {
+  "id": "4640 Ö 10 erfunden",
+  "ksinr": 4640,
+  "item_number": "Ö 10",
+  "text": "Beantragt sind eine Bürgschaft und die Zusage der Stadt, für die Rückzahlung eines 13,5-Millionen-Euro-Kredits der Stadtwerke einzustehen. Das Geld finanziert Medizintechnik, Bau und IT.",
+  "gedeckt": false,
+  "notiz": "Klinikum → Stadtwerke (wer den Kredit aufnimmt)"
+ },
+ {
+  "id": "4646 Ö 7 erfunden",
+  "ksinr": 4646,
+  "item_number": "Ö 7",
+  "text": "Bericht zum 31. Juli 2026: In der Gaußstraße, der Ratsherr-Schulze-Straße und 51 Turnhallen sind 205 von 489 Plätzen belegt; 71 Personen sind auszugsberechtigt.",
+  "gedeckt": false,
+  "notiz": "dezentrale Objekte → Turnhallen"
+ },
+ {
+  "id": "4646 Ö 6 erfunden",
+  "ksinr": 4646,
+  "item_number": "Ö 6",
+  "text": "Vorgelegt wird der Sachstand zum Integrationskonzept: Seit 15. August läuft ein Kurs für Integrationslotsen. Geplant sind ein Fachtag am 10. Dezember im PFL und die Demokratiekonferenz am 30. Oktober in der Weser-Ems-Halle.",
+  "gedeckt": false,
+  "notiz": "Ort der Demokratiekonferenz vertauscht"
+ },
+ {
+  "id": "4667 Ö 8.1.1 erfunden",
+  "ksinr": 4667,
+  "item_number": "Ö 8.1.1",
+  "text": "CDU und FDP beantragen Ersatzbäume mit 12–14 statt 20–25 cm Stammumfang und 400 Euro Ausgleich je Baum. Die Verwaltung berichtet: 99 Genehmigungen, vier Ausgleichszahlungen.",
+  "gedeckt": false,
+  "notiz": "Antragsteller vertauscht (CDU/FDP stehen nicht in der Vorlage)"
+ },
+ {
+  "id": "4667 Ö 8.3 erfunden",
+  "ksinr": 4667,
+  "item_number": "Ö 8.3",
+  "text": "Zur Abstimmung steht der weitere Umgang mit den Ratsbeschlüssen zum Fliegerhorst. Das Landgericht verurteilte die Verantwortlichen; ein Sachverständigenbüro nimmt am 18. August die Arbeit auf, Kosten sind noch nicht beziffert.",
+  "gedeckt": false,
+  "notiz": "Einstellung durch die Staatsanwaltschaft → Verurteilung durch ein Gericht"
+ },
+ {
+  "id": "4618 Ö 9.6 erfunden",
+  "ksinr": 4618,
+  "item_number": "Ö 9.6",
+  "text": "Die SPD-Fraktion beantragt, das Abstimmungsverhalten bei Ratsbeschlüssen im Rats- und Bürgerinformationssystem transparent zu dokumentieren.",
+  "gedeckt": false,
+  "notiz": "Antragsteller vertauscht"
+ },
+ {
+  "id": "4675 Ö 8 erfunden",
+  "ksinr": 4675,
+  "item_number": "Ö 8",
+  "text": "Vorgelegt wird der Bericht zum Rechtsanspruch auf Ganztagsbetreuung für Kinder im Kindergartenalter.",
+  "gedeckt": false,
+  "notiz": "Grundschulalter → Kindergartenalter"
+ },
+ {
+  "id": "4646 Ö 5 erfunden",
+  "ksinr": 4646,
+  "item_number": "Ö 5",
+  "text": "Zur Abstimmung steht die Auswertung des Aktionsplans von 2020 und seine Fortschreibung: sechs Themenfelder mit je fünf Handlungsempfehlungen. Für kleinere Maßnahmen stehen 10.000 Euro aus Landesmitteln bereit.",
+  "gedeckt": false,
+  "notiz": "wer zahlt: Haushalt → Land"
+ },
+ {
+  "id": "4702 Ö 9.1 erfunden",
+  "ksinr": 4702,
+  "item_number": "Ö 9.1",
+  "text": "Zur Abstimmung steht der Teilflächennutzungsplan Windenergie: Er weist 69 Hektar bis 2027 und 89 Hektar bis 2032 als Windenergiegebiete aus.",
+  "gedeckt": false,
+  "notiz": "der Fall aus dem Kritiker-Kopf: beide Zahlen stehen in der Vorlage, aber als gesetzliche ZIELE; der Plan weist 91,84 Hektar aus"
+ },
+ {
+  "id": "4702 Ö 9.1 gedeckt",
+  "ksinr": 4702,
+  "item_number": "Ö 9.1",
+  "text": "Zur Abstimmung steht der Teilflächennutzungsplan Windenergie: Die Sonderbaufläche wurde zum Schutz von Vögeln und Fledermäusen von 105,05 auf 91,84 Hektar verkleinert.",
+  "gedeckt": true,
+  "notiz": "umformuliert aus der Vorlage („Avifauna und Fledermäuse … von 105,05 Hektar auf 91,84 Hektar reduziert“)"
+ }
+]
