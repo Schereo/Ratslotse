@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Quizfragen aus den eigenen Daten bauen — ohne Modell, ohne Kosten.
 
-„Angenommen oder abgelehnt?“ aus den Anträgen mit klarem Ausgang und „Wofür
-gibt Oldenburg mehr aus?“ aus den Haushaltsprodukten (``council.quiz_formats``).
+„Angenommen oder abgelehnt?“ aus den Anträgen mit klarem Ausgang, „Wofür
+gibt Oldenburg mehr aus?“ und „Sortiere nach Größe“ aus den Haushaltsprodukten
+(``council.quiz_formats``), und ab dem 28.09.2026 die Wahlbereiche der
+Ratswahl im Vergleich (``app.election.quiz_questions``).
 Idempotent: Neue Fragen werden angelegt, vorhandene über ihren stabilen
 Schlüssel aufgefrischt — ein neues Haushaltsjahr ändert also Zahlen und
 Lösung derselben Frage, statt eine zweite daneben zu legen.
@@ -26,8 +28,11 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")
 
+sys.path.insert(0, str(ROOT / "web" / "backend"))
+
 from council import quiz_formats  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
+from app.election import quiz_questions as wahl_fragen  # noqa: E402
 
 COUNCIL_DB = Path(os.environ.get("COUNCIL_DB") or ROOT / "data" / "council.sqlite")
 
@@ -36,11 +41,15 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--db", type=Path, default=COUNCIL_DB)
     ap.add_argument("--trocken", action="store_true", help="nur zeigen, nichts speichern")
+    ap.add_argument("--wahl-vorab", action="store_true",
+                    help="Wahlfragen auch vor dem Freigabetag bauen (nur lokal, zur Vorschau)")
     args = ap.parse_args()
 
     store = CouncilStore(args.db)
     try:
         questions = quiz_formats.build_all(store)
+        # Ratswahl 2026 (Plan Q12): erst nach der Stichwahl — davor leer.
+        questions += wahl_fragen.questions(force=args.wahl_vorab)
         by = collections.Counter(q["format"] for q in questions)
         print(f"{len(questions)} Fragen gebaut: {dict(by)}")
         if args.trocken:

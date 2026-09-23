@@ -29,7 +29,8 @@ class QuizMixin(StoreBasis):
     """Die Quiz-Abfragen — nur zum Mitvererben."""
 
     # Themen ohne Entität dahinter (kuratierte Spezial-Gebiete) → Anzeigename.
-    _THEMA_LABELS = {"haushalt": "Stadt-Haushalt", "antraege": "Anträge im Rat"}
+    _THEMA_LABELS = {"haushalt": "Stadt-Haushalt", "antraege": "Anträge im Rat",
+                     "ratswahl-2026": "Ratswahl 2026"}
 
     def save_quiz_questions(self, rows: list[dict]) -> int:
         """Neue Quizfragen speichern; Duplikate (gleicher content_hash) werden
