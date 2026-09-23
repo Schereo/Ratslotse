@@ -149,3 +149,16 @@ test("eine unbekannte Idee zeigt einen Leerzustand statt eines Fehlers", async (
   await page.goto("/council/ideen/bewegung?id=999");
   await expect(page.getByText("Diese Idee gibt es nicht (mehr).")).toBeVisible();
 });
+
+test("die Ideen sind ein Reiter der Analyse, kein eigener Punkt in der Navigation", async ({ page }) => {
+  await mocks(page);
+  await page.goto("/council/ideen");
+  const reiter = page.getByRole("button", { name: /Andere Städte/ });
+  await expect(reiter).toHaveAttribute("aria-pressed", "true");
+  // Zurück in die Analyse über dieselbe Leiste.
+  await page.getByRole("button", { name: /^Trends$/ }).click();
+  await expect(page).toHaveURL(/\/council\?tab=analysis$/, { timeout: 20_000 });
+  // Und von dort wieder hin.
+  await page.getByRole("button", { name: /Andere Städte/ }).click();
+  await expect(page).toHaveURL(/\/council\/ideen$/, { timeout: 20_000 });
+});

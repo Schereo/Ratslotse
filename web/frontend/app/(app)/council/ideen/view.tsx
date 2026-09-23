@@ -20,12 +20,14 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowUpRight, Building2, ChevronLeft, ChevronRight, Search } from "lucide-react";
 
+import { AnalyseReiter } from "@/components/council-analysis";
 import { DecisionLinkCard, POLICY_FIELD_LABELS } from "@/components/decision-ui";
 import { BewegungKarte, type Bewegung } from "@/components/ideen/bewegung-karte";
 import { STAND } from "@/components/ideen/stand";
 import { ZeitleisteLegende } from "@/components/ideen/zeitleiste";
 import { Lotti } from "@/components/lotti";
 import { Card } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useFeature } from "@/lib/features";
 import type { ApiAntwort } from "@/lib/vertrag";
@@ -848,10 +850,23 @@ export default function View() {
 
   return (
     <div className="space-y-6">
+      {/* Ein Reiter der Analyse, kein eigener Punkt in der Navigation (Tim,
+          23.09.2026) — die Leiste ist dieselbe wie auf der Analyse-Seite. */}
+      <div>
+        {/* Derselbe Kopf wie auf /council?tab=analysis — sonst spränge die
+            Reiter-Leiste beim Wechsel um eine Überschrift nach oben. */}
+        <PageHeader
+          title="Analyse"
+          description="Parteien, Personen, Finanzen, Trends und Ziele im Überblick."
+        />
+        <div className="mt-4">
+          <AnalyseReiter aktiv="staedte" />
+        </div>
+      </div>
       <div className="max-w-3xl">
-        <h1 className="font-display text-[28px] font-bold leading-tight text-foreground sm:text-[34px]">
+        <h2 className="font-display text-[24px] font-bold leading-tight text-foreground sm:text-[28px]">
           Ideen aus anderen Städten
-        </h1>
+        </h2>
         <p className="mt-2 text-lese text-foreground/90">
           {/* Die Städte kommen aus den DATEN, nicht aus diesem Satz. Fest
               aufgezählt stand hier bis zum 13.09.2026 „Osnabrück,
