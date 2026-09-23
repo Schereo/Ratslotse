@@ -47,6 +47,10 @@ on:
         required: true
         default: dev
         options: [dev, prod]
+      auch_schrumpfen:
+        description: "Teilhaushalte auch ersetzen, wenn ein Jahrgang dabei schrumpft (nach Parser-Fix)"
+        type: boolean
+        default: false
 
 concurrency:
   # Je Umgebung eine eigene Gruppe: Ein Prod-Lauf soll nicht auf einen
@@ -140,7 +144,15 @@ jobs:
             .venv/bin/python scripts/ingest_haushalt.py
             .venv/bin/python scripts/ingest_finanzen_opendata.py
             .venv/bin/python scripts/ingest_schulden.py
-            .venv/bin/python scripts/ingest_finanzberichte.py
+            # `auch_schrumpfen`: nach einem Parser-Fix, der Altzeilen abräumt
+            # (#1524: 2021/THH10 fällt von 27 auf 20 Zeilen, weil sieben
+            # Zeilen aus der Vorjahresspalte des Plans 2022 stammten). Ohne
+            # den Schalter hält der Bestandsschutz den alten Stand.
+            if [ "${{ inputs.auch_schrumpfen }}" = "true" ]; then
+              .venv/bin/python scripts/ingest_finanzberichte.py --auch-schrumpfen
+            else
+              .venv/bin/python scripts/ingest_finanzberichte.py
+            fi
             .venv/bin/python scripts/ingest_pruefberichte.py
             .venv/bin/python scripts/ingest_konzernabschluss.py
             .venv/bin/python scripts/ingest_investitionen_ist.py
