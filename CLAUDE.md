@@ -506,6 +506,7 @@ COUNCIL_LIVE_TRACKER_MODEL=google/gemini-3.5-flash-lite  # Modell der Live-Verfo
 COUNCIL_ASSISTANT_MODEL=openai/gpt-6-luna        # Lottis Erklärungen (ohne ZDR: llm.ZDR_VERZICHT; Default passt)
 COUNCIL_QA_MODEL=openai/gpt-6-luna               # Antwort-Modell der KI-Frage (genau vor schnell; Default passt)
 COUNCIL_QA_EXPAND_MODEL=google/gemini-3.1-flash-lite  # Frage-Analyse der KI-Frage (schnell, mit ZDR; Default passt)
+COUNCIL_DEEP_MODEL=                  # Bericht der ausführlichen Recherche; leer = COUNCIL_QA_MODEL
 COUNCIL_RETRIEVAL_KLASSISCH=0        # "1" = Notausschalter: Retrieval-Stand vor dem Vorlagen-Chunk-Ausbau
 # Städtevergleich (check_cities.py) — der teuerste und längste Cron
 CITIES_MAX_SECONDS=14400             # Frist je Lauf; 0 hebt sie auf (Nachlauf von Hand)

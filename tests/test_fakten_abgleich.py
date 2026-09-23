@@ -8,6 +8,7 @@ damit nicht mehr sähe.
 """
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -256,8 +257,19 @@ def test_verbot_mit_jahr_trifft_nur_die_verwechslung():
     ("Die Hundesteuer ist nicht einzeln ausgewiesen.", True),
     ("Ein Schuldenvergleich mit anderen Städten ist anhand der vorliegenden Zahlen "
      "nicht möglich.", True),
+    # Recherche-Berichte, 23.09.2026: fetter Kernsatz, andere Wendungen.
+    ("Aus den vorliegenden Unterlagen lässt sich **nicht feststellen, wie Christoph Baak "
+     "abgestimmt hat**.", True),
+    ("**Nein – in den mitgelieferten Unterlagen findet sich kein Beschluss des Rates.**", True),
+    ("Ein Hebesatz für die Grundsteuer C ist in den Unterlagen nicht dokumentiert.", True),
+    ("Nein – in den mitgelieferten Unterlagen ist kein Ratsbeschluss zur Einführung einer "
+     "Grundsteuer C dokumentiert.", True),
+    ("Dafür lässt sich aus dem vorliegenden Material kein Betrag nennen.", True),
+    ("Einen entsprechenden Ist-Wert für 2026 enthalten die Unterlagen nicht.", True),
+    ("Die Unterlagen enthalten die Zahl 222.117.000 Euro für 2025.", False),
     ("Die Schulden lagen Ende 2025 bei 337 Mio. €.", False),
     ("Die Stadt muss das nicht bezahlen, das trägt das Land.", False),
+    ("Der Rat beschloss **am 1. Juni 2026** einstimmig den Zuschuss.", False),
 ])
 def test_verweigerung(antwort, erwartet):
     assert fa.verweigert(antwort) is erwartet
@@ -435,6 +447,51 @@ def test_die_buergschaft_als_buergschaft_ist_kein_verstoss():
 def test_die_buergschaft_als_baupreis_bleibt_ein_verstoss():
     assert _verstoss("Die Kongresshalle kostet 79 Mio. Euro. Die Bürgschaft ist ein "
                      "eigener Beschluss.") is not None
+
+
+def test_die_andere_buergschaft_als_andere_genannt_ist_kein_verstoss():
+    """`rat-kongresshalle-buergschaft`: GPT-6 Sol nannte die 16,9 Mio. € der
+    Kramermarktfläche ausdrücklich als ANDERES Vorhaben (23.09.2026)."""
+    faelle = json.loads((WURZEL / "eval" / "cases_fakten_rat.json").read_text(encoding="utf-8"))
+    (verbot,) = next(f for f in faelle if f["id"] == "rat-kongresshalle-buergschaft")["verboten"]
+    richtig = ("Für dessen Sanierung erhöhte der Rat im Februar 2026 eine Ausfallbürgschaft von "
+               "12 auf 16,9 Millionen Euro. Diese 16,9 Millionen Euro sind nicht Teil der hier "
+               "erfragten Neubau-Bürgschaft.")
+    falsch = "Die Stadt bürgt für die Kongresshalle mit 16,9 Millionen Euro."
+    assert fa.verboten_im_text(verbot, richtig, fa.zahlen(richtig), fa.zeilen(richtig)) is None
+    assert fa.verboten_im_text(verbot, falsch, fa.zahlen(falsch), fa.zeilen(falsch)) is not None
+
+
+def test_die_jahresreihe_ist_keine_jahresfalle():
+    """`rat-btb-zuschuss-2027`: Die Beträge der anderen Jahre dürfen genannt
+    werden — nur nicht als der für 2027."""
+    faelle = json.loads((WURZEL / "eval" / "cases_fakten_rat.json").read_text(encoding="utf-8"))
+    verbote = next(f for f in faelle if f["id"] == "rat-btb-zuschuss-2027")["verboten"]
+    reihe = ("Für 2027 ist ein maximaler Zuschuss von 177.500 Euro ausgewiesen, 191.000 Euro "
+             "2030. Für 2026 nennt die Vorlage 173.000 Euro.")
+    falsch = "Im Jahr 2027 bekommt der BTB 173.000 Euro."
+    assert not [v for v in verbote if fa.verboten_im_text(v, reihe, fa.zahlen(reihe), fa.zeilen(reihe))]
+    assert [v for v in verbote if fa.verboten_im_text(v, falsch, fa.zahlen(falsch), fa.zeilen(falsch))]
+
+
+def test_zum_jahresende_haengt_das_jahr_an():
+    """GPT-6 Sol, 23.09.2026: „von 211.503.000 Euro zum Jahresende 2015 auf
+    336.994.000 Euro zum Jahresende 2025“ — die zweite Zahl gehört zu 2025."""
+    t = "stieg von 211.503.000 Euro zum Jahresende 2015 auf 336.994.000 Euro zum Jahresende 2025."
+    zl = fa.zeilen(t)
+    jahre = {z.wert: fa.jahre_der_zahl(zl, z, satz=True) for z in fa.zahlen(t) if z.art == "€"}
+    assert jahre[336_994_000] == {2025}
+    # Der Ausgangswert („von … auf“) trägt nach der bestehenden Regel gar kein
+    # Jahr — das ist unscharf, nicht falsch.
+    assert 2025 not in jahre[211_503_000]
+
+
+def test_ein_abgeschnittenes_mil_ist_millionen():
+    """Die Presse-Auszüge im Prompt enden mitten im Wort („57,3 Mil“) — wer
+    „57,3 Millionen Euro“ daraus macht, erfindet nichts."""
+    kontext = "Pauschalfestpreis von 57,3 Mil\nNÄCHSTER BLOCK"
+    assert fa.erfundene_zahlen("Der Festpreis beträgt 57,3 Millionen Euro.", kontext) == []
+    assert fa.zahlen("rund 57,3 Millimeter")[0].wert == 57.3
 
 
 def test_eine_abkuerzung_beendet_den_satz_nicht():

@@ -15,6 +15,15 @@ python eval/pruefstand.py bericht         # → docs/modell-pruefstand.md
 python eval/pruefstand.py liste           # Register: Schalter, heutiges Modell, lokal oder nicht
 ```
 
+**Teure Modelle: erst eine Stichprobe; einen vollen Lauf nur, wenn die
+Stichprobe einen echten Gewinn zeigt** (Tims Regel vom 23.09.2026). Beide
+Läufer (`pruefstand.py`, `run_fakten.py`) schätzen vor dem ersten Aufruf die
+Kosten aus `kern/usage.PRICES` und brechen über `--max-kosten` (Vorgabe
+1 $) ab, außer mit `--teuer-ok`; ein Modell mit mehr als 5 $ je Mio.
+Ausgabe-Tokens misst ohne weitere Angabe eine geschichtete Stichprobe
+(`--stichprobe N`, Vorgabe 15, feste Saat), den vollen Lauf nur mit `--voll`
+(`eval/kostenbremse.py`).
+
 Der **Modell-Prüfstand** (`eval/pruefstand.py`) fährt jede angeschlossene
 Suite mit dem gewählten Modell und legt je Lauf ein Ergebnis im einheitlichen
 Format unter `eval/results/pruefstand/<suite>/` ab: `qualitaet` (die

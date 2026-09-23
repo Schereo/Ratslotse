@@ -52,6 +52,14 @@ python eval/pruefstand.py --suite fakten-haushalt --modell google/gemini-2.5-fla
 `--ohne-zdr` setzt `NWZ_OPENROUTER_ZDR=0` nur im Mess-Backend: GPT-6 Luna hat
 keinen ZDR-Anbieter (Tims Entscheidung vom 23.09. für Lotti und Frag den Rat).
 
+**Die ausführliche Recherche** misst derselbe Läufer: `--kanal deep --auswahl
+deep` stellt 55 Fälle als Recherche-Job, der Kontext sind die Prompts aller
+Aufrufe des Jobs, `--aufwand` setzt den Denkaufwand. Die Läufe liegen in
+`eval/results/fakten/deep/` (nicht in diesem Bericht), `bericht --kanal deep`
+druckt die Vergleichstabelle; Ergebnis und Entscheidung in
+`docs/plan-modellwechsel.md`, „Ausführliche Recherche“. **Teure Modelle
+laufen erst als Stichprobe** (`eval/kostenbremse.py`).
+
 **Grenzen der lokalen Messung.** Der lokale Datenabzug hat keine Embeddings;
 Frag den Rat sucht lokal also nur über BM25. Kontextfehler bei den
 **Ratsfragen** können deshalb teils Artefakte der lokalen Suche sein — bei

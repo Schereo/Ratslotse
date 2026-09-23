@@ -105,7 +105,12 @@ MODEL_PARAMS: dict[str, dict[str, Any]] = {
     # bleibt: Er sagt, dass hier gemessen wurde.
     "google/gemini-3.1-flash-lite": {},
     "google/gemini-3.5-flash-lite": {},
-    **{m: {"min_max_tokens": GPT56_MIN_MAX_TOKENS} for m in ("openai/gpt-6-luna",)},
+    # GPT-6 Sol denkt wie Luna: gemessen an der ausführlichen Recherche
+    # (23.09.2026, eval/run_fakten.py --kanal deep) — ohne den Boden bekäme
+    # der Bericht nur die 4.000 Tokens aus `qa.deep_bericht_stream`, von denen
+    # das Denken zuerst zehrt.
+    **{m: {"min_max_tokens": GPT56_MIN_MAX_TOKENS} for m in (
+        "openai/gpt-6-luna", "openai/gpt-6-sol")},
 }
 
 
@@ -406,7 +411,8 @@ MITSCHNITT_ENV = "RATSLOTSE_PROMPT_MITSCHNITT"
 
 
 def _mitschnitt(feature: str | None, kwargs: dict[str, Any], antwort: str | None, *,
-                antwort_modell: str | None = None, abgebrochen: bool = False) -> None:
+                antwort_modell: str | None = None, abgebrochen: bool = False,
+                finish_reason: str | None = None, usage_obj: Any = None) -> None:
     """Eine Zeile ins Mitschnitt-Protokoll — nur wenn der Messschalter gesetzt ist."""
     ordner = os.environ.get(MITSCHNITT_ENV, "").strip()
     if not ordner:
@@ -428,6 +434,11 @@ def _mitschnitt(feature: str | None, kwargs: dict[str, Any], antwort: str | None
             "messages": kwargs.get("messages"),
             "answer": antwort,
             "aborted": abgebrochen,
+            # `length` heißt: abgeschnitten, ohne Fehler. Bei denkenden
+            # Modellen zehrt das Denken vom selben Budget — mehr Aufwand kann
+            # den sichtbaren Text still kürzen (Messung Deep-Bericht, 23.09.).
+            "finish_reason": finish_reason,
+            "usage": _usage_kurz(usage_obj),
         }
         with open(ziel / f"{feature or 'ohne_feature'}.jsonl", "a", encoding="utf-8") as f:
             f.write(json.dumps(zeile, ensure_ascii=False, default=str) + "\n")
@@ -440,6 +451,23 @@ def _antworttext(resp: Any) -> str | None:
         return resp.choices[0].message.content
     except (AttributeError, IndexError, TypeError):
         return None
+
+
+def _finish_reason(resp: Any) -> str | None:
+    try:
+        return resp.choices[0].finish_reason
+    except (AttributeError, IndexError, TypeError):
+        return None
+
+
+def _usage_kurz(usage_obj: Any) -> dict | None:
+    """Tokens eines Aufrufs für den Mitschnitt — samt Denk-Tokens."""
+    if usage_obj is None:
+        return None
+    details = getattr(usage_obj, "completion_tokens_details", None)
+    return {"prompt_tokens": getattr(usage_obj, "prompt_tokens", None),
+            "completion_tokens": getattr(usage_obj, "completion_tokens", None),
+            "reasoning_tokens": getattr(details, "reasoning_tokens", None) if details else None}
 
 
 _client: OpenAI | None = None
@@ -653,7 +681,8 @@ def chat_complete(**kwargs: Any):
             continue
         _record_usage(feature, model, getattr(resp, "usage", None))
         _mitschnitt(feature, versuch, _antworttext(resp),
-                    antwort_modell=getattr(resp, "model", None))
+                    antwort_modell=getattr(resp, "model", None),
+                    finish_reason=_finish_reason(resp), usage_obj=getattr(resp, "usage", None))
         return resp
     raise AssertionError("unerreichbar: kein Modell")  # pragma: no cover
 
@@ -711,13 +740,18 @@ def chat_stream(**kwargs: Any):
     mit = bool(os.environ.get(MITSCHNITT_ENV, "").strip())
     teile: list[str] = []
     antwort_modell: str | None = None
+    grund: str | None = None
+    verbrauch: Any = None
     fertig = False
     try:
         for chunk in _create(stream=True, _zdr=zdr_pflicht(feature), **kwargs):
             if mit and antwort_modell is None:
                 antwort_modell = getattr(chunk, "model", None)
             if getattr(chunk, "usage", None):
+                verbrauch = chunk.usage
                 _record_usage(feature, kwargs.get("model"), chunk.usage)
+            if mit and chunk.choices and getattr(chunk.choices[0], "finish_reason", None):
+                grund = chunk.choices[0].finish_reason
             if chunk.choices and chunk.choices[0].delta.content:
                 if mit:
                     teile.append(chunk.choices[0].delta.content)
@@ -729,4 +763,4 @@ def chat_stream(**kwargs: Any):
         # sehen, dass es zwei Aufrufe waren.
         if mit:
             _mitschnitt(feature, kwargs, "".join(teile), antwort_modell=antwort_modell,
-                        abgebrochen=not fertig)
+                        abgebrochen=not fertig, finish_reason=grund, usage_obj=verbrauch)

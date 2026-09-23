@@ -177,3 +177,69 @@ def test_bericht_ersetzt_nur_den_erzeugten_teil(tmp_path):
     rf.bericht_schreiben([], [], ziel)
     text = ziel.read_text()
     assert "von Hand" in text and "Fuß von Hand" in text and "\nalt\n" not in text
+
+
+# --------------------------------------------------------------------------- #
+# Die ausführliche Recherche (--kanal deep)
+# --------------------------------------------------------------------------- #
+
+def test_recherche_auswahl_gibt_es_und_ist_frag_den_rat():
+    """Rund 50 Fälle, alle vorhanden, keiner doppelt — und nur Fälle aus Frag
+    den Rat: Lottis Fälle hängen an der Seite, die Recherche kennt keine."""
+    ids = rf.AUSWAHL["deep"]
+    assert 45 <= len(ids) <= 60
+    assert len(set(ids)) == len(ids)
+    gewaehlt = rf._faelle_waehlen(rf.lade(), None, None, "deep")
+    assert [f["id"] for f in gewaehlt] == list(ids)
+    assert {f["kanal"] for f in gewaehlt} == {"rat"}
+    # Die Absagen gehören dazu: Ein Bericht ist die Form, die am ehesten auffüllt.
+    assert sum(1 for f in gewaehlt if not f.get("antwort_in_daten", True)) >= 5
+
+
+def test_unbekannte_auswahl_bricht_ab():
+    with pytest.raises(SystemExit):
+        rf._faelle_waehlen([], None, None, "gibt-es-nicht")
+
+
+def test_recherche_kontext_sind_alle_prompts_des_jobs():
+    """Die Zerlegung und der Bericht sehen verschiedene Prompts; ein Fakt, den
+    irgendein Schritt sah, war im Kontext."""
+    aufrufe = [{"feature": "deep_decomposition", "messages": [{"role": "user", "content": "A"}]},
+               {"feature": "deep_report", "messages": [{"role": "user", "content": "B"}]},
+               {"feature": "ohne", "messages": None}]
+    kontext = rf.job_kontext(aufrufe)
+    assert "A" in kontext and "B" in kontext
+    assert rf.job_kontext([]) is None
+    assert rf._antwort_aufruf(aufrufe)["feature"] == "deep_report"
+
+
+def test_kontingent_wird_nur_in_der_wegwerf_datenbank_aufgehoben(tmp_path):
+    import sqlite3
+    db = tmp_path / "k.sqlite"
+    con = sqlite3.connect(db)
+    con.execute("CREATE TABLE web_users (email TEXT, deep_limit INTEGER)")
+    con.executemany("INSERT INTO web_users VALUES (?, NULL)", [(rf.KONTO[0],), ("b@example.org",)])
+    con.commit()
+    con.close()
+    rf.kontingent_aufheben(db)
+    con = sqlite3.connect(db)
+    assert dict(con.execute("SELECT email, deep_limit FROM web_users")) == {
+        rf.KONTO[0]: 0, "b@example.org": None}
+    con.close()
+
+
+def test_recherche_kennzahlen_und_tabelle():
+    zeile = {"fehlerart": "ok", "kontext_ok": True, "id": "a", "kanal": "rat", "ms": 60_000,
+             "usd": 0.005, "finish_reason": "stop", "usage": {"reasoning_tokens": 800}}
+    zeilen = [zeile, {**zeile, "id": "b", "fehlerart": "modell_ausgelassen", "ms": 120_000,
+                      "usd": 0.007, "finish_reason": "length",
+                      "usage": {"reasoning_tokens": 3000}}]
+    k = rf.kennzahlen(zeilen)
+    assert k["p95_ms"] == 120_000 and k["abgeschnitten"] == 1
+    assert k["usd_je_fall"] == 0.006 and k["denk_tokens_max"] == 3000
+    laeufe = [{"modell": "m", "aufwand": "high", "zeitstempel": "x", "faelle": zeilen,
+               "kennzahlen": k}]
+    tabelle = "\n".join(rf.tabelle_deep(laeufe))
+    assert "m · high" in tabelle and "0,0060" in tabelle and "120 s" in tabelle
+    # Ohne Unterschied zwischen Läufen keine Zeile je Fall.
+    assert len(rf.unterschiede_deep(laeufe)) == 2

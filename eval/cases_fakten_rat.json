@@ -927,12 +927,14 @@
    {
     "art": "zahl",
     "wert": 173000,
-    "grund": "Betrag für 2026"
+    "grund": "Betrag für 2026",
+    "als_jahr": 2027
    },
    {
     "art": "zahl",
     "wert": 191000,
-    "grund": "Betrag für 2030"
+    "grund": "Betrag für 2030",
+    "als_jahr": 2027
    }
   ],
   "notiz": "Jahresfalle: Die Vorlage nennt fünf Jahresbeträge in einer Zeile. Ob die Vorlage (financial_impact) überhaupt in den Kontext kommt, ist Teil der Messung."
@@ -962,12 +964,14 @@
    {
     "art": "zahl",
     "wert": 173000,
-    "grund": "Betrag für 2026"
+    "grund": "Betrag für 2026",
+    "als_jahr": 2027
    },
    {
     "art": "zahl",
     "wert": 191000,
-    "grund": "Betrag für 2030"
+    "grund": "Betrag für 2030",
+    "als_jahr": 2027
    }
   ],
   "notiz": "Beschlusstext und Kurzfassung nennen keine Beträge, nur die Vorlage. Seit 23.09.2026 trägt der Beschluss-Block deren finanzielle Auswirkungen (die Karte „Was kostet das?“ der Seite); vorher Kontextfehler."
@@ -1503,7 +1507,13 @@
    {
     "art": "zahl",
     "wert": 16900000,
-    "grund": "Bürgschaft für die Park- und Kramermarktfläche (id 8478), nicht für die Kongresshalle"
+    "grund": "Bürgschaft für die Park- und Kramermarktfläche (id 8478), nicht für die Kongresshalle",
+    "ausser_im_satz_mit": [
+     "Kramermarkt",
+     "Parkfläche",
+     "Sanierung",
+     "nicht Teil"
+    ]
    }
   ],
   "notiz": "Zwei Bürgschaften für dieselbe Gesellschaft, beide 2023 beschlossen und später erhöht: Kongresshalle 50 → 79 Mio. € (30.06.2025), Kramermarktfläche 12 → 16,9 Mio. € (23.02.2026). Die jüngere ist die falsche."

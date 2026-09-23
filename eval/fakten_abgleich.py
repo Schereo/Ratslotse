@@ -46,6 +46,11 @@ _MULT = {
     "mrd": 1e9, "milliarde": 1e9, "milliarden": 1e9,
     "mio": 1e6, "million": 1e6, "millionen": 1e6,
     "tsd": 1e3, "tausend": 1e3, "t€": 1e3, "teur": 1e3,
+    # Ein am Zeilenende abgeschnittenes „Mil…“: Die Presse-Auszüge im Prompt
+    # enden nach fester Zeichenzahl, mitten im Wort („Pauschalfestpreis von
+    # 57,3 Mil“, 23.09.2026). Die Zahl STAND im Kontext; wer daraus „57,3
+    # Millionen Euro“ macht, erfindet nichts.
+    "mil": 1e6,
 }
 
 #: Eine Zahl im deutschen Format, mit optionalem Vielfachen und Einheit.
@@ -57,7 +62,8 @@ _ZAHL = re.compile(
     r"(?<![\w.,])"
     r"(?P<num>\d{1,3}(?:\.\d{3})+(?:,\d+)?|\d+(?:,\d+)?)"
     r"(?![\d])(?!\.\d)"
-    r"(?:\s?(?P<mult>Mrd\.?|Milliarden?|Mio\.?|Millionen?|Tsd\.?|Tausend|T€|TEUR)(?![a-zäöü]))?"
+    r"(?:\s?(?P<mult>Mrd\.?|Milliarden?|Mio\.?|Millionen?|Tsd\.?|Tausend|T€|TEUR"
+    r"|Mil(?=\s*(?:\n|$)))(?![a-zäöü]))?"
     r"(?:\s?(?P<einheit>€|Euro\b|EUR\b|%|Prozent\b|v\.\s?H\.))?",
     re.IGNORECASE,
 )
@@ -275,7 +281,14 @@ def _zeile_zu(zeilen_: list[Zeile], pos: int) -> int:
 #: Wie weit HINTER einer Zahl ein Jahr noch zu ihr gehört: „337 Mio. € (2025)“
 #: ja, „337 Mio. € — 2024 waren es noch 295“ nicht.
 _JAHR_DAHINTER_MAX = 14
-_ANGEHAENGT = re.compile(r"\s*(\(|im jahr|jahr|für|fuer|in|zum|ende|stand)\s*", re.I)
+#: Bis zu zwei Bindewörter: „336.994.000 Euro zum Jahresende 2025“ (GPT-6 Sol
+#: im Recherche-Bericht, 23.09.2026 — galt als Wert für 2015, das weiter vorn
+#: im Satz stand: „von 211.503.000 Euro zum Jahresende 2015 auf …“).
+_ANGEHAENGT = re.compile(r"\s*(?:(?:\(|im jahr|jahresende|jahr|für|fuer|in|zum|am|ende|stand)"
+                         r"\s*){1,2}", re.I)
+#: Wie weit ein ANGEHÄNGTES Jahr hinter der Zahl stehen darf — weiter als
+#: ``_JAHR_DAHINTER_MAX``, weil die Bindewörter dazwischen es festlegen.
+_ANGEHAENGT_MAX = 20
 
 
 def jahre_der_zahl(zeilen_: list[Zeile], z: Zahl, *, satz: bool = False) -> set[int]:
@@ -319,7 +332,7 @@ def _jahr_in_zeile(zeile: Zeile, p: int, q: int, von: int = 0, bis: int | None =
     # im Jahr 2020 auf 850,2 Mio. € im Jahr 2025“ — 850,2 gehört zu 2025,
     # nicht zum 2020 davor.
     for s, j in zeile.jahre:
-        if q <= s < min(bis, q + _JAHR_DAHINTER_MAX) and _ANGEHAENGT.fullmatch(zeile.text[q:s]):
+        if q <= s < min(bis, q + _ANGEHAENGT_MAX) and _ANGEHAENGT.fullmatch(zeile.text[q:s]):
             return j
     vorher = [j for (s, j) in zeile.jahre if von <= s < p]
     if vorher:
@@ -434,12 +447,30 @@ _VERWEIGERT = re.compile("|".join([
     r"\b(steht|stehen)\b[^.!?\n]{0,50}\b(nicht|kein|keine|keinen)\b",
     r"\b(vergleichswert|vergleichszahl|angaben|daten|zahlen|werte?)\w*\b[^.!?\n]{0,40}"
     r"\bfehl(t|en)\b",
+    # Recherche-Berichte, 23.09.2026 (GPT-6 Sol/Luna): „in den mitgelieferten
+    # Unterlagen findet sich kein Beschluss“, „sind … nicht dokumentiert“,
+    # „ist anhand dieser Unterlagen nicht nachweisbar“
+    r"\b(findet|finden) sich\b[^.!?\n]{0,60}\b(kein|keine|keinen|nichts)\b",
+    r"\bnicht (dokumentiert|nachweisbar|nachzuweisen|ersichtlich)\b",
+    # „ist kein Ratsbeschluss zur Einführung … dokumentiert“, „lässt sich aus
+    # dem vorliegenden Material kein Betrag nennen“, „einen Ist-Wert für 2026
+    # enthalten die Unterlagen nicht“ (GPT-6 Luna, zweiter Lauf)
+    r"\b(kein|keine|keinen)\b[^.!?\n]{0,60}\b(dokumentiert|belegt|verzeichnet)\b",
+    r"laesst sich\b[^.!?\n]{0,50}\b(kein|keine|keinen|nicht)\b[^.!?\n]{0,30}"
+    r"\b(nennen|sagen|feststellen|beziffern|ableiten|angeben)\b",
+    r"\b(enthalten|nennen|zeigen|liefern)\b[^.!?\n]{0,40}\b(unterlagen|daten|angaben|quellen|"
+    r"material)\w*\b[^.!?\n]{0,20}\b(nicht|keine|keinen|kein|nichts)\b",
 ]))
 
 
 def verweigert(antwort: str) -> bool:
-    """Sagt die Antwort, dass die Daten das nicht hergeben?"""
-    return bool(_VERWEIGERT.search(falte(antwort)))
+    """Sagt die Antwort, dass die Daten das nicht hergeben?
+
+    Ohne Markdown-Hervorhebung: Der Bericht der ausführlichen Recherche
+    setzt den Kernsatz fett („lässt sich **nicht feststellen**“) — GPT-6
+    Luna, 23.09.2026, zählte als nicht verweigert.
+    """
+    return bool(_VERWEIGERT.search(falte((antwort or "").replace("**", ""))))
 
 
 # --------------------------------------------------------------------------- #
