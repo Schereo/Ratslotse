@@ -35,6 +35,12 @@ from council.topics import _strip_fences  # noqa: F401  (kept for symmetry / fut
 # (docs/plan-modellwechsel.md, P4a).
 # Ohne ZDR (kern/llm.py::ZDR_VERZICHT), wie Lotti.
 MODEL = os.environ.get("COUNCIL_QA_MODEL", "openai/gpt-6-luna")
+# Der lange Bericht der ausführlichen Recherche (`deep_bericht_stream`) —
+# eigener Schalter, weil er ein Hintergrund-Auftrag ist: Dort zählt die
+# Latenz am wenigsten, und ein stärkeres Modell kostet je Bericht, nicht je
+# Frage. Ohne Angabe dasselbe Modell wie die Antwort. Messung und
+# Entscheidung: docs/plan-modellwechsel.md, „Ausführliche Recherche“.
+DEEP_MODEL = os.environ.get("COUNCIL_DEEP_MODEL") or MODEL
 # Die Query-Expansion ist ein Mini-Prompt auf dem kritischen Pfad JEDER
 # Frage, also ein schnelles Modell. Bis P4a (23.09.2026) gemini-2.5-flash-lite
 # (läuft am 20.10.2026 aus), seitdem 3.1 Flash Lite. Suite ki-frage-routing,
@@ -2114,7 +2120,7 @@ def deep_bericht_stream(question: str, candidates: list[dict],
                         haushalt: list[dict] | None = None,
                         planungen: list[dict] | None = None,
                         anlagen: list[dict] | None = None,
-                        model: str = MODEL,
+                        model: str = DEEP_MODEL,
                         taxes: list[dict] | None = None,
                         tax_capacity: dict | None = None,
                         geld: dict | None = None):
@@ -2142,7 +2148,10 @@ def deep_bericht_stream(question: str, candidates: list[dict],
                             context=_build_context(candidates),
                             zusatz=zusatz,
                             planungen=_planungen_block(planungen))
-    extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
+    # Der Denkaufwand je Modell UND Feature, wie bei Lotti und der Antwort
+    # (`llm.WEB_DENKAUFWAND`) — bis 23.09.2026 stand hier nur DeepSeeks
+    # Aus-Schalter, der Bericht lief also immer mit der Vorgabe des Anbieters.
+    extra = llm.web_denk_extra(model, "deep_report")
     yield from llm.chat_stream(model=model, _feature="deep_report", temperature=0.2,
                                max_tokens=4000,
                                messages=[{"role": "user", "content": prompt}], **extra)

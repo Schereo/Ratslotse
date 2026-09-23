@@ -611,14 +611,24 @@ def radverkehr_und_baeder(q: Quelle) -> list[dict]:
              "Mit wie viel Geld unterstützt die Stadt das BTB-Schwimmbad im Jahr 2027?",
              "verwechslung/schwimmbad",
              [g_zahl(177_500, "€", "Zuschuss BTB-Bad (Maximalbetrag)", q_vorlage(btb_v), jahr=2027)],
-             verboten=[v_zahl(173_000, "Betrag für 2026"), v_zahl(191_000, "Betrag für 2030")],
+             # Nur ALS Betrag für 2027 verboten: Der Bericht der ausführlichen
+             # Recherche nennt die ganze Reihe („Für 2026 nennt die Vorlage
+             # 173.000 Euro … 191.000 Euro 2030“) — richtig, und bis 23.09.2026
+             # als falsch gezählt, bei allen drei gemessenen Einstellungen.
+             verboten=[{**v_zahl(173_000, "Betrag für 2026"), "als_jahr": 2027},
+                       {**v_zahl(191_000, "Betrag für 2030"), "als_jahr": 2027}],
              notiz="Jahresfalle: Die Vorlage nennt fünf Jahresbeträge in einer Zeile. Ob die "
                    "Vorlage (financial_impact) überhaupt in den Kontext kommt, ist Teil der Messung."),
         fall("lotti-btb-betrag", "lotti",
              "Wie viel Geld bekommt der BTB hier im Jahr 2027?",
              "beschluss/kosten",
              [g_zahl(177_500, "€", "Zuschuss BTB-Bad (Maximalbetrag)", q_vorlage(btb_v), jahr=2027)],
-             verboten=[v_zahl(173_000, "Betrag für 2026"), v_zahl(191_000, "Betrag für 2030")],
+             # Nur ALS Betrag für 2027 verboten: Der Bericht der ausführlichen
+             # Recherche nennt die ganze Reihe („Für 2026 nennt die Vorlage
+             # 173.000 Euro … 191.000 Euro 2030“) — richtig, und bis 23.09.2026
+             # als falsch gezählt, bei allen drei gemessenen Einstellungen.
+             verboten=[{**v_zahl(173_000, "Betrag für 2026"), "als_jahr": 2027},
+                       {**v_zahl(191_000, "Betrag für 2030"), "als_jahr": 2027}],
              route="/council/decision", refs={"decision_id": btb["id"]},
              notiz="Beschlusstext und Kurzfassung nennen keine Beträge, nur die Vorlage. Seit "
                    "23.09.2026 trägt der Beschluss-Block deren finanzielle Auswirkungen (die "
@@ -791,8 +801,15 @@ def weitere_beschluesse(q: Quelle) -> list[dict]:
              "verwechslung/weser-ems-halle",
              [g_zahl(79_000_000, "€", "Ausfallbürgschaft Kongresshalle (Höchstbetrag)",
                      q_beschluss(b_kongress, "official_text")), g_sitzungsdatum(b_kongress)],
-             verboten=[v_zahl(16_900_000, "Bürgschaft für die Park- und Kramermarktfläche "
-                                          f"(id {b_kramer['id']}), nicht für die Kongresshalle")],
+             verboten=[{**v_zahl(16_900_000, "Bürgschaft für die Park- und Kramermarktfläche "
+                                             f"(id {b_kramer['id']}), nicht für die Kongresshalle"),
+                        # Als die ANDERE Bürgschaft genannt, ist sie keine
+                        # Verwechslung. GPT-6 Sol im Recherche-Bericht, 23.09.:
+                        # „Für dessen Sanierung erhöhte der Rat … von 12 auf
+                        # 16,9 Millionen Euro. Diese 16,9 Millionen Euro sind
+                        # nicht Teil der hier erfragten Neubau-Bürgschaft.“
+                        "ausser_im_satz_mit": ["Kramermarkt", "Parkfläche", "Sanierung",
+                                               "nicht Teil"]}],
              notiz="Zwei Bürgschaften für dieselbe Gesellschaft, beide 2023 beschlossen und später "
                    "erhöht: Kongresshalle 50 → 79 Mio. € (30.06.2025), Kramermarktfläche "
                    "12 → 16,9 Mio. € (23.02.2026). Die jüngere ist die falsche."),

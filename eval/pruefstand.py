@@ -101,6 +101,10 @@ OHNE_DENKEN_ENV = "PRUEFSTAND_OHNE_DENKEN"
 #: Woran ein 404 der Datenpolitik zu erkennen ist: kein Anbieter, der ZDR
 #: zusagt. Für ein Feature mit Nutzereingabe ist das das RICHTIGE Ergebnis
 #: (GPT-6 Luna, Stand 22.09.2026) — im Bericht „nicht zulässig", kein Ausfall.
+#: Die Stichprobe einer Suite, die eine kennt (Suite.stichprobe) — gesetzt
+#: nur im Unterprozess eines Laufs. Für teure Modelle die Vorgabe
+#: (eval/kostenbremse.py, Tims Regel vom 23.09.2026).
+STICHPROBE_ENV = "PRUEFSTAND_STICHPROBE"
 _ZDR_404 = re.compile(r"data policy|zero data retention|no endpoints found matching", re.I)
 
 
@@ -201,6 +205,10 @@ class Suite:
     #: Läuft live im Sitzungs-Mitschnitt: Die Latenz ist der Verzug der
     #: Anzeige, sie zählt wie im Web.
     live: bool = False
+    #: Kann die Suite eine geschichtete Stichprobe ihrer Fälle messen
+    #: (STICHPROBE_ENV)? Ohne das läuft ein teures Modell hier nur mit
+    #: --voll.
+    stichprobe: bool = False
 
     @property
     def nutzereingabe(self) -> bool:
@@ -461,7 +469,12 @@ def _lauf_fakten(name: str) -> Callable[[], dict]:
     def lauf() -> dict:
         from council import assistant
         from eval import run_fakten as rf
-        erg = rf.ein_lauf(assistant.MODEL, rf.lade([_fakten_datei(name)]), laut=False)
+        faelle = rf.lade([_fakten_datei(name)])
+        n = int(os.environ.get(STICHPROBE_ENV) or 0)
+        if n:
+            from eval import kostenbremse
+            faelle = kostenbremse.stichprobe(faelle, n)
+        erg = rf.ein_lauf(assistant.MODEL, faelle, laut=False)
         pfad = rf.speichern(erg)
         # Die Antworten stehen im eigenen Ergebnis (eval/results/fakten/); hier
         # nur, was der Bericht braucht — sonst trüge jeder Prüfstandslauf
@@ -853,7 +866,7 @@ REGISTER: tuple[Suite, ...] = (
         faelle=_fakten_kz("n_cases"),
         nebenkennzahlen=lambda roh: {k: (roh.get("kennzahlen") or {}).get(k) for k in (
             "kontextfehler", "modellfehler", "fehlerarten", "p50_ms")},
-        lokal=_braucht_fakten(datei), hart_sperrt=True,
+        lokal=_braucht_fakten(datei), hart_sperrt=True, stichprobe=True,
     ) for name, titel, datei in (
         ("fakten-haushalt", "Fakten-Eval: Haushaltsfragen (Lotti + Frag den Rat)",
          "cases_fakten_haushalt.json"),
@@ -1166,6 +1179,10 @@ def _unterprozess(argv: list[str]) -> int:
     suite = SUITEN[a.suite]
     erg = messen(suite, lauf=a.lauf, modell=a.modell, tarif=a.tarif, ohne_denken=a.ohne_denken,
                  aufwand=a.aufwand)
+    if os.environ.get(STICHPROBE_ENV):
+        # Eine Stichprobe ist mit einem vollen Lauf nicht Fall für Fall
+        # vergleichbar — das Ergebnis sagt, dass es eine war.
+        erg["stichprobe"] = int(os.environ[STICHPROBE_ENV])
     pfad = ablegen(erg)
     print(f"\n  → {zeile(erg)}\n    {pfad.relative_to(WURZEL)}", flush=True)
     return 0
@@ -1210,12 +1227,79 @@ def pruefe_tarif(suiten: Iterable[Suite], tarif: str | None) -> str | None:
     return None
 
 
+def kosten_schaetzen(suite: Suite, modell: str, laeufe: int = 1, *,
+                     stichprobe_n: int | None = None,
+                     ordner: Path = ERGEBNISSE) -> float | None:
+    """Was ``laeufe`` Läufe der Suite mit ``modell`` voraussichtlich kosten.
+
+    Aus dem jüngsten früheren Lauf derselben Suite mit bekanntem Preis und
+    echten Kosten (ohne Flex, der halbe Preise hat), hochgerechnet mit dem
+    Preisverhältnis — dem GRÖSSEREN aus Eingabe und Ausgabe, weil der
+    frühere Lauf beides nicht getrennt ausweist. Mit Stichprobe anteilig
+    nach Fällen. ``None``: kein Preis für ``modell`` oder kein früherer Lauf.
+    """
+    from eval import kostenbremse as kb
+    neu = kb.preis(modell)
+    if neu is None:
+        return None
+    for pfad in sorted((ordner / suite.name).glob("*.json"), reverse=True):
+        try:
+            e = json.loads(pfad.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        alt = kb.preis(e.get("modell") or "")
+        if (alt is None or e.get("abbruch") or e.get("tarif") or not e.get("kosten_usd")
+                or e.get("ohne_kostenwert") or not alt[0] or not alt[1]):
+            continue
+        faktor = max(neu[0] / alt[0], neu[1] / alt[1])
+        anteil = (min(1.0, stichprobe_n / e["faelle"])
+                  if stichprobe_n and e.get("faelle") else 1.0)
+        return float(e["kosten_usd"]) * faktor * anteil * laeufe
+    return None
+
+
+def kostenpruefung(suite: Suite, modell: str, laeufe: int, *, max_kosten: float,
+                   teuer_ok: bool, stichprobe_n: int | None, voll: bool,
+                   ordner: Path = ERGEBNISSE) -> tuple[int | None, str | None, str | None]:
+    """Die Kostenbremse vor einer Suite (``eval/kostenbremse.py``).
+
+    Gibt ``(stichprobe, grund, hinweis)`` zurück: die Fallzahl, mit der die
+    Suite läuft (``None`` = alle), den Grund, warum sie NICHT läuft, und
+    einen Hinweis für die Ausgabe.
+    """
+    from eval import kostenbremse as kb
+    n = stichprobe_n
+    if n and not suite.stichprobe:
+        return None, (f"{suite.name} kennt keine Stichprobe — ohne --stichprobe laufen "
+                      "oder eine Suite mit Stichprobe wählen"), None
+    if kb.teuer(modell) and not voll and not n:
+        if not suite.stichprobe:
+            return None, (f"{modell} ist teuer (Ausgabe über {kb.TEUER_AUSGABE_USD:.0f} $ je "
+                          f"Mio. Tokens), und {suite.name} kennt keine Stichprobe. Erst eine "
+                          "Suite mit Stichprobe; den vollen Lauf nur mit --voll."), None
+        n = kb.STICHPROBE_N
+    schaetzung = kosten_schaetzen(suite, modell, laeufe, stichprobe_n=n, ordner=ordner)
+    hinweis = (f"Stichprobe {n} Fälle; " if n else "") + (
+        f"geschätzt {schaetzung:.2f} $ für {laeufe} Lauf/Läufe" if schaetzung is not None
+        else "keine Schätzung (kein früherer Lauf mit Preis)")
+    if schaetzung is None and kb.preis(modell) is not None and not kb.teuer(modell):
+        # Ein billiges Modell auf einer Suite ohne Vorlauf: laufen lassen —
+        # sonst ließe sich eine neue Suite nie zum ersten Mal messen.
+        return n, None, hinweis
+    grund = kb.bremse(schaetzung, max_kosten=max_kosten, teuer_ok=teuer_ok, modell=modell,
+                      was=f"{suite.name} mit {modell}")
+    return n, grund, hinweis
+
+
 def starten(suite: Suite, modell: str, lauf: int, tarif: str | None, ohne_denken: bool,
-            aufwand: str | None = None) -> int:
+            aufwand: str | None = None, stichprobe_n: int | None = None) -> int:
     """Einen Lauf im eigenen Prozess mit eigener Kostendatei."""
     with tempfile.TemporaryDirectory(prefix="pruefstand-") as tmp:
         env = {**os.environ, suite.schalter: modell,
                "RATSLOTSE_SQLITE": str(Path(tmp) / "usage.sqlite")}
+        env.pop(STICHPROBE_ENV, None)
+        if stichprobe_n:
+            env[STICHPROBE_ENV] = str(stichprobe_n)
         if tarif:
             env[TARIF_ENV] = tarif
         argv = [sys.executable, str(Path(__file__).resolve()), "_lauf", "--suite", suite.name,
@@ -1617,7 +1701,18 @@ def main(argv: list[str] | None = None) -> int:
                     help="reasoning.enabled=false für das gewählte Modell (z. B. DeepSeek V4 Flash)")
     ap.add_argument("--aufwand", choices=AUFWAENDE,
                     help="reasoning.effort für das gewählte Modell (z. B. low bei GPT-6 Luna)")
+    # Kostenbremse (eval/kostenbremse.py, Tims Regel vom 23.09.2026)
+    ap.add_argument("--max-kosten", type=float, default=None,
+                    help="Grenze der geschätzten Kosten je Suite in USD (Vorgabe 1,00)")
+    ap.add_argument("--teuer-ok", action="store_true",
+                    help="auch über der Grenze bzw. ohne Schätzung laufen")
+    ap.add_argument("--stichprobe", type=int, metavar="N",
+                    help="geschichtete Stichprobe von N Fällen (nur Suiten, die das können)")
+    ap.add_argument("--voll", action="store_true",
+                    help="teures Modell: alle Fälle statt der Stichprobe")
     a = ap.parse_args(argv)
+    from eval import kostenbremse as kb
+    max_kosten = kb.MAX_KOSTEN_USD if a.max_kosten is None else a.max_kosten
 
     suiten = waehlen(a.suite)
     grund = pruefe_tarif(suiten, a.tarif)
@@ -1635,9 +1730,19 @@ def main(argv: list[str] | None = None) -> int:
             print(f"\n=== {suite.name}: übersprungen — {grund}")
             continue
         modell = a.modell or suite.modell_aktuell()
+        n, grund, hinweis = kostenpruefung(suite, modell, a.laeufe, max_kosten=max_kosten,
+                                           teuer_ok=a.teuer_ok, stichprobe_n=a.stichprobe,
+                                           voll=a.voll)
+        if grund:
+            print(f"\n=== {suite.name}: nicht gestartet — {grund}")
+            rot = True
+            continue
+        if hinweis:
+            print(f"\n    {suite.name}: {hinweis}")
         for lauf in range(1, a.laeufe + 1):
             print(f"\n=== {suite.name} · {modell} · Lauf {lauf}/{a.laeufe}", flush=True)
-            rot |= starten(suite, modell, lauf, a.tarif, a.ohne_denken, a.aufwand) != 0
+            rot |= starten(suite, modell, lauf, a.tarif, a.ohne_denken, a.aufwand,
+                           stichprobe_n=n) != 0
     print("\nBericht neu schreiben: python eval/pruefstand.py bericht")
     return 1 if rot else 0
 

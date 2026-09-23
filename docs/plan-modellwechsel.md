@@ -83,6 +83,11 @@ Merge von P4–P5 also auf Prod und dev nachsehen:
 - `ERSATZ` nachziehen: Heute ist 2.5 Flash der Ersatz für Luna. Nach dem
   20.10. wäre das ein Ersatz, der selbst ausfällt.
 - **Web-Anfragen nie über `:batch`.**
+- **Teure Modelle: erst eine Stichprobe; einen vollen Lauf nur, wenn die
+  Stichprobe einen echten Gewinn zeigt** (Tim, 23.09.2026). Die Läufer
+  setzen das selbst durch: Kostenschätzung vor dem Lauf, Grenze
+  `--max-kosten` 1 $, über 5 $ je Mio. Ausgabe-Tokens von selbst eine
+  geschichtete Stichprobe von 15 Fällen (`eval/kostenbremse.py`).
 - Ein Feature ohne Eval bekommt vor dem Wechsel eine kleine: zehn echte
   Eingaben, alte Ausgabe daneben, buchstäblich prüfbare Zusagen (Zahlen,
   Namen, Form). Kein Modell als Richter.
@@ -459,8 +464,9 @@ nicht Teil von P4a.**
   sagte auf „Wie viel zahlt die Stadt jedes Jahr an Zinsen?“ aber, der
   Zinsaufwand sei nicht beziffert (Screenshot P4a) — der Geld-Kontext für
   Lotti trägt die Zahl nicht. Kein Modellfehler.
-- `qa_simple`, `deep_report` und `party_opinions` laufen mit GPT-6 Luna und
-  sind ungemessen.
+- `qa_simple` und `party_opinions` laufen mit GPT-6 Luna und sind
+  ungemessen. `deep_report` ist seit 23.09.2026 gemessen (§ 5,
+  „Ausführliche Recherche“).
 
 
 Die sechs freigegebenen Luna-Features auf GPT-6 Luna (oder Flex), je nach
@@ -543,3 +549,82 @@ Detail stehen in [`docs/modell-batch-flex.md`](modell-batch-flex.md).
   `district_projects`, `social_*`) und `speeches` (Gemini 2.5 Flash).
   **Offen:** ihr Kostenanteil. Den zeigt nur das Admin-Panel auf Prod.
 
+
+### Ausführliche Recherche (gemessen 23.09.2026, `eval/run_fakten.py --kanal deep`)
+
+Tim, 23.09.: „vielleicht könnten wir für die ausführliche Recherche noch mehr
+Effort / Thinking nehmen?“ Die Recherche ist ein Hintergrund-Auftrag, die
+Latenz zählt dort am wenigsten. Gemessen über den echten Weg: Job an
+`POST /api/council/deep-research`, abfragen bis fertig, Bericht gegen die
+Goldfakten der Fakten-Eval. Kontext = die Prompts ALLER Aufrufe des Jobs
+(Analyse, Zerlegung, Bericht). 55 Fälle aus Frag den Rat (`--auswahl deep`:
+Verläufe, Plan gegen Ist, Vergleiche, Kosten samt Finanzierung,
+Verwechslungsfallen, 6 × „nicht in den Daten“), lokaler Abzug ohne
+Embeddings (BM25), gleiche Datenbank für alle.
+
+| Einstellung | Läufe | Modellfehler | davon falsch/erfunden | Kontextfehler | p50 | p95 | Denk-Tokens p50 (max) | $ je Bericht |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| GPT-6 Luna, Vorgabe (heute) | 2 × 55 | 2, 2 | 0 | 6, 6 | 29–32 s | 38–44 s | 1.014 (2.057) | 0,0042 |
+| GPT-6 Luna, `high` | 2 × 55 | 2, 2 | 0 | 5, 6 | 41–44 s | 59–68 s | 2.070 (4.360) | 0,0047–0,0048 |
+| GPT-6 Luna, `xhigh` | 1 × 55 | 2 | 0 | 5 | 59 s | 83 s | 3.560 (7.225) | 0,0056 |
+| **GPT-6 Sol**, Vorgabe | 55 + 43 | **0, 0** | 0 | 5, 5 | 22–23 s | 27–29 s | 314 (862) | **0,056–0,057** |
+
+Alle Luna-Fehler sind **Auslassungen** in Rats-Verläufen — das Datum eines
+Beschlusses („Der Rat lehnte 2022 … ab“ statt 07.11.2022, `rat-eigenreinigung`
+in 3 von 4 Läufen), die Zahl der Gegenstimmen (`rat-stadion-einwohnerbefragung`,
+27), den jüngsten Beschluss zum Thema (`rat-schwimmbad-zuletzt`). Keine
+falsche, keine erfundene Zahl, in keiner Einstellung. Kein Bericht
+abgeschnitten (`finish_reason` überall `stop`; der Boden von 16.000 Tokens aus
+`MODEL_PARAMS` lässt bei `xhigh` mit 7.225 Denk-Tokens noch Luft — die 4.000
+der Aufrufstelle hätten dort nicht gereicht). Die Kontextfehler (Stadion:
+Pauschalpreis, EU-Beihilfe, Fertigstellung; Grundsteuer-Mehrertrag;
+Sechsfeldhalle) sind in allen Einstellungen dieselben: Retrieval ohne
+Embeddings, kein Modellthema.
+
+**Entscheidung:**
+
+- **Mehr Denkaufwand für Luna bringt nichts.** `high` und `xhigh` machen
+  dieselben zwei Auslassungen, nur an anderen Fällen, und brauchen 40 bzw.
+  100 % länger. `WEB_DENKAUFWAND` bleibt leer. Der Bericht liest den Eintrag
+  aber jetzt (`llm.web_denk_extra(model, "deep_report")`) — bis heute hätte
+  ein Eintrag dort nichts bewirkt.
+- **GPT-6 Sol ist besser — nicht umgestellt, Tim entscheidet.** 0 Modellfehler
+  in 98 Berichten gegen 2 je Lauf bei Luna, dazu schneller (es denkt kürzer).
+  Preis: rund **5,6 ct je Bericht statt 0,42 ct** (13-mal so viel; Listenpreis
+  2/10 $ gegen 0,10/0,50 $ je Mio. Tokens). Bei **100 Berichten im Monat
+  5,63 $ statt 0,42 $**; beim Kontingent von 5 je Konto und Tag höchstens
+  28 ct je Konto und Tag. Umstellen hieße eine Zeile in der `.env`:
+  `COUNCIL_DEEP_MODEL=openai/gpt-6-sol` (neuer Schalter, leer = das Modell der
+  Antwort). Unter dem Haus-Routing gibt es Endpunkte (OpenAI, Azure, Bedrock;
+  `deep_report` steht in `ZDR_VERZICHT`, kein China, kein Training). Nicht
+  über den Endpunkt `openai/fast` (doppelter Preis) — OpenRouter wählt ihn
+  ohne `service_tier` nicht.
+- Die Zerlegung (`deep_decomposition`) läuft auf 3.1 Flash Lite, das nicht
+  denkt (`reasoning_tokens` 0); ein Aufwand wirkt dort nicht. Nicht gemessen.
+
+**Was die Messung gekostet hat:** Luna fünf volle Läufe zusammen 1,29 $,
+Sol 5,54 $ (ein voller Lauf 3,10 $, der zweite nach 43 Fällen gestoppt,
+2,44 $) — der Anlass für die neue Regel oben in § 2 und die Kostenbremse
+(`eval/kostenbremse.py`). **Lehre für die Stichprobe:** Auf der festen
+Stichprobe von 15 Fällen (`bericht --kanal deep --stichprobe 15`) machen
+Luna und Sol beide 0 Modellfehler — die Luna-Auslassungen sitzen in
+Rats-Verläufen, von denen die Stichprobe nur drei zieht. Eine Stichprobe
+zeigt einen großen Gewinn; einen von zwei Fällen auf 55 zeigt sie nicht.
+
+**Messfehler, behoben vor dem Vergleich** (alle Läufe nachgewertet, jeder mit
+Beleg aus einer gespeicherten Antwort):
+
+| Fall | Fehler | Korrektur |
+|---|---|---|
+| `rat-btb-zuschuss-2027` | Der Bericht nennt die ganze Jahresreihe (173.000 € für 2026 … 191.000 € für 2030) — alle drei Einstellungen „falsch“ | Verbote nur `als_jahr: 2027` (`build_fakten_rat.py`, auch für Lotti) |
+| `rat-kongresshalle-buergschaft` | Sol nannte die 16,9 Mio. € ausdrücklich als die ANDERE Bürgschaft | `ausser_im_satz_mit` |
+| `rat-nd-*`, `hh-nd-*` | Absage fett gesetzt („lässt sich **nicht feststellen**“), andere Wendungen („findet sich kein Beschluss“, „kein … dokumentiert“, „enthalten die Unterlagen nicht“) | `verweigert` ohne `**`, fünf Muster mehr |
+| `rat-stadion-einwohnerbefragung` | „57,3 Millionen Euro“ als erfunden — der Presse-Auszug im Prompt endet nach fester Länge bei „57,3 Mil“ | abgeschnittenes „Mil“ am Zeilenende = Millionen |
+| `hh-schulden-entwicklung-rat` | „336.994.000 Euro zum Jahresende 2025“ galt als Wert für 2015 | angehängtes Jahr mit zwei Bindewörtern |
+
+Ergebnisse: `eval/results/fakten/deep/` (je Fall Bericht, Befund, Dauer,
+Kosten, `finish_reason`, Denk-Tokens). Die Kosten je Bericht der Läufe vom
+23.09. sind aus `llm_usage` nach Zeitstempel neu zugeordnet: Die erste
+Fassung des Läufers zählte „alles seit der Marke des Falls“ und nahm dabei
+den Bericht des Vorgängers teils doppelt mit (6,5 statt 5,6 ct); die
+Laufsummen stimmten, und der Läufer rechnet jetzt über die Laufsumme.

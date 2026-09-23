@@ -44,11 +44,27 @@ Aufruf::
 ``--ohne-zdr`` setzt ``NWZ_OPENROUTER_ZDR=0`` NUR im Mess-Backend: GPT-6
 Luna hat keinen ZDR-Anbieter (Tims Entscheidung vom 23.09. für Lotti und Frag
 den Rat); die Fälle sind eigene Fragen, keine Nutzerdaten.
+
+**Die ausführliche Recherche** (``--kanal deep``, 23.09.2026): Jeder Fall
+geht dann, egal welchem Kanal er gehört, als Job an ``POST
+/api/council/deep-research``; der Lauf fragt den Job ab, bis er fertig ist,
+und wertet den Bericht aus. Den Kontext bilden ALLE Prompts des Jobs
+(Analyse, Zerlegung, Bericht) — nicht nur der letzte. ``--auswahl deep``
+nimmt die Fälle, für die sich eine Recherche lohnt (``AUSWAHL["deep"]``),
+``--aufwand`` setzt den Denkaufwand (``RATSLOTSE_WEB_DENKAUFWAND``) im
+Mess-Backend. Das Tageskontingent hebt der Lauf über denselben Weg auf, den
+ein Admin im Panel nimmt (``web_users.deep_limit = 0``) — in der
+Wegwerf-Kontendatenbank, ohne Messschalter im Betriebscode::
+
+    python eval/run_fakten.py --kanal deep --auswahl deep --modell openai/gpt-6-luna --ohne-zdr
+    python eval/run_fakten.py --kanal deep --auswahl deep --modell openai/gpt-6-luna --ohne-zdr --aufwand high
+    python eval/run_fakten.py bericht --kanal deep        # Vergleichstabelle auf stdout
 """
 from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import re
 import shutil
@@ -80,8 +96,55 @@ MITSCHNITT_ABLAGE = Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cac
     / "ratslotse" / "fakten-mitschnitt"
 KONTO = ("ratsfrau@example.org", "password123")
 MITSCHNITT_ENV = "RATSLOTSE_PROMPT_MITSCHNITT"
+#: Wie ``kern.llm.WEB_DENKAUFWAND_ENV`` — hier als Text, damit der Runner
+#: ohne ``kern`` importierbar bleibt.
+DENKAUFWAND_ENV = "RATSLOTSE_WEB_DENKAUFWAND"
 #: Die Features, deren Prompt die Antwort trägt — je Kanal.
-ANTWORT_FEATURES = ("assistant_explain", "qa_answer", "qa_simple")
+ANTWORT_FEATURES = ("assistant_explain", "qa_answer", "qa_simple", "deep_report")
+#: Die Recherche-Läufe liegen in einem eigenen Ordner: Sie messen eine
+#: Teilmenge über einen anderen Weg, und ``bericht`` (docs/fakten-eval.md)
+#: soll sie nicht neben die Gesamtläufe stellen.
+ERGEBNISSE_DEEP = ERGEBNISSE / "deep"
+#: Wie lange ein Recherche-Job höchstens laufen darf, bevor er als Ausfall
+#: zählt. Gemessen (23.09.2026): p95 29 s (Sol) bis 83 s (Luna ``xhigh``).
+DEEP_FRIST_S = 900
+
+#: Benannte Fallauswahlen (``--auswahl``). ``deep``: die Fälle, für die sich
+#: eine ausführliche Recherche lohnt — Verläufe, Vergleiche, Plan gegen Ist,
+#: Kosten samt Finanzierung, Verwechslungsfallen und „nicht in den Daten“.
+#: Nur Fälle aus Frag den Rat: Lottis Fälle hängen an der Seite, auf der die
+#: Frage fällt, und die Recherche kennt keine Seite. Einfache Nachschlage-
+#: Fragen (ein Wert, ein Name, ein Termin) fehlen bewusst — dafür gibt es die
+#: schnelle Frage.
+AUSWAHL: dict[str, tuple[str, ...]] = {
+    "deep": (
+        # Haushalt: Verläufe, Plan gegen Ist, Vergleiche, Gründe
+        "hh-schulden-entwicklung-rat", "hh-schulden-rekord-rat", "hh-schulden-konzern-rat",
+        "hh-buergschaften-rat", "hh-kredite-2026-rat", "hh-plan-defizit-2026-rat",
+        "hh-plan-groesster-bereich-rat", "hh-ist-gruende-2024-rat", "hh-vollzug-2026-rat",
+        "hh-vollzug-2025-rat", "hh-invest-plan-ist-rat", "hh-invest-vorhaben-rat",
+        "hh-invest-ist-2025-rat", "hh-gewst-plan-ist-2024-rat", "hh-hebesatz-entwicklung-rat",
+        "hh-gebuehr-abfall-kosten-rat", "hh-vergleich-gewst-hebesatz-rat",
+        "hh-aenderungsliste-2026-rat", "hh-haushalt-entwurf-final-rat", "hh-spielraum-rat",
+        "hh-rpa-rat", "hh-nachbewilligung-2025-rat", "hh-stadion-gesellschaft-rat",
+        # Haushalt: nicht in den Daten
+        "hh-nd-schulden-wolfsburg-rat", "hh-nd-schulden-2030-rat", "hh-nd-gewst-2026-rat",
+        # Rat: Verläufe und Kosten samt Finanzierung
+        "rat-stadion-was-beschlossen", "rat-stadion-kosten-wer-zahlt",
+        "rat-stadion-eu-genehmigung", "rat-stadion-fertigstellung",
+        "rat-stadion-einwohnerbefragung", "rat-stadion-wer-dagegen",
+        "rat-fliegerhorst-zuletzt", "rat-radverkehr-plaene", "rat-haareneschstrasse",
+        "rat-schwimmbad-zuletzt", "rat-grundsteuer-entwicklung", "rat-grundsteuer-mehrertrag",
+        "rat-waermeplan", "rat-baumschutzsatzung", "rat-sechsfeldhalle-kosten",
+        # Rat: Verwechslungsfallen
+        "rat-stadion-grundsatzbeschluss", "rat-fliegerhorst-dreifeldhalle-kosten",
+        "rat-quellenweg-fahrradstrasse", "rat-btb-zuschuss-2027", "rat-tangentialbus-praemisse",
+        "rat-grundsteuer-490-prozent", "rat-kongresshalle-kosten", "rat-kongresshalle-buergschaft",
+        "rat-zweckentfremdungssatzung", "rat-vbn-tarif-2024", "rat-eigenreinigung",
+        # Rat: nicht in den Daten
+        "rat-nd-einzelstimme-baak", "rat-nd-grundsteuer-c", "rat-nd-gehalt-stadion-gf",
+    ),
+}
 
 
 def lade(pfade: list[Path] | None = None) -> list[dict]:
@@ -113,7 +176,7 @@ def _uvicorn() -> str:
 
 @contextmanager
 def backend(modell: str, mitschnitt: Path, *, ohne_zdr: bool,
-            protokoll: Path) -> Iterator[str]:
+            protokoll: Path, aufwand: str | None = None) -> Iterator[str]:
     """Ein eigenes Backend für den Lauf; gibt die Basis-Adresse zurück."""
     with tempfile.TemporaryDirectory(prefix="fakten-konten-") as tmp:
         konten = Path(tmp) / "ratslotse.sqlite"
@@ -121,6 +184,7 @@ def backend(modell: str, mitschnitt: Path, *, ohne_zdr: bool,
         subprocess.run([sys.executable, str(WURZEL / "scripts" / "saat_konten.py"),
                         "--db", str(konten), "--council-db", str(rat)],
                        check=True, capture_output=True, cwd=WURZEL)
+        kontingent_aufheben(konten)
         port = _freier_port()
         env = {
             **os.environ,
@@ -132,7 +196,13 @@ def backend(modell: str, mitschnitt: Path, *, ohne_zdr: bool,
             MITSCHNITT_ENV: str(mitschnitt),
             "COUNCIL_ASSISTANT_MODEL": modell,
             "COUNCIL_QA_MODEL": modell,
+            "COUNCIL_DEEP_MODEL": modell,
         }
+        # Ohne Angabe gilt, was im Code steht — auch wenn die eigene Shell
+        # den Schalter noch von einem früheren Lauf trägt.
+        env.pop(DENKAUFWAND_ENV, None)
+        if aufwand:
+            env[DENKAUFWAND_ENV] = aufwand
         # Die Kosten landen in der Datei des Aufrufers (Prüfstand: eigene
         # je Lauf); ohne Vorgabe neben dem Mitschnitt, nie in der echten.
         env["RATSLOTSE_SQLITE"] = str(kostendatei(mitschnitt))
@@ -163,6 +233,23 @@ def backend(modell: str, mitschnitt: Path, *, ohne_zdr: bool,
                 proz.wait(timeout=10)
             except subprocess.TimeoutExpired:
                 proz.kill()
+
+
+def kontingent_aufheben(konten: Path, email: str = KONTO[0]) -> None:
+    """Das Tageskontingent der Recherche (5 je Konto) für das Messkonto aus.
+
+    Derselbe Weg wie im Admin-Panel (``web_users.deep_limit = 0`` heißt
+    „unbegrenzt“, ``routers/council.py::_deep_limit``) — in der Wegwerf-
+    Datenbank dieses Laufs. Ein Messschalter im Router wäre eine Stelle mehr,
+    an der der Betrieb das Kontingent verlieren könnte.
+    """
+    import sqlite3
+    con = sqlite3.connect(konten)
+    try:
+        con.execute("UPDATE web_users SET deep_limit = 0 WHERE email = ?", (email,))
+        con.commit()
+    finally:
+        con.close()
 
 
 def kostendatei(mitschnitt: Path) -> Path:
@@ -287,6 +374,52 @@ def frage_stellen(client: Any, fall: dict) -> dict:
     return erg
 
 
+def recherche_stellen(client: Any, fall: dict, *, frist_s: float = DEEP_FRIST_S,
+                      takt_s: float = 3.0) -> dict:
+    """Eine Frage als ausführliche Recherche — Job anlegen, abfragen bis fertig.
+
+    Abgefragt wird der gespeicherte Stand (``GET …/{id}``), nicht der SSE-
+    Strom: Das ist der Weg, auf dem die App einen fertigen Bericht nach dem
+    Zurückkommen holt, und er kennt keine Zwischenstände, die man falsch
+    zusammensetzen könnte. Danach „gesehen“ — sonst stieße der Job eine
+    Fertig-Meldung an.
+    """
+    t0 = time.perf_counter()
+
+    def ms() -> int:
+        return round((time.perf_counter() - t0) * 1000)
+
+    r = client.post("/api/council/deep-research", json={"question": fall["frage"]})
+    if r.status_code == 400 and (r.json() or {}).get("unclear"):
+        # Die Rückfrage ist eine Antwort, kein Ausfall: Die Frage war dem
+        # Riegel zu unbestimmt, ein Bericht entsteht nicht.
+        return {"text": str(r.json().get("detail") or ""), "done": {}, "fehler": None,
+                "ms": ms(), "weg": "rueckfrage", "status": "rueckfrage"}
+    if r.status_code != 201:
+        return {"text": "", "done": {}, "fehler": f"HTTP {r.status_code}: {r.text[:300]}",
+                "ms": ms(), "weg": "deep", "status": None}
+    job_id = r.json()["job_id"]
+    zeile: dict = {}
+    while time.perf_counter() - t0 < frist_s:
+        time.sleep(takt_s)
+        s = client.get(f"/api/council/deep-research/{job_id}")
+        if s.status_code != 200:
+            continue
+        zeile = s.json()
+        if zeile.get("status") != "laeuft":
+            break
+    else:
+        client.post(f"/api/council/deep-research/{job_id}/stop")
+        return {"text": zeile.get("report") or "", "done": {}, "ms": ms(), "weg": "deep",
+                "fehler": f"Frist {frist_s:.0f} s überschritten", "status": "frist"}
+    client.post(f"/api/council/deep-research/{job_id}/seen")
+    status = zeile.get("status")
+    quellen = zeile.get("sources") or {}
+    return {"text": (zeile.get("report") or "").strip(), "ms": ms(), "weg": "deep",
+            "status": status, "fehler": None if status == "fertig" else f"Job-Status {status}",
+            "done": {"facets": quellen.get("facets"), "cited": quellen.get("cited")}}
+
+
 def _antwort_aufruf(aufrufe: list[dict]) -> dict | None:
     """Der Aufruf, dessen Antwort gezeigt wurde: der letzte eines Antwort-Features."""
     passend = [a for a in aufrufe if a.get("feature") in ANTWORT_FEATURES and not a.get("aborted")]
@@ -303,16 +436,49 @@ def _kopfzeilen(kontext: str) -> list[str]:
     return list(dict.fromkeys(aus))
 
 
+def job_kontext(aufrufe: list[dict]) -> str | None:
+    """Der Kontext einer Recherche: die Prompts ALLER Aufrufe des Jobs.
+
+    Der Bericht bekommt das gesammelte Material, aber was in den Facetten-
+    Schritten stand, gehört ebenso zum Kontext — ein Fakt, den irgendein
+    Schritt sah, war da. Abgerissene Ströme zählen mit: Ihr Prompt ist
+    derselbe wie der des neuen Anlaufs.
+    """
+    teile = [prompt_text(a) for a in aufrufe if a.get("messages")]
+    return "\n\n".join(teile) if teile else None
+
+
+def _perzentil(werte: list[float], p: float) -> float | None:
+    """Nächster Rang (ohne Interpolation) — bei 50 Fällen ist p95 der 48."""
+    if not werte:
+        return None
+    s = sorted(werte)
+    return s[min(len(s) - 1, max(0, math.ceil(p * len(s)) - 1))]
+
+
 def ein_lauf(modell: str, faelle: list[dict], *, ohne_zdr: bool = False,
              basis: str | None = None, mitschnitt: Path | None = None,
-             laut: bool = True) -> dict:
-    """Alle Fälle einmal — gibt das Rohergebnis (ohne volle Prompts) zurück."""
+             laut: bool = True, kanal: str | None = None,
+             aufwand: str | None = None) -> dict:
+    """Alle Fälle einmal — gibt das Rohergebnis (ohne volle Prompts) zurück.
+
+    ``kanal="deep"`` stellt jeden Fall als ausführliche Recherche.
+    """
     stempel = datetime.now().strftime("%Y%m%d-%H%M%S")
-    lauf_name = f"{modell.replace('/', '-')}-{stempel}"
+    lauf_name = (f"{modell.replace('/', '-')}{'-' + kanal if kanal else ''}"
+                 f"{'-' + aufwand if aufwand else ''}-{stempel}")
     ordner = mitschnitt or (MITSCHNITT_ABLAGE / lauf_name)
     ordner.mkdir(parents=True, exist_ok=True)
     aus: dict = {"modell": modell, "zeitstempel": stempel, "mitschnitt": str(ordner),
                  "ohne_zdr": ohne_zdr, "faelle": []}
+    if kanal:
+        aus["kanal"] = kanal
+    if aufwand:
+        aus["aufwand"] = aufwand
+    datei = kostendatei(ordner)
+    # Dieselbe Uhr wie `ts` in llm_usage: UTC (s. kern/usage.jetzt_utc).
+    marke = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    bisher = [kosten_seit(datei, marke)["usd"]]
 
     def messen(basis_: str) -> None:
         client = anmelden(basis_)
@@ -320,13 +486,16 @@ def ein_lauf(modell: str, faelle: list[dict], *, ohne_zdr: bool = False,
         schnitt.neu()  # was vorher drinstand, gehört keinem Fall
         for n, fall in enumerate(faelle, 1):
             try:
-                erg = frage_stellen(client, fall)
+                erg = recherche_stellen(client, fall) if kanal == "deep" else frage_stellen(client, fall)
             except Exception as e:  # noqa: BLE001 — ein Ausfall ist ein Messergebnis
                 erg = {"text": "", "done": {}, "fehler": f"{type(e).__name__}: {e}", "ms": 0,
                        "weg": "?"}
             aufrufe = schnitt.neu()
             antwort_aufruf = _antwort_aufruf(aufrufe)
-            kontext = prompt_text(antwort_aufruf) if antwort_aufruf else None
+            if kanal == "deep":
+                kontext = job_kontext(aufrufe) if antwort_aufruf else None
+            else:
+                kontext = prompt_text(antwort_aufruf) if antwort_aufruf else None
             if antwort_aufruf is not None:
                 gefragt = antwort_aufruf.get("model")
                 geantwortet = antwort_aufruf.get("response_model") or gefragt or ""
@@ -349,20 +518,34 @@ def ein_lauf(modell: str, faelle: list[dict], *, ohne_zdr: bool = False,
                 "facetten": ((erg.get("done") or {}).get("facets")
                              or (erg.get("done") or {}).get("geld_facets")),
             }
+            if kanal == "deep":
+                # Nacheinander gemessen: Was die Laufsumme seit dem letzten
+                # Fall zugelegt hat, gehört diesem. NICHT „alles seit der
+                # Marke des Falls“ — `ts` hat Sekunden, und der Bericht des
+                # Vorgängers endet oft in derselben Sekunde, in der dieser
+                # Fall beginnt (erste Messung: 6,5 ct je Bericht statt 5,6).
+                summe = kosten_seit(datei, marke)["usd"]
+                zeile["usd"] = round(summe - bisher[0], 5)
+                bisher[0] = summe
+                zeile["job_status"] = erg.get("status")
+                zeile["finish_reason"] = (antwort_aufruf or {}).get("finish_reason")
+                zeile["usage"] = (antwort_aufruf or {}).get("usage")
+                zeile["reasoning"] = (antwort_aufruf or {}).get("reasoning")
             zeile.update(fa.bewerten(fall, kontext, zeile["antwort"]))
             aus["faelle"].append(zeile)
             if laut:
                 print(f"[{n:3}/{len(faelle)}] {fall['id']:42} {zeile['fehlerart']:28} "
-                      f"{zeile['weg']:14} {zeile['ms'] or 0:6} ms", flush=True)
+                      f"{zeile['weg']:14} {zeile['ms'] or 0:6} ms"
+                      + (f"  {zeile['usd']:.4f} $ {zeile.get('finish_reason')}"
+                         if kanal == "deep" else ""), flush=True)
 
-    # Dieselbe Uhr wie `ts` in llm_usage: UTC (s. kern/usage.jetzt_utc).
-    marke = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
     if basis:
         messen(basis)
     else:
-        with backend(modell, ordner, ohne_zdr=ohne_zdr, protokoll=ordner / "backend.log") as b:
+        with backend(modell, ordner, ohne_zdr=ohne_zdr, protokoll=ordner / "backend.log",
+                     aufwand=aufwand) as b:
             messen(b)
-    aus["kosten"] = kosten_seit(kostendatei(ordner), marke)
+    aus["kosten"] = kosten_seit(datei, marke)
     aus["kosten_usd"] = aus["kosten"]["usd"]
     aus["kennzahlen"] = kennzahlen(aus["faelle"])
     # Immer auch neben den Mitschnitt — ein Probelauf mit --nicht-speichern
@@ -401,7 +584,7 @@ def kennzahlen(zeilen: list[dict]) -> dict:
     n = len(zeilen)
     arten = Counter(z["fehlerart"] for z in zeilen)
     ms = sorted(z["ms"] for z in zeilen if z.get("ms"))
-    return {
+    aus = {
         "n_cases": n,
         "ok": arten.get("ok", 0),
         "quote_ok": round(arten.get("ok", 0) / n, 4) if n else None,
@@ -412,10 +595,25 @@ def kennzahlen(zeilen: list[dict]) -> dict:
         "erfunden": arten.get("modell_erfunden", 0),
         "ausfaelle": sum(1 for z in zeilen if z.get("fehler")),
         "p50_ms": ms[len(ms) // 2] if ms else None,
+        "p95_ms": _perzentil(ms, 0.95),
     }
+    # Nur die Recherche misst je Fall Kosten und das Ende des Stroms.
+    usd = [z["usd"] for z in zeilen if z.get("usd") is not None]
+    if usd:
+        aus["usd_je_fall"] = round(sum(usd) / len(usd), 5)
+        aus["usd_p95"] = _perzentil(usd, 0.95)
+        aus["abgeschnitten"] = sum(1 for z in zeilen if z.get("finish_reason") == "length")
+        denken = [(z.get("usage") or {}).get("reasoning_tokens") for z in zeilen]
+        denken = [d for d in denken if d is not None]
+        aus["denk_tokens_p50"] = _perzentil(denken, 0.5)
+        aus["denk_tokens_max"] = max(denken) if denken else None
+    return aus
 
 
 def speichern(erg: dict, ziel: Path | None = None) -> Path:
+    if ziel is None and erg.get("kanal") == "deep":
+        ziel = ERGEBNISSE_DEEP / (f"{erg['modell'].replace('/', '-')}"
+                                  f"-{erg.get('aufwand') or 'vorgabe'}-{erg['zeitstempel']}.json")
     ziel = ziel or ERGEBNISSE / f"{erg['modell'].replace('/', '-')}-{erg['zeitstempel']}.json"
     ziel.parent.mkdir(parents=True, exist_ok=True)
     ziel.write_text(json.dumps(erg, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
@@ -427,8 +625,9 @@ def _pct(a: int, b: int) -> str:
 
 
 def laufname(e: dict) -> str:
-    """Modell, und wo es einen gibt, der Stand („vor #1493“)."""
-    return e["modell"] + (f" ({e['etikett']})" if e.get("etikett") else "")
+    """Modell, Denkaufwand (falls gesetzt) und, wo es einen gibt, der Stand („vor #1493“)."""
+    return (e["modell"] + (f" · {e['aufwand']}" if e.get("aufwand") else "")
+            + (f" ({e['etikett']})" if e.get("etikett") else ""))
 
 
 def _vergleichslauf(e: dict) -> bool:
@@ -595,6 +794,46 @@ def bericht_teil(laeufe: list[dict], faelle: list[dict]) -> str:
     return "\n".join(zeilen).rstrip() + "\n"
 
 
+def _de(usd: float | None) -> str:
+    return f"{usd:.4f}".replace(".", ",") if usd is not None else "—"
+
+
+def tabelle_deep(laeufe: list[dict]) -> list[str]:
+    """Die Recherche-Läufe nebeneinander: Fehler nach Art, Dauer, Kosten."""
+    aus = ["| Lauf | Fälle | ok | Modellfehler | ausgelassen | falsch | erfunden | "
+           "zu Unrecht verweigert | Kontextfehler | Ausfälle | abgeschnitten | p50 | p95 | "
+           "$ je Bericht | $ p95 |",
+           "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|"]
+    for e in laeufe:
+        k = e["kennzahlen"]
+        a = k["fehlerarten"]
+
+        def s(ms: float | None) -> str:
+            return f"{ms / 1000:.0f} s" if ms else "—"
+        aus.append(
+            f"| {laufname(e)} | {k['n_cases']} | {_pct(k['ok'], k['n_cases'])} | "
+            f"{k['modellfehler']} | {a.get('modell_ausgelassen', 0)} | {a.get('modell_falsch', 0)} | "
+            f"{a.get('modell_erfunden', 0)} | {a.get('modell_verweigert_zu_unrecht', 0)} | "
+            f"{k['kontextfehler']} | {k['ausfaelle']} | {k.get('abgeschnitten', '—')} | "
+            f"{s(k.get('p50_ms'))} | {s(k.get('p95_ms'))} | "
+            f"{_de(k.get('usd_je_fall'))} | {_de(k.get('usd_p95'))} |")
+    return aus
+
+
+def unterschiede_deep(laeufe: list[dict]) -> list[str]:
+    """Je Fall, wo die Läufe sich in der Fehlerart unterscheiden."""
+    ids = list(dict.fromkeys(z["id"] for e in laeufe for z in e["faelle"]))
+    je = [{z["id"]: z["fehlerart"] for z in e["faelle"]} for e in laeufe]
+    aus = ["| Fall | " + " | ".join(laufname(e) for e in laeufe) + " |",
+           "|---|" + "---|" * len(laeufe)]
+    for i in ids:
+        arten = [j.get(i, "—") for j in je]
+        # Ein Fall, den ein Lauf nicht hat (gestoppt, Stichprobe), ist kein Unterschied.
+        if len(set(arten) - {"—"}) > 1:
+            aus.append(f"| `{i}` | " + " | ".join(arten) + " |")
+    return aus
+
+
 MARKE_AN, MARKE_AUS = "<!-- fakten-eval:anfang -->", "<!-- fakten-eval:ende -->"
 
 
@@ -614,12 +853,79 @@ def bericht_schreiben(laeufe: list[dict], faelle: list[dict], ziel: Path = BERIC
 # Aufruf
 # --------------------------------------------------------------------------- #
 
-def _faelle_waehlen(alle: list[dict], nur: str | None, limit: int | None) -> list[dict]:
+def _faelle_waehlen(alle: list[dict], nur: str | None, limit: int | None,
+                    auswahl: str | None = None) -> list[dict]:
+    if auswahl:
+        if auswahl not in AUSWAHL:
+            raise SystemExit(f"unbekannte Auswahl {auswahl!r} — bekannt: {', '.join(AUSWAHL)}")
+        ids = AUSWAHL[auswahl]
+        fehlen = set(ids) - {f["id"] for f in alle}
+        if fehlen:
+            raise SystemExit(f"Auswahl {auswahl!r} nennt unbekannte Fälle: {sorted(fehlen)}")
+        nach_id = {f["id"]: f for f in alle}
+        alle = [nach_id[i] for i in ids]
     if nur:
         wahl = {x.strip() for x in nur.split(",") if x.strip()}
         alle = [f for f in alle if f["id"] in wahl or (f.get("kategorie") or "") in wahl
                 or f["kanal"] in wahl]
     return alle[:limit] if limit else alle
+
+
+#: Promptlänge je Kanal, wenn ein Fall noch nie gemessen wurde — Mittel der
+#: Läufe bis 23.09.2026 (Lotti 11.674, Frag den Rat 18.064, Recherche 75.132
+#: Zeichen, alle Prompts des Jobs).
+ZEICHEN_VORGABE = {"lotti": 12_000, "rat": 18_000, "deep": 75_000}
+#: Antwort-Tokens je Fall samt Denken — großzügig: Der Recherche-Bericht
+#: brauchte mit GPT-6 Luna `xhigh` bis 7.225 Denk-Tokens, im Mittel rund 4.000
+#: Tokens insgesamt; die Antworten von Frag den Rat und Lotti sind kürzer.
+ANTWORT_TOKENS = {"lotti": 800, "rat": 1_500, "deep": 4_000}
+
+
+def fruehere_zeichen(ordner: Path = ERGEBNISSE) -> dict[tuple[str, str], int]:
+    """Gemessene Promptlänge je (Weg, Fall) aus den gespeicherten Läufen — der
+    jüngste Wert gilt. Weg ist ``deep`` oder der Kanal des Falls."""
+    aus: dict[tuple[str, str], int] = {}
+    pfade = sorted(ordner.glob("*.json")) + sorted((ordner / "deep").glob("*.json"))
+    for pfad in pfade:
+        try:
+            e = json.loads(pfad.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        for z in e.get("faelle") or []:
+            if z.get("kontext_zeichen"):
+                weg = "deep" if e.get("kanal") == "deep" else z.get("kanal", "rat")
+                aus[(weg, z["id"])] = int(z["kontext_zeichen"])
+    return aus
+
+
+def kosten_schaetzen(modell: str, faelle: list[dict], kanal: str | None = None,
+                     zeichen: dict[tuple[str, str], int] | None = None) -> float | None:
+    """Was der Lauf mit ``modell`` voraussichtlich kostet (Listenpreis).
+
+    Gezählt ist nur der Aufruf des gemessenen Modells je Fall — die Analyse
+    davor läuft auf ihrem eigenen, billigen Modell.
+    """
+    from eval import kostenbremse as kb
+    zeichen = fruehere_zeichen() if zeichen is None else zeichen
+    tokens, antwort = [], 0.0
+    for f in faelle:
+        weg = kanal or f["kanal"]
+        tokens.append(zeichen.get((weg, f["id"]), ZEICHEN_VORGABE.get(weg, 20_000))
+                      / kb.ZEICHEN_JE_TOKEN)
+        antwort += ANTWORT_TOKENS.get(weg, 1_500)
+    if not faelle:
+        return 0.0
+    return kb.schaetzen(modell, tokens, antwort / len(faelle))
+
+
+def deep_laeufe(ordner: Path = ERGEBNISSE_DEEP) -> list[dict]:
+    """Alle Recherche-Läufe, ältester zuerst — auch zwei derselben Einstellung."""
+    aus = []
+    for pfad in sorted(ordner.glob("*.json")):
+        e = json.loads(pfad.read_text(encoding="utf-8"))
+        e["_datei"] = str(pfad.relative_to(WURZEL))
+        aus.append(e)
+    return sorted(aus, key=lambda e: e["zeitstempel"])
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -638,6 +944,20 @@ def main(argv: list[str] | None = None) -> int:
                     help="weitere Fall-Datei zusätzlich zur Vorgabe (z. B. aus einem offenen PR)")
     ap.add_argument("--etikett", help="Stand des Laufs für den Bericht; „vor …“ = Vergleichslauf")
     ap.add_argument("--nicht-speichern", action="store_true")
+    ap.add_argument("--kanal", choices=("deep",),
+                    help="jeden Fall über diesen Weg stellen (deep = ausführliche Recherche)")
+    ap.add_argument("--auswahl", help=f"benannte Fallauswahl: {', '.join(AUSWAHL)}")
+    ap.add_argument("--aufwand", choices=("vorgabe", "minimal", "low", "medium", "high", "xhigh"),
+                    help="Denkaufwand der Web-Antworten im Mess-Backend")
+    # Kostenbremse (eval/kostenbremse.py, Tims Regel vom 23.09.2026)
+    ap.add_argument("--max-kosten", type=float, default=None,
+                    help="Grenze der geschätzten Kosten in USD (Vorgabe 1,00)")
+    ap.add_argument("--teuer-ok", action="store_true",
+                    help="auch über der Grenze bzw. ohne Preis laufen")
+    ap.add_argument("--stichprobe", type=int, metavar="N",
+                    help="geschichtete Stichprobe von N Fällen (feste Saat)")
+    ap.add_argument("--voll", action="store_true",
+                    help="teures Modell: alle gewählten Fälle statt der Stichprobe")
     a = ap.parse_args(argv)
     pfade = [Path(p) for p in a.faelle.split(",")] if a.faelle else None
     faelle = lade(pfade)
@@ -645,6 +965,20 @@ def main(argv: list[str] | None = None) -> int:
     for extra in a.dazu:
         faelle += [f for f in lade([Path(extra)]) if f["id"] not in bekannt]
 
+    if befehl == "bericht" and a.kanal == "deep":
+        laeufe = deep_laeufe()
+        # Mit --stichprobe N: nur die feste Stichprobe der Recherche-Auswahl —
+        # dieselbe, die ein teures Modell von selbst misst. Die Spalte „Fälle“
+        # zeigt, wie viele davon ein Lauf hat (ein gestoppter Lauf hat weniger).
+        if a.stichprobe:
+            from eval import kostenbremse as kb
+            ids = {f["id"] for f in kb.stichprobe(_faelle_waehlen(faelle, None, None, "deep"),
+                                                  a.stichprobe)}
+            for e in laeufe:
+                e["faelle"] = [z for z in e["faelle"] if z["id"] in ids]
+                e["kennzahlen"] = {**e["kennzahlen"], **kennzahlen(e["faelle"])}
+        print("\n".join(tabelle_deep(laeufe) + [""] + unterschiede_deep(laeufe)))
+        return 0
     if befehl == "bericht":
         laeufe = letzte_laeufe()
         bericht_schreiben(laeufe, faelle)
@@ -666,8 +1000,24 @@ def main(argv: list[str] | None = None) -> int:
         load_dotenv(WURZEL / ".env")
     if not os.environ.get("OPENROUTER_API_KEY"):
         raise SystemExit("OPENROUTER_API_KEY fehlt")
-    auswahl = _faelle_waehlen(faelle, a.nur, a.limit)
-    erg = ein_lauf(a.modell, auswahl, ohne_zdr=a.ohne_zdr, basis=a.basis, mitschnitt=a.mitschnitt)
+    auswahl = _faelle_waehlen(faelle, a.nur, a.limit, a.auswahl)
+    from eval import kostenbremse as kb
+    auswahl, hinweis = kb.auswahl_fuer(a.modell, auswahl, stichprobe_n=a.stichprobe, voll=a.voll)
+    if hinweis:
+        print(hinweis)
+    schaetzung = kosten_schaetzen(a.modell, auswahl, a.kanal)
+    grund = kb.bremse(schaetzung, max_kosten=kb.MAX_KOSTEN_USD if a.max_kosten is None
+                      else a.max_kosten, teuer_ok=a.teuer_ok, modell=a.modell,
+                      was=f"Der Lauf ({len(auswahl)} Fälle, {a.modell})")
+    if grund:
+        raise SystemExit(grund)
+    if schaetzung is not None:
+        print(f"Geschätzt: {schaetzung:.2f} $ für {len(auswahl)} Fälle (Listenpreis)")
+    # Ein Aufwand aus der Shell zählt wie `--aufwand` — und steht dann auch im
+    # Ergebnis, statt still mitzumessen.
+    aufwand = a.aufwand or os.environ.get(DENKAUFWAND_ENV) or None
+    erg = ein_lauf(a.modell, auswahl, ohne_zdr=a.ohne_zdr, basis=a.basis, mitschnitt=a.mitschnitt,
+                   kanal=a.kanal, aufwand=aufwand)
     if a.etikett:
         erg["etikett"] = a.etikett
     print(json.dumps(erg["kennzahlen"], ensure_ascii=False, indent=1))

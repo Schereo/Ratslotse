@@ -700,3 +700,57 @@ def test_lotti_und_antwort_fragen_luna_mit_dem_vorgabe_aufwand(monkeypatch):
     assert "reasoning" not in (extra.get("extra_body") or {})
     _, extra = qa._answer_messages("Was?", [], "topic", "openai/gpt-6-luna")
     assert "reasoning" not in (extra.get("extra_body") or {})
+
+
+def test_recherche_bericht_nimmt_den_denkaufwand_je_feature(monkeypatch):
+    """Bis 23.09.2026 trug der Deep-Bericht nur DeepSeeks Aus-Schalter — ein
+    Eintrag in ``WEB_DENKAUFWAND`` für ``deep_report`` wäre wirkungslos
+    geblieben, und die Messung hätte zweimal dasselbe verglichen."""
+    from council import qa
+    monkeypatch.delenv(llm.WEB_DENKAUFWAND_ENV, raising=False)
+    gestellt: dict = {}
+
+    def merken(**kwargs):
+        gestellt.update(kwargs)
+        return iter(())
+
+    monkeypatch.setattr(llm, "chat_stream", merken)
+    monkeypatch.setitem(llm.WEB_DENKAUFWAND, ("openai/gpt-6-luna", "deep_report"), "high")
+    list(qa.deep_bericht_stream("Frage?", [], model="openai/gpt-6-luna"))
+    assert gestellt["_feature"] == "deep_report"
+    assert gestellt["extra_body"] == {"reasoning": {"effort": "high"}}
+    # Der Messschalter der Fakten-Eval erreicht den Bericht ebenso.
+    monkeypatch.setenv(llm.WEB_DENKAUFWAND_ENV, "vorgabe")
+    gestellt.clear()
+    list(qa.deep_bericht_stream("Frage?", [], model="openai/gpt-6-luna"))
+    assert "extra_body" not in gestellt
+    # DeepSeek bleibt ohne Denken, wie bisher.
+    gestellt.clear()
+    list(qa.deep_bericht_stream("Frage?", [], model="deepseek/deepseek-v4-pro"))
+    assert gestellt["extra_body"] == {"reasoning": {"enabled": False}}
+
+
+def test_gpt6_sol_hat_den_boden_der_denkenden_modelle():
+    """Sonst bekäme der Bericht die 4.000 Tokens der Aufrufstelle, und das
+    Denken zehrte sie still auf (finish_reason ``length``)."""
+    assert llm._with_model_params({"model": "openai/gpt-6-sol", "max_tokens": 4000})[
+        "max_tokens"] >= llm.GPT56_MIN_MAX_TOKENS
+
+
+def test_mitschnitt_haelt_ende_und_denk_tokens_fest(monkeypatch, tmp_path):
+    """Der Nachweis gegen einen still abgeschnittenen Bericht: ``length`` im
+    Mitschnitt, dazu die Denk-Tokens, die das Budget verbraucht haben."""
+    monkeypatch.setenv(llm.MITSCHNITT_ENV, str(tmp_path))
+    details = type("D", (), {"reasoning_tokens": 900})()
+    verbrauch = type("U", (), {"prompt_tokens": 10, "completion_tokens": 1000, "cost": 0.0,
+                               "completion_tokens_details": details})()
+    ende = type("K", (), {"choices": [type("C", (), {
+        "delta": type("D", (), {"content": ""})(), "finish_reason": "length"})()],
+        "usage": None, "model": "m"})()
+    nutzung = type("K", (), {"choices": [], "usage": verbrauch, "model": "m"})()
+    monkeypatch.setattr(llm, "_create", lambda **kw: iter([_strom_teil("Text"), ende, nutzung]))
+    assert "".join(llm.chat_stream(model="m", messages=[], _feature="deep_report")) == "Text"
+    (z,) = _zeilen(tmp_path, "deep_report")
+    assert z["finish_reason"] == "length"
+    assert z["usage"] == {"prompt_tokens": 10, "completion_tokens": 1000,
+                          "reasoning_tokens": 900}
