@@ -4389,6 +4389,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/quiz/joker": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Joker
+         * @description 50:50: zwei falsche Antworten streichen. Kostet die Hälfte der Punkte —
+         *     das rechnet ``/answer`` mit ``joker: true``.
+         */
+        post: operations["joker_api_quiz_joker_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/quiz/map-answer": {
         parameters: {
             query?: never;
@@ -13011,6 +13032,11 @@ export interface components {
         };
         /** QuizAnswerIn */
         QuizAnswerIn: {
+            /**
+             * Joker
+             * @default false
+             */
+            joker: boolean;
             /** Order */
             order?: number[] | null;
             /** Question Id */
@@ -13202,6 +13228,19 @@ export interface components {
             options: string[];
             /** Question */
             question: string;
+            /** Question Id */
+            question_id: number;
+        };
+        /**
+         * QuizJoker
+         * @description Die zwei falschen Antworten, die der 50:50-Joker streicht.
+         */
+        QuizJoker: {
+            /** Remove */
+            remove: number[];
+        };
+        /** QuizJokerIn */
+        QuizJokerIn: {
             /** Question Id */
             question_id: number;
         };
@@ -20248,6 +20287,39 @@ export interface operations {
             };
         };
     };
+    joker_api_quiz_joker_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuizJokerIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuizJoker"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     map_answer_api_quiz_map_answer_post: {
         parameters: {
             query?: never;
@@ -22474,4 +22546,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 509679b189913af5163f30593ecd2938ed17ecb95ceea90e290b5b1ce3808200
+// vertrag-sha256: b6477e34424c62cd6dacc8b26595aaeac16477c1a0d00c3ffc5096c1cb9e0e8e

@@ -7041,3 +7041,27 @@ def test_quiz_stats_map_of_everyone(client):
                                   "level": 0, "level_label": "zu wenige Antworten"}
     assert s["district_legend"]["all"][3] == "gut bekannt" and len(s["district_legend"]["mine"]) == 4
     quiz_router._ALL_CACHE.update(at=0.0, value=None)
+def test_quiz_joker_strikes_two_wrong_and_halves_points(client):
+    """50:50: zwei FALSCHE Antworten, beim zweiten Aufruf dieselben, und mit
+    Joker gibt es die Hälfte der Punkte (aufgerundet)."""
+    _register(client)
+    _seed_quiz("Osternburg", n=1, difficulty="hard")      # richtig ist Index 1, 3 Punkte
+    qid = client.get("/api/quiz/round?areas=district:Osternburg").json()["questions"][0]["id"]
+    first = client.post("/api/quiz/joker", json={"question_id": qid}).json()["remove"]
+    assert len(first) == 2 and 1 not in first
+    assert client.post("/api/quiz/joker", json={"question_id": qid}).json()["remove"] == first
+    r = client.post("/api/quiz/answer", json={"question_id": qid, "selected_index": 1, "joker": True}).json()
+    assert r["correct"] is True and r["points"] == 2
+
+
+def test_quiz_joker_refuses_estimates(client):
+    _register(client)
+    store = CouncilStore(COUNCIL_DB)
+    store.save_quiz_questions([{
+        "area_type": "district", "area_key": "Osternburg", "category": "estimation",
+        "difficulty": "easy", "question": "Wie viele Einwohner?", "qtype": "estimate",
+        "options": [], "correct_index": 0, "answer_value": 100.0, "answer_unit": "Menschen",
+        "range_min": 0.0, "range_max": 300.0, "content_hash": "joker-estimate"}])
+    qid = store.quiz_active_rows()[0]["id"]
+    store.close()
+    assert client.post("/api/quiz/joker", json={"question_id": qid}).status_code == 400
