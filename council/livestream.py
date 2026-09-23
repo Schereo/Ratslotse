@@ -35,6 +35,10 @@ das Frontend zeigt sie dann ohne Video-Sprung-Link. Sobald die
 YouTube-Fassung verfügbar wird (Zubringer oder O1-Genehmigung), ersetzt
 der YouTube-Lauf die Zeilen samt echten Video-Timestamps; das Protokoll
 ersetzt später beides.
+
+Eine feste Auswahl der Stücke bleibt seit 23.09.2026 erhalten
+(``council/stt_retain.py``) — als Referenzmaterial für die Transkriptions-
+Eval (``eval/run_stt.py``), die sonst nie Sitzungs-Audio sieht.
 """
 from __future__ import annotations
 
@@ -253,7 +257,8 @@ def _spread(text: str, chunk_offset: int,
 def record_and_transcribe(dest_dir: Path,
                           max_seconds: int | None = None,
                           poll_seconds: int = 20,
-                          on_chunk=None) -> list[tuple[float, str]]:
+                          on_chunk=None,
+                          on_transcribed=None) -> list[tuple[float, str]]:
     """Aufnehmen + parallel transkribieren, bis die Schlussformel fällt.
 
     Gibt die Transkript-Segmente der ganzen Sitzung zurück (für
@@ -263,7 +268,12 @@ def record_and_transcribe(dest_dir: Path,
     ``on_chunk(idx, segments, closing)`` wird je fertigem Stück gerufen,
     mit dessen Segmenten und ob die Schlussformel darin fiel — der Haken
     für die Live-Verfolgung. Ein Fehler darin bricht die Aufnahme NICHT ab:
-    Der Live-Stand ist Zugabe, die Ergebnisse am Abend sind der Auftrag."""
+    Der Live-Stand ist Zugabe, die Ergebnisse am Abend sind der Auftrag.
+
+    ``on_transcribed(idx, path, text)`` bekommt je Stück den ROHEN
+    Transkript-Text (vor ``parse_segments``) — der Haken für
+    ``council/stt_retain.py``: Sie legt daraus ab, was der laufende Weg
+    tatsächlich transkribiert hat, als Vergleich zur Eval-Referenz."""
     proc = start_recording(dest_dir, max_seconds)
     if proc is None:
         return []
@@ -282,6 +292,11 @@ def record_and_transcribe(dest_dir: Path,
                     continue
                 done.add(idx)
                 text = transcribe_chunk(path)
+                if on_transcribed is not None:
+                    try:
+                        on_transcribed(idx, path, text)
+                    except Exception:  # noqa: BLE001 — Aufbewahrung ist Zugabe
+                        log.exception("on_transcribed für Stück %d fehlgeschlagen", idx)
                 chunk_segments = parse_segments(text, idx * CHUNK_SECONDS,
                                                 audio_seconds(path))
                 segments.extend(chunk_segments)

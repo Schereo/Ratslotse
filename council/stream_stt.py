@@ -49,15 +49,18 @@ import logging
 import os
 import queue
 import re
+import shutil
 import subprocess
+import tempfile
 import threading
 import time
 from collections.abc import Callable
+from pathlib import Path
 
 import httpx
 import websockets.sync.client as ws_client
 
-from council import livestream
+from council import livestream, stt_retain
 
 log = logging.getLogger(__name__)
 
@@ -292,7 +295,8 @@ def record_and_transcribe(on_window=None, source: str | None = None,
                           max_seconds: int | None = None, pace: float | None = None,
                           people: list[dict] | None = None,
                           window_seconds: int = WINDOW_SECONDS,
-                          on_segment=None, stop: threading.Event | None = None) -> list[tuple[float, str]]:
+                          on_segment=None, stop: threading.Event | None = None,
+                          ksinr: int | None = None) -> list[tuple[float, str]]:
     """Stream mitschneiden und streamend transkribieren, bis die
     Schlussformel fällt — die Streaming-Fassung von
     ``livestream.record_and_transcribe``.
@@ -304,7 +308,12 @@ def record_and_transcribe(on_window=None, source: str | None = None,
     ``window_seconds`` und bei jedem Aufruf/jeder Worterteilung;
     ``on_segment(start, end, text)`` je fertiger Äußerung, sobald sie da ist
     (die Live-Probe im Admin-Panel); ``stop`` beendet die Aufnahme von außen.
-    """
+
+    Mit ``ksinr`` und eingeschalteter Aufbewahrung (``stt_retain.enabled()``)
+    wird der gesendete Rohton nebenher in eine Datei mitgeschrieben und am
+    Ende in Stücke geschnitten (``stt_retain.retain_from_raw``) — es gibt
+    hier sonst keine Datei-Stücke wie beim Weg über ``livestream.py``. Ohne
+    ``ksinr`` (z. B. die Generalprobe ``--probe``) entfällt das."""
     vocab = vocabulary(people or [])
     url = open_session(vocab)  # wirft StreamUnavailable → Rückfall auf Stücke
     proc = ffmpeg_pcm(source or livestream.STREAM_URL)
@@ -318,6 +327,17 @@ def record_and_transcribe(on_window=None, source: str | None = None,
     session_started = 0.0
     closing = False
     t0 = time.monotonic()
+    raw_dir: Path | None = None
+    raw_path: Path | None = None
+    raw_file = None
+    if ksinr is not None and stt_retain.enabled():
+        raw_dir = Path(tempfile.mkdtemp(prefix=f"stt-raw-{ksinr}-"))
+        raw_path = raw_dir / "raw.pcm"
+        try:
+            raw_file = raw_path.open("wb")
+        except OSError:
+            log.exception("STT-Aufbewahrung: Rohaudio-Datei nicht angelegt")
+            raw_file = None
 
     def drain() -> None:
         nonlocal closing
@@ -357,6 +377,13 @@ def record_and_transcribe(on_window=None, source: str | None = None,
                 session_started = sent
                 threading.Thread(target=_retire, args=(old, drain), daemon=True).start()
             link.send(frame)
+            if raw_file is not None:
+                try:
+                    raw_file.write(frame)
+                except OSError:
+                    log.exception("STT-Aufbewahrung: Rohaudio-Schreibfehler — Aufbewahrung endet")
+                    raw_file.close()
+                    raw_file = None
             sent += FRAME_SECONDS
             drain()
             windower.advance(sent)
@@ -374,7 +401,20 @@ def record_and_transcribe(on_window=None, source: str | None = None,
         link.stop(30)
         drain()
         windower.close()
+        if raw_file is not None:
+            try:
+                raw_file.close()
+            except OSError:
+                pass
     segments.sort(key=lambda s: s[0])
     log.info("Streaming beendet: %.0f s Audio, %d Segmente, %d Fenster (%d ausgelöst)",
              sent, len(segments), windower.dispatched, windower.triggered)
+    if raw_path is not None and raw_dir is not None and ksinr is not None:
+        try:
+            if raw_path.exists() and raw_path.stat().st_size > 0:
+                stt_retain.retain_from_raw(ksinr, raw_path, segments)
+        except OSError:
+            log.exception("STT-Aufbewahrung: Rohaudio nicht lesbar")
+        finally:
+            shutil.rmtree(raw_dir, ignore_errors=True)
     return segments
