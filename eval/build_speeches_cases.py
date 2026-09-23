@@ -66,7 +66,10 @@ AUSWAHL: tuple[tuple[int, tuple[str, ...]], ...] = (
 
 _ROLLE = (r"(?:Ratsherr|Ratsfrau|Ratsmitglied|Stadtrat|Stadträtin|Oberbürgermeister|"
           r"Bürgermeisterin|Bürgermeister|Erste Stadträtin|Frau|Herr|"
-          r"(?:Die|Der) (?:stellvertretende )?(?:Ausschussvorsitzende|Ratsvorsitzende|Vorsitzende)|"
+          # Artikel optional: „Ausschussvorsitzende Eilers-Dörfler schlägt vor …"
+          # (4650) stand ohne ihn da und fiel durchs Muster — wer sie nannte,
+          # bekam einen Fehlgriff angerechnet (nachgelesen 23.09.2026).
+          r"(?:(?:Die|Der) )?(?:stellvertretende )?(?:Ausschussvorsitzende|Ratsvorsitzende|Vorsitzende)|"
           r"Beratendes Mitglied|Ausschussmitglied)")
 _NAME = (r"((?:Dr\.\s*|Prof\.\s*)*(?:von\s+|van\s+|de\s+)?[A-ZÄÖÜ][\wäöüß]+"
          r"(?:-[A-ZÄÖÜ][\wäöüß]+)?)")

@@ -49,9 +49,9 @@ und ist trotzdem kein Beleg für den einzelnen Einsatz.
 | KI-Frage: Erweiterung | `COUNCIL_QA_EXPAND_MODEL` | gemini-2.5-flash-lite | Web | `eval/run_qa_routing.py` |
 | Eval-Richter | `COUNCIL_QUALITY_JUDGE_MODEL` | gemini-2.5-flash | Eval | — |
 | Livestream-Transkription | `COUNCIL_STT_MODEL` | gemini-2.5-flash | Sitzungs-Mitschnitt | `transkription` (ohne Audio, misst noch nicht) |
-| Live-Verfolgung | `COUNCIL_LIVE_TRACKER_MODEL` | gemini-2.5-flash | Sitzungs-Mitschnitt | `live-verfolgung` |
-| Wortbeiträge | `COUNCIL_WORTBEITRAG_MODEL` | gemini-2.5-flash | Cron `check_protocols` | `wortbeitraege` |
-| Ortszuordnung | `COUNCIL_LOCATION_MODEL` | gemini-2.5-flash-lite | Cron | `eval/run_locations.py` |
+| Live-Verfolgung | `COUNCIL_LIVE_TRACKER_MODEL` | gemini-3.5-flash-lite (P4b) | Sitzungs-Mitschnitt | `live-verfolgung` |
+| Wortbeiträge | `COUNCIL_WORTBEITRAG_MODEL` | gemini-3.5-flash-lite (P4b) | Cron `check_protocols` | `wortbeitraege` |
+| Ortszuordnung | `COUNCIL_LOCATION_MODEL` | gemini-3.1-flash-lite (P4b) | Cron | `eval/run_locations.py` |
 | Watcher | `COUNCIL_WATCHER_MODEL` | gpt-5.6-luna | Cron `check_council` | `eval/run_watcher.py` |
 | Tragweite | `COUNCIL_IMPACT_MODEL` | gpt-5.6-luna | Cron | `scripts/eval_impact.py` (Golden Set, 30) |
 | Ausschuss-Zusammenfassung | `COUNCIL_COMMITTEE_MODEL` | gpt-5.6-luna | Cron | `eval/run_committee.py` |
@@ -243,6 +243,53 @@ bis zum Ergebnis, Ausfälle, echte Kosten.
 
 Web-Pfade (Lotti, KI-Frage, Erweiterung) und Pipelines (Transkription,
 Live-Verfolgung, Wortbeiträge, Orte, Eval-Richter), je nach P1/P2 gemessen.
+
+**Stand 23.09.2026 (P4b, Pipelines): drei Features umgestellt.** Der
+wichtigste Befund zuerst: **Wo ein Nachfolger schlechter aussah
+(Wortbeiträge, Orte), lag es an einem Prompt- oder Messfehler, nicht am
+Modell** — ein mehrdeutiger Prompt, ein Fall, dessen Text nie ankam, und
+zwei Regeln, die nie aufgeschrieben waren. Tims Vermutung („ein ein Jahr
+neueres Modell ist nicht wirklich schlechter“) hat sich bestätigt. Vor jedem
+„schlechter“ gehört deshalb der Blick auf die verfehlten Fälle.
+
+- **Wortbeiträge → 3.5 Flash Lite.** Die Nachfolger ließen niemanden weg,
+  sie legten Wortmeldungen einer Person zusammen und steckten Antworten ins
+  `answer`-Feld der Frage (3.1 Flash Lite: 195 statt 246 Einträge, 49 statt
+  16 `answer`-Felder). Der Prompt sagte „ein Eintrag je Beitrag“ UND „fasse
+  zusammen“, und seine Regeln nannten die Arten noch deutsch („rede“,
+  „anfrage“ …), während das Schema englisch war. Neuer Prompt: jede
+  Wortmeldung ein Eintrag, Antworten mit eigenem Namen, `answer` nur bei
+  `inquiry`/`citizen_question`. Dazu eine Goldwert-Korrektur mit Beleg: Das
+  Muster kannte „Ausschussvorsitzende X“ nur mit Artikel.
+
+  | Modell | alter Prompt (P2) | neuer Prompt | ct/Aufruf | p50 |
+  |---|---|---|---:|---:|
+  | 2.5 Flash | 97,8 / 97,8 | 99,6 / 99,6 | 0,57 | 9,2–9,6 s |
+  | 3.5 Flash Lite | 86,7 / 90,6 | 99,6 / 99,0 / 99,2 | 0,50–0,53 | 5,5–6,0 s |
+  | 3.1 Flash Lite | 86,7 / 86,5 | 99,2 / 99,0 | 0,30 | 5,3–5,7 s |
+  | 3 Flash Preview | 91,2 / 91,0 | 98,5 / 98,5 | 0,64 | 10,9–11,5 s |
+
+  An ganzen Protokollen (volle 48k-Fenster) nachgeprüft: 3.5 Flash Lite
+  liefert MEHR Beiträge mit Namen (ksinr 3852: 55 statt 37), aber nicht mehr
+  die namenlosen „Es wird bemängelt …“-Einträge, die 2.5 Flash aus
+  Abwägungstabellen der Öffentlichkeitsbeteiligung zog (3852: 86, 4604: 82).
+  Das sind keine Wortbeiträge; wer sie vermisst, braucht eine eigene Art.
+  Alte Läufe: `eval/results/pruefstand/wortbeitraege/prompt-bis-2026-09-23/`.
+- **Live-Verfolgung → 3.5 Flash Lite.** Alle im Rauschen (100/100/100/98,3 %);
+  3.5 Flash Lite hat den kürzesten Verzug (1,1–1,3 s statt 1,8 s) zum selben
+  Preis. Prompt unverändert, keine Lücke gefunden.
+- **Orte → 3.1 Flash Lite.** Die Suite hatte einen Messfehler: Der einzige
+  Fall mit Beschlusstext trug ihn unter `beschluss`, gelesen wurde
+  `official_text` — kein Modell bekam ihn je zu sehen. Die Regex-Baseline
+  allein stand danach bei 100 %, jedes Modell fügte „Wohnquartieren“ als
+  Ort hinzu (jetzt als Gattung gesperrt, modellunabhängig), und die
+  Nachfolger nannten „Bebauungsplan N-777 G“ als Ort (jetzt eine
+  Prompt-Regel). Danach alle drei Modelle 100 % ohne falschen Ort; 3.1 Flash
+  Lite ist der billigere Nachfolger (0,12 ct gegen 0,18 ct je Aufruf).
+  Die Suite ist damit gesättigt: Sie sagt „kein Rückschritt“, nicht „besser“.
+- **Nicht angefasst:** Transkription (eigener Auftrag), `ERSATZ` für Luna
+  (P5), `COUNCIL_QA_EXPAND_MODEL` (P4a — `council/cities/evidence.py` liest
+  dieselbe Variable und sollte dem Modell folgen, das P4a für `qa.py` wählt).
 
 ### P5 — GPT-5.6 Luna ablösen
 

@@ -502,7 +502,7 @@ GLADIA_API_KEY=...                          # Streaming-Transkription (council/s
 GLADIA_REGION=eu-west                       # Gladia-Region (EU)
 COUNCIL_STT_BEHALTEN=20                     # Stücke je Sitzung für die Transkriptions-Eval aufheben (council/stt_retain.py); 0 = aus
 COUNCIL_LIVE_WINDOW_SECONDS=15              # Takt der Live-Verfolgung beim Streaming
-COUNCIL_LIVE_TRACKER_MODEL=google/gemini-2.5-flash  # Modell der Live-Verfolgung (welcher TOP läuft)
+COUNCIL_LIVE_TRACKER_MODEL=google/gemini-3.5-flash-lite  # Modell der Live-Verfolgung (welcher TOP läuft)
 COUNCIL_ASSISTANT_MODEL=google/gemini-2.5-flash   # Lottis Erklärungen (Assistentin; Default passt)
 COUNCIL_QA_MODEL=google/gemini-2.5-flash          # Antwort-Modell der KI-Frage (schnell; Default passt)
 COUNCIL_QA_EXPAND_MODEL=google/gemini-2.5-flash-lite  # Query-Expansion der KI-Frage (schnell; Default passt)

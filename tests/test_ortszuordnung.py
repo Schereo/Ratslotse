@@ -714,3 +714,30 @@ def test_bruchstuecke_aus_der_pdf_extraktion_verlieren(tmp_path):
             "SELECT name FROM council_locations").fetchone()["name"] == "Kasinoplatz"
     finally:
         store.close()
+
+
+# ------------------------------------------- Gattungen im Plural sind kein Ort ---
+
+@pytest.mark.parametrize("name", ["Wohnquartieren", "Wohngebieten", "Stadtteile", "Quartiere"])
+def test_gattung_im_plural_ist_kein_ort(name):
+    """„Vermeidung von Durchgangsverkehr in Wohnquartieren": Jedes gemessene
+    Modell (23.09.2026) gab „Wohnquartieren" als Ort aus. Die Schranke nach dem
+    Modell hält das jetzt modellunabhängig ab."""
+    assert not locations.valid_llm_location(name, "area", f"Verkehr in {name}")
+
+
+def test_benanntes_quartier_bleibt_ein_ort():
+    assert locations.valid_llm_location(
+        "Quartier am Krusenbusch", "area", "Entwicklung Quartier am Krusenbusch")
+
+
+def test_orts_eval_liest_jedes_feld_ihrer_faelle():
+    """Ein Fall trug seinen Text unter `beschluss`, gelesen wurde
+    `official_text` — der Text kam bei keinem Modell an. Die Eval bricht
+    jetzt ab, statt ein Feld still zu übergehen."""
+    from eval import run_locations
+    faelle = json.loads(run_locations.CASES.read_text(encoding="utf-8"))
+    assert all(set(f) <= run_locations.FELDER for f in faelle)
+    with pytest.raises(ValueError, match="beschluss"):
+        run_locations.evaluate([{"id": "x", "title": "T", "beschluss": "B",
+                                 "expected_locations": []}])
