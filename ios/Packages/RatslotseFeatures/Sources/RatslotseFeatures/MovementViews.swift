@@ -85,6 +85,53 @@ enum ZeitleisteRechnung {
         }
     }
 
+    /// Wo jeder datierte Punkt einer Leiste liegt: Anteil und Spur. Dieselbe
+    /// Liste zeichnet die Leiste und sucht die Bühne ab — zwei Rechnungen
+    /// liefen auseinander, und der Finger träfe einen Punkt neben dem Ring.
+    static func lage(_ punkte: [TimelinePoint], _ achse: TimeAxis)
+        -> [(punkt: TimelinePoint, anteil: Double, spur: Int)] {
+        let datiert = punkte.compactMap { p in anteil(p.date, achse).map { (punkt: p, anteil: $0) } }
+            .sorted { $0.anteil < $1.anteil }
+        let spur = spuren(datiert.map(\.anteil))
+        return datiert.enumerated().map { i, e in (e.punkt, e.anteil, spur[i]) }
+    }
+
+    /// Die Reihenfolge für VoiceOver und das Durchwischen: nach Datum, bei
+    /// Gleichstand nach Stadt — wie die Chronik darunter (`reihenfolge` in
+    /// `lib/zeitleiste.ts`).
+    static func reihenfolge(_ punkte: [TimelinePoint]) -> [TimelinePoint] {
+        punkte.sorted {
+            let a = $0.date ?? "9999", b = $1.date ?? "9999"
+            return a != b ? a < b : $0.city.localizedCompare($1.city) == .orderedAscending
+        }
+    }
+
+    /// Der Punkt, der dem Finger am nächsten liegt; die Höhe zählt halb —
+    /// wer waagerecht wischt, meint die Zeit, nicht die Spur (`naechster`).
+    static func naechster(_ mitten: [CGPoint], zu p: CGPoint) -> Int? {
+        mitten.indices.min { a, b in
+            let da = pow(mitten[a].x - p.x, 2) + pow((mitten[a].y - p.y) * 0.5, 2)
+            let db = pow(mitten[b].x - p.x, 2) + pow((mitten[b].y - p.y) * 0.5, 2)
+            return da < db
+        }
+    }
+
+    static func art(_ kind: String) -> String {
+        switch kind {
+        case "motion": "Antrag"
+        case "amendment": "Änderungsantrag"
+        case "inquiry": "Anfrage"
+        case "proposal": "Beschlussvorlage"
+        default: "Vorlage"
+        }
+    }
+
+    static func datum(_ iso: String?) -> String {
+        guard let iso, iso.count >= 10 else { return "ohne Datum" }
+        let t = iso.prefix(10).split(separator: "-")
+        return t.count == 3 ? "\(t[2]).\(t[1]).\(t[0])" : iso
+    }
+
     /// Die Leiste als Satz — für VoiceOver, das keine Punkte sieht.
     static func satz(_ punkte: [TimelinePoint]) -> String {
         guard !punkte.isEmpty else { return "Keine Vorlagen." }
@@ -109,6 +156,17 @@ struct Zeitleiste: View {
     let punkte: [TimelinePoint]
     var label: String?
     var hoehe: CGFloat = 34
+    /// Die Vorlage, die gerade abgelesen wird — sie bekommt einen Ring.
+    var aktiv: String?
+    /// Die Stelle des Ablese-Strichs, 0…1. Auf der Bühne zeichnet jede Zeile
+    /// ihr Stück an derselben Stelle; die Zeilen stehen ohne Abstand, also
+    /// liest es sich als EIN Strich durch alle Städte.
+    var fuehrung: Double?
+
+    /// Wo ein Punkt gezeichnet wird — auch die Bühne sucht damit.
+    static func x(_ anteil: Double, breite: CGFloat) -> CGFloat {
+        min(max(anteil * breite, 6), breite - 6)
+    }
 
     var body: some View {
         GeometryReader { geo in
@@ -123,19 +181,29 @@ struct Zeitleiste: View {
                     }
                     .stroke(RatsColor.border, style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
                 }
-                let datiert = punkte.compactMap { p in
-                    ZeitleisteRechnung.anteil(p.date, achse).map { (punkt: p, anteil: $0) }
-                }.sorted { $0.anteil < $1.anteil }
-                let spur = ZeitleisteRechnung.spuren(datiert.map(\.anteil))
-                ForEach(Array(datiert.enumerated()), id: \.element.punkt.id) { i, eintrag in
+                if let fuehrung {
+                    Rectangle()
+                        .fill(RatsColor.text.opacity(0.45))
+                        .frame(width: 1, height: hoehe)
+                        .position(x: Self.x(fuehrung, breite: breite), y: hoehe / 2)
+                }
+                ForEach(ZeitleisteRechnung.lage(punkte, achse), id: \.punkt.id) { eintrag in
                     let stufe = ZeitleisteStufe(outcome: eintrag.punkt.outcome)
+                    let an = eintrag.punkt.paperID == aktiv
                     Circle()
                         .fill(stufe == .open ? RatsColor.card : stufe.farbe)
                         .overlay(Circle().stroke(stufe == .open ? RatsColor.muted : RatsColor.card,
                                                  lineWidth: stufe == .open ? 1.5 : 2))
                         .frame(width: 11, height: 11)
-                        .position(x: min(max(eintrag.anteil * breite, 6), breite - 6),
-                                  y: hoehe / 2 + CGFloat(spur[i]) * 8)
+                        .overlay {
+                            if an {
+                                Circle().stroke(RatsColor.text, lineWidth: 1.5).frame(width: 16, height: 16)
+                            }
+                        }
+                        .scaleEffect(an ? 1.3 : 1)
+                        .zIndex(an ? 1 : 0)
+                        .position(x: Self.x(eintrag.anteil, breite: breite),
+                                  y: hoehe / 2 + CGFloat(eintrag.spur) * 8)
                 }
             }
         }
@@ -524,18 +592,210 @@ private extension MovementsResponse {
 
 // MARK: - Ideen-Seite
 
+// MARK: - Bühne
+
+/// Je Stadt eine Zeile auf der gemeinsamen Achse — und darunter, was am
+/// gewählten Punkt stand. Das Gegenstück zur `Buehne` im Web (#1498).
+///
+/// Wie dort zeigt die Ablesung IMMER etwas: im Ruhezustand die jüngste
+/// Vorlage, nur mit Ring. Tippen wählt, waagerechtes Wischen fährt durch die
+/// Punkte (senkrecht scrollt die Seite weiter), ein iPad-Zeiger wählt beim
+/// Überfahren, und VoiceOver blättert mit Wischen nach oben und unten.
+struct MovementStage: View {
+    let detail: MovementDetail
+    let zeige: (String) -> Void
+    @State private var gewaehlt: String?
+
+    private static let spalte: CGFloat = 92
+    private static let abstand: CGFloat = 10
+    private static let zeile: CGFloat = 34
+
+    private var reihe: [TimelinePoint] {
+        ZeitleisteRechnung.reihenfolge(detail.movement.timeline)
+            .filter { ZeitleisteRechnung.anteil($0.date, detail.axis) != nil }
+    }
+
+    private var aktiv: TimelinePoint? {
+        if let gewaehlt, let p = reihe.first(where: { $0.paperID == gewaehlt }) { return p }
+        return reihe.last
+    }
+
+    var body: some View {
+        let b = detail.movement
+        let punkt = aktiv
+        let fuehrung = gewaehlt == nil ? nil : punkt.flatMap { ZeitleisteRechnung.anteil($0.date, detail.axis) }
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Wie die Idee durch die Räte lief")
+                .font(RatsFont.title(16))
+                .foregroundStyle(RatsColor.text)
+                .accessibilityAddTraits(.isHeader)
+            GeometryReader { geo in
+                zeilen(b, aktiv: punkt?.paperID, fuehrung: fuehrung)
+                    .contentShape(Rectangle())
+                    .gesture(SpatialTapGesture().onEnded { waehle(bei: $0.location, breite: geo.size.width) })
+                    .simultaneousGesture(
+                        DragGesture(minimumDistance: 12).onChanged { v in
+                            guard abs(v.translation.width) > abs(v.translation.height) else { return }
+                            waehle(bei: v.location, breite: geo.size.width)
+                        })
+                    .onContinuousHover { phase in
+                        switch phase {
+                        case .active(let p): waehle(bei: p, breite: geo.size.width)
+                        case .ended: gewaehlt = nil
+                        }
+                    }
+            }
+            .frame(height: Self.zeile * CGFloat(b.cities.count))
+            .sensoryFeedback(.selection, trigger: gewaehlt)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Zeitleiste: \(ZeitleisteRechnung.satz(b.timeline))")
+            .accessibilityValue(punkt.map(vorlesen) ?? "")
+            .accessibilityHint("Wische nach oben oder unten, um die Vorlagen durchzugehen.")
+            .accessibilityAdjustableAction { richtung in
+                let i = punkt.flatMap { p in reihe.firstIndex { $0.paperID == p.paperID } } ?? reihe.count - 1
+                switch richtung {
+                case .increment: gewaehlt = reihe[min(i + 1, reihe.count - 1)].paperID
+                case .decrement: gewaehlt = reihe[max(i - 1, 0)].paperID
+                @unknown default: break
+                }
+            }
+            HStack(spacing: Self.abstand) {
+                Color.clear.frame(width: Self.spalte, height: 1)
+                Jahresskala(achse: detail.axis)
+            }
+            if let punkt {
+                ablesung(punkt)
+            }
+            ZeitleisteLegende()
+            Text("Tippen oder waagerecht wischen, um eine Vorlage abzulesen.")
+                .font(RatsFont.body(11))
+                .foregroundStyle(RatsColor.muted)
+        }
+        .padding(16)
+        .background(RatsColor.stage)
+        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(RatsColor.border))
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    /// Die Zeilen OHNE Abstand — nur so wird aus den Stücken der Führung
+    /// ein durchgehender Strich.
+    private func zeilen(_ b: Movement, aktiv: String?, fuehrung: Double?) -> some View {
+        VStack(spacing: 0) {
+            ForEach(b.cities) { c in
+                let punkte = b.timeline.filter { $0.bodyID == c.bodyID }
+                HStack(spacing: Self.abstand) {
+                    Text(c.city)
+                        .font(RatsFont.body(13, weight: .semibold))
+                        .foregroundStyle(self.aktiv?.bodyID == c.bodyID ? RatsColor.primary : RatsColor.text)
+                        .frame(width: Self.spalte, alignment: .leading)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                    Zeitleiste(achse: detail.axis, punkte: punkte, hoehe: Self.zeile,
+                               aktiv: aktiv, fuehrung: fuehrung)
+                }
+            }
+        }
+    }
+
+    /// Nächster Punkt zur Stelle `p` — gerechnet mit derselben Lage, mit der
+    /// die Zeilen zeichnen (`ZeitleisteRechnung.lage`, `Zeitleiste.x`).
+    private func waehle(bei p: CGPoint, breite: CGFloat) {
+        let streifen = breite - Self.spalte - Self.abstand
+        guard streifen > 0 else { return }
+        var ids: [String] = []
+        var mitten: [CGPoint] = []
+        for (r, c) in detail.movement.cities.enumerated() {
+            let punkte = detail.movement.timeline.filter { $0.bodyID == c.bodyID }
+            for e in ZeitleisteRechnung.lage(punkte, detail.axis) {
+                ids.append(e.punkt.paperID)
+                mitten.append(CGPoint(
+                    x: Self.spalte + Self.abstand + Zeitleiste.x(e.anteil, breite: streifen),
+                    y: CGFloat(r) * Self.zeile + Self.zeile / 2 + CGFloat(e.spur) * 8))
+            }
+        }
+        if let i = ZeitleisteRechnung.naechster(mitten, zu: p), ids[i] != gewaehlt {
+            gewaehlt = ids[i]
+        }
+    }
+
+    private func dokument(_ p: TimelinePoint) -> MovementDocument? {
+        detail.documents.first { $0.paperID == p.paperID }
+    }
+
+    private func titel(_ p: TimelinePoint) -> String {
+        if let name = dokument(p)?.name, !name.isEmpty { return name }
+        return p.title.isEmpty ? ZeitleisteRechnung.art(p.kind) : p.title
+    }
+
+    private func vorlesen(_ p: TimelinePoint) -> String {
+        [p.city, ZeitleisteRechnung.datum(p.date), ZeitleisteStufe(outcome: p.outcome).text, titel(p)]
+            .joined(separator: ", ")
+    }
+
+    private func ablesung(_ p: TimelinePoint) -> some View {
+        let stufe = ZeitleisteStufe(outcome: p.outcome)
+        let art = [ZeitleisteRechnung.art(p.kind), dokument(p)?.originator].compactMap { $0 }
+            .filter { !$0.isEmpty }.joined(separator: " · ")
+        return HStack(alignment: .top, spacing: 10) {
+            Circle()
+                .fill(stufe == .open ? RatsColor.card : stufe.farbe)
+                .overlay(Circle().stroke(stufe == .open ? RatsColor.muted : .clear, lineWidth: 1.5))
+                .frame(width: 12, height: 12)
+                .padding(.top, 3)
+            VStack(alignment: .leading, spacing: 5) {
+                Text(titel(p))
+                    .font(RatsFont.body(14, weight: .semibold))
+                    .foregroundStyle(RatsColor.text)
+                    .fixedSize(horizontal: false, vertical: true)
+                (Text(p.city).fontWeight(.semibold).foregroundColor(RatsColor.text)
+                 + Text(" · \(ZeitleisteRechnung.datum(p.date)) · \(art)"))
+                    .font(RatsFont.body(12))
+                    .foregroundStyle(RatsColor.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: 12) {
+                    ErgebnisPille(outcome: p.outcome)
+                    Button("In der Chronik zeigen") { zeige(p.paperID) }
+                        .font(RatsFont.body(12.5, weight: .semibold))
+                        .foregroundStyle(RatsColor.primary)
+                    if gewaehlt != nil {
+                        Button("zurücksetzen") { gewaehlt = nil }
+                            .font(RatsFont.body(12.5))
+                            .foregroundStyle(RatsColor.muted)
+                    }
+                }
+                .buttonStyle(RatsPlainButtonStyle())
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 12).padding(.vertical, 10)
+        .background(RatsColor.card)
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(RatsColor.border))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+}
+
 struct MovementDetailView: View {
     let model: AppModel
     let clusterID: Int
     @State private var detail: MovementDetail?
     @State private var fehler: String?
     @State private var gesagt = ""
+    /// Der Chronik-Eintrag, zu dem die Bühne gerade gesprungen ist.
+    @State private var markiert: String?
 
     var body: some View {
+        ScrollViewReader { proxy in
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 if let detail {
-                    inhalt(detail)
+                    inhalt(detail) { paperID in
+                        markiert = paperID
+                        withAnimation(.easeInOut(duration: 0.35)) { proxy.scrollTo(paperID, anchor: .top) }
+                        Task {
+                            try? await Task.sleep(for: .seconds(2.4))
+                            if markiert == paperID { withAnimation { markiert = nil } }
+                        }
+                    }
                 } else if fehler != nil {
                     Text("Diese Idee gibt es nicht (mehr).")
                         .font(RatsFont.body(15))
@@ -548,6 +808,7 @@ struct MovementDetailView: View {
             .padding(.horizontal, 16)
             .padding(.bottom, 32)
         }
+        }
         .background(RatsColor.page)
         .navigationTitle("Idee")
         .navigationBarTitleDisplayMode(.inline)
@@ -555,7 +816,7 @@ struct MovementDetailView: View {
     }
 
     @ViewBuilder
-    private func inhalt(_ d: MovementDetail) -> some View {
+    private func inhalt(_ d: MovementDetail, zeige: @escaping (String) -> Void) -> some View {
         let b = d.movement
         VStack(alignment: .leading, spacing: 8) {
             if let feld = b.field {
@@ -576,7 +837,7 @@ struct MovementDetailView: View {
         .padding(.top, 8)
 
         oldenburg(d)
-        buehne(d)
+        MovementStage(detail: d, zeige: zeige)
 
         VStack(alignment: .leading, spacing: 0) {
             Text("Alle Vorlagen, nach Datum")
@@ -585,6 +846,11 @@ struct MovementDetailView: View {
                 .padding(.bottom, 8)
             ForEach(d.documents.sorted { ($0.date ?? "9999") < ($1.date ?? "9999") }) { dok in
                 eintrag(dok)
+                    .padding(.horizontal, 8)
+                    .background(markiert == dok.paperID ? RatsColor.primary.opacity(0.08) : .clear,
+                                in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .padding(.horizontal, -8)
+                    .id(dok.paperID)
                 Divider().overlay(RatsColor.separator)
             }
         }
@@ -620,35 +886,6 @@ struct MovementDetailView: View {
                 }
             }
         }
-    }
-
-    private func buehne(_ d: MovementDetail) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Wie die Idee durch die Räte lief")
-                .font(RatsFont.title(16))
-                .foregroundStyle(RatsColor.text)
-            ForEach(d.movement.cities) { c in
-                let punkte = d.movement.timeline.filter { $0.bodyID == c.bodyID }
-                HStack(spacing: 10) {
-                    Text(c.city)
-                        .font(RatsFont.body(13, weight: .semibold))
-                        .foregroundStyle(RatsColor.text)
-                        .frame(width: 92, alignment: .leading)
-                        .lineLimit(2)
-                    Zeitleiste(achse: d.axis, punkte: punkte,
-                               label: "\(c.city): \(ZeitleisteRechnung.satz(punkte))")
-                }
-            }
-            HStack(spacing: 10) {
-                Color.clear.frame(width: 92, height: 1)
-                Jahresskala(achse: d.axis)
-            }
-            ZeitleisteLegende()
-        }
-        .padding(16)
-        .background(RatsColor.stage)
-        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(RatsColor.border))
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
     private func eintrag(_ d: MovementDocument) -> some View {
@@ -797,9 +1034,5 @@ struct MovementDetailView: View {
         }
     }
 
-    private static func datum(_ iso: String?) -> String {
-        guard let iso, iso.count >= 10 else { return "ohne Datum" }
-        let t = iso.prefix(10).split(separator: "-")
-        return t.count == 3 ? "\(t[2]).\(t[1]).\(t[0])" : iso
-    }
+    private static func datum(_ iso: String?) -> String { ZeitleisteRechnung.datum(iso) }
 }

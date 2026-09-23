@@ -498,7 +498,8 @@ import Testing
         "first_date": "2023-06-01", "last_date": "2025-02-01",
         "outcomes": {"accepted": 1},
         "timeline": [{"paper_id": "p1", "body_id": "osnabrueck", "city": "Osnabrück",
-                      "date": "2023-06-01", "outcome": "accepted", "kind": "motion"}],
+                      "date": "2023-06-01", "outcome": "accepted", "kind": "motion",
+                      "title": "Hitzeaktionsplan aufstellen"}],
         "oldenburg": {"status": "partial", "situation": "Oldenburg hat informiert.",
                       "confidence": "medium",
                       "evidence": [{"decision_id": 1, "kvonr": 4711, "title": "Hitze-Informationen",
@@ -521,6 +522,15 @@ import Testing
     #expect(antwort.items[0].oldenburg?.evidence.first?.decisionID == 1)
     #expect(antwort.items[1].oldenburg == nil, "ohne Urteil steht nil da, kein erfundener Stand")
     #expect(antwort.counts["unjudged"] == 1)
+    #expect(antwort.items[0].timeline.first?.title == "Hitzeaktionsplan aufstellen")
+}
+
+@Test func einPunktOhneTitelKipptNicht() throws {
+    // Server vor #1498 (und Bestände, die seither nicht neu gebaut wurden)
+    // schicken keinen Titel — die Ablesung nennt dann die Art der Vorlage.
+    let json = #"{"paper_id": "p1", "body_id": "kiel", "city": "Kiel", "date": null, "outcome": "none", "kind": "inquiry"}"#
+    let punkt = try JSONDecoder().decode(TimelinePoint.self, from: Data(json.utf8))
+    #expect(punkt.title == "")
 }
 
 @Test func eineLeereBewegungsantwortKipptNicht() throws {
