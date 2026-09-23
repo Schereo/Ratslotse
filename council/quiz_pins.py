@@ -58,6 +58,8 @@ def distance_m(geometry: dict, lat: float, lon: float) -> float | None:
     proj = _project(lat)
     p = proj(lon, lat)
     t, coords = geometry.get("type"), geometry.get("coordinates")
+    if not isinstance(coords, list):
+        return None
     if t == "Point":
         return math.hypot(*(a - b for a, b in zip(p, proj(*coords))))
     lines: list[list] = []
