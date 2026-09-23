@@ -4433,6 +4433,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/quiz/duel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Duel Create
+         * @description Eine gespielte Runde als Herausforderung (Plan Q9). Nur aktive Fragen.
+         */
+        post: operations["duel_create_api_quiz_duel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/quiz/duel/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Duel Get */
+        get: operations["duel_get_api_quiz_duel__code__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/quiz/duel/{code}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Duel Complete */
+        post: operations["duel_complete_api_quiz_duel__code__complete_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/quiz/joker": {
         parameters: {
             query?: never;
@@ -13341,6 +13395,56 @@ export interface components {
             /** Level Label */
             level_label: string;
         };
+        /**
+         * QuizDuel
+         * @description Ein Duell (Plan Q9). ``questions`` ohne Lösung; ``players`` erst,
+         *     wenn ich gespielt habe oder das Duell meins ist — sonst verriete die
+         *     Liste, wie schwer die Runde ist, bevor man sie spielt.
+         */
+        QuizDuel: {
+            /** Code */
+            code: string;
+            /** Mine */
+            mine: boolean;
+            /** Owner Correct */
+            owner_correct: number;
+            /** Owner Name */
+            owner_name: string;
+            /** Played */
+            played: boolean;
+            /** Players */
+            players: components["schemas"]["QuizDuelPlayer"][];
+            /** Questions */
+            questions: components["schemas"]["QuizQuestion"][];
+            /** Total */
+            total: number;
+        };
+        /** QuizDuelCreated */
+        QuizDuelCreated: {
+            /** Code */
+            code: string;
+        };
+        /** QuizDuelDoneIn */
+        QuizDuelDoneIn: {
+            /** Correct */
+            correct: number;
+        };
+        /** QuizDuelIn */
+        QuizDuelIn: {
+            /** Correct */
+            correct: number;
+            /** Question Ids */
+            question_ids: number[];
+        };
+        /** QuizDuelPlayer */
+        QuizDuelPlayer: {
+            /** Correct */
+            correct: number;
+            /** Me */
+            me: boolean;
+            /** Name */
+            name: string;
+        };
         /** QuizFlagged */
         QuizFlagged: {
             /** Flagged */
@@ -20537,6 +20641,105 @@ export interface operations {
             };
         };
     };
+    duel_create_api_quiz_duel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuizDuelIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuizDuelCreated"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    duel_get_api_quiz_duel__code__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuizDuel"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    duel_complete_api_quiz_duel__code__complete_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuizDuelDoneIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuizDuel"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     joker_api_quiz_joker_post: {
         parameters: {
             query?: never;
@@ -22860,4 +23063,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 383b483c713f7de557c520901746c553da516bd9ee8e828bec7f5998aa1740c2
+// vertrag-sha256: e8adbbc730c3d85f6feeb2c297651990005f460d3c0c4aeb5ca3fc12b539d0f5

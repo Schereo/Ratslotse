@@ -476,6 +476,15 @@ class QuizBlitzIn(BaseModel):
     answered: int = Field(ge=0, le=40)
 
 
+class QuizDuelIn(BaseModel):
+    question_ids: list[int] = Field(min_length=1, max_length=10)
+    correct: int = Field(ge=0, le=10)
+
+
+class QuizDuelDoneIn(BaseModel):
+    correct: int = Field(ge=0, le=10)
+
+
 class QuizRateIn(BaseModel):
     question_id: int
     verdict: str = Field(pattern="^(gut|schlecht)$")

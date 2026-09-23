@@ -1045,6 +1045,28 @@ class QuizBlitzResult(TypedDict):
     best: int
     today_best: int
     new_best: bool
+class QuizDuelCreated(TypedDict):
+    code: str
+
+
+class QuizDuelPlayer(TypedDict):
+    name: str
+    correct: int
+    me: bool
+
+
+class QuizDuel(TypedDict):
+    """Ein Duell (Plan Q9). ``questions`` ohne Lösung; ``players`` erst,
+    wenn ich gespielt habe oder das Duell meins ist — sonst verriete die
+    Liste, wie schwer die Runde ist, bevor man sie spielt."""
+    code: str
+    owner_name: str
+    owner_correct: int
+    total: int
+    mine: bool
+    played: bool
+    questions: list[QuizQuestion]
+    players: list[QuizDuelPlayer]
 
 
 class QuizResult(TypedDict):

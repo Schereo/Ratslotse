@@ -17,8 +17,9 @@ import { OwnQuestionsView } from "@/components/quiz-own";
 import { QuizProgressMap } from "@/components/quiz-progress-map";
 import { QuizBlitz } from "@/components/quiz-blitz";
 import { QuizPinPlay, type PinQuestion } from "@/components/quiz-pin-play";
+import { DuelScore, type DuelView } from "@/components/quiz-duel";
 
-type RoundKind = "normal" | "review" | "daily" | "own";
+type RoundKind = "normal" | "review" | "daily" | "own" | "duel";
 
 // Zuletzt gespielte Einstellungen (localStorage) → „Weiterspielen".
 const LS_KEY = "quiz:lastSettings";
@@ -399,6 +400,10 @@ function QuizInner() {
   const [ownAutoNew, setOwnAutoNew] = useState(false);
   const [last, setLast] = useState<LastSettings | null>(null);
   const [autoStarted, setAutoStarted] = useState(false);
+  // Duell über ?duell=<code> (Plan Q9): erst laden, dann spielen oder — wenn
+  // schon gespielt — gleich die Tabelle zeigen.
+  const [duel, setDuel] = useState<DuelView | null>(null);
+  const [duelDone, setDuelDone] = useState<DuelView | null>(null);
 
   useEffect(() => { setLast(loadLast()); }, [reloadKey]);
 
@@ -482,6 +487,15 @@ function QuizInner() {
   // Auto-Start über Query (?review=1 / ?play=<area>) — von der Statistik-Seite.
   useEffect(() => {
     if (autoStarted || loading || !data) return;
+    const code = params.get("duell");
+    if (code) {
+      setAutoStarted(true);
+      void api.get<DuelView>(`/quiz/duel/${encodeURIComponent(code)}`).then((d) => {
+        if (d.played) { setDuelDone(d); return; }
+        setDuel(d); setKind("duel"); setRound(d.questions);
+      }).catch(() => toast.error("Dieses Duell gibt es nicht (mehr)."));
+      return;
+    }
     if (params.get("review")) { setAutoStarted(true); void startReview(); }
     else {
       const play = params.get("play");
@@ -490,6 +504,15 @@ function QuizInner() {
   }, [autoStarted, loading, data, params, startReview, startRound]);
 
   if (loading) return <div className="py-10"><Spinner /></div>;
+
+  if (duelDone && !round) {
+    return (
+      <div className="mx-auto max-w-xl space-y-4 text-center">
+        <DuelScore duel={duelDone} />
+        <Button onClick={() => { setDuelDone(null); setDuel(null); }}>Zum Quiz</Button>
+      </div>
+    );
+  }
 
   if (view === "blitz") {
     return <QuizBlitz onExit={() => { setView("home"); setReloadKey((k) => k + 1); }} />;
@@ -506,10 +529,16 @@ function QuizInner() {
   }
 
   if (round) {
-    const title = kind === "daily" ? "Tägliche Challenge"
+    const title = kind === "duel" && duel ? `Duell gegen ${duel.owner_name}`
+      : kind === "daily" ? "Tägliche Challenge"
       : kind === "review" ? "Meine Fehler"
         : kind === "own" ? "Meine Fragen üben" : undefined;
-    const onComplete = kind === "daily"
+    const onComplete = kind === "duel" && duel
+      ? async (r: { correct: number }) => {
+          try { setDuelDone(await api.post<DuelView>(`/quiz/duel/${duel.code}/complete`, { correct: r.correct })); } catch { /* Tabelle fehlt dann */ }
+          return undefined;
+        }
+      : kind === "daily"
       ? async (r: { correct: number; total: number; points: number; results: boolean[] }) => {
           try {
             const res = await api.post<{ share_text?: string }>("/quiz/daily/complete", r);
@@ -519,8 +548,10 @@ function QuizInner() {
       : undefined;
     return (
       <QuizPlay questions={round} title={title} onComplete={onComplete}
+        duel={kind === "normal" || kind === "daily"}
+        doneExtra={kind === "duel" && duelDone ? <DuelScore duel={duelDone} /> : undefined}
         practice={kind === "own"} answerPath={kind === "own" ? "/quiz/own/answer" : "/quiz/answer"}
-        onExit={() => { setRound(null); setView(kind === "own" ? "own" : "home"); setReloadKey((k) => k + 1); }} />
+        onExit={() => { setRound(null); setDuel(null); setDuelDone(null); setView(kind === "own" ? "own" : "home"); setReloadKey((k) => k + 1); }} />
     );
   }
 

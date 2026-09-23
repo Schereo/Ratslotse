@@ -18235,6 +18235,137 @@
         "title": "QuizDistrictProgress",
         "type": "object"
       },
+      "QuizDuel": {
+        "description": "Ein Duell (Plan Q9). ``questions`` ohne Lösung; ``players`` erst,\nwenn ich gespielt habe oder das Duell meins ist — sonst verriete die\nListe, wie schwer die Runde ist, bevor man sie spielt.",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "mine": {
+            "title": "Mine",
+            "type": "boolean"
+          },
+          "owner_correct": {
+            "title": "Owner Correct",
+            "type": "integer"
+          },
+          "owner_name": {
+            "title": "Owner Name",
+            "type": "string"
+          },
+          "played": {
+            "title": "Played",
+            "type": "boolean"
+          },
+          "players": {
+            "items": {
+              "$ref": "#/components/schemas/QuizDuelPlayer"
+            },
+            "title": "Players",
+            "type": "array"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/QuizQuestion"
+            },
+            "title": "Questions",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "code",
+          "owner_name",
+          "owner_correct",
+          "total",
+          "mine",
+          "played",
+          "questions",
+          "players"
+        ],
+        "title": "QuizDuel",
+        "type": "object"
+      },
+      "QuizDuelCreated": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "title": "QuizDuelCreated",
+        "type": "object"
+      },
+      "QuizDuelDoneIn": {
+        "properties": {
+          "correct": {
+            "maximum": 10.0,
+            "minimum": 0.0,
+            "title": "Correct",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "correct"
+        ],
+        "title": "QuizDuelDoneIn",
+        "type": "object"
+      },
+      "QuizDuelIn": {
+        "properties": {
+          "correct": {
+            "maximum": 10.0,
+            "minimum": 0.0,
+            "title": "Correct",
+            "type": "integer"
+          },
+          "question_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "maxItems": 10,
+            "minItems": 1,
+            "title": "Question Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "question_ids",
+          "correct"
+        ],
+        "title": "QuizDuelIn",
+        "type": "object"
+      },
+      "QuizDuelPlayer": {
+        "properties": {
+          "correct": {
+            "title": "Correct",
+            "type": "integer"
+          },
+          "me": {
+            "title": "Me",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "correct",
+          "me"
+        ],
+        "title": "QuizDuelPlayer",
+        "type": "object"
+      },
       "QuizFlagged": {
         "properties": {
           "flagged": {
@@ -30263,6 +30394,142 @@
           }
         },
         "summary": "Daily Complete",
+        "tags": [
+          "quiz"
+        ]
+      }
+    },
+    "/api/quiz/duel": {
+      "post": {
+        "description": "Eine gespielte Runde als Herausforderung (Plan Q9). Nur aktive Fragen.",
+        "operationId": "duel_create_api_quiz_duel_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuizDuelIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuizDuelCreated"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Duel Create",
+        "tags": [
+          "quiz"
+        ]
+      }
+    },
+    "/api/quiz/duel/{code}": {
+      "get": {
+        "operationId": "duel_get_api_quiz_duel__code__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "title": "Code",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuizDuel"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Duel Get",
+        "tags": [
+          "quiz"
+        ]
+      }
+    },
+    "/api/quiz/duel/{code}/complete": {
+      "post": {
+        "operationId": "duel_complete_api_quiz_duel__code__complete_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "title": "Code",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuizDuelDoneIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuizDuel"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Duel Complete",
         "tags": [
           "quiz"
         ]
