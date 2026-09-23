@@ -30,6 +30,7 @@ import { Hantel, type HantelZeile } from "@/components/grafik/hantel";
 import { Einordnung } from "@/components/grafik/einordnung";
 import { deMio } from "@/lib/haushalt";
 import type { SteuerplanZeile } from "@/lib/haushalt";
+import { useErklaerAnker } from "@/lib/erklaer-anker";
 
 export function SteuerPlanIst({ zeilen, abgrenzung, beleg }: {
   /** Nur die Zeilen DIESER Steuerart, aufsteigend nach Jahr. */
@@ -38,6 +39,7 @@ export function SteuerPlanIst({ zeilen, abgrenzung, beleg }: {
   abgrenzung: string;
   beleg?: React.ReactNode;
 }) {
+  const anker = useErklaerAnker("steuer-plan-ist", "Steuern: geplant und geworden");
   if (zeilen.length < 1) return null;
   const sortiert = [...zeilen].sort((a, b) => a.year - b.year);
 
@@ -66,7 +68,7 @@ export function SteuerPlanIst({ zeilen, abgrenzung, beleg }: {
   const groesste = Math.max(...abweichungen);
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+    <div {...anker} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
           Geplant und geworden

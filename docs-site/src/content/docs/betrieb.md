@@ -661,7 +661,7 @@ Die `.env` liegt ausschließlich auf dem Server und wird vom Deploy nicht
 | `OPENROUTER_API_KEY` | Zugang zu allen LLM-Aufrufen ([ADR 0001](/docs/adr/0001-openrouter/)) | ja | — |
 | `NWZ_OPENROUTER_ROUTING` | Provider-Routing (DSGVO) an/aus; `off` ist der Notausschalter ([ADR 0002](/docs/adr/0002-dsgvo-provider-routing/)) | nein | `on` |
 | `NWZ_OPENROUTER_IGNORE` | Kommaliste ausgeschlossener Provider-Slugs | nein | `deepseek,baidu,streamlake,siliconflow,alibaba` |
-| `NWZ_OPENROUTER_ZDR` | Zero-Data-Retention verlangen; `0`/`false`/`off`/`no` lockert das | nein | `1` |
+| `NWZ_OPENROUTER_ZDR` | Zero-Data-Retention verlangen — für Aufrufe mit Nutzereingaben; Features mit nur öffentlichen Daten stehen in `kern/llm.py::OHNE_NUTZEREINGABE` und laufen ohne ZDR. `0`/`false`/`off`/`no` lockert es für alle | nein | `1` |
 | `NWZ_DEEPSEEK_MIN_MAX_TOKENS` | Untergrenze für `max_tokens` bei DeepSeek-Reasoning-Modellen | nein | `24000` |
 
 ### Modellwahl je Aufgabe
@@ -677,7 +677,7 @@ Alle optional — greift keine Variable, gilt der Default aus dem Code.
 | `COUNCIL_ENTITY_MODEL` | Entitäten-NER und -Beschreibungen | `deepseek/deepseek-v4-pro` |
 | `COUNCIL_SIMPLE_MODEL` | „Einfach erklärt"-Kurzfassungen | `deepseek/deepseek-v4-pro` |
 | `COUNCIL_INTEREST_MODEL` | Gesprächswert-Score | `deepseek/deepseek-v4-pro` |
-| `COUNCIL_IMPACT_MODEL` | Tragweite-Score | `deepseek/deepseek-v4-pro` |
+| `COUNCIL_IMPACT_MODEL` | Tragweite-Score | `openai/gpt-6-luna` (Flex-Tarif) |
 | `COUNCIL_FUNDSTUECK_MODEL` | Story zum „Fundstück des Tages" | `deepseek/deepseek-v4-pro` |
 | `COUNCIL_RECAP_MODEL` | Themenfeld-Rückblicke | `deepseek/deepseek-v4-pro` |
 | `COUNCIL_QA_MODEL` | „Frag den Rat" (Antwort + Query-Expansion) | `deepseek/deepseek-v4-pro` |

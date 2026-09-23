@@ -34,7 +34,14 @@ from .impact import vorlagen_kern
 #: Anlagen bringt 40.000 bis 60.000 Zeichen mit, und gpt-4o-mini fand darin
 #: Angaben nicht wieder, die wörtlich dastanden — beim Kritiker gemessen,
 #: 8 Fehlalarme auf 22 Texte. Luna hat 1,05 Mio Zeichen Kontext.
-MODEL = os.environ.get("COUNCIL_SOCIAL_MODEL", "openai/gpt-5.6-luna")
+#:
+#: Tims Entscheidung 23.09.2026 (P5, docs/plan-modellwechsel.md):
+#: GPT-6 Luna ersetzt 5.6, im Flex-Tarif (kein Nutzereingabe-Feature, s.
+#: ``llm.OHNE_NUTZEREINGABE``). Prüfstand 23.09.2026 (`social-text`, 20
+#: Fälle × 2 Läufe): 5.6 90,0 % ± 10,0 (0,075–0,089 ct/Aufruf) — 6-Luna normal
+#: 90,0 % ± 0,0 (0,035–0,073 ct) — 6-Luna flex 92,5 % ± 5,0 (0,018–0,036 ct).
+#: Alle im Rauschen, Flex zu einem Viertel bis Fünftel des heutigen Preises.
+MODEL = os.environ.get("COUNCIL_SOCIAL_MODEL", "openai/gpt-6-luna")
 
 #: Zeichenbudgets. Großzügig, aber nicht grenzenlos (Tims Vorgabe 30.08.26:
 #: „so viel Kontext wie möglich").
@@ -175,7 +182,8 @@ def _antwort(system: str, user: str, max_tokens: int = 400) -> str:
             model=MODEL, response_format={"type": "json_object"},
             messages=[{"role": "system", "content": system},
                       {"role": "user", "content": user}],
-            max_tokens=max_tokens, _feature="social_card_text", _geduld=True, _ersatz=llm.ersatz_fuer(MODEL))
+            max_tokens=max_tokens, _feature="social_card_text", _geduld=True, _ersatz=llm.ersatz_fuer(MODEL),
+            _tarif="flex")
     except Exception as fehler:  # noqa: BLE001 — jede Sorte Anbieterfehler, s. AnbieterFehler
         raise AnbieterFehler(str(fehler)) from fehler
     roh = (resp.choices[0].message.content or "").strip()

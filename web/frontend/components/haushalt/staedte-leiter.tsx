@@ -15,6 +15,7 @@ import { deZahl } from "@/components/grafik/format";
 import type { StadtHebesatz } from "@/lib/haushalt-labor";
 import { Beleg } from "@/components/haushalt/source";
 import { cn } from "@/lib/utils";
+import { useErklaerAnker } from "@/lib/erklaer-anker";
 
 type Zeile = {
   name: string;
@@ -31,6 +32,7 @@ export function StaedteLeiter({ staedte, heute, deinWert, geaendert }: {
   deinWert: number;
   geaendert: boolean;
 }) {
+  const anker = useErklaerAnker("staedte-leiter", "Städtevergleich");
   if (staedte.length < 3) return null;
   const year = staedte[0].year;
 
@@ -57,7 +59,7 @@ export function StaedteLeiter({ staedte, heute, deinWert, geaendert }: {
     : undefined;
 
   return (
-    <div className="mt-3 rounded-xl bg-muted/40 p-3">
+    <div {...anker} className="mt-3 rounded-xl bg-muted/40 p-3">
       <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
         Die kreisfreien Städte · {year}
       </p>

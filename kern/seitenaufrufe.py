@@ -66,7 +66,7 @@ ROUTEN: frozenset[str] = frozenset({
     "/wahlen", "/wahl", "/wahlabend", "/wahlabend/stichwahl", "/stichwahl/potenzial", "/tipp", "/tipp/live",
     # Ratsinhalte (die vier geteilten Detailseiten und das Stöbern)
     "/council", "/council/decision", "/council/sitzung", "/council/thema",
-    "/council/person", "/council/ort", "/council/ideen",
+    "/council/person", "/council/ort", "/council/ideen", "/council/ideen/bewegung",
     # angemeldete Fläche
     # „Suche", „Sitzungen", „Themen" und „Analyse" sind KEINE eigenen Seiten —
     # sie sind /council mit einem ?tab=, siehe COUNCIL_TABS.

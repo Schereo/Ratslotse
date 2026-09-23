@@ -1,0 +1,76 @@
+{
+ "suite": "cities-einordnung",
+ "titel": "Städtevergleich: taugt die Vorlage?",
+ "kennzahl": "„taugt / taugt nicht“ richtig — die eine Entscheidung, die das Produkt trifft",
+ "modell": "deepseek/deepseek-v4-flash",
+ "variante": null,
+ "tarif": null,
+ "lauf": 1,
+ "zeitstempel": "2026-09-22T23:53:30",
+ "db_stand": "Sitzungen bis 2026-09-16, 9078 Beschlüsse",
+ "qualitaet": 0.886,
+ "harte_befunde": null,
+ "faelle": 45,
+ "p50_ms": 47107,
+ "p95_ms": 341656,
+ "aufrufe": 8,
+ "kosten_usd": 0.01367,
+ "ohne_kostenwert": 0,
+ "ct_je_aufruf": 0.1709,
+ "ct_je_lauf": 1.367,
+ "kosten_gesamt_usd": 0.01367,
+ "ausfaelle": 0,
+ "nicht_zulaessig": false,
+ "abbruch": null,
+ "modelle_laut_tabelle": [
+  "deepseek/deepseek-v4-flash"
+ ],
+ "ersatz": [],
+ "dauer_s": 966.8,
+ "nebenkennzahlen": {
+  "geliefert": 44,
+  "transfer": 77.3,
+  "feld": 86.4
+ },
+ "fehler_beispiele": [],
+ "roh": {
+  "n_cases": 45,
+  "n_answered": 44,
+  "usable_accuracy": 88.6,
+  "transfer_accuracy": 77.3,
+  "field_accuracy": 86.4,
+  "competence_accuracy": 65.9,
+  "mistakes": [
+   {
+    "case": "Besetzung der Stelle der Kinderbeauftragten",
+    "erwartet": "adaptable",
+    "bekommen": "one_off",
+    "instrument": null
+   },
+   {
+    "case": "Einheitliches Anmeldeverfahren für mehr Chancengerechtigkeit!",
+    "erwartet": "jurisdiction",
+    "bekommen": "adaptable",
+    "instrument": "Vorgezogenes Anmeldeverfahren für weiterführende Schulen"
+   },
+   {
+    "case": "Nachträgliche Aufnahme des Treffens mit Saskia Ludwig in die Terminber",
+    "erwartet": "one_off",
+    "bekommen": "adaptable",
+    "instrument": "Dokumentationspflicht für OB-Termine"
+   },
+   {
+    "case": "Maßnahmen für ein stabiles und nachhaltiges Bildungs- und Betreuungsan",
+    "erwartet": "adaptable",
+    "bekommen": "local",
+    "instrument": "Schließung städtischer Kitas"
+   },
+   {
+    "case": "Rahmenplan Bornim/ Bornstedt",
+    "erwartet": "local",
+    "bekommen": "adaptable",
+    "instrument": "Bürgerbeteiligung für Rahmenplan"
+   }
+  ]
+ }
+}

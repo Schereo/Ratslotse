@@ -1,0 +1,279 @@
+[
+ {
+  "ksinr": 4695,
+  "video_id": "ogs6D7Qdh60",
+  "datum": "2026-06-29",
+  "erwartet": {
+   "6.1": {
+    "outcome": "accepted",
+    "vote": "unanimous"
+   },
+   "6.2": {
+    "outcome": "noted",
+    "vote": null
+   },
+   "6.3": {
+    "outcome": "accepted",
+    "vote": "unanimous"
+   },
+   "6.4": {
+    "outcome": "accepted",
+    "vote": "unanimous"
+   },
+   "6.5": {
+    "outcome": "accepted",
+    "vote": "unanimous"
+   },
+   "6.6": {
+    "outcome": "accepted",
+    "vote": "unanimous"
+   },
+   "6.7": {
+    "outcome": "accepted",
+    "vote": "unanimous"
+   },
+   "6.8": {
+    "outcome": "accepted",
+    "vote": "unanimous"
+   },
+   "6.9": {
+    "outcome": "accepted",
+    "vote": "majority"
+   },
+   "7.1": {
+    "outcome": "accepted",
+    "vote": "majority"
+   },
+   "7.2": {
+    "outcome": "accepted",
+    "vote": "majority"
+   },
+   "7.3": {
+    "outcome": "accepted",
+    "vote": "unanimous"
+   },
+   "9.1": {
+    "outcome": "accepted",
+    "vote": "unanimous"
+   },
+   "10.1": {
+    "outcome": "accepted",
+    "vote": "unanimous"
+   },
+   "11.1": {
+    "outcome": "accepted",
+    "vote": "unanimous"
+   },
+   "11.2": {
+    "outcome": "accepted",
+    "vote": "unanimous"
+   },
+   "11.3": {
+    "outcome": "accepted",
+    "vote": "unanimous"
+   },
+   "12.1": {
+    "outcome": "accepted",
+    "vote": "unanimous"
+   },
+   "12.2": {
+    "outcome": "accepted",
+    "vote": "unanimous"
+   },
+   "13.1": {
+    "outcome": "accepted",
+    "vote": "unanimous"
+   },
+   "14.1": {
+    "outcome": "accepted",
+    "vote": null
+   },
+   "14.2": {
+    "outcome": "accepted",
+    "vote": "unanimous"
+   },
+   "14.4": {
+    "outcome": "rejected",
+    "vote": "majority"
+   },
+   "14.6": {
+    "outcome": "accepted",
+    "vote": "unanimous"
+   },
+   "14.7": {
+    "outcome": "postponed",
+    "vote": null
+   },
+   "14.8": {
+    "outcome": "postponed",
+    "vote": null
+   },
+   "14.9": {
+    "outcome": "postponed",
+    "vote": null
+   },
+   "14.10": {
+    "outcome": "postponed",
+    "vote": null
+   },
+   "14.11": {
+    "outcome": "accepted",
+    "vote": "unanimous"
+   },
+   "14.12": {
+    "outcome": "accepted",
+    "vote": "majority"
+   },
+   "14.13": {
+    "outcome": "accepted",
+    "vote": "unanimous"
+   }
+  },
+  "ausgenommen": {
+   "14.5": "Niederschrift: „abgesetzt“; im Video nimmt die FDP ihren Berichtsantrag ohne Abstimmung zur Kenntnis (110:53–111:11) — kein Ergebnis zu hören"
+  }
+ },
+ {
+  "ksinr": 4692,
+  "video_id": "OZ2OUkwR6e0",
+  "datum": "2026-06-01",
+  "erwartet": {
+   "6.1": {
+    "outcome": "accepted",
+    "vote": "majority"
+   },
+   "6.2": {
+    "outcome": "accepted",
+    "vote": "majority"
+   },
+   "6.3": {
+    "outcome": "accepted",
+    "vote": "majority"
+   },
+   "7.1": {
+    "outcome": "accepted",
+    "vote": "unanimous"
+   },
+   "8.1": {
+    "outcome": "accepted",
+    "vote": "majority"
+   },
+   "8.2": {
+    "outcome": "accepted",
+    "vote": "majority"
+   },
+   "8.3": {
+    "outcome": "accepted",
+    "vote": "majority"
+   },
+   "9.1": {
+    "outcome": "accepted",
+    "vote": "unanimous"
+   },
+   "9.2": {
+    "outcome": "accepted",
+    "vote": "unanimous"
+   },
+   "10.1": {
+    "outcome": "accepted",
+    "vote": "unanimous"
+   },
+   "11.1": {
+    "outcome": "accepted",
+    "vote": "unanimous"
+   },
+   "12.1": {
+    "outcome": "accepted",
+    "vote": "unanimous"
+   },
+   "12.2": {
+    "outcome": "noted",
+    "vote": null
+   },
+   "12.3": {
+    "outcome": "accepted",
+    "vote": "unanimous"
+   },
+   "12.4": {
+    "outcome": "accepted",
+    "vote": "unanimous"
+   },
+   "13.1": {
+    "outcome": "accepted",
+    "vote": "unanimous"
+   },
+   "13.2": {
+    "outcome": "accepted",
+    "vote": "unanimous"
+   },
+   "14.1": {
+    "outcome": "accepted",
+    "vote": "unanimous"
+   },
+   "14.2": {
+    "outcome": "accepted",
+    "vote": "unanimous"
+   },
+   "14.3": {
+    "outcome": "accepted",
+    "vote": "unanimous"
+   },
+   "14.4": {
+    "outcome": "accepted",
+    "vote": "unanimous"
+   },
+   "15.1": {
+    "outcome": "postponed",
+    "vote": null
+   },
+   "15.3": {
+    "outcome": "postponed",
+    "vote": null
+   },
+   "15.7": {
+    "outcome": "postponed",
+    "vote": null
+   },
+   "15.9": {
+    "outcome": "postponed",
+    "vote": null
+   },
+   "15.10": {
+    "outcome": "rejected",
+    "vote": "majority"
+   }
+  },
+  "ausgenommen": {
+   "4": "Parser-Zeile: TOP 4 sind die Mitteilungen des Oberbürgermeisters, laut Sitzungsleitung „gibt es keine“ (Video 10:41) — kein Beschluss",
+   "15.2": "mit Ablauf der öffentlichen Sitzung ohne Abstimmung vertagt",
+   "15.4": "mit Ablauf der öffentlichen Sitzung ohne Abstimmung vertagt",
+   "15.5": "mit Ablauf der öffentlichen Sitzung ohne Abstimmung vertagt",
+   "15.6": "mit Ablauf der öffentlichen Sitzung ohne Abstimmung vertagt",
+   "15.8": "mit Ablauf der öffentlichen Sitzung ohne Abstimmung vertagt"
+  }
+ },
+ {
+  "ksinr": 4628,
+  "video_id": "5SNPSh0EI94",
+  "datum": "2026-03-16",
+  "erwartet": {
+   "6.1": {
+    "outcome": "accepted",
+    "vote": "unanimous"
+   },
+   "6.2": {
+    "outcome": "noted",
+    "vote": null
+   },
+   "7.1": {
+    "outcome": "accepted",
+    "vote": "unanimous"
+   },
+   "7.2": {
+    "outcome": "accepted",
+    "vote": "majority"
+   }
+  },
+  "ausgenommen": {}
+ }
+]

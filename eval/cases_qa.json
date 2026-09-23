@@ -14,31 +14,31 @@
     ],
     "expected_keys": [
       {
-        "vorlage_nr": "22/1006/1",
+        "template_number": "22/1006/1",
         "committee": "Rat"
       },
       {
-        "vorlage_nr": "22/1006",
+        "template_number": "22/1006",
         "committee": "Ausschuss für Stadtplanung und Bauen"
       },
       {
-        "vorlage_nr": "22/1006",
+        "template_number": "22/1006",
         "committee": "Ausschuss für Finanzen und Beteiligungen"
       },
       {
-        "vorlage_nr": "23/0258",
+        "template_number": "23/0258",
         "committee": "Ausschuss für Finanzen und Beteiligungen"
       },
       {
-        "vorlage_nr": "23/0147",
+        "template_number": "23/0147",
         "committee": "Ausschuss für Finanzen und Beteiligungen"
       },
       {
-        "vorlage_nr": "23/0147",
+        "template_number": "23/0147",
         "committee": "Rat"
       },
       {
-        "vorlage_nr": "23/0258",
+        "template_number": "23/0258",
         "committee": "Rat"
       }
     ]
@@ -57,27 +57,27 @@
     ],
     "expected_keys": [
       {
-        "vorlage_nr": "24/0824",
+        "template_number": "24/0824",
         "committee": "Verkehrsausschuss"
       },
       {
-        "vorlage_nr": "24/0824",
+        "template_number": "24/0824",
         "committee": "Rat"
       },
       {
-        "vorlage_nr": "23/0261",
+        "template_number": "23/0261",
         "committee": "Verkehrsausschuss"
       },
       {
-        "vorlage_nr": "21/0439",
+        "template_number": "21/0439",
         "committee": "Verkehrsausschuss"
       },
       {
-        "vorlage_nr": "18/0092/1",
+        "template_number": "18/0092/1",
         "committee": "Verkehrsausschuss"
       },
       {
-        "vorlage_nr": "19/0104",
+        "template_number": "19/0104",
         "committee": "Verkehrsausschuss"
       }
     ]
@@ -98,11 +98,11 @@
         "title_like": "Illegale Abfallentsorgung und Korruptionsverdacht"
       },
       {
-        "vorlage_nr": "25/0520",
+        "template_number": "25/0520",
         "committee": "Rat"
       },
       {
-        "vorlage_nr": "25/0199",
+        "template_number": "25/0199",
         "committee": "Rat"
       },
       {
@@ -127,31 +127,31 @@
     ],
     "expected_keys": [
       {
-        "vorlage_nr": "24/0264/3",
+        "template_number": "24/0264/3",
         "committee": "Rat"
       },
       {
-        "vorlage_nr": "24/0264/2",
+        "template_number": "24/0264/2",
         "committee": "Schulausschuss"
       },
       {
-        "vorlage_nr": "24/0264/2",
+        "template_number": "24/0264/2",
         "committee": "Sportausschuss"
       },
       {
-        "vorlage_nr": "24/0264/1",
+        "template_number": "24/0264/1",
         "committee": "Schulausschuss"
       },
       {
-        "vorlage_nr": "24/0264",
+        "template_number": "24/0264",
         "committee": "Schulausschuss"
       },
       {
-        "vorlage_nr": "24/0264/3",
+        "template_number": "24/0264/3",
         "committee": "Schulausschuss"
       },
       {
-        "vorlage_nr": "24/0264/2",
+        "template_number": "24/0264/2",
         "committee": "Verkehrsausschuss"
       }
     ]
@@ -178,11 +178,11 @@
         "title_like": "Verzicht auf Erhebung von Vergnügungssteuer"
       },
       {
-        "vorlage_nr": "25/0489",
+        "template_number": "25/0489",
         "committee": "Rat"
       },
       {
-        "vorlage_nr": "25/0489",
+        "template_number": "25/0489",
         "committee": "Ausschuss für Finanzen und Beteiligungen"
       },
       {
@@ -190,7 +190,7 @@
         "title_like": "Verzicht auf die Erhebung der Vergnügungssteuer"
       },
       {
-        "vorlage_nr": "24/0797",
+        "template_number": "24/0797",
         "committee": "Ausschuss für Finanzen und Beteiligungen"
       }
     ]
@@ -234,11 +234,11 @@
         "title_like": "Erlass einer Verordnung zum Verbot"
       },
       {
-        "vorlage_nr": "25/0567",
+        "template_number": "25/0567",
         "committee": "Jugendhilfeausschuss"
       },
       {
-        "vorlage_nr": "25/0090",
+        "template_number": "25/0090",
         "committee": "Jugendhilfeausschuss"
       }
     ]
@@ -255,19 +255,19 @@
     ],
     "expected_keys": [
       {
-        "vorlage_nr": "23/0929",
+        "template_number": "23/0929",
         "committee": "Ausschuss für Wirtschaftsförderung, Digitalisierung und internationale Zusammenarbeit"
       },
       {
-        "vorlage_nr": "23/0929",
+        "template_number": "23/0929",
         "committee": "Rat"
       },
       {
-        "vorlage_nr": "23/0929/1",
+        "template_number": "23/0929/1",
         "committee": "Rat"
       },
       {
-        "vorlage_nr": "23/0929/1",
+        "template_number": "23/0929/1",
         "committee": "Ausschuss für Wirtschaftsförderung, Digitalisierung und internationale Zusammenarbeit"
       }
     ]
@@ -286,27 +286,27 @@
     ],
     "expected_keys": [
       {
-        "vorlage_nr": "25/0070",
+        "template_number": "25/0070",
         "committee": "Verkehrsausschuss"
       },
       {
-        "vorlage_nr": "25/0069",
+        "template_number": "25/0069",
         "committee": "Verkehrsausschuss"
       },
       {
-        "vorlage_nr": "25/0072",
+        "template_number": "25/0072",
         "committee": "Verkehrsausschuss"
       },
       {
-        "vorlage_nr": "25/0069",
+        "template_number": "25/0069",
         "committee": "Rat"
       },
       {
-        "vorlage_nr": "25/0070",
+        "template_number": "25/0070",
         "committee": "Rat"
       },
       {
-        "vorlage_nr": "25/0072",
+        "template_number": "25/0072",
         "committee": "Rat"
       }
     ]
@@ -324,11 +324,11 @@
     ],
     "expected_keys": [
       {
-        "vorlage_nr": "22/0854",
+        "template_number": "22/0854",
         "committee": "Verkehrsausschuss"
       },
       {
-        "vorlage_nr": "22/0854",
+        "template_number": "22/0854",
         "committee": "Rat"
       },
       {
@@ -336,11 +336,11 @@
         "title_like": "Temporäre autofreie Zone in den Sommermonaten"
       },
       {
-        "vorlage_nr": "22/0225",
+        "template_number": "22/0225",
         "committee": "Verkehrsausschuss"
       },
       {
-        "vorlage_nr": "22/0609",
+        "template_number": "22/0609",
         "committee": "Verkehrsausschuss"
       }
     ]
@@ -357,19 +357,19 @@
     ],
     "expected_keys": [
       {
-        "vorlage_nr": "25/0821",
+        "template_number": "25/0821",
         "committee": "Ausschuss für Finanzen und Beteiligungen"
       },
       {
-        "vorlage_nr": "24/0455",
+        "template_number": "24/0455",
         "committee": "Rat"
       },
       {
-        "vorlage_nr": "24/0455",
+        "template_number": "24/0455",
         "committee": "Ausschuss für Finanzen und Beteiligungen"
       },
       {
-        "vorlage_nr": "23/0486",
+        "template_number": "23/0486",
         "committee": "Rat"
       }
     ]
@@ -384,11 +384,11 @@
     ],
     "expected_keys": [
       {
-        "vorlage_nr": "25/0329",
+        "template_number": "25/0329",
         "committee": "Betriebsausschuss Eigenbetrieb Gebäudewirtschaft und Hochbau"
       },
       {
-        "vorlage_nr": "21/0896",
+        "template_number": "21/0896",
         "committee": "Ausschuss für Stadtgrün, Umwelt und Klima"
       }
     ]
@@ -405,19 +405,19 @@
     ],
     "expected_keys": [
       {
-        "vorlage_nr": "26/0178",
+        "template_number": "26/0178",
         "committee": "Rat"
       },
       {
-        "vorlage_nr": "26/0178",
+        "template_number": "26/0178",
         "committee": "Schulausschuss"
       },
       {
-        "vorlage_nr": "24/0264/3",
+        "template_number": "24/0264/3",
         "committee": "Rat"
       },
       {
-        "vorlage_nr": "24/0264/2",
+        "template_number": "24/0264/2",
         "committee": "Schulausschuss"
       }
     ]
@@ -434,19 +434,19 @@
     ],
     "expected_keys": [
       {
-        "vorlage_nr": "22/0755",
+        "template_number": "22/0755",
         "committee": "Ausschuss für Stadtplanung und Bauen"
       },
       {
-        "vorlage_nr": "22/0730/1",
+        "template_number": "22/0730/1",
         "committee": "Rat"
       },
       {
-        "vorlage_nr": "19/0843",
+        "template_number": "19/0843",
         "committee": "Ausschuss für Finanzen und Beteiligungen"
       },
       {
-        "vorlage_nr": "20/0215",
+        "template_number": "20/0215",
         "committee": "Sozialausschuss"
       }
     ]
@@ -465,7 +465,7 @@
         "title_like": "Ersatzbau für die Cäcilienbrücke"
       },
       {
-        "vorlage_nr": "24/0252"
+        "template_number": "24/0252"
       }
     ]
   },
@@ -475,13 +475,13 @@
     "question": "Plant die Stadt einen Pumptrack?",
     "expected_keys": [
       {
-        "vorlage_nr": "26/0355"
+        "template_number": "26/0355"
       },
       {
-        "vorlage_nr": "23/0662"
+        "template_number": "23/0662"
       },
       {
-        "vorlage_nr": "21/0916"
+        "template_number": "21/0916"
       }
     ]
   },
@@ -491,7 +491,7 @@
     "question": "Wie hoch ist die Bürgschaft der Stadt für die Weser-Ems-Hallen?",
     "expected_keys": [
       {
-        "vorlage_nr": "25/0321"
+        "template_number": "25/0321"
       }
     ]
   },
@@ -511,7 +511,7 @@
         "title_like": "Cäcilienbrücke"
       },
       {
-        "vorlage_nr": "24/0252"
+        "template_number": "24/0252"
       },
       {
         "session_date": "2024-11-18",
@@ -531,7 +531,7 @@
     ],
     "expected_keys": [
       {
-        "vorlage_nr": "25/0321"
+        "template_number": "25/0321"
       }
     ]
   },
@@ -541,7 +541,7 @@
     "question": "Was wurde aus dem kostenlosen Bus-Samstag in Oldenburg?",
     "expected_keys": [
       {
-        "vorlage_nr": "25/0496",
+        "template_number": "25/0496",
         "committee": "Rat"
       }
     ]
@@ -588,7 +588,7 @@
       },
       {
         "session_date": "2026-02-12",
-        "sprecher": "Jaekel"
+        "speaker": "Jaekel"
       }
     ],
     "kommentar": "Die Antwort vom 10.08.2026 zitierte alle acht gefundenen Beschlüsse korrekt, endete aber mit einer beruhigenden Aussage von Juni 2025 — dabei trägt die zitierte Sitzung vom 12.02.2026 die Nachfragen zu erhöhten Vinylchlorid-Werten und die Einordnung der Verwaltung (Jaekel). Die Ähnlichkeitssuche fand die Beiträge nicht: Sie sprechen Chemie und Messpunkte, die Frage spricht Sondermüll. Seither koppelt wortbeitraege_zu_beschluessen die Aussprache über die Station."

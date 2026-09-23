@@ -1,0 +1,281 @@
+{
+ "suite": "wortbeitraege",
+ "titel": "Wortbeiträge aus Niederschriften",
+ "kennzahl": "F1 über die Beiträge je Person (Name UND Anzahl, gegen Protokoll-Muster und gespeicherte Extraktion; eval/run_speeches.py)",
+ "modell": "google/gemini-3-flash-preview",
+ "variante": null,
+ "tarif": null,
+ "lauf": 1,
+ "zeitstempel": "2026-09-23T02:04:06",
+ "db_stand": "Sitzungen bis 2026-09-16, 9078 Beschlüsse",
+ "qualitaet": 0.9124,
+ "harte_befunde": 0,
+ "warnung": null,
+ "faelle": 16,
+ "p50_ms": 9174,
+ "p95_ms": 15148,
+ "aufrufe": 16,
+ "kosten_usd": 0.098402,
+ "ohne_kostenwert": 0,
+ "ct_je_aufruf": 0.615,
+ "ct_je_lauf": 9.8402,
+ "kosten_gesamt_usd": 0.098402,
+ "ausfaelle": 0,
+ "nicht_zulaessig": false,
+ "abbruch": null,
+ "modelle_laut_tabelle": [
+  "google/gemini-3-flash-preview"
+ ],
+ "ersatz": [],
+ "dauer_s": 152.5,
+ "nebenkennzahlen": {
+  "precision": 0.9951,
+  "recall": 0.8423,
+  "top_richtig": 1.0,
+  "partei_ohne_beleg": 2,
+  "fehlgeschlagen": 0
+ },
+ "fehler_beispiele": [],
+ "roh": {
+  "n_cases": 16,
+  "f1": 0.9124,
+  "precision": 0.9951,
+  "recall": 0.8423,
+  "erfunden": 0,
+  "partei_ohne_beleg": 2,
+  "top_richtig": 1.0,
+  "fehlgeschlagen": 0,
+  "faelle": [
+   {
+    "id": "4695-5+6.9",
+    "tp": 9,
+    "fp": 0,
+    "fn": 3,
+    "verpasst": [
+     "denckmann",
+     "wenzel"
+    ],
+    "fremd": [],
+    "erfunden": [],
+    "partei_ohne_beleg": [],
+    "top_ok": 9,
+    "top_alle": 9,
+    "beitraege": 10
+   },
+   {
+    "id": "4695-7.1+7.2",
+    "tp": 13,
+    "fp": 0,
+    "fn": 0,
+    "verpasst": [],
+    "fremd": [],
+    "erfunden": [],
+    "partei_ohne_beleg": [],
+    "top_ok": 13,
+    "top_alle": 13,
+    "beitraege": 13
+   },
+   {
+    "id": "4695-10.1+11.1+12.1",
+    "tp": 8,
+    "fp": 0,
+    "fn": 0,
+    "verpasst": [],
+    "fremd": [],
+    "erfunden": [],
+    "partei_ohne_beleg": [],
+    "top_ok": 8,
+    "top_alle": 8,
+    "beitraege": 8
+   },
+   {
+    "id": "4687-6.1",
+    "tp": 12,
+    "fp": 0,
+    "fn": 0,
+    "verpasst": [],
+    "fremd": [],
+    "erfunden": [],
+    "partei_ohne_beleg": [],
+    "top_ok": 12,
+    "top_alle": 12,
+    "beitraege": 12
+   },
+   {
+    "id": "4687-6.3+6.4",
+    "tp": 13,
+    "fp": 0,
+    "fn": 0,
+    "verpasst": [],
+    "fremd": [],
+    "erfunden": [],
+    "partei_ohne_beleg": [],
+    "top_ok": 13,
+    "top_alle": 13,
+    "beitraege": 13
+   },
+   {
+    "id": "4650-3.2+4",
+    "tp": 13,
+    "fp": 0,
+    "fn": 1,
+    "verpasst": [],
+    "fremd": [],
+    "erfunden": [],
+    "partei_ohne_beleg": [],
+    "top_ok": 13,
+    "top_alle": 13,
+    "beitraege": 16
+   },
+   {
+    "id": "4650-10.1+10.2",
+    "tp": 22,
+    "fp": 0,
+    "fn": 2,
+    "verpasst": [],
+    "fremd": [],
+    "erfunden": [],
+    "partei_ohne_beleg": [],
+    "top_ok": 22,
+    "top_alle": 22,
+    "beitraege": 22
+   },
+   {
+    "id": "4598-5+6+7.1",
+    "tp": 12,
+    "fp": 0,
+    "fn": 5,
+    "verpasst": [
+     "schröder",
+     "schwierin"
+    ],
+    "fremd": [],
+    "erfunden": [],
+    "partei_ohne_beleg": [],
+    "top_ok": 12,
+    "top_alle": 12,
+    "beitraege": 12
+   },
+   {
+    "id": "4592-5+6",
+    "tp": 15,
+    "fp": 0,
+    "fn": 4,
+    "verpasst": [
+     "denckmann"
+    ],
+    "fremd": [],
+    "erfunden": [],
+    "partei_ohne_beleg": [],
+    "top_ok": 15,
+    "top_alle": 15,
+    "beitraege": 15
+   },
+   {
+    "id": "4592-8.1+8.2",
+    "tp": 13,
+    "fp": 0,
+    "fn": 2,
+    "verpasst": [
+     "wilken"
+    ],
+    "fremd": [],
+    "erfunden": [],
+    "partei_ohne_beleg": [
+     "Gutzeit: null",
+     "Gutzeit: null"
+    ],
+    "top_ok": 13,
+    "top_alle": 13,
+    "beitraege": 13
+   },
+   {
+    "id": "4631-9.3+9.4+9.5",
+    "tp": 13,
+    "fp": 0,
+    "fn": 2,
+    "verpasst": [
+     "rosenboom"
+    ],
+    "fremd": [],
+    "erfunden": [],
+    "partei_ohne_beleg": [],
+    "top_ok": 13,
+    "top_alle": 13,
+    "beitraege": 13
+   },
+   {
+    "id": "4631-9.6",
+    "tp": 7,
+    "fp": 0,
+    "fn": 4,
+    "verpasst": [
+     "bembennek",
+     "franke"
+    ],
+    "fremd": [],
+    "erfunden": [],
+    "partei_ohne_beleg": [],
+    "top_ok": 7,
+    "top_alle": 7,
+    "beitraege": 7
+   },
+   {
+    "id": "4664-11.5+11.6+11.7",
+    "tp": 13,
+    "fp": 0,
+    "fn": 0,
+    "verpasst": [],
+    "fremd": [],
+    "erfunden": [],
+    "partei_ohne_beleg": [],
+    "top_ok": 13,
+    "top_alle": 13,
+    "beitraege": 13
+   },
+   {
+    "id": "4591-7+8.1",
+    "tp": 15,
+    "fp": 1,
+    "fn": 5,
+    "verpasst": [],
+    "fremd": [
+     "verwaltung"
+    ],
+    "erfunden": [],
+    "partei_ohne_beleg": [],
+    "top_ok": 15,
+    "top_alle": 15,
+    "beitraege": 16
+   },
+   {
+    "id": "4671-7+8",
+    "tp": 12,
+    "fp": 0,
+    "fn": 6,
+    "verpasst": [
+     "bembennek"
+    ],
+    "fremd": [],
+    "erfunden": [],
+    "partei_ohne_beleg": [],
+    "top_ok": 12,
+    "top_alle": 12,
+    "beitraege": 12
+   },
+   {
+    "id": "4678-5+9",
+    "tp": 13,
+    "fp": 0,
+    "fn": 4,
+    "verpasst": [],
+    "fremd": [],
+    "erfunden": [],
+    "partei_ohne_beleg": [],
+    "top_ok": 13,
+    "top_alle": 13,
+    "beitraege": 13
+   }
+  ]
+ }
+}

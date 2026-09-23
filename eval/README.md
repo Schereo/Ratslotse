@@ -4,6 +4,79 @@ Misst die **Qualität der KI-Extraktion** (Topic-Matching & Filter) gegen
 handgelabelte Ground-Truth-Fälle. Ziel: Änderungen an Prompts oder Modellen
 sollen messbar besser/schlechter werden, statt „gefühlt".
 
+## Neues Modell erschienen? Ein Befehl.
+
+```bash
+python eval/pruefstand.py --modell openai/gpt-6-luna --laeufe 2      # alle Suiten
+python eval/pruefstand.py --suite lotti,orte --modell google/gemini-3.5-flash-lite --laeufe 2
+python eval/pruefstand.py --suite orte --modell deepseek/deepseek-v4-flash --ohne-denken
+python eval/pruefstand.py --laeufe 2      # ohne --modell: das HEUTIGE Modell jeder Suite
+python eval/pruefstand.py bericht         # → docs/modell-pruefstand.md
+python eval/pruefstand.py liste           # Register: Schalter, heutiges Modell, lokal oder nicht
+```
+
+Der **Modell-Prüfstand** (`eval/pruefstand.py`) fährt jede angeschlossene
+Suite mit dem gewählten Modell und legt je Lauf ein Ergebnis im einheitlichen
+Format unter `eval/results/pruefstand/<suite>/` ab: `qualitaet` (die
+Hauptkennzahl der Suite, 0–1), `harte_befunde`, `p50_ms`/`p95_ms` je
+Modellaufruf, echte Kosten aus `llm_usage` (`ct_je_aufruf`, `ct_je_lauf` —
+nie aus `PRICES` geschätzt; fehlt ein Kostenwert, steht das da), `ausfaelle`
+und das Rohergebnis der Suite. Der Bericht stellt je Feature das heutige
+Modell neben jeden Kandidaten und nennt einen Unterschied nur dann besser oder
+schlechter, wenn er die **Streuung** zwischen zwei Läufen übersteigt — also:
+immer `--laeufe 2`.
+
+- **Jeder Lauf ist ein eigener Prozess** mit dem Modell in der Umgebung, VOR
+  dem Import gesetzt (die Module binden ihr Modell beim Import, teils als
+  Default-Argument), und mit einer eigenen Kostendatei. Der Lauf prüft, dass
+  das Modul das Modell übernommen hat; `modelle_laut_tabelle` zeigt, wer
+  geantwortet hat, und `ersatz`, ob ein Ersatzmodell (`llm.ERSATZ`)
+  eingesprungen ist.
+- **Nutzereingabe** liest das Register aus `kern/llm.py::zdr_pflicht`. Ein
+  Modell ohne ZDR-Anbieter endet dort mit 404 — im Bericht „nicht zulässig
+  (ZDR)", das richtige Ergebnis, kein Ausfall.
+- **`--tarif flex`** gilt nur für Suiten ohne Nutzereingabe (Flex-Endpunkte
+  haben kein ZDR) und wirkt über `RATSLOTSE_LLM_TARIF` (`llm.TARIF_ENV`), die
+  `chat_complete` als Vorgabe für `_tarif` nimmt. Das ist ein **reiner
+  Messschalter** — in die `.env` des Betriebs gehört er nicht, dort stellte
+  er alle Features auf einmal um. Der Lauf zählt, wie viele Flex-Anfragen der
+  Anbieter abgewiesen hat (dann lief derselbe Aufruf still im Normaltarif).
+- **Neue Suite anschließen** heißt: ein `Suite(...)`-Eintrag in `REGISTER` —
+  Feature-Namen, Schalter, Lauf-Funktion (gibt das Rohergebnis zurück, statt
+  nur zu drucken), Kennzahl mit Begründung. `tests/test_pruefstand.py` hält
+  fest, dass Schalter und Feature-Namen im Code vorkommen.
+- `ki-frage` (`run_qa.py`) braucht die Embeddings und läuft deshalb nur auf
+  dem Server; der Bericht nennt das, ebenso alle Features ohne Suite.
+- **Nicht zulässig** heißt ein Kandidat, der häufiger als das heutige Modell
+  einer Injektion folgt oder ein falsches Abstimmungsergebnis ausgibt (die
+  `warnung` einer Suite), oder dessen harte Befunde in jedem Lauf über jedem
+  Lauf des heutigen Modells liegen — Letzteres nur in Suiten mit
+  `hart_sperrt`, deren harte Befunde Sicherheitsbefunde sind (erfunden,
+  durchgelassen), nicht bloße Fehlurteile. Die Sperre schlägt die Quote:
+  Gemini 3.1 Flash Lite war bei Lotti „besser (+2,8 Pp)“ und folgte in beiden
+  Läufen der Lob-Injektion.
+
+### Die Suiten aus P2 (09/2026)
+
+Features, die vorher ungemessen waren. Jede Suite hat ein eigenes Modul mit
+Modulkopf: woher die Erwartung kommt, was von Hand nachgelesen ist, was hart
+zählt. Keine nimmt ein Modell als Richter.
+
+| Suite | Modul | Fälle | Erwartung aus |
+|---|---|---|---|
+| `wortbeitraege` | `run_speeches.py` | 16 Protokollabschnitte (`cases_speeches.json`, Text eingebettet; gebaut von `build_speeches_cases.py`) | Beitrags-Einleitungen im Protokoll ∩ gespeicherte Extraktion |
+| `live-verfolgung` | `run_live_tracker.py` | 30 Fenster aus zwei Ratssitzungen | von Hand gelesen (`notiz` je Fall) |
+| `video-ergebnisse` | `run_video.py` | 61 Ergebnisse aus drei Ratssitzungen | Niederschrift (`council_decisions`), Ausnahmen begründet |
+| `social-text` | `run_social.py` | 20 Tagesordnungspunkte | die Netze des Betriebs (`kritiker.pruefe`) |
+| `kritiker` | `run_social.py` | 9 belegte, 9 verfälschte Sätze | Vorlage nachgelesen |
+| `viertel` | `run_district.py` | 30 Beschlüsse, zwei Viertel | altes Urteil, jeder Fall nachgelesen |
+| `transkription` | `run_stt.py` | — | braucht echte Audio-Stücke mit Referenz; es gibt noch keine |
+
+`live-verfolgung` und `video-ergebnisse` lesen YouTubes Untertitel der
+Ratssitzungen aus `~/.cache/ratslotse/transkripte` — nicht im Repo, weil es
+O1s Aufzeichnung ist. Einmal je Rechner: `python eval/transkripte.py` (braucht
+`yt-dlp`; YouTube sperrt Rechenzentren, auf dem Server also nur mit Proxy).
+
 ## Suiten
 
 | Suite | Misst | Komponente | Scoring | Cases |

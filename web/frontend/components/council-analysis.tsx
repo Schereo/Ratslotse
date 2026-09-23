@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Users, Euro, TrendingUp, Target, User } from "lucide-react";
+import { Users, Euro, TrendingUp, Target, User, Lightbulb } from "lucide-react";
+import { useFeature } from "@/lib/features";
 import { PartyAnalysis, FinanceData } from "@/lib/types";
 import { Card, ChartSkeleton, Segmented, EmptyState } from "@/components/ui";
 import { POLICY_FIELD_LABELS, PartyBadge, DecisionLinkCard, formatEuro } from "@/components/decision-ui";
@@ -391,26 +392,59 @@ const ANALYSE_FRAGEN: Record<AnalysisSub, readonly string[]> = {
   ziele: ["Welche Klimaziele hat sich der Rat gesetzt?", "Bis wann will Oldenburg klimaneutral sein?"],
 };
 
-export function AnalysisTab() {
+/** Ein Reiter mehr als die Analyse selbst kennt: „Andere Städte" führt auf
+ *  die Ideen-Seite (`/council/ideen`). Sie stellt dieselbe Frage wie die
+ *  Analyse — was tut der Rat? — aus der anderen Richtung: was tun andere Räte,
+ *  was Oldenburg nicht tut. Tims Entscheidung 23.09.2026: kein eigener Punkt
+ *  in der Navigation, sondern ein Reiter hier. */
+type AnalyseReiterWert = AnalysisSub | "staedte";
+
+export function AnalyseReiter({ aktiv, className }: { aktiv: AnalyseReiterWert; className?: string }) {
   const sp = useSearchParams();
   const router = useRouter();
-  const raw = sp.get("sub");
-  const sub: AnalysisSub = raw === "finanzen" || raw === "parties" || raw === "ziele" || raw === "personen" ? raw : "trends";
-  const setSub = (s: AnalysisSub) => {
-    const params = new URLSearchParams(sp.toString());
+  const staedte = useFeature("ideen-anderswo");
+  const optionen: { value: AnalyseReiterWert; label: string; icon: typeof Users }[] =
+    SUB_TABS.map(([s, lbl, Icon]) => ({ value: s, label: lbl, icon: Icon }));
+  if (staedte) optionen.push({ value: "staedte", label: "Andere Städte", icon: Lightbulb });
+  const wechsel = (s: AnalyseReiterWert) => {
+    if (s === aktiv) return;
+    if (s === "staedte") { router.push("/council/ideen"); return; }
+    // Von der Ideen-Seite zurück: deren Parameter (feld, stand, …) gehören
+    // nicht in die Analyse.
+    const params = new URLSearchParams(aktiv === "staedte" ? "" : sp.toString());
     params.set("tab", "analysis");
     if (s === "trends") params.delete("sub"); else params.set("sub", s);
-    router.replace(`/council?${params.toString()}`, { scroll: false });
+    const ziel = `/council?${params.toString()}`;
+    if (aktiv === "staedte") router.push(ziel); else router.replace(ziel, { scroll: false });
   };
+  // Auf dem Handy läuft die Leiste seitwärts aus dem Bild, und „Andere
+  // Städte" steht ganz rechts — ohne das stünde der aktive Reiter außer Sicht
+  // (Bild vom 23.09.2026). `nearest` rollt nur waagerecht und nur wenn nötig.
+  const huelle = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    huelle.current?.querySelector('[aria-pressed="true"]')
+      ?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [aktiv, staedte]);
+  return (
+    <div ref={huelle}>
+      <Segmented
+        className={className ?? "overflow-x-auto sm:w-fit"}
+        value={aktiv}
+        onChange={wechsel}
+        options={optionen}
+      />
+    </div>
+  );
+}
+
+export function AnalysisTab() {
+  const sp = useSearchParams();
+  const raw = sp.get("sub");
+  const sub: AnalysisSub = raw === "finanzen" || raw === "parties" || raw === "ziele" || raw === "personen" ? raw : "trends";
 
   return (
     <div className="mt-4 space-y-4">
-      <Segmented
-        className="overflow-x-auto sm:w-fit"
-        value={sub}
-        onChange={setSub}
-        options={SUB_TABS.map(([s, lbl, Icon]) => ({ value: s, label: lbl, icon: Icon }))}
-      />
+      <AnalyseReiter aktiv={sub} />
       {/* Die Auswertungen sind das, was Neue nach dem Wahlabend als Erstes
           anklicken (BartVZ, Neele — Auswertung 17.09.2026), und dort endete
           es. Zwei Fragen je Reiter, die die Zahlen darunter zur Sprache bringen. */}

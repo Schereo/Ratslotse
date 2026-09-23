@@ -12,13 +12,17 @@ Bei jedem neuen Screen gegen diese Datei bauen; die Artboards zeigen die Anwendu
 - **Ehrlichkeit ist Designprinzip:** Disclaimer haben feste Orte (nicht wegklickbar,
   nicht aufdringlich); Paraphrasen kursiv ohne Anführungszeichen; keine erfundenen
   Grafiken (kein Stimmverhalten — das RIS kennt keins); Externes klar markiert.
-- **Lotti (Maskottchen):** Beobachterin, nie Chat-Autorin. Erlaubt: Empty States,
-  Ladezustände, „nichts gefunden", Consent-Momente. Posen via mascot.tsx:
-  wave / search / confused / point — feiner über `regung` aus dem Sprite-Katalog
-  (/lotti/katalog.html). **Jede Regung ist an einen Zustand gebunden:** Was etwas
-  bedeutet (jongliert = Recherche läuft, erklärt = Erklär-Kasten, klatscht =
-  geschafft), darf nie zufällig passieren — von selbst blinzelt und nickt die
-  Figur nur. Antworten kommen „aus den Beschlüssen", nicht „von Lotti".
+- **Lotti (Maskottchen):** Beobachterin und **Erklärerin**, nie Autorin einer
+  Ratsauskunft. Sie erklärt, was auf dem Bildschirm steht — ein Fachwort, eine
+  Zahl, einen Baustein, eine Seite — und reicht Ratsfragen an „Frag den Rat"
+  weiter; deren Antworten kommen weiterhin „aus den Beschlüssen", nicht „von
+  Lotti". Erlaubt bleiben Empty States, Ladezustände, „nichts gefunden",
+  Consent-Momente und die Tour. **Ihr Fenster öffnet sich nie von selbst.**
+  Posen via mascot.tsx: wave / search / confused / point — feiner über `regung`
+  aus dem Sprite-Katalog (/lotti/katalog.html). **Jede Regung ist an einen
+  Zustand gebunden:** Was etwas bedeutet (jongliert = Recherche läuft, erklärt =
+  Erklär-Kasten, schreibt = Lotti antwortet gerade, klatscht = geschafft), darf
+  nie zufällig passieren — von selbst blinzelt und nickt die Figur nur.
 
 ## 2. Farben
 
@@ -378,6 +382,152 @@ iOS-Schrift.
   anschneiden (Tims iPad-Befund 16.08.: „der ganze Bereich wird von dieser
   Fläche verdeckt"). Die Andockkante ist `TABLEISTE_HOEHE` aus
   `components/nav.tsx` — nie eine eigene Zahl.
+- **Lotti-Knopf und Lotti-Fenster**: Der Knopf schwebt unten rechts auf jeder
+  angemeldeten Seite, 56 px rund, darin der **Kopf der 3D-Lotti**
+  (`public/lotti/kopf.png`, aus der Ruhe-Pose geschnitten) auf Hafenblau,
+  `shadow-lifted`, `z-50`. Das Bild ist größer als der Kreis und wird von ihm
+  beschnitten wie ein Porträt; die runde Fläche kommt aus dem CSS und nicht
+  aus dem Bild, damit sie im Dunkelmodus den dortigen Primärton nimmt. Er liegt
+  über Tab-Leiste und Andock-Composer, deren Höhen als Variablen
+  (`--rl-unten`, `--rl-composer`) in seiner Position stehen, nie als eigene
+  Zahl. Offen wird er zum Schließen-Kreuz. **Design 9a③ steht dem nicht
+  entgegen:** Es hat den *Navigations*-FAB aus der Tab-Leiste genommen; ein
+  Chat-Knopf ist keine Navigation, sondern die Bauform, die man von
+  Hilfe-Seiten kennt (Tim, 21.09.2026). `BackToTop` rückt über ihn, das
+  Küken hält die rechte Ecke frei.
+  **Unter dem Zeiger schaut Lotti auf**: Der Knopf hebt sich 2 px, der
+  Schatten öffnet sich (`shadow-knopf-hover`), und der Kopf darin richtet sich
+  auf — aus seinen +3 px auf 0, 6° geneigt, 5 % größer; `duration-fluss`,
+  `ease-out-strong`. Nur unter `maus:` (Touch lässt den Hover kleben) und die
+  Bewegung nur unter `motion-safe:` — Farbe und Schatten bleiben auch bei
+  reduzierter Bewegung, sonst wäre der Knopf dort gar nicht mehr als
+  anklickbar erkennbar. Der Fokus-Ring bleibt der lauteste Zustand; er sitzt
+  in `--tw-ring-shadow` und wird vom Hover-Schatten nicht verdrängt.
+  Das Fenster sitzt über dem Knopf (Schreibtisch 384 px × max 40 rem, **nicht
+  modal**, kein Scrim — die Seite bleibt lesbar und bedienbar; Handy: die
+  Fläche zwischen Kopfleiste und Knopf). Anatomie von oben: Kopfzeile (Lotti
+  32 px mit Regung nach Zustand · „Lotti" Bricolage 16/700 · Neu anfangen) →
+  **Kontext-Pille** in Leserolle `meta` („Du bist auf: … · markiert: …") →
+  Verlauf (Frage als Bubble rechts, bg primary/7 + Rahmen /18; Antwort links
+  in 13,5 px mit Lotti 24 px daneben; **Tipp-Anzeige** = drei 8-px-Punkte in
+  Signal-Orange, die sich mit 160 ms Versatz um 3,5 px heben und senken
+  (`lotti-tippt`, 1,1 s, `ease-in-out`), **daneben der Schritt** in
+  `text-hinweis`/Muted — „Lotti liest die Seite …", dann „Lotti schreibt …";
+  auf dem Ratsweg die drei Schritte der KI-Frage. Die Texte stehen in
+  `lib/qa-schritte.ts`, die Schritte selbst meldet der Server als SSE-Rahmen
+  `step`. Bis 22.09.2026 waren es 6-px-Punkte mit `animate-pulse` und kein
+  Text — „man sieht fast nicht, dass da was lädt" (Tim). Bei reduzierter
+  Bewegung blinkt nur die Deckkraft. `role="status"`) → **höchstens ein
+  Chip** unter der letzten Antwort → Turn-Fußzeile (Daumen, Textlink) →
+  Composer (s. u.).
+  **Was unter einer Antwort steht — und was nicht.** Seit 22.09.2026 ist das
+  eine Entscheidung über die SUMME, nicht je Element: **ein** Chip mit dem
+  nächsten Schritt (Wegweiser › Baustein, `anschlussfragen`), darunter die
+  zwei Daumen und — nur unter einer Antwort, die nicht schon aus dem Archiv
+  kam — der stille Textlink „Im Ratsarchiv nachsehen". Alles gehört der
+  **letzten** Runde auf dieser Seite; ältere tragen nichts.
+  **Einen Fachwort-Chip gibt es nicht.** „Was heißt Aufwendung?" stand unter
+  einer Antwort, in der „Aufwendungen" zwei Zeilen höher schon unterstrichen
+  war und sich dort aufklappen ließ — zwei Wege zu derselben geprüften
+  Erklärung. Der Weg AM WORT gewinnt: Er beantwortet die Frage da, wo sie
+  entsteht.
+  **Unter einer Antwort aus dem Archiv steht gar kein Chip** — sie kommt aus
+  9.000 Beschlüssen, ein Kasten DIESER Seite daneben wäre ein Themenwechsel —
+  und **ihre Belege sind nur die zitierten** (mindestens einer); der Rest
+  bleibt hinter „Alle N Quellen". Drei Zeilen, von denen zwei zur Frage fremd
+  wirken, sind dieselbe Sorte Rauschen wie drei Chips.
+  **Ein Chip entsteht nur aus einem Namen, der als Handlung trägt**
+  (`chipTauglich`): kein Apostroph, kein Doppelpunkt, höchstens vier Wörter.
+  „Lotti erklärt's einfach erklären" ist der Fall, gegen den die Regel
+  gebaut ist — lieber kein Chip als ein alberner.
+  Chip-Namen sind Handlungen („Anzeigetafel erklären", „Weiter zu: Woher
+  kommt das Geld?"), keine Etiketten. Die **Grund-Chips** stehen nur im
+  leeren Fenster; danach trägt der Composer-Platzhalter die Aufforderung und
+  der Erklär-Modus wohnt als stilles Icon (`MousePointerClick`) an seiner
+  linken Seite. „Markiertes erklären" bleibt, solange etwas markiert ist — er
+  antwortet auf eine Handlung, er ist kein Dauerangebot. **Seit 22.09.2026
+  (PR 25) stehen an oberster Stelle zwei kuratierte Startfragen der Seite**
+  (`kern/knowledge.py::PageKnowledge.starters`, z. B. auf der Schulden-Seite
+  „Wie viel Schulden hat Oldenburg pro Kopf?") — wer nicht weiß, was er
+  fragen kann, fragt nichts, und zwei gute Fragen sagen das vor. „Was sehe
+  ich hier?" bleibt darunter als dritter, kleinerer Chip im Sekundärstil
+  (Rahmen `border-border`, blasser Text, kein gefüllter Primary-Ton): immer
+  noch die richtige Antwort, nur nicht mehr die lauteste.
+  **Und was es NICHT mehr gibt: den Knopf „Den Rat fragen".** Er stand
+  gefüllt unter jeder Runde, die ins Archiv weiterreichte. Tims Bild vom
+  Bereichs-Steckbrief zeigte ihn zusammen mit zwei weiteren Chips, zwei
+  Daumen und zwei Grund-Chips — sieben Bedienelemente für eine Antwort, jedes
+  einzeln begründet („Es ist für den User sehr überfordernd"). Und er
+  verlangte eine Entscheidung, die niemand treffen kann: „Ich dachte, ich
+  frage gerade die Informationen aus dem Rat." Gehört eine Frage ins Archiv,
+  geht Lotti seither **von selbst** dorthin — sichtbar (Schritt-Text „Das
+  steht nicht auf der Seite — ich sehe im Ratsarchiv nach"), als eine Runde,
+  mit Belegen.
+  **Darunter nichts mehr.** Bis 22.09.2026 stand dort eine feste Fußzeile
+  („Erklärt aus Glossar, Seite und Haushaltsdaten. Keine Rechtsberatung, keine
+  Bewertung."); sie ist ersatzlos weg — zwei Zeilen plus Trennlinie kosteten
+  dauerhaft gut 30 px Verlaufshöhe für einen Satz, den man einmal liest (Tim,
+  22.09.2026). Der **rechtliche** Hinweis hing nie daran: Dass Frage und
+  Auszüge extern verarbeitet werden, sagt die Einwilligungs-Karte (einmal,
+  vor der ersten Frage, auch in diesem Fenster), dauerhaft nachlesbar die
+  Konto-Karte „Gespräche" und die Datenschutzseite. Dass Lotti nicht bewertet
+  und nicht berät, setzt der Prompt durch, nicht das Kleingedruckte.
+  **Zäsur im Verlauf**: Weil der Verlauf den Seitenwechsel überlebt, steht vor
+  der ersten Runde einer neuen Seite eine stille Zwischenzeile „Jetzt auf:
+  Schulden" — mono 10 px, Versalien, `tracking-[0.1em]`, Muted, zentriert
+  unter einer `border`-dünnen Linie; dieselbe Bauform wie die Kontextzeile an
+  einer Frage. Die Linie steht OBEN, nicht links und rechts daneben: Ein
+  Beschlusstitel füllt die 384 px allein. Sie ordnet ein, sie ruft nicht:
+  keine Farbe, kein Abzeichen, kein Datum; der Name wird bei 60 Zeichen
+  gekappt.
+  **Fachwörter klappen hier auf, statt zu überlagern.** Ein erklärter Begriff
+  (`glossary-text.tsx`) zeigt seine Erklärung sonst als Popover am Wort,
+  `absolute left-0 top-full`, bis zu 17 rem breit. Das ist die Form für breite
+  Flächen — Haushalts-Seiten, Ratsgespräch. **In Lottis Fenster nicht**: 384 px
+  mit `overflow-hidden` schneiden jede Ebene ab, die rechts übersteht, und ein
+  Begriff am rechten Rand ist dort halb zu lesen (Tim, 22.09.2026,
+  „Wirtschaftsplan"). Ein nach links ausgerichteter Popover löst das nicht —
+  beschnitten wird am Fenster, nicht am Wort. Deshalb: `GlossarAufklappBereich`
+  um die Antwort, und ein Tipp/Klick (am Zeigergerät auch der Hover nach
+  220 ms) klappt **unter dem Absatz** einen stillen Block auf — Radius 8,
+  `bg-muted/40`, Rahmen `border`, Begriff fett in Foreground, Erklärung in
+  12 px Muted; dieselbe Typo wie im Popover. Höchstens **einer je Antwort**:
+  ein zweites Wort ersetzt das erste. Esc schließt ihn (und nur ihn, nicht
+  gleich das Fenster), `aria-expanded` sagt, woran man ist. Faustregel: unter
+  ~28 rem Textbreite klappt es auf, darüber überlagert es.
+  **Anschlussfragen**: In derselben Chip-Reihe stehen unter der LETZTEN
+  Antwort höchstens **zwei** weiterführende Angebote — „Erklär mir: <der
+  nächste Baustein der Seite, der noch nicht erklärt wurde>" und „Was heißt
+  <Fachwort aus der Antwort>?", in diesem Vorrang und nie zweimal dasselbe.
+  Reicht die Antwort ins Archiv weiter, ist das gefüllte „Den Rat fragen"
+  selbst der erste der beiden, und es bleibt genau ein Chip daneben. Der
+  Baustein-Name wird bei 38 Zeichen und am ersten `·` gekappt — ein
+  zweizeiliger Chip ist keiner. Die Vorschläge entstehen im Browser aus
+  Ankern und Glossar, **nicht aus einem zweiten Modellaufruf**; unter einer
+  Fehler-Runde und unter der „Zeig mir"-Runde steht keiner.
+  Kein Emoji, kein KI-Vokabular — in der Oberfläche heißt sie nur „Lotti".
+  **Kein Zähler und kein Abzeichen am geschlossenen Knopf.**
+- **Erklär-Abzeichen**: 28 px rund, `bg-card`, Rahmen primary/30, „?" in
+  primary, oben rechts am Baustein (4 px eingerückt), `z-40`. Erscheint im
+  Erklär-Modus mit `--takt-fluss`, verschwindet mit `Esc` oder nach der Wahl.
+  **Nur auf Elementen mit `data-erklaer`** (`lib/erklaer-anker.ts`) — kein
+  Fallback auf „die nächste Karte": Ein geratener Ausschnitt sieht aus, als
+  wüsste Lotti, worauf gezeigt wurde. Abzeichen statt Zeigerhand, weil das
+  Handy kein Hover hat und eine Zeigerhand ohne Ziel gegen § 6 verstößt. Der
+  Modus schließt das Fenster: Die Abzeichen stehen auf der Seite, und mobil
+  deckt das Fenster genau sie ab.
+- **Anstupser**: eine Sprechblase über dem Lotti-Knopf, max 16 rem, `bg-card`,
+  Rahmen, Radius 16, `shadow-lifted`; Lotti 32 px mit `hebt-hand`, der Satz in
+  `text-hinweis` („Hast du eine Frage zu dem, was du siehst?"), darunter
+  **Ja, frag Lotti** (primary, gefüllt) und oben rechts ein **×**.
+  `role="status"` — sie meldet sich, ohne den Fokus zu nehmen. Sie verschwindet
+  nach 15 s oder nach 300 px Scrollen von selbst, und **das zählt nicht als
+  Ablehnung**: Wer nicht hinsieht, hat nicht Nein gesagt. Kein Ton, keine
+  Vibration, kein Zähler am Knopf. **Ihre Grenzen stehen im Code, nicht im
+  Ermessen** (`lib/anstupser.ts`): nur auf Leseseiten, nach 45 s sichtbarer
+  Lesezeit, nicht in den ersten zwei Seitenaufrufen einer Sitzung, höchstens
+  einmal am Tag und dreimal in 30 Tagen, nach zwei × 60 Tage Pause, nach einem
+  Ja 14 Tage.
 - **Turn-Fußzeile**: KI-Hinweis 14 px + stille Icon-Aktionen 15 px
   (Teilen, Drucken, Vorlesen, 👍/👎) — keine gerahmten Buttons.
 - **Schritt-Zeichen (Haushalt)**: Jeder Schritt des Haushalts-Wegs trägt ein
@@ -556,7 +706,9 @@ eine Wirkung der einzelnen Mail zu behaupten.
 
 ## 8. Anti-Patterns
 
-Keine Anführungszeichen um Paraphrasen · keine Stimm-/Abstimmungsgrafiken ·
+Keine Lotti-Sprechblase außerhalb der Anstupser-Grenzen (§ 5) · kein Zähler
+oder Abzeichen am geschlossenen Lotti-Knopf ·
+keine Anführungszeichen um Paraphrasen · keine Stimm-/Abstimmungsgrafiken ·
 kein Signal-Orange als Flächenfarbe · keine Parteifarben-Flächen (Ausnahmen:
 Stichwahl-Karte und ihr Aufleuchten, s. § 2) · kein Emoji
 im UI-Text · keine gerahmten Button-Reihen unter Antworten (stille Icons) ·

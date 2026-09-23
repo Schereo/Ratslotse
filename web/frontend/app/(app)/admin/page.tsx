@@ -22,6 +22,7 @@ import { UsersTab } from "@/components/admin/users";
 import { MailDashboard } from "@/components/admin/mail";
 import { AdminOverview } from "@/components/admin/overview";
 import { StatsTab, OperationsTab } from "@/components/admin/statistics";
+import { LottiTab } from "@/components/admin/lotti";
 
 export default function AdminPage() {
   const { user, loading } = useAuth();
@@ -41,6 +42,7 @@ export default function AdminPage() {
       <div className="mt-6 min-w-0">
         {tab === "stats" && <AdminOverview />}
         {(["aktivitaet", "konten", "reichweite", "antworten"] as string[]).includes(tab) && <StatsTab view={tab} />}
+        {tab === "lotti" && <LottiTab />}
         {tab === "jobs" && <OperationsTab />}
         {tab === "fehler" && <FehlerTab />}
         {tab === "feedback" && <FeedbackTab />}
@@ -78,11 +80,13 @@ type LlmUsage = {
  *  englisch sind, stünde dort `attachment_ocr` — deshalb jetzt vollständig.
  *  Wer ein neues `_feature=` einführt, trägt es hier ein. */
 const FEATURE_LABELS: Record<string, string> = {
+  assistant_explain: "Lotti erklärt (Assistentin)",
   cities_classify: "Fremde Ratsvorlage einordnen",
   cities_fit: "Hat Oldenburg das schon?",
   cities_evidence_terms: "Städtevergleich: Oldenburger Suchwörter",
   cities_effort: "Städtevergleich: Was kostet die Idee?",
   cities_stance: "Städtevergleich: Wollte der Rat die Idee?",
+  cities_idea_fit: "Städtevergleich: Hat Oldenburg die Idee schon?",
   cities_reason: "Städtevergleich: Warum ging es so aus?",
   cities_cluster_check: "Städtevergleich: Gehört das zusammen?",
   eval_cities_effort: "Prüfstand: Was kostet die Idee?",
@@ -90,6 +94,7 @@ const FEATURE_LABELS: Record<string, string> = {
   eval_cities_fit: "Prüfstand: Hat Oldenburg das schon?",
   attachment_ocr: "Anlagen-Texterkennung",
   committee_summary: "Ausschuss-Zusammenfassung",
+  council_watcher: "Themen-Wächter (Tagesordnung ↔ Thema)",
   daily_find_story: "Fundstück des Tages",
   decision_places: "Orte eines Beschlusses",
   district_projects: "Mein Viertel — Vorhaben",

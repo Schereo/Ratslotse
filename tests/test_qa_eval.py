@@ -165,3 +165,19 @@ def test_evaluate_zaehlt_debatten_nur_bei_faellen_mit_erwartung():
     a = next(d for d in res["details"] if d["id"] == "a")
     assert a["debatten"]["fehlend"] == [{"text_like": "Fehlt"}]
     assert "debatten" not in next(d for d in res["details"] if d["id"] == "b")
+
+
+def test_goldfaelle_nutzen_nur_bekannte_schluessel():
+    """Die Umbenennung auf englische Namen (09/2026) erreichte `run_qa.py`,
+    aber nicht `cases_qa.json`: 63 Fälle trugen noch `vorlage_nr`, einer
+    `sprecher` — und jeder Lauf endete mit „unbekannte Schluessel", bevor er
+    etwas maß. Aufgefallen erst beim Anschließen an den Modell-Prüfstand."""
+    import json
+    from pathlib import Path
+    from eval import run_qa
+    faelle = json.loads((Path(__file__).resolve().parents[1] / "eval" / "cases_qa.json").read_text())
+    for fall in faelle:
+        for spec in fall.get("expected_keys") or []:
+            assert set(spec) <= set(run_qa.KEY_FIELDS), (fall["id"], sorted(spec))
+        for spec in fall.get("expected_debatten") or []:
+            assert set(spec) <= set(run_qa.DEBATTE_FIELDS), (fall["id"], sorted(spec))

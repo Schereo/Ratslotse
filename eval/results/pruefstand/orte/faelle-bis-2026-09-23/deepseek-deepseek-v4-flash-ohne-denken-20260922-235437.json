@@ -1,0 +1,62 @@
+{
+ "suite": "orte",
+ "titel": "Ortszuordnung",
+ "kennzahl": "F1 über die Orte je Beschluss (Regex-Baseline + Modell, wie im Backfill)",
+ "modell": "deepseek/deepseek-v4-flash",
+ "variante": "ohne Denken",
+ "tarif": null,
+ "lauf": 1,
+ "zeitstempel": "2026-09-22T23:54:37",
+ "db_stand": "Sitzungen bis 2026-09-16, 9078 Beschlüsse",
+ "qualitaet": 0.8966,
+ "harte_befunde": 1,
+ "warnung": null,
+ "faelle": 20,
+ "p50_ms": 4665,
+ "p95_ms": 138246,
+ "aufrufe": 2,
+ "kosten_usd": 0.000387,
+ "ohne_kostenwert": 0,
+ "ct_je_aufruf": 0.0194,
+ "ct_je_lauf": 0.0387,
+ "kosten_gesamt_usd": 0.000387,
+ "ausfaelle": 0,
+ "nicht_zulaessig": false,
+ "abbruch": null,
+ "modelle_laut_tabelle": [
+  "deepseek/deepseek-v4-flash"
+ ],
+ "ersatz": [],
+ "dauer_s": 142.9,
+ "nebenkennzahlen": {
+  "precision": 0.9285714285714286,
+  "recall": 0.8666666666666667
+ },
+ "fehler_beispiele": [],
+ "roh": {
+  "cases": 20,
+  "tp": 13,
+  "fp": 1,
+  "fn": 2,
+  "precision": 0.9285714285714286,
+  "recall": 0.8666666666666667,
+  "f1": 0.896551724137931,
+  "misses": [
+   {
+    "id": "mehrere-orte-beschlusstext",
+    "expected": [
+     "nadorster-strasse",
+     "stedinger-weg"
+    ],
+    "predicted": []
+   },
+   {
+    "id": "bplan-nur-nummer",
+    "expected": [],
+    "predicted": [
+     "n-777-g"
+    ]
+   }
+  ]
+ }
+}

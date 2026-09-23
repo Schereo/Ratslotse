@@ -1,0 +1,267 @@
+{
+ "suite": "viertel",
+ "titel": "Mein Viertel: liegt der Beschluss hier?",
+ "kennzahl": "Anteil richtig „im Viertel ja/nein“ (Richter-Stufe). Erwartung = gespeichertes Urteil von GPT-5.6 Luna, jeder Fall von Hand nachgelesen, Widersprüche raus",
+ "modell": "openai/gpt-6-luna",
+ "variante": null,
+ "tarif": "flex",
+ "lauf": 2,
+ "zeitstempel": "2026-09-23T01:57:21",
+ "db_stand": "Sitzungen bis 2026-09-16, 9078 Beschlüsse",
+ "qualitaet": 0.9333,
+ "harte_befunde": 0,
+ "warnung": null,
+ "faelle": 30,
+ "p50_ms": 11800,
+ "p95_ms": 15993,
+ "aufrufe": 7,
+ "kosten_usd": 0.001208,
+ "ohne_kostenwert": 0,
+ "ct_je_aufruf": 0.0173,
+ "ct_je_lauf": 0.1208,
+ "kosten_gesamt_usd": 0.001208,
+ "ausfaelle": 0,
+ "nicht_zulaessig": false,
+ "abbruch": null,
+ "modelle_laut_tabelle": [
+  "openai/gpt-6-luna"
+ ],
+ "ersatz": [],
+ "dauer_s": 84.3,
+ "nebenkennzahlen": {
+  "verpasst": 2,
+  "ohne_urteil": 0,
+  "fehler": []
+ },
+ "fehler_beispiele": [],
+ "roh": {
+  "n_cases": 30,
+  "quote": 0.9333,
+  "fremd_auf_der_tafel": [],
+  "verpasst": [
+   "bloherfelde/7586",
+   "eversten/8134"
+  ],
+  "ohne_urteil": [],
+  "fehler": [],
+  "faelle": [
+   {
+    "id": "bloherfelde/7827",
+    "soll": true,
+    "ist": "district",
+    "richtig": true,
+    "fremd_auf_der_tafel": false
+   },
+   {
+    "id": "bloherfelde/7300",
+    "soll": true,
+    "ist": "district",
+    "richtig": true,
+    "fremd_auf_der_tafel": false
+   },
+   {
+    "id": "bloherfelde/7586",
+    "soll": true,
+    "ist": "citywide",
+    "richtig": false,
+    "fremd_auf_der_tafel": false
+   },
+   {
+    "id": "bloherfelde/7483",
+    "soll": true,
+    "ist": "district",
+    "richtig": true,
+    "fremd_auf_der_tafel": false
+   },
+   {
+    "id": "bloherfelde/7749",
+    "soll": true,
+    "ist": "district",
+    "richtig": true,
+    "fremd_auf_der_tafel": false
+   },
+   {
+    "id": "bloherfelde/7936",
+    "soll": false,
+    "ist": "elsewhere",
+    "richtig": true,
+    "fremd_auf_der_tafel": false
+   },
+   {
+    "id": "bloherfelde/7784",
+    "soll": false,
+    "ist": "elsewhere",
+    "richtig": true,
+    "fremd_auf_der_tafel": false
+   },
+   {
+    "id": "bloherfelde/8181",
+    "soll": false,
+    "ist": "elsewhere",
+    "richtig": true,
+    "fremd_auf_der_tafel": false
+   },
+   {
+    "id": "bloherfelde/7342",
+    "soll": false,
+    "ist": "elsewhere",
+    "richtig": true,
+    "fremd_auf_der_tafel": false
+   },
+   {
+    "id": "bloherfelde/8227",
+    "soll": false,
+    "ist": "citywide",
+    "richtig": true,
+    "fremd_auf_der_tafel": false
+   },
+   {
+    "id": "bloherfelde/8486",
+    "soll": false,
+    "ist": "citywide",
+    "richtig": true,
+    "fremd_auf_der_tafel": false
+   },
+   {
+    "id": "bloherfelde/7631",
+    "soll": false,
+    "ist": "citywide",
+    "richtig": true,
+    "fremd_auf_der_tafel": false
+   },
+   {
+    "id": "bloherfelde/7273",
+    "soll": false,
+    "ist": "citywide",
+    "richtig": true,
+    "fremd_auf_der_tafel": false
+   },
+   {
+    "id": "eversten/8514",
+    "soll": true,
+    "ist": "district",
+    "richtig": true,
+    "fremd_auf_der_tafel": false
+   },
+   {
+    "id": "eversten/8420",
+    "soll": true,
+    "ist": "district",
+    "richtig": true,
+    "fremd_auf_der_tafel": false
+   },
+   {
+    "id": "eversten/8309",
+    "soll": true,
+    "ist": "district",
+    "richtig": true,
+    "fremd_auf_der_tafel": false
+   },
+   {
+    "id": "eversten/8134",
+    "soll": true,
+    "ist": "citywide",
+    "richtig": false,
+    "fremd_auf_der_tafel": false
+   },
+   {
+    "id": "eversten/7663",
+    "soll": true,
+    "ist": "district",
+    "richtig": true,
+    "fremd_auf_der_tafel": false
+   },
+   {
+    "id": "eversten/7952",
+    "soll": true,
+    "ist": "district",
+    "richtig": true,
+    "fremd_auf_der_tafel": false
+   },
+   {
+    "id": "eversten/8697",
+    "soll": true,
+    "ist": "district",
+    "richtig": true,
+    "fremd_auf_der_tafel": false
+   },
+   {
+    "id": "eversten/7619",
+    "soll": true,
+    "ist": "district",
+    "richtig": true,
+    "fremd_auf_der_tafel": false
+   },
+   {
+    "id": "eversten/9359",
+    "soll": false,
+    "ist": "elsewhere",
+    "richtig": true,
+    "fremd_auf_der_tafel": false
+   },
+   {
+    "id": "eversten/8313",
+    "soll": false,
+    "ist": "citywide",
+    "richtig": true,
+    "fremd_auf_der_tafel": false
+   },
+   {
+    "id": "eversten/8708",
+    "soll": false,
+    "ist": "citywide",
+    "richtig": true,
+    "fremd_auf_der_tafel": false
+   },
+   {
+    "id": "eversten/7746",
+    "soll": false,
+    "ist": "elsewhere",
+    "richtig": true,
+    "fremd_auf_der_tafel": false
+   },
+   {
+    "id": "eversten/7739",
+    "soll": false,
+    "ist": "elsewhere",
+    "richtig": true,
+    "fremd_auf_der_tafel": false
+   },
+   {
+    "id": "eversten/7151",
+    "soll": false,
+    "ist": "elsewhere",
+    "richtig": true,
+    "fremd_auf_der_tafel": false
+   },
+   {
+    "id": "eversten/7794",
+    "soll": false,
+    "ist": "citywide",
+    "richtig": true,
+    "fremd_auf_der_tafel": false
+   },
+   {
+    "id": "eversten/7761",
+    "soll": false,
+    "ist": "mentioned",
+    "richtig": true,
+    "fremd_auf_der_tafel": false
+   },
+   {
+    "id": "eversten/8429",
+    "soll": false,
+    "ist": "elsewhere",
+    "richtig": true,
+    "fremd_auf_der_tafel": false
+   }
+  ]
+ },
+ "flex": {
+  "anfragen": 7,
+  "abgewiesen": 0,
+  "service_tier": {
+   "flex": 7
+  }
+ }
+}

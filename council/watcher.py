@@ -91,6 +91,11 @@ def _classify_agenda(session: CouncilSession, topics: list[dict],
 
     resp = llm.chat_complete(
         model=MODEL, _geduld=True, _ersatz=llm.ersatz_fuer(MODEL),
+        # Ohne den Namen lief der Watcher in keiner Kostenstatistik und für
+        # keinen Modell-Prüfstand (eval/pruefstand.py). Er steht bewusst NICHT
+        # in `llm.OHNE_NUTZEREINGABE`: Der Prompt trägt die
+        # Themenbeschreibungen der Nutzer*innen, also bleibt es bei ZDR.
+        _feature="council_watcher",
         response_format={"type": "json_object"},
         # Zuordnung ist Klassifikation, keine Textproduktion: Ohne
         # temperature=0 lieferte derselbe Prompt mal drei Treffer, mal keinen
@@ -225,6 +230,7 @@ def _pruefe_am_text(session: CouncilSession, topic: dict, nums: list[str],
         answer = llm.chat_complete(
             model=MODEL, response_format={"type": "json_object"}, temperature=0,
             max_tokens=400, _geduld=True, _ersatz=llm.ersatz_fuer(MODEL),
+            _feature="council_watcher",
             messages=[{"role": "user", "content": prompts.render(
                 "council_watcher_check", thema=topic.get("name", ""),
                 beschreibung=topic.get("description", ""), kandidaten="\n".join(zeilen))}],

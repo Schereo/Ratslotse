@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useVollbildMelden } from "@/lib/vollbild";
 import { useRouter } from "next/navigation";
 import { Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui";
@@ -242,6 +243,9 @@ export function GuidedTour() {
   const [cardPos, setCardPos] = useState<{ top: number; left: number } | null>(null);
 
   const active = stepIndex >= 0;
+  // Solange die Tour läuft, gibt es keinen Lotti-Knopf daneben: Sie ist selbst
+  // Lottis Führung, und der Knopf läge unter ihrer Abdunkelung (lib/vollbild.ts).
+  useVollbildMelden("tour", active);
   const step = active ? STEPS[stepIndex] : null;
   const isLast = stepIndex === STEPS.length - 1;
 

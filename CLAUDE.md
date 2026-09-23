@@ -500,8 +500,10 @@ COUNCIL_RECORD_MAX_HOURS=6                  # Kappe des Sitzungs-Mitschnitts
 COUNCIL_CHUNK_SECONDS=30                    # Stücklänge des Mitschnitts ohne Streaming (Live-Verfolgung)
 GLADIA_API_KEY=...                          # Streaming-Transkription (council/stream_stt.py); leer = Audio-Stücke
 GLADIA_REGION=eu-west                       # Gladia-Region (EU)
+COUNCIL_STT_BEHALTEN=20                     # Stücke je Sitzung für die Transkriptions-Eval aufheben (council/stt_retain.py); 0 = aus
 COUNCIL_LIVE_WINDOW_SECONDS=15              # Takt der Live-Verfolgung beim Streaming
-COUNCIL_LIVE_TRACKER_MODEL=google/gemini-2.5-flash  # Modell der Live-Verfolgung (welcher TOP läuft)
+COUNCIL_LIVE_TRACKER_MODEL=google/gemini-3.5-flash-lite  # Modell der Live-Verfolgung (welcher TOP läuft)
+COUNCIL_ASSISTANT_MODEL=google/gemini-2.5-flash   # Lottis Erklärungen (Assistentin; Default passt)
 COUNCIL_QA_MODEL=google/gemini-2.5-flash          # Antwort-Modell der KI-Frage (schnell; Default passt)
 COUNCIL_QA_EXPAND_MODEL=google/gemini-2.5-flash-lite  # Query-Expansion der KI-Frage (schnell; Default passt)
 COUNCIL_RETRIEVAL_KLASSISCH=0        # "1" = Notausschalter: Retrieval-Stand vor dem Vorlagen-Chunk-Ausbau
@@ -512,7 +514,7 @@ CITIES_FIT_WORKERS=8                 # gleichzeitige Urteile; mehr = schneller, 
 # OpenRouter Provider-Routing (DSGVO) — schließt China-Anbieter aus, verlangt ZDR
 NWZ_OPENROUTER_ROUTING=on            # "off" = Notausschalter
 NWZ_OPENROUTER_IGNORE=deepseek,baidu,streamlake,siliconflow,alibaba
-NWZ_OPENROUTER_ZDR=1                 # "0" lockert die Zero-Data-Retention-Pflicht
+NWZ_OPENROUTER_ZDR=1                 # "0" lockert die Zero-Data-Retention-Pflicht (gilt ohnehin nur für Nutzer-Pfade, s. kern/llm.py::OHNE_NUTZEREINGABE)
 # Umweg über Tims NAS für Ziele, die Hetzner-Adressen sperren (kern/proxy.py)
 RATSLOTSE_PROXY_URL=socks5h://nutzer:passwort@100.118.52.13:1080   # SOCKS auf dem NAS, nur übers Tailnet
 RATSLOTSE_PROXY_HOSTS=gisportal4ol.oldenburg.de,youtube.com         # nur diese Hosts (+ Subdomains) gehen den Umweg

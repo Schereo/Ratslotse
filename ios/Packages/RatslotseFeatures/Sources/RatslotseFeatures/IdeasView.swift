@@ -15,6 +15,7 @@ import SwiftUI
 struct IdeasView: View {
     let model: AppModel
     @State private var felder: [IdeaFieldSummary] = []
+    @State private var staedte: [String] = []
     @State private var gewaehlt: String?
     @State private var ideen: IdeasResponse?
     @State private var laedt = true
@@ -32,6 +33,18 @@ struct IdeasView: View {
                 } else if let gewaehlt {
                     feldListe(gewaehlt)
                 } else {
+                    // Die Bewegungen zuerst: Ideen, die mehrere Räte hatten.
+                    // Darunter die einzelnen Ideen je Feld (Tims Entscheidung
+                    // vom 22.09.2026) — 89 % aller Ideen stehen nur in einer
+                    // Stadt, und eine Stadt ist eine Beobachtung, kein Trend.
+                    if model.feature("ideen-anderswo"), !felder.isEmpty {
+                        MovementsSection(model: model, felder: felder)
+                        Text("Einzelne Ideen")
+                            .font(RatsFont.title(19))
+                            .foregroundStyle(RatsColor.text)
+                            .accessibilityAddTraits(.isHeader)
+                            .padding(.top, 12)
+                    }
                     uebersicht
                 }
             }
@@ -50,10 +63,12 @@ struct IdeasView: View {
             Text("Ideen aus anderen Städten")
                 .font(RatsFont.body(20, weight: .semibold))
                 .foregroundStyle(RatsColor.text)
-            Text("Was Räte in Osnabrück, Braunschweig, Münster, Potsdam und "
-                 + "Magdeburg beschlossen haben — und ob Oldenburg dasselbe schon "
-                 + "hat. Die Einschätzung stammt von einem Sprachmodell; die "
-                 + "Beschlüsse, auf die sie sich stützt, stehen unter jeder Idee.")
+            // Die Städte kommen aus den DATEN (`bodies`). Hier standen bis
+            // 22.09.2026 fünf fest aufgezählt, als es längst acht waren.
+            Text("Was Räte in \(Self.aufzaehlung(staedte)) beantragt und beschlossen "
+                 + "haben — und ob Oldenburg dasselbe schon hat. Den Stand in Oldenburg "
+                 + "prüft ein Sprachmodell an Oldenburger Beschlüssen; sie stehen bei "
+                 + "jeder Idee.")
                 .font(RatsFont.body(12.5))
                 .foregroundStyle(RatsColor.muted)
                 .fixedSize(horizontal: false, vertical: true)
@@ -234,6 +249,7 @@ struct IdeasView: View {
             // abgeleiteter Typ wären für den Wächter unsichtbar.
             let antwort: IdeaFields = try await model.api.get("/api/council/cities/ideas/fields")
             felder = antwort.fields
+            staedte = antwort.bodies
             fehler = nil
         } catch {
             fehler = error.localizedDescription
@@ -252,6 +268,15 @@ struct IdeasView: View {
             ideen = antwort
         } catch {
             fehler = error.localizedDescription
+        }
+    }
+
+    /// „A, B und C" — die letzte mit „und", wie man es schreibt.
+    static func aufzaehlung(_ namen: [String]) -> String {
+        switch namen.count {
+        case 0: return "anderen Städten"
+        case 1: return namen[0]
+        default: return namen.dropLast().joined(separator: ", ") + " und " + (namen.last ?? "")
         }
     }
 

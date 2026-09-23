@@ -54,6 +54,62 @@ def _spearman(xs: list[float], ys: list[float]) -> float:
     return num / den if den else 0.0
 
 
+def golden_zeilen(store: CouncilStore, *, laut: bool = True) -> list[tuple[dict, dict]]:
+    """Die Golden-Beschlüsse dieser Datenbank: ``[(Goldeintrag, Beschlusszeile)]``."""
+    golden = json.loads((ROOT / "scripts" / "golden_impact.json").read_text())["golden"]
+    rows = []
+    for g in golden:
+        row = store._conn.execute(
+            """SELECT d.id, d.title, d.official_text, d.summary, d.outcome, d.kind,
+                      d.amount_eur, d.impact, cs.committee, cs.session_date
+               FROM council_decisions d JOIN council_sessions cs ON cs.ksinr = d.ksinr
+               WHERE d.title LIKE ? ORDER BY d.id LIMIT 1""",
+            (f"%{g['match']}%",),
+        ).fetchone()
+        if row is None:
+            if laut:
+                print(f"!! nicht gefunden: {g['match']!r} — übersprungen")
+            continue
+        rows.append((g, dict(row)))
+    return rows
+
+
+def frisch_bewerten(rows: list[tuple[dict, dict]]) -> None:
+    """ALLE Golden-Beschlüsse neu bewerten, ohne etwas zu speichern.
+
+    Für den Modell-Prüfstand (``eval/pruefstand.py``): Er misst das Modell,
+    das gerade eingestellt ist — ein gespeicherter Wert stammt vom Modell des
+    letzten Backfills und sagte über den Kandidaten nichts. Geschrieben wird
+    nichts, sonst verschöbe jeder Messlauf die Tragweite im Bestand.
+    """
+    from council.impact import rate_batch
+    zeilen = [d for _, d in rows]
+    neu: dict[int, int] = {}
+    for i in range(0, len(zeilen), 20):
+        for did, score, _reason in rate_batch(zeilen[i : i + 20]):
+            neu[did] = score
+    for _, d in rows:
+        d["impact"] = neu.get(d["id"])
+
+
+def auswerten(rows: list[tuple[dict, dict]]) -> dict:
+    """Spearman über die Band-Mitten und Band-Trefferquote der bewerteten Zeilen."""
+    usable = [(g, d) for g, d in rows if d["impact"] is not None]
+    if not usable:
+        return {"n": 0, "golden": len(rows), "rho": None, "hit_rate": None, "faelle": []}
+    mids = [(g["band"][0] + g["band"][1]) / 2 for g, _ in usable]
+    scores = [float(d["impact"]) for _, d in usable]
+    hits = sum(1 for (g, d) in usable if g["band"][0] <= d["impact"] <= g["band"][1])
+    return {
+        "n": len(usable), "golden": len(rows),
+        "rho": round(_spearman(mids, scores), 4),
+        "hit_rate": round(hits / len(usable), 4),
+        "faelle": [{"title": d["title"][:90], "impact": d["impact"], "band": g["band"],
+                    "im_band": g["band"][0] <= d["impact"] <= g["band"][1]}
+                   for g, d in usable],
+    }
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Tragweite-Score gegen das Golden-Set prüfen")
     ap.add_argument("--rate-missing", action="store_true",
@@ -61,22 +117,9 @@ def main() -> int:
     ap.add_argument("--db", default=str(COUNCIL_DB))
     args = ap.parse_args()
 
-    golden = json.loads((ROOT / "scripts" / "golden_impact.json").read_text())["golden"]
     store = CouncilStore(Path(args.db))
     try:
-        rows = []
-        for g in golden:
-            row = store._conn.execute(
-                """SELECT d.id, d.title, d.official_text, d.summary, d.outcome, d.kind,
-                          d.amount_eur, d.impact, cs.committee, cs.session_date
-                   FROM council_decisions d JOIN council_sessions cs ON cs.ksinr = d.ksinr
-                   WHERE d.title LIKE ? ORDER BY d.id LIMIT 1""",
-                (f"%{g['match']}%",),
-            ).fetchone()
-            if row is None:
-                print(f"!! nicht gefunden: {g['match']!r} — übersprungen")
-                continue
-            rows.append((g, dict(row)))
+        rows = golden_zeilen(store)
 
         missing = [d for _, d in rows if d["impact"] is None]
         if missing and args.rate_missing:
@@ -89,23 +132,18 @@ def main() -> int:
                 if d["impact"] is None:
                     d["impact"] = store.get_decision(d["id"])["impact"]
 
-        usable = [(g, d) for g, d in rows if d["impact"] is not None]
-        if len(usable) < 20:
-            print(f"Nur {len(usable)} bewertete Golden-Beschlüsse — zu wenig für ein Urteil.")
+        mass = auswerten(rows)
+        if mass["n"] < 20:
+            print(f"Nur {mass['n']} bewertete Golden-Beschlüsse — zu wenig für ein Urteil.")
             return 1
+        rho, hit_rate = mass["rho"], mass["hit_rate"]
 
-        mids = [(g["band"][0] + g["band"][1]) / 2 for g, _ in usable]
-        scores = [float(d["impact"]) for _, d in usable]
-        hits = sum(1 for (g, d) in usable if g["band"][0] <= d["impact"] <= g["band"][1])
-        rho = _spearman(mids, scores)
-        hit_rate = hits / len(usable)
-
-        print(f"\nGolden-Set: {len(usable)} Beschlüsse")
+        print(f"\nGolden-Set: {mass['n']} Beschlüsse")
         print(f"Spearman-Rangkorrelation: {rho:.3f}  (Schwelle {RHO_MIN})")
         print(f"Band-Trefferquote:        {hit_rate:.0%}  (Schwelle {HIT_MIN:.0%})")
-        for g, d in sorted(usable, key=lambda x: x[1]["impact"], reverse=True):
-            mark = "ok " if g["band"][0] <= d["impact"] <= g["band"][1] else "MISS"
-            print(f"  [{mark}] {d['impact']:3} erwartet {g['band']}  {d['title'][:70]}")
+        for f in sorted(mass["faelle"], key=lambda x: x["impact"], reverse=True):
+            mark = "ok " if f["im_band"] else "MISS"
+            print(f"  [{mark}] {f['impact']:3} erwartet {f['band']}  {f['title'][:70]}")
 
         ok = rho >= RHO_MIN and hit_rate >= HIT_MIN
         print("\nBESTANDEN — Mischung kann scharf." if ok

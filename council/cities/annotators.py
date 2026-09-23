@@ -440,6 +440,60 @@ class OldenburgFit(BaseModel):
         return self.status in ("present", "partial")
 
 
+#: Sekunden, nach denen ein Aufruf als hängend gilt. **Gemessen, nicht
+#: geschätzt:** Am 22.09.2026 standen die Probe dieses Laufs und der
+#: `fit`-Restlauf auf dev zugleich über eine halbe Stunde still — CPU 99 %
+#: frei, vier offene Verbindungen zu OpenRouter, keine Antwort, während ein
+#: frischer Aufruf in 1,6 s zurückkam. Das SDK wartet ohne eigene Angabe
+#: 600 s je Versuch. Ein gewöhnliches Urteil braucht 20–40 s; nach 120 s ist
+#: es kein langsames mehr, sondern ein hängendes, und die Wiederholung in
+#: `llm.chat_complete` (Timeout zählt als vorübergehend) übernimmt. Gilt für
+#: `fit`, `idea_fit` und `reason`.
+LLM_TIMEOUT_S = float(os.environ.get("CITIES_LLM_TIMEOUT", "120"))
+
+
+class IdeaVerdict(BaseModel):
+    """Hat Oldenburg diese IDEE schon? — einmal je Gruppe, nicht je Vorlage.
+
+    **Warum nicht die Mehrheit der Einzelurteile.** ``fit`` urteilt je Vorlage
+    und sieht dabei nur deren Belege. Bei 61 von 81 Ideen aus drei und mehr
+    Städten widersprachen sich die Einzelurteile (gemessen 22.09.2026); keine
+    Mehrheitsregel trifft dann den richtigen Stand, weil jede Stimme nur einen
+    Ausschnitt kannte. Hier sieht das Modell alle Vorlagen und die Vereinigung
+    ihrer Belege auf einmal.
+
+    **Beleg und Verwandtes getrennt.** Der Entwurf zeigte unter „Belege" auch,
+    was nur dasselbe Themenfeld streift — und las sich dann wie eine
+    Begründung für „vorhanden". ``evidence`` stützt den Status, ``related``
+    ist Lesestoff und belegt nichts.
+    """
+
+    status: Literal[FIT_STATUS]  # type: ignore[valid-type]
+    #: EIN Satz über die Lage in Oldenburg, als Auskunft formuliert — nicht
+    #: als Prüfvermerk („Kein Beleg zeigt …").
+    situation: str = Field(default="", max_length=300)
+    evidence: list[str] = Field(default_factory=list, max_length=3)
+    related: list[str] = Field(default_factory=list, max_length=3)
+    confidence: Literal[CONFIDENCE_VALUES]  # type: ignore[valid-type]
+
+    @field_validator("situation", mode="before")
+    @classmethod
+    def _kuerzen(cls, v: object) -> object:
+        """Zu lang heißt nicht falsch geurteilt — kürzen, nicht verwerfen."""
+        return v.strip()[:300] if isinstance(v, str) else v
+
+    @field_validator("evidence", "related", mode="before")
+    @classmethod
+    def _hoechstens_drei(cls, v: object) -> object:
+        """Eine vierte Kennung ist kein falsches Urteil, nur eine zu viel."""
+        return v[:3] if isinstance(v, list) else v
+
+    @property
+    def braucht_beleg(self) -> bool:
+        """``present`` und ``partial`` sind Behauptungen über Oldenburg."""
+        return self.status in ("present", "partial")
+
+
 @dataclass(frozen=True)
 class Annotator:
     key: str
@@ -459,12 +513,13 @@ class Annotator:
     #: Probelauf der Punkt, an dem mehr Text die Trefferquote nicht mehr hob.
     input_chars: int = 2200
     active: bool = True
-    #: Darf dieser Annotator ohne die ZDR-Provider-Beschränkung laufen?
-    #: Hier gehen ausschließlich öffentliche Ratsdokumente anderer Städte
-    #: durchs Modell, kein Nutzertext — anders als bei der KI-Frage. Die
-    #: Beschränkung kostete messbar: ``gpt-5.6-luna`` lieferte mit ihr 53 %
-    #: der Ergebnisse, ohne sie 100 % bei doppelter Geschwindigkeit.
-    routing_free: bool = True
+    # Ohne ZDR laufen die Annotatoren über ``kern/llm.py::zdr_pflicht``
+    # (Präfix ``cities_``): Hier gehen ausschließlich öffentliche
+    # Ratsdokumente anderer Städte durchs Modell. Bis 23.09.2026 stand dafür
+    # ``routing_free`` hier und die Aufrufe schickten ``provider: {}`` — das
+    # warf mit ZDR auch den China-Ausschluss und ``data_collection: deny``
+    # weg. Gemessen hatte sich die Lockerung an ZDR allein (``gpt-5.6-luna``
+    # lieferte mit ZDR 53 % der Ergebnisse, ohne 100 %).
     #: Braucht der Annotator die Nachbarschaften? Dann läuft er NACH dem Index,
     #: nicht davor — sonst urteilt er über eine Stadt, deren nächste Verwandte
     #: er noch gar nicht kennt.
@@ -667,6 +722,28 @@ ANNOTATORS: dict[str, Annotator] = {
         gut_wenn="eval/run_cities_effort.py bleibt über 80 % über fünf Klassen. "
                  "Die Kanten sind schärfer als bei `transfer` — eine Anfrage ist "
                  "keine Satzung —, deshalb liegt die Schranke höher.",
+    ),
+    "idea_fit": Annotator(
+        key="idea_fit", version="1", applies_to=("cluster",),
+        prompt_system="cities_idea_fit_system", prompt_user="cities_idea_fit_user",
+        model=os.environ.get("CITIES_IDEA_FIT_MODEL", "deepseek/deepseek-v4-flash"),
+        payload=IdeaVerdict,
+        # Eine Idee je Aufruf, drei Stimmen — dieselbe Lehre wie bei `fit`.
+        # Die Belege sind die VEREINIGUNG über alle Mitglieder; zwei Ideen in
+        # einem Aufruf teilten sie sich, und das Modell verwechselte, was zu
+        # welcher gehört.
+        batch_size=1, input_chars=600, max_tokens=6000, needs_index=True,
+        # Läuft nicht in der üblichen Schleife: Es braucht die Gruppen aus
+        # `idea_groups`, und die schreibt erst der Cluster-Schritt.
+        own_stage="idea_fit",
+        gut_wenn="eval/run_cities_idea_fit.py gegen Handfälle aus Gruppen mit "
+                 "zwei und mehr Städten. Zwei harte Schranken bei NULL: "
+                 "erfundene Kennungen und ein „vorhanden“, wo die Idee fehlt "
+                 "(es nimmt sie von der Liste). Status-Trefferquote über 70 % — "
+                 "höher als bei `fit`, weil das Modell hier alle Vorlagen und "
+                 "Belege auf einmal sieht. Eine eigene Fehlerklasse: ein "
+                 "Eintrag unter `evidence`, den der Mensch als „nur verwandt“ "
+                 "markiert hat.",
     ),
 }
 

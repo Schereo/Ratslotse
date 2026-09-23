@@ -56,6 +56,10 @@ os.environ["RATSLOTSE_DB"] = RATSLOTSE_DB
 os.environ["COUNCIL_DB"] = COUNCIL_DB
 # Der Verlauf des Wahlabends gehört in den tmp-Ordner, nie nach data/.
 os.environ["WAHLABEND_HISTORY_FILE"] = str(_TMP / "wahlabend-verlauf.json")
+# Dieselbe Isolation für die STT-Aufbewahrung (council/stt_retain.py): ohne
+# das hier würde ein Test, der den Livestream-Mitschnitt durchspielt, echte
+# Dateien nach ~/.cache/ratslotse/stt schreiben.
+os.environ["RATSLOTSE_STT_AUDIO"] = str(_TMP / "stt")
 os.environ["WEB_JWT_SECRET"] = "test-secret"
 os.environ["WEB_ADMIN_EMAIL"] = "admin@test.de"
 os.environ["COOKIE_SECURE"] = "false"   # TestClient spricht http://testserver
@@ -92,3 +96,16 @@ def source():
         return Herkunft(kind="ris", probe=probe, label=label, url=url, **rest)
 
     return bauen
+
+
+def pytest_configure(config):
+    """Eigene Marker anmelden — sonst warnt pytest bei jedem Lauf.
+
+    ``einwilligung(wert)`` setzt für einen Test, was
+    ``web_users.saves_conversations`` liefert: ``None`` = nie gefragt,
+    ``1`` = ja, ``0`` = nein. Der Wert entscheidet, ob ein Gespräch überhaupt
+    gespeichert wird (``tests/test_assistant.py``).
+    """
+    config.addinivalue_line(
+        "markers",
+        "einwilligung(wert): saves_conversations dieses Kontos (None | 0 | 1)")

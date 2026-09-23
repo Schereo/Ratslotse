@@ -229,6 +229,14 @@ ERLAUBT_ZEILE = {
 #: mit Begründung. Wer hier etwas einträgt, hat nachgesehen, was das Backend
 #: an dieser Stelle wirklich liefert.
 ERLAUBT_STELLE = {
+    ("assistentin.ts", "stadt"): "deutsches STOPPWORT des Anker-Abgleichs — "
+                                 "kein gelesener Wert, sondern ein Wort, das "
+                                 "in einer getippten Frage nichts über den "
+                                 "gesuchten Baustein aussagt",
+    ("assistentin.ts", "verwaltung"): "dasselbe Stoppwort-Verzeichnis (s. o.)",
+    ("assistentin.ts", "ort"): "Parametername der eigenen Kartenadresse "
+                               "(`/karte?ort=…`, lib/routes.ts::karteHref), "
+                               "kein gespeicherter Wert",
     ("types.ts", "rat"): "Doku-Kommentar über alte gecachte Antworten",
     ("CouncilViews.swift", "vorlage"): "Tagesordnungs-Diff (neu|geaendert|verschoben|vorlage|anlagen)",
     ("TopicsAndAccountViews.swift", "thema"): "Symbolwahl über einen deutschen Feldnamen",

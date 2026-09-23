@@ -181,7 +181,6 @@ WEB_OHNE_VERTRAG = {
     ("MemberDetail", "current_faction"),
     ("MemberDetail", "kpenr"),
     ("MemberDetail", "memberships"),
-    ("PartyAnalysis", "accepted"),
     ("PartyAnalysis", "matrix"),
     ("PartyAnalysis", "n_antraege"),
     ("PartyAnalysis", "n_mit_beschluss"),

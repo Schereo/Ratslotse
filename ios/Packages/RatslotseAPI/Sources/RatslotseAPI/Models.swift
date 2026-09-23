@@ -732,9 +732,12 @@ public struct IdeaFieldSummary: Codable, Sendable, Hashable, Identifiable {
     /// Oldenburg fehlen. Eine Tatsache — vorher stand hier die Zahl der
     /// „lohnt sich"-Urteile, also eine Modellmeinung.
     public let multiCity: Int
+    /// Bewegungen dieses Feldes: Ideen ab zwei anderen Städten, die Oldenburg
+    /// fehlen oder halb hat — die Zahl der Feld-Chips über der Liste.
+    public let movements: Int
 
     enum CodingKeys: String, CodingKey {
-        case field, total, missing, partial, present
+        case field, total, missing, partial, present, movements
         case multiCity = "multi_city"
     }
 
@@ -746,18 +749,302 @@ public struct IdeaFieldSummary: Codable, Sendable, Hashable, Identifiable {
         partial = try v.decodeIfPresent(Int.self, forKey: .partial) ?? 0
         present = try v.decodeIfPresent(Int.self, forKey: .present) ?? 0
         multiCity = try v.decodeIfPresent(Int.self, forKey: .multiCity) ?? 0
+        movements = try v.decodeIfPresent(Int.self, forKey: .movements) ?? 0
     }
 }
 
 public struct IdeaFields: Codable, Sendable {
     public let fields: [IdeaFieldSummary]
+    /// Die Städte, aus denen Ideen vorliegen — aus den DATEN, nicht aus einem
+    /// Satz im Kopf der Ansicht (der zählte bis 09/2026 fünf fest auf, als es
+    /// schon acht waren).
+    public let bodies: [String]
 
     public init(from decoder: Decoder) throws {
         let v = try decoder.container(keyedBy: CodingKeys.self)
         fields = try v.decodeIfPresent([IdeaFieldSummary].self, forKey: .fields) ?? []
+        bodies = try v.decodeIfPresent([String].self, forKey: .bodies) ?? []
     }
 
-    enum CodingKeys: String, CodingKey { case fields }
+    enum CodingKeys: String, CodingKey { case fields, bodies }
+}
+
+
+// MARK: - Bewegungen (Plan PR 50/54)
+//
+// Eine IDEE über Stadtgrenzen: dieselbe Sache, von mindestens zwei anderen
+// Räten beantragt oder beschlossen. Alles gehärtet (`decodeIfPresent` mit
+// Vorgabe) — dieselbe Lehre wie bei ``Idea``: Ein fehlendes Feld soll eine
+// Karte leerer machen, nicht die ganze Liste.
+
+/// Eine Stadt in einer Bewegung.
+public struct MovementCity: Codable, Sendable, Hashable, Identifiable {
+    public var id: String { bodyID }
+    public let bodyID: String
+    public let city: String
+    public let firstDate: String?
+    public let members: Int
+    public let outcomes: [String: Int]
+
+    enum CodingKeys: String, CodingKey {
+        case city, members, outcomes
+        case bodyID = "body_id"
+        case firstDate = "first_date"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let v = try decoder.container(keyedBy: CodingKeys.self)
+        bodyID = try v.decodeIfPresent(String.self, forKey: .bodyID) ?? ""
+        city = try v.decodeIfPresent(String.self, forKey: .city) ?? ""
+        firstDate = try v.decodeIfPresent(String.self, forKey: .firstDate)
+        members = try v.decodeIfPresent(Int.self, forKey: .members) ?? 0
+        outcomes = try v.decodeIfPresent([String: Int].self, forKey: .outcomes) ?? [:]
+    }
+}
+
+/// Ein Punkt der Zeitleiste — eine Vorlage.
+public struct TimelinePoint: Codable, Sendable, Hashable, Identifiable {
+    public var id: String { paperID }
+    public let paperID: String
+    public let bodyID: String
+    public let city: String
+    public let date: String?
+    /// Kanonisches Ergebnis; `none`, wenn die Stadt keins ausweist.
+    public let outcome: String
+    public let kind: String
+
+    enum CodingKeys: String, CodingKey {
+        case city, date, outcome, kind
+        case paperID = "paper_id"
+        case bodyID = "body_id"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let v = try decoder.container(keyedBy: CodingKeys.self)
+        paperID = try v.decodeIfPresent(String.self, forKey: .paperID) ?? ""
+        bodyID = try v.decodeIfPresent(String.self, forKey: .bodyID) ?? ""
+        city = try v.decodeIfPresent(String.self, forKey: .city) ?? ""
+        date = try v.decodeIfPresent(String.self, forKey: .date)
+        outcome = try v.decodeIfPresent(String.self, forKey: .outcome) ?? "none"
+        kind = try v.decodeIfPresent(String.self, forKey: .kind) ?? "other"
+    }
+
+    public init(paperID: String, bodyID: String, city: String, date: String?,
+                outcome: String, kind: String) {
+        self.paperID = paperID
+        self.bodyID = bodyID
+        self.city = city
+        self.date = date
+        self.outcome = outcome
+        self.kind = kind
+    }
+}
+
+/// EINE Zeitachse für alle Bewegungen, vom Server bestimmt — damit Web und
+/// App dieselbe zeichnen und sie beim Blättern nicht springt.
+public struct TimeAxis: Codable, Sendable, Hashable {
+    public let start: String?
+    public let end: String?
+
+    enum CodingKeys: String, CodingKey { case start, end }
+
+    public init(from decoder: Decoder) throws {
+        let v = try decoder.container(keyedBy: CodingKeys.self)
+        start = try v.decodeIfPresent(String.self, forKey: .start)
+        end = try v.decodeIfPresent(String.self, forKey: .end)
+    }
+
+    public init(start: String?, end: String?) {
+        self.start = start
+        self.end = end
+    }
+}
+
+/// Hat Oldenburg diese Idee schon? — EIN Urteil je Idee (`idea_fit`).
+/// `evidence` stützt den Stand, `related` ist Lesestoff und belegt nichts.
+public struct OldenburgVerdict: Codable, Sendable, Hashable {
+    public let status: String
+    public let situation: String
+    public let confidence: String
+    public let evidence: [IdeaEvidence]
+    public let related: [IdeaEvidence]
+
+    enum CodingKeys: String, CodingKey { case status, situation, confidence, evidence, related }
+
+    public init(from decoder: Decoder) throws {
+        let v = try decoder.container(keyedBy: CodingKeys.self)
+        status = try v.decodeIfPresent(String.self, forKey: .status) ?? ""
+        situation = try v.decodeIfPresent(String.self, forKey: .situation) ?? ""
+        confidence = try v.decodeIfPresent(String.self, forKey: .confidence) ?? ""
+        evidence = try v.decodeIfPresent([IdeaEvidence].self, forKey: .evidence) ?? []
+        related = try v.decodeIfPresent([IdeaEvidence].self, forKey: .related) ?? []
+    }
+}
+
+/// Eine Idee, die mehrere andere Räte hatten.
+public struct Movement: Codable, Sendable, Hashable, Identifiable {
+    public var id: Int { clusterID }
+    public let clusterID: Int
+    public let label: String
+    public let field: String?
+    /// Je Stadt, nach erstem Datum. Oldenburg zählt nie mit.
+    public let cities: [MovementCity]
+    public let members: Int
+    public let oldenburgMembers: Int
+    public let firstDate: String?
+    public let lastDate: String?
+    public let outcomes: [String: Int]
+    public let timeline: [TimelinePoint]
+    /// `nil`, solange die Idee noch nicht beurteilt ist.
+    public let oldenburg: OldenburgVerdict?
+
+    enum CodingKeys: String, CodingKey {
+        case label, field, cities, members, outcomes, timeline, oldenburg
+        case clusterID = "cluster_id"
+        case oldenburgMembers = "oldenburg_members"
+        case firstDate = "first_date"
+        case lastDate = "last_date"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let v = try decoder.container(keyedBy: CodingKeys.self)
+        clusterID = try v.decodeIfPresent(Int.self, forKey: .clusterID) ?? 0
+        label = try v.decodeIfPresent(String.self, forKey: .label) ?? ""
+        field = try v.decodeIfPresent(String.self, forKey: .field)
+        cities = try v.decodeIfPresent([MovementCity].self, forKey: .cities) ?? []
+        members = try v.decodeIfPresent(Int.self, forKey: .members) ?? 0
+        oldenburgMembers = try v.decodeIfPresent(Int.self, forKey: .oldenburgMembers) ?? 0
+        firstDate = try v.decodeIfPresent(String.self, forKey: .firstDate)
+        lastDate = try v.decodeIfPresent(String.self, forKey: .lastDate)
+        outcomes = try v.decodeIfPresent([String: Int].self, forKey: .outcomes) ?? [:]
+        timeline = try v.decodeIfPresent([TimelinePoint].self, forKey: .timeline) ?? []
+        oldenburg = try v.decodeIfPresent(OldenburgVerdict.self, forKey: .oldenburg)
+    }
+}
+
+public struct MovementsResponse: Codable, Sendable {
+    public let items: [Movement]
+    public let total: Int
+    public let page: Int
+    public let perPage: Int
+    public let axis: TimeAxis
+    /// Je Oldenburg-Status die Zahl unter den übrigen Filtern; `unjudged`
+    /// zählt die noch unbeurteilten.
+    public let counts: [String: Int]
+
+    enum CodingKeys: String, CodingKey {
+        case items, total, page, axis, counts
+        case perPage = "per_page"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let v = try decoder.container(keyedBy: CodingKeys.self)
+        items = try v.decodeIfPresent([Movement].self, forKey: .items) ?? []
+        total = try v.decodeIfPresent(Int.self, forKey: .total) ?? 0
+        page = try v.decodeIfPresent(Int.self, forKey: .page) ?? 1
+        perPage = try v.decodeIfPresent(Int.self, forKey: .perPage) ?? 30
+        axis = try v.decodeIfPresent(TimeAxis.self, forKey: .axis) ?? TimeAxis(start: nil, end: nil)
+        counts = try v.decodeIfPresent([String: Int].self, forKey: .counts) ?? [:]
+    }
+
+    public init(items: [Movement], total: Int, page: Int, perPage: Int,
+                axis: TimeAxis, counts: [String: Int]) {
+        self.items = items
+        self.total = total
+        self.page = page
+        self.perPage = perPage
+        self.axis = axis
+        self.counts = counts
+    }
+}
+
+/// Eine Vorlage einer Bewegung, für die Ideen-Seite.
+public struct MovementDocument: Codable, Sendable, Hashable, Identifiable {
+    public var id: String { paperID }
+    public let paperID: String
+    public let bodyID: String
+    public let city: String
+    public let name: String
+    public let date: String?
+    public let kind: String
+    public let web: String?
+    public let outcome: String
+    public let originator: String?
+    public let instrument: String?
+    public let summary: String?
+    public let protocolNote: IdeaProtocol?
+    public let protocolSource: String
+
+    enum CodingKeys: String, CodingKey {
+        case city, name, date, kind, web, outcome, originator, instrument, summary
+        case paperID = "paper_id"
+        case bodyID = "body_id"
+        case protocolNote = "protocol"
+        case protocolSource = "protocol_source"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let v = try decoder.container(keyedBy: CodingKeys.self)
+        paperID = try v.decodeIfPresent(String.self, forKey: .paperID) ?? ""
+        bodyID = try v.decodeIfPresent(String.self, forKey: .bodyID) ?? ""
+        city = try v.decodeIfPresent(String.self, forKey: .city) ?? ""
+        name = try v.decodeIfPresent(String.self, forKey: .name) ?? ""
+        date = try v.decodeIfPresent(String.self, forKey: .date)
+        kind = try v.decodeIfPresent(String.self, forKey: .kind) ?? "other"
+        web = try v.decodeIfPresent(String.self, forKey: .web)
+        outcome = try v.decodeIfPresent(String.self, forKey: .outcome) ?? "none"
+        originator = try v.decodeIfPresent(String.self, forKey: .originator)
+        instrument = try v.decodeIfPresent(String.self, forKey: .instrument)
+        summary = try v.decodeIfPresent(String.self, forKey: .summary)
+        protocolNote = try v.decodeIfPresent(IdeaProtocol.self, forKey: .protocolNote)
+        protocolSource = try v.decodeIfPresent(String.self, forKey: .protocolSource) ?? "none"
+    }
+}
+
+/// Eine andere Bewegung desselben Themenfelds.
+public struct MovementSimilar: Codable, Sendable, Hashable, Identifiable {
+    public var id: Int { clusterID }
+    public let clusterID: Int
+    public let label: String
+    public let cities: Int
+    public let members: Int
+
+    enum CodingKeys: String, CodingKey {
+        case label, cities, members
+        case clusterID = "cluster_id"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let v = try decoder.container(keyedBy: CodingKeys.self)
+        clusterID = try v.decodeIfPresent(Int.self, forKey: .clusterID) ?? 0
+        label = try v.decodeIfPresent(String.self, forKey: .label) ?? ""
+        cities = try v.decodeIfPresent(Int.self, forKey: .cities) ?? 0
+        members = try v.decodeIfPresent(Int.self, forKey: .members) ?? 0
+    }
+}
+
+/// Eine Bewegung mit allen Vorlagen — die Ideen-Seite.
+public struct MovementDetail: Codable, Sendable {
+    public let movement: Movement
+    public let axis: TimeAxis
+    public let documents: [MovementDocument]
+    public let oldenburgDocuments: [IdeaEvidence]
+    public let similar: [MovementSimilar]
+
+    enum CodingKeys: String, CodingKey {
+        case movement, axis, documents, similar
+        case oldenburgDocuments = "oldenburg_documents"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let v = try decoder.container(keyedBy: CodingKeys.self)
+        // Ohne die Bewegung selbst gibt es keine Seite — hier darf es werfen.
+        movement = try v.decode(Movement.self, forKey: .movement)
+        axis = try v.decodeIfPresent(TimeAxis.self, forKey: .axis) ?? TimeAxis(start: nil, end: nil)
+        documents = try v.decodeIfPresent([MovementDocument].self, forKey: .documents) ?? []
+        oldenburgDocuments = try v.decodeIfPresent([IdeaEvidence].self, forKey: .oldenburgDocuments) ?? []
+        similar = try v.decodeIfPresent([MovementSimilar].self, forKey: .similar) ?? []
+    }
 }
 
 

@@ -22,7 +22,16 @@ from kern import llm, prompts
 # gegen deepseek-v4-pro, gpt-5.1 und gpt-5-mini): behält als einziges Modell
 # durchgängig Beträge, Hektar und Ortsnamen, trifft Rechtsinstrumente genauer
 # (Veränderungssperre ≠ „Bauverbot") — und kostet ein Viertel.
-MODEL = os.environ.get("COUNCIL_IMPACT_MODEL", "openai/gpt-5.6-luna")
+#
+# Tims Entscheidung 23.09.2026 (P5, docs/plan-modellwechsel.md): GPT-6 Luna
+# ersetzt 5.6, im Flex-Tarif (kein Nutzereingabe-Feature). Prüfstand
+# 23.09.2026 (`tragweite`, Golden Set, 30 Fälle × 2 Läufe): 5.6 91,7 % ± 3,3
+# (0,101–0,166 ct/Aufruf) — 6-Luna normal 91,7 % ± 3,3 (0,037–0,065 ct) —
+# 6-Luna flex 91,7 % ± 3,3 (0,020–0,033 ct). Alle im Rauschen, Flex zu einem
+# Fünftel bis Achtel des heutigen Preises. `impact_rating_agenda` hat kein
+# Golden Set (`tragweite-tagesordnung`, Qualität „—"), teilt sich aber MODEL
+# mit `impact_rating` und denselben Aufrufer-Vorteil.
+MODEL = os.environ.get("COUNCIL_IMPACT_MODEL", "openai/gpt-6-luna")
 
 #: Für die Bewertung reicht kurzes Nachdenken: Mit dem Standard-Aufwand
 #: verbrannte Luna das Doppelte an Denk-Tokens für identische Ergebnisse.
@@ -230,6 +239,7 @@ def rate_agenda_batch(items: list[dict], _tiefe: int = 0) -> list[tuple[int, int
             temperature=0.1,
             extra_body=dict(REASONING_KURZ),
             _feature="impact_rating_agenda", _geduld=True, _ersatz=llm.ersatz_fuer(MODEL),
+            _tarif="flex",
         )
         data = json.loads(resp.choices[0].message.content or "{}")
     except Exception as exc:  # noqa: BLE001
@@ -280,6 +290,7 @@ def rate_batch(decisions: list[dict], _tiefe: int = 0) -> list[tuple[int, int, s
             temperature=0.1,
             extra_body=dict(REASONING_KURZ),
             _feature="impact_rating", _geduld=True, _ersatz=llm.ersatz_fuer(MODEL),
+            _tarif="flex",
         )
         data = json.loads(resp.choices[0].message.content or "{}")
     except Exception as exc:  # noqa: BLE001

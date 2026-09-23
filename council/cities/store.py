@@ -1613,6 +1613,259 @@ class CitiesStore:
                 "SELECT COUNT(*) FROM idea_group_status WHERE model=? AND version=? AND fit_version=?",
                 (model, version, fit_version)).fetchone()[0])
 
+    # ------------------------------------------------------------ Bewegungen
+    #
+    # Die Idee als Ganzes (Plan PR 47–50). Geschrieben vom Cluster-Schritt
+    # (``clusters.rebuild_idea_groups``), gelesen von den Endpunkten
+    # ``/cities/movements``. Die Regel für die Überschrift steht in
+    # ``clusters.idea_label`` — hier wird nur abgelegt und abgefragt.
+
+    #: Das Urteil je Idee über Oldenburg (Plan PR 48). Hier nur GELESEN.
+    IDEEN_IDEA_FIT = ("idea_fit", "1")
+
+    def idea_group_candidates(self, model: str, version: str) -> list[dict]:
+        """Alle Mitglieder aller Gruppen, so wie die Oberfläche sie zählt.
+
+        Nur die Arten, die eine Idee tragen, ohne die von ``cluster_check``
+        Ausgeschlossenen — dieselben Bedingungen wie ``rebuild_group_status``.
+        Oldenburger Mitglieder sind DABEI; wer sie nicht zählen will, filtert
+        (``clusters.rebuild_idea_groups`` tut es, ``idea_fit`` braucht sie).
+        """
+        rows = self._conn.execute(
+            "SELECT k.cluster_id, k.paper_id, k.score, p.body_id, p.name, p.date, p.kind, "
+            "       json_extract(c.payload, '$.field') AS field, "
+            "       json_extract(c.payload, '$.instrument') AS instrument "
+            "FROM idea_clusters k JOIN papers p ON p.id = k.paper_id "
+            "LEFT JOIN annotations c ON c.object_kind='paper' AND c.object_id=p.id "
+            "  AND c.annotator='classify' AND c.version='2' "
+            "WHERE k.model=? AND k.version=? "
+            "  AND p.kind IN ('motion','proposal','inquiry','amendment') "
+            "  AND NOT EXISTS (SELECT 1 FROM annotations ck, json_each(ck.payload,'$.drop') d "
+            "                  WHERE ck.object_kind='cluster' AND ck.annotator='cluster_check' "
+            "                    AND ck.object_id = k.version || ':' || k.cluster_id "
+            "                    AND d.value = p.id) "
+            "ORDER BY k.cluster_id, k.score DESC, p.date DESC",
+            (model, version))
+        return [dict(r) for r in rows]
+
+    def cluster_verdicts(self, version: str, check_version: str) -> dict[int, dict]:
+        """Cluster-Id → Nutzlast des Prüflaufs (``label``, ``drop``, ``stable``)."""
+        rows = self._conn.execute(
+            "SELECT object_id, payload FROM annotations "
+            "WHERE object_kind='cluster' AND annotator='cluster_check' AND version=? "
+            "  AND object_id LIKE ? || ':%'",
+            (check_version, version))
+        out: dict[int, dict] = {}
+        for r in rows:
+            try:
+                out[int(r["object_id"].split(":", 1)[1])] = json.loads(r["payload"])
+            except (ValueError, IndexError):
+                continue
+        return out
+
+    def replace_idea_groups(self, model: str, version: str, rows: Sequence[dict]) -> int:
+        """Die Ideen einer Fassung ersetzen — alles oder nichts.
+
+        Wie ``replace_idea_clusters``: Eine halb geschriebene Tabelle zeigte
+        eine Übersicht, in der die Hälfte der Ideen fehlt, und nichts deutete
+        darauf hin.
+        """
+        with self._write() as conn:
+            conn.execute("DELETE FROM idea_groups WHERE model=? AND version=?",
+                         (model, version))
+            conn.executemany(
+                "INSERT INTO idea_groups (model, version, cluster_id, field, cities, members, "
+                "  oldenburg_members, first_date, last_date, outcomes, per_city, timeline, "
+                "  stable, label, top_paper) "
+                "VALUES (:model, :version, :cluster_id, :field, :cities, :members, "
+                "  :oldenburg_members, :first_date, :last_date, :outcomes, :per_city, "
+                "  :timeline, :stable, :label, :top_paper)",
+                [dict(r, model=model, version=version) for r in rows])
+        return len(rows)
+
+    #: Die Liste der Bewegungen. Leere Filter heißen „alle" (``''`` bzw. 0),
+    #: wie bei den Ideen-Abfragen oben — GANZE Anweisungen, damit
+    #: ``tests/test_sql_spalten.py`` sie prüft.
+    #:
+    #: Das Oldenburg-Urteil kommt aus ``annotations`` (``idea_fit``), nicht
+    #: aus ``idea_groups``: Die Tabelle trägt keine Meinung. Eine Gruppe ohne
+    #: Urteil fällt unter einem Status-Filter heraus — sie hat keinen Status.
+    _BEWEGUNGEN_ZEILEN = (
+        "SELECT g.*, j.payload AS verdict_json "
+        "FROM idea_groups g "
+        "LEFT JOIN annotations j ON j.object_kind='cluster' "
+        "  AND j.object_id = g.version || ':' || g.cluster_id "
+        "  AND j.annotator=? AND j.version=? "
+        "WHERE g.model=? AND g.version=? AND g.stable=1 AND g.cities >= ? "
+        "  AND (? = '' OR g.field = ?) "
+        "  AND (? = '' OR instr(?, ',' || json_extract(j.payload, '$.status') || ',') > 0) "
+        "  AND (? = 0 OR g.cluster_id IN (SELECT value FROM json_each(?)) "
+        "       OR lower(g.label) LIKE ?) "
+        "ORDER BY CASE WHEN ? = 'zuletzt' THEN g.last_date END DESC, "
+        "         g.cities DESC, g.members DESC, g.last_date DESC, g.cluster_id "
+        "LIMIT ? OFFSET ?")
+
+    _BEWEGUNGEN_ZAEHLEN = (
+        "SELECT COUNT(*) "
+        "FROM idea_groups g "
+        "LEFT JOIN annotations j ON j.object_kind='cluster' "
+        "  AND j.object_id = g.version || ':' || g.cluster_id "
+        "  AND j.annotator=? AND j.version=? "
+        "WHERE g.model=? AND g.version=? AND g.stable=1 AND g.cities >= ? "
+        "  AND (? = '' OR g.field = ?) "
+        "  AND (? = '' OR instr(?, ',' || json_extract(j.payload, '$.status') || ',') > 0) "
+        "  AND (? = 0 OR g.cluster_id IN (SELECT value FROM json_each(?)) "
+        "       OR lower(g.label) LIKE ?)")
+
+    #: Welche Gruppen eine Suche trifft — über Titel und Zusammenfassung der
+    #: Mitglieder, nicht den Volltext: Der streift zu viel (s. ``_SUCHE``).
+    _BEWEGUNGEN_SUCHE = (
+        "SELECT DISTINCT k.cluster_id FROM papers_fts x "
+        "JOIN idea_clusters k ON k.paper_id = x.paper_id "
+        "WHERE k.model=? AND k.version=? AND papers_fts MATCH ?")
+
+    def _bewegungen_treffer(self, model: str, version: str, q: str) -> list[int]:
+        for stufe in _such_stufen(q):
+            try:
+                ids = [int(r[0]) for r in self._conn.execute(
+                    self._BEWEGUNGEN_SUCHE, (model, version, "{name summary} : (" + stufe + ")"))]
+            except sqlite3.OperationalError:
+                continue          # kaputte FTS-Syntax ist kein Serverfehler
+            if ids:
+                return ids
+        return []
+
+    def idea_groups(self, model: str, version: str, *, field: str | None = None,
+                    min_cities: int = 2, oldenburg: Sequence[str] = (),
+                    q: str = "", sort: str = "staedte", limit: int = 30,
+                    offset: int = 0) -> tuple[list[dict], int]:
+        """``(zeilen, gesamt)`` — gefiltert, sortiert und gezählt in SQL.
+
+        ``sort`` ist ``"staedte"`` (die meisten Städte zuerst) oder
+        ``"zuletzt"`` (die jüngste Vorlage zuerst). Unbelegte Gruppen
+        (``stable=0``) erscheinen nie: Über sie waren sich drei Stimmen nicht
+        einig, dass sie EINE Sache sind.
+        """
+        f_ann, f_ver = self.IDEEN_IDEA_FIT
+        status = ("," + ",".join(oldenburg) + ",") if oldenburg else ""
+        q = (q or "").strip()
+        treffer = self._bewegungen_treffer(model, version, q) if q else []
+        muster = "%" + q.lower() + "%" if q else ""
+        filter_args = [f_ann, f_ver, model, version, min_cities,
+                       field or "", field or "", status, status,
+                       1 if q else 0, json.dumps(treffer), muster]
+        gesamt = int(self._conn.execute(self._BEWEGUNGEN_ZAEHLEN, filter_args).fetchone()[0])
+        rows = self._conn.execute(self._BEWEGUNGEN_ZEILEN,
+                                  filter_args + [sort, limit, offset])
+        return [dict(r) for r in rows], gesamt
+
+    def idea_group(self, model: str, version: str, cluster_id: int) -> dict | None:
+        """Eine Gruppe samt Urteil über Oldenburg — auch eine unbelegte."""
+        f_ann, f_ver = self.IDEEN_IDEA_FIT
+        row = self._conn.execute(
+            "SELECT g.*, j.payload AS verdict_json FROM idea_groups g "
+            "LEFT JOIN annotations j ON j.object_kind='cluster' "
+            "  AND j.object_id = g.version || ':' || g.cluster_id "
+            "  AND j.annotator=? AND j.version=? "
+            "WHERE g.model=? AND g.version=? AND g.cluster_id=?",
+            (f_ann, f_ver, model, version, cluster_id)).fetchone()
+        return dict(row) if row else None
+
+    def idea_group_members(self, model: str, version: str, cluster_id: int) -> list[dict]:
+        """Die Vorlagen einer Gruppe, nach Datum — MIT den Oldenburgern.
+
+        Je Vorlage Stadt, Datum, Art, Titel, Link, die Einordnung und das
+        Einzelurteil ``fit``. Das Ergebnis hängt der Aufrufer über
+        ``outcome_for_paper`` an — EINE Herleitung, nicht zwei.
+        """
+        f_ann, f_ver = self.IDEEN_FIT
+        rows = self._conn.execute(
+            "SELECT p.id, p.body_id, p.name, p.date, p.kind, p.web, p.reference, "
+            "       b.name AS body_name, k.score, c.payload AS classify_json, "
+            "       f.payload AS fit_json "
+            "FROM idea_clusters k JOIN papers p ON p.id = k.paper_id "
+            "LEFT JOIN bodies b ON b.id = p.body_id "
+            "LEFT JOIN annotations c ON c.object_kind='paper' AND c.object_id=p.id "
+            "  AND c.annotator='classify' AND c.version='2' "
+            "LEFT JOIN annotations f ON f.object_kind='paper' AND f.object_id=p.id "
+            "  AND f.annotator=? AND f.version=? "
+            "WHERE k.model=? AND k.version=? AND k.cluster_id=? "
+            "  AND p.kind IN ('motion','proposal','inquiry','amendment') "
+            "  AND NOT EXISTS (SELECT 1 FROM annotations ck, json_each(ck.payload,'$.drop') d "
+            "                  WHERE ck.object_kind='cluster' AND ck.annotator='cluster_check' "
+            "                    AND ck.object_id = k.version || ':' || k.cluster_id "
+            "                    AND d.value = p.id) "
+            "ORDER BY COALESCE(p.date, ''), p.id",
+            (f_ann, f_ver, model, version, cluster_id))
+        return [dict(r) for r in rows]
+
+    def idea_groups_axis(self, model: str, version: str, min_cities: int) -> tuple[str | None, str | None]:
+        """Früheste und späteste Vorlage aller gezeigten Bewegungen.
+
+        Über den GANZEN Bestand, nicht die Seite: Sonst verschiebt sich die
+        Zeitachse beim Blättern, und derselbe Punkt stünde woanders.
+        """
+        row = self._conn.execute(
+            "SELECT MIN(first_date), MAX(last_date) FROM idea_groups "
+            "WHERE model=? AND version=? AND stable=1 AND cities >= ?",
+            (model, version, min_cities)).fetchone()
+        return (row[0], row[1]) if row else (None, None)
+
+    def idea_group_counts(self, model: str, version: str, min_cities: int,
+                          oldenburg: Sequence[str] = ()) -> dict[str, int]:
+        """Themenfeld → Zahl der Bewegungen — für die Kacheln der Übersicht.
+
+        Mit ``oldenburg`` nur die mit diesem Urteil — dieselbe Vorgabe wie die
+        Liste, sonst verspräche die Kachel mehr, als die Liste dann zeigt.
+        """
+        f_ann, f_ver = self.IDEEN_IDEA_FIT
+        status = ("," + ",".join(oldenburg) + ",") if oldenburg else ""
+        return {r[0]: int(r[1]) for r in self._conn.execute(
+            "SELECT g.field, COUNT(*) FROM idea_groups g "
+            "LEFT JOIN annotations j ON j.object_kind='cluster' "
+            "  AND j.object_id = g.version || ':' || g.cluster_id "
+            "  AND j.annotator=? AND j.version=? "
+            "WHERE g.model=? AND g.version=? AND g.stable=1 AND g.cities >= ? "
+            "  AND g.field IS NOT NULL "
+            "  AND (? = '' OR instr(?, ',' || json_extract(j.payload, '$.status') || ',') > 0) "
+            "GROUP BY g.field",
+            (f_ann, f_ver, model, version, min_cities, status, status))}
+
+    def idea_group_verdict_counts(self, model: str, version: str, *,
+                                  field: str | None = None, min_cities: int = 2,
+                                  q: str = "") -> dict[str, int]:
+        """Je Oldenburg-Urteil die Zahl der Bewegungen — für die Filter-Chips.
+
+        Unter denselben Filtern wie die Liste, nur ohne den Status selbst;
+        ``unjudged`` zählt, was noch kein Urteil hat.
+        """
+        f_ann, f_ver = self.IDEEN_IDEA_FIT
+        q = (q or "").strip()
+        treffer = self._bewegungen_treffer(model, version, q) if q else []
+        return {r[0]: int(r[1]) for r in self._conn.execute(
+            "SELECT COALESCE(json_extract(j.payload, '$.status'), 'unjudged'), COUNT(*) "
+            "FROM idea_groups g "
+            "LEFT JOIN annotations j ON j.object_kind='cluster' "
+            "  AND j.object_id = g.version || ':' || g.cluster_id "
+            "  AND j.annotator=? AND j.version=? "
+            "WHERE g.model=? AND g.version=? AND g.stable=1 AND g.cities >= ? "
+            "  AND (? = '' OR g.field = ?) "
+            "  AND (? = 0 OR g.cluster_id IN (SELECT value FROM json_each(?)) "
+            "       OR lower(g.label) LIKE ?) "
+            "GROUP BY 1",
+            (f_ann, f_ver, model, version, min_cities, field or "", field or "",
+             1 if q else 0, json.dumps(treffer), "%" + q.lower() + "%" if q else ""))}
+
+    def similar_idea_groups(self, model: str, version: str, field: str | None,
+                            cluster_id: int, min_cities: int, limit: int = 3) -> list[dict]:
+        """Andere Bewegungen desselben Feldes, die meisten Städte zuerst."""
+        return [dict(r) for r in self._conn.execute(
+            "SELECT cluster_id, label, cities, members, first_date, last_date "
+            "FROM idea_groups WHERE model=? AND version=? AND stable=1 AND cities >= ? "
+            "  AND field = ? AND cluster_id != ? "
+            "ORDER BY cities DESC, members DESC, cluster_id LIMIT ?",
+            (model, version, min_cities, field, cluster_id, limit))]
+
     def paper_matrix(self, model: str, body_id: str) -> tuple[list[str], bytes]:
         """Alle Papier-Vektoren einer Stadt am Stück — Kennung und Rohbytes.
 

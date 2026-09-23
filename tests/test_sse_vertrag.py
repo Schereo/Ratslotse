@@ -47,3 +47,17 @@ def test_beide_stroeme_sind_vertreten():
     rahmen, _ = gesendet()
     assert {"step", "sources", "token", "done"} <= set(rahmen), sorted(rahmen)
     assert {"phase", "facets", "facette", "gestoppt", "fehler"} <= set(rahmen), sorted(rahmen)
+
+
+def test_lottis_erklaerung_teilt_sich_das_vokabular_der_frage():
+    """Der dritte Strom (``/council/explain``) benutzt ABSICHTLICH dieselben
+    Rahmennamen wie die KI-Frage — ``step``, ``token``, ``replace``, ``done``,
+    ``error``. Beide Clients parsen von Hand; ein zweites Vokabular für
+    dieselbe Sache wäre ein zweiter Parser und damit eine zweite Stelle, an
+    der eine Umbenennung hängen bleibt.
+
+    Was Lotti zusätzlich sendet, steht in ``done``: ``mode`` (kam die Antwort
+    ohne Modell?), ``next`` (gehört die Frage ins Archiv?) und ``glossary``.
+    """
+    rahmen, _ = gesendet()
+    assert {"mode", "next", "glossary", "kind"} <= rahmen["done"], sorted(rahmen["done"])

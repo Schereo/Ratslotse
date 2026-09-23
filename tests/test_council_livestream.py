@@ -234,7 +234,7 @@ def test_livestream_retry_uses_fresh_directory(tmp_path, monkeypatch):
 
     seen: list[Path] = []
 
-    def fake_record(run_dir: Path, on_chunk=None):
+    def fake_record(run_dir: Path, on_chunk=None, on_transcribed=None):
         seen.append(run_dir)
         assert not list(run_dir.glob("chunk_*.mp3"))
         (run_dir / "chunk_000.mp3").write_bytes(b"dieser lauf")

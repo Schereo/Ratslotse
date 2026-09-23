@@ -21,10 +21,12 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Sparkles, ArrowUp, Loader2, ChevronDown, ChevronRight, ChevronUp, ArrowRight, Plus,
   Square, CircleSlash, ExternalLink, FlaskConical, History, Pencil, RotateCcw, ChevronLeft,
-  MessageSquarePlus, MoreHorizontal, Share2, ThumbsDown, ThumbsUp, Trash2, Volume2, X,
+  MessageSquarePlus, MoreHorizontal, Share2, Trash2, Volume2, X,
   BookOpen, Check, MapPin, SearchX, Bell } from "lucide-react";
 import dynamic from "next/dynamic";
 import { Mascot } from "@/components/mascot";
+import { openLotti } from "@/components/assistentin";
+import { FeedbackDaumen } from "@/components/feedback-daumen";
 import type { QaOrtPin } from "@/components/qa-orte-karte";
 
 // 5a/I-10: Leaflet kennt kein SSR — die Mini-Karte kommt nur im Browser.
@@ -37,6 +39,9 @@ import { api, apiUrl, authHeaders } from "@/lib/api";
 import { type ApiAntwort } from "@/lib/vertrag";
 import { useAuth } from "@/lib/auth";
 import { entwurfAbholen, entwurfMelden } from "@/lib/draft";
+import { leseSseStrom } from "@/lib/sse";
+import { ASK_SCHRITTE, type AskSchritt } from "@/lib/qa-schritte";
+import { GespraecheEinwilligung } from "@/components/gespraeche-einwilligung";
 import { leseHatGespraeche, leseQaBeispiele, merkeHatGespraeche, merkeQaBeispiele } from "@/lib/qa-zuletzt";
 import { Button, Input, toast } from "@/components/ui";
 // Die beiden Kanten, an denen der fixierte Composer und die Belege-Spalte
@@ -138,12 +143,10 @@ function waehleBeispiele(frisch: string[], count: number): string[] {
   return [...frei, ...pool.filter((f) => !frei.includes(f))].slice(0, count);
 }
 
-type Step = "expand" | "search" | "answer";
-const STEP_LABELS: Record<Step, string> = {
-  expand: "Frage wird in Suchbegriffe übersetzt",
-  search: "Beschlüsse werden durchsucht und sortiert",
-  answer: "Antwort wird formuliert",
-};
+// Die Schritt-Texte stehen seit 22.09.2026 in `lib/qa-schritte.ts` — Lottis
+// Fenster zeigt dieselben Rahmen, und zwei Fassungen liefen auseinander.
+type Step = AskSchritt;
+const STEP_LABELS = ASK_SCHRITTE;
 
 // Playful rotating status words (Claude-Code-style) shown while the model works.
 const PLAYFUL = [
@@ -171,7 +174,13 @@ const OUTCOME_LABEL: Record<string, string> = {
 };
 
 /** Gesprächs-Zeile der „Meine Gespräche"-Liste (5a/I-04). */
-type GespraechEintrag = { id: number; title: string; updated: string; n_turns: number };
+type GespraechEintrag = {
+  id: number; title: string; updated: string; n_turns: number;
+  /** `ask` (hier entstanden) oder `lotti` (in ihrem Fenster). Ohne dieses
+   *  Feld sahen beide gleich aus, und ein Lotti-Gespräch öffnete sich hier —
+   *  mit einem Verlauf, der so nie entstanden ist. */
+  kind?: string;
+};
 /** Wie viele Gesprächszeilen eine Seite bringt — der Rest kommt über
  *  „Ältere anzeigen" nach. */
 const GESPRAECHE_SEITE = 30;
@@ -361,81 +370,6 @@ function BelegPeek({ source, nummer, onClose, onListe }: {
       </div>
     </div>,
     document.body,
-  );
-}
-
-/** Daumen hoch/runter zur KI-Antwort (5a/I-03) — der einzige Qualitätsmesser
- *  außerhalb der Eval-Gold-Fälle. 👎 fragt optional nach dem Grund; gesendet
- *  wird fire-and-forget, der Dank kommt sofort. */
-function FeedbackDaumen({ turn }: { turn: Turn }) {
-  const [abgegeben, setAbgegeben] = useState<"up" | "down" | null>(null);
-  const [frageGrund, setFrageGrund] = useState(false);
-  const [reason, setGrund] = useState("");
-  const post = (rating: "up" | "down", grundText?: string) =>
-    void fetch(apiUrl("/council/qa-feedback"), {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json", ...authHeaders() },
-      body: JSON.stringify({
-        question: turn.question.slice(0, 300),
-        answer_excerpt: turn.answer.slice(0, 500) || null,
-        rating,
-        reason: grundText?.trim() || null,
-      }),
-    }).catch(() => {});
-  const senden = (rating: "up" | "down") => {
-    // Nochmal auf denselben Daumen: nichts zu melden, nichts zu senden — das
-    // spart eine Zeile in der Tabelle und einen Schlag aufs Rate-Limit.
-    if (rating === abgegeben) return;
-    const korrektur = abgegeben !== null;
-    setAbgegeben(rating);
-    setFrageGrund(rating === "down");
-    // Beim Umschwenken auf „hilfreich" ist der alte Grund hinfällig.
-    if (rating === "up") setGrund("");
-    // Der Daumen zählt sofort — auch wenn der Grund nie kommt.
-    post(rating);
-    if (rating === "up") toast.success(korrektur ? "Danke — Bewertung geändert." : "Danke für die Rückmeldung!");
-  };
-  const grundNachreichen = () => {
-    setFrageGrund(false);
-    // Nur mit echtem Text nachsenden — die Grund-Zeile ersetzt beim Auswerten
-    // den nackten Daumen (gleiche Frage, jüngerer Zeitstempel).
-    if (reason.trim()) post("down", reason);
-    toast.success("Danke für die Rückmeldung!");
-  };
-  return (
-    <span className="flex items-center gap-0.5">
-      {/* Beide Daumen bleiben anklickbar: Wer sich vertippt oder es sich
-          anders überlegt, muss die Bewertung ändern können (Tims Befund).
-          Der nicht gewählte Daumen tritt nur zurück, statt zu erstarren. */}
-      <button type="button" aria-label="Antwort war hilfreich" title="Hilfreich"
-        aria-pressed={abgegeben === "up"}
-        onClick={() => senden("up")}
-        className={cn("rounded-md p-1 transition-colors",
-          abgegeben === "up" ? "text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground",
-          abgegeben === "down" && "opacity-40 hover:opacity-100")}>
-        <ThumbsUp className="h-3.5 w-3.5" aria-hidden />
-      </button>
-      <button type="button" aria-label="Antwort war nicht hilfreich" title="Nicht hilfreich"
-        aria-pressed={abgegeben === "down"}
-        onClick={() => senden("down")}
-        className={cn("rounded-md p-1 transition-colors",
-          abgegeben === "down" ? "text-signal" : "text-muted-foreground hover:bg-muted hover:text-foreground",
-          abgegeben === "up" && "opacity-40 hover:opacity-100")}>
-        <ThumbsDown className="h-3.5 w-3.5" aria-hidden />
-      </button>
-      {frageGrund && (
-        <form className="ml-1 flex min-w-0 items-center gap-1"
-          onSubmit={(e) => { e.preventDefault(); grundNachreichen(); }}>
-          {/* 16px auf Touch: Unter 16px zoomt iOS-Safari beim Fokus in das
-              Feld hinein (Tims Befund beim Daumen runter). */}
-          <input value={reason} onChange={(e) => setGrund(e.target.value)} autoFocus
-            placeholder="Was war falsch? (optional)" maxLength={500}
-            className="h-7 w-44 min-w-0 rounded-md border border-border bg-card px-2 text-[16px] outline-none placeholder:text-muted-foreground/60 focus:border-primary sm:h-6 sm:w-40 sm:text-[11px]" />
-          <button type="submit" className="text-[11px] font-medium text-primary hover:underline">Senden</button>
-        </form>
-      )}
-    </span>
   );
 }
 
@@ -929,20 +863,10 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         try { const b = await res.json(); if (b?.detail) msg = typeof b.detail === "string" ? b.detail : msg; } catch { /* ignore */ }
         throw new Error(msg);
       }
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buf = "";
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buf += decoder.decode(value, { stream: true });
-        const chunks = buf.split("\n\n");
-        buf = chunks.pop() ?? "";
-        for (const chunk of chunks) {
-          const line = chunk.replace(/^data: ?/, "").trim();
-          if (!line) continue;
-          let msg: { type: string; [k: string]: unknown };
-          try { msg = JSON.parse(line); } catch { continue; }
+      // Das Zerlegen des Stroms steht in `lib/sse.ts` — eine Stelle für alle
+      // Leser (seit Lottis Fenster sind es zwei). Was ein Rahmen BEDEUTET,
+      // bleibt hier: Das weiß nur diese Ansicht.
+      await leseSseStrom(res.body, (msg) => {
           if (msg.type === "step") setStep(msg.step as Step);
           else if (msg.type === "sources") patchLast({
             sources: msg.sources as QaSource[],
@@ -967,6 +891,14 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
           else if (msg.type === "suggestions") patchLast({ followups: (msg.questions as string[]) ?? [] });
           else if (msg.type === "done") {
             patchLast({ cited: (msg.cited as number[]) ?? [],
+                        // Der Stand aus dem sources-Ereignis ist über ALLE
+                        // Kandidaten gerechnet, dieser hier über die
+                        // zitierten — er beschreibt also die Antwort, die
+                        // darüber steht. Fehlt er (ältere Fassung, keine
+                        // Zitate), bleibt der erste Wert stehen.
+                        ...(msg.records_state !== undefined
+                          ? { records_state: msg.records_state as Turn["records_state"] }
+                          : {}),
                         unclear: Boolean(msg.unclear) });
             // null heißt: Server konnte/durfte nicht (mehr) in dieses Gespräch
             // speichern (z. B. auf anderem Gerät gelöscht) — die tote id nicht
@@ -975,8 +907,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             else if ("conversation_id" in msg) setGespraechId(null);
           }
           else if (msg.type === "error") throw new Error((msg.message as string) ?? "Frage fehlgeschlagen.");
-        }
-      }
+      });
     } catch (e) {
       if ((e as Error)?.name === "AbortError") return;
       // Fehler-Turn: Die Frage ist nicht verloren — zurück ins Eingabefeld.
@@ -1167,25 +1098,13 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             return;
           }
           if (!res.ok || !res.body) throw new Error(String(res.status));
-          const reader = res.body.getReader();
-          const decoder = new TextDecoder();
-          let buf = "";
-          for (;;) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            buf += decoder.decode(value, { stream: true });
-            const chunks = buf.split("\n\n");
-            buf = chunks.pop() ?? "";
-            for (const chunk of chunks) {
-              if (chunk.startsWith(":")) continue; // Keepalive
-              const line = chunk.replace(/^data: ?/, "").trim();
-              if (!line) continue;
-              let msg: { type: string; [k: string]: unknown };
-              try { msg = JSON.parse(line); } catch { continue; }
-              deepAb.current.set(jobId, (deepAb.current.get(jobId) ?? 0) + 1);
-              if (verarbeite(msg)) beendet = true;
-            }
-          }
+          // Derselbe Leser wie bei der schnellen Frage (lib/sse.ts); die
+          // Keepalive-Zeilen dieses Stroms (`: …`) fallen dort als
+          // ungültiges JSON heraus.
+          await leseSseStrom(res.body, (msg) => {
+            deepAb.current.set(jobId, (deepAb.current.get(jobId) ?? 0) + 1);
+            if (verarbeite(msg)) beendet = true;
+          });
         } catch (e) {
           if ((e as Error)?.name === "AbortError") return;
         }
@@ -1524,6 +1443,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         sources?: QaSource[]; cited?: number[]; press_releases?: PresseHinweis[];
         debates?: DebattenHinweis[]; attachments?: AnlagenHinweis[];
         planning_procedures?: Planung[]; sessions?: SitzungsInfo[];
+        records_state?: Turn["records_state"];
         research?: boolean; context?: string | null; unclear?: boolean;
         documents_read?: number; period?: string;
         chart?: QaGrafik | null } | null };
@@ -1537,6 +1457,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         planning_procedures: t.sources?.planning_procedures ?? [],
         sessions: t.sources?.sessions ?? [],
         chart: t.sources?.chart ?? null,
+        records_state: t.sources?.records_state ?? null,
         cited: t.sources?.cited ?? [],
         // Die kondensierte Frage aus dem Snapshot, sonst die Originalfrage.
         // Sie ist der Schlüssel, unter dem nachladende Bausteine ihr Ergebnis
@@ -1629,10 +1550,25 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   useEffect(() => {
     const el = composerRef.current;
     if (!el) return;
-    const ro = new ResizeObserver(() => setComposerHoehe(el.offsetHeight));
+    // Die Höhe geht ZUSÄTZLICH als CSS-Variable ans Wurzelelement: Der
+    // schwebende Lotti-Knopf liegt in der App-Hülle, also außerhalb dieses
+    // Baums, und muss trotzdem über dem Composer bleiben — sonst deckt er
+    // den Senden-Pfeil ab (derselbe Konflikt, wegen dem `BackToTop` auf
+    // dieser Seite gar nicht erst erscheint).
+    const melden = (h: number) => {
+      setComposerHoehe(h);
+      document.documentElement.style.setProperty("--rl-composer", `${h}px`);
+    };
+    const ro = new ResizeObserver(() => melden(el.offsetHeight));
     ro.observe(el);
-    setComposerHoehe(el.offsetHeight);
-    return () => ro.disconnect();
+    melden(el.offsetHeight);
+    return () => {
+      ro.disconnect();
+      // Beim Verlassen der Fragen-Seite zurücksetzen: Sonst hielte der Knopf
+      // auf jeder anderen Seite weiter Abstand zu einem Composer, der dort
+      // gar nicht steht.
+      document.documentElement.style.removeProperty("--rl-composer");
+    };
   }, []);
 
   // Brücke zum History-Knopf im Seitenkopf (Tims TestFlight-Feedback 11.08.):
@@ -1829,7 +1765,17 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             onMehr={() => void mehrGespraeche()}
             aktivId={gespraechId}
             onNeu={() => { setSheetOffen(false); neuesGespraech(); }}
-            onLaden={(id) => void gespraechLaden(id)}
+            onLaden={(id, kind) => {
+              // **Ein Lotti-Gespräch gehört in ihr Fenster.** Hier geladen
+              // stünde ein Verlauf, der so nie entstanden ist: ohne
+              // Bildschirm-Bezug und ohne die Chips, die zu ihm gehören.
+              if (kind === "lotti") {
+                setSheetOffen(false);
+                openLotti(id);
+                return;
+              }
+              void gespraechLaden(id);
+            }}
             onLoeschen={(id) => void gespraechLoeschen(id)}
             onUmbenennen={(id, title) => void gespraechUmbenennen(id, title)}
             onClose={() => { setSheetOffen(false); setSuche(""); setSucheListe(null); }}
@@ -1849,38 +1795,13 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             {/* 6a①: Erstnutzungs-Frage — einmalig, solange nie beantwortet. */}
             {einstellung === null && (
               <div className="mb-5 w-full max-w-md rounded-2xl border border-primary/25 bg-primary/[0.04] p-4 text-left">
-                <div className="flex flex-col items-start gap-3 sm:flex-row">
-                  <Mascot pose="wave" className="h-10 w-10 shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-foreground">Soll ich mir deine Gespräche merken?</p>
-                    <p className="mt-1 text-hinweis text-muted-foreground">
-                      Wenn du magst, speichere ich deine Verläufe in deinem Konto — du findest
-                      sie dann auf allen Geräten oben unter „Gespräche". Wenn nicht, wird das
-                      Gespräch gelöscht, sobald du es schließt.
-                    </p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <button type="button" onClick={() => void einwilligen(true)}
-                        className="min-h-11 rounded-full bg-primary px-3.5 py-2 text-hinweis font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
-                        KI nutzen & merken
-                      </button>
-                      <button type="button" onClick={() => void einwilligen(false)}
-                        className="min-h-11 rounded-full border border-border px-3.5 py-2 text-hinweis font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-                        KI nutzen, nicht merken
-                      </button>
-                    </div>
-                    {/* V-01: Der Datenschutz-Hinweis zog aus dem Composer in die
-                        Einstellungen (gegen den Dauer-Lärm) — ein Neuling sah ihn
-                        damit nie vor seiner ersten Frage. Diese Karte unterbricht
-                        ohnehin genau einmal; hier gehört der Satz hin. */}
-                    <p className="mt-3 text-hinweis text-muted-foreground">
-                      Frage und passende Ratsauszüge werden über OpenRouter extern verarbeitet;
-                      eine Drittlandverarbeitung ist möglich. Mit einer Auswahl erlaubst du
-                      diese Übermittlung. Ohne sie kann „Frag den Rat“ keine Antwort erzeugen.
-                      Bitte keine personenbezogenen oder sensiblen Daten eingeben. Ob der Verlauf
-                      zusätzlich im Konto gespeichert wird, entscheidest du mit den beiden Optionen.
-                    </p>
-                  </div>
-                </div>
+                {/* Die Karte steht in `components/gespraeche-einwilligung.tsx`:
+                    Lottis Fenster stellt dieselbe Frage, und es ist wirklich
+                    DIESELBE — ein Schalter am Konto, eine Tabelle. Zwei Texte
+                    liefen auseinander. Der Fehlerfall bleibt hier lauter
+                    (Toast + Rücknahme), weil die Karte hier den Composer
+                    blockiert (Befund F12). */}
+                <GespraecheEinwilligung onEntschieden={(merken) => void einwilligen(merken)} />
               </div>
             )}
             {/* Design 15a: EIN Erklärsatz statt drei fast gleicher (Seiten-
@@ -2620,7 +2541,8 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
               )}
               <PrintButton iconOnly />
               {turn.answer && !turn.fehler && <VorlesenKnopf text={turn.answer} />}
-              {turn.answer && !turn.fehler && <FeedbackDaumen turn={turn} />}
+              {turn.answer && !turn.fehler
+                && <FeedbackDaumen question={turn.question} answer={turn.answer} />}
               <span role="status" className="min-w-0 basis-full text-hinweis text-muted-foreground sm:flex-1 sm:basis-auto sm:text-right">
                 {/* 5a/I-02 bzw. RG-10: ehrlich sagen, worauf die Antwort fußt. */}
                 {turn.unclear
@@ -2739,8 +2661,16 @@ function SheetZeile({ g, aktiv, offen, inAelter, aufklappen, onLaden, onLoeschen
         <button type="button" className="flex min-w-0 flex-1 items-center gap-2 text-left"
           onClick={() => { if (offen) aufklappen(null); else onLaden(); }}>
           <span className="min-w-0 flex-1">
-            <span className={cn("block truncate text-[14.5px] text-foreground", aktiv && "font-semibold")}>{g.title}</span>
+            <span className={cn("flex items-center gap-1.5 text-[14.5px] text-foreground", aktiv && "font-semibold")}>
+              {g.kind === "lotti" && (
+                <Mascot regung="ruht" decorative className="h-4 w-4 flex-none" />
+              )}
+              <span className="min-w-0 truncate">{g.title}</span>
+            </span>
             <span className="mt-px block text-[11.5px] text-muted-foreground">
+              {/* Woher es stammt, steht vorn: Wer die Liste überfliegt, sucht
+                  nicht die Möwe, sondern das Wort. */}
+              {g.kind === "lotti" ? "Mit Lotti · " : ""}
               {aktiv ? `${fragen} · gerade offen`
                 : inAelter ? `${relativTag(g.updated)} · ${fragen}` : fragen}
             </span>
@@ -2798,7 +2728,8 @@ function GespraecheSheet({ gespraeche, gesamt, treffer, weitere, laedtMehr, such
   sucht: boolean;
   suche: string; onSuche: (q: string) => void; onMehr: () => void;
   aktivId: number | null;
-  onNeu: () => void; onLaden: (id: number) => void; onLoeschen: (id: number) => void;
+  onNeu: () => void; onLaden: (id: number, kind?: string) => void;
+  onLoeschen: (id: number) => void;
   onUmbenennen: (id: number, title: string) => void; onClose: () => void;
 }) {
   const [offenId, setOffenId] = useState<number | null>(null);
@@ -2878,7 +2809,7 @@ function GespraecheSheet({ gespraeche, gesamt, treffer, weitere, laedtMehr, such
                   <SheetZeile key={g.id} g={g} aktiv={g.id === aktivId} offen={offenId === g.id}
                     inAelter={gr.name === "Älter"}
                     aufklappen={setOffenId}
-                    onLaden={() => onLaden(g.id)}
+                    onLaden={() => onLaden(g.id, g.kind)}
                     onLoeschen={() => { setOffenId(null); onLoeschen(g.id); }}
                     onUmbenennen={(title) => onUmbenennen(g.id, title)} />
                 ))}
@@ -3319,9 +3250,16 @@ function SteckbriefBaustein({ steckbriefe }: {
 /** Ehrlichkeits-Hinweis bei ALTEM Stand — das Gegenstück zur dünnen Beleglage.
  *
  *  Dort sind es zu wenige Belege, hier sind es alte: Zu Neu-Donnerschwee endet
- *  die Aktenlage im Februar 2023, die Antwort erzählte trotzdem im Präsens vom
+ *  die Aktenlage 2021/2023, die Antwort erzählte trotzdem im Präsens vom
  *  „geplanten" Wohnquartier (echte Nutzerfrage, 21.09.2026). Die Daten stehen
  *  ohnehin an jeder Quelle — dieser Satz sagt, was sie zusammen bedeuten.
+ *
+ *  Der Satz spricht ausdrücklich über die ANTWORT („die jüngste Quelle dieser
+ *  Antwort"), nicht über den Rat. Der Wert kommt seit dem Nachtrag aus den
+ *  ZITIERTEN Beschlüssen; ein „seit über vier Jahren hat der Rat dazu nichts
+ *  entschieden" wäre damit zu weit gegriffen — im Bestand kann sehr wohl ein
+ *  jüngerer Beschluss liegen, den diese Antwort nur nicht zitiert.
+ *
  *  Kein Ausweg-Knopf: Eine gründlichere Recherche findet keine Beschlüsse, die
  *  es nicht gibt. */
 function AlterStand({ stand }: { stand: NonNullable<Turn["records_state"]> }) {
@@ -3333,9 +3271,9 @@ function AlterStand({ stand }: { stand: NonNullable<Turn["records_state"]> }) {
     <p className="flex items-start gap-2 rounded-xl border border-border bg-card px-3.5 py-3 text-[12.5px] leading-relaxed text-muted-foreground">
       <History className="mt-0.5 h-3.5 w-3.5 shrink-0 text-signal" aria-hidden />
       <span>
-        Ältere Aktenlage: Der jüngste Beschluss dazu ist vom{" "}
+        Ältere Aktenlage: Die jüngste Quelle dieser Antwort ist vom{" "}
         <strong className="font-medium text-foreground">{fmtDatum(stand.latest)}</strong>{" "}
-        — seit über {dauer} hat der Rat dazu nichts mehr entschieden.
+        — über {dauer} alt.
       </span>
     </p>
   );

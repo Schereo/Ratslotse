@@ -32,6 +32,7 @@ import { useEffect, useRef } from "react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { useErklaerAnker } from "@/lib/erklaer-anker";
 
 /** Eine Zahl, die beim ersten Sichtkontakt von 0 auf ihren Wert zählt.
  *
@@ -130,8 +131,11 @@ export function Seitenbuehne({ kicker, zahl, sub, minibild, className }: {
   minibild?: Minibild;
   className?: string;
 }) {
+  // Erklär-Anker: Die Bühne trägt die eine gemessene Zahl der Seite — die
+  // häufigste Stelle, an der jemand „und was heißt das?" denkt.
+  const anker = useErklaerAnker("buehne", kicker);
   return (
-    <div className={cn("hh-seitenbuehne @container rounded-2xl", className)}>
+    <div {...anker} className={cn("hh-seitenbuehne @container rounded-2xl", className)}>
       <div className={cn(
         "flex flex-col gap-4 px-5 py-[18px]",
         minibild && "@lg:grid @lg:grid-cols-[1fr_224px] @lg:items-center",

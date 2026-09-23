@@ -695,6 +695,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/stats/assistant": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stats Assistant
+         * @description Wird Lotti angenommen — und wofür?
+         *
+         *     Die Fragen kommen aus den gespeicherten Gesprächen, also von den Konten
+         *     mit Einwilligung. Das anonyme Fragenprotokoll aus dem Plan ist gestrichen
+         *     (Tim, 21.09.2026): Ein freier Text, den niemand abgenickt hat, wird nicht
+         *     aufgehoben — auch nicht für eine gute Frage.
+         */
+        get: operations["stats_assistant_api_admin_stats_assistant_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/stats/cohorts": {
         parameters: {
             query?: never;
@@ -1456,6 +1481,65 @@ export interface paths {
          *     proxy buffers it (the client then renders the same final state at once).
          */
         post: operations["ask_api_council_ask_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/assistant/event": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Assistant Event
+         * @description Ein Ereignis zählen — je Konto und Tag, wie jeder andere Funktionszähler.
+         *
+         *     **Was NICHT mitgeht:** kein Zeitpunkt, keine Seite, keine Frage. Nur
+         *     welche Handlung es war.
+         */
+        post: operations["assistant_event_api_council_assistant_event_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/assistant/starters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Assistant Starters
+         * @description Die zwei kuratierten Startfragen fürs leere Lotti-Fenster dieser Seite.
+         *
+         *     **Kein Modellaufruf, keine Datenbank** — die Fragen stehen als Code in
+         *     ``kern/knowledge.py``; dieser Endpunkt normalisiert nur die Route wie
+         *     ``/explain`` und liefert sie route-genau aus. Der Client holt ihn einmal
+         *     je Route (React Query, wie ``ThemenBruecke`` in ``council-qa.tsx``) und
+         *     fragt ihn danach nicht mehr an, solange das Fenster offen bleibt.
+         *
+         *     **Ohne das Recht der Seite: leere Liste, kein 403.** Anders als bei
+         *     ``/explain`` steckt hier kein geschützter Inhalt hinter dem Riegel — die
+         *     beiden Fragen sind derselbe kuratierte Text, der in diesem Modul im
+         *     öffentlichen Repo steht, keine Haushaltszahl. Ein 403 wäre außerdem eine
+         *     Fehlermeldung für einen Aufruf, den niemand ausgelöst hat: Das Fenster
+         *     holt die Startfragen VON SELBST beim Öffnen, nicht auf einen Klick, und
+         *     ein Konto ohne `budget` sieht den Haushalts-Knopf ohnehin nie. Eine leere
+         *     Liste lässt den Client einfach bei „Was sehe ich hier?" — dieselbe
+         *     Oberfläche wie auf einer Seite, die dieses Modul gar nicht kennt.
+         */
+        get: operations["assistant_starters_api_council_assistant_starters_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2526,6 +2610,84 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/council/cities/movements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Cities Movements
+         * @description Ideen, die mehrere andere Räte hatten — je Idee EINE Zeile.
+         *
+         *     **Öffentlich**, wie die übrigen Städte-Endpunkte: Es stehen nur
+         *     Ratsdokumente anderer Städte darin und ein Urteil darüber, ob Oldenburg
+         *     dasselbe hat. Der Schalter sitzt an der Seite, nicht hier.
+         *
+         *     ``oldenburg`` filtert nach dem Urteil je Idee (``idea_fit``); leer heißt
+         *     alle, auch die noch unbeurteilten. ``sort`` ist ``staedte`` (die meisten
+         *     Städte zuerst) oder ``zuletzt`` (die jüngste Vorlage zuerst).
+         */
+        get: operations["cities_movements_api_council_cities_movements_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/cities/movements/detail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Cities Movement Detail
+         * @description Eine Bewegung mit allen Vorlagen — die Ideen-Seite.
+         *
+         *     Die Kennung als Query-Parameter, nicht als Pfadsegment: Der statische
+         *     Export des Frontends kennt keine dynamischen Pfade
+         *     (``web/frontend/CLAUDE.md``). Auch eine unbelegte Gruppe (``stable=0``)
+         *     ist abrufbar — sie steht nur in keiner Liste.
+         */
+        get: operations["cities_movement_detail_api_council_cities_movements_detail_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/cities/movements/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cities Movement Feedback
+         * @description „Stimmt" oder „stimmt nicht" zum Urteil über Oldenburg JE IDEE.
+         *
+         *     Derselbe Rückkanal wie an der Einzelkarte, nur am Urteil ``idea_fit``
+         *     (``object_kind='cluster'``) — die Tabelle ``feedback`` kennt die Art
+         *     schon. Die Antwort trägt die Gruppen-Kennung als ``paper_id``, damit die
+         *     Form dieselbe bleibt.
+         */
+        post: operations["cities_movement_feedback_api_council_cities_movements_feedback_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/council/cities/search": {
         parameters: {
             query?: never;
@@ -3012,6 +3174,34 @@ export interface paths {
         get: operations["entity_api_council_entity__slug__get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/explain": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Explain
+         * @description Erklärt, was gerade auf dem Bildschirm steht — als SSE-Strom.
+         *
+         *     Der Unterschied zu ``/ask``: **keine Suche**. Der Gegenstand steht auf der
+         *     Seite, die Person zeigt selbst darauf; gesucht werden muss nichts. Drei
+         *     Wege kommen ohne Modell aus (Glossar, Beschluss-Kurzfassung,
+         *     Seiten-Wissen) und antworten in wenigen Millisekunden.
+         *
+         *     **Gespeichert wird hier nichts** außer zwei Zählern: Markierung,
+         *     Element-Text und Frage stehen auf der Seite und bleiben dort.
+         */
+        post: operations["explain_api_council_explain_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5928,6 +6118,97 @@ export interface components {
             /** Prompt Tokens */
             prompt_tokens: number;
         };
+        /**
+         * AdminLotti
+         * @description Was der Reiter „Lotti" im Admin-Panel zeigt.
+         *
+         *     Die Fragen stammen **nur aus gespeicherten Gesprächen**, also von Konten
+         *     mit Einwilligung — ein Ausschnitt, und die Oberfläche sagt das auch.
+         */
+        AdminLotti: {
+            calls: components["schemas"]["AdminLottiAufrufe"];
+            /** Days */
+            days: number;
+            /** Elements */
+            elements: components["schemas"]["AdminLottiZeile"][];
+            feedback: components["schemas"]["AdminLottiDaumen"];
+            funnel: components["schemas"]["AdminLottiTrichter"];
+            nudge: components["schemas"]["AdminLottiAnstupser"];
+            /** Pages */
+            pages: components["schemas"]["AdminLottiZeile"][];
+            /** Questions */
+            questions: components["schemas"]["AdminLottiFrage"][];
+            /** Timeline */
+            timeline: components["schemas"]["AdminLottiTag"][];
+        };
+        /** AdminLottiAnstupser */
+        AdminLottiAnstupser: {
+            /** Accepted */
+            accepted: number;
+            /** Dismissed */
+            dismissed: number;
+            /** Shown */
+            shown: number;
+        };
+        /** AdminLottiAufrufe */
+        AdminLottiAufrufe: {
+            /** Handed Over */
+            handed_over: number;
+            /** Handed Over Auto */
+            handed_over_auto: number;
+            /** Opened */
+            opened: number;
+            /** With Model */
+            with_model: number;
+            /** Without Model */
+            without_model: number;
+        };
+        /** AdminLottiDaumen */
+        AdminLottiDaumen: {
+            /** Down */
+            down: number;
+            /** Reasons */
+            reasons: string[];
+            /** Up */
+            up: number;
+        };
+        /** AdminLottiFrage */
+        AdminLottiFrage: {
+            /** N */
+            n: number;
+            /** Question */
+            question: string;
+        };
+        /** AdminLottiTag */
+        AdminLottiTag: {
+            /** Client */
+            client: string;
+            /** Day */
+            day: string;
+            /** N */
+            n: number;
+        };
+        /**
+         * AdminLottiTrichter
+         * @description Von „war da" bis „speichert" — die vier Stufen der Annahme.
+         */
+        AdminLottiTrichter: {
+            /** Active */
+            active: number;
+            /** Asked */
+            asked: number;
+            /** Opened */
+            opened: number;
+            /** Saving */
+            saving: number;
+        };
+        /** AdminLottiZeile */
+        AdminLottiZeile: {
+            /** Key */
+            key: string;
+            /** N */
+            n: number;
+        };
         /** AdminMailAnlass */
         AdminMailAnlass: {
             /** Anlass */
@@ -6662,6 +6943,43 @@ export interface components {
             previous_answer: string;
             /** Question */
             question: string;
+            /**
+             * ScreenContext
+             * @description Was die Person vor sich hatte, als sie die Ratsfrage gestellt hat.
+             *
+             *     **Wozu.** Eine Frage aus Lottis Fenster trägt ihren Gegenstand oft nicht
+             *     im Wortlaut: „Und wer hat das beantragt?" steht neben einer Tabellenzeile,
+             *     die das „das" benennt. Ohne den Bildschirm sucht das Archiv nach nichts.
+             *
+             *     **Kürzer gedeckelt als bei ``/explain``** (600 statt 1.200 Zeichen): Dort
+             *     TRÄGT der Element-Text die Antwort, hier ist er Beiwerk — die Antwort
+             *     kommt aus den Beschlüssen, und ein langer Baustein verdrängte sie nur.
+             */
+            screen?: {
+                /**
+                 * Element Text
+                 * @default
+                 */
+                element_text: string;
+                /**
+                 * Element Title
+                 * @default
+                 */
+                element_title: string;
+                /**
+                 * Heading
+                 * @default
+                 */
+                heading: string;
+                refs?: components["schemas"]["ExplainRefs"];
+                /** Route */
+                route: string;
+                /**
+                 * Selection
+                 * @default
+                 */
+                selection: string;
+            } | null;
         };
         /**
          * AskTurn
@@ -6746,6 +7064,30 @@ export interface components {
             write_ups: number;
             /** Year */
             year: number;
+        };
+        /**
+         * AssistantEventBody
+         * @description Ein Ereignis aus Lottis Fenster, das sonst keinen Endpunkt hätte.
+         *
+         *     Das Öffnen des Fensters ruft nichts auf — ohne diesen Zähler ließe sich
+         *     „wird es überhaupt angeklickt?" nicht beantworten. Gebaut wie
+         *     ``POST /onboarding/tour``: ein Zähler, kein Zustand.
+         */
+        AssistantEventBody: {
+            /** Kind */
+            kind: string;
+        };
+        /**
+         * AssistantStarters
+         * @description Die zwei kuratierten Fragen fürs leere Lotti-Fenster einer Seite.
+         *
+         *     Kein Modellaufruf: Die Fragen stehen als Code in ``kern/knowledge.py``
+         *     (``PageKnowledge.starters``); der Endpunkt liefert sie nur route-genau
+         *     aus, damit Web und App dieselben zeigen.
+         */
+        AssistantStarters: {
+            /** Starters */
+            starters: string[];
         };
         /**
          * Attendance
@@ -7795,6 +8137,8 @@ export interface components {
         ConversationDetail: {
             /** Id */
             id: number;
+            /** Kind */
+            kind: string;
             /** Title */
             title: string;
             /** Turns */
@@ -7828,6 +8172,8 @@ export interface components {
         ConversationRow: {
             /** Id */
             id: number;
+            /** Kind */
+            kind: string;
             /** N Turns */
             n_turns: number;
             /** Title */
@@ -9592,6 +9938,110 @@ export interface components {
             slug: string;
         };
         /**
+         * ExplainBody
+         * @description Was Lotti zu sehen bekommt.
+         */
+        ExplainBody: {
+            /** Anchors */
+            anchors?: string[];
+            /** Conversation Id */
+            conversation_id?: number | null;
+            /**
+             * ExplainElement
+             * @description Das angeklickte Element — Schlüssel, Überschrift und sein Text.
+             *
+             *     Der Text wird aus dem DOM geerntet (``innerText`` des Elements mit dem
+             *     ``data-erklaer``-Anker). Er ist damit **Fremdtext**: Auf Beschluss-Seiten
+             *     steht darin, was jemand in eine Ratsvorlage geschrieben hat. Behandelt
+             *     wird er ausschließlich als Daten, siehe ``council/assistant.py``.
+             */
+            element?: {
+                /** Key */
+                key?: string | null;
+                /**
+                 * Text
+                 * @default
+                 */
+                text: string;
+                /**
+                 * Title
+                 * @default
+                 */
+                title: string;
+            } | null;
+            /**
+             * Heading
+             * @default
+             */
+            heading: string;
+            /** History */
+            history?: components["schemas"]["AskTurn"][];
+            /**
+             * Page Title
+             * @default
+             */
+            page_title: string;
+            /**
+             * Question
+             * @default
+             */
+            question: string;
+            refs?: components["schemas"]["ExplainRefs"];
+            /** Route */
+            route: string;
+            /**
+             * Selection
+             * @default
+             */
+            selection: string;
+        };
+        /**
+         * ExplainElement
+         * @description Das angeklickte Element — Schlüssel, Überschrift und sein Text.
+         *
+         *     Der Text wird aus dem DOM geerntet (``innerText`` des Elements mit dem
+         *     ``data-erklaer``-Anker). Er ist damit **Fremdtext**: Auf Beschluss-Seiten
+         *     steht darin, was jemand in eine Ratsvorlage geschrieben hat. Behandelt
+         *     wird er ausschließlich als Daten, siehe ``council/assistant.py``.
+         */
+        ExplainElement: {
+            /** Key */
+            key?: string | null;
+            /**
+             * Text
+             * @default
+             */
+            text: string;
+            /**
+             * Title
+             * @default
+             */
+            title: string;
+        };
+        /**
+         * ExplainRefs
+         * @description Die Kennungen aus der Adresszeile — nie Inhalte.
+         *
+         *     Ohne sie müsste das Backend erraten, welchen Beschluss die Seite zeigt;
+         *     mit ihnen schlägt es ihn nach. Die Query selbst kommt NICHT mit (dieselbe
+         *     Regel wie bei den Seitenaufrufen): Der Client zerlegt sie und schickt nur
+         *     die Felder, die hier stehen.
+         */
+        ExplainRefs: {
+            /** Area */
+            area?: string | null;
+            /** Decision Id */
+            decision_id?: number | null;
+            /** Ksinr */
+            ksinr?: number | null;
+            /** Place Id */
+            place_id?: string | null;
+            /** Slug */
+            slug?: string | null;
+            /** Year */
+            year?: number | null;
+        };
+        /**
          * FactionPhase
          * @description Eine Phase der Fraktions-/Gruppenzugehörigkeit aus den
          *     Anwesenheitslisten — die einzige echte Zeitreihe, denn das
@@ -10041,6 +10491,8 @@ export interface components {
             field: string;
             /** Missing */
             missing: number;
+            /** Movements */
+            movements: number;
             /** Multi City */
             multi_city: number;
             /** Not Applicable */
@@ -10680,6 +11132,177 @@ export interface components {
             title: string;
         };
         /**
+         * Movement
+         * @description Eine Idee, die mehrere andere Räte hatten.
+         */
+        Movement: {
+            /** Cities */
+            cities: components["schemas"]["MovementCity"][];
+            /** Cluster Id */
+            cluster_id: number;
+            /** Field */
+            field: string | null;
+            /** First Date */
+            first_date: string | null;
+            /** Label */
+            label: string;
+            /** Last Date */
+            last_date: string | null;
+            /** Members */
+            members: number;
+            /**
+             * OldenburgVerdict
+             * @description Hat Oldenburg diese Idee schon? — EIN Urteil je Idee (``idea_fit``).
+             *
+             *     ``evidence`` stützt den Status; ``related`` ist Lesestoff und belegt
+             *     nichts. Die Trennung ist der Grund für das Urteil je Idee: Im Entwurf
+             *     stand beides unter „Belege" und las sich wie eine Begründung für
+             *     „vorhanden".
+             */
+            oldenburg: {
+                /** Confidence */
+                confidence: string;
+                /** Evidence */
+                evidence: components["schemas"]["IdeaEvidence"][];
+                /** Related */
+                related: components["schemas"]["IdeaEvidence"][];
+                /** Situation */
+                situation: string;
+                /** Status */
+                status: string;
+            } | null;
+            /** Oldenburg Members */
+            oldenburg_members: number;
+            /** Outcomes */
+            outcomes: {
+                [key: string]: number;
+            };
+            /** Timeline */
+            timeline: components["schemas"]["TimelinePoint"][];
+        };
+        /**
+         * MovementCity
+         * @description Eine Stadt in einer Bewegung: wann sie zuerst dabei war und wie es ausging.
+         */
+        MovementCity: {
+            /** Body Id */
+            body_id: string;
+            /** City */
+            city: string;
+            /** First Date */
+            first_date: string | null;
+            /** Members */
+            members: number;
+            /** Outcomes */
+            outcomes: {
+                [key: string]: number;
+            };
+        };
+        /**
+         * MovementDetail
+         * @description Eine Bewegung mit allen Vorlagen — die Ideen-Seite.
+         */
+        MovementDetail: {
+            axis: components["schemas"]["TimeAxis"];
+            /** Documents */
+            documents: components["schemas"]["MovementDocument"][];
+            movement: components["schemas"]["Movement"];
+            /** Oldenburg Documents */
+            oldenburg_documents: components["schemas"]["IdeaEvidence"][];
+            /** Similar */
+            similar: components["schemas"]["MovementSimilar"][];
+        };
+        /**
+         * MovementDocument
+         * @description Eine Vorlage einer Bewegung, für die Ideen-Seite.
+         */
+        MovementDocument: {
+            /** Body Id */
+            body_id: string;
+            /** City */
+            city: string;
+            /** Date */
+            date: string | null;
+            /** Instrument */
+            instrument: string | null;
+            /** Kind */
+            kind: string;
+            /** Name */
+            name: string;
+            /** Originator */
+            originator: string | null;
+            /** Outcome */
+            outcome: string;
+            /** Paper Id */
+            paper_id: string;
+            /**
+             * IdeaProtocol
+             * @description Was die Niederschrift der Sitzung zu dieser Vorlage sagt.
+             *
+             *     Das „Warum" — der Grund, aus dem der Städtevergleich überhaupt gebaut
+             *     wurde: Dass Magdeburg die Verpackungssteuer-Prüfung eingestellt hat, sagt
+             *     die Karte schon; *warum* der Rat das tat, ist das, was eine Oldenburger
+             *     Fraktion in ihrer eigenen Sitzung braucht.
+             *
+             *     **``grounded`` entscheidet, ob überhaupt etwas gezeigt wird.** Steht im
+             *     Abschnitt nur ein Ergebnis und keine Begründung — der häufigere Fall —,
+             *     ist es ``False``, ``why`` bleibt leer, und die Oberfläche zeigt an dieser
+             *     Stelle nichts. Eine erfundene Begründung wäre schlimmer als gar keine.
+             */
+            protocol: {
+                /** Date */
+                date: string | null;
+                /** Decided */
+                decided: string;
+                /** Discussed */
+                discussed: string;
+                /** Grounded */
+                grounded: boolean;
+                /** Organization */
+                organization: string | null;
+                /** Vote */
+                vote: string | null;
+                /** Why */
+                why: string;
+            } | null;
+            /** Protocol Source */
+            protocol_source: string;
+            /** Summary */
+            summary: string | null;
+            /** Web */
+            web: string | null;
+        };
+        /**
+         * MovementSimilar
+         * @description Eine andere Bewegung desselben Themenfelds.
+         */
+        MovementSimilar: {
+            /** Cities */
+            cities: number;
+            /** Cluster Id */
+            cluster_id: number;
+            /** Label */
+            label: string;
+            /** Members */
+            members: number;
+        };
+        /** MovementsResponse */
+        MovementsResponse: {
+            axis: components["schemas"]["TimeAxis"];
+            /** Counts */
+            counts: {
+                [key: string]: number;
+            };
+            /** Items */
+            items: components["schemas"]["Movement"][];
+            /** Page */
+            page: number;
+            /** Per Page */
+            per_page: number;
+            /** Total */
+            total: number;
+        };
+        /**
          * MyTopicItem
          * @description „n TOPs zu deinen Themen" — Treffer der Tagesordnungs-Klassifikation.
          */
@@ -10834,6 +11457,27 @@ export interface components {
             id: number;
             /** Ok */
             ok: boolean;
+        };
+        /**
+         * OldenburgVerdict
+         * @description Hat Oldenburg diese Idee schon? — EIN Urteil je Idee (``idea_fit``).
+         *
+         *     ``evidence`` stützt den Status; ``related`` ist Lesestoff und belegt
+         *     nichts. Die Trennung ist der Grund für das Urteil je Idee: Im Entwurf
+         *     stand beides unter „Belege" und las sich wie eine Begründung für
+         *     „vorhanden".
+         */
+        OldenburgVerdict: {
+            /** Confidence */
+            confidence: string;
+            /** Evidence */
+            evidence: components["schemas"]["IdeaEvidence"][];
+            /** Related */
+            related: components["schemas"]["IdeaEvidence"][];
+            /** Situation */
+            situation: string;
+            /** Status */
+            status: string;
         };
         /** OnboardingState */
         OnboardingState: {
@@ -11794,6 +12438,11 @@ export interface components {
             rating: string;
             /** Reason */
             reason?: string | null;
+            /**
+             * Source
+             * @default ask
+             */
+            source: string;
         };
         /**
          * QaShare
@@ -12900,6 +13549,43 @@ export interface components {
             runoff: number;
         };
         /**
+         * ScreenContext
+         * @description Was die Person vor sich hatte, als sie die Ratsfrage gestellt hat.
+         *
+         *     **Wozu.** Eine Frage aus Lottis Fenster trägt ihren Gegenstand oft nicht
+         *     im Wortlaut: „Und wer hat das beantragt?" steht neben einer Tabellenzeile,
+         *     die das „das" benennt. Ohne den Bildschirm sucht das Archiv nach nichts.
+         *
+         *     **Kürzer gedeckelt als bei ``/explain``** (600 statt 1.200 Zeichen): Dort
+         *     TRÄGT der Element-Text die Antwort, hier ist er Beiwerk — die Antwort
+         *     kommt aus den Beschlüssen, und ein langer Baustein verdrängte sie nur.
+         */
+        ScreenContext: {
+            /**
+             * Element Text
+             * @default
+             */
+            element_text: string;
+            /**
+             * Element Title
+             * @default
+             */
+            element_title: string;
+            /**
+             * Heading
+             * @default
+             */
+            heading: string;
+            refs?: components["schemas"]["ExplainRefs"];
+            /** Route */
+            route: string;
+            /**
+             * Selection
+             * @default
+             */
+            selection: string;
+        };
+        /**
          * SessionDetail
          * @description Eine Sitzung mit allem, was die Sitzungs-Seite braucht.
          *
@@ -13343,6 +14029,39 @@ export interface components {
              * @constant
              */
             found: false;
+        };
+        /**
+         * TimeAxis
+         * @description EINE Zeitachse für alle Bewegungen, vom Server bestimmt.
+         *
+         *     Vom Jahresanfang der frühesten bis zum Jahresende der spätesten Vorlage
+         *     im GANZEN Bestand — nicht der Seite: Sonst verschöbe sich die Achse beim
+         *     Blättern, und derselbe Punkt stünde woanders. Web und App zeichnen damit
+         *     dieselbe Achse, ohne sie je selbst auszurechnen.
+         */
+        TimeAxis: {
+            /** End */
+            end: string | null;
+            /** Start */
+            start: string | null;
+        };
+        /**
+         * TimelinePoint
+         * @description Ein Punkt der Zeitleiste — eine Vorlage.
+         */
+        TimelinePoint: {
+            /** Body Id */
+            body_id: string;
+            /** City */
+            city: string;
+            /** Date */
+            date: string | null;
+            /** Kind */
+            kind: string;
+            /** Outcome */
+            outcome: string;
+            /** Paper Id */
+            paper_id: string;
         };
         /**
          * TodaySession
@@ -14994,6 +15713,37 @@ export interface operations {
             };
         };
     };
+    stats_assistant_api_admin_stats_assistant_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminLotti"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     stats_cohorts_api_admin_stats_cohorts_get: {
         parameters: {
             query?: {
@@ -16062,6 +16812,68 @@ export interface operations {
             };
         };
     };
+    assistant_event_api_council_assistant_event_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssistantEventBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    assistant_starters_api_council_assistant_starters_get: {
+        parameters: {
+            query?: {
+                route?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssistantStarters"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     haushalt_uebersicht_api_council_budget_get: {
         parameters: {
             query?: {
@@ -16611,6 +17423,107 @@ export interface operations {
             path: {
                 paper_id: string;
             };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedbackAck"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cities_movements_api_council_cities_movements_get: {
+        parameters: {
+            query?: {
+                field?: string | null;
+                oldenburg?: string;
+                min_cities?: number;
+                q?: string;
+                sort?: string;
+                page?: number;
+                per_page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MovementsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cities_movement_detail_api_council_cities_movements_detail_get: {
+        parameters: {
+            query: {
+                id: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MovementDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cities_movement_feedback_api_council_cities_movements_feedback_post: {
+        parameters: {
+            query: {
+                id: number;
+                verdict: string;
+                note?: string | null;
+            };
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -17341,6 +18254,63 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["EntityDetail"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    explain_api_council_explain_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExplainBody"];
+            };
+        };
+        responses: {
+            /**
+             * @description Server-Sent Events (`text/event-stream`). Jeder Rahmen ist eine `data:`-Zeile mit einem JSON-Objekt, das ein Feld `type` trägt:
+             *
+             *     - `step` — Fortschritt, `step` ist `context`, `answer` oder `archiv` (die Frage geht ins Beschluss-Archiv)
+             *     - `token` — ein Stück Erklärungstext (`text`)
+             *     - `replace` — ersetzt den bisher gesendeten Text vollständig
+             *     - `done` — Schluss-Ereignis mit `mode` (`deterministic` für die Wege ohne Modell, `handoff` für eine Archivfrage, die ohne Modellaufruf direkt an `POST /council/ask` geht — der Strom trägt dann keinen Text und kein `conversation_id` —, sonst `explain`), `next` (`ratsfrage`, wenn die Frage ins Beschluss-Archiv gehört, sonst `null`), `next_page` (`{route, title}` einer anderen Haushalts-Seite, auf der die Sache ausführlich steht — geprüft gegen die bekannten Seiten und die Rechte des Kontos, sonst `null`), `glossary` (die geprüften Fachwörter im Kontext), `evidence` (die Papiere hinter den Haushaltszahlen, die im Prompt standen — je Eintrag `label`, `year` und `url`; höchstens fünf, leer bei den Wegen ohne Modell) und `timings`
+             *     - `error` — die Erklärung ist fehlgeschlagen (`message`)
+             *
+             *     Ein Verbindungsabriss ist folgenlos: Der Client kann erneut fragen.
+             */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": string;
+                };
+            };
+            /** @description Zu dieser Seite gibt es keine Erklärung (mit Grund im `detail`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Die Seite gehört zu einem Recht, das dieses Konto nicht hat. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -20944,4 +21914,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 2211af94dffabd2a492491201149554b2de22a00cdb2e66d03434d48b0d5f474
+// vertrag-sha256: b0fc47a366049cd5f4276fe321a4894841555979a98de4ca12c5220d0dc26c24

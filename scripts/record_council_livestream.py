@@ -45,7 +45,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")
 
-from council import livestream, livetracker, stream_stt, videos  # noqa: E402
+from council import livestream, livetracker, stream_stt, stt_retain, videos  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 
 log = logging.getLogger(__name__)
@@ -65,12 +65,24 @@ RECORDING_ROOT = Path(tempfile.gettempdir()) / "council-livestream"
 
 
 def _record_fresh(ksinr: int, on_chunk=None) -> list[tuple[float, str]]:
-    """Eine Aufnahme in einem garantiert leeren, danach gelöschten Run-Pfad."""
+    """Eine Aufnahme in einem garantiert leeren, danach gelöschten Run-Pfad.
+
+    Vor dem Löschen wird eine feste Auswahl der Stücke aufgehoben
+    (``stt_retain``) — der Run-Pfad existiert dafür noch, das Verzeichnis
+    fliegt erst beim Verlassen des ``with``-Blocks weg."""
     RECORDING_ROOT.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(
         prefix=f"{ksinr}-", dir=RECORDING_ROOT
     ) as run_dir:
-        return livestream.record_and_transcribe(Path(run_dir), on_chunk=on_chunk)
+        run_path = Path(run_dir)
+        texte: dict[int, str] = {}
+        segments = livestream.record_and_transcribe(
+            run_path, on_chunk=on_chunk,
+            on_transcribed=lambda idx, path, text: texte.__setitem__(idx, text))
+        stuecke = sorted(run_path.glob("chunk_*.mp3"))
+        stt_retain.retain(ksinr, "chunks",
+                          [(p, texte.get(i, "")) for i, p in enumerate(stuecke)])
+        return segments
 
 
 def _tracker(store: CouncilStore, ksinr: int, window_seconds: int) -> livetracker.LiveTracker | None:
@@ -90,7 +102,8 @@ def _record(ksinr: int, tracker: livetracker.LiveTracker | None) -> tuple[list[t
         try:
             return stream_stt.record_and_transcribe(
                 on_window=tracker.on_window if tracker else None,
-                people=tracker.people if tracker else None), "gladia"
+                people=tracker.people if tracker else None,
+                ksinr=ksinr), "gladia"
         except stream_stt.StreamUnavailable as exc:
             log.warning("Streaming nicht möglich (%s) — Rückfall auf Stücke", exc)
             if tracker:

@@ -65,6 +65,7 @@ messen, sondern die Qualität einer **Bewertung**:
 | `eval/run_cities_fit.py` | Urteil über Oldenburg (`cities_fit`) | Beleg-Disziplin unter 100 % → Regression |
 | `eval/run_cities_sections.py` | Schnitt der Niederschriften (ohne Modell) | unter 75 % der Tagesordnungspunkte mit Abschnitt → Regression |
 | `eval/run_cities_reason.py` | Das „Warum" aus der Niederschrift (`cities_reason`) | **eine** erfundene Begründung → Regression |
+| `eval/run_cities_idea_fit.py` | Urteil je Idee über Oldenburg (`cities_idea_fit`) | eine erfundene Kennung oder ein falsches „vorhanden" → Regression; Status unter 70 % |
 
 ### Warum der Städtevergleich zwei Prüfstände hat
 

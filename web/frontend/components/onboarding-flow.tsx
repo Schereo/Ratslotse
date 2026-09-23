@@ -16,6 +16,7 @@ import { darfAdmin } from "@/lib/rechte";
 import { TopicSheet, type Described } from "@/components/topic-sheet";
 import { einladungStand, merkeEinladung } from "@/lib/tour-einladung";
 import { StadtteilKarte } from "@/components/stadtteil-karte";
+import { useVollbildMelden } from "@/lib/vollbild";
 
 /** Design 26a — geführtes Onboarding: einrichten statt nur vorstellen.
  *
@@ -344,6 +345,13 @@ export function OnboardingFlow() {
     flowVisible = step !== null;
     return () => { flowVisible = false; };
   }, [step]);
+
+  // …und der Lotti-Knopf tritt ganz weg. Gemeldet wird erst, wenn der Flow
+  // WIRKLICH steht — nicht schon, während er auf `/onboarding/setup` wartet
+  // (`flowEntscheidet`): Bleibt diese Antwort aus, hinge der Knopf sonst
+  // dauerhaft an einer Entscheidung, die nie fällt. Ein Wimpernschlag Knopf
+  // vor dem Assistenten ist der bessere Ausfall als gar kein Knopf mehr.
+  useVollbildMelden("onboarding", step !== null);
 
   // Und solange er noch überlegt, ebenfalls. Steht das Ergebnis fest und lautet
   // es „nicht zeigen", muss das Signal kommen, das die geparkten Abzeichen

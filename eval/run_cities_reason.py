@@ -181,7 +181,7 @@ def ein_lauf(faelle: list[dict], ann) -> dict:
                               datum=f["date"], punkt=f["item"],
                               abschnitt=f["section"][:ann.input_chars])}],
                 max_tokens=ann.max_tokens, temperature=ann.temperature,
-                extra_body={"provider": {}} if ann.routing_free else {},
+                extra_body={},
                 _feature=ann.feature)
             nutzlast = ann.payload.model_validate(
                 parse_json(antwort.choices[0].message.content or ""))

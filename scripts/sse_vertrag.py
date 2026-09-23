@@ -37,9 +37,23 @@ from pathlib import Path
 WURZEL = Path(__file__).resolve().parents[1]
 FRAGE = WURZEL / "web" / "backend" / "app" / "routers" / "council.py"
 RECHERCHE = WURZEL / "web" / "backend" / "app" / "deepresearch.py"
-WEB = WURZEL / "web" / "frontend" / "components" / "council-qa.tsx"
-APP = (WURZEL / "ios" / "Packages" / "RatslotseFeatures" / "Sources"
-       / "RatslotseFeatures" / "QuestionsView.swift")
+#: Die Web-Leser des Stroms. Seit 09/2026 zwei: das Ratsgespräch und
+#: Lottis Fenster — beide parsen dieselben Rahmen, und beide können ein
+#: Feld lesen, das niemand schickt.
+WEB_LESER = (
+    WURZEL / "web" / "frontend" / "components" / "council-qa.tsx",
+    WURZEL / "web" / "frontend" / "components" / "assistentin" / "panel.tsx",
+)
+WEB = WEB_LESER[0]
+#: Die App-Leser des Stroms. Seit 09/2026 zwei — wie im Web: das
+#: Ratsgespräch und Lottis Blatt.
+APP_LESER = (
+    WURZEL / "ios" / "Packages" / "RatslotseFeatures" / "Sources"
+    / "RatslotseFeatures" / "QuestionsView.swift",
+    WURZEL / "ios" / "Packages" / "RatslotseFeatures" / "Sources"
+    / "RatslotseFeatures" / "AssistantSheet.swift",
+)
+APP = APP_LESER[0]
 SSE_CLIENT = (WURZEL / "ios" / "Packages" / "RatslotseAPI" / "Sources"
               / "RatslotseAPI" / "SSEClient.swift")
 
@@ -150,13 +164,36 @@ def _block(text: str, von: str, bis: str) -> str:
 
 
 def web_gelesen() -> set[str]:
-    """Jedes ``msg.<feld>`` aus den Strom-Blöcken."""
-    return set(re.findall(r"\bmsg\.([a-z_]+)\b", WEB.read_text())) - {"type"}
+    """Jedes ``msg.<feld>`` aus den Strom-Blöcken — aus BEIDEN Web-Lesern."""
+    aus: set[str] = set()
+    for pfad in WEB_LESER:
+        if pfad.exists():
+            aus |= set(re.findall(r"\bmsg\.([a-z_]+)\b", pfad.read_text()))
+    return aus - {"type"}
 
 
 def web_blob_gelesen() -> set[str]:
-    """Jedes ``t.sources?.<feld>`` — was das Web aus einem geladenen Gespräch holt."""
-    return set(re.findall(r"t\.sources\?\.([a-z_]+)", WEB.read_text()))
+    """Jedes ``…sources?.<feld>`` — was das Web aus einem geladenen Gespräch holt.
+
+    Aus BEIDEN Lesern, wie beim Strom. Bis 22.09.2026 stand hier nur das
+    Ratsgespräch (``WEB``); Lottis Fenster war ungeprüft — ausgerechnet der
+    Leser, der zuletzt dazugekommen ist.
+
+    **Warum die Variablennamen trotzdem in der Regex stehen.** Im
+    Ratsgespräch gibt es ein ZWEITES ``sources``: der Schnappschuss eines
+    Recherche-AUFTRAGS (``job.sources``), geschrieben von
+    ``deep_job_update`` und nicht von ``qa_turn_speichern``. Er trägt
+    eigene Felder (``facets``, ``facets_done``), die in diesem Blob nichts
+    verloren haben — eine Regex auf jedes ``*.sources?.`` meldete sie als
+    Leichen, und zwei falsche Befunde machen die Prüfung stumpf. Gesucht
+    wird deshalb, was eine RUNDE heißt.
+    """
+    aus: set[str] = set()
+    for pfad in WEB_LESER:
+        if pfad.exists():
+            aus |= set(re.findall(r"\b(?:t|tn|turn)\.sources\?\.([a-z_]+)",
+                                  pfad.read_text()))
+    return aus
 
 
 def app_gelesen() -> set[str]:
@@ -166,7 +203,9 @@ def app_gelesen() -> set[str]:
     in der Ansicht, sondern als abgeleitete Eigenschaften im `SSEEvent`. Wer
     nur die Ansicht liest, prüft die Hälfte.
     """
-    aus = set(re.findall(r'event\.fields\["([a-z_]+)"\]', APP.read_text()))
+    aus: set[str] = set()
+    for datei in APP_LESER:
+        aus |= set(re.findall(r'event\.fields\["([a-z_]+)"\]', datei.read_text()))
     aus |= set(re.findall(r'fields\["([a-z_]+)"\]', SSE_CLIENT.read_text()))
     kodier = _block(SSE_CLIENT.read_text(), "enum CodingKeys", "\n    }")
     aus |= set(re.findall(r'=\s*"([a-z_]+)"', kodier))

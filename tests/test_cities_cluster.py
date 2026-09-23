@@ -261,8 +261,9 @@ def test_die_gruppierung_selbst_bleibt_unangetastet(monkeypatch, store):
     assert store.annotation("cluster", "1:1", "cluster_check", "1") is not None
 
 
-def test_der_cron_schritt_rechnet_alle_fuenf_stufen(monkeypatch):
-    """Einbetten, gruppieren, prüfen, die Haltung — und der Mehrheits-Status.
+def test_der_cron_schritt_rechnet_alle_stufen(monkeypatch):
+    """Einbetten, gruppieren, prüfen, die Haltung, der Mehrheits-Status — und
+    seit Plan PR 47 die Idee als Ganzes (`idea_groups`).
 
     Bis 10.09.2026 fehlte die vierte: `stance_all` hing an einem Handaufruf.
     Der Cron hätte neue Vorlagen gruppiert und geprüft, aber nie gefragt, ob
@@ -281,13 +282,17 @@ def test_der_cron_schritt_rechnet_alle_fuenf_stufen(monkeypatch):
                         lambda *a, **k: gerufen.append("check") or {"checked": 1})
     monkeypatch.setattr(clusters, "stance_all",
                         lambda *a, **k: gerufen.append("stance") or {"annotated": 2})
+    monkeypatch.setattr(clusters, "rebuild_idea_groups",
+                        lambda *a, **k: gerufen.append("idea_groups") or 5)
 
     class Store:
         def rebuild_group_status(self, *a, **k):
             gerufen.append("group_status"); return 7
 
     zahlen = clusters.run(main=Store())
-    assert gerufen == ["embed", "build", "check", "stance", "group_status"], gerufen
+    assert gerufen == ["embed", "build", "check", "stance", "group_status",
+                       "idea_groups"], gerufen
     assert zahlen["stance_annotated"] == 2, "die Kennzahlen des vierten Schritts fehlen"
     assert zahlen["group_status"] == 7, "der fünfte Schritt meldet nichts"
     assert zahlen["embedded"] == 3 and zahlen["check_checked"] == 1
+    assert zahlen["idea_groups"] == 5, "der sechste Schritt meldet nichts"
