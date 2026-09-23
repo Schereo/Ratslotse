@@ -128,6 +128,9 @@ OEFFENTLICH = {
     # Persönliches: Ein Wahlbezirk hat mindestens einige hundert Wählende.
     ("get", "/api/wahlabend/wahlbezirke"),
     ("get", "/api/wahlabend/wahlbezirke/rangliste"),
+    # Dieselben Zahlen für die Stadtkarte: wer je Urnenbezirk vorn lag und in
+    # welchen Ortsbereichen der Bezirk liegt (docs/plan-viertel-wahlkarte.md).
+    ("get", "/api/wahlabend/karte"),
     # Und dieselbe Tabelle von der anderen Seite: eine Kandidatur in allen
     # ihren Wahlbezirken. Namen und Zahlen stehen so in der amtlichen
     # Ergebnisdarstellung.

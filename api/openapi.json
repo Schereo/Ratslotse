@@ -9585,6 +9585,363 @@
         "title": "ElectionMandate",
         "type": "object"
       },
+      "ElectionMap": {
+        "description": "``GET /api/wahlabend/karte`` — das Ergebnis je Wahlbezirk für die\nStadtkarte (docs/plan-viertel-wahlkarte.md). Gerechnet wird hier, nicht\nin Web und App: wer vorn lag, wie deutlich, wo der Bezirk liegt.",
+        "properties": {
+          "areas": {
+            "items": {
+              "$ref": "#/components/schemas/ElectionMapArea"
+            },
+            "title": "Areas",
+            "type": "array"
+          },
+          "contestants": {
+            "items": {
+              "$ref": "#/components/schemas/ElectionMapContestant"
+            },
+            "title": "Contestants",
+            "type": "array"
+          },
+          "counted": {
+            "title": "Counted",
+            "type": "integer"
+          },
+          "districts": {
+            "items": {
+              "$ref": "#/components/schemas/ElectionMapDistrict"
+            },
+            "title": "Districts",
+            "type": "array"
+          },
+          "election": {
+            "$ref": "#/components/schemas/ElectionMapChoice"
+          },
+          "elections": {
+            "items": {
+              "$ref": "#/components/schemas/ElectionMapChoice"
+            },
+            "title": "Elections",
+            "type": "array"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "place": {
+            "title": "Place",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "postal_share_pct": {
+            "title": "Postal Share Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "ties": {
+            "title": "Ties",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "wins": {
+            "items": {
+              "$ref": "#/components/schemas/ElectionMapWin"
+            },
+            "title": "Wins",
+            "type": "array"
+          }
+        },
+        "required": [
+          "election",
+          "elections",
+          "phase",
+          "contestants",
+          "postal_share_pct",
+          "total",
+          "counted",
+          "wins",
+          "ties",
+          "place",
+          "districts",
+          "areas"
+        ],
+        "title": "ElectionMap",
+        "type": "object"
+      },
+      "ElectionMapArea": {
+        "description": "Ein Wahlbereich MIT Briefwahl — der Vergleich neben dem Bezirk, denn\ndie Briefwahl (2026 ein Drittel der Stimmen) hat keine Fläche.",
+        "properties": {
+          "counted": {
+            "title": "Counted",
+            "type": "integer"
+          },
+          "leader": {
+            "title": "Leader",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "number": {
+            "title": "Number",
+            "type": "integer"
+          },
+          "parties": {
+            "items": {
+              "$ref": "#/components/schemas/ElectionMapShare"
+            },
+            "title": "Parties",
+            "type": "array"
+          },
+          "roman": {
+            "title": "Roman",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "valid_votes": {
+            "title": "Valid Votes",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "number",
+          "roman",
+          "counted",
+          "total",
+          "valid_votes",
+          "leader",
+          "parties"
+        ],
+        "title": "ElectionMapArea",
+        "type": "object"
+      },
+      "ElectionMapChoice": {
+        "description": "Eine Wahl, die die Karte zeigen kann.",
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "label",
+          "kind",
+          "date"
+        ],
+        "title": "ElectionMapChoice",
+        "type": "object"
+      },
+      "ElectionMapContestant": {
+        "description": "Eine Liste (Ratswahl) oder Kandidatur (OB-Wahl) mit ihrer Kartenfarbe.",
+        "properties": {
+          "color": {
+            "title": "Color",
+            "type": "string"
+          },
+          "color_dark": {
+            "title": "Color Dark",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "short": {
+            "title": "Short",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "short",
+          "name",
+          "color",
+          "color_dark"
+        ],
+        "title": "ElectionMapContestant",
+        "type": "object"
+      },
+      "ElectionMapDistrict": {
+        "description": "Ein Urnenbezirk auf der Karte: wer vorn lag, wie deutlich, und wo er liegt.",
+        "properties": {
+          "area": {
+            "title": "Area",
+            "type": "integer"
+          },
+          "counted": {
+            "title": "Counted",
+            "type": "boolean"
+          },
+          "leader": {
+            "title": "Leader",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "margin_pct": {
+            "title": "Margin Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "integer"
+          },
+          "parties": {
+            "items": {
+              "$ref": "#/components/schemas/ElectionMapShare"
+            },
+            "title": "Parties",
+            "type": "array"
+          },
+          "places": {
+            "items": {
+              "$ref": "#/components/schemas/ElectionMapPlace"
+            },
+            "title": "Places",
+            "type": "array"
+          },
+          "runner_up": {
+            "title": "Runner Up",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "turnout_pct": {
+            "title": "Turnout Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "valid_votes": {
+            "title": "Valid Votes",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "number",
+          "name",
+          "area",
+          "counted",
+          "leader",
+          "runner_up",
+          "margin_pct",
+          "turnout_pct",
+          "valid_votes",
+          "places",
+          "parties"
+        ],
+        "title": "ElectionMapDistrict",
+        "type": "object"
+      },
+      "ElectionMapPlace": {
+        "description": "Ein Ortsbereich, in dem ein Wahlbezirk liegt — mit Flächenanteil 0…1.",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "share": {
+            "title": "Share",
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "share"
+        ],
+        "title": "ElectionMapPlace",
+        "type": "object"
+      },
+      "ElectionMapShare": {
+        "properties": {
+          "share_pct": {
+            "title": "Share Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "votes": {
+            "title": "Votes",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "slug",
+          "votes",
+          "share_pct"
+        ],
+        "title": "ElectionMapShare",
+        "type": "object"
+      },
+      "ElectionMapWin": {
+        "description": "Die Legende: in wie vielen Urnenbezirken eine Liste vorn lag.",
+        "properties": {
+          "districts": {
+            "title": "Districts",
+            "type": "integer"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "districts"
+        ],
+        "title": "ElectionMapWin",
+        "type": "object"
+      },
       "ElectionNight": {
         "properties": {
           "areas": {
@@ -32456,6 +32813,68 @@
           }
         },
         "summary": "Wahlabend Kandidaten",
+        "tags": [
+          "wahlabend"
+        ]
+      }
+    },
+    "/api/wahlabend/karte": {
+      "get": {
+        "description": "Das Ergebnis je Urnenbezirk für die Stadtkarte: wer vorn lag, wie\ndeutlich, in welchen Ortsbereichen der Bezirk liegt — und je Wahlbereich\nder Stand MIT Briefwahl (docs/plan-viertel-wahlkarte.md).\n\nÖffentlich wie der Wahlabend, hinter demselben Schalter. Nichts\nPersönliches, kein Sprachmodell: Zahlen der Stadt, gezählt.",
+        "operationId": "wahlabend_karte_je_bezirk_api_wahlabend_karte_get",
+        "parameters": [
+          {
+            "description": "Slug der Wahl (Ratswahl, OB-Wahl, Stichwahl); leer = die Ratswahl",
+            "in": "query",
+            "name": "wahl",
+            "required": false,
+            "schema": {
+              "description": "Slug der Wahl (Ratswahl, OB-Wahl, Stichwahl); leer = die Ratswahl",
+              "title": "Wahl",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "nur die Wahlbezirke, die diesen Ortsbereich berühren",
+            "in": "query",
+            "name": "place",
+            "required": false,
+            "schema": {
+              "description": "nur die Wahlbezirke, die diesen Ortsbereich berühren",
+              "title": "Place",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ElectionMap"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Wahlabend Karte Je Bezirk",
         "tags": [
           "wahlabend"
         ]

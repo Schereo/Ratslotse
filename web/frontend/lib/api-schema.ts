@@ -5513,6 +5513,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/wahlabend/karte": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Wahlabend Karte Je Bezirk
+         * @description Das Ergebnis je Urnenbezirk für die Stadtkarte: wer vorn lag, wie
+         *     deutlich, in welchen Ortsbereichen der Bezirk liegt — und je Wahlbereich
+         *     der Stand MIT Briefwahl (docs/plan-viertel-wahlkarte.md).
+         *
+         *     Öffentlich wie der Wahlabend, hinter demselben Schalter. Nichts
+         *     Persönliches, kein Sprachmodell: Zahlen der Stadt, gezählt.
+         */
+        get: operations["wahlabend_karte_je_bezirk_api_wahlabend_karte_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/wahlabend/karte.png": {
         parameters: {
             query?: never;
@@ -9697,6 +9722,145 @@ export interface components {
             slug: string;
             /** Votes */
             votes: number | null;
+        };
+        /**
+         * ElectionMap
+         * @description ``GET /api/wahlabend/karte`` — das Ergebnis je Wahlbezirk für die
+         *     Stadtkarte (docs/plan-viertel-wahlkarte.md). Gerechnet wird hier, nicht
+         *     in Web und App: wer vorn lag, wie deutlich, wo der Bezirk liegt.
+         */
+        ElectionMap: {
+            /** Areas */
+            areas: components["schemas"]["ElectionMapArea"][];
+            /** Contestants */
+            contestants: components["schemas"]["ElectionMapContestant"][];
+            /** Counted */
+            counted: number;
+            /** Districts */
+            districts: components["schemas"]["ElectionMapDistrict"][];
+            election: components["schemas"]["ElectionMapChoice"];
+            /** Elections */
+            elections: components["schemas"]["ElectionMapChoice"][];
+            /** Phase */
+            phase: string;
+            /** Place */
+            place: string | null;
+            /** Postal Share Pct */
+            postal_share_pct: number | null;
+            /** Ties */
+            ties: number;
+            /** Total */
+            total: number;
+            /** Wins */
+            wins: components["schemas"]["ElectionMapWin"][];
+        };
+        /**
+         * ElectionMapArea
+         * @description Ein Wahlbereich MIT Briefwahl — der Vergleich neben dem Bezirk, denn
+         *     die Briefwahl (2026 ein Drittel der Stimmen) hat keine Fläche.
+         */
+        ElectionMapArea: {
+            /** Counted */
+            counted: number;
+            /** Leader */
+            leader: string | null;
+            /** Number */
+            number: number;
+            /** Parties */
+            parties: components["schemas"]["ElectionMapShare"][];
+            /** Roman */
+            roman: string;
+            /** Total */
+            total: number;
+            /** Valid Votes */
+            valid_votes: number | null;
+        };
+        /**
+         * ElectionMapChoice
+         * @description Eine Wahl, die die Karte zeigen kann.
+         */
+        ElectionMapChoice: {
+            /** Date */
+            date: string;
+            /** Kind */
+            kind: string;
+            /** Label */
+            label: string;
+            /** Slug */
+            slug: string;
+        };
+        /**
+         * ElectionMapContestant
+         * @description Eine Liste (Ratswahl) oder Kandidatur (OB-Wahl) mit ihrer Kartenfarbe.
+         */
+        ElectionMapContestant: {
+            /** Color */
+            color: string;
+            /** Color Dark */
+            color_dark: string;
+            /** Name */
+            name: string;
+            /** Short */
+            short: string;
+            /** Slug */
+            slug: string;
+        };
+        /**
+         * ElectionMapDistrict
+         * @description Ein Urnenbezirk auf der Karte: wer vorn lag, wie deutlich, und wo er liegt.
+         */
+        ElectionMapDistrict: {
+            /** Area */
+            area: number;
+            /** Counted */
+            counted: boolean;
+            /** Leader */
+            leader: string | null;
+            /** Margin Pct */
+            margin_pct: number | null;
+            /** Name */
+            name: string;
+            /** Number */
+            number: number;
+            /** Parties */
+            parties: components["schemas"]["ElectionMapShare"][];
+            /** Places */
+            places: components["schemas"]["ElectionMapPlace"][];
+            /** Runner Up */
+            runner_up: string | null;
+            /** Turnout Pct */
+            turnout_pct: number | null;
+            /** Valid Votes */
+            valid_votes: number | null;
+        };
+        /**
+         * ElectionMapPlace
+         * @description Ein Ortsbereich, in dem ein Wahlbezirk liegt — mit Flächenanteil 0…1.
+         */
+        ElectionMapPlace: {
+            /** Name */
+            name: string;
+            /** Share */
+            share: number;
+        };
+        /** ElectionMapShare */
+        ElectionMapShare: {
+            /** Share Pct */
+            share_pct: number | null;
+            /** Slug */
+            slug: string;
+            /** Votes */
+            votes: number | null;
+        };
+        /**
+         * ElectionMapWin
+         * @description Die Legende: in wie vielen Urnenbezirken eine Liste vorn lag.
+         */
+        ElectionMapWin: {
+            /** Districts */
+            districts: number;
+            /** Slug */
+            slug: string;
         };
         /** ElectionNight */
         ElectionNight: {
@@ -21887,6 +22051,40 @@ export interface operations {
             };
         };
     };
+    wahlabend_karte_je_bezirk_api_wahlabend_karte_get: {
+        parameters: {
+            query?: {
+                /** @description Slug der Wahl (Ratswahl, OB-Wahl, Stichwahl); leer = die Ratswahl */
+                wahl?: string | null;
+                /** @description nur die Wahlbezirke, die diesen Ortsbereich berühren */
+                place?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ElectionMap"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     wahlabend_karte_api_wahlabend_karte_png_get: {
         parameters: {
             query: {
@@ -22227,4 +22425,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: fd9a34d7c3254b5816f678867c6d30a2ec8330845053d96fcccb2645a0895af1
+// vertrag-sha256: 4923d817d1ad36931068a52f84269f8883f132f5671a2e6cc58bd2b9098cb874

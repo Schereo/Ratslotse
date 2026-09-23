@@ -4766,6 +4766,101 @@ class MayorDistrictList(TypedDict):
     districts: list[MayorDistrictEntry]
 
 
+# ------------------------------------------------------------------ Wahlkarte
+
+class ElectionMapContestant(TypedDict):
+    """Eine Liste (Ratswahl) oder Kandidatur (OB-Wahl) mit ihrer Kartenfarbe."""
+    slug: str
+    #: Kurz für Karte und Legende („SPD", „Prange").
+    short: str
+    name: str
+    color: str
+    color_dark: str
+
+
+class ElectionMapShare(TypedDict):
+    slug: str
+    votes: int | None
+    share_pct: float | None
+
+
+class ElectionMapPlace(TypedDict):
+    """Ein Ortsbereich, in dem ein Wahlbezirk liegt — mit Flächenanteil 0…1."""
+    name: str
+    share: float
+
+
+class ElectionMapDistrict(TypedDict):
+    """Ein Urnenbezirk auf der Karte: wer vorn lag, wie deutlich, und wo er liegt."""
+    number: int
+    name: str
+    area: int
+    counted: bool
+    #: Slug der stärksten Liste bzw. Kandidatur — ``None``, solange nicht gezählt.
+    leader: str | None
+    runner_up: str | None
+    #: Vorsprung auf Platz 2 in Prozentpunkten — trägt die Deckkraft der Fläche.
+    margin_pct: float | None
+    turnout_pct: float | None
+    valid_votes: int | None
+    #: Die Ortsbereiche, in denen er liegt, größter Anteil zuerst.
+    places: list[ElectionMapPlace]
+    #: Alle Listen bzw. Kandidaturen, stärkste zuerst.
+    parties: list[ElectionMapShare]
+
+
+class ElectionMapArea(TypedDict):
+    """Ein Wahlbereich MIT Briefwahl — der Vergleich neben dem Bezirk, denn
+    die Briefwahl (2026 ein Drittel der Stimmen) hat keine Fläche."""
+    number: int
+    roman: str
+    counted: int
+    total: int
+    valid_votes: int | None
+    leader: str | None
+    parties: list[ElectionMapShare]
+
+
+class ElectionMapWin(TypedDict):
+    """Die Legende: in wie vielen Urnenbezirken eine Liste vorn lag."""
+    slug: str
+    districts: int
+
+
+class ElectionMapChoice(TypedDict):
+    """Eine Wahl, die die Karte zeigen kann."""
+    slug: str
+    #: Kurz für den Umschalter („Ratswahl", „OB-Wahl", „Stichwahl").
+    label: str
+    kind: str
+    date: str
+
+
+class ElectionMap(TypedDict):
+    """``GET /api/wahlabend/karte`` — das Ergebnis je Wahlbezirk für die
+    Stadtkarte (docs/plan-viertel-wahlkarte.md). Gerechnet wird hier, nicht
+    in Web und App: wer vorn lag, wie deutlich, wo der Bezirk liegt."""
+    election: ElectionMapChoice
+    #: Alle Wahlen, zwischen denen die Karte umschalten kann.
+    elections: list[ElectionMapChoice]
+    #: "before" | "counting" | "complete" — über die Urnenbezirke.
+    phase: str
+    contestants: list[ElectionMapContestant]
+    #: Anteil der Briefwahl an allen gültigen Stimmen, in Prozent.
+    postal_share_pct: float | None
+    #: Urnenbezirke — nur sie haben eine Fläche.
+    total: int
+    counted: int
+    wins: list[ElectionMapWin]
+    #: Gezählte Urnenbezirke ohne Sieger (Gleichstand an der Spitze).
+    ties: int
+    #: Mit ``?place=``: nur die Bezirke, die den Ortsbereich berühren.
+    place: str | None
+    districts: list[ElectionMapDistrict]
+    #: Wahlbereiche mit Briefwahl — mit ``?place=`` nur die berührten.
+    areas: list[ElectionMapArea]
+
+
 class MayorHistoryPoint(TypedDict):
     """Ein Stand des Stichwahl-Abends — für den Verlauf (S3). Der Dienst
     schreibt ihn sich selbst mit; der Votemanager kennt nur das Jetzt."""

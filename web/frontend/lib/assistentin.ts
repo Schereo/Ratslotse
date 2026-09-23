@@ -112,13 +112,23 @@ export function refsAus(search = "", route = ""): Refs {
   return refs;
 }
 
-/** Leerraum falten und hart schneiden — wie `assistant.kuerze` im Backend. */
+/** Leerraum falten und hart schneiden — `max` ist die Länge des ERGEBNISSES.
+ *
+ *  **Das „ …" zählt mit.** Bis 23.09.2026 wurde auf `max` geschnitten und das
+ *  Auslassungszeichen danach angehängt — wie `assistant.kuerze` im Backend,
+ *  das nur den Prompt füllt. Hier aber ist `max` die Feldgrenze des
+ *  Backends (`ELEMENT_TEXT_MAX`, `HEADING_MAX`, …): Ein Baustein mit viel
+ *  Text ging mit 1.202 Zeichen hinaus, der Server wies ihn mit 422 ab, und
+ *  das Fenster sagte „Dazu kann ich gerade nichts sagen." Gefunden am
+ *  Kassenzettel auf `/haushalt` — über einen Chip, den Lotti selbst
+ *  vorgeschlagen hatte. */
 export function kuerze(text: string, max: number): string {
   const sauber = (text ?? "").replace(/\s+/g, " ").trim();
-  if (sauber.length <= max) return sauber;
   // An der Zeichen-, nicht an der Byte-Grenze schneiden: `slice` auf einem
   // String mit Emoji zerlegt sonst ein Surrogatpaar.
-  return [...sauber].slice(0, max).join("").trimEnd() + " …";
+  const zeichen = [...sauber];
+  if (zeichen.length <= max) return sauber;
+  return zeichen.slice(0, Math.max(0, max - 2)).join("").trimEnd() + " …";
 }
 
 /** Ein Name ist erst ab drei Zeichen ein Name.

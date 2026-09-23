@@ -71,6 +71,18 @@ Deckkraft trägt den Vorsprung (50 % = kaum Farbe), offene Bezirke halb so
 kräftig und gestrichelt. Bei Listenwahlen mit sieben Farben bleibt es bei
 der Primärtönung.
 
+**Die zweite Ausnahme: die Wahl-Ebene der Stadtkarte** (`wahl-bezirke-zeichner.ts`,
+Tims Wunsch 23.09.2026). „Wie hat meine Gegend gewählt?" beantwortet eine
+Fläche je Urnenbezirk in der Farbe dessen, der dort vorn lag — auch bei der
+Listenwahl mit sieben Farben, weil die Frage je Fläche wieder nur eine ist.
+Dieselbe Grammatik wie bei der Stichwahl: **Die Deckkraft trägt den Vorsprung
+auf Platz 2** (knapp = fast leer, ab 20 Punkten satt), ein Gleichstand oder
+ein offener Bezirk ist gestrichelt, im Dunkeln gilt die `color_dark` der
+Liste (CDU-Schwarz wäre dort eine Wand). Die Ortsbereiche liegen als dunkle
+Linien darüber. **Nur die Fläche** — in Legende, Liste und Bezirkstabelle
+bleibt die Parteifarbe ein Punkt. Die Briefwahl hat keine Fläche und wird in
+der Tafel genannt, nie in eine Farbe gerechnet.
+
 **Und ihr Aufleuchten** (`stichwahl-momente.tsx`, Tims Wunsch 23.09.2026):
 Meldet ein Schwung Bezirke, glüht der Bildschirm einmal kurz (2,4 s, nur
 `opacity`) in der Farbe dessen, der diese Bezirke gewonnen hat — zum Rand hin
@@ -710,7 +722,7 @@ Keine Lotti-Sprechblase außerhalb der Anstupser-Grenzen (§ 5) · kein Zähler
 oder Abzeichen am geschlossenen Lotti-Knopf ·
 keine Anführungszeichen um Paraphrasen · keine Stimm-/Abstimmungsgrafiken ·
 kein Signal-Orange als Flächenfarbe · keine Parteifarben-Flächen (Ausnahmen:
-Stichwahl-Karte und ihr Aufleuchten, s. § 2) · kein Emoji
+Stichwahl-Karte und ihr Aufleuchten, Wahl-Ebene der Stadtkarte, s. § 2) · kein Emoji
 im UI-Text · keine gerahmten Button-Reihen unter Antworten (stille Icons) ·
 Bricolage nie im Fließtext · Externes nie wie Beschlüsse stylen · Footer nie
 auf der Chat-Seite (Links im Sidebar-Fuß).
