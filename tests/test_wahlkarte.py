@@ -155,3 +155,12 @@ def test_ueberlappung_deckt_alles():
     assert district_map.places() == orte
     anteil_204 = {e["name"]: e["share"] for e in tabelle[204]}
     assert anteil_204["Innenstadt"] < 0.5
+
+
+def test_app_buendelt_dieselben_bezirke_wie_das_web():
+    """Die App bringt die Bezirks-Umrisse im Bundle mit. Holt jemand sie neu
+    (`wahl_geodaten.py hol`), muss die Kopie mit — sonst färbt die App die
+    Nummern von heute auf die Flächen von gestern."""
+    web = (GEO / "wahlbezirke-oldenburg.json").read_bytes()
+    app = (WURZEL / "ios" / "Resources" / "wahlbezirke-oldenburg.json").read_bytes()
+    assert web == app, "ios/Resources/wahlbezirke-oldenburg.json neu kopieren"

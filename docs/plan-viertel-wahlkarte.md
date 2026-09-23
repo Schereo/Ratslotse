@@ -353,3 +353,10 @@ Tim hat die Empfehlungen E1–E5 am 23.09. angenommen („passt alles").
 - **Abweichung:** `stichwahl-karte.tsx` behält seine Farbregel. Vier Tage vor
   der Stichwahl wird die Seite nicht angefasst. Das Backend rechnet dieselbe
   Regel (`district_map.RUNOFF_SECOND`).
+- **PR 6 (iOS):** Die Ebene läuft über denselben Endpunkt mit einer Abfrage
+  für beide Stufen. Die Geometrie liegt im Bundle
+  (`ios/Resources/wahlbezirke-oldenburg.json`, 44 KB, dieselbe Datei wie
+  im Web). Ein Tipp im Viertel wählt den Bezirk über Punkt-in-Fläche,
+  weil MapKit-Flächen in SwiftUI nicht tippbar sind. Die Maske außerhalb des
+  Ortsbereichs fehlt in der App: MapKit zeichnet sie nicht ohne ein Overlay
+  mit Loch, und der Umriss oben reicht zur Orientierung.
