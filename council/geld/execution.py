@@ -38,7 +38,15 @@ NAME = "execution"
 #: Die Wörter, die NUR diesen Bericht meinen können — sie feuern allein.
 _HART = re.compile(
     r"haushaltsvollzug|zwischenstand|zwischenbericht|quartalsbericht|"
-    r"finanz und leistungsbericht|leistungsbericht|hochrechnung|hochgerechnet")
+    r"finanz und leistungsbericht|leistungsbericht|hochrechnung|hochgerechnet|"
+    # Die Erwartung für das LAUFENDE Jahr — genau das, was der Bericht ist.
+    # „Was erwartet die Verwaltung für das laufende Jahr?" (der Einstieg der
+    # Seite /haushalt/plan-ist) traf bis 09/2026 keine einzige Facette: kein
+    # Geld-Wort, also kein Anker für „erwartet" (Fakten-Eval 23.09.2026).
+    # Beide Wörter zusammen, nicht eines allein: „im laufenden Jahr" steht
+    # auch in „Welche Sitzungen gibt es im laufenden Jahr?".
+    r"(?:erwart|prognos|voraussichtlich)[^.?!]{0,60}\blaufend\w* (?:haushalts)?jahr|"
+    r"\blaufend\w* (?:haushalts)?jahr[^.?!]{0,60}(?:erwart|prognos)")
 #: Und die weichen, die einen Geld-Anker brauchen. Jedes einzelne davon
 #: gehört auch zu ganz anderen Fragen: „Wie ist der Stand beim Stadion?",
 #: „Was passiert im laufenden Verfahren?", „Wie ist die
@@ -54,12 +62,19 @@ _WEICH = re.compile(
     r"prognos|erwartet|voraussichtlich|\baktuell|bisher|nach plan|sachstand|"
     r"(?:der|zum|beim|aktuelle[rn]?) stand\b|\bstand der\b|"
     # `\blaufen` deckt „laufende(n)" mit ab — die Wortgrenze steht nur vorn.
-    r"halbjahr|quartal|\blaeuft|\blaufen|gelaufen|\blief\b")
+    r"halbjahr|quartal|\blaeuft|\blaufen|gelaufen|\blief\b|"
+    # „Wie entwickelt sich der Haushalt 2026 laut dem letzten Bericht der
+    # Verwaltung?" — Gegenwart und der jüngste Bericht: Beides meint den
+    # Zwischenstand (Fakten-Eval 23.09.2026). „entwickelt HAT" bleibt draußen,
+    # das ist eine Rückschau und gehört den Jahresabschlüssen.
+    r"entwickelt sich|(?:letzte|juengste|neueste|aktuelle)\w* bericht|"
+    r"bericht der verwaltung")
 #: Der Anker ist die FACETTE, nicht noch einmal ein Wortmuster: `_F_PLAN` in
 #: `qa.py` enthält `haushalt|etat|budget` bereits, ein zusätzlicher Texttest
 #: darauf könnte also nie etwas beitragen, was `plan` nicht schon sagt.
 _ANKER = frozenset(("plan", "ist", "ansatz"))
 _JAHR = re.compile(r"\b(20\d\d)\b")
+_RUECKBLICK = re.compile(r"entwickelt|ausgegangen|abgeschlossen|gelaufen")
 
 
 def _abschlussjahr() -> int:
@@ -76,6 +91,13 @@ def _abschlussjahr() -> int:
 def recognize(text: str, typ: str, facets: set[str]) -> bool:
     if _HART.search(text):
         return True
+    m = _JAHR.search(text)
+    # Ein Jahr MIT Jahresabschluss ist kein Fall für den Zwischenstand: „Woran
+    # lag es, dass 2024 besser lief als geplant?" zog über „lief" den
+    # Vollzug 2026 vor die Erläuterungen zum Abschluss 2024 (gemessen
+    # 23.09.2026). Die harten Wörter oben gelten weiter.
+    if m and int(m.group(1)) <= _abschlussjahr():
+        return False
     if _WEICH.search(text) and (facets & _ANKER):
         return True
     # Zweite Regel, ohne die die Facette ihre häufigste Frage verpasst: Wer
@@ -87,8 +109,13 @@ def recognize(text: str, typ: str, facets: set[str]) -> bool:
     # plus Jahreszahl trifft auch „Welche Änderungslisten gab es zum Haushalt
     # 2026?" — eine Verfahrensfrage, deren Antwort der Vollzug nicht ist
     # (gemessen am Korpus in tests/test_qa_geldquellen.py).
-    m = _JAHR.search(text)
-    return bool(m and int(m.group(1)) > _abschlussjahr() and "ist" in facets)
+    if not (m and int(m.group(1)) > _abschlussjahr()):
+        return False
+    # Der Rückblick auf ein solches Jahr zählt wie das Ist: Frag den Rat
+    # formulierte „Wie ist das Haushaltsjahr 2025 ausgegangen?" um in „Wie
+    # hat sich das Haushaltsjahr 2025 finanziell entwickelt?" (Fakten-Eval
+    # 23.09.2026) — kein Ist-Wort, aber dieselbe Frage.
+    return "ist" in facets or bool(_RUECKBLICK.search(text) and facets & _ANKER)
 
 
 #: Womit die Begriffe den Finanzhaushalt dazuholen. Er bewegt Ein- und

@@ -491,19 +491,41 @@ def tabelle_kanaele(laeufe: list[dict]) -> list[str]:
     return aus
 
 
+def _stand(e: dict) -> str:
+    """Der Code-Stand eines Laufs: das Etikett bis zum ersten Komma."""
+    return str(e.get("etikett") or "").split(",")[0].strip()
+
+
 def kontextfehler(laeufe: list[dict], faelle: list[dict]) -> dict[str, list[dict]]:
     """Die Arbeitsliste: je Baustein die Fälle, deren Kontext nicht stimmte.
 
     Ein Kontextfehler hängt nicht am Modell — der Prompt ist bis auf die
     Analyse derselbe. Gezählt wird deshalb, was in IRGENDEINEM Lauf fehlte,
-    mit dem Beispiel aus dem ersten.
+    mit dem Beispiel aus dem ersten — aber je Fall nur unter den JÜNGSTEN
+    Läufen, die ihn enthalten. Seit 23.09.2026 laufen Teilmengen (nur die
+    Haushaltsfälle, nach einem Kontext-Nachzug): Ohne diese Regel stünde ein
+    behobener Fehler aus einem älteren Gesamtlauf weiter auf der Liste, und
+    die Liste zeigte nicht mehr, was HEUTE fehlt. „Jüngste" heißt: derselbe
+    STAND wie der neueste Lauf mit diesem Fall — der Teil des Etiketts vor
+    dem Komma (``_stand``), damit zwei Läufe desselben Stands („nach K1,
+    Lauf 1" und „…, Lauf 2") beide zählen.
     """
     nach_id = {f["id"]: f for f in faelle}
     gruppen: dict[str, list[dict]] = defaultdict(list)
     gesehen: set[str] = set()
-    for e in [e for e in laeufe if not _vergleichslauf(e)]:
+    aktuell = [e for e in laeufe if not _vergleichslauf(e)]
+    # Je Fall das Etikett des neuesten Laufs, der ihn enthält.
+    neuester: dict[str, tuple[str, str]] = {}
+    for e in aktuell:
+        for z in e["faelle"]:
+            marke = (str(e.get("zeitstempel") or ""), _stand(e))
+            if z["id"] not in neuester or marke[0] > neuester[z["id"]][0]:
+                neuester[z["id"]] = marke
+    for e in aktuell:
         for z in e["faelle"]:
             if not z["fehlerart"].startswith("kontext_") or z["id"] in gesehen:
+                continue
+            if _stand(e) != neuester[z["id"]][1]:
                 continue
             gesehen.add(z["id"])
             fall = nach_id.get(z["id"], {})

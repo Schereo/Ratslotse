@@ -1,0 +1,5 @@
+---
+kategorie: behoben
+---
+
+**Lotti und Frag den Rat bekommen die Haushaltszahlen, nach denen gefragt ist.** Bei zwei von zehn Haushaltsfragen stand die richtige Zahl bisher gar nicht im Kontext des Sprachmodells, obwohl sie in den Daten liegt. Jetzt kommen sie an: die Erwartung der Verwaltung für das laufende Jahr und das Ergebnis 2025 aus dem Finanz- und Leistungsbericht, der Investitionsplan 2026, Zinsen und Tilgung im Jahr, der Höchstbetrag für Liquiditätskredite, die größten Ausgabenbereiche und das größte Vorhaben des Investitionsprogramms. Außerdem kommen Hebesätze und Steuereinnahmen je Einwohner der anderen kreisfreien Städte an, dazu alle Betriebe des Konzerns samt GSG und Bäderbetrieb. Einzelne Aufgaben wie Stadtarchiv oder Sportförderung werden auch unter dem Alltagswort gefunden. Auf dem Steuer-Steckbrief weiß Lotti, um welche Steuer es geht. Und der Haushalt 2026 gilt nicht mehr als „noch nicht beschlossen“: Das Datum stammt jetzt aus dem Ratsbeschluss vom 09.02.2026 und nicht mehr aus dem Entwurf, der den Tag der Vertagung nannte.

@@ -27,6 +27,10 @@ Facette hat nur dann etwas zu sagen, wenn die Frage ein Vorhaben benennt. Sie
 darf deshalb an ``investitionen`` andocken (jede Investitionsfrage prüft sie
 mit), ohne den Prompt jeder Investitionsfrage zu verlängern — die Store-Methode
 gibt ``None`` zurück, und der Baustein bleibt leer.
+
+DIE EINE AUSNAHME ist die Rangfrage (``geld.rangfrage``: „Welches ist das
+größte Vorhaben?"). Dann ist die Rangfolge selbst die Antwort, und es kommen
+die fünf größten Vorhaben des Jahrgangs — ausdrücklich als solche benannt.
 """
 from __future__ import annotations
 
@@ -79,6 +83,13 @@ _ALLERWELTSWOERTER = frozenset({
     "neubau", "vorhaben", "projekt", "projekte", "massnahme", "massnahmen",
     "haushalt", "haushaltsplan", "etat", "budget", "geld", "euro",
     "kosten", "kostet", "ausgaben", "finanzierung", "gesamt", "gesamtkosten",
+    # Füllwörter der Frage (Fakten-Eval 23.09.2026): „Wie viel hat die Stadt
+    # 2025 für Baumaßnahmen ausgegeben?" fand über „fuer" und „2025" fünf
+    # Vorhaben („Krippenausbau 2025" …), die nichts gefragt waren — und der
+    # Baustein schob das Investitions-Ist 2025 aus dem Deckel.
+    "fuer", "viel", "wieviel", "ausgegeben", "gibt", "geben", "wird", "wurde",
+    "werden", "welche", "welcher", "welches", "diese", "dieser", "dieses",
+    "einzelne", "einzelnen", "insgesamt", "tatsaechlich", "geplant",
 })
 
 
@@ -122,9 +133,11 @@ class Store(StoreBasis):
             "level = 'measure'")
         if jahr is None:
             return None
+        rang = geld.rangfrage(terms)
         begriffe = [w for w in terms
-                    if geld.falte(w).replace(" ", "") not in _ALLERWELTSWOERTER]
-        if not begriffe:
+                    if geld.falte(w).replace(" ", "") not in _ALLERWELTSWOERTER
+                    and not geld.falte(w).isdigit()]
+        if not begriffe and not rang:
             return None
         try:
             thh = {r["sub_budget_no"]: r["label"] for r in self._conn.execute(
@@ -138,19 +151,33 @@ class Store(StoreBasis):
             if not tabelle_fehlt(fehler):
                 raise
             return None
-        bewertet = []
-        for r in zeilen:
-            bereich = thh.get(r["sub_budget_no"], "")
-            n = (self._trifft(r["label"], begriffe)
-                 + self._trifft(r["details"], begriffe)
-                 + self._trifft(bereich, begriffe))
-            if n:
-                r["sub_budget"] = bereich
-                bewertet.append((n, r))
-        if not bewertet:
+        if rang:
+            # „Welches ist das größte Vorhaben?" — die fünf größten nach
+            # Gesamtinvestitionssumme. Ein Begriffsabgleich fand dafür bis
+            # 09/2026 über „einzelne" und „Investitionsprogramm" fünf
+            # Zufallszeilen, und die Kampfmittelsondierung am Fliegerhorst
+            # (35,9 Mio. €, das größte Vorhaben 2025) fehlte (Fakten-Eval
+            # 23.09.2026). Das ist der Trostpreis, den der Docstring
+            # ausschließt — hier aber gefragt, nicht als Ersatz geliefert.
+            for r in zeilen:
+                r["sub_budget"] = thh.get(r["sub_budget_no"], "")
+            treffer = sorted(zeilen, key=lambda r: -(r["grand_total"] or 0))[:5]
+        else:
+            bewertet = []
+            for r in zeilen:
+                bereich = thh.get(r["sub_budget_no"], "")
+                n = (self._trifft(r["label"], begriffe)
+                     + self._trifft(r["details"], begriffe)
+                     + self._trifft(bereich, begriffe))
+                if n:
+                    r["sub_budget"] = bereich
+                    bewertet.append((n, r))
+            if not bewertet:
+                return None
+            treffer = [r for _, r in sorted(
+                bewertet, key=lambda x: (-x[0], -(x[1]["grand_total"] or 0)))][:5]
+        if not treffer:
             return None
-        treffer = [r for _, r in sorted(
-            bewertet, key=lambda x: (-x[0], -(x[1]["grand_total"] or 0)))][:5]
         # Derselbe Code im Vorjahrgang: Das Programm wird jedes Jahr neu
         # aufgelegt, und die Gesamtsumme eines Vorhabens ändert sich dabei.
         # Zwei Ausgaben derselben Zeile nebeneinander sind keine Rechnung über
@@ -163,7 +190,7 @@ class Store(StoreBasis):
                 "ORDER BY year DESC LIMIT 1", (r["code"], jahr)).fetchone()
             r["davor"] = dict(davor) if davor else None
         return {"year": jahr, "year_deviates": abweichend, "asked_year": year,
-                "measures": treffer,
+                "measures": treffer, "ranking": rang,
                 "beleg": self._beleg(treffer[0].get("herkunft_id"))}
 
 
@@ -198,6 +225,9 @@ def block(daten: dict | None) -> str:
                   f"{geld.de_mio(davor['grand_total'])}")
         zeilen.append(s)
     hinweis = ""
+    if daten.get("ranking"):
+        hinweis += (f"\nDie Zeilen oben sind die fünf GRÖSSTEN Vorhaben des Programms "
+                    f"{daten['year']} nach Gesamtinvestitionssumme, absteigend.")
     if daten.get("year_deviates"):
         hinweis = (f"\nZum Haushaltsjahr {daten['asked_year']} liegt kein "
                    f"Investitionsprogramm vor; hier steht der Jahrgang "

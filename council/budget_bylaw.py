@@ -28,6 +28,14 @@ Der Jahrgang **2026** ist die eine Ausnahme mit einem echten Datum
 (15.12.2025) — aber auch sein Deckblatt sagt „Verwaltungsentwurf". Das Datum
 ist die geplante Sitzung, nicht ihr Ergebnis. Wer es als Beleg nähme, machte
 aus einem Vorschlag einen Beschluss.
+
+**Genau das ist passiert** (Fakten-Eval 23.09.2026): Der Parser übernahm das
+Datum als ``session_date``, und die Spalte stand für 2026 auf dem 15.12.2025
+— dem Tag, an dem der Finanzausschuss VERTAGT hat (Beschluss 9283).
+Beschlossen hat der Rat am 09.02.2026 (Beschluss 8286). Seitdem liest der
+Parser bei einem Entwurf KEIN Datum mehr, und die Spalte trägt das Datum des
+Ratsbeschlusses aus ``council_decisions`` (``geld/bylaw.py::budget_adoption``;
+beim Speichern und per Werte-Migration für den Bestand).
 """
 from __future__ import annotations
 
@@ -120,7 +128,10 @@ class Haushaltssatzung:
     property_tax_b_rate: int | None
     trade_tax_rate: int | None
 
-    #: Das im Text genannte Sitzungsdatum, ``None`` bei „xx.xx.20xx".
+    #: Das Datum, an dem der Rat die Satzung beschlossen hat (``TT.MM.JJJJ``).
+    #: Aus dem Text nur bei einem Dokument OHNE Entwurfsvermerk — in einem
+    #: Entwurf ist es die geplante Sitzung (s. Modulkopf). Sonst ``None``, und
+    #: der Store setzt beim Speichern das Datum des Ratsbeschlusses ein.
     session_date: str | None
     template_number: str | None
 
@@ -248,7 +259,11 @@ def parse_satzung(text: str, template_number: str | None = None) -> Haushaltssat
         property_tax_a_rate=_zahl(_GRUNDSTEUER_A, t),
         property_tax_b_rate=_zahl(_GRUNDSTEUER_B, t),
         trade_tax_rate=_zahl(_GEWERBESTEUER, t),
-        session_date=(m.group(1) if (m := _SITZUNG.search(t)) else None),
+        # Ein Datum im ENTWURF ist die geplante Sitzung, kein Beschluss (s.
+        # Modulkopf) — es wird nicht übernommen. Das Datum des Beschlusses
+        # kennen nur die Ratsbeschlüsse; der Store trägt es beim Speichern ein.
+        session_date=(None if _ENTWURF.search(text)
+                      else (m.group(1) if (m := _SITZUNG.search(t)) else None)),
         template_number=template_number,
     )
 

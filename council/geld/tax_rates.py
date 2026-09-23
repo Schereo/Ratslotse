@@ -57,7 +57,13 @@ _HEBESATZ = re.compile(
     r"(?:prozent|hoehe\b|hoeher|erhoeh|gesenkt|senkung|angehoben|gestiegen|"
     r"steigt|teurer|entwickel|veraender)|"
     r"(?:erhoeh|gesenkt|angehoben|gestiegen|prozent|entwicklung|verlauf)[^.?!]{0,40}"
-    r"(?:grund|gewerbe)steuer")
+    r"(?:grund|gewerbe)steuer|"
+    # „Wie viel Einfluss hat der Rat auf die Steuern?" — der Hebesatz IST der
+    # Einfluss; ohne ihn beantwortete Lotti die Frage mit dem Aufkommen und
+    # dem Finanzausgleich (Fakten-Eval 23.09.2026). Ebenso „Wer entscheidet
+    # über die Höhe dieser Steuer?", der Einstieg des Steuer-Steckbriefs.
+    r"(?:einfluss|entscheid|bestimm|festleg|festgeleg|stellschraube)[^.?!]{0,40}steuer|"
+    r"steuer[^.?!]{0,40}(?:beeinfluss|entscheid|festleg|festgeleg)")
 
 #: Die Statistik beim Namen. Diese Wörter kommen sonst nirgends im Bestand vor
 #: und brauchen deshalb keinen Steuer-Anker.

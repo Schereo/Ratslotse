@@ -823,7 +823,8 @@ def test_abweichungsgrund_findet_die_steuerzeile_ueber_den_wortstamm(tmp_path):
     treffer = store.abweichungsgruende_fuer_begriffe(["Gewerbesteuer", "Mehreinnahmen"])
     assert treffer and treffer[0]["label"] == "Steuern und ähnliche Abgaben"
     text = qa._gruende_block(treffer)
-    assert "Nachveranlagungen" in text and "+21.4 Mio" in text
+    # Mit Dezimalkomma: „+21.4 Mio" las die Fakten-Eval als 214 Mio. €.
+    assert "Nachveranlagungen" in text and "+21,4 Mio. €" in text
     # Es ist die Begründung der VERWALTUNG, keine Feststellung von uns.
     assert "Die Verwaltung begründet" in text
     store.close()
@@ -875,7 +876,8 @@ def test_vergleich_block_bringt_alle_staedte_der_reihe(tmp_path):
     store = _befuellter_store(tmp_path)
     v = store.staedtevergleich_kontext()
     text = qa._vergleich_block(v)
-    assert "Oldenburg: 1.834 EUR" in text and "Delmenhorst: 1.104 EUR" in text
+    # Jede Stadt trägt das Jahr selbst (Gliederungs-Regel, s. `_vergleich_kennzahl_zeilen`).
+    assert "Oldenburg 2024: 1.834 EUR" in text and "Delmenhorst 2024: 1.104 EUR" in text
     assert "Steuerkraftmesszahl je Einwohner" in text and "2024" in text
     store.close()
 

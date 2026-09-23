@@ -126,7 +126,10 @@ def test_begriffe_waehlen_die_reihe(tmp_path):
 def test_der_baustein_nennt_den_entwurf_und_die_leere_ermaechtigung(tmp_path):
     store = _store(tmp_path)
     text = bylaw.block(store.bylaw_context(["Kreditermächtigung"], 2026))
-    assert "VERWALTUNGSENTWURF, KEIN RATSBESCHLUSS" in text
+    assert "DIE ZAHLEN SIND DER VERWALTUNGSENTWURF" in text
+    # Ohne Ratsbeschluss im Bestand sagt der Baustein genau das — und nicht
+    # „beschlossen am" mit dem Datum aus dem Entwurf.
+    assert "Einen Ratsbeschluss zu Haushaltssatzung und Haushaltsplan 2026 gibt es" in text
     # NICHT „0,0 Mio. €": Die Satzung schreibt dort einen Satz.
     assert "nicht veranschlagt" in text and "(§ 2): 0,0 Mio. €" not in text
     # Gleiche Werte über alle Jahrgänge werden zusammengefasst statt gelistet.

@@ -3800,6 +3800,57 @@ class SchemaMixin(StoreBasis):
         self._migrate_produkt_steckbrief()
         self._migrate_herkunft()
         self._migrate_owner_id()
+        self._satzung_beschlussdatum("satzung_beschlussdatum_2026_09")
+
+    def _satzung_beschlussdatum(self, marke: str) -> None:
+        """``council_budget_bylaw.session_date`` einmalig auf das Datum des
+        RATSBESCHLUSSES bringen.
+
+        Der Parser übernahm bis 09/2026 das Datum aus dem Entwurfstext — die
+        GEPLANTE Sitzung. Für 2026 stand dort der 15.12.2025, der Tag, an dem
+        der Finanzausschuss vertagt hat; beschlossen hat der Rat am 09.02.2026
+        (Fakten-Eval 23.09.2026). Seitdem liest der Parser bei Entwürfen kein
+        Datum mehr, und das Speichern setzt das des Ratsbeschlusses ein
+        (``bylaw_session_date``). Hier zieht der BESTAND nach: jede
+        Entwurfszeile auf das Beschlussdatum, oder leer, wo es keinen
+        Beschluss gibt.
+
+        **Einmal, mit Marke** (``council_migration_marks``), und nicht bei
+        jedem Start: Jeder Store-Start (also jede HTTP-Anfrage) müsste sonst
+        die Ratsbeschlüsse durchsuchen. Der Wächter
+        ``tests/test_store_start_neben_schreiber.py`` hält fest, dass ein
+        zweiter Start nur liest — die Marke wird deshalb auch auf einer
+        frischen Datenbank gesetzt."""
+        hat_marken = self._conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' "
+            "AND name = 'council_migration_marks'").fetchone()
+        if hat_marken and self._conn.execute(
+                "SELECT 1 FROM council_migration_marks WHERE marke = ?", (marke,)).fetchone():
+            return
+        spalten = {r[1] for r in self._conn.execute("PRAGMA table_info(council_budget_bylaw)")}
+        neu: list[tuple[str | None, int, int]] = []
+        if {"session_date", "version", "year", "supplement"} <= spalten:
+            for year, supplement, alt in self._conn.execute(
+                    "SELECT year, supplement, session_date FROM council_budget_bylaw "
+                    "WHERE version = 'draft'").fetchall():
+                soll = self.bylaw_session_date(year)
+                if soll != alt:
+                    neu.append((soll, year, supplement))
+        with self._conn:
+            self._conn.execute(
+                "CREATE TABLE IF NOT EXISTS council_migration_marks ("
+                "marke TEXT PRIMARY KEY, gesetzt_am TEXT NOT NULL)")
+            if neu:
+                self._conn.executemany(
+                    "UPDATE council_budget_bylaw SET session_date = ? "
+                    "WHERE year = ? AND supplement = ?", neu)
+            self._conn.execute(
+                "INSERT OR IGNORE INTO council_migration_marks (marke, gesetzt_am) "
+                "VALUES (?, datetime('now'))", (marke,))
+        if neu:
+            logging.getLogger("ratslotse.council.store").warning(
+                "Haushaltssatzung: Beschlussdatum aus den Ratsbeschlüssen gesetzt: %s",
+                ", ".join(f"{j}={d}" for d, j, _ in neu))
 
     def _migrate_quiz_estimate(self) -> None:
         """Schätzfrage-Slider: numerische Felder für qtype='estimate' in

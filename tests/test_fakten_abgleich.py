@@ -105,6 +105,11 @@ def test_aufloesung_folgt_der_angabe():
     ("1.908 €", 1908, True),
     ("1.900 €", 1908, True),
     ("1.800 €", 1908, False),
+    # Kaufmännisch gerundet, nicht „zur geraden Ziffer“ (Pythons `round`):
+    # 35.850.000 € ist „35,9 Mio. €“ — `round(358.5)` ergäbe 35,8.
+    ("35,9 Mio. €", 35_850_000, True),
+    ("35,8 Mio. €", 35_850_000, True),         # abgeschnitten, wie „über 336 Mio.“
+    ("36,0 Mio. €", 35_850_000, False),
 ])
 def test_rundung(text, gold, erwartet):
     (z,) = fa.zahlen(text)
@@ -248,6 +253,9 @@ def test_verbot_mit_jahr_trifft_nur_die_verwechslung():
     ("Aus den Unterlagen lässt sich kein Gewinner nennen.", True),
     ("Wie viel davon auf Kredite entfiel, ist in den vorliegenden Angaben nicht aufgeschlüsselt.",
      True),
+    ("Die Hundesteuer ist nicht einzeln ausgewiesen.", True),
+    ("Ein Schuldenvergleich mit anderen Städten ist anhand der vorliegenden Zahlen "
+     "nicht möglich.", True),
     ("Die Schulden lagen Ende 2025 bei 337 Mio. €.", False),
     ("Die Stadt muss das nicht bezahlen, das trägt das Land.", False),
 ])
