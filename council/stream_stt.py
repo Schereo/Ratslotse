@@ -49,15 +49,18 @@ import logging
 import os
 import queue
 import re
+import shutil
 import subprocess
+import tempfile
 import threading
 import time
 from collections.abc import Callable
+from pathlib import Path
 
 import httpx
 import websockets.sync.client as ws_client
 
-from council import livestream
+from council import livestream, stt_retain
 
 log = logging.getLogger(__name__)
 
@@ -292,7 +295,8 @@ def record_and_transcribe(on_window=None, source: str | None = None,
                           max_seconds: int | None = None, pace: float | None = None,
                           people: list[dict] | None = None,
                           window_seconds: int = WINDOW_SECONDS,
-                          on_segment=None, stop: threading.Event | None = None) -> list[tuple[float, str]]:
+                          on_segment=None, stop: threading.Event | None = None,
+                          ksinr: int | None = None) -> list[tuple[float, str]]:
     """Stream mitschneiden und streamend transkribieren, bis die
     Schlussformel fällt — die Streaming-Fassung von
     ``livestream.record_and_transcribe``.
@@ -304,7 +308,18 @@ def record_and_transcribe(on_window=None, source: str | None = None,
     ``window_seconds`` und bei jedem Aufruf/jeder Worterteilung;
     ``on_segment(start, end, text)`` je fertiger Äußerung, sobald sie da ist
     (die Live-Probe im Admin-Panel); ``stop`` beendet die Aufnahme von außen.
-    """
+
+    Mit ``ksinr`` und eingeschalteter Aufbewahrung (``stt_retain.enabled()``)
+    gibt es hier keine Datei-Stücke wie beim Weg über ``livestream.py`` — die
+    werden also gezielt mitgeschrieben: Welche 30-s-Fenster überhaupt
+    aufgehoben werden, steht schon VOR der Aufnahme fest
+    (``stt_retain.planned_indices``, an ``limit`` gedeckelt), nur für diese
+    Fenster wird der Rohton in eine eigene kleine Datei gepuffert — alles
+    andere wird verworfen, ohne je auf die Platte zu kommen. Eine Sitzung von
+    6 h ergäbe sonst ~690 MB Rohton für am Ende nur 20 Stücke von je 30 s;
+    das hatte am 24.09.2026 den Server-Datenträger bedroht (derselbe, den
+    schon einmal die Release-Snapshots gefüllt hatten). Ohne ``ksinr``
+    (z. B. die Generalprobe ``--probe``) entfällt das ganz."""
     vocab = vocabulary(people or [])
     url = open_session(vocab)  # wirft StreamUnavailable → Rückfall auf Stücke
     proc = ffmpeg_pcm(source or livestream.STREAM_URL)
@@ -318,6 +333,15 @@ def record_and_transcribe(on_window=None, source: str | None = None,
     session_started = 0.0
     closing = False
     t0 = time.monotonic()
+    retain_seconds = livestream.CHUNK_SECONDS
+    kept_indices: set[int] = set()
+    chunk_dir: Path | None = None
+    current_idx: int | None = None
+    current_file = None
+    if ksinr is not None and stt_retain.enabled():
+        kept_indices = stt_retain.planned_indices(limit, retain_seconds)
+        if kept_indices:
+            chunk_dir = Path(tempfile.mkdtemp(prefix=f"stt-raw-{ksinr}-"))
 
     def drain() -> None:
         nonlocal closing
@@ -357,6 +381,26 @@ def record_and_transcribe(on_window=None, source: str | None = None,
                 session_started = sent
                 threading.Thread(target=_retire, args=(old, drain), daemon=True).start()
             link.send(frame)
+            if chunk_dir is not None:
+                idx = int(sent // retain_seconds)
+                if idx != current_idx:
+                    if current_file is not None:
+                        current_file.close()
+                        current_file = None
+                    current_idx = idx
+                    if idx in kept_indices:
+                        try:
+                            current_file = (chunk_dir / f"chunk_{idx:03d}.pcm").open("wb")
+                        except OSError:
+                            log.exception("STT-Aufbewahrung: Stück-Datei nicht angelegt")
+                            current_file = None
+                if current_file is not None:
+                    try:
+                        current_file.write(frame)
+                    except OSError:
+                        log.exception("STT-Aufbewahrung: Schreibfehler — Stück verworfen")
+                        current_file.close()
+                        current_file = None
             sent += FRAME_SECONDS
             drain()
             windower.advance(sent)
@@ -374,7 +418,18 @@ def record_and_transcribe(on_window=None, source: str | None = None,
         link.stop(30)
         drain()
         windower.close()
+        if current_file is not None:
+            try:
+                current_file.close()
+            except OSError:
+                pass
     segments.sort(key=lambda s: s[0])
     log.info("Streaming beendet: %.0f s Audio, %d Segmente, %d Fenster (%d ausgelöst)",
              sent, len(segments), windower.dispatched, windower.triggered)
+    if chunk_dir is not None and ksinr is not None:
+        try:
+            stt_retain.finalize_streaming_chunks(ksinr, chunk_dir, segments,
+                                                 chunk_seconds=retain_seconds)
+        finally:
+            shutil.rmtree(chunk_dir, ignore_errors=True)
     return segments

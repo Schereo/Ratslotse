@@ -500,6 +500,7 @@ COUNCIL_RECORD_MAX_HOURS=6                  # Kappe des Sitzungs-Mitschnitts
 COUNCIL_CHUNK_SECONDS=30                    # Stücklänge des Mitschnitts ohne Streaming (Live-Verfolgung)
 GLADIA_API_KEY=...                          # Streaming-Transkription (council/stream_stt.py); leer = Audio-Stücke
 GLADIA_REGION=eu-west                       # Gladia-Region (EU)
+COUNCIL_STT_BEHALTEN=20                     # Stücke je Sitzung für die Transkriptions-Eval aufheben (council/stt_retain.py); 0 = aus
 COUNCIL_LIVE_WINDOW_SECONDS=15              # Takt der Live-Verfolgung beim Streaming
 COUNCIL_LIVE_TRACKER_MODEL=google/gemini-2.5-flash  # Modell der Live-Verfolgung (welcher TOP läuft)
 COUNCIL_ASSISTANT_MODEL=google/gemini-2.5-flash   # Lottis Erklärungen (Assistentin; Default passt)

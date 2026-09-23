@@ -3,28 +3,31 @@
 
     python eval/pruefstand.py --suite transkription --modell google/gemini-3-flash-preview --laeufe 2
 
-**Warum sie noch nicht misst.** Es gibt nirgends aufbewahrtes Sitzungs-Audio:
-Der Mitschnitt (``scripts/record_council_livestream.py``) schreibt seine
-30-Sekunden-Stücke in ein ``TemporaryDirectory`` und löscht sie nach dem Lauf
-— absichtlich, damit ein abgebrochener Lauf keine alten Stücke in einen Retry
-reicht. Auf dem Server liegt also ebenso wenig wie hier. Audio zu erfinden oder
-zu synthetisieren misst nicht, was im Saal passiert (Hall, Zwischenrufe,
-Mikrofon aus); deshalb bleibt die Suite leer, bis echte Stücke da sind.
+**Warum sie noch nicht misst.** Bis 09/2026 gab es nirgends aufbewahrtes
+Sitzungs-Audio: Der Mitschnitt (``scripts/record_council_livestream.py``)
+schrieb seine Stücke in ein ``TemporaryDirectory`` und löschte sie nach dem
+Lauf — absichtlich, damit ein abgebrochener Lauf keine alten Stücke in einen
+Retry reicht. Seit 23.09.2026 hebt ``council/stt_retain.py`` je Sitzung eine
+feste Auswahl auf (``~/.cache/ratslotse/stt/<ksinr>/``, Schalter
+``COUNCIL_STT_BEHALTEN``) — die Suite bleibt trotzdem leer, bis die NÄCHSTE
+Ratssitzung mit Livestream gelaufen ist (s. ``kern/jobs.py`` bzw. die
+Sitzungstabelle für das Datum): Audio zu erfinden oder zu synthetisieren
+misst nicht, was im Saal passiert (Hall, Zwischenrufe, Mikrofon aus).
 
-**Was dafür gebraucht wird**, in ``~/.cache/ratslotse/stt/`` (oder
-``RATSLOTSE_STT_AUDIO``), je Stück zwei Dateien:
+**Was dafür gebraucht wird**, in ``~/.cache/ratslotse/stt/<ksinr>/`` (oder
+``RATSLOTSE_STT_AUDIO``, rekursiv durchsucht), je Stück zwei Dateien:
 
 * ``<name>.mp3`` — ein Stück wie im Betrieb (``livestream.start_recording``:
-  Mono, 32 kbit/s, 30 s).
+  Mono, 32 kbit/s, 30 s) — liegt nach der nächsten Sitzung automatisch da.
 * ``<name>.txt`` — der Referenztext dieses Stücks. Leer heißt: keine Rede
-  (Warteschleife, Musik, Pause) — dort ist jede Transkription erfunden.
+  (Warteschleife, Musik, Pause) — dort ist jede Transkription erfunden. Wird
+  aus den YouTube-Untertiteln derselben Sitzung geschnitten:
+  ``python eval/stt_referenz.py <ksinr>``.
 
-Zehn bis zwanzig Stücke einer Sitzung reichen, davon zwei, drei ohne Rede.
-Die Referenz lässt sich aus YouTubes Untertiteln derselben Minuten schneiden
-(``eval/transkripte.py``) und von Hand glätten. Am einfachsten: bei der
-nächsten Ratssitzung auf dem Server die Stücke eines Laufs aufheben (der
-Pfad steht im Log) — oder den O1-Stream mit ``ffmpeg`` selbst mitschneiden,
-er ist frei abrufbar (``COUNCIL_STREAM_URL``).
+Daneben liegt, was der PRODUKTIONSWEG für dasselbe Stück tatsächlich
+transkribiert hat (``<name>.chunks.txt`` oder ``<name>.gladia.txt``,
+s. ``council/stt_retain.py``) — ein Vergleichswert, kein Eingang in diese
+Suite.
 
 **Kandidaten müssen Audio annehmen.** GPT-6 Luna kann das nicht, Gemini 3.x
 schon; ein Lauf mit einem Modell ohne Audio endet mit einem Anbieterfehler
@@ -57,10 +60,14 @@ def ordner() -> Path:
 
 
 def stuecke() -> list[tuple[Path, Path]]:
+    """Über alle Sitzungs-Unterordner hinweg (``stt_retain.session_dir``
+    legt je Sitzung einen eigenen ``<ksinr>/`` an) — ``rglob`` statt
+    ``glob``, damit die Suite auch flach abgelegte Stücke (von Hand
+    zusammengestellt) findet."""
     d = ordner()
     if not d.is_dir():
         return []
-    return [(mp3, mp3.with_suffix(".txt")) for mp3 in sorted(d.glob("*.mp3"))
+    return [(mp3, mp3.with_suffix(".txt")) for mp3 in sorted(d.rglob("*.mp3"))
             if mp3.with_suffix(".txt").exists()]
 
 
@@ -68,8 +75,9 @@ def fehlend() -> str | None:
     if stuecke():
         return None
     return (f"kein Sitzungs-Audio: braucht Stücke <name>.mp3 mit Referenz <name>.txt in "
-            f"{ordner()} — der Mitschnitt löscht seine Stücke nach jedem Lauf, auch auf dem "
-            f"Server liegen keine (s. eval/run_stt.py)")
+            f"{ordner()}/<ksinr>/ — die Aufbewahrung (council/stt_retain.py) legt sie erst "
+            f"nach der nächsten Ratssitzung mit Livestream an, die Referenz kommt danach aus "
+            f"`python eval/stt_referenz.py <ksinr>` (s. eval/run_stt.py)")
 
 
 _MARKE = re.compile(r"\[\s*\d{1,2}:\d{2}\s*\]")

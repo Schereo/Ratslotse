@@ -56,6 +56,10 @@ os.environ["RATSLOTSE_DB"] = RATSLOTSE_DB
 os.environ["COUNCIL_DB"] = COUNCIL_DB
 # Der Verlauf des Wahlabends gehört in den tmp-Ordner, nie nach data/.
 os.environ["WAHLABEND_HISTORY_FILE"] = str(_TMP / "wahlabend-verlauf.json")
+# Dieselbe Isolation für die STT-Aufbewahrung (council/stt_retain.py): ohne
+# das hier würde ein Test, der den Livestream-Mitschnitt durchspielt, echte
+# Dateien nach ~/.cache/ratslotse/stt schreiben.
+os.environ["RATSLOTSE_STT_AUDIO"] = str(_TMP / "stt")
 os.environ["WEB_JWT_SECRET"] = "test-secret"
 os.environ["WEB_ADMIN_EMAIL"] = "admin@test.de"
 os.environ["COOKIE_SECURE"] = "false"   # TestClient spricht http://testserver

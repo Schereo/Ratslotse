@@ -222,3 +222,79 @@ def test_record_and_transcribe_reports_segments_at_once_and_stops_on_signal(monk
     assert seen[0][:2] == (3.0, 5.0)
     assert len(segs) == 2
     assert fake.sent_seconds < 60          # gestoppt, lange vor dem Ende der Datei
+
+
+# ------------------------------------------- STT-Aufbewahrung: Platten-Obergrenze
+
+class _EndlosStille:
+    """ffmpeg-Ersatz, der Stille liefert, ohne den ganzen Puffer im Speicher
+    zu halten — für eine 6-h-Simulation wäre ``_pcm(6*3600)`` selbst schon
+    ~660 MB groß, genau die Menge, die dieser Test widerlegen soll."""
+
+    def __init__(self, total_bytes: int, frame_bytes: int):
+        self.remaining = total_bytes
+        self.frame_bytes = frame_bytes
+        self.stdout = self
+        self.poll = lambda: 0
+        self.terminate = lambda: None
+        self.wait = lambda timeout=None: 0
+        self.kill = lambda: None
+
+    def read(self, n: int) -> bytes:
+        take = min(n, self.remaining)
+        self.remaining -= take
+        return b"\0" * take
+
+
+def _verzeichnisgroesse(pfad) -> int:
+    return sum(f.stat().st_size for f in pfad.rglob("*") if f.is_file())
+
+
+def test_retention_bounds_disk_usage_for_a_six_hour_session(tmp_path, monkeypatch):
+    """Review-Befund 24.09.2026: Eine frühere Fassung schrieb den GANZEN
+    Rohton mit (16 kHz·16-bit·mono ≈ 32 kB/s → ~690 MB bei 6 h), nur um am
+    Ende 20 Stücke von je 30 s herauszuschneiden. Jetzt entscheidet
+    ``stt_retain.planned_indices`` VOR der Aufnahme, welche Fenster
+    überhaupt mitgeschrieben werden — das Verzeichnis, das kurz vor dem
+    Aufräumen existiert, darf deshalb höchstens einen kleinen Bruchteil
+    davon groß sein, selbst im 6-h-Fall (``COUNCIL_RECORD_MAX_HOURS``).
+
+    Damit der Test in Sekunden statt Minuten läuft, wird nicht in
+    100-ms-Rahmen (216 000 Iterationen) simuliert, sondern in 1-s-Rahmen
+    (21 600) — die Auswahl-Arithmetik (``idx = sent // Fensterlänge``)
+    bleibt dieselbe, nur gröber getaktet."""
+    monkeypatch.setenv("RATSLOTSE_STT_AUDIO", str(tmp_path / "stt"))
+    monkeypatch.setenv("COUNCIL_STT_BEHALTEN", "500")   # absichtlich zu hoch — STREAM_KEEP_CAP muss greifen
+    monkeypatch.setattr(stream_stt, "FRAME_SECONDS", 1.0)
+    monkeypatch.setattr(stream_stt, "FRAME_BYTES", stream_stt.SAMPLE_RATE * 2)  # 1 s Rahmen
+
+    sechs_stunden = 6 * 3600
+    gesamt_bytes = sechs_stunden * stream_stt.SAMPLE_RATE * 2   # ~691 MB ohne Auswahl
+    quelle = _EndlosStille(gesamt_bytes, stream_stt.FRAME_BYTES)
+    fake_ws = _FakeWS({})
+    monkeypatch.setattr(stream_stt, "open_session", lambda vocab: "wss://fake")
+    monkeypatch.setattr(stream_stt.ws_client, "connect", lambda url, **kw: fake_ws)
+    monkeypatch.setattr(stream_stt, "ffmpeg_pcm", lambda source: quelle)
+
+    gemessen: list[int] = []
+    echtes_rmtree = stream_stt.shutil.rmtree
+
+    def spionieren_dann_loeschen(pfad, ignore_errors=False):
+        from pathlib import Path
+        p = Path(pfad)
+        if p.exists():
+            gemessen.append(_verzeichnisgroesse(p))
+        echtes_rmtree(pfad, ignore_errors=ignore_errors)
+
+    monkeypatch.setattr(stream_stt.shutil, "rmtree", spionieren_dann_loeschen)
+
+    segs = stream_stt.record_and_transcribe(
+        source="datei.m4a", people=[], max_seconds=sechs_stunden, ksinr=4242)
+
+    assert segs == []                       # keine Äußerungen im Test — nur die Aufbewahrung zählt
+    assert gemessen, "kein Aufräumen des Aufbewahrungs-Ordners beobachtet"
+    spitzenwert = max(gemessen)
+    # Großzügige, aber klare Obergrenze — weit unter dem, was der ganze
+    # Rohton gebraucht hätte, und unter dem 50-MB-Ziel aus dem Review.
+    assert spitzenwert < 50_000_000, f"{spitzenwert} Bytes — deutlich mehr als geplant"
+    assert spitzenwert < gesamt_bytes / 10
