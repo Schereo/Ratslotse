@@ -7,6 +7,317 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [2.8.0] – 2026-09-23
+
+### Hinzugefügt
+- **Ideen aus anderen Städten zeigen jetzt Bewegungen statt langer Listen.**
+  Eine Idee, die mehrere andere Räte hatten, steht als eine Karte da: welche
+  Städte, wann und mit welchem Ergebnis, auf einer gemeinsamen Zeitleiste — und
+  ein Urteil je Idee, ob Oldenburg sie schon hat, mit Belegen und getrennt davon
+  „Verwandtes aus Oldenburg". Jede Idee hat eine eigene Seite mit allen
+  Vorlagen, dem „Warum" aus den Niederschriften, wo eines dasteht, und einer
+  Rückmeldung „Stimmt das?". Die einzelnen Vorlagen stehen weiter darunter. Im
+  Web und in der App, weiterhin hinter dem Schalter `ideen-anderswo`. (#1483)
+- **Lotti schlägt vor, was als Nächstes dran ist.** Unter ihrer Antwort stehen
+  jetzt bis zu zwei Chips, die weiterführen: zum nächsten Baustein der Seite
+  („Erklär mir: Kredite und Zinsen"), zu einem Fachwort aus der Antwort („Was
+  heißt Umschuldung?") oder ins Ratsarchiv. Die Vorschläge entstehen im Browser
+  aus dem, was das Fenster ohnehin weiß — ohne einen zweiten Aufruf ans
+  Sprachmodell; die Frage nach einem Fachwort beantwortet das geprüfte Glossar
+  in Millisekunden und kostet nichts. Gefragt wird nichts zweimal. (#1462)
+- **Lotti fragt selten mal selbst nach.** Wer eine Weile auf einer Seite liest,
+  bekommt von ihr eine kleine Blase: „Hast du eine Frage zu dem, was du siehst?“
+  Ein Tipp öffnet ihr Fenster, ein × schickt sie wieder weg. Sie meldet sich
+  höchstens einmal am Tag und dreimal im Monat, nie auf der Fragen-Seite, und
+  nach zweimal Wegklicken zwei Monate lang gar nicht mehr. (#1445)
+- **Lotti hilft jetzt auch in der App.** Unten rechts schwebt ein Knopf mit ihr
+  über jedem Screen. Ein Tipp öffnet ein Blatt, in dem sie erklärt, was gerade
+  zu sehen ist — die Seite, die Liste, ein Fachwort. Gehört die Frage ins
+  Ratsarchiv, sagt sie das und reicht sie an „Frag den Rat" weiter, ohne dass
+  man sie noch einmal tippen muss. (#1447)
+- **Lotti zeigt, worauf ihre Zahlen ruhen.** Unter einer Antwort mit
+  Haushaltszahlen steht jetzt die Zeile „Grundlage:" mit den Papieren, die Lotti
+  vorlagen — Jahresabschluss, Haushaltsplan, Prüfbericht, jeweils mit Jahr und,
+  wo es eine gibt, mit der Adresse des Dokuments. Ein Klick öffnet es in einem
+  neuen Tab, in derselben Form wie die Beleg-Chips der Haushalts-Seiten. Genannt
+  wird, was wirklich im Kontext stand: Ein Baustein, der nicht mehr in den
+  Prompt passte, bringt auch seinen Beleg nicht mit. Es sind die Quellen der
+  Antwort, nicht die einer einzelnen Zahl — genau das sagt die Beschriftung.
+  Antworten ohne Zahlen (Glossar, Seitenwissen, „Lotti erklärt's einfach")
+  bekommen keine Zeile, und ein gespeichertes Gespräch zeigt die Belege beim
+  Laden wieder. (#1474)
+- **Lottis Erklärungen lassen sich bewerten.** Unter jeder Antwort, die ein
+  Modell geschrieben hat, stehen jetzt dieselben zwei stillen Daumen wie im
+  Ratsgespräch — mit der Nachfrage nach dem Grund beim Daumen runter. Unter
+  geprüftem Text (Glossar, Seiten-Wissen, „Lotti erklärt's einfach") stehen sie
+  bewusst nicht: Dort bewertete man das Glossar, nicht die Assistentin. Der
+  Admin-Reiter „Lotti" zeigt die Quote dazu, getrennt von der des Ratsgesprächs.
+  (#1460)
+- **Lotti ordnet Zahlen ein, statt sie zu bewerten.** Auf „Ist das viel?", „Wie
+  steht Oldenburg im Vergleich da?" oder „Wie viel Schulden hat Oldenburg pro
+  Kopf?" legt sie den Betrag je Einwohner*in daneben und sagt, wo Oldenburg in
+  der Reihe der acht kreisfreien Städte Niedersachsens steht. Ob das viel oder
+  wenig ist, entscheidet weiterhin die Person — Lotti bewertet nicht. Gerechnet
+  wird auf dem Server: Ratslotse teilt den Betrag durch die Einwohnerzahl
+  desselben Jahres und nennt beide Jahrgänge dazu, damit keine Zahl im Kopf des
+  Sprachmodells entsteht. Nebenbei behoben: Der Städtevergleich im
+  Antwort-Kontext zeigte bisher die Einwohnerzahlen der acht Städte statt ihrer
+  Steuerkraft. (#1473)
+- **Lotti kann jetzt erklären, was auf dem Bildschirm steht.** Der Unterbau
+  dafür steht: ein eigener Endpunkt, der eine Seite, einen angeklickten Baustein
+  oder markierten Text in Alltagssprache erklärt — ohne im Beschluss-Archiv zu
+  suchen. Für Fachwörter, Beschluss-Kurzfassungen und Seitenbeschreibungen
+  antwortet er aus geprüftem Text, ganz ohne Sprachmodell. Fragen, die wirklich
+  ins Archiv gehören („Wer hat dagegen gestimmt?"), beantwortet er nicht,
+  sondern reicht sie an „Frag den Rat" weiter. Sichtbar wird das mit dem
+  Lotti-Knopf im nächsten Schritt. (#1441)
+- **Zeig Lotti, was du erklärt haben willst.** Im Lotti-Fenster gibt es jetzt
+  „Etwas auf der Seite zeigen": Jeder erklärbare Baustein bekommt ein kleines
+  Fragezeichen, und ein Tipp darauf erklärt genau diesen — die Rate-Treppe, eine
+  Zahlentabelle, den amtlichen Beschlusstext. Erklärt wird dabei nur, was in dem
+  angetippten Baustein steht, nicht die ganze Seite. (#1443)
+- **Lotti merkt sich eure Gespräche — wenn ihr das wollt.** Was du sie fragst,
+  landet in deinem Konto, sobald du „Gespräche merken" erlaubt hast; du findest
+  es auf allen Geräten unter „Gespräche" wieder. Es ist dieselbe Einwilligung
+  wie bei „Frag den Rat", und wer sie abgelehnt hat, wird nicht noch einmal
+  gefragt. Was auf der Seite steht — der markierte Text, der Inhalt eines
+  Bausteins —, wird dabei nicht mitgespeichert. (#1444)
+- **Lotti kennt jetzt den ganzen Haushalt, nicht nur die Seite, auf der man
+  steht.** Sie weiß von allen fünfzehn Haushalts-Seiten, welche Frage dort
+  beantwortet wird, und sagt am Ende einer Antwort in einem Satz, wo etwas
+  ausführlich nachzulesen ist — mit einem Chip „Weiter zu: …", der direkt
+  hinführt. Und die geprüften Haushaltszahlen kommen nicht mehr nur im
+  Haushalts-Bereich: Wer auf „Heute" oder auf einer Beschluss-Seite nach dem
+  Schuldenstand fragt, bekommt die Zahl dort, wo er gerade ist. (#1467)
+- **Lotti ist jetzt auf jeder Seite ansprechbar.** Unten rechts schwebt ein
+  Knopf; ein Tipp darauf öffnet ihr Fenster, und sie erklärt, was gerade auf dem
+  Bildschirm steht — die Seite, eine Zahl oder markierter Text. Der Verlauf
+  bleibt erhalten, wenn du weiterblätterst. Fragen, die in die Ratsunterlagen
+  gehören („Wer hat dagegen gestimmt?"), beantwortet sie nicht selbst, sondern
+  reicht sie mit einem Tipp an „Frag den Rat" weiter. (#1442)
+- **Lotti reicht Archivfragen weiter, ohne dich wegzuschicken.** Fragst du sie
+  etwas, das nur die Ratsunterlagen beantworten („Wer hat dagegen gestimmt?"),
+  sucht sie jetzt direkt im Fenster — und nimmt mit, was du gerade vor dir hast.
+  Die Antwort steht dort, wo du gefragt hast, mit den Beschlüssen darunter; wer
+  mehr will, geht mit einem Tipp ins volle Ratsgespräch. (#1446)
+- **Lottis leeres Fenster schlägt jetzt zwei Fragen zur jeweiligen Seite vor,
+  statt nur „Was sehe ich hier?" anzubieten.** Wer nicht weiß, was er Lotti
+  fragen kann, fragt oft gar nichts — auf der Schulden-Seite erscheinen jetzt
+  etwa „Wie viel Schulden hat Oldenburg pro Kopf?" und „Wie hoch ist der
+  Schuldenstand des Kernhaushalts allein?" als Chips. „Was sehe ich hier?"
+  bleibt darunter als kleinere dritte Option. Die Fragen sind für jede Seite von
+  Hand ausgewählt und im Browser gegen echte Daten geprüft: Auf den
+  Haushalts-Seiten zieht jede der beiden wirklich eine Zahl, statt nur die Seite
+  zu beschreiben. (#1471)
+- **Lotti zeigt dir, wo etwas steht.** Wer sie fragt „Wo finde ich …?" oder „Wo
+  steht …?", bekommt jetzt einen Knopf „Zeig mir: …" — ein Klick scrollt zum
+  passenden Baustein der Seite und hebt ihn kurz hervor. Die Antwort entsteht im
+  Browser aus den Überschriften der Seite, ohne Rückfrage beim Sprachmodell, und
+  ist deshalb sofort da. Findet sich nichts Passendes, geht die Frage wie bisher
+  an Lotti — die jetzt aber weiß, welche Bausteine auf der Seite stehen, und
+  deshalb sagen kann, unter welcher Überschrift man nachsehen muss. (#1461)
+- **Der Modell-Prüfstand misst jetzt auch Wortbeiträge, Live-Verfolgung,
+  Video-Ergebnisse, Social-Texte, Kritiker und „Mein Viertel“.** Jede Suite
+  prüft an echten Sitzungen und Beschlüssen, mit Erwartungen aus Niederschrift
+  und Vorlage statt aus einer Modellausgabe, und ohne ein Modell als Richter.
+  Die Transkription des Mitschnitts hat eine Suite, aber noch kein Audio zum
+  Messen. Ein Kandidat, der häufiger als das heutige Modell einer Injektion
+  folgt oder mehr erfindet, heißt im Bericht nicht mehr „besser“, sondern „nicht
+  zulässig“ — egal, wie gut seine Quote ist. (#1487)
+- **Modell-Prüfstand: jedes KI-Feature mit Eval gegen jedes neue Modell, mit
+  einem Befehl.** `python eval/pruefstand.py --modell <id> --laeufe 2` misst
+  Qualität, harte Befunde, Latenz und echte Kosten je Feature und schreibt mit
+  `bericht` eine Übersicht, die einen Unterschied nur jenseits der Streuung
+  zweier Läufe als Gewinn oder Verlust zählt. Nebenbei erscheint der
+  Themen-Wächter jetzt in der Kostenstatistik des Admin-Panels; bisher liefen
+  seine Aufrufe dort unter keinem Namen. (#1482)
+
+### Geändert
+- **Der Städtevergleich wird vorerst nicht mehr wöchentlich aktualisiert.** Der
+  Hintergrundlauf, der Ratsdokumente der Vergleichsstädte holt und gegen
+  Oldenburg hält, ist abgeschaltet, bis der Vergleich fertig ist — er war der
+  mit Abstand teuerste und längste Lauf des Projekts. Die bereits erfassten
+  Daten bleiben unverändert sichtbar. Dazu drei Änderungen, damit er wieder
+  eingeschaltet werden kann, ohne alles andere aufzuhalten: Er hat jetzt eine
+  Zeitgrenze und hört von selbst auf, statt bis in den Abend zu laufen; er tritt
+  zur Seite, sobald eine neue Version veröffentlicht wird, und macht beim
+  nächsten Mal weiter; und wenn ein Bewertungsmaßstab geändert wird, bewertet er
+  nicht mehr stillschweigend den gesamten Bestand neu — das ist jetzt ein
+  eigener, angestoßener Lauf. (#1418)
+- **Lotti geht selbst ins Ratsarchiv — und unter einer Antwort steht höchstens
+  noch ein nächster Schritt.** Der Knopf „Den Rat fragen" ist weg. Wer fragt
+  „Wer hat dagegen gestimmt?", bekommt die Antwort mit Belegen, ohne vorher zu
+  entscheiden, welchen Weg die Frage nehmen soll — Lotti sagt dabei, was sie
+  gerade tut („Das steht nicht auf der Seite — ich sehe im Ratsarchiv nach").
+  Der Umweg über eine Vorab-Erklärung entfällt damit: Eine Archivfrage kostet
+  ein Viertel weniger und spart rund eine Sekunde. Wer nach einer Erklärung doch
+  tiefer will, findet darunter den stillen Textlink „Im Ratsarchiv nachsehen".
+  Gleichzeitig ist das Fenster ruhiger geworden: Statt bis zu sieben
+  Bedienelementen unter einer Antwort steht dort jetzt höchstens ein Vorschlag,
+  und er sagt als Handlung, was passiert („Anzeigetafel erklären" statt „Erklär
+  mir: Die Anzeigetafel"). Ein Fachwort führt nicht mehr zusätzlich einen Chip
+  mit sich — es steht unterstrichen im Antworttext und klappt dort auf. Die
+  Einstiegs-Chips stehen nur noch im leeren Fenster; „Etwas auf der Seite
+  zeigen" wohnt danach als Icon neben dem Eingabefeld. Und der Verweis auf eine
+  andere Haushalts-Seite zeigt nie mehr auf die Seite, auf der man gerade steht.
+  Eine Antwort aus dem Ratsarchiv zeigt außerdem nur noch die Quellen, auf die
+  sie sich wirklich beruft; die übrigen Fundstücke stehen wie gehabt hinter
+  „Alle … Quellen". Und ein Gespräch, das mit einer Archivfrage beginnt, bleibt
+  eines: Es landet bei Lotti und nimmt die folgenden Erklärungen mit auf.
+  (#1470)
+- **Die Überschrift einer Seite gilt Lotti jetzt ausdrücklich als Fremdtext.**
+  Auf einer Beschluss-Seite ist sie der Titel aus der Ratsvorlage, also von
+  jemand anderem geschrieben. Ein Eval-Fall prüft, dass eine Anweisung darin
+  folgenlos bleibt. (#1452)
+- **Lotti schaut auf, wenn der Mauszeiger kommt.** Der schwebende Knopf unten
+  rechts hebt sich leicht, sein Schatten öffnet sich, und Lottis Kopf darin
+  richtet sich auf und neigt sich — so ist auch ohne Zeigerhand zu sehen, dass
+  man ihn anklicken kann. Auf Touchgeräten ändert sich nichts, und wer
+  reduzierte Bewegung eingestellt hat, bekommt nur den Farb- und
+  Schattenwechsel. Gleichzeitig ist die feste Fußzeile unten in Lottis Fenster
+  weggefallen: Sie kostete in jedem Gespräch dauerhaft Platz für einen Satz, den
+  man einmal liest. Was rechtlich zu sagen ist — dass Frage und Ratsauszüge
+  extern verarbeitet werden —, steht unverändert in der Einwilligungs-Karte vor
+  der ersten Frage, in der Konto-Karte „Gespräche" und auf der Datenschutzseite.
+  (#1466)
+- **Lotti weiß jetzt, was dein Konto darf — und was es nicht darf.** Sie
+  verweist nur noch auf Seiten, die dir auch offenstehen, statt in eine
+  gesperrte Ansicht zu schicken. Fragst du ausdrücklich nach „meinen Themen",
+  kennt sie deren Namen; ohne dieses Wort bleiben sie außen vor. Deinen Namen,
+  deine Adresse und deine Rolle erfährt sie nie. Und wenn dir ihr Knopf im Weg
+  ist: Unter „Mein Konto" lässt er sich für dieses Gerät ausblenden — über ⌘K
+  ist sie trotzdem erreichbar. (#1448)
+- **Fragt jemand ohne Zusatz nach „dem Haushalt", nennt Lotti jetzt beide
+  Zählweisen.** Tims eigene Frage war der Normalfall: „der Haushalt" heißt für
+  die Verwaltung den Kernhaushalt, für alle anderen die ganze Stadt samt
+  Eigenbetrieben und Beteiligungen. Sagt jemand nur „Haushalt", „Etat", „Budget"
+  oder „Gesamthaushalt" — ohne „Kern", „Konzern", „Eigenbetrieb(e)",
+  „Beteiligung(en)" oder „Gesamtabschluss" zu nennen —, holt Lotti jetzt beide
+  Zahlen dazu und nennt sie mit je einem Satz: dieselbe Figur wie „Drei
+  Zählweisen, eine Stadt" auf der Schulden-Seite. Das gilt auf den
+  Haushalts-Seiten genauso wie außerhalb, etwa auf „Heute" — dort kamen
+  Haushaltszahlen bisher nur zu ausdrücklichen Geldfragen wie „Wie hoch sind die
+  Schulden?". (#1472)
+- **Wortbeiträge aus Niederschriften werden vollständiger erfasst.** Jede
+  Wortmeldung steht jetzt als eigener Eintrag da, auch wenn dieselbe Person
+  mehrmals spricht, und wer in einer Aussprache antwortet (Verwaltung, Gäste,
+  Vortragende), erscheint mit eigenem Namen statt im Antwortfeld der Frage. Die
+  Live-Verfolgung einer Ratssitzung und die Ortszuordnung von Beschlüssen laufen
+  auf neueren Modellen, weil die bisherigen im Oktober abgeschaltet werden.
+  (#1491)
+- **Zwei Projektregeln sagen jetzt, was wirklich gilt.** Der Rückmerge von
+  `main` nach `dev` stand als Pflicht nach jedem Fix in den Regeln — ein
+  Workflow erledigt ihn längst bei jedem Push, der Befehl von Hand sagt seit
+  Monaten nur noch „Already up to date". Er steht jetzt dort, wo er zählt: als
+  Auflösung, wenn der Workflow bei einem Konflikt rot wird. Und die Karte „Neu
+  bei Ratslotse" wird von jeder Minor- auf jede Major-Version umgestellt: Die
+  Minor-Regel war eine Bitte und wurde fünf Releases lang übergangen, weil die
+  Kuratierung Handarbeit ist. Beide Regeln hält jetzt ein Wächter statt einer
+  Zeile Prosa. (#1435)
+
+### Behoben
+- **Der Hinweis auf eine ältere Aktenlage beschreibt jetzt die Antwort, nicht
+  den Bestand.** Gerechnet wurde er über alle gefundenen Beschlüsse — ein
+  einzelner Randtreffer aus diesem Jahr ließ damit eine Antwort aktuell
+  aussehen, die ausschließlich auf Beschlüssen von 2018 bis 2023 ruht.
+  Maßgeblich sind jetzt die Beschlüsse, die in der Antwort wirklich zitiert
+  werden; gespeicherte Gespräche bringen den Hinweis beim Wiederöffnen mit.
+  (#1434)
+- **Jeder Prod-Deploy war fünf Minuten länger unterwegs als nötig.** Die
+  Testsuite läuft seit 09/2026 parallel über alle Kerne — auf den Pull Requests
+  und lokal, aber nicht in dem Testlauf, der dem Deploy vorgeschaltet ist: Dort
+  war die Umstellung übersehen worden. Gemessen am Release 2.7.0: 7 min 25 s
+  dort gegen gut zwei Minuten auf demselben Stand im Pull Request. Nichts wurde
+  dadurch rot, es dauerte nur jedes Mal länger. Ein Wächter hält die drei
+  Stellen, die die ganze Suite fahren, jetzt beieinander. (#1433)
+- **Lotti kennt das Abstimmungsergebnis des Beschlusses, den sie erklärt.** „Wie
+  viele haben dagegen gestimmt?" bekam auf einer Beschluss-Seite bisher die
+  Auskunft, das könne nur das Ratsarchiv sagen — obwohl das Ergebnis auf der
+  Seite stand. Ergebnis, Stimmenverhältnis, Gegenstimmen und Enthaltungen gehen
+  jetzt mit in ihren Blick auf die Seite, das Sitzungsdatum dabei in Worten („1.
+  Juni 2026"). Wer wie gestimmt hat, steht weiterhin nirgends — diese Frage
+  reicht sie wie bisher an „Den Rat fragen" weiter. (#1457)
+- **Lotti liest den eigenen Namen nicht mehr von der Startseite ab.** Die
+  Überschrift von „Heute" ist eine Begrüßung mit dem Anzeigenamen des Kontos —
+  sie stand damit in Lottis Kontext-Zeile, in ihrem Arbeitsauftrag und im Titel
+  des gespeicherten Gesprächs. Jetzt zeigt das Fenster dort den Seitennamen, und
+  der Anzeigename wird zusätzlich im Backend aus Überschrift und Gesprächstitel
+  gestrichen. Nebenbei heißt der Browser-Tab der Startseite jetzt „Heute" statt
+  des langen Anwendungstitels. (#1456)
+- **Lotti in der App: eigenes Gespräch, lesbare Antworten, und sie klopft auch
+  hier an.** Ihre Runden landeten bisher im laufenden Ratsgespräch, und
+  Fettungen standen als Sternchen im Text. Beides ist behoben. Neu ist der
+  Hinweis zur KI-Verarbeitung vor der ersten Frage, das seltene Anklopfen mit
+  denselben Grenzen wie im Web, und ein Stück Luft unter langen Listen, damit
+  ihr Knopf den letzten Eintrag nicht mehr verdeckt. (#1450)
+- **Lotti erklärt jetzt den Beschluss, nicht die Sorte Seite.** Auf einer
+  Beschluss-, Personen- oder Themenfeld-Seite hatte sie den Gegenstand zwar vor
+  sich, redete aber über die Gattung der Seite und sagte im Zweifel „das steht
+  hier nicht". Außerdem antwortet sie auf Seiten, die zu einem Recht gehören,
+  nur noch Konten, die dieses Recht auch haben. (#1449)
+- **Lotti verliert den Beschluss nicht mehr, wenn sie ins Ratsarchiv
+  weiterreicht.** Wer auf einer Beschluss-Seite „Wer hat dagegen gestimmt?"
+  fragte und auf „Den Rat fragen" tippte, bekam bisher eine Antwort über einen
+  *ähnlichen* Vorgang — die Frage reiste nur als Text mit, nicht als Kennung.
+  Jetzt geht die Kennung der Seite mit: Der Beschluss, den du vor dir hast,
+  steht in den Quellen immer an erster Stelle, und „das" und „dieser Beschluss"
+  meinen ihn. Das Archiv bleibt dabei offen — „Gab es dazu frühere Anträge?"
+  findet weiterhin die anderen. (#1455)
+- **Lotti hört im Haushalt auf die Frage, nicht nur auf die Seite.** Wer auf der
+  Haushalts-Übersicht nach dem Gesamthaushalt samt Eigenbetrieben fragte, bekam
+  die Zahlen der Seite und sonst nichts — die Frage war der Auswahl der Quellen
+  gleichgültig. Jetzt entscheiden Frage und Seite gemeinsam, welche
+  Haushaltsdaten sie heranzieht, und bei einer eigenen Frage bleibt Platz für
+  die Quelle, die sie beantwortet. (#1465)
+- **Lottis Fenster schneidet Erklärungen nicht mehr ab — und sagt, woran es
+  gerade arbeitet.** Ein unterstrichenes Fachwort in Lottis Antwort zeigte seine
+  Erklärung als Popover am Wort; im 384 Pixel schmalen Fenster schnitt der Rand
+  sie ab, sobald das Wort rechts stand. Jetzt klappt sie unter dem Absatz auf —
+  ein stiller Block, höchstens einer je Antwort, Esc schließt ihn. Im
+  Ratsgespräch, wo Platz ist, bleibt der Popover. Und die Ladeanzeige ist
+  endlich eine: drei Punkte, die sich wirklich bewegen, daneben der Schritt, den
+  der Server ohnehin meldet — „Lotti liest die Seite …", dann „Lotti schreibt
+  …", auf dem Weg ins Archiv die Schritte der KI-Frage. (#1468)
+- **Lotti tritt beiseite, solange der Einrichtungs-Assistent oder die Tour
+  läuft.** Der schwebende Knopf stand bisher auch dann im Seitengerüst, wenn
+  eine Vollfläche davor lag — unsichtbar, aber mit der Tabulatortaste
+  erreichbar. Wer ihn dort traf, öffnete Lottis Fenster hinter dem Assistenten
+  und bekam Erklärungen zu einer Seite, die gerade gar nicht zu sehen war. Jetzt
+  gibt es während des Assistenten, der Tour-Einladung und der geführten Tour
+  weder Knopf noch Anklopfen noch Fenster; danach ist alles wie vorher. (#1458)
+- **Lotti erklärt den Haushalt wieder.** Der Riegel, der Seiten mit Recht nur
+  Konten mit diesem Recht öffnet, las die Rechte an der falschen Stelle und
+  sperrte deshalb jedes Konto aus. (#1453)
+- **Lottis Gespräche finden sich wieder.** In der Liste „Gespräche" tragen sie
+  jetzt ihren Namen und öffnen sich in ihrem Fenster statt im Ratsgespräch. Eine
+  Frage, die sie ans Ratsarchiv weiterreicht, wird im selben Gespräch
+  gespeichert; nach einem Neuladen des Tabs läuft es weiter, statt sich zu
+  teilen. Und wer die Speicher-Frage anderswo beantwortet hat, bekommt sie bei
+  Lotti nicht noch einmal. **Und auf dem Handy bleibt ihr Fenster über der
+  Tastatur.** Wer dort in die Zeile tippte, tippte bisher hinter die Tastatur.
+  (#1451)
+- **Lotti verwechselt die Seiten nicht mehr.** Ihr Verlauf überlebt den
+  Seitenwechsel — das ist gewollt, nur stand die Erklärung der vorigen Seite
+  danach ohne jeden Hinweis obenan, und ihre Runden gingen als Vorgeschichte in
+  die nächste Frage. Jetzt trennt eine stille Zwischenzeile „Jetzt auf: …" die
+  Seiten voneinander, und als Gedächtnis reisen nur noch Runden mit, die auf
+  derselben Seite gestellt wurden. Ältere Runden bleiben sichtbar, sie reden nur
+  nicht mehr in die Antwort hinein. (#1459)
+- **Registrierungs-Signale und Kohorten rechnen in UTC.** Die Tagesreihe der
+  Registrierungen und die Reife der Kohorten liefen über die Ortszeit, die
+  gespeicherten Zeitstempel stehen aber in UTC. Zwischen 22 und 24 Uhr CEST
+  fehlte deshalb der jüngste Tag im Admin-Panel; die Abweisungen werden jetzt
+  ebenfalls auf den UTC-Tag gezählt, und zwei Tests halten den Grenzfall mit
+  gestellter Uhr fest. (#1464)
+- **Der Städtevergleich schickt keine Dokumente mehr an chinesische
+  Modellanbieter.** Die Einordnung fremder Ratsdokumente lief bisher ganz ohne
+  die Anbieterauswahl, die für alle übrigen Modellaufrufe gilt: Damit fielen
+  nicht nur die Zero-Data-Retention-Pflicht, sondern auch das Trainingsverbot
+  und der Ausschluss chinesischer Anbieter weg. Jetzt entfällt dort nur noch die
+  Zero-Data-Retention-Pflicht, weil ausschließlich öffentliche Ratsdokumente
+  anderer Städte verarbeitet werden. Das Trainingsverbot und der Ausschluss
+  gelten wie überall. Nutzerdaten waren nie betroffen. (#1488)
+
 ## [2.7.0] – 2026-09-21
 
 ### Hinzugefügt
@@ -8589,7 +8900,8 @@ Open-Source-Go-Live von Ratslotse.
 *Dieser Changelog beginnt mit dem Open-Source-Release von Ratslotse. Die
 Entwicklungshistorie davor ist nicht Teil dieses Repositories.*
 
-[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v2.7.0...main
+[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v2.8.0...main
+[2.8.0]: https://github.com/Schereo/Ratslotse/compare/v2.7.0...v2.8.0
 [2.7.0]: https://github.com/Schereo/Ratslotse/compare/v2.6.7...v2.7.0
 [2.6.7]: https://github.com/Schereo/Ratslotse/compare/v2.6.6...v2.6.7
 [2.6.6]: https://github.com/Schereo/Ratslotse/compare/v2.6.5...v2.6.6
