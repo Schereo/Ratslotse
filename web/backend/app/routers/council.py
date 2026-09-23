@@ -42,7 +42,7 @@ from kern.store import Store
 
 from .. import deepresearch
 from ..config import get_settings
-from ..antworten import (AnalysisData, AssistantStarters, BudgetAmendmentLists, BudgetAuditReports,
+from ..antworten import (AnalysisData, ElectedCouncil, ElectedMember, AssistantStarters, BudgetAmendmentLists, BudgetAuditReports,
                          BudgetBalanceSheet, BudgetComparison, BudgetDataState, BudgetDebt, BudgetLiquidity, BudgetLoans,
                          BudgetDispute, BudgetDocuments, BudgetExecution,
                          BudgetFixedAssets, BudgetGroup,
@@ -69,6 +69,7 @@ from ..antworten import (AnalysisData, AssistantStarters, BudgetAmendmentLists, 
                          TemplateFollowed, TemplateFollows, TemplateUnfollowed, ThisWeek,
                          TodayBriefing, TrendData)
 from ..clients import client_kind
+from ..election import elected as elected_mod
 from ..deps import (get_cities_store, get_council_store, get_current_user, get_store,
                     optional_user, require_active, require_permission)
 from ..ratelimit import (
@@ -3626,6 +3627,41 @@ def members(_user: dict = Depends(require_active),
             store: CouncilStore = Depends(get_council_store)) -> CouncilMembers:
     """Directory of council members (from attendance): party, sessions, committees."""
     return {"members": store.list_members()}
+
+
+def _elected(store: CouncilStore) -> ElectedCouncil | None:
+    known = {m["slug"]: m.get("art") or "council" for m in store.list_members()}
+    return elected_mod.council(store.person_slug, store.council_history, known)
+
+
+@router.get("/elected")
+def elected_council(response: Response,
+                    store: CouncilStore = Depends(get_council_store)) -> ElectedCouncil:
+    """Der gewählte Rat nach der letzten Ratswahl, bevor er in den Protokollen
+    steht: wer ab dem 1. November einen Sitz hat, mit Liste, Wahlbereich und
+    Personenstimmen.
+
+    Ohne Anmeldung lesbar: Es ist das bekannt gemachte Wahlergebnis, und die
+    Angaben (Name, Beruf, Jahrgang) stammen aus der amtlichen Bekanntmachung
+    der Wahlvorschläge.
+    """
+    data = _elected(store)
+    if data is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Kein gewählter Rat vorhanden.")
+    response.headers["Cache-Control"] = "public, max-age=3600"
+    return data
+
+
+@router.get("/elected/{slug}")
+def elected_member(slug: str, store: CouncilStore = Depends(get_council_store)) -> ElectedMember:
+    """Eine Person aus dem gewählten Rat — für die Personen-Seite, auch wenn
+    es aus den Protokollen noch kein Profil gibt. Öffentlich wie ``/elected``."""
+    data = _elected(store)
+    slug = store.personen_kanon().get(slug, slug)
+    hit = next((m for m in (data or {}).get("members", []) if m["slug"] == slug), None)
+    if hit is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Nicht im gewählten Rat.")
+    return hit
 
 
 @router.get("/person/{slug}")

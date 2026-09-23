@@ -13,6 +13,7 @@ import { useFetch } from "@/lib/use-fetch";
 import { cn } from "@/lib/utils";
 import { shortCommittee } from "@/lib/committees";
 import { useZurueck } from "@/lib/zurueck";
+import { GewaehltProfil, NeuerRatHinweis, useGewaehlt, type Gewaehlt } from "@/components/neuer-rat";
 
 const sessionUrl = (ksinr: number) => `https://buergerinfo.oldenburg.de/si0057.php?__ksinr=${ksinr}`;
 
@@ -43,22 +44,27 @@ function Section({ title, aside, children }: { title: string; aside?: React.Reac
  *  Vorsitz, „–heute"-Balken laufen bis zum rechten Rand. */
 function OfficesGantt({ current }: { current: Membership[] }) {
   const thisYear = new Date().getFullYear();
-  const starts = current.map((m) => yearOf(m.von)).filter((y): y is number => y != null);
+  const starts = current.map((m) => yearOf(m.valid_from)).filter((y): y is number => y != null);
   const minYear = starts.length ? Math.min(...starts) : thisYear - 4;
   const span = Math.max(1, thisYear - minYear);
   const midYear = minYear + Math.round(span / 2);
+  // Wahlperioden beginnen am 1. November (2001, 2006, …). Wer über eine
+  // Wahl hinweg im Amt blieb, hat einen durchgehenden Balken — die Linie
+  // zeigt, wo die neue Periode anfing (Tims Wunsch 23.09.2026). Auf
+  // derselben Jahres-Skala wie die Balken, die ebenfalls am Jahr beginnen.
+  const perioden = wahlperiodenIn(minYear, thisYear).map((y) => ({ y, pct: ((y - minYear) / span) * 100 }));
   const rows = [...current].sort((a, b) => {
     const ca = isChair(a.role) ? 0 : 1, cb = isChair(b.role) ? 0 : 1;
-    return ca !== cb ? ca - cb : (yearOf(a.von) ?? minYear) - (yearOf(b.von) ?? minYear);
+    return ca !== cb ? ca - cb : (yearOf(a.valid_from) ?? minYear) - (yearOf(b.valid_from) ?? minYear);
   });
   return (
     <div className="rounded-xl border border-border bg-card p-4">
       <div className="flex flex-col gap-2.5">
         {rows.map((m, i) => {
           const chair = isChair(m.role);
-          const vy = yearOf(m.von) ?? minYear;
+          const vy = yearOf(m.valid_from) ?? minYear;
           const leftPct = Math.min(90, Math.max(0, ((vy - minYear) / span) * 100));
-          const showLabel = 100 - leftPct >= 26 && m.von;
+          const showLabel = 100 - leftPct >= 26 && m.valid_from;
           return (
             // Schmal (< sm) stapelt sich die Zeile: Name über dem Balken, Jahr
             // rechts daneben. Zweispaltig fraß die Namensspalte auf dem Handy
@@ -79,7 +85,7 @@ function OfficesGantt({ current }: { current: Membership[] }) {
                 </span>
                 {/* Das Jahr steht schmal IMMER in der Namenszeile — im Balken
                     wäre es bei kurzer Amtszeit unlesbar oder ganz weg. */}
-                {m.von && (
+                {m.valid_from && (
                   <span className={`ml-auto shrink-0 text-[11px] font-semibold tabular-nums sm:hidden ${chair ? "text-signal" : "text-primary"}`}>
                     seit {vy}
                   </span>
@@ -90,6 +96,10 @@ function OfficesGantt({ current }: { current: Membership[] }) {
               <span className="relative block h-2 w-full rounded-full bg-muted sm:h-4 sm:w-auto sm:rounded-none sm:bg-transparent">
                 <span className={`absolute inset-y-0 rounded-full sm:inset-y-[2px] ${chair ? "bg-signal" : "bg-primary"}`}
                   style={{ left: `${leftPct}%`, right: 0 }} />
+                {perioden.filter((p) => p.pct > leftPct).map((p) => (
+                  <span key={p.y} aria-hidden className="absolute inset-y-0 w-[2px] -translate-x-1/2 bg-card"
+                    style={{ left: `${p.pct}%` }} />
+                ))}
                 {showLabel && (
                   <span className="absolute top-1/2 hidden -translate-y-1/2 text-[10.5px] font-semibold text-white sm:inline"
                     style={{ left: `calc(${leftPct}% + 8px)` }}>
@@ -107,14 +117,34 @@ function OfficesGantt({ current }: { current: Membership[] }) {
         <span className="absolute left-0 top-1 text-[10px] text-muted-foreground">{minYear}</span>
         {span > 6 && <span className="absolute left-1/2 top-1 -translate-x-1/2 text-[10px] text-muted-foreground">{midYear}</span>}
         <span className="absolute right-0 top-1 text-[10px] text-muted-foreground">heute</span>
+        {perioden.map((p) => (
+          <span key={p.y} aria-hidden className="absolute -top-px h-1.5 w-px -translate-x-1/2 bg-muted-foreground/60"
+            style={{ left: `${p.pct}%` }} />
+        ))}
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11.5px] text-muted-foreground">
         <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-signal" /> Vorsitz<span className="hidden sm:inline"> / stellv. Vorsitz</span></span>
         <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-primary" /> Mitglied</span>
+        {perioden.length > 0 && (
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-3 w-[2px] rounded-full bg-muted-foreground/60" /> neue Wahlperiode
+          </span>
+        )}
         <span className="ml-auto tabular-nums sm:hidden">{minYear} → heute</span>
       </div>
     </div>
   );
+}
+
+/** Die Anfangsjahre der Wahlperioden (1996, 2001, … — jeweils fünf Jahre)
+ *  nach `von`, die schon begonnen haben: Die Periode 2026 beginnt erst am
+ *  1. November, vorher gehört an den rechten Rand keine Linie. */
+function wahlperiodenIn(von: number, bis: number): number[] {
+  const heute = new Date();
+  const begonnen = (y: number) => y < heute.getFullYear() || (y === heute.getFullYear() && heute.getMonth() >= 10);
+  const out: number[] = [];
+  for (let y = 1996; y <= bis; y += 5) if (y > von && begonnen(y)) out.push(y);
+  return out;
 }
 
 /** Schmal darf der Gremienname umbrechen — er hat dort die volle Zeile für sich
@@ -140,13 +170,21 @@ function PersonInner() {
     }
   }, [kanon, slug]);
 
-  if (loading) return <DetailSkeleton />;
-  if (!data) notFound();
+  // Der gewählte Rat (Ratswahl 2026): Wer neu gewählt ist, steht noch in
+  // keinem Protokoll und hätte sonst keine Seite; wer schon eine hat, bekommt
+  // darauf die Zeile „Wiedergewählt …". Beides hinter dem Schalter.
+  const { data: gewaehlt, laedt: gewaehltLaedt } = useGewaehlt<Gewaehlt>(slug);
+
+  if (loading || gewaehltLaedt) return <DetailSkeleton />;
+  if (!data) {
+    if (gewaehlt) return <GewaehltProfil g={gewaehlt} />;
+    notFound();
+  }
   if (data.type === "administration") return <VerwaltungProfil data={data} />;
-  return <RatsmitgliedProfil data={data} />;
+  return <RatsmitgliedProfil data={data} gewaehlt={gewaehlt} />;
 }
 
-function RatsmitgliedProfil({ data }: { data: MemberDetail }) {
+function RatsmitgliedProfil({ data, gewaehlt }: { data: MemberDetail; gewaehlt?: Gewaehlt | null }) {
   const { zeigen: zeigeZurueck, zurueck } = useZurueck();
   const [pastOpen, setPastOpen] = useState(false);
 
@@ -157,13 +195,13 @@ function RatsmitgliedProfil({ data }: { data: MemberDetail }) {
   const currentAffiliation = data.current_affiliation
     ?? (data.faction_timeline.length ? data.faction_timeline[data.faction_timeline.length - 1] : null);
   const memberships = data.ris?.memberships ?? [];
-  const current = memberships.filter((m) => !m.bis);
-  const past = memberships.filter((m) => m.bis);
+  const current = memberships.filter((m) => !m.valid_until);
+  const past = memberships.filter((m) => m.valid_until);
   const nChairs = data.committees.filter((c) => c.chair).length;
   const maxPresence = Math.max(1, ...data.committees.map((c) => c.n));
 
-  const pastFrom = past.map((m) => yearOf(m.von)).filter((y): y is number => y != null);
-  const pastTo = past.map((m) => yearOf(m.bis)).filter((y): y is number => y != null);
+  const pastFrom = past.map((m) => yearOf(m.valid_from)).filter((y): y is number => y != null);
+  const pastTo = past.map((m) => yearOf(m.valid_until)).filter((y): y is number => y != null);
   const pastSpan = pastFrom.length && pastTo.length ? `${Math.min(...pastFrom)}–${Math.max(...pastTo)}` : null;
 
   return (
@@ -230,6 +268,8 @@ function RatsmitgliedProfil({ data }: { data: MemberDetail }) {
         </Popover>
       </div>
 
+      {gewaehlt && <NeuerRatHinweis g={gewaehlt} />}
+
       {/* Aktuelle Ämter als Gantt */}
       {current.length > 0 && (
         <Section title="Aktuelle Ämter" aside={<>{current.length} laufend · Balken = Amtszeit</>}>
@@ -257,7 +297,7 @@ function RatsmitgliedProfil({ data }: { data: MemberDetail }) {
                       {isChair(m.role) && <span className="ml-1.5 text-[11px] font-medium text-signal">{isDeputy(m.role) ? "stellv. Vorsitz" : "Vorsitz"}</span>}
                     </span>
                     <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                      {m.von ? yearOf(m.von) : "?"} – {m.bis ? yearOf(m.bis) : "heute"}
+                      {m.valid_from ? yearOf(m.valid_from) : "?"} – {m.valid_until ? yearOf(m.valid_until) : "heute"}
                     </span>
                   </div>
                 ))}

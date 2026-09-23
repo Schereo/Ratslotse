@@ -301,6 +301,21 @@ PAGES: dict[str, PageKnowledge] = dict([
            "Woher stammen die Angaben zu einer Person?",
        ),
     ),
+    _p("/council/neuer-rat", "Der neue Rat",
+       "Wer nach der Ratswahl ab dem 1. November im Rat sitzt — nach Listen, mit "
+       "Wahlbereich, Personenstimmen, Beruf und Jahrgang. Die Karten sagen, wer "
+       "neu im Rat ist, wer schon im letzten Rat saß und wer nach einer Pause "
+       "zurückkehrt.",
+       "Die Sitze stammen aus dem Wahlergebnis der Stadt, Beruf und Jahrgang aus "
+       "der Bekanntmachung der Wahlvorschläge, die Jahre im Rat aus den "
+       "Protokollen und dem Ratsinformationssystem.",
+       "Bis der Wahlausschuss das Ergebnis feststellt, ist es vorläufig; wer vor "
+       "2018 im Rat saß und heute nicht mehr geführt wird, erscheint als neu.",
+       starters=(
+           "Wie kommt ein Sitz über Personenstimmen zustande?",
+           "Was passiert, wenn jemand die Wahl ablehnt?",
+       ),
+    ),
     _p("/council/ort", "Ort",
        "Was an einem bestimmten Ort in der Stadt beschlossen wurde — ein "
        "Quartier, eine Straße, ein Gebäude —, neueste Entscheidung zuerst.",

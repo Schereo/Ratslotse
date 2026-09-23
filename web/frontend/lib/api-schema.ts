@@ -3117,6 +3117,53 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/council/elected": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Elected Council
+         * @description Der gewählte Rat nach der letzten Ratswahl, bevor er in den Protokollen
+         *     steht: wer ab dem 1. November einen Sitz hat, mit Liste, Wahlbereich und
+         *     Personenstimmen.
+         *
+         *     Ohne Anmeldung lesbar: Es ist das bekannt gemachte Wahlergebnis, und die
+         *     Angaben (Name, Beruf, Jahrgang) stammen aus der amtlichen Bekanntmachung
+         *     der Wahlvorschläge.
+         */
+        get: operations["elected_council_api_council_elected_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/elected/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Elected Member
+         * @description Eine Person aus dem gewählten Rat — für die Personen-Seite, auch wenn
+         *     es aus den Protokollen noch kein Profil gibt. Öffentlich wie ``/elected``.
+         */
+        get: operations["elected_member_api_council_elected__slug__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/council/entities": {
         parameters: {
             query?: never;
@@ -9120,6 +9167,95 @@ export interface components {
             catalog: components["schemas"]["PlaceCatalogHead"];
             /** Districts */
             districts: unknown;
+        };
+        /**
+         * ElectedCouncil
+         * @description Der gewählte Rat nach einer Ratswahl — bevor er in den Protokollen steht.
+         */
+        ElectedCouncil: {
+            /** Date */
+            date: string;
+            /** Election */
+            election: string;
+            /** Members */
+            members: components["schemas"]["ElectedMember"][];
+            /** Seats */
+            seats: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "vorlaeufig" | "amtlich";
+            /** Term Start */
+            term_start: string;
+            /** Title */
+            title: string;
+            /** Vacancies */
+            vacancies: components["schemas"]["ElectedVacancy"][];
+        };
+        /**
+         * ElectedMember
+         * @description Eine Person mit Sitz im gewählten Rat (``app.election.elected``).
+         *
+         *     ``slug`` ist derselbe wie auf der Personen-Seite; ``has_profile`` sagt, ob
+         *     es dort schon ein Profil aus den Protokollen gibt, ``council_status``, ob
+         *     die Person dem Rat schon angehörte (und nicht nur einen Ausschuss beriet).
+         */
+        ElectedMember: {
+            /** Area */
+            area: number;
+            /** Area Name */
+            area_name: string;
+            /** Area Roman */
+            area_roman: string;
+            /** Born */
+            born: number | null;
+            /** Color */
+            color: string;
+            /** Color Dark */
+            color_dark: string;
+            /**
+             * Council Status
+             * @enum {string}
+             */
+            council_status: "new" | "current" | "former";
+            /** Council Terms */
+            council_terms: number[];
+            /** Has Profile */
+            has_profile: boolean;
+            /** List */
+            list: string;
+            /** List Short */
+            list_short: string;
+            /**
+             * Mandate
+             * @enum {string}
+             */
+            mandate: "direct" | "list" | "transfer" | "unknown" | "successor";
+            /** Name */
+            name: string;
+            /** Occupation */
+            occupation: string | null;
+            /** Position */
+            position: number | null;
+            /** Slug */
+            slug: string;
+            /** Votes */
+            votes: number | null;
+        };
+        /**
+         * ElectedVacancy
+         * @description Ein Sitz, dessen gewählte Person ihn nicht antritt.
+         */
+        ElectedVacancy: {
+            /** List Short */
+            list_short: string;
+            /** Name */
+            name: string;
+            /** Reason */
+            reason: string;
+            /** Successor */
+            successor: string | null;
         };
         /** ElectionArea */
         ElectionArea: {
@@ -18431,6 +18567,57 @@ export interface operations {
             };
         };
     };
+    elected_council_api_council_elected_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ElectedCouncil"];
+                };
+            };
+        };
+    };
+    elected_member_api_council_elected__slug__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ElectedMember"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     entities_list_api_council_entities_get: {
         parameters: {
             query?: {
@@ -22238,4 +22425,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 1d84f1f6b9a8e24126c7189495c9e9f5cf2cc8e965149749a439a9fa4a9e7e2c
+// vertrag-sha256: 4923d817d1ad36931068a52f84269f8883f132f5671a2e6cc58bd2b9098cb874
