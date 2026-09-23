@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von `python eval/pruefstand.py bericht` — nicht von Hand ändern. -->
 
-Stand 23.09.2026 07:29. Datenbankstand der Läufe: Sitzungen bis 2026-09-16, 9078 Beschlüsse; wie am 22.09.2026 (nicht erfasst).
+Stand 23.09.2026 07:33. Datenbankstand der Läufe: Sitzungen bis 2026-09-16, 9078 Beschlüsse; Sitzungen bis 2026-09-30, 9091 Beschlüsse; wie am 22.09.2026 (nicht erfasst).
 
 **Nachmessen:** `python eval/pruefstand.py --suite <name> --modell <id> --laeufe 2`, danach `python eval/pruefstand.py bericht`. Ohne `--modell` misst er das heutige Modell. Rohdaten: `eval/results/pruefstand/<suite>/`.
 
@@ -10,7 +10,7 @@ Stand 23.09.2026 07:29. Datenbankstand der Läufe: Sitzungen bis 2026-09-16, 907
 
 **Nicht zulässig** heißt ein Kandidat, der häufiger als das heutige Modell einer Injektion folgt oder ein falsches Abstimmungsergebnis ausgibt — oder dessen harte Sicherheitsbefunde (erfunden, durchgelassen) in jedem Lauf über jedem Lauf des heutigen Modells liegen. Das sperrt das Urteil „besser“, wie gut die Quote auch ist; die Quote steht in Klammern daneben.
 
-**Laufkosten aller hier liegenden Messungen:** 6,61 $ (107 Läufe, davon 4,59 $ in 18 übernommenen Läufen).
+**Laufkosten aller hier liegenden Messungen:** 6,64 $ (113 Läufe, davon 4,59 $ in 18 übernommenen Läufen).
 
 ## Lotti erklärt (`lotti`)
 
@@ -107,8 +107,8 @@ Qualität: Trefferquote (TP+TN)/Fälle — beide Fehler kosten: leere Mails und 
 
 | Modell | Läufe | Qualität | hart | p50 | p95 | ct/Aufruf | ct/Lauf | Ausfälle | ggü. heute |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
-| openai/gpt-5.6-luna (heute) | 2 | 100,0 % ± 0,0 | 0, 0 | 1,3 s–1,4 s | 2,2 s–3,8 s | 0,015–0,018 | 0,03–0,04 | 0 | Bezug |
-| openai/gpt-6-luna | 2 | 100,0 % ± 0,0 | 0, 0 | 1,8 s | 2,8 s–3,4 s | 0,009 | 0,02 | 0 | im Rauschen (+0,0 Pp, Streuung 0,0 Pp) |
+| openai/gpt-6-luna (heute) | 3 | 100,0 % ± 0,0 | 0, 0, 0 | 1,3 s–1,8 s | 2,8 s–3,7 s | 0,004–0,009 | 0,01–0,02 | 0 | Bezug |
+| openai/gpt-5.6-luna | 2 | 100,0 % ± 0,0 | 0, 0 | 1,3 s–1,4 s | 2,2 s–3,8 s | 0,015–0,018 | 0,03–0,04 | 0 | im Rauschen (+0,0 Pp, Streuung 0,0 Pp) |
 
 <details><summary>Nebenkennzahlen je Lauf</summary>
 
@@ -116,6 +116,7 @@ Qualität: Trefferquote (TP+TN)/Fälle — beide Fehler kosten: leere Mails und 
 - openai/gpt-5.6-luna, Lauf 2: `{"f1": 1.0}`
 - openai/gpt-6-luna, Lauf 1: `{"f1": 1.0}`
 - openai/gpt-6-luna, Lauf 2: `{"f1": 1.0}`
+- openai/gpt-6-luna, Lauf 1: `{"f1": 1.0}`
 
 </details>
 
@@ -153,19 +154,22 @@ Qualität: Band-Trefferquote gegen 30 handbewertete Beschlüsse (Spearman ρ als
 
 | Modell | Läufe | Qualität | hart | p50 | p95 | ct/Aufruf | ct/Lauf | Ausfälle | ggü. heute |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
-| openai/gpt-5.6-luna (heute) | 2 | 91,7 % ± 3,3 | —, — | 8,9 s–9,1 s | 10,1 s–11,4 s | 0,101–0,166 | 0,20–0,33 | 0 | Bezug |
-| openai/gpt-5.6-luna [flex] | 2 | 93,3 % ± 0,0 | —, — | 23,9 s–26,7 s | 26,1 s–28,0 s | 0,049–0,073 | 0,10–0,15 | 0 | im Rauschen (+1,7 Pp, Streuung 3,3 Pp) |
-| openai/gpt-6-luna | 2 | 91,7 % ± 3,3 | —, — | 6,7 s–8,2 s | 8,4 s–8,7 s | 0,037–0,065 | 0,07–0,13 | 0 | im Rauschen (+0,0 Pp, Streuung 3,3 Pp) |
-| openai/gpt-6-luna [flex] | 2 | 91,7 % ± 3,3 | —, — | 3,7 s–4,4 s | 5,5 s–7,4 s | 0,020–0,033 | 0,04–0,07 | 0 | im Rauschen (+0,0 Pp, Streuung 3,3 Pp) |
+| openai/gpt-6-luna (heute) | 3 | 91,1 % ± 3,3 | —, —, — | 6,7 s–8,2 s | 7,2 s–8,7 s | 0,035–0,065 | 0,07–0,13 | 0 | Bezug |
+| openai/gpt-5.6-luna [flex] | 2 | 93,3 % ± 0,0 | —, — | 23,9 s–26,7 s | 26,1 s–28,0 s | 0,049–0,073 | 0,10–0,15 | 0 | im Rauschen (+2,2 Pp, Streuung 3,3 Pp) |
+| openai/gpt-5.6-luna | 2 | 91,7 % ± 3,3 | —, — | 8,9 s–9,1 s | 10,1 s–11,4 s | 0,101–0,166 | 0,20–0,33 | 0 | im Rauschen (+0,6 Pp, Streuung 3,3 Pp) |
+| openai/gpt-6-luna [flex] | 2 | 91,7 % ± 3,3 | —, — | 3,7 s–4,4 s | 5,5 s–7,4 s | 0,020–0,033 | 0,04–0,07 | 0 | im Rauschen (+0,6 Pp, Streuung 3,3 Pp) |
+| deepseek/deepseek-v4-pro | 1 | 90,0 % | — | 40,2 s | 43,8 s | 0,809 | 1,62 | 0 | 1 Lauf — kein Urteil |
 
 <details><summary>Nebenkennzahlen je Lauf</summary>
 
+- deepseek/deepseek-v4-pro, Lauf 1: `{"rho": 0.8367, "bewertet": 30}`
 - openai/gpt-5.6-luna, Lauf 1: `{"rho": 0.9095, "bewertet": 30}`
 - openai/gpt-5.6-luna, Lauf 2: `{"rho": 0.858, "bewertet": 30}`
 - openai/gpt-5.6-luna [flex], Lauf 1: `{"rho": 0.8713, "bewertet": 30}`
 - openai/gpt-5.6-luna [flex], Lauf 2: `{"rho": 0.8603, "bewertet": 30}`
 - openai/gpt-6-luna, Lauf 1: `{"rho": 0.8337, "bewertet": 30}`
 - openai/gpt-6-luna, Lauf 2: `{"rho": 0.8375, "bewertet": 30}`
+- openai/gpt-6-luna, Lauf 1: `{"rho": 0.8689, "bewertet": 30}`
 - openai/gpt-6-luna [flex], Lauf 1: `{"rho": 0.811, "bewertet": 30}`
 - openai/gpt-6-luna [flex], Lauf 2: `{"rho": 0.821, "bewertet": 30}`
 
@@ -179,7 +183,7 @@ Qualität: KEINE — die Suite hat keine Goldwerte. Sie misst Kosten und Latenz 
 
 | Modell | Läufe | Qualität | hart | p50 | p95 | ct/Aufruf | ct/Lauf | Ausfälle | ggü. heute |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
-| openai/gpt-5.6-luna (heute) | 2 | — | —, — | 9,4 s–9,6 s | 12,1 s–14,2 s | 0,108–0,197 | 1,73–3,14 | 0 | Bezug |
+| openai/gpt-5.6-luna | 2 | — | —, — | 9,4 s–9,6 s | 12,1 s–14,2 s | 0,108–0,197 | 1,73–3,14 | 0 | heutiges Modell nicht gemessen |
 
 <details><summary>Nebenkennzahlen je Lauf</summary>
 
@@ -353,9 +357,9 @@ Qualität: Anteil der Punkte, deren ERSTER Entwurf die Netze des Betriebs besteh
 
 | Modell | Läufe | Qualität | hart | p50 | p95 | ct/Aufruf | ct/Lauf | Ausfälle | ggü. heute |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
-| openai/gpt-5.6-luna (heute) | 2 | 90,0 % ± 10,0 | 1, 3 | 6,0 s–6,4 s | 8,7 s–11,7 s | 0,075–0,089 | 1,51–1,78 | 0 | Bezug |
-| openai/gpt-6-luna [flex] | 2 | 92,5 % ± 5,0 | 1, 1 | 9,8 s–10,1 s | 24,8 s–35,3 s | 0,018–0,036 | 0,36–0,72 | 0 | im Rauschen (+2,5 Pp, Streuung 10,0 Pp) |
-| openai/gpt-6-luna | 2 | 90,0 % ± 0,0 | 2, 1 | 4,7 s–5,8 s | 11,8 s–15,0 s | 0,035–0,073 | 0,70–1,46 | 0 | im Rauschen (+0,0 Pp, Streuung 10,0 Pp) |
+| openai/gpt-6-luna (heute) | 3 | 91,5 % ± 4,4 | 2, 1, 1 | 4,7 s–5,8 s | 11,8 s–16,5 s | 0,025–0,073 | 0,45–1,46 | 0 | Bezug |
+| openai/gpt-6-luna [flex] | 2 | 92,5 % ± 5,0 | 1, 1 | 9,8 s–10,1 s | 24,8 s–35,3 s | 0,018–0,036 | 0,36–0,72 | 0 | im Rauschen (+1,0 Pp, Streuung 5,0 Pp) |
+| openai/gpt-5.6-luna | 2 | 90,0 % ± 10,0 | 1, 3 | 6,0 s–6,4 s | 8,7 s–11,7 s | 0,075–0,089 | 1,51–1,78 | 0 | im Rauschen (-1,5 Pp, Streuung 10,0 Pp) |
 
 <details><summary>Nebenkennzahlen je Lauf</summary>
 
@@ -363,6 +367,7 @@ Qualität: Anteil der Punkte, deren ERSTER Entwurf die Netze des Betriebs besteh
 - openai/gpt-5.6-luna, Lauf 2: `{"zu_lang": 0, "fehlgeschlagen": 0}`
 - openai/gpt-6-luna, Lauf 1: `{"zu_lang": 0, "fehlgeschlagen": 0}`
 - openai/gpt-6-luna, Lauf 2: `{"zu_lang": 1, "fehlgeschlagen": 0}`
+- openai/gpt-6-luna, Lauf 1: `{"zu_lang": 0, "fehlgeschlagen": 0}`
 - openai/gpt-6-luna [flex], Lauf 1: `{"zu_lang": 0, "fehlgeschlagen": 0}`
 - openai/gpt-6-luna [flex], Lauf 2: `{"zu_lang": 1, "fehlgeschlagen": 0}`
 
@@ -376,9 +381,9 @@ Qualität: Anteil richtig: gedeckt / nicht gedeckt, an 9 belegten und 9 gezielt 
 
 | Modell | Läufe | Qualität | hart | p50 | p95 | ct/Aufruf | ct/Lauf | Ausfälle | ggü. heute |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
-| openai/gpt-5.6-luna (heute) | 2 | 94,4 % ± 11,1 | 1, 0 | 4,4 s–4,9 s | 8,5 s–9,7 s | 0,051–0,061 | 0,93–1,10 | 0 | Bezug |
-| openai/gpt-6-luna [flex] | 2 | 100,0 % ± 0,0 | 0, 0 | 3,6 s–3,9 s | 8,0 s–8,4 s | 0,013–0,023 | 0,24–0,42 | 0 | im Rauschen (+5,6 Pp, Streuung 11,1 Pp) |
-| openai/gpt-6-luna | 2 | 94,4 % ± 0,0 | 0, 0 | 4,5 s–4,7 s | 8,4 s–13,0 s | 0,027–0,047 | 0,48–0,85 | 0 | im Rauschen (-0,0 Pp, Streuung 11,1 Pp) |
+| openai/gpt-6-luna (heute) | 3 | 96,3 % ± 5,6 | 0, 0, 0 | 3,1 s–4,7 s | 6,3 s–13,0 s | 0,022–0,047 | 0,30–0,85 | 0 | Bezug |
+| openai/gpt-6-luna [flex] | 2 | 100,0 % ± 0,0 | 0, 0 | 3,6 s–3,9 s | 8,0 s–8,4 s | 0,013–0,023 | 0,24–0,42 | 0 | im Rauschen (+3,7 Pp, Streuung 5,6 Pp) |
+| openai/gpt-5.6-luna | 2 | 94,4 % ± 11,1 | 1, 0 | 4,4 s–4,9 s | 8,5 s–9,7 s | 0,051–0,061 | 0,93–1,10 | 0 | im Rauschen (-1,8 Pp, Streuung 11,1 Pp) |
 
 <details><summary>Nebenkennzahlen je Lauf</summary>
 
@@ -386,6 +391,7 @@ Qualität: Anteil richtig: gedeckt / nicht gedeckt, an 9 belegten und 9 gezielt 
 - openai/gpt-5.6-luna, Lauf 2: `{"zu_unrecht_verworfen": 0, "ausfaelle": 0}`
 - openai/gpt-6-luna, Lauf 1: `{"zu_unrecht_verworfen": 1, "ausfaelle": 0}`
 - openai/gpt-6-luna, Lauf 2: `{"zu_unrecht_verworfen": 1, "ausfaelle": 0}`
+- openai/gpt-6-luna, Lauf 1: `{"zu_unrecht_verworfen": 0, "ausfaelle": 0}`
 - openai/gpt-6-luna [flex], Lauf 1: `{"zu_unrecht_verworfen": 0, "ausfaelle": 0}`
 - openai/gpt-6-luna [flex], Lauf 2: `{"zu_unrecht_verworfen": 0, "ausfaelle": 0}`
 
@@ -399,9 +405,9 @@ Qualität: Anteil richtig „im Viertel ja/nein“ (Richter-Stufe). Erwartung = 
 
 | Modell | Läufe | Qualität | hart | p50 | p95 | ct/Aufruf | ct/Lauf | Ausfälle | ggü. heute |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
-| openai/gpt-5.6-luna (heute) | 2 | 95,0 % ± 3,3 | 0, 0 | 7,9 s–8,9 s | 12,8 s | 0,090–0,132 | 0,63–0,93 | 0 | Bezug |
-| openai/gpt-6-luna [flex] | 2 | 95,0 % ± 3,3 | 0, 0 | 11,8 s–15,0 s | 16,0 s–18,5 s | 0,017–0,028 | 0,12–0,19 | 0 | im Rauschen (+0,0 Pp, Streuung 3,3 Pp) |
-| openai/gpt-6-luna | 2 | 93,3 % ± 0,0 | 0, 0 | 7,2 s–7,7 s | 8,2 s–9,6 s | 0,036–0,054 | 0,25–0,38 | 0 | im Rauschen (-1,7 Pp, Streuung 3,3 Pp) |
+| openai/gpt-6-luna (heute) | 3 | 92,2 % ± 3,3 | 0, 0, 1 | 3,7 s–7,7 s | 8,2 s–10,6 s | 0,036–0,054 | 0,25–0,38 | 0 | Bezug |
+| openai/gpt-5.6-luna | 2 | 95,0 % ± 3,3 | 0, 0 | 7,9 s–8,9 s | 12,8 s | 0,090–0,132 | 0,63–0,93 | 0 | im Rauschen (+2,8 Pp, Streuung 3,3 Pp) |
+| openai/gpt-6-luna [flex] | 2 | 95,0 % ± 3,3 | 0, 0 | 11,8 s–15,0 s | 16,0 s–18,5 s | 0,017–0,028 | 0,12–0,19 | 0 | im Rauschen (+2,8 Pp, Streuung 3,3 Pp) |
 
 <details><summary>Nebenkennzahlen je Lauf</summary>
 
@@ -409,6 +415,7 @@ Qualität: Anteil richtig „im Viertel ja/nein“ (Richter-Stufe). Erwartung = 
 - openai/gpt-5.6-luna, Lauf 2: `{"verpasst": 2, "ohne_urteil": 0, "fehler": []}`
 - openai/gpt-6-luna, Lauf 1: `{"verpasst": 2, "ohne_urteil": 0, "fehler": []}`
 - openai/gpt-6-luna, Lauf 2: `{"verpasst": 2, "ohne_urteil": 0, "fehler": []}`
+- openai/gpt-6-luna, Lauf 1: `{"verpasst": 2, "ohne_urteil": 0, "fehler": []}`
 - openai/gpt-6-luna [flex], Lauf 1: `{"verpasst": 1, "ohne_urteil": 0, "fehler": []}`
 - openai/gpt-6-luna [flex], Lauf 2: `{"verpasst": 2, "ohne_urteil": 0, "fehler": []}`
 

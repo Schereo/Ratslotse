@@ -10,7 +10,13 @@ from .scraper import AgendaItem
 # dem höchsten Halluzinationsrisiko im System, denn das Modell sieht nur
 # Titel. Per Env tauschbar, seit 28.08.26 Standard: gpt-5.6-luna (nüchterner
 # und aktueller als das zwei Jahre alte 4o-mini; Vergleich in council/impact.py).
-MODEL = os.environ.get("COUNCIL_COMMITTEE_MODEL", "openai/gpt-5.6-luna")
+#
+# Tims Entscheidung 23.09.2026 (P5, docs/plan-modellwechsel.md): GPT-6 Luna
+# ersetzt 5.6, im Flex-Tarif (kein Nutzereingabe-Feature). Prüfstand
+# 23.09.2026 (`ausschuss`, 3 Fälle × 2 Läufe — zu wenig für einen Unterschied):
+# 5.6 100,0 % ± 0,0 (0,015–0,018 ct/Aufruf) — 6-Luna normal 100,0 % ± 0,0
+# (0,009 ct). Kein Flex-Lauf gemessen (Suite zu klein); Flex bleibt aus.
+MODEL = os.environ.get("COUNCIL_COMMITTEE_MODEL", "openai/gpt-6-luna")
 
 
 def _esc(text: str) -> str:
@@ -145,6 +151,7 @@ def _analyse(committee: str, session_date: str,
             ],
             max_tokens=_budget(len(relevant)),
             _feature="committee_summary", _geduld=True, _ersatz=llm.ersatz_fuer(MODEL),
+            _tarif="flex",
         )
         content = (resp.choices[0].message.content or "").strip()
         if content.startswith("```"):
