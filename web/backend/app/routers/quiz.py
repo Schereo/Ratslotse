@@ -390,7 +390,7 @@ def pin_round(n: int = Query(5, ge=1, le=10),
               _user: dict = Depends(require_active),
               council: CouncilStore = Depends(get_council_store)) -> QuizPinRound:
     """„Wo liegt das?" (Plan Q7): n Orte zum Verorten, ohne Lage."""
-    return {"questions": quiz_pins.round_(council, n)}
+    return cast(QuizPinRound, {"questions": quiz_pins.round_(council, n)})
 
 
 @router.post("/pin-answer")
