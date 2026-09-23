@@ -2121,7 +2121,8 @@ def _bewegung(store: CouncilStore, z: dict,
     punkte = [
         TimelinePoint(paper_id=str(p["paper_id"]), body_id=str(p["body_id"]),
                       city=namen.get(p["body_id"], str(p["body_id"])), date=p.get("date"),
-                      outcome=p.get("outcome") or "none", kind=p.get("kind") or "other")
+                      outcome=p.get("outcome") or "none", kind=p.get("kind") or "other",
+                      title=p.get("title") or "")
         for p in json.loads(z.get("timeline") or "[]")]
     return {
         "cluster_id": int(z["cluster_id"]), "label": z.get("label") or "",

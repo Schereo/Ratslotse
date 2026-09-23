@@ -694,9 +694,12 @@ def rebuild_idea_groups(main: CitiesStore, model: str = EMBED_MODEL,
             outcome = ergebnis["outcome"] if ergebnis else None
             if outcome:
                 gesamt[outcome] += 1
+            # Der Kurztitel reist mit, damit die Zeitleiste beim Überfahren
+            # sagt, worum es an diesem Punkt ging — ohne eine Abfrage je Punkt.
+            titel = ((m.get("instrument") or "").strip() or (m.get("name") or "").strip())[:140]
             punkte.append({"paper_id": m["paper_id"], "body_id": m["body_id"],
                            "date": (m.get("date") or "")[:10] or None,
-                           "outcome": outcome, "kind": m["kind"]})
+                           "outcome": outcome, "kind": m["kind"], "title": titel})
             stadt = je_stadt.setdefault(m["body_id"], {
                 "body_id": m["body_id"], "first_date": None, "members": 0,
                 "outcomes": {}})
