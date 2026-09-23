@@ -20348,6 +20348,10 @@
           "paper_id": {
             "title": "Paper Id",
             "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
           }
         },
         "required": [
@@ -20356,7 +20360,8 @@
           "city",
           "date",
           "outcome",
-          "kind"
+          "kind",
+          "title"
         ],
         "title": "TimelinePoint",
         "type": "object"

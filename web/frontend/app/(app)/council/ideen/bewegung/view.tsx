@@ -24,12 +24,19 @@ import { DecisionLinkCard, POLICY_FIELD_LABELS } from "@/components/decision-ui"
 import { bilanz, zeitraum } from "@/components/ideen/bewegung-karte";
 import { ErgebnisPille } from "@/components/ideen/ergebnis";
 import { StandPille } from "@/components/ideen/stand";
-import { Jahresskala, Zeitleiste, ZeitleisteLegende } from "@/components/ideen/zeitleiste";
+import {
+  Jahresskala,
+  PUNKT,
+  Zeitleiste,
+  ZeitleisteLegende,
+  ZeitleistenFlaeche,
+} from "@/components/ideen/zeitleiste";
 import { Lotti } from "@/components/lotti";
 import { api } from "@/lib/api";
 import { useFeature } from "@/lib/features";
 import type { ApiAntwort } from "@/lib/vertrag";
-import { satz } from "@/lib/zeitleiste";
+import { cn } from "@/lib/utils";
+import { anteil, datumText, reihenfolge, satz, stufe } from "@/lib/zeitleiste";
 
 type Detail = ApiAntwort<"/council/cities/movements/detail">;
 type Dokument = Detail["documents"][number];
@@ -51,12 +58,6 @@ const NIEDERSCHRIFT: Record<string, string> = {
   available: "",
 };
 
-function datum(iso: string | null | undefined): string {
-  if (!iso) return "ohne Datum";
-  const [j, m, t] = iso.slice(0, 10).split("-");
-  return t ? `${t}.${m}.${j}` : iso;
-}
-
 function Kicker({ children }: { children: React.ReactNode }) {
   return (
     <div className="font-mono text-[11.5px] font-medium uppercase tracking-[0.07em] text-muted-foreground">
@@ -67,9 +68,25 @@ function Kicker({ children }: { children: React.ReactNode }) {
 
 // ------------------------------------------------------------- Bühne
 
-/** Je Stadt eine Zeile auf der gemeinsamen Achse. */
-function Buehne({ detail }: { detail: Detail }) {
+/** Je Stadt eine Zeile auf der gemeinsamen Achse — und darunter, was am
+ *  gewählten Punkt stand.
+ *
+ *  Wie die Verläufe im Haushalt: Die Ablesung zeigt IMMER etwas, im
+ *  Ruhezustand die jüngste Vorlage (nur mit Ring, ohne Strich — s.
+ *  `Zeitleiste`). Überfahren, Tippen, Wischen oder die Pfeiltasten wechseln
+ *  nur, welche. */
+function Buehne({ detail, onZeige }: { detail: Detail; onZeige: (paperId: string) => void }) {
   const b = detail.movement;
+  const [gewaehlt, setGewaehlt] = useState<string | null>(null);
+  const [perTaste, setPerTaste] = useState(false);
+  const reihe = useMemo(
+    () => reihenfolge(b.timeline).filter((p) => anteil(p.date, detail.axis) !== null),
+    [b.timeline, detail.axis],
+  );
+  const aktiv = gewaehlt ?? reihe[reihe.length - 1]?.paper_id ?? null;
+  const punkt = reihe.find((p) => p.paper_id === aktiv) ?? null;
+  const fuehrung = punkt && gewaehlt !== null ? anteil(punkt.date, detail.axis) : null;
+  const dokument = punkt ? detail.documents.find((d) => d.paper_id === punkt.paper_id) : undefined;
   return (
     <section
       aria-labelledby="buehne-titel"
@@ -78,41 +95,115 @@ function Buehne({ detail }: { detail: Detail }) {
       <h2 id="buehne-titel" className="font-display text-base font-bold text-foreground">
         Wie die Idee durch die Räte lief
       </h2>
-      <div className="grid gap-1">
-        {b.cities.map((c) => {
-          const punkte = b.timeline.filter((p) => p.body_id === c.body_id);
-          return (
-            <div key={c.body_id} className="grid grid-cols-[100px_minmax(0,1fr)] items-center gap-3 sm:grid-cols-[130px_minmax(0,1fr)]">
-              <span className="truncate text-[13px] font-semibold text-foreground sm:text-sm" title={c.city}>
-                {c.city}
-              </span>
-              <Zeitleiste
-                achse={detail.axis}
-                punkte={punkte}
-                label={`${c.city}: ${satz(punkte)}`}
-              />
-            </div>
-          );
-        })}
-        <div className="grid grid-cols-[100px_minmax(0,1fr)] gap-3 sm:grid-cols-[130px_minmax(0,1fr)]">
+      <div className="grid">
+        {/* Die Zeilen stehen ohne Abstand: Jede zeichnet ihr Stück der
+            Führungslinie, zusammen ist es EIN Strich durch alle Städte. */}
+        <ZeitleistenFlaeche
+          aktiv={aktiv}
+          onWahl={(id, taste) => {
+            setGewaehlt(id);
+            setPerTaste(Boolean(taste));
+          }}
+          beruehren
+          reihe={reihe.map((p) => p.paper_id)}
+          label="Vorlagen auf der Zeitleiste — mit den Pfeiltasten wechseln"
+          className="grid"
+        >
+          {b.cities.map((c) => {
+            const punkte = b.timeline.filter((p) => p.body_id === c.body_id);
+            return (
+              <div key={c.body_id} className="grid grid-cols-[100px_minmax(0,1fr)] items-center gap-x-3 sm:grid-cols-[130px_minmax(0,1fr)]">
+                <span
+                  className={cn(
+                    "truncate text-[13px] font-semibold transition-colors sm:text-sm",
+                    punkt?.body_id === c.body_id ? "text-primary" : "text-foreground",
+                  )}
+                >
+                  {c.city}
+                </span>
+                <Zeitleiste
+                  achse={detail.axis}
+                  punkte={punkte}
+                  label={`${c.city}: ${satz(punkte)}`}
+                  aktiv={aktiv}
+                  fuehrung={fuehrung}
+                />
+              </div>
+            );
+          })}
+        </ZeitleistenFlaeche>
+        <div className="mt-1 grid grid-cols-[100px_minmax(0,1fr)] gap-x-3 sm:grid-cols-[130px_minmax(0,1fr)]">
           <span />
           <Jahresskala achse={detail.axis} />
         </div>
       </div>
-      <ZeitleisteLegende />
+      {punkt && (
+        <div
+          aria-live={perTaste ? "polite" : undefined}
+          className="flex items-start gap-3 rounded-xl border border-border/70 bg-card px-3.5 py-2.5"
+        >
+          <span aria-hidden className={cn("mt-1 h-3 w-3 shrink-0 rounded-full", PUNKT[stufe(punkt.outcome)])} />
+          <div className="min-w-0 flex-1 space-y-1">
+            <p className="text-[13px] font-semibold leading-snug text-foreground [text-wrap:pretty]">
+              {dokument?.name || punkt.title || ART[punkt.kind] || "Vorlage"}
+            </p>
+            <p className="text-[11.5px] leading-snug text-muted-foreground">
+              <b className="font-semibold text-foreground">{punkt.city}</b>
+              {" · "}{datumText(punkt.date)}{" · "}
+              {[ART[punkt.kind] ?? "Vorlage", dokument?.originator].filter(Boolean).join(" · ")}
+            </p>
+            <p className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-0.5">
+              <ErgebnisPille outcome={punkt.outcome} />
+              <button
+                type="button"
+                onClick={() => onZeige(punkt.paper_id)}
+                className="text-[12px] font-semibold text-primary hover:underline"
+              >
+                In der Chronik zeigen
+              </button>
+              {gewaehlt !== null && (
+                <button
+                  type="button"
+                  onClick={() => setGewaehlt(null)}
+                  className="text-[12px] text-muted-foreground hover:text-foreground"
+                >
+                  zurücksetzen
+                </button>
+              )}
+            </p>
+          </div>
+        </div>
+      )}
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <ZeitleisteLegende />
+        <p className="text-[11px] text-muted-foreground">
+          Überfahren, tippen oder mit den Pfeiltasten wechseln.
+        </p>
+      </div>
     </section>
   );
 }
 
 // ------------------------------------------------------------ Chronik
 
-function Eintrag({ d }: { d: Dokument }) {
+/** Die Kennung eines Chronik-Eintrags — das Sprungziel aus der Bühne. */
+function eintragId(paperId: string): string {
+  return `vorlage-${paperId}`;
+}
+
+function Eintrag({ d, markiert }: { d: Dokument; markiert: boolean }) {
   const art = [ART[d.kind] ?? "Vorlage", d.originator].filter(Boolean).join(" · ");
   return (
-    <li className="grid gap-1.5 border-t border-border/70 px-4 py-3.5 first:border-t-0 sm:grid-cols-[104px_minmax(0,1fr)] sm:gap-4">
+    <li
+      id={eintragId(d.paper_id)}
+      className={cn(
+        "grid scroll-mt-24 gap-1.5 border-t border-border/70 px-4 py-3.5 transition-colors duration-700 first:border-t-0 sm:grid-cols-[104px_minmax(0,1fr)] sm:gap-4",
+        markiert && "bg-primary/[0.07]",
+      )}
+    >
       <div className="font-mono text-meta text-muted-foreground">
         <span className="block font-sans text-sm font-semibold text-foreground">{d.city}</span>
-        {datum(d.date)}
+        {datumText(d.date)}
       </div>
       <div className="min-w-0 space-y-1.5">
         <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
@@ -142,7 +233,7 @@ function Eintrag({ d }: { d: Dokument }) {
             <p className="mt-1 font-mono text-meta text-muted-foreground">
               aus der Niederschrift
               {d.protocol.organization ? ` · ${d.protocol.organization}` : ""}
-              {d.protocol.date ? ` · ${datum(d.protocol.date)}` : ""}
+              {d.protocol.date ? ` · ${datumText(d.protocol.date)}` : ""}
               {d.protocol.vote ? ` · ${d.protocol.vote}` : ""}
             </p>
           </div>
@@ -330,6 +421,7 @@ export default function View() {
   const id = Number(params?.get("id") ?? "");
   const von = params?.get("von") ?? "";
   const [alle, setAlle] = useState(false);
+  const [markiert, setMarkiert] = useState<string | null>(null);
   const { data, isPending, isError } = useQuery({
     queryKey: ["bewegung", id],
     queryFn: () => api.get<Detail>(`/council/cities/movements/detail?id=${id}`),
@@ -386,14 +478,26 @@ export default function View() {
           <div className="lg:hidden">
             <UndInOldenburg detail={data} kennung="ol-titel-schmal" />
           </div>
-          <Buehne detail={data} />
+          <Buehne
+            detail={data}
+            onZeige={(paperId) => {
+              // Steht der Eintrag hinter „Alle zeigen", erst aufklappen, dann
+              // im nächsten Bild springen — vorher gibt es ihn im DOM nicht.
+              setAlle(true);
+              setMarkiert(paperId);
+              requestAnimationFrame(() => requestAnimationFrame(() =>
+                document.getElementById(eintragId(paperId))?.scrollIntoView({ behavior: "smooth", block: "start" }),
+              ));
+              window.setTimeout(() => setMarkiert((m) => (m === paperId ? null : m)), 2400);
+            }}
+          />
           <section aria-labelledby="chronik-titel" className="grid gap-3">
             <h2 id="chronik-titel" className="font-display text-base font-bold text-foreground">
               Alle Vorlagen, nach Datum
             </h2>
             <ol className="overflow-hidden rounded-[14px] border border-border bg-card shadow-sm">
               {(alle ? dokumente : dokumente.slice(0, CHRONIK_ERST)).map((d) => (
-                <Eintrag key={d.paper_id} d={d} />
+                <Eintrag key={d.paper_id} d={d} markiert={d.paper_id === markiert} />
               ))}
             </ol>
             {!alle && dokumente.length > CHRONIK_ERST && (

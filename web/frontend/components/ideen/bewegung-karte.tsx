@@ -12,7 +12,7 @@
 import Link from "next/link";
 
 import { POLICY_FIELD_LABELS } from "@/components/decision-ui";
-import { Jahresskala, Zeitleiste } from "@/components/ideen/zeitleiste";
+import { KartenZeitleiste } from "@/components/ideen/zeitleiste";
 import { StandPille } from "@/components/ideen/stand";
 import type { ApiAntwort } from "@/lib/vertrag";
 import { cn } from "@/lib/utils";
@@ -104,11 +104,11 @@ export function BewegungKarte({
           <span className="font-semibold">{b.cities.length} Städte:</span> {staedteZeile(b)}
         </p>
       )}
-      <div>
-        <Zeitleiste achse={achse} punkte={b.timeline} />
-        <Jahresskala achse={achse} className="-mt-0.5" />
-      </div>
-      <p className="font-mono text-meta text-muted-foreground">{bilanz(b)}</p>
+      <KartenZeitleiste
+        achse={achse}
+        punkte={b.timeline}
+        ruhe={<p className="font-mono text-meta text-muted-foreground">{bilanz(b)}</p>}
+      />
       <OldenburgZeile bewegung={b} />
     </Link>
   );

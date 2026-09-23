@@ -20,6 +20,7 @@ function bewegung(id: number, label: string, staedte: string[], status: string |
   const timeline = staedte.map((city, i) => ({
     paper_id: `p${id}-${i}`, body_id: city.toLowerCase(), city,
     date: `${2023 + (i % 3)}-0${1 + i}-15`, outcome: i % 2 ? "rejected" : "accepted", kind: "motion",
+    title: `${label} (${city})`,
   }));
   return {
     cluster_id: id, label, field: "klima_umwelt",
@@ -161,4 +162,39 @@ test("die Ideen sind ein Reiter der Analyse, kein eigener Punkt in der Navigatio
   // Und von dort wieder hin.
   await page.getByRole("button", { name: /Andere Städte/ }).click();
   await expect(page).toHaveURL(/\/council\/ideen$/, { timeout: 20_000 });
+});
+
+test("die Zeitleiste liest ab: Überfahren, Tasten und der Sprung in die Chronik", async ({ page }) => {
+  await mocks(page);
+  await page.goto("/council/ideen");
+
+  // Auf der Karte: Über einem Punkt steht sofort, was er ist — ohne `title`,
+  // den der Browser erst nach einer Sekunde zeigte.
+  const karte = page.getByRole("region", { name: "Ideen, die mehrere Räte hatten" })
+    .getByRole("link", { name: /Verpackungssteuer einführen/ });
+  const punkt = karte.locator("[data-punkt]").first();
+  await expect(punkt).not.toHaveAttribute("title", /.+/);
+  await expect(karte).toContainText("2 Vorlagen");
+  await punkt.hover();
+  await expect(karte).toContainText("Münster · 15.01.2023 · beschlossen");
+  await expect(karte).toContainText("Verpackungssteuer einführen (Münster)");
+  await page.mouse.move(0, 0);
+  await expect(karte).not.toContainText("15.01.2023");
+
+  // Auf der Ideen-Seite zeigt die Ablesung im Ruhezustand die jüngste Vorlage.
+  await page.goto("/council/ideen/bewegung?id=14");
+  const buehne = page.getByRole("region", { name: "Wie die Idee durch die Räte lief" });
+  await expect(buehne).toContainText("Antrag Braunschweig");
+
+  // Tastatur: ein Tabstopp, dann Pos1 und Pfeile — nach Datum.
+  const flaeche = buehne.getByRole("group", { name: /Vorlagen auf der Zeitleiste/ });
+  await flaeche.focus();
+  await page.keyboard.press("Home");
+  await expect(buehne).toContainText("Antrag Osnabrück");
+  await page.keyboard.press("ArrowRight");
+  await expect(buehne).toContainText("Antrag Magdeburg");
+
+  // Der Sprung in die Chronik landet beim Eintrag.
+  await buehne.getByRole("button", { name: "In der Chronik zeigen" }).click();
+  await expect(page.locator("#vorlage-p14-3")).toBeInViewport();
 });

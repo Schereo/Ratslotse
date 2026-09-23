@@ -18,6 +18,8 @@ export type Punkt = {
   date: string | null;
   outcome: string;
   kind: string;
+  /** Kurztitel für die Ablese-Zeile; fehlt bei Beständen vor 23.09.2026. */
+  title?: string;
 };
 
 /** Fünf Stufen, nicht acht: Wer eine Leiste überfliegt, unterscheidet
@@ -125,4 +127,45 @@ export function spuren(anteile: number[], abstand = 0.032, spuren = 3): number[]
     letzte.set(frei, a);
     return frei;
   });
+}
+
+export const ART_TEXT: Record<string, string> = {
+  motion: "Antrag", amendment: "Änderungsantrag", inquiry: "Anfrage",
+  proposal: "Beschlussvorlage",
+};
+
+/** „12.03.2024" — oder „ohne Datum". */
+export function datumText(iso: string | null | undefined): string {
+  if (!iso) return "ohne Datum";
+  const [j, m, t] = iso.slice(0, 10).split("-");
+  return t ? `${t}.${m}.${j}` : iso;
+}
+
+/** Der Punkt, der dem Zeiger am nächsten liegt — als Index in `mitten`.
+ *
+ *  Gerechnet in Bildschirm-Pixeln (die Mitten misst der Aufrufer): Die
+ *  Punkte liegen in Spuren übereinander und auf der Ideen-Seite in einer
+ *  Zeile je Stadt, eine Suche nur über die x-Achse träfe also oft den
+ *  Nachbarn darüber. Die Höhe zählt halb — wer waagerecht über eine Leiste
+ *  fährt, meint die Zeit, nicht die Spur. `-1` ohne Punkte. */
+export function naechster(mitten: { x: number; y: number }[], x: number, y: number): number {
+  let best = -1;
+  let abstand = Infinity;
+  mitten.forEach((m, i) => {
+    const d = (m.x - x) ** 2 + ((m.y - y) * 0.5) ** 2;
+    if (d < abstand) {
+      abstand = d;
+      best = i;
+    }
+  });
+  return best;
+}
+
+/** Die Reihenfolge für die Pfeiltasten: nach Datum, bei Gleichstand nach
+ *  Stadt — dieselbe, in der die Chronik darunter die Vorlagen führt. */
+export function reihenfolge<T extends Punkt>(punkte: T[]): T[] {
+  return [...punkte].sort(
+    (a, b) =>
+      (a.date ?? "9999").localeCompare(b.date ?? "9999") || a.city.localeCompare(b.city, "de"),
+  );
 }

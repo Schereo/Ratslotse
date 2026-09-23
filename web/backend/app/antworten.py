@@ -1730,6 +1730,9 @@ class TimelinePoint(TypedDict):
     #: Kanonisches Ergebnis; ``none``, wenn die Stadt keins ausweist.
     outcome: str
     kind: str
+    #: Kurztitel (Instrument, sonst Titel der Vorlage) — für die Ablese-Zeile
+    #: der Zeitleiste. Leer bei Beständen, die vor 23.09.2026 gebaut wurden.
+    title: str
 
 
 class TimeAxis(TypedDict):

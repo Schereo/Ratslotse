@@ -14062,6 +14062,8 @@ export interface components {
             outcome: string;
             /** Paper Id */
             paper_id: string;
+            /** Title */
+            title: string;
         };
         /**
          * TodaySession
@@ -21914,4 +21916,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: b0fc47a366049cd5f4276fe321a4894841555979a98de4ca12c5220d0dc26c24
+// vertrag-sha256: 3e1b864b68766a78b561e7474d1ad9cdd9e1c77d16146000829f7a007c138242
