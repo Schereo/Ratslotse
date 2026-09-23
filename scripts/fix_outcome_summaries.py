@@ -20,12 +20,20 @@ Was nicht gelingt, wird GELEERT statt stehen gelassen: Eine fehlende
 Kurzfassung erzeugt der Wochenlauf neu, eine falsche bliebe für immer.
 Beim Themen-Satz bleiben Themenfeld und Schlagworte, wie sie sind.
 
+Danach die Beschreibungen der Themen-Seiten (``council_entity_meta``): Sie
+entstehen aus den Einzeilern und kannten das Ergebnis bis 23.09.2026 ebenso
+wenig. Bei den 20 Themen des dev-Abzugs, deren Beschlüsse alle scheiterten,
+bestanden 8–9 die Eval (``eval/run_ergebnis_texte.py --textart themen``),
+etwa „TSH Konzept Berlin": „… der Bau neuer Dreifeldsporthallen … beschlossen"
+— beide Beschlüsse abgelehnt. Mit dem Ergebnis im Prompt 20/20.
+
 Usage::
 
     python scripts/fix_outcome_summaries.py                        # Bericht, nichts ändert sich
     python scripts/fix_outcome_summaries.py --probe --limit 20     # Modell rufen, alt/neu zeigen, Kosten messen
     python scripts/fix_outcome_summaries.py --schreiben            # alles Betroffene neu schreiben
     python scripts/fix_outcome_summaries.py --schreiben --nur simple --limit 50
+    python scripts/fix_outcome_summaries.py --schreiben --nur themen
 """
 from __future__ import annotations
 
@@ -41,7 +49,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")
 
-from council import outcome_note, simple_summary, topics  # noqa: E402
+from council import entities, outcome_note, simple_summary, topics  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 from council.votes import normalize_vote  # noqa: E402
 from kern import llm  # noqa: E402
@@ -67,6 +75,39 @@ def _vote_fixes(store: CouncilStore) -> list[tuple[int, str | None, str | None]]
     rows = store._conn.execute("SELECT id, vote, raw_result FROM council_decisions").fetchall()
     return [(r["id"], r["vote"], normalize_vote(r["vote"], r["raw_result"]))
             for r in rows if normalize_vote(r["vote"], r["raw_result"]) != r["vote"]]
+
+
+def _affected_entities(store: CouncilStore) -> list[dict]:
+    """Themen mit Beschreibung und mindestens einem nicht gefassten Beschluss.
+
+    Anders als beim Einzeiler gibt es hier keine Probe je Zeile: Eine
+    Beschreibung erzählt von vielen Beschlüssen, und die falschen nannten die
+    Ablehnung oft sogar („lehnte im September ab … beschloss im November ein
+    Abstellverbot" — beide abgelehnt). Deshalb alle; ein zweiter Lauf schreibt
+    sie noch einmal (251 Themen im dev-Abzug, $0,45 am 23.09.2026).
+    """
+    rows = store._conn.execute(
+        f"""SELECT e.slug, e.name, e.kind, m.description
+            FROM council_entities e JOIN council_entity_meta m ON m.slug = e.slug
+            WHERE m.description IS NOT NULL AND m.description != ''
+              AND EXISTS (SELECT 1 FROM council_entity_links el
+                          JOIN council_decisions d ON d.id = el.decision_id
+                          WHERE el.entity_id = e.id AND d.outcome IN ({_OUTCOMES}))
+            ORDER BY e.n DESC"""
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def _new_descriptions(store: CouncilStore, ents: list[dict], workers: int) -> dict[str, str | None]:
+    # Die Beschlüsse im Hauptfaden lesen — die Verbindung gehört ihm.
+    work = [(e, store.entity_decisions_brief(e["slug"])) for e in ents]
+
+    def run(item: tuple) -> str | None:
+        e, decs = item
+        return entities.describe(e["name"], e["kind"], decs)
+
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        return dict(zip((e["slug"] for e in ents), pool.map(run, work)))
 
 
 def _new_simple(rows: list[dict], workers: int) -> dict[int, str | None]:
@@ -147,6 +188,30 @@ def process(db: Path, write: bool = False, probe: bool = False, only: str = "all
                               "tags": json.loads(r["policy_tags"] or "[]"),
                               "summary": new.get(r["id"])}
                     for r in rows})
+
+        # Themen-Beschreibungen NACH den Einzeilern: Sie werden aus ihnen gebaut.
+        if only in ("alle", "themen"):
+            ents = _affected_entities(store)
+            print(f"themen: {len(ents)} betroffen")
+            stats["themen_betroffen"] = len(ents)
+            ents = ents[:limit] if limit else ents
+            if (write or probe) and ents:
+                new_desc = _new_descriptions(store, ents, workers)
+                if probe:
+                    for e in ents:
+                        print(f"\n[themen] {e['slug']}\n  alt: {e['description']}\n"
+                              f"  neu: {new_desc.get(e['slug']) or '— (wird geleert)'}")
+                ok = sum(1 for v in new_desc.values() if v)
+                stats["themen_neu"] = ok
+                stats["themen_geleert"] = len(new_desc) - ok
+                if write:
+                    store.set_entity_descriptions([(s, v) for s, v in new_desc.items() if v])
+                    # Geleert statt stehen gelassen: describe_entities.py (Wochenlauf)
+                    # füllt eine leere Beschreibung neu, eine falsche nie.
+                    with store._conn:
+                        store._conn.executemany(
+                            "UPDATE council_entity_meta SET description = NULL WHERE slug = ?",
+                            [(s,) for s, v in new_desc.items() if not v])
     finally:
         store.close()
 
@@ -162,7 +227,7 @@ def main() -> int:
     ap.add_argument("--db", type=Path, default=COUNCIL_DB)
     ap.add_argument("--schreiben", action="store_true", help="wirklich schreiben (sonst nur Bericht)")
     ap.add_argument("--probe", action="store_true", help="Modell rufen und alt/neu zeigen, nichts schreiben")
-    ap.add_argument("--nur", choices=("alle", "simple", "summary", "vote"), default="alle")
+    ap.add_argument("--nur", choices=("alle", "simple", "summary", "themen", "vote"), default="alle")
     ap.add_argument("--limit", type=int, default=None, help="höchstens so viele Zeilen je Spalte")
     ap.add_argument("--workers", type=int, default=4)
     args = ap.parse_args()

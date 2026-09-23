@@ -1,0 +1,454 @@
+{
+ "etikett": "vorher",
+ "zeit": "2026-09-23T08:13:52",
+ "textarten": {
+  "simple_summary": [
+   {
+    "bestanden": 1,
+    "faelle": 15,
+    "zeilen": [
+     {
+      "id": 481,
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Der Schulausschuss hat entschieden, dass die Förderschule für Kinder mit Lernschwierigkeiten bis 2028 weiterbesteht. Kinder können dort weiterhin die 5. Klasse besuchen, wenn sie diese spezielle Unterstützung brauchen. Die Stadt wird jetzt schnell die Eltern über diese Möglichkeit informieren und ihren Bedarf abfragen, um die Schulplätze zu planen."
+     },
+     {
+      "id": 1583,
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Die Stadt Oldenburg verspricht, nach der Reform der Grundsteuer die Steuersätze so anzupassen, dass die Einnahmen aus dieser Steuer insgesamt nicht steigen."
+     },
+     {
+      "id": 2737,
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Der Schulausschuss hat beschlossen, dass die Verwaltung Mitarbeiter des Umweltbildungszentrums Oldenburg einlädt. Bei der nächsten Sitzung sollen sie ihre Arbeit und ihre Ideen für die Zukunft vorstellen und sich zu den Vorschlägen von Fridays for Future äußern. So bekommt der Ausschuss direkt von den Fachleuten Informationen."
+     },
+     {
+      "id": 5253,
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Der Stadtrat hat eine frühere Entscheidung rückgängig gemacht. Die Reinigung von städtischen Gebäuden wird ab Januar 2023 nicht mehr von einer Fremdfirma erledigt. Die Stadt stellt stattdessen eigenes Personal dafür ein."
+     },
+     {
+      "id": 5914,
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Der Rat der Stadt Oldenburg hat der Anpassung der Fahrpreise im öffentlichen Nahverkehr (VBN) zum 1. Januar 2024 zugestimmt. Für Oldenburg bedeutet das: Ab diesem Termin gelten neue Tarife für Busse und Bahnen im gesamten VBN-Gebiet. In der Versammlung des Verkehrsverbunds am 4. Oktober 2023 wird die Stadt mit ihren Stimmen für diese Änderung stimmen."
+     },
+     {
+      "id": 5988,
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Die Stadt Oldenburg hat für 2024 neue Steuersätze festgelegt. Der Satz für die Grundsteuer B steigt von 445 auf 490 Prozent. Dadurch müssen Eigentümerinnen und Eigentümer von Grundstücken mehr Grundsteuer zahlen."
+     },
+     {
+      "id": 5993,
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Der Ausschuss hat beschlossen, den Bau neuer Dreifachsporthallen in Eversten und Kreyenbrück zeitnah umzusetzen. Die Stadt unterstützt die Sanierung eines städtischen Schwimmbads mit bis zu 1,5 Millionen Euro und plant den Bau eines weiteren Lehrschwimmbads in einem Stadtteil."
+     },
+     {
+      "id": 6061,
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "E-Scooter, E-Roller und Leihfahrräder dürfen nicht mehr auf Gehwegen und Einfahrten abgestellt werden. Stattdessen sollen sie künftig an Bushaltestellen, unter Autobahnbrücken oder auf Fahrradparkplätzen geparkt werden."
+     },
+     {
+      "id": 9097,
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Der Verkehrsausschuss der Stadt Oldenburg hat den Beschluss für eine Protected Bike Lane an der unteren Nadorster Straße aufgehoben. Der Bau des baulich getrennten Radwegs wird damit sofort gestoppt. Die Straße behält ihre ursprüngliche Verkehrsaufteilung ohne diesen Radweg."
+     },
+     {
+      "id": 9118,
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Der Rat hat beschlossen, dass die Stadt mit Investoren oder Grundstückseigentümern nur noch unverbindliche Absichtserklärungen abschließen darf, wenn darin klar steht, dass die Stadt rechtlich nicht gebunden ist. Außerdem müssen der Ausschuss für Stadtplanung und Bauen und der Verwaltungsausschuss zustimmen, und die Ratsgremien müssen die Erklärung in öffentlicher Sitzung behandeln."
+     },
+     {
+      "id": 522,
+      "outcome": "postponed",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Der Ausschuss für Stadtplanung und Bauen hat beschlossen, den Flächennutzungsplan für ein Gebiet zwischen Alexanderstraße und Ammerländer Heerstraße zu ändern. Damit beginnt die Stadt offiziell mit der Planung für den östlichen Teil der Hallensichel des ehemaligen Fliegerhorsts und für eine geplante Entlastungsstraße bis zur Ammerländer Heerstraße. Konkret wird so festgelegt, wie dieses Gelände künftig genutzt werden darf."
+     },
+     {
+      "id": 1008,
+      "outcome": "postponed",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Die Stadt Oldenburg bietet ein Grundstück an der Ammergaustraße zum Verkauf an. Mindestens 60 Prozent der dort gebauten Wohnungen müssen preisgünstig sein. Der Käufer zahlt mindestens 871.500 Euro, und der Stadtrat entscheidet später endgültig über den Verkauf."
+     },
+     {
+      "id": 2419,
+      "outcome": "postponed",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Der Ausschuss hat den Plan für ein Baugebiet am alten Fliegerhorst gebilligt. Die Fläche wurde verkleinert, weil eine geplante Umgehungsstraße nun nicht mehr dazugehört. Jetzt können alle Bürger den Plan einsehen und sich dazu äußern."
+     },
+     {
+      "id": 2592,
+      "outcome": "postponed",
+      "ok": true,
+      "grund": "",
+      "text": "Der Ausschuss hat noch nicht über den Klima-Antrag entschieden. Er hat die Beratung auf Mai verschoben. Bis dahin soll die Verwaltung einen Plan vorlegen: welche Teile des Antrags wann in welchen Ausschüssen besprochen werden und wie regelmäßig über den Fortschritt berichtet wird."
+     },
+     {
+      "id": 3747,
+      "outcome": "postponed",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Der Ausschuss hat beschlossen, das Thema Lärmbelästigung durch Bahn-Bauarbeiten erst in der nächsten Sitzung zu besprechen. In der Zwischenzeit schreibt die Stadt einen Brief an die Bahnaufsicht, betroffene Anwohner sollen Lärmbeschwerden einreichen und die örtlichen Bundestagsabgeordneten werden um Hilfe gebeten."
+     }
+    ]
+   },
+   {
+    "bestanden": 2,
+    "faelle": 15,
+    "zeilen": [
+     {
+      "id": 481,
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Der Schulausschuss hat beschlossen, dass die Förderschule für Kinder mit Lernschwierigkeiten bis 2028 weiter bestehen bleibt. Das bedeutet, dass dort auch in Zukunft Kinder in die 5. Klasse aufgenommen werden können, wenn Bedarf besteht. Außerdem soll schnell geklärt werden, wie Eltern über diese Möglichkeit informiert werden und wie viele Eltern ihr Kind dort anmelden möchten, um besser planen zu können."
+     },
+     {
+      "id": 1583,
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Der Rat der Stadt Oldenburg hat beschlossen, dass die Stadt nach der Grundsteuerreform die Hebesätze so anpasst, dass die gesamten Einnahmen aus der Grundsteuer nicht steigen. Die Stadt darf also durch die Reform unterm Strich nicht mehr Geld von den Grundstückseigentümern verlangen als vorher. So bleibt die Belastung für die Bürger insgesamt gleich."
+     },
+     {
+      "id": 2737,
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Die Stadtverwaltung soll Mitarbeiter des Umweltbildungszentrums in die nächste Sitzung des Schulausschusses einladen. Dort sollen sie ihre Arbeit und ihre Ideen für die Zukunft vorstellen und sich zu den Vorschlägen von Fridays for Future äußern. So will der Ausschuss mehr über die Einrichtung und ihre Pläne erfahren."
+     },
+     {
+      "id": 5253,
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Der Stadtrat hat beschlossen, die Reinigung öffentlicher Gebäude nicht mehr extern zu vergeben. Stattdessen stellt die Stadt eigenes Reinigungspersonal ein. Ein früherer Beschluss zur Fremdreinigung für die Jahre 2023 bis 2028 wurde aufgehoben."
+     },
+     {
+      "id": 5914,
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Der Rat hat zugestimmt, dass sich die Tarife im Verkehrsverbund Bremen/Niedersachsen (VBN) zum 1. Januar 2024 ändern. Was genau teurer oder anders wird, steht im Beschluss nicht. Bei der Sitzung des Verbands am 4. Oktober 2023 wird Oldenburg dieser Änderung zustimmen."
+     },
+     {
+      "id": 5988,
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Die Stadt Oldenburg hat die Grundsteuer B für 2024 erhöht. Der Hebesatz steigt von 445 auf 490 Prozent. Für Eigentümer von Grundstücken und Gebäuden bedeutet das höhere Steuerzahlungen im nächsten Jahr."
+     },
+     {
+      "id": 5993,
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Der Ausschuss hat beschlossen, den Bau neuer großer Sporthallen in Eversten und Kreyenbrück voranzutreiben. Gleichzeitig soll der städtische Schwimmbadbetreiber BTB bis zu 1,5 Millionen Euro für die Sanierung eines Bades erhalten. Zudem soll ein weiteres Stadtteilbad gebaut werden, das vor allem für Schwimmkurse genutzt wird – kein Wellness-Bad."
+     },
+     {
+      "id": 6061,
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "In Oldenburg dürfen E-Scooter, E-Roller und Leihfahrräder nicht mehr auf Gehwegen oder vor Einfahrten abgestellt werden. Stattdessen sollen sie künftig an Bushaltestellen, unter Autobahnbrücken oder auf Fahrradparkplätzen geparkt werden."
+     },
+     {
+      "id": 9097,
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Die Stadt hatte vor, auf der unteren Nadorster Straße einen extra abgetrennten Radweg zu bauen. Dieser Plan wird jetzt gestoppt. Die Straße bekommt wieder die Aufteilung, die sie vorher hatte."
+     },
+     {
+      "id": 9118,
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Der Rat hat festgelegt, dass die Stadt nur noch unter drei Bedingungen unverbindliche Planungsvereinbarungen mit Grundstückseigentümern oder Investoren abschließen darf. In dem Papier muss ausdrücklich stehen, dass die Stadt dadurch rechtlich nicht gebunden ist. Außerdem müssen der Ausschuss für Stadtplanung und Bauen und der Verwaltungsausschuss zustimmen, und das Thema muss in öffentlicher Sitzung der Ratsgremien behandelt werden."
+     },
+     {
+      "id": 522,
+      "outcome": "postponed",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Der Ausschuss hat beschlossen, den Flächennutzungsplan – den Plan, der die Nutzung von Flächen in der Stadt regelt – für ein Gebiet zwischen Alexanderstraße und Ammerländer Heerstraße zu ändern. Die Änderung betrifft den östlichen Teil der Hallensichel auf dem ehemaligen Fliegerhorst und eine Straße, die den Verkehr entlasten soll. Damit beginnt die Stadt offiziell mit der Planung für dieses Gebiet und die Straße."
+     },
+     {
+      "id": 1008,
+      "outcome": "postponed",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Die Stadt Oldenburg verkauft ein Grundstück an der Ammergaustraße, wobei mindestens 60 Prozent der neuen Wohnungen preisgünstig und mietpreisgebunden sein müssen. Der Mindestkaufpreis beträgt 500 Euro pro Quadratmeter, insgesamt 871.500 Euro. Der Rat wird später anhand der Angebote über den Verkauf entscheiden."
+     },
+     {
+      "id": 2419,
+      "outcome": "postponed",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Die Stadt plant eine neue Entlastungsstraße im Bereich Fliegerhorst und Hallensichel-Ost. Dafür hat der Ausschuss den Entwurf zur Änderung des Flächennutzungsplans gebilligt und den Planbereich im Westen auf die geplante Straße verkleinert. Der Beschluss ermöglicht nun die öffentliche Auslegung der Pläne, sodass alle sie einsehen und sich dazu äußern können."
+     },
+     {
+      "id": 2592,
+      "outcome": "postponed",
+      "ok": true,
+      "grund": "",
+      "text": "Der Ausschuss hat den gesamten Antrag zum Klimaschutz auf die Mai-Sitzung verschoben. Bis dahin wird eine Übersicht erstellt, die einen Jahresfahrplan mit Zuständigkeiten und Zeitplänen für alle beteiligten Ausschüsse enthält. Außerdem wurde ein vierteljährlicher Bericht zum aktuellen Stand zugesagt."
+     },
+     {
+      "id": 3747,
+      "outcome": "postponed",
+      "ok": true,
+      "grund": "",
+      "text": "Der Ausschuss hat das Thema Lärmschutz bei den Bahnbauarbeiten auf die nächste Sitzung verschoben. Bis dahin soll die Stadt an die Bundesbehörde für Eisenbahnaufsicht schreiben, Betroffene sollen die Lärmbelästigungen offiziell melden, und die Bundestagsabgeordneten aus der Region werden eingeschaltet."
+     }
+    ]
+   }
+  ],
+  "summary": [
+   {
+    "bestanden": 1,
+    "faelle": 15,
+    "zeilen": [
+     {
+      "id": 481,
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Der Schulausschuss spricht sich für die Fortführung der Förderschule Lernen mit Bestandsschutz bis 2028 aus."
+     },
+     {
+      "id": 1583,
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Der Rat beschließt, die Grundsteuer-Hebesätze nach der Reform so anzupassen, dass das Aufkommen insgesamt konstant bleibt."
+     },
+     {
+      "id": 2737,
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Die Verwaltung wird beauftragt, das Regionale Umweltbildungszentrum Oldenburg zur Vorstellung seiner Arbeit in den Schulausschuss einzuladen."
+     },
+     {
+      "id": 5253,
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Der Rat hebt den Beschluss zur Fremdreinigung auf und beschließt, die Unterhaltsreinigung städtischer Objekte mit eigenem Personal durchzuführen."
+     },
+     {
+      "id": 5914,
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Der Rat stimmt der VBN-Tarifanpassung zum 01.01.2024 zu und legt das Abstimmungsverhalten in der Verbandsversammlung fest."
+     },
+     {
+      "id": 5988,
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Der Ausschuss beschließt die Hebesatzung 2024 und hebt den Grundsteuer-B-Hebesatz von 445 auf 490 v.H. an."
+     },
+     {
+      "id": 5993,
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Der Ausschuss beschließt den Bau neuer Dreifeldsporthallen, die Unterstützung der Schwimmbadsanierung und ein weiteres Stadtteilbad."
+     },
+     {
+      "id": 6061,
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Das Abstellen von E-Scootern, E-Rollern und OLi-Bikes auf Fußwegen und Zufahrten wird untersagt und auf neue Flächen verwiesen."
+     },
+     {
+      "id": 9097,
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Der Beschluss zur Protected Bike Lane an der Nadorster Straße wird aufgehoben, die ursprüngliche Verkehrsraumaufteilung tritt wieder in Kraft."
+     },
+     {
+      "id": 9118,
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Der Rat legt Voraussetzungen für gemeinsame städtebauliche Absichtserklärungen mit Grundstückseigentümern oder Investoren fest."
+     },
+     {
+      "id": 522,
+      "outcome": "postponed",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Der Ausschuss beschließt die Aufstellung der Änderung Nr. 78 des Flächennutzungsplanes für den Bereich Fliegerhorst/Hallensichel-Ost."
+     },
+     {
+      "id": 1008,
+      "outcome": "postponed",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Der Ausschuss beschließt den Verkauf eines städtischen Grundstücks an der Ammergaustraße mit mindestens 60 % preisgebundenem Wohnraum."
+     },
+     {
+      "id": 2419,
+      "outcome": "postponed",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Der Ausschuss stimmt dem Entwurf der Änderung Nr. 78 des Flächennutzungsplanes zu und beschließt die öffentliche Auslegung."
+     },
+     {
+      "id": 2592,
+      "outcome": "postponed",
+      "ok": true,
+      "grund": "",
+      "text": "Der Ausschuss vertagt den Klima- und Umweltschutzantrag auf die Mai-Sitzung und fordert eine Synopse mit Jahresplan und Quartalsbericht."
+     },
+     {
+      "id": 3747,
+      "outcome": "postponed",
+      "ok": false,
+      "grund": "behauptet: „beschließt“",
+      "text": "Der Ausschuss vertagt den Punkt zu Bahnlärm und beschließt ein Schreiben an das Eisenbahnbundesamt, Anzeigen und Bundestagseinbindung."
+     }
+    ]
+   },
+   {
+    "bestanden": 2,
+    "faelle": 15,
+    "zeilen": [
+     {
+      "id": 481,
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Der Schulausschuss spricht sich für die Fortführung der Förderschule Lernen mit Bestandsschutz bis 2028 aus."
+     },
+     {
+      "id": 1583,
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Der Rat beschließt, die Hebesätze nach der Grundsteuerreform so anzupassen, dass das Grundsteueraufkommen insgesamt konstant bleibt."
+     },
+     {
+      "id": 2737,
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Die Verwaltung wird beauftragt, das Regionale Umweltbildungszentrum Oldenburg zur Vorstellung seiner Arbeit in den Schulausschuss einzuladen."
+     },
+     {
+      "id": 5253,
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Der Rat hebt den Beschluss zur Unterhaltsreinigung auf und beschließt, die Reinigung künftig mit eigenem Personal durchzuführen."
+     },
+     {
+      "id": 5914,
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Der Rat stimmt der Anpassung des VBN-Tarifs zum 01.01.2024 zu und legt das Abstimmungsverhalten in der Verbandsversammlung fest."
+     },
+     {
+      "id": 5988,
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Der Ausschuss beschließt die Hebesatzung 2024 und hebt den Hebesatz für die Grundsteuer B von 445 auf 490 v.H. an."
+     },
+     {
+      "id": 5993,
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Der Ausschuss beschließt den Bau neuer Dreifeldsporthallen und unterstützt die Sanierung sowie den Bau von Schwimmbädern."
+     },
+     {
+      "id": 6061,
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Das Abstellen von E-Scootern, E-Rollern und OLi-Bikes auf Fußwegen und Zufahrten wird untersagt und neue Abstellflächen werden festgelegt."
+     },
+     {
+      "id": 9097,
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Der Beschluss zur Umsetzung der Protected Bike Lane an der Nadorster Straße wird aufgehoben und die ursprüngliche Verkehrsraumaufteilung tritt wieder in Kraft."
+     },
+     {
+      "id": 9118,
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Der Rat legt Voraussetzungen für den Abschluss gemeinsamer städtebaulicher Absichtserklärungen mit Grundstückseigentümern oder Investoren fest."
+     },
+     {
+      "id": 522,
+      "outcome": "postponed",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Der Ausschuss beschließt die Aufstellung der Änderung Nr. 78 des Flächennutzungsplanes für den Bereich Fliegerhorst/Hallensichel-Ost."
+     },
+     {
+      "id": 1008,
+      "outcome": "postponed",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Der Ausschuss beschließt den Verkauf eines städtischen Grundstücks an der Ammergaustraße mit der Vorgabe von mindestens 60 % preisgebundenem Wohnraum."
+     },
+     {
+      "id": 2419,
+      "outcome": "postponed",
+      "ok": false,
+      "grund": "nennt das Ergebnis nicht",
+      "text": "Der Ausschuss stimmt dem Entwurf der Änderung Nr. 78 des Flächennutzungsplanes zu und beschließt die öffentliche Auslegung."
+     },
+     {
+      "id": 2592,
+      "outcome": "postponed",
+      "ok": true,
+      "grund": "",
+      "text": "Der Antrag für wirksamen Klima- und Umweltschutz wird vertagt, um eine Synopse mit Jahresplan und Zeitplan zu erstellen."
+     },
+     {
+      "id": 3747,
+      "outcome": "postponed",
+      "ok": true,
+      "grund": "",
+      "text": "Der Tagesordnungspunkt zu Lärmbelästigungen durch Bahn-Baumaßnahmen wird vertagt; zwischenzeitlich sollen drei Maßnahmen umgesetzt werden."
+     }
+    ]
+   }
+  ]
+ }
+}

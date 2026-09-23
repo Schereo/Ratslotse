@@ -530,7 +530,7 @@ class ThemenMixin(StoreBasis):
         """Lightweight decision list (title/summary/field/date) of an entity — the
         grounding context for the description prompt."""
         rows = self._conn.execute(
-            """SELECT d.title, d.summary, d.policy_field, cs.session_date
+            """SELECT d.title, d.summary, d.policy_field, d.outcome, cs.session_date
                FROM council_entities e
                JOIN council_entity_links el ON el.entity_id = e.id
                JOIN council_decisions d ON d.id = el.decision_id

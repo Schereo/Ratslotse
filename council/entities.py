@@ -12,6 +12,7 @@ import logging
 import os
 import re
 
+from council import outcome_note
 from kern import llm
 
 MODEL = os.environ.get("COUNCIL_ENTITY_MODEL", "deepseek/deepseek-v4-pro")
@@ -73,6 +74,14 @@ def slug(name: str) -> str:
 _KIND_DE = {"place": "Ort / Straße / Gebiet", "organisation": "Organisation",
             "project": "Projekt"}
 
+#: Das Ergebnis vor jeder Beschlusszeile. Die nicht gefassten heißen wie in
+#: den Prompts von Kurzfassung und Einzeiler (``outcome_note.LABEL``).
+_ERGEBNIS_ZEILE = {
+    "accepted": "angenommen",
+    "noted": "zur Kenntnis genommen",
+    **{o: outcome_note.LABEL[o] for o in outcome_note.NOT_ADOPTED},
+}
+
 _DESCRIBE_PROMPT = """Du schreibst eine kurze, sachliche Einordnung für die Themen-Seite „{name}" ({kind}) im Oldenburger Ratsinformationssystem.
 
 Beschlüsse des Stadtrats zu diesem Thema (neueste zuerst):
@@ -81,6 +90,7 @@ Beschlüsse des Stadtrats zu diesem Thema (neueste zuerst):
 Schreibe 2–4 Sätze auf Deutsch:
 - Was ist „{name}"? Bei Orten/Straßen/Gebieten: wo es ungefähr liegt und was es besonders oder kommunalpolitisch relevant macht. Bei Organisationen: was sie ist/tut. Bei Projekten: worum es geht.
 - Warum beschäftigt es den Stadtrat — der rote Faden der Beschlüsse.
+- Das Ergebnis in eckigen Klammern gilt, auch wenn der Satz dahinter anders klingt: Was ABGELEHNT, VERTAGT oder OHNE BESCHLUSS ist, wurde NICHT beschlossen — nenne es als abgelehnt bzw. offen, nie als Beschluss, Auftrag oder Umsetzung.
 
 Strikt nur gesichertes Wissen: stütze dich auf die Beschlüsse oben und allgemein bekannte, unstrittige Fakten über Oldenburg. Wenn du etwas nicht sicher weißt, lass es weg — KEINE Spekulation, keine erfundenen Zahlen, Jahre oder Adressen. Neutral, ohne Wertung. Beginne direkt mit der Sache (kein „Diese Seite…", kein „„{name}" ist ein Thema…")."""
 
@@ -94,7 +104,14 @@ def describe(name: str, kind: str, decisions: list[dict], model: str = MODEL) ->
         t = (d.get("title") or "").strip()
         s = " ".join((d.get("summary") or "").split())[:160]
         dt = (d.get("session_date") or "")[:10]
-        lines.append(f"- {dt}: {t}{' — ' + s if s else ''}")
+        # Das Ergebnis je Zeile (outcome_note, wie Kurzfassung und Einzeiler):
+        # Ohne es las das Modell abgelehnte Anträge als Beschlüsse — bei den
+        # 20 Themen des dev-Abzugs, deren Beschlüsse alle scheiterten, nannten
+        # 11–12 Beschreibungen keine Ablehnung oder erzählten von einem
+        # Beschluss (23.09.2026, eval/run_ergebnis_texte.py --textart themen).
+        # Der Einzeiler `s` kann aus der Zeit davor stammen und selbst falsch sein.
+        ergebnis = _ERGEBNIS_ZEILE.get(str(d.get("outcome") or ""), "Ergebnis unbekannt")
+        lines.append(f"- {dt} [{ergebnis}]: {t}{' — ' + s if s else ''}")
     prompt = _DESCRIBE_PROMPT.format(name=name, kind=_KIND_DE.get(kind, kind), decisions="\n".join(lines))
     extra: dict = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
     try:
