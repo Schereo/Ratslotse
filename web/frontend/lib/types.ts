@@ -320,7 +320,7 @@ export interface MemberDetail {
     kpenr: number;
     name: string;
     current_faction: string | null;
-    memberships: { kgrnr: number | null; committee: string; role: string | null; von: string | null; bis: string | null }[];
+    memberships: { kgrnr: number | null; committee: string; role: string | null; valid_from: string | null; valid_until: string | null }[];
   } | null;
   committees: { committee: string; n: number; chair: boolean }[];
   recent: { ksinr: number; committee: string; session_date: string }[];
