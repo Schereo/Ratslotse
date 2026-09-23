@@ -303,8 +303,10 @@ NUTZER_PFADE = ("qa_answer", "qa_simple", "qa_analysis", "qa_query_expansion",
 def test_nutzer_pfade_behalten_zdr(monkeypatch):
     monkeypatch.delenv("NWZ_OPENROUTER_ZDR", raising=False)
     for f in NUTZER_PFADE:
-        assert llm.zdr_pflicht(f), f
+        assert llm.nutzereingabe(f), f
         assert f not in llm.OHNE_NUTZEREINGABE
+        # Die EINE benannte Ausnahme: Tims ZDR-Verzicht vom 23.09.2026.
+        assert llm.zdr_pflicht(f) is (f not in llm.ZDR_VERZICHT), f
     assert llm.zdr_pflicht(None), "ohne _feature bleibt es bei ZDR (der Watcher)"
     assert llm.zdr_pflicht("ein_neues_feature"), "unbekannt heißt ZDR"
 
@@ -341,7 +343,10 @@ def test_chat_complete_reicht_die_zdr_entscheidung_durch(monkeypatch):
         raise RuntimeError("stop")
 
     monkeypatch.setattr(llm, "_create", fake_create)
-    for feature, erwartet in (("impact_rating", False), ("qa_answer", True), (None, True)):
+    # qa_answer steht seit 23.09.2026 in ZDR_VERZICHT; qa_analysis trägt
+    # Nutzereingabe und hat keinen Verzicht.
+    for feature, erwartet in (("impact_rating", False), ("qa_answer", False),
+                              ("qa_analysis", True), (None, True)):
         with pytest.raises(RuntimeError):
             llm.chat_complete(model="x", messages=[], _feature=feature)
         assert gesehen[-1] is erwartet
@@ -611,3 +616,87 @@ def test_mitschnitt_steht_in_keiner_env_vorlage():
     for vorlage in wurzel.glob(".env*"):
         if vorlage.is_file():
             assert llm.MITSCHNITT_ENV not in vorlage.read_text(errors="ignore"), vorlage
+
+
+def test_zdr_verzicht_ist_genau_die_benannte_liste():
+    """Tims Entscheidung 23.09.2026: Lotti und „Frag den Rat“ auf GPT-6 Luna,
+    ohne ZDR. Genau die Features, die ``COUNCIL_ASSISTANT_MODEL`` und
+    ``COUNCIL_QA_MODEL`` lesen — die Analyse vor der Suche, der Watcher und
+    die Themenbeschreibung behalten ZDR."""
+    assert llm.ZDR_VERZICHT == {"assistant_explain", "qa_answer", "qa_simple",
+                                "deep_report", "party_opinions"}
+    assert llm.ZDR_VERZICHT <= set(NUTZER_PFADE)
+    for f in ("qa_analysis", "qa_query_expansion", "deep_decomposition",
+              "topic_auto_description", "vagueness_check", "council_watcher", None):
+        assert llm.zdr_pflicht(f), f
+
+
+def test_zdr_verzicht_behaelt_trainingsverbot_und_china_liste(monkeypatch):
+    """Ohne ZDR heißt nicht ohne Schranken: ``data_collection: deny`` und die
+    China-Liste gehen auch für Lotti und die Antwort mit — durch das echte
+    ``_create``, Strom UND Einmal-Aufruf."""
+    for var in ("NWZ_OPENROUTER_ROUTING", "NWZ_OPENROUTER_IGNORE", "NWZ_OPENROUTER_ZDR"):
+        monkeypatch.delenv(var, raising=False)
+    gesendet = []
+
+    class _FakeCompletions:
+        def create(self, **kwargs):
+            gesendet.append(kwargs)
+            return iter(()) if kwargs.get("stream") else _Antwort()
+
+    class _FakeClient:
+        chat = type("", (), {"completions": _FakeCompletions()})()
+
+    monkeypatch.setattr(llm, "get_client", lambda: _FakeClient())
+    monkeypatch.setattr(llm, "_record_usage", lambda f, m, u: None)
+    llm.chat_complete(model="openai/gpt-6-luna", messages=[], _feature="assistant_explain")
+    list(llm.chat_stream(model="openai/gpt-6-luna", messages=[], _feature="qa_answer"))
+    llm.chat_complete(model="google/gemini-3.1-flash-lite", messages=[], _feature="qa_analysis")
+    verzicht, strom, analyse = (g["extra_body"]["provider"] for g in gesendet)
+    for provider in (verzicht, strom):
+        assert "zdr" not in provider
+        assert provider["data_collection"] == "deny"
+        assert {"deepseek", "baidu", "alibaba"} <= set(provider["ignore"])
+    assert analyse["zdr"] is True
+
+
+def test_zdr_verzicht_gibt_flex_nicht_frei(monkeypatch):
+    aufrufe = _stub_create_kwargs(monkeypatch, [_Antwort()])
+    for feature in sorted(llm.ZDR_VERZICHT):
+        with pytest.raises(llm.FlexNichtErlaubt):
+            llm.chat_complete(model="openai/gpt-6-luna", messages=[], _feature=feature,
+                              _tarif="flex")
+    assert aufrufe == []
+
+
+def test_web_denkaufwand_nur_fuer_die_gemessenen_modelle(monkeypatch):
+    monkeypatch.delenv(llm.WEB_DENKAUFWAND_ENV, raising=False)
+    for (modell, feature), stufe in llm.WEB_DENKAUFWAND.items():
+        assert llm.web_denk_extra(modell, feature) == {"extra_body": {"reasoning": {"effort": stufe}}}
+    assert llm.web_denk_extra("openai/gpt-6-luna", "qa_answer") == {}
+    assert llm.web_denk_extra("deepseek/deepseek-v4-flash", "qa_answer") == {
+        "extra_body": {"reasoning": {"enabled": False}}}
+    assert llm.web_denk_extra("google/gemini-3.1-flash-lite", "qa_answer") == {}
+    # NICHT über MODEL_PARAMS: Dort gälte es auch für die Luna-Crons.
+    assert "extra_body" not in llm.MODEL_PARAMS.get("openai/gpt-6-luna", {})
+
+
+def test_messschalter_ueberschreibt_den_denkaufwand(monkeypatch):
+    monkeypatch.setenv(llm.WEB_DENKAUFWAND_ENV, "vorgabe")
+    assert llm.web_denk_extra("openai/gpt-6-luna", "qa_answer") == {}
+    monkeypatch.setenv(llm.WEB_DENKAUFWAND_ENV, "high")
+    assert llm.web_denk_extra("openai/gpt-6-luna", "assistant_explain") == {
+        "extra_body": {"reasoning": {"effort": "high"}}}
+
+
+def test_lotti_und_antwort_fragen_luna_mit_dem_vorgabe_aufwand(monkeypatch):
+    """Entschieden an der Fakten-Eval (P4a): ``low`` ließ bei Lotti 13 statt 10
+    und bei Frag den Rat 31 statt 27 Pflichtangaben aus oder verfälschte sie —
+    „Akkuratheit schlägt Geschwindigkeit“. Kein ``reasoning`` im Aufruf."""
+    monkeypatch.delenv(llm.WEB_DENKAUFWAND_ENV, raising=False)
+    from council import assistant, qa
+    _, extra = assistant.explain_messages(assistant.Screen(route="/haushalt"), "Was?", {},
+                                          model="openai/gpt-6-luna")
+    assert "reasoning" not in (extra.get("extra_body") or {})
+    _, extra = qa._answer_messages("Was?", [], "topic", "openai/gpt-6-luna")
+    assert "reasoning" not in (extra.get("extra_body") or {})

@@ -79,3 +79,29 @@ im Repo.
   liegen 30 Tage bei OpenRouter (Google Cloud Storage), außer man löscht
   den Stapel. Beim Upstream-Anbieter OpenAI ist das Löschen „unsupported“.
   Deshalb wird Batch derzeit nicht verwendet.
+
+## Nachtrag 23.09.2026: ZDR-Verzicht für Lotti und „Frag den Rat“
+
+**Entscheidung (Tim):** Lotti und die Antwort von „Frag den Rat“ laufen auf
+GPT-6 Luna, „auch wenn die kein Zero Data Retention haben — das ist
+wenigstens kein chinesischer Anbieter“. Anlass war ein Faktencheck an 14
+echten Antworten, Aussage für Aussage gegen Kontext und Datenbank: GPT-6
+Luna in 12 von 14 fehlerfrei, Gemini 2.5 Flash (das bisherige Modell, bei
+OpenRouter ab 20.10.2026 abgeschaltet) in 5 von 14. GPT-6 Luna bieten nur
+OpenAI direkt und Amazon Bedrock an, beide ohne ZDR.
+
+Umgesetzt als **benannte Ausnahme**, nicht als Lockerung:
+`kern/llm.py::ZDR_VERZICHT` nennt genau die Features, die diese beiden
+Modelle lesen (`assistant_explain`, `qa_answer`, `qa_simple`, `deep_report`,
+`party_opinions`). Alles andere mit Nutzereingabe — die Frage-Analyse vor der
+Suche, der Watcher, die Themen-Beschreibung, die Vagheits-Prüfung und jeder
+Aufruf ohne `_feature` — behält ZDR. Für die Ausnahme gelten weiter
+`data_collection: deny` und der China-Ausschluss, und sie gibt **nicht** den
+Flex-Tarif frei (der hängt an `llm.nutzereingabe`, nicht an der ZDR-Pflicht).
+`tests/test_llm.py` hält alle drei Punkte fest. Die Datenschutzerklärung nennt
+seitdem Lotti ausdrücklich und sagt, dass für dieses Modell keine ZDR-Zusage
+besteht.
+
+Dazu kommt eine Schutzschicht, die nicht vom Anbieter abhängt:
+`kern/foreign_text.py` nimmt Sätze aus Seiten- und Vorlagentext heraus, die
+sich an ein KI-System wenden, bevor Lotti oder die Antwort sie sehen.

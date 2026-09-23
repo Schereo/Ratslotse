@@ -43,8 +43,11 @@ PaperMatrix = tuple[list[str], bytes]
 #: Das Modell für die Suchbegriffe. Dasselbe wie bei der Query-Expansion der
 #: KI-Frage und aus demselben Grund: Die Aufgabe ist klein, die Antwort kurz,
 #: und ein großes Modell kostet hier nur Zeit. Gemessen bei der KI-Frage:
-#: 0,5 s statt 2–12 s.
-TERMS_MODEL = os.environ.get("COUNCIL_QA_EXPAND_MODEL", "google/gemini-2.5-flash-lite")
+#: 0,5 s statt 2–12 s. Die Vorgabe folgt der KI-Frage (``qa.EXPAND_MODEL``,
+#: seit P4a am 23.09.2026 Gemini 3.1 Flash Lite — 2.5 Flash Lite läuft am
+#: 20.10.2026 aus); eigens für die Städte-Suchbegriffe gemessen ist sie nicht,
+#: der Cron ist pausiert.
+TERMS_MODEL = os.environ.get("COUNCIL_QA_EXPAND_MODEL", "google/gemini-3.1-flash-lite")
 
 #: Wie viele Nachbarn und Volltexttreffer je Papier höchstens mitgehen. Mehr
 #: kostet Eingabe-Token, ohne das Urteil zu verbessern: Was auf Rang sechs

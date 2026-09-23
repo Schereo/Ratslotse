@@ -1279,7 +1279,14 @@ DEFAULTS: dict[str, dict[str, str]] = {
             '"needs": ["ein oder mehrere erlaubte Bedarfsnamen"]}}}}\n\n'
             "kind-Regeln:\n"
             '- "history": Die Frage zielt auf Werdegang/Chronik/Stand eines Vorgangs '
-            '("Wie lief …", "Wie ist der Stand …", "Was wurde aus …", "Chronologie").\n'
+            '("Wie lief …", "Wie ist der Stand …", "Was wurde aus …", "Chronologie"). '
+            # P4a (23.09.2026): Gemini 3.1 Flash Lite nannte „Was wurde zum
+            # Radweg an der Donnerschweer Straße beschlossen?“ in 4 von 4
+            # Läufen history, 3.5 Flash Lite die Abstimmungs- und Gremien-
+            # Fragen je einmal. 2.5 Flash Lite brauchte den Satz nicht.
+            'NICHT history sind Fragen nach EINER Sache — „Was wurde zu X beschlossen?“, '
+            '„Wie lautete das Abstimmungsergebnis …?“, „Welcher Ausschuss hat … beraten?“: '
+            'Die sind topic.\n'
             '- "party": Die Frage fragt nach Position/Anträgen/Verhalten einer bestimmten '
             "Fraktion oder Gruppe (SPD, CDU, Grüne, FDP, Linke, AfD, Volt, BSW, Piraten, "
             '"Für Oldenburg" …). Dann "party" auf den Namen setzen.\n'
@@ -1511,6 +1518,19 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "- Erkläre NUR, was oben steht. Keine Zahl, kein Datum, kein Ergebnis, das\n"
             "  dort nicht vorkommt. Eine Haushaltszahl bekommt immer ihr Jahr und ihre\n"
             "  Quelle mit („laut Jahresabschluss 2024“).\n"
+            # P4a (23.09.2026): GPT-6 Luna rechnete, wo Gemini 2.5 Flash es nie
+            # tat — „rund 1.970 Euro Steuerkraft je Einwohner“ (348 Mio. € durch
+            # die Einwohnerzahl, in 4 von 4 Läufen) und eine Hochrechnung der
+            # Schulden auf 2027 (3 von 4). Eine Differenz oder einen Anteil
+            # zweier Zahlen desselben Bausteins verlangen dagegen Fälle, die
+            # beide Modelle bestehen sollen (Konzern ohne Kern, unbesetzte
+            # Stellen) — deshalb kein Rechenverbot, sondern genau diese zwei.
+            "  Rechne keinen Wert je Einwohner aus, den Ratslotse oben nicht schon\n"
+            "  gerechnet hat, und schreibe nichts fort: keine Hochrechnung, keine\n"
+            "  Prognose — auch nicht, wenn die Frage danach verlangt. Nenne dann die\n"
+            "  Zahlen, die dastehen, und sag, dass diese Rechnung hier nicht vorliegt.\n"
+            "  Einen Anteil oder eine Differenz zweier Zahlen, die oben stehen, darfst\n"
+            "  du dagegen nennen, wenn die Frage danach fragt.\n"
             "{zwei_zaehlweisen}"
             "{einordnung_regel}"
             "- Steht oben ein GEGENSTAND DER SEITE (ein Beschluss, eine Sitzung, eine\n"

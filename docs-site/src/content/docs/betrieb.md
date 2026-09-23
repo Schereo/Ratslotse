@@ -680,7 +680,9 @@ Alle optional — greift keine Variable, gilt der Default aus dem Code.
 | `COUNCIL_IMPACT_MODEL` | Tragweite-Score | `openai/gpt-6-luna` (Flex-Tarif) |
 | `COUNCIL_FUNDSTUECK_MODEL` | Story zum „Fundstück des Tages" | `deepseek/deepseek-v4-pro` |
 | `COUNCIL_RECAP_MODEL` | Themenfeld-Rückblicke | `deepseek/deepseek-v4-pro` |
-| `COUNCIL_QA_MODEL` | „Frag den Rat" (Antwort + Query-Expansion) | `deepseek/deepseek-v4-pro` |
+| `COUNCIL_QA_MODEL` | „Frag den Rat": Antwort, vereinfachte Antwort, Deep-Research-Bericht, Partei-Meinungen — ohne ZDR (`llm.ZDR_VERZICHT`) | `openai/gpt-6-luna` (Denkaufwand: Vorgabe des Anbieters) |
+| `COUNCIL_QA_EXPAND_MODEL` | „Frag den Rat": Frage-Analyse vor der Suche (mit ZDR); auch die Städte-Suchbegriffe | `google/gemini-3.1-flash-lite` |
+| `COUNCIL_ASSISTANT_MODEL` | Lottis Erklärungen — ohne ZDR (`llm.ZDR_VERZICHT`) | `openai/gpt-6-luna` (Denkaufwand: Vorgabe des Anbieters) |
 | `COUNCIL_QUIZ_MODEL` | Quizfragen erzeugen | `deepseek/deepseek-v4-pro` |
 | `COUNCIL_QUIZ_VERIFY_MODEL` | Verify-Pass über erzeugte Quizfragen | `openai/gpt-4o-mini` |
 | `COUNCIL_EMBED_MODEL` | Embeddings (fastembed, lokal) | `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` |

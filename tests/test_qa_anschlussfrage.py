@@ -114,6 +114,24 @@ def test_fragehuelle_fliegt_aus_den_suchbegriffen():
     assert f("Beschlüsse Rat") == "Beschlüsse Rat"
 
 
+def test_ohne_verlauf_bleibt_die_frage_wie_gestellt(monkeypatch):
+    """Ohne Gespräch gibt es nichts aufzulösen — eine Umschreibung des Modells
+    gilt dann nicht. Gemessen 23.09.2026: Gemini 3.1 Flash Lite schrieb „Wie
+    viel investiert die Stadt?“ zu einer Frage nach den „gesamten
+    Investitionsausgaben … im aktuellen Haushalt“ um, und die Haushalts-
+    Facetten, die DIESE Fassung lesen, zogen Plan, Ansatz und Konzern mit."""
+    _llm(monkeypatch, json.dumps({
+        "question": "Wie hoch sind die gesamten Investitionsausgaben der Stadt Oldenburg "
+                    "im aktuellen Haushalt?",
+        "terms": "Investitionen Investitionsausgaben", "kind": "money"}))
+    a = qa.analyse_query("Wie viel investiert die Stadt?")
+    assert a["question"] == "Wie viel investiert die Stadt?"
+    assert "ansatz" not in qa.geld_facetten(a["question"], a["kind"])
+    # Die übrigen Felder der Analyse bleiben die des Modells.
+    assert a["kind"] == "money"
+    assert a["terms"] == "Investitionen Investitionsausgaben"
+
+
 def test_analyse_filtert_die_fragehuelle(monkeypatch):
     _llm(monkeypatch, json.dumps({"terms": "Radverkehr Beschlüsse Rat", "kind": "topic"}))
     a = qa.analyse_query("Was hat der Rat zuletzt zum Radverkehr beschlossen?")

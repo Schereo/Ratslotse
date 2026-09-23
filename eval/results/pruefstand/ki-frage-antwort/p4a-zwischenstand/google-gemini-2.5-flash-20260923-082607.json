@@ -1,0 +1,494 @@
+{
+ "suite": "ki-frage-antwort",
+ "titel": "KI-Frage: Antwort bei festem Kontext",
+ "kennzahl": "mittlere Abdeckung: Anteil der erwarteten Beschlüsse im Kontext, die die Antwort zitiert (Fall mit hartem Befund = 0)",
+ "modell": "google/gemini-2.5-flash",
+ "variante": null,
+ "tarif": null,
+ "lauf": 1,
+ "zeitstempel": "2026-09-23T08:26:07",
+ "db_stand": "Sitzungen bis 2026-09-16, 9078 Beschlüsse",
+ "qualitaet": 0.7341,
+ "harte_befunde": 0,
+ "warnung": null,
+ "faelle": 20,
+ "p50_ms": 1583,
+ "p95_ms": 5576,
+ "aufrufe": 20,
+ "kosten_usd": 0.021973,
+ "ohne_kostenwert": 0,
+ "ct_je_aufruf": 0.1099,
+ "ct_je_lauf": 2.1973,
+ "kosten_gesamt_usd": 0.021973,
+ "ausfaelle": 0,
+ "nicht_zulaessig": false,
+ "abbruch": null,
+ "modelle_laut_tabelle": [
+  "google/gemini-2.5-flash"
+ ],
+ "ersatz": [],
+ "dauer_s": 48.9,
+ "nebenkennzahlen": {
+  "mindestens_einer": 0.95,
+  "zitiert_erwartet": 19
+ },
+ "fehler_beispiele": [],
+ "roh": {
+  "faelle": [
+   {
+    "id": "stadion",
+    "ms": 2545,
+    "zitiert": [
+     8677,
+     5621,
+     5797,
+     5656,
+     5690,
+     5442,
+     9330,
+     8164
+    ],
+    "erwartet": [
+     5621,
+     5402,
+     5459,
+     5656,
+     5442,
+     5690,
+     5797
+    ],
+    "text": "Der Neubau des **Stadions an der Maastrichter Straße** wurde zu einem Pauschalpreis von rund 57,3 Millionen Euro netto beschlossen [8677]. Die Planung sieht ein Stadion mit 7.500 bis 10.000 Plätzen vor [5621].\n\nFür die Bauleitplanung des Bebauungsplans 831 wurden außerplanmäßige Mehraufwendungen von 180.000 Euro bewilligt [5797, 5656]. Zusätzlich wurden 604.000 Euro für die Planung und Klimaneutralität des Stadionneubaus genehmigt [5690, 5442]. Ein Antrag, die Beauftragung eines Totalunternehmers erst nach einer positiven Rückmeldung der Europäischen Kommission vorzunehmen, wurde abgelehnt [9330]. Das Verkehrskonzept für den Stadionneubau soll in einer künftigen Verkehrsausschusssitzung vorgestellt werden [8164].\n\nFOLGEFRAGEN: [\"Wer stimmte gegen den Stadionneubau?\", \"Wofür wurden die 604.000 Euro bewilligt?\", \"Welcher Bebauungsplan betrifft das Stadion?\"]",
+    "zitiert_erwartet": true,
+    "abdeckung": 0.7143,
+    "erfundene_zahlen": [],
+    "erfundene_quellen": [],
+    "hart": false
+   },
+   {
+    "id": "fahrradstrassen",
+    "ms": 2593,
+    "zitiert": [
+     7533,
+     3043
+    ],
+    "erwartet": [
+     7171,
+     7533,
+     5597,
+     3907,
+     373,
+     1532
+    ],
+    "text": "In Oldenburg wurde die **Fahrradstraße Haareneschstraße** beschlossen. Die Verwaltung soll diese beibehalten, das Parken neu ordnen und die Straße gemäß Richtlinie gestalten [7533].\n\nZudem wurde die Verwaltung beauftragt, etwa 4-6 neue Fahrradstraßen in alle Richtungen zu planen, um eine ganzheitliche Struktur zu erreichen [3043].\n\nFOLGEFRAGEN: [\"Wie viele Gegenstimmen gab es zur Haareneschstraße?\", \"Wann wurde der Leitfaden für Fahrradstraßen fortgeschrieben?\", \"Welche Achse soll Fahrradstraßen bekommen?\"]",
+    "zitiert_erwartet": true,
+    "abdeckung": 0.1667,
+    "erfundene_zahlen": [],
+    "erfundene_quellen": [],
+    "hart": false
+   },
+   {
+    "id": "fliegerhorst-abfall",
+    "ms": 5576,
+    "zitiert": [
+     7837,
+     7739,
+     7532
+    ],
+    "erwartet": [
+     7739,
+     7837,
+     7531,
+     7532
+    ],
+    "text": "Die Stadt Oldenburg geht gegen illegale Abfallentsorgung auf dem Fliegerhorst vor, indem sie die Verwaltung beauftragt hat, den Umfang und die Verursacher illegaler Abfallablagerungen auf dem Schießstand zu ermitteln und deren Entfernung zu veranlassen [7837]. Zudem hat der Rat beschlossen, Auftragsstopps zu verhängen, Schadensersatzansprüche zu prüfen und einen Entsorgungsplan zu erstellen, falls sich Korruptionsvorwürfe und illegale Abfallentsorgung auf dem Schießstand/Fliegerhorst bestätigen [7739]. Ratsmitgliedern wurde auch Akteneinsicht in Unterlagen zur Bodenbeprobung am ehemaligen Schießstand gewährt [7532].\n\nFOLGEFRAGEN: [\"Wer hat den Antrag zur Ermittlung der Verursacher gestellt?\", \"Welche Fraktionen haben den Antrag zur illegalen Abfallentsorgung gestellt?\", \"Wann wurde der Bebauungsplan N-777 F beschlossen?\"]",
+    "zitiert_erwartet": true,
+    "abdeckung": 0.75,
+    "erfundene_zahlen": [],
+    "erfundene_quellen": [],
+    "hart": false
+   },
+   {
+    "id": "wechloy-neubau",
+    "ms": 1454,
+    "zitiert": [
+     6998,
+     7746,
+     7282
+    ],
+    "erwartet": [
+     7282,
+     6842,
+     6876,
+     6753,
+     6696,
+     6598,
+     6998,
+     6816
+    ],
+    "text": "Der Neubau der Grundschule Wechloy wurde mehrheitlich vom Schulausschuss am 5. November 2024 beschlossen [6998]. Die Schule soll an der Theodor-Heuss-Straße neu gebaut werden, wobei das Raumprogramm der Grundschule Fliegerhorst übernommen wird [6998]. Ein Änderungsantrag der CDU-Fraktion zur Zweizügigkeit der Grundschule Wechloy wurde am 2. September 2025 abgelehnt [7746]. Zuvor wurde ein Beschlussvorschlag der Verwaltung zum Neubau der Grundschule Wechloy am 25. November 2024 vom Rat abgelehnt [7282].\n\nFOLGEFRAGEN: [\"Wer lehnte den Beschlussvorschlag der Verwaltung ab?\", \"Wo soll die Grundschule Wechloy neu gebaut werden?\", \"Wann wurde der Änderungsantrag zur Zweizügigkeit abgelehnt?\"]",
+    "zitiert_erwartet": true,
+    "abdeckung": 0.25,
+    "erfundene_zahlen": [],
+    "erfundene_quellen": [],
+    "hart": false
+   },
+   {
+    "id": "vergnuegungssteuer",
+    "ms": 1617,
+    "zitiert": [
+     8056,
+     8002,
+     7972
+    ],
+    "erwartet": [
+     8056,
+     7864,
+     8002,
+     7972,
+     7089,
+     7270
+    ],
+    "text": "Ja, die Vergnügungssteuer auf Tanzveranstaltungen wurde abgeschafft [8056]. Der Rat hat am 27. Oktober 2025 die entsprechende Satzung zur Änderung der Vergnügungssteuersatzung beschlossen [8002]. Zuvor hatte der Ausschuss für Finanzen und Beteiligungen am 1. Oktober 2025 die Satzung zur Änderung der Vergnügungssteuersatzung vom 25. November 2019 beschlossen [7972]. Der Einnahmeausfall wird auf rund 35.000 Euro geschätzt und eine Kompensation wird geprüft [8056].\n\nFOLGEFRAGEN: [\"Wer hat die Abschaffung beantragt?\", \"Wann wurde die alte Vergnügungssteuersatzung geändert?\", \"Welcher Ausschuss hat die Abschaffung zuerst beschlossen?\"]",
+    "zitiert_erwartet": true,
+    "abdeckung": 0.5,
+    "erfundene_zahlen": [],
+    "erfundene_quellen": [],
+    "hart": false
+   },
+   {
+    "id": "huntebruecke",
+    "ms": 1242,
+    "zitiert": [
+     8355,
+     8105
+    ],
+    "erwartet": [
+     8355,
+     8105
+    ],
+    "text": "Ja, es gibt eine Resolution des Rates zum schnellstmöglichen Neubau der Oldenburger Huntebrücke. Diese wurde am 1. Dezember 2025 beschlossen [8355]. Zuvor hatte der Verkehrsausschuss die Resolution bereits am 17. November 2025 angenommen [8105]. Die Resolution wurde von den Fraktionen Bündnis 90/Die Grünen, SPD, FDP und CDU beantragt.\n\nFOLGEFRAGEN: [\"Wer hat die Resolution beantragt?\", \"Gibt es weitere Berichte zur Huntebrücke?\", \"Wann wurde die Resolution beschlossen?\"]",
+    "zitiert_erwartet": true,
+    "abdeckung": 1.0,
+    "erfundene_zahlen": [],
+    "erfundene_quellen": [],
+    "hart": false
+   },
+   {
+    "id": "lachgas",
+    "ms": 1105,
+    "zitiert": [
+     9278,
+     7662
+    ],
+    "erwartet": [
+     7452,
+     7662,
+     7839,
+     7400
+    ],
+    "text": "Die Stadt Oldenburg hat eine Verordnung zum Verbot des Verkaufs und der Weitergabe von Lachgas an Minderjährige im Stadtgebiet beschlossen [9278]. Zuvor wurde die Verwaltung beauftragt, eine solche Verordnung auszuarbeiten [7662].\n\nFOLGEFRAGEN: [\"Wer hat den Antrag gestellt?\", \"Wann wurde die Verordnung beschlossen?\", \"Gab es Gegenstimmen bei der Beauftragung?\"]",
+    "zitiert_erwartet": true,
+    "abdeckung": 0.25,
+    "erfundene_zahlen": [],
+    "erfundene_quellen": [],
+    "hart": false
+   },
+   {
+    "id": "machatschkala",
+    "ms": 1069,
+    "zitiert": [
+     6652,
+     6571,
+     6169,
+     6301
+    ],
+    "erwartet": [
+     6169,
+     6571,
+     6652,
+     6301
+    ],
+    "text": "Der Antrag der CDU-Fraktion, die Städtepartnerschaft mit Machatschkala zu beenden, wurde vom Rat mehrheitlich abgelehnt [6652]. Zuvor wurde der Tagesordnungspunkt mehrfach vertagt [6571, 6169] oder als behandelt erklärt [6301].\n\nFOLGEFRAGEN: [\"Wer stimmte gegen die Ablehnung?\", \"Wann wurde der Antrag der CDU-Fraktion gestellt?\", \"Welche anderen internationalen Kooperationen gibt es?\"]",
+    "zitiert_erwartet": true,
+    "abdeckung": 1.0,
+    "erfundene_zahlen": [],
+    "erfundene_quellen": [],
+    "hart": false
+   },
+   {
+    "id": "maerchen-strassen",
+    "ms": 1343,
+    "zitiert": [
+     7651,
+     7649,
+     7648
+    ],
+    "erwartet": [
+     7477,
+     7478,
+     7476,
+     7648,
+     7649,
+     7651
+    ],
+    "text": "In Oldenburg wurden Straßen nach den Märchenfiguren **Rapunzel**, **Rotkäppchen** und **Schneewittchen** benannt. Es gibt einen Rapunzelweg [7651], einen Rotkäppchenweg [7649] und einen Schneewittchenweg [7648].\n\nFOLGEFRAGEN: [\"Wo genau liegen diese Straßen?\", \"Welche Gremien haben die Benennung beschlossen?\", \"Gab es Gegenstimmen bei der Benennung?\"]",
+    "zitiert_erwartet": true,
+    "abdeckung": 0.5,
+    "erfundene_zahlen": [],
+    "erfundene_quellen": [],
+    "hart": false
+   },
+   {
+    "id": "summer-street",
+    "ms": 2051,
+    "zitiert": [
+     5367,
+     5207,
+     5910,
+     8652,
+     8161,
+     9067,
+     4480,
+     9028,
+     4635
+    ],
+    "erwartet": [
+     5207,
+     5367,
+     4480,
+     4635,
+     5069
+    ],
+    "text": "Der Oldenburger Stadtrat hat beschlossen, dass von einer temporären Schließung des Schloßplatzes als \"Summer Street\" im Jahr 2023 abgesehen wird. Stattdessen soll eine dauerhafte Umgestaltung mit Verkehrsberuhigung geplant werden [5367, 5207]. Für die Planungskosten dieser Umgestaltung wurden überplanmäßig 136.000 Euro bewilligt [5910, 8652]. Ein Sachstandsbericht zur Planung der Umgestaltung wurde im Dezember 2025 zur Kenntnis genommen [8161]. Ursprünglich war geplant, die Aktion \"Summer Street\" 2022 abzusagen und sie 2023 unter neuen Rahmenbedingungen stattfinden zu lassen [9067, 4480]. Bereits im März 2022 wurde beschlossen, den Schloßplatz in den Sommermonaten temporär zur autofreien Zone für Fußgänger und Radfahrer zu machen [9028, 4635].\n\nFOLGEFRAGEN: [\"Wann wurde die Summer Street 2022 abgesagt?\", \"Wer beantragte die temporäre autofreie Zone?\", \"Welcher Ausschuss befasste sich mit der Sperrung des Schloßplatzes?\"]",
+    "zitiert_erwartet": true,
+    "abdeckung": 0.8,
+    "erfundene_zahlen": [],
+    "erfundene_quellen": [],
+    "hart": false
+   },
+   {
+    "id": "baeder-finanzen",
+    "ms": 1475,
+    "zitiert": [
+     8195,
+     8197,
+     7061,
+     6840,
+     5911
+    ],
+    "erwartet": [
+     8197,
+     7061,
+     6840,
+     5911
+    ],
+    "text": "Die Bäderbetriebsgesellschaft Oldenburg mbH (BBGO) weist in ihren Jahresabschlüssen und Wirtschaftsplänen Fehlbeträge auf. Für das Jahr 2026 wird ein Jahresfehlbetrag von rund 10,1 Millionen Euro erwartet [8195]. Der Jahresabschluss 2024 zeigte einen Fehlbetrag von rund 5,7 Millionen Euro [8197]. Im Jahr 2023 lag der Fehlbetrag bei rund 5,2 Millionen Euro [7061, 6840], und für 2022 wurde ein Fehlbetrag von rund 4,82 Millionen Euro festgestellt [5911].\n\nFOLGEFRAGEN: [\"Wie hoch war der Fehlbedarf 2021?\", \"Wann wurde der Wirtschaftsplan 2023 beschlossen?\", \"Wer stimmte gegen den Wirtschaftsplan 2026?\"]",
+    "zitiert_erwartet": true,
+    "abdeckung": 1.0,
+    "erfundene_zahlen": [],
+    "erfundene_quellen": [],
+    "hart": false
+   },
+   {
+    "id": "klimaneutral",
+    "ms": 12073,
+    "zitiert": [
+     3857,
+     3588,
+     4183,
+     5690,
+     3104,
+     3283,
+     2999,
+     7617,
+     4965
+    ],
+    "erwartet": [
+     7617,
+     4183
+    ],
+    "text": "Die Stadt Oldenburg hat beschlossen, bis zum Jahr 2035 klimaneutral zu werden [3857, 3588]. Die Verwaltung wurde beauftragt, hierfür einen Maßnahmenplan zu erstellen [3857, 3588]. Ein Zwischenbericht zum Erarbeitungsstand dieses Maßnahmenplans wurde bereits zur Kenntnis genommen [4183].\n\nIm Rahmen dieser Klimaneutralitätsziele wurden auch konkrete Maßnahmen beschlossen:\n*   Für den Neubau des Stadions an der Maastrichter Straße wurden zusätzlich 604.000 Euro für Planung und Klimaneutralität bewilligt [5690].\n*   Die Stadtverwaltung soll ein Leitbildprojekt für klimaneutrale Schulen initiieren und Schulen auf diesem Weg unterstützen, unter anderem in den Bereichen Ernährung, Energie und Mobilität [3104, 3283].\n*   Die Verwaltung wurde gebeten, Reduktionsszenarien zur Einhaltung des CO2-Budgets mit Klimaneutralität bis 2030, 2035 oder 2040 zu berechnen [2999].\n\nZudem wurden Berichte zum Sachstand des klimaneutralen Umbaus städtischer Gebäude [7617] und zur energetischen Sanierung städtischer Gebäude [4965] zur Kenntnis genommen.\n\nFOLGEFRAGEN: [\"Wie viel Geld wurde für den Stadionneubau bewilligt?\", \"Welche Fraktion stellte den Antrag zur Klimaneutralität?\", \"Wann wurde der Bericht zur Klimaneutralität bis 2035 zur Kenntnis genommen?\"]",
+    "zitiert_erwartet": true,
+    "abdeckung": 1.0,
+    "erfundene_zahlen": [],
+    "erfundene_quellen": [],
+    "hart": false
+   },
+   {
+    "id": "grundschulen-aktuell",
+    "ms": 1583,
+    "zitiert": [
+     8425,
+     8312,
+     7282,
+     6842
+    ],
+    "erwartet": [
+     8425,
+     8312,
+     7282,
+     6842
+    ],
+    "text": "Zuletzt wurde am 16. März 2026 beschlossen, dass die **Grundschule Wechloy** ab dem Schuljahr 2027/2028 aufwachsend zweizügig geführt wird [8425]. Dieser Beschluss wurde zuvor bereits am 10. März 2026 vom Schulausschuss einstimmig bei zwei Enthaltungen angenommen [8312].\n\nAm 25. November 2024 wurde ein Vorschlag zum Neubau der Grundschule Wechloy abgelehnt [7282], nachdem dieser Punkt im Schulausschuss am 3. September 2024 vertagt worden war [6842].\n\nFOLGEFRAGEN: [\"Wer stimmte gegen den Neubau der Grundschule Wechloy?\", \"Wann wurde das Rahmenkonzept zur Ganztagsbildung geändert?\", \"Welche Grundschulen wurden im Bericht vom 08.11.2022 genannt?\"]",
+    "zitiert_erwartet": true,
+    "abdeckung": 1.0,
+    "erfundene_zahlen": [],
+    "erfundene_quellen": [],
+    "hart": false
+   },
+   {
+    "id": "wohnraum",
+    "ms": 2630,
+    "zitiert": [
+     5630,
+     8146,
+     6640,
+     6458,
+     5291,
+     2725,
+     7418,
+     2279
+    ],
+    "erwartet": [
+     5291,
+     5630,
+     2163,
+     2725
+    ],
+    "text": "Die Stadt Oldenburg setzt sich auf verschiedene Weisen für bezahlbaren Wohnraum ein. Ein wichtiger Punkt ist die **Vergabe städtischer Wohnbaugrundstücke**, bei der mindestens ein Drittel an Endnutzer im Erbbaurecht vergeben werden soll und bei Investorengrundstücken sozialer Wohnungsbau gefördert wird [5630].\n\nZudem gibt es Regelungen zur **Sozialquote**, die vorschreiben, dass ein bestimmter Anteil des neu geschaffenen Wohnraums preisgünstig sein muss. Für das Projekt Lebensquartier im B-Plan 851 wurde diese Quote einmalig von 30 auf 20 Prozent reduziert [8146]. Auch für das Bauleitplanverfahren 857 wurden Ausnahmeregelungen von der Quotenregelung für preiswerten Wohnraum beschlossen [6640, 6458].\n\nDie Stadt nimmt regelmäßig Berichte zur Kenntnis, die sich mit dem Bedarf an bezahlbarem Wohnraum beschäftigen, darunter eine Teilfortschreibung des Wohnkonzepts [5291] und der Wohnungsmarktbericht 2019 [2725]. Auch die Schaffung von Wohnraum für Studierende ist ein wiederkehrendes Thema, zu dem Berichte zur Kenntnis genommen wurden [7418, 2279].\n\nFOLGEFRAGEN: [\"Wie hoch war die Sozialquote vor der Reduzierung im B-Plan 851?\", \"Welche Ausnahmen gibt es für das Bauleitplanverfahren 857?\", \"Wann wurde der Wohnungsmarktbericht 2019 vorgestellt?\"]",
+    "zitiert_erwartet": true,
+    "abdeckung": 0.75,
+    "erfundene_zahlen": [],
+    "erfundene_quellen": [],
+    "hart": false
+   },
+   {
+    "id": "caecilienbruecke-verlauf",
+    "ms": 1526,
+    "zitiert": [
+     9379,
+     7822,
+     7193,
+     6692
+    ],
+    "erwartet": [
+     7822,
+     7193,
+     6692
+    ],
+    "text": "Der Rat der Stadt Oldenburg hat beschlossen, eine Fachaufsichtsbeschwerde gegen das Wasserstraßen- und Schifffahrtsamt (WSA) wegen der Verzögerungen beim Neubau der Cäcilienbrücke einzuleiten und eine gemeinsame Aktion mit Abgeordneten zu fordern [9379]. Zuvor wurde bereits eine Resolution verabschiedet, die das WSA auffordert, Planung und Neubau der Cäcilienbrücke zu beschleunigen [7822]. Berichte zum Sachstand des Abrisses und Neubaus der Cäcilienbrücke wurden in der Vergangenheit zur Kenntnis genommen [7193, 6692].\n\nFOLGEFRAGEN: [\"Wer hat die Fachaufsichtsbeschwerde beantragt?\", \"Wer hat die Resolution zur Beschleunigung beantragt?\", \"Wann wurde der Bericht zur Verkehrsregelung zur Kenntnis genommen?\"]",
+    "zitiert_erwartet": true,
+    "abdeckung": 1.0,
+    "erfundene_zahlen": [],
+    "erfundene_quellen": [],
+    "hart": false
+   },
+   {
+    "id": "pumptrack-vorlagentiefe",
+    "ms": 1264,
+    "zitiert": [
+     8466,
+     8136
+    ],
+    "erwartet": [
+     8515,
+     5859,
+     4271
+    ],
+    "text": "Die vorliegenden Beschlüsse des Oldenburger Stadtrats enthalten keine Informationen über die Planung eines Pumptracks. Es gibt jedoch Beschlüsse zur Erweiterung von Sportmöglichkeiten und zur Sanierung und Erweiterung der Skatehalle [8466, 8136].\n\nFOLGEFRAGEN: [\"Was ist mit der Skatehalle geplant?\", \"Wo sollen Sportmöglichkeiten erweitert werden?\", \"Wer ist am Sportplatz Schlieffenstraße beteiligt?\"]",
+    "zitiert_erwartet": false,
+    "abdeckung": 0.0,
+    "erfundene_zahlen": [],
+    "erfundene_quellen": [],
+    "hart": false
+   },
+   {
+    "id": "weser-ems-buergschaft",
+    "ms": 1594,
+    "zitiert": [
+     7912,
+     7758,
+     7522,
+     7391
+    ],
+    "erwartet": [
+     7912,
+     7758
+    ],
+    "text": "Die Stadt Oldenburg hat ihre Ausfallbürgschaft für die Weser-Ems-Hallen auf maximal 79 Millionen Euro erhöht [7912, 7758]. Diese Erhöhung ist für den Neubau der Weser-Ems Halle vorgesehen. Zusätzlich besteht eine Ausfallbürgschaft von rund 1 Million Euro für ein Darlehen der Weser-Ems Halle Oldenburg GmbH & Co. KG [7522, 7391].\n\nFOLGEFRAGEN: [\"Wofür genau ist die Bürgschaft von 79 Millionen Euro gedacht?\", \"Welche Fraktionen haben den Neubau der Kongresshalle beantragt?\", \"Wie viele Gegenstimmen gab es bei der Erhöhung der Bürgschaft auf 79 Millionen Euro?\"]",
+    "zitiert_erwartet": true,
+    "abdeckung": 1.0,
+    "erfundene_zahlen": [],
+    "erfundene_quellen": [],
+    "hart": false
+   },
+   {
+    "id": "seb-bus-samstag",
+    "ms": 973,
+    "zitiert": [
+     8047,
+     8527
+    ],
+    "erwartet": [
+     8047
+    ],
+    "text": "Der kostenlose Bus-Samstag in Oldenburg wird unbefristet fortgesetzt [8047]. Der Endbericht zur Evaluation der Aktion \"Samstags einfach Bus fahren\" wurde zur Kenntnis genommen [8527].\n\nFOLGEFRAGEN: [\"Wann wurde der kostenlose Bus-Samstag beschlossen?\", \"Wer hat den Antrag gestellt?\", \"Gab es Gegenstimmen?\"]",
+    "zitiert_erwartet": true,
+    "abdeckung": 1.0,
+    "erfundene_zahlen": [],
+    "erfundene_quellen": [],
+    "hart": false
+   },
+   {
+    "id": "fliegerhorst-altlasten",
+    "ms": 2402,
+    "zitiert": [
+     6728,
+     7739,
+     7738,
+     7641,
+     8235
+    ],
+    "erwartet": [
+     8235,
+     6728,
+     7739,
+     7641
+    ],
+    "text": "Die Thematik der Altlasten und des Giftmülls auf dem Fliegerhorstgelände hat in den letzten Jahren an Bedeutung gewonnen. Im April 2024 wurde ein Bericht zu Korruptionsvorwürfen und Sondermüll auf dem Fliegerhorst zur Kenntnis genommen [6728]. Im Mai 2025 beschloss der Rat, Auftragsstopps zu verhängen, Schadensersatzansprüche zu prüfen und einen Entsorgungsplan zu erstellen, falls sich die Vorwürfe illegaler Abfallentsorgung und Korruption auf dem Schießstand/Fliegerhorst bestätigen [7739]. Ein weiterer Berichtsantrag zur Rolle der Verwaltung und dem Informationsstand der Gremien bezüglich der Sondermüllentsorgung wurde im Mai 2025 behandelt, führte jedoch zu keinem Beschluss [7738]. Im Juni 2025 wurde der Sachstand der ehemaligen Schießanlage auf dem Fliegerhorst zur Kenntnis genommen [7641]. Der aktuellste Stand ist, dass im Februar 2026 der Bericht zum zweiten Grundwassermonitoring der ehemaligen Schießanlage auf dem Fliegerhorst zur Kenntnis genommen wurde [8235].\n\nFOLGEFRAGEN: [\"Welche Fraktionen stellten den Antrag zur illegalen Abfallentsorgung?\", \"Wann wurde der Bebauungsplan O-782 B beschlossen?\", \"Wie hoch ist der jährliche Zuschuss für die Traditionsgemeinschaft Jagdbombergeschwader 43 e.V.?\"]",
+    "zitiert_erwartet": true,
+    "abdeckung": 1.0,
+    "erfundene_zahlen": [],
+    "erfundene_quellen": [],
+    "hart": false
+   },
+   {
+    "id": "fliegerhorst-sondermuell-debatte",
+    "ms": 2382,
+    "zitiert": [
+     8235,
+     7641,
+     7739,
+     7532,
+     6728
+    ],
+    "erwartet": [
+     8235,
+     7739,
+     7641
+    ],
+    "text": "Dem Rat sind mehrere Aspekte bezüglich des Sondermülls im ehemaligen Schießstand des Fliegerhorsts bekannt. Der Ausschuss für Stadtgrün, Umwelt und Klima hat zuletzt im Februar 2026 den Bericht zum zweiten Grundwassermonitoring der ehemaligen Schießanlage zur Kenntnis genommen [8235]. Zuvor, im Juni 2025, wurde bereits ein Sachstandsbericht zur ehemaligen Schießanlage zur Kenntnis genommen [7641].\n\nIm Mai 2025 hat der Rat auf Antrag mehrerer Fraktionen beschlossen, Auftragsstopps zu verhängen, Schadensersatzansprüche zu prüfen und einen Entsorgungsplan zu erstellen, falls sich die Vorwürfe illegaler Abfallentsorgung und Korruption auf dem Schießstand bestätigen [7739]. Bereits im März 2025 wurde Ratsmitgliedern Akteneinsicht in Unterlagen zur Bodenbeprobung am ehemaligen Schießstand gewährt [7532]. Im April 2024 nahm der Rat einen Bericht zu Korruptionsvorwürfen und Sondermüll auf dem Fliegerhorst zur Kenntnis [6728].\n\nFOLGEFRAGEN: [\"Was ergab das 2. Grundwassermonitoring?\", \"Wann wird der Entsorgungsplan erstellt?\", \"Welche Vorwürfe wurden geprüft?\"]",
+    "zitiert_erwartet": true,
+    "abdeckung": 1.0,
+    "erfundene_zahlen": [],
+    "erfundene_quellen": [],
+    "hart": false
+   }
+  ],
+  "cases": 20,
+  "qualitaet": 0.7341,
+  "mindestens_einer": 0.95,
+  "hart": 0,
+  "zitiert_erwartet": 19
+ }
+}
