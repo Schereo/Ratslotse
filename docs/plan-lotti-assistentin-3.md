@@ -302,6 +302,39 @@ einer Frage mit klarem Seitenbezug nachlädt. Das ist der Punkt, an dem
 Regel 6 aus Plan 1 („keine Kopie der Seitentexte") fällt — bewusst, mit
 Zahlen, nicht vorher.
 
+### PR 31 — Markieren statt Modus (gebaut 23.09.2026, Branch `claude/lotti-markieren`)
+
+**Anlass.** Tim am 23.09.2026: „Dieses ‚Frag mich zu dieser Seite‘ und dann
+kann man irgendwas anklicken — das ist so mega komisch, keiner versteht, wie
+das funktioniert, selbst bei mir hat es gedauert. An ein paar Orten tauchen
+Fragezeichen auf … Und dieses Kleine unten in der Mitte ‚Auf dieser Seite
+kann ich gerade nichts einzeln erklären‘ sollte nicht angezeigt werden."
+
+**Was.** Der Erklär-Modus ist weg — der Chip „Etwas auf der Seite zeigen",
+sein Icon am Composer, die „?"-Abzeichen, der Hinweis unten. Ebenso der Chip
+„Markiertes erklären": Er tat dasselbe wie der neue Knopf, nur weiter weg.
+Neu ist ein kleiner Knopf **„Lotti fragen" an der Markierung**
+(`components/assistentin/markier-knopf.tsx`, Logik in `lib/markieren.ts`):
+Er steht unter dem Ende der Auswahl, fragt beim Klick sofort „Was bedeutet
+das?" und zeigt die Markierung im Verlauf als Zitat. Der Baustein um die
+Markierung (nächster `data-erklaer`-Vorfahr) geht als Kontext mit; das
+Zitat reist im Gedächtnis mit, damit „und warum so viel?" danach ein „das"
+hat.
+
+**Behalten:** die `data-erklaer`-Anker. Sie tragen weiter die Landkarte für
+„Wo finde ich …?", die Anschluss-Chips „… erklären" und jetzt den
+Baustein-Kontext einer Markierung.
+
+**Nebenbei behoben:** Eine Frage aus dem Modus ging verloren, wenn die
+Einwilligungs-Karte noch offen war; die Markier-Frage wartet jetzt auf sie.
+Eine Auswahl in einem `<input>` meldet Chromium mit dem Eltern-Element als
+Anker — geprüft wird deshalb zusätzlich der Fokus. (Die 422 bei langen
+Bausteinen, auf die die ersten Bilder dieses PRs liefen, hat #1512
+parallel an `kuerze` behoben.)
+
+**iOS:** Die App hatte nie einen Erklär-Modus (`AssistantSheet.swift`); dort
+ist nichts nachzuziehen.
+
 ## 3. Reihenfolge
 
 PR 23 und 24 zusammen zuerst — sie sind die Antwort auf Tims Hauptpunkte

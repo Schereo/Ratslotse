@@ -8,8 +8,11 @@
  * beim Erscheinungsbild, das aus demselben Grund im Gerät wohnt.
  *
  * **Was sie NICHT tut:** Sie schaltet Lotti nicht ab. Über die ⌘K-Palette
- * („Lotti fragen") bleibt sie erreichbar, und der Erklär-Modus ebenso — sonst
- * wäre der versteckte Knopf ein Aus-Schalter mit falschem Namen.
+ * („Lotti fragen") bleibt sie erreichbar — sonst wäre der versteckte Knopf
+ * ein Aus-Schalter mit falschem Namen. Der Knopf „Lotti fragen" an einer
+ * Markierung (`components/assistentin/markier-knopf.tsx`) folgt dagegen
+ * dieser Einstellung: Wer Lotti aus dem Weg haben will, will auch keinen
+ * Knopf an jeder Markierung.
  */
 const SCHLUESSEL = "ratslotse:lotti-knopf-aus";
 

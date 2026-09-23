@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, ExternalLink, MousePointerClick, RotateCcw, Sparkles, X } from "lucide-react";
+import { ArrowRight, ExternalLink, RotateCcw, Sparkles, X } from "lucide-react";
 
 import { Mascot } from "@/components/mascot";
 import { AntwortText } from "@/components/qa-bausteine";
@@ -13,7 +13,7 @@ import { FeedbackDaumen } from "@/components/feedback-daumen";
 import { api, apiUrl, authHeaders, qs } from "@/lib/api";
 import type { ApiAntwort } from "@/lib/vertrag";
 import {
-  ankerKennung, ankerListe, ankerTreffer, anschlussfragen, auswahlText, belegName,
+  ankerKennung, ankerListe, ankerTreffer, anschlussfragen, belegName,
   chipTitel, daumenZeigen, erklaerAktion,
   ernteElement, gedaechtnis, kuerze, ortsfrage, refsAus, routeAus, seitenName,
   seitenTitel, seitenUeberschrift, trenneWeiter, ueberschriftenPfad, zaesur,
@@ -23,6 +23,8 @@ import { useAuth } from "@/lib/auth";
 import { GespraecheEinwilligung } from "@/components/gespraeche-einwilligung";
 import { decisionHref, fragenHref } from "@/lib/routes";
 import type { ElementFrage } from "./index";
+import type { MarkierFrage } from "./markier-knopf";
+import { auswahlText, frageMitZitat } from "@/lib/markieren";
 import { leseSseStrom } from "@/lib/sse";
 import { lottiSchrittText } from "@/lib/qa-schritte";
 import { tastaturHoehe } from "@/lib/tastatur";
@@ -106,8 +108,12 @@ export type LottiTurn = {
   /** Die Bausteine, zu denen diese Runde hinführt („Zeig mir: …"). Gesetzt
    *  nur in der Lotsen-Runde (`mode === "local"`). */
   zeigen?: Anker[];
-  /** Der Baustein, den diese Runde ERKLÄRT — aus dem Erklär-Modus oder aus
-   *  einem „Erklär mir: …"-Chip. Er ist das Gedächtnis der Anschlussfragen:
+  /** Die Markierung, zu der diese Runde gefragt wurde („Lotti fragen" an der
+   *  Auswahl). Sie steht als Zitat vor der Frage — im Verlauf wie im
+   *  Gedächtnis (`frageMitZitat`), denn „Was bedeutet das?" allein hätte
+   *  in der nächsten Runde kein „das" mehr. */
+  zitat?: string;
+  /** Der Baustein, den diese Runde ERKLÄRT — aus einem „… erklären"-Chip. Er ist das Gedächtnis der Anschlussfragen:
    *  Was einmal erklärt wurde, wird nicht noch einmal vorgeschlagen. Der
    *  Schlüssel allein reichte dafür nicht (zwei Bausteine dürfen sich einen
    *  teilen), deshalb steht hier der ganze Anker. */
@@ -127,8 +133,8 @@ export type LottiTurn = {
  *  **Warum der Client ihn kennen muss.** Am Schreibtisch steht das Fenster
  *  NEBEN der Seite — nach einem „Zeig mir" bleibt es offen, man sieht beides.
  *  Auf dem Handy füllt es die Fläche zwischen Kopfleiste und Knopf und deckt
- *  damit genau das ab, wohin gescrollt wird; dort schließt es sich, wie schon
- *  beim Erklär-Modus. Die Zeichenkette ist dieselbe wie in
+ *  damit genau das ab, wohin gescrollt wird; dort schließt es sich. Die
+ *  Zeichenkette ist dieselbe wie in
  *  `tailwind.config.ts` — laufen die beiden auseinander, schließt sich das
  *  Fenster genau auf den Breiten falsch, auf denen niemand nachsieht. */
 const DESK = "(pointer: fine) and (min-width: 1024px)";
@@ -213,21 +219,20 @@ function merkeVerlauf(turns: LottiTurn[]): void {
 }
 
 export function LottiPanel({
-  offen, onSchliessen, markierung, element, onElementVerbraucht,
-  ladeGespraech, onGespraechGeladen, onModus,
+  offen, onSchliessen, markierung, markiert, onMarkiertVerbraucht,
+  ladeGespraech, onGespraechGeladen,
 }: {
   offen: boolean;
   onSchliessen: () => void;
   /** Der gerade markierte Text der Seite — er wandert in die Kontext-Pille. */
   markierung: string;
-  /** Ein im Erklär-Modus angetippter Baustein. Gesetzt heißt: sofort fragen. */
-  element: ElementFrage | null;
-  onElementVerbraucht: () => void;
+  /** Eine Markierung, an der „Lotti fragen" gedrückt wurde. Gesetzt heißt:
+   *  sofort fragen. */
+  markiert: MarkierFrage | null;
+  onMarkiertVerbraucht: () => void;
   /** Ein gespeichertes Lotti-Gespräch, das geladen werden soll. */
   ladeGespraech?: number | null;
   onGespraechGeladen?: () => void;
-  /** „Etwas auf der Seite zeigen" — der Modus lebt eine Ebene höher. */
-  onModus: () => void;
 }) {
   const pathname = usePathname();
   const sp = useSearchParams();
@@ -364,6 +369,10 @@ export function LottiPanel({
      *  Schritt derselben Frage — die Frage-Blase steht schon darüber und
      *  wird nicht wiederholt. */
     dazu?: { question: string; answer: string };
+    /** Die Markierung der Runde, aus der dieser Weg kommt. Der Zustand
+     *  `markierung` taugt dafür nicht: Auf dem Handy ist die Auswahl nach dem
+     *  Tipp auf „Lotti fragen" schon aufgehoben. */
+    auswahl?: string;
   } = {}) => {
     abbruch.current?.abort();
     const ctrl = new AbortController();
@@ -401,7 +410,7 @@ export function LottiPanel({
           // die gerade darüber entstanden ist und noch nicht im Zustand steht.
           history: [
             ...gedaechtnis(turns, route, MAX_TURNS_KONTEXT).map((t) => ({
-              question: t.question, answer: t.answer })),
+              question: frageMitZitat(t), answer: t.answer })),
             ...(opts.dazu ? [opts.dazu] : []),
           ].slice(-MAX_TURNS_KONTEXT)
             .map((t) => ({ question: t.question.slice(0, 200), answer: t.answer.slice(0, 300) })),
@@ -410,7 +419,9 @@ export function LottiPanel({
             heading: seitenUeberschrift(document, anzeigename).slice(0, 200),
             element_title: letzterBaustein.current?.title ?? "",
             element_text: (letzterBaustein.current?.text ?? "").slice(0, 600),
-            selection: markierung.slice(0, 600),
+            // 600: `qa.SCREEN_SELECTION_MAX` — die Ratsfrage nimmt weniger
+            // mit als die Erklärung.
+            selection: (opts.auswahl ?? markierung).slice(0, 600),
             // **Die Kennung, nicht nur der Text.** Ohne sie suchte das Archiv
             // nach Ähnlichkeit: Auf der Seite des Beschlusses „Weitenmesser im
             // Marschwegstadion" (2020) beantwortete „Wer hat dagegen gestimmt?"
@@ -469,13 +480,21 @@ export function LottiPanel({
 
   const fragen = useCallback(async (
     text: string, mitMarkierung: boolean, baustein: ElementFrage | null = null,
-    /** Welchen Baustein dieser Aufruf ERKLÄRT — aus dem Erklär-Modus oder
-     *  aus einem „… erklären"-Chip. Gemerkt wird er nur, damit derselbe Chip
-     *  nicht zweimal erscheint. */
-    chip: { anker?: Anker } = {},
+    opts: {
+      /** Welchen Baustein dieser Aufruf ERKLÄRT — aus einem „… erklären"-
+       *  Chip. Gemerkt wird er nur, damit derselbe Chip nicht zweimal
+       *  erscheint. */
+      anker?: Anker;
+      /** Eine Markierung, an der „Lotti fragen" gedrückt wurde. Sie ersetzt
+       *  die laufende Auswahl: Die kann schon weg sein (Handy) oder eine
+       *  andere (man hat weitermarkiert, während das Fenster aufging). */
+      markiert?: MarkierFrage;
+    } = {},
   ) => {
     const sauber = text.trim();
-    if (!sauber && !mitMarkierung && !baustein) return;
+    const markiert = opts.markiert ?? null;
+    const auswahl = markiert ? markiert.text : (mitMarkierung ? markierung : "");
+    if (!sauber && !auswahl && !baustein) return;
     // Ohne beantwortete Einwilligung wird nicht gefragt: Der Satz über die
     // externe Verarbeitung steht in der Karte, und sie ist die einzige Stelle,
     // an der er VOR der ersten Frage steht.
@@ -493,7 +512,7 @@ export function LottiPanel({
     // Gesprächsverlauf, den niemand nachliest, zum Preis eines Schreibwegs
     // durchs ganze Backend.
     const anker = ankerListe(document);
-    if (!baustein && !mitMarkierung && ortsfrage(sauber)) {
+    if (!baustein && !auswahl && ortsfrage(sauber)) {
       const treffer = ankerTreffer(sauber, anker);
       if (treffer.length) {
         abbruch.current?.abort();
@@ -516,15 +535,22 @@ export function LottiPanel({
     setFrage("");
     setLaden(true);
 
-    const kontext = baustein
-      ? (baustein.title || "Baustein auf der Seite")
-      : (mitMarkierung && markierung ? `Markiert: „${kuerze(markierung, 40)}“` : "");
+    // Unter der Frage: woher sie kommt. Bei einer Markierung steht das Zitat
+    // schon IN der Blase — dann nur der Baustein, in dem sie lag, und ob sie
+    // gekürzt wurde (sonst glaubte man, Lotti habe alles gelesen).
+    const kontext = markiert
+      ? [markiert.element?.title, markiert.gekuerzt ? "Markierung gekürzt" : null]
+        .filter(Boolean).join(" · ")
+      : baustein
+        ? (baustein.title || "Baustein auf der Seite")
+        : (auswahl ? `Markiert: „${kuerze(auswahl, 40)}“` : "");
     if (baustein) letzterBaustein.current = baustein;
     const key = naechsterKey.current++;
     setTurns((ts) => [...ts, {
       key, question: sauber, answer: "", next: null, mode: null, kontext,
       route, seite: seitenName(document, anzeigename),
-      baustein: chip.anker,
+      baustein: opts.anker,
+      zitat: markiert?.text,
     }]);
 
     const bildschirm: Bildschirm = {
@@ -533,9 +559,10 @@ export function LottiPanel({
       // Der PFAD, nicht nur die `h1`: „Schulden › Rate-Treppe" sagt Lotti,
       // wo auf der Seite sie steht, ohne den Seitentext mitzuschicken. Er
       // wird beim Antippen berechnet — nur dort liegt der Knoten noch vor.
-      heading: baustein?.pfad || ueberschriftenPfad(null, document, anzeigename),
+      heading: baustein?.pfad || markiert?.pfad
+        || ueberschriftenPfad(null, document, anzeigename),
       element: baustein,
-      selection: mitMarkierung ? markierung : "",
+      selection: auswahl,
       refs,
     };
 
@@ -576,7 +603,7 @@ export function LottiPanel({
           // **Nur Runden DIESER Seite** — der Verlauf überlebt den
           // Seitenwechsel, das Gedächtnis nicht (lib/assistentin.ts).
           history: gedaechtnis(turns, route, MAX_TURNS_KONTEXT)
-            .map((t) => ({ question: t.question.slice(0, 200), answer: t.answer.slice(0, 300) })),
+            .map((t) => ({ question: frageMitZitat(t).slice(0, 200), answer: t.answer.slice(0, 300) })),
           // Das laufende Gespräch. Das Feld MUSS mit, auch als `null`: Der
           // Server speichert nur, wenn der Client es überhaupt geschickt hat
           // (`model_fields_set`) — so bleibt ein alter Client stumm, statt
@@ -658,27 +685,37 @@ export function LottiPanel({
     // **Erst NACH dem Strom**, nicht im `done`-Rahmen: Dort liefe der
     // Abbruch-Wächter von `ratsfrageStellen` in den noch offenen
     // Erklär-Strom und risse ihn mitten im Satz ab.
-    if (archivWeg === "statt") await ratsfrageStellen(sauber, { inTurn: key });
+    if (archivWeg === "statt") await ratsfrageStellen(sauber, { inTurn: key, auswahl });
     else if (archivWeg === "danach") {
-      await ratsfrageStellen(sauber, { dazu: { question: sauber, answer: antwort } });
+      await ratsfrageStellen(sauber, {
+        dazu: { question: frageMitZitat({ question: sauber, zitat: markiert?.text }), answer: antwort },
+        auswahl,
+      });
     }
   }, [markierung, refs, route, turns, gespraechId, merken, setGespraechId,
       anzeigename, ratsfrageStellen]);
 
-  // Ein im Erklär-Modus angetippter Baustein fragt von selbst — der Tipp auf
-  // das Abzeichen IST die Frage, ein zweiter Klick im Fenster wäre einer zu
-  // viel. Danach wird er verbraucht, sonst feuerte jedes Neuzeichnen erneut.
+  // „Lotti fragen" an einer Markierung fragt von selbst — der Tipp auf den
+  // Knopf IST die Frage, ein zweiter Klick im Fenster wäre einer zu viel.
+  // Danach wird sie verbraucht, sonst feuerte jedes Neuzeichnen erneut.
+  //
+  // **Und sie wartet auf die Einwilligung.** Wer zum ersten Mal fragt, sieht
+  // zuerst die Karte; ohne Antwort darauf fragt `fragen` nichts. Bis
+  // 23.09.2026 wurde der angetippte Baustein trotzdem verbraucht — die Frage
+  // war dann einfach weg. Jetzt steht sie, bis die Karte beantwortet ist.
   useEffect(() => {
-    if (!element || !offen) return;
-    // Der angetippte Baustein gilt danach als erklärt — der Anschluss-Chip
-    // „Erklär mir: …" bietet ihn nicht noch einmal an.
-    void fragen("", false, element,
-      element.key ? { anker: { key: element.key, titel: element.title } } : {});
-    onElementVerbraucht();
+    if (!markiert || !offen || merken == null) return;
+    // Der Baustein um die Markierung geht als Kontext mit, gilt aber NICHT
+    // als erklärt: Gefragt wurde nach einem Stück davon, nicht nach ihm —
+    // der Anschluss-Chip „… erklären" darf ihn weiter anbieten.
+    void fragen("Was bedeutet das?", false,
+      markiert.element ? { ...markiert.element, pfad: markiert.pfad } : null,
+      { markiert });
+    onMarkiertVerbraucht();
     // `fragen` hängt am Verlauf und wechselt mit jeder Runde — in der
     // Abhängigkeitsliste stünde es für „bei jeder Antwort noch einmal fragen".
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [element, offen]);
+  }, [markiert, offen, merken]);
 
   // Ein gespeichertes Lotti-Gespräch aus der Liste „Gespräche".
   useEffect(() => {
@@ -710,6 +747,9 @@ export function LottiPanel({
           // Wo gefragt wurde, steht im Schnappschuss — der Element-TEXT nicht
           // (Regel 2: Seiteninhalt wird nicht im Konto verdoppelt).
           kontext: tn.sources?.element_title || tn.sources?.route || "",
+          // Die ersten 200 Zeichen der Markierung stehen im Schnappschuss
+          // (routers/council.py) — genug für das Zitat über der Frage.
+          zitat: tn.sources?.selection || undefined,
         })));
         setGespraechId(ladeGespraech);
       } catch {
@@ -735,7 +775,7 @@ export function LottiPanel({
 
   /** Ein „Zeig mir"-Chip: hinscrollen, hervorheben — und auf dem Handy das
    *  Fenster schließen, weil es genau die Fläche bedeckt, auf die gezeigt
-   *  wird (dieselbe Entscheidung wie beim Erklär-Modus). Am Schreibtisch
+   *  wird. Am Schreibtisch
    *  bleibt es offen: Dort steht es neben der Seite, und das Gespräch geht
    *  weiter. */
   const zeigMir = (anker: Anker) => {
@@ -758,8 +798,7 @@ export function LottiPanel({
     void ratsfrageStellen(t.question || "Was wurde dazu beschlossen?");
   };
 
-  /** „Erklär mir: <Titel>" — genau der Weg, den auch das Abzeichen im
-   *  Erklär-Modus nimmt: den Baustein am DOM-Knoten ernten und samt
+  /** „<Titel> erklären" — den Baustein am DOM-Knoten ernten und samt
    *  `element_key` schicken. **Ohne Scrollen**: Wer hier fragt, will die
    *  Erklärung im Fenster lesen, nicht an eine andere Stelle der Seite
    *  gebracht werden — dafür gibt es „Zeig mir". */
@@ -915,8 +954,9 @@ export function LottiPanel({
               </p>
             )}
             {t.question && !t.frageVerborgen && (
-              <p className="ml-6 rounded-xl rounded-br-sm border border-primary/[0.18] bg-primary/[0.07] px-2.5 py-1.5 text-[13.5px] text-foreground">
-                {t.question}
+              <p data-lotti-frage
+                className="ml-6 rounded-xl rounded-br-sm border border-primary/[0.18] bg-primary/[0.07] px-2.5 py-1.5 text-[13.5px] text-foreground">
+                {frageMitZitat(t)}
               </p>
             )}
             {t.kontext && (
@@ -1046,10 +1086,9 @@ export function LottiPanel({
 
       {/* **Die Grund-Chips stehen nur im LEEREN Fenster** (PR 24). Sie sagen,
           was man hier tun kann — das braucht, wer noch nichts gefragt hat.
-          Danach steht dieselbe Aufforderung im Composer-Platzhalter, und der
-          Erklär-Modus wohnt als stilles Icon daneben. Bis 22.09.2026 standen
-          sie dauerhaft unter jedem Gespräch und waren zwei der sieben
-          Bedienelemente unter Tims Antwort.
+          Danach steht dieselbe Aufforderung im Composer-Platzhalter. Bis
+          22.09.2026 standen sie dauerhaft unter jedem Gespräch und waren zwei
+          der sieben Bedienelemente unter Tims Antwort.
 
           **Die zwei Startfragen (PR 25) stehen an der Stelle, an der bis
           22.09.2026 „Was sehe ich hier?" allein stand** — wer nicht weiß, was
@@ -1061,12 +1100,16 @@ export function LottiPanel({
           Seite ohne welche) bleibt „Was sehe ich hier?" allein und im
           gewohnten Stil — sie ist der Fall, der IMMER geht.
 
-          **„Markiertes erklären" ist kein Grund-Chip** und bleibt: Er
-          erscheint nur, wenn gerade etwas markiert ist, also als Antwort auf
-          eine Handlung, die eben passiert ist — kein Dauerangebot. */}
-      {(turns.length === 0 || markierung) && (
+          **Was hier seit 23.09.2026 fehlt:** „Etwas auf der Seite zeigen"
+          (der Erklär-Modus, samt seinem Icon am Composer) und „Markiertes
+          erklären". Beides macht jetzt der Knopf „Lotti fragen" an der
+          Markierung selbst (`markier-knopf.tsx`) — am Wort statt hier unten,
+          dieselbe Regel wie beim Fachwort: Der Weg AM WORT gewinnt. Wer bei
+          stehender Markierung tippt, fragt weiterhin mit ihr (Kontext-Pille
+          „markiert: …"). */}
+      {turns.length === 0 && (
         <div className="flex flex-col gap-1.5 px-3 pb-1.5">
-          {turns.length === 0 && startfragen.length > 0 && (
+          {startfragen.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
               {startfragen.map((frage) => (
                 <Chip key={frage} onClick={() => void fragen(frage, false)}
@@ -1077,22 +1120,10 @@ export function LottiPanel({
             </div>
           )}
           <div className="flex flex-wrap gap-1.5">
-            {turns.length === 0 && (
-              <Chip onClick={() => void fragen("Was sehe ich hier?", false)}
-                   disabled={laden || merken == null} sekundaer={startfragen.length > 0}>
-                Was sehe ich hier?
-              </Chip>
-            )}
-            {markierung && (
-              <Chip onClick={() => void fragen("Was heißt das?", true)} disabled={laden || merken == null}>
-                Markiertes erklären
-              </Chip>
-            )}
-            {turns.length === 0 && (
-              <Chip onClick={onModus} disabled={laden || merken == null}>
-                Etwas auf der Seite zeigen
-              </Chip>
-            )}
+            <Chip onClick={() => void fragen("Was sehe ich hier?", false)}
+                 disabled={laden || merken == null} sekundaer={startfragen.length > 0}>
+              Was sehe ich hier?
+            </Chip>
           </div>
         </div>
       )}
@@ -1102,24 +1133,7 @@ export function LottiPanel({
         onSubmit={(e) => { e.preventDefault(); void fragen(frage, !!markierung); }}
         className="flex items-center gap-2 border-t border-border px-3 py-2"
       >
-        {/* Der Erklär-Modus, sobald das Fenster nicht mehr leer ist — als
-            stilles Icon statt als Chip. Es steht, wo vorher der dekorative
-            Funke stand: Der hat nichts getan, und die Breite braucht das
-            Icon. Dieselbe Bauform wie die Icon-Aktionen der Kopfzeile. */}
-        {turns.length > 0 ? (
-          <button
-            type="button"
-            onClick={onModus}
-            disabled={laden || merken == null}
-            aria-label="Etwas auf der Seite zeigen"
-            title="Etwas auf der Seite zeigen"
-            className="flex-none rounded-md p-0.5 text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-          >
-            <MousePointerClick className="h-4 w-4" aria-hidden />
-          </button>
-        ) : (
-          <Sparkles className="h-4 w-4 flex-none text-signal" aria-hidden />
-        )}
+        <Sparkles className="h-4 w-4 flex-none text-signal" aria-hidden />
         <input
           ref={eingabeRef}
           value={frage}
@@ -1386,7 +1400,7 @@ export function useMarkierung(): string {
       clearTimeout(timer);
       timer = setTimeout(() => {
         const fenster = document.querySelector("[data-lotti-fenster]");
-        setText(auswahlText(document.getSelection(), fenster));
+        setText(auswahlText(document.getSelection(), fenster, document.activeElement));
       }, 250);
     };
     document.addEventListener("selectionchange", onChange);
