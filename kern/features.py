@@ -117,15 +117,15 @@ FEATURES: dict[str, Feature] = {
     ),
     "lotti-selbstpruefung": Feature(
         key="lotti-selbstpruefung",
-        description="Lotti prüft ihre Antwort, bevor sie gilt: erst ohne Modell (jede Zahl "
-                    "steht im Kontext, unter ihrem Jahr), dann ein Prüfer-Modell einer anderen "
-                    "Familie; bei einem Mangel genau ein zweiter Versuch, im Fenster als "
-                    "„Ich formuliere das genauer …“ samt „Warum neu?“ (council/self_check.py).",
-        fertig_wenn="Die Kalibrierung (eval/run_selbstpruefung.py) zeigt mehr als die Hälfte "
-                    "der bekannten Mängel bei höchstens 5 % Fehlalarmen, UND ein Lauf der "
-                    "Fakten-Eval mit Selbstprüfung hat eine höhere ok-Quote als ohne. Am "
-                    "24.09.2026 galt beides nicht (docs/lotti-selbstpruefung.md) — bis dahin "
-                    "bleibt er auf Prod aus.",
+        description="Lottis Selbstprüfung als stille Stichprobe: Ein Anteil der Erklärungen "
+                    "(COUNCIL_ASSISTANT_PRUEFER_ANTEIL, Vorgabe 10 %) wird NACH der Antwort "
+                    "geprüft — erst ohne Modell, dann von einem Prüfer-Modell einer anderen "
+                    "Familie; das Urteil zählt der Admin-Reiter „Lotti“ (council/self_check.py). "
+                    "Niemand wartet darauf, nichts wird ersetzt.",
+        fertig_wenn="Vier Wochen Stichprobe auf dev: Zeigt der Admin-Reiter Seiten mit "
+                    "auffällig vielen Beanstandungen, gehen sie als Aufgaben an die Kontext- "
+                    "und Regelarbeit; dann entscheidet Tim, ob die Stichprobe dauerhaft läuft "
+                    "(Schalter raus) oder wegfällt (docs/lotti-selbstpruefung.md).",
     ),
     "neuer-rat": Feature(
         key="neuer-rat",

@@ -6550,6 +6550,7 @@ export interface components {
             pages: components["schemas"]["AdminLottiZeile"][];
             /** Questions */
             questions: components["schemas"]["AdminLottiFrage"][];
+            self_check: components["schemas"]["AdminLottiSelbstpruefung"];
             /** Timeline */
             timeline: components["schemas"]["AdminLottiTag"][];
         };
@@ -6590,6 +6591,38 @@ export interface components {
             n: number;
             /** Question */
             question: string;
+        };
+        /** AdminLottiPruefSeite */
+        AdminLottiPruefSeite: {
+            /** Checked */
+            checked: number;
+            /** Poor */
+            poor: number;
+            /** Route */
+            route: string;
+        };
+        /**
+         * AdminLottiSelbstpruefung
+         * @description Lottis Selbstprüfung (``council/self_check.py``), eine stille Stichprobe —
+         *     nur Zahlen, keine Fragen.
+         */
+        AdminLottiSelbstpruefung: {
+            /** By Rules */
+            by_rules: number;
+            /** Checked */
+            checked: number;
+            /** Cost Usd */
+            cost_usd: number;
+            /** P50 Ms */
+            p50_ms: number | null;
+            /** Pages */
+            pages: components["schemas"]["AdminLottiPruefSeite"][];
+            /** Poor */
+            poor: number;
+            /** Reasons */
+            reasons: components["schemas"]["AdminLottiZeile"][];
+            /** Unknown */
+            unknown: number;
         };
         /** AdminLottiTag */
         AdminLottiTag: {
@@ -23718,4 +23751,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 36228d6971ac95721170ae631391476ab7c7cfde2367d51e39cc890d004628e2
+// vertrag-sha256: 3e8d77eb337af67248be815a3c052a0c8a0b47e3b6133336d41a755e55e987d2

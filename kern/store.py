@@ -346,13 +346,14 @@ CREATE TABLE IF NOT EXISTS qa_conversation_turns (
 );
 CREATE INDEX IF NOT EXISTS idx_qa_turns_gespraech ON qa_conversation_turns(conversation_id);
 
--- Lottis Selbstprüfung (council/self_check.py, seit 24.09.2026): je geprüfter
--- Antwort das Urteil. IMMER gespeichert: Urteil, Stufe, Kategorien, kurze
--- Gründe (ohne Zitat der Frage — der Prüfer darf sie nicht zitieren, und
--- self_check._kurz streicht, was er trotzdem übernimmt), Seite, Modell, ob
--- neu geschrieben wurde, Dauer, Kosten. Frage und Antworten NUR mit der
--- Einwilligung in die Gesprächsspeicherung (web_users.saves_conversations = 1)
--- — sonst NULL. user_id für die Konto-Löschung (USER_OWNED_TABLES).
+-- Lottis Selbstprüfung (council/self_check.py, seit 24.09.2026): eine stille
+-- Stichprobe — je geprüfter Antwort das Urteil, geprüft NACH der Auslieferung.
+-- IMMER gespeichert: Urteil, Stufe, Kategorien, kurze Gründe (ohne Zitat der
+-- Frage — der Prüfer darf sie nicht zitieren, und self_check._kurz streicht,
+-- was er trotzdem übernimmt), Seite, Modell, Dauer, Kosten. Frage und Antwort
+-- NUR mit der Einwilligung in die Gesprächsspeicherung
+-- (web_users.saves_conversations = 1) — sonst NULL. user_id für die
+-- Konto-Löschung (USER_OWNED_TABLES).
 CREATE TABLE IF NOT EXISTS assistant_checks (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id      INTEGER NOT NULL,
@@ -364,12 +365,10 @@ CREATE TABLE IF NOT EXISTS assistant_checks (
     categories   TEXT NOT NULL DEFAULT '[]',   -- JSON-Liste
     reasons      TEXT NOT NULL DEFAULT '[]',   -- JSON-Liste, je ≤ 160 Zeichen
     model        TEXT,
-    revision     TEXT NOT NULL DEFAULT 'none', -- none | replaced | kept
     duration_ms  INTEGER,
     cost_usd     REAL,
     question     TEXT,
-    answer_first TEXT,
-    answer_final TEXT
+    answer       TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_assistant_checks_created ON assistant_checks(created);
 
@@ -3595,13 +3594,12 @@ class Store:
 
     def assistant_check_speichern(self, user_id: int, *, route: str, verdict: str,
                                   stage: str, categories: list[str], reasons: list[str],
-                                  model: str | None, revision: str, duration_ms: int | None,
+                                  model: str | None, duration_ms: int | None,
                                   cost_usd: float | None, question: str | None = None,
-                                  answer_first: str | None = None,
-                                  answer_final: str | None = None) -> None:
+                                  answer: str | None = None) -> None:
         """Ein Urteil der Selbstprüfung ablegen.
 
-        Frage und Antworten nur mit Einwilligung — die prüft HIER der Store,
+        Frage und Antwort nur mit Einwilligung — die prüft HIER der Store,
         nicht der Aufrufer: Eine Stelle, die das vergisst, legte sonst Fragen
         von Konten ab, die ausdrücklich nichts speichern wollen.
         """
@@ -3610,20 +3608,19 @@ class Store:
         with self._conn:
             self._conn.execute(
                 "INSERT INTO assistant_checks (user_id, created, route, verdict, stage, "
-                "categories, reasons, model, revision, duration_ms, cost_usd, question, "
-                "answer_first, answer_final) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "categories, reasons, model, duration_ms, cost_usd, question, answer) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (user_id, now, route[:200], verdict, stage,
                  json.dumps(categories[:6], ensure_ascii=False),
                  json.dumps([r[:160] for r in reasons[:3]], ensure_ascii=False),
-                 model, revision, duration_ms, cost_usd,
+                 model, duration_ms, cost_usd,
                  (question or "")[:600] if mit_text and question else None,
-                 (answer_first or "")[:8000] if mit_text and answer_first else None,
-                 (answer_final or "")[:8000] if mit_text and answer_final else None))
+                 (answer or "")[:8000] if mit_text and answer else None))
 
     def selbstpruefung_auswertung(self, seit: str) -> dict:
         """Die Zahlen für den Admin-Reiter „Lotti“ — ab dem Tag ``seit``."""
         zeilen = self._conn.execute(
-            "SELECT route, verdict, stage, categories, revision, duration_ms, cost_usd "
+            "SELECT route, verdict, stage, categories, duration_ms, cost_usd "
             "FROM assistant_checks WHERE created >= ?", (seit,)).fetchall()
         seiten: dict[str, dict] = {}
         gruende: dict[str, int] = {}
@@ -3644,8 +3641,6 @@ class Store:
             "poor": sum(1 for r in zeilen if r["verdict"] == "poor"),
             "unknown": sum(1 for r in zeilen if r["verdict"] == "unknown"),
             "by_rules": sum(1 for r in zeilen if r["stage"] == "rules" and r["verdict"] == "poor"),
-            "replaced": sum(1 for r in zeilen if r["revision"] == "replaced"),
-            "kept": sum(1 for r in zeilen if r["revision"] == "kept"),
             "cost_usd": round(sum(r["cost_usd"] or 0 for r in zeilen), 4),
             "p50_ms": dauer[len(dauer) // 2] if dauer else None,
             "pages": sorted(seiten.values(), key=lambda x: (-x["poor"], -x["checked"]))[:15],
@@ -4764,8 +4759,8 @@ class Store:
             "elements": oben(elemente, 15),
             "questions": sorted(fragen.values(), key=lambda f: -f["n"])[:50],
             "feedback": daumen,
-            # Lottis Selbstprüfung (council/self_check.py): wie oft ihre
-            # Antwort beanstandet und neu geschrieben wurde, je Seite und Grund.
+            # Lottis Selbstprüfung (council/self_check.py): eine stille
+            # Stichprobe — wie oft beanstandet, je Seite und Grund.
             "self_check": self.selbstpruefung_auswertung(seit),
             # Der Anstupser ist noch nicht gebaut; die drei Zahlen stehen
             # deshalb auf 0 und die Oberfläche sagt das. Sie hier schon zu

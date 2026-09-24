@@ -2177,17 +2177,15 @@ class AdminLottiPruefSeite(TypedDict):
 
 
 class AdminLottiSelbstpruefung(TypedDict):
-    """Lottis Selbstprüfung (``council/self_check.py``) — nur Zahlen, keine Fragen."""
+    """Lottis Selbstprüfung (``council/self_check.py``), eine stille Stichprobe —
+    nur Zahlen, keine Fragen."""
     checked: int
     #: Beanstandet — von Stufe 1 (ohne Modell) oder vom Prüfer.
     poor: int
-    #: Der Prüfer antwortete nicht oder unlesbar; die Antwort galt ungeprüft.
+    #: Der Prüfer antwortete nicht oder unlesbar.
     unknown: int
     #: Davon von Stufe 1, ohne Prüfer-Aufruf.
     by_rules: int
-    replaced: int
-    #: Neu geschrieben, aber der zweite Versuch war schlechter — der erste blieb.
-    kept: int
     cost_usd: float
     p50_ms: int | None
     pages: list[AdminLottiPruefSeite]
@@ -4379,15 +4377,6 @@ SSE_ERKLAERUNG: dict[int | str, dict[str, Any]] = {
             "`archiv` (die Frage geht ins Beschluss-Archiv)\n"
             "- `token` — ein Stück Erklärungstext (`text`)\n"
             "- `replace` — ersetzt den bisher gesendeten Text vollständig\n"
-            "- `check` — Lottis Selbstprüfung (nur mit dem Schalter "
-            "`lotti-selbstpruefung`, nur nach einer Antwort mit Modell): `state` ist "
-            "`running`, dann `good`, `poor` oder `skipped` (Prüfer ausgefallen — die "
-            "Antwort gilt ungeprüft); bei `poor` trägt `reasons` feste Sätze für "
-            "Laien, warum neu geschrieben wird\n"
-            "- `revision` — der zweite Versuch nach `poor`: `state` `running`, dann "
-            "`replaced` (mit `text`, der den bisherigen Text ersetzt) oder `kept` (der "
-            "erste Text bleibt). Die native iOS-App (`X-Client: ios`) bekommt statt "
-            "`replaced` einen `replace`-Rahmen, weil sie `revision` nicht kennt\n"
             "- `done` — Schluss-Ereignis mit `mode` (`deterministic` für die "
             "Wege ohne Modell, `handoff` für eine Archivfrage, die ohne "
             "Modellaufruf direkt an `POST /council/ask` geht — der Strom "

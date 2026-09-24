@@ -138,19 +138,20 @@ export function LottiTab() {
   );
 }
 
-/** Lottis Selbstprüfung — wie oft beanstandet, wo und warum.
+/** Lottis Selbstprüfung — eine stille Stichprobe: wie oft beanstandet, wo, warum.
  *
- *  **Nur Zahlen, keine Fragen.** Frage und Antworten stehen in der Tabelle
+ *  **Nur Zahlen, keine Fragen.** Frage und Antwort stehen in der Tabelle
  *  nur bei Konten mit Einwilligung; hier gezeigt wird keins von beiden —
  *  der Anteil je Seite und die Gründe reichen für „wo hakt es?". */
 function Selbstpruefung({ p }: { p: AdminLotti["self_check"] }) {
   const anteil = p.checked > 0 ? Math.round((p.poor * 100) / p.checked) : null;
   return (
     <section className="space-y-3">
-      <AbschnittKopf titel="Wie oft Lotti neu formuliert">
-        Die Selbstprüfung (Schalter <code>lotti-selbstpruefung</code>): erst ohne Modell,
-        dann ein Prüfer-Modell. Beanstandet heißt: ein zweiter Versuch; „behalten“, wenn
-        der schlechter war als der erste.
+      <AbschnittKopf titel="Wie gut Lottis Antworten sind — Stichprobe">
+        Ein Teil der Antworten wird nach der Auslieferung geprüft (Schalter{" "}
+        <code>lotti-selbstpruefung</code>, Anteil <code>COUNCIL_ASSISTANT_PRUEFER_ANTEIL</code>):
+        erst ohne Modell, dann von einem Prüfer-Modell. Niemand wartet darauf, nichts
+        wird ersetzt.
       </AbschnittKopf>
       {p.checked === 0
         ? <p className="text-hinweis text-muted-foreground">Noch keine geprüfte Antwort.</p>
@@ -160,8 +161,8 @@ function Selbstpruefung({ p }: { p: AdminLotti["self_check"] }) {
               <Zahl label="Geprüft" n={p.checked}
                 note={p.p50_ms != null ? `Median ${(p.p50_ms / 1000).toLocaleString("de-DE", { maximumFractionDigits: 1 })} s` : undefined} />
               <Zahl label="Beanstandet" n={p.poor}
-                note={anteil != null ? `${anteil} % · ${p.by_rules} ohne Modell` : undefined} />
-              <Zahl label="Ersetzt" n={p.replaced} note={`${p.kept} behalten`} />
+                note={anteil != null ? `${anteil} % der geprüften` : undefined} />
+              <Zahl label="Davon ohne Modell" n={p.by_rules} note="Zahl, Jahr, Wertung, Rest" />
               <Zahl label="Prüfer ausgefallen" n={p.unknown}
                 note={`${p.cost_usd.toLocaleString("de-DE", { maximumFractionDigits: 2 })} $ gesamt`} />
             </div>

@@ -1653,7 +1653,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
         ),
     },
     # Lottis Selbstprüfung (council/self_check.py, 24.09.2026): der Prüfer
-    # und der zweite Versuch. Der Prüfer bekommt Lottis GANZEN Prompt als
+    # einer stillen Stichprobe. Der Prüfer bekommt Lottis GANZEN Prompt als
     # Kontext — auch ihre Regeln: Ohne sie hielte er „rechnet nichts je
     # Einwohner aus“ für eine Lücke, obwohl es verboten ist.
     "assistant_check": {
@@ -1702,30 +1702,14 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "- eine fehlende Zeile „WEITER: …“ — die entfernt Ratslotse vor der Anzeige, du\n"
             "  siehst die Antwort ohne sie;\n"
             "- ein Verweis ins Ratsarchiv oder auf eine andere Seite, wenn die Sache dort steht.\n\n"
-            "Im Zweifel: gut. Eine zurückgewiesene Antwort wird neu geschrieben — ein falscher\n"
-            "Alarm kostet die Person Zeit und kann eine gute Antwort verschlechtern.\n\n"
+            "Im Zweifel: gut. Ein falscher Alarm lenkt die Auswertung auf Antworten, die in\n"
+            "Ordnung sind, und verdeckt die, die es nicht sind.\n\n"
             "Antworte NUR mit JSON:\n"
             '{{"urteil": "gut" | "mangelhaft", "kategorien": ["<aus der Liste oben>"], '
             '"gruende": ["<höchstens drei kurze Sätze, je unter 20 Wörtern>"], '
             '"fehlt": ["<was im Kontext steht und in die Antwort gehört, mit Zahl und Jahr — '
             'höchstens drei>"], "verstaendlich": "ja" | "nein"}}\n'
             "Bei „gut“ bleiben kategorien, gruende und fehlt leer. Zitiere die Frage nicht."
-        ),
-    },
-    "assistant_revision": {
-        "title": "Lotti prüft ihre Antwort – der zweite Versuch",
-        "description": (
-            "Folgt als zweite Nachricht auf Lottis ersten Versuch, wenn die Prüfung ihn "
-            "zurückgewiesen hat. Platzhalter: {notes} (die Anmerkungen, gefiltert)."
-        ),
-        "template": (
-            "Deine Antwort ist noch nicht gut genug. Eine Prüfung hat angemerkt:\n"
-            "{notes}\n\n"
-            "Schreib die Antwort neu. Es gelten alle Regeln von oben: Beantworte die Frage\n"
-            "im ersten Satz, höchstens fünf Sätze, nur was oben steht, jede Haushaltszahl mit\n"
-            "Jahr und Quelle, Fachwörter im selben Satz erklärt, keine Wertung. Nimm eine\n"
-            "Anmerkung nur auf, wenn sie oben belegt ist — erfinde nichts dazu. Gib nur die\n"
-            "neue Antwort aus, ohne Hinweis darauf, dass es eine zweite Fassung ist."
         ),
     },
     "simple_summary_system": {

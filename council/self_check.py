@@ -1,57 +1,55 @@
-"""Lotti prüft ihre Antwort, bevor sie gilt — die Selbstprüfung.
+"""Lottis Selbstprüfung — eine stille Stichprobe über ihre Antworten.
 
 **Tims Idee (24.09.2026):** „Einen zweiten LLM-Pass, der die Antwort bewertet
-… ist das eine gute Antwort auf die Frage, und falls nicht, anmerkt, warum …
-und im besten Fall die Antwort korrigiert.“ Anlass war ein Befund an 36
-Laienfragen zum Haushalt: keine falsche Zahl, aber rund die Hälfte der
-Antworten half zu wenig — sie endeten mit „geht aus den Angaben nicht
-hervor“, wo der Kontext wenigstens eine Einordnung erlaubt hätte.
+… ist das eine gute Antwort auf die Frage, und falls nicht, anmerkt, warum …“
+Gebaut war sie zuerst als Prüfung VOR der Anzeige, mit Neuschreiben und
+„Warum neu?“ im Fenster (Commit ca759f9c). Gemessen an der Fakten-Eval
+(178 Fälle, nach L1+L2) änderte das an der ok-Quote nichts: 4 Antworten
+ersetzt, 1 davon besser, 163 → 163 ok — bei +1,7 s im Median und dem
+2,5-Fachen der Kosten (``docs/lotti-selbstpruefung.md``). Tims Regel für
+diesen Fall: eine stille Stichprobe.
+
+**Was sie jetzt tut.** Für einen Anteil der Erklärungen
+(:data:`ANTEIL`, ``COUNCIL_ASSISTANT_PRUEFER_ANTEIL``, Vorgabe 10 %) prüft
+der Server NACH der Antwort — die Person wartet nicht, sieht nichts, und
+nichts wird ersetzt. Das Urteil landet in ``assistant_checks`` und im
+Admin-Reiter „Lotti“: Anteil beanstandet je Seite und die häufigsten Gründe.
 
 **Zwei Stufen, die billige zuerst.**
 
-1. :func:`rule_findings` — ohne Modell, in Millisekunden: Jede Zahl der
-   Antwort steht im Kontext (dieselbe Logik wie die Fakten-Eval,
-   :mod:`council.fakten_abgleich`), unter dem Jahr, unter dem sie dort steht;
-   keine Wertung in der ersten Person; kein technischer Rest aus dem Prompt.
-   Ein Befund hier heißt: neu schreiben, ohne erst ein zweites Modell zu
-   fragen — die Regel IST das Urteil.
+1. :func:`rule_findings` — ohne Modell: Jede Zahl der Antwort steht im
+   Kontext (dieselbe Logik wie die Fakten-Eval, :mod:`council.fakten_abgleich`),
+   unter dem Jahr, unter dem sie dort steht; keine Wertung in eigener Stimme;
+   kein Rest aus dem Prompt. Ein Befund hier IST das Urteil.
 2. :func:`judge` — ein Prüfer-Modell aus einer ANDEREN Familie als die
    Antwort (Gemini gegen GPT-6 Luna), damit es nicht den eigenen Stil
    bevorzugt. Es bekommt denselben Prompt, den Lotti bekam, samt Frage und
-   Antwort, und urteilt als JSON. Es schreibt nichts um.
-
-**Genau ein zweiter Versuch** (:func:`revise`). Das Antwortmodell bekommt
-seinen ersten Versuch und die Gründe und schreibt neu. Der zweite Versuch
-durchläuft nur noch Stufe 1 — keine Schleife, keine zweite Prüferrunde. Hat
-er dort MEHR Befunde als der erste, bleibt der erste (:func:`choose`).
+   Antwort, und urteilt als JSON.
 
 **Fremdtext bleibt Daten.** Der Kontext, den der Prüfer liest, ist der fertige
 Prompt aus :func:`council.assistant.explain_messages` — Element-Text und
-Markierung stehen dort schon zwischen Marken und sind durch
-:func:`kern.foreign_text.defuse` gelaufen. Die Gründe des Prüfers gehen
-ihrerseits noch einmal durch den Filter, bevor sie im Prompt des zweiten
-Versuchs stehen: Ein Prüfer, den eine Injektion im Kontext erreicht hat,
-soll sie nicht als „Anmerkung“ weiterreichen können.
-
-**Was Nutzer*innen davon sehen, kommt NICHT vom Modell.** Die Sätze unter
-„Warum neu?“ stehen hier als Code (:data:`LAY_REASONS`), je Kategorie einer.
-Die Begründung des Prüfers ist für das Antwortmodell geschrieben, nicht für
-Laien — und sie könnte die Frage zitieren, die im Admin-Panel nicht stehen
-soll.
+Markierung stehen dort zwischen Marken und sind durch
+:func:`kern.foreign_text.defuse` gelaufen; der Prüfer-Prompt rahmt alles
+noch einmal als Daten.
 """
 from __future__ import annotations
 
 import json
 import os
+import random
 import re
 import time
-from collections.abc import Callable, Iterator
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
 from council import fakten_abgleich as fa
 from kern import llm, prompts
-from kern.foreign_text import defuse
+
+#: Welcher Anteil der Erklärungen mit Modell geprüft wird (0 bis 1). Eine
+#: Prüfung kostet rund 0,28 Cent — das Dreifache der Antwort selbst (Messung
+#: 24.09.2026); jede zehnte reicht für „wo hakt es?“ je Seite.
+ANTEIL = float(os.environ.get("COUNCIL_ASSISTANT_PRUEFER_ANTEIL", "0.1"))
 
 #: Das Prüfer-Modell. Bewusst eine andere Familie als die Antwort (GPT-6
 #: Luna, ``COUNCIL_ASSISTANT_MODEL``). Kalibrierung vom 24.09.2026
@@ -85,19 +83,6 @@ RULE_CATEGORIES = ("zahl_ohne_beleg", "jahr_vertauscht", "wertung", "technischer
 #: erklärten. Ohne diese Kategorie als Auslöser: 1 Fehlalarm von 101.
 NOTE_ONLY = frozenset({"unverstaendlich"})
 
-#: Was unter „Warum neu?“ steht — für Laien, ohne ein Wort vom Modell.
-LAY_REASONS: dict[str, str] = {
-    "frage_verfehlt": "Die erste Fassung ging an deiner Frage vorbei.",
-    "kontext_ungenutzt": "Mir lagen Angaben dazu vor, die in der ersten Fassung fehlten.",
-    "zu_vorsichtig": "Die erste Fassung hat abgewunken, obwohl ich mehr dazu sagen kann.",
-    "unverstaendlich": "Die erste Fassung war zu sehr Amtsdeutsch.",
-    "wertung": "Die erste Fassung hat bewertet — das ist nicht meine Aufgabe.",
-    "falsche_angabe": "In der ersten Fassung stand eine Angabe, die ich nicht belegen kann.",
-    "zahl_ohne_beleg": "In der ersten Fassung stand eine Zahl, die ich nicht belegen kann.",
-    "jahr_vertauscht": "In der ersten Fassung stand eine Zahl beim falschen Jahr.",
-    "technischer_rest": "In der ersten Fassung stand ein technischer Rest.",
-}
-
 #: Wie viele Gründe höchstens gespeichert und weitergereicht werden, und wie
 #: lang jeder sein darf. Der Prüfer soll kurz sein; der Deckel ist die
 #: zweite Bremse, damit kein Absatz Kontext in der Tabelle landet.
@@ -126,35 +111,6 @@ class Verdict:
     model: str | None = None
     cost_usd: float | None = None
     ms: int = 0
-
-
-@dataclass
-class Result:
-    """Was am Ende gilt — und was über den Weg dahin gespeichert wird."""
-
-    answer_raw: str
-    verdict: Verdict
-    #: ``none`` (nichts neu geschrieben) | ``replaced`` | ``kept`` (der zweite
-    #: Versuch war in Stufe 1 schlechter oder kam nicht, der erste bleibt).
-    revision: str = "none"
-    first_raw: str = ""
-    second_raw: str | None = None
-    cost_usd: float | None = None
-    ms: int = 0
-
-    @property
-    def lay_reasons(self) -> list[str]:
-        return lay_reasons(self.verdict.categories)
-
-
-def lay_reasons(categories: list[str]) -> list[str]:
-    """Die Sätze für „Warum neu?“, ohne Dubletten („wertung“ gibt es in beiden Stufen)."""
-    aus: list[str] = []
-    for k in categories:
-        satz = LAY_REASONS.get(k)
-        if satz and satz not in aus:
-            aus.append(satz)
-    return aus
 
 
 # --------------------------------------------------------------------------- #
@@ -328,102 +284,32 @@ def judge(question: str, context: str, answer: str, *, model: str | None = None)
 
 
 # --------------------------------------------------------------------------- #
-# Neu schreiben
+# Die Stichprobe
 # --------------------------------------------------------------------------- #
 
-def notes_for_revision(v: Verdict, findings: list[Finding]) -> str:
-    """Die Gründe für den zweiten Versuch — durch den Fremdtext-Filter."""
-    zeilen = [f"- {f.detail}" for f in findings]
-    zeilen += [f"- {g}" for g in v.reasons]
-    zeilen += [f"- Im Kontext steht dazu: {g}" for g in v.missing]
-    if not zeilen:
-        zeilen = [f"- {LAY_REASONS.get(k, k)}" for k in v.categories]
-    return defuse("\n".join(zeilen))[0]
+def gezogen(anteil: float | None = None, zufall: Callable[[], float] = random.random) -> bool:
+    """Fällt diese Antwort in die Stichprobe?"""
+    a = ANTEIL if anteil is None else anteil
+    return a > 0 and zufall() < a
 
 
-def revise(messages: list[dict], first_raw: str, notes: str, *,
-           model: str, extra: dict | None = None, max_tokens: int = 350
-           ) -> tuple[str, float | None]:
-    """Der zweite Versuch mit dem Antwortmodell — ``(Text, Kosten)``.
+def check(question: str, context: str, answer: str, *, skip_judge: bool = False,
+          judge_model: str | None = None) -> Verdict:
+    """Stufe 1, und nur ohne Befund dort der Prüfer. Wirft nie.
 
-    Als Fortsetzung desselben Gesprächs: Das Modell sieht seinen Prompt, seine
-    erste Antwort und die Anmerkungen. Unter demselben Feature wie die erste
-    Antwort (``assistant_explain``) — nur dafür gilt der EU-Weg von GPT-6
-    Luna (``kern/llm.py::EU_ZUERST``), und es IST dieselbe Aufgabe.
-    """
-    folge = [*messages, {"role": "assistant", "content": first_raw},
-             {"role": "user", "content": prompts.render("assistant_revision", notes=notes)}]
-    resp = llm.chat_complete(model=model, _feature="assistant_explain", temperature=0.2,
-                             max_tokens=max_tokens, messages=folge, **(extra or {}))
-    return (resp.choices[0].message.content or "").strip(), _kosten(resp)
-
-
-def _gleich(s: str) -> str:
-    return s
-
-
-def choose(first: str, second: str | None, context: str, question: str,
-           strip: Callable[[str], str] = _gleich) -> str:
-    """``replaced`` oder ``kept`` — bleibt der erste Versuch?
-
-    Der zweite gilt, wenn er da ist und in Stufe 1 nicht MEHR Befunde hat als
-    der erste. Gleich viele reichen: Der Prüfer hatte einen Grund, den Stufe 1
-    nicht sieht.
-    """
-    if not second or not strip(second).strip():
-        return "kept"
-    vorher = len(rule_findings(strip(first), context, question))
-    nachher = len(rule_findings(strip(second), context, question))
-    return "kept" if nachher > vorher else "replaced"
-
-
-def _summe(*werte: float | None) -> float | None:
-    da = [w for w in werte if w is not None]
-    return round(sum(da), 6) if da else None
-
-
-def run(messages: list[dict], first_raw: str, *, question: str, answer_model: str,
-        extra: dict | None = None, skip_judge: bool = False,
-        strip: Callable[[str], str] = _gleich, judge_model: str | None = None,
-        ) -> Iterator[dict]:
-    """Der ganze Ablauf als Folge von Ereignissen — für Router UND Eval.
-
-    Ereignisse (``event``): ``verdict`` (mit ``verdict``), ``revision_running``
-    und zuletzt ``result`` (mit ``result``). Der Router macht daraus
-    SSE-Rahmen, die Eval liest nur das letzte. Ein gemeinsamer Ablauf, weil
-    zwei Fassungen derselben Reihenfolge auseinanderliefen.
-
-    ``strip`` macht aus dem Rohtext den gezeigten (``split_next`` ohne die
-    ``WEITER``-Zeile); geprüft wird immer der gezeigte. ``skip_judge``:
-    Stufe 1 ja, Prüfer nein — für Antworten, die ohnehin ins Archiv
-    weiterreichen.
+    ``skip_judge``: Antworten, die ins Archiv weiterreichen, sind absichtlich
+    kurz — das Archiv antwortet gleich darunter. Dort nur Stufe 1.
     """
     t0 = time.perf_counter()
-    context = messages[0]["content"] if messages else ""
-    first = strip(first_raw)
-    befunde = rule_findings(first, context, question)
-    if befunde:
-        v = Verdict("poor", "rules",
-                    categories=list(dict.fromkeys(f.category for f in befunde)),
-                    reasons=[f.detail[:REASON_CHARS] for f in befunde[:REASONS_MAX]])
-    elif skip_judge:
-        v = Verdict("good", "rules")
-    else:
-        v = judge(question, context, first, model=judge_model)
-    yield {"event": "verdict", "verdict": v}
-    if v.verdict != "poor":
-        yield {"event": "result", "result": Result(
-            first_raw, v, first_raw=first_raw, cost_usd=v.cost_usd,
-            ms=round((time.perf_counter() - t0) * 1000))}
-        return
-    yield {"event": "revision_running"}
     try:
-        second, kosten = revise(messages, first_raw, notes_for_revision(v, befunde),
-                                model=answer_model, extra=extra)
-    except Exception:  # noqa: BLE001 — dann bleibt die erste Antwort
-        second, kosten = None, None
-    wahl = choose(first_raw, second, context, question, strip)
-    yield {"event": "result", "result": Result(
-        second if wahl == "replaced" and second else first_raw, v, revision=wahl,
-        first_raw=first_raw, second_raw=second, cost_usd=_summe(v.cost_usd, kosten),
-        ms=round((time.perf_counter() - t0) * 1000))}
+        befunde = rule_findings(answer, context, question)
+    except Exception:  # noqa: BLE001 — eine Regel, die an einem Text scheitert, ist kein Urteil
+        befunde = []
+    if befunde:
+        return Verdict("poor", "rules",
+                       categories=list(dict.fromkeys(f.category for f in befunde)),
+                       reasons=[f.detail[:REASON_CHARS] for f in befunde[:REASONS_MAX]],
+                       ms=round((time.perf_counter() - t0) * 1000))
+    if skip_judge:
+        return Verdict("good", "rules", ms=round((time.perf_counter() - t0) * 1000))
+    return judge(question, context, answer, model=judge_model)

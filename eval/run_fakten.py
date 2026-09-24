@@ -179,23 +179,22 @@ def _uvicorn() -> str:
     return gefunden
 
 
-#: Lottis Selbstprüfung (``council/self_check.py``) ist in der Eval AUS,
-#: solange ``--selbstpruefung`` nicht gesetzt ist: Sie kostet je Fall einen
-#: Prüfer-Aufruf und ändert Antworten — ein Lauf, der sie still mitmisst,
-#: wäre mit keinem früheren vergleichbar.
+#: Lottis Selbstprüfung (``council/self_check.py``) bleibt im Mess-Backend
+#: AUS: Sie ist eine stille Stichprobe nach der Antwort und ändert nichts an
+#: dem, was gemessen wird — kostete aber je gezogene Antwort einen
+#: Prüfer-Aufruf. Die Selbstprüfung misst ``eval/run_selbstpruefung.py``.
 SELBSTPRUEFUNG = "lotti-selbstpruefung"
 
 
-def _schalter(selbstpruefung: bool) -> str:
-    """``FEATURE_FLAGS`` fürs Mess-Backend: alle Schalter, die Selbstprüfung nur auf Wunsch."""
+def _schalter() -> str:
+    """``FEATURE_FLAGS`` fürs Mess-Backend: alle Schalter außer der Selbstprüfung."""
     from kern import features
-    return ",".join(k for k in features.FEATURES if selbstpruefung or k != SELBSTPRUEFUNG)
+    return ",".join(k for k in features.FEATURES if k != SELBSTPRUEFUNG)
 
 
 @contextmanager
 def backend(modell: str, mitschnitt: Path, *, ohne_zdr: bool,
-            protokoll: Path, aufwand: str | None = None,
-            selbstpruefung: bool = False) -> Iterator[str]:
+            protokoll: Path, aufwand: str | None = None) -> Iterator[str]:
     """Ein eigenes Backend für den Lauf; gibt die Basis-Adresse zurück."""
     with tempfile.TemporaryDirectory(prefix="fakten-konten-") as tmp:
         konten = Path(tmp) / "ratslotse.sqlite"
@@ -211,7 +210,7 @@ def backend(modell: str, mitschnitt: Path, *, ohne_zdr: bool,
             "RATSLOTSE_DB": str(konten),
             "WEB_JWT_SECRET": "nur-fuer-die-fakten-eval",
             "DISABLE_RATE_LIMIT": "1",
-            "FEATURE_FLAGS": _schalter(selbstpruefung),
+            "FEATURE_FLAGS": _schalter(),
             MITSCHNITT_ENV: str(mitschnitt),
             "COUNCIL_ASSISTANT_MODEL": modell,
             "COUNCIL_QA_MODEL": modell,
@@ -316,8 +315,6 @@ def anmelden(basis: str) -> Any:
 def _strom(client: Any, pfad: str, body: dict) -> dict:
     t0 = time.perf_counter()
     text, done, fehler, ersetzt = "", {}, None, False
-    urteil: str | None = None
-    neu: str | None = None
     with client.stream("POST", pfad, json=body) as r:
         if r.status_code != 200:
             return {"text": "", "done": {}, "fehler": f"HTTP {r.status_code}: {r.read()[:300]!r}",
@@ -333,20 +330,11 @@ def _strom(client: Any, pfad: str, body: dict) -> dict:
                 text += d.get("text", "")
             elif d.get("type") == "replace":
                 text, ersetzt = d.get("text", ""), True
-            elif d.get("type") == "revision" and d.get("state") == "replaced":
-                # Lottis Selbstprüfung hat neu geschrieben — die zweite
-                # Fassung ist die, die im Fenster steht.
-                text, ersetzt, neu = d.get("text", ""), True, "replaced"
-            elif d.get("type") == "revision" and d.get("state") == "kept":
-                neu = "kept"
-            elif d.get("type") == "check" and d.get("state") != "running":
-                urteil = d.get("state")
             elif d.get("type") == "done":
                 done = d
             elif d.get("type") == "error":
                 fehler = str(d.get("message") or d)
     return {"text": text.strip(), "done": done, "fehler": fehler, "ersetzt": ersetzt,
-            "pruefung": urteil, "neufassung": neu,
             "ms": round((time.perf_counter() - t0) * 1000)}
 
 
@@ -456,15 +444,8 @@ def recherche_stellen(client: Any, fall: dict, *, frist_s: float = DEEP_FRIST_S,
 
 
 def _antwort_aufruf(aufrufe: list[dict]) -> dict | None:
-    """Der Aufruf, dessen Prompt die Antwort trägt: der letzte eines Antwort-Features.
-
-    **Ohne den zweiten Versuch der Selbstprüfung.** Der trägt Lottis ERSTE
-    Antwort als eigene Nachricht im Prompt (``council/self_check.revise``);
-    als Kontext gelesen, gälte jede Zahl, die sie dort erfunden hat, als „im
-    Prompt“. Sein Prompt ist sonst derselbe wie der des ersten Aufrufs.
-    """
-    passend = [a for a in aufrufe if a.get("feature") in ANTWORT_FEATURES and not a.get("aborted")
-               and not any(m.get("role") == "assistant" for m in a.get("messages") or [])]
+    """Der Aufruf, dessen Antwort gezeigt wurde: der letzte eines Antwort-Features."""
+    passend = [a for a in aufrufe if a.get("feature") in ANTWORT_FEATURES and not a.get("aborted")]
     return passend[-1] if passend else None
 
 
@@ -501,15 +482,14 @@ def _perzentil(werte: list[float], p: float) -> float | None:
 def ein_lauf(modell: str, faelle: list[dict], *, ohne_zdr: bool = False,
              basis: str | None = None, mitschnitt: Path | None = None,
              laut: bool = True, kanal: str | None = None,
-             aufwand: str | None = None, selbstpruefung: bool = False) -> dict:
+             aufwand: str | None = None) -> dict:
     """Alle Fälle einmal — gibt das Rohergebnis (ohne volle Prompts) zurück.
 
     ``kanal="deep"`` stellt jeden Fall als ausführliche Recherche.
     """
     stempel = datetime.now().strftime("%Y%m%d-%H%M%S")
     lauf_name = (f"{modell.replace('/', '-')}{'-' + kanal if kanal else ''}"
-                 f"{'-' + aufwand if aufwand else ''}{'-selbstpruefung' if selbstpruefung else ''}"
-                 f"-{stempel}")
+                 f"{'-' + aufwand if aufwand else ''}-{stempel}")
     ordner = mitschnitt or (MITSCHNITT_ABLAGE / lauf_name)
     ordner.mkdir(parents=True, exist_ok=True)
     aus: dict = {"modell": modell, "zeitstempel": stempel, "mitschnitt": str(ordner),
@@ -518,8 +498,6 @@ def ein_lauf(modell: str, faelle: list[dict], *, ohne_zdr: bool = False,
         aus["kanal"] = kanal
     if aufwand:
         aus["aufwand"] = aufwand
-    if selbstpruefung:
-        aus["selbstpruefung"] = True
     datei = kostendatei(ordner)
     # Dieselbe Uhr wie `ts` in llm_usage: UTC (s. kern/usage.jetzt_utc).
     marke = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
@@ -560,7 +538,6 @@ def ein_lauf(modell: str, faelle: list[dict], *, ohne_zdr: bool = False,
                 "bausteine": _kopfzeilen(kontext or ""),
                 "aufrufe": [a.get("feature") for a in aufrufe],
                 "modell_antwort": (antwort_aufruf or {}).get("response_model"),
-                "pruefung": erg.get("pruefung"), "neufassung": erg.get("neufassung"),
                 "facetten": ((erg.get("done") or {}).get("facets")
                              or (erg.get("done") or {}).get("geld_facets")),
             }
@@ -589,7 +566,7 @@ def ein_lauf(modell: str, faelle: list[dict], *, ohne_zdr: bool = False,
         messen(basis)
     else:
         with backend(modell, ordner, ohne_zdr=ohne_zdr, protokoll=ordner / "backend.log",
-                     aufwand=aufwand, selbstpruefung=selbstpruefung) as b:
+                     aufwand=aufwand) as b:
             messen(b)
     aus["kosten"] = kosten_seit(datei, marke)
     aus["kosten_usd"] = aus["kosten"]["usd"]
@@ -984,8 +961,6 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--nur", help="Fall-IDs, Kategorien oder Kanal, kommagetrennt")
     ap.add_argument("--limit", type=int)
     ap.add_argument("--ohne-zdr", action="store_true")
-    ap.add_argument("--selbstpruefung", action="store_true",
-                    help="Lottis Selbstprüfung im Mess-Backend einschalten (Vorgabe: aus)")
     ap.add_argument("--basis", help="ein laufendes Backend statt eines eigenen")
     ap.add_argument("--mitschnitt", type=Path, help="mit --basis: dessen Mitschnitt-Ordner")
     ap.add_argument("--dazu", action="append", default=[],
@@ -1065,7 +1040,7 @@ def main(argv: list[str] | None = None) -> int:
     # Ergebnis, statt still mitzumessen.
     aufwand = a.aufwand or os.environ.get(DENKAUFWAND_ENV) or None
     erg = ein_lauf(a.modell, auswahl, ohne_zdr=a.ohne_zdr, basis=a.basis, mitschnitt=a.mitschnitt,
-                   kanal=a.kanal, aufwand=aufwand, selbstpruefung=a.selbstpruefung)
+                   kanal=a.kanal, aufwand=aufwand)
     if a.etikett:
         erg["etikett"] = a.etikett
     print(json.dumps(erg["kennzahlen"], ensure_ascii=False, indent=1))

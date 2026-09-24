@@ -68,24 +68,3 @@ export function lottiSchrittText(schritt: string | null | undefined,
   }
   return "Lotti überlegt";
 }
-
-/** Lottis Selbstprüfung — die Stände aus den SSE-Rahmen `check` und
- *  `revision` (`POST /council/explain`, Schalter `lotti-selbstpruefung`). */
-export type PruefStand = "running" | "good" | "poor" | "skipped";
-export type NeufassungStand = "running" | "replaced" | "kept";
-
-/** Was unter der Antwort steht, solange die Prüfung läuft — sonst `null`.
- *
- *  **Zwei Sätze, nicht mehr** (Tims Idee vom 24.09.2026: „bewerte die
- *  Antwort … ich verfasse die Antwort neu“). Ein gutes Urteil braucht keinen
- *  Satz: Der Hinweis verschwindet, die Antwort bleibt, wie sie war. Ein
- *  ausgefallener Prüfer (`skipped`) auch nicht — für die Person ist das
- *  derselbe Zustand. */
-export function pruefHinweis(pruefung: PruefStand | null | undefined,
-                             neufassung: NeufassungStand | null | undefined): string | null {
-  if (neufassung === "running" || (pruefung === "poor" && !neufassung)) {
-    return "Ich formuliere das genauer";
-  }
-  if (!neufassung && pruefung === "running") return "Lotti prüft ihre Antwort";
-  return null;
-}

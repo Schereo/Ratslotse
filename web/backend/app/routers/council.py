@@ -30,6 +30,7 @@ from council import steuertabellen
 from council import trade_tax_statistics as gewst
 from council import assistant as lotti
 from council import self_check
+from starlette.background import BackgroundTask
 from council import beteiligungsbericht, qa
 from council import ernte
 from kern import features, knowledge, seitenaufrufe
@@ -4006,25 +4007,34 @@ def _lotti_turn_speichern(ratslotse: Store, user: dict, body: ExplainBody,
         return None
 
 
-def _selbstpruefung_speichern(ratslotse: Store, user: dict, route: str, frage: str,
-                              pruefung: self_check.Result, dauer_ms: int | None,
-                              zeigen: Callable[[str], str]) -> None:
-    """Das Urteil der Selbstprüfung ablegen — wirft nie.
+def _selbstpruefung_nachlauf(nachlauf: dict) -> None:
+    """Die stille Stichprobe: prüfen und ablegen, nachdem die Antwort raus ist.
 
-    Was immer gespeichert wird und was nur mit Einwilligung, entscheidet
-    ``Store.assistant_check_speichern`` (Frage und Antworten nur mit
-    ``saves_conversations = 1``). Hier wird nur zusammengetragen.
+    **Eigener Store**, nicht der aus dem Request: Dessen Verbindung gehört
+    der Anfrage, und die ist hier vorbei. Was immer gespeichert wird und was
+    nur mit Einwilligung, entscheidet ``Store.assistant_check_speichern``
+    (Frage und Antwort nur mit ``saves_conversations = 1``).
+
+    Wirft nie — eine Prüfung ist Zusatz, und ein Fehler hier träfe niemanden,
+    der ihn sehen könnte, außer dem Log.
     """
+    if not nachlauf:
+        return
     try:
-        v = pruefung.verdict
-        ratslotse.assistant_check_speichern(
-            user["id"], route=route, verdict=v.verdict, stage=v.stage,
-            categories=v.categories, reasons=v.reasons, model=v.model,
-            revision=pruefung.revision, duration_ms=dauer_ms, cost_usd=pruefung.cost_usd,
-            question=frage or None, answer_first=zeigen(pruefung.first_raw),
-            answer_final=zeigen(pruefung.answer_raw))
-    except Exception:  # noqa: BLE001 — Speichern ist Zusatz, nie Blocker
-        _log.warning("Selbstprüfung nicht gespeichert", exc_info=True)
+        t0 = time.perf_counter()
+        v = self_check.check(nachlauf["frage"], nachlauf["context"], nachlauf["text"],
+                             skip_judge=nachlauf["skip_judge"])
+        store = Store(get_settings().ratslotse_db)
+        try:
+            store.assistant_check_speichern(
+                nachlauf["user_id"], route=nachlauf["route"], verdict=v.verdict,
+                stage=v.stage, categories=v.categories, reasons=v.reasons, model=v.model,
+                duration_ms=round((time.perf_counter() - t0) * 1000), cost_usd=v.cost_usd,
+                question=nachlauf["frage"] or None, answer=nachlauf["text"])
+        finally:
+            store.close()
+    except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
+        _log.warning("Lottis Selbstprüfung (Stichprobe) fehlgeschlagen", exc_info=True)
 
 
 class AssistantEventBody(BaseModel):
@@ -4163,6 +4173,8 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
     )
     frage = body.question.strip()
     verlauf = [r.model_dump() for r in body.history]
+    #: Was die stille Stichprobe nach dem Strom prüft — leer, wenn nichts.
+    nachlauf: dict = {}
 
     def gen():
         try:
@@ -4274,56 +4286,6 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
                             "text": lotti.split_next(ans, rechte, route)[0]})
 
             text, weiter, zielseite = lotti.split_next(buf, rechte, route)
-            # **Lotti prüft ihre Antwort, bevor sie gilt** (Schalter
-            # `lotti-selbstpruefung`, council/self_check.py). Die Antwort steht
-            # da schon im Fenster; das hier entscheidet, ob sie bleibt. Erst
-            # nach dem Strom, VOR `done`: Gespeichert, gezählt und belegt wird
-            # die Antwort, die am Ende gilt.
-            pruefung: self_check.Result | None = None
-            if features.an("lotti-selbstpruefung") and text.strip():
-                t_pruef = time.perf_counter()
-                try:
-                    yield _sse({"type": "check", "state": "running"})
-                    messages, extra = lotti.explain_messages(screen, frage, ctx, verlauf)
-                    for ereignis in self_check.run(
-                            messages, buf, question=frage, answer_model=lotti.MODEL,
-                            extra=extra,
-                            # Eine Antwort, die ins Archiv weiterreicht, ist
-                            # absichtlich kurz — das Archiv antwortet gleich
-                            # darunter. Nur Stufe 1, kein Prüfer.
-                            skip_judge=(weiter == "ratsfrage"),
-                            strip=lambda roh: lotti.split_next(roh, rechte, route)[0]):
-                        if ereignis["event"] == "verdict":
-                            v = ereignis["verdict"]
-                            # `reasons` sind die festen Sätze aus
-                            # self_check.LAY_REASONS, nie Text vom Prüfer.
-                            yield _sse({"type": "check",
-                                        "state": {"good": "good", "poor": "poor"}.get(
-                                            v.verdict, "skipped"),
-                                        "reasons": self_check.lay_reasons(v.categories)
-                                        if v.verdict == "poor" else []})
-                        elif ereignis["event"] == "revision_running":
-                            yield _sse({"type": "revision", "state": "running"})
-                        elif ereignis["event"] == "result":
-                            pruefung = ereignis["result"]
-                    if pruefung is not None and pruefung.revision == "replaced":
-                        buf = pruefung.answer_raw
-                        text, weiter, zielseite = lotti.split_next(buf, rechte, route)
-                        # Die ausgelieferte iOS-App kennt `revision` nicht
-                        # (AssistantSheet.swift: `default: break`), wohl aber
-                        # `replace` — so zeigt auch sie die geprüfte Fassung,
-                        # nur ohne Übergang und ohne „Warum neu?“.
-                        if client_kind(request) == "ios":
-                            yield _sse({"type": "replace", "text": text})
-                        else:
-                            yield _sse({"type": "revision", "state": "replaced", "text": text})
-                    elif pruefung is not None and pruefung.revision == "kept":
-                        yield _sse({"type": "revision", "state": "kept"})
-                except Exception:  # noqa: BLE001 — die Prüfung ist Zusatz, nie Blocker
-                    _log.warning("Lottis Selbstprüfung fehlgeschlagen", exc_info=True)
-                    pruefung = None
-                    yield _sse({"type": "check", "state": "skipped", "reasons": []})
-                zeiten["check_ms"] = round((time.perf_counter() - t_pruef) * 1000)
             # Die Weiterreichung bleibt dem Modell überlassen — die
             # deterministische Ergänzung steht jetzt GANZ OBEN und hat den
             # Aufruf dann gar nicht erst gemacht. Setzt das Modell die Marke
@@ -4358,10 +4320,16 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
             conversation_id = _lotti_turn_speichern(
                 ratslotse, user, body, screen, frage, text, "explain", weiter, begriffe,
                 belege)
-            if pruefung is not None:
-                _selbstpruefung_speichern(ratslotse, user, route, frage, pruefung,
-                                          zeiten.get("check_ms"),
-                                          lambda roh: lotti.split_next(roh, rechte, route)[0])
+            # **Die stille Stichprobe** (Schalter `lotti-selbstpruefung`,
+            # council/self_check.py): Für einen Anteil der Antworten prüft der
+            # Server NACH dem `done`-Rahmen — als Hintergrund-Aufgabe der
+            # Antwort, die erst läuft, wenn der Strom beim Client ist. Hier
+            # wird nur vorgemerkt; der Prompt ist derselbe, den Lotti bekam.
+            if features.an("lotti-selbstpruefung") and text.strip() and self_check.gezogen():
+                messages, _extra = lotti.explain_messages(screen, frage, ctx, verlauf)
+                nachlauf.update(user_id=user["id"], route=route, frage=frage, text=text,
+                                context=messages[0]["content"],
+                                skip_judge=(weiter == "ratsfrage"))
             yield _sse({"type": "done", "mode": "explain", "kind": "model",
                         "next": weiter,
                         # Der Verweis auf eine andere Haushalts-Seite, als Ziel
@@ -4385,7 +4353,9 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
 
     return StreamingResponse(
         gen(), media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        # Läuft erst, wenn der Strom ausgeliefert ist — niemand wartet darauf.
+        background=BackgroundTask(_selbstpruefung_nachlauf, nachlauf))
 
 
 class ScreenContext(BaseModel):
