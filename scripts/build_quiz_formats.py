@@ -41,13 +41,15 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--db", type=Path, default=COUNCIL_DB)
     ap.add_argument("--trocken", action="store_true", help="nur zeigen, nichts speichern")
+    ap.add_argument("--ohne-modell", action="store_true",
+                    help="keine neuen Antragsbeschreibungen schreiben lassen (nur gespeicherte)")
     ap.add_argument("--wahl-vorab", action="store_true",
                     help="Wahlfragen auch vor dem Freigabetag bauen (nur lokal, zur Vorschau)")
     args = ap.parse_args()
 
     store = CouncilStore(args.db)
     try:
-        questions = quiz_formats.build_all(store)
+        questions = quiz_formats.build_all(store, describe=not args.ohne_modell)
         # Ratswahl 2026 (Plan Q12): erst nach der Stichwahl — davor leer.
         questions += wahl_fragen.questions(force=args.wahl_vorab)
         by = collections.Counter(q["format"] for q in questions)
@@ -58,7 +60,12 @@ def main() -> int:
             return 0
         n_new = store.save_quiz_questions(questions)
         n_upd = store.refresh_quiz_payloads(questions)
-        print(f"{n_new} neu, {n_upd} aufgefrischt.")
+        # Antrags-Fragen ohne Beschreibung (oder aus älteren Läufen) mustern
+        # wir aus — ohne sie wäre die Antwort geraten. Nur, wenn überhaupt
+        # welche gebaut wurden: Fällt das Modell ganz aus, bleibt der Bestand.
+        verdict = [q["content_hash"] for q in questions if q.get("format") == "verdict"]
+        n_old = store.retire_quiz_area_except(*quiz_formats.VERDICT_AREA, verdict) if verdict else 0
+        print(f"{n_new} neu, {n_upd} aufgefrischt, {n_old} Antrags-Fragen ohne Beschreibung ausgemustert.")
         # Kein einziger Baustein heißt: Tabelle leer oder Filter zu streng —
         # beides soll im Wochenlauf auffallen statt still nichts zu tun.
         return 0 if questions else 1

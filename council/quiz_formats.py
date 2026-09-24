@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 
 #: Gebiet der Antrags-Fragen (``_THEMA_LABELS`` in ``store_quiz`` kennt es).
@@ -50,7 +51,7 @@ VERDICT_ACCEPTED_PER_REJECTED = 1.5
 _PROPOSER_PAREN = re.compile(
     r"\s*\((?:Antrag (?:der |des )?)?"
     r"((?:Fraktion|Fraktionen|Gruppe|Gruppen)\b[^()]*?)"
-    r"(?:,?\s+vom\s+(\d{1,2}\.\d{1,2}\.(\d{4}))[^()]*)?\)")
+    r"(?:,?\s+vom\s+(\d{1,2}\.\d{1,2}\.(\d{4}|\d{2}))\b[^()]*)?\)")
 # „Antrag der Fraktion BSW: Einführung eines Schulfachs …“
 _PROPOSER_PREFIX = re.compile(r"^Antrag (?:der |des )?((?:Fraktion|Fraktionen|Gruppe)\b[^:]*?):\s*")
 # Anhängsel des RIS-Titels, die nichts über den Inhalt sagen.
@@ -71,6 +72,8 @@ def parse_motion(title: str) -> dict | None:
     if m:
         proposer = m.group(1).strip().rstrip(",")
         year = int(m.group(3)) if m.group(3) else None
+        if year is not None and year < 100:   # „vom 18.10.18"
+            year += 2000
         core = (title[:m.start()] + title[m.end():]).strip()
     else:
         m = _PROPOSER_PREFIX.match(title)
@@ -110,10 +113,78 @@ def _key(*parts: object) -> str:
     return hashlib.sha256(raw.encode()).hexdigest()[:32]
 
 
-def verdict_questions(store) -> list[dict]:
+# --- Worum ging es? (Tims Hinweis 24.09.2026) ------------------------------
+#
+# „Außerordentliche Verdachtskündigung" sagt niemandem etwas; über den Ausgang
+# zu entscheiden hieß dann raten. Deshalb steht unter jeder Antrags-Frage ein
+# Satz, WAS beantragt wurde — geschrieben aus Beschlusstext und Wortbeiträgen,
+# aber ausdrücklich OHNE Ergebnis. Die vorhandenen Kurzfassungen taugen dafür
+# nicht: Sie beginnen mit „Der Rat hat beschlossen …" und verraten die Lösung.
+
+MOTION_MODEL = os.environ.get("COUNCIL_QUIZ_MOTION_MODEL", "openai/gpt-4o-mini")
+#: Verrät ein Satz den Ausgang oder die Reaktion darauf, ist er unbrauchbar.
+_GIVES_AWAY = re.compile(
+    r"abgelehnt|angenommen|beschlossen|vertagt|zugestimmt|einstimmig|mehrheit|"
+    r"stimmte|entschied|entschieden|ablehnung|zustimmung|scheiterte|durchgesetzt",
+    re.IGNORECASE)
+#: Beschlusstexte, die nur das Ergebnis tragen („Der Antrag wird abgelehnt.").
+_ONLY_OUTCOME = re.compile(r"^\s*(der|dem) antrag\b.{0,60}$", re.IGNORECASE | re.S)
+
+_MOTION_PROMPT = """Du beschreibst einen Antrag im Oldenburger Stadtrat für ein Quiz. Wer spielt, soll danach raten, wie entschieden wurde — verrate das NICHT.
+
+Schreibe EINEN Satz (höchstens 30 Wörter), was der Antrag verlangt oder erreichen will: sachlich, konkret, ohne Wertung. Beginne mit „Der Antrag“ oder „Die Antragsteller“. Nenne kein Ergebnis, keine Abstimmung und nicht, wie Verwaltung oder andere Fraktionen reagiert haben. Lassen die Unterlagen nicht erkennen, was beantragt wurde, antworte nur mit: NICHTS
+
+Antrag: {title} ({proposer})
+
+Unterlagen:
+{context}"""
+
+
+def motion_context(store, decision_id: int, proposer: str) -> str:
+    """Beschlusstext (wenn er mehr als das Ergebnis sagt) und die Wortbeiträge,
+    die der Antragsteller zuerst — wer einbringt, erklärt am ehesten, worum es
+    geht."""
+    raw = store.quiz_motion_context(decision_id)
+    parts = []
+    text = (raw["official_text"] or "").strip()
+    if len(text) > 80 and not _ONLY_OUTCOME.match(text):
+        parts.append(f"Beschlusstext: {text[:1200]}")
+    own = [sp for sp in raw["speeches"] if sp.get("party") and sp["party"].lower() in proposer.lower()]
+    rest = [sp for sp in raw["speeches"] if sp not in own]
+    for sp in (own + rest)[:8]:
+        who = sp.get("speaker") or "Jemand"
+        party = f" ({sp['party']})" if sp.get("party") else ""
+        parts.append(f"{who}{party}: {(sp.get('text') or '').strip()[:500]}")
+    return "\n".join(parts)[:3500]
+
+
+def describe_motion(title: str, proposer: str, context: str) -> str | None:
+    """Ein Satz, was beantragt wurde — oder ``None``, wenn die Unterlagen es
+    nicht hergeben oder der Satz das Ergebnis verrät."""
+    if len(context) < 60:
+        return None
+    from kern import llm
+    try:
+        resp = llm.chat_complete(
+            model=MOTION_MODEL, _feature="quiz_motion_context", temperature=0, max_tokens=120,
+            timeout=120, messages=[{"role": "user", "content": _MOTION_PROMPT.format(
+                title=title, proposer=proposer, context=context)}])
+        text = (resp.choices[0].message.content or "").strip().strip('"„“')
+    except Exception:  # noqa: BLE001 — ohne Beschreibung keine Frage, kein Abbruch
+        return None
+    text = " ".join(text.split())
+    if (len(text) < 20 or text.upper().startswith("NICHTS") or len(text) > 260
+            or _GIVES_AWAY.search(text)):
+        return None
+    return text
+
+
+def verdict_questions(store, *, describe: bool = True) -> list[dict]:
     """Die Antrags-Fragen: je Vorlage die abschließende Entscheidung (die des
     Rates, wenn es eine gibt, sonst die jüngste), ausgewogen zwischen
-    angenommen und abgelehnt."""
+    angenommen und abgelehnt — und nur Anträge, zu denen es eine Beschreibung
+    gibt (``hint``). Ohne ``describe`` werden nur schon gespeicherte
+    Beschreibungen benutzt, kein Modell."""
     rows = store.quiz_motion_rows(VERDICT_MIN_INTEREST)
     finals: dict[object, tuple] = {}
     for r in rows:
@@ -126,12 +197,41 @@ def verdict_questions(store) -> list[dict]:
             finals[key] = (rank, r, motion)
 
     picked = sorted(finals.values(), key=lambda x: -(x[1]["interest"] or 0))
-    rejected = [x for x in picked if x[1]["outcome"] == "rejected"]
-    accepted = [x for x in picked if x[1]["outcome"] == "accepted"]
-    accepted = accepted[:max(1, round(len(rejected) * VERDICT_ACCEPTED_PER_REJECTED))]
+    cached = store.quiz_hints_by_hash(
+        [_key("verdict", x[1]["template_number"] or x[1]["id"]) for x in picked])
+
+    def hint_for(r, motion) -> str | None:
+        h = cached.get(_key("verdict", r["template_number"] or r["id"]))
+        if h or not describe:
+            return h
+        return describe_motion(motion["core"], motion["proposer"],
+                               motion_context(store, r["id"], motion["proposer"]))
+
+    # Derselbe Antrag steht manchmal unter zwei Titeln im RIS („Wilhem" und
+    # „Wilhelm", „Glück und Lebensfreude" und „… Wohlbefinden") — eine Frage.
+    from council.quiz import is_near_duplicate
+    seen: list[str] = []
+
+    def fresh(motion) -> bool:
+        if is_near_duplicate(motion["core"], seen, threshold=0.5):
+            return False
+        seen.append(motion["core"])
+        return True
+
+    rejected: list[tuple] = []
+    for _, r, motion in picked:
+        if r["outcome"] == "rejected" and fresh(motion) and (h := hint_for(r, motion)):
+            rejected.append((r, motion, h))
+    want = max(1, round(len(rejected) * VERDICT_ACCEPTED_PER_REJECTED))
+    accepted: list[tuple] = []
+    for _, r, motion in picked:
+        if len(accepted) >= want:
+            break
+        if r["outcome"] == "accepted" and fresh(motion) and (h := hint_for(r, motion)):
+            accepted.append((r, motion, h))
 
     out = []
-    for _, r, motion in rejected + accepted:
+    for r, motion, hint in rejected + accepted:
         year = motion["year"] or int((r["session_date"] or "0000")[:4])
         verb = "beantragten" if _plural(motion["proposer"]) else "beantragte"
         body = _body(r["committee"])
@@ -147,6 +247,7 @@ def verdict_questions(store) -> list[dict]:
             "question": (f"Die {motion['proposer']} {verb} {year}: „{motion['core']}“. "
                          f"Wie hat {body} entschieden?"),
             "options": list(VERDICT_OPTIONS), "correct_index": 1 if rejected_ else 0,
+            "hint": hint,
             "explanation": explanation,
             # Die Kurzfassung nur beim angenommenen Antrag: Bei einem
             # abgelehnten beschreibt sie womöglich den Vorschlag, als gälte er
@@ -351,5 +452,5 @@ def order_distance(guess: list[int], right: list[int]) -> int:
                if pos[right[i]] > pos[right[j]])
 
 
-def build_all(store) -> list[dict]:
-    return verdict_questions(store) + compare_questions(store) + order_questions(store)
+def build_all(store, *, describe: bool = True) -> list[dict]:
+    return verdict_questions(store, describe=describe) + compare_questions(store) + order_questions(store)
