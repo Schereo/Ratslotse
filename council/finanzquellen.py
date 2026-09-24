@@ -586,11 +586,17 @@ def _bestand_satzung_veroeffentlicht(store: CouncilStore) -> set[tuple]:
 
 
 def _bestand_foerdermittel(store: CouncilStore) -> set[tuple]:
-    """Das Jahr des Datenstands je Liste — die Listen tragen keinen Jahrgang,
+    """Das Jahr des JÜNGSTEN Datenstands — die Listen tragen keinen Jahrgang,
     sondern einen Stand („DS: 31. Januar 2026"); der Förderkatalog hat keinen
-    und zählt mit dem Jahr seines Abrufs."""
-    return {(int((z["list_as_of"] or z["fetched_at"])[:4]),)
-            for z in store.get_foerdermittel()}
+    und zählt mit dem Jahr seines Abrufs.
+
+    Nur der jüngste, nicht einer je Liste: Die abgeschlossene Förderperiode
+    2014–2020 steht mit ihrem letzten Stand (2024) daneben, und aus „2024 und
+    2026" machte der Datenstand „Für 2025 liegen uns keine auswertbaren Zahlen
+    vor" — für eine Liste, die 2025 gar nicht neu erscheinen sollte (Prüfung
+    24.09.2026)."""
+    staende = [int((z["list_as_of"] or z["fetched_at"])[:4]) for z in store.get_foerdermittel()]
+    return {(max(staende),)} if staende else set()
 
 
 def _bestand_budgetberichte(store: CouncilStore) -> set[tuple]:
@@ -3338,7 +3344,13 @@ def datenstand(store: CouncilStore, heute: date | None = None) -> list[dict]:
             "key": q.key, "label": q.label, "was": q.was,
             "tabelle": q.tabelle, "herkunft": q.herkunft,
             "source": STELLEN.get(q.herkunft, q.herkunft),
-            "automatisch": q.automatisch,
+            # Für Leser*innen zählt, ob die Schicht OHNE Handgriff nachkommt —
+            # und das tut sie auch über ein ``lauf``-Skript, das der Cron
+            # startet, sobald ein neues Dokument im Bestand liegt
+            # (``check_finanzdaten._skriptlauf``). Bis 24.09.2026 stand hier nur
+            # ``q.automatisch``, und der Datenstand nannte zwölf Schichten aus
+            # dem Ratsinformationssystem „nicht automatisch ergänzt".
+            "automatisch": q.automatisch or q.lauf is not None,
             "jahrgaenge": years, "luecken": luecken,
             # Je Jahrgang die Zahl der Einheiten (Teilhaushalte bzw. Ebenen) —
             # und wie viele der bestbelegte Jahrgang hat.

@@ -1394,3 +1394,30 @@ def test_finanz_anlagen_filter_umfasst_die_vorlagentitel(tmp_path):
         assert sorted(r[0] for r in rows) == [6, 224365]
     finally:
         store.close()
+
+
+def test_datenstand_zaehlt_skriptlaeufe_als_automatisch(tmp_path):
+    """Eine Schicht mit ``lauf`` kommt ohne Handgriff nach: Der Cron startet
+    das Skript, sobald ein neues Dokument im Bestand liegt. Bis 24.09.2026 nannte
+    der Datenstand zwölf solche Schichten „nicht automatisch ergänzt"."""
+    from council.store import CouncilStore
+    store = CouncilStore(tmp_path / "c.sqlite")
+    try:
+        zeilen = {z["key"]: z for z in finanzquellen.datenstand(store)}
+    finally:
+        store.close()
+    for key in finanzquellen.REIHENFOLGE:
+        q = finanzquellen.QUELLEN[key]
+        assert zeilen[key]["automatisch"] == (q.automatisch or q.lauf is not None), key
+    assert zeilen["budget_measures"]["automatisch"] is True
+
+
+def test_foerdermittel_nur_der_juengste_stand():
+    """Die abgeschlossene Förderperiode steht mit ihrem letzten Stand (2024)
+    neben der laufenden (2026) — daraus wurde eine „Lücke 2025"."""
+    class _Store:
+        def get_foerdermittel(self):
+            return [{"list_as_of": "2024-06-30", "fetched_at": "2026-09-24"},
+                    {"list_as_of": "2026-01-31", "fetched_at": "2026-09-24"},
+                    {"list_as_of": None, "fetched_at": "2026-09-24T10:00:00"}]
+    assert finanzquellen._bestand_foerdermittel(_Store()) == {(2026,)}

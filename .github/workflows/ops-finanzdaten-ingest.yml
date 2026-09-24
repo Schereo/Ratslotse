@@ -297,9 +297,9 @@ jobs:
             # unterscheiden (s. council/budget_execution.py).
             #
             # Er hängt an KEINEM der Läufe darüber: Aus `council_attachments`
-            # liest er nur Label und URL und lädt die PDFs selbst — deshalb ist
-            # er auch der vierte Ingest, den `check_finanzdaten` NICHT
-            # übernehmen kann („lädt nichts herunter").
+            # liest er nur Label und URL und lädt die PDFs selbst. Der Cron
+            # (`check_finanzdaten`) startet ihn als `lauf`-Skript, sobald ein
+            # neuer Bericht im Bestand liegt; hier steht er für den Nachlauf.
             .venv/bin/python scripts/ingest_haushaltsvollzug.py
             # Der Liquiditätsstand: die Grafiken der Monatsvorlagen — lädt
             # fehlende Anlagen selbst (bis 2021 heißen sie nur „Anlage").
@@ -314,7 +314,15 @@ jobs:
             # (Regionaldatenbank). Braucht das Konto aus der .env — ohne endet
             # der Lauf mit einem Satz und ohne Fehler (dev hat keins). Steht
             # nach dem Schuldenstand der Stadt, gegen den Oldenburg geprüft wird.
-            .venv/bin/python scripts/ingest_regionalstatistik.py
+            #
+            # NICHT unter `set -e`: Der Webservice stellt Aufträge in eine
+            # Warteschlange, und am 24.09.2026 war das Ergebnis zweimal nach
+            # 600 s nicht fertig. Der Abbruch nahm alles danach mit — die
+            # Steuertabellen des Jahrbuchs, das Archiv, den Bestandsbericht.
+            # Ein Stau beim Statistikamt ist kein Fehler in unseren Zahlen;
+            # der Lauf färbt deshalb erst ganz unten rot.
+            regional=0
+            .venv/bin/python scripts/ingest_regionalstatistik.py || regional=$?
 
             # Die beiden Steuertabellen des Jahrbuchs (1103 Plan neben Ist je
             # Steuerart, 1105 Hebesätze seit 1980). Sie stehen NACH
@@ -547,10 +555,21 @@ jobs:
               exit "$wirtschaftsplaene"
             fi
 
+            if [ "$regional" -ne 0 ]; then
+              echo ""
+              echo "Die Regionaldatenbank hat Exit $regional gemeldet — meist ein"
+              echo "Auftrag, der in ihrer Warteschlange nicht fertig wurde. Die"
+              echo "gespeicherten Jahrgänge bleiben stehen; nochmal laufen lassen."
+              echo "Die übrigen Ingests sind trotzdem durchgelaufen."
+            fi
+
             # Der OCR-Lauf färbt ZULETZT rot: Er ist ein Zulieferer, kein
             # Ingest. Ein Ausfall heißt „ein Jahrgang fehlt", nicht „eine Zahl
             # ist falsch" — und der Bestandsbericht oben soll trotzdem lesbar
             # sein, wenn jemand nachschaut, warum.
             if [ "$ocr" -ne 0 ]; then
               exit "$ocr"
+            fi
+            if [ "$regional" -ne 0 ]; then
+              exit "$regional"
             fi

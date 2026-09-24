@@ -53,8 +53,7 @@ def main() -> int:
 
     store = CouncilStore(args.db)
     try:
-        eigene = {z["year"]: z["credit_market"] for z in store.get_schulden()
-                  if z.get("credit_market") is not None}
+        eigene = rs.eigene_reihe(store.get_schulden(), store.get_schulden_plan())
         rs.pruefe(lesung, eigene)
         for h in lesung.hinweise:
             print(f"  nicht übernommen: {h}")

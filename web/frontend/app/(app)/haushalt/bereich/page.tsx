@@ -84,16 +84,19 @@ function Kicker({ children }: { children: React.ReactNode }) {
  *  öffentlich-rechtlichen Entgelte, in denen die Elternbeiträge stecken, die
  *  VIERTgrößte Position. Statt eines geschätzten Satzes steht hier die
  *  ausgelesene Aufteilung — mit dem Jahr, aus dem sie stammt. */
-function EigeneErtraege({ daten, key, planEin, planJahr }: {
+function EigeneErtraege({ daten, bereich, planEin, planJahr }: {
   daten: Daten;
-  key: string | null;
+  /** Der kanonische Bereichs-Schlüssel. Hieß bis 24.09.2026 `key` — und den
+   *  reicht React nie als Prop durch: Die Karte blieb auf allen dreizehn
+   *  Bereichsseiten still leer (gefunden über die Konsolenwarnung). */
+  bereich: string | null;
   planEin: number;
   planJahr: number;
 }) {
   const posten = (daten.income_statement ?? []).filter(
-    (p) => p.sub_budget_name != null && bereichSchluessel(p.sub_budget_name) === key
+    (p) => p.sub_budget_name != null && bereichSchluessel(p.sub_budget_name) === bereich
            && p.nr >= 1 && p.nr <= 11 && (p.result ?? 0) > 0);
-  if (!posten.length || !key) return null;
+  if (!posten.length || !bereich) return null;
   const year = Math.max(...posten.map((p) => p.year));
   const arten = posten
     .filter((p) => p.year === year)
@@ -437,7 +440,7 @@ function BereichInner() {
       <ReiterTafel id="ueberblick" aktiv={aktiv} className="flex flex-col gap-4">
         {/* Die Rechnung des Bereichs steht seit 24.08. oben auf der Tafel —
             der Überblick beginnt mit dem Blick HINTER ihre Einnahmen-Leiste. */}
-        <EigeneErtraege daten={data} key={kanon.key} planEin={ein} planJahr={year} />
+        <EigeneErtraege daten={data} bereich={kanon.key} planEin={ein} planJahr={year} />
 
         {/* Was die Verwaltung im Vorbericht zu diesem Teilhaushalt schreibt —
             Wortlaut, nie zusammengefasst (Plan Haushalt-Datenquellen, PR 5). */}

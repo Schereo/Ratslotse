@@ -81,3 +81,19 @@ def test_endpunkt_je_einwohner_alphabetisch(tmp_path):
         assert all(v["series"] != rs.SERIES for v in haushalt_vergleich(_user={}, store=store)["values"])
     finally:
         store.close()
+
+
+def test_eigene_reihe_springt_auf_die_schuldenuebersicht_im_plan():
+    """2022 geht die Jahrbuch-Tabelle nicht auf, die Aufteilung ist verworfen —
+    die Schuldenübersicht im Plan 2024 (Stand 31.12.2022) springt ein. Wo das
+    Jahrbuch einen Wert hat, gilt der."""
+    schulden = [{"year": 2021, "credit_market": 53_074_000.0},
+                {"year": 2022, "credit_market": None},
+                {"year": 2023, "credit_market": 46_577_000.0}]
+    plan = [{"budget_year": 2024, "entity": "Kernhaushalt", "code": "1.2", "start_prior": 49_740_000.0},
+            {"budget_year": 2024, "entity": "Kernhaushalt", "code": "1.3", "start_prior": 1.0},
+            {"budget_year": 2025, "entity": "Kernhaushalt", "code": "1.2", "start_prior": 99.0},
+            {"budget_year": 2024, "entity": "Eigenbetrieb Gebäudewirtschaft und Hochbau",
+             "code": "1.2", "start_prior": 7.0}]
+    assert rs.eigene_reihe(schulden, plan) == {2021: 53_074_000.0, 2022: 49_740_000.0,
+                                               2023: 46_577_000.0}

@@ -150,6 +150,29 @@ def lies(schulden_csv: str, einwohner_csv: str) -> Lesung:
     return aus
 
 
+def eigene_reihe(schulden: list[dict], schulden_plan: list[dict]) -> dict[int, float]:
+    """Oldenburgs Kreditmarktschulden zum 31.12. — die Gegenreihe der Probe.
+
+    Erste Quelle ist die Schuldenreihe des Statistischen Jahrbuchs
+    (``council_debt.credit_market``). Wo sie fehlt, springt die
+    Schuldenübersicht des Haushaltsplans ein: Die Zeile „Kredite für
+    Investitionen" des Kernhaushalts, Stand zu Beginn des Vorjahres — im Plan
+    2024 also der 31.12.2022. Gemessen am 24.09.2026 stimmt sie in allen
+    sieben Jahren, in denen beide da sind (2017–2024 ohne 2022), auf den Euro
+    mit dem Jahrbuch überein.
+
+    Der Anlass ist 2022: Dort geht die Jahrbuch-Tabelle selbst nicht auf (die
+    Schuldenarten ergeben 1,08 Mio. € mehr als die Summe), die Aufteilung ist
+    verworfen — und ohne Gegenreihe fiel der Jahrgang auch hier für alle acht
+    Städte heraus."""
+    eigene = {z["year"]: z["credit_market"] for z in schulden if z.get("credit_market") is not None}
+    for z in schulden_plan:
+        if (z.get("entity") == "Kernhaushalt" and z.get("code") == "1.2"
+                and z.get("start_prior") is not None):
+            eigene.setdefault(z["budget_year"] - 2, z["start_prior"])
+    return eigene
+
+
 def pruefe(lesung: Lesung, eigene_kern: dict[int, float]) -> Lesung:
     """Oldenburgs Kernhaushalt gegen die eigene Reihe; ein Jahr ohne bestandene
     Probe fällt für alle Städte heraus."""

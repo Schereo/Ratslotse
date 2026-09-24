@@ -26,7 +26,11 @@ import { cn } from "@/lib/utils";
 type Antwort = ApiAntwort<"/council/budget/preface-figures">;
 
 const ART: Record<string, string> = {
-  actual: "Ist", prior_budget: "Plan", forecast: "Prognose", budget: "Ansatz", financial_plan: "Finanzplanung",
+  // „Entwurf", nicht „Ansatz": Der Vorbericht hängt am Verwaltungsentwurf,
+  // der Rat ändert ihn noch (für 2026 von −89,3 auf −71,1 Mio. € im
+  // Ergebnis). „Ansatz 2026" stand neben dem beschlossenen Plan der Startseite
+  // wie dessen Zahl (Prüfung 24.09.2026).
+  actual: "Ist", prior_budget: "Plan", forecast: "Prognose", budget: "Entwurf", financial_plan: "Finanzplanung",
 };
 const REIHENFOLGE = ["actual", "prior_budget", "forecast", "budget", "financial_plan"];
 
@@ -112,7 +116,9 @@ export function VorberichtZahlen({ reihen, titel, kicker, genau = false, childre
       <p className="max-w-[76ch] text-[11.5px] leading-relaxed text-muted-foreground">
         Aus dem Vorbericht, den die Verwaltung mit dem Entwurf einbringt: „Plan“ ist der Ansatz des
         laufenden Jahres, „Prognose“ die Erwartung der Kämmerei zum Zeitpunkt des Entwurfs,
-        „Finanzplanung“ die Jahre danach. {genau ? "" : "Die Diagramme des Vorberichts runden auf 0,1 Mio. €."}
+        „Entwurf“ das kommende Jahr, wie die Verwaltung es einbringt — der Rat ändert es noch —,
+        „Finanzplanung“ die Jahre danach. „Ist“ ist der Stand bei Drucklegung und kann vom
+        späteren Jahresabschluss um einige Hunderttausend Euro abweichen. {genau ? "" : "Die Diagramme des Vorberichts runden auf 0,1 Mio. €."}
       </p>
     </section>
   );
