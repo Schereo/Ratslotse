@@ -253,7 +253,7 @@ def joker(payload: QuizJokerIn,
     q = council.get_quiz_question(payload.question_id)
     if not q:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Frage nicht gefunden.")
-    if q.get("qtype") == "estimate" or len(q.get("options") or []) < 4:
+    if q.get("qtype") in ("estimate", "order") or len(q.get("options") or []) < 4:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Für diese Frage gibt es keinen Joker.")
     return {"remove": _joker_remove(q["id"], user["id"], len(q["options"]), q["correct_index"])}
 
