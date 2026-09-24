@@ -1055,7 +1055,10 @@ def test_die_beiden_reihen_bleiben_zwei_zeilen(lsn_bestand):
     Städtevergleich überhaupt eine eigene Tabelle hat."""
     as_of = finanzquellen.datenstand(lsn_bestand, date(2026, 8, 16))
     zeilen = [z for z in as_of if z["tabelle"] == "council_city_comparison"]
-    assert [z["key"] for z in zeilen] == ["lsn_steuerkraft", "lsn_realsteuern"]
+    # Der Bundesvergleich (Wegweiser Kommune) liegt als dritte, eigene Reihe in
+    # derselben Tabelle — aus demselben Grund eine eigene Zeile.
+    assert [z["key"] for z in zeilen] == ["lsn_steuerkraft", "lsn_realsteuern", "bundesvergleich"]
+    zeilen = zeilen[:2]
     # Keine der beiden Zeilen behauptet eine Lücke, die es nicht gibt.
     assert all(z["luecken"] == [] for z in zeilen)
     lsn_bestand.close()
@@ -1145,6 +1148,7 @@ ZAHLWORT = {
     "siebenundzwanzig": 27,
     "achtundzwanzig": 28,
     "neunundzwanzig": 29,
+    "dreißig": 30,
 }
 
 DOKU = ROOT / "docs-site" / "src" / "content" / "docs" / "haushalt.md"

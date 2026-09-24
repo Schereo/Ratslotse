@@ -40,6 +40,7 @@ import {
   juengstesJahr, platzVonOldenburg, series, steuerkraftJeEinwohner, change,
 } from "@/lib/haushalt-vergleich";
 import { Staedtevergleich, Zeitreihe } from "@/components/haushalt/staedtevergleich";
+import { Bundesvergleich } from "@/components/haushalt/bundesvergleich";
 import { SlopePaar, type SlopePaarZeile } from "@/components/grafik/slope-paar";
 import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/source";
 import { Fundstelle } from "@/components/haushalt/fundstelle";
@@ -49,7 +50,7 @@ import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weit
 import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
 import { Seitenbuehne, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
 
-const QUELLEN = ["lsn_finanzausgleich", "lsn_realsteuern", "vergleich_2018"] as const;
+const QUELLEN = ["lsn_finanzausgleich", "lsn_realsteuern", "bundesvergleich", "vergleich_2018"] as const;
 
 function Abschnitt({ kicker, zusatz, id, children }: {
   kicker: string; zusatz?: string; id?: string; children: React.ReactNode;
@@ -481,6 +482,12 @@ export default function VergleichSeite() {
           </details>
         </section>
 
+        {/* --- Über die Landesgrenze: drei Kennzahlen, die dort tragen (Plan
+            Blickwinkel, B3). Steht NACH dem Beleg, warum Ausgaben und Schulden
+            nicht vergleichbar sind — und vor der Frage, wen man vergleichen
+            würde, deren Antwort (die acht Niedersachsens) er erweitert. --- */}
+        <Bundesvergleich />
+
         {/* --- Wen man überhaupt vergleichen würde --- */}
         <Abschnitt kicker="Wen man mit Oldenburg vergleichen würde">
           <p className="mt-1.5 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
@@ -550,9 +557,11 @@ export default function VergleichSeite() {
               Gesamtabschluss vorgelegt, Braunschweig zuletzt für 2016.
             </li>
             <li>
-              <strong>Städte außerhalb Niedersachsens.</strong> Finanzausgleich,
-              Kreisumlage und die Zuständigkeit für Sozial- und Jugendhilfe sind
-              Landesrecht. Jede Kennzahl bräuchte eine eigene Abgrenzungsprüfung.
+              <strong>Weitere Kennzahlen für Städte außerhalb Niedersachsens.</strong>{" "}
+              Finanzausgleich, Kreisumlage und die Zuständigkeit für Sozial- und
+              Jugendhilfe sind Landesrecht. Der Bundesvergleich oben beschränkt sich
+              deshalb auf drei Größen, die überall gleich abgegrenzt sind und für
+              Oldenburg zu den eigenen Zahlen passen.
             </li>
             <li>
               <strong>Eine gemeinsame Zeitreihe mit den Steuerkraft-Zahlen auf{" "}

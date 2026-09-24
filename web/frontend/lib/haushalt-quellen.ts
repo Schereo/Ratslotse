@@ -151,6 +151,8 @@ export type QuellenSchluessel =
   | "budget_bylaw_published"
   // Fördermittel von EU und Bund je Vorhaben (Listen der Geber).
   | "grants_received"
+  // Oldenburg im Bundesvergleich (Wegweiser Kommune).
+  | "bundesvergleich"
   | "investitionsprogramm"
   // Und das Ist-Gegenstück aus dem Statistischen Jahrbuch. Bewusst ein
   // eigener Schlüssel und nicht ein zweiter Absatz unter `investitionen`:
@@ -869,6 +871,20 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     as_of: "Haushaltspläne 2019–2026, Stand der Einbringung",
     art: "pdf",
     url: "https://buergerinfo.oldenburg.de",
+  },
+  bundesvergleich: {
+    title: "Wegweiser Kommune — Finanzen und Demografische Entwicklung",
+    citation:
+      "Das Portal der Bertelsmann Stiftung bereitet die Zahlen der Statistischen Ämter für alle " +
+      "Kommunen einheitlich auf. Gelesen werden die Exporte je Kommune für 2019–2023: " +
+      "Einkommensteuer, Grundsteuer B und Liquiditätskredite je Einwohner*in, dazu die " +
+      "Einwohnerzahl für die Vergleichsgruppe. Oldenburgs Werte sind gegen die eigenen Reihen " +
+      "der Stadt geprüft (Statistisches Jahrbuch, Liquiditätsstand der Kämmerei).",
+    herausgeber: "Bertelsmann Stiftung (Daten: Statistische Ämter des Bundes und der Länder)",
+    standWort: "Jahre",
+    as_of: "Jahre 2019–2023, abgerufen 24.09.2026",
+    art: "csv",
+    url: "https://www.wegweiser-kommune.de/daten",
   },
   grants_received: {
     title: "Liste der Vorhaben (EFRE, ESF) und Förderkatalog des Bundes",

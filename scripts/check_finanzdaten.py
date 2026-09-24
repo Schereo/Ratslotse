@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Neue Haushalts-Jahrgänge von allein nachziehen (alle zwei Wochen).
 
-Der Haushalts-Bereich lebt von neunundzwanzig Datenschichten (``finanzquellen.
+Der Haushalts-Bereich lebt von dreißig Datenschichten (``finanzquellen.
 REIHENFOLGE``), die bis 08/2026 alle von Hand eingelesen wurden. Dieser Job
 holt die **neun**, die als Anlage im Ratsinformationssystem liegen UND einen
-eigenen Leser mitbringen (``einlesen``). Von den zwanzig übrigen kommen neun von
+eigenen Leser mitbringen (``einlesen``). Von den einundzwanzig übrigen kommen zehn von
 außerhalb und haben eigene Wege — ausdrücklich so, denn „lädt nichts herunter"
 ist die Regel, an der dieser Job hängt. Die restlichen elf liegen zwar im
 Ratsinformationssystem, werden aber von eigenen Skripten eingelesen

@@ -4667,6 +4667,34 @@
         "title": "BudgetExecution",
         "type": "object"
       },
+      "BudgetFederalComparison": {
+        "properties": {
+          "group": {
+            "$ref": "#/components/schemas/FederalGroup"
+          },
+          "indicators": {
+            "items": {
+              "$ref": "#/components/schemas/FederalIndicator"
+            },
+            "title": "Indicators",
+            "type": "array"
+          },
+          "provenance": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Herkunft"
+            },
+            "title": "Provenance",
+            "type": "object"
+          }
+        },
+        "required": [
+          "indicators",
+          "group",
+          "provenance"
+        ],
+        "title": "BudgetFederalComparison",
+        "type": "object"
+      },
       "BudgetFixedAssets": {
         "properties": {
           "accounting_systems": {
@@ -11563,6 +11591,199 @@
           "n"
         ],
         "title": "FactionPhase",
+        "type": "object"
+      },
+      "FederalCity": {
+        "description": "Eine Stadt der Vergleichsgruppe in einem Jahr. ``key`` ist der\nGemeindeschlüssel (AGS), ``population`` die Einwohnerzahl desselben\nJahres aus demselben Portal.",
+        "properties": {
+          "city": {
+            "title": "City",
+            "type": "string"
+          },
+          "is_oldenburg": {
+            "title": "Is Oldenburg",
+            "type": "boolean"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "lower_saxony": {
+            "title": "Lower Saxony",
+            "type": "boolean"
+          },
+          "population": {
+            "title": "Population",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "key",
+          "city",
+          "value",
+          "population",
+          "lower_saxony",
+          "is_oldenburg"
+        ],
+        "title": "FederalCity",
+        "type": "object"
+      },
+      "FederalGroup": {
+        "description": "Die Regel der Vergleichsgruppe: kreisfreie Städte zwischen\n``population_min`` und ``population_max`` Einwohner*innen, dazu alle\nNiedersachsens. ``n`` Städte, davon ``lower_saxony`` in Niedersachsen.",
+        "properties": {
+          "lower_saxony": {
+            "title": "Lower Saxony",
+            "type": "integer"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "population_max": {
+            "title": "Population Max",
+            "type": "integer"
+          },
+          "population_min": {
+            "title": "Population Min",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "population_min",
+          "population_max",
+          "n",
+          "lower_saxony"
+        ],
+        "title": "FederalGroup",
+        "type": "object"
+      },
+      "FederalIndicator": {
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          },
+          "years": {
+            "items": {
+              "$ref": "#/components/schemas/FederalYear"
+            },
+            "title": "Years",
+            "type": "array"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "unit",
+          "years"
+        ],
+        "title": "FederalIndicator",
+        "type": "object"
+      },
+      "FederalStats": {
+        "properties": {
+          "max": {
+            "title": "Max",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "median": {
+            "title": "Median",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "min": {
+            "title": "Min",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "p25": {
+            "title": "P25",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "p75": {
+            "title": "P75",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "zero": {
+            "title": "Zero",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "n",
+          "zero",
+          "min",
+          "p25",
+          "median",
+          "p75",
+          "max"
+        ],
+        "title": "FederalStats",
+        "type": "object"
+      },
+      "FederalYear": {
+        "properties": {
+          "cities": {
+            "items": {
+              "$ref": "#/components/schemas/FederalCity"
+            },
+            "title": "Cities",
+            "type": "array"
+          },
+          "oldenburg": {
+            "title": "Oldenburg",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "stats": {
+            "$ref": "#/components/schemas/FederalStats"
+          },
+          "year": {
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "year",
+          "oldenburg",
+          "stats",
+          "cities"
+        ],
+        "title": "FederalYear",
         "type": "object"
       },
       "FeedbackAck": {
@@ -26988,6 +27209,28 @@
           }
         },
         "summary": "Haushalt Vollzug",
+        "tags": [
+          "council"
+        ]
+      }
+    },
+    "/api/council/budget/federal-comparison": {
+      "get": {
+        "description": "Oldenburg im Bundesvergleich (``council/bundesvergleich.py``).\n\nJe Kennzahl und Jahr die Städte der Vergleichsgruppe mit ihrem Wert und die\nKennwerte der Verteilung (Spannweite, Quartile, Median) — gerechnet hier,\ndamit Web und App dieselben Zahlen zeigen. KEIN RANG: Die Antwort nennt\nkeinen Platz, und die Seite zeichnet keinen.\n\nNur Jahre, in denen Oldenburgs Wert die Probe gegen die eigenen Reihen\nbestanden hat, stehen im Bestand.",
+        "operationId": "haushalt_bundesvergleich_api_council_budget_federal_comparison_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetFederalComparison"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Haushalt Bundesvergleich",
         "tags": [
           "council"
         ]
