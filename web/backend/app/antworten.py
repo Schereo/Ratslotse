@@ -3515,6 +3515,58 @@ class BudgetGrantsReceived(TypedDict):
     provenance: Provenance
 
 
+class FederalCity(TypedDict):
+    """Eine Stadt der Vergleichsgruppe in einem Jahr. ``key`` ist der
+    Gemeindeschlüssel (AGS), ``population`` die Einwohnerzahl desselben
+    Jahres aus demselben Portal."""
+    key: str
+    city: str
+    value: float
+    population: float | None
+    lower_saxony: bool
+    is_oldenburg: bool
+
+
+class FederalStats(TypedDict):
+    n: int
+    zero: int
+    min: float | None
+    p25: float | None
+    median: float | None
+    p75: float | None
+    max: float | None
+
+
+class FederalYear(TypedDict):
+    year: int
+    oldenburg: float | None
+    stats: FederalStats
+    cities: list[FederalCity]
+
+
+class FederalIndicator(TypedDict):
+    key: str
+    label: str
+    unit: str
+    years: list[FederalYear]
+
+
+class FederalGroup(TypedDict):
+    """Die Regel der Vergleichsgruppe: kreisfreie Städte zwischen
+    ``population_min`` und ``population_max`` Einwohner*innen, dazu alle
+    Niedersachsens. ``n`` Städte, davon ``lower_saxony`` in Niedersachsen."""
+    population_min: int
+    population_max: int
+    n: int
+    lower_saxony: int
+
+
+class BudgetFederalComparison(TypedDict):
+    indicators: list[FederalIndicator]
+    group: FederalGroup
+    provenance: Provenance
+
+
 class BudgetGrants(TypedDict):
     years: list[int]
     year: int | None

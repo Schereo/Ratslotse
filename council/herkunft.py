@@ -88,6 +88,9 @@ ARTEN: dict[str, str] = {
     # selbst, über die Stadt und ihre Gesellschaften als Empfänger.
     "eu": "Liste der Vorhaben der EU-Strukturfonds in Niedersachsen (NBank)",
     "bund": "Förderkatalog des Bundes",
+    # Oldenburg im Bundesvergleich (council/bundesvergleich.py): ein Portal,
+    # das die Zahlen der Statistischen Ämter für alle Kommunen aufbereitet.
+    "wegweiser": "Wegweiser Kommune der Bertelsmann Stiftung (Daten der Statistischen Ämter)",
 }
 
 #: Der ausdrückliche Verzicht. Keine Quelle darf ohne Angabe gespeichert
@@ -325,6 +328,12 @@ PROBEN: dict[str, str] = {
         "sechs Finanzhaushalts-Zeilen ergeben die beiden „Nachrichtlich“-Summen "
         "der Satzung auf den Cent. Gescannte Ausgaben liest ein Sehmodell; die "
         "Summenprobe fängt eine falsch gelesene Ziffer.",
+    "federal_comparison_own_series":
+        "Oldenburgs Werte im Wegweiser Kommune gegen die eigenen Reihen: "
+        "Einkommensteuer und Grundsteuer je Einwohner*in auf 3 % genau wie im "
+        "Statistischen Jahrbuch; Liquiditätskredite 0, wo der Liquiditätsstand "
+        "zum Jahresende positiv ist. Eine Kennzahl erscheint nur für die Jahre, "
+        "in denen Oldenburgs Wert die Probe besteht — dann für alle Städte.",
     "foekat_export_complete":
         "Der Förderkatalog meldet zur Suche nach der Gemeinde Oldenburg (Oldb) "
         "eine Trefferzahl; die exportierte Liste hat genau so viele Zeilen. "

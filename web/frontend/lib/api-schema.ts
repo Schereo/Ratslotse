@@ -2114,6 +2114,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/council/budget/federal-comparison": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Haushalt Bundesvergleich
+         * @description Oldenburg im Bundesvergleich (``council/bundesvergleich.py``).
+         *
+         *     Je Kennzahl und Jahr die Städte der Vergleichsgruppe mit ihrem Wert und die
+         *     Kennwerte der Verteilung (Spannweite, Quartile, Median) — gerechnet hier,
+         *     damit Web und App dieselben Zahlen zeigen. KEIN RANG: Die Antwort nennt
+         *     keinen Platz, und die Seite zeichnet keinen.
+         *
+         *     Nur Jahre, in denen Oldenburgs Wert die Probe gegen die eigenen Reihen
+         *     bestanden hat, stehen im Bestand.
+         */
+        get: operations["haushalt_bundesvergleich_api_council_budget_federal_comparison_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/council/budget/grants": {
         parameters: {
             query?: never;
@@ -7955,6 +7983,16 @@ export interface components {
             /** Totals */
             totals: unknown;
         };
+        /** BudgetFederalComparison */
+        BudgetFederalComparison: {
+            group: components["schemas"]["FederalGroup"];
+            /** Indicators */
+            indicators: components["schemas"]["FederalIndicator"][];
+            /** Provenance */
+            provenance: {
+                [key: string]: components["schemas"]["Herkunft"];
+            };
+        };
         /** BudgetFixedAssets */
         BudgetFixedAssets: {
             /** Accounting Systems */
@@ -10758,6 +10796,80 @@ export interface components {
             n: number;
             /** Parties */
             parties: string[];
+        };
+        /**
+         * FederalCity
+         * @description Eine Stadt der Vergleichsgruppe in einem Jahr. ``key`` ist der
+         *     Gemeindeschlüssel (AGS), ``population`` die Einwohnerzahl desselben
+         *     Jahres aus demselben Portal.
+         */
+        FederalCity: {
+            /** City */
+            city: string;
+            /** Is Oldenburg */
+            is_oldenburg: boolean;
+            /** Key */
+            key: string;
+            /** Lower Saxony */
+            lower_saxony: boolean;
+            /** Population */
+            population: number | null;
+            /** Value */
+            value: number;
+        };
+        /**
+         * FederalGroup
+         * @description Die Regel der Vergleichsgruppe: kreisfreie Städte zwischen
+         *     ``population_min`` und ``population_max`` Einwohner*innen, dazu alle
+         *     Niedersachsens. ``n`` Städte, davon ``lower_saxony`` in Niedersachsen.
+         */
+        FederalGroup: {
+            /** Lower Saxony */
+            lower_saxony: number;
+            /** N */
+            n: number;
+            /** Population Max */
+            population_max: number;
+            /** Population Min */
+            population_min: number;
+        };
+        /** FederalIndicator */
+        FederalIndicator: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Unit */
+            unit: string;
+            /** Years */
+            years: components["schemas"]["FederalYear"][];
+        };
+        /** FederalStats */
+        FederalStats: {
+            /** Max */
+            max: number | null;
+            /** Median */
+            median: number | null;
+            /** Min */
+            min: number | null;
+            /** N */
+            n: number;
+            /** P25 */
+            p25: number | null;
+            /** P75 */
+            p75: number | null;
+            /** Zero */
+            zero: number;
+        };
+        /** FederalYear */
+        FederalYear: {
+            /** Cities */
+            cities: components["schemas"]["FederalCity"][];
+            /** Oldenburg */
+            oldenburg: number | null;
+            stats: components["schemas"]["FederalStats"];
+            /** Year */
+            year: number;
         };
         /**
          * FeedbackAck
@@ -18221,6 +18333,26 @@ export interface operations {
             };
         };
     };
+    haushalt_bundesvergleich_api_council_budget_federal_comparison_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetFederalComparison"];
+                };
+            };
+        };
+    };
     haushalt_zuschuesse_api_council_budget_grants_get: {
         parameters: {
             query?: {
@@ -23467,4 +23599,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: be6e5def925c9c3c917f00e6ae4508b506e9e837838691b54775df5b21ffd9ea
+// vertrag-sha256: 03c217a588af1f931be9744c870aeec3b075a8ddf588117f3e6c908954c04e4a

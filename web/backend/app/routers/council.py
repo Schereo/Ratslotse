@@ -45,7 +45,7 @@ from .. import deepresearch
 from ..config import get_settings
 from ..antworten import (AnalysisData, ElectedCouncil, ElectedMember, AssistantStarters, BudgetAmendmentLists, BudgetAuditReports,
                          BudgetBalanceSheet, BudgetComparison, BudgetDataState, BudgetDebt, BudgetLiquidity, BudgetLoans,
-                         BudgetDispute, BudgetDocuments, BudgetExecution, BudgetGrants, GrantRow, GrantTotal, BudgetGrantsReceived, GrantReceivedList, GrantReceivedRow, GrantReceivedTotal, Provenance,
+                         BudgetDispute, BudgetDocuments, BudgetExecution, BudgetGrants, GrantRow, GrantTotal, BudgetGrantsReceived, BudgetFederalComparison, FederalCity, FederalGroup, FederalIndicator, FederalStats, FederalYear, GrantReceivedList, GrantReceivedRow, GrantReceivedTotal, Provenance,
                          BudgetNote, BudgetNotes,
                          BudgetFixedAssets, BudgetGroup,
                          BudgetHoldings, BudgetInvestmentProgram, BudgetInvestments,
@@ -5463,7 +5463,9 @@ def haushalt_vergleich(
 
     from council import staedtevergleich as sv
 
-    werte = store.get_staedtevergleich()
+    # Der Bundesvergleich hat seinen eigenen Endpunkt (/budget/federal-comparison):
+    # 46 Städte statt acht, und diese Seite kennt nur die acht.
+    werte = [w for w in store.get_staedtevergleich() if w["series"] != "wegweiser"]
     years: dict[str, list[int]] = {}
     for w in werte:
         years.setdefault(w["series"], [])
@@ -5509,6 +5511,50 @@ def haushalt_vergleich(
         "citation": beleg,
         "provenance": {str(h["id"]): h for h in store.get_herkunft(ids)},
     }
+
+
+@router.get("/budget/federal-comparison")
+def haushalt_bundesvergleich(
+    _user: dict = Depends(require_budget),
+    store: CouncilStore = Depends(get_council_store),
+) -> BudgetFederalComparison:
+    """Oldenburg im Bundesvergleich (``council/bundesvergleich.py``).
+
+    Je Kennzahl und Jahr die Städte der Vergleichsgruppe mit ihrem Wert und die
+    Kennwerte der Verteilung (Spannweite, Quartile, Median) — gerechnet hier,
+    damit Web und App dieselben Zahlen zeigen. KEIN RANG: Die Antwort nennt
+    keinen Platz, und die Seite zeichnet keinen.
+
+    Nur Jahre, in denen Oldenburgs Wert die Probe gegen die eigenen Reihen
+    bestanden hat, stehen im Bestand."""
+    from council import bundesvergleich as bv
+
+    werte = store.get_staedtevergleich(bv.SERIES)
+    ew = {(w["key"], w["year"]): w["value"] for w in werte if w["indicator"] == "population"}
+    ol_key = next((w["key"] for w in werte if w["city"].startswith("Oldenburg (Oldenburg)")), None)
+    indicators: list[FederalIndicator] = []
+    for kennzahl, kopf in bv.INDIKATOREN.items():
+        jahre: list[FederalYear] = []
+        for jahr in sorted({w["year"] for w in werte if w["indicator"] == kennzahl}):
+            staedte = [FederalCity(key=w["key"], city=w["city"], value=w["value"],
+                                   population=ew.get((w["key"], jahr)),
+                                   lower_saxony=w["key"][:2] == bv.LAND_NI,
+                                   is_oldenburg=w["key"] == ol_key)
+                       for w in werte if w["indicator"] == kennzahl and w["year"] == jahr]
+            staedte.sort(key=lambda c: c["city"])
+            ol = next((c["value"] for c in staedte if c["is_oldenburg"]), None)
+            jahre.append(FederalYear(year=jahr, oldenburg=ol, cities=staedte,
+                                     stats=cast(FederalStats, bv.kennwerte([c["value"] for c in staedte]))))
+        indicators.append(FederalIndicator(key=kennzahl, label=kopf.split(" (")[0],
+                                           unit="eur_je_ew", years=jahre))
+    ids = sorted({w["herkunft_id"] for w in werte if w["herkunft_id"] is not None})
+    return BudgetFederalComparison(
+        indicators=indicators,
+        group=FederalGroup(population_min=bv.EW_VON, population_max=bv.EW_BIS,
+                           n=len({w["key"] for w in werte}),
+                           lower_saxony=len({w["key"] for w in werte if w["key"][:2] == bv.LAND_NI})),
+        provenance=cast(Provenance, {str(h["id"]): h for h in store.get_herkunft(ids)}),
+    )
 
 
 @router.get("/budget/assets")

@@ -840,6 +840,14 @@ def _bestand_lsn_realsteuern(store: CouncilStore) -> set[tuple]:
                "WHERE series = 'real_taxes'")}
 
 
+def _bestand_bundesvergleich(store: CouncilStore) -> set[tuple]:
+    """Die Jahre des Bundesvergleichs — die Einheit ist das Jahr an der Zahl,
+    wie beim Realsteuervergleich."""
+    return {(r[0],) for r in _jahre(
+        store, "SELECT DISTINCT year FROM council_city_comparison "
+               "WHERE series = 'wegweiser' AND indicator != 'population'")}
+
+
 def _bestand_lsn_gewerbesteuer(store: CouncilStore) -> set[tuple]:
     """Die Erhebungsjahre der Gewerbesteuerstatistik.
 
@@ -3125,6 +3133,22 @@ for _q in (
         balance=_bestand_lsn_realsteuern,
     ),
     Finanzquelle(
+        key="bundesvergleich",
+        label="Bundesvergleich",
+        was="Einkommensteuer, Grundsteuer B und Liquiditätskredite je "
+            "Einwohner*in für kreisfreie Städte ähnlicher Größe in ganz "
+            "Deutschland, dazu alle Niedersachsens — Oldenburg darin als Punkt.",
+        tabelle="council_city_comparison",
+        # Der Wegweiser zieht die Jahresrechnungen der Statistischen Ämter nach;
+        # 2023 stand im September 2026 als jüngstes Jahr da. Zwei Jahre Abstand
+        # und der September als Schwelle — früher ist nie ein Problem.
+        erwarteter_monat=9,
+        versatz=2,
+        herkunft="wegweiser",
+        nachschub="Export vom Wegweiser Kommune, scripts/ingest_bundesvergleich.py",
+        balance=_bestand_bundesvergleich,
+    ),
+    Finanzquelle(
         key="lsn_gewerbesteuer",
         label="Gewerbesteuerstatistik",
         was="Wie viele Betriebe die Gewerbesteuer aufbringen — und wie viele "
@@ -3200,7 +3224,7 @@ REIHENFOLGE = ("haushaltsplan", "budget_notes", "income_budget", "finance_budget
                "budget_bylaw", "budget_bylaw_published",
                "wirtschaftsplan", "enterprise_accounts", "company_accounts",
                "schulden", "loans", "liquidity",
-               "lsn_steuerkraft", "lsn_realsteuern", "lsn_gewerbesteuer")
+               "lsn_steuerkraft", "lsn_realsteuern", "lsn_gewerbesteuer", "bundesvergleich")
 
 #: Die Stelle hinter einer Herkunft, im Klartext. Sie steht in der Fußzeile des
 #: Datenstands („Nicht dabei: … — die Zahlen holen wir bei …") und muss deshalb
@@ -3213,6 +3237,7 @@ STELLEN = {
     "lsn": "Landesamt für Statistik Niedersachsen",
     "eu": "NBank (Liste der Vorhaben der EU-Strukturfonds)",
     "bund": "Förderkatalog des Bundes",
+    "wegweiser": "Wegweiser Kommune (Bertelsmann Stiftung)",
 }
 
 
