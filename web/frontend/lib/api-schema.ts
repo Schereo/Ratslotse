@@ -13011,6 +13011,8 @@ export interface components {
         };
         /** QuizAnswerIn */
         QuizAnswerIn: {
+            /** Order */
+            order?: number[] | null;
             /** Question Id */
             question_id: number;
             /** Selected Index */
@@ -13232,6 +13234,11 @@ export interface components {
             category: string;
             /** Difficulty */
             difficulty: string;
+            /**
+             * Format
+             * @enum {string}
+             */
+            format?: "verdict" | "compare" | "order";
             /** Hint */
             hint?: string | null;
             /** Id */
@@ -13242,7 +13249,7 @@ export interface components {
              * Qtype
              * @enum {string}
              */
-            qtype: "mc" | "estimate";
+            qtype: "mc" | "estimate" | "order";
             /** Question */
             question: string;
             /** Range Max */
@@ -13280,6 +13287,8 @@ export interface components {
             correct: boolean;
             /** Correct Index */
             correct_index: number;
+            /** Correct Order */
+            correct_order?: number[];
             /** Detail */
             detail?: unknown;
             /** Explanation */
@@ -22425,4 +22434,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 4923d817d1ad36931068a52f84269f8883f132f5671a2e6cc58bd2b9098cb874
+// vertrag-sha256: 2ffc3c742164884581c406b07975c736f301231814101fece110ff0b6cfcf3f8

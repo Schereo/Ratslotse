@@ -29,7 +29,8 @@ class QuizMixin(StoreBasis):
     """Die Quiz-Abfragen — nur zum Mitvererben."""
 
     # Themen ohne Entität dahinter (kuratierte Spezial-Gebiete) → Anzeigename.
-    _THEMA_LABELS = {"haushalt": "Stadt-Haushalt"}
+    _THEMA_LABELS = {"haushalt": "Stadt-Haushalt", "antraege": "Anträge im Rat",
+                     "ratswahl-2026": "Ratswahl 2026"}
 
     def save_quiz_questions(self, rows: list[dict]) -> int:
         """Neue Quizfragen speichern; Duplikate (gleicher content_hash) werden
@@ -44,8 +45,8 @@ class QuizMixin(StoreBasis):
                     " correct_index, explanation, source_type, source_ref, content_hash, "
                     " status, qtype, answer_value, answer_unit, range_min, range_max, "
                     " detail, hint, topic, chart, lat, lon, place_label, geojson, image_url, image_author, image_license, "
-                    " image_license_url, image_source_url, appeal, generated_at) "
-                    "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    " image_license_url, image_source_url, appeal, format, generated_at) "
+                    "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                     (r["area_type"], r["area_key"], r["category"], r.get("difficulty", "medium"),
                      r["question"], json.dumps(r.get("options", []), ensure_ascii=False),
                      int(r.get("correct_index", 0)), r.get("explanation"),
@@ -56,7 +57,8 @@ class QuizMixin(StoreBasis):
                      r.get("detail"), r.get("hint"), r.get("topic"), r.get("chart"),
                      r.get("lat"), r.get("lon"), r.get("place_label"), r.get("geojson"),
                      r.get("image_url"), r.get("image_author"), r.get("image_license"),
-                     r.get("image_license_url"), r.get("image_source_url"), r.get("appeal"), now),
+                     r.get("image_license_url"), r.get("image_source_url"), r.get("appeal"),
+                     r.get("format"), now),
                 )
                 new += cur.rowcount
         return new
@@ -75,6 +77,10 @@ class QuizMixin(StoreBasis):
             "question": r["question"], "options": options, "qtype": qtype,
             "source_type": r["source_type"], "source_ref": r["source_ref"],
         }
+        # Bauform (verdict/compare) — die App kennt sie nicht und zeigt dann
+        # schlicht Multiple Choice mit zwei Antworten.
+        if "format" in keys and r["format"]:
+            out["format"] = r["format"]
         # Tipp gehört zur Frage (vor dem Auflösen anzeigbar), nicht zur Lösung.
         if "hint" in keys and r["hint"]:
             out["hint"] = r["hint"]
@@ -128,8 +134,13 @@ class QuizMixin(StoreBasis):
         ).fetchone()
         return self._quiz_row(r, with_answer=with_answer) if r else None
 
+    #: Fragetypen, die nur das Web darstellen kann. Die ausgelieferte App kennt
+    #: ``mc`` und ``estimate`` und zeigte eine Reihenfolge-Frage als Multiple
+    #: Choice mit einer richtigen Antwort — also falsch.
+    WEB_ONLY_QTYPES = ("order",)
+
     def pick_quiz_questions(self, areas: list[tuple[str, str]], categories: list[str] | None,
-                            exclude_ids: list[int] | None, limit: int) -> list[dict]:
+                            exclude_ids: list[int] | None, limit: int, *, web: bool = True) -> list[dict]:
         """Fragen für eine Runde: aus den gewählten Gebieten (area_type, area_key),
         optional auf Kategorien gefiltert, ohne die schon beantworteten
         (exclude_ids) — aufgefüllt mit beantworteten, falls sonst zu wenige.
@@ -142,6 +153,9 @@ class QuizMixin(StoreBasis):
         if categories:
             sql += f" AND category IN ({','.join('?' * len(categories))})"
             params += categories
+        if not web:
+            sql += f" AND qtype NOT IN ({','.join('?' * len(self.WEB_ONLY_QTYPES))})"
+            params += list(self.WEB_ONLY_QTYPES)
         rows = self._conn.execute(sql, params).fetchall()
         seen = set(exclude_ids or [])
         fresh = [r for r in rows if r["id"] not in seen]
@@ -156,15 +170,15 @@ class QuizMixin(StoreBasis):
         picked = (fresh + used)[:limit]
         return [self._quiz_row(r, with_answer=False) for r in picked]
 
-    def pick_quiz_questions_by_ids(self, ids: list[int], limit: int) -> list[dict]:
+    def pick_quiz_questions_by_ids(self, ids: list[int], limit: int, *, web: bool = True) -> list[dict]:
         """Aktive Fragen (OHNE Lösung) zu einer Id-Liste, gemischt und gedeckelt —
         für den „Meine Fehler"-Wiederholmodus. Retirte Fragen fallen raus."""
         if not ids:
             return []
         ph = ",".join("?" * len(ids))
-        rows = list(self._conn.execute(
+        rows = [r for r in self._conn.execute(
             f"SELECT * FROM council_quiz_questions WHERE id IN ({ph}) AND status = 'active'",
-            ids).fetchall())
+            ids).fetchall() if web or r["qtype"] not in self.WEB_ONLY_QTYPES]
         import random
         random.shuffle(rows)
         return [self._quiz_row(r, with_answer=False) for r in rows[:limit]]
@@ -174,7 +188,9 @@ class QuizMixin(StoreBasis):
         OHNE Lösung — derselbe Satz für alle an einem Tag. Über alle Gebiete,
         aber nur reizvolle: Sie ist das Schaufenster des Quiz."""
         ids = [r[0] for r in self._conn.execute(
-            "SELECT id FROM council_quiz_questions WHERE status = 'active' "
+            # Ohne Reihenfolge-Fragen: Die Challenge ist für alle dieselbe,
+            # auch für die App.
+            "SELECT id FROM council_quiz_questions WHERE status = 'active' AND qtype != 'order' "
             "AND (appeal IS NULL OR appeal >= ?) ORDER BY id", (MIN_APPEAL,)
         ).fetchall()]
         if not ids:
@@ -205,6 +221,28 @@ class QuizMixin(StoreBasis):
             self._conn.executemany(
                 "UPDATE council_quiz_questions SET appeal = ? WHERE id = ?",
                 [(n, qid) for qid, n in notes.items()])
+
+    def quiz_motion_rows(self, min_interest: int) -> list[sqlite3.Row]:
+        """Beschlüsse mit klarem Ausgang und Gesprächswert — der Rohstoff der
+        Antrags-Fragen (``council.quiz_formats.verdict_questions``)."""
+        return self._conn.execute(
+            "SELECT d.id, d.title, d.outcome, d.vote, d.interest, d.template_number, "
+            "       d.simple_summary, s.committee, s.session_date "
+            "FROM council_decisions d JOIN council_sessions s ON s.ksinr = d.ksinr "
+            "WHERE d.kind = 'decision' AND d.outcome IN ('accepted', 'rejected') "
+            "  AND COALESCE(d.interest, 0) >= ?", (min_interest,)).fetchall()
+
+    def quiz_product_rows(self, product_nos: list[str]) -> tuple[int | None, list[sqlite3.Row]]:
+        """(jüngstes Planjahr, dessen Zeilen der genannten Haushaltsprodukte) —
+        der Rohstoff der Vergleichsfragen."""
+        year = self._conn.execute("SELECT MAX(year) FROM council_products").fetchone()[0]
+        if year is None or not product_nos:
+            return None, []
+        ph = ",".join("?" * len(product_nos))
+        return year, self._conn.execute(
+            f"SELECT product_no, expenses, revenues, source_url FROM council_products "
+            f"WHERE year = ? AND product_no IN ({ph}) AND expenses > 0",
+            (year, *product_nos)).fetchall()
 
     def quiz_active_rows(self) -> list[dict]:
         """Alle aktiven Fragen als rohe Zeilen (Optionen entpackt) — für den
@@ -284,12 +322,13 @@ class QuizMixin(StoreBasis):
                 cur = self._conn.execute(
                     "UPDATE council_quiz_questions SET question = ?, hint = ?, "
                     "options = ?, correct_index = ?, chart = ?, explanation = ?, "
-                    "detail = ?, answer_value = ?, range_min = ?, range_max = ? "
+                    "detail = ?, answer_value = ?, range_min = ?, range_max = ?, "
+                    "source_ref = COALESCE(?, source_ref) "
                     "WHERE content_hash = ? AND status = 'active'",
                     (r.get("question"), r.get("hint"),
                      json.dumps(r.get("options") or [], ensure_ascii=False),
                      r.get("correct_index"), r.get("chart"), r.get("explanation"),
                      r.get("detail"), r.get("answer_value"), r.get("range_min"),
-                     r.get("range_max"), r["content_hash"]))
+                     r.get("range_max"), r.get("source_ref"), r["content_hash"]))
                 n += cur.rowcount
         return n

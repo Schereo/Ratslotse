@@ -1016,7 +1016,10 @@ class QuizQuestion(TypedDict):
     options: list[str]
     # Geschrieben ausschließlich von unserem eigenen Code („mc" beim Anlegen
     # eigener Fragen, „mc"/„estimate" bei den amtlichen) — deshalb benennbar.
-    qtype: Literal["mc", "estimate"]
+    qtype: Literal["mc", "estimate", "order"]
+    # Bauform aus ``council.quiz_formats`` — beide sind Multiple Choice mit
+    # zwei Antworten; wer das Feld nicht kennt (die App), zeigt sie so.
+    format: NotRequired[Literal["verdict", "compare", "order"]]
     source_type: NotRequired[str | None]
     source_ref: NotRequired[str | None]
     hint: NotRequired[str | None]
@@ -1046,6 +1049,8 @@ class QuizResult(TypedDict):
     chart: NotRequired[Any]
     answer_value: NotRequired[float | None]
     unit: NotRequired[str | None]
+    # Reihenfolge-Frage: die richtige Reihenfolge als Indizes, größter zuerst.
+    correct_order: NotRequired[list[int]]
 
 
 class QuizArea(TypedDict):

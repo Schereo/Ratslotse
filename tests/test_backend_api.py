@@ -6949,3 +6949,39 @@ def test_calendar_subscription_feed_und_rotation(client):
     assert r2.status_code == 200 and r2.json()["url"] != body["url"]
     assert client.get(pfad).status_code == 404
     assert client.get("/api/calendar/gibtsnicht.ics").status_code == 404
+
+
+def _seed_order_question():
+    import json as _json
+    store = CouncilStore(COUNCIL_DB)
+    chart = {"type": "bars", "title": "t", "unit": "Mio. Euro",
+             "items": [{"label": "C", "value": 30}, {"label": "A", "value": 20},
+                       {"label": "D", "value": 10}, {"label": "B", "value": 5}]}
+    store.save_quiz_questions([{
+        "area_type": "topic", "area_key": "haushalt", "category": "estimation", "difficulty": "medium",
+        "question": "Sortiere!", "qtype": "order", "format": "order", "options": ["A", "B", "C", "D"],
+        "correct_index": 0, "chart": _json.dumps(chart), "content_hash": "order-1"}])
+    qid = store.quiz_active_rows()[0]["id"]
+    store.close()
+    return qid
+
+
+def test_quiz_order_scores_by_swapped_pairs(client):
+    _register(client)
+    qid = _seed_order_question()
+    r = client.post("/api/quiz/answer", json={"question_id": qid, "order": [2, 0, 3, 1]}).json()
+    assert r["correct"] is True and r["points"] == 3 and r["correct_order"] == [2, 0, 3, 1]
+    r = client.post("/api/quiz/answer", json={"question_id": qid, "order": [0, 2, 3, 1]}).json()
+    assert r["correct"] is False and r["points"] == 2
+    assert client.post("/api/quiz/answer", json={"question_id": qid, "order": [0, 0, 1, 2]}).status_code == 400
+
+
+def test_quiz_order_never_reaches_the_app(client):
+    """Die App kennt `order` nicht — sie bekommt solche Fragen nicht, das Web schon;
+    die Tages-Challenge (für alle gleich) nie."""
+    _register(client)
+    _seed_order_question()
+    web = client.get("/api/quiz/round?areas=topic:haushalt").json()["questions"]
+    app = client.get("/api/quiz/round?areas=topic:haushalt", headers={"X-Client": "ios"}).json()["questions"]
+    assert [q["qtype"] for q in web] == ["order"] and app == []
+    assert client.get("/api/quiz/daily").json()["questions"] == []

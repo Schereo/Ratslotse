@@ -2095,6 +2095,7 @@ class SchemaMixin(StoreBasis):
             "image_url TEXT, image_author TEXT, image_license TEXT, "  # Foto (Wikimedia Commons)
             "image_license_url TEXT, image_source_url TEXT, "    # Bildnachweis
             "appeal INTEGER, "                                    # Richter-Note 1–5 (council.quiz.rate_appeal); NULL = unbenotet
+            "format TEXT, "                                       # verdict|compare (council.quiz_formats); NULL = gewöhnliche Frage
             "generated_at TEXT NOT NULL)"
         )
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_quiz_area ON council_quiz_questions(area_type, area_key)")
@@ -3799,6 +3800,7 @@ class SchemaMixin(StoreBasis):
         self._migrate_qa_feedback_source()
         self._migrate_quiz_hint()
         self._migrate_quiz_appeal()
+        self._migrate_quiz_format()
         self._migrate_produkt_steckbrief()
         self._migrate_herkunft()
         self._migrate_owner_id()
@@ -3910,6 +3912,15 @@ class SchemaMixin(StoreBasis):
         if cols and "appeal" not in cols:
             with self._conn:
                 self._conn.execute("ALTER TABLE council_quiz_questions ADD COLUMN appeal INTEGER")
+
+    def _migrate_quiz_format(self) -> None:
+        """Die Bauform einer Frage (09/2026): ``verdict`` (Angenommen oder
+        abgelehnt?) und ``compare`` (Wofür mehr?) aus ``council.quiz_formats``.
+        Leer heißt: gewöhnliche Frage, wie alles davor."""
+        cols = {r[1] for r in self._conn.execute("PRAGMA table_info(council_quiz_questions)").fetchall()}
+        if cols and "format" not in cols:
+            with self._conn:
+                self._conn.execute("ALTER TABLE council_quiz_questions ADD COLUMN format TEXT")
 
     def _migrate_produkt_steckbrief(self) -> None:
         """Produkt-Steckbrief (Kurzbeschreibung, Rechtsgrundlage, Spielraum,
