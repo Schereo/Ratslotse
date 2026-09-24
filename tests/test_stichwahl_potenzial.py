@@ -36,12 +36,12 @@ def test_die_ausgangslage_2026(vorgabe):
 
 def test_die_ratswahl_2026_und_nicht_die_generalprobe(vorgabe):
     """Die Prüfung vom 16.09.2026 (Codex) fand 37.430 CDU-Stimmen — das war
-    2021, aus der Generalprobe. 2026 sind es 34.335, und das sind Stimmen,
-    keine Personen: bis zu drei je Wählendem (2,91 im Schnitt)."""
+    2021, aus der Generalprobe. 2026 sind es 34.608 (amtlich; vorläufig 34.335), und das sind Stimmen,
+    keine Personen: bis zu drei je Wählendem (2,93 im Schnitt; vorläufig 2,91)."""
     p = vorgabe
-    assert p["cdu_council"] == 34335
-    assert p["votes_per_voter"] == 2.91
-    assert abs(p["cdu_voters_est"] - round(34335 / 2.91)) <= 60   # Rundung je Bezirk
+    assert p["cdu_council"] == 34608
+    assert p["votes_per_voter"] == 2.93
+    assert abs(p["cdu_voters_est"] - round(34608 / 2.93)) <= 60   # Rundung je Bezirk
     assert p["cdu_voters_est"] == sum(z["cdu_voters_est"] for z in p["districts"])
 
 

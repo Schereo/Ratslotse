@@ -8834,6 +8834,36 @@
         "title": "Districts",
         "type": "object"
       },
+      "ElectedAffiliation": {
+        "description": "Die Zugehörigkeit im neuen Rat, wo sie von der Wahlliste abweicht.",
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source": {
+            "title": "Source",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "label",
+          "note",
+          "source"
+        ],
+        "title": "ElectedAffiliation",
+        "type": "object"
+      },
       "ElectedCouncil": {
         "description": "Der gewählte Rat nach einer Ratswahl — bevor er in den Protokollen steht.",
         "properties": {
@@ -8896,6 +8926,39 @@
       "ElectedMember": {
         "description": "Eine Person mit Sitz im gewählten Rat (``app.election.elected``).\n\n``slug`` ist derselbe wie auf der Personen-Seite; ``has_profile`` sagt, ob\nes dort schon ein Profil aus den Protokollen gibt, ``council_status``, ob\ndie Person dem Rat schon angehörte (und nicht nur einen Ausschuss beriet).",
         "properties": {
+          "affiliation": {
+            "description": "Die Zugehörigkeit im neuen Rat, wo sie von der Wahlliste abweicht.",
+            "properties": {
+              "label": {
+                "title": "Label",
+                "type": "string"
+              },
+              "note": {
+                "title": "Note",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "source": {
+                "title": "Source",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "label",
+              "note",
+              "source"
+            ],
+            "title": "ElectedAffiliation",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
           "area": {
             "title": "Area",
             "type": "integer"
@@ -9009,7 +9072,8 @@
           "born",
           "has_profile",
           "council_status",
-          "council_terms"
+          "council_terms",
+          "affiliation"
         ],
         "title": "ElectedMember",
         "type": "object"
@@ -9029,6 +9093,13 @@
             "title": "Reason",
             "type": "string"
           },
+          "source": {
+            "title": "Source",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "successor": {
             "title": "Successor",
             "type": [
@@ -9041,7 +9112,8 @@
           "name",
           "list_short",
           "reason",
-          "successor"
+          "successor",
+          "source"
         ],
         "title": "ElectedVacancy",
         "type": "object"

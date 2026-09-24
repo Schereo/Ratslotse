@@ -1,5 +1,5 @@
 {
-  "zeitstempel": "14.09.2026 00:14",
+  "zeitstempel": "24.09.2026 12:31",
   "seitentitel": "Stadtratswahl 13.09.2026 - Stadt Oldenburg (Oldenburg) - Stadt Oldenburg",
   "Komponente": {
     "tabelle": {
@@ -10,8 +10,8 @@
             "labelKurz": "GRÜNE - Summe Partei- und Kandidaten-Stimmen",
             "labelLang": "BÜNDNIS 90/DIE GRÜNEN - Summe Partei- und Kandidaten-Stimmen"
           },
-          "zahl": "62.549",
-          "prozent": "24,94 %",
+          "zahl": "62.862",
+          "prozent": "24,91 %",
           "tagged": false
         },
         {
@@ -20,8 +20,8 @@
             "labelKurz": "GRÜNE - Stimmen für die Partei",
             "labelLang": "BÜNDNIS 90/DIE GRÜNEN - Stimmen für die Partei"
           },
-          "zahl": "40.477",
-          "prozent": "16,14 %",
+          "zahl": "40.762",
+          "prozent": "16,15 %",
           "tagged": false
         },
         {
@@ -30,16 +30,16 @@
             "labelKurz": "GRÜNE - Summe Kandidaten-Stimmen",
             "labelLang": "BÜNDNIS 90/DIE GRÜNEN - Summe Kandidaten-Stimmen"
           },
-          "zahl": "22.072",
-          "prozent": "8,80 %",
+          "zahl": "22.100",
+          "prozent": "8,76 %",
           "tagged": false,
           "sub_zeilen": [
             {
               "label": {
                 "labelKurz": "Nujdar Saed"
               },
-              "zahl": "1.784",
-              "prozent": "8,08 %",
+              "zahl": "1.789",
+              "prozent": "8,10 %",
               "tagged": false
             },
             {
@@ -47,14 +47,14 @@
                 "labelKurz": "Sina Berends"
               },
               "zahl": "1.392",
-              "prozent": "6,31 %",
+              "prozent": "6,30 %",
               "tagged": false
             },
             {
               "label": {
                 "labelKurz": "Susanne Menge"
               },
-              "zahl": "1.287",
+              "zahl": "1.289",
               "prozent": "5,83 %",
               "tagged": false
             },
@@ -63,7 +63,7 @@
                 "labelKurz": "Lena Nzume"
               },
               "zahl": "1.223",
-              "prozent": "5,54 %",
+              "prozent": "5,53 %",
               "tagged": false
             },
             {
@@ -71,7 +71,7 @@
                 "labelKurz": "Pia Schlieker"
               },
               "zahl": "1.138",
-              "prozent": "5,16 %",
+              "prozent": "5,15 %",
               "tagged": false
             },
             {
@@ -86,8 +86,8 @@
               "label": {
                 "labelKurz": "Annabelle Jandrich"
               },
-              "zahl": "823",
-              "prozent": "3,73 %",
+              "zahl": "827",
+              "prozent": "3,74 %",
               "tagged": false
             },
             {
@@ -95,7 +95,7 @@
                 "labelKurz": "Dara Bako"
               },
               "zahl": "690",
-              "prozent": "3,13 %",
+              "prozent": "3,12 %",
               "tagged": false
             },
             {
@@ -111,7 +111,7 @@
                 "labelKurz": "Oliver Rohde"
               },
               "zahl": "637",
-              "prozent": "2,89 %",
+              "prozent": "2,88 %",
               "tagged": false
             },
             {
@@ -127,14 +127,14 @@
                 "labelKurz": "Lucas Palma"
               },
               "zahl": "531",
-              "prozent": "2,41 %",
+              "prozent": "2,40 %",
               "tagged": false
             },
             {
               "label": {
                 "labelKurz": "Hermann Neemann"
               },
-              "zahl": "528",
+              "zahl": "529",
               "prozent": "2,39 %",
               "tagged": false
             },
@@ -151,14 +151,14 @@
                 "labelKurz": "Ruth Drügemöller"
               },
               "zahl": "485",
-              "prozent": "2,20 %",
+              "prozent": "2,19 %",
               "tagged": false
             },
             {
               "label": {
                 "labelKurz": "Dr. Benjamin Giesers"
               },
-              "zahl": "448",
+              "zahl": "449",
               "prozent": "2,03 %",
               "tagged": false
             },
@@ -167,7 +167,7 @@
                 "labelKurz": "Corinna Meyer"
               },
               "zahl": "447",
-              "prozent": "2,03 %",
+              "prozent": "2,02 %",
               "tagged": false
             },
             {
@@ -175,22 +175,22 @@
                 "labelKurz": "Berit Müller"
               },
               "zahl": "421",
-              "prozent": "1,91 %",
+              "prozent": "1,90 %",
               "tagged": false
             },
             {
               "label": {
                 "labelKurz": "David Droste"
               },
-              "zahl": "373",
-              "prozent": "1,69 %",
+              "zahl": "376",
+              "prozent": "1,70 %",
               "tagged": false
             },
             {
               "label": {
                 "labelKurz": "Tomma Hangen"
               },
-              "zahl": "357",
+              "zahl": "359",
               "prozent": "1,62 %",
               "tagged": false
             },
@@ -214,8 +214,8 @@
               "label": {
                 "labelKurz": "Ingrid Kruse"
               },
-              "zahl": "345",
-              "prozent": "1,56 %",
+              "zahl": "346",
+              "prozent": "1,57 %",
               "tagged": false
             },
             {
@@ -230,7 +230,7 @@
               "label": {
                 "labelKurz": "Alexandra Reith"
               },
-              "zahl": "308",
+              "zahl": "309",
               "prozent": "1,40 %",
               "tagged": false
             },
@@ -255,7 +255,7 @@
                 "labelKurz": "Bärbel Bode"
               },
               "zahl": "264",
-              "prozent": "1,20 %",
+              "prozent": "1,19 %",
               "tagged": false
             },
             {
@@ -271,7 +271,7 @@
                 "labelKurz": "Holly Melanie Dahnken"
               },
               "zahl": "233",
-              "prozent": "1,06 %",
+              "prozent": "1,05 %",
               "tagged": false
             },
             {
@@ -335,7 +335,15 @@
                 "labelKurz": "Jörn Haberzettl"
               },
               "zahl": "169",
-              "prozent": "0,77 %",
+              "prozent": "0,76 %",
+              "tagged": false
+            },
+            {
+              "label": {
+                "labelKurz": "Dr. Joachim Hinrichs"
+              },
+              "zahl": "168",
+              "prozent": "0,76 %",
               "tagged": false
             },
             {
@@ -344,14 +352,6 @@
               },
               "zahl": "167",
               "prozent": "0,76 %",
-              "tagged": false
-            },
-            {
-              "label": {
-                "labelKurz": "Dr. Joachim Hinrichs"
-              },
-              "zahl": "165",
-              "prozent": "0,75 %",
               "tagged": false
             },
             {
@@ -374,8 +374,8 @@
               "label": {
                 "labelKurz": "Carlo Kuhnert"
               },
-              "zahl": "160",
-              "prozent": "0,72 %",
+              "zahl": "162",
+              "prozent": "0,73 %",
               "tagged": false
             },
             {
@@ -438,8 +438,8 @@
               "label": {
                 "labelKurz": "Wilfried Schumann"
               },
-              "zahl": "116",
-              "prozent": "0,53 %",
+              "zahl": "119",
+              "prozent": "0,54 %",
               "tagged": false
             },
             {
@@ -490,8 +490,8 @@
             "labelKurz": "SPD - Summe Partei- und Kandidaten-Stimmen",
             "labelLang": "Sozialdemokratische Partei Deutschlands - Summe Partei- und Kandidaten-Stimmen"
           },
-          "zahl": "58.121",
-          "prozent": "23,17 %",
+          "zahl": "58.557",
+          "prozent": "23,20 %",
           "tagged": false
         },
         {
@@ -500,8 +500,8 @@
             "labelKurz": "SPD - Stimmen für die Partei",
             "labelLang": "Sozialdemokratische Partei Deutschlands - Stimmen für die Partei"
           },
-          "zahl": "28.919",
-          "prozent": "11,53 %",
+          "zahl": "29.269",
+          "prozent": "11,60 %",
           "tagged": false
         },
         {
@@ -510,24 +510,24 @@
             "labelKurz": "SPD - Summe Kandidaten-Stimmen",
             "labelLang": "Sozialdemokratische Partei Deutschlands - Summe Kandidaten-Stimmen"
           },
-          "zahl": "29.202",
-          "prozent": "11,64 %",
+          "zahl": "29.288",
+          "prozent": "11,60 %",
           "tagged": false,
           "sub_zeilen": [
             {
               "label": {
                 "labelKurz": "Ulf Prange"
               },
-              "zahl": "4.019",
-              "prozent": "13,76 %",
+              "zahl": "4.028",
+              "prozent": "13,75 %",
               "tagged": false
             },
             {
               "label": {
                 "labelKurz": "Nicole Piechotta"
               },
-              "zahl": "2.193",
-              "prozent": "7,51 %",
+              "zahl": "2.198",
+              "prozent": "7,50 %",
               "tagged": false
             },
             {
@@ -535,55 +535,63 @@
                 "labelKurz": "Bernhard Ellberg"
               },
               "zahl": "1.680",
-              "prozent": "5,75 %",
+              "prozent": "5,74 %",
               "tagged": false
             },
             {
               "label": {
                 "labelKurz": "Claudia Oeljeschläger"
               },
-              "zahl": "1.539",
-              "prozent": "5,27 %",
+              "zahl": "1.542",
+              "prozent": "5,26 %",
               "tagged": false
             },
             {
               "label": {
                 "labelKurz": "Paul Behrens"
               },
-              "zahl": "1.171",
-              "prozent": "4,01 %",
-              "tagged": false
-            },
-            {
-              "label": {
-                "labelKurz": "Joris Rastetter"
-              },
-              "zahl": "994",
-              "prozent": "3,40 %",
-              "tagged": false
-            },
-            {
-              "label": {
-                "labelKurz": "Dr. Mareike Witkowski"
-              },
-              "zahl": "993",
-              "prozent": "3,40 %",
+              "zahl": "1.172",
+              "prozent": "4,00 %",
               "tagged": false
             },
             {
               "label": {
                 "labelKurz": "Dr. Florian Fortmann"
               },
-              "zahl": "989",
-              "prozent": "3,39 %",
+              "zahl": "1.009",
+              "prozent": "3,45 %",
+              "tagged": false
+            },
+            {
+              "label": {
+                "labelKurz": "Dr. Mareike Witkowski"
+              },
+              "zahl": "998",
+              "prozent": "3,41 %",
+              "tagged": false
+            },
+            {
+              "label": {
+                "labelKurz": "Joris Rastetter"
+              },
+              "zahl": "996",
+              "prozent": "3,40 %",
               "tagged": false
             },
             {
               "label": {
                 "labelKurz": "Güzel Tulan"
               },
-              "zahl": "911",
-              "prozent": "3,12 %",
+              "zahl": "912",
+              "prozent": "3,11 %",
+              "tagged": false
+            },
+            {
+              "label": {
+                "labelKurz": "Germaid Eilers-Dörfler"
+              },
+              "zahl": "739",
+              "prozent": "2,52 %",
               "tagged": false
             },
             {
@@ -591,23 +599,15 @@
                 "labelKurz": "Kai Hollwege"
               },
               "zahl": "738",
-              "prozent": "2,53 %",
-              "tagged": false
-            },
-            {
-              "label": {
-                "labelKurz": "Germaid Eilers-Dörfler"
-              },
-              "zahl": "732",
-              "prozent": "2,51 %",
+              "prozent": "2,52 %",
               "tagged": false
             },
             {
               "label": {
                 "labelKurz": "Pascal Latko"
               },
-              "zahl": "684",
-              "prozent": "2,34 %",
+              "zahl": "689",
+              "prozent": "2,35 %",
               "tagged": false
             },
             {
@@ -622,8 +622,8 @@
               "label": {
                 "labelKurz": "Jannis Hadtstein"
               },
-              "zahl": "575",
-              "prozent": "1,97 %",
+              "zahl": "580",
+              "prozent": "1,98 %",
               "tagged": false
             },
             {
@@ -638,15 +638,15 @@
               "label": {
                 "labelKurz": "Tom Schröder"
               },
-              "zahl": "488",
-              "prozent": "1,67 %",
+              "zahl": "491",
+              "prozent": "1,68 %",
               "tagged": false
             },
             {
               "label": {
                 "labelKurz": "Marianne Schmeichel"
               },
-              "zahl": "436",
+              "zahl": "437",
               "prozent": "1,49 %",
               "tagged": false
             },
@@ -654,7 +654,7 @@
               "label": {
                 "labelKurz": "Yvonne Möhlenbrock-Woch"
               },
-              "zahl": "415",
+              "zahl": "416",
               "prozent": "1,42 %",
               "tagged": false
             },
@@ -662,7 +662,7 @@
               "label": {
                 "labelKurz": "Thomas Johannes Klein"
               },
-              "zahl": "408",
+              "zahl": "409",
               "prozent": "1,40 %",
               "tagged": false
             },
@@ -692,6 +692,14 @@
             },
             {
               "label": {
+                "labelKurz": "Doris Addicks"
+              },
+              "zahl": "325",
+              "prozent": "1,11 %",
+              "tagged": false
+            },
+            {
+              "label": {
                 "labelKurz": "Dr. Karl-Michael Werner"
               },
               "zahl": "324",
@@ -700,18 +708,10 @@
             },
             {
               "label": {
-                "labelKurz": "Doris Addicks"
-              },
-              "zahl": "321",
-              "prozent": "1,10 %",
-              "tagged": false
-            },
-            {
-              "label": {
                 "labelKurz": "Ana Majcher"
               },
-              "zahl": "292",
-              "prozent": "1,00 %",
+              "zahl": "296",
+              "prozent": "1,01 %",
               "tagged": false
             },
             {
@@ -719,7 +719,7 @@
                 "labelKurz": "Jens Freymuth"
               },
               "zahl": "285",
-              "prozent": "0,98 %",
+              "prozent": "0,97 %",
               "tagged": false
             },
             {
@@ -727,7 +727,7 @@
                 "labelKurz": "Malin Grahl"
               },
               "zahl": "276",
-              "prozent": "0,95 %",
+              "prozent": "0,94 %",
               "tagged": false
             },
             {
@@ -750,7 +750,7 @@
               "label": {
                 "labelKurz": "Birte Borgmann"
               },
-              "zahl": "268",
+              "zahl": "269",
               "prozent": "0,92 %",
               "tagged": false
             },
@@ -758,8 +758,8 @@
               "label": {
                 "labelKurz": "Rezgar Hussein"
               },
-              "zahl": "246",
-              "prozent": "0,84 %",
+              "zahl": "249",
+              "prozent": "0,85 %",
               "tagged": false
             },
             {
@@ -772,25 +772,25 @@
             },
             {
               "label": {
+                "labelKurz": "Alan Shamo"
+              },
+              "zahl": "226",
+              "prozent": "0,77 %",
+              "tagged": false
+            },
+            {
+              "label": {
                 "labelKurz": "Marion Eilts"
               },
               "zahl": "224",
-              "prozent": "0,77 %",
+              "prozent": "0,76 %",
               "tagged": false
             },
             {
               "label": {
                 "labelKurz": "Dr. Karsten Mohr"
               },
-              "zahl": "220",
-              "prozent": "0,75 %",
-              "tagged": false
-            },
-            {
-              "label": {
-                "labelKurz": "Alan Shamo"
-              },
-              "zahl": "219",
+              "zahl": "221",
               "prozent": "0,75 %",
               "tagged": false
             },
@@ -799,7 +799,7 @@
                 "labelKurz": "Christoph Sahm"
               },
               "zahl": "212",
-              "prozent": "0,73 %",
+              "prozent": "0,72 %",
               "tagged": false
             },
             {
@@ -852,18 +852,10 @@
             },
             {
               "label": {
-                "labelKurz": "Heike Rohwer"
+                "labelKurz": "Ursula Rump"
               },
               "zahl": "160",
               "prozent": "0,55 %",
-              "tagged": false
-            },
-            {
-              "label": {
-                "labelKurz": "Ursula Rump"
-              },
-              "zahl": "159",
-              "prozent": "0,54 %",
               "tagged": false
             },
             {
@@ -879,6 +871,14 @@
                 "labelKurz": "Sven Borgmann"
               },
               "zahl": "156",
+              "prozent": "0,53 %",
+              "tagged": false
+            },
+            {
+              "label": {
+                "labelKurz": "Heike Rohwer"
+              },
+              "zahl": "155",
               "prozent": "0,53 %",
               "tagged": false
             },
@@ -900,7 +900,7 @@
             },
             {
               "label": {
-                "labelKurz": "Nicolaas Cornelis Verkaik"
+                "labelKurz": "Ute Bauer"
               },
               "zahl": "145",
               "prozent": "0,50 %",
@@ -908,10 +908,10 @@
             },
             {
               "label": {
-                "labelKurz": "Ute Bauer"
+                "labelKurz": "Nicolaas Cornelis Verkaik"
               },
-              "zahl": "144",
-              "prozent": "0,49 %",
+              "zahl": "145",
+              "prozent": "0,50 %",
               "tagged": false
             },
             {
@@ -935,7 +935,7 @@
                 "labelKurz": "Iwo Felgendreher"
               },
               "zahl": "139",
-              "prozent": "0,48 %",
+              "prozent": "0,47 %",
               "tagged": false
             },
             {
@@ -943,14 +943,14 @@
                 "labelKurz": "Dieter Niebisch"
               },
               "zahl": "133",
-              "prozent": "0,46 %",
+              "prozent": "0,45 %",
               "tagged": false
             },
             {
               "label": {
                 "labelKurz": "Gabriela Wiegand"
               },
-              "zahl": "124",
+              "zahl": "123",
               "prozent": "0,42 %",
               "tagged": false
             },
@@ -998,7 +998,7 @@
               "label": {
                 "labelKurz": "Helga Wittig-Aßmus"
               },
-              "zahl": "93",
+              "zahl": "94",
               "prozent": "0,32 %",
               "tagged": false
             },
@@ -1030,7 +1030,7 @@
               "label": {
                 "labelKurz": "Malte Diehl"
               },
-              "zahl": "67",
+              "zahl": "66",
               "prozent": "0,23 %",
               "tagged": false
             },
@@ -1047,7 +1047,7 @@
                 "labelKurz": "Svenja Grebener"
               },
               "zahl": "60",
-              "prozent": "0,21 %",
+              "prozent": "0,20 %",
               "tagged": false
             },
             {
@@ -1055,7 +1055,7 @@
                 "labelKurz": "Sabine Kirchmayr"
               },
               "zahl": "57",
-              "prozent": "0,20 %",
+              "prozent": "0,19 %",
               "tagged": false
             },
             {
@@ -1070,7 +1070,7 @@
               "label": {
                 "labelKurz": "Miriam Bourehil"
               },
-              "zahl": "49",
+              "zahl": "50",
               "prozent": "0,17 %",
               "tagged": false
             },
@@ -1098,8 +1098,8 @@
             "labelKurz": "CDU - Summe Partei- und Kandidaten-Stimmen",
             "labelLang": "Christlich Demokratische Union Deutschlands in Niedersachsen - Summe Partei- und Kandidaten-Stimmen"
           },
-          "zahl": "34.335",
-          "prozent": "13,69 %",
+          "zahl": "34.608",
+          "prozent": "13,71 %",
           "tagged": false
         },
         {
@@ -1108,8 +1108,8 @@
             "labelKurz": "CDU - Stimmen für die Partei",
             "labelLang": "Christlich Demokratische Union Deutschlands in Niedersachsen - Stimmen für die Partei"
           },
-          "zahl": "17.866",
-          "prozent": "7,12 %",
+          "zahl": "18.103",
+          "prozent": "7,17 %",
           "tagged": false
         },
         {
@@ -1118,16 +1118,16 @@
             "labelKurz": "CDU - Summe Kandidaten-Stimmen",
             "labelLang": "Christlich Demokratische Union Deutschlands in Niedersachsen - Summe Kandidaten-Stimmen"
           },
-          "zahl": "16.469",
-          "prozent": "6,57 %",
+          "zahl": "16.505",
+          "prozent": "6,54 %",
           "tagged": false,
           "sub_zeilen": [
             {
               "label": {
                 "labelKurz": "Stefan Menke"
               },
-              "zahl": "1.526",
-              "prozent": "9,27 %",
+              "zahl": "1.534",
+              "prozent": "9,29 %",
               "tagged": false
             },
             {
@@ -1135,7 +1135,7 @@
                 "labelKurz": "Christoph Baak"
               },
               "zahl": "1.325",
-              "prozent": "8,05 %",
+              "prozent": "8,03 %",
               "tagged": false
             },
             {
@@ -1143,22 +1143,22 @@
                 "labelKurz": "Petra Averbeck"
               },
               "zahl": "1.304",
-              "prozent": "7,92 %",
+              "prozent": "7,90 %",
               "tagged": false
             },
             {
               "label": {
                 "labelKurz": "Barbara Woltmann"
               },
-              "zahl": "975",
-              "prozent": "5,92 %",
+              "zahl": "979",
+              "prozent": "5,93 %",
               "tagged": false
             },
             {
               "label": {
                 "labelKurz": "Christoph Faurie"
               },
-              "zahl": "700",
+              "zahl": "701",
               "prozent": "4,25 %",
               "tagged": false
             },
@@ -1166,16 +1166,16 @@
               "label": {
                 "labelKurz": "Hans-Georg Heß"
               },
-              "zahl": "693",
-              "prozent": "4,21 %",
+              "zahl": "692",
+              "prozent": "4,19 %",
               "tagged": false
             },
             {
               "label": {
                 "labelKurz": "Niklas Howad"
               },
-              "zahl": "637",
-              "prozent": "3,87 %",
+              "zahl": "640",
+              "prozent": "3,88 %",
               "tagged": false
             },
             {
@@ -1183,23 +1183,23 @@
                 "labelKurz": "Olaf Klaukien"
               },
               "zahl": "609",
-              "prozent": "3,70 %",
+              "prozent": "3,69 %",
               "tagged": false
             },
             {
               "label": {
                 "labelKurz": "Mats Meerbothe"
               },
-              "zahl": "515",
-              "prozent": "3,13 %",
+              "zahl": "519",
+              "prozent": "3,14 %",
               "tagged": false
             },
             {
               "label": {
                 "labelKurz": "Dr. Björn Siebler"
               },
-              "zahl": "477",
-              "prozent": "2,90 %",
+              "zahl": "481",
+              "prozent": "2,91 %",
               "tagged": false
             },
             {
@@ -1215,7 +1215,7 @@
                 "labelKurz": "Jan Gutzeit"
               },
               "zahl": "446",
-              "prozent": "2,71 %",
+              "prozent": "2,70 %",
               "tagged": false
             },
             {
@@ -1223,15 +1223,15 @@
                 "labelKurz": "Thomas Theilsiefje"
               },
               "zahl": "438",
-              "prozent": "2,66 %",
+              "prozent": "2,65 %",
               "tagged": false
             },
             {
               "label": {
                 "labelKurz": "Dr. Martin Niewerth"
               },
-              "zahl": "343",
-              "prozent": "2,08 %",
+              "zahl": "347",
+              "prozent": "2,10 %",
               "tagged": false
             },
             {
@@ -1239,7 +1239,7 @@
                 "labelKurz": "Uwe Hermann Mokros"
               },
               "zahl": "327",
-              "prozent": "1,99 %",
+              "prozent": "1,98 %",
               "tagged": false
             },
             {
@@ -1255,7 +1255,7 @@
                 "labelKurz": "Rita van Döllen-Mokros"
               },
               "zahl": "294",
-              "prozent": "1,79 %",
+              "prozent": "1,78 %",
               "tagged": false
             },
             {
@@ -1270,8 +1270,8 @@
               "label": {
                 "labelKurz": "Holger Grond"
               },
-              "zahl": "255",
-              "prozent": "1,55 %",
+              "zahl": "258",
+              "prozent": "1,56 %",
               "tagged": false
             },
             {
@@ -1279,7 +1279,7 @@
                 "labelKurz": "Anja Niebur"
               },
               "zahl": "240",
-              "prozent": "1,46 %",
+              "prozent": "1,45 %",
               "tagged": false
             },
             {
@@ -1294,7 +1294,7 @@
               "label": {
                 "labelKurz": "Björn Stuhr"
               },
-              "zahl": "222",
+              "zahl": "223",
               "prozent": "1,35 %",
               "tagged": false
             },
@@ -1303,7 +1303,7 @@
                 "labelKurz": "Tobias Freitag"
               },
               "zahl": "212",
-              "prozent": "1,29 %",
+              "prozent": "1,28 %",
               "tagged": false
             },
             {
@@ -1350,7 +1350,7 @@
               "label": {
                 "labelKurz": "Dirk Boshoven"
               },
-              "zahl": "133",
+              "zahl": "134",
               "prozent": "0,81 %",
               "tagged": false
             },
@@ -1359,7 +1359,7 @@
                 "labelKurz": "Wolfgang Seppel"
               },
               "zahl": "131",
-              "prozent": "0,80 %",
+              "prozent": "0,79 %",
               "tagged": false
             },
             {
@@ -1380,15 +1380,15 @@
             },
             {
               "label": {
-                "labelKurz": "Dr. Eberhard Haunhorst"
+                "labelKurz": "Tobias Tillmann"
               },
-              "zahl": "117",
+              "zahl": "118",
               "prozent": "0,71 %",
               "tagged": false
             },
             {
               "label": {
-                "labelKurz": "Tobias Tillmann"
+                "labelKurz": "Dr. Eberhard Haunhorst"
               },
               "zahl": "117",
               "prozent": "0,71 %",
@@ -1423,7 +1423,7 @@
                 "labelKurz": "Josef Pohlgeers"
               },
               "zahl": "108",
-              "prozent": "0,66 %",
+              "prozent": "0,65 %",
               "tagged": false
             },
             {
@@ -1447,7 +1447,7 @@
                 "labelKurz": "Sarah Lüken"
               },
               "zahl": "103",
-              "prozent": "0,63 %",
+              "prozent": "0,62 %",
               "tagged": false
             },
             {
@@ -1487,7 +1487,7 @@
                 "labelKurz": "Christina Meyer-Baak"
               },
               "zahl": "75",
-              "prozent": "0,46 %",
+              "prozent": "0,45 %",
               "tagged": false
             },
             {
@@ -1495,7 +1495,7 @@
                 "labelKurz": "Niclas Wiese"
               },
               "zahl": "70",
-              "prozent": "0,43 %",
+              "prozent": "0,42 %",
               "tagged": false
             },
             {
@@ -1503,7 +1503,7 @@
                 "labelKurz": "Marcel van Döllen"
               },
               "zahl": "70",
-              "prozent": "0,43 %",
+              "prozent": "0,42 %",
               "tagged": false
             },
             {
@@ -1551,7 +1551,7 @@
                 "labelKurz": "Frohe Angela Habermann"
               },
               "zahl": "42",
-              "prozent": "0,26 %",
+              "prozent": "0,25 %",
               "tagged": false
             },
             {
@@ -1559,7 +1559,7 @@
                 "labelKurz": "Rick Meinecke"
               },
               "zahl": "42",
-              "prozent": "0,26 %",
+              "prozent": "0,25 %",
               "tagged": false
             },
             {
@@ -1567,7 +1567,7 @@
                 "labelKurz": "Frank Möhle"
               },
               "zahl": "42",
-              "prozent": "0,26 %",
+              "prozent": "0,25 %",
               "tagged": false
             },
             {
@@ -1606,8 +1606,8 @@
               "label": {
                 "labelKurz": "Liselotte Möhle"
               },
-              "zahl": "34",
-              "prozent": "0,21 %",
+              "zahl": "37",
+              "prozent": "0,22 %",
               "tagged": false
             },
             {
@@ -1634,8 +1634,8 @@
             "labelKurz": "Die Linke - Summe Partei- und Kandidaten-Stimmen",
             "labelLang": "Die Linke - Summe Partei- und Kandidaten-Stimmen"
           },
-          "zahl": "32.651",
-          "prozent": "13,02 %",
+          "zahl": "32.750",
+          "prozent": "12,98 %",
           "tagged": false
         },
         {
@@ -1644,8 +1644,8 @@
             "labelKurz": "Die Linke - Stimmen für die Partei",
             "labelLang": "Die Linke - Stimmen für die Partei"
           },
-          "zahl": "22.024",
-          "prozent": "8,78 %",
+          "zahl": "22.102",
+          "prozent": "8,76 %",
           "tagged": false
         },
         {
@@ -1654,16 +1654,16 @@
             "labelKurz": "Die Linke - Summe Kandidaten-Stimmen",
             "labelLang": "Die Linke - Summe Kandidaten-Stimmen"
           },
-          "zahl": "10.627",
-          "prozent": "4,24 %",
+          "zahl": "10.648",
+          "prozent": "4,22 %",
           "tagged": false,
           "sub_zeilen": [
             {
               "label": {
                 "labelKurz": "Heike Boldt"
               },
-              "zahl": "1.375",
-              "prozent": "12,94 %",
+              "zahl": "1.379",
+              "prozent": "12,95 %",
               "tagged": false
             },
             {
@@ -1671,7 +1671,7 @@
                 "labelKurz": "Mousa Mazidi"
               },
               "zahl": "737",
-              "prozent": "6,94 %",
+              "prozent": "6,92 %",
               "tagged": false
             },
             {
@@ -1679,7 +1679,7 @@
                 "labelKurz": "Esther Dannemann-Janßen"
               },
               "zahl": "643",
-              "prozent": "6,05 %",
+              "prozent": "6,04 %",
               "tagged": false
             },
             {
@@ -1687,7 +1687,7 @@
                 "labelKurz": "Anna Brauer"
               },
               "zahl": "499",
-              "prozent": "4,70 %",
+              "prozent": "4,69 %",
               "tagged": false
             },
             {
@@ -1695,7 +1695,7 @@
                 "labelKurz": "Leylan Düman"
               },
               "zahl": "440",
-              "prozent": "4,14 %",
+              "prozent": "4,13 %",
               "tagged": false
             },
             {
@@ -1703,7 +1703,7 @@
                 "labelKurz": "Jacqueline Schulte"
               },
               "zahl": "337",
-              "prozent": "3,17 %",
+              "prozent": "3,16 %",
               "tagged": false
             },
             {
@@ -1711,7 +1711,7 @@
                 "labelKurz": "Serena Schmidt"
               },
               "zahl": "324",
-              "prozent": "3,05 %",
+              "prozent": "3,04 %",
               "tagged": false
             },
             {
@@ -1719,7 +1719,7 @@
                 "labelKurz": "Steven Haseloh"
               },
               "zahl": "308",
-              "prozent": "2,90 %",
+              "prozent": "2,89 %",
               "tagged": false
             },
             {
@@ -1734,23 +1734,23 @@
               "label": {
                 "labelKurz": "Sebastian Rodowski"
               },
-              "zahl": "295",
-              "prozent": "2,78 %",
+              "zahl": "298",
+              "prozent": "2,80 %",
               "tagged": false
             },
             {
               "label": {
                 "labelKurz": "Margareta Ostern"
               },
-              "zahl": "291",
-              "prozent": "2,74 %",
+              "zahl": "294",
+              "prozent": "2,76 %",
               "tagged": false
             },
             {
               "label": {
                 "labelKurz": "Anda Nicolae-Vladu"
               },
-              "zahl": "275",
+              "zahl": "276",
               "prozent": "2,59 %",
               "tagged": false
             },
@@ -1758,8 +1758,8 @@
               "label": {
                 "labelKurz": "Saskia Dierks"
               },
-              "zahl": "248",
-              "prozent": "2,33 %",
+              "zahl": "246",
+              "prozent": "2,31 %",
               "tagged": false
             },
             {
@@ -1767,7 +1767,7 @@
                 "labelKurz": "André Reil"
               },
               "zahl": "244",
-              "prozent": "2,30 %",
+              "prozent": "2,29 %",
               "tagged": false
             },
             {
@@ -1775,7 +1775,7 @@
                 "labelKurz": "Jan Galuska"
               },
               "zahl": "241",
-              "prozent": "2,27 %",
+              "prozent": "2,26 %",
               "tagged": false
             },
             {
@@ -1783,7 +1783,7 @@
                 "labelKurz": "Antje Magdalena Klinger"
               },
               "zahl": "239",
-              "prozent": "2,25 %",
+              "prozent": "2,24 %",
               "tagged": false
             },
             {
@@ -1798,8 +1798,8 @@
               "label": {
                 "labelKurz": "Mattis Teschner"
               },
-              "zahl": "221",
-              "prozent": "2,08 %",
+              "zahl": "224",
+              "prozent": "2,10 %",
               "tagged": false
             },
             {
@@ -1815,7 +1815,7 @@
                 "labelKurz": "Evelyn Schuckardt"
               },
               "zahl": "194",
-              "prozent": "1,83 %",
+              "prozent": "1,82 %",
               "tagged": false
             },
             {
@@ -1831,7 +1831,15 @@
                 "labelKurz": "Jelena Do"
               },
               "zahl": "173",
-              "prozent": "1,63 %",
+              "prozent": "1,62 %",
+              "tagged": false
+            },
+            {
+              "label": {
+                "labelKurz": "Anne-Katrin Strick"
+              },
+              "zahl": "173",
+              "prozent": "1,62 %",
               "tagged": false
             },
             {
@@ -1839,14 +1847,6 @@
                 "labelKurz": "Siri große Osterhues"
               },
               "zahl": "173",
-              "prozent": "1,63 %",
-              "tagged": false
-            },
-            {
-              "label": {
-                "labelKurz": "Anne-Katrin Strick"
-              },
-              "zahl": "172",
               "prozent": "1,62 %",
               "tagged": false
             },
@@ -1854,8 +1854,8 @@
               "label": {
                 "labelKurz": "Javed Rahimy"
               },
-              "zahl": "170",
-              "prozent": "1,60 %",
+              "zahl": "171",
+              "prozent": "1,61 %",
               "tagged": false
             },
             {
@@ -1863,7 +1863,7 @@
                 "labelKurz": "Arne Brix"
               },
               "zahl": "157",
-              "prozent": "1,48 %",
+              "prozent": "1,47 %",
               "tagged": false
             },
             {
@@ -1918,8 +1918,8 @@
               "label": {
                 "labelKurz": "Ulrich Schachtschneider"
               },
-              "zahl": "110",
-              "prozent": "1,04 %",
+              "zahl": "114",
+              "prozent": "1,07 %",
               "tagged": false
             },
             {
@@ -1974,7 +1974,7 @@
               "label": {
                 "labelKurz": "Michel Janßen"
               },
-              "zahl": "76",
+              "zahl": "77",
               "prozent": "0,72 %",
               "tagged": false
             },
@@ -1983,15 +1983,15 @@
                 "labelKurz": "Andrea Nanz"
               },
               "zahl": "74",
-              "prozent": "0,70 %",
+              "prozent": "0,69 %",
               "tagged": false
             },
             {
               "label": {
                 "labelKurz": "Paul Naujoks"
               },
-              "zahl": "72",
-              "prozent": "0,68 %",
+              "zahl": "73",
+              "prozent": "0,69 %",
               "tagged": false
             },
             {
@@ -2014,8 +2014,8 @@
               "label": {
                 "labelKurz": "Hendrik Jelschen"
               },
-              "zahl": "43",
-              "prozent": "0,40 %",
+              "zahl": "44",
+              "prozent": "0,41 %",
               "tagged": false
             },
             {
@@ -2034,8 +2034,8 @@
             "labelKurz": "FDP - Summe Partei- und Kandidaten-Stimmen",
             "labelLang": "Freie Demokratische Partei Landesverband Niedersachsen e.V. - Summe Partei- und Kandidaten-Stimmen"
           },
-          "zahl": "9.613",
-          "prozent": "3,83 %",
+          "zahl": "9.743",
+          "prozent": "3,86 %",
           "tagged": false
         },
         {
@@ -2044,8 +2044,8 @@
             "labelKurz": "FDP - Stimmen für die Partei",
             "labelLang": "Freie Demokratische Partei Landesverband Niedersachsen e.V. - Stimmen für die Partei"
           },
-          "zahl": "5.731",
-          "prozent": "2,28 %",
+          "zahl": "5.858",
+          "prozent": "2,32 %",
           "tagged": false
         },
         {
@@ -2054,8 +2054,8 @@
             "labelKurz": "FDP - Summe Kandidaten-Stimmen",
             "labelLang": "Freie Demokratische Partei Landesverband Niedersachsen e.V. - Summe Kandidaten-Stimmen"
           },
-          "zahl": "3.882",
-          "prozent": "1,55 %",
+          "zahl": "3.885",
+          "prozent": "1,54 %",
           "tagged": false,
           "sub_zeilen": [
             {
@@ -2063,7 +2063,7 @@
                 "labelKurz": "Dr. Gero Büsselmann"
               },
               "zahl": "534",
-              "prozent": "13,76 %",
+              "prozent": "13,75 %",
               "tagged": false
             },
             {
@@ -2078,8 +2078,8 @@
               "label": {
                 "labelKurz": "René Dittrich"
               },
-              "zahl": "297",
-              "prozent": "7,65 %",
+              "zahl": "300",
+              "prozent": "7,72 %",
               "tagged": false
             },
             {
@@ -2095,7 +2095,7 @@
                 "labelKurz": "Dr. Christian Schönberg"
               },
               "zahl": "166",
-              "prozent": "4,28 %",
+              "prozent": "4,27 %",
               "tagged": false
             },
             {
@@ -2191,7 +2191,7 @@
                 "labelKurz": "Dr. Jürgen Reinermann"
               },
               "zahl": "93",
-              "prozent": "2,40 %",
+              "prozent": "2,39 %",
               "tagged": false
             },
             {
@@ -2247,7 +2247,7 @@
                 "labelKurz": "Dr.Dr. Roland Zielke"
               },
               "zahl": "53",
-              "prozent": "1,37 %",
+              "prozent": "1,36 %",
               "tagged": false
             },
             {
@@ -2338,8 +2338,8 @@
             "labelKurz": "AfD Niedersachsen - Summe Partei- und Kandidaten-Stimmen",
             "labelLang": "Alternative für Deutschland - Niedersachsen - Summe Partei- und Kandidaten-Stimmen"
           },
-          "zahl": "22.136",
-          "prozent": "8,83 %",
+          "zahl": "22.254",
+          "prozent": "8,82 %",
           "tagged": false
         },
         {
@@ -2348,8 +2348,8 @@
             "labelKurz": "AfD Niedersachsen - Stimmen für die Partei",
             "labelLang": "Alternative für Deutschland - Niedersachsen - Stimmen für die Partei"
           },
-          "zahl": "14.110",
-          "prozent": "5,63 %",
+          "zahl": "14.165",
+          "prozent": "5,61 %",
           "tagged": false
         },
         {
@@ -2358,7 +2358,7 @@
             "labelKurz": "AfD Niedersachsen - Summe Kandidaten-Stimmen",
             "labelLang": "Alternative für Deutschland - Niedersachsen - Summe Kandidaten-Stimmen"
           },
-          "zahl": "8.026",
+          "zahl": "8.089",
           "prozent": "3,20 %",
           "tagged": false,
           "sub_zeilen": [
@@ -2366,48 +2366,48 @@
               "label": {
                 "labelKurz": "Lidia Bernhardt"
               },
-              "zahl": "1.681",
-              "prozent": "20,94 %",
+              "zahl": "1.698",
+              "prozent": "20,99 %",
               "tagged": false
             },
             {
               "label": {
                 "labelKurz": "Andreas Michael Paul"
               },
-              "zahl": "1.654",
-              "prozent": "20,61 %",
+              "zahl": "1.670",
+              "prozent": "20,65 %",
               "tagged": false
             },
             {
               "label": {
                 "labelKurz": "Felix Wolf"
               },
-              "zahl": "625",
-              "prozent": "7,79 %",
-              "tagged": false
-            },
-            {
-              "label": {
-                "labelKurz": "Alexander Llewellyn Sylvester Volk"
-              },
-              "zahl": "576",
-              "prozent": "7,18 %",
+              "zahl": "629",
+              "prozent": "7,78 %",
               "tagged": false
             },
             {
               "label": {
                 "labelKurz": "Ivan Poddubny"
               },
-              "zahl": "573",
-              "prozent": "7,14 %",
+              "zahl": "579",
+              "prozent": "7,16 %",
+              "tagged": false
+            },
+            {
+              "label": {
+                "labelKurz": "Alexander Llewellyn Sylvester Volk"
+              },
+              "zahl": "578",
+              "prozent": "7,15 %",
               "tagged": false
             },
             {
               "label": {
                 "labelKurz": "Adrian Pawlikowski"
               },
-              "zahl": "569",
-              "prozent": "7,09 %",
+              "zahl": "570",
+              "prozent": "7,05 %",
               "tagged": false
             },
             {
@@ -2415,15 +2415,15 @@
                 "labelKurz": "Elke Bruns"
               },
               "zahl": "435",
-              "prozent": "5,42 %",
+              "prozent": "5,38 %",
               "tagged": false
             },
             {
               "label": {
                 "labelKurz": "Eberhard Peusch"
               },
-              "zahl": "400",
-              "prozent": "4,98 %",
+              "zahl": "404",
+              "prozent": "4,99 %",
               "tagged": false
             },
             {
@@ -2431,39 +2431,39 @@
                 "labelKurz": "Alf Hans Rettkowski"
               },
               "zahl": "341",
-              "prozent": "4,25 %",
+              "prozent": "4,22 %",
               "tagged": false
             },
             {
               "label": {
                 "labelKurz": "Miriam Alexandra Tański"
               },
-              "zahl": "330",
-              "prozent": "4,11 %",
+              "zahl": "331",
+              "prozent": "4,09 %",
               "tagged": false
             },
             {
               "label": {
                 "labelKurz": "Gennadi Gast"
               },
-              "zahl": "303",
-              "prozent": "3,78 %",
+              "zahl": "309",
+              "prozent": "3,82 %",
               "tagged": false
             },
             {
               "label": {
                 "labelKurz": "Carina Anneliese Klara Esbensen"
               },
-              "zahl": "293",
-              "prozent": "3,65 %",
+              "zahl": "294",
+              "prozent": "3,63 %",
               "tagged": false
             },
             {
               "label": {
                 "labelKurz": "Jutta Annette Ziegeldorf"
               },
-              "zahl": "246",
-              "prozent": "3,07 %",
+              "zahl": "251",
+              "prozent": "3,10 %",
               "tagged": false
             }
           ]
@@ -2474,8 +2474,8 @@
             "labelKurz": "Volt - Summe Partei- und Kandidaten-Stimmen",
             "labelLang": "Volt Deutschland Landesverband Niedersachsen - Summe Partei- und Kandidaten-Stimmen"
           },
-          "zahl": "10.262",
-          "prozent": "4,09 %",
+          "zahl": "10.346",
+          "prozent": "4,10 %",
           "tagged": false
         },
         {
@@ -2484,8 +2484,8 @@
             "labelKurz": "Volt - Stimmen für die Partei",
             "labelLang": "Volt Deutschland Landesverband Niedersachsen - Stimmen für die Partei"
           },
-          "zahl": "7.002",
-          "prozent": "2,79 %",
+          "zahl": "7.086",
+          "prozent": "2,81 %",
           "tagged": false
         },
         {
@@ -2495,7 +2495,7 @@
             "labelLang": "Volt Deutschland Landesverband Niedersachsen - Summe Kandidaten-Stimmen"
           },
           "zahl": "3.260",
-          "prozent": "1,30 %",
+          "prozent": "1,29 %",
           "tagged": false,
           "sub_zeilen": [
             {
@@ -2610,8 +2610,8 @@
             "labelKurz": "PIRATEN - Summe Partei- und Kandidaten-Stimmen",
             "labelLang": "Piratenpartei Niedersachsen - Summe Partei- und Kandidaten-Stimmen"
           },
-          "zahl": "2.519",
-          "prozent": "1,00 %",
+          "zahl": "2.537",
+          "prozent": "1,01 %",
           "tagged": false
         },
         {
@@ -2620,7 +2620,7 @@
             "labelKurz": "PIRATEN - Stimmen für die Partei",
             "labelLang": "Piratenpartei Niedersachsen - Stimmen für die Partei"
           },
-          "zahl": "1.571",
+          "zahl": "1.585",
           "prozent": "0,63 %",
           "tagged": false
         },
@@ -2630,7 +2630,7 @@
             "labelKurz": "PIRATEN - Summe Kandidaten-Stimmen",
             "labelLang": "Piratenpartei Niedersachsen - Summe Kandidaten-Stimmen"
           },
-          "zahl": "948",
+          "zahl": "952",
           "prozent": "0,38 %",
           "tagged": false,
           "sub_zeilen": [
@@ -2639,7 +2639,7 @@
                 "labelKurz": "Nicole Wittfoot"
               },
               "zahl": "156",
-              "prozent": "16,46 %",
+              "prozent": "16,39 %",
               "tagged": false
             },
             {
@@ -2647,7 +2647,7 @@
                 "labelKurz": "Niklas Koopmann"
               },
               "zahl": "95",
-              "prozent": "10,02 %",
+              "prozent": "9,98 %",
               "tagged": false
             },
             {
@@ -2655,7 +2655,15 @@
                 "labelKurz": "Jan Köhler"
               },
               "zahl": "94",
-              "prozent": "9,92 %",
+              "prozent": "9,87 %",
+              "tagged": false
+            },
+            {
+              "label": {
+                "labelKurz": "Colin Harms"
+              },
+              "zahl": "84",
+              "prozent": "8,82 %",
               "tagged": false
             },
             {
@@ -2663,15 +2671,7 @@
                 "labelKurz": "Holger Lubitz"
               },
               "zahl": "81",
-              "prozent": "8,54 %",
-              "tagged": false
-            },
-            {
-              "label": {
-                "labelKurz": "Colin Harms"
-              },
-              "zahl": "80",
-              "prozent": "8,44 %",
+              "prozent": "8,51 %",
               "tagged": false
             },
             {
@@ -2679,7 +2679,7 @@
                 "labelKurz": "Christian Busse"
               },
               "zahl": "69",
-              "prozent": "7,28 %",
+              "prozent": "7,25 %",
               "tagged": false
             },
             {
@@ -2687,7 +2687,7 @@
                 "labelKurz": "Neele Padovan"
               },
               "zahl": "68",
-              "prozent": "7,17 %",
+              "prozent": "7,14 %",
               "tagged": false
             },
             {
@@ -2695,7 +2695,7 @@
                 "labelKurz": "Justin Ritter"
               },
               "zahl": "65",
-              "prozent": "6,86 %",
+              "prozent": "6,83 %",
               "tagged": false
             },
             {
@@ -2703,7 +2703,7 @@
                 "labelKurz": "Clemens Görcke"
               },
               "zahl": "61",
-              "prozent": "6,43 %",
+              "prozent": "6,41 %",
               "tagged": false
             },
             {
@@ -2711,7 +2711,7 @@
                 "labelKurz": "Norman Chapman"
               },
               "zahl": "59",
-              "prozent": "6,22 %",
+              "prozent": "6,20 %",
               "tagged": false
             },
             {
@@ -2719,7 +2719,7 @@
                 "labelKurz": "Daniela Jansen"
               },
               "zahl": "57",
-              "prozent": "6,01 %",
+              "prozent": "5,99 %",
               "tagged": false
             },
             {
@@ -2727,7 +2727,7 @@
                 "labelKurz": "Michael Pensler"
               },
               "zahl": "37",
-              "prozent": "3,90 %",
+              "prozent": "3,89 %",
               "tagged": false
             },
             {
@@ -2735,7 +2735,7 @@
                 "labelKurz": "Stefan Pyhel"
               },
               "zahl": "26",
-              "prozent": "2,74 %",
+              "prozent": "2,73 %",
               "tagged": false
             }
           ]
@@ -2746,7 +2746,7 @@
             "labelKurz": "BSW Niedersachsen - Summe Partei- und Kandidaten-Stimmen",
             "labelLang": "Bündnis Sahra Wagenknecht - Vernunft und Gerechtigkeit - Landesverband Niedersachsen - Summe Partei- und Kandidaten-Stimmen"
           },
-          "zahl": "4.141",
+          "zahl": "4.162",
           "prozent": "1,65 %",
           "tagged": false
         },
@@ -2756,8 +2756,8 @@
             "labelKurz": "BSW Niedersachsen - Stimmen für die Partei",
             "labelLang": "Bündnis Sahra Wagenknecht - Vernunft und Gerechtigkeit - Landesverband Niedersachsen - Stimmen für die Partei"
           },
-          "zahl": "2.773",
-          "prozent": "1,11 %",
+          "zahl": "2.788",
+          "prozent": "1,10 %",
           "tagged": false
         },
         {
@@ -2766,8 +2766,8 @@
             "labelKurz": "BSW Niedersachsen - Summe Kandidaten-Stimmen",
             "labelLang": "Bündnis Sahra Wagenknecht - Vernunft und Gerechtigkeit - Landesverband Niedersachsen - Summe Kandidaten-Stimmen"
           },
-          "zahl": "1.368",
-          "prozent": "0,55 %",
+          "zahl": "1.374",
+          "prozent": "0,54 %",
           "tagged": false,
           "sub_zeilen": [
             {
@@ -2775,7 +2775,7 @@
                 "labelKurz": "Dr. Holger Onken"
               },
               "zahl": "252",
-              "prozent": "18,42 %",
+              "prozent": "18,34 %",
               "tagged": false
             },
             {
@@ -2783,15 +2783,15 @@
                 "labelKurz": "Hans-Henning Adler"
               },
               "zahl": "249",
-              "prozent": "18,20 %",
+              "prozent": "18,12 %",
               "tagged": false
             },
             {
               "label": {
                 "labelKurz": "Kerstin Wieser"
               },
-              "zahl": "211",
-              "prozent": "15,42 %",
+              "zahl": "214",
+              "prozent": "15,57 %",
               "tagged": false
             },
             {
@@ -2799,7 +2799,7 @@
                 "labelKurz": "Anette Meyburg"
               },
               "zahl": "162",
-              "prozent": "11,84 %",
+              "prozent": "11,79 %",
               "tagged": false
             },
             {
@@ -2807,7 +2807,7 @@
                 "labelKurz": "Steffen Schumann"
               },
               "zahl": "156",
-              "prozent": "11,40 %",
+              "prozent": "11,35 %",
               "tagged": false
             },
             {
@@ -2815,15 +2815,15 @@
                 "labelKurz": "Heinz Reinmold"
               },
               "zahl": "148",
-              "prozent": "10,82 %",
+              "prozent": "10,77 %",
               "tagged": false
             },
             {
               "label": {
                 "labelKurz": "Helmut Cordes"
               },
-              "zahl": "98",
-              "prozent": "7,16 %",
+              "zahl": "101",
+              "prozent": "7,35 %",
               "tagged": false
             },
             {
@@ -2831,7 +2831,7 @@
                 "labelKurz": "Gerrit Krull"
               },
               "zahl": "92",
-              "prozent": "6,73 %",
+              "prozent": "6,70 %",
               "tagged": false
             }
           ]
@@ -2842,7 +2842,7 @@
             "labelKurz": "DAVA-Niedersachsen - Summe Partei- und Kandidaten-Stimmen",
             "labelLang": "DAVA-Niedersachsen - Summe Partei- und Kandidaten-Stimmen"
           },
-          "zahl": "579",
+          "zahl": "592",
           "prozent": "0,23 %",
           "tagged": false
         },
@@ -2852,7 +2852,7 @@
             "labelKurz": "DAVA-Niedersachsen - Stimmen für die Partei",
             "labelLang": "DAVA-Niedersachsen - Stimmen für die Partei"
           },
-          "zahl": "329",
+          "zahl": "336",
           "prozent": "0,13 %",
           "tagged": false
         },
@@ -2862,7 +2862,7 @@
             "labelKurz": "DAVA-Niedersachsen - Summe Kandidaten-Stimmen",
             "labelLang": "DAVA-Niedersachsen - Summe Kandidaten-Stimmen"
           },
-          "zahl": "250",
+          "zahl": "256",
           "prozent": "0,10 %",
           "tagged": false,
           "sub_zeilen": [
@@ -2870,8 +2870,8 @@
               "label": {
                 "labelKurz": "Yakup Castur"
               },
-              "zahl": "99",
-              "prozent": "39,60 %",
+              "zahl": "105",
+              "prozent": "41,02 %",
               "tagged": false
             },
             {
@@ -2879,7 +2879,7 @@
                 "labelKurz": "Murat Görgülü"
               },
               "zahl": "69",
-              "prozent": "27,60 %",
+              "prozent": "26,95 %",
               "tagged": false
             },
             {
@@ -2887,7 +2887,7 @@
                 "labelKurz": "Hammoud Alsaleh"
               },
               "zahl": "53",
-              "prozent": "21,20 %",
+              "prozent": "20,70 %",
               "tagged": false
             },
             {
@@ -2895,7 +2895,7 @@
                 "labelKurz": "Ali Yenilmez"
               },
               "zahl": "29",
-              "prozent": "11,60 %",
+              "prozent": "11,33 %",
               "tagged": false
             }
           ]
@@ -2906,7 +2906,7 @@
             "labelKurz": "Michael Stille, Einzelwahlvorschlag",
             "labelLang": "Michael Stille, Einzelwahlvorschlag"
           },
-          "zahl": "123",
+          "zahl": "124",
           "prozent": "0,05 %",
           "tagged": false
         },
@@ -2916,7 +2916,7 @@
             "labelKurz": "Die PARTEI - Summe Partei- und Kandidaten-Stimmen",
             "labelLang": "Partei für Arbeit, Rechtsstaat, Tierschutz, Elitenförderung und basisdemokratische Initiative - Landesverband Niedersachsen - Summe Partei- und Kandidaten-Stimmen"
           },
-          "zahl": "2.081",
+          "zahl": "2.098",
           "prozent": "0,83 %",
           "tagged": false
         },
@@ -2926,7 +2926,7 @@
             "labelKurz": "Die PARTEI - Stimmen für die Partei",
             "labelLang": "Partei für Arbeit, Rechtsstaat, Tierschutz, Elitenförderung und basisdemokratische Initiative - Landesverband Niedersachsen - Stimmen für die Partei"
           },
-          "zahl": "1.422",
+          "zahl": "1.439",
           "prozent": "0,57 %",
           "tagged": false
         },
@@ -2996,7 +2996,7 @@
             "labelKurz": "PGM NDS - Summe Partei- und Kandidaten-Stimmen",
             "labelLang": "Partei für Gerechtigkeit und Menschlichkeit, Landesverband Niedersachsen - Summe Partei- und Kandidaten-Stimmen"
           },
-          "zahl": "980",
+          "zahl": "981",
           "prozent": "0,39 %",
           "tagged": false
         },
@@ -3006,8 +3006,8 @@
             "labelKurz": "PGM NDS - Stimmen für die Partei",
             "labelLang": "Partei für Gerechtigkeit und Menschlichkeit, Landesverband Niedersachsen - Stimmen für die Partei"
           },
-          "zahl": "721",
-          "prozent": "0,29 %",
+          "zahl": "719",
+          "prozent": "0,28 %",
           "tagged": false
         },
         {
@@ -3016,7 +3016,7 @@
             "labelKurz": "PGM NDS - Summe Kandidaten-Stimmen",
             "labelLang": "Partei für Gerechtigkeit und Menschlichkeit, Landesverband Niedersachsen - Summe Kandidaten-Stimmen"
           },
-          "zahl": "259",
+          "zahl": "262",
           "prozent": "0,10 %",
           "tagged": false,
           "sub_zeilen": [
@@ -3024,8 +3024,8 @@
               "label": {
                 "labelKurz": "Susan Cleeves"
               },
-              "zahl": "63",
-              "prozent": "24,32 %",
+              "zahl": "66",
+              "prozent": "25,19 %",
               "tagged": false
             },
             {
@@ -3033,7 +3033,7 @@
                 "labelKurz": "Nico Jirsa"
               },
               "zahl": "51",
-              "prozent": "19,69 %",
+              "prozent": "19,47 %",
               "tagged": false
             },
             {
@@ -3041,7 +3041,7 @@
                 "labelKurz": "Domenik Lemper"
               },
               "zahl": "46",
-              "prozent": "17,76 %",
+              "prozent": "17,56 %",
               "tagged": false
             },
             {
@@ -3049,7 +3049,7 @@
                 "labelKurz": "Lukas Graff"
               },
               "zahl": "36",
-              "prozent": "13,90 %",
+              "prozent": "13,74 %",
               "tagged": false
             },
             {
@@ -3057,7 +3057,7 @@
                 "labelKurz": "Norgand Schwarzlose"
               },
               "zahl": "30",
-              "prozent": "11,58 %",
+              "prozent": "11,45 %",
               "tagged": false
             },
             {
@@ -3065,7 +3065,7 @@
                 "labelKurz": "Felix Simon"
               },
               "zahl": "17",
-              "prozent": "6,56 %",
+              "prozent": "6,49 %",
               "tagged": false
             },
             {
@@ -3073,7 +3073,7 @@
                 "labelKurz": "Sven Barger"
               },
               "zahl": "16",
-              "prozent": "6,18 %",
+              "prozent": "6,11 %",
               "tagged": false
             }
           ]
@@ -3084,7 +3084,7 @@
             "labelKurz": "BB-OL - Summe Partei- und Kandidaten-Stimmen",
             "labelLang": "Bürger Bündnis Oldenburg - Summe Partei- und Kandidaten-Stimmen"
           },
-          "zahl": "5.597",
+          "zahl": "5.641",
           "prozent": "2,23 %",
           "tagged": false
         },
@@ -3094,8 +3094,8 @@
             "labelKurz": "BB-OL - Stimmen für die Partei",
             "labelLang": "Bürger Bündnis Oldenburg - Stimmen für die Partei"
           },
-          "zahl": "3.385",
-          "prozent": "1,35 %",
+          "zahl": "3.425",
+          "prozent": "1,36 %",
           "tagged": false
         },
         {
@@ -3104,7 +3104,7 @@
             "labelKurz": "BB-OL - Summe Kandidaten-Stimmen",
             "labelLang": "Bürger Bündnis Oldenburg - Summe Kandidaten-Stimmen"
           },
-          "zahl": "2.212",
+          "zahl": "2.216",
           "prozent": "0,88 %",
           "tagged": false,
           "sub_zeilen": [
@@ -3112,7 +3112,7 @@
               "label": {
                 "labelKurz": "Holger Martin Wilkens"
               },
-              "zahl": "470",
+              "zahl": "471",
               "prozent": "21,25 %",
               "tagged": false
             },
@@ -3121,7 +3121,7 @@
                 "labelKurz": "Andreas Sander"
               },
               "zahl": "398",
-              "prozent": "17,99 %",
+              "prozent": "17,96 %",
               "tagged": false
             },
             {
@@ -3129,7 +3129,7 @@
                 "labelKurz": "Mladen Drijenčić"
               },
               "zahl": "167",
-              "prozent": "7,55 %",
+              "prozent": "7,54 %",
               "tagged": false
             },
             {
@@ -3137,15 +3137,15 @@
                 "labelKurz": "Olaf Balvert"
               },
               "zahl": "153",
-              "prozent": "6,92 %",
+              "prozent": "6,90 %",
               "tagged": false
             },
             {
               "label": {
                 "labelKurz": "Olaf Cording"
               },
-              "zahl": "135",
-              "prozent": "6,10 %",
+              "zahl": "136",
+              "prozent": "6,14 %",
               "tagged": false
             },
             {
@@ -3153,7 +3153,7 @@
                 "labelKurz": "Ubbo Voss"
               },
               "zahl": "125",
-              "prozent": "5,65 %",
+              "prozent": "5,64 %",
               "tagged": false
             },
             {
@@ -3161,7 +3161,7 @@
                 "labelKurz": "Claudia Scholz"
               },
               "zahl": "123",
-              "prozent": "5,56 %",
+              "prozent": "5,55 %",
               "tagged": false
             },
             {
@@ -3169,7 +3169,7 @@
                 "labelKurz": "Frank Hammerschmidt"
               },
               "zahl": "109",
-              "prozent": "4,93 %",
+              "prozent": "4,92 %",
               "tagged": false
             },
             {
@@ -3177,7 +3177,7 @@
                 "labelKurz": "Peter Proske"
               },
               "zahl": "99",
-              "prozent": "4,48 %",
+              "prozent": "4,47 %",
               "tagged": false
             },
             {
@@ -3185,7 +3185,7 @@
                 "labelKurz": "Nastassja Wilkens"
               },
               "zahl": "90",
-              "prozent": "4,07 %",
+              "prozent": "4,06 %",
               "tagged": false
             },
             {
@@ -3209,23 +3209,23 @@
                 "labelKurz": "Thorsten Frankenberg"
               },
               "zahl": "59",
-              "prozent": "2,67 %",
+              "prozent": "2,66 %",
               "tagged": false
             },
             {
               "label": {
                 "labelKurz": "Jasmina Braße"
               },
-              "zahl": "52",
-              "prozent": "2,35 %",
+              "zahl": "53",
+              "prozent": "2,39 %",
               "tagged": false
             },
             {
               "label": {
                 "labelKurz": "Birgitt Voss-Jaeger"
               },
-              "zahl": "40",
-              "prozent": "1,81 %",
+              "zahl": "41",
+              "prozent": "1,85 %",
               "tagged": false
             },
             {
@@ -3233,7 +3233,7 @@
                 "labelKurz": "Florentine Proske"
               },
               "zahl": "34",
-              "prozent": "1,54 %",
+              "prozent": "1,53 %",
               "tagged": false
             },
             {
@@ -3241,7 +3241,7 @@
                 "labelKurz": "Calvin Klaus"
               },
               "zahl": "32",
-              "prozent": "1,45 %",
+              "prozent": "1,44 %",
               "tagged": false
             }
           ]
@@ -3252,7 +3252,7 @@
             "labelKurz": "Echt Oldenburg - Summe Partei- und Kandidaten-Stimmen",
             "labelLang": "Echt Oldenburg - Summe Partei- und Kandidaten-Stimmen"
           },
-          "zahl": "3.447",
+          "zahl": "3.459",
           "prozent": "1,37 %",
           "tagged": false
         },
@@ -3262,7 +3262,7 @@
             "labelKurz": "Echt Oldenburg - Stimmen für die Partei",
             "labelLang": "Echt Oldenburg - Stimmen für die Partei"
           },
-          "zahl": "1.779",
+          "zahl": "1.789",
           "prozent": "0,71 %",
           "tagged": false
         },
@@ -3272,8 +3272,8 @@
             "labelKurz": "Echt Oldenburg - Summe Kandidaten-Stimmen",
             "labelLang": "Echt Oldenburg - Summe Kandidaten-Stimmen"
           },
-          "zahl": "1.668",
-          "prozent": "0,67 %",
+          "zahl": "1.670",
+          "prozent": "0,66 %",
           "tagged": false,
           "sub_zeilen": [
             {
@@ -3281,23 +3281,23 @@
                 "labelKurz": "Ralf Butzin"
               },
               "zahl": "605",
-              "prozent": "36,27 %",
+              "prozent": "36,23 %",
               "tagged": false
             },
             {
               "label": {
                 "labelKurz": "Liane Neumann"
               },
-              "zahl": "311",
-              "prozent": "18,65 %",
+              "zahl": "314",
+              "prozent": "18,80 %",
               "tagged": false
             },
             {
               "label": {
                 "labelKurz": "Stephan Seibel"
               },
-              "zahl": "258",
-              "prozent": "15,47 %",
+              "zahl": "257",
+              "prozent": "15,39 %",
               "tagged": false
             },
             {
@@ -3305,7 +3305,7 @@
                 "labelKurz": "Klaus Ludwig"
               },
               "zahl": "203",
-              "prozent": "12,17 %",
+              "prozent": "12,16 %",
               "tagged": false
             },
             {
@@ -3313,7 +3313,7 @@
                 "labelKurz": "Thomas Nespethal"
               },
               "zahl": "185",
-              "prozent": "11,09 %",
+              "prozent": "11,08 %",
               "tagged": false
             },
             {
@@ -3332,7 +3332,7 @@
             "labelKurz": "WFO - Summe Partei- und Kandidaten-Stimmen",
             "labelLang": "Wählergemeinschaft Für Oldenburg - Summe Partei- und Kandidaten-Stimmen"
           },
-          "zahl": "1.682",
+          "zahl": "1.686",
           "prozent": "0,67 %",
           "tagged": false
         },
@@ -3342,7 +3342,7 @@
             "labelKurz": "WFO - Stimmen für die Partei",
             "labelLang": "Wählergemeinschaft Für Oldenburg - Stimmen für die Partei"
           },
-          "zahl": "1.046",
+          "zahl": "1.052",
           "prozent": "0,42 %",
           "tagged": false
         },
@@ -3352,7 +3352,7 @@
             "labelKurz": "WFO - Summe Kandidaten-Stimmen",
             "labelLang": "Wählergemeinschaft Für Oldenburg - Summe Kandidaten-Stimmen"
           },
-          "zahl": "636",
+          "zahl": "634",
           "prozent": "0,25 %",
           "tagged": false,
           "sub_zeilen": [
@@ -3361,7 +3361,7 @@
                 "labelKurz": "Franz Norrenbrock"
               },
               "zahl": "76",
-              "prozent": "11,95 %",
+              "prozent": "11,99 %",
               "tagged": false
             },
             {
@@ -3369,7 +3369,7 @@
                 "labelKurz": "Ralf Rüdiger"
               },
               "zahl": "65",
-              "prozent": "10,22 %",
+              "prozent": "10,25 %",
               "tagged": false
             },
             {
@@ -3377,7 +3377,7 @@
                 "labelKurz": "Laura Maerz"
               },
               "zahl": "51",
-              "prozent": "8,02 %",
+              "prozent": "8,04 %",
               "tagged": false
             },
             {
@@ -3385,15 +3385,7 @@
                 "labelKurz": "Ursel Krause"
               },
               "zahl": "44",
-              "prozent": "6,92 %",
-              "tagged": false
-            },
-            {
-              "label": {
-                "labelKurz": "Stefan Hoekstra"
-              },
-              "zahl": "36",
-              "prozent": "5,66 %",
+              "prozent": "6,94 %",
               "tagged": false
             },
             {
@@ -3401,7 +3393,15 @@
                 "labelKurz": "Dominique Hartmann"
               },
               "zahl": "35",
-              "prozent": "5,50 %",
+              "prozent": "5,52 %",
+              "tagged": false
+            },
+            {
+              "label": {
+                "labelKurz": "Stefan Hoekstra"
+              },
+              "zahl": "35",
+              "prozent": "5,52 %",
               "tagged": false
             },
             {
@@ -3409,7 +3409,7 @@
                 "labelKurz": "Ingrid Meyer"
               },
               "zahl": "33",
-              "prozent": "5,19 %",
+              "prozent": "5,21 %",
               "tagged": false
             },
             {
@@ -3417,7 +3417,7 @@
                 "labelKurz": "Sarah Aytan"
               },
               "zahl": "28",
-              "prozent": "4,40 %",
+              "prozent": "4,42 %",
               "tagged": false
             },
             {
@@ -3425,7 +3425,7 @@
                 "labelKurz": "Michele Hartmann"
               },
               "zahl": "25",
-              "prozent": "3,93 %",
+              "prozent": "3,94 %",
               "tagged": false
             },
             {
@@ -3433,7 +3433,7 @@
                 "labelKurz": "Jannik Engelberts"
               },
               "zahl": "24",
-              "prozent": "3,77 %",
+              "prozent": "3,79 %",
               "tagged": false
             },
             {
@@ -3441,7 +3441,7 @@
                 "labelKurz": "Holger Ulrich Kruse"
               },
               "zahl": "23",
-              "prozent": "3,62 %",
+              "prozent": "3,63 %",
               "tagged": false
             },
             {
@@ -3449,7 +3449,7 @@
                 "labelKurz": "Weronika Justyna Baumann"
               },
               "zahl": "22",
-              "prozent": "3,46 %",
+              "prozent": "3,47 %",
               "tagged": false
             },
             {
@@ -3457,7 +3457,7 @@
                 "labelKurz": "Sophie-Marie Kruse"
               },
               "zahl": "21",
-              "prozent": "3,30 %",
+              "prozent": "3,31 %",
               "tagged": false
             },
             {
@@ -3465,7 +3465,7 @@
                 "labelKurz": "Klaus-Dieter Dreyer"
               },
               "zahl": "19",
-              "prozent": "2,99 %",
+              "prozent": "3,00 %",
               "tagged": false
             },
             {
@@ -3473,7 +3473,7 @@
                 "labelKurz": "Peter Höpner"
               },
               "zahl": "19",
-              "prozent": "2,99 %",
+              "prozent": "3,00 %",
               "tagged": false
             },
             {
@@ -3481,7 +3481,7 @@
                 "labelKurz": "Luca Krause"
               },
               "zahl": "18",
-              "prozent": "2,83 %",
+              "prozent": "2,84 %",
               "tagged": false
             },
             {
@@ -3489,7 +3489,7 @@
                 "labelKurz": "Heinrich Kreuzwieser"
               },
               "zahl": "17",
-              "prozent": "2,67 %",
+              "prozent": "2,68 %",
               "tagged": false
             },
             {
@@ -3497,7 +3497,7 @@
                 "labelKurz": "Philipp Haak"
               },
               "zahl": "14",
-              "prozent": "2,20 %",
+              "prozent": "2,21 %",
               "tagged": false
             },
             {
@@ -3505,15 +3505,15 @@
                 "labelKurz": "Thea Schmidt"
               },
               "zahl": "14",
-              "prozent": "2,20 %",
+              "prozent": "2,21 %",
               "tagged": false
             },
             {
               "label": {
                 "labelKurz": "Dieter Schneider"
               },
-              "zahl": "13",
-              "prozent": "2,04 %",
+              "zahl": "12",
+              "prozent": "1,89 %",
               "tagged": false
             },
             {
@@ -3521,7 +3521,7 @@
                 "labelKurz": "Harald Schneider"
               },
               "zahl": "11",
-              "prozent": "1,73 %",
+              "prozent": "1,74 %",
               "tagged": false
             },
             {
@@ -3529,7 +3529,7 @@
                 "labelKurz": "Heike Killian"
               },
               "zahl": "10",
-              "prozent": "1,57 %",
+              "prozent": "1,58 %",
               "tagged": false
             },
             {
@@ -3537,7 +3537,7 @@
                 "labelKurz": "Maike Weigelt"
               },
               "zahl": "10",
-              "prozent": "1,57 %",
+              "prozent": "1,58 %",
               "tagged": false
             },
             {
@@ -3609,31 +3609,31 @@
             "label": {
               "labelKurz": "Wähler/-innen"
             },
-            "zahl": "86.082",
-            "prozent": "63,52 %",
+            "zahl": "86.051",
+            "prozent": "63,50 %",
             "tagged": false
           },
           {
             "label": {
               "labelKurz": "ungültige Stimmzettel"
             },
-            "zahl": "938",
-            "prozent": "1,09 %",
+            "zahl": "835",
+            "prozent": "0,97 %",
             "tagged": false
           },
           {
             "label": {
               "labelKurz": "gültige Stimmzettel"
             },
-            "zahl": "85.144",
-            "prozent": "98,91 %",
+            "zahl": "85.216",
+            "prozent": "99,03 %",
             "tagged": false
           },
           {
             "label": {
               "labelKurz": "gültige Stimmen"
             },
-            "zahl": "250.816",
+            "zahl": "252.400",
             "prozent": "",
             "tagged": false
           }
@@ -3650,71 +3650,71 @@
           "bezeichnung": "GRÜNE",
           "color": "#33cc00",
           "bezeichnungAusfuehrlich": "BÜNDNIS 90/DIE GRÜNEN",
-          "wert": -3092,
-          "wertString": "-3.092",
-          "prozentGerundet": -6.25,
-          "prozentString": "-6,25"
+          "wert": -2779,
+          "wertString": "-2.779",
+          "prozentGerundet": -6.28,
+          "prozentString": "-6,28"
         },
         {
           "bezeichnung": "SPD",
           "color": "#d60029",
           "bezeichnungAusfuehrlich": "Sozialdemokratische Partei Deutschlands",
-          "wert": -2911,
-          "wertString": "-2.911",
-          "prozentGerundet": -5.83,
-          "prozentString": "-5,83"
+          "wert": -2475,
+          "wertString": "-2.475",
+          "prozentGerundet": -5.8,
+          "prozentString": "-5,80"
         },
         {
           "bezeichnung": "CDU",
           "color": "#32302e",
           "bezeichnungAusfuehrlich": "Christlich Demokratische Union Deutschlands in Niedersachsen",
-          "wert": -3095,
-          "wertString": "-3.095",
-          "prozentGerundet": -4.1,
-          "prozentString": "-4,10"
+          "wert": -2822,
+          "wertString": "-2.822",
+          "prozentGerundet": -4.08,
+          "prozentString": "-4,08"
         },
         {
           "bezeichnung": "Die Linke",
           "color": "#d01d5c",
           "bezeichnungAusfuehrlich": "Die Linke",
-          "wert": 15901,
-          "wertString": "+15.901",
-          "prozentGerundet": 5.06,
-          "prozentString": "+5,06"
+          "wert": 16000,
+          "wertString": "+16.000",
+          "prozentGerundet": 5.02,
+          "prozentString": "+5,02"
         },
         {
           "bezeichnung": "FDP",
           "color": "#ffed00",
           "bezeichnungAusfuehrlich": "Freie Demokratische Partei Landesverband Niedersachsen e.V.",
-          "wert": -1556,
-          "wertString": "-1.556",
-          "prozentGerundet": -1.48,
-          "prozentString": "-1,48"
+          "wert": -1426,
+          "wertString": "-1.426",
+          "prozentGerundet": -1.45,
+          "prozentString": "-1,45"
         },
         {
           "bezeichnung": "AfD Niedersachsen",
           "color": "#00b2ee",
           "bezeichnungAusfuehrlich": "Alternative für Deutschland - Niedersachsen",
-          "wert": 16409,
-          "wertString": "+16.409",
-          "prozentGerundet": 6.11,
-          "prozentString": "+6,11"
+          "wert": 16527,
+          "wertString": "+16.527",
+          "prozentGerundet": 6.1,
+          "prozentString": "+6,10"
         },
         {
           "bezeichnung": "Volt",
           "color": "#8b2252",
           "bezeichnungAusfuehrlich": "Volt Deutschland Landesverband Niedersachsen",
-          "wert": 4725,
-          "wertString": "+4.725",
-          "prozentGerundet": 1.46,
-          "prozentString": "+1,46"
+          "wert": 4809,
+          "wertString": "+4.809",
+          "prozentGerundet": 1.47,
+          "prozentString": "+1,47"
         },
         {
           "bezeichnung": "BB-OL",
           "color": "#777777",
           "bezeichnungAusfuehrlich": "Bürger Bündnis Oldenburg",
-          "wert": 5597,
-          "wertString": "+5.597",
+          "wert": 5641,
+          "wertString": "+5.641",
           "prozentGerundet": 2.23,
           "prozentString": "+2,23"
         }
@@ -3723,15 +3723,15 @@
         "bezeichnung": "Sonstige",
         "color": "#bebebe",
         "bezeichnungAusfuehrlich": "Sonstige",
-        "wert": 8391,
-        "wertString": "+8.391",
-        "prozentGerundet": 2.79,
-        "prozentString": "+2,79"
+        "wert": 8478,
+        "wertString": "+8.478",
+        "prozentGerundet": 2.8,
+        "prozentString": "+2,80"
       },
-      "footer": "14.09.2026 00:13 Uhr - 133 von 133 Ergebnissen",
+      "footer": "24.09.2026 11:39 Uhr - 133 von 133 Ergebnissen",
       "isBalkenDarstellung": false,
-      "file_version": "26.09.01",
-      "file_timestamp": "14.09.2026 00:14:45 524",
+      "file_version": "26.09.04",
+      "file_timestamp": "24.09.2026 12:31:36 169",
       "server_hash": "646b1029f537300d28340ce6ec5ea8d7"
     },
     "guv_grafik_letzte_wahl_detailliert": {
@@ -3745,190 +3745,190 @@
           "bezeichnungAusfuerlich": "BÜNDNIS 90/DIE GRÜNEN",
           "colorHex": "#33cc00",
           "werte": [
-            62549,
+            62862,
             65641
           ],
           "werteString": [
-            "62.549",
+            "62.862",
             "65.641"
           ],
-          "wertDiff": -3092,
-          "wertDiffString": "-3.092",
+          "wertDiff": -2779,
+          "wertDiffString": "-2.779",
           "prozentGerundet": [
-            24.94,
+            24.91,
             31.19
           ],
           "prozentString": [
-            "24,94",
+            "24,91",
             "31,19"
           ],
-          "prozentDiff": -6.25,
-          "prozentDiffString": "-6,25"
+          "prozentDiff": -6.28,
+          "prozentDiffString": "-6,28"
         },
         {
           "bezeichnung": "SPD",
           "bezeichnungAusfuerlich": "Sozialdemokratische Partei Deutschlands",
           "colorHex": "#d60029",
           "werte": [
-            58121,
+            58557,
             61032
           ],
           "werteString": [
-            "58.121",
+            "58.557",
             "61.032"
           ],
-          "wertDiff": -2911,
-          "wertDiffString": "-2.911",
+          "wertDiff": -2475,
+          "wertDiffString": "-2.475",
           "prozentGerundet": [
-            23.17,
+            23.2,
             29.0
           ],
           "prozentString": [
-            "23,17",
+            "23,20",
             "29,00"
           ],
-          "prozentDiff": -5.83,
-          "prozentDiffString": "-5,83"
+          "prozentDiff": -5.8,
+          "prozentDiffString": "-5,80"
         },
         {
           "bezeichnung": "CDU",
           "bezeichnungAusfuerlich": "Christlich Demokratische Union Deutschlands in Niedersachsen",
           "colorHex": "#32302e",
           "werte": [
-            34335,
+            34608,
             37430
           ],
           "werteString": [
-            "34.335",
+            "34.608",
             "37.430"
           ],
-          "wertDiff": -3095,
-          "wertDiffString": "-3.095",
+          "wertDiff": -2822,
+          "wertDiffString": "-2.822",
           "prozentGerundet": [
-            13.69,
+            13.71,
             17.79
           ],
           "prozentString": [
-            "13,69",
+            "13,71",
             "17,79"
           ],
-          "prozentDiff": -4.1,
-          "prozentDiffString": "-4,10"
+          "prozentDiff": -4.08,
+          "prozentDiffString": "-4,08"
         },
         {
           "bezeichnung": "Die Linke",
           "bezeichnungAusfuerlich": "Die Linke",
           "colorHex": "#d01d5c",
           "werte": [
-            32651,
+            32750,
             16750
           ],
           "werteString": [
-            "32.651",
+            "32.750",
             "16.750"
           ],
-          "wertDiff": 15901,
-          "wertDiffString": "+15.901",
+          "wertDiff": 16000,
+          "wertDiffString": "+16.000",
           "prozentGerundet": [
-            13.02,
+            12.98,
             7.96
           ],
           "prozentString": [
-            "13,02",
+            "12,98",
             "7,96"
           ],
-          "prozentDiff": 5.06,
-          "prozentDiffString": "+5,06"
+          "prozentDiff": 5.02,
+          "prozentDiffString": "+5,02"
         },
         {
           "bezeichnung": "FDP",
           "bezeichnungAusfuerlich": "Freie Demokratische Partei Landesverband Niedersachsen e.V.",
           "colorHex": "#ffed00",
           "werte": [
-            9613,
+            9743,
             11169
           ],
           "werteString": [
-            "9.613",
+            "9.743",
             "11.169"
           ],
-          "wertDiff": -1556,
-          "wertDiffString": "-1.556",
+          "wertDiff": -1426,
+          "wertDiffString": "-1.426",
           "prozentGerundet": [
-            3.83,
+            3.86,
             5.31
           ],
           "prozentString": [
-            "3,83",
+            "3,86",
             "5,31"
           ],
-          "prozentDiff": -1.48,
-          "prozentDiffString": "-1,48"
+          "prozentDiff": -1.45,
+          "prozentDiffString": "-1,45"
         },
         {
           "bezeichnung": "AfD Niedersachsen",
           "bezeichnungAusfuerlich": "Alternative für Deutschland - Niedersachsen",
           "colorHex": "#00b2ee",
           "werte": [
-            22136,
+            22254,
             5727
           ],
           "werteString": [
-            "22.136",
+            "22.254",
             "5.727"
           ],
-          "wertDiff": 16409,
-          "wertDiffString": "+16.409",
+          "wertDiff": 16527,
+          "wertDiffString": "+16.527",
           "prozentGerundet": [
-            8.83,
+            8.82,
             2.72
           ],
           "prozentString": [
-            "8,83",
+            "8,82",
             "2,72"
           ],
-          "prozentDiff": 6.11,
-          "prozentDiffString": "+6,11"
+          "prozentDiff": 6.1,
+          "prozentDiffString": "+6,10"
         },
         {
           "bezeichnung": "Volt",
           "bezeichnungAusfuerlich": "Volt Deutschland Landesverband Niedersachsen",
           "colorHex": "#8b2252",
           "werte": [
-            10262,
+            10346,
             5537
           ],
           "werteString": [
-            "10.262",
+            "10.346",
             "5.537"
           ],
-          "wertDiff": 4725,
-          "wertDiffString": "+4.725",
+          "wertDiff": 4809,
+          "wertDiffString": "+4.809",
           "prozentGerundet": [
-            4.09,
+            4.1,
             2.63
           ],
           "prozentString": [
-            "4,09",
+            "4,10",
             "2,63"
           ],
-          "prozentDiff": 1.46,
-          "prozentDiffString": "+1,46"
+          "prozentDiff": 1.47,
+          "prozentDiffString": "+1,47"
         },
         {
           "bezeichnung": "BB-OL",
           "bezeichnungAusfuerlich": "Bürger Bündnis Oldenburg",
           "colorHex": "#777777",
           "werte": [
-            5597,
+            5641,
             0
           ],
           "werteString": [
-            "5.597",
+            "5.641",
             "0"
           ],
-          "wertDiff": 5597,
-          "wertDiffString": "+5.597",
+          "wertDiff": 5641,
+          "wertDiffString": "+5.641",
           "prozentGerundet": [
             2.23,
             0.0
@@ -3946,31 +3946,31 @@
         "bezeichnungAusfuerlich": "Sonstige",
         "colorHex": "#bebebe",
         "werte": [
-          15552,
+          15639,
           7161
         ],
         "werteString": [
-          "15.552",
+          "15.639",
           "7.161"
         ],
-        "wertDiff": 8391,
-        "wertDiffString": "+8.391",
+        "wertDiff": 8478,
+        "wertDiffString": "+8.478",
         "prozentGerundet": [
-          6.19,
+          6.2,
           3.4
         ],
         "prozentString": [
-          "6,19",
+          "6,20",
           "3,40"
         ],
-        "prozentDiff": 2.79,
-        "prozentDiffString": "+2,79"
+        "prozentDiff": 2.8,
+        "prozentDiffString": "+2,80"
       },
       "sonstigeBalken": [],
-      "footer": "14.09.2026 00:13 Uhr - 133 von 133 Ergebnissen",
+      "footer": "24.09.2026 11:39 Uhr - 133 von 133 Ergebnissen",
       "isBalkenDarstellung": false,
-      "file_version": "26.09.01",
-      "file_timestamp": "14.09.2026 00:14:45 530",
+      "file_version": "26.09.04",
+      "file_timestamp": "24.09.2026 12:31:36 169",
       "server_hash": "646b1029f537300d28340ce6ec5ea8d7"
     },
     "guv_tabelle": {
@@ -3997,20 +3997,20 @@
           "label": {
             "labelKurz": "Wähler"
           },
-          "anzahl": 86082,
-          "anzahlString": "86.082",
-          "prozent": 63.52,
-          "prozentString": "63,52 %",
+          "anzahl": 86051,
+          "anzahlString": "86.051",
+          "prozent": 63.5,
+          "prozentString": "63,50 %",
           "data": [
             {
               "anzahl": 72723,
-              "anzahlGuV": 13359,
+              "anzahlGuV": 13328,
               "anzahlString": "72.723",
-              "anzahlGuVString": "13.359",
+              "anzahlGuVString": "13.328",
               "prozent": 53.8,
-              "prozentGuV": 9.72,
+              "prozentGuV": 9.7,
               "prozentString": "53,80 %",
-              "prozentGuVString": "9,72 *"
+              "prozentGuVString": "9,70 *"
             }
           ]
         },
@@ -4018,15 +4018,15 @@
           "label": {
             "labelKurz": "gültige Stimmen"
           },
-          "anzahl": 250816,
-          "anzahlString": "250.816",
+          "anzahl": 252400,
+          "anzahlString": "252.400",
           "prozentString": "",
           "data": [
             {
               "anzahl": 210447,
-              "anzahlGuV": 40369,
+              "anzahlGuV": 41953,
               "anzahlString": "210.447",
-              "anzahlGuVString": "40.369",
+              "anzahlGuVString": "41.953",
               "prozentString": "",
               "prozentGuVString": ""
             }
@@ -4037,20 +4037,20 @@
             "labelKurz": "GRÜNE",
             "labelLang": "BÜNDNIS 90/DIE GRÜNEN"
           },
-          "anzahl": 62549,
-          "anzahlString": "62.549",
-          "prozent": 24.94,
-          "prozentString": "24,94 %",
+          "anzahl": 62862,
+          "anzahlString": "62.862",
+          "prozent": 24.91,
+          "prozentString": "24,91 %",
           "data": [
             {
               "anzahl": 65641,
-              "anzahlGuV": -3092,
+              "anzahlGuV": -2779,
               "anzahlString": "65.641",
-              "anzahlGuVString": "-3.092",
+              "anzahlGuVString": "-2.779",
               "prozent": 31.19,
-              "prozentGuV": -6.25,
+              "prozentGuV": -6.28,
               "prozentString": "31,19 %",
-              "prozentGuVString": "-6,25 *"
+              "prozentGuVString": "-6,28 *"
             }
           ]
         },
@@ -4059,20 +4059,20 @@
             "labelKurz": "SPD",
             "labelLang": "Sozialdemokratische Partei Deutschlands"
           },
-          "anzahl": 58121,
-          "anzahlString": "58.121",
-          "prozent": 23.17,
-          "prozentString": "23,17 %",
+          "anzahl": 58557,
+          "anzahlString": "58.557",
+          "prozent": 23.2,
+          "prozentString": "23,20 %",
           "data": [
             {
               "anzahl": 61032,
-              "anzahlGuV": -2911,
+              "anzahlGuV": -2475,
               "anzahlString": "61.032",
-              "anzahlGuVString": "-2.911",
+              "anzahlGuVString": "-2.475",
               "prozent": 29.0,
-              "prozentGuV": -5.83,
+              "prozentGuV": -5.8,
               "prozentString": "29,00 %",
-              "prozentGuVString": "-5,83 *"
+              "prozentGuVString": "-5,80 *"
             }
           ]
         },
@@ -4081,20 +4081,20 @@
             "labelKurz": "CDU",
             "labelLang": "Christlich Demokratische Union Deutschlands in Niedersachsen"
           },
-          "anzahl": 34335,
-          "anzahlString": "34.335",
-          "prozent": 13.69,
-          "prozentString": "13,69 %",
+          "anzahl": 34608,
+          "anzahlString": "34.608",
+          "prozent": 13.71,
+          "prozentString": "13,71 %",
           "data": [
             {
               "anzahl": 37430,
-              "anzahlGuV": -3095,
+              "anzahlGuV": -2822,
               "anzahlString": "37.430",
-              "anzahlGuVString": "-3.095",
+              "anzahlGuVString": "-2.822",
               "prozent": 17.79,
-              "prozentGuV": -4.1,
+              "prozentGuV": -4.08,
               "prozentString": "17,79 %",
-              "prozentGuVString": "-4,10 *"
+              "prozentGuVString": "-4,08 *"
             }
           ]
         },
@@ -4103,20 +4103,20 @@
             "labelKurz": "Die Linke",
             "labelLang": "Die Linke"
           },
-          "anzahl": 32651,
-          "anzahlString": "32.651",
-          "prozent": 13.02,
-          "prozentString": "13,02 %",
+          "anzahl": 32750,
+          "anzahlString": "32.750",
+          "prozent": 12.98,
+          "prozentString": "12,98 %",
           "data": [
             {
               "anzahl": 16750,
-              "anzahlGuV": 15901,
+              "anzahlGuV": 16000,
               "anzahlString": "16.750",
-              "anzahlGuVString": "15.901",
+              "anzahlGuVString": "16.000",
               "prozent": 7.96,
-              "prozentGuV": 5.06,
+              "prozentGuV": 5.02,
               "prozentString": "7,96 %",
-              "prozentGuVString": "5,06 *"
+              "prozentGuVString": "5,02 *"
             }
           ]
         },
@@ -4125,20 +4125,20 @@
             "labelKurz": "FDP",
             "labelLang": "Freie Demokratische Partei Landesverband Niedersachsen e.V."
           },
-          "anzahl": 9613,
-          "anzahlString": "9.613",
-          "prozent": 3.83,
-          "prozentString": "3,83 %",
+          "anzahl": 9743,
+          "anzahlString": "9.743",
+          "prozent": 3.86,
+          "prozentString": "3,86 %",
           "data": [
             {
               "anzahl": 11169,
-              "anzahlGuV": -1556,
+              "anzahlGuV": -1426,
               "anzahlString": "11.169",
-              "anzahlGuVString": "-1.556",
+              "anzahlGuVString": "-1.426",
               "prozent": 5.31,
-              "prozentGuV": -1.48,
+              "prozentGuV": -1.45,
               "prozentString": "5,31 %",
-              "prozentGuVString": "-1,48 *"
+              "prozentGuVString": "-1,45 *"
             }
           ]
         },
@@ -4147,20 +4147,20 @@
             "labelKurz": "AfD Niedersachsen",
             "labelLang": "Alternative für Deutschland - Niedersachsen"
           },
-          "anzahl": 22136,
-          "anzahlString": "22.136",
-          "prozent": 8.83,
-          "prozentString": "8,83 %",
+          "anzahl": 22254,
+          "anzahlString": "22.254",
+          "prozent": 8.82,
+          "prozentString": "8,82 %",
           "data": [
             {
               "anzahl": 5727,
-              "anzahlGuV": 16409,
+              "anzahlGuV": 16527,
               "anzahlString": "5.727",
-              "anzahlGuVString": "16.409",
+              "anzahlGuVString": "16.527",
               "prozent": 2.72,
-              "prozentGuV": 6.11,
+              "prozentGuV": 6.1,
               "prozentString": "2,72 %",
-              "prozentGuVString": "6,11 *"
+              "prozentGuVString": "6,10 *"
             }
           ]
         },
@@ -4169,20 +4169,20 @@
             "labelKurz": "Volt",
             "labelLang": "Volt Deutschland Landesverband Niedersachsen"
           },
-          "anzahl": 10262,
-          "anzahlString": "10.262",
-          "prozent": 4.09,
-          "prozentString": "4,09 %",
+          "anzahl": 10346,
+          "anzahlString": "10.346",
+          "prozent": 4.1,
+          "prozentString": "4,10 %",
           "data": [
             {
               "anzahl": 5537,
-              "anzahlGuV": 4725,
+              "anzahlGuV": 4809,
               "anzahlString": "5.537",
-              "anzahlGuVString": "4.725",
+              "anzahlGuVString": "4.809",
               "prozent": 2.63,
-              "prozentGuV": 1.46,
+              "prozentGuV": 1.47,
               "prozentString": "2,63 %",
-              "prozentGuVString": "1,46 *"
+              "prozentGuVString": "1,47 *"
             }
           ]
         },
@@ -4191,20 +4191,20 @@
             "labelKurz": "PIRATEN",
             "labelLang": "Piratenpartei Niedersachsen"
           },
-          "anzahl": 2519,
-          "anzahlString": "2.519",
-          "prozent": 1.0,
-          "prozentString": "1,00 %",
+          "anzahl": 2537,
+          "anzahlString": "2.537",
+          "prozent": 1.01,
+          "prozentString": "1,01 %",
           "data": [
             {
               "anzahl": 2890,
-              "anzahlGuV": -371,
+              "anzahlGuV": -353,
               "anzahlString": "2.890",
-              "anzahlGuVString": "-371",
+              "anzahlGuVString": "-353",
               "prozent": 1.37,
-              "prozentGuV": -0.37,
+              "prozentGuV": -0.36,
               "prozentString": "1,37 %",
-              "prozentGuVString": "-0,37 *"
+              "prozentGuVString": "-0,36 *"
             }
           ]
         },
@@ -4213,16 +4213,16 @@
             "labelKurz": "BSW Niedersachsen",
             "labelLang": "Bündnis Sahra Wagenknecht - Vernunft und Gerechtigkeit - Landesverband Niedersachsen"
           },
-          "anzahl": 4141,
-          "anzahlString": "4.141",
+          "anzahl": 4162,
+          "anzahlString": "4.162",
           "prozent": 1.65,
           "prozentString": "1,65 %",
           "data": [
             {
               "anzahl": 0,
-              "anzahlGuV": 4141,
+              "anzahlGuV": 4162,
               "anzahlString": "0",
-              "anzahlGuVString": "4.141",
+              "anzahlGuVString": "4.162",
               "prozent": 0.0,
               "prozentGuV": 1.65,
               "prozentString": "0,00 %",
@@ -4235,16 +4235,16 @@
             "labelKurz": "DAVA-Niedersachsen",
             "labelLang": "DAVA-Niedersachsen"
           },
-          "anzahl": 579,
-          "anzahlString": "579",
+          "anzahl": 592,
+          "anzahlString": "592",
           "prozent": 0.23,
           "prozentString": "0,23 %",
           "data": [
             {
               "anzahl": 0,
-              "anzahlGuV": 579,
+              "anzahlGuV": 592,
               "anzahlString": "0",
-              "anzahlGuVString": "579",
+              "anzahlGuVString": "592",
               "prozent": 0.0,
               "prozentGuV": 0.23,
               "prozentString": "0,00 %",
@@ -4257,16 +4257,16 @@
             "labelKurz": "Einzelwahlvorschlag Stille",
             "labelLang": "Einzelwahlvorschlag Stille"
           },
-          "anzahl": 123,
-          "anzahlString": "123",
+          "anzahl": 124,
+          "anzahlString": "124",
           "prozent": 0.05,
           "prozentString": "0,05 %",
           "data": [
             {
               "anzahl": 0,
-              "anzahlGuV": 123,
+              "anzahlGuV": 124,
               "anzahlString": "0",
-              "anzahlGuVString": "123",
+              "anzahlGuVString": "124",
               "prozent": 0.0,
               "prozentGuV": 0.05,
               "prozentString": "0,00 %",
@@ -4279,16 +4279,16 @@
             "labelKurz": "Die PARTEI",
             "labelLang": "Partei für Arbeit, Rechtsstaat, Tierschutz, Elitenförderung und basisdemokratische Initiative - Landesverband Niedersachsen"
           },
-          "anzahl": 2081,
-          "anzahlString": "2.081",
+          "anzahl": 2098,
+          "anzahlString": "2.098",
           "prozent": 0.83,
           "prozentString": "0,83 %",
           "data": [
             {
               "anzahl": 0,
-              "anzahlGuV": 2081,
+              "anzahlGuV": 2098,
               "anzahlString": "0",
-              "anzahlGuVString": "2.081",
+              "anzahlGuVString": "2.098",
               "prozent": 0.0,
               "prozentGuV": 0.83,
               "prozentString": "0,00 %",
@@ -4301,16 +4301,16 @@
             "labelKurz": "PGM NDS",
             "labelLang": "Partei für Gerechtigkeit und Menschlichkeit, Landesverband Niedersachsen"
           },
-          "anzahl": 980,
-          "anzahlString": "980",
+          "anzahl": 981,
+          "anzahlString": "981",
           "prozent": 0.39,
           "prozentString": "0,39 %",
           "data": [
             {
               "anzahl": 0,
-              "anzahlGuV": 980,
+              "anzahlGuV": 981,
               "anzahlString": "0",
-              "anzahlGuVString": "980",
+              "anzahlGuVString": "981",
               "prozent": 0.0,
               "prozentGuV": 0.39,
               "prozentString": "0,00 %",
@@ -4323,16 +4323,16 @@
             "labelKurz": "BB-OL",
             "labelLang": "Bürger Bündnis Oldenburg"
           },
-          "anzahl": 5597,
-          "anzahlString": "5.597",
+          "anzahl": 5641,
+          "anzahlString": "5.641",
           "prozent": 2.23,
           "prozentString": "2,23 %",
           "data": [
             {
               "anzahl": 0,
-              "anzahlGuV": 5597,
+              "anzahlGuV": 5641,
               "anzahlString": "0",
-              "anzahlGuVString": "5.597",
+              "anzahlGuVString": "5.641",
               "prozent": 0.0,
               "prozentGuV": 2.23,
               "prozentString": "0,00 %",
@@ -4345,16 +4345,16 @@
             "labelKurz": "Echt Oldenburg",
             "labelLang": "Echt Oldenburg"
           },
-          "anzahl": 3447,
-          "anzahlString": "3.447",
+          "anzahl": 3459,
+          "anzahlString": "3.459",
           "prozent": 1.37,
           "prozentString": "1,37 %",
           "data": [
             {
               "anzahl": 0,
-              "anzahlGuV": 3447,
+              "anzahlGuV": 3459,
               "anzahlString": "0",
-              "anzahlGuVString": "3.447",
+              "anzahlGuVString": "3.459",
               "prozent": 0.0,
               "prozentGuV": 1.37,
               "prozentString": "0,00 %",
@@ -4367,16 +4367,16 @@
             "labelKurz": "WFO",
             "labelLang": "Wählergemeinschaft Für Oldenburg"
           },
-          "anzahl": 1682,
-          "anzahlString": "1.682",
+          "anzahl": 1686,
+          "anzahlString": "1.686",
           "prozent": 0.67,
           "prozentString": "0,67 %",
           "data": [
             {
               "anzahl": 1838,
-              "anzahlGuV": -156,
+              "anzahlGuV": -152,
               "anzahlString": "1.838",
-              "anzahlGuVString": "-156",
+              "anzahlGuVString": "-152",
               "prozent": 0.87,
               "prozentGuV": -0.2,
               "prozentString": "0,87 %",
@@ -4419,7 +4419,7 @@
           "titel": "Stadt Oldenburg (Oldenburg) - Stadt Oldenburg",
           "subtitle": "Stadtratswahl 13.09.2026 Sitzverteilung"
         },
-        "footer": "14.09.2026 00:13 Uhr - Es wurden 52  Sitze vergeben.\nEs ist noch ein Losentscheid nötig. ",
+        "footer": "24.09.2026 11:39 Uhr - Es wurden 52  Sitze vergeben.",
         "entries": [
           {
             "sitze": 7,
@@ -4524,19 +4524,19 @@
             "GRÜNE",
             "Menge, Susanne",
             "Wahlbereich 1, direkt",
-            "1.287"
+            "1.289"
           ],
           [
             "GRÜNE",
             "Neemann, Hermann",
             "Wahlbereich 1, Listenplatz 2",
-            "528"
+            "529"
           ],
           [
             "GRÜNE",
             "Kruse, Ingrid",
             "Wahlbereich 1, Listenplatz 3",
-            "345"
+            "346"
           ],
           [
             "GRÜNE",
@@ -4566,7 +4566,7 @@
             "GRÜNE",
             "Jandrich, Annabelle",
             "Wahlbereich 4, direkt",
-            "823"
+            "827"
           ],
           [
             "GRÜNE",
@@ -4578,7 +4578,7 @@
             "GRÜNE",
             "Saed, Nujdar",
             "Wahlbereich 5, direkt",
-            "1.784"
+            "1.789"
           ],
           [
             "GRÜNE",
@@ -4596,7 +4596,7 @@
             "GRÜNE",
             "Dr. Giesers, Benjamin",
             "Wahlbereich 6, Listenplatz 2",
-            "448"
+            "449"
           ],
           [
             "SPD",
@@ -4608,13 +4608,13 @@
             "SPD",
             "Tulan, Güzel",
             "Wahlbereich 1, Listenplatz 2",
-            "911"
+            "912"
           ],
           [
             "SPD",
             "Prange, Ulf",
             "Wahlbereich 2, direkt",
-            "4.019"
+            "4.028"
           ],
           [
             "SPD",
@@ -4626,49 +4626,49 @@
             "SPD",
             "Behrens, Paul",
             "Wahlbereich 3, direkt",
-            "1.171"
+            "1.172"
           ],
           [
             "SPD",
             "Eilers-Dörfler, Germaid",
             "Wahlbereich 3, Listenplatz 2",
-            "732"
+            "739"
           ],
           [
             "SPD",
             "Piechotta, Nicole",
             "Wahlbereich 4, direkt",
-            "2.193"
+            "2.198"
           ],
           [
             "SPD",
             "Dr. Witkowski, Mareike",
             "Wahlbereich 4, Listenplatz 2",
-            "993"
+            "998"
           ],
           [
             "SPD",
             "Oeljeschläger, Claudia",
             "Wahlbereich 5, direkt",
-            "1.539"
+            "1.542"
           ],
           [
             "SPD",
             "Latko, Pascal",
             "Wahlbereich 5, Listenplatz 2",
-            "684"
+            "689"
           ],
           [
             "SPD",
             "Dr. Fortmann, Florian",
             "Wahlbereich 6, direkt",
-            "989"
+            "1.009"
           ],
           [
             "SPD",
             "Schmeichel, Marianne",
             "Wahlbereich 6, Listenplatz 2",
-            "436"
+            "437"
           ],
           [
             "CDU",
@@ -4686,25 +4686,25 @@
             "CDU",
             "Howad, Niklas",
             "Wahlbereich 3, Listenplatz 1",
-            "637"
+            "640"
           ],
           [
             "CDU",
             "Menke, Stefan",
             "Wahlbereich 4, direkt",
-            "1.526"
+            "1.534"
           ],
           [
             "CDU",
             "Faurie, Christoph",
             "Wahlbereich 4, Listenplatz 2",
-            "700"
+            "701"
           ],
           [
             "CDU",
             "Woltmann, Barbara",
             "Wahlbereich 5, Listenplatz 1",
-            "975"
+            "979"
           ],
           [
             "CDU",
@@ -4728,7 +4728,7 @@
             "Die Linke",
             "Boldt, Heike",
             "Wahlbereich 2, Listenplatz 1",
-            "1.375"
+            "1.379"
           ],
           [
             "Die Linke",
@@ -4740,13 +4740,13 @@
             "Die Linke",
             "Rodowski, Sebastian",
             "Wahlbereich 4, Listenplatz 1",
-            "295"
+            "298"
           ],
           [
             "Die Linke",
             "Teschner, Mattis",
             "Wahlbereich 5, Listenplatz 1",
-            "221"
+            "224"
           ],
           [
             "Die Linke",
@@ -4758,7 +4758,7 @@
             "FDP",
             "Dittrich, René",
             "Wahlbereich 2, Listenplatz 1",
-            "297"
+            "300"
           ],
           [
             "FDP",
@@ -4770,31 +4770,31 @@
             "AfD Niedersachsen",
             "Peusch, Eberhard",
             "Wahlbereich 1, Listenplatz 1",
-            "400"
+            "404"
           ],
           [
             "AfD Niedersachsen",
             "Wolf, Felix",
             "Wahlbereich 3, Listenplatz 1",
-            "625"
+            "629"
           ],
           [
             "AfD Niedersachsen",
             "Paul, Andreas Michael",
             "Wahlbereich 4, Listenplatz 1",
-            "1.654"
+            "1.670"
           ],
           [
             "AfD Niedersachsen",
             "Bernhardt, Lidia",
             "Wahlbereich 5, Listenplatz 1",
-            "1.681"
+            "1.698"
           ],
           [
             "AfD Niedersachsen",
             "Pawlikowski, Adrian",
             "Wahlbereich 6, Listenplatz 1",
-            "569"
+            "570"
           ],
           [
             "Volt",
@@ -4846,71 +4846,71 @@
           "bezeichnung": "GRÜNE",
           "color": "#33cc00",
           "bezeichnungAusfuehrlich": "BÜNDNIS 90/DIE GRÜNEN",
-          "wert": 62549,
-          "wertString": "62.549 Stimmen",
-          "prozentGerundet": 24.94,
-          "prozentString": "24,94 %"
+          "wert": 62862,
+          "wertString": "62.862 Stimmen",
+          "prozentGerundet": 24.91,
+          "prozentString": "24,91 %"
         },
         {
           "bezeichnung": "SPD",
           "color": "#d60029",
           "bezeichnungAusfuehrlich": "Sozialdemokratische Partei Deutschlands",
-          "wert": 58121,
-          "wertString": "58.121 Stimmen",
-          "prozentGerundet": 23.17,
-          "prozentString": "23,17 %"
+          "wert": 58557,
+          "wertString": "58.557 Stimmen",
+          "prozentGerundet": 23.2,
+          "prozentString": "23,20 %"
         },
         {
           "bezeichnung": "CDU",
           "color": "#32302e",
           "bezeichnungAusfuehrlich": "Christlich Demokratische Union Deutschlands in Niedersachsen",
-          "wert": 34335,
-          "wertString": "34.335 Stimmen",
-          "prozentGerundet": 13.69,
-          "prozentString": "13,69 %"
+          "wert": 34608,
+          "wertString": "34.608 Stimmen",
+          "prozentGerundet": 13.71,
+          "prozentString": "13,71 %"
         },
         {
           "bezeichnung": "Die Linke",
           "color": "#d01d5c",
           "bezeichnungAusfuehrlich": "Die Linke",
-          "wert": 32651,
-          "wertString": "32.651 Stimmen",
-          "prozentGerundet": 13.02,
-          "prozentString": "13,02 %"
+          "wert": 32750,
+          "wertString": "32.750 Stimmen",
+          "prozentGerundet": 12.98,
+          "prozentString": "12,98 %"
         },
         {
           "bezeichnung": "FDP",
           "color": "#ffed00",
           "bezeichnungAusfuehrlich": "Freie Demokratische Partei Landesverband Niedersachsen e.V.",
-          "wert": 9613,
-          "wertString": "9.613 Stimmen",
-          "prozentGerundet": 3.83,
-          "prozentString": "3,83 %"
+          "wert": 9743,
+          "wertString": "9.743 Stimmen",
+          "prozentGerundet": 3.86,
+          "prozentString": "3,86 %"
         },
         {
           "bezeichnung": "AfD Niedersachsen",
           "color": "#00b2ee",
           "bezeichnungAusfuehrlich": "Alternative für Deutschland - Niedersachsen",
-          "wert": 22136,
-          "wertString": "22.136 Stimmen",
-          "prozentGerundet": 8.83,
-          "prozentString": "8,83 %"
+          "wert": 22254,
+          "wertString": "22.254 Stimmen",
+          "prozentGerundet": 8.82,
+          "prozentString": "8,82 %"
         },
         {
           "bezeichnung": "Volt",
           "color": "#8b2252",
           "bezeichnungAusfuehrlich": "Volt Deutschland Landesverband Niedersachsen",
-          "wert": 10262,
-          "wertString": "10.262 Stimmen",
-          "prozentGerundet": 4.09,
-          "prozentString": "4,09 %"
+          "wert": 10346,
+          "wertString": "10.346 Stimmen",
+          "prozentGerundet": 4.1,
+          "prozentString": "4,10 %"
         },
         {
           "bezeichnung": "BB-OL",
           "color": "#777777",
           "bezeichnungAusfuehrlich": "Bürger Bündnis Oldenburg",
-          "wert": 5597,
-          "wertString": "5.597 Stimmen",
+          "wert": 5641,
+          "wertString": "5.641 Stimmen",
           "prozentGerundet": 2.23,
           "prozentString": "2,23 %"
         }
@@ -4918,27 +4918,27 @@
       "sonstige": {
         "bezeichnung": "Sonstige",
         "color": "#acbee4",
-        "wert": 15552,
-        "wertString": "15.552 Stimmen",
-        "prozentGerundet": 6.19,
-        "prozentString": "6,19 %"
+        "wert": 15639,
+        "wertString": "15.639 Stimmen",
+        "prozentGerundet": 6.2,
+        "prozentString": "6,20 %"
       },
       "sonstigeBalken": [
         {
           "bezeichnung": "PIRATEN",
           "color": "#ff7f24",
           "bezeichnungAusfuehrlich": "Piratenpartei Niedersachsen",
-          "wert": 2519,
-          "wertString": "2.519 Stimmen",
-          "prozentGerundet": 1.0,
-          "prozentString": "1,00 %"
+          "wert": 2537,
+          "wertString": "2.537 Stimmen",
+          "prozentGerundet": 1.01,
+          "prozentString": "1,01 %"
         },
         {
           "bezeichnung": "BSW Niedersachsen",
           "color": "#ff00ff",
           "bezeichnungAusfuehrlich": "Bündnis Sahra Wagenknecht - Vernunft und Gerechtigkeit - Landesverband Niedersachsen",
-          "wert": 4141,
-          "wertString": "4.141 Stimmen",
+          "wert": 4162,
+          "wertString": "4.162 Stimmen",
           "prozentGerundet": 1.65,
           "prozentString": "1,65 %"
         },
@@ -4946,8 +4946,8 @@
           "bezeichnung": "DAVA-Niedersachsen",
           "color": "#058f92",
           "bezeichnungAusfuehrlich": "DAVA-Niedersachsen",
-          "wert": 579,
-          "wertString": "579 Stimmen",
+          "wert": 592,
+          "wertString": "592 Stimmen",
           "prozentGerundet": 0.23,
           "prozentString": "0,23 %"
         },
@@ -4955,8 +4955,8 @@
           "bezeichnung": "Stille, Einzelwahlvorschlag",
           "color": "#dbdbdb",
           "bezeichnungAusfuehrlich": "Michael Stille, Einzelwahlvorschlag",
-          "wert": 123,
-          "wertString": "123 Stimmen",
+          "wert": 124,
+          "wertString": "124 Stimmen",
           "prozentGerundet": 0.05,
           "prozentString": "0,05 %"
         },
@@ -4964,8 +4964,8 @@
           "bezeichnung": "Die PARTEI",
           "color": "#cd2626",
           "bezeichnungAusfuehrlich": "Partei für Arbeit, Rechtsstaat, Tierschutz, Elitenförderung und basisdemokratische Initiative - Landesverband Niedersachsen",
-          "wert": 2081,
-          "wertString": "2.081 Stimmen",
+          "wert": 2098,
+          "wertString": "2.098 Stimmen",
           "prozentGerundet": 0.83,
           "prozentString": "0,83 %"
         },
@@ -4973,8 +4973,8 @@
           "bezeichnung": "PGM NDS",
           "color": "#cccccc",
           "bezeichnungAusfuehrlich": "Partei für Gerechtigkeit und Menschlichkeit, Landesverband Niedersachsen",
-          "wert": 980,
-          "wertString": "980 Stimmen",
+          "wert": 981,
+          "wertString": "981 Stimmen",
           "prozentGerundet": 0.39,
           "prozentString": "0,39 %"
         },
@@ -4982,8 +4982,8 @@
           "bezeichnung": "Echt Oldenburg",
           "color": "#777777",
           "bezeichnungAusfuehrlich": "Echt Oldenburg",
-          "wert": 3447,
-          "wertString": "3.447 Stimmen",
+          "wert": 3459,
+          "wertString": "3.459 Stimmen",
           "prozentGerundet": 1.37,
           "prozentString": "1,37 %"
         },
@@ -4991,27 +4991,27 @@
           "bezeichnung": "WFO",
           "color": "#777777",
           "bezeichnungAusfuehrlich": "Wählergemeinschaft Für Oldenburg",
-          "wert": 1682,
-          "wertString": "1.682 Stimmen",
+          "wert": 1686,
+          "wertString": "1.686 Stimmen",
           "prozentGerundet": 0.67,
           "prozentString": "0,67 %"
         }
       ],
-      "footer": "14.09.2026 00:13 Uhr - 133 von 133 Ergebnissen",
+      "footer": "24.09.2026 11:39 Uhr - 133 von 133 Ergebnissen",
       "isBalkenDarstellung": false,
-      "file_version": "26.09.01",
-      "file_timestamp": "14.09.2026 00:14:45 501",
+      "file_version": "26.09.04",
+      "file_timestamp": "24.09.2026 12:31:36 161",
       "server_hash": "646b1029f537300d28340ce6ec5ea8d7"
     },
     "wahlbeteiligung": {
       "text": {
         "text": "Die Wahlbeteiligung liegt bei: ",
-        "prozent": 63.52
+        "prozent": 63.5
       },
       "hinweis": ""
     }
   },
-  "file_version": "26.09.01",
-  "file_timestamp": "14.09.2026 00:14:45 501",
+  "file_version": "26.09.04",
+  "file_timestamp": "24.09.2026 12:31:36 158",
   "server_hash": "646b1029f537300d28340ce6ec5ea8d7"
 }

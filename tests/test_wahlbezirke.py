@@ -85,7 +85,7 @@ def test_die_bezirke_summieren_sich_zu_den_wahlbereichen(bezirke, nacht):
 
 def test_die_gueltigen_stimmen_ergeben_die_stadt(bezirke, nacht):
     gesamt = sum(z["totals"]["valid_votes"] or 0 for z in bezirke["districts"])
-    assert gesamt == nacht["totals"]["valid_votes"] == 250816
+    assert gesamt == nacht["totals"]["valid_votes"] == 252400
 
 
 def test_der_anteil_rechnet_gegen_die_gueltigen_stimmen_des_bezirks(bezirke):
