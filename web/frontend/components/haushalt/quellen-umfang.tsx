@@ -8,6 +8,11 @@
 // Beleg. Eine Zahl, die hier von Hand stünde, wäre nach dem nächsten Ingest
 // falsch.
 //
+// EINGEKLAPPT UNTEN, nicht als Karte oben (Tim, 24.09.2026, nach dem ersten
+// Bild): Die Zählung belegt die Seite, sie ist nicht ihr Inhalt. Sie steht
+// deshalb als Lade im Apparat neben „Stand der Daten" und dem
+// Quellenverzeichnis — zugeklappt mit der einen Zeile, die neugierig macht.
+//
 // Drei Ebenen, vom Großen ins Kleine: die vier Kennzahlen, die Dokumente
 // nach veröffentlichender Stelle (ein geteilter Balken, eine Farbe in
 // Abstufungen — kein Rang, keine Wertung), und je Datenschicht Dokumente
@@ -18,6 +23,7 @@ import { useState } from "react";
 import { useFetch } from "@/lib/use-fetch";
 import type { ApiAntwort } from "@/lib/vertrag";
 import { deZahl } from "@/components/grafik/format";
+import { Apparat } from "@/components/haushalt/source";
 
 type Antwort = ApiAntwort<"/council/budget/source-stats">;
 
@@ -35,8 +41,8 @@ function rund(n: number): string {
 
 function Kennzahl({ wert, einheit, text }: { wert: string; einheit: string; text: string }) {
   return (
-    <div className="rounded-xl border border-border bg-background/60 p-3">
-      <dd className="font-display text-[24px] font-bold leading-none tabular-nums text-foreground">
+    <div className="rounded-lg border border-border bg-background/60 px-3 py-2.5">
+      <dd className="font-display text-[18px] font-bold leading-none tabular-nums text-foreground">
         {wert}
       </dd>
       <dt className="mt-1.5 text-[12.5px] font-semibold text-foreground">{einheit}</dt>
@@ -84,22 +90,16 @@ export function QuellenUmfang() {
   const stellen = data.sources.length;
 
   return (
-    <section className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
-      <div className="min-w-0 max-w-[76ch]">
-        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-          Woher die Zahlen kommen
-        </p>
-        <h2 className="mt-1 text-[17px] font-semibold leading-snug text-foreground">
-          Rund {rund(data.numbers)} Zahlen aus {deZahl(data.documents, 0)} Dokumenten
-        </h2>
-        <p className="mt-2 text-[13px] leading-relaxed text-foreground/90">
-          Der Haushaltsbereich führt zusammen, was sonst über Haushaltspläne, Jahresabschlüsse,
-          Ratsvorlagen, Prüfberichte, Wirtschaftspläne und amtliche Statistiken verteilt ist — aus{" "}
-          {stellen} veröffentlichenden Stellen. Jede Zahl behält ihren Beleg, und beim Einlesen
-          muss sie Proben bestehen: Summen gegen ihre Teile, der Plan gegen den Abschluss, eine
-          zweite Quelle gegen die erste. Was nicht aufgeht, bleibt draußen.
-        </p>
-      </div>
+    <Apparat kicker="Umfang der Daten"
+      zusatz={`rund ${rund(data.numbers)} Zahlen aus ${deZahl(data.documents, 0)} Dokumenten`}>
+    <div className="mt-3 flex flex-col gap-4">
+      <p className="max-w-[74ch] text-[12.5px] leading-relaxed text-muted-foreground">
+        Der Haushaltsbereich führt zusammen, was sonst über Haushaltspläne, Jahresabschlüsse,
+        Ratsvorlagen, Prüfberichte, Wirtschaftspläne und amtliche Statistiken verteilt ist — aus{" "}
+        {stellen} veröffentlichenden Stellen. Jede Zahl behält ihren Beleg, und beim Einlesen
+        muss sie Proben bestehen: Summen gegen ihre Teile, der Plan gegen den Abschluss, eine
+        zweite Quelle gegen die erste. Was nicht aufgeht, bleibt draußen.
+      </p>
 
       <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kennzahl wert={rund(data.numbers)} einheit="Zahlen"
@@ -161,6 +161,7 @@ export function QuellenUmfang() {
         ist eine Ratsanlage, eine Liste oder ein Datensatz. Mehrere Schichten können dasselbe
         Dokument lesen; die Zeilen lassen sich deshalb nicht zur Summe oben addieren.
       </p>
-    </section>
+    </div>
+    </Apparat>
   );
 }
