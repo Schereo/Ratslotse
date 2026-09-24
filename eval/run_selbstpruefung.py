@@ -22,7 +22,13 @@ Aufruf::
 
     python eval/run_selbstpruefung.py fakten ~/.cache/ratslotse/fakten-mitschnitt/<lauf>
     python eval/run_selbstpruefung.py laien <mitschnitt>/assistant_explain.jsonl
+    python eval/run_selbstpruefung.py absage ~/.cache/ratslotse/fakten-mitschnitt/<lauf>
     … --modell google/gemini-3-flash-preview --limit 15
+
+``absage`` ist die Gegenprobe zur Nachsicht des Prüfers: Die guten Fälle
+eines Fakten-Laufs, deren Goldfakt im Kontext stand, bekommen statt ihrer
+Antwort eine bloße Absage („Das geht aus den Angaben hier nicht hervor.“).
+Jede davon MUSS der Prüfer beanstanden — der Kontext trägt die Zahl ja.
 
 Stufe 1 (ohne Modell) läuft immer mit; ein Befund dort ersetzt den Prüfer
 genau wie im Betrieb (``council.self_check.run``).
@@ -79,6 +85,25 @@ def fakten_faelle(ordner: Path) -> list[dict]:
     return aus
 
 
+ABSAGE = "Das geht aus den Angaben hier nicht hervor."
+
+
+def absage_faelle(ordner: Path) -> list[dict]:
+    """Die guten Fälle mit Goldfakt im Kontext — mit einer Absage als Antwort."""
+    faelle: dict[str, dict] = {}
+    for datei in (WURZEL / "eval").glob("cases_fakten_*.json"):
+        faelle |= {c["id"]: c for c in json.loads(datei.read_text())}
+    aus = []
+    for f in fakten_faelle(ordner):
+        fall = faelle.get(f["id"]) or {}
+        # Nur, wo die Antwort in den Daten steht — bei „nicht in den Daten“
+        # ist die Absage ja richtig.
+        if f["soll"] == "gut" and fall.get("gold") and fall.get("antwort_in_daten", True):
+            aus.append({**f, "id": f"{f['id']}+absage", "antwort": ABSAGE,
+                        "soll": "mangelhaft", "gruppe": "absage"})
+    return aus
+
+
 def laien_faelle(mitschnitt: Path) -> list[dict]:
     """Die 36 Fragen: je Frage der LETZTE Aufruf im Mitschnitt (der Lauf im Fenster)."""
     befunde = {(f["route"], f["frage"]): f for f in json.loads(LAIEN.read_text())}
@@ -128,14 +153,15 @@ def auswerten(faelle: list[dict], modell: str, parallel: int = 4) -> dict:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=(__doc__ or "").split("\n")[0])
-    ap.add_argument("satz", choices=("fakten", "laien"))
+    ap.add_argument("satz", choices=("fakten", "laien", "absage"))
     ap.add_argument("quelle", type=Path, help="Lauf-Ordner (fakten) bzw. Mitschnitt-Datei (laien)")
     ap.add_argument("--modell", default=sc.MODEL)
     ap.add_argument("--limit", type=int)
     ap.add_argument("--nur", help="Fall-ids, kommagetrennt")
     ap.add_argument("--aus", type=Path, help="Ergebnis als JSON hierhin")
     a = ap.parse_args(argv)
-    faelle = fakten_faelle(a.quelle) if a.satz == "fakten" else laien_faelle(a.quelle)
+    faelle = {"fakten": fakten_faelle, "laien": laien_faelle,
+              "absage": absage_faelle}[a.satz](a.quelle)
     if a.nur:
         nur = set(a.nur.split(","))
         faelle = [f for f in faelle if f["id"] in nur]
