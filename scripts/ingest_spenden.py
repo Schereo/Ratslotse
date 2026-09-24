@@ -118,7 +118,14 @@ def main() -> int:
                        else f"als Zerlegung in {v['teile']} Teilbeträge, die sich "
                             f"auf den Cent aufaddieren.")))
 
-        n = store.save_spenden(vorlagen, verworfen, _lauf_herkunft(result))
+        # Erledigt ist auch, was es als Beschluss gar nicht mehr gibt: 21/0694
+        # stand nach einem Protokoll-Neulauf in keiner Beschlusszeile mehr,
+        # sein „fehlt"-Eintrag aber blieb stehen.
+        im_lauf = {z.get("template_number") for z in roh}
+        weg = [v["template_number"] for v in store.get_spenden_verworfen()
+               if v["template_number"] not in im_lauf]
+        n = store.save_spenden(vorlagen, verworfen, _lauf_herkunft(result),
+                                erledigt=[*result.get("erledigt", ()), *weg])
         print(f"  gespeichert: {n} Vorlagen, {len(verworfen)} verworfene Zeilen")
 
         store.herkunft_aufraeumen()

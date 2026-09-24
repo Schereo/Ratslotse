@@ -220,6 +220,7 @@ def lies(zeilen: Iterable[dict]) -> dict:
     """
     kandidaten: list[dict] = []
     verworfen: list[dict] = []
+    nicht_beschlossen: set[str] = set()
     zaehler: Counter = Counter()
 
     for z in zeilen:
@@ -230,11 +231,12 @@ def lies(zeilen: Iterable[dict]) -> dict:
         raw = z.get("raw_text")
 
         if (z.get("outcome") or "") != "accepted":
-            verworfen.append({"template_number": nr, "session_date": z.get("session_date"),
-                              "reason": "Der Tagesordnungspunkt wurde nicht beschlossen — "
-                                       "angenommen wurde nichts, also ist auch nichts "
-                                       "eingenommen worden."})
+            # Kein Eintrag in `verworfen`: Die Liste heißt auf der Seite „fehlen
+            # in dieser Reihe — ihre Beträge sind in den Summen nicht
+            # enthalten". Ein nicht beschlossener Punkt hat keinen Betrag, der
+            # fehlen könnte (bis 09/2026 stand 21/0694 dort).
             zaehler["nicht_beschlossen"] += 1
+            nicht_beschlossen.add(nr)
             continue
 
         kopf = _erster(z.get("official_text"))
@@ -280,6 +282,11 @@ def lies(zeilen: Iterable[dict]) -> dict:
     for k in sorted(kandidaten, key=lambda k: (not k["in_plenary"], k["session_date"] or "")):
         je_vorlage.setdefault(k["template_number"], k)
     vorlagen = sorted(je_vorlage.values(), key=lambda k: (k["session_date"] or "", k["template_number"]))
+    # Eine Vorlage, die über eine ANDERE Sitzung gezählt ist, fehlt nicht.
+    # Dieselbe Liste läuft durch Ausschuss und Rat; hält nur eines der beiden
+    # Protokolle den Betrag fest, stand sie bis 09/2026 zugleich in der Summe
+    # und unter „fehlen" (21/0003).
+    verworfen = [v for v in verworfen if v["template_number"] not in je_vorlage]
 
     years: dict[int, dict] = {}
     for v in vorlagen:
@@ -297,6 +304,11 @@ def lies(zeilen: Iterable[dict]) -> dict:
     return {
         "vorlagen": vorlagen,
         "verworfen": verworfen,
+        # Vorlagen, die dieser Lauf als erledigt kennt — gezählt oder nicht
+        # beschlossen. Ein alter Eintrag unter „fehlen" für sie ist überholt
+        # (`save_spenden` räumt ihn ab).
+        "erledigt": sorted((set(je_vorlage) | nicht_beschlossen)
+                           - {v["template_number"] for v in verworfen}),
         "years": [years[j] for j in sorted(years)],
         "probes": dict(zaehler),
     }

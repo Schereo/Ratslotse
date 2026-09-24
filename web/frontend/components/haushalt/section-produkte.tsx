@@ -657,7 +657,7 @@ export function ProdukteAbschnitt({ onBestand }: {
     year: number;
     /** Die drei größten Aufgaben nach Zuschussbedarf — fürs Minibild der
      *  Bühne, mit echten Namen statt einer abstrakten Baum-Skizze
-     *  (Tim, 26.08.). `value` ist |netto| in Euro. */
+     *  (Tim, 26.08.). `value` ist der Zuschussbedarf in Euro. */
     beispiele: { name: string; value: number }[];
   } | null) => void;
 } = {}) {
@@ -717,10 +717,14 @@ export function ProdukteAbschnitt({ onBestand }: {
     // zuletzt gemeldete Bestand stehen.
     if (entprellt.trim() || office || spielraum) return;
     const count = data.products.length;
-    const beispiele = [...data.products]
-      .sort((a, b) => Math.abs(netto(b)) - Math.abs(netto(a)))
+    // Nur Zuschussbedarf (netto > 0), absteigend. Bis 09/2026 wurde nach dem
+    // BETRAG sortiert — dann stand „Rechnungswesen" (+405,8 Mio. € Überschuss,
+    // dort laufen die Steuern ein) als „größter Zuschussbedarf" ganz oben.
+    const beispiele = data.products
+      .filter((pr) => netto(pr) > 0)
+      .sort((a, b) => netto(b) - netto(a))
       .slice(0, 3)
-      .map((pr) => ({ name: pr.product_name, value: Math.abs(netto(pr)) }));
+      .map((pr) => ({ name: pr.product_name, value: netto(pr) }));
     onBestand(count > 0 ? { count, year, beispiele } : null);
   }, [onBestand, uebersicht.loading, loading, data, year, entprellt, office, spielraum]);
 

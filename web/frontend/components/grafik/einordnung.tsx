@@ -41,10 +41,14 @@ export function Einordnung({ satz, gemessen, nichtAussagen, className }: {
     <div className={cn("flex flex-col gap-2", className)}>
       {(satz || gemessen) && (
         <div className="border-l-2 border-border pl-2.5">
+          {/* Ein <div>, kein <p>: Der Satz darf Blockelemente tragen — auf
+              /haushalt/plan-ist steht dort der aufklappbare Wortlaut
+              (<Warum>, ein <details>), und <details> in <p> ist ungültiges
+              HTML (Hydration-Fehler, 09/2026). */}
           {satz && (
-            <p className="max-w-[74ch] text-[12.5px] leading-relaxed text-foreground/85">
+            <div className="max-w-[74ch] text-[12.5px] leading-relaxed text-foreground/85">
               {satz}
-            </p>
+            </div>
           )}
           {gemessen && (
             <p className={cn(

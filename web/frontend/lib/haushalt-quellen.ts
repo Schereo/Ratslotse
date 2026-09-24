@@ -455,12 +455,10 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
       "Bürgerinformationssystem.",
     herausgeber: "Stadt Oldenburg, Amt für Personal- und Verwaltungsmanagement",
     standWort: "Haushaltsjahre",
-    // Der Zusatz bleibt von Hand: Welcher Jahrgang seinen Teil B nicht
-    // hergibt, steht nicht in der Tabelle, sondern hängt am Textextrakt des
-    // PDFs (2026 liefert dort Glyphen statt Buchstaben, s.
-    // `council/stellenplan.py`).
-    standZusatz: "(2026 ohne Teil B)",
-    as_of: "Haushaltsjahre 2023–2026 (2026 ohne Teil B)",
+    // Bis 09/2026 stand hier „(2026 ohne Teil B)" — von Hand, und längst
+    // überholt: Seit dem Glyphen-Nachlauf trägt 2026 beide Teile (141
+    // Zeilen Teil B, gemessen 23.09.2026 auf Prod).
+    as_of: "Haushaltsjahre 2023–2026",
     art: "pdf",
     url: "https://buergerinfo.oldenburg.de",
   },
@@ -469,12 +467,13 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     citation:
       "Die Randmarken des Berichts (B, WB, H, K) und der Absatz, der jeweils dahinter steht — " +
       "mit der Textziffer und der Seite, unter der er dort geführt wird. " +
-      "Der Jahrgang 2024 fehlt, weil sein PDF keine Zeichenzuordnung mitbringt — der " +
-      "Textextrakt besteht aus Glyphen-Nummern, und eine zweite Kopie gibt es nicht. " +
       "Die Berichte hängen als Anlagen an Ratsvorlagen im Bürgerinformationssystem.",
     herausgeber: "Stadt Oldenburg, Rechnungsprüfungsamt",
     standWort: "Jahresabschlüsse",
-    as_of: "Jahresabschlüsse 2017–2023",
+    // Bis 09/2026 hieß es hier „Der Jahrgang 2024 fehlt" (PDF ohne
+    // Zeichenzuordnung). Der Glyphen-Nachlauf (#922) hat ihn gelesen; 2024
+    // trägt 15 Feststellungen.
+    as_of: "Jahresabschlüsse 2017–2024",
     art: "pdf",
     url: "https://buergerinfo.oldenburg.de",
   },

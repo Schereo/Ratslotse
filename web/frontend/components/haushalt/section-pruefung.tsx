@@ -30,10 +30,9 @@
 //
 // SEIT H3-05 IST DIE WIEDERHOLUNGS-MATRIX DAS BILD DER SEITE: Feststellung ×
 // Jahr (<KettenMatrix>, GB-10), denn die Wiederholungen sind die Geschichte —
-// was seit Jahren angemahnt wird, steht als Kette. Der Jahrgang 2024 fehlt
-// ersatzlos (PDF ohne Zeichenzuordnung); dieser Satz gehört auf die Seite,
-// und die Spalte bleibt trotzdem stehen — die Komponente erzwingt sie in
-// jeder Zeile. Das Board ist zugleich der Dunkelmodus-Nachweis der Serie:
+// was seit Jahren angemahnt wird, steht als Kette. Fehlt ein Jahrgang, bleibt
+// seine Spalte trotzdem stehen — die Komponente erzwingt sie in jeder Zeile
+// (2024 fehlte bis zum Glyphen-Nachlauf #922). Das Board ist zugleich der Dunkelmodus-Nachweis der Serie:
 // alles hier rechnet in Theme-Tokens, keine Sonderfarbe.
 //
 // Leserichtung: Was ist das → wie viel ist es (Zähler-Trio) → was heißen die
