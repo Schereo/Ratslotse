@@ -1692,8 +1692,16 @@ class HaushaltMixin(StoreBasis):
         for s in stationen:
             s["votum"] = votum.get(s["ksinr"])
 
+        # Nach dem Ratsbeschluss: die Bekanntmachung im Amtsblatt
+        # (council/amtsblatt.py) — erst damit tritt die Satzung in Kraft — und
+        # die öffentlichen Tagesordnungspunkte zur Genehmigung durch die
+        # Kommunalaufsicht (2026: der Grünen-Antrag 26/0389 im
+        # Finanzausschuss). Beides hing bis 09/2026 ohne Datum im „Danach".
+        beschluss_am = stationen[-1]["date"]
         return {
             "year": year,
+            "bekanntmachung": self._hh_bekanntmachung(year),
+            "debatte_genehmigung": self._hh_genehmigungsdebatte(beschluss_am, f"{year}-12-31"),
             "template_number": beschluss_vorlagen[0]["template_number"] if beschluss_vorlagen else None,
             "kvonr": beschluss_vorlagen[0]["kvonr"] if beschluss_vorlagen else None,
             "einbringung": einbringung,
@@ -1704,6 +1712,40 @@ class HaushaltMixin(StoreBasis):
             } if fach else None,
             "stationen": stationen,
         }
+
+    #: Ein Tagesordnungspunkt zur Genehmigung des Haushalts — eng gefasst:
+    #: „Dienstreisegenehmigung … im Haushaltsjahr" (2025) ist keiner.
+    _HH_GENEHMIGUNG = re.compile(
+        r"kommunalaufsicht|haushaltsgenehmigung|genehmigung (des|der) (haushalt|kredit)|"
+        r"kredit\w* (noch )?(nicht )?genehmigt", re.I)
+
+    def _hh_bekanntmachung(self, year: int) -> dict | None:
+        """Die Bekanntmachung der beschlossenen Satzung im Amtsblatt."""
+        try:
+            r = self._conn.execute(
+                "SELECT published_on, session_date, issue_nr, url, approval_note, herkunft_id "
+                "FROM council_budget_bylaw_published WHERE year = ?", (year,)).fetchone()
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return None
+        if not r or not r["published_on"]:
+            return None
+        return {"date": r["published_on"], "session_date": r["session_date"],
+                "issue_nr": r["issue_nr"], "url": r["url"],
+                "approval_note": r["approval_note"], "herkunft_id": r["herkunft_id"]}
+
+    def _hh_genehmigungsdebatte(self, von: str, bis: str) -> list[dict]:
+        """Öffentliche Tagesordnungspunkte zur Genehmigung zwischen Beschluss
+        und Jahresende."""
+        rows = self._conn.execute(
+            "SELECT s.session_date AS date, s.committee, s.ksinr, a.item_number AS top, "
+            "       a.title, a.template_number "
+            "  FROM council_agenda_items a JOIN council_sessions s ON s.ksinr = a.ksinr "
+            " WHERE a.is_public = 1 AND s.session_date > ? AND s.session_date <= ? "
+            "   AND (lower(a.title) LIKE '%genehmig%' OR lower(a.title) LIKE '%aufsicht%') "
+            " ORDER BY s.session_date", (von, bis)).fetchall()
+        return [dict(r) for r in rows if self._HH_GENEHMIGUNG.search(r["title"] or "")]
 
     def _hh_beratungen(self, kvonrs: list[int]) -> list[dict]:
         """Beratungen mehrerer Vorlagen, nach Datum sortiert, je mit dem
