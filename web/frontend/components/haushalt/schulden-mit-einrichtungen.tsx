@@ -101,7 +101,8 @@ export function SchuldenMitEinrichtungen() {
 
       <p className="mt-3 max-w-[76ch] text-[11.5px] leading-relaxed text-muted-foreground">
         Je Einwohner*in am 30.06., Schulden zum 31.12. Oldenburgs Kernhaushalt stimmt in jedem
-        gezeigten Jahr auf den Euro mit der Schuldenreihe der Stadt überein
+        gezeigten Jahr auf den Euro mit den eigenen Zahlen der Stadt überein — der Schuldenreihe
+        des Statistischen Jahrbuchs, wo sie fehlt der Schuldenübersicht im Haushaltsplan
         {fehlend.length > 0 && <> — {fehlend.join(", ")} fehlt, weil sich das dort nicht prüfen lässt</>}.
         Für die Einrichtungen gibt es keine solche Gegenprobe; sie stehen, wie die Statistik sie
         führt. Beteiligungen unter 100 % (etwa an Energieversorgern) sind nicht dabei.

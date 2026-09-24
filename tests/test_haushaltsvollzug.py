@@ -647,7 +647,10 @@ def test_der_jahrgang_kommt_in_den_datenstand(tmp_path):
                      if z["key"] == "budget_execution")
         assert zeile["jahrgaenge"] == [2025]
         assert zeile["tabelle"] == "council_budget_execution"
-        assert zeile["automatisch"] is False
+        # Kein eigener Leser, aber ein Skript, das der Cron bei einem neuen
+        # Bericht startet — für Leser*innen „kommt von selbst nach".
+        assert zeile["automatisch"] is True
+        assert finanzquellen.QUELLEN["budget_execution"].lauf == ("scripts/ingest_haushaltsvollzug.py",)
         assert "ingest_haushaltsvollzug" in zeile["was"] + str(
             finanzquellen.QUELLEN["budget_execution"].nachschub)
     finally:
