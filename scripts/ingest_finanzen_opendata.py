@@ -125,7 +125,13 @@ def main() -> int:
                 print(f"Investitionen {year}: HTTP {r.status_code} — übersprungen",
                       file=sys.stderr)
                 continue
-            gelesen = investitionen.lies(r.text, year)
+            # 2020/2021 sind Latin-1, ab 2022 UTF-8 — ohne Zeichensatz im Kopf
+            # der Antwort rät `requests` sonst Latin-1 auch für UTF-8.
+            try:
+                text = r.content.decode("utf-8")
+            except UnicodeDecodeError:
+                text = r.content.decode("latin-1")
+            gelesen = investitionen.lies(text, year)
             if not gelesen["bestanden"]:
                 print(f"Investitionen {year}: {gelesen['nachweis']} — "
                       f"nicht gespeichert", file=sys.stderr)
@@ -149,7 +155,8 @@ def main() -> int:
                                "die Summenzeile „Finanzhaushalt "
                                "Gesamtinvestitionen“. Für welches Jahr die Datei "
                                "gilt, steht nicht in ihr, sondern in ihrem "
-                               f"Dateinamen (…_{year}_Finanzhaushalt.csv)",
+                               f"Dateinamen (…{year}…csv); 2020 und 2021 als "
+                               "zweiter Block der Datei nach dem Ergebnishaushalt",
                     probe_result=gelesen["nachweis"],
                     as_of=f"Haushaltsplan {year} — Plan, nicht Ist",
                     **anker),

@@ -55,6 +55,7 @@ import { Summe } from "@/components/haushalt/tafel";
 import { ReiterLeiste, ReiterTafel, type Reiter } from "@/components/ui/reiter";
 import { Datenstand } from "@/components/haushalt/datenstand";
 import { ZuschuesseBereich } from "@/components/haushalt/zuschuesse-bereich";
+import { VorberichtBereich } from "@/components/haushalt/vorbericht-bereich";
 import { cn } from "@/lib/utils";
 
 type ReiterId = "ueberblick" | "planist" | "zuschuesse" | "source";
@@ -308,7 +309,7 @@ function BereichInner() {
     ...(abschluss.length ? (["ergebnisrechnung_thh"] as const) : []),
     ...(hatPlanIst ? (["jahresabschluss"] as const) : []),
     ...(produktZeilen.length ? (["teilhaushalt"] as const) : []),
-    ...(kanon.sub_budget != null ? (["grants"] as const) : []),
+    ...(kanon.sub_budget != null ? (["budget_notes", "grants"] as const) : []),
   ];
 
   const reiterListe: Reiter<ReiterId>[] = [
@@ -435,6 +436,10 @@ function BereichInner() {
         {/* Die Rechnung des Bereichs steht seit 24.08. oben auf der Tafel —
             der Überblick beginnt mit dem Blick HINTER ihre Einnahmen-Leiste. */}
         <EigeneErtraege daten={data} key={kanon.key} planEin={ein} planJahr={year} />
+
+        {/* Was die Verwaltung im Vorbericht zu diesem Teilhaushalt schreibt —
+            Wortlaut, nie zusammengefasst (Plan Haushalt-Datenquellen, PR 5). */}
+        {kanon.sub_budget != null && <VorberichtBereich subBudget={kanon.sub_budget} />}
 
         {/* Brutto gegen Netto — der Umschalter IST das Lehrstück. */}
         <Karte>

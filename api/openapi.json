@@ -5254,6 +5254,80 @@
         "title": "BudgetLoans",
         "type": "object"
       },
+      "BudgetNote": {
+        "description": "Ein Abschnitt des Vorberichts zu einem Teilhaushalt, im Wortlaut.\n\n``kind``: ``result`` (Abschnitt 2.4.2.x, Ergebnishaushalt) oder\n``investments`` (3.2.2.x). ``text`` sind Absätze, getrennt durch eine\nLeerzeile — ohne die Tabellen und Grafiken des Originals.",
+        "properties": {
+          "budget_year": {
+            "title": "Budget Year",
+            "type": "integer"
+          },
+          "herkunft_id": {
+            "title": "Herkunft Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "page": {
+            "title": "Page",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "sub_budget_no": {
+            "title": "Sub Budget No",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "budget_year",
+          "sub_budget_no",
+          "kind",
+          "title",
+          "text",
+          "page",
+          "herkunft_id"
+        ],
+        "title": "BudgetNote",
+        "type": "object"
+      },
+      "BudgetNotes": {
+        "properties": {
+          "notes": {
+            "items": {
+              "$ref": "#/components/schemas/BudgetNote"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "provenance": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Herkunft"
+            },
+            "title": "Provenance",
+            "type": "object"
+          }
+        },
+        "required": [
+          "notes",
+          "provenance"
+        ],
+        "title": "BudgetNotes",
+        "type": "object"
+      },
       "BudgetOverview": {
         "description": "``/api/council/budget`` — das Datenfundament des Haushalts-Bereichs.\n\n**Jedes Feld ist ``NotRequired``, und zwar zwingend.** Der Endpunkt baut\nseine Antwort aus einer Bausteinliste und liefert mit ``?felder=…`` nur\ndie angeforderten Blöcke (``?felder=years,population`` sind zwei Schlüssel,\nnicht sechsundzwanzig). Ein Pflichtfeld wäre hier an jedem\nzugeschnittenen Aufruf ein 500.\n\nDie Werte bleiben ``Any``: Was in ihnen steht, kommt aus breiten\nStore-Abfragen, und eine geratene Verengung ließe Pydantic Werte\nKONVERTIEREN (siehe Kopf dieses Abschnitts). Was die einzelnen Blöcke\nbedeuten — und welche Angabe ohne welche nicht gezeigt werden darf —\nsteht im Docstring des Handlers (``routers/council.py::haushalt_uebersicht``).",
         "properties": {
@@ -26902,6 +26976,49 @@
           }
         },
         "summary": "Haushalt Kredite",
+        "tags": [
+          "council"
+        ]
+      }
+    },
+    "/api/council/budget/notes": {
+      "get": {
+        "description": "Was die Verwaltung im Vorbericht zu einem Teilhaushalt schreibt — je\nPlan der Abschnitt zum Ergebnishaushalt und der zu den Investitionen, im\nWortlaut (``council/vorbericht.py``). Jüngster Plan zuerst.",
+        "operationId": "haushalt_vorbericht_api_council_budget_notes_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "sub_budget",
+            "required": true,
+            "schema": {
+              "title": "Sub Budget",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetNotes"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Haushalt Vorbericht",
         "tags": [
           "council"
         ]

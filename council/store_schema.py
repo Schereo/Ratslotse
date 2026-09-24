@@ -931,6 +931,7 @@ class SchemaMixin(StoreBasis):
         # Und die Zuschüsse an Dritte aus Anlage 003.
         "council_grants":            (None, "source_url", "ris"),
         "council_debt_plan":         (None, "source_url", "ris"),
+        "council_budget_notes":      (None, "source_url", "ris"),
         "council_commitments":       (None, "source_url", "ris"),
         # Ebenso die Investitionen des Finanzhaushalts: neu, ohne Altspalten,
         # Herkunft ausschließlich über `herkunft_id`.
@@ -2364,6 +2365,20 @@ class SchemaMixin(StoreBasis):
         self._conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_zuschuesse_thh "
             "ON council_grants(sub_budget_no, budget_year)")
+        # Der Vorbericht (Anlage 001, council/vorbericht.py): je Plan und
+        # Teilhaushalt der Wortlaut der Abschnitte 2.4.2.x (Ergebnishaushalt,
+        # kind = result) und 3.2.2.x (Investitionen, kind = investments).
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_budget_notes ("
+            "budget_year INTEGER NOT NULL, "
+            "sub_budget_no INTEGER NOT NULL, "
+            "kind TEXT NOT NULL, "               # result | investments
+            "title TEXT NOT NULL, "
+            "text TEXT NOT NULL, "               # Absätze, durch Leerzeile getrennt
+            "page INTEGER, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (budget_year, sub_budget_no, kind))"
+        )
         # Aus derselben Anlage 003: der voraussichtliche Stand der Schulden
         # (je Plan, Block und Schuldenart; Beträge in Euro, gedruckt in T€) und
         # die Fälligkeiten der Verpflichtungsermächtigungen.

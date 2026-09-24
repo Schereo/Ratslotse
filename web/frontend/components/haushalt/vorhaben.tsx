@@ -148,7 +148,7 @@ export function Vorhaben({
   const [wort, setWort] = useState(() => params.get("vorhaben") ?? "");
   const [sortierung, setSortierung] = useState<Sortierung>("grand_total");
   // Der Explorer hat seinen eigenen Jahrgang-Filter (H4-06): Die beiden
-  // Quellen der Seite reichen verschieden weit (Portal 2022–2025, Plan
+  // Quellen der Seite reichen verschieden weit (Portal 2020–2025, Plan
   // 2019–2026) — wer 2019 sehen will, darf nicht am Jahr der Seite hängen.
   const [jahrWahl, setJahrWahl] = useState<number | null>(
     () => Number(params.get("year")) || null);

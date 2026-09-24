@@ -145,6 +145,8 @@ export type QuellenSchluessel =
   | "grants"
   // Und aus derselben Anlage: Schuldenstand laut Plan und die VE.
   | "debt_plan"
+  // Der Vorbericht (Anlage 001): der Wortlaut je Teilhaushalt.
+  | "budget_notes"
   | "investitionsprogramm"
   // Und das Ist-Gegenstück aus dem Statistischen Jahrbuch. Bewusst ein
   // eigener Schlüssel und nicht ein zweiter Absatz unter `investitionen`:
@@ -843,7 +845,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
       "darin, und einzelne Vorhaben nennt der Datensatz gar nicht.",
     herausgeber: "Stadt Oldenburg, Open-Data-Portal",
     standWort: "Haushaltsjahre",
-    as_of: "Haushaltsjahre 2022–2025",
+    as_of: "Haushaltsjahre 2020–2025",
     lizenz: "dl-de/by-2.0",
     art: "csv",
     url: "https://opendata.oldenburg.de/dataset/haushaltsplan-stadt-oldenburg-2025",
@@ -858,6 +860,19 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
       "verschluckt; jede der sechs Spalten muss ihre Summen und Salden selbst ergeben. " +
       "Es ist der Entwurf der Verwaltung: Die Anlage hängt an der Einbringungs-Vorlage, " +
       "nicht am Beschluss.",
+    herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
+    standWort: "Haushaltspläne",
+    as_of: "Haushaltspläne 2019–2026, Stand der Einbringung",
+    art: "pdf",
+    url: "https://buergerinfo.oldenburg.de",
+  },
+  budget_notes: {
+    title: "Vorbericht zum Haushaltsplan (Anlage 001)",
+    citation:
+      "Der Vorbericht erläutert jeden Teilhaushalt in zwei Abschnitten: zum Ergebnishaushalt " +
+      "(2.4.2) und zu den Investitionen (3.2.2). Wiedergegeben wird der Wortlaut der Verwaltung, " +
+      "ohne Tabellen und Grafiken. Es ist der Entwurf, wie er in den Rat eingebracht wurde; " +
+      "Änderungen im Beratungsverfahren stehen nicht darin.",
     herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
     standWort: "Haushaltspläne",
     as_of: "Haushaltspläne 2019–2026, Stand der Einbringung",

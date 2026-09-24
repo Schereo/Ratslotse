@@ -127,6 +127,8 @@ class HaushaltMixin(StoreBasis):
         "grants":            ("council_grants", "budget_year", None, None),
         # Und aus derselben Anlage der Schuldenstand laut Plan.
         "debt_plan":         ("council_debt_plan", "budget_year", None, None),
+        # Der Vorbericht (Anlage 001): ein Dokument je Plan.
+        "budget_notes":      ("council_budget_notes", "budget_year", None, None),
         # Vierte Ebene: Abschnitt 2.1, die Bilanz. Der älteste Stichtag (2016)
         # stammt aus der Vorjahresspalte des Abschlusses 2017 — er trägt
         # deshalb dessen Dokument, mit eigener Fundstelle.
@@ -2159,6 +2161,38 @@ class HaushaltMixin(StoreBasis):
             return [dict(r) for r in self._conn.execute(
                 "SELECT * FROM council_commitments WHERE plan_year = budget_year "
                 "ORDER BY budget_year, due_year")]
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return []
+
+    def save_vorbericht(self, budget_year: int, abschnitte: list[dict], herkunft) -> int:
+        """Die Abschnitte eines Vorberichts ersetzen."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute("DELETE FROM council_budget_notes WHERE budget_year = ?",
+                               (budget_year,))
+            self._conn.executemany(
+                "INSERT INTO council_budget_notes (budget_year, sub_budget_no, kind, title, "
+                " text, page, herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,?)",
+                [(budget_year, a["sub_budget_no"], a["kind"], a["title"], a["text"],
+                  a["page"], hid, now) for a in abschnitte])
+        return len(abschnitte)
+
+    def vorbericht_jahrgaenge(self) -> list[int]:
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT DISTINCT budget_year FROM council_budget_notes ORDER BY budget_year")]
+        except sqlite3.OperationalError:
+            return []
+
+    def get_vorbericht(self, sub_budget_no: int) -> list[dict]:
+        """Die Abschnitte eines Teilhaushalts über alle Pläne, jüngster zuerst."""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_budget_notes WHERE sub_budget_no = ? "
+                "ORDER BY budget_year DESC, kind DESC", (sub_budget_no,))]
         except sqlite3.OperationalError as fehler:
             if not tabelle_fehlt(fehler):
                 raise

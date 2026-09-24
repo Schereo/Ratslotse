@@ -581,6 +581,10 @@ def _einheiten_uebersichten(row: dict) -> set[tuple]:
     return set()
 
 
+def _bestand_vorbericht(store: CouncilStore) -> set[tuple]:
+    return {(j,) for j in store.vorbericht_jahrgaenge()}
+
+
 def _bestand_uebersichten(store: CouncilStore) -> set[tuple]:
     return {(j,) for j in store.zuschuss_jahrgaenge()}
 
@@ -2608,6 +2612,27 @@ for _q in (
         lauf=("scripts/ingest_finanzhaushalt.py",),
     ),
     Finanzquelle(
+        key="budget_notes",
+        label="Vorbericht zum Haushaltsplan",
+        was="Was die Verwaltung zu jedem Teilhaushalt schreibt — zum "
+            "Ergebnishaushalt und zu den Investitionen, im Wortlaut.",
+        tabelle="council_budget_notes",
+        erwarteter_monat=10,
+        versatz=-1,
+        herkunft="ris",
+        erkennung=Erkennung(
+            # Die acht Vorberichte 2019–2026 und ihre Dubletten; das Sammel-PDF
+            # (280 Seiten) sortiert das Skript über die Seitenzahl aus.
+            label_muster=("%Vorbericht%",),
+            mindest_seiten=40,
+            ordnung="document_id",
+        ),
+        einheiten_von=_einheiten_uebersichten,
+        balance=_bestand_vorbericht,
+        nachschub="scripts/ingest_vorbericht.py (lädt die PDFs selbst)",
+        lauf=("scripts/ingest_vorbericht.py",),
+    ),
+    Finanzquelle(
         key="grants",
         label="Zuschüsse an Dritte",
         was="Wer von der Stadt Zuschüsse bekommt — Vereine, Träger, "
@@ -3116,7 +3141,8 @@ for _q in (
 #: weil er zeitlich dazwischenliegt: Erst was die Stadt vorhat, dann wie es im
 #: laufenden Jahr läuft, dann wie es ausgegangen ist. Die drei nebeneinander
 #: sind die Geschichte eines Haushaltsjahres.
-REIHENFOLGE = ("haushaltsplan", "income_budget", "finance_budget", "grants", "investitionen",
+REIHENFOLGE = ("haushaltsplan", "budget_notes", "income_budget", "finance_budget", "grants",
+               "investitionen",
                "investitionsprogramm", "budget_execution",
                "jahresabschluss", "teilhaushalt",
                "stellenplan", "indicators", "rpa_fundstelle",

@@ -871,7 +871,7 @@ def test_haushalt_datenstand_nennt_alle_schichten(client):
     _register(client)
     b = client.get("/api/council/budget/data-status").json()
     schichten = {s["key"]: s for s in b["layers"]}
-    assert set(schichten) == {"haushaltsplan", "income_budget", "finance_budget", "grants", "investitionen",
+    assert set(schichten) == {"haushaltsplan", "budget_notes", "income_budget", "finance_budget", "grants", "investitionen",
                               "investitionsprogramm", "budget_execution",
                               "jahresabschluss", "teilhaushalt", "stellenplan",
                               "indicators", "rpa_fundstelle",

@@ -144,6 +144,16 @@ INVESTITIONEN_CSV_URLS: dict[int, str] = {
            f"1101_Haushaltsplan_StadtOL_{year}_Finanzhaushalt.csv")
     for year in (2022, 2023, 2024, 2025)
 }
+# 2020 und 2021 hat das Portal anders geschnitten: EINE Datei je Jahr mit zwei
+# Blöcken („Ergebnishaushalt - Haushaltssoll", „Finanzhaushalt, Investitionen -
+# Haushaltssoll"), Latin-1 statt UTF-8. `investitionen.lies` sucht sich den
+# Finanzhaushalts-Block selbst (Plan Haushalt-Datenquellen, PR 6).
+INVESTITIONEN_CSV_URLS.update({
+    2020: ("https://opendata.oldenburg.de/sites/default/files/"
+           "1101%20Haushaltsplan%20der%20Stadt%20Oldenburg%202020_1.csv"),
+    2021: ("https://opendata.oldenburg.de/sites/default/files/"
+           "1101%20Haushaltsplan%20der%20Stadt%20Oldenburg%202021.csv"),
+})
 
 # Steuerarten-Spalten wie im Portal, nur Umlaute restauriert.
 _STEUERART_NAMEN = {

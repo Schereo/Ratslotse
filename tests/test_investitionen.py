@@ -26,6 +26,8 @@ auffallen:
 """
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from council import finanzquellen, herkunft, investitionen as inv
@@ -343,3 +345,18 @@ def test_bestandsschutz_haelt_einen_leeren_lauf_drauSSen(tmp_path):
     p = finanzquellen.Protokoll(still=True)
     assert finanzquellen.bestandsschutz(p, "Investitionen 2025", 15, 0) is False
     assert p.warnungen
+
+
+def test_2021_zwei_bloecke_in_einer_datei():
+    """2020/2021 liefert das Portal EINE Latin-1-Datei: erst der
+    Ergebnishaushalt (Erträge/Aufwendungen), dann der Finanzhaushalt — mit
+    Tausenderpunkten. Gelesen wird nur der zweite Block, und er geht auf."""
+    text = (Path(__file__).parent / "fixtures" / "haushaltsplan_2021_opendata.csv") \
+        .read_bytes().decode("latin-1")
+    r = inv.lies(text, 2021)
+    assert r["bestanden"], r["nachweis"]
+    assert len(r["zeilen"]) == 13
+    assert r["gesamt"]["outflows"] == 92_837_070.0
+    assert r["gesamt"]["inflows"] == 21_426_150.0
+    # Die Ertragszeilen des ersten Blocks dürfen nicht als Investitionen landen.
+    assert all(z["outflows"] < 60_000_000 for z in r["zeilen"])
