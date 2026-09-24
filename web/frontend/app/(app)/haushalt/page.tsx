@@ -33,6 +33,7 @@ import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { Wegweiser } from "@/components/haushalt/wegweiser";
 import { Datenstand } from "@/components/haushalt/datenstand";
+import { QuellenUmfang } from "@/components/haushalt/quellen-umfang";
 import { useFetch } from "@/lib/use-fetch";
 import { Tafel } from "@/components/haushalt/tafel";
 import { VollzugKarte } from "@/components/haushalt/vollzug";
@@ -284,6 +285,10 @@ export default function HaushaltPage() {
       <div id="wegweiser" className="scroll-mt-20">
         <Wegweiser />
       </div>
+
+      {/* Wie viel hinter den Seiten steckt — gezählt aus dem Bestand
+          (Tim, 24.09.2026: „zeigen, wie sophisticated die Übersicht ist"). */}
+      <QuellenUmfang />
 
       {/* Der Kassenzettel (H2-02): die Kernzahl in einer Einheit, die man
           fühlt — und die Zeile, um die es politisch geht, als letzte des Bons

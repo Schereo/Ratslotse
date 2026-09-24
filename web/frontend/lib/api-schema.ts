@@ -2670,6 +2670,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/council/budget/source-stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Haushalt Quellenzahlen
+         * @description Wie viele Zahlen aus wie vielen Dokumenten der Bereich zusammenträgt —
+         *     gezählt aus dem Bestand, je Datenschicht und gesamt
+         *     (``council/quellenzahlen.py``). Zehn Minuten gepuffert.
+         */
+        get: operations["haushalt_quellenzahlen_api_council_budget_source_stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/council/budget/staff-plan": {
         parameters: {
             query?: never;
@@ -8544,6 +8566,34 @@ export interface components {
             products: unknown;
             /** Year */
             year: unknown;
+        };
+        /**
+         * BudgetSourceStats
+         * @description Woher die Zahlen kommen (``council/quellenzahlen.py``). ``numbers``
+         *     zählt numerische Zellen ohne Schlüssel (Jahre, Seiten, Kennungen);
+         *     ``documents`` eigenständige Belege; ``citations`` Belegstellen;
+         *     ``probe_kinds``/``probe_runs`` die bestandenen Proben beim Einlesen.
+         */
+        BudgetSourceStats: {
+            /** Citations */
+            citations: number;
+            /** Documents */
+            documents: number;
+            /** Layers */
+            layers: components["schemas"]["SourceStatsLayer"][];
+            /** Numbers */
+            numbers: number;
+            other: components["schemas"]["SourceStatsOther"];
+            /** Probe Kinds */
+            probe_kinds: number;
+            /** Probe Runs */
+            probe_runs: number;
+            /** Rows */
+            rows: number;
+            /** Sources */
+            sources: components["schemas"]["SourceStatsSource"][];
+            /** Tables */
+            tables: number;
         };
         /** BudgetStaffPlan */
         BudgetStaffPlan: {
@@ -15279,6 +15329,46 @@ export interface components {
             status: string;
         };
         /**
+         * SourceStatsLayer
+         * @description Eine Datenschicht (oder mehrere, die dieselben Tabellen füllen).
+         */
+        SourceStatsLayer: {
+            /** Documents */
+            documents: number;
+            /** Keys */
+            keys: string[];
+            /** Labels */
+            labels: string[];
+            /** Numbers */
+            numbers: number;
+            /** Rows */
+            rows: number;
+            /** Sources */
+            sources: string[];
+            /** Tables */
+            tables: number;
+        };
+        /** SourceStatsOther */
+        SourceStatsOther: {
+            /** Documents */
+            documents: number;
+            /** Numbers */
+            numbers: number;
+            /** Rows */
+            rows: number;
+            /** Tables */
+            tables: number;
+        };
+        /** SourceStatsSource */
+        SourceStatsSource: {
+            /** Documents */
+            documents: number;
+            /** Kind */
+            kind: string;
+            /** Label */
+            label: string;
+        };
+        /**
          * Speech
          * @description Ein Wortbeitrag aus einem Protokoll.
          */
@@ -19002,6 +19092,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BudgetHoldings"];
+                };
+            };
+        };
+    };
+    haushalt_quellenzahlen_api_council_budget_source_stats_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetSourceStats"];
                 };
             };
         };
@@ -23982,4 +24092,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: ed370591b9a985cab0841a30e9c1a8c67e4f7378641693f2b6c37da7b9c26da2
+// vertrag-sha256: 80d3652dfcef374af1aa780b1ad7df7206931f4ef28b73a838302fcd4f7888ac
