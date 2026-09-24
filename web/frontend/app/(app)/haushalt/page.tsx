@@ -286,10 +286,6 @@ export default function HaushaltPage() {
         <Wegweiser />
       </div>
 
-      {/* Wie viel hinter den Seiten steckt — gezählt aus dem Bestand
-          (Tim, 24.09.2026: „zeigen, wie sophisticated die Übersicht ist"). */}
-      <QuellenUmfang />
-
       {/* Der Kassenzettel (H2-02): die Kernzahl in einer Einheit, die man
           fühlt — und die Zeile, um die es politisch geht, als letzte des Bons
           („aus dem Ersparten"). */}
@@ -473,6 +469,9 @@ export default function HaushaltPage() {
       {/* Steht am Fuß und gilt für den ganzen Bereich: Wer hier ankommt, hat
           die Zahlen gesehen und fragt sich, bis wann sie reichen. */}
       <Datenstand />
+      {/* Wie viel hinter den Seiten steckt — gezählt aus dem Bestand. Als
+          Lade im Apparat, nicht als Karte oben (Tim, 24.09.2026). */}
+      <QuellenUmfang />
 
       <Quellenverzeichnis keys={quellen} />
     </div>
