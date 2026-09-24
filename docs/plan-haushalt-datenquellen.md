@@ -215,7 +215,7 @@ Tabellenkopf, ob „Budget“-Zeilen je Produkt geführt werden. Ergebnis als
 Tabelle in diesen Plan nachtragen. Gebaut wird nur bei mindestens drei
 gleichen Jahrgängen (Entscheidung 5).
 
-**Gemessen am 24.09.2026** (,
+**Gemessen am 24.09.2026** (`python scripts/messe_budgetberichte.py --markdown`,
 39 Anlagen zu 38 Vorlagen):
 
 | Vorlage | Gremium | THH | Stichtag | Seiten | Text | Ergebnisrechnung | Finanzrechnung | Maßnahmen | Produkte | Prognose | Maßnahmen-Nr. |
@@ -268,7 +268,7 @@ zusätzlich die Investitionen je Maßnahme (I10-Nummer) mit Ansatz, Prognose,
 Abweichung und einem Erläuterungstext je Maßnahme („Der Erweiterungsbau der
 Krippe ist fertiggestellt …“). Die Schwelle aus Entscheidung 5 ist damit
 deutlich überschritten. Neu gegenüber dem Haushaltsvollzug
-(, nur Summen je Teilhaushalt) ist die
+(`council_budget_execution`, nur Summen je Teilhaushalt) ist die
 **Maßnahmen-Ebene mit Begründung**. Der Stadtgrün-Ausschuss (THH 09) hat nur
 einen Bericht (2022) und bleibt draußen. Bau als PR 8b: Maßnahmen je Stichtag
 mit Prognose und Erläuterung, Probe Summe der Maßnahmen gegen die Zeile
