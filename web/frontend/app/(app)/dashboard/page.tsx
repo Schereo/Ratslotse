@@ -16,6 +16,7 @@ import { LiveBanner } from "@/components/live-banner";
 import { FundstueckCard } from "@/components/fundstueck-card";
 import { SeitBesuchWidget } from "@/components/seit-besuch-widget";
 import { HeuteWidget, HeuteWidgetGrid } from "@/components/heute-widget";
+import { useUltra } from "@/lib/use-ultra";
 import { MeinViertelWidget } from "@/components/mein-viertel-widget";
 import { RecentDecisions } from "@/components/recent-decisions";
 import { WocheImRat, type Wochenvorschau } from "@/components/woche-im-rat";
@@ -56,6 +57,7 @@ export default function DashboardPage() {
   }, []);
 
   const topicsQuery = useQuery({ queryKey: ["topics"], queryFn: () => api.get<Topic[]>("/topics") });
+  const ultra = useUltra();
 
   const zahlQuery = useQuery({
     queryKey: ["zahl-der-woche"],
@@ -130,8 +132,15 @@ export default function DashboardPage() {
       />
 
       {/* Größe ist eine Layout-Vorgabe. Die Karten entscheiden anhand ihrer
-          eigenen Breite, wie viele Details passen — auch auf dem Telefon. */}
-      <HeuteWidgetGrid className={cn("mt-6", STAFFEL)} style={staffelStil(2)}>
+          eigenen Breite, wie viele Details passen — auch auf dem Telefon.
+          Ab `ultra` (1440p, 21:9) steht „Die Woche im Rat" als eigene Spalte
+          links, das übrige Raster rechts — beide gut 1.000 px breit, die
+          Karten behalten also ihren vollen Detailgrad. Drei Spalten hätten
+          sie auf ~700 px und damit eine Stufe kürzer gezogen. Umgehängt wird
+          per Hook statt doppelt per CSS, weil jede Karte selbst lädt. */}
+      <div className={cn("mt-6", ultra && "grid grid-cols-2 items-start gap-4", STAFFEL)} style={staffelStil(2)}>
+      {ultra && vorschau && <WocheImRat vorschau={vorschau} heuteIso={heuteIso} size="wide" />}
+      <HeuteWidgetGrid>
         <SeitBesuchWidget />
         {/* Zahl der Woche (RL-905) — eine Zahl und ein Satz, braucht am
             wenigsten Breite. */}
@@ -175,11 +184,12 @@ export default function DashboardPage() {
           )}
           {!zahl && <div className="h-10 animate-pulse rounded-lg bg-signal/10" />}
         </HeuteWidget>
-        {vorschau && <WocheImRat vorschau={vorschau} heuteIso={heuteIso} size="wide" />}
+        {!ultra && vorschau && <WocheImRat vorschau={vorschau} heuteIso={heuteIso} size="wide" />}
         <MeinViertelWidget topics={topicsQuery.data} heuteIso={heuteIso} size="wide" />
         <RecentDecisions size="wide" />
         <FundstueckCard size="wide" />
       </HeuteWidgetGrid>
+      </div>
 
     </div>
   );

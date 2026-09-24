@@ -9,6 +9,7 @@ import { karteHref } from "@/lib/routes";
 import { cn, formatDate } from "@/lib/utils";
 import { Button, DetailSkeleton, EmptyState, Sheet, SheetContent, SheetTitle, toast } from "@/components/ui";
 import { SEITEN_POLSTER } from "@/lib/vollbreit";
+import { useUltra } from "@/lib/use-ultra";
 import { StadtKarte, type KartenStufe } from "@/components/stadt-karte";
 import { EbenenChips } from "@/components/ebenen-chips";
 import { ebeneUmschalten, ebenenMerken, ebenenStart, ebenenZuUrl, type EbenenId } from "@/lib/karten-ebenen";
@@ -226,14 +227,8 @@ function Buehne() {
   }, []);
   // 1440p und 21:9: Die Tafel wird zweispaltig, und ein gewähltes Vorhaben
   // (bzw. ein Wahlbezirk) öffnet in der rechten Spalte, statt die Liste zu
-  // ersetzen — dieselbe Schwelle wie `ultra` in tailwind.config.ts.
-  const [ultra, setUltra] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia("(min-width: 2200px)");
-    const h = () => setUltra(mq.matches);
-    h(); mq.addEventListener("change", h);
-    return () => mq.removeEventListener("change", h);
-  }, []);
+  // ersetzen.
+  const ultra = useUltra();
 
   function zumOrt(placeId: string) { router.push(karteHref(placeId)); }
   function zurStadt() { router.push(karteHref()); }

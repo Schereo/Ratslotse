@@ -23,6 +23,7 @@ export const VOLLBREIT: readonly string[] = [
 /** Ab `ultra` (2200 px) bis 2200 px breit statt 1600 px. Nur Seiten, die
  *  den Platz in zusätzliche Spalten stecken, nicht in längere Zeilen. */
 export const ULTRA_BREIT: readonly string[] = [
+  "/dashboard",
   "/council/decision",
 ];
 
@@ -52,3 +53,8 @@ export function huellenKlasse(breite: HuellenBreite): string {
 /** Das Polster der normalen Hülle, zum Nachreichen auf randlosen Seiten —
  *  für das, was dort KEINE Bühne ist: Ladeplatzhalter, Fehlerzustände. */
 export const SEITEN_POLSTER = "px-4 py-6 sm:px-6 sm:py-8 lg:px-8";
+
+/** Die Schwelle von `ultra` aus tailwind.config.ts, für JavaScript. Nur dort
+ *  nehmen, wo CSS allein nicht reicht — wenn eine Seite ab `ultra` Bausteine
+ *  UMHÄNGT und sie dabei nicht doppelt einhängen darf (jede Instanz lädt). */
+export const ULTRA_MEDIA = "(min-width: 2200px)";
