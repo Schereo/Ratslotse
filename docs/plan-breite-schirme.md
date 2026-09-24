@@ -270,6 +270,39 @@ der Seite am Abend selbst ist das Risiko nicht wert.
 Die Bild-vor-Merge-Regel oben gilt trotzdem für jeden einzelnen PR.
 
 
+## 6. Stand der Umsetzung (24.09.2026)
+
+Gebaut in dieser Reihenfolge, mit diesen Abweichungen vom Plan oben:
+
+- **PR 1+2** (Hülle, Mein Viertel): wie geplant. Die Tafel ist ab `ultra`
+  840 px breit; im Viertel öffnet ein Vorhaben in der rechten Spalte, die
+  Liste bleibt stehen.
+- **PR 4** (Beschluss): Die dritte Spalte trägt außer „Anderswo" und
+  „Ähnliche Beschlüsse" auch den **Weg der Vorlage und die Presse** — sonst
+  war sie bei den meisten Beschlüssen fast leer und die Metadaten-Spalte
+  doppelt so lang. Ab `ultra` wachsen nur die Seitenspalten (340/520 px),
+  die Lesespalte bleibt um 900 px.
+- **PR 3** (Heute): **zwei** Spalten ab `ultra`, nicht drei — „Die Woche
+  im Rat" links, das Raster rechts. Bei drei Spalten wären die Karten auf
+  ~700 px gefallen und damit eine Detailstufe kürzer geworden
+  (`useWidgetDetail`, Schwelle 56,25 rem).
+- **PR 6** (Person, Thema, Ort): zweispaltig ab `weit`, **ohne** klebende
+  linke Spalte — sie kann höher werden als das Fenster, dann verschwände
+  ihr Ende hinter der langen Liste.
+- **PR 5 und 7** (Sitzung, Suche): gemeinsamer Baustein
+  `components/beschluss-vorschau.tsx`, schon ab `weit` statt erst ab
+  `ultra` (bei 1536 px Inhalt passen 950 + 560). Die Vorschau lädt über
+  `useFetch`, nicht react-query — die Detailseite tut es auch, einen
+  geteilten Schlüssel gibt es also nicht. **Nicht gebaut:** Pfeiltasten in
+  der Vorschau und die Vorschau in der Sitzungen-Liste (dort klappt jede
+  Sitzung ihre Punkte schon an Ort und Stelle auf; eine Vorschau zeigte nur
+  dieselbe Tagesordnung ein zweites Mal).
+- **PR 8**: Nur `/admin` und `/abos` (dort ab 120 rem drei Spalten). Bei
+  2560 px geprüft und **verworfen**: der Haushalt (Zeilen mit Balken
+  bekamen eine 700-px-Lücke), Konto, Themen, Quiz — sie wurden nur breiter.
+- **PR 9** (Wahlabend): offen, frühestens nach dem 27.09.2026.
+
+
 ## Anhang A — Messung wiederholen
 
 Voraussetzung: Backend mit echten Daten und allen Schaltern

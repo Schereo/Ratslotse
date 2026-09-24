@@ -25,6 +25,12 @@ export const VOLLBREIT: readonly string[] = [
 export const ULTRA_BREIT: readonly string[] = [
   "/dashboard",
   "/council/decision",
+  // Raster, deren Container-Queries die Spalten selbst vermehren. Geprüft
+  // und bewusst NICHT hier (24.09.2026, Bilder bei 2560 px): Haushalt (Zeilen
+  // mit Balken bekamen eine 700-px-Lücke), Konto, Themen, Quiz — sie wurden
+  // nur breiter, nicht reicher.
+  "/admin",
+  "/abos",
 ];
 
 function ohneSchraegstrich(pfad: string): string {
