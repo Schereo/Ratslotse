@@ -51,7 +51,7 @@ def _laden(url: str) -> bytes:
 def _text(pdf: bytes) -> tuple[str, int]:
     import pymupdf  # noqa: PLC0415
     with pymupdf.open(stream=pdf, filetype="pdf") as doc:
-        return "\n".join(p.get_text() for p in doc), doc.page_count
+        return "\n".join(str(p.get_text()) for p in doc), doc.page_count
 
 
 def main() -> int:

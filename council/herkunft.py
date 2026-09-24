@@ -316,6 +316,11 @@ PROBEN: dict[str, str] = {
         "Zuschüsse darüber ergeben sie, in beiden Spalten. Wo die Vorlage "
         "selbst falsch summiert (2020 und 2021, Teilhaushalt 8), ist jede "
         "Zeile vollständig und die Abweichung im Beleg vermerkt.",
+    "bylaw_published":
+        "Die Haushaltssatzung, wie sie im Amtsblatt bekannt gemacht wurde: Die "
+        "sechs Finanzhaushalts-Zeilen ergeben die beiden „Nachrichtlich“-Summen "
+        "der Satzung auf den Cent. Gescannte Ausgaben liest ein Sehmodell; die "
+        "Summenprobe fängt eine falsch gelesene Ziffer.",
     "budget_notes_sections":
         "Das Inhaltsverzeichnis des Vorberichts nennt je Teilhaushalt einen "
         "Abschnitt zum Ergebnishaushalt und einen zu den Investitionen; jeder "
@@ -761,6 +766,8 @@ HERKUNFT_TABELLEN: tuple[str, ...] = (
     "council_debt_plan",
     # Der Vorbericht (Anlage 001): der Wortlaut je Teilhaushalt.
     "council_budget_notes",
+    # Die beschlossene Haushaltssatzung aus dem Amtsblatt.
+    "council_budget_bylaw_published",
     "council_commitments",
     # Die Jahresabschlüsse der Gesellschaften — neu, ohne Altbestand.
     "council_company_accounts",

@@ -147,6 +147,8 @@ export type QuellenSchluessel =
   | "debt_plan"
   // Der Vorbericht (Anlage 001): der Wortlaut je Teilhaushalt.
   | "budget_notes"
+  // Die beschlossene Haushaltssatzung aus dem Amtsblatt.
+  | "budget_bylaw_published"
   | "investitionsprogramm"
   // Und das Ist-Gegenstück aus dem Statistischen Jahrbuch. Bewusst ein
   // eigener Schlüssel und nicht ein zweiter Absatz unter `investitionen`:
@@ -865,6 +867,21 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     as_of: "Haushaltspläne 2019–2026, Stand der Einbringung",
     art: "pdf",
     url: "https://buergerinfo.oldenburg.de",
+  },
+  budget_bylaw_published: {
+    title: "Amtsblatt für die Stadt Oldenburg — Haushaltssatzung",
+    citation:
+      "Die beschlossene Haushaltssatzung mit ihrer öffentlichen Bekanntmachung; erst damit " +
+      "tritt sie in Kraft. Die Ausgaben bis 2025 sind eingescannt und werden per " +
+      "Texterkennung gelesen; die Summenprobe der Satzung (sechs Finanzhaushalts-Zeilen = " +
+      "„Nachrichtlich“-Summen) fängt eine falsch gelesene Ziffer. Eine Genehmigung der " +
+      "Kommunalaufsicht druckt das Amtsblatt 2020–2026 bei keiner Satzung ab. 2019 ist " +
+      "auf der Seite der Stadt nicht verlinkt.",
+    herausgeber: "Stadt Oldenburg, Rechtsamt (Amtsblatt)",
+    standWort: "Haushaltsjahre",
+    as_of: "Haushaltsjahre 2020–2026",
+    art: "pdf",
+    url: "https://www.oldenburg.de/startseite/rathaus/informiert-bleiben/bekanntmachungen/amtsblatt.html",
   },
   budget_notes: {
     title: "Vorbericht zum Haushaltsplan (Anlage 001)",

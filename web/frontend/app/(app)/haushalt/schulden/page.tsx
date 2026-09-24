@@ -55,7 +55,8 @@ import { LiquiditaetsBlock } from "@/components/haushalt/liquiditaet";
 import type { LiquiditaetsDaten } from "@/lib/haushalt-liquiditaet";
 import type { KrediteDaten } from "@/lib/haushalt-kredite";
 import { deMio, haushaltUrl, type HaushaltAuswahl,
-  type HaushaltssatzungZeile } from "@/lib/haushalt";
+  type HaushaltssatzungZeile, type SatzungVeroeffentlicht } from "@/lib/haushalt";
+import { formatDate } from "@/lib/utils";
 import {
   Ansicht, BuergschaftsVorlage, Herkunft, SchuldenDaten, aufteilungen, deEuro,
   herkunftVon,
@@ -78,7 +79,7 @@ import { Fundstelle } from "@/components/haushalt/fundstelle";
 // einen Beleg-Chip darauf setzt. `Beleg` rendert dann bewusst nichts
 // („lieber keinen Chip als eine falsche Nummer") — und der Satz endete
 // mit einer Fußnote, die es nicht gab.
-const QUELLEN = ["schulden", "bilanz", "budget_bylaw", "loans", "debt_plan", "liquidity",
+const QUELLEN = ["schulden", "bilanz", "budget_bylaw", "budget_bylaw_published", "loans", "debt_plan", "liquidity",
                  "jahresabschluss"] as const;
 
 /** Die Haushaltssatzung wird über den Bausteine-Endpunkt geholt und nicht über
@@ -89,7 +90,7 @@ const QUELLEN = ["schulden", "bilanz", "budget_bylaw", "loans", "debt_plan", "li
 // `provenance` mit — der Rahmen-Block zeigte seine drei Zahlen bis zum
 // 21.08.2026 ganz ohne Beleg: Die Quelle stand im Verzeichnis am Seitenfuß,
 // an den Zahlen selbst stand nichts.
-const SATZUNG_FELDER = ["budget_bylaw", "provenance"] as const;
+const SATZUNG_FELDER = ["budget_bylaw", "budget_bylaw_published", "provenance"] as const;
 
 /** Wofür die Stadt geradesteht — Bürgschaften neben den eigenen Schulden.
  *
@@ -431,26 +432,36 @@ function DritteZahlBlock({ daten }: { daten: SchuldenDaten | null }) {
  *  liegen ausschließlich Verwaltungsentwürfe; die beschlossene Satzung
  *  erscheint im Amtsblatt. Ohne den Satz behaupteten diese Zahlen einen
  *  Ratsbeschluss, den wir nicht belegt haben. */
-function RahmenBlock({ row, herkunft }: {
+function RahmenBlock({ row, herkunft, beschlossen, herkunftBeschlossen }: {
   row: HaushaltssatzungZeile; herkunft: Herkunft | null;
+  /** Die bekannt gemachte Fassung desselben Jahres (Amtsblatt), wo es sie gibt. */
+  beschlossen: SatzungVeroeffentlicht | null;
+  herkunftBeschlossen: Herkunft | null;
 }) {
-  const posten: { label: string; value: number | null; erklaerung: string }[] = [
+  // Die Zahlen der beschlossenen Fassung, wo es sie gibt — der Entwurf bleibt
+  // daneben stehen, sobald der Rat etwas geändert hat.
+  const quelle = beschlossen ?? row;
+  const posten: { label: string; value: number | null; entwurf: number | null;
+    erklaerung: string }[] = [
     {
       label: "Kredite für Investitionen",
-      value: row.investment_loans,
+      value: quelle.investment_loans,
+      entwurf: row.investment_loans,
       erklaerung: "Wie viel die Stadt sich im Haushaltsjahr für Investitionen "
         + "leihen darf (§ 2).",
     },
     {
       label: "Höchstbetrag für Liquiditätskredite",
-      value: row.liquidity_loans,
+      value: quelle.liquidity_loans,
+      entwurf: row.liquidity_loans,
       erklaerung: "Bis zu diesem Höchstbetrag darf die Stadt kurzfristige Kredite "
         + "aufnehmen, um ihre Zahlungsfähigkeit zu sichern (§ 4). Der Betrag ist eine "
         + "Ermächtigung und nicht der tatsächlich genutzte Kredit.",
     },
     {
       label: "Verpflichtungsermächtigungen",
-      value: row.commitment_authorizations,
+      value: quelle.commitment_authorizations,
+      entwurf: row.commitment_authorizations,
       erklaerung: "Was die Stadt in diesem Jahr bestellen darf, obwohl die "
         + "Rechnung erst in kommenden Jahren kommt (§ 3).",
     },
@@ -474,7 +485,20 @@ function RahmenBlock({ row, herkunft }: {
       {/* Steht VOR den Zahlen, nicht als Fußnote darunter: Wer sie erst liest
           und dann erfährt, dass sie nicht beschlossen sind, hat sie schon
           geglaubt (dieselbe Regel wie der Summen-Kasten auf /haushalt/betriebe). */}
-      {row.version !== "beschlossen" && (
+      {beschlossen && (
+        <p className="mt-3 rounded-xl border border-border bg-muted/40 px-3 py-2
+                      text-[12.5px] leading-relaxed text-foreground/85">
+          <strong>Beschlossene Fassung.</strong>{" "}
+          {beschlossen.session_date && <>Der Rat hat die Satzung am {formatDate(beschlossen.session_date)} beschlossen; </>}
+          bekannt gemacht im Amtsblatt Nr.&nbsp;{beschlossen.issue_nr}
+          {beschlossen.published_on && <> vom {formatDate(beschlossen.published_on)}</>}
+          <Beleg q="budget_bylaw_published" />.{" "}
+          {beschlossen.approval_note
+            ? <>Zur Genehmigung steht dort: „{beschlossen.approval_note}“</>
+            : <>Eine Genehmigung der Kommunalaufsicht nennt das Amtsblatt nicht.</>}
+        </p>
+      )}
+      {!beschlossen && row.version !== "beschlossen" && (
         <p className="mt-3 rounded-xl border border-signal/40 bg-signal/5 px-3 py-2
                       text-[12.5px] leading-relaxed text-foreground/85">
           <strong>Entwurf der Verwaltung, kein Ratsbeschluss.</strong> Im
@@ -505,11 +529,18 @@ function RahmenBlock({ row, herkunft }: {
             </div>
             <p className="mt-0.5 max-w-[62ch] text-[12px] leading-relaxed text-muted-foreground">
               {p.erklaerung}
+              {/* Was der Rat gegenüber dem Entwurf geändert hat — genannt, nicht
+                  bewertet (keine Farbe, kein Pfeil). */}
+              {beschlossen && p.entwurf != null && p.value != null
+                && Math.abs(p.entwurf - p.value) > 0.5 && (
+                <> Im Entwurf der Verwaltung standen {deMio(p.entwurf / 1e6)}&#8239;Mio.&nbsp;€.</>
+              )}
             </p>
           </div>
         ))}
       </dl>
-      <Dokumentbeleg h={herkunft} vorlageNr={row.template_number}
+      <Dokumentbeleg h={beschlossen ? herkunftBeschlossen : herkunft}
+        vorlageNr={beschlossen ? undefined : row.template_number}
         className="mt-3 border-t border-dashed border-border pt-2.5" />
     </section>
   );
@@ -533,6 +564,12 @@ export default function SchuldenPage() {
       ? zeilen.reduce((a, b) => (b.year > a.year ? b : a))
       : null;
   }, [satzungDaten]);
+
+  // Die bekannt gemachte Fassung desselben Jahres (Amtsblatt).
+  const beschlossen = useMemo(
+    () => (satzung ? (satzungDaten?.budget_bylaw_published ?? [])
+      .find((z) => z.year === satzung.year) ?? null : null),
+    [satzung, satzungDaten]);
 
   const series = data?.series ?? [];
   const kurve = useMemo(() => punkte(series, ansicht), [series, ansicht]);
@@ -1018,7 +1055,9 @@ export default function SchuldenPage() {
           hoechstbetrag={satzung?.liquidity_loans ?? null} />
 
         {satzung && <RahmenBlock row={satzung}
-          herkunft={herkunftVon(satzungDaten, satzung.herkunft_id)} />}
+          herkunft={herkunftVon(satzungDaten, satzung.herkunft_id)}
+          beschlossen={beschlossen}
+          herkunftBeschlossen={beschlossen ? herkunftVon(satzungDaten, beschlossen.herkunft_id) : null} />}
 
         <Link href="/haushalt"
           className="group flex items-center gap-2 text-[13px] font-semibold text-primary">

@@ -227,6 +227,12 @@ jobs:
             # sofort sehen und nicht erst hinter dem Bestandsbericht.
             .venv/bin/python scripts/ingest_haushaltssatzung.py
 
+            # Die BESCHLOSSENE Haushaltssatzung aus dem Amtsblatt (oldenburg.de).
+            # Steht nach dem Entwurf, weil sie sich mit ihm vergleicht. Liest
+            # nur Ausgaben, die noch nicht angesehen wurden (council_gazette_issues);
+            # gescannte Seiten gehen ans Sehmodell, gemessen 0,002 $ je Seite.
+            .venv/bin/python scripts/ingest_amtsblatt.py
+
             # Die Gebührenbedarfsberechnung — Abfall und Straßenreinigung.
             # Steht NACH dem OCR-Lauf oben, und das ist keine Sortierlaune:
             # Der Jahrgang 2020 liegt nur als Scan vor und wird erst dort

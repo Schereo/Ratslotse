@@ -2534,6 +2534,7 @@ class BudgetOverview(TypedDict):
     fees: NotRequired[Any]
     fee_rates: NotRequired[Any]
     budget_bylaw: NotRequired[Any]
+    budget_bylaw_published: NotRequired[Any]
     business_plans: NotRequired[Any]
     enterprise_accounts: NotRequired[Any]
     variance_reasons: NotRequired[Any]

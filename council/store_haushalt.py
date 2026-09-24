@@ -954,6 +954,42 @@ class HaushaltMixin(StoreBasis):
             return {"zeilen": [], "summen": []}
         return {"zeilen": zeilen, "summen": summen}
 
+    def save_satzung_veroeffentlicht(self, v, *, issue_nr: str, url: str, herkunft) -> None:
+        """Die beschlossene Satzung eines Jahres ersetzen (council/amtsblatt.py)."""
+        from council.amtsblatt import FELDER
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            spalten = ("year", *FELDER, "session_date", "published_on", "issue_nr", "url",
+                       "approval_note", "herkunft_id", "fetched_at")
+            werte = (v.satzung.year, *(getattr(v.satzung, f) for f in FELDER),
+                     v.session_date, v.published_on, issue_nr, url, v.approval_note, hid, now)
+            self._conn.execute(
+                f"INSERT OR REPLACE INTO council_budget_bylaw_published ({', '.join(spalten)}) "
+                f"VALUES ({', '.join('?' * len(spalten))})", werte)
+
+    def get_satzungen_veroeffentlicht(self) -> list[dict]:
+        try:
+            return [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_budget_bylaw_published ORDER BY year")]
+        except sqlite3.OperationalError:
+            return []
+
+    def amtsblatt_gesehen(self) -> dict[str, dict]:
+        try:
+            return {r["url"]: dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_gazette_issues")}
+        except sqlite3.OperationalError:
+            return {}
+
+    def amtsblatt_merken(self, url: str, year: int, nr: str, has_bylaw: bool, reader: str) -> None:
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            self._conn.execute(
+                "INSERT OR REPLACE INTO council_gazette_issues (url, year, nr, has_bylaw, "
+                " reader, checked_at) VALUES (?,?,?,?,?,?)",
+                (url, year, nr, int(has_bylaw), reader, now))
+
     def get_haushaltssatzungen(self) -> list[dict]:
         """Alle Satzungs-Jahrgänge, ältester zuerst."""
         try:

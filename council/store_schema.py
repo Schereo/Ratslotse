@@ -932,6 +932,7 @@ class SchemaMixin(StoreBasis):
         "council_grants":            (None, "source_url", "ris"),
         "council_debt_plan":         (None, "source_url", "ris"),
         "council_budget_notes":      (None, "source_url", "ris"),
+        "council_budget_bylaw_published": (None, "url", "city"),
         "council_commitments":       (None, "source_url", "ris"),
         # Ebenso die Investitionen des Finanzhaushalts: neu, ohne Altspalten,
         # Herkunft ausschließlich über `herkunft_id`.
@@ -2365,6 +2366,32 @@ class SchemaMixin(StoreBasis):
         self._conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_zuschuesse_thh "
             "ON council_grants(sub_budget_no, budget_year)")
+        # Das Amtsblatt (council/amtsblatt.py): die BESCHLOSSENE Haushaltssatzung,
+        # neben dem Entwurf aus dem RIS (council_budget_bylaw). Eigene Tabelle,
+        # weil jene den Schlüssel (year, supplement) trägt und der Entwurf
+        # stehen bleiben soll — die Seite zeigt, was der Rat geändert hat.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_budget_bylaw_published ("
+            "year INTEGER PRIMARY KEY, "
+            "ordinary_revenues REAL, ordinary_expenses REAL, "
+            "extraordinary_revenues REAL, extraordinary_expenses REAL, "
+            "in_operating REAL, out_operating REAL, in_capital REAL, out_capital REAL, "
+            "in_financing REAL, out_financing REAL, in_total REAL, out_total REAL, "
+            "investment_loans REAL, commitment_authorizations REAL, liquidity_loans REAL, "
+            "property_tax_a_rate INTEGER, property_tax_b_rate INTEGER, trade_tax_rate INTEGER, "
+            "session_date TEXT, "                  # Ratsbeschluss, ISO
+            "published_on TEXT, "                  # Amtsblatt-Ausgabe, ISO
+            "issue_nr TEXT, url TEXT, "
+            "approval_note TEXT, "                 # Wortlaut, nur wo gedruckt
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL)"
+        )
+        # Welche Amtsblatt-Ausgaben schon angesehen wurden — damit ein Lauf die
+        # gescannten Ausgaben nicht jedes Mal neu lesen lässt (0,002 $ je Seite).
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_gazette_issues ("
+            "url TEXT PRIMARY KEY, year INTEGER NOT NULL, nr TEXT NOT NULL, "
+            "has_bylaw INTEGER NOT NULL DEFAULT 0, reader TEXT, checked_at TEXT NOT NULL)"
+        )
         # Der Vorbericht (Anlage 001, council/vorbericht.py): je Plan und
         # Teilhaushalt der Wortlaut der Abschnitte 2.4.2.x (Ergebnishaushalt,
         # kind = result) und 3.2.2.x (Investitionen, kind = investments).

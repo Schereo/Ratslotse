@@ -581,6 +581,10 @@ def _einheiten_uebersichten(row: dict) -> set[tuple]:
     return set()
 
 
+def _bestand_satzung_veroeffentlicht(store: CouncilStore) -> set[tuple]:
+    return {(z["year"],) for z in store.get_satzungen_veroeffentlicht()}
+
+
 def _bestand_vorbericht(store: CouncilStore) -> set[tuple]:
     return {(j,) for j in store.vorbericht_jahrgaenge()}
 
@@ -2990,6 +2994,25 @@ for _q in (
         balance=_bestand_gesellschaft_abschluss,
     ),
     Finanzquelle(
+        key="budget_bylaw_published",
+        label="Beschlossene Haushaltssatzung (Amtsblatt)",
+        was="Die Haushaltssatzung in der Fassung, die der Rat beschlossen und "
+            "die Stadt im Amtsblatt bekannt gemacht hat — mit Beschluss- und "
+            "Bekanntmachungsdatum, neben dem Verwaltungsentwurf.",
+        tabelle="council_budget_bylaw_published",
+        # Die Bekanntmachung kommt im Frühjahr des Haushaltsjahres (2020–2026:
+        # zwischen 17.02. und 22.04.).
+        erwarteter_monat=5,
+        versatz=0,
+        herkunft="city",
+        # Kein ``lauf``: Der Cron erkennt neue Dokumente am Bestand, und das
+        # Amtsblatt liegt nicht im Bestand — ob eine neue Ausgabe da ist, sagt
+        # erst die Übersichtsseite. Der Ops-Lauf (ops-finanzdaten-ingest.yml)
+        # fragt sie; bereits angesehene Ausgaben kosten dort nichts.
+        nachschub="Amtsblatt auf oldenburg.de, scripts/ingest_amtsblatt.py",
+        balance=_bestand_satzung_veroeffentlicht,
+    ),
+    Finanzquelle(
         key="schulden",
         label="Schuldenstand",
         was="Wie viel die Stadt schuldet und wie sich das seit 1995 entwickelt "
@@ -3148,7 +3171,7 @@ REIHENFOLGE = ("haushaltsplan", "budget_notes", "income_budget", "finance_budget
                "stellenplan", "indicators", "rpa_fundstelle",
                "pruefungsfeststellungen",
                "konzernabschluss", "beteiligungsbericht", "fees",
-               "budget_bylaw",
+               "budget_bylaw", "budget_bylaw_published",
                "wirtschaftsplan", "enterprise_accounts", "company_accounts",
                "schulden", "loans", "liquidity",
                "lsn_steuerkraft", "lsn_realsteuern", "lsn_gewerbesteuer")
