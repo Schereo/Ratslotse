@@ -342,6 +342,11 @@ export function QuizPlay({ questions, onExit, onComplete, title, answerPath = "/
           </span>
         </div>
         <h2 className="mt-3 text-lg font-semibold leading-snug text-foreground">{q.question}</h2>
+        {/* Beim Antrag steht, worum es ging — der Titel allein ist oft ein
+            Rätsel („Außerordentliche Verdachtskündigung"). Ohne Ergebnis. */}
+        {q.format === "verdict" && q.hint && (
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{q.hint}</p>
+        )}
 
         {canJoker && (
           <button type="button" onClick={applyJoker}
@@ -352,7 +357,7 @@ export function QuizPlay({ questions, onExit, onComplete, title, answerPath = "/
         )}
         {/* Optionaler Tipp — hilft bei schweren Fragen, ohne die Lösung zu
             verraten. Nur vor dem Auflösen anbietbar. */}
-        {q.hint && chosen === null && (
+        {q.hint && q.format !== "verdict" && chosen === null && (
           hintShown ? (
             <p className="mt-3 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-foreground">
               <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />

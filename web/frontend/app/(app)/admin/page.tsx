@@ -125,6 +125,7 @@ const FEATURE_LABELS: Record<string, string> = {
   quiz_generation: "Quiz-Fragen erzeugen",
   quiz_verify: "Quiz-Fragen prüfen",
   quiz_appeal: "Quiz-Fragen benoten",
+  quiz_motion_context: "Quiz: Anträge beschreiben",
   simple_summary: "Lotti erklärt's einfach",
   social_card_text: "Social-Kartentext",
   social_critic: "Social-Kritiker",

@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import json
 
+import pytest
+
 from council import quiz_formats as qf
 from council.store import CouncilStore
 
@@ -46,13 +48,27 @@ def _seed_motions(store: CouncilStore, n_accepted: int, n_rejected: int) -> None
         for outcome, n in (("accepted", n_accepted), ("rejected", n_rejected)):
             for i in range(n):
                 k += 1
-                title = f"Mehr Bänke am Wasser Nummer {k} (Fraktion Beispiel vom 01.02.2024)"
+                # Verschiedene Themen — gleich klingende Titel hielte die
+                # Dubletten-Prüfung für denselben Antrag.
+                thema = ["Bänke am Wasser", "Nachtbusse am Wochenende", "Trinkbrunnen in Parks",
+                         "Radwege an Schulen", "Solardächer auf Turnhallen", "Hundewiesen im Norden",
+                         "Kita-Plätze in Kreyenbrück", "Sanierung der Stadtbibliothek",
+                         "Blühstreifen an Straßen", "Schwimmkurse für Kinder", "Taktung der Buslinie 310",
+                         "Öffentliche Toiletten", "Bolzplatz in Eversten"][k - 1]
+                title = f"Mehr {thema} jetzt (Fraktion Beispiel vom 01.02.2024)"
                 for ksinr, oc in ((2, "accepted"), (1, outcome)):  # Ausschuss empfiehlt, Rat entscheidet
                     c.execute(
                         "INSERT INTO council_decisions (ksinr, position, title, outcome, vote, kind, "
                         "interest, template_number, simple_summary) VALUES (?,?,?,?,?,?,?,?,?)",
                         (ksinr, k, title, oc, "majority", "decision", 60, f"V-{k}",
                          f"Die Stadt stellt mehr Bänke auf ({k})."))
+
+
+@pytest.fixture(autouse=True)
+def _no_model(monkeypatch):
+    """Kein Modell in den Tests: Die Beschreibung ist eine Attrappe."""
+    monkeypatch.setattr(qf, "describe_motion",
+                        lambda title, proposer, context: f"Der Antrag verlangt: {title}.")
 
 
 def test_verdict_uses_the_final_decision_and_balances(tmp_path):
@@ -176,3 +192,81 @@ def test_order_distance_counts_swapped_pairs():
     assert qf.order_distance([2, 0, 3, 1], right) == 0
     assert qf.order_distance([0, 2, 3, 1], right) == 1
     assert qf.order_distance([1, 3, 0, 2], right) == 6
+
+
+# ---- Worum ging es? (Tims Hinweis 24.09.2026) --------------------------------
+
+def test_verdict_carries_a_description_as_hint(tmp_path):
+    store = CouncilStore(tmp_path / "c.sqlite")
+    _seed_motions(store, n_accepted=2, n_rejected=2)
+    qs = qf.verdict_questions(store)
+    store.close()
+    assert qs and all(q["hint"].startswith("Der Antrag verlangt") for q in qs)
+
+
+def test_verdict_without_description_is_dropped(tmp_path, monkeypatch):
+    """Ohne Beschreibung wäre die Antwort geraten — die Frage fällt weg."""
+    monkeypatch.setattr(qf, "describe_motion", lambda *a: None)
+    store = CouncilStore(tmp_path / "c.sqlite")
+    _seed_motions(store, n_accepted=2, n_rejected=2)
+    assert qf.verdict_questions(store) == []
+    store.close()
+
+
+def test_verdict_reuses_stored_descriptions(tmp_path, monkeypatch):
+    store = CouncilStore(tmp_path / "c.sqlite")
+    _seed_motions(store, n_accepted=2, n_rejected=2)
+    store.save_quiz_questions(qf.verdict_questions(store))
+    monkeypatch.setattr(qf, "describe_motion", lambda *a: (_ for _ in ()).throw(AssertionError("kein Modell")))
+    again = qf.verdict_questions(store)
+    store.close()
+    assert again and all(q["hint"] for q in again)
+
+
+def test_rebuild_retires_what_is_no_longer_built(tmp_path):
+    store = CouncilStore(tmp_path / "c.sqlite")
+    _seed_motions(store, n_accepted=2, n_rejected=2)
+    qs = qf.verdict_questions(store)
+    store.save_quiz_questions(qs)
+    keep = [q["content_hash"] for q in qs[:2]]
+    assert store.retire_quiz_area_except(*qf.VERDICT_AREA, keep) == len(qs) - 2
+    assert {r["content_hash"] for r in store.quiz_active_rows()} == set(keep)
+    store.close()
+
+
+def test_describe_motion_rejects_give_aways(monkeypatch):
+    from types import SimpleNamespace
+    from kern import llm
+    def answer(text):
+        return lambda **kw: SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=text))])
+    monkeypatch.undo()      # die Attrappe aus _no_model weg, die echte Funktion prüfen
+    ctx = "Ratsfrau X (Beispiel): Sie fordert, der Firma die städtischen Aufträge zu entziehen."
+    monkeypatch.setattr(llm, "chat_complete", answer("Der Antrag verlangt, einer Firma die Aufträge zu entziehen."))
+    assert qf.describe_motion("Verdachtskündigung", "Gruppe X", ctx).startswith("Der Antrag verlangt")
+    monkeypatch.setattr(llm, "chat_complete", answer("Der Antrag wurde mehrheitlich abgelehnt."))
+    assert qf.describe_motion("Verdachtskündigung", "Gruppe X", ctx) is None
+    monkeypatch.setattr(llm, "chat_complete", answer("NICHTS"))
+    assert qf.describe_motion("Verdachtskündigung", "Gruppe X", ctx) is None
+    assert qf.describe_motion("Verdachtskündigung", "Gruppe X", "zu kurz") is None
+
+
+def test_parse_motion_two_digit_year():
+    m = qf.parse_motion("Sachgrundlose Befristung von Arbeitsverträgen (Gruppe Linke./Piraten vom 18.10.18)")
+    assert m == {"proposer": "Gruppe Linke./Piraten", "year": 2018, "core": "Sachgrundlose Befristung von Arbeitsverträgen"}
+
+
+def test_motion_context_puts_the_proposer_first(tmp_path):
+    store = CouncilStore(tmp_path / "c.sqlite")
+    _seed_motions(store, n_accepted=0, n_rejected=1)
+    did = store._conn.execute("SELECT id, item_number FROM council_decisions WHERE ksinr = 1").fetchone()[0]
+    with store._conn:
+        store._conn.execute("UPDATE council_decisions SET item_number = 'Ö 7' WHERE id = ?", (did,))
+        for pos, (who, party, text) in enumerate([
+                ("Herr A", "Andere", "Wir halten das für falsch."),
+                ("Frau B", "Beispiel", "Wir wollen mehr Bänke am Wasser, damit man ausruhen kann.")]):
+            store._conn.execute(
+                "INSERT INTO council_speeches (ksinr, position, kind, top, speaker, party, text, extracted_at) "
+                "VALUES (1, ?, 'speech', '7 Mehr Bänke', ?, ?, ?, '2024-05-07')", (pos, who, party, text))
+    ctx = qf.motion_context(store, did, "Fraktion Beispiel")
+    store.close()
+    assert ctx.index("Frau B") < ctx.index("Herr A")
