@@ -747,6 +747,13 @@ PROBEN: dict[str, str] = {
         "Die Zeile „Jahresüberschuss“ bzw. „Jahresfehlbetrag“ der Gewinn- und "
         "Verlustrechnung, Geschäftsjahr und Vorjahr. Ein Fehlbetrag, der ohne "
         "Minus gedruckt ist, zählt negativ.",
+    "company_accounts_ocr":
+        "Die Anlage ist ein Scan ohne Textebene; gelesen hat ein Sehmodell. "
+        "Übernommen wird nur das Geschäftsjahr: die Bilanzsumme aus der "
+        "Schlusszeile, wenn derselbe Betrag ein zweites Mal dasteht (Aktiva = "
+        "Passiva), und die Zeile Jahresüberschuss/-fehlbetrag. Wo ein anderes "
+        "Dokument dasselbe Jahr nennt, stimmten beide bei der Einführung in "
+        "neun von neun Fällen auf den Cent.",
     "company_accounts_overlap":
         "Dieselbe Zahl steht in zwei Abschlüssen — als Geschäftsjahr im "
         "eigenen, als Vorjahr im folgenden — und oft auch im "

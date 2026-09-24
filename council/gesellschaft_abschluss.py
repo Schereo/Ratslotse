@@ -49,6 +49,7 @@ from council.eigenbetriebe_abschluss import Kennzahl, Lesung
 PROBE_BILANZ = "company_accounts_balance"
 PROBE_GUV = "company_accounts_result_line"
 PROBE_UEBERLAPPUNG = "company_accounts_overlap"
+PROBE_OCR = "company_accounts_ocr"
 
 FUNDSTELLE_BILANZ = "Bilanz — Summe der Aktiva gleich Summe der Passiva (in Euro)"
 FUNDSTELLE_GUV = "Gewinn- und Verlustrechnung — Jahresüberschuss/-fehlbetrag (in Euro)"
@@ -217,6 +218,66 @@ def lies_anlage(text: str, title: str, label: str, document_id: int | None) -> L
             if vorjahr and erg[1] is not None:
                 aus.kennzahlen.append(Kennzahl(company, jahr - 1, "jahresergebnis", erg[1], "EUR",
                                                jahr, document_id, FUNDSTELLE_GUV, PROBE_GUV))
+    return aus
+
+
+def bilanzsumme_ocr(text: str) -> float | None:
+    """Die Bilanzsumme eines GESCANNTEN Abschlusses, aus dem Text des Sehmodells.
+
+    Der Scan kennt keine Wortrahmen, das Sehmodell liefert Zeilen mit
+    Tabulatoren. Zwei Dinge sind anders als im Textdokument:
+
+    - Das Vorjahr steht in den Scans 2018/2019 in TEUR („2.560"), nicht in
+      Euro — ein Betragspaar mit Cent gibt es dort nicht.
+    - Der größte Betrag ist nicht immer die Bilanzsumme: Bei der
+      Weser-Ems-Halle Beteiligungs-GmbH 2021 ist das gezeichnete Kapital
+      (25.000 €) größer als die Bilanzsumme (18.320,66 €), weil ein
+      Verlustvortrag abgeht.
+
+    Die Regel deshalb: die LETZTE Zeile mit einem Euro-Betrag — dort endet
+    jede Bilanz mit der Summe —, und deren erster Betrag muss ein zweites Mal
+    im Dokument stehen (Aktiva = Passiva). Sonst ``None``."""
+    alle = _BETRAG.findall(text or "")
+    zeilen = [z for z in (text or "").split("\n") if _BETRAG.search(z)]
+    if not zeilen:
+        return None
+    erster = _BETRAG.findall(zeilen[-1])[0]
+    if alle.count(erster) >= 2 and _wert(erster) > 0:
+        return _wert(erster)
+    return None
+
+
+def lies_ocr(text: str, title: str, label: str, document_id: int | None) -> Lesung:
+    """Wie :func:`lies_anlage`, für den OCR-Text eines Scans — und nur das
+    GESCHÄFTSJAHR.
+
+    Gemessen am 24.09.2026 an den 13 gescannten Anlagen gegen den Bestand:
+    Alle neun Geschäftsjahre, die ein anderes Dokument schon kannte, stimmten
+    auf den Cent. Die eine Vorjahresspalte in Euro (Weser-Ems Halle KG, 2020)
+    wich um 34,48 € ab — das Vorjahr steht dafür im eigenen Abschluss, und
+    eine Ziffer des Sehmodells soll dort keinen Konflikt stiften."""
+    aus = Lesung()
+    gj = gesellschaft_aus_titel(title)
+    art = art_aus_label(label)
+    if gj is None or art is None:
+        aus.hinweise.append("Gesellschaft, Jahr oder Art nicht erkennbar")
+        return aus
+    company, jahr = gj
+    aus.form = art
+    if art in ("bilanz", "beide"):
+        summe = bilanzsumme_ocr(text)
+        if summe is None:
+            aus.hinweise.append("OCR: keine Bilanzsumme (Schlusszeile steht nicht zweimal)")
+        else:
+            aus.kennzahlen.append(Kennzahl(company, jahr, "bilanzsumme", summe, "EUR", jahr,
+                                           document_id, FUNDSTELLE_BILANZ, PROBE_OCR))
+    if art in ("guv", "beide"):
+        erg = jahresergebnis(text)
+        if erg is None:
+            aus.hinweise.append("OCR: keine Zeile Jahresüberschuss/-fehlbetrag mit Betrag")
+        else:
+            aus.kennzahlen.append(Kennzahl(company, jahr, "jahresergebnis", erg[0], "EUR", jahr,
+                                           document_id, FUNDSTELLE_GUV, PROBE_OCR))
     return aus
 
 

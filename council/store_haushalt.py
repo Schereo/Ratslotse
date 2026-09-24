@@ -1280,7 +1280,8 @@ class HaushaltMixin(StoreBasis):
         try:
             return [dict(r) for r in self._conn.execute(
                 f"""SELECT t.kvonr, t.template_number, t.title, a.document_id, a.label,
-                           a.url, a.n_pages
+                           a.url, a.n_pages, a.ocr_model,
+                           CASE WHEN a.ocr_model IS NOT NULL THEN a.raw_text END AS ocr_text
                       FROM council_templates t JOIN council_attachments a ON a.kvonr = t.kvonr
                      WHERE {TITEL_SQL}
                      ORDER BY t.template_number, a.document_id""", list(TITEL_MUSTER))]
