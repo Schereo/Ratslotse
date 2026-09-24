@@ -933,7 +933,9 @@ def haushalt_beteiligungen(
       (ein Jahresabschluss mit demselben Betrag zählt mit). ``source`` sagt,
       woher die Zeile kommt: ``holdings_report`` (Beteiligungsbericht) oder
       ``annual_accounts`` — das jüngste Jahr, das nur der Jahresabschluss der
-      Gesellschaft schon nennt (``council/gesellschaft_abschluss.py``),
+      Gesellschaft schon nennt, oder ein Jahr, in dem der Abschluss vom
+      Bericht abweicht und deshalb gilt (dann steht die Zahl des Berichts in
+      ``report_value``; ``council/gesellschaft_abschluss.py``),
     - ``group_comparison``: für die Gesellschaften, die auch im
       Gesamtabschluss stehen, beide Zahlen desselben Jahres nebeneinander.
       **Keine Probe** — die beiden Rechnungen unterscheiden sich systematisch,

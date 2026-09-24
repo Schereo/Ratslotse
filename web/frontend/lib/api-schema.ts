@@ -2457,7 +2457,9 @@ export interface paths {
          *       (ein Jahresabschluss mit demselben Betrag zählt mit). ``source`` sagt,
          *       woher die Zeile kommt: ``holdings_report`` (Beteiligungsbericht) oder
          *       ``annual_accounts`` — das jüngste Jahr, das nur der Jahresabschluss der
-         *       Gesellschaft schon nennt (``council/gesellschaft_abschluss.py``),
+         *       Gesellschaft schon nennt, oder ein Jahr, in dem der Abschluss vom
+         *       Bericht abweicht und deshalb gilt (dann steht die Zahl des Berichts in
+         *       ``report_value``; ``council/gesellschaft_abschluss.py``),
          *     - ``group_comparison``: für die Gesellschaften, die auch im
          *       Gesamtabschluss stehen, beide Zahlen desselben Jahres nebeneinander.
          *       **Keine Probe** — die beiden Rechnungen unterscheiden sich systematisch,
@@ -23067,4 +23069,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: a95a55d9e0b340e41efb1520172386836e7c9d8e14b75e3cb0385c7569af355d
+// vertrag-sha256: 5fd47d8c9ec4139d16f2ca3968cd187693889b6fa1adf3d93bd428648340e64f

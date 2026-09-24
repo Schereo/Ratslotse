@@ -119,12 +119,14 @@ def test_eine_reihe_aus_zwei_quellen():
     assert ("fremd", 2025) not in by
 
 
-def test_widerspruch_laesst_den_bericht_stehen():
+def test_bei_widerspruch_gilt_der_abschluss():
+    """Tims Entscheidung 24.09.2026 — die Zahl des Berichts bleibt sichtbar."""
     reihe = ga.reihe_ergaenzen([_k("otm", 2024, -1_121_896.30)],
                                [_a("otm", 2024, -1_000_000.00)], {"otm"})
-    assert reihe[0]["value"] == -1_121_896.30
-    assert reihe[0]["n_reports"] == 1
-    assert reihe[0]["accounts_differ"] is True
+    assert reihe[0]["value"] == -1_000_000.00
+    assert reihe[0]["source"] == "annual_accounts"
+    assert reihe[0]["report_value"] == -1_121_896.30
+    assert reihe[0]["herkunft_id"] == 9
 
 
 def test_speichern_ersetzt_den_bestand(tmp_path):

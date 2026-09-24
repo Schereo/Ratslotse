@@ -9,9 +9,9 @@ Anlagen der Vorlage „Verkehr und Wasser GmbH (VWG): Jahresabschluss 2025 -
 Beschluss". Daraus kommt ein Jahr früher dieselbe Zahl.
 
 EINE REIHE, ZWEI QUELLEN (Tims Entscheidung 24.09.2026): Die Seite zeigt je
-Gesellschaft eine Reihe. Wo der Beteiligungsbericht ein Jahr führt, gilt seine
-Zahl; der Jahresabschluss füllt nur, was dort noch fehlt, und bezeugt den
-Rest. Deshalb eine eigene Tabelle — der Beteiligungsbericht-Ingest leert
+Gesellschaft eine Reihe. Der Jahresabschluss füllt, was im Bericht noch
+fehlt, und bezeugt den Rest; weichen beide ab, gilt der Abschluss (gemessen
+24.09.2026: 63 von 63 Überlappungen gleich, der Fall ist bisher leer). Deshalb eine eigene Tabelle — der Beteiligungsbericht-Ingest leert
 ``council_company_indicators`` bei jedem Lauf, und die Jahresabschluss-Zahlen
 gingen dabei mit unter.
 
@@ -224,10 +224,13 @@ def reihe_ergaenzen(kennzahlen: list[dict], abschluesse: list[dict],
                     firmen: set[str]) -> list[dict]:
     """Eine Reihe aus zwei Quellen: Beteiligungsbericht vorn, Jahresabschluss dahinter.
 
-    - Nennt der Beteiligungsbericht ein Jahr, gilt seine Zeile. Nennt der
-      Abschluss denselben Betrag (auf den Euro), zählt er als weiterer
-      Zeuge (``n_reports`` + 1); nennt er einen anderen, bleibt es beim
-      Bericht, und ``accounts_differ`` sagt es.
+    - Nennt der Beteiligungsbericht ein Jahr und der Abschluss denselben
+      Betrag (auf den Euro), bleibt die Zeile des Berichts, und der Abschluss
+      zählt als weiterer Zeuge (``n_reports`` + 1).
+    - Nennen beide verschiedene Beträge, gilt der Abschluss (Tims
+      Entscheidung 24.09.2026: das festgestellte Dokument der Gesellschaft
+      selbst, nicht die Abschrift im Bericht). ``report_value`` behält die
+      Zahl des Berichts, damit die Abweichung sichtbar bleibt.
     - Fehlt das Jahr im Bericht, kommt die Zeile des Abschlusses dazu, mit
       ``source = "annual_accounts"`` — dieselbe Form, damit die Seite nicht
       zwei Reihen kennen muss.
@@ -246,7 +249,9 @@ def reihe_ergaenzen(kennzahlen: list[dict], abschluesse: list[dict],
             if abs(vorhanden["value"] - a["value"]) <= 1.0:
                 vorhanden["n_reports"] = vorhanden["n_reports"] + 1
             else:
-                vorhanden["accounts_differ"] = True
+                vorhanden.update(report_value=vorhanden["value"], value=a["value"],
+                                 herkunft_id=a["herkunft_id"], source="annual_accounts",
+                                 n_reports=a["confirmations"])
             continue
         if a["company"] not in firmen:
             continue
