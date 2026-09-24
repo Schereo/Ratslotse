@@ -8191,6 +8191,8 @@ export interface components {
             audit_report_sources?: unknown;
             /** Budget Bylaw */
             budget_bylaw?: unknown;
+            /** Budget Bylaw Published */
+            budget_bylaw_published?: unknown;
             /** Budgeted Years */
             budgeted_years?: unknown;
             /** Business Plans */
@@ -23328,4 +23330,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 45f622d3ae697b30a258aebfaafba04bec82b84a81e39dee1dd88167b97d7f9a
+// vertrag-sha256: d6248ab1f42aec70a012d89140fc33be30569146bb5676b6dfd574fd170c7e8b

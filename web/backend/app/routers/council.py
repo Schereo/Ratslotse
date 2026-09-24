@@ -1375,6 +1375,10 @@ def haushalt_uebersicht(
         # erscheint im Amtsblatt. Wer das Feld wegblendet, macht aus einem
         # Vorschlag der Verwaltung einen Ratsbeschluss.
         "budget_bylaw": store.get_haushaltssatzungen,
+        # Die BESCHLOSSENE Fassung dazu, aus dem Amtsblatt (council/amtsblatt.py):
+        # je Jahr die Zahlen der bekannt gemachten Satzung, Beschluss- und
+        # Bekanntmachungsdatum. Neben den Entwurf gestellt, nicht an seine Stelle.
+        "budget_bylaw_published": store.get_satzungen_veroeffentlicht,
         "business_plans": store.get_wirtschaftsplaene,
         # Das Ist dazu: die Kennzahlen der Jahresabschlüsse je Betrieb und
         # Jahr (council/eigenbetriebe_abschluss.py) — Umsatzerlöse,

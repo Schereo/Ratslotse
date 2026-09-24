@@ -5337,6 +5337,9 @@
           "budget_bylaw": {
             "title": "Budget Bylaw"
           },
+          "budget_bylaw_published": {
+            "title": "Budget Bylaw Published"
+          },
           "budgeted_years": {
             "title": "Budgeted Years"
           },
