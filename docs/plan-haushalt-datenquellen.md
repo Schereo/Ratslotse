@@ -215,6 +215,65 @@ Tabellenkopf, ob „Budget“-Zeilen je Produkt geführt werden. Ergebnis als
 Tabelle in diesen Plan nachtragen. Gebaut wird nur bei mindestens drei
 gleichen Jahrgängen (Entscheidung 5).
 
+**Gemessen am 24.09.2026** (`python scripts/messe_budgetberichte.py --markdown`,
+39 Anlagen zu 38 Vorlagen):
+
+| Vorlage | Gremium | THH | Stichtag | Seiten | Text | Ergebnisrechnung | Finanzrechnung | Maßnahmen | Produkte | Prognose | Maßnahmen-Nr. |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 18/0030 | Jugendhilfeausschuss | 11 | 31.12.2017 | 7 | ja | ✓ | ✓ | – | ✓ | ✓ | 0 |
+| 18/0123 | Schulausschuss | 12 | 31.12.2017 | 3 | ja | ✓ | ✓ | – | ✓ | ✓ | 0 |
+| 18/0528 | Jugendhilfeausschuss | 11 | 30.06.2018 | 7 | ja | ✓ | ✓ | – | ✓ | ✓ | 0 |
+| 18/0561 | Schulausschuss | 12 | 30.06.2018 | 3 | ja | ✓ | ✓ | ✓ | ✓ | ✓ | 19 |
+| 18/0689 | Jugendhilfeausschuss | 11 | 30.09.2018 | 8 | ja | ✓ | ✓ | – | ✓ | ✓ | 0 |
+| 18/0762 | Schulausschuss | 12 | 30.09.2018 | 3 | ja | ✓ | ✓ | ✓ | ✓ | ✓ | 20 |
+| 19/0009 | Jugendhilfeausschuss | 11 | 31.12.2018 | 8 | ja | ✓ | ✓ | – | ✓ | ✓ | 0 |
+| 19/0152 | Schulausschuss | 12 | 31.12.2018 | 3 | ja | ✓ | ✓ | ✓ | ✓ | ✓ | 18 |
+| 19/0596 | – | 11 | 30.06.2019 | 7 | ja | ✓ | ✓ | – | ✓ | ✓ | 0 |
+| 19/0633 | Schulausschuss | 12 | 30.06.2019 | 3 | ja | ✓ | ✓ | ✓ | ✓ | ✓ | 18 |
+| 19/0759 | Jugendhilfeausschuss | 11 | 30.09.2019 | 7 | ja | ✓ | ✓ | – | ✓ | ✓ | 0 |
+| 19/0817 | Schulausschuss | 12 | 30.09.2019 | 3 | ja | ✓ | ✓ | ✓ | ✓ | ✓ | 18 |
+| 20/0004 | Jugendhilfeausschuss | 11 | 31.12.2019 | 7 | ja | ✓ | ✓ | ✓ | ✓ | ✓ | 8 |
+| 20/0014 | Jugendhilfeausschuss | 11 | 30.06.2020 | 7 | ja | ✓ | ✓ | ✓ | ✓ | ✓ | 8 |
+| 20/0158 | Schulausschuss | 12 | 31.12.2019 | 3 | ja | ✓ | ✓ | ✓ | ✓ | ✓ | 18 |
+| 20/0493 | Schulausschuss | 12 | 30.06.2020 | 3 | ja | ✓ | ✓ | ✓ | ✓ | ✓ | 15 |
+| 20/0664 | Schulausschuss | 12 | 30.09.2020 | 3 | ja | ✓ | ✓ | ✓ | ✓ | ✓ | 15 |
+| 20/0733 | Jugendhilfeausschuss | 11 | 30.09.2020 | 7 | ja | ✓ | ✓ | ✓ | ✓ | ✓ | 8 |
+| 21/0179 | Jugendhilfeausschuss | 11 | 31.12.2020 | 7 | ja | ✓ | ✓ | ✓ | ✓ | ✓ | 8 |
+| 21/0638 | Schulausschuss | 12 | 30.06.2021 | 11 | ja | ✓ | ✓ | ✓ | ✓ | ✓ | 16 |
+| 21/0648 | Jugendhilfeausschuss | 11 | 30.06.2021 | 6 | ja | ✓ | ✓ | ✓ | ✓ | ✓ | 4 |
+| 21/0874 | Jugendhilfeausschuss | 11 | 30.09.2021 | 5 | ja | ✓ | – | – | ✓ | ✓ | 0 |
+| 22/0177 | Jugendhilfeausschuss | 11 | 31.12.2021 | 7 | ja | ✓ | ✓ | ✓ | ✓ | ✓ | 4 |
+| 22/0618 | Jugendhilfeausschuss | 11 | 30.06.2022 | 7 | ja | ✓ | ✓ | ✓ | ✓ | ✓ | 6 |
+| 22/0798 | Jugendhilfeausschuss | 11 | 30.09.2022 | 7 | ja | ✓ | ✓ | ✓ | ✓ | ✓ | 6 |
+| 22/0831 | Ausschuss für Stadtgrün, Umw | 9 | 30.09.2022 | 5 | ja | ✓ | ✓ | ✓ | ✓ | ✓ | 55 |
+| 23/0055 | Jugendhilfeausschuss | 11 | 31.12.2022 | 6 | ja | ✓ | – | – | ✓ | ✓ | 0 |
+| 23/0155 | Schulausschuss | 12 | 31.12.2022 | 10 | ja | ✓ | ✓ | ✓ | ✓ | ✓ | 16 |
+| 23/0535 | Schulausschuss | 12 | 30.06.2023 | 2 | ja | ✓ | ✓ | ✓ | ✓ | ✓ | 17 |
+| 23/0682 | Jugendhilfeausschuss | 11 | 30.06.2023 | 7 | ja | ✓ | ✓ | ✓ | ✓ | ✓ | 7 |
+| 23/0808 | Schulausschuss | 12 | 30.09.2023 | 2 | ja | ✓ | ✓ | ✓ | ✓ | ✓ | 18 |
+| 23/0832 | Jugendhilfeausschuss | 11 | 30.09.2024 | 8 | ja | ✓ | ✓ | ✓ | ✓ | ✓ | 7 |
+| 24/0445 | Jugendhilfeausschuss | 11 | 30.06.2024 | 7 | ja | ✓ | ✓ | ✓ | ✓ | ✓ | 6 |
+| 24/0737 | Jugendhilfeausschuss | 11 | 30.09.2024 | 1 | ja | – | ✓ | ✓ | – | ✓ | 6 |
+| 24/0737 | Jugendhilfeausschuss | 11 | 30.09.2024 | 7 | ja | ✓ | – | – | ✓ | ✓ | 0 |
+| 25/0045 | Jugendhilfeausschuss | 11 | 31.12.2024 | 8 | ja | ✓ | ✓ | ✓ | ✓ | ✓ | 6 |
+| 25/0549 | Jugendhilfeausschuss | 11 | 30.06.2025 | 7 | ja | ✓ | ✓ | ✓ | ✓ | ✓ | 15 |
+| 25/0752 | Jugendhilfeausschuss | 11 | 30.09.2025 | 7 | ja | ✓ | ✓ | ✓ | ✓ | ✓ | 15 |
+| 26/0009 | Jugendhilfeausschuss | 11 | 31.12.2025 | 7 | ja | ✓ | ✓ | ✓ | ✓ | ✓ | 15 |
+| 26/0596 | – | 11 | 30.06.2026 | 6 | ja | ✓ | ✓ | ✓ | ✓ | ✓ | 12 |
+
+**Befund:** Zwei Reihen tragen dieselbe Tabelle über viele Jahrgänge —
+**Jugendhilfeausschuss (THH 11)** 2017–2026 und **Schulausschuss (THH 12)**
+2017–2023: Teilergebnis- und Teilfinanzrechnung mit Prognose, ab 2019/2020
+zusätzlich die Investitionen je Maßnahme (I10-Nummer) mit Ansatz, Prognose,
+Abweichung und einem Erläuterungstext je Maßnahme („Der Erweiterungsbau der
+Krippe ist fertiggestellt …“). Die Schwelle aus Entscheidung 5 ist damit
+deutlich überschritten. Neu gegenüber dem Haushaltsvollzug
+(`council_budget_execution`, nur Summen je Teilhaushalt) ist die
+**Maßnahmen-Ebene mit Begründung**. Der Stadtgrün-Ausschuss (THH 09) hat nur
+einen Bericht (2022) und bleibt draußen. Bau als PR 8b: Maßnahmen je Stichtag
+mit Prognose und Erläuterung, Probe Summe der Maßnahmen gegen die Zeile
+„Auszahlungen für Investitionen“ der Teilfinanzrechnung.
+
 ## 5. Für jeden PR
 
 - Registry-Eintrag in `finanzquellen.py`, sonst fehlt die Schicht im
