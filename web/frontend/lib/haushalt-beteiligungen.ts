@@ -201,6 +201,10 @@ export function auftragSatz(daten: BeteiligungsDaten, g: Gesellschaft): string |
  *  („Ganzen Wortlaut zeigen", H4-A) — die Seite kürzt die Verwaltung nicht. */
 export function absatzVorschau(text: string, grenze = 420): { kopf: string; rest: string } {
   const glatt = text.replace(/\r/g, "").trim();
+  // Kurzes nicht einklappen (Tim, 24.09.2026): Ein Auslöser, hinter dem
+  // zwei weitere Zeilen stehen, kostet mehr, als er spart. Bis zum Anderthalb-
+  // fachen der Grenze steht der Text ganz da.
+  if (glatt.length <= grenze * 1.5) return { kopf: glatt, rest: "" };
   const absatz = glatt.indexOf("\n");
   if (absatz > 0 && absatz <= grenze * 1.6) {
     return { kopf: glatt.slice(0, absatz).trim(), rest: glatt.slice(absatz).trim() };

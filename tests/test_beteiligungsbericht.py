@@ -789,3 +789,26 @@ def test_personen_und_eigentuemer_landen_mit_herkunft_im_bestand(tmp_path):
     store.herkunft_aufraeumen()
     assert store.herkunft_luecken() == {}
     store.close()
+
+
+def test_fliesstext_fuegt_silbentrennung_zusammen():
+    """Der Auftrag der Großleitstelle, wie er auf Prod stand (Bericht 2024)."""
+    from council.beteiligungsbericht import fliesstext
+    roh = ("Hauptzweck ist das Betreiben und Unterhalten der Großleitstelle Oldenburger Land "
+           "für die Feuerweh-\nren und die Rettungsdienste der Trägerkörperschaften und dadurch "
+           "die Erzielung wirtschaftlicher Kos-\ntenvorteile gegenüber den bisherigen "
+           "Einzelleitstellen. Die Anstalt gewährleistet den technischen, or-\nganisatorischen "
+           "und wirtschaftlichen Betrieb der Großleitstelle Oldenburger Land für die "
+           "Trägerkörper-\nschaften.")
+    glatt = fliesstext(roh)
+    assert "\n" not in glatt
+    assert "Feuerwehren und" in glatt and "Kostenvorteile" in glatt
+    assert "organisatorischen" in glatt and "Trägerkörperschaften." in glatt
+
+
+def test_fliesstext_laesst_bindestriche_und_absaetze_stehen():
+    from council.beteiligungsbericht import fliesstext
+    assert fliesstext("an der Marie-Curie-\nStraße 1") == "an der Marie-Curie-Straße 1"
+    assert fliesstext("für Sport-\nund Freizeit") == "für Sport- und Freizeit"
+    assert fliesstext("Erster Absatz.\nZweiter Absatz.") == "Erster Absatz.\nZweiter Absatz."
+    assert fliesstext("- Punkt eins\n- Punkt zwei") == "- Punkt eins\n- Punkt zwei"
