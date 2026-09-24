@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
-"""Die Zuschüsse an Dritte einlesen (Übersichten, Anlage 003 des Haushaltsplans).
+"""Die Übersichten des Haushaltsplans einlesen (Anlage 003): Zuschüsse an
+Dritte, voraussichtlicher Stand der Schulden, Verpflichtungsermächtigungen.
 
-Parser und Probe: ``council/uebersichten.py``. Der Lauf lädt die PDFs selbst —
+Parser und Proben: ``council/uebersichten.py``. Jede der drei Tabellen wird
+für sich geprüft und gespeichert — eine verworfene Schulden-Übersicht hält
+die Zuschüsse desselben Plans nicht auf. Der Lauf lädt die PDFs selbst —
 die Tabelle steht quer und braucht Wortkoordinaten, die der gespeicherte
 Textauszug nicht hergibt. Acht Pläne à gut 40 Seiten, höflich nacheinander.
 
-    python scripts/ingest_zuschuesse.py
-    python scripts/ingest_zuschuesse.py --trocken
-    python scripts/ingest_zuschuesse.py --auch-schrumpfen
+    python scripts/ingest_uebersichten.py
+    python scripts/ingest_uebersichten.py --trocken
+    python scripts/ingest_uebersichten.py --auch-schrumpfen
 """
 from __future__ import annotations
 
@@ -61,6 +64,8 @@ def main() -> int:
 
     gelesen: dict[int, int] = {}
     verworfen = 0
+    satzung_ve = {s["year"]: s["commitment_authorizations"]
+                  for s in store.get_haushaltssatzungen() if not s["supplement"]}
     for i, r in enumerate(rows):
         # Ein Jahrgang, den schon ein früheres Dokument geliefert hat, braucht
         # seine Dubletten nicht — nur wenn das Label das Jahr verrät, lässt
@@ -71,7 +76,8 @@ def main() -> int:
         if i:
             time.sleep(args.pause)
         try:
-            erg = uebersichten.lies(uebersichten.woerter_aus_pdf(_laden(r["url"])))
+            seiten = uebersichten.woerter_aus_pdf(_laden(r["url"]))
+            erg = uebersichten.lies(seiten)
         except Exception as exc:  # noqa: BLE001 — ein Dokument stoppt nicht den Lauf
             p.warnen(f"  {r['document_id']}: nicht ladbar ({exc})")
             verworfen += 1
@@ -92,8 +98,40 @@ def main() -> int:
                 f"{len(erg.summen)} Teilhaushalts-Summen aufgegangen · Dokument {r['document_id']}"
                 + (f" · auffällig: {'; '.join(erg.auffaellig)}" if erg.auffaellig else ""))
         gelesen[jahr] = len(erg.zeilen)
+        schulden = uebersichten.lies_schulden(seiten)
+        ve = uebersichten.lies_ve(seiten)
+        ve_auffaellig = uebersichten.pruefe_ve(ve, satzung_ve.get(jahr))
+        p.sagen(f"        Schulden: {'geprüft' if schulden.bestanden else '; '.join(schulden.hinweise)}"
+                + (f" (ohne Summenzeile, nicht gespeichert: {', '.join(schulden.ausgelassen)})"
+                   if schulden.ausgelassen else "")
+                + f" · VE: {len([z for z in ve.zeilen if z[0] == jahr])} Fälligkeiten"
+                + (f" · auffällig: {ve_auffaellig[0]}" if ve_auffaellig else ""))
         if args.trocken:
             continue
+        stand = f"Haushaltsplan {jahr}, Anlage 003 — Stand der Einbringung"
+        if schulden.bestanden and schulden.budget_year == jahr:
+            zeilen = [{"entity": b, "code": c, "label": lab,
+                       "start_prior": None if v0 is None else v0 * 1000,
+                       "start_expected": None if v1 is None else v1 * 1000}
+                      for b, c, lab, v0, v1 in schulden.posten if c != "1"]
+            zeilen += [{"entity": b, "code": "total", "label": "Schulden insgesamt",
+                        "start_prior": v[0] * 1000, "start_expected": v[1] * 1000}
+                       for b, v in schulden.summen.items()]
+            store.save_schulden_plan(jahr, zeilen, herkunft.Herkunft(
+                kind="ris", probe=[uebersichten.PROBE_SCHULDEN],
+                citation="Übersicht über den voraussichtlichen Stand der Schulden (in 1.000 €)",
+                probe_result=(f"{len(schulden.summen)} Blöcke ergeben ihre Summenzeile"
+                              + (f"; ohne Summenzeile ausgelassen: {', '.join(schulden.ausgelassen)}"
+                                 if schulden.ausgelassen else "")),
+                document_id=r["document_id"], label=r["label"], url=r["url"], as_of=stand))
+        if ve.budget_year == jahr and ve.zeilen:
+            store.save_ve(jahr, ve.zeilen, herkunft.Herkunft(
+                kind="ris", probe=[uebersichten.PROBE_VE],
+                citation="Übersicht über die aus Verpflichtungsermächtigungen voraussichtlich "
+                         "fällig werdenden Auszahlungen",
+                probe_result=("Zeile des Planjahres = § 3 der Haushaltssatzung"
+                              if not ve_auffaellig else ve_auffaellig[0]),
+                document_id=r["document_id"], label=r["label"], url=r["url"], as_of=stand))
         alt = len(store.get_zuschuesse(jahr))
         if alt and not finanzquellen.bestandsschutz(
                 p, f"{jahr} Zuschüsse", alt, len(erg.zeilen), not args.auch_schrumpfen):

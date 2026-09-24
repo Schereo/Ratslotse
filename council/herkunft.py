@@ -310,6 +310,15 @@ PROBEN: dict[str, str] = {
         "Zuschüsse darüber ergeben sie, in beiden Spalten. Wo die Vorlage "
         "selbst falsch summiert (2020 und 2021, Teilhaushalt 8), ist jede "
         "Zeile vollständig und die Abweichung im Beleg vermerkt.",
+    "debt_plan_totals":
+        "Je Block (Kernhaushalt, Eigenbetriebe) und Spalte ergeben die "
+        "Schuldenarten die Zeile „Schulden insgesamt“, bis auf die Rundung "
+        "der einzelnen Posten auf Tausend. Dazu stimmt jeder erwartete Stand "
+        "mit dem Vorjahreswert im folgenden Plan überein.",
+    "commitments_bylaw":
+        "Die Fälligkeiten der Verpflichtungsermächtigungen des Planjahres "
+        "ergeben den Gesamtbetrag aus § 3 der Haushaltssatzung — 2019 bis 2025 "
+        "auf den Euro; 2026 weichen Übersicht und Satzung um 30.000 € ab.",
     "finance_budget_total_rows":
         "Der Finanzhaushalt rechnet sich in jeder seiner sechs Jahresspalten "
         "selbst vor: laufende Ein- und Auszahlungen ergeben ihre Summen und "
@@ -737,6 +746,9 @@ HERKUNFT_TABELLEN: tuple[str, ...] = (
     "council_finance_budget",
     # Die Zuschüsse an Dritte aus den Übersichten (Anlage 003).
     "council_grants",
+    # Und aus derselben Anlage: Schuldenstand laut Plan und die VE.
+    "council_debt_plan",
+    "council_commitments",
     # Die Jahresabschlüsse der Gesellschaften — neu, ohne Altbestand.
     "council_company_accounts",
     # Die Investitionen des Finanzhaushalts — neu, ohne Altbestand.

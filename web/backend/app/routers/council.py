@@ -5808,8 +5808,13 @@ def haushalt_schulden(
     buerg = store.get_buergschaften()
     rueckstellung = store.get_bilanz_posten(_b.RUECKSTELLUNG_ROLLE) if buerg else []
     geldschulden = store.get_bilanz_posten(_b.GELDSCHULDEN_ROLLE) if buerg else []
+    # Was die Haushaltspläne selbst erwarten (Anlage 003): der voraussichtliche
+    # Stand zu Beginn des Planjahres, auch für die Eigenbetriebe, und die VE.
+    plan = store.get_schulden_plan()
+    ve = store.get_ve()
     ids = sorted(set(ids) | {z["herkunft_id"] for z in (*zins, *buerg, *integriert,
-                                                        *rueckstellung, *geldschulden)
+                                                        *rueckstellung, *geldschulden,
+                                                        *plan, *ve)
                              if z.get("herkunft_id") is not None})
 
     return {
@@ -5845,6 +5850,14 @@ def haushalt_schulden(
         # Leer, solange kein Jahresabschluss eingelesen ist — die Seite lässt
         # den Block dann weg, statt eine Null zu zeigen.
         "interest_expense": zins,
+        # Aus den Übersichten der Haushaltspläne (council/uebersichten.py):
+        # `debt_plan` je Plan, Block und Schuldenart die beiden Stände in Euro,
+        # `commitments` je Plan die Fälligkeiten seiner eigenen VE.
+        "debt_plan": [{k: z[k] for k in ("budget_year", "entity", "code", "label",
+                                        "start_prior", "start_expected", "herkunft_id")}
+                      for z in plan],
+        "commitments": [{k: z[k] for k in ("budget_year", "due_year", "amount", "herkunft_id")}
+                        for z in ve],
         # Die Spaltenüberschriften der Quelle, in ihrer Reihenfolge — damit die
         # Legende nicht in zwei Sprachen existiert.
         "column_kinds": [{"field": field, "title": title}

@@ -96,6 +96,8 @@ class HaushaltMixin(StoreBasis):
                                  "t.kind = 'budget'", None),
         # Die Zuschüsse an Dritte (Anlage 003): ein Dokument je Plan.
         "grants":            ("council_grants", "budget_year", None, None),
+        # Und aus derselben Anlage der Schuldenstand laut Plan.
+        "debt_plan":         ("council_debt_plan", "budget_year", None, None),
         # Vierte Ebene: Abschnitt 2.1, die Bilanz. Der älteste Stichtag (2016)
         # stammt aus der Vorjahresspalte des Abschlusses 2017 — er trägt
         # deshalb dessen Dokument, mit eigener Fundstelle.
@@ -2083,6 +2085,55 @@ class HaushaltMixin(StoreBasis):
                   z["note"], None if z["cash"] is None else int(z["cash"]), hid, now)
                  for i, z in enumerate(zeilen, 1)])
         return len(zeilen)
+
+    def save_schulden_plan(self, budget_year: int, zeilen: list[dict], herkunft) -> int:
+        """Die Schulden-Übersicht eines Plans ersetzen (Beträge in Euro)."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute("DELETE FROM council_debt_plan WHERE budget_year = ?",
+                               (budget_year,))
+            self._conn.executemany(
+                "INSERT INTO council_debt_plan (budget_year, entity, code, label, "
+                " start_prior, start_expected, herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,?)",
+                [(budget_year, z["entity"], z["code"], z["label"], z["start_prior"],
+                  z["start_expected"], hid, now) for z in zeilen])
+        return len(zeilen)
+
+    def save_ve(self, budget_year: int, zeilen: list[tuple[int, int, float]], herkunft) -> int:
+        """Die VE-Fälligkeiten eines Plans ersetzen."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute("DELETE FROM council_commitments WHERE budget_year = ?",
+                               (budget_year,))
+            self._conn.executemany(
+                "INSERT INTO council_commitments (budget_year, plan_year, due_year, amount, "
+                " herkunft_id, fetched_at) VALUES (?,?,?,?,?,?)",
+                [(budget_year, p, f, b, hid, now) for p, f, b in zeilen])
+        return len(zeilen)
+
+    def get_schulden_plan(self) -> list[dict]:
+        """Alle Zeilen der Schulden-Übersichten, nach Plan, Block, Code."""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_debt_plan ORDER BY budget_year, entity, code")]
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return []
+
+    def get_ve(self) -> list[dict]:
+        """Die VE-Fälligkeiten: je Plan die Zeile des eigenen Planjahres —
+        was dieser Plan an Bindung späterer Jahre erlaubt hat."""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_commitments WHERE plan_year = budget_year "
+                "ORDER BY budget_year, due_year")]
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return []
 
     def zuschuss_jahrgaenge(self) -> list[int]:
         """Eingelesene Pläne der Zuschuss-Übersicht (aufsteigend)."""

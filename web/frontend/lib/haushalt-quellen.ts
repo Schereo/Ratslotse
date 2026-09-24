@@ -143,6 +143,8 @@ export type QuellenSchluessel =
   | "finance_budget"
   // Die Zuschüsse an Dritte aus derselben Planfamilie (Anlage 003).
   | "grants"
+  // Und aus derselben Anlage: Schuldenstand laut Plan und die VE.
+  | "debt_plan"
   | "investitionsprogramm"
   // Und das Ist-Gegenstück aus dem Statistischen Jahrbuch. Bewusst ein
   // eigener Schlüssel und nicht ein zweiter Absatz unter `investitionen`:
@@ -856,6 +858,21 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
       "verschluckt; jede der sechs Spalten muss ihre Summen und Salden selbst ergeben. " +
       "Es ist der Entwurf der Verwaltung: Die Anlage hängt an der Einbringungs-Vorlage, " +
       "nicht am Beschluss.",
+    herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
+    standWort: "Haushaltspläne",
+    as_of: "Haushaltspläne 2019–2026, Stand der Einbringung",
+    art: "pdf",
+    url: "https://buergerinfo.oldenburg.de",
+  },
+  debt_plan: {
+    title: "Übersichten zum Schuldenstand und zu den Verpflichtungsermächtigungen (Anlage 003)",
+    citation:
+      "Teil der Übersichten des Haushaltsplans: der voraussichtliche Stand der Schulden zu " +
+      "Beginn des Planjahres, in 1.000 €, für den Kernhaushalt und nachrichtlich je " +
+      "Eigenbetrieb — und die Auszahlungen, die aus Verpflichtungsermächtigungen in den " +
+      "Folgejahren fällig werden. Es sind Erwartungen der Verwaltung beim Aufstellen des " +
+      "Plans, kein Ist. Der aufgelöste Eigenbetrieb Hafen (ab 2021) und der Abfallwirtschafts" +
+      "betrieb 2026 fehlen, weil die Übersicht für sie keine Summe nennt.",
     herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
     standWort: "Haushaltspläne",
     as_of: "Haushaltspläne 2019–2026, Stand der Einbringung",

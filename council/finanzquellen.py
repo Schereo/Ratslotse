@@ -2631,8 +2631,8 @@ for _q in (
         balance=_bestand_uebersichten,
         # Kein `einlesen`: Die Tabelle braucht Wortkoordinaten — der Lauf lädt
         # die PDFs selbst, wie beim Gesamtfinanzhaushalt.
-        nachschub="scripts/ingest_zuschuesse.py (lädt die PDFs selbst)",
-        lauf=("scripts/ingest_zuschuesse.py",),
+        nachschub="scripts/ingest_uebersichten.py (lädt die PDFs selbst)",
+        lauf=("scripts/ingest_uebersichten.py",),
     ),
     Finanzquelle(
         key="stellenplan",

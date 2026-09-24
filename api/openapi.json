@@ -4522,6 +4522,20 @@
             "title": "Column Kinds",
             "type": "array"
           },
+          "commitments": {
+            "items": {
+              "$ref": "#/components/schemas/CommitmentRow"
+            },
+            "title": "Commitments",
+            "type": "array"
+          },
+          "debt_plan": {
+            "items": {
+              "$ref": "#/components/schemas/DebtPlanRow"
+            },
+            "title": "Debt Plan",
+            "type": "array"
+          },
           "guarantees": {
             "$ref": "#/components/schemas/Guarantees"
           },
@@ -5775,6 +5789,38 @@
         "title": "ClientErrorIn",
         "type": "object"
       },
+      "CommitmentRow": {
+        "description": "Eine Fälligkeit aus den Verpflichtungsermächtigungen eines Plans.",
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          },
+          "budget_year": {
+            "title": "Budget Year",
+            "type": "integer"
+          },
+          "due_year": {
+            "title": "Due Year",
+            "type": "integer"
+          },
+          "herkunft_id": {
+            "title": "Herkunft Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "budget_year",
+          "due_year",
+          "amount",
+          "herkunft_id"
+        ],
+        "title": "CommitmentRow",
+        "type": "object"
+      },
       "CommitteeDetail": {
         "properties": {
           "decisions_year": {
@@ -6275,6 +6321,59 @@
           "month_name"
         ],
         "title": "DataLayer",
+        "type": "object"
+      },
+      "DebtPlanRow": {
+        "description": "Der voraussichtliche Stand der Schulden laut Haushaltsplan (Anlage 003).\n\n``entity`` ist „Kernhaushalt\" oder ein Eigenbetrieb, ``code`` die\nSchuldenart (1.2 Kredite für Investitionen … 5) oder ``total``.\n``start_prior`` ist der Stand zu Beginn des Vorjahres, ``start_expected``\nder erwartete zu Beginn des Planjahres — beide in Euro.",
+        "properties": {
+          "budget_year": {
+            "title": "Budget Year",
+            "type": "integer"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "entity": {
+            "title": "Entity",
+            "type": "string"
+          },
+          "herkunft_id": {
+            "title": "Herkunft Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "start_expected": {
+            "title": "Start Expected",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "start_prior": {
+            "title": "Start Prior",
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "budget_year",
+          "entity",
+          "code",
+          "label",
+          "start_prior",
+          "start_expected",
+          "herkunft_id"
+        ],
+        "title": "DebtPlanRow",
         "type": "object"
       },
       "DecisionDetail": {

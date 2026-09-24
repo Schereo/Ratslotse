@@ -930,6 +930,8 @@ class SchemaMixin(StoreBasis):
         "council_finance_budget":    (None, "source_url", "ris"),
         # Und die Zuschüsse an Dritte aus Anlage 003.
         "council_grants":            (None, "source_url", "ris"),
+        "council_debt_plan":         (None, "source_url", "ris"),
+        "council_commitments":       (None, "source_url", "ris"),
         # Ebenso die Investitionen des Finanzhaushalts: neu, ohne Altspalten,
         # Herkunft ausschließlich über `herkunft_id`.
         "council_investments":        (None, "source_url", "opendata"),
@@ -2362,6 +2364,29 @@ class SchemaMixin(StoreBasis):
         self._conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_zuschuesse_thh "
             "ON council_grants(sub_budget_no, budget_year)")
+        # Aus derselben Anlage 003: der voraussichtliche Stand der Schulden
+        # (je Plan, Block und Schuldenart; Beträge in Euro, gedruckt in T€) und
+        # die Fälligkeiten der Verpflichtungsermächtigungen.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_debt_plan ("
+            "budget_year INTEGER NOT NULL, "
+            "entity TEXT NOT NULL, "             # Kernhaushalt | Eigenbetrieb …
+            "code TEXT NOT NULL, "               # 1.2 … 5 | total
+            "label TEXT NOT NULL, "
+            "start_prior REAL, "                 # Stand zu Beginn des Vorjahres
+            "start_expected REAL, "              # voraussichtl. Stand zu Beginn des Planjahres
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (budget_year, entity, code))"
+        )
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_commitments ("
+            "budget_year INTEGER NOT NULL, "     # der Plan, dessen Übersicht es nennt
+            "plan_year INTEGER NOT NULL, "       # der Plan, der die VE erteilt hat
+            "due_year INTEGER NOT NULL, "
+            "amount REAL NOT NULL, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (budget_year, plan_year, due_year))"
+        )
         # Der Stellenplan (Anlage 21/22 des Haushaltsplans, council/stellenplan.py):
         # wie viele Stellen die Stadt vorhält, wie viele davon besetzt sind
         # und wie viele nicht.

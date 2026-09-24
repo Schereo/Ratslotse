@@ -376,3 +376,217 @@ def woerter_aus_pdf(pdf: bytes) -> list[list[list[tuple]]]:
             gekippt = [(hoehe - w[3], w[0], hoehe - w[1], w[2], w[4]) for w in roh]
             aus.append([roh, gedreht, gekippt])
     return aus
+
+
+# --------------------------------------------------------------------------
+# Übersicht über den voraussichtlichen Stand der Schulden (§ 1 Abs. 2 Nr. 6
+# KomHKVO)
+# --------------------------------------------------------------------------
+#
+# Je Plan eine Seite (die Abfallwirtschaft läuft auf die nächste über): der
+# Kernhaushalt, dann „nachrichtlich" die Eigenbetriebe. Je Schuldenart zwei
+# Spalten in 1.000 €: der Stand zu Beginn des Vorjahres und der
+# VORAUSSICHTLICHE Stand zu Beginn des Planjahres. Das ist die Zahl, die es
+# sonst nirgends gibt — der Jahresabschluss kennt nur das Ist, und das kommt
+# ein Jahr später.
+#
+# DIE PROBE: Je Block und Spalte ergeben die Schuldenarten ohne Unterposten
+# (1.1, 1.2 …, 2. bis 5.; bei 1.4 mit 1.4.1/1.4.2 zählen nur die Unterposten)
+# die Zeile „Schulden insgesamt".
+
+PROBE_SCHULDEN = "debt_plan_totals"
+
+_CODE = re.compile(r"^(\d(?:\.\d){0,2})\.?$")
+
+#: Die Schuldenarten nach dem Muster der KomHKVO. Die Bezeichnung kommt von
+#: hier und nicht aus der Zeile: 2021–2024 steht neben dem Hafen-Block die
+#: Randbemerkung „Der Eigenbetrieb Hafen wurde aufgelöst …", deren Wörter
+#: auf den Höhen der Posten liegen und sonst in deren Namen landeten.
+SCHULDENARTEN = {
+    "1": "Geldschulden",
+    "1.1": "Anleihen",
+    "1.2": "Kredite für Investitionen",
+    "1.3": "Liquiditätskredite",
+    "1.4": "Sonstige Geldschulden bzw. Kredite nach § 111 Abs. 7 NKomVG",
+    "1.4.1": "davon Kredite für Investitionen (§ 111 Abs. 7 NKomVG)",
+    "1.4.2": "davon Liquiditätskredite (§ 111 Abs. 7 NKomVG)",
+    "1.5": "Konzernkredite (§ 121a NKomVG)",
+    "1.6": "Konzernliquiditätskredite (§ 122a NKomVG)",
+    "2": "Verbindlichkeiten aus kreditähnlichen Rechtsgeschäften",
+    "3": "Verbindlichkeiten aus Lieferungen und Leistungen",
+    "4": "Transferverbindlichkeiten",
+    "5": "Sonstige Verbindlichkeiten",
+}
+_TEUR = re.compile(r"^-?\d{1,3}(?:\.\d{3})*$")
+
+
+@dataclass
+class SchuldenLesung:
+    budget_year: int | None = None
+    #: (Block, Code, Bezeichnung, Stand Vorjahresbeginn T€, Stand Planjahresbeginn T€)
+    posten: list[tuple[str, str, str, float | None, float | None]] = field(default_factory=list)
+    summen: dict[str, tuple[float, float]] = field(default_factory=dict)
+    hinweise: list[str] = field(default_factory=list)
+    #: Blöcke ohne vollständige Summenzeile — nicht gespeichert, nur genannt.
+    ausgelassen: list[str] = field(default_factory=list)
+
+    @property
+    def bestanden(self) -> bool:
+        return bool(self.summen) and not self.hinweise
+
+
+def lies_schulden(seiten: list[list[list[tuple]]]) -> SchuldenLesung:
+    """Die Schulden-Übersicht aus den Seiten des Dokuments (erste Fassung je
+    Seite genügt: Die Seiten stehen hochkant und ungedreht)."""
+    aus = SchuldenLesung()
+    block = "Kernhaushalt"
+    spalten: tuple[float, float] | None = None
+    angefangen = False
+    for fassungen in seiten:
+        woerter = fassungen[0]
+        text = " ".join(w[4] for w in woerter)
+        if not angefangen:
+            # Das Inhaltsverzeichnis nennt die Übersicht auch — die Tabelle hat
+            # zusätzlich den Spaltenkopf „Art der Schulden".
+            if "Stand der Schulden" not in text.replace("  ", " ") or "Art der Schulden" not in text:
+                continue
+            angefangen = True
+        elif not any(w[4] in ("Geldschulden", "nachrichtlich:") for w in woerter):
+            break
+        mitte = lambda w: (w[1] + w[3]) / 2  # noqa: E731
+        zeilen: list[list[tuple]] = []
+        for w in sorted(woerter, key=mitte):
+            if zeilen and mitte(w) - mitte(zeilen[-1][0]) <= 3:
+                zeilen[-1].append(w)
+            else:
+                zeilen.append([w])
+        for z in zeilen:
+            z.sort(key=lambda w: w[0])
+            worte = [w[4] for w in z]
+            jahre = [w for w in z if re.fullmatch(r"20\d\d", w[4])]
+            if len(jahre) == 2 and spalten is None:
+                spalten = (jahre[0][2], jahre[1][2])  # rechte Kanten: Zahlen stehen rechtsbündig
+                aus.budget_year = int(jahre[1][4])
+                continue
+            if spalten is None:
+                continue
+            if worte[0] == "nachrichtlich:":
+                block = " ".join(worte[1:])
+                continue
+            zahlen = [w for w in z if _TEUR.match(w[4]) and w[0] > spalten[0] - 120]
+            werte: list[float | None] = [None, None]
+            for w in zahlen:
+                i = 0 if abs(w[2] - spalten[0]) < abs(w[2] - spalten[1]) else 1
+                werte[i] = float(w[4].replace(".", ""))
+            if worte[:2] == ["Schulden", "insgesamt"]:
+                if werte[0] is not None and werte[1] is not None:
+                    aus.summen[block] = (werte[0], werte[1])
+                continue
+            m = _CODE.match(worte[0])
+            if m and len(worte) > 1 and not _TEUR.match(worte[1]) and m.group(1) in SCHULDENARTEN:
+                aus.posten.append((block, m.group(1), SCHULDENARTEN[m.group(1)],
+                                   werte[0], werte[1]))
+    _pruefe_schulden(aus)
+    aus.posten = [p for p in aus.posten if p[0] not in aus.ausgelassen]
+    return aus
+
+
+def _pruefe_schulden(aus: SchuldenLesung) -> None:
+    if aus.budget_year is None or not aus.posten:
+        aus.hinweise.append("keine Schulden-Übersicht gefunden")
+        return
+    for block in dict.fromkeys(p[0] for p in aus.posten):
+        posten = [p for p in aus.posten if p[0] == block]
+        codes = {p[1] for p in posten}
+        # Blätter: kein anderer Code beginnt mit „code." — „1" (Geldschulden
+        # aus) ist nur die Überschrift und trägt keine Zahl.
+        blaetter = [p for p in posten if not any(c.startswith(p[1] + ".") for c in codes)]
+        if block not in aus.summen:
+            # Hafen 2021–2024 (aufgelöst, nur noch eine Spalte), Abfallwirtschaft
+            # 2026 (die Seite bricht mitten im Block ab): nichts zu prüfen,
+            # also nichts zu speichern.
+            aus.ausgelassen.append(block)
+            continue
+        for i in (0, 1):
+            s = sum(((p[3] if i == 0 else p[4]) or 0.0) for p in blaetter)
+            # Jeder Posten ist auf Tausend gerundet; die Summe darf deshalb um
+            # einen Tausender danebenliegen (EGH 2019: 162.573 gegen 162.572).
+            if abs(s - aus.summen[block][i]) > 1.5:
+                aus.hinweise.append(f"{block}, Spalte {i + 1}: Posten {s:,.0f} T€, "
+                                    f"insgesamt {aus.summen[block][i]:,.0f} T€")
+
+
+# --------------------------------------------------------------------------
+# Übersicht über die aus Verpflichtungsermächtigungen voraussichtlich fällig
+# werdenden Auszahlungen
+# --------------------------------------------------------------------------
+#
+# Eine Verpflichtungsermächtigung (VE) erlaubt der Stadt, im Planjahr Aufträge
+# zu vergeben, die erst in späteren Jahren bezahlt werden. Die Übersicht hat
+# je Plan, der VE erteilt hat, eine Zeile („2026 (Plan)") und je Folgejahr
+# eine Spalte mit dem, was daraus fällig wird.
+#
+# Die Zeile „Insgesamt" taugt NICHT als Probe: Ältere Pläne stehen dort als
+# „(Ist)" ohne Beträge, ihre Fälligkeiten zählen aber in „Insgesamt" mit.
+# Die Probe ist deshalb die Haushaltssatzung: Die Zeile des Planjahres ergibt
+# den Gesamtbetrag der VE aus deren § 3 (``council_budget_bylaw``) — 2019 und
+# 2025 auf den Euro. 2026 nennt die Übersicht 41.519.000 €, die Satzung
+# 41.489.000 €; das steht so in den beiden Dokumenten.
+
+PROBE_VE = "commitments_bylaw"
+
+
+@dataclass
+class VeLesung:
+    budget_year: int | None = None
+    #: (Plan, der die VE erteilt, Fälligkeitsjahr, Betrag in €)
+    zeilen: list[tuple[int, int, float]] = field(default_factory=list)
+    hinweise: list[str] = field(default_factory=list)
+
+
+def lies_ve(seiten: list[list[list[tuple]]]) -> VeLesung:
+    aus = VeLesung()
+    for fassungen in seiten:
+        woerter = fassungen[0]
+        text = " ".join(w[4] for w in woerter)
+        if "fällig werdenden Auszahlungen" not in text or "Haushaltsplan" not in text:
+            continue
+        mitte = lambda w: (w[1] + w[3]) / 2  # noqa: E731
+        zeilen: list[list[tuple]] = []
+        for w in sorted(woerter, key=mitte):
+            if zeilen and mitte(w) - mitte(zeilen[-1][0]) <= 3:
+                zeilen[-1].append(w)
+            else:
+                zeilen.append([w])
+        spalten: list[tuple[float, int]] = []
+        for z in zeilen:
+            z.sort(key=lambda w: w[0])
+            jahre = [w for w in z if re.fullmatch(r"20\d\d", w[4])]
+            if not spalten and len(jahre) >= 3 and jahre[0][0] > 200:
+                spalten = [(w[2], int(w[4])) for w in jahre]  # rechte Kante
+                aus.budget_year = spalten[0][1]
+                continue
+            if not spalten or not re.fullmatch(r"20\d\d", z[0][4]) or z[0][0] > 150:
+                continue
+            plan = int(z[0][4])
+            for w in z[1:]:
+                if not re.fullmatch(r"-?\d{1,3}(?:\.\d{3})*", w[4]):
+                    continue
+                faellig = min(spalten, key=lambda s: abs(s[0] - w[2]))[1]
+                aus.zeilen.append((plan, faellig, float(w[4].replace(".", ""))))
+        break
+    if aus.budget_year is None:
+        aus.hinweise.append("keine VE-Übersicht gefunden")
+    return aus
+
+
+def pruefe_ve(aus: VeLesung, satzung_ve: float | None) -> list[str]:
+    """Die Zeile des Planjahres gegen § 3 der Haushaltssatzung — Abweichungen
+    als Satz (auffällig, nicht verwerfend: zwei Dokumente, zwei Fassungen)."""
+    if satzung_ve is None or aus.budget_year is None:
+        return []
+    eigene = sum(b for p, _f, b in aus.zeilen if p == aus.budget_year)
+    if abs(eigene - satzung_ve) <= 1:
+        return []
+    return [f"VE des Plans {aus.budget_year}: Übersicht {eigene:,.0f} €, "
+            f"Haushaltssatzung {satzung_ve:,.0f} €"]
