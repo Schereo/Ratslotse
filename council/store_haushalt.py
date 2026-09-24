@@ -131,6 +131,8 @@ class HaushaltMixin(StoreBasis):
         "budget_notes":      ("council_budget_notes", "budget_year", None, None),
         # Die Budgetberichte: ein Dokument je Stichtag und Teilhaushalt.
         "budget_measures":   ("council_budget_measures", "budget_year", None, None),
+        # Die Zahlen aus dem Vorbericht: ein Dokument je Plan, wie der Wortlaut.
+        "budget_preface":    ("council_budget_preface_figures", "plan_budget_year", None, None),
         # Vierte Ebene: Abschnitt 2.1, die Bilanz. Der älteste Stichtag (2016)
         # stammt aus der Vorjahresspalte des Abschlusses 2017 — er trägt
         # deshalb dessen Dokument, mit eigener Fundstelle.
@@ -2338,6 +2340,35 @@ class HaushaltMixin(StoreBasis):
             return [dict(r) for r in self._conn.execute(
                 "SELECT * FROM council_budget_measures WHERE as_of = ? AND sub_budget_no = ? "
                 "ORDER BY seq", (as_of, sub_budget_no))]
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return []
+
+    def save_vorbericht_zahlen(self, plan_budget_year: int, werte: list[dict], herkunft) -> int:
+        """Die Zahlen eines Vorberichts ersetzen (``council/vorbericht_zahlen.py``)."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute("DELETE FROM council_budget_preface_figures WHERE plan_budget_year = ?",
+                               (plan_budget_year,))
+            self._conn.executemany(
+                "INSERT INTO council_budget_preface_figures (plan_budget_year, series, year, "
+                " variant, amount, page, herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,?)",
+                [(plan_budget_year, w["series"], w["year"], w["variant"], w["amount"], w["page"],
+                  hid, now) for w in werte])
+        return len(werte)
+
+    def get_vorbericht_zahlen(self, series: list[str] | None = None) -> list[dict]:
+        """Die Zahlen aller Vorberichte, jüngster Plan zuerst."""
+        sql = "SELECT * FROM council_budget_preface_figures"
+        args: list = []
+        if series:
+            sql += f" WHERE series IN ({','.join('?' * len(series))})"
+            args += series
+        try:
+            return [dict(r) for r in self._conn.execute(
+                sql + " ORDER BY plan_budget_year DESC, series, year, variant", args)]
         except sqlite3.OperationalError as fehler:
             if not tabelle_fehlt(fehler):
                 raise

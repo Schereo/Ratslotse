@@ -2536,6 +2536,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/council/budget/preface-figures": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Haushalt Vorbericht Zahlen
+         * @description Zahlen aus dem Vorbericht der Haushaltspläne (``council/vorbericht_zahlen.py``):
+         *     Personalaufwand samt Rückstellungen, Steuerarten mit Prognose und
+         *     Finanzplanung, Jahresergebnisse. Je Plan, jüngster zuerst — die Seite
+         *     zeigt den jüngsten und lässt ältere wählen.
+         */
+        get: operations["haushalt_vorbericht_zahlen_api_council_budget_preface_figures_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/council/budget/products": {
         parameters: {
             query?: never;
@@ -8489,6 +8512,15 @@ export interface components {
             /** Rounds */
             rounds: unknown;
         };
+        /** BudgetPrefaceFigures */
+        BudgetPrefaceFigures: {
+            /** Plans */
+            plans: components["schemas"]["PrefacePlan"][];
+            /** Provenance */
+            provenance: {
+                [key: string]: components["schemas"]["Herkunft"];
+            };
+        };
         /** BudgetProducts */
         BudgetProducts: {
             /** All Years */
@@ -13555,6 +13587,33 @@ export interface components {
             points: number;
             /** Tip */
             tip: number;
+        };
+        /**
+         * PrefaceFigure
+         * @description Ein Wert aus dem Vorbericht. ``variant``: ``actual`` (Ist),
+         *     ``prior_budget`` (Plan des Vorjahres), ``forecast`` (Prognose der
+         *     Kämmerei), ``budget`` (Ansatz des Planjahres), ``financial_plan``.
+         */
+        PrefaceFigure: {
+            /** Amount */
+            amount: number;
+            /** Herkunft Id */
+            herkunft_id: number | null;
+            /** Page */
+            page: number | null;
+            /** Series */
+            series: string;
+            /** Variant */
+            variant: string;
+            /** Year */
+            year: number;
+        };
+        /** PrefacePlan */
+        PrefacePlan: {
+            /** Figures */
+            figures: components["schemas"]["PrefaceFigure"][];
+            /** Plan Budget Year */
+            plan_budget_year: number;
         };
         /** ProjectReportIn */
         ProjectReportIn: {
@@ -18804,6 +18863,37 @@ export interface operations {
             };
         };
     };
+    haushalt_vorbericht_zahlen_api_council_budget_preface_figures_get: {
+        parameters: {
+            query: {
+                series: string[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetPrefaceFigures"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     haushalt_produkte_api_council_budget_products_get: {
         parameters: {
             query: {
@@ -23836,4 +23926,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: c3b0fa569f04fd536d138357dc8b926dc80cb1e8a3b441a70e9009de871b033c
+// vertrag-sha256: f4fe777a8116cd4085bcd66ee18c1c85503e8f0b22bfda9550d42c1b613d2026

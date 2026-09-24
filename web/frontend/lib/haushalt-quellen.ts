@@ -147,6 +147,8 @@ export type QuellenSchluessel =
   | "debt_plan"
   // Der Vorbericht (Anlage 001): der Wortlaut je Teilhaushalt.
   | "budget_notes"
+  // Die Zahlen aus demselben Vorbericht (Personal, Steuerarten, Ergebnis).
+  | "budget_preface"
   // Die Budgetberichte an die Fachausschüsse: Investitionen je Maßnahme.
   | "budget_measures"
   // Die beschlossene Haushaltssatzung aus dem Amtsblatt.
@@ -945,6 +947,20 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     herausgeber: "Stadt Oldenburg, Ämter für Jugend und Familie sowie Schule und Bildung",
     standWort: "Stichtage",
     as_of: "Stichtage 30.06.2018 bis 30.06.2026",
+    art: "pdf",
+    url: "https://buergerinfo.oldenburg.de",
+  },
+  budget_preface: {
+    title: "Vorbericht zum Haushaltsplan (Anlage 001) — Zahlen",
+    citation:
+      "Aus drei Kapiteln des Vorberichts: 2.1.1 Fehlbeträge und Überschüsse, 2.2 Erträge aus den " +
+      "Steuerarten, 2.4.1.3 gesamtstädtische Personalaufwendungen — Ist, Plan und Prognose des " +
+      "laufenden Jahres, Ansatz und Finanzplanung. Personal und Jahresergebnis sind gegen den " +
+      "Ergebnishaushalt desselben Plans geprüft, die Steuer-Ist-Werte gegen das Statistische " +
+      "Jahrbuch. Es ist der Entwurf der Verwaltung.",
+    herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
+    standWort: "Haushaltspläne",
+    as_of: "Haushaltspläne 2019–2026, Stand der Einbringung",
     art: "pdf",
     url: "https://buergerinfo.oldenburg.de",
   },
