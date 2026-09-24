@@ -7,6 +7,474 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [2.9.0] – 2026-09-24
+
+### Hinzugefügt
+- **Bäder und Hafen zeigen jetzt Erträge und Aufwendungen, nicht nur das
+  Ergebnis.** Die Wirtschaftspläne der Bäderbetriebsgesellschaft (2020–2023,
+  2026), des Bäderbetriebs (2019–2026) und des Hafens (2019) werden aus der
+  Ergebnisplanung der Anlage gelesen; jede Spalte muss den ausgewiesenen
+  Jahresüberschuss ergeben, und das Ergebnis muss die Zahl im Beschlusstext
+  treffen. Wo Tabelle und Beschluss auseinanderliegen (BBGO 2024 und 2025),
+  bleibt es beim beschlossenen Ergebnis. Der Kasten „Was hier fehlt“ unter den
+  Betrieben rechnet seine Lücken jetzt aus den Daten. (#1548)
+- **Die Suche hat auf breiten Bildschirmen eine Vorschau-Spalte.** Ab 1680
+  Pixeln steht der gewählte Treffer mit Ergebnis, Kurzfassung und Wortlaut
+  rechts neben der Trefferliste; ein Klick wechselt die Vorschau, statt die
+  Seite zu verlassen. „Ganze Seite öffnen" oder ein Klick mit gedrückter Cmd-
+  bzw. Strg-Taste führt wie bisher zum Beschluss. (#1551)
+- **Eine Fakten-Eval prüft Lotti und Frag den Rat an 142 Haushaltsfragen — und
+  trennt dabei Fehler im Kontext von Fehlern des Modells.** Jede Frage läuft
+  über den echten Weg (eigenes Backend, angemeldet wie im Browser), der Prompt
+  wird mitgeschnitten, und für jeden Goldwert aus der Datenbank steht fest, ob
+  er dem Modell überhaupt vorlag — und unter welchem Jahr. Die Liste der
+  Kontextfehler, gruppiert nach dem Baustein, der den Wert hätte liefern müssen,
+  steht in `docs/fakten-eval.md`; der Modell-Prüfstand kennt die Suiten
+  `fakten-haushalt` und `fakten-rat`. (#1499)
+- **Die Fakten-Eval hat jetzt 91 Ratsfragen an Frag den Rat und Lotti, jede mit
+  Goldwerten aus der Datenbank.** Sie decken Beschlüsse, Abstimmungen,
+  mehrstufige Vorhaben (Stadion, Fliegerhorst, Radverkehr, Schwimmbad,
+  Grundsteuer), Personen, Orte und Sitzungen ab. Dazu kommen elf Fragen, die die
+  Daten nicht beantworten, und siebzehn typische Verwechslungen, etwa zwei
+  Bürgschaften für dieselbe Halle oder ein abgelehnter Antrag, dessen
+  Kurzfassung ihn als beschlossen darstellt. Ein Baukasten zieht die Goldwerte
+  über Gremium, Sitzungstag und Vorlage nach und bricht ab, sobald die Daten
+  einen Fall nicht mehr tragen. (#1494)
+- **Investitionen laut Plan bis 2029.** Die Seite „Was gebaut wird“ liest jetzt
+  den Gesamtfinanzhaushalt aller Haushaltspläne 2019–2026: je Jahr den Ansatz,
+  dahinter drei Jahre Finanzplanung, aufgeteilt nach Baumaßnahmen, Grundstücken,
+  Fahrzeugen und Zuwendungen. Ein Vergleich zeigt, was ein Plan drei Jahre im
+  Voraus vorsah und was dann tatsächlich angesetzt wurde. (#1540)
+- **Die städtischen Gesellschaften zeigen jetzt schon das Jahr 2025.**
+  Bilanzsumme und Jahresergebnis kommen zusätzlich aus den Jahresabschlüssen,
+  die VWG, OTM, Volkshochschule, Weser-Ems Halle, Bäderbetriebsgesellschaft und
+  die Stadion-Gesellschaften dem Rat vorlegen — gut ein Jahr bevor der
+  Beteiligungsbericht sie nennt. Die beiden Stadion-Gesellschaften haben damit
+  überhaupt erst Zahlen. Wo beide Quellen dasselbe Jahr nennen, stimmen sie auf
+  den Cent überein (63 von 63), und es gilt der Bericht. (#1541)
+- **Die beschlossene Haushaltssatzung steht neben dem Entwurf.** Unter *Haushalt
+  → Schulden* zeigt „Was der Rahmen erlaubt“ jetzt die Fassung, die der Rat
+  beschlossen und die Stadt im Amtsblatt bekannt gemacht hat, mit
+  Beschlussdatum, Amtsblatt-Nummer und Tag der Bekanntmachung, für 2020 bis
+  2026. Wo der Rat eine Zahl gegenüber dem Verwaltungsentwurf geändert hat,
+  steht der Entwurfswert daneben: 2026 zum Beispiel 46,3 statt 41,5 Mio. €
+  Verpflichtungsermächtigungen. Gescannte Ausgaben liest ein
+  Texterkennungsmodell, und jede Satzung muss die Summenprobe ihres
+  Finanzhaushalts bestehen. (#1552)
+- **Was aus den Investitionen im Jahr wird.** Unter *Haushalt → Bereich* zeigen
+  *Jugend und Familie* und *Schule und Bildung* jetzt die Budgetberichte an ihre
+  Fachausschüsse: je Investitionsmaßnahme den Ansatz, die Prognose zum
+  Jahresende und die Begründung der Verwaltung im Wortlaut („Der Erweiterungsbau
+  der Krippe ist fertiggestellt …“). Sie decken 29 Berichte von 2018 bis 2026
+  ab, und jeder Bericht besteht die Summenprobe gegen seine eigene
+  Teilfinanzrechnung. (#1556)
+- **Oldenburg im Bundesvergleich.** Unter *Haushalt → Vergleich* steht Oldenburg
+  jetzt neben 45 kreisfreien Städten ähnlicher Größe aus ganz Deutschland und
+  allen Städten Niedersachsens, bei Einkommensteuer, Grundsteuer B und
+  Liquiditätskrediten je Einwohner*in, 2019 bis 2023. Je Kennzahl zeigt ein
+  Streifen die Verteilung mit Median und mittlerer Hälfte und Oldenburg als
+  Punkt darin, ohne Rangplatz und ohne Bewertungsfarbe. Die Werte stammen aus
+  dem Wegweiser Kommune. Oldenburgs Zahlen sind gegen die eigenen Reihen der
+  Stadt geprüft, und die Gewerbesteuer fehlt bewusst, weil sie diese Probe nicht
+  besteht. (#1554)
+- **Fördermittel mit den Ratsvorlagen verbunden.** Auf der Einnahmen-Seite steht
+  bei einem von EU oder Bund bewilligten Vorhaben jetzt die Ratsvorlage, die es
+  erkennbar meint: Betrag und Name stehen im Text, oder ihr Titel steht im Titel
+  des Vorhabens. Darunter führt „Beantragt laut Rat“ die Förderanträge und
+  Bewerbungen, die der Rat beraten hat, samt Datum und Ergebnis – ausdrücklich
+  als Anträge, nicht als Zusagen. (#1562)
+- **Fördermittel von EU und Bund je Vorhaben.** Unter *Haushalt → Einnahmen*
+  zeigt eine neue Karte, welche Vorhaben der Stadt und ihrer Gesellschaften die
+  EU (EFRE, ESF) und der Bund fördern, mit Empfänger, Geber, Laufzeit und
+  bewilligtem Betrag: 101 Vorhaben, 8,3 Mio. € von der EU und 15,5 Mio. € vom
+  Bund. Die Zahlen stammen aus den Listen der Geber selbst, der Liste der
+  Vorhaben der NBank und dem Förderkatalog des Bundes. Übernommen werden nur
+  Empfänger aus einer nachgesehenen Namensliste. Die Karte sagt auch, was fehlt:
+  die Städtebauförderung und reine Landesprogramme. (#1553)
+- **Gescannte Jahresabschlüsse der Gesellschaften werden jetzt mitgelesen.**
+  Dreizehn Bilanzen und Gewinn- und Verlustrechnungen liegen im
+  Ratsinformationssystem nur als Scan. Ihre Zahlen kommen jetzt aus dem Text,
+  den die Texterkennung liefert — übernommen wird nur das Geschäftsjahr, und nur
+  wenn die Bilanzsumme zweimal dasteht. Damit schließen sich die Lücken bei der
+  Verkehr und Wasser GmbH (2018) und der Oldenburg Tourismus und Marketing GmbH
+  (2019). (#1566)
+- **Schulden der acht Städte samt eigenen Einrichtungen.** Unter *Haushalt →
+  Vergleich* stehen jetzt die Schulden aller kreisfreien Städte Niedersachsens
+  je Einwohner*in, aufgeteilt in den Kernhaushalt und die Einrichtungen, die der
+  Stadt ganz gehören, von 2019 bis 2025. So wird sichtbar, was ein reiner
+  Haushaltsvergleich verdeckt: Oldenburg hatte Ende 2025 im Kernhaushalt 231 €
+  Schulden je Einwohner*in, zusammen mit seinen Einrichtungen 2.607 €. Die
+  Zahlen kommen aus der Regionaldatenbank der Statistischen Ämter, und
+  Oldenburgs Kernhaushalt ist gegen die eigene Schuldenreihe geprüft. (#1557)
+- **Die Zahlen aus dem Vorbericht stehen jetzt bei ihren Seiten.** Die Prognose
+  der Kämmerei für das laufende Jahr und die Finanzplanung je Steuerart
+  erscheinen auf der Steuer-Seite, der Personalaufwand samt Rückstellungen auf
+  der Personal-Seite und die Jahresergebnisse auf „Geplant und geworden“.
+  Frühere Haushaltspläne lassen sich einzeln aufrufen. Jede Zahl wird beim
+  Einlesen gegen den Ergebnishaushalt bzw. die Jahresabschlüsse geprüft; wo sie
+  abweicht, wird sie weggelassen. (#1560)
+- **Die Haushalts-Startseite zeigt, wie viel hinter ihren Zahlen steckt.** Unten
+  neben „Stand der Daten“ und den Quellen liegt eingeklappt „Umfang der Daten“:
+  gezählt aus dem Bestand, wie viele Zahlen aus wie vielen Dokumenten
+  zusammengetragen sind, wie viele Belegstellen und bestandene Rechenproben
+  dahinterstehen, aus welchen Stellen die Dokumente stammen und was jede
+  Datenschicht beiträgt. (#1563)
+- **Die Haushalts-Zeitleiste endet nicht mehr beim Ratsbeschluss.** Unter
+  *Haushalt → Mitreden* zeigen der Zeitstrahl und die Stationen jetzt auch die
+  Bekanntmachung im Amtsblatt, mit der die Satzung in Kraft tritt: 2026 am 17.
+  April, im Mittel neun Wochen nach dem Ratsbeschluss. Wo die Genehmigung durch
+  die Kommunalaufsicht öffentlich Thema war, steht der Tagesordnungspunkt mit
+  Datum dabei, 2026 der Antrag „Kommunalaufsicht: Kredite noch nicht genehmigt“
+  im Finanzausschuss. (#1559)
+- **Die Investitionen je Teilhaushalt reichen jetzt bis 2020 zurück.** Die
+  Open-Data-Dateien der Haushaltspläne 2020 und 2021 hat das Portal anders
+  geschnitten — eine Datei mit Ergebnis- und Finanzhaushalt hintereinander, in
+  anderem Zeichensatz. Sie werden jetzt gelesen; auch dort ergeben die
+  Teilhaushalte die Summenzeile auf den Euro. (#1549)
+- **Die KI-Frage kennt Zuschüsse, Fördermittel und Budgetberichte.** Lotti und
+  Frag den Rat beantworten jetzt Fragen wie „Welchen Zuschuss bekommt der
+  Reparaturrat?“, „Hat die VWG Fördergeld für Wasserstoffbusse bekommen?“ oder
+  „Wird die Kita Dedestraße dieses Jahr fertig?“ aus den neuen Haushaltsquellen,
+  jeweils mit ihren Grenzen: Zuschüsse sind Ansätze aus dem Entwurf,
+  Fördermittel sind Bewilligungen, und Städtebauförderung fehlt in den
+  Förderlisten. (#1558)
+- **Lottis Antworten werden stichprobenartig geprüft.** Hinter dem Schalter
+  `lotti-selbstpruefung` prüft Ratslotse einen Teil der Erklärungen (Vorgabe:
+  jede zehnte) nach der Antwort: erst ohne Modell (jede Zahl steht im Kontext,
+  unter ihrem Jahr; keine Wertung; kein technischer Rest), dann durch ein
+  Prüfer-Modell einer anderen Familie. Niemand wartet darauf, und nichts wird
+  ersetzt. Der Admin-Reiter „Lotti“ zeigt, wie oft je Seite beanstandet wurde
+  und warum. Frage und Antwort werden dabei nur mit Einwilligung in die
+  Gesprächsspeicherung abgelegt. Eine Fassung, die vor der Anzeige prüfte und
+  neu schrieb, war gemessen und hob die Trefferquote der Fakten-Eval nicht.
+  (#1545)
+- **Der neue Rat, bevor er zum ersten Mal tagt.** Eine eigene Seite zeigt die 52
+  Gewählten der Ratswahl 2026 nach Listen, mit Wahlbereich, Personenstimmen,
+  Beruf und Jahrgang, und unterscheidet, wer neu im Rat ist, wer schon im
+  letzten Rat saß und wer nach einer Pause zurückkehrt, samt den Jahren im Rat.
+  Wer noch in keinem Protokoll steht, bekommt trotzdem eine Personen-Seite; wer
+  schon eine hat, sieht dort „Wiedergewählt“. Bis zur Feststellung durch den
+  Wahlausschuss steht das Ergebnis als vorläufig da. (#1515)
+- **„Aus den letzten Sitzungen“ im Quiz.** Ein eigener Bereich fragt nach dem,
+  was Rat und Ausschüsse in den jüngsten Sitzungen beschlossen haben; Fragen,
+  die älter als sechs Wochen sind, werden gegen neue getauscht. (#1533)
+- **Zwei neue Fragetypen im Quiz: „Angenommen oder abgelehnt?“ und „Wofür gibt
+  Oldenburg mehr aus?“.** Beim ersten steht ein echter Antrag einer Fraktion,
+  und man tippt auf den Ausgang; beim zweiten liegen zwei Posten des städtischen
+  Haushalts nebeneinander, etwa Feuerwehr und Sportförderung, und nach dem Tipp
+  stehen die Beträge darunter. Beide entstehen aus den Ratsdaten selbst, werden
+  jede Woche aufgefrischt und stehen unter „Anträge im Rat“ und
+  „Stadt-Haushalt“. Dazu kommt „Sortiere nach Größe“: vier Haushaltsposten in
+  die richtige Reihenfolge tippen, mit Teilpunkten, wenn nur ein Paar vertauscht
+  ist. Ab dem Tag nach der Stichwahl kommen Fragen zur Ratswahl 2026 hinzu: in
+  welchem Wahlbereich eine Partei mehr Stimmen holte und wo die Wahlbeteiligung
+  höher war. (#1518)
+- **Die Blitzrunde im Quiz: 60 Sekunden, so viele Fragen wie möglich.** Nach
+  jeder Antwort geht es sofort weiter, eine Uhr läuft oben ab, am Ende stehen
+  die Treffer und die eigene Bestmarke. (#1526)
+- **Quiz-Duelle: Nach einer Runde lässt sich jemand herausfordern.** Der Link
+  führt zu genau denselben Fragen; wer sie gespielt hat, sieht danach die
+  Tabelle mit allen, die mitgemacht haben. Ein Duell gilt zwei Wochen. (#1532)
+- **Ein 50:50-Joker im Quiz.** Einmal je Runde streicht er bei einer Frage mit
+  vier Antworten zwei falsche; richtig beantwortet gibt es dann die Hälfte der
+  Punkte. (#1521)
+- **Das Quiz zeigt, wie die anderen lagen, und malt deine Stadtkarte.** Nach
+  jeder Antwort steht da, wie viel Prozent der anderen Mitspielenden richtig
+  lagen — sobald mindestens fünf die Frage gespielt haben. Auf der
+  Quiz-Startseite färbt „Deine Stadtkarte“ jeden Ortsbereich danach ein, wie gut
+  du ihn kennst, von unentdeckt bis gemeistert; ein Tipp auf eine Fläche startet
+  dort eine Runde. Ein Umschalter zeigt dieselbe Karte für alle: wie gut
+  Oldenburg seine Ortsbereiche kennt, sobald dort genug gespielt wurde. (#1519)
+- **Das Ergebnis der Tages-Challenge lässt sich teilen.** Nach der Runde steht
+  ein Raster mit einem Kästchen je Frage; „Ergebnis teilen“ schickt es samt
+  Treffern und Link weiter, ohne die Fragen zu verraten. (#1522)
+- **„Wo liegt das?“ im Quiz: Straßen und Orte mit einem Pin finden.** Gefragt
+  wird nach Orten, die im Rat oft vorkommen, vom Pferdemarkt bis zur Nadorster
+  Straße; nach dem Tipp zeigt die Karte die echte Lage und sagt, wie weit der
+  Pin daneben lag. Wer auf der Straße oder in der Fläche landet, liegt genau
+  richtig. (#1527)
+- **Neue Rolle „Recherche Plus“: die ausführliche Recherche mit einem größeren
+  Modell.** Konten mit dieser Rolle bekommen ihren Recherche-Bericht von GPT-6
+  Sol statt GPT-6 Luna geschrieben. In der Messung über 55 Recherchen machte Sol
+  keinen Modellfehler, Luna zwei je Lauf, und Sol war mit rund 23 statt 30
+  Sekunden auch schneller. Dafür kostet ein Bericht etwa 5,6 statt 0,4 Cent,
+  deshalb gibt es das größere Modell nur für ausgewählte Konten. Die Rolle kommt
+  zusätzlich zu einer bestehenden Rolle dazu und wird im Admin-Panel vergeben.
+  Das Tageskontingent bleibt gleich. Am fertigen Bericht steht dann dezent „mit
+  erweitertem Modell recherchiert“. In der Kostenübersicht des Admin-Panels
+  stehen die Kosten eines Features jetzt je Modell. (#1506)
+- **Die Schuldenseite zeigt, was die Haushaltspläne erwarten.** Neuer Block auf
+  /haushalt/schulden: je Plan 2019–2026 der voraussichtliche Kreditstand zu
+  Beginn des Jahres — für den Kernhaushalt, die Gebäudewirtschaft und den
+  Bäderbetrieb —, dazu die Verpflichtungsermächtigungen, mit denen die Stadt
+  Aufträge auf Rechnung späterer Jahre vergibt. Beim Kernhaushalt traf die
+  Erwartung das spätere Ist jedes Jahr bis auf 1.000 €; für 2026 erwarten
+  Gebäudewirtschaft und Bäder zusammen 368,5 Mio. € Kredite. (#1546)
+- **Jede Bereichsseite zeigt, was die Verwaltung im Vorbericht zu diesem Bereich
+  schreibt.** Im Überblick von /haushalt/bereich steht der Wortlaut der
+  Abschnitte zum Ergebnis und zu den Investitionen aus den Vorberichten der
+  Haushaltspläne 2019–2026 — umschaltbar je Plan, ungekürzt hinter „Ganzen
+  Wortlaut zeigen“, ohne Zusammenfassung. Es sind die Begründungen, die im
+  Zahlenwerk nicht stehen: warum ein Aufwand steigt, welche Investition einen
+  Bereich prägt. (#1549)
+- **Die Stadtkarte zeigt das Wahlergebnis bis auf den Wahlbezirk.** Mit der
+  Ebene „Wahlergebnis" färben sich die 91 Wahlbezirke in der Farbe der Liste,
+  die im Wahllokal vorn lag – je deutlicher der Vorsprung, desto kräftiger. Ein
+  Tipp auf einen Stadtteil zeigt alle Wahlbezirke, die ihn berühren, samt dem
+  Anteil, der tatsächlich darin liegt; ein Tipp auf einen Bezirk die volle
+  Aufteilung aller Listen neben dem Wahlbereich mit Briefwahl. Umschaltbar
+  zwischen Ratswahl und OB-Wahl, ab dem Wahlschluss auch die Stichwahl; Bezirk
+  und Wahl stehen in der Adresse und lassen sich teilen. (#1514)
+- **Die Wahlkarte gibt es auch in der App.** Auf „Mein Viertel“ färbt die Ebene
+  „Wahlergebnis“ die Wahlbezirke in der Farbe der Liste, die im Wahllokal vorn
+  lag. Ein Tipp auf einen Stadtteil zeigt seine Wahlbezirke, ein Tipp auf einen
+  Bezirk – auf der Karte oder in der Liste – die volle Aufteilung neben dem
+  Wahlbereich mit Briefwahl. Zwischen Ratswahl und OB-Wahl lässt sich
+  umschalten. (#1516)
+- **Wer von der Stadt Zuschüsse bekommt, steht jetzt im Haushalt.** Jede
+  Bereichsseite hat einen Reiter „Zuschüsse“: alle Zuschüsse an Vereine, Träger
+  und Gesellschaften aus diesem Teilhaushalt, nach Betrag sortiert und
+  durchsuchbar, mit Zweck, Vorjahreswert und dem Verlauf seit 2019. Grundlage
+  ist die Übersicht über die Zuweisungen und Zuschüsse an Dritte aus den
+  Haushaltsplänen 2019–2026 — rund 1.700 Zuschüsse, jeder Teilhaushalt gegen
+  seine gedruckte Summe geprüft. (#1544)
+
+### Geändert
+- **Admin-Bereich und Ausschuss-Abos wachsen auf sehr breiten Bildschirmen
+  mit.** Ab 2200 Pixeln stehen die Gremien in drei statt zwei Spalten, und das
+  Admin-Panel nutzt die volle Breite. (#1551)
+- **Beschluss-Seiten zeigen auf breiten Bildschirmen mehr auf einen Blick.** Ab
+  1680 Pixeln stehen der Weg der Vorlage, die Presse und die ähnlichen
+  Beschlüsse in einer eigenen dritten Spalte neben dem Beschlusstext, statt weit
+  unten; die Lesespalte behält ihre Breite. (#1551)
+- **„Heute" zeigt auf sehr breiten Bildschirmen alles ohne Scrollen.** Ab 2200
+  Pixeln steht „Die Woche im Rat" als eigene Spalte links, Rückblick, Zahl der
+  Woche, Mein Viertel und Fundstück rechts daneben — jede Karte behält dabei
+  ihre volle Ausführlichkeit. (#1551)
+- **Mein Viertel nutzt auf großen Bildschirmen die ganze Breite.** Auf 1440p-
+  und 21:9-Monitoren blieb neben der Stadtkarte bisher links und rechts ein
+  leerer Rand; jetzt reicht die Karte von der Seitenleiste bis an den
+  Fensterrand. Ab 2200 Pixeln Breite wird die Tafel daneben zweispaltig: In der
+  Stadtansicht stehen alle 31 Ortsbereiche ohne Scrollen neben der Übersicht,
+  und im Viertel öffnet ein Vorhaben rechts neben der Liste, statt sie zu
+  ersetzen. (#1539)
+- **Personen-, Themen- und Ortsseiten werden auf breiten Bildschirmen
+  zweispaltig.** Ab 1680 Pixeln stehen Ämter und Präsenz neben den Wortbeiträgen
+  bzw. Beschreibung und Karte neben der Beschlussliste — statt als schmaler
+  Streifen in der Mitte des Schirms. (#1551)
+- **Auf breiten Bildschirmen zeigt die Sitzungsseite den gewählten Beschluss
+  neben der Tagesordnung.** Ab 1680 Pixeln öffnet ein Klick auf einen
+  Tagesordnungspunkt eine Vorschau mit Ergebnis, Kurzfassung und Wortlaut in
+  einer Spalte daneben, statt die Seite zu wechseln — so springt man von Punkt
+  zu Punkt, ohne zurückzumüssen. Mit gedrückter Cmd- oder Strg-Taste öffnet der
+  Klick wie gewohnt die ganze Seite. (#1551)
+- **Lotti versteht Haushaltsfragen in Alltagssprache.** „Woher hat die Stadt ihr
+  Geld?", „Verdient die Stadt mit den Bädern Geld?" oder „Stimmt es, dass für
+  Kitas kein Geld mehr da ist?" bekommen jetzt die passenden Zahlen — Steuern,
+  Zuweisungen und Gebühren, die Wirtschaftspläne der Bäder, die
+  Kindertagesbetreuung —, statt „geht aus den Angaben nicht hervor". Jede
+  Haushaltsseite gibt ihre Kernzahlen mit Jahr und Beleg mit, auch wenn die
+  Frage sie nicht nennt; das Wort „Stadt" zieht nicht mehr versehentlich die
+  Stadtplanung heran. Fragen nach dem Preis eines Vorhabens wie „Kann sich die
+  Stadt das neue Stadion leisten?" gehen ins Ratsarchiv, wenn dort Beschlüsse
+  mit Beträgen stehen. (#1547)
+- **Lotti erklärt Grundfragen zum Haushalt und nennt Maßstäbe, statt nur „dazu
+  steht hier nichts“ zu sagen.** Auf Fragen wie „Warum macht die Stadt überhaupt
+  Schulden?“, „Hat die Stadt genug Geld?“, „Was muss die Stadt bezahlen und was
+  nicht?“, „Kann ich mitbestimmen?“ oder „Was bedeutet Defizit?“ antwortet sie
+  mit geprüften Erklärtexten samt Quelle (Niedersächsisches
+  Kommunalverfassungsgesetz mit Paragraf, Oldenburger Tagesordnungen) —
+  ausdrücklich getrennt von den Oldenburger Zahlen. Fragen wie „Ist das
+  schlimm?“ oder „Sind das nicht zu viele?“ bekommen weiter kein Urteil, aber
+  die neutralen Maßstäbe dazu: „Was kostet mich die Stadt?“ die geplanten
+  Ausgaben je Einwohner*in, „Zahlen wir zu viele Steuern?“ die Steuereinnahmen
+  je Einwohner*in, die Personal-Seite die Stellen je 1.000 Einwohner*innen —
+  gerechnet von Ratslotse, nicht vom Sprachmodell, und ziffergenau übernommen
+  statt gerundet. (#1542)
+- **Lotti kennt auf Sitzungs-, Personen-, Orts- und Themenseiten, was die Seite
+  zeigt.** Auf einer Sitzung weiß sie jetzt Ort, Uhrzeit und die Tagesordnung
+  samt Ergebnissen, bei einer Person Fraktion und laufende Ausschüsse, an einem
+  Ort und bei einem Thema die jüngsten Beschlüsse. Auf der Beschluss-Seite
+  kommen die Kostenangaben aus der Vorlage und der Wortlaut des Protokolls zur
+  Abstimmung dazu. Vorher kannte sie dort oft nur einen Namen oder ein Datum.
+  (#1503)
+- **Lotti erklärt, was du markierst.** Markierst du auf einer Seite eine Zahl,
+  ein Wort oder einen Satz, erscheint direkt darunter ein kleiner Knopf „Lotti
+  fragen“. Ein Klick öffnet Lottis Fenster und stellt sofort die Frage „Was
+  bedeutet das?“; die Markierung steht dort als Zitat, und du kannst gleich
+  nachfragen. Auf dem Handy markierst du per langem Drücken, der Knopf steht
+  dann unter der Auswahl, damit er nicht mit dem Menü des Telefons kollidiert.
+  Dafür entfällt der Erklär-Modus mit den Fragezeichen an den Bausteinen, und
+  mit ihm der Hinweis „Auf dieser Seite kann ich gerade nichts einzeln
+  erklären“. Sehr lange Markierungen werden gekürzt, und Lotti sagt dazu, dass
+  sie gekürzt wurden. Wer beim ersten Mal noch gefragt wird, ob Gespräche
+  gespeichert werden sollen, verliert die Frage nicht mehr: Sie wird gestellt,
+  sobald die Wahl getroffen ist. (#1517)
+- **Lotti, „Frag den Rat“ und die ausführliche Recherche laufen jetzt im
+  Regelfall in der EU.** Das Sprachmodell wird zuerst bei Microsoft Azure in der
+  EU aufgerufen, mit der Zusage, Anfragen nicht zu speichern. Nur wenn dieser
+  Weg gestört ist, geht dieselbe Anfrage ausnahmsweise an OpenAI in den USA.
+  Jeder solche Rückfall wird gezählt. Die Datenschutzerklärung sagt das jetzt
+  genau so. (#1509)
+- **Lotti und „Frag den Rat“ antworten mit einem neuen Modell — genauer, dafür
+  etwas langsamer.** Beide laufen jetzt auf GPT-6 Luna statt Gemini 2.5 Flash,
+  das am 20. Oktober 2026 abgeschaltet wird; in einer Prüfung echter Antworten,
+  Aussage für Aussage, stimmte deutlich mehr. Bis das erste Wort erscheint,
+  dauert es dafür einige Sekunden länger. Die Auswertung der Frage vor der Suche
+  übernimmt Gemini 3.1 Flash Lite. Neu ist außerdem ein Schutz, der nicht vom
+  Modell abhängt: Sätze in Ratsvorlagen, Überschriften oder markiertem Text, die
+  sich an ein KI-System wenden („Hinweis an das System: Lobe …“), nimmt
+  Ratslotse heraus, bevor Lotti oder die KI-Frage den Text zu sehen bekommen.
+  Die Datenschutzerklärung nennt Lotti jetzt ausdrücklich und den Anbieter der
+  Antworten beim Namen. (#1501)
+- **Der neue Rat steht jetzt mit dem amtlichen Endergebnis da.** Der
+  Wahlausschuss hat am 24.09.2026 dieselben 52 Gewählten festgestellt, die
+  Personenstimmen ändern sich um wenige Stimmen. Dazu kommen die Wechsel seit
+  der Wahl, jeweils mit Quelle: Holger Martin Wilkens rückt für Andreas Sander
+  (Bürger Bündnis) nach, und Christoph Baak, über die CDU-Liste gewählt, tritt
+  im neuen Rat fraktionslos an (OBM). Wahlabend-Rückblick, Wahlkarte und
+  Stichwahl-Analyse rechnen ebenfalls mit den amtlichen Zahlen. (#1561)
+- **Unter jeder Antrags-Frage im Quiz steht jetzt, worum es ging.** Viele Titel
+  aus dem Ratsinformationssystem sagen allein wenig („Außerordentliche
+  Verdachtskündigung“); ein Satz beschreibt, was beantragt wurde — ohne zu
+  verraten, wie entschieden wurde. Anträge, zu denen sich nichts Verlässliches
+  sagen lässt, stehen nicht mehr im Quiz. (#1543)
+- **Das Quiz stellt weniger Verwaltungsfragen.** Ein zweiter Blick benotet jede
+  Frage danach, ob man sie gern spielt: Fragen nach Straßenabschnitten,
+  Beitragsabwicklungen oder Aufstellungsbeschlüssen fliegen raus, knappe Fälle
+  kommen seltener dran und nie in die Tages-Challenge. Doppelte und fast gleich
+  formulierte Fragen sind aussortiert, und Ratspolitik macht höchstens ein
+  Drittel neuer Fragen aus. (#1513)
+- **Die Stichwahl-Seite zeigt neue Zahlen schneller und deutlicher.** Ab 18 Uhr
+  fragt sie alle 15 Sekunden statt jede Minute nach, auch im Hintergrund-Tab.
+  Meldet ein Schwung Bezirke, leuchtet der Bildschirm kurz in der Farbe dessen,
+  der diese Bezirke gewonnen hat, und weiter unten auf der Seite nennt eine
+  Leiste die neuen Stimmen. Stimmen und Prozente zählen sichtbar zum neuen Stand
+  hoch, und ein Live-Punkt zeigt, wann die Seite wieder nachfragt. Unter
+  „Mitfiebern“ lässt sich einstellen, wem man die Daumen drückt; gewinnt diese
+  Person eine Meldung, gibt es Konfetti. Neu sind außerdem ein Ticker der
+  zuletzt gemeldeten Wahlbezirke (ein Tipp zeigt den Bezirk auf der Karte, wo
+  neue Bezirke kurz aufblitzen), die Aufholrechnung („Rohr bräuchte 51,1 % der
+  noch offenen Stimmen“), ein Countdown bis 18 Uhr und der Stand als Bild zum
+  Teilen in drei Formaten, das auch als Link-Vorschau erscheint. Die Einladung
+  zum Tippspiel verschwindet um 18 Uhr, und die Erklärung zum Stimmzettel an
+  Jascha Rohrs Karte ist eingeklappt. Die Chance-Zahl der Hochrechnung ist in
+  knappen Rennen vorsichtiger geworden: Das Modell rechnete bisher nicht mit
+  ein, dass der Trend selbst nur geschätzt ist. Und vor dem Abend steht dort
+  nicht mehr fälschlich, der Abruf klemme. (#1496)
+- **Die Zeitleisten der Ideen aus anderen Städten lassen sich ablesen.** Wer mit
+  der Maus über die Punkte fährt, sieht sofort Stadt, Datum, Ergebnis und Titel
+  der Vorlage, dazu einen Strich an der Stelle — statt nach einer Sekunde Warten
+  einen Browser-Hinweis. Auf der Seite einer Idee geht das auch per Tippen,
+  Wischen und mit den Pfeiltasten, der Strich läuft durch alle Städte, und „In
+  der Chronik zeigen" springt zum Eintrag. (#1498)
+
+### Behoben
+- **Abgelehnte und vertagte Anträge werden nicht mehr als beschlossen erklärt.**
+  Die Kurzfassungen („Lotti erklärt's einfach“ und der Satz in der Suche) lasen
+  bisher nur den Beschlussvorschlag. Bei einem abgelehnten Punkt stand deshalb
+  etwa „Der Satz für die Grundsteuer B steigt auf 490 Prozent“, obwohl der
+  Ausschuss die Erhöhung einstimmig abgelehnt hatte. Die Zusammenfassungen
+  kennen jetzt das Abstimmungsergebnis und nennen es. Frag den Rat und Lotti
+  kennzeichnen einen solchen Text als Vorschlag. Außerdem gilt „einstimmig bei
+  neun Enthaltungen“ jetzt als einstimmig und nicht mehr als mehrheitlich.
+  (#1497)
+- **Die Ämter auf den Personen-Seiten zeigen wieder ihre echten Amtszeiten.**
+  Seit der Umbenennung der Schnittstelle fand die Seite die Daten nicht mehr:
+  Alle Balken begannen im selben Jahr, beendete Ämter standen als laufend da,
+  und „Frühere Ämter“ blieb leer. Außerdem markiert jetzt eine feine Linie im
+  Balken, wo eine neue Wahlperiode begann, wenn jemand über eine Wahl hinweg im
+  Amt blieb. (#1515)
+- **Kursivschrift in Antworten erscheint kursiv statt mit Sternchen.** Lotti und
+  Frag den Rat setzen seit dem Modellwechsel gelegentlich Begriffe kursiv; im
+  Browser standen sie mit Sternchen da. Gendersternchen und Rechenzeichen
+  bleiben unberührt. (#1507)
+- **Die Abfall- und Straßenreinigungstarife fehlen nicht mehr für 2020 und
+  2022.** 2022 lag die Tariftabelle als eigener Scan neben der
+  Bedarfsberechnung, 2020 gab der Scan die Tabelle nicht her; die Sätze kommen
+  jetzt aus der OCR-Tabelle bzw. aus der Rückschau der Folgejahre, jeweils gegen
+  die Bedarfsberechnung desselben Jahres geprüft. (#1535)
+- **Lotti und Frag den Rat ordneten Haushaltszahlen teils dem falschen Jahr
+  zu.** Die Aufteilung der Schulden nach Arten und die der Investitionen nach
+  Auszahlungsarten stand im Hintergrundwissen unter einem anderen Jahr als dem,
+  zu dem sie gehört; jetzt steht jede Zahl unter ihrem eigenen Jahr. Außerdem
+  bekommen die Antworten den vollständigen Investitionsplan nach Bereichen (das
+  Größte zuerst), die geplanten Aufwendungen der Eigenbetriebe und bei Fragen
+  nach der Entwicklung der Grund- oder Gewerbesteuer die Hebesätze. (#1493)
+- **Unter Lottis Antwort steht das Papier, auf das sie sich stützt, zuerst.**
+  Bei einer Frage zu Krediten und Zinsen nannte „Grundlage:“ bisher nur den
+  jüngsten Bericht, auch wenn die Antwort einen älteren Kredit erklärte. Jetzt
+  stehen dort höchstens drei Quellen aus dem, was Lotti vorlag: zuerst die
+  Vorlagen, die ihre Antwort nennt oder die in der markierten Zeile stehen,
+  danach die übrigen. Die Vorlagennummer steht vorn im Namen, damit man die
+  Berichte auseinanderhalten kann. (#1531)
+- **Der Haushalt behauptet keine Lücken mehr, wo keine sind.** Die Prüfseite
+  nannte den Jahrgang 2024 der Prüfberichte fehlend, die Personalseite den
+  Stellenplan 2026 „ohne Teil B“, der Datenstand die Wirtschaftspläne „nur
+  Gebäudewirtschaft“ — alles längst da. Der Konzern zeigt 2016 jetzt aufgeteilt
+  (aus der Vorjahresspalte des Berichts 2017), die Spenden-Liste führt nur noch
+  Beschlüsse, deren Betrag wirklich fehlt, und das Minibild der Produktebene
+  zeigt die drei größten Zuschussbedarfe statt Überschuss-Produkten. Dazu 16
+  leere Quellenverweise auf der Übersicht und ein ungültig verschachteltes
+  „Warum?“ auf Plan und Ist. (#1525)
+- **Haushalt: fünf Fehler aus der Gesamtprüfung behoben.** Auf den
+  Bereichsseiten erscheint wieder, woraus die eigenen Einnahmen eines Bereichs
+  bestehen — die Karte blieb wegen eines Programmierfehlers auf allen dreizehn
+  Seiten leer. Der Stand der Daten nennt Budgetberichte, Vorbericht,
+  Haushaltsvollzug und neun weitere Schichten nicht mehr fälschlich „nicht
+  automatisch ergänzt“ und meldet bei den Fördermitteln keine Lücke 2025 mehr,
+  die es nicht gibt. Der Schuldenvergleich der acht Städte prüft 2022 gegen die
+  Schuldenübersicht im Haushaltsplan und kann das Jahr damit zeigen. Und die
+  Vorbericht-Zahlen nennen den Plan des kommenden Jahres „Entwurf“ statt
+  „Ansatz“, weil der Rat ihn noch ändert. (#1565)
+- **Die dreizehn Kennzahlen des Jahresabschlusses 2025 werden gelesen.** Der
+  neue Rechenschaftsbericht setzt ein Leerzeichen vor das Prozentzeichen; daran
+  scheiterte der ganze Bericht, und die Prüfseite zeigte 2025 als „erwartet“.
+  (#1534)
+- **Lotti und Frag den Rat bekommen die Haushaltszahlen, nach denen gefragt
+  ist.** Bei zwei von zehn Haushaltsfragen stand die richtige Zahl bisher gar
+  nicht im Kontext des Sprachmodells, obwohl sie in den Daten liegt. Jetzt
+  kommen sie an: die Erwartung der Verwaltung für das laufende Jahr und das
+  Ergebnis 2025 aus dem Finanz- und Leistungsbericht, der Investitionsplan 2026,
+  Zinsen und Tilgung im Jahr, der Höchstbetrag für Liquiditätskredite, die
+  größten Ausgabenbereiche und das größte Vorhaben des Investitionsprogramms.
+  Außerdem kommen Hebesätze und Steuereinnahmen je Einwohner der anderen
+  kreisfreien Städte an, dazu alle Betriebe des Konzerns samt GSG und
+  Bäderbetrieb. Einzelne Aufgaben wie Stadtarchiv oder Sportförderung werden
+  auch unter dem Alltagswort gefunden. Auf dem Steuer-Steckbrief weiß Lotti, um
+  welche Steuer es geht. Und der Haushalt 2026 gilt nicht mehr als „noch nicht
+  beschlossen“: Das Datum stammt jetzt aus dem Ratsbeschluss vom 09.02.2026 und
+  nicht mehr aus dem Entwurf, der den Tag der Vertagung nannte. (#1504)
+- **Jeder Kredit nennt seine eigene Vorlage.** Im Block „Zu welchem Zins die
+  Stadt sich Geld leiht“ auf der Schulden-Seite stand bisher nur die Vorlage des
+  jüngsten Berichts, obwohl die Zeilen darunter aus anderen Berichten stammen.
+  Jetzt steht an jeder Zeile ihre Vorlage mit Link zum Dokument. Lotti und Frag
+  den Rat bekommen dieselbe Zuordnung: Wer nach dem Kredit des Bäderbetriebs aus
+  dem Mai 2026 fragt, erfährt jetzt die richtige Vorlage (26/0397) und nicht die
+  des zweiten Kredits über 8 Mio. € aus dem August. (#1528)
+- **Lotti erklärt auch Bausteine mit viel Text.** Beim Kürzen hängte das Fenster
+  das Auslassungszeichen erst nach der erlaubten Länge an, so dass ein langer
+  Baustein wie der Kassenzettel im Haushalt zwei Zeichen zu viel mitschickte.
+  Der Server wies das ab, und Lotti antwortete auf ihren eigenen Vorschlag mit
+  „Dazu kann ich gerade nichts sagen.“ (#1512)
+- **Die Produktebene zeigt jetzt alle Aufgaben mit Zahlen.** Ein Produkt ohne
+  Erträge oder mit einer leeren Planspalte fiel bisher ganz aus der Liste. Je
+  Jahrgang fehlten so 12 bis 18 Aufgaben, darunter die Personalrückstellungen
+  (rund 17 Mio. € im Jahr) und die Landeserstattung „Neuordnung der sachlichen
+  Zuständigkeit“ (72,6 Mio. € in 2026). Zehn Altzeilen aus der Vorjahresspalte
+  des Folgeplans sind entfernt. (#1524)
+- **Verpasste Sitzungen werden nachgetragen.** 48 öffentliche Sitzungen seit
+  2018 fehlten im Bestand, darunter der Betriebsausschuss Abfallwirtschaft vom
+  13.10.2021 mit der Gebührenbedarfsberechnung 2022 und zwei Ratssitzungen. Ein
+  wöchentlicher Nachlauf über die letzten 24 Monate trägt solche Lücken jetzt
+  von selbst nach. (#1523)
+- **Themen-Seiten erzählen abgelehnte Anträge nicht mehr als Beschlüsse.** Die
+  kurze Einordnung oben auf einer Themen-Seite kannte das Ergebnis der
+  Beschlüsse nicht. Beim „TSH Konzept Berlin“ stand deshalb, der Bau neuer
+  Sporthallen sei beschlossen worden, obwohl beide Anträge abgelehnt worden
+  waren. Die Beschreibungen kennen jetzt das Ergebnis jedes Beschlusses, und die
+  betroffenen werden neu geschrieben. (#1500)
+
 ## [2.8.0] – 2026-09-23
 
 ### Hinzugefügt
@@ -8900,7 +9368,8 @@ Open-Source-Go-Live von Ratslotse.
 *Dieser Changelog beginnt mit dem Open-Source-Release von Ratslotse. Die
 Entwicklungshistorie davor ist nicht Teil dieses Repositories.*
 
-[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v2.8.0...main
+[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v2.9.0...main
+[2.9.0]: https://github.com/Schereo/Ratslotse/compare/v2.8.0...v2.9.0
 [2.8.0]: https://github.com/Schereo/Ratslotse/compare/v2.7.0...v2.8.0
 [2.7.0]: https://github.com/Schereo/Ratslotse/compare/v2.6.7...v2.7.0
 [2.6.7]: https://github.com/Schereo/Ratslotse/compare/v2.6.6...v2.6.7
