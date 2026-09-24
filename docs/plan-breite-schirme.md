@@ -258,14 +258,16 @@ der Seite am Abend selbst ist das Risiko nicht wert.
   `weit` ebenfalls (größtes iPad quer: 1366 px).
 
 
-## 5. Fragen an Tim, bevor gebaut wird
+## 5. Tims Entscheidungen (24.09.2026)
 
-1. **Obergrenze 2200 px** für Raster- und Detailseiten, randlos nur für
-   Karten — oder sollen auch die Raster bis an den Rand gehen?
-2. **Vorschau-Spalte in der Suche** (PR 7): gewollt? Sie ändert, wie man auf
-   dem großen Schirm sucht (Klick öffnet nicht mehr die Seite, sondern die
-   Vorschau).
-3. **Reihenfolge**: Vorschlag PR 1 → 2 → 4 → 3 → 6 → 5 → 8 → 7 → 9.
+1. **Obergrenze 2200 px** für Raster- und Detailseiten; randlos gehen nur
+   die Karten (Form A). Über 2200 px bleibt also Rand stehen — gewollt.
+2. **Vorschau-Spalte in der Suche: ja.** PR 7 ist damit freigegeben,
+   einschließlich der Sitzungen-Liste.
+3. **Reihenfolge wie vorgeschlagen:** PR 1 → 2 → 4 → 3 → 6 → 5 → 8 → 7 → 9.
+   PR 9 (Wahlabend) frühestens nach der OB-Stichwahl am 27.09.2026.
+
+Die Bild-vor-Merge-Regel oben gilt trotzdem für jeden einzelnen PR.
 
 
 ## Anhang A — Messung wiederholen
