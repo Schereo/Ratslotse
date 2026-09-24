@@ -146,7 +146,13 @@ jobs:
             .venv/bin/python scripts/backfill_anlagen_ocr.py --nur-finanz || ocr=$?
 
             .venv/bin/python scripts/ingest_haushalt.py
-            .venv/bin/python scripts/ingest_finanzen_opendata.py
+            # Das Portal ist langsam (24.09.2026: 27 s für die Startseite, ein
+            # CSV-Abruf nach 120 s ohne Antwort). Das Skript versucht es dreimal;
+            # schweigt es dann noch, bleiben die gespeicherten Reihen stehen,
+            # und der Lauf färbt erst unten rot — die Schritte danach lesen
+            # den Bestand, nicht den Abruf.
+            opendata=0
+            .venv/bin/python scripts/ingest_finanzen_opendata.py || opendata=$?
             .venv/bin/python scripts/ingest_schulden.py
             # `auch_schrumpfen`: nach einem Parser-Fix, der Altzeilen abräumt
             # (#1524: 2021/THH10 fällt von 27 auf 20 Zeilen, weil sieben
@@ -555,6 +561,12 @@ jobs:
               exit "$wirtschaftsplaene"
             fi
 
+            if [ "$opendata" -ne 0 ]; then
+              echo ""
+              echo "Das Open-Data-Portal hat Exit $opendata gemeldet — meist ein"
+              echo "Abruf, der dreimal ins Leere lief. Die gespeicherten Reihen"
+              echo "bleiben stehen; die übrigen Ingests sind durchgelaufen."
+            fi
             if [ "$regional" -ne 0 ]; then
               echo ""
               echo "Die Regionaldatenbank hat Exit $regional gemeldet — meist ein"
@@ -572,4 +584,7 @@ jobs:
             fi
             if [ "$regional" -ne 0 ]; then
               exit "$regional"
+            fi
+            if [ "$opendata" -ne 0 ]; then
+              exit "$opendata"
             fi
