@@ -512,6 +512,12 @@ class UserQuizAnswerIn(BaseModel):
     value: float | None = None                                    # Schätzfrage (Slider)
 
 
+class QuizPinIn(BaseModel):
+    slug: str = Field(min_length=1, max_length=120)
+    lat: float = Field(ge=-90, le=90)
+    lon: float = Field(ge=-180, le=180)
+
+
 class QuizMapIn(BaseModel):
     target: str = Field(min_length=1, max_length=60)   # gefragter Stadtteil
     clicked: str = Field(min_length=1, max_length=60)   # angeklickter Stadtteil

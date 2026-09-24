@@ -1120,6 +1120,28 @@ class QuizDayCompleted(TypedDict):
     share_text: NotRequired[str]
 
 
+class QuizPinQuestion(TypedDict):
+    slug: str
+    name: str
+    kind_label: str
+
+
+class QuizPinRound(TypedDict):
+    questions: list[QuizPinQuestion]
+
+
+class QuizPinResult(TypedDict):
+    """Auflösung von „Wo liegt das?": Entfernung zur Geometrie, Punkte, und
+    die Geometrie selbst zum Einzeichnen."""
+    distance_m: int
+    distance_label: str
+    points: int
+    name: str
+    geojson: Any
+    lat: float
+    lon: float
+
+
 class QuizMapQuestion(TypedDict):
     target: str
     question: str

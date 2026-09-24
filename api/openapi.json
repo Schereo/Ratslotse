@@ -18388,6 +18388,117 @@
         "title": "QuizOwnQuestions",
         "type": "object"
       },
+      "QuizPinIn": {
+        "properties": {
+          "lat": {
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Lat",
+            "type": "number"
+          },
+          "lon": {
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Lon",
+            "type": "number"
+          },
+          "slug": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "lat",
+          "lon"
+        ],
+        "title": "QuizPinIn",
+        "type": "object"
+      },
+      "QuizPinQuestion": {
+        "properties": {
+          "kind_label": {
+            "title": "Kind Label",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "kind_label"
+        ],
+        "title": "QuizPinQuestion",
+        "type": "object"
+      },
+      "QuizPinResult": {
+        "description": "Auflösung von „Wo liegt das?\": Entfernung zur Geometrie, Punkte, und\ndie Geometrie selbst zum Einzeichnen.",
+        "properties": {
+          "distance_label": {
+            "title": "Distance Label",
+            "type": "string"
+          },
+          "distance_m": {
+            "title": "Distance M",
+            "type": "integer"
+          },
+          "geojson": {
+            "title": "Geojson"
+          },
+          "lat": {
+            "title": "Lat",
+            "type": "number"
+          },
+          "lon": {
+            "title": "Lon",
+            "type": "number"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "points": {
+            "title": "Points",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "distance_m",
+          "distance_label",
+          "points",
+          "name",
+          "geojson",
+          "lat",
+          "lon"
+        ],
+        "title": "QuizPinResult",
+        "type": "object"
+      },
+      "QuizPinRound": {
+        "properties": {
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/QuizPinQuestion"
+            },
+            "title": "Questions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "questions"
+        ],
+        "title": "QuizPinRound",
+        "type": "object"
+      },
       "QuizQuestion": {
         "description": "Gebaut in ``CouncilStore._quiz_row(with_answer=False)`` — die Lösung ist\nbewusst NICHT dabei. ``source_*`` sind ``NotRequired``, weil die eigenen\nÜbungsfragen (``/own/round``) ohne Quelle gebaut werden; ``unit`` und die\nSlider-Grenzen gibt es nur bei Schätzfragen.",
         "properties": {
@@ -30455,6 +30566,94 @@
           }
         },
         "summary": "Own Update",
+        "tags": [
+          "quiz"
+        ]
+      }
+    },
+    "/api/quiz/pin-answer": {
+      "post": {
+        "description": "Den Pin werten: Entfernung zur Geometrie des Orts, Punkte in Stufen.\nGebucht wie das Karten-Quiz (``question_id = 0``) auf den Ortsbereich des\nOrts — so zählt es auf die Stadtkarte.",
+        "operationId": "pin_answer_api_quiz_pin_answer_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuizPinIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuizPinResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Pin Answer",
+        "tags": [
+          "quiz"
+        ]
+      }
+    },
+    "/api/quiz/pin-round": {
+      "get": {
+        "description": "„Wo liegt das?\" (Plan Q7): n Orte zum Verorten, ohne Lage.",
+        "operationId": "pin_round_api_quiz_pin_round_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "n",
+            "required": false,
+            "schema": {
+              "default": 5,
+              "maximum": 10,
+              "minimum": 1,
+              "title": "N",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuizPinRound"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Pin Round",
         "tags": [
           "quiz"
         ]

@@ -12,17 +12,17 @@ from typing import cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
-from council import geo, places, quiz_formats
+from council import geo, places, quiz_formats, quiz_pins
 from council.store import CouncilStore
 from kern.store import Store
 
 from ..antworten import (Ok, OkWithId, QuizAreas, QuizBlitzResult, QuizDailyRound, QuizDayCompleted, QuizFlagged,
-                         QuizJoker,
+                         QuizJoker, QuizPinResult, QuizPinRound,
                          QuizMapResult, QuizMapRound, QuizOwnQuestions, QuizResult, QuizRound,
                          QuizScore)
 from ..clients import is_app_client
 from ..deps import get_council_store, get_store, require_active, require_admin
-from ..schemas import (QuizAnswerIn, QuizBlitzIn, QuizDailyIn, QuizJokerIn, QuizMapIn, QuizRateIn,
+from ..schemas import (QuizAnswerIn, QuizBlitzIn, QuizDailyIn, QuizJokerIn, QuizMapIn, QuizPinIn, QuizRateIn,
                        UserQuizAnswerIn, UserQuizQuestionIn)
 
 router = APIRouter(prefix="/api/quiz", tags=["quiz"])
@@ -383,6 +383,39 @@ def blitz_complete(payload: QuizBlitzIn,
     if payload.correct > payload.answered:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Mehr richtige als beantwortete Fragen.")
     return cast(QuizBlitzResult, store.record_quiz_blitz(user["id"], _today(), payload.correct, payload.answered))
+
+
+@router.get("/pin-round")
+def pin_round(n: int = Query(5, ge=1, le=10),
+              _user: dict = Depends(require_active),
+              council: CouncilStore = Depends(get_council_store)) -> QuizPinRound:
+    """„Wo liegt das?" (Plan Q7): n Orte zum Verorten, ohne Lage."""
+    return cast(QuizPinRound, {"questions": quiz_pins.round_(council, n)})
+
+
+@router.post("/pin-answer")
+def pin_answer(payload: QuizPinIn,
+               user: dict = Depends(require_active),
+               store: Store = Depends(get_store),
+               council: CouncilStore = Depends(get_council_store)) -> QuizPinResult:
+    """Den Pin werten: Entfernung zur Geometrie des Orts, Punkte in Stufen.
+    Gebucht wie das Karten-Quiz (``question_id = 0``) auf den Ortsbereich des
+    Orts — so zählt es auf die Stadtkarte."""
+    rows = council.quiz_pin_rows(0, slug=payload.slug)
+    found = quiz_pins.candidates_from(rows)
+    if not found:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Ort nicht gefunden.")
+    place = found[0]
+    dist = quiz_pins.distance_m(place["geometry"], payload.lat, payload.lon)
+    if dist is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Für diesen Ort gibt es keine Lage.")
+    pts = quiz_pins.points_for(dist)
+    district = geo.ortsbereich_for(place["lat"], place["lon"])
+    if district:
+        store.record_quiz_answer(user["id"], 0, "district", district, "places", pts >= 2, pts)
+    return {"distance_m": int(round(dist)), "distance_label": quiz_pins.describe(dist),
+            "points": pts, "name": place["name"], "geojson": place["geometry"],
+            "lat": place["lat"], "lon": place["lon"]}
 
 
 @router.get("/map-round")

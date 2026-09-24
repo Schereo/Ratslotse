@@ -4572,6 +4572,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/quiz/pin-answer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Pin Answer
+         * @description Den Pin werten: Entfernung zur Geometrie des Orts, Punkte in Stufen.
+         *     Gebucht wie das Karten-Quiz (``question_id = 0``) auf den Ortsbereich des
+         *     Orts — so zählt es auf die Stadtkarte.
+         */
+        post: operations["pin_answer_api_quiz_pin_answer_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/quiz/pin-round": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Pin Round
+         * @description „Wo liegt das?" (Plan Q7): n Orte zum Verorten, ohne Lage.
+         */
+        get: operations["pin_round_api_quiz_pin_round_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/quiz/rate": {
         parameters: {
             query?: never;
@@ -13352,6 +13394,50 @@ export interface components {
             /** Questions */
             questions: components["schemas"]["UserQuizQuestion"][];
         };
+        /** QuizPinIn */
+        QuizPinIn: {
+            /** Lat */
+            lat: number;
+            /** Lon */
+            lon: number;
+            /** Slug */
+            slug: string;
+        };
+        /** QuizPinQuestion */
+        QuizPinQuestion: {
+            /** Kind Label */
+            kind_label: string;
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+        };
+        /**
+         * QuizPinResult
+         * @description Auflösung von „Wo liegt das?": Entfernung zur Geometrie, Punkte, und
+         *     die Geometrie selbst zum Einzeichnen.
+         */
+        QuizPinResult: {
+            /** Distance Label */
+            distance_label: string;
+            /** Distance M */
+            distance_m: number;
+            /** Geojson */
+            geojson: unknown;
+            /** Lat */
+            lat: number;
+            /** Lon */
+            lon: number;
+            /** Name */
+            name: string;
+            /** Points */
+            points: number;
+        };
+        /** QuizPinRound */
+        QuizPinRound: {
+            /** Questions */
+            questions: components["schemas"]["QuizPinQuestion"][];
+        };
         /**
          * QuizQuestion
          * @description Gebaut in ``CouncilStore._quiz_row(with_answer=False)`` — die Lösung ist
@@ -20697,6 +20783,70 @@ export interface operations {
             };
         };
     };
+    pin_answer_api_quiz_pin_answer_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuizPinIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuizPinResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pin_round_api_quiz_pin_round_get: {
+        parameters: {
+            query?: {
+                n?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuizPinRound"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     rate_api_quiz_rate_post: {
         parameters: {
             query?: never;
@@ -22676,4 +22826,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 59788d2335da8cf4606a4a20b53bf686c2785659eb7ce17198f5d043079beea9
+// vertrag-sha256: e921e70449674f887a48aa48519e2d6114aec44b522ac3f25eb2a092cf028710

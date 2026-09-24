@@ -7107,3 +7107,25 @@ def test_quiz_blitz_best_only_rises(client):
     assert b["best"] == 7 and b["new_best"] is False
     assert client.get("/api/quiz/stats").json()["blitz_best"] == 7
     assert client.post("/api/quiz/blitz/complete", json={"correct": 5, "answered": 3}).status_code == 400
+def test_quiz_pin_round_and_answer(client):
+    """„Wo liegt das?": nur Orte mit Gewicht und Geometrie, gewertet an der
+    Geometrie, gebucht auf den Ortsbereich."""
+    _register(client)
+    store = CouncilStore(COUNCIL_DB)
+    line = json.dumps({"type": "LineString", "coordinates": [[8.2140, 53.1430], [8.2160, 53.1440]]})
+    with store._conn:
+        for slug, name, n in (("schlossplatz", "Schlossplatz", 12), ("kleiner-weg", "Kleiner Weg", 2)):
+            store._conn.execute("INSERT INTO council_entities (slug, name, kind, n) VALUES (?,?,?,?)",
+                                (slug, name, "place", n))
+            store._conn.execute("INSERT INTO council_entity_meta (slug, lat, lon, geojson) VALUES (?,?,?,?)",
+                                (slug, 53.1435, 8.2150, line))
+    store.close()
+    qs = client.get("/api/quiz/pin-round?n=5").json()["questions"]
+    assert [q["slug"] for q in qs] == ["schlossplatz"] and qs[0]["kind_label"] == "Straße"
+    near = client.post("/api/quiz/pin-answer", json={"slug": "schlossplatz", "lat": 53.1435, "lon": 8.2150}).json()
+    assert near["points"] == 3 and near["distance_m"] < 20 and near["geojson"]["type"] == "LineString"
+    far = client.post("/api/quiz/pin-answer", json={"slug": "schlossplatz", "lat": 53.20, "lon": 8.30}).json()
+    assert far["points"] == 0 and "km daneben" in far["distance_label"]
+    assert client.post("/api/quiz/pin-answer", json={"slug": "gibt-es-nicht", "lat": 53.1, "lon": 8.2}).status_code == 404
+    by_area = client.get("/api/quiz/stats").json()["by_area"]
+    assert sum(a["answered"] for a in by_area if a["area_type"] == "district") == 2
