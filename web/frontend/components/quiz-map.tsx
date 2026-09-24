@@ -19,15 +19,31 @@ const CORRECT: Style = { color: "#16a34a", weight: 2.5, fillColor: "#16a34a", fi
 const WRONG: Style = { color: "#dc2626", weight: 2.5, fillColor: "#dc2626", fillOpacity: 0.45 };
 const DIM: Style = { color: "#94a3b8", weight: 0.5, fillColor: "#94a3b8", fillOpacity: 0.04 };
 
+// Fortschrittskarte: eine Farbe (Hafenblau), die Deckkraft trägt die Stufe —
+// unentdeckt kaum, gemeistert kräftig. Stufen und Wörter kommen vom Server.
+const LEVEL: Style[] = [
+  { color: "#94a3b8", weight: 0.75, fillColor: "#94a3b8", fillOpacity: 0.06 },
+  { color: "#0764a6", weight: 1, fillColor: "#0764a6", fillOpacity: 0.16 },
+  { color: "#0764a6", weight: 1.25, fillColor: "#0764a6", fillOpacity: 0.34 },
+  { color: "#0764a6", weight: 1.5, fillColor: "#0764a6", fillOpacity: 0.62 },
+];
+
+export type DistrictLevel = { level: number; label: string; answered: number; correct: number };
+
 /** Klickbare Ortsbereich-Karte für das Karten-Quiz. Init einmalig; Umfärben bei
  *  Auswahl/Auflösung läuft über einen zweiten Effekt, ohne die Karte neu zu
- *  bauen. Bewusst OHNE Beschriftung — sonst wäre die Antwort verraten. */
-export function QuizMap({ picked, solution, disabled, onPick, className }: {
+ *  bauen. Bewusst OHNE Beschriftung — sonst wäre die Antwort verraten.
+ *
+ *  Mit `progress` wird sie zur Fortschrittskarte: jede Fläche nach ihrer Stufe
+ *  getönt, Name und Stand im Tooltip, ein Klick startet eine Runde dort. */
+export function QuizMap({ picked, solution, disabled, onPick, progress, className, label }: {
   picked: string | null;
   solution: string | null;   // richtige Antwort (nach dem Klick eingefärbt)
   disabled: boolean;         // nach der Antwort keine Auswahl mehr
   onPick: (name: string) => void;
+  progress?: Record<string, DistrictLevel>;
   className?: string;
+  label?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
@@ -35,11 +51,12 @@ export function QuizMap({ picked, solution, disabled, onPick, className }: {
   // aktuelle Callbacks/State in Refs, damit der Init-Effekt stabil bleibt.
   const onPickRef = useRef(onPick);
   onPickRef.current = onPick;
-  const stateRef = useRef({ picked, solution, disabled });
-  stateRef.current = { picked, solution, disabled };
+  const stateRef = useRef({ picked, solution, disabled, progress });
+  stateRef.current = { picked, solution, disabled, progress };
 
   function styleFor(name: string): Style {
-    const { picked: p, solution: s } = stateRef.current;
+    const { picked: p, solution: s, progress: pr } = stateRef.current;
+    if (pr) return LEVEL[pr[name]?.level ?? 0] ?? LEVEL[0];
     if (s) {
       if (name === s) return CORRECT;
       if (name === p) return WRONG;
@@ -91,11 +108,21 @@ export function QuizMap({ picked, solution, disabled, onPick, className }: {
             onEachFeature: (feature, layer) => {
               const name = feature?.properties?.name as string | undefined;
               if (!name) return;
+              if (stateRef.current.progress) {
+                // Tooltip liest den Stand beim Öffnen, nicht beim Bauen —
+                // die Karte wird nur einmal gebaut.
+                layer.bindTooltip(() => {
+                  const d = stateRef.current.progress?.[name];
+                  const stand = d && d.answered ? ` · ${d.correct} von ${d.answered} richtig` : "";
+                  return `<strong>${name}</strong><br>${d?.label ?? "unentdeckt"}${stand}`;
+                }, { sticky: true, direction: "top", className: "text-xs" });
+              }
               layer.on({
                 click: () => { if (!stateRef.current.disabled) onPickRef.current(name); },
                 mouseover: () => {
-                  const { disabled: d, picked: p } = stateRef.current;
-                  if (!d && name !== p) (layer as Path).setStyle(HOVER);
+                  const { disabled: d, picked: p, progress: pr } = stateRef.current;
+                  if (pr) (layer as Path).setStyle({ ...styleFor(name), weight: 2.5, color: "#0764a6" });
+                  else if (!d && name !== p) (layer as Path).setStyle(HOVER);
                 },
                 mouseout: () => (layer as Path).setStyle(styleFor(name)),
               });
@@ -103,7 +130,7 @@ export function QuizMap({ picked, solution, disabled, onPick, className }: {
           },
         ).addTo(map);
         layerRef.current = gj;
-        if (gj.getBounds().isValid()) map.fitBounds(gj.getBounds(), { padding: [12, 12] });
+        if (gj.getBounds().isValid()) map.fitBounds(gj.getBounds(), { padding: [12, 12], animate: false });
         restyle();
         // Die Kartenhöhe skaliert mit dem Viewport (dvh) — bei Größenänderung
         // (Fenster, mobile Browserleiste) Leaflet nachziehen, sonst bleiben
@@ -113,7 +140,10 @@ export function QuizMap({ picked, solution, disabled, onPick, className }: {
           const g = layerRef.current;
           if (!m) return;
           m.invalidateSize();
-          if (g?.getBounds().isValid()) m.fitBounds(g.getBounds(), { padding: [12, 12] });
+          // Ohne Animation: Wird die Karte während eines Zoom-Übergangs
+          // abgebaut (Rundenstart von der Fortschrittskarte), greift Leaflet
+          // danach ins Leere („_leaflet_pos of undefined“).
+          if (g?.getBounds().isValid()) m.fitBounds(g.getBounds(), { padding: [12, 12], animate: false });
         });
         resize.observe(el);
       } catch (err) {
@@ -127,16 +157,16 @@ export function QuizMap({ picked, solution, disabled, onPick, className }: {
       const m = mapRef.current;
       mapRef.current = null;
       layerRef.current = null;
-      try { m?.remove(); } catch { /* Karte ohnehin weg */ }
+      try { m?.stop(); m?.remove(); } catch { /* Karte ohnehin weg */ }
     };
   }, []);
 
   // Umfärben bei Auswahl/Auflösung.
-  useEffect(() => { restyle(); }, [picked, solution, disabled]);
+  useEffect(() => { restyle(); }, [picked, solution, disabled, progress]);
 
   return (
     <div className={cn("relative isolate overflow-hidden rounded-xl border border-border", className)}>
-      <div ref={ref} className="h-full w-full" aria-label="Oldenburg-Karte zum Verorten der Ortsbereiche" />
+      <div ref={ref} className="h-full w-full" aria-label={label ?? "Oldenburg-Karte zum Verorten der Ortsbereiche"} />
     </div>
   );
 }

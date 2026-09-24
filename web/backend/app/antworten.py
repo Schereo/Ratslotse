@@ -1032,6 +1032,13 @@ class QuizRound(TypedDict):
     questions: list[QuizQuestion]
 
 
+class QuizOthers(TypedDict):
+    """Wie die anderen bei dieser Frage lagen — erst ab
+    ``routers.quiz.OTHERS_MIN`` Mitspielenden, sonst fehlt das Feld."""
+    players: int
+    correct_pct: int
+
+
 class QuizResult(TypedDict):
     """Antwort auf ``/answer`` und ``/own/answer``. Was nur ein Zweig setzt,
     ist ``NotRequired``: Schätzfragen liefern ``answer_value``/``unit``, die
@@ -1051,6 +1058,7 @@ class QuizResult(TypedDict):
     unit: NotRequired[str | None]
     # Reihenfolge-Frage: die richtige Reihenfolge als Indizes, größter zuerst.
     correct_order: NotRequired[list[int]]
+    others: NotRequired[QuizOthers]
 
 
 class QuizArea(TypedDict):
@@ -1162,15 +1170,30 @@ class QuizAreaScore(TypedDict):
     last_at: str | None
 
 
+class QuizDistrictProgress(TypedDict):
+    """Ein Ortsbereich auf der Fortschrittskarte (``routers.quiz._district_progress``).
+    ``level`` 0–3 samt Wort, damit Web und App dieselbe Schwelle zeigen."""
+    district: str
+    answered: int
+    correct: int
+    level: Literal[0, 1, 2, 3]
+    level_label: str
+
+
 class QuizScore(TypedDict):
     """``Store.quiz_stats`` liefert ``by_area``/``total``, der Router hängt
-    Serie, Abzeichen, Fehlerzahl und Tages-Status an."""
+    Serie, Abzeichen, Fehlerzahl, Tages-Status und die Fortschrittskarte an."""
     by_area: list[QuizAreaScore]
     total: QuizTotal
     wrong: int
     streak: int
     badges: list[QuizBadge]
     daily_done: bool
+    districts: NotRequired[list[QuizDistrictProgress]]
+    # Dieselbe Karte über alle Mitspielenden (anonym, erst ab 20 Antworten).
+    districts_all: NotRequired[list[QuizDistrictProgress]]
+    # Die Wörter der Stufen 0–3 je Ansicht: {"mine": [...], "all": [...]}.
+    district_legend: NotRequired[dict[str, list[str]]]
 
 
 class QuizFlaggedQuestion(TypedDict):

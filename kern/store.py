@@ -393,6 +393,7 @@ CREATE TABLE IF NOT EXISTS quiz_answers (
     answered_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_quiz_answers_owner ON quiz_answers(owner_id, area_type, area_key);
+CREATE INDEX IF NOT EXISTS idx_quiz_answers_question ON quiz_answers(question_id, owner_id);
 
 -- Nutzer-Bewertung einer Frage (Qualitäts-Kreislauf → schlechte ausmustern).
 CREATE TABLE IF NOT EXISTS quiz_ratings (
@@ -2501,6 +2502,25 @@ class Store:
                 "category, correct, points, answered_at) VALUES (?,?,?,?,?,?,?,?)",
                 (owner_id, question_id, area_type, area_key, category, int(correct), points, now),
             )
+
+    def quiz_others_result(self, question_id: int, owner_id: int) -> tuple[int, int]:
+        """(Mitspielende, davon richtig) bei einer Frage — ohne ``owner_id``,
+        und je Konto nur die ERSTE Antwort: Wer eine Frage im Fehler-Stapel
+        dreimal übt, lag am Ende richtig, wusste es aber beim ersten Mal nicht."""
+        row = self._conn.execute(
+            "SELECT COUNT(*) n, COALESCE(SUM(a.correct), 0) ok FROM quiz_answers a "
+            "WHERE a.question_id = ? AND a.owner_id != ? AND a.id = ("
+            "  SELECT MIN(b.id) FROM quiz_answers b "
+            "  WHERE b.question_id = a.question_id AND b.owner_id = a.owner_id)",
+            (question_id, owner_id)).fetchone()
+        return int(row["n"]), int(row["ok"])
+
+    def quiz_area_totals(self) -> list[dict]:
+        """Beantwortet/richtig je Gebiet über ALLE Konten — ohne Kontobezug,
+        für „Wie gut kennt Oldenburg …" auf der Stadtkarte (Plan Q11)."""
+        return [dict(r) for r in self._conn.execute(
+            "SELECT area_type, area_key, COUNT(*) answered, COALESCE(SUM(correct), 0) correct "
+            "FROM quiz_answers GROUP BY area_type, area_key").fetchall()]
 
     def quiz_answered_ids(self, owner_id: int) -> list[int]:
         return [r[0] for r in self._conn.execute(

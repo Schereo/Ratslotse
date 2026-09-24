@@ -431,6 +431,20 @@ export function QuizPlay({ questions, onExit, onComplete, title, answerPath = "/
                   ? `Richtig! +${result.points}`
                   : result.points > 0 ? `Nah dran! +${result.points}` : "Leider daneben."}
             </LottiReaction>
+            {/* Wie die anderen lagen: macht aus der einzelnen Frage ein
+                Spiel mit anderen — und tröstet bei einer schweren. */}
+            {!practice && result.others && (
+              <p className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                <span className="relative h-1.5 w-16 overflow-hidden rounded-full bg-muted" aria-hidden>
+                  <span className="absolute inset-y-0 left-0 rounded-full bg-primary/60"
+                        style={{ width: `${result.others.correct_pct}%` }} />
+                </span>
+                <span>
+                  <span className="font-medium tabular-nums text-foreground">{result.others.correct_pct} %</span>
+                  {" "}von {result.others.players} anderen lagen richtig
+                </span>
+              </p>
+            )}
             {isEstimate && result.answer_value != null && (
               <p className="mt-1 text-sm text-foreground">
                 Richtige Antwort:{" "}

@@ -13155,6 +13155,26 @@ export interface components {
             /** Streak */
             streak: number;
         };
+        /**
+         * QuizDistrictProgress
+         * @description Ein Ortsbereich auf der Fortschrittskarte (``routers.quiz._district_progress``).
+         *     ``level`` 0–3 samt Wort, damit Web und App dieselbe Schwelle zeigen.
+         */
+        QuizDistrictProgress: {
+            /** Answered */
+            answered: number;
+            /** Correct */
+            correct: number;
+            /** District */
+            district: string;
+            /**
+             * Level
+             * @enum {integer}
+             */
+            level: 0 | 1 | 2 | 3;
+            /** Level Label */
+            level_label: string;
+        };
         /** QuizFlagged */
         QuizFlagged: {
             /** Flagged */
@@ -13212,6 +13232,17 @@ export interface components {
         QuizMapRound: {
             /** Questions */
             questions: components["schemas"]["QuizMapQuestion"][];
+        };
+        /**
+         * QuizOthers
+         * @description Wie die anderen bei dieser Frage lagen — erst ab
+         *     ``routers.quiz.OTHERS_MIN`` Mitspielenden, sonst fehlt das Feld.
+         */
+        QuizOthers: {
+            /** Correct Pct */
+            correct_pct: number;
+            /** Players */
+            players: number;
         };
         /** QuizOwnQuestions */
         QuizOwnQuestions: {
@@ -13297,6 +13328,7 @@ export interface components {
             image?: unknown;
             /** Map */
             map?: unknown;
+            others?: components["schemas"]["QuizOthers"];
             /** Points */
             points: number;
             /** Source Ref */
@@ -13316,7 +13348,7 @@ export interface components {
         /**
          * QuizScore
          * @description ``Store.quiz_stats`` liefert ``by_area``/``total``, der Router hängt
-         *     Serie, Abzeichen, Fehlerzahl und Tages-Status an.
+         *     Serie, Abzeichen, Fehlerzahl, Tages-Status und die Fortschrittskarte an.
          */
         QuizScore: {
             /** Badges */
@@ -13325,6 +13357,14 @@ export interface components {
             by_area: components["schemas"]["QuizAreaScore"][];
             /** Daily Done */
             daily_done: boolean;
+            /** District Legend */
+            district_legend?: {
+                [key: string]: string[];
+            };
+            /** Districts */
+            districts?: components["schemas"]["QuizDistrictProgress"][];
+            /** Districts All */
+            districts_all?: components["schemas"]["QuizDistrictProgress"][];
             /** Streak */
             streak: number;
             total: components["schemas"]["QuizTotal"];
@@ -22434,4 +22474,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 2ffc3c742164884581c406b07975c736f301231814101fece110ff0b6cfcf3f8
+// vertrag-sha256: 509679b189913af5163f30593ecd2938ed17ecb95ceea90e290b5b1ce3808200

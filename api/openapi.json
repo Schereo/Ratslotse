@@ -18062,6 +18062,46 @@
         "title": "QuizDayCompleted",
         "type": "object"
       },
+      "QuizDistrictProgress": {
+        "description": "Ein Ortsbereich auf der Fortschrittskarte (``routers.quiz._district_progress``).\n``level`` 0–3 samt Wort, damit Web und App dieselbe Schwelle zeigen.",
+        "properties": {
+          "answered": {
+            "title": "Answered",
+            "type": "integer"
+          },
+          "correct": {
+            "title": "Correct",
+            "type": "integer"
+          },
+          "district": {
+            "title": "District",
+            "type": "string"
+          },
+          "level": {
+            "enum": [
+              0,
+              1,
+              2,
+              3
+            ],
+            "title": "Level",
+            "type": "integer"
+          },
+          "level_label": {
+            "title": "Level Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "district",
+          "answered",
+          "correct",
+          "level",
+          "level_label"
+        ],
+        "title": "QuizDistrictProgress",
+        "type": "object"
+      },
       "QuizFlagged": {
         "properties": {
           "flagged": {
@@ -18215,6 +18255,25 @@
           "questions"
         ],
         "title": "QuizMapRound",
+        "type": "object"
+      },
+      "QuizOthers": {
+        "description": "Wie die anderen bei dieser Frage lagen — erst ab\n``routers.quiz.OTHERS_MIN`` Mitspielenden, sonst fehlt das Feld.",
+        "properties": {
+          "correct_pct": {
+            "title": "Correct Pct",
+            "type": "integer"
+          },
+          "players": {
+            "title": "Players",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "players",
+          "correct_pct"
+        ],
+        "title": "QuizOthers",
         "type": "object"
       },
       "QuizOwnQuestions": {
@@ -18412,6 +18471,9 @@
           "map": {
             "title": "Map"
           },
+          "others": {
+            "$ref": "#/components/schemas/QuizOthers"
+          },
           "points": {
             "title": "Points",
             "type": "integer"
@@ -18469,7 +18531,7 @@
         "type": "object"
       },
       "QuizScore": {
-        "description": "``Store.quiz_stats`` liefert ``by_area``/``total``, der Router hängt\nSerie, Abzeichen, Fehlerzahl und Tages-Status an.",
+        "description": "``Store.quiz_stats`` liefert ``by_area``/``total``, der Router hängt\nSerie, Abzeichen, Fehlerzahl, Tages-Status und die Fortschrittskarte an.",
         "properties": {
           "badges": {
             "items": {
@@ -18488,6 +18550,30 @@
           "daily_done": {
             "title": "Daily Done",
             "type": "boolean"
+          },
+          "district_legend": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": "District Legend",
+            "type": "object"
+          },
+          "districts": {
+            "items": {
+              "$ref": "#/components/schemas/QuizDistrictProgress"
+            },
+            "title": "Districts",
+            "type": "array"
+          },
+          "districts_all": {
+            "items": {
+              "$ref": "#/components/schemas/QuizDistrictProgress"
+            },
+            "title": "Districts All",
+            "type": "array"
           },
           "streak": {
             "title": "Streak",

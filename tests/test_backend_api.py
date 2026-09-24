@@ -2552,6 +2552,43 @@ def test_quiz_stats_aggregate_per_area(client):
     assert area["points"] == 4  # 2× mittel
 
 
+def test_quiz_answer_shows_how_others_did_from_five_players_on(client):
+    """„X % lagen richtig": erst ab fünf ANDEREN, je Konto nur die erste
+    Antwort, die eigene nicht mitgezählt."""
+    _register(client)
+    _seed_quiz("Osternburg", n=1)
+    qid = client.get("/api/quiz/round?areas=district:Osternburg").json()["questions"][0]["id"]
+    store = Store(RATSLOTSE_DB)
+    me = store._conn.execute("SELECT id FROM web_users WHERE email = 'admin@test.de'").fetchone()[0]
+    for owner in range(900, 904):                      # vier andere: zu wenige
+        store.record_quiz_answer(owner, qid, "district", "Osternburg", "history", owner % 2 == 0, 1)
+    store.record_quiz_answer(me, qid, "district", "Osternburg", "history", True, 1)
+    r = client.post("/api/quiz/answer", json={"question_id": qid, "selected_index": 1}).json()
+    assert "others" not in r
+    store.record_quiz_answer(904, qid, "district", "Osternburg", "history", False, 0)
+    store.record_quiz_answer(904, qid, "district", "Osternburg", "history", True, 1)  # zweiter Versuch zählt nicht
+    store.close()
+    r = client.post("/api/quiz/answer", json={"question_id": qid, "selected_index": 1}).json()
+    assert r["others"] == {"players": 5, "correct_pct": 40}   # 900, 902 richtig
+
+
+def test_quiz_stats_draw_the_district_map(client):
+    """Die Fortschrittskarte: alle Ortsbereiche, Unterorte zählen für ihren
+    Ortsbereich, die oberste Stufe ist die Kenner-Schwelle."""
+    _register(client)
+    store = Store(RATSLOTSE_DB)
+    me = store._conn.execute("SELECT id FROM web_users WHERE email = 'admin@test.de'").fetchone()[0]
+    for i in range(5):
+        store.record_quiz_answer(me, 1000 + i, "district", "Eversten Holz", "places", True, 1)
+    store.record_quiz_answer(me, 2000, "district", "Osternburg", "places", False, 0)
+    store.close()
+    districts = {d["district"]: d for d in client.get("/api/quiz/stats").json()["districts"]}
+    assert len(districts) == 31
+    assert districts["Eversten"]["level"] == 3 and districts["Eversten"]["level_label"] == "gemeistert"
+    assert districts["Osternburg"]["level"] == 1 and districts["Osternburg"]["answered"] == 1
+    assert districts["Nadorst"]["level"] == 0 and districts["Nadorst"]["level_label"] == "unentdeckt"
+
+
 def test_quiz_rating_and_admin_flag(client):
     _register(client)  # Helper hebt admin@test.de per grant_admin auf Admin
     _seed_quiz("Osternburg", n=1)
@@ -6985,3 +7022,22 @@ def test_quiz_order_never_reaches_the_app(client):
     app = client.get("/api/quiz/round?areas=topic:haushalt", headers={"X-Client": "ios"}).json()["questions"]
     assert [q["qtype"] for q in web] == ["order"] and app == []
     assert client.get("/api/quiz/daily").json()["questions"] == []
+def test_quiz_stats_map_of_everyone(client):
+    """„Wie gut kennt Oldenburg …" (Plan Q11): über alle Konten, erst ab 20
+    Antworten je Ortsbereich, darunter ohne Zahlen."""
+    from app.routers import quiz as quiz_router
+    quiz_router._ALL_CACHE.update(at=0.0, value=None)
+    _register(client)
+    store = Store(RATSLOTSE_DB)
+    for owner in range(700, 725):                       # 25 Antworten in Eversten, 80 % richtig
+        store.record_quiz_answer(owner, 1, "district", "Eversten", "places", owner % 5 != 0, 1)
+    for owner in range(700, 705):                       # 5 in Osternburg: zu wenige
+        store.record_quiz_answer(owner, 2, "district", "Osternburg", "places", True, 1)
+    store.close()
+    s = client.get("/api/quiz/stats").json()
+    alle = {d["district"]: d for d in s["districts_all"]}
+    assert alle["Eversten"]["level"] == 3 and alle["Eversten"]["level_label"] == "gut bekannt"
+    assert alle["Osternburg"] == {"district": "Osternburg", "answered": 0, "correct": 0,
+                                  "level": 0, "level_label": "zu wenige Antworten"}
+    assert s["district_legend"]["all"][3] == "gut bekannt" and len(s["district_legend"]["mine"]) == 4
+    quiz_router._ALL_CACHE.update(at=0.0, value=None)
