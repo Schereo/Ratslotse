@@ -41,8 +41,11 @@
 
 **Tim hat am 24.09.2026 entschieden: alle fünf Empfehlungen gelten.** Zu
 Punkt 2 ausdrücklich: Vereine und Träger namentlich, Privatpersonen nicht.
-Zu Punkt 4: Konto bei der Regionaldatenbank (nicht Destatis-GENESIS), der
-Zugang steht als `REGIONALSTATISTIK_TOKEN` in der `.env`.
+Zu Punkt 4: Konto bei der Regionaldatenbank (nicht Destatis-GENESIS). Die
+Oberfläche dort (GENESIS 5.0.4) zeigt keinen Token an; Zugang deshalb über
+`REGIONALSTATISTIK_USER` + `REGIONALSTATISTIK_PASSWORD` in der `.env`, ein
+`REGIONALSTATISTIK_TOKEN` hat Vorrang, falls es ihn gibt (Header `username`
+= Token, ohne Passwort).
 
 1. **Gesellschaften: zwei Herkünfte in einer Reihe?** Beteiligungsbericht und
    RIS-Abschluss nennen für dasselbe Jahr dieselbe Zahl, der Bericht aber zwei
@@ -57,8 +60,11 @@ Zugang steht als `REGIONALSTATISTIK_TOKEN` in der `.env`.
    die KI-Frage, nie zusammengefasst.
 4. **Regionaldatenbank-Konto.** Die API der Regionaldatenbank
    (regionalstatistik.de, REST/JSON, nur POST) verlangt seit 05/2025 ein
-   kostenloses Konto; Zugang über einen persönlichen API-Token
-   (`REGIONALSTATISTIK_TOKEN` in der `.env`). *Empfehlung:* Tim legt das Konto
+   kostenloses Konto; Zugang über Kennung + Passwort
+   (`REGIONALSTATISTIK_USER`/`REGIONALSTATISTIK_PASSWORD`) oder, falls
+   vorhanden, einen persönlichen Token (`REGIONALSTATISTIK_TOKEN`). Beide
+   gehen als HTTP-Header, die Parameter als `application/x-www-form-urlencoded`
+   im POST-Body (Anwenderdokumentation Webservice/API 5.0, 06.05.2025, § 2.1.3). *Empfehlung:* Tim legt das Konto
    an; bis dahin baut PR 7 auf den LSN-Downloads.
 5. **Budgetberichte der Fachausschüsse (PR 8).** *Empfehlung:* erst messen, nur
    bauen, wenn mindestens drei Jahrgänge dieselbe Tabelle führen.
