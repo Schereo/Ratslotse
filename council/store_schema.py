@@ -992,6 +992,7 @@ class SchemaMixin(StoreBasis):
         "council_budget_execution": (None, "source_url", "ris"),
         "council_liquidity": (None, "url", "ris"),
     "council_enterprise_accounts": (None, None, "ris"),
+        "council_company_accounts": (None, None, "ris"),
         # Kredite und Zinsen: neu, ohne Altbestand — derselbe Platzhalter.
         "council_loan_notices": (None, "document_url", "ris"),
         "council_loan_items": (None, "document_url", "ris"),
@@ -3591,6 +3592,25 @@ class SchemaMixin(StoreBasis):
             "probes TEXT NOT NULL, "
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
             "PRIMARY KEY (enterprise, year, metric))"
+        )
+        # Die Jahresabschlüsse der städtischen Gesellschaften
+        # (council/gesellschaft_abschluss.py): dieselbe Form wie bei den
+        # Eigenbetrieben. Eigene Tabelle und nicht council_company_indicators,
+        # weil der Beteiligungsbericht-Ingest jene bei jedem Lauf leert.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_company_accounts ("
+            "company TEXT NOT NULL, "             # Kürzel wie council_companies
+            "year INTEGER NOT NULL, "
+            "indicator TEXT NOT NULL, "          # bilanzsumme | jahresergebnis
+            "value REAL NOT NULL, "              # Euro
+            "unit TEXT NOT NULL, "
+            "report_year INTEGER NOT NULL, "     # der Abschluss, aus dem die Zahl stammt
+            "confirmations INTEGER NOT NULL DEFAULT 1, "
+            "conflicts INTEGER NOT NULL DEFAULT 0, "
+            "document_id INTEGER, "
+            "probes TEXT NOT NULL, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (company, year, indicator))"
         )
         # Kredite und Zinsen (council/loans.py): die Unterrichtungen des Rates
         # nach der Kreditrichtlinie — je Vorlage eine Zeile mit Berichts-

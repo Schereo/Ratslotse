@@ -170,7 +170,11 @@ export type QuellenSchluessel =
   | "donations"
   // A12: Der Beteiligungsbericht — die einzige Quelle des Bereichs, die ein
   // eigener Cron von oldenburg.de herunterlädt.
-  | "beteiligungsbericht";
+  | "beteiligungsbericht"
+  // Und die Jahresabschlüsse der Gesellschaften selbst: dieselben Kennzahlen,
+  // ein Jahr früher. Eigener Schlüssel, weil es andere Dokumente sind (die
+  // Anlagen der Beschlussvorlage im Ratsinformationssystem).
+  | "company_accounts";
 
 export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
   plan: {
@@ -900,5 +904,20 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     as_of: "Berichtsjahre 2022–2024, Kennzahlen ab 2017",
     art: "pdf",
     url: "https://www.oldenburg.de/startseite/politik/verwaltung-finanzen/finanzen/beteiligungsbericht.html",
+  },
+  company_accounts: {
+    title: "Jahresabschlüsse der städtischen Gesellschaften",
+    citation:
+      "Bilanz und Gewinn- und Verlustrechnung als Anlagen der Beschlussvorlage " +
+      "„Jahresabschluss 20xx“ im Ratsinformationssystem — Bilanzsumme und " +
+      "Jahresüberschuss bzw. -fehlbetrag. Sie liegen dem Rat im Sommer nach dem " +
+      "Geschäftsjahr vor, gut ein Jahr vor dem Beteiligungsbericht; wo beide " +
+      "dasselbe Jahr nennen, gilt der Bericht. Eine Eigenkapitalquote nennen die " +
+      "Anlagen nicht. Einige ältere Anlagen (2018–2021) sind Scans ohne Text.",
+    herausgeber: "Die Gesellschaften, vorgelegt von der Stadt Oldenburg",
+    standWort: "Geschäftsjahre",
+    as_of: "Geschäftsjahre 2017–2025",
+    art: "pdf",
+    url: "https://buergerinfo.oldenburg.de",
   },
 };

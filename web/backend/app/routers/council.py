@@ -20,6 +20,7 @@ from council.cities.store import CitiesStore
 from council.store import CouncilStore
 from council.topics import POLICY_FIELDS
 from council.goals import GOALS
+from council import gesellschaft_abschluss
 from council.parties import faction_label, order_key
 from council import expense_series as ausgabenreihe_mod
 from council import indicators as kennzahlen_mod
@@ -928,7 +929,11 @@ def haushalt_beteiligungen(
     - ``indicators``: die Zeitreihe je Gesellschaft (Jahresergebnis,
       Bilanzsumme, Eigenkapitalquote). ``n_reports`` sagt, wie viele Berichte
       denselben Wert nennen — 1 heißt „durch eine Probe im Dokument gedeckt",
-      mehr heißt zusätzlich „von einer zweiten Veröffentlichung bestätigt",
+      mehr heißt zusätzlich „von einer zweiten Veröffentlichung bestätigt"
+      (ein Jahresabschluss mit demselben Betrag zählt mit). ``source`` sagt,
+      woher die Zeile kommt: ``holdings_report`` (Beteiligungsbericht) oder
+      ``annual_accounts`` — das jüngste Jahr, das nur der Jahresabschluss der
+      Gesellschaft schon nennt (``council/gesellschaft_abschluss.py``),
     - ``group_comparison``: für die Gesellschaften, die auch im
       Gesamtabschluss stehen, beide Zahlen desselben Jahres nebeneinander.
       **Keine Probe** — die beiden Rechnungen unterscheiden sich systematisch,
@@ -943,7 +948,11 @@ def haushalt_beteiligungen(
     aufgebaut und nicht maschinenlesbar (``council/beteiligungsbericht.py``)."""
     berichtsjahre = store.beteiligungsbericht_jahre()
     gesellschaften = store.get_gesellschaften()
-    indicators = store.get_gesellschaft_kennzahlen()
+    # Eine Reihe, zwei Quellen (Tims Entscheidung 24.09.2026): Der
+    # Jahresabschluss füllt die Jahre, die der Bericht noch nicht hat.
+    indicators = gesellschaft_abschluss.reihe_ergaenzen(
+        store.get_gesellschaft_kennzahlen(), store.get_company_accounts(),
+        {g["company"] for g in gesellschaften})
     texte = [t for g in gesellschaften
              for t in store.get_gesellschaft_texte(g["company"])]
     personen = store.get_gesellschaft_personen()

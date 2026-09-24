@@ -158,6 +158,9 @@ class HaushaltMixin(StoreBasis):
         # Prüfberichte (ein Betrieb, ein Papier), jede Kennzahl zeigt auf den
         # jüngsten Bericht, der sie nennt.
         "enterprise_accounts": ("council_enterprise_accounts", "year", None, None),
+        # Die Jahresabschlüsse der Gesellschaften: dieselbe Form — je
+        # Gesellschaft eine Vorlage mit Bilanz und GuV.
+        "company_accounts": ("council_company_accounts", "year", None, None),
         # Die Änderungslisten zum Haushalt. Wie `wirtschaftsplan` stehen je
         # Jahrgang MEHRERE Papiere dahinter (Verw. I–III und die
         # Beschluss-Datei des AFB) — die Summen-Tabelle trägt je Dokument
@@ -1094,6 +1097,69 @@ class HaushaltMixin(StoreBasis):
         for r in rows:
             r["probes"] = [p for p in (r.get("probes") or "").split(",") if p]
         return rows
+
+    # --- Jahresabschlüsse der Gesellschaften (council/gesellschaft_abschluss.py)
+
+    def gesellschaft_abschluss_anlagen(self) -> list[dict]:
+        """Die Anlagen der Jahresabschluss-Vorlagen der Gesellschaften — mit
+        Titel, denn Gesellschaft und Jahr stehen dort, nicht im Label.
+        Ausgesiebt (Gesellschaft bekannt, Bilanz oder GuV) wird im Modul."""
+        from council.gesellschaft_abschluss import TITEL_MUSTER, TITEL_SQL
+        try:
+            return [dict(r) for r in self._conn.execute(
+                f"""SELECT t.kvonr, t.template_number, t.title, a.document_id, a.label,
+                           a.url, a.n_pages
+                      FROM council_templates t JOIN council_attachments a ON a.kvonr = t.kvonr
+                     WHERE {TITEL_SQL}
+                     ORDER BY t.template_number, a.document_id""", list(TITEL_MUSTER))]
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return []
+
+    def save_company_accounts(self, rows: list[dict], herkunft) -> int:
+        """Die Kennzahlen schreiben — je Zeile ihre Herkunft (``row["herkunft"]``).
+
+        Ersetzt den Bestand ganz: Jede Zeile ist aus den Dokumenten neu
+        zusammengeführt, und ein Jahr, das keine Anlage mehr trägt, soll nicht
+        stehen bleiben (der Bestandsschutz im Skript steht davor)."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            rueck = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute("DELETE FROM council_company_accounts")
+            for r in rows:
+                hid = self.merke_herkunft(r["herkunft"], fetched_at=now) if r.get("herkunft") else rueck
+                self._conn.execute(
+                    "INSERT INTO council_company_accounts (company, year, indicator, value, "
+                    " unit, report_year, confirmations, conflicts, document_id, probes, "
+                    " herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                    (r["enterprise"], r["year"], r["metric"], r["value"] + 0.0, r["unit"],
+                     r["report_year"], r.get("confirmations", 1), r.get("conflicts", 0),
+                     r.get("document_id"), ",".join(r.get("probes") or []), hid, now))
+        return len(rows)
+
+    def get_company_accounts(self) -> list[dict]:
+        """Alle Kennzahlen, aufsteigend nach Gesellschaft, Kennzahl, Jahr."""
+        try:
+            rows = [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_company_accounts ORDER BY company, indicator, year")]
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return []
+        for r in rows:
+            r["probes"] = [p for p in (r.get("probes") or "").split(",") if p]
+        return rows
+
+    def company_account_einheiten(self) -> set[tuple]:
+        """``(Jahr, Gesellschaft)`` — die Einheiten des Datenstands."""
+        try:
+            return {(r[0], r[1]) for r in self._conn.execute(
+                "SELECT DISTINCT report_year, company FROM council_company_accounts")}
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return set()
 
     def get_loan_notices(self) -> list[dict]:
         """Die Unterrichtungen, aufsteigend nach Berichtszeitraum; ``probes`` als Liste."""
