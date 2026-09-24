@@ -358,8 +358,13 @@ def frage_stellen(client: Any, fall: dict) -> dict:
         # Das Fenster schickt Titel und Überschrift der Seite mit; auf den
         # Haushalts-Seiten ziehen sie eigene Facetten („Wie viel Schulden hat
         # Oldenburg?“ zieht die Schulden auch zu einer Investitionsfrage).
+        # `page_title` und `anchors`, wo der Fall sie trägt (die Laienfälle,
+        # abgelesen am echten Fenster): Bis 24.09.2026 schickte die Eval als
+        # Seitentitel die Überschrift und keine Bausteine — also einen anderen
+        # Prompt als das Fenster.
         body = {"route": fall["route"], "question": fall["frage"], "refs": fall.get("refs") or {},
-                "page_title": fall.get("heading", ""), "heading": fall.get("heading", "")}
+                "page_title": fall.get("page_title") or fall.get("heading", ""),
+                "heading": fall.get("heading", ""), "anchors": fall.get("anchors") or []}
         erg = _strom(client, "/api/council/explain", body)
         erg["weg"] = (erg.get("done") or {}).get("mode") or "?"
         # Gehört die Frage ins Archiv, geht das Fenster von selbst zu Frag den
