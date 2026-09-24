@@ -990,6 +990,40 @@ class HaushaltMixin(StoreBasis):
                 " reader, checked_at) VALUES (?,?,?,?,?,?)",
                 (url, year, nr, int(has_bylaw), reader, now))
 
+    def save_foerdermittel(self, source: str, period: str | None, vorhaben: list,
+                           *, list_as_of: str | None, list_url: str, herkunft) -> int:
+        """Die Vorhaben EINER Liste ersetzen (council/foerdermittel.py).
+
+        Eine Liste ist ``source`` plus ``period`` — die EU führt je Fonds und
+        Förderperiode eine Datei, der Förderkatalog eine einzige Liste. Was die
+        Liste nicht mehr führt, verschwindet mit ihr."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute(
+                "DELETE FROM council_grants_received WHERE source = ? AND period IS ?",
+                (source, period))
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO council_grants_received (source, source_id, period, "
+                " recipient, recipient_key, title, summary, funder, program, amount_total, "
+                " amount_granted, start, end, list_as_of, list_url, herkunft_id, fetched_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                [(v.source, v.source_id, period, v.recipient, v.recipient_key, v.title,
+                  v.summary, v.funder, v.program, v.amount_total, v.amount_granted,
+                  v.start, v.end, list_as_of, list_url, hid, now) for v in vorhaben])
+        return len(vorhaben)
+
+    def get_foerdermittel(self) -> list[dict]:
+        """Alle Vorhaben, jüngster Beginn zuerst."""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_grants_received "
+                " ORDER BY start DESC, amount_granted DESC")]
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return []
+
     def get_haushaltssatzungen(self) -> list[dict]:
         """Alle Satzungs-Jahrgänge, ältester zuerst."""
         try:

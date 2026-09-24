@@ -84,6 +84,10 @@ ARTEN: dict[str, str] = {
     # beiden Quellen erscheinen einmal jährlich und werden von Hand geholt
     # (s. council/staedtevergleich.py).
     "lsn": "Statistischer Bericht des Landesamts für Statistik Niedersachsen",
+    # Fördermittel von außen (council/foerdermittel.py): Listen der Geber
+    # selbst, über die Stadt und ihre Gesellschaften als Empfänger.
+    "eu": "Liste der Vorhaben der EU-Strukturfonds in Niedersachsen (NBank)",
+    "bund": "Förderkatalog des Bundes",
 }
 
 #: Der ausdrückliche Verzicht. Keine Quelle darf ohne Angabe gespeichert
@@ -321,6 +325,16 @@ PROBEN: dict[str, str] = {
         "sechs Finanzhaushalts-Zeilen ergeben die beiden „Nachrichtlich“-Summen "
         "der Satzung auf den Cent. Gescannte Ausgaben liest ein Sehmodell; die "
         "Summenprobe fängt eine falsch gelesene Ziffer.",
+    "foekat_export_complete":
+        "Der Förderkatalog meldet zur Suche nach der Gemeinde Oldenburg (Oldb) "
+        "eine Trefferzahl; die exportierte Liste hat genau so viele Zeilen. "
+        "Übernommen werden nur Empfänger aus einer nachgesehenen Namensliste "
+        "der Stadt und ihrer Gesellschaften, mit der Gemeindekennziffer 03403000.",
+    "eu_list_columns":
+        "Die Spalten der Liste der Vorhaben werden an ihrem Kopf erkannt, nicht "
+        "an ihrer Position. Jede übernommene Zeile hat Beginn und Unionsbeitrag, "
+        "und der Beitrag übersteigt die förderfähigen Kosten nicht. Übernommen "
+        "werden nur Empfänger aus einer nachgesehenen Namensliste.",
     "budget_notes_sections":
         "Das Inhaltsverzeichnis des Vorberichts nennt je Teilhaushalt einen "
         "Abschnitt zum Ergebnishaushalt und einen zu den Investitionen; jeder "
@@ -768,6 +782,8 @@ HERKUNFT_TABELLEN: tuple[str, ...] = (
     "council_budget_notes",
     # Die beschlossene Haushaltssatzung aus dem Amtsblatt.
     "council_budget_bylaw_published",
+    # Fördermittel von EU und Bund je Vorhaben.
+    "council_grants_received",
     "council_commitments",
     # Die Jahresabschlüsse der Gesellschaften — neu, ohne Altbestand.
     "council_company_accounts",

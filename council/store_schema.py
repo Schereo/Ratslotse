@@ -933,6 +933,8 @@ class SchemaMixin(StoreBasis):
         "council_debt_plan":         (None, "source_url", "ris"),
         "council_budget_notes":      (None, "source_url", "ris"),
         "council_budget_bylaw_published": (None, "url", "city"),
+        # Fördermittel von EU und Bund (council/foerdermittel.py): eigene Arten.
+        "council_grants_received":   (None, "list_url", "eu"),
         "council_commitments":       (None, "source_url", "ris"),
         # Ebenso die Investitionen des Finanzhaushalts: neu, ohne Altspalten,
         # Herkunft ausschließlich über `herkunft_id`.
@@ -2384,6 +2386,24 @@ class SchemaMixin(StoreBasis):
             "issue_nr TEXT, url TEXT, "
             "approval_note TEXT, "                 # Wortlaut, nur wo gedruckt
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL)"
+        )
+        # Fördermittel von außen (council/foerdermittel.py): je Vorhaben der
+        # Stadt oder einer ihrer Gesellschaften eine Zeile aus der EU-Liste
+        # der Vorhaben (EFRE/ESF) oder dem Förderkatalog des Bundes. Ein Lauf
+        # ersetzt je Liste (`source` + `period`) alle Zeilen.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_grants_received ("
+            "source TEXT NOT NULL, "               # efre | esf | foekat
+            "source_id TEXT NOT NULL, "            # Code, FKZ oder Hash
+            "period TEXT, "                        # Förderperiode (nur EU)
+            "recipient TEXT NOT NULL, recipient_key TEXT NOT NULL, "
+            "title TEXT NOT NULL, summary TEXT, "
+            "funder TEXT NOT NULL, program TEXT, "
+            "amount_total REAL, amount_granted REAL, "
+            "start TEXT, end TEXT, "
+            "list_as_of TEXT, list_url TEXT, "     # Datenstand und Adresse der Liste
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (source, source_id))"
         )
         # Welche Amtsblatt-Ausgaben schon angesehen wurden — damit ein Lauf die
         # gescannten Ausgaben nicht jedes Mal neu lesen lässt (0,002 $ je Seite).

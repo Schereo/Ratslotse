@@ -2146,6 +2146,35 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/council/budget/grants-received": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Haushalt Foerdermittel
+         * @description Fördermittel von EU und Bund — je Vorhaben der Stadt oder einer ihrer
+         *     Gesellschaften (``council/foerdermittel.py``).
+         *
+         *     - ``rows``: alle Vorhaben, jüngster Beginn zuerst,
+         *     - ``lists``: die eingelesenen Listen mit Datenstand, Zahl und Summe —
+         *       damit die Seite sagen kann, wie aktuell was ist,
+         *     - ``recipients``: Schlüssel → Anzeigename der Empfänger.
+         *
+         *     Beträge sind Bewilligungen, keine Auszahlungen. Städtebauförderung und
+         *     reine Landesprogramme stehen in keiner der Listen.
+         */
+        get: operations["haushalt_foerdermittel_api_council_budget_grants_received_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/council/budget/group": {
         parameters: {
             query?: never;
@@ -7959,6 +7988,23 @@ export interface components {
             /** Years */
             years: number[];
         };
+        /** BudgetGrantsReceived */
+        BudgetGrantsReceived: {
+            /** Lists */
+            lists: components["schemas"]["GrantReceivedList"][];
+            /** Provenance */
+            provenance: {
+                [key: string]: components["schemas"]["Herkunft"];
+            };
+            /** Recipients */
+            recipients: {
+                [key: string]: string;
+            };
+            /** Rows */
+            rows: components["schemas"]["GrantReceivedRow"][];
+            /** Totals */
+            totals: components["schemas"]["GrantReceivedTotal"][];
+        };
         /** BudgetGroup */
         BudgetGroup: {
             /** Consolidated */
@@ -10889,6 +10935,77 @@ export interface components {
         Goals: {
             /** Goals */
             goals: components["schemas"]["Goal"][];
+        };
+        /**
+         * GrantReceivedList
+         * @description Eine eingelesene Liste: EU je Fonds und Förderperiode, dazu der
+         *     Förderkatalog. ``list_as_of`` ist der Datenstand der Liste.
+         */
+        GrantReceivedList: {
+            /** Amount */
+            amount: number;
+            /** List As Of */
+            list_as_of: string | null;
+            /** List Url */
+            list_url: string | null;
+            /** N */
+            n: number;
+            /** Period */
+            period: string | null;
+            /** Source */
+            source: string;
+        };
+        /**
+         * GrantReceivedRow
+         * @description Ein gefördertes Vorhaben der Stadt oder einer Gesellschaft.
+         *
+         *     ``funder`` ist „EU" oder das Bundesressort (BMV, BMWE …),
+         *     ``amount_granted`` der bewilligte Unionsbeitrag bzw. Bundesanteil — nicht
+         *     das Ausgezahlte. ``amount_total`` (förderfähige bzw. Gesamtkosten) führen
+         *     nur die EU-Listen. ``recipient`` steht so in der Liste, ``recipient_key``
+         *     ist der Schlüssel aus ``council/foerdermittel.EMPFAENGER``.
+         */
+        GrantReceivedRow: {
+            /** Amount Granted */
+            amount_granted: number | null;
+            /** Amount Total */
+            amount_total: number | null;
+            /** End */
+            end: string | null;
+            /** Funder */
+            funder: string;
+            /** Herkunft Id */
+            herkunft_id: number | null;
+            /** Period */
+            period: string | null;
+            /** Program */
+            program: string | null;
+            /** Recipient */
+            recipient: string;
+            /** Recipient Key */
+            recipient_key: string;
+            /** Source */
+            source: string;
+            /** Source Id */
+            source_id: string;
+            /** Start */
+            start: string | null;
+            /** Summary */
+            summary: string | null;
+            /** Title */
+            title: string;
+        };
+        /**
+         * GrantReceivedTotal
+         * @description Je Geber (``eu`` oder ``bund``): Zahl der Vorhaben und bewilligte Summe.
+         */
+        GrantReceivedTotal: {
+            /** Amount */
+            amount: number;
+            /** Group */
+            group: string;
+            /** N */
+            n: number;
         };
         /**
          * GrantRow
@@ -18136,6 +18253,26 @@ export interface operations {
             };
         };
     };
+    haushalt_foerdermittel_api_council_budget_grants_received_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetGrantsReceived"];
+                };
+            };
+        };
+    };
     haushalt_konzern_api_council_budget_group_get: {
         parameters: {
             query?: never;
@@ -23330,4 +23467,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: d6248ab1f42aec70a012d89140fc33be30569146bb5676b6dfd574fd170c7e8b
+// vertrag-sha256: be6e5def925c9c3c917f00e6ae4508b506e9e837838691b54775df5b21ffd9ea

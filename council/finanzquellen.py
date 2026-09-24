@@ -585,6 +585,14 @@ def _bestand_satzung_veroeffentlicht(store: CouncilStore) -> set[tuple]:
     return {(z["year"],) for z in store.get_satzungen_veroeffentlicht()}
 
 
+def _bestand_foerdermittel(store: CouncilStore) -> set[tuple]:
+    """Das Jahr des Datenstands je Liste — die Listen tragen keinen Jahrgang,
+    sondern einen Stand („DS: 31. Januar 2026"); der Förderkatalog hat keinen
+    und zählt mit dem Jahr seines Abrufs."""
+    return {(int((z["list_as_of"] or z["fetched_at"])[:4]),)
+            for z in store.get_foerdermittel()}
+
+
 def _bestand_vorbericht(store: CouncilStore) -> set[tuple]:
     return {(j,) for j in store.vorbericht_jahrgaenge()}
 
@@ -2637,6 +2645,24 @@ for _q in (
         lauf=("scripts/ingest_vorbericht.py",),
     ),
     Finanzquelle(
+        key="grants_received",
+        label="Fördermittel von EU und Bund",
+        was="Welche Vorhaben der Stadt und ihrer Gesellschaften die EU (EFRE, "
+            "ESF) und der Bund fördern — je Vorhaben Empfänger, Zweck, Laufzeit "
+            "und bewilligter Betrag, aus den Listen der Geber selbst.",
+        tabelle="council_grants_received",
+        # Die EU-Listen erscheinen halbjährlich (Stand 31.01. im April,
+        # Stand 31.07. im Herbst); der Förderkatalog ist laufend aktuell.
+        erwarteter_monat=6,
+        versatz=0,
+        herkunft="eu",
+        balance=_bestand_foerdermittel,
+        # Kein ``lauf``: Beide Listen liegen außerhalb des Bestands, ob es eine
+        # neue gibt, sagt erst die Übersichtsseite. Der Ops-Lauf fragt sie.
+        nachschub="Listen der Vorhaben (europa-fuer-niedersachsen.de) und "
+                  "Förderkatalog des Bundes, scripts/ingest_foerdermittel.py",
+    ),
+    Finanzquelle(
         key="grants",
         label="Zuschüsse an Dritte",
         was="Wer von der Stadt Zuschüsse bekommt — Vereine, Träger, "
@@ -3164,7 +3190,7 @@ for _q in (
 #: weil er zeitlich dazwischenliegt: Erst was die Stadt vorhat, dann wie es im
 #: laufenden Jahr läuft, dann wie es ausgegangen ist. Die drei nebeneinander
 #: sind die Geschichte eines Haushaltsjahres.
-REIHENFOLGE = ("haushaltsplan", "budget_notes", "income_budget", "finance_budget", "grants",
+REIHENFOLGE = ("haushaltsplan", "budget_notes", "income_budget", "finance_budget", "grants", "grants_received",
                "investitionen",
                "investitionsprogramm", "budget_execution",
                "jahresabschluss", "teilhaushalt",
@@ -3185,6 +3211,8 @@ STELLEN = {
     "city": "Portal der Stadt",
     "opendata": "Open-Data-Portal der Stadt",
     "lsn": "Landesamt für Statistik Niedersachsen",
+    "eu": "NBank (Liste der Vorhaben der EU-Strukturfonds)",
+    "bund": "Förderkatalog des Bundes",
 }
 
 
