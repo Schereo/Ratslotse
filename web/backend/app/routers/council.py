@@ -4074,7 +4074,11 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
             # drei Wege ohne Modell ist: Die verlangen eine generische Frage
             # („Was sehe ich hier?") oder eine Vokabelfrage, und keine davon
             # trifft `archiv_sofort` (tests/test_assistant.py hält beides).
-            if lotti.archiv_sofort(frage):
+            # Dazu die Preisfrage nach einem Vorhaben („Kann sich die Stadt das
+            # neue Stadion leisten?"), die im Haushalt keine Antwort hat, im
+            # Archiv aber Beschlüsse mit Betrag — am Bestand geprüft, nicht
+            # am Wortlaut allein (s. `lotti.projekt_ins_archiv`).
+            if lotti.archiv_sofort(frage) or lotti.projekt_ins_archiv(store, screen, frage):
                 yield _sse({"type": "step", "step": "archiv"})
                 ratslotse.record_activity(user["id"], "assistant_to_ask_auto",
                                           client_kind(request))

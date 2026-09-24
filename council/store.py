@@ -3124,9 +3124,13 @@ class CouncilStore(BplanMixin, FundstueckeMixin, HaushaltMixin, OrteMixin, Perso
             return []
         # 16 statt 10: Die Begriffe der Gründlichen Recherche kommen aus
         # mehreren Facetten, das treffende Wort steht dort oft weiter hinten.
-        woerter = [w.lower() for w in begriffe if len(w) >= 4][:16]
+        # Ohne Allerweltswörter (s. `geld.ALLERWELT`): „Stadt" traf sonst die
+        # STADTplanung in jeder zweiten Laienfrage (gemessen 24.09.2026).
+        # „haushalt" bleibt drin — es wählt unten die Summenzeile.
+        woerter = [w.lower() for w in begriffe
+                   if len(w) >= 4 and not _geld.allerwelt(w)][:16]
         rows = self._conn.execute(
-            "SELECT year, area, revenues, expenses, result, is_total "
+            "SELECT year, area, revenues, expenses, result, is_total, herkunft_id "
             "FROM council_budget WHERE year = ?", (year,)).fetchall()
         out = []
         if _geld.rangfrage(begriffe):
@@ -3144,7 +3148,7 @@ class CouncilStore(BplanMixin, FundstueckeMixin, HaushaltMixin, OrteMixin, Perso
             if abweicht:
                 for r in out:
                     r["year_asked"] = gefragt
-            return out
+            return self._haushalt_belege(out)
         for r in rows:
             if r["is_total"]:
                 if any(w in ("haushalt", "gesamthaushalt", "haushaltsplan") for w in woerter):
@@ -3175,7 +3179,7 @@ class CouncilStore(BplanMixin, FundstueckeMixin, HaushaltMixin, OrteMixin, Perso
                         r["year_before"] = frueh
                         r["expenses_before"] = a["expenses"]
                         r["revenues_before"] = a["revenues"]
-        return out
+        return self._haushalt_belege(out)
 
     #: Suchbegriffe → Steuerart, wie sie im Open-Data-CSV heißt. Bewusst
     #: kuratiert statt Substring-Suche: „Steuer" allein trifft sonst jede Art,
@@ -3575,7 +3579,7 @@ class CouncilStore(BplanMixin, FundstueckeMixin, HaushaltMixin, OrteMixin, Perso
         # den Konzern-Baustein aus dem Deckel.
         "sind", "hoch", "ganze", "ganzen", "wird", "wurde", "werden", "haben",
         "nach", "eine", "einen", "einer", "dass", "noch", "diesem", "hier",
-    })
+    }) | _geld.ALLERWELT
 
     def produkte_fuer_begriffe(self, begriffe: list[str], limit: int = 4,
                                year: int | None = None) -> dict | None:

@@ -78,6 +78,8 @@ B_REIHE = "council/geld/expense_series.py"
 B_GLOSSAR = "kern/glossar.py + Seitenwissen (kern/knowledge.py)"
 B_SEITE = "Seitenwissen (kern/knowledge.py)"
 B_KEINE = "— (die Daten geben es nicht her)"
+B_ARCHIV = "Ratsarchiv (Lotti → Frag den Rat, assistant.projekt_ins_archiv)"
+B_KERN = "Seiten-Kernzahlen (assistant.SEITEN_KERN)"
 
 _con: sqlite3.Connection | None = None
 
@@ -169,10 +171,45 @@ def _seitentitel(route: str) -> str:
 
 FAELLE: list[dict] = []
 
+#: Was das Fenster je Haushaltsseite mitschickt — `page_title`, `heading`,
+#: `anchors`, abgelesen am 24.09.2026 aus den Requests des echten Fensters
+#: (Playwright, dev-Datenstand). Die Überschrift der Übersicht trägt eine
+#: Zahl aus den Daten; ändert sie sich, ist sie hier nachzuziehen.
+_TITEL = "Ratslotse — Oldenburger Ratsinformationen verständlich"
+FENSTER: dict[str, tuple[str, str, tuple[str, ...]]] = {
+    "/haushalt": (_TITEL, "Oldenburg plant Ausgaben von 883,9 Millionen Euro.",
+                  ("Die Anzeigetafel", "Der Kassenzettel", "Verfügbar nach Jahresergebnis",
+                   "Die Teilhaushalte")),
+    "/haushalt/schulden": (_TITEL, "Wie viel Schulden hat Oldenburg?",
+                           ("Drei Zählweisen, eine Stadt · Stand 31.12.2024", "Kredite und Zinsen",
+                            "Schulden total", "Verbürgt und selbst geschuldet", "Liquiditätsstand")),
+    "/haushalt/einnahmen": (_TITEL, "Woher kommt das Geld?", ("Spielraum über alle Quellen",)),
+    "/haushalt/investitionen": (_TITEL, "Was gebaut wird — und was daraus wurde",
+                                ("Investitionsprogramm · Pläne 2019–2026", "Vorhaben")),
+    "/haushalt/pflicht": (_TITEL, "Muss oder kann?", ("Anteil an allen Ausgaben · Plan 2026",)),
+    "/haushalt/produkte": (_TITEL, "Was kostet eigentlich …?", ("Produktebene · Haushaltsjahr 2026",)),
+    "/haushalt/personal": (_TITEL, "Wer macht die Arbeit?",
+                           ("Stellenplan Teil A · Beamtinnen und Beamte · Plan 2026",
+                            "Personalaufwand")),
+    "/haushalt/plan-ist": (_TITEL, "Geplant und geworden",
+                           ("Jahresabschluss 2024 · Mio. € Aufwand", "Der Haushaltsvollzug")),
+    "/haushalt/konzern": (_TITEL, "Und ist das die ganze Stadt?",
+                          ("Gesamtabschluss · Konzern Oldenburg · 2024", "Jahresergebnis im Plan",
+                           "Gebühr im Zeitverlauf")),
+    "/haushalt/vergleich": (_TITEL, "Steht Oldenburg besser da als Osnabrück?",
+                            ("Kreisfreie Städte Niedersachsens",)),
+    "/haushalt/steuer": (_TITEL, "Gewerbesteuer",
+                         ("Steuer-Steckbrief · Hebesatz Gewerbesteuer", "Der Verlauf im Jahr",
+                          "Steuern: geplant und geworden", "Wer zahlt das?", "Hebesatz-Treppe",
+                          "Was die Stadt nicht entscheidet")),
+    "/haushalt/mitreden": (_TITEL, "Mitreden", ("Haushaltsberatungen 2019–2026", "Position",
+                                                "Vorhaben")),
+}
+
 
 def F(id_: str, kanal: str, frage: str, kategorie: str, baustein: str, gold: list[dict], *,
       route: str | None = None, verboten: list[dict] | None = None, in_daten: bool = True,
-      notiz: str = "", bekannt: str | None = None) -> None:
+      notiz: str = "", bekannt: str | None = None, fenster: bool = False) -> None:
     # Kurzform „lotti:/haushalt/schulden“ = Lotti auf dieser Seite.
     if kanal.startswith("lotti:"):
         kanal, route = "lotti", kanal.split(":", 1)[1]
@@ -184,6 +221,16 @@ def F(id_: str, kanal: str, frage: str, kategorie: str, baustein: str, gold: lis
         # Die Überschrift der Seite reist im echten Fenster mit (`heading`)
         # und zieht auf Haushalts-Seiten eigene Facetten — also auch hier.
         fall["heading"] = _seitentitel(route)
+        # `fenster`: Titel, Überschrift und Bausteine, wie das ECHTE Fenster
+        # sie schickt (gemessen 24.09.2026 mit Playwright, s. FENSTER). Der
+        # Seitentitel aus kern/knowledge.py ist nicht die Überschrift der
+        # Seite — auf der Übersicht steht „Oldenburg plant Ausgaben von 883,9
+        # Millionen Euro.“, nicht „Haushalt — Übersicht“; und die Überschrift
+        # zieht eigene Facetten. Ohne sie mäße die Eval einen anderen Prompt
+        # als den, den die Laienfragen im Fenster bekommen.
+        if fenster:
+            titel, ueberschrift, anker = FENSTER[route]
+            fall.update({"page_title": titel, "heading": ueberschrift, "anchors": list(anker)})
     fall.update({"frage": frage, "kategorie": kategorie, "baustein": baustein,
                  "antwort_in_daten": in_daten, "gold": gold, "verboten": verboten or []})
     if notiz:
@@ -1049,7 +1096,151 @@ def bauen() -> list[dict]:  # noqa: PLR0915 — eine Liste, kein Algorithmus
     F("hh-nd-klinikum-gehaelter-lotti", "lotti",
       "Wie viel verdient die Geschäftsführung des Klinikums?", nd, B_KEINE, [],
       route="/haushalt/konzern", in_daten=False)
+    laien()
     return FAELLE
+
+
+def laien() -> None:
+    """Die 36 Laienfragen vom 24.09.2026 — wie sie im Fenster gestellt wurden.
+
+    Tim: „Die meisten Leute stellen keine technisch perfekten Fragen …
+    Trotzdem müssen wir gute Antworten geben.“ Kleinschreibung und Tippfehler
+    („schulen pro einwohner“) sind Absicht. Jeder Fall läuft mit Überschrift
+    und Bausteinen des echten Fensters (``fenster=True``).
+
+    **Wertungsfragen** („Hat die Stadt genug Geld?“, „Ist das schlimm?“) haben
+    als Gold den MASSSTAB — die Zahl, an der man es selbst einordnen kann.
+    Eine ehrliche Absage besteht, wenn sie den Maßstab nennt; eine Absage
+    ohne Zahl nicht. Reine Begriffsfragen („Was ist ein Haushalt?“) prüfen
+    Wörter statt Zahlen.
+    """
+    k = "haushalt/laien"
+    aufwand26 = Z(BUDGET_SUM.format("expenses"), 2026, jahr=2026, bez="Aufwendungen Plan 2026",
+                  baustein=B_KERN)
+    ertrag26 = Z(BUDGET_SUM.format("revenues"), 2026, jahr=2026, bez="Erträge Plan 2026",
+                 baustein=B_KERN)
+    haushalt26 = Z(BUDGET_SUM.format("expenses"), 2026, jahr=2026, bez="Aufwendungen Plan 2026",
+                   baustein=B_KERN, oder=[ALT(BUDGET_SUM.format("revenues"), 2026, jahr=2026)])
+    schulden25 = Z(DEBT.format("total"), 2025, jahr=2025, bez="Schuldenstand Kern + Eigenbetriebe",
+                   baustein=B_SCHULDEN)
+    ergebnis24 = Z(IST.format("result"), 2024, 21, jahr=2024, bez="ordentliches Ergebnis Ist 2024",
+                   pflicht=False, baustein=B_IST)
+    ansatz = ("SELECT amount FROM council_income_budget WHERE plan_budget_year = ? AND year = ? "
+              "AND nr = ? AND kind = 'budget'")
+
+    def L(nr: int, route: str, frage: str, baustein: str, gold: list[dict], **kw: Any) -> None:
+        F(f"hh-laien-{nr:02d}", "lotti", frage, k, baustein, gold, route=route, fenster=True, **kw)
+
+    L(1, "/haushalt", "wie viele schulden hat die stadt", B_SCHULDEN, [schulden25])
+    L(2, "/haushalt", "was gibt die stadt eigentlich so aus", B_KERN,
+      [aufwand26, Z(BUDGET_AREA.format("expenses"), 2026, "Soziales und Gesundheit", jahr=2026,
+                    bez="größter Teilhaushalt", pflicht=False, baustein=B_KERN)],
+      notiz="Befund A: bekam die Stadtplanung (7,4 Mio. €) über das Wort „Stadt“.")
+    L(3, "/haushalt", "hat die stadt genug geld", B_KERN, [haushalt26, ergebnis24],
+      notiz="Wertungsfrage: Maßstab = Aufwand/Ertrag des Plans.")
+    L(4, "/haushalt", "wo kann die stadt sparen", B_PRODUKTE,
+      [T([["Spielraum", "freiwillig"]], "council_products.controllability = 'high'")])
+    L(5, "/haushalt", "warum ist die stadt pleite", B_KERN, [haushalt26, ergebnis24],
+      notiz="Wertungsfrage mit falscher Voraussetzung; Maßstab = Plan und Abschluss.")
+    L(6, "/haushalt", "wieviel geld hat oldenburg im jahr", B_KERN, [haushalt26],
+      notiz="Befund A: 884 Mio. ohne Jahr und Quelle.")
+    L(7, "/haushalt", "was kostet mich die stadt pro jahr", B_KERN,
+      [aufwand26, Z("SELECT population FROM council_einwohner WHERE year = ?", 2025, jahr=2025,
+                    einheit="", bez="Einwohner*innen Ende 2025", pflicht=False,
+                    baustein="council/geld/population.py")],
+      notiz="Die Pro-Kopf-Rechnung ist Sache der Einordnung, hier nicht Pflicht.")
+    L(8, "/haushalt", "wofür geht das meiste geld drauf", B_PLAN,
+      [Z(BUDGET_AREA.format("expenses"), 2026, "Soziales und Gesundheit", jahr=2026,
+         bez="größter Teilhaushalt")])
+    L(9, "/haushalt", "was ist ein haushalt überhaupt", B_GLOSSAR,
+      [T([["Plan", "plant"], ["Einnahmen", "Erträge", "einnimmt"]], "Glossar/Seitenwissen")])
+    L(10, "/haushalt", "kann sich die stadt das neue stadion leisten", B_ARCHIV,
+      [Z("SELECT MAX(amount_eur) FROM council_decisions WHERE title LIKE '%Stadion%'",
+         bez="Stadion Pauschalpreis netto (Beschluss)", baustein=B_ARCHIV),
+       T([["Bürgschaft", "bürgt", "Ausfallbürgschaft"]], "Stadion-Beschlüsse", pflicht=False)],
+      notiz="Befund A: kein Weg ins Archiv. Jetzt: projekt_ins_archiv → Frag den Rat.")
+    L(11, "/haushalt/schulden", "ist das schlimm?", B_SCHULDEN, [schulden25])
+    L(12, "/haushalt/schulden", "ist das viel oder wenig", B_SCHULDEN, [schulden25])
+    L(13, "/haushalt/schulden", "wer muss das alles zurückzahlen", B_SCHULDEN,
+      [T([["Eigenbetrieb", "Eigenbetriebe"]], "council_debt: Abgrenzung Tabelle 1108")])
+    L(14, "/haushalt/schulden", "wann sind die schulden weg", B_SCHULDEN, [schulden25],
+      notiz="Einen Tilgungsplan gibt es nicht; der Maßstab ist der Stand.")
+    L(15, "/haushalt/schulden", "warum macht die stadt überhaupt schulden", B_SCHULDEN,
+      [schulden25 | {"pflicht": False},
+       T([["Kredit", "Kredite", "investier", "Investition"]], "Erklärung")])
+    L(16, "/haushalt/schulden", "wie hoch sind die schulen pro einwohner", B_SCHULDEN,
+      [Z(DEBT.format("per_capita"), 2025, jahr=2025, bez="Schulden je Einwohner*in")],
+      notiz="Tippfehler „schulen“ gewollt. Befund C: 1.908 € gerundet zu „rund 1.900 €“.")
+    L(17, "/haushalt/einnahmen", "woher hat die stadt ihr geld", B_KERN,
+      [Z(ansatz, 2026, 2026, 1, jahr=2026, bez="Steuern und ähnliche Abgaben Ansatz 2026",
+         baustein=B_ANSATZ, oder=[ALT(TAX, 2025, "total", jahr=2025)])],
+      notiz="Befund A: keine Beträge, obwohl Steuern 2025 (387 Mio. €) im Bestand.")
+    L(18, "/haushalt/einnahmen", "zahlen wir zu viele steuern", B_STEUERN,
+      [Z(TAX, 2025, "total", jahr=2025, bez="Steuereinnahmen 2025", baustein=B_STEUERN,
+         oder=[ALT(ansatz, 2026, 2026, 1, jahr=2026)])])
+    L(19, "/haushalt/einnahmen", "bekommt die stadt geld vom land", B_ANSATZ,
+      [Z(ansatz, 2026, 2026, 2, jahr=2026, bez="Zuwendungen und allg. Umlagen Ansatz 2026",
+         oder=[ALT("SELECT allocations FROM council_tax_capacity WHERE year = ?", 2026,
+                   jahr=2026)])],
+      notiz="Befund A: „wie viel geht nicht hervor“.")
+    L(20, "/haushalt/investitionen", "was wird gebaut", B_MASSNAHMEN,
+      [T(["Kampfmittel"], "council_investment_measures year=2026: größte grand_total"),
+       Z("SELECT grand_total FROM council_investment_measures WHERE year = ? AND "
+         "level = 'measure' ORDER BY grand_total DESC LIMIT 1", 2026, jahr=2026,
+         bez="größtes Vorhaben 2026 (Gesamtsumme)", pflicht=False)],
+      notiz="Befund A: „einzelne Vorhaben stehen hier nicht“.")
+    L(21, "/haushalt/investitionen", "wird was für schulen gemacht", B_MASSNAHMEN,
+      [T([["Schule", "Schulen"]], "council_investment_measures: Schul-Posten")])
+    L(22, "/haushalt/investitionen", "warum dauern die baustellen immer so lange", B_KEINE, [],
+      in_daten=False, notiz="Gründe für Bauzeiten stehen in keiner Haushaltsquelle.")
+    L(23, "/haushalt/pflicht", "was muss die stadt bezahlen und was nicht", B_PRODUKTE,
+      [Z(PRODUKT.format("expenses"), 2026, "Kindertagesbetreuung", jahr=2026,
+         bez="Kindertagesbetreuung Aufwand 2026", pflicht=False),
+       T([["Spielraum", "Pflicht", "pflicht", "gesetzlich"]], "council_products.controllability")])
+    L(24, "/haushalt/pflicht", "könnte man nicht einfach das theater streichen", B_PRODUKTE,
+      [Z(PRODUKT.format("-result"), 2026, "Kultur- u. Künstlerförderung", jahr=2026,
+         bez="Kultur- und Künstlerförderung Zuschussbedarf 2026",
+         oder=[ALT(PRODUKT.format("expenses"), 2026, "Kultur- u. Künstlerförderung", jahr=2026)])],
+      notiz="Befund A: „keine Angaben zu Kosten des Theaters“. Das Staatstheater trägt das "
+            "Land; im Haushalt steht die Kulturförderung.")
+    L(25, "/haushalt/produkte", "was kostet die feuerwehr", B_PRODUKTE,
+      [Z(PRODUKT.format("expenses"), 2026, "Brand- und Katastrophenschutz", jahr=2026,
+         bez="Brand- und Katastrophenschutz Aufwand 2026",
+         oder=[ALT(PRODUKT.format("-result"), 2026, "Brand- und Katastrophenschutz",
+                   jahr=2026)])])
+    kita = Z(PRODUKT.format("expenses"), 2026, "Kindertagesbetreuung", jahr=2026,
+             bez="Kindertagesbetreuung Aufwand 2026",
+             oder=[ALT(PRODUKT.format("-result"), 2026, "Kindertagesbetreuung", jahr=2026)])
+    L(26, "/haushalt/produkte", "wie viel geld geht in kitas", B_PRODUKTE, [kita])
+    L(27, "/haushalt/personal", "wie viele leute arbeiten bei der stadt", B_STELLEN,
+      [T([["Stellen"]], "council_staff_plan: Stellen, keine Köpfe")])
+    L(28, "/haushalt/personal", "sind das nicht zu viele", B_STELLEN,
+      [T([["Stellen"]], "council_staff_plan")],
+      notiz="Wertungsfrage: Maßstab = der Stellenplan selbst.")
+    L(29, "/haushalt/plan-ist", "hat die stadt mehr ausgegeben als geplant", B_IST,
+      [Z(IST.format("result"), 2024, 20, jahr=2024, bez="Aufwendungen Ist 2024"),
+       Z(IST.format("budgeted"), 2024, 20, jahr=2024, bez="Aufwendungen Ansatz 2024")])
+    L(30, "/haushalt/konzern", "was sind eigenbetriebe", B_WIRTSCHAFTSPLAN,
+      [T([["eigene", "eigenen", "eigener", "eigenem"],
+          ["Wirtschaftsplan", "Buchführung", "Jahresplan", "getrennt"]], "Glossar/Seitenwissen")])
+    L(31, "/haushalt/konzern", "verdient die stadt mit den bädern geld", B_WIRTSCHAFTSPLAN,
+      [Z(BP.format("result"), "bbgo", 2026, jahr=2026, bez="BBGO Ergebnis Plan 2026",
+         betrag=True)],
+      notiz="Befund A: „keine Angaben“ — „Bädern“ traf das Muster für „Bäder“ nicht.")
+    L(32, "/haushalt/vergleich", "sind wir ärmer als osnabrück", B_VERGLEICH,
+      [Z(CITY, 2026, "Oldenburg", "steuerkraftmesszahl", jahr=2026, faktor=1000,
+         bez="Steuerkraftmesszahl Oldenburg")])
+    L(33, "/haushalt/steuer", "warum ist die grundsteuer so hoch", B_HEBESATZ,
+      [Z(RATE, 2025, "Grundsteuer B", jahr=2025, einheit="%", bez="Hebesatz Grundsteuer B",
+         oder=[ALT(TAX, 2025, "Grundsteuer A+B", jahr=2025)])])
+    L(34, "/haushalt/mitreden", "kann ich mitbestimmen wofür das geld ausgegeben wird",
+      B_SEITE, [T([["Rat", "Fraktion", "Fraktionen", "Antrag", "Anträge"]], "Seitenwissen")])
+    L(35, "/haushalt", "stimmt es dass für kitas kein geld mehr da ist", B_PRODUKTE, [kita],
+      notiz="Befund A: nur „Jugend und Familie 169 Mio.“, die Kindertagesbetreuung fehlte.")
+    L(36, "/haushalt", "was bedeutet defizit", B_GLOSSAR,
+      [T([["mehr"], ["aus", "Ausgaben", "Aufwendungen"]], "Glossar"),
+       aufwand26 | {"pflicht": False}, ertrag26 | {"pflicht": False}],
+      notiz="Befund B: richtig, aber ohne Oldenburger Zahl.")
 
 
 def main() -> int:

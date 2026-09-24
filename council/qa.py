@@ -18,6 +18,7 @@ from kern.foreign_text import defuse
 from council import ernte
 from council import outcome_note
 from council import geld as _geld
+from council.geld import alltag as _alltag
 from council.topics import _strip_fences  # noqa: F401  (kept for symmetry / future use)
 
 # Antwort-Modell: GPT-6 Luna seit P4a (23.09.2026), Tims Entscheidung nach
@@ -2464,9 +2465,15 @@ def _haushalt_block(zeilen: list[dict] | None) -> str:
             s += (f" — {r['year_before']} waren es {_eur(r.get('expenses_before'))} "
                   f"Aufwendungen")
         teile.append(s)
+    # Die Fundstelle EINMAL je Dokument, nicht je Zeile: Alle Teilhaushalte
+    # eines Jahres stehen in derselben Übersicht des Haushaltsplans, und
+    # fünfmal derselbe Beleg wären 500 Zeichen ohne neue Auskunft.
+    belege = list(dict.fromkeys(_beleg_text(r.get("beleg")) for r in zeilen))
+    belege = [b.removeprefix(" — ") for b in belege if b]
     return ("\nSTADTHAUSHALT (GEPLANTE Zahlen aus dem beschlossenen Haushaltsplan; nur\n"
             "nutzen, wenn einschlägig — im Text als „Laut Haushaltsplan JAHR …“ nennen,\n"
-            "NIE mit [id]):\n" + "\n".join(teile) + "\n" + _jahr_hinweis(zeilen))
+            "NIE mit [id]):\n" + "\n".join(teile) + "\n"
+            + "".join(f"- {b}\n" for b in belege) + _jahr_hinweis(zeilen))
 
 
 def _steuern_block(zeilen: list[dict] | None) -> str:
@@ -2889,6 +2896,12 @@ def geld_facetten(question: str, typ: str = "topic") -> set[str]:
         f.add("stellenplan")
     if _F_AENDERUNGSLISTE.search(t) or (_F_STREIT.search(t) and (f & {"plan", "ansatz"})):
         f.add("antraege")
+    # Alltagssprache (council/geld/alltag.py): „Wie viel Geld hat Oldenburg
+    # im Jahr?" traf bis 24.09.2026 kein einziges Muster oben. Die Wortfelder
+    # ERGÄNZEN nur — und stehen vor den Modul-Facetten, damit `measures` an
+    # ein alltagssprachliches `investitionen` („Was wird gebaut?") andocken
+    # kann wie an ein fachsprachliches.
+    f |= _alltag.facetten(t)
     # Die Modul-Facetten (council/geld/): jede prüft ihren eigenen Wortlaut
     # und sieht, was bis hierher erkannt wurde — so kann „vorhaben" an
     # „investitionen" andocken, ohne dessen Muster zu kopieren.
@@ -2936,7 +2949,8 @@ def _vorjahr_wort(jahr: int, davor: int) -> str:
     return f"Davor zuletzt im Bestand ({davor}; dazwischen fehlt die Reihe)"
 
 
-def geld_kontext(store, question: str, begriffe: str = "", typ: str = "topic") -> dict:
+def geld_kontext(store, question: str, begriffe: str = "", typ: str = "topic",
+                 facetten: set[str] | frozenset[str] | None = None) -> dict:
     """Alle einschlägigen Haushalts-Quellen zu einer Frage in EINEM Aufruf.
 
     Der Router ruft nur noch das hier; welche Store-Methoden dabei laufen,
@@ -2944,15 +2958,32 @@ def geld_kontext(store, question: str, begriffe: str = "", typ: str = "topic") -
     Rückgabewert trägt seine ``facetten`` mit — das Frontend zeigt sie im
     Quellen-Ereignis, und im Log ist damit ohne Rätselraten zu sehen, warum
     eine Antwort eine Zahl kannte oder eben nicht.
+
+    ``facetten`` setzt die Facetten fest, statt sie am Wortlaut zu erkennen —
+    für Lottis Seiten-Kernzahlen (``assistant.SEITEN_KERN``): Dort steht fest,
+    welche Quelle eine Seite trägt, und eine Erkennung am Wortlaut könnte nur
+    danebenliegen.
     """
-    facetten = geld_facetten(question, typ)
+    facetten = set(facetten) if facetten is not None else geld_facetten(question, typ)
     # Die Begriffe kommen aus der Expansion; ohne sie tut es die Frage selbst.
-    woerter = [w for w in (begriffe or question or "").split() if w]
+    # Ohne Allerweltswörter (`geld.ALLERWELT`): Die Quellen gleichen über
+    # Wortstämme ab, und „stadt" traf die STADTplanung im Plan UND im
+    # Jahresabschluss — gemessen an „Hat die Stadt genug Geld?" (24.09.2026).
+    woerter = [w for w in (begriffe or question or "").split()
+               if w and not _geld.allerwelt(w)]
     # Ein Rangfolge-Wort aus der FRAGE („am meisten", „größte") reist als
     # Begriff mit, auch wenn die Expansion es weggelassen hat — die Quellen,
     # die eine Rangfolge bilden können, erkennen es daran (`geld.rangfrage`).
     woerter += [w for w in (question or "").split()
                 if _geld.RANG_WORT.match(_geld.falte(w)) and w not in woerter]
+    # Die Suchbegriffe der Alltags-Wortfelder („Kita" → „Kindertagesbetreuung",
+    # „Geld vom Land" → „Zuwendungen"): Die Quellen suchen nach NAMEN, und
+    # ein Alltagswort steht in keinem. Sie zählen auch als Wörter der FRAGE
+    # (`frage=` beim Ansatz unten) — sie sind deren Übersetzung, nicht
+    # Beiwerk der Expansion.
+    alltag_begriffe = _alltag.begriffe(_falte(question or ""))
+    woerter += [w for w in alltag_begriffe if w not in woerter]
+    alltag_facetten = _alltag.facetten(_falte(question or ""))
     # Das Jahr aus der FRAGE, nicht aus den Begriffen: Die Expansion streut
     # Jahreszahlen ein, die niemand getippt hat. Jede Quelle bekommt es und
     # liefert den Jahrgang, wenn sie ihn hat — sonst den jüngsten, mit Vermerk.
@@ -2967,7 +2998,8 @@ def geld_kontext(store, question: str, begriffe: str = "", typ: str = "topic") -
     if "ausgleich" in facetten:
         # Wie bisher: der Dämpfer nur, wenn es wirklich um Steuern geht —
         # sonst hinge er an jeder Zuweisungs-Frage ohne Bezug.
-        if aus.get("taxes") or _F_AUSGLEICH.search(_falte(question or "")):
+        if (aus.get("taxes") or _F_AUSGLEICH.search(_falte(question or ""))
+                or "ausgleich" in alltag_facetten):
             aus["tax_capacity"] = _sicher(store.steuerkraft_kontext, year=jahr)
     if "ist" in facetten:
         aus["ist"] = _sicher(store.result_actual_for_terms, woerter, year=jahr)
@@ -2997,7 +3029,8 @@ def geld_kontext(store, question: str, begriffe: str = "", typ: str = "topic") -
         # ähnliche Finanzerträge" in jeder Stadion-Frage.
         eigen = bool(_F_ANSATZ.search(_falte(question or "")))
         a = _sicher(store.ansatz_fuer_begriffe, woerter, year=jahr,
-                    frage=[w for w in (question or "").split() if len(w) >= 4])
+                    frage=[w for w in (question or "").split() if len(w) >= 4]
+                    + alltag_begriffe)
         if a and (a.get("treffer") or (eigen and not aus.get("haushalt"))):
             aus["ansatz"] = a
     if "schulden" in facetten:
@@ -3912,14 +3945,29 @@ def geld_auswahl(geld: dict | None,
     # 23.09.2026). Innerhalb beider Gruppen gilt die Reihenfolge von
     # GELD_FACETTEN unverändert.
     vorrang = set(geld.get("vorrang") or ())
+    # `kern`: die Kernzahlen der Seite (Lotti, `assistant.SEITEN_KERN`) —
+    # HINTER der Frage, VOR dem, was nur die Überschrift gezogen hat, und
+    # zusammen höchstens `kern_max` Zeichen. Ein Kern-Baustein, der den
+    # eigenen Deckel sprengt, fällt aus, ohne die Schleife zu beenden: Er ist
+    # Zugabe, und die Bausteine dahinter können kleiner sein.
+    kern = set(geld.get("kern") or ()) - vorrang
+    kern_max = geld.get("kern_max") or max_chars
     reihenfolge = ([f for f in GELD_FACETTEN if f in vorrang]
-                   + [f for f in GELD_FACETTEN if f not in vorrang])
+                   + [f for f in GELD_FACETTEN if f in kern]
+                   + [f for f in GELD_FACETTEN if f not in vorrang and f not in kern])
+    kern_laenge = 0
     for facette in reihenfolge:
         key, bauer = _GELD_BAUSTEINE[facette]
+        if any(k == key for k, _ in aus):
+            continue   # zwei Facetten, ein Datenschlüssel — nie doppelt
         text = bauer(geld.get(key))
         if not text:
             continue
-        if laenge + len(text) > max_chars and aus:
+        if facette in kern:
+            if kern_laenge + len(text) > kern_max or laenge + len(text) > max_chars:
+                continue
+            kern_laenge += len(text)
+        elif laenge + len(text) > max_chars and aus:
             break
         aus.append((key, text))
         laenge += len(text)

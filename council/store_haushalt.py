@@ -39,6 +39,35 @@ class HaushaltMixin(StoreBasis):
     von dort.
     """
 
+    def beschluesse_mit_betrag(self, wort: str) -> int:
+        """Wie viele Beschlüsse tragen ``wort`` im Titel UND einen Betrag?
+
+        Für Lottis Weiche ins Archiv (``assistant.projekt_ins_archiv``): Ob
+        das Archiv zu einem Vorhaben etwas über Geld weiß, entscheidet der
+        Bestand, nicht eine Liste von Vorhaben, die veralten würde."""
+        if len(wort) < 4:
+            return 0
+        wort = wort.replace("%", "").replace("_", "")
+        # Das Wort kommt gefaltet („weser ems halle", „baeder"); die Titel
+        # tragen Umlaute. Beide Schreibweisen, sonst fände „Bäder" nichts.
+        mit_umlaut = (wort.replace("ae", "ä").replace("oe", "ö").replace("ue", "ü"))
+        return self._conn.execute(
+            "SELECT COUNT(*) FROM council_decisions WHERE amount_eur > 0 "
+            "AND (title LIKE ? OR title LIKE ?)",
+            (f"%{wort}%", f"%{mit_umlaut}%")).fetchone()[0]
+
+    def _haushalt_belege(self, zeilen: list[dict]) -> list[dict]:
+        """Jede Plan-Zeile mit ihrer Fundstelle.
+
+        Bis 09/2026 stand der Stadthaushalt als einziger Baustein OHNE Beleg im
+        Prompt — und die Überschrift der Übersicht („Oldenburg plant Ausgaben
+        von 883,9 Millionen Euro") erklärte Lotti deshalb „ohne Jahr und
+        Beleg" (Laienfragen 24.09.2026), obwohl ``council_provenance`` den
+        beschlossenen Haushaltsplan 2026 kennt."""
+        for r in zeilen:
+            r["beleg"] = self._beleg(r.pop("herkunft_id", None))
+        return zeilen
+
     #: Welcher Beschluss zu einem Dokument der maßgebliche ist. Der Rat zuerst
     #: — eine Vorlage läuft durch mehrere Gremien, aber verabschiedet wird sie
     #: dort. Innerhalb eines Gremiums die jüngste Sitzung: Ein vertagter Punkt

@@ -232,11 +232,18 @@ def block(daten: dict | None) -> str:
         hinweis = (f"\nZum Haushaltsjahr {daten['asked_year']} liegt kein "
                    f"Investitionsprogramm vor; hier steht der Jahrgang "
                    f"{daten['year']}. Nenne dieses Jahr, nicht das gefragte.")
+    # Die Rangliste beantwortet „Was wird gebaut?" — die Frage nennt KEIN
+    # bestimmtes Vorhaben, und mit „nur bei einem bestimmten Vorhaben" im
+    # Kopf ließ Lotti die fünf größten liegen und beschrieb die Seite
+    # (Laienfragen durchs Fenster, 24.09.2026).
+    wann = ("Nutzen, wenn nach einem bestimmten Vorhaben gefragt ist ODER "
+            "allgemein danach, was gebaut wird — dann die größten nennen."
+            if daten.get("ranking") else
+            "Nur nutzen, wenn nach einem bestimmten Vorhaben gefragt ist.")
     return (
         f"\nEINZELNE INVESTITIONS-VORHABEN (Investitionsprogramm zum "
         f"Haushaltsplan {daten['year']}, Anlage 004 — Verwaltungsentwurf, also "
-        "GEPLANT und nicht beschlossen). Nur nutzen, wenn nach einem "
-        "bestimmten Vorhaben gefragt ist.\n"
+        f"GEPLANT und nicht beschlossen). {wann}\n"
         "JEDER BETRAG IST DIE GESAMTINVESTITIONSSUMME über alle Jahre, KEINE "
         "Jahresrate — die Aufteilung auf die Jahre steht in dieser Quelle "
         "nicht.\n"
