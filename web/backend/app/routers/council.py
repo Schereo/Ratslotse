@@ -46,6 +46,7 @@ from ..config import get_settings
 from ..antworten import (AnalysisData, ElectedCouncil, ElectedMember, AssistantStarters, BudgetAmendmentLists, BudgetAuditReports,
                          BudgetBalanceSheet, BudgetComparison, BudgetDataState, BudgetDebt, BudgetLiquidity, BudgetLoans,
                          BudgetDispute, BudgetDocuments, BudgetExecution, BudgetGrants, GrantRow, GrantTotal, Provenance,
+                         BudgetNote, BudgetNotes,
                          BudgetFixedAssets, BudgetGroup,
                          BudgetHoldings, BudgetInvestmentProgram, BudgetInvestments,
                          BudgetOverview, BudgetPath, BudgetProducts, BudgetStaffPlan, Committees,
@@ -988,6 +989,23 @@ def haushalt_beteiligungen(
         "group_comparison": vergleich,
         "provenance": {str(h["id"]): h for h in store.get_herkunft(ids)},
     }
+
+
+@router.get("/budget/notes")
+def haushalt_vorbericht(
+    sub_budget: int,
+    _user: dict = Depends(require_budget),
+    store: CouncilStore = Depends(get_council_store),
+) -> BudgetNotes:
+    """Was die Verwaltung im Vorbericht zu einem Teilhaushalt schreibt — je
+    Plan der Abschnitt zum Ergebnishaushalt und der zu den Investitionen, im
+    Wortlaut (``council/vorbericht.py``). Jüngster Plan zuerst."""
+    zeilen = store.get_vorbericht(sub_budget)
+    ids = sorted({z["herkunft_id"] for z in zeilen if z["herkunft_id"] is not None})
+    return BudgetNotes(
+        notes=[cast(BudgetNote, {k: z[k] for k in BudgetNote.__annotations__}) for z in zeilen],
+        provenance=cast(Provenance, {str(h["id"]): h for h in store.get_herkunft(ids)}),
+    )
 
 
 @router.get("/budget/grants")

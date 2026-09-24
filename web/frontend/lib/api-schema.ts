@@ -2406,6 +2406,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/council/budget/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Haushalt Vorbericht
+         * @description Was die Verwaltung im Vorbericht zu einem Teilhaushalt schreibt — je
+         *     Plan der Abschnitt zum Ergebnishaushalt und der zu den Investitionen, im
+         *     Wortlaut (``council/vorbericht.py``). Jüngster Plan zuerst.
+         */
+        get: operations["haushalt_vorbericht_api_council_budget_notes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/council/budget/products": {
         parameters: {
             query?: never;
@@ -8114,6 +8136,39 @@ export interface components {
             refinancing_by_year: components["schemas"]["LoanYear"][];
             /** Scope Note */
             scope_note: string;
+        };
+        /**
+         * BudgetNote
+         * @description Ein Abschnitt des Vorberichts zu einem Teilhaushalt, im Wortlaut.
+         *
+         *     ``kind``: ``result`` (Abschnitt 2.4.2.x, Ergebnishaushalt) oder
+         *     ``investments`` (3.2.2.x). ``text`` sind Absätze, getrennt durch eine
+         *     Leerzeile — ohne die Tabellen und Grafiken des Originals.
+         */
+        BudgetNote: {
+            /** Budget Year */
+            budget_year: number;
+            /** Herkunft Id */
+            herkunft_id: number | null;
+            /** Kind */
+            kind: string;
+            /** Page */
+            page: number | null;
+            /** Sub Budget No */
+            sub_budget_no: number;
+            /** Text */
+            text: string;
+            /** Title */
+            title: string;
+        };
+        /** BudgetNotes */
+        BudgetNotes: {
+            /** Notes */
+            notes: components["schemas"]["BudgetNote"][];
+            /** Provenance */
+            provenance: {
+                [key: string]: components["schemas"]["Herkunft"];
+            };
         };
         /**
          * BudgetOverview
@@ -18210,6 +18265,37 @@ export interface operations {
             };
         };
     };
+    haushalt_vorbericht_api_council_budget_notes_get: {
+        parameters: {
+            query: {
+                sub_budget: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetNotes"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     haushalt_produkte_api_council_budget_products_get: {
         parameters: {
             query: {
@@ -23242,4 +23328,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 8a2628749a17e3b1180d06ee81dbcf196401b3db2b2fde6bb0ad7960459b54ab
+// vertrag-sha256: 45f622d3ae697b30a258aebfaafba04bec82b84a81e39dee1dd88167b97d7f9a

@@ -3413,6 +3413,26 @@ class FinanceBudgetRow(TypedDict):
     herkunft_id: int | None
 
 
+class BudgetNote(TypedDict):
+    """Ein Abschnitt des Vorberichts zu einem Teilhaushalt, im Wortlaut.
+
+    ``kind``: ``result`` (Abschnitt 2.4.2.x, Ergebnishaushalt) oder
+    ``investments`` (3.2.2.x). ``text`` sind Absätze, getrennt durch eine
+    Leerzeile — ohne die Tabellen und Grafiken des Originals."""
+    budget_year: int
+    sub_budget_no: int
+    kind: str
+    title: str
+    text: str
+    page: int | None
+    herkunft_id: int | None
+
+
+class BudgetNotes(TypedDict):
+    notes: list[BudgetNote]
+    provenance: Provenance
+
+
 class GrantRow(TypedDict):
     """Ein Zuschuss an Dritte aus der Übersicht in Anlage 003.
 

@@ -316,6 +316,11 @@ PROBEN: dict[str, str] = {
         "Zuschüsse darüber ergeben sie, in beiden Spalten. Wo die Vorlage "
         "selbst falsch summiert (2020 und 2021, Teilhaushalt 8), ist jede "
         "Zeile vollständig und die Abweichung im Beleg vermerkt.",
+    "budget_notes_sections":
+        "Das Inhaltsverzeichnis des Vorberichts nennt je Teilhaushalt einen "
+        "Abschnitt zum Ergebnishaushalt und einen zu den Investitionen; jeder "
+        "genannte steht im Text mit mindestens einem Absatz. Wiedergegeben wird "
+        "der Wortlaut, ohne die Tabellen und Grafiken des Originals.",
     "debt_plan_totals":
         "Je Block (Kernhaushalt, Eigenbetriebe) und Spalte ergeben die "
         "Schuldenarten die Zeile „Schulden insgesamt“, bis auf die Rundung "
@@ -754,6 +759,8 @@ HERKUNFT_TABELLEN: tuple[str, ...] = (
     "council_grants",
     # Und aus derselben Anlage: Schuldenstand laut Plan und die VE.
     "council_debt_plan",
+    # Der Vorbericht (Anlage 001): der Wortlaut je Teilhaushalt.
+    "council_budget_notes",
     "council_commitments",
     # Die Jahresabschlüsse der Gesellschaften — neu, ohne Altbestand.
     "council_company_accounts",

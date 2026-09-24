@@ -27,8 +27,8 @@ Jahrgang eine Datei mit 15 Zeilen::
 Die Rechenprobe
 ---------------
 Die Datei rechnet sich selbst vor: Die Teilhaushalts-Zeilen ergeben die Zeile
-*Finanzhaushalt Gesamtinvestitionen* — in **beiden** Spalten. Über die vier
-verfügbaren Jahrgänge (2022–2025) geht sie auf den Euro genau auf, acht Proben,
+*Finanzhaushalt Gesamtinvestitionen* — in **beiden** Spalten. Über die sechs
+verfügbaren Jahrgänge (2020–2025) geht sie auf den Euro genau auf, zwölf Proben,
 Restbetrag jeweils 0 €. Sie ist damit die einzige Portal-Quelle des Bereichs
 mit einer Probe im Dokument selbst; die drei anderen CSVs (Steuern,
 Steuerkraft, Einwohner) tragen ausdrücklich keine (``herkunft.UNGEPRUEFT``).
@@ -114,6 +114,8 @@ NAMEN: dict[str, str] = {
     "Verkehr und Strassenbau": "Verkehr und Straßenbau",
     "Umwelt, Bauordnung, Gruen und Friedhoefe": "Umwelt, Bauordnung, Grün und Friedhöfe",
     "Umwelt, Bauordnung, Gruen u Friedhoefe": "Umwelt, Bauordnung, Grün und Friedhöfe",
+    # 2020 schreibt das Portal Umlaute, kürzt aber „und".
+    "Umwelt, Bauordnung, Grün u Friedhöfe": "Umwelt, Bauordnung, Grün und Friedhöfe",
     "Nicht rechtsfaehige Stiftungen": "Nicht rechtsfähige Stiftungen",
 }
 
@@ -165,6 +167,10 @@ def jahrgang_aus_url(url: str | None) -> int | None:
     ausgewiesen statt weggelassen: Die Herkunft nennt den Dateinamen als
     Fundstelle des Jahrgangs."""
     m = _JAHR_IN_URL.search(url or "")
+    if m:
+        return int(m.group(1))
+    # 2020/2021: „1101%20Haushaltsplan%20der%20Stadt%20Oldenburg%202021.csv"
+    m = re.search(r"Oldenburg(?:%20|\s)(20\d\d)", url or "")
     return int(m.group(1)) if m else None
 
 
@@ -240,8 +246,12 @@ def lies(csv_text: str, year: int) -> dict:
             "bestanden": False}
     if not roh:
         return {**leer, "nachweis": "Datei ist leer"}
-    if not kopfprobe(roh[0]):
+    # 2020/2021 steht vor dem Finanzhaushalt noch der Ergebnishaushalt in
+    # derselben Datei — gelesen wird ab der Kopfzeile mit Ein-/Auszahlungen.
+    kopf = next((i for i, ln in enumerate(roh) if kopfprobe(ln)), None)
+    if kopf is None:
         return {**leer, "nachweis": f"Kopfzeile nicht in der erwarteten Form: {roh[0]!r}"}
+    roh = roh[kopf:]
 
     zeilen: list[dict] = []
     gesamt: dict | None = None
