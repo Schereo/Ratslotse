@@ -2214,7 +2214,10 @@ export interface paths {
          *     - ``rows``: alle Vorhaben, jüngster Beginn zuerst,
          *     - ``lists``: die eingelesenen Listen mit Datenstand, Zahl und Summe —
          *       damit die Seite sagen kann, wie aktuell was ist,
-         *     - ``recipients``: Schlüssel → Anzeigename der Empfänger.
+         *     - ``recipients``: Schlüssel → Anzeigename der Empfänger,
+         *     - ``rows[].templates``: Ratsvorlagen, die das Vorhaben erkennbar meinen,
+         *     - ``applications``: Förderanträge und Bewerbungen, die der Rat beraten hat
+         *       (``council/foerder_vorlagen.py``) — Anträge, keine Bewilligungen.
          *
          *     Beträge sind Bewilligungen, keine Auszahlungen. Städtebauförderung und
          *     reine Landesprogramme stehen in keiner der Listen.
@@ -8144,6 +8147,8 @@ export interface components {
         };
         /** BudgetGrantsReceived */
         BudgetGrantsReceived: {
+            /** Applications */
+            applications: components["schemas"]["GrantTemplate"][];
             /** Lists */
             lists: components["schemas"]["GrantReceivedList"][];
             /** Provenance */
@@ -11321,6 +11326,8 @@ export interface components {
             start: string | null;
             /** Summary */
             summary: string | null;
+            /** Templates */
+            templates: components["schemas"]["GrantTemplate"][];
             /** Title */
             title: string;
         };
@@ -11372,6 +11379,29 @@ export interface components {
             seq: number;
             /** Sub Budget No */
             sub_budget_no: number;
+        };
+        /**
+         * GrantTemplate
+         * @description Eine Ratsvorlage zu Fördergeld (``council/foerder_vorlagen.py``) mit
+         *     ihrer LETZTEN Beratung: Datum, Gremium, Ergebnis, Beschluss-Id für den
+         *     Link. ``basis`` nur an einem Vorhaben: ``amount`` (Betrag und Name stehen
+         *     im Text) oder ``title`` (der Vorlagentitel steht im Titel des Vorhabens).
+         */
+        GrantTemplate: {
+            /** Basis */
+            basis?: string;
+            /** Committee */
+            committee: string | null;
+            /** Date */
+            date: string | null;
+            /** Decision Id */
+            decision_id: number | null;
+            /** Outcome */
+            outcome: string | null;
+            /** Template Number */
+            template_number: string;
+            /** Title */
+            title: string;
         };
         /**
          * GrantTotal
@@ -23926,4 +23956,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: f4fe777a8116cd4085bcd66ee18c1c85503e8f0b22bfda9550d42c1b613d2026
+// vertrag-sha256: 09c43e6c464597cd04fb88b2245b1a0fc97d97bf3d3cffa1ce29d4767428e8ac

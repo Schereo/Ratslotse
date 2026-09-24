@@ -3545,6 +3545,20 @@ class GrantTotal(TypedDict):
     amount: float
 
 
+class GrantTemplate(TypedDict):
+    """Eine Ratsvorlage zu Fördergeld (``council/foerder_vorlagen.py``) mit
+    ihrer LETZTEN Beratung: Datum, Gremium, Ergebnis, Beschluss-Id für den
+    Link. ``basis`` nur an einem Vorhaben: ``amount`` (Betrag und Name stehen
+    im Text) oder ``title`` (der Vorlagentitel steht im Titel des Vorhabens)."""
+    template_number: str
+    title: str
+    decision_id: int | None
+    date: str | None
+    committee: str | None
+    outcome: str | None
+    basis: NotRequired[str]
+
+
 class GrantReceivedRow(TypedDict):
     """Ein gefördertes Vorhaben der Stadt oder einer Gesellschaft.
 
@@ -3567,6 +3581,7 @@ class GrantReceivedRow(TypedDict):
     start: str | None
     end: str | None
     herkunft_id: int | None
+    templates: list[GrantTemplate]
 
 
 class GrantReceivedList(TypedDict):
@@ -3589,6 +3604,9 @@ class GrantReceivedTotal(TypedDict):
 
 class BudgetGrantsReceived(TypedDict):
     rows: list[GrantReceivedRow]
+    #: Förderanträge und Bewerbungen, die der Rat beraten hat — jüngste zuerst.
+    #: Ein Antrag ist keine Bewilligung.
+    applications: list[GrantTemplate]
     lists: list[GrantReceivedList]
     totals: list[GrantReceivedTotal]
     recipients: dict[str, str]

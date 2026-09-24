@@ -2407,6 +2407,17 @@ class SchemaMixin(StoreBasis):
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
             "PRIMARY KEY (source, source_id))"
         )
+        # Welche Ratsvorlage erkennbar ein bewilligtes Vorhaben meint
+        # (council/foerder_vorlagen.py). Abgeleitet aus zwei Tabellen, die ihre
+        # eigene Herkunft tragen — deshalb ohne herkunft_id; jeder Lauf ersetzt
+        # alle Zeilen.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_grant_templates ("
+            "source TEXT NOT NULL, source_id TEXT NOT NULL, "
+            "template_number TEXT NOT NULL, "
+            "basis TEXT NOT NULL, "                # amount | title
+            "PRIMARY KEY (source, source_id, template_number))"
+        )
         # Welche Amtsblatt-Ausgaben schon angesehen wurden — damit ein Lauf die
         # gescannten Ausgaben nicht jedes Mal neu lesen lässt (0,002 $ je Seite).
         self._conn.execute(
