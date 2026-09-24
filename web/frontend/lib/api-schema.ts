@@ -2114,6 +2114,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/council/budget/grants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Haushalt Zuschuesse
+         * @description Wer von der Stadt Zuschüsse bekommt — die Übersicht aus Anlage 003.
+         *
+         *     - ``rows``: die Zuschüsse eines Plans (Vorgabe: der jüngste), mit
+         *       ``sub_budget`` nur die eines Teilhaushalts, in Dokument-Reihenfolge,
+         *     - ``totals``: je Plan und Teilhaushalt Zahl und Summe — die Reihe über
+         *       alle eingelesenen Pläne, damit die Seite den Verlauf zeigen kann,
+         *       ohne acht Jahrgänge Zeilen zu laden,
+         *     - ``years``: die eingelesenen Pläne.
+         *
+         *     Vereine und Träger stehen mit Namen darin, wie in der Vorlage (Tims
+         *     Entscheidung 24.09.2026); Privatpersonen führt die Übersicht nicht.
+         *     Es ist der Entwurf der Verwaltung: Anlage 003 hängt an der
+         *     Einbringungs-Vorlage (``council/uebersichten.py``).
+         */
+        get: operations["haushalt_zuschuesse_api_council_budget_grants_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/council/budget/group": {
         parameters: {
             query?: never;
@@ -7886,6 +7918,21 @@ export interface components {
             /** Years */
             years: unknown[];
         };
+        /** BudgetGrants */
+        BudgetGrants: {
+            /** Provenance */
+            provenance: {
+                [key: string]: components["schemas"]["Herkunft"];
+            };
+            /** Rows */
+            rows: components["schemas"]["GrantRow"][];
+            /** Totals */
+            totals: components["schemas"]["GrantTotal"][];
+            /** Year */
+            year: number | null;
+            /** Years */
+            years: number[];
+        };
         /** BudgetGroup */
         BudgetGroup: {
             /** Consolidated */
@@ -10742,6 +10789,57 @@ export interface components {
         Goals: {
             /** Goals */
             goals: components["schemas"]["Goal"][];
+        };
+        /**
+         * GrantRow
+         * @description Ein Zuschuss an Dritte aus der Übersicht in Anlage 003.
+         *
+         *     ``description`` ist die Spalte „Beschreibung der Zuwendung" und nennt
+         *     meist den Empfänger („Zuschuss Reparaturrat"), ``note`` die Erläuterung.
+         *     ``amount`` ist der Ansatz im Planjahr, ``amount_prior`` der im Vorjahr —
+         *     beide aus demselben Plan. ``cash``: 1 bar, 0 unbar, ``None`` ohne Angabe
+         *     (2019 führt die Spalte nicht). ``lfd_nr`` ist die Nummer der Stadt und
+         *     nicht eindeutig; die Reihenfolge ist ``seq``.
+         */
+        GrantRow: {
+            /** Amount */
+            amount: number | null;
+            /** Amount Prior */
+            amount_prior: number | null;
+            /** Budget Year */
+            budget_year: number;
+            /** Cash */
+            cash: number | null;
+            /** Description */
+            description: string;
+            /** Herkunft Id */
+            herkunft_id: number | null;
+            /** Lfd Nr */
+            lfd_nr: number;
+            /** Note */
+            note: string | null;
+            /** Product Name */
+            product_name: string | null;
+            /** Product No */
+            product_no: string | null;
+            /** Seq */
+            seq: number;
+            /** Sub Budget No */
+            sub_budget_no: number;
+        };
+        /**
+         * GrantTotal
+         * @description Je Plan und Teilhaushalt: Zahl und Summe der Zuschüsse im Planjahr.
+         */
+        GrantTotal: {
+            /** Amount */
+            amount: number;
+            /** Budget Year */
+            budget_year: number;
+            /** N */
+            n: number;
+            /** Sub Budget No */
+            sub_budget_no: number;
         };
         /**
          * GuaranteeRow
@@ -17906,6 +18004,38 @@ export interface operations {
             };
         };
     };
+    haushalt_zuschuesse_api_council_budget_grants_get: {
+        parameters: {
+            query?: {
+                sub_budget?: number | null;
+                year?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetGrants"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     haushalt_konzern_api_council_budget_group_get: {
         parameters: {
             query?: never;
@@ -23069,4 +23199,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 5fd47d8c9ec4139d16f2ca3968cd187693889b6fa1adf3d93bd428648340e64f
+// vertrag-sha256: 3c6e059de6ac423c7f1e8b3242d83cb8feddacc531c665abd10be496f1242554

@@ -3413,6 +3413,45 @@ class FinanceBudgetRow(TypedDict):
     herkunft_id: int | None
 
 
+class GrantRow(TypedDict):
+    """Ein Zuschuss an Dritte aus der Übersicht in Anlage 003.
+
+    ``description`` ist die Spalte „Beschreibung der Zuwendung" und nennt
+    meist den Empfänger („Zuschuss Reparaturrat"), ``note`` die Erläuterung.
+    ``amount`` ist der Ansatz im Planjahr, ``amount_prior`` der im Vorjahr —
+    beide aus demselben Plan. ``cash``: 1 bar, 0 unbar, ``None`` ohne Angabe
+    (2019 führt die Spalte nicht). ``lfd_nr`` ist die Nummer der Stadt und
+    nicht eindeutig; die Reihenfolge ist ``seq``."""
+    budget_year: int
+    seq: int
+    lfd_nr: int
+    sub_budget_no: int
+    product_no: str | None
+    product_name: str | None
+    description: str
+    amount_prior: float | None
+    amount: float | None
+    note: str | None
+    cash: int | None
+    herkunft_id: int | None
+
+
+class GrantTotal(TypedDict):
+    """Je Plan und Teilhaushalt: Zahl und Summe der Zuschüsse im Planjahr."""
+    budget_year: int
+    sub_budget_no: int
+    n: int
+    amount: float
+
+
+class BudgetGrants(TypedDict):
+    years: list[int]
+    year: int | None
+    rows: list[GrantRow]
+    totals: list[GrantTotal]
+    provenance: Provenance
+
+
 class BudgetInvestments(TypedDict):
     financial_budget: list[Any]
     investments: list[Any]

@@ -4697,6 +4697,54 @@
         "title": "BudgetFixedAssets",
         "type": "object"
       },
+      "BudgetGrants": {
+        "properties": {
+          "provenance": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Herkunft"
+            },
+            "title": "Provenance",
+            "type": "object"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/GrantRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "totals": {
+            "items": {
+              "$ref": "#/components/schemas/GrantTotal"
+            },
+            "title": "Totals",
+            "type": "array"
+          },
+          "year": {
+            "title": "Year",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "years": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Years",
+            "type": "array"
+          }
+        },
+        "required": [
+          "years",
+          "year",
+          "rows",
+          "totals",
+          "provenance"
+        ],
+        "title": "BudgetGrants",
+        "type": "object"
+      },
       "BudgetGroup": {
         "properties": {
           "consolidated": {
@@ -11683,6 +11731,125 @@
           "goals"
         ],
         "title": "Goals",
+        "type": "object"
+      },
+      "GrantRow": {
+        "description": "Ein Zuschuss an Dritte aus der Übersicht in Anlage 003.\n\n``description`` ist die Spalte „Beschreibung der Zuwendung\" und nennt\nmeist den Empfänger („Zuschuss Reparaturrat\"), ``note`` die Erläuterung.\n``amount`` ist der Ansatz im Planjahr, ``amount_prior`` der im Vorjahr —\nbeide aus demselben Plan. ``cash``: 1 bar, 0 unbar, ``None`` ohne Angabe\n(2019 führt die Spalte nicht). ``lfd_nr`` ist die Nummer der Stadt und\nnicht eindeutig; die Reihenfolge ist ``seq``.",
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "amount_prior": {
+            "title": "Amount Prior",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "budget_year": {
+            "title": "Budget Year",
+            "type": "integer"
+          },
+          "cash": {
+            "title": "Cash",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "herkunft_id": {
+            "title": "Herkunft Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "lfd_nr": {
+            "title": "Lfd Nr",
+            "type": "integer"
+          },
+          "note": {
+            "title": "Note",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "product_name": {
+            "title": "Product Name",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "product_no": {
+            "title": "Product No",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          },
+          "sub_budget_no": {
+            "title": "Sub Budget No",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "budget_year",
+          "seq",
+          "lfd_nr",
+          "sub_budget_no",
+          "product_no",
+          "product_name",
+          "description",
+          "amount_prior",
+          "amount",
+          "note",
+          "cash",
+          "herkunft_id"
+        ],
+        "title": "GrantRow",
+        "type": "object"
+      },
+      "GrantTotal": {
+        "description": "Je Plan und Teilhaushalt: Zahl und Summe der Zuschüsse im Planjahr.",
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          },
+          "budget_year": {
+            "title": "Budget Year",
+            "type": "integer"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "sub_budget_no": {
+            "title": "Sub Budget No",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "budget_year",
+          "sub_budget_no",
+          "n",
+          "amount"
+        ],
+        "title": "GrantTotal",
         "type": "object"
       },
       "GuaranteeRow": {
@@ -26422,6 +26589,64 @@
           }
         },
         "summary": "Haushalt Vollzug",
+        "tags": [
+          "council"
+        ]
+      }
+    },
+    "/api/council/budget/grants": {
+      "get": {
+        "description": "Wer von der Stadt Zuschüsse bekommt — die Übersicht aus Anlage 003.\n\n- ``rows``: die Zuschüsse eines Plans (Vorgabe: der jüngste), mit\n  ``sub_budget`` nur die eines Teilhaushalts, in Dokument-Reihenfolge,\n- ``totals``: je Plan und Teilhaushalt Zahl und Summe — die Reihe über\n  alle eingelesenen Pläne, damit die Seite den Verlauf zeigen kann,\n  ohne acht Jahrgänge Zeilen zu laden,\n- ``years``: die eingelesenen Pläne.\n\nVereine und Träger stehen mit Namen darin, wie in der Vorlage (Tims\nEntscheidung 24.09.2026); Privatpersonen führt die Übersicht nicht.\nEs ist der Entwurf der Verwaltung: Anlage 003 hängt an der\nEinbringungs-Vorlage (``council/uebersichten.py``).",
+        "operationId": "haushalt_zuschuesse_api_council_budget_grants_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "sub_budget",
+            "required": false,
+            "schema": {
+              "title": "Sub Budget",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "year",
+            "required": false,
+            "schema": {
+              "title": "Year",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetGrants"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Haushalt Zuschuesse",
         "tags": [
           "council"
         ]
