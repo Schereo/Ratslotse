@@ -60,7 +60,7 @@ Zugang steht als `REGIONALSTATISTIK_TOKEN` in der `.env`.
    kostenloses Konto; Zugang über einen persönlichen API-Token
    (`REGIONALSTATISTIK_TOKEN` in der `.env`). *Empfehlung:* Tim legt das Konto
    an; bis dahin baut PR 7 auf den LSN-Downloads.
-5. **Budgetberichte der Fachausschüsse (PR 6).** *Empfehlung:* erst messen, nur
+5. **Budgetberichte der Fachausschüsse (PR 8).** *Empfehlung:* erst messen, nur
    bauen, wenn mindestens drei Jahrgänge dieselbe Tabelle führen.
 
 ## 3. Reihenfolge
