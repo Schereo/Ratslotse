@@ -3619,6 +3619,30 @@ class FederalGroup(TypedDict):
     lower_saxony: int
 
 
+class CityDebt(TypedDict):
+    """Die Schulden einer Stadt zum 31.12. — ``debt_core`` im Kernhaushalt,
+    ``debt_entities`` in den Einrichtungen, die ihr zu 100 % gehören, beides
+    in Euro und je Einwohner*in (Einwohner am 30.06. desselben Jahres)."""
+    key: str
+    city: str
+    is_oldenburg: bool
+    population: float | None
+    debt_core: float | None
+    debt_entities: float | None
+    core_per_capita: float | None
+    entities_per_capita: float | None
+
+
+class CityDebtYear(TypedDict):
+    year: int
+    cities: list[CityDebt]
+
+
+class BudgetDebtComparison(TypedDict):
+    years: list[CityDebtYear]
+    provenance: Provenance
+
+
 class BudgetFederalComparison(TypedDict):
     indicators: list[FederalIndicator]
     group: FederalGroup

@@ -572,12 +572,12 @@ sondern auch, ob sie einer anderen etwas wegnimmt oder ihr etwas anhängt.
 
 ## Der Bereich hält sich selbst aktuell
 
-**Einunddreißig** Datenschichten, jede einmal von Hand eingelesen — ohne Cron
+**Zweiunddreißig** Datenschichten, jede einmal von Hand eingelesen — ohne Cron
 veraltet der ganze Bereich still, sobald niemand mehr daran denkt.
 `check_finanzdaten.py` (sonntags) nimmt das ab: **Neun** liest er
-selbst nach (sie liegen als Anlage im Ratsinformationssystem), die **zweiundzwanzig**
+selbst nach (sie liegen als Anlage im Ratsinformationssystem), die **dreiundzwanzig**
 übrigen werden nur beobachtet — er meldet, dass ein Jahrgang fällig wäre, und
-nennt Quelle und Skript. Zehn davon kommen von außerhalb, zwölf liegen zwar
+nennt Quelle und Skript. Elf davon kommen von außerhalb, zwölf liegen zwar
 im Ratsinformationssystem, haben aber eigene Einlese-Skripte. „Lädt nichts herunter" ist
 die Regel, an der dieser Job hängt. Maßgeblich ist `finanzquellen.REIHENFOLGE`;
 diese Doku zählt nach, sie legt nichts fest.

@@ -2016,6 +2016,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/council/budget/debt-comparison": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Haushalt Schuldenvergleich
+         * @description Die Schulden der acht kreisfreien Städte Niedersachsens — Kernhaushalt
+         *     und die Einrichtungen, die ihnen ganz gehören (``council/regionalstatistik.py``).
+         *
+         *     Je Jahr alle Städte alphabetisch, mit Beträgen und Werten je Einwohner*in.
+         *     Kein Rang. Nur Jahre, in denen Oldenburgs Kernhaushalt zur eigenen
+         *     Schuldenreihe passt, stehen im Bestand.
+         */
+        get: operations["haushalt_schuldenvergleich_api_council_budget_debt_comparison_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/council/budget/documents": {
         parameters: {
             query?: never;
@@ -8001,6 +8026,15 @@ export interface components {
             /** Years */
             years: unknown[];
         };
+        /** BudgetDebtComparison */
+        BudgetDebtComparison: {
+            /** Provenance */
+            provenance: {
+                [key: string]: components["schemas"]["Herkunft"];
+            };
+            /** Years */
+            years: components["schemas"]["CityDebtYear"][];
+        };
         /** BudgetDispute */
         BudgetDispute: {
             /** Rounds */
@@ -8542,6 +8576,37 @@ export interface components {
             current_password: string;
             /** New Password */
             new_password: string;
+        };
+        /**
+         * CityDebt
+         * @description Die Schulden einer Stadt zum 31.12. — ``debt_core`` im Kernhaushalt,
+         *     ``debt_entities`` in den Einrichtungen, die ihr zu 100 % gehören, beides
+         *     in Euro und je Einwohner*in (Einwohner am 30.06. desselben Jahres).
+         */
+        CityDebt: {
+            /** City */
+            city: string;
+            /** Core Per Capita */
+            core_per_capita: number | null;
+            /** Debt Core */
+            debt_core: number | null;
+            /** Debt Entities */
+            debt_entities: number | null;
+            /** Entities Per Capita */
+            entities_per_capita: number | null;
+            /** Is Oldenburg */
+            is_oldenburg: boolean;
+            /** Key */
+            key: string;
+            /** Population */
+            population: number | null;
+        };
+        /** CityDebtYear */
+        CityDebtYear: {
+            /** Cities */
+            cities: components["schemas"]["CityDebt"][];
+            /** Year */
+            year: number;
         };
         /**
          * CityMapPoint
@@ -18402,6 +18467,26 @@ export interface operations {
             };
         };
     };
+    haushalt_schuldenvergleich_api_council_budget_debt_comparison_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetDebtComparison"];
+                };
+            };
+        };
+    };
     haushalt_dokumente_api_council_budget_documents_get: {
         parameters: {
             query?: never;
@@ -23751,4 +23836,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 3e8d77eb337af67248be815a3c052a0c8a0b47e3b6133336d41a755e55e987d2
+// vertrag-sha256: c3b0fa569f04fd536d138357dc8b926dc80cb1e8a3b441a70e9009de871b033c

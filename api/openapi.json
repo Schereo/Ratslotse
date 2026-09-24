@@ -4662,6 +4662,30 @@
         "title": "BudgetDebt",
         "type": "object"
       },
+      "BudgetDebtComparison": {
+        "properties": {
+          "provenance": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Herkunft"
+            },
+            "title": "Provenance",
+            "type": "object"
+          },
+          "years": {
+            "items": {
+              "$ref": "#/components/schemas/CityDebtYear"
+            },
+            "title": "Years",
+            "type": "array"
+          }
+        },
+        "required": [
+          "years",
+          "provenance"
+        ],
+        "title": "BudgetDebtComparison",
+        "type": "object"
+      },
       "BudgetDispute": {
         "properties": {
           "rounds": {
@@ -5918,6 +5942,91 @@
           "new_password"
         ],
         "title": "ChangePasswordRequest",
+        "type": "object"
+      },
+      "CityDebt": {
+        "description": "Die Schulden einer Stadt zum 31.12. — ``debt_core`` im Kernhaushalt,\n``debt_entities`` in den Einrichtungen, die ihr zu 100 % gehören, beides\nin Euro und je Einwohner*in (Einwohner am 30.06. desselben Jahres).",
+        "properties": {
+          "city": {
+            "title": "City",
+            "type": "string"
+          },
+          "core_per_capita": {
+            "title": "Core Per Capita",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "debt_core": {
+            "title": "Debt Core",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "debt_entities": {
+            "title": "Debt Entities",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "entities_per_capita": {
+            "title": "Entities Per Capita",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "is_oldenburg": {
+            "title": "Is Oldenburg",
+            "type": "boolean"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "population": {
+            "title": "Population",
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "key",
+          "city",
+          "is_oldenburg",
+          "population",
+          "debt_core",
+          "debt_entities",
+          "core_per_capita",
+          "entities_per_capita"
+        ],
+        "title": "CityDebt",
+        "type": "object"
+      },
+      "CityDebtYear": {
+        "properties": {
+          "cities": {
+            "items": {
+              "$ref": "#/components/schemas/CityDebt"
+            },
+            "title": "Cities",
+            "type": "array"
+          },
+          "year": {
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "year",
+          "cities"
+        ],
+        "title": "CityDebtYear",
         "type": "object"
       },
       "CityMapPoint": {
@@ -27394,6 +27503,28 @@
           }
         },
         "summary": "Haushalt Schulden",
+        "tags": [
+          "council"
+        ]
+      }
+    },
+    "/api/council/budget/debt-comparison": {
+      "get": {
+        "description": "Die Schulden der acht kreisfreien Städte Niedersachsens — Kernhaushalt\nund die Einrichtungen, die ihnen ganz gehören (``council/regionalstatistik.py``).\n\nJe Jahr alle Städte alphabetisch, mit Beträgen und Werten je Einwohner*in.\nKein Rang. Nur Jahre, in denen Oldenburgs Kernhaushalt zur eigenen\nSchuldenreihe passt, stehen im Bestand.",
+        "operationId": "haushalt_schuldenvergleich_api_council_budget_debt_comparison_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetDebtComparison"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Haushalt Schuldenvergleich",
         "tags": [
           "council"
         ]

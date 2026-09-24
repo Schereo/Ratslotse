@@ -91,6 +91,9 @@ ARTEN: dict[str, str] = {
     # Oldenburg im Bundesvergleich (council/bundesvergleich.py): ein Portal,
     # das die Zahlen der Statistischen Ämter für alle Kommunen aufbereitet.
     "wegweiser": "Wegweiser Kommune der Bertelsmann Stiftung (Daten der Statistischen Ämter)",
+    # Die Regionaldatenbank der Statistischen Ämter (council/regionalstatistik.py):
+    # dieselben Ämter, abgerufen über ihren Webservice mit eigenem Konto.
+    "regionalstatistik": "Regionaldatenbank der Statistischen Ämter des Bundes und der Länder",
 }
 
 #: Der ausdrückliche Verzicht. Keine Quelle darf ohne Angabe gespeichert
@@ -328,6 +331,12 @@ PROBEN: dict[str, str] = {
         "sechs Finanzhaushalts-Zeilen ergeben die beiden „Nachrichtlich“-Summen "
         "der Satzung auf den Cent. Gescannte Ausgaben liest ein Sehmodell; die "
         "Summenprobe fängt eine falsch gelesene Ziffer.",
+    "regional_debt_core_budget":
+        "Oldenburgs Kernhaushalt in der Schuldenstatistik der Regionaldatenbank "
+        "gegen die eigene Schuldenreihe der Stadt, auf 1.000 € genau. Ein Jahr, "
+        "in dem das nicht gelingt, fehlt für alle acht Städte. Die Schulden der "
+        "eigenen Einrichtungen haben keine Gegenreihe und stehen, wie die "
+        "Statistik sie führt.",
     "federal_comparison_own_series":
         "Oldenburgs Werte im Wegweiser Kommune gegen die eigenen Reihen: "
         "Einkommensteuer und Grundsteuer je Einwohner*in auf 3 % genau wie im "
