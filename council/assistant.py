@@ -1331,10 +1331,6 @@ def screen_context(store, screen: Screen, question: str, *,
                 geld = qa.geld_kontext(store, facetten_text, ausloeser, "money")
             except Exception:  # noqa: BLE001 — Zahlen sind Zusatz, nie Blocker
                 geld = {}
-            # L2: Der Zähler der Einordnung, wenn die Frage ihn nicht nennt —
-            # nur auf den Haushalts-Seiten, wo „das" die Seite meint.
-            if geld and einordnung_frage_ and haushaltsseite:
-                _nenner_partner(store, geld, screen.route)
             # Was die FRAGE zieht, geht vor dem, was nur der Bildschirm zieht
             # (s. `qa.geld_auswahl`): Die Seite ist Kontext, die Frage ist die
             # Frage. Nur bei einer eigenen Frage — „Was sehe ich hier?" meint
@@ -1351,6 +1347,13 @@ def screen_context(store, screen: Screen, question: str, *,
                         store, kern.begriffe, kern.begriffe, "money", facetten=kern.facetten))
                 except Exception:  # noqa: BLE001 — Zahlen sind Zusatz, nie Blocker
                     pass
+            # L2: Der Zähler der Einordnung, wenn die Frage ihn nicht nennt —
+            # NACH den Kernzahlen der Seite (L1, #1547), die ihn auf allen drei
+            # Seiten normalerweise schon mitbringen, samt Deckel `KERN_MAX`.
+            # Das hier füllt nur die Lücke, wenn der Kern ausfällt; es prüft
+            # auf den vorhandenen Schlüssel, ein zweiter Block entsteht nie.
+            if geld and einordnung_frage_ and haushaltsseite:
+                _nenner_partner(store, geld, screen.route)
             if geld and haushaltsseite and eigene_frage:
                 eigen = qa.geld_facetten(question) & set(geld.get("facets") or ())
                 if eigen:
