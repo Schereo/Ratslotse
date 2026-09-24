@@ -8,6 +8,7 @@ import { featureAktiv, useAppConfig } from "@/lib/features";
 import { karteHref } from "@/lib/routes";
 import { cn, formatDate } from "@/lib/utils";
 import { Button, DetailSkeleton, EmptyState, Sheet, SheetContent, SheetTitle, toast } from "@/components/ui";
+import { SEITEN_POLSTER } from "@/lib/vollbreit";
 import { StadtKarte, type KartenStufe } from "@/components/stadt-karte";
 import { EbenenChips } from "@/components/ebenen-chips";
 import { ebeneUmschalten, ebenenMerken, ebenenStart, ebenenZuUrl, type EbenenId } from "@/lib/karten-ebenen";
@@ -62,7 +63,8 @@ export default function KarteView() {
   // `undefined` heißt „noch nicht geladen" und wäre AUS — ein notFound() in
   // diesem Moment träfe jeden beim ersten Aufruf. Deshalb erst nach Antwort.
   if (cfg.isSuccess && !featureAktiv(cfg.data, "mein-viertel")) notFound();
-  if (!cfg.isSuccess) return <DetailSkeleton />;
+  // Das Polster, das die randlose Hülle hier nicht mehr gibt (lib/vollbreit.ts).
+  if (!cfg.isSuccess) return <div className={SEITEN_POLSTER}><DetailSkeleton /></div>;
   return <Buehne />;
 }
 
@@ -226,8 +228,10 @@ function Buehne() {
   function zumOrt(placeId: string) { router.push(karteHref(placeId)); }
   function zurStadt() { router.push(karteHref()); }
 
-  if (uebersicht.isLoading) return <DetailSkeleton />;
-  if (!orte || !uebersicht.data) return <EmptyState title="Die Karte lässt sich gerade nicht laden." mascot="confused" />;
+  if (uebersicht.isLoading) return <div className={SEITEN_POLSTER}><DetailSkeleton /></div>;
+  if (!orte || !uebersicht.data) {
+    return <div className={SEITEN_POLSTER}><EmptyState title="Die Karte lässt sich gerade nicht laden." mascot="confused" /></div>;
+  }
   const daten = uebersicht.data;
   const stufe: KartenStufe = ortName ? { art: "district", name: ortName } : { art: "city" };
   const place = tafel.data?.place as { id: string; name: string } | undefined;
@@ -247,10 +251,11 @@ function Buehne() {
   );
 
   return (
-    // Die Bühne bricht aus dem Seitenpolster aus: negative Ränder gegen
-    // `px-4/6/8` und `--rl-luft` des App-Layouts, damit die Karte bis an die
-    // Kanten läuft. `@container` für die Spalten-Varianten der Bausteine.
-    <div className="@container -mx-4 -my-[var(--rl-luft)] flex flex-col sm:-mx-6 lg:-mx-8 desk:h-[calc(100dvh)] desk:flex-row desk:overflow-hidden">
+    // Randlos: Die Hülle lässt für /karte Deckel und Polster weg
+    // (lib/vollbreit.ts) — bis 09/2026 brach die Bühne mit negativen Rändern
+    // aus dem Polster aus, blieb dabei aber im 1600er-Deckel stecken.
+    // `@container` für die Spalten-Varianten der Bausteine.
+    <div className="@container flex flex-col desk:h-[calc(100dvh)] desk:flex-row desk:overflow-hidden">
       <div className="relative h-[45dvh] min-h-[280px] desk:h-auto desk:min-h-0 desk:flex-1">
         <StadtKarte
           stufe={stufe}

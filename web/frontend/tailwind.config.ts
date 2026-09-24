@@ -50,6 +50,12 @@ const config: Config = {
            reine Breiten-Frage — Lesespalten bleiben trotzdem gedeckelt,
            `weit` verteilt nur den gewonnenen Raum (Belege-Spalte, Abstände). */
         weit: { raw: "(min-width: 1680px)" },
+        /* ultra — 1440p und 21:9 (Tims Befund 24.09.2026): Über `weit` wuchs
+           keine Seite mehr mit, auf 2560 px blieben je Seite ~390 px leer.
+           Die Hülle geht hier bis 2200 px — aber nur für Seiten, die sich in
+           lib/vollbreit.ts anmelden, weil sie den Platz in Spalten stecken
+           statt in längere Zeilen (docs/plan-breite-schirme.md). */
+        ultra: { raw: "(min-width: 2200px)" },
         desk: { raw: "(pointer: fine) and (min-width: 1024px)" },
         tab: { raw: "(pointer: coarse) and (min-width: 1024px)" },
         /* maus — reines Eingabegerät, OHNE Breiten-Gate (Tims Wunsch 19.08.):
