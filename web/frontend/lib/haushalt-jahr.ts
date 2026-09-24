@@ -39,8 +39,33 @@ export type WegStation = {
   votum: WegVotum | null;
 };
 
+/** Die Bekanntmachung der beschlossenen Satzung im Amtsblatt — erst damit
+ *  tritt sie in Kraft (council/amtsblatt.py). */
+export type WegBekanntmachung = {
+  date: string;
+  session_date: string | null;
+  issue_nr: string | null;
+  url: string | null;
+  /** Wortlaut eines Genehmigungsvermerks — 2020–2026 in keinem Jahr gedruckt. */
+  approval_note: string | null;
+  herkunft_id: number | null;
+};
+
+/** Ein öffentlicher Tagesordnungspunkt zur Genehmigung durch die
+ *  Kommunalaufsicht zwischen Ratsbeschluss und Jahresende. */
+export type WegDebattenpunkt = {
+  date: string;
+  committee: string;
+  ksinr: number;
+  top: string | null;
+  title: string;
+  template_number: string | null;
+};
+
 export type WegRunde = {
   year: number;
+  bekanntmachung?: WegBekanntmachung | null;
+  debatte_genehmigung?: WegDebattenpunkt[];
   template_number: string | null;
   kvonr: number | null;
   einbringung: WegStation | null;
@@ -179,6 +204,24 @@ export function jahresabschlussMass(doks: AbschlussDok[] | undefined): Abschluss
     mitVersatz,
     medianMonate: monate[Math.floor(monate.length / 2)],
   };
+}
+
+/** Wie lange nach dem Ratsbeschluss die Satzung im Amtsblatt stand — über
+ *  alle Jahrgänge mit beidem. Der Median in Wochen, dazu die Spanne. */
+export type BekanntmachungMass = { gezaehlt: number; medianWochen: number; minWochen: number; maxWochen: number };
+
+export function bekanntmachungMass(runden: WegRunde[]): BekanntmachungMass | null {
+  const wochen: number[] = [];
+  for (const r of runden) {
+    const rat = entscheidung(r);
+    if (!r.bekanntmachung?.date || !rat?.date) continue;
+    const tage = (Date.parse(r.bekanntmachung.date) - Date.parse(rat.date)) / 86_400_000;
+    if (tage >= 0) wochen.push(Math.round(tage / 7));
+  }
+  if (!wochen.length) return null;
+  wochen.sort((a, b) => a - b);
+  return { gezaehlt: wochen.length, medianWochen: wochen[Math.floor(wochen.length / 2)],
+    minWochen: wochen[0], maxWochen: wochen[wochen.length - 1] };
 }
 
 /** „im Jahr darauf" / „im übernächsten Jahr" / „drei Jahre später" — die

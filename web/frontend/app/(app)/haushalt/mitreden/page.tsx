@@ -47,7 +47,7 @@ import { StreitAbschnitt } from "@/components/haushalt/section-streit";
  *  Block „Was in den Listen stand" zeigt Positionen aus echten Papieren.
  *  (`tests/test_quellen_dokumente.py` liest die Literale dieser Liste, um
  *  stumme Beleg-Chips zu finden.) */
-const QUELLEN: QuellenSchluessel[] = ["ratsbeschluss", "aenderungsliste"];
+const QUELLEN: QuellenSchluessel[] = ["ratsbeschluss", "aenderungsliste", "budget_bylaw_published"];
 
 /** „2025-10-01" → „1.10.2025" — die Kurzform für den Phasen-Strahl der
  *  Bühne; ausgeschrieben (`deDatum`) wären vier Zeilen zu lang. */

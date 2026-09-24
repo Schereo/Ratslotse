@@ -40,13 +40,15 @@
 //   der Kommunalaufsicht anzuzeigen, genehmigungsbedürftig sind nur einzelne
 //   Teile.
 //
-// TODO(Datenpfad): Die Station „Genehmigung & Bekanntmachung" aus H3-06
-// bekommt der Strahl bewusst NICHT — weder die Anzeige bei der
-// Kommunalaufsicht noch die Bekanntmachung stehen im Ratsinformationssystem
-// (keine Sitzung, kein Dokument im Bestand). Erst wenn dafür eine Quelle
-// erschlossen ist (etwa das Amtsblatt), bekommt sie eine gemessene Lage;
-// bis dahin beschreibt der „Danach"-Absatz den Schritt ohne Datum, statt
-// eine Lage zu raten.
+// DIE BEKANNTMACHUNG hat seit 09/2026 eine gemessene Lage: Das Amtsblatt
+// ist erschlossen (council/amtsblatt.py), je Jahrgang mit Datum und Ausgabe.
+// Die Station steht auf dem Strahl mit ihrem Median („im Mittel 10 Wochen
+// nach dem Ratsbeschluss") und in der Stationsliste mit Link zur Ausgabe.
+// Die GENEHMIGUNG selbst bekommt weiter keine Station: Das Amtsblatt druckt
+// 2020–2026 in keinem Jahr einen Genehmigungsvermerk, und eine Anzeige bei
+// der Kommunalaufsicht steht in keiner Sitzung. Wo die Genehmigung politisch
+// Thema war (2026: Antrag 26/0389 im Finanzausschuss), steht der
+// Tagesordnungspunkt als Debatte in der Liste — mit Datum, weil er eins hat.
 //
 // KEINE TERMIN-KARTE MEHR (Tim, 22.08.2026: „dass hier immer die nächste
 // Ratssitzung als mögliche Haushaltsdebatte angekündigt wird, das sollten
@@ -72,7 +74,7 @@ import { ChevronRight, ExternalLink } from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
 import { sessionHref, decisionHref } from "@/lib/routes";
 import {
-  MONATE, WegDaten, WegRunde, WegStation, deDatum, deTagMonat,
+  MONATE, WegDaten, WegRunde, WegStation, bekanntmachungMass, deDatum, deTagMonat,
   entscheidung, jahresabschlussMass, monateZwischen,
   rhythmus, strahlRunde, versatzWort,
 } from "@/lib/haushalt-jahr";
@@ -200,6 +202,15 @@ export function TermineAbschnitt({ onBestand }: {
       von: ankerEntscheidung.date,
       gemessen: `${rh.imJahrSelbst} von ${rh.jahrgaenge} Jahrgängen erst beschlossen, als das Jahr schon lief`,
       href: sessionHref(ankerEntscheidung.ksinr, ankerEntscheidung.top ? [ankerEntscheidung.top] : undefined),
+    });
+  }
+  const bekannt = bekanntmachungMass(runden);
+  if (anker.bekanntmachung && bekannt) {
+    stationen.push({
+      label: "Im Amtsblatt, in Kraft",
+      von: anker.bekanntmachung.date,
+      gemessen: `in ${bekannt.gezaehlt} Jahrgängen im Mittel ${bekannt.medianWochen} Wochen nach dem Ratsbeschluss`,
+      href: "/haushalt/schulden",
     });
   }
   stationen.push({
@@ -437,10 +448,59 @@ function Weg({ runde }: { runde: WegRunde }) {
         </StationsZeile>
       ))}
 
+      {runde.bekanntmachung && (
+        <div className="flex gap-3 border-t border-border/70 py-3">
+          <div className="min-w-0 flex-1">
+            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
+              Bekannt gemacht, in Kraft
+            </p>
+            <p className="mt-1 text-[13.5px] font-bold leading-snug">
+              Amtsblatt Nr.&nbsp;{runde.bekanntmachung.issue_nr}
+              <Beleg q="budget_bylaw_published" />
+            </p>
+            <p className="mt-1 max-w-[76ch] text-[12.5px] leading-relaxed text-foreground/85">
+              {deDatum(runde.bekanntmachung.date)} — mit der öffentlichen Bekanntmachung tritt die
+              beschlossene Satzung in Kraft.{" "}
+              {runde.bekanntmachung.approval_note
+                ? <>Zur Genehmigung steht dort: „{runde.bekanntmachung.approval_note}“</>
+                : "Einen Genehmigungsvermerk der Kommunalaufsicht druckt das Amtsblatt nicht ab."}
+            </p>
+            {runde.bekanntmachung.url && (
+              <a href={runde.bekanntmachung.url} target="_blank" rel="noopener noreferrer"
+                className="mt-1.5 inline-flex items-center gap-1 text-[11.5px] font-semibold text-primary">
+                Ausgabe öffnen
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            )}
+          </div>
+        </div>
+      )}
+
+      {(runde.debatte_genehmigung ?? []).map((d) => (
+        <div key={`${d.ksinr}-${d.top}`} className="flex gap-3 border-t border-border/70 py-3">
+          <div className="min-w-0 flex-1">
+            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
+              Debatte um die Genehmigung
+            </p>
+            <p className="mt-1 text-[13.5px] font-bold leading-snug">{d.committee}</p>
+            <p className="mt-1 max-w-[76ch] text-[12.5px] leading-relaxed text-foreground/85">
+              {deDatum(d.date)} — {d.title}
+            </p>
+            <Link href={sessionHref(d.ksinr, d.top ? [d.top] : undefined)}
+              className="mt-1.5 inline-flex items-center gap-1 text-[11.5px] font-semibold text-primary">
+              Sitzung ansehen
+              {d.top && <span className="font-mono font-normal text-muted-foreground">{d.top}</span>}
+              <ChevronRight className="h-3 w-3" />
+            </Link>
+          </div>
+        </div>
+      ))}
+
       <Ablauf title="Danach">
         Die beschlossene Haushaltssatzung wird der Kommunalaufsicht angezeigt;
         genehmigungsbedürftig sind nur einzelne Teile, etwa der Gesamtbetrag der Kredite.
-        Die Satzung als Ganze wartet also auf keine Freigabe. Dann läuft das Haushaltsjahr,
+        Die Satzung als Ganze wartet also auf keine Freigabe — eine Genehmigung taucht in
+        keiner Sitzung und in keinem Amtsblatt 2020–2026 mit Datum auf. Dann läuft das Haushaltsjahr,
         und erst der Jahresabschluss danach zeigt, was tatsächlich daraus geworden ist —{" "}
         <Link href="/haushalt/plan-ist" className="font-semibold text-primary">
           geplant gegen tatsächlich
@@ -519,9 +579,10 @@ function Nachlauf() {
         Aus der Beratungsfolge der Sammelvorlage „Haushalt &lt;Jahr&gt; – Beschluss" im
         Ratsinformationssystem, dem jeweiligen Tagesordnungspunkt und — wo ein Protokoll
         vorliegt — dem Beschluss über die Haushaltssatzung. Alle gezeigten Sitzungen sind
-        öffentlich. Was die Verwaltung intern vorbereitet und was nach dem Beschluss mit der
-        Kommunalaufsicht läuft, steht in keiner Sitzung; diese beiden Schritte sind darum als
-        Ablauf beschrieben und nicht datiert.
+        öffentlich. Die Bekanntmachung kommt aus dem Amtsblatt der Stadt (ab 2020; 2019 ist
+        dort nicht verlinkt). Was die Verwaltung intern vorbereitet und was nach dem Beschluss
+        mit der Kommunalaufsicht läuft, steht in keiner Sitzung; diese beiden Schritte sind darum
+        als Ablauf beschrieben und nicht datiert.
       </p>
       {/* Die Trennlinie gehört um den ganzen Block, nicht um den Link: Als
           `border-t` am `<a>` selbst reichte sie nur so weit wie sein Text und

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  deDatum, deTagMonat, entscheidung, ergebnisArt, monateZwischen,
+  bekanntmachungMass, deDatum, deTagMonat, entscheidung, ergebnisArt, monateZwischen,
   naechsterHaushaltsTermin, rhythmus, strahlRunde, tageZumJahresbeginn, versatzWort,
 } from "./haushalt-jahr";
 
@@ -207,5 +207,30 @@ describe("ergebnisArt — die Wortwahl des Ratsinfos auf die Farbe abbilden", ()
     expect(ergebnisArt(null)).toBe("no_decision");
     expect(ergebnisArt("")).toBe("no_decision");
     expect(ergebnisArt("Vertagt ohne Aussprache")).toBe("no_decision");
+  });
+});
+
+describe("bekanntmachungMass — wie lange bis zum Amtsblatt", () => {
+  const mit = (year: number, rat: string, amtsblatt: string | null) => ({
+    ...(runde(year, [station("Rat", rat)]) as object),
+    bekanntmachung: amtsblatt ? { date: amtsblatt } : null,
+  }) as never;
+
+  it("misst ab dem Ratsbeschluss, Median und Spanne in Wochen", () => {
+    const m = bekanntmachungMass([
+      mit(2024, "2023-12-18", "2024-02-23"),   // 10 Wochen
+      mit(2025, "2024-12-16", "2025-03-07"),   // 12 Wochen
+      mit(2026, "2026-02-09", "2026-04-17"),   // 10 Wochen
+    ]);
+    expect(m).toEqual({ gezaehlt: 3, medianWochen: 10, minWochen: 10, maxWochen: 12 });
+  });
+
+  it("zählt Jahrgänge ohne Bekanntmachung nicht mit", () => {
+    const m = bekanntmachungMass([mit(2019, "2019-01-14", null), mit(2026, "2026-02-09", "2026-04-17")]);
+    expect(m?.gezaehlt).toBe(1);
+  });
+
+  it("liefert null ohne einen einzigen Jahrgang", () => {
+    expect(bekanntmachungMass([mit(2019, "2019-01-14", null)])).toBeNull();
   });
 });
