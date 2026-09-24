@@ -22,7 +22,9 @@ export const VOLLBREIT: readonly string[] = [
 
 /** Ab `ultra` (2200 px) bis 2200 px breit statt 1600 px. Nur Seiten, die
  *  den Platz in zusätzliche Spalten stecken, nicht in längere Zeilen. */
-export const ULTRA_BREIT: readonly string[] = [];
+export const ULTRA_BREIT: readonly string[] = [
+  "/council/decision",
+];
 
 function ohneSchraegstrich(pfad: string): string {
   // Der statische Export hängt einen Schrägstrich an (s. lib/public-routes.ts).
