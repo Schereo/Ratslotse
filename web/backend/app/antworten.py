@@ -3373,12 +3373,31 @@ class BudgetHoldings(TypedDict):
     texts: Any
 
 
+class FinanceBudgetRow(TypedDict):
+    """Eine Investitionszeile des Gesamtfinanzhaushalts (Anlage 006).
+
+    ``kind`` trennt den Ansatz des Planjahres (``budget``) von der
+    Finanzplanung (``financial_plan``); ``plan_budget_year`` sagt, aus welchem
+    Plan die Zahl stammt. ``role`` ist nur bei den Summen und dem Saldo
+    gesetzt, die übrigen Zeilen sind die Auszahlungs- und Einzahlungsarten."""
+    plan_budget_year: int
+    year: int
+    kind: str
+    nr: int
+    label: str
+    role: str | None
+    amount: float
+    is_total: int
+    herkunft_id: int | None
+
+
 class BudgetInvestments(TypedDict):
     financial_budget: list[Any]
     investments: list[Any]
     provenance: Provenance
     years: Any
     sub_budgets: list[Any]
+    finance_budget: NotRequired[list[FinanceBudgetRow]]
 
 
 class BudgetInvestmentProgram(TypedDict):

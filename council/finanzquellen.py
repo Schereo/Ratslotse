@@ -564,6 +564,11 @@ def _bestand_ergebnishaushalt(store: CouncilStore) -> set[tuple]:
     return {(j,) for j in store.ergebnishaushalt_jahrgaenge()}
 
 
+def _bestand_finanzhaushalt(store: CouncilStore) -> set[tuple]:
+    """Wie beim Gesamtergebnishaushalt: ein Dokument, ein Plan-Jahrgang."""
+    return {(j,) for j in store.finanzhaushalt_jahrgaenge()}
+
+
 def _einheiten_stellenplan(row: dict) -> set[tuple]:
     """Je Dokument zwei Einheiten: Teil A und Teil B.
 
@@ -2540,6 +2545,32 @@ for _q in (
         einlesen=lies_ergebnishaushalte,
     ),
     Finanzquelle(
+        key="finance_budget",
+        label="Gesamtfinanzhaushalt (Planjahre)",
+        was="Was die Stadt im Planjahr an Geld ein- und auszahlen will — "
+            "laufend, für Investitionen und zur Finanzierung, samt "
+            "Finanzplanung für die drei folgenden Jahre.",
+        tabelle="council_finance_budget",
+        # Anlage 006 desselben Haushaltsplans wie 005: gleicher Takt.
+        erwarteter_monat=10,
+        versatz=-1,
+        herkunft="ris",
+        erkennung=Erkennung(
+            # Dieselbe Begründung wie beim Gesamtergebnishaushalt: Das Label
+            # trifft genau die acht Anlagen 006 (2019–2026, 24.09.2026).
+            label_muster=("%Gesamtfinanzhaushalt%",),
+            mindest_seiten=3,
+            ordnung="document_id",
+        ),
+        einheiten_von=_einheiten_ergebnishaushalt,
+        balance=_bestand_finanzhaushalt,
+        # Kein `einlesen`: Die Spalten brauchen Wortkoordinaten, die der
+        # gespeicherte Textauszug nicht hergibt (s. council/finance_budget.py)
+        # — der Lauf lädt die vier Seiten deshalb selbst, wie der Vollzug.
+        nachschub="scripts/ingest_finanzhaushalt.py (lädt die PDFs selbst)",
+        lauf=("scripts/ingest_finanzhaushalt.py",),
+    ),
+    Finanzquelle(
         key="stellenplan",
         label="Stellenplan",
         was="Wie viele Stellen die Stadt vorhält — und wie viele davon nicht "
@@ -3001,7 +3032,7 @@ for _q in (
 #: weil er zeitlich dazwischenliegt: Erst was die Stadt vorhat, dann wie es im
 #: laufenden Jahr läuft, dann wie es ausgegangen ist. Die drei nebeneinander
 #: sind die Geschichte eines Haushaltsjahres.
-REIHENFOLGE = ("haushaltsplan", "income_budget", "investitionen",
+REIHENFOLGE = ("haushaltsplan", "income_budget", "finance_budget", "investitionen",
                "investitionsprogramm", "budget_execution",
                "jahresabschluss", "teilhaushalt",
                "stellenplan", "indicators", "rpa_fundstelle",

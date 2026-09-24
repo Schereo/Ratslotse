@@ -2228,6 +2228,9 @@ export interface paths {
          *       also samt laufender Verwaltungstätigkeit. Die Bezugsgröße, die aus
          *       „80,8 Mio. €" erst eine Aussage macht — und die einzige Zahl hier ohne
          *       Rechenprobe (eigene ``herkunft_id`` mit ``ungeprueft``, s. u.),
+         *     - ``finance_budget``: die Investitionszeilen des Gesamtfinanzhaushalts
+         *       (Anlage 006) aller Pläne — Summen, Saldo und Auszahlungsarten, je mit
+         *       ``kind`` (Ansatz oder Finanzplanung) und ``plan_budget_year``,
          *     - ``herkunft``: je ``herkunft_id`` Dokument, Fundstelle, bestandene Probe
          *       samt Messwert. Die geprüften Zeilen und die Bezugsgröße tragen
          *       **verschiedene** IDs; sie stehen in derselben Datei, aber nur die einen
@@ -7880,6 +7883,8 @@ export interface components {
         };
         /** BudgetInvestments */
         BudgetInvestments: {
+            /** Finance Budget */
+            finance_budget?: components["schemas"]["FinanceBudgetRow"][];
             /** Financial Budget */
             financial_budget: unknown[];
             /** Investments */
@@ -10532,6 +10537,35 @@ export interface components {
              * @default
              */
             message: string;
+        };
+        /**
+         * FinanceBudgetRow
+         * @description Eine Investitionszeile des Gesamtfinanzhaushalts (Anlage 006).
+         *
+         *     ``kind`` trennt den Ansatz des Planjahres (``budget``) von der
+         *     Finanzplanung (``financial_plan``); ``plan_budget_year`` sagt, aus welchem
+         *     Plan die Zahl stammt. ``role`` ist nur bei den Summen und dem Saldo
+         *     gesetzt, die übrigen Zeilen sind die Auszahlungs- und Einzahlungsarten.
+         */
+        FinanceBudgetRow: {
+            /** Amount */
+            amount: number;
+            /** Herkunft Id */
+            herkunft_id: number | null;
+            /** Is Total */
+            is_total: number;
+            /** Kind */
+            kind: string;
+            /** Label */
+            label: string;
+            /** Nr */
+            nr: number;
+            /** Plan Budget Year */
+            plan_budget_year: number;
+            /** Role */
+            role: string | null;
+            /** Year */
+            year: number;
         };
         /** Finances */
         Finances: {
@@ -22826,4 +22860,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: e921e70449674f887a48aa48519e2d6114aec44b522ac3f25eb2a092cf028710
+// vertrag-sha256: 383b483c713f7de557c520901746c553da516bd9ee8e828bec7f5998aa1740c2

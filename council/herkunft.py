@@ -305,6 +305,12 @@ PROBEN: dict[str, str] = {
         "selbst vor: Die Einnahmearten ergeben die Summe der Erträge, die "
         "Ausgabearten die Summe der Aufwendungen, und beide zusammen das "
         "ausgewiesene Ergebnis.",
+    "finance_budget_total_rows":
+        "Der Finanzhaushalt rechnet sich in jeder seiner sechs Jahresspalten "
+        "selbst vor: laufende Ein- und Auszahlungen ergeben ihre Summen und "
+        "den Saldo, ebenso die Investitionen, beide zusammen den "
+        "Finanzmittel-Überschuss, mit der Finanzierung die "
+        "Finanzmittelveränderung — 54 Proben je Plan, alle aufgegangen.",
     "income_budget_plan_column":
         "Das Jahr, über das der Rat wirklich entscheidet, ist im Plan "
         "hervorgehoben und steht in jeder Zeile ein zweites Mal. Diese "
@@ -708,6 +714,8 @@ HERKUNFT_TABELLEN: tuple[str, ...] = (
     "council_trade_tax_statistics",
     # Die Planjahre aus dem Gesamtergebnishaushalt — neu, ohne Altbestand.
     "council_income_budget",
+    # Und die Zahlungen derselben Pläne, Gesamtfinanzhaushalt (Anlage 006).
+    "council_finance_budget",
     # Die Investitionen des Finanzhaushalts — neu, ohne Altbestand.
     "council_investments",
     # Die einzelnen Vorhaben aus Anlage 004 des Haushaltsplans — ebenso.
