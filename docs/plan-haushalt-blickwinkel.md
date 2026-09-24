@@ -34,7 +34,9 @@
 | 10c | RIS 26/0389 | Antrag Bündnis 90/Die Grünen „Kommunalaufsicht: Kredite noch nicht genehmigt“ (Finanzausschuss 06.05.2026) | der politische Streit um die Genehmigung | seit #1523 im Bestand |
 | 11 | [Wegweiser Kommune](https://www.wegweiser-kommune.de/kommunen/oldenburg-oldenburg) (Bertelsmann) | Datenportal, Zeitreihen ab 2006 | Finanzindikatoren je Kommune (Steuereinnahmen, Kassenkredite, Schulden je Einwohner) | **CC0**, laut [Nutzungsbedingungen](https://www.wegweiser-kommune.de/nutzungsbedingungen) |
 
-## 2. Entscheidungen für Tim
+## 2. Entscheidungen
+
+**Tim hat am 24.09.2026 entschieden: alle fünf Empfehlungen gelten.**
 
 1. **Förderungen: nur die Stadt oder auch ihre Gesellschaften?** VWG, EGH und
    Klinikum bekommen eigene Mittel. *Empfehlung:* Stadt und die Gesellschaften

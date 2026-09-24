@@ -37,10 +37,12 @@
 | 7 | LSN-Online | Steuerkraft (nur 2026), Realsteuern 2023–2025, Gewerbesteuer 2017–2021 | Kassenstatistik, Schulden je Einwohner, Personalstand fehlen ganz |
 | 8 | Regionaldatenbank Deutschland (GENESIS) | nichts | Statistiken 71517 (Kassenergebnisse, vierteljährlich), 71327 (Schulden), 74111 (Personalstand); Web-API braucht ein kostenloses Konto |
 
-## 2. Entscheidungen für Tim
+## 2. Entscheidungen
 
-Zu jeder Frage steht eine Empfehlung. Baut das andere Modell ohne Antwort los,
-gilt die Empfehlung.
+**Tim hat am 24.09.2026 entschieden: alle fünf Empfehlungen gelten.** Zu
+Punkt 2 ausdrücklich: Vereine und Träger namentlich, Privatpersonen nicht.
+Zu Punkt 4: Konto bei der Regionaldatenbank (nicht Destatis-GENESIS), der
+Zugang steht als `REGIONALSTATISTIK_TOKEN` in der `.env`.
 
 1. **Gesellschaften: zwei Herkünfte in einer Reihe?** Beteiligungsbericht und
    RIS-Abschluss nennen für dasselbe Jahr dieselbe Zahl, der Bericht aber zwei
@@ -53,9 +55,11 @@ gilt die Empfehlung.
 3. **Vorbericht: Zahlen oder auch Text?** *Empfehlung:* drei Tabellen als
    Zahlen, die Abschnitte je Teilhaushalt als Wortlaut für die Bereichsseite und
    die KI-Frage, nie zusammengefasst.
-4. **Regionaldatenbank-Konto.** Die GENESIS-API braucht Zugangsdaten
-   (`GENESIS_USER`/`GENESIS_PASSWORD` in der `.env`). *Empfehlung:* Tim legt das
-   Konto an; bis dahin baut PR 8 auf den LSN-Downloads.
+4. **Regionaldatenbank-Konto.** Die API der Regionaldatenbank
+   (regionalstatistik.de, REST/JSON, nur POST) verlangt seit 05/2025 ein
+   kostenloses Konto; Zugang über einen persönlichen API-Token
+   (`REGIONALSTATISTIK_TOKEN` in der `.env`). *Empfehlung:* Tim legt das Konto
+   an; bis dahin baut PR 7 auf den LSN-Downloads.
 5. **Budgetberichte der Fachausschüsse (PR 6).** *Empfehlung:* erst messen, nur
    bauen, wenn mindestens drei Jahrgänge dieselbe Tabelle führen.
 
@@ -184,7 +188,7 @@ Drei Teile, je ein Parser in `council/uebersichten.py`:
 ### PR 7 — Städtevergleich aus LSN und Regionaldatenbank
 
 - **Quellen** LSN-Online-Downloads (heute schon für Steuerkraft/Realsteuern)
-  und, sobald das Konto da ist, GENESIS-API `regionalstatistik.de`
+  und, sobald das Konto da ist, die API der Regionaldatenbank `regionalstatistik.de`
   (Statistiken 71517, 71327, 74111) für die acht kreisfreien Städte
   Niedersachsens.
 - **Kennzahlen** Kassenergebnis je Quartal (Einzahlungen, Auszahlungen,
