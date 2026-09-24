@@ -15,6 +15,7 @@
  *  reicht sie schlicht nicht durch.
  */
 
+import { istVorschauKlick } from "@/components/beschluss-vorschau";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { CalendarPlus, ChevronRight, Flame, Paperclip, Users } from "lucide-react";
@@ -128,7 +129,7 @@ export function kurzfassung(it: AgendaRowItem): string | null {
   return it.social_text || it.summary || null;
 }
 
-export function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flash, ksinr, bookmarkable = true, shareable = true, videoResult, live = false }: {
+export function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flash, ksinr, bookmarkable = true, shareable = true, videoResult, live = false, onVorschau, gewaehlt = false }: {
   it: AgendaRowItem; query: string; outcome?: DecisionOutcome | null;
   decisionId?: number; myTopic?: string;
   ksinr?: number;
@@ -150,6 +151,12 @@ export function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flas
   /** Läuft GERADE — aus der Live-Verfolgung der Übertragung (`lib/live`,
    *  `liveItemKeys`). Rote Marke an der Zeile, weiche rote Tönung. */
   live?: boolean;
+  /** Breite Schirme: Ein schlichter Klick zeigt den Beschluss in der Vorschau
+   *  daneben, statt die Seite zu wechseln (components/beschluss-vorschau.tsx).
+   *  Cmd-/Strg-Klick öffnet weiter die volle Seite. */
+  onVorschau?: (decisionId: number) => void;
+  /** Dieser Punkt steht gerade in der Vorschau. */
+  gewaehlt?: boolean;
 }) {
   const hit = itemMatches(it, query);
   const body = (
@@ -216,7 +223,8 @@ export function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flas
       {decisionId != null && <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/50" aria-hidden />}
     </>
   );
-  const tone = hit ? "bg-amber-50 dark:bg-amber-950/40"
+  const tone = gewaehlt ? "bg-primary/[0.07] ring-1 ring-primary/30"
+    : hit ? "bg-amber-50 dark:bg-amber-950/40"
     : live ? "bg-red-500/[0.06] ring-1 ring-red-500/20"
     : myTopic ? "bg-signal/5" : "";
   const layout = cn(
@@ -255,6 +263,12 @@ export function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flas
       <li id={domId} className={cn(layout, tone)}>
         <Link
           href={decisionHref(decisionId)}
+          aria-current={gewaehlt || undefined}
+          onClick={onVorschau ? (e) => {
+            if (!istVorschauKlick(e)) return;
+            e.preventDefault();
+            onVorschau(decisionId);
+          } : undefined}
           className="flex min-w-0 flex-1 flex-wrap items-start gap-x-3 gap-y-1 transition-colors active:scale-[0.995]"
         >
           {body}

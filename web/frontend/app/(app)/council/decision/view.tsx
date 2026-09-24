@@ -670,8 +670,91 @@ function DecisionDetailInner() {
   const nachbarHref = (nr: number) => decisionHref(nr)
     + (suche ? `&suche=${encodeURIComponent(suche)}` : "");
 
+  // Der Weg der Vorlage und die Presse: rechts unter den Metadaten oder, ab
+  // `weit`, oben in der dritten Spalte — sonst stünde die rechte Spalte
+  // doppelt so lang wie die neue daneben.
+  const wegUndPresse = (
+    <>
+      {(data.deliberation_path && data.deliberation_path.length > 0) || data.template_journey.length > 1 ? (
+        <MetaCard title={`Weg der Vorlage ${d.template_number ?? ""}`.trim()}>
+          {/* Offizielle Beratungsfolge aus dem Ratsinfo: Ergebnis je Station,
+              geplante künftige Beratungen inklusive; sonst der aus unseren
+              eigenen Sitzungen rekonstruierte Weg. */}
+          <div className="ml-1 flex flex-col gap-2.5 border-l-2 border-border pl-3.5">
+            {data.deliberation_path && data.deliberation_path.length > 0
+              ? data.deliberation_path.map((b, i) => {
+                  const current = b.ksinr != null && b.ksinr === d.ksinr;
+                  return (
+                    <div key={`${b.ksinr ?? "x"}-${b.date ?? i}-${b.committee}`} className="relative">
+                      <span className={cn(
+                        "absolute -left-[19px] top-1.5 h-2 w-2 rounded-full",
+                        current ? "bg-primary" : b.future ? "border border-primary/60 bg-background" : "bg-border",
+                      )} />
+                      <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+                        <span className={cn("text-[13px]", current ? "font-medium text-foreground" : "text-foreground")}
+                          title={b.committee}>
+                          {shortCommittee(b.committee)}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground">
+                          {b.date ? formatDate(b.date) : "Termin offen"}
+                          {b.is_public === 0 && " · nichtöffentlich"}
+                          {current && " · hier"}
+                        </span>
+                        {b.future ? (
+                          <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">geplant</span>
+                        ) : b.result ? (
+                          <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">{b.result}</span>
+                        ) : null}
+                      </div>
+                    </div>
+                  );
+                })
+              : data.template_journey.map((stop) => {
+                  const current = stop.ksinr === d.ksinr;
+                  return (
+                    <div key={`${stop.ksinr}-${stop.item_number}`} className="relative">
+                      <span className={cn(
+                        "absolute -left-[19px] top-1.5 h-2 w-2 rounded-full",
+                        current ? "bg-primary" : "bg-border",
+                      )} />
+                      <span className={cn("text-[13px]", current && "font-medium text-foreground")} title={stop.committee}>
+                        {shortCommittee(stop.committee)}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground"> · {formatDate(stop.session_date)}{current ? " (hier)" : ""}</span>
+                    </div>
+                  );
+                })}
+          </div>
+          {/* Design 28a/W1: Der Weg der Vorlage ist der Ort, an dem der
+              Wunsch entsteht — man sieht, dass es weitergeht, und will
+              Bescheid wissen. Der Knopf steht deshalb hier und nicht in
+              einer Aktionsleiste. */}
+          {data.follow && <FollowButton kvonr={data.follow.kvonr} initial={data.follow.following} />}
+        </MetaCard>
+      ) : null}
+
+      {d.title && (
+        <MetaCard title="In der Presse">
+          <a
+            href={nwzSearchUrl(d.title)}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+          >
+            <Newspaper className="h-4 w-4 shrink-0" /> Bei NWZonline nach Berichten suchen
+          </a>
+        </MetaCard>
+      )}
+    </>
+  );
+
   return (
-    <div className="mx-auto max-w-5xl">
+    // Ab `weit` eine dritte Spalte (docs/plan-breite-schirme.md, PR 4): Die
+    // Erzählung behält ihre Breite, „Anderswo" und „Ähnliche Beschlüsse"
+    // ziehen von unten daneben — auf 1440p standen links und rechts je 648 px
+    // leer, während man für die Nachbarn scrollen musste. Ab `ultra` wachsen
+    // nur die beiden Seitenspalten; die Lesespalte bleibt um 900 px.
+    <div className="mx-auto max-w-5xl weit:max-w-[1480px] ultra:max-w-[1800px]">
       <div className="print-hidden flex flex-wrap items-center justify-between gap-3">
         {zeigeZurueck ? (
           <button onClick={backToSession} className="inline-flex min-w-0 items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
@@ -761,7 +844,7 @@ function DecisionDetailInner() {
         <DecisionTags key={d.id} detail={data} />
       </div>
 
-      <div className="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+      <div className="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px] weit:grid-cols-[minmax(0,1fr)_300px_360px] ultra:grid-cols-[minmax(0,1fr)_340px_520px]">
         {/* Linke Spalte (25a): nur noch die inhaltliche Erzählung —
             Kurzfassung → amtlicher Wortlaut → Verlauf & Begründung → Nachbarn.
             Dokumente, Anwesenheit, Beratungsweg und Presse sind Metadaten und
@@ -820,13 +903,9 @@ function DecisionDetailInner() {
             </Section>
           )}
 
-          <Elsewhere decisionId={d.id} />
-
-          {data.similar.length > 0 && (
-            <Section title={`Ähnliche Beschlüsse (${data.similar.length})`}>
-              <SimilarList items={data.similar} />
-            </Section>
-          )}
+          <div className="space-y-3 weit:hidden">
+            <Zusammenhang decisionId={d.id} similar={data.similar} />
+          </div>
         </div>
 
         {/* Rechte Spalte (25a): drei Karten statt sechs — „Auf einen Blick"
@@ -894,79 +973,36 @@ function DecisionDetailInner() {
             </MetaCard>
           )}
 
-          {(data.deliberation_path && data.deliberation_path.length > 0) || data.template_journey.length > 1 ? (
-            <MetaCard title={`Weg der Vorlage ${d.template_number ?? ""}`.trim()}>
-              {/* Offizielle Beratungsfolge aus dem Ratsinfo: Ergebnis je Station,
-                  geplante künftige Beratungen inklusive; sonst der aus unseren
-                  eigenen Sitzungen rekonstruierte Weg. */}
-              <div className="ml-1 flex flex-col gap-2.5 border-l-2 border-border pl-3.5">
-                {data.deliberation_path && data.deliberation_path.length > 0
-                  ? data.deliberation_path.map((b, i) => {
-                      const current = b.ksinr != null && b.ksinr === d.ksinr;
-                      return (
-                        <div key={`${b.ksinr ?? "x"}-${b.date ?? i}-${b.committee}`} className="relative">
-                          <span className={cn(
-                            "absolute -left-[19px] top-1.5 h-2 w-2 rounded-full",
-                            current ? "bg-primary" : b.future ? "border border-primary/60 bg-background" : "bg-border",
-                          )} />
-                          <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
-                            <span className={cn("text-[13px]", current ? "font-medium text-foreground" : "text-foreground")}
-                              title={b.committee}>
-                              {shortCommittee(b.committee)}
-                            </span>
-                            <span className="text-[11px] text-muted-foreground">
-                              {b.date ? formatDate(b.date) : "Termin offen"}
-                              {b.is_public === 0 && " · nichtöffentlich"}
-                              {current && " · hier"}
-                            </span>
-                            {b.future ? (
-                              <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">geplant</span>
-                            ) : b.result ? (
-                              <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">{b.result}</span>
-                            ) : null}
-                          </div>
-                        </div>
-                      );
-                    })
-                  : data.template_journey.map((stop) => {
-                      const current = stop.ksinr === d.ksinr;
-                      return (
-                        <div key={`${stop.ksinr}-${stop.item_number}`} className="relative">
-                          <span className={cn(
-                            "absolute -left-[19px] top-1.5 h-2 w-2 rounded-full",
-                            current ? "bg-primary" : "bg-border",
-                          )} />
-                          <span className={cn("text-[13px]", current && "font-medium text-foreground")} title={stop.committee}>
-                            {shortCommittee(stop.committee)}
-                          </span>
-                          <span className="text-[11px] text-muted-foreground"> · {formatDate(stop.session_date)}{current ? " (hier)" : ""}</span>
-                        </div>
-                      );
-                    })}
-              </div>
-              {/* Design 28a/W1: Der Weg der Vorlage ist der Ort, an dem der
-                  Wunsch entsteht — man sieht, dass es weitergeht, und will
-                  Bescheid wissen. Der Knopf steht deshalb hier und nicht in
-                  einer Aktionsleiste. */}
-              {data.follow && <FollowButton kvonr={data.follow.kvonr} initial={data.follow.following} />}
-            </MetaCard>
-          ) : null}
-
-          {d.title && (
-            <MetaCard title="In der Presse">
-              <a
-                href={nwzSearchUrl(d.title)}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
-              >
-                <Newspaper className="h-4 w-4 shrink-0" /> Bei NWZonline nach Berichten suchen
-              </a>
-            </MetaCard>
-          )}
+          {/* Weg und Presse stehen ab `weit` in der dritten Spalte. */}
+          <div className="space-y-4 weit:hidden">{wegUndPresse}</div>
         </aside>
+
+        {/* Die dritte Spalte ab `weit` — dieselben Blöcke wie links unten
+            (dort `weit:hidden`). Beide Instanzen teilen die Abfrage über den
+            react-query-Schlüssel; display:none nimmt die jeweils andere auch
+            aus dem Vorlese-Baum, wie bei der GlanceCard. */}
+        <div className="hidden min-w-0 space-y-4 weit:block">
+          {wegUndPresse}
+          <Zusammenhang decisionId={d.id} similar={data.similar} />
+        </div>
       </div>
     </div>
+  );
+}
+
+/** Was den Beschluss mit anderen verbindet: dieselbe Idee in anderen Städten
+ *  und die ähnlichen Oldenburger Beschlüsse. Steht unter der Erzählung oder,
+ *  ab `weit`, als eigene Spalte daneben. */
+function Zusammenhang({ decisionId, similar }: { decisionId: number; similar: DecisionDetail["similar"] }) {
+  return (
+    <>
+      <Elsewhere decisionId={decisionId} />
+      {similar.length > 0 && (
+        <Section title={`Ähnliche Beschlüsse (${similar.length})`}>
+          <SimilarList items={similar} />
+        </Section>
+      )}
+    </>
   );
 }
 

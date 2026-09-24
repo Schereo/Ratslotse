@@ -85,7 +85,7 @@ function EntityInner() {
   if (!data) notFound();
   const k = ENTITY_KIND[data.entity.kind] ?? ENTITY_KIND.project;
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-3xl weit:max-w-[1480px]">
       <div className="print-hidden flex items-center justify-between gap-3">
         {zeigeZurueck ? (
           <button onClick={() => zurueck("/council?tab=themen")} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
@@ -106,6 +106,12 @@ function EntityInner() {
         {data.money > 0 && <> · <span className="font-medium text-emerald-700 dark:text-emerald-400">{formatEuro(data.money)}</span> erkannt</>}
       </p>
 
+      {/* Ab `weit` zwei Spalten (docs/plan-breite-schirme.md, PR 6): links
+          das, was den Gegenstand beschreibt; rechts die Beschlussliste, die
+          einspaltig erst nach allem anderen kam. Die DOM-Reihenfolge bleibt,
+          darunter ändert sich nichts. */}
+      <div className="weit:mt-6 weit:grid weit:grid-cols-[minmax(0,560px)_minmax(0,1fr)] weit:items-start weit:gap-x-10">
+      <div className="min-w-0 weit:[&>*:first-child]:mt-0">
       {data.description && (
         <p className="mt-4 rounded-lg border border-border bg-muted/40 p-3.5 text-sm leading-relaxed text-foreground/90">
           {data.description}
@@ -138,12 +144,16 @@ function EntityInner() {
 
       <RelatedThemes related={data.related ?? []} />
 
+      </div>
+      <div className="min-w-0 weit:[&>*:first-child]:mt-0">
       <h2 className="mt-7 text-sm font-semibold text-muted-foreground">Beschlüsse zu diesem Thema</h2>
       <div className="mt-3 space-y-2">
         {data.decisions.map((d) => (
           <DecisionLinkCard key={d.id} id={d.id} title={d.title} committee={d.committee}
             session_date={d.session_date} field={d.policy_field} amount={d.amount_eur} sub={d.summary} />
         ))}
+      </div>
+      </div>
       </div>
     </div>
   );

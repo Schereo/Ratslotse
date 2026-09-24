@@ -22,7 +22,16 @@ export const VOLLBREIT: readonly string[] = [
 
 /** Ab `ultra` (2200 px) bis 2200 px breit statt 1600 px. Nur Seiten, die
  *  den Platz in zusätzliche Spalten stecken, nicht in längere Zeilen. */
-export const ULTRA_BREIT: readonly string[] = [];
+export const ULTRA_BREIT: readonly string[] = [
+  "/dashboard",
+  "/council/decision",
+  // Raster, deren Container-Queries die Spalten selbst vermehren. Geprüft
+  // und bewusst NICHT hier (24.09.2026, Bilder bei 2560 px): Haushalt (Zeilen
+  // mit Balken bekamen eine 700-px-Lücke), Konto, Themen, Quiz — sie wurden
+  // nur breiter, nicht reicher.
+  "/admin",
+  "/abos",
+];
 
 function ohneSchraegstrich(pfad: string): string {
   // Der statische Export hängt einen Schrägstrich an (s. lib/public-routes.ts).
@@ -50,3 +59,10 @@ export function huellenKlasse(breite: HuellenBreite): string {
 /** Das Polster der normalen Hülle, zum Nachreichen auf randlosen Seiten —
  *  für das, was dort KEINE Bühne ist: Ladeplatzhalter, Fehlerzustände. */
 export const SEITEN_POLSTER = "px-4 py-6 sm:px-6 sm:py-8 lg:px-8";
+
+/** Die Schwellen von `ultra` und `weit` aus tailwind.config.ts, für JavaScript. Nur dort
+ *  nehmen, wo CSS allein nicht reicht — wenn eine Seite ab `ultra` Bausteine
+ *  UMHÄNGT und sie dabei nicht doppelt einhängen darf (jede Instanz lädt). */
+export const ULTRA_MEDIA = "(min-width: 2200px)";
+/** Dasselbe für `weit`. */
+export const WEIT_MEDIA = "(min-width: 1680px)";

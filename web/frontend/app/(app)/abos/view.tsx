@@ -427,7 +427,7 @@ export function AbosView() {
           Fensterbreite — DESIGNSPRACHE §4), genau wie im Einrichtungs-
           Assistenten: Sechzehn Kacheln untereinander wären eine Reise, neben-
           einander sind sie ein Überblick. */}
-      <div className="mt-2 grid gap-2 @xl:grid-cols-2">
+      <div className="mt-2 grid gap-2 @xl:grid-cols-2 @[120rem]:grid-cols-3">
         {sortiert.map((d) => {
           const abonniert = abos.includes(d.name);
           return (
