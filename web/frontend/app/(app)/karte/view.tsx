@@ -224,6 +224,16 @@ function Buehne() {
     h(); mq.addEventListener("change", h);
     return () => mq.removeEventListener("change", h);
   }, []);
+  // 1440p und 21:9: Die Tafel wird zweispaltig, und ein gewähltes Vorhaben
+  // (bzw. ein Wahlbezirk) öffnet in der rechten Spalte, statt die Liste zu
+  // ersetzen — dieselbe Schwelle wie `ultra` in tailwind.config.ts.
+  const [ultra, setUltra] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 2200px)");
+    const h = () => setUltra(mq.matches);
+    h(); mq.addEventListener("change", h);
+    return () => mq.removeEventListener("change", h);
+  }, []);
 
   function zumOrt(placeId: string) { router.push(karteHref(placeId)); }
   function zurStadt() { router.push(karteHref()); }
@@ -344,7 +354,7 @@ function Buehne() {
         )}
       </div>
 
-      <aside className="min-w-0 border-t border-border bg-card desk:w-[420px] desk:shrink-0 desk:overflow-y-auto desk:border-l desk:border-t-0" aria-label={ortName ? `Tafel ${ortName}` : "Tafel Oldenburg"}>
+      <aside className="min-w-0 border-t border-border bg-card desk:w-[420px] ultra:desk:w-[840px] desk:shrink-0 desk:overflow-y-auto desk:border-l desk:border-t-0" aria-label={ortName ? `Tafel ${ortName}` : "Tafel Oldenburg"}>
         {stufe.art === "city" ? (
           <StadtTafel daten={daten} orte={orte} meine={meine} byName={byName} onOrt={zumOrt} onHoverOrt={setSchwebtOrt}
             themen={themenAn ? entitiesQ.data?.entities : undefined} wahl={wahl} />
@@ -354,11 +364,11 @@ function Buehne() {
           <div className="p-5">
             <EmptyState title="Diesen Ortsbereich gibt es nicht." mascot="search" action={<Button variant="secondary" onClick={zurStadt}>Zur Stadt</Button>} />
           </div>
-        ) : wahl && gewaehlterBezirk ? (
+        ) : wahl && gewaehlterBezirk && !ultra ? (
           <div className="p-5">
             <WahlBezirkTafel daten={wahl} bezirk={gewaehlterBezirk} ort={ortName} onZurueck={() => setWahlBezirk(null)} />
           </div>
-        ) : breit && z.ausgewaehlt ? (
+        ) : breit && z.ausgewaehlt && !ultra ? (
           <div className="p-5">
             <button type="button" onClick={() => z.setAktiv(null)} className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
               <ArrowLeft className="h-4 w-4" /> {place.name}
@@ -367,6 +377,11 @@ function Buehne() {
           </div>
         ) : (
           <ViertelTafel data={tafel.data} place={place} z={z}
+            nebenan={!ultra ? null
+              : wahl && gewaehlterBezirk
+                ? <WahlBezirkTafel daten={wahl} bezirk={gewaehlterBezirk} ort={ortName} onZurueck={() => setWahlBezirk(null)} />
+                // Das X im Detail führt zurück; die Liste links bleibt ja stehen.
+                : z.ausgewaehlt ? detail("immer") : null}
             wahl={wahl && ortName ? <WahlViertelTafel daten={wahl} ort={ortName} onBezirk={(nr) => { setWahlBezirk(nr); z.setAktiv(null); }} className={STAFFEL} style={staffelStil(1)} /> : null} />
         )}
       </aside>
@@ -459,8 +474,12 @@ function StadtTafel({ daten, orte, meine, byName, onOrt, onHoverOrt, themen, wah
   /** Das Ergebnis je Bezirk, wenn die Wahl-Ebene an ist. */
   wahl?: Wahlkarte;
 }) {
+  // Ab `ultra` zwei Spalten (die Tafel ist dann 840 px breit): links, was
+  // zum Einstieg gehört, rechts die Listen. Darunter bleibt es EINE Spalte in
+  // derselben Reihenfolge — die beiden Gruppen stapeln einfach.
   return (
-    <div className="flex flex-col gap-5 p-5">
+    <div className="flex flex-col gap-5 p-5 ultra:grid ultra:grid-cols-2 ultra:items-start">
+      <div className="flex flex-col gap-5">
       <section className={cn("hh-tafel relative z-30 rounded-2xl border border-border bg-background p-4 text-foreground", STAFFEL)} style={staffelStil(0)} aria-labelledby="viertel-stadt-titel">
         <Stadtzahl data={daten} orte={orte} kompakt />
         <div className="mt-4 border-t border-border pt-4">
@@ -480,9 +499,12 @@ function StadtTafel({ daten, orte, meine, byName, onOrt, onHoverOrt, themen, wah
       <div className={STAFFEL} style={staffelStil(1)}>
         <Highlights data={daten} ortHref={karteHref} kompakt />
       </div>
+      </div>
+      <div className="flex flex-col gap-5">
       {themen && <div className={STAFFEL} style={staffelStil(2)}><ThemenAktiv themen={themen} /></div>}
       <div className={STAFFEL} style={staffelStil(2)}>
         <Rangliste orte={orte} ortHref={karteHref} spalten="grid-cols-1" onHover={onHoverOrt} />
+      </div>
       </div>
     </div>
   );
@@ -490,15 +512,25 @@ function StadtTafel({ daten, orte, meine, byName, onOrt, onHoverOrt, themen, wah
 
 /** Die Tafel-Spalte auf der Viertel-Stufe — die Karten und die Liste von
  *  `/viertel`, in der Reihenfolge, die dort gilt. */
-function ViertelTafel({ data, place, z, wahl }: {
+function ViertelTafel({ data, place, z, wahl, nebenan }: {
   data: NonNullable<ReturnType<typeof useTafel>["data"]>;
   place: { id: string; name: string };
   z: ReturnType<typeof useTafelZustand>;
   /** Die Wahlbezirke dieses Ortsbereichs, wenn die Wahl-Ebene an ist. */
   wahl?: React.ReactNode;
+  /** Ab `ultra`: was statt der rechten Spalte steht (Vorhaben, Wahlbezirk).
+   *  Die Liste links bleibt dabei stehen — man springt von Pin zu Pin, ohne
+   *  jedes Mal zurück zu müssen. */
+  nebenan?: React.ReactNode;
 }) {
+  // Ab `ultra` zwei Spalten: links Kopf, Stand und die Vorhaben-Liste (sie
+  // gehört zu den Pins der Karte), rechts Termine, Sperrungen, Beteiligung,
+  // Geld, Presse. Darunter lösen sich die Spalten auf (`contents`), und
+  // `order` stellt die bisherige Reihenfolge her: die Liste NACH Termine,
+  // Sperrungen und Beteiligung.
   return (
-    <div className="flex flex-col gap-4 p-5">
+    <div className="flex flex-col gap-4 p-5 ultra:grid ultra:grid-cols-2 ultra:items-start ultra:gap-5">
+      <div className="contents ultra:flex ultra:flex-col ultra:gap-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs font-medium uppercase tracking-wider text-primary">Mein Viertel</p>
@@ -517,10 +549,7 @@ function ViertelTafel({ data, place, z, wahl }: {
 
       {z.vorhaben.length > 0 && <StandChips zaehler={z.zaehler} stufe={z.stufe} onStufe={(s) => { z.setStufe(s); z.setAktiv(null); }} />}
 
-      <DemnaechstKarte items={data.upcoming} className={STAFFEL} style={staffelStil(1)} />
-      <SperrungenKarte items={data.closures} className={STAFFEL} style={staffelStil(1)} />
-      <BeteiligungKarte items={data.participations} className={STAFFEL} style={staffelStil(2)} />
-
+      <div className="order-1 flex flex-col gap-4">
       {z.vorhaben.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-xl border-2 border-dashed border-border px-4 py-8 text-center">
           <Mascot pose="search" decorative className="h-16 w-16" />
@@ -534,7 +563,15 @@ function ViertelTafel({ data, place, z, wahl }: {
       ) : (
         <VorhabenListe sichtbar={z.sichtbar} aktiv={z.aktiv} schwebt={z.schwebt} onAktiv={z.setAktiv} onSchwebt={z.setSchwebt} className={STAFFEL} style={staffelStil(2)} />
       )}
+      </div>
+      </div>
 
+      <div className="contents ultra:flex ultra:flex-col ultra:gap-4">
+      {nebenan ?? <>
+      <DemnaechstKarte items={data.upcoming} className={STAFFEL} style={staffelStil(1)} />
+      <SperrungenKarte items={data.closures} className={STAFFEL} style={staffelStil(1)} />
+      <BeteiligungKarte items={data.participations} className={STAFFEL} style={staffelStil(2)} />
+      <div className="order-2 flex flex-col gap-4">
       <InvestitionenKarte items={data.investments} />
       <PresseBlock items={data.press} className={STAFFEL} style={staffelStil(3)} />
 
@@ -545,6 +582,9 @@ function ViertelTafel({ data, place, z, wahl }: {
         </div>
       )}
       <p className="text-xs leading-relaxed text-muted-foreground">{QUELLEN_HINWEIS}</p>
+      </div>
+      </>}
+      </div>
     </div>
   );
 }
