@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import { notFound, useSearchParams } from "next/navigation";
 import { ArrowLeft, CalendarDays, ExternalLink, MapPin } from "lucide-react";
 import type { SessionDetail } from "@/lib/types";
@@ -18,6 +18,8 @@ import { isLiveNow } from "@/lib/live";
 import { useFetch } from "@/lib/use-fetch";
 import { useHeute } from "@/lib/use-heute";
 import { useZurueck } from "@/lib/zurueck";
+import { useWeit } from "@/lib/use-ultra";
+import { BeschlussVorschau } from "@/components/beschluss-vorschau";
 
 const KOPF_AKTION = "min-h-11 h-auto min-w-0 justify-start gap-2 whitespace-normal rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-fluss hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&_svg]:h-4 [&_svg]:w-4 [&_svg]:shrink-0";
 
@@ -53,6 +55,11 @@ function SitzungInner() {
   // dahinter (und ihre drei Fallen) steckt im Hook. Die Markierung bleibt hier
   // stehen: Der geteilte Punkt ist der Grund, warum diese Seite offen ist.
   const flashTop = useTopSprung(ksinr, tops, Boolean(data), true);
+  // Breite Schirme: Tagesordnung links, der gewählte Beschluss rechts
+  // (docs/plan-breite-schirme.md, PR 5). `null` = noch nichts gewählt; dann
+  // steht der geteilte Punkt aus dem Link oder der erste mit Beschluss drin.
+  const weit = useWeit();
+  const [gewaehlt, setGewaehlt] = useState<number | null>(null);
 
   if (ksinr <= 0) notFound();
   if (loading) return <DetailSkeleton />;
@@ -69,9 +76,16 @@ function SitzungInner() {
   const datum = new Date(data.session_date + "T12:00:00").toLocaleDateString("de-DE", {
     weekday: "long", day: "numeric", month: "long", year: "numeric",
   });
+  // Nur wo es Beschlüsse gibt, lohnt die zweite Spalte — eine anstehende
+  // Sitzung hat noch keine, dort bliebe sie leer.
+  const mitBeschluss = items.filter((it) => it.is_public && decisionByItem[topKey(it.item_number)] != null);
+  const ausLink = tops.map((t) => decisionByItem[topKey(t)]).find((id) => id != null);
+  const vorschauId = weit && mitBeschluss.length > 0
+    ? (gewaehlt ?? ausLink ?? decisionByItem[topKey(mitBeschluss[0].item_number)])
+    : null;
 
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className={vorschauId != null ? "mx-auto max-w-[1480px]" : "mx-auto max-w-4xl"}>
       {/* „Zurück" nur für Angemeldete: Für Gäste führt jedes Ziel entweder aus
           der Seite heraus oder an die Anmeldewand (s. lib/zurueck.ts). */}
       {zeigeZurueck && (
@@ -129,7 +143,8 @@ function SitzungInner() {
         </div>
       </header>
 
-      <Card className="mt-5 p-4">
+      <div className={vorschauId != null ? "mt-5 grid grid-cols-[minmax(0,1fr)_minmax(0,560px)] items-start gap-6" : "mt-5"}>
+      <Card className="p-4">
         {/* Nur bei anstehenden Sitzungen: Nach der Sitzung ist die
             Änderungs-Historie Verwaltungsrauschen. */}
         {kuenftig && (data.agenda_changes?.length ?? 0) > 0 && (
@@ -154,12 +169,21 @@ function SitzungInner() {
                 decisionId={it.is_public ? decisionByItem[topKey(it.item_number)] : undefined}
                 videoResult={it.is_public ? videoByItem[videoKey(it.item_number)] : undefined}
                 domId={topDomId(ksinr, it.item_number)}
-                flash={flashTop === topDomId(ksinr, it.item_number)} />
+                flash={flashTop === topDomId(ksinr, it.item_number)}
+                onVorschau={vorschauId != null ? setGewaehlt : undefined}
+                gewaehlt={vorschauId != null && vorschauId === decisionByItem[topKey(it.item_number)]} />
             ))}
           </ul>
         )}
         <AttendanceSection detail={data} />
       </Card>
+      {vorschauId != null && (
+        // Klebt, damit sie beim Scrollen durch eine lange Tagesordnung neben
+        // dem Punkt bleibt. Höher als das Fenster wird sie nicht: Der
+        // Wortlaut ist in der Vorschau gekappt.
+        <BeschlussVorschau key={vorschauId} id={vorschauId} className="sticky top-6" />
+      )}
+      </div>
     </div>
   );
 }

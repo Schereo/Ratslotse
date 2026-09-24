@@ -54,7 +54,9 @@ export function huellenKlasse(breite: HuellenBreite): string {
  *  für das, was dort KEINE Bühne ist: Ladeplatzhalter, Fehlerzustände. */
 export const SEITEN_POLSTER = "px-4 py-6 sm:px-6 sm:py-8 lg:px-8";
 
-/** Die Schwelle von `ultra` aus tailwind.config.ts, für JavaScript. Nur dort
+/** Die Schwellen von `ultra` und `weit` aus tailwind.config.ts, für JavaScript. Nur dort
  *  nehmen, wo CSS allein nicht reicht — wenn eine Seite ab `ultra` Bausteine
  *  UMHÄNGT und sie dabei nicht doppelt einhängen darf (jede Instanz lädt). */
 export const ULTRA_MEDIA = "(min-width: 2200px)";
+/** Dasselbe für `weit`. */
+export const WEIT_MEDIA = "(min-width: 1680px)";
