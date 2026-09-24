@@ -167,6 +167,12 @@ jobs:
             .venv/bin/python scripts/ingest_uebersichten.py
             # Vorbericht (Anlage 001): Wortlaut je Teilhaushalt — lädt die PDFs selbst.
             .venv/bin/python scripts/ingest_vorbericht.py
+            # Die Budgetberichte an Jugendhilfe- und Schulausschuss: Investitionen
+            # je Maßnahme mit Prognose und Erläuterung. Braucht pymupdf (unten
+            # ohnehin nachgezogen) und lädt die Anlagen selbst.
+            .venv/bin/python -c "import pymupdf" 2>/dev/null \
+              || .venv/bin/pip install --quiet pymupdf
+            .venv/bin/python scripts/ingest_budgetberichte.py
             .venv/bin/python scripts/ingest_pruefberichte.py
             .venv/bin/python scripts/ingest_konzernabschluss.py
             .venv/bin/python scripts/ingest_investitionen_ist.py

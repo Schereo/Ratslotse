@@ -129,6 +129,8 @@ class HaushaltMixin(StoreBasis):
         "debt_plan":         ("council_debt_plan", "budget_year", None, None),
         # Der Vorbericht (Anlage 001): ein Dokument je Plan.
         "budget_notes":      ("council_budget_notes", "budget_year", None, None),
+        # Die Budgetberichte: ein Dokument je Stichtag und Teilhaushalt.
+        "budget_measures":   ("council_budget_measures", "budget_year", None, None),
         # Vierte Ebene: Abschnitt 2.1, die Bilanz. Der älteste Stichtag (2016)
         # stammt aus der Vorjahresspalte des Abschlusses 2017 — er trägt
         # deshalb dessen Dokument, mit eigener Fundstelle.
@@ -2249,6 +2251,55 @@ class HaushaltMixin(StoreBasis):
                 [(budget_year, a["sub_budget_no"], a["kind"], a["title"], a["text"],
                   a["page"], hid, now) for a in abschnitte])
         return len(abschnitte)
+
+    def save_budgetbericht(self, as_of: str, sub_budget_no: int, budget_year: int,
+                           massnahmen: list[dict], *, template_number: str, herkunft) -> int:
+        """Die Maßnahmen EINES Berichts (Stichtag, Teilhaushalt) ersetzen."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute(
+                "DELETE FROM council_budget_measures WHERE as_of = ? AND sub_budget_no = ?",
+                (as_of, sub_budget_no))
+            self._conn.executemany(
+                "INSERT INTO council_budget_measures (as_of, sub_budget_no, seq, budget_year, "
+                " measure_no, measure_no_to, name, kind, planned, forecast, carryover, note, "
+                " template_number, herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                [(as_of, sub_budget_no, i, budget_year, m["nr"] or None, m["nr_bis"], m["name"],
+                  m["kind"], m["planned"], m["forecast"], m["carryover"], m["note"] or None,
+                  template_number, hid, now) for i, m in enumerate(massnahmen, 1)])
+        return len(massnahmen)
+
+    def budgetbericht_stichtage(self, sub_budget_no: int | None = None) -> list[dict]:
+        """Die eingelesenen Berichte, jüngster zuerst: Stichtag, Teilhaushalt,
+        Vorlage, Zahl der Maßnahmen, Summen je Richtung."""
+        sql = ("SELECT as_of, sub_budget_no, budget_year, template_number, herkunft_id, "
+               "       COUNT(*) AS n, "
+               "       SUM(CASE WHEN kind = 'A' THEN COALESCE(planned, 0) END) AS planned, "
+               "       SUM(CASE WHEN kind = 'A' THEN COALESCE(forecast, 0) END) AS forecast "
+               "  FROM council_budget_measures")
+        args: list = []
+        if sub_budget_no is not None:
+            sql += " WHERE sub_budget_no = ?"
+            args.append(sub_budget_no)
+        try:
+            return [dict(r) for r in self._conn.execute(
+                sql + " GROUP BY as_of, sub_budget_no ORDER BY as_of DESC, sub_budget_no", args)]
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return []
+
+    def get_budgetbericht(self, as_of: str, sub_budget_no: int) -> list[dict]:
+        """Die Maßnahmen eines Berichts in der Reihenfolge des Dokuments."""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_budget_measures WHERE as_of = ? AND sub_budget_no = ? "
+                "ORDER BY seq", (as_of, sub_budget_no))]
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return []
 
     def vorbericht_jahrgaenge(self) -> list[int]:
         try:

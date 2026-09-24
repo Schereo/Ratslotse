@@ -46,7 +46,7 @@ from ..config import get_settings
 from ..antworten import (AnalysisData, ElectedCouncil, ElectedMember, AssistantStarters, BudgetAmendmentLists, BudgetAuditReports,
                          BudgetBalanceSheet, BudgetComparison, BudgetDataState, BudgetDebt, BudgetLiquidity, BudgetLoans,
                          BudgetDispute, BudgetDocuments, BudgetExecution, BudgetGrants, GrantRow, GrantTotal, BudgetGrantsReceived, BudgetFederalComparison, FederalCity, FederalGroup, FederalIndicator, FederalStats, FederalYear, GrantReceivedList, GrantReceivedRow, GrantReceivedTotal, Provenance,
-                         BudgetNote, BudgetNotes,
+                         BudgetNote, BudgetNotes, BudgetMeasure, BudgetMeasureReport, BudgetMeasures,
                          BudgetFixedAssets, BudgetGroup,
                          BudgetHoldings, BudgetInvestmentProgram, BudgetInvestments,
                          BudgetOverview, BudgetPath, BudgetProducts, BudgetStaffPlan, Committees,
@@ -989,6 +989,34 @@ def haushalt_beteiligungen(
         "group_comparison": vergleich,
         "provenance": {str(h["id"]): h for h in store.get_herkunft(ids)},
     }
+
+
+@router.get("/budget/measures")
+def haushalt_budgetbericht(
+    sub_budget: int,
+    as_of: str | None = None,
+    _user: dict = Depends(require_budget),
+    store: CouncilStore = Depends(get_council_store),
+) -> BudgetMeasures:
+    """Was aus den Investitionen eines Teilhaushalts im Jahr wird — die
+    Budgetberichte an die Fachausschüsse (``council/budgetberichte.py``).
+
+    ``reports`` nennt alle eingelesenen Stichtage, jüngster zuerst;
+    ``measures`` sind die Maßnahmen des gewählten (Vorgabe: des jüngsten),
+    in der Reihenfolge des Berichts. Eingelesen sind Jugend und Familie (11)
+    und Schule und Bildung (12); für andere Teilhaushalte ist die Antwort leer."""
+    berichte = store.budgetbericht_stichtage(sub_budget)
+    stichtage = [b["as_of"] for b in berichte]
+    gewaehlt = as_of if as_of in stichtage else (stichtage[0] if stichtage else None)
+    zeilen = store.get_budgetbericht(gewaehlt, sub_budget) if gewaehlt else []
+    ids = sorted({z["herkunft_id"] for z in zeilen if z["herkunft_id"] is not None})
+    return BudgetMeasures(
+        reports=[cast(BudgetMeasureReport, {k: b[k] for k in BudgetMeasureReport.__annotations__})
+                 for b in berichte],
+        as_of=gewaehlt,
+        measures=[cast(BudgetMeasure, {k: z[k] for k in BudgetMeasure.__annotations__}) for z in zeilen],
+        provenance=cast(Provenance, {str(h["id"]): h for h in store.get_herkunft(ids)}),
+    )
 
 
 @router.get("/budget/notes")

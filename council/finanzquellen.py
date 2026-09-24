@@ -593,6 +593,19 @@ def _bestand_foerdermittel(store: CouncilStore) -> set[tuple]:
             for z in store.get_foerdermittel()}
 
 
+def _bestand_budgetberichte(store: CouncilStore) -> set[tuple]:
+    """``(Jahr, Teilhaushalt)`` — vier Berichte im Jahr je Ausschuss; „da"
+    heißt hier: mindestens einer."""
+    return {(z["budget_year"], z["sub_budget_no"]) for z in store.budgetbericht_stichtage()}
+
+
+def _marke_budgetberichte(store: CouncilStore) -> int | None:
+    """Die jüngste Vorlage „Budgetbericht …" (``kvonr``) — die Berichte hängen
+    an Vorlagen, ihre Anlagen tragen kein einheitliches Label."""
+    reihen = _jahre(store, "SELECT MAX(kvonr) FROM council_templates WHERE title LIKE '%Budgetbericht%'")
+    return reihen[0][0] if reihen and reihen[0][0] is not None else None
+
+
 def _bestand_vorbericht(store: CouncilStore) -> set[tuple]:
     return {(j,) for j in store.vorbericht_jahrgaenge()}
 
@@ -2671,6 +2684,24 @@ for _q in (
                   "Förderkatalog des Bundes, scripts/ingest_foerdermittel.py",
     ),
     Finanzquelle(
+        key="budget_measures",
+        label="Budgetberichte",
+        was="Was aus den Investitionen der Bereiche Jugend und Schule im Jahr "
+            "wird — je Maßnahme Ansatz, Prognose zum Jahresende und die "
+            "Begründung der Verwaltung, aus den Quartalsberichten an die "
+            "Fachausschüsse.",
+        tabelle="council_budget_measures",
+        # Der Bericht zum 30.06. geht im September/Oktober an den Ausschuss;
+        # er ist der erste, der zeigt, wie das Jahr läuft.
+        erwarteter_monat=10,
+        versatz=0,
+        herkunft="ris",
+        marke=_marke_budgetberichte,
+        balance=_bestand_budgetberichte,
+        nachschub="scripts/ingest_budgetberichte.py (lädt die PDFs selbst)",
+        lauf=("scripts/ingest_budgetberichte.py",),
+    ),
+    Finanzquelle(
         key="grants",
         label="Zuschüsse an Dritte",
         was="Wer von der Stadt Zuschüsse bekommt — Vereine, Träger, "
@@ -3215,6 +3246,7 @@ for _q in (
 #: laufenden Jahr läuft, dann wie es ausgegangen ist. Die drei nebeneinander
 #: sind die Geschichte eines Haushaltsjahres.
 REIHENFOLGE = ("haushaltsplan", "budget_notes", "income_budget", "finance_budget", "grants", "grants_received",
+               "budget_measures",
                "investitionen",
                "investitionsprogramm", "budget_execution",
                "jahresabschluss", "teilhaushalt",

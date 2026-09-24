@@ -932,6 +932,7 @@ class SchemaMixin(StoreBasis):
         "council_grants":            (None, "source_url", "ris"),
         "council_debt_plan":         (None, "source_url", "ris"),
         "council_budget_notes":      (None, "source_url", "ris"),
+        "council_budget_measures":   (None, "source_url", "ris"),
         "council_budget_bylaw_published": (None, "url", "city"),
         # Fördermittel von EU und Bund (council/foerdermittel.py): eigene Arten.
         "council_grants_received":   (None, "list_url", "eu"),
@@ -2411,6 +2412,25 @@ class SchemaMixin(StoreBasis):
             "CREATE TABLE IF NOT EXISTS council_gazette_issues ("
             "url TEXT PRIMARY KEY, year INTEGER NOT NULL, nr TEXT NOT NULL, "
             "has_bylaw INTEGER NOT NULL DEFAULT 0, reader TEXT, checked_at TEXT NOT NULL)"
+        )
+        # Die Budgetberichte der Fachausschüsse (council/budgetberichte.py): je
+        # Bericht (Stichtag, Teilhaushalt) die Investitionen je Maßnahme mit
+        # Ansatz, Prognose und der Erläuterung im Wortlaut. `seq` ist die
+        # Reihenfolge im Bericht — eine Maßnahme ohne I10-Nummer kommt vor.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_budget_measures ("
+            "as_of TEXT NOT NULL, "                 # Stichtag, ISO
+            "sub_budget_no INTEGER NOT NULL, "
+            "seq INTEGER NOT NULL, "
+            "budget_year INTEGER NOT NULL, "
+            "measure_no TEXT, measure_no_to TEXT, "  # I10-Nummer, bei Bereichen die letzte
+            "name TEXT NOT NULL, "
+            "kind TEXT NOT NULL, "                  # A = Auszahlung, E = Einzahlung
+            "planned REAL, forecast REAL, carryover REAL, "
+            "note TEXT, "                           # Erläuterung im Wortlaut
+            "template_number TEXT, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (as_of, sub_budget_no, seq))"
         )
         # Der Vorbericht (Anlage 001, council/vorbericht.py): je Plan und
         # Teilhaushalt der Wortlaut der Abschnitte 2.4.2.x (Ergebnishaushalt,

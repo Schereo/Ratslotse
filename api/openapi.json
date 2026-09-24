@@ -5330,6 +5330,174 @@
         "title": "BudgetLoans",
         "type": "object"
       },
+      "BudgetMeasure": {
+        "description": "Eine Investitionsmaßnahme im Budgetbericht. ``kind``: ``A`` Auszahlung,\n``E`` Einzahlung. ``measure_no`` ist die I10-Nummer (bei einem Bereich\n„… bis …\" die erste, ``measure_no_to`` die letzte) und kann fehlen.\n``note`` ist die Erläuterung der Verwaltung im Wortlaut.",
+        "properties": {
+          "carryover": {
+            "title": "Carryover",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "forecast": {
+            "title": "Forecast",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "herkunft_id": {
+            "title": "Herkunft Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "measure_no": {
+            "title": "Measure No",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "measure_no_to": {
+            "title": "Measure No To",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "planned": {
+            "title": "Planned",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "seq",
+          "measure_no",
+          "measure_no_to",
+          "name",
+          "kind",
+          "planned",
+          "forecast",
+          "carryover",
+          "note",
+          "herkunft_id"
+        ],
+        "title": "BudgetMeasure",
+        "type": "object"
+      },
+      "BudgetMeasureReport": {
+        "description": "Ein eingelesener Budgetbericht: Stichtag, Vorlage, Zahl der Maßnahmen\nund die Summen der Auszahlungen (Ansatz, Prognose zum Jahresende).",
+        "properties": {
+          "as_of": {
+            "title": "As Of",
+            "type": "string"
+          },
+          "budget_year": {
+            "title": "Budget Year",
+            "type": "integer"
+          },
+          "forecast": {
+            "title": "Forecast",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "planned": {
+            "title": "Planned",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "template_number": {
+            "title": "Template Number",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "as_of",
+          "budget_year",
+          "template_number",
+          "n",
+          "planned",
+          "forecast"
+        ],
+        "title": "BudgetMeasureReport",
+        "type": "object"
+      },
+      "BudgetMeasures": {
+        "properties": {
+          "as_of": {
+            "title": "As Of",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "measures": {
+            "items": {
+              "$ref": "#/components/schemas/BudgetMeasure"
+            },
+            "title": "Measures",
+            "type": "array"
+          },
+          "provenance": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Herkunft"
+            },
+            "title": "Provenance",
+            "type": "object"
+          },
+          "reports": {
+            "items": {
+              "$ref": "#/components/schemas/BudgetMeasureReport"
+            },
+            "title": "Reports",
+            "type": "array"
+          }
+        },
+        "required": [
+          "reports",
+          "as_of",
+          "measures",
+          "provenance"
+        ],
+        "title": "BudgetMeasures",
+        "type": "object"
+      },
       "BudgetNote": {
         "description": "Ein Abschnitt des Vorberichts zu einem Teilhaushalt, im Wortlaut.\n\n``kind``: ``result`` (Abschnitt 2.4.2.x, Ergebnishaushalt) oder\n``investments`` (3.2.2.x). ``text`` sind Absätze, getrennt durch eine\nLeerzeile — ohne die Tabellen und Grafiken des Originals.",
         "properties": {
@@ -27467,6 +27635,61 @@
           }
         },
         "summary": "Haushalt Kredite",
+        "tags": [
+          "council"
+        ]
+      }
+    },
+    "/api/council/budget/measures": {
+      "get": {
+        "description": "Was aus den Investitionen eines Teilhaushalts im Jahr wird — die\nBudgetberichte an die Fachausschüsse (``council/budgetberichte.py``).\n\n``reports`` nennt alle eingelesenen Stichtage, jüngster zuerst;\n``measures`` sind die Maßnahmen des gewählten (Vorgabe: des jüngsten),\nin der Reihenfolge des Berichts. Eingelesen sind Jugend und Familie (11)\nund Schule und Bildung (12); für andere Teilhaushalte ist die Antwort leer.",
+        "operationId": "haushalt_budgetbericht_api_council_budget_measures_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "sub_budget",
+            "required": true,
+            "schema": {
+              "title": "Sub Budget",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "as_of",
+            "required": false,
+            "schema": {
+              "title": "As Of",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetMeasures"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Haushalt Budgetbericht",
         "tags": [
           "council"
         ]
