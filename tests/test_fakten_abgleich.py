@@ -229,6 +229,15 @@ def test_ausgangswert_mit_rund_traegt_nicht_das_endjahr():
     assert fa.zahl_im_text({"wert": 336_994_000, "jahr": 2025}, antwort, satz=True).status == "ok"
 
 
+def test_paar_gegenueber_folgt_der_reihenfolge_der_jahre():
+    """Gemessen 24.09. (GPT-6 Luna): 222 Mio. galt als Wert von 2015."""
+    for wort in ("gegenüber", "statt"):
+        antwort = ("Die Stadt nahm 2025 rund 136 Millionen Euro mehr Gewerbesteuer ein als 2015: "
+                   f"rund 222 Millionen Euro {wort} rund 86 Millionen Euro.")
+        assert fa.zahl_im_text({"wert": 222_117_000, "jahr": 2025}, antwort, satz=True).status == "ok"
+        assert fa.zahl_im_text({"wert": 86_249_000, "jahr": 2015}, antwort, satz=True).status == "ok"
+
+
 def test_elternzeile_zaehlt_ihr_erstes_jahr():
     kontext = ("- Wirtschaftsplan 2026: Ergebnis 711.250 €; im Plan 2025 waren es 627.511 €\n"
                "  - Erfolgsplan: Aufwendungen 26,0 Mio. €")

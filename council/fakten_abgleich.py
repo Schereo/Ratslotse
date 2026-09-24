@@ -324,6 +324,14 @@ def jahre_der_zahl(zeilen_: list[Zeile], z: Zahl, *, satz: bool = False) -> set[
                           r"\bvon\s*$", zeile.text[von:p]) and \
             re.match(r"[^.!?;]{0,25}\bauf\b", zeile.text[q:bis]):
         return set()
+    # „2025 rund 136 Mio. mehr als 2015: 222 Mio. gegenüber 86 Mio.“ (GPT-6
+    # Luna, 24.09.): Ein Paar „X gegenüber/statt Y“ nach zwei Jahren im Satz
+    # nennt die Werte in der Reihenfolge der Jahre — sonst galt 222 Mio. als
+    # Wert von 2015, dem letzten Jahr davor.
+    if satz:
+        paar = _paar_jahr(zeile, p, q, von, bis)
+        if paar is not None:
+            return {paar}
     # Erst der Satz — auch im Kontext: Die Beschluss-Zeilen von Frag den Rat
     # sind ein Absatz aus Titel, Datum, Vorlagentext; das letzte Jahr davor
     # in der ganzen Zeile gehört oft zu einem anderen Satz.
@@ -333,6 +341,32 @@ def jahre_der_zahl(zeilen_: list[Zeile], z: Zahl, *, satz: bool = False) -> set[
     if eigen is not None:
         return {eigen}
     return _jahre_der_eltern(zeilen_, zeile.eltern)
+
+
+_PAAR_WORT = r"(?:gegenüber|gegenueber|statt|anstatt|im vergleich zu|verglichen mit)"
+_EINHEIT = r"(?:\s*(?:mio\.?|millionen|mrd\.?|milliarden|tsd\.?|tausend))?(?:\s*(?:euro|€))?"
+_PAAR_VORNE = re.compile(_EINHEIT + r"\s*" + _PAAR_WORT + r"\s+(?:rund |etwa |knapp |gut )?\d", re.I)
+_PAAR_HINTEN = re.compile(_PAAR_WORT + r"\s+(?:rund |etwa |knapp |gut )?$", re.I)
+
+
+def _paar_jahr(zeile: Zeile, p: int, q: int, von: int, bis: int) -> int | None:
+    """Das Jahr eines Werts in „X gegenüber Y“, wenn der Satz davor zwei Jahre nennt."""
+    t = zeile.text
+    if _PAAR_VORNE.match(t[q:bis]):
+        stelle, index = p, 0
+    elif _PAAR_HINTEN.search(t[max(von, p - 40):p]):
+        stelle, index = p, 1
+    else:
+        return None
+    jahre = list(dict.fromkeys(j for (s, j) in zeile.jahre if von <= s < stelle))
+    if index == 1:
+        # Der zweite Wert: die Jahre vor dem ERSTEN Wert des Paares zählen.
+        m = _PAAR_HINTEN.search(t[max(von, p - 40):p])
+        vorne = max(von, p - 40) + (m.start() if m else 0)
+        jahre = list(dict.fromkeys(j for (s, j) in zeile.jahre if von <= s < vorne))
+    if len(jahre) != 2:
+        return None
+    return jahre[index]
 
 
 def _jahr_in_zeile(zeile: Zeile, p: int, q: int, von: int = 0, bis: int | None = None) -> int | None:

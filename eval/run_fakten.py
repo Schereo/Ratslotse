@@ -91,7 +91,10 @@ sys.path.insert(0, str(WURZEL))
 from council import fakten_abgleich as fa  # noqa: E402
 
 FAELLE_DATEIEN = (WURZEL / "eval" / "cases_fakten_haushalt.json",
-                  WURZEL / "eval" / "cases_fakten_rat.json")
+                  WURZEL / "eval" / "cases_fakten_rat.json",
+                  # Lotti auf Rats-Seiten mit Fragen, die nicht auf der Seite
+                  # stehen (build_fakten_mehrstufig_rat.py, 24.09.2026)
+                  WURZEL / "eval" / "cases_fakten_mehrstufig_rat.json")
 ERGEBNISSE = WURZEL / "eval" / "results" / "fakten"
 BERICHT = WURZEL / "docs" / "fakten-eval.md"
 #: Die vollen Prompts eines Laufs — zu groß fürs Repo (rund 15 kB je Fall),
@@ -384,7 +387,21 @@ def frage_stellen(client: Any, fall: dict) -> dict:
         body = {"route": fall["route"], "question": fall["frage"], "refs": fall.get("refs") or {},
                 "page_title": fall.get("page_title") or fall.get("heading", ""),
                 "heading": fall.get("heading", ""), "anchors": fall.get("anchors") or []}
+        # Anschlussfragen (`vorfragen`): erst die früheren Runden, dann die
+        # Frage mit dem Verlauf — so wie das Fenster ihn schickt (Frage und
+        # die ersten 300 Zeichen der Antwort, `panel.tsx`). Bewertet wird nur
+        # die letzte Antwort; ihr Prompt trägt den Verlauf mit.
+        verlauf: list[dict] = []
+        vorher_ms = 0
+        for vorfrage in fall.get("vorfragen") or []:
+            v = _strom(client, "/api/council/explain", {**body, "question": vorfrage,
+                                                        "history": verlauf[-3:]})
+            vorher_ms += v["ms"]
+            verlauf.append({"question": vorfrage[:200], "answer": v["text"][:300]})
+        if verlauf:
+            body["history"] = verlauf[-3:]
         erg = _strom(client, "/api/council/explain", body)
+        erg["vorher_ms"] = vorher_ms
         erg["weg"] = (erg.get("done") or {}).get("mode") or "?"
         # Gehört die Frage ins Archiv, geht das Fenster von selbst zu Frag den
         # Rat — mit dem Bildschirm. Genau das tut die Eval auch.
@@ -895,8 +912,12 @@ def _faelle_waehlen(alle: list[dict], nur: str | None, limit: int | None,
         alle = [nach_id[i] for i in ids]
     if nur:
         wahl = {x.strip() for x in nur.split(",") if x.strip()}
+        # „haushalt/mehrstufig/“ (mit Schrägstrich am Ende) wählt alle
+        # Unterkategorien — die mehrstufigen Fälle haben sechs.
+        vorsilben = tuple(w for w in wahl if w.endswith("/"))
         alle = [f for f in alle if f["id"] in wahl or (f.get("kategorie") or "") in wahl
-                or f["kanal"] in wahl]
+                or f["kanal"] in wahl
+                or (vorsilben and (f.get("kategorie") or "").startswith(vorsilben))]
     return alle[:limit] if limit else alle
 
 

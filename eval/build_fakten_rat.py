@@ -664,7 +664,11 @@ def grundsteuer(q: Quelle) -> list[dict]:
     erwarte("rund 4,42 Millionen Euro" in v25["financial_impact"], "25/0615: Mehrertrag")
     b490 = q.beschluss("Ausschuss für Finanzen und Beteiligungen", "2023-09-06", vorlage="23/0632")
     erwarte(b490["outcome"] == "rejected" and "490 v.H." in b490["official_text"], "5988")
-    erwarte("steigt" in (b490["simple_summary"] or ""), "5988: Kurzfassung (fehlerhaft) unverändert")
+    # Bis 24.09.2026 stand hier `erwarte("steigt" in simple_summary)`: Die
+    # Kurzfassung war die Falle. `fix_outcome_summaries.py` (#1497) hat sie
+    # auf dev korrigiert — die Falle bleibt trotzdem, denn Beschlusstext und
+    # `summary` beschreiben die Erhöhung weiter als beschlossen; das Gold ist
+    # ohnehin nur das Ergebnis.
     hb24 = q.hebesatz("Grundsteuer B", 2015)
     hb25 = q.hebesatz("Grundsteuer B", 2025)
     erwarte(hb24["rate"] == 445 and hb25["rate"] == 539, "Hebesätze B")
