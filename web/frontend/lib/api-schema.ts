@@ -2536,6 +2536,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/council/budget/preface-figures": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Haushalt Vorbericht Zahlen
+         * @description Zahlen aus dem Vorbericht der Haushaltspläne (``council/vorbericht_zahlen.py``):
+         *     Personalaufwand samt Rückstellungen, Steuerarten mit Prognose und
+         *     Finanzplanung, Jahresergebnisse. Je Plan, jüngster zuerst — die Seite
+         *     zeigt den jüngsten und lässt ältere wählen.
+         */
+        get: operations["haushalt_vorbericht_zahlen_api_council_budget_preface_figures_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/council/budget/products": {
         parameters: {
             query?: never;
@@ -8489,6 +8512,15 @@ export interface components {
             /** Rounds */
             rounds: unknown;
         };
+        /** BudgetPrefaceFigures */
+        BudgetPrefaceFigures: {
+            /** Plans */
+            plans: components["schemas"]["PrefacePlan"][];
+            /** Provenance */
+            provenance: {
+                [key: string]: components["schemas"]["Herkunft"];
+            };
+        };
         /** BudgetProducts */
         BudgetProducts: {
             /** All Years */
@@ -13581,6 +13613,33 @@ export interface components {
             points: number;
             /** Tip */
             tip: number;
+        };
+        /**
+         * PrefaceFigure
+         * @description Ein Wert aus dem Vorbericht. ``variant``: ``actual`` (Ist),
+         *     ``prior_budget`` (Plan des Vorjahres), ``forecast`` (Prognose der
+         *     Kämmerei), ``budget`` (Ansatz des Planjahres), ``financial_plan``.
+         */
+        PrefaceFigure: {
+            /** Amount */
+            amount: number;
+            /** Herkunft Id */
+            herkunft_id: number | null;
+            /** Page */
+            page: number | null;
+            /** Series */
+            series: string;
+            /** Variant */
+            variant: string;
+            /** Year */
+            year: number;
+        };
+        /** PrefacePlan */
+        PrefacePlan: {
+            /** Figures */
+            figures: components["schemas"]["PrefaceFigure"][];
+            /** Plan Budget Year */
+            plan_budget_year: number;
         };
         /** ProjectReportIn */
         ProjectReportIn: {
@@ -18830,6 +18889,37 @@ export interface operations {
             };
         };
     };
+    haushalt_vorbericht_zahlen_api_council_budget_preface_figures_get: {
+        parameters: {
+            query: {
+                series: string[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetPrefaceFigures"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     haushalt_produkte_api_council_budget_products_get: {
         parameters: {
             query: {
@@ -23862,4 +23952,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: cf2e01a0c91f42d56c027a15f7b0587e636210d5848d89f46d4a7cb8c3fabfdf
+// vertrag-sha256: 8324922905974db24620ac6af8f8e819d3dc9edd411cf4b79ece0f06f161697a

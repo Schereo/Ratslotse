@@ -62,6 +62,7 @@ import {
 import { cn } from "@/lib/utils";
 import { ScrollZeile } from "@/components/ui";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
+import { VorberichtZahlen } from "@/components/haushalt/vorbericht-zahlen";
 import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
 import { Seitenbuehne, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
 import { Vollzug } from "@/components/haushalt/vollzug";
@@ -284,6 +285,7 @@ function PlanIstInner() {
     ...(kasse ? (["cash_flow_statement"] as const) : []),
     "plan",
     ...(hatNachbewilligungen ? (["ratsbeschluss"] as const) : []),
+    "budget_preface",
   ];
   const pruefbericht = pruefberichtZuJahr(data, year);
   // Die Zeilen der Hantel. Zwei Regeln, beide oben im Kopf begründet:
@@ -858,6 +860,12 @@ function PlanIstInner() {
           vorher im Fachausschuss beraten, und was dort keine Mehrheit findet,
           erreicht den Rat meist gar nicht erst. */}
       <NachbewilligungsBefund daten={data} />
+
+      {/* Die Jahresergebnisse aus dem Vorbericht: die abgeschlossenen Jahre,
+          die PROGNOSE des laufenden (Stand Entwurf) und der Plan danach — die
+          Zeile, die zwischen „geplant" und „geworden" sonst fehlt. */}
+      <VorberichtZahlen kicker="Jahresergebnis" titel="Überschuss oder Fehlbetrag — Ist, Prognose und Plan"
+        reihen={[{ key: "result", label: "Jahresergebnis (ordentlich + außerordentlich)" }]} />
 
       <SchrittWeiter href="/haushalt/plan-ist" />
 

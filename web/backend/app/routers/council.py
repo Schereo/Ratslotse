@@ -48,7 +48,7 @@ from ..config import get_settings
 from ..antworten import (AnalysisData, ElectedCouncil, ElectedMember, AssistantStarters, BudgetAmendmentLists, BudgetAuditReports,
                          BudgetBalanceSheet, BudgetComparison, BudgetDataState, BudgetDebt, BudgetLiquidity, BudgetLoans,
                          BudgetDispute, BudgetDocuments, BudgetExecution, BudgetGrants, GrantRow, GrantTotal, BudgetGrantsReceived, BudgetFederalComparison, BudgetDebtComparison, CityDebt, CityDebtYear, FederalCity, FederalGroup, FederalIndicator, FederalStats, FederalYear, GrantReceivedList, GrantReceivedRow, GrantReceivedTotal, Provenance,
-                         BudgetNote, BudgetNotes, BudgetMeasure, BudgetMeasureReport, BudgetMeasures,
+                         BudgetNote, BudgetNotes, BudgetPrefaceFigures, PrefaceFigure, PrefacePlan, BudgetMeasure, BudgetMeasureReport, BudgetMeasures,
                          BudgetFixedAssets, BudgetGroup,
                          BudgetHoldings, BudgetInvestmentProgram, BudgetInvestments,
                          BudgetOverview, BudgetPath, BudgetProducts, BudgetStaffPlan, Committees,
@@ -1017,6 +1017,28 @@ def haushalt_budgetbericht(
                  for b in berichte],
         as_of=gewaehlt,
         measures=[cast(BudgetMeasure, {k: z[k] for k in BudgetMeasure.__annotations__}) for z in zeilen],
+        provenance=cast(Provenance, {str(h["id"]): h for h in store.get_herkunft(ids)}),
+    )
+
+
+@router.get("/budget/preface-figures")
+def haushalt_vorbericht_zahlen(
+    series: Annotated[list[str], Query()],
+    _user: dict = Depends(require_budget),
+    store: CouncilStore = Depends(get_council_store),
+) -> BudgetPrefaceFigures:
+    """Zahlen aus dem Vorbericht der Haushaltspläne (``council/vorbericht_zahlen.py``):
+    Personalaufwand samt Rückstellungen, Steuerarten mit Prognose und
+    Finanzplanung, Jahresergebnisse. Je Plan, jüngster zuerst — die Seite
+    zeigt den jüngsten und lässt ältere wählen."""
+    zeilen = store.get_vorbericht_zahlen(series)
+    plaene: dict[int, list[PrefaceFigure]] = {}
+    for z in zeilen:
+        plaene.setdefault(z["plan_budget_year"], []).append(
+            cast(PrefaceFigure, {k: z[k] for k in PrefaceFigure.__annotations__}))
+    ids = sorted({z["herkunft_id"] for z in zeilen if z["herkunft_id"] is not None})
+    return BudgetPrefaceFigures(
+        plans=[PrefacePlan(plan_budget_year=j, figures=f) for j, f in sorted(plaene.items(), reverse=True)],
         provenance=cast(Provenance, {str(h["id"]): h for h in store.get_herkunft(ids)}),
     )
 

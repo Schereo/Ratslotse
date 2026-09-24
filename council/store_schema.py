@@ -932,6 +932,7 @@ class SchemaMixin(StoreBasis):
         "council_grants":            (None, "source_url", "ris"),
         "council_debt_plan":         (None, "source_url", "ris"),
         "council_budget_notes":      (None, "source_url", "ris"),
+        "council_budget_preface_figures": (None, "source_url", "ris"),
         "council_budget_measures":   (None, "source_url", "ris"),
         "council_budget_bylaw_published": (None, "url", "city"),
         # Fördermittel von EU und Bund (council/foerdermittel.py): eigene Arten.
@@ -2431,6 +2432,16 @@ class SchemaMixin(StoreBasis):
             "template_number TEXT, "
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
             "PRIMARY KEY (as_of, sub_budget_no, seq))"
+        )
+        # Die Zahlen im Vorbericht (council/vorbericht_zahlen.py): je Plan und
+        # Reihe (Personal, Steuerarten, Ergebnis) die Werte mit ihrer Art —
+        # Ist, Plan des Vorjahres, Prognose, Ansatz, Finanzplanung.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_budget_preface_figures ("
+            "plan_budget_year INTEGER NOT NULL, series TEXT NOT NULL, "
+            "year INTEGER NOT NULL, variant TEXT NOT NULL, amount REAL NOT NULL, "
+            "page INTEGER, herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (plan_budget_year, series, year, variant))"
         )
         # Der Vorbericht (Anlage 001, council/vorbericht.py): je Plan und
         # Teilhaushalt der Wortlaut der Abschnitte 2.4.2.x (Ergebnishaushalt,

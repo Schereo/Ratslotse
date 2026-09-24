@@ -2669,6 +2669,9 @@ for _q in (
         ),
         einheiten_von=_einheiten_uebersichten,
         balance=_bestand_vorbericht,
+        # Derselbe Lauf liest die Zahlen zu Personal, Steuerarten und
+        # Fehlbeträgen aus demselben Dokument (council/vorbericht_zahlen.py).
+        nebentabellen=("council_budget_preface_figures",),
         nachschub="scripts/ingest_vorbericht.py (lädt die PDFs selbst)",
         lauf=("scripts/ingest_vorbericht.py",),
     ),

@@ -3487,6 +3487,28 @@ class BudgetMeasures(TypedDict):
     provenance: Provenance
 
 
+class PrefaceFigure(TypedDict):
+    """Ein Wert aus dem Vorbericht. ``variant``: ``actual`` (Ist),
+    ``prior_budget`` (Plan des Vorjahres), ``forecast`` (Prognose der
+    Kämmerei), ``budget`` (Ansatz des Planjahres), ``financial_plan``."""
+    series: str
+    year: int
+    variant: str
+    amount: float
+    page: int | None
+    herkunft_id: int | None
+
+
+class PrefacePlan(TypedDict):
+    plan_budget_year: int
+    figures: list[PrefaceFigure]
+
+
+class BudgetPrefaceFigures(TypedDict):
+    plans: list[PrefacePlan]
+    provenance: Provenance
+
+
 class BudgetNotes(TypedDict):
     notes: list[BudgetNote]
     provenance: Provenance

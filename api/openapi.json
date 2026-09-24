@@ -5788,6 +5788,30 @@
         "title": "BudgetPath",
         "type": "object"
       },
+      "BudgetPrefaceFigures": {
+        "properties": {
+          "plans": {
+            "items": {
+              "$ref": "#/components/schemas/PrefacePlan"
+            },
+            "title": "Plans",
+            "type": "array"
+          },
+          "provenance": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Herkunft"
+            },
+            "title": "Provenance",
+            "type": "object"
+          }
+        },
+        "required": [
+          "plans",
+          "provenance"
+        ],
+        "title": "BudgetPrefaceFigures",
+        "type": "object"
+      },
       "BudgetProducts": {
         "properties": {
           "all_years": {
@@ -18310,6 +18334,72 @@
         "title": "PredictionTurnoutLine",
         "type": "object"
       },
+      "PrefaceFigure": {
+        "description": "Ein Wert aus dem Vorbericht. ``variant``: ``actual`` (Ist),\n``prior_budget`` (Plan des Vorjahres), ``forecast`` (Prognose der\nKämmerei), ``budget`` (Ansatz des Planjahres), ``financial_plan``.",
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          },
+          "herkunft_id": {
+            "title": "Herkunft Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "page": {
+            "title": "Page",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "series": {
+            "title": "Series",
+            "type": "string"
+          },
+          "variant": {
+            "title": "Variant",
+            "type": "string"
+          },
+          "year": {
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "series",
+          "year",
+          "variant",
+          "amount",
+          "page",
+          "herkunft_id"
+        ],
+        "title": "PrefaceFigure",
+        "type": "object"
+      },
+      "PrefacePlan": {
+        "properties": {
+          "figures": {
+            "items": {
+              "$ref": "#/components/schemas/PrefaceFigure"
+            },
+            "title": "Figures",
+            "type": "array"
+          },
+          "plan_budget_year": {
+            "title": "Plan Budget Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "plan_budget_year",
+          "figures"
+        ],
+        "title": "PrefacePlan",
+        "type": "object"
+      },
       "ProjectReportIn": {
         "properties": {
           "reason": {
@@ -28021,6 +28111,52 @@
           }
         },
         "summary": "Haushalt Vorbericht",
+        "tags": [
+          "council"
+        ]
+      }
+    },
+    "/api/council/budget/preface-figures": {
+      "get": {
+        "description": "Zahlen aus dem Vorbericht der Haushaltspläne (``council/vorbericht_zahlen.py``):\nPersonalaufwand samt Rückstellungen, Steuerarten mit Prognose und\nFinanzplanung, Jahresergebnisse. Je Plan, jüngster zuerst — die Seite\nzeigt den jüngsten und lässt ältere wählen.",
+        "operationId": "haushalt_vorbericht_zahlen_api_council_budget_preface_figures_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "series",
+            "required": true,
+            "schema": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Series",
+              "type": "array"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetPrefaceFigures"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Haushalt Vorbericht Zahlen",
         "tags": [
           "council"
         ]

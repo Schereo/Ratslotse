@@ -45,6 +45,7 @@ import { StellenPaare, StellenPaareLegende } from "@/components/haushalt/stellen
 import { Waffel } from "@/components/grafik/waffel";
 import { Einordnung } from "@/components/grafik/einordnung";
 import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/source";
+import { VorberichtZahlen } from "@/components/haushalt/vorbericht-zahlen";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { cn } from "@/lib/utils";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
@@ -57,7 +58,7 @@ import { Fundstelle } from "@/components/haushalt/fundstelle";
 // Der Stellenplan ist die Quelle der Seite; der Jahresabschluss und der
 // Gesamtergebnishaushalt tragen seit 02.09.2026 die Zahl dazu, was das Personal
 // kostet (Baustein `Personalaufwand`).
-const QUELLEN = ["stellenplan", "jahresabschluss", "income_budget"] as const;
+const QUELLEN = ["stellenplan", "jahresabschluss", "income_budget", "budget_preface"] as const;
 
 /** Nur die Kernverwaltung (`sub_budget_item=keine`): Die Kachel braucht die
  *  Posten 13–20 gesamt, keine Teilhaushalts-Zeilen — das spart den mit
@@ -448,6 +449,19 @@ export default function PersonalPage() {
             </>
           )}
         </section>
+
+        {/* Der Personalaufwand, wie der Vorbericht ihn aufschlüsselt: mit den
+            Zuführungen zu Pensions-, Beihilfe- und anderen Rückstellungen und
+            dem Aufwand ohne sie — beides steht im Ergebnishaushalt nicht. */}
+        <VorberichtZahlen genau kicker="Personalaufwand samt Rückstellungen"
+          titel="Was das Personal kostet — mit und ohne Rückstellungen"
+          reihen={[
+            { key: "personnel_active", label: "Aktives Personal" },
+            { key: "personnel_pension", label: "Versorgung" },
+            { key: "personnel_total", label: "Summe" },
+            { key: "personnel_provisions", label: "davon Zuführungen zu Rückstellungen" },
+            { key: "personnel_net", label: "Personalaufwand ohne Rückstellungen" },
+          ]} />
 
         {/* Die Grenzen — eigener Block, nicht Kleingedrucktes. */}
         <section className="@container rounded-2xl border border-border border-l-[3px] border-l-signal bg-card p-4 shadow-sm">

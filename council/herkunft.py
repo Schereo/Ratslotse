@@ -358,6 +358,13 @@ PROBEN: dict[str, str] = {
         "nennt Ansatz und Prognose des Teilhaushalts; die Maßnahmen ergeben "
         "sie, je Richtung und auf den Euro. Wo das Dokument die Summenzeile "
         "rundet (höchstens 0,1 %), steht der Abstand im Beleg.",
+    "budget_preface_figures":
+        "Die Personaltabelle rechnet sich selbst (aktiv + Versorgung = Summe, "
+        "Summe − Rückstellungen = ohne Rückstellungen) und stimmt mit den Zeilen 13 "
+        "und 14 des Ergebnishaushalts desselben Plans; die Planwerte der Fehlbeträge "
+        "sind ordentliches plus außerordentliches Ergebnis; die Ist-Werte der Steuern "
+        "stimmen mit dem Statistischen Jahrbuch (außer der Gewerbesteuer, die das "
+        "Jahrbuch nach Abzug der Umlage zählt). Die Diagramme runden auf 0,1 Mio. €.",
     "budget_notes_sections":
         "Das Inhaltsverzeichnis des Vorberichts nennt je Teilhaushalt einen "
         "Abschnitt zum Ergebnishaushalt und einen zu den Investitionen; jeder "
@@ -803,6 +810,8 @@ HERKUNFT_TABELLEN: tuple[str, ...] = (
     "council_debt_plan",
     # Der Vorbericht (Anlage 001): der Wortlaut je Teilhaushalt.
     "council_budget_notes",
+    # Und die Zahlen aus demselben Vorbericht.
+    "council_budget_preface_figures",
     # Die beschlossene Haushaltssatzung aus dem Amtsblatt.
     "council_budget_bylaw_published",
     # Die Budgetberichte der Fachausschüsse: Investitionen je Maßnahme.
