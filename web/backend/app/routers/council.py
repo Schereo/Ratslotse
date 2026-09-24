@@ -45,7 +45,7 @@ from .. import deepresearch
 from ..config import get_settings
 from ..antworten import (AnalysisData, ElectedCouncil, ElectedMember, AssistantStarters, BudgetAmendmentLists, BudgetAuditReports,
                          BudgetBalanceSheet, BudgetComparison, BudgetDataState, BudgetDebt, BudgetLiquidity, BudgetLoans,
-                         BudgetDispute, BudgetDocuments, BudgetExecution, BudgetGrants, GrantRow, GrantTotal, Provenance,
+                         BudgetDispute, BudgetDocuments, BudgetExecution, BudgetGrants, GrantRow, GrantTotal, BudgetGrantsReceived, GrantReceivedList, GrantReceivedRow, GrantReceivedTotal, Provenance,
                          BudgetNote, BudgetNotes,
                          BudgetFixedAssets, BudgetGroup,
                          BudgetHoldings, BudgetInvestmentProgram, BudgetInvestments,
@@ -1039,6 +1039,48 @@ def haushalt_zuschuesse(
     return BudgetGrants(
         years=jahre, year=jahr, rows=rows,
         totals=cast(list[GrantTotal], summen),
+        provenance=cast(Provenance, {str(h["id"]): h for h in store.get_herkunft(ids)}),
+    )
+
+
+@router.get("/budget/grants-received")
+def haushalt_foerdermittel(
+    _user: dict = Depends(require_budget),
+    store: CouncilStore = Depends(get_council_store),
+) -> BudgetGrantsReceived:
+    """Fördermittel von EU und Bund — je Vorhaben der Stadt oder einer ihrer
+    Gesellschaften (``council/foerdermittel.py``).
+
+    - ``rows``: alle Vorhaben, jüngster Beginn zuerst,
+    - ``lists``: die eingelesenen Listen mit Datenstand, Zahl und Summe —
+      damit die Seite sagen kann, wie aktuell was ist,
+    - ``recipients``: Schlüssel → Anzeigename der Empfänger.
+
+    Beträge sind Bewilligungen, keine Auszahlungen. Städtebauförderung und
+    reine Landesprogramme stehen in keiner der Listen."""
+    from council.foerdermittel import EMPFAENGER  # noqa: PLC0415
+    zeilen = store.get_foerdermittel()
+    listen: dict[tuple, GrantReceivedList] = {}
+    for z in zeilen:
+        k = (z["source"], z["period"])
+        eintrag = listen.setdefault(k, GrantReceivedList(
+            source=z["source"], period=z["period"], list_as_of=z["list_as_of"],
+            list_url=z["list_url"], n=0, amount=0.0))
+        eintrag["n"] += 1
+        eintrag["amount"] += z["amount_granted"] or 0.0
+    summen: dict[str, GrantReceivedTotal] = {}
+    for z in zeilen:
+        gruppe = "eu" if z["funder"] == "EU" else "bund"
+        t = summen.setdefault(gruppe, GrantReceivedTotal(group=gruppe, n=0, amount=0.0))
+        t["n"] += 1
+        t["amount"] += z["amount_granted"] or 0.0
+    ids = sorted({z["herkunft_id"] for z in zeilen if z["herkunft_id"] is not None})
+    return BudgetGrantsReceived(
+        rows=[cast(GrantReceivedRow, {k: z[k] for k in GrantReceivedRow.__annotations__})
+              for z in zeilen],
+        lists=list(listen.values()),
+        totals=[summen[g] for g in ("eu", "bund") if g in summen],
+        recipients={k: label for k, (label, _) in EMPFAENGER.items()},
         provenance=cast(Provenance, {str(h["id"]): h for h in store.get_herkunft(ids)}),
     )
 

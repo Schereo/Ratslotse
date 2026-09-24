@@ -3465,6 +3465,56 @@ class GrantTotal(TypedDict):
     amount: float
 
 
+class GrantReceivedRow(TypedDict):
+    """Ein gefördertes Vorhaben der Stadt oder einer Gesellschaft.
+
+    ``funder`` ist „EU" oder das Bundesressort (BMV, BMWE …),
+    ``amount_granted`` der bewilligte Unionsbeitrag bzw. Bundesanteil — nicht
+    das Ausgezahlte. ``amount_total`` (förderfähige bzw. Gesamtkosten) führen
+    nur die EU-Listen. ``recipient`` steht so in der Liste, ``recipient_key``
+    ist der Schlüssel aus ``council/foerdermittel.EMPFAENGER``."""
+    source: str
+    source_id: str
+    period: str | None
+    recipient: str
+    recipient_key: str
+    title: str
+    summary: str | None
+    funder: str
+    program: str | None
+    amount_total: float | None
+    amount_granted: float | None
+    start: str | None
+    end: str | None
+    herkunft_id: int | None
+
+
+class GrantReceivedList(TypedDict):
+    """Eine eingelesene Liste: EU je Fonds und Förderperiode, dazu der
+    Förderkatalog. ``list_as_of`` ist der Datenstand der Liste."""
+    source: str
+    period: str | None
+    list_as_of: str | None
+    list_url: str | None
+    n: int
+    amount: float
+
+
+class GrantReceivedTotal(TypedDict):
+    """Je Geber (``eu`` oder ``bund``): Zahl der Vorhaben und bewilligte Summe."""
+    group: str
+    n: int
+    amount: float
+
+
+class BudgetGrantsReceived(TypedDict):
+    rows: list[GrantReceivedRow]
+    lists: list[GrantReceivedList]
+    totals: list[GrantReceivedTotal]
+    recipients: dict[str, str]
+    provenance: Provenance
+
+
 class BudgetGrants(TypedDict):
     years: list[int]
     year: int | None

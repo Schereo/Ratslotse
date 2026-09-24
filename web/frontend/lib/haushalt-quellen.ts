@@ -149,6 +149,8 @@ export type QuellenSchluessel =
   | "budget_notes"
   // Die beschlossene Haushaltssatzung aus dem Amtsblatt.
   | "budget_bylaw_published"
+  // Fördermittel von EU und Bund je Vorhaben (Listen der Geber).
+  | "grants_received"
   | "investitionsprogramm"
   // Und das Ist-Gegenstück aus dem Statistischen Jahrbuch. Bewusst ein
   // eigener Schlüssel und nicht ein zweiter Absatz unter `investitionen`:
@@ -867,6 +869,21 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     as_of: "Haushaltspläne 2019–2026, Stand der Einbringung",
     art: "pdf",
     url: "https://buergerinfo.oldenburg.de",
+  },
+  grants_received: {
+    title: "Liste der Vorhaben (EFRE, ESF) und Förderkatalog des Bundes",
+    citation:
+      "Die Listen der Geber selbst: die Liste der Vorhaben der EU-Strukturfonds in " +
+      "Niedersachsen (NBank, halbjährlich, beide Förderperioden) und der Förderkatalog des " +
+      "Bundes (Suche nach der Gemeinde Oldenburg). Übernommen sind nur die Stadt und ihre " +
+      "Gesellschaften über eine nachgesehene Namensliste. Die Beträge sind Bewilligungen " +
+      "(Unionsbeitrag, Bundesanteil), keine Auszahlungen. Städtebauförderung und reine " +
+      "Landesprogramme stehen in keiner der beiden Listen.",
+    herausgeber: "NBank; Bundesministerium für Forschung, Technologie und Raumfahrt (Förderkatalog)",
+    standWort: "Listen",
+    as_of: "EU-Listen Stand 31.01.2026 und 30.09.2024, Förderkatalog abgerufen 24.09.2026",
+    art: "web",
+    url: "https://www.europa-fuer-niedersachsen.niedersachsen.de/startseite/regionen_und_foerderung/efre_und_esf/liste-der-vorhaben-152610.html",
   },
   budget_bylaw_published: {
     title: "Amtsblatt für die Stadt Oldenburg — Haushaltssatzung",

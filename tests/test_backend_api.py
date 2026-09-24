@@ -877,7 +877,7 @@ def test_haushalt_datenstand_nennt_alle_schichten(client):
                               "indicators", "rpa_fundstelle",
                               "pruefungsfeststellungen", "konzernabschluss",
                               "beteiligungsbericht", "fees",
-                              "budget_bylaw", "budget_bylaw_published",
+                              "budget_bylaw", "budget_bylaw_published", "grants_received",
                               "wirtschaftsplan",
                               "enterprise_accounts", "company_accounts",
                               "schulden", "loans", "liquidity",

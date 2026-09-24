@@ -4759,6 +4759,54 @@
         "title": "BudgetGrants",
         "type": "object"
       },
+      "BudgetGrantsReceived": {
+        "properties": {
+          "lists": {
+            "items": {
+              "$ref": "#/components/schemas/GrantReceivedList"
+            },
+            "title": "Lists",
+            "type": "array"
+          },
+          "provenance": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Herkunft"
+            },
+            "title": "Provenance",
+            "type": "object"
+          },
+          "recipients": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Recipients",
+            "type": "object"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/GrantReceivedRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "totals": {
+            "items": {
+              "$ref": "#/components/schemas/GrantReceivedTotal"
+            },
+            "title": "Totals",
+            "type": "array"
+          }
+        },
+        "required": [
+          "rows",
+          "lists",
+          "totals",
+          "recipients",
+          "provenance"
+        ],
+        "title": "BudgetGrantsReceived",
+        "type": "object"
+      },
       "BudgetGroup": {
         "properties": {
           "consolidated": {
@@ -11907,6 +11955,181 @@
           "goals"
         ],
         "title": "Goals",
+        "type": "object"
+      },
+      "GrantReceivedList": {
+        "description": "Eine eingelesene Liste: EU je Fonds und Förderperiode, dazu der\nFörderkatalog. ``list_as_of`` ist der Datenstand der Liste.",
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          },
+          "list_as_of": {
+            "title": "List As Of",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "list_url": {
+            "title": "List Url",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "period": {
+            "title": "Period",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "period",
+          "list_as_of",
+          "list_url",
+          "n",
+          "amount"
+        ],
+        "title": "GrantReceivedList",
+        "type": "object"
+      },
+      "GrantReceivedRow": {
+        "description": "Ein gefördertes Vorhaben der Stadt oder einer Gesellschaft.\n\n``funder`` ist „EU\" oder das Bundesressort (BMV, BMWE …),\n``amount_granted`` der bewilligte Unionsbeitrag bzw. Bundesanteil — nicht\ndas Ausgezahlte. ``amount_total`` (förderfähige bzw. Gesamtkosten) führen\nnur die EU-Listen. ``recipient`` steht so in der Liste, ``recipient_key``\nist der Schlüssel aus ``council/foerdermittel.EMPFAENGER``.",
+        "properties": {
+          "amount_granted": {
+            "title": "Amount Granted",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "amount_total": {
+            "title": "Amount Total",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "end": {
+            "title": "End",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "funder": {
+            "title": "Funder",
+            "type": "string"
+          },
+          "herkunft_id": {
+            "title": "Herkunft Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "period": {
+            "title": "Period",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "program": {
+            "title": "Program",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "recipient": {
+            "title": "Recipient",
+            "type": "string"
+          },
+          "recipient_key": {
+            "title": "Recipient Key",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "string"
+          },
+          "start": {
+            "title": "Start",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "summary": {
+            "title": "Summary",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "source_id",
+          "period",
+          "recipient",
+          "recipient_key",
+          "title",
+          "summary",
+          "funder",
+          "program",
+          "amount_total",
+          "amount_granted",
+          "start",
+          "end",
+          "herkunft_id"
+        ],
+        "title": "GrantReceivedRow",
+        "type": "object"
+      },
+      "GrantReceivedTotal": {
+        "description": "Je Geber (``eu`` oder ``bund``): Zahl der Vorhaben und bewilligte Summe.",
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          },
+          "group": {
+            "title": "Group",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "group",
+          "n",
+          "amount"
+        ],
+        "title": "GrantReceivedTotal",
         "type": "object"
       },
       "GrantRow": {
@@ -26823,6 +27046,28 @@
           }
         },
         "summary": "Haushalt Zuschuesse",
+        "tags": [
+          "council"
+        ]
+      }
+    },
+    "/api/council/budget/grants-received": {
+      "get": {
+        "description": "Fördermittel von EU und Bund — je Vorhaben der Stadt oder einer ihrer\nGesellschaften (``council/foerdermittel.py``).\n\n- ``rows``: alle Vorhaben, jüngster Beginn zuerst,\n- ``lists``: die eingelesenen Listen mit Datenstand, Zahl und Summe —\n  damit die Seite sagen kann, wie aktuell was ist,\n- ``recipients``: Schlüssel → Anzeigename der Empfänger.\n\nBeträge sind Bewilligungen, keine Auszahlungen. Städtebauförderung und\nreine Landesprogramme stehen in keiner der Listen.",
+        "operationId": "haushalt_foerdermittel_api_council_budget_grants_received_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetGrantsReceived"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Haushalt Foerdermittel",
         "tags": [
           "council"
         ]
