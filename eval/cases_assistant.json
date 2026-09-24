@@ -1047,5 +1047,161 @@
   ],
   "must_not_number": true,
   "max_sentences": 6
+ },
+ {
+  "id": "laien-pro-kopf-ziffergenau",
+  "note": "L2 (24.09.2026), Laien-Befund C, Frage 16 mit Tippfehler: Die gerechneten 1.908 € wurden zu „rund 1.900 €“. EINORDNUNG_REGEL verlangt seitdem, gerechnete Werte ZIFFERGENAU zu übernehmen — hier gilt deshalb nur die exakte Zahl.",
+  "route": "/haushalt/schulden",
+  "heading": "Wie viel Schulden hat Oldenburg?",
+  "question": "wie hoch sind die schulen pro einwohner",
+  "expect_mode": "explain",
+  "must_mention": [
+   "1.908"
+  ],
+  "must_not": [
+   "rund 1.900",
+   "knapp 1.900",
+   "etwa 1.900",
+   "gut 1.900"
+  ],
+  "must_not_number": true,
+  "max_sentences": 5
+ },
+ {
+  "id": "laien-warum-schulden",
+  "note": "L2, Befund B, Frage 15: bis 24.09.2026 „Die Angaben hier erklären nicht, warum …“. Jetzt mit dem Erklärtext „kredite“ (kern/erklaerwissen.py): Kredite nur für Investitionen, § 120 NKomVG — als allgemeine Regel, nicht als Aussage über Oldenburg.",
+  "route": "/haushalt/schulden",
+  "heading": "Wie viel Schulden hat Oldenburg?",
+  "question": "warum macht die stadt überhaupt schulden",
+  "expect_mode": "explain",
+  "must_mention": [
+   [
+    "Investition"
+   ],
+   [
+    "§ 120",
+    "Kommunalverfassungsgesetz",
+    "NKomVG"
+   ]
+  ],
+  "must_not_number": true,
+  "max_sentences": 6
+ },
+ {
+  "id": "laien-kostet-mich",
+  "note": "L2, Befund B, Frage 7: „Was kostet mich die Stadt?“ ist eine Pro-Kopf-Frage in der ersten Person. Die Summe des Plans 2026 kommt als Zähler dazu (council/assistant.py::_nenner_partner), gerechnet: 883,9 Mio. € / 176.614 = 5.005 € je Einwohner*in.",
+  "route": "/haushalt",
+  "heading": "Oldenburg plant Ausgaben von 883,9 Millionen Euro.",
+  "question": "was kostet mich die stadt pro jahr",
+  "expect_mode": "explain",
+  "must_mention": [
+   "5.005"
+  ],
+  "must_not": [
+   "ist viel",
+   "ist wenig",
+   "ziemlich viel",
+   "sehr hoch",
+   "sehr niedrig",
+   "besonders hoch",
+   "gut aufgestellt",
+   "schlecht da",
+   "besorgniserregend",
+   "alarmierend",
+   "im grünen Bereich"
+  ],
+  "must_not_number": true,
+  "max_sentences": 6
+ },
+ {
+  "id": "laien-zu-viele-stellen",
+  "note": "L2, Befund B, Frage 28: „sind das nicht zu viele“ auf der Personal-Seite endete mit „lässt sich daraus nicht beurteilen“. Jetzt: Stellen je 1.000 Einwohner*innen, serverseitig gerechnet, und kein Urteil.",
+  "route": "/haushalt/personal",
+  "heading": "Wer macht die Arbeit?",
+  "question": "sind das nicht zu viele",
+  "expect_mode": "explain",
+  "must_mention": [
+   [
+    "je 1.000",
+    "pro 1.000"
+   ]
+  ],
+  "must_not": [
+   "das sind zu viele",
+   "das sind nicht zu viele",
+   "es sind zu viele",
+   "zu viele Stellen hat",
+   "angemessen viele"
+  ],
+  "must_not_number": true,
+  "max_sentences": 6
+ },
+ {
+  "id": "laien-genug-geld",
+  "note": "L2, Befund B, Frage 3: „hat die stadt genug geld“ bekam eine Absage ohne Maßstab. Jetzt: Erklärtext „genug_geld“ (Ergebnis, Liquidität, Schulden) und die Summe des Plans mit Erträgen UND Aufwendungen — ohne Urteil.",
+  "route": "/haushalt",
+  "heading": "Oldenburg plant Ausgaben von 883,9 Millionen Euro.",
+  "question": "hat die stadt genug geld",
+  "expect_mode": "explain",
+  "must_mention": [
+   [
+    "Erträge",
+    "Einnahmen"
+   ],
+   [
+    "Aufwendungen",
+    "Ausgaben"
+   ]
+  ],
+  "must_not": [
+   "die Stadt hat genug Geld",
+   "die Stadt hat nicht genug Geld",
+   "hat also genug",
+   "reicht also"
+  ],
+  "must_not_number": true,
+  "max_sentences": 6
+ },
+ {
+  "id": "laien-mitreden",
+  "note": "L2, Befund B, Frage 34: „Ob du selbst mitbestimmen kannst, geht aus den Angaben nicht hervor.“ Jetzt mit dem Erklärtext „mitreden“: Einwohnerfragestunde (§ 62 NKomVG, in Oldenburg auf den Tagesordnungen von Rat und Finanzausschuss), Anträge über Ratsmitglieder und Fraktionen.",
+  "route": "/haushalt/mitreden",
+  "heading": "Mitreden",
+  "question": "kann ich mitbestimmen wofür das geld ausgegeben wird",
+  "expect_mode": "explain",
+  "must_mention": [
+   [
+    "Einwohnerfragestunde",
+    "Fragestunde"
+   ]
+  ],
+  "must_not_number": true,
+  "max_sentences": 6
+ },
+ {
+  "id": "laien-defizit",
+  "note": "L2, Befund B, Frage 36: richtig, aber dünn („mehr ausgegeben als eingenommen“). Jetzt mit dem Erklärtext „defizit“: Aufwendungen gegen Erträge, dazu mindestens EIN Stück aus dem Text (Fehlbetrag, Finanzhaushalt/Kasse, Ausgleich/Rücklage) — welches, ist Geschmack, kein Befund.",
+  "route": "/haushalt",
+  "heading": "Oldenburg plant Ausgaben von 883,9 Millionen Euro.",
+  "question": "was bedeutet defizit",
+  "expect_mode": "explain",
+  "must_mention": [
+   [
+    "Aufwendungen"
+   ],
+   [
+    "Erträge",
+    "Einnahmen"
+   ],
+   [
+    "Fehlbetrag",
+    "Finanzhaushalt",
+    "Kasse",
+    "ausgeglichen",
+    "Rücklage"
+   ]
+  ],
+  "must_not_number": true,
+  "max_sentences": 6
  }
 ]

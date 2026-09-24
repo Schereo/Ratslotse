@@ -8,12 +8,15 @@ dem Bildschirm, die Person zeigt selbst darauf. Deshalb ist der Prompt halb
 so groß, es gibt keine Kandidatenliste, und drei Wege kommen ganz ohne Modell
 aus (:func:`deterministic_answer`).
 
-**Was hineingeht.** Vier Dinge, und alle vier sind eng gedeckelt:
+**Was hineingeht.** Fünf Dinge, und alle fünf sind eng gedeckelt:
 
 * die **Seite** — nicht ihr Text, sondern das, was :mod:`kern.knowledge` über
   sie weiß (was sie zeigt, woher die Zahlen kommen, was sie nicht sagt),
 * das **angeklickte Element** oder die **Markierung** — Text aus dem Browser,
 * geprüfte **Fachwort-Erklärungen** aus :mod:`kern.glossar`,
+* bei Laien-Grundfragen zum Haushalt („warum Schulden?", „genug Geld?")
+  geprüfte **Erklärtexte mit Quelle** aus :mod:`kern.erklaerwissen` —
+  ausgelöst von der Frage, nie vom Bildschirm,
 * bei Geld-Fragen die **Haushaltszahlen** aus ``qa.geld_kontext`` — dieselben
   deterministischen Facetten wie in der KI-Frage, nur mit engerem Deckel.
 
@@ -41,7 +44,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from council import outcome_note
-from kern import glossar, knowledge, llm, prompts
+from kern import erklaerwissen, glossar, knowledge, llm, prompts
 from kern.foreign_text import defuse
 
 # GPT-6 Luna seit P4a (23.09.2026), Tims Entscheidung: „Akkuratheit schlägt
@@ -917,6 +920,22 @@ def _glossar_block(begriffe: list[dict]) -> str:
             f"  kurzen Alltagssatz machen):\n{zeilen}\n")
 
 
+def _erklaerwissen_block(erklaerungen: list) -> str:
+    """Die geprüften Erklärtexte — mit Quelle, und ausdrücklich NICHT Oldenburg.
+
+    Die Überschrift trägt die Trennung, die die Regel verlangt
+    (:data:`kern.prompts.ERKLAERWISSEN_REGEL`): Was hier steht, gilt für jede
+    Kommune in Niedersachsen und ist keine Oldenburger Zahl.
+    """
+    if not erklaerungen:
+        return ""
+    zeilen = "\n".join(f"  · {e.titel}: {e.text}\n    Quelle: {e.quelle}"
+                       for e in erklaerungen)
+    return ("\nALLGEMEIN ERKLÄRT (geprüfte Erklärtexte von Ratslotse zum Haushaltsrecht —\n"
+            "gilt für jede Kommune in Niedersachsen, ist KEINE Aussage über Oldenburg\n"
+            "und KEINE Oldenburger Zahl):\n" + zeilen + "\n")
+
+
 def _anker_block(screen: Screen) -> str:
     """Die Bausteine der Seite, von oben nach unten — Titel, sonst nichts.
 
@@ -1099,7 +1118,13 @@ _EINORDNUNG_RE = re.compile(
     r"|\bim vergleich\b|\bverglichen\b|\bandere[nr]? staedte[n]?\b"
     r"|\bdurchschnitt|\brangliste\b|\bbesser oder schlechter\b"
     # E — die Pro-Kopf-Frage
-    r"|\bpro kopf\b|\bje kopf\b|\bpro einwohner|\bje einwohner|\bpro person\b",
+    r"|\bpro kopf\b|\bje kopf\b|\bpro einwohner|\bje einwohner|\bpro person\b"
+    # F — dieselbe Frage in der ersten Person (Laien-Befund 24.09.2026,
+    # Frage 7): „Was kostet mich die Stadt pro Jahr?" meint den Betrag je
+    # Einwohner*in, sagt es aber nicht. Bis hierher: „diese Rechnung liegt
+    # nicht vor" — obwohl Summe und Einwohnerzahl beide im Bestand sind.
+    r"|\bkostet (?:mich|uns)\b|\bzahle ich\b|\bmein anteil\b"
+    r"|\b(?:pro|je) (?:buerger|nase)",
 )
 
 
@@ -1119,6 +1144,88 @@ def einordnungsfrage(question: str) -> bool:
     Rechnung, die vom Urteil des Modells abhinge, wäre mal da und mal nicht.
     """
     return bool(_EINORDNUNG_RE.search(" ".join(falte(question).split())))
+
+
+#: Die Frage will ein URTEIL — „schlimm?", „zu viele?", „genug?" (L2,
+#: 24.09.2026).
+#:
+#: **Anders als** :data:`_EINORDNUNG_RE`: Die fragt nach einem Maßstab und
+#: bekommt ihn gerechnet. Diese fragt, ob etwas gut oder schlecht ist — die
+#: Antwort darauf gibt Lotti nicht, aber sie hat eine, die keine Bewertung ist
+#: (:data:`kern.prompts.WERTUNG_REGEL`). Gemessen an den 36 Laienfragen durch
+#: das Fenster: „sind das nicht zu viele", „hat die stadt genug geld",
+#: „zahlen wir zu viele steuern", „ist das schlimm?" endeten ohne Maßstab.
+#:
+#: ``zu`` steht immer VOR dem Mengenwort — „wie viel zu viel" ja, „wie viel"
+#: allein nie. ``genug`` ohne Zusatz: „reicht das Geld" meint dasselbe und
+#: steht beim Erklärtext „genug Geld", nicht hier.
+_WERTUNG_RE = re.compile(
+    r"\bschlimm|\bzu (?:viel|viele|hoch|hohe|teuer|wenig|niedrig|gross|klein)\b"
+    r"|\bgenug\b|\bangemessen|\bverschwend|\bbedenklich|\bbesorgnis"
+    r"|\bviel oder wenig\b|\bgut oder schlecht\b|\bnormal\b",
+)
+
+
+def wertungsfrage(question: str) -> bool:
+    """Will diese Frage ein Urteil — „ist das schlimm?", „zu viele?"?
+
+    Deterministisch am Wortlaut, dieselbe Bauform wie :func:`einordnungsfrage`:
+    Der Auslöser entscheidet, ob :data:`kern.prompts.WERTUNG_REGEL` im Prompt
+    steht — und, zusammen mit dieser, ob :func:`_einordnung` rechnet: Die
+    neutralen Maßstäbe, die die Regel verlangt, sollen auch da sein.
+    """
+    return bool(_WERTUNG_RE.search(" ".join(falte(question).split())))
+
+
+#: Welche Zahl „das" auf einer Haushalts-Seite meint, wenn die Frage es nicht
+#: sagt („sind das nicht zu viele" auf „Wer macht die Arbeit?"). Nur für die
+#: EINORDNUNG gebraucht: Eine Pro-Kopf-Zahl braucht einen Zähler, und der
+#: kommt von selbst nur, wenn die Frage sein Wort trägt. Die Auswahl der
+#: Kernzahlen je Seite überhaupt ist eine eigene Aufgabe (L1, `council/qa.py`);
+#: hier geht es nur um den Nenner-Partner einer Einordnungsfrage.
+#:
+#: Nur drei Seiten, und jede mit IHRER Zahl: Auf der Schulden-Seite meint
+#: „ist das schlimm?" den Schuldenstand, nicht den Gesamthaushalt — eine
+#: Plan-Summe dort wäre ein Maßstab für eine Frage, die niemand gestellt hat.
+#: Seiten ohne Eintrag bekommen nichts dazu.
+_EINORDNUNG_ZAEHLER = {
+    "/haushalt": "haushalt",
+    "/haushalt/schulden": "schulden",
+    "/haushalt/personal": "stellenplan",
+}
+
+
+def _nenner_partner(store, geld: dict, route: str) -> None:
+    """Holt die Zahl, auf die sich eine Einordnungsfrage bezieht, wenn sie fehlt.
+
+    Zwei Fälle, beide gemessen am 24.09.2026 durch das echte Fenster:
+
+    * **„Was kostet mich die Stadt pro Jahr?" auf der Übersicht.** Im Kontext
+      stand „Stadtplanung 7,4 Mio. €" (das Wort „Stadt" traf den
+      Teilhaushalt), aber keine Gesamtsumme — also auch keine Pro-Kopf-Zahl.
+      Fehlt JEDE Zahl, die die ganze Stadt meint (:func:`_stadtsummen`),
+      kommt die Summenzeile des Plans dazu. Sie trägt Erträge UND
+      Aufwendungen, beantwortet also zugleich „hat die Stadt genug Geld?"
+      mit dem, was der Erklärtext dazu erklärt: ob sich beide decken.
+    * **„Sind das nicht zu viele?" auf der Personal-Seite.** Der Stellenplan
+      kam nicht mit, weil die Frage „Stellen" nicht sagt.
+
+    Verändert ``geld`` an Ort und Stelle; wirft nie (Zahlen sind Zusatz).
+    """
+    zaehler = _EINORDNUNG_ZAEHLER.get(route)
+    try:
+        if zaehler == "stellenplan" and not geld.get("stellenplan"):
+            geld["stellenplan"] = store.stellenplan_kontext()
+        elif zaehler == "schulden" and not geld.get("schulden"):
+            geld["schulden"] = store.schulden_kontext()
+        elif zaehler == "haushalt" and not _stadtsummen(geld):
+            summe = [r for r in (store.haushalt_fuer_begriffe(["haushalt"]) or [])
+                     if r.get("is_total")][:1]
+            if summe:
+                geld["haushalt"] = summe + [r for r in geld.get("haushalt") or []
+                                            if not r.get("is_total")]
+    except Exception:  # noqa: BLE001 — Zahlen sind Zusatz, nie Blocker
+        return
 
 
 #: Höchstens so viele eigene Themen — als NAMEN, nie mit Beschreibung. Die
@@ -1177,7 +1284,11 @@ def screen_context(store, screen: Screen, question: str, *,
     geld_gewollt = False
     ausloeser = ""
     zwei_zaehlweisen_frage_ = zwei_zaehlweisen_frage(question)
-    einordnung_frage_ = einordnungsfrage(question)
+    # L2: Eine Wertungsfrage („ist das schlimm?") bekommt dieselben Maßstäbe
+    # gerechnet wie eine Einordnungsfrage — die Regel, die sie statt einer
+    # Absage verlangt (`prompts.WERTUNG_REGEL`), braucht sie im Kontext.
+    wertung_frage_ = wertungsfrage(question)
+    einordnung_frage_ = einordnungsfrage(question) or wertung_frage_
     if wissen and (haushaltsseite or darf_geld):
         from council import qa  # lokal: qa ist groß, und nicht jeder Aufruf braucht es
         ausloeser = (" ".join(t for t in (question, gegenstand) if t).strip()
@@ -1208,7 +1319,13 @@ def screen_context(store, screen: Screen, question: str, *,
         # Haushaltszahl steht, auf die er sich bezieht. Genau die Sorte
         # Baustein, die neben Fremdtext die Regeln verdünnt (s. GELD_AUSSERHALB).
         if einordnung_frage_ and geld_gewollt:
-            facetten_text = f"{facetten_text} einwohner vergleich"
+            # L2: Auf der Personal-Seite OHNE „vergleich": Der Städtevergleich
+            # ist eine Euro-Reihe (Steuerkraft) und stand bei „sind das nicht
+            # zu viele" als Beleg unter einer Antwort über Stellen
+            # (Bildschirmfoto 24.09.2026).
+            vergleich = ("" if _EINORDNUNG_ZAEHLER.get(screen.route) == "stellenplan"
+                         else " vergleich")
+            facetten_text = f"{facetten_text} einwohner{vergleich}"
         if geld_gewollt:
             try:
                 geld = qa.geld_kontext(store, facetten_text, ausloeser, "money")
@@ -1230,6 +1347,13 @@ def screen_context(store, screen: Screen, question: str, *,
                         store, kern.begriffe, kern.begriffe, "money", facetten=kern.facetten))
                 except Exception:  # noqa: BLE001 — Zahlen sind Zusatz, nie Blocker
                     pass
+            # L2: Der Zähler der Einordnung, wenn die Frage ihn nicht nennt —
+            # NACH den Kernzahlen der Seite (L1, #1547), die ihn auf allen drei
+            # Seiten normalerweise schon mitbringen, samt Deckel `KERN_MAX`.
+            # Das hier füllt nur die Lücke, wenn der Kern ausfällt; es prüft
+            # auf den vorhandenen Schlüssel, ein zweiter Block entsteht nie.
+            if geld and einordnung_frage_ and haushaltsseite:
+                _nenner_partner(store, geld, screen.route)
             if geld and haushaltsseite and eigene_frage:
                 eigen = qa.geld_facetten(question) & set(geld.get("facets") or ())
                 if eigen:
@@ -1288,6 +1412,15 @@ def screen_context(store, screen: Screen, question: str, *,
         # Baustein wird, entscheidet `_einordnung_block` an den Daten — ohne
         # Einwohnerzahl gibt es weder Rechnung noch Regel.
         "einordnung": einordnung_frage_,
+        # L2: Die Frage will ein Urteil — der Prompt bekommt die Regel
+        # „Maßstäbe statt Absage" (`prompts.WERTUNG_REGEL`).
+        "wertung": wertung_frage_,
+        # L2: Die geprüften Erklärtexte, die diese FRAGE auslöst (nie der
+        # Bildschirm — s. `erklaerwissen.finde`). Nur im Haushalts-Kontext:
+        # Die Texte handeln vom Haushaltsrecht, und außerhalb stünden sie
+        # neben einem Beschluss, zu dem sie nichts sagen.
+        "erklaerungen": (erklaerwissen.finde(question)
+                         if haushaltsseite or geld_gewollt else []),
         # Wer selbst fragt, bekommt den vollen Deckel der KI-Frage: Dann
         # tragen die Zahlen die Antwort und dürfen nicht als dritter
         # Baustein herausfallen (s. GELD_MAX).
@@ -1419,6 +1552,14 @@ def _stadtsummen(geld: dict) -> list[tuple[str, float, int | None]]:
             aus.append(("geplante Aufwendungen des Kernhaushalts", zeile["expenses"], jahr))
         if zeile.get("revenues"):
             aus.append(("geplante Erträge des Kernhaushalts", zeile["revenues"], jahr))
+    # L2: Die Steuereinnahmen insgesamt meinen ebenfalls die ganze Stadt —
+    # „Zahlen wir zu viele Steuern?" bekam bis 24.09.2026 keinen Maßstab.
+    # Nur die Summenzeile: Eine einzelne Steuerart je Einwohner*in wäre die
+    # Sorte Zahl, die P4a verboten hat (Gewerbesteuer zahlen Betriebe).
+    for zeile in geld.get("taxes") or []:
+        if zeile.get("kind") == "total" and zeile.get("amount"):
+            aus.append(("tatsächlich eingenommene Steuern der Stadt insgesamt",
+                        zeile["amount"], zeile.get("year")))
     ist = geld.get("ist") or {}
     gesamt = ist.get("gesamt") or {}
     if gesamt.get("expenses_actual"):
@@ -1480,7 +1621,55 @@ def _einordnung(geld: dict | None, einwohner: dict | None) -> list[str]:
             f"- {label} {jahr}: {_geld.de_betrag(betrag)} geteilt durch "
             f"{_geld.de_zahl(ew['population'])} Einwohner*innen (Ende {ew['year']}) "
             f"= {_geld.de_euro(pro_kopf)} je Einwohner*in")
+    zeilen += _stellen_je_tausend(geld.get("stellenplan"), einwohner)
     return zeilen
+
+
+def _komma(zahl: float, stellen: int = 1) -> str:
+    """``11,6`` — deutsches Komma, Tausenderpunkt, feste Nachkommastellen."""
+    roh = f"{zahl:,.{stellen}f}"
+    return roh.replace(",", "_").replace(".", ",").replace("_", ".")
+
+
+def _stellen_je_tausend(stellenplan: dict | None, einwohner: dict | None) -> list[str]:
+    """Stellen je 1.000 Einwohner*innen — dieselbe Bauform wie die Euro-Zeilen.
+
+    **Warum je 1.000 und nicht je Kopf.** 0,0146 Stellen je Einwohner*in liest
+    niemand; „14,6 Stellen je 1.000" ist die Form, in der Kommunen ihren
+    Personalbestand vergleichen. Eine Nachkommastelle, weil der Stellenplan
+    selbst Bruchteile führt (Teilzeit) — mehr wäre Scheingenauigkeit.
+
+    **Je Teil, nie zusammen.** Der Stellenplan hat keine Zeile „Stellen
+    insgesamt", ``store.stellenplan_kontext`` bildet keine, und die
+    Personal-Seite sagt es ausdrücklich („keine Summe A+B — steht in keinem
+    Dokument"). Ein erster Entwurf rechnete „A und B zusammen: 14,6 je 1.000"
+    — und Lotti nannte genau diese Zahl neben einer Seite, die sie bewusst
+    nicht zeigt (Bildschirmfoto 24.09.2026). Deshalb nur die beiden Teile.
+
+    Nenner ist die Einwohnerzahl zum Ende des VORJAHRS des Haushaltsjahres,
+    falls vorhanden: Der Stellenplan 2026 wird im Herbst 2025 aufgestellt.
+    Beide Jahre stehen in der Zeile.
+    """
+    s = stellenplan or {}
+    teile = [t for t in s.get("teile") or [] if t.get("positions_planned")]
+    if not teile or not einwohner or not einwohner.get("latest"):
+        return []
+    from council import geld as _geld
+
+    jahr = s.get("budget_year")
+    ew = _einwohner_zu(einwohner, (jahr - 1) if jahr else None)
+    if not ew or not ew.get("population"):
+        return []
+    n = ew["population"]
+
+    def zeile(label: str, stellen: float) -> str:
+        return (f"- {label} im Stellenplan {jahr}: {_komma(stellen)} Stellen geteilt durch "
+                f"{_geld.de_zahl(n)} Einwohner*innen (Ende {ew['year']}) = "
+                f"{_komma(stellen / n * 1000)} Stellen je 1.000 Einwohner*innen "
+                f"(Kernverwaltung, Stellen statt Köpfe)")
+
+    return [zeile(f"Teil {t['part']} ({t.get('teil_name') or t['part']})",
+                  t["positions_planned"]) for t in teile]
 
 
 def _vergleichs_zeile(vergleich: dict | None) -> str:
@@ -1550,7 +1739,12 @@ def _einordnung_block(geld: dict | None) -> str:
     zeilen = _einordnung(geld, (geld or {}).get("population"))
     if not zeilen:
         return ""
-    vergleich = _vergleichs_zeile((geld or {}).get("vergleich"))
+    # Der Städtevergleich ist eine Euro-Reihe (Steuerkraft, Hebesätze). Neben
+    # Stellen je 1.000 Einwohner*innen allein stünde er als Maßstab für etwas,
+    # das er nicht misst (gemessen 24.09.2026: „sind das nicht zu viele" bekam
+    # die Steuerkraftmesszahl als Vergleich).
+    euro = any("je Einwohner*in" in z for z in zeilen)
+    vergleich = _vergleichs_zeile((geld or {}).get("vergleich")) if euro else ""
     return ("\nZUR EINORDNUNG (von Ratslotse GERECHNET, nicht vom Modell — übernimm\n"
             "diese Zahlen, wie sie dastehen, und rechne selbst nichts nach):\n"
             + "\n".join([*zeilen, *([vergleich] if vergleich else [])]) + "\n")
@@ -1585,6 +1779,16 @@ def explain_messages(screen: Screen, question: str, ctx: dict,
         # PR 26: dieselbe Bauform noch einmal — an der Rechnung, nicht an der
         # Frage. Ohne Absatz keine Regel (s. oben).
         einordnung_regel=prompts.EINORDNUNG_REGEL if einordnung else "",
+        # L2: „Maßstäbe statt Absage" — nur für eine Wertungsfrage. Auch NEBEN
+        # der Einordnungsregel: Die kennt nur „je Einwohner*in und andere
+        # Städte"; „hat die Stadt genug Geld?" hat als Maßstab zuerst, ob
+        # Erträge und Aufwendungen sich decken — und das sagt nur diese.
+        wertung_regel=prompts.WERTUNG_REGEL if ctx.get("wertung") else "",
+        # L2: die geprüften Erklärtexte und ihre Regel — beide an DERSELBEN
+        # Bedingung, derselbe bedingte Bau wie `wegweiser_regel`.
+        erklaerwissen=_erklaerwissen_block(ctx.get("erklaerungen") or []),
+        erklaerwissen_regel=(prompts.ERKLAERWISSEN_REGEL
+                             if ctx.get("erklaerungen") else ""),
         screen=_screen_block(screen),
         anker=_anker_block(screen),
         question=kuerze(question, QUESTION_MAX) or "(keine eigene Frage — erklär das Gezeigte)",
