@@ -54,6 +54,14 @@ function PersonKarte({ g, letzte }: { g: Gewaehlt; letzte: number }) {
           {MANDAT[g.mandate]}
         </p>
         {jahre && <p className="mt-1.5 text-xs text-muted-foreground">Im Rat {jahre}</p>}
+        {/* Die Karte steht weiter unter der Liste, über die gewählt wurde —
+            das ist das Wahlergebnis. Die Abweichung steht daneben; die Quelle
+            dazu auf der Personen-Seite (ein Link im Link ginge hier nicht). */}
+        {g.affiliation && (
+          <p className="mt-1.5 text-xs font-medium text-foreground">
+            Tritt {g.affiliation.label} an
+          </p>
+        )}
       </Card>
     </Link>
   );
@@ -112,12 +120,17 @@ export default function View() {
 
       {data.vacancies.length > 0 && (
         <Card className="max-w-3xl p-4">
-          <h2 className="font-display text-[15px] font-bold text-foreground">Nicht angetreten</h2>
+          <h2 className="font-display text-[15px] font-bold text-foreground">Wechsel nach der Wahl</h2>
           <ul className="mt-2 space-y-1.5 text-[13.5px] text-foreground">
             {data.vacancies.map((v) => (
               <li key={v.name}>
                 <strong className="font-semibold">{v.name}</strong> ({v.list_short}) — {v.reason}
-                {v.successor ? <>; nachgerückt ist {v.successor}.</> : <>; die Nachfolge steht noch nicht fest.</>}
+                {v.successor ? <>; nachgerückt ist {v.successor}</> : <>; die Nachfolge steht noch nicht fest</>}
+                {v.source && (
+                  <>
+                    {" "}(<a href={v.source} target="_blank" rel="noreferrer" className="text-primary underline-offset-2 hover:underline">Quelle</a>)
+                  </>
+                )}.
               </li>
             ))}
           </ul>

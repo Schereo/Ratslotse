@@ -4007,6 +4007,8 @@ class ElectedMember(TypedDict):
     #: Wahlperioden im Rat (Anfangsjahr, z. B. 2016 für 2016–2021). Vor 2018
     #: nur für Personen, die das Ratsinformationssystem noch führt.
     council_terms: list[int]
+    #: Abweichende Zugehörigkeit im neuen Rat — ``None``: die der Liste.
+    affiliation: ElectedAffiliation | None
 
 
 class ElectedVacancy(TypedDict):
@@ -4016,6 +4018,16 @@ class ElectedVacancy(TypedDict):
     reason: str
     #: Anzeigename der Nachfolge; ``None``, solange sie nicht bekannt ist.
     successor: str | None
+    #: Wo das bekannt wurde (Meldung der Stadt oder Presse).
+    source: str | None
+
+
+class ElectedAffiliation(TypedDict):
+    """Die Zugehörigkeit im neuen Rat, wo sie von der Wahlliste abweicht."""
+    #: Wie die Person im Rat auftritt, z. B. „fraktionslos (OBM)“.
+    label: str
+    note: str | None
+    source: str | None
 
 
 class ElectedCouncil(TypedDict):

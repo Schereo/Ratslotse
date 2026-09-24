@@ -18,7 +18,8 @@ nach der Sitzung des Wahlausschusses um.
 
 **Was sich danach noch ändert**, steht in ``mandatswechsel.json`` im selben
 Ordner, von Hand gepflegt: wer die Wahl ablehnt oder als Oberbürgermeister*in
-ausscheidet, und wer für sie nachrückt. Das Nachrücken der Ersatzpersonen (NKWG) hängt
+ausscheidet, und wer für sie nachrückt — dazu unter ``affiliations``, wer
+im neuen Rat nicht für die Liste antritt, über die er gewählt ist. Das Nachrücken der Ersatzpersonen (NKWG) hängt
 an der Art des Wahlvorschlags und an der Stimmenreihenfolge; das rechnen wir
 nicht nach, sondern tragen ein, was die Stadt bekannt gibt. Der Name der
 Nachfolge muss im Register derselben Liste stehen, sonst bricht das Laden ab.
@@ -35,7 +36,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from ..antworten import ElectedCouncil, ElectedMember, ElectedVacancy
+from ..antworten import ElectedAffiliation, ElectedCouncil, ElectedMember, ElectedVacancy
 from . import archive, elections, reference, register
 
 _log = logging.getLogger("ratslotse.web.wahlabend")
@@ -70,15 +71,37 @@ class _Change:
     list_slug: str
     reason: str
     successor: str | None
+    source: str | None
 
 
-def _changes(folder: Path) -> list[_Change]:
+@dataclass(frozen=True)
+class _Affiliation:
+    name: str
+    list_slug: str
+    label: str
+    note: str | None
+    source: str | None
+
+
+def _read_changes(folder: Path) -> dict:
     path = folder / CHANGES_FILE
-    if not path.is_file():
-        return []
-    raw = json.loads(path.read_text(encoding="utf-8"))
-    return [_Change(c["name"], c["list"], c["reason"], c.get("successor"))
+    return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
+
+
+def _changes(raw: dict) -> list[_Change]:
+    return [_Change(c["name"], c["list"], c["reason"], c.get("successor"), c.get("source"))
             for c in raw.get("changes", [])]
+
+
+def _affiliations(raw: dict) -> list[_Affiliation]:
+    """Wer im neuen Rat nicht für die Liste antritt, über die er gewählt ist.
+
+    Das Wahlergebnis kennt nur die Liste; ein Austritt nach der Wahl ändert
+    daran nichts (Christoph Baak, über die CDU-Liste gewählt, tritt als
+    fraktionsloses Mitglied „OBM“ an). Die Seite sortiert deshalb weiter nach
+    Liste und nennt die Abweichung daneben."""
+    return [_Affiliation(a["name"], a["list"], a["label"], a.get("note"), a.get("source"))
+            for a in raw.get("affiliations", [])]
 
 
 def _find(reg: register.Register, list_slug: str, name: str) -> tuple[int, register.Candidate] | None:
@@ -107,6 +130,14 @@ def _load(slug: str) -> tuple[dict, list[dict], list[ElectedVacancy]] | None:
     parties = {p["slug"]: p for p in night["parties"]}
     areas = {a["number"]: a for a in night["areas"]}
 
+    def votes_of(list_slug: str, area: int, cand: register.Candidate) -> int | None:
+        """Personenstimmen aus dem Wahlbereich — auch für eine Nachfolge,
+        die am Wahlabend keinen Sitz bekam."""
+        a = areas.get(area)
+        p = next((x for x in (a or {}).get("parties", []) if x["slug"] == list_slug), None)
+        c = next((x for x in (p or {}).get("candidates", []) if x["position"] == cand.position), None)
+        return c["votes"] if c else None
+
     def entry(list_slug: str, area: int, cand: register.Candidate | None, name: str,
               votes: int | None, mandate: str) -> dict:
         p = parties[list_slug]
@@ -117,6 +148,7 @@ def _load(slug: str) -> tuple[dict, list[dict], list[ElectedVacancy]] | None:
             "area": area, "area_roman": a["roman"], "area_name": a["name"],
             "position": cand.position if cand else None, "votes": votes, "mandate": mandate,
             "occupation": cand.occupation if cand else None, "born": cand.born if cand else None,
+            "affiliation": None,
         }
 
     members: list[dict] = []
@@ -131,7 +163,8 @@ def _load(slug: str) -> tuple[dict, list[dict], list[ElectedVacancy]] | None:
         members.append(entry(m["slug"], m["area"], found[1] if found else None, name, m["votes"], m["kind"]))
 
     vacancies: list[ElectedVacancy] = []
-    for ch in _changes(wahl.archive_folder):
+    raw_changes = _read_changes(wahl.archive_folder)
+    for ch in _changes(raw_changes):
         idx = next((i for i, e in enumerate(members)
                     if e["register_name"] == ch.name and e["list"] == ch.list_slug), None)
         if idx is None:
@@ -143,10 +176,17 @@ def _load(slug: str) -> tuple[dict, list[dict], list[ElectedVacancy]] | None:
             if found is None:
                 raise ValueError(f"{CHANGES_FILE}: „{ch.successor}“ steht nicht auf der Liste {ch.list_slug}")
             area, cand = found
-            members.append(entry(ch.list_slug, area, cand, ch.successor, None, "successor"))
+            members.append(entry(ch.list_slug, area, cand, ch.successor,
+                                 votes_of(ch.list_slug, area, cand), "successor"))
             successor = display_name(ch.successor)
         vacancies.append(ElectedVacancy(name=left["name"], list_short=left["list_short"],
-                                        reason=ch.reason, successor=successor))
+                                        reason=ch.reason, successor=successor, source=ch.source))
+
+    for af in _affiliations(raw_changes):
+        hit = next((e for e in members if e["register_name"] == af.name and e["list"] == af.list_slug), None)
+        if hit is None:
+            raise ValueError(f"{CHANGES_FILE}: „{af.name}“ ({af.list_slug}) hat keinen Sitz")
+        hit["affiliation"] = ElectedAffiliation(label=af.label, note=af.note, source=af.source)
 
     # Stimmzettel-Reihenfolge der Listen, darin Wahlbereich und Listenplatz —
     # dieselbe Ordnung wie auf der Wahlabend-Seite.
@@ -205,6 +245,7 @@ def council(slug_of, history, known: dict[str, str], election: str | None = None
             area_roman=e["area_roman"], area_name=e["area_name"], position=e["position"],
             votes=e["votes"], mandate=e["mandate"], occupation=e["occupation"], born=e["born"],
             has_profile=slug in known, council_status=status, council_terms=terms,
+            affiliation=e["affiliation"],
         ))
     return ElectedCouncil(
         election=head["election"], title=head["title"], date=head["date"],

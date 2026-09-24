@@ -152,7 +152,38 @@ def test_nachfolge_ersetzt_den_sitz(tmp_path, monkeypatch):
     assert len(rat["members"]) == 52
     assert rat["vacancies"][0]["successor"] == elected.display_name(nachfolge)
     neu = next(m for m in rat["members"] if m["name"] == elected.display_name(nachfolge))
-    assert neu["mandate"] == "successor" and neu["votes"] is None
+    # Die Nachfolge trägt ihre eigenen Personenstimmen aus dem Wahlbereich.
+    assert neu["mandate"] == "successor" and isinstance(neu["votes"], int)
+
+
+def test_der_eingetragene_stand_2026():
+    """Was ``mandatswechsel.json`` heute trägt: Sander verzichtet für
+    Wilkens (471 Personenstimmen amtlich, 470 vorläufig, Wahlbereich VI), Baak ist über die
+    CDU-Liste gewählt und tritt fraktionslos an — er bleibt unter der CDU
+    einsortiert, weil das Wahlergebnis so lautet."""
+    rat = elected.council(_slug, _history(), {}, WAHL)
+    assert rat is not None and len(rat["members"]) == 52
+    namen = {m["name"]: m for m in rat["members"]}
+    assert "Andreas Sander" not in namen
+    wilkens = namen["Holger Martin Wilkens"]
+    assert (wilkens["list"], wilkens["area"], wilkens["mandate"]) == ("buergerbuendnis", 6, "successor")
+    assert wilkens["votes"] == 471
+    (v,) = rat["vacancies"]
+    assert v["name"] == "Andreas Sander" and v["successor"] == "Holger Martin Wilkens" and v["source"]
+    baak = namen["Christoph Baak"]
+    assert baak["list"] == "cdu" and baak["affiliation"] is not None
+    assert "OBM" in baak["affiliation"]["label"] and baak["affiliation"]["source"]
+    assert sum(1 for m in rat["members"] if m["affiliation"]) == 1
+
+
+def test_zugehoerigkeit_nur_fuer_gewaehlte(tmp_path, monkeypatch):
+    _mit_wechseln(tmp_path, monkeypatch, [])
+    wahl = elections.get(WAHL)
+    assert wahl is not None and wahl.archive_folder is not None
+    (wahl.archive_folder / elected.CHANGES_FILE).write_text(json.dumps({
+        "affiliations": [{"name": "Mustermann, Erika", "list": "cdu", "label": "x"}]}), encoding="utf-8")
+    with pytest.raises(ValueError, match="hat keinen Sitz"):
+        elected._load(WAHL)
 
 
 def test_nachfolge_muss_auf_der_liste_stehen(tmp_path, monkeypatch):

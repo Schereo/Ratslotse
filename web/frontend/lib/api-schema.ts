@@ -9791,6 +9791,18 @@ export interface components {
             districts: unknown;
         };
         /**
+         * ElectedAffiliation
+         * @description Die Zugehörigkeit im neuen Rat, wo sie von der Wahlliste abweicht.
+         */
+        ElectedAffiliation: {
+            /** Label */
+            label: string;
+            /** Note */
+            note: string | null;
+            /** Source */
+            source: string | null;
+        };
+        /**
          * ElectedCouncil
          * @description Der gewählte Rat nach einer Ratswahl — bevor er in den Protokollen steht.
          */
@@ -9824,6 +9836,18 @@ export interface components {
          *     die Person dem Rat schon angehörte (und nicht nur einen Ausschuss beriet).
          */
         ElectedMember: {
+            /**
+             * ElectedAffiliation
+             * @description Die Zugehörigkeit im neuen Rat, wo sie von der Wahlliste abweicht.
+             */
+            affiliation: {
+                /** Label */
+                label: string;
+                /** Note */
+                note: string | null;
+                /** Source */
+                source: string | null;
+            } | null;
             /** Area */
             area: number;
             /** Area Name */
@@ -9876,6 +9900,8 @@ export interface components {
             name: string;
             /** Reason */
             reason: string;
+            /** Source */
+            source: string | null;
             /** Successor */
             successor: string | null;
         };
@@ -23956,4 +23982,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 09c43e6c464597cd04fb88b2245b1a0fc97d97bf3d3cffa1ce29d4767428e8ac
+// vertrag-sha256: ed370591b9a985cab0841a30e9c1a8c67e4f7378641693f2b6c37da7b9c26da2

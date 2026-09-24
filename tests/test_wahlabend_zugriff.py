@@ -103,8 +103,9 @@ def test_rang_nach_stimmen_nicht_nach_prozent(nacht):
     assert (dritter["roman"], vierter["roman"]) == ("III", "II")
     assert dritter["votes"] > vierter["votes"]
     assert dritter["share_pct"] < vierter["share_pct"]
-    # Und der stärkste Wahlbereich der SPD ist IV.
-    assert spd["areas"][0]["roman"] == "IV" and spd["areas"][0]["votes"] == 12094
+    # Und der stärkste Wahlbereich der SPD ist IV — 12.355 Stimmen im
+    # amtlichen Endergebnis (vorläufig: 12.094; eingefroren am 24.09.2026).
+    assert spd["areas"][0]["roman"] == "IV" and spd["areas"][0]["votes"] == 12355
 
 
 def test_der_letzte_und_der_naechste_sitz_stehen_genau_einmal(nacht):

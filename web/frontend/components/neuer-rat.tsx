@@ -93,7 +93,9 @@ export function steckbrief(g: Pick<Gewaehlt, "occupation" | "born">): string {
 
 function StandHinweis({ status, compact = false }: { status: GewaehlterRat["status"]; compact?: boolean }) {
   if (status === "amtlich") {
-    return <span className="text-meta text-muted-foreground">Amtliches Endergebnis</span>;
+    // Im Profilkopf ist „amtlich" der Normalfall und keine Zeile wert —
+    // nur das Vorläufige verdient eine Markierung.
+    return compact ? null : <span className="text-meta text-muted-foreground">Amtliches Endergebnis</span>;
   }
   return (
     <span className="inline-flex items-center rounded-full border border-[#fde68a] bg-[#fffbeb] px-2.5 py-0.5 text-xs font-medium text-[#92400e] dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300">
@@ -107,16 +109,40 @@ export function NeuerRatHinweis({ g }: { g: Gewaehlt }) {
   const an = useFeature("neuer-rat");
   if (!an) return null;
   return (
-    <Link href={NEUER_RAT_HREF}
-      className="mt-4 flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 transition-colors hover:bg-primary/10">
-      <Vote className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-      <span className="min-w-0 flex-1 text-[13.5px] text-foreground">
-        <strong className="font-semibold">{g.council_status === "current" ? "Wiedergewählt" : g.council_status === "former" ? "Wieder gewählt" : "Neu gewählt"}</strong>{" "}
-        für {g.list_short} im Wahlbereich {g.area_roman}
-        {g.votes != null && <> · {zahl(g.votes)} Personenstimmen</>}
-      </span>
-      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-    </Link>
+    <div className="mt-4 overflow-hidden rounded-xl border border-primary/20 bg-primary/5">
+      <Link href={NEUER_RAT_HREF}
+        className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-primary/10">
+        <Vote className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+        <span className="min-w-0 flex-1 text-[13.5px] text-foreground">
+          <strong className="font-semibold">{g.council_status === "current" ? "Wiedergewählt" : g.council_status === "former" ? "Wieder gewählt" : "Neu gewählt"}</strong>{" "}
+          über die Liste {g.list_short} im Wahlbereich {g.area_roman}
+          {g.votes != null && <> · {zahl(g.votes)} Personenstimmen</>}
+        </span>
+        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+      </Link>
+      {g.affiliation && (
+        // Außerhalb des Links: Die Quelle ist selbst ein Link, und ein Link
+        // im Link ist kein gültiges HTML.
+        <p className="border-t border-primary/15 px-4 py-2.5 text-[13px] text-foreground">
+          <AbweichendeZugehoerigkeit a={g.affiliation} />
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** „Tritt im neuen Rat fraktionslos (OBM) an — nach der Wahl aus … (Quelle)". */
+export function AbweichendeZugehoerigkeit({ a, mitQuelle = true }: { a: NonNullable<Gewaehlt["affiliation"]>; mitQuelle?: boolean }) {
+  return (
+    <>
+      Tritt im neuen Rat <strong className="font-semibold">{a.label}</strong> an
+      {a.note && <> — {a.note}</>}
+      {mitQuelle && a.source && (
+        <>
+          {" "}(<a href={a.source} target="_blank" rel="noreferrer" className="text-primary underline-offset-2 hover:underline">Quelle</a>)
+        </>
+      )}.
+    </>
   );
 }
 
@@ -132,12 +158,18 @@ export function GewaehltProfil({ g }: { g: Gewaehlt }) {
     ...(g.position != null ? [["Listenplatz", String(g.position)] as [string, React.ReactNode]] : []),
     ...(g.votes != null ? [["Personenstimmen", zahl(g.votes)] as [string, React.ReactNode]] : []),
     ...(MANDAT[g.mandate] ? [["Sitz", MANDAT[g.mandate]] as [string, React.ReactNode]] : []),
+    ...(g.affiliation ? [["Im neuen Rat", g.affiliation.label] as [string, React.ReactNode]] : []),
     ...(g.council_terms.length && rat
       ? [["Bisher im Rat", ratsjahre(g.council_terms, letztePeriode(rat.term_start))] as [string, React.ReactNode]]
       : []),
   ];
   const info = steckbrief(g);
   const brand = partyBrand(g.list_short);
+  // Wer nachrückt, rückt für jemanden nach — das steht in der Liste der
+  // Wechsel, nicht an der Person.
+  const vorgaenger = g.mandate === "successor"
+    ? rat?.vacancies.find((v) => v.successor === g.name) ?? null
+    : null;
   return (
     <Card className="mx-auto max-w-3xl p-5 sm:p-6">
       {zeigeZurueck && (
@@ -167,6 +199,16 @@ export function GewaehltProfil({ g }: { g: Gewaehlt }) {
           : "Wieder gewählt in den Rat der Stadt Oldenburg"}
         {rat && <> — die Wahlperiode beginnt am {langesDatum(rat.term_start)}</>}.
       </p>
+      {vorgaenger && (
+        <p className="mt-2 text-hinweis text-muted-foreground">
+          Anstelle von {vorgaenger.name} ({vorgaenger.list_short}): {vorgaenger.reason}
+          {vorgaenger.source && (
+            <>
+              {" "}(<a href={vorgaenger.source} target="_blank" rel="noreferrer" className="text-primary underline-offset-2 hover:underline">Quelle</a>)
+            </>
+          )}.
+        </p>
+      )}
 
       <dl className="mt-4 grid gap-x-6 gap-y-2.5 rounded-xl border border-border p-4 sm:grid-cols-2">
         {fakten.map(([k, v]) => (

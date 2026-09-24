@@ -45,19 +45,21 @@ def test_ratswahl_wer_vorn_lag(rat):
     assert rat["election"]["label"] == "Ratswahl"
     assert rat["total"] == rat["counted"] == 91 and rat["phase"] == "complete"
     siege = {w["slug"]: w["districts"] for w in rat["wins"]}
-    # 48 + 39 + 2 + 1 = 90 — Bezirk 400 ist ein Gleichstand (361 : 361).
-    assert siege == {"spd": 48, "gruene": 39, "afd": 2, "linke": 1}
+    # 47 + 39 + 2 + 1 = 89 — zwei Gleichstände: Bezirk 400 (Grüne : SPD,
+    # 361 : 361) und, erst im amtlichen Endergebnis, Bezirk 208 (Linke : SPD,
+    # 452 : 452). Vorläufig waren es 48 SPD-Bezirke und ein Gleichstand.
+    assert siege == {"spd": 47, "gruene": 39, "afd": 2, "linke": 1}
     d = {x["number"]: x for x in rat["districts"]}
     assert d[400]["counted"] and d[400]["leader"] is None and d[400]["margin_pct"] == 0.0
-    assert rat["ties"] == 1
+    assert d[208]["leader"] is None and rat["ties"] == 2
     assert d[515]["leader"] == "afd" and d[515]["runner_up"] == "spd"
-    assert d[515]["margin_pct"] == pytest.approx(8.9, abs=0.05)
+    assert d[515]["margin_pct"] == pytest.approx(8.8, abs=0.05)
     assert d[515]["name"] == "Grundschule Krusenbusch"
     assert d[205]["leader"] == "linke"
 
 
 def test_ratswahl_briefwahl_ist_ein_drittel_ohne_flaeche(rat):
-    assert rat["postal_share_pct"] == pytest.approx(32.2, abs=0.05)
+    assert rat["postal_share_pct"] == pytest.approx(32.3, abs=0.05)
     assert all(x["number"] < 900 for x in rat["districts"])
     # Die Wahlbereiche tragen die Briefwahl mit: je Bereich mehr Stimmen als
     # seine Urnenbezirke zusammen.
@@ -81,7 +83,7 @@ def test_ortsbereich_innenstadt_hat_bezirke():
     # Nur die Wahlbereiche, die die Bezirke berühren — und die Stadtzahlen
     # (Siege, Briefwahl) bleiben die der ganzen Stadt.
     assert {a["number"] for a in k["areas"]} == {x["area"] for x in k["districts"]}
-    assert sum(w["districts"] for w in k["wins"]) == 90 and k["ties"] == 1
+    assert sum(w["districts"] for w in k["wins"]) == 89 and k["ties"] == 2
 
 
 def test_ob_wahl_personen_statt_listen():
