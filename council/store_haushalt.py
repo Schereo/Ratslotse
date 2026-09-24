@@ -789,7 +789,10 @@ class HaushaltMixin(StoreBasis):
             if not tabelle_fehlt(fehler):
                 raise
             return []
-        return [dict(r) for r in rows]
+        # Auch beim Lesen, nicht nur beim Einlesen: Der Bestand stammt aus
+        # Läufen vor der Glättung und bleibt so, bis der Bericht neu gelesen wird.
+        from council.beteiligungsbericht import fliesstext  # noqa: PLC0415
+        return [dict(r, text=fliesstext(r["text"])) for r in rows]
 
     def _gesellschaft_zeilen(self, tabelle: str, report_year: int | None,
                              ordnung: str) -> list[dict]:
@@ -2701,6 +2704,7 @@ class HaushaltMixin(StoreBasis):
         Jede Liste bringt ihre eigene ``herkunft`` je Zeile mit: Die Kennzahlen
         eines Jahres stammen aus einem anderen Bericht als die Texte daneben,
         und die Probe ist eine andere."""
+        from council.beteiligungsbericht import fliesstext  # noqa: PLC0415
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self.transaktion():
             for tabelle in ("council_company_indicators",
@@ -2722,7 +2726,7 @@ class HaushaltMixin(StoreBasis):
                     "INSERT INTO council_company_texts (report_year, "
                     " company, section, text, fetched_at, herkunft_id) "
                     "VALUES (?,?,?,?,?,?)",
-                    (z["report_year"], z["company"], z["section"], z["text"],
+                    (z["report_year"], z["company"], z["section"], fliesstext(z["text"]),
                      now, self.merke_herkunft(z["herkunft"], fetched_at=now)))
             for z in indicators:
                 self._conn.execute(

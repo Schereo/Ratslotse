@@ -370,6 +370,36 @@ _ZAHL = re.compile(r"[-–−]?\s?[\d.\s]*\d(?:,\d{1,2})?")
 _EINHEIT = re.compile(r"\(?\s*[iI]n\s+(?:Euro|Prozent)\s*\)?|Quote|€|%", re.I)
 
 
+_BINDEWORT = re.compile(r"(?:und|oder|bzw|sowie)\b")
+
+
+def fliesstext(text: str) -> str:
+    """Die Zeilenenden des PDFs aus einem Absatz nehmen, wo ein Wort getrennt ist.
+
+    Der Bericht ist im Blocksatz mit Silbentrennung gesetzt; der Extrakt
+    behält beides: „der Feuerweh-\\nren und die Rettungsdienste". Auf der
+    Seite stand das bis 24.09.2026 genau so, samt Umbruch mitten im Wort
+    (58 der 225 Texte, gemessen auf Prod).
+
+    - Kleinbuchstabe dahinter → Silbentrennung, Strich und Umbruch fallen weg
+      („Feuerwehren", „organisatorischen"). 151 Fälle.
+    - Großbuchstabe dahinter → echter Bindestrich, nur der Umbruch fällt weg
+      („Marie-Curie-Straße"). 3 Fälle.
+    - „und", „oder", „bzw.", „sowie" dahinter → Ergänzungsstrich
+      („Sport- und Freizeit"): Strich bleibt, Leerzeichen statt Umbruch.
+
+    Andere Zeilenumbrüche bleiben stehen — sie trennen Absätze und
+    Listenpunkte, und die Seite zeigt sie so (``whitespace-pre-line``)."""
+    def ersetze(m: re.Match) -> str:
+        folge = m.group(2)
+        if _BINDEWORT.match(folge):
+            return f"{m.group(1)}- {folge}"
+        if folge[:1].isupper():
+            return f"{m.group(1)}-{folge}"
+        return f"{m.group(1)}{folge}"
+    return re.sub(r"(\w)-[ \t]*\n[ \t]*(\w+)", ersetze, text or "")
+
+
 def _entzerren(text: str) -> str:
     """Leerraum aus den Beträgen räumen, an genau drei Stellen.
 
