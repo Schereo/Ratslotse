@@ -10,6 +10,12 @@ Passiva) und oft quer, der gespeicherte Textauszug bringt die Zellen
 durcheinander; die Wortrahmen des PDFs nicht. Je Vorlage zwei einseitige
 PDFs, gut siebzig insgesamt — höflich nacheinander.
 
+Ein SCAN hat keine Wortrahmen. Für ihn nimmt der Lauf den Text, den das
+Sehmodell des OCR-Laufs gespeichert hat (``scripts/backfill_anlagen_ocr.py
+--nur-finanz``), und liest daraus nur das Geschäftsjahr
+(``gesellschaft_abschluss.lies_ocr``). Ohne diesen Weg fehlten VWG 2018 und
+OTM 2019 ganz.
+
     python scripts/ingest_gesellschaft_abschluss.py
     python scripts/ingest_gesellschaft_abschluss.py --trocken
     python scripts/ingest_gesellschaft_abschluss.py --auch-schrumpfen
@@ -75,6 +81,7 @@ def main() -> int:
               flush=True)
         alle: list[ea.Kennzahl] = []
         ohne: list[str] = []
+        ocr = 0
         for i, a in enumerate(anlagen):
             if i:
                 time.sleep(args.pause)
@@ -83,17 +90,21 @@ def main() -> int:
             except Exception as exc:  # noqa: BLE001 — ein Dokument stoppt nicht den Lauf
                 ohne.append(f"  {a['document_id']} ({a['label'][:45]}): nicht ladbar ({exc})")
                 continue
-            lesung = ga.lies_anlage(text, a["title"], a["label"], a["document_id"])
+            if not text.strip() and a.get("ocr_text"):
+                lesung = ga.lies_ocr(a["ocr_text"], a["title"], a["label"], a["document_id"])
+                if lesung.kennzahlen:
+                    ocr += 1
+            else:
+                lesung = ga.lies_anlage(text, a["title"], a["label"], a["document_id"])
             if lesung.kennzahlen:
                 alle.extend(lesung.kennzahlen)
             else:
-                # Die Scans von 2018/2019 (VWG, OTM) tragen keinen Text; die
-                # Jahre deckt der Beteiligungsbericht.
                 ohne.append(f"  {a['document_id']} ({a['label'][:45]}): "
-                            + ("; ".join(lesung.hinweise[:2]) if text.strip() else "Scan ohne Text"))
+                            + ("; ".join(lesung.hinweise[:2]) if text.strip() or a.get("ocr_text")
+                               else "Scan ohne Text (noch nicht per OCR gelesen)"))
         zeilen, strittig = ea.zusammenfuehren(alle)
         print(f"{len(zeilen)} Kennzahl-Zeilen, {len(strittig)} strittig, "
-              f"{len(ohne)} Anlage(n) ohne Zahl.", flush=True)
+              f"{len(ohne)} Anlage(n) ohne Zahl, {ocr} Scan(s) über den OCR-Text.", flush=True)
         for o in ohne:
             print(o, flush=True)
         for s in strittig:
