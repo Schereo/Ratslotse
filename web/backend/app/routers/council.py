@@ -10,7 +10,7 @@ import unicodedata
 from collections import Counter, defaultdict
 from datetime import date, timedelta
 from collections.abc import Callable
-from typing import Annotated
+from typing import Annotated, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
@@ -20,6 +20,7 @@ from council.cities.store import CitiesStore
 from council.store import CouncilStore
 from council.topics import POLICY_FIELDS
 from council.goals import GOALS
+from council import gesellschaft_abschluss
 from council.parties import faction_label, order_key
 from council import expense_series as ausgabenreihe_mod
 from council import indicators as kennzahlen_mod
@@ -28,6 +29,8 @@ from council import donations as spenden_mod
 from council import steuertabellen
 from council import trade_tax_statistics as gewst
 from council import assistant as lotti
+from council import self_check
+from starlette.background import BackgroundTask
 from council import beteiligungsbericht, qa
 from council import ernte
 from kern import features, knowledge, seitenaufrufe
@@ -42,9 +45,10 @@ from kern.store import Store
 
 from .. import deepresearch
 from ..config import get_settings
-from ..antworten import (AnalysisData, AssistantStarters, BudgetAmendmentLists, BudgetAuditReports,
+from ..antworten import (AnalysisData, ElectedCouncil, ElectedMember, AssistantStarters, BudgetAmendmentLists, BudgetAuditReports,
                          BudgetBalanceSheet, BudgetComparison, BudgetDataState, BudgetDebt, BudgetLiquidity, BudgetLoans,
-                         BudgetDispute, BudgetDocuments, BudgetExecution,
+                         BudgetDispute, BudgetDocuments, BudgetExecution, BudgetGrants, GrantRow, GrantTotal, BudgetGrantsReceived, BudgetFederalComparison, BudgetDebtComparison, CityDebt, CityDebtYear, FederalCity, FederalGroup, FederalIndicator, FederalStats, FederalYear, GrantReceivedList, GrantReceivedRow, GrantReceivedTotal, GrantTemplate, BudgetSourceStats, Provenance,
+                         BudgetNote, BudgetNotes, BudgetPrefaceFigures, PrefaceFigure, PrefacePlan, BudgetMeasure, BudgetMeasureReport, BudgetMeasures,
                          BudgetFixedAssets, BudgetGroup,
                          BudgetHoldings, BudgetInvestmentProgram, BudgetInvestments,
                          BudgetOverview, BudgetPath, BudgetProducts, BudgetStaffPlan, Committees,
@@ -69,6 +73,7 @@ from ..antworten import (AnalysisData, AssistantStarters, BudgetAmendmentLists, 
                          TemplateFollowed, TemplateFollows, TemplateUnfollowed, ThisWeek,
                          TodayBriefing, TrendData)
 from ..clients import client_kind
+from ..election import elected as elected_mod
 from ..deps import (get_cities_store, get_council_store, get_current_user, get_store,
                     optional_user, require_active, require_permission)
 from ..ratelimit import (
@@ -927,7 +932,13 @@ def haushalt_beteiligungen(
     - ``indicators``: die Zeitreihe je Gesellschaft (Jahresergebnis,
       Bilanzsumme, Eigenkapitalquote). ``n_reports`` sagt, wie viele Berichte
       denselben Wert nennen — 1 heißt „durch eine Probe im Dokument gedeckt",
-      mehr heißt zusätzlich „von einer zweiten Veröffentlichung bestätigt",
+      mehr heißt zusätzlich „von einer zweiten Veröffentlichung bestätigt"
+      (ein Jahresabschluss mit demselben Betrag zählt mit). ``source`` sagt,
+      woher die Zeile kommt: ``holdings_report`` (Beteiligungsbericht) oder
+      ``annual_accounts`` — das jüngste Jahr, das nur der Jahresabschluss der
+      Gesellschaft schon nennt, oder ein Jahr, in dem der Abschluss vom
+      Bericht abweicht und deshalb gilt (dann steht die Zahl des Berichts in
+      ``report_value``; ``council/gesellschaft_abschluss.py``),
     - ``group_comparison``: für die Gesellschaften, die auch im
       Gesamtabschluss stehen, beide Zahlen desselben Jahres nebeneinander.
       **Keine Probe** — die beiden Rechnungen unterscheiden sich systematisch,
@@ -942,7 +953,11 @@ def haushalt_beteiligungen(
     aufgebaut und nicht maschinenlesbar (``council/beteiligungsbericht.py``)."""
     berichtsjahre = store.beteiligungsbericht_jahre()
     gesellschaften = store.get_gesellschaften()
-    indicators = store.get_gesellschaft_kennzahlen()
+    # Eine Reihe, zwei Quellen (Tims Entscheidung 24.09.2026): Der
+    # Jahresabschluss füllt die Jahre, die der Bericht noch nicht hat.
+    indicators = gesellschaft_abschluss.reihe_ergaenzen(
+        store.get_gesellschaft_kennzahlen(), store.get_company_accounts(),
+        {g["company"] for g in gesellschaften})
     texte = [t for g in gesellschaften
              for t in store.get_gesellschaft_texte(g["company"])]
     personen = store.get_gesellschaft_personen()
@@ -978,6 +993,157 @@ def haushalt_beteiligungen(
     }
 
 
+@router.get("/budget/measures")
+def haushalt_budgetbericht(
+    sub_budget: int,
+    as_of: str | None = None,
+    _user: dict = Depends(require_budget),
+    store: CouncilStore = Depends(get_council_store),
+) -> BudgetMeasures:
+    """Was aus den Investitionen eines Teilhaushalts im Jahr wird — die
+    Budgetberichte an die Fachausschüsse (``council/budgetberichte.py``).
+
+    ``reports`` nennt alle eingelesenen Stichtage, jüngster zuerst;
+    ``measures`` sind die Maßnahmen des gewählten (Vorgabe: des jüngsten),
+    in der Reihenfolge des Berichts. Eingelesen sind Jugend und Familie (11)
+    und Schule und Bildung (12); für andere Teilhaushalte ist die Antwort leer."""
+    berichte = store.budgetbericht_stichtage(sub_budget)
+    stichtage = [b["as_of"] for b in berichte]
+    gewaehlt = as_of if as_of in stichtage else (stichtage[0] if stichtage else None)
+    zeilen = store.get_budgetbericht(gewaehlt, sub_budget) if gewaehlt else []
+    ids = sorted({z["herkunft_id"] for z in zeilen if z["herkunft_id"] is not None})
+    return BudgetMeasures(
+        reports=[cast(BudgetMeasureReport, {k: b[k] for k in BudgetMeasureReport.__annotations__})
+                 for b in berichte],
+        as_of=gewaehlt,
+        measures=[cast(BudgetMeasure, {k: z[k] for k in BudgetMeasure.__annotations__}) for z in zeilen],
+        provenance=cast(Provenance, {str(h["id"]): h for h in store.get_herkunft(ids)}),
+    )
+
+
+@router.get("/budget/preface-figures")
+def haushalt_vorbericht_zahlen(
+    series: Annotated[list[str], Query()],
+    _user: dict = Depends(require_budget),
+    store: CouncilStore = Depends(get_council_store),
+) -> BudgetPrefaceFigures:
+    """Zahlen aus dem Vorbericht der Haushaltspläne (``council/vorbericht_zahlen.py``):
+    Personalaufwand samt Rückstellungen, Steuerarten mit Prognose und
+    Finanzplanung, Jahresergebnisse. Je Plan, jüngster zuerst — die Seite
+    zeigt den jüngsten und lässt ältere wählen."""
+    zeilen = store.get_vorbericht_zahlen(series)
+    plaene: dict[int, list[PrefaceFigure]] = {}
+    for z in zeilen:
+        plaene.setdefault(z["plan_budget_year"], []).append(
+            cast(PrefaceFigure, {k: z[k] for k in PrefaceFigure.__annotations__}))
+    ids = sorted({z["herkunft_id"] for z in zeilen if z["herkunft_id"] is not None})
+    return BudgetPrefaceFigures(
+        plans=[PrefacePlan(plan_budget_year=j, figures=f) for j, f in sorted(plaene.items(), reverse=True)],
+        provenance=cast(Provenance, {str(h["id"]): h for h in store.get_herkunft(ids)}),
+    )
+
+
+@router.get("/budget/notes")
+def haushalt_vorbericht(
+    sub_budget: int,
+    _user: dict = Depends(require_budget),
+    store: CouncilStore = Depends(get_council_store),
+) -> BudgetNotes:
+    """Was die Verwaltung im Vorbericht zu einem Teilhaushalt schreibt — je
+    Plan der Abschnitt zum Ergebnishaushalt und der zu den Investitionen, im
+    Wortlaut (``council/vorbericht.py``). Jüngster Plan zuerst."""
+    zeilen = store.get_vorbericht(sub_budget)
+    ids = sorted({z["herkunft_id"] for z in zeilen if z["herkunft_id"] is not None})
+    return BudgetNotes(
+        notes=[cast(BudgetNote, {k: z[k] for k in BudgetNote.__annotations__}) for z in zeilen],
+        provenance=cast(Provenance, {str(h["id"]): h for h in store.get_herkunft(ids)}),
+    )
+
+
+@router.get("/budget/grants")
+def haushalt_zuschuesse(
+    sub_budget: int | None = None,
+    year: int | None = None,
+    _user: dict = Depends(require_budget),
+    store: CouncilStore = Depends(get_council_store),
+) -> BudgetGrants:
+    """Wer von der Stadt Zuschüsse bekommt — die Übersicht aus Anlage 003.
+
+    - ``rows``: die Zuschüsse eines Plans (Vorgabe: der jüngste), mit
+      ``sub_budget`` nur die eines Teilhaushalts, in Dokument-Reihenfolge,
+    - ``totals``: je Plan und Teilhaushalt Zahl und Summe — die Reihe über
+      alle eingelesenen Pläne, damit die Seite den Verlauf zeigen kann,
+      ohne acht Jahrgänge Zeilen zu laden,
+    - ``years``: die eingelesenen Pläne.
+
+    Vereine und Träger stehen mit Namen darin, wie in der Vorlage (Tims
+    Entscheidung 24.09.2026); Privatpersonen führt die Übersicht nicht.
+    Es ist der Entwurf der Verwaltung: Anlage 003 hängt an der
+    Einbringungs-Vorlage (``council/uebersichten.py``)."""
+    jahre = store.zuschuss_jahrgaenge()
+    jahr = year if year in jahre else (jahre[-1] if jahre else None)
+    zeilen = store.get_zuschuesse(jahr, sub_budget) if jahr is not None else []
+    summen = [s for s in store.zuschuss_summen()
+              if sub_budget is None or s["sub_budget_no"] == sub_budget]
+    ids = sorted({z["herkunft_id"] for z in zeilen if z["herkunft_id"] is not None})
+    rows: list[GrantRow] = [cast(GrantRow, {k: z[k] for k in GrantRow.__annotations__})
+                            for z in zeilen]
+    return BudgetGrants(
+        years=jahre, year=jahr, rows=rows,
+        totals=cast(list[GrantTotal], summen),
+        provenance=cast(Provenance, {str(h["id"]): h for h in store.get_herkunft(ids)}),
+    )
+
+
+@router.get("/budget/grants-received")
+def haushalt_foerdermittel(
+    _user: dict = Depends(require_budget),
+    store: CouncilStore = Depends(get_council_store),
+) -> BudgetGrantsReceived:
+    """Fördermittel von EU und Bund — je Vorhaben der Stadt oder einer ihrer
+    Gesellschaften (``council/foerdermittel.py``).
+
+    - ``rows``: alle Vorhaben, jüngster Beginn zuerst,
+    - ``lists``: die eingelesenen Listen mit Datenstand, Zahl und Summe —
+      damit die Seite sagen kann, wie aktuell was ist,
+    - ``recipients``: Schlüssel → Anzeigename der Empfänger,
+    - ``rows[].templates``: Ratsvorlagen, die das Vorhaben erkennbar meinen,
+    - ``applications``: Förderanträge und Bewerbungen, die der Rat beraten hat
+      (``council/foerder_vorlagen.py``) — Anträge, keine Bewilligungen.
+
+    Beträge sind Bewilligungen, keine Auszahlungen. Städtebauförderung und
+    reine Landesprogramme stehen in keiner der Listen."""
+    from council.foerdermittel import EMPFAENGER  # noqa: PLC0415
+    zeilen = store.get_foerdermittel()
+    listen: dict[tuple, GrantReceivedList] = {}
+    for z in zeilen:
+        k = (z["source"], z["period"])
+        eintrag = listen.setdefault(k, GrantReceivedList(
+            source=z["source"], period=z["period"], list_as_of=z["list_as_of"],
+            list_url=z["list_url"], n=0, amount=0.0))
+        eintrag["n"] += 1
+        eintrag["amount"] += z["amount_granted"] or 0.0
+    summen: dict[str, GrantReceivedTotal] = {}
+    for z in zeilen:
+        gruppe = "eu" if z["funder"] == "EU" else "bund"
+        t = summen.setdefault(gruppe, GrantReceivedTotal(group=gruppe, n=0, amount=0.0))
+        t["n"] += 1
+        t["amount"] += z["amount_granted"] or 0.0
+    ids = sorted({z["herkunft_id"] for z in zeilen if z["herkunft_id"] is not None})
+    verweise = store.get_foerder_verweise()
+    return BudgetGrantsReceived(
+        rows=[cast(GrantReceivedRow, {**{k: z[k] for k in GrantReceivedRow.__annotations__
+                                         if k != "templates"},
+                                      "templates": verweise.get((z["source"], z["source_id"]), [])})
+              for z in zeilen],
+        applications=cast(list[GrantTemplate], store.get_foerderantraege()),
+        lists=list(listen.values()),
+        totals=[summen[g] for g in ("eu", "bund") if g in summen],
+        recipients={k: label for k, (label, _) in EMPFAENGER.items()},
+        provenance=cast(Provenance, {str(h["id"]): h for h in store.get_herkunft(ids)}),
+    )
+
+
 @router.get("/budget/investments")
 def haushalt_investitionen(
     _user: dict = Depends(require_budget),
@@ -999,6 +1165,9 @@ def haushalt_investitionen(
       also samt laufender Verwaltungstätigkeit. Die Bezugsgröße, die aus
       „80,8 Mio. €" erst eine Aussage macht — und die einzige Zahl hier ohne
       Rechenprobe (eigene ``herkunft_id`` mit ``ungeprueft``, s. u.),
+    - ``finance_budget``: die Investitionszeilen des Gesamtfinanzhaushalts
+      (Anlage 006) aller Pläne — Summen, Saldo und Auszahlungsarten, je mit
+      ``kind`` (Ansatz oder Finanzplanung) und ``plan_budget_year``,
     - ``herkunft``: je ``herkunft_id`` Dokument, Fundstelle, bestandene Probe
       samt Messwert. Die geprüften Zeilen und die Bezugsgröße tragen
       **verschiedene** IDs; sie stehen in derselben Datei, aber nur die einen
@@ -1009,12 +1178,17 @@ def haushalt_investitionen(
     Vorhaben** — „Verkehr und Straßenbau: 10,5 Mio. €" sagt nicht, welche
     Straße."""
     zeilen = store.get_investitionen()
-    ids = sorted({z["herkunft_id"] for z in zeilen if z["herkunft_id"] is not None})
+    # Der Gesamtfinanzhaushalt (Anlage 006): dieselbe Frage aus dem Plan
+    # selbst, mit der Finanzplanung bis drei Jahre voraus und der Aufteilung
+    # nach Auszahlungsarten (Baumaßnahmen, Grundstücke …).
+    plan = store.get_finanzhaushalt_investitionen()
+    ids = sorted({z["herkunft_id"] for z in (*zeilen, *plan) if z["herkunft_id"] is not None})
     return {
         "years": store.investitionen_jahre(),
         "sub_budgets": [z for z in zeilen if z["level"] == "sub_budget"],
         "investments": [z for z in zeilen if z["level"] == "investments"],
         "financial_budget": [z for z in zeilen if z["level"] == "financial_budget"],
+        "finance_budget": plan,
         "provenance": {str(h["id"]): h for h in store.get_herkunft(ids)},
     }
 
@@ -1091,6 +1265,18 @@ def haushalt_datenstand(
     for z in zeilen:
         z["month_name"] = finanzquellen.MONATE[z["erwarteter_monat"]]
     return {"today": date.today().isoformat(), "layers": zeilen}
+
+
+@router.get("/budget/source-stats")
+def haushalt_quellenzahlen(
+    _user: dict = Depends(require_budget),
+    store: CouncilStore = Depends(get_council_store),
+) -> BudgetSourceStats:
+    """Wie viele Zahlen aus wie vielen Dokumenten der Bereich zusammenträgt —
+    gezählt aus dem Bestand, je Datenschicht und gesamt
+    (``council/quellenzahlen.py``). Zehn Minuten gepuffert."""
+    from council import quellenzahlen  # noqa: PLC0415
+    return cast(BudgetSourceStats, quellenzahlen.gepuffert(store, str(store._path)))
 
 
 @router.get("/budget/documents")
@@ -1302,6 +1488,10 @@ def haushalt_uebersicht(
         # erscheint im Amtsblatt. Wer das Feld wegblendet, macht aus einem
         # Vorschlag der Verwaltung einen Ratsbeschluss.
         "budget_bylaw": store.get_haushaltssatzungen,
+        # Die BESCHLOSSENE Fassung dazu, aus dem Amtsblatt (council/amtsblatt.py):
+        # je Jahr die Zahlen der bekannt gemachten Satzung, Beschluss- und
+        # Bekanntmachungsdatum. Neben den Entwurf gestellt, nicht an seine Stelle.
+        "budget_bylaw_published": store.get_satzungen_veroeffentlicht,
         "business_plans": store.get_wirtschaftsplaene,
         # Das Ist dazu: die Kennzahlen der Jahresabschlüsse je Betrieb und
         # Jahr (council/eigenbetriebe_abschluss.py) — Umsatzerlöse,
@@ -2121,7 +2311,8 @@ def _bewegung(store: CouncilStore, z: dict,
     punkte = [
         TimelinePoint(paper_id=str(p["paper_id"]), body_id=str(p["body_id"]),
                       city=namen.get(p["body_id"], str(p["body_id"])), date=p.get("date"),
-                      outcome=p.get("outcome") or "none", kind=p.get("kind") or "other")
+                      outcome=p.get("outcome") or "none", kind=p.get("kind") or "other",
+                      title=p.get("title") or "")
         for p in json.loads(z.get("timeline") or "[]")]
     return {
         "cluster_id": int(z["cluster_id"]), "label": z.get("label") or "",
@@ -3155,10 +3346,20 @@ def deep_research_start(body: DeepResearchBody, request: Request,
             {"detail": qa.RUECKFRAGE_TEXT, "unclear": True, "questions": vorschlaege},
             status_code=status.HTTP_400_BAD_REQUEST)
     ratslotse.record_activity(user["id"], "research")
-    job_id = ratslotse.deep_job_anlegen(user["id"], question)
+    # Recherche Plus: Das Recht wird HIER am Konto geprüft und mit dem Job
+    # festgehalten — der Hintergrundlauf fragt das Konto nicht noch einmal.
+    # Das Konto-Dict trägt `roles`, nie ein `permissions`-Feld. Das
+    # Kontingent oben gilt für beide Modelle gleich (Tim: keine Erhöhung).
+    premium = "premium_models" in rollen.permissions_for(user.get("roles"))
+    modell = qa.deep_model_for(premium)
+    # Ohne eigenes Plus-Modell (Schalter leer) ist es kein Plus-Bericht, und
+    # der Client soll auch keinen Hinweis darauf zeigen.
+    premium = premium and modell != qa.DEEP_MODEL
+    job_id = ratslotse.deep_job_anlegen(user["id"], question, model=modell, premium=premium)
     settings = get_settings()
     job = deepresearch.DeepJob(id=job_id, user_id=user["id"], question=question,
-                               conversation_id=body.conversation_id, verlauf=verlauf)
+                               conversation_id=body.conversation_id, verlauf=verlauf,
+                               model=modell, premium=premium)
     deepresearch.start_job(job, settings.ratslotse_db, settings.council_db)
     return {"job_id": job_id, "remaining": _deep_frei(ratslotse, user)}
 
@@ -3617,6 +3818,41 @@ def members(_user: dict = Depends(require_active),
     return {"members": store.list_members()}
 
 
+def _elected(store: CouncilStore) -> ElectedCouncil | None:
+    known = {m["slug"]: m.get("art") or "council" for m in store.list_members()}
+    return elected_mod.council(store.person_slug, store.council_history, known)
+
+
+@router.get("/elected")
+def elected_council(response: Response,
+                    store: CouncilStore = Depends(get_council_store)) -> ElectedCouncil:
+    """Der gewählte Rat nach der letzten Ratswahl, bevor er in den Protokollen
+    steht: wer ab dem 1. November einen Sitz hat, mit Liste, Wahlbereich und
+    Personenstimmen.
+
+    Ohne Anmeldung lesbar: Es ist das bekannt gemachte Wahlergebnis, und die
+    Angaben (Name, Beruf, Jahrgang) stammen aus der amtlichen Bekanntmachung
+    der Wahlvorschläge.
+    """
+    data = _elected(store)
+    if data is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Kein gewählter Rat vorhanden.")
+    response.headers["Cache-Control"] = "public, max-age=3600"
+    return data
+
+
+@router.get("/elected/{slug}")
+def elected_member(slug: str, store: CouncilStore = Depends(get_council_store)) -> ElectedMember:
+    """Eine Person aus dem gewählten Rat — für die Personen-Seite, auch wenn
+    es aus den Protokollen noch kein Profil gibt. Öffentlich wie ``/elected``."""
+    data = _elected(store)
+    slug = store.personen_kanon().get(slug, slug)
+    hit = next((m for m in (data or {}).get("members", []) if m["slug"] == slug), None)
+    if hit is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Nicht im gewählten Rat.")
+    return hit
+
+
 @router.get("/person/{slug}")
 def person(slug: str, store: CouncilStore = Depends(get_council_store)) -> PersonDetail:
     """Das Profil einer Person — Ratsmitglied oder Verwaltung mit erkanntem
@@ -3812,6 +4048,36 @@ def _lotti_turn_speichern(ratslotse: Store, user: dict, body: ExplainBody,
         return None
 
 
+def _selbstpruefung_nachlauf(nachlauf: dict) -> None:
+    """Die stille Stichprobe: prüfen und ablegen, nachdem die Antwort raus ist.
+
+    **Eigener Store**, nicht der aus dem Request: Dessen Verbindung gehört
+    der Anfrage, und die ist hier vorbei. Was immer gespeichert wird und was
+    nur mit Einwilligung, entscheidet ``Store.assistant_check_speichern``
+    (Frage und Antwort nur mit ``saves_conversations = 1``).
+
+    Wirft nie — eine Prüfung ist Zusatz, und ein Fehler hier träfe niemanden,
+    der ihn sehen könnte, außer dem Log.
+    """
+    if not nachlauf:
+        return
+    try:
+        t0 = time.perf_counter()
+        v = self_check.check(nachlauf["frage"], nachlauf["context"], nachlauf["text"],
+                             skip_judge=nachlauf["skip_judge"])
+        store = Store(get_settings().ratslotse_db)
+        try:
+            store.assistant_check_speichern(
+                nachlauf["user_id"], route=nachlauf["route"], verdict=v.verdict,
+                stage=v.stage, categories=v.categories, reasons=v.reasons, model=v.model,
+                duration_ms=round((time.perf_counter() - t0) * 1000), cost_usd=v.cost_usd,
+                question=nachlauf["frage"] or None, answer=nachlauf["text"])
+        finally:
+            store.close()
+    except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
+        _log.warning("Lottis Selbstprüfung (Stichprobe) fehlgeschlagen", exc_info=True)
+
+
 class AssistantEventBody(BaseModel):
     """Ein Ereignis aus Lottis Fenster, das sonst keinen Endpunkt hätte.
 
@@ -3948,6 +4214,8 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
     )
     frage = body.question.strip()
     verlauf = [r.model_dump() for r in body.history]
+    #: Was die stille Stichprobe nach dem Strom prüft — leer, wenn nichts.
+    nachlauf: dict = {}
 
     def gen():
         try:
@@ -3973,7 +4241,11 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
             # drei Wege ohne Modell ist: Die verlangen eine generische Frage
             # („Was sehe ich hier?") oder eine Vokabelfrage, und keine davon
             # trifft `archiv_sofort` (tests/test_assistant.py hält beides).
-            if lotti.archiv_sofort(frage):
+            # Dazu die Preisfrage nach einem Vorhaben („Kann sich die Stadt das
+            # neue Stadion leisten?"), die im Haushalt keine Antwort hat, im
+            # Archiv aber Beschlüsse mit Betrag — am Bestand geprüft, nicht
+            # am Wortlaut allein (s. `lotti.projekt_ins_archiv`).
+            if lotti.archiv_sofort(frage) or lotti.projekt_ins_archiv(store, screen, frage):
                 yield _sse({"type": "step", "step": "archiv"})
                 ratslotse.record_activity(user["id"], "assistant_to_ask_auto",
                                           client_kind(request))
@@ -4082,10 +4354,23 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
             # Liste kommt deshalb aus derselben Auswahl, die den Prompt
             # gefüllt hat (`qa.geld_auswahl`), und die Beschriftung im Fenster
             # sagt genau das: „Grundlage:".
-            belege = lotti.kontext_belege(ctx)
+            # Die Antwort ist hier fertig: Sie ordnet die Belege (genannte
+            # Vorlagen zuerst, die markierte Zeile zählt als genannt), die
+            # Quellen selbst kommen weiter nur aus dem Kontext.
+            belege = lotti.kontext_belege(ctx, text, screen.selection)
             conversation_id = _lotti_turn_speichern(
                 ratslotse, user, body, screen, frage, text, "explain", weiter, begriffe,
                 belege)
+            # **Die stille Stichprobe** (Schalter `lotti-selbstpruefung`,
+            # council/self_check.py): Für einen Anteil der Antworten prüft der
+            # Server NACH dem `done`-Rahmen — als Hintergrund-Aufgabe der
+            # Antwort, die erst läuft, wenn der Strom beim Client ist. Hier
+            # wird nur vorgemerkt; der Prompt ist derselbe, den Lotti bekam.
+            if features.an("lotti-selbstpruefung") and text.strip() and self_check.gezogen():
+                messages, _extra = lotti.explain_messages(screen, frage, ctx, verlauf)
+                nachlauf.update(user_id=user["id"], route=route, frage=frage, text=text,
+                                context=messages[0]["content"],
+                                skip_judge=(weiter == "ratsfrage"))
             yield _sse({"type": "done", "mode": "explain", "kind": "model",
                         "next": weiter,
                         # Der Verweis auf eine andere Haushalts-Seite, als Ziel
@@ -4099,7 +4384,7 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
                         # macht daraus Verweise aufs Glossar.
                         "glossary": begriffe,
                         # Die Papiere hinter den Zahlen im Prompt, höchstens
-                        # fünf (`qa.GELD_BELEGE_MAX`).
+                        # drei (`assistant.BELEGE_MAX`), genannte zuerst.
                         "evidence": belege,
                         "timings": zeiten,
                         "conversation_id": conversation_id})
@@ -4109,7 +4394,9 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
 
     return StreamingResponse(
         gen(), media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        # Läuft erst, wenn der Strom ausgeliefert ist — niemand wartet darauf.
+        background=BackgroundTask(_selbstpruefung_nachlauf, nachlauf))
 
 
 class ScreenContext(BaseModel):
@@ -5291,7 +5578,10 @@ def haushalt_vergleich(
 
     from council import staedtevergleich as sv
 
-    werte = store.get_staedtevergleich()
+    # Der Bundesvergleich und die Schulden der acht Städte haben eigene
+    # Endpunkte (/budget/federal-comparison, /budget/debt-comparison) — andere
+    # Kennzahlen, andere Einheiten; diese Antwort bleibt, was sie war.
+    werte = [w for w in store.get_staedtevergleich() if w["series"] not in ("wegweiser", "regionalstatistik")]
     years: dict[str, list[int]] = {}
     for w in werte:
         years.setdefault(w["series"], [])
@@ -5337,6 +5627,85 @@ def haushalt_vergleich(
         "citation": beleg,
         "provenance": {str(h["id"]): h for h in store.get_herkunft(ids)},
     }
+
+
+@router.get("/budget/debt-comparison")
+def haushalt_schuldenvergleich(
+    _user: dict = Depends(require_budget),
+    store: CouncilStore = Depends(get_council_store),
+) -> BudgetDebtComparison:
+    """Die Schulden der acht kreisfreien Städte Niedersachsens — Kernhaushalt
+    und die Einrichtungen, die ihnen ganz gehören (``council/regionalstatistik.py``).
+
+    Je Jahr alle Städte alphabetisch, mit Beträgen und Werten je Einwohner*in.
+    Kein Rang. Nur Jahre, in denen Oldenburgs Kernhaushalt zur eigenen
+    Schuldenreihe passt, stehen im Bestand."""
+    from council import regionalstatistik as rs
+
+    werte = store.get_staedtevergleich(rs.SERIES)
+    je: dict[tuple[int, str], dict] = {}
+    for w in werte:
+        je.setdefault((w["year"], w["key"]), {"city": w["city"]})[w["indicator"]] = w["value"]
+
+    def pro_kopf(betrag: float | None, ew: float | None) -> float | None:
+        return round(betrag / ew, 2) if betrag is not None and ew else None
+
+    jahre: list[CityDebtYear] = []
+    for jahr in sorted({j for j, _ in je}, reverse=True):
+        staedte = [CityDebt(key=key, city=d["city"], is_oldenburg=key == rs.OLDENBURG,
+                            population=d.get("population"), debt_core=d.get("debt_core"),
+                            debt_entities=d.get("debt_entities"),
+                            core_per_capita=pro_kopf(d.get("debt_core"), d.get("population")),
+                            entities_per_capita=pro_kopf(d.get("debt_entities"), d.get("population")))
+                   for (j, key), d in je.items() if j == jahr]
+        jahre.append(CityDebtYear(year=jahr, cities=sorted(staedte, key=lambda c: c["city"])))
+    ids = sorted({w["herkunft_id"] for w in werte if w["herkunft_id"] is not None})
+    return BudgetDebtComparison(
+        years=jahre, provenance=cast(Provenance, {str(h["id"]): h for h in store.get_herkunft(ids)}))
+
+
+@router.get("/budget/federal-comparison")
+def haushalt_bundesvergleich(
+    _user: dict = Depends(require_budget),
+    store: CouncilStore = Depends(get_council_store),
+) -> BudgetFederalComparison:
+    """Oldenburg im Bundesvergleich (``council/bundesvergleich.py``).
+
+    Je Kennzahl und Jahr die Städte der Vergleichsgruppe mit ihrem Wert und die
+    Kennwerte der Verteilung (Spannweite, Quartile, Median) — gerechnet hier,
+    damit Web und App dieselben Zahlen zeigen. KEIN RANG: Die Antwort nennt
+    keinen Platz, und die Seite zeichnet keinen.
+
+    Nur Jahre, in denen Oldenburgs Wert die Probe gegen die eigenen Reihen
+    bestanden hat, stehen im Bestand."""
+    from council import bundesvergleich as bv
+
+    werte = store.get_staedtevergleich(bv.SERIES)
+    ew = {(w["key"], w["year"]): w["value"] for w in werte if w["indicator"] == "population"}
+    ol_key = next((w["key"] for w in werte if w["city"].startswith("Oldenburg (Oldenburg)")), None)
+    indicators: list[FederalIndicator] = []
+    for kennzahl, kopf in bv.INDIKATOREN.items():
+        jahre: list[FederalYear] = []
+        for jahr in sorted({w["year"] for w in werte if w["indicator"] == kennzahl}):
+            staedte = [FederalCity(key=w["key"], city=w["city"], value=w["value"],
+                                   population=ew.get((w["key"], jahr)),
+                                   lower_saxony=w["key"][:2] == bv.LAND_NI,
+                                   is_oldenburg=w["key"] == ol_key)
+                       for w in werte if w["indicator"] == kennzahl and w["year"] == jahr]
+            staedte.sort(key=lambda c: c["city"])
+            ol = next((c["value"] for c in staedte if c["is_oldenburg"]), None)
+            jahre.append(FederalYear(year=jahr, oldenburg=ol, cities=staedte,
+                                     stats=cast(FederalStats, bv.kennwerte([c["value"] for c in staedte]))))
+        indicators.append(FederalIndicator(key=kennzahl, label=kopf.split(" (")[0],
+                                           unit="eur_je_ew", years=jahre))
+    ids = sorted({w["herkunft_id"] for w in werte if w["herkunft_id"] is not None})
+    return BudgetFederalComparison(
+        indicators=indicators,
+        group=FederalGroup(population_min=bv.EW_VON, population_max=bv.EW_BIS,
+                           n=len({w["key"] for w in werte}),
+                           lower_saxony=len({w["key"] for w in werte if w["key"][:2] == bv.LAND_NI})),
+        provenance=cast(Provenance, {str(h["id"]): h for h in store.get_herkunft(ids)}),
+    )
 
 
 @router.get("/budget/assets")
@@ -5704,8 +6073,13 @@ def haushalt_schulden(
     buerg = store.get_buergschaften()
     rueckstellung = store.get_bilanz_posten(_b.RUECKSTELLUNG_ROLLE) if buerg else []
     geldschulden = store.get_bilanz_posten(_b.GELDSCHULDEN_ROLLE) if buerg else []
+    # Was die Haushaltspläne selbst erwarten (Anlage 003): der voraussichtliche
+    # Stand zu Beginn des Planjahres, auch für die Eigenbetriebe, und die VE.
+    plan = store.get_schulden_plan()
+    ve = store.get_ve()
     ids = sorted(set(ids) | {z["herkunft_id"] for z in (*zins, *buerg, *integriert,
-                                                        *rueckstellung, *geldschulden)
+                                                        *rueckstellung, *geldschulden,
+                                                        *plan, *ve)
                              if z.get("herkunft_id") is not None})
 
     return {
@@ -5741,6 +6115,14 @@ def haushalt_schulden(
         # Leer, solange kein Jahresabschluss eingelesen ist — die Seite lässt
         # den Block dann weg, statt eine Null zu zeigen.
         "interest_expense": zins,
+        # Aus den Übersichten der Haushaltspläne (council/uebersichten.py):
+        # `debt_plan` je Plan, Block und Schuldenart die beiden Stände in Euro,
+        # `commitments` je Plan die Fälligkeiten seiner eigenen VE.
+        "debt_plan": [{k: z[k] for k in ("budget_year", "entity", "code", "label",
+                                        "start_prior", "start_expected", "herkunft_id")}
+                      for z in plan],
+        "commitments": [{k: z[k] for k in ("budget_year", "due_year", "amount", "herkunft_id")}
+                        for z in ve],
         # Die Spaltenüberschriften der Quelle, in ihrer Reihenfolge — damit die
         # Legende nicht in zwei Sprachen existiert.
         "column_kinds": [{"field": field, "title": title}

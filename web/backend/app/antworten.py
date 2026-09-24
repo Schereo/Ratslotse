@@ -1016,7 +1016,10 @@ class QuizQuestion(TypedDict):
     options: list[str]
     # Geschrieben ausschließlich von unserem eigenen Code („mc" beim Anlegen
     # eigener Fragen, „mc"/„estimate" bei den amtlichen) — deshalb benennbar.
-    qtype: Literal["mc", "estimate"]
+    qtype: Literal["mc", "estimate", "order"]
+    # Bauform aus ``council.quiz_formats`` — beide sind Multiple Choice mit
+    # zwei Antworten; wer das Feld nicht kennt (die App), zeigt sie so.
+    format: NotRequired[Literal["verdict", "compare", "order"]]
     source_type: NotRequired[str | None]
     source_ref: NotRequired[str | None]
     hint: NotRequired[str | None]
@@ -1027,6 +1030,43 @@ class QuizQuestion(TypedDict):
 
 class QuizRound(TypedDict):
     questions: list[QuizQuestion]
+
+
+class QuizOthers(TypedDict):
+    """Wie die anderen bei dieser Frage lagen — erst ab
+    ``routers.quiz.OTHERS_MIN`` Mitspielenden, sonst fehlt das Feld."""
+    players: int
+    correct_pct: int
+class QuizJoker(TypedDict):
+    """Die zwei falschen Antworten, die der 50:50-Joker streicht."""
+    remove: list[int]
+class QuizBlitzResult(TypedDict):
+    """Abschluss einer Blitzrunde: Bestmarke gesamt und heute."""
+    best: int
+    today_best: int
+    new_best: bool
+class QuizDuelCreated(TypedDict):
+    code: str
+
+
+class QuizDuelPlayer(TypedDict):
+    name: str
+    correct: int
+    me: bool
+
+
+class QuizDuel(TypedDict):
+    """Ein Duell (Plan Q9). ``questions`` ohne Lösung; ``players`` erst,
+    wenn ich gespielt habe oder das Duell meins ist — sonst verriete die
+    Liste, wie schwer die Runde ist, bevor man sie spielt."""
+    code: str
+    owner_name: str
+    owner_correct: int
+    total: int
+    mine: bool
+    played: bool
+    questions: list[QuizQuestion]
+    players: list[QuizDuelPlayer]
 
 
 class QuizResult(TypedDict):
@@ -1046,6 +1086,9 @@ class QuizResult(TypedDict):
     chart: NotRequired[Any]
     answer_value: NotRequired[float | None]
     unit: NotRequired[str | None]
+    # Reihenfolge-Frage: die richtige Reihenfolge als Indizes, größter zuerst.
+    correct_order: NotRequired[list[int]]
+    others: NotRequired[QuizOthers]
 
 
 class QuizArea(TypedDict):
@@ -1094,6 +1137,31 @@ class QuizDayCompleted(TypedDict):
     ok: bool
     day: str
     streak: int
+    # Zum Teilen, fertig gesetzt (``routers.quiz._share_text``) — nur, wenn
+    # der Client die Einzelergebnisse mitschickt.
+    share_text: NotRequired[str]
+
+
+class QuizPinQuestion(TypedDict):
+    slug: str
+    name: str
+    kind_label: str
+
+
+class QuizPinRound(TypedDict):
+    questions: list[QuizPinQuestion]
+
+
+class QuizPinResult(TypedDict):
+    """Auflösung von „Wo liegt das?": Entfernung zur Geometrie, Punkte, und
+    die Geometrie selbst zum Einzeichnen."""
+    distance_m: int
+    distance_label: str
+    points: int
+    name: str
+    geojson: Any
+    lat: float
+    lon: float
 
 
 class QuizMapQuestion(TypedDict):
@@ -1157,15 +1225,31 @@ class QuizAreaScore(TypedDict):
     last_at: str | None
 
 
+class QuizDistrictProgress(TypedDict):
+    """Ein Ortsbereich auf der Fortschrittskarte (``routers.quiz._district_progress``).
+    ``level`` 0–3 samt Wort, damit Web und App dieselbe Schwelle zeigen."""
+    district: str
+    answered: int
+    correct: int
+    level: Literal[0, 1, 2, 3]
+    level_label: str
+
+
 class QuizScore(TypedDict):
     """``Store.quiz_stats`` liefert ``by_area``/``total``, der Router hängt
-    Serie, Abzeichen, Fehlerzahl und Tages-Status an."""
+    Serie, Abzeichen, Fehlerzahl, Tages-Status und die Fortschrittskarte an."""
     by_area: list[QuizAreaScore]
     total: QuizTotal
     wrong: int
     streak: int
     badges: list[QuizBadge]
     daily_done: bool
+    districts: NotRequired[list[QuizDistrictProgress]]
+    # Dieselbe Karte über alle Mitspielenden (anonym, erst ab 20 Antworten).
+    districts_all: NotRequired[list[QuizDistrictProgress]]
+    # Die Wörter der Stufen 0–3 je Ansicht: {"mine": [...], "all": [...]}.
+    district_legend: NotRequired[dict[str, list[str]]]
+    blitz_best: NotRequired[int]
 
 
 class QuizFlaggedQuestion(TypedDict):
@@ -1417,6 +1501,13 @@ class AdminPlaceCandidate(TypedDict):
     evidence: list[AdminPlaceCandidateEvidence]
 
 
+class AdminLlmUsageModel(TypedDict):
+    """Ein Modell innerhalb eines Features — Aufrufe und Kosten."""
+    model: str
+    calls: int
+    cost: float
+
+
 class AdminLlmUsageFeature(TypedDict):
     """Kosten und Verbrauch eines Features (``kern.usage.summary``)."""
     feature: str
@@ -1425,6 +1516,10 @@ class AdminLlmUsageFeature(TypedDict):
     completion_tokens: int
     cost: float
     models: list[str]
+    #: Dieselben Kosten je Modell, teuerstes zuerst — damit ein Feature mit
+    #: zwei Modellen (``deep_report`` mit und ohne Recherche Plus) zeigt, was
+    #: welches kostet.
+    by_model: list[AdminLlmUsageModel]
     first: str | None
     last: str | None
 
@@ -1730,6 +1825,9 @@ class TimelinePoint(TypedDict):
     #: Kanonisches Ergebnis; ``none``, wenn die Stadt keins ausweist.
     outcome: str
     kind: str
+    #: Kurztitel (Instrument, sonst Titel der Vorlage) — für die Ablese-Zeile
+    #: der Zeitleiste. Leer bei Beständen, die vor 23.09.2026 gebaut wurden.
+    title: str
 
 
 class TimeAxis(TypedDict):
@@ -2072,6 +2170,28 @@ class AdminLottiAnstupser(TypedDict):
     dismissed: int
 
 
+class AdminLottiPruefSeite(TypedDict):
+    route: str
+    checked: int
+    poor: int
+
+
+class AdminLottiSelbstpruefung(TypedDict):
+    """Lottis Selbstprüfung (``council/self_check.py``), eine stille Stichprobe —
+    nur Zahlen, keine Fragen."""
+    checked: int
+    #: Beanstandet — von Stufe 1 (ohne Modell) oder vom Prüfer.
+    poor: int
+    #: Der Prüfer antwortete nicht oder unlesbar.
+    unknown: int
+    #: Davon von Stufe 1, ohne Prüfer-Aufruf.
+    by_rules: int
+    cost_usd: float
+    p50_ms: int | None
+    pages: list[AdminLottiPruefSeite]
+    reasons: list[AdminLottiZeile]
+
+
 class AdminLotti(TypedDict):
     """Was der Reiter „Lotti" im Admin-Panel zeigt.
 
@@ -2086,6 +2206,7 @@ class AdminLotti(TypedDict):
     elements: list[AdminLottiZeile]
     questions: list[AdminLottiFrage]
     feedback: AdminLottiDaumen
+    self_check: AdminLottiSelbstpruefung
     nudge: AdminLottiAnstupser
 
 
@@ -2436,6 +2557,7 @@ class BudgetOverview(TypedDict):
     fees: NotRequired[Any]
     fee_rates: NotRequired[Any]
     budget_bylaw: NotRequired[Any]
+    budget_bylaw_published: NotRequired[Any]
     business_plans: NotRequired[Any]
     enterprise_accounts: NotRequired[Any]
     variance_reasons: NotRequired[Any]
@@ -2659,7 +2781,7 @@ class QaShare(TypedDict):
 
 class ResearchSnapshot(TypedDict):
     """Persistierter Stand eines Deep-Research-Jobs (``Store.deep_job_get``,
-    fester SELECT über acht Spalten). ``report`` und ``sources`` sind ``None``,
+    fester SELECT über neun Spalten). ``report`` und ``sources`` sind ``None``,
     solange der Job läuft; der Router parst ``sources`` aus der JSON-Spalte.
 
     ``user_id`` steht bewusst NICHT hier — der Store wählt es gar nicht erst
@@ -2684,6 +2806,10 @@ class ResearchSnapshot(TypedDict):
     seen: int
     created: str
     updated: str
+    #: Schrieb das größere Modell den Bericht (Recht ``premium_models``,
+    #: beim Einreichen festgehalten)? Der Client zeigt dann einen Hinweis.
+    #: Welches Modell genau, bleibt serverseitig (Spalte ``model``).
+    premium_model: bool
 
 
 class AnalysisCoverage(TypedDict):
@@ -3293,12 +3419,291 @@ class BudgetHoldings(TypedDict):
     texts: Any
 
 
+class FinanceBudgetRow(TypedDict):
+    """Eine Investitionszeile des Gesamtfinanzhaushalts (Anlage 006).
+
+    ``kind`` trennt den Ansatz des Planjahres (``budget``) von der
+    Finanzplanung (``financial_plan``); ``plan_budget_year`` sagt, aus welchem
+    Plan die Zahl stammt. ``role`` ist nur bei den Summen und dem Saldo
+    gesetzt, die übrigen Zeilen sind die Auszahlungs- und Einzahlungsarten."""
+    plan_budget_year: int
+    year: int
+    kind: str
+    nr: int
+    label: str
+    role: str | None
+    amount: float
+    is_total: int
+    herkunft_id: int | None
+
+
+class BudgetNote(TypedDict):
+    """Ein Abschnitt des Vorberichts zu einem Teilhaushalt, im Wortlaut.
+
+    ``kind``: ``result`` (Abschnitt 2.4.2.x, Ergebnishaushalt) oder
+    ``investments`` (3.2.2.x). ``text`` sind Absätze, getrennt durch eine
+    Leerzeile — ohne die Tabellen und Grafiken des Originals."""
+    budget_year: int
+    sub_budget_no: int
+    kind: str
+    title: str
+    text: str
+    page: int | None
+    herkunft_id: int | None
+
+
+class BudgetMeasureReport(TypedDict):
+    """Ein eingelesener Budgetbericht: Stichtag, Vorlage, Zahl der Maßnahmen
+    und die Summen der Auszahlungen (Ansatz, Prognose zum Jahresende)."""
+    as_of: str
+    budget_year: int
+    template_number: str | None
+    n: int
+    planned: float | None
+    forecast: float | None
+
+
+class BudgetMeasure(TypedDict):
+    """Eine Investitionsmaßnahme im Budgetbericht. ``kind``: ``A`` Auszahlung,
+    ``E`` Einzahlung. ``measure_no`` ist die I10-Nummer (bei einem Bereich
+    „… bis …" die erste, ``measure_no_to`` die letzte) und kann fehlen.
+    ``note`` ist die Erläuterung der Verwaltung im Wortlaut."""
+    seq: int
+    measure_no: str | None
+    measure_no_to: str | None
+    name: str
+    kind: str
+    planned: float | None
+    forecast: float | None
+    carryover: float | None
+    note: str | None
+    herkunft_id: int | None
+
+
+class BudgetMeasures(TypedDict):
+    reports: list[BudgetMeasureReport]
+    as_of: str | None
+    measures: list[BudgetMeasure]
+    provenance: Provenance
+
+
+class PrefaceFigure(TypedDict):
+    """Ein Wert aus dem Vorbericht. ``variant``: ``actual`` (Ist),
+    ``prior_budget`` (Plan des Vorjahres), ``forecast`` (Prognose der
+    Kämmerei), ``budget`` (Ansatz des Planjahres), ``financial_plan``."""
+    series: str
+    year: int
+    variant: str
+    amount: float
+    page: int | None
+    herkunft_id: int | None
+
+
+class PrefacePlan(TypedDict):
+    plan_budget_year: int
+    figures: list[PrefaceFigure]
+
+
+class BudgetPrefaceFigures(TypedDict):
+    plans: list[PrefacePlan]
+    provenance: Provenance
+
+
+class BudgetNotes(TypedDict):
+    notes: list[BudgetNote]
+    provenance: Provenance
+
+
+class GrantRow(TypedDict):
+    """Ein Zuschuss an Dritte aus der Übersicht in Anlage 003.
+
+    ``description`` ist die Spalte „Beschreibung der Zuwendung" und nennt
+    meist den Empfänger („Zuschuss Reparaturrat"), ``note`` die Erläuterung.
+    ``amount`` ist der Ansatz im Planjahr, ``amount_prior`` der im Vorjahr —
+    beide aus demselben Plan. ``cash``: 1 bar, 0 unbar, ``None`` ohne Angabe
+    (2019 führt die Spalte nicht). ``lfd_nr`` ist die Nummer der Stadt und
+    nicht eindeutig; die Reihenfolge ist ``seq``."""
+    budget_year: int
+    seq: int
+    lfd_nr: int
+    sub_budget_no: int
+    product_no: str | None
+    product_name: str | None
+    description: str
+    amount_prior: float | None
+    amount: float | None
+    note: str | None
+    cash: int | None
+    herkunft_id: int | None
+
+
+class GrantTotal(TypedDict):
+    """Je Plan und Teilhaushalt: Zahl und Summe der Zuschüsse im Planjahr."""
+    budget_year: int
+    sub_budget_no: int
+    n: int
+    amount: float
+
+
+class GrantTemplate(TypedDict):
+    """Eine Ratsvorlage zu Fördergeld (``council/foerder_vorlagen.py``) mit
+    ihrer LETZTEN Beratung: Datum, Gremium, Ergebnis, Beschluss-Id für den
+    Link. ``basis`` nur an einem Vorhaben: ``amount`` (Betrag und Name stehen
+    im Text) oder ``title`` (der Vorlagentitel steht im Titel des Vorhabens)."""
+    template_number: str
+    title: str
+    decision_id: int | None
+    date: str | None
+    committee: str | None
+    outcome: str | None
+    basis: NotRequired[str]
+
+
+class GrantReceivedRow(TypedDict):
+    """Ein gefördertes Vorhaben der Stadt oder einer Gesellschaft.
+
+    ``funder`` ist „EU" oder das Bundesressort (BMV, BMWE …),
+    ``amount_granted`` der bewilligte Unionsbeitrag bzw. Bundesanteil — nicht
+    das Ausgezahlte. ``amount_total`` (förderfähige bzw. Gesamtkosten) führen
+    nur die EU-Listen. ``recipient`` steht so in der Liste, ``recipient_key``
+    ist der Schlüssel aus ``council/foerdermittel.EMPFAENGER``."""
+    source: str
+    source_id: str
+    period: str | None
+    recipient: str
+    recipient_key: str
+    title: str
+    summary: str | None
+    funder: str
+    program: str | None
+    amount_total: float | None
+    amount_granted: float | None
+    start: str | None
+    end: str | None
+    herkunft_id: int | None
+    templates: list[GrantTemplate]
+
+
+class GrantReceivedList(TypedDict):
+    """Eine eingelesene Liste: EU je Fonds und Förderperiode, dazu der
+    Förderkatalog. ``list_as_of`` ist der Datenstand der Liste."""
+    source: str
+    period: str | None
+    list_as_of: str | None
+    list_url: str | None
+    n: int
+    amount: float
+
+
+class GrantReceivedTotal(TypedDict):
+    """Je Geber (``eu`` oder ``bund``): Zahl der Vorhaben und bewilligte Summe."""
+    group: str
+    n: int
+    amount: float
+
+
+class BudgetGrantsReceived(TypedDict):
+    rows: list[GrantReceivedRow]
+    #: Förderanträge und Bewerbungen, die der Rat beraten hat — jüngste zuerst.
+    #: Ein Antrag ist keine Bewilligung.
+    applications: list[GrantTemplate]
+    lists: list[GrantReceivedList]
+    totals: list[GrantReceivedTotal]
+    recipients: dict[str, str]
+    provenance: Provenance
+
+
+class FederalCity(TypedDict):
+    """Eine Stadt der Vergleichsgruppe in einem Jahr. ``key`` ist der
+    Gemeindeschlüssel (AGS), ``population`` die Einwohnerzahl desselben
+    Jahres aus demselben Portal."""
+    key: str
+    city: str
+    value: float
+    population: float | None
+    lower_saxony: bool
+    is_oldenburg: bool
+
+
+class FederalStats(TypedDict):
+    n: int
+    zero: int
+    min: float | None
+    p25: float | None
+    median: float | None
+    p75: float | None
+    max: float | None
+
+
+class FederalYear(TypedDict):
+    year: int
+    oldenburg: float | None
+    stats: FederalStats
+    cities: list[FederalCity]
+
+
+class FederalIndicator(TypedDict):
+    key: str
+    label: str
+    unit: str
+    years: list[FederalYear]
+
+
+class FederalGroup(TypedDict):
+    """Die Regel der Vergleichsgruppe: kreisfreie Städte zwischen
+    ``population_min`` und ``population_max`` Einwohner*innen, dazu alle
+    Niedersachsens. ``n`` Städte, davon ``lower_saxony`` in Niedersachsen."""
+    population_min: int
+    population_max: int
+    n: int
+    lower_saxony: int
+
+
+class CityDebt(TypedDict):
+    """Die Schulden einer Stadt zum 31.12. — ``debt_core`` im Kernhaushalt,
+    ``debt_entities`` in den Einrichtungen, die ihr zu 100 % gehören, beides
+    in Euro und je Einwohner*in (Einwohner am 30.06. desselben Jahres)."""
+    key: str
+    city: str
+    is_oldenburg: bool
+    population: float | None
+    debt_core: float | None
+    debt_entities: float | None
+    core_per_capita: float | None
+    entities_per_capita: float | None
+
+
+class CityDebtYear(TypedDict):
+    year: int
+    cities: list[CityDebt]
+
+
+class BudgetDebtComparison(TypedDict):
+    years: list[CityDebtYear]
+    provenance: Provenance
+
+
+class BudgetFederalComparison(TypedDict):
+    indicators: list[FederalIndicator]
+    group: FederalGroup
+    provenance: Provenance
+
+
+class BudgetGrants(TypedDict):
+    years: list[int]
+    year: int | None
+    rows: list[GrantRow]
+    totals: list[GrantTotal]
+    provenance: Provenance
+
+
 class BudgetInvestments(TypedDict):
     financial_budget: list[Any]
     investments: list[Any]
     provenance: Provenance
     years: Any
     sub_budgets: list[Any]
+    finance_budget: NotRequired[list[FinanceBudgetRow]]
 
 
 class BudgetInvestmentProgram(TypedDict):
@@ -3348,6 +3753,47 @@ class DataLayer(TypedDict):
     erwarteter_monat: int
     #: Der Monatsname dazu — hängt der Router an.
     month_name: str
+
+
+class SourceStatsLayer(TypedDict):
+    """Eine Datenschicht (oder mehrere, die dieselben Tabellen füllen)."""
+    keys: list[str]
+    labels: list[str]
+    sources: list[str]
+    tables: int
+    rows: int
+    numbers: int
+    documents: int
+
+
+class SourceStatsOther(TypedDict):
+    tables: int
+    rows: int
+    numbers: int
+    documents: int
+
+
+class SourceStatsSource(TypedDict):
+    kind: str
+    label: str
+    documents: int
+
+
+class BudgetSourceStats(TypedDict):
+    """Woher die Zahlen kommen (``council/quellenzahlen.py``). ``numbers``
+    zählt numerische Zellen ohne Schlüssel (Jahre, Seiten, Kennungen);
+    ``documents`` eigenständige Belege; ``citations`` Belegstellen;
+    ``probe_kinds``/``probe_runs`` die bestandenen Proben beim Einlesen."""
+    numbers: int
+    rows: int
+    tables: int
+    documents: int
+    citations: int
+    probe_kinds: int
+    probe_runs: int
+    sources: list[SourceStatsSource]
+    layers: list[SourceStatsLayer]
+    other: SourceStatsOther
 
 
 class BudgetDataState(TypedDict):
@@ -3567,6 +4013,76 @@ class SharePreview(TypedDict):
 
 class CouncilMembers(TypedDict):
     members: Any
+
+
+class ElectedMember(TypedDict):
+    """Eine Person mit Sitz im gewählten Rat (``app.election.elected``).
+
+    ``slug`` ist derselbe wie auf der Personen-Seite; ``has_profile`` sagt, ob
+    es dort schon ein Profil aus den Protokollen gibt, ``council_status``, ob
+    die Person dem Rat schon angehörte (und nicht nur einen Ausschuss beriet).
+    """
+    slug: str
+    name: str
+    list: str
+    list_short: str
+    color: str
+    color_dark: str
+    area: int
+    area_roman: str
+    area_name: str
+    #: Listenplatz im Wahlbereich; ``None``, wenn das Register ihn nicht kennt.
+    position: int | None
+    #: Personenstimmen; ``None`` bei einer Nachfolge.
+    votes: int | None
+    #: Wie der Sitz zustande kam: ``direct`` (Personenstimmen), ``list``
+    #: (Listenplatz), ``transfer`` (Sitz aus einem anderen Wahlbereich) oder
+    #: ``successor`` (nachgerückt).
+    mandate: Literal["direct", "list", "transfer", "unknown", "successor"]
+    occupation: str | None
+    born: int | None
+    has_profile: bool
+    #: ``current``: saß im Rat der ablaufenden Wahlperiode; ``former``: saß
+    #: früher einmal im Rat, zuletzt nicht; ``new``: nirgends gefunden.
+    council_status: Literal["new", "current", "former"]
+    #: Wahlperioden im Rat (Anfangsjahr, z. B. 2016 für 2016–2021). Vor 2018
+    #: nur für Personen, die das Ratsinformationssystem noch führt.
+    council_terms: list[int]
+    #: Abweichende Zugehörigkeit im neuen Rat — ``None``: die der Liste.
+    affiliation: ElectedAffiliation | None
+
+
+class ElectedVacancy(TypedDict):
+    """Ein Sitz, dessen gewählte Person ihn nicht antritt."""
+    name: str
+    list_short: str
+    reason: str
+    #: Anzeigename der Nachfolge; ``None``, solange sie nicht bekannt ist.
+    successor: str | None
+    #: Wo das bekannt wurde (Meldung der Stadt oder Presse).
+    source: str | None
+
+
+class ElectedAffiliation(TypedDict):
+    """Die Zugehörigkeit im neuen Rat, wo sie von der Wahlliste abweicht."""
+    #: Wie die Person im Rat auftritt, z. B. „fraktionslos (OBM)“.
+    label: str
+    note: str | None
+    source: str | None
+
+
+class ElectedCouncil(TypedDict):
+    """Der gewählte Rat nach einer Ratswahl — bevor er in den Protokollen steht."""
+    election: str
+    title: str
+    date: str
+    #: Beginn der Wahlperiode (1. November des Wahljahres).
+    term_start: str
+    seats: int
+    #: ``vorlaeufig`` bis zur Feststellung durch den Wahlausschuss.
+    status: Literal["vorlaeufig", "amtlich"]
+    members: list[ElectedMember]
+    vacancies: list[ElectedVacancy]
 
 
 class GoalMetrics(TypedDict):
@@ -3855,7 +4371,33 @@ class Guarantees(TypedDict):
     templates: list[GuaranteeTemplate]
 
 
+class DebtPlanRow(TypedDict):
+    """Der voraussichtliche Stand der Schulden laut Haushaltsplan (Anlage 003).
+
+    ``entity`` ist „Kernhaushalt" oder ein Eigenbetrieb, ``code`` die
+    Schuldenart (1.2 Kredite für Investitionen … 5) oder ``total``.
+    ``start_prior`` ist der Stand zu Beginn des Vorjahres, ``start_expected``
+    der erwartete zu Beginn des Planjahres — beide in Euro."""
+    budget_year: int
+    entity: str
+    code: str
+    label: str
+    start_prior: float | None
+    start_expected: float | None
+    herkunft_id: int | None
+
+
+class CommitmentRow(TypedDict):
+    """Eine Fälligkeit aus den Verpflichtungsermächtigungen eines Plans."""
+    budget_year: int
+    due_year: int
+    amount: float
+    herkunft_id: int | None
+
+
 class BudgetDebt(TypedDict):
+    debt_plan: NotRequired[list[DebtPlanRow]]
+    commitments: NotRequired[list[CommitmentRow]]
     scope_note: Any
     column_kinds: list[Any]
     guarantees: Guarantees
@@ -4005,7 +4547,9 @@ SSE_RECHERCHE: dict[int | str, dict[str, Any]] = {
             "- `sources` — die Quellen der Recherche\n"
             "- `token` — ein Stück Berichtstext (`text`)\n"
             "- `replace` — ersetzt den bisher gesendeten Text vollständig\n"
-            "- `done` — Schluss-Ereignis mit `cited` und `documents_read`\n"
+            "- `done` — Schluss-Ereignis mit `cited`, `documents_read` und "
+            "`premium_model` (`true`, wenn der Bericht mit dem größeren Modell "
+            "des Rechts `premium_models` entstand)\n"
             "- `gestoppt` — auf Wunsch abgebrochen (`facets_done`)\n"
             "- `fehler` — die Recherche ist fehlgeschlagen\n\n"
             "Ein Verbindungsabriss ist folgenlos — der Job läuft im Backend "
@@ -4686,6 +5230,101 @@ class MayorDistrictList(TypedDict):
     total: int
     counted: int
     districts: list[MayorDistrictEntry]
+
+
+# ------------------------------------------------------------------ Wahlkarte
+
+class ElectionMapContestant(TypedDict):
+    """Eine Liste (Ratswahl) oder Kandidatur (OB-Wahl) mit ihrer Kartenfarbe."""
+    slug: str
+    #: Kurz für Karte und Legende („SPD", „Prange").
+    short: str
+    name: str
+    color: str
+    color_dark: str
+
+
+class ElectionMapShare(TypedDict):
+    slug: str
+    votes: int | None
+    share_pct: float | None
+
+
+class ElectionMapPlace(TypedDict):
+    """Ein Ortsbereich, in dem ein Wahlbezirk liegt — mit Flächenanteil 0…1."""
+    name: str
+    share: float
+
+
+class ElectionMapDistrict(TypedDict):
+    """Ein Urnenbezirk auf der Karte: wer vorn lag, wie deutlich, und wo er liegt."""
+    number: int
+    name: str
+    area: int
+    counted: bool
+    #: Slug der stärksten Liste bzw. Kandidatur — ``None``, solange nicht gezählt.
+    leader: str | None
+    runner_up: str | None
+    #: Vorsprung auf Platz 2 in Prozentpunkten — trägt die Deckkraft der Fläche.
+    margin_pct: float | None
+    turnout_pct: float | None
+    valid_votes: int | None
+    #: Die Ortsbereiche, in denen er liegt, größter Anteil zuerst.
+    places: list[ElectionMapPlace]
+    #: Alle Listen bzw. Kandidaturen, stärkste zuerst.
+    parties: list[ElectionMapShare]
+
+
+class ElectionMapArea(TypedDict):
+    """Ein Wahlbereich MIT Briefwahl — der Vergleich neben dem Bezirk, denn
+    die Briefwahl (2026 ein Drittel der Stimmen) hat keine Fläche."""
+    number: int
+    roman: str
+    counted: int
+    total: int
+    valid_votes: int | None
+    leader: str | None
+    parties: list[ElectionMapShare]
+
+
+class ElectionMapWin(TypedDict):
+    """Die Legende: in wie vielen Urnenbezirken eine Liste vorn lag."""
+    slug: str
+    districts: int
+
+
+class ElectionMapChoice(TypedDict):
+    """Eine Wahl, die die Karte zeigen kann."""
+    slug: str
+    #: Kurz für den Umschalter („Ratswahl", „OB-Wahl", „Stichwahl").
+    label: str
+    kind: str
+    date: str
+
+
+class ElectionMap(TypedDict):
+    """``GET /api/wahlabend/karte`` — das Ergebnis je Wahlbezirk für die
+    Stadtkarte (docs/plan-viertel-wahlkarte.md). Gerechnet wird hier, nicht
+    in Web und App: wer vorn lag, wie deutlich, wo der Bezirk liegt."""
+    election: ElectionMapChoice
+    #: Alle Wahlen, zwischen denen die Karte umschalten kann.
+    elections: list[ElectionMapChoice]
+    #: "before" | "counting" | "complete" — über die Urnenbezirke.
+    phase: str
+    contestants: list[ElectionMapContestant]
+    #: Anteil der Briefwahl an allen gültigen Stimmen, in Prozent.
+    postal_share_pct: float | None
+    #: Urnenbezirke — nur sie haben eine Fläche.
+    total: int
+    counted: int
+    wins: list[ElectionMapWin]
+    #: Gezählte Urnenbezirke ohne Sieger (Gleichstand an der Spitze).
+    ties: int
+    #: Mit ``?place=``: nur die Bezirke, die den Ortsbereich berühren.
+    place: str | None
+    districts: list[ElectionMapDistrict]
+    #: Wahlbereiche mit Briefwahl — mit ``?place=`` nur die berührten.
+    areas: list[ElectionMapArea]
 
 
 class MayorHistoryPoint(TypedDict):

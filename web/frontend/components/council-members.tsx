@@ -10,6 +10,7 @@ import { AnalysisIntro } from "@/components/analysis-intro";
 import { personHref } from "@/lib/routes";
 import { useFetch } from "@/lib/use-fetch";
 import { PersonEintrag } from "@/components/qa-bausteine";
+import { NeuerRatTeaser } from "@/components/neuer-rat";
 
 function MemberChip({ m }: { m: Member }) {
   return (
@@ -95,6 +96,7 @@ export function PersonenView() {
         <strong className="font-semibold text-foreground">Präsenz</strong>, nicht das Stimmverhalten. Erfasst sind
         Sitzungen <strong className="font-semibold text-foreground">ab 2018</strong>.
       </AnalysisIntro>
+      <NeuerRatTeaser />
       <div className="flex flex-col gap-2 sm:flex-row">
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

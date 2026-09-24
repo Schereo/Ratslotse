@@ -38,6 +38,7 @@ from ..antworten import (
     ElectionDistrictRef,
     ElectionList,
     ElectionListItem,
+    ElectionMap,
     ElectionNight,
     ElectionWatchEntry,
     ElectionWatchList,
@@ -55,6 +56,7 @@ from ..deps import get_store, optional_user, require_active
 from ..election import (
     archive,
     candidates,
+    district_map,
     elections,
     history,
     image,
@@ -184,6 +186,25 @@ def _districts(probe: str | None, counted: int | None, wahl: str | None) -> Elec
     if probe:
         return service.districts(reg, service.probe_snapshot(reg, service.load_reference(), counted), "probe")
     return service.districts(reg, votemanager.fetch(), "live")
+
+
+@router.get("/api/wahlabend/karte")
+def wahlabend_karte_je_bezirk(
+    wahl: str | None = Query(default=None, description="Slug der Wahl (Ratswahl, OB-Wahl, Stichwahl); leer = die Ratswahl"),
+    place: str | None = Query(default=None, description="nur die Wahlbezirke, die diesen Ortsbereich berühren"),
+) -> ElectionMap:
+    """Das Ergebnis je Urnenbezirk für die Stadtkarte: wer vorn lag, wie
+    deutlich, in welchen Ortsbereichen der Bezirk liegt — und je Wahlbereich
+    der Stand MIT Briefwahl (docs/plan-viertel-wahlkarte.md).
+
+    Öffentlich wie der Wahlabend, hinter demselben Schalter. Nichts
+    Persönliches, kein Sprachmodell: Zahlen der Stadt, gezählt.
+    """
+    _frei()
+    try:
+        return district_map.build(wahl, place)
+    except (district_map.UnknownElection, district_map.UnknownPlace) as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
 
 @router.get("/api/wahlabend/wahlbezirke/rangliste")

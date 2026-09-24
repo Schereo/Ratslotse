@@ -71,6 +71,18 @@ Deckkraft trägt den Vorsprung (50 % = kaum Farbe), offene Bezirke halb so
 kräftig und gestrichelt. Bei Listenwahlen mit sieben Farben bleibt es bei
 der Primärtönung.
 
+**Die zweite Ausnahme: die Wahl-Ebene der Stadtkarte** (`wahl-bezirke-zeichner.ts`,
+Tims Wunsch 23.09.2026). „Wie hat meine Gegend gewählt?" beantwortet eine
+Fläche je Urnenbezirk in der Farbe dessen, der dort vorn lag — auch bei der
+Listenwahl mit sieben Farben, weil die Frage je Fläche wieder nur eine ist.
+Dieselbe Grammatik wie bei der Stichwahl: **Die Deckkraft trägt den Vorsprung
+auf Platz 2** (knapp = fast leer, ab 20 Punkten satt), ein Gleichstand oder
+ein offener Bezirk ist gestrichelt, im Dunkeln gilt die `color_dark` der
+Liste (CDU-Schwarz wäre dort eine Wand). Die Ortsbereiche liegen als dunkle
+Linien darüber. **Nur die Fläche** — in Legende, Liste und Bezirkstabelle
+bleibt die Parteifarbe ein Punkt. Die Briefwahl hat keine Fläche und wird in
+der Tafel genannt, nie in eine Farbe gerechnet.
+
 **Und ihr Aufleuchten** (`stichwahl-momente.tsx`, Tims Wunsch 23.09.2026):
 Meldet ein Schwung Bezirke, glüht der Bildschirm einmal kurz (2,4 s, nur
 `opacity`) in der Farbe dessen, der diese Bezirke gewonnen hat — zum Rand hin
@@ -193,6 +205,15 @@ iOS-Schrift.
     Bedienhilfen, die einen Präzisions-Zeiger voraussetzen und die Touch nie
     braucht: die Blätter-Pfeile an Chip-Zeile und Steckbrief-Karussell. Ein
     Desktop-Fenster in halber Breite behält sie, ein iPad bekommt sie nie.
+  - `weit` (`min-width: 1680px`) und `ultra` (`min-width: 2200px`) — **noch
+    mehr Platz**, 21:9 und 1440p. Die Hülle deckelt bei 1280, ab `weit` bei
+    1600 px. Über 2200 px geht sie nur für Seiten, die sich in
+    `lib/vollbreit.ts` anmelden — und zwar in einer von zwei Listen:
+    `VOLLBREIT` (randlos, kein Polster: Bühnen wie die Stadtkarte) oder
+    `ULTRA_BREIT` (Deckel 2200 px). Anmelden darf sich nur, wer den Platz in
+    **zusätzliche Spalten** steckt; eine Seite mit einer Spalte würde nur
+    längere Zeilen bekommen (Tims Befund 24.09.2026, Messung und Bauformen
+    in `docs/plan-breite-schirme.md`).
 
   Ein iPad ist quer 1180–1366 px breit und bekäme die Seitenleiste sonst allein
   wegen seiner Breite — dort gehört die Navigation aber an den Daumen (Tims
@@ -214,7 +235,8 @@ iOS-Schrift.
   in welche Spalte gehört, entscheidet der Inhalt, nicht die Höhe (Konto-Seite,
   Tims iPad-Befund 16.08.: 459 × 494 px Leerfläche neben einer Karte, die
   weiter unten noch lange nicht zu Ende war). Die
-  Breite deckelt die Hülle (`max-w-7xl` im App-Layout) — ein eigenes
+  Breite deckelt die Hülle (`max-w-7xl`, ab `weit` 1600 px, für angemeldete
+  Seiten ab `ultra` 2200 px — s. `lib/vollbreit.ts`) — ein eigenes
   `max-w-*` auf einem Raster verschenkt genau den Platz, den das Gerät hat.
 - **Lesebreite: den KASTEN deckeln, nicht den Text darin.** Ein `max-w-[76ch]`
   an einem Absatz in einer 1.496 px breiten Karte lässt rechts 870 px leer, und
@@ -442,10 +464,10 @@ iOS-Schrift.
   gebaut ist — lieber kein Chip als ein alberner.
   Chip-Namen sind Handlungen („Anzeigetafel erklären", „Weiter zu: Woher
   kommt das Geld?"), keine Etiketten. Die **Grund-Chips** stehen nur im
-  leeren Fenster; danach trägt der Composer-Platzhalter die Aufforderung und
-  der Erklär-Modus wohnt als stilles Icon (`MousePointerClick`) an seiner
-  linken Seite. „Markiertes erklären" bleibt, solange etwas markiert ist — er
-  antwortet auf eine Handlung, er ist kein Dauerangebot. **Seit 22.09.2026
+  leeren Fenster; danach trägt der Composer-Platzhalter die Aufforderung.
+  Den Erklär-Modus („Etwas auf der Seite zeigen", Icon am Composer) und den
+  Chip „Markiertes erklären" gibt es seit 23.09.2026 nicht mehr — beides tut
+  der **Markier-Knopf** an der Auswahl selbst (s. u.). **Seit 22.09.2026
   (PR 25) stehen an oberster Stelle zwei kuratierte Startfragen der Seite**
   (`kern/knowledge.py::PageKnowledge.starters`, z. B. auf der Schulden-Seite
   „Wie viel Schulden hat Oldenburg pro Kopf?") — wer nicht weiß, was er
@@ -507,15 +529,31 @@ iOS-Schrift.
   Fehler-Runde und unter der „Zeig mir"-Runde steht keiner.
   Kein Emoji, kein KI-Vokabular — in der Oberfläche heißt sie nur „Lotti".
   **Kein Zähler und kein Abzeichen am geschlossenen Knopf.**
-- **Erklär-Abzeichen**: 28 px rund, `bg-card`, Rahmen primary/30, „?" in
-  primary, oben rechts am Baustein (4 px eingerückt), `z-40`. Erscheint im
-  Erklär-Modus mit `--takt-fluss`, verschwindet mit `Esc` oder nach der Wahl.
-  **Nur auf Elementen mit `data-erklaer`** (`lib/erklaer-anker.ts`) — kein
-  Fallback auf „die nächste Karte": Ein geratener Ausschnitt sieht aus, als
-  wüsste Lotti, worauf gezeigt wurde. Abzeichen statt Zeigerhand, weil das
-  Handy kein Hover hat und eine Zeigerhand ohne Ziel gegen § 6 verstößt. Der
-  Modus schließt das Fenster: Die Abzeichen stehen auf der Seite, und mobil
-  deckt das Fenster genau sie ab.
+- **Markier-Knopf „Lotti fragen"** (`components/assistentin/markier-knopf.tsx`,
+  seit 23.09.2026): Wer auf der Seite Text markiert, bekommt direkt unter dem
+  Ende der Auswahl eine Pille — `bg-card`, Rahmen primary/30, Text primary
+  13/500, `shadow-lifted`, links der Lotti-Kopf 28 px auf Hafenblau; Höhe
+  36 px an der Maus, 44 px am Touchgerät. Waagrecht mittig unter dem
+  Auswahl-Ende, im Fenster gehalten, **nie über dem Text**: Passt sie unten
+  nicht, steht sie über dem Anfang. Am Touchgerät 34 px Abstand, denn direkt
+  unter dem Ende sitzt der Anfasser des Systems, und ÜBER der Auswahl sein
+  Menü. Erscheint nach 250 ms Ruhe (`duration-fluss`, `ease-out-strong`,
+  ohne Bewegung bei reduzierter Bewegung), verschwindet sofort mit der
+  Auswahl, mit `Esc` (nur sie, nicht auch das Fenster), mit einem Klick
+  daneben und wenn die Auswahl aus dem Bild gescrollt ist. Die erste
+  Tabulatortaste nach dem Markieren führt zu ihr. Ein Klick öffnet das
+  Fenster und fragt sofort „Was bedeutet das?"; im Verlauf steht die Frage
+  mit Zitat („„391,5 Mio. €“ — Was bedeutet das?"); mitgeschickt wird die
+  ganze ZEILE mit dem markierten Teil zwischen »…« — nur sie sagt, welche
+  von zwei gleichen Zahlen gemeint ist. Nicht in Lottis Fenster,
+  nicht in Eingabefeldern, nicht unter zwei Zeichen, nicht bei
+  ausgeblendetem Lotti-Knopf. **Warum statt der „?"-Abzeichen des
+  Erklär-Modus** (Tim, 23.09.2026: „keiner versteht, wie das funktioniert,
+  selbst bei mir hat es gedauert"): Ein Modus muss man erst kennen, Markieren
+  kann jede*r — der Knopf antwortet auf eine Handlung, statt eine zu
+  verlangen. Die `data-erklaer`-Anker bleiben: Liegt die Markierung in einem
+  Baustein, geht dessen Text als Kontext mit — ohne Anker nur die
+  Markierung, kein geratener Ausschnitt.
 - **Anstupser**: eine Sprechblase über dem Lotti-Knopf, max 16 rem, `bg-card`,
   Rahmen, Radius 16, `shadow-lifted`; Lotti 32 px mit `hebt-hand`, der Satz in
   `text-hinweis` („Hast du eine Frage zu dem, was du siehst?"), darunter
@@ -710,7 +748,7 @@ Keine Lotti-Sprechblase außerhalb der Anstupser-Grenzen (§ 5) · kein Zähler
 oder Abzeichen am geschlossenen Lotti-Knopf ·
 keine Anführungszeichen um Paraphrasen · keine Stimm-/Abstimmungsgrafiken ·
 kein Signal-Orange als Flächenfarbe · keine Parteifarben-Flächen (Ausnahmen:
-Stichwahl-Karte und ihr Aufleuchten, s. § 2) · kein Emoji
+Stichwahl-Karte und ihr Aufleuchten, Wahl-Ebene der Stadtkarte, s. § 2) · kein Emoji
 im UI-Text · keine gerahmten Button-Reihen unter Antworten (stille Icons) ·
 Bricolage nie im Fließtext · Externes nie wie Beschlüsse stylen · Footer nie
 auf der Chat-Seite (Links im Sidebar-Fuß).

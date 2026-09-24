@@ -205,13 +205,13 @@ def block(data: dict | None) -> str:
     if data.get("draft"):
         zeilen.append(f"- Verwaltungsentwurf {j}: {_saldo(data['draft'])}")
     if data.get("final"):
-        zeilen.append(f"- Nach allen Änderungen ({_DOKUMENT.get(data['final_document'], data['final_document'])}): "
+        zeilen.append(f"- Nach allen Änderungen {j} ({_DOKUMENT.get(data['final_document'], data['final_document'])}): "
                       f"{_saldo(data['final'])}")
     for s in data.get("lists") or []:
-        zeilen.append(f"  - {s['label']}: verändert den Saldo um {geld.de_mio(s['balance'])}")
+        zeilen.append(f"  - {s['label']} {j}: verändert den Saldo um {geld.de_mio(s['balance'])}")
     if data.get("positions"):
         zeilen.append("- Positionen" + (" zur Frage" if data.get("matched") else " (die größten)")
-                      + " im Endstand:")
+                      + f" im Endstand {j}:")
         for z in data["positions"]:
             teile = []
             if z.get("revenue") is not None:
@@ -221,7 +221,7 @@ def block(data: dict | None) -> str:
             s = f"  - {z['label']}"
             if z.get("sub_budget"):
                 s += f" (THH {z['sub_budget']})"
-            s += ": " + (", ".join(teile) or "kein Betrag (Vermerk)")
+            s += f" {j}: " + (", ".join(teile) or "kein Betrag (Vermerk)")
             if z.get("author"):
                 s += f" — vorgeschlagen von {z['author']}"
             if z.get("explanation"):
@@ -229,16 +229,16 @@ def block(data: dict | None) -> str:
             zeilen.append(s)
     if data.get("cash"):
         c = data["cash"]
-        zeilen.append("- FINANZHAUSHALT (Investitionen), eigene Listen — Ein- und Auszahlungen:")
+        zeilen.append(f"- FINANZHAUSHALT {j} (Investitionen), eigene Listen — Ein- und Auszahlungen:")
         if c.get("draft"):
             zeilen.append(f"  - Verwaltungsentwurf {j}: Einzahlungen {geld.de_mio(c['draft']['inflows'])}, "
                           f"Auszahlungen {geld.de_mio(c['draft']['outflows'])}")
         if c.get("final"):
-            zeilen.append(f"  - Nach allen Änderungen ({_DOKUMENT.get(c['final_document'], c['final_document'])}): "
+            zeilen.append(f"  - Nach allen Änderungen {j} ({_DOKUMENT.get(c['final_document'], c['final_document'])}): "
                           f"Einzahlungen {geld.de_mio(c['final']['inflows'])}, "
                           f"Auszahlungen {geld.de_mio(c['final']['outflows'])}")
         for s in c.get("lists") or []:
-            zeilen.append(f"  - {s['label']}: Einzahlungen {geld.de_mio(s['inflows'])}, "
+            zeilen.append(f"  - {s['label']} {j}: Einzahlungen {geld.de_mio(s['inflows'])}, "
                           f"Auszahlungen {geld.de_mio(s['outflows'])}")
         for z in c.get("positions") or []:
             teile = []
@@ -249,7 +249,7 @@ def block(data: dict | None) -> str:
             s = f"  - {z['label']}"
             if z.get("product"):
                 s += f" ({z['product']})"
-            s += ": " + (", ".join(teile) or "kein Betrag")
+            s += f" {j}: " + (", ".join(teile) or "kein Betrag")
             if z.get("explanation"):
                 s += f" — {' '.join(z['explanation'].split())[:100]}"
             zeilen.append(s)

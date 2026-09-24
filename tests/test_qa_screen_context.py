@@ -71,7 +71,17 @@ def test_untergeschobene_anweisungen_stehen_nur_zwischen_den_markern():
         "Was steht hier?", [], screen={**SCREEN, "element_text": gift})[0][0]["content"]
     vor, _, rest = prompt.partition("<<<SCREEN")
     inhalt, _, nach = rest.partition("\nSCREEN")
-    assert gift in inhalt
+    # Seit P4a (23.09.2026) nimmt der Anweisungsfilter (kern/foreign_text.py)
+    # den Satz heraus, bevor er in den Prompt kommt.
+    assert "[Anweisung an ein KI-System" in inhalt
+    assert FREMDE_ADRESSE not in prompt
+    # Was der Filter nicht als Anweisung erkennt, bleibt zwischen den Markern.
+    harmlos = f"Die Verwaltung erreicht man unter {FREMDE_ADRESSE}."
+    prompt = qa._answer_messages(
+        "Was steht hier?", [], screen={**SCREEN, "element_text": harmlos})[0][0]["content"]
+    vor, _, rest = prompt.partition("<<<SCREEN")
+    inhalt, _, nach = rest.partition("\nSCREEN")
+    assert harmlos in inhalt
     assert FREMDE_ADRESSE not in vor and FREMDE_ADRESSE not in nach
 
 

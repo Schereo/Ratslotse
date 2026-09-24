@@ -16,6 +16,8 @@ def test_defaults_render_with_placeholders():
     # Format prompts must accept their documented placeholders.
     prompts.render("committee_summary_user", committee="C", date="18.08.2026", items_text="I")
     prompts.render("council_watcher_user", committee="C", session_date="d", items_text="I", topics_text="T")
+    prompts.render("simple_summary_user", title="T", committee="C", session_date="d",
+                   outcome_note="", official_text="O")
 
 
 def test_raw_prompts_have_valid_json_braces():

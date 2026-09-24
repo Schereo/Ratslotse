@@ -335,6 +335,8 @@ export type HaushaltDaten = {
   provenance?: Record<string, Herkunft>;
   /** Die Haushaltssatzung je Jahrgang — der Rahmen um den Plan. */
   budget_bylaw?: HaushaltssatzungZeile[];
+  /** Dieselbe Satzung in der BESCHLOSSENEN Fassung aus dem Amtsblatt. */
+  budget_bylaw_published?: SatzungVeroeffentlicht[];
   /** Woraus die Abfall- und Straßenreinigungsgebühren entstehen. */
   fees?: GebuehrenZeile[];
   /** Die konkreten Tarifvorschläge derselben Unterlagen. */
@@ -1049,6 +1051,19 @@ export type GebuehrensatzZeile = {
  *  Verwaltungsentwürfe; die beschlossene Satzung erscheint im Amtsblatt. Eine
  *  Anzeige, die das wegließe, machte aus einem Vorschlag der Verwaltung einen
  *  Ratsbeschluss. */
+/** Die beschlossene Haushaltssatzung, wie im Amtsblatt bekannt gemacht
+ *  (council/amtsblatt.py). Dieselben Zahlen wie der Entwurf, dazu die Daten
+ *  des Beschlusses und der Bekanntmachung. */
+export type SatzungVeroeffentlicht = Omit<HaushaltssatzungZeile,
+  "supplement" | "version" | "template_number" | "probes"> & {
+  session_date: string | null;
+  published_on: string | null;
+  issue_nr: string | null;
+  url: string | null;
+  approval_note: string | null;
+  herkunft_id: number | null;
+};
+
 export type HaushaltssatzungZeile = {
   year: number;
   /** 0 = die Satzung selbst. Nachträge werden (noch) nicht gelesen. */

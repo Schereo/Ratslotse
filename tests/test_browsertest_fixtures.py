@@ -205,3 +205,16 @@ def test_die_potenzial_abschrift_kennt_jedes_feld():
     assert not fehlt, "Diese Felder fehlen in stichwahl-potenzial-probe.json:\n  " + "\n  ".join(fehlt)
     assert ist["lead"] == 2225 and len(ist["districts"]) == 133
     assert ist["bundles"][0]["district_name"] == "Eversten"
+
+
+def test_die_wahlkarten_abschrift_kennt_jedes_feld():
+    """`/api/wahlabend/karte` für `24-wahlkarte.spec.ts` — auf die Bezirke von
+    Krusenbusch gekürzt. Wieder erzeugen: s. Kopf der Spec-Datei."""
+    from datetime import datetime, timezone
+
+    from app.election import district_map
+
+    frisch = district_map.build("ratswahl-2026", now=datetime(2026, 9, 23, 12, tzinfo=timezone.utc))
+    ist = json.loads((FIXTURES / "wahlkarte-krusenbusch.json").read_text(encoding="utf-8"))
+    fehlt = _fehlt(dict(frisch), ist, "wahlkarte")
+    assert not fehlt, "Diese Felder fehlen in wahlkarte-krusenbusch.json:\n  " + "\n  ".join(fehlt)

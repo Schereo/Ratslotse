@@ -25,6 +25,7 @@ press links and "Ähnliche Beschlüsse" are heavier and run here, once a week, i
    11b. B-Plan-Umringe        fetch_bplan_outlines.py     — Flächen aus openGEOdata, auch wo OSM noch nichts kennt
    11c. Mein Viertel           build_district_projects.py  — bündelt verortete Beschlüsse zu Vorhaben je Ortsbereich
     12. Quizfragen             generate_quiz.py            — füllt Gebiete unter Ziel-Fragenzahl auf
+   12b. Quiz aus Daten        build_quiz_formats.py       — Anträge (angenommen/abgelehnt?) und Haushaltsvergleiche (kein LLM)
     13. Interessantheit        rate_interest.py            — 500er-Tranche, speist das Fundstück
     14. Fundstücke             generate_fundstuecke.py     — 21 Tage Vorlauf, idempotent
 
@@ -156,6 +157,10 @@ STEPS: list[tuple[str, str]] = [
     # Quizfragen auffüllen (LLM) — nur Gebiete unter Ziel-Fragenzahl, ersetzt
     # ausgemusterte Fragen und deckt neue Beschluss-Themen ab.
     ("Quizfragen", "generate_quiz.py"),
+    # Quizfragen aus den eigenen Daten (kein LLM): Anträge mit ihrem Ausgang
+    # und Haushaltsprodukte im Vergleich. Nach dem Gesprächswert oben nicht
+    # nötig — er nutzt den vom Vorlauf, neue Anträge kommen eine Woche später.
+    ("Quiz aus Daten", "build_quiz_formats.py"),
     # Interessantheit (RL-U11, LLM): 500er-Wochentranche, neueste zuerst —
     # speist das Fundstück des Tages; der Alt-Bestand füllt sich über Wochen.
     ("Interessantheit", "rate_interest.py --limit 500"),
@@ -171,7 +176,7 @@ def main() -> list[dict]:
     hier nur die Namen der Fehlschläge, und in der Cron-Übersicht stand
     entsprechend eine einzige Zahl („16 Schritte, 0 fehlgeschlagen"). Welcher
     Schritt zwei Stunden brauchte und welcher stumm nichts tat, sah man nur im
-    Log auf dem Server — obwohl der Lauf es die ganze Zeit wusste. 20 der 22
+    Log auf dem Server — obwohl der Lauf es die ganze Zeit wusste. 21 der 23
     Schritte rufen kein ``run_guarded``, schreiben also auch keine eigene
     ``job_runs``-Zeile; ihre Bilanz kann nur von hier kommen.
 

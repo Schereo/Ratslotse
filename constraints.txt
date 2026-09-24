@@ -28,8 +28,9 @@
 #
 # WAS DIESE DATEI NICHT TUT. Sie installiert nichts. Eine Zeile für ein Paket,
 # das gar nicht angefordert wird, bleibt wirkungslos — deshalb stehen hier auch
-# `fastembed`, `onnxruntime`, `pymupdf` und `yt-dlp`, die auf dem Server von
-# Hand nachinstalliert sind und bewusst in keiner Requirements-Datei stehen.
+# `fastembed`, `onnxruntime`, `pymupdf`, `openpyxl` und `yt-dlp`, die auf dem
+# Server von Hand oder vom Ops-Lauf nachinstalliert werden und bewusst in keiner
+# Requirements-Datei stehen.
 # Sie sind damit wenigstens festgehalten.
 #
 # `ruff` steht bewusst NICHT hier: Es ist kein Laufzeit-Paket, und die
@@ -47,6 +48,7 @@ cryptography==49.0.0
 distro==1.9.0
 dnspython==2.8.0
 email-validator==2.3.0
+et-xmlfile==2.0.0
 fastapi==0.137.2
 fastembed==0.8.0
 filelock==3.29.4
@@ -71,6 +73,7 @@ mmh3==5.2.1
 numpy==2.5.0
 onnxruntime==1.27.0
 openai==2.41.0
+openpyxl==3.1.5
 packaging==26.2
 pillow==12.2.0
 protobuf==7.35.1

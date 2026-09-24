@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  ankerListe, ankerTreffer, anschlussfragen, auswahlText, belegName, BELEG_NAME_MAX,
+  ankerListe, ankerTreffer, anschlussfragen, auswahlErlaubt, belegName, BELEG_NAME_MAX,
   chipTitel, daumenZeigen,
   erklaerAktion, ernteElement,
   gedaechtnis, kuerze, ohneNamen, ortsfrage, refsAus, routeAus, seitenTitel,
@@ -71,7 +71,9 @@ describe("kuerze", () => {
 
   it("schneidet hart und sagt es", () => {
     const aus = kuerze("x".repeat(300), 100);
-    expect(aus.length).toBeLessThanOrEqual(102);
+    // `max` ist die Feldgrenze des Backends — das „ …" zählt mit, sonst
+    // antwortet der Server mit 422 (der Kassenzettel, 23.09.2026).
+    expect(aus.length).toBeLessThanOrEqual(100);
     expect(aus.endsWith("…")).toBe(true);
   });
 
@@ -135,45 +137,64 @@ describe("ernteElement", () => {
     expect(ernteElement(el).title).toBe("Die Tafel");
   });
 
-  it("deckelt den Text bei 1200 Zeichen", () => {
-    const el = fakeElement({ attrs: { "data-erklaer": "x" }, text: "y".repeat(5000) });
-    expect(ernteElement(el).text.length).toBeLessThanOrEqual(1202);
+  it("deckelt Text, Titel und Schlüssel samt „ …“ an der Server-Grenze", () => {
+    // Der Server nimmt 1200 / 200 / 80 (`ExplainElement`); das „ …" zählt
+    // mit (#1512).
+    const el = fakeElement({
+      attrs: { "data-erklaer": "k".repeat(200), "data-erklaer-titel": "t".repeat(500) },
+      text: "y".repeat(5000),
+    });
+    const aus = ernteElement(el);
+    expect(aus.text.length).toBeLessThanOrEqual(1200);
+    expect(aus.title.length).toBeLessThanOrEqual(200);
+    expect(aus.key!.length).toBeLessThanOrEqual(80);
+    expect(aus.text.endsWith(" …")).toBe(true);
   });
 });
 
-describe("auswahlText", () => {
-  const auswahl = (text: string, el: unknown): Selection => ({
-    isCollapsed: false, rangeCount: 1, anchorNode: el, toString: () => text,
+describe("auswahlErlaubt", () => {
+  const auswahl = (anker: unknown, fokus: unknown = anker): Selection => ({
+    isCollapsed: false, rangeCount: 1, anchorNode: anker, focusNode: fokus,
   } as unknown as Selection);
-
-  it("nimmt eine Markierung auf der Seite", () => {
+  const seite = () => {
     const el = fakeElement({});
     Object.defineProperty(el, "nodeType", { value: 1 });
-    expect(auswahlText(auswahl("Verpflichtungsermächtigung", el), null))
-      .toBe("Verpflichtungsermächtigung");
+    return el;
+  };
+
+  it("lässt eine Markierung auf der Seite durch", () => {
+    expect(auswahlErlaubt(auswahl(seite()), null)).toBe(true);
   });
 
   it("nimmt NICHTS aus einem Eingabefeld — das ist getippter Text der Person", () => {
     const el = fakeElement({ innen: {} as Element });
     Object.defineProperty(el, "nodeType", { value: 1 });
-    expect(auswahlText(auswahl("mein Passwort", el), null)).toBe("");
+    expect(auswahlErlaubt(auswahl(el), null)).toBe(false);
   });
 
   it("nimmt NICHTS aus dem Lotti-Fenster selbst", () => {
-    const el = fakeElement({});
-    Object.defineProperty(el, "nodeType", { value: 1 });
     const fenster = { contains: () => true } as unknown as Element;
-    expect(auswahlText(auswahl("Lottis eigene Antwort", el), fenster)).toBe("");
+    expect(auswahlErlaubt(auswahl(seite()), fenster)).toBe(false);
   });
 
-  it("ignoriert eine Markierung unter drei Zeichen — das ist ein Klick", () => {
-    const el = fakeElement({});
-    Object.defineProperty(el, "nodeType", { value: 1 });
-    expect(auswahlText(auswahl("ab", el), null)).toBe("");
+  it("prüft BEIDE Enden — auf der Seite begonnen, im Fenster geendet, zählt nicht", () => {
+    const drinnen = seite();
+    const fenster = { contains: (el: unknown) => el === drinnen } as unknown as Element;
+    expect(auswahlErlaubt(auswahl(seite(), drinnen), fenster)).toBe(false);
+    expect(auswahlErlaubt(auswahl(drinnen, seite()), fenster)).toBe(false);
+  });
+
+  it("nimmt NICHTS, solange ein Eingabefeld den Fokus hat — Chromium meldet dort den Eltern-Knoten", () => {
+    const eingabe = { closest: () => ({}) } as unknown as Element;
+    expect(auswahlErlaubt(auswahl(seite()), null, eingabe)).toBe(false);
+    const knopf = { closest: () => null } as unknown as Element;
+    expect(auswahlErlaubt(auswahl(seite()), null, knopf)).toBe(true);
   });
 
   it("kommt mit einer leeren Auswahl zurecht", () => {
-    expect(auswahlText(null, null)).toBe("");
+    expect(auswahlErlaubt(null, null)).toBe(false);
+    expect(auswahlErlaubt({ isCollapsed: true, rangeCount: 1 } as unknown as Selection, null))
+      .toBe(false);
   });
 });
 
@@ -630,6 +651,16 @@ describe("chipTitel", () => {
 });
 
 describe("belegName", () => {
+  it("behält eine Vorlagennummer im Untertitel — und stellt sie nach vorn", () => {
+    // Zwei Kredit-Unterrichtungen unter einer Antwort hießen sonst gleich.
+    const titel = "Unterrichtung des Rates über Kreditaufnahmen, Derivatabschlüsse und Umschuldungen";
+    const mai = belegName({ label: `${titel} — Vorlage 26/0397`, year: 2026 });
+    const aug = belegName({ label: `${titel} — Vorlage 26/0629`, year: 2026 });
+    expect(mai.startsWith("Vorlage 26/0397 · Unterrichtung")).toBe(true);
+    expect(aug.startsWith("Vorlage 26/0629")).toBe(true);
+    expect(mai.length).toBeLessThanOrEqual(BELEG_NAME_MAX);
+  });
+
   it("lässt einen kurzen Namen in Ruhe und hängt das Jahr an", () => {
     expect(belegName({ label: "Jahresabschluss", year: 2024 }))
       .toBe("Jahresabschluss 2024");
@@ -647,7 +678,7 @@ describe("belegName", () => {
       label: "Statistisches Jahrbuch der Stadt Oldenburg, Tabelle 1108 — "
         + "Stand der Verschuldung 1995 bis 2025",
       year: 2025,
-    })).toBe("Statistisches Jahrbuch der Stadt Oldenburg, …");
+    })).toBe("Statistisches Jahrbuch der Stadt Oldenburg …");
   });
 
   it("kappt, was auch danach zu lang ist", () => {

@@ -28,6 +28,7 @@ import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { FinanzausgleichDaempfer } from "@/components/haushalt/fiscal-equalization-daempfer";
 import { ZuweisungDreiteilig } from "@/components/haushalt/zuweisung-dreiteilig";
+import { FoerdermittelKarte } from "@/components/haushalt/foerdermittel-karte";
 import { cn } from "@/lib/utils";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
@@ -155,7 +156,8 @@ export default function EinnahmenPage() {
     ...(planErtraege ? (["income_budget"] as const) : []),
     ...(karten.some((k) => k.art.ergebnisPosten && k.amount != null)
       ? (["jahresabschluss"] as const) : []),
-    ...(spendenReihe.length ? (["donations"] as const) : [])];
+    ...(spendenReihe.length ? (["donations"] as const) : []),
+    "grants_received"];
 
   return (
     <Quellenkontext keys={quellen}>
@@ -583,6 +585,12 @@ export default function EinnahmenPage() {
           </dl>
         </section>
       )}
+
+      {/* Fördermittel von EU und Bund je Vorhaben (Plan Blickwinkel, B2) —
+          die dritte Einnahme, die nicht aus Steuern und Zuweisungen kommt,
+          deshalb direkt hinter den Zuwendungen. Die Karte lädt selbst und
+          verschwindet, solange nichts eingelesen ist. */}
+      <FoerdermittelKarte />
 
       {/* Bis 17.08. stand hier ein einziger Absatz von 550 Zeichen, ohne
           Rahmen zwischen zwei Karten. Er beantwortet drei verschiedene Fragen

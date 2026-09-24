@@ -1,0 +1,975 @@
+{
+ "modell": "openai/gpt-6-luna",
+ "zeitstempel": "20260923-145439",
+ "mitschnitt": "/Users/tim/.cache/ratslotse/fakten-mitschnitt/openai-gpt-6-luna-20260923-145439",
+ "ohne_zdr": true,
+ "faelle": [
+  {
+   "id": "hh-schulden-stand-heute",
+   "kanal": "lotti",
+   "kategorie": "haushalt/schulden",
+   "frage": "Wie hoch sind die Schulden der Stadt?",
+   "route": "/dashboard",
+   "weg": "explain",
+   "ms": 9960,
+   "fehler": null,
+   "antwort": "Der Schuldenstand der Stadt Oldenburg lag zum Jahresende 2025 bei rund 337 Millionen Euro, laut Statistischem Jahrbuch der Stadt Oldenburg, Tabelle 1108. Die Zahl umfasst den Kernhaushalt und die Eigenbetriebe, aber nicht rechtlich selbstständige Beteiligungen wie das Klinikum oder städtische Gesellschaften. Ausführlicher erklärt das „Wie viel Schulden hat Oldenburg?“.",
+   "kontext_zeichen": 11542,
+   "bausteine": [
+    "WAS DU WEISST",
+    "ZAHLEN AUS DEM HAUSHALT",
+    "SCHULDENSTAND",
+    "DER HAUSHALTS-BEREICH",
+    "WAS DIE PERSON GERADE VOR SICH HAT",
+    "UEBERSCHRIFT",
+    "SO ANTWORTEST DU",
+    "WEITER",
+    "FRAGE"
+   ],
+   "aufrufe": [
+    "assistant_explain"
+   ],
+   "modell_antwort": "openai/gpt-6-luna",
+   "facetten": null,
+   "kontext_ok": true,
+   "antwort_ok": true,
+   "fehlerart": "ok",
+   "gold": [
+    {
+     "fakt": "Schuldenstand Kern + Eigenbetriebe 2025: 336994000.0",
+     "pflicht": true,
+     "kontext": {
+      "status": "ok",
+      "fundstellen": [
+       "- Schuldenstand am Jahresende 2025: 336.994.000 € — das sind 1.908 € je Einwohner*in"
+      ],
+      "jahre": [
+       [
+        2025
+       ]
+      ]
+     },
+     "antwort": {
+      "status": "ok",
+      "fundstellen": [
+       "Der Schuldenstand der Stadt Oldenburg lag zum Jahresende 2025 bei rund 337 Millionen Euro, laut Statistischem Jahrbuch der Stadt Oldenburg, Tabelle 1108. Die Zahl umfasst den Kernhaushalt und die Eigenbetriebe, aber nich"
+      ],
+      "jahre": [
+       [
+        2025
+       ]
+      ]
+     }
+    }
+   ],
+   "verstoesse": [],
+   "erfunden": [],
+   "verweigert": false
+  },
+  {
+   "id": "hh-buergschaften-lotti",
+   "kanal": "lotti",
+   "kategorie": "haushalt/schulden",
+   "frage": "Für wie viel Geld bürgt die Stadt?",
+   "route": "/haushalt/schulden",
+   "weg": "explain",
+   "ms": 4237,
+   "fehler": null,
+   "antwort": "Die Stadt bürgt für rund 220 Millionen Euro an Krediten anderer, laut Jahresabschluss 2024 der Kernverwaltung und ihrer nicht rechtsfähigen Stiftungen. Das ist keine Schuld der Stadt: Die Bürgschaft kostet sie erst etwas, wenn sie in Anspruch genommen wird.",
+   "kontext_zeichen": 11466,
+   "bausteine": [
+    "WAS DU WEISST",
+    "ZAHLEN AUS DEM HAUSHALT",
+    "SCHULDENSTAND",
+    "DER HAUSHALTS-BEREICH",
+    "WAS DIE PERSON GERADE VOR SICH HAT",
+    "UEBERSCHRIFT",
+    "SO ANTWORTEST DU",
+    "WEITER",
+    "FRAGE"
+   ],
+   "aufrufe": [
+    "assistant_explain"
+   ],
+   "modell_antwort": "openai/gpt-6-luna",
+   "facetten": null,
+   "kontext_ok": true,
+   "antwort_ok": true,
+   "fehlerart": "ok",
+   "gold": [
+    {
+     "fakt": "Bürgschaften 2024: 220300000.0",
+     "pflicht": true,
+     "kontext": {
+      "status": "ok",
+      "fundstellen": [
+       "- Zusätzlich verbürgt (KEINE Schuld, sondern ein Einstehen für fremde Kredite) 2024: 220.300.000 €; davon hält die Stadt 1.301.338 € als Rückstellung für den erwarteten Ausfall vor — Beleg: Jahresabschluss 2024 der Kernv"
+      ],
+      "jahre": [
+       [
+        2024
+       ]
+      ]
+     },
+     "antwort": {
+      "status": "ok",
+      "fundstellen": [
+       "Die Stadt bürgt für rund 220 Millionen Euro an Krediten anderer, laut Jahresabschluss 2024 der Kernverwaltung und ihrer nicht rechtsfähigen Stiftungen. Das ist keine Schuld der Stadt: Die Bürgschaft kostet sie erst etwas"
+      ],
+      "jahre": [
+       []
+      ]
+     }
+    }
+   ],
+   "verstoesse": [],
+   "erfunden": [],
+   "verweigert": false
+  },
+  {
+   "id": "hh-plan-personal-lotti",
+   "kanal": "lotti",
+   "kategorie": "haushalt/plan",
+   "frage": "Wie viel gibt die Stadt 2026 für Personal aus?",
+   "route": "/haushalt/personal",
+   "weg": "explain",
+   "ms": 4906,
+   "fehler": null,
+   "antwort": "Laut Haushaltsansatz 2026 im Gesamtergebnishaushalt des Verwaltungsentwurfs plant die Stadt rund 209 Millionen Euro für Personal in der gesamten Kernverwaltung. Das ist ein Planwert, kein bereits abgerechneter Betrag.",
+   "kontext_zeichen": 13981,
+   "bausteine": [
+    "WAS DU WEISST",
+    "ZAHLEN AUS DEM HAUSHALT",
+    "STELLENPLAN 2026",
+    "SO IST ES ZU LESEN",
+    "AUFGABEN DER STADT MIT KOSTEN UND RECHTSGRUNDLAGE",
+    "STADTHAUSHALT",
+    "PASSEND ZUR FRAGE",
+    "DER HAUSHALTS-BEREICH",
+    "WAS DIE PERSON GERADE VOR SICH HAT",
+    "UEBERSCHRIFT",
+    "SO ANTWORTEST DU",
+    "WEITER",
+    "FRAGE"
+   ],
+   "aufrufe": [
+    "assistant_explain"
+   ],
+   "modell_antwort": "openai/gpt-6-luna",
+   "facetten": null,
+   "kontext_ok": true,
+   "antwort_ok": true,
+   "fehlerart": "ok",
+   "gold": [
+    {
+     "fakt": "Personalaufwendungen Plan 2026 2026: 209443324.0",
+     "pflicht": true,
+     "kontext": {
+      "status": "ok",
+      "fundstellen": [
+       "- Personalaufwendungen: Ansatz 2026 209.443.324 €; zuletzt abgerechnet 2024: 184.779.048 € (Jahresabschluss — das IST zu diesem Posten)"
+      ],
+      "jahre": [
+       [
+        2026
+       ]
+      ]
+     },
+     "antwort": {
+      "status": "ok",
+      "fundstellen": [
+       "Laut Haushaltsansatz 2026 im Gesamtergebnishaushalt des Verwaltungsentwurfs plant die Stadt rund 209 Millionen Euro für Personal in der gesamten Kernverwaltung. Das ist ein Planwert, kein bereits abgerechneter Betrag."
+      ],
+      "jahre": [
+       [
+        2026
+       ]
+      ]
+     }
+    }
+   ],
+   "verstoesse": [],
+   "erfunden": [],
+   "verweigert": false
+  },
+  {
+   "id": "hh-ist-aufwand-2023-lotti",
+   "kanal": "lotti",
+   "kategorie": "haushalt/ist",
+   "frage": "Wie viel hat die Stadt 2023 tatsächlich ausgegeben?",
+   "route": "/haushalt/plan-ist",
+   "weg": "explain",
+   "ms": 7032,
+   "fehler": null,
+   "antwort": "Laut Jahresabschluss 2023 lagen die tatsächlichen Aufwendungen der Stadt bei rund 683 Millionen Euro. Das sind Aufwendungen in der Ergebnisrechnung, nicht zwingend Zahlungen, die im selben Jahr tatsächlich abgeflossen sind.",
+   "kontext_zeichen": 11617,
+   "bausteine": [
+    "WAS DU WEISST",
+    "ZAHLEN AUS DEM HAUSHALT",
+    "GEPLANT UND TATSÄCHLICH",
+    "STADTHAUSHALT",
+    "KASSENSICHT",
+    "DER HAUSHALTS-BEREICH",
+    "WAS DIE PERSON GERADE VOR SICH HAT",
+    "UEBERSCHRIFT",
+    "SO ANTWORTEST DU",
+    "WEITER",
+    "FRAGE"
+   ],
+   "aufrufe": [
+    "assistant_explain"
+   ],
+   "modell_antwort": "openai/gpt-6-luna",
+   "facetten": null,
+   "kontext_ok": true,
+   "antwort_ok": true,
+   "fehlerart": "ok",
+   "gold": [
+    {
+     "fakt": "Summe ordentliche Aufwendungen Ist 2023 2023: 683032270.32",
+     "pflicht": true,
+     "kontext": {
+      "status": "ok",
+      "fundstellen": [
+       "- Gesamt 2023: Aufwendungen geplant 674.305.462 €, tatsächlich 683.032.270 €; Erträge geplant 664.574.528 €, tatsächlich 732.987.198 €"
+      ],
+      "jahre": [
+       [
+        2023
+       ]
+      ]
+     },
+     "antwort": {
+      "status": "ok",
+      "fundstellen": [
+       "Laut Jahresabschluss 2023 lagen die tatsächlichen Aufwendungen der Stadt bei rund 683 Millionen Euro. Das sind Aufwendungen in der Ergebnisrechnung, nicht zwingend Zahlungen, die im selben Jahr tatsächlich abgeflossen si"
+      ],
+      "jahre": [
+       [
+        2023
+       ]
+      ]
+     }
+    }
+   ],
+   "verstoesse": [],
+   "erfunden": [],
+   "verweigert": true
+  },
+  {
+   "id": "hh-vollzug-2026-lotti",
+   "kanal": "lotti",
+   "kategorie": "haushalt/vollzug",
+   "frage": "Was erwartet die Verwaltung für das laufende Jahr?",
+   "route": "/haushalt/plan-ist",
+   "weg": "explain",
+   "ms": 6113,
+   "fehler": null,
+   "antwort": "Für 2026 erwartet die Verwaltung ein Defizit von rund 66 Millionen Euro; geplant waren rund 69 Millionen Euro. Das sind Prognosen für das Jahresende, keine bereits festgestellten Einnahmen oder Ausgaben. Die Zahlen stammen aus dem Finanz- und Leistungsbericht zum 30. Juni 2026.",
+   "kontext_zeichen": 10634,
+   "bausteine": [
+    "WAS DU WEISST",
+    "ZAHLEN AUS DEM HAUSHALT",
+    "HAUSHALTSVOLLZUG 2026",
+    "ES IST EINE ERWARTUNG, KEIN IST",
+    "DER HAUSHALTS-BEREICH",
+    "WAS DIE PERSON GERADE VOR SICH HAT",
+    "UEBERSCHRIFT",
+    "SO ANTWORTEST DU",
+    "WEITER",
+    "FRAGE"
+   ],
+   "aufrufe": [
+    "assistant_explain"
+   ],
+   "modell_antwort": "openai/gpt-6-luna",
+   "facetten": null,
+   "kontext_ok": true,
+   "antwort_ok": true,
+   "fehlerart": "ok",
+   "gold": [
+    {
+     "fakt": "Prognose Ergebnis 2026 (Stand 30.06.2026) 2026: -66033353.0",
+     "pflicht": true,
+     "kontext": {
+      "status": "ok",
+      "fundstellen": [
+       "- Jahresergebnis 2026, Stand 30.06.2026: geplant -68,7 Mio. €, erwartet -66,0 Mio. € — Abweichung 2,6 Mio. € (so im Bericht gedruckt) — Beleg: 1 Finanz- und Leistungsbericht zum 30. Juni 2026 Berichtsvorlage (AFB 2. Sept",
+       "- Wie sich die Erwartung im Jahr bewegte — 31.03.2026: -73,2 Mio. €, 30.06.2026: -66,0 Mio. €; alle für denselben 31. Dezember, keine Zwischenergebnisse."
+      ],
+      "jahre": [
+       [
+        2026
+       ],
+       [
+        2026
+       ]
+      ]
+     },
+     "antwort": {
+      "status": "ok",
+      "fundstellen": [
+       "Für 2026 erwartet die Verwaltung ein Defizit von rund 66 Millionen Euro; geplant waren rund 69 Millionen Euro. Das sind Prognosen für das Jahresende, keine bereits festgestellten Einnahmen oder Ausgaben. Die Zahlen stamm"
+      ],
+      "jahre": [
+       [
+        2026
+       ]
+      ]
+     }
+    }
+   ],
+   "verstoesse": [],
+   "erfunden": [],
+   "verweigert": false
+  },
+  {
+   "id": "hh-invest-rekord-lotti",
+   "kanal": "lotti",
+   "kategorie": "haushalt/investitionen",
+   "frage": "In welchem Jahr hat die Stadt am meisten investiert?",
+   "route": "/haushalt/investitionen",
+   "weg": "explain",
+   "ms": 4023,
+   "fehler": null,
+   "antwort": "Am meisten investierte die Kernverwaltung im Jahr 2020: rund 70 Millionen Euro flossen tatsächlich für Investitionen ab, laut Statistischem Jahrbuch der Stadt, Tabelle 1107-1. Eigenbetriebe und städtische Gesellschaften sind dabei nicht enthalten.",
+   "kontext_zeichen": 15294,
+   "bausteine": [
+    "WAS DU WEISST",
+    "ZAHLEN AUS DEM HAUSHALT",
+    "EINZELNE INVESTITIONS-VORHABEN",
+    "SCHULGEBÄUDE FEHLEN HIER",
+    "INVESTITIONEN",
+    "ES SIND ZWEI HAUSHALTE, NICHT EINER",
+    "NIE GEGEN DEN PLAN RECHNEN",
+    "DER HAUSHALTS-BEREICH",
+    "WAS DIE PERSON GERADE VOR SICH HAT",
+    "UEBERSCHRIFT",
+    "SO ANTWORTEST DU",
+    "WEITER",
+    "FRAGE"
+   ],
+   "aufrufe": [
+    "assistant_explain"
+   ],
+   "modell_antwort": "openai/gpt-6-luna",
+   "facetten": null,
+   "kontext_ok": true,
+   "antwort_ok": true,
+   "fehlerart": "ok",
+   "gold": [
+    {
+     "fakt": "Höchster Wert der Reihe (2020) 2020: 70481000.0",
+     "pflicht": true,
+     "kontext": {
+      "status": "ok",
+      "fundstellen": [
+       "- Höchster Wert der Reihe seit 2010, Jahr 2020: 70.481.000 € (ohne Aufteilung)"
+      ],
+      "jahre": [
+       [
+        2020
+       ]
+      ]
+     },
+     "antwort": {
+      "status": "ok",
+      "fundstellen": [
+       "Am meisten investierte die Kernverwaltung im Jahr 2020: rund 70 Millionen Euro flossen tatsächlich für Investitionen ab, laut Statistischem Jahrbuch der Stadt, Tabelle 1107-1. Eigenbetriebe und städtische Gesellschaften "
+      ],
+      "jahre": [
+       [
+        2020
+       ]
+      ]
+     }
+    }
+   ],
+   "verstoesse": [],
+   "erfunden": [],
+   "verweigert": true
+  },
+  {
+   "id": "hh-kennzahl-personal-lotti",
+   "kanal": "lotti",
+   "kategorie": "haushalt/pruefung",
+   "frage": "Wie hoch ist die Personalintensität der Stadt Oldenburg?",
+   "route": "/haushalt/pruefung",
+   "weg": "explain",
+   "ms": 3134,
+   "fehler": null,
+   "antwort": "Die Personalintensität beträgt 2024 **24,17 Prozent**, laut Rechenschaftsbericht zum Jahresabschluss 2024. Sie zeigt, welcher Anteil der ordentlichen Aufwendungen auf aktives Personal entfällt; die Stadt rechnet dafür die Aufwendungen für aktives Personal mal 100 und teilt durch die ordentlichen Aufwendungen.",
+   "kontext_zeichen": 13641,
+   "bausteine": [
+    "WAS DU WEISST",
+    "ZAHLEN AUS DEM HAUSHALT",
+    "STELLENPLAN 2026",
+    "SO IST ES ZU LESEN",
+    "KENNZAHLEN 2024",
+    "DER HAUSHALTS-BEREICH",
+    "WAS DIE PERSON GERADE VOR SICH HAT",
+    "UEBERSCHRIFT",
+    "SO ANTWORTEST DU",
+    "WEITER",
+    "FRAGE"
+   ],
+   "aufrufe": [
+    "assistant_explain"
+   ],
+   "modell_antwort": "openai/gpt-6-luna",
+   "facetten": null,
+   "kontext_ok": true,
+   "antwort_ok": true,
+   "fehlerart": "ok",
+   "gold": [
+    {
+     "fakt": "Personalintensität 2024 2024: 24.17",
+     "pflicht": true,
+     "kontext": {
+      "status": "ok",
+      "fundstellen": [
+       "- Personalintensität 2024: 24,17 % (so rechnet die Stadt: Aufwendungen für aktives Personal * 100 / ordentliche Aufwendungen)"
+      ],
+      "jahre": [
+       [
+        2024
+       ]
+      ]
+     },
+     "antwort": {
+      "status": "ok",
+      "fundstellen": [
+       "Die Personalintensität beträgt 2024 **24,17 Prozent**, laut Rechenschaftsbericht zum Jahresabschluss 2024. Sie zeigt, welcher Anteil der ordentlichen Aufwendungen auf aktives Personal entfällt; die Stadt rechnet dafür di"
+      ],
+      "jahre": [
+       [
+        2024
+       ]
+      ]
+     }
+    }
+   ],
+   "verstoesse": [],
+   "erfunden": [],
+   "verweigert": false
+  },
+  {
+   "id": "hh-rpa-lotti",
+   "kanal": "lotti",
+   "kategorie": "haushalt/pruefung",
+   "frage": "Was hat das Rechnungsprüfungsamt beanstandet?",
+   "route": "/haushalt/pruefung",
+   "weg": "explain",
+   "ms": 11988,
+   "fehler": null,
+   "antwort": "Eine Auswahl aus dem Schlussbericht zum geprüften Jahresabschluss 2024: Das Rechnungsprüfungsamt, die Stelle, die den Jahresabschluss der Stadt prüft, beanstandete mehrere Punkte. In Textziffer 2.8.3 beanstandete es, dass Mittel in voller Höhe bereitgestellt wurden, obwohl zusätzliche Einnahmen laut Bericht nur verwendet werden dürfen, soweit sie tatsächlich eingegangen sind. In Textziffer 3.2.2 kritisierte es, dass bei der Vergabe und technischen Einrichtung von Benutzerrechten oft keine getrennten Zuständigkeiten bestanden und eine Kontrolle durch zwei Personen fehlte. In Textziffer 4.3.1 erwartete es, dass beanstandete Haushaltsreste – nicht verwendete Haushaltsmittel – im Haushaltsjahr 2025 gesperrt werden. In Textziffer 4.3.3 kritisierte es, dass die Stadt die Erlaubnis, Verpflichtungen für spätere Jahre einzugehen, nur sehr wenig nutzte und Planung und tatsächliche Ausführung stark auseinanderlagen. Quelle für alle genannten Punkte: Schlussbericht des Rechnungsprüfungsamtes über die Prüfung des Jahresabschlusses 2024 der Stadt Oldenburg (Oldb).",
+   "kontext_zeichen": 11404,
+   "bausteine": [
+    "WAS DU WEISST",
+    "ZAHLEN AUS DEM HAUSHALT",
+    "DER HAUSHALTS-BEREICH",
+    "WAS DIE PERSON GERADE VOR SICH HAT",
+    "UEBERSCHRIFT",
+    "SO ANTWORTEST DU",
+    "WEITER",
+    "FRAGE"
+   ],
+   "aufrufe": [
+    "assistant_explain"
+   ],
+   "modell_antwort": "openai/gpt-6-luna",
+   "facetten": null,
+   "kontext_ok": true,
+   "antwort_ok": true,
+   "fehlerart": "ok",
+   "gold": [
+    {
+     "fakt": "Vier-Augen | Funktionstrennung | Inventur | Verpflichtungsermächtigung | Haushaltsreste | außerplanmäßig | überplanmäßig",
+     "pflicht": true,
+     "kontext": {
+      "status": "ok",
+      "fundstellen": [],
+      "jahre": []
+     },
+     "antwort": {
+      "status": "ok",
+      "fundstellen": [],
+      "jahre": []
+     }
+    }
+   ],
+   "verstoesse": [],
+   "erfunden": [],
+   "verweigert": false
+  },
+  {
+   "id": "lotti-thema-waermeplanung",
+   "kanal": "lotti",
+   "kategorie": "verlauf/klima",
+   "frage": "Was ist hier zur Wärmeplanung beschlossen worden?",
+   "route": "/council/thema",
+   "weg": "explain",
+   "ms": 2882,
+   "fehler": null,
+   "antwort": "Der Oldenburger Wärmeplan wurde verabschiedet. Die Verwaltung soll 18 Maßnahmen daraus umsetzen; außerdem wird ein Beirat eingerichtet, der die Umsetzung begleitet.",
+   "kontext_zeichen": 7798,
+   "bausteine": [
+    "WAS DU WEISST",
+    "WAS DIE PERSON GERADE VOR SICH HAT",
+    "SO ANTWORTEST DU",
+    "WEITER",
+    "FRAGE"
+   ],
+   "aufrufe": [
+    "assistant_explain"
+   ],
+   "modell_antwort": "openai/gpt-6-luna",
+   "facetten": null,
+   "kontext_ok": true,
+   "antwort_ok": false,
+   "fehlerart": "modell_ausgelassen",
+   "gold": [
+    {
+     "fakt": "01.06.2026 | 1.6.2026 | 1. Juni 2026 | 01. Juni 2026 | 2026-06-01",
+     "pflicht": true,
+     "kontext": {
+      "status": "ok",
+      "fundstellen": [],
+      "jahre": []
+     },
+     "antwort": {
+      "status": "fehlt",
+      "fundstellen": [
+       "01.06.2026 | 1.6.2026 | 1. Juni 2026 | 01. Juni 2026 | 2026-06-01 | Juni 2026"
+      ],
+      "jahre": []
+     }
+    },
+    {
+     "fakt": "Maßnahmen des Wärmeplans : 18",
+     "pflicht": true,
+     "kontext": {
+      "status": "ok",
+      "fundstellen": [
+       "Rückblick (maschinell zusammengefasst, 19. März 2026 bis 1. Juni 2026): Kommunale Wärmeplanung mit 18 Maßnahmen und Wärmewende-Beirat beschlossen. - Der Oldenburger Wärmeplan wurde verabschiedet und die Verwaltung mit de",
+       "Rückblick (maschinell zusammengefasst, 19. März 2026 bis 1. Juni 2026): Kommunale Wärmeplanung mit 18 Maßnahmen und Wärmewende-Beirat beschlossen. - Der Oldenburger Wärmeplan wurde verabschiedet und die Verwaltung mit de"
+      ],
+      "jahre": [
+       [
+        2026
+       ],
+       [
+        2026
+       ]
+      ]
+     },
+     "antwort": {
+      "status": "ok",
+      "fundstellen": [
+       "Der Oldenburger Wärmeplan wurde verabschiedet. Die Verwaltung soll 18 Maßnahmen daraus umsetzen; außerdem wird ein Beirat eingerichtet, der die Umsetzung begleitet."
+      ],
+      "jahre": [
+       []
+      ]
+     }
+    }
+   ],
+   "verstoesse": [],
+   "erfunden": [],
+   "verweigert": false
+  },
+  {
+   "id": "lotti-ob-stichwahl",
+   "kanal": "lotti",
+   "kategorie": "beschluss/ergebnis",
+   "frage": "Wann wäre laut diesem Beschluss eine Stichwahl?",
+   "route": "/council/decision",
+   "weg": "explain",
+   "ms": 1139,
+   "fehler": null,
+   "antwort": "Eine nötige Stichwahl wäre am 27. September 2026.",
+   "kontext_zeichen": 6868,
+   "bausteine": [
+    "WAS DU WEISST",
+    "WAS DIE PERSON GERADE VOR SICH HAT",
+    "SO ANTWORTEST DU",
+    "WEITER",
+    "FRAGE"
+   ],
+   "aufrufe": [
+    "assistant_explain"
+   ],
+   "modell_antwort": "openai/gpt-6-luna",
+   "facetten": null,
+   "kontext_ok": true,
+   "antwort_ok": true,
+   "fehlerart": "ok",
+   "gold": [
+    {
+     "fakt": "27.09.2026 | 27.9.2026 | 27. September 2026 | 2026-09-27",
+     "pflicht": true,
+     "kontext": {
+      "status": "ok",
+      "fundstellen": [],
+      "jahre": []
+     },
+     "antwort": {
+      "status": "ok",
+      "fundstellen": [],
+      "jahre": []
+     }
+    }
+   ],
+   "verstoesse": [],
+   "erfunden": [],
+   "verweigert": false
+  },
+  {
+   "id": "lotti-buergschaft-kongresshalle",
+   "kanal": "lotti",
+   "kategorie": "verwechslung/weser-ems-halle",
+   "frage": "Um wie viel wurde die Bürgschaft hier erhöht?",
+   "route": "/council/decision",
+   "weg": "explain",
+   "ms": 4520,
+   "fehler": null,
+   "antwort": "Die Bürgschaft wurde um 29 Millionen Euro erhöht: von 50 auf maximal 79 Millionen Euro. Sie ist ein Versprechen der Stadt, für den Kredit einzustehen, falls die Gesellschaft nicht zahlen kann.",
+   "kontext_zeichen": 14007,
+   "bausteine": [
+    "WAS DU WEISST",
+    "ZAHLEN AUS DEM HAUSHALT",
+    "SCHULDENSTAND",
+    "DER HAUSHALTS-BEREICH",
+    "WAS DIE PERSON GERADE VOR SICH HAT",
+    "SO ANTWORTEST DU",
+    "WEITER",
+    "FRAGE"
+   ],
+   "aufrufe": [
+    "assistant_explain"
+   ],
+   "modell_antwort": "openai/gpt-6-luna",
+   "facetten": null,
+   "kontext_ok": true,
+   "antwort_ok": true,
+   "fehlerart": "ok",
+   "gold": [
+    {
+     "fakt": "Bürgschaft vorher : 50000000",
+     "pflicht": true,
+     "kontext": {
+      "status": "ok",
+      "fundstellen": [
+       "Kurzfassung: Der Stadtrat hat beschlossen, dass die Stadt Oldenburg für einen Kredit der Hallen-Betreiber-Gesellschaft bürgt. Die Bürgschaft wird von 50 auf höchstens 79 Millionen Euro erhöht. Mit dem Geld wird der Neuba",
+       "Amtlicher Wortlaut (Auszug): Die am 18.12.2023 vom Rat beschlossene 100%ige Ausfallbürgschaft (inklusive Zinsen und Nebenkosten) für die Finanzierung des Neubaus der Kongresshalle, der Festsäle, des Galerieausbaus sowie "
+      ],
+      "jahre": [
+       [
+        2025
+       ],
+       [
+        2023
+       ]
+      ]
+     },
+     "antwort": {
+      "status": "ok",
+      "fundstellen": [
+       "Die Bürgschaft wurde um 29 Millionen Euro erhöht: von 50 auf maximal 79 Millionen Euro. Sie ist ein Versprechen der Stadt, für den Kredit einzustehen, falls die Gesellschaft nicht zahlen kann."
+      ],
+      "jahre": [
+       []
+      ]
+     }
+    },
+    {
+     "fakt": "Bürgschaft neu (Höchstbetrag) : 79000000",
+     "pflicht": true,
+     "kontext": {
+      "status": "ok",
+      "fundstellen": [
+       "Kurzfassung: Der Stadtrat hat beschlossen, dass die Stadt Oldenburg für einen Kredit der Hallen-Betreiber-Gesellschaft bürgt. Die Bürgschaft wird von 50 auf höchstens 79 Millionen Euro erhöht. Mit dem Geld wird der Neuba",
+       "Amtlicher Wortlaut (Auszug): Die am 18.12.2023 vom Rat beschlossene 100%ige Ausfallbürgschaft (inklusive Zinsen und Nebenkosten) für die Finanzierung des Neubaus der Kongresshalle, der Festsäle, des Galerieausbaus sowie "
+      ],
+      "jahre": [
+       [
+        2025
+       ],
+       [
+        2023
+       ]
+      ]
+     },
+     "antwort": {
+      "status": "ok",
+      "fundstellen": [
+       "Die Bürgschaft wurde um 29 Millionen Euro erhöht: von 50 auf maximal 79 Millionen Euro. Sie ist ein Versprechen der Stadt, für den Kredit einzustehen, falls die Gesellschaft nicht zahlen kann."
+      ],
+      "jahre": [
+       []
+      ]
+     }
+    }
+   ],
+   "verstoesse": [],
+   "erfunden": [],
+   "verweigert": true
+  },
+  {
+   "id": "lotti-person-druegemoeller-ausschuesse",
+   "kanal": "lotti",
+   "kategorie": "person/ausschuss",
+   "frage": "In welchen Ausschüssen sitzt sie?",
+   "route": "/council/person",
+   "weg": "explain",
+   "ms": 7122,
+   "fehler": null,
+   "antwort": "Sie sitzt im Ausschuss für Stadtgrün, Umwelt und Klima, im Ausschuss für Allgemeine Angelegenheiten, im Verwaltungsausschuss, im Betriebsausschuss Eigenbetrieb Gebäudewirtschaft und Hochbau, im Ausschuss für Finanzen und Beteiligungen sowie im Ausschuss für Stadtplanung und Bauen. Im Ausschuss für Stadtgrün, Umwelt und Klima ist sie stellvertretende Vorsitzende; den Betriebsausschuss für Gebäudewirtschaft und Hochbau leitet sie.",
+   "kontext_zeichen": 6575,
+   "bausteine": [
+    "WAS DU WEISST",
+    "WAS DIE PERSON GERADE VOR SICH HAT",
+    "SO ANTWORTEST DU",
+    "WEITER",
+    "FRAGE"
+   ],
+   "aufrufe": [
+    "assistant_explain"
+   ],
+   "modell_antwort": "openai/gpt-6-luna",
+   "facetten": null,
+   "kontext_ok": true,
+   "antwort_ok": true,
+   "fehlerart": "ok",
+   "gold": [
+    {
+     "fakt": "Gebäudewirtschaft + Stadtplanung + Finanzen",
+     "pflicht": true,
+     "kontext": {
+      "status": "ok",
+      "fundstellen": [],
+      "jahre": []
+     },
+     "antwort": {
+      "status": "ok",
+      "fundstellen": [],
+      "jahre": []
+     }
+    }
+   ],
+   "verstoesse": [],
+   "erfunden": [],
+   "verweigert": false
+  },
+  {
+   "id": "lotti-ort-alte-fleiwa",
+   "kanal": "lotti",
+   "kategorie": "ort",
+   "frage": "Was wurde hier zuletzt beschlossen?",
+   "route": "/council/ort",
+   "weg": "explain",
+   "ms": 6160,
+   "fehler": null,
+   "antwort": "Zuletzt beschloss der Rat am 1. Juni 2026 den Bebauungsplan 855 für Industriestraße/Alte Fleiwa. Der Beschluss wurde angenommen; „als Satzung“ bedeutet, dass der Plan formal als örtliche Regelung beschlossen wurde.",
+   "kontext_zeichen": 7200,
+   "bausteine": [
+    "WAS DU WEISST",
+    "WAS DIE PERSON GERADE VOR SICH HAT",
+    "SO ANTWORTEST DU",
+    "WEITER",
+    "FRAGE"
+   ],
+   "aufrufe": [
+    "assistant_explain"
+   ],
+   "modell_antwort": "openai/gpt-6-luna",
+   "facetten": null,
+   "kontext_ok": true,
+   "antwort_ok": true,
+   "fehlerart": "ok",
+   "gold": [
+    {
+     "fakt": "01.06.2026 | 1.6.2026 | 1. Juni 2026 | 01. Juni 2026 | 2026-06-01",
+     "pflicht": true,
+     "kontext": {
+      "status": "ok",
+      "fundstellen": [],
+      "jahre": []
+     },
+     "antwort": {
+      "status": "ok",
+      "fundstellen": [],
+      "jahre": []
+     }
+    },
+    {
+     "fakt": "855",
+     "pflicht": true,
+     "kontext": {
+      "status": "ok",
+      "fundstellen": [],
+      "jahre": []
+     },
+     "antwort": {
+      "status": "ok",
+      "fundstellen": [],
+      "jahre": []
+     }
+    }
+   ],
+   "verstoesse": [],
+   "erfunden": [],
+   "verweigert": false
+  },
+  {
+   "id": "lotti-sitzung-0106-stadion",
+   "kanal": "lotti",
+   "kategorie": "sitzung/beschluesse",
+   "frage": "Was wurde hier in der Sitzung zum Stadion entschieden?",
+   "route": "/council/sitzung",
+   "weg": "explain",
+   "ms": 9766,
+   "fehler": null,
+   "antwort": "Der Rat nahm den Stadionneubau an der Maastrichter Straße, eine Ausfallbürgschaft der Stadt für die Stadiongesellschaft – die Stadt springt ein, falls die Gesellschaft ihre Zahlungsverpflichtungen nicht erfüllen kann – und Grundstücksübertragungen an. Abgelehnt wurde der Antrag, ein Unternehmen mit Gesamtverantwortung für den Stadionbau erst nach einer positiven Rückmeldung der Europäischen Kommission zu beauftragen.",
+   "kontext_zeichen": 11250,
+   "bausteine": [
+    "WAS DU WEISST",
+    "WAS DIE PERSON GERADE VOR SICH HAT",
+    "SO ANTWORTEST DU",
+    "WEITER",
+    "FRAGE"
+   ],
+   "aufrufe": [
+    "assistant_explain"
+   ],
+   "modell_antwort": "openai/gpt-6-luna",
+   "facetten": null,
+   "kontext_ok": true,
+   "antwort_ok": false,
+   "fehlerart": "modell_ausgelassen",
+   "gold": [
+    {
+     "fakt": "Beschluss 8677",
+     "pflicht": true,
+     "kontext": {
+      "status": "ok",
+      "fundstellen": [],
+      "jahre": []
+     },
+     "antwort": {
+      "status": "fehlt",
+      "fundstellen": [],
+      "jahre": []
+     }
+    },
+    {
+     "fakt": "Beschluss 8679",
+     "pflicht": true,
+     "kontext": {
+      "status": "ok",
+      "fundstellen": [],
+      "jahre": []
+     },
+     "antwort": {
+      "status": "fehlt",
+      "fundstellen": [],
+      "jahre": []
+     }
+    },
+    {
+     "fakt": "angenommen | beschlossen | zugestimmt | beschloss | Zustimmung | accepted",
+     "pflicht": true,
+     "kontext": {
+      "status": "ok",
+      "fundstellen": [],
+      "jahre": []
+     },
+     "antwort": {
+      "status": "fehlt",
+      "fundstellen": [
+       "angenommen | beschlossen | zugestimmt | beschloss | Zustimmung | accepted"
+      ],
+      "jahre": []
+     }
+    }
+   ],
+   "verstoesse": [],
+   "erfunden": [],
+   "verweigert": false
+  },
+  {
+   "id": "lotti-nd-waermeplan-wer-dagegen",
+   "kanal": "lotti",
+   "kategorie": "nicht-in-daten/abstimmung",
+   "frage": "Welche Fraktionen waren hier dagegen?",
+   "route": "/council/decision",
+   "weg": "explain→ask",
+   "ms": 13141,
+   "fehler": null,
+   "antwort": "Welche Fraktionen dagegen waren, lässt sich nicht feststellen; wer wie gestimmt hat, ist auch im Ratsarchiv nicht verzeichnet. Hier steht nur, dass der Beschluss mehrheitlich mit fünf Gegenstimmen angenommen wurde.\n\nAus den Unterlagen geht nicht hervor, welche Fraktionen die fünf Gegenstimmen abgegeben haben. Die Aussprache zeigt zwar, dass die BSW-Fraktion den Plan kritisierte und eine Vertagung beantragte; ob sie gegen den abschließenden Beschluss stimmte, ist daraus aber nicht ersichtlich. [8683]",
+   "kontext_zeichen": 25239,
+   "bausteine": [
+    "DER GEGENSTAND DER SEITE",
+    "WAS DIE PERSON GERADE AUF DEM BILDSCHIRM HAT",
+    "SCREEN",
+    "STAND DER AKTEN",
+    "BESCHLÜSSE",
+    "WAS DIE FACHWÖRTER BEDEUTEN",
+    "AKTUELLES VON DER STADT",
+    "AUS DEN RATSDEBATTEN",
+    "FOLGEFRAGEN"
+   ],
+   "aufrufe": [
+    "assistant_explain",
+    "qa_analysis",
+    "qa_answer"
+   ],
+   "modell_antwort": "openai/gpt-6-luna",
+   "facetten": null,
+   "kontext_ok": true,
+   "antwort_ok": true,
+   "fehlerart": "ok",
+   "gold": [],
+   "verstoesse": [],
+   "erfunden": [],
+   "verweigert": true
+  }
+ ],
+ "kosten": {
+  "usd": 0.009,
+  "aufrufe": 17,
+  "ohne_kosten": 0,
+  "je": {
+   "assistant_explain · openai/gpt-6-luna": {
+    "aufrufe": 15,
+    "usd": 0.008
+   },
+   "qa_analysis · google/gemini-3.1-flash-lite": {
+    "aufrufe": 1,
+    "usd": 0.0
+   },
+   "qa_answer · openai/gpt-6-luna": {
+    "aufrufe": 1,
+    "usd": 0.001
+   }
+  }
+ },
+ "kosten_usd": 0.009,
+ "kennzahlen": {
+  "n_cases": 15,
+  "ok": 13,
+  "quote_ok": 0.8667,
+  "kontext_ok": 15,
+  "fehlerarten": {
+   "ok": 13,
+   "modell_ausgelassen": 2
+  },
+  "modellfehler": 2,
+  "kontextfehler": 0,
+  "erfunden": 0,
+  "ausfaelle": 0,
+  "p50_ms": 6113,
+  "p95_ms": 13141
+ },
+ "etikett": "stichprobe-plus-lotti-1"
+}

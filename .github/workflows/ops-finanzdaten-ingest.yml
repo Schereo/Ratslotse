@@ -146,7 +146,13 @@ jobs:
             .venv/bin/python scripts/backfill_anlagen_ocr.py --nur-finanz || ocr=$?
 
             .venv/bin/python scripts/ingest_haushalt.py
-            .venv/bin/python scripts/ingest_finanzen_opendata.py
+            # Das Portal ist langsam (24.09.2026: 27 s für die Startseite, ein
+            # CSV-Abruf nach 120 s ohne Antwort). Das Skript versucht es dreimal;
+            # schweigt es dann noch, bleiben die gespeicherten Reihen stehen,
+            # und der Lauf färbt erst unten rot — die Schritte danach lesen
+            # den Bestand, nicht den Abruf.
+            opendata=0
+            .venv/bin/python scripts/ingest_finanzen_opendata.py || opendata=$?
             .venv/bin/python scripts/ingest_schulden.py
             # `auch_schrumpfen`: nach einem Parser-Fix, der Altzeilen abräumt
             # (#1524: 2021/THH10 fällt von 27 auf 20 Zeilen, weil sieben
@@ -157,6 +163,22 @@ jobs:
             else
               .venv/bin/python scripts/ingest_finanzberichte.py
             fi
+            # Gesamtfinanzhaushalt (Anlage 006): lädt seine vier Seiten je Plan
+            # selbst, weil die Spalten Wortkoordinaten brauchen.
+            .venv/bin/python scripts/ingest_finanzhaushalt.py
+            # Jahresabschlüsse der Gesellschaften: lädt Bilanz und GuV selbst
+            # (Wortrahmen, die Bilanz steht zweispaltig und oft quer).
+            .venv/bin/python scripts/ingest_gesellschaft_abschluss.py
+            # Übersichten (Anlage 003): Zuschüsse, Schuldenstand, VE — lädt die PDFs selbst.
+            .venv/bin/python scripts/ingest_uebersichten.py
+            # Vorbericht (Anlage 001): Wortlaut je Teilhaushalt — lädt die PDFs selbst.
+            .venv/bin/python scripts/ingest_vorbericht.py
+            # Die Budgetberichte an Jugendhilfe- und Schulausschuss: Investitionen
+            # je Maßnahme mit Prognose und Erläuterung. Braucht pymupdf (unten
+            # ohnehin nachgezogen) und lädt die Anlagen selbst.
+            .venv/bin/python -c "import pymupdf" 2>/dev/null \
+              || .venv/bin/pip install --quiet pymupdf
+            .venv/bin/python scripts/ingest_budgetberichte.py
             .venv/bin/python scripts/ingest_pruefberichte.py
             .venv/bin/python scripts/ingest_konzernabschluss.py
             .venv/bin/python scripts/ingest_investitionen_ist.py
@@ -217,6 +239,24 @@ jobs:
             # sofort sehen und nicht erst hinter dem Bestandsbericht.
             .venv/bin/python scripts/ingest_haushaltssatzung.py
 
+            # Die BESCHLOSSENE Haushaltssatzung aus dem Amtsblatt (oldenburg.de).
+            # Steht nach dem Entwurf, weil sie sich mit ihm vergleicht. Liest
+            # nur Ausgaben, die noch nicht angesehen wurden (council_gazette_issues);
+            # gescannte Seiten gehen ans Sehmodell, gemessen 0,002 $ je Seite.
+            .venv/bin/python scripts/ingest_amtsblatt.py
+
+            # Fördermittel von EU und Bund je Vorhaben — die Listen der Geber
+            # (europa-fuer-niedersachsen.de, Förderkatalog des Bundes). Sechs
+            # Abrufe mit 1,5 s Abstand, kein Sprachmodell.
+            # `openpyxl` liest die XLSX-Listen der EU. Wie pymupdf nicht in
+            # requirements.txt (nur dieser Lauf braucht es), bei Bedarf
+            # nachgezogen — in der Fassung aus constraints.txt. Fehlte es,
+            # brach der Lauf am 24.09.2026 hier ab, und alle Schritte danach
+            # liefen nicht.
+            .venv/bin/python -c "import openpyxl" 2>/dev/null \
+              || .venv/bin/pip install --quiet -c constraints.txt openpyxl
+            .venv/bin/python scripts/ingest_foerdermittel.py
+
             # Die Gebührenbedarfsberechnung — Abfall und Straßenreinigung.
             # Steht NACH dem OCR-Lauf oben, und das ist keine Sortierlaune:
             # Der Jahrgang 2020 liegt nur als Scan vor und wird erst dort
@@ -263,13 +303,32 @@ jobs:
             # unterscheiden (s. council/budget_execution.py).
             #
             # Er hängt an KEINEM der Läufe darüber: Aus `council_attachments`
-            # liest er nur Label und URL und lädt die PDFs selbst — deshalb ist
-            # er auch der vierte Ingest, den `check_finanzdaten` NICHT
-            # übernehmen kann („lädt nichts herunter").
+            # liest er nur Label und URL und lädt die PDFs selbst. Der Cron
+            # (`check_finanzdaten`) startet ihn als `lauf`-Skript, sobald ein
+            # neuer Bericht im Bestand liegt; hier steht er für den Nachlauf.
             .venv/bin/python scripts/ingest_haushaltsvollzug.py
             # Der Liquiditätsstand: die Grafiken der Monatsvorlagen — lädt
             # fehlende Anlagen selbst (bis 2021 heißen sie nur „Anlage").
             .venv/bin/python scripts/ingest_liquiditaet.py
+
+            # Oldenburg im Bundesvergleich (Wegweiser Kommune). Steht NACH den
+            # eigenen Steuer- und Liquiditätsreihen, gegen die Oldenburgs Werte
+            # geprüft werden. Rund 14 Abrufe mit 1,5 s Abstand.
+            .venv/bin/python scripts/ingest_bundesvergleich.py
+
+            # Die Schulden der acht kreisfreien Städte samt eigenen Einrichtungen
+            # (Regionaldatenbank). Braucht das Konto aus der .env — ohne endet
+            # der Lauf mit einem Satz und ohne Fehler (dev hat keins). Steht
+            # nach dem Schuldenstand der Stadt, gegen den Oldenburg geprüft wird.
+            #
+            # NICHT unter `set -e`: Der Webservice stellt Aufträge in eine
+            # Warteschlange, und am 24.09.2026 war das Ergebnis zweimal nach
+            # 600 s nicht fertig. Der Abbruch nahm alles danach mit — die
+            # Steuertabellen des Jahrbuchs, das Archiv, den Bestandsbericht.
+            # Ein Stau beim Statistikamt ist kein Fehler in unseren Zahlen;
+            # der Lauf färbt deshalb erst ganz unten rot.
+            regional=0
+            .venv/bin/python scripts/ingest_regionalstatistik.py || regional=$?
 
             # Die beiden Steuertabellen des Jahrbuchs (1103 Plan neben Ist je
             # Steuerart, 1105 Hebesätze seit 1980). Sie stehen NACH
@@ -502,10 +561,30 @@ jobs:
               exit "$wirtschaftsplaene"
             fi
 
+            if [ "$opendata" -ne 0 ]; then
+              echo ""
+              echo "Das Open-Data-Portal hat Exit $opendata gemeldet — meist ein"
+              echo "Abruf, der dreimal ins Leere lief. Die gespeicherten Reihen"
+              echo "bleiben stehen; die übrigen Ingests sind durchgelaufen."
+            fi
+            if [ "$regional" -ne 0 ]; then
+              echo ""
+              echo "Die Regionaldatenbank hat Exit $regional gemeldet — meist ein"
+              echo "Auftrag, der in ihrer Warteschlange nicht fertig wurde. Die"
+              echo "gespeicherten Jahrgänge bleiben stehen; nochmal laufen lassen."
+              echo "Die übrigen Ingests sind trotzdem durchgelaufen."
+            fi
+
             # Der OCR-Lauf färbt ZULETZT rot: Er ist ein Zulieferer, kein
             # Ingest. Ein Ausfall heißt „ein Jahrgang fehlt", nicht „eine Zahl
             # ist falsch" — und der Bestandsbericht oben soll trotzdem lesbar
             # sein, wenn jemand nachschaut, warum.
             if [ "$ocr" -ne 0 ]; then
               exit "$ocr"
+            fi
+            if [ "$regional" -ne 0 ]; then
+              exit "$regional"
+            fi
+            if [ "$opendata" -ne 0 ]; then
+              exit "$opendata"
             fi

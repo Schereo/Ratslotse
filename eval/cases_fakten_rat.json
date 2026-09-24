@@ -1,0 +1,2784 @@
+[
+ {
+  "id": "rat-stadion-was-beschlossen",
+  "kanal": "rat",
+  "frage": "Was hat der Rat zum Stadion an der Maastrichter Straße beschlossen?",
+  "kategorie": "verlauf/stadion",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "15.04.2024",
+      "15.4.2024",
+      "15. April 2024",
+      "2024-04-15"
+     ]
+    ],
+    "quelle": "council_decisions id=6705, Rat 2024-04-15, TOP 8, Vorlage 24/0158; council_sessions.session_date",
+    "antwort_auch": [
+     "April 2024"
+    ]
+   },
+   {
+    "art": "text",
+    "muss": [
+     [
+      "01.06.2026",
+      "1.6.2026",
+      "1. Juni 2026",
+      "01. Juni 2026",
+      "2026-06-01"
+     ]
+    ],
+    "quelle": "council_decisions id=8677, Rat 2026-06-01, TOP 6.1, Vorlage 26/0396; council_sessions.session_date",
+    "antwort_auch": [
+     "Juni 2026"
+    ]
+   },
+   {
+    "art": "zahl",
+    "wert": 57339000,
+    "einheit": "€",
+    "bezeichnung": "Pauschalpreis Totalunternehmer netto",
+    "toleranz": 0.005,
+    "quelle": "council_decisions id=8677, Rat 2026-06-01, TOP 6.1, Vorlage 26/0396; official_text"
+   },
+   {
+    "art": "zahl",
+    "wert": 15000000,
+    "einheit": "€",
+    "bezeichnung": "Eigenkapitalzuschuss der Stadt (bis zu)",
+    "toleranz": 0.0,
+    "quelle": "council_decisions id=8659, Rat 2024-10-28, TOP 6.1, Vorlage 24/0511/1; official_text Ziff. 3"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Faktencheck 23.09. (rat[0]): Beide Modelle ließen den Eigenkapitalzuschuss von bis zu 15 Mio. € aus 8659 weg; Gemini ordnete die 50,4 Mio. € als „Volumen“ ein (es ist die Kostengrenze für die Vergabe) und datierte eine Rede in die falsche Sitzung."
+ },
+ {
+  "id": "rat-stadion-kosten-wer-zahlt",
+  "kanal": "rat",
+  "frage": "Wie viel kostet das neue Stadion und wer bezahlt es?",
+  "kategorie": "beschluss/kosten",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 57339000,
+    "einheit": "€",
+    "bezeichnung": "Pauschalpreis netto",
+    "toleranz": 0.005,
+    "quelle": "council_decisions id=8677, Rat 2026-06-01, TOP 6.1, Vorlage 26/0396; official_text"
+   },
+   {
+    "art": "zahl",
+    "wert": 2360000,
+    "einheit": "€",
+    "bezeichnung": "Baunebenkosten netto",
+    "toleranz": 0.01,
+    "quelle": "council_decisions id=8677, Rat 2026-06-01, TOP 6.1, Vorlage 26/0396; official_text"
+   },
+   {
+    "art": "zahl",
+    "wert": 15000000,
+    "einheit": "€",
+    "bezeichnung": "Eigenkapitalzuschuss der Stadt (bis zu)",
+    "toleranz": 0.0,
+    "quelle": "council_decisions id=8659, Rat 2024-10-28, TOP 6.1, Vorlage 24/0511/1; official_text Ziff. 3"
+   },
+   {
+    "art": "text",
+    "muss": [
+     [
+      "Bürgschaft",
+      "bürgt",
+      "Ausfallbürgschaft"
+     ]
+    ],
+    "quelle": "council_decisions id=8679, Rat 2026-06-01, TOP 6.2, Vorlage 26/0374; official_text"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Faktencheck rat[1]: Luna legte nahe, die Stadt zahle direkt nichts — 8659 beschließt aber bis zu 15 Mio. € Eigenkapital. Fängt, ob 8659 überhaupt im Kontext einer Kostenfrage landet."
+ },
+ {
+  "id": "rat-stadion-grundsatzbeschluss",
+  "kanal": "rat",
+  "frage": "Wann hat der Rat beschlossen, das Stadion an der Maastrichter Straße zu bauen?",
+  "kategorie": "verwechslung/stadion",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "15.04.2024",
+      "15.4.2024",
+      "15. April 2024",
+      "2024-04-15"
+     ]
+    ],
+    "quelle": "council_decisions id=6705, Rat 2024-04-15, TOP 8, Vorlage 24/0158; council_sessions.session_date"
+   },
+   {
+    "art": "zahl",
+    "wert": 10000,
+    "einheit": "Plätze",
+    "bezeichnung": "Besucherplätze",
+    "toleranz": 0.0,
+    "quelle": "council_decisions id=6705, Rat 2024-04-15, TOP 8, Vorlage 24/0158; official_text"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Zwei ähnliche Beschlüsse: 27.02.2023 nur „Aufnahme der Planung“ (Varianten 7.500/10.000 Plätze, id 5621), 15.04.2024 die Errichtung. Wer den älteren als Baubeschluss nennt, hat verwechselt; ihn als Vorstufe zu nennen, ist richtig — deshalb kein Verbot."
+ },
+ {
+  "id": "rat-stadion-bplan-satzung",
+  "kanal": "rat",
+  "frage": "Wann wurde der Bebauungsplan 831 für das Stadion als Satzung beschlossen?",
+  "kategorie": "verwechslung/stadion",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "13.04.2026",
+      "13.4.2026",
+      "13. April 2026",
+      "2026-04-13"
+     ]
+    ],
+    "quelle": "council_decisions id=8540, Rat 2026-04-13, TOP 6.2, Vorlage 26/0172; council_sessions.session_date"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Am 30.05.2022 (id 4851) fiel nur der Aufstellungsbeschluss; dasselbe Planzeichen, vier Jahre früher."
+ },
+ {
+  "id": "rat-stadion-wer-dagegen",
+  "kanal": "rat",
+  "frage": "Welche Fraktionen haben im Juni 2026 gegen die Stadion-Vergabe gestimmt?",
+  "kategorie": "beschluss/abstimmung",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "Grüne",
+      "Grünen"
+     ],
+     [
+      "Für Oldenburg"
+     ]
+    ],
+    "quelle": "council_press id=289 (2026-06-02, „Rat verwandelt Stadion-Vorlage: Hellmich baut neue Arena“)"
+   },
+   {
+    "art": "zahl",
+    "wert": 18,
+    "einheit": "Gegenstimmen",
+    "bezeichnung": "Gegenstimmen",
+    "toleranz": 0.0,
+    "quelle": "council_decisions id=8677, Rat 2026-06-01, TOP 6.1, Vorlage 26/0396; no_votes"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Das Protokoll nennt nur Zahlen (18 dagegen); WER dagegen war, steht allein in der Pressemitteilung vom 02.06.2026. Falle: Die factions-Spalte von 8677 ist [„CDU“] — das sind ANTRAGSTELLER (Kontext: „Antrag von: CDU“), keine Gegenstimmen. Die CDU stimmte dafür, zwei Mitglieder enthielten sich."
+ },
+ {
+  "id": "rat-stadion-baufirma",
+  "kanal": "rat",
+  "frage": "Welche Firma baut das neue Stadion?",
+  "kategorie": "beschluss/ergebnis",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     "Hellmich"
+    ],
+    "quelle": "council_press id=289 (2026-06-02, „Rat verwandelt Stadion-Vorlage: Hellmich baut neue Arena“)"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Der Beschluss 8677 nennt nur „den Totalunternehmer“; den Namen trägt die Pressemitteilung."
+ },
+ {
+  "id": "rat-stadion-eu-genehmigung",
+  "kanal": "rat",
+  "frage": "Hat die EU-Kommission die Finanzierung des Stadions genehmigt?",
+  "kategorie": "verlauf/stadion",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "12.08.2026",
+      "12.8.2026",
+      "12. August 2026",
+      "2026-08-12"
+     ]
+    ],
+    "quelle": "council_press id=3112 (2026-08-12, „Stadion-Neubau: EU und Kommunalaufsicht geben endgültig grünes Licht“)",
+    "antwort_auch": [
+     "August 2026"
+    ]
+   },
+   {
+    "art": "zahl",
+    "wert": 75000000,
+    "einheit": "€",
+    "bezeichnung": "genehmigte Beihilfen",
+    "toleranz": 0.0,
+    "quelle": "council_press id=3112 (2026-08-12, „Stadion-Neubau: EU und Kommunalaufsicht geben endgültig grünes Licht“)"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Alle Ratsbeschlüsse vom 01.06.2026 stehen unter EU-Vorbehalt; die Auflösung steht nur in der Presse (12.08.2026). Wer nur die Beschlüsse kennt, sagt „noch offen“ — veraltet."
+ },
+ {
+  "id": "rat-stadion-fertigstellung",
+  "kanal": "rat",
+  "frage": "Wann soll das neue Stadion fertig sein?",
+  "kategorie": "verlauf/stadion",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     "2028",
+     "2029"
+    ],
+    "quelle": "council_press id=3112 (2026-08-12, „Stadion-Neubau: EU und Kommunalaufsicht geben endgültig grünes Licht“)"
+   },
+   {
+    "art": "text",
+    "muss": [
+     [
+      "1. Juli 2027",
+      "01.07.2027",
+      "Juli 2027"
+     ]
+    ],
+    "quelle": "council_press id=3112 (2026-08-12, „Stadion-Neubau: EU und Kommunalaufsicht geben endgültig grünes Licht“)"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Baubeginn 1. Juli 2027, Fertigstellung Ende 2028/Anfang 2029 — nur in Pressemitteilungen (02.06., 05.06., 12.08.2026)."
+ },
+ {
+  "id": "rat-stadion-einwohnerbefragung",
+  "kanal": "rat",
+  "frage": "Gab es eine Einwohnerbefragung zum Stadion?",
+  "kategorie": "verlauf/stadion",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "abgelehnt",
+      "lehnte",
+      "Ablehnung",
+      "rejected"
+     ]
+    ],
+    "quelle": "council_decisions id=8500, Rat 2026-02-23, TOP 12.7; outcome=rejected"
+   },
+   {
+    "art": "text",
+    "muss": [
+     [
+      "23.02.2026",
+      "23.2.2026",
+      "23. Februar 2026",
+      "2026-02-23"
+     ]
+    ],
+    "quelle": "council_decisions id=8500, Rat 2026-02-23, TOP 12.7; council_sessions.session_date",
+    "antwort_auch": [
+     "Februar 2026"
+    ]
+   },
+   {
+    "art": "zahl",
+    "wert": 27,
+    "einheit": "Gegenstimmen",
+    "bezeichnung": "Gegenstimmen",
+    "toleranz": 0.0,
+    "quelle": "council_decisions id=8500, Rat 2026-02-23, TOP 12.7; no_votes"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Der Rat lehnte die Befragung zweimal ab (26.02.2024 als Teil eines Grünen-Antrags, 23.02.2026 mit 27 Gegenstimmen); das Bürgerbegehren erklärte der Verwaltungsausschuss am 11.05.2026 für unzulässig (nur Presse). Wer das Bürgerbegehren für eine Befragung hält, verwechselt."
+ },
+ {
+  "id": "rat-stadion-fehlbetrag-2026",
+  "kanal": "rat",
+  "frage": "Mit welchem Fehlbetrag plant die Stadiongesellschaft im Jahr 2026?",
+  "kategorie": "beschluss/kosten",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 651500,
+    "einheit": "€",
+    "jahr": 2026,
+    "bezeichnung": "maximaler Fehlbetrag Wirtschaftsplan",
+    "toleranz": 0.0,
+    "quelle": "council_decisions id=8442, Rat 2025-12-15, TOP 10.3, Vorlage 25/0850; official_text"
+   }
+  ],
+  "verboten": [
+   {
+    "art": "zahl",
+    "wert": 240000,
+    "grund": "Wirtschaftsplan 2025 (id 9208), nicht 2026"
+   }
+  ],
+  "notiz": "Jahresfalle: Drei Wirtschaftspläne der Stadion GmbH & Co. KG stehen im Bestand (2024: 190.000 €, 2025: 240.000 €, 2026: 651.500 €)."
+ },
+ {
+  "id": "lotti-stadion-kosten",
+  "kanal": "lotti",
+  "route": "/council/decision",
+  "refs": {
+   "decision_id": 8677
+  },
+  "frage": "Wie viel kostet das Stadion laut diesem Beschluss?",
+  "kategorie": "beschluss/kosten",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 57339000,
+    "einheit": "€",
+    "bezeichnung": "Pauschalpreis netto",
+    "toleranz": 0.005,
+    "quelle": "council_decisions id=8677, Rat 2026-06-01, TOP 6.1, Vorlage 26/0396; official_text"
+   },
+   {
+    "art": "zahl",
+    "wert": 2360000,
+    "einheit": "€",
+    "bezeichnung": "Baunebenkosten netto",
+    "toleranz": 0.01,
+    "quelle": "council_decisions id=8677, Rat 2026-06-01, TOP 6.1, Vorlage 26/0396; official_text"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Der Beschluss-Block trägt den amtlichen Wortlaut (600 Zeichen) — beide Zahlen stehen darin."
+ },
+ {
+  "id": "lotti-stadion-abstimmung",
+  "kanal": "lotti",
+  "route": "/council/decision",
+  "refs": {
+   "decision_id": 8677
+  },
+  "frage": "Wie knapp ist die Abstimmung hier ausgegangen?",
+  "kategorie": "beschluss/abstimmung",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "angenommen",
+      "beschlossen",
+      "zugestimmt",
+      "beschloss",
+      "Zustimmung",
+      "accepted"
+     ]
+    ],
+    "quelle": "council_decisions id=8677, Rat 2026-06-01, TOP 6.1, Vorlage 26/0396; outcome=accepted"
+   },
+   {
+    "art": "zahl",
+    "wert": 18,
+    "einheit": "Gegenstimmen",
+    "bezeichnung": "Gegenstimmen",
+    "toleranz": 0.0,
+    "quelle": "council_decisions id=8677, Rat 2026-06-01, TOP 6.1, Vorlage 26/0396; no_votes"
+   },
+   {
+    "art": "zahl",
+    "wert": 2,
+    "einheit": "Enthaltungen",
+    "bezeichnung": "Enthaltungen",
+    "toleranz": 0.0,
+    "quelle": "council_decisions id=8677, Rat 2026-06-01, TOP 6.1, Vorlage 26/0396; abstentions"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Messung 21.09. (B3): Die Zahlen fehlten einmal ganz im Prompt; seitdem reicht _abstimmung sie durch. Wächter dafür."
+ },
+ {
+  "id": "lotti-stadion-wer-dagegen",
+  "kanal": "lotti",
+  "route": "/council/decision",
+  "refs": {
+   "decision_id": 8677
+  },
+  "frage": "Welche Fraktionen waren hier dagegen?",
+  "kategorie": "beschluss/abstimmung",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "Grüne",
+      "Grünen"
+     ],
+     [
+      "Für Oldenburg"
+     ]
+    ],
+    "quelle": "council_press id=289 (2026-06-02, „Rat verwandelt Stadion-Vorlage: Hellmich baut neue Arena“)"
+   }
+  ],
+  "verboten": [],
+  "notiz": "In den Daten steht es (Pressemitteilung 02.06.2026), im Beschluss-Block nicht. Erwartet: Kontextfehler auf der Beschluss-Seite. Falle wie beim Rats-Fall: Die CDU ist Antragstellerin, nicht Gegnerin."
+ },
+ {
+  "id": "lotti-stadion-tu-antrag",
+  "kanal": "lotti",
+  "route": "/council/decision",
+  "refs": {
+   "decision_id": 9330
+  },
+  "frage": "Was wurde hier entschieden und was bedeutet das für mich?",
+  "kategorie": "beschluss/ergebnis",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "abgelehnt",
+      "lehnte",
+      "Ablehnung",
+      "rejected"
+     ]
+    ],
+    "quelle": "council_decisions id=9330, Rat 2026-06-01, TOP 15.10; outcome=rejected"
+   },
+   {
+    "art": "text",
+    "muss": [
+     [
+      "01.06.2026",
+      "1.6.2026",
+      "1. Juni 2026",
+      "01. Juni 2026",
+      "2026-06-01"
+     ]
+    ],
+    "quelle": "council_decisions id=9330, Rat 2026-06-01, TOP 15.10; council_sessions.session_date",
+    "antwort_auch": [
+     "Juni 2026"
+    ]
+   },
+   {
+    "art": "zahl",
+    "wert": 31,
+    "einheit": "Gegenstimmen",
+    "bezeichnung": "Gegenstimmen",
+    "toleranz": 0.0,
+    "quelle": "council_decisions id=9330, Rat 2026-06-01, TOP 15.10; no_votes"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Faktencheck lotti[4]: Gemini erfand „keine direkte Auswirkung, da abgelehnt“ und ließ die 31 Gegenstimmen weg, die im Kontext standen."
+ },
+ {
+  "id": "lotti-stadion-eigenkapital",
+  "kanal": "lotti",
+  "route": "/council/decision",
+  "refs": {
+   "decision_id": 8659
+  },
+  "frage": "Wie viel Geld gibt die Stadt der Stadiongesellschaft laut diesem Beschluss?",
+  "kategorie": "beschluss/kosten",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 15000000,
+    "einheit": "€",
+    "bezeichnung": "Eigenkapitalzuschuss (bis zu)",
+    "toleranz": 0.0,
+    "quelle": "council_decisions id=8659, Rat 2024-10-28, TOP 6.1, Vorlage 24/0511/1; official_text Ziff. 3 / simple_summary"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Im amtlichen Wortlaut steht die Zahl erst nach Zeichen 1.000 — der Block kürzt auf 600. Sie kommt nur über die Kurzfassung in den Prompt. Die 50,4 Mio. € desselben Beschlusses sind eine Kostengrenze, keine Zahlung."
+ },
+ {
+  "id": "rat-fliegerhorst-zuletzt",
+  "kanal": "rat",
+  "frage": "Was hat der Rat zuletzt zum Fliegerhorst beschlossen?",
+  "kategorie": "verlauf/fliegerhorst",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "13.04.2026",
+      "13.4.2026",
+      "13. April 2026",
+      "2026-04-13"
+     ]
+    ],
+    "quelle": "council_decisions id=8541, Rat 2026-04-13, TOP 6.3, Vorlage 26/0210; council_sessions.session_date",
+    "antwort_auch": [
+     "April 2026"
+    ]
+   },
+   {
+    "art": "text",
+    "muss": [
+     [
+      "N-777 G",
+      "777 G",
+      "777G"
+     ]
+    ],
+    "quelle": "council_decisions id=8541, Rat 2026-04-13, TOP 6.3, Vorlage 26/0210; title"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Jüngster Ratsbeschluss mit Fliegerhorst im Titel (Stand der Daten). Die Ratssitzung vom 31.08.2026 hatte zwei Fliegerhorst-Anträge auf der Tagesordnung, ihr Protokoll liegt noch nicht vor — sie sind kein Beschluss."
+ },
+ {
+  "id": "rat-fliegerhorst-sporthalle",
+  "kanal": "rat",
+  "frage": "Welche Sporthalle bekommt die neue Grundschule auf dem Fliegerhorst?",
+  "kategorie": "verlauf/fliegerhorst",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "Dreifeldhalle",
+      "Dreifeld",
+      "drei Felder"
+     ]
+    ],
+    "quelle": "council_decisions id=8497, Rat 2026-02-23, TOP 12.1, Vorlage 26/0089/1; official_text"
+   },
+   {
+    "art": "text",
+    "muss": [
+     [
+      "23.02.2026",
+      "23.2.2026",
+      "23. Februar 2026",
+      "2026-02-23"
+     ]
+    ],
+    "quelle": "council_decisions id=8497, Rat 2026-02-23, TOP 12.1, Vorlage 26/0089/1; council_sessions.session_date",
+    "antwort_auch": [
+     "Februar 2026"
+    ]
+   }
+  ],
+  "verboten": [],
+  "notiz": "Geplant war eine Einfeldhalle; der CDU-Antrag von 2024 wurde am 23.02.2026 angenommen."
+ },
+ {
+  "id": "rat-fliegerhorst-dreifeldhalle-kosten",
+  "kanal": "rat",
+  "frage": "Was soll die Dreifeldhalle auf dem Fliegerhorst kosten?",
+  "kategorie": "verwechslung/fliegerhorst",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 20000000,
+    "einheit": "€",
+    "bezeichnung": "orientierende Kosten Dreifeldhalle („knapp unter“)",
+    "toleranz": 0.05,
+    "quelle": "council_templates 26/0089/1 (kvonr=28624); financial_impact"
+   }
+  ],
+  "verboten": [
+   {
+    "art": "zahl",
+    "wert": 7000000,
+    "grund": "orientierende Kosten der EINFELDhalle"
+   }
+  ],
+  "notiz": "Beide Zahlen stehen im selben Absatz der Vorlage; die 7 Mio. € gelten für die verworfene Einfeldhalle."
+ },
+ {
+  "id": "lotti-fliegerhorst-sanierung",
+  "kanal": "lotti",
+  "route": "/council/decision",
+  "refs": {
+   "decision_id": 7240
+  },
+  "frage": "Bis wann läuft die Sanierung hier und was darf sie kosten?",
+  "kategorie": "beschluss/kosten",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 160767900,
+    "einheit": "€",
+    "bezeichnung": "Gesamtkostenrahmen",
+    "toleranz": 0.005,
+    "quelle": "council_decisions id=7240, Rat 2024-09-30, TOP 13.2, Vorlage 24/0540; official_text"
+   },
+   {
+    "art": "text",
+    "muss": [
+     "2032"
+    ],
+    "quelle": "council_decisions id=7240, Rat 2024-09-30, TOP 13.2, Vorlage 24/0540; official_text"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Gesamtkosten einschließlich privater Maßnahmen, nicht städtische Ausgaben. Die Zahl steht bei Zeichen ~560 des Wortlauts — knapp vor der 600er-Kappe."
+ },
+ {
+  "id": "lotti-fliegerhorst-quote",
+  "kanal": "lotti",
+  "route": "/council/decision",
+  "refs": {
+   "decision_id": 8336
+  },
+  "frage": "Wie hoch ist die Quote für preiswerten Wohnraum hier jetzt?",
+  "kategorie": "beschluss/ergebnis",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 30,
+    "einheit": "%",
+    "bezeichnung": "Quote preiswerter Wohnraum (neu)",
+    "toleranz": 0.0,
+    "quelle": "council_decisions id=8336, Rat 2025-12-01, TOP 12.2, Vorlage 25/0755; official_text"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Die alte Quote (50 %) steht im selben Satz; sie als frühere zu nennen, ist richtig — deshalb kein Verbot."
+ },
+ {
+  "id": "lotti-ort-hallensichel",
+  "kanal": "lotti",
+  "route": "/council/ort",
+  "refs": {
+   "place_id": "hallensichel-ost"
+  },
+  "frage": "Wie weit ist der Bebauungsplan hier?",
+  "kategorie": "ort",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "13.04.2026",
+      "13.4.2026",
+      "13. April 2026",
+      "2026-04-13"
+     ]
+    ],
+    "quelle": "council_decisions id=8541, Rat 2026-04-13, TOP 6.3, Vorlage 26/0210; council_sessions.session_date",
+    "antwort_auch": [
+     "April 2026"
+    ]
+   },
+   {
+    "art": "text",
+    "muss": [
+     [
+      "Satzung",
+      "beschlossen"
+     ]
+    ],
+    "quelle": "council_decisions id=8541, Rat 2026-04-13, TOP 6.3, Vorlage 26/0210; official_text"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Bis 23.09.2026 trug der Orts-Block nur Name und Beschreibung (Kontextfehler); seitdem die jüngsten Beschlüsse wie die Ortsseite. Falle: Ein Satzungsbeschluss zu N-777 G fiel schon am 28.09.2020; der gültige ist der vom 13.04.2026."
+ },
+ {
+  "id": "rat-radverkehr-plaene",
+  "kanal": "rat",
+  "frage": "Was plant die Stadt für den Radverkehr?",
+  "kategorie": "verlauf/radverkehr",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "01.06.2026",
+      "1.6.2026",
+      "1. Juni 2026",
+      "01. Juni 2026",
+      "2026-06-01"
+     ]
+    ],
+    "quelle": "council_decisions id=9307, Rat 2026-06-01, TOP 9.1, Vorlage 26/0221; council_sessions.session_date",
+    "antwort_auch": [
+     "Juni 2026"
+    ]
+   },
+   {
+    "art": "text",
+    "muss": [
+     [
+      "Leitfaden"
+     ]
+    ],
+    "quelle": "council_decisions id=9307, Rat 2026-06-01, TOP 9.1, Vorlage 26/0221; title"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Faktencheck rat[2]: Gemini stellte Anträge und Berichte von 2019/2020 (Radschnellweg-Prüfung 2020, Quellenweg-Planung 2019) ohne Jahr als heutige Pläne dar. Der jüngste Beschluss ist der Fahrradstraßen-Leitfaden."
+ },
+ {
+  "id": "rat-quellenweg-fahrradstrasse",
+  "kanal": "rat",
+  "frage": "Wird der Quellenweg eine Fahrradstraße?",
+  "kategorie": "verwechslung/radverkehr",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "26.09.2022",
+      "26.9.2022",
+      "26. September 2022",
+      "2022-09-26"
+     ]
+    ],
+    "quelle": "council_decisions id=5172, Rat 2022-09-26, TOP 13.1, Vorlage 22/0667; council_sessions.session_date",
+    "antwort_auch": [
+     "September 2022"
+    ]
+   },
+   {
+    "art": "text",
+    "muss": [
+     [
+      "angenommen",
+      "beschlossen",
+      "zugestimmt",
+      "beschloss",
+      "Zustimmung",
+      "accepted"
+     ]
+    ],
+    "quelle": "council_decisions id=5172, Rat 2022-09-26, TOP 13.1, Vorlage 22/0667; outcome=accepted"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Mehrstufig: 2019 Planung beauftragt, 2020 umbenannt in „fahrradgerechter Ausbau“, am 26.09.2022 beschloss der Rat die UMSETZUNG der Fahrradstraße Quellenweg (CDU dagegen). Der Faktencheck vom 23.09. hielt die Umbenennung von 2020 für den Endstand — der Fall prüft, ob 2022 gefunden wird."
+ },
+ {
+  "id": "rat-haareneschstrasse",
+  "kanal": "rat",
+  "frage": "Bleibt die Haareneschstraße eine Fahrradstraße?",
+  "kategorie": "verlauf/radverkehr",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "24.02.2025",
+      "24.2.2025",
+      "24. Februar 2025",
+      "2025-02-24"
+     ]
+    ],
+    "quelle": "council_decisions id=7533, Rat 2025-02-24, TOP 10.1, Vorlage 24/0824; council_sessions.session_date",
+    "antwort_auch": [
+     "Februar 2025"
+    ]
+   },
+   {
+    "art": "zahl",
+    "wert": 5,
+    "einheit": "Gegenstimmen",
+    "bezeichnung": "Gegenstimmen",
+    "toleranz": 0.0,
+    "quelle": "council_decisions id=7533, Rat 2025-02-24, TOP 10.1, Vorlage 24/0824; no_votes"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Zwei Beschlüsse zur selben Straße: 26.08.2024 (Katharinenstraße, Zuwegung) und 24.02.2025 (Beibehaltung mit neuer Parkordnung)."
+ },
+ {
+  "id": "lotti-haarenesch-abstimmung",
+  "kanal": "lotti",
+  "route": "/council/decision",
+  "refs": {
+   "decision_id": 7533
+  },
+  "frage": "Wie ist die Abstimmung hier ausgegangen?",
+  "kategorie": "beschluss/abstimmung",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "angenommen",
+      "beschlossen",
+      "zugestimmt",
+      "beschloss",
+      "Zustimmung",
+      "accepted"
+     ]
+    ],
+    "quelle": "council_decisions id=7533, Rat 2025-02-24, TOP 10.1, Vorlage 24/0824; outcome=accepted"
+   },
+   {
+    "art": "zahl",
+    "wert": 5,
+    "einheit": "Gegenstimmen",
+    "bezeichnung": "Gegenstimmen",
+    "toleranz": 0.0,
+    "quelle": "council_decisions id=7533, Rat 2025-02-24, TOP 10.1, Vorlage 24/0824; no_votes"
+   }
+  ],
+  "verboten": [],
+  "notiz": ""
+ },
+ {
+  "id": "rat-schwimmbad-zuletzt",
+  "kanal": "rat",
+  "frage": "Was wurde zuletzt zum Thema Schwimmbad beschlossen?",
+  "kategorie": "verlauf/schwimmbad",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "01.06.2026",
+      "1.6.2026",
+      "1. Juni 2026",
+      "01. Juni 2026",
+      "2026-06-01"
+     ]
+    ],
+    "quelle": "council_decisions id=9316, Rat 2026-06-01, TOP 13.2, Vorlage 26/0353; council_sessions.session_date",
+    "antwort_auch": [
+     "Juni 2026"
+    ]
+   },
+   {
+    "art": "text",
+    "muss": [
+     [
+      "BTB",
+      "Bürgerfelder Turnerbund"
+     ]
+    ],
+    "quelle": "council_decisions id=9316, Rat 2026-06-01, TOP 13.2, Vorlage 26/0353; official_text"
+   },
+   {
+    "art": "text",
+    "muss": [
+     [
+      "einstimmig"
+     ]
+    ],
+    "quelle": "council_decisions id=9316, Rat 2026-06-01, TOP 13.2, Vorlage 26/0353; vote=unanimous"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Faktencheck rat[6]: beide Modelle richtig — Wächter."
+ },
+ {
+  "id": "rat-btb-zuschuss-2027",
+  "kanal": "rat",
+  "frage": "Mit wie viel Geld unterstützt die Stadt das BTB-Schwimmbad im Jahr 2027?",
+  "kategorie": "verwechslung/schwimmbad",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 177500,
+    "einheit": "€",
+    "jahr": 2027,
+    "bezeichnung": "Zuschuss BTB-Bad (Maximalbetrag)",
+    "toleranz": 0.0,
+    "quelle": "council_templates 26/0353 (kvonr=29803); financial_impact"
+   }
+  ],
+  "verboten": [
+   {
+    "art": "zahl",
+    "wert": 173000,
+    "grund": "Betrag für 2026",
+    "als_jahr": 2027
+   },
+   {
+    "art": "zahl",
+    "wert": 191000,
+    "grund": "Betrag für 2030",
+    "als_jahr": 2027
+   }
+  ],
+  "notiz": "Jahresfalle: Die Vorlage nennt fünf Jahresbeträge in einer Zeile. Ob die Vorlage (financial_impact) überhaupt in den Kontext kommt, ist Teil der Messung."
+ },
+ {
+  "id": "lotti-btb-betrag",
+  "kanal": "lotti",
+  "route": "/council/decision",
+  "refs": {
+   "decision_id": 9316
+  },
+  "frage": "Wie viel Geld bekommt der BTB hier im Jahr 2027?",
+  "kategorie": "beschluss/kosten",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 177500,
+    "einheit": "€",
+    "jahr": 2027,
+    "bezeichnung": "Zuschuss BTB-Bad (Maximalbetrag)",
+    "toleranz": 0.0,
+    "quelle": "council_templates 26/0353 (kvonr=29803); financial_impact"
+   }
+  ],
+  "verboten": [
+   {
+    "art": "zahl",
+    "wert": 173000,
+    "grund": "Betrag für 2026",
+    "als_jahr": 2027
+   },
+   {
+    "art": "zahl",
+    "wert": 191000,
+    "grund": "Betrag für 2030",
+    "als_jahr": 2027
+   }
+  ],
+  "notiz": "Beschlusstext und Kurzfassung nennen keine Beträge, nur die Vorlage. Seit 23.09.2026 trägt der Beschluss-Block deren finanzielle Auswirkungen (die Karte „Was kostet das?“ der Seite); vorher Kontextfehler."
+ },
+ {
+  "id": "rat-vwg-elektrobusse",
+  "kanal": "rat",
+  "frage": "Wie viele Elektrobusse soll die VWG bis 2030 anschaffen?",
+  "kategorie": "beschluss/ergebnis",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 41,
+    "einheit": "Fahrzeuge",
+    "bezeichnung": "batterieelektrische Busse bis Ende 2030",
+    "toleranz": 0.0,
+    "quelle": "council_decisions id=9356, Rat 2026-06-29, TOP 6.9, Vorlage 26/0414; official_text"
+   },
+   {
+    "art": "text",
+    "muss": [
+     [
+      "29.06.2026",
+      "29.6.2026",
+      "29. Juni 2026",
+      "2026-06-29"
+     ]
+    ],
+    "quelle": "council_decisions id=9356, Rat 2026-06-29, TOP 6.9, Vorlage 26/0414; council_sessions.session_date",
+    "antwort_auch": [
+     "Juni 2026"
+    ]
+   }
+  ],
+  "verboten": [],
+  "notiz": ""
+ },
+ {
+  "id": "lotti-vwg-busse",
+  "kanal": "lotti",
+  "route": "/council/decision",
+  "refs": {
+   "decision_id": 9356
+  },
+  "frage": "Wie viele Busse werden hier angeschafft und bis wann?",
+  "kategorie": "beschluss/ergebnis",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 41,
+    "einheit": "Fahrzeuge",
+    "bezeichnung": "batterieelektrische Busse",
+    "toleranz": 0.0,
+    "quelle": "council_decisions id=9356, Rat 2026-06-29, TOP 6.9, Vorlage 26/0414; official_text"
+   },
+   {
+    "art": "text",
+    "muss": [
+     "2030"
+    ],
+    "quelle": "council_decisions id=9356, Rat 2026-06-29, TOP 6.9, Vorlage 26/0414; official_text"
+   }
+  ],
+  "verboten": [],
+  "notiz": ""
+ },
+ {
+  "id": "rat-tangentialbus-praemisse",
+  "kanal": "rat",
+  "frage": "Ab wann fahren die neuen Tangentialbuslinien in Oldenburg?",
+  "kategorie": "verwechslung/praemisse",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "abgelehnt",
+      "lehnte",
+      "Ablehnung",
+      "rejected"
+     ]
+    ],
+    "quelle": "council_decisions id=8472, Rat 2025-12-15, TOP 18.1, Vorlage 25/0881; outcome=rejected"
+   },
+   {
+    "art": "text",
+    "muss": [
+     [
+      "15.12.2025",
+      "15. Dezember 2025",
+      "2025-12-15"
+     ]
+    ],
+    "quelle": "council_decisions id=8472, Rat 2025-12-15, TOP 18.1, Vorlage 25/0881; council_sessions.session_date"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Falsche Prämisse: Es gibt keine beschlossenen Tangentiallinien — schon der Prüfauftrag (FDP) wurde am 15.12.2025 abgelehnt. Ein Starttermin wäre erfunden."
+ },
+ {
+  "id": "rat-grundsteuer-entwicklung",
+  "kanal": "rat",
+  "frage": "Wie hat sich die Grundsteuer in Oldenburg entwickelt?",
+  "kategorie": "verlauf/grundsteuer",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 445,
+    "einheit": "%",
+    "jahr": 2015,
+    "bezeichnung": "Hebesatz Grundsteuer B 2015–2024",
+    "toleranz": 0.0,
+    "quelle": "council_tax_rates kind='Grundsteuer B', year=2015"
+   },
+   {
+    "art": "zahl",
+    "wert": 539,
+    "einheit": "%",
+    "jahr": 2025,
+    "bezeichnung": "Hebesatz Grundsteuer B ab 2025",
+    "toleranz": 0.0,
+    "quelle": "council_tax_rates kind='Grundsteuer B', year=2025"
+   },
+   {
+    "art": "text",
+    "muss": [
+     [
+      "25.11.2024",
+      "25. November 2024",
+      "2024-11-25"
+     ]
+    ],
+    "quelle": "council_decisions id=7293, Rat 2024-11-25, TOP 8.11, Vorlage 24/0645; council_sessions.session_date",
+    "antwort_auch": [
+     "November 2024"
+    ]
+   },
+   {
+    "art": "text",
+    "muss": [
+     [
+      "15.12.2025",
+      "15. Dezember 2025",
+      "2025-12-15"
+     ]
+    ],
+    "quelle": "council_decisions id=8468, Rat 2025-12-15, TOP 16.1, Vorlage 25/0615; council_sessions.session_date",
+    "antwort_auch": [
+     "Dezember 2025"
+    ]
+   }
+  ],
+  "verboten": [],
+  "notiz": "Faktencheck rat[3]: Gemini datierte die Vertagung (01.12.2025) auf November; die Hebesätze standen gar nicht im Prompt. Die Hebesätze liegen in council_tax_rates (Haushalts-Facette), die Beschlüsse im Archiv; der Satzungsbeschluss selbst nennt keinen Satz („in der anliegenden Fassung“)."
+ },
+ {
+  "id": "rat-grundsteuer-dezember-2025",
+  "kanal": "rat",
+  "frage": "Wie ging die Abstimmung über die Grundsteuer-Satzung im Dezember 2025 aus?",
+  "kategorie": "verlauf/grundsteuer",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "abgelehnt",
+      "lehnte",
+      "Ablehnung",
+      "rejected"
+     ]
+    ],
+    "quelle": "council_decisions id=8468, Rat 2025-12-15, TOP 16.1, Vorlage 25/0615; outcome=rejected"
+   },
+   {
+    "art": "text",
+    "muss": [
+     [
+      "15.12.2025",
+      "15. Dezember 2025",
+      "2025-12-15"
+     ]
+    ],
+    "quelle": "council_decisions id=8468, Rat 2025-12-15, TOP 16.1, Vorlage 25/0615; council_sessions.session_date",
+    "antwort_auch": [
+     "Dezember 2025"
+    ]
+   },
+   {
+    "art": "zahl",
+    "wert": 43,
+    "einheit": "Gegenstimmen",
+    "bezeichnung": "Gegenstimmen",
+    "toleranz": 0.0,
+    "quelle": "council_decisions id=8468, Rat 2025-12-15, TOP 16.1, Vorlage 25/0615; no_votes"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Zwei Ratssitzungen im Dezember: am 01.12. vertagt, am 15.12. mit 43 Gegenstimmen abgelehnt."
+ },
+ {
+  "id": "rat-grundsteuer-mehrertrag",
+  "kanal": "rat",
+  "frage": "Wie viel Mehrertrag hätte die im Dezember 2025 abgelehnte Grundsteuer-Anhebung gebracht?",
+  "kategorie": "beschluss/kosten",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 4420000,
+    "einheit": "€",
+    "jahr": 2026,
+    "bezeichnung": "erwartete Mehrerträge ab 2026",
+    "toleranz": 0.01,
+    "quelle": "council_templates 25/0615 (kvonr=28100); financial_impact"
+   }
+  ],
+  "verboten": [],
+  "notiz": ""
+ },
+ {
+  "id": "rat-grundsteuer-490-prozent",
+  "kanal": "rat",
+  "frage": "Wurde die Grundsteuer B für 2024 auf 490 Prozent erhöht?",
+  "kategorie": "verwechslung/grundsteuer",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "abgelehnt",
+      "lehnte",
+      "Ablehnung",
+      "rejected"
+     ]
+    ],
+    "quelle": "council_decisions id=5988, Ausschuss für Finanzen und Beteiligungen 2023-09-06, TOP 20, Vorlage 23/0632; outcome=rejected"
+   },
+   {
+    "art": "text",
+    "muss": [
+     [
+      "06.09.2023",
+      "6.9.2023",
+      "6. September 2023",
+      "06. September 2023",
+      "2023-09-06"
+     ]
+    ],
+    "quelle": "council_decisions id=5988, Ausschuss für Finanzen und Beteiligungen 2023-09-06, TOP 20, Vorlage 23/0632; council_sessions.session_date",
+    "antwort_auch": [
+     "September 2023"
+    ]
+   }
+  ],
+  "verboten": [],
+  "notiz": "DATENFEHLER als Falle: Beschlusstext und beide Kurzfassungen (summary, simple_summary) von 5988 beschreiben die Erhöhung als beschlossen — das Ergebnis ist „einstimmig abgelehnt“. Frag den Rat bekommt summary + outcome, also einen Widerspruch im Kontext."
+ },
+ {
+  "id": "lotti-grundsteuer-490",
+  "kanal": "lotti",
+  "route": "/council/decision",
+  "refs": {
+   "decision_id": 5988
+  },
+  "frage": "Steigt die Grundsteuer B damit auf 490 Prozent?",
+  "kategorie": "verwechslung/grundsteuer",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "abgelehnt",
+      "lehnte",
+      "Ablehnung",
+      "rejected"
+     ]
+    ],
+    "quelle": "council_decisions id=5988, Ausschuss für Finanzen und Beteiligungen 2023-09-06, TOP 20, Vorlage 23/0632; outcome=rejected"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Lottis Beschluss-Block zeigt „Abstimmung: abgelehnt, einstimmig“ und direkt darunter die Kurzfassung „Der Satz für die Grundsteuer B steigt von 445 auf 490 Prozent“ — ein Kontext, der sich selbst widerspricht. 15 von 21 abgelehnten Beschlüssen mit Kurzfassung tragen diesen Fehler (Stand 23.09.)."
+ },
+ {
+  "id": "rat-waermeplan",
+  "kanal": "rat",
+  "frage": "Hat der Rat den Oldenburger Wärmeplan beschlossen?",
+  "kategorie": "beschluss/ergebnis",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "01.06.2026",
+      "1.6.2026",
+      "1. Juni 2026",
+      "01. Juni 2026",
+      "2026-06-01"
+     ]
+    ],
+    "quelle": "council_decisions id=8683, Rat 2026-06-01, TOP 8.1, Vorlage 26/0236; council_sessions.session_date",
+    "antwort_auch": [
+     "Juni 2026"
+    ]
+   },
+   {
+    "art": "text",
+    "muss": [
+     [
+      "angenommen",
+      "beschlossen",
+      "zugestimmt",
+      "beschloss",
+      "Zustimmung",
+      "accepted"
+     ]
+    ],
+    "quelle": "council_decisions id=8683, Rat 2026-06-01, TOP 8.1, Vorlage 26/0236; outcome=accepted"
+   },
+   {
+    "art": "zahl",
+    "wert": 18,
+    "einheit": "Maßnahmen",
+    "bezeichnung": "Maßnahmen des Wärmeplans",
+    "toleranz": 0.0,
+    "quelle": "council_decisions id=8683, Rat 2026-06-01, TOP 8.1, Vorlage 26/0236; official_text"
+   },
+   {
+    "art": "zahl",
+    "wert": 5,
+    "einheit": "Gegenstimmen",
+    "bezeichnung": "Gegenstimmen",
+    "toleranz": 0.0,
+    "quelle": "council_decisions id=8683, Rat 2026-06-01, TOP 8.1, Vorlage 26/0236; no_votes"
+   }
+  ],
+  "verboten": [],
+  "notiz": ""
+ },
+ {
+  "id": "lotti-waermeplan-massnahmen",
+  "kanal": "lotti",
+  "route": "/council/decision",
+  "refs": {
+   "decision_id": 8683
+  },
+  "frage": "Wie viele Maßnahmen umfasst der Plan hier?",
+  "kategorie": "beschluss/ergebnis",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 18,
+    "einheit": "Maßnahmen",
+    "bezeichnung": "Maßnahmen des Wärmeplans",
+    "toleranz": 0.0,
+    "quelle": "council_decisions id=8683, Rat 2026-06-01, TOP 8.1, Vorlage 26/0236; official_text"
+   }
+  ],
+  "verboten": [],
+  "notiz": ""
+ },
+ {
+  "id": "lotti-thema-waermeplanung",
+  "kanal": "lotti",
+  "route": "/council/thema",
+  "refs": {
+   "slug": "klima_umwelt"
+  },
+  "frage": "Was ist hier zur Wärmeplanung beschlossen worden?",
+  "kategorie": "verlauf/klima",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "01.06.2026",
+      "1.6.2026",
+      "1. Juni 2026",
+      "01. Juni 2026",
+      "2026-06-01"
+     ]
+    ],
+    "quelle": "council_decisions id=8683, Rat 2026-06-01, TOP 8.1, Vorlage 26/0236; council_sessions.session_date",
+    "antwort_auch": [
+     "Juni 2026"
+    ]
+   },
+   {
+    "art": "zahl",
+    "wert": 18,
+    "einheit": "Maßnahmen",
+    "bezeichnung": "Maßnahmen des Wärmeplans",
+    "toleranz": 0.0,
+    "quelle": "council_decisions id=8683, Rat 2026-06-01, TOP 8.1, Vorlage 26/0236; official_text"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Ein Feld-Schlüssel auf /council/thema (die echte Seite zeigt Entitäten, s. council/page_context.py). Seit 23.09.2026 trägt der Block Rückblick und jüngste Beschlüsse des Felds; vorher nur Label und Beschreibung."
+ },
+ {
+  "id": "rat-lachgas-verbot",
+  "kanal": "rat",
+  "frage": "Hat Oldenburg ein Lachgas-Verbot für Minderjährige beschlossen?",
+  "kategorie": "beschluss/ergebnis",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "29.09.2025",
+      "29.9.2025",
+      "29. September 2025",
+      "2025-09-29"
+     ]
+    ],
+    "quelle": "council_decisions id=9278, Rat 2025-09-29, TOP 11.6; council_sessions.session_date",
+    "antwort_auch": [
+     "September 2025"
+    ]
+   },
+   {
+    "art": "text",
+    "muss": [
+     [
+      "einstimmig"
+     ]
+    ],
+    "quelle": "council_decisions id=9278, Rat 2025-09-29, TOP 11.6; vote"
+   }
+  ],
+  "verboten": [],
+  "notiz": ""
+ },
+ {
+  "id": "lotti-ob-stichwahl",
+  "kanal": "lotti",
+  "route": "/council/decision",
+  "refs": {
+   "decision_id": 8003
+  },
+  "frage": "Wann wäre laut diesem Beschluss eine Stichwahl?",
+  "kategorie": "beschluss/ergebnis",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "27.09.2026",
+      "27.9.2026",
+      "27. September 2026",
+      "2026-09-27"
+     ]
+    ],
+    "quelle": "council_decisions id=8003, Rat 2025-10-27, TOP 8.1, Vorlage 25/0676; official_text"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Im selben Satz steht der Wahltag (13.09.2026); ihn als Wahltag zu nennen ist richtig, ihn als Stichwahl zu nennen falsch."
+ },
+ {
+  "id": "rat-kongresshalle-kosten",
+  "kanal": "rat",
+  "frage": "Was kostet der Neubau der Kongresshalle an der Weser-Ems-Halle?",
+  "kategorie": "verwechslung/weser-ems-halle",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 78681607.64,
+    "einheit": "€",
+    "bezeichnung": "Pauschalpreis netto",
+    "toleranz": 0.002,
+    "quelle": "council_decisions id=7911, Rat 2025-06-30, TOP 9.4, Vorlage 25/0332/1; official_text"
+   }
+  ],
+  "verboten": [
+   {
+    "art": "zahl",
+    "wert": 79000000,
+    "grund": "Höchstbetrag der Ausfallbürgschaft, nicht der Baupreis",
+    "ausser_im_satz_mit": [
+     "Bürgschaft",
+     "bürgt"
+    ]
+   }
+  ],
+  "notiz": "Baupreis (78,68 Mio. €) und Bürgschaft (79 Mio. €) wurden in derselben Sitzung beschlossen und liegen 0,4 % auseinander — die Toleranz ist deshalb eng."
+ },
+ {
+  "id": "rat-kongresshalle-buergschaft",
+  "kanal": "rat",
+  "frage": "Für welchen Betrag bürgt die Stadt beim Neubau der Kongresshalle der Weser-Ems-Halle?",
+  "kategorie": "verwechslung/weser-ems-halle",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 79000000,
+    "einheit": "€",
+    "bezeichnung": "Ausfallbürgschaft Kongresshalle (Höchstbetrag)",
+    "toleranz": 0.0,
+    "quelle": "council_decisions id=7912, Rat 2025-06-30, TOP 9.5, Vorlage 25/0321; official_text"
+   },
+   {
+    "art": "text",
+    "muss": [
+     [
+      "30.06.2025",
+      "30.6.2025",
+      "30. Juni 2025",
+      "2025-06-30"
+     ]
+    ],
+    "quelle": "council_decisions id=7912, Rat 2025-06-30, TOP 9.5, Vorlage 25/0321; council_sessions.session_date",
+    "antwort_auch": [
+     "Juni 2025"
+    ]
+   }
+  ],
+  "verboten": [
+   {
+    "art": "zahl",
+    "wert": 16900000,
+    "grund": "Bürgschaft für die Park- und Kramermarktfläche (id 8478), nicht für die Kongresshalle",
+    "ausser_im_satz_mit": [
+     "Kramermarkt",
+     "Parkfläche",
+     "Sanierung",
+     "nicht Teil"
+    ]
+   }
+  ],
+  "notiz": "Zwei Bürgschaften für dieselbe Gesellschaft, beide 2023 beschlossen und später erhöht: Kongresshalle 50 → 79 Mio. € (30.06.2025), Kramermarktfläche 12 → 16,9 Mio. € (23.02.2026). Die jüngere ist die falsche."
+ },
+ {
+  "id": "lotti-buergschaft-kongresshalle",
+  "kanal": "lotti",
+  "route": "/council/decision",
+  "refs": {
+   "decision_id": 7912
+  },
+  "frage": "Um wie viel wurde die Bürgschaft hier erhöht?",
+  "kategorie": "verwechslung/weser-ems-halle",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 50000000,
+    "einheit": "€",
+    "bezeichnung": "Bürgschaft vorher",
+    "toleranz": 0.0,
+    "quelle": "council_decisions id=7912, Rat 2025-06-30, TOP 9.5, Vorlage 25/0321; official_text"
+   },
+   {
+    "art": "zahl",
+    "wert": 79000000,
+    "einheit": "€",
+    "bezeichnung": "Bürgschaft neu (Höchstbetrag)",
+    "toleranz": 0.0,
+    "quelle": "council_decisions id=7912, Rat 2025-06-30, TOP 9.5, Vorlage 25/0321; official_text"
+   }
+  ],
+  "verboten": [
+   {
+    "art": "zahl",
+    "wert": 16900000,
+    "grund": "andere Bürgschaft (Kramermarktfläche)"
+   }
+  ],
+  "notiz": ""
+ },
+ {
+  "id": "lotti-buergschaft-kramermarkt",
+  "kanal": "lotti",
+  "route": "/council/decision",
+  "refs": {
+   "decision_id": 8478
+  },
+  "frage": "Wofür gilt die Bürgschaft hier und wie hoch ist sie?",
+  "kategorie": "verwechslung/weser-ems-halle",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "Kramermarkt",
+      "Parkfläche",
+      "Park- und Kramermarkt"
+     ]
+    ],
+    "quelle": "council_decisions id=8478, Rat 2026-02-23, TOP 5.4, Vorlage 25/0929; official_text"
+   },
+   {
+    "art": "zahl",
+    "wert": 16900000,
+    "einheit": "€",
+    "bezeichnung": "Bürgschaft neu (Höchstbetrag)",
+    "toleranz": 0.0,
+    "quelle": "council_decisions id=8478, Rat 2026-02-23, TOP 5.4, Vorlage 25/0929; official_text"
+   }
+  ],
+  "verboten": [
+   {
+    "art": "zahl",
+    "wert": 79000000,
+    "grund": "Bürgschaft für die Kongresshalle, nicht diese"
+   }
+  ],
+  "notiz": ""
+ },
+ {
+  "id": "rat-sechsfeldhalle-beschlossen",
+  "kanal": "rat",
+  "frage": "Wurde die Sechsfeldhalle an der Kennedystraße beschlossen?",
+  "kategorie": "verwechslung/sechsfeldhalle",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "29.06.2026",
+      "29.6.2026",
+      "29. Juni 2026",
+      "2026-06-29"
+     ]
+    ],
+    "quelle": "council_decisions id=9368, Rat 2026-06-29, TOP 14.1; council_sessions.session_date",
+    "antwort_auch": [
+     "Juni 2026"
+    ]
+   },
+   {
+    "art": "text",
+    "muss": [
+     [
+      "angenommen",
+      "beschlossen",
+      "zugestimmt",
+      "beschloss",
+      "Zustimmung",
+      "accepted"
+     ]
+    ],
+    "quelle": "council_decisions id=9368, Rat 2026-06-29, TOP 14.1; outcome=accepted"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Derselbe Antrag stand am 01.06.2026 auf der Tagesordnung und wurde aus Zeitgründen vertagt (id 9322); beschlossen am 29.06.2026. Wer beim 01.06. stehen bleibt, meldet einen veralteten Stand."
+ },
+ {
+  "id": "rat-sechsfeldhalle-kosten",
+  "kanal": "rat",
+  "frage": "Was soll die Sechsfeldhalle an der Kennedystraße kosten?",
+  "kategorie": "beschluss/kosten",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 31300000,
+    "einheit": "€",
+    "bezeichnung": "erste Kostenschätzung",
+    "toleranz": 0.01,
+    "quelle": "council_press id=813 (2026-02-11, „Große Lösung für drängendes Problem: Sechs Felder für Oldenburgs Hallensport“)"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Der Beschluss nennt keine Kosten; die erste Schätzung steht nur in der Pressemitteilung vom 11.02.2026."
+ },
+ {
+  "id": "lotti-sechsfeldhalle-kosten",
+  "kanal": "lotti",
+  "route": "/council/decision",
+  "refs": {
+   "decision_id": 9368
+  },
+  "frage": "Was kostet die Halle, um die es hier geht?",
+  "kategorie": "beschluss/kosten",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 31300000,
+    "einheit": "€",
+    "bezeichnung": "erste Kostenschätzung",
+    "toleranz": 0.01,
+    "quelle": "council_press id=813 (2026-02-11, „Große Lösung für drängendes Problem: Sechs Felder für Oldenburgs Hallensport“)"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Erwartet: Kontextfehler — die Beschluss-Seite zeigt keine Pressemitteilung (nur eine NWZ-Suche), also auch Lottis Block nicht (bewusst, 23.09.2026)."
+ },
+ {
+  "id": "rat-zweckentfremdungssatzung",
+  "kanal": "rat",
+  "frage": "Gibt es in Oldenburg inzwischen eine Zweckentfremdungssatzung?",
+  "kategorie": "verwechslung/zweckentfremdung",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "01.12.2025",
+      "1.12.2025",
+      "1. Dezember 2025",
+      "01. Dezember 2025",
+      "2025-12-01"
+     ]
+    ],
+    "quelle": "council_decisions id=8353, Rat 2025-12-01, TOP 17.6, Vorlage 25/0817; council_sessions.session_date",
+    "antwort_auch": [
+     "Dezember 2025"
+    ]
+   },
+   {
+    "art": "text",
+    "muss": [
+     [
+      "Entwurf"
+     ]
+    ],
+    "quelle": "council_decisions id=8353, Rat 2025-12-01, TOP 17.6, Vorlage 25/0817; official_text"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Beschlossen ist am 01.12.2025 nur der AUFTRAG, einen Entwurf vorzulegen; der SPD-Antrag zum Entwurf wurde am 01.06.2026 abgesetzt. Eine Satzung gibt es nicht — „ja, seit Dezember 2025“ wäre die Verwechslung."
+ },
+ {
+  "id": "rat-vbn-tarif-2024",
+  "kanal": "rat",
+  "frage": "Hat der Rat der VBN-Tarifanpassung zum 1. Januar 2024 zugestimmt?",
+  "kategorie": "verwechslung/abgelehnt-als-angenommen",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "abgelehnt",
+      "lehnte",
+      "Ablehnung",
+      "rejected"
+     ]
+    ],
+    "quelle": "council_decisions id=5914, Rat 2023-09-04, TOP 6.10, Vorlage 23/0537; outcome=rejected"
+   },
+   {
+    "art": "text",
+    "muss": [
+     [
+      "04.09.2023",
+      "4.9.2023",
+      "4. September 2023",
+      "04. September 2023",
+      "2023-09-04"
+     ]
+    ],
+    "quelle": "council_decisions id=5914, Rat 2023-09-04, TOP 6.10, Vorlage 23/0537; council_sessions.session_date",
+    "antwort_auch": [
+     "September 2023"
+    ]
+   }
+  ],
+  "verboten": [],
+  "notiz": "DATENFEHLER als Falle: Beschlusstext (= Beschlussvorschlag) und beide Kurzfassungen sagen „wird zugestimmt“, das Ergebnis ist „mehrheitlich bei zwei Ja-Stimmen abgelehnt“."
+ },
+ {
+  "id": "lotti-vbn-tarif-2024",
+  "kanal": "lotti",
+  "route": "/council/decision",
+  "refs": {
+   "decision_id": 5914
+  },
+  "frage": "Gelten damit ab 2024 neue Preise im VBN?",
+  "kategorie": "verwechslung/abgelehnt-als-angenommen",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "abgelehnt",
+      "lehnte",
+      "Ablehnung",
+      "rejected"
+     ]
+    ],
+    "quelle": "council_decisions id=5914, Rat 2023-09-04, TOP 6.10, Vorlage 23/0537; outcome=rejected"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Wie lotti-grundsteuer-490: Die Kurzfassung behauptet das Gegenteil des Ergebnisses."
+ },
+ {
+  "id": "rat-eigenreinigung",
+  "kanal": "rat",
+  "frage": "Reinigt die Stadt ihre Gebäude inzwischen mit eigenem Personal?",
+  "kategorie": "verwechslung/abgelehnt-als-angenommen",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "abgelehnt",
+      "lehnte",
+      "Ablehnung",
+      "rejected"
+     ]
+    ],
+    "quelle": "council_decisions id=5253, Rat 2022-11-07, TOP 12.4; outcome=rejected"
+   },
+   {
+    "art": "text",
+    "muss": [
+     [
+      "07.11.2022",
+      "7.11.2022",
+      "7. November 2022",
+      "07. November 2022",
+      "2022-11-07"
+     ]
+    ],
+    "quelle": "council_decisions id=5253, Rat 2022-11-07, TOP 12.4; council_sessions.session_date",
+    "antwort_auch": [
+     "November 2022"
+    ]
+   }
+  ],
+  "verboten": [],
+  "notiz": "Antrag der Linken vom 21.10.2022, am 07.11.2022 abgelehnt. Kurzfassung: „Die Reinigung städtischer Gebäude übernimmt die Stadt selbst“ — falsch."
+ },
+ {
+  "id": "lotti-e-scooter-antrag",
+  "kanal": "lotti",
+  "route": "/council/decision",
+  "refs": {
+   "decision_id": 8351
+  },
+  "frage": "Was ist aus dem Antrag hier geworden?",
+  "kategorie": "beschluss/ergebnis",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "abgelehnt",
+      "lehnte",
+      "Ablehnung",
+      "rejected"
+     ]
+    ],
+    "quelle": "council_decisions id=8351, Rat 2025-12-01, TOP 17.4, Vorlage 25/0710; outcome=rejected"
+   },
+   {
+    "art": "zahl",
+    "wert": 41,
+    "einheit": "Gegenstimmen",
+    "bezeichnung": "Gegenstimmen",
+    "toleranz": 0.0,
+    "quelle": "council_decisions id=8351, Rat 2025-12-01, TOP 17.4, Vorlage 25/0710; no_votes"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Einfacher Fall als Nullmessung: Alles steht im Beschluss-Block."
+ },
+ {
+  "id": "rat-schulbezirke-abstimmung",
+  "kanal": "rat",
+  "frage": "Wie wurde über die neuen Schulbezirke der Grundschulen abgestimmt?",
+  "kategorie": "beschluss/abstimmung",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "einstimmig"
+     ]
+    ],
+    "quelle": "council_decisions id=8426, Rat 2026-03-16, TOP 7.2, Vorlage 26/0179; raw_result"
+   },
+   {
+    "art": "zahl",
+    "wert": 9,
+    "einheit": "Enthaltungen",
+    "bezeichnung": "Enthaltungen",
+    "toleranz": 0.0,
+    "quelle": "council_decisions id=8426, Rat 2026-03-16, TOP 7.2, Vorlage 26/0179; abstentions"
+   },
+   {
+    "art": "text",
+    "muss": [
+     [
+      "16.03.2026",
+      "16.3.2026",
+      "16. März 2026",
+      "2026-03-16"
+     ]
+    ],
+    "quelle": "council_decisions id=8426, Rat 2026-03-16, TOP 7.2, Vorlage 26/0179; council_sessions.session_date",
+    "antwort_auch": [
+     "März 2026"
+    ]
+   }
+  ],
+  "verboten": [],
+  "notiz": "DATENFEHLER als Falle: vote='majority', raw_result „einstimmig bei neun Enthaltungen“. Frag den Rat reicht raw_result nur bei strittigen Beschlüssen durch — hier gilt er wegen vote='majority' als strittig."
+ },
+ {
+  "id": "lotti-schulbezirke-gegenstimmen",
+  "kanal": "lotti",
+  "route": "/council/decision",
+  "refs": {
+   "decision_id": 8426
+  },
+  "frage": "Gab es hier Gegenstimmen?",
+  "kategorie": "beschluss/abstimmung",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "einstimmig",
+      "keine Gegenstimme"
+     ]
+    ],
+    "quelle": "council_decisions id=8426, Rat 2026-03-16, TOP 7.2, Vorlage 26/0179; raw_result"
+   },
+   {
+    "art": "zahl",
+    "wert": 9,
+    "einheit": "Enthaltungen",
+    "bezeichnung": "Enthaltungen",
+    "toleranz": 0.0,
+    "quelle": "council_decisions id=8426, Rat 2026-03-16, TOP 7.2, Vorlage 26/0179; abstentions"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Lottis _abstimmung liest vote='majority' und schreibt „mehrheitlich, 9 Enthaltungen“ — raw_result sah sie bis 23.09.2026 nicht. Damals: Kontext falsch zugeordnet (mehrheitlich statt einstimmig). Achtung beim Abgleich: Das Wort „Einstimmig“ steht in einer Prompt-Regel — ein reiner Wortfund im Prompt meldet hier fälschlich Abdeckung; gesucht werden muss in den Kontextblöcken."
+ },
+ {
+  "id": "rat-ort-kreuzung-muellersweg",
+  "kanal": "rat",
+  "frage": "Wie viel Geld wurde für den Ausbau der Kreuzung Müllersweg/Bremer Heerstraße bewilligt?",
+  "kategorie": "ort",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 870000,
+    "einheit": "€",
+    "bezeichnung": "außerplanmäßige Mehrauszahlung",
+    "toleranz": 0.0,
+    "quelle": "council_decisions id=7058, Rat 2024-08-26, TOP 7.7, Vorlage 24/0422; official_text"
+   },
+   {
+    "art": "text",
+    "muss": [
+     [
+      "26.08.2024",
+      "26.8.2024",
+      "26. August 2024",
+      "2024-08-26"
+     ]
+    ],
+    "quelle": "council_decisions id=7058, Rat 2024-08-26, TOP 7.7, Vorlage 24/0422; council_sessions.session_date",
+    "antwort_auch": [
+     "August 2024"
+    ]
+   }
+  ],
+  "verboten": [
+   {
+    "art": "zahl",
+    "wert": 390000,
+    "grund": "Deckung aus „Technologiepark Wechloy“, nicht die Bewilligung"
+   },
+   {
+    "art": "zahl",
+    "wert": 480000,
+    "grund": "Deckung aus „BG Am Bahndamm“, nicht die Bewilligung"
+   }
+  ],
+  "notiz": ""
+ },
+ {
+  "id": "rat-baumschutzsatzung",
+  "kanal": "rat",
+  "frage": "Gilt die Baumschutzsatzung in Oldenburg noch?",
+  "kategorie": "verlauf/baumschutz",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "bleibt bestehen",
+      "gilt weiterhin",
+      "weiterhin",
+      "bleibt in Kraft",
+      "gilt noch"
+     ]
+    ],
+    "quelle": "council_press id=765 (2026-02-22, „Bürgerentscheid: Baumschutzsatzung bleibt bestehen“)"
+   },
+   {
+    "art": "text",
+    "muss": [
+     [
+      "22.02.2026",
+      "22.2.2026",
+      "22. Februar 2026",
+      "2026-02-22"
+     ]
+    ],
+    "quelle": "council_press id=765 (2026-02-22, „Bürgerentscheid: Baumschutzsatzung bleibt bestehen“)",
+    "antwort_auch": [
+     "Februar 2026"
+    ]
+   },
+   {
+    "art": "text",
+    "muss": [
+     [
+      "30.06.2025",
+      "30.6.2025",
+      "30. Juni 2025",
+      "2025-06-30"
+     ]
+    ],
+    "quelle": "council_decisions id=7920, Rat 2025-06-30, TOP 11.1, Vorlage 25/0387; council_sessions.session_date",
+    "antwort_auch": [
+     "Juni 2025"
+    ]
+   }
+  ],
+  "verboten": [],
+  "notiz": "Falle: Beim Bürgerentscheid am 22.02.2026 stimmten 60,58 % FÜR die Aufhebung — das Quorum (20 % der Stimmberechtigten) wurde aber verfehlt, die Satzung bleibt. Beschlossen hatte der Rat sie am 30.06.2025 (15 Gegenstimmen)."
+ },
+ {
+  "id": "rat-person-vorsitz-verkehr",
+  "kanal": "rat",
+  "frage": "Wer ist Vorsitzender des Verkehrsausschusses?",
+  "kategorie": "person/ausschuss",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     "Meerbothe"
+    ],
+    "quelle": "council_memberships (valid_until leer oder nach Stichtag) ⋈ council_persons; committee='Verkehrsausschuss', role='Ausschussvorsitzende/r'"
+   }
+  ],
+  "verboten": [],
+  "notiz": ""
+ },
+ {
+  "id": "rat-person-vorsitz-umwelt",
+  "kanal": "rat",
+  "frage": "Wer leitet den Ausschuss für Stadtgrün, Umwelt und Klima?",
+  "kategorie": "person/ausschuss",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     "Rohde"
+    ],
+    "quelle": "council_memberships (valid_until leer oder nach Stichtag) ⋈ council_persons; committee='Ausschuss für Stadtgrün, Umwelt und Klima', role='Ausschussvorsitzende/r' seit 2025-08-25"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Wechsel im August 2025; ältere Protokolle zeigen andere Sitzungsleitungen."
+ },
+ {
+  "id": "rat-person-adler-fraktion",
+  "kanal": "rat",
+  "frage": "Für welche Fraktion sitzt Hans-Henning Adler im Rat?",
+  "kategorie": "person/fraktion",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     "BSW"
+    ],
+    "quelle": "council_persons.current_faction; name='Hans-Henning Adler'"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Fraktionswechsel: bis 2023 Linke, Anfang 2024 „Bündnis Vernunft und Gerechtigkeit“, seitdem BSW (council_attendance.party). Wer die älteren Protokolle liest, nennt die Linke."
+ },
+ {
+  "id": "rat-person-sander-gruppe",
+  "kanal": "rat",
+  "frage": "Welcher Fraktion oder Gruppe gehört Andreas Sander an?",
+  "kategorie": "person/fraktion",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     "Für Oldenburg"
+    ],
+    "quelle": "council_persons.current_faction; name='Andreas Sander'"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Bis 2024 Piratenpartei (Gruppe mit den Linken), seit 11/2024 „Für Oldenburg“. Fraktion vs. Gruppe: „Für Oldenburg“ tritt als Gruppe auf."
+ },
+ {
+  "id": "lotti-person-luekermann-partei",
+  "kanal": "lotti",
+  "route": "/council/person",
+  "refs": {
+   "slug": "jens-luekermann"
+  },
+  "frage": "Für welche Partei sitzt er im Rat?",
+  "kategorie": "person/fraktion",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     "Volt"
+    ],
+    "quelle": "council_persons.current_faction; name='Jens Lükermann'"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Bis 12/2024 als „FDP/Volt“ geführt (Gruppe), seitdem Volt allein. Lottis Personen-Block trug bis 23.09.2026 nur den Namen; seitdem Fraktion und laufende Mitgliedschaften wie die Personenseite."
+ },
+ {
+  "id": "rat-person-druegemoeller-ausschuesse",
+  "kanal": "rat",
+  "frage": "In welchen Ausschüssen sitzt Ruth Drügemöller?",
+  "kategorie": "person/ausschuss",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     "Gebäudewirtschaft",
+     "Stadtplanung",
+     "Finanzen"
+    ],
+    "quelle": "council_memberships (valid_until leer oder nach Stichtag) ⋈ council_persons; name='Ruth Regina Drügemöller'"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Frag den Rat erkennt die Person (finde_person) und antwortet aus ihren Wortbeiträgen — Mitgliedschaften stehen dort nicht. Erwartet: Kontextfehler."
+ },
+ {
+  "id": "rat-person-ellberg-vorsitz",
+  "kanal": "rat",
+  "frage": "Welche Ausschüsse leitet Bernhard Ellberg?",
+  "kategorie": "person/ausschuss",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     "Schulausschuss",
+     "Wirtschaftsförderung"
+    ],
+    "quelle": "council_memberships (valid_until leer oder nach Stichtag) ⋈ council_persons; name='Bernhard Ellberg', role='Ausschussvorsitzende/r'"
+   }
+  ],
+  "verboten": [],
+  "notiz": ""
+ },
+ {
+  "id": "lotti-person-druegemoeller-ausschuesse",
+  "kanal": "lotti",
+  "route": "/council/person",
+  "refs": {
+   "slug": "ruth-regina-druegemoeller"
+  },
+  "frage": "In welchen Ausschüssen sitzt sie?",
+  "kategorie": "person/ausschuss",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     "Gebäudewirtschaft",
+     "Stadtplanung",
+     "Finanzen"
+    ],
+    "quelle": "council_memberships (valid_until leer oder nach Stichtag) ⋈ council_persons; name='Ruth Regina Drügemöller'"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Die Personenseite zeigt die Mitgliedschaften; Lottis Personen-Block trug bis 23.09.2026 nur den Namen (Kontextfehler)."
+ },
+ {
+  "id": "lotti-person-adler-fraktion",
+  "kanal": "lotti",
+  "route": "/council/person",
+  "refs": {
+   "slug": "hans-henning-adler"
+  },
+  "frage": "Welcher Fraktion gehört er heute an?",
+  "kategorie": "person/fraktion",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     "BSW"
+    ],
+    "quelle": "council_persons.current_faction; name='Hans-Henning Adler'"
+   }
+  ],
+  "verboten": [],
+  "notiz": ""
+ },
+ {
+  "id": "lotti-person-meerbothe-vorsitz",
+  "kanal": "lotti",
+  "route": "/council/person",
+  "refs": {
+   "slug": "renke-meerbothe"
+  },
+  "frage": "Welchen Ausschuss leitet er?",
+  "kategorie": "person/ausschuss",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     "Verkehrsausschuss"
+    ],
+    "quelle": "council_memberships (valid_until leer oder nach Stichtag) ⋈ council_persons; name='Renke Meerbothe', role='Ausschussvorsitzende/r'"
+   }
+  ],
+  "verboten": [],
+  "notiz": ""
+ },
+ {
+  "id": "rat-ort-alte-fleiwa",
+  "kanal": "rat",
+  "frage": "Was wurde zuletzt zur Alten Fleiwa beschlossen?",
+  "kategorie": "ort",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "01.06.2026",
+      "1.6.2026",
+      "1. Juni 2026",
+      "01. Juni 2026",
+      "2026-06-01"
+     ]
+    ],
+    "quelle": "council_decisions id=9319, Rat 2026-06-01, TOP 14.3, Vorlage 26/0302; council_sessions.session_date",
+    "antwort_auch": [
+     "Juni 2026"
+    ]
+   },
+   {
+    "art": "text",
+    "muss": [
+     "855"
+    ],
+    "quelle": "council_decisions id=9319, Rat 2026-06-01, TOP 14.3, Vorlage 26/0302; title"
+   }
+  ],
+  "verboten": [],
+  "notiz": ""
+ },
+ {
+  "id": "rat-ort-hallensichel",
+  "kanal": "rat",
+  "frage": "Was hat der Rat zur Hallensichel-Ost beschlossen?",
+  "kategorie": "ort",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "13.04.2026",
+      "13.4.2026",
+      "13. April 2026",
+      "2026-04-13"
+     ]
+    ],
+    "quelle": "council_decisions id=8541, Rat 2026-04-13, TOP 6.3, Vorlage 26/0210; council_sessions.session_date",
+    "antwort_auch": [
+     "April 2026"
+    ]
+   },
+   {
+    "art": "zahl",
+    "wert": 23,
+    "einheit": "Gegenstimmen",
+    "bezeichnung": "Gegenstimmen",
+    "toleranz": 0.0,
+    "quelle": "council_decisions id=8541, Rat 2026-04-13, TOP 6.3, Vorlage 26/0210; no_votes"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Ein erster Satzungsbeschluss zu N-777 G fiel am 28.09.2020; gültig ist der erneute vom 13.04.2026. Beide sind Ortsbeschlüsse, nur einer ist der Stand."
+ },
+ {
+  "id": "rat-ort-eversten-west",
+  "kanal": "rat",
+  "frage": "Was ist zuletzt in Eversten-West beschlossen worden?",
+  "kategorie": "ort",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "24.06.2019",
+      "24.6.2019",
+      "24. Juni 2019",
+      "2019-06-24"
+     ]
+    ],
+    "quelle": "store.decision_ids_for_place('eversten-west') — jüngster angenommener Beschluss, z. B. id 2226",
+    "antwort_auch": [
+     "Juni 2019"
+    ]
+   },
+   {
+    "art": "text",
+    "muss": [
+     "2019"
+    ],
+    "quelle": "store.decision_ids_for_place('eversten-west') — jüngster angenommener Beschluss"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Alter Aktenstand: Der jüngste angenommene Beschluss ist von 2019 (spätere Einträge sind Berichte). Die Antwort muss das Alter nennen, statt „aktuell“ zu schreiben (aktenstand_regel)."
+ },
+ {
+  "id": "lotti-ort-alte-fleiwa",
+  "kanal": "lotti",
+  "route": "/council/ort",
+  "refs": {
+   "place_id": "alte-fleiwa"
+  },
+  "frage": "Was wurde hier zuletzt beschlossen?",
+  "kategorie": "ort",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "01.06.2026",
+      "1.6.2026",
+      "1. Juni 2026",
+      "01. Juni 2026",
+      "2026-06-01"
+     ]
+    ],
+    "quelle": "council_decisions id=9319, Rat 2026-06-01, TOP 14.3, Vorlage 26/0302; council_sessions.session_date",
+    "antwort_auch": [
+     "Juni 2026"
+    ]
+   },
+   {
+    "art": "text",
+    "muss": [
+     "855"
+    ],
+    "quelle": "council_decisions id=9319, Rat 2026-06-01, TOP 14.3, Vorlage 26/0302; title"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Die Ortsseite listet die Beschlüsse; Lottis Orts-Block trug bis 23.09.2026 nur Name und Beschreibung (Kontextfehler)."
+ },
+ {
+  "id": "rat-sitzung-naechster-rat",
+  "kanal": "rat",
+  "frage": "Wann tagt der Rat als Nächstes?",
+  "kategorie": "sitzung/termin",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "28.09.2026",
+      "28.9.2026",
+      "28. September 2026",
+      "2026-09-28"
+     ]
+    ],
+    "quelle": "council_sessions ∪ council_scheduled_sessions, erste Rat-Sitzung nach Stichtag 2026-09-23"
+   },
+   {
+    "art": "text",
+    "muss": [
+     [
+      "18:00",
+      "18 Uhr",
+      "18.00"
+     ]
+    ],
+    "quelle": "council_sessions ∪ council_scheduled_sessions, erste Rat-Sitzung nach Stichtag 2026-09-23; session_time"
+   }
+  ],
+  "verboten": [],
+  "notiz": "ZEITABHÄNGIG: Goldwert relativ zum Stichtag 2026-09-23 gezogen — vor einem Lauf nach diesem Termin den Baukasten neu laufen lassen."
+ },
+ {
+  "id": "rat-sitzung-naechster-verkehrsausschuss",
+  "kanal": "rat",
+  "frage": "Wann ist die nächste Sitzung des Verkehrsausschusses?",
+  "kategorie": "sitzung/termin",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "14.12.2026",
+      "14. Dezember 2026",
+      "2026-12-14"
+     ]
+    ],
+    "quelle": "council_sessions ∪ council_scheduled_sessions, erste Verkehrsausschuss-Sitzung nach Stichtag 2026-09-23"
+   }
+  ],
+  "verboten": [],
+  "notiz": "ZEITABHÄNGIG: Goldwert relativ zum Stichtag 2026-09-23 gezogen — vor einem Lauf nach diesem Termin den Baukasten neu laufen lassen. Die jüngste Sitzung (21.09.2026) liegt vor dem Stichtag und ist die naheliegende Verwechslung."
+ },
+ {
+  "id": "rat-sitzung-tagesordnung-2809",
+  "kanal": "rat",
+  "frage": "Was steht bei der Ratssitzung am 28.09.2026 auf der Tagesordnung?",
+  "kategorie": "sitzung/tagesordnung",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     "Klinikum"
+    ],
+    "quelle": "council_agenda_items ksinr=4705, TOP Ö 6.5"
+   },
+   {
+    "art": "zahl",
+    "wert": 9512500,
+    "einheit": "€",
+    "bezeichnung": "überplanmäßige Bewilligung Teilhaushalt 10",
+    "toleranz": 0.01,
+    "quelle": "council_agenda_items ksinr=4705, TOP Ö 6.3"
+   },
+   {
+    "art": "text",
+    "muss": [
+     "Abstimmungsverhalten"
+    ],
+    "quelle": "council_agenda_items ksinr=4705, TOP Ö 12.3"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Künftige Sitzung ohne Beschlüsse: Die Tagesordnung ist die Antwort, und Beschlüsse anderer Sitzungen sind es nicht (_sitzungen_block)."
+ },
+ {
+  "id": "rat-sitzung-rat-2906",
+  "kanal": "rat",
+  "frage": "Was hat der Rat am 29.06.2026 beschlossen?",
+  "kategorie": "sitzung/beschluesse",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "id",
+    "wert": 9356,
+    "quelle": "council_decisions id=9356, Rat 2026-06-29, TOP 6.9, Vorlage 26/0414"
+   },
+   {
+    "art": "id",
+    "wert": 9368,
+    "quelle": "council_decisions id=9368, Rat 2026-06-29, TOP 14.1"
+   },
+   {
+    "art": "id",
+    "wert": 9364,
+    "quelle": "council_decisions id=9364, Rat 2026-06-29, TOP 11.3, Vorlage 26/0439"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Drei der gewichtigen Beschlüsse dieser Sitzung (34 Beschlüsse insgesamt); finde_sitzungen soll alle vollständig in den Kontext holen."
+ },
+ {
+  "id": "lotti-sitzung-2809-wann-wo",
+  "kanal": "lotti",
+  "route": "/council/sitzung",
+  "refs": {
+   "ksinr": 4705
+  },
+  "frage": "Wann und wo findet diese Sitzung statt?",
+  "kategorie": "sitzung/termin",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "28.09.2026",
+      "28.9.2026",
+      "28. September 2026",
+      "2026-09-28"
+     ]
+    ],
+    "quelle": "council_sessions ksinr=4705"
+   },
+   {
+    "art": "text",
+    "muss": [
+     "PFL"
+    ],
+    "quelle": "council_sessions ksinr=4705; location"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Lottis Sitzungs-Block trug bis 23.09.2026 Gremium und Datum, keinen Ort und keine Uhrzeit (Kontextfehler beim Ort)."
+ },
+ {
+  "id": "lotti-sitzung-2809-tagesordnung",
+  "kanal": "lotti",
+  "route": "/council/sitzung",
+  "refs": {
+   "ksinr": 4705
+  },
+  "frage": "Welche Punkte stehen hier auf der Tagesordnung?",
+  "kategorie": "sitzung/tagesordnung",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     "Klinikum"
+    ],
+    "quelle": "council_agenda_items ksinr=4705, TOP Ö 6.5"
+   },
+   {
+    "art": "zahl",
+    "wert": 9512500,
+    "einheit": "€",
+    "bezeichnung": "überplanmäßige Bewilligung Teilhaushalt 10",
+    "toleranz": 0.01,
+    "quelle": "council_agenda_items ksinr=4705, TOP Ö 6.3"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Die Seite zeigt die Tagesordnung; Lottis Block seit 23.09.2026 auch (vorher Kontextfehler)."
+ },
+ {
+  "id": "lotti-sitzung-0106-stadion",
+  "kanal": "lotti",
+  "route": "/council/sitzung",
+  "refs": {
+   "ksinr": 4692
+  },
+  "frage": "Was wurde hier in der Sitzung zum Stadion entschieden?",
+  "kategorie": "sitzung/beschluesse",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "id",
+    "wert": 8677,
+    "quelle": "council_decisions id=8677, Rat 2026-06-01, TOP 6.1, Vorlage 26/0396"
+   },
+   {
+    "art": "id",
+    "wert": 8679,
+    "quelle": "council_decisions id=8679, Rat 2026-06-01, TOP 6.2, Vorlage 26/0374"
+   },
+   {
+    "art": "text",
+    "muss": [
+     [
+      "angenommen",
+      "beschlossen",
+      "zugestimmt",
+      "beschloss",
+      "Zustimmung",
+      "accepted"
+     ]
+    ],
+    "quelle": "council_decisions id=8677, Rat 2026-06-01, TOP 6.1, Vorlage 26/0396; outcome=accepted"
+   }
+  ],
+  "verboten": [],
+  "notiz": "41 Beschlüsse in dieser Sitzung, fünf davon zum Stadion. Bis 23.09.2026 kannte Lottis Block keinen davon; seitdem die Tagesordnung mit Ergebnis und Nummer. Die Nummern verlangt das Gold auch in der Antwort — Lotti nennt sie selten (modell_ausgelassen), das ist hinnehmbar."
+ },
+ {
+  "id": "lotti-sitzung-sport-1305",
+  "kanal": "lotti",
+  "route": "/council/sitzung",
+  "refs": {
+   "ksinr": 4592
+  },
+  "frage": "Was hat der Sportausschuss hier zum Schwimmbad beschlossen?",
+  "kategorie": "sitzung/beschluesse",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "BTB",
+      "Bürgerfelder Turnerbund"
+     ]
+    ],
+    "quelle": "council_decisions id=8513, Sportausschuss 2026-05-13, TOP 6, Vorlage 26/0353; title"
+   },
+   {
+    "art": "text",
+    "muss": [
+     [
+      "angenommen",
+      "beschlossen",
+      "zugestimmt",
+      "beschloss",
+      "Zustimmung",
+      "accepted"
+     ]
+    ],
+    "quelle": "council_decisions id=8513, Sportausschuss 2026-05-13, TOP 6, Vorlage 26/0353; outcome=accepted"
+   }
+  ],
+  "verboten": [],
+  "notiz": ""
+ },
+ {
+  "id": "lotti-thema-verkehr-zuletzt",
+  "kanal": "lotti",
+  "route": "/council/thema",
+  "refs": {
+   "slug": "verkehr"
+  },
+  "frage": "Was wurde hier im Verkehr zuletzt beschlossen?",
+  "kategorie": "verlauf/radverkehr",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "29.06.2026",
+      "29.6.2026",
+      "29. Juni 2026",
+      "2026-06-29"
+     ]
+    ],
+    "quelle": "council_decisions policy_field='verkehr', jüngste angenommene (Rat 2026-06-29)",
+    "antwort_auch": [
+     "Juni 2026"
+    ]
+   }
+  ],
+  "verboten": [],
+  "notiz": "Jüngste Verkehrsbeschlüsse: Rat 29.06.2026 (VWG-Antriebswende, Bahnhofsvorplatz, Uhlhornsweg). Der Themenfeld-Block trägt keine Beschlüsse."
+ },
+ {
+  "id": "rat-nd-einzelstimme-baak",
+  "kanal": "rat",
+  "frage": "Wie hat Christoph Baak beim Stadion-Beschluss im Juni 2026 abgestimmt?",
+  "kategorie": "nicht-in-daten/abstimmung",
+  "antwort_in_daten": false,
+  "gold": [],
+  "verboten": [],
+  "notiz": "Protokolle halten fest, WIE abgestimmt wurde, nicht WER wie. Die Pressemitteilung vom 02.06. sagt, die CDU stimmte dafür und zwei CDU-Mitglieder enthielten sich — ohne Namen. „Er stimmte dafür“ wäre geraten."
+ },
+ {
+  "id": "rat-nd-waermeplan-wer-dagegen",
+  "kanal": "rat",
+  "frage": "Welche Fraktion hat gegen den Wärmeplan gestimmt?",
+  "kategorie": "nicht-in-daten/abstimmung",
+  "antwort_in_daten": false,
+  "gold": [],
+  "verboten": [],
+  "notiz": "Belegt sind fünf Gegenstimmen, keine Namen (raw_result, Presse 02.06.2026). Adler (BSW) kritisierte den Plan und beantragte Vertagung (Wortbeitrag) — daraus „die BSW stimmte dagegen“ zu machen, ist eine Folgerung, kein Beleg."
+ },
+ {
+  "id": "rat-nd-grundsteuer-namen",
+  "kanal": "rat",
+  "frage": "Welche Ratsmitglieder haben im Dezember 2025 für die höhere Grundsteuer gestimmt?",
+  "kategorie": "nicht-in-daten/abstimmung",
+  "antwort_in_daten": false,
+  "gold": [],
+  "verboten": [],
+  "notiz": "Das Ergebnis lautet nur „mehrheitlich mit 43 Gegenstimmen“ (abgelehnt)."
+ },
+ {
+  "id": "rat-nd-grundsteuer-c",
+  "kanal": "rat",
+  "frage": "Hat der Rat die Einführung einer Grundsteuer C beschlossen?",
+  "kategorie": "nicht-in-daten/offen",
+  "antwort_in_daten": false,
+  "gold": [],
+  "verboten": [],
+  "notiz": "Der BSW-Antrag stand am 31.08.2026 auf der Tagesordnung; das Protokoll liegt nicht vor, die Presse reicht bis 26.08. Richtig: beantragt, Ergebnis offen."
+ },
+ {
+  "id": "rat-nd-rat-3108",
+  "kanal": "rat",
+  "frage": "Was hat der Rat am 31.08.2026 beschlossen?",
+  "kategorie": "nicht-in-daten/offen",
+  "antwort_in_daten": false,
+  "gold": [],
+  "verboten": [],
+  "notiz": "Sitzung und Tagesordnung sind da, Beschlüsse nicht (Protokoll folgt Wochen später — _sitzungen_block verlangt, das zu sagen). Beschlüsse anderer Sitzungen sind NICHT die Antwort."
+ },
+ {
+  "id": "rat-nd-stichwahl-ergebnis",
+  "kanal": "rat",
+  "frage": "Wer hat die Stichwahl zum Oberbürgermeister gewonnen?",
+  "kategorie": "nicht-in-daten/offen",
+  "antwort_in_daten": false,
+  "gold": [],
+  "verboten": [],
+  "notiz": "Stichwahl am 27.09.2026, nach dem Datenstand. Nur der Termin ist belegt (Ratsbeschluss 27.10.2025). Sobald die Wahlergebnisse in den Daten sind, bricht der Baukasten ab und der Fall muss neu gefasst werden."
+ },
+ {
+  "id": "rat-nd-gehalt-stadion-gf",
+  "kanal": "rat",
+  "frage": "Wie viel verdient der Geschäftsführer der Stadion Oldenburg GmbH?",
+  "kategorie": "nicht-in-daten/sonstiges",
+  "antwort_in_daten": false,
+  "gold": [],
+  "verboten": [],
+  "notiz": "Der Name (Stefan Orth) steht in der Presse, eine Vergütung nirgends — weder in Jahresabschluss-Beschlüssen noch in Vorlagen oder Beteiligungsdaten."
+ },
+ {
+  "id": "lotti-nd-waermeplan-wer-dagegen",
+  "kanal": "lotti",
+  "route": "/council/decision",
+  "refs": {
+   "decision_id": 8683
+  },
+  "frage": "Welche Fraktionen waren hier dagegen?",
+  "kategorie": "nicht-in-daten/abstimmung",
+  "antwort_in_daten": false,
+  "gold": [],
+  "verboten": [],
+  "notiz": "Wie rat-nd-waermeplan-wer-dagegen. Richtig: fünf Gegenstimmen, wer, steht nicht fest."
+ },
+ {
+  "id": "lotti-nd-person-abstimmung",
+  "kanal": "lotti",
+  "route": "/council/person",
+  "refs": {
+   "slug": "christoph-baak"
+  },
+  "frage": "Hat er beim Stadion dafür oder dagegen gestimmt?",
+  "kategorie": "nicht-in-daten/abstimmung",
+  "antwort_in_daten": false,
+  "gold": [],
+  "verboten": [],
+  "notiz": "Das Seiten-Wissen sagt es selbst: „Ein Stimmverhalten gibt es hier nicht“."
+ },
+ {
+  "id": "lotti-nd-sitzung-ergebnisse",
+  "kanal": "lotti",
+  "route": "/council/sitzung",
+  "refs": {
+   "ksinr": 4705
+  },
+  "frage": "Welche Ergebnisse hatte diese Sitzung?",
+  "kategorie": "nicht-in-daten/offen",
+  "antwort_in_daten": false,
+  "gold": [],
+  "verboten": [],
+  "notiz": "Sitzung am 28.09.2026 — nach dem Datenstand, also ohne Ergebnisse. Richtig ist, das zu sagen; Ergebnisse früherer Sitzungen sind es nicht."
+ },
+ {
+  "id": "lotti-nd-ort-einwohner",
+  "kanal": "lotti",
+  "route": "/council/ort",
+  "refs": {
+   "place_id": "bloherfelde"
+  },
+  "frage": "Wie viele Menschen wohnen hier?",
+  "kategorie": "nicht-in-daten/sonstiges",
+  "antwort_in_daten": false,
+  "gold": [],
+  "verboten": [],
+  "notiz": "Einwohnerzahlen gibt es nur für die ganze Stadt (council_einwohner), nicht je Stadtteil. Die städtische Zahl als Stadtteilzahl zu nennen wäre der Fehler."
+ }
+]

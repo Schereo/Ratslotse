@@ -564,6 +564,62 @@ def _bestand_ergebnishaushalt(store: CouncilStore) -> set[tuple]:
     return {(j,) for j in store.ergebnishaushalt_jahrgaenge()}
 
 
+def _bestand_finanzhaushalt(store: CouncilStore) -> set[tuple]:
+    """Wie beim Gesamtergebnishaushalt: ein Dokument, ein Plan-Jahrgang."""
+    return {(j,) for j in store.finanzhaushalt_jahrgaenge()}
+
+
+def _einheiten_uebersichten(row: dict) -> set[tuple]:
+    """Der Jahrgang aus dem Label („2026 003 Vw Übersichten …") oder dem Kopf
+    („Haushaltsplan 2020"). Die alten Labels heißen nur „003 Übersichten";
+    ohne Jahr bleibt die Einheit leer, das Skript liest sie trotzdem — es nimmt
+    das Planjahr aus dem Tabellenkopf."""
+    for text in (row.get("label") or "", (row.get("kopf") or "")[:600]):
+        m = re.search(r"\b(20[1-3]\d)\b", text)
+        if m:
+            return {(int(m.group(1)),)}
+    return set()
+
+
+def _bestand_satzung_veroeffentlicht(store: CouncilStore) -> set[tuple]:
+    return {(z["year"],) for z in store.get_satzungen_veroeffentlicht()}
+
+
+def _bestand_foerdermittel(store: CouncilStore) -> set[tuple]:
+    """Das Jahr des JÜNGSTEN Datenstands — die Listen tragen keinen Jahrgang,
+    sondern einen Stand („DS: 31. Januar 2026"); der Förderkatalog hat keinen
+    und zählt mit dem Jahr seines Abrufs.
+
+    Nur der jüngste, nicht einer je Liste: Die abgeschlossene Förderperiode
+    2014–2020 steht mit ihrem letzten Stand (2024) daneben, und aus „2024 und
+    2026" machte der Datenstand „Für 2025 liegen uns keine auswertbaren Zahlen
+    vor" — für eine Liste, die 2025 gar nicht neu erscheinen sollte (Prüfung
+    24.09.2026)."""
+    staende = [int((z["list_as_of"] or z["fetched_at"])[:4]) for z in store.get_foerdermittel()]
+    return {(max(staende),)} if staende else set()
+
+
+def _bestand_budgetberichte(store: CouncilStore) -> set[tuple]:
+    """``(Jahr, Teilhaushalt)`` — vier Berichte im Jahr je Ausschuss; „da"
+    heißt hier: mindestens einer."""
+    return {(z["budget_year"], z["sub_budget_no"]) for z in store.budgetbericht_stichtage()}
+
+
+def _marke_budgetberichte(store: CouncilStore) -> int | None:
+    """Die jüngste Vorlage „Budgetbericht …" (``kvonr``) — die Berichte hängen
+    an Vorlagen, ihre Anlagen tragen kein einheitliches Label."""
+    reihen = _jahre(store, "SELECT MAX(kvonr) FROM council_templates WHERE title LIKE '%Budgetbericht%'")
+    return reihen[0][0] if reihen and reihen[0][0] is not None else None
+
+
+def _bestand_vorbericht(store: CouncilStore) -> set[tuple]:
+    return {(j,) for j in store.vorbericht_jahrgaenge()}
+
+
+def _bestand_uebersichten(store: CouncilStore) -> set[tuple]:
+    return {(j,) for j in store.zuschuss_jahrgaenge()}
+
+
 def _einheiten_stellenplan(row: dict) -> set[tuple]:
     """Je Dokument zwei Einheiten: Teil A und Teil B.
 
@@ -737,6 +793,26 @@ def _marke_eigenbetriebe_abschluss(store: CouncilStore) -> int | None:
     return r[0] if r and r[0] is not None else None
 
 
+def _bestand_gesellschaft_abschluss(store: CouncilStore) -> set[tuple]:
+    """``(Jahr, Gesellschaft)`` — wie bei den Eigenbetrieben: Jede
+    Gesellschaft legt ihren Abschluss in einer eigenen Vorlage vor."""
+    return store.company_account_einheiten()
+
+
+def _marke_gesellschaft_abschluss(store: CouncilStore) -> int | None:
+    """Die jüngste Jahresabschluss-Vorlage einer Gesellschaft (``kvonr``)."""
+    from council.gesellschaft_abschluss import TITEL_MUSTER, TITEL_SQL
+    try:
+        r = store._conn.execute(  # noqa: SLF001
+            f"SELECT MAX(t.kvonr) FROM council_templates t WHERE {TITEL_SQL}",
+            list(TITEL_MUSTER)).fetchone()
+    except sqlite3.OperationalError as fehler:
+        if not tabelle_fehlt(fehler):
+            raise
+        return None
+    return r[0] if r and r[0] is not None else None
+
+
 def _bestand_schulden(store: CouncilStore) -> set[tuple]:
     """Die Jahrgänge der Schuldenzeitreihe.
 
@@ -781,6 +857,21 @@ def _bestand_lsn_realsteuern(store: CouncilStore) -> set[tuple]:
     return {(r[0],) for r in _jahre(
         store, "SELECT DISTINCT year FROM council_city_comparison "
                "WHERE series = 'real_taxes'")}
+
+
+def _bestand_bundesvergleich(store: CouncilStore) -> set[tuple]:
+    """Die Jahre des Bundesvergleichs — die Einheit ist das Jahr an der Zahl,
+    wie beim Realsteuervergleich."""
+    return {(r[0],) for r in _jahre(
+        store, "SELECT DISTINCT year FROM council_city_comparison "
+               "WHERE series = 'wegweiser' AND indicator != 'population'")}
+
+
+def _bestand_regionalstatistik(store: CouncilStore) -> set[tuple]:
+    """Die Jahre der Schuldenstatistik je Stadt (Stichtag 31.12.)."""
+    return {(r[0],) for r in _jahre(
+        store, "SELECT DISTINCT year FROM council_city_comparison "
+               "WHERE series = 'regionalstatistik' AND indicator = 'debt_core'")}
 
 
 def _bestand_lsn_gewerbesteuer(store: CouncilStore) -> set[tuple]:
@@ -2347,6 +2438,7 @@ def _kette_pruefen(gelesen: dict[int, list[dict]], p: Protokoll) -> dict:
 # --- Die Registry -----------------------------------------------------------
 
 from council.eigenbetriebe_abschluss import TITEL_MUSTER as _EIGENBETRIEBE_TITEL  # noqa: E402
+from council.gesellschaft_abschluss import TITEL_MUSTER as _GESELLSCHAFTEN_TITEL  # noqa: E402
 
 QUELLEN: dict[str, Finanzquelle] = {}
 
@@ -2538,6 +2630,119 @@ for _q in (
         einheiten_von=_einheiten_ergebnishaushalt,
         balance=_bestand_ergebnishaushalt,
         einlesen=lies_ergebnishaushalte,
+    ),
+    Finanzquelle(
+        key="finance_budget",
+        label="Gesamtfinanzhaushalt (Planjahre)",
+        was="Was die Stadt im Planjahr an Geld ein- und auszahlen will — "
+            "laufend, für Investitionen und zur Finanzierung, samt "
+            "Finanzplanung für die drei folgenden Jahre.",
+        tabelle="council_finance_budget",
+        # Anlage 006 desselben Haushaltsplans wie 005: gleicher Takt.
+        erwarteter_monat=10,
+        versatz=-1,
+        herkunft="ris",
+        erkennung=Erkennung(
+            # Dieselbe Begründung wie beim Gesamtergebnishaushalt: Das Label
+            # trifft genau die acht Anlagen 006 (2019–2026, 24.09.2026).
+            label_muster=("%Gesamtfinanzhaushalt%",),
+            mindest_seiten=3,
+            ordnung="document_id",
+        ),
+        einheiten_von=_einheiten_ergebnishaushalt,
+        balance=_bestand_finanzhaushalt,
+        # Kein `einlesen`: Die Spalten brauchen Wortkoordinaten, die der
+        # gespeicherte Textauszug nicht hergibt (s. council/finance_budget.py)
+        # — der Lauf lädt die vier Seiten deshalb selbst, wie der Vollzug.
+        nachschub="scripts/ingest_finanzhaushalt.py (lädt die PDFs selbst)",
+        lauf=("scripts/ingest_finanzhaushalt.py",),
+    ),
+    Finanzquelle(
+        key="budget_notes",
+        label="Vorbericht zum Haushaltsplan",
+        was="Was die Verwaltung zu jedem Teilhaushalt schreibt — zum "
+            "Ergebnishaushalt und zu den Investitionen, im Wortlaut.",
+        tabelle="council_budget_notes",
+        erwarteter_monat=10,
+        versatz=-1,
+        herkunft="ris",
+        erkennung=Erkennung(
+            # Die acht Vorberichte 2019–2026 und ihre Dubletten; das Sammel-PDF
+            # (280 Seiten) sortiert das Skript über die Seitenzahl aus.
+            label_muster=("%Vorbericht%",),
+            mindest_seiten=40,
+            ordnung="document_id",
+        ),
+        einheiten_von=_einheiten_uebersichten,
+        balance=_bestand_vorbericht,
+        # Derselbe Lauf liest die Zahlen zu Personal, Steuerarten und
+        # Fehlbeträgen aus demselben Dokument (council/vorbericht_zahlen.py).
+        nebentabellen=("council_budget_preface_figures",),
+        nachschub="scripts/ingest_vorbericht.py (lädt die PDFs selbst)",
+        lauf=("scripts/ingest_vorbericht.py",),
+    ),
+    Finanzquelle(
+        key="grants_received",
+        label="Fördermittel von EU und Bund",
+        was="Welche Vorhaben der Stadt und ihrer Gesellschaften die EU (EFRE, "
+            "ESF) und der Bund fördern — je Vorhaben Empfänger, Zweck, Laufzeit "
+            "und bewilligter Betrag, aus den Listen der Geber selbst.",
+        tabelle="council_grants_received",
+        # Die EU-Listen erscheinen halbjährlich (Stand 31.01. im April,
+        # Stand 31.07. im Herbst); der Förderkatalog ist laufend aktuell.
+        erwarteter_monat=6,
+        versatz=0,
+        herkunft="eu",
+        balance=_bestand_foerdermittel,
+        # Kein ``lauf``: Beide Listen liegen außerhalb des Bestands, ob es eine
+        # neue gibt, sagt erst die Übersichtsseite. Der Ops-Lauf fragt sie.
+        nachschub="Listen der Vorhaben (europa-fuer-niedersachsen.de) und "
+                  "Förderkatalog des Bundes, scripts/ingest_foerdermittel.py",
+    ),
+    Finanzquelle(
+        key="budget_measures",
+        label="Budgetberichte",
+        was="Was aus den Investitionen der Bereiche Jugend und Schule im Jahr "
+            "wird — je Maßnahme Ansatz, Prognose zum Jahresende und die "
+            "Begründung der Verwaltung, aus den Quartalsberichten an die "
+            "Fachausschüsse.",
+        tabelle="council_budget_measures",
+        # Der Bericht zum 30.06. geht im September/Oktober an den Ausschuss;
+        # er ist der erste, der zeigt, wie das Jahr läuft.
+        erwarteter_monat=10,
+        versatz=0,
+        herkunft="ris",
+        marke=_marke_budgetberichte,
+        balance=_bestand_budgetberichte,
+        nachschub="scripts/ingest_budgetberichte.py (lädt die PDFs selbst)",
+        lauf=("scripts/ingest_budgetberichte.py",),
+    ),
+    Finanzquelle(
+        key="grants",
+        label="Zuschüsse an Dritte",
+        was="Wer von der Stadt Zuschüsse bekommt — Vereine, Träger, "
+            "Gesellschaften —, je Zuschuss Zweck, Betrag im Planjahr und im "
+            "Vorjahr, aus der Übersicht in Anlage 003 des Haushaltsplans.",
+        tabelle="council_grants",
+        # Anlage 003 desselben Haushaltsplans wie 005 und 006: gleicher Takt.
+        erwarteter_monat=10,
+        versatz=-1,
+        herkunft="ris",
+        erkennung=Erkennung(
+            # Trifft die acht Anlagen 2019–2026 und ihre Dubletten (zweimal
+            # dieselbe Anlage in einer anderen Vorlage); das Sammel-PDF
+            # „2-5 Vorbericht, Übersichten, …" (280 Seiten) sortiert das
+            # Skript über die Seitenzahl aus.
+            label_muster=("%bersichten%",),
+            mindest_seiten=30,
+            ordnung="document_id",
+        ),
+        einheiten_von=_einheiten_uebersichten,
+        balance=_bestand_uebersichten,
+        # Kein `einlesen`: Die Tabelle braucht Wortkoordinaten — der Lauf lädt
+        # die PDFs selbst, wie beim Gesamtfinanzhaushalt.
+        nachschub="scripts/ingest_uebersichten.py (lädt die PDFs selbst)",
+        lauf=("scripts/ingest_uebersichten.py",),
     ),
     Finanzquelle(
         key="stellenplan",
@@ -2850,6 +3055,45 @@ for _q in (
         balance=_bestand_eigenbetriebe_abschluss,
     ),
     Finanzquelle(
+        key="company_accounts",
+        label="Jahresabschlüsse der Gesellschaften",
+        was="Bilanzsumme und Jahresergebnis der städtischen Gesellschaften "
+            "(VWG, OTM, VHS, Weser-Ems Halle, Bäder, Stadion) aus dem "
+            "Jahresabschluss — ein Jahr früher, als der Beteiligungsbericht "
+            "sie nennt.",
+        tabelle="council_company_accounts",
+        unit="Gesellschaften",
+        # Die Abschlüsse kommen im Sommer nach dem Geschäftsjahr in den Rat
+        # (2025: VWG und OTM im Juni, WEH und Stadion im Juli 2026).
+        erwarteter_monat=8,
+        versatz=1,
+        herkunft="ris",
+        erkennung=Erkennung(vorlagen_muster=tuple(_GESELLSCHAFTEN_TITEL), oder=True),
+        marke=_marke_gesellschaft_abschluss,
+        nachschub="scripts/ingest_gesellschaft_abschluss.py (lädt Bilanz und GuV selbst)",
+        lauf=("scripts/ingest_gesellschaft_abschluss.py",),
+        balance=_bestand_gesellschaft_abschluss,
+    ),
+    Finanzquelle(
+        key="budget_bylaw_published",
+        label="Beschlossene Haushaltssatzung (Amtsblatt)",
+        was="Die Haushaltssatzung in der Fassung, die der Rat beschlossen und "
+            "die Stadt im Amtsblatt bekannt gemacht hat — mit Beschluss- und "
+            "Bekanntmachungsdatum, neben dem Verwaltungsentwurf.",
+        tabelle="council_budget_bylaw_published",
+        # Die Bekanntmachung kommt im Frühjahr des Haushaltsjahres (2020–2026:
+        # zwischen 17.02. und 22.04.).
+        erwarteter_monat=5,
+        versatz=0,
+        herkunft="city",
+        # Kein ``lauf``: Der Cron erkennt neue Dokumente am Bestand, und das
+        # Amtsblatt liegt nicht im Bestand — ob eine neue Ausgabe da ist, sagt
+        # erst die Übersichtsseite. Der Ops-Lauf (ops-finanzdaten-ingest.yml)
+        # fragt sie; bereits angesehene Ausgaben kosten dort nichts.
+        nachschub="Amtsblatt auf oldenburg.de, scripts/ingest_amtsblatt.py",
+        balance=_bestand_satzung_veroeffentlicht,
+    ),
+    Finanzquelle(
         key="schulden",
         label="Schuldenstand",
         was="Wie viel die Stadt schuldet und wie sich das seit 1995 entwickelt "
@@ -2936,6 +3180,38 @@ for _q in (
         balance=_bestand_lsn_realsteuern,
     ),
     Finanzquelle(
+        key="bundesvergleich",
+        label="Bundesvergleich",
+        was="Einkommensteuer, Grundsteuer B und Liquiditätskredite je "
+            "Einwohner*in für kreisfreie Städte ähnlicher Größe in ganz "
+            "Deutschland, dazu alle Niedersachsens — Oldenburg darin als Punkt.",
+        tabelle="council_city_comparison",
+        # Der Wegweiser zieht die Jahresrechnungen der Statistischen Ämter nach;
+        # 2023 stand im September 2026 als jüngstes Jahr da. Zwei Jahre Abstand
+        # und der September als Schwelle — früher ist nie ein Problem.
+        erwarteter_monat=9,
+        versatz=2,
+        herkunft="wegweiser",
+        nachschub="Export vom Wegweiser Kommune, scripts/ingest_bundesvergleich.py",
+        balance=_bestand_bundesvergleich,
+    ),
+    Finanzquelle(
+        key="regionalstatistik",
+        label="Schulden der acht Städte",
+        was="Was die acht kreisfreien Städte Niedersachsens schulden — im "
+            "Kernhaushalt und in den Einrichtungen, die ihnen ganz gehören, "
+            "je Einwohner*in.",
+        tabelle="council_city_comparison",
+        # Die Schulden zum 31.12. stehen im September des Folgejahres in der
+        # Regionaldatenbank (2025 war am 24.09.2026 da).
+        erwarteter_monat=10,
+        versatz=1,
+        herkunft="regionalstatistik",
+        nachschub="Webservice der Regionaldatenbank (Konto in der .env), "
+                  "scripts/ingest_regionalstatistik.py",
+        balance=_bestand_regionalstatistik,
+    ),
+    Finanzquelle(
         key="lsn_gewerbesteuer",
         label="Gewerbesteuerstatistik",
         was="Wie viele Betriebe die Gewerbesteuer aufbringen — und wie viele "
@@ -3001,16 +3277,19 @@ for _q in (
 #: weil er zeitlich dazwischenliegt: Erst was die Stadt vorhat, dann wie es im
 #: laufenden Jahr läuft, dann wie es ausgegangen ist. Die drei nebeneinander
 #: sind die Geschichte eines Haushaltsjahres.
-REIHENFOLGE = ("haushaltsplan", "income_budget", "investitionen",
+REIHENFOLGE = ("haushaltsplan", "budget_notes", "income_budget", "finance_budget", "grants", "grants_received",
+               "budget_measures",
+               "investitionen",
                "investitionsprogramm", "budget_execution",
                "jahresabschluss", "teilhaushalt",
                "stellenplan", "indicators", "rpa_fundstelle",
                "pruefungsfeststellungen",
                "konzernabschluss", "beteiligungsbericht", "fees",
-               "budget_bylaw",
-               "wirtschaftsplan", "enterprise_accounts",
+               "budget_bylaw", "budget_bylaw_published",
+               "wirtschaftsplan", "enterprise_accounts", "company_accounts",
                "schulden", "loans", "liquidity",
-               "lsn_steuerkraft", "lsn_realsteuern", "lsn_gewerbesteuer")
+               "lsn_steuerkraft", "lsn_realsteuern", "lsn_gewerbesteuer", "bundesvergleich",
+               "regionalstatistik")
 
 #: Die Stelle hinter einer Herkunft, im Klartext. Sie steht in der Fußzeile des
 #: Datenstands („Nicht dabei: … — die Zahlen holen wir bei …") und muss deshalb
@@ -3021,6 +3300,10 @@ STELLEN = {
     "city": "Portal der Stadt",
     "opendata": "Open-Data-Portal der Stadt",
     "lsn": "Landesamt für Statistik Niedersachsen",
+    "eu": "NBank (Liste der Vorhaben der EU-Strukturfonds)",
+    "bund": "Förderkatalog des Bundes",
+    "wegweiser": "Wegweiser Kommune (Bertelsmann Stiftung)",
+    "regionalstatistik": "Regionaldatenbank der Statistischen Ämter",
 }
 
 
@@ -3061,7 +3344,13 @@ def datenstand(store: CouncilStore, heute: date | None = None) -> list[dict]:
             "key": q.key, "label": q.label, "was": q.was,
             "tabelle": q.tabelle, "herkunft": q.herkunft,
             "source": STELLEN.get(q.herkunft, q.herkunft),
-            "automatisch": q.automatisch,
+            # Für Leser*innen zählt, ob die Schicht OHNE Handgriff nachkommt —
+            # und das tut sie auch über ein ``lauf``-Skript, das der Cron
+            # startet, sobald ein neues Dokument im Bestand liegt
+            # (``check_finanzdaten._skriptlauf``). Bis 24.09.2026 stand hier nur
+            # ``q.automatisch``, und der Datenstand nannte zwölf Schichten aus
+            # dem Ratsinformationssystem „nicht automatisch ergänzt".
+            "automatisch": q.automatisch or q.lauf is not None,
             "jahrgaenge": years, "luecken": luecken,
             # Je Jahrgang die Zahl der Einheiten (Teilhaushalte bzw. Ebenen) —
             # und wie viele der bestbelegte Jahrgang hat.

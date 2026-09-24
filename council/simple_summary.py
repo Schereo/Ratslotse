@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import os
 
+from council import outcome_note
 from kern import llm, prompts
 
 MODEL = os.environ.get("COUNCIL_SIMPLE_MODEL", "deepseek/deepseek-v4-pro")
@@ -20,15 +21,24 @@ MAX_BESCHLUSS_CHARS = 6000
 
 def generate_one(decision: dict) -> str | None:
     """Kurzfassung für einen Beschluss-Dict (id/title/official_text/committee/
-    session_date). None = LLM-Antwort unbrauchbar; "" = bewusst keine
-    Erklärung möglich (wird NICHT gespeichert, damit ein späterer Lauf mit
-    besserem Prompt erneut ansetzt)."""
+    session_date/outcome/raw_result). None = LLM-Antwort unbrauchbar; "" =
+    bewusst keine Erklärung möglich (wird NICHT gespeichert, damit ein
+    späterer Lauf mit besserem Prompt erneut ansetzt).
+
+    Ist der Punkt abgelehnt, vertagt oder ohne Beschluss geblieben, ist
+    ``official_text`` nur der Vorschlag — das Modell bekommt deshalb das
+    Ergebnis dazu, und eine Antwort, die es nicht nennt, wird verworfen
+    (:mod:`council.outcome_note`). Lieber keine Kurzfassung als eine, die
+    einen abgelehnten Antrag als beschlossen erklärt."""
+    outcome = decision.get("outcome")
+    note = outcome_note.note(outcome, decision.get("raw_result"))
     system = prompts.get("simple_summary_system")
     user = prompts.render(
         "simple_summary_user",
         title=(decision.get("title") or "(ohne Titel)").strip(),
         committee=decision.get("committee") or "",
         session_date=decision.get("session_date") or "",
+        outcome_note=f"{note}\n\n" if note else "",
         official_text=(decision.get("official_text") or "")[:MAX_BESCHLUSS_CHARS],
     )
     try:
@@ -49,5 +59,7 @@ def generate_one(decision: dict) -> str | None:
     text = (data.get("einfach") or "").strip()
     # Plausibilitäts-Leitplanken: leere oder ausufernde Antworten verwerfen.
     if not text or len(text) > 700:
+        return None
+    if not outcome_note.states_outcome(outcome, text):
         return None
     return text

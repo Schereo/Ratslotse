@@ -926,6 +926,18 @@ class SchemaMixin(StoreBasis):
         "council_trade_tax_statistics": (None, "source_url", "lsn"),
         # Und die Planjahre aus dem Gesamtergebnishaushalt.
         "council_income_budget":     (None, "source_url", "ris"),
+        # Und der Gesamtfinanzhaushalt, Anlage 006: neu, ohne Altspalten.
+        "council_finance_budget":    (None, "source_url", "ris"),
+        # Und die Zuschüsse an Dritte aus Anlage 003.
+        "council_grants":            (None, "source_url", "ris"),
+        "council_debt_plan":         (None, "source_url", "ris"),
+        "council_budget_notes":      (None, "source_url", "ris"),
+        "council_budget_preface_figures": (None, "source_url", "ris"),
+        "council_budget_measures":   (None, "source_url", "ris"),
+        "council_budget_bylaw_published": (None, "url", "city"),
+        # Fördermittel von EU und Bund (council/foerdermittel.py): eigene Arten.
+        "council_grants_received":   (None, "list_url", "eu"),
+        "council_commitments":       (None, "source_url", "ris"),
         # Ebenso die Investitionen des Finanzhaushalts: neu, ohne Altspalten,
         # Herkunft ausschließlich über `herkunft_id`.
         "council_investments":        (None, "source_url", "opendata"),
@@ -990,6 +1002,7 @@ class SchemaMixin(StoreBasis):
         "council_budget_execution": (None, "source_url", "ris"),
         "council_liquidity": (None, "url", "ris"),
     "council_enterprise_accounts": (None, None, "ris"),
+        "council_company_accounts": (None, None, "ris"),
         # Kredite und Zinsen: neu, ohne Altbestand — derselbe Platzhalter.
         "council_loan_notices": (None, "document_url", "ris"),
         "council_loan_items": (None, "document_url", "ris"),
@@ -2094,6 +2107,8 @@ class SchemaMixin(StoreBasis):
             "lat REAL, lon REAL, place_label TEXT, geojson TEXT, "  # Locator-Karte (Punkt, Linie oder Gebiets-Polygon)
             "image_url TEXT, image_author TEXT, image_license TEXT, "  # Foto (Wikimedia Commons)
             "image_license_url TEXT, image_source_url TEXT, "    # Bildnachweis
+            "appeal INTEGER, "                                    # Richter-Note 1–5 (council.quiz.rate_appeal); NULL = unbenotet
+            "format TEXT, "                                       # verdict|compare (council.quiz_formats); NULL = gewöhnliche Frage
             "generated_at TEXT NOT NULL)"
         )
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_quiz_area ON council_quiz_questions(area_type, area_key)")
@@ -2311,6 +2326,171 @@ class SchemaMixin(StoreBasis):
         self._conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_ergebnishaushalt_jahr "
             "ON council_income_budget(year, kind)")
+        # Der Gesamtfinanzhaushalt (Anlage 006, council/finance_budget.py):
+        # dieselbe Form wie council_income_budget, nur Zahlungen statt
+        # Erträge/Aufwendungen — und mit `role` für die Summen- und
+        # Saldenzeilen, weil die Postennummern zwischen den Jahrgängen
+        # wandern (bis 2022 steht die erste Summe unter 10, ab 2023 unter 09).
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_finance_budget ("
+            "plan_budget_year INTEGER NOT NULL, "
+            "year INTEGER NOT NULL, "
+            "kind TEXT NOT NULL, "                 # budget | financial_plan
+            "nr INTEGER NOT NULL, "                # Postennummer im Dokument
+            "label TEXT NOT NULL, "
+            "role TEXT, "                          # Summen-/Saldenzeile, sonst NULL
+            "amount REAL NOT NULL, "
+            "is_total INTEGER NOT NULL DEFAULT 0, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (plan_budget_year, year, nr))"
+        )
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_finanzhaushalt_jahr "
+            "ON council_finance_budget(year, kind)")
+        # Die Zuschüsse an Dritte aus den Übersichten (Anlage 003,
+        # council/uebersichten.py): je Zeile ein Zuschuss mit Empfänger in der
+        # Beschreibung. `seq` ist die Reihenfolge im Dokument — die laufende
+        # Nummer der Stadt taugt nicht als Schlüssel, sie ist doppelt vergeben.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_grants ("
+            "budget_year INTEGER NOT NULL, "
+            "seq INTEGER NOT NULL, "
+            "lfd_nr INTEGER NOT NULL, "
+            "sub_budget_no INTEGER NOT NULL, "
+            "product_no TEXT, "
+            "product_name TEXT, "
+            "description TEXT NOT NULL, "
+            "amount_prior REAL, "                 # Ansatz des Vorjahres
+            "amount REAL, "                       # Ansatz des Planjahres
+            "note TEXT, "
+            "cash INTEGER, "                      # 1 bar, 0 unbar, NULL ohne Angabe (2019)
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (budget_year, seq))"
+        )
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_zuschuesse_thh "
+            "ON council_grants(sub_budget_no, budget_year)")
+        # Das Amtsblatt (council/amtsblatt.py): die BESCHLOSSENE Haushaltssatzung,
+        # neben dem Entwurf aus dem RIS (council_budget_bylaw). Eigene Tabelle,
+        # weil jene den Schlüssel (year, supplement) trägt und der Entwurf
+        # stehen bleiben soll — die Seite zeigt, was der Rat geändert hat.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_budget_bylaw_published ("
+            "year INTEGER PRIMARY KEY, "
+            "ordinary_revenues REAL, ordinary_expenses REAL, "
+            "extraordinary_revenues REAL, extraordinary_expenses REAL, "
+            "in_operating REAL, out_operating REAL, in_capital REAL, out_capital REAL, "
+            "in_financing REAL, out_financing REAL, in_total REAL, out_total REAL, "
+            "investment_loans REAL, commitment_authorizations REAL, liquidity_loans REAL, "
+            "property_tax_a_rate INTEGER, property_tax_b_rate INTEGER, trade_tax_rate INTEGER, "
+            "session_date TEXT, "                  # Ratsbeschluss, ISO
+            "published_on TEXT, "                  # Amtsblatt-Ausgabe, ISO
+            "issue_nr TEXT, url TEXT, "
+            "approval_note TEXT, "                 # Wortlaut, nur wo gedruckt
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL)"
+        )
+        # Fördermittel von außen (council/foerdermittel.py): je Vorhaben der
+        # Stadt oder einer ihrer Gesellschaften eine Zeile aus der EU-Liste
+        # der Vorhaben (EFRE/ESF) oder dem Förderkatalog des Bundes. Ein Lauf
+        # ersetzt je Liste (`source` + `period`) alle Zeilen.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_grants_received ("
+            "source TEXT NOT NULL, "               # efre | esf | foekat
+            "source_id TEXT NOT NULL, "            # Code, FKZ oder Hash
+            "period TEXT, "                        # Förderperiode (nur EU)
+            "recipient TEXT NOT NULL, recipient_key TEXT NOT NULL, "
+            "title TEXT NOT NULL, summary TEXT, "
+            "funder TEXT NOT NULL, program TEXT, "
+            "amount_total REAL, amount_granted REAL, "
+            "start TEXT, end TEXT, "
+            "list_as_of TEXT, list_url TEXT, "     # Datenstand und Adresse der Liste
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (source, source_id))"
+        )
+        # Welche Ratsvorlage erkennbar ein bewilligtes Vorhaben meint
+        # (council/foerder_vorlagen.py). Abgeleitet aus zwei Tabellen, die ihre
+        # eigene Herkunft tragen — deshalb ohne herkunft_id; jeder Lauf ersetzt
+        # alle Zeilen.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_grant_templates ("
+            "source TEXT NOT NULL, source_id TEXT NOT NULL, "
+            "template_number TEXT NOT NULL, "
+            "basis TEXT NOT NULL, "                # amount | title
+            "PRIMARY KEY (source, source_id, template_number))"
+        )
+        # Welche Amtsblatt-Ausgaben schon angesehen wurden — damit ein Lauf die
+        # gescannten Ausgaben nicht jedes Mal neu lesen lässt (0,002 $ je Seite).
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_gazette_issues ("
+            "url TEXT PRIMARY KEY, year INTEGER NOT NULL, nr TEXT NOT NULL, "
+            "has_bylaw INTEGER NOT NULL DEFAULT 0, reader TEXT, checked_at TEXT NOT NULL)"
+        )
+        # Die Budgetberichte der Fachausschüsse (council/budgetberichte.py): je
+        # Bericht (Stichtag, Teilhaushalt) die Investitionen je Maßnahme mit
+        # Ansatz, Prognose und der Erläuterung im Wortlaut. `seq` ist die
+        # Reihenfolge im Bericht — eine Maßnahme ohne I10-Nummer kommt vor.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_budget_measures ("
+            "as_of TEXT NOT NULL, "                 # Stichtag, ISO
+            "sub_budget_no INTEGER NOT NULL, "
+            "seq INTEGER NOT NULL, "
+            "budget_year INTEGER NOT NULL, "
+            "measure_no TEXT, measure_no_to TEXT, "  # I10-Nummer, bei Bereichen die letzte
+            "name TEXT NOT NULL, "
+            "kind TEXT NOT NULL, "                  # A = Auszahlung, E = Einzahlung
+            "planned REAL, forecast REAL, carryover REAL, "
+            "note TEXT, "                           # Erläuterung im Wortlaut
+            "template_number TEXT, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (as_of, sub_budget_no, seq))"
+        )
+        # Die Zahlen im Vorbericht (council/vorbericht_zahlen.py): je Plan und
+        # Reihe (Personal, Steuerarten, Ergebnis) die Werte mit ihrer Art —
+        # Ist, Plan des Vorjahres, Prognose, Ansatz, Finanzplanung.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_budget_preface_figures ("
+            "plan_budget_year INTEGER NOT NULL, series TEXT NOT NULL, "
+            "year INTEGER NOT NULL, variant TEXT NOT NULL, amount REAL NOT NULL, "
+            "page INTEGER, herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (plan_budget_year, series, year, variant))"
+        )
+        # Der Vorbericht (Anlage 001, council/vorbericht.py): je Plan und
+        # Teilhaushalt der Wortlaut der Abschnitte 2.4.2.x (Ergebnishaushalt,
+        # kind = result) und 3.2.2.x (Investitionen, kind = investments).
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_budget_notes ("
+            "budget_year INTEGER NOT NULL, "
+            "sub_budget_no INTEGER NOT NULL, "
+            "kind TEXT NOT NULL, "               # result | investments
+            "title TEXT NOT NULL, "
+            "text TEXT NOT NULL, "               # Absätze, durch Leerzeile getrennt
+            "page INTEGER, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (budget_year, sub_budget_no, kind))"
+        )
+        # Aus derselben Anlage 003: der voraussichtliche Stand der Schulden
+        # (je Plan, Block und Schuldenart; Beträge in Euro, gedruckt in T€) und
+        # die Fälligkeiten der Verpflichtungsermächtigungen.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_debt_plan ("
+            "budget_year INTEGER NOT NULL, "
+            "entity TEXT NOT NULL, "             # Kernhaushalt | Eigenbetrieb …
+            "code TEXT NOT NULL, "               # 1.2 … 5 | total
+            "label TEXT NOT NULL, "
+            "start_prior REAL, "                 # Stand zu Beginn des Vorjahres
+            "start_expected REAL, "              # voraussichtl. Stand zu Beginn des Planjahres
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (budget_year, entity, code))"
+        )
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_commitments ("
+            "budget_year INTEGER NOT NULL, "     # der Plan, dessen Übersicht es nennt
+            "plan_year INTEGER NOT NULL, "       # der Plan, der die VE erteilt hat
+            "due_year INTEGER NOT NULL, "
+            "amount REAL NOT NULL, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (budget_year, plan_year, due_year))"
+        )
         # Der Stellenplan (Anlage 21/22 des Haushaltsplans, council/stellenplan.py):
         # wie viele Stellen die Stadt vorhält, wie viele davon besetzt sind
         # und wie viele nicht.
@@ -3567,6 +3747,25 @@ class SchemaMixin(StoreBasis):
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
             "PRIMARY KEY (enterprise, year, metric))"
         )
+        # Die Jahresabschlüsse der städtischen Gesellschaften
+        # (council/gesellschaft_abschluss.py): dieselbe Form wie bei den
+        # Eigenbetrieben. Eigene Tabelle und nicht council_company_indicators,
+        # weil der Beteiligungsbericht-Ingest jene bei jedem Lauf leert.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_company_accounts ("
+            "company TEXT NOT NULL, "             # Kürzel wie council_companies
+            "year INTEGER NOT NULL, "
+            "indicator TEXT NOT NULL, "          # bilanzsumme | jahresergebnis
+            "value REAL NOT NULL, "              # Euro
+            "unit TEXT NOT NULL, "
+            "report_year INTEGER NOT NULL, "     # der Abschluss, aus dem die Zahl stammt
+            "confirmations INTEGER NOT NULL DEFAULT 1, "
+            "conflicts INTEGER NOT NULL DEFAULT 0, "
+            "document_id INTEGER, "
+            "probes TEXT NOT NULL, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (company, year, indicator))"
+        )
         # Kredite und Zinsen (council/loans.py): die Unterrichtungen des Rates
         # nach der Kreditrichtlinie — je Vorlage eine Zeile mit Berichts-
         # zeitraum und Zinsersparnis, je nummeriertem Posten eine Zeile mit
@@ -3797,9 +3996,62 @@ class SchemaMixin(StoreBasis):
         self._migrate_quiz_media()
         self._migrate_qa_feedback_source()
         self._migrate_quiz_hint()
+        self._migrate_quiz_appeal()
+        self._migrate_quiz_format()
         self._migrate_produkt_steckbrief()
         self._migrate_herkunft()
         self._migrate_owner_id()
+        self._satzung_beschlussdatum("satzung_beschlussdatum_2026_09")
+
+    def _satzung_beschlussdatum(self, marke: str) -> None:
+        """``council_budget_bylaw.session_date`` einmalig auf das Datum des
+        RATSBESCHLUSSES bringen.
+
+        Der Parser übernahm bis 09/2026 das Datum aus dem Entwurfstext — die
+        GEPLANTE Sitzung. Für 2026 stand dort der 15.12.2025, der Tag, an dem
+        der Finanzausschuss vertagt hat; beschlossen hat der Rat am 09.02.2026
+        (Fakten-Eval 23.09.2026). Seitdem liest der Parser bei Entwürfen kein
+        Datum mehr, und das Speichern setzt das des Ratsbeschlusses ein
+        (``bylaw_session_date``). Hier zieht der BESTAND nach: jede
+        Entwurfszeile auf das Beschlussdatum, oder leer, wo es keinen
+        Beschluss gibt.
+
+        **Einmal, mit Marke** (``council_migration_marks``), und nicht bei
+        jedem Start: Jeder Store-Start (also jede HTTP-Anfrage) müsste sonst
+        die Ratsbeschlüsse durchsuchen. Der Wächter
+        ``tests/test_store_start_neben_schreiber.py`` hält fest, dass ein
+        zweiter Start nur liest — die Marke wird deshalb auch auf einer
+        frischen Datenbank gesetzt."""
+        hat_marken = self._conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' "
+            "AND name = 'council_migration_marks'").fetchone()
+        if hat_marken and self._conn.execute(
+                "SELECT 1 FROM council_migration_marks WHERE marke = ?", (marke,)).fetchone():
+            return
+        spalten = {r[1] for r in self._conn.execute("PRAGMA table_info(council_budget_bylaw)")}
+        neu: list[tuple[str | None, int, int]] = []
+        if {"session_date", "version", "year", "supplement"} <= spalten:
+            for year, supplement, alt in self._conn.execute(
+                    "SELECT year, supplement, session_date FROM council_budget_bylaw "
+                    "WHERE version = 'draft'").fetchall():
+                soll = self.bylaw_session_date(year)
+                if soll != alt:
+                    neu.append((soll, year, supplement))
+        with self._conn:
+            self._conn.execute(
+                "CREATE TABLE IF NOT EXISTS council_migration_marks ("
+                "marke TEXT PRIMARY KEY, gesetzt_am TEXT NOT NULL)")
+            if neu:
+                self._conn.executemany(
+                    "UPDATE council_budget_bylaw SET session_date = ? "
+                    "WHERE year = ? AND supplement = ?", neu)
+            self._conn.execute(
+                "INSERT OR IGNORE INTO council_migration_marks (marke, gesetzt_am) "
+                "VALUES (?, datetime('now'))", (marke,))
+        if neu:
+            logging.getLogger("ratslotse.council.store").warning(
+                "Haushaltssatzung: Beschlussdatum aus den Ratsbeschlüssen gesetzt: %s",
+                ", ".join(f"{j}={d}" for d, j, _ in neu))
 
     def _migrate_quiz_estimate(self) -> None:
         """Schätzfrage-Slider: numerische Felder für qtype='estimate' in
@@ -3848,6 +4100,24 @@ class SchemaMixin(StoreBasis):
             for name in ("hint", "topic", "chart"):
                 if name not in cols:
                     self._conn.execute(f"ALTER TABLE council_quiz_questions ADD COLUMN {name} TEXT")
+
+    def _migrate_quiz_appeal(self) -> None:
+        """Richter-Note je Frage (09/2026): wie reizvoll sie zum Spielen ist.
+        Leer auf dem Bestand, bis ``scripts/sweep_quiz.py`` gelaufen ist —
+        unbenotete Fragen gelten als spielbar."""
+        cols = {r[1] for r in self._conn.execute("PRAGMA table_info(council_quiz_questions)").fetchall()}
+        if cols and "appeal" not in cols:
+            with self._conn:
+                self._conn.execute("ALTER TABLE council_quiz_questions ADD COLUMN appeal INTEGER")
+
+    def _migrate_quiz_format(self) -> None:
+        """Die Bauform einer Frage (09/2026): ``verdict`` (Angenommen oder
+        abgelehnt?) und ``compare`` (Wofür mehr?) aus ``council.quiz_formats``.
+        Leer heißt: gewöhnliche Frage, wie alles davor."""
+        cols = {r[1] for r in self._conn.execute("PRAGMA table_info(council_quiz_questions)").fetchall()}
+        if cols and "format" not in cols:
+            with self._conn:
+                self._conn.execute("ALTER TABLE council_quiz_questions ADD COLUMN format TEXT")
 
     def _migrate_produkt_steckbrief(self) -> None:
         """Produkt-Steckbrief (Kurzbeschreibung, Rechtsgrundlage, Spielraum,

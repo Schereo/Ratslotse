@@ -125,8 +125,8 @@ def test_begriffe_waehlen_den_betrieb(tmp_path):
     assert p["prior"] == {"year": 2025, "result": 627_511.0}
     text = business_plans.block(daten)
     assert "Ergebnis 711.250 €" in text
-    assert "im Plan 2025 waren es 627.511 €" in text
-    assert "Erfolgsplan: Erträge 26,7 Mio. €, Aufwendungen 26,0 Mio. €" in text
+    assert "Wirtschaftsplan 2025 (der Plan davor): Ergebnis 627.511 €" in text
+    assert "Ergebnis 711.250 €; Erträge 26,7 Mio. €, Aufwendungen 26,0 Mio. €" in text
     store.close()
 
 
@@ -144,6 +144,12 @@ def test_ohne_treffer_kommt_der_jahrgang(tmp_path):
     text = business_plans.block(daten)
     assert "Eigenbetrieb Hafen" not in text
     assert "NIE addieren" in text
+    # Faktencheck 23.09.2026: „Welche Eigenbetriebe gibt es und wie viel
+    # geben sie aus?“ bekam nur Plan-ERGEBNISSE. Die Aufwendungen gehören in
+    # den Überblick — und wo der Plan sie nicht nennt, steht das dabei.
+    assert "Aufwendungen 26,0 Mio. €" in text
+    assert "Erträge und Aufwendungen nennt diese Quelle nicht" in text
+    assert "im Plan 2025 waren es 627.511 € Ergebnis" in text
     store.close()
 
 
@@ -152,7 +158,7 @@ def test_ausgeglichener_plan_sagt_was_die_null_heisst(tmp_path):
     text = business_plans.block(store.business_plans_context(["Bäder", "Schwimmbad"]))
     assert "Ergebnis 0 € (ausgeglichener Plan" in text
     assert "Erträge und Aufwendungen nennt diese Quelle nicht" in text
-    assert "davon Investitionen 10,8 Mio. €" in text
+    assert "Vermögensplan 2026: darin Investitionen 10,8 Mio. €" in text
     store.close()
 
 
@@ -163,7 +169,7 @@ def test_gefragtes_jahr_wird_geliefert(tmp_path):
     p = daten["plans"][0]
     assert (p["year"], p["result"]) == (2025, -5_401_285.0)
     text = business_plans.block(daten)
-    assert "Vermögensplan 59,6 Mio. €" in text
+    assert "Vermögensplan 2025: 59,6 Mio. €" in text
     store.close()
 
 

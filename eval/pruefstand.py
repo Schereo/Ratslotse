@@ -19,8 +19,8 @@ auch was günstiger machen." Der Plan dazu steht in
 **Das Register** (:data:`REGISTER`) nennt je Suite, welche Feature-Namen in
 ``llm_usage`` landen, über welchen Schalter das Modell gewählt wird, woraus die
 Hauptkennzahl ``qualitaet`` entsteht (0–1, je Suite begründet), ob der Prompt
-Nutzereingaben trägt (dann nie ohne ZDR und nie Flex/Batch — abgelesen aus
-``kern/llm.py::zdr_pflicht``, nicht doppelt gepflegt) und ob das Feature im
+Nutzereingaben trägt (dann ZDR außer bei ``llm.ZDR_VERZICHT``, nie Flex/Batch — abgelesen aus
+``kern/llm.py::nutzereingabe``, nicht doppelt gepflegt) und ob das Feature im
 Web läuft (dann zählt die Latenz).
 
 **Warum ein Unterprozess je Suite × Modell × Lauf.** Die Module binden ihr
@@ -101,6 +101,10 @@ OHNE_DENKEN_ENV = "PRUEFSTAND_OHNE_DENKEN"
 #: Woran ein 404 der Datenpolitik zu erkennen ist: kein Anbieter, der ZDR
 #: zusagt. Für ein Feature mit Nutzereingabe ist das das RICHTIGE Ergebnis
 #: (GPT-6 Luna, Stand 22.09.2026) — im Bericht „nicht zulässig", kein Ausfall.
+#: Die Stichprobe einer Suite, die eine kennt (Suite.stichprobe) — gesetzt
+#: nur im Unterprozess eines Laufs. Für teure Modelle die Vorgabe
+#: (eval/kostenbremse.py, Tims Regel vom 23.09.2026).
+STICHPROBE_ENV = "PRUEFSTAND_STICHPROBE"
 _ZDR_404 = re.compile(r"data policy|zero data retention|no endpoints found matching", re.I)
 
 
@@ -201,11 +205,21 @@ class Suite:
     #: Läuft live im Sitzungs-Mitschnitt: Die Latenz ist der Verzug der
     #: Anzeige, sie zählt wie im Web.
     live: bool = False
+    #: Kann die Suite eine geschichtete Stichprobe ihrer Fälle messen
+    #: (STICHPROBE_ENV)? Ohne das läuft ein teures Modell hier nur mit
+    #: --voll.
+    stichprobe: bool = False
 
     @property
     def nutzereingabe(self) -> bool:
-        """Aus ``kern/llm.py`` abgelesen: ZDR-Pflicht heißt Nutzereingabe im Prompt."""
-        return any(llm.zdr_pflicht(f) for f in self.features)
+        """Aus ``kern/llm.py`` abgelesen (``nutzereingabe``) — nicht aus der
+        ZDR-Pflicht: Lotti und die Antwort tragen Nutzereingaben, laufen seit
+        23.09.2026 aber mit ``ZDR_VERZICHT``."""
+        return any(llm.nutzereingabe(f) for f in self.features)
+
+    @property
+    def zdr_verzicht(self) -> bool:
+        return any(f in llm.ZDR_VERZICHT for f in self.features)
 
     @property
     def gezaehlt(self) -> tuple[str, ...]:
@@ -268,6 +282,16 @@ def _lauf_qa() -> dict:
     from eval import run_qa
     return run_qa.messen(argparse.Namespace(db=None, nur_portable=False,
                                             rate_missing=False, nur_retrieval=False))
+
+
+def _lauf_qa_antwort() -> dict:
+    from council.store import CouncilStore
+    from eval import run_qa_answer
+    store = CouncilStore(_council_db())
+    try:
+        return run_qa_answer.lauf(store)
+    finally:
+        store.close()
 
 
 def _lauf_qa_routing() -> dict:
@@ -430,6 +454,49 @@ def _lauf_viertel() -> dict:
     return r.ein_lauf(r.lade())
 
 
+# ---- Fakten-Eval: Kontextfehler und Modellfehler getrennt (23.09.2026) ------ #
+# Läuft über ein eigenes Backend (eval/run_fakten.py) — der echte Codepfad
+# beider Kanäle. Das Backend erbt die Umgebung dieses Unterprozesses: den
+# Schalter (``COUNCIL_ASSISTANT_MODEL``; der Lauf setzt ``COUNCIL_QA_MODEL``
+# gleich), die eigene Kostendatei (``RATSLOTSE_SQLITE``) und ein gesetztes
+# ``NWZ_OPENROUTER_ZDR=0`` — ohne das ist GPT-6 Luna hier „nicht zulässig“.
+
+def _fakten_datei(name: str) -> Path:
+    return WURZEL / "eval" / name
+
+
+def _lauf_fakten(name: str) -> Callable[[], dict]:
+    def lauf() -> dict:
+        from council import assistant
+        from eval import run_fakten as rf
+        faelle = rf.lade([_fakten_datei(name)])
+        n = int(os.environ.get(STICHPROBE_ENV) or 0)
+        if n:
+            from eval import kostenbremse
+            faelle = kostenbremse.stichprobe(faelle, n)
+        erg = rf.ein_lauf(assistant.MODEL, faelle, laut=False)
+        pfad = rf.speichern(erg)
+        # Die Antworten stehen im eigenen Ergebnis (eval/results/fakten/); hier
+        # nur, was der Bericht braucht — sonst trüge jeder Prüfstandslauf
+        # Hunderte Antworten ins Repo.
+        return {"kennzahlen": erg["kennzahlen"], "datei": str(pfad.relative_to(WURZEL)),
+                "faelle": [{"id": z["id"], "fehlerart": z["fehlerart"],
+                            "kontext_ok": z["kontext_ok"]} for z in erg["faelle"]]}
+    return lauf
+
+
+def _braucht_fakten(name: str) -> Callable[[], str | None]:
+    def pruefen() -> str | None:
+        if not _fakten_datei(name).exists():
+            return f"eval/{name} fehlt"
+        return _braucht_council_db()
+    return pruefen
+
+
+def _fakten_kz(schluessel: str) -> Callable[[dict], Any]:
+    return lambda roh: (roh.get("kennzahlen") or {}).get(schluessel)
+
+
 def _anteil(zaehler: str, nenner: str = "n_cases") -> Callable[[dict], float | None]:
     def lesen(roh: dict) -> float | None:
         return roh[zaehler] / roh[nenner] if roh.get(nenner) else None
@@ -479,6 +546,27 @@ REGISTER: tuple[Suite, ...] = (
         faelle=lambda roh: roh.get("cases"),
         nebenkennzahlen=lambda roh: {"retrieval": roh.get("retrieval"), "skipped": roh.get("skipped")},
         lokal=_braucht_embeddings,
+    ),
+    Suite(
+        # P4a (23.09.2026): Die Suite `ki-frage` braucht die Embeddings und
+        # läuft nur auf dem Server. Diese misst NUR das Antwortmodell, mit
+        # festem Kontext (erwartete Beschlüsse + BM25-Ablenker) — der lokale
+        # Vorlauf für einen Wechsel von COUNCIL_QA_MODEL, nicht die Abnahme.
+        name="ki-frage-antwort", titel="KI-Frage: Antwort bei festem Kontext",
+        features=("qa_answer",), schalter="COUNCIL_QA_MODEL",
+        modell_aktuell=_attr("council.qa", "MODEL"),
+        kennzahl="mittlere Abdeckung: Anteil der erwarteten Beschlüsse im Kontext, die die "
+                 "Antwort zitiert (Fall mit hartem Befund = 0)",
+        eingabe="eval/cases_qa.json (portable Einzelfragen) + data/council.sqlite, "
+                "Kontext ohne Embeddings",
+        laufen=_lauf_qa_antwort, web=True,
+        qualitaet=lambda roh: roh.get("qualitaet"),
+        harte_befunde=lambda roh: roh.get("hart"),
+        hart_heisst="Antworten mit erfundener Zahl oder einer Quelle, die nicht im Kontext stand",
+        faelle=lambda roh: roh.get("cases"),
+        nebenkennzahlen=lambda roh: {"mindestens_einer": roh.get("mindestens_einer"),
+                                     "zitiert_erwartet": roh.get("zitiert_erwartet")},
+        lokal=_braucht_council_db, hart_sperrt=True,
     ),
     Suite(
         name="ki-frage-routing", titel="KI-Frage: Analyse & Routing",
@@ -761,6 +849,29 @@ REGISTER: tuple[Suite, ...] = (
                                      "fehler": roh.get("fehler")},
         lokal=_braucht_council_db, hart_sperrt=True,
     ),
+    *(Suite(
+        name=name, titel=titel,
+        features=("assistant_explain", "qa_answer"), schalter="COUNCIL_ASSISTANT_MODEL",
+        modell_aktuell=_attr("council.assistant", "MODEL"),
+        kennzahl="Anteil der Fälle „ok“: Goldfakt im Prompt unter dem richtigen Jahr UND in der "
+                 "Antwort, keine Verwechslung, keine erfundene Zahl (eval/fakten_abgleich.py). "
+                 "Kontextfehler zählen als nicht ok — sie trifft jedes Modell gleich",
+        eingabe=f"eval/{datei} + data/council.sqlite, über ein eigenes Backend "
+                "(beide Kanäle, COUNCIL_QA_MODEL = COUNCIL_ASSISTANT_MODEL)",
+        laufen=_lauf_fakten(datei), web=True,
+        qualitaet=_fakten_kz("quote_ok"),
+        harte_befunde=_fakten_kz("erfunden"),
+        hart_heisst="Antworten mit einer Zahl, die weder im Prompt steht noch sich daraus "
+                    "rechnen lässt — oder einer Zahl, wo die Daten keine hergeben",
+        faelle=_fakten_kz("n_cases"),
+        nebenkennzahlen=lambda roh: {k: (roh.get("kennzahlen") or {}).get(k) for k in (
+            "kontextfehler", "modellfehler", "fehlerarten", "p50_ms")},
+        lokal=_braucht_fakten(datei), hart_sperrt=True, stichprobe=True,
+    ) for name, titel, datei in (
+        ("fakten-haushalt", "Fakten-Eval: Haushaltsfragen (Lotti + Frag den Rat)",
+         "cases_fakten_haushalt.json"),
+        ("fakten-rat", "Fakten-Eval: Ratsfragen (Lotti + Frag den Rat)", "cases_fakten_rat.json"),
+    )),
 )
 
 SUITEN: dict[str, Suite] = {s.name: s for s in REGISTER}
@@ -864,6 +975,36 @@ class Messpunkte:
                              "fehler": None if fehler is None else f"{type(fehler).__name__}: {str(fehler)[:300]}"})
 
 
+#: Die Denkstufen, die OpenRouter als ``reasoning.effort`` annimmt.
+AUFWAENDE = ("minimal", "low", "medium", "high")
+
+
+def _aufwand(modell: str, stufe: str) -> Callable[[], None]:
+    """``reasoning.effort=<stufe>`` für ``modell`` — nur in diesem Prozess.
+
+    P4a (23.09.2026): Für GPT-6 Luna in Lotti und der Antwort war die Frage,
+    ob ``low`` bei gleicher Qualität schneller ist (Tim: bei gleicher
+    Qualität gewinnt ``low`` wegen der Latenz, sonst bleibt die Vorgabe).
+    """
+    vorher = llm.MODEL_PARAMS.get(modell)
+    eintrag = dict(vorher or {})
+    eintrag["extra_body"] = {**eintrag.get("extra_body", {}), "reasoning": {"effort": stufe}}
+    llm.MODEL_PARAMS[modell] = eintrag
+
+    def zurueck() -> None:
+        if vorher is None:
+            llm.MODEL_PARAMS.pop(modell, None)
+        else:
+            llm.MODEL_PARAMS[modell] = vorher
+    return zurueck
+
+
+def _variante(ohne_denken: bool, aufwand: str | None) -> str | None:
+    if ohne_denken:
+        return "ohne Denken"
+    return f"Aufwand {aufwand}" if aufwand else None
+
+
 def _ohne_denken(modell: str) -> Callable[[], None]:
     """``reasoning.enabled=false`` für ``modell`` — nur in diesem Prozess."""
     vorher = llm.MODEL_PARAMS.get(modell)
@@ -895,7 +1036,7 @@ def db_stand() -> str:
 
 
 def messen(suite: Suite, *, lauf: int = 1, modell: str | None = None, tarif: str | None = None,
-           ohne_denken: bool = False) -> dict:
+           ohne_denken: bool = False, aufwand: str | None = None) -> dict:
     """Ein Lauf einer Suite — erwartet die Umgebung schon gesetzt (Schalter, Tarif,
     eigene ``RATSLOTSE_SQLITE``). Gibt das Ergebnis im einheitlichen Format zurück."""
     effektiv = suite.modell_aktuell()
@@ -907,6 +1048,8 @@ def messen(suite: Suite, *, lauf: int = 1, modell: str | None = None, tarif: str
     rueckgaengig = [punkte.installieren()]
     if ohne_denken:
         rueckgaengig.append(_ohne_denken(effektiv))
+    if aufwand:
+        rueckgaengig.append(_aufwand(effektiv, aufwand))
     marke = usage.jetzt_utc()
     t0 = time.perf_counter()
     abbruch: str | None = None
@@ -920,7 +1063,7 @@ def messen(suite: Suite, *, lauf: int = 1, modell: str | None = None, tarif: str
     dauer = time.perf_counter() - t0
     erg = ergebnis(suite, roh, punkte.aufrufe, marke, lauf=lauf, modell=effektiv,
                    tarif=tarif, ohne_denken=ohne_denken, abbruch=abbruch,
-                   dauer_s=round(dauer, 1))
+                   dauer_s=round(dauer, 1), aufwand=aufwand)
     if tarif:
         erg["flex"] = punkte.flex
     return erg
@@ -928,7 +1071,7 @@ def messen(suite: Suite, *, lauf: int = 1, modell: str | None = None, tarif: str
 
 def ergebnis(suite: Suite, roh: dict, aufrufe: list[dict], marke: str, *, lauf: int,
              modell: str, tarif: str | None, ohne_denken: bool, abbruch: str | None,
-             dauer_s: float) -> dict:
+             dauer_s: float, aufwand: str | None = None) -> dict:
     """Das einheitliche Messformat aus Rohergebnis, Messpunkten und ``usage.seit``."""
     eigene = [a for a in aufrufe if a["feature"] in suite.gezaehlt]
     ok_ms = [a["ms"] for a in eigene if a["ok"]]
@@ -962,7 +1105,7 @@ def ergebnis(suite: Suite, roh: dict, aufrufe: list[dict], marke: str, *, lauf: 
         "titel": suite.titel,
         "kennzahl": suite.kennzahl,
         "modell": modell,
-        "variante": "ohne Denken" if ohne_denken else None,
+        "variante": _variante(ohne_denken, aufwand),
         "tarif": tarif,
         "lauf": lauf,
         "zeitstempel": datetime.now().isoformat(timespec="seconds"),
@@ -1031,9 +1174,15 @@ def _unterprozess(argv: list[str]) -> int:
     ap.add_argument("--modell", required=True)
     ap.add_argument("--tarif")
     ap.add_argument("--ohne-denken", action="store_true")
+    ap.add_argument("--aufwand", choices=AUFWAENDE)
     a = ap.parse_args(argv)
     suite = SUITEN[a.suite]
-    erg = messen(suite, lauf=a.lauf, modell=a.modell, tarif=a.tarif, ohne_denken=a.ohne_denken)
+    erg = messen(suite, lauf=a.lauf, modell=a.modell, tarif=a.tarif, ohne_denken=a.ohne_denken,
+                 aufwand=a.aufwand)
+    if os.environ.get(STICHPROBE_ENV):
+        # Eine Stichprobe ist mit einem vollen Lauf nicht Fall für Fall
+        # vergleichbar — das Ergebnis sagt, dass es eine war.
+        erg["stichprobe"] = int(os.environ[STICHPROBE_ENV])
     pfad = ablegen(erg)
     print(f"\n  → {zeile(erg)}\n    {pfad.relative_to(WURZEL)}", flush=True)
     return 0
@@ -1078,11 +1227,79 @@ def pruefe_tarif(suiten: Iterable[Suite], tarif: str | None) -> str | None:
     return None
 
 
-def starten(suite: Suite, modell: str, lauf: int, tarif: str | None, ohne_denken: bool) -> int:
+def kosten_schaetzen(suite: Suite, modell: str, laeufe: int = 1, *,
+                     stichprobe_n: int | None = None,
+                     ordner: Path = ERGEBNISSE) -> float | None:
+    """Was ``laeufe`` Läufe der Suite mit ``modell`` voraussichtlich kosten.
+
+    Aus dem jüngsten früheren Lauf derselben Suite mit bekanntem Preis und
+    echten Kosten (ohne Flex, der halbe Preise hat), hochgerechnet mit dem
+    Preisverhältnis — dem GRÖSSEREN aus Eingabe und Ausgabe, weil der
+    frühere Lauf beides nicht getrennt ausweist. Mit Stichprobe anteilig
+    nach Fällen. ``None``: kein Preis für ``modell`` oder kein früherer Lauf.
+    """
+    from eval import kostenbremse as kb
+    neu = kb.preis(modell)
+    if neu is None:
+        return None
+    for pfad in sorted((ordner / suite.name).glob("*.json"), reverse=True):
+        try:
+            e = json.loads(pfad.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        alt = kb.preis(e.get("modell") or "")
+        if (alt is None or e.get("abbruch") or e.get("tarif") or not e.get("kosten_usd")
+                or e.get("ohne_kostenwert") or not alt[0] or not alt[1]):
+            continue
+        faktor = max(neu[0] / alt[0], neu[1] / alt[1])
+        anteil = (min(1.0, stichprobe_n / e["faelle"])
+                  if stichprobe_n and e.get("faelle") else 1.0)
+        return float(e["kosten_usd"]) * faktor * anteil * laeufe
+    return None
+
+
+def kostenpruefung(suite: Suite, modell: str, laeufe: int, *, max_kosten: float,
+                   teuer_ok: bool, stichprobe_n: int | None, voll: bool,
+                   ordner: Path = ERGEBNISSE) -> tuple[int | None, str | None, str | None]:
+    """Die Kostenbremse vor einer Suite (``eval/kostenbremse.py``).
+
+    Gibt ``(stichprobe, grund, hinweis)`` zurück: die Fallzahl, mit der die
+    Suite läuft (``None`` = alle), den Grund, warum sie NICHT läuft, und
+    einen Hinweis für die Ausgabe.
+    """
+    from eval import kostenbremse as kb
+    n = stichprobe_n
+    if n and not suite.stichprobe:
+        return None, (f"{suite.name} kennt keine Stichprobe — ohne --stichprobe laufen "
+                      "oder eine Suite mit Stichprobe wählen"), None
+    if kb.teuer(modell) and not voll and not n:
+        if not suite.stichprobe:
+            return None, (f"{modell} ist teuer (Ausgabe über {kb.TEUER_AUSGABE_USD:.0f} $ je "
+                          f"Mio. Tokens), und {suite.name} kennt keine Stichprobe. Erst eine "
+                          "Suite mit Stichprobe; den vollen Lauf nur mit --voll."), None
+        n = kb.STICHPROBE_N
+    schaetzung = kosten_schaetzen(suite, modell, laeufe, stichprobe_n=n, ordner=ordner)
+    hinweis = (f"Stichprobe {n} Fälle; " if n else "") + (
+        f"geschätzt {schaetzung:.2f} $ für {laeufe} Lauf/Läufe" if schaetzung is not None
+        else "keine Schätzung (kein früherer Lauf mit Preis)")
+    if schaetzung is None and kb.preis(modell) is not None and not kb.teuer(modell):
+        # Ein billiges Modell auf einer Suite ohne Vorlauf: laufen lassen —
+        # sonst ließe sich eine neue Suite nie zum ersten Mal messen.
+        return n, None, hinweis
+    grund = kb.bremse(schaetzung, max_kosten=max_kosten, teuer_ok=teuer_ok, modell=modell,
+                      was=f"{suite.name} mit {modell}")
+    return n, grund, hinweis
+
+
+def starten(suite: Suite, modell: str, lauf: int, tarif: str | None, ohne_denken: bool,
+            aufwand: str | None = None, stichprobe_n: int | None = None) -> int:
     """Einen Lauf im eigenen Prozess mit eigener Kostendatei."""
     with tempfile.TemporaryDirectory(prefix="pruefstand-") as tmp:
         env = {**os.environ, suite.schalter: modell,
                "RATSLOTSE_SQLITE": str(Path(tmp) / "usage.sqlite")}
+        env.pop(STICHPROBE_ENV, None)
+        if stichprobe_n:
+            env[STICHPROBE_ENV] = str(stichprobe_n)
         if tarif:
             env[TARIF_ENV] = tarif
         argv = [sys.executable, str(Path(__file__).resolve()), "_lauf", "--suite", suite.name,
@@ -1091,6 +1308,8 @@ def starten(suite: Suite, modell: str, lauf: int, tarif: str | None, ohne_denken
             argv += ["--tarif", tarif]
         if ohne_denken:
             argv.append("--ohne-denken")
+        if aufwand:
+            argv += ["--aufwand", aufwand]
         return subprocess.run(argv, env=env, cwd=WURZEL).returncode
 
 
@@ -1296,7 +1515,7 @@ def bericht(ergebnisse: list[dict], *, heute: dict[str, str] | None = None,
             "",
             f"Schalter `{suite.schalter}` · Feature {', '.join(f'`{f}`' for f in suite.features)} · "
             f"{'Web (Latenz zählt)' if suite.web else 'live im Mitschnitt (Latenz = Verzug)' if suite.live else 'Cron (Latenz egal)'} · "
-            f"{'**Nutzereingabe** — nur mit ZDR, nie Flex/Batch' if suite.nutzereingabe else 'nur öffentliche Ratsdaten — ZDR nicht nötig'}",
+            f"{('**Nutzereingabe** — ohne ZDR (Tims Verzicht 23.09.2026, `llm.ZDR_VERZICHT`), nie Flex/Batch' if suite.zdr_verzicht else '**Nutzereingabe** — nur mit ZDR, nie Flex/Batch') if suite.nutzereingabe else 'nur öffentliche Ratsdaten — ZDR nicht nötig'}",
             "",
             f"Qualität: {suite.kennzahl}."
             + (f" {faelle} Fälle je Lauf" + (f" (ein Fall ≈ {_de(100 / faelle)} Pp)"
@@ -1343,6 +1562,16 @@ def bericht(ergebnisse: list[dict], *, heute: dict[str, str] | None = None,
                 f"{_spanne([e.get('ct_je_lauf') for e in ls], lambda x: _de(x, 2))} | "
                 f"{'nicht erfasst' if all(a is None for a in ausf) else sum(a or 0 for a in ausf)} | "
                 f"{'Bezug' if g is bezug else (urteil_mit_sperre(suite, bezug, g) if bezug else 'heutiges Modell nicht gemessen')} |")
+        # Läufe mit einem älteren Prompt oder einer älteren Fallliste liegen in
+        # Unterordnern (P4a: `vor-p4a/`). Sie gehören nicht in dieselbe Zeile
+        # wie die heutigen — derselbe Modellname mit anderem Prompt ist ein
+        # anderer Messgegenstand —, aber sie sollen auffindbar bleiben.
+        archiv = sorted(d for d in (ERGEBNISSE / suite.name).glob("*/") if any(d.glob("*.json")))
+        if archiv:
+            zeilen += ["", "Ältere Läufe (anderer Prompt oder andere Fallliste, hier nicht "
+                           "verglichen): " + ", ".join(
+                               f"`{d.relative_to(WURZEL).as_posix()}/` ({len(list(d.glob('*.json')))})"
+                               for d in archiv) + "."]
         quellen = sorted({e["quelle"] for g in gs for e in g.laeufe if e.get("quelle")})
         if quellen:
             zeilen += ["", f"¹ Übernommen aus `{Path(quellen[0]).parent.as_posix()}/` "
@@ -1470,7 +1699,20 @@ def main(argv: list[str] | None = None) -> int:
                     help="nur für Suiten ohne Nutzereingabe (Flex-Endpunkte haben kein ZDR)")
     ap.add_argument("--ohne-denken", action="store_true",
                     help="reasoning.enabled=false für das gewählte Modell (z. B. DeepSeek V4 Flash)")
+    ap.add_argument("--aufwand", choices=AUFWAENDE,
+                    help="reasoning.effort für das gewählte Modell (z. B. low bei GPT-6 Luna)")
+    # Kostenbremse (eval/kostenbremse.py, Tims Regel vom 23.09.2026)
+    ap.add_argument("--max-kosten", type=float, default=None,
+                    help="Grenze der geschätzten Kosten je Suite in USD (Vorgabe 1,00)")
+    ap.add_argument("--teuer-ok", action="store_true",
+                    help="auch über der Grenze bzw. ohne Schätzung laufen")
+    ap.add_argument("--stichprobe", type=int, metavar="N",
+                    help="geschichtete Stichprobe von N Fällen (nur Suiten, die das können)")
+    ap.add_argument("--voll", action="store_true",
+                    help="teures Modell: alle Fälle statt der Stichprobe")
     a = ap.parse_args(argv)
+    from eval import kostenbremse as kb
+    max_kosten = kb.MAX_KOSTEN_USD if a.max_kosten is None else a.max_kosten
 
     suiten = waehlen(a.suite)
     grund = pruefe_tarif(suiten, a.tarif)
@@ -1488,9 +1730,19 @@ def main(argv: list[str] | None = None) -> int:
             print(f"\n=== {suite.name}: übersprungen — {grund}")
             continue
         modell = a.modell or suite.modell_aktuell()
+        n, grund, hinweis = kostenpruefung(suite, modell, a.laeufe, max_kosten=max_kosten,
+                                           teuer_ok=a.teuer_ok, stichprobe_n=a.stichprobe,
+                                           voll=a.voll)
+        if grund:
+            print(f"\n=== {suite.name}: nicht gestartet — {grund}")
+            rot = True
+            continue
+        if hinweis:
+            print(f"\n    {suite.name}: {hinweis}")
         for lauf in range(1, a.laeufe + 1):
             print(f"\n=== {suite.name} · {modell} · Lauf {lauf}/{a.laeufe}", flush=True)
-            rot |= starten(suite, modell, lauf, a.tarif, a.ohne_denken) != 0
+            rot |= starten(suite, modell, lauf, a.tarif, a.ohne_denken, a.aufwand,
+                           stichprobe_n=n) != 0
     print("\nBericht neu schreiben: python eval/pruefstand.py bericht")
     return 1 if rot else 0
 

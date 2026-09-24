@@ -71,6 +71,8 @@ def test_was_zaehlt_und_was_nicht(store):
     zeitleiste = json.loads(g["timeline"])
     assert [p["paper_id"] for p in zeitleiste] == ["ha/1", "ms/1", "po/1", "ha/2"]
     assert all(p["body_id"] != "oldenburg" for p in zeitleiste)
+    assert zeitleiste[0]["title"] == "Hitzeaktionsplan aufstellen", \
+        "der Kurztitel reist für die Ablese-Zeile mit"
     staedte = json.loads(g["per_city"])
     assert [s["body_id"] for s in staedte] == ["hannover", "muenster", "potsdam"], \
         "je Stadt nach erstem Datum"

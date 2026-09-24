@@ -2016,6 +2016,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/council/budget/debt-comparison": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Haushalt Schuldenvergleich
+         * @description Die Schulden der acht kreisfreien Städte Niedersachsens — Kernhaushalt
+         *     und die Einrichtungen, die ihnen ganz gehören (``council/regionalstatistik.py``).
+         *
+         *     Je Jahr alle Städte alphabetisch, mit Beträgen und Werten je Einwohner*in.
+         *     Kein Rang. Nur Jahre, in denen Oldenburgs Kernhaushalt zur eigenen
+         *     Schuldenreihe passt, stehen im Bestand.
+         */
+        get: operations["haushalt_schuldenvergleich_api_council_budget_debt_comparison_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/council/budget/documents": {
         parameters: {
             query?: never;
@@ -2106,6 +2131,98 @@ export interface paths {
          *     zwei Jahre später.
          */
         get: operations["haushalt_vollzug_api_council_budget_execution_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/budget/federal-comparison": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Haushalt Bundesvergleich
+         * @description Oldenburg im Bundesvergleich (``council/bundesvergleich.py``).
+         *
+         *     Je Kennzahl und Jahr die Städte der Vergleichsgruppe mit ihrem Wert und die
+         *     Kennwerte der Verteilung (Spannweite, Quartile, Median) — gerechnet hier,
+         *     damit Web und App dieselben Zahlen zeigen. KEIN RANG: Die Antwort nennt
+         *     keinen Platz, und die Seite zeichnet keinen.
+         *
+         *     Nur Jahre, in denen Oldenburgs Wert die Probe gegen die eigenen Reihen
+         *     bestanden hat, stehen im Bestand.
+         */
+        get: operations["haushalt_bundesvergleich_api_council_budget_federal_comparison_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/budget/grants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Haushalt Zuschuesse
+         * @description Wer von der Stadt Zuschüsse bekommt — die Übersicht aus Anlage 003.
+         *
+         *     - ``rows``: die Zuschüsse eines Plans (Vorgabe: der jüngste), mit
+         *       ``sub_budget`` nur die eines Teilhaushalts, in Dokument-Reihenfolge,
+         *     - ``totals``: je Plan und Teilhaushalt Zahl und Summe — die Reihe über
+         *       alle eingelesenen Pläne, damit die Seite den Verlauf zeigen kann,
+         *       ohne acht Jahrgänge Zeilen zu laden,
+         *     - ``years``: die eingelesenen Pläne.
+         *
+         *     Vereine und Träger stehen mit Namen darin, wie in der Vorlage (Tims
+         *     Entscheidung 24.09.2026); Privatpersonen führt die Übersicht nicht.
+         *     Es ist der Entwurf der Verwaltung: Anlage 003 hängt an der
+         *     Einbringungs-Vorlage (``council/uebersichten.py``).
+         */
+        get: operations["haushalt_zuschuesse_api_council_budget_grants_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/budget/grants-received": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Haushalt Foerdermittel
+         * @description Fördermittel von EU und Bund — je Vorhaben der Stadt oder einer ihrer
+         *     Gesellschaften (``council/foerdermittel.py``).
+         *
+         *     - ``rows``: alle Vorhaben, jüngster Beginn zuerst,
+         *     - ``lists``: die eingelesenen Listen mit Datenstand, Zahl und Summe —
+         *       damit die Seite sagen kann, wie aktuell was ist,
+         *     - ``recipients``: Schlüssel → Anzeigename der Empfänger,
+         *     - ``rows[].templates``: Ratsvorlagen, die das Vorhaben erkennbar meinen,
+         *     - ``applications``: Förderanträge und Bewerbungen, die der Rat beraten hat
+         *       (``council/foerder_vorlagen.py``) — Anträge, keine Bewilligungen.
+         *
+         *     Beträge sind Bewilligungen, keine Auszahlungen. Städtebauförderung und
+         *     reine Landesprogramme stehen in keiner der Listen.
+         */
+        get: operations["haushalt_foerdermittel_api_council_budget_grants_received_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2228,6 +2345,9 @@ export interface paths {
          *       also samt laufender Verwaltungstätigkeit. Die Bezugsgröße, die aus
          *       „80,8 Mio. €" erst eine Aussage macht — und die einzige Zahl hier ohne
          *       Rechenprobe (eigene ``herkunft_id`` mit ``ungeprueft``, s. u.),
+         *     - ``finance_budget``: die Investitionszeilen des Gesamtfinanzhaushalts
+         *       (Anlage 006) aller Pläne — Summen, Saldo und Auszahlungsarten, je mit
+         *       ``kind`` (Ansatz oder Finanzplanung) und ``plan_budget_year``,
          *     - ``herkunft``: je ``herkunft_id`` Dokument, Fundstelle, bestandene Probe
          *       samt Messwert. Die geprüften Zeilen und die Bezugsgröße tragen
          *       **verschiedene** IDs; sie stehen in derselben Datei, aber nur die einen
@@ -2371,6 +2491,77 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/council/budget/measures": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Haushalt Budgetbericht
+         * @description Was aus den Investitionen eines Teilhaushalts im Jahr wird — die
+         *     Budgetberichte an die Fachausschüsse (``council/budgetberichte.py``).
+         *
+         *     ``reports`` nennt alle eingelesenen Stichtage, jüngster zuerst;
+         *     ``measures`` sind die Maßnahmen des gewählten (Vorgabe: des jüngsten),
+         *     in der Reihenfolge des Berichts. Eingelesen sind Jugend und Familie (11)
+         *     und Schule und Bildung (12); für andere Teilhaushalte ist die Antwort leer.
+         */
+        get: operations["haushalt_budgetbericht_api_council_budget_measures_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/budget/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Haushalt Vorbericht
+         * @description Was die Verwaltung im Vorbericht zu einem Teilhaushalt schreibt — je
+         *     Plan der Abschnitt zum Ergebnishaushalt und der zu den Investitionen, im
+         *     Wortlaut (``council/vorbericht.py``). Jüngster Plan zuerst.
+         */
+        get: operations["haushalt_vorbericht_api_council_budget_notes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/budget/preface-figures": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Haushalt Vorbericht Zahlen
+         * @description Zahlen aus dem Vorbericht der Haushaltspläne (``council/vorbericht_zahlen.py``):
+         *     Personalaufwand samt Rückstellungen, Steuerarten mit Prognose und
+         *     Finanzplanung, Jahresergebnisse. Je Plan, jüngster zuerst — die Seite
+         *     zeigt den jüngsten und lässt ältere wählen.
+         */
+        get: operations["haushalt_vorbericht_zahlen_api_council_budget_preface_figures_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/council/budget/products": {
         parameters: {
             query?: never;
@@ -2450,7 +2641,13 @@ export interface paths {
          *     - ``indicators``: die Zeitreihe je Gesellschaft (Jahresergebnis,
          *       Bilanzsumme, Eigenkapitalquote). ``n_reports`` sagt, wie viele Berichte
          *       denselben Wert nennen — 1 heißt „durch eine Probe im Dokument gedeckt",
-         *       mehr heißt zusätzlich „von einer zweiten Veröffentlichung bestätigt",
+         *       mehr heißt zusätzlich „von einer zweiten Veröffentlichung bestätigt"
+         *       (ein Jahresabschluss mit demselben Betrag zählt mit). ``source`` sagt,
+         *       woher die Zeile kommt: ``holdings_report`` (Beteiligungsbericht) oder
+         *       ``annual_accounts`` — das jüngste Jahr, das nur der Jahresabschluss der
+         *       Gesellschaft schon nennt, oder ein Jahr, in dem der Abschluss vom
+         *       Bericht abweicht und deshalb gilt (dann steht die Zahl des Berichts in
+         *       ``report_value``; ``council/gesellschaft_abschluss.py``),
          *     - ``group_comparison``: für die Gesellschaften, die auch im
          *       Gesamtabschluss stehen, beide Zahlen desselben Jahres nebeneinander.
          *       **Keine Probe** — die beiden Rechnungen unterscheiden sich systematisch,
@@ -2465,6 +2662,28 @@ export interface paths {
          *     aufgebaut und nicht maschinenlesbar (``council/beteiligungsbericht.py``).
          */
         get: operations["haushalt_beteiligungen_api_council_budget_shareholdings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/budget/source-stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Haushalt Quellenzahlen
+         * @description Wie viele Zahlen aus wie vielen Dokumenten der Bereich zusammenträgt —
+         *     gezählt aus dem Bestand, je Datenschicht und gesamt
+         *     (``council/quellenzahlen.py``). Zehn Minuten gepuffert.
+         */
+        get: operations["haushalt_quellenzahlen_api_council_budget_source_stats_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3109,6 +3328,53 @@ export interface paths {
          * @description Belegte Ratslotse-Ortsbereiche für den Beschlussfilter.
          */
         get: operations["districts_api_council_districts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/elected": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Elected Council
+         * @description Der gewählte Rat nach der letzten Ratswahl, bevor er in den Protokollen
+         *     steht: wer ab dem 1. November einen Sitz hat, mit Liste, Wahlbereich und
+         *     Personenstimmen.
+         *
+         *     Ohne Anmeldung lesbar: Es ist das bekannt gemachte Wahlergebnis, und die
+         *     Angaben (Name, Beruf, Jahrgang) stammen aus der amtlichen Bekanntmachung
+         *     der Wahlvorschläge.
+         */
+        get: operations["elected_council_api_council_elected_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/elected/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Elected Member
+         * @description Eine Person aus dem gewählten Rat — für die Personen-Seite, auch wenn
+         *     es aus den Protokollen noch kein Profil gibt. Öffentlich wie ``/elected``.
+         */
+        get: operations["elected_member_api_council_elected__slug__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4300,6 +4566,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/quiz/blitz-round": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Blitz Round
+         * @description Blitzrunde (Plan Q6): schnelle Fragen für 60 Sekunden, ohne Lösung.
+         *     Ausgewertet wird jede wie immer über ``/answer``.
+         */
+        get: operations["blitz_round_api_quiz_blitz_round_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/quiz/blitz/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Blitz Complete
+         * @description Einen Blitz-Lauf abschließen — bucht nur die Bestmarke.
+         */
+        post: operations["blitz_complete_api_quiz_blitz_complete_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/quiz/daily": {
         parameters: {
             query?: never;
@@ -4336,6 +4643,81 @@ export interface paths {
          *     hier nur Abschluss festhalten für „heute erledigt" + Serie).
          */
         post: operations["daily_complete_api_quiz_daily_complete_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/quiz/duel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Duel Create
+         * @description Eine gespielte Runde als Herausforderung (Plan Q9). Nur aktive Fragen.
+         */
+        post: operations["duel_create_api_quiz_duel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/quiz/duel/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Duel Get */
+        get: operations["duel_get_api_quiz_duel__code__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/quiz/duel/{code}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Duel Complete */
+        post: operations["duel_complete_api_quiz_duel__code__complete_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/quiz/joker": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Joker
+         * @description 50:50: zwei falsche Antworten streichen. Kostet die Hälfte der Punkte —
+         *     das rechnet ``/answer`` mit ``joker: true``.
+         */
+        post: operations["joker_api_quiz_joker_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4458,6 +4840,48 @@ export interface paths {
         post?: never;
         /** Own Delete */
         delete: operations["own_delete_api_quiz_own__question_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/quiz/pin-answer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Pin Answer
+         * @description Den Pin werten: Entfernung zur Geometrie des Orts, Punkte in Stufen.
+         *     Gebucht wie das Karten-Quiz (``question_id = 0``) auf den Ortsbereich des
+         *     Orts — so zählt es auf die Stadtkarte.
+         */
+        post: operations["pin_answer_api_quiz_pin_answer_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/quiz/pin-round": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Pin Round
+         * @description „Wo liegt das?" (Plan Q7): n Orte zum Verorten, ohne Lage.
+         */
+        get: operations["pin_round_api_quiz_pin_round_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -5466,6 +5890,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/wahlabend/karte": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Wahlabend Karte Je Bezirk
+         * @description Das Ergebnis je Urnenbezirk für die Stadtkarte: wer vorn lag, wie
+         *     deutlich, in welchen Ortsbereichen der Bezirk liegt — und je Wahlbereich
+         *     der Stand MIT Briefwahl (docs/plan-viertel-wahlkarte.md).
+         *
+         *     Öffentlich wie der Wahlabend, hinter demselben Schalter. Nichts
+         *     Persönliches, kein Sprachmodell: Zahlen der Stadt, gezählt.
+         */
+        get: operations["wahlabend_karte_je_bezirk_api_wahlabend_karte_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/wahlabend/karte.png": {
         parameters: {
             query?: never;
@@ -6123,6 +6572,8 @@ export interface components {
          * @description Kosten und Verbrauch eines Features (``kern.usage.summary``).
          */
         AdminLlmUsageFeature: {
+            /** By Model */
+            by_model: components["schemas"]["AdminLlmUsageModel"][];
             /** Calls */
             calls: number;
             /** Completion Tokens */
@@ -6139,6 +6590,18 @@ export interface components {
             models: string[];
             /** Prompt Tokens */
             prompt_tokens: number;
+        };
+        /**
+         * AdminLlmUsageModel
+         * @description Ein Modell innerhalb eines Features — Aufrufe und Kosten.
+         */
+        AdminLlmUsageModel: {
+            /** Calls */
+            calls: number;
+            /** Cost */
+            cost: number;
+            /** Model */
+            model: string;
         };
         /**
          * AdminLotti
@@ -6160,6 +6623,7 @@ export interface components {
             pages: components["schemas"]["AdminLottiZeile"][];
             /** Questions */
             questions: components["schemas"]["AdminLottiFrage"][];
+            self_check: components["schemas"]["AdminLottiSelbstpruefung"];
             /** Timeline */
             timeline: components["schemas"]["AdminLottiTag"][];
         };
@@ -6200,6 +6664,38 @@ export interface components {
             n: number;
             /** Question */
             question: string;
+        };
+        /** AdminLottiPruefSeite */
+        AdminLottiPruefSeite: {
+            /** Checked */
+            checked: number;
+            /** Poor */
+            poor: number;
+            /** Route */
+            route: string;
+        };
+        /**
+         * AdminLottiSelbstpruefung
+         * @description Lottis Selbstprüfung (``council/self_check.py``), eine stille Stichprobe —
+         *     nur Zahlen, keine Fragen.
+         */
+        AdminLottiSelbstpruefung: {
+            /** By Rules */
+            by_rules: number;
+            /** Checked */
+            checked: number;
+            /** Cost Usd */
+            cost_usd: number;
+            /** P50 Ms */
+            p50_ms: number | null;
+            /** Pages */
+            pages: components["schemas"]["AdminLottiPruefSeite"][];
+            /** Poor */
+            poor: number;
+            /** Reasons */
+            reasons: components["schemas"]["AdminLottiZeile"][];
+            /** Unknown */
+            unknown: number;
         };
         /** AdminLottiTag */
         AdminLottiTag: {
@@ -7558,6 +8054,10 @@ export interface components {
         BudgetDebt: {
             /** Column Kinds */
             column_kinds: unknown[];
+            /** Commitments */
+            commitments?: components["schemas"]["CommitmentRow"][];
+            /** Debt Plan */
+            debt_plan?: components["schemas"]["DebtPlanRow"][];
             guarantees: components["schemas"]["Guarantees"];
             /** Integrated Debt */
             integrated_debt: unknown;
@@ -7573,6 +8073,15 @@ export interface components {
             series: unknown;
             /** Years */
             years: unknown[];
+        };
+        /** BudgetDebtComparison */
+        BudgetDebtComparison: {
+            /** Provenance */
+            provenance: {
+                [key: string]: components["schemas"]["Herkunft"];
+            };
+            /** Years */
+            years: components["schemas"]["CityDebtYear"][];
         };
         /** BudgetDispute */
         BudgetDispute: {
@@ -7615,6 +8124,16 @@ export interface components {
             /** Totals */
             totals: unknown;
         };
+        /** BudgetFederalComparison */
+        BudgetFederalComparison: {
+            group: components["schemas"]["FederalGroup"];
+            /** Indicators */
+            indicators: components["schemas"]["FederalIndicator"][];
+            /** Provenance */
+            provenance: {
+                [key: string]: components["schemas"]["Herkunft"];
+            };
+        };
         /** BudgetFixedAssets */
         BudgetFixedAssets: {
             /** Accounting Systems */
@@ -7632,6 +8151,40 @@ export interface components {
             series: unknown;
             /** Years */
             years: unknown[];
+        };
+        /** BudgetGrants */
+        BudgetGrants: {
+            /** Provenance */
+            provenance: {
+                [key: string]: components["schemas"]["Herkunft"];
+            };
+            /** Rows */
+            rows: components["schemas"]["GrantRow"][];
+            /** Totals */
+            totals: components["schemas"]["GrantTotal"][];
+            /** Year */
+            year: number | null;
+            /** Years */
+            years: number[];
+        };
+        /** BudgetGrantsReceived */
+        BudgetGrantsReceived: {
+            /** Applications */
+            applications: components["schemas"]["GrantTemplate"][];
+            /** Lists */
+            lists: components["schemas"]["GrantReceivedList"][];
+            /** Provenance */
+            provenance: {
+                [key: string]: components["schemas"]["Herkunft"];
+            };
+            /** Recipients */
+            recipients: {
+                [key: string]: string;
+            };
+            /** Rows */
+            rows: components["schemas"]["GrantReceivedRow"][];
+            /** Totals */
+            totals: components["schemas"]["GrantReceivedTotal"][];
         };
         /** BudgetGroup */
         BudgetGroup: {
@@ -7690,6 +8243,8 @@ export interface components {
         };
         /** BudgetInvestments */
         BudgetInvestments: {
+            /** Finance Budget */
+            finance_budget?: components["schemas"]["FinanceBudgetRow"][];
             /** Financial Budget */
             financial_budget: unknown[];
             /** Investments */
@@ -7810,6 +8365,100 @@ export interface components {
             scope_note: string;
         };
         /**
+         * BudgetMeasure
+         * @description Eine Investitionsmaßnahme im Budgetbericht. ``kind``: ``A`` Auszahlung,
+         *     ``E`` Einzahlung. ``measure_no`` ist die I10-Nummer (bei einem Bereich
+         *     „… bis …" die erste, ``measure_no_to`` die letzte) und kann fehlen.
+         *     ``note`` ist die Erläuterung der Verwaltung im Wortlaut.
+         */
+        BudgetMeasure: {
+            /** Carryover */
+            carryover: number | null;
+            /** Forecast */
+            forecast: number | null;
+            /** Herkunft Id */
+            herkunft_id: number | null;
+            /** Kind */
+            kind: string;
+            /** Measure No */
+            measure_no: string | null;
+            /** Measure No To */
+            measure_no_to: string | null;
+            /** Name */
+            name: string;
+            /** Note */
+            note: string | null;
+            /** Planned */
+            planned: number | null;
+            /** Seq */
+            seq: number;
+        };
+        /**
+         * BudgetMeasureReport
+         * @description Ein eingelesener Budgetbericht: Stichtag, Vorlage, Zahl der Maßnahmen
+         *     und die Summen der Auszahlungen (Ansatz, Prognose zum Jahresende).
+         */
+        BudgetMeasureReport: {
+            /** As Of */
+            as_of: string;
+            /** Budget Year */
+            budget_year: number;
+            /** Forecast */
+            forecast: number | null;
+            /** N */
+            n: number;
+            /** Planned */
+            planned: number | null;
+            /** Template Number */
+            template_number: string | null;
+        };
+        /** BudgetMeasures */
+        BudgetMeasures: {
+            /** As Of */
+            as_of: string | null;
+            /** Measures */
+            measures: components["schemas"]["BudgetMeasure"][];
+            /** Provenance */
+            provenance: {
+                [key: string]: components["schemas"]["Herkunft"];
+            };
+            /** Reports */
+            reports: components["schemas"]["BudgetMeasureReport"][];
+        };
+        /**
+         * BudgetNote
+         * @description Ein Abschnitt des Vorberichts zu einem Teilhaushalt, im Wortlaut.
+         *
+         *     ``kind``: ``result`` (Abschnitt 2.4.2.x, Ergebnishaushalt) oder
+         *     ``investments`` (3.2.2.x). ``text`` sind Absätze, getrennt durch eine
+         *     Leerzeile — ohne die Tabellen und Grafiken des Originals.
+         */
+        BudgetNote: {
+            /** Budget Year */
+            budget_year: number;
+            /** Herkunft Id */
+            herkunft_id: number | null;
+            /** Kind */
+            kind: string;
+            /** Page */
+            page: number | null;
+            /** Sub Budget No */
+            sub_budget_no: number;
+            /** Text */
+            text: string;
+            /** Title */
+            title: string;
+        };
+        /** BudgetNotes */
+        BudgetNotes: {
+            /** Notes */
+            notes: components["schemas"]["BudgetNote"][];
+            /** Provenance */
+            provenance: {
+                [key: string]: components["schemas"]["Herkunft"];
+            };
+        };
+        /**
          * BudgetOverview
          * @description ``/api/council/budget`` — das Datenfundament des Haushalts-Bereichs.
          *
@@ -7830,6 +8479,8 @@ export interface components {
             audit_report_sources?: unknown;
             /** Budget Bylaw */
             budget_bylaw?: unknown;
+            /** Budget Bylaw Published */
+            budget_bylaw_published?: unknown;
             /** Budgeted Years */
             budgeted_years?: unknown;
             /** Business Plans */
@@ -7888,6 +8539,15 @@ export interface components {
             /** Rounds */
             rounds: unknown;
         };
+        /** BudgetPrefaceFigures */
+        BudgetPrefaceFigures: {
+            /** Plans */
+            plans: components["schemas"]["PrefacePlan"][];
+            /** Provenance */
+            provenance: {
+                [key: string]: components["schemas"]["Herkunft"];
+            };
+        };
         /** BudgetProducts */
         BudgetProducts: {
             /** All Years */
@@ -7906,6 +8566,34 @@ export interface components {
             products: unknown;
             /** Year */
             year: unknown;
+        };
+        /**
+         * BudgetSourceStats
+         * @description Woher die Zahlen kommen (``council/quellenzahlen.py``). ``numbers``
+         *     zählt numerische Zellen ohne Schlüssel (Jahre, Seiten, Kennungen);
+         *     ``documents`` eigenständige Belege; ``citations`` Belegstellen;
+         *     ``probe_kinds``/``probe_runs`` die bestandenen Proben beim Einlesen.
+         */
+        BudgetSourceStats: {
+            /** Citations */
+            citations: number;
+            /** Documents */
+            documents: number;
+            /** Layers */
+            layers: components["schemas"]["SourceStatsLayer"][];
+            /** Numbers */
+            numbers: number;
+            other: components["schemas"]["SourceStatsOther"];
+            /** Probe Kinds */
+            probe_kinds: number;
+            /** Probe Runs */
+            probe_runs: number;
+            /** Rows */
+            rows: number;
+            /** Sources */
+            sources: components["schemas"]["SourceStatsSource"][];
+            /** Tables */
+            tables: number;
         };
         /** BudgetStaffPlan */
         BudgetStaffPlan: {
@@ -7975,6 +8663,37 @@ export interface components {
             current_password: string;
             /** New Password */
             new_password: string;
+        };
+        /**
+         * CityDebt
+         * @description Die Schulden einer Stadt zum 31.12. — ``debt_core`` im Kernhaushalt,
+         *     ``debt_entities`` in den Einrichtungen, die ihr zu 100 % gehören, beides
+         *     in Euro und je Einwohner*in (Einwohner am 30.06. desselben Jahres).
+         */
+        CityDebt: {
+            /** City */
+            city: string;
+            /** Core Per Capita */
+            core_per_capita: number | null;
+            /** Debt Core */
+            debt_core: number | null;
+            /** Debt Entities */
+            debt_entities: number | null;
+            /** Entities Per Capita */
+            entities_per_capita: number | null;
+            /** Is Oldenburg */
+            is_oldenburg: boolean;
+            /** Key */
+            key: string;
+            /** Population */
+            population: number | null;
+        };
+        /** CityDebtYear */
+        CityDebtYear: {
+            /** Cities */
+            cities: components["schemas"]["CityDebt"][];
+            /** Year */
+            year: number;
         };
         /**
          * CityMapPoint
@@ -8134,6 +8853,20 @@ export interface components {
              * @default
              */
             stack: string;
+        };
+        /**
+         * CommitmentRow
+         * @description Eine Fälligkeit aus den Verpflichtungsermächtigungen eines Plans.
+         */
+        CommitmentRow: {
+            /** Amount */
+            amount: number;
+            /** Budget Year */
+            budget_year: number;
+            /** Due Year */
+            due_year: number;
+            /** Herkunft Id */
+            herkunft_id: number | null;
         };
         /** CommitteeDetail */
         CommitteeDetail: {
@@ -8338,6 +9071,31 @@ export interface components {
             unit: string | null;
             /** Was */
             was: string;
+        };
+        /**
+         * DebtPlanRow
+         * @description Der voraussichtliche Stand der Schulden laut Haushaltsplan (Anlage 003).
+         *
+         *     ``entity`` ist „Kernhaushalt" oder ein Eigenbetrieb, ``code`` die
+         *     Schuldenart (1.2 Kredite für Investitionen … 5) oder ``total``.
+         *     ``start_prior`` ist der Stand zu Beginn des Vorjahres, ``start_expected``
+         *     der erwartete zu Beginn des Planjahres — beide in Euro.
+         */
+        DebtPlanRow: {
+            /** Budget Year */
+            budget_year: number;
+            /** Code */
+            code: string;
+            /** Entity */
+            entity: string;
+            /** Herkunft Id */
+            herkunft_id: number | null;
+            /** Label */
+            label: string;
+            /** Start Expected */
+            start_expected: number | null;
+            /** Start Prior */
+            start_prior: number | null;
         };
         /**
          * DecisionDetail
@@ -9082,6 +9840,121 @@ export interface components {
             /** Districts */
             districts: unknown;
         };
+        /**
+         * ElectedAffiliation
+         * @description Die Zugehörigkeit im neuen Rat, wo sie von der Wahlliste abweicht.
+         */
+        ElectedAffiliation: {
+            /** Label */
+            label: string;
+            /** Note */
+            note: string | null;
+            /** Source */
+            source: string | null;
+        };
+        /**
+         * ElectedCouncil
+         * @description Der gewählte Rat nach einer Ratswahl — bevor er in den Protokollen steht.
+         */
+        ElectedCouncil: {
+            /** Date */
+            date: string;
+            /** Election */
+            election: string;
+            /** Members */
+            members: components["schemas"]["ElectedMember"][];
+            /** Seats */
+            seats: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "vorlaeufig" | "amtlich";
+            /** Term Start */
+            term_start: string;
+            /** Title */
+            title: string;
+            /** Vacancies */
+            vacancies: components["schemas"]["ElectedVacancy"][];
+        };
+        /**
+         * ElectedMember
+         * @description Eine Person mit Sitz im gewählten Rat (``app.election.elected``).
+         *
+         *     ``slug`` ist derselbe wie auf der Personen-Seite; ``has_profile`` sagt, ob
+         *     es dort schon ein Profil aus den Protokollen gibt, ``council_status``, ob
+         *     die Person dem Rat schon angehörte (und nicht nur einen Ausschuss beriet).
+         */
+        ElectedMember: {
+            /**
+             * ElectedAffiliation
+             * @description Die Zugehörigkeit im neuen Rat, wo sie von der Wahlliste abweicht.
+             */
+            affiliation: {
+                /** Label */
+                label: string;
+                /** Note */
+                note: string | null;
+                /** Source */
+                source: string | null;
+            } | null;
+            /** Area */
+            area: number;
+            /** Area Name */
+            area_name: string;
+            /** Area Roman */
+            area_roman: string;
+            /** Born */
+            born: number | null;
+            /** Color */
+            color: string;
+            /** Color Dark */
+            color_dark: string;
+            /**
+             * Council Status
+             * @enum {string}
+             */
+            council_status: "new" | "current" | "former";
+            /** Council Terms */
+            council_terms: number[];
+            /** Has Profile */
+            has_profile: boolean;
+            /** List */
+            list: string;
+            /** List Short */
+            list_short: string;
+            /**
+             * Mandate
+             * @enum {string}
+             */
+            mandate: "direct" | "list" | "transfer" | "unknown" | "successor";
+            /** Name */
+            name: string;
+            /** Occupation */
+            occupation: string | null;
+            /** Position */
+            position: number | null;
+            /** Slug */
+            slug: string;
+            /** Votes */
+            votes: number | null;
+        };
+        /**
+         * ElectedVacancy
+         * @description Ein Sitz, dessen gewählte Person ihn nicht antritt.
+         */
+        ElectedVacancy: {
+            /** List Short */
+            list_short: string;
+            /** Name */
+            name: string;
+            /** Reason */
+            reason: string;
+            /** Source */
+            source: string | null;
+            /** Successor */
+            successor: string | null;
+        };
         /** ElectionArea */
         ElectionArea: {
             /** Districts Counted */
@@ -9547,6 +10420,145 @@ export interface components {
             slug: string;
             /** Votes */
             votes: number | null;
+        };
+        /**
+         * ElectionMap
+         * @description ``GET /api/wahlabend/karte`` — das Ergebnis je Wahlbezirk für die
+         *     Stadtkarte (docs/plan-viertel-wahlkarte.md). Gerechnet wird hier, nicht
+         *     in Web und App: wer vorn lag, wie deutlich, wo der Bezirk liegt.
+         */
+        ElectionMap: {
+            /** Areas */
+            areas: components["schemas"]["ElectionMapArea"][];
+            /** Contestants */
+            contestants: components["schemas"]["ElectionMapContestant"][];
+            /** Counted */
+            counted: number;
+            /** Districts */
+            districts: components["schemas"]["ElectionMapDistrict"][];
+            election: components["schemas"]["ElectionMapChoice"];
+            /** Elections */
+            elections: components["schemas"]["ElectionMapChoice"][];
+            /** Phase */
+            phase: string;
+            /** Place */
+            place: string | null;
+            /** Postal Share Pct */
+            postal_share_pct: number | null;
+            /** Ties */
+            ties: number;
+            /** Total */
+            total: number;
+            /** Wins */
+            wins: components["schemas"]["ElectionMapWin"][];
+        };
+        /**
+         * ElectionMapArea
+         * @description Ein Wahlbereich MIT Briefwahl — der Vergleich neben dem Bezirk, denn
+         *     die Briefwahl (2026 ein Drittel der Stimmen) hat keine Fläche.
+         */
+        ElectionMapArea: {
+            /** Counted */
+            counted: number;
+            /** Leader */
+            leader: string | null;
+            /** Number */
+            number: number;
+            /** Parties */
+            parties: components["schemas"]["ElectionMapShare"][];
+            /** Roman */
+            roman: string;
+            /** Total */
+            total: number;
+            /** Valid Votes */
+            valid_votes: number | null;
+        };
+        /**
+         * ElectionMapChoice
+         * @description Eine Wahl, die die Karte zeigen kann.
+         */
+        ElectionMapChoice: {
+            /** Date */
+            date: string;
+            /** Kind */
+            kind: string;
+            /** Label */
+            label: string;
+            /** Slug */
+            slug: string;
+        };
+        /**
+         * ElectionMapContestant
+         * @description Eine Liste (Ratswahl) oder Kandidatur (OB-Wahl) mit ihrer Kartenfarbe.
+         */
+        ElectionMapContestant: {
+            /** Color */
+            color: string;
+            /** Color Dark */
+            color_dark: string;
+            /** Name */
+            name: string;
+            /** Short */
+            short: string;
+            /** Slug */
+            slug: string;
+        };
+        /**
+         * ElectionMapDistrict
+         * @description Ein Urnenbezirk auf der Karte: wer vorn lag, wie deutlich, und wo er liegt.
+         */
+        ElectionMapDistrict: {
+            /** Area */
+            area: number;
+            /** Counted */
+            counted: boolean;
+            /** Leader */
+            leader: string | null;
+            /** Margin Pct */
+            margin_pct: number | null;
+            /** Name */
+            name: string;
+            /** Number */
+            number: number;
+            /** Parties */
+            parties: components["schemas"]["ElectionMapShare"][];
+            /** Places */
+            places: components["schemas"]["ElectionMapPlace"][];
+            /** Runner Up */
+            runner_up: string | null;
+            /** Turnout Pct */
+            turnout_pct: number | null;
+            /** Valid Votes */
+            valid_votes: number | null;
+        };
+        /**
+         * ElectionMapPlace
+         * @description Ein Ortsbereich, in dem ein Wahlbezirk liegt — mit Flächenanteil 0…1.
+         */
+        ElectionMapPlace: {
+            /** Name */
+            name: string;
+            /** Share */
+            share: number;
+        };
+        /** ElectionMapShare */
+        ElectionMapShare: {
+            /** Share Pct */
+            share_pct: number | null;
+            /** Slug */
+            slug: string;
+            /** Votes */
+            votes: number | null;
+        };
+        /**
+         * ElectionMapWin
+         * @description Die Legende: in wie vielen Urnenbezirken eine Liste vorn lag.
+         */
+        ElectionMapWin: {
+            /** Districts */
+            districts: number;
+            /** Slug */
+            slug: string;
         };
         /** ElectionNight */
         ElectionNight: {
@@ -10084,6 +11096,80 @@ export interface components {
             parties: string[];
         };
         /**
+         * FederalCity
+         * @description Eine Stadt der Vergleichsgruppe in einem Jahr. ``key`` ist der
+         *     Gemeindeschlüssel (AGS), ``population`` die Einwohnerzahl desselben
+         *     Jahres aus demselben Portal.
+         */
+        FederalCity: {
+            /** City */
+            city: string;
+            /** Is Oldenburg */
+            is_oldenburg: boolean;
+            /** Key */
+            key: string;
+            /** Lower Saxony */
+            lower_saxony: boolean;
+            /** Population */
+            population: number | null;
+            /** Value */
+            value: number;
+        };
+        /**
+         * FederalGroup
+         * @description Die Regel der Vergleichsgruppe: kreisfreie Städte zwischen
+         *     ``population_min`` und ``population_max`` Einwohner*innen, dazu alle
+         *     Niedersachsens. ``n`` Städte, davon ``lower_saxony`` in Niedersachsen.
+         */
+        FederalGroup: {
+            /** Lower Saxony */
+            lower_saxony: number;
+            /** N */
+            n: number;
+            /** Population Max */
+            population_max: number;
+            /** Population Min */
+            population_min: number;
+        };
+        /** FederalIndicator */
+        FederalIndicator: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Unit */
+            unit: string;
+            /** Years */
+            years: components["schemas"]["FederalYear"][];
+        };
+        /** FederalStats */
+        FederalStats: {
+            /** Max */
+            max: number | null;
+            /** Median */
+            median: number | null;
+            /** Min */
+            min: number | null;
+            /** N */
+            n: number;
+            /** P25 */
+            p25: number | null;
+            /** P75 */
+            p75: number | null;
+            /** Zero */
+            zero: number;
+        };
+        /** FederalYear */
+        FederalYear: {
+            /** Cities */
+            cities: components["schemas"]["FederalCity"][];
+            /** Oldenburg */
+            oldenburg: number | null;
+            stats: components["schemas"]["FederalStats"];
+            /** Year */
+            year: number;
+        };
+        /**
          * FeedbackAck
          * @description Die Bestätigung einer Rückmeldung — mehr braucht die Karte nicht.
          */
@@ -10114,6 +11200,35 @@ export interface components {
              * @default
              */
             message: string;
+        };
+        /**
+         * FinanceBudgetRow
+         * @description Eine Investitionszeile des Gesamtfinanzhaushalts (Anlage 006).
+         *
+         *     ``kind`` trennt den Ansatz des Planjahres (``budget``) von der
+         *     Finanzplanung (``financial_plan``); ``plan_budget_year`` sagt, aus welchem
+         *     Plan die Zahl stammt. ``role`` ist nur bei den Summen und dem Saldo
+         *     gesetzt, die übrigen Zeilen sind die Auszahlungs- und Einzahlungsarten.
+         */
+        FinanceBudgetRow: {
+            /** Amount */
+            amount: number;
+            /** Herkunft Id */
+            herkunft_id: number | null;
+            /** Is Total */
+            is_total: number;
+            /** Kind */
+            kind: string;
+            /** Label */
+            label: string;
+            /** Nr */
+            nr: number;
+            /** Plan Budget Year */
+            plan_budget_year: number;
+            /** Role */
+            role: string | null;
+            /** Year */
+            year: number;
         };
         /** Finances */
         Finances: {
@@ -10230,6 +11345,153 @@ export interface components {
         Goals: {
             /** Goals */
             goals: components["schemas"]["Goal"][];
+        };
+        /**
+         * GrantReceivedList
+         * @description Eine eingelesene Liste: EU je Fonds und Förderperiode, dazu der
+         *     Förderkatalog. ``list_as_of`` ist der Datenstand der Liste.
+         */
+        GrantReceivedList: {
+            /** Amount */
+            amount: number;
+            /** List As Of */
+            list_as_of: string | null;
+            /** List Url */
+            list_url: string | null;
+            /** N */
+            n: number;
+            /** Period */
+            period: string | null;
+            /** Source */
+            source: string;
+        };
+        /**
+         * GrantReceivedRow
+         * @description Ein gefördertes Vorhaben der Stadt oder einer Gesellschaft.
+         *
+         *     ``funder`` ist „EU" oder das Bundesressort (BMV, BMWE …),
+         *     ``amount_granted`` der bewilligte Unionsbeitrag bzw. Bundesanteil — nicht
+         *     das Ausgezahlte. ``amount_total`` (förderfähige bzw. Gesamtkosten) führen
+         *     nur die EU-Listen. ``recipient`` steht so in der Liste, ``recipient_key``
+         *     ist der Schlüssel aus ``council/foerdermittel.EMPFAENGER``.
+         */
+        GrantReceivedRow: {
+            /** Amount Granted */
+            amount_granted: number | null;
+            /** Amount Total */
+            amount_total: number | null;
+            /** End */
+            end: string | null;
+            /** Funder */
+            funder: string;
+            /** Herkunft Id */
+            herkunft_id: number | null;
+            /** Period */
+            period: string | null;
+            /** Program */
+            program: string | null;
+            /** Recipient */
+            recipient: string;
+            /** Recipient Key */
+            recipient_key: string;
+            /** Source */
+            source: string;
+            /** Source Id */
+            source_id: string;
+            /** Start */
+            start: string | null;
+            /** Summary */
+            summary: string | null;
+            /** Templates */
+            templates: components["schemas"]["GrantTemplate"][];
+            /** Title */
+            title: string;
+        };
+        /**
+         * GrantReceivedTotal
+         * @description Je Geber (``eu`` oder ``bund``): Zahl der Vorhaben und bewilligte Summe.
+         */
+        GrantReceivedTotal: {
+            /** Amount */
+            amount: number;
+            /** Group */
+            group: string;
+            /** N */
+            n: number;
+        };
+        /**
+         * GrantRow
+         * @description Ein Zuschuss an Dritte aus der Übersicht in Anlage 003.
+         *
+         *     ``description`` ist die Spalte „Beschreibung der Zuwendung" und nennt
+         *     meist den Empfänger („Zuschuss Reparaturrat"), ``note`` die Erläuterung.
+         *     ``amount`` ist der Ansatz im Planjahr, ``amount_prior`` der im Vorjahr —
+         *     beide aus demselben Plan. ``cash``: 1 bar, 0 unbar, ``None`` ohne Angabe
+         *     (2019 führt die Spalte nicht). ``lfd_nr`` ist die Nummer der Stadt und
+         *     nicht eindeutig; die Reihenfolge ist ``seq``.
+         */
+        GrantRow: {
+            /** Amount */
+            amount: number | null;
+            /** Amount Prior */
+            amount_prior: number | null;
+            /** Budget Year */
+            budget_year: number;
+            /** Cash */
+            cash: number | null;
+            /** Description */
+            description: string;
+            /** Herkunft Id */
+            herkunft_id: number | null;
+            /** Lfd Nr */
+            lfd_nr: number;
+            /** Note */
+            note: string | null;
+            /** Product Name */
+            product_name: string | null;
+            /** Product No */
+            product_no: string | null;
+            /** Seq */
+            seq: number;
+            /** Sub Budget No */
+            sub_budget_no: number;
+        };
+        /**
+         * GrantTemplate
+         * @description Eine Ratsvorlage zu Fördergeld (``council/foerder_vorlagen.py``) mit
+         *     ihrer LETZTEN Beratung: Datum, Gremium, Ergebnis, Beschluss-Id für den
+         *     Link. ``basis`` nur an einem Vorhaben: ``amount`` (Betrag und Name stehen
+         *     im Text) oder ``title`` (der Vorlagentitel steht im Titel des Vorhabens).
+         */
+        GrantTemplate: {
+            /** Basis */
+            basis?: string;
+            /** Committee */
+            committee: string | null;
+            /** Date */
+            date: string | null;
+            /** Decision Id */
+            decision_id: number | null;
+            /** Outcome */
+            outcome: string | null;
+            /** Template Number */
+            template_number: string;
+            /** Title */
+            title: string;
+        };
+        /**
+         * GrantTotal
+         * @description Je Plan und Teilhaushalt: Zahl und Summe der Zuschüsse im Planjahr.
+         */
+        GrantTotal: {
+            /** Amount */
+            amount: number;
+            /** Budget Year */
+            budget_year: number;
+            /** N */
+            n: number;
+            /** Sub Budget No */
+            sub_budget_no: number;
         };
         /**
          * GuaranteeRow
@@ -12432,6 +13694,33 @@ export interface components {
             /** Tip */
             tip: number;
         };
+        /**
+         * PrefaceFigure
+         * @description Ein Wert aus dem Vorbericht. ``variant``: ``actual`` (Ist),
+         *     ``prior_budget`` (Plan des Vorjahres), ``forecast`` (Prognose der
+         *     Kämmerei), ``budget`` (Ansatz des Planjahres), ``financial_plan``.
+         */
+        PrefaceFigure: {
+            /** Amount */
+            amount: number;
+            /** Herkunft Id */
+            herkunft_id: number | null;
+            /** Page */
+            page: number | null;
+            /** Series */
+            series: string;
+            /** Variant */
+            variant: string;
+            /** Year */
+            year: number;
+        };
+        /** PrefacePlan */
+        PrefacePlan: {
+            /** Figures */
+            figures: components["schemas"]["PrefaceFigure"][];
+            /** Plan Budget Year */
+            plan_budget_year: number;
+        };
         /** ProjectReportIn */
         ProjectReportIn: {
             /** Reason */
@@ -12697,6 +13986,13 @@ export interface components {
         };
         /** QuizAnswerIn */
         QuizAnswerIn: {
+            /**
+             * Joker
+             * @default false
+             */
+            joker: boolean;
+            /** Order */
+            order?: number[] | null;
             /** Question Id */
             question_id: number;
             /** Selected Index */
@@ -12784,12 +14080,33 @@ export interface components {
              */
             tier: "bronze" | "silber" | "gold";
         };
+        /** QuizBlitzIn */
+        QuizBlitzIn: {
+            /** Answered */
+            answered: number;
+            /** Correct */
+            correct: number;
+        };
+        /**
+         * QuizBlitzResult
+         * @description Abschluss einer Blitzrunde: Bestmarke gesamt und heute.
+         */
+        QuizBlitzResult: {
+            /** Best */
+            best: number;
+            /** New Best */
+            new_best: boolean;
+            /** Today Best */
+            today_best: number;
+        };
         /** QuizDailyIn */
         QuizDailyIn: {
             /** Correct */
             correct: number;
             /** Points */
             points: number;
+            /** Results */
+            results?: boolean[] | null;
             /** Total */
             total: number;
         };
@@ -12836,8 +14153,80 @@ export interface components {
             day: string;
             /** Ok */
             ok: boolean;
+            /** Share Text */
+            share_text?: string;
             /** Streak */
             streak: number;
+        };
+        /**
+         * QuizDistrictProgress
+         * @description Ein Ortsbereich auf der Fortschrittskarte (``routers.quiz._district_progress``).
+         *     ``level`` 0–3 samt Wort, damit Web und App dieselbe Schwelle zeigen.
+         */
+        QuizDistrictProgress: {
+            /** Answered */
+            answered: number;
+            /** Correct */
+            correct: number;
+            /** District */
+            district: string;
+            /**
+             * Level
+             * @enum {integer}
+             */
+            level: 0 | 1 | 2 | 3;
+            /** Level Label */
+            level_label: string;
+        };
+        /**
+         * QuizDuel
+         * @description Ein Duell (Plan Q9). ``questions`` ohne Lösung; ``players`` erst,
+         *     wenn ich gespielt habe oder das Duell meins ist — sonst verriete die
+         *     Liste, wie schwer die Runde ist, bevor man sie spielt.
+         */
+        QuizDuel: {
+            /** Code */
+            code: string;
+            /** Mine */
+            mine: boolean;
+            /** Owner Correct */
+            owner_correct: number;
+            /** Owner Name */
+            owner_name: string;
+            /** Played */
+            played: boolean;
+            /** Players */
+            players: components["schemas"]["QuizDuelPlayer"][];
+            /** Questions */
+            questions: components["schemas"]["QuizQuestion"][];
+            /** Total */
+            total: number;
+        };
+        /** QuizDuelCreated */
+        QuizDuelCreated: {
+            /** Code */
+            code: string;
+        };
+        /** QuizDuelDoneIn */
+        QuizDuelDoneIn: {
+            /** Correct */
+            correct: number;
+        };
+        /** QuizDuelIn */
+        QuizDuelIn: {
+            /** Correct */
+            correct: number;
+            /** Question Ids */
+            question_ids: number[];
+        };
+        /** QuizDuelPlayer */
+        QuizDuelPlayer: {
+            /** Correct */
+            correct: number;
+            /** Me */
+            me: boolean;
+            /** Name */
+            name: string;
         };
         /** QuizFlagged */
         QuizFlagged: {
@@ -12869,6 +14258,19 @@ export interface components {
             /** Question Id */
             question_id: number;
         };
+        /**
+         * QuizJoker
+         * @description Die zwei falschen Antworten, die der 50:50-Joker streicht.
+         */
+        QuizJoker: {
+            /** Remove */
+            remove: number[];
+        };
+        /** QuizJokerIn */
+        QuizJokerIn: {
+            /** Question Id */
+            question_id: number;
+        };
         /** QuizMapIn */
         QuizMapIn: {
             /** Clicked */
@@ -12897,10 +14299,65 @@ export interface components {
             /** Questions */
             questions: components["schemas"]["QuizMapQuestion"][];
         };
+        /**
+         * QuizOthers
+         * @description Wie die anderen bei dieser Frage lagen — erst ab
+         *     ``routers.quiz.OTHERS_MIN`` Mitspielenden, sonst fehlt das Feld.
+         */
+        QuizOthers: {
+            /** Correct Pct */
+            correct_pct: number;
+            /** Players */
+            players: number;
+        };
         /** QuizOwnQuestions */
         QuizOwnQuestions: {
             /** Questions */
             questions: components["schemas"]["UserQuizQuestion"][];
+        };
+        /** QuizPinIn */
+        QuizPinIn: {
+            /** Lat */
+            lat: number;
+            /** Lon */
+            lon: number;
+            /** Slug */
+            slug: string;
+        };
+        /** QuizPinQuestion */
+        QuizPinQuestion: {
+            /** Kind Label */
+            kind_label: string;
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+        };
+        /**
+         * QuizPinResult
+         * @description Auflösung von „Wo liegt das?": Entfernung zur Geometrie, Punkte, und
+         *     die Geometrie selbst zum Einzeichnen.
+         */
+        QuizPinResult: {
+            /** Distance Label */
+            distance_label: string;
+            /** Distance M */
+            distance_m: number;
+            /** Geojson */
+            geojson: unknown;
+            /** Lat */
+            lat: number;
+            /** Lon */
+            lon: number;
+            /** Name */
+            name: string;
+            /** Points */
+            points: number;
+        };
+        /** QuizPinRound */
+        QuizPinRound: {
+            /** Questions */
+            questions: components["schemas"]["QuizPinQuestion"][];
         };
         /**
          * QuizQuestion
@@ -12918,6 +14375,11 @@ export interface components {
             category: string;
             /** Difficulty */
             difficulty: string;
+            /**
+             * Format
+             * @enum {string}
+             */
+            format?: "verdict" | "compare" | "order";
             /** Hint */
             hint?: string | null;
             /** Id */
@@ -12928,7 +14390,7 @@ export interface components {
              * Qtype
              * @enum {string}
              */
-            qtype: "mc" | "estimate";
+            qtype: "mc" | "estimate" | "order";
             /** Question */
             question: string;
             /** Range Max */
@@ -12966,6 +14428,8 @@ export interface components {
             correct: boolean;
             /** Correct Index */
             correct_index: number;
+            /** Correct Order */
+            correct_order?: number[];
             /** Detail */
             detail?: unknown;
             /** Explanation */
@@ -12974,6 +14438,7 @@ export interface components {
             image?: unknown;
             /** Map */
             map?: unknown;
+            others?: components["schemas"]["QuizOthers"];
             /** Points */
             points: number;
             /** Source Ref */
@@ -12993,15 +14458,25 @@ export interface components {
         /**
          * QuizScore
          * @description ``Store.quiz_stats`` liefert ``by_area``/``total``, der Router hängt
-         *     Serie, Abzeichen, Fehlerzahl und Tages-Status an.
+         *     Serie, Abzeichen, Fehlerzahl, Tages-Status und die Fortschrittskarte an.
          */
         QuizScore: {
             /** Badges */
             badges: components["schemas"]["QuizBadge"][];
+            /** Blitz Best */
+            blitz_best?: number;
             /** By Area */
             by_area: components["schemas"]["QuizAreaScore"][];
             /** Daily Done */
             daily_done: boolean;
+            /** District Legend */
+            district_legend?: {
+                [key: string]: string[];
+            };
+            /** Districts */
+            districts?: components["schemas"]["QuizDistrictProgress"][];
+            /** Districts All */
+            districts_all?: components["schemas"]["QuizDistrictProgress"][];
             /** Streak */
             streak: number;
             total: components["schemas"]["QuizTotal"];
@@ -13213,7 +14688,7 @@ export interface components {
         /**
          * ResearchSnapshot
          * @description Persistierter Stand eines Deep-Research-Jobs (``Store.deep_job_get``,
-         *     fester SELECT über acht Spalten). ``report`` und ``sources`` sind ``None``,
+         *     fester SELECT über neun Spalten). ``report`` und ``sources`` sind ``None``,
          *     solange der Job läuft; der Router parst ``sources`` aus der JSON-Spalte.
          *
          *     ``user_id`` steht bewusst NICHT hier — der Store wählt es gar nicht erst
@@ -13235,6 +14710,8 @@ export interface components {
             created: string;
             /** Id */
             id: string;
+            /** Premium Model */
+            premium_model: boolean;
             /** Question */
             question: string;
             /** Report */
@@ -13287,11 +14764,11 @@ export interface components {
              * Key
              * @enum {string}
              */
-            key: "user" | "expert" | "council_member" | "admin";
+            key: "user" | "research_plus" | "expert" | "council_member" | "admin";
             /** Label */
             label: string;
             /** Permissions */
-            permissions: ("budget" | "mandate" | "admin")[];
+            permissions: ("budget" | "mandate" | "premium_models" | "admin")[];
         };
         /**
          * RoleUpdate
@@ -13852,6 +15329,46 @@ export interface components {
             status: string;
         };
         /**
+         * SourceStatsLayer
+         * @description Eine Datenschicht (oder mehrere, die dieselben Tabellen füllen).
+         */
+        SourceStatsLayer: {
+            /** Documents */
+            documents: number;
+            /** Keys */
+            keys: string[];
+            /** Labels */
+            labels: string[];
+            /** Numbers */
+            numbers: number;
+            /** Rows */
+            rows: number;
+            /** Sources */
+            sources: string[];
+            /** Tables */
+            tables: number;
+        };
+        /** SourceStatsOther */
+        SourceStatsOther: {
+            /** Documents */
+            documents: number;
+            /** Numbers */
+            numbers: number;
+            /** Rows */
+            rows: number;
+            /** Tables */
+            tables: number;
+        };
+        /** SourceStatsSource */
+        SourceStatsSource: {
+            /** Documents */
+            documents: number;
+            /** Kind */
+            kind: string;
+            /** Label */
+            label: string;
+        };
+        /**
          * Speech
          * @description Ein Wortbeitrag aus einem Protokoll.
          */
@@ -14127,6 +15644,8 @@ export interface components {
             outcome: string;
             /** Paper Id */
             paper_id: string;
+            /** Title */
+            title: string;
         };
         /**
          * TodaySession
@@ -14512,14 +16031,14 @@ export interface components {
             /** Pending Email */
             pending_email?: string | null;
             /** Permissions */
-            permissions: ("budget" | "mandate" | "admin")[];
+            permissions: ("budget" | "mandate" | "premium_models" | "admin")[];
             /**
              * Role
              * @enum {string}
              */
-            role: "user" | "expert" | "council_member" | "admin";
+            role: "user" | "research_plus" | "expert" | "council_member" | "admin";
             /** Roles */
-            roles: ("user" | "expert" | "council_member" | "admin")[];
+            roles: ("user" | "research_plus" | "expert" | "council_member" | "admin")[];
             /** Saves Conversations */
             saves_conversations?: number | null;
             /**
@@ -14699,12 +16218,12 @@ export interface components {
              * Role
              * @enum {string}
              */
-            role: "user" | "expert" | "council_member" | "admin";
+            role: "user" | "research_plus" | "expert" | "council_member" | "admin";
             /**
              * Roles
              * @default []
              */
-            roles: ("user" | "expert" | "council_member" | "admin")[];
+            roles: ("user" | "research_plus" | "expert" | "council_member" | "admin")[];
             /**
              * Status
              * @default pending
@@ -17153,6 +18672,26 @@ export interface operations {
             };
         };
     };
+    haushalt_schuldenvergleich_api_council_budget_debt_comparison_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetDebtComparison"];
+                };
+            };
+        };
+    };
     haushalt_dokumente_api_council_budget_documents_get: {
         parameters: {
             query?: never;
@@ -17200,6 +18739,78 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    haushalt_bundesvergleich_api_council_budget_federal_comparison_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetFederalComparison"];
+                };
+            };
+        };
+    };
+    haushalt_zuschuesse_api_council_budget_grants_get: {
+        parameters: {
+            query?: {
+                sub_budget?: number | null;
+                year?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetGrants"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    haushalt_foerdermittel_api_council_budget_grants_received_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetGrantsReceived"];
                 };
             };
         };
@@ -17335,6 +18946,100 @@ export interface operations {
             };
         };
     };
+    haushalt_budgetbericht_api_council_budget_measures_get: {
+        parameters: {
+            query: {
+                sub_budget: number;
+                as_of?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetMeasures"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    haushalt_vorbericht_api_council_budget_notes_get: {
+        parameters: {
+            query: {
+                sub_budget: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetNotes"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    haushalt_vorbericht_zahlen_api_council_budget_preface_figures_get: {
+        parameters: {
+            query: {
+                series: string[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetPrefaceFigures"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     haushalt_produkte_api_council_budget_products_get: {
         parameters: {
             query: {
@@ -17387,6 +19092,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BudgetHoldings"];
+                };
+            };
+        };
+    };
+    haushalt_quellenzahlen_api_council_budget_source_stats_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetSourceStats"];
                 };
             };
         };
@@ -18084,7 +19809,7 @@ export interface operations {
              *     - `sources` — die Quellen der Recherche
              *     - `token` — ein Stück Berichtstext (`text`)
              *     - `replace` — ersetzt den bisher gesendeten Text vollständig
-             *     - `done` — Schluss-Ereignis mit `cited` und `documents_read`
+             *     - `done` — Schluss-Ereignis mit `cited`, `documents_read` und `premium_model` (`true`, wenn der Bericht mit dem größeren Modell des Rechts `premium_models` entstand)
              *     - `gestoppt` — auf Wunsch abgebrochen (`facets_done`)
              *     - `fehler` — die Recherche ist fehlgeschlagen
              *
@@ -18245,6 +19970,57 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Districts"];
+                };
+            };
+        };
+    };
+    elected_council_api_council_elected_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ElectedCouncil"];
+                };
+            };
+        };
+    };
+    elected_member_api_council_elected__slug__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ElectedMember"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -19777,6 +21553,70 @@ export interface operations {
             };
         };
     };
+    blitz_round_api_quiz_blitz_round_get: {
+        parameters: {
+            query?: {
+                n?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuizRound"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    blitz_complete_api_quiz_blitz_complete_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuizBlitzIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuizBlitzResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     daily_api_quiz_daily_get: {
         parameters: {
             query?: never;
@@ -19817,6 +21657,138 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["QuizDayCompleted"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    duel_create_api_quiz_duel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuizDuelIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuizDuelCreated"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    duel_get_api_quiz_duel__code__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuizDuel"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    duel_complete_api_quiz_duel__code__complete_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuizDuelDoneIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuizDuel"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    joker_api_quiz_joker_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuizJokerIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuizJoker"];
                 };
             };
             /** @description Validation Error */
@@ -20064,6 +22036,70 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Ok"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pin_answer_api_quiz_pin_answer_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuizPinIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuizPinResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pin_round_api_quiz_pin_round_get: {
+        parameters: {
+            query?: {
+                n?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuizPinRound"];
                 };
             };
             /** @description Validation Error */
@@ -21682,6 +23718,40 @@ export interface operations {
             };
         };
     };
+    wahlabend_karte_je_bezirk_api_wahlabend_karte_get: {
+        parameters: {
+            query?: {
+                /** @description Slug der Wahl (Ratswahl, OB-Wahl, Stichwahl); leer = die Ratswahl */
+                wahl?: string | null;
+                /** @description nur die Wahlbezirke, die diesen Ortsbereich berühren */
+                place?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ElectionMap"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     wahlabend_karte_api_wahlabend_karte_png_get: {
         parameters: {
             query: {
@@ -22022,4 +24092,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: dd86f14d5858abde7b35785c9c73720157f38662661b03f062a25c3bbf318931
+// vertrag-sha256: 80d3652dfcef374af1aa780b1ad7df7206931f4ef28b73a838302fcd4f7888ac

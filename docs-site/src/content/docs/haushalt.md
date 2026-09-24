@@ -138,7 +138,7 @@ die es nicht zeigen:
 | `council_taxes` | Steuereinnahmen je Art seit 1998 (**Ist**) | Open-Data-Portal, Datensatz 1104 | `scripts/ingest_finanzen_opendata.py` |
 | `council_tax_capacity` | Steuerkraftmesszahl + Schlüsselzuweisungen je Ausgleichsjahr seit 1993 (Jahreszahl beim Einlesen korrigiert, s. u.) | Open-Data-Portal, Datensatz 1106 | dito |
 | `council_einwohner` | Einwohnerzahl je Jahr seit 2010 | Open-Data-Portal, Datensatz 1102 | dito |
-| `council_investments` | Investitionen des **Finanz**haushalts je Teilhaushalt, 2022–2025 (**Plan**) — Ein- und Auszahlungen, dazu die Summenzeile und der Gesamtbetrag des Finanzhaushalts als Bezugsgröße | Open-Data-Portal, Datensatz 1101, Tabellenblatt „Finanzhaushalt" | dito |
+| `council_investments` | Investitionen des **Finanz**haushalts je Teilhaushalt, 2020–2025 (**Plan**) — Ein- und Auszahlungen, dazu die Summenzeile und der Gesamtbetrag des Finanzhaushalts als Bezugsgröße | Open-Data-Portal, Datensatz 1101, Tabellenblatt „Finanzhaushalt" | dito |
 | `council_investment_measures` | **Einzelne Vorhaben** je Teilhaushalt, 2019–2026 (**Plan**) — IPSP-Element, Bezeichnung und Gesamtinvestitionssumme; `ebene` (`massnahme` / `teilhaushalt` / `gesamt`). Ohne Jahresraten, s. u. | Investitionsprogramm (Anlage 004 des Haushaltsplans) — **Anlagen im RIS** | `scripts/ingest_finanzberichte.py` |
 | `council_budget_execution` | Haushaltsvollzug: Ansatz, Prognose zum Jahresende und Abweichung je Teilhaushalt, 2018–2026, viermal jährlich — für Ergebnis- **und** Finanzhaushalt. `plan_basis` sagt, ob die Ansatz-Spalte die Ermächtigungsübertragungen enthält (bis 2020) oder nicht (ab 2021) | Finanz- und Leistungsberichte — **Anlagen im RIS** | `scripts/ingest_haushaltsvollzug.py` |
 | `council_loan_notices`, `council_loan_items` | Kredite und Zinsen: je Unterrichtung des Rates nach der Kreditrichtlinie der Berichtszeitraum und die Zinsersparnis der Umschuldung, je Posten Art (Kreditaufnahme, Umschuldung, Prolongation, Ausleihung), Schuldner, Betrag, Zinssatz, Zinsbindung und Datum der Kreditentscheidung, 2018–2026 | Vorlagen „Unterrichtung des Rates über Kreditaufnahmen, Derivatabschlüsse und Umschuldungen“ — **Volltexte im RIS** | `scripts/ingest_kredite.py` |
@@ -572,12 +572,12 @@ sondern auch, ob sie einer anderen etwas wegnimmt oder ihr etwas anhängt.
 
 ## Der Bereich hält sich selbst aktuell
 
-**Dreiundzwanzig** Datenschichten, jede einmal von Hand eingelesen — ohne Cron
+**Zweiunddreißig** Datenschichten, jede einmal von Hand eingelesen — ohne Cron
 veraltet der ganze Bereich still, sobald niemand mehr daran denkt.
 `check_finanzdaten.py` (sonntags) nimmt das ab: **Neun** liest er
-selbst nach (sie liegen als Anlage im Ratsinformationssystem), die **vierzehn**
+selbst nach (sie liegen als Anlage im Ratsinformationssystem), die **dreiundzwanzig**
 übrigen werden nur beobachtet — er meldet, dass ein Jahrgang fällig wäre, und
-nennt Quelle und Skript. Sieben davon kommen von außerhalb, sieben liegen zwar
+nennt Quelle und Skript. Elf davon kommen von außerhalb, zwölf liegen zwar
 im Ratsinformationssystem, haben aber eigene Einlese-Skripte. „Lädt nichts herunter" ist
 die Regel, an der dieser Job hängt. Maßgeblich ist `finanzquellen.REIHENFOLGE`;
 diese Doku zählt nach, sie legt nichts fest.
@@ -2531,9 +2531,11 @@ Das macht sie zur **einzigen Portal-CSV des Bereichs mit einer Rechenprobe im
 Dokument selbst**: Die 13 Teilhaushalts-Zeilen müssen die Zeile *Finanzhaushalt
 Gesamtinvestitionen* ergeben, in beiden Spalten. Die drei anderen Portal-CSVs
 (Steuern, Steuerkraft, Einwohner) tragen ausdrücklich keine und stehen mit
-`herkunft.UNGEPRUEFT` in der Datenbank. Über die vier verfügbaren Jahrgänge
-(2022–2025) geht die Probe auf den Euro genau auf — acht Proben, Restbetrag
-jeweils 0 €.
+`herkunft.UNGEPRUEFT` in der Datenbank. Über die sechs verfügbaren Jahrgänge
+(2020–2025) geht die Probe auf den Euro genau auf — zwölf Proben, Restbetrag
+jeweils 0 €. 2020 und 2021 stehen in einer anderen Datei: EINE Latin-1-CSV je
+Jahr, erst der Ergebnishaushalt, dann der Finanzhaushalt; gelesen wird ab der
+Kopfzeile mit Ein- und Auszahlungen.
 
 :::caution[Die Toleranz ist kleiner als ein Euro, und das ist der Punkt]
 Die Datei führt volle Euro ohne Nachkommastellen. Die kleinste Abweichung, die

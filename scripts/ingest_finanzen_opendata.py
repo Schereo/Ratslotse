@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import os
 import sys
+import time
 from pathlib import Path
 
 import requests
@@ -47,6 +48,24 @@ COUNCIL_DB = Path(os.environ.get("COUNCIL_DB") or ROOT / "data" / "council.sqlit
 _UA = {"User-Agent": "Ratslotse/1.0 (ratslotse.de; Haushalts-Bereich)"}
 
 
+def _holen(url: str, versuche: int = 3) -> requests.Response:
+    """Ein Abruf mit Geduld: Das Portal brauchte am 24.09.2026 27 s für die
+    Startseite und ließ einen CSV-Abruf nach 120 s ins Leere laufen — der
+    Ops-Lauf brach daran ab. Zwei weitere Versuche mit Pause; ein Portal, das
+    danach noch schweigt, ist wirklich weg."""
+    for n in range(versuche):
+        try:
+            return requests.get(url, headers=_UA, timeout=120)
+        except requests.RequestException as fehler:
+            if n == versuche - 1:
+                raise
+            warten = 15 * (n + 1)
+            print(f"  {url}: {type(fehler).__name__} — neuer Versuch in {warten} s",
+                  file=sys.stderr, flush=True)
+            time.sleep(warten)
+    raise AssertionError("unerreichbar")
+
+
 def _spanne(rows: list[dict]) -> str:
     """„1998–2025" aus den Jahrgängen einer Datensatz-Lieferung."""
     years = sorted({r["year"] for r in rows})
@@ -56,7 +75,7 @@ def _spanne(rows: list[dict]) -> str:
 def main() -> int:
     store = CouncilStore(COUNCIL_DB)
     try:
-        r = requests.get(haushalt.STEUERN_CSV_URL, headers=_UA, timeout=120)
+        r = _holen(haushalt.STEUERN_CSV_URL)
         r.raise_for_status()
         taxes = haushalt.parse_steuereinnahmen(r.text)
         if not taxes:
@@ -75,7 +94,7 @@ def main() -> int:
             as_of=_spanne(taxes)))
         print(f"Steuereinnahmen: {n} Zeilen ({_spanne(taxes)}).")
 
-        r = requests.get(haushalt.STEUERKRAFT_CSV_URL, headers=_UA, timeout=120)
+        r = _holen(haushalt.STEUERKRAFT_CSV_URL)
         r.raise_for_status()
         kraft = haushalt.parse_steuerkraft(r.text)
         if not kraft:
@@ -96,7 +115,7 @@ def main() -> int:
             as_of=_spanne(kraft)))
         print(f"Steuerkraft/Schlüsselzuweisungen: {n} Jahre ({_spanne(kraft)}).")
 
-        r = requests.get(haushalt.EINWOHNER_CSV_URL, headers=_UA, timeout=120)
+        r = _holen(haushalt.EINWOHNER_CSV_URL)
         r.raise_for_status()
         ew = haushalt.parse_einwohner(r.text)
         if ew:
@@ -120,12 +139,23 @@ def main() -> int:
         p = finanzquellen.Protokoll()
         gespeichert: list[int] = []
         for year, url in sorted(haushalt.INVESTITIONEN_CSV_URLS.items()):
-            r = requests.get(url, headers=_UA, timeout=120)
+            try:
+                r = _holen(url)
+            except requests.RequestException as fehler:
+                print(f"Investitionen {year}: {type(fehler).__name__} — übersprungen",
+                      file=sys.stderr)
+                continue
             if r.status_code != 200:
                 print(f"Investitionen {year}: HTTP {r.status_code} — übersprungen",
                       file=sys.stderr)
                 continue
-            gelesen = investitionen.lies(r.text, year)
+            # 2020/2021 sind Latin-1, ab 2022 UTF-8 — ohne Zeichensatz im Kopf
+            # der Antwort rät `requests` sonst Latin-1 auch für UTF-8.
+            try:
+                text = r.content.decode("utf-8")
+            except UnicodeDecodeError:
+                text = r.content.decode("latin-1")
+            gelesen = investitionen.lies(text, year)
             if not gelesen["bestanden"]:
                 print(f"Investitionen {year}: {gelesen['nachweis']} — "
                       f"nicht gespeichert", file=sys.stderr)
@@ -149,7 +179,8 @@ def main() -> int:
                                "die Summenzeile „Finanzhaushalt "
                                "Gesamtinvestitionen“. Für welches Jahr die Datei "
                                "gilt, steht nicht in ihr, sondern in ihrem "
-                               f"Dateinamen (…_{year}_Finanzhaushalt.csv)",
+                               f"Dateinamen (…{year}…csv); 2020 und 2021 als "
+                               "zweiter Block der Datei nach dem Ergebnishaushalt",
                     probe_result=gelesen["nachweis"],
                     as_of=f"Haushaltsplan {year} — Plan, nicht Ist",
                     **anker),

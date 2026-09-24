@@ -54,9 +54,12 @@ import { Warum } from "@/components/haushalt/warum";
 import { Summe } from "@/components/haushalt/tafel";
 import { ReiterLeiste, ReiterTafel, type Reiter } from "@/components/ui/reiter";
 import { Datenstand } from "@/components/haushalt/datenstand";
+import { ZuschuesseBereich } from "@/components/haushalt/zuschuesse-bereich";
+import { VorberichtBereich } from "@/components/haushalt/vorbericht-bereich";
+import { BudgetberichtBereich } from "@/components/haushalt/budgetbericht-bereich";
 import { cn } from "@/lib/utils";
 
-type ReiterId = "ueberblick" | "planist" | "source";
+type ReiterId = "ueberblick" | "planist" | "zuschuesse" | "source";
 
 function Karte({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
@@ -81,16 +84,19 @@ function Kicker({ children }: { children: React.ReactNode }) {
  *  öffentlich-rechtlichen Entgelte, in denen die Elternbeiträge stecken, die
  *  VIERTgrößte Position. Statt eines geschätzten Satzes steht hier die
  *  ausgelesene Aufteilung — mit dem Jahr, aus dem sie stammt. */
-function EigeneErtraege({ daten, key, planEin, planJahr }: {
+function EigeneErtraege({ daten, bereich, planEin, planJahr }: {
   daten: Daten;
-  key: string | null;
+  /** Der kanonische Bereichs-Schlüssel. Hieß bis 24.09.2026 `key` — und den
+   *  reicht React nie als Prop durch: Die Karte blieb auf allen dreizehn
+   *  Bereichsseiten still leer (gefunden über die Konsolenwarnung). */
+  bereich: string | null;
   planEin: number;
   planJahr: number;
 }) {
   const posten = (daten.income_statement ?? []).filter(
-    (p) => p.sub_budget_name != null && bereichSchluessel(p.sub_budget_name) === key
+    (p) => p.sub_budget_name != null && bereichSchluessel(p.sub_budget_name) === bereich
            && p.nr >= 1 && p.nr <= 11 && (p.result ?? 0) > 0);
-  if (!posten.length || !key) return null;
+  if (!posten.length || !bereich) return null;
   const year = Math.max(...posten.map((p) => p.year));
   const arten = posten
     .filter((p) => p.year === year)
@@ -307,11 +313,14 @@ function BereichInner() {
     ...(abschluss.length ? (["ergebnisrechnung_thh"] as const) : []),
     ...(hatPlanIst ? (["jahresabschluss"] as const) : []),
     ...(produktZeilen.length ? (["teilhaushalt"] as const) : []),
+    ...(kanon.sub_budget != null ? (["budget_notes", "grants"] as const) : []),
+    ...(kanon.sub_budget === 11 || kanon.sub_budget === 12 ? (["budget_measures"] as const) : []),
   ];
 
   const reiterListe: Reiter<ReiterId>[] = [
     { id: "ueberblick", label: "Überblick" },
     ...(hatPlanIst ? [{ id: "planist" as const, label: "Geplant und geworden" }] : []),
+    ...(kanon.sub_budget != null ? [{ id: "zuschuesse" as const, label: "Zuschüsse" }] : []),
     { id: "source", label: "Quelle" },
   ];
   const aktiv = reiterListe.some((r) => r.id === reiter) ? reiter : "ueberblick";
@@ -431,7 +440,12 @@ function BereichInner() {
       <ReiterTafel id="ueberblick" aktiv={aktiv} className="flex flex-col gap-4">
         {/* Die Rechnung des Bereichs steht seit 24.08. oben auf der Tafel —
             der Überblick beginnt mit dem Blick HINTER ihre Einnahmen-Leiste. */}
-        <EigeneErtraege daten={data} key={kanon.key} planEin={ein} planJahr={year} />
+        <EigeneErtraege daten={data} bereich={kanon.key} planEin={ein} planJahr={year} />
+
+        {/* Was die Verwaltung im Vorbericht zu diesem Teilhaushalt schreibt —
+            Wortlaut, nie zusammengefasst (Plan Haushalt-Datenquellen, PR 5). */}
+        {kanon.sub_budget != null && <VorberichtBereich subBudget={kanon.sub_budget} />}
+        {kanon.sub_budget != null && <BudgetberichtBereich subBudget={kanon.sub_budget} />}
 
         {/* Brutto gegen Netto — der Umschalter IST das Lehrstück. */}
         <Karte>
@@ -730,6 +744,12 @@ function BereichInner() {
               </Karte>
             );
           })()}
+        </ReiterTafel>
+      )}
+
+      {kanon.sub_budget != null && (
+        <ReiterTafel id="zuschuesse" aktiv={aktiv} className="flex flex-col gap-4">
+          <ZuschuesseBereich subBudget={kanon.sub_budget} bereichName={kanon.name} />
         </ReiterTafel>
       )}
 

@@ -86,6 +86,11 @@ OEFFENTLICH = {
     ("get", "/api/council/person/{slug}"),
     ("get", "/api/council/person/{slug}/speeches"),
     ("get", "/api/council/people-directory"),
+    # Der gewählte Rat: das bekannt gemachte Wahlergebnis mit Angaben aus der
+    # amtlichen Bekanntmachung der Wahlvorschläge — die Personen-Seite braucht
+    # es ohne Konto, genau wie ihr Profil.
+    ("get", "/api/council/elected"),
+    ("get", "/api/council/elected/{slug}"),
     ("get", "/api/council/place/{place_id}"),
     # „Anderswo beschlossen" steht auf derselben Seite wie der Beschluss
     # selbst und zeigt ausschließlich Vorlagen aus den öffentlichen
@@ -123,6 +128,9 @@ OEFFENTLICH = {
     # Persönliches: Ein Wahlbezirk hat mindestens einige hundert Wählende.
     ("get", "/api/wahlabend/wahlbezirke"),
     ("get", "/api/wahlabend/wahlbezirke/rangliste"),
+    # Dieselben Zahlen für die Stadtkarte: wer je Urnenbezirk vorn lag und in
+    # welchen Ortsbereichen der Bezirk liegt (docs/plan-viertel-wahlkarte.md).
+    ("get", "/api/wahlabend/karte"),
     # Und dieselbe Tabelle von der anderen Seite: eine Kandidatur in allen
     # ihren Wahlbezirken. Namen und Zahlen stehen so in der amtlichen
     # Ergebnisdarstellung.

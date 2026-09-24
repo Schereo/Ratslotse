@@ -1,0 +1,300 @@
+{
+ "etikett": "themen-vorher",
+ "zeit": "2026-09-23T09:12:00",
+ "textarten": {
+  "themen": [
+   {
+    "bestanden": 8,
+    "faelle": 20,
+    "zeilen": [
+     {
+      "id": "baederstrategiekonzept",
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Das Bäderstrategiekonzept ist ein Projekt zur strategischen Planung und Entwicklung der städtischen Bäderlandschaft in Oldenburg. Federführend zuständig ist die Stadtverwaltung. Der Stadtrat befasste sich im Frühjahr 2018 mehrfach damit, wobei der Sportausschuss Berichte der Verwaltung zur Kenntnis nahm und einen Antrag des Stadtsportbundes auf Verlagerung der Federführung ablehnte."
+     },
+     {
+      "id": "foerderschule-lernen",
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt keine Ablehnung",
+      "text": "Die Förderschule Lernen ist eine Schulform mit dem Förderschwerpunkt Lernen, die Schülerinnen und Schüler mit entsprechendem sonderpädagogischen Unterstützungsbedarf unterrichtet. In Oldenburg steht diese Schulform aufgrund landesrechtlicher Vorgaben zur schrittweisen Auflösung der Förderschulen Lernen unter Handlungsdruck. Der Stadtrat befasste sich im März und April 2018 mit dem Thema, wobei eine Sondersitzung notwendig wurde und der Schulausschuss sich schließlich für eine Fortführung mit Bestandsschutz bis zum Jahr 2028 aussprach."
+     },
+     {
+      "id": "heidbrook",
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt keine Ablehnung",
+      "text": "Heidbrook ist ein Gebiet im Oldenburger Norden, das im Kontext der Nachnutzung des ehemaligen Fliegerhorstes und angrenzender Flächen steht. Der Stadtrat befasst sich wiederkehrend mit der ökologischen Bedeutung und dem Schutzstatus des Raums, etwa durch Kartierungen von Heuschreckenbeständen und Berichte zur Unterschutzstellung. Daneben spielen die Klärung von Eigentümerverhältnissen, die Entwicklung öffentlicher Flächen sowie konkrete Maßnahmen wie die Fällung von Fichten eine Rolle."
+     },
+     {
+      "id": "kreyenbrueck",
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt keine Ablehnung",
+      "text": "Kreyenbrück ist ein Stadtteil im Süden Oldenburgs, der durch seine gewachsene Wohnbebauung und die Nähe zu Naherholungsgebieten wie dem Kreyenmoor geprägt ist. Kommunalpolitisch steht der Stadtteil unter anderem wegen seiner sozialen Infrastruktur im Fokus. Der Stadtrat befasste sich 2023 mit dem Bau und der Sanierung von Sporthallen und Schwimmbädern, wovon auch Kreyenbrück profitieren soll, und nahm 2019 einen Bericht zum dort veranstalteten „Farbenfroh Festival“ entgegen, das die kulturelle Stadtteilarbeit stärkt."
+     },
+     {
+      "id": "staendelweg",
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Der Ständelweg ist eine Straße beziehungsweise ein Gebiet in Oldenburg. Kommunalpolitisch relevant wurde er durch einen Antrag der Fraktion Bündnis 90/Die Grünen vom 07.03.2019, einen Bebauungsplan für den Ständelweg aufzustellen. Der Stadtrat vertagte den Antrag zunächst in seiner Sitzung am 21.03.2019 und lehnte ihn in der Sitzung am 16.05.2019 ab."
+     },
+     {
+      "id": "zweckentfremdungssatzung",
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Eine Zweckentfremdungssatzung ist ein kommunales Instrument, mit dem Städte die Nutzung von Wohnraum zu anderen Zwecken – etwa als Ferienwohnung, Gewerbe oder durch längeren Leerstand – genehmigungspflichtig machen und unterbinden können. In Oldenburg beantragte die Gruppe Die Linke/Piratenpartei 2019 erstmals die Aufstellung einer solchen Satzung; der Antrag wurde zunächst in den Ausschuss für Stadtplanung und Bauen verwiesen und dort später abgelehnt. Ein erneuter Vorstoß der Fraktion Die Linke zur Bekämpfung von Leerstand mittels Zweckentfremdungssatzung wurde im Dezember 2022 vertagt."
+     },
+     {
+      "id": "infanterieweg",
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Der Infanterieweg ist eine Straße in Oldenburg, die den Stadtrat wiederholt im Zusammenhang mit Verkehrsthemen beschäftigt. Kommunalpolitisch relevant wurde sie unter anderem durch Fragen der Verkehrssicherheit, etwa die abgelehnte Wiederanbringung eines Verkehrsspiegels im Kreuzungsbereich Johann-Justus-Weg, sowie durch die Straßenplanung selbst. Zudem war der Infanterieweg Gegenstand einer Impulsberatung zur Fahrrad-Mobilität, was auf eine verkehrliche Bedeutung für den Radverkehr hindeutet."
+     },
+     {
+      "id": "gelbe-tonne",
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Die Gelbe Tonne ist ein Sammelbehälter für Verpackungsabfälle, die im Rahmen des dualen Systems getrennt vom Restmüll erfasst werden. In Oldenburg werden diese Abfälle bisher über Gelbe Säcke eingesammelt. Der Rat hat sich mit der Umstellung auf eine feste Tonnenlösung befasst, um stabile Behälter anstelle von reißanfälligen Säcken zu prüfen. Ein entsprechender Antrag der SPD-Fraktion wurde 2019 abgelehnt, während der Rat 2025 einen Bericht zur Einführung der Gelben Tonne zur Kenntnis nahm."
+     },
+     {
+      "id": "tweelbaeker-see",
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Der Tweelbäker See liegt im Oldenburger Stadtgebiet und ist als Gewässer mit umgebendem Naherholungs- und Wegebereich kommunalpolitisch vor allem durch Verkehrsinfrastruktur relevant. Den Stadtrat beschäftigen in jüngerer Zeit insbesondere der Zustand und die mögliche Erneuerung einer Brücke am Tweelbäker See; ein entsprechender Antrag der CDU-Fraktion wurde 2025 abgelehnt bzw. als behandelt eingestuft. Zuvor befasste sich der Rat 2020 mit einem möglichen Radweg zwischen Drielaker See und Tweelbäker See, wobei der Verwaltungsbericht zur Kenntnis genommen wurde."
+     },
+     {
+      "id": "ruz",
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "behauptet: „beschlossen“",
+      "text": "Das RUZ (Regionales Umweltbildungszentrum) ist eine Bildungseinrichtung in Oldenburg, die Angebote zur Umweltbildung und Bildung für nachhaltige Entwicklung bereitstellt. Der Stadtrat befasste sich Ende 2020 mit einer möglichen Ausweitung des RUZ-Aufgabenbereichs: Während eine finanzielle und personelle Stärkung für außerschulische Bildungsangebote zur nachhaltigen Ernährung beschlossen wurde, lehnte der zuständige Ausschuss den Vorschlag ab, das RUZ auch mit Beratungs- und Fortbildungsleistungen für Unternehmen zu betrauen."
+     },
+     {
+      "id": "btb",
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt keine Ablehnung",
+      "text": "Der BTB (Bürgerfelder Turnerbund) ist ein großer Oldenburger Sportverein. Er ist Betreiber eines Schwimmbads, dessen Sanierung die Stadt 2023 mit bis zu 1,5 Millionen Euro unterstützt. Den Stadtrat beschäftigen zudem die Auswirkungen geplanter BTB-Neubauten auf andere Vereine, wozu bereits 2021 eine einvernehmliche Lösung angestrebt wurde."
+     },
+     {
+      "id": "eversten",
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt keine Ablehnung",
+      "text": "Eversten ist ein Stadtteil im Westen Oldenburgs, der sowohl durch Wohngebiete als auch durch Naherholungsflächen wie den Wildenloh geprägt ist. Kommunalpolitisch steht der Stadtteil im Zusammenhang mit dem Ausbau der Sport- und Verkehrsinfrastruktur im Fokus. Der Stadtrat befasste sich 2023 mit dem Bau neuer Sporthallen und der Unterstützung der Schwimmbadsanierung in der Stadt, was auch die Sportstättensituation für Eversten betrifft. Zuvor wurde 2021 ein Bericht zu einer möglichen gesicherten Fahrradgarage im Bereich Wildenloh/Eversten zur Kenntnis genommen, was das Interesse an einer verbesserten Fahrradinfrastruktur in diesem Gebiet zeigt."
+     },
+     {
+      "id": "service-center",
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "behauptet: „beschlossen“",
+      "text": "Das Service Center ist die zentrale Anlaufstelle der Stadtverwaltung Oldenburg für Bürgeranliegen. Der Stadtrat befasste sich wiederholt mit dessen Weiterentwicklung, insbesondere mit dem Einsatz von Künstlicher Intelligenz zur Vereinfachung des Dokumentenscannens. Ein entsprechender Antrag wurde zunächst zurückgezogen und vertagt, im September 2024 zur Umsetzung beschlossen, jedoch kurz darauf durch einen erneuten Beschluss abgelehnt. Daneben wurde 2022 ein Antrag zu Anti-Diskriminierungs-Training und Mehrsprachigkeit im Service Center ohne Beschlussfassung behandelt."
+     },
+     {
+      "id": "quartiersgaragen",
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt keine Ablehnung",
+      "text": "Bei dem Projekt „Quartiersgaragen“ geht es um die Schaffung von gebündeltem Parkraum in Wohnquartieren, um den öffentlichen Straßenraum vom parkenden Verkehr zu entlasten. Der Stadtrat befasste sich 2022 zunächst mit einem Bericht zur grundsätzlichen Schaffung solcher Parkraumangebote. Im April 2024 folgte ein Prüfauftrag an die Verwaltung, die Einrichtung weiterer Quartiersgaragen in verschiedenen Stadtvierteln zu untersuchen."
+     },
+     {
+      "id": "stadtteilbaeder-eversten",
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Die Stadtteilbäder Eversten sind ein Hallenbad im gleichnamigen Oldenburger Stadtteil. Sie gehören zum Bäderbetrieb der Stadt Oldenburg (BBO) und dienen vor allem der wohnortnahen Versorgung mit Schwimmangeboten, insbesondere für Schulen und Vereine. Im Jahr 2022 beschäftigte sich der Stadtrat mit dem Vorschlag, die Stadtteilbäder Eversten und Kreyenbrück in den Herbst-, Weihnachts- und Osterferien vorübergehend zu schließen, um Energieverbräuche zu senken. Der Rat lehnte diese Schließungen in zwei aufeinanderfolgenden Beschlüssen ab."
+     },
+     {
+      "id": "stadtteilbaeder-kreyenbrueck",
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Das Stadtteilbad Kreyenbrück ist ein Hallenbad im Oldenburger Stadtteil Kreyenbrück, das vom städtischen Bäderbetrieb (BBO) unterhalten wird. Es zählt neben dem Stadtteilbad Eversten zu den kleineren, wohnortnahen Bädern der Stadt. Kommunalpolitisch relevant wurde es im Jahr 2022 durch die Diskussion um Energieeinsparmaßnahmen. Der Stadtrat befasste sich mehrfach mit dem Vorschlag, die Stadtteilbäder Eversten und Kreyenbrück in den Ferienzeiten zu schließen, um Energieverbräuche zu reduzieren. Die vorgeschlagenen Schließungen in den Herbst-, Weihnachts- und Osterferien sowie eine auf die Weihnachtsferien beschränkte Schließung wurden jeweils abgelehnt."
+     },
+     {
+      "id": "tsh-konzept-berlin",
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt keine Ablehnung",
+      "text": "Das TSH Konzept Berlin betrifft die Planung und den Bau von Sporthallen in Oldenburg, wobei „TSH“ für Typensporthalle steht und das Konzept auf standardisierte, kosteneffiziente Hallenentwürfe nach Berliner Vorbild verweist. Der Stadtrat befasst sich im Zusammenhang mit dem TSH Konzept Berlin mit dem generellen Bedarf an neuen Sporthallen sowie der Sanierung von Schwimmbädern. Die Beschlüsse aus September und November 2023 zeigen den roten Faden: Der Schulausschuss beschließt den Bau neuer Dreifeldsporthallen und stellt bis zu 1,5 Mio. Euro für die Schwimmbadsanierung des BTB bereit."
+     },
+     {
+      "id": "e-scooter",
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "behauptet: „beschloss“",
+      "text": "E-Scooter sind elektrische Tretroller, die im Stadtgebiet Oldenburgs als Leihfahrzeuge angeboten werden. Kommunalpolitisch relevant ist vor allem das wilde Abstellen der Fahrzeuge auf Gehwegen und in Zufahrten, was zu Behinderungen führt. Der Stadtrat befasste sich 2023 mit Anträgen, die ein Abstellverbot und die Einrichtung spezieller Abstellflächen forderten. Während der Verkehrsausschuss den Vorschlag ablehnte, beschloss der Schulausschuss ein entsprechendes Verbot."
+     },
+     {
+      "id": "oli-bikes",
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "behauptet: „beschloss“",
+      "text": "OLi-Bikes ist das stationslose Fahrradverleihsystem in Oldenburg. Im Jahr 2023 befasste sich der Stadtrat mehrfach mit dem Abstellen dieser Leihräder sowie von E-Scootern und E-Rollern. Der Verkehrsausschuss lehnte einen entsprechenden Beschlussvorschlag zunächst ab, während der Schulausschuss ein Verbot des Abstellens auf Fußwegen und Zufahrten sowie die Ausweisung neuer Abstellflächen beschloss. Eine endgültige Beschlussfassung im Rat kam im November 2023 nicht zustande, da der Antrag nicht im Verwaltungsausschuss vorbereitet worden war."
+     },
+     {
+      "id": "kuhbrook",
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt keine Ablehnung",
+      "text": "Kuhbrook ist ein Gebiet im Oldenburger Stadtteil Bümmerstede, das zusammen mit dem angrenzenden Heidbrook und Teilen des ehemaligen Fliegerhorstes einen ökologisch wertvollen Raum bildet. Der Stadtrat befasst sich mit dem Areal im Kontext des Naturschutzes, insbesondere hinsichtlich einer möglichen Unterschutzstellung. In diesem Zusammenhang wurde die Verwaltung beauftragt, eine spezifische Kartierung der Heuschreckenbestände vorzunehmen, um die naturschutzfachliche Bedeutung des Gebiets weiter zu erfassen."
+     }
+    ]
+   },
+   {
+    "bestanden": 9,
+    "faelle": 20,
+    "zeilen": [
+     {
+      "id": "baederstrategiekonzept",
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Das Bäderstrategiekonzept ist ein Projekt zur strategischen Weiterentwicklung der städtischen Bäderlandschaft in Oldenburg. Federführend war die Verwaltung, die dem Sportausschuss mehrfach Bericht erstattete. Der Stadtsportbund Oldenburg beantragte im Frühjahr 2018, die Federführung für die Fortschreibung an ihn zu verlagern, was der Ausschuss ablehnte. Die Beratungen wurden im März 2018 vertagt und das Konzept im April 2018 zur Kenntnis genommen."
+     },
+     {
+      "id": "foerderschule-lernen",
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt keine Ablehnung",
+      "text": "Die Förderschule Lernen ist eine Schulform mit dem Förderschwerpunkt Lernen, die in Oldenburg als auslaufendes Angebot mit Bestandsschutz weitergeführt wird. Der Schulausschuss des Stadtrats hat sich im April 2018 für den Erhalt dieser Schulform bis zum Jahr 2028 ausgesprochen. Zuvor war die Beratung über die Zukunft der Schule im März 2018 vertagt und eine Sondersitzung anberaumt worden."
+     },
+     {
+      "id": "heidbrook",
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt keine Ablehnung",
+      "text": "Heidbrook ist ein Gebiet im Oldenburger Norden, das im Kontext der Konversion des ehemaligen Fliegerhorstes und angrenzender Flächen steht. Der Stadtrat befasst sich seit Jahren mit den Eigentümerverhältnissen, dem Naturschutz und der Entwicklung öffentlicher Flächen in diesem Raum. Die Beschlüsse reichen von der Klärung städtischer Besitzverhältnisse über die Unterschutzstellung und faunistische Kartierungen bis hin zu konkreten Maßnahmen wie Fällungen."
+     },
+     {
+      "id": "kreyenbrueck",
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt keine Ablehnung",
+      "text": "Kreyenbrück ist ein Stadtteil im Süden Oldenburgs, der durch seine Wohngebiete und die Nähe zum Küstenkanal geprägt ist. Kommunalpolitisch steht der Stadtteil unter anderem wegen seiner sozialen Infrastruktur im Fokus. Der Stadtrat befasste sich 2023 mit dem Bau neuer Sporthallen und der Unterstützung der Schwimmbadsanierung in diesem Bereich. Zuvor wurde 2019 das im Stadtteil veranstaltete „Farbenfroh Festival“ thematisiert und die Beantragung von Fördermitteln angeregt."
+     },
+     {
+      "id": "staendelweg",
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Der Ständelweg ist eine Straße im Oldenburger Stadtteil Eversten. Kommunalpolitische Relevanz erlangte das Gebiet durch einen Antrag der Fraktion Bündnis 90/Die Grünen, die dort die Aufstellung eines Bebauungsplans anstrebte. Der Stadtrat vertagte das Vorhaben zunächst im März 2019 und lehnte den Antrag in seiner Sitzung im Mai 2019 schließlich ab."
+     },
+     {
+      "id": "zweckentfremdungssatzung",
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Eine Zweckentfremdungssatzung ist ein kommunales Instrument, mit dem Städte die Umwandlung von Wohnraum in gewerbliche Nutzung, Leerstand oder Abriss genehmigungspflichtig machen können, um das Wohnungsangebot zu schützen. Im Oldenburger Stadtrat wurde das Thema mehrfach auf Antrag der Gruppe Die Linke./Piratenpartei behandelt. Ein erster Vorstoß wurde 2019 im Ausschuss beraten und anschließend abgelehnt; ein späterer Antrag zur Bekämpfung von Leerstand wurde Ende 2022 vertagt."
+     },
+     {
+      "id": "infanterieweg",
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Der Infanterieweg ist eine Straße in Oldenburg, die den Stadtrat wiederholt im Zusammenhang mit Verkehrsthemen beschäftigt. Kommunalpolitisch relevant wurde sie unter anderem durch Fragen der Verkehrssicherheit, etwa die abgelehnte Wiederanbringung eines Verkehrsspiegels im Kreuzungsbereich Johann-Justus-Weg. Zudem ist der Infanterieweg Gegenstand der Radverkehrsplanung, wie die Impulsberatung zur Fahrrad-Mobilität und die spätere Vorstellung einer Straßenplanung zeigen."
+     },
+     {
+      "id": "gelbe-tonne",
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Bei der „Gelben Tonne“ handelt es sich um ein Sammelsystem für Leichtverpackungen, das als geschlossener Behälter eine Alternative zu den bisher in Oldenburg verwendeten Gelben Säcken darstellt. Der Stadtrat befasste sich 2019 mit einem SPD-Antrag auf Umstellung, lehnte diesen jedoch ab. Im September 2025 nahm der Rat einen Bericht zur Einführung der Gelben Tonne zur Kenntnis, was auf eine geänderte Beschlusslage hindeutet."
+     },
+     {
+      "id": "tweelbaeker-see",
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Der Tweelbäker See liegt im Oldenburger Stadtgebiet und ist als Gewässer mit umgebendem Naherholungsbereich Teil der seenreichen Landschaft im Nordwesten der Stadt. Kommunalpolitisch relevant ist er vor allem durch die Verkehrsinfrastruktur in seinem Umfeld, insbesondere die Brücke am Tweelbäker See sowie Radwegeverbindungen. Der Stadtrat befasste sich zuletzt mehrfach mit einem Antrag der CDU-Fraktion zur Erneuerung dieser Brücke, der im Dezember 2025 abgelehnt wurde; zuvor hatte der Rat 2020 einen Bericht der Verwaltung zu einem Radweg zwischen Drielaker See und Tweelbäker See zur Kenntnis genommen."
+     },
+     {
+      "id": "ruz",
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Das RUZ (Regionales Umweltbildungszentrum) ist eine Bildungseinrichtung in Oldenburg, die Angebote zur Umweltbildung und Bildung für nachhaltige Entwicklung bereitstellt. Der Stadtrat befasste sich Ende 2020 im Rahmen der Beratungen zum Leitantrag von Fridays for Future mit dem RUZ. Dabei ging es zum einen um eine mögliche finanzielle und personelle Stärkung für außerschulische Bildungsangebote zur nachhaltigen Ernährung, zum anderen um den abgelehnten Vorschlag, das RUZ mit der Beratung und Fortbildung von Unternehmen zu betrauen."
+     },
+     {
+      "id": "btb",
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt keine Ablehnung",
+      "text": "Der BTB (Bürgerfelder Turnerbund) ist ein Sportverein in Oldenburg, der unter anderem eigene Sportanlagen und ein Schwimmbad betreibt. Der Stadtrat befasst sich mit dem BTB vor allem im Zusammenhang mit dem Bau und der Sanierung von Sporthallen und Schwimmbädern, wobei die Stadt die Schwimmbadsanierung mit bis zu 1,5 Mio. Euro unterstützt. Weitere Beratungspunkte betrafen die Auswirkungen geplanter BTB-Neubauten auf den Vereinssport anderer Oldenburger Vereine, wobei eine einvernehmliche Lösung angestrebt wird."
+     },
+     {
+      "id": "eversten",
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt keine Ablehnung",
+      "text": "Eversten ist ein Stadtteil im Westen Oldenburgs, der durch Wohngebiete, den Eversten Holz und die Nähe zum Naherholungsgebiet Wildenloh geprägt ist. Der Stadtrat befasst sich mit dem Gebiet vor allem im Zusammenhang mit der Sport- und Freizeitinfrastruktur. Dies zeigen der Beschluss zum Bau und zur Sanierung von Sporthallen und Schwimmbädern sowie die Befassung mit einer gesicherten Fahrradgarage am Wildenloh."
+     },
+     {
+      "id": "service-center",
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "behauptet: „beauftragt“",
+      "text": "Das Service Center der Stadt Oldenburg ist die zentrale Anlaufstelle für Bürgeranliegen und übernimmt unter anderem die Bearbeitung eingehender Dokumente. Der Stadtrat befasste sich wiederholt mit dem Antrag, dort eine KI-Unterstützung zur Vereinfachung des Dokumentenscannens einzusetzen. Nach anfänglicher Vertagung und Rückziehung des Antrags wurde die Verwaltung im September 2024 zunächst mit der Umsetzung beauftragt, dieser Beschluss jedoch noch im selben Monat endgültig abgelehnt. Ein früherer Vorstoß zu Anti-Diskriminierungs-Trainings und Mehrsprachigkeit im Service Center blieb 2022 ohne Beschlussfassung."
+     },
+     {
+      "id": "quartiersgaragen",
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt keine Ablehnung",
+      "text": "Quartiersgaragen sind Sammelparkanlagen, die dazu dienen, den ruhenden Verkehr aus den öffentlichen Straßenräumen in zentrale Quartiersstandorte zu verlagern. Verkehrspolitisch relevant sind sie als kommunales Instrument gegen den Parkdruck in dicht bebauten Gründerzeitvierteln wie dem Dobbenviertel oder dem Gerichtsviertel. Den Stadtrat beschäftigt das Thema in zwei Schritten: Zunächst wurde 2022 ein Bericht zum Antrag auf Schaffung von Parkraum in Quartiersgaragen zur Kenntnis genommen, 2024 folgte der Prüfauftrag für eine Ausweitung des Konzepts auf weitere Stadtteile."
+     },
+     {
+      "id": "stadtteilbaeder-eversten",
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Stadtteilbäder Eversten bezeichnet die Hallenbäder im Oldenburger Stadtteil Eversten, die zum Bäderbetrieb der Stadt Oldenburg (BBO) gehören. Der Stadtrat befasste sich 2022 mit Vorschlägen, diese Bäder – zusammen mit dem Stadtteilbad Kreyenbrück – in den Herbst-, Weihnachts- und Osterferien beziehungsweise in den Weihnachtsferien zu schließen, um Energie einzusparen. Beide Beschlussvorlagen wurden abgelehnt."
+     },
+     {
+      "id": "stadtteilbaeder-kreyenbrueck",
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Das Stadtteilbad Kreyenbrück ist ein Hallenbad im Oldenburger Stadtteil Kreyenbrück und gehört zum Bäderbetrieb der Stadt Oldenburg (BBO). Es zählt neben dem Stadtteilbad Eversten zu den kleineren, wohnortnahen Bädern der Stadt. Kommunalpolitische Relevanz erhielt das Bad im Jahr 2022, als die Verwaltung vorschlug, es zusammen mit dem Bad in Eversten in den Ferienzeiten zu schließen, um Energieverbräuche zu senken. Der Stadtrat lehnte diese Schließungsvorschläge sowohl im September als auch im November 2022 ab."
+     },
+     {
+      "id": "tsh-konzept-berlin",
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt keine Ablehnung",
+      "text": "Das „TSH Konzept Berlin“ befasst sich mit dem Bau und der Sanierung von Sporthallen und Schwimmbädern in Oldenburg. Der Stadtrat hat dazu im September und November 2023 Beschlüsse gefasst, die den Bau neuer Dreifeldsporthallen sowie die finanzielle Unterstützung der Schwimmbadsanierung des BTB mit bis zu 1,5 Millionen Euro vorsehen. Zudem wurde der Bau eines weiteren Stadtteils beschlossen."
+     },
+     {
+      "id": "e-scooter",
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "behauptet: „beschloss“",
+      "text": "E-Scooter sind elektrisch betriebene Tretroller, die in Oldenburg wie in vielen Städten als Leihfahrzeuge im öffentlichen Straßenraum angeboten werden. Kommunalpolitisch relevant sind sie vor allem wegen des häufig kritisierten Abstellens auf Gehwegen und Zufahrten, das Fußgänger und mobilitätseingeschränkte Personen behindern kann. Der Stadtrat befasst sich mit der Frage, wie das Abstellen reguliert werden kann: Während der Verkehrsausschuss im September 2023 einen Verbotsvorschlag ablehnte, beschloss der Schulausschuss im November 2023 ein Verbot des Abstellens auf Fußwegen und Zufahrten sowie die Ausweisung neuer Abstellflächen."
+     },
+     {
+      "id": "oli-bikes",
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "behauptet: „beschloss“",
+      "text": "OLi-Bikes ist ein Fahrradverleihsystem in Oldenburg. Im Jahr 2023 befasste sich der Stadtrat auf Antrag mit dem Abstellen von Leihfahrrädern und E-Scootern. Der Verkehrsausschuss lehnte einen entsprechenden Beschlussvorschlag ab, während der Schulausschuss ein Verbot des Abstellens auf Fußwegen und Zufahrten sowie die Ausweisung neuer Abstellflächen beschloss. Eine endgültige Beschlussfassung im Rat erfolgte nicht, da der Antrag nicht im Verwaltungsausschuss vorbereitet worden war."
+     },
+     {
+      "id": "kuhbrook",
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "nennt keine Ablehnung",
+      "text": "Kuhbrook ist ein Gebiet im Oldenburger Stadtteil Bümmerstede, das zusammen mit dem angrenzenden Heidbrook und einem Gehölzbereich des ehemaligen Fliegerhorstes einen naturschutzfachlich wertvollen Raum bildet. Der Stadtrat befasst sich mit dem Gebiet im Zusammenhang mit dessen möglicher Unterschutzstellung. In diesem Rahmen wurde die Verwaltung zudem beauftragt, eine gezielte Kartierung der Heuschreckenbestände vorzunehmen und die Ergebnisse vorzustellen."
+     }
+    ]
+   }
+  ]
+ }
+}

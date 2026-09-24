@@ -33,6 +33,7 @@ import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { Wegweiser } from "@/components/haushalt/wegweiser";
 import { Datenstand } from "@/components/haushalt/datenstand";
+import { QuellenUmfang } from "@/components/haushalt/quellen-umfang";
 import { useFetch } from "@/lib/use-fetch";
 import { Tafel } from "@/components/haushalt/tafel";
 import { VollzugKarte } from "@/components/haushalt/vollzug";
@@ -468,6 +469,9 @@ export default function HaushaltPage() {
       {/* Steht am Fuß und gilt für den ganzen Bereich: Wer hier ankommt, hat
           die Zahlen gesehen und fragt sich, bis wann sie reichen. */}
       <Datenstand />
+      {/* Wie viel hinter den Seiten steckt — gezählt aus dem Bestand. Als
+          Lade im Apparat, nicht als Karte oben (Tim, 24.09.2026). */}
+      <QuellenUmfang />
 
       <Quellenverzeichnis keys={quellen} />
     </div>

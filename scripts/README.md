@@ -79,6 +79,7 @@ verloren gehen könnten.
 | `update_disposable_domains.py [--schreiben]` | Wegwerf-Domain-Liste (`kern/disposable_email_domains.txt`) aus dem Upstream nachziehen; Vorgabe ist der Bericht |
 | `reextract_protocols.py` | Beschlüsse neu extrahieren nach Prompt-Änderung |
 | `build_decisions_fts.py` | Volltext-Index der Beschlüsse neu bauen |
+| `fix_outcome_summaries.py [--probe --limit 20] [--schreiben]` | Kurzfassungen abgelehnter/vertagter Punkte neu schreiben, die das Ergebnis verschweigen, dazu `vote` bei „einstimmig bei N Enthaltungen“ (Bericht-Default; `--probe` misst die Kosten, ohne zu schreiben) |
 | `extract_decision_locations.py --full` | Einmaliger Orts-Backfill; danach inkrementell über `check_protocols.py` |
 | `geocode_decision_locations.py` | Neue Beschluss-Orte geokodieren sowie stabile Katalog- und Ortsbereichs-IDs ableiten |
 | `revalidate_decision_locations.py [--apply]` | Gespeicherte Ortslinks mit aktuellen Präzisionsregeln prüfen/reparieren (Dry-Run-Default) |

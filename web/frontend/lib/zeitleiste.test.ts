@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { anteil, jahresmarken, satz, spuren, stufe } from "./zeitleiste";
+import { anteil, datumText, jahresmarken, naechster, reihenfolge, satz, spuren, stufe } from "./zeitleiste";
 
 const ACHSE = { start: "2023-01-01", end: "2027-01-01" };
 
@@ -90,5 +90,39 @@ describe("spuren", () => {
 
   it("überlappt in Spur 0, wenn alle Spuren voll sind", () => {
     expect(spuren([0.5, 0.5, 0.5, 0.5])).toEqual([0, 1, -1, 0]);
+  });
+});
+
+describe("naechster", () => {
+  it("findet den Punkt unter dem Zeiger", () => {
+    expect(naechster([{ x: 10, y: 5 }, { x: 50, y: 5 }, { x: 90, y: 5 }], 55, 5)).toBe(1);
+  });
+
+  it("wiegt die Höhe halb: waagerecht zählt mehr als die Spur", () => {
+    // Zeiger bei x=30 auf der Linie. Der Punkt in der Spur darüber liegt
+    // 8 px höher, aber nur 2 px daneben — er ist gemeint, nicht der ferne
+    // auf der Linie.
+    expect(naechster([{ x: 32, y: -3 }, { x: 45, y: 5 }], 30, 5)).toBe(0);
+  });
+
+  it("gibt -1 ohne Punkte", () => {
+    expect(naechster([], 3, 3)).toBe(-1);
+  });
+});
+
+describe("reihenfolge", () => {
+  it("nach Datum, dann Stadt; ohne Datum ans Ende", () => {
+    const p = (city: string, date: string | null) =>
+      ({ paper_id: `${city}${date}`, city, date, outcome: "none", kind: "motion" });
+    const r = reihenfolge([p("Münster", "2024-02-01"), p("Aachen", null),
+                           p("Bonn", "2024-02-01"), p("Kiel", "2023-01-01")]);
+    expect(r.map((x) => x.city)).toEqual(["Kiel", "Bonn", "Münster", "Aachen"]);
+  });
+});
+
+describe("datumText", () => {
+  it("deutsch, und sagt, wenn keins da ist", () => {
+    expect(datumText("2024-03-12")).toBe("12.03.2024");
+    expect(datumText(null)).toBe("ohne Datum");
   });
 });

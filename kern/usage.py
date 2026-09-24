@@ -37,6 +37,17 @@ PRICES: dict[str, tuple[float, float]] = {
     "google/gemini-3.1-flash-lite": (0.25, 1.50),
     "google/gemini-3.5-flash-lite": (0.30, 2.50),
     "google/gemini-3-flash-preview": (0.50, 3.00),
+    # Die OpenAI-Modelle der Web-Pfade und ihre Kandidaten, Listenpreise von
+    # OpenRouter am 23.09.2026. Seitdem liest auch die Kostenbremse der
+    # Messläufe (eval/kostenbremse.py) hier: Ein Modell ohne Eintrag lässt
+    # sich vor dem Lauf nicht schätzen und läuft nur mit --teuer-ok.
+    "openai/gpt-6-luna": (0.10, 0.50),
+    "openai/gpt-6-sol": (2.0, 10.0),
+    "openai/gpt-5.6-luna": (0.20, 1.20),
+    "openai/gpt-5.6-sol": (2.0, 10.0),
+    "openai/gpt-5.6-terra": (2.0, 12.0),
+    "google/gemini-3.5-flash": (1.50, 9.00),
+    "deepseek/deepseek-v4-flash-0731": (0.04, 0.64),
 }
 
 
@@ -163,18 +174,26 @@ def summary() -> dict:
     for r in rows:
         f = feats.setdefault(r["feature"], {
             "feature": r["feature"], "calls": 0, "prompt_tokens": 0, "completion_tokens": 0,
-            "cost": 0.0, "models": set(), "first": r["first"], "last": r["last"]})
+            "cost": 0.0, "models": set(), "by_model": [], "first": r["first"], "last": r["last"]})
+        kosten = r["creal"] + _cost(r["model"], r["pin_est"], r["pout_est"])
         f["calls"] += r["calls"]
         f["prompt_tokens"] += r["pin"]
         f["completion_tokens"] += r["pout"]
-        f["cost"] += r["creal"] + _cost(r["model"], r["pin_est"], r["pout_est"])
+        f["cost"] += kosten
         if r["model"]:
             f["models"].add(r["model"])
+        # Kosten JE MODELL innerhalb des Features: Seit „Recherche Plus“
+        # (23.09.2026) schreibt `deep_report` mit zwei Modellen, die sich im
+        # Preis um das 13-Fache unterscheiden (Luna 0,42 ct, Sol 5,6 ct je
+        # Bericht). Eine Summe über beide sagte nicht, was das Plus kostet.
+        f["by_model"].append({"model": r["model"] or "", "calls": r["calls"],
+                              "cost": round(kosten, 4)})
         f["first"] = min(f["first"], r["first"])
         f["last"] = max(f["last"], r["last"])
     out = []
     for f in feats.values():
         f["models"] = sorted(f["models"])
+        f["by_model"].sort(key=lambda m: -m["cost"])
         f["cost"] = round(f["cost"], 4)
         out.append(f)
     out.sort(key=lambda x: -x["cost"])

@@ -30,6 +30,16 @@ den Ortsbereichen (``public/geo/stadtteile-oldenburg.json``, 18 KB).
     python scripts/wahl_geodaten.py hol          # holen, vereinfachen, schreiben
     python scripts/wahl_geodaten.py hol --roh    # ohne Vereinfachung (zum Vergleichen)
     python scripts/wahl_geodaten.py pruefe       # was liegt da, und passt es zur Wahl?
+    python scripts/wahl_geodaten.py ueberlappung # welcher Bezirk liegt in welchem Ortsbereich?
+
+**Wahlbezirke liegen nicht in den Ortsbereichen** (gemessen 23.09.2026): Bei
+25 von 91 liegen weniger als 80 % der Fläche in einem einzigen, Innenstadt
+und Drielake haben gar keinen Bezirk, der überwiegend in ihnen liegt. Die
+Stadtkarte zeigt je Ortsbereich deshalb ALLE Bezirke, die ihn berühren —
+und ``ueberlappung`` rechnet die Anteile dafür
+(``kommunalwahl/geo/wahlbezirk-ortsbereiche.json``, gelesen von
+``web/backend/app/election/district_map.py``). Ohne shapely: Die Fläche wird
+über ein Raster gezählt, s. ``anteile``.
 """
 from __future__ import annotations
 
@@ -42,6 +52,14 @@ from pathlib import Path
 
 WURZEL = Path(__file__).resolve().parents[1]
 ZIEL = WURZEL / "web" / "frontend" / "public" / "geo"
+ORTSBEREICHE = ZIEL / "stadtteile-oldenburg.json"
+UEBERLAPPUNG = WURZEL / "kommunalwahl" / "geo" / "wahlbezirk-ortsbereiche.json"
+#: Rasterweite der Flächenzählung in Metern. Ein Bezirk ist Hunderte Meter
+#: breit; bei 20 m liegt die Abweichung gegen eine exakte Verschneidung
+#: (shapely, einmal gemessen) unter einem Prozentpunkt je Anteil.
+RASTER_M = 20.0
+#: Anteile darunter fallen weg — ein Zipfel an der Grenze ist kein „liegt in".
+SCHWELLE = 0.05
 
 DIENST = ("https://services5.arcgis.com/kqBnwL0FsBhsJf2P/arcgis/rest/services/"
           "Wahlen/FeatureServer")
@@ -230,6 +248,103 @@ def cmd_pruefe(_: argparse.Namespace) -> int:
     return 1 if fehler else 0
 
 
+# ------------------------------------------------------------------ Überlappung
+
+def _im_ring(x: float, y: float, ring: list) -> bool:
+    """Punkt-in-Polygon (Strahlverfahren) für einen Ring."""
+    drin = False
+    j = len(ring) - 1
+    for i in range(len(ring)):
+        xi, yi = ring[i][0], ring[i][1]
+        xj, yj = ring[j][0], ring[j][1]
+        if (yi > y) != (yj > y) and x < (xj - xi) * (y - yi) / (yj - yi) + xi:
+            drin = not drin
+        j = i
+    return drin
+
+
+def _polygone(geo: dict) -> list[list]:
+    """Je Teilfläche die Ringe (außen zuerst, danach Löcher)."""
+    return [geo["coordinates"]] if geo["type"] == "Polygon" else list(geo["coordinates"])
+
+
+def _enthaelt(polygone: list[list], x: float, y: float) -> bool:
+    for ringe in polygone:
+        if ringe and _im_ring(x, y, ringe[0]) and not any(_im_ring(x, y, r) for r in ringe[1:]):
+            return True
+    return False
+
+
+def _box(polygone: list[list]) -> tuple[float, float, float, float]:
+    xs = [p[0] for ringe in polygone for p in ringe[0]]
+    ys = [p[1] for ringe in polygone for p in ringe[0]]
+    return min(xs), min(ys), max(xs), max(ys)
+
+
+def anteile(bezirke: list[dict], orte: list[dict], raster_m: float = RASTER_M,
+            schwelle: float = SCHWELLE) -> dict[int, list[dict]]:
+    """Je Wahlbezirk die Ortsbereiche, in denen er liegt, mit Flächenanteil.
+
+    Gezählt wird auf einem Raster: jeder Rasterpunkt im Bezirk wird dem
+    Ortsbereich zugeschlagen, in dem er liegt. Punkte, die in keinem liegen
+    (die vereinfachten Grenzen schließen nicht ganz bündig), zählen nicht.
+    Anteile unter ``schwelle`` fallen weg, der Rest wird auf 1 normiert.
+    """
+    ortsflaechen = []
+    for o in orte:
+        polys = _polygone(o["geometry"])
+        ortsflaechen.append((o["properties"]["name"], polys, _box(polys)))
+    out: dict[int, list[dict]] = {}
+    for b in bezirke:
+        polys = _polygone(b["geometry"])
+        x0, y0, x1, y1 = _box(polys)
+        mx, my = _meter_je_grad((y0 + y1) / 2)
+        dx, dy = raster_m / mx, raster_m / my
+        kandidaten = [(n, p) for n, p, (a, c, e, f) in ortsflaechen
+                      if a <= x1 and e >= x0 and c <= y1 and f >= y0]
+        zaehler: dict[str, int] = {}
+        y = y0 + dy / 2
+        while y < y1:
+            x = x0 + dx / 2
+            while x < x1:
+                if _enthaelt(polys, x, y):
+                    for name, op in kandidaten:
+                        if _enthaelt(op, x, y):
+                            zaehler[name] = zaehler.get(name, 0) + 1
+                            break
+                x += dx
+            y += dy
+        summe = sum(zaehler.values()) or 1
+        behalten = {n: z / summe for n, z in zaehler.items() if z / summe >= schwelle}
+        rest = sum(behalten.values()) or 1
+        out[b["properties"]["nr"]] = [
+            {"place": n, "share": round(a / rest, 3)}
+            for n, a in sorted(behalten.items(), key=lambda t: (-t[1], t[0]))
+        ]
+    return out
+
+
+def cmd_ueberlappung(_: argparse.Namespace) -> int:
+    bezirke = json.loads((ZIEL / EBENEN[0][0]).read_text(encoding="utf-8"))["features"]
+    orte = json.loads(ORTSBEREICHE.read_text(encoding="utf-8"))["features"]
+    tabelle = anteile(bezirke, orte)
+    UEBERLAPPUNG.parent.mkdir(parents=True, exist_ok=True)
+    UEBERLAPPUNG.write_text(json.dumps({
+        "about": ("Welcher Wahlbezirk (Urne) in welchen Ortsbereichen liegt, als "
+                  "Flächenanteil. Gerechnet von scripts/wahl_geodaten.py ueberlappung "
+                  f"auf einem {RASTER_M:g}-m-Raster aus public/geo/."),
+        "threshold": SCHWELLE,
+        "districts": {str(nr): orte_ for nr, orte_ in sorted(tabelle.items())},
+    }, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    geteilt = sum(1 for o in tabelle.values() if o and o[0]["share"] < 0.8)
+    ohne = sorted({o["properties"]["name"] for o in orte}
+                  - {e["place"] for o in tabelle.values() for e in o})
+    print(f"{len(tabelle)} Bezirke, davon {geteilt} unter 80 % in einem Ortsbereich")
+    print(f"Ortsbereiche ohne Bezirk: {ohne or 'keine'}")
+    print(f"  {UEBERLAPPUNG.relative_to(WURZEL)}")
+    return 1 if ohne else 0
+
+
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     unter = p.add_subparsers(dest="befehl", required=True)
@@ -239,6 +354,8 @@ def main() -> int:
     h.set_defaults(fn=cmd_hol)
     pr = unter.add_parser("pruefe", help="was liegt da, und passt es zur Wahl?")
     pr.set_defaults(fn=cmd_pruefe)
+    ue = unter.add_parser("ueberlappung", help="Anteile Wahlbezirk × Ortsbereich rechnen")
+    ue.set_defaults(fn=cmd_ueberlappung)
     a = p.parse_args()
     return a.fn(a)
 

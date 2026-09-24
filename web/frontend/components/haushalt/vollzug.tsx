@@ -160,7 +160,7 @@ export function Vollzug({ daten, year, onYear, beleg }: {
           </p>
           <div className="mt-2">
             <Hantel zeilen={verlaufHantel} unit="Mio. €" massstab="amount" sortierung="alpha"
-              wovon="die Erwartung" istLabel="erwartet"
+              wovon="die Erwartung" istLabel="erwartet" istKurz="erwartet"
               keineWertung={
                 <>Die Farbe bewertet nicht. Eine Erwartung, die im Jahr besser wird, kann
                   eine vorsichtige Planung sein oder mehr Gewerbesteuer — was es war, steht
@@ -177,7 +177,7 @@ export function Vollzug({ daten, year, onYear, beleg }: {
           </p>
           <div className="mt-2">
             <Hantel zeilen={bereichHantel} unit="Mio. €" massstab="amount" schwelle={6}
-              wovon="der Bereich" istLabel="erwartet"
+              wovon="der Bereich" istLabel="erwartet" istKurz="erwartet"
               keineWertung={
                 <>Die Farbe bewertet nicht: Ein Bereich, der mehr erwartet als geplant, hat
                   meist mehr eingenommen (bei „Finanzmanagement und Recht" die Gewerbesteuer)

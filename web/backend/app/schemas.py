@@ -459,6 +459,30 @@ class QuizAnswerIn(BaseModel):
     selected_index: int | None = Field(default=None, ge=0, le=3)  # Multiple Choice
     value: float | None = None                                    # Schätzfrage (Slider)
     time_ms: int | None = Field(default=None, ge=0)
+    # Reihenfolge-Frage: die vier Antworten in der getippten Reihenfolge.
+    order: list[int] | None = Field(default=None, min_length=4, max_length=4)
+    # Mit 50:50-Joker beantwortet: halbe Punkte (aufgerundet). Die App
+    # schickt das Feld nie und bekommt deshalb immer volle Punkte.
+    joker: bool = False
+
+
+class QuizJokerIn(BaseModel):
+    question_id: int
+
+
+class QuizBlitzIn(BaseModel):
+    # 60 Sekunden: mehr als 40 Antworten schafft niemand, der liest.
+    correct: int = Field(ge=0, le=40)
+    answered: int = Field(ge=0, le=40)
+
+
+class QuizDuelIn(BaseModel):
+    question_ids: list[int] = Field(min_length=1, max_length=10)
+    correct: int = Field(ge=0, le=10)
+
+
+class QuizDuelDoneIn(BaseModel):
+    correct: int = Field(ge=0, le=10)
 
 
 class QuizRateIn(BaseModel):
@@ -471,6 +495,8 @@ class QuizDailyIn(BaseModel):
     correct: int = Field(ge=0, le=50)
     total: int = Field(ge=1, le=50)
     points: int = Field(ge=0, le=500)
+    # Je Frage richtig/falsch, in Spielreihenfolge — für das Teil-Raster.
+    results: list[bool] | None = Field(default=None, max_length=10)
 
 
 # Eigene Quizfragen (RL-U14): privat je Konto. Multiple-Choice (2–4 Antworten)
@@ -493,6 +519,12 @@ class UserQuizAnswerIn(BaseModel):
     question_id: int
     selected_index: int | None = Field(default=None, ge=0, le=3)  # Multiple Choice
     value: float | None = None                                    # Schätzfrage (Slider)
+
+
+class QuizPinIn(BaseModel):
+    slug: str = Field(min_length=1, max_length=120)
+    lat: float = Field(ge=-90, le=90)
+    lon: float = Field(ge=-180, le=180)
 
 
 class QuizMapIn(BaseModel):

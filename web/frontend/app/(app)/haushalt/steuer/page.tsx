@@ -22,6 +22,16 @@ import {
   STEUERARTEN, SPIELRAUM_LABEL, type SteuerArt, steuerartNachSlug,
 } from "@/lib/haushalt-taxes";
 import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/source";
+import { VorberichtZahlen } from "@/components/haushalt/vorbericht-zahlen";
+
+/** Steuerart → Reihe im Vorbericht (council/vorbericht_zahlen.py). Nur die
+ *  vier, für die der Vorbericht je ein Diagramm führt. */
+const VORBERICHT_REIHE: Record<string, { key: string; label: string }> = {
+  gewerbesteuer: { key: "tax_trade", label: "Gewerbesteuer (brutto, vor der Umlage)" },
+  grundsteuer: { key: "tax_property", label: "Grundsteuer A + B" },
+  einkommensteueranteil: { key: "tax_income", label: "Gemeindeanteil an der Einkommensteuer" },
+  umsatzsteueranteil: { key: "tax_sales", label: "Gemeindeanteil an der Umsatzsteuer" },
+};
 import { LottiErklaert, LottiVergleich } from "@/components/haushalt/lotti-erklaert";
 import { IstKurve } from "@/components/haushalt/ist-kurve";
 import { SteuerPlanIst } from "@/components/haushalt/steuer-plan-ist";
@@ -260,7 +270,8 @@ function SteuerInner() {
             auf der Seite stehen — sonst führte die Fußnotenliste eine Quelle,
             aus der hier nichts stammt (dieselbe Regel wie bei
             „haushaltssatzung" darüber). */
-         ...(statistik ? (["lsn_gewerbesteuer"] as const) : [])];
+         ...(statistik ? (["lsn_gewerbesteuer"] as const) : []),
+         ...(VORBERICHT_REIHE[art.slug] ? (["budget_preface"] as const) : [])];
 
   return (
     <Quellenkontext keys={quellen}>
@@ -724,6 +735,11 @@ function SteuerInner() {
         </div>
         )}
         </>
+      )}
+
+      {VORBERICHT_REIHE[art.slug] && (
+        <VorberichtZahlen reihen={[VORBERICHT_REIHE[art.slug]]} kicker="Prognose und Finanzplanung"
+          titel={`Was die Kämmerei für ${art.title} erwartet`} />
       )}
 
       <Grenzen art={art} />

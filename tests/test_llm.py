@@ -303,8 +303,10 @@ NUTZER_PFADE = ("qa_answer", "qa_simple", "qa_analysis", "qa_query_expansion",
 def test_nutzer_pfade_behalten_zdr(monkeypatch):
     monkeypatch.delenv("NWZ_OPENROUTER_ZDR", raising=False)
     for f in NUTZER_PFADE:
-        assert llm.zdr_pflicht(f), f
+        assert llm.nutzereingabe(f), f
         assert f not in llm.OHNE_NUTZEREINGABE
+        # Die EINE benannte Ausnahme: Tims ZDR-Verzicht vom 23.09.2026.
+        assert llm.zdr_pflicht(f) is (f not in llm.ZDR_VERZICHT), f
     assert llm.zdr_pflicht(None), "ohne _feature bleibt es bei ZDR (der Watcher)"
     assert llm.zdr_pflicht("ein_neues_feature"), "unbekannt heißt ZDR"
 
@@ -341,7 +343,10 @@ def test_chat_complete_reicht_die_zdr_entscheidung_durch(monkeypatch):
         raise RuntimeError("stop")
 
     monkeypatch.setattr(llm, "_create", fake_create)
-    for feature, erwartet in (("impact_rating", False), ("qa_answer", True), (None, True)):
+    # qa_answer steht seit 23.09.2026 in ZDR_VERZICHT; qa_analysis trägt
+    # Nutzereingabe und hat keinen Verzicht.
+    for feature, erwartet in (("impact_rating", False), ("qa_answer", False),
+                              ("qa_analysis", True), (None, True)):
         with pytest.raises(RuntimeError):
             llm.chat_complete(model="x", messages=[], _feature=feature)
         assert gesehen[-1] is erwartet
@@ -528,3 +533,448 @@ def test_kein_aufruf_leert_das_routing():
                for p in (wurzel / d).rglob("*.py")
                if re.search(r'["\']provider["\']\s*:\s*\{\s*\}', p.read_text())]
     assert not treffer, treffer
+
+
+# --------------------------------------------------------------------------- #
+# Prompt-Mitschnitt (Messschalter der Fakten-Eval)
+# --------------------------------------------------------------------------- #
+def _zeilen(ordner, feature):
+    import json
+    pfad = ordner / f"{feature}.jsonl"
+    return [json.loads(z) for z in pfad.read_text().splitlines()] if pfad.exists() else []
+
+
+def _strom_teil(text, model=None):
+    delta = type("D", (), {"content": text})()
+    return type("K", (), {"choices": [type("C", (), {"delta": delta})()], "usage": None,
+                          "model": model})()
+
+
+def test_mitschnitt_aus_schreibt_nichts(monkeypatch, tmp_path):
+    monkeypatch.delenv(llm.MITSCHNITT_ENV, raising=False)
+    monkeypatch.chdir(tmp_path)
+    _stub_create(monkeypatch, [_Antwort("hallo")])
+    llm.chat_complete(model="m", messages=[{"role": "user", "content": "x"}], _feature="qa_answer")
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_mitschnitt_haelt_prompt_modell_und_antwort_fest(monkeypatch, tmp_path):
+    """Die Eval muss den ECHTEN Prompt sehen — Nachrichten, Modell, Antwort, je Feature."""
+    monkeypatch.setenv(llm.MITSCHNITT_ENV, str(tmp_path))
+    _stub_create(monkeypatch, [_Antwort("Die Antwort")])
+    msgs = [{"role": "system", "content": "Kontext 336.994.000 €"},
+            {"role": "user", "content": "Frage"}]
+    llm.chat_complete(model="openai/gpt-6-luna", messages=msgs, _feature="assistant_explain")
+    (z,) = _zeilen(tmp_path, "assistant_explain")
+    assert z["model"] == "openai/gpt-6-luna"
+    assert z["messages"] == msgs
+    assert z["answer"] == "Die Antwort"
+    assert z["aborted"] is False
+
+
+def test_mitschnitt_auch_beim_strom(monkeypatch, tmp_path):
+    monkeypatch.setenv(llm.MITSCHNITT_ENV, str(tmp_path))
+    monkeypatch.setattr(llm, "_create", lambda **kw: iter([
+        _strom_teil("Rund ", "google/gemini-2.5-flash"), _strom_teil("337 Mio. €")]))
+    teile = list(llm.chat_stream(model="google/gemini-2.5-flash",
+                                 messages=[{"role": "user", "content": "q"}],
+                                 _feature="qa_answer"))
+    assert "".join(teile) == "Rund 337 Mio. €"
+    (z,) = _zeilen(tmp_path, "qa_answer")
+    assert z["answer"] == "Rund 337 Mio. €"
+    assert z["response_model"] == "google/gemini-2.5-flash"
+
+
+def test_mitschnitt_haelt_einen_abgerissenen_strom_fest(monkeypatch, tmp_path):
+    """Reißt der Strom, erzeugt der Router neu — die Eval muss beide Aufrufe sehen."""
+    monkeypatch.setenv(llm.MITSCHNITT_ENV, str(tmp_path))
+
+    def strom(**kw):
+        yield _strom_teil("Anfang")
+        raise RuntimeError("Strom weg")
+
+    monkeypatch.setattr(llm, "_create", strom)
+    with pytest.raises(RuntimeError):
+        list(llm.chat_stream(model="m", messages=[], _feature="qa_answer"))
+    (z,) = _zeilen(tmp_path, "qa_answer")
+    assert z["aborted"] is True and z["answer"] == "Anfang"
+
+
+def test_mitschnitt_fehler_bricht_den_aufruf_nicht_ab(monkeypatch, tmp_path):
+    datei = tmp_path / "keinordner"
+    datei.write_text("")  # eine DATEI, wo ein Ordner sein müsste
+    monkeypatch.setenv(llm.MITSCHNITT_ENV, str(datei))
+    _stub_create(monkeypatch, [_Antwort("ok")])
+    resp = llm.chat_complete(model="m", messages=[], _feature="qa_answer")
+    assert resp.choices[0].message.content == "ok"
+
+
+def test_mitschnitt_steht_in_keiner_env_vorlage():
+    """Der Schalter schreibt Nutzerfragen im Klartext auf die Platte — nie im Betrieb."""
+    from pathlib import Path
+    wurzel = Path(__file__).resolve().parent.parent
+    for vorlage in wurzel.glob(".env*"):
+        if vorlage.is_file():
+            assert llm.MITSCHNITT_ENV not in vorlage.read_text(errors="ignore"), vorlage
+
+
+def test_zdr_verzicht_ist_genau_die_benannte_liste():
+    """Tims Entscheidung 23.09.2026: Lotti und „Frag den Rat“ auf GPT-6 Luna,
+    ohne ZDR. Genau die Features, die ``COUNCIL_ASSISTANT_MODEL`` und
+    ``COUNCIL_QA_MODEL`` lesen — die Analyse vor der Suche, der Watcher und
+    die Themenbeschreibung behalten ZDR."""
+    assert llm.ZDR_VERZICHT == {"assistant_explain", "qa_answer", "qa_simple",
+                                "deep_report", "party_opinions"}
+    assert llm.ZDR_VERZICHT <= set(NUTZER_PFADE)
+    for f in ("qa_analysis", "qa_query_expansion", "deep_decomposition",
+              "topic_auto_description", "vagueness_check", "council_watcher", None):
+        assert llm.zdr_pflicht(f), f
+
+
+def test_zdr_verzicht_behaelt_trainingsverbot_und_china_liste(monkeypatch):
+    """Ohne ZDR heißt nicht ohne Schranken: ``data_collection: deny`` und die
+    China-Liste gehen auch für Lotti und die Antwort mit — durch das echte
+    ``_create``, Strom UND Einmal-Aufruf."""
+    for var in ("NWZ_OPENROUTER_ROUTING", "NWZ_OPENROUTER_IGNORE", "NWZ_OPENROUTER_ZDR"):
+        monkeypatch.delenv(var, raising=False)
+    gesendet = []
+
+    class _FakeCompletions:
+        def create(self, **kwargs):
+            gesendet.append(kwargs)
+            return iter(()) if kwargs.get("stream") else _Antwort()
+
+    class _FakeClient:
+        chat = type("", (), {"completions": _FakeCompletions()})()
+
+    monkeypatch.setattr(llm, "get_client", lambda: _FakeClient())
+    monkeypatch.setattr(llm, "_record_usage", lambda f, m, u: None)
+    # Ein Modell ohne EU-Weg (EU_ZUERST) zeigt das Verzicht-Routing direkt —
+    # dasselbe, das bei GPT-6 Luna als Rückfall dient (s. die EU-Tests unten).
+    llm.chat_complete(model="deepseek/deepseek-v4-pro", messages=[], _feature="assistant_explain")
+    list(llm.chat_stream(model="deepseek/deepseek-v4-pro", messages=[], _feature="qa_answer"))
+    llm.chat_complete(model="google/gemini-3.1-flash-lite", messages=[], _feature="qa_analysis")
+    verzicht, strom, analyse = (g["extra_body"]["provider"] for g in gesendet)
+    for provider in (verzicht, strom):
+        assert "zdr" not in provider
+        assert provider["data_collection"] == "deny"
+        assert {"deepseek", "baidu", "alibaba"} <= set(provider["ignore"])
+    assert analyse["zdr"] is True
+
+
+def test_zdr_verzicht_gibt_flex_nicht_frei(monkeypatch):
+    aufrufe = _stub_create_kwargs(monkeypatch, [_Antwort()])
+    for feature in sorted(llm.ZDR_VERZICHT):
+        with pytest.raises(llm.FlexNichtErlaubt):
+            llm.chat_complete(model="openai/gpt-6-luna", messages=[], _feature=feature,
+                              _tarif="flex")
+    assert aufrufe == []
+
+
+def test_web_denkaufwand_nur_fuer_die_gemessenen_modelle(monkeypatch):
+    monkeypatch.delenv(llm.WEB_DENKAUFWAND_ENV, raising=False)
+    for (modell, feature), stufe in llm.WEB_DENKAUFWAND.items():
+        assert llm.web_denk_extra(modell, feature) == {"extra_body": {"reasoning": {"effort": stufe}}}
+    assert llm.web_denk_extra("openai/gpt-6-luna", "qa_answer") == {}
+    assert llm.web_denk_extra("deepseek/deepseek-v4-flash", "qa_answer") == {
+        "extra_body": {"reasoning": {"enabled": False}}}
+    assert llm.web_denk_extra("google/gemini-3.1-flash-lite", "qa_answer") == {}
+    # NICHT über MODEL_PARAMS: Dort gälte es auch für die Luna-Crons.
+    assert "extra_body" not in llm.MODEL_PARAMS.get("openai/gpt-6-luna", {})
+
+
+def test_messschalter_ueberschreibt_den_denkaufwand(monkeypatch):
+    monkeypatch.setenv(llm.WEB_DENKAUFWAND_ENV, "vorgabe")
+    assert llm.web_denk_extra("openai/gpt-6-luna", "qa_answer") == {}
+    monkeypatch.setenv(llm.WEB_DENKAUFWAND_ENV, "high")
+    assert llm.web_denk_extra("openai/gpt-6-luna", "assistant_explain") == {
+        "extra_body": {"reasoning": {"effort": "high"}}}
+
+
+def test_lotti_und_antwort_fragen_luna_mit_dem_vorgabe_aufwand(monkeypatch):
+    """Entschieden an der Fakten-Eval (P4a): ``low`` ließ bei Lotti 13 statt 10
+    und bei Frag den Rat 31 statt 27 Pflichtangaben aus oder verfälschte sie —
+    „Akkuratheit schlägt Geschwindigkeit“. Kein ``reasoning`` im Aufruf."""
+    monkeypatch.delenv(llm.WEB_DENKAUFWAND_ENV, raising=False)
+    from council import assistant, qa
+    _, extra = assistant.explain_messages(assistant.Screen(route="/haushalt"), "Was?", {},
+                                          model="openai/gpt-6-luna")
+    assert "reasoning" not in (extra.get("extra_body") or {})
+    _, extra = qa._answer_messages("Was?", [], "topic", "openai/gpt-6-luna")
+    assert "reasoning" not in (extra.get("extra_body") or {})
+
+
+def test_recherche_bericht_nimmt_den_denkaufwand_je_feature(monkeypatch):
+    """Bis 23.09.2026 trug der Deep-Bericht nur DeepSeeks Aus-Schalter — ein
+    Eintrag in ``WEB_DENKAUFWAND`` für ``deep_report`` wäre wirkungslos
+    geblieben, und die Messung hätte zweimal dasselbe verglichen."""
+    from council import qa
+    monkeypatch.delenv(llm.WEB_DENKAUFWAND_ENV, raising=False)
+    gestellt: dict = {}
+
+    def merken(**kwargs):
+        gestellt.update(kwargs)
+        return iter(())
+
+    monkeypatch.setattr(llm, "chat_stream", merken)
+    monkeypatch.setitem(llm.WEB_DENKAUFWAND, ("openai/gpt-6-luna", "deep_report"), "high")
+    list(qa.deep_bericht_stream("Frage?", [], model="openai/gpt-6-luna"))
+    assert gestellt["_feature"] == "deep_report"
+    assert gestellt["extra_body"] == {"reasoning": {"effort": "high"}}
+    # Der Messschalter der Fakten-Eval erreicht den Bericht ebenso.
+    monkeypatch.setenv(llm.WEB_DENKAUFWAND_ENV, "vorgabe")
+    gestellt.clear()
+    list(qa.deep_bericht_stream("Frage?", [], model="openai/gpt-6-luna"))
+    assert "extra_body" not in gestellt
+    # DeepSeek bleibt ohne Denken, wie bisher.
+    gestellt.clear()
+    list(qa.deep_bericht_stream("Frage?", [], model="deepseek/deepseek-v4-pro"))
+    assert gestellt["extra_body"] == {"reasoning": {"enabled": False}}
+
+
+def test_gpt6_sol_hat_den_boden_der_denkenden_modelle():
+    """Sonst bekäme der Bericht die 4.000 Tokens der Aufrufstelle, und das
+    Denken zehrte sie still auf (finish_reason ``length``)."""
+    assert llm._with_model_params({"model": "openai/gpt-6-sol", "max_tokens": 4000})[
+        "max_tokens"] >= llm.GPT56_MIN_MAX_TOKENS
+
+
+def test_mitschnitt_haelt_ende_und_denk_tokens_fest(monkeypatch, tmp_path):
+    """Der Nachweis gegen einen still abgeschnittenen Bericht: ``length`` im
+    Mitschnitt, dazu die Denk-Tokens, die das Budget verbraucht haben."""
+    monkeypatch.setenv(llm.MITSCHNITT_ENV, str(tmp_path))
+    details = type("D", (), {"reasoning_tokens": 900})()
+    verbrauch = type("U", (), {"prompt_tokens": 10, "completion_tokens": 1000, "cost": 0.0,
+                               "completion_tokens_details": details})()
+    ende = type("K", (), {"choices": [type("C", (), {
+        "delta": type("D", (), {"content": ""})(), "finish_reason": "length"})()],
+        "usage": None, "model": "m"})()
+    nutzung = type("K", (), {"choices": [], "usage": verbrauch, "model": "m"})()
+    monkeypatch.setattr(llm, "_create", lambda **kw: iter([_strom_teil("Text"), ende, nutzung]))
+    assert "".join(llm.chat_stream(model="m", messages=[], _feature="deep_report")) == "Text"
+    (z,) = _zeilen(tmp_path, "deep_report")
+    assert z["finish_reason"] == "length"
+    assert z["usage"] == {"prompt_tokens": 10, "completion_tokens": 1000,
+                          "reasoning_tokens": 900}
+
+
+# --------------------------------------------------------------------------- #
+# EU zuerst (Tims Entscheidung 23.09.2026): GPT-6 Luna für Lotti und
+# „Frag den Rat“ erst über azure/eu mit ZDR, bei Ausfall ohne ZDR.
+# --------------------------------------------------------------------------- #
+@pytest.fixture
+def _eu_umgebung(monkeypatch):
+    for var in ("NWZ_OPENROUTER_ROUTING", "NWZ_OPENROUTER_IGNORE", "NWZ_OPENROUTER_ZDR",
+                llm.EU_ANBIETER_ENV, llm.MITSCHNITT_ENV):
+        monkeypatch.delenv(var, raising=False)
+    aufgezeichnet = []
+    monkeypatch.setattr(llm, "_record_usage", lambda f, m, u: aufgezeichnet.append((f, m)))
+    return aufgezeichnet
+
+
+def _routing(kw):
+    """Den Provider-Block, den ``_create`` aus den kwargs bauen würde."""
+    return llm._routing_extra_body(kw.get("_zdr", True), kw.get("_only"))["provider"]
+
+
+def _fehler(code, text="fehler"):
+    import httpx
+    from openai import APIStatusError, NotFoundError, RateLimitError
+    antwort = httpx.Response(code, request=_make_request())
+    klasse = {404: NotFoundError, 429: RateLimitError}.get(code, APIStatusError)
+    return klasse(text, response=antwort, body={})
+
+
+def test_eu_erster_weg_ok_nur_azure(_eu_umgebung, monkeypatch):
+    aufrufe = _stub_create_kwargs(monkeypatch, [_Antwort("aus der EU")])
+    resp = llm.chat_complete(model="openai/gpt-6-luna", messages=[], _feature="assistant_explain")
+    assert resp.choices[0].message.content == "aus der EU"
+    (kw,) = aufrufe
+    provider = _routing(kw)
+    assert provider["only"] == ["azure/eu"] and provider["zdr"] is True
+    assert provider["data_collection"] == "deny"
+    assert {"deepseek", "baidu", "alibaba"} <= set(provider["ignore"])
+    assert _eu_umgebung == [("assistant_explain", "openai/gpt-6-luna")]
+
+
+@pytest.mark.parametrize("fehler", [
+    _fehler(429, "temporarily rate-limited upstream"),
+    _fehler(503),
+    _fehler(404, "No allowed providers are available for the selected model"),
+    llm.EmptyResponseError("200 ohne choices"),
+])
+def test_eu_ausfall_faellt_einmal_auf_das_verzicht_routing(_eu_umgebung, monkeypatch, fehler):
+    aufrufe = _stub_create_kwargs(monkeypatch, [fehler, _Antwort("aus den USA")])
+    resp = llm.chat_complete(model="openai/gpt-6-luna", messages=[], _feature="qa_answer")
+    assert resp.choices[0].message.content == "aus den USA"
+    eu, verzicht = aufrufe
+    assert _routing(eu)["only"] == ["azure/eu"] and _routing(eu)["zdr"] is True
+    zweiter = _routing(verzicht)
+    assert "only" not in zweiter and "zdr" not in zweiter
+    assert zweiter["data_collection"] == "deny" and "deepseek" in zweiter["ignore"]
+    # Gezählt als eigenes Modell — so steht es in llm_usage und im Admin-Panel.
+    assert _eu_umgebung == [("qa_answer", "openai/gpt-6-luna" + llm.RUECKFALL_MARKE)]
+
+
+def test_eu_leerantwort_faellt_auch_mit_eigener_leerregel_zurueck(_eu_umgebung, monkeypatch):
+    """Die Partei-Meinungen behandeln Leerantworten selbst — aus der EU heißt
+    leer trotzdem „Anbieter gestört“, der zweite Weg behält die Regel."""
+    aufrufe = _stub_create_kwargs(monkeypatch, [_AntwortOhneChoices(), _Antwort("[]")])
+    resp = llm.chat_complete(model="openai/gpt-6-luna", messages=[], _feature="party_opinions",
+                             _allow_empty_response=True)
+    assert resp.choices[0].message.content == "[]"
+    assert [a.get("_only") for a in aufrufe] == [("azure/eu",), None]
+    assert all(a["_allow_empty_response"] for a in aufrufe)
+
+
+def test_eu_inhaltsfilter_faellt_nicht_zurueck(_eu_umgebung, monkeypatch):
+    """Ein Filter-Treffer hängt am Text — ein Rückfall schickte genau diesen
+    Text in die USA."""
+    import httpx
+    from openai import BadRequestError
+    filter_fehler = BadRequestError(
+        "content_filter: ResponsibleAIPolicyViolation",
+        response=httpx.Response(400, request=_make_request()), body={})
+    aufrufe = _stub_create_kwargs(monkeypatch, [filter_fehler, _Antwort()])
+    with pytest.raises(BadRequestError):
+        llm.chat_complete(model="openai/gpt-6-luna", messages=[], _feature="assistant_explain")
+    assert len(aufrufe) == 1 and _eu_umgebung == []
+
+
+def test_eu_anderer_client_fehler_faellt_nicht_zurueck(_eu_umgebung, monkeypatch):
+    from openai import APIStatusError
+    aufrufe = _stub_create_kwargs(monkeypatch, [_fehler(401, "bad key"), _Antwort()])
+    with pytest.raises(APIStatusError):
+        llm.chat_complete(model="openai/gpt-6-luna", messages=[], _feature="qa_answer")
+    assert len(aufrufe) == 1
+
+
+def test_eu_nur_fuer_zdr_verzicht_und_gemessene_modelle(_eu_umgebung, monkeypatch):
+    """Außerhalb von ZDR_VERZICHT und für Modelle ohne EU-Weg bleibt alles, wie es war."""
+    aufrufe = _stub_create_kwargs(monkeypatch, [_Antwort()] * 4)
+    llm.chat_complete(model="openai/gpt-6-luna", messages=[], _feature="impact_rating")
+    llm.chat_complete(model="openai/gpt-6-luna", messages=[], _feature="qa_analysis")
+    llm.chat_complete(model="google/gemini-3.1-flash-lite", messages=[], _feature="qa_answer")
+    llm.chat_complete(model="openai/gpt-6-luna", messages=[])
+    assert [a.get("_only") for a in aufrufe] == [None] * 4
+    assert [a["_zdr"] for a in aufrufe] == [False, True, False, True]
+    assert llm.eu_zuerst("deep_report", "openai/gpt-6-sol") == ("azure/eu",)
+    assert set(llm.EU_ZUERST) == {"openai/gpt-6-luna", "openai/gpt-6-sol"}
+
+
+def test_eu_notausschalter_und_messschalter(_eu_umgebung, monkeypatch):
+    monkeypatch.setenv(llm.EU_ANBIETER_ENV, "gibtsnicht/eu")
+    assert llm.eu_zuerst("qa_answer", "openai/gpt-6-luna") == ("gibtsnicht/eu",)
+    monkeypatch.setenv("NWZ_OPENROUTER_ROUTING", "off")
+    assert llm.eu_zuerst("qa_answer", "openai/gpt-6-luna") is None
+
+
+def test_eu_messschalter_steht_in_keiner_env_vorlage():
+    from pathlib import Path
+    wurzel = Path(__file__).resolve().parent.parent
+    for vorlage in wurzel.glob(".env*"):
+        if vorlage.is_file():
+            assert llm.EU_ANBIETER_ENV not in vorlage.read_text(errors="ignore"), vorlage
+
+
+def _strom_mit(monkeypatch, plan):
+    """``plan`` je Aufruf: Liste von Chunks; eine Exception darin wird geworfen."""
+    aufrufe = []
+
+    def fake_create(**kw):
+        aufrufe.append(kw)
+        teile = plan.pop(0)
+
+        def gen():
+            for t in teile:
+                if isinstance(t, BaseException):
+                    raise t
+                yield t
+        return gen()
+
+    monkeypatch.setattr(llm, "_create", fake_create)
+    return aufrufe
+
+
+def test_eu_strom_ok_nur_azure(_eu_umgebung, monkeypatch):
+    aufrufe = _strom_mit(monkeypatch, [[_strom_teil("EU")]])
+    assert "".join(llm.chat_stream(model="openai/gpt-6-luna", messages=[],
+                                   _feature="qa_answer")) == "EU"
+    (kw,) = aufrufe
+    assert kw["_only"] == ("azure/eu",) and kw["_zdr"] is True
+
+
+def test_eu_strom_fehler_vor_dem_ersten_token_faellt_zurueck(_eu_umgebung, monkeypatch, tmp_path):
+    from openai import APIError
+    monkeypatch.setenv(llm.MITSCHNITT_ENV, str(tmp_path))
+    im_strom = APIError("Provider returned error", request=_make_request(), body=None)
+    aufrufe = _strom_mit(monkeypatch, [[im_strom], [_strom_teil("US ", "m"), _strom_teil("Text")]])
+    assert "".join(llm.chat_stream(model="openai/gpt-6-luna", messages=[],
+                                   _feature="assistant_explain")) == "US Text"
+    assert [(a["_zdr"], a["_only"]) for a in aufrufe] == [(True, ("azure/eu",)), (False, None)]
+    (z,) = _zeilen(tmp_path, "assistant_explain")
+    assert z["fallback"] is True and z["aborted"] is False
+
+
+def test_eu_recherche_plus_mit_sol_geht_zuerst_nach_azure_eu(_eu_umgebung, monkeypatch):
+    """Recherche Plus (#1506): ``deep_report`` läuft für ``premium_models`` auf
+    GPT-6 Sol — auch dort zuerst azure/eu mit ZDR, erst dann ohne."""
+    aufrufe = _strom_mit(monkeypatch, [[llm.EmptyResponseError("leer")], [_strom_teil("Bericht")]])
+    assert "".join(llm.chat_stream(model="openai/gpt-6-sol", messages=[],
+                                   _feature="deep_report")) == "Bericht"
+    assert [(a["_zdr"], a["_only"]) for a in aufrufe] == [(True, ("azure/eu",)), (False, None)]
+    assert _routing(aufrufe[0])["only"] == ["azure/eu"]
+
+
+def test_eu_strom_verbindungsfehler_faellt_zurueck(_eu_umgebung, monkeypatch):
+    aufrufe = []
+
+    def fake_create(**kw):
+        aufrufe.append(kw)
+        if kw["_only"]:
+            raise _fehler(429, "temporarily rate-limited upstream")
+        return iter([_strom_teil("ok")])
+
+    monkeypatch.setattr(llm, "_create", fake_create)
+    assert "".join(llm.chat_stream(model="openai/gpt-6-luna", messages=[],
+                                   _feature="deep_report")) == "ok"
+    assert len(aufrufe) == 2
+
+
+def test_eu_strom_fehler_nach_dem_ersten_token_reisst_wie_bisher(_eu_umgebung, monkeypatch):
+    """Schon ausgeliefert → kein zweiter Weg (sonst zwei Antworten in einem
+    Fenster); der Router erzeugt wie bisher neu."""
+    from openai import APIError
+    aufrufe = _strom_mit(monkeypatch, [[_strom_teil("Anfang"),
+                                        APIError("weg", request=_make_request(), body=None)],
+                                       [_strom_teil("nie")]])
+    teile = []
+    with pytest.raises(APIError):
+        for t in llm.chat_stream(model="openai/gpt-6-luna", messages=[], _feature="qa_answer"):
+            teile.append(t)
+    assert teile == ["Anfang"] and len(aufrufe) == 1
+
+
+def test_eu_strom_inhaltsfilter_faellt_nicht_zurueck(_eu_umgebung, monkeypatch):
+    from openai import APIError
+    treffer = APIError("The response was filtered due to content_filter",
+                       request=_make_request(), body=None)
+    aufrufe = _strom_mit(monkeypatch, [[treffer], [_strom_teil("nie")]])
+    with pytest.raises(APIError):
+        list(llm.chat_stream(model="openai/gpt-6-luna", messages=[], _feature="qa_answer"))
+    assert len(aufrufe) == 1
+
+
+def test_eu_strom_zaehlt_den_rueckfall(_eu_umgebung, monkeypatch):
+    verbrauch = type("U", (), {"prompt_tokens": 1, "completion_tokens": 1, "cost": 0.0})()
+    nutzung = type("K", (), {"choices": [], "usage": verbrauch, "model": "m"})()
+    _strom_mit(monkeypatch, [[llm.EmptyResponseError("leer")], [_strom_teil("x"), nutzung]])
+    list(llm.chat_stream(model="openai/gpt-6-luna", messages=[], _feature="qa_answer"))
+    assert _eu_umgebung == [("qa_answer", "openai/gpt-6-luna" + llm.RUECKFALL_MARKE)]
+
+
+def test_strom_ausserhalb_bleibt_ein_weg(_eu_umgebung, monkeypatch):
+    aufrufe = _strom_mit(monkeypatch, [[llm.EmptyResponseError("leer")], [_strom_teil("nie")]])
+    with pytest.raises(llm.EmptyResponseError):
+        list(llm.chat_stream(model="openai/gpt-6-luna", messages=[], _feature="qa_analysis"))
+    assert len(aufrufe) == 1 and aufrufe[0]["_only"] is None

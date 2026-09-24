@@ -54,6 +54,18 @@ COUNCIL_DB = str(_TMP / "council.sqlite")
 
 os.environ["RATSLOTSE_DB"] = RATSLOTSE_DB
 os.environ["COUNCIL_DB"] = COUNCIL_DB
+# Die LLM-Kosten (kern/usage.py) lesen eine EIGENE Variable und fallen ohne sie
+# auf data/ratslotse.sqlite des Checkouts zurück. Jeder Test, der
+# `chat_complete` mit `_feature` ruft und `_record_usage` nicht stubbt, schrieb
+# dorthin — am 23.09.2026 waren es acht erfundene Zeilen je Lauf (Modell „m“,
+# „openai/gpt-6-luna“ impact_rating …), die im Admin-Panel unter LLM-Kosten
+# standen. Tests mit eigener Kostendatei setzen sie per `monkeypatch.setenv`.
+os.environ["RATSLOTSE_SQLITE"] = RATSLOTSE_DB
+# Der Städte-Speicher (council/cities, Backend `get_cities_store`) ebenso: Die
+# KI-Frage öffnet ihn bei jeder Frage — ohne diese Zeilen beschreibbar in data/.
+os.environ["CITIES_DB"] = str(_TMP / "cities.sqlite")
+os.environ["CITIES_FILES_DIR"] = str(_TMP / "cities-files")
+os.environ["CITIES_RAW_DIR"] = str(_TMP / "cities-raw")
 # Der Verlauf des Wahlabends gehört in den tmp-Ordner, nie nach data/.
 os.environ["WAHLABEND_HISTORY_FILE"] = str(_TMP / "wahlabend-verlauf.json")
 # Dieselbe Isolation für die STT-Aufbewahrung (council/stt_retain.py): ohne
@@ -79,6 +91,46 @@ try:
     dotenv.load_dotenv = lambda *a, **k: False
 except ImportError:  # dotenv ist nur eine Laufzeit-Abhängigkeit der Skripte
     pass
+
+# --- Wächter: kein Test öffnet eine Datenbank unter data/ --------------------
+# Die Umgebungsvariablen oben decken die Wege ab, die wir kennen. Ein neuer
+# Rückfall auf `data/…` (wie der in kern/usage.py) fiele sonst wieder erst im
+# Admin-Panel auf. Deshalb weist die Suite jedes `sqlite3.connect` auf eine
+# Datei im data/-Ordner des Checkouts ab — laut, im Test, der es auslöst.
+# Ausgenommen ist, was nur LIEST (`file:…?mode=ro`): Die Messtests gegen den
+# echten Bestand (test_geld_*, test_fakten_rat_faelle) tun genau das.
+# `tests/test_keine_echte_db.py` hält fest, dass der Wächter greift.
+import sqlite3  # noqa: E402
+
+DATA_DIR = (Path(__file__).resolve().parent.parent / "data").resolve()
+_echtes_connect = sqlite3.connect
+
+
+def _ziel_in_data(database) -> bool:
+    if not isinstance(database, (str, os.PathLike)):
+        return False
+    pfad = os.fsdecode(database)
+    if pfad == ":memory:" or pfad.startswith("file::memory:"):
+        return False
+    if pfad.startswith("file:"):
+        pfad, _, query = pfad[len("file:"):].partition("?")
+        if "mode=ro" in query.split("&"):
+            return False
+    try:
+        return Path(pfad).resolve().is_relative_to(DATA_DIR)
+    except (OSError, ValueError):
+        return False
+
+
+def _connect_ohne_data(database, *args, **kwargs):
+    if _ziel_in_data(database):
+        raise RuntimeError(
+            f"Test öffnet die echte Datenbank {database!r} — Pfad über die "
+            "Umgebung (tests/conftest.py) oder tmp_path umlenken.")
+    return _echtes_connect(database, *args, **kwargs)
+
+
+sqlite3.connect = _connect_ohne_data
 
 
 @pytest.fixture

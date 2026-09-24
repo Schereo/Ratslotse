@@ -1,0 +1,959 @@
+{
+ "modell": "openai/gpt-6-sol",
+ "zeitstempel": "20260923-150201",
+ "mitschnitt": "/Users/tim/.cache/ratslotse/fakten-mitschnitt/openai-gpt-6-sol-20260923-150201",
+ "ohne_zdr": true,
+ "faelle": [
+  {
+   "id": "hh-plan-groesster-bereich-rat",
+   "kanal": "rat",
+   "kategorie": "haushalt/plan",
+   "frage": "Welcher Bereich des städtischen Haushalts kostet 2026 am meisten?",
+   "route": null,
+   "weg": "ask",
+   "ms": 7874,
+   "fehler": null,
+   "antwort": "Laut Haushaltsplan 2026 kostet der Bereich Soziales und Gesundheit mit rund 283,1 Millionen Euro geplanten Ausgaben am meisten.",
+   "kontext_zeichen": 14846,
+   "bausteine": [
+    "DIESE FRAGE IST ENG GESTELLT",
+    "STAND DER AKTEN",
+    "BESCHLÜSSE",
+    "WAS DIE FACHWÖRTER BEDEUTEN",
+    "AUFGABEN DER STADT MIT KOSTEN UND RECHTSGRUNDLAGE",
+    "STADTHAUSHALT",
+    "FOLGEFRAGEN"
+   ],
+   "aufrufe": [
+    "qa_analysis",
+    "qa_answer"
+   ],
+   "modell_antwort": "openai/gpt-6-sol",
+   "facetten": null,
+   "kontext_ok": true,
+   "antwort_ok": true,
+   "fehlerart": "ok",
+   "gold": [
+    {
+     "fakt": "Soziales",
+     "pflicht": true,
+     "kontext": {
+      "status": "ok",
+      "fundstellen": [],
+      "jahre": []
+     },
+     "antwort": {
+      "status": "ok",
+      "fundstellen": [],
+      "jahre": []
+     }
+    },
+    {
+     "fakt": "Aufwendungen Soziales und Gesundheit 2026: 283120052.0",
+     "pflicht": true,
+     "kontext": {
+      "status": "ok",
+      "fundstellen": [
+       "- Platz 1 der Teilhaushalte nach Aufwendungen: Soziales und Gesundheit (2026): Aufwendungen 283.120.052 €, Erträge 169.924.514 €"
+      ],
+      "jahre": [
+       [
+        2026
+       ]
+      ]
+     },
+     "antwort": {
+      "status": "ok",
+      "fundstellen": [
+       "Laut Haushaltsplan 2026 kostet der Bereich Soziales und Gesundheit mit rund 283,1 Millionen Euro geplanten Ausgaben am meisten."
+      ],
+      "jahre": [
+       [
+        2026
+       ]
+      ]
+     }
+    }
+   ],
+   "verstoesse": [],
+   "erfunden": [],
+   "verweigert": false
+  },
+  {
+   "id": "hh-ist-gruende-2024-rat",
+   "kanal": "rat",
+   "kategorie": "haushalt/ist",
+   "frage": "Warum war das Ergebnis 2024 besser als geplant?",
+   "route": null,
+   "weg": "ask",
+   "ms": 19360,
+   "fehler": null,
+   "antwort": "**Kurz gesagt:** Laut Jahresabschluss 2024 der Kernverwaltung erzielte die Stadt tatsächlich rund 6,1 Millionen Euro Überschuss statt eines geplanten Defizits von rund 32 Millionen Euro, weil die Erträge stärker über dem Plan lagen als die Aufwendungen.\n\nDie Ergebnisrechnung im Jahresabschluss 2024 zeigt: Die Erträge lagen bei rund 799,1 Millionen Euro statt der geplanten 693,6 Millionen Euro; die Aufwendungen stiegen ebenfalls, aber weniger stark – auf rund 764,4 Millionen Euro statt der geplanten 727,9 Millionen Euro. So wurde aus dem geplanten Minus von rund 34,3 Millionen Euro im **ordentlichen Ergebnis** ein Plus von rund 34,6 Millionen Euro.\n\nDie Verwaltung begründet einen Teil der höheren Erträge damit, dass 2024 vor allem Geldanlagen mehr Zinsen einbrachten und auch Zinsen auf Steuernachforderungen stiegen; zusammen lagen die Zinsen und ähnlichen Finanzerträge rund 4 Millionen Euro über dem Plan. Warum die Erträge insgesamt so viel höher ausfielen, erklären die vorliegenden Angaben damit nicht vollständig. Zugleich fiel das **außerordentliche Ergebnis** deutlich schlechter aus als geplant: Statt eines Plus von rund 2,3 Millionen Euro gab es ein Minus von rund 28,5 Millionen Euro, hauptsächlich wegen einer Abschreibung im Zusammenhang mit der Eigenkapitalstärkung des Klinikums. Auch die Versorgungsaufwendungen lagen laut Verwaltung wegen der Besoldungserhöhungen rund 4,8 Millionen Euro über dem Plan.",
+   "kontext_zeichen": 18216,
+   "bausteine": [
+    "ACHTUNG, DÜNNE BELEGLAGE",
+    "ZU DIESER FRAGE LIEGEN HAUSHALTSDATEN IM KONTEXT",
+    "STAND DER AKTEN",
+    "BESCHLÜSSE",
+    "GEPLANT UND TATSÄCHLICH",
+    "WARUM DER PLAN NICHT AUFGING",
+    "KASSENSICHT",
+    "FOLGEFRAGEN"
+   ],
+   "aufrufe": [
+    "qa_analysis",
+    "qa_answer"
+   ],
+   "modell_antwort": "openai/gpt-6-sol",
+   "facetten": null,
+   "kontext_ok": false,
+   "antwort_ok": false,
+   "fehlerart": "kontext_fehlt",
+   "gold": [
+    {
+     "fakt": "Steuer | Gewerbesteuer",
+     "pflicht": true,
+     "kontext": {
+      "status": "ok",
+      "fundstellen": [],
+      "jahre": []
+     },
+     "antwort": {
+      "status": "ok",
+      "fundstellen": [],
+      "jahre": []
+     }
+    },
+    {
+     "fakt": "Mehrertrag Steuern 2024 2024: 75100000.0",
+     "pflicht": true,
+     "kontext": {
+      "status": "fehlt",
+      "fundstellen": [],
+      "jahre": []
+     },
+     "antwort": {
+      "status": "fehlt",
+      "fundstellen": [],
+      "jahre": []
+     }
+    }
+   ],
+   "verstoesse": [],
+   "erfunden": [],
+   "verweigert": false
+  },
+  {
+   "id": "hh-vollzug-2026-rat",
+   "kanal": "rat",
+   "kategorie": "haushalt/vollzug",
+   "frage": "Wie entwickelt sich der Haushalt 2026 laut dem letzten Bericht der Verwaltung?",
+   "route": null,
+   "weg": "ask",
+   "ms": 23086,
+   "fehler": null,
+   "antwort": "**Kurz gesagt:** Laut Finanz- und Leistungsbericht der Verwaltung für 2026 wird für den Stadthaushalt ein Defizit von rund 66 Millionen Euro erwartet – etwas weniger als die geplanten rund 68,7 Millionen Euro.\n\n## Entwicklung der Prognose\n\nDie Verwaltung hatte zuvor für das Jahresende 2026 noch ein Defizit von rund 73,2 Millionen Euro erwartet. Ihre jüngste Prognose fällt damit günstiger aus. Das ist **kein bereits feststehendes Jahresergebnis**, sondern eine Erwartung für das gesamte Jahr 2026.\n\n## Einnahmen und Ausgaben\n\nFür 2026 erwartet die Verwaltung Erträge von rund 835,2 Millionen Euro statt der im Bericht angesetzten rund 816,7 Millionen Euro. Zugleich rechnet sie mit Aufwendungen von rund 901,2 Millionen Euro statt rund 885,4 Millionen Euro. Höhere erwartete Einnahmen stehen also auch höheren erwarteten Ausgaben gegenüber.",
+   "kontext_zeichen": 16510,
+   "bausteine": [
+    "ZU DIESER FRAGE LIEGEN HAUSHALTSDATEN IM KONTEXT",
+    "STAND DER AKTEN",
+    "BESCHLÜSSE",
+    "WAS DIE FACHWÖRTER BEDEUTEN",
+    "AKTUELLES VON DER STADT",
+    "HAUSHALTSVOLLZUG 2026",
+    "ES IST EINE ERWARTUNG, KEIN IST",
+    "STADTHAUSHALT",
+    "FOLGEFRAGEN"
+   ],
+   "aufrufe": [
+    "qa_analysis",
+    "qa_answer"
+   ],
+   "modell_antwort": "openai/gpt-6-sol",
+   "facetten": null,
+   "kontext_ok": true,
+   "antwort_ok": true,
+   "fehlerart": "ok",
+   "gold": [
+    {
+     "fakt": "Prognose Ergebnis 2026 (Stand 30.06.2026) 2026: -66033353.0",
+     "pflicht": true,
+     "kontext": {
+      "status": "ok",
+      "fundstellen": [
+       "- Jahresergebnis 2026, Stand 30.06.2026: geplant -68,7 Mio. €, erwartet -66,0 Mio. € — Abweichung 2,6 Mio. € (so im Bericht gedruckt) — Beleg: 1 Finanz- und Leistungsbericht zum 30. Juni 2026 Berichtsvorlage (AFB 2. Sept",
+       "- Wie sich die Erwartung im Jahr bewegte — 31.03.2026: -73,2 Mio. €, 30.06.2026: -66,0 Mio. €; alle für denselben 31. Dezember, keine Zwischenergebnisse."
+      ],
+      "jahre": [
+       [
+        2026
+       ],
+       [
+        2026
+       ]
+      ]
+     },
+     "antwort": {
+      "status": "ok",
+      "fundstellen": [
+       "**Kurz gesagt:** Laut Finanz- und Leistungsbericht der Verwaltung für 2026 wird für den Stadthaushalt ein Defizit von rund 66 Millionen Euro erwartet – etwas weniger als die geplanten rund 68,7 Millionen Euro."
+      ],
+      "jahre": [
+       [
+        2026
+       ]
+      ]
+     }
+    },
+    {
+     "fakt": "Ansatz Ergebnis 2026 2026: -68679446.0",
+     "pflicht": false,
+     "kontext": {
+      "status": "ok",
+      "fundstellen": [
+       "- Jahresergebnis 2026, Stand 30.06.2026: geplant -68,7 Mio. €, erwartet -66,0 Mio. € — Abweichung 2,6 Mio. € (so im Bericht gedruckt) — Beleg: 1 Finanz- und Leistungsbericht zum 30. Juni 2026 Berichtsvorlage (AFB 2. Sept"
+      ],
+      "jahre": [
+       [
+        2026
+       ]
+      ]
+     },
+     "antwort": {
+      "status": "ok",
+      "fundstellen": [
+       "**Kurz gesagt:** Laut Finanz- und Leistungsbericht der Verwaltung für 2026 wird für den Stadthaushalt ein Defizit von rund 66 Millionen Euro erwartet – etwas weniger als die geplanten rund 68,7 Millionen Euro."
+      ],
+      "jahre": [
+       [
+        2026
+       ]
+      ]
+     }
+    }
+   ],
+   "verstoesse": [],
+   "erfunden": [],
+   "verweigert": false
+  },
+  {
+   "id": "hh-invest-vorhaben-rat",
+   "kanal": "rat",
+   "kategorie": "haushalt/investitionen",
+   "frage": "Welches ist das größte einzelne Vorhaben im Investitionsprogramm 2025?",
+   "route": null,
+   "weg": "ask",
+   "ms": 16441,
+   "fehler": null,
+   "antwort": "Das größte einzelne Vorhaben ist die **Kampfmittelsondierung am Fliegerhorst** mit einer Gesamtinvestitionssumme von rund 35,9 Millionen Euro über alle Jahre, laut Investitionsprogramm zum Haushaltsplan 2025 (Verwaltungsentwurf).",
+   "kontext_zeichen": 18247,
+   "bausteine": [
+    "DIESE FRAGE IST ENG GESTELLT",
+    "STAND DER AKTEN",
+    "BESCHLÜSSE",
+    "EINZELNE INVESTITIONS-VORHABEN",
+    "SCHULGEBÄUDE FEHLEN HIER",
+    "INVESTITIONEN",
+    "ES SIND ZWEI HAUSHALTE, NICHT EINER",
+    "NIE GEGEN DEN PLAN RECHNEN",
+    "FOLGEFRAGEN"
+   ],
+   "aufrufe": [
+    "qa_analysis",
+    "qa_answer"
+   ],
+   "modell_antwort": "openai/gpt-6-sol",
+   "facetten": null,
+   "kontext_ok": true,
+   "antwort_ok": true,
+   "fehlerart": "ok",
+   "gold": [
+    {
+     "fakt": "Kampfmittel",
+     "pflicht": true,
+     "kontext": {
+      "status": "ok",
+      "fundstellen": [],
+      "jahre": []
+     },
+     "antwort": {
+      "status": "ok",
+      "fundstellen": [],
+      "jahre": []
+     }
+    },
+    {
+     "fakt": "Fliegerhorst Kampfmittelsondierung (Gesamtsumme) 2025: 35850000.0",
+     "pflicht": true,
+     "kontext": {
+      "status": "ok",
+      "fundstellen": [
+       "- Fliegerhorst Kampfmittelsondierung (Wirtschaftsförderung, Liegenschaften): 35,9 Mio. €"
+      ],
+      "jahre": [
+       [
+        2025
+       ]
+      ]
+     },
+     "antwort": {
+      "status": "ok",
+      "fundstellen": [
+       "Das größte einzelne Vorhaben ist die **Kampfmittelsondierung am Fliegerhorst** mit einer Gesamtinvestitionssumme von rund 35,9 Millionen Euro über alle Jahre, laut Investitionsprogramm zum Haushaltsplan 2025 (Verwaltungs"
+      ],
+      "jahre": [
+       []
+      ]
+     }
+    }
+   ],
+   "verstoesse": [],
+   "erfunden": [],
+   "verweigert": false
+  },
+  {
+   "id": "hh-rpa-rat",
+   "kanal": "rat",
+   "kategorie": "haushalt/pruefung",
+   "frage": "Was hat das Rechnungsprüfungsamt beim Jahresabschluss 2024 beanstandet?",
+   "route": null,
+   "weg": "ask",
+   "ms": 18681,
+   "fehler": null,
+   "antwort": "**Kurz gesagt:** Vier Beanstandungen und eine wiederholte Beanstandung verzeichnet der Schlussbericht des Rechnungsprüfungsamtes über die Prüfung des Jahresabschlusses 2024 der Stadt Oldenburg; die vorliegenden Auszüge beschreiben drei der Beanstandungen näher.\n\n## Was konkret beanstandet wurde\n\n- **Mittelbereitstellung:** Die Stadt stellte Mittel in voller Höhe bereit, obwohl zusätzliche Erträge dafür nur in der Höhe verwendet werden durften, in der sie tatsächlich eingegangen waren (Textziffer 2.8.3).\n- **Haushaltsreste:** Bei aus dem Vorjahr übertragenen Mitteln beanstandete das Amt einzelne Beträge in den Teilhaushalten. Es erwartete, dass diese Beträge im Haushaltsjahr 2025 gesperrt werden (Textziffer 4.3.1).\n- **Planung künftiger Verpflichtungen:** Die vorgesehenen Verpflichtungsermächtigungen wurden äußerst wenig genutzt. Das Amt sah darin erneut ein Missverhältnis zwischen Haushaltsplanung und tatsächlicher Umsetzung und forderte eine bedarfsgerechtere Planung (Textziffer 4.3.3).\n\n## Was die Auszüge außerdem zeigen\n\nDie Auszüge sind **keine vollständige Liste** aller Feststellungen; insbesondere beschreiben sie die wiederholte Beanstandung nicht näher. Dass die Verwaltung den Jahresabschluss erneut nicht innerhalb der gesetzlichen Frist aufgestellt hatte, kennzeichnete das Amt ausdrücklich als **Hinweis**, nicht als Beanstandung (Textziffer 1.1.2).",
+   "kontext_zeichen": 18136,
+   "bausteine": [
+    "ZU DIESER FRAGE LIEGEN HAUSHALTSDATEN IM KONTEXT",
+    "STAND DER AKTEN",
+    "BESCHLÜSSE",
+    "WAS DIE FACHWÖRTER BEDEUTEN",
+    "GEPLANT UND TATSÄCHLICH",
+    "KASSENSICHT",
+    "FOLGEFRAGEN"
+   ],
+   "aufrufe": [
+    "qa_analysis",
+    "qa_answer"
+   ],
+   "modell_antwort": "openai/gpt-6-sol",
+   "facetten": null,
+   "kontext_ok": true,
+   "antwort_ok": true,
+   "fehlerart": "ok",
+   "gold": [
+    {
+     "fakt": "Vier-Augen | Funktionstrennung | Inventur | Verpflichtungsermächtigung | Haushaltsreste | außerplanmäßig | überplanmäßig",
+     "pflicht": true,
+     "kontext": {
+      "status": "ok",
+      "fundstellen": [],
+      "jahre": []
+     },
+     "antwort": {
+      "status": "ok",
+      "fundstellen": [],
+      "jahre": []
+     }
+    }
+   ],
+   "verstoesse": [],
+   "erfunden": [],
+   "verweigert": false
+  },
+  {
+   "id": "hh-nachbewilligung-2025-rat",
+   "kanal": "rat",
+   "kategorie": "haushalt/nachbewilligungen",
+   "frage": "Welche größte überplanmäßige Ausgabe hat der Rat 2025 nachbewilligt?",
+   "route": null,
+   "weg": "ask",
+   "ms": 14292,
+   "fehler": null,
+   "antwort": "Die größte überplanmäßige Nachbewilligung des Rates 2025 betrug laut den Vorlagen im Ratsinformationssystem rund 19,4 Millionen Euro für den Teilhaushalt 10, Budget 50.",
+   "kontext_zeichen": 17573,
+   "bausteine": [
+    "DIESE FRAGE IST ENG GESTELLT",
+    "STAND DER AKTEN",
+    "BESCHLÜSSE",
+    "WAS DIE FACHWÖRTER BEDEUTEN",
+    "EINZELNE NACHBEWILLIGUNGEN 2025",
+    "STADTHAUSHALT",
+    "NACHBEWILLIGUNGEN 2024",
+    "FOLGEFRAGEN"
+   ],
+   "aufrufe": [
+    "qa_analysis",
+    "qa_answer"
+   ],
+   "modell_antwort": "openai/gpt-6-sol",
+   "facetten": null,
+   "kontext_ok": true,
+   "antwort_ok": true,
+   "fehlerart": "ok",
+   "gold": [
+    {
+     "fakt": "größte über-/außerplanmäßige Bewilligung 2025 (Teilhaushalt 10) 2025: 19420500.0",
+     "pflicht": true,
+     "kontext": {
+      "status": "ok",
+      "fundstellen": [
+       "- 19,4 Mio. € — Überplanmäßige Bewilligung von Mehraufwendungen in Höhe von 19.420.500 Euro für den Teilhaushalt 10, Budget 50 (Vorlage 25/0715/1; überplanmäßig Bewilligung, vom Rat beschlossen)",
+       "- 19,4 Mio. € — Überplanmäßige Bewilligung von Mehraufwendungen in Höhe von 19.420.500 Euro für den Teilhaushalt 10, Budget 50 (Vorlage 25/0715/1; überplanmäßig Bewilligung, vom Rat beschlossen)"
+      ],
+      "jahre": [
+       [],
+       []
+      ]
+     },
+     "antwort": {
+      "status": "ok",
+      "fundstellen": [
+       "Die größte überplanmäßige Nachbewilligung des Rates 2025 betrug laut den Vorlagen im Ratsinformationssystem rund 19,4 Millionen Euro für den Teilhaushalt 10, Budget 50."
+      ],
+      "jahre": [
+       [
+        2025
+       ]
+      ]
+     }
+    }
+   ],
+   "verstoesse": [],
+   "erfunden": [],
+   "verweigert": false
+  },
+  {
+   "id": "hh-nd-gewst-firma-rat",
+   "kanal": "rat",
+   "kategorie": "haushalt/nicht-in-daten",
+   "frage": "Wie viel Gewerbesteuer zahlt die EWE in Oldenburg?",
+   "route": null,
+   "weg": "ask",
+   "ms": 15124,
+   "fehler": null,
+   "antwort": "Die Ratsunterlagen geben nicht her, wie viel Gewerbesteuer die EWE in Oldenburg zahlt. Die Beschlüsse zur EWE betreffen einen Antrag zur Energiewende [2590] und den Kohleausstieg [2486], nennen aber keinen Steuerbetrag.",
+   "kontext_zeichen": 21949,
+   "bausteine": [
+    "DIESE FRAGE IST ENG GESTELLT",
+    "ACHTUNG, DÜNNE BELEGLAGE",
+    "STAND DER AKTEN",
+    "BESCHLÜSSE",
+    "WAS DIE FACHWÖRTER BEDEUTEN",
+    "STEUEREINNAHMEN",
+    "FINANZAUSGLEICH",
+    "FOLGEFRAGEN"
+   ],
+   "aufrufe": [
+    "qa_analysis",
+    "qa_answer"
+   ],
+   "modell_antwort": "openai/gpt-6-sol",
+   "facetten": null,
+   "kontext_ok": true,
+   "antwort_ok": true,
+   "fehlerart": "ok",
+   "gold": [],
+   "verstoesse": [],
+   "erfunden": [],
+   "verweigert": true
+  },
+  {
+   "id": "hh-nd-abwasser-rat",
+   "kanal": "rat",
+   "kategorie": "haushalt/nicht-in-daten",
+   "frage": "Wie hoch ist die Abwassergebühr in Oldenburg?",
+   "route": null,
+   "weg": "ask",
+   "ms": 15491,
+   "fehler": null,
+   "antwort": "Wie hoch die Abwassergebühr in Oldenburg ist, geht aus den vorliegenden Unterlagen nicht hervor. Der Rat hat dem Oldenburgisch-Ostfriesischen Wasserverband das Recht übertragen, Satzungen über Abwasserabgaben zu erlassen; ein Gebührensatz wird dabei nicht genannt [4096].",
+   "kontext_zeichen": 24259,
+   "bausteine": [
+    "DIESE FRAGE IST ENG GESTELLT",
+    "STAND DER AKTEN",
+    "BESCHLÜSSE",
+    "GEBÜHRENBEDARFSBERECHNUNGEN",
+    "FOLGEFRAGEN"
+   ],
+   "aufrufe": [
+    "qa_analysis",
+    "qa_answer"
+   ],
+   "modell_antwort": "openai/gpt-6-sol",
+   "facetten": null,
+   "kontext_ok": true,
+   "antwort_ok": true,
+   "fehlerart": "ok",
+   "gold": [],
+   "verstoesse": [],
+   "erfunden": [],
+   "verweigert": true
+  },
+  {
+   "id": "rat-stadion-fehlbetrag-2026",
+   "kanal": "rat",
+   "kategorie": "beschluss/kosten",
+   "frage": "Mit welchem Fehlbetrag plant die Stadiongesellschaft im Jahr 2026?",
+   "route": null,
+   "weg": "ask",
+   "ms": 9248,
+   "fehler": null,
+   "antwort": "Die Stadion Oldenburg GmbH & Co. KG plant für 2026 mit einem Fehlbetrag von 651.500 Euro [8442].",
+   "kontext_zeichen": 17851,
+   "bausteine": [
+    "DIESE FRAGE IST ENG GESTELLT",
+    "STAND DER AKTEN",
+    "BESCHLÜSSE",
+    "HAUSHALTSVOLLZUG 2026",
+    "ES IST EINE ERWARTUNG, KEIN IST",
+    "STÄDTISCHE GESELLSCHAFTEN",
+    "GEPLANT UND TATSÄCHLICH",
+    "KASSENSICHT",
+    "FOLGEFRAGEN"
+   ],
+   "aufrufe": [
+    "qa_analysis",
+    "qa_answer"
+   ],
+   "modell_antwort": "openai/gpt-6-sol",
+   "facetten": null,
+   "kontext_ok": true,
+   "antwort_ok": true,
+   "fehlerart": "ok",
+   "gold": [
+    {
+     "fakt": "maximaler Fehlbetrag Wirtschaftsplan 2026: 651500",
+     "pflicht": true,
+     "kontext": {
+      "status": "ok",
+      "fundstellen": [
+       "[8442] Stadion Oldenburg GmbH & Co. KG: Wirtschaftsplan 2026 (Rat · 15.12.2025 · accepted): Der Wirtschaftsplan 2026 der Stadion Oldenburg GmbH & Co. KG mit einem Fehlbetrag von 651.500 Euro wurde beschlossen. — Abstimmu",
+       "[8442] Stadion Oldenburg GmbH & Co. KG: Wirtschaftsplan 2026 (Rat · 15.12.2025 · accepted): Der Wirtschaftsplan 2026 der Stadion Oldenburg GmbH & Co. KG mit einem Fehlbetrag von 651.500 Euro wurde beschlossen. — Abstimmu",
+       "[8194] Stadion Oldenburg GmbH & Co. KG: Wirtschaftsplan 2026 (Ausschuss für Finanzen und Beteiligungen · 03.12.2025 · accepted): Der Wirtschaftsplan 2026 der Stadion Oldenburg GmbH & Co. KG mit einem maximalen Fehlbetrag"
+      ],
+      "jahre": [
+       [
+        2026
+       ],
+       [
+        2026
+       ],
+       [
+        2026
+       ]
+      ]
+     },
+     "antwort": {
+      "status": "ok",
+      "fundstellen": [
+       "Die Stadion Oldenburg GmbH & Co. KG plant für 2026 mit einem Fehlbetrag von 651.500 Euro [8442]."
+      ],
+      "jahre": [
+       [
+        2026
+       ]
+      ]
+     }
+    }
+   ],
+   "verstoesse": [],
+   "erfunden": [],
+   "verweigert": false
+  },
+  {
+   "id": "rat-schwimmbad-zuletzt",
+   "kanal": "rat",
+   "kategorie": "verlauf/schwimmbad",
+   "frage": "Was wurde zuletzt zum Thema Schwimmbad beschlossen?",
+   "route": null,
+   "weg": "ask",
+   "ms": 15787,
+   "fehler": null,
+   "antwort": "**Kurz gesagt:** Der Rat hat am 1. Juni 2026 beschlossen, das **BTB-Schwimmbad** von 2027 bis 2030 finanziell zu unterstützen [9316].\n\n## Zum Beschluss\nDer Sportausschuss hatte die weitere Unterstützung zuvor befürwortet; der spätere Ratsbeschluss ist der geltende Stand [8513] [9316].\n\n## Einordnung\nDas ist ein anderer Beschluss als die früheren Entscheidungen zum **Sport- und Gesundheitsbad am Flötenteich** [2400] [1309]. Laut Pressemitteilung vom 3. Juni 2026 haben dort Umbauarbeiten am Parkplatz begonnen – das ist keine neue Entscheidung über das Schwimmbad.",
+   "kontext_zeichen": 13066,
+   "bausteine": [
+    "CHRONOLOGIE",
+    "STAND DER AKTEN",
+    "BESCHLÜSSE",
+    "AKTUELLES VON DER STADT",
+    "FOLGEFRAGEN"
+   ],
+   "aufrufe": [
+    "qa_analysis",
+    "qa_answer"
+   ],
+   "modell_antwort": "openai/gpt-6-sol",
+   "facetten": null,
+   "kontext_ok": true,
+   "antwort_ok": false,
+   "fehlerart": "modell_ausgelassen",
+   "gold": [
+    {
+     "fakt": "01.06.2026 | 1.6.2026 | 1. Juni 2026 | 01. Juni 2026 | 2026-06-01",
+     "pflicht": true,
+     "kontext": {
+      "status": "ok",
+      "fundstellen": [],
+      "jahre": []
+     },
+     "antwort": {
+      "status": "ok",
+      "fundstellen": [],
+      "jahre": []
+     }
+    },
+    {
+     "fakt": "BTB | Bürgerfelder Turnerbund",
+     "pflicht": true,
+     "kontext": {
+      "status": "ok",
+      "fundstellen": [],
+      "jahre": []
+     },
+     "antwort": {
+      "status": "ok",
+      "fundstellen": [],
+      "jahre": []
+     }
+    },
+    {
+     "fakt": "einstimmig",
+     "pflicht": true,
+     "kontext": {
+      "status": "ok",
+      "fundstellen": [],
+      "jahre": []
+     },
+     "antwort": {
+      "status": "fehlt",
+      "fundstellen": [
+       "einstimmig"
+      ],
+      "jahre": []
+     }
+    }
+   ],
+   "verstoesse": [],
+   "erfunden": [],
+   "verweigert": false
+  },
+  {
+   "id": "rat-tangentialbus-praemisse",
+   "kanal": "rat",
+   "kategorie": "verwechslung/praemisse",
+   "frage": "Ab wann fahren die neuen Tangentialbuslinien in Oldenburg?",
+   "route": null,
+   "weg": "ask",
+   "ms": 10754,
+   "fehler": null,
+   "antwort": "Ein Starttermin für neue Tangentialbuslinien geht aus den vorliegenden Unterlagen nicht hervor. Der Rat lehnte den Antrag zur Prüfung ihrer Einführung ab [8472].",
+   "kontext_zeichen": 20983,
+   "bausteine": [
+    "DIESE FRAGE IST ENG GESTELLT",
+    "STAND DER AKTEN",
+    "BESCHLÜSSE",
+    "AKTUELLES VON DER STADT",
+    "FOLGEFRAGEN"
+   ],
+   "aufrufe": [
+    "qa_analysis",
+    "qa_answer"
+   ],
+   "modell_antwort": "openai/gpt-6-sol",
+   "facetten": null,
+   "kontext_ok": true,
+   "antwort_ok": false,
+   "fehlerart": "modell_ausgelassen",
+   "gold": [
+    {
+     "fakt": "abgelehnt | lehnte | Ablehnung | rejected",
+     "pflicht": true,
+     "kontext": {
+      "status": "ok",
+      "fundstellen": [],
+      "jahre": []
+     },
+     "antwort": {
+      "status": "ok",
+      "fundstellen": [],
+      "jahre": []
+     }
+    },
+    {
+     "fakt": "15.12.2025 | 15. Dezember 2025 | 2025-12-15",
+     "pflicht": true,
+     "kontext": {
+      "status": "ok",
+      "fundstellen": [],
+      "jahre": []
+     },
+     "antwort": {
+      "status": "fehlt",
+      "fundstellen": [
+       "15.12.2025 | 15. Dezember 2025 | 2025-12-15"
+      ],
+      "jahre": []
+     }
+    }
+   ],
+   "verstoesse": [],
+   "erfunden": [],
+   "verweigert": true
+  },
+  {
+   "id": "rat-person-vorsitz-umwelt",
+   "kanal": "rat",
+   "kategorie": "person/ausschuss",
+   "frage": "Wer leitet den Ausschuss für Stadtgrün, Umwelt und Klima?",
+   "route": null,
+   "weg": "ask",
+   "ms": 10716,
+   "fehler": null,
+   "antwort": "Wer den Ausschuss für Stadtgrün, Umwelt und Klima leitet, geht aus den vorliegenden Unterlagen nicht hervor. Ein Beschluss erwähnt neue Vorsitzende, nennt aber keine Namen [716].",
+   "kontext_zeichen": 13030,
+   "bausteine": [
+    "DIESE FRAGE IST ENG GESTELLT",
+    "STAND DER AKTEN",
+    "BESCHLÜSSE",
+    "WAS DIE FACHWÖRTER BEDEUTEN",
+    "FOLGEFRAGEN"
+   ],
+   "aufrufe": [
+    "qa_analysis",
+    "qa_answer"
+   ],
+   "modell_antwort": "openai/gpt-6-sol",
+   "facetten": null,
+   "kontext_ok": false,
+   "antwort_ok": false,
+   "fehlerart": "kontext_fehlt",
+   "gold": [
+    {
+     "fakt": "Rohde",
+     "pflicht": true,
+     "kontext": {
+      "status": "fehlt",
+      "fundstellen": [
+       "Rohde"
+      ],
+      "jahre": []
+     },
+     "antwort": {
+      "status": "fehlt",
+      "fundstellen": [
+       "Rohde"
+      ],
+      "jahre": []
+     }
+    }
+   ],
+   "verstoesse": [],
+   "erfunden": [],
+   "verweigert": true
+  },
+  {
+   "id": "rat-person-druegemoeller-ausschuesse",
+   "kanal": "rat",
+   "kategorie": "person/ausschuss",
+   "frage": "In welchen Ausschüssen sitzt Ruth Drügemöller?",
+   "route": null,
+   "weg": "ask",
+   "ms": 26831,
+   "fehler": null,
+   "antwort": "**Kurz gesagt:** Für Ruth Drügemöller sind ein Sitz im Verwaltungsausschuss und ein Sitz im Betriebsausschuss Abfallwirtschaft durch Ratsbeschlüsse belegt; Wortbeiträge in weiteren Ausschüssen belegen für sich genommen keinen Sitz dort. [7081] [9119]\n\n## Belegte Sitze\n\nDer Rat bestimmte Drügemöller zur Nachfolgerin im Betriebsausschuss Abfallwirtschaft. [9119] Später wurde sie als neues Mitglied des Verwaltungsausschusses benannt; zuvor war sie dort als vertretendes Mitglied abgelöst worden. [7081] [9187] Der Beschluss zur Umbesetzung nennt auch den „AAA“, ordnet diesen Sitz aber nicht ausdrücklich Drügemöller zu. [7081]\n\n## Meinungsbild der Debatte\n\nLaut Protokoll sagte Ruth Regina Drügemöller (Bündnis 90/Die Grünen) am 04.02.2026 im **Ausschuss für Finanzen und Beteiligungen**, ein Antrag zur Dachbegrünung gehöre ihrer Ansicht nach in den Ausschuss für Stadtplanung und Bauen; außerdem sprach sie sich für mehr Transparenz bei Großprojekten aus. Laut Protokoll regte sie am 21.05.2026 im **Ausschuss für Stadtplanung und Bauen** an, die Bäume am ehemaligen Combi-Standort Bremer Heerstraße zu erhalten. Diese Beiträge zeigen ihre Mitarbeit in den Beratungen, ersetzen aber keinen Beleg für einen formalen Ausschusssitz.",
+   "kontext_zeichen": 15436,
+   "bausteine": [
+    "STAND DER AKTEN",
+    "BESCHLÜSSE",
+    "AUS DEN RATSDEBATTEN",
+    "FOLGEFRAGEN"
+   ],
+   "aufrufe": [
+    "qa_analysis",
+    "qa_answer"
+   ],
+   "modell_antwort": "openai/gpt-6-sol",
+   "facetten": null,
+   "kontext_ok": true,
+   "antwort_ok": false,
+   "fehlerart": "modell_ausgelassen",
+   "gold": [
+    {
+     "fakt": "Gebäudewirtschaft + Stadtplanung + Finanzen",
+     "pflicht": true,
+     "kontext": {
+      "status": "ok",
+      "fundstellen": [],
+      "jahre": []
+     },
+     "antwort": {
+      "status": "fehlt",
+      "fundstellen": [
+       "Gebäudewirtschaft"
+      ],
+      "jahre": []
+     }
+    }
+   ],
+   "verstoesse": [],
+   "erfunden": [],
+   "verweigert": false
+  },
+  {
+   "id": "rat-ort-alte-fleiwa",
+   "kanal": "rat",
+   "kategorie": "ort",
+   "frage": "Was wurde zuletzt zur Alten Fleiwa beschlossen?",
+   "route": null,
+   "weg": "ask",
+   "ms": 14375,
+   "fehler": null,
+   "antwort": "**Kurz gesagt:** Der Rat hat am 1. Juni 2026 den Bebauungsplan 855 für den Bereich Industriestraße/Alte Fleiwa mit Begründung als Satzung beschlossen [9319]; das ist die jüngste Entscheidung zur Alten Fleiwa.\n\n## Wie es dazu kam\n\nZuvor hatte der Planungsausschuss die eingegangenen Stellungnahmen geprüft und dem Plan zugestimmt [8593]. Noch davor war der Entwurf zur Veröffentlichung beschlossen worden [8114]. **Der Ratsbeschluss ist der aktuelle Stand** – die Ausschussentscheidung war ein Zwischenschritt.\n\n## Was sonst zuletzt Thema war\n\nDer Rat beschloss außerdem neue Regeln für die Überlassung der Alten Maschinenhalle [8490]. Zum Verkehrskonzept für den Schützenweg und das Quartier Alte Fleiwa nahm der Verkehrsausschuss dagegen lediglich einen Bericht zur Kenntnis; darüber wurde kein neuer Beschluss gefasst [8533].",
+   "kontext_zeichen": 11272,
+   "bausteine": [
+    "CHRONOLOGIE",
+    "STAND DER AKTEN",
+    "BESCHLÜSSE",
+    "FOLGEFRAGEN"
+   ],
+   "aufrufe": [
+    "qa_analysis",
+    "qa_answer"
+   ],
+   "modell_antwort": "openai/gpt-6-sol",
+   "facetten": null,
+   "kontext_ok": true,
+   "antwort_ok": true,
+   "fehlerart": "ok",
+   "gold": [
+    {
+     "fakt": "01.06.2026 | 1.6.2026 | 1. Juni 2026 | 01. Juni 2026 | 2026-06-01",
+     "pflicht": true,
+     "kontext": {
+      "status": "ok",
+      "fundstellen": [],
+      "jahre": []
+     },
+     "antwort": {
+      "status": "ok",
+      "fundstellen": [],
+      "jahre": []
+     }
+    },
+    {
+     "fakt": "855",
+     "pflicht": true,
+     "kontext": {
+      "status": "ok",
+      "fundstellen": [],
+      "jahre": []
+     },
+     "antwort": {
+      "status": "ok",
+      "fundstellen": [],
+      "jahre": []
+     }
+    }
+   ],
+   "verstoesse": [],
+   "erfunden": [],
+   "verweigert": false
+  },
+  {
+   "id": "rat-sitzung-naechster-rat",
+   "kanal": "rat",
+   "kategorie": "sitzung/termin",
+   "frage": "Wann tagt der Rat als Nächstes?",
+   "route": null,
+   "weg": "ask",
+   "ms": 11073,
+   "fehler": null,
+   "antwort": "Zur nächsten Ratssitzung liegen noch keine Beschlüsse vor; laut Sitzungskalender tagt der Rat am 28. September 2026 um 18 Uhr.",
+   "kontext_zeichen": 22828,
+   "bausteine": [
+    "DIESE FRAGE IST ENG GESTELLT",
+    "ACHTUNG, KEINE ZUKUNFT IM KONTEXT",
+    "STAND DER AKTEN",
+    "BESCHLÜSSE",
+    "ZUR GEFRAGTEN SITZUNG",
+    "FOLGEFRAGEN"
+   ],
+   "aufrufe": [
+    "qa_analysis",
+    "qa_answer"
+   ],
+   "modell_antwort": "openai/gpt-6-sol",
+   "facetten": null,
+   "kontext_ok": true,
+   "antwort_ok": true,
+   "fehlerart": "ok",
+   "gold": [
+    {
+     "fakt": "28.09.2026 | 28.9.2026 | 28. September 2026 | 2026-09-28",
+     "pflicht": true,
+     "kontext": {
+      "status": "ok",
+      "fundstellen": [],
+      "jahre": []
+     },
+     "antwort": {
+      "status": "ok",
+      "fundstellen": [],
+      "jahre": []
+     }
+    },
+    {
+     "fakt": "18:00 | 18 Uhr | 18.00",
+     "pflicht": true,
+     "kontext": {
+      "status": "ok",
+      "fundstellen": [],
+      "jahre": []
+     },
+     "antwort": {
+      "status": "ok",
+      "fundstellen": [],
+      "jahre": []
+     }
+    }
+   ],
+   "verstoesse": [],
+   "erfunden": [],
+   "verweigert": true
+  }
+ ],
+ "kosten": {
+  "usd": 0.2878,
+  "aufrufe": 30,
+  "ohne_kosten": 0,
+  "je": {
+   "qa_analysis · google/gemini-3.1-flash-lite": {
+    "aufrufe": 15,
+    "usd": 0.011
+   },
+   "qa_answer · openai/gpt-6-sol": {
+    "aufrufe": 15,
+    "usd": 0.2768
+   }
+  }
+ },
+ "kosten_usd": 0.2878,
+ "kennzahlen": {
+  "n_cases": 15,
+  "ok": 10,
+  "quote_ok": 0.6667,
+  "kontext_ok": 13,
+  "fehlerarten": {
+   "ok": 10,
+   "kontext_fehlt": 2,
+   "modell_ausgelassen": 3
+  },
+  "modellfehler": 3,
+  "kontextfehler": 2,
+  "erfunden": 0,
+  "ausfaelle": 0,
+  "p50_ms": 15124,
+  "p95_ms": 26831
+ },
+ "etikett": "stichprobe-plus-rat-1"
+}

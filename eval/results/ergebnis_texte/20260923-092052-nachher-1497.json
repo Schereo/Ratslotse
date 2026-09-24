@@ -1,0 +1,594 @@
+{
+ "etikett": "nachher-1497",
+ "zeit": "2026-09-23T09:14:24",
+ "textarten": {
+  "simple_summary": [
+   {
+    "bestanden": 18,
+    "faelle": 20,
+    "zeilen": [
+     {
+      "id": 481,
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Der Schulausschuss hat den Vorschlag mehrheitlich abgelehnt. Der Vorschlag sah vor, die Förderschule Lernen bis 2028 weiterzuführen und ihren Bestand zu sichern, damit dort weiterhin Kinder mit Lernschwierigkeiten in die 5. Klasse aufgenommen werden können. Außerdem sollten Eltern schnell über die Einschulungsmöglichkeit informiert und ihre Entscheidung abgefragt werden, um den Bedarf zu planen."
+     },
+     {
+      "id": 1583,
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Der Rat hat einen Vorschlag der FDP abgelehnt. Die FDP wollte, dass die Stadt die Grundsteuer-Hebesätze nach der Reform so anpasst, dass die Einnahmen daraus nicht steigen."
+     },
+     {
+      "id": 2737,
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Der Schulausschuss hat einen Vorschlag der Grünen abgelehnt. Die Verwaltung sollte Mitarbeiter des Regionalen Umweltbildungszentrums zur nächsten Sitzung einladen. Sie sollten dort ihre Arbeit und Zukunftsideen vorstellen und sich zu Vorschlägen der Fridays-for-Future-Bewegung äußern."
+     },
+     {
+      "id": 5253,
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Der Rat hat einen Vorschlag der Fraktion Die Linke abgelehnt. Die Stadt sollte die Reinigung ihrer Gebäude selbst übernehmen und dafür neue Mitarbeiter einstellen. Der Vorschlag fand keine Mehrheit."
+     },
+     {
+      "id": 5914,
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Der Vorschlag, die Tarife im Verkehrsverbund Bremen/Niedersachsen zum 1. Januar 2024 anzupassen, wurde im Rat abgelehnt. Die Stadt Oldenburg sollte in der Verbandsversammlung dafür stimmen, aber das wird sie nun nicht tun."
+     },
+     {
+      "id": 5988,
+      "outcome": "rejected",
+      "ok": false,
+      "grund": "behauptet: „steigen“",
+      "text": "Der Ausschuss hat einen Vorschlag abgelehnt. Darin sollte die Grundsteuer B für Grundstücke in Oldenburg von 445 auf 490 Prozent steigen."
+     },
+     {
+      "id": 5993,
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Der Ausschuss hat den Vorschlag abgelehnt, schnell neue Dreifach-Sporthallen in Eversten und Kreyenbrück zu bauen und dem Bäderbetrieb BTB bei der Sanierung von Schwimmbädern mit bis zu 1,5 Millionen Euro zu helfen. Auch ein weiteres Lehrschwimmbad für die Stadtteile war vorgeschlagen, wurde aber ebenfalls abgelehnt."
+     },
+     {
+      "id": 6061,
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Der Vorschlag wurde im Schulausschuss abgelehnt. Es war vorgeschlagen, das Abstellen von E-Scootern, E-Rollern und OLi-Bikes auf Gehwegen und Zufahrten zu verbieten. Stattdessen sollten Parkplätze an Bushaltestellen, freie Flächen unter Autobahnen oder Fahrradabstellplätze als neue Abstellorte dienen."
+     },
+     {
+      "id": 9097,
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Der Verkehrsausschuss hat einen Vorschlag der CDU mehrheitlich abgelehnt. Die CDU wollte, dass die Stadt die Planung für einen baulich geschützten Radfahrstreifen auf der unteren Nadorster Straße sofort beendet. Stattdessen sollte dort wieder die alte Verkehrsführung gelten."
+     },
+     {
+      "id": 9118,
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Der Oldenburger Stadtrat hat einen Vorschlag mit 37 Nein- und 7 Ja-Stimmen abgelehnt. Der Vorschlag sollte das künftige Verfahren für unverbindliche städtebauliche Absprachen mit Grundstückseigentümern oder Investoren regeln. Demnach sollten solche Absprachen nur zulässig sein, wenn sie klar unverbindlich sind, vom Planungs- und Verwaltungsausschuss bestätigt und in öffentlicher Ratssitzung behandelt werden."
+     },
+     {
+      "id": 522,
+      "outcome": "postponed",
+      "ok": true,
+      "grund": "",
+      "text": "Der Ausschuss hat die Entscheidung über diesen Vorschlag einstimmig vertagt. Vorgeschlagen war, für ein Gebiet am ehemaligen Fliegerhorst offiziell mit der Bauleitplanung zu beginnen. Konkret ging es um den östlichen Teil der sogenannten Hallensichel und eine neue Entlastungsstraße bis zur Ammerländer Heerstraße."
+     },
+     {
+      "id": 1008,
+      "outcome": "postponed",
+      "ok": true,
+      "grund": "",
+      "text": "Die Entscheidung über den Grundstücksverkauf an der Ammergaustraße wurde vertagt. Der Vorschlag sah vor, dass die Stadt ein 1.743 Quadratmeter großes Grundstück zum Verkauf anbietet. Ein Käufer müsste dort mehrheitlich Wohnungen mit staatlich festgelegten Mieten bauen, und der Mindestpreis für das Land sollte bei 871.500 Euro liegen."
+     },
+     {
+      "id": 2419,
+      "outcome": "postponed",
+      "ok": false,
+      "grund": "kein Text",
+      "text": null
+     },
+     {
+      "id": 2592,
+      "outcome": "postponed",
+      "ok": true,
+      "grund": "",
+      "text": "Der Ausschuss hat die Entscheidung über diesen Vorschlag vertagt. Der Vorschlag sah vor, den Antrag auf die Mai-Sitzung zu verschieben und bis dahin eine Übersicht mit Jahresplan, beteiligten Fachausschüssen und Zeitplänen sowie einen Bericht alle drei Monate über den aktuellen Stand vorzulegen."
+     },
+     {
+      "id": 3747,
+      "outcome": "postponed",
+      "ok": true,
+      "grund": "",
+      "text": "Der Ausschuss hat die Entscheidung über Lärmschutz bei Bahnbauarbeiten auf die nächste Sitzung verschoben. Der Vorschlag, in der Zwischenzeit ein Schreiben an das Eisenbahnbundesamt zu schicken, Anzeigen zu erstatten und Bundestagsabgeordnete einzubinden, wurde nicht beschlossen."
+     },
+     {
+      "id": 1552,
+      "outcome": "accepted",
+      "ok": true,
+      "grund": "",
+      "text": "In der Kita Ostlandstraße 14 wird ab dem Kita-Jahr 2019/2020 eine normale Gruppe zu einer Integrationsgruppe. So können im Norden Oldenburgs künftig mehr Kinder mit und ohne Behinderung gemeinsam betreut werden."
+     },
+     {
+      "id": 1843,
+      "outcome": "accepted",
+      "ok": true,
+      "grund": "",
+      "text": "Der Rat hat beschlossen, die Kosten für die Beleuchtung der Kiesgrubenstraße getrennt von den übrigen Ausbaukosten zu ermitteln. Dadurch kann die Stadt für die Straßenbeleuchtung gesondert Beiträge von den Anliegern verlangen, wie es die Straßenausbaubeitragssatzung vorsieht."
+     },
+     {
+      "id": 3075,
+      "outcome": "accepted",
+      "ok": true,
+      "grund": "",
+      "text": "Der Sozialausschuss hat beschlossen, dass die Stadt zur nächsten Kommunalwahl eine Informationskampagne entwickelt, die alle Menschen gut verstehen können – auch in Leichter Sprache. Gemeinsam mit dem Netzwerk Inklusion konkret und der städtischen Inklusions-Fachstelle sollen zum Beispiel Flyer entstehen, die zum Wählen motivieren. Diese Materialien sollen anschließend über verschiedene Medien öffentlich zugänglich gemacht werden."
+     },
+     {
+      "id": 3104,
+      "outcome": "accepted",
+      "ok": true,
+      "grund": "",
+      "text": "Der Schulausschuss hat einen Vorschlag von Fridays for Future besprochen. Die Stadtverwaltung soll ein Projekt starten, das Schulen hilft, klimaneutral zu werden. Dabei geht es um Themen wie Schulessen, Energieverbrauch und Wege zur Schule. Schulen, die das schaffen, bekommen eine Auszeichnung, die sie jedes Jahr neu bestätigen müssen."
+     },
+     {
+      "id": 7462,
+      "outcome": "accepted",
+      "ok": true,
+      "grund": "",
+      "text": "Der Sportausschuss hat die Verwaltung beauftragt, den Nebenplatz B der Sportanlage Hundsmühler Höhe für zwei Fußballfelder zu planen. Jedes Feld soll 90 Meter lang und 45 Meter breit sein, mit der kurzen Seite zum Küstenkanal."
+     }
+    ]
+   },
+   {
+    "bestanden": 20,
+    "faelle": 20,
+    "zeilen": [
+     {
+      "id": 481,
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Der Schulausschuss hat einen Vorschlag abgelehnt, die Förderschule für Lernschwierigkeiten bis 2028 fortzuführen. Der Vorschlag sah vor, dass dort weiterhin Fünftklässler mit Lernschwierigkeiten eingeschult werden sollten, je nach Bedarf und Nachfrage. Außerdem sollte schnell entschieden werden, wie Eltern über diese Möglichkeit informiert und nach ihrer Entscheidung gefragt werden."
+     },
+     {
+      "id": 1583,
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Der Rat hat den Vorschlag abgelehnt. Vorgeschlagen war, dass die Stadt Oldenburg ihre örtlichen Grundsteuer-Steuersätze nach der Reform so anpassen sollte, dass die gesamten Einnahmen aus der Grundsteuer höchstens gleich bleiben."
+     },
+     {
+      "id": 2737,
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Der Schulausschuss hat einen Vorschlag abgelehnt: Die Stadtverwaltung sollte Mitarbeiter des Regionalen Umweltbildungszentrums Oldenburg zur nächsten Sitzung einladen. Dort hätten sie ihre Arbeit und Zukunftsideen vorgestellt und sich zu Vorschlägen der Fridays-for-Future-Bewegung geäußert."
+     },
+     {
+      "id": 5253,
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Der Vorschlag, die Reinigung städtischer Gebäude ab 2023 wieder mit eigenem Personal zu machen, wurde abgelehnt. Die Fraktion Die Linke wollte damit den Beschluss aufheben, die Reinigung an externe Firmen zu vergeben. Stattdessen sollten neue städtische Mitarbeiter eingestellt werden."
+     },
+     {
+      "id": 5914,
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Der Oldenburger Rat hat einen Vorschlag abgelehnt, der die Fahrpreise im Verkehrsverbund Bremen/Niedersachsen (VBN) ab dem 1. Januar 2024 ändern sollte. Dadurch wird die Stadt bei der nächsten Verbandsversammlung des Zweckverbands nicht für diese Tarifanpassung stimmen."
+     },
+     {
+      "id": 5988,
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Der Ausschuss für Finanzen und Beteiligungen hat den Vorschlag abgelehnt. Darin sollte die Stadt die Hebesätze für die Grundsteuer und Gewerbesteuer für 2024 festlegen. Vorgesehen war, den Hebesatz der Grundsteuer B von 445 auf 490 Prozent anzuheben."
+     },
+     {
+      "id": 5993,
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Der Ausschuss hat einen Vorschlag abgelehnt, der schnelle neue Dreifachsporthallen in Stadtteilen wie Eversten und Kreyenbrück vorsah. Außerdem war vorgeschlagen, den BTB bei der Sanierung eines Schwimmbads mit bis zu 1,5 Millionen Euro zu unterstützen und ein weiteres Lehrschwimmbad für die Stadtteile zu bauen. Dieser Vorschlag wurde einstimmig abgelehnt und ist damit nicht beschlossen."
+     },
+     {
+      "id": 6061,
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Der Schulausschuss hat den Vorschlag abgelehnt. Es sollte verboten werden, E-Scooter, E-Roller und OLi-Bikes auf Gehwegen und Einfahrten abzustellen. Stattdessen waren Parkplätze an Bushaltestellen, unter Autobahnen oder an Fahrradständern vorgesehen."
+     },
+     {
+      "id": 9097,
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Der Verkehrsausschuss lehnte den Vorschlag mehrheitlich ab, den Beschluss für eine Protected Bike Lane (einen geschützten Radfahrstreifen) an der unteren Nadorster Straße aufzuheben. Damit hätte die ursprüngliche Aufteilung des Straßenraums wieder gegolten."
+     },
+     {
+      "id": 9118,
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Der Rat hat einen Vorschlag abgelehnt, der regeln sollte, wie die Stadt unverbindliche Planungsabsprachen mit Grundstückseigentümern oder Investoren trifft. Dem Vorschlag nach hätten solche Absichtserklärungen klar als rechtlich unverbindlich gelten, vom Planungsausschuss und Verwaltungsausschuss bestätigt und in öffentlicher Sitzung behandelt werden müssen."
+     },
+     {
+      "id": 522,
+      "outcome": "postponed",
+      "ok": true,
+      "grund": "",
+      "text": "Die Entscheidung wurde vertagt, es ist noch nichts beschlossen. Der Vorschlag war, für ein Gebiet zwischen Alexanderstraße und Ammerländer Heerstraße den Flächennutzungsplan zu ändern, um dort die östliche Hallensichel des alten Fliegerhorsts und eine neue Entlastungsstraße bis zur Ammerländer Heerstraße zu planen."
+     },
+     {
+      "id": 1008,
+      "outcome": "postponed",
+      "ok": true,
+      "grund": "",
+      "text": "Der Ausschuss hat den Vorschlag einstimmig vertagt – entschieden ist also noch nichts. Der Vorschlag sah vor, ein 1.743 Quadratmeter großes städtisches Grundstück an der Ammergaustraße für mindestens 871.500 Euro zu verkaufen. Dabei sollten mindestens 60 Prozent der dort geplanten Wohnungen preisgebunden sein, also mit begrenzter Miete angeboten werden."
+     },
+     {
+      "id": 2419,
+      "outcome": "postponed",
+      "ok": true,
+      "grund": "",
+      "text": "Der Ausschuss hat die Entscheidung über diesen Vorschlag vertagt. Es ging um eine Änderung des Flächennutzungsplans für das Gebiet am Fliegerhorst, die eine Entlastungsstraße und neue Bauflächen ermöglichen soll. Die vorgeschlagene Planung sollte öffentlich ausgelegt werden, damit sich Bürger dazu äußern können."
+     },
+     {
+      "id": 2592,
+      "outcome": "postponed",
+      "ok": true,
+      "grund": "",
+      "text": "Der Ausschuss hat die Entscheidung über den Klimaschutz-Antrag auf Mai verschoben. Vorher soll die Verwaltung eine Übersicht erstellen: welche Anträge in welchen Ausschüssen wann besprochen werden und wie regelmäßig über den Stand berichtet wird."
+     },
+     {
+      "id": 3747,
+      "outcome": "postponed",
+      "ok": true,
+      "grund": "",
+      "text": "Der Ausschuss für Bahnangelegenheiten hat die Diskussion über Baulärm der Bahn in Oldenburg vertagt und noch nicht entschieden. Der Vorschlag sah vor, ein städtisches Schreiben an das Eisenbahnbundesamt zu senden, Lärmbeschwerden von Betroffenen zu dokumentieren und die örtlichen Bundestagsabgeordneten einzubeziehen. Konkrete Maßnahmen bleiben daher vorerst aus."
+     },
+     {
+      "id": 1552,
+      "outcome": "accepted",
+      "ok": true,
+      "grund": "",
+      "text": "Die Kindertagesstätte in der Ostlandstraße 14 bekommt ab dem Kindergartenjahr 2019/2020 eine Integrationsgruppe statt einer normalen Gruppe. Dort werden Kinder mit und ohne Förderbedarf gemeinsam betreut. Damit entstehen im Norden Oldenburgs mehr wohnortnahe Plätze für Familien, die solche Betreuung suchen."
+     },
+     {
+      "id": 1843,
+      "outcome": "accepted",
+      "ok": true,
+      "grund": "",
+      "text": "Der Rat hat beschlossen, die Kosten für die Straßenbeleuchtung beim Ausbau der Kiesgrubenstraße getrennt zu erfassen. Damit wird vorbereitet, dass die Anlieger später nur für diesen Teil der Baumaßnahme Beiträge zahlen müssen."
+     },
+     {
+      "id": 3075,
+      "outcome": "accepted",
+      "ok": true,
+      "grund": "",
+      "text": "Der Sozialausschuss hat beschlossen, dass die Stadt zur nächsten Kommunalwahl eine barrierefreie Informationskampagne startet. Gemeinsam mit Inklusionsexperten und dem Netzwerk 'Inklusion konkret' werden leicht verständliche Materialien wie Flyer entwickelt. Diese sollen dann über verschiedene Medien allen Bürgerinnen und Bürgern zugänglich gemacht werden."
+     },
+     {
+      "id": 3104,
+      "outcome": "accepted",
+      "ok": true,
+      "grund": "",
+      "text": "Die Stadt Oldenburg startet ein Projekt, um Schulen dabei zu helfen, klimaneutral zu werden. Dabei geht es um Themen wie Schulessen, Energieverbrauch und wie Kinder zur Schule kommen. Sobald eine Schule klimaneutral ist, bekommt sie eine Auszeichnung, die sie jedes Jahr erneuern muss, um sie zu behalten."
+     },
+     {
+      "id": 7462,
+      "outcome": "accepted",
+      "ok": true,
+      "grund": "",
+      "text": "Der Sportausschuss hat beschlossen, dass die Verwaltung den Nebenplatz B der Sportanlage Hundsmühler Höhe für zwei Fußballfelder planen soll. Beide Felder sollen 90 Meter lang und 45 Meter breit werden, mit der kurzen Seite zum Küstenkanal."
+     }
+    ]
+   }
+  ],
+  "summary": [
+   {
+    "bestanden": 20,
+    "faelle": 20,
+    "zeilen": [
+     {
+      "id": 481,
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Der Antrag auf Fortführung der Förderschule Lernen mit Bestandsschutz bis 2028 wurde mehrheitlich abgelehnt."
+     },
+     {
+      "id": 1583,
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Der Antrag, die Grundsteuer-Hebesätze nach der Reform aufkommensneutral anzupassen, wurde mehrheitlich abgelehnt."
+     },
+     {
+      "id": 2737,
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Der Antrag, das Regionale Umweltbildungszentrum zur Vorstellung seiner Arbeit in den Schulausschuss einzuladen, wurde abgelehnt."
+     },
+     {
+      "id": 5253,
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Der Antrag, die Fremdreinigung zugunsten einer Eigenreinigung durch städtisches Personal aufzuheben, wurde mehrheitlich abgelehnt."
+     },
+     {
+      "id": 5914,
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Der Vorschlag zur Zustimmung der VBN-Tarifanpassung zum 01.01.2024 wurde mehrheitlich abgelehnt."
+     },
+     {
+      "id": 5988,
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Die Satzung zur Anhebung des Hebesatzes der Grundsteuer B auf 490 v.H. für 2024 wurde einstimmig abgelehnt."
+     },
+     {
+      "id": 5993,
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Der Antrag zum Bau von Sporthallen und zur finanziellen Unterstützung der Schwimmbadsanierung wurde einstimmig abgelehnt."
+     },
+     {
+      "id": 6061,
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Der Antrag, das Abstellen von E-Scootern und Leihrädern auf Fußwegen zu untersagen, wurde einstimmig abgelehnt."
+     },
+     {
+      "id": 9097,
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Der Antrag, die Protected Bike Lane an der Nadorster Straße aufzuheben, wurde mehrheitlich abgelehnt."
+     },
+     {
+      "id": 9118,
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Der Antrag zur Regelung des Verfahrens beim Abschluss städtebaulicher Absichtserklärungen wurde mehrheitlich abgelehnt."
+     },
+     {
+      "id": 522,
+      "outcome": "postponed",
+      "ok": true,
+      "grund": "",
+      "text": "Der Aufstellungsbeschluss zur Änderung Nr. 78 des Flächennutzungsplanes wurde einstimmig vertagt."
+     },
+     {
+      "id": 1008,
+      "outcome": "postponed",
+      "ok": true,
+      "grund": "",
+      "text": "Der Beschluss zum Verkauf eines städtischen Grundstücks an der Ammergaustraße wurde einstimmig vertagt."
+     },
+     {
+      "id": 2419,
+      "outcome": "postponed",
+      "ok": true,
+      "grund": "",
+      "text": "Der Auslegungsbeschluss zur Änderung Nr. 78 des Flächennutzungsplanes wurde einstimmig vertagt."
+     },
+     {
+      "id": 2592,
+      "outcome": "postponed",
+      "ok": true,
+      "grund": "",
+      "text": "Der Antrag für wirksamen Klima- und Umweltschutz wurde unter der Bedingung der Vorlage einer Synopse einstimmig vertagt."
+     },
+     {
+      "id": 3747,
+      "outcome": "postponed",
+      "ok": true,
+      "grund": "",
+      "text": "Der Tagesordnungspunkt zu Lärmbelästigungen durch Bahn-Baumaßnahmen wurde vertagt."
+     },
+     {
+      "id": 1552,
+      "outcome": "accepted",
+      "ok": true,
+      "grund": "",
+      "text": "In der Kita Ostlandstraße wird eine Regelkindergartengruppe in eine Integrationsgruppe umgewandelt."
+     },
+     {
+      "id": 1843,
+      "outcome": "accepted",
+      "ok": true,
+      "grund": "",
+      "text": "Der beitragsfähige Aufwand für die Beleuchtung der Kiesgrubenstraße wird im Wege der Aufwandsspaltung gesondert ermittelt."
+     },
+     {
+      "id": 3075,
+      "outcome": "accepted",
+      "ok": true,
+      "grund": "",
+      "text": "Die Verwaltung wird beauftragt, eine barrierefreie Öffentlichkeitskampagne zur Kommunalwahl zu entwickeln."
+     },
+     {
+      "id": 3104,
+      "outcome": "accepted",
+      "ok": true,
+      "grund": "",
+      "text": "Die Stadtverwaltung soll ein Leitbildprojekt für klimaneutrale Schulen ins Leben rufen und diese aktiv unterstützen."
+     },
+     {
+      "id": 7462,
+      "outcome": "accepted",
+      "ok": true,
+      "grund": "",
+      "text": "Die Verwaltung wird aufgefordert, die Sportanlage Hundsmühler Höhe als Zwei-Feldvariante für den Fußball zu planen."
+     }
+    ]
+   },
+   {
+    "bestanden": 20,
+    "faelle": 20,
+    "zeilen": [
+     {
+      "id": 481,
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Der Antrag auf Fortführung der Förderschule Lernen mit Bestandsschutz bis 2028 wurde mehrheitlich abgelehnt."
+     },
+     {
+      "id": 1583,
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Der Antrag, die Grundsteuer-Hebesätze nach der Reform konstant zu halten, wurde mehrheitlich abgelehnt."
+     },
+     {
+      "id": 2737,
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Der Antrag, das Regionale Umweltbildungszentrum zur Vorstellung seiner Arbeit einzuladen, wurde abgelehnt."
+     },
+     {
+      "id": 5253,
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Der Antrag, den Beschluss zur Fremdvergabe der Reinigung aufzuheben und Eigenpersonal einzusetzen, wurde mehrheitlich abgelehnt."
+     },
+     {
+      "id": 5914,
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Der Vorschlag zur VBN-Tarifanpassung zum 01.01.2024 wurde mehrheitlich abgelehnt; die Stadt stimmt in der Verbandsversammlung nicht zu."
+     },
+     {
+      "id": 5988,
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Die Satzung zur Anhebung des Hebesatzes der Grundsteuer B auf 490 v.H. wurde einstimmig abgelehnt."
+     },
+     {
+      "id": 5993,
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Der Vorschlag zum zeitnahen Bau neuer Sporthallen und zur finanziellen Unterstützung der Schwimmbadsanierung wurde einstimmig abgelehnt."
+     },
+     {
+      "id": 6061,
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Der Antrag, das Abstellen von E-Scootern und Leihrädern auf Gehwegen zu untersagen, wurde bei zwei Enthaltungen abgelehnt."
+     },
+     {
+      "id": 9097,
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Der Antrag, die Entscheidung für die Protected Bike Lane aufzuheben, wurde mehrheitlich abgelehnt; die Umsetzung bleibt bestehen."
+     },
+     {
+      "id": 9118,
+      "outcome": "rejected",
+      "ok": true,
+      "grund": "",
+      "text": "Der Antrag, ein dreistufiges Verfahren für städtebauliche Absichtserklärungen verbindlich zu machen, wurde deutlich abgelehnt."
+     },
+     {
+      "id": 522,
+      "outcome": "postponed",
+      "ok": true,
+      "grund": "",
+      "text": "Der Aufstellungsbeschluss für die 78. FNP-Änderung im Bereich Hallensichel-Ost wurde einstimmig vertagt."
+     },
+     {
+      "id": 1008,
+      "outcome": "postponed",
+      "ok": true,
+      "grund": "",
+      "text": "Der Beschlussvorschlag zum Verkauf eines städtischen Grundstücks mit Vorgaben für preisgebundenen Wohnungsbau wurde einstimmig vertagt."
+     },
+     {
+      "id": 2419,
+      "outcome": "postponed",
+      "ok": true,
+      "grund": "",
+      "text": "Der Auslegungsbeschluss für die 78. FNP-Änderung wurde einstimmig vertagt."
+     },
+     {
+      "id": 2592,
+      "outcome": "postponed",
+      "ok": true,
+      "grund": "",
+      "text": "Der Antrag für lokalen Klima- und Umweltschutz wurde unter Maßgabe der Erstellung einer Synopse mit Zeitplan einstimmig vertagt."
+     },
+     {
+      "id": 3747,
+      "outcome": "postponed",
+      "ok": true,
+      "grund": "",
+      "text": "Der Tagesordnungspunkt zu Lärmbelästigungen durch Bahn-Baumaßnahmen wurde vertagt; zwischenzeitlich sollen Beschwerde-Maßnahmen erfolgen."
+     },
+     {
+      "id": 1552,
+      "outcome": "accepted",
+      "ok": true,
+      "grund": "",
+      "text": "Eine Regelkindergartengruppe in der Kita Ostlandstraße wird in eine Integrationsgruppe umgewandelt."
+     },
+     {
+      "id": 1843,
+      "outcome": "accepted",
+      "ok": true,
+      "grund": "",
+      "text": "Der beitragsfähige Aufwand für die Beleuchtung der Kiesgrubenstraße wird per Aufwandsspaltungsbeschluss gesondert ermittelt."
+     },
+     {
+      "id": 3075,
+      "outcome": "accepted",
+      "ok": true,
+      "grund": "",
+      "text": "Die Verwaltung soll zur Kommunalwahl eine barrierefreie Öffentlichkeitskampagne unter Beteiligung des Netzwerks Inklusion entwickeln."
+     },
+     {
+      "id": 3104,
+      "outcome": "accepted",
+      "ok": true,
+      "grund": "",
+      "text": "Die Verwaltung wird beauftragt, ein Leitbildprojekt für klimaneutrale Schulen mit jährlicher Auszeichnung zu initiieren."
+     },
+     {
+      "id": 7462,
+      "outcome": "accepted",
+      "ok": true,
+      "grund": "",
+      "text": "Die Verwaltung soll für die Sportanlage Hundsmühler Höhe eine Planung mit zwei Fußballfeldern (90x45 m) erstellen."
+     }
+    ]
+   }
+  ]
+ }
+}

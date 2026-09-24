@@ -101,6 +101,17 @@ gegen ein **Recht**, nie gegen einen Rollennamen: Backend
 
 Eine neue Rolle wirkt damit ohne Frontend-Release und ohne Store-Update.
 
+Ein Recht, das keine Route sperrt, sondern etwas **anders macht** (etwa
+`premium_models`: größeres Modell für die ausführliche Recherche), prüft der
+Router selbst mit `rollen.permissions_for(user.get("roles"))` — das Konto-Dict
+trägt `roles`, nie ein `permissions`-Feld. Läuft die Wirkung im Hintergrund
+weiter (ein Job), gehört die Entscheidung beim Einreichen in die Job-Zeile,
+nicht in eine zweite Abfrage des Kontos später.
+
+Die iOS-Admin-Ansicht tippt ihre Rollen-Menüeinträge ab (`ADMIN_ROLLEN` in
+`AdminView.swift`) — eine neue vergebbare Rolle dort ergänzen; das Web-Panel
+baut seine Kästchen aus `GET /api/admin/roles` und braucht nichts.
+
 **Was dich fängt:** `test_rollen.py` — auch die Frage, ob jede Route mit dem
 Recht wirklich das Recht verlangt.
 

@@ -320,7 +320,7 @@ export interface MemberDetail {
     kpenr: number;
     name: string;
     current_faction: string | null;
-    memberships: { kgrnr: number | null; committee: string; role: string | null; von: string | null; bis: string | null }[];
+    memberships: { kgrnr: number | null; committee: string; role: string | null; valid_from: string | null; valid_until: string | null }[];
   } | null;
   committees: { committee: string; n: number; chair: boolean }[];
   recent: { ksinr: number; committee: string; session_date: string }[];
@@ -562,6 +562,8 @@ export interface QuizAnswerResult {
   topic?: string | null;
   map?: { lat: number; lon: number; label: string | null; geojson?: object | null } | null;
   image?: QuizImageCredit | null;
+  /** Reihenfolge-Frage: die richtige Reihenfolge als Indizes, größter zuerst. */
+  correct_order?: number[];
   /** Diagramm der Auflösung (Haushalts-Fragen): Balken, Donut oder Trendlinie. */
   chart?: {
     type?: "bars" | "share" | "trend";
@@ -569,6 +571,8 @@ export interface QuizAnswerResult {
     unit: string;
     items: { label: string; value: number; highlight?: boolean }[];
   } | null;
+  /** Wie die anderen lagen — erst ab fünf Mitspielenden (Server entscheidet). */
+  others?: { players: number; correct_pct: number };
 }
 export interface QuizBadge {
   key: string;

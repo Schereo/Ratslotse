@@ -415,6 +415,18 @@ export function BetriebeAbschnitt({ data, loading }: {
   }, [data]);
 
 
+  // Welche Pläne nur ihr Jahresergebnis tragen — je Betrieb mit Jahren.
+  const nurErgebnis = (() => {
+    const je = new Map<string, { name: string; jahre: number[] }>();
+    for (const z of data?.business_plans ?? []) {
+      if (z.revenues != null) continue;
+      const g = je.get(z.enterprise) ?? { name: z.enterprise_name, jahre: [] };
+      g.jahre.push(z.year);
+      je.set(z.enterprise, g);
+    }
+    return [...je.values()];
+  })();
+
   if (loading || !data) {
     return (
       <div className="py-16 text-center text-sm text-muted-foreground">
@@ -489,21 +501,22 @@ export function BetriebeAbschnitt({ data, loading }: {
             Was hier fehlt
           </p>
           <ul className="mt-2 flex flex-col gap-1.5 text-[12.5px] leading-relaxed text-foreground/85">
-            <li>
-              <strong className="text-foreground">Der Eigenbetrieb Hafen.</strong>{" "}
-              Von ihm liegen nur zwei Wirtschaftspläne vor, beide aus 2019 und
-              2020, in einem Aufbau, den wir nicht maschinell auslesen können.
-              Deshalb weisen wir daraus keine Zahlen aus. Seine geprüften
-              Jahresabschlüsse 2017 bis 2020 stehen im Bestand und in der
-              KI-Frage — eine Karte bekommt er erst mit einem lesbaren Plan.
-            </li>
-            <li>
-              <strong className="text-foreground">Erträge und Aufwendungen der
-                meisten Betriebe.</strong>{" "}
-              Vier der sechs nennen im Beschluss nur das Jahresergebnis. Was
-              dort ein Strich ist, steht in keiner Form da, die sich nachrechnen
-              lässt.
-            </li>
+            {/* Gerechnet, nicht geschrieben (Plan Haushalt-Datenquellen,
+                PR 4): Bis 09/2026 stand hier „Vier der sechs nennen nur das
+                Jahresergebnis" — seit die GuV-Übersichten der Bäder gelesen
+                werden, stimmte der Satz nicht mehr, und niemand hätte es
+                gemerkt. */}
+            {nurErgebnis.length > 0 && (
+              <li>
+                <strong className="text-foreground">Erträge und Aufwendungen in{" "}
+                  {nurErgebnis.reduce((n, g) => n + g.jahre.length, 0)} Plänen.</strong>{" "}
+                Dort steht nur das Jahresergebnis:{" "}
+                {nurErgebnis.map((g) => `${g.name} (${g.jahre.join(", ")})`).join("; ")}.
+                Entweder nennt die Vorlage nur diese eine Zahl, oder ihre Tabelle
+                ergibt nicht dieselbe Zahl wie der Beschlusstext — dann übernehmen wir
+                nur, was beschlossen ist.
+              </li>
+            )}
             <li>
               <strong className="text-foreground">Vier ältere Jahrgänge</strong>{" "}
               liegen nur als eingescanntes Papier vor, ohne lesbaren Text. Sie

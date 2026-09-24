@@ -48,14 +48,13 @@ export const EBENEN: readonly Ebene[] = [
   // über ALLE Jahre. In der Vorgabe aus — sie sind das andere Vokabular
   // (Themen statt Vorhaben) und lägen sonst über den Pins des Viertels.
   { id: "themen-orte", label: "Themen-Orte", farbe: "#7c3aed", stufen: ["city", "district"], quelle: "Orte und Themen aus allen Beschlüssen, nach Zahl gewichtet" },
-  // Das Wahlergebnis der Ratswahl (13.09.2026) je Wahlbereich, aus dem
-  // Wahlabend-Dashboard (Schritt 7 des Plans). Die Fläche ist eine TÖNUNG
-  // nach Stärke der stärksten Liste, nie eine Parteifarbe — die steht nur als
-  // Punkt im Hinweis und in der Tafel (Designsprache). Flächen sind die
-  // Ortsbereiche, gruppiert über ihren Wahlbereich aus dem Ortskatalog: Die
-  // Stadt schneidet Wahlbezirke, keine Ortsbereiche — das ist ungefähr.
+  // Das Wahlergebnis je Urnenbezirk (docs/plan-viertel-wahlkarte.md): die
+  // 91 Wahlbezirke in der Farbe dessen, der dort vorn lag, die Deckkraft nach
+  // dem Vorsprung — die zweite Ausnahme der Designsprache neben der
+  // Stichwahl-Karte. Die Ortsbereiche bleiben als Linien darüber; ein
+  // Ortsbereich zeigt alle Bezirke, die ihn berühren, in voller Form.
   { id: "wahlergebnis", label: "Wahlergebnis", farbe: "#475569", stufen: ["city", "district"], schalter: "wahlabend",
-    quelle: "Ratswahl 13.09.2026, Open Data der Stadt (Votemanager) je Wahlbereich — Flächen über die Ortsbereiche, ungefähr" },
+    quelle: "Ratswahl und OB-Wahl 2026 je Wahlbezirk, Open Data der Stadt (Votemanager); Bezirksgrenzen: openGEOdata, dl-zero-de/2.0. Farben nach den Wahllokalen, ohne Briefwahl" },
 ] as const;
 
 export const ALLE_EBENEN: readonly EbenenId[] = EBENEN.map((e) => e.id);

@@ -1090,6 +1090,13 @@
       "AdminLlmUsageFeature": {
         "description": "Kosten und Verbrauch eines Features (``kern.usage.summary``).",
         "properties": {
+          "by_model": {
+            "items": {
+              "$ref": "#/components/schemas/AdminLlmUsageModel"
+            },
+            "title": "By Model",
+            "type": "array"
+          },
           "calls": {
             "title": "Calls",
             "type": "integer"
@@ -1139,10 +1146,35 @@
           "completion_tokens",
           "cost",
           "models",
+          "by_model",
           "first",
           "last"
         ],
         "title": "AdminLlmUsageFeature",
+        "type": "object"
+      },
+      "AdminLlmUsageModel": {
+        "description": "Ein Modell innerhalb eines Features — Aufrufe und Kosten.",
+        "properties": {
+          "calls": {
+            "title": "Calls",
+            "type": "integer"
+          },
+          "cost": {
+            "title": "Cost",
+            "type": "number"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          }
+        },
+        "required": [
+          "model",
+          "calls",
+          "cost"
+        ],
+        "title": "AdminLlmUsageModel",
         "type": "object"
       },
       "AdminLotti": {
@@ -1185,6 +1217,9 @@
             "title": "Questions",
             "type": "array"
           },
+          "self_check": {
+            "$ref": "#/components/schemas/AdminLottiSelbstpruefung"
+          },
           "timeline": {
             "items": {
               "$ref": "#/components/schemas/AdminLottiTag"
@@ -1202,6 +1237,7 @@
           "elements",
           "questions",
           "feedback",
+          "self_check",
           "nudge"
         ],
         "title": "AdminLotti",
@@ -1305,6 +1341,87 @@
           "n"
         ],
         "title": "AdminLottiFrage",
+        "type": "object"
+      },
+      "AdminLottiPruefSeite": {
+        "properties": {
+          "checked": {
+            "title": "Checked",
+            "type": "integer"
+          },
+          "poor": {
+            "title": "Poor",
+            "type": "integer"
+          },
+          "route": {
+            "title": "Route",
+            "type": "string"
+          }
+        },
+        "required": [
+          "route",
+          "checked",
+          "poor"
+        ],
+        "title": "AdminLottiPruefSeite",
+        "type": "object"
+      },
+      "AdminLottiSelbstpruefung": {
+        "description": "Lottis Selbstprüfung (``council/self_check.py``), eine stille Stichprobe —\nnur Zahlen, keine Fragen.",
+        "properties": {
+          "by_rules": {
+            "title": "By Rules",
+            "type": "integer"
+          },
+          "checked": {
+            "title": "Checked",
+            "type": "integer"
+          },
+          "cost_usd": {
+            "title": "Cost Usd",
+            "type": "number"
+          },
+          "p50_ms": {
+            "title": "P50 Ms",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "pages": {
+            "items": {
+              "$ref": "#/components/schemas/AdminLottiPruefSeite"
+            },
+            "title": "Pages",
+            "type": "array"
+          },
+          "poor": {
+            "title": "Poor",
+            "type": "integer"
+          },
+          "reasons": {
+            "items": {
+              "$ref": "#/components/schemas/AdminLottiZeile"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "unknown": {
+            "title": "Unknown",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "checked",
+          "poor",
+          "unknown",
+          "by_rules",
+          "cost_usd",
+          "p50_ms",
+          "pages",
+          "reasons"
+        ],
+        "title": "AdminLottiSelbstpruefung",
         "type": "object"
       },
       "AdminLottiTag": {
@@ -4490,6 +4607,20 @@
             "title": "Column Kinds",
             "type": "array"
           },
+          "commitments": {
+            "items": {
+              "$ref": "#/components/schemas/CommitmentRow"
+            },
+            "title": "Commitments",
+            "type": "array"
+          },
+          "debt_plan": {
+            "items": {
+              "$ref": "#/components/schemas/DebtPlanRow"
+            },
+            "title": "Debt Plan",
+            "type": "array"
+          },
           "guarantees": {
             "$ref": "#/components/schemas/Guarantees"
           },
@@ -4529,6 +4660,30 @@
           "interest_expense"
         ],
         "title": "BudgetDebt",
+        "type": "object"
+      },
+      "BudgetDebtComparison": {
+        "properties": {
+          "provenance": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Herkunft"
+            },
+            "title": "Provenance",
+            "type": "object"
+          },
+          "years": {
+            "items": {
+              "$ref": "#/components/schemas/CityDebtYear"
+            },
+            "title": "Years",
+            "type": "array"
+          }
+        },
+        "required": [
+          "years",
+          "provenance"
+        ],
+        "title": "BudgetDebtComparison",
         "type": "object"
       },
       "BudgetDispute": {
@@ -4621,6 +4776,34 @@
         "title": "BudgetExecution",
         "type": "object"
       },
+      "BudgetFederalComparison": {
+        "properties": {
+          "group": {
+            "$ref": "#/components/schemas/FederalGroup"
+          },
+          "indicators": {
+            "items": {
+              "$ref": "#/components/schemas/FederalIndicator"
+            },
+            "title": "Indicators",
+            "type": "array"
+          },
+          "provenance": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Herkunft"
+            },
+            "title": "Provenance",
+            "type": "object"
+          }
+        },
+        "required": [
+          "indicators",
+          "group",
+          "provenance"
+        ],
+        "title": "BudgetFederalComparison",
+        "type": "object"
+      },
       "BudgetFixedAssets": {
         "properties": {
           "accounting_systems": {
@@ -4663,6 +4846,110 @@
           "series"
         ],
         "title": "BudgetFixedAssets",
+        "type": "object"
+      },
+      "BudgetGrants": {
+        "properties": {
+          "provenance": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Herkunft"
+            },
+            "title": "Provenance",
+            "type": "object"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/GrantRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "totals": {
+            "items": {
+              "$ref": "#/components/schemas/GrantTotal"
+            },
+            "title": "Totals",
+            "type": "array"
+          },
+          "year": {
+            "title": "Year",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "years": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Years",
+            "type": "array"
+          }
+        },
+        "required": [
+          "years",
+          "year",
+          "rows",
+          "totals",
+          "provenance"
+        ],
+        "title": "BudgetGrants",
+        "type": "object"
+      },
+      "BudgetGrantsReceived": {
+        "properties": {
+          "applications": {
+            "items": {
+              "$ref": "#/components/schemas/GrantTemplate"
+            },
+            "title": "Applications",
+            "type": "array"
+          },
+          "lists": {
+            "items": {
+              "$ref": "#/components/schemas/GrantReceivedList"
+            },
+            "title": "Lists",
+            "type": "array"
+          },
+          "provenance": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Herkunft"
+            },
+            "title": "Provenance",
+            "type": "object"
+          },
+          "recipients": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Recipients",
+            "type": "object"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/GrantReceivedRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "totals": {
+            "items": {
+              "$ref": "#/components/schemas/GrantReceivedTotal"
+            },
+            "title": "Totals",
+            "type": "array"
+          }
+        },
+        "required": [
+          "rows",
+          "applications",
+          "lists",
+          "totals",
+          "recipients",
+          "provenance"
+        ],
+        "title": "BudgetGrantsReceived",
         "type": "object"
       },
       "BudgetGroup": {
@@ -4799,6 +5086,13 @@
       },
       "BudgetInvestments": {
         "properties": {
+          "finance_budget": {
+            "items": {
+              "$ref": "#/components/schemas/FinanceBudgetRow"
+            },
+            "title": "Finance Budget",
+            "type": "array"
+          },
           "financial_budget": {
             "items": {},
             "title": "Financial Budget",
@@ -5153,6 +5447,248 @@
         "title": "BudgetLoans",
         "type": "object"
       },
+      "BudgetMeasure": {
+        "description": "Eine Investitionsmaßnahme im Budgetbericht. ``kind``: ``A`` Auszahlung,\n``E`` Einzahlung. ``measure_no`` ist die I10-Nummer (bei einem Bereich\n„… bis …\" die erste, ``measure_no_to`` die letzte) und kann fehlen.\n``note`` ist die Erläuterung der Verwaltung im Wortlaut.",
+        "properties": {
+          "carryover": {
+            "title": "Carryover",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "forecast": {
+            "title": "Forecast",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "herkunft_id": {
+            "title": "Herkunft Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "measure_no": {
+            "title": "Measure No",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "measure_no_to": {
+            "title": "Measure No To",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "planned": {
+            "title": "Planned",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "seq",
+          "measure_no",
+          "measure_no_to",
+          "name",
+          "kind",
+          "planned",
+          "forecast",
+          "carryover",
+          "note",
+          "herkunft_id"
+        ],
+        "title": "BudgetMeasure",
+        "type": "object"
+      },
+      "BudgetMeasureReport": {
+        "description": "Ein eingelesener Budgetbericht: Stichtag, Vorlage, Zahl der Maßnahmen\nund die Summen der Auszahlungen (Ansatz, Prognose zum Jahresende).",
+        "properties": {
+          "as_of": {
+            "title": "As Of",
+            "type": "string"
+          },
+          "budget_year": {
+            "title": "Budget Year",
+            "type": "integer"
+          },
+          "forecast": {
+            "title": "Forecast",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "planned": {
+            "title": "Planned",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "template_number": {
+            "title": "Template Number",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "as_of",
+          "budget_year",
+          "template_number",
+          "n",
+          "planned",
+          "forecast"
+        ],
+        "title": "BudgetMeasureReport",
+        "type": "object"
+      },
+      "BudgetMeasures": {
+        "properties": {
+          "as_of": {
+            "title": "As Of",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "measures": {
+            "items": {
+              "$ref": "#/components/schemas/BudgetMeasure"
+            },
+            "title": "Measures",
+            "type": "array"
+          },
+          "provenance": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Herkunft"
+            },
+            "title": "Provenance",
+            "type": "object"
+          },
+          "reports": {
+            "items": {
+              "$ref": "#/components/schemas/BudgetMeasureReport"
+            },
+            "title": "Reports",
+            "type": "array"
+          }
+        },
+        "required": [
+          "reports",
+          "as_of",
+          "measures",
+          "provenance"
+        ],
+        "title": "BudgetMeasures",
+        "type": "object"
+      },
+      "BudgetNote": {
+        "description": "Ein Abschnitt des Vorberichts zu einem Teilhaushalt, im Wortlaut.\n\n``kind``: ``result`` (Abschnitt 2.4.2.x, Ergebnishaushalt) oder\n``investments`` (3.2.2.x). ``text`` sind Absätze, getrennt durch eine\nLeerzeile — ohne die Tabellen und Grafiken des Originals.",
+        "properties": {
+          "budget_year": {
+            "title": "Budget Year",
+            "type": "integer"
+          },
+          "herkunft_id": {
+            "title": "Herkunft Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "page": {
+            "title": "Page",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "sub_budget_no": {
+            "title": "Sub Budget No",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "budget_year",
+          "sub_budget_no",
+          "kind",
+          "title",
+          "text",
+          "page",
+          "herkunft_id"
+        ],
+        "title": "BudgetNote",
+        "type": "object"
+      },
+      "BudgetNotes": {
+        "properties": {
+          "notes": {
+            "items": {
+              "$ref": "#/components/schemas/BudgetNote"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "provenance": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Herkunft"
+            },
+            "title": "Provenance",
+            "type": "object"
+          }
+        },
+        "required": [
+          "notes",
+          "provenance"
+        ],
+        "title": "BudgetNotes",
+        "type": "object"
+      },
       "BudgetOverview": {
         "description": "``/api/council/budget`` — das Datenfundament des Haushalts-Bereichs.\n\n**Jedes Feld ist ``NotRequired``, und zwar zwingend.** Der Endpunkt baut\nseine Antwort aus einer Bausteinliste und liefert mit ``?felder=…`` nur\ndie angeforderten Blöcke (``?felder=years,population`` sind zwei Schlüssel,\nnicht sechsundzwanzig). Ein Pflichtfeld wäre hier an jedem\nzugeschnittenen Aufruf ein 500.\n\nDie Werte bleiben ``Any``: Was in ihnen steht, kommt aus breiten\nStore-Abfragen, und eine geratene Verengung ließe Pydantic Werte\nKONVERTIEREN (siehe Kopf dieses Abschnitts). Was die einzelnen Blöcke\nbedeuten — und welche Angabe ohne welche nicht gezeigt werden darf —\nsteht im Docstring des Handlers (``routers/council.py::haushalt_uebersicht``).",
         "properties": {
@@ -5161,6 +5697,9 @@
           },
           "budget_bylaw": {
             "title": "Budget Bylaw"
+          },
+          "budget_bylaw_published": {
+            "title": "Budget Bylaw Published"
           },
           "budgeted_years": {
             "title": "Budgeted Years"
@@ -5257,6 +5796,30 @@
         "title": "BudgetPath",
         "type": "object"
       },
+      "BudgetPrefaceFigures": {
+        "properties": {
+          "plans": {
+            "items": {
+              "$ref": "#/components/schemas/PrefacePlan"
+            },
+            "title": "Plans",
+            "type": "array"
+          },
+          "provenance": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Herkunft"
+            },
+            "title": "Provenance",
+            "type": "object"
+          }
+        },
+        "required": [
+          "plans",
+          "provenance"
+        ],
+        "title": "BudgetPrefaceFigures",
+        "type": "object"
+      },
       "BudgetProducts": {
         "properties": {
           "all_years": {
@@ -5296,6 +5859,70 @@
           "matches"
         ],
         "title": "BudgetProducts",
+        "type": "object"
+      },
+      "BudgetSourceStats": {
+        "description": "Woher die Zahlen kommen (``council/quellenzahlen.py``). ``numbers``\nzählt numerische Zellen ohne Schlüssel (Jahre, Seiten, Kennungen);\n``documents`` eigenständige Belege; ``citations`` Belegstellen;\n``probe_kinds``/``probe_runs`` die bestandenen Proben beim Einlesen.",
+        "properties": {
+          "citations": {
+            "title": "Citations",
+            "type": "integer"
+          },
+          "documents": {
+            "title": "Documents",
+            "type": "integer"
+          },
+          "layers": {
+            "items": {
+              "$ref": "#/components/schemas/SourceStatsLayer"
+            },
+            "title": "Layers",
+            "type": "array"
+          },
+          "numbers": {
+            "title": "Numbers",
+            "type": "integer"
+          },
+          "other": {
+            "$ref": "#/components/schemas/SourceStatsOther"
+          },
+          "probe_kinds": {
+            "title": "Probe Kinds",
+            "type": "integer"
+          },
+          "probe_runs": {
+            "title": "Probe Runs",
+            "type": "integer"
+          },
+          "rows": {
+            "title": "Rows",
+            "type": "integer"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/SourceStatsSource"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "tables": {
+            "title": "Tables",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "numbers",
+          "rows",
+          "tables",
+          "documents",
+          "citations",
+          "probe_kinds",
+          "probe_runs",
+          "sources",
+          "layers",
+          "other"
+        ],
+        "title": "BudgetSourceStats",
         "type": "object"
       },
       "BudgetStaffPlan": {
@@ -5411,6 +6038,91 @@
           "new_password"
         ],
         "title": "ChangePasswordRequest",
+        "type": "object"
+      },
+      "CityDebt": {
+        "description": "Die Schulden einer Stadt zum 31.12. — ``debt_core`` im Kernhaushalt,\n``debt_entities`` in den Einrichtungen, die ihr zu 100 % gehören, beides\nin Euro und je Einwohner*in (Einwohner am 30.06. desselben Jahres).",
+        "properties": {
+          "city": {
+            "title": "City",
+            "type": "string"
+          },
+          "core_per_capita": {
+            "title": "Core Per Capita",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "debt_core": {
+            "title": "Debt Core",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "debt_entities": {
+            "title": "Debt Entities",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "entities_per_capita": {
+            "title": "Entities Per Capita",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "is_oldenburg": {
+            "title": "Is Oldenburg",
+            "type": "boolean"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "population": {
+            "title": "Population",
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "key",
+          "city",
+          "is_oldenburg",
+          "population",
+          "debt_core",
+          "debt_entities",
+          "core_per_capita",
+          "entities_per_capita"
+        ],
+        "title": "CityDebt",
+        "type": "object"
+      },
+      "CityDebtYear": {
+        "properties": {
+          "cities": {
+            "items": {
+              "$ref": "#/components/schemas/CityDebt"
+            },
+            "title": "Cities",
+            "type": "array"
+          },
+          "year": {
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "year",
+          "cities"
+        ],
+        "title": "CityDebtYear",
         "type": "object"
       },
       "CityMapPoint": {
@@ -5686,6 +6398,38 @@
           }
         },
         "title": "ClientErrorIn",
+        "type": "object"
+      },
+      "CommitmentRow": {
+        "description": "Eine Fälligkeit aus den Verpflichtungsermächtigungen eines Plans.",
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          },
+          "budget_year": {
+            "title": "Budget Year",
+            "type": "integer"
+          },
+          "due_year": {
+            "title": "Due Year",
+            "type": "integer"
+          },
+          "herkunft_id": {
+            "title": "Herkunft Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "budget_year",
+          "due_year",
+          "amount",
+          "herkunft_id"
+        ],
+        "title": "CommitmentRow",
         "type": "object"
       },
       "CommitteeDetail": {
@@ -6188,6 +6932,59 @@
           "month_name"
         ],
         "title": "DataLayer",
+        "type": "object"
+      },
+      "DebtPlanRow": {
+        "description": "Der voraussichtliche Stand der Schulden laut Haushaltsplan (Anlage 003).\n\n``entity`` ist „Kernhaushalt\" oder ein Eigenbetrieb, ``code`` die\nSchuldenart (1.2 Kredite für Investitionen … 5) oder ``total``.\n``start_prior`` ist der Stand zu Beginn des Vorjahres, ``start_expected``\nder erwartete zu Beginn des Planjahres — beide in Euro.",
+        "properties": {
+          "budget_year": {
+            "title": "Budget Year",
+            "type": "integer"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "entity": {
+            "title": "Entity",
+            "type": "string"
+          },
+          "herkunft_id": {
+            "title": "Herkunft Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "start_expected": {
+            "title": "Start Expected",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "start_prior": {
+            "title": "Start Prior",
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "budget_year",
+          "entity",
+          "code",
+          "label",
+          "start_prior",
+          "start_expected",
+          "herkunft_id"
+        ],
+        "title": "DebtPlanRow",
         "type": "object"
       },
       "DecisionDetail": {
@@ -8133,6 +8930,290 @@
         "title": "Districts",
         "type": "object"
       },
+      "ElectedAffiliation": {
+        "description": "Die Zugehörigkeit im neuen Rat, wo sie von der Wahlliste abweicht.",
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source": {
+            "title": "Source",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "label",
+          "note",
+          "source"
+        ],
+        "title": "ElectedAffiliation",
+        "type": "object"
+      },
+      "ElectedCouncil": {
+        "description": "Der gewählte Rat nach einer Ratswahl — bevor er in den Protokollen steht.",
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "election": {
+            "title": "Election",
+            "type": "string"
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/ElectedMember"
+            },
+            "title": "Members",
+            "type": "array"
+          },
+          "seats": {
+            "title": "Seats",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "vorlaeufig",
+              "amtlich"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "term_start": {
+            "title": "Term Start",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "vacancies": {
+            "items": {
+              "$ref": "#/components/schemas/ElectedVacancy"
+            },
+            "title": "Vacancies",
+            "type": "array"
+          }
+        },
+        "required": [
+          "election",
+          "title",
+          "date",
+          "term_start",
+          "seats",
+          "status",
+          "members",
+          "vacancies"
+        ],
+        "title": "ElectedCouncil",
+        "type": "object"
+      },
+      "ElectedMember": {
+        "description": "Eine Person mit Sitz im gewählten Rat (``app.election.elected``).\n\n``slug`` ist derselbe wie auf der Personen-Seite; ``has_profile`` sagt, ob\nes dort schon ein Profil aus den Protokollen gibt, ``council_status``, ob\ndie Person dem Rat schon angehörte (und nicht nur einen Ausschuss beriet).",
+        "properties": {
+          "affiliation": {
+            "description": "Die Zugehörigkeit im neuen Rat, wo sie von der Wahlliste abweicht.",
+            "properties": {
+              "label": {
+                "title": "Label",
+                "type": "string"
+              },
+              "note": {
+                "title": "Note",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "source": {
+                "title": "Source",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "label",
+              "note",
+              "source"
+            ],
+            "title": "ElectedAffiliation",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "area": {
+            "title": "Area",
+            "type": "integer"
+          },
+          "area_name": {
+            "title": "Area Name",
+            "type": "string"
+          },
+          "area_roman": {
+            "title": "Area Roman",
+            "type": "string"
+          },
+          "born": {
+            "title": "Born",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "color": {
+            "title": "Color",
+            "type": "string"
+          },
+          "color_dark": {
+            "title": "Color Dark",
+            "type": "string"
+          },
+          "council_status": {
+            "enum": [
+              "new",
+              "current",
+              "former"
+            ],
+            "title": "Council Status",
+            "type": "string"
+          },
+          "council_terms": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Council Terms",
+            "type": "array"
+          },
+          "has_profile": {
+            "title": "Has Profile",
+            "type": "boolean"
+          },
+          "list": {
+            "title": "List",
+            "type": "string"
+          },
+          "list_short": {
+            "title": "List Short",
+            "type": "string"
+          },
+          "mandate": {
+            "enum": [
+              "direct",
+              "list",
+              "transfer",
+              "unknown",
+              "successor"
+            ],
+            "title": "Mandate",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "occupation": {
+            "title": "Occupation",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "position": {
+            "title": "Position",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "votes": {
+            "title": "Votes",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "list",
+          "list_short",
+          "color",
+          "color_dark",
+          "area",
+          "area_roman",
+          "area_name",
+          "position",
+          "votes",
+          "mandate",
+          "occupation",
+          "born",
+          "has_profile",
+          "council_status",
+          "council_terms",
+          "affiliation"
+        ],
+        "title": "ElectedMember",
+        "type": "object"
+      },
+      "ElectedVacancy": {
+        "description": "Ein Sitz, dessen gewählte Person ihn nicht antritt.",
+        "properties": {
+          "list_short": {
+            "title": "List Short",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "successor": {
+            "title": "Successor",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "list_short",
+          "reason",
+          "successor",
+          "source"
+        ],
+        "title": "ElectedVacancy",
+        "type": "object"
+      },
       "ElectionArea": {
         "properties": {
           "districts_counted": {
@@ -9339,6 +10420,363 @@
           "kind"
         ],
         "title": "ElectionMandate",
+        "type": "object"
+      },
+      "ElectionMap": {
+        "description": "``GET /api/wahlabend/karte`` — das Ergebnis je Wahlbezirk für die\nStadtkarte (docs/plan-viertel-wahlkarte.md). Gerechnet wird hier, nicht\nin Web und App: wer vorn lag, wie deutlich, wo der Bezirk liegt.",
+        "properties": {
+          "areas": {
+            "items": {
+              "$ref": "#/components/schemas/ElectionMapArea"
+            },
+            "title": "Areas",
+            "type": "array"
+          },
+          "contestants": {
+            "items": {
+              "$ref": "#/components/schemas/ElectionMapContestant"
+            },
+            "title": "Contestants",
+            "type": "array"
+          },
+          "counted": {
+            "title": "Counted",
+            "type": "integer"
+          },
+          "districts": {
+            "items": {
+              "$ref": "#/components/schemas/ElectionMapDistrict"
+            },
+            "title": "Districts",
+            "type": "array"
+          },
+          "election": {
+            "$ref": "#/components/schemas/ElectionMapChoice"
+          },
+          "elections": {
+            "items": {
+              "$ref": "#/components/schemas/ElectionMapChoice"
+            },
+            "title": "Elections",
+            "type": "array"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "place": {
+            "title": "Place",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "postal_share_pct": {
+            "title": "Postal Share Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "ties": {
+            "title": "Ties",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "wins": {
+            "items": {
+              "$ref": "#/components/schemas/ElectionMapWin"
+            },
+            "title": "Wins",
+            "type": "array"
+          }
+        },
+        "required": [
+          "election",
+          "elections",
+          "phase",
+          "contestants",
+          "postal_share_pct",
+          "total",
+          "counted",
+          "wins",
+          "ties",
+          "place",
+          "districts",
+          "areas"
+        ],
+        "title": "ElectionMap",
+        "type": "object"
+      },
+      "ElectionMapArea": {
+        "description": "Ein Wahlbereich MIT Briefwahl — der Vergleich neben dem Bezirk, denn\ndie Briefwahl (2026 ein Drittel der Stimmen) hat keine Fläche.",
+        "properties": {
+          "counted": {
+            "title": "Counted",
+            "type": "integer"
+          },
+          "leader": {
+            "title": "Leader",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "number": {
+            "title": "Number",
+            "type": "integer"
+          },
+          "parties": {
+            "items": {
+              "$ref": "#/components/schemas/ElectionMapShare"
+            },
+            "title": "Parties",
+            "type": "array"
+          },
+          "roman": {
+            "title": "Roman",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "valid_votes": {
+            "title": "Valid Votes",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "number",
+          "roman",
+          "counted",
+          "total",
+          "valid_votes",
+          "leader",
+          "parties"
+        ],
+        "title": "ElectionMapArea",
+        "type": "object"
+      },
+      "ElectionMapChoice": {
+        "description": "Eine Wahl, die die Karte zeigen kann.",
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "label",
+          "kind",
+          "date"
+        ],
+        "title": "ElectionMapChoice",
+        "type": "object"
+      },
+      "ElectionMapContestant": {
+        "description": "Eine Liste (Ratswahl) oder Kandidatur (OB-Wahl) mit ihrer Kartenfarbe.",
+        "properties": {
+          "color": {
+            "title": "Color",
+            "type": "string"
+          },
+          "color_dark": {
+            "title": "Color Dark",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "short": {
+            "title": "Short",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "short",
+          "name",
+          "color",
+          "color_dark"
+        ],
+        "title": "ElectionMapContestant",
+        "type": "object"
+      },
+      "ElectionMapDistrict": {
+        "description": "Ein Urnenbezirk auf der Karte: wer vorn lag, wie deutlich, und wo er liegt.",
+        "properties": {
+          "area": {
+            "title": "Area",
+            "type": "integer"
+          },
+          "counted": {
+            "title": "Counted",
+            "type": "boolean"
+          },
+          "leader": {
+            "title": "Leader",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "margin_pct": {
+            "title": "Margin Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "integer"
+          },
+          "parties": {
+            "items": {
+              "$ref": "#/components/schemas/ElectionMapShare"
+            },
+            "title": "Parties",
+            "type": "array"
+          },
+          "places": {
+            "items": {
+              "$ref": "#/components/schemas/ElectionMapPlace"
+            },
+            "title": "Places",
+            "type": "array"
+          },
+          "runner_up": {
+            "title": "Runner Up",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "turnout_pct": {
+            "title": "Turnout Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "valid_votes": {
+            "title": "Valid Votes",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "number",
+          "name",
+          "area",
+          "counted",
+          "leader",
+          "runner_up",
+          "margin_pct",
+          "turnout_pct",
+          "valid_votes",
+          "places",
+          "parties"
+        ],
+        "title": "ElectionMapDistrict",
+        "type": "object"
+      },
+      "ElectionMapPlace": {
+        "description": "Ein Ortsbereich, in dem ein Wahlbezirk liegt — mit Flächenanteil 0…1.",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "share": {
+            "title": "Share",
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "share"
+        ],
+        "title": "ElectionMapPlace",
+        "type": "object"
+      },
+      "ElectionMapShare": {
+        "properties": {
+          "share_pct": {
+            "title": "Share Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "votes": {
+            "title": "Votes",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "slug",
+          "votes",
+          "share_pct"
+        ],
+        "title": "ElectionMapShare",
+        "type": "object"
+      },
+      "ElectionMapWin": {
+        "description": "Die Legende: in wie vielen Urnenbezirken eine Liste vorn lag.",
+        "properties": {
+          "districts": {
+            "title": "Districts",
+            "type": "integer"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "districts"
+        ],
+        "title": "ElectionMapWin",
         "type": "object"
       },
       "ElectionNight": {
@@ -10685,6 +12123,199 @@
         "title": "FactionPhase",
         "type": "object"
       },
+      "FederalCity": {
+        "description": "Eine Stadt der Vergleichsgruppe in einem Jahr. ``key`` ist der\nGemeindeschlüssel (AGS), ``population`` die Einwohnerzahl desselben\nJahres aus demselben Portal.",
+        "properties": {
+          "city": {
+            "title": "City",
+            "type": "string"
+          },
+          "is_oldenburg": {
+            "title": "Is Oldenburg",
+            "type": "boolean"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "lower_saxony": {
+            "title": "Lower Saxony",
+            "type": "boolean"
+          },
+          "population": {
+            "title": "Population",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "key",
+          "city",
+          "value",
+          "population",
+          "lower_saxony",
+          "is_oldenburg"
+        ],
+        "title": "FederalCity",
+        "type": "object"
+      },
+      "FederalGroup": {
+        "description": "Die Regel der Vergleichsgruppe: kreisfreie Städte zwischen\n``population_min`` und ``population_max`` Einwohner*innen, dazu alle\nNiedersachsens. ``n`` Städte, davon ``lower_saxony`` in Niedersachsen.",
+        "properties": {
+          "lower_saxony": {
+            "title": "Lower Saxony",
+            "type": "integer"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "population_max": {
+            "title": "Population Max",
+            "type": "integer"
+          },
+          "population_min": {
+            "title": "Population Min",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "population_min",
+          "population_max",
+          "n",
+          "lower_saxony"
+        ],
+        "title": "FederalGroup",
+        "type": "object"
+      },
+      "FederalIndicator": {
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          },
+          "years": {
+            "items": {
+              "$ref": "#/components/schemas/FederalYear"
+            },
+            "title": "Years",
+            "type": "array"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "unit",
+          "years"
+        ],
+        "title": "FederalIndicator",
+        "type": "object"
+      },
+      "FederalStats": {
+        "properties": {
+          "max": {
+            "title": "Max",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "median": {
+            "title": "Median",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "min": {
+            "title": "Min",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "p25": {
+            "title": "P25",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "p75": {
+            "title": "P75",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "zero": {
+            "title": "Zero",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "n",
+          "zero",
+          "min",
+          "p25",
+          "median",
+          "p75",
+          "max"
+        ],
+        "title": "FederalStats",
+        "type": "object"
+      },
+      "FederalYear": {
+        "properties": {
+          "cities": {
+            "items": {
+              "$ref": "#/components/schemas/FederalCity"
+            },
+            "title": "Cities",
+            "type": "array"
+          },
+          "oldenburg": {
+            "title": "Oldenburg",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "stats": {
+            "$ref": "#/components/schemas/FederalStats"
+          },
+          "year": {
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "year",
+          "oldenburg",
+          "stats",
+          "cities"
+        ],
+        "title": "FederalYear",
+        "type": "object"
+      },
       "FeedbackAck": {
         "description": "Die Bestätigung einer Rückmeldung — mehr braucht die Karte nicht.",
         "properties": {
@@ -10736,6 +12367,66 @@
           }
         },
         "title": "FeedbackNotifyIn",
+        "type": "object"
+      },
+      "FinanceBudgetRow": {
+        "description": "Eine Investitionszeile des Gesamtfinanzhaushalts (Anlage 006).\n\n``kind`` trennt den Ansatz des Planjahres (``budget``) von der\nFinanzplanung (``financial_plan``); ``plan_budget_year`` sagt, aus welchem\nPlan die Zahl stammt. ``role`` ist nur bei den Summen und dem Saldo\ngesetzt, die übrigen Zeilen sind die Auszahlungs- und Einzahlungsarten.",
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          },
+          "herkunft_id": {
+            "title": "Herkunft Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "is_total": {
+            "title": "Is Total",
+            "type": "integer"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "nr": {
+            "title": "Nr",
+            "type": "integer"
+          },
+          "plan_budget_year": {
+            "title": "Plan Budget Year",
+            "type": "integer"
+          },
+          "role": {
+            "title": "Role",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "year": {
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "plan_budget_year",
+          "year",
+          "kind",
+          "nr",
+          "label",
+          "role",
+          "amount",
+          "is_total",
+          "herkunft_id"
+        ],
+        "title": "FinanceBudgetRow",
         "type": "object"
       },
       "Finances": {
@@ -11015,6 +12706,363 @@
           "goals"
         ],
         "title": "Goals",
+        "type": "object"
+      },
+      "GrantReceivedList": {
+        "description": "Eine eingelesene Liste: EU je Fonds und Förderperiode, dazu der\nFörderkatalog. ``list_as_of`` ist der Datenstand der Liste.",
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          },
+          "list_as_of": {
+            "title": "List As Of",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "list_url": {
+            "title": "List Url",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "period": {
+            "title": "Period",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "period",
+          "list_as_of",
+          "list_url",
+          "n",
+          "amount"
+        ],
+        "title": "GrantReceivedList",
+        "type": "object"
+      },
+      "GrantReceivedRow": {
+        "description": "Ein gefördertes Vorhaben der Stadt oder einer Gesellschaft.\n\n``funder`` ist „EU\" oder das Bundesressort (BMV, BMWE …),\n``amount_granted`` der bewilligte Unionsbeitrag bzw. Bundesanteil — nicht\ndas Ausgezahlte. ``amount_total`` (förderfähige bzw. Gesamtkosten) führen\nnur die EU-Listen. ``recipient`` steht so in der Liste, ``recipient_key``\nist der Schlüssel aus ``council/foerdermittel.EMPFAENGER``.",
+        "properties": {
+          "amount_granted": {
+            "title": "Amount Granted",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "amount_total": {
+            "title": "Amount Total",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "end": {
+            "title": "End",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "funder": {
+            "title": "Funder",
+            "type": "string"
+          },
+          "herkunft_id": {
+            "title": "Herkunft Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "period": {
+            "title": "Period",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "program": {
+            "title": "Program",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "recipient": {
+            "title": "Recipient",
+            "type": "string"
+          },
+          "recipient_key": {
+            "title": "Recipient Key",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "string"
+          },
+          "start": {
+            "title": "Start",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "summary": {
+            "title": "Summary",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "templates": {
+            "items": {
+              "$ref": "#/components/schemas/GrantTemplate"
+            },
+            "title": "Templates",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "source_id",
+          "period",
+          "recipient",
+          "recipient_key",
+          "title",
+          "summary",
+          "funder",
+          "program",
+          "amount_total",
+          "amount_granted",
+          "start",
+          "end",
+          "herkunft_id",
+          "templates"
+        ],
+        "title": "GrantReceivedRow",
+        "type": "object"
+      },
+      "GrantReceivedTotal": {
+        "description": "Je Geber (``eu`` oder ``bund``): Zahl der Vorhaben und bewilligte Summe.",
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          },
+          "group": {
+            "title": "Group",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "group",
+          "n",
+          "amount"
+        ],
+        "title": "GrantReceivedTotal",
+        "type": "object"
+      },
+      "GrantRow": {
+        "description": "Ein Zuschuss an Dritte aus der Übersicht in Anlage 003.\n\n``description`` ist die Spalte „Beschreibung der Zuwendung\" und nennt\nmeist den Empfänger („Zuschuss Reparaturrat\"), ``note`` die Erläuterung.\n``amount`` ist der Ansatz im Planjahr, ``amount_prior`` der im Vorjahr —\nbeide aus demselben Plan. ``cash``: 1 bar, 0 unbar, ``None`` ohne Angabe\n(2019 führt die Spalte nicht). ``lfd_nr`` ist die Nummer der Stadt und\nnicht eindeutig; die Reihenfolge ist ``seq``.",
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "amount_prior": {
+            "title": "Amount Prior",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "budget_year": {
+            "title": "Budget Year",
+            "type": "integer"
+          },
+          "cash": {
+            "title": "Cash",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "herkunft_id": {
+            "title": "Herkunft Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "lfd_nr": {
+            "title": "Lfd Nr",
+            "type": "integer"
+          },
+          "note": {
+            "title": "Note",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "product_name": {
+            "title": "Product Name",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "product_no": {
+            "title": "Product No",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          },
+          "sub_budget_no": {
+            "title": "Sub Budget No",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "budget_year",
+          "seq",
+          "lfd_nr",
+          "sub_budget_no",
+          "product_no",
+          "product_name",
+          "description",
+          "amount_prior",
+          "amount",
+          "note",
+          "cash",
+          "herkunft_id"
+        ],
+        "title": "GrantRow",
+        "type": "object"
+      },
+      "GrantTemplate": {
+        "description": "Eine Ratsvorlage zu Fördergeld (``council/foerder_vorlagen.py``) mit\nihrer LETZTEN Beratung: Datum, Gremium, Ergebnis, Beschluss-Id für den\nLink. ``basis`` nur an einem Vorhaben: ``amount`` (Betrag und Name stehen\nim Text) oder ``title`` (der Vorlagentitel steht im Titel des Vorhabens).",
+        "properties": {
+          "basis": {
+            "title": "Basis",
+            "type": "string"
+          },
+          "committee": {
+            "title": "Committee",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date": {
+            "title": "Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "decision_id": {
+            "title": "Decision Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "template_number": {
+            "title": "Template Number",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "template_number",
+          "title",
+          "decision_id",
+          "date",
+          "committee",
+          "outcome"
+        ],
+        "title": "GrantTemplate",
+        "type": "object"
+      },
+      "GrantTotal": {
+        "description": "Je Plan und Teilhaushalt: Zahl und Summe der Zuschüsse im Planjahr.",
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          },
+          "budget_year": {
+            "title": "Budget Year",
+            "type": "integer"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "sub_budget_no": {
+            "title": "Sub Budget No",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "budget_year",
+          "sub_budget_no",
+          "n",
+          "amount"
+        ],
+        "title": "GrantTotal",
         "type": "object"
       },
       "GuaranteeRow": {
@@ -16421,6 +18469,72 @@
         "title": "PredictionTurnoutLine",
         "type": "object"
       },
+      "PrefaceFigure": {
+        "description": "Ein Wert aus dem Vorbericht. ``variant``: ``actual`` (Ist),\n``prior_budget`` (Plan des Vorjahres), ``forecast`` (Prognose der\nKämmerei), ``budget`` (Ansatz des Planjahres), ``financial_plan``.",
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          },
+          "herkunft_id": {
+            "title": "Herkunft Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "page": {
+            "title": "Page",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "series": {
+            "title": "Series",
+            "type": "string"
+          },
+          "variant": {
+            "title": "Variant",
+            "type": "string"
+          },
+          "year": {
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "series",
+          "year",
+          "variant",
+          "amount",
+          "page",
+          "herkunft_id"
+        ],
+        "title": "PrefaceFigure",
+        "type": "object"
+      },
+      "PrefacePlan": {
+        "properties": {
+          "figures": {
+            "items": {
+              "$ref": "#/components/schemas/PrefaceFigure"
+            },
+            "title": "Figures",
+            "type": "array"
+          },
+          "plan_budget_year": {
+            "title": "Plan Budget Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "plan_budget_year",
+          "figures"
+        ],
+        "title": "PrefacePlan",
+        "type": "object"
+      },
       "ProjectReportIn": {
         "properties": {
           "reason": {
@@ -17072,6 +19186,23 @@
       },
       "QuizAnswerIn": {
         "properties": {
+          "joker": {
+            "default": false,
+            "title": "Joker",
+            "type": "boolean"
+          },
+          "order": {
+            "items": {
+              "type": "integer"
+            },
+            "maxItems": 4,
+            "minItems": 4,
+            "title": "Order",
+            "type": [
+              "array",
+              "null"
+            ]
+          },
           "question_id": {
             "title": "Question Id",
             "type": "integer"
@@ -17299,6 +19430,52 @@
         "title": "QuizBadge",
         "type": "object"
       },
+      "QuizBlitzIn": {
+        "properties": {
+          "answered": {
+            "maximum": 40.0,
+            "minimum": 0.0,
+            "title": "Answered",
+            "type": "integer"
+          },
+          "correct": {
+            "maximum": 40.0,
+            "minimum": 0.0,
+            "title": "Correct",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "correct",
+          "answered"
+        ],
+        "title": "QuizBlitzIn",
+        "type": "object"
+      },
+      "QuizBlitzResult": {
+        "description": "Abschluss einer Blitzrunde: Bestmarke gesamt und heute.",
+        "properties": {
+          "best": {
+            "title": "Best",
+            "type": "integer"
+          },
+          "new_best": {
+            "title": "New Best",
+            "type": "boolean"
+          },
+          "today_best": {
+            "title": "Today Best",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "best",
+          "today_best",
+          "new_best"
+        ],
+        "title": "QuizBlitzResult",
+        "type": "object"
+      },
       "QuizDailyIn": {
         "properties": {
           "correct": {
@@ -17312,6 +19489,17 @@
             "minimum": 0.0,
             "title": "Points",
             "type": "integer"
+          },
+          "results": {
+            "items": {
+              "type": "boolean"
+            },
+            "maxItems": 10,
+            "title": "Results",
+            "type": [
+              "array",
+              "null"
+            ]
           },
           "total": {
             "maximum": 50.0,
@@ -17436,6 +19624,10 @@
             "title": "Ok",
             "type": "boolean"
           },
+          "share_text": {
+            "title": "Share Text",
+            "type": "string"
+          },
           "streak": {
             "title": "Streak",
             "type": "integer"
@@ -17447,6 +19639,177 @@
           "streak"
         ],
         "title": "QuizDayCompleted",
+        "type": "object"
+      },
+      "QuizDistrictProgress": {
+        "description": "Ein Ortsbereich auf der Fortschrittskarte (``routers.quiz._district_progress``).\n``level`` 0–3 samt Wort, damit Web und App dieselbe Schwelle zeigen.",
+        "properties": {
+          "answered": {
+            "title": "Answered",
+            "type": "integer"
+          },
+          "correct": {
+            "title": "Correct",
+            "type": "integer"
+          },
+          "district": {
+            "title": "District",
+            "type": "string"
+          },
+          "level": {
+            "enum": [
+              0,
+              1,
+              2,
+              3
+            ],
+            "title": "Level",
+            "type": "integer"
+          },
+          "level_label": {
+            "title": "Level Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "district",
+          "answered",
+          "correct",
+          "level",
+          "level_label"
+        ],
+        "title": "QuizDistrictProgress",
+        "type": "object"
+      },
+      "QuizDuel": {
+        "description": "Ein Duell (Plan Q9). ``questions`` ohne Lösung; ``players`` erst,\nwenn ich gespielt habe oder das Duell meins ist — sonst verriete die\nListe, wie schwer die Runde ist, bevor man sie spielt.",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "mine": {
+            "title": "Mine",
+            "type": "boolean"
+          },
+          "owner_correct": {
+            "title": "Owner Correct",
+            "type": "integer"
+          },
+          "owner_name": {
+            "title": "Owner Name",
+            "type": "string"
+          },
+          "played": {
+            "title": "Played",
+            "type": "boolean"
+          },
+          "players": {
+            "items": {
+              "$ref": "#/components/schemas/QuizDuelPlayer"
+            },
+            "title": "Players",
+            "type": "array"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/QuizQuestion"
+            },
+            "title": "Questions",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "code",
+          "owner_name",
+          "owner_correct",
+          "total",
+          "mine",
+          "played",
+          "questions",
+          "players"
+        ],
+        "title": "QuizDuel",
+        "type": "object"
+      },
+      "QuizDuelCreated": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "title": "QuizDuelCreated",
+        "type": "object"
+      },
+      "QuizDuelDoneIn": {
+        "properties": {
+          "correct": {
+            "maximum": 10.0,
+            "minimum": 0.0,
+            "title": "Correct",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "correct"
+        ],
+        "title": "QuizDuelDoneIn",
+        "type": "object"
+      },
+      "QuizDuelIn": {
+        "properties": {
+          "correct": {
+            "maximum": 10.0,
+            "minimum": 0.0,
+            "title": "Correct",
+            "type": "integer"
+          },
+          "question_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "maxItems": 10,
+            "minItems": 1,
+            "title": "Question Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "question_ids",
+          "correct"
+        ],
+        "title": "QuizDuelIn",
+        "type": "object"
+      },
+      "QuizDuelPlayer": {
+        "properties": {
+          "correct": {
+            "title": "Correct",
+            "type": "integer"
+          },
+          "me": {
+            "title": "Me",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "correct",
+          "me"
+        ],
+        "title": "QuizDuelPlayer",
         "type": "object"
       },
       "QuizFlagged": {
@@ -17523,6 +19886,36 @@
           "comments"
         ],
         "title": "QuizFlaggedQuestion",
+        "type": "object"
+      },
+      "QuizJoker": {
+        "description": "Die zwei falschen Antworten, die der 50:50-Joker streicht.",
+        "properties": {
+          "remove": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Remove",
+            "type": "array"
+          }
+        },
+        "required": [
+          "remove"
+        ],
+        "title": "QuizJoker",
+        "type": "object"
+      },
+      "QuizJokerIn": {
+        "properties": {
+          "question_id": {
+            "title": "Question Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "question_id"
+        ],
+        "title": "QuizJokerIn",
         "type": "object"
       },
       "QuizMapIn": {
@@ -17604,6 +19997,25 @@
         "title": "QuizMapRound",
         "type": "object"
       },
+      "QuizOthers": {
+        "description": "Wie die anderen bei dieser Frage lagen — erst ab\n``routers.quiz.OTHERS_MIN`` Mitspielenden, sonst fehlt das Feld.",
+        "properties": {
+          "correct_pct": {
+            "title": "Correct Pct",
+            "type": "integer"
+          },
+          "players": {
+            "title": "Players",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "players",
+          "correct_pct"
+        ],
+        "title": "QuizOthers",
+        "type": "object"
+      },
       "QuizOwnQuestions": {
         "properties": {
           "questions": {
@@ -17618,6 +20030,117 @@
           "questions"
         ],
         "title": "QuizOwnQuestions",
+        "type": "object"
+      },
+      "QuizPinIn": {
+        "properties": {
+          "lat": {
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Lat",
+            "type": "number"
+          },
+          "lon": {
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Lon",
+            "type": "number"
+          },
+          "slug": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "lat",
+          "lon"
+        ],
+        "title": "QuizPinIn",
+        "type": "object"
+      },
+      "QuizPinQuestion": {
+        "properties": {
+          "kind_label": {
+            "title": "Kind Label",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "kind_label"
+        ],
+        "title": "QuizPinQuestion",
+        "type": "object"
+      },
+      "QuizPinResult": {
+        "description": "Auflösung von „Wo liegt das?\": Entfernung zur Geometrie, Punkte, und\ndie Geometrie selbst zum Einzeichnen.",
+        "properties": {
+          "distance_label": {
+            "title": "Distance Label",
+            "type": "string"
+          },
+          "distance_m": {
+            "title": "Distance M",
+            "type": "integer"
+          },
+          "geojson": {
+            "title": "Geojson"
+          },
+          "lat": {
+            "title": "Lat",
+            "type": "number"
+          },
+          "lon": {
+            "title": "Lon",
+            "type": "number"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "points": {
+            "title": "Points",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "distance_m",
+          "distance_label",
+          "points",
+          "name",
+          "geojson",
+          "lat",
+          "lon"
+        ],
+        "title": "QuizPinResult",
+        "type": "object"
+      },
+      "QuizPinRound": {
+        "properties": {
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/QuizPinQuestion"
+            },
+            "title": "Questions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "questions"
+        ],
+        "title": "QuizPinRound",
         "type": "object"
       },
       "QuizQuestion": {
@@ -17637,6 +20160,15 @@
           },
           "difficulty": {
             "title": "Difficulty",
+            "type": "string"
+          },
+          "format": {
+            "enum": [
+              "verdict",
+              "compare",
+              "order"
+            ],
+            "title": "Format",
             "type": "string"
           },
           "hint": {
@@ -17660,7 +20192,8 @@
           "qtype": {
             "enum": [
               "mc",
-              "estimate"
+              "estimate",
+              "order"
             ],
             "title": "Qtype",
             "type": "string"
@@ -17766,6 +20299,13 @@
             "title": "Correct Index",
             "type": "integer"
           },
+          "correct_order": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Correct Order",
+            "type": "array"
+          },
           "detail": {
             "title": "Detail"
           },
@@ -17781,6 +20321,9 @@
           },
           "map": {
             "title": "Map"
+          },
+          "others": {
+            "$ref": "#/components/schemas/QuizOthers"
           },
           "points": {
             "title": "Points",
@@ -17839,7 +20382,7 @@
         "type": "object"
       },
       "QuizScore": {
-        "description": "``Store.quiz_stats`` liefert ``by_area``/``total``, der Router hängt\nSerie, Abzeichen, Fehlerzahl und Tages-Status an.",
+        "description": "``Store.quiz_stats`` liefert ``by_area``/``total``, der Router hängt\nSerie, Abzeichen, Fehlerzahl, Tages-Status und die Fortschrittskarte an.",
         "properties": {
           "badges": {
             "items": {
@@ -17847,6 +20390,10 @@
             },
             "title": "Badges",
             "type": "array"
+          },
+          "blitz_best": {
+            "title": "Blitz Best",
+            "type": "integer"
           },
           "by_area": {
             "items": {
@@ -17858,6 +20405,30 @@
           "daily_done": {
             "title": "Daily Done",
             "type": "boolean"
+          },
+          "district_legend": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": "District Legend",
+            "type": "object"
+          },
+          "districts": {
+            "items": {
+              "$ref": "#/components/schemas/QuizDistrictProgress"
+            },
+            "title": "Districts",
+            "type": "array"
+          },
+          "districts_all": {
+            "items": {
+              "$ref": "#/components/schemas/QuizDistrictProgress"
+            },
+            "title": "Districts All",
+            "type": "array"
           },
           "streak": {
             "title": "Streak",
@@ -18300,7 +20871,7 @@
         "type": "object"
       },
       "ResearchSnapshot": {
-        "description": "Persistierter Stand eines Deep-Research-Jobs (``Store.deep_job_get``,\nfester SELECT über acht Spalten). ``report`` und ``sources`` sind ``None``,\nsolange der Job läuft; der Router parst ``sources`` aus der JSON-Spalte.\n\n``user_id`` steht bewusst NICHT hier — der Store wählt es gar nicht erst\naus, die Zeile gehört ohnehin dem anfragenden Konto.\n\n**``sources`` ist ein OBJEKT, keine Liste.** Es ist der ganze Quellen-Block\n(``deepresearch._quellen_payload``): unter ``sources`` die Beschlüsse,\ndaneben ``press_releases``, ``debates``, ``planning_procedures``,\n``attachments``, ``facets``, ``documents_read``, ``period``, ``cited`` und\n``context`` — deckungsgleich mit dem ``sources``-Ereignis des Stroms, damit\nder Client einen fertigen Job identisch rendern kann. Der Block bleibt hier\noffen, weil er ein gewachsener JSON-Blob in der Datenbank ist: Ältere\nZeilen tragen weniger Schlüssel, und eine Aufzählung schnitte die\nzusätzlichen still weg (dieselbe Erwägung wie bei ``ConversationTurn``).\nAls ``list`` deklariert war das ein 500 an jedem fertigen Job.",
+        "description": "Persistierter Stand eines Deep-Research-Jobs (``Store.deep_job_get``,\nfester SELECT über neun Spalten). ``report`` und ``sources`` sind ``None``,\nsolange der Job läuft; der Router parst ``sources`` aus der JSON-Spalte.\n\n``user_id`` steht bewusst NICHT hier — der Store wählt es gar nicht erst\naus, die Zeile gehört ohnehin dem anfragenden Konto.\n\n**``sources`` ist ein OBJEKT, keine Liste.** Es ist der ganze Quellen-Block\n(``deepresearch._quellen_payload``): unter ``sources`` die Beschlüsse,\ndaneben ``press_releases``, ``debates``, ``planning_procedures``,\n``attachments``, ``facets``, ``documents_read``, ``period``, ``cited`` und\n``context`` — deckungsgleich mit dem ``sources``-Ereignis des Stroms, damit\nder Client einen fertigen Job identisch rendern kann. Der Block bleibt hier\noffen, weil er ein gewachsener JSON-Blob in der Datenbank ist: Ältere\nZeilen tragen weniger Schlüssel, und eine Aufzählung schnitte die\nzusätzlichen still weg (dieselbe Erwägung wie bei ``ConversationTurn``).\nAls ``list`` deklariert war das ein 500 an jedem fertigen Job.",
         "properties": {
           "created": {
             "title": "Created",
@@ -18309,6 +20880,10 @@
           "id": {
             "title": "Id",
             "type": "string"
+          },
+          "premium_model": {
+            "title": "Premium Model",
+            "type": "boolean"
           },
           "question": {
             "title": "Question",
@@ -18350,7 +20925,8 @@
           "sources",
           "seen",
           "created",
-          "updated"
+          "updated",
+          "premium_model"
         ],
         "title": "ResearchSnapshot",
         "type": "object"
@@ -18434,6 +21010,7 @@
           "key": {
             "enum": [
               "user",
+              "research_plus",
               "expert",
               "council_member",
               "admin"
@@ -18450,6 +21027,7 @@
               "enum": [
                 "budget",
                 "mandate",
+                "premium_models",
                 "admin"
               ],
               "type": "string"
@@ -19820,6 +22398,110 @@
         "title": "SourceCheck",
         "type": "object"
       },
+      "SourceStatsLayer": {
+        "description": "Eine Datenschicht (oder mehrere, die dieselben Tabellen füllen).",
+        "properties": {
+          "documents": {
+            "title": "Documents",
+            "type": "integer"
+          },
+          "keys": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Keys",
+            "type": "array"
+          },
+          "labels": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Labels",
+            "type": "array"
+          },
+          "numbers": {
+            "title": "Numbers",
+            "type": "integer"
+          },
+          "rows": {
+            "title": "Rows",
+            "type": "integer"
+          },
+          "sources": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "tables": {
+            "title": "Tables",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "keys",
+          "labels",
+          "sources",
+          "tables",
+          "rows",
+          "numbers",
+          "documents"
+        ],
+        "title": "SourceStatsLayer",
+        "type": "object"
+      },
+      "SourceStatsOther": {
+        "properties": {
+          "documents": {
+            "title": "Documents",
+            "type": "integer"
+          },
+          "numbers": {
+            "title": "Numbers",
+            "type": "integer"
+          },
+          "rows": {
+            "title": "Rows",
+            "type": "integer"
+          },
+          "tables": {
+            "title": "Tables",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "tables",
+          "rows",
+          "numbers",
+          "documents"
+        ],
+        "title": "SourceStatsOther",
+        "type": "object"
+      },
+      "SourceStatsSource": {
+        "properties": {
+          "documents": {
+            "title": "Documents",
+            "type": "integer"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "label",
+          "documents"
+        ],
+        "title": "SourceStatsSource",
+        "type": "object"
+      },
       "Speech": {
         "description": "Ein Wortbeitrag aus einem Protokoll.",
         "properties": {
@@ -20459,6 +23141,10 @@
           "paper_id": {
             "title": "Paper Id",
             "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
           }
         },
         "required": [
@@ -20467,7 +23153,8 @@
           "city",
           "date",
           "outcome",
-          "kind"
+          "kind",
+          "title"
         ],
         "title": "TimelinePoint",
         "type": "object"
@@ -21341,6 +24028,7 @@
               "enum": [
                 "budget",
                 "mandate",
+                "premium_models",
                 "admin"
               ],
               "type": "string"
@@ -21351,6 +24039,7 @@
           "role": {
             "enum": [
               "user",
+              "research_plus",
               "expert",
               "council_member",
               "admin"
@@ -21362,6 +24051,7 @@
             "items": {
               "enum": [
                 "user",
+                "research_plus",
                 "expert",
                 "council_member",
                 "admin"
@@ -21837,6 +24527,7 @@
           "role": {
             "enum": [
               "user",
+              "research_plus",
               "expert",
               "council_member",
               "admin"
@@ -21849,6 +24540,7 @@
             "items": {
               "enum": [
                 "user",
+                "research_plus",
                 "expert",
                 "council_member",
                 "admin"
@@ -25217,6 +27909,28 @@
         ]
       }
     },
+    "/api/council/budget/debt-comparison": {
+      "get": {
+        "description": "Die Schulden der acht kreisfreien Städte Niedersachsens — Kernhaushalt\nund die Einrichtungen, die ihnen ganz gehören (``council/regionalstatistik.py``).\n\nJe Jahr alle Städte alphabetisch, mit Beträgen und Werten je Einwohner*in.\nKein Rang. Nur Jahre, in denen Oldenburgs Kernhaushalt zur eigenen\nSchuldenreihe passt, stehen im Bestand.",
+        "operationId": "haushalt_schuldenvergleich_api_council_budget_debt_comparison_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetDebtComparison"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Haushalt Schuldenvergleich",
+        "tags": [
+          "council"
+        ]
+      }
+    },
     "/api/council/budget/documents": {
       "get": {
         "description": "Je Quelle des Haushalts-Bereichs das **Dokument** — Jahrgang für Jahrgang.\n\nDas Quellenverzeichnis am Fuß jeder Haushalts-Seite beschreibt eine Quelle\nals Ganzes („Die Jahresabschlüsse der Stadt Oldenburg, 2017–2024\"). Diese\nBeschreibung ist redaktionell und kennt keine Jahrgänge — ihr „Dokument\nöffnen\" führte deshalb auf die Startseite des Ratsinformationssystems, wo\nman wieder selbst suchen darf. Hier steht, welches PDF zu welchem Jahr\ngehört, damit der Link das Dokument des **gezeigten** Jahres öffnet.\n\n``{\"documents\": {\"<quellenschluessel>\": [{year, url, label, citation,\npage}, …]}}`` — aufsteigend nach Jahr. Ein Schlüssel fehlt, wo wir kein\nDokument haben; die Oberfläche fällt dann auf die statische Adresse\nzurück und sagt dazu, wohin sie führt.\n\nEin Jahrgang kann mehrere Dokumente tragen: Die Produktebene verteilt sich\nauf rund neun Teilhaushalts-Anlagen. Die Liste nennt sie alle statt eine\nauszuwählen — welche gemeint ist, entscheidet die Seite, nicht die API.\n\nDie Fundstelle kommt aus ``council_provenance`` und ist der eigentliche\nGewinn: „Abschnitt 3.2\" macht aus einem 300-Seiten-PDF eine nachschlagbare\nStelle.\n\n``editions`` kommt aus derselben Antwort statt aus einem eigenen Aufruf:\nEs beantwortet die Nachbarfrage („welche Jahrgänge deckt diese Quelle\nab?\"), wird an derselben Stelle gebraucht — im Quellenverzeichnis — und\nist eine Abfrage je Quelle, keine je Zeile. Zwei Endpunkte dafür hießen\nzwei Rundreisen für einen Seitenfuß.",
@@ -25285,6 +27999,108 @@
         ]
       }
     },
+    "/api/council/budget/federal-comparison": {
+      "get": {
+        "description": "Oldenburg im Bundesvergleich (``council/bundesvergleich.py``).\n\nJe Kennzahl und Jahr die Städte der Vergleichsgruppe mit ihrem Wert und die\nKennwerte der Verteilung (Spannweite, Quartile, Median) — gerechnet hier,\ndamit Web und App dieselben Zahlen zeigen. KEIN RANG: Die Antwort nennt\nkeinen Platz, und die Seite zeichnet keinen.\n\nNur Jahre, in denen Oldenburgs Wert die Probe gegen die eigenen Reihen\nbestanden hat, stehen im Bestand.",
+        "operationId": "haushalt_bundesvergleich_api_council_budget_federal_comparison_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetFederalComparison"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Haushalt Bundesvergleich",
+        "tags": [
+          "council"
+        ]
+      }
+    },
+    "/api/council/budget/grants": {
+      "get": {
+        "description": "Wer von der Stadt Zuschüsse bekommt — die Übersicht aus Anlage 003.\n\n- ``rows``: die Zuschüsse eines Plans (Vorgabe: der jüngste), mit\n  ``sub_budget`` nur die eines Teilhaushalts, in Dokument-Reihenfolge,\n- ``totals``: je Plan und Teilhaushalt Zahl und Summe — die Reihe über\n  alle eingelesenen Pläne, damit die Seite den Verlauf zeigen kann,\n  ohne acht Jahrgänge Zeilen zu laden,\n- ``years``: die eingelesenen Pläne.\n\nVereine und Träger stehen mit Namen darin, wie in der Vorlage (Tims\nEntscheidung 24.09.2026); Privatpersonen führt die Übersicht nicht.\nEs ist der Entwurf der Verwaltung: Anlage 003 hängt an der\nEinbringungs-Vorlage (``council/uebersichten.py``).",
+        "operationId": "haushalt_zuschuesse_api_council_budget_grants_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "sub_budget",
+            "required": false,
+            "schema": {
+              "title": "Sub Budget",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "year",
+            "required": false,
+            "schema": {
+              "title": "Year",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetGrants"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Haushalt Zuschuesse",
+        "tags": [
+          "council"
+        ]
+      }
+    },
+    "/api/council/budget/grants-received": {
+      "get": {
+        "description": "Fördermittel von EU und Bund — je Vorhaben der Stadt oder einer ihrer\nGesellschaften (``council/foerdermittel.py``).\n\n- ``rows``: alle Vorhaben, jüngster Beginn zuerst,\n- ``lists``: die eingelesenen Listen mit Datenstand, Zahl und Summe —\n  damit die Seite sagen kann, wie aktuell was ist,\n- ``recipients``: Schlüssel → Anzeigename der Empfänger,\n- ``rows[].templates``: Ratsvorlagen, die das Vorhaben erkennbar meinen,\n- ``applications``: Förderanträge und Bewerbungen, die der Rat beraten hat\n  (``council/foerder_vorlagen.py``) — Anträge, keine Bewilligungen.\n\nBeträge sind Bewilligungen, keine Auszahlungen. Städtebauförderung und\nreine Landesprogramme stehen in keiner der Listen.",
+        "operationId": "haushalt_foerdermittel_api_council_budget_grants_received_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetGrantsReceived"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Haushalt Foerdermittel",
+        "tags": [
+          "council"
+        ]
+      }
+    },
     "/api/council/budget/group": {
       "get": {
         "description": "Der Konzern Stadt Oldenburg — was der Kernhaushalt **nicht** zeigt.\n\nAlles auf einmal, weil die Aussage dieser Seite eine Differenz ist: Eine\nKonzernzahl allein sagt nichts, sie sagt erst etwas neben der\nKernverwaltung im selben Jahr.\n\n- ``years``: Jahrgänge mit eingelesenem Gesamtabschluss,\n- ``consolidated``: je Jahrgang die Summen des Konzerns (Erträge,\n  Aufwendungen, ordentliches Ergebnis, Gesamtjahresergebnis, Zins- und\n  Personalaufwand) samt bestandener Rechenprobe und Fundstelle,\n- ``entity``: wer den Konzern ausmacht — je Jahrgang und Aufstellung eine\n  Zeile pro Aufgabenträger, Beträge in **Euro** (der Bericht rundet sie\n  auf Tausend, daher die glatten Endziffern),\n- ``items``: die vollständige Gesamtergebnisrechnung je Jahrgang,\n- ``cross_check``: dieselbe Kernverwaltungs-Zahl aus zwei unabhängigen\n  Dokumenten — der Trägerzeile des Gesamtabschlusses und dem\n  Jahresabschluss, den wir getrennt eingelesen haben,\n- ``herkunft``: je ``herkunft_id`` Dokument, Fundstelle, bestandene Probe\n  samt Messwert und Stichtag. Die beiden Ebenen eines Jahrgangs tragen\n  **verschiedene** IDs: Sie stehen in verschiedenen Abschnitten des\n  Berichts und sind durch verschiedene Proben gedeckt.\n\nDer Gesamtabschluss ist **kein Haushalt**: Er wird rund zwei Jahre später\naufgestellt, folgt handelsrechtlichen Regeln und ist mit den Planzahlen\nauf ``/haushalt`` nicht verrechenbar. Die Seite sagt das; die API liefert\ndeshalb auch keine gemischten Summen, sondern beide Reihen getrennt.",
@@ -25331,7 +28147,7 @@
     },
     "/api/council/budget/investments": {
       "get": {
-        "description": "Was die Stadt bauen und kaufen will — die Investitionen des\nFinanzhaushalts, je Teilhaushalt.\n\nDie andere Hälfte des Haushaltsplans: Im Ergebnishaushalt, den der Rest des\nBereichs zeigt, steht keine einzige Investition (ein Schulneubau taucht dort\nnur als Abschreibung auf, verteilt über Jahrzehnte).\n\n- ``years``: Haushaltsjahre, für die Investitionen vorliegen,\n- ``sub_budgets``: je Jahr und Teilhaushalt Ein- und Auszahlungen aus\n  Investitionstätigkeit,\n- ``investments``: je Jahr die Summenzeile der Datei — das **Ziel der\n  Rechenprobe**, nicht unsere Addition,\n- ``financial_budget``: je Jahr der Gesamtbetrag aller Ein- und Auszahlungen,\n  also samt laufender Verwaltungstätigkeit. Die Bezugsgröße, die aus\n  „80,8 Mio. €\" erst eine Aussage macht — und die einzige Zahl hier ohne\n  Rechenprobe (eigene ``herkunft_id`` mit ``ungeprueft``, s. u.),\n- ``herkunft``: je ``herkunft_id`` Dokument, Fundstelle, bestandene Probe\n  samt Messwert. Die geprüften Zeilen und die Bezugsgröße tragen\n  **verschiedene** IDs; sie stehen in derselben Datei, aber nur die einen\n  sind durch deren Summenzeile gedeckt.\n\nZwei Grenzen, die die Seite nennt und die API deshalb nicht verwischt:\nDiese Zahlen sind **Plan**, nicht Ist, und sie nennen **kein einzelnes\nVorhaben** — „Verkehr und Straßenbau: 10,5 Mio. €\" sagt nicht, welche\nStraße.",
+        "description": "Was die Stadt bauen und kaufen will — die Investitionen des\nFinanzhaushalts, je Teilhaushalt.\n\nDie andere Hälfte des Haushaltsplans: Im Ergebnishaushalt, den der Rest des\nBereichs zeigt, steht keine einzige Investition (ein Schulneubau taucht dort\nnur als Abschreibung auf, verteilt über Jahrzehnte).\n\n- ``years``: Haushaltsjahre, für die Investitionen vorliegen,\n- ``sub_budgets``: je Jahr und Teilhaushalt Ein- und Auszahlungen aus\n  Investitionstätigkeit,\n- ``investments``: je Jahr die Summenzeile der Datei — das **Ziel der\n  Rechenprobe**, nicht unsere Addition,\n- ``financial_budget``: je Jahr der Gesamtbetrag aller Ein- und Auszahlungen,\n  also samt laufender Verwaltungstätigkeit. Die Bezugsgröße, die aus\n  „80,8 Mio. €\" erst eine Aussage macht — und die einzige Zahl hier ohne\n  Rechenprobe (eigene ``herkunft_id`` mit ``ungeprueft``, s. u.),\n- ``finance_budget``: die Investitionszeilen des Gesamtfinanzhaushalts\n  (Anlage 006) aller Pläne — Summen, Saldo und Auszahlungsarten, je mit\n  ``kind`` (Ansatz oder Finanzplanung) und ``plan_budget_year``,\n- ``herkunft``: je ``herkunft_id`` Dokument, Fundstelle, bestandene Probe\n  samt Messwert. Die geprüften Zeilen und die Bezugsgröße tragen\n  **verschiedene** IDs; sie stehen in derselben Datei, aber nur die einen\n  sind durch deren Summenzeile gedeckt.\n\nZwei Grenzen, die die Seite nennt und die API deshalb nicht verwischt:\nDiese Zahlen sind **Plan**, nicht Ist, und sie nennen **kein einzelnes\nVorhaben** — „Verkehr und Straßenbau: 10,5 Mio. €\" sagt nicht, welche\nStraße.",
         "operationId": "haushalt_investitionen_api_council_budget_investments_get",
         "responses": {
           "200": {
@@ -25436,6 +28252,150 @@
           }
         },
         "summary": "Haushalt Kredite",
+        "tags": [
+          "council"
+        ]
+      }
+    },
+    "/api/council/budget/measures": {
+      "get": {
+        "description": "Was aus den Investitionen eines Teilhaushalts im Jahr wird — die\nBudgetberichte an die Fachausschüsse (``council/budgetberichte.py``).\n\n``reports`` nennt alle eingelesenen Stichtage, jüngster zuerst;\n``measures`` sind die Maßnahmen des gewählten (Vorgabe: des jüngsten),\nin der Reihenfolge des Berichts. Eingelesen sind Jugend und Familie (11)\nund Schule und Bildung (12); für andere Teilhaushalte ist die Antwort leer.",
+        "operationId": "haushalt_budgetbericht_api_council_budget_measures_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "sub_budget",
+            "required": true,
+            "schema": {
+              "title": "Sub Budget",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "as_of",
+            "required": false,
+            "schema": {
+              "title": "As Of",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetMeasures"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Haushalt Budgetbericht",
+        "tags": [
+          "council"
+        ]
+      }
+    },
+    "/api/council/budget/notes": {
+      "get": {
+        "description": "Was die Verwaltung im Vorbericht zu einem Teilhaushalt schreibt — je\nPlan der Abschnitt zum Ergebnishaushalt und der zu den Investitionen, im\nWortlaut (``council/vorbericht.py``). Jüngster Plan zuerst.",
+        "operationId": "haushalt_vorbericht_api_council_budget_notes_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "sub_budget",
+            "required": true,
+            "schema": {
+              "title": "Sub Budget",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetNotes"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Haushalt Vorbericht",
+        "tags": [
+          "council"
+        ]
+      }
+    },
+    "/api/council/budget/preface-figures": {
+      "get": {
+        "description": "Zahlen aus dem Vorbericht der Haushaltspläne (``council/vorbericht_zahlen.py``):\nPersonalaufwand samt Rückstellungen, Steuerarten mit Prognose und\nFinanzplanung, Jahresergebnisse. Je Plan, jüngster zuerst — die Seite\nzeigt den jüngsten und lässt ältere wählen.",
+        "operationId": "haushalt_vorbericht_zahlen_api_council_budget_preface_figures_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "series",
+            "required": true,
+            "schema": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Series",
+              "type": "array"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetPrefaceFigures"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Haushalt Vorbericht Zahlen",
         "tags": [
           "council"
         ]
@@ -25546,7 +28506,7 @@
     },
     "/api/council/budget/shareholdings": {
       "get": {
-        "description": "Die städtischen Gesellschaften — was sie tun, wer sie beaufsichtigt.\n\nDie Ergänzung zum Gesamtabschluss (``/haushalt/konzern``): Der sagt, wie\nviel die Betriebe bewegen, diese Seite, was sie damit machen.\n\n- ``companies``: je Gesellschaft Name, Gliederungsnummer und Seite im\n  jüngsten Bericht, dazu ``consolidated_key``, wo der Gesamtabschluss sie als\n  eigenen Träger führt,\n- ``texts``: die beschreibenden Abschnitte (Gegenstand, Eigentümer,\n  Aufsichtsorgane, eigene Beteiligungen, Auswirkungen auf den Haushalt) —\n  alle ausdrücklich **ungeprüft**, denn Fließtext lässt sich gegen nichts\n  rechnen,\n- ``people``: die Aufsichtsorgane, Person für Person, mit Gremium,\n  Vorsitz, Amtszeit-Hinweis und — wo das Verzeichnis die Person\n  eindeutig kennt — ``slug`` und ``party`` für die Personen-Seite.\n  ``position`` steht nur da, wo die Spaltenprobe gehalten hat; siehe\n  ``roles_assignable`` an der Gesellschaft. Zwei der fünf Abschnitte\n  sind nämlich keine Prosa, sondern Tabellen, die der PDF-Extrakt\n  spaltenweise ausgibt (``council/beteiligungsbericht.py``),\n- ``owners``: wem die Gesellschaft gehört, mit Betrag und Anteil.\n  **Ohne** die Stammkapital-Zeile — die ist die Summe und kein\n  Gesellschafter. Gesellschaften, deren Anteile sich nicht auf das\n  ausgewiesene Stammkapital summieren, erscheinen hier gar nicht; ihr\n  Rohtext steht weiter in ``texts``,\n- ``indicators``: die Zeitreihe je Gesellschaft (Jahresergebnis,\n  Bilanzsumme, Eigenkapitalquote). ``n_reports`` sagt, wie viele Berichte\n  denselben Wert nennen — 1 heißt „durch eine Probe im Dokument gedeckt\",\n  mehr heißt zusätzlich „von einer zweiten Veröffentlichung bestätigt\",\n- ``group_comparison``: für die Gesellschaften, die auch im\n  Gesamtabschluss stehen, beide Zahlen desselben Jahres nebeneinander.\n  **Keine Probe** — die beiden Rechnungen unterscheiden sich systematisch,\n  und zwei Betriebe weisen wegen Ergebnisabführung 0 € aus, obwohl sie\n  etwas erwirtschaftet haben. Eine Einordnung, kein Urteil,\n- ``report_years`` / ``years``: welche Berichte gelesen sind und welche\n  Bezugsjahre die Kennzahlen abdecken (sie reichen weiter zurück als die\n  Berichte — jeder führt vier bis fünf Jahre mit),\n- ``herkunft``: je ``herkunft_id`` Dokument, Fundstelle, Seite und Probe.\n\nGelesen werden die Berichte ab 2022; davor ist das Dokument anders\naufgebaut und nicht maschinenlesbar (``council/beteiligungsbericht.py``).",
+        "description": "Die städtischen Gesellschaften — was sie tun, wer sie beaufsichtigt.\n\nDie Ergänzung zum Gesamtabschluss (``/haushalt/konzern``): Der sagt, wie\nviel die Betriebe bewegen, diese Seite, was sie damit machen.\n\n- ``companies``: je Gesellschaft Name, Gliederungsnummer und Seite im\n  jüngsten Bericht, dazu ``consolidated_key``, wo der Gesamtabschluss sie als\n  eigenen Träger führt,\n- ``texts``: die beschreibenden Abschnitte (Gegenstand, Eigentümer,\n  Aufsichtsorgane, eigene Beteiligungen, Auswirkungen auf den Haushalt) —\n  alle ausdrücklich **ungeprüft**, denn Fließtext lässt sich gegen nichts\n  rechnen,\n- ``people``: die Aufsichtsorgane, Person für Person, mit Gremium,\n  Vorsitz, Amtszeit-Hinweis und — wo das Verzeichnis die Person\n  eindeutig kennt — ``slug`` und ``party`` für die Personen-Seite.\n  ``position`` steht nur da, wo die Spaltenprobe gehalten hat; siehe\n  ``roles_assignable`` an der Gesellschaft. Zwei der fünf Abschnitte\n  sind nämlich keine Prosa, sondern Tabellen, die der PDF-Extrakt\n  spaltenweise ausgibt (``council/beteiligungsbericht.py``),\n- ``owners``: wem die Gesellschaft gehört, mit Betrag und Anteil.\n  **Ohne** die Stammkapital-Zeile — die ist die Summe und kein\n  Gesellschafter. Gesellschaften, deren Anteile sich nicht auf das\n  ausgewiesene Stammkapital summieren, erscheinen hier gar nicht; ihr\n  Rohtext steht weiter in ``texts``,\n- ``indicators``: die Zeitreihe je Gesellschaft (Jahresergebnis,\n  Bilanzsumme, Eigenkapitalquote). ``n_reports`` sagt, wie viele Berichte\n  denselben Wert nennen — 1 heißt „durch eine Probe im Dokument gedeckt\",\n  mehr heißt zusätzlich „von einer zweiten Veröffentlichung bestätigt\"\n  (ein Jahresabschluss mit demselben Betrag zählt mit). ``source`` sagt,\n  woher die Zeile kommt: ``holdings_report`` (Beteiligungsbericht) oder\n  ``annual_accounts`` — das jüngste Jahr, das nur der Jahresabschluss der\n  Gesellschaft schon nennt, oder ein Jahr, in dem der Abschluss vom\n  Bericht abweicht und deshalb gilt (dann steht die Zahl des Berichts in\n  ``report_value``; ``council/gesellschaft_abschluss.py``),\n- ``group_comparison``: für die Gesellschaften, die auch im\n  Gesamtabschluss stehen, beide Zahlen desselben Jahres nebeneinander.\n  **Keine Probe** — die beiden Rechnungen unterscheiden sich systematisch,\n  und zwei Betriebe weisen wegen Ergebnisabführung 0 € aus, obwohl sie\n  etwas erwirtschaftet haben. Eine Einordnung, kein Urteil,\n- ``report_years`` / ``years``: welche Berichte gelesen sind und welche\n  Bezugsjahre die Kennzahlen abdecken (sie reichen weiter zurück als die\n  Berichte — jeder führt vier bis fünf Jahre mit),\n- ``herkunft``: je ``herkunft_id`` Dokument, Fundstelle, Seite und Probe.\n\nGelesen werden die Berichte ab 2022; davor ist das Dokument anders\naufgebaut und nicht maschinenlesbar (``council/beteiligungsbericht.py``).",
         "operationId": "haushalt_beteiligungen_api_council_budget_shareholdings_get",
         "responses": {
           "200": {
@@ -25561,6 +28521,28 @@
           }
         },
         "summary": "Haushalt Beteiligungen",
+        "tags": [
+          "council"
+        ]
+      }
+    },
+    "/api/council/budget/source-stats": {
+      "get": {
+        "description": "Wie viele Zahlen aus wie vielen Dokumenten der Bereich zusammenträgt —\ngezählt aus dem Bestand, je Datenschicht und gesamt\n(``council/quellenzahlen.py``). Zehn Minuten gepuffert.",
+        "operationId": "haushalt_quellenzahlen_api_council_budget_source_stats_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetSourceStats"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Haushalt Quellenzahlen",
         "tags": [
           "council"
         ]
@@ -26822,7 +29804,7 @@
                 }
               }
             },
-            "description": "Server-Sent Events (`text/event-stream`). Erst ein Replay aller Ereignisse ab `ab`, dann live weiter. Jeder Rahmen ist eine `data:`-Zeile mit einem JSON-Objekt und einem Feld `type`:\n\n- `phase` — `zerlegen`, `lesen` (mit `dokumente`) oder `schreiben`\n- `facets` — die Namen der Facetten, in die die Frage zerfällt\n- `facette` — eine Facette ist fertig (`name`, `treffer`)\n- `sources` — die Quellen der Recherche\n- `token` — ein Stück Berichtstext (`text`)\n- `replace` — ersetzt den bisher gesendeten Text vollständig\n- `done` — Schluss-Ereignis mit `cited` und `documents_read`\n- `gestoppt` — auf Wunsch abgebrochen (`facets_done`)\n- `fehler` — die Recherche ist fehlgeschlagen\n\nEin Verbindungsabriss ist folgenlos — der Job läuft im Backend weiter, der Client verbindet sich einfach neu."
+            "description": "Server-Sent Events (`text/event-stream`). Erst ein Replay aller Ereignisse ab `ab`, dann live weiter. Jeder Rahmen ist eine `data:`-Zeile mit einem JSON-Objekt und einem Feld `type`:\n\n- `phase` — `zerlegen`, `lesen` (mit `dokumente`) oder `schreiben`\n- `facets` — die Namen der Facetten, in die die Frage zerfällt\n- `facette` — eine Facette ist fertig (`name`, `treffer`)\n- `sources` — die Quellen der Recherche\n- `token` — ein Stück Berichtstext (`text`)\n- `replace` — ersetzt den bisher gesendeten Text vollständig\n- `done` — Schluss-Ereignis mit `cited`, `documents_read` und `premium_model` (`true`, wenn der Bericht mit dem größeren Modell des Rechts `premium_models` entstand)\n- `gestoppt` — auf Wunsch abgebrochen (`facets_done`)\n- `fehler` — die Recherche ist fehlgeschlagen\n\nEin Verbindungsabriss ist folgenlos — der Job läuft im Backend weiter, der Client verbindet sich einfach neu."
           },
           "410": {
             "description": "Die Recherche ist nicht mehr aktiv — den Snapshot über `GET /api/council/deep-research/{job_id}` laden."
@@ -27020,6 +30002,71 @@
           }
         },
         "summary": "Districts",
+        "tags": [
+          "council"
+        ]
+      }
+    },
+    "/api/council/elected": {
+      "get": {
+        "description": "Der gewählte Rat nach der letzten Ratswahl, bevor er in den Protokollen\nsteht: wer ab dem 1. November einen Sitz hat, mit Liste, Wahlbereich und\nPersonenstimmen.\n\nOhne Anmeldung lesbar: Es ist das bekannt gemachte Wahlergebnis, und die\nAngaben (Name, Beruf, Jahrgang) stammen aus der amtlichen Bekanntmachung\nder Wahlvorschläge.",
+        "operationId": "elected_council_api_council_elected_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ElectedCouncil"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Elected Council",
+        "tags": [
+          "council"
+        ]
+      }
+    },
+    "/api/council/elected/{slug}": {
+      "get": {
+        "description": "Eine Person aus dem gewählten Rat — für die Personen-Seite, auch wenn\nes aus den Protokollen noch kein Profil gibt. Öffentlich wie ``/elected``.",
+        "operationId": "elected_member_api_council_elected__slug__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ElectedMember"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Elected Member",
         "tags": [
           "council"
         ]
@@ -29040,6 +32087,94 @@
         ]
       }
     },
+    "/api/quiz/blitz-round": {
+      "get": {
+        "description": "Blitzrunde (Plan Q6): schnelle Fragen für 60 Sekunden, ohne Lösung.\nAusgewertet wird jede wie immer über ``/answer``.",
+        "operationId": "blitz_round_api_quiz_blitz_round_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "n",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 40,
+              "minimum": 5,
+              "title": "N",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuizRound"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Blitz Round",
+        "tags": [
+          "quiz"
+        ]
+      }
+    },
+    "/api/quiz/blitz/complete": {
+      "post": {
+        "description": "Einen Blitz-Lauf abschließen — bucht nur die Bestmarke.",
+        "operationId": "blitz_complete_api_quiz_blitz_complete_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuizBlitzIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuizBlitzResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Blitz Complete",
+        "tags": [
+          "quiz"
+        ]
+      }
+    },
     "/api/quiz/daily": {
       "get": {
         "description": "Die heutige Tages-Challenge (5 Fragen, für alle gleich) + mein Ergebnis,\nfalls ich sie heute schon gespielt habe.",
@@ -29099,6 +32234,184 @@
           }
         },
         "summary": "Daily Complete",
+        "tags": [
+          "quiz"
+        ]
+      }
+    },
+    "/api/quiz/duel": {
+      "post": {
+        "description": "Eine gespielte Runde als Herausforderung (Plan Q9). Nur aktive Fragen.",
+        "operationId": "duel_create_api_quiz_duel_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuizDuelIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuizDuelCreated"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Duel Create",
+        "tags": [
+          "quiz"
+        ]
+      }
+    },
+    "/api/quiz/duel/{code}": {
+      "get": {
+        "operationId": "duel_get_api_quiz_duel__code__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "title": "Code",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuizDuel"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Duel Get",
+        "tags": [
+          "quiz"
+        ]
+      }
+    },
+    "/api/quiz/duel/{code}/complete": {
+      "post": {
+        "operationId": "duel_complete_api_quiz_duel__code__complete_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "title": "Code",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuizDuelDoneIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuizDuel"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Duel Complete",
+        "tags": [
+          "quiz"
+        ]
+      }
+    },
+    "/api/quiz/joker": {
+      "post": {
+        "description": "50:50: zwei falsche Antworten streichen. Kostet die Hälfte der Punkte —\ndas rechnet ``/answer`` mit ``joker: true``.",
+        "operationId": "joker_api_quiz_joker_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuizJokerIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuizJoker"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Joker",
         "tags": [
           "quiz"
         ]
@@ -29427,6 +32740,94 @@
           }
         },
         "summary": "Own Update",
+        "tags": [
+          "quiz"
+        ]
+      }
+    },
+    "/api/quiz/pin-answer": {
+      "post": {
+        "description": "Den Pin werten: Entfernung zur Geometrie des Orts, Punkte in Stufen.\nGebucht wie das Karten-Quiz (``question_id = 0``) auf den Ortsbereich des\nOrts — so zählt es auf die Stadtkarte.",
+        "operationId": "pin_answer_api_quiz_pin_answer_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuizPinIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuizPinResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Pin Answer",
+        "tags": [
+          "quiz"
+        ]
+      }
+    },
+    "/api/quiz/pin-round": {
+      "get": {
+        "description": "„Wo liegt das?\" (Plan Q7): n Orte zum Verorten, ohne Lage.",
+        "operationId": "pin_round_api_quiz_pin_round_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "n",
+            "required": false,
+            "schema": {
+              "default": 5,
+              "maximum": 10,
+              "minimum": 1,
+              "title": "N",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuizPinRound"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Pin Round",
         "tags": [
           "quiz"
         ]
@@ -32130,6 +35531,68 @@
           }
         },
         "summary": "Wahlabend Kandidaten",
+        "tags": [
+          "wahlabend"
+        ]
+      }
+    },
+    "/api/wahlabend/karte": {
+      "get": {
+        "description": "Das Ergebnis je Urnenbezirk für die Stadtkarte: wer vorn lag, wie\ndeutlich, in welchen Ortsbereichen der Bezirk liegt — und je Wahlbereich\nder Stand MIT Briefwahl (docs/plan-viertel-wahlkarte.md).\n\nÖffentlich wie der Wahlabend, hinter demselben Schalter. Nichts\nPersönliches, kein Sprachmodell: Zahlen der Stadt, gezählt.",
+        "operationId": "wahlabend_karte_je_bezirk_api_wahlabend_karte_get",
+        "parameters": [
+          {
+            "description": "Slug der Wahl (Ratswahl, OB-Wahl, Stichwahl); leer = die Ratswahl",
+            "in": "query",
+            "name": "wahl",
+            "required": false,
+            "schema": {
+              "description": "Slug der Wahl (Ratswahl, OB-Wahl, Stichwahl); leer = die Ratswahl",
+              "title": "Wahl",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "nur die Wahlbezirke, die diesen Ortsbereich berühren",
+            "in": "query",
+            "name": "place",
+            "required": false,
+            "schema": {
+              "description": "nur die Wahlbezirke, die diesen Ortsbereich berühren",
+              "title": "Place",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ElectionMap"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Wahlabend Karte Je Bezirk",
         "tags": [
           "wahlabend"
         ]

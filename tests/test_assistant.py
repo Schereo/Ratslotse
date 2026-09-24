@@ -34,6 +34,7 @@ from app.main import app  # noqa: E402
 from app.deps import get_council_store, get_store, require_active  # noqa: E402
 from app.ratelimit import assistant_limiter  # noqa: E402
 from council import assistant as lotti  # noqa: E402
+from kern import foreign_text  # noqa: E402
 from council import qa  # noqa: E402
 from kern import knowledge, seitenaufrufe  # noqa: E402
 
@@ -161,6 +162,38 @@ def test_eine_markierung_mit_zwei_begriffen_geht_ans_modell(kein_modell):
     assert lotti.deterministic_answer(_Store(), screen, "") is None
 
 
+def test_markierung_in_ihrer_zeile_bleibt_eine_glossar_frage(kein_modell):
+    """Seit 23.09.2026 schickt der Markier-Knopf die ZEILE mit, der markierte
+    Teil steht zwischen »…«. Die Glossar-Abkürzung sieht nur ihn — sonst
+    träfe sie in „Der Bebauungsplan … »Umschuldung« …" zwei Begriffe und
+    kostete einen Modellaufruf für eine kuratierte Erklärung."""
+    screen = lotti.Screen(
+        route="/haushalt/schulden",
+        selection="Der Bebauungsplan und die »Umschuldung« liegen vor.")
+    text, art = lotti.deterministic_answer(_Store(), screen, "Was bedeutet das?")
+    assert art == "glossary"
+    assert "Umschuldung" in text
+
+
+def test_markierter_teil_ohne_und_mit_marken():
+    assert lotti.markierter_teil("Mai 2026 · »8,0 Mio. €« 3,43 %") == "8,0 Mio. €"
+    assert lotti.markierter_teil("8,0 Mio. €") == "8,0 Mio. €"
+    assert lotti.markierter_teil("") == ""
+
+
+def test_die_zeile_bekommt_genau_einen_erklaersatz():
+    """Das Modell muss wissen, was die Marken heißen — ein Satz, UNSER Text,
+    vor dem Fremdtext-Block. Ohne Marken steht er nicht da."""
+    mit = lotti._screen_block(lotti.Screen(
+        route="/haushalt/schulden",
+        selection="Mai 2026 · Bäderbetrieb Oldenburg · »8,0 Mio. €« 3,43 %"))
+    assert "Markiert ist nur der Teil zwischen » und «" in mit
+    assert mit.index("Markiert ist nur") < mit.index("<<<AUSWAHL")
+    assert "»8,0 Mio. €« 3,43 %" in mit
+    ohne = lotti._screen_block(lotti.Screen(route="/haushalt/schulden", selection="8,0 Mio. €"))
+    assert "Markiert ist nur" not in ohne
+
+
 def test_der_anschluss_chip_fragt_nach_seinem_wort_und_bleibt_kostenlos(kein_modell):
     """„Was heißt Umschuldung?" mit dem Wort als Markierung — der Weg des
     Anschluss-Chips in Lottis Fenster.
@@ -194,6 +227,25 @@ def test_beschluss_seite_antwortet_mit_der_kurzfassung(kein_modell):
     text, art = lotti.deterministic_answer(store, screen, "Was sehe ich hier?")
     assert art == "simple_summary"
     assert "Die Stadt baut ein Stadion." in text
+
+
+def test_abgelehnt_mit_falscher_kurzfassung_geht_ans_modell(kein_modell):
+    """Gemessen am 23.09.2026: 5988 „einstimmig abgelehnt" trug die
+    Kurzfassung „Der Satz für die Grundsteuer B steigt von 445 auf 490
+    Prozent", und dieser Weg gab sie ohne Modell als Antwort aus. Eine
+    Kurzfassung, die das Ergebnis verschweigt, ist keine geprüfte Antwort."""
+    store = _Store({"title": "Hebesatzung 2024", "outcome": "rejected",
+                    "simple_summary": "Der Satz für die Grundsteuer B steigt von 445 auf 490 Prozent."})
+    screen = lotti.Screen(route="/council/decision", refs={"decision_id": 5988})
+    assert lotti.deterministic_answer(store, screen, "Was sehe ich hier?") is None
+
+
+def test_abgelehnt_mit_richtiger_kurzfassung_bleibt_ohne_modell(kein_modell):
+    kurz = "Der Ausschuss hat den Vorschlag einstimmig abgelehnt, die Grundsteuer B anzuheben."
+    store = _Store({"title": "Hebesatzung 2024", "outcome": "rejected", "simple_summary": kurz})
+    screen = lotti.Screen(route="/council/decision", refs={"decision_id": 5988})
+    text, art = lotti.deterministic_answer(store, screen, "Was sehe ich hier?")
+    assert art == "simple_summary" and kurz in text
 
 
 def test_beschluss_ohne_kurzfassung_geht_ans_modell(kein_modell):
@@ -278,7 +330,18 @@ def test_untergeschobene_anweisungen_stehen_nur_zwischen_den_markern():
     p = _prompt(screen)
     vor_marker, _, rest = p.partition("<<<ELEMENT")
     inhalt, _, nach_marker = rest.partition("\nELEMENT")
-    assert gift in inhalt
+    # Seit P4a (23.09.2026) nimmt der Anweisungsfilter (kern/foreign_text.py)
+    # den Satz ganz heraus; übrig bleibt seine Marke — zwischen den Markern.
+    assert foreign_text.MARKER in inhalt
+    assert FREMDE_ADRESSE not in p
+    # Was der Filter NICHT als Anweisung erkennt, bleibt Fremdtext zwischen
+    # den Markern — die zweite Schicht hält weiter.
+    harmlos = f"Die Verwaltung erreicht man unter {FREMDE_ADRESSE}."
+    p = _prompt(lotti.Screen(route="/council/decision", element_title="Beschlusstext",
+                             element_text=harmlos))
+    vor_marker, _, rest = p.partition("<<<ELEMENT")
+    inhalt, _, nach_marker = rest.partition("\nELEMENT")
+    assert harmlos in inhalt
     assert FREMDE_ADRESSE not in vor_marker
     assert FREMDE_ADRESSE not in nach_marker
 
@@ -1905,6 +1968,26 @@ def test_die_vergleichszeile_zaehlt_darueber_und_darunter():
     assert "348,2 Mio. €" in zeile and "teur" not in zeile
 
 
+def test_auf_der_personal_seite_kein_staedtevergleich(monkeypatch):
+    """Der Städtevergleich ist eine Euro-Reihe (Steuerkraft); unter einer
+    Antwort über Stellen stand er als Beleg (Bildschirmfoto 24.09.2026)."""
+    gesehen: dict = {}
+
+    def merke(store, frage, begriffe="", typ="topic"):
+        gesehen["frage"] = frage
+        return {"facets": ["population"]}
+
+    monkeypatch.setattr(qa, "geld_kontext", merke)
+
+    class _S(_Store):
+        def stellenplan_kontext(self, **_k):
+            return None
+
+    lotti.screen_context(_S(), lotti.Screen(route="/haushalt/personal"),
+                         "sind das nicht zu viele", permissions=BUDGET)
+    assert "einwohner" in gesehen["frage"] and "vergleich" not in gesehen["frage"]
+
+
 def test_eine_einordnungsfrage_zieht_einwohner_und_vergleich(monkeypatch):
     """Beide Facetten haben ihre eigenen, engen Wörter und kämen von „Ist das
     viel?" nie von selbst mit. Wie in PR 27 wächst nur der Text der
@@ -2026,6 +2109,64 @@ def test_ohne_haushaltszahlen_keine_belege():
     assert lotti.kontext_belege(None) == []
 
 
+_KREDIT = "Unterrichtung des Rates über Kreditaufnahmen — Vorlage "
+_FUENF = [{"label": _KREDIT + nr, "year": 2026, "url": f"https://example.org/{i}"}
+          for i, nr in enumerate(["26/0629", "26/0397", "26/0013", "25/0527", "22/0792"])]
+
+
+def _nummern(belege):
+    return [b["label"].rsplit(" ", 1)[1] for b in belege]
+
+
+def test_belege_genannte_zuerst_dann_kontext_reihenfolge_hoechstens_drei():
+    """Review zu #1531: Die Antwort ordnet, der Kontext liefert."""
+    aus = lotti.belege_ordnen(_FUENF, "Laut Vorlage 26/0397 lag der Zins bei 3,43 %.")
+    assert _nummern(aus) == ["26/0397", "26/0629", "26/0013"]
+    assert len(lotti.belege_ordnen(_FUENF)) == lotti.BELEGE_MAX == 3
+
+
+def test_belege_ohne_nennung_bleiben_in_kontext_reihenfolge():
+    assert _nummern(lotti.belege_ordnen(_FUENF, "Das ist ein Kredit.")) == \
+        ["26/0629", "26/0397", "26/0013"]
+
+
+def test_belege_die_markierte_zeile_zaehlt_als_genannt():
+    """Die Antwort schreibt keine Nummer — die markierte Zeile trägt sie."""
+    zeile = "Mai 2026 · Kreditaufnahme · Bäderbetrieb Oldenburg · »8,0 Mio. €« · Vorlage 25/0527 3,43 %"
+    aus = lotti.belege_ordnen(_FUENF, "Das sind acht Millionen Euro.", zeile)
+    assert _nummern(aus)[0] == "25/0527"
+
+
+def test_belege_eine_fremde_nummer_erzeugt_keinen_beleg():
+    """Nur Quellen aus dem Kontext: Nennt die Antwort eine Vorlage, die nicht
+    darin stand, entsteht kein Chip — und die Reihenfolge bleibt."""
+    aus = lotti.belege_ordnen(_FUENF, "Siehe Vorlage 99/9999.")
+    assert _nummern(aus) == ["26/0629", "26/0397", "26/0013"]
+    assert all(b in _FUENF for b in aus)
+
+
+def test_belege_ein_genannter_titel_zaehlt_auch():
+    belege = [{"label": "Statistisches Jahrbuch, Tabelle 1108", "year": 2024, "url": None},
+              {"label": "Jahresabschluss 2024", "year": 2024, "url": None}]
+    aus = lotti.belege_ordnen(belege, "Laut Jahresabschluss 2024 waren es 4,2 Mio. €.")
+    assert aus[0]["label"] == "Jahresabschluss 2024"
+
+
+def test_kontext_belege_ordnet_erst_und_kappt_dann():
+    """Ein genanntes Papier an sechster Stelle des Kontexts muss nach vorn
+    dürfen, statt vorher am Deckel zu scheitern."""
+    zeilen = [{"template_number": f"26/{i:04d}", "seq": 1, "year": 2026,
+               "beleg": {"label": _KREDIT + f"26/{i:04d}", "url": f"https://example.org/{i}"}}
+              for i in range(8)]
+    ctx = {"geld": {"facets": ["loans"], "loans": {"year": 2026, "rates": zeilen, "positions": []}}}
+    # Der Baustein braucht Zinssätze, sonst baut `loans.block` nichts.
+    for z in zeilen:
+        z.update(kind="loan", rate_pct=3.0, amount=1_000_000.0, period_from="2026-01",
+                 period_to="2026-01")
+    aus = lotti.kontext_belege(ctx, "Vorlage 26/0003 ist gemeint.")
+    assert _nummern(aus)[0] == "26/0003" and len(aus) == 3
+
+
 def test_kontext_belege_nimmt_denselben_deckel_wie_der_block():
     """Block und Belege hinter EINEM Deckel (`_deckel`). Liefen sie
     auseinander, stünde unter einer Erklärung eine Quelle, die das Modell nie
@@ -2052,3 +2193,245 @@ def test_der_beleg_titel_traegt_keinen_trennstrich_am_ende():
     geld = _schulden_geld()
     geld["schulden"]["beleg"]["label"] = "Prüfbericht GA 2024 - GESAMTDOKUMENT -"
     assert qa.geld_belege(geld)[0]["label"] == "Prüfbericht GA 2024 - GESAMTDOKUMENT"
+
+
+def test_abgelehnt_der_wortlaut_ist_nur_der_vorschlag():
+    """5988: „Abstimmung: abgelehnt" und darunter die Kurzfassung „steigt auf
+    490 Prozent" — ein Kontext, der sich selbst widerspricht (23.09.2026).
+    Die falsche Kurzfassung fällt weg, der Wortlaut heißt, was er ist."""
+    block = _block(outcome="rejected", vote="unanimous",
+                   simple_summary="Der Satz für die Grundsteuer B steigt von 445 auf 490 Prozent.",
+                   official_text="Der Hebesatz wird auf 490 Prozent angehoben.")
+    assert "Abstimmung: abgelehnt" in block
+    assert "Kurzfassung" not in block
+    assert "Beschlussvorschlag — gilt NICHT" in block
+    assert "Amtlicher Wortlaut" not in block
+
+
+def test_angenommen_behaelt_kurzfassung_und_wortlaut():
+    block = _block(outcome="accepted", simple_summary="Die Stadt baut ein Stadion.",
+                   official_text="Der Rat beschließt den Neubau.")
+    assert "Kurzfassung: Die Stadt baut ein Stadion." in block
+    assert "Amtlicher Wortlaut (Auszug): Der Rat beschließt den Neubau." in block
+
+
+# --- 15. Erklären statt Absagen (L2, 24.09.2026) -----------------------------
+#
+# 36 Laienfragen durch das echte Fenster: rund die Hälfte endete mit „geht aus
+# den Angaben nicht hervor". Drei Bausteine dagegen — Erklärtexte mit Quelle
+# (kern/erklaerwissen.py), Maßstäbe statt Absage bei Wertungsfragen, und die
+# Pro-Kopf-Rechnung auch für Ausgaben, Steuern und Stellen. Die Regeln gegen
+# eigene Bewertung und erfundene Zahlen bleiben unverändert.
+
+@pytest.mark.parametrize("frage", [
+    "ist das schlimm?",
+    "sind das nicht zu viele",
+    "hat die stadt genug geld",
+    "zahlen wir zu viele steuern",
+    "ist das viel oder wenig",
+    "Ist die Grundsteuer zu hoch?",
+])
+def test_wertungsfrage_wird_erkannt(frage):
+    assert lotti.wertungsfrage(frage)
+
+
+@pytest.mark.parametrize("frage", [
+    "wie viele schulden hat die stadt",
+    "Wie viel gibt die Stadt aus?",
+    "Wie hoch ist der Schuldenstand?",
+    "was bedeutet defizit",
+    "Was sehe ich hier?",
+    "",
+])
+def test_eine_sachfrage_ist_keine_wertungsfrage(frage):
+    assert not lotti.wertungsfrage(frage)
+
+
+@pytest.mark.parametrize("frage", [
+    "was kostet mich die stadt pro jahr",
+    "Was zahle ich eigentlich für die Stadt?",
+    "Wie hoch ist mein Anteil an den Schulden?",
+    "Was kostet uns die Verwaltung?",
+])
+def test_die_frage_in_der_ersten_person_ist_eine_pro_kopf_frage(frage):
+    """Befund-Frage 7: „Was kostet mich die Stadt pro Jahr?" meint den Betrag
+    je Einwohner*in, sagt es aber nicht — und bekam „diese Rechnung liegt
+    nicht vor", obwohl Summe und Einwohnerzahl im Bestand sind."""
+    assert lotti.einordnungsfrage(frage)
+
+
+_EINWOHNER = {"latest": {"year": 2025, "population": 176_614},
+              "series": [{"year": 2024, "population": 176_242},
+                         {"year": 2025, "population": 176_614}]}
+
+
+def test_ausgaben_und_ertraege_je_einwohner_werden_gerechnet():
+    """Die Summenzeile des Plans 2026 (Stand 24.09.2026): 883,9 Mio. €
+    Aufwendungen und 812,9 Mio. € Erträge durch 176.614 = 5.005 € und
+    4.602 € — gerechnet hier, nicht im Modell."""
+    geld = {"haushalt": [{"year": 2026, "area": "Summe", "is_total": 1,
+                          "expenses": 883_945_000.0, "revenues": 812_800_000.0}],
+            "population": _EINWOHNER}
+    zeilen = lotti._einordnung(geld, geld["population"])
+    assert any("Aufwendungen" in z and "5.005 € je Einwohner*in" in z for z in zeilen)
+    assert any("Erträge" in z and "4.602 € je Einwohner*in" in z for z in zeilen)
+
+
+def test_steuern_je_einwohner_nur_aus_der_summenzeile():
+    """„Zahlen wir zu viele Steuern?" bekommt die Steuereinnahmen insgesamt
+    je Einwohner*in — eine einzelne Steuerart nie (Gewerbesteuer zahlen
+    Betriebe, nicht Einwohner*innen; die Regel aus P4a)."""
+    geld = {"taxes": [{"kind": "total", "year": 2025, "amount": 387_150_000.0},
+                      {"kind": "Gewerbesteuer (-umlage)", "year": 2025,
+                       "amount": 170_000_000.0}],
+            "population": _EINWOHNER}
+    zeilen = lotti._einordnung(geld, geld["population"])
+    assert len(zeilen) == 1
+    assert "Steuern der Stadt insgesamt 2025" in zeilen[0]
+    assert "2.192 € je Einwohner*in" in zeilen[0]
+
+
+def _stellenplan(fehlend: list | None = None) -> dict:
+    return {"budget_year": 2026, "fehlend": fehlend or [],
+            "teile": [{"part": "A", "teil_name": "Beamtinnen und Beamte",
+                       "positions_planned": 815.0},
+                      {"part": "B", "teil_name": "Arbeitnehmerinnen und Arbeitnehmer",
+                       "positions_planned": 1769.0}]}
+
+
+def test_stellen_je_tausend_einwohner_mit_beiden_jahren():
+    """„Sind das nicht zu viele?" auf der Personal-Seite: Stellen je 1.000
+    Einwohner*innen, je Teil. Nenner: Ende des Vorjahrs des Haushaltsjahres
+    (der Stellenplan 2026 entsteht 2025)."""
+    zeilen = lotti._einordnung({"stellenplan": _stellenplan()}, _EINWOHNER)
+    assert len(zeilen) == 2
+    assert "815,0 Stellen" in zeilen[0] and "4,6 Stellen je 1.000" in zeilen[0]
+    assert "Ende 2025" in zeilen[0] and "Stellenplan 2026" in zeilen[0]
+    assert "1.769,0 Stellen" in zeilen[1] and "10,0 Stellen je 1.000" in zeilen[1]
+
+
+def test_nie_eine_summe_der_stellen():
+    """Die Personal-Seite sagt ausdrücklich „keine Summe A+B — steht in keinem
+    Dokument". Ein erster Entwurf rechnete sie doch, und Lotti nannte sie."""
+    zeilen = lotti._einordnung({"stellenplan": _stellenplan()}, _EINWOHNER)
+    assert not any("2.584" in z or "zusammen" in z or "14,6" in z for z in zeilen)
+
+
+def test_neben_stellen_allein_steht_kein_steuerkraft_vergleich():
+    """Gemessen 24.09.2026: „sind das nicht zu viele" bekam die
+    Steuerkraftmesszahl der Städte als Vergleich — ein Maßstab für etwas,
+    das er nicht misst."""
+    v = {"indicator": "steuerkraftmesszahl", "year": 2026, "unit": "teur",
+         "staedte": [{"city": "Braunschweig", "value": 384070.0},
+                     {"city": "Oldenburg", "value": 348164.0}]}
+    block = lotti._einordnung_block({"stellenplan": _stellenplan(),
+                                     "population": _EINWOHNER, "vergleich": v})
+    assert "Stellen je 1.000" in block
+    assert "kreisfreien Städte" not in block
+
+
+class _NennerStore:
+    """Liefert die Summenzeile, den Stellenplan und den Schuldenstand."""
+
+    def __init__(self) -> None:
+        self.gerufen: list[str] = []
+
+    def haushalt_fuer_begriffe(self, begriffe, **_k):
+        self.gerufen.append(f"haushalt{begriffe}")
+        return [{"year": 2026, "area": "Summe", "is_total": 1,
+                 "expenses": 883_945_000.0, "revenues": 812_870_000.0}]
+
+    def stellenplan_kontext(self, **_k):
+        self.gerufen.append("stellenplan")
+        return _stellenplan()
+
+    def schulden_kontext(self, **_k):
+        self.gerufen.append("schulden")
+        return {"year": 2025, "total": 336_994_000.0}
+
+
+@pytest.mark.parametrize(("route", "erwartet"), [
+    ("/haushalt", "haushalt['haushalt']"),
+    ("/haushalt/personal", "stellenplan"),
+    ("/haushalt/schulden", "schulden"),
+])
+def test_der_zaehler_der_einordnung_kommt_je_seite(route, erwartet):
+    store = _NennerStore()
+    geld: dict = {"haushalt": [{"year": 2026, "area": "Stadtplanung", "is_total": 0,
+                                "expenses": 7_380_665.0}]}
+    lotti._nenner_partner(store, geld, route)
+    assert store.gerufen == [erwartet]
+
+
+def test_die_summe_steht_vor_dem_teilhaushalt_und_ersetzt_ihn_nicht():
+    """Befund-Frage 7: Im Kontext stand nur „Stadtplanung" (das Wort „Stadt"
+    traf den Teilhaushalt). Die Summe kommt DAZU, vorn."""
+    geld: dict = {"haushalt": [{"year": 2026, "area": "Stadtplanung", "is_total": 0,
+                                "expenses": 7_380_665.0}]}
+    lotti._nenner_partner(_NennerStore(), geld, "/haushalt")
+    assert [r["area"] for r in geld["haushalt"]] == ["Summe", "Stadtplanung"]
+
+
+def test_ohne_eintrag_fuer_die_seite_kommt_nichts_dazu():
+    store = _NennerStore()
+    lotti._nenner_partner(store, {}, "/haushalt/produkte")
+    assert store.gerufen == []
+
+
+def test_eine_vorhandene_gesamtzahl_wird_nicht_doppelt_geholt():
+    store = _NennerStore()
+    lotti._nenner_partner(store, {"schulden": {"year": 2025, "total": 1.0}}, "/haushalt")
+    assert store.gerufen == []
+
+
+def test_erklaertexte_und_ihre_regel_stehen_nur_mit_ausloeser_im_prompt():
+    from kern import erklaerwissen
+    screen = lotti.Screen(route="/haushalt/schulden")
+    frage = "warum macht die stadt überhaupt schulden"
+    mit = _prompt(screen, frage, erklaerungen=erklaerwissen.finde(frage))
+    assert "ALLGEMEIN ERKLÄRT" in mit
+    assert "§ 120 Abs. 1 und 2 NKomVG" in mit
+    assert "KEINE Aussage über Oldenburg" in mit
+    assert "Halte es GETRENNT von Oldenburg" in mit
+    ohne = _prompt(screen, frage, erklaerungen=[])
+    assert "ALLGEMEIN ERKLÄRT" not in ohne
+
+
+def test_ohne_die_neuen_eintraege_bleibt_der_prompt_zeichengleich():
+    """Regel aus PR 21: Ohne Auslöser ist der Prompt exakt der von vorher —
+    kein ctx-Eintrag vs. ausdrücklich leer/aus."""
+    screen = lotti.Screen(route="/haushalt/schulden")
+    ohne_eintrag = _prompt(screen)
+    ausdruecklich_aus = _prompt(screen, erklaerungen=[], wertung=False)
+    assert ohne_eintrag == ausdruecklich_aus
+    assert "URTEIL" not in ohne_eintrag and "ALLGEMEIN ERKLÄRT" not in ohne_eintrag
+
+
+def test_die_wertungsregel_steht_nur_bei_einer_wertungsfrage_im_prompt():
+    screen = lotti.Screen(route="/haushalt/personal")
+    mit = _prompt(screen, "sind das nicht zu viele", wertung=True)
+    assert "Die Frage will ein URTEIL" in mit
+    assert "Fang NICHT mit der Absage an" in mit
+    # Die Rechen- und Bewertungsregeln stehen unverändert daneben.
+    assert "Keine Bewertung, keine Empfehlung" in mit
+    assert "Rechne keinen Wert je Einwohner aus" in mit
+
+
+def test_gerechnete_werte_werden_ziffergenau_uebernommen():
+    """Befund C: 1.908 € wurden zu „rund 1.900 €" — die Rundungsregel galt
+    auch für eine Zahl, die eigens gerechnet war, um belegt zu sein."""
+    screen = lotti.Screen(route="/haushalt/schulden")
+    p = _prompt(screen, "Ist das viel?", einordnung=True, geld=_GELD_ATTRAPPE)
+    assert "ZIFFERGENAU" in p and "nicht „rund 1.900 €“" in p
+
+
+def test_die_erklaertexte_kommen_nur_im_haushalts_kontext(monkeypatch):
+    """Auf einer Beschluss-Seite ohne Geldfrage stünden sie neben einem
+    Vorgang, zu dem sie nichts sagen."""
+    monkeypatch.setattr(qa, "geld_kontext", lambda *a, **k: {"facets": []})
+    ctx = lotti.screen_context(_Store(), lotti.Screen(route="/council/decision"),
+                               "Kann ich da mitbestimmen?", permissions=BUDGET)
+    assert ctx["erklaerungen"] == []
+    ctx = lotti.screen_context(_Store(), lotti.Screen(route="/haushalt/mitreden"),
+                               "Kann ich da mitbestimmen?", permissions=BUDGET)
+    assert [e.key for e in ctx["erklaerungen"]] == ["mitreden"]

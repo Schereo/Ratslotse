@@ -137,6 +137,28 @@ export type QuellenSchluessel =
   | "lsn_gewerbesteuer"
   // A11: Die Investitionen des Finanzhaushalts.
   | "investitionen"
+  // Und dieselbe Frage aus dem Haushaltsplan selbst (Anlage 006), mit
+  // Finanzplanung. Eigener Schlüssel: anderes Dokument, andere Fassung
+  // (Entwurf statt Open-Data-Datei), andere Probe.
+  | "finance_budget"
+  // Die Zuschüsse an Dritte aus derselben Planfamilie (Anlage 003).
+  | "grants"
+  // Und aus derselben Anlage: Schuldenstand laut Plan und die VE.
+  | "debt_plan"
+  // Der Vorbericht (Anlage 001): der Wortlaut je Teilhaushalt.
+  | "budget_notes"
+  // Die Zahlen aus demselben Vorbericht (Personal, Steuerarten, Ergebnis).
+  | "budget_preface"
+  // Die Budgetberichte an die Fachausschüsse: Investitionen je Maßnahme.
+  | "budget_measures"
+  // Die beschlossene Haushaltssatzung aus dem Amtsblatt.
+  | "budget_bylaw_published"
+  // Fördermittel von EU und Bund je Vorhaben (Listen der Geber).
+  | "grants_received"
+  // Oldenburg im Bundesvergleich (Wegweiser Kommune).
+  | "bundesvergleich"
+  // Die Schulden der acht Städte samt eigenen Einrichtungen (Regionaldatenbank).
+  | "regionalstatistik"
   | "investitionsprogramm"
   // Und das Ist-Gegenstück aus dem Statistischen Jahrbuch. Bewusst ein
   // eigener Schlüssel und nicht ein zweiter Absatz unter `investitionen`:
@@ -166,7 +188,11 @@ export type QuellenSchluessel =
   | "donations"
   // A12: Der Beteiligungsbericht — die einzige Quelle des Bereichs, die ein
   // eigener Cron von oldenburg.de herunterlädt.
-  | "beteiligungsbericht";
+  | "beteiligungsbericht"
+  // Und die Jahresabschlüsse der Gesellschaften selbst: dieselben Kennzahlen,
+  // ein Jahr früher. Eigener Schlüssel, weil es andere Dokumente sind (die
+  // Anlagen der Beschlussvorlage im Ratsinformationssystem).
+  | "company_accounts";
 
 export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
   plan: {
@@ -831,10 +857,154 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
       "darin, und einzelne Vorhaben nennt der Datensatz gar nicht.",
     herausgeber: "Stadt Oldenburg, Open-Data-Portal",
     standWort: "Haushaltsjahre",
-    as_of: "Haushaltsjahre 2022–2025",
+    as_of: "Haushaltsjahre 2020–2025",
     lizenz: "dl-de/by-2.0",
     art: "csv",
     url: "https://opendata.oldenburg.de/dataset/haushaltsplan-stadt-oldenburg-2025",
+  },
+  finance_budget: {
+    title: "Gesamtfinanzhaushalte der Stadt Oldenburg (Anlage 006)",
+    citation:
+      "Anlage 006 des Haushaltsplans: alle Ein- und Auszahlungen des Planjahres — " +
+      "laufende Verwaltungstätigkeit, Investitionen, Finanzierung — und dahinter drei " +
+      "Jahre mittelfristige Finanzplanung. Wir zeigen die Investitionszeilen. " +
+      "Gelesen über die Lage der Zahlen im PDF, weil der Textauszug leere Zellen " +
+      "verschluckt; jede der sechs Spalten muss ihre Summen und Salden selbst ergeben. " +
+      "Es ist der Entwurf der Verwaltung: Die Anlage hängt an der Einbringungs-Vorlage, " +
+      "nicht am Beschluss.",
+    herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
+    standWort: "Haushaltspläne",
+    as_of: "Haushaltspläne 2019–2026, Stand der Einbringung",
+    art: "pdf",
+    url: "https://buergerinfo.oldenburg.de",
+  },
+  regionalstatistik: {
+    title: "Regionaldatenbank — Schulden der Kernhaushalte und der eigenen Einrichtungen (71327)",
+    citation:
+      "Die Schuldenstatistik der Statistischen Ämter je Kreis und kreisfreier Stadt: " +
+      "Schulden des Kernhaushalts und der öffentlichen Fonds, Einrichtungen und Unternehmen, " +
+      "an denen er unmittelbar zu 100 % beteiligt ist (31.12.), dazu die Einwohnerzahl am " +
+      "30.06. (Tabellen 71327-Z-02 und -Z-07). Oldenburgs Kernhaushalt ist gegen die eigene " +
+      "Schuldenreihe der Stadt geprüft; für die Einrichtungen gibt es keine Gegenreihe.",
+    herausgeber: "Statistische Ämter des Bundes und der Länder (Datenlizenz Deutschland 2.0)",
+    standWort: "Jahre",
+    as_of: "Schulden 31.12.2019–2025 ohne 2022, abgerufen 24.09.2026",
+    art: "web",
+    url: "https://www.regionalstatistik.de/genesis/online?operation=table&code=71327-Z-02",
+  },
+  bundesvergleich: {
+    title: "Wegweiser Kommune — Finanzen und Demografische Entwicklung",
+    citation:
+      "Das Portal der Bertelsmann Stiftung bereitet die Zahlen der Statistischen Ämter für alle " +
+      "Kommunen einheitlich auf. Gelesen werden die Exporte je Kommune für 2019–2023: " +
+      "Einkommensteuer, Grundsteuer B und Liquiditätskredite je Einwohner*in, dazu die " +
+      "Einwohnerzahl für die Vergleichsgruppe. Oldenburgs Werte sind gegen die eigenen Reihen " +
+      "der Stadt geprüft (Statistisches Jahrbuch, Liquiditätsstand der Kämmerei).",
+    herausgeber: "Bertelsmann Stiftung (Daten: Statistische Ämter des Bundes und der Länder)",
+    standWort: "Jahre",
+    as_of: "Jahre 2019–2023, abgerufen 24.09.2026",
+    art: "csv",
+    url: "https://www.wegweiser-kommune.de/daten",
+  },
+  grants_received: {
+    title: "Liste der Vorhaben (EFRE, ESF) und Förderkatalog des Bundes",
+    citation:
+      "Die Listen der Geber selbst: die Liste der Vorhaben der EU-Strukturfonds in " +
+      "Niedersachsen (NBank, halbjährlich, beide Förderperioden) und der Förderkatalog des " +
+      "Bundes (Suche nach der Gemeinde Oldenburg). Übernommen sind nur die Stadt und ihre " +
+      "Gesellschaften über eine nachgesehene Namensliste. Die Beträge sind Bewilligungen " +
+      "(Unionsbeitrag, Bundesanteil), keine Auszahlungen. Städtebauförderung und reine " +
+      "Landesprogramme stehen in keiner der beiden Listen.",
+    herausgeber: "NBank; Bundesministerium für Forschung, Technologie und Raumfahrt (Förderkatalog)",
+    standWort: "Listen",
+    as_of: "EU-Listen Stand 31.01.2026 und 30.09.2024, Förderkatalog abgerufen 24.09.2026",
+    art: "web",
+    url: "https://www.europa-fuer-niedersachsen.niedersachsen.de/startseite/regionen_und_foerderung/efre_und_esf/liste-der-vorhaben-152610.html",
+  },
+  budget_bylaw_published: {
+    title: "Amtsblatt für die Stadt Oldenburg — Haushaltssatzung",
+    citation:
+      "Die beschlossene Haushaltssatzung mit ihrer öffentlichen Bekanntmachung; erst damit " +
+      "tritt sie in Kraft. Die Ausgaben bis 2025 sind eingescannt und werden per " +
+      "Texterkennung gelesen; die Summenprobe der Satzung (sechs Finanzhaushalts-Zeilen = " +
+      "„Nachrichtlich“-Summen) fängt eine falsch gelesene Ziffer. Eine Genehmigung der " +
+      "Kommunalaufsicht druckt das Amtsblatt 2020–2026 bei keiner Satzung ab. 2019 ist " +
+      "auf der Seite der Stadt nicht verlinkt.",
+    herausgeber: "Stadt Oldenburg, Rechtsamt (Amtsblatt)",
+    standWort: "Haushaltsjahre",
+    as_of: "Haushaltsjahre 2020–2026",
+    art: "pdf",
+    url: "https://www.oldenburg.de/startseite/rathaus/informiert-bleiben/bekanntmachungen/amtsblatt.html",
+  },
+  budget_measures: {
+    title: "Budgetberichte an die Fachausschüsse (Finanz- und Leistungsberichte)",
+    citation:
+      "Viermal im Jahr berichtet die Verwaltung dem Jugendhilfe- und dem Schulausschuss, wie " +
+      "der Haushalt läuft. Gelesen wird die Teilfinanzrechnung: je Investitionsmaßnahme Ansatz " +
+      "und Prognose zum Jahresende, darunter die Erläuterung im Wortlaut. Die Maßnahmen ergeben " +
+      "die Summenzeile „Auszahlungen für Investitionen“ des Berichts. Andere Ausschüsse bekommen " +
+      "solche Berichte nicht regelmäßig.",
+    herausgeber: "Stadt Oldenburg, Ämter für Jugend und Familie sowie Schule und Bildung",
+    standWort: "Stichtage",
+    as_of: "Stichtage 30.06.2018 bis 30.06.2026",
+    art: "pdf",
+    url: "https://buergerinfo.oldenburg.de",
+  },
+  budget_preface: {
+    title: "Vorbericht zum Haushaltsplan (Anlage 001) — Zahlen",
+    citation:
+      "Aus drei Kapiteln des Vorberichts: 2.1.1 Fehlbeträge und Überschüsse, 2.2 Erträge aus den " +
+      "Steuerarten, 2.4.1.3 gesamtstädtische Personalaufwendungen — Ist, Plan und Prognose des " +
+      "laufenden Jahres, Ansatz und Finanzplanung. Personal und Jahresergebnis sind gegen den " +
+      "Ergebnishaushalt desselben Plans geprüft, die Steuer-Ist-Werte gegen das Statistische " +
+      "Jahrbuch. Es ist der Entwurf der Verwaltung.",
+    herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
+    standWort: "Haushaltspläne",
+    as_of: "Haushaltspläne 2019–2026, Stand der Einbringung",
+    art: "pdf",
+    url: "https://buergerinfo.oldenburg.de",
+  },
+  budget_notes: {
+    title: "Vorbericht zum Haushaltsplan (Anlage 001)",
+    citation:
+      "Der Vorbericht erläutert jeden Teilhaushalt in zwei Abschnitten: zum Ergebnishaushalt " +
+      "(2.4.2) und zu den Investitionen (3.2.2). Wiedergegeben wird der Wortlaut der Verwaltung, " +
+      "ohne Tabellen und Grafiken. Es ist der Entwurf, wie er in den Rat eingebracht wurde; " +
+      "Änderungen im Beratungsverfahren stehen nicht darin.",
+    herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
+    standWort: "Haushaltspläne",
+    as_of: "Haushaltspläne 2019–2026, Stand der Einbringung",
+    art: "pdf",
+    url: "https://buergerinfo.oldenburg.de",
+  },
+  debt_plan: {
+    title: "Übersichten zum Schuldenstand und zu den Verpflichtungsermächtigungen (Anlage 003)",
+    citation:
+      "Teil der Übersichten des Haushaltsplans: der voraussichtliche Stand der Schulden zu " +
+      "Beginn des Planjahres, in 1.000 €, für den Kernhaushalt und nachrichtlich je " +
+      "Eigenbetrieb — und die Auszahlungen, die aus Verpflichtungsermächtigungen in den " +
+      "Folgejahren fällig werden. Es sind Erwartungen der Verwaltung beim Aufstellen des " +
+      "Plans, kein Ist. Der aufgelöste Eigenbetrieb Hafen (ab 2021) und der Abfallwirtschafts" +
+      "betrieb 2026 fehlen, weil die Übersicht für sie keine Summe nennt.",
+    herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
+    standWort: "Haushaltspläne",
+    as_of: "Haushaltspläne 2019–2026, Stand der Einbringung",
+    art: "pdf",
+    url: "https://buergerinfo.oldenburg.de",
+  },
+  grants: {
+    title: "Übersicht über die Zuweisungen und Zuschüsse an Dritte (Anlage 003)",
+    citation:
+      "Teil der Übersichten des Haushaltsplans: je Zuschuss Teilhaushalt, Produkt, " +
+      "Beschreibung der Zuwendung, Ansatz im Planjahr und im Vorjahr, Erläuterung und " +
+      "ob bar oder unbar. Vereine und Träger stehen dort mit Namen. Es ist der Entwurf " +
+      "der Verwaltung: Die Anlage hängt an der Einbringungs-Vorlage, spätere Änderungen " +
+      "des Rates stehen nicht darin. Was tatsächlich ausgezahlt wurde, sagt sie nicht.",
+    herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
+    standWort: "Haushaltspläne",
+    as_of: "Haushaltspläne 2019–2026, Stand der Einbringung",
+    art: "pdf",
+    url: "https://buergerinfo.oldenburg.de",
   },
   // A12: Das Investitionsprogramm (/haushalt/investitionen, Block „Die
   // einzelnen Vorhaben"). Die Ebene unter A11 — und aus einer ganz anderen
@@ -880,5 +1050,20 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     as_of: "Berichtsjahre 2022–2024, Kennzahlen ab 2017",
     art: "pdf",
     url: "https://www.oldenburg.de/startseite/politik/verwaltung-finanzen/finanzen/beteiligungsbericht.html",
+  },
+  company_accounts: {
+    title: "Jahresabschlüsse der städtischen Gesellschaften",
+    citation:
+      "Bilanz und Gewinn- und Verlustrechnung als Anlagen der Beschlussvorlage " +
+      "„Jahresabschluss 20xx“ im Ratsinformationssystem — Bilanzsumme und " +
+      "Jahresüberschuss bzw. -fehlbetrag. Sie liegen dem Rat im Sommer nach dem " +
+      "Geschäftsjahr vor, gut ein Jahr vor dem Beteiligungsbericht; wo beide " +
+      "dasselbe Jahr nennen, gilt der Bericht. Eine Eigenkapitalquote nennen die " +
+      "Anlagen nicht. Einige ältere Anlagen (2018–2021) sind Scans ohne Text.",
+    herausgeber: "Die Gesellschaften, vorgelegt von der Stadt Oldenburg",
+    standWort: "Geschäftsjahre",
+    as_of: "Geschäftsjahre 2017–2025",
+    art: "pdf",
+    url: "https://buergerinfo.oldenburg.de",
   },
 };

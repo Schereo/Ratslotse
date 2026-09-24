@@ -43,14 +43,27 @@ NAME = "tax_rates"
 #: Der Hebesatz beim Namen — und die Frageform, die ihn meint, ohne ihn zu
 #: nennen („Warum ist die Grundsteuer gestiegen?"). „grundsteuer a" mit
 #: Wortgrenze hinten, sonst zöge „Grundsteuer Aufkommen" die Treppe.
+#:
+#: „entwickel“/„veränder“/„Entwicklung“/„Verlauf“ seit 09/2026: „Wie hat sich
+#: die Grundsteuer in Oldenburg entwickelt?“ bekam nur das Aufkommen
+#: (31,3 → 32,6 Mio. €) und nicht die Treppe 445 → 539 % — die eigentliche
+#: Entwicklung, die der Rat beschließt (Faktencheck 23.09.2026). Das
+#: Aufkommen allein erklärt nicht einmal sich selbst: 2025 stieg der Satz,
+#: und das Aufkommen sank.
 _HEBESATZ = re.compile(
     r"hebesatz|hebesaetze|gewerbesteuersatz|grundsteuersatz|"
     r"grundsteuer [ab]\b|"
     r"(?:grund|gewerbe)steuer[^.?!]{0,40}"
     r"(?:prozent|hoehe\b|hoeher|erhoeh|gesenkt|senkung|angehoben|gestiegen|"
-    r"steigt|teurer)|"
-    r"(?:erhoeh|gesenkt|angehoben|gestiegen|prozent)[^.?!]{0,40}"
-    r"(?:grund|gewerbe)steuer")
+    r"steigt|teurer|entwickel|veraender)|"
+    r"(?:erhoeh|gesenkt|angehoben|gestiegen|prozent|entwicklung|verlauf)[^.?!]{0,40}"
+    r"(?:grund|gewerbe)steuer|"
+    # „Wie viel Einfluss hat der Rat auf die Steuern?" — der Hebesatz IST der
+    # Einfluss; ohne ihn beantwortete Lotti die Frage mit dem Aufkommen und
+    # dem Finanzausgleich (Fakten-Eval 23.09.2026). Ebenso „Wer entscheidet
+    # über die Höhe dieser Steuer?", der Einstieg des Steuer-Steckbriefs.
+    r"(?:einfluss|entscheid|bestimm|festleg|festgeleg|stellschraube)[^.?!]{0,40}steuer|"
+    r"steuer[^.?!]{0,40}(?:beeinfluss|entscheid|festleg|festgeleg)")
 
 #: Die Statistik beim Namen. Diese Wörter kommen sonst nirgends im Bestand vor
 #: und brauchen deshalb keinen Steuer-Anker.
@@ -197,14 +210,20 @@ def _statistik_text(s: dict) -> str:
         f"{geld.de_zahl(s['cases'])}, davon mit positivem Steuermessbetrag "
         f"{geld.de_zahl(s['cases_positive'])}",
     ]
+    # Die zerlegten Betriebsstätten eingerückt UNTER den Messbetrag, dessen
+    # Teil sie sind, und mit Jahr — bis 09/2026 stand „- davon zerlegte …“
+    # auf oberster Ebene und hing an nichts (Gliederungs-Wächter,
+    # tests/test_geld_gliederung.py).
     if s.get("tax_base_eur") is not None:
-        zeilen.append(f"- Steuermessbetrag zusammen: "
+        zeilen.append(f"- Steuermessbetrag zusammen {s['year']}: "
                       f"{geld.de_mio(s['tax_base_eur'])}")
     if s.get("apportionments") is not None:
+        tief = "  " if s.get("tax_base_eur") is not None else ""
         zeilen.append(
-            f"- davon zerlegte Betriebsstätten (Firmen mit mehreren Standorten, "
-            f"§ 28 GewStG): {geld.de_zahl(s['apportionments'])} Fälle mit "
-            f"{geld.de_mio(s.get('apportioned_assessment_eur'))} Messbetrag")
+            f"{tief}- davon aus zerlegten Betriebsstätten (Firmen mit mehreren "
+            f"Standorten, § 28 GewStG) {s['year']}: "
+            f"{geld.de_mio(s.get('apportioned_assessment_eur'))} Messbetrag, "
+            f"{geld.de_zahl(s['apportionments'])} Fälle")
     # Der Verzug steht IMMER dabei, nicht nur bei abweichendem Jahrgang: Neben
     # einer Aufkommensreihe bis 2025 ist ein Nenner von 2021 sonst eine
     # Aktualität, die er nicht hat.

@@ -871,23 +871,24 @@ def test_haushalt_datenstand_nennt_alle_schichten(client):
     _register(client)
     b = client.get("/api/council/budget/data-status").json()
     schichten = {s["key"]: s for s in b["layers"]}
-    assert set(schichten) == {"haushaltsplan", "income_budget", "investitionen",
+    assert set(schichten) == {"haushaltsplan", "budget_notes", "income_budget", "finance_budget", "grants", "budget_measures", "investitionen",
                               "investitionsprogramm", "budget_execution",
                               "jahresabschluss", "teilhaushalt", "stellenplan",
                               "indicators", "rpa_fundstelle",
                               "pruefungsfeststellungen", "konzernabschluss",
                               "beteiligungsbericht", "fees",
-                              "budget_bylaw",
+                              "budget_bylaw", "budget_bylaw_published", "grants_received",
                               "wirtschaftsplan",
-                              "enterprise_accounts",
+                              "enterprise_accounts", "company_accounts",
                               "schulden", "loans", "liquidity",
                               "lsn_steuerkraft", "lsn_realsteuern",
-                              "lsn_gewerbesteuer"}
+                              "lsn_gewerbesteuer", "bundesvergleich", "regionalstatistik"}
     # Die Wirtschaftspläne der Eigenbetriebe: die einzige Schicht, deren
-    # Einheit eine VORLAGE ist und keine Anlage — der Cron kann sie deshalb
-    # nicht selbst lesen und beobachtet sie nur. Ihr Takt ist der einzige mit
+    # Einheit eine VORLAGE ist und keine Anlage — der Cron liest sie nicht
+    # selbst, startet aber ihr Skript, sobald eine neue Vorlage da ist; für
+    # Leser*innen kommt sie also von selbst nach. Ihr Takt ist der einzige mit
     # negativem Versatz: Der Plan FÜR 2027 wird im Herbst 2026 eingebracht.
-    assert schichten["wirtschaftsplan"]["automatisch"] is False
+    assert schichten["wirtschaftsplan"]["automatisch"] is True
     assert schichten["wirtschaftsplan"]["month_name"] == "November"
 
     # Vier verschiedene Takte — das ist der Grund, warum der Block existiert.
@@ -2550,6 +2551,43 @@ def test_quiz_stats_aggregate_per_area(client):
     assert stats["total"]["answered"] == 2 and stats["total"]["correct"] == 2
     area = next(a for a in stats["by_area"] if a["area_key"] == "Osternburg")
     assert area["points"] == 4  # 2× mittel
+
+
+def test_quiz_answer_shows_how_others_did_from_five_players_on(client):
+    """„X % lagen richtig": erst ab fünf ANDEREN, je Konto nur die erste
+    Antwort, die eigene nicht mitgezählt."""
+    _register(client)
+    _seed_quiz("Osternburg", n=1)
+    qid = client.get("/api/quiz/round?areas=district:Osternburg").json()["questions"][0]["id"]
+    store = Store(RATSLOTSE_DB)
+    me = store._conn.execute("SELECT id FROM web_users WHERE email = 'admin@test.de'").fetchone()[0]
+    for owner in range(900, 904):                      # vier andere: zu wenige
+        store.record_quiz_answer(owner, qid, "district", "Osternburg", "history", owner % 2 == 0, 1)
+    store.record_quiz_answer(me, qid, "district", "Osternburg", "history", True, 1)
+    r = client.post("/api/quiz/answer", json={"question_id": qid, "selected_index": 1}).json()
+    assert "others" not in r
+    store.record_quiz_answer(904, qid, "district", "Osternburg", "history", False, 0)
+    store.record_quiz_answer(904, qid, "district", "Osternburg", "history", True, 1)  # zweiter Versuch zählt nicht
+    store.close()
+    r = client.post("/api/quiz/answer", json={"question_id": qid, "selected_index": 1}).json()
+    assert r["others"] == {"players": 5, "correct_pct": 40}   # 900, 902 richtig
+
+
+def test_quiz_stats_draw_the_district_map(client):
+    """Die Fortschrittskarte: alle Ortsbereiche, Unterorte zählen für ihren
+    Ortsbereich, die oberste Stufe ist die Kenner-Schwelle."""
+    _register(client)
+    store = Store(RATSLOTSE_DB)
+    me = store._conn.execute("SELECT id FROM web_users WHERE email = 'admin@test.de'").fetchone()[0]
+    for i in range(5):
+        store.record_quiz_answer(me, 1000 + i, "district", "Eversten Holz", "places", True, 1)
+    store.record_quiz_answer(me, 2000, "district", "Osternburg", "places", False, 0)
+    store.close()
+    districts = {d["district"]: d for d in client.get("/api/quiz/stats").json()["districts"]}
+    assert len(districts) == 31
+    assert districts["Eversten"]["level"] == 3 and districts["Eversten"]["level_label"] == "gemeistert"
+    assert districts["Osternburg"]["level"] == 1 and districts["Osternburg"]["answered"] == 1
+    assert districts["Nadorst"]["level"] == 0 and districts["Nadorst"]["level_label"] == "unentdeckt"
 
 
 def test_quiz_rating_and_admin_flag(client):
@@ -5650,6 +5688,81 @@ def _deep_events(client, job_id, ab=0):
                 if line.startswith("data: ")]
 
 
+def test_recherche_plus_waehlt_das_groessere_modell(client, monkeypatch):
+    """Recherche Plus (23.09.2026): Das Recht `premium_models` entscheidet
+    beim EINREICHEN, welches Modell den Bericht schreibt — am Konto geprüft
+    (`roles`, nie ein erfundenes `permissions`-Feld), in der Job-Zeile
+    festgehalten und bis in den Bericht-Aufruf durchgereicht. Ohne das Recht
+    bleibt alles, wie es war: Standardmodell, kein Hinweis."""
+    from council import qa as qa_mod
+
+    _deep_mocks(monkeypatch)
+    monkeypatch.setattr(qa_mod, "DEEP_MODEL", "openai/gpt-6-luna")
+    monkeypatch.setattr(qa_mod, "DEEP_PLUS_MODEL", "openai/gpt-6-sol")
+    modelle: list[str | None] = []
+
+    def _bericht(question, cands, **k):
+        modelle.append(k.get("model"))
+        return iter(["Der Rat hat den Neubau beschlossen [5]."])
+
+    monkeypatch.setattr(qa_mod, "deep_bericht_stream", _bericht)
+    frage = {"question": "Wie ist der Stand beim Stadionneubau?"}
+
+    # Ein reguläres Konto — bewusst NICHT die Admin-Adresse der Suite: Admin
+    # erbt jedes Recht, also auch dieses.
+    _register(client, "leser@example.org")
+    client.post("/api/auth/login", json={"email": "leser@example.org", "password": "password123"})
+    job = client.post("/api/council/deep-research", json=frage).json()["job_id"]
+    done = next(e for e in _deep_events(client, job) if e["type"] == "done")
+    assert modelle == ["openai/gpt-6-luna"]
+    assert done["premium_model"] is False
+    assert client.get(f"/api/council/deep-research/{job}").json()["premium_model"] is False
+
+    store = Store(RATSLOTSE_DB)
+    try:
+        uid = store.get_web_user_by_email("leser@example.org")["id"]
+        store.set_web_user_roles(uid, ["research_plus"])
+    finally:
+        store.close()
+    job = client.post("/api/council/deep-research", json=frage).json()["job_id"]
+    done = next(e for e in _deep_events(client, job) if e["type"] == "done")
+    assert modelle[-1] == "openai/gpt-6-sol"
+    assert done["premium_model"] is True
+    assert client.get(f"/api/council/deep-research/{job}").json()["premium_model"] is True
+    # Für die Kostenrechnung steht das Modell in der Job-Zeile.
+    store = Store(RATSLOTSE_DB)
+    try:
+        zeile = store._conn.execute(
+            "SELECT model, premium FROM deep_research_jobs WHERE id = ?", (job,)).fetchone()
+    finally:
+        store.close()
+    assert tuple(zeile) == ("openai/gpt-6-sol", 1)
+    # Das Kontingent gilt für beide Modelle gleich: zwei von fünf verbraucht.
+    assert client.get("/api/council/deep-research/current").json()["remaining"] == 3
+
+
+def test_recherche_plus_ohne_eigenes_modell_ist_kein_plus(client, monkeypatch):
+    """Ist der Schalter leer (Plus-Modell = Standardmodell), zeigt der Client
+    keinen Hinweis — er wäre sonst eine Behauptung ohne Unterschied."""
+    from council import qa as qa_mod
+
+    _deep_mocks(monkeypatch)
+    monkeypatch.setattr(qa_mod, "DEEP_MODEL", "openai/gpt-6-luna")
+    monkeypatch.setattr(qa_mod, "DEEP_PLUS_MODEL", "openai/gpt-6-luna")
+    _register(client, "plus@example.org")
+    store = Store(RATSLOTSE_DB)
+    try:
+        store.set_web_user_roles(store.get_web_user_by_email("plus@example.org")["id"],
+                                 ["research_plus"])
+    finally:
+        store.close()
+    client.post("/api/auth/login", json={"email": "plus@example.org", "password": "password123"})
+    job = client.post("/api/council/deep-research",
+                      json={"question": "Wie ist der Stand beim Stadionneubau?"}).json()["job_id"]
+    done = next(e for e in _deep_events(client, job) if e["type"] == "done")
+    assert done["premium_model"] is False
+
+
 def test_deep_research_roundtrip_und_replay(client, monkeypatch):
     """Der komplette Job-Lauf: Phasen → Facetten → sources (mit Planungen und
     gelesen-Zahl) → Token → done. Der Events-Endpoint liefert beim ZWEITEN
@@ -6874,3 +6987,181 @@ def test_calendar_subscription_feed_und_rotation(client):
     assert r2.status_code == 200 and r2.json()["url"] != body["url"]
     assert client.get(pfad).status_code == 404
     assert client.get("/api/calendar/gibtsnicht.ics").status_code == 404
+
+
+def _seed_order_question():
+    import json as _json
+    store = CouncilStore(COUNCIL_DB)
+    chart = {"type": "bars", "title": "t", "unit": "Mio. Euro",
+             "items": [{"label": "C", "value": 30}, {"label": "A", "value": 20},
+                       {"label": "D", "value": 10}, {"label": "B", "value": 5}]}
+    store.save_quiz_questions([{
+        "area_type": "topic", "area_key": "haushalt", "category": "estimation", "difficulty": "medium",
+        "question": "Sortiere!", "qtype": "order", "format": "order", "options": ["A", "B", "C", "D"],
+        "correct_index": 0, "chart": _json.dumps(chart), "content_hash": "order-1"}])
+    qid = store.quiz_active_rows()[0]["id"]
+    store.close()
+    return qid
+
+
+def test_quiz_order_scores_by_swapped_pairs(client):
+    _register(client)
+    qid = _seed_order_question()
+    r = client.post("/api/quiz/answer", json={"question_id": qid, "order": [2, 0, 3, 1]}).json()
+    assert r["correct"] is True and r["points"] == 3 and r["correct_order"] == [2, 0, 3, 1]
+    r = client.post("/api/quiz/answer", json={"question_id": qid, "order": [0, 2, 3, 1]}).json()
+    assert r["correct"] is False and r["points"] == 2
+    assert client.post("/api/quiz/answer", json={"question_id": qid, "order": [0, 0, 1, 2]}).status_code == 400
+
+
+def test_quiz_order_never_reaches_the_app(client):
+    """Die App kennt `order` nicht — sie bekommt solche Fragen nicht, das Web schon;
+    die Tages-Challenge (für alle gleich) nie."""
+    _register(client)
+    _seed_order_question()
+    web = client.get("/api/quiz/round?areas=topic:haushalt").json()["questions"]
+    app = client.get("/api/quiz/round?areas=topic:haushalt", headers={"X-Client": "ios"}).json()["questions"]
+    assert [q["qtype"] for q in web] == ["order"] and app == []
+    assert client.get("/api/quiz/daily").json()["questions"] == []
+def test_quiz_stats_map_of_everyone(client):
+    """„Wie gut kennt Oldenburg …" (Plan Q11): über alle Konten, erst ab 20
+    Antworten je Ortsbereich, darunter ohne Zahlen."""
+    from app.routers import quiz as quiz_router
+    quiz_router._ALL_CACHE.update(at=0.0, value=None)
+    _register(client)
+    store = Store(RATSLOTSE_DB)
+    for owner in range(700, 725):                       # 25 Antworten in Eversten, 80 % richtig
+        store.record_quiz_answer(owner, 1, "district", "Eversten", "places", owner % 5 != 0, 1)
+    for owner in range(700, 705):                       # 5 in Osternburg: zu wenige
+        store.record_quiz_answer(owner, 2, "district", "Osternburg", "places", True, 1)
+    store.close()
+    s = client.get("/api/quiz/stats").json()
+    alle = {d["district"]: d for d in s["districts_all"]}
+    assert alle["Eversten"]["level"] == 3 and alle["Eversten"]["level_label"] == "gut bekannt"
+    assert alle["Osternburg"] == {"district": "Osternburg", "answered": 0, "correct": 0,
+                                  "level": 0, "level_label": "zu wenige Antworten"}
+    assert s["district_legend"]["all"][3] == "gut bekannt" and len(s["district_legend"]["mine"]) == 4
+    quiz_router._ALL_CACHE.update(at=0.0, value=None)
+def test_quiz_joker_strikes_two_wrong_and_halves_points(client):
+    """50:50: zwei FALSCHE Antworten, beim zweiten Aufruf dieselben, und mit
+    Joker gibt es die Hälfte der Punkte (aufgerundet)."""
+    _register(client)
+    _seed_quiz("Osternburg", n=1, difficulty="hard")      # richtig ist Index 1, 3 Punkte
+    qid = client.get("/api/quiz/round?areas=district:Osternburg").json()["questions"][0]["id"]
+    first = client.post("/api/quiz/joker", json={"question_id": qid}).json()["remove"]
+    assert len(first) == 2 and 1 not in first
+    assert client.post("/api/quiz/joker", json={"question_id": qid}).json()["remove"] == first
+    r = client.post("/api/quiz/answer", json={"question_id": qid, "selected_index": 1, "joker": True}).json()
+    assert r["correct"] is True and r["points"] == 2
+
+
+def test_quiz_joker_refuses_estimates(client):
+    _register(client)
+    store = CouncilStore(COUNCIL_DB)
+    store.save_quiz_questions([{
+        "area_type": "district", "area_key": "Osternburg", "category": "estimation",
+        "difficulty": "easy", "question": "Wie viele Einwohner?", "qtype": "estimate",
+        "options": [], "correct_index": 0, "answer_value": 100.0, "answer_unit": "Menschen",
+        "range_min": 0.0, "range_max": 300.0, "content_hash": "joker-estimate"}])
+    qid = store.quiz_active_rows()[0]["id"]
+    store.close()
+    assert client.post("/api/quiz/joker", json={"question_id": qid}).status_code == 400
+def test_quiz_daily_share_text(client):
+    """Das Teil-Raster: ein Kästchen je Frage, Datum, Treffer — und ohne
+    Einzelergebnisse bleibt die Antwort, wie sie war (die App)."""
+    _register(client)
+    r = client.post("/api/quiz/daily/complete", json={
+        "correct": 4, "total": 5, "points": 6, "results": [True, False, True, True, True]}).json()
+    day = r["day"]
+    lines = r["share_text"].split("\n")
+    assert lines[0] == f"Ratslotse-Quiz {day[8:10]}.{day[5:7]}."
+    assert lines[1] == "🟩🟥🟩🟩🟩  4 von 5"
+    assert lines[2].endswith("/quiz")
+    r2 = client.post("/api/quiz/daily/complete", json={"correct": 1, "total": 5, "points": 1}).json()
+    assert "share_text" not in r2
+def test_quiz_blitz_round_takes_only_fast_questions(client):
+    """Blitzrunde: zwei Antworten oder leicht mit kurzen Antworten — keine
+    Schätzfrage, keine lange Frage."""
+    _register(client)
+    store = CouncilStore(COUNCIL_DB)
+    base = {"area_type": "district", "area_key": "Osternburg", "category": "history",
+            "correct_index": 0, "explanation": "x", "source_type": "wikipedia", "source_ref": ""}
+    store.save_quiz_questions([
+        {**base, "question": "Zwei Antworten?", "difficulty": "hard", "options": ["Ja", "Nein"], "content_hash": "b1"},
+        {**base, "question": "Leicht und kurz?", "difficulty": "easy", "options": ["A", "B", "C", "D"], "content_hash": "b2"},
+        {**base, "question": "Leicht aber lang?", "difficulty": "easy",
+         "options": ["A" * 60, "B", "C", "D"], "content_hash": "b3"},
+        {**base, "question": "Schwer mit vier?", "difficulty": "hard", "options": ["A", "B", "C", "D"], "content_hash": "b4"},
+        {**base, "question": "Schätzung?", "difficulty": "easy", "qtype": "estimate", "options": [],
+         "answer_value": 5.0, "answer_unit": "x", "range_min": 0.0, "range_max": 20.0, "content_hash": "b5"},
+    ])
+    store.close()
+    got = {q["question"] for q in client.get("/api/quiz/blitz-round?n=10").json()["questions"]}
+    assert got == {"Zwei Antworten?", "Leicht und kurz?"}
+
+
+def test_quiz_blitz_best_only_rises(client):
+    _register(client)
+    a = client.post("/api/quiz/blitz/complete", json={"correct": 7, "answered": 9}).json()
+    assert a == {"best": 7, "today_best": 7, "new_best": True}
+    b = client.post("/api/quiz/blitz/complete", json={"correct": 4, "answered": 6}).json()
+    assert b["best"] == 7 and b["new_best"] is False
+    assert client.get("/api/quiz/stats").json()["blitz_best"] == 7
+    assert client.post("/api/quiz/blitz/complete", json={"correct": 5, "answered": 3}).status_code == 400
+def test_quiz_pin_round_and_answer(client):
+    """„Wo liegt das?": nur Orte mit Gewicht und Geometrie, gewertet an der
+    Geometrie, gebucht auf den Ortsbereich."""
+    _register(client)
+    store = CouncilStore(COUNCIL_DB)
+    line = json.dumps({"type": "LineString", "coordinates": [[8.2140, 53.1430], [8.2160, 53.1440]]})
+    with store._conn:
+        for slug, name, n in (("schlossplatz", "Schlossplatz", 12), ("kleiner-weg", "Kleiner Weg", 2)):
+            store._conn.execute("INSERT INTO council_entities (slug, name, kind, n) VALUES (?,?,?,?)",
+                                (slug, name, "place", n))
+            store._conn.execute("INSERT INTO council_entity_meta (slug, lat, lon, geojson) VALUES (?,?,?,?)",
+                                (slug, 53.1435, 8.2150, line))
+    store.close()
+    qs = client.get("/api/quiz/pin-round?n=5").json()["questions"]
+    assert [q["slug"] for q in qs] == ["schlossplatz"] and qs[0]["kind_label"] == "Straße"
+    near = client.post("/api/quiz/pin-answer", json={"slug": "schlossplatz", "lat": 53.1435, "lon": 8.2150}).json()
+    assert near["points"] == 3 and near["distance_m"] < 20 and near["geojson"]["type"] == "LineString"
+    far = client.post("/api/quiz/pin-answer", json={"slug": "schlossplatz", "lat": 53.20, "lon": 8.30}).json()
+    assert far["points"] == 0 and "km daneben" in far["distance_label"]
+    assert client.post("/api/quiz/pin-answer", json={"slug": "gibt-es-nicht", "lat": 53.1, "lon": 8.2}).status_code == 404
+    by_area = client.get("/api/quiz/stats").json()["by_area"]
+    assert sum(a["answered"] for a in by_area if a["area_type"] == "district") == 2
+def test_quiz_duel_roundtrip(client):
+    """Duell (Plan Q9): anlegen, eine zweite Person spielt es, beide sehen die
+    Tabelle; wer noch nicht gespielt hat, sieht keine Ergebnisse."""
+    _register(client)
+    _seed_quiz("Osternburg", n=3)
+    ids = [q["id"] for q in client.get("/api/quiz/round?areas=district:Osternburg&n=3").json()["questions"]]
+    code = client.post("/api/quiz/duel", json={"question_ids": ids, "correct": 2}).json()["code"]
+    assert len(code) == 10
+    mine = client.get(f"/api/quiz/duel/{code}").json()
+    assert mine["mine"] is True and mine["total"] == 3 and [q["id"] for q in mine["questions"]] == ids
+    assert "correct_index" not in mine["questions"][0]
+
+    other = TestClient(app)
+    _register(other, email="gegner@example.org")
+    before = other.get(f"/api/quiz/duel/{code}").json()
+    assert before["played"] is False and before["players"] == [] and before["owner_name"] == "Testkonto"
+    after = other.post(f"/api/quiz/duel/{code}/complete", json={"correct": 3}).json()
+    assert after["played"] is True and after["players"] == [{"name": "Testkonto", "correct": 3, "me": True}]
+    # das erste Ergebnis zählt
+    again = other.post(f"/api/quiz/duel/{code}/complete", json={"correct": 0}).json()
+    assert again["players"][0]["correct"] == 3
+    assert client.get(f"/api/quiz/duel/{code}").json()["players"][0]["me"] is False
+    assert client.get("/api/quiz/duel/gibtesnicht").status_code == 404
+
+
+def test_quiz_duel_expires(client):
+    _register(client)
+    _seed_quiz("Osternburg", n=1)
+    ids = [q["id"] for q in client.get("/api/quiz/round?areas=district:Osternburg").json()["questions"]]
+    code = client.post("/api/quiz/duel", json={"question_ids": ids, "correct": 1}).json()["code"]
+    store = Store(RATSLOTSE_DB)
+    with store._conn:
+        store._conn.execute("UPDATE quiz_duels SET created_at = '2020-01-01T00:00:00'")
+    store.close()
+    assert client.get(f"/api/quiz/duel/{code}").status_code == 404

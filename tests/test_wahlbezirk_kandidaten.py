@@ -85,7 +85,7 @@ def test_ein_wahlbezirk_kennt_sein_wahllokal_und_seinen_wahlbereich(stand):
     d = service.district_candidates(reg, snap, 504)
     assert d is not None
     assert d["name"] == "504 Grundschule Bümmerstede" and d["area"] == 5 and d["postal"] is False
-    assert d["valid_votes"] == 1718
+    assert d["valid_votes"] == 1730
     # Briefwahl gehört dazu — ein Drittel der Stimmen liegt dort.
     brief = service.district_candidates(reg, snap, 954)
     assert brief is not None and brief["postal"] is True and brief["area"] == 5
@@ -109,7 +109,7 @@ def test_der_filter_zeigt_die_kandidaturen_dieses_wahllokals(stand):
     assert stimmen == sorted(stimmen, reverse=True)
     # Und die Zahl ist die des Wahllokals, nicht die der Stadt.
     stadtweit = next(z for z in candidates.ranking(nacht)["rows"] if z["name"].startswith("Oeljeschläger"))
-    assert erste["votes"] == 105 and stadtweit["votes"] == 1539
+    assert erste["votes"] == 105 and stadtweit["votes"] == 1542
 
 
 def test_der_anteil_rechnet_gegen_die_liste_im_bezirk(stand):
@@ -235,7 +235,7 @@ def test_eine_kandidatur_in_allen_ihren_bezirken(stand):
     # Stärkster zuerst — und die Summe ist genau das Wahlbereichs-Ergebnis.
     stimmen = [b["votes"] or 0 for b in bezirke]
     assert stimmen == sorted(stimmen, reverse=True)
-    assert sum(stimmen) == 4019
+    assert sum(stimmen) == 4028
     assert bezirke[0]["name"] == "214 GS Drielake" and bezirke[0]["votes"] == 292
 
 
@@ -248,7 +248,7 @@ def test_die_beiden_anteile_zeigen_in_verschiedene_richtungen(stand):
     assert round(sum(b["share_pct"] or 0 for b in bezirke)) == 100
     for b in bezirke:
         if b["votes"]:
-            assert b["share_pct"] == round(100 * b["votes"] / 4019, 2)
+            assert b["share_pct"] == round(100 * b["votes"] / 4028, 2)
             assert 0 < (b["party_share_pct"] or 0) <= 100, b["name"]
 
 
@@ -270,7 +270,7 @@ def test_auch_ein_einzelwahlvorschlag_hat_bezirke(stand):
 def test_der_endpunkt_liefert_die_kandidatur_und_weist_unbekanntes_ab():
     d = router.wahlabend_kandidat(party="spd", area=2, position=1, probe=None,
                                   counted=None, wahl="ratswahl-2026")
-    assert d["name"] == "Prange, Ulf" and d["votes"] == 4019
+    assert d["name"] == "Prange, Ulf" and d["votes"] == 4028
     assert d["party_short"] and d["area_roman"] == "II"
     assert sum(b["votes"] or 0 for b in d["districts"]) == d["votes"]
 

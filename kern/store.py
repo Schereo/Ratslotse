@@ -346,6 +346,32 @@ CREATE TABLE IF NOT EXISTS qa_conversation_turns (
 );
 CREATE INDEX IF NOT EXISTS idx_qa_turns_gespraech ON qa_conversation_turns(conversation_id);
 
+-- Lottis Selbstprüfung (council/self_check.py, seit 24.09.2026): eine stille
+-- Stichprobe — je geprüfter Antwort das Urteil, geprüft NACH der Auslieferung.
+-- IMMER gespeichert: Urteil, Stufe, Kategorien, kurze Gründe (ohne Zitat der
+-- Frage — der Prüfer darf sie nicht zitieren, und self_check._kurz streicht,
+-- was er trotzdem übernimmt), Seite, Modell, Dauer, Kosten. Frage und Antwort
+-- NUR mit der Einwilligung in die Gesprächsspeicherung
+-- (web_users.saves_conversations = 1) — sonst NULL. user_id für die
+-- Konto-Löschung (USER_OWNED_TABLES).
+CREATE TABLE IF NOT EXISTS assistant_checks (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id      INTEGER NOT NULL,
+    created      TEXT NOT NULL,
+    surface      TEXT NOT NULL DEFAULT 'lotti',
+    route        TEXT NOT NULL,
+    verdict      TEXT NOT NULL,          -- good | poor | unknown
+    stage        TEXT NOT NULL,          -- rules | model
+    categories   TEXT NOT NULL DEFAULT '[]',   -- JSON-Liste
+    reasons      TEXT NOT NULL DEFAULT '[]',   -- JSON-Liste, je ≤ 160 Zeichen
+    model        TEXT,
+    duration_ms  INTEGER,
+    cost_usd     REAL,
+    question     TEXT,
+    answer       TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_assistant_checks_created ON assistant_checks(created);
+
 -- Geteilte „Frag den Rat"-Antworten (Task 31): bewusste Einzel-
 -- Veröffentlichung per Klick — unabhängig vom „Gespräche speichern"-Opt-in.
 -- token ist der öffentliche Schlüssel (unerratbar); user_id nur intern für
@@ -375,7 +401,9 @@ CREATE TABLE IF NOT EXISTS deep_research_jobs (
     sources  TEXT,                  -- JSON {sources, presse, debatten, planungen, cited, facetten, gelesen, zeitraum}
     seen     INTEGER NOT NULL DEFAULT 0,  -- Client hat den fertigen Bericht gerendert
     created  TEXT NOT NULL,
-    updated  TEXT NOT NULL
+    updated  TEXT NOT NULL,
+    model    TEXT,                  -- Modell des Berichts, beim Einreichen gewählt (NULL = vor 09/2026)
+    premium  INTEGER NOT NULL DEFAULT 0  -- 1 = mit dem Recht premium_models eingereicht
 );
 CREATE INDEX IF NOT EXISTS idx_deep_jobs_user ON deep_research_jobs(user_id, created DESC);
 
@@ -391,6 +419,7 @@ CREATE TABLE IF NOT EXISTS quiz_answers (
     answered_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_quiz_answers_owner ON quiz_answers(owner_id, area_type, area_key);
+CREATE INDEX IF NOT EXISTS idx_quiz_answers_question ON quiz_answers(question_id, owner_id);
 
 -- Nutzer-Bewertung einer Frage (Qualitäts-Kreislauf → schlechte ausmustern).
 CREATE TABLE IF NOT EXISTS quiz_ratings (
@@ -411,6 +440,34 @@ CREATE TABLE IF NOT EXISTS quiz_daily (
     points       INTEGER NOT NULL,
     completed_at TEXT NOT NULL,
     PRIMARY KEY (owner_id, day)
+);
+
+-- Blitzrunde (Plan Q6): 60 Sekunden, je Lauf eine Zeile — die Bestmarke ist
+-- das MAX darüber. Einzelantworten stehen wie immer in quiz_answers.
+CREATE TABLE IF NOT EXISTS quiz_blitz (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    owner_id    INTEGER NOT NULL,
+    day         TEXT NOT NULL,          -- YYYY-MM-DD (UTC)
+    correct     INTEGER NOT NULL,
+    answered    INTEGER NOT NULL,
+    finished_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_quiz_blitz_owner ON quiz_blitz(owner_id, correct);
+-- Duell (Plan Q9): eine gespielte Runde als Herausforderung. Der Code steht
+-- im geteilten Link; nach DUEL_DAYS Tagen verfällt er.
+CREATE TABLE IF NOT EXISTS quiz_duels (
+    code          TEXT PRIMARY KEY,
+    owner_id      INTEGER NOT NULL,
+    question_ids  TEXT NOT NULL,        -- JSON-Liste
+    owner_correct INTEGER NOT NULL,
+    created_at    TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS quiz_duel_players (
+    code        TEXT NOT NULL,
+    owner_id    INTEGER NOT NULL,
+    correct     INTEGER NOT NULL,
+    finished_at TEXT NOT NULL,
+    PRIMARY KEY (code, owner_id)
 );
 
 -- Eigene Quizfragen (RL-U14): privat je Konto, zum Üben — geben bewusst
@@ -811,11 +868,15 @@ USER_OWNED_TABLES: tuple[tuple[str, str], ...] = (
     ("prediction_players", "owner_id"),
     ("qa_conversations", "user_id"),
     ("qa_conversation_turns", "user_id"),
+    ("assistant_checks", "user_id"),
     ("qa_shares", "user_id"),
     ("deep_research_jobs", "user_id"),
     ("quiz_answers", "owner_id"),
     ("quiz_ratings", "owner_id"),
     ("quiz_daily", "owner_id"),
+    ("quiz_blitz", "owner_id"),
+    ("quiz_duels", "owner_id"),
+    ("quiz_duel_players", "owner_id"),
     ("user_quiz_questions", "owner_id"),
     ("user_activity", "owner_id"),
     # Feedback wird mitgelöscht: Es ist eine Nachricht dieser Person. Die
@@ -1743,6 +1804,17 @@ class Store:
             with self._conn:
                 self._conn.execute(
                     "ALTER TABLE qa_conversations ADD COLUMN kind TEXT NOT NULL DEFAULT 'ask'")
+        # Recherche Plus (23.09.2026): Welches Modell den Bericht schrieb und
+        # ob das Recht `premium_models` den Ausschlag gab — beim Einreichen
+        # festgehalten. Alte Zeilen bleiben ohne Modell und ohne Plus.
+        dj_cols = self._table_cols("deep_research_jobs")
+        if dj_cols and "model" not in dj_cols:
+            with self._conn:
+                self._conn.execute("ALTER TABLE deep_research_jobs ADD COLUMN model TEXT")
+        if dj_cols and "premium" not in dj_cols:
+            with self._conn:
+                self._conn.execute(
+                    "ALTER TABLE deep_research_jobs ADD COLUMN premium INTEGER NOT NULL DEFAULT 0")
         qs_cols = self._table_cols("qa_shares")
         if qs_cols and "extras" not in qs_cols:
             with self._conn:
@@ -2488,6 +2560,83 @@ class Store:
                 "category, correct, points, answered_at) VALUES (?,?,?,?,?,?,?,?)",
                 (owner_id, question_id, area_type, area_key, category, int(correct), points, now),
             )
+
+    def quiz_others_result(self, question_id: int, owner_id: int) -> tuple[int, int]:
+        """(Mitspielende, davon richtig) bei einer Frage — ohne ``owner_id``,
+        und je Konto nur die ERSTE Antwort: Wer eine Frage im Fehler-Stapel
+        dreimal übt, lag am Ende richtig, wusste es aber beim ersten Mal nicht."""
+        row = self._conn.execute(
+            "SELECT COUNT(*) n, COALESCE(SUM(a.correct), 0) ok FROM quiz_answers a "
+            "WHERE a.question_id = ? AND a.owner_id != ? AND a.id = ("
+            "  SELECT MIN(b.id) FROM quiz_answers b "
+            "  WHERE b.question_id = a.question_id AND b.owner_id = a.owner_id)",
+            (question_id, owner_id)).fetchone()
+        return int(row["n"]), int(row["ok"])
+
+    def quiz_area_totals(self) -> list[dict]:
+        """Beantwortet/richtig je Gebiet über ALLE Konten — ohne Kontobezug,
+        für „Wie gut kennt Oldenburg …" auf der Stadtkarte (Plan Q11)."""
+        return [dict(r) for r in self._conn.execute(
+            "SELECT area_type, area_key, COUNT(*) answered, COALESCE(SUM(correct), 0) correct "
+            "FROM quiz_answers GROUP BY area_type, area_key").fetchall()]
+    def record_quiz_blitz(self, owner_id: int, day: str, correct: int, answered: int) -> dict:
+        """Einen Blitz-Lauf buchen; zurück: Bestmarke gesamt und heute, und ob
+        dieser Lauf sie gerade gesetzt hat."""
+        before = self._conn.execute(
+            "SELECT COALESCE(MAX(correct), 0) FROM quiz_blitz WHERE owner_id = ?", (owner_id,)).fetchone()[0]
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute(
+                "INSERT INTO quiz_blitz (owner_id, day, correct, answered, finished_at) VALUES (?,?,?,?,?)",
+                (owner_id, day, correct, answered, now))
+        today = self._conn.execute(
+            "SELECT MAX(correct) FROM quiz_blitz WHERE owner_id = ? AND day = ?", (owner_id, day)).fetchone()[0]
+        return {"best": max(before, correct), "today_best": today or 0,
+                "new_best": correct > before}
+
+    def quiz_blitz_best(self, owner_id: int) -> int:
+        return self._conn.execute(
+            "SELECT COALESCE(MAX(correct), 0) FROM quiz_blitz WHERE owner_id = ?", (owner_id,)).fetchone()[0]
+    def create_quiz_duel(self, owner_id: int, question_ids: list[int], owner_correct: int) -> str:
+        """Ein Duell anlegen; zurück der Code für den Link (10 Zeichen aus
+        einem Alphabet ohne verwechselbare Zeichen)."""
+        alphabet = "abcdefghjkmnpqrstuvwxyz23456789"
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        for _ in range(5):
+            code = "".join(secrets.choice(alphabet) for _ in range(10))
+            try:
+                with self._conn:
+                    self._conn.execute(
+                        "INSERT INTO quiz_duels (code, owner_id, question_ids, owner_correct, created_at) "
+                        "VALUES (?,?,?,?,?)", (code, owner_id, json.dumps(question_ids), owner_correct, now))
+                return code
+            except sqlite3.IntegrityError:
+                continue
+        raise RuntimeError("Kein freier Duell-Code")
+
+    def quiz_duel(self, code: str) -> dict | None:
+        """Das Duell samt Anzeigename des Herausforderers und allen, die es
+        gespielt haben (Anzeigename, Treffer)."""
+        r = self._conn.execute(
+            "SELECT d.*, u.display_name FROM quiz_duels d LEFT JOIN web_users u ON u.id = d.owner_id "
+            "WHERE d.code = ?", (code,)).fetchone()
+        if not r:
+            return None
+        players = [dict(p) for p in self._conn.execute(
+            "SELECT p.owner_id, p.correct, u.display_name FROM quiz_duel_players p "
+            "LEFT JOIN web_users u ON u.id = p.owner_id WHERE p.code = ? ORDER BY p.finished_at",
+            (code,)).fetchall()]
+        return {"code": r["code"], "owner_id": r["owner_id"], "owner_name": r["display_name"],
+                "question_ids": json.loads(r["question_ids"]), "owner_correct": r["owner_correct"],
+                "created_at": r["created_at"], "players": players}
+
+    def record_quiz_duel_play(self, code: str, owner_id: int, correct: int) -> None:
+        """Einmal je Konto: Das erste Ergebnis zählt, wie bei „wie lagen die anderen"."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute(
+                "INSERT OR IGNORE INTO quiz_duel_players (code, owner_id, correct, finished_at) "
+                "VALUES (?,?,?,?)", (code, owner_id, correct, now))
 
     def quiz_answered_ids(self, owner_id: int) -> list[int]:
         return [r[0] for r in self._conn.execute(
@@ -3321,16 +3470,25 @@ class Store:
 
     # ---- „Gründliche Recherche" (RG-10, Task 34) ---------------------------
 
-    def deep_job_anlegen(self, user_id: int, question: str) -> str:
-        """Neuen Recherche-Job registrieren → unerratbare Job-ID."""
+    def deep_job_anlegen(self, user_id: int, question: str, model: str | None = None,
+                         premium: bool = False) -> str:
+        """Neuen Recherche-Job registrieren → unerratbare Job-ID.
+
+        ``model`` und ``premium`` halten fest, womit der Bericht geschrieben
+        wird — entschieden beim Einreichen aus den Rechten des Kontos, damit
+        die Kosten je Bericht nachvollziehbar bleiben und der Client den
+        Hinweis „mit erweitertem Modell“ auch nach einem Neustart zeigt.
+        """
         import secrets
 
         job_id = secrets.token_urlsafe(12)
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
             self._conn.execute(
-                "INSERT INTO deep_research_jobs (id, user_id, question, status, created, updated) "
-                "VALUES (?, ?, ?, 'laeuft', ?, ?)", (job_id, user_id, question[:300], now, now))
+                "INSERT INTO deep_research_jobs "
+                "(id, user_id, question, status, created, updated, model, premium) "
+                "VALUES (?, ?, ?, 'laeuft', ?, ?, ?, ?)",
+                (job_id, user_id, question[:300], now, now, model, 1 if premium else 0))
         return job_id
 
     def deep_job_update(self, job_id: str, status: str, bericht: str | None = None,
@@ -3346,10 +3504,15 @@ class Store:
     def deep_job_get(self, job_id: str, user_id: int) -> dict | None:
         """Job-Zeile — nur für den Eigentümer."""
         row = self._conn.execute(
-            "SELECT id, question, status, report, sources, seen, created, updated "
+            "SELECT id, question, status, report, sources, seen, created, updated, "
+            "premium AS premium_model "
             "FROM deep_research_jobs WHERE id = ? AND user_id = ?",
             (job_id, user_id)).fetchone()
-        return dict(row) if row else None
+        if not row:
+            return None
+        aus = dict(row)
+        aus["premium_model"] = bool(aus["premium_model"])
+        return aus
 
     def deep_job_aktuell(self, user_id: int) -> dict | None:
         """Der jüngste Job des Kontos — damit der Client nach Navigation oder
@@ -3428,6 +3591,62 @@ class Store:
             self._conn.execute("UPDATE qa_conversations SET updated = ? WHERE id = ?",
                                (now, conversation_id))
             return True
+
+    def assistant_check_speichern(self, user_id: int, *, route: str, verdict: str,
+                                  stage: str, categories: list[str], reasons: list[str],
+                                  model: str | None, duration_ms: int | None,
+                                  cost_usd: float | None, question: str | None = None,
+                                  answer: str | None = None) -> None:
+        """Ein Urteil der Selbstprüfung ablegen.
+
+        Frage und Antwort nur mit Einwilligung — die prüft HIER der Store,
+        nicht der Aufrufer: Eine Stelle, die das vergisst, legte sonst Fragen
+        von Konten ab, die ausdrücklich nichts speichern wollen.
+        """
+        mit_text = self.get_qa_speichern(user_id) == 1
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute(
+                "INSERT INTO assistant_checks (user_id, created, route, verdict, stage, "
+                "categories, reasons, model, duration_ms, cost_usd, question, answer) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (user_id, now, route[:200], verdict, stage,
+                 json.dumps(categories[:6], ensure_ascii=False),
+                 json.dumps([r[:160] for r in reasons[:3]], ensure_ascii=False),
+                 model, duration_ms, cost_usd,
+                 (question or "")[:600] if mit_text and question else None,
+                 (answer or "")[:8000] if mit_text and answer else None))
+
+    def selbstpruefung_auswertung(self, seit: str) -> dict:
+        """Die Zahlen für den Admin-Reiter „Lotti“ — ab dem Tag ``seit``."""
+        zeilen = self._conn.execute(
+            "SELECT route, verdict, stage, categories, duration_ms, cost_usd "
+            "FROM assistant_checks WHERE created >= ?", (seit,)).fetchall()
+        seiten: dict[str, dict] = {}
+        gruende: dict[str, int] = {}
+        dauer = sorted(r["duration_ms"] for r in zeilen if r["duration_ms"] is not None)
+        for r in zeilen:
+            s = seiten.setdefault(r["route"], {"route": r["route"], "checked": 0, "poor": 0})
+            s["checked"] += 1
+            if r["verdict"] == "poor":
+                s["poor"] += 1
+            try:
+                kategorien = json.loads(r["categories"] or "[]")
+            except (ValueError, TypeError):
+                kategorien = []
+            for k in kategorien:
+                gruende[k] = gruende.get(k, 0) + 1
+        return {
+            "checked": len(zeilen),
+            "poor": sum(1 for r in zeilen if r["verdict"] == "poor"),
+            "unknown": sum(1 for r in zeilen if r["verdict"] == "unknown"),
+            "by_rules": sum(1 for r in zeilen if r["stage"] == "rules" and r["verdict"] == "poor"),
+            "cost_usd": round(sum(r["cost_usd"] or 0 for r in zeilen), 4),
+            "p50_ms": dauer[len(dauer) // 2] if dauer else None,
+            "pages": sorted(seiten.values(), key=lambda x: (-x["poor"], -x["checked"]))[:15],
+            "reasons": [{"key": k, "n": n} for k, n in
+                        sorted(gruende.items(), key=lambda p: -p[1])[:10]],
+        }
 
     @staticmethod
     def _titel_muster(suche: str | None) -> str | None:
@@ -4540,6 +4759,9 @@ class Store:
             "elements": oben(elemente, 15),
             "questions": sorted(fragen.values(), key=lambda f: -f["n"])[:50],
             "feedback": daumen,
+            # Lottis Selbstprüfung (council/self_check.py): eine stille
+            # Stichprobe — wie oft beanstandet, je Seite und Grund.
+            "self_check": self.selbstpruefung_auswertung(seit),
             # Der Anstupser ist noch nicht gebaut; die drei Zahlen stehen
             # deshalb auf 0 und die Oberfläche sagt das. Sie hier schon zu
             # lesen kostet nichts und erspart später eine Vertragsänderung.

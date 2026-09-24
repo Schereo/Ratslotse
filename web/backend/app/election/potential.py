@@ -108,14 +108,14 @@ class Ratswahl:
     #: Bezirk → dort ausgestellte Wahlscheine (Spalte A2).
     ballot_papers: dict[int, int]
     ballot_papers_city: int
-    #: Gültige Stimmen je Wählendem — bis zu drei je Person (2026: 2,91).
+    #: Gültige Stimmen je Wählendem — bis zu drei je Person (2026: 2,93 amtlich, 2,91 vorläufig).
     votes_per_voter: float
 
 
 def _ratswahl_2026() -> Ratswahl:
     """Aus der Open-Data-CSV der Ratswahl 2026 — nicht aus der Generalprobe,
     die trägt die Zahlen von 2021 (der Fehler bis 16.09.2026: 37.430 CDU-
-    Stimmen von 2021 statt 34.335 von 2026)."""
+    Stimmen von 2021 statt 34.608 von 2026)."""
     import csv
 
     from . import reference

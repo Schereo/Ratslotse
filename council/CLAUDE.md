@@ -65,6 +65,26 @@ Datensatz an und die Tabelle wüchse mit der Zahl der Läufe.
 Mehrschrittige Ingests laufen in `transaktion(...)`. Bricht ein Cron mitten
 drin ab, darf kein halber Jahrgang stehen bleiben.
 
+**Im Prompt-Baustein steht jede Zahl unter ihrem eigenen Jahr.** Eine
+eingerückte Zeile liest das Modell als Aufschlüsselung der Zeile darüber —
+am 23.09.2026 standen so die Schuldenarten 2025 unter „Ein Jahr davor
+(2024)“ und die Investitionsarten 2025 unter „Höchster Wert: 2020“, und
+beide Modelle gaben sie für das falsche Jahr aus. Deshalb: „davon“ nur direkt
+unter seiner Summe, mit demselben Jahr, zusammen gleich der Summe; jede
+eingerückte Zeile mit Betrag nennt ihr Jahr selbst. `tests/test_geld_gliederung.py`
+prüft das für jede Facette an echten Zahlen; eine neue Facette braucht dort
+eine Frage im Abzug (die Fehlermeldung nennt den Befehl).
+
+## Ein Text über einen Beschluss kennt dessen Ergebnis
+
+Bei einem **abgelehnten** oder vertagten Punkt ist `official_text` der
+Vorschlag, nicht das, was gilt. Ein Prompt ohne `outcome` macht daraus einen
+Beschluss („Die Grundsteuer B steigt auf 490 Prozent“, einstimmig abgelehnt).
+Wer einen neuen Text über Beschlüsse erzeugt, gibt das Ergebnis mit
+(`outcome_note.note` bzw. `outcome_note.LABEL`) und nimmt die Textart in
+`tests/test_texte_kennen_ergebnis.py` auf; `eval/run_ergebnis_texte.py` misst
+es am echten Modell, `scripts/fix_outcome_summaries.py` zieht den Bestand nach.
+
 ## Zwei Namensräume, gleiche Wörter
 
 `qa_antwort`, `deep_bericht` und Geschwister sind **gleichzeitig**

@@ -7,19 +7,23 @@ View auf ihre Stadtteile (keine eigenen Fragen) — der Filter expandiert sie.
 from __future__ import annotations
 
 import random
-from datetime import datetime
+from datetime import datetime, timedelta
+from typing import cast
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
-from council import geo, places
+from council import geo, places, quiz_formats, quiz_pins
 from council.store import CouncilStore
 from kern.store import Store
 
-from ..antworten import (Ok, OkWithId, QuizAreas, QuizDailyRound, QuizDayCompleted, QuizFlagged,
+from ..antworten import (Ok, OkWithId, QuizAreas, QuizBlitzResult, QuizDailyRound, QuizDayCompleted, QuizDuel,
+                         QuizDuelCreated, QuizFlagged, QuizJoker, QuizPinResult, QuizPinRound,
                          QuizMapResult, QuizMapRound, QuizOwnQuestions, QuizResult, QuizRound,
                          QuizScore)
+from ..clients import is_app_client
 from ..deps import get_council_store, get_store, require_active, require_admin
-from ..schemas import (QuizAnswerIn, QuizDailyIn, QuizMapIn, QuizRateIn,
+from ..schemas import (QuizAnswerIn, QuizBlitzIn, QuizDailyIn, QuizDuelDoneIn, QuizDuelIn, QuizJokerIn, QuizMapIn,
+                       QuizPinIn, QuizRateIn,
                        UserQuizAnswerIn, UserQuizQuestionIn)
 
 router = APIRouter(prefix="/api/quiz", tags=["quiz"])
@@ -28,6 +32,22 @@ CATEGORIES = ["history", "places", "people", "council_politics", "estimation"]
 _POINTS = {"easy": 1, "medium": 2, "hard": 3}
 DAILY_N = 5
 MAP_POINTS = 2  # feste Punkte je richtig verorteten Stadtteil
+#: Ab so vielen anderen Mitspielenden zeigt die Auflösung, wie sie lagen.
+#: Darunter sagt eine Quote nichts („100 % lagen richtig" heißt: eine Person).
+OTHERS_MIN = 5
+#: Stufen der Fortschrittskarte: (ab beantwortet, ab Quote, Wort). Die oberste
+#: ist dieselbe Schwelle wie das „Kenner"-Abzeichen in ``_badges``.
+DISTRICT_LEVELS = [(5, 0.8, "gemeistert"), (3, 0.5, "vertraut"), (1, 0.0, "entdeckt")]
+#: Dieselbe Karte für alle (Plan Q11): Stufe nach der Trefferquote aller
+#: Mitspielenden — erst ab so vielen Antworten je Ortsbereich, darunter sagt
+#: eine Quote nichts und verriete bei zwei Leuten, wie jemand gespielt hat.
+ALL_MIN_ANSWERS = 20
+ALL_LEVELS = [(0.75, "gut bekannt"), (0.5, "bekannt"), (0.0, "wenig bekannt")]
+ALL_NONE = "zu wenige Antworten"
+#: Die Wörter je Stufe 0–3, damit Web und App dieselbe Legende zeigen.
+LEGEND = {"mine": ["unentdeckt", "entdeckt", "vertraut", "gemeistert"],
+          "all": [ALL_NONE, "wenig bekannt", "bekannt", "gut bekannt"]}
+_ALL_CACHE: dict = {"at": 0.0, "value": None}
 
 
 def _today() -> str:
@@ -54,6 +74,78 @@ def _badges(stats: dict, streak: int, theme_labels: dict[str, str]) -> list[dict
             name = theme_labels.get(a["area_key"], a["area_key"]) if a["area_type"] == "topic" else a["area_key"]
             out.append({"key": f"kenner:{a['area_type']}:{a['area_key']}",
                         "label": f"{name}-Kenner", "tier": "bronze"})
+    return out
+
+
+def _ortsbereich_of(key: str, council: CouncilStore, ob: set[str]) -> str | None:
+    """Der Ortsbereich, zu dem ein Quiz-Gebiet gehört — Unterorte wie das
+    Eversten Holz zählen für Eversten, sonst blieben sie auf der Karte
+    unsichtbar."""
+    place = council.resolve_place(key)
+    seen: set[str] = set()
+    while place and place.id not in seen:
+        if place.name in ob:
+            return place.name
+        seen.add(place.id)
+        place = council.resolve_place(place.parent_ids[0]) if place.parent_ids else None
+    return key if key in ob else None
+
+
+def _district_progress(by_area: list[dict], council: CouncilStore) -> list[dict]:
+    """Alle Ortsbereiche mit Stufe 0–3 — auch die unentdeckten, sonst kann die
+    Karte nicht zeigen, was noch fehlt."""
+    names = geo.ortsbereiche()
+    ob = set(names)
+    agg = {n: [0, 0] for n in names}
+    for a in by_area:
+        if a["area_type"] != "district":
+            continue
+        name = _ortsbereich_of(a["area_key"], council, ob)
+        if name:
+            agg[name][0] += a["answered"]
+            agg[name][1] += a["correct"]
+    out = []
+    for name in sorted(names):
+        answered, correct = agg[name]
+        level, label = 0, "unentdeckt"
+        for i, (min_n, min_q, word) in enumerate(DISTRICT_LEVELS):
+            if answered >= min_n and correct / answered >= min_q:
+                level, label = len(DISTRICT_LEVELS) - i, word
+                break
+        out.append({"district": name, "answered": answered, "correct": correct,
+                    "level": level, "level_label": label})
+    return out
+
+
+def _district_all(store: Store, council: CouncilStore) -> list[dict]:
+    """Die Karte aller: je Ortsbereich die Trefferquote aller Mitspielenden,
+    zehn Minuten zwischengespeichert (die Summe läuft über alle Antworten)."""
+    import time
+    if _ALL_CACHE["value"] is not None and time.time() - _ALL_CACHE["at"] < 600:
+        return _ALL_CACHE["value"]
+    names = geo.ortsbereiche()
+    ob = set(names)
+    agg = {n: [0, 0] for n in names}
+    for a in store.quiz_area_totals():
+        if a["area_type"] != "district":
+            continue
+        name = _ortsbereich_of(a["area_key"], council, ob)
+        if name:
+            agg[name][0] += a["answered"]
+            agg[name][1] += a["correct"]
+    out = []
+    for name in sorted(names):
+        answered, correct = agg[name]
+        level, label = 0, ALL_NONE
+        if answered >= ALL_MIN_ANSWERS:
+            for i, (min_q, word) in enumerate(ALL_LEVELS):
+                if correct / answered >= min_q:
+                    level, label = len(ALL_LEVELS) - i, word
+                    break
+        # Unter der Schwelle keine Zahlen — nur „zu wenige Antworten".
+        out.append({"district": name, "answered": answered if level else 0,
+                    "correct": correct if level else 0, "level": level, "level_label": label})
+    _ALL_CACHE.update(at=time.time(), value=out)
     return out
 
 
@@ -121,7 +213,8 @@ def areas(user: dict = Depends(require_active),
 
 
 @router.get("/round")
-def round_(areas: str = Query(..., description="komma-separiert, z. B. electoral_district:3,district:Osternburg"),
+def round_(request: Request,
+           areas: str = Query(..., description="komma-separiert, z. B. electoral_district:3,district:Osternburg"),
            categories: str = "", n: int = Query(10, ge=1, le=30),
            user: dict = Depends(require_active),
            store: Store = Depends(get_store),
@@ -132,7 +225,8 @@ def round_(areas: str = Query(..., description="komma-separiert, z. B. electoral
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Kein gültiges Gebiet gewählt.")
     cats = [c for c in categories.split(",") if c in CATEGORIES]
     questions = council.pick_quiz_questions(
-        pairs, cats or None, store.quiz_answered_ids(user["id"]), n)
+        pairs, cats or None, store.quiz_answered_ids(user["id"]), n,
+        web=not is_app_client(request))
     return {"questions": questions}
 
 
@@ -144,6 +238,27 @@ def _estimate_score(guess: float, actual: float | None, diff_points: int) -> tup
     err = abs(guess - actual) / max(abs(actual), 1.0)
     frac = 1.0 if err <= 0.05 else 0.66 if err <= 0.15 else 0.33 if err <= 0.30 else 0.0
     return err <= 0.15, round(diff_points * frac)
+
+
+def _joker_remove(question_id: int, owner_id: int, options: int, correct_index: int) -> list[int]:
+    """Zwei falsche Antworten — je Frage und Konto immer dieselben, damit ein
+    zweiter Aufruf nicht zwei andere streicht (und so die Lösung verrät)."""
+    wrong = [i for i in range(options) if i != correct_index]
+    return sorted(random.Random(f"{question_id}:{owner_id}").sample(wrong, 2))
+
+
+@router.post("/joker")
+def joker(payload: QuizJokerIn,
+          user: dict = Depends(require_active),
+          council: CouncilStore = Depends(get_council_store)) -> QuizJoker:
+    """50:50: zwei falsche Antworten streichen. Kostet die Hälfte der Punkte —
+    das rechnet ``/answer`` mit ``joker: true``."""
+    q = council.get_quiz_question(payload.question_id)
+    if not q:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Frage nicht gefunden.")
+    if q.get("qtype") in ("estimate", "order") or len(q.get("options") or []) < 4:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Für diese Frage gibt es keinen Joker.")
+    return {"remove": _joker_remove(q["id"], user["id"], len(q["options"]), q["correct_index"])}
 
 
 @router.post("/answer")
@@ -162,7 +277,16 @@ def answer(payload: QuizAnswerIn,
             "source_type": q.get("source_type"), "source_ref": q.get("source_ref"),
             "detail": q.get("detail"), "topic": q.get("topic"),
             "map": q.get("map"), "image": q.get("image"), "chart": q.get("chart")}
-    if q.get("qtype") == "estimate":
+    if q.get("qtype") == "order":
+        guess = payload.order
+        if not guess or sorted(guess) != list(range(len(q["options"]))):
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Bitte alle vier in eine Reihenfolge bringen.")
+        right = quiz_formats.correct_order(q["options"], q["chart"])
+        dist = quiz_formats.order_distance(guess, right)
+        pts = {0: 3, 1: 2, 2: 1}.get(dist, 0)
+        correct = dist == 0
+        resp.update({"correct": correct, "correct_index": -1, "points": pts, "correct_order": right})
+    elif q.get("qtype") == "estimate":
         if payload.value is None:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "Schätzwert fehlt.")
         correct, pts = _estimate_score(payload.value, q.get("answer_value"), diff_pts)
@@ -171,7 +295,13 @@ def answer(payload: QuizAnswerIn,
     else:
         correct = payload.selected_index == q["correct_index"]
         pts = diff_pts if correct else 0
+        if payload.joker and len(q.get("options") or []) >= 4:
+            pts = -(-pts // 2)  # halbe Punkte, aufgerundet
         resp.update({"correct": correct, "correct_index": q["correct_index"], "points": pts})
+    # Vor dem Buchen gezählt und ohne die eigene Antwort: „wie lagen die anderen?"
+    players, ok = store.quiz_others_result(q["id"], user["id"])
+    if players >= OTHERS_MIN:
+        resp["others"] = {"players": players, "correct_pct": round(100 * ok / players)}
     store.record_quiz_answer(user["id"], q["id"], q["area_type"], q["area_key"],
                              q["category"], correct, pts)
     return resp
@@ -190,14 +320,14 @@ def rate(payload: QuizRateIn,
 
 
 @router.get("/review")
-def review(n: int = Query(10, ge=1, le=30),
+def review(request: Request, n: int = Query(10, ge=1, le=30),
            user: dict = Depends(require_active),
            store: Store = Depends(get_store),
            council: CouncilStore = Depends(get_council_store)) -> QuizRound:
     """„Meine Fehler" — zuletzt falsch beantwortete Fragen zum Wiederholen
     (spaced repetition). Richtig beantwortet fliegt eine Frage aus dem Stapel."""
     ids = store.quiz_wrong_question_ids(user["id"])
-    return {"questions": council.pick_quiz_questions_by_ids(ids, n)}
+    return {"questions": council.pick_quiz_questions_by_ids(ids, n, web=not is_app_client(request))}
 
 
 @router.get("/daily")
@@ -212,6 +342,16 @@ def daily(user: dict = Depends(require_active),
             "questions": [] if done else council.daily_quiz_questions(day, DAILY_N)}
 
 
+def _share_text(day: str, results: list[bool], base_url: str) -> str:
+    """Das Teil-Raster der Tages-Challenge — wie bei Wordle ein Kästchen je
+    Frage, ohne die Fragen zu verraten. Die Emoji stehen NUR im geteilten
+    Text; im UI gilt „kein Emoji" (DESIGNSPRACHE § 8)."""
+    y, m, d = day.split("-")
+    grid = "".join("🟩" if ok else "🟥" for ok in results)
+    host = base_url.removeprefix("https://").removeprefix("http://").rstrip("/")
+    return f"Ratslotse-Quiz {int(d):02d}.{int(m):02d}.\n{grid}  {sum(results)} von {len(results)}\n{host}/quiz"
+
+
 @router.post("/daily/complete")
 def daily_complete(payload: QuizDailyIn,
                    user: dict = Depends(require_active),
@@ -220,7 +360,121 @@ def daily_complete(payload: QuizDailyIn,
     hier nur Abschluss festhalten für „heute erledigt" + Serie)."""
     day = _today()
     store.record_quiz_daily(user["id"], day, payload.correct, payload.total, payload.points)
-    return {"ok": True, "day": day, "streak": store.quiz_streak(user["id"])}
+    out: dict = {"ok": True, "day": day, "streak": store.quiz_streak(user["id"])}
+    if payload.results:
+        from ..config import get_settings
+        out["share_text"] = _share_text(day, payload.results, get_settings().app_base_url)
+    return out
+
+
+@router.get("/blitz-round")
+def blitz_round(n: int = Query(30, ge=5, le=40),
+                _user: dict = Depends(require_active),
+                council: CouncilStore = Depends(get_council_store)) -> QuizRound:
+    """Blitzrunde (Plan Q6): schnelle Fragen für 60 Sekunden, ohne Lösung.
+    Ausgewertet wird jede wie immer über ``/answer``."""
+    return cast(QuizRound, {"questions": council.pick_blitz_questions(n)})
+
+
+@router.post("/blitz/complete")
+def blitz_complete(payload: QuizBlitzIn,
+                   user: dict = Depends(require_active),
+                   store: Store = Depends(get_store)) -> QuizBlitzResult:
+    """Einen Blitz-Lauf abschließen — bucht nur die Bestmarke."""
+    if payload.correct > payload.answered:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Mehr richtige als beantwortete Fragen.")
+    return cast(QuizBlitzResult, store.record_quiz_blitz(user["id"], _today(), payload.correct, payload.answered))
+
+
+@router.get("/pin-round")
+def pin_round(n: int = Query(5, ge=1, le=10),
+              _user: dict = Depends(require_active),
+              council: CouncilStore = Depends(get_council_store)) -> QuizPinRound:
+    """„Wo liegt das?" (Plan Q7): n Orte zum Verorten, ohne Lage."""
+    return cast(QuizPinRound, {"questions": quiz_pins.round_(council, n)})
+
+
+@router.post("/pin-answer")
+def pin_answer(payload: QuizPinIn,
+               user: dict = Depends(require_active),
+               store: Store = Depends(get_store),
+               council: CouncilStore = Depends(get_council_store)) -> QuizPinResult:
+    """Den Pin werten: Entfernung zur Geometrie des Orts, Punkte in Stufen.
+    Gebucht wie das Karten-Quiz (``question_id = 0``) auf den Ortsbereich des
+    Orts — so zählt es auf die Stadtkarte."""
+    rows = council.quiz_pin_rows(0, slug=payload.slug)
+    found = quiz_pins.candidates_from(rows)
+    if not found:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Ort nicht gefunden.")
+    place = found[0]
+    dist = quiz_pins.distance_m(place["geometry"], payload.lat, payload.lon)
+    if dist is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Für diesen Ort gibt es keine Lage.")
+    pts = quiz_pins.points_for(dist)
+    district = geo.ortsbereich_for(place["lat"], place["lon"])
+    if district:
+        store.record_quiz_answer(user["id"], 0, "district", district, "places", pts >= 2, pts)
+    return {"distance_m": int(round(dist)), "distance_label": quiz_pins.describe(dist),
+            "points": pts, "name": place["name"], "geojson": place["geometry"],
+            "lat": place["lat"], "lon": place["lon"]}
+
+
+#: So lange gilt ein Duell-Link.
+DUEL_DAYS = 14
+
+
+def _duel_view(duel: dict, user_id: int, council: CouncilStore) -> QuizDuel:
+    mine = duel["owner_id"] == user_id
+    played = mine or any(p["owner_id"] == user_id for p in duel["players"])
+    by_id = {q["id"]: q for q in council.pick_quiz_questions_by_ids(duel["question_ids"], 10)}
+    questions = [by_id[i] for i in duel["question_ids"] if i in by_id]   # die Reihenfolge des Duells
+    return cast(QuizDuel, {
+        "code": duel["code"], "owner_name": duel["owner_name"] or "Jemand",
+        "owner_correct": duel["owner_correct"], "total": len(duel["question_ids"]),
+        "mine": mine, "played": played, "questions": questions,
+        "players": [{"name": p["display_name"] or "Jemand", "correct": p["correct"],
+                     "me": p["owner_id"] == user_id} for p in duel["players"]] if played else [],
+    })
+
+
+def _live_duel(code: str, store: Store) -> dict:
+    duel = store.quiz_duel(code)
+    if not duel or datetime.fromisoformat(duel["created_at"]) < datetime.utcnow() - timedelta(days=DUEL_DAYS):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Dieses Duell gibt es nicht (mehr).")
+    return duel
+
+
+@router.post("/duel")
+def duel_create(payload: QuizDuelIn,
+                user: dict = Depends(require_active),
+                store: Store = Depends(get_store),
+                council: CouncilStore = Depends(get_council_store)) -> QuizDuelCreated:
+    """Eine gespielte Runde als Herausforderung (Plan Q9). Nur aktive Fragen."""
+    ids = list(dict.fromkeys(payload.question_ids))
+    if len(council.pick_quiz_questions_by_ids(ids, 10)) != len(ids):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Nicht alle Fragen gibt es noch.")
+    if payload.correct > len(ids):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Mehr richtige als Fragen.")
+    return {"code": store.create_quiz_duel(user["id"], ids, payload.correct)}
+
+
+@router.get("/duel/{code}")
+def duel_get(code: str,
+             user: dict = Depends(require_active),
+             store: Store = Depends(get_store),
+             council: CouncilStore = Depends(get_council_store)) -> QuizDuel:
+    return _duel_view(_live_duel(code, store), user["id"], council)
+
+
+@router.post("/duel/{code}/complete")
+def duel_complete(code: str, payload: QuizDuelDoneIn,
+                  user: dict = Depends(require_active),
+                  store: Store = Depends(get_store),
+                  council: CouncilStore = Depends(get_council_store)) -> QuizDuel:
+    duel = _live_duel(code, store)
+    if duel["owner_id"] != user["id"]:
+        store.record_quiz_duel_play(code, user["id"], min(payload.correct, len(duel["question_ids"])))
+    return _duel_view(store.quiz_duel(code) or duel, user["id"], council)
 
 
 @router.get("/map-round")
@@ -410,6 +664,10 @@ def stats(user: dict = Depends(require_active),
     s["streak"] = streak
     s["badges"] = _badges(s, streak, theme_labels)
     s["daily_done"] = store.quiz_daily_result(user["id"], _today()) is not None
+    s["districts"] = _district_progress(s["by_area"], council)
+    s["districts_all"] = _district_all(store, council)
+    s["district_legend"] = LEGEND
+    s["blitz_best"] = store.quiz_blitz_best(user["id"])
     return s
 
 

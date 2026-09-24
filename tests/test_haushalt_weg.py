@@ -196,3 +196,36 @@ def test_jahr_grenzt_ein(store):
 
     assert [r["year"] for r in store.haushalt_weg()] == [2025, 2026]
     assert [r["year"] for r in store.haushalt_weg(2026)] == [2026]
+
+
+def test_nach_dem_beschluss_amtsblatt_und_debatte_um_die_genehmigung(store):
+    """Die Bekanntmachung kommt aus dem Amtsblatt (council/amtsblatt.py), die
+    Debatte aus der Tagesordnung — 2026 der Grünen-Antrag 26/0389 im
+    Finanzausschuss. Eine „Dienstreisegenehmigung … im Haushaltsjahr" (2025)
+    ist KEINE Debatte um die Genehmigung."""
+    import json
+    from pathlib import Path
+
+    from council import amtsblatt, herkunft
+
+    runde_2026(store)
+    sitzung(store, 5, "Ausschuss für Finanzen und Beteiligungen", "2026-05-06", [
+        ("Ö 13.1", "Kommunalaufsicht: Kredite noch nicht genehmigt (Fraktion Bündnis 90/Die "
+                   "Grünen vom 21.04.2026) - Antrag mit Bericht der Verwaltung", 200),
+        ("Ö 7", "Kostenübernahme und Dienstreisegenehmigung für die Teilnahme an Sitzungen "
+                "im Haushaltsjahr 2026", 201),
+    ])
+    sitzung(store, 6, "Rat", "2027-02-01", [("Ö 3", "Kommunalaufsicht: Bericht", 202)])
+
+    [r] = store.haushalt_weg()
+    assert r["bekanntmachung"] is None               # noch nichts eingelesen
+    assert [(d["date"], d["top"]) for d in r["debatte_genehmigung"]] == [("2026-05-06", "Ö 13.1")]
+
+    texte = json.loads((Path(__file__).parent / "fixtures" / "amtsblatt_satzung_texte.json")
+                       .read_text(encoding="utf-8"))
+    v = amtsblatt.lies(texte["2026"])
+    store.save_satzung_veroeffentlicht(v, issue_nr="8", url="https://x/2026-8.pdf", herkunft=herkunft.Herkunft(
+        kind="city", probe=[amtsblatt.PROBE_VEROEFFENTLICHT], url="https://x/2026-8.pdf", label="Amtsblatt 8/2026"))
+    [r] = store.haushalt_weg()
+    b = r["bekanntmachung"]
+    assert (b["date"], b["issue_nr"], b["approval_note"]) == ("2026-04-17", "8", None)

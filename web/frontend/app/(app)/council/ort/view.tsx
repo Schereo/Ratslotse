@@ -30,7 +30,7 @@ function PlaceInner() {
   const place = data.place;
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-3xl weit:max-w-[1480px]">
       <div className="print-hidden flex items-center justify-between gap-3">
         {zeigeZurueck ? (
           <button onClick={() => zurueck("/council?tab=decisions")}
@@ -52,6 +52,12 @@ function PlaceInner() {
         </div>
       </div>
 
+      {/* Ab `weit` zwei Spalten (docs/plan-breite-schirme.md, PR 6): links
+          das, was den Ort beschreibt; rechts die Beschlussliste, die
+          einspaltig erst nach allem anderen kam. Die DOM-Reihenfolge bleibt,
+          darunter ändert sich nichts. */}
+      <div className="weit:mt-6 weit:grid weit:grid-cols-[minmax(0,560px)_minmax(0,1fr)] weit:items-start weit:gap-x-10">
+      <div className="min-w-0 weit:[&>*:first-child]:mt-0">
       {place.description && (
         <p className="mt-5 rounded-lg border border-border bg-muted/40 p-4 text-sm leading-relaxed text-foreground/90">
           {place.description}
@@ -111,6 +117,8 @@ function PlaceInner() {
         </div>
       )}
 
+      </div>
+      <div className="min-w-0 weit:[&>*:first-child]:mt-0">
       <h2 className="mt-8 text-sm font-semibold text-muted-foreground">Beschlüsse mit Ortsbezug</h2>
       {data.decisions.length > 0 ? (
         <div className="mt-3 space-y-2">
@@ -125,6 +133,8 @@ function PlaceInner() {
       ) : (
         <p className="mt-3 text-sm text-muted-foreground">Noch kein Beschluss ist diesem Ort sicher zugeordnet.</p>
       )}
+      </div>
+      </div>
     </div>
   );
 }

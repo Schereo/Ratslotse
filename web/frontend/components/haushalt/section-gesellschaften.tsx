@@ -142,6 +142,11 @@ function Karte({ daten, g, onOeffnen }: {
             <p className="font-display text-[22px] font-bold leading-tight tracking-tight tabular-nums">
               {wertText(juengstes)}
             </p>
+            {juengstes.source === "annual_accounts" && (
+              <p className="relative z-10 text-[11px] text-muted-foreground">
+                laut Jahresabschluss<Beleg q="company_accounts" />
+              </p>
+            )}
           </div>
           {series.length >= 2 && (
             <div className="w-[128px] flex-none pb-0.5">

@@ -8,6 +8,8 @@ import { featureAktiv, useAppConfig } from "@/lib/features";
 import { karteHref } from "@/lib/routes";
 import { cn, formatDate } from "@/lib/utils";
 import { Button, DetailSkeleton, EmptyState, Sheet, SheetContent, SheetTitle, toast } from "@/components/ui";
+import { SEITEN_POLSTER } from "@/lib/vollbreit";
+import { useUltra } from "@/lib/use-ultra";
 import { StadtKarte, type KartenStufe } from "@/components/stadt-karte";
 import { EbenenChips } from "@/components/ebenen-chips";
 import { ebeneUmschalten, ebenenMerken, ebenenStart, ebenenZuUrl, type EbenenId } from "@/lib/karten-ebenen";
@@ -16,9 +18,9 @@ import Link from "next/link";
 import { api } from "@/lib/api";
 import { themaHref } from "@/lib/routes";
 import type { Entity, EntityMapPoint } from "@/lib/types";
-import { loadOrtsbereichCatalog, loadOrtsbereiche, ortsbereichFor, type OrtsbereichEntry, type OrtsbereichFeature } from "@/lib/districts";
-import { wahlFlaechen, wahlbereiche, listenSortiert, type Wahlstand } from "@/lib/wahl-flaechen";
-import { WahlKarte, WahlKarteBereich } from "@/components/wahl-karte";
+import { loadOrtsbereiche, ortsbereichFor, type OrtsbereichFeature } from "@/lib/districts";
+import { bezirkeIn, wahlParam, type Wahlkarte } from "@/lib/wahlkarte";
+import { WahlBezirkTafel, WahlChips, WahlStadtTafel, WahlViertelTafel } from "@/components/wahl-karte";
 import { EBENEN } from "@/lib/karten-ebenen";
 import { KIND_COLOR, istBeschlussort, punktHref } from "@/components/council-map";
 import { ENTITY_KIND } from "@/components/council-entities";
@@ -62,7 +64,8 @@ export default function KarteView() {
   // `undefined` heißt „noch nicht geladen" und wäre AUS — ein notFound() in
   // diesem Moment träfe jeden beim ersten Aufruf. Deshalb erst nach Antwort.
   if (cfg.isSuccess && !featureAktiv(cfg.data, "mein-viertel")) notFound();
-  if (!cfg.isSuccess) return <DetailSkeleton />;
+  // Das Polster, das die randlose Hülle hier nicht mehr gibt (lib/vollbreit.ts).
+  if (!cfg.isSuccess) return <div className={SEITEN_POLSTER}><DetailSkeleton /></div>;
   return <Buehne />;
 }
 
@@ -96,6 +99,13 @@ function Buehne() {
   // sonst führte der Link auf eine Karte ohne die versprochenen Punkte.
   const orteParam = sp.get("orte");
   const probe = sp.get("probe");
+  // Die Wahl-Ebene: welche Wahl, welcher Bezirk — beides in der Adresse,
+  // damit sich ein Bezirk teilen lässt (docs/plan-viertel-wahlkarte.md).
+  const [wahlSlug, setWahlSlug] = useState<string | null>(() => sp.get("wahl"));
+  const [wahlBezirk, setWahlBezirk] = useState<number | null>(() => {
+    const b = Number(sp.get("bezirk"));
+    return Number.isInteger(b) && b > 0 ? b : null;
+  });
   const orteFilter = useMemo(() => {
     const namen = (orteParam ?? "").split(",").map((n) => n.trim().toLowerCase()).filter(Boolean);
     return namen.length ? new Set(namen) : null;
@@ -121,6 +131,30 @@ function Buehne() {
     z.setAktiv(vorgewaehlt);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vorgewaehlt, ort]);
+  // Ein anderer Ortsbereich → der Bezirk des vorigen gilt nicht mehr.
+  const [ortVorher, setOrtVorher] = useState(ort);
+  if (ortVorher !== ort) { setOrtVorher(ort); if (wahlBezirk != null && ortVorher != null) setWahlBezirk(null); }
+  // Ein Vorhaben gewählt → der Bezirk tritt zurück (eine Auswahl zur Zeit).
+  useEffect(() => { if (z.aktiv != null) setWahlBezirk(null); }, [z.aktiv]);
+  // Die Ebene „Wahlergebnis": das Ergebnis je Urnenbezirk, gerechnet im
+  // Backend (`/api/wahlabend/karte`). Nur mit dem Schalter `wahlabend` —
+  // ohne ihn antwortet der Endpunkt 404, und der Chip bleibt weg. EINE
+  // Abfrage für beide Stufen: Die Antwort kennt je Bezirk seine Ortsbereiche.
+  const wahlSchalter = featureAktiv(cfg.data, "wahlabend");
+  const verborgen = useMemo(() => new Set<EbenenId>(EBENEN.filter((e) => e.schalter && !featureAktiv(cfg.data, e.schalter)).map((e) => e.id)), [cfg.data]);
+  const wahlAn = wahlSchalter && ebenen.has("wahlergebnis");
+  const wahlQ = useQuery({
+    queryKey: ["wahlkarte", wahlSlug],
+    queryFn: () => api.get<Wahlkarte>(wahlSlug ? `/wahlabend/karte?wahl=${encodeURIComponent(wahlSlug)}` : "/wahlabend/karte"),
+    enabled: wahlAn,
+    staleTime: 60_000,
+    // Nur solange noch gezählt wird, lohnt der Takt.
+    refetchInterval: (q) => (wahlAn && q.state.data?.phase === "counting" ? 60_000 : false),
+  });
+  const wahl = wahlAn ? wahlQ.data : undefined;
+  const wahlImViertel = useMemo(() => (wahl && ortName ? bezirkeIn(wahl, ortName) : []), [wahl, ortName]);
+  const gewaehlterBezirk = wahl && ortName && wahlBezirk != null ? wahl.districts.find((d) => d.number === wahlBezirk) ?? null : null;
+
   // Auswahl und Ebenen → Adresse (replace: zurück soll nicht durch jeden Pin
   // und jeden Chip springen). Die Vorgabe der Ebenen bleibt aus der Adresse
   // heraus — sie soll sauber sein, solange nichts Besonderes gilt.
@@ -129,12 +163,16 @@ function Buehne() {
     const e = ebenenZuUrl(ebenen);
     // `probe` (Generalprobe der Wahl-Ebene) reist mit — sonst löschte der
     // erste Chip-Wechsel die Probe aus der Adresse.
+    const mitWahl = ebenen.has("wahlergebnis");
+    const w = mitWahl ? wahlParam(wahlSlug, wahlQ.data) : null;
     const teile = [e == null ? null : `ebenen=${e}`, orteParam ? `orte=${encodeURIComponent(orteParam)}` : null,
-      probe ? `probe=${encodeURIComponent(probe)}` : null].filter(Boolean);
+      probe ? `probe=${encodeURIComponent(probe)}` : null,
+      w ? `wahl=${encodeURIComponent(w)}` : null,
+      mitWahl && ort && wahlBezirk != null ? `bezirk=${wahlBezirk}` : null].filter(Boolean);
     const ziel = teile.length ? `${basis}${basis.includes("?") ? "&" : "?"}${teile.join("&")}` : basis;
     if (window.location.pathname + window.location.search !== ziel) router.replace(ziel, { scroll: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [z.aktiv, ebenen, orteParam, probe]);
+  }, [z.aktiv, ebenen, orteParam, probe, wahlSlug, wahlBezirk, wahlQ.data]);
 
   // Die Ebene „Themen-Orte" (Schritt 3): die Punkte der alten Themen-Karte,
   // geladen erst, wenn die Ebene an ist (der Endpunkt verlangt ein Konto —
@@ -178,34 +216,6 @@ function Buehne() {
     return z;
   }, [themenQ.data, ortName, umrisse]);
 
-  // Die Ebene „Wahlergebnis" (Schritt 7): das Wahlabend-Dashboard je
-  // Wahlbereich, auf die Ortsbereiche gelegt. Nur mit dem Schalter
-  // `wahlabend` — ohne ihn antwortet der Endpunkt 404, und der Chip bleibt
-  // weg. `?probe=2021` reicht die Generalprobe durch, wie auf /wahlabend.
-  const wahlSchalter = featureAktiv(cfg.data, "wahlabend");
-  const verborgen = useMemo(() => new Set<EbenenId>(EBENEN.filter((e) => e.schalter && !featureAktiv(cfg.data, e.schalter)).map((e) => e.id)), [cfg.data]);
-  const wahlAn = wahlSchalter && ebenen.has("wahlergebnis");
-  const wahlQ = useQuery({
-    queryKey: ["wahlabend", probe],
-    queryFn: () => api.get<Wahlstand>(probe === "2021" ? "/wahlabend?probe=2021&counted=60" : "/wahlabend"),
-    enabled: wahlAn,
-    staleTime: 60_000,
-    refetchInterval: wahlAn ? 60_000 : false,
-  });
-  const [katalog, setKatalog] = useState<OrtsbereichEntry[]>([]);
-  useEffect(() => {
-    if (!wahlAn || katalog.length) return;
-    void loadOrtsbereichCatalog().then((k) => setKatalog(k.places)).catch(() => {});
-  }, [wahlAn, katalog.length]);
-  const wahl = useMemo(() => (wahlAn && wahlQ.data && katalog.length ? wahlFlaechen(wahlQ.data, katalog) : undefined), [wahlAn, wahlQ.data, katalog]);
-  // Der Wahlbereich des gewählten Viertels — bei Grenzgebieten alle.
-  const wahlImViertel = useMemo(() => {
-    if (!wahlAn || !wahlQ.data || !ortName) return [];
-    const eintrag = katalog.find((k) => k.name === ortName);
-    const bereiche = wahlbereiche(wahlQ.data);
-    return (eintrag?.electoral_districts ?? []).map((n) => bereiche.get(n)).filter((f): f is NonNullable<typeof f> => !!f);
-  }, [wahlAn, wahlQ.data, katalog, ortName]);
-
   // Schreibtisch: Tafel-Spalte neben der Karte. Telefon: Karte oben, Tafel
   // darunter, Detail als Sheet — die Grenze wie auf /viertel.
   const [breit, setBreit] = useState(false);
@@ -215,12 +225,18 @@ function Buehne() {
     h(); mq.addEventListener("change", h);
     return () => mq.removeEventListener("change", h);
   }, []);
+  // 1440p und 21:9: Die Tafel wird zweispaltig, und ein gewähltes Vorhaben
+  // (bzw. ein Wahlbezirk) öffnet in der rechten Spalte, statt die Liste zu
+  // ersetzen.
+  const ultra = useUltra();
 
   function zumOrt(placeId: string) { router.push(karteHref(placeId)); }
   function zurStadt() { router.push(karteHref()); }
 
-  if (uebersicht.isLoading) return <DetailSkeleton />;
-  if (!orte || !uebersicht.data) return <EmptyState title="Die Karte lässt sich gerade nicht laden." mascot="confused" />;
+  if (uebersicht.isLoading) return <div className={SEITEN_POLSTER}><DetailSkeleton /></div>;
+  if (!orte || !uebersicht.data) {
+    return <div className={SEITEN_POLSTER}><EmptyState title="Die Karte lässt sich gerade nicht laden." mascot="confused" /></div>;
+  }
   const daten = uebersicht.data;
   const stufe: KartenStufe = ortName ? { art: "district", name: ortName } : { art: "city" };
   const place = tafel.data?.place as { id: string; name: string } | undefined;
@@ -240,10 +256,11 @@ function Buehne() {
   );
 
   return (
-    // Die Bühne bricht aus dem Seitenpolster aus: negative Ränder gegen
-    // `px-4/6/8` und `--rl-luft` des App-Layouts, damit die Karte bis an die
-    // Kanten läuft. `@container` für die Spalten-Varianten der Bausteine.
-    <div className="@container -mx-4 -my-[var(--rl-luft)] flex flex-col sm:-mx-6 lg:-mx-8 desk:h-[calc(100dvh)] desk:flex-row desk:overflow-hidden">
+    // Randlos: Die Hülle lässt für /karte Deckel und Polster weg
+    // (lib/vollbreit.ts) — bis 09/2026 brach die Bühne mit negativen Rändern
+    // aus dem Polster aus, blieb dabei aber im 1600er-Deckel stecken.
+    // `@container` für die Spalten-Varianten der Bausteine.
+    <div className="@container flex flex-col desk:h-[calc(100dvh)] desk:flex-row desk:overflow-hidden">
       <div className="relative h-[45dvh] min-h-[280px] desk:h-auto desk:min-h-0 desk:flex-1">
         <StadtKarte
           stufe={stufe}
@@ -259,6 +276,8 @@ function Buehne() {
           themenOrte={themenOrte}
           onThemenOrt={(p) => router.push(punktHref(p))}
           wahl={wahl}
+          wahlBezirk={wahlBezirk}
+          onWahlBezirk={(nr) => { setWahlBezirk(nr); if (nr != null) z.setAktiv(null); }}
           aktiv={z.aktiv}
           gedimmt={z.gedimmt}
           schwebt={z.schwebt}
@@ -273,18 +292,19 @@ function Buehne() {
           stufe={stufe.art}
           verborgen={verborgen}
           zaehler={stufe.art === "city"
-            ? { vorhaben: daten.total, ...(themenAn ? { "themen-orte": themenOrte.length } : {}), ...(wahlAn && wahlQ.data ? { wahlergebnis: wahlQ.data.progress.districts_counted } : {}) }
+            ? { vorhaben: daten.total, ...(themenAn ? { "themen-orte": themenOrte.length } : {}), ...(wahl ? { wahlergebnis: wahl.counted } : {}) }
             : {
               vorhaben: z.vorhaben.length,
               plaene: z.vorhaben.reduce((n, v) => n + v.locations.filter((l) => l.kind === "bplan").length, 0),
               sperrungen: tafel.data?.closures.length ?? 0,
               mitreden: tafel.data?.participations.filter((b) => b.geometry).length ?? 0,
               ...(themenAn ? { "themen-orte": themenOrte.length } : {}),
-              ...(wahlAn && wahlImViertel[0] ? { wahlergebnis: wahlImViertel[0].counted } : {}),
+              ...(wahl ? { wahlergebnis: wahlImViertel.length } : {}),
             }}
           onToggle={ebeneWechseln}
-          unterzeile={themenAn && (
+          unterzeile={(themenAn || wahl) && (
             <div className="flex flex-col gap-1">
+              {wahl && <WahlChips daten={wahl} onWahl={(slug) => { setWahlSlug(slug); setWahlBezirk(null); }} />}
               {orteFilter && (
                 <button type="button" onClick={orteWeg}
                   className="inline-flex w-fit items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary shadow-sm backdrop-blur transition-colors hover:bg-primary/15"
@@ -293,7 +313,7 @@ function Buehne() {
                   <X className="h-3 w-3" aria-hidden />
                 </button>
               )}
-              <ThemenArtChips art={art} zaehler={artZaehler} onArt={setArt} />
+              {themenAn && <ThemenArtChips art={art} zaehler={artZaehler} onArt={setArt} />}
             </div>
           )}
           className="absolute left-3 top-3 z-[500] max-w-[calc(100%-4.5rem)]"
@@ -329,17 +349,21 @@ function Buehne() {
         )}
       </div>
 
-      <aside className="min-w-0 border-t border-border bg-card desk:w-[420px] desk:shrink-0 desk:overflow-y-auto desk:border-l desk:border-t-0" aria-label={ortName ? `Tafel ${ortName}` : "Tafel Oldenburg"}>
+      <aside className="min-w-0 border-t border-border bg-card desk:w-[420px] ultra:desk:w-[840px] desk:shrink-0 desk:overflow-y-auto desk:border-l desk:border-t-0" aria-label={ortName ? `Tafel ${ortName}` : "Tafel Oldenburg"}>
         {stufe.art === "city" ? (
           <StadtTafel daten={daten} orte={orte} meine={meine} byName={byName} onOrt={zumOrt} onHoverOrt={setSchwebtOrt}
-            themen={themenAn ? entitiesQ.data?.entities : undefined} wahl={wahlAn ? wahlQ.data : undefined} />
+            themen={themenAn ? entitiesQ.data?.entities : undefined} wahl={wahl} />
         ) : tafel.isLoading ? (
           <div className="p-5"><DetailSkeleton /></div>
         ) : !tafel.data || !place ? (
           <div className="p-5">
             <EmptyState title="Diesen Ortsbereich gibt es nicht." mascot="search" action={<Button variant="secondary" onClick={zurStadt}>Zur Stadt</Button>} />
           </div>
-        ) : breit && z.ausgewaehlt ? (
+        ) : wahl && gewaehlterBezirk && !ultra ? (
+          <div className="p-5">
+            <WahlBezirkTafel daten={wahl} bezirk={gewaehlterBezirk} ort={ortName} onZurueck={() => setWahlBezirk(null)} />
+          </div>
+        ) : breit && z.ausgewaehlt && !ultra ? (
           <div className="p-5">
             <button type="button" onClick={() => z.setAktiv(null)} className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
               <ArrowLeft className="h-4 w-4" /> {place.name}
@@ -347,7 +371,13 @@ function Buehne() {
             {detail("immer")}
           </div>
         ) : (
-          <ViertelTafel data={tafel.data} place={place} z={z} wahl={wahlImViertel} />
+          <ViertelTafel data={tafel.data} place={place} z={z}
+            nebenan={!ultra ? null
+              : wahl && gewaehlterBezirk
+                ? <WahlBezirkTafel daten={wahl} bezirk={gewaehlterBezirk} ort={ortName} onZurueck={() => setWahlBezirk(null)} />
+                // Das X im Detail führt zurück; die Liste links bleibt ja stehen.
+                : z.ausgewaehlt ? detail("immer") : null}
+            wahl={wahl && ortName ? <WahlViertelTafel daten={wahl} ort={ortName} onBezirk={(nr) => { setWahlBezirk(nr); z.setAktiv(null); }} className={STAFFEL} style={staffelStil(1)} /> : null} />
         )}
       </aside>
 
@@ -436,11 +466,15 @@ function StadtTafel({ daten, orte, meine, byName, onOrt, onHoverOrt, themen, wah
   onHoverOrt: (name: string | null) => void;
   /** Die Themen-Liste, wenn die Ebene an ist — sonst bleibt der Block weg. */
   themen?: Entity[];
-  /** Der Stand der Ratswahl, wenn die Ebene an ist — stadtweit. */
-  wahl?: Wahlstand;
+  /** Das Ergebnis je Bezirk, wenn die Wahl-Ebene an ist. */
+  wahl?: Wahlkarte;
 }) {
+  // Ab `ultra` zwei Spalten (die Tafel ist dann 840 px breit): links, was
+  // zum Einstieg gehört, rechts die Listen. Darunter bleibt es EINE Spalte in
+  // derselben Reihenfolge — die beiden Gruppen stapeln einfach.
   return (
-    <div className="flex flex-col gap-5 p-5">
+    <div className="flex flex-col gap-5 p-5 ultra:grid ultra:grid-cols-2 ultra:items-start">
+      <div className="flex flex-col gap-5">
       <section className={cn("hh-tafel relative z-30 rounded-2xl border border-border bg-background p-4 text-foreground", STAFFEL)} style={staffelStil(0)} aria-labelledby="viertel-stadt-titel">
         <Stadtzahl data={daten} orte={orte} kompakt />
         <div className="mt-4 border-t border-border pt-4">
@@ -454,23 +488,18 @@ function StadtTafel({ daten, orte, meine, byName, onOrt, onHoverOrt, themen, wah
           }} />
         </div>
       </section>
+      {/* Mit der Wahl-Ebene gehört die Legende nach oben — sonst erklärt die
+          Karte ihre Farben erst unter den Vorhaben. */}
+      {wahl && <WahlStadtTafel daten={wahl} className={STAFFEL} style={staffelStil(1)} />}
       <div className={STAFFEL} style={staffelStil(1)}>
         <Highlights data={daten} ortHref={karteHref} kompakt />
       </div>
-      {wahl && (
-        <WahlKarte
-          kicker="Ratswahl · ganz Oldenburg"
-          titel={wahl.phase === "complete" ? "Das Ergebnis" : wahl.phase === "counting" ? "Die Auszählung läuft" : "Der Wahlabend kommt"}
-          listen={listenSortiert(wahl.parties, wahl.parties)}
-          counted={wahl.progress.districts_counted}
-          total={wahl.progress.districts_total}
-          hinweis="Die Flächen tönen nach der stärksten Liste ihres Wahlbereichs; Parteifarben stehen nur als Punkt. Eigene Rechnung, kein amtliches Ergebnis."
-          className={STAFFEL} style={staffelStil(1)}
-        />
-      )}
+      </div>
+      <div className="flex flex-col gap-5">
       {themen && <div className={STAFFEL} style={staffelStil(2)}><ThemenAktiv themen={themen} /></div>}
       <div className={STAFFEL} style={staffelStil(2)}>
         <Rangliste orte={orte} ortHref={karteHref} spalten="grid-cols-1" onHover={onHoverOrt} />
+      </div>
       </div>
     </div>
   );
@@ -478,15 +507,25 @@ function StadtTafel({ daten, orte, meine, byName, onOrt, onHoverOrt, themen, wah
 
 /** Die Tafel-Spalte auf der Viertel-Stufe — die Karten und die Liste von
  *  `/viertel`, in der Reihenfolge, die dort gilt. */
-function ViertelTafel({ data, place, z, wahl }: {
+function ViertelTafel({ data, place, z, wahl, nebenan }: {
   data: NonNullable<ReturnType<typeof useTafel>["data"]>;
   place: { id: string; name: string };
   z: ReturnType<typeof useTafelZustand>;
-  /** Die Wahlbereiche dieses Ortsbereichs mit Ergebnis, wenn die Ebene an ist. */
-  wahl?: ReturnType<typeof wahlbereiche> extends Map<number, infer F> ? F[] : never;
+  /** Die Wahlbezirke dieses Ortsbereichs, wenn die Wahl-Ebene an ist. */
+  wahl?: React.ReactNode;
+  /** Ab `ultra`: was statt der rechten Spalte steht (Vorhaben, Wahlbezirk).
+   *  Die Liste links bleibt dabei stehen — man springt von Pin zu Pin, ohne
+   *  jedes Mal zurück zu müssen. */
+  nebenan?: React.ReactNode;
 }) {
+  // Ab `ultra` zwei Spalten: links Kopf, Stand und die Vorhaben-Liste (sie
+  // gehört zu den Pins der Karte), rechts Termine, Sperrungen, Beteiligung,
+  // Geld, Presse. Darunter lösen sich die Spalten auf (`contents`), und
+  // `order` stellt die bisherige Reihenfolge her: die Liste NACH Termine,
+  // Sperrungen und Beteiligung.
   return (
-    <div className="flex flex-col gap-4 p-5">
+    <div className="flex flex-col gap-4 p-5 ultra:grid ultra:grid-cols-2 ultra:items-start ultra:gap-5">
+      <div className="contents ultra:flex ultra:flex-col ultra:gap-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs font-medium uppercase tracking-wider text-primary">Mein Viertel</p>
@@ -501,13 +540,11 @@ function ViertelTafel({ data, place, z, wahl }: {
         <ShareButton path={karteHref(place.id)} title={`Mein Viertel: ${place.name} — Ratslotse`} />
       </div>
 
+      {wahl}
+
       {z.vorhaben.length > 0 && <StandChips zaehler={z.zaehler} stufe={z.stufe} onStufe={(s) => { z.setStufe(s); z.setAktiv(null); }} />}
 
-      <DemnaechstKarte items={data.upcoming} className={STAFFEL} style={staffelStil(1)} />
-      <SperrungenKarte items={data.closures} className={STAFFEL} style={staffelStil(1)} />
-      <BeteiligungKarte items={data.participations} className={STAFFEL} style={staffelStil(2)} />
-      {wahl && wahl.length > 0 && <WahlKarteBereich flaechen={wahl} className={STAFFEL} style={staffelStil(2)} />}
-
+      <div className="order-1 flex flex-col gap-4">
       {z.vorhaben.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-xl border-2 border-dashed border-border px-4 py-8 text-center">
           <Mascot pose="search" decorative className="h-16 w-16" />
@@ -521,7 +558,15 @@ function ViertelTafel({ data, place, z, wahl }: {
       ) : (
         <VorhabenListe sichtbar={z.sichtbar} aktiv={z.aktiv} schwebt={z.schwebt} onAktiv={z.setAktiv} onSchwebt={z.setSchwebt} className={STAFFEL} style={staffelStil(2)} />
       )}
+      </div>
+      </div>
 
+      <div className="contents ultra:flex ultra:flex-col ultra:gap-4">
+      {nebenan ?? <>
+      <DemnaechstKarte items={data.upcoming} className={STAFFEL} style={staffelStil(1)} />
+      <SperrungenKarte items={data.closures} className={STAFFEL} style={staffelStil(1)} />
+      <BeteiligungKarte items={data.participations} className={STAFFEL} style={staffelStil(2)} />
+      <div className="order-2 flex flex-col gap-4">
       <InvestitionenKarte items={data.investments} />
       <PresseBlock items={data.press} className={STAFFEL} style={staffelStil(3)} />
 
@@ -532,6 +577,9 @@ function ViertelTafel({ data, place, z, wahl }: {
         </div>
       )}
       <p className="text-xs leading-relaxed text-muted-foreground">{QUELLEN_HINWEIS}</p>
+      </div>
+      </>}
+      </div>
     </div>
   );
 }

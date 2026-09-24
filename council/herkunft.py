@@ -84,6 +84,16 @@ ARTEN: dict[str, str] = {
     # beiden Quellen erscheinen einmal jährlich und werden von Hand geholt
     # (s. council/staedtevergleich.py).
     "lsn": "Statistischer Bericht des Landesamts für Statistik Niedersachsen",
+    # Fördermittel von außen (council/foerdermittel.py): Listen der Geber
+    # selbst, über die Stadt und ihre Gesellschaften als Empfänger.
+    "eu": "Liste der Vorhaben der EU-Strukturfonds in Niedersachsen (NBank)",
+    "bund": "Förderkatalog des Bundes",
+    # Oldenburg im Bundesvergleich (council/bundesvergleich.py): ein Portal,
+    # das die Zahlen der Statistischen Ämter für alle Kommunen aufbereitet.
+    "wegweiser": "Wegweiser Kommune der Bertelsmann Stiftung (Daten der Statistischen Ämter)",
+    # Die Regionaldatenbank der Statistischen Ämter (council/regionalstatistik.py):
+    # dieselben Ämter, abgerufen über ihren Webservice mit eigenem Konto.
+    "regionalstatistik": "Regionaldatenbank der Statistischen Ämter des Bundes und der Länder",
 }
 
 #: Der ausdrückliche Verzicht. Keine Quelle darf ohne Angabe gespeichert
@@ -209,6 +219,12 @@ PROBEN: dict[str, str] = {
         "In jeder Spalte des Erfolgsplans gilt die Rechnung des Dokuments: "
         "Erträge − Aufwendungen = Ergebnis. Geprüft werden alle Spalten, "
         "gespeichert nur das Planjahr.",
+    # Die GuV-Übersichten der Bäder und des Hafens (council/wirtschaftsplan_guv.py).
+    "business_plan_guv_columns":
+        "Die Posten der Ergebnisplanung — ohne Zwischensummen — ergeben in "
+        "jeder Spalte den ausgewiesenen Jahresüberschuss bzw. -fehlbetrag; "
+        "in der Spalte des Planjahres auf den Euro. Dazu trifft das Ergebnis "
+        "die Zahl aus dem Beschlusstext derselben Vorlage.",
     "business_plan_prose":
         "Der Satz unter der Tabelle nennt dieselben beiden Summen wie die "
         "Planspalte — zwei unabhängig gesetzte Stellen desselben Dokuments.",
@@ -305,6 +321,70 @@ PROBEN: dict[str, str] = {
         "selbst vor: Die Einnahmearten ergeben die Summe der Erträge, die "
         "Ausgabearten die Summe der Aufwendungen, und beide zusammen das "
         "ausgewiesene Ergebnis.",
+    "grants_subtotals":
+        "Unter jedem Teilhaushalt steht „Summe THH …“ mit beiden Beträgen; die "
+        "Zuschüsse darüber ergeben sie, in beiden Spalten. Wo die Vorlage "
+        "selbst falsch summiert (2020 und 2021, Teilhaushalt 8), ist jede "
+        "Zeile vollständig und die Abweichung im Beleg vermerkt.",
+    "bylaw_published":
+        "Die Haushaltssatzung, wie sie im Amtsblatt bekannt gemacht wurde: Die "
+        "sechs Finanzhaushalts-Zeilen ergeben die beiden „Nachrichtlich“-Summen "
+        "der Satzung auf den Cent. Gescannte Ausgaben liest ein Sehmodell; die "
+        "Summenprobe fängt eine falsch gelesene Ziffer.",
+    "regional_debt_core_budget":
+        "Oldenburgs Kernhaushalt in der Schuldenstatistik der Regionaldatenbank "
+        "gegen die eigene Schuldenreihe der Stadt, auf 1.000 € genau. Ein Jahr, "
+        "in dem das nicht gelingt, fehlt für alle acht Städte. Die Schulden der "
+        "eigenen Einrichtungen haben keine Gegenreihe und stehen, wie die "
+        "Statistik sie führt.",
+    "federal_comparison_own_series":
+        "Oldenburgs Werte im Wegweiser Kommune gegen die eigenen Reihen: "
+        "Einkommensteuer und Grundsteuer je Einwohner*in auf 3 % genau wie im "
+        "Statistischen Jahrbuch; Liquiditätskredite 0, wo der Liquiditätsstand "
+        "zum Jahresende positiv ist. Eine Kennzahl erscheint nur für die Jahre, "
+        "in denen Oldenburgs Wert die Probe besteht — dann für alle Städte.",
+    "foekat_export_complete":
+        "Der Förderkatalog meldet zur Suche nach der Gemeinde Oldenburg (Oldb) "
+        "eine Trefferzahl; die exportierte Liste hat genau so viele Zeilen. "
+        "Übernommen werden nur Empfänger aus einer nachgesehenen Namensliste "
+        "der Stadt und ihrer Gesellschaften, mit der Gemeindekennziffer 03403000.",
+    "eu_list_columns":
+        "Die Spalten der Liste der Vorhaben werden an ihrem Kopf erkannt, nicht "
+        "an ihrer Position. Jede übernommene Zeile hat Beginn und Unionsbeitrag, "
+        "und der Beitrag übersteigt die förderfähigen Kosten nicht. Übernommen "
+        "werden nur Empfänger aus einer nachgesehenen Namensliste.",
+    "budget_report_measures_sum":
+        "Die Zeile „Auszahlungen für Investitionen“ der Teilfinanzrechnung "
+        "nennt Ansatz und Prognose des Teilhaushalts; die Maßnahmen ergeben "
+        "sie, je Richtung und auf den Euro. Wo das Dokument die Summenzeile "
+        "rundet (höchstens 0,1 %), steht der Abstand im Beleg.",
+    "budget_preface_figures":
+        "Die Personaltabelle rechnet sich selbst (aktiv + Versorgung = Summe, "
+        "Summe − Rückstellungen = ohne Rückstellungen) und stimmt mit den Zeilen 13 "
+        "und 14 des Ergebnishaushalts desselben Plans; die Planwerte der Fehlbeträge "
+        "sind ordentliches plus außerordentliches Ergebnis; die Ist-Werte der Steuern "
+        "stimmen mit dem Statistischen Jahrbuch (außer der Gewerbesteuer, die das "
+        "Jahrbuch nach Abzug der Umlage zählt). Die Diagramme runden auf 0,1 Mio. €.",
+    "budget_notes_sections":
+        "Das Inhaltsverzeichnis des Vorberichts nennt je Teilhaushalt einen "
+        "Abschnitt zum Ergebnishaushalt und einen zu den Investitionen; jeder "
+        "genannte steht im Text mit mindestens einem Absatz. Wiedergegeben wird "
+        "der Wortlaut, ohne die Tabellen und Grafiken des Originals.",
+    "debt_plan_totals":
+        "Je Block (Kernhaushalt, Eigenbetriebe) und Spalte ergeben die "
+        "Schuldenarten die Zeile „Schulden insgesamt“, bis auf die Rundung "
+        "der einzelnen Posten auf Tausend. Dazu stimmt jeder erwartete Stand "
+        "mit dem Vorjahreswert im folgenden Plan überein.",
+    "commitments_bylaw":
+        "Die Fälligkeiten der Verpflichtungsermächtigungen des Planjahres "
+        "ergeben den Gesamtbetrag aus § 3 der Haushaltssatzung — 2019 bis 2025 "
+        "auf den Euro; 2026 weichen Übersicht und Satzung um 30.000 € ab.",
+    "finance_budget_total_rows":
+        "Der Finanzhaushalt rechnet sich in jeder seiner sechs Jahresspalten "
+        "selbst vor: laufende Ein- und Auszahlungen ergeben ihre Summen und "
+        "den Saldo, ebenso die Investitionen, beide zusammen den "
+        "Finanzmittel-Überschuss, mit der Finanzierung die "
+        "Finanzmittelveränderung — 54 Proben je Plan, alle aufgegangen.",
     "income_budget_plan_column":
         "Das Jahr, über das der Rat wirklich entscheidet, ist im Plan "
         "hervorgehoben und steht in jeder Zeile ein zweites Mal. Diese "
@@ -658,6 +738,27 @@ PROBEN: dict[str, str] = {
         "Die Mehrjahresübersicht des Prüfberichts nennt ihre Jahre im Kopf und "
         "je Kennzahl genau so viele Werte; Fußnotenziffern vor den Werten "
         "zählen nicht mit.",
+    # Die Jahresabschlüsse der Gesellschaften (council/gesellschaft_abschluss.py)
+    "company_accounts_balance":
+        "Die Bilanzsumme steht in jeder Bilanz zweimal — als Summe der Aktiva "
+        "und als Summe der Passiva. Gelesen wird nur ein Betragspaar "
+        "(Geschäftsjahr, Vorjahr), das beide Male gleich dasteht.",
+    "company_accounts_result_line":
+        "Die Zeile „Jahresüberschuss“ bzw. „Jahresfehlbetrag“ der Gewinn- und "
+        "Verlustrechnung, Geschäftsjahr und Vorjahr. Ein Fehlbetrag, der ohne "
+        "Minus gedruckt ist, zählt negativ.",
+    "company_accounts_ocr":
+        "Die Anlage ist ein Scan ohne Textebene; gelesen hat ein Sehmodell. "
+        "Übernommen wird nur das Geschäftsjahr: die Bilanzsumme aus der "
+        "Schlusszeile, wenn derselbe Betrag ein zweites Mal dasteht (Aktiva = "
+        "Passiva), und die Zeile Jahresüberschuss/-fehlbetrag. Wo ein anderes "
+        "Dokument dasselbe Jahr nennt, stimmten beide bei der Einführung in "
+        "neun von neun Fällen auf den Cent.",
+    "company_accounts_overlap":
+        "Dieselbe Zahl steht in zwei Abschlüssen — als Geschäftsjahr im "
+        "eigenen, als Vorjahr im folgenden — und oft auch im "
+        "Beteiligungsbericht. Wo zwei Quellen dasselbe Jahr nennen, nennen "
+        "sie denselben Betrag auf den Cent.",
     "enterprise_accounts_overlap":
         "Dieselbe Zahl steht in mehreren Berichten — als Geschäftsjahr im "
         "eigenen, als Vorjahr in den folgenden. Wo zwei Berichte dasselbe Jahr "
@@ -708,6 +809,25 @@ HERKUNFT_TABELLEN: tuple[str, ...] = (
     "council_trade_tax_statistics",
     # Die Planjahre aus dem Gesamtergebnishaushalt — neu, ohne Altbestand.
     "council_income_budget",
+    # Und die Zahlungen derselben Pläne, Gesamtfinanzhaushalt (Anlage 006).
+    "council_finance_budget",
+    # Die Zuschüsse an Dritte aus den Übersichten (Anlage 003).
+    "council_grants",
+    # Und aus derselben Anlage: Schuldenstand laut Plan und die VE.
+    "council_debt_plan",
+    # Der Vorbericht (Anlage 001): der Wortlaut je Teilhaushalt.
+    "council_budget_notes",
+    # Und die Zahlen aus demselben Vorbericht.
+    "council_budget_preface_figures",
+    # Die beschlossene Haushaltssatzung aus dem Amtsblatt.
+    "council_budget_bylaw_published",
+    # Die Budgetberichte der Fachausschüsse: Investitionen je Maßnahme.
+    "council_budget_measures",
+    # Fördermittel von EU und Bund je Vorhaben.
+    "council_grants_received",
+    "council_commitments",
+    # Die Jahresabschlüsse der Gesellschaften — neu, ohne Altbestand.
+    "council_company_accounts",
     # Die Investitionen des Finanzhaushalts — neu, ohne Altbestand.
     "council_investments",
     # Die einzelnen Vorhaben aus Anlage 004 des Haushaltsplans — ebenso.

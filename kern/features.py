@@ -115,6 +115,27 @@ FEATURES: dict[str, Feature] = {
                     "Ja-Quote unter 5 %, wird er seltener oder abgeschafft — Tims "
                     "Entscheidung. Bleibt er, fliegt der Schalter raus.",
     ),
+    "lotti-selbstpruefung": Feature(
+        key="lotti-selbstpruefung",
+        description="Lottis Selbstprüfung als stille Stichprobe: Ein Anteil der Erklärungen "
+                    "(COUNCIL_ASSISTANT_PRUEFER_ANTEIL, Vorgabe 10 %) wird NACH der Antwort "
+                    "geprüft — erst ohne Modell, dann von einem Prüfer-Modell einer anderen "
+                    "Familie; das Urteil zählt der Admin-Reiter „Lotti“ (council/self_check.py). "
+                    "Niemand wartet darauf, nichts wird ersetzt.",
+        fertig_wenn="Vier Wochen Stichprobe auf dev: Zeigt der Admin-Reiter Seiten mit "
+                    "auffällig vielen Beanstandungen, gehen sie als Aufgaben an die Kontext- "
+                    "und Regelarbeit; dann entscheidet Tim, ob die Stichprobe dauerhaft läuft "
+                    "(Schalter raus) oder wegfällt (docs/lotti-selbstpruefung.md).",
+    ),
+    "neuer-rat": Feature(
+        key="neuer-rat",
+        description="Der gewählte Rat vor seiner ersten Sitzung: die Liste der 52 "
+                    "Gewählten aus dem Wahlergebnis, dazu eine Personen-Seite für "
+                    "alle, die noch in keinem Protokoll stehen.",
+        fertig_wenn="Tim hat die Liste nach dem amtlichen Endergebnis freigegeben. "
+                    "Nach der konstituierenden Sitzung (02.11.2026) prüfen, ob die "
+                    "Vorab-Liste noch gebraucht wird.",
+    ),
     "tippspiel": Feature(
         key="tippspiel",
         description="Das Tippspiel zu den Wahlen 2026: zur Ratswahl am 13.09. Sitze je "

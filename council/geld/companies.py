@@ -76,6 +76,12 @@ _TRIFFT = re.compile(
     r"haelt die stadt|stadt haelt|aufsichtsrat|verwaltungsrat|"
     r"betriebsausschuss|geschaeftsfuehr|"
     r"staedtische\w* (?:unternehmen|betriebe|firmen)|kommunale\w* unternehmen|"
+    # „Welche Betriebe gehören zum Konzern?" — die Frage nach der LISTE. Der
+    # Gesamtabschluss (`konzern`) kennt nur die konsolidierten Einheiten; die
+    # GSG steht dort nicht, im Beteiligungsbericht schon (Fakten-Eval
+    # 23.09.2026).
+    r"welche\w* (?:betriebe|gesellschaften|unternehmen|toechter)|"
+    r"gehoer\w*[^.?!]{0,20}zum konzern|"
     + _KURZNAMEN)
 
 #: Wörter, die die FACETTE auslösen und deshalb kein Suchbegriff sein können.
@@ -214,8 +220,14 @@ class Store(StoreBasis):
         keine bestimmte gemeint — zwei davon zu zeigen hieße raten."""
         woerter = [w for w in terms
                    if geld.falte(w) not in _KEIN_SUCHWORT and len(w) > 2]
+        # Die Kürzel („GSG", „VWG", „AWB") zählen doppelt, und zwar über den
+        # Schlüssel der Gesellschaft: `_trifft` übergeht Begriffe unter vier
+        # Zeichen, und so fand „Wie viel Gewinn hat die GSG Oldenburg 2024
+        # gemacht?" die GSG nicht (Fakten-Eval 23.09.2026).
+        kuerzel = {geld.falte(w) for w in woerter}
         punkte = [(self._trifft(f"{r['name']} {r['company']} {r['purpose'] or ''}",
-                                woerter), r) for r in reihen]
+                                woerter) + (2 if r["company"] in kuerzel else 0), r)
+                  for r in reihen]
         beste = max((p[0] for p in punkte), default=0)
         if not beste:
             return []
@@ -374,8 +386,8 @@ def _ueberblick_zeilen(u: dict, jahr: int | None) -> list[str]:
     for g in u["largest"]:
         anteil = (f", Anteil der Stadt {geld.de_prozent(g['share_pct'])}"
                   if g.get("share_pct") is not None else "")
-        zeilen.append(f"  - {g['name']}: Bilanzsumme {geld.de_betrag(g['bilanzsumme'])} "
-                      f"({g['year']}){anteil}")
+        zeilen.append(f"  - {g['name']} {g['year']}: Bilanzsumme "
+                      f"{geld.de_betrag(g['bilanzsumme'])}{anteil}")
     if u.get("results_sum") is not None and u.get("results_n"):
         zeilen.append(f"- Die {u['results_n']} Jahresergebnisse, die der Bericht für "
                       f"{jahr} nennt, ergeben zusammen {geld.de_betrag(u['results_sum'])}. "

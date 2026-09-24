@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		09FDEB594DB17AD7A86F1844 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BB30C7E925B562746E8169C7 /* Assets.xcassets */; };
+		1AE58B84DA6D12F276A82B8F /* wahlbezirke-oldenburg.json in Resources */ = {isa = PBXBuildFile; fileRef = 49BD0FB274C9379B24E91104 /* wahlbezirke-oldenburg.json */; };
 		28BD30569358E8A521F9C957 /* OFL-BricolageGrotesque.txt in Resources */ = {isa = PBXBuildFile; fileRef = 33A534B0F668B3947D9DD409 /* OFL-BricolageGrotesque.txt */; };
 		2CCEC9C8A8DB932EBFB273E8 /* OFL-IBMPlexMono.txt in Resources */ = {isa = PBXBuildFile; fileRef = 70CBFFFD61C9295634F5B654 /* OFL-IBMPlexMono.txt */; };
 		2E7AA5A9CC0BFD650267BA48 /* Inter-Variable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F6217EB0DE76D0F28ACDDE9D /* Inter-Variable.ttf */; };
@@ -42,6 +43,7 @@
 		33A534B0F668B3947D9DD409 /* OFL-BricolageGrotesque.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "OFL-BricolageGrotesque.txt"; sourceTree = "<group>"; };
 		3B8E61A6D22EEC9444ADC6F5 /* IBMPlexMono-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexMono-Medium.ttf"; sourceTree = "<group>"; };
 		3EABA56FCF5C2D393432D171 /* RatslotseAppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RatslotseAppDelegate.swift; sourceTree = "<group>"; };
+		49BD0FB274C9379B24E91104 /* wahlbezirke-oldenburg.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "wahlbezirke-oldenburg.json"; sourceTree = "<group>"; };
 		539BE405E3F2DA865A1B09AC /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
 		6583B3132ED8165355A43F96 /* RatslotseAppTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = RatslotseAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		70CBFFFD61C9295634F5B654 /* OFL-IBMPlexMono.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "OFL-IBMPlexMono.txt"; sourceTree = "<group>"; };
@@ -148,6 +150,7 @@
 				F2470F6BF2181DFA7911BB1B /* LucideIcons-LICENSE.txt */,
 				2E0527A1C047C39F746509A8 /* PrivacyInfo.xcprivacy */,
 				71991107FF7E56E02998B6A7 /* stadtteile-oldenburg.json */,
+				49BD0FB274C9379B24E91104 /* wahlbezirke-oldenburg.json */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -263,6 +266,7 @@
 				3DC82352060A9FC7219544CD /* OFL-Inter.txt in Resources */,
 				76EE984AE63A9BBA12A9806E /* PrivacyInfo.xcprivacy in Resources */,
 				A0246E965BDFE016AD176FB3 /* stadtteile-oldenburg.json in Resources */,
+				1AE58B84DA6D12F276A82B8F /* wahlbezirke-oldenburg.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -364,7 +368,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 2.8.0;
+				MARKETING_VERSION = 2.9.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -432,7 +436,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 2.8.0;
+				MARKETING_VERSION = 2.9.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;

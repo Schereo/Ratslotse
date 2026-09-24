@@ -73,7 +73,7 @@ def test_hauptgruppen_summen_und_groesste_posten(tmp_path):
         b = assets.block(d)
         assert "Anlagevermögen gesamt zum 31.12.2024: 795,0 Mio. €" in b
         assert "Abschreibungen im Jahr 33,0 Mio. €" in b
-        assert "Infrastrukturvermögen: Buchwert 388,2 Mio. €" in b
+        assert "Infrastrukturvermögen 31.12.2024: Buchwert 388,2 Mio. €" in b
         assert "BUCHWERT IST KEIN MARKTWERT" in b
         assert "Beleg: Jahresabschluss 2024, 8.1 Anlagenübersicht" in b
     finally:

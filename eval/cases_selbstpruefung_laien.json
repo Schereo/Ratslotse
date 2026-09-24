@@ -1,0 +1,218 @@
+[
+ {
+  "nr": 1,
+  "route": "/haushalt",
+  "frage": "wie viele schulden hat die stadt",
+  "befund": "gut"
+ },
+ {
+  "nr": 2,
+  "route": "/haushalt",
+  "frage": "was gibt die stadt eigentlich so aus",
+  "befund": "A"
+ },
+ {
+  "nr": 3,
+  "route": "/haushalt",
+  "frage": "hat die stadt genug geld",
+  "befund": "B"
+ },
+ {
+  "nr": 4,
+  "route": "/haushalt",
+  "frage": "wo kann die stadt sparen",
+  "befund": "gut"
+ },
+ {
+  "nr": 5,
+  "route": "/haushalt",
+  "frage": "warum ist die stadt pleite",
+  "befund": "gut"
+ },
+ {
+  "nr": 6,
+  "route": "/haushalt",
+  "frage": "wieviel geld hat oldenburg im jahr",
+  "befund": "A"
+ },
+ {
+  "nr": 7,
+  "route": "/haushalt",
+  "frage": "was kostet mich die stadt pro jahr",
+  "befund": "B"
+ },
+ {
+  "nr": 8,
+  "route": "/haushalt",
+  "frage": "wofür geht das meiste geld drauf",
+  "befund": "gut"
+ },
+ {
+  "nr": 9,
+  "route": "/haushalt",
+  "frage": "was ist ein haushalt überhaupt",
+  "befund": null
+ },
+ {
+  "nr": 10,
+  "route": "/haushalt",
+  "frage": "kann sich die stadt das neue stadion leisten",
+  "befund": "A"
+ },
+ {
+  "nr": 11,
+  "route": "/haushalt/schulden",
+  "frage": "ist das schlimm?",
+  "befund": "gut"
+ },
+ {
+  "nr": 12,
+  "route": "/haushalt/schulden",
+  "frage": "ist das viel oder wenig",
+  "befund": "gut"
+ },
+ {
+  "nr": 13,
+  "route": "/haushalt/schulden",
+  "frage": "wer muss das alles zurückzahlen",
+  "befund": "gut"
+ },
+ {
+  "nr": 14,
+  "route": "/haushalt/schulden",
+  "frage": "wann sind die schulden weg",
+  "befund": "gut"
+ },
+ {
+  "nr": 15,
+  "route": "/haushalt/schulden",
+  "frage": "warum macht die stadt überhaupt schulden",
+  "befund": "B"
+ },
+ {
+  "nr": 16,
+  "route": "/haushalt/schulden",
+  "frage": "wie hoch sind die schulen pro einwohner",
+  "befund": "gut"
+ },
+ {
+  "nr": 17,
+  "route": "/haushalt/einnahmen",
+  "frage": "woher hat die stadt ihr geld",
+  "befund": "A"
+ },
+ {
+  "nr": 18,
+  "route": "/haushalt/einnahmen",
+  "frage": "zahlen wir zu viele steuern",
+  "befund": null
+ },
+ {
+  "nr": 19,
+  "route": "/haushalt/einnahmen",
+  "frage": "bekommt die stadt geld vom land",
+  "befund": "A"
+ },
+ {
+  "nr": 20,
+  "route": "/haushalt/investitionen",
+  "frage": "was wird gebaut",
+  "befund": "A"
+ },
+ {
+  "nr": 21,
+  "route": "/haushalt/investitionen",
+  "frage": "wird was für schulen gemacht",
+  "befund": "gut"
+ },
+ {
+  "nr": 22,
+  "route": "/haushalt/investitionen",
+  "frage": "warum dauern die baustellen immer so lange",
+  "befund": "B"
+ },
+ {
+  "nr": 23,
+  "route": "/haushalt/pflicht",
+  "frage": "was muss die stadt bezahlen und was nicht",
+  "befund": "gut"
+ },
+ {
+  "nr": 24,
+  "route": "/haushalt/pflicht",
+  "frage": "könnte man nicht einfach das theater streichen",
+  "befund": "A"
+ },
+ {
+  "nr": 25,
+  "route": "/haushalt/produkte",
+  "frage": "was kostet die feuerwehr",
+  "befund": "gut"
+ },
+ {
+  "nr": 26,
+  "route": "/haushalt/produkte",
+  "frage": "wie viel geld geht in kitas",
+  "befund": "gut"
+ },
+ {
+  "nr": 27,
+  "route": "/haushalt/personal",
+  "frage": "wie viele leute arbeiten bei der stadt",
+  "befund": "gut"
+ },
+ {
+  "nr": 28,
+  "route": "/haushalt/personal",
+  "frage": "sind das nicht zu viele",
+  "befund": "B"
+ },
+ {
+  "nr": 29,
+  "route": "/haushalt/plan-ist",
+  "frage": "hat die stadt mehr ausgegeben als geplant",
+  "befund": "gut"
+ },
+ {
+  "nr": 30,
+  "route": "/haushalt/konzern",
+  "frage": "was sind eigenbetriebe",
+  "befund": "gut"
+ },
+ {
+  "nr": 31,
+  "route": "/haushalt/konzern",
+  "frage": "verdient die stadt mit den bädern geld",
+  "befund": "A"
+ },
+ {
+  "nr": 32,
+  "route": "/haushalt/vergleich",
+  "frage": "sind wir ärmer als osnabrück",
+  "befund": "gut"
+ },
+ {
+  "nr": 33,
+  "route": "/haushalt/steuer",
+  "frage": "warum ist die grundsteuer so hoch",
+  "befund": null
+ },
+ {
+  "nr": 34,
+  "route": "/haushalt/mitreden",
+  "frage": "kann ich mitbestimmen wofür das geld ausgegeben wird",
+  "befund": "B"
+ },
+ {
+  "nr": 35,
+  "route": "/haushalt",
+  "frage": "stimmt es dass für kitas kein geld mehr da ist",
+  "befund": "A"
+ },
+ {
+  "nr": 36,
+  "route": "/haushalt",
+  "frage": "was bedeutet defizit",
+  "befund": "B"
+ }
+]

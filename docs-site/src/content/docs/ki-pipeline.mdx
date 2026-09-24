@@ -255,7 +255,21 @@ Erklärung, Kategorie und **Quellenangabe**; es erfindet nichts frei.
 Ein zweiter, günstiger **Verify-Pass** (kleines Modell) verwirft Fragen, die
 nicht eindeutig aus der Quelle belegbar sind. Antwortoptionen werden gemischt
 (die richtige Antwort liegt sonst gern auf Position A), Dubletten fängt ein
-`content_hash`. Zusätzlich bewerten **Nutzer*innen** jede Frage nach dem
+`content_hash`.
+
+Danach kommt der **Richter** (seit 09/2026, `quiz.rate_appeal`): Er fragt
+nicht, ob eine Frage stimmt, sondern ob man sie gern spielt, und benotet sie
+von 1 bis 5. Unter 3 wird eine neue Frage gar nicht erst gespeichert; im
+Bestand kommen knappe Fälle in der Runde erst nach den reizvollen dran und
+nie in die Tages-Challenge. Umformulierungen einer schon vorhandenen Frage
+fallen über einen Wortvergleich heraus, und Ratspolitik macht höchstens ein
+Drittel einer Lieferung aus. Anlass: Im Bestand waren 48 % der Fragen
+Ratspolitik, und viele davon fragten Straßenabschnitte oder
+Aufstellungsbeschlüsse ab, obwohl der Erzeugungs-Prompt genau das seit Juli
+verbietet. Den Bestand räumt `scripts/sweep_quiz.py` auf (Trockenlauf ohne
+`--retire`; alle rund 700 Fragen kosten gemessen $0,03).
+
+Zusätzlich bewerten **Nutzer*innen** jede Frage nach dem
 Beantworten (👍/👎) — schlecht bewertete erscheinen in einer Admin-Liste und
 werden ausgemustert; da der Backfill nur Gebiete **unter** der Ziel-Fragenzahl
 auffüllt, erzeugt der nächste Lauf automatisch Ersatz.
@@ -433,6 +447,30 @@ hat es sie einmal vergessen, und dann stand da eine Absage ohne Ausweg.
 Zum Vergleich: Der Antwort-Prompt der KI-Frage ist mit 8.412 Zeichen gut
 anderthalbmal so groß wie Lottis 5.844, und dazu kommen dort Analyse,
 Expansion und Reranker.
+
+### Selbstprüfung: eine stille Stichprobe
+
+Mit dem Schalter `lotti-selbstpruefung` prüft Ratslotse einen Teil der
+Erklärungen, die ein Modell geschrieben hat (`COUNCIL_ASSISTANT_PRUEFER_ANTEIL`,
+Vorgabe 10 %) — **nach** der Antwort, als Hintergrund-Aufgabe, wenn der Strom
+schon beim Client ist (`council/self_check.py`):
+
+1. **Ohne Modell:** Jede Zahl der Antwort steht im Kontext, unter dem Jahr,
+   unter dem sie dort steht — dieselbe Logik wie die Fakten-Eval
+   (`council/fakten_abgleich.py`); dazu keine Wertung in eigener Stimme und
+   kein Rest aus dem Prompt.
+2. **Prüfer-Modell** einer anderen Familie als die Antwort (Gemini gegen
+   GPT-6 Luna), mit Zero Data Retention. Es bekommt Lottis ganzen Prompt samt
+   Frage und Antwort und urteilt als JSON.
+
+Das Urteil landet in `assistant_checks` und im Admin-Reiter „Lotti“ — Frage
+und Antwort nur mit Einwilligung in die Gesprächsspeicherung.
+
+**Warum nicht vor der Anzeige?** Gemessen am 24.09.2026 an der Fakten-Eval
+(178 Fälle): Die Fassung, die vor der Anzeige prüfte und bei einem Mangel neu
+schrieb, ersetzte 4 Antworten, eine davon besser — ok blieb bei 163, dafür
++1,7 s im Median und das 2,5-Fache der Kosten. Zahlen und Befehle:
+`docs/lotti-selbstpruefung.md`.
 
 ## Frag den Rat: welche Quelle eine Geldfrage zieht
 

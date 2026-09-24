@@ -122,6 +122,16 @@ Das Skript rechnet die Sitzverteilung mit demselben Code nach, der am Wahlabend 
 (NKWG §§ 36/37), und **bricht ab**, wenn sie von der abweicht, die der Votemanager selbst
 ausweist. Eine falsche Referenz fiele erst bei der nächsten Wahl auf — dann ist die Quelle weg.
 
+**Der gewählte Rat** (`/council/neuer-rat`, Schalter `neuer-rat`) liest dieselbe Sitzzuteilung
+aus dem Archiv (`web/backend/app/election/elected.py`). Was sich nach der Wahl noch ändert, steht
+von Hand in `referenz-<jahr>/mandatswechsel.json` — wer ablehnt oder als OB ausscheidet, und wer
+nachrückt. Die Nachfolge muss auf dem Stimmzettel derselben Liste stehen, sonst bricht das Laden ab:
+
+```json
+{"changes": [{"name": "Prange, Ulf", "list": "spd", "reason": "Amt als Oberbürgermeister",
+              "successor": "Nachname, Vorname"}]}
+```
+
 **Welche Wahl die Seite zeigt**, sagt `elections.active()`: die jüngste Ratswahl in `wahlen/`, die
 kein Entwurf mehr ist — oder die, die `WAHLABEND_ELECTION` in der `.env` nennt. Alles, was vorher
 als Konstante in acht Modulen stand (Basis-URL, Wahl-Ids, Wahlschluss, Register- und
