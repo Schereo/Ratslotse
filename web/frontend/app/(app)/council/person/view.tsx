@@ -205,7 +205,11 @@ function RatsmitgliedProfil({ data, gewaehlt }: { data: MemberDetail; gewaehlt?:
   const pastSpan = pastFrom.length && pastTo.length ? `${Math.min(...pastFrom)}–${Math.max(...pastTo)}` : null;
 
   return (
-    <Card className="mx-auto max-w-3xl p-5 sm:p-6">
+    // Ab `weit` zwei Spalten (docs/plan-breite-schirme.md, PR 6): links die
+    // Ämter und Zahlen, rechts Wortbeiträge und letzte Sitzungen. Die
+    // Reihenfolge im DOM ist dieselbe wie einspaltig — darunter ändert sich
+    // also nichts, auch nicht für Screenreader.
+    <Card className="mx-auto max-w-3xl p-5 sm:p-6 weit:max-w-[1480px]">
       {zeigeZurueck && (
         <button onClick={() => zurueck("/council")} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" /> Zurück
@@ -270,6 +274,8 @@ function RatsmitgliedProfil({ data, gewaehlt }: { data: MemberDetail; gewaehlt?:
 
       {gewaehlt && <NeuerRatHinweis g={gewaehlt} />}
 
+      <div className="weit:grid weit:grid-cols-2 weit:items-start weit:gap-x-10">
+      <div className="min-w-0">
       {/* Aktuelle Ämter als Gantt */}
       {current.length > 0 && (
         <Section title="Aktuelle Ämter" aside={<>{current.length} laufend · Balken = Amtszeit</>}>
@@ -355,6 +361,8 @@ function RatsmitgliedProfil({ data, gewaehlt }: { data: MemberDetail; gewaehlt?:
         </Section>
       )}
 
+      </div>
+      <div className="min-w-0">
       {/* Wortbeiträge (Personen-Paket 10.08.26): die jüngsten Beiträge in
           voller Länge — dasselbe Beleg-Versprechen wie im Ratsgespräch.
           Vielredner kommen auf über tausend Beiträge, deshalb seitenweise und
@@ -382,6 +390,8 @@ function RatsmitgliedProfil({ data, gewaehlt }: { data: MemberDetail; gewaehlt?:
           </div>
         </Section>
       )}
+      </div>
+      </div>
     </Card>
   );
 }
