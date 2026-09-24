@@ -2463,6 +2463,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/council/budget/measures": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Haushalt Budgetbericht
+         * @description Was aus den Investitionen eines Teilhaushalts im Jahr wird — die
+         *     Budgetberichte an die Fachausschüsse (``council/budgetberichte.py``).
+         *
+         *     ``reports`` nennt alle eingelesenen Stichtage, jüngster zuerst;
+         *     ``measures`` sind die Maßnahmen des gewählten (Vorgabe: des jüngsten),
+         *     in der Reihenfolge des Berichts. Eingelesen sind Jugend und Familie (11)
+         *     und Schule und Bildung (12); für andere Teilhaushalte ist die Antwort leer.
+         */
+        get: operations["haushalt_budgetbericht_api_council_budget_measures_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/council/budget/notes": {
         parameters: {
             query?: never;
@@ -8220,6 +8246,67 @@ export interface components {
             refinancing_by_year: components["schemas"]["LoanYear"][];
             /** Scope Note */
             scope_note: string;
+        };
+        /**
+         * BudgetMeasure
+         * @description Eine Investitionsmaßnahme im Budgetbericht. ``kind``: ``A`` Auszahlung,
+         *     ``E`` Einzahlung. ``measure_no`` ist die I10-Nummer (bei einem Bereich
+         *     „… bis …" die erste, ``measure_no_to`` die letzte) und kann fehlen.
+         *     ``note`` ist die Erläuterung der Verwaltung im Wortlaut.
+         */
+        BudgetMeasure: {
+            /** Carryover */
+            carryover: number | null;
+            /** Forecast */
+            forecast: number | null;
+            /** Herkunft Id */
+            herkunft_id: number | null;
+            /** Kind */
+            kind: string;
+            /** Measure No */
+            measure_no: string | null;
+            /** Measure No To */
+            measure_no_to: string | null;
+            /** Name */
+            name: string;
+            /** Note */
+            note: string | null;
+            /** Planned */
+            planned: number | null;
+            /** Seq */
+            seq: number;
+        };
+        /**
+         * BudgetMeasureReport
+         * @description Ein eingelesener Budgetbericht: Stichtag, Vorlage, Zahl der Maßnahmen
+         *     und die Summen der Auszahlungen (Ansatz, Prognose zum Jahresende).
+         */
+        BudgetMeasureReport: {
+            /** As Of */
+            as_of: string;
+            /** Budget Year */
+            budget_year: number;
+            /** Forecast */
+            forecast: number | null;
+            /** N */
+            n: number;
+            /** Planned */
+            planned: number | null;
+            /** Template Number */
+            template_number: string | null;
+        };
+        /** BudgetMeasures */
+        BudgetMeasures: {
+            /** As Of */
+            as_of: string | null;
+            /** Measures */
+            measures: components["schemas"]["BudgetMeasure"][];
+            /** Provenance */
+            provenance: {
+                [key: string]: components["schemas"]["Herkunft"];
+            };
+            /** Reports */
+            reports: components["schemas"]["BudgetMeasureReport"][];
         };
         /**
          * BudgetNote
@@ -18536,6 +18623,38 @@ export interface operations {
             };
         };
     };
+    haushalt_budgetbericht_api_council_budget_measures_get: {
+        parameters: {
+            query: {
+                sub_budget: number;
+                as_of?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetMeasures"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     haushalt_vorbericht_api_council_budget_notes_get: {
         parameters: {
             query: {
@@ -23599,4 +23718,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 03c217a588af1f931be9744c870aeec3b075a8ddf588117f3e6c908954c04e4a
+// vertrag-sha256: 36228d6971ac95721170ae631391476ab7c7cfde2367d51e39cc890d004628e2

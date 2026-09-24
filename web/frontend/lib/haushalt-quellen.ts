@@ -147,6 +147,8 @@ export type QuellenSchluessel =
   | "debt_plan"
   // Der Vorbericht (Anlage 001): der Wortlaut je Teilhaushalt.
   | "budget_notes"
+  // Die Budgetberichte an die Fachausschüsse: Investitionen je Maßnahme.
+  | "budget_measures"
   // Die beschlossene Haushaltssatzung aus dem Amtsblatt.
   | "budget_bylaw_published"
   // Fördermittel von EU und Bund je Vorhaben (Listen der Geber).
@@ -915,6 +917,20 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     as_of: "Haushaltsjahre 2020–2026",
     art: "pdf",
     url: "https://www.oldenburg.de/startseite/rathaus/informiert-bleiben/bekanntmachungen/amtsblatt.html",
+  },
+  budget_measures: {
+    title: "Budgetberichte an die Fachausschüsse (Finanz- und Leistungsberichte)",
+    citation:
+      "Viermal im Jahr berichtet die Verwaltung dem Jugendhilfe- und dem Schulausschuss, wie " +
+      "der Haushalt läuft. Gelesen wird die Teilfinanzrechnung: je Investitionsmaßnahme Ansatz " +
+      "und Prognose zum Jahresende, darunter die Erläuterung im Wortlaut. Die Maßnahmen ergeben " +
+      "die Summenzeile „Auszahlungen für Investitionen“ des Berichts. Andere Ausschüsse bekommen " +
+      "solche Berichte nicht regelmäßig.",
+    herausgeber: "Stadt Oldenburg, Ämter für Jugend und Familie sowie Schule und Bildung",
+    standWort: "Stichtage",
+    as_of: "Stichtage 30.06.2018 bis 30.06.2026",
+    art: "pdf",
+    url: "https://buergerinfo.oldenburg.de",
   },
   budget_notes: {
     title: "Vorbericht zum Haushaltsplan (Anlage 001)",

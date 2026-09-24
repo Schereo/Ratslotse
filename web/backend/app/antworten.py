@@ -3429,6 +3429,41 @@ class BudgetNote(TypedDict):
     herkunft_id: int | None
 
 
+class BudgetMeasureReport(TypedDict):
+    """Ein eingelesener Budgetbericht: Stichtag, Vorlage, Zahl der Maßnahmen
+    und die Summen der Auszahlungen (Ansatz, Prognose zum Jahresende)."""
+    as_of: str
+    budget_year: int
+    template_number: str | None
+    n: int
+    planned: float | None
+    forecast: float | None
+
+
+class BudgetMeasure(TypedDict):
+    """Eine Investitionsmaßnahme im Budgetbericht. ``kind``: ``A`` Auszahlung,
+    ``E`` Einzahlung. ``measure_no`` ist die I10-Nummer (bei einem Bereich
+    „… bis …" die erste, ``measure_no_to`` die letzte) und kann fehlen.
+    ``note`` ist die Erläuterung der Verwaltung im Wortlaut."""
+    seq: int
+    measure_no: str | None
+    measure_no_to: str | None
+    name: str
+    kind: str
+    planned: float | None
+    forecast: float | None
+    carryover: float | None
+    note: str | None
+    herkunft_id: int | None
+
+
+class BudgetMeasures(TypedDict):
+    reports: list[BudgetMeasureReport]
+    as_of: str | None
+    measures: list[BudgetMeasure]
+    provenance: Provenance
+
+
 class BudgetNotes(TypedDict):
     notes: list[BudgetNote]
     provenance: Provenance

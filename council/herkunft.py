@@ -344,6 +344,11 @@ PROBEN: dict[str, str] = {
         "an ihrer Position. Jede übernommene Zeile hat Beginn und Unionsbeitrag, "
         "und der Beitrag übersteigt die förderfähigen Kosten nicht. Übernommen "
         "werden nur Empfänger aus einer nachgesehenen Namensliste.",
+    "budget_report_measures_sum":
+        "Die Zeile „Auszahlungen für Investitionen“ der Teilfinanzrechnung "
+        "nennt Ansatz und Prognose des Teilhaushalts; die Maßnahmen ergeben "
+        "sie, je Richtung und auf den Euro. Wo das Dokument die Summenzeile "
+        "rundet (höchstens 0,1 %), steht der Abstand im Beleg.",
     "budget_notes_sections":
         "Das Inhaltsverzeichnis des Vorberichts nennt je Teilhaushalt einen "
         "Abschnitt zum Ergebnishaushalt und einen zu den Investitionen; jeder "
@@ -791,6 +796,8 @@ HERKUNFT_TABELLEN: tuple[str, ...] = (
     "council_budget_notes",
     # Die beschlossene Haushaltssatzung aus dem Amtsblatt.
     "council_budget_bylaw_published",
+    # Die Budgetberichte der Fachausschüsse: Investitionen je Maßnahme.
+    "council_budget_measures",
     # Fördermittel von EU und Bund je Vorhaben.
     "council_grants_received",
     "council_commitments",
