@@ -205,6 +205,15 @@ iOS-Schrift.
     Bedienhilfen, die einen Präzisions-Zeiger voraussetzen und die Touch nie
     braucht: die Blätter-Pfeile an Chip-Zeile und Steckbrief-Karussell. Ein
     Desktop-Fenster in halber Breite behält sie, ein iPad bekommt sie nie.
+  - `weit` (`min-width: 1680px`) und `ultra` (`min-width: 2200px`) — **noch
+    mehr Platz**, 21:9 und 1440p. Die Hülle deckelt bei 1280, ab `weit` bei
+    1600 px. Über 2200 px geht sie nur für Seiten, die sich in
+    `lib/vollbreit.ts` anmelden — und zwar in einer von zwei Listen:
+    `VOLLBREIT` (randlos, kein Polster: Bühnen wie die Stadtkarte) oder
+    `ULTRA_BREIT` (Deckel 2200 px). Anmelden darf sich nur, wer den Platz in
+    **zusätzliche Spalten** steckt; eine Seite mit einer Spalte würde nur
+    längere Zeilen bekommen (Tims Befund 24.09.2026, Messung und Bauformen
+    in `docs/plan-breite-schirme.md`).
 
   Ein iPad ist quer 1180–1366 px breit und bekäme die Seitenleiste sonst allein
   wegen seiner Breite — dort gehört die Navigation aber an den Daumen (Tims
@@ -226,7 +235,8 @@ iOS-Schrift.
   in welche Spalte gehört, entscheidet der Inhalt, nicht die Höhe (Konto-Seite,
   Tims iPad-Befund 16.08.: 459 × 494 px Leerfläche neben einer Karte, die
   weiter unten noch lange nicht zu Ende war). Die
-  Breite deckelt die Hülle (`max-w-7xl` im App-Layout) — ein eigenes
+  Breite deckelt die Hülle (`max-w-7xl`, ab `weit` 1600 px, für angemeldete
+  Seiten ab `ultra` 2200 px — s. `lib/vollbreit.ts`) — ein eigenes
   `max-w-*` auf einem Raster verschenkt genau den Platz, den das Gerät hat.
 - **Lesebreite: den KASTEN deckeln, nicht den Text darin.** Ein `max-w-[76ch]`
   an einem Absatz in einer 1.496 px breiten Karte lässt rechts 870 px leer, und

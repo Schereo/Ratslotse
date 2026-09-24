@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { DetailSkeleton } from "@/components/ui";
+import { SEITEN_POLSTER } from "@/lib/vollbreit";
 import View from "./view";
 
 export const metadata: Metadata = {
@@ -10,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function Page() {
   return (
-    <Suspense fallback={<DetailSkeleton />}>
+    <Suspense fallback={<div className={SEITEN_POLSTER}><DetailSkeleton /></div>}>
       <View />
     </Suspense>
   );

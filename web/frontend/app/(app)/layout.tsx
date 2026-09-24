@@ -27,6 +27,7 @@ import { Button, Card, CardListSkeleton, Input, Label, PasswordInput, Skeleton, 
 import { SETUP_QUERY_KEY, holeSetupStand } from "@/lib/onboarding-setup";
 import { KONTAKT_EMAIL, KONTAKT_MAILTO } from "@/lib/kontakt";
 import { istOeffentlich, mitRuecksprung } from "@/lib/public-routes";
+import { breiteFuer, huellenKlasse } from "@/lib/vollbreit";
 import type { User } from "@/lib/types";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -180,7 +181,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             Viewport-hohe Seiten (Fragen-Bühne) müssen es von ihrer Höhe
             abziehen und hatten dafür bisher eine eigene Zahl — die lief beim
             ersten Kopf-Umbau auseinander (s. fragen/view.tsx). */}
-        <div className="mx-auto w-full max-w-7xl flex-1 px-4 py-[var(--rl-luft)] [--rl-luft:1.5rem] sm:px-6 sm:[--rl-luft:2rem] lg:px-8 weit:max-w-[1600px]">
+        {/* Wie breit, steht je Seite in lib/vollbreit.ts: randlos (Karten),
+            bis 2200 px ab `ultra` (Seiten mit Spalten) oder wie bisher. */}
+        <div className={huellenKlasse(breiteFuer(pathname))}>
           {children}
         </div>
         {/* Design 6a③: Der sticky Seiten-Footer entfällt — die Pflicht-Links
