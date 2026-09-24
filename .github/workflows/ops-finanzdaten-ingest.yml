@@ -310,6 +310,12 @@ jobs:
             # geprüft werden. Rund 14 Abrufe mit 1,5 s Abstand.
             .venv/bin/python scripts/ingest_bundesvergleich.py
 
+            # Die Schulden der acht kreisfreien Städte samt eigenen Einrichtungen
+            # (Regionaldatenbank). Braucht das Konto aus der .env — ohne endet
+            # der Lauf mit einem Satz und ohne Fehler (dev hat keins). Steht
+            # nach dem Schuldenstand der Stadt, gegen den Oldenburg geprüft wird.
+            .venv/bin/python scripts/ingest_regionalstatistik.py
+
             # Die beiden Steuertabellen des Jahrbuchs (1103 Plan neben Ist je
             # Steuerart, 1105 Hebesätze seit 1980). Sie stehen NACH
             # ingest_finanzen_opendata.py, und das ist keine Sortierlaune:

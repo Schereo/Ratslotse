@@ -47,7 +47,7 @@ from .. import deepresearch
 from ..config import get_settings
 from ..antworten import (AnalysisData, ElectedCouncil, ElectedMember, AssistantStarters, BudgetAmendmentLists, BudgetAuditReports,
                          BudgetBalanceSheet, BudgetComparison, BudgetDataState, BudgetDebt, BudgetLiquidity, BudgetLoans,
-                         BudgetDispute, BudgetDocuments, BudgetExecution, BudgetGrants, GrantRow, GrantTotal, BudgetGrantsReceived, BudgetFederalComparison, FederalCity, FederalGroup, FederalIndicator, FederalStats, FederalYear, GrantReceivedList, GrantReceivedRow, GrantReceivedTotal, Provenance,
+                         BudgetDispute, BudgetDocuments, BudgetExecution, BudgetGrants, GrantRow, GrantTotal, BudgetGrantsReceived, BudgetFederalComparison, BudgetDebtComparison, CityDebt, CityDebtYear, FederalCity, FederalGroup, FederalIndicator, FederalStats, FederalYear, GrantReceivedList, GrantReceivedRow, GrantReceivedTotal, Provenance,
                          BudgetNote, BudgetNotes, BudgetMeasure, BudgetMeasureReport, BudgetMeasures,
                          BudgetFixedAssets, BudgetGroup,
                          BudgetHoldings, BudgetInvestmentProgram, BudgetInvestments,
@@ -5537,9 +5537,10 @@ def haushalt_vergleich(
 
     from council import staedtevergleich as sv
 
-    # Der Bundesvergleich hat seinen eigenen Endpunkt (/budget/federal-comparison):
-    # 46 Städte statt acht, und diese Seite kennt nur die acht.
-    werte = [w for w in store.get_staedtevergleich() if w["series"] != "wegweiser"]
+    # Der Bundesvergleich und die Schulden der acht Städte haben eigene
+    # Endpunkte (/budget/federal-comparison, /budget/debt-comparison) — andere
+    # Kennzahlen, andere Einheiten; diese Antwort bleibt, was sie war.
+    werte = [w for w in store.get_staedtevergleich() if w["series"] not in ("wegweiser", "regionalstatistik")]
     years: dict[str, list[int]] = {}
     for w in werte:
         years.setdefault(w["series"], [])
@@ -5585,6 +5586,41 @@ def haushalt_vergleich(
         "citation": beleg,
         "provenance": {str(h["id"]): h for h in store.get_herkunft(ids)},
     }
+
+
+@router.get("/budget/debt-comparison")
+def haushalt_schuldenvergleich(
+    _user: dict = Depends(require_budget),
+    store: CouncilStore = Depends(get_council_store),
+) -> BudgetDebtComparison:
+    """Die Schulden der acht kreisfreien Städte Niedersachsens — Kernhaushalt
+    und die Einrichtungen, die ihnen ganz gehören (``council/regionalstatistik.py``).
+
+    Je Jahr alle Städte alphabetisch, mit Beträgen und Werten je Einwohner*in.
+    Kein Rang. Nur Jahre, in denen Oldenburgs Kernhaushalt zur eigenen
+    Schuldenreihe passt, stehen im Bestand."""
+    from council import regionalstatistik as rs
+
+    werte = store.get_staedtevergleich(rs.SERIES)
+    je: dict[tuple[int, str], dict] = {}
+    for w in werte:
+        je.setdefault((w["year"], w["key"]), {"city": w["city"]})[w["indicator"]] = w["value"]
+
+    def pro_kopf(betrag: float | None, ew: float | None) -> float | None:
+        return round(betrag / ew, 2) if betrag is not None and ew else None
+
+    jahre: list[CityDebtYear] = []
+    for jahr in sorted({j for j, _ in je}, reverse=True):
+        staedte = [CityDebt(key=key, city=d["city"], is_oldenburg=key == rs.OLDENBURG,
+                            population=d.get("population"), debt_core=d.get("debt_core"),
+                            debt_entities=d.get("debt_entities"),
+                            core_per_capita=pro_kopf(d.get("debt_core"), d.get("population")),
+                            entities_per_capita=pro_kopf(d.get("debt_entities"), d.get("population")))
+                   for (j, key), d in je.items() if j == jahr]
+        jahre.append(CityDebtYear(year=jahr, cities=sorted(staedte, key=lambda c: c["city"])))
+    ids = sorted({w["herkunft_id"] for w in werte if w["herkunft_id"] is not None})
+    return BudgetDebtComparison(
+        years=jahre, provenance=cast(Provenance, {str(h["id"]): h for h in store.get_herkunft(ids)}))
 
 
 @router.get("/budget/federal-comparison")

@@ -155,6 +155,8 @@ export type QuellenSchluessel =
   | "grants_received"
   // Oldenburg im Bundesvergleich (Wegweiser Kommune).
   | "bundesvergleich"
+  // Die Schulden der acht Städte samt eigenen Einrichtungen (Regionaldatenbank).
+  | "regionalstatistik"
   | "investitionsprogramm"
   // Und das Ist-Gegenstück aus dem Statistischen Jahrbuch. Bewusst ein
   // eigener Schlüssel und nicht ein zweiter Absatz unter `investitionen`:
@@ -873,6 +875,20 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     as_of: "Haushaltspläne 2019–2026, Stand der Einbringung",
     art: "pdf",
     url: "https://buergerinfo.oldenburg.de",
+  },
+  regionalstatistik: {
+    title: "Regionaldatenbank — Schulden der Kernhaushalte und der eigenen Einrichtungen (71327)",
+    citation:
+      "Die Schuldenstatistik der Statistischen Ämter je Kreis und kreisfreier Stadt: " +
+      "Schulden des Kernhaushalts und der öffentlichen Fonds, Einrichtungen und Unternehmen, " +
+      "an denen er unmittelbar zu 100 % beteiligt ist (31.12.), dazu die Einwohnerzahl am " +
+      "30.06. (Tabellen 71327-Z-02 und -Z-07). Oldenburgs Kernhaushalt ist gegen die eigene " +
+      "Schuldenreihe der Stadt geprüft; für die Einrichtungen gibt es keine Gegenreihe.",
+    herausgeber: "Statistische Ämter des Bundes und der Länder (Datenlizenz Deutschland 2.0)",
+    standWort: "Jahre",
+    as_of: "Schulden 31.12.2019–2025 ohne 2022, abgerufen 24.09.2026",
+    art: "web",
+    url: "https://www.regionalstatistik.de/genesis/online?operation=table&code=71327-Z-02",
   },
   bundesvergleich: {
     title: "Wegweiser Kommune — Finanzen und Demografische Entwicklung",

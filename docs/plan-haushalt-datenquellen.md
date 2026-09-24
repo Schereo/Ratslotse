@@ -208,6 +208,18 @@ Drei Teile, je ein Parser in `council/uebersichten.py`:
 - **Fertig, wenn** vier Quartale und zwei Jahre Schulden für alle acht Städte
   stehen.
 
+**Gemessen am 24.09.2026** mit dem Konto aus der Prod-`.env`:
+
+| Statistik | Tabelle | Jahre | Ergebnis |
+|---|---|---|---|
+| 71517 Kassenergebnisse | 71517-01/02-03-4 | 1995–**2014** | nicht aktuell, keine Quartale → **nicht gebaut** |
+| 71327 Schulden | 71327-Z-02 (+ Z-07 Einwohner) | 2019–2025 | Kernhaushalt **und** Einrichtungen zu 100 %; Oldenburgs Kernhaushalt = `council_debt` auf den Euro (2022 ohne eigene Aufteilung) → **gebaut** |
+| 74111 Personal | 74111-04-04-4 | 30.06.2006–2024 | 2024: 2.825 Vollzeitäquivalente gegen 1.990 besetzte Stellen laut Stellenplan — Abgrenzung nicht prüfbar → **nicht gebaut** |
+
+Gebaut ist deshalb der Block „Schulden samt eigenen Einrichtungen“ auf
+`/haushalt/vergleich` — er beantwortet das Argument der Seite (Kernhaushalte
+messen die Auslagerung), statt ihm zu widersprechen.
+
 ### PR 8 — Budgetberichte der Fachausschüsse (nur nach Messung)
 
 Erst ein Messskript (`scripts/messe_budgetberichte.py`): je Vorlage Anlagen,
