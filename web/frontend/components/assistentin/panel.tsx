@@ -26,7 +26,10 @@ import type { ElementFrage } from "./index";
 import type { MarkierFrage } from "./markier-knopf";
 import { auswahlText, frageMitZitat } from "@/lib/markieren";
 import { leseSseStrom } from "@/lib/sse";
-import { lottiSchrittText } from "@/lib/qa-schritte";
+import {
+  lottiSchrittText, pruefHinweis, type NeufassungStand, type PruefStand,
+} from "@/lib/qa-schritte";
+import { Aufklapp } from "@/components/aufklapp";
 import { tastaturHoehe } from "@/lib/tastatur";
 import { cn } from "@/lib/utils";
 
@@ -126,6 +129,14 @@ export type LottiTurn = {
    *  Archiv): Die Frage-Blase steht schon darüber. Die Frage selbst bleibt
    *  gesetzt — der Daumen und das gespeicherte Gespräch brauchen sie. */
   frageVerborgen?: boolean;
+  /** Lottis Selbstprüfung (Schalter `lotti-selbstpruefung`) — aus dem
+   *  SSE-Rahmen `check`. Ohne Schalter kommt er nie, das Feld bleibt leer. */
+  pruefung?: PruefStand | null;
+  /** Der zweite Versuch nach „mangelhaft“ — aus dem Rahmen `revision`. */
+  neufassung?: NeufassungStand | null;
+  /** „Warum neu?“ — feste Sätze vom Server (`self_check.LAY_REASONS`), nie
+   *  Text eines Modells. */
+  warumNeu?: string[];
 };
 
 /** Der Breakpoint `desk` aus `tailwind.config.ts`, als Medienabfrage.
@@ -636,6 +647,25 @@ export function LottiPanel({
           antwort = rein;
           if (next === "ratsfrage") archivWeg = "danach";
           patch(() => ({ answer: rein, next }));
+        } else if (msg.type === "check") {
+          // **Lotti prüft ihre Antwort.** Der Text steht schon; hier ändert
+          // sich nur, was darunter steht („Lotti prüft ihre Antwort …").
+          const stand = msg.state as PruefStand;
+          patch(() => ({
+            pruefung: stand,
+            warumNeu: stand === "poor" ? ((msg.reasons as string[]) ?? []) : [],
+          }));
+        } else if (msg.type === "revision") {
+          const stand = msg.state as NeufassungStand;
+          if (stand === "replaced") {
+            // Die neue Fassung ERSETZT die erste. Ob danach ins Archiv
+            // weitergereicht wird, entscheidet der Server neu (`done`).
+            const { text: rein } = trenneWeiter((msg.text as string) ?? "");
+            antwort = rein;
+            patch(() => ({ answer: rein, neufassung: stand }));
+          } else {
+            patch(() => ({ neufassung: stand }));
+          }
         } else if (msg.type === "done") {
           // **Der Weg ins Archiv ist unsere Entscheidung, nicht ihre.** Bis
           // 22.09.2026 stand hier ein Knopf „Den Rat fragen" — Tim: „Ich weiß
@@ -983,9 +1013,23 @@ export function LottiPanel({
                        `overflow-hidden` schneidet ihn der Rand ab, sobald das
                        Wort rechts steht (Tim, 22.09.2026). Der Bereich steht
                        um EINE Antwort: ein zweites Wort ersetzt das erste. */
-                    <GlossarAufklappBereich className="text-[13.5px] leading-relaxed text-foreground/90">
-                      <AntwortText text={t.answer} idToNum={new Map()} />
-                    </GlossarAufklappBereich>
+                    /* **Die neue Fassung ersetzt die erste, ohne zu
+                       springen.** Während Lotti neu formuliert, tritt die
+                       erste zurück (dieselbe Bauform wie `.liste-laedt`);
+                       die zweite blendet über den Schlüssel neu ein — nur
+                       Deckkraft, damit nichts im Fenster verrutscht. */
+                    <div
+                      key={t.neufassung === "replaced" ? "zweite" : "erste"}
+                      data-lotti-fassung={t.neufassung === "replaced" ? "zweite" : "erste"}
+                      className={cn(
+                        t.neufassung === "running" && "liste-laedt",
+                        t.neufassung === "replaced" && "lotti-neufassung",
+                      )}
+                    >
+                      <GlossarAufklappBereich className="text-[13.5px] leading-relaxed text-foreground/90">
+                        <AntwortText text={t.answer} idToNum={new Map()} />
+                      </GlossarAufklappBereich>
+                    </div>
                   )
                   : <Tippt schritt={t.schritt} ratsfrage={t.ratsfrage} />}
                 {t.answer && !t.fehler && t.ratsfrage && (
@@ -1057,6 +1101,7 @@ export function LottiPanel({
                     Sie ist kein Chip im Sinne von PR 24: Diese Regel zählt
                     Angebote, die eine neue Runde auslösen; ein Beleg löst
                     nichts aus, er öffnet ein Dokument. */}
+                {t.answer && !t.fehler && <Pruefung turn={t} />}
                 {t.answer && !t.fehler && <Grundlage belege={t.evidence} />}
                 {(daumenZeigen(t) || archivLink) && (
                   <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -1341,6 +1386,53 @@ function Tippt({ schritt, ratsfrage }: { schritt?: string | null; ratsfrage?: bo
         {lottiSchrittText(schritt, ratsfrage)} …
       </span>
     </span>
+  );
+}
+
+/**
+ * Lottis Selbstprüfung unter der Antwort (Schalter `lotti-selbstpruefung`).
+ *
+ * Solange geprüft oder neu formuliert wird: dieselbe Ladeanzeige wie beim
+ * Schreiben — drei Punkte und ein Satz, `role="status"`. Danach bleibt nur
+ * unter einer ERSETZTEN Antwort etwas stehen: der stille Textlink „Warum
+ * neu?“, der die Gründe aufklappt. Ein gutes Urteil zeigt nichts — unter
+ * einer Antwort stehen schon Grundlage, Daumen und ein Chip (Designsprache,
+ * „Was unter einer Antwort steht“), ein Häkchen mehr wäre Lärm.
+ */
+function Pruefung({ turn }: { turn: LottiTurn }) {
+  const [offen, setOffen] = useState(false);
+  const hinweis = pruefHinweis(turn.pruefung, turn.neufassung);
+  if (hinweis) {
+    return (
+      <span data-lotti-pruefung={turn.neufassung ?? turn.pruefung ?? ""}
+        className="mt-1 flex items-center gap-2" role="status">
+        <span className="inline-flex flex-none items-center gap-1" aria-hidden>
+          {[0, 1, 2].map((i) => (
+            <span key={i} className="lotti-tippt-punkt h-1.5 w-1.5 rounded-full bg-signal"
+              style={{ animationDelay: `${i * 160}ms` }} />
+          ))}
+        </span>
+        <span className="text-hinweis text-muted-foreground">{hinweis} …</span>
+      </span>
+    );
+  }
+  if (turn.neufassung !== "replaced") return null;
+  const gruende = turn.warumNeu?.length
+    ? turn.warumNeu : ["Die erste Fassung hat die Prüfung nicht bestanden."];
+  return (
+    <div data-lotti-pruefung="replaced" className="mt-1">
+      <button type="button" onClick={() => setOffen((o) => !o)} aria-expanded={offen}
+        className="text-[11.5px] font-medium text-muted-foreground hover:text-foreground hover:underline">
+        Neu formuliert · Warum neu?
+      </button>
+      <Aufklapp offen={offen}>
+        <ul className="mt-1 space-y-0.5 border-l-2 border-border pl-2.5">
+          {gruende.map((g) => (
+            <li key={g} className="text-hinweis text-muted-foreground">{g}</li>
+          ))}
+        </ul>
+      </Aufklapp>
+    </div>
   );
 }
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ASK_SCHRITTE, ERKLAER_SCHRITTE, lottiSchrittText } from "./qa-schritte";
+import { ASK_SCHRITTE, ERKLAER_SCHRITTE, lottiSchrittText, pruefHinweis } from "./qa-schritte";
 
 describe("lottiSchrittText", () => {
   it("nennt für die Erklärung, was gerade passiert", () => {
@@ -50,5 +50,22 @@ describe("lottiSchrittText", () => {
     // als „Lotti überlegt" im Fenster, wo niemand ihn vermisst.
     expect(Object.keys(ERKLAER_SCHRITTE).sort()).toEqual(["answer", "archiv", "context"]);
     expect(Object.keys(ASK_SCHRITTE).sort()).toEqual(["answer", "expand", "search"]);
+  });
+});
+
+describe("pruefHinweis", () => {
+  it("sagt während der Prüfung, dass geprüft wird", () => {
+    expect(pruefHinweis("running", null)).toBe("Lotti prüft ihre Antwort");
+  });
+  it("sagt ab dem Urteil „mangelhaft“, dass neu formuliert wird — auch vor dem Rahmen `revision`", () => {
+    expect(pruefHinweis("poor", null)).toBe("Ich formuliere das genauer");
+    expect(pruefHinweis("poor", "running")).toBe("Ich formuliere das genauer");
+  });
+  it("verschwindet, sobald es ein Ergebnis gibt", () => {
+    for (const p of ["good", "skipped", undefined, null] as const) {
+      expect(pruefHinweis(p, null)).toBeNull();
+    }
+    expect(pruefHinweis("poor", "replaced")).toBeNull();
+    expect(pruefHinweis("poor", "kept")).toBeNull();
   });
 });

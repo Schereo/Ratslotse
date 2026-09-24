@@ -481,6 +481,56 @@ test.describe("Lotti-Knopf und -Fenster", () => {
     await expect(page.getByText(/nichts einzeln erklären/)).toHaveCount(0);
   });
 
+  test("Selbstprüfung: die neue Fassung ersetzt die erste, „Warum neu?“ klappt die Gründe auf", async ({ page }) => {
+    // Schalter `lotti-selbstpruefung` (council/self_check.py): Nach dem Strom
+    // meldet der Server `check` und — bei einem Mangel — `revision`. Die
+    // Gründe sind feste Sätze vom Server, nie Text eines Modells.
+    const erste = "Hier liegt kein Betrag vor.";
+    const zweite = "Ende 2025 hatte die Stadt rund 337 Millionen Euro Schulden.";
+    const grund = "Mir lagen Angaben dazu vor, die in der ersten Fassung fehlten.";
+    await page.route("**/api/council/explain", (route) =>
+      route.fulfill({ status: 200, contentType: "text/event-stream", body: [
+        { type: "token", text: erste },
+        { type: "check", state: "running" },
+        { type: "check", state: "poor", reasons: [grund] },
+        { type: "revision", state: "running" },
+        { type: "revision", state: "replaced", text: zweite },
+        { type: "done", mode: "explain", kind: "model", next: null, next_page: null,
+          glossary: [], evidence: [], timings: { total_ms: 900 } },
+      ].map((r) => `data: ${JSON.stringify(r)}\n\n`).join("") })
+        .catch(() => { /* Test ist schon zu Ende */ }),
+    );
+    await page.goto("/dashboard");
+    await knopf(page).click();
+    await fenster(page).getByRole("button", { name: "Was sehe ich hier?" }).click();
+    await expect(fenster(page).getByText(zweite)).toBeVisible();
+    await expect(fenster(page).getByText(erste)).toHaveCount(0);
+    // Der Hinweis ist weg, sobald die neue Fassung steht.
+    await expect(fenster(page).getByText(/prüft ihre Antwort|formuliere das genauer/)).toHaveCount(0);
+    await expect(fenster(page).getByText(grund)).toHaveCount(0);
+    await fenster(page).getByRole("button", { name: /Warum neu/ }).click();
+    await expect(fenster(page).getByText(grund)).toBeVisible();
+  });
+
+  test("Selbstprüfung: ein gutes Urteil lässt nichts unter der Antwort stehen", async ({ page }) => {
+    await page.route("**/api/council/explain", (route) =>
+      route.fulfill({ status: 200, contentType: "text/event-stream", body: [
+        { type: "token", text: ANTWORT_ZAHL },
+        { type: "check", state: "running" },
+        { type: "check", state: "good", reasons: [] },
+        { type: "done", mode: "explain", kind: "model", next: null, next_page: null,
+          glossary: [], evidence: [], timings: { total_ms: 900 } },
+      ].map((r) => `data: ${JSON.stringify(r)}\n\n`).join("") })
+        .catch(() => { /* Test ist schon zu Ende */ }),
+    );
+    await page.goto("/dashboard");
+    await knopf(page).click();
+    await fenster(page).getByRole("button", { name: "Was sehe ich hier?" }).click();
+    await expect(fenster(page).getByText(ANTWORT_ZAHL)).toBeVisible();
+    await expect(fenster(page).locator("[data-lotti-pruefung]")).toHaveCount(0);
+    await expect(fenster(page).getByRole("button", { name: /Warum neu/ })).toHaveCount(0);
+  });
+
   test("unter einer Antwort steht höchstens EIN Chip", async ({ page }) => {
     // Tims Bild: drei Chips, zwei Daumen, zwei Grund-Chips — sieben
     // Bedienelemente für eine Antwort. Der Strom hier böte zwei an

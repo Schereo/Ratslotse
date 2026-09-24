@@ -1534,3 +1534,14 @@ lotti-figur {
     animation: lotti-tippt-blinzeln 1.8s ease-in-out infinite !important;
   }
 }
+
+/* ── Lottis neue Fassung (Selbstprüfung, 24.09.2026) ──────────────────────
+   Die zweite Fassung einer Antwort ersetzt die erste. Nur Deckkraft: Ein
+   Anheben verschöbe den Text, den man gerade liest, um ein paar Pixel —
+   genau das „Springen“, das der Übergang vermeiden soll. `--takt-buehne`,
+   weil hier etwas Neues die Fläche betritt. Bei reduzierter Bewegung legt
+   der globale Block die Dauer still; der Endzustand (voll sichtbar) steht
+   dann sofort. */
+.lotti-neufassung {
+  animation: page-in var(--takt-buehne) var(--ease-out-strong) both;
+}

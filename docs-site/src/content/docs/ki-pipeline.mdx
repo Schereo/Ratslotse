@@ -448,6 +448,31 @@ Zum Vergleich: Der Antwort-Prompt der KI-Frage ist mit 8.412 Zeichen gut
 anderthalbmal so groß wie Lottis 5.844, und dazu kommen dort Analyse,
 Expansion und Reranker.
 
+### Selbstprüfung (hinter einem Schalter)
+
+Mit dem Schalter `lotti-selbstpruefung` prüft Ratslotse jede Erklärung, die
+ein Modell geschrieben hat, bevor sie gilt (`council/self_check.py`):
+
+1. **Ohne Modell:** Jede Zahl der Antwort steht im Kontext, unter dem Jahr,
+   unter dem sie dort steht — dieselbe Logik wie die Fakten-Eval
+   (`council/fakten_abgleich.py`); dazu keine Wertung in eigener Stimme und
+   kein Rest aus dem Prompt. Ein Befund hier heißt: neu schreiben.
+2. **Prüfer-Modell** einer anderen Familie als die Antwort (Gemini gegen
+   GPT-6 Luna), mit Zero Data Retention. Es bekommt Lottis ganzen Prompt samt
+   Frage und Antwort und urteilt als JSON; es schreibt nichts um.
+
+Bei einem Mangel schreibt das Antwortmodell **genau einmal** neu; der zweite
+Versuch durchläuft nur noch Stufe 1 und verliert, wenn er dort schlechter ist.
+Der Strom meldet das mit zwei Rahmen (`check`, `revision`); die iOS-App, die
+`revision` nicht kennt, bekommt die neue Fassung als `replace`. Das Urteil
+landet in `assistant_checks` — Frage und Antworten nur mit Einwilligung in die
+Gesprächsspeicherung.
+
+**Auf Prod aus**, weil die Kalibrierung vom 24.09.2026 keinen Gewinn zeigte:
+Der Prüfer fand die bekannten Mängel nicht, und ein Lauf der Fakten-Eval mit
+Selbstprüfung ersetzte keine einzige Antwort — bei +1,8 s im Median und
+0,24 Cent je Prüfung. Zahlen und Befehle: `docs/lotti-selbstpruefung.md`.
+
 ## Frag den Rat: welche Quelle eine Geldfrage zieht
 
 Die KI-Frage antwortet nicht nur aus Beschlüssen. Zu Geldfragen liegen

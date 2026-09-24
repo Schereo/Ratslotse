@@ -115,6 +115,18 @@ FEATURES: dict[str, Feature] = {
                     "Ja-Quote unter 5 %, wird er seltener oder abgeschafft — Tims "
                     "Entscheidung. Bleibt er, fliegt der Schalter raus.",
     ),
+    "lotti-selbstpruefung": Feature(
+        key="lotti-selbstpruefung",
+        description="Lotti prüft ihre Antwort, bevor sie gilt: erst ohne Modell (jede Zahl "
+                    "steht im Kontext, unter ihrem Jahr), dann ein Prüfer-Modell einer anderen "
+                    "Familie; bei einem Mangel genau ein zweiter Versuch, im Fenster als "
+                    "„Ich formuliere das genauer …“ samt „Warum neu?“ (council/self_check.py).",
+        fertig_wenn="Die Kalibrierung (eval/run_selbstpruefung.py) zeigt mehr als die Hälfte "
+                    "der bekannten Mängel bei höchstens 5 % Fehlalarmen, UND ein Lauf der "
+                    "Fakten-Eval mit Selbstprüfung hat eine höhere ok-Quote als ohne. Am "
+                    "24.09.2026 galt beides nicht (docs/lotti-selbstpruefung.md) — bis dahin "
+                    "bleibt er auf Prod aus.",
+    ),
     "neuer-rat": Feature(
         key="neuer-rat",
         description="Der gewählte Rat vor seiner ersten Sitzung: die Liste der 52 "
