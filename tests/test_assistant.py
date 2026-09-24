@@ -1968,6 +1968,26 @@ def test_die_vergleichszeile_zaehlt_darueber_und_darunter():
     assert "348,2 Mio. €" in zeile and "teur" not in zeile
 
 
+def test_auf_der_personal_seite_kein_staedtevergleich(monkeypatch):
+    """Der Städtevergleich ist eine Euro-Reihe (Steuerkraft); unter einer
+    Antwort über Stellen stand er als Beleg (Bildschirmfoto 24.09.2026)."""
+    gesehen: dict = {}
+
+    def merke(store, frage, begriffe="", typ="topic"):
+        gesehen["frage"] = frage
+        return {"facets": ["population"]}
+
+    monkeypatch.setattr(qa, "geld_kontext", merke)
+
+    class _S(_Store):
+        def stellenplan_kontext(self, **_k):
+            return None
+
+    lotti.screen_context(_S(), lotti.Screen(route="/haushalt/personal"),
+                         "sind das nicht zu viele", permissions=BUDGET)
+    assert "einwohner" in gesehen["frage"] and "vergleich" not in gesehen["frage"]
+
+
 def test_eine_einordnungsfrage_zieht_einwohner_und_vergleich(monkeypatch):
     """Beide Facetten haben ihre eigenen, engen Wörter und kämen von „Ist das
     viel?" nie von selbst mit. Wie in PR 27 wächst nur der Text der
@@ -2281,22 +2301,20 @@ def _stellenplan(fehlend: list | None = None) -> dict:
 
 def test_stellen_je_tausend_einwohner_mit_beiden_jahren():
     """„Sind das nicht zu viele?" auf der Personal-Seite: Stellen je 1.000
-    Einwohner*innen, je Teil und zusammen. Nenner: Ende des Vorjahrs des
-    Haushaltsjahres (der Stellenplan 2026 entsteht 2025)."""
+    Einwohner*innen, je Teil. Nenner: Ende des Vorjahrs des Haushaltsjahres
+    (der Stellenplan 2026 entsteht 2025)."""
     zeilen = lotti._einordnung({"stellenplan": _stellenplan()}, _EINWOHNER)
-    assert len(zeilen) == 3
+    assert len(zeilen) == 2
     assert "815,0 Stellen" in zeilen[0] and "4,6 Stellen je 1.000" in zeilen[0]
     assert "Ende 2025" in zeilen[0] and "Stellenplan 2026" in zeilen[0]
-    assert "2.584,0 Stellen" in zeilen[2] and "14,6 Stellen je 1.000" in zeilen[2]
-    assert "zusammengezählt" in zeilen[2]
+    assert "1.769,0 Stellen" in zeilen[1] and "10,0 Stellen je 1.000" in zeilen[1]
 
 
-def test_ohne_beide_teile_keine_summe_der_stellen():
-    """Ein halber Jahrgang darf nicht aussehen wie ein ganzer."""
-    s = _stellenplan(fehlend=["Arbeitnehmerinnen und Arbeitnehmer"])
-    s["teile"] = s["teile"][:1]
-    zeilen = lotti._einordnung({"stellenplan": s}, _EINWOHNER)
-    assert len(zeilen) == 1 and "zusammen" not in zeilen[0]
+def test_nie_eine_summe_der_stellen():
+    """Die Personal-Seite sagt ausdrücklich „keine Summe A+B — steht in keinem
+    Dokument". Ein erster Entwurf rechnete sie doch, und Lotti nannte sie."""
+    zeilen = lotti._einordnung({"stellenplan": _stellenplan()}, _EINWOHNER)
+    assert not any("2.584" in z or "zusammen" in z or "14,6" in z for z in zeilen)
 
 
 def test_neben_stellen_allein_steht_kein_steuerkraft_vergleich():

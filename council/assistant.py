@@ -1124,7 +1124,13 @@ def screen_context(store, screen: Screen, question: str, *,
         # Haushaltszahl steht, auf die er sich bezieht. Genau die Sorte
         # Baustein, die neben Fremdtext die Regeln verdünnt (s. GELD_AUSSERHALB).
         if einordnung_frage_ and geld_gewollt:
-            facetten_text = f"{facetten_text} einwohner vergleich"
+            # L2: Auf der Personal-Seite OHNE „vergleich": Der Städtevergleich
+            # ist eine Euro-Reihe (Steuerkraft) und stand bei „sind das nicht
+            # zu viele" als Beleg unter einer Antwort über Stellen
+            # (Bildschirmfoto 24.09.2026).
+            vergleich = ("" if _EINORDNUNG_ZAEHLER.get(screen.route) == "stellenplan"
+                         else " vergleich")
+            facetten_text = f"{facetten_text} einwohner{vergleich}"
         if geld_gewollt:
             try:
                 geld = qa.geld_kontext(store, facetten_text, ausloeser, "money")
@@ -1423,11 +1429,12 @@ def _stellen_je_tausend(stellenplan: dict | None, einwohner: dict | None) -> lis
     Personalbestand vergleichen. Eine Nachkommastelle, weil der Stellenplan
     selbst Bruchteile führt (Teilzeit) — mehr wäre Scheingenauigkeit.
 
-    **Je Teil, und die Summe ausdrücklich als Rechnung.** Der Stellenplan hat
-    keine Zeile „Stellen insgesamt" (``store.stellenplan_kontext`` bildet
-    auch keine). Die Summe aus Teil A und B steht hier nur, wenn BEIDE Teile
-    im Bestand sind, und heißt „von Ratslotse zusammengezählt" — sonst sähe
-    ein halber Jahrgang aus wie ein ganzer.
+    **Je Teil, nie zusammen.** Der Stellenplan hat keine Zeile „Stellen
+    insgesamt", ``store.stellenplan_kontext`` bildet keine, und die
+    Personal-Seite sagt es ausdrücklich („keine Summe A+B — steht in keinem
+    Dokument"). Ein erster Entwurf rechnete „A und B zusammen: 14,6 je 1.000"
+    — und Lotti nannte genau diese Zahl neben einer Seite, die sie bewusst
+    nicht zeigt (Bildschirmfoto 24.09.2026). Deshalb nur die beiden Teile.
 
     Nenner ist die Einwohnerzahl zum Ende des VORJAHRS des Haushaltsjahres,
     falls vorhanden: Der Stellenplan 2026 wird im Herbst 2025 aufgestellt.
@@ -1451,12 +1458,8 @@ def _stellen_je_tausend(stellenplan: dict | None, einwohner: dict | None) -> lis
                 f"{_komma(stellen / n * 1000)} Stellen je 1.000 Einwohner*innen "
                 f"(Kernverwaltung, Stellen statt Köpfe)")
 
-    aus = [zeile(f"Teil {t['part']} ({t.get('teil_name') or t['part']})",
-                 t["positions_planned"]) for t in teile]
-    if len(teile) >= 2 and not s.get("fehlend"):
-        aus.append(zeile("Teil A und B zusammen (von Ratslotse zusammengezählt)",
-                         sum(t["positions_planned"] for t in teile)))
-    return aus
+    return [zeile(f"Teil {t['part']} ({t.get('teil_name') or t['part']})",
+                  t["positions_planned"]) for t in teile]
 
 
 def _vergleichs_zeile(vergleich: dict | None) -> str:
