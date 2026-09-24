@@ -141,6 +141,8 @@ export type QuellenSchluessel =
   // Finanzplanung. Eigener Schlüssel: anderes Dokument, andere Fassung
   // (Entwurf statt Open-Data-Datei), andere Probe.
   | "finance_budget"
+  // Die Zuschüsse an Dritte aus derselben Planfamilie (Anlage 003).
+  | "grants"
   | "investitionsprogramm"
   // Und das Ist-Gegenstück aus dem Statistischen Jahrbuch. Bewusst ein
   // eigener Schlüssel und nicht ein zweiter Absatz unter `investitionen`:
@@ -854,6 +856,20 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
       "verschluckt; jede der sechs Spalten muss ihre Summen und Salden selbst ergeben. " +
       "Es ist der Entwurf der Verwaltung: Die Anlage hängt an der Einbringungs-Vorlage, " +
       "nicht am Beschluss.",
+    herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
+    standWort: "Haushaltspläne",
+    as_of: "Haushaltspläne 2019–2026, Stand der Einbringung",
+    art: "pdf",
+    url: "https://buergerinfo.oldenburg.de",
+  },
+  grants: {
+    title: "Übersicht über die Zuweisungen und Zuschüsse an Dritte (Anlage 003)",
+    citation:
+      "Teil der Übersichten des Haushaltsplans: je Zuschuss Teilhaushalt, Produkt, " +
+      "Beschreibung der Zuwendung, Ansatz im Planjahr und im Vorjahr, Erläuterung und " +
+      "ob bar oder unbar. Vereine und Träger stehen dort mit Namen. Es ist der Entwurf " +
+      "der Verwaltung: Die Anlage hängt an der Einbringungs-Vorlage, spätere Änderungen " +
+      "des Rates stehen nicht darin. Was tatsächlich ausgezahlt wurde, sagt sie nicht.",
     herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
     standWort: "Haushaltspläne",
     as_of: "Haushaltspläne 2019–2026, Stand der Einbringung",

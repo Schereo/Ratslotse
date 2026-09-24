@@ -163,6 +163,8 @@ jobs:
             # Jahresabschlüsse der Gesellschaften: lädt Bilanz und GuV selbst
             # (Wortrahmen, die Bilanz steht zweispaltig und oft quer).
             .venv/bin/python scripts/ingest_gesellschaft_abschluss.py
+            # Zuschüsse an Dritte (Anlage 003): lädt die Übersichten selbst.
+            .venv/bin/python scripts/ingest_zuschuesse.py
             .venv/bin/python scripts/ingest_pruefberichte.py
             .venv/bin/python scripts/ingest_konzernabschluss.py
             .venv/bin/python scripts/ingest_investitionen_ist.py

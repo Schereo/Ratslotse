@@ -10,7 +10,7 @@ import unicodedata
 from collections import Counter, defaultdict
 from datetime import date, timedelta
 from collections.abc import Callable
-from typing import Annotated
+from typing import Annotated, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
@@ -45,7 +45,7 @@ from .. import deepresearch
 from ..config import get_settings
 from ..antworten import (AnalysisData, ElectedCouncil, ElectedMember, AssistantStarters, BudgetAmendmentLists, BudgetAuditReports,
                          BudgetBalanceSheet, BudgetComparison, BudgetDataState, BudgetDebt, BudgetLiquidity, BudgetLoans,
-                         BudgetDispute, BudgetDocuments, BudgetExecution,
+                         BudgetDispute, BudgetDocuments, BudgetExecution, BudgetGrants, GrantRow, GrantTotal, Provenance,
                          BudgetFixedAssets, BudgetGroup,
                          BudgetHoldings, BudgetInvestmentProgram, BudgetInvestments,
                          BudgetOverview, BudgetPath, BudgetProducts, BudgetStaffPlan, Committees,
@@ -988,6 +988,41 @@ def haushalt_beteiligungen(
         "group_comparison": vergleich,
         "provenance": {str(h["id"]): h for h in store.get_herkunft(ids)},
     }
+
+
+@router.get("/budget/grants")
+def haushalt_zuschuesse(
+    sub_budget: int | None = None,
+    year: int | None = None,
+    _user: dict = Depends(require_budget),
+    store: CouncilStore = Depends(get_council_store),
+) -> BudgetGrants:
+    """Wer von der Stadt Zuschüsse bekommt — die Übersicht aus Anlage 003.
+
+    - ``rows``: die Zuschüsse eines Plans (Vorgabe: der jüngste), mit
+      ``sub_budget`` nur die eines Teilhaushalts, in Dokument-Reihenfolge,
+    - ``totals``: je Plan und Teilhaushalt Zahl und Summe — die Reihe über
+      alle eingelesenen Pläne, damit die Seite den Verlauf zeigen kann,
+      ohne acht Jahrgänge Zeilen zu laden,
+    - ``years``: die eingelesenen Pläne.
+
+    Vereine und Träger stehen mit Namen darin, wie in der Vorlage (Tims
+    Entscheidung 24.09.2026); Privatpersonen führt die Übersicht nicht.
+    Es ist der Entwurf der Verwaltung: Anlage 003 hängt an der
+    Einbringungs-Vorlage (``council/uebersichten.py``)."""
+    jahre = store.zuschuss_jahrgaenge()
+    jahr = year if year in jahre else (jahre[-1] if jahre else None)
+    zeilen = store.get_zuschuesse(jahr, sub_budget) if jahr is not None else []
+    summen = [s for s in store.zuschuss_summen()
+              if sub_budget is None or s["sub_budget_no"] == sub_budget]
+    ids = sorted({z["herkunft_id"] for z in zeilen if z["herkunft_id"] is not None})
+    rows: list[GrantRow] = [cast(GrantRow, {k: z[k] for k in GrantRow.__annotations__})
+                            for z in zeilen]
+    return BudgetGrants(
+        years=jahre, year=jahr, rows=rows,
+        totals=cast(list[GrantTotal], summen),
+        provenance=cast(Provenance, {str(h["id"]): h for h in store.get_herkunft(ids)}),
+    )
 
 
 @router.get("/budget/investments")

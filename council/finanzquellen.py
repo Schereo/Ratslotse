@@ -569,6 +569,22 @@ def _bestand_finanzhaushalt(store: CouncilStore) -> set[tuple]:
     return {(j,) for j in store.finanzhaushalt_jahrgaenge()}
 
 
+def _einheiten_uebersichten(row: dict) -> set[tuple]:
+    """Der Jahrgang aus dem Label („2026 003 Vw Übersichten …") oder dem Kopf
+    („Haushaltsplan 2020"). Die alten Labels heißen nur „003 Übersichten";
+    ohne Jahr bleibt die Einheit leer, das Skript liest sie trotzdem — es nimmt
+    das Planjahr aus dem Tabellenkopf."""
+    for text in (row.get("label") or "", (row.get("kopf") or "")[:600]):
+        m = re.search(r"\b(20[1-3]\d)\b", text)
+        if m:
+            return {(int(m.group(1)),)}
+    return set()
+
+
+def _bestand_uebersichten(store: CouncilStore) -> set[tuple]:
+    return {(j,) for j in store.zuschuss_jahrgaenge()}
+
+
 def _einheiten_stellenplan(row: dict) -> set[tuple]:
     """Je Dokument zwei Einheiten: Teil A und Teil B.
 
@@ -2592,6 +2608,33 @@ for _q in (
         lauf=("scripts/ingest_finanzhaushalt.py",),
     ),
     Finanzquelle(
+        key="grants",
+        label="Zuschüsse an Dritte",
+        was="Wer von der Stadt Zuschüsse bekommt — Vereine, Träger, "
+            "Gesellschaften —, je Zuschuss Zweck, Betrag im Planjahr und im "
+            "Vorjahr, aus der Übersicht in Anlage 003 des Haushaltsplans.",
+        tabelle="council_grants",
+        # Anlage 003 desselben Haushaltsplans wie 005 und 006: gleicher Takt.
+        erwarteter_monat=10,
+        versatz=-1,
+        herkunft="ris",
+        erkennung=Erkennung(
+            # Trifft die acht Anlagen 2019–2026 und ihre Dubletten (zweimal
+            # dieselbe Anlage in einer anderen Vorlage); das Sammel-PDF
+            # „2-5 Vorbericht, Übersichten, …" (280 Seiten) sortiert das
+            # Skript über die Seitenzahl aus.
+            label_muster=("%bersichten%",),
+            mindest_seiten=30,
+            ordnung="document_id",
+        ),
+        einheiten_von=_einheiten_uebersichten,
+        balance=_bestand_uebersichten,
+        # Kein `einlesen`: Die Tabelle braucht Wortkoordinaten — der Lauf lädt
+        # die PDFs selbst, wie beim Gesamtfinanzhaushalt.
+        nachschub="scripts/ingest_zuschuesse.py (lädt die PDFs selbst)",
+        lauf=("scripts/ingest_zuschuesse.py",),
+    ),
+    Finanzquelle(
         key="stellenplan",
         label="Stellenplan",
         was="Wie viele Stellen die Stadt vorhält — und wie viele davon nicht "
@@ -3073,7 +3116,7 @@ for _q in (
 #: weil er zeitlich dazwischenliegt: Erst was die Stadt vorhat, dann wie es im
 #: laufenden Jahr läuft, dann wie es ausgegangen ist. Die drei nebeneinander
 #: sind die Geschichte eines Haushaltsjahres.
-REIHENFOLGE = ("haushaltsplan", "income_budget", "finance_budget", "investitionen",
+REIHENFOLGE = ("haushaltsplan", "income_budget", "finance_budget", "grants", "investitionen",
                "investitionsprogramm", "budget_execution",
                "jahresabschluss", "teilhaushalt",
                "stellenplan", "indicators", "rpa_fundstelle",

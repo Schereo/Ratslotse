@@ -928,6 +928,8 @@ class SchemaMixin(StoreBasis):
         "council_income_budget":     (None, "source_url", "ris"),
         # Und der Gesamtfinanzhaushalt, Anlage 006: neu, ohne Altspalten.
         "council_finance_budget":    (None, "source_url", "ris"),
+        # Und die Zuschüsse an Dritte aus Anlage 003.
+        "council_grants":            (None, "source_url", "ris"),
         # Ebenso die Investitionen des Finanzhaushalts: neu, ohne Altspalten,
         # Herkunft ausschließlich über `herkunft_id`.
         "council_investments":        (None, "source_url", "opendata"),
@@ -2337,6 +2339,29 @@ class SchemaMixin(StoreBasis):
         self._conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_finanzhaushalt_jahr "
             "ON council_finance_budget(year, kind)")
+        # Die Zuschüsse an Dritte aus den Übersichten (Anlage 003,
+        # council/uebersichten.py): je Zeile ein Zuschuss mit Empfänger in der
+        # Beschreibung. `seq` ist die Reihenfolge im Dokument — die laufende
+        # Nummer der Stadt taugt nicht als Schlüssel, sie ist doppelt vergeben.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_grants ("
+            "budget_year INTEGER NOT NULL, "
+            "seq INTEGER NOT NULL, "
+            "lfd_nr INTEGER NOT NULL, "
+            "sub_budget_no INTEGER NOT NULL, "
+            "product_no TEXT, "
+            "product_name TEXT, "
+            "description TEXT NOT NULL, "
+            "amount_prior REAL, "                 # Ansatz des Vorjahres
+            "amount REAL, "                       # Ansatz des Planjahres
+            "note TEXT, "
+            "cash INTEGER, "                      # 1 bar, 0 unbar, NULL ohne Angabe (2019)
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (budget_year, seq))"
+        )
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_zuschuesse_thh "
+            "ON council_grants(sub_budget_no, budget_year)")
         # Der Stellenplan (Anlage 21/22 des Haushaltsplans, council/stellenplan.py):
         # wie viele Stellen die Stadt vorhält, wie viele davon besetzt sind
         # und wie viele nicht.

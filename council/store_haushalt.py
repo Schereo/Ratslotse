@@ -94,6 +94,8 @@ class HaushaltMixin(StoreBasis):
         # Filter aus demselben Grund.
         "finance_budget":    ("council_finance_budget", "year",
                                  "t.kind = 'budget'", None),
+        # Die Zuschüsse an Dritte (Anlage 003): ein Dokument je Plan.
+        "grants":            ("council_grants", "budget_year", None, None),
         # Vierte Ebene: Abschnitt 2.1, die Bilanz. Der älteste Stichtag (2016)
         # stammt aus der Vorjahresspalte des Abschlusses 2017 — er trägt
         # deshalb dessen Dokument, mit eigener Fundstelle.
@@ -2064,6 +2066,59 @@ class HaushaltMixin(StoreBasis):
                   z.get("role"), z["amount"], 1 if z.get("is_total") else 0, now, hid)
                  for z in zeilen])
         return len(zeilen)
+
+    def save_zuschuesse(self, budget_year: int, zeilen: list[dict], herkunft) -> int:
+        """Die Zuschüsse eines Plans ersetzen — nur, was die Probe bestanden hat."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute("DELETE FROM council_grants WHERE budget_year = ?",
+                               (budget_year,))
+            self._conn.executemany(
+                "INSERT INTO council_grants (budget_year, seq, lfd_nr, sub_budget_no, "
+                " product_no, product_name, description, amount_prior, amount, note, "
+                " cash, herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                [(budget_year, i, z["lfd_nr"], z["sub_budget_no"], z["product_no"],
+                  z["product_name"], z["description"], z["amount_prior"], z["amount"],
+                  z["note"], None if z["cash"] is None else int(z["cash"]), hid, now)
+                 for i, z in enumerate(zeilen, 1)])
+        return len(zeilen)
+
+    def zuschuss_jahrgaenge(self) -> list[int]:
+        """Eingelesene Pläne der Zuschuss-Übersicht (aufsteigend)."""
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT DISTINCT budget_year FROM council_grants ORDER BY budget_year")]
+        except sqlite3.OperationalError:
+            return []
+
+    def get_zuschuesse(self, budget_year: int, sub_budget_no: int | None = None) -> list[dict]:
+        """Die Zuschüsse eines Plans, wahlweise eines Teilhaushalts, in
+        Dokument-Reihenfolge."""
+        sql = "SELECT * FROM council_grants WHERE budget_year = ?"
+        args: list = [budget_year]
+        if sub_budget_no is not None:
+            sql += " AND sub_budget_no = ?"
+            args.append(sub_budget_no)
+        try:
+            return [dict(r) for r in self._conn.execute(sql + " ORDER BY seq", args)]
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return []
+
+    def zuschuss_summen(self) -> list[dict]:
+        """Je Plan und Teilhaushalt: Zahl und Summe der Zuschüsse (Planjahr)."""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                "SELECT budget_year, sub_budget_no, COUNT(*) AS n, "
+                "       SUM(COALESCE(amount, 0)) AS amount "
+                "  FROM council_grants GROUP BY budget_year, sub_budget_no "
+                " ORDER BY budget_year, sub_budget_no")]
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return []
 
     def finanzhaushalt_jahrgaenge(self) -> list[int]:
         """Eingelesene Pläne des Gesamtfinanzhaushalts (aufsteigend)."""

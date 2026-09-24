@@ -305,6 +305,11 @@ PROBEN: dict[str, str] = {
         "selbst vor: Die Einnahmearten ergeben die Summe der Erträge, die "
         "Ausgabearten die Summe der Aufwendungen, und beide zusammen das "
         "ausgewiesene Ergebnis.",
+    "grants_subtotals":
+        "Unter jedem Teilhaushalt steht „Summe THH …“ mit beiden Beträgen; die "
+        "Zuschüsse darüber ergeben sie, in beiden Spalten. Wo die Vorlage "
+        "selbst falsch summiert (2020 und 2021, Teilhaushalt 8), ist jede "
+        "Zeile vollständig und die Abweichung im Beleg vermerkt.",
     "finance_budget_total_rows":
         "Der Finanzhaushalt rechnet sich in jeder seiner sechs Jahresspalten "
         "selbst vor: laufende Ein- und Auszahlungen ergeben ihre Summen und "
@@ -730,6 +735,8 @@ HERKUNFT_TABELLEN: tuple[str, ...] = (
     "council_income_budget",
     # Und die Zahlungen derselben Pläne, Gesamtfinanzhaushalt (Anlage 006).
     "council_finance_budget",
+    # Die Zuschüsse an Dritte aus den Übersichten (Anlage 003).
+    "council_grants",
     # Die Jahresabschlüsse der Gesellschaften — neu, ohne Altbestand.
     "council_company_accounts",
     # Die Investitionen des Finanzhaushalts — neu, ohne Altbestand.
