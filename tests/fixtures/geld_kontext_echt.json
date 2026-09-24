@@ -19,7 +19,7 @@
    "draft": {
     "balance": -89291295.0,
     "expenses": 881706058.0,
-    "herkunft_id": 1319,
+    "herkunft_id": 966,
     "kind": "draft",
     "label": "Verwaltungsentwurf, Stand: 01.10.2025",
     "list_key": "administration_1",
@@ -29,7 +29,7 @@
    "final": {
     "balance": -68739348.0,
     "expenses": 885489388.0,
-    "herkunft_id": 1318,
+    "herkunft_id": 965,
     "kind": "final_total",
     "label": "Überschuss/ Fehlbedarf:",
     "list_key": "fc_decided",
@@ -41,7 +41,7 @@
     {
      "balance": 16629632.0,
      "expenses": 2832644.0,
-     "herkunft_id": 1319,
+     "herkunft_id": 966,
      "kind": "list",
      "label": "Änderungsliste Verw. I",
      "list_key": "administration_1",
@@ -51,7 +51,7 @@
     {
      "balance": 684016.0,
      "expenses": -331016.0,
-     "herkunft_id": 1320,
+     "herkunft_id": 967,
      "kind": "list",
      "label": "Änderungsliste Verw. II",
      "list_key": "administration_2",
@@ -61,7 +61,7 @@
     {
      "balance": 3020000.0,
      "expenses": 1500000.0,
-     "herkunft_id": 1321,
+     "herkunft_id": 968,
      "kind": "list",
      "label": "Änderungsliste Verw. III",
      "list_key": "administration_3",
@@ -123,7 +123,7 @@
    "draft": {
     "balance": -89291295.0,
     "expenses": 881706058.0,
-    "herkunft_id": 1319,
+    "herkunft_id": 966,
     "kind": "draft",
     "label": "Verwaltungsentwurf, Stand: 01.10.2025",
     "list_key": "administration_1",
@@ -133,7 +133,7 @@
    "final": {
     "balance": -68739348.0,
     "expenses": 885489388.0,
-    "herkunft_id": 1318,
+    "herkunft_id": 965,
     "kind": "final_total",
     "label": "Überschuss/ Fehlbedarf:",
     "list_key": "fc_decided",
@@ -145,7 +145,7 @@
     {
      "balance": 16629632.0,
      "expenses": 2832644.0,
-     "herkunft_id": 1319,
+     "herkunft_id": 966,
      "kind": "list",
      "label": "Änderungsliste Verw. I",
      "list_key": "administration_1",
@@ -155,7 +155,7 @@
     {
      "balance": 684016.0,
      "expenses": -331016.0,
-     "herkunft_id": 1320,
+     "herkunft_id": 967,
      "kind": "list",
      "label": "Änderungsliste Verw. II",
      "list_key": "administration_2",
@@ -165,7 +165,7 @@
     {
      "balance": 3020000.0,
      "expenses": 1500000.0,
-     "herkunft_id": 1321,
+     "herkunft_id": 968,
      "kind": "list",
      "label": "Änderungsliste Verw. III",
      "list_key": "administration_3",
@@ -221,28 +221,28 @@
    "posten": [
     {
      "amount": 788574714.0,
-     "herkunft_id": 324,
+     "herkunft_id": 194,
      "is_total": 1,
      "label": "Summe ordentliche Erträge",
      "nr": 12
     },
     {
      "amount": 880775058.0,
-     "herkunft_id": 324,
+     "herkunft_id": 194,
      "is_total": 1,
      "label": "Summe ordentliche Aufwendungen",
      "nr": 20
     },
     {
      "amount": -92200345.0,
-     "herkunft_id": 324,
+     "herkunft_id": 194,
      "is_total": 1,
      "label": "ordentliches Ergebnis",
      "nr": 21
     },
     {
      "amount": 2909050.0,
-     "herkunft_id": 324,
+     "herkunft_id": 194,
      "is_total": 1,
      "label": "außerordentliches Ergebnis",
      "nr": 24
@@ -264,7 +264,7 @@
      "actual": 179073160.27,
      "actual_year": 2024,
      "amount": 145012116.0,
-     "herkunft_id": 324,
+     "herkunft_id": 194,
      "is_total": 0,
      "label": "Zuwendungen und allgemeine Umlagen",
      "nr": 2
@@ -286,7 +286,7 @@
      "actual": 42691302.14,
      "actual_year": 2024,
      "amount": 53098053.0,
-     "herkunft_id": 324,
+     "herkunft_id": 194,
      "is_total": 0,
      "label": "Aufwendungen für Sach- und Dienstleistungen",
      "nr": 15
@@ -308,7 +308,56 @@
      "actual": 377878954.16,
      "actual_year": 2024,
      "amount": 388377600.0,
-     "herkunft_id": 324,
+     "herkunft_id": 194,
+     "is_total": 0,
+     "label": "Steuern und ähnliche Abgaben",
+     "nr": 1
+    },
+    {
+     "actual": 179073160.27,
+     "actual_year": 2024,
+     "amount": 145012116.0,
+     "herkunft_id": 194,
+     "is_total": 0,
+     "label": "Zuwendungen und allgemeine Umlagen",
+     "nr": 2
+    },
+    {
+     "actual": 25880028.87,
+     "actual_year": 2024,
+     "amount": 26622594.0,
+     "herkunft_id": 194,
+     "is_total": 0,
+     "label": "öffentlich-rechtliche Entgelte",
+     "nr": 5
+    },
+    {
+     "actual": 133574077.86,
+     "actual_year": 2024,
+     "amount": 146842124.0,
+     "herkunft_id": 194,
+     "is_total": 0,
+     "label": "Kostenerstattungen und Kostenumlagen",
+     "nr": 7
+    }
+   ],
+   "treffer": true,
+   "year": 2026
+  },
+  {
+   "beleg": {
+    "as_of": "Haushaltsplan 2026, Anlage 005 — Stand der Einbringung",
+    "citation": "Gesamtergebnishaushalt, Posten 1–24 — Spalte „Ansatz 2026“ und die drei Finanzplanungsjahre",
+    "label": "2026 005 Vw Gesamtergebnishaushalt Haushalt 2026 Verwaltungsentwurf",
+    "page": null,
+    "url": "https://buergerinfo.oldenburg.de/getfile.php?id=297441&type=do"
+   },
+   "posten": [
+    {
+     "actual": 377878954.16,
+     "actual_year": 2024,
+     "amount": 388377600.0,
+     "herkunft_id": 194,
      "is_total": 0,
      "label": "Steuern und ähnliche Abgaben",
      "nr": 1
@@ -328,28 +377,28 @@
    "posten": [
     {
      "amount": 747259256.0,
-     "herkunft_id": 323,
+     "herkunft_id": 193,
      "is_total": 1,
      "label": "Summe ordentliche Erträge",
      "nr": 12
     },
     {
      "amount": 805216345.0,
-     "herkunft_id": 323,
+     "herkunft_id": 193,
      "is_total": 1,
      "label": "Summe ordentliche Aufwendungen",
      "nr": 20
     },
     {
      "amount": -57957089.0,
-     "herkunft_id": 323,
+     "herkunft_id": 193,
      "is_total": 1,
      "label": "ordentliches Ergebnis",
      "nr": 21
     },
     {
      "amount": 5332000.0,
-     "herkunft_id": 323,
+     "herkunft_id": 193,
      "is_total": 1,
      "label": "außerordentliches Ergebnis",
      "nr": 24
@@ -403,7 +452,7 @@
      ],
      "committee": "Ausschuss für Finanzen und Beteiligungen",
      "date": "2026-02-04",
-     "gesamt": 19,
+     "gesamt": 23,
      "official_text": {
       "outcome": "accepted",
       "vote": "majority"
@@ -488,7 +537,7 @@
      "amount": 11232400.0,
      "category": "excess",
      "decided": 1,
-     "herkunft_id": 1226,
+     "herkunft_id": 903,
      "in_plenary": 1,
      "kind": "approval",
      "template_number": "24/0648",
@@ -499,7 +548,7 @@
      "amount": 9000000.0,
      "category": "excess",
      "decided": 1,
-     "herkunft_id": 1226,
+     "herkunft_id": 903,
      "in_plenary": 1,
      "kind": "approval",
      "template_number": "24/0520",
@@ -510,7 +559,7 @@
      "amount": 7927700.0,
      "category": "excess",
      "decided": 1,
-     "herkunft_id": 1226,
+     "herkunft_id": 903,
      "in_plenary": 1,
      "kind": "approval",
      "template_number": "24/0652",
@@ -521,7 +570,7 @@
      "amount": 5800000.0,
      "category": "excess",
      "decided": 1,
-     "herkunft_id": 1226,
+     "herkunft_id": 903,
      "in_plenary": 1,
      "kind": "approval",
      "template_number": "24/0677",
@@ -532,7 +581,7 @@
      "amount": 2303000.0,
      "category": "excess",
      "decided": 1,
-     "herkunft_id": 1226,
+     "herkunft_id": 903,
      "in_plenary": 1,
      "kind": "approval",
      "template_number": "24/0676",
@@ -543,7 +592,7 @@
      "amount": 2000000.0,
      "category": "excess",
      "decided": 1,
-     "herkunft_id": 1226,
+     "herkunft_id": 903,
      "in_plenary": 1,
      "kind": "approval",
      "template_number": "24/0847",
@@ -554,7 +603,7 @@
      "amount": 870000.0,
      "category": "unbudgeted",
      "decided": 1,
-     "herkunft_id": 1226,
+     "herkunft_id": 903,
      "in_plenary": 1,
      "kind": "approval",
      "template_number": "24/0422",
@@ -565,7 +614,7 @@
      "amount": 829000.0,
      "category": "excess",
      "decided": 1,
-     "herkunft_id": 1226,
+     "herkunft_id": 903,
      "in_plenary": 1,
      "kind": "approval",
      "template_number": "24/0609",
@@ -593,7 +642,7 @@
      "amount": 9512500.0,
      "category": "excess",
      "decided": 0,
-     "herkunft_id": 1226,
+     "herkunft_id": 903,
      "in_plenary": 0,
      "kind": "approval",
      "template_number": "26/0656",
@@ -604,7 +653,7 @@
      "amount": 735000.0,
      "category": "unbudgeted",
      "decided": 1,
-     "herkunft_id": 1226,
+     "herkunft_id": 903,
      "in_plenary": 1,
      "kind": "commitment_authorization",
      "template_number": "26/0515",
@@ -615,7 +664,7 @@
      "amount": 80438.05,
      "category": "unbudgeted",
      "decided": 1,
-     "herkunft_id": 1226,
+     "herkunft_id": 903,
      "in_plenary": 1,
      "kind": "approval",
      "template_number": "26/0365",
@@ -626,7 +675,7 @@
      "amount": null,
      "category": "both",
      "decided": 0,
-     "herkunft_id": 1226,
+     "herkunft_id": 903,
      "in_plenary": 0,
      "kind": "threshold",
      "template_number": "26/0035",
@@ -692,7 +741,7 @@
      "depreciation": -17036012.73,
      "depreciation_closing": -313229354.41,
      "disposals": -1003208.41,
-     "herkunft_id": 1355,
+     "herkunft_id": 993,
      "label": "Infrastrukturvermögen",
      "nr": "2.3",
      "year": 2024
@@ -704,7 +753,7 @@
      "depreciation": -32709.63,
      "depreciation_closing": -329977.57,
      "disposals": 0.0,
-     "herkunft_id": 1355,
+     "herkunft_id": 993,
      "label": "Sondervermögenmit Sonderrechnung",
      "nr": "3.3",
      "year": 2024
@@ -716,7 +765,7 @@
      "depreciation": 0.0,
      "depreciation_closing": 0.0,
      "disposals": -4865149.72,
-     "herkunft_id": 1355,
+     "herkunft_id": 993,
      "label": "Ausleihungen",
      "nr": "3.4",
      "year": 2024
@@ -728,7 +777,7 @@
      "depreciation": -1861097.0,
      "depreciation_closing": -5596956.91,
      "disposals": -379639.32,
-     "herkunft_id": 1355,
+     "herkunft_id": 993,
      "label": "Unbebaute Grundstücke undgrundstücksgleiche Rechte anunbebauten Grundstücken",
      "nr": "2.1",
      "year": 2024
@@ -740,7 +789,7 @@
      "depreciation": -5678531.47,
      "depreciation_closing": -34937583.43,
      "disposals": -2298426.5,
-     "herkunft_id": 1355,
+     "herkunft_id": 993,
      "label": "Geleist. Investionszuwendungen und Investitionszuschüsse",
      "nr": "1.4",
      "year": 2024
@@ -752,7 +801,7 @@
      "depreciation": -211645.43,
      "depreciation_closing": -1712172.36,
      "disposals": -20551.29,
-     "herkunft_id": 1355,
+     "herkunft_id": 993,
      "label": "Bebaute Grundstücke undgrundstücksgleiche Rechte anbebauten Grundstücken",
      "nr": "2.2",
      "year": 2024
@@ -766,7 +815,7 @@
      "depreciation": -6523027.43,
      "depreciation_closing": -46367067.22,
      "disposals": -2592218.16,
-     "herkunft_id": 1355,
+     "herkunft_id": 993,
      "label": "Immaterielles Vermögensgegenstände",
      "nr": "1",
      "year": 2024
@@ -778,7 +827,7 @@
      "depreciation": -25857381.33,
      "depreciation_closing": -369874559.29,
      "disposals": -5568065.53,
-     "herkunft_id": 1355,
+     "herkunft_id": 993,
      "label": "Sachvermögen (ohne Vorräte u. geringwertige VG)",
      "nr": "2",
      "year": 2024
@@ -790,7 +839,7 @@
      "depreciation": -28533957.63,
      "depreciation_closing": -123500161.7,
      "disposals": -4865149.72,
-     "herkunft_id": 1355,
+     "herkunft_id": 993,
      "label": "Finanzvermögen (ohne Forderungenund duchlaufende Posten)",
      "nr": "3",
      "year": 2024
@@ -852,6 +901,81 @@
    "year": 2024
   }
  ],
+ "budget_reports": [
+  {
+   "beleg": {
+    "as_of": "Stichtag 30.06.2026",
+    "citation": "Teilfinanzrechnung, Investitionen je Maßnahme (nachrichtlich)",
+    "label": "Finanz- und Leistungsbericht zum 30.06.2026",
+    "page": null,
+    "url": "https://buergerinfo.oldenburg.de/getfile.php?id=311613&type=do"
+   },
+   "summen": [
+    {
+     "as_of": "2026-06-30",
+     "budget_year": 2026,
+     "forecast": 2319506.0,
+     "planned": 1519000.0,
+     "sub_budget_no": 11
+    }
+   ],
+   "weitere": 4,
+   "zeilen": [
+    {
+     "as_of": "2026-06-30",
+     "budget_year": 2026,
+     "forecast": 163059.0,
+     "herkunft_id": 1768,
+     "kind": "A",
+     "measure_no": "I10.170066.525.008",
+     "name": "Inv.Zuschuss Kita Dedestraße",
+     "note": "Der Erweiterungsbau der Krippe wurde fertiggestellt. Die Eröffnung erfolgte planmäßig zum Ende des vergangenen Jahres. Die noch verfügbaren Haushaltsmittel aus einer Ermächtigungsübertragung sind für die Einrichtung vorgesehen und werden voraussichtlich",
+     "planned": 0.0,
+     "sub_budget_no": 11,
+     "template_number": "26/0596"
+    },
+    {
+     "as_of": "2026-06-30",
+     "budget_year": 2026,
+     "forecast": 0.0,
+     "herkunft_id": 1768,
+     "kind": "A",
+     "measure_no": "I10.170077.525.003",
+     "name": "Kita Maßnahme 2026, Nr. 3",
+     "note": "Im Rahmen der Haushaltsplanung 2026 war ursprünglich die Maßnahme „Walddorfkindergarten“ vorgesehen. Im Zusammenhang mit dem Ausbau des Ganztagsangebots an der Grundschule Haarentor muss der Walddorfkindergarten seinen bisherigen Standort verlagern. Nach aktuellem Kenntnisstand und unter Berücksichtigung der Entwicklung der Kinderzahlen wird das Vorhaben jedoch nicht in der ursprünglich geplanten Form umgesetzt. Insbesondere wird die vorgesehene Neubaumaßnahme nicht weiterverfolgt. Stattdessen konnte mit einem Umzug in die Bremer Straße eine alternative Lösung gefunden werden. Nach derzeitigem Stand ist daher nicht davon auszugehen, dass im laufenden Haushaltsjahr Mittel abfließen.",
+     "planned": 500000.0,
+     "sub_budget_no": 11,
+     "template_number": "26/0596"
+    },
+    {
+     "as_of": "2026-06-30",
+     "budget_year": 2026,
+     "forecast": 1218306.0,
+     "herkunft_id": 1768,
+     "kind": "A",
+     "measure_no": "I10.170074.525.001",
+     "name": "Inv.Zusch. Kita Ausbau",
+     "note": "Für die Schaffung neuer Krippenplätze in der Bloherfelder Straße (I10.170074.525.001) wurden im Haushaltsjahr 2026 Abschlagszahlungen für die Erstausstattung sowie die Außenanlagen geleistet. Die Verwendungsnachweise wurden mittlerweile eingereicht und die Schlusszahlung in Höhe von 18.306,21 Euro ist erfolgt. Aus dem Haushaltsjahr 2025 wurden für diese Maßnahme 23.500 Euro als Ermächtigung übertragen. Die verbleibenden Mittel in Höhe von 5.193,79 Euro werden nicht mehr",
+     "planned": 0.0,
+     "sub_budget_no": 11,
+     "template_number": "26/0596"
+    },
+    {
+     "as_of": "2026-06-30",
+     "budget_year": 2026,
+     "forecast": 0.0,
+     "herkunft_id": 1768,
+     "kind": "A",
+     "measure_no": "I10.170074.525.006",
+     "name": "Inv.Zusch. Kita Ausbau",
+     "note": "Für die Schaffung einer neuen integrativen sowie einer heilpädagogischen Gruppe in der Kita Hannah (Außenstelle Arche, Steenkenweg) wurden investive Mittel in Höhe von 330.000 Euro für die erforderliche Sanierung sowie die Erstausstattung",
+     "planned": 330000.0,
+     "sub_budget_no": 11,
+     "template_number": "26/0596"
+    }
+   ]
+  }
+ ],
  "business_plans": [
   {
    "beleg": {
@@ -896,8 +1020,8 @@
      "enterprise": "awb",
      "enterprise_name": "Abfallwirtschaftsbetrieb Stadt Oldenburg",
      "expenses": 26036000.0,
-     "fetched_at": "2026-09-02T18:06:20",
-     "herkunft_id": 1147,
+     "fetched_at": "2026-09-03T18:54:24",
+     "herkunft_id": 873,
      "investments": null,
      "prior": {
       "result": 627511.0,
@@ -937,18 +1061,18 @@
      "ended": false,
      "enterprise": "bbo",
      "enterprise_name": "Bäderbetrieb der Stadt Oldenburg",
-     "expenses": null,
-     "fetched_at": "2026-09-02T18:06:20",
-     "herkunft_id": 1183,
+     "expenses": 16747185.0,
+     "fetched_at": "2026-09-24T07:16:40",
+     "herkunft_id": 1702,
      "investments": 10752000.0,
      "prior": {
       "result": 0.0,
       "year": 2025
      },
-     "probes": "business_plan_key_figure,business_plan_investments",
+     "probes": "business_plan_guv_columns,business_plan_key_figure",
      "result": 0.0,
-     "revenues": null,
-     "taxes": null,
+     "revenues": 16747187.0,
+     "taxes": 0.0,
      "template_number": "25/0818/1",
      "year": 2026
     },
@@ -985,8 +1109,8 @@
      "enterprise": "hafen",
      "enterprise_name": "Eigenbetrieb Hafen der Stadt Oldenburg",
      "expenses": null,
-     "fetched_at": "2026-09-02T18:06:20",
-     "herkunft_id": 1152,
+     "fetched_at": "2026-09-24T07:16:40",
+     "herkunft_id": 1676,
      "investments": null,
      "prior": {
       "result": -273950.0,
@@ -1004,11 +1128,11 @@
   },
   {
    "beleg": {
-    "as_of": "Wirtschaftsplan 2026, Fassung des Ratsbeschlusses",
-    "citation": "Beschlussvorschlag der Vorlage",
+    "as_of": "Wirtschaftsplan 2026",
+    "citation": "Ergebnisplanung des Wirtschaftsplans (Spalte des Planjahres)",
     "label": "Bäderbetriebsgesellschaft Oldenburg mbH: Wirtschaftsplan 2026",
     "page": null,
-    "url": "https://buergerinfo.oldenburg.de/vo0050.php?__kvonr=28315"
+    "url": "https://buergerinfo.oldenburg.de/getfile.php?id=300203&type=do"
    },
    "detail": false,
    "plans": [
@@ -1021,18 +1145,18 @@
      "ended": false,
      "enterprise": "bbgo",
      "enterprise_name": "Bäderbetriebsgesellschaft Oldenburg mbH",
-     "expenses": null,
-     "fetched_at": "2026-09-02T18:06:20",
-     "herkunft_id": 1174,
+     "expenses": 20248140.0,
+     "fetched_at": "2026-09-24T07:16:40",
+     "herkunft_id": 1694,
      "investments": null,
      "prior": {
       "result": -6247913.0,
       "year": 2025
      },
-     "probes": "business_plan_key_figure",
+     "probes": "business_plan_guv_columns,business_plan_key_figure",
      "result": -10128335.0,
-     "revenues": null,
-     "taxes": null,
+     "revenues": 10119804.0,
+     "taxes": 0.0,
      "template_number": "25/0819",
      "year": 2026
     },
@@ -1069,8 +1193,8 @@
      "enterprise": "awb",
      "enterprise_name": "Abfallwirtschaftsbetrieb Stadt Oldenburg",
      "expenses": 26036000.0,
-     "fetched_at": "2026-09-02T18:06:20",
-     "herkunft_id": 1147,
+     "fetched_at": "2026-09-03T18:54:24",
+     "herkunft_id": 873,
      "investments": null,
      "prior": {
       "result": 627511.0,
@@ -1093,8 +1217,8 @@
      "enterprise": "stadion",
      "enterprise_name": "Stadion Oldenburg GmbH & Co. KG",
      "expenses": null,
-     "fetched_at": "2026-09-02T18:06:20",
-     "herkunft_id": 1175,
+     "fetched_at": "2026-09-24T07:16:40",
+     "herkunft_id": 1689,
      "investments": null,
      "prior": {
       "result": -240000.0,
@@ -1142,8 +1266,8 @@
      "enterprise": "egh",
      "enterprise_name": "Eigenbetrieb Gebäudewirtschaft und Hochbau",
      "expenses": 82824771.0,
-     "fetched_at": "2026-09-02T18:06:20",
-     "herkunft_id": 1139,
+     "fetched_at": "2026-09-24T07:16:40",
+     "herkunft_id": 866,
      "investments": null,
      "prior": {
       "result": -5401285.0,
@@ -1183,18 +1307,18 @@
      "ended": false,
      "enterprise": "bbo",
      "enterprise_name": "Bäderbetrieb der Stadt Oldenburg",
-     "expenses": null,
-     "fetched_at": "2026-09-02T18:06:20",
-     "herkunft_id": 1183,
+     "expenses": 16747185.0,
+     "fetched_at": "2026-09-24T07:16:40",
+     "herkunft_id": 1702,
      "investments": 10752000.0,
      "prior": {
       "result": 0.0,
       "year": 2025
      },
-     "probes": "business_plan_key_figure,business_plan_investments",
+     "probes": "business_plan_guv_columns,business_plan_key_figure",
      "result": 0.0,
-     "revenues": null,
-     "taxes": null,
+     "revenues": 16747187.0,
+     "taxes": 0.0,
      "template_number": "25/0818/1",
      "year": 2026
     }
@@ -1203,11 +1327,11 @@
   },
   {
    "beleg": {
-    "as_of": "Wirtschaftsplan 2026, Fassung des Ratsbeschlusses",
-    "citation": "Beschlussvorschlag der Vorlage",
+    "as_of": "Wirtschaftsplan 2026",
+    "citation": "Ergebnisplanung des Wirtschaftsplans (Spalte des Planjahres)",
     "label": "Bäderbetriebsgesellschaft Oldenburg mbH: Wirtschaftsplan 2026",
     "page": null,
-    "url": "https://buergerinfo.oldenburg.de/vo0050.php?__kvonr=28315"
+    "url": "https://buergerinfo.oldenburg.de/getfile.php?id=300203&type=do"
    },
    "detail": true,
    "plans": [
@@ -1220,18 +1344,18 @@
      "ended": false,
      "enterprise": "bbgo",
      "enterprise_name": "Bäderbetriebsgesellschaft Oldenburg mbH",
-     "expenses": null,
-     "fetched_at": "2026-09-02T18:06:20",
-     "herkunft_id": 1174,
+     "expenses": 20248140.0,
+     "fetched_at": "2026-09-24T07:16:40",
+     "herkunft_id": 1694,
      "investments": null,
      "prior": {
       "result": -6247913.0,
       "year": 2025
      },
-     "probes": "business_plan_key_figure",
+     "probes": "business_plan_guv_columns,business_plan_key_figure",
      "result": -10128335.0,
-     "revenues": null,
-     "taxes": null,
+     "revenues": 10119804.0,
+     "taxes": 0.0,
      "template_number": "25/0819",
      "year": 2026
     },
@@ -1262,67 +1386,20 @@
      "ended": false,
      "enterprise": "bbo",
      "enterprise_name": "Bäderbetrieb der Stadt Oldenburg",
-     "expenses": null,
-     "fetched_at": "2026-09-02T18:06:20",
-     "herkunft_id": 1183,
+     "expenses": 16747185.0,
+     "fetched_at": "2026-09-24T07:16:40",
+     "herkunft_id": 1702,
      "investments": 10752000.0,
      "prior": {
       "result": 0.0,
       "year": 2025
      },
-     "probes": "business_plan_key_figure,business_plan_investments",
+     "probes": "business_plan_guv_columns,business_plan_key_figure",
      "result": 0.0,
-     "revenues": null,
-     "taxes": null,
+     "revenues": 16747187.0,
+     "taxes": 0.0,
      "template_number": "25/0818/1",
      "year": 2026
-    },
-    {
-     "actual": {
-      "beleg": {
-       "as_of": "Jahresabschluss 2020",
-       "citation": "Mehrjahresübersicht des Prüfberichts (Kennzahlen in TEUR, jüngstes Jahr zuerst)",
-       "label": "Bericht des Jahresabschlusses und des Lageberichtes zum 31.12.2020 des Eigenbetriebes Hafen der Stadt Oldenburg (Oldb), Oldenburg",
-       "page": null,
-       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=238630&type=do"
-      },
-      "confirmations": 1,
-      "report_year": 2020,
-      "same_year": true,
-      "values": {
-       "balance_total": 6241000.0,
-       "current_assets": 863000.0,
-       "depreciation": 175000.0,
-       "equity": 610000.0,
-       "fixed_assets": 5378000.0,
-       "investments": 35000.0,
-       "liabilities": 379000.0,
-       "result": -229000.0,
-       "revenues": 130000.0
-      },
-      "year": 2020
-     },
-     "capital_plan": null,
-     "commitments": null,
-     "draft_date": null,
-     "duty": "Betrieb den Stadthafen — Liegeplätze, Anleger und Umschlag.",
-     "ended": true,
-     "enterprise": "hafen",
-     "enterprise_name": "Eigenbetrieb Hafen der Stadt Oldenburg",
-     "expenses": null,
-     "fetched_at": "2026-09-02T18:06:20",
-     "herkunft_id": 1152,
-     "investments": null,
-     "prior": {
-      "result": -273950.0,
-      "year": 2019
-     },
-     "probes": "business_plan_key_figure",
-     "result": -383438.0,
-     "revenues": null,
-     "taxes": null,
-     "template_number": "19/0853",
-     "year": 2020
     }
    ],
    "year": 2026
@@ -1340,7 +1417,7 @@
    },
    "beschluss": {
     "date": "2026-02-09",
-    "decision_id": 8286,
+    "decision_id": 20929,
     "title": "Haushaltssatzung und Haushaltsplan 2026 (Kernhaushalt) mit der mittelfristigen Ergebnis- und Finanzplanung und dem Investitionsprogramm 2027-2029"
    },
    "fehlend": [],
@@ -1350,8 +1427,8 @@
     "commitment_authorizations": 41489000.0,
     "extraordinary_expenses": 931000.0,
     "extraordinary_revenues": 3840050.0,
-    "fetched_at": "2026-09-02T18:06:20",
-    "herkunft_id": 1110,
+    "fetched_at": "2026-09-03T18:54:24",
+    "herkunft_id": 846,
     "in_capital": 60468730.0,
     "in_financing": 0.0,
     "in_operating": 771602854.0,
@@ -1546,6 +1623,69 @@
    "overview": null,
    "report_year": 2024,
    "year": 2024
+  },
+  {
+   "beleg": {
+    "as_of": "Beteiligungsbericht 2024",
+    "citation": "Abschnitt 2.4.3 — Bäderbetriebsgesellschaft Oldenburg mbH",
+    "label": "Beteiligungsbericht 2024 (oldenburg.de)",
+    "page": 117,
+    "url": "https://www.oldenburg.de/fileadmin/oldenburg/Benutzer/Dateien/20_Controlling_und_Finanzen/Beteiligungsbericht/Beteiligungsbericht_2024_kombiniert_final.pdf"
+   },
+   "companies": [
+    {
+     "body": {
+      "chair": {
+       "chair_role": "chair",
+       "committee": "Gesellschafterversammlung",
+       "name": "Dr. Julia Figura",
+       "position": "Stadtkämmerin",
+       "roles_assignable": 1
+      },
+      "committee": "Gesellschafterversammlung",
+      "council_members": 4,
+      "count": 5,
+      "roles_assignable": true
+     },
+     "budget_impact": "Die Stadt Oldenburg ist alleinige Gesellschafterin der BBGO und zahlte für das Jahr 2024 im Rahmen \ndes Defizitausgleichs einen Betrag in Höhe von insgesamt 5.709.452,79 Euro in die Kapitalrücklage ein.",
+     "classification": "2.4.3",
+     "company": "bbgo",
+     "indicators": [
+      {
+       "kind": "jahresergebnis",
+       "unit": "eur",
+       "value": -5709452.79,
+       "year": 2024
+      },
+      {
+       "kind": "bilanzsumme",
+       "unit": "eur",
+       "value": 3863900.95,
+       "year": 2024
+      },
+      {
+       "kind": "eigenkapitalquote",
+       "unit": "percent",
+       "value": 0.98,
+       "year": 2023
+      }
+     ],
+     "legal_form": "GmbH / Co. KG",
+     "name": "Bäderbetriebsgesellschaft Oldenburg mbH",
+     "owners": [
+      {
+       "amount_eur": 25000.0,
+       "name": "Stadt Oldenburg",
+       "share_pct": 100.0
+      }
+     ],
+     "page": 117,
+     "purpose": "Gegenstand des Unternehmens ist der Betrieb der städtischen Bäder. Dies sind: \n das an der Hunte gelegene Sport- und Freizeitbad, \n das Freibad Flötenteich nebst Campingplatz, \n das Hallenbad Eversten und \n das Hallenbad Kreyenbrück. \n \nDer öffentliche Zweck des Unternehmens besteht in der Umsetzung der sozial- und sportpolitischen \nAbsichten der Stadt Oldenburg. Dies sind insbesondere \n die allgemeine öffentliche Gesundheitsvorsorge, \n die Förderung des Schwimmsportes im Hinblick auf Breiten- und Leistungssport und \n die Förderung und Sicherstellung des Schulsportes. \n \nDas von der Gesellschaft zur Umsetzung des öffentlichen Zwecks zu erbringende Leistungsangebot \nsoll mit modernen betriebswirtschaftlichen Methoden und Instrumenten unterstützt und marktge-\nrecht positioniert werden. Mögliche finanzielle Belastungen, die sich für den Gesellschafter im Ergeb-\nnis aus der Verwirklichung des öffentlichen Zwecks ergeben, sind nachhaltig zu minimieren."
+    }
+   ],
+   "overview": null,
+   "report_year": 2024,
+   "year": 2024
   }
  ],
  "donations": [
@@ -1572,7 +1712,7 @@
    "groesste": {
     "amount": 303757.4,
     "committee": "Rat",
-    "herkunft_id": 984,
+    "herkunft_id": 803,
     "template_number": "24/0419"
    },
    "laufend": false,
@@ -1583,19 +1723,9 @@
      "template_number": "18/0587"
     },
     {
-     "reason": "Das Protokoll hält für diese Sitzung keinen Betrag fest, sondern nur, dass angenommen wurde.",
-     "session_date": "2021-01-25",
-     "template_number": "21/0003"
-    },
-    {
      "reason": "Die Vorlage schlug 10.282,58 Euro vor, das Protokoll hält 8.512,58 Euro fest.",
      "session_date": "2021-09-01",
      "template_number": "21/0563"
-    },
-    {
-     "reason": "Der Tagesordnungspunkt wurde nicht beschlossen — angenommen wurde nichts, also ist auch nichts eingenommen worden.",
-     "session_date": "2021-10-06",
-     "template_number": "21/0694"
     },
     {
      "reason": "Die Vorlage schlug 52.000,00 Euro vor, das Protokoll hält 51.500,00 Euro fest.",
@@ -1670,7 +1800,7 @@
     "carryover": 6859597.0,
     "deviation": 15860681.0,
     "forecast": 901241068.0,
-    "herkunft_id": 1586,
+    "herkunft_id": 1205,
     "kind": "expense",
     "plan_basis": "budget"
    },
@@ -1688,7 +1818,7 @@
     "carryover": null,
     "deviation": 2646093.0,
     "forecast": -66033353.0,
-    "herkunft_id": 1586,
+    "herkunft_id": 1205,
     "kind": "result",
     "plan_basis": "budget"
    },
@@ -1698,7 +1828,69 @@
     "carryover": null,
     "deviation": 18506773.0,
     "forecast": 835207715.0,
-    "herkunft_id": 1586,
+    "herkunft_id": 1205,
+    "kind": "revenue",
+    "plan_basis": "budget"
+   },
+   "finanzhaushalt": null,
+   "plan_basis": "budget",
+   "verlauf": [
+    {
+     "as_of": "2026-03-31",
+     "forecast": -73164412.0
+    },
+    {
+     "as_of": "2026-06-30",
+     "forecast": -66033353.0
+    }
+   ],
+   "year": 2026
+  },
+  {
+   "anderer_jahrgang": false,
+   "as_of": "2026-06-30",
+   "aufwand": {
+    "budget": "result",
+    "budgeted": 885380387.0,
+    "carryover": 6859597.0,
+    "deviation": 15860681.0,
+    "forecast": 901241068.0,
+    "herkunft_id": 1205,
+    "kind": "expense",
+    "plan_basis": "budget"
+   },
+   "beleg": {
+    "as_of": "Finanz- und Leistungsbericht zum 30.06.2026",
+    "citation": "Auswertung der Berichte zum 30.06.2026, 1. Ergebnishaushalt",
+    "label": "1 Finanz- und Leistungsbericht zum 30. Juni 2026 Berichtsvorlage (AFB 2. September 2026)",
+    "page": null,
+    "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312599&type=do"
+   },
+   "bereiche": [
+    {
+     "budgeted": -28684009.0,
+     "deviation": -405195.0,
+     "forecast": -29089204.0,
+     "label": "Verkehr und Straßenbau"
+    }
+   ],
+   "ergebnis": {
+    "budget": "result",
+    "budgeted": -68679446.0,
+    "carryover": null,
+    "deviation": 2646093.0,
+    "forecast": -66033353.0,
+    "herkunft_id": 1205,
+    "kind": "result",
+    "plan_basis": "budget"
+   },
+   "ertrag": {
+    "budget": "result",
+    "budgeted": 816700942.0,
+    "carryover": null,
+    "deviation": 18506773.0,
+    "forecast": 835207715.0,
+    "herkunft_id": 1205,
     "kind": "revenue",
     "plan_basis": "budget"
    },
@@ -1725,7 +1917,7 @@
     "carryover": 6003089.0,
     "deviation": 5893520.0,
     "forecast": 824728616.0,
-    "herkunft_id": 1584,
+    "herkunft_id": 1203,
     "kind": "expense",
     "plan_basis": "budget"
    },
@@ -1743,7 +1935,7 @@
     "carryover": null,
     "deviation": 73325732.0,
     "forecast": -18148945.0,
-    "herkunft_id": 1584,
+    "herkunft_id": 1203,
     "kind": "result",
     "plan_basis": "budget"
    },
@@ -1753,7 +1945,7 @@
     "carryover": null,
     "deviation": 79219252.0,
     "forecast": 806579671.0,
-    "herkunft_id": 1584,
+    "herkunft_id": 1203,
     "kind": "revenue",
     "plan_basis": "budget"
    },
@@ -1787,7 +1979,7 @@
     "amount": 850170000.0,
     "conflict_amount": null,
     "conflict_source": null,
-    "herkunft_id": 862,
+    "herkunft_id": 731,
     "source": "pdf",
     "year": 2025
    },
@@ -1806,7 +1998,7 @@
      "amount": 608910000.0,
      "conflict_amount": 613572000.0,
      "conflict_source": "csv",
-     "herkunft_id": 864,
+     "herkunft_id": 733,
      "source": "pdf",
      "year": 2021
     }
@@ -1816,7 +2008,7 @@
     "amount": 76493000.0,
     "conflict_amount": null,
     "conflict_source": null,
-    "herkunft_id": 860,
+    "herkunft_id": 729,
     "source": "csv",
     "year": 1972
    },
@@ -1825,7 +2017,7 @@
     "amount": 850170000.0,
     "conflict_amount": null,
     "conflict_source": null,
-    "herkunft_id": 862,
+    "herkunft_id": 731,
     "source": "pdf",
     "year": 2025
    },
@@ -1835,7 +2027,7 @@
      "amount": 764745000.0,
      "conflict_amount": null,
      "conflict_source": null,
-     "herkunft_id": 863,
+     "herkunft_id": 732,
      "source": "pdf",
      "year": 2024
     },
@@ -1844,7 +2036,7 @@
      "amount": 850170000.0,
      "conflict_amount": null,
      "conflict_source": null,
-     "herkunft_id": 862,
+     "herkunft_id": 731,
      "source": "pdf",
      "year": 2025
     }
@@ -1854,7 +2046,7 @@
     "amount": 850170000.0,
     "conflict_amount": null,
     "conflict_source": null,
-    "herkunft_id": 862,
+    "herkunft_id": 731,
     "source": "pdf",
     "year": 2025
    },
@@ -1864,7 +2056,7 @@
      "amount": 142655000.0,
      "conflict_amount": null,
      "conflict_source": null,
-     "herkunft_id": 860,
+     "herkunft_id": 729,
      "source": "csv",
      "year": 1980
     },
@@ -1873,7 +2065,7 @@
      "amount": 216056000.0,
      "conflict_amount": null,
      "conflict_source": null,
-     "herkunft_id": 860,
+     "herkunft_id": 729,
      "source": "csv",
      "year": 1990
     },
@@ -1882,7 +2074,7 @@
      "amount": 360760000.0,
      "conflict_amount": null,
      "conflict_source": null,
-     "herkunft_id": 860,
+     "herkunft_id": 729,
      "source": "csv",
      "year": 2000
     },
@@ -1891,7 +2083,7 @@
      "amount": 358800000.0,
      "conflict_amount": null,
      "conflict_source": null,
-     "herkunft_id": 862,
+     "herkunft_id": 731,
      "source": "pdf",
      "year": 2010
     },
@@ -1900,7 +2092,7 @@
      "amount": 588167000.0,
      "conflict_amount": null,
      "conflict_source": null,
-     "herkunft_id": 863,
+     "herkunft_id": 732,
      "source": "pdf",
      "year": 2020
     }
@@ -1923,7 +2115,7 @@
      "amount": 62.0,
      "area": "waste_collection",
      "change_pct": 24.0,
-     "herkunft_id": 1273,
+     "herkunft_id": 941,
      "key": "base_fee",
      "label": "Grundgebühr",
      "prior_year": 50.0,
@@ -1935,7 +2127,7 @@
      "amount": 8.0,
      "area": "waste_collection",
      "change_pct": 0.0,
-     "herkunft_id": 1278,
+     "herkunft_id": 946,
      "key": "bulky_waste_1m3",
      "label": "Sperrmüllanlieferung 1 m³",
      "prior_year": 8.0,
@@ -1947,7 +2139,7 @@
      "amount": 16.0,
      "area": "waste_collection",
      "change_pct": 0.0,
-     "herkunft_id": 1279,
+     "herkunft_id": 947,
      "key": "bulky_waste_2m3",
      "label": "Sperrmüllanlieferung 2 m³",
      "prior_year": 16.0,
@@ -1959,7 +2151,7 @@
      "amount": 25.0,
      "area": "waste_collection",
      "change_pct": 0.0,
-     "herkunft_id": 1276,
+     "herkunft_id": 944,
      "key": "bulky_waste_card",
      "label": "Sperrmüllkarte",
      "prior_year": 25.0,
@@ -1971,7 +2163,7 @@
      "amount": 3.0,
      "area": "waste_collection",
      "change_pct": 0.0,
-     "herkunft_id": 1280,
+     "herkunft_id": 948,
      "key": "green_waste_05m3",
      "label": "Grüngutanlieferung bis 0,5 m³",
      "prior_year": 3.0,
@@ -1983,7 +2175,7 @@
      "amount": 6.0,
      "area": "waste_collection",
      "change_pct": 0.0,
-     "herkunft_id": 1281,
+     "herkunft_id": 949,
      "key": "green_waste_1m3",
      "label": "Grüngutanlieferung bis 1 m³",
      "prior_year": 6.0,
@@ -1995,7 +2187,7 @@
      "amount": 12.0,
      "area": "waste_collection",
      "change_pct": 0.0,
-     "herkunft_id": 1282,
+     "herkunft_id": 950,
      "key": "green_waste_2m3",
      "label": "Grüngutanlieferung bis 2 m³",
      "prior_year": 12.0,
@@ -2007,7 +2199,7 @@
      "amount": 20.0,
      "area": "waste_collection",
      "change_pct": 0.0,
-     "herkunft_id": 1277,
+     "herkunft_id": 945,
      "key": "green_waste_card",
      "label": "Grüngutkarte",
      "prior_year": 20.0,
@@ -2019,7 +2211,7 @@
      "amount": 15.0,
      "area": "waste_collection",
      "change_pct": 0.0,
-     "herkunft_id": 1275,
+     "herkunft_id": 943,
      "key": "organic_base_volume_60l",
      "label": "Biogrundmenge 60 L",
      "prior_year": 15.0,
@@ -2031,7 +2223,7 @@
      "amount": 1.34,
      "area": "waste_collection",
      "change_pct": 0.0,
-     "herkunft_id": 1274,
+     "herkunft_id": 942,
      "key": "per_litre_fee",
      "label": "Allgemeine Litergebühr",
      "prior_year": 1.34,
@@ -2043,7 +2235,7 @@
      "amount": 151.21,
      "area": "waste_treatment",
      "change_pct": 8.24,
-     "herkunft_id": 1272,
+     "herkunft_id": 940,
      "key": "waste_treatment_per_mg",
      "label": "Gebühr je Mg",
      "prior_year": 139.7,
@@ -2055,7 +2247,7 @@
      "amount": 4.04,
      "area": "street_cleaning",
      "change_pct": 8.02,
-     "herkunft_id": 1283,
+     "herkunft_id": 951,
      "key": "street_cleaning_per_metre",
      "label": "Gebühr je Meter Quadratwurzel bei wöchentlicher Reinigung",
      "prior_year": 3.74,
@@ -2092,7 +2284,7 @@
        "deductions": -4392270.0,
        "fee": 151.214,
        "fee_proposed": 151.21,
-       "herkunft_id": 1129,
+       "herkunft_id": 856,
        "reference_quantity": 53985.0,
        "reference_unit": "Mg",
        "template_number": "25/0644",
@@ -2113,7 +2305,7 @@
        "deductions": -4275091.0,
        "fee": 139.772,
        "fee_proposed": 139.7,
-       "herkunft_id": 1126,
+       "herkunft_id": 853,
        "reference_quantity": 52845.0,
        "reference_unit": "Mg",
        "template_number": "24/0673",
@@ -2134,7 +2326,7 @@
        "deductions": -4004633.0,
        "fee": 134.709,
        "fee_proposed": 134.7,
-       "herkunft_id": 1123,
+       "herkunft_id": 850,
        "reference_quantity": 51200.0,
        "reference_unit": "Mg",
        "template_number": "23/0801",
@@ -2155,7 +2347,7 @@
        "deductions": -4102219.0,
        "fee": 123.284,
        "fee_proposed": 123.25,
-       "herkunft_id": 1120,
+       "herkunft_id": 847,
        "reference_quantity": 53200.0,
        "reference_unit": "Mg",
        "template_number": "22/0691",
@@ -2182,7 +2374,7 @@
        "deductions": -4130008.0,
        "fee": null,
        "fee_proposed": null,
-       "herkunft_id": 1130,
+       "herkunft_id": 857,
        "reference_quantity": null,
        "reference_unit": null,
        "template_number": "25/0644",
@@ -2203,7 +2395,7 @@
        "deductions": -3608748.0,
        "fee": null,
        "fee_proposed": null,
-       "herkunft_id": 1127,
+       "herkunft_id": 854,
        "reference_quantity": null,
        "reference_unit": null,
        "template_number": "24/0673",
@@ -2224,7 +2416,7 @@
        "deductions": -3374371.0,
        "fee": null,
        "fee_proposed": null,
-       "herkunft_id": 1124,
+       "herkunft_id": 851,
        "reference_quantity": null,
        "reference_unit": null,
        "template_number": "23/0801",
@@ -2245,7 +2437,7 @@
        "deductions": -2858407.0,
        "fee": null,
        "fee_proposed": null,
-       "herkunft_id": 1121,
+       "herkunft_id": 848,
        "reference_quantity": null,
        "reference_unit": null,
        "template_number": "22/0691",
@@ -2454,6 +2646,113 @@
    "year_asked": 2026
   }
  ],
+ "grants": [
+  {
+   "anderer_jahrgang": false,
+   "anzahl": 222,
+   "beleg": {
+    "as_of": "Haushaltsplan 2026, Anlage 003 — Stand der Einbringung",
+    "citation": "Übersicht über die Zuweisungen und Zuschüsse an Dritte",
+    "label": "2026 003 Vw Übersichten Haushalt 2026 Verwaltungsentwurf",
+    "page": null,
+    "url": "https://buergerinfo.oldenburg.de/getfile.php?id=297439&type=do"
+   },
+   "rangfolge": false,
+   "summe": 157444299.0,
+   "weitere": 0,
+   "year": 2026,
+   "zeilen": [
+    {
+     "amount": 61200.0,
+     "amount_prior": 61200.0,
+     "description": "Zuschuss Reparaturrat",
+     "herkunft_id": 1657,
+     "note": "Reparaturrat Oldenburg e.V. Ressourcenzentrum - Zuschuss für Personal- und Sachkosten",
+     "product_name": "Wirtschaftsförderung, Regionale Beziehungen",
+     "sub_budget_no": 3
+    }
+   ]
+  }
+ ],
+ "grants_received": [
+  {
+   "beleg": {
+    "as_of": "abgerufen am 24.09.2026",
+    "citation": "Suche nach Gemeinde „Oldenburg (Oldb)“, Export als Textdatei",
+    "label": "Förderkatalog des Bundes",
+    "page": null,
+    "url": "https://foerderportal.bund.de/foekat/jsp/StartAction.do"
+   },
+   "stand": "2026-01-31",
+   "summen": {
+    "Bund": [
+     51,
+     15468451.0
+    ],
+    "EU": [
+     50,
+     8268033.359999999
+    ]
+   },
+   "treffer": false,
+   "weitere": 0,
+   "year": null,
+   "zeilen": [
+    {
+     "amount_granted": 429000.0,
+     "end": "2028-05-31",
+     "funder": "BMUKN",
+     "herkunft_id": 1731,
+     "list_as_of": null,
+     "program": "KSI - Investive Maßnahmen zur Förderung einer nachhaltigen Mobilität",
+     "recipient": "Stadt Oldenburg",
+     "source": "foekat",
+     "start": "2026-06-01",
+     "summary": null,
+     "title": "KSI: Aufpflasterungen der getrennten Geh- und Radwege entlang der Hauptverkehrsstraßen Eichenstraße und Peterstraße in Oldenburg"
+    },
+    {
+     "amount_granted": 29762.88,
+     "end": "2026-12-31",
+     "funder": "EU",
+     "herkunft_id": 1728,
+     "list_as_of": "2026-01-31",
+     "program": "ESF 2021-2027",
+     "recipient": "Volkshochschule Oldenburg gGmbH",
+     "source": "esf",
+     "start": "2025-12-01",
+     "summary": "Im Projekt „Gesund und mobil“ wird eine Lernwerkstatt für Erwachsene zur Verbesserung ihrer Schriftsprachkenntnisse und sozialen Integration angeboten",
+     "title": "Gesund und mobil"
+    },
+    {
+     "amount_granted": 150000.0,
+     "end": "2027-12-31",
+     "funder": "EU",
+     "herkunft_id": 1728,
+     "list_as_of": "2026-01-31",
+     "program": "ESF 2021-2027",
+     "recipient": "Volkshochschule Oldenburg gGmbH",
+     "source": "esf",
+     "start": "2025-04-01",
+     "summary": "Persönliche Stabilisierung und soziale Integration junger Menschen mit beruflichen Eingliederungshemmnissen und sozialpädagogischem Förderbedarf",
+     "title": "Oldenburger Jugendwerkstatt 2 - OJW II"
+    },
+    {
+     "amount_granted": 145000.0,
+     "end": "2027-12-31",
+     "funder": "EU",
+     "herkunft_id": 1728,
+     "list_as_of": "2026-01-31",
+     "program": "ESF 2021-2027",
+     "recipient": "Volkshochschule Oldenburg gGmbH",
+     "source": "esf",
+     "start": "2025-04-01",
+     "summary": "Persönliche Stabilisierung und soziale Integration junger Menschen mit beruflichen Eingliederungshemmnissen und sozialpädagogischem Förderbedarf",
+     "title": "Oldenburger Jugendwerkstatt 1 - OJW I"
+    }
+   ]
+  }
+ ],
  "gruende": [
   [
    {
@@ -2465,7 +2764,7 @@
      "url": "https://buergerinfo.oldenburg.de/getfile.php?id=295294&type=do"
     },
     "delta_meur": 75.1,
-    "herkunft_id": 236,
+    "herkunft_id": 171,
     "label": "Steuern und ähnliche Abgaben",
     "nr": 1,
     "percent": 24.82,
@@ -2481,7 +2780,7 @@
      "url": "https://buergerinfo.oldenburg.de/getfile.php?id=295294&type=do"
     },
     "delta_meur": 29.1,
-    "herkunft_id": 236,
+    "herkunft_id": 171,
     "label": "außerordentliche Aufwendungen",
     "nr": 23,
     "percent": 2421.17,
@@ -2497,7 +2796,7 @@
      "url": "https://buergerinfo.oldenburg.de/getfile.php?id=295294&type=do"
     },
     "delta_meur": 4.8,
-    "herkunft_id": 236,
+    "herkunft_id": 171,
     "label": "Versorgungsaufwendungen",
     "nr": 14,
     "percent": 69.12,
@@ -2510,6 +2809,13 @@
   [
    {
     "area": "Summe",
+    "beleg": {
+     "as_of": "Haushaltsjahr 2026",
+     "citation": "Übersicht „Ergebnishaushalt“ — Teilhaushalte mit ordentlichen Erträgen und Aufwendungen",
+     "label": "Beschlossener Haushaltsplan 2026",
+     "page": null,
+     "url": "https://www.oldenburg.de/fileadmin/oldenburg/Benutzer/Dateien/20_Controlling_und_Finanzen/200_Finanzen/Haushalt_2026/Genehmigung_Haushalt_2026/04_Haushaltsplan_2026_-_UEbersichten.pdf"
+    },
     "expenses": 883918387.0,
     "expenses_before": 582509635.0,
     "is_total": 1,
@@ -2522,7 +2828,54 @@
   ],
   [
    {
+    "area": "Summe",
+    "beleg": {
+     "as_of": "Haushaltsjahr 2024",
+     "citation": "Ergebnishaushalt-CSV, eine Zeile je Teilhaushalt plus Zeile „Gesamtergebnishaushalt“",
+     "label": "Ergebnishaushalt 2024 (Open-Data-Portal)",
+     "page": null,
+     "url": "https://opendata.oldenburg.de/sites/default/files/1101_Haushaltsplan_StadtOL_2024_Ergebnishaushalt.csv"
+    },
+    "expenses": 728170348.0,
+    "expenses_before": 582509635.0,
+    "is_total": 1,
+    "result": -34240657.0,
+    "revenues": 693929691.0,
+    "revenues_before": 588790868.0,
+    "year": 2024,
+    "year_before": 2020
+   }
+  ],
+  [
+   {
+    "area": "Jugend und Familie",
+    "beleg": {
+     "as_of": "Haushaltsjahr 2026",
+     "citation": "Übersicht „Ergebnishaushalt“ — Teilhaushalte mit ordentlichen Erträgen und Aufwendungen",
+     "label": "Beschlossener Haushaltsplan 2026",
+     "page": null,
+     "url": "https://www.oldenburg.de/fileadmin/oldenburg/Benutzer/Dateien/20_Controlling_und_Finanzen/200_Finanzen/Haushalt_2026/Genehmigung_Haushalt_2026/04_Haushaltsplan_2026_-_UEbersichten.pdf"
+    },
+    "expenses": 169215200.0,
+    "expenses_before": 111519449.0,
+    "is_total": 0,
+    "result": -129875119.0,
+    "revenues": 39340080.0,
+    "revenues_before": 26034609.0,
+    "year": 2026,
+    "year_before": 2020
+   }
+  ],
+  [
+   {
     "area": "Verwaltungsführung",
+    "beleg": {
+     "as_of": "Haushaltsjahr 2026",
+     "citation": "Übersicht „Ergebnishaushalt“ — Teilhaushalte mit ordentlichen Erträgen und Aufwendungen",
+     "label": "Beschlossener Haushaltsplan 2026",
+     "page": null,
+     "url": "https://www.oldenburg.de/fileadmin/oldenburg/Benutzer/Dateien/20_Controlling_und_Finanzen/200_Finanzen/Haushalt_2026/Genehmigung_Haushalt_2026/04_Haushaltsplan_2026_-_UEbersichten.pdf"
+    },
     "expenses": 9711555.0,
     "expenses_before": 7034414.0,
     "is_total": 0,
@@ -2535,20 +2888,14 @@
   ],
   [
    {
-    "area": "Stadtplanung",
-    "expenses": 7380665.0,
-    "expenses_before": 5096746.0,
-    "is_total": 0,
-    "result": -6768196.0,
-    "revenues": 612468.0,
-    "revenues_before": 633803.0,
-    "year": 2026,
-    "year_before": 2020
-   }
-  ],
-  [
-   {
     "area": "Summe",
+    "beleg": {
+     "as_of": "Haushaltsjahr 2026",
+     "citation": "Übersicht „Ergebnishaushalt“ — Teilhaushalte mit ordentlichen Erträgen und Aufwendungen",
+     "label": "Beschlossener Haushaltsplan 2026",
+     "page": null,
+     "url": "https://www.oldenburg.de/fileadmin/oldenburg/Benutzer/Dateien/20_Controlling_und_Finanzen/200_Finanzen/Haushalt_2026/Genehmigung_Haushalt_2026/04_Haushaltsplan_2026_-_UEbersichten.pdf"
+    },
     "expenses": 883918387.0,
     "is_total": 1,
     "result": -71057496.0,
@@ -2557,6 +2904,13 @@
    },
    {
     "area": "Soziales und Gesundheit",
+    "beleg": {
+     "as_of": "Haushaltsjahr 2026",
+     "citation": "Übersicht „Ergebnishaushalt“ — Teilhaushalte mit ordentlichen Erträgen und Aufwendungen",
+     "label": "Beschlossener Haushaltsplan 2026",
+     "page": null,
+     "url": "https://www.oldenburg.de/fileadmin/oldenburg/Benutzer/Dateien/20_Controlling_und_Finanzen/200_Finanzen/Haushalt_2026/Genehmigung_Haushalt_2026/04_Haushaltsplan_2026_-_UEbersichten.pdf"
+    },
     "expenses": 283120052.0,
     "is_total": 0,
     "rang": 1,
@@ -2566,6 +2920,13 @@
    },
    {
     "area": "Jugend und Familie",
+    "beleg": {
+     "as_of": "Haushaltsjahr 2026",
+     "citation": "Übersicht „Ergebnishaushalt“ — Teilhaushalte mit ordentlichen Erträgen und Aufwendungen",
+     "label": "Beschlossener Haushaltsplan 2026",
+     "page": null,
+     "url": "https://www.oldenburg.de/fileadmin/oldenburg/Benutzer/Dateien/20_Controlling_und_Finanzen/200_Finanzen/Haushalt_2026/Genehmigung_Haushalt_2026/04_Haushaltsplan_2026_-_UEbersichten.pdf"
+    },
     "expenses": 169215200.0,
     "is_total": 0,
     "rang": 2,
@@ -2575,6 +2936,13 @@
    },
    {
     "area": "Finanzmanagement und Recht",
+    "beleg": {
+     "as_of": "Haushaltsjahr 2026",
+     "citation": "Übersicht „Ergebnishaushalt“ — Teilhaushalte mit ordentlichen Erträgen und Aufwendungen",
+     "label": "Beschlossener Haushaltsplan 2026",
+     "page": null,
+     "url": "https://www.oldenburg.de/fileadmin/oldenburg/Benutzer/Dateien/20_Controlling_und_Finanzen/200_Finanzen/Haushalt_2026/Genehmigung_Haushalt_2026/04_Haushaltsplan_2026_-_UEbersichten.pdf"
+    },
     "expenses": 100677045.0,
     "is_total": 0,
     "rang": 3,
@@ -2586,12 +2954,57 @@
   [
    {
     "area": "Sicherheit und Ordnung",
+    "beleg": {
+     "as_of": "Haushaltsjahr 2026",
+     "citation": "Übersicht „Ergebnishaushalt“ — Teilhaushalte mit ordentlichen Erträgen und Aufwendungen",
+     "label": "Beschlossener Haushaltsplan 2026",
+     "page": null,
+     "url": "https://www.oldenburg.de/fileadmin/oldenburg/Benutzer/Dateien/20_Controlling_und_Finanzen/200_Finanzen/Haushalt_2026/Genehmigung_Haushalt_2026/04_Haushaltsplan_2026_-_UEbersichten.pdf"
+    },
     "expenses": 65370096.0,
     "expenses_before": 41887157.0,
     "is_total": 0,
     "result": -33482800.0,
     "revenues": 31887296.0,
     "revenues_before": 23351147.0,
+    "year": 2026,
+    "year_before": 2020
+   }
+  ],
+  [
+   {
+    "area": "Finanzmanagement und Recht",
+    "beleg": {
+     "as_of": "Haushaltsjahr 2026",
+     "citation": "Übersicht „Ergebnishaushalt“ — Teilhaushalte mit ordentlichen Erträgen und Aufwendungen",
+     "label": "Beschlossener Haushaltsplan 2026",
+     "page": null,
+     "url": "https://www.oldenburg.de/fileadmin/oldenburg/Benutzer/Dateien/20_Controlling_und_Finanzen/200_Finanzen/Haushalt_2026/Genehmigung_Haushalt_2026/04_Haushaltsplan_2026_-_UEbersichten.pdf"
+    },
+    "expenses": 100677045.0,
+    "expenses_before": 40274573.0,
+    "is_total": 0,
+    "result": 428605849.0,
+    "revenues": 529282894.0,
+    "revenues_before": 389760528.0,
+    "year": 2026,
+    "year_before": 2020
+   },
+   {
+    "area": "Summe",
+    "beleg": {
+     "as_of": "Haushaltsjahr 2026",
+     "citation": "Übersicht „Ergebnishaushalt“ — Teilhaushalte mit ordentlichen Erträgen und Aufwendungen",
+     "label": "Beschlossener Haushaltsplan 2026",
+     "page": null,
+     "url": "https://www.oldenburg.de/fileadmin/oldenburg/Benutzer/Dateien/20_Controlling_und_Finanzen/200_Finanzen/Haushalt_2026/Genehmigung_Haushalt_2026/04_Haushaltsplan_2026_-_UEbersichten.pdf"
+    },
+    "expenses": 883918387.0,
+    "expenses_before": 582509635.0,
+    "is_total": 1,
+    "result": -71057496.0,
+    "revenues": 812860891.0,
+    "revenues_before": 588790868.0,
     "year": 2026,
     "year_before": 2020
    }
@@ -2771,13 +3184,13 @@
   {
    "beleg": {
     "as_of": "Haushaltsplan 2025 — Plan, nicht Ist",
-    "citation": "Datensatz 1101, Tabellenblatt „Finanzhaushalt“ — je Teilhaushalt eine Zeile mit Ein- und Auszahlungen aus Investitionstätigkeit, darunter die Summenzeile „Finanzhaushalt Gesamtinvestitionen“. Für welches Jahr die Datei gilt, steht nicht in ihr, sondern in ihrem Dateinamen (…_2025_Finanzhaushalt.csv)",
+    "citation": "Datensatz 1101, Tabellenblatt „Finanzhaushalt“ — je Teilhaushalt eine Zeile mit Ein- und Auszahlungen aus Investitionstätigkeit, darunter die Summenzeile „Finanzhaushalt Gesamtinvestitionen“. Für welches Jahr die Datei gilt, steht nicht in ihr, sondern in ihrem Dateinamen (…2025…csv); 2020 und 2021 als zweiter Block der Datei nach dem Ergebnishaushalt",
     "label": "Finanzhaushalt der Stadt Oldenburg 2025",
     "page": null,
     "url": "https://opendata.oldenburg.de/sites/default/files/1101_Haushaltsplan_StadtOL_2025_Finanzhaushalt.csv"
    },
    "gesamt": {
-    "herkunft_id": 115,
+    "herkunft_id": 1719,
     "inflows": 39672063.0,
     "label": "Finanzhaushalt Gesamtinvestitionen",
     "level": "investments",
@@ -2796,11 +3209,11 @@
     "budget_year": 2026,
     "budgeted": 70273312.0,
     "forecast": 70404408.0,
-    "herkunft_id": 1585
+    "herkunft_id": 1204
    },
    "teilhaushalte": [
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 21065300.0,
      "label": "Finanzmanagement und Recht",
      "level": "sub_budget",
@@ -2808,7 +3221,7 @@
      "sub_budget_no": 4
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 13878863.0,
      "label": "Wirtschaftsförderung, Liegenschaften",
      "level": "sub_budget",
@@ -2816,7 +3229,7 @@
      "sub_budget_no": 3
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 145000.0,
      "label": "Verkehr und Straßenbau",
      "level": "sub_budget",
@@ -2824,7 +3237,7 @@
      "sub_budget_no": 8
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 141000.0,
      "label": "Umwelt, Bauordnung, Grün und Friedhöfe",
      "level": "sub_budget",
@@ -2832,7 +3245,7 @@
      "sub_budget_no": 9
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 4206000.0,
      "label": "Stadtplanung",
      "level": "sub_budget",
@@ -2840,7 +3253,7 @@
      "sub_budget_no": 7
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 0.0,
      "label": "Schule und Bildung",
      "level": "sub_budget",
@@ -2848,7 +3261,7 @@
      "sub_budget_no": 12
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 80000.0,
      "label": "Sicherheit und Ordnung",
      "level": "sub_budget",
@@ -2856,7 +3269,7 @@
      "sub_budget_no": 5
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 0.0,
      "label": "Jugend und Familie",
      "level": "sub_budget",
@@ -2864,7 +3277,7 @@
      "sub_budget_no": 11
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 8000.0,
      "label": "Personal- und Verwaltungsmanagement",
      "level": "sub_budget",
@@ -2872,7 +3285,7 @@
      "sub_budget_no": 2
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 120000.0,
      "label": "Kultur, Museen, Sport",
      "level": "sub_budget",
@@ -2880,7 +3293,7 @@
      "sub_budget_no": 6
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 0.0,
      "label": "Soziales und Gesundheit",
      "level": "sub_budget",
@@ -2888,7 +3301,7 @@
      "sub_budget_no": 10
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 0.0,
      "label": "Verwaltungsführung",
      "level": "sub_budget",
@@ -2896,7 +3309,7 @@
      "sub_budget_no": 1
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 27900.0,
      "label": "Nicht rechtsfähige Stiftungen",
      "level": "sub_budget",
@@ -2908,140 +3321,139 @@
   },
   {
    "beleg": {
-    "as_of": "Haushaltsplan 2025 — Plan, nicht Ist",
-    "citation": "Datensatz 1101, Tabellenblatt „Finanzhaushalt“ — je Teilhaushalt eine Zeile mit Ein- und Auszahlungen aus Investitionstätigkeit, darunter die Summenzeile „Finanzhaushalt Gesamtinvestitionen“. Für welches Jahr die Datei gilt, steht nicht in ihr, sondern in ihrem Dateinamen (…_2025_Finanzhaushalt.csv)",
-    "label": "Finanzhaushalt der Stadt Oldenburg 2025",
+    "as_of": "Haushaltsplan 2020 — Plan, nicht Ist",
+    "citation": "Datensatz 1101, Tabellenblatt „Finanzhaushalt“ — je Teilhaushalt eine Zeile mit Ein- und Auszahlungen aus Investitionstätigkeit, darunter die Summenzeile „Finanzhaushalt Gesamtinvestitionen“. Für welches Jahr die Datei gilt, steht nicht in ihr, sondern in ihrem Dateinamen (…2020…csv); 2020 und 2021 als zweiter Block der Datei nach dem Ergebnishaushalt",
+    "label": "Finanzhaushalt der Stadt Oldenburg 2020",
     "page": null,
-    "url": "https://opendata.oldenburg.de/sites/default/files/1101_Haushaltsplan_StadtOL_2025_Finanzhaushalt.csv"
+    "url": "https://opendata.oldenburg.de/sites/default/files/1101%20Haushaltsplan%20der%20Stadt%20Oldenburg%202020_1.csv"
    },
    "gesamt": {
-    "herkunft_id": 115,
-    "inflows": 39672063.0,
+    "herkunft_id": 1712,
+    "inflows": 26665400.0,
     "label": "Finanzhaushalt Gesamtinvestitionen",
     "level": "investments",
-    "outflows": 80781520.0,
+    "outflows": 92959400.0,
     "sub_budget_no": 0
    },
    "neuer_plan": null,
    "teilhaushalte": [
     {
-     "herkunft_id": 115,
-     "inflows": 21065300.0,
+     "herkunft_id": 1712,
+     "inflows": 3204900.0,
      "label": "Finanzmanagement und Recht",
      "level": "sub_budget",
-     "outflows": 36813610.0,
+     "outflows": 50029100.0,
      "sub_budget_no": 4
     },
     {
-     "herkunft_id": 115,
-     "inflows": 13878863.0,
+     "herkunft_id": 1712,
+     "inflows": 14920400.0,
      "label": "Wirtschaftsförderung, Liegenschaften",
      "level": "sub_budget",
-     "outflows": 14130150.0,
+     "outflows": 16862300.0,
      "sub_budget_no": 3
     },
     {
-     "herkunft_id": 115,
-     "inflows": 145000.0,
+     "herkunft_id": 1712,
+     "inflows": 1306200.0,
      "label": "Verkehr und Straßenbau",
      "level": "sub_budget",
-     "outflows": 10451500.0,
+     "outflows": 9833000.0,
      "sub_budget_no": 8
     },
     {
-     "herkunft_id": 115,
-     "inflows": 141000.0,
-     "label": "Umwelt, Bauordnung, Grün und Friedhöfe",
-     "level": "sub_budget",
-     "outflows": 5918860.0,
-     "sub_budget_no": 9
-    },
-    {
-     "herkunft_id": 115,
-     "inflows": 4206000.0,
-     "label": "Stadtplanung",
-     "level": "sub_budget",
-     "outflows": 4259000.0,
-     "sub_budget_no": 7
-    },
-    {
-     "herkunft_id": 115,
-     "inflows": 0.0,
+     "herkunft_id": 1712,
+     "inflows": 2655000.0,
      "label": "Schule und Bildung",
      "level": "sub_budget",
-     "outflows": 1912500.0,
+     "outflows": 4684000.0,
      "sub_budget_no": 12
     },
     {
-     "herkunft_id": 115,
-     "inflows": 80000.0,
-     "label": "Sicherheit und Ordnung",
-     "level": "sub_budget",
-     "outflows": 1855000.0,
-     "sub_budget_no": 5
-    },
-    {
-     "herkunft_id": 115,
-     "inflows": 0.0,
+     "herkunft_id": 1712,
+     "inflows": 1440000.0,
      "label": "Jugend und Familie",
      "level": "sub_budget",
-     "outflows": 1715500.0,
+     "outflows": 2350000.0,
      "sub_budget_no": 11
     },
     {
-     "herkunft_id": 115,
-     "inflows": 8000.0,
+     "herkunft_id": 1712,
+     "inflows": 3017800.0,
+     "label": "Stadtplanung",
+     "level": "sub_budget",
+     "outflows": 2218400.0,
+     "sub_budget_no": 7
+    },
+    {
+     "herkunft_id": 1712,
+     "inflows": 110000.0,
+     "label": "Sicherheit und Ordnung",
+     "level": "sub_budget",
+     "outflows": 1804600.0,
+     "sub_budget_no": 5
+    },
+    {
+     "herkunft_id": 1712,
+     "inflows": 0.0,
      "label": "Personal- und Verwaltungsmanagement",
      "level": "sub_budget",
-     "outflows": 1542500.0,
+     "outflows": 1702200.0,
      "sub_budget_no": 2
     },
     {
-     "herkunft_id": 115,
-     "inflows": 120000.0,
+     "herkunft_id": 1712,
+     "inflows": 0.0,
      "label": "Kultur, Museen, Sport",
      "level": "sub_budget",
-     "outflows": 1356400.0,
+     "outflows": 1543900.0,
      "sub_budget_no": 6
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1712,
+     "inflows": 0.0,
+     "label": "Umwelt, Bauordnung, Grün und Friedhöfe",
+     "level": "sub_budget",
+     "outflows": 1381300.0,
+     "sub_budget_no": 9
+    },
+    {
+     "herkunft_id": 1712,
+     "inflows": 11100.0,
+     "label": "Nicht rechtsfähige Stiftungen",
+     "level": "sub_budget",
+     "outflows": 500000.0,
+     "sub_budget_no": 13
+    },
+    {
+     "herkunft_id": 1712,
      "inflows": 0.0,
      "label": "Soziales und Gesundheit",
      "level": "sub_budget",
-     "outflows": 782000.0,
+     "outflows": 45600.0,
      "sub_budget_no": 10
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1712,
      "inflows": 0.0,
      "label": "Verwaltungsführung",
      "level": "sub_budget",
-     "outflows": 44500.0,
+     "outflows": 5000.0,
      "sub_budget_no": 1
-    },
-    {
-     "herkunft_id": 115,
-     "inflows": 27900.0,
-     "label": "Nicht rechtsfähige Stiftungen",
-     "level": "sub_budget",
-     "outflows": 0.0,
-     "sub_budget_no": 13
     }
    ],
-   "year": 2025,
-   "year_asked": 2020
+   "year": 2020
   },
   {
    "beleg": {
     "as_of": "Haushaltsplan 2025 — Plan, nicht Ist",
-    "citation": "Datensatz 1101, Tabellenblatt „Finanzhaushalt“ — je Teilhaushalt eine Zeile mit Ein- und Auszahlungen aus Investitionstätigkeit, darunter die Summenzeile „Finanzhaushalt Gesamtinvestitionen“. Für welches Jahr die Datei gilt, steht nicht in ihr, sondern in ihrem Dateinamen (…_2025_Finanzhaushalt.csv)",
+    "citation": "Datensatz 1101, Tabellenblatt „Finanzhaushalt“ — je Teilhaushalt eine Zeile mit Ein- und Auszahlungen aus Investitionstätigkeit, darunter die Summenzeile „Finanzhaushalt Gesamtinvestitionen“. Für welches Jahr die Datei gilt, steht nicht in ihr, sondern in ihrem Dateinamen (…2025…csv); 2020 und 2021 als zweiter Block der Datei nach dem Ergebnishaushalt",
     "label": "Finanzhaushalt der Stadt Oldenburg 2025",
     "page": null,
     "url": "https://opendata.oldenburg.de/sites/default/files/1101_Haushaltsplan_StadtOL_2025_Finanzhaushalt.csv"
    },
    "gesamt": {
-    "herkunft_id": 115,
+    "herkunft_id": 1719,
     "inflows": 39672063.0,
     "label": "Finanzhaushalt Gesamtinvestitionen",
     "level": "investments",
@@ -3051,7 +3463,7 @@
    "neuer_plan": null,
    "teilhaushalte": [
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 21065300.0,
      "label": "Finanzmanagement und Recht",
      "level": "sub_budget",
@@ -3059,7 +3471,7 @@
      "sub_budget_no": 4
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 13878863.0,
      "label": "Wirtschaftsförderung, Liegenschaften",
      "level": "sub_budget",
@@ -3067,7 +3479,7 @@
      "sub_budget_no": 3
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 145000.0,
      "label": "Verkehr und Straßenbau",
      "level": "sub_budget",
@@ -3075,7 +3487,7 @@
      "sub_budget_no": 8
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 141000.0,
      "label": "Umwelt, Bauordnung, Grün und Friedhöfe",
      "level": "sub_budget",
@@ -3083,7 +3495,7 @@
      "sub_budget_no": 9
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 4206000.0,
      "label": "Stadtplanung",
      "level": "sub_budget",
@@ -3091,7 +3503,7 @@
      "sub_budget_no": 7
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 0.0,
      "label": "Schule und Bildung",
      "level": "sub_budget",
@@ -3099,7 +3511,7 @@
      "sub_budget_no": 12
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 80000.0,
      "label": "Sicherheit und Ordnung",
      "level": "sub_budget",
@@ -3107,7 +3519,7 @@
      "sub_budget_no": 5
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 0.0,
      "label": "Jugend und Familie",
      "level": "sub_budget",
@@ -3115,7 +3527,7 @@
      "sub_budget_no": 11
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 8000.0,
      "label": "Personal- und Verwaltungsmanagement",
      "level": "sub_budget",
@@ -3123,7 +3535,7 @@
      "sub_budget_no": 2
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 120000.0,
      "label": "Kultur, Museen, Sport",
      "level": "sub_budget",
@@ -3131,7 +3543,7 @@
      "sub_budget_no": 6
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 0.0,
      "label": "Soziales und Gesundheit",
      "level": "sub_budget",
@@ -3139,7 +3551,7 @@
      "sub_budget_no": 10
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 0.0,
      "label": "Verwaltungsführung",
      "level": "sub_budget",
@@ -3147,7 +3559,7 @@
      "sub_budget_no": 1
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 27900.0,
      "label": "Nicht rechtsfähige Stiftungen",
      "level": "sub_budget",
@@ -3161,13 +3573,13 @@
   {
    "beleg": {
     "as_of": "Haushaltsplan 2025 — Plan, nicht Ist",
-    "citation": "Datensatz 1101, Tabellenblatt „Finanzhaushalt“ — je Teilhaushalt eine Zeile mit Ein- und Auszahlungen aus Investitionstätigkeit, darunter die Summenzeile „Finanzhaushalt Gesamtinvestitionen“. Für welches Jahr die Datei gilt, steht nicht in ihr, sondern in ihrem Dateinamen (…_2025_Finanzhaushalt.csv)",
+    "citation": "Datensatz 1101, Tabellenblatt „Finanzhaushalt“ — je Teilhaushalt eine Zeile mit Ein- und Auszahlungen aus Investitionstätigkeit, darunter die Summenzeile „Finanzhaushalt Gesamtinvestitionen“. Für welches Jahr die Datei gilt, steht nicht in ihr, sondern in ihrem Dateinamen (…2025…csv); 2020 und 2021 als zweiter Block der Datei nach dem Ergebnishaushalt",
     "label": "Finanzhaushalt der Stadt Oldenburg 2025",
     "page": null,
     "url": "https://opendata.oldenburg.de/sites/default/files/1101_Haushaltsplan_StadtOL_2025_Finanzhaushalt.csv"
    },
    "gesamt": {
-    "herkunft_id": 115,
+    "herkunft_id": 1719,
     "inflows": 39672063.0,
     "label": "Finanzhaushalt Gesamtinvestitionen",
     "level": "investments",
@@ -3177,7 +3589,7 @@
    "neuer_plan": null,
    "teilhaushalte": [
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 21065300.0,
      "label": "Finanzmanagement und Recht",
      "level": "sub_budget",
@@ -3185,7 +3597,7 @@
      "sub_budget_no": 4
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 13878863.0,
      "label": "Wirtschaftsförderung, Liegenschaften",
      "level": "sub_budget",
@@ -3193,7 +3605,7 @@
      "sub_budget_no": 3
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 145000.0,
      "label": "Verkehr und Straßenbau",
      "level": "sub_budget",
@@ -3201,7 +3613,7 @@
      "sub_budget_no": 8
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 141000.0,
      "label": "Umwelt, Bauordnung, Grün und Friedhöfe",
      "level": "sub_budget",
@@ -3209,7 +3621,7 @@
      "sub_budget_no": 9
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 4206000.0,
      "label": "Stadtplanung",
      "level": "sub_budget",
@@ -3217,7 +3629,7 @@
      "sub_budget_no": 7
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 0.0,
      "label": "Schule und Bildung",
      "level": "sub_budget",
@@ -3225,7 +3637,7 @@
      "sub_budget_no": 12
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 80000.0,
      "label": "Sicherheit und Ordnung",
      "level": "sub_budget",
@@ -3233,7 +3645,7 @@
      "sub_budget_no": 5
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 0.0,
      "label": "Jugend und Familie",
      "level": "sub_budget",
@@ -3241,7 +3653,7 @@
      "sub_budget_no": 11
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 8000.0,
      "label": "Personal- und Verwaltungsmanagement",
      "level": "sub_budget",
@@ -3249,7 +3661,7 @@
      "sub_budget_no": 2
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 120000.0,
      "label": "Kultur, Museen, Sport",
      "level": "sub_budget",
@@ -3257,7 +3669,7 @@
      "sub_budget_no": 6
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 0.0,
      "label": "Soziales und Gesundheit",
      "level": "sub_budget",
@@ -3265,7 +3677,7 @@
      "sub_budget_no": 10
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 0.0,
      "label": "Verwaltungsführung",
      "level": "sub_budget",
@@ -3273,7 +3685,7 @@
      "sub_budget_no": 1
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 27900.0,
      "label": "Nicht rechtsfähige Stiftungen",
      "level": "sub_budget",
@@ -3286,13 +3698,13 @@
   {
    "beleg": {
     "as_of": "Haushaltsplan 2025 — Plan, nicht Ist",
-    "citation": "Datensatz 1101, Tabellenblatt „Finanzhaushalt“ — je Teilhaushalt eine Zeile mit Ein- und Auszahlungen aus Investitionstätigkeit, darunter die Summenzeile „Finanzhaushalt Gesamtinvestitionen“. Für welches Jahr die Datei gilt, steht nicht in ihr, sondern in ihrem Dateinamen (…_2025_Finanzhaushalt.csv)",
+    "citation": "Datensatz 1101, Tabellenblatt „Finanzhaushalt“ — je Teilhaushalt eine Zeile mit Ein- und Auszahlungen aus Investitionstätigkeit, darunter die Summenzeile „Finanzhaushalt Gesamtinvestitionen“. Für welches Jahr die Datei gilt, steht nicht in ihr, sondern in ihrem Dateinamen (…2025…csv); 2020 und 2021 als zweiter Block der Datei nach dem Ergebnishaushalt",
     "label": "Finanzhaushalt der Stadt Oldenburg 2025",
     "page": null,
     "url": "https://opendata.oldenburg.de/sites/default/files/1101_Haushaltsplan_StadtOL_2025_Finanzhaushalt.csv"
    },
    "gesamt": {
-    "herkunft_id": 115,
+    "herkunft_id": 1719,
     "inflows": 39672063.0,
     "label": "Finanzhaushalt Gesamtinvestitionen",
     "level": "investments",
@@ -3311,11 +3723,11 @@
     "budget_year": 2026,
     "budgeted": 70273312.0,
     "forecast": 70404408.0,
-    "herkunft_id": 1585
+    "herkunft_id": 1204
    },
    "teilhaushalte": [
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 21065300.0,
      "label": "Finanzmanagement und Recht",
      "level": "sub_budget",
@@ -3323,7 +3735,7 @@
      "sub_budget_no": 4
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 13878863.0,
      "label": "Wirtschaftsförderung, Liegenschaften",
      "level": "sub_budget",
@@ -3331,7 +3743,7 @@
      "sub_budget_no": 3
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 145000.0,
      "label": "Verkehr und Straßenbau",
      "level": "sub_budget",
@@ -3339,7 +3751,7 @@
      "sub_budget_no": 8
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 141000.0,
      "label": "Umwelt, Bauordnung, Grün und Friedhöfe",
      "level": "sub_budget",
@@ -3347,7 +3759,7 @@
      "sub_budget_no": 9
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 4206000.0,
      "label": "Stadtplanung",
      "level": "sub_budget",
@@ -3355,7 +3767,7 @@
      "sub_budget_no": 7
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 0.0,
      "label": "Schule und Bildung",
      "level": "sub_budget",
@@ -3363,7 +3775,7 @@
      "sub_budget_no": 12
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 80000.0,
      "label": "Sicherheit und Ordnung",
      "level": "sub_budget",
@@ -3371,7 +3783,7 @@
      "sub_budget_no": 5
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 0.0,
      "label": "Jugend und Familie",
      "level": "sub_budget",
@@ -3379,7 +3791,7 @@
      "sub_budget_no": 11
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 8000.0,
      "label": "Personal- und Verwaltungsmanagement",
      "level": "sub_budget",
@@ -3387,7 +3799,7 @@
      "sub_budget_no": 2
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 120000.0,
      "label": "Kultur, Museen, Sport",
      "level": "sub_budget",
@@ -3395,7 +3807,7 @@
      "sub_budget_no": 6
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 0.0,
      "label": "Soziales und Gesundheit",
      "level": "sub_budget",
@@ -3403,7 +3815,7 @@
      "sub_budget_no": 10
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 0.0,
      "label": "Verwaltungsführung",
      "level": "sub_budget",
@@ -3411,7 +3823,7 @@
      "sub_budget_no": 1
     },
     {
-     "herkunft_id": 115,
+     "herkunft_id": 1719,
      "inflows": 27900.0,
      "label": "Nicht rechtsfähige Stiftungen",
      "level": "sub_budget",
@@ -3446,7 +3858,7 @@
    "gesamt": {
     "expenses_actual": 764416063.76,
     "expenses_planned": 727883665.27,
-    "herkunft_id": 223,
+    "herkunft_id": 158,
     "name": null,
     "plan_kind": "budget",
     "revenues_actual": 799057202.86,
@@ -3477,7 +3889,7 @@
    "gesamt": {
     "expenses_actual": 764416063.76,
     "expenses_planned": 727883665.27,
-    "herkunft_id": 223,
+    "herkunft_id": 158,
     "name": null,
     "plan_kind": "budget",
     "revenues_actual": 799057202.86,
@@ -3699,22 +4111,22 @@
   {
    "asked_year_rows": [],
    "beleg": {
-    "as_of": "Stichtag 2026-05-31",
+    "as_of": "Stichtag 2026-08-31",
     "citation": "Anlage „Grafik Liquiditätsstand zum Monatsende“ — die Werte des Balkendiagramms",
-    "label": "Grafik „Liquiditätsstand zum Monatsende“ (Anlage der Vorlage Liquiditätsstand) — Vorlage 26/0483",
+    "label": "Grafik „Liquiditätsstand zum Monatsende“ (Anlage der Vorlage Liquiditätsstand) — Vorlage 26/0715",
     "page": null,
-    "url": "https://buergerinfo.oldenburg.de/getfile.php?id=309985&type=do"
+    "url": "https://buergerinfo.oldenburg.de/getfile.php?id=313451&type=do"
    },
    "coverage": [
     "2015-01",
-    "2026-05"
+    "2026-08"
    ],
    "latest": {
-    "amount": 136100000.0,
-    "as_of": "2026-05-31",
+    "amount": 141100000.0,
+    "as_of": "2026-08-31",
     "confirmations": 1,
-    "herkunft_id": 1719,
-    "month": "2026-05",
+    "herkunft_id": 1488,
+    "month": "2026-08",
     "revised_from": null,
     "year": 2026
    },
@@ -3722,25 +4134,25 @@
     "amount": -7600000.0,
     "as_of": "2019-11-30",
     "confirmations": 19,
-    "herkunft_id": 1646,
+    "herkunft_id": 1251,
     "month": "2016-07",
     "revised_from": null,
     "year": 2016
    },
    "max12": {
     "amount": 147400000.0,
-    "as_of": "2026-05-31",
-    "confirmations": 2,
-    "herkunft_id": 1718,
+    "as_of": "2026-08-31",
+    "confirmations": 3,
+    "herkunft_id": 1486,
     "month": "2026-02",
     "revised_from": null,
     "year": 2026
    },
    "min12": {
     "amount": 84800000.0,
-    "as_of": "2026-05-31",
-    "confirmations": 3,
-    "herkunft_id": 1717,
+    "as_of": "2026-08-31",
+    "confirmations": 4,
+    "herkunft_id": 1485,
     "month": "2026-01",
     "revised_from": null,
     "year": 2026
@@ -3751,34 +4163,34 @@
      "amount": 145400000.0,
      "as_of": "2025-11-30",
      "confirmations": 24,
-     "herkunft_id": 1692,
+     "herkunft_id": 1297,
      "month": "2022-12",
      "revised_from": null,
      "year": 2022
     },
     {
      "amount": 138600000.0,
-     "as_of": "2026-05-31",
-     "confirmations": 18,
-     "herkunft_id": 1702,
+     "as_of": "2026-08-31",
+     "confirmations": 19,
+     "herkunft_id": 1470,
      "month": "2023-12",
      "revised_from": null,
      "year": 2023
     },
     {
      "amount": 116000000.0,
-     "as_of": "2026-05-31",
-     "confirmations": 10,
-     "herkunft_id": 1710,
+     "as_of": "2026-08-31",
+     "confirmations": 11,
+     "herkunft_id": 1478,
      "month": "2024-12",
      "revised_from": null,
      "year": 2024
     },
     {
      "amount": 108000000.0,
-     "as_of": "2026-05-31",
-     "confirmations": 3,
-     "herkunft_id": 1717,
+     "as_of": "2026-08-31",
+     "confirmations": 4,
+     "herkunft_id": 1485,
      "month": "2025-12",
      "revised_from": null,
      "year": 2025
@@ -3789,130 +4201,130 @@
    "asked_year_rows": [
     {
      "amount": 124000000.0,
-     "as_of": "2026-05-31",
-     "confirmations": 18,
-     "herkunft_id": 1702,
+     "as_of": "2026-08-31",
+     "confirmations": 19,
+     "herkunft_id": 1470,
      "month": "2024-01",
      "revised_from": null,
      "year": 2024
     },
     {
      "amount": 151300000.0,
-     "as_of": "2026-05-31",
-     "confirmations": 17,
-     "herkunft_id": 1703,
+     "as_of": "2026-08-31",
+     "confirmations": 18,
+     "herkunft_id": 1471,
      "month": "2024-02",
      "revised_from": 151900000.0,
      "year": 2024
     },
     {
      "amount": 136100000.0,
-     "as_of": "2026-05-31",
-     "confirmations": 16,
-     "herkunft_id": 1704,
+     "as_of": "2026-08-31",
+     "confirmations": 17,
+     "herkunft_id": 1472,
      "month": "2024-03",
      "revised_from": null,
      "year": 2024
     },
     {
      "amount": 117700000.0,
-     "as_of": "2026-05-31",
-     "confirmations": 15,
-     "herkunft_id": 1705,
+     "as_of": "2026-08-31",
+     "confirmations": 16,
+     "herkunft_id": 1473,
      "month": "2024-04",
      "revised_from": null,
      "year": 2024
     },
     {
      "amount": 146100000.0,
-     "as_of": "2026-05-31",
-     "confirmations": 15,
-     "herkunft_id": 1705,
+     "as_of": "2026-08-31",
+     "confirmations": 16,
+     "herkunft_id": 1473,
      "month": "2024-05",
      "revised_from": null,
      "year": 2024
     },
     {
      "amount": 126200000.0,
-     "as_of": "2026-05-31",
-     "confirmations": 14,
-     "herkunft_id": 1706,
+     "as_of": "2026-08-31",
+     "confirmations": 15,
+     "herkunft_id": 1474,
      "month": "2024-06",
      "revised_from": null,
      "year": 2024
     },
     {
      "amount": 124300000.0,
-     "as_of": "2026-05-31",
-     "confirmations": 14,
-     "herkunft_id": 1706,
+     "as_of": "2026-08-31",
+     "confirmations": 15,
+     "herkunft_id": 1474,
      "month": "2024-07",
      "revised_from": null,
      "year": 2024
     },
     {
      "amount": 180100000.0,
-     "as_of": "2026-05-31",
-     "confirmations": 13,
-     "herkunft_id": 1707,
+     "as_of": "2026-08-31",
+     "confirmations": 14,
+     "herkunft_id": 1475,
      "month": "2024-08",
      "revised_from": null,
      "year": 2024
     },
     {
      "amount": 158200000.0,
-     "as_of": "2026-05-31",
-     "confirmations": 12,
-     "herkunft_id": 1708,
+     "as_of": "2026-08-31",
+     "confirmations": 13,
+     "herkunft_id": 1476,
      "month": "2024-09",
      "revised_from": null,
      "year": 2024
     },
     {
      "amount": 148500000.0,
-     "as_of": "2026-05-31",
-     "confirmations": 11,
-     "herkunft_id": 1709,
+     "as_of": "2026-08-31",
+     "confirmations": 12,
+     "herkunft_id": 1477,
      "month": "2024-10",
      "revised_from": null,
      "year": 2024
     },
     {
      "amount": 146400000.0,
-     "as_of": "2026-05-31",
-     "confirmations": 10,
-     "herkunft_id": 1710,
+     "as_of": "2026-08-31",
+     "confirmations": 11,
+     "herkunft_id": 1478,
      "month": "2024-11",
      "revised_from": null,
      "year": 2024
     },
     {
      "amount": 116000000.0,
-     "as_of": "2026-05-31",
-     "confirmations": 10,
-     "herkunft_id": 1710,
+     "as_of": "2026-08-31",
+     "confirmations": 11,
+     "herkunft_id": 1478,
      "month": "2024-12",
      "revised_from": null,
      "year": 2024
     }
    ],
    "beleg": {
-    "as_of": "Stichtag 2026-05-31",
+    "as_of": "Stichtag 2026-08-31",
     "citation": "Anlage „Grafik Liquiditätsstand zum Monatsende“ — die Werte des Balkendiagramms",
-    "label": "Grafik „Liquiditätsstand zum Monatsende“ (Anlage der Vorlage Liquiditätsstand) — Vorlage 26/0483",
+    "label": "Grafik „Liquiditätsstand zum Monatsende“ (Anlage der Vorlage Liquiditätsstand) — Vorlage 26/0715",
     "page": null,
-    "url": "https://buergerinfo.oldenburg.de/getfile.php?id=309985&type=do"
+    "url": "https://buergerinfo.oldenburg.de/getfile.php?id=313451&type=do"
    },
    "coverage": [
     "2015-01",
-    "2026-05"
+    "2026-08"
    ],
    "latest": {
-    "amount": 136100000.0,
-    "as_of": "2026-05-31",
+    "amount": 141100000.0,
+    "as_of": "2026-08-31",
     "confirmations": 1,
-    "herkunft_id": 1719,
-    "month": "2026-05",
+    "herkunft_id": 1488,
+    "month": "2026-08",
     "revised_from": null,
     "year": 2026
    },
@@ -3920,25 +4332,25 @@
     "amount": -7600000.0,
     "as_of": "2019-11-30",
     "confirmations": 19,
-    "herkunft_id": 1646,
+    "herkunft_id": 1251,
     "month": "2016-07",
     "revised_from": null,
     "year": 2016
    },
    "max12": {
     "amount": 147400000.0,
-    "as_of": "2026-05-31",
-    "confirmations": 2,
-    "herkunft_id": 1718,
+    "as_of": "2026-08-31",
+    "confirmations": 3,
+    "herkunft_id": 1486,
     "month": "2026-02",
     "revised_from": null,
     "year": 2026
    },
    "min12": {
     "amount": 84800000.0,
-    "as_of": "2026-05-31",
-    "confirmations": 3,
-    "herkunft_id": 1717,
+    "as_of": "2026-08-31",
+    "confirmations": 4,
+    "herkunft_id": 1485,
     "month": "2026-01",
     "revised_from": null,
     "year": 2026
@@ -3949,34 +4361,34 @@
      "amount": 145400000.0,
      "as_of": "2025-11-30",
      "confirmations": 24,
-     "herkunft_id": 1692,
+     "herkunft_id": 1297,
      "month": "2022-12",
      "revised_from": null,
      "year": 2022
     },
     {
      "amount": 138600000.0,
-     "as_of": "2026-05-31",
-     "confirmations": 18,
-     "herkunft_id": 1702,
+     "as_of": "2026-08-31",
+     "confirmations": 19,
+     "herkunft_id": 1470,
      "month": "2023-12",
      "revised_from": null,
      "year": 2023
     },
     {
      "amount": 116000000.0,
-     "as_of": "2026-05-31",
-     "confirmations": 10,
-     "herkunft_id": 1710,
+     "as_of": "2026-08-31",
+     "confirmations": 11,
+     "herkunft_id": 1478,
      "month": "2024-12",
      "revised_from": null,
      "year": 2024
     },
     {
      "amount": 108000000.0,
-     "as_of": "2026-05-31",
-     "confirmations": 3,
-     "herkunft_id": 1717,
+     "as_of": "2026-08-31",
+     "confirmations": 4,
+     "herkunft_id": 1485,
      "month": "2025-12",
      "revised_from": null,
      "year": 2025
@@ -3986,13 +4398,6 @@
  ],
  "loans": [
   {
-   "beleg": {
-    "as_of": "Berichtszeitraum 2026-06 bis 2026-08",
-    "citation": "Abschnitt „Bericht“ der Unterrichtung — nummerierte Posten; Zinsersparnis aus „Finanzielle Auswirkungen“",
-    "label": "Unterrichtung des Rates über Kreditaufnahmen, Derivatabschlüsse und Umschuldungen — Vorlage 26/0629",
-    "page": null,
-    "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312529&type=do"
-   },
    "coverage": [
     "2018-02",
     "2026-08"
@@ -4017,13 +4422,20 @@
    },
    "latest_refinancing": {
     "amount": 48241251.34,
+    "beleg": {
+     "as_of": "Berichtszeitraum 2026-06 bis 2026-08",
+     "citation": "Abschnitt „Bericht“ der Unterrichtung — nummerierte Posten; Zinsersparnis aus „Finanzielle Auswirkungen“",
+     "label": "Unterrichtung des Rates über Kreditaufnahmen, Derivatabschlüsse und Umschuldungen — Vorlage 26/0629",
+     "page": null,
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312529&type=do"
+    },
     "borrower": null,
     "decided_at": "2026-08-10",
-    "fetched_at": "2026-09-02T18:06:18",
+    "fetched_at": "2026-09-03T18:54:26",
     "fixed_until": null,
     "fixed_years": null,
     "heading": "Umschuldung von Kommunalkrediten (Grundgeschäfte) in Höhe von insgesamt 48.241.251,34 Euro",
-    "herkunft_id": 1630,
+    "herkunft_id": 1246,
     "kind": "refinancing",
     "period_from": "2026-06",
     "period_to": "2026-08",
@@ -4036,13 +4448,20 @@
    "positions": [
     {
      "amount": 8000000.0,
+     "beleg": {
+      "as_of": "Berichtszeitraum 2026-06 bis 2026-08",
+      "citation": "Abschnitt „Bericht“ der Unterrichtung — nummerierte Posten; Zinsersparnis aus „Finanzielle Auswirkungen“",
+      "label": "Unterrichtung des Rates über Kreditaufnahmen, Derivatabschlüsse und Umschuldungen — Vorlage 26/0629",
+      "page": null,
+      "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312529&type=do"
+     },
      "borrower": "Bäderbetrieb Oldenburg",
      "decided_at": "2026-08-06",
-     "fetched_at": "2026-09-02T18:06:18",
+     "fetched_at": "2026-09-03T18:54:26",
      "fixed_until": null,
      "fixed_years": null,
      "heading": "Kreditaufnahme des Bäderbetriebs Oldenburg am Kapitalmarkt in Höhe von 8.000.000,00 Euro",
-     "herkunft_id": 1630,
+     "herkunft_id": 1246,
      "kind": "loan",
      "period_from": "2026-06",
      "period_to": "2026-08",
@@ -4054,13 +4473,20 @@
     },
     {
      "amount": 48241251.34,
+     "beleg": {
+      "as_of": "Berichtszeitraum 2026-06 bis 2026-08",
+      "citation": "Abschnitt „Bericht“ der Unterrichtung — nummerierte Posten; Zinsersparnis aus „Finanzielle Auswirkungen“",
+      "label": "Unterrichtung des Rates über Kreditaufnahmen, Derivatabschlüsse und Umschuldungen — Vorlage 26/0629",
+      "page": null,
+      "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312529&type=do"
+     },
      "borrower": null,
      "decided_at": "2026-08-10",
-     "fetched_at": "2026-09-02T18:06:18",
+     "fetched_at": "2026-09-03T18:54:26",
      "fixed_until": null,
      "fixed_years": null,
      "heading": "Umschuldung von Kommunalkrediten (Grundgeschäfte) in Höhe von insgesamt 48.241.251,34 Euro",
-     "herkunft_id": 1630,
+     "herkunft_id": 1246,
      "kind": "refinancing",
      "period_from": "2026-06",
      "period_to": "2026-08",
@@ -4072,13 +4498,20 @@
     },
     {
      "amount": 8000000.0,
+     "beleg": {
+      "as_of": "Berichtszeitraum 2026-05 bis 2026-05",
+      "citation": "Abschnitt „Bericht“ der Unterrichtung — nummerierte Posten; Zinsersparnis aus „Finanzielle Auswirkungen“",
+      "label": "Unterrichtung des Rates über Kreditaufnahmen, Derivatabschlüsse und Umschuldungen — Vorlage 26/0397",
+      "page": null,
+      "url": "https://buergerinfo.oldenburg.de/getfile.php?id=309309&type=do"
+     },
      "borrower": "Bäderbetrieb Oldenburg",
      "decided_at": "2026-05-13",
-     "fetched_at": "2026-09-02T18:06:18",
+     "fetched_at": "2026-09-03T18:54:26",
      "fixed_until": null,
      "fixed_years": null,
      "heading": "Kreditaufnahme des Bäderbetriebs Oldenburg am Kapitalmarkt in Höhe von 8.000.000,00 Euro",
-     "herkunft_id": 1629,
+     "herkunft_id": 1245,
      "kind": "loan",
      "period_from": "2026-05",
      "period_to": "2026-05",
@@ -4092,13 +4525,20 @@
    "rates": [
     {
      "amount": 8000000.0,
+     "beleg": {
+      "as_of": "Berichtszeitraum 2026-06 bis 2026-08",
+      "citation": "Abschnitt „Bericht“ der Unterrichtung — nummerierte Posten; Zinsersparnis aus „Finanzielle Auswirkungen“",
+      "label": "Unterrichtung des Rates über Kreditaufnahmen, Derivatabschlüsse und Umschuldungen — Vorlage 26/0629",
+      "page": null,
+      "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312529&type=do"
+     },
      "borrower": "Bäderbetrieb Oldenburg",
      "decided_at": "2026-08-06",
-     "fetched_at": "2026-09-02T18:06:18",
+     "fetched_at": "2026-09-03T18:54:26",
      "fixed_until": null,
      "fixed_years": null,
      "heading": "Kreditaufnahme des Bäderbetriebs Oldenburg am Kapitalmarkt in Höhe von 8.000.000,00 Euro",
-     "herkunft_id": 1630,
+     "herkunft_id": 1246,
      "kind": "loan",
      "period_from": "2026-06",
      "period_to": "2026-08",
@@ -4110,13 +4550,20 @@
     },
     {
      "amount": 8000000.0,
+     "beleg": {
+      "as_of": "Berichtszeitraum 2026-05 bis 2026-05",
+      "citation": "Abschnitt „Bericht“ der Unterrichtung — nummerierte Posten; Zinsersparnis aus „Finanzielle Auswirkungen“",
+      "label": "Unterrichtung des Rates über Kreditaufnahmen, Derivatabschlüsse und Umschuldungen — Vorlage 26/0397",
+      "page": null,
+      "url": "https://buergerinfo.oldenburg.de/getfile.php?id=309309&type=do"
+     },
      "borrower": "Bäderbetrieb Oldenburg",
      "decided_at": "2026-05-13",
-     "fetched_at": "2026-09-02T18:06:18",
+     "fetched_at": "2026-09-03T18:54:26",
      "fixed_until": null,
      "fixed_years": null,
      "heading": "Kreditaufnahme des Bäderbetriebs Oldenburg am Kapitalmarkt in Höhe von 8.000.000,00 Euro",
-     "herkunft_id": 1629,
+     "herkunft_id": 1245,
      "kind": "loan",
      "period_from": "2026-05",
      "period_to": "2026-05",
@@ -4128,13 +4575,20 @@
     },
     {
      "amount": 10000000.0,
+     "beleg": {
+      "as_of": "Berichtszeitraum 2025-12 bis 2026-01",
+      "citation": "Abschnitt „Bericht“ der Unterrichtung — nummerierte Posten; Zinsersparnis aus „Finanzielle Auswirkungen“",
+      "label": "Unterrichtung des Rates über Kreditaufnahmen, Derivatabschlüsse und Umschuldungen — Vorlage 26/0013",
+      "page": null,
+      "url": "https://buergerinfo.oldenburg.de/getfile.php?id=302132&type=do"
+     },
      "borrower": "Eigenbetrieb Gebäudewirtschaft und Hochbau",
      "decided_at": "2025-12-11",
-     "fetched_at": "2026-09-02T18:06:18",
+     "fetched_at": "2026-09-03T18:54:26",
      "fixed_until": null,
      "fixed_years": null,
      "heading": "Kreditaufnahme des Eigenbetriebs Gebäudewirtschaft und Hochbau am Kapitalmarkt in Höhe von 10.000.000,00 Euro",
-     "herkunft_id": 1625,
+     "herkunft_id": 1241,
      "kind": "loan",
      "period_from": "2025-12",
      "period_to": "2026-01",
@@ -4146,13 +4600,20 @@
     },
     {
      "amount": 9742709.0,
+     "beleg": {
+      "as_of": "Berichtszeitraum 2025-06 bis 2025-08",
+      "citation": "Abschnitt „Bericht“ der Unterrichtung — nummerierte Posten; Zinsersparnis aus „Finanzielle Auswirkungen“",
+      "label": "Unterrichtung des Rates über Kreditaufnahmen, Derivatabschlüsse und Umschuldungen — Vorlage 25/0527",
+      "page": null,
+      "url": "https://buergerinfo.oldenburg.de/getfile.php?id=295404&type=do"
+     },
      "borrower": "Bäderbetrieb Oldenburg",
      "decided_at": "2025-06-05",
-     "fetched_at": "2026-09-02T18:06:18",
+     "fetched_at": "2026-09-03T18:54:26",
      "fixed_until": null,
      "fixed_years": null,
      "heading": "Kreditaufnahme des Bäderbetriebs Oldenburg am Kapitalmarkt in Höhe von 9.742.709,00 Euro",
-     "herkunft_id": 1621,
+     "herkunft_id": 1237,
      "kind": "loan",
      "period_from": "2025-06",
      "period_to": "2025-08",
@@ -4164,11 +4625,18 @@
     }
    ],
    "saving": {
+    "beleg": {
+     "as_of": "Berichtszeitraum 2022-11 bis 2022-11",
+     "citation": "Abschnitt „Bericht“ der Unterrichtung — nummerierte Posten; Zinsersparnis aus „Finanzielle Auswirkungen“",
+     "label": "Unterrichtung des Rates über Kreditaufnahmen, Derivatabschlüsse und Umschuldungen — Vorlage 22/0792",
+     "page": null,
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=255047&type=do"
+    },
     "document_date": "2022-11-24",
     "document_id": 255047,
     "document_url": "https://buergerinfo.oldenburg.de/getfile.php?id=255047&type=do",
-    "fetched_at": "2026-09-02T18:06:18",
-    "herkunft_id": 1597,
+    "fetched_at": "2026-09-03T18:54:26",
+    "herkunft_id": 1215,
     "interest_saving": 10846.48,
     "items": 1,
     "none_reported": 0,
@@ -4202,7 +4670,7 @@
      },
      "details": "SG Untere Nadorster Straße, Grundstücke · SG Untere Nadorster Straße, Zuw. v. Land",
      "grand_total": 4294800.0,
-     "herkunft_id": 339,
+     "herkunft_id": 209,
      "label": "SG Untere Nadorster Straße",
      "sub_budget": "Stadtplanung",
      "sub_budget_no": 7
@@ -4215,7 +4683,7 @@
      },
      "details": "Hannah-Arendt-Straße, Straßenbau · BG Am Bahndamm, S 745 B, Beleuchtung",
      "grand_total": 5504400.0,
-     "herkunft_id": 339,
+     "herkunft_id": 209,
      "label": "BG Am Bahndamm/Gerh.-Stalling-Straße",
      "sub_budget": "Verkehr und Straßenbau",
      "sub_budget_no": 8
@@ -4228,7 +4696,7 @@
      },
      "details": "Ofenerdieker Straße, Straßenbau · Ofenerdieker Straße, Beleuchtung",
      "grand_total": 2396000.0,
-     "herkunft_id": 339,
+     "herkunft_id": 209,
      "label": "Ofenerdieker Straße",
      "sub_budget": "Verkehr und Straßenbau",
      "sub_budget_no": 8
@@ -4241,7 +4709,7 @@
      },
      "details": "Unterführung Ammerländer Heerstraße",
      "grand_total": 2230000.0,
-     "herkunft_id": 339,
+     "herkunft_id": 209,
      "label": "Ammerländer Heerstraße",
      "sub_budget": "Verkehr und Straßenbau",
      "sub_budget_no": 8
@@ -4254,7 +4722,7 @@
      },
      "details": "Siebenbürger Straße, Straßenbau · Siebenbürger Straße, Beleuchtung",
      "grand_total": 1598670.0,
-     "herkunft_id": 339,
+     "herkunft_id": 209,
      "label": "Siebenbürger Straße",
      "sub_budget": "Verkehr und Straßenbau",
      "sub_budget_no": 8
@@ -4282,7 +4750,7 @@
      },
      "details": "Fliegerhorst Kampfmittel",
      "grand_total": 36850000.0,
-     "herkunft_id": 339,
+     "herkunft_id": 209,
      "label": "Fliegerhorst Kampfmittelsondierung",
      "sub_budget": "Wirtschaftsförderung, Liegenschaften",
      "sub_budget_no": 3
@@ -4295,7 +4763,7 @@
      },
      "details": "BA N-777 D · BA N-777 E, Straßenbau · BA N-777 F, Straßenbau · Entlastungsstraße, Straßenbau · Entlastungsstraße, Planungskosten · Entlastungsstraße, GVFG-Mittel",
      "grand_total": 24775700.0,
-     "herkunft_id": 339,
+     "herkunft_id": 209,
      "label": "Fliegerhorst: Straßenbaumaßnahmen",
      "sub_budget": "Wirtschaftsförderung, Liegenschaften",
      "sub_budget_no": 3
@@ -4308,7 +4776,7 @@
      },
      "details": "Eig.kap. Zusch.Stadion Oldb GmbH & Co KG",
      "grand_total": 15000000.0,
-     "herkunft_id": 339,
+     "herkunft_id": 209,
      "label": "Eigenkapitalzuschuss",
      "sub_budget": "Finanzmanagement und Recht",
      "sub_budget_no": 4
@@ -4321,7 +4789,7 @@
      },
      "details": "SG Kreyenbrück Nord, Inv.Zusch.",
      "grand_total": 14764602.0,
-     "herkunft_id": 339,
+     "herkunft_id": 209,
      "label": "SG Kreyenbrück Nord",
      "sub_budget": "Stadtplanung",
      "sub_budget_no": 7
@@ -4334,7 +4802,7 @@
      },
      "details": "SUG Alter Stadthafen, Inv.Zusch. · SUG Alter Stadthafen, Str.Ausbaubeiträge",
      "grand_total": 12710340.0,
-     "herkunft_id": 339,
+     "herkunft_id": 209,
      "label": "SUG Alter Stadthafen",
      "sub_budget": "Stadtplanung",
      "sub_budget_no": 7
@@ -4362,7 +4830,7 @@
      },
      "details": "Fliegerhorst Kampfmittel",
      "grand_total": 35850000.0,
-     "herkunft_id": 338,
+     "herkunft_id": 208,
      "label": "Fliegerhorst Kampfmittelsondierung",
      "sub_budget": "Wirtschaftsförderung, Liegenschaften",
      "sub_budget_no": 3
@@ -4375,7 +4843,7 @@
      },
      "details": "Ausleihung an Beteiligungen, 2025 · Tilgung -Ausleihung Beteiligungen, 2025",
      "grand_total": 26559810.0,
-     "herkunft_id": 338,
+     "herkunft_id": 208,
      "label": "Ausleihung an Beteiligungen, 2025",
      "sub_budget": "Finanzmanagement und Recht",
      "sub_budget_no": 4
@@ -4388,7 +4856,7 @@
      },
      "details": "Straßenbaumaßnahmen, Planungskosten · BA N-777 D, Straßenbau · BA N-777 E, Straßenbau · BA N-777 F, Straßenbau · Entlastungsstraße, Straßenbau · Entlastungsstraße, Planungskosten · Entlastungsstraße, GVFG-Mittel",
      "grand_total": 24889900.0,
-     "herkunft_id": 338,
+     "herkunft_id": 208,
      "label": "Fliegerhorst: Straßenbaumaßnahmen",
      "sub_budget": "Wirtschaftsförderung, Liegenschaften",
      "sub_budget_no": 3
@@ -4398,7 +4866,7 @@
      "davor": null,
      "details": "Eig.kap. Zusch.Stadion Oldb GmbH & Co KG",
      "grand_total": 15000000.0,
-     "herkunft_id": 338,
+     "herkunft_id": 208,
      "label": "Eigenkapitalzuschuss",
      "sub_budget": "Finanzmanagement und Recht",
      "sub_budget_no": 4
@@ -4408,7 +4876,7 @@
      "davor": null,
      "details": "Kita Ausbau, 5. Fortschreibung 2025-2028",
      "grand_total": 12000000.0,
-     "herkunft_id": 338,
+     "herkunft_id": 208,
      "label": "Krippenausbau 2022",
      "sub_budget": "Jugend und Familie",
      "sub_budget_no": 11
@@ -4436,7 +4904,7 @@
      },
      "details": "Investitionszuschuss BTB",
      "grand_total": 3900000.0,
-     "herkunft_id": 339,
+     "herkunft_id": 209,
      "label": "Investitionszuschuss BTB",
      "sub_budget": "Kultur, Museen, Sport",
      "sub_budget_no": 6
@@ -4446,7 +4914,7 @@
      "davor": null,
      "details": "Investive Anlagen",
      "grand_total": 58500.0,
-     "herkunft_id": 339,
+     "herkunft_id": 209,
      "label": "Investive Anlagen",
      "sub_budget": "Wirtschaftsförderung, Liegenschaften",
      "sub_budget_no": 3
@@ -4459,7 +4927,7 @@
      },
      "details": "Investitionen 17, Einr./Ausst., 2026",
      "grand_total": 30000.0,
-     "herkunft_id": 339,
+     "herkunft_id": 209,
      "label": "Investitionen 17, 2026",
      "sub_budget": "Jugend und Familie",
      "sub_budget_no": 11
@@ -4472,7 +4940,7 @@
      },
      "details": "Investitionen 17",
      "grand_total": 30000.0,
-     "herkunft_id": 339,
+     "herkunft_id": 209,
      "label": "Investitionen 17, 2027",
      "sub_budget": "Jugend und Familie",
      "sub_budget_no": 11
@@ -4485,7 +4953,7 @@
      },
      "details": "Investitionen 17, Einr./Ausst., 2028",
      "grand_total": 30000.0,
-     "herkunft_id": 339,
+     "herkunft_id": 209,
      "label": "Investitionen 17, 2028",
      "sub_budget": "Jugend und Familie",
      "sub_budget_no": 11
@@ -4508,43 +4976,43 @@
     "url": "https://opendata.oldenburg.de/sites/default/files/1102-Ordentliche_Aufwendungen_des_Ergebnishaushaltes_seit_2010.csv"
    },
    "five_years_ago": {
-    "herkunft_id": 1346,
+    "herkunft_id": 984,
     "population": 169077,
     "year": 2020
    },
    "latest": {
-    "herkunft_id": 1346,
+    "herkunft_id": 984,
     "population": 176614,
     "year": 2025
    },
    "series": [
     {
-     "herkunft_id": 1346,
+     "herkunft_id": 984,
      "population": 169077,
      "year": 2020
     },
     {
-     "herkunft_id": 1346,
+     "herkunft_id": 984,
      "population": 169605,
      "year": 2021
     },
     {
-     "herkunft_id": 1346,
+     "herkunft_id": 984,
      "population": 170389,
      "year": 2022
     },
     {
-     "herkunft_id": 1346,
+     "herkunft_id": 984,
      "population": 174445,
      "year": 2023
     },
     {
-     "herkunft_id": 1346,
+     "herkunft_id": 984,
      "population": 176242,
      "year": 2024
     },
     {
-     "herkunft_id": 1346,
+     "herkunft_id": 984,
      "population": 176614,
      "year": 2025
     }
@@ -4565,7 +5033,7 @@
      },
      "controllability": "low",
      "expenses": 87915525.0,
-     "herkunft_id": 1459,
+     "herkunft_id": 1097,
      "legal_basis": "Sozialgesetzbuch (SGB) VIII, Niedersächsisches Gesetz über Tageseinrichtungen für Kinder (Nds. KiTaG)",
      "office": "Amt für Jugend und Familie",
      "product_name": "Kindertagesbetreuung",
@@ -4583,7 +5051,7 @@
      },
      "controllability": "medium",
      "expenses": 45954645.0,
-     "herkunft_id": 1456,
+     "herkunft_id": 1094,
      "legal_basis": "Bundesfernstraßengesetz, Baugesetzbuch, Straßenverkehrsordnung, Nds. Straßengesetz, Nds. Wassergesetz, Nds. Deichgesetz, Nds. Nahverkehrsgesetz, Nds. Kommunalabgabengesetz, Erschließungsbeitragssatzung",
      "office": "Amt für Verkehr und Straßenbau",
      "product_name": "Verkehrsflächen und -anlagen",
@@ -4601,7 +5069,7 @@
      },
      "controllability": "medium",
      "expenses": 467998.0,
-     "herkunft_id": 1451,
+     "herkunft_id": 1089,
      "legal_basis": "Ratsbeschluss vom 29.06.2020, Niedersächsische Hafenordnung, Niedersächsisches Hafensicherheitsgesetz, Niedersächsisches Kommunalabgabengesetz",
      "office": "Amt für Wirtschaftsförderung",
      "product_name": "BgA Hafenbetrieb",
@@ -4619,13 +5087,90 @@
      },
      "controllability": "low",
      "expenses": 7539026.0,
-     "herkunft_id": 1459,
+     "herkunft_id": 1097,
      "legal_basis": "§§ 8a,19,22,30,31,34,41 und §§ 42, 42a bis 42e Sozialgesetzbuch (SGB) VIII",
      "office": "Amt für Jugend und Familie",
      "product_name": "Jugendhilfezentrum",
      "product_no": "P10.360006",
      "result": -209493.0,
      "short_description": "Das Jugendhilfezentrum ist eine Einrichtung der Jugendhilfe mit stationären und ambulanten Angeboten der erzieherischen Hilfen und Angeboten der Betreuung junger Mütter im Rahmen der gemeinsamen Wohnform. Außerdem übernimmt die Einrichtung für das Amt für Jugend und Familie Krisendienste in Familien und außerhalb der Öffnungszeiten im Rahmen der Rufbereitschaft. Zur Aufnahme von Jugendlichen im Rahmen von vorläufigen Unterbringungen steht die Jugendschutzstelle zur Verfügung. Daneben wird eine Wohngruppe für unbegleitete minderjährige Ausländer, das Betreute Jugendwohnen, die Soziale Gruppenarbeit Kreyenbrück sowie die Straßensozialarbeit und der Familienkrisendienst bereitgehalten. Es wird zusätzlich ein gesondertes Angebot für sogenannte „Systemsprenger“ vorgehalten, um die Betreuung von besonders herausfordernden Kindern und Jugendlichen zu gewährleisten und um die Jugendschutzstelle zu entlasten."
+    }
+   ],
+   "year": 2026
+  },
+  {
+   "produkte": [
+    {
+     "beleg": {
+      "as_of": "Haushaltsplan 2026 — Stand der Einbringung",
+      "citation": "Teilergebnishaushalt THH11, Produktebene mit Steckbrief",
+      "label": "2026 017 Vw THH11 Haushalt 2026 Verwaltungsentwurf",
+      "page": null,
+      "url": "https://buergerinfo.oldenburg.de/getfile.php?id=297453&type=do"
+     },
+     "controllability": "low",
+     "expenses": 87915525.0,
+     "herkunft_id": 1097,
+     "legal_basis": "Sozialgesetzbuch (SGB) VIII, Niedersächsisches Gesetz über Tageseinrichtungen für Kinder (Nds. KiTaG)",
+     "office": "Amt für Jugend und Familie",
+     "product_name": "Kindertagesbetreuung",
+     "product_no": "P10.360001",
+     "result": -73738117.0,
+     "short_description": "Bedarfsgerechte Bildung (inkl. alltagsintegrierter Sprachbildung und –förderung), Erziehung, Förderung und Betreuung von Kindern in Kitas inkl. der Förderung in Integrationsgruppen sowie in der Kindertagespflege. Sicherstellung der Rechtsansprüche auf Kindertagesbetreuung. Werbung, Auswahl und Qualifizierung von Kindertagespflegepersonen. Beratung von Sorgeberechtigten, die einen Platz in Kindertagesbetreuung suchen und ggfs. Vermittlung. Familien werden in Ihrem Erziehungs-, Bildungs- und Betreuungsauftragt unterstützt. Planungen im Rahmen der Ausbaukonzepte und des Musterraumkonzeptes (Erweiterungen, Umbauten, Neubauten) und pädagogische Begleitung der Planungsgespräche für städtische Einrichtungen, Bereitstellung der notwendigen Ausstattung für Kita-Einrichtungen. Qualitätssicherung durch Fachberatung und Förderung freier Träger."
+    },
+    {
+     "beleg": {
+      "as_of": "Haushaltsplan 2026 — Stand der Einbringung",
+      "citation": "Teilergebnishaushalt THH10, Produktebene mit Steckbrief",
+      "label": "2026 016 Vw THH10 Haushalt 2026 Verwaltungsentwurf",
+      "page": null,
+      "url": "https://buergerinfo.oldenburg.de/getfile.php?id=297452&type=do"
+     },
+     "controllability": "medium",
+     "expenses": 2493135.0,
+     "herkunft_id": 1551,
+     "legal_basis": "Niedersächsisches Gesetz über den öffentlichen Gesundheitsdienst (NGöGD), Niedersächsisches Schulgesetz (NSchG), Infektionsschutzgesetz (IfSG)",
+     "office": "Gesundheitsamt",
+     "product_name": "Kinder- und Jugendgesundheit",
+     "product_no": "P10.414002",
+     "result": -1497000.0,
+     "short_description": "Beratung und Unterstützung von Schwangeren und jungen Familien, Untersuchung von Kindern und bei Bedarf Hinweisberatung, Maßnahmen zur Aufklärung und Prävention, Impfberatung"
+    },
+    {
+     "beleg": {
+      "as_of": "Haushaltsplan 2026 — Stand der Einbringung",
+      "citation": "Teilergebnishaushalt THH10, Produktebene mit Steckbrief",
+      "label": "2026 016 Vw THH10 Haushalt 2026 Verwaltungsentwurf",
+      "page": null,
+      "url": "https://buergerinfo.oldenburg.de/getfile.php?id=297452&type=do"
+     },
+     "controllability": "medium",
+     "expenses": 1241937.0,
+     "herkunft_id": 1551,
+     "legal_basis": "Betreuungsorganisationsgesetz (BtOG), Gesetz über das Verfahren in Familiensachen und Angelegenheiten der freiwilligen Gerichtsbarkeit (FamFG), Niedersächsische Ausführungsgesetze und Richtlinien.",
+     "office": "Amt für Teilhabe und Soziales",
+     "product_name": "Betreuung",
+     "product_no": "P10.343000",
+     "result": -1241937.0,
+     "short_description": "Sicherstellung eines qualifizierten und bedarfsgerechten Betreuungswesens im Stadtgebiet (Netzwerkarbeit). Sicherstellung eines bedarfsgerechten Angebotes von Berufsbetreuern und ehrenamtlichen Betreuern. Förderung von und Zusammenarbeit mit dem Betreuungsverein. Durchführung von Informations- und Fortbildungsveranstaltungen für ehrenamtliche Betreuende und Interessierte, sowie Beratung über allgemeine betreuungsrechtliche Fragen. Unterstützung des Betreuungsgerichts in Betreuungsverfahren, zum Beispiel durch Sachverhaltsermittlungen, vorschlagen geeigneter Betreuungspersonen, Begleitung betreuungsrechtlicher Unterbringungen, sowie Beratung von An- und Zugehörigen."
+    },
+    {
+     "beleg": {
+      "as_of": "Haushaltsplan 2026 — Stand der Einbringung",
+      "citation": "Teilergebnishaushalt THH06, Produktebene mit Steckbrief",
+      "label": "2026 012 Vw THH06 Haushalt 2026 Verwaltungsentwurf",
+      "page": null,
+      "url": "https://buergerinfo.oldenburg.de/getfile.php?id=297448&type=do"
+     },
+     "controllability": "high",
+     "expenses": 379300.0,
+     "herkunft_id": 1092,
+     "legal_basis": "politische Entscheidungen, Weisungen des Oberbürgermeisters",
+     "office": "Amt für Kultur, Museen und Sport",
+     "product_name": "Förderung v. Kinder-/Jugendliteratur",
+     "product_no": "P10.272002",
+     "result": -378537.0,
+     "short_description": "Das Produkt beinhaltet die Ausrichtung der Kinderbuchmesse Oldenburg (KIBUM) und die Vergabe des Kinder- und Jugendbuchpreises der Stadt Oldenburg."
     }
    ],
    "year": 2026
@@ -4642,7 +5187,7 @@
      },
      "controllability": "low",
      "expenses": 63980400.0,
-     "herkunft_id": 1458,
+     "herkunft_id": 1551,
      "legal_basis": "SGB II, Niedersächsisches Ausführungsgesetz zum SGB II",
      "office": "Amt für Teilhabe und Soziales",
      "product_name": "Grundsicherung für Arbeitsuchende SGB II",
@@ -4660,7 +5205,7 @@
      },
      "controllability": "low",
      "expenses": 7893073.0,
-     "herkunft_id": 1459,
+     "herkunft_id": 1097,
      "legal_basis": "§§ 16 – 21 Sozialgesetzbuch (SGB) VIII",
      "office": "Amt für Jugend und Familie",
      "product_name": "Hilfen für Familien",
@@ -4678,7 +5223,7 @@
      },
      "controllability": "medium",
      "expenses": 7259784.0,
-     "herkunft_id": 1459,
+     "herkunft_id": 1097,
      "legal_basis": "§§ 11-14 Sozialgesetzbuch (SGB) VIII",
      "office": "Amt für Jugend und Familie",
      "product_name": "Hilfen für junge Menschen",
@@ -4696,7 +5241,7 @@
      },
      "controllability": "low",
      "expenses": 7540173.0,
-     "herkunft_id": 1458,
+     "herkunft_id": 1551,
      "legal_basis": "Asylbewerberleistungsgesetz (AsylbLG), Aufenthaltsgesetz (AufenthG), Gesetz zur Aufnahme von ausländischen Flüchtlingen (AufnG)",
      "office": "Amt für Zuwanderung und Integration",
      "product_name": "Hilfen für Asylbewerber",
@@ -4719,7 +5264,7 @@
      },
      "controllability": "low",
      "expenses": 19487937.0,
-     "herkunft_id": 1453,
+     "herkunft_id": 1550,
      "legal_basis": "Niedersächsisches Brandschutzgesetz, Niedersächsisches Katastrophenschutzgesetz",
      "office": "Feuerwehr",
      "product_name": "Brand- und Katastrophenschutz",
@@ -4737,7 +5282,7 @@
      },
      "controllability": "low",
      "expenses": 19858531.0,
-     "herkunft_id": 1453,
+     "herkunft_id": 1550,
      "legal_basis": "Niedersächsisches Rettungsdienstgesetz",
      "office": "Feuerwehr",
      "product_name": "BgA Rettungsdienst",
@@ -4760,7 +5305,7 @@
      },
      "controllability": "high",
      "expenses": 3577245.0,
-     "herkunft_id": 1454,
+     "herkunft_id": 1092,
      "legal_basis": "Satzung für die Musikschule der Stadt Oldenburg, Entgeltordnung für die Musikschule der Stadt Oldenburg, Unterrichtsbedingungen für die Musikschule der Stadt Oldenburg, politische Entscheidungen, Weisungen des Oberbürgermeisters",
      "office": "Amt für Kultur, Museen und Sport",
      "product_name": "Musikunterricht und Veranstaltungen",
@@ -4783,13 +5328,31 @@
      },
      "controllability": "medium",
      "expenses": 75139287.0,
-     "herkunft_id": 1447,
+     "herkunft_id": 1085,
      "legal_basis": "Nds. Schulgesetz (NSchG), Erlasse des Nds. Kultusministeriums, Ratsbeschlüsse",
      "office": "Amt für Schule und Bildung",
      "product_name": "Betrieb von Schulen",
      "product_no": "P10.210000",
      "result": -64842693.0,
      "short_description": "Vorhalten und Betrieb des notwendigen Schulangebots und der erforderlichen Schulanlagen"
+    },
+    {
+     "beleg": {
+      "as_of": "Haushaltsplan 2026 — Stand der Einbringung",
+      "citation": "Teilergebnishaushalt THH10, Produktebene mit Steckbrief",
+      "label": "2026 016 Vw THH10 Haushalt 2026 Verwaltungsentwurf",
+      "page": null,
+      "url": "https://buergerinfo.oldenburg.de/getfile.php?id=297452&type=do"
+     },
+     "controllability": "high",
+     "expenses": 612107.0,
+     "herkunft_id": 1551,
+     "legal_basis": "Weisungen des Oberbürgermeisters und des Sozialdezernenten, politischer Wille",
+     "office": "Amt für Zuwanderung und Integration",
+     "product_name": "Leistungen für anerkannte Flüchtlinge",
+     "product_no": "P10.315550",
+     "result": -612107.0,
+     "short_description": "Dieses Produkt enthält Leistungen zur Unterstützung von Asylberechtigten, anerkannten Flüchtlingen und subsidiär Schutzberechtigten bei der Suche nach eigenem Wohnraum und den ersten Schritten in selbständigen Wohnformen. Weiterhin ist der Betrieb von Wohnheimen für Asylberechtigte, anerkannte Flüchtlinge und subsidiär Schutzberechtigte Teil dieses Produktes."
     },
     {
      "beleg": {
@@ -4801,7 +5364,7 @@
      },
      "controllability": "medium",
      "expenses": 2550308.0,
-     "herkunft_id": 1457,
+     "herkunft_id": 1095,
      "legal_basis": "Niedersächsisches Bestattungsgesetz (BestattG), Friedhofssatzung, Gebührensatzung, § 823 BGB, (Verkehrssicherungspflicht)",
      "office": "Amt für Umweltschutz und Bauordnung",
      "product_name": "Friedhofs- und Bestattungswesen",
@@ -4825,7 +5388,7 @@
    "feststellungen": [
     {
      "chain": "überundaußerplanmäßigeaufwendungenundauszahlungen",
-     "herkunft_id": 1360,
+     "herkunft_id": 998,
      "mark": "B",
      "mark_name": "Beanstandung",
      "page": 16,
@@ -4836,7 +5399,7 @@
     },
     {
      "chain": "vieraugenprinzip",
-     "herkunft_id": 1360,
+     "herkunft_id": 998,
      "mark": "WB",
      "mark_name": "Wiederholte Beanstandung",
      "page": 22,
@@ -4847,7 +5410,7 @@
     },
     {
      "chain": "haushaltsreste",
-     "herkunft_id": 1360,
+     "herkunft_id": 998,
      "mark": "B",
      "mark_name": "Beanstandung",
      "page": 39,
@@ -4858,7 +5421,7 @@
     },
     {
      "chain": "inanspruchgenommeneverpflichtungsermächtigungen",
-     "herkunft_id": 1360,
+     "herkunft_id": 998,
      "mark": "B",
      "mark_name": "Beanstandung",
      "page": 40,
@@ -5155,7 +5718,7 @@
     {
      "as_of_date": "2025-06-30",
      "filled": 652.31,
-     "herkunft_id": 331,
+     "herkunft_id": 201,
      "label": "Summe",
      "part": "A",
      "positions_planned": 815.0,
@@ -5166,7 +5729,7 @@
     {
      "as_of_date": "2025-06-30",
      "filled": 1391.52,
-     "herkunft_id": 1808,
+     "herkunft_id": 1369,
      "label": "Summe",
      "part": "B",
      "positions_planned": 1769.0,
@@ -5241,7 +5804,7 @@
      "actual": 222117000.0,
      "deviation": 66591000.0,
      "deviation_pct": 42.816635160680526,
-     "herkunft_id": 865,
+     "herkunft_id": 734,
      "kind": "Gewerbesteuer (-umlage)",
      "plan": 155526000.0,
      "provisional": 1,
@@ -5251,7 +5814,7 @@
      "actual": 106086000.0,
      "deviation": 1974000.0,
      "deviation_pct": 1.8960350391885594,
-     "herkunft_id": 865,
+     "herkunft_id": 734,
      "kind": "Einkommensteueranteil",
      "plan": 104112000.0,
      "provisional": 1,
@@ -5261,7 +5824,7 @@
      "actual": 32585000.0,
      "deviation": -1535000.0,
      "deviation_pct": -4.498827667057448,
-     "herkunft_id": 865,
+     "herkunft_id": 734,
      "kind": "Grundsteuer A+B",
      "plan": 34120000.0,
      "provisional": 1,
@@ -5271,7 +5834,7 @@
      "actual": 22233000.0,
      "deviation": 1080000.0,
      "deviation_pct": 5.105658771805421,
-     "herkunft_id": 865,
+     "herkunft_id": 734,
      "kind": "Gemeindeanteil an der Umsatzsteuer",
      "plan": 21153000.0,
      "provisional": 1,
@@ -5281,7 +5844,7 @@
      "actual": 3368000.0,
      "deviation": -132000.0,
      "deviation_pct": -3.77142857142857,
-     "herkunft_id": 865,
+     "herkunft_id": 734,
      "kind": "Vergnügungssteuer",
      "plan": 3500000.0,
      "provisional": 1,
@@ -5291,7 +5854,7 @@
      "actual": 819000.0,
      "deviation": -1000.0,
      "deviation_pct": -0.12195121951219523,
-     "herkunft_id": 865,
+     "herkunft_id": 734,
      "kind": "sonstige Steuern",
      "plan": 820000.0,
      "provisional": 1,
@@ -5584,7 +6147,7 @@
     "city": "Oldenburg",
     "confidential": 0,
     "fetched_at": "2026-08-26T04:42:17",
-    "herkunft_id": 1188,
+    "herkunft_id": 899,
     "key": "403000",
     "rate": 439.0,
     "tax_base_eur": 30015356,
@@ -5627,49 +6190,49 @@
    "staedte": [
     {
      "city": "Braunschweig",
-     "herkunft_id": 123,
+     "herkunft_id": 58,
      "unit": "teur",
      "value": 384070.0
     },
     {
      "city": "Oldenburg",
-     "herkunft_id": 123,
+     "herkunft_id": 58,
      "unit": "teur",
      "value": 348164.0
     },
     {
      "city": "Osnabrück",
-     "herkunft_id": 123,
+     "herkunft_id": 58,
      "unit": "teur",
      "value": 273609.0
     },
     {
      "city": "Wolfsburg",
-     "herkunft_id": 123,
+     "herkunft_id": 58,
      "unit": "teur",
      "value": 233702.0
     },
     {
      "city": "Salzgitter",
-     "herkunft_id": 123,
+     "herkunft_id": 58,
      "unit": "teur",
      "value": 109666.0
     },
     {
      "city": "Wilhelmshaven",
-     "herkunft_id": 123,
+     "herkunft_id": 58,
      "unit": "teur",
      "value": 99674.0
     },
     {
      "city": "Delmenhorst",
-     "herkunft_id": 123,
+     "herkunft_id": 58,
      "unit": "teur",
      "value": 77099.0
     },
     {
      "city": "Emden",
-     "herkunft_id": 123,
+     "herkunft_id": 58,
      "unit": "teur",
      "value": 74287.0
     }
@@ -5690,49 +6253,49 @@
    "staedte": [
     {
      "city": "Braunschweig",
-     "herkunft_id": 124,
+     "herkunft_id": 59,
      "unit": "percent",
      "value": 450.0
     },
     {
      "city": "Salzgitter",
-     "herkunft_id": 124,
+     "herkunft_id": 59,
      "unit": "percent",
      "value": 440.0
     },
     {
      "city": "Osnabrück",
-     "herkunft_id": 124,
+     "herkunft_id": 59,
      "unit": "percent",
      "value": 440.0
     },
     {
      "city": "Oldenburg",
-     "herkunft_id": 124,
+     "herkunft_id": 59,
      "unit": "percent",
      "value": 439.0
     },
     {
      "city": "Delmenhorst",
-     "herkunft_id": 124,
+     "herkunft_id": 59,
      "unit": "percent",
      "value": 435.0
     },
     {
      "city": "Emden",
-     "herkunft_id": 124,
+     "herkunft_id": 59,
      "unit": "percent",
      "value": 420.0
     },
     {
      "city": "Wilhelmshaven",
-     "herkunft_id": 124,
+     "herkunft_id": 59,
      "unit": "percent",
      "value": 420.0
     },
     {
      "city": "Wolfsburg",
-     "herkunft_id": 124,
+     "herkunft_id": 59,
      "unit": "percent",
      "value": 360.0
     }
@@ -5752,49 +6315,49 @@
      "staedte": [
       {
        "city": "Oldenburg",
-       "herkunft_id": 124,
+       "herkunft_id": 59,
        "unit": "eur_je_ew",
        "value": 1233.36
       },
       {
        "city": "Wolfsburg",
-       "herkunft_id": 124,
+       "herkunft_id": 59,
        "unit": "eur_je_ew",
        "value": 989.24
       },
       {
        "city": "Wilhelmshaven",
-       "herkunft_id": 124,
+       "herkunft_id": 59,
        "unit": "eur_je_ew",
        "value": 931.24
       },
       {
        "city": "Osnabrück",
-       "herkunft_id": 124,
+       "herkunft_id": 59,
        "unit": "eur_je_ew",
        "value": 896.26
       },
       {
        "city": "Emden",
-       "herkunft_id": 124,
+       "herkunft_id": 59,
        "unit": "eur_je_ew",
        "value": 818.24
       },
       {
        "city": "Braunschweig",
-       "herkunft_id": 124,
+       "herkunft_id": 59,
        "unit": "eur_je_ew",
        "value": 687.81
       },
       {
        "city": "Delmenhorst",
-       "herkunft_id": 124,
+       "herkunft_id": 59,
        "unit": "eur_je_ew",
        "value": 417.56
       },
       {
        "city": "Salzgitter",
-       "herkunft_id": 124,
+       "herkunft_id": 59,
        "unit": "eur_je_ew",
        "value": 364.3
       }
@@ -5818,49 +6381,49 @@
    "staedte": [
     {
      "city": "Wolfsburg",
-     "herkunft_id": 124,
+     "herkunft_id": 59,
      "unit": "eur_je_ew",
      "value": 2259.77
     },
     {
      "city": "Oldenburg",
-     "herkunft_id": 124,
+     "herkunft_id": 59,
      "unit": "eur_je_ew",
      "value": 2033.66
     },
     {
      "city": "Osnabrück",
-     "herkunft_id": 124,
+     "herkunft_id": 59,
      "unit": "eur_je_ew",
      "value": 1714.21
     },
     {
      "city": "Emden",
-     "herkunft_id": 124,
+     "herkunft_id": 59,
      "unit": "eur_je_ew",
      "value": 1700.34
     },
     {
      "city": "Wilhelmshaven",
-     "herkunft_id": 124,
+     "herkunft_id": 59,
      "unit": "eur_je_ew",
      "value": 1667.48
     },
     {
      "city": "Braunschweig",
-     "herkunft_id": 124,
+     "herkunft_id": 59,
      "unit": "eur_je_ew",
      "value": 1601.05
     },
     {
      "city": "Salzgitter",
-     "herkunft_id": 124,
+     "herkunft_id": 59,
      "unit": "eur_je_ew",
      "value": 1120.98
     },
     {
      "city": "Delmenhorst",
-     "herkunft_id": 124,
+     "herkunft_id": 59,
      "unit": "eur_je_ew",
      "value": 1039.72
     }
