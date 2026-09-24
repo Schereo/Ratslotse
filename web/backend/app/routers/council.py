@@ -10,7 +10,7 @@ import unicodedata
 from collections import Counter, defaultdict
 from datetime import date, timedelta
 from collections.abc import Callable
-from typing import Annotated
+from typing import Annotated, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
@@ -20,6 +20,7 @@ from council.cities.store import CitiesStore
 from council.store import CouncilStore
 from council.topics import POLICY_FIELDS
 from council.goals import GOALS
+from council import gesellschaft_abschluss
 from council.parties import faction_label, order_key
 from council import expense_series as ausgabenreihe_mod
 from council import indicators as kennzahlen_mod
@@ -44,7 +45,7 @@ from .. import deepresearch
 from ..config import get_settings
 from ..antworten import (AnalysisData, ElectedCouncil, ElectedMember, AssistantStarters, BudgetAmendmentLists, BudgetAuditReports,
                          BudgetBalanceSheet, BudgetComparison, BudgetDataState, BudgetDebt, BudgetLiquidity, BudgetLoans,
-                         BudgetDispute, BudgetDocuments, BudgetExecution,
+                         BudgetDispute, BudgetDocuments, BudgetExecution, BudgetGrants, GrantRow, GrantTotal, Provenance,
                          BudgetFixedAssets, BudgetGroup,
                          BudgetHoldings, BudgetInvestmentProgram, BudgetInvestments,
                          BudgetOverview, BudgetPath, BudgetProducts, BudgetStaffPlan, Committees,
@@ -928,7 +929,13 @@ def haushalt_beteiligungen(
     - ``indicators``: die Zeitreihe je Gesellschaft (Jahresergebnis,
       Bilanzsumme, Eigenkapitalquote). ``n_reports`` sagt, wie viele Berichte
       denselben Wert nennen — 1 heißt „durch eine Probe im Dokument gedeckt",
-      mehr heißt zusätzlich „von einer zweiten Veröffentlichung bestätigt",
+      mehr heißt zusätzlich „von einer zweiten Veröffentlichung bestätigt"
+      (ein Jahresabschluss mit demselben Betrag zählt mit). ``source`` sagt,
+      woher die Zeile kommt: ``holdings_report`` (Beteiligungsbericht) oder
+      ``annual_accounts`` — das jüngste Jahr, das nur der Jahresabschluss der
+      Gesellschaft schon nennt, oder ein Jahr, in dem der Abschluss vom
+      Bericht abweicht und deshalb gilt (dann steht die Zahl des Berichts in
+      ``report_value``; ``council/gesellschaft_abschluss.py``),
     - ``group_comparison``: für die Gesellschaften, die auch im
       Gesamtabschluss stehen, beide Zahlen desselben Jahres nebeneinander.
       **Keine Probe** — die beiden Rechnungen unterscheiden sich systematisch,
@@ -943,7 +950,11 @@ def haushalt_beteiligungen(
     aufgebaut und nicht maschinenlesbar (``council/beteiligungsbericht.py``)."""
     berichtsjahre = store.beteiligungsbericht_jahre()
     gesellschaften = store.get_gesellschaften()
-    indicators = store.get_gesellschaft_kennzahlen()
+    # Eine Reihe, zwei Quellen (Tims Entscheidung 24.09.2026): Der
+    # Jahresabschluss füllt die Jahre, die der Bericht noch nicht hat.
+    indicators = gesellschaft_abschluss.reihe_ergaenzen(
+        store.get_gesellschaft_kennzahlen(), store.get_company_accounts(),
+        {g["company"] for g in gesellschaften})
     texte = [t for g in gesellschaften
              for t in store.get_gesellschaft_texte(g["company"])]
     personen = store.get_gesellschaft_personen()
@@ -979,6 +990,41 @@ def haushalt_beteiligungen(
     }
 
 
+@router.get("/budget/grants")
+def haushalt_zuschuesse(
+    sub_budget: int | None = None,
+    year: int | None = None,
+    _user: dict = Depends(require_budget),
+    store: CouncilStore = Depends(get_council_store),
+) -> BudgetGrants:
+    """Wer von der Stadt Zuschüsse bekommt — die Übersicht aus Anlage 003.
+
+    - ``rows``: die Zuschüsse eines Plans (Vorgabe: der jüngste), mit
+      ``sub_budget`` nur die eines Teilhaushalts, in Dokument-Reihenfolge,
+    - ``totals``: je Plan und Teilhaushalt Zahl und Summe — die Reihe über
+      alle eingelesenen Pläne, damit die Seite den Verlauf zeigen kann,
+      ohne acht Jahrgänge Zeilen zu laden,
+    - ``years``: die eingelesenen Pläne.
+
+    Vereine und Träger stehen mit Namen darin, wie in der Vorlage (Tims
+    Entscheidung 24.09.2026); Privatpersonen führt die Übersicht nicht.
+    Es ist der Entwurf der Verwaltung: Anlage 003 hängt an der
+    Einbringungs-Vorlage (``council/uebersichten.py``)."""
+    jahre = store.zuschuss_jahrgaenge()
+    jahr = year if year in jahre else (jahre[-1] if jahre else None)
+    zeilen = store.get_zuschuesse(jahr, sub_budget) if jahr is not None else []
+    summen = [s for s in store.zuschuss_summen()
+              if sub_budget is None or s["sub_budget_no"] == sub_budget]
+    ids = sorted({z["herkunft_id"] for z in zeilen if z["herkunft_id"] is not None})
+    rows: list[GrantRow] = [cast(GrantRow, {k: z[k] for k in GrantRow.__annotations__})
+                            for z in zeilen]
+    return BudgetGrants(
+        years=jahre, year=jahr, rows=rows,
+        totals=cast(list[GrantTotal], summen),
+        provenance=cast(Provenance, {str(h["id"]): h for h in store.get_herkunft(ids)}),
+    )
+
+
 @router.get("/budget/investments")
 def haushalt_investitionen(
     _user: dict = Depends(require_budget),
@@ -1000,6 +1046,9 @@ def haushalt_investitionen(
       also samt laufender Verwaltungstätigkeit. Die Bezugsgröße, die aus
       „80,8 Mio. €" erst eine Aussage macht — und die einzige Zahl hier ohne
       Rechenprobe (eigene ``herkunft_id`` mit ``ungeprueft``, s. u.),
+    - ``finance_budget``: die Investitionszeilen des Gesamtfinanzhaushalts
+      (Anlage 006) aller Pläne — Summen, Saldo und Auszahlungsarten, je mit
+      ``kind`` (Ansatz oder Finanzplanung) und ``plan_budget_year``,
     - ``herkunft``: je ``herkunft_id`` Dokument, Fundstelle, bestandene Probe
       samt Messwert. Die geprüften Zeilen und die Bezugsgröße tragen
       **verschiedene** IDs; sie stehen in derselben Datei, aber nur die einen
@@ -1010,12 +1059,17 @@ def haushalt_investitionen(
     Vorhaben** — „Verkehr und Straßenbau: 10,5 Mio. €" sagt nicht, welche
     Straße."""
     zeilen = store.get_investitionen()
-    ids = sorted({z["herkunft_id"] for z in zeilen if z["herkunft_id"] is not None})
+    # Der Gesamtfinanzhaushalt (Anlage 006): dieselbe Frage aus dem Plan
+    # selbst, mit der Finanzplanung bis drei Jahre voraus und der Aufteilung
+    # nach Auszahlungsarten (Baumaßnahmen, Grundstücke …).
+    plan = store.get_finanzhaushalt_investitionen()
+    ids = sorted({z["herkunft_id"] for z in (*zeilen, *plan) if z["herkunft_id"] is not None})
     return {
         "years": store.investitionen_jahre(),
         "sub_budgets": [z for z in zeilen if z["level"] == "sub_budget"],
         "investments": [z for z in zeilen if z["level"] == "investments"],
         "financial_budget": [z for z in zeilen if z["level"] == "financial_budget"],
+        "finance_budget": plan,
         "provenance": {str(h["id"]): h for h in store.get_herkunft(ids)},
     }
 
@@ -4020,7 +4074,11 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
             # drei Wege ohne Modell ist: Die verlangen eine generische Frage
             # („Was sehe ich hier?") oder eine Vokabelfrage, und keine davon
             # trifft `archiv_sofort` (tests/test_assistant.py hält beides).
-            if lotti.archiv_sofort(frage):
+            # Dazu die Preisfrage nach einem Vorhaben („Kann sich die Stadt das
+            # neue Stadion leisten?"), die im Haushalt keine Antwort hat, im
+            # Archiv aber Beschlüsse mit Betrag — am Bestand geprüft, nicht
+            # am Wortlaut allein (s. `lotti.projekt_ins_archiv`).
+            if lotti.archiv_sofort(frage) or lotti.projekt_ins_archiv(store, screen, frage):
                 yield _sse({"type": "step", "step": "archiv"})
                 ratslotse.record_activity(user["id"], "assistant_to_ask_auto",
                                           client_kind(request))
@@ -5754,8 +5812,13 @@ def haushalt_schulden(
     buerg = store.get_buergschaften()
     rueckstellung = store.get_bilanz_posten(_b.RUECKSTELLUNG_ROLLE) if buerg else []
     geldschulden = store.get_bilanz_posten(_b.GELDSCHULDEN_ROLLE) if buerg else []
+    # Was die Haushaltspläne selbst erwarten (Anlage 003): der voraussichtliche
+    # Stand zu Beginn des Planjahres, auch für die Eigenbetriebe, und die VE.
+    plan = store.get_schulden_plan()
+    ve = store.get_ve()
     ids = sorted(set(ids) | {z["herkunft_id"] for z in (*zins, *buerg, *integriert,
-                                                        *rueckstellung, *geldschulden)
+                                                        *rueckstellung, *geldschulden,
+                                                        *plan, *ve)
                              if z.get("herkunft_id") is not None})
 
     return {
@@ -5791,6 +5854,14 @@ def haushalt_schulden(
         # Leer, solange kein Jahresabschluss eingelesen ist — die Seite lässt
         # den Block dann weg, statt eine Null zu zeigen.
         "interest_expense": zins,
+        # Aus den Übersichten der Haushaltspläne (council/uebersichten.py):
+        # `debt_plan` je Plan, Block und Schuldenart die beiden Stände in Euro,
+        # `commitments` je Plan die Fälligkeiten seiner eigenen VE.
+        "debt_plan": [{k: z[k] for k in ("budget_year", "entity", "code", "label",
+                                        "start_prior", "start_expected", "herkunft_id")}
+                      for z in plan],
+        "commitments": [{k: z[k] for k in ("budget_year", "due_year", "amount", "herkunft_id")}
+                        for z in ve],
         # Die Spaltenüberschriften der Quelle, in ihrer Reihenfolge — damit die
         # Legende nicht in zwei Sprachen existiert.
         "column_kinds": [{"field": field, "title": title}

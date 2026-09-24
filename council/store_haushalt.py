@@ -39,6 +39,35 @@ class HaushaltMixin(StoreBasis):
     von dort.
     """
 
+    def beschluesse_mit_betrag(self, wort: str) -> int:
+        """Wie viele Beschlüsse tragen ``wort`` im Titel UND einen Betrag?
+
+        Für Lottis Weiche ins Archiv (``assistant.projekt_ins_archiv``): Ob
+        das Archiv zu einem Vorhaben etwas über Geld weiß, entscheidet der
+        Bestand, nicht eine Liste von Vorhaben, die veralten würde."""
+        if len(wort) < 4:
+            return 0
+        wort = wort.replace("%", "").replace("_", "")
+        # Das Wort kommt gefaltet („weser ems halle", „baeder"); die Titel
+        # tragen Umlaute. Beide Schreibweisen, sonst fände „Bäder" nichts.
+        mit_umlaut = (wort.replace("ae", "ä").replace("oe", "ö").replace("ue", "ü"))
+        return self._conn.execute(
+            "SELECT COUNT(*) FROM council_decisions WHERE amount_eur > 0 "
+            "AND (title LIKE ? OR title LIKE ?)",
+            (f"%{wort}%", f"%{mit_umlaut}%")).fetchone()[0]
+
+    def _haushalt_belege(self, zeilen: list[dict]) -> list[dict]:
+        """Jede Plan-Zeile mit ihrer Fundstelle.
+
+        Bis 09/2026 stand der Stadthaushalt als einziger Baustein OHNE Beleg im
+        Prompt — und die Überschrift der Übersicht („Oldenburg plant Ausgaben
+        von 883,9 Millionen Euro") erklärte Lotti deshalb „ohne Jahr und
+        Beleg" (Laienfragen 24.09.2026), obwohl ``council_provenance`` den
+        beschlossenen Haushaltsplan 2026 kennt."""
+        for r in zeilen:
+            r["beleg"] = self._beleg(r.pop("herkunft_id", None))
+        return zeilen
+
     #: Welcher Beschluss zu einem Dokument der maßgebliche ist. Der Rat zuerst
     #: — eine Vorlage läuft durch mehrere Gremien, aber verabschiedet wird sie
     #: dort. Innerhalb eines Gremiums die jüngste Sitzung: Ein vertagter Punkt
@@ -90,6 +119,14 @@ class HaushaltMixin(StoreBasis):
         # eines.
         "income_budget":     ("council_income_budget", "year",
                                  "t.kind = 'budget'", None),
+        # Dasselbe für den Gesamtfinanzhaushalt (Anlage 006) — derselbe
+        # Filter aus demselben Grund.
+        "finance_budget":    ("council_finance_budget", "year",
+                                 "t.kind = 'budget'", None),
+        # Die Zuschüsse an Dritte (Anlage 003): ein Dokument je Plan.
+        "grants":            ("council_grants", "budget_year", None, None),
+        # Und aus derselben Anlage der Schuldenstand laut Plan.
+        "debt_plan":         ("council_debt_plan", "budget_year", None, None),
         # Vierte Ebene: Abschnitt 2.1, die Bilanz. Der älteste Stichtag (2016)
         # stammt aus der Vorjahresspalte des Abschlusses 2017 — er trägt
         # deshalb dessen Dokument, mit eigener Fundstelle.
@@ -154,6 +191,9 @@ class HaushaltMixin(StoreBasis):
         # Prüfberichte (ein Betrieb, ein Papier), jede Kennzahl zeigt auf den
         # jüngsten Bericht, der sie nennt.
         "enterprise_accounts": ("council_enterprise_accounts", "year", None, None),
+        # Die Jahresabschlüsse der Gesellschaften: dieselbe Form — je
+        # Gesellschaft eine Vorlage mit Bilanz und GuV.
+        "company_accounts": ("council_company_accounts", "year", None, None),
         # Die Änderungslisten zum Haushalt. Wie `wirtschaftsplan` stehen je
         # Jahrgang MEHRERE Papiere dahinter (Verw. I–III und die
         # Beschluss-Datei des AFB) — die Summen-Tabelle trägt je Dokument
@@ -1091,6 +1131,69 @@ class HaushaltMixin(StoreBasis):
             r["probes"] = [p for p in (r.get("probes") or "").split(",") if p]
         return rows
 
+    # --- Jahresabschlüsse der Gesellschaften (council/gesellschaft_abschluss.py)
+
+    def gesellschaft_abschluss_anlagen(self) -> list[dict]:
+        """Die Anlagen der Jahresabschluss-Vorlagen der Gesellschaften — mit
+        Titel, denn Gesellschaft und Jahr stehen dort, nicht im Label.
+        Ausgesiebt (Gesellschaft bekannt, Bilanz oder GuV) wird im Modul."""
+        from council.gesellschaft_abschluss import TITEL_MUSTER, TITEL_SQL
+        try:
+            return [dict(r) for r in self._conn.execute(
+                f"""SELECT t.kvonr, t.template_number, t.title, a.document_id, a.label,
+                           a.url, a.n_pages
+                      FROM council_templates t JOIN council_attachments a ON a.kvonr = t.kvonr
+                     WHERE {TITEL_SQL}
+                     ORDER BY t.template_number, a.document_id""", list(TITEL_MUSTER))]
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return []
+
+    def save_company_accounts(self, rows: list[dict], herkunft) -> int:
+        """Die Kennzahlen schreiben — je Zeile ihre Herkunft (``row["herkunft"]``).
+
+        Ersetzt den Bestand ganz: Jede Zeile ist aus den Dokumenten neu
+        zusammengeführt, und ein Jahr, das keine Anlage mehr trägt, soll nicht
+        stehen bleiben (der Bestandsschutz im Skript steht davor)."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            rueck = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute("DELETE FROM council_company_accounts")
+            for r in rows:
+                hid = self.merke_herkunft(r["herkunft"], fetched_at=now) if r.get("herkunft") else rueck
+                self._conn.execute(
+                    "INSERT INTO council_company_accounts (company, year, indicator, value, "
+                    " unit, report_year, confirmations, conflicts, document_id, probes, "
+                    " herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                    (r["enterprise"], r["year"], r["metric"], r["value"] + 0.0, r["unit"],
+                     r["report_year"], r.get("confirmations", 1), r.get("conflicts", 0),
+                     r.get("document_id"), ",".join(r.get("probes") or []), hid, now))
+        return len(rows)
+
+    def get_company_accounts(self) -> list[dict]:
+        """Alle Kennzahlen, aufsteigend nach Gesellschaft, Kennzahl, Jahr."""
+        try:
+            rows = [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_company_accounts ORDER BY company, indicator, year")]
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return []
+        for r in rows:
+            r["probes"] = [p for p in (r.get("probes") or "").split(",") if p]
+        return rows
+
+    def company_account_einheiten(self) -> set[tuple]:
+        """``(Jahr, Gesellschaft)`` — die Einheiten des Datenstands."""
+        try:
+            return {(r[0], r[1]) for r in self._conn.execute(
+                "SELECT DISTINCT report_year, company FROM council_company_accounts")}
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return set()
+
     def get_loan_notices(self) -> list[dict]:
         """Die Unterrichtungen, aufsteigend nach Berichtszeitraum; ``probes`` als Liste."""
         try:
@@ -1974,6 +2077,161 @@ class HaushaltMixin(StoreBasis):
                   z["amount"], 1 if z.get("is_total") else 0, now, hid)
                  for z in zeilen])
         return len(zeilen)
+
+    def save_finanzhaushalt(self, plan_budget_year: int, zeilen: list[dict],
+                            herkunft) -> int:
+        """Einen Gesamtfinanzhaushalt-Jahrgang ersetzen (Anlage 006) — wie
+        ``save_ergebnishaushalt``: gelöscht wird nach ``plan_budget_year``, und
+        übergeben wird nur, was die Summenprobe bestanden hat."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute(
+                "DELETE FROM council_finance_budget WHERE plan_budget_year = ?",
+                (plan_budget_year,))
+            self._conn.executemany(
+                "INSERT INTO council_finance_budget (plan_budget_year, year, kind, nr, "
+                " label, role, amount, is_total, fetched_at, herkunft_id) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?)",
+                [(plan_budget_year, z["year"], z["kind"], z["nr"], z["label"],
+                  z.get("role"), z["amount"], 1 if z.get("is_total") else 0, now, hid)
+                 for z in zeilen])
+        return len(zeilen)
+
+    def save_zuschuesse(self, budget_year: int, zeilen: list[dict], herkunft) -> int:
+        """Die Zuschüsse eines Plans ersetzen — nur, was die Probe bestanden hat."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute("DELETE FROM council_grants WHERE budget_year = ?",
+                               (budget_year,))
+            self._conn.executemany(
+                "INSERT INTO council_grants (budget_year, seq, lfd_nr, sub_budget_no, "
+                " product_no, product_name, description, amount_prior, amount, note, "
+                " cash, herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                [(budget_year, i, z["lfd_nr"], z["sub_budget_no"], z["product_no"],
+                  z["product_name"], z["description"], z["amount_prior"], z["amount"],
+                  z["note"], None if z["cash"] is None else int(z["cash"]), hid, now)
+                 for i, z in enumerate(zeilen, 1)])
+        return len(zeilen)
+
+    def save_schulden_plan(self, budget_year: int, zeilen: list[dict], herkunft) -> int:
+        """Die Schulden-Übersicht eines Plans ersetzen (Beträge in Euro)."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute("DELETE FROM council_debt_plan WHERE budget_year = ?",
+                               (budget_year,))
+            self._conn.executemany(
+                "INSERT INTO council_debt_plan (budget_year, entity, code, label, "
+                " start_prior, start_expected, herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,?)",
+                [(budget_year, z["entity"], z["code"], z["label"], z["start_prior"],
+                  z["start_expected"], hid, now) for z in zeilen])
+        return len(zeilen)
+
+    def save_ve(self, budget_year: int, zeilen: list[tuple[int, int, float]], herkunft) -> int:
+        """Die VE-Fälligkeiten eines Plans ersetzen."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute("DELETE FROM council_commitments WHERE budget_year = ?",
+                               (budget_year,))
+            self._conn.executemany(
+                "INSERT INTO council_commitments (budget_year, plan_year, due_year, amount, "
+                " herkunft_id, fetched_at) VALUES (?,?,?,?,?,?)",
+                [(budget_year, p, f, b, hid, now) for p, f, b in zeilen])
+        return len(zeilen)
+
+    def get_schulden_plan(self) -> list[dict]:
+        """Alle Zeilen der Schulden-Übersichten, nach Plan, Block, Code."""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_debt_plan ORDER BY budget_year, entity, code")]
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return []
+
+    def get_ve(self) -> list[dict]:
+        """Die VE-Fälligkeiten: je Plan die Zeile des eigenen Planjahres —
+        was dieser Plan an Bindung späterer Jahre erlaubt hat."""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_commitments WHERE plan_year = budget_year "
+                "ORDER BY budget_year, due_year")]
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return []
+
+    def zuschuss_jahrgaenge(self) -> list[int]:
+        """Eingelesene Pläne der Zuschuss-Übersicht (aufsteigend)."""
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT DISTINCT budget_year FROM council_grants ORDER BY budget_year")]
+        except sqlite3.OperationalError:
+            return []
+
+    def get_zuschuesse(self, budget_year: int, sub_budget_no: int | None = None) -> list[dict]:
+        """Die Zuschüsse eines Plans, wahlweise eines Teilhaushalts, in
+        Dokument-Reihenfolge."""
+        sql = "SELECT * FROM council_grants WHERE budget_year = ?"
+        args: list = [budget_year]
+        if sub_budget_no is not None:
+            sql += " AND sub_budget_no = ?"
+            args.append(sub_budget_no)
+        try:
+            return [dict(r) for r in self._conn.execute(sql + " ORDER BY seq", args)]
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return []
+
+    def zuschuss_summen(self) -> list[dict]:
+        """Je Plan und Teilhaushalt: Zahl und Summe der Zuschüsse (Planjahr)."""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                "SELECT budget_year, sub_budget_no, COUNT(*) AS n, "
+                "       SUM(COALESCE(amount, 0)) AS amount "
+                "  FROM council_grants GROUP BY budget_year, sub_budget_no "
+                " ORDER BY budget_year, sub_budget_no")]
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return []
+
+    def finanzhaushalt_jahrgaenge(self) -> list[int]:
+        """Eingelesene Pläne des Gesamtfinanzhaushalts (aufsteigend)."""
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT DISTINCT plan_budget_year FROM council_finance_budget "
+                "ORDER BY plan_budget_year")]
+        except sqlite3.OperationalError:
+            return []
+
+    def get_finanzhaushalt_investitionen(self) -> list[dict]:
+        """Die Investitionszeilen aller Pläne: Summen und Saldo der
+        Investitionstätigkeit plus die Auszahlungsarten (Baumaßnahmen,
+        Grundstücke …), je Plan und Jahr, samt ``kind`` — die Seite trennt
+        Ansatz und Finanzplanung selbst.
+
+        Die Auszahlungsarten sind die Posten zwischen den beiden Summenzeilen
+        der Investitionstätigkeit; welche Nummern das sind, sagt der jeweilige
+        Plan (die Nummern wandern zwischen den Jahrgängen)."""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                "SELECT t.plan_budget_year, t.year, t.kind, t.nr, t.label, t.role, "
+                "       t.amount, t.is_total, t.herkunft_id "
+                "FROM council_finance_budget t "
+                "JOIN council_finance_budget a ON a.plan_budget_year = t.plan_budget_year "
+                "  AND a.year = t.year AND a.role = 'total_in_capital' "
+                "JOIN council_finance_budget b ON b.plan_budget_year = t.plan_budget_year "
+                "  AND b.year = t.year AND b.role = 'total_out_capital' "
+                "WHERE t.role IN ('total_in_capital', 'total_out_capital', 'balance_capital') "
+                "   OR (t.nr > a.nr AND t.nr < b.nr) "
+                "ORDER BY t.plan_budget_year, t.year, t.nr")]
+        except sqlite3.OperationalError:
+            return []
 
     def ergebnishaushalt_jahrgaenge(self) -> list[int]:
         """Haushaltsplan-Jahrgänge, die eingelesen sind (aufsteigend).

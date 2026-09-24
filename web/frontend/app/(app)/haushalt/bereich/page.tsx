@@ -54,9 +54,10 @@ import { Warum } from "@/components/haushalt/warum";
 import { Summe } from "@/components/haushalt/tafel";
 import { ReiterLeiste, ReiterTafel, type Reiter } from "@/components/ui/reiter";
 import { Datenstand } from "@/components/haushalt/datenstand";
+import { ZuschuesseBereich } from "@/components/haushalt/zuschuesse-bereich";
 import { cn } from "@/lib/utils";
 
-type ReiterId = "ueberblick" | "planist" | "source";
+type ReiterId = "ueberblick" | "planist" | "zuschuesse" | "source";
 
 function Karte({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
@@ -307,11 +308,13 @@ function BereichInner() {
     ...(abschluss.length ? (["ergebnisrechnung_thh"] as const) : []),
     ...(hatPlanIst ? (["jahresabschluss"] as const) : []),
     ...(produktZeilen.length ? (["teilhaushalt"] as const) : []),
+    ...(kanon.sub_budget != null ? (["grants"] as const) : []),
   ];
 
   const reiterListe: Reiter<ReiterId>[] = [
     { id: "ueberblick", label: "Überblick" },
     ...(hatPlanIst ? [{ id: "planist" as const, label: "Geplant und geworden" }] : []),
+    ...(kanon.sub_budget != null ? [{ id: "zuschuesse" as const, label: "Zuschüsse" }] : []),
     { id: "source", label: "Quelle" },
   ];
   const aktiv = reiterListe.some((r) => r.id === reiter) ? reiter : "ueberblick";
@@ -730,6 +733,12 @@ function BereichInner() {
               </Karte>
             );
           })()}
+        </ReiterTafel>
+      )}
+
+      {kanon.sub_budget != null && (
+        <ReiterTafel id="zuschuesse" aktiv={aktiv} className="flex flex-col gap-4">
+          <ZuschuesseBereich subBudget={kanon.sub_budget} bereichName={kanon.name} />
         </ReiterTafel>
       )}
 

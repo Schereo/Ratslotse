@@ -2114,6 +2114,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/council/budget/grants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Haushalt Zuschuesse
+         * @description Wer von der Stadt Zuschüsse bekommt — die Übersicht aus Anlage 003.
+         *
+         *     - ``rows``: die Zuschüsse eines Plans (Vorgabe: der jüngste), mit
+         *       ``sub_budget`` nur die eines Teilhaushalts, in Dokument-Reihenfolge,
+         *     - ``totals``: je Plan und Teilhaushalt Zahl und Summe — die Reihe über
+         *       alle eingelesenen Pläne, damit die Seite den Verlauf zeigen kann,
+         *       ohne acht Jahrgänge Zeilen zu laden,
+         *     - ``years``: die eingelesenen Pläne.
+         *
+         *     Vereine und Träger stehen mit Namen darin, wie in der Vorlage (Tims
+         *     Entscheidung 24.09.2026); Privatpersonen führt die Übersicht nicht.
+         *     Es ist der Entwurf der Verwaltung: Anlage 003 hängt an der
+         *     Einbringungs-Vorlage (``council/uebersichten.py``).
+         */
+        get: operations["haushalt_zuschuesse_api_council_budget_grants_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/council/budget/group": {
         parameters: {
             query?: never;
@@ -2228,6 +2260,9 @@ export interface paths {
          *       also samt laufender Verwaltungstätigkeit. Die Bezugsgröße, die aus
          *       „80,8 Mio. €" erst eine Aussage macht — und die einzige Zahl hier ohne
          *       Rechenprobe (eigene ``herkunft_id`` mit ``ungeprueft``, s. u.),
+         *     - ``finance_budget``: die Investitionszeilen des Gesamtfinanzhaushalts
+         *       (Anlage 006) aller Pläne — Summen, Saldo und Auszahlungsarten, je mit
+         *       ``kind`` (Ansatz oder Finanzplanung) und ``plan_budget_year``,
          *     - ``herkunft``: je ``herkunft_id`` Dokument, Fundstelle, bestandene Probe
          *       samt Messwert. Die geprüften Zeilen und die Bezugsgröße tragen
          *       **verschiedene** IDs; sie stehen in derselben Datei, aber nur die einen
@@ -2450,7 +2485,13 @@ export interface paths {
          *     - ``indicators``: die Zeitreihe je Gesellschaft (Jahresergebnis,
          *       Bilanzsumme, Eigenkapitalquote). ``n_reports`` sagt, wie viele Berichte
          *       denselben Wert nennen — 1 heißt „durch eine Probe im Dokument gedeckt",
-         *       mehr heißt zusätzlich „von einer zweiten Veröffentlichung bestätigt",
+         *       mehr heißt zusätzlich „von einer zweiten Veröffentlichung bestätigt"
+         *       (ein Jahresabschluss mit demselben Betrag zählt mit). ``source`` sagt,
+         *       woher die Zeile kommt: ``holdings_report`` (Beteiligungsbericht) oder
+         *       ``annual_accounts`` — das jüngste Jahr, das nur der Jahresabschluss der
+         *       Gesellschaft schon nennt, oder ein Jahr, in dem der Abschluss vom
+         *       Bericht abweicht und deshalb gilt (dann steht die Zahl des Berichts in
+         *       ``report_value``; ``council/gesellschaft_abschluss.py``),
          *     - ``group_comparison``: für die Gesellschaften, die auch im
          *       Gesamtabschluss stehen, beide Zahlen desselben Jahres nebeneinander.
          *       **Keine Probe** — die beiden Rechnungen unterscheiden sich systematisch,
@@ -4430,6 +4471,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/quiz/duel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Duel Create
+         * @description Eine gespielte Runde als Herausforderung (Plan Q9). Nur aktive Fragen.
+         */
+        post: operations["duel_create_api_quiz_duel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/quiz/duel/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Duel Get */
+        get: operations["duel_get_api_quiz_duel__code__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/quiz/duel/{code}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Duel Complete */
+        post: operations["duel_complete_api_quiz_duel__code__complete_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/quiz/joker": {
         parameters: {
             query?: never;
@@ -4567,6 +4662,48 @@ export interface paths {
         post?: never;
         /** Own Delete */
         delete: operations["own_delete_api_quiz_own__question_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/quiz/pin-answer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Pin Answer
+         * @description Den Pin werten: Entfernung zur Geometrie des Orts, Punkte in Stufen.
+         *     Gebucht wie das Karten-Quiz (``question_id = 0``) auf den Ortsbereich des
+         *     Orts — so zählt es auf die Stadtkarte.
+         */
+        post: operations["pin_answer_api_quiz_pin_answer_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/quiz/pin-round": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Pin Round
+         * @description „Wo liegt das?" (Plan Q7): n Orte zum Verorten, ohne Lage.
+         */
+        get: operations["pin_round_api_quiz_pin_round_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -7706,6 +7843,10 @@ export interface components {
         BudgetDebt: {
             /** Column Kinds */
             column_kinds: unknown[];
+            /** Commitments */
+            commitments?: components["schemas"]["CommitmentRow"][];
+            /** Debt Plan */
+            debt_plan?: components["schemas"]["DebtPlanRow"][];
             guarantees: components["schemas"]["Guarantees"];
             /** Integrated Debt */
             integrated_debt: unknown;
@@ -7781,6 +7922,21 @@ export interface components {
             /** Years */
             years: unknown[];
         };
+        /** BudgetGrants */
+        BudgetGrants: {
+            /** Provenance */
+            provenance: {
+                [key: string]: components["schemas"]["Herkunft"];
+            };
+            /** Rows */
+            rows: components["schemas"]["GrantRow"][];
+            /** Totals */
+            totals: components["schemas"]["GrantTotal"][];
+            /** Year */
+            year: number | null;
+            /** Years */
+            years: number[];
+        };
         /** BudgetGroup */
         BudgetGroup: {
             /** Consolidated */
@@ -7838,6 +7994,8 @@ export interface components {
         };
         /** BudgetInvestments */
         BudgetInvestments: {
+            /** Finance Budget */
+            finance_budget?: components["schemas"]["FinanceBudgetRow"][];
             /** Financial Budget */
             financial_budget: unknown[];
             /** Investments */
@@ -8283,6 +8441,20 @@ export interface components {
              */
             stack: string;
         };
+        /**
+         * CommitmentRow
+         * @description Eine Fälligkeit aus den Verpflichtungsermächtigungen eines Plans.
+         */
+        CommitmentRow: {
+            /** Amount */
+            amount: number;
+            /** Budget Year */
+            budget_year: number;
+            /** Due Year */
+            due_year: number;
+            /** Herkunft Id */
+            herkunft_id: number | null;
+        };
         /** CommitteeDetail */
         CommitteeDetail: {
             /** Decisions Year */
@@ -8486,6 +8658,31 @@ export interface components {
             unit: string | null;
             /** Was */
             was: string;
+        };
+        /**
+         * DebtPlanRow
+         * @description Der voraussichtliche Stand der Schulden laut Haushaltsplan (Anlage 003).
+         *
+         *     ``entity`` ist „Kernhaushalt" oder ein Eigenbetrieb, ``code`` die
+         *     Schuldenart (1.2 Kredite für Investitionen … 5) oder ``total``.
+         *     ``start_prior`` ist der Stand zu Beginn des Vorjahres, ``start_expected``
+         *     der erwartete zu Beginn des Planjahres — beide in Euro.
+         */
+        DebtPlanRow: {
+            /** Budget Year */
+            budget_year: number;
+            /** Code */
+            code: string;
+            /** Entity */
+            entity: string;
+            /** Herkunft Id */
+            herkunft_id: number | null;
+            /** Label */
+            label: string;
+            /** Start Expected */
+            start_expected: number | null;
+            /** Start Prior */
+            start_prior: number | null;
         };
         /**
          * DecisionDetail
@@ -10491,6 +10688,35 @@ export interface components {
              */
             message: string;
         };
+        /**
+         * FinanceBudgetRow
+         * @description Eine Investitionszeile des Gesamtfinanzhaushalts (Anlage 006).
+         *
+         *     ``kind`` trennt den Ansatz des Planjahres (``budget``) von der
+         *     Finanzplanung (``financial_plan``); ``plan_budget_year`` sagt, aus welchem
+         *     Plan die Zahl stammt. ``role`` ist nur bei den Summen und dem Saldo
+         *     gesetzt, die übrigen Zeilen sind die Auszahlungs- und Einzahlungsarten.
+         */
+        FinanceBudgetRow: {
+            /** Amount */
+            amount: number;
+            /** Herkunft Id */
+            herkunft_id: number | null;
+            /** Is Total */
+            is_total: number;
+            /** Kind */
+            kind: string;
+            /** Label */
+            label: string;
+            /** Nr */
+            nr: number;
+            /** Plan Budget Year */
+            plan_budget_year: number;
+            /** Role */
+            role: string | null;
+            /** Year */
+            year: number;
+        };
         /** Finances */
         Finances: {
             /** By Field */
@@ -10606,6 +10832,57 @@ export interface components {
         Goals: {
             /** Goals */
             goals: components["schemas"]["Goal"][];
+        };
+        /**
+         * GrantRow
+         * @description Ein Zuschuss an Dritte aus der Übersicht in Anlage 003.
+         *
+         *     ``description`` ist die Spalte „Beschreibung der Zuwendung" und nennt
+         *     meist den Empfänger („Zuschuss Reparaturrat"), ``note`` die Erläuterung.
+         *     ``amount`` ist der Ansatz im Planjahr, ``amount_prior`` der im Vorjahr —
+         *     beide aus demselben Plan. ``cash``: 1 bar, 0 unbar, ``None`` ohne Angabe
+         *     (2019 führt die Spalte nicht). ``lfd_nr`` ist die Nummer der Stadt und
+         *     nicht eindeutig; die Reihenfolge ist ``seq``.
+         */
+        GrantRow: {
+            /** Amount */
+            amount: number | null;
+            /** Amount Prior */
+            amount_prior: number | null;
+            /** Budget Year */
+            budget_year: number;
+            /** Cash */
+            cash: number | null;
+            /** Description */
+            description: string;
+            /** Herkunft Id */
+            herkunft_id: number | null;
+            /** Lfd Nr */
+            lfd_nr: number;
+            /** Note */
+            note: string | null;
+            /** Product Name */
+            product_name: string | null;
+            /** Product No */
+            product_no: string | null;
+            /** Seq */
+            seq: number;
+            /** Sub Budget No */
+            sub_budget_no: number;
+        };
+        /**
+         * GrantTotal
+         * @description Je Plan und Teilhaushalt: Zahl und Summe der Zuschüsse im Planjahr.
+         */
+        GrantTotal: {
+            /** Amount */
+            amount: number;
+            /** Budget Year */
+            budget_year: number;
+            /** N */
+            n: number;
+            /** Sub Budget No */
+            sub_budget_no: number;
         };
         /**
          * GuaranteeRow
@@ -13265,6 +13542,56 @@ export interface components {
             /** Level Label */
             level_label: string;
         };
+        /**
+         * QuizDuel
+         * @description Ein Duell (Plan Q9). ``questions`` ohne Lösung; ``players`` erst,
+         *     wenn ich gespielt habe oder das Duell meins ist — sonst verriete die
+         *     Liste, wie schwer die Runde ist, bevor man sie spielt.
+         */
+        QuizDuel: {
+            /** Code */
+            code: string;
+            /** Mine */
+            mine: boolean;
+            /** Owner Correct */
+            owner_correct: number;
+            /** Owner Name */
+            owner_name: string;
+            /** Played */
+            played: boolean;
+            /** Players */
+            players: components["schemas"]["QuizDuelPlayer"][];
+            /** Questions */
+            questions: components["schemas"]["QuizQuestion"][];
+            /** Total */
+            total: number;
+        };
+        /** QuizDuelCreated */
+        QuizDuelCreated: {
+            /** Code */
+            code: string;
+        };
+        /** QuizDuelDoneIn */
+        QuizDuelDoneIn: {
+            /** Correct */
+            correct: number;
+        };
+        /** QuizDuelIn */
+        QuizDuelIn: {
+            /** Correct */
+            correct: number;
+            /** Question Ids */
+            question_ids: number[];
+        };
+        /** QuizDuelPlayer */
+        QuizDuelPlayer: {
+            /** Correct */
+            correct: number;
+            /** Me */
+            me: boolean;
+            /** Name */
+            name: string;
+        };
         /** QuizFlagged */
         QuizFlagged: {
             /** Flagged */
@@ -13351,6 +13678,50 @@ export interface components {
         QuizOwnQuestions: {
             /** Questions */
             questions: components["schemas"]["UserQuizQuestion"][];
+        };
+        /** QuizPinIn */
+        QuizPinIn: {
+            /** Lat */
+            lat: number;
+            /** Lon */
+            lon: number;
+            /** Slug */
+            slug: string;
+        };
+        /** QuizPinQuestion */
+        QuizPinQuestion: {
+            /** Kind Label */
+            kind_label: string;
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+        };
+        /**
+         * QuizPinResult
+         * @description Auflösung von „Wo liegt das?": Entfernung zur Geometrie, Punkte, und
+         *     die Geometrie selbst zum Einzeichnen.
+         */
+        QuizPinResult: {
+            /** Distance Label */
+            distance_label: string;
+            /** Distance M */
+            distance_m: number;
+            /** Geojson */
+            geojson: unknown;
+            /** Lat */
+            lat: number;
+            /** Lon */
+            lon: number;
+            /** Name */
+            name: string;
+            /** Points */
+            points: number;
+        };
+        /** QuizPinRound */
+        QuizPinRound: {
+            /** Questions */
+            questions: components["schemas"]["QuizPinQuestion"][];
         };
         /**
          * QuizQuestion
@@ -17676,6 +18047,38 @@ export interface operations {
             };
         };
     };
+    haushalt_zuschuesse_api_council_budget_grants_get: {
+        parameters: {
+            query?: {
+                sub_budget?: number | null;
+                year?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetGrants"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     haushalt_konzern_api_council_budget_group_get: {
         parameters: {
             query?: never;
@@ -20417,6 +20820,105 @@ export interface operations {
             };
         };
     };
+    duel_create_api_quiz_duel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuizDuelIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuizDuelCreated"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    duel_get_api_quiz_duel__code__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuizDuel"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    duel_complete_api_quiz_duel__code__complete_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuizDuelDoneIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuizDuel"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     joker_api_quiz_joker_post: {
         parameters: {
             query?: never;
@@ -20684,6 +21186,70 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Ok"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pin_answer_api_quiz_pin_answer_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuizPinIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuizPinResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pin_round_api_quiz_pin_round_get: {
+        parameters: {
+            query?: {
+                n?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuizPinRound"];
                 };
             };
             /** @description Validation Error */
@@ -22676,4 +23242,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 59788d2335da8cf4606a4a20b53bf686c2785659eb7ce17198f5d043079beea9
+// vertrag-sha256: 8a2628749a17e3b1180d06ee81dbcf196401b3db2b2fde6bb0ad7960459b54ab

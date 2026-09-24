@@ -437,7 +437,15 @@ def text_aus_wortrahmen(pdf_bytes: bytes) -> str:
     seiten: list[str] = []
     with pymupdf.open(stream=pdf_bytes, filetype="pdf") as doc:
         for page in doc:
-            woerter = sorted((round(w[3], 1), w[0], w[4]) for w in page.get_text("words"))
+            # Querformat-Seiten mit /Rotate 90 (die Bilanzen der Gesellschaften
+            # 2020–2023) liefern ihre Wörter im UNGEDREHTEN Koordinatensystem:
+            # Die Zeile stünde dann senkrecht. Die Drehmatrix der Seite setzt sie
+            # in Leserichtung; bei Rotation 0 ist sie die Einheitsmatrix.
+            dreh = page.rotation_matrix
+            woerter = sorted(
+                (round(r.y1, 1), r.x0, w[4])
+                for w in page.get_text("words")
+                for r in (pymupdf.Rect(w[:4]) * dreh,))
             zeilen: list[tuple[float, list[tuple[float, str]]]] = []
             for y, x, t in woerter:
                 if zeilen and abs(y - zeilen[-1][0]) <= 2.5:

@@ -926,6 +926,12 @@ class SchemaMixin(StoreBasis):
         "council_trade_tax_statistics": (None, "source_url", "lsn"),
         # Und die Planjahre aus dem Gesamtergebnishaushalt.
         "council_income_budget":     (None, "source_url", "ris"),
+        # Und der Gesamtfinanzhaushalt, Anlage 006: neu, ohne Altspalten.
+        "council_finance_budget":    (None, "source_url", "ris"),
+        # Und die Zuschüsse an Dritte aus Anlage 003.
+        "council_grants":            (None, "source_url", "ris"),
+        "council_debt_plan":         (None, "source_url", "ris"),
+        "council_commitments":       (None, "source_url", "ris"),
         # Ebenso die Investitionen des Finanzhaushalts: neu, ohne Altspalten,
         # Herkunft ausschließlich über `herkunft_id`.
         "council_investments":        (None, "source_url", "opendata"),
@@ -990,6 +996,7 @@ class SchemaMixin(StoreBasis):
         "council_budget_execution": (None, "source_url", "ris"),
         "council_liquidity": (None, "url", "ris"),
     "council_enterprise_accounts": (None, None, "ris"),
+        "council_company_accounts": (None, None, "ris"),
         # Kredite und Zinsen: neu, ohne Altbestand — derselbe Platzhalter.
         "council_loan_notices": (None, "document_url", "ris"),
         "council_loan_items": (None, "document_url", "ris"),
@@ -2313,6 +2320,73 @@ class SchemaMixin(StoreBasis):
         self._conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_ergebnishaushalt_jahr "
             "ON council_income_budget(year, kind)")
+        # Der Gesamtfinanzhaushalt (Anlage 006, council/finance_budget.py):
+        # dieselbe Form wie council_income_budget, nur Zahlungen statt
+        # Erträge/Aufwendungen — und mit `role` für die Summen- und
+        # Saldenzeilen, weil die Postennummern zwischen den Jahrgängen
+        # wandern (bis 2022 steht die erste Summe unter 10, ab 2023 unter 09).
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_finance_budget ("
+            "plan_budget_year INTEGER NOT NULL, "
+            "year INTEGER NOT NULL, "
+            "kind TEXT NOT NULL, "                 # budget | financial_plan
+            "nr INTEGER NOT NULL, "                # Postennummer im Dokument
+            "label TEXT NOT NULL, "
+            "role TEXT, "                          # Summen-/Saldenzeile, sonst NULL
+            "amount REAL NOT NULL, "
+            "is_total INTEGER NOT NULL DEFAULT 0, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (plan_budget_year, year, nr))"
+        )
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_finanzhaushalt_jahr "
+            "ON council_finance_budget(year, kind)")
+        # Die Zuschüsse an Dritte aus den Übersichten (Anlage 003,
+        # council/uebersichten.py): je Zeile ein Zuschuss mit Empfänger in der
+        # Beschreibung. `seq` ist die Reihenfolge im Dokument — die laufende
+        # Nummer der Stadt taugt nicht als Schlüssel, sie ist doppelt vergeben.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_grants ("
+            "budget_year INTEGER NOT NULL, "
+            "seq INTEGER NOT NULL, "
+            "lfd_nr INTEGER NOT NULL, "
+            "sub_budget_no INTEGER NOT NULL, "
+            "product_no TEXT, "
+            "product_name TEXT, "
+            "description TEXT NOT NULL, "
+            "amount_prior REAL, "                 # Ansatz des Vorjahres
+            "amount REAL, "                       # Ansatz des Planjahres
+            "note TEXT, "
+            "cash INTEGER, "                      # 1 bar, 0 unbar, NULL ohne Angabe (2019)
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (budget_year, seq))"
+        )
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_zuschuesse_thh "
+            "ON council_grants(sub_budget_no, budget_year)")
+        # Aus derselben Anlage 003: der voraussichtliche Stand der Schulden
+        # (je Plan, Block und Schuldenart; Beträge in Euro, gedruckt in T€) und
+        # die Fälligkeiten der Verpflichtungsermächtigungen.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_debt_plan ("
+            "budget_year INTEGER NOT NULL, "
+            "entity TEXT NOT NULL, "             # Kernhaushalt | Eigenbetrieb …
+            "code TEXT NOT NULL, "               # 1.2 … 5 | total
+            "label TEXT NOT NULL, "
+            "start_prior REAL, "                 # Stand zu Beginn des Vorjahres
+            "start_expected REAL, "              # voraussichtl. Stand zu Beginn des Planjahres
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (budget_year, entity, code))"
+        )
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_commitments ("
+            "budget_year INTEGER NOT NULL, "     # der Plan, dessen Übersicht es nennt
+            "plan_year INTEGER NOT NULL, "       # der Plan, der die VE erteilt hat
+            "due_year INTEGER NOT NULL, "
+            "amount REAL NOT NULL, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (budget_year, plan_year, due_year))"
+        )
         # Der Stellenplan (Anlage 21/22 des Haushaltsplans, council/stellenplan.py):
         # wie viele Stellen die Stadt vorhält, wie viele davon besetzt sind
         # und wie viele nicht.
@@ -3568,6 +3642,25 @@ class SchemaMixin(StoreBasis):
             "probes TEXT NOT NULL, "
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
             "PRIMARY KEY (enterprise, year, metric))"
+        )
+        # Die Jahresabschlüsse der städtischen Gesellschaften
+        # (council/gesellschaft_abschluss.py): dieselbe Form wie bei den
+        # Eigenbetrieben. Eigene Tabelle und nicht council_company_indicators,
+        # weil der Beteiligungsbericht-Ingest jene bei jedem Lauf leert.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_company_accounts ("
+            "company TEXT NOT NULL, "             # Kürzel wie council_companies
+            "year INTEGER NOT NULL, "
+            "indicator TEXT NOT NULL, "          # bilanzsumme | jahresergebnis
+            "value REAL NOT NULL, "              # Euro
+            "unit TEXT NOT NULL, "
+            "report_year INTEGER NOT NULL, "     # der Abschluss, aus dem die Zahl stammt
+            "confirmations INTEGER NOT NULL DEFAULT 1, "
+            "conflicts INTEGER NOT NULL DEFAULT 0, "
+            "document_id INTEGER, "
+            "probes TEXT NOT NULL, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (company, year, indicator))"
         )
         # Kredite und Zinsen (council/loans.py): die Unterrichtungen des Rates
         # nach der Kreditrichtlinie — je Vorlage eine Zeile mit Berichts-

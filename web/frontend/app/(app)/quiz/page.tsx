@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Search, Play, MapPin, Sparkles, Check, X, ChevronDown, ChevronUp, PencilLine, Zap, Flame, RotateCcw, Timer } from "lucide-react";
+import { Search, Play, MapPin, Sparkles, Check, X, ChevronDown, ChevronUp, PencilLine, Zap, Flame, RotateCcw, Timer, Crosshair, Newspaper } from "lucide-react";
 import { QuizAreas, QuizAreaEntry, QuizQuestion, QuizStats, QuizDaily, UserQuizQuestion } from "@/lib/types";
 import { Button, Input, Spinner, EmptyState, toast } from "@/components/ui";
 import { Mascot } from "@/components/mascot";
@@ -16,8 +16,10 @@ import { QuizMapPlay } from "@/components/quiz-map-play";
 import { OwnQuestionsView } from "@/components/quiz-own";
 import { QuizProgressMap } from "@/components/quiz-progress-map";
 import { QuizBlitz } from "@/components/quiz-blitz";
+import { QuizPinPlay, type PinQuestion } from "@/components/quiz-pin-play";
+import { DuelScore, type DuelView } from "@/components/quiz-duel";
 
-type RoundKind = "normal" | "review" | "daily" | "own";
+type RoundKind = "normal" | "review" | "daily" | "own" | "duel";
 
 // Zuletzt gespielte Einstellungen (localStorage) → „Weiterspielen".
 const LS_KEY = "quiz:lastSettings";
@@ -393,10 +395,15 @@ function QuizInner() {
   const [round, setRound] = useState<QuizQuestion[] | null>(null);
   const [kind, setKind] = useState<RoundKind>("normal");
   const [mapTargets, setMapTargets] = useState<string[] | null>(null);
+  const [pinQuestions, setPinQuestions] = useState<PinQuestion[] | null>(null);
   const [view, setView] = useState<"home" | "setup" | "own" | "blitz">("home");
   const [ownAutoNew, setOwnAutoNew] = useState(false);
   const [last, setLast] = useState<LastSettings | null>(null);
   const [autoStarted, setAutoStarted] = useState(false);
+  // Duell über ?duell=<code> (Plan Q9): erst laden, dann spielen oder — wenn
+  // schon gespielt — gleich die Tabelle zeigen.
+  const [duel, setDuel] = useState<DuelView | null>(null);
+  const [duelDone, setDuelDone] = useState<DuelView | null>(null);
 
   useEffect(() => { setLast(loadLast()); }, [reloadKey]);
 
@@ -464,9 +471,31 @@ function QuizInner() {
     }
   }, []);
 
+  const startPin = useCallback(async () => {
+    setStarting(true);
+    try {
+      const res = await api.get<{ questions: PinQuestion[] }>("/quiz/pin-round?n=5");
+      if (!res.questions.length) { toast.info("Gerade gibt es keine Orte zum Verorten."); return; }
+      setPinQuestions(res.questions);
+    } catch {
+      toast.error("„Wo liegt das?“ konnte nicht geladen werden.");
+    } finally {
+      setStarting(false);
+    }
+  }, []);
+
   // Auto-Start über Query (?review=1 / ?play=<area>) — von der Statistik-Seite.
   useEffect(() => {
     if (autoStarted || loading || !data) return;
+    const code = params.get("duell");
+    if (code) {
+      setAutoStarted(true);
+      void api.get<DuelView>(`/quiz/duel/${encodeURIComponent(code)}`).then((d) => {
+        if (d.played) { setDuelDone(d); return; }
+        setDuel(d); setKind("duel"); setRound(d.questions);
+      }).catch(() => toast.error("Dieses Duell gibt es nicht (mehr)."));
+      return;
+    }
     if (params.get("review")) { setAutoStarted(true); void startReview(); }
     else {
       const play = params.get("play");
@@ -476,8 +505,22 @@ function QuizInner() {
 
   if (loading) return <div className="py-10"><Spinner /></div>;
 
+  if (duelDone && !round) {
+    return (
+      <div className="mx-auto max-w-xl space-y-4 text-center">
+        <DuelScore duel={duelDone} />
+        <Button onClick={() => { setDuelDone(null); setDuel(null); }}>Zum Quiz</Button>
+      </div>
+    );
+  }
+
   if (view === "blitz") {
     return <QuizBlitz onExit={() => { setView("home"); setReloadKey((k) => k + 1); }} />;
+  }
+
+  if (pinQuestions) {
+    return <QuizPinPlay questions={pinQuestions}
+      onExit={() => { setPinQuestions(null); setReloadKey((k) => k + 1); }} />;
   }
 
   if (mapTargets) {
@@ -486,10 +529,16 @@ function QuizInner() {
   }
 
   if (round) {
-    const title = kind === "daily" ? "Tägliche Challenge"
+    const title = kind === "duel" && duel ? `Duell gegen ${duel.owner_name}`
+      : kind === "daily" ? "Tägliche Challenge"
       : kind === "review" ? "Meine Fehler"
         : kind === "own" ? "Meine Fragen üben" : undefined;
-    const onComplete = kind === "daily"
+    const onComplete = kind === "duel" && duel
+      ? async (r: { correct: number }) => {
+          try { setDuelDone(await api.post<DuelView>(`/quiz/duel/${duel.code}/complete`, { correct: r.correct })); } catch { /* Tabelle fehlt dann */ }
+          return undefined;
+        }
+      : kind === "daily"
       ? async (r: { correct: number; total: number; points: number; results: boolean[] }) => {
           try {
             const res = await api.post<{ share_text?: string }>("/quiz/daily/complete", r);
@@ -499,8 +548,10 @@ function QuizInner() {
       : undefined;
     return (
       <QuizPlay questions={round} title={title} onComplete={onComplete}
+        duel={kind === "normal" || kind === "daily"}
+        doneExtra={kind === "duel" && duelDone ? <DuelScore duel={duelDone} /> : undefined}
         practice={kind === "own"} answerPath={kind === "own" ? "/quiz/own/answer" : "/quiz/answer"}
-        onExit={() => { setRound(null); setView(kind === "own" ? "own" : "home"); setReloadKey((k) => k + 1); }} />
+        onExit={() => { setRound(null); setDuel(null); setDuelDone(null); setView(kind === "own" ? "own" : "home"); setReloadKey((k) => k + 1); }} />
     );
   }
 
@@ -558,6 +609,16 @@ function QuizInner() {
       onClick: dailyOpen ? startDaily : () => toast.info("Heute schon erledigt — morgen gibt's neue Fragen."),
     });
   }
+  // Aus den letzten Sitzungen (Plan Q10) — nur, wenn es dort Fragen gibt.
+  const recent = catalog.topics.find((t) => t.key === "aktuell" && t.questions > 0);
+  if (recent) {
+    tiles.push({
+      key: "aktuell", icon: <Newspaper className="h-[18px] w-[18px]" />,
+      iconClass: "bg-primary/10 text-primary",
+      title: "Aus den letzten Sitzungen", sub: "Was der Rat gerade beschlossen hat",
+      onClick: () => void startRound(["topic:aktuell"], []),
+    });
+  }
   tiles.push({
     key: "blitz", icon: <Timer className="h-[18px] w-[18px]" />,
     iconClass: "bg-amber-500/15 text-amber-700 dark:text-amber-500",
@@ -571,6 +632,11 @@ function QuizInner() {
     title: "Karten-Quiz", sub: "Ortsbereiche auf der Karte finden", onClick: () => void startMap(),
   });
   tiles.push({
+    key: "pin", icon: <Crosshair className="h-[18px] w-[18px]" />,
+    iconClass: "bg-orange-500/[0.12] text-orange-700 dark:text-orange-400",
+    title: "Wo liegt das?", sub: "Straßen und Orte mit einem Pin finden", onClick: () => void startPin(),
+  });
+  tiles.push({
     key: "own", icon: <PencilLine className="h-[18px] w-[18px]" />, iconClass: "bg-muted text-muted-foreground",
     title: <>Eigene Fragen{ownCount > 0 && <span className="font-medium text-muted-foreground"> · {ownCount}</span>}</>,
     sub: "Anlegen & üben — ohne Punkte",
@@ -578,8 +644,18 @@ function QuizInner() {
   });
   // Keine Lücke im Raster: bei ungerader Zahl nimmt die letzte Kachel mobil
   // die volle Breite; am Schreibtisch passt jede Zahl bis fünf in eine Zeile.
-  if (tiles.length % 2 === 1) tiles[tiles.length - 1].className = "col-span-2 lg:col-span-1";
-  const lgCols = { 5: "lg:grid-cols-5", 4: "lg:grid-cols-4", 3: "lg:grid-cols-3" }[tiles.length] ?? "lg:grid-cols-2";
+  // Am Schreibtisch höchstens fünf je Zeile (sechs werden zwei Dreier), und
+  // die letzte Kachel streckt sich über den Rest der Zeile.
+  const lgN = tiles.length <= 5 ? tiles.length : tiles.length === 6 ? 3 : 4;
+  const lgRest = tiles.length % lgN;
+  const LG_SPAN: Record<number, string> = { 1: "lg:col-span-1", 2: "lg:col-span-2", 3: "lg:col-span-3", 4: "lg:col-span-4" };
+  if (tiles.length) {
+    tiles[tiles.length - 1].className = cn(
+      tiles.length % 2 === 1 ? "col-span-2" : undefined,
+      lgRest ? LG_SPAN[lgN - lgRest + 1] : "lg:col-span-1",
+    );
+  }
+  const lgCols = ({ 1: "lg:grid-cols-1", 2: "lg:grid-cols-2", 3: "lg:grid-cols-3", 4: "lg:grid-cols-4", 5: "lg:grid-cols-5" } as Record<number, string>)[lgN];
 
   return (
     <div>

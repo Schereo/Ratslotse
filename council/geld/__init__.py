@@ -187,6 +187,37 @@ RANG_WORT = re.compile(
     r"wichtigste[nrs]?|groesster|dickste[nrs]?)$")
 
 
+#: Wörter, die in JEDER Haushaltsfrage stehen können und deshalb keinen
+#: Teilhaushalt, kein Produkt und keinen Betrieb auswählen dürfen — gefaltet.
+#:
+#: Gemessen am 24.09.2026 an 36 Laienfragen durch Lottis Fenster: „Was gibt
+#: die Stadt eigentlich so aus?", „Woher hat die Stadt ihr Geld?" und „Hat die
+#: Stadt genug Geld?" bekamen alle drei die **Stadtplanung** (7,4 Mio. €) als
+#: einzige Haushaltszeile — „stadt" ist fünf Buchstaben lang und damit lang
+#: genug für den Anfangs-Abgleich von ``_bereich_passt`` („STADTplanung").
+#: Die Überschrift der Übersicht („Oldenburg plant Ausgaben von 883,9
+#: Millionen Euro") reist als Suchtext mit und trägt dieselbe Sorte Wörter.
+#: Eine Liste für alle Abgleiche, damit die Produktsuche und die
+#: Teilhaushalts-Suche nicht zwei verschiedene Vorstellungen davon haben, was
+#: ein Allerweltswort ist.
+ALLERWELT = frozenset({
+    "stadt", "staedte", "oldenburg", "oldenburger", "oldenburgs", "geld",
+    "gelder", "euro", "millionen", "million", "milliarden", "ausgaben",
+    "ausgabe", "ausgeben", "ausgegeben", "gibt", "geben", "plant", "planen",
+    "kostet", "kosten", "zahlt", "zahlen", "bezahlt", "bezahlen", "eigentlich",
+    "ueberhaupt", "wirklich", "genug", "jahr", "jahre", "jahres", "jaehrlich",
+    "viel", "viele", "wieviel", "insgesamt", "fuer", "welche", "welcher",
+    "welches", "dieser", "diese", "dieses", "einfach", "immer", "mehr",
+    "weniger", "warum", "wieso", "stimmt", "nicht", "kein", "keine", "alles",
+    "leute", "menschen", "buerger", "einwohner",
+})
+
+
+def allerwelt(wort: str) -> bool:
+    """Ist ``wort`` (roh oder gefaltet) ein :data:`ALLERWELT`-Wort?"""
+    return falte(wort) in ALLERWELT
+
+
 def rangfrage(terms) -> bool:
     """Trägt ``terms`` (Liste oder Text) ein Rangfolge-Wort?"""
     woerter = terms.split() if isinstance(terms, str) else list(terms or [])

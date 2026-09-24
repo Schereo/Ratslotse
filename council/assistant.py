@@ -129,6 +129,116 @@ GELD_AUSSERHALB = frozenset({
     "kassensicht", "supplementary_approvals", "antraege",
 })
 
+@dataclass(frozen=True)
+class SeitenKern:
+    """Die Zahlen, die eine Haushaltsseite IMMER in den Prompt mitgibt."""
+
+    #: Facetten aus ``qa.GELD_FACETTEN`` — fest, nicht am Wortlaut erkannt.
+    facetten: frozenset[str]
+    #: Suchbegriffe in der Sprache der Quellen. „meisten"/„groesste" sind
+    #: Rangwörter (``geld.RANG_WORT``): Dann liefern Plan und
+    #: Investitionsprogramm die größten Posten statt eines Begriffstreffers.
+    begriffe: str = ""
+
+
+def _k(facetten: set[str], begriffe: str = "") -> SeitenKern:
+    return SeitenKern(frozenset(facetten), begriffe)
+
+
+#: Je Haushaltsseite ihre Kernzahlen — was die Seite ZEIGT, als Zahl im
+#: Prompt, auch wenn die Frage es nicht nennt.
+#:
+#: **Warum, gemessen am 24.09.2026** (36 Laienfragen, echtes Fenster): Die
+#: Facetten hängen am Wortlaut, und Laien nennen die Sache nicht beim Namen.
+#: „Ist das schlimm?" auf der Schulden-Seite ging gut, weil die Überschrift
+#: „Wie viel Schulden hat Oldenburg?" die Facette trug. „Woher hat die Stadt
+#: ihr Geld?" auf der Einnahmen-Seite bekam dagegen KEINEN Betrag (die
+#: Steuern 2025, 387 Mio. €, liegen im Bestand), „Was wird gebaut?" auf der
+#: Investitions-Seite kein einziges Vorhaben, und auf der Übersicht stand die
+#: Überschrift „883,9 Mio." ohne Jahr und Beleg im Prompt. Die Seite ist der
+#: Gegenstand jeder Frage, die auf ihr gestellt wird.
+#:
+#: **Knapp, und die Frage geht vor.** Die Kernzahlen stehen in der
+#: Reihenfolge von ``qa.geld_auswahl`` HINTER dem, was die Frage selbst zieht
+#: (``vorrang``), und vor dem, was nur die Überschrift zieht; zusammen höchstens
+#: :data:`KERN_MAX` Zeichen. Keine Zahl steht hier — nur, WELCHE Quelle eine
+#: Seite trägt (``kern/knowledge.py`` bleibt zahlenfrei).
+#:
+#: Nicht dabei: ``/haushalt/bereich`` (der Teilhaushalt kommt als Slug in
+#: ``refs.area``, der Steckbrief zeigt ihn schon als Überschrift) und
+#: ``/haushalt/steuer`` bekommt die Steuer des Steckbriefs dynamisch (s.
+#: :func:`seiten_kern`).
+SEITEN_KERN: dict[str, SeitenKern] = {
+    # Gesamtaufwand des Plans (die Überschrift) und die drei größten
+    # Teilhaushalte — mit Jahr und Beleg.
+    "/haushalt": _k({"plan"}, "haushalt meisten"),
+    # Die Seite zeigt oben die Teilhaushalte im Klartext.
+    "/haushalt/produkte": _k({"plan"}, "haushalt meisten"),
+    # Die Ertragsarten des Plans (Steuern, Zuwendungen, Entgelte,
+    # Kostenerstattungen), ihre Summe und die tatsächlichen Steuereinnahmen.
+    "/haushalt/einnahmen": _k({"ansatz", "taxes", "plan"},
+                              "Steuern Zuwendungen Kostenerstattungen öffentlich-rechtliche "
+                              "einnahmen haushalt"),
+    # Die fünf größten Vorhaben des Investitionsprogramms.
+    "/haushalt/investitionen": _k({"measures"}, "groesste"),
+    # Der Konzern mit seinen Einheiten; die Wirtschaftspläne der Betriebe.
+    "/haushalt/konzern": _k({"konzern", "business_plans"}),
+    "/haushalt/personal": _k({"stellenplan"}),
+    "/haushalt/schulden": _k({"schulden"}),
+    # Die größten Pflichtaufgaben (Spielraum-Selbstauskunft „low").
+    "/haushalt/pflicht": _k({"produkte"}, "pflicht"),
+    "/haushalt/plan-ist": _k({"ist"}),
+    "/haushalt/vergleich": _k({"vergleich"}),
+    "/haushalt/pruefung": _k({"indicators"}),
+    "/haushalt/mitreden": _k({"antraege"}),
+    "/haushalt/labor": _k({"plan"}, "haushalt"),
+    "/haushalt/steuer": _k({"taxes"}),
+}
+
+#: Deckel für die Kernzahlen einer Seite. 2.500, gemessen an den Bausteinen
+#: der 14 Seiten am 24.09.2026: der größte Einzelbaustein (Wirtschaftspläne
+#: ohne Suchbegriff) liegt bei ~2,2 kZ; zwei davon zusammen sprengten den
+#: Deckel, ohne dass die zweite Zahl die Seite besser erklärt.
+KERN_MAX = 2500
+
+
+def seiten_kern(screen: Screen) -> SeitenKern | None:
+    """Die Kernzahlen der Seite, auf der die Person steht — oder ``None``."""
+    kern = SEITEN_KERN.get(screen.route)
+    if kern and screen.route == "/haushalt/steuer":
+        # Der Steckbrief zeigt EINE Steuer; die ist sein Gegenstand.
+        return _k(set(kern.facetten), steuer_auf_seite(screen) or "steuern")
+    return kern
+
+
+def _kern_dazu(geld: dict, kern: dict) -> dict:
+    """Die Kernzahlen der Seite in den Geld-Kontext der Frage legen.
+
+    Was die Frage schon gezogen hat, bleibt unangetastet — ihre Treffer sind
+    genauer als die Kernzahl derselben Quelle. Einzige Ausnahme ist der
+    Stadthaushalt: Zeilen sind dort einzeln, und „Jugend und Familie" aus der
+    Kita-Frage verträgt die Gesamtsumme der Übersicht daneben."""
+    from council import qa
+    neu = dict(geld or {})
+    genommen: list[str] = []
+    for facette in kern.get("facets") or ():
+        key = qa._GELD_BAUSTEINE[facette][0]
+        wert = kern.get(key)
+        if not wert:
+            continue
+        alt = neu.get(key)
+        if not alt:
+            neu[key] = wert
+        elif key == "haushalt" and isinstance(alt, list) and isinstance(wert, list):
+            da = {r.get("area") for r in alt}
+            neu[key] = alt + [r for r in wert if r.get("area") not in da]
+        genommen.append(facette)
+    neu["facets"] = sorted(set(neu.get("facets") or ()) | set(genommen))
+    neu["kern"] = sorted(genommen)
+    neu["kern_max"] = KERN_MAX
+    return neu
+
+
 #: Höchstens so viele geprüfte Fachwort-Erklärungen — wie beim
 #: „Einfacher erklären"-Prompt, aus demselben Grund: Ein erklärter Baustein
 #: trägt mehr Fachwörter als eine Frage.
@@ -422,6 +532,91 @@ def archiv_sofort(question: str) -> bool:
     if not archivfrage(question):
         return False
     return not _HIERHER_RE.search(" ".join(falte(question).split()))
+
+
+#: „Kann sich die Stadt das neue Stadion leisten?", „Was kostet das neue
+#: Stadion?", „Wie teuer wird der Umbau der Weser-Ems-Halle?" — die Frage
+#: nach dem Preis EINES Vorhabens. Gruppe 1: das Ding vor „leisten", Gruppe 2:
+#: das Ding hinter „kostet". Gefaltet (ä → ae), ohne Satzzeichen.
+_PROJEKT_LEISTEN_RE = re.compile(
+    r"\b(?:das|den|die|dem|der|so ein\w*|ein\w*)\s+"
+    r"(neue[nmrs]?\s+|geplante[nmrs]?\s+|teure[nmrs]?\s+)?([a-z]{4,})\s+(?:\w+\s+)?leisten\b")
+_PROJEKT_KOSTEN_RE = re.compile(
+    r"\b(?:was|wie ?viel|wieviel)\s+(?:kostet|kosten|kostete)\s+(?:uns\s+|die stadt\s+)?"
+    r"(?:das|der|die|den)\s+(neue[nmrs]?\s+|geplante[nmrs]?\s+)?([a-z]{4,})"
+    r"|\bwie teuer\s+(?:ist|wird|war|sind|werden|wurde)\s+(?:das|der|die)\s+"
+    r"(neue[nmrs]?\s+|geplante[nmrs]?\s+)?([a-z]{4,})")
+#: Wörter, die an der Stelle des Vorhabens stehen, aber auf den Bildschirm
+#: oder aufs Ganze zeigen: „Was kostet das hier?", „Kann sich die Stadt das
+#: alles leisten?".
+_KEIN_VORHABEN = frozenset({
+    "hier", "alles", "ganze", "ganzen", "projekt", "vorhaben", "ding", "stadt",
+    "ueberhaupt", "eigentlich", "wirklich", "noch", "denn", "jetzt", "mich",
+    "haushalt", "verwaltung",
+})
+_UMBAU_RE = re.compile(r"(?:neubau|umbau|ausbau|sanierung|erweiterung)$")
+
+
+def projekt_vorhaben(question: str) -> tuple[str, bool] | None:
+    """``(Vorhaben, eindeutig_ein_Projekt)`` — oder ``None``.
+
+    ``eindeutig`` ist die Frage nach dem LEISTEN oder nach etwas NEUEM (neue,
+    geplante, Neubau, Umbau): Dann ist ein Vorhaben gemeint, über das der Rat
+    entschieden hat, und keine laufende Aufgabe."""
+    t = " ".join(falte(question).split())
+    m = _PROJEKT_LEISTEN_RE.search(t)
+    if m:
+        ding, eindeutig = m.group(2), True
+    else:
+        m = _PROJEKT_KOSTEN_RE.search(t)
+        if not m:
+            return None
+        neu, ding = (m.group(1), m.group(2)) if m.group(2) else (m.group(3), m.group(4))
+        eindeutig = bool(neu) or bool(_UMBAU_RE.search(ding))
+    if ding in _KEIN_VORHABEN:
+        return None
+    return ding, eindeutig
+
+
+#: Ab so vielen Beschlüssen mit Betrag zum Vorhaben weiß das Archiv mehr als
+#: der Haushalt. Das Stadion hat 26 (bis 57,3 Mio. €), die Feuerwehr 12
+#: (bis 0,3 Mio. €), „Kita" keinen (Stand 24.09.2026).
+ARCHIV_MIN_BETRAEGE = 3
+
+
+def projekt_ins_archiv(store, screen: Screen, question: str) -> bool:
+    """Gehört die Preisfrage nach einem VORHABEN ins Beschluss-Archiv?
+
+    **Warum, gemessen am 24.09.2026.** „Kann sich die Stadt das neue Stadion
+    leisten?" auf der Haushalts-Übersicht bekam eine Erklärung ohne jeden
+    Weg ins Archiv — dort stehen die Baukosten (57,3 Mio. € netto) und die
+    Bürgschaft, im Haushalt nur ein Posten „Stadion" über 275.000 € im
+    Investitionsprogramm, der die Frage falsch beantwortet hätte.
+
+    **Geprüft, nicht geraten.** Ins Archiv geht die Frage nur, wenn das
+    Archiv zu dem Vorhaben Beschlüsse MIT BETRAG hat (``ARCHIV_MIN_BETRAEGE``)
+    — und bei einer schlichten Kostenfrage („Was kostet die Feuerwehr?")
+    nur, wenn keine Aufgabe des Haushalts sie beantwortet: Die laufenden
+    Kosten einer Aufgabe stehen in der Produktebene, nicht in Beschlüssen.
+    Was die Alltags-Wortfelder kennen (Kitas, Bäder, Theater), gehört ohnehin
+    in den Haushalt."""
+    if _hat_gegenstand(screen) or _HIERHER_RE.search(" ".join(falte(question).split())):
+        return False
+    gefunden = projekt_vorhaben(question)
+    if not gefunden:
+        return False
+    ding, eindeutig = gefunden
+    from council.geld import alltag
+    if alltag.treffer(ding):
+        return False
+    try:
+        if store.beschluesse_mit_betrag(ding) < ARCHIV_MIN_BETRAEGE:
+            return False
+        if not eindeutig and store.produkte_fuer_begriffe([ding]):
+            return False
+    except Exception:  # noqa: BLE001 — im Zweifel bleibt Lotti beim Bildschirm
+        return False
+    return True
 
 
 #: Kennungen, die auf EINEN Gegenstand zeigen — dann erklärt Lotti den, nicht
@@ -1144,7 +1339,19 @@ def screen_context(store, screen: Screen, question: str, *,
             # (s. `qa.geld_auswahl`): Die Seite ist Kontext, die Frage ist die
             # Frage. Nur bei einer eigenen Frage — „Was sehe ich hier?" meint
             # den Bildschirm.
-            if geld and haushaltsseite and question.strip() and not generische_frage(question):
+            eigene_frage = bool(question.strip()) and not generische_frage(question)
+            # Die Kernzahlen der Seite — nur bei einer eigenen Frage. „Was
+            # sehe ich hier?" und der Klick auf einen Baustein meinen den
+            # Bildschirm; dort trägt der angeklickte Baustein die Facetten,
+            # und ein zweiter Block daneben verdünnte ihn (s. GELD_MAX).
+            kern = seiten_kern(screen) if haushaltsseite and eigene_frage else None
+            if kern:
+                try:
+                    geld = _kern_dazu(geld, qa.geld_kontext(
+                        store, kern.begriffe, kern.begriffe, "money", facetten=kern.facetten))
+                except Exception:  # noqa: BLE001 — Zahlen sind Zusatz, nie Blocker
+                    pass
+            if geld and haushaltsseite and eigene_frage:
                 eigen = qa.geld_facetten(question) & set(geld.get("facets") or ())
                 if eigen:
                     geld["vorrang"] = sorted(eigen)

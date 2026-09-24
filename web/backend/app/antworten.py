@@ -1045,6 +1045,28 @@ class QuizBlitzResult(TypedDict):
     best: int
     today_best: int
     new_best: bool
+class QuizDuelCreated(TypedDict):
+    code: str
+
+
+class QuizDuelPlayer(TypedDict):
+    name: str
+    correct: int
+    me: bool
+
+
+class QuizDuel(TypedDict):
+    """Ein Duell (Plan Q9). ``questions`` ohne Lösung; ``players`` erst,
+    wenn ich gespielt habe oder das Duell meins ist — sonst verriete die
+    Liste, wie schwer die Runde ist, bevor man sie spielt."""
+    code: str
+    owner_name: str
+    owner_correct: int
+    total: int
+    mine: bool
+    played: bool
+    questions: list[QuizQuestion]
+    players: list[QuizDuelPlayer]
 
 
 class QuizResult(TypedDict):
@@ -1118,6 +1140,28 @@ class QuizDayCompleted(TypedDict):
     # Zum Teilen, fertig gesetzt (``routers.quiz._share_text``) — nur, wenn
     # der Client die Einzelergebnisse mitschickt.
     share_text: NotRequired[str]
+
+
+class QuizPinQuestion(TypedDict):
+    slug: str
+    name: str
+    kind_label: str
+
+
+class QuizPinRound(TypedDict):
+    questions: list[QuizPinQuestion]
+
+
+class QuizPinResult(TypedDict):
+    """Auflösung von „Wo liegt das?": Entfernung zur Geometrie, Punkte, und
+    die Geometrie selbst zum Einzeichnen."""
+    distance_m: int
+    distance_label: str
+    points: int
+    name: str
+    geojson: Any
+    lat: float
+    lon: float
 
 
 class QuizMapQuestion(TypedDict):
@@ -3351,12 +3395,70 @@ class BudgetHoldings(TypedDict):
     texts: Any
 
 
+class FinanceBudgetRow(TypedDict):
+    """Eine Investitionszeile des Gesamtfinanzhaushalts (Anlage 006).
+
+    ``kind`` trennt den Ansatz des Planjahres (``budget``) von der
+    Finanzplanung (``financial_plan``); ``plan_budget_year`` sagt, aus welchem
+    Plan die Zahl stammt. ``role`` ist nur bei den Summen und dem Saldo
+    gesetzt, die übrigen Zeilen sind die Auszahlungs- und Einzahlungsarten."""
+    plan_budget_year: int
+    year: int
+    kind: str
+    nr: int
+    label: str
+    role: str | None
+    amount: float
+    is_total: int
+    herkunft_id: int | None
+
+
+class GrantRow(TypedDict):
+    """Ein Zuschuss an Dritte aus der Übersicht in Anlage 003.
+
+    ``description`` ist die Spalte „Beschreibung der Zuwendung" und nennt
+    meist den Empfänger („Zuschuss Reparaturrat"), ``note`` die Erläuterung.
+    ``amount`` ist der Ansatz im Planjahr, ``amount_prior`` der im Vorjahr —
+    beide aus demselben Plan. ``cash``: 1 bar, 0 unbar, ``None`` ohne Angabe
+    (2019 führt die Spalte nicht). ``lfd_nr`` ist die Nummer der Stadt und
+    nicht eindeutig; die Reihenfolge ist ``seq``."""
+    budget_year: int
+    seq: int
+    lfd_nr: int
+    sub_budget_no: int
+    product_no: str | None
+    product_name: str | None
+    description: str
+    amount_prior: float | None
+    amount: float | None
+    note: str | None
+    cash: int | None
+    herkunft_id: int | None
+
+
+class GrantTotal(TypedDict):
+    """Je Plan und Teilhaushalt: Zahl und Summe der Zuschüsse im Planjahr."""
+    budget_year: int
+    sub_budget_no: int
+    n: int
+    amount: float
+
+
+class BudgetGrants(TypedDict):
+    years: list[int]
+    year: int | None
+    rows: list[GrantRow]
+    totals: list[GrantTotal]
+    provenance: Provenance
+
+
 class BudgetInvestments(TypedDict):
     financial_budget: list[Any]
     investments: list[Any]
     provenance: Provenance
     years: Any
     sub_budgets: list[Any]
+    finance_budget: NotRequired[list[FinanceBudgetRow]]
 
 
 class BudgetInvestmentProgram(TypedDict):
@@ -3971,7 +4073,33 @@ class Guarantees(TypedDict):
     templates: list[GuaranteeTemplate]
 
 
+class DebtPlanRow(TypedDict):
+    """Der voraussichtliche Stand der Schulden laut Haushaltsplan (Anlage 003).
+
+    ``entity`` ist „Kernhaushalt" oder ein Eigenbetrieb, ``code`` die
+    Schuldenart (1.2 Kredite für Investitionen … 5) oder ``total``.
+    ``start_prior`` ist der Stand zu Beginn des Vorjahres, ``start_expected``
+    der erwartete zu Beginn des Planjahres — beide in Euro."""
+    budget_year: int
+    entity: str
+    code: str
+    label: str
+    start_prior: float | None
+    start_expected: float | None
+    herkunft_id: int | None
+
+
+class CommitmentRow(TypedDict):
+    """Eine Fälligkeit aus den Verpflichtungsermächtigungen eines Plans."""
+    budget_year: int
+    due_year: int
+    amount: float
+    herkunft_id: int | None
+
+
 class BudgetDebt(TypedDict):
+    debt_plan: NotRequired[list[DebtPlanRow]]
+    commitments: NotRequired[list[CommitmentRow]]
     scope_note: Any
     column_kinds: list[Any]
     guarantees: Guarantees

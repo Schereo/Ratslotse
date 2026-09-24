@@ -564,6 +564,27 @@ def _bestand_ergebnishaushalt(store: CouncilStore) -> set[tuple]:
     return {(j,) for j in store.ergebnishaushalt_jahrgaenge()}
 
 
+def _bestand_finanzhaushalt(store: CouncilStore) -> set[tuple]:
+    """Wie beim Gesamtergebnishaushalt: ein Dokument, ein Plan-Jahrgang."""
+    return {(j,) for j in store.finanzhaushalt_jahrgaenge()}
+
+
+def _einheiten_uebersichten(row: dict) -> set[tuple]:
+    """Der Jahrgang aus dem Label („2026 003 Vw Übersichten …") oder dem Kopf
+    („Haushaltsplan 2020"). Die alten Labels heißen nur „003 Übersichten";
+    ohne Jahr bleibt die Einheit leer, das Skript liest sie trotzdem — es nimmt
+    das Planjahr aus dem Tabellenkopf."""
+    for text in (row.get("label") or "", (row.get("kopf") or "")[:600]):
+        m = re.search(r"\b(20[1-3]\d)\b", text)
+        if m:
+            return {(int(m.group(1)),)}
+    return set()
+
+
+def _bestand_uebersichten(store: CouncilStore) -> set[tuple]:
+    return {(j,) for j in store.zuschuss_jahrgaenge()}
+
+
 def _einheiten_stellenplan(row: dict) -> set[tuple]:
     """Je Dokument zwei Einheiten: Teil A und Teil B.
 
@@ -729,6 +750,26 @@ def _marke_eigenbetriebe_abschluss(store: CouncilStore) -> int | None:
     try:
         r = store._conn.execute(  # noqa: SLF001
             f"SELECT MAX(kvonr) FROM council_templates WHERE {TITEL_SQL}",
+            list(TITEL_MUSTER)).fetchone()
+    except sqlite3.OperationalError as fehler:
+        if not tabelle_fehlt(fehler):
+            raise
+        return None
+    return r[0] if r and r[0] is not None else None
+
+
+def _bestand_gesellschaft_abschluss(store: CouncilStore) -> set[tuple]:
+    """``(Jahr, Gesellschaft)`` — wie bei den Eigenbetrieben: Jede
+    Gesellschaft legt ihren Abschluss in einer eigenen Vorlage vor."""
+    return store.company_account_einheiten()
+
+
+def _marke_gesellschaft_abschluss(store: CouncilStore) -> int | None:
+    """Die jüngste Jahresabschluss-Vorlage einer Gesellschaft (``kvonr``)."""
+    from council.gesellschaft_abschluss import TITEL_MUSTER, TITEL_SQL
+    try:
+        r = store._conn.execute(  # noqa: SLF001
+            f"SELECT MAX(t.kvonr) FROM council_templates t WHERE {TITEL_SQL}",
             list(TITEL_MUSTER)).fetchone()
     except sqlite3.OperationalError as fehler:
         if not tabelle_fehlt(fehler):
@@ -2347,6 +2388,7 @@ def _kette_pruefen(gelesen: dict[int, list[dict]], p: Protokoll) -> dict:
 # --- Die Registry -----------------------------------------------------------
 
 from council.eigenbetriebe_abschluss import TITEL_MUSTER as _EIGENBETRIEBE_TITEL  # noqa: E402
+from council.gesellschaft_abschluss import TITEL_MUSTER as _GESELLSCHAFTEN_TITEL  # noqa: E402
 
 QUELLEN: dict[str, Finanzquelle] = {}
 
@@ -2538,6 +2580,59 @@ for _q in (
         einheiten_von=_einheiten_ergebnishaushalt,
         balance=_bestand_ergebnishaushalt,
         einlesen=lies_ergebnishaushalte,
+    ),
+    Finanzquelle(
+        key="finance_budget",
+        label="Gesamtfinanzhaushalt (Planjahre)",
+        was="Was die Stadt im Planjahr an Geld ein- und auszahlen will — "
+            "laufend, für Investitionen und zur Finanzierung, samt "
+            "Finanzplanung für die drei folgenden Jahre.",
+        tabelle="council_finance_budget",
+        # Anlage 006 desselben Haushaltsplans wie 005: gleicher Takt.
+        erwarteter_monat=10,
+        versatz=-1,
+        herkunft="ris",
+        erkennung=Erkennung(
+            # Dieselbe Begründung wie beim Gesamtergebnishaushalt: Das Label
+            # trifft genau die acht Anlagen 006 (2019–2026, 24.09.2026).
+            label_muster=("%Gesamtfinanzhaushalt%",),
+            mindest_seiten=3,
+            ordnung="document_id",
+        ),
+        einheiten_von=_einheiten_ergebnishaushalt,
+        balance=_bestand_finanzhaushalt,
+        # Kein `einlesen`: Die Spalten brauchen Wortkoordinaten, die der
+        # gespeicherte Textauszug nicht hergibt (s. council/finance_budget.py)
+        # — der Lauf lädt die vier Seiten deshalb selbst, wie der Vollzug.
+        nachschub="scripts/ingest_finanzhaushalt.py (lädt die PDFs selbst)",
+        lauf=("scripts/ingest_finanzhaushalt.py",),
+    ),
+    Finanzquelle(
+        key="grants",
+        label="Zuschüsse an Dritte",
+        was="Wer von der Stadt Zuschüsse bekommt — Vereine, Träger, "
+            "Gesellschaften —, je Zuschuss Zweck, Betrag im Planjahr und im "
+            "Vorjahr, aus der Übersicht in Anlage 003 des Haushaltsplans.",
+        tabelle="council_grants",
+        # Anlage 003 desselben Haushaltsplans wie 005 und 006: gleicher Takt.
+        erwarteter_monat=10,
+        versatz=-1,
+        herkunft="ris",
+        erkennung=Erkennung(
+            # Trifft die acht Anlagen 2019–2026 und ihre Dubletten (zweimal
+            # dieselbe Anlage in einer anderen Vorlage); das Sammel-PDF
+            # „2-5 Vorbericht, Übersichten, …" (280 Seiten) sortiert das
+            # Skript über die Seitenzahl aus.
+            label_muster=("%bersichten%",),
+            mindest_seiten=30,
+            ordnung="document_id",
+        ),
+        einheiten_von=_einheiten_uebersichten,
+        balance=_bestand_uebersichten,
+        # Kein `einlesen`: Die Tabelle braucht Wortkoordinaten — der Lauf lädt
+        # die PDFs selbst, wie beim Gesamtfinanzhaushalt.
+        nachschub="scripts/ingest_uebersichten.py (lädt die PDFs selbst)",
+        lauf=("scripts/ingest_uebersichten.py",),
     ),
     Finanzquelle(
         key="stellenplan",
@@ -2850,6 +2945,26 @@ for _q in (
         balance=_bestand_eigenbetriebe_abschluss,
     ),
     Finanzquelle(
+        key="company_accounts",
+        label="Jahresabschlüsse der Gesellschaften",
+        was="Bilanzsumme und Jahresergebnis der städtischen Gesellschaften "
+            "(VWG, OTM, VHS, Weser-Ems Halle, Bäder, Stadion) aus dem "
+            "Jahresabschluss — ein Jahr früher, als der Beteiligungsbericht "
+            "sie nennt.",
+        tabelle="council_company_accounts",
+        unit="Gesellschaften",
+        # Die Abschlüsse kommen im Sommer nach dem Geschäftsjahr in den Rat
+        # (2025: VWG und OTM im Juni, WEH und Stadion im Juli 2026).
+        erwarteter_monat=8,
+        versatz=1,
+        herkunft="ris",
+        erkennung=Erkennung(vorlagen_muster=tuple(_GESELLSCHAFTEN_TITEL), oder=True),
+        marke=_marke_gesellschaft_abschluss,
+        nachschub="scripts/ingest_gesellschaft_abschluss.py (lädt Bilanz und GuV selbst)",
+        lauf=("scripts/ingest_gesellschaft_abschluss.py",),
+        balance=_bestand_gesellschaft_abschluss,
+    ),
+    Finanzquelle(
         key="schulden",
         label="Schuldenstand",
         was="Wie viel die Stadt schuldet und wie sich das seit 1995 entwickelt "
@@ -3001,14 +3116,14 @@ for _q in (
 #: weil er zeitlich dazwischenliegt: Erst was die Stadt vorhat, dann wie es im
 #: laufenden Jahr läuft, dann wie es ausgegangen ist. Die drei nebeneinander
 #: sind die Geschichte eines Haushaltsjahres.
-REIHENFOLGE = ("haushaltsplan", "income_budget", "investitionen",
+REIHENFOLGE = ("haushaltsplan", "income_budget", "finance_budget", "grants", "investitionen",
                "investitionsprogramm", "budget_execution",
                "jahresabschluss", "teilhaushalt",
                "stellenplan", "indicators", "rpa_fundstelle",
                "pruefungsfeststellungen",
                "konzernabschluss", "beteiligungsbericht", "fees",
                "budget_bylaw",
-               "wirtschaftsplan", "enterprise_accounts",
+               "wirtschaftsplan", "enterprise_accounts", "company_accounts",
                "schulden", "loans", "liquidity",
                "lsn_steuerkraft", "lsn_realsteuern", "lsn_gewerbesteuer")
 

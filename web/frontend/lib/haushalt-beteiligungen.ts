@@ -93,6 +93,9 @@ export type Kennzahl = {
   /** In wie vielen Berichten dieser Wert übereinstimmend steht. */
   n_reports: number;
   herkunft_id: number | null;
+  /** Beteiligungsbericht oder — für das Jahr, das der Bericht noch nicht
+   *  hat — der Jahresabschluss der Gesellschaft. */
+  source?: "holdings_report" | "annual_accounts";
 };
 
 export type Konzernzeile = {

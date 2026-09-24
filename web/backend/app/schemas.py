@@ -476,6 +476,15 @@ class QuizBlitzIn(BaseModel):
     answered: int = Field(ge=0, le=40)
 
 
+class QuizDuelIn(BaseModel):
+    question_ids: list[int] = Field(min_length=1, max_length=10)
+    correct: int = Field(ge=0, le=10)
+
+
+class QuizDuelDoneIn(BaseModel):
+    correct: int = Field(ge=0, le=10)
+
+
 class QuizRateIn(BaseModel):
     question_id: int
     verdict: str = Field(pattern="^(gut|schlecht)$")
@@ -510,6 +519,12 @@ class UserQuizAnswerIn(BaseModel):
     question_id: int
     selected_index: int | None = Field(default=None, ge=0, le=3)  # Multiple Choice
     value: float | None = None                                    # Schätzfrage (Slider)
+
+
+class QuizPinIn(BaseModel):
+    slug: str = Field(min_length=1, max_length=120)
+    lat: float = Field(ge=-90, le=90)
+    lon: float = Field(ge=-180, le=180)
 
 
 class QuizMapIn(BaseModel):

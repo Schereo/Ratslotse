@@ -137,6 +137,14 @@ export type QuellenSchluessel =
   | "lsn_gewerbesteuer"
   // A11: Die Investitionen des Finanzhaushalts.
   | "investitionen"
+  // Und dieselbe Frage aus dem Haushaltsplan selbst (Anlage 006), mit
+  // Finanzplanung. Eigener Schlüssel: anderes Dokument, andere Fassung
+  // (Entwurf statt Open-Data-Datei), andere Probe.
+  | "finance_budget"
+  // Die Zuschüsse an Dritte aus derselben Planfamilie (Anlage 003).
+  | "grants"
+  // Und aus derselben Anlage: Schuldenstand laut Plan und die VE.
+  | "debt_plan"
   | "investitionsprogramm"
   // Und das Ist-Gegenstück aus dem Statistischen Jahrbuch. Bewusst ein
   // eigener Schlüssel und nicht ein zweiter Absatz unter `investitionen`:
@@ -166,7 +174,11 @@ export type QuellenSchluessel =
   | "donations"
   // A12: Der Beteiligungsbericht — die einzige Quelle des Bereichs, die ein
   // eigener Cron von oldenburg.de herunterlädt.
-  | "beteiligungsbericht";
+  | "beteiligungsbericht"
+  // Und die Jahresabschlüsse der Gesellschaften selbst: dieselben Kennzahlen,
+  // ein Jahr früher. Eigener Schlüssel, weil es andere Dokumente sind (die
+  // Anlagen der Beschlussvorlage im Ratsinformationssystem).
+  | "company_accounts";
 
 export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
   plan: {
@@ -836,6 +848,51 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     art: "csv",
     url: "https://opendata.oldenburg.de/dataset/haushaltsplan-stadt-oldenburg-2025",
   },
+  finance_budget: {
+    title: "Gesamtfinanzhaushalte der Stadt Oldenburg (Anlage 006)",
+    citation:
+      "Anlage 006 des Haushaltsplans: alle Ein- und Auszahlungen des Planjahres — " +
+      "laufende Verwaltungstätigkeit, Investitionen, Finanzierung — und dahinter drei " +
+      "Jahre mittelfristige Finanzplanung. Wir zeigen die Investitionszeilen. " +
+      "Gelesen über die Lage der Zahlen im PDF, weil der Textauszug leere Zellen " +
+      "verschluckt; jede der sechs Spalten muss ihre Summen und Salden selbst ergeben. " +
+      "Es ist der Entwurf der Verwaltung: Die Anlage hängt an der Einbringungs-Vorlage, " +
+      "nicht am Beschluss.",
+    herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
+    standWort: "Haushaltspläne",
+    as_of: "Haushaltspläne 2019–2026, Stand der Einbringung",
+    art: "pdf",
+    url: "https://buergerinfo.oldenburg.de",
+  },
+  debt_plan: {
+    title: "Übersichten zum Schuldenstand und zu den Verpflichtungsermächtigungen (Anlage 003)",
+    citation:
+      "Teil der Übersichten des Haushaltsplans: der voraussichtliche Stand der Schulden zu " +
+      "Beginn des Planjahres, in 1.000 €, für den Kernhaushalt und nachrichtlich je " +
+      "Eigenbetrieb — und die Auszahlungen, die aus Verpflichtungsermächtigungen in den " +
+      "Folgejahren fällig werden. Es sind Erwartungen der Verwaltung beim Aufstellen des " +
+      "Plans, kein Ist. Der aufgelöste Eigenbetrieb Hafen (ab 2021) und der Abfallwirtschafts" +
+      "betrieb 2026 fehlen, weil die Übersicht für sie keine Summe nennt.",
+    herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
+    standWort: "Haushaltspläne",
+    as_of: "Haushaltspläne 2019–2026, Stand der Einbringung",
+    art: "pdf",
+    url: "https://buergerinfo.oldenburg.de",
+  },
+  grants: {
+    title: "Übersicht über die Zuweisungen und Zuschüsse an Dritte (Anlage 003)",
+    citation:
+      "Teil der Übersichten des Haushaltsplans: je Zuschuss Teilhaushalt, Produkt, " +
+      "Beschreibung der Zuwendung, Ansatz im Planjahr und im Vorjahr, Erläuterung und " +
+      "ob bar oder unbar. Vereine und Träger stehen dort mit Namen. Es ist der Entwurf " +
+      "der Verwaltung: Die Anlage hängt an der Einbringungs-Vorlage, spätere Änderungen " +
+      "des Rates stehen nicht darin. Was tatsächlich ausgezahlt wurde, sagt sie nicht.",
+    herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
+    standWort: "Haushaltspläne",
+    as_of: "Haushaltspläne 2019–2026, Stand der Einbringung",
+    art: "pdf",
+    url: "https://buergerinfo.oldenburg.de",
+  },
   // A12: Das Investitionsprogramm (/haushalt/investitionen, Block „Die
   // einzelnen Vorhaben"). Die Ebene unter A11 — und aus einer ganz anderen
   // Quelle: nicht dem Open-Data-Portal, sondern dem Haushaltsplan selbst.
@@ -880,5 +937,20 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     as_of: "Berichtsjahre 2022–2024, Kennzahlen ab 2017",
     art: "pdf",
     url: "https://www.oldenburg.de/startseite/politik/verwaltung-finanzen/finanzen/beteiligungsbericht.html",
+  },
+  company_accounts: {
+    title: "Jahresabschlüsse der städtischen Gesellschaften",
+    citation:
+      "Bilanz und Gewinn- und Verlustrechnung als Anlagen der Beschlussvorlage " +
+      "„Jahresabschluss 20xx“ im Ratsinformationssystem — Bilanzsumme und " +
+      "Jahresüberschuss bzw. -fehlbetrag. Sie liegen dem Rat im Sommer nach dem " +
+      "Geschäftsjahr vor, gut ein Jahr vor dem Beteiligungsbericht; wo beide " +
+      "dasselbe Jahr nennen, gilt der Bericht. Eine Eigenkapitalquote nennen die " +
+      "Anlagen nicht. Einige ältere Anlagen (2018–2021) sind Scans ohne Text.",
+    herausgeber: "Die Gesellschaften, vorgelegt von der Stadt Oldenburg",
+    standWort: "Geschäftsjahre",
+    as_of: "Geschäftsjahre 2017–2025",
+    art: "pdf",
+    url: "https://buergerinfo.oldenburg.de",
   },
 };

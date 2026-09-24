@@ -30,7 +30,7 @@ class QuizMixin(StoreBasis):
 
     # Themen ohne Entität dahinter (kuratierte Spezial-Gebiete) → Anzeigename.
     _THEMA_LABELS = {"haushalt": "Stadt-Haushalt", "antraege": "Anträge im Rat",
-                     "ratswahl-2026": "Ratswahl 2026"}
+                     "ratswahl-2026": "Ratswahl 2026", "aktuell": "Aus den letzten Sitzungen"}
 
     def save_quiz_questions(self, rows: list[dict]) -> int:
         """Neue Quizfragen speichern; Duplikate (gleicher content_hash) werden
@@ -170,6 +170,47 @@ class QuizMixin(StoreBasis):
         picked = (fresh + used)[:limit]
         return [self._quiz_row(r, with_answer=False) for r in picked]
 
+    def quiz_recent_decisions(self, sessions: int, min_interest: int) -> list[sqlite3.Row]:
+        """Die Beschlüsse der jüngsten ``sessions`` Sitzungstage mit Gesprächswert
+        — Rohstoff für „Aus den letzten Sitzungen" (Plan Q10). Nach Tagen, nicht
+        nach Wochen: In der Sommerpause wäre „diese Woche" leer."""
+        days = [r[0] for r in self._conn.execute(
+            "SELECT DISTINCT s.session_date FROM council_sessions s "
+            "JOIN council_decisions d ON d.ksinr = s.ksinr "
+            "WHERE COALESCE(d.interest, 0) >= ? ORDER BY s.session_date DESC LIMIT ?",
+            (min_interest, sessions)).fetchall()]
+        if not days:
+            return []
+        ph = ",".join("?" * len(days))
+        return self._conn.execute(
+            f"SELECT d.id, d.title, d.outcome, d.raw_result, d.amount_eur, d.simple_summary, d.interest, "
+            f"       s.committee, s.session_date FROM council_decisions d "
+            f"JOIN council_sessions s ON s.ksinr = d.ksinr "
+            f"WHERE s.session_date IN ({ph}) AND d.kind = 'decision' AND COALESCE(d.interest, 0) >= ? "
+            f"ORDER BY d.interest DESC LIMIT 25", (*days, min_interest)).fetchall()
+
+    def retire_stale_quiz_area(self, area_type: str, area_key: str, older_than: str) -> int:
+        """Fragen eines Gebiets ausmustern, die vor ``older_than`` (ISO)
+        entstanden sind — damit „aktuell" wahr bleibt."""
+        with self._conn:
+            cur = self._conn.execute(
+                "UPDATE council_quiz_questions SET status = 'retired' "
+                "WHERE area_type = ? AND area_key = ? AND status = 'active' AND generated_at < ?",
+                (area_type, area_key, older_than))
+        return cur.rowcount
+
+    def quiz_pin_rows(self, min_decisions: int, slug: str | None = None) -> list[sqlite3.Row]:
+        """Verortete Orte mit Geometrie für „Wo liegt das?" (``council.quiz_pins``)
+        — alle ab ``min_decisions`` Beschlüssen, oder genau einer (``slug``)."""
+        sql = ("SELECT e.slug, e.name, m.lat, m.lon, m.geojson FROM council_entities e "
+               "JOIN council_entity_meta m ON m.slug = e.slug "
+               "WHERE e.kind = 'place' AND m.lat IS NOT NULL AND m.geojson IS NOT NULL AND e.n >= ?")
+        params: list = [min_decisions]
+        if slug:
+            sql += " AND e.slug = ?"
+            params.append(slug)
+        return self._conn.execute(sql, params).fetchall()
+
     #: Längste Antwort, die in einer Blitzrunde noch schnell zu lesen ist.
     BLITZ_MAX_OPTION = 45
 
@@ -244,6 +285,53 @@ class QuizMixin(StoreBasis):
             self._conn.executemany(
                 "UPDATE council_quiz_questions SET appeal = ? WHERE id = ?",
                 [(n, qid) for qid, n in notes.items()])
+
+    def quiz_motion_context(self, decision_id: int) -> dict:
+        """Was über einen Antrag vorliegt, um ihn zu beschreiben (ohne sein
+        Ergebnis zu verraten): Beschlusstext und die Wortbeiträge zu seinem
+        Tagesordnungspunkt — in allen Sitzungen, in denen er mit demselben
+        Titel stand (vertagt, im Ausschuss, im Rat)."""
+        d = self._conn.execute(
+            "SELECT id, ksinr, item_number, title, official_text FROM council_decisions WHERE id = ?",
+            (decision_id,)).fetchone()
+        if not d:
+            return {"official_text": "", "speeches": []}
+        same = self._conn.execute(
+            "SELECT ksinr, item_number FROM council_decisions WHERE title = ?", (d["title"],)).fetchall()
+        speeches: list[dict] = []
+        for row in same:
+            num = (row["item_number"] or "").replace("Ö", "").replace("N", "").strip()
+            if not num:
+                continue
+            speeches += [dict(r) for r in self._conn.execute(
+                "SELECT speaker, party, text FROM council_speeches "
+                "WHERE ksinr = ? AND (top = ? OR top LIKE ?) ORDER BY position",
+                (row["ksinr"], num, num + " %")).fetchall()]
+        return {"official_text": d["official_text"] or "", "speeches": speeches}
+
+    def retire_quiz_area_except(self, area_type: str, area_key: str, keep: list[str]) -> int:
+        """Aktive Fragen eines Gebiets ausmustern, deren Schlüssel nicht in
+        ``keep`` steht — für Gebiete, die ein Lauf komplett neu baut (die
+        Antrags-Fragen): Was nicht mehr gebaut wird, soll nicht stehen bleiben."""
+        rows = self._conn.execute(
+            "SELECT id, content_hash FROM council_quiz_questions "
+            "WHERE area_type = ? AND area_key = ? AND status = 'active'", (area_type, area_key)).fetchall()
+        gone = [r["id"] for r in rows if r["content_hash"] not in set(keep)]
+        if gone:
+            with self._conn:
+                self._conn.executemany(
+                    "UPDATE council_quiz_questions SET status = 'retired' WHERE id = ?", [(i,) for i in gone])
+        return len(gone)
+
+    def quiz_hints_by_hash(self, hashes: list[str]) -> dict[str, str]:
+        """Schon gespeicherte Tipps zu stabilen Schlüsseln — damit der
+        Wochenlauf eine Beschreibung nicht jedes Mal neu schreiben lässt."""
+        if not hashes:
+            return {}
+        ph = ",".join("?" * len(hashes))
+        return {r["content_hash"]: r["hint"] for r in self._conn.execute(
+            f"SELECT content_hash, hint FROM council_quiz_questions WHERE content_hash IN ({ph}) "
+            f"AND hint IS NOT NULL", hashes).fetchall()}
 
     def quiz_motion_rows(self, min_interest: int) -> list[sqlite3.Row]:
         """Beschlüsse mit klarem Ausgang und Gesprächswert — der Rohstoff der

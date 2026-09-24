@@ -4522,6 +4522,20 @@
             "title": "Column Kinds",
             "type": "array"
           },
+          "commitments": {
+            "items": {
+              "$ref": "#/components/schemas/CommitmentRow"
+            },
+            "title": "Commitments",
+            "type": "array"
+          },
+          "debt_plan": {
+            "items": {
+              "$ref": "#/components/schemas/DebtPlanRow"
+            },
+            "title": "Debt Plan",
+            "type": "array"
+          },
           "guarantees": {
             "$ref": "#/components/schemas/Guarantees"
           },
@@ -4697,6 +4711,54 @@
         "title": "BudgetFixedAssets",
         "type": "object"
       },
+      "BudgetGrants": {
+        "properties": {
+          "provenance": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Herkunft"
+            },
+            "title": "Provenance",
+            "type": "object"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/GrantRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "totals": {
+            "items": {
+              "$ref": "#/components/schemas/GrantTotal"
+            },
+            "title": "Totals",
+            "type": "array"
+          },
+          "year": {
+            "title": "Year",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "years": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Years",
+            "type": "array"
+          }
+        },
+        "required": [
+          "years",
+          "year",
+          "rows",
+          "totals",
+          "provenance"
+        ],
+        "title": "BudgetGrants",
+        "type": "object"
+      },
       "BudgetGroup": {
         "properties": {
           "consolidated": {
@@ -4831,6 +4893,13 @@
       },
       "BudgetInvestments": {
         "properties": {
+          "finance_budget": {
+            "items": {
+              "$ref": "#/components/schemas/FinanceBudgetRow"
+            },
+            "title": "Finance Budget",
+            "type": "array"
+          },
           "financial_budget": {
             "items": {},
             "title": "Financial Budget",
@@ -5720,6 +5789,38 @@
         "title": "ClientErrorIn",
         "type": "object"
       },
+      "CommitmentRow": {
+        "description": "Eine Fälligkeit aus den Verpflichtungsermächtigungen eines Plans.",
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          },
+          "budget_year": {
+            "title": "Budget Year",
+            "type": "integer"
+          },
+          "due_year": {
+            "title": "Due Year",
+            "type": "integer"
+          },
+          "herkunft_id": {
+            "title": "Herkunft Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "budget_year",
+          "due_year",
+          "amount",
+          "herkunft_id"
+        ],
+        "title": "CommitmentRow",
+        "type": "object"
+      },
       "CommitteeDetail": {
         "properties": {
           "decisions_year": {
@@ -6220,6 +6321,59 @@
           "month_name"
         ],
         "title": "DataLayer",
+        "type": "object"
+      },
+      "DebtPlanRow": {
+        "description": "Der voraussichtliche Stand der Schulden laut Haushaltsplan (Anlage 003).\n\n``entity`` ist „Kernhaushalt\" oder ein Eigenbetrieb, ``code`` die\nSchuldenart (1.2 Kredite für Investitionen … 5) oder ``total``.\n``start_prior`` ist der Stand zu Beginn des Vorjahres, ``start_expected``\nder erwartete zu Beginn des Planjahres — beide in Euro.",
+        "properties": {
+          "budget_year": {
+            "title": "Budget Year",
+            "type": "integer"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "entity": {
+            "title": "Entity",
+            "type": "string"
+          },
+          "herkunft_id": {
+            "title": "Herkunft Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "start_expected": {
+            "title": "Start Expected",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "start_prior": {
+            "title": "Start Prior",
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "budget_year",
+          "entity",
+          "code",
+          "label",
+          "start_prior",
+          "start_expected",
+          "herkunft_id"
+        ],
+        "title": "DebtPlanRow",
         "type": "object"
       },
       "DecisionDetail": {
@@ -11339,6 +11493,66 @@
         "title": "FeedbackNotifyIn",
         "type": "object"
       },
+      "FinanceBudgetRow": {
+        "description": "Eine Investitionszeile des Gesamtfinanzhaushalts (Anlage 006).\n\n``kind`` trennt den Ansatz des Planjahres (``budget``) von der\nFinanzplanung (``financial_plan``); ``plan_budget_year`` sagt, aus welchem\nPlan die Zahl stammt. ``role`` ist nur bei den Summen und dem Saldo\ngesetzt, die übrigen Zeilen sind die Auszahlungs- und Einzahlungsarten.",
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          },
+          "herkunft_id": {
+            "title": "Herkunft Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "is_total": {
+            "title": "Is Total",
+            "type": "integer"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "nr": {
+            "title": "Nr",
+            "type": "integer"
+          },
+          "plan_budget_year": {
+            "title": "Plan Budget Year",
+            "type": "integer"
+          },
+          "role": {
+            "title": "Role",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "year": {
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "plan_budget_year",
+          "year",
+          "kind",
+          "nr",
+          "label",
+          "role",
+          "amount",
+          "is_total",
+          "herkunft_id"
+        ],
+        "title": "FinanceBudgetRow",
+        "type": "object"
+      },
       "Finances": {
         "properties": {
           "by_field": {
@@ -11616,6 +11830,125 @@
           "goals"
         ],
         "title": "Goals",
+        "type": "object"
+      },
+      "GrantRow": {
+        "description": "Ein Zuschuss an Dritte aus der Übersicht in Anlage 003.\n\n``description`` ist die Spalte „Beschreibung der Zuwendung\" und nennt\nmeist den Empfänger („Zuschuss Reparaturrat\"), ``note`` die Erläuterung.\n``amount`` ist der Ansatz im Planjahr, ``amount_prior`` der im Vorjahr —\nbeide aus demselben Plan. ``cash``: 1 bar, 0 unbar, ``None`` ohne Angabe\n(2019 führt die Spalte nicht). ``lfd_nr`` ist die Nummer der Stadt und\nnicht eindeutig; die Reihenfolge ist ``seq``.",
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "amount_prior": {
+            "title": "Amount Prior",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "budget_year": {
+            "title": "Budget Year",
+            "type": "integer"
+          },
+          "cash": {
+            "title": "Cash",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "herkunft_id": {
+            "title": "Herkunft Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "lfd_nr": {
+            "title": "Lfd Nr",
+            "type": "integer"
+          },
+          "note": {
+            "title": "Note",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "product_name": {
+            "title": "Product Name",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "product_no": {
+            "title": "Product No",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          },
+          "sub_budget_no": {
+            "title": "Sub Budget No",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "budget_year",
+          "seq",
+          "lfd_nr",
+          "sub_budget_no",
+          "product_no",
+          "product_name",
+          "description",
+          "amount_prior",
+          "amount",
+          "note",
+          "cash",
+          "herkunft_id"
+        ],
+        "title": "GrantRow",
+        "type": "object"
+      },
+      "GrantTotal": {
+        "description": "Je Plan und Teilhaushalt: Zahl und Summe der Zuschüsse im Planjahr.",
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          },
+          "budget_year": {
+            "title": "Budget Year",
+            "type": "integer"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "sub_budget_no": {
+            "title": "Sub Budget No",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "budget_year",
+          "sub_budget_no",
+          "n",
+          "amount"
+        ],
+        "title": "GrantTotal",
         "type": "object"
       },
       "GuaranteeRow": {
@@ -18168,6 +18501,137 @@
         "title": "QuizDistrictProgress",
         "type": "object"
       },
+      "QuizDuel": {
+        "description": "Ein Duell (Plan Q9). ``questions`` ohne Lösung; ``players`` erst,\nwenn ich gespielt habe oder das Duell meins ist — sonst verriete die\nListe, wie schwer die Runde ist, bevor man sie spielt.",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "mine": {
+            "title": "Mine",
+            "type": "boolean"
+          },
+          "owner_correct": {
+            "title": "Owner Correct",
+            "type": "integer"
+          },
+          "owner_name": {
+            "title": "Owner Name",
+            "type": "string"
+          },
+          "played": {
+            "title": "Played",
+            "type": "boolean"
+          },
+          "players": {
+            "items": {
+              "$ref": "#/components/schemas/QuizDuelPlayer"
+            },
+            "title": "Players",
+            "type": "array"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/QuizQuestion"
+            },
+            "title": "Questions",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "code",
+          "owner_name",
+          "owner_correct",
+          "total",
+          "mine",
+          "played",
+          "questions",
+          "players"
+        ],
+        "title": "QuizDuel",
+        "type": "object"
+      },
+      "QuizDuelCreated": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "title": "QuizDuelCreated",
+        "type": "object"
+      },
+      "QuizDuelDoneIn": {
+        "properties": {
+          "correct": {
+            "maximum": 10.0,
+            "minimum": 0.0,
+            "title": "Correct",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "correct"
+        ],
+        "title": "QuizDuelDoneIn",
+        "type": "object"
+      },
+      "QuizDuelIn": {
+        "properties": {
+          "correct": {
+            "maximum": 10.0,
+            "minimum": 0.0,
+            "title": "Correct",
+            "type": "integer"
+          },
+          "question_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "maxItems": 10,
+            "minItems": 1,
+            "title": "Question Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "question_ids",
+          "correct"
+        ],
+        "title": "QuizDuelIn",
+        "type": "object"
+      },
+      "QuizDuelPlayer": {
+        "properties": {
+          "correct": {
+            "title": "Correct",
+            "type": "integer"
+          },
+          "me": {
+            "title": "Me",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "correct",
+          "me"
+        ],
+        "title": "QuizDuelPlayer",
+        "type": "object"
+      },
       "QuizFlagged": {
         "properties": {
           "flagged": {
@@ -18386,6 +18850,117 @@
           "questions"
         ],
         "title": "QuizOwnQuestions",
+        "type": "object"
+      },
+      "QuizPinIn": {
+        "properties": {
+          "lat": {
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Lat",
+            "type": "number"
+          },
+          "lon": {
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Lon",
+            "type": "number"
+          },
+          "slug": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "lat",
+          "lon"
+        ],
+        "title": "QuizPinIn",
+        "type": "object"
+      },
+      "QuizPinQuestion": {
+        "properties": {
+          "kind_label": {
+            "title": "Kind Label",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "kind_label"
+        ],
+        "title": "QuizPinQuestion",
+        "type": "object"
+      },
+      "QuizPinResult": {
+        "description": "Auflösung von „Wo liegt das?\": Entfernung zur Geometrie, Punkte, und\ndie Geometrie selbst zum Einzeichnen.",
+        "properties": {
+          "distance_label": {
+            "title": "Distance Label",
+            "type": "string"
+          },
+          "distance_m": {
+            "title": "Distance M",
+            "type": "integer"
+          },
+          "geojson": {
+            "title": "Geojson"
+          },
+          "lat": {
+            "title": "Lat",
+            "type": "number"
+          },
+          "lon": {
+            "title": "Lon",
+            "type": "number"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "points": {
+            "title": "Points",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "distance_m",
+          "distance_label",
+          "points",
+          "name",
+          "geojson",
+          "lat",
+          "lon"
+        ],
+        "title": "QuizPinResult",
+        "type": "object"
+      },
+      "QuizPinRound": {
+        "properties": {
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/QuizPinQuestion"
+            },
+            "title": "Questions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "questions"
+        ],
+        "title": "QuizPinRound",
         "type": "object"
       },
       "QuizQuestion": {
@@ -26118,6 +26693,64 @@
         ]
       }
     },
+    "/api/council/budget/grants": {
+      "get": {
+        "description": "Wer von der Stadt Zuschüsse bekommt — die Übersicht aus Anlage 003.\n\n- ``rows``: die Zuschüsse eines Plans (Vorgabe: der jüngste), mit\n  ``sub_budget`` nur die eines Teilhaushalts, in Dokument-Reihenfolge,\n- ``totals``: je Plan und Teilhaushalt Zahl und Summe — die Reihe über\n  alle eingelesenen Pläne, damit die Seite den Verlauf zeigen kann,\n  ohne acht Jahrgänge Zeilen zu laden,\n- ``years``: die eingelesenen Pläne.\n\nVereine und Träger stehen mit Namen darin, wie in der Vorlage (Tims\nEntscheidung 24.09.2026); Privatpersonen führt die Übersicht nicht.\nEs ist der Entwurf der Verwaltung: Anlage 003 hängt an der\nEinbringungs-Vorlage (``council/uebersichten.py``).",
+        "operationId": "haushalt_zuschuesse_api_council_budget_grants_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "sub_budget",
+            "required": false,
+            "schema": {
+              "title": "Sub Budget",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "year",
+            "required": false,
+            "schema": {
+              "title": "Year",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetGrants"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Haushalt Zuschuesse",
+        "tags": [
+          "council"
+        ]
+      }
+    },
     "/api/council/budget/group": {
       "get": {
         "description": "Der Konzern Stadt Oldenburg — was der Kernhaushalt **nicht** zeigt.\n\nAlles auf einmal, weil die Aussage dieser Seite eine Differenz ist: Eine\nKonzernzahl allein sagt nichts, sie sagt erst etwas neben der\nKernverwaltung im selben Jahr.\n\n- ``years``: Jahrgänge mit eingelesenem Gesamtabschluss,\n- ``consolidated``: je Jahrgang die Summen des Konzerns (Erträge,\n  Aufwendungen, ordentliches Ergebnis, Gesamtjahresergebnis, Zins- und\n  Personalaufwand) samt bestandener Rechenprobe und Fundstelle,\n- ``entity``: wer den Konzern ausmacht — je Jahrgang und Aufstellung eine\n  Zeile pro Aufgabenträger, Beträge in **Euro** (der Bericht rundet sie\n  auf Tausend, daher die glatten Endziffern),\n- ``items``: die vollständige Gesamtergebnisrechnung je Jahrgang,\n- ``cross_check``: dieselbe Kernverwaltungs-Zahl aus zwei unabhängigen\n  Dokumenten — der Trägerzeile des Gesamtabschlusses und dem\n  Jahresabschluss, den wir getrennt eingelesen haben,\n- ``herkunft``: je ``herkunft_id`` Dokument, Fundstelle, bestandene Probe\n  samt Messwert und Stichtag. Die beiden Ebenen eines Jahrgangs tragen\n  **verschiedene** IDs: Sie stehen in verschiedenen Abschnitten des\n  Berichts und sind durch verschiedene Proben gedeckt.\n\nDer Gesamtabschluss ist **kein Haushalt**: Er wird rund zwei Jahre später\naufgestellt, folgt handelsrechtlichen Regeln und ist mit den Planzahlen\nauf ``/haushalt`` nicht verrechenbar. Die Seite sagt das; die API liefert\ndeshalb auch keine gemischten Summen, sondern beide Reihen getrennt.",
@@ -26164,7 +26797,7 @@
     },
     "/api/council/budget/investments": {
       "get": {
-        "description": "Was die Stadt bauen und kaufen will — die Investitionen des\nFinanzhaushalts, je Teilhaushalt.\n\nDie andere Hälfte des Haushaltsplans: Im Ergebnishaushalt, den der Rest des\nBereichs zeigt, steht keine einzige Investition (ein Schulneubau taucht dort\nnur als Abschreibung auf, verteilt über Jahrzehnte).\n\n- ``years``: Haushaltsjahre, für die Investitionen vorliegen,\n- ``sub_budgets``: je Jahr und Teilhaushalt Ein- und Auszahlungen aus\n  Investitionstätigkeit,\n- ``investments``: je Jahr die Summenzeile der Datei — das **Ziel der\n  Rechenprobe**, nicht unsere Addition,\n- ``financial_budget``: je Jahr der Gesamtbetrag aller Ein- und Auszahlungen,\n  also samt laufender Verwaltungstätigkeit. Die Bezugsgröße, die aus\n  „80,8 Mio. €\" erst eine Aussage macht — und die einzige Zahl hier ohne\n  Rechenprobe (eigene ``herkunft_id`` mit ``ungeprueft``, s. u.),\n- ``herkunft``: je ``herkunft_id`` Dokument, Fundstelle, bestandene Probe\n  samt Messwert. Die geprüften Zeilen und die Bezugsgröße tragen\n  **verschiedene** IDs; sie stehen in derselben Datei, aber nur die einen\n  sind durch deren Summenzeile gedeckt.\n\nZwei Grenzen, die die Seite nennt und die API deshalb nicht verwischt:\nDiese Zahlen sind **Plan**, nicht Ist, und sie nennen **kein einzelnes\nVorhaben** — „Verkehr und Straßenbau: 10,5 Mio. €\" sagt nicht, welche\nStraße.",
+        "description": "Was die Stadt bauen und kaufen will — die Investitionen des\nFinanzhaushalts, je Teilhaushalt.\n\nDie andere Hälfte des Haushaltsplans: Im Ergebnishaushalt, den der Rest des\nBereichs zeigt, steht keine einzige Investition (ein Schulneubau taucht dort\nnur als Abschreibung auf, verteilt über Jahrzehnte).\n\n- ``years``: Haushaltsjahre, für die Investitionen vorliegen,\n- ``sub_budgets``: je Jahr und Teilhaushalt Ein- und Auszahlungen aus\n  Investitionstätigkeit,\n- ``investments``: je Jahr die Summenzeile der Datei — das **Ziel der\n  Rechenprobe**, nicht unsere Addition,\n- ``financial_budget``: je Jahr der Gesamtbetrag aller Ein- und Auszahlungen,\n  also samt laufender Verwaltungstätigkeit. Die Bezugsgröße, die aus\n  „80,8 Mio. €\" erst eine Aussage macht — und die einzige Zahl hier ohne\n  Rechenprobe (eigene ``herkunft_id`` mit ``ungeprueft``, s. u.),\n- ``finance_budget``: die Investitionszeilen des Gesamtfinanzhaushalts\n  (Anlage 006) aller Pläne — Summen, Saldo und Auszahlungsarten, je mit\n  ``kind`` (Ansatz oder Finanzplanung) und ``plan_budget_year``,\n- ``herkunft``: je ``herkunft_id`` Dokument, Fundstelle, bestandene Probe\n  samt Messwert. Die geprüften Zeilen und die Bezugsgröße tragen\n  **verschiedene** IDs; sie stehen in derselben Datei, aber nur die einen\n  sind durch deren Summenzeile gedeckt.\n\nZwei Grenzen, die die Seite nennt und die API deshalb nicht verwischt:\nDiese Zahlen sind **Plan**, nicht Ist, und sie nennen **kein einzelnes\nVorhaben** — „Verkehr und Straßenbau: 10,5 Mio. €\" sagt nicht, welche\nStraße.",
         "operationId": "haushalt_investitionen_api_council_budget_investments_get",
         "responses": {
           "200": {
@@ -26379,7 +27012,7 @@
     },
     "/api/council/budget/shareholdings": {
       "get": {
-        "description": "Die städtischen Gesellschaften — was sie tun, wer sie beaufsichtigt.\n\nDie Ergänzung zum Gesamtabschluss (``/haushalt/konzern``): Der sagt, wie\nviel die Betriebe bewegen, diese Seite, was sie damit machen.\n\n- ``companies``: je Gesellschaft Name, Gliederungsnummer und Seite im\n  jüngsten Bericht, dazu ``consolidated_key``, wo der Gesamtabschluss sie als\n  eigenen Träger führt,\n- ``texts``: die beschreibenden Abschnitte (Gegenstand, Eigentümer,\n  Aufsichtsorgane, eigene Beteiligungen, Auswirkungen auf den Haushalt) —\n  alle ausdrücklich **ungeprüft**, denn Fließtext lässt sich gegen nichts\n  rechnen,\n- ``people``: die Aufsichtsorgane, Person für Person, mit Gremium,\n  Vorsitz, Amtszeit-Hinweis und — wo das Verzeichnis die Person\n  eindeutig kennt — ``slug`` und ``party`` für die Personen-Seite.\n  ``position`` steht nur da, wo die Spaltenprobe gehalten hat; siehe\n  ``roles_assignable`` an der Gesellschaft. Zwei der fünf Abschnitte\n  sind nämlich keine Prosa, sondern Tabellen, die der PDF-Extrakt\n  spaltenweise ausgibt (``council/beteiligungsbericht.py``),\n- ``owners``: wem die Gesellschaft gehört, mit Betrag und Anteil.\n  **Ohne** die Stammkapital-Zeile — die ist die Summe und kein\n  Gesellschafter. Gesellschaften, deren Anteile sich nicht auf das\n  ausgewiesene Stammkapital summieren, erscheinen hier gar nicht; ihr\n  Rohtext steht weiter in ``texts``,\n- ``indicators``: die Zeitreihe je Gesellschaft (Jahresergebnis,\n  Bilanzsumme, Eigenkapitalquote). ``n_reports`` sagt, wie viele Berichte\n  denselben Wert nennen — 1 heißt „durch eine Probe im Dokument gedeckt\",\n  mehr heißt zusätzlich „von einer zweiten Veröffentlichung bestätigt\",\n- ``group_comparison``: für die Gesellschaften, die auch im\n  Gesamtabschluss stehen, beide Zahlen desselben Jahres nebeneinander.\n  **Keine Probe** — die beiden Rechnungen unterscheiden sich systematisch,\n  und zwei Betriebe weisen wegen Ergebnisabführung 0 € aus, obwohl sie\n  etwas erwirtschaftet haben. Eine Einordnung, kein Urteil,\n- ``report_years`` / ``years``: welche Berichte gelesen sind und welche\n  Bezugsjahre die Kennzahlen abdecken (sie reichen weiter zurück als die\n  Berichte — jeder führt vier bis fünf Jahre mit),\n- ``herkunft``: je ``herkunft_id`` Dokument, Fundstelle, Seite und Probe.\n\nGelesen werden die Berichte ab 2022; davor ist das Dokument anders\naufgebaut und nicht maschinenlesbar (``council/beteiligungsbericht.py``).",
+        "description": "Die städtischen Gesellschaften — was sie tun, wer sie beaufsichtigt.\n\nDie Ergänzung zum Gesamtabschluss (``/haushalt/konzern``): Der sagt, wie\nviel die Betriebe bewegen, diese Seite, was sie damit machen.\n\n- ``companies``: je Gesellschaft Name, Gliederungsnummer und Seite im\n  jüngsten Bericht, dazu ``consolidated_key``, wo der Gesamtabschluss sie als\n  eigenen Träger führt,\n- ``texts``: die beschreibenden Abschnitte (Gegenstand, Eigentümer,\n  Aufsichtsorgane, eigene Beteiligungen, Auswirkungen auf den Haushalt) —\n  alle ausdrücklich **ungeprüft**, denn Fließtext lässt sich gegen nichts\n  rechnen,\n- ``people``: die Aufsichtsorgane, Person für Person, mit Gremium,\n  Vorsitz, Amtszeit-Hinweis und — wo das Verzeichnis die Person\n  eindeutig kennt — ``slug`` und ``party`` für die Personen-Seite.\n  ``position`` steht nur da, wo die Spaltenprobe gehalten hat; siehe\n  ``roles_assignable`` an der Gesellschaft. Zwei der fünf Abschnitte\n  sind nämlich keine Prosa, sondern Tabellen, die der PDF-Extrakt\n  spaltenweise ausgibt (``council/beteiligungsbericht.py``),\n- ``owners``: wem die Gesellschaft gehört, mit Betrag und Anteil.\n  **Ohne** die Stammkapital-Zeile — die ist die Summe und kein\n  Gesellschafter. Gesellschaften, deren Anteile sich nicht auf das\n  ausgewiesene Stammkapital summieren, erscheinen hier gar nicht; ihr\n  Rohtext steht weiter in ``texts``,\n- ``indicators``: die Zeitreihe je Gesellschaft (Jahresergebnis,\n  Bilanzsumme, Eigenkapitalquote). ``n_reports`` sagt, wie viele Berichte\n  denselben Wert nennen — 1 heißt „durch eine Probe im Dokument gedeckt\",\n  mehr heißt zusätzlich „von einer zweiten Veröffentlichung bestätigt\"\n  (ein Jahresabschluss mit demselben Betrag zählt mit). ``source`` sagt,\n  woher die Zeile kommt: ``holdings_report`` (Beteiligungsbericht) oder\n  ``annual_accounts`` — das jüngste Jahr, das nur der Jahresabschluss der\n  Gesellschaft schon nennt, oder ein Jahr, in dem der Abschluss vom\n  Bericht abweicht und deshalb gilt (dann steht die Zahl des Berichts in\n  ``report_value``; ``council/gesellschaft_abschluss.py``),\n- ``group_comparison``: für die Gesellschaften, die auch im\n  Gesamtabschluss stehen, beide Zahlen desselben Jahres nebeneinander.\n  **Keine Probe** — die beiden Rechnungen unterscheiden sich systematisch,\n  und zwei Betriebe weisen wegen Ergebnisabführung 0 € aus, obwohl sie\n  etwas erwirtschaftet haben. Eine Einordnung, kein Urteil,\n- ``report_years`` / ``years``: welche Berichte gelesen sind und welche\n  Bezugsjahre die Kennzahlen abdecken (sie reichen weiter zurück als die\n  Berichte — jeder führt vier bis fünf Jahre mit),\n- ``herkunft``: je ``herkunft_id`` Dokument, Fundstelle, Seite und Probe.\n\nGelesen werden die Berichte ab 2022; davor ist das Dokument anders\naufgebaut und nicht maschinenlesbar (``council/beteiligungsbericht.py``).",
         "operationId": "haushalt_beteiligungen_api_council_budget_shareholdings_get",
         "responses": {
           "200": {
@@ -30090,6 +30723,142 @@
         ]
       }
     },
+    "/api/quiz/duel": {
+      "post": {
+        "description": "Eine gespielte Runde als Herausforderung (Plan Q9). Nur aktive Fragen.",
+        "operationId": "duel_create_api_quiz_duel_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuizDuelIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuizDuelCreated"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Duel Create",
+        "tags": [
+          "quiz"
+        ]
+      }
+    },
+    "/api/quiz/duel/{code}": {
+      "get": {
+        "operationId": "duel_get_api_quiz_duel__code__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "title": "Code",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuizDuel"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Duel Get",
+        "tags": [
+          "quiz"
+        ]
+      }
+    },
+    "/api/quiz/duel/{code}/complete": {
+      "post": {
+        "operationId": "duel_complete_api_quiz_duel__code__complete_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "title": "Code",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuizDuelDoneIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuizDuel"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Duel Complete",
+        "tags": [
+          "quiz"
+        ]
+      }
+    },
     "/api/quiz/joker": {
       "post": {
         "description": "50:50: zwei falsche Antworten streichen. Kostet die Hälfte der Punkte —\ndas rechnet ``/answer`` mit ``joker: true``.",
@@ -30455,6 +31224,94 @@
           }
         },
         "summary": "Own Update",
+        "tags": [
+          "quiz"
+        ]
+      }
+    },
+    "/api/quiz/pin-answer": {
+      "post": {
+        "description": "Den Pin werten: Entfernung zur Geometrie des Orts, Punkte in Stufen.\nGebucht wie das Karten-Quiz (``question_id = 0``) auf den Ortsbereich des\nOrts — so zählt es auf die Stadtkarte.",
+        "operationId": "pin_answer_api_quiz_pin_answer_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuizPinIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuizPinResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Pin Answer",
+        "tags": [
+          "quiz"
+        ]
+      }
+    },
+    "/api/quiz/pin-round": {
+      "get": {
+        "description": "„Wo liegt das?\" (Plan Q7): n Orte zum Verorten, ohne Lage.",
+        "operationId": "pin_round_api_quiz_pin_round_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "n",
+            "required": false,
+            "schema": {
+              "default": 5,
+              "maximum": 10,
+              "minimum": 1,
+              "title": "N",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuizPinRound"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Pin Round",
         "tags": [
           "quiz"
         ]

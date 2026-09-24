@@ -50,6 +50,7 @@ import { ArrowRight, FileText } from "lucide-react";
 import { Segmented } from "@/components/ui";
 import { useFetch } from "@/lib/use-fetch";
 import { KrediteBlock } from "@/components/haushalt/kredite";
+import { SchuldenLautPlan } from "@/components/haushalt/schulden-laut-plan";
 import { LiquiditaetsBlock } from "@/components/haushalt/liquiditaet";
 import type { LiquiditaetsDaten } from "@/lib/haushalt-liquiditaet";
 import type { KrediteDaten } from "@/lib/haushalt-kredite";
@@ -77,7 +78,7 @@ import { Fundstelle } from "@/components/haushalt/fundstelle";
 // einen Beleg-Chip darauf setzt. `Beleg` rendert dann bewusst nichts
 // („lieber keinen Chip als eine falsche Nummer") — und der Satz endete
 // mit einer Fußnote, die es nicht gab.
-const QUELLEN = ["schulden", "bilanz", "budget_bylaw", "loans", "liquidity",
+const QUELLEN = ["schulden", "bilanz", "budget_bylaw", "loans", "debt_plan", "liquidity",
                  "jahresabschluss"] as const;
 
 /** Die Haushaltssatzung wird über den Bausteine-Endpunkt geholt und nicht über
@@ -744,6 +745,10 @@ export default function SchuldenPage() {
             Ersparnis. Eine dritte Quelle neben Jahrbuch und Abschluss, mit
             eigenem Beleg; ohne Bestand kein Block. */}
         <KrediteBlock daten={krediteDaten ?? null} />
+
+        {/* WAS DIE PLÄNE ERWARTEN — Anlage 003 der Haushaltspläne: der
+            voraussichtliche Stand je Eigenbetrieb und die VE. */}
+        <SchuldenLautPlan />
 
         <LottiErklaert
           title="Warum es zwei Schuldenzahlen gibt"
