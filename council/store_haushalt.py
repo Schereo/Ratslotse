@@ -2616,7 +2616,7 @@ class HaushaltMixin(StoreBasis):
         return len(channels)
 
     def save_spenden(self, zeilen: list[dict], verworfen: list[dict],
-                     herkunft) -> int:
+                     herkunft, erledigt: list[str] | tuple = ()) -> int:
         """Die geprüfte Spendenreihe schreiben — je Vorlage eine Zeile.
 
         Anders als bei den übrigen Schichten bringt **jede Zeile ihre eigene
@@ -2645,6 +2645,14 @@ class HaushaltMixin(StoreBasis):
                 "(template_number, session_date, reason, herkunft_id, fetched_at) VALUES (?,?,?,?,?)",
                 [(v["template_number"], v.get("session_date"), v["reason"], rueck, now)
                  for v in verworfen])
+            # Überholte „fehlt"-Einträge: Die Vorlage ist inzwischen gezählt
+            # (etwa über das Protokoll des Rates) oder als nicht beschlossen
+            # erkannt. Gelöscht wird nur, was der Lauf ausdrücklich als
+            # erledigt meldet — eine Teillieferung räumt weiter nichts ab.
+            if erledigt:
+                self._conn.executemany(
+                    "DELETE FROM council_donations_rejected WHERE template_number = ?",
+                    [(nr,) for nr in erledigt])
         return len(zeilen)
 
     def liquiditaetsanlagen(self) -> list[dict]:
