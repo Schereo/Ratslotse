@@ -9,13 +9,18 @@ Parser und Probe: ``council/foerdermittel.py``. Der Lauf
 2. sucht im Förderkatalog des Bundes nach der Gemeinde Oldenburg (Oldb) und
    holt das Ergebnis als CSV,
 3. behält aus jeder Liste nur die Vorhaben der Stadt und ihrer Gesellschaften
-   und ersetzt damit die Zeilen dieser Liste.
+   und ersetzt damit die Zeilen dieser Liste,
+4. ordnet den Vorhaben die Ratsvorlagen zu, die sie erkennbar meinen
+   (``council/foerder_vorlagen.py``). Das geht auch allein, ohne Abruf —
+   neue Vorlagen kommen täglich dazu, die Listen selten:
+   ``--nur-verknuepfen``.
 
 Höflich: 1,5 s Abstand zwischen zwei Abrufen, sechs Abrufe je Lauf. Kein
 Sprachmodell, keine Kosten.
 
     python scripts/ingest_foerdermittel.py --trocken
     python scripts/ingest_foerdermittel.py
+    python scripts/ingest_foerdermittel.py --nur-verknuepfen
 """
 from __future__ import annotations
 
@@ -32,6 +37,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+from council import foerder_vorlagen as fv  # noqa: E402
 from council import foerdermittel as fm  # noqa: E402
 from council import herkunft  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
@@ -89,13 +95,34 @@ def _foekat(abruf: Abruf) -> tuple[fm.Lesung, str]:
     return fm.lies_foekat(abruf(url).decode("iso-8859-15"), treffer), fm.FOEKAT_BASIS + "StartAction.do"
 
 
+def verknuepfen(store: CouncilStore) -> int:
+    vorhaben = store.get_foerdermittel()
+    vorlagen = [dict(r) for r in store._conn.execute(
+        "SELECT template_number, title, raw_text FROM council_templates")]
+    verweise = fv.verknuepfe(vorhaben, vorlagen)
+    n = store.save_foerder_verweise(verweise)
+    print(f"{n} Verweise Vorhaben → Vorlage "
+          f"({len({(v.source, v.source_id) for v in verweise})} Vorhaben, "
+          f"{len({v.template_number for v in verweise})} Vorlagen).")
+    return n
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--db", type=Path, default=COUNCIL_DB)
     ap.add_argument("--trocken", action="store_true", help="nur lesen und berichten")
     ap.add_argument("--pause", type=float, default=1.5)
+    ap.add_argument("--nur-verknuepfen", action="store_true",
+                    help="nichts abrufen, nur Vorhaben und Vorlagen neu zuordnen")
     args = ap.parse_args()
+    if args.nur_verknuepfen:
+        store = CouncilStore(args.db)
+        try:
+            verknuepfen(store)
+        finally:
+            store.close()
+        return 0
 
     abruf = Abruf(args.pause)
     listen: list[tuple[fm.Lesung, str, str | None, str, herkunft.Herkunft]] = []
@@ -129,10 +156,11 @@ def main() -> int:
         if store is not None:
             gespeichert += store.save_foerdermittel(quelle, periode, lesung.vorhaben,
                                                     list_as_of=lesung.stand, list_url=url, herkunft=h)
+    print(f"\n{gespeichert} Vorhaben gespeichert.")
     if store is not None:
+        verknuepfen(store)
         store.herkunft_aufraeumen()
         store.close()
-    print(f"\n{gespeichert} Vorhaben gespeichert.")
     return 0
 
 

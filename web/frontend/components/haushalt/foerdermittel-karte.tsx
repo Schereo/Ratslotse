@@ -15,7 +15,14 @@
 //
 // Die Filter laufen im Browser: rund hundert Zeilen, die ohnehin geladen
 // sind. Die Summen je Geber rechnet das Backend.
+//
+// Die RATSSEITE (council/foerder_vorlagen.py) steht an zwei Stellen: je
+// Vorhaben die Vorlagen, die es erkennbar meinen, und darunter die
+// Förderanträge, die der Rat beraten hat. Die Anträge stehen bewusst
+// GETRENNT von den Bewilligungen — die meisten gehören zu Programmen, die in
+// keiner der beiden Listen stehen, und ein Antrag ist keine Zusage.
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useFetch } from "@/lib/use-fetch";
 import type { ApiAntwort } from "@/lib/vertrag";
@@ -24,12 +31,16 @@ import { deZahl } from "@/components/grafik/format";
 import { Beleg } from "@/components/haushalt/source";
 import { BetragZelle, TextZelle, ZahlenTabelle } from "@/components/haushalt/zahlen-tabelle";
 import { cn } from "@/lib/utils";
+import { decisionHref } from "@/lib/routes";
+import { STUFE_TEXT, stufe } from "@/lib/zeitleiste";
 
 type Antwort = ApiAntwort<"/council/budget/grants-received">;
 type Zeile = Antwort["rows"][number];
+type Vorlage = Antwort["applications"][number];
 type Geber = "alle" | "eu" | "bund";
 
 const SICHTBAR = 8;
+const ANTRAEGE_SICHTBAR = 5;
 
 /** Die Ressortkürzel des Förderkatalogs im Klartext. */
 const RESSORT: Record<string, string> = {
@@ -54,10 +65,24 @@ function geberText(z: Zeile): string {
   return RESSORT[z.funder] ?? z.funder;
 }
 
+/** „Vorlage 23/0896" als Link auf die letzte Beratung, sonst als Text. */
+function VorlageLink({ v }: { v: Vorlage }) {
+  const text = `Vorlage ${v.template_number}`;
+  return v.decision_id != null
+    ? <Link href={decisionHref(v.decision_id)} className="font-medium text-primary hover:underline">{text}</Link>
+    : <span className="font-medium text-foreground">{text}</span>;
+}
+
+function Beratung({ v }: { v: Vorlage }) {
+  if (!v.date) return null;
+  return <>{v.committee ?? "Rat"}, {datum(v.date)}, {STUFE_TEXT[stufe(v.outcome)]}</>;
+}
+
 export function FoerdermittelKarte() {
   const { data } = useFetch<Antwort>("/council/budget/grants-received");
   const [geber, setGeber] = useState<Geber>("alle");
   const [alleZeigen, setAlleZeigen] = useState(false);
+  const [alleAntraege, setAlleAntraege] = useState(false);
 
   const zeilen = useMemo(
     () => (data?.rows ?? []).filter((z) =>
@@ -130,6 +155,17 @@ export function FoerdermittelKarte() {
               <span className="mt-0.5 block text-[11.5px] leading-relaxed text-muted-foreground">
                 {data.recipients[z.recipient_key] ?? z.recipient} · {geberText(z)}
               </span>
+              {z.templates.length > 0 && (
+                <span className="mt-1 block text-[11.5px] leading-relaxed text-muted-foreground">
+                  Im Rat:{" "}
+                  {z.templates.map((v, i) => (
+                    <span key={v.template_number}>
+                      {i > 0 && " · "}
+                      <VorlageLink v={v} /> {v.title.replace(/\s[-–]\s*(Bericht|Beschluss)\s*-?$/, "")}
+                    </span>
+                  ))}
+                </span>
+              )}
             </TextZelle>
             <TextZelle className="whitespace-nowrap font-mono text-[11.5px] text-muted-foreground">
               {jahr(z.start)}–{jahr(z.end)}
@@ -146,12 +182,41 @@ export function FoerdermittelKarte() {
         </button>
       )}
 
+      {data.applications.length > 0 && (
+        <div className="flex flex-col gap-2 border-t border-border pt-4">
+          <h3 className="text-[14px] font-semibold text-foreground">Beantragt laut Rat</h3>
+          <p className="max-w-[76ch] text-[12.5px] leading-relaxed text-foreground/90">
+            {data.applications.length} Vorlagen, mit denen die Stadt Fördergeld beantragt oder sich um
+            ein Programm bewirbt. Ein Antrag ist keine Zusage — und die meisten Programme hier
+            (etwa die Sanierung von Sportstätten) stehen in keiner der beiden Listen oben.
+          </p>
+          <ul className="flex flex-col divide-y divide-border">
+            {(alleAntraege ? data.applications : data.applications.slice(0, ANTRAEGE_SICHTBAR)).map((v) => (
+              <li key={v.template_number} className="py-2">
+                <span className="block text-[13px] font-medium leading-snug text-foreground">{v.title}</span>
+                <span className="mt-0.5 block text-[11.5px] text-muted-foreground">
+                  <VorlageLink v={v} />{v.date && <> · <Beratung v={v} /></>}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {data.applications.length > ANTRAEGE_SICHTBAR && (
+            <button type="button" onClick={() => setAlleAntraege((o) => !o)}
+              className="w-fit text-[12.5px] font-semibold text-primary">
+              {alleAntraege ? "Weniger zeigen" : `Alle ${data.applications.length} Anträge zeigen`}
+            </button>
+          )}
+        </div>
+      )}
+
       <p className="max-w-[76ch] text-[11.5px] leading-relaxed text-muted-foreground">
         Bewilligt heißt zugesagt, nicht ausgezahlt. Die EU-Beträge sind der Unionsbeitrag aus der
         Liste der Vorhaben{euStand ? ` (Stand ${datum(euStand)})` : ""}, die Bundesbeträge der
         Bundesanteil laut Förderkatalog. Was hier fehlt: die Städtebauförderung und reine
         Landesprogramme — sie stehen in keiner der beiden Listen. Gezählt sind nur die Stadt und
-        ihre Gesellschaften, nicht Vereine oder Unternehmen in Oldenburg.
+        ihre Gesellschaften, nicht Vereine oder Unternehmen in Oldenburg. „Im Rat“ steht an
+        einem Vorhaben nur, wenn eine Vorlage es erkennbar meint: Betrag und Name stehen im Text,
+        oder ihr Titel steht im Titel des Vorhabens.
       </p>
     </section>
   );

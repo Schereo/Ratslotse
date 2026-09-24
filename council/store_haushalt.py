@@ -1028,6 +1028,69 @@ class HaushaltMixin(StoreBasis):
                 raise
             return []
 
+    def save_foerder_verweise(self, verweise: list) -> int:
+        """Die Zuordnung Vorhaben → Vorlage ganz ersetzen."""
+        with self.transaktion():
+            self._conn.execute("DELETE FROM council_grant_templates")
+            self._conn.executemany(
+                "INSERT OR IGNORE INTO council_grant_templates "
+                "(source, source_id, template_number, basis) VALUES (?,?,?,?)",
+                [(v.source, v.source_id, v.template_number, v.basis) for v in verweise])
+        return len(verweise)
+
+    def _vorlagen_beratung(self, nummern: list[str]) -> dict[str, dict]:
+        """Je Vorlage Titel und die LETZTE Beratung (Datum, Gremium, Ergebnis,
+        Beschluss-Id) — das, worauf ein Link zeigen soll."""
+        if not nummern:
+            return {}
+        platz = ",".join("?" * len(nummern))
+        aus = {r["template_number"]: {"template_number": r["template_number"], "title": r["title"],
+                                      "decision_id": None, "date": None, "committee": None,
+                                      "outcome": None}
+               for r in self._conn.execute(
+                   f"SELECT template_number, title FROM council_templates "
+                   f"WHERE template_number IN ({platz})", nummern)}
+        for r in self._conn.execute(
+                f"SELECT d.template_number, d.id, d.outcome, s.session_date, s.committee "
+                f"  FROM council_decisions d JOIN council_sessions s ON s.ksinr = d.ksinr "
+                f" WHERE d.template_number IN ({platz}) "
+                f" ORDER BY s.session_date, d.id", nummern):
+            if r["template_number"] in aus:
+                aus[r["template_number"]].update(decision_id=r["id"], date=r["session_date"],
+                                                 committee=r["committee"], outcome=r["outcome"])
+        return aus
+
+    def get_foerder_verweise(self) -> dict[tuple[str, str], list[dict]]:
+        """(source, source_id) → die Vorlagen, die das Vorhaben erkennbar meinen."""
+        try:
+            paare = [dict(r) for r in self._conn.execute(
+                "SELECT source, source_id, template_number, basis FROM council_grant_templates")]
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return {}
+        vorlagen = self._vorlagen_beratung(sorted({p["template_number"] for p in paare}))
+        aus: dict[tuple[str, str], list[dict]] = {}
+        for p in paare:
+            if p["template_number"] in vorlagen:
+                aus.setdefault((p["source"], p["source_id"]), []).append(
+                    {**vorlagen[p["template_number"]], "basis": p["basis"]})
+        for liste in aus.values():
+            liste.sort(key=lambda v: v["date"] or "")
+        return aus
+
+    def get_foerderantraege(self) -> list[dict]:
+        """Die Vorlagen, mit denen die Stadt Fördergeld beantragt oder sich
+        bewirbt (``council/foerder_vorlagen.ist_antrag``), jüngste zuerst."""
+        from council.foerder_vorlagen import ist_antrag  # noqa: PLC0415
+        nummern = [r["template_number"] for r in self._conn.execute(
+            # Kein LIKE-Vorfilter: SQLite faltet nur ASCII, „%förder%" fände
+            # „Förderantrag" nicht. 5.000 Titel in Python sind nichts.
+            "SELECT template_number, title FROM council_templates") if ist_antrag(r["title"])]
+        vorlagen = self._vorlagen_beratung(nummern)
+        return sorted(vorlagen.values(), key=lambda v: (v["date"] or "", v["template_number"]),
+                      reverse=True)
+
     def get_haushaltssatzungen(self) -> list[dict]:
         """Alle Satzungs-Jahrgänge, ältester zuerst."""
         try:

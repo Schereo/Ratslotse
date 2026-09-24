@@ -4898,6 +4898,13 @@
       },
       "BudgetGrantsReceived": {
         "properties": {
+          "applications": {
+            "items": {
+              "$ref": "#/components/schemas/GrantTemplate"
+            },
+            "title": "Applications",
+            "type": "array"
+          },
           "lists": {
             "items": {
               "$ref": "#/components/schemas/GrantReceivedList"
@@ -4936,6 +4943,7 @@
         },
         "required": [
           "rows",
+          "applications",
           "lists",
           "totals",
           "recipients",
@@ -12763,6 +12771,13 @@
               "null"
             ]
           },
+          "templates": {
+            "items": {
+              "$ref": "#/components/schemas/GrantTemplate"
+            },
+            "title": "Templates",
+            "type": "array"
+          },
           "title": {
             "title": "Title",
             "type": "string"
@@ -12782,7 +12797,8 @@
           "amount_granted",
           "start",
           "end",
-          "herkunft_id"
+          "herkunft_id",
+          "templates"
         ],
         "title": "GrantReceivedRow",
         "type": "object"
@@ -12899,6 +12915,61 @@
           "herkunft_id"
         ],
         "title": "GrantRow",
+        "type": "object"
+      },
+      "GrantTemplate": {
+        "description": "Eine Ratsvorlage zu Fördergeld (``council/foerder_vorlagen.py``) mit\nihrer LETZTEN Beratung: Datum, Gremium, Ergebnis, Beschluss-Id für den\nLink. ``basis`` nur an einem Vorhaben: ``amount`` (Betrag und Name stehen\nim Text) oder ``title`` (der Vorlagentitel steht im Titel des Vorhabens).",
+        "properties": {
+          "basis": {
+            "title": "Basis",
+            "type": "string"
+          },
+          "committee": {
+            "title": "Committee",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date": {
+            "title": "Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "decision_id": {
+            "title": "Decision Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "template_number": {
+            "title": "Template Number",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "template_number",
+          "title",
+          "decision_id",
+          "date",
+          "committee",
+          "outcome"
+        ],
+        "title": "GrantTemplate",
         "type": "object"
       },
       "GrantTotal": {
@@ -27842,7 +27913,7 @@
     },
     "/api/council/budget/grants-received": {
       "get": {
-        "description": "Fördermittel von EU und Bund — je Vorhaben der Stadt oder einer ihrer\nGesellschaften (``council/foerdermittel.py``).\n\n- ``rows``: alle Vorhaben, jüngster Beginn zuerst,\n- ``lists``: die eingelesenen Listen mit Datenstand, Zahl und Summe —\n  damit die Seite sagen kann, wie aktuell was ist,\n- ``recipients``: Schlüssel → Anzeigename der Empfänger.\n\nBeträge sind Bewilligungen, keine Auszahlungen. Städtebauförderung und\nreine Landesprogramme stehen in keiner der Listen.",
+        "description": "Fördermittel von EU und Bund — je Vorhaben der Stadt oder einer ihrer\nGesellschaften (``council/foerdermittel.py``).\n\n- ``rows``: alle Vorhaben, jüngster Beginn zuerst,\n- ``lists``: die eingelesenen Listen mit Datenstand, Zahl und Summe —\n  damit die Seite sagen kann, wie aktuell was ist,\n- ``recipients``: Schlüssel → Anzeigename der Empfänger,\n- ``rows[].templates``: Ratsvorlagen, die das Vorhaben erkennbar meinen,\n- ``applications``: Förderanträge und Bewerbungen, die der Rat beraten hat\n  (``council/foerder_vorlagen.py``) — Anträge, keine Bewilligungen.\n\nBeträge sind Bewilligungen, keine Auszahlungen. Städtebauförderung und\nreine Landesprogramme stehen in keiner der Listen.",
         "operationId": "haushalt_foerdermittel_api_council_budget_grants_received_get",
         "responses": {
           "200": {

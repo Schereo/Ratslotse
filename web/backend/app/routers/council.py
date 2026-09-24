@@ -47,7 +47,7 @@ from .. import deepresearch
 from ..config import get_settings
 from ..antworten import (AnalysisData, ElectedCouncil, ElectedMember, AssistantStarters, BudgetAmendmentLists, BudgetAuditReports,
                          BudgetBalanceSheet, BudgetComparison, BudgetDataState, BudgetDebt, BudgetLiquidity, BudgetLoans,
-                         BudgetDispute, BudgetDocuments, BudgetExecution, BudgetGrants, GrantRow, GrantTotal, BudgetGrantsReceived, BudgetFederalComparison, BudgetDebtComparison, CityDebt, CityDebtYear, FederalCity, FederalGroup, FederalIndicator, FederalStats, FederalYear, GrantReceivedList, GrantReceivedRow, GrantReceivedTotal, Provenance,
+                         BudgetDispute, BudgetDocuments, BudgetExecution, BudgetGrants, GrantRow, GrantTotal, BudgetGrantsReceived, BudgetFederalComparison, BudgetDebtComparison, CityDebt, CityDebtYear, FederalCity, FederalGroup, FederalIndicator, FederalStats, FederalYear, GrantReceivedList, GrantReceivedRow, GrantReceivedTotal, GrantTemplate, Provenance,
                          BudgetNote, BudgetNotes, BudgetPrefaceFigures, PrefaceFigure, PrefacePlan, BudgetMeasure, BudgetMeasureReport, BudgetMeasures,
                          BudgetFixedAssets, BudgetGroup,
                          BudgetHoldings, BudgetInvestmentProgram, BudgetInvestments,
@@ -1106,7 +1106,10 @@ def haushalt_foerdermittel(
     - ``rows``: alle Vorhaben, jüngster Beginn zuerst,
     - ``lists``: die eingelesenen Listen mit Datenstand, Zahl und Summe —
       damit die Seite sagen kann, wie aktuell was ist,
-    - ``recipients``: Schlüssel → Anzeigename der Empfänger.
+    - ``recipients``: Schlüssel → Anzeigename der Empfänger,
+    - ``rows[].templates``: Ratsvorlagen, die das Vorhaben erkennbar meinen,
+    - ``applications``: Förderanträge und Bewerbungen, die der Rat beraten hat
+      (``council/foerder_vorlagen.py``) — Anträge, keine Bewilligungen.
 
     Beträge sind Bewilligungen, keine Auszahlungen. Städtebauförderung und
     reine Landesprogramme stehen in keiner der Listen."""
@@ -1127,9 +1130,13 @@ def haushalt_foerdermittel(
         t["n"] += 1
         t["amount"] += z["amount_granted"] or 0.0
     ids = sorted({z["herkunft_id"] for z in zeilen if z["herkunft_id"] is not None})
+    verweise = store.get_foerder_verweise()
     return BudgetGrantsReceived(
-        rows=[cast(GrantReceivedRow, {k: z[k] for k in GrantReceivedRow.__annotations__})
+        rows=[cast(GrantReceivedRow, {**{k: z[k] for k in GrantReceivedRow.__annotations__
+                                         if k != "templates"},
+                                      "templates": verweise.get((z["source"], z["source_id"]), [])})
               for z in zeilen],
+        applications=cast(list[GrantTemplate], store.get_foerderantraege()),
         lists=list(listen.values()),
         totals=[summen[g] for g in ("eu", "bund") if g in summen],
         recipients={k: label for k, (label, _) in EMPFAENGER.items()},
