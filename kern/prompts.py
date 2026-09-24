@@ -655,10 +655,15 @@ ZWEI_ZAEHLWEISEN_REGEL = (
 #: nachrechnen könnte. Deshalb steht die Ausnahme HIER, an der Regel, die nur
 #: mit diesen Zahlen im Prompt steht — nicht in der geteilten Stil-Regel, die
 #: auch „Verständlicher erklären" benutzt.
+#:
+#: **Die Zahl zuerst** (L1+L2-Messung 24.09.2026): „Was kostet mich die Stadt
+#: pro Jahr?" bekam nur noch „5.005 € je Einwohner*in" — die Gesamtsumme
+#: (883,9 Mio. €), die L1 allein noch nannte, fiel weg; der Maßstab ersetzt
+#: die Zahl nicht, er steht neben ihr.
 EINORDNUNG_REGEL = (
-    "- Die Frage will einen MASSSTAB, keine Bewertung. Sag, wie die Zahl im\n"
-    "  Vergleich steht — je Einwohner*in und neben den anderen Städten, mit dem\n"
-    "  Jahr beider Zahlen. Sag NICHT, ob das viel oder wenig, hoch oder niedrig,\n"
+    "- Die Frage will einen MASSSTAB, keine Bewertung. Nenne zuerst die Zahl\n"
+    "  selbst mit Jahr und Beleg und sag dann, wie sie im Vergleich steht — je\n"
+    "  Einwohner*in und neben den anderen Städten, mit dem Jahr beider Zahlen. Sag NICHT, ob das viel oder wenig, hoch oder niedrig,\n"
     "  gut oder schlecht ist: Das entscheidet die Person, nicht du. Rechne auch\n"
     "  nichts nach — die Zahlen unter „ZUR EINORDNUNG“ sind bereits gerechnet,\n"
     "  übernimm sie ZIFFERGENAU („1.908 €“, nicht „rund 1.900 €“); die\n"
@@ -707,15 +712,21 @@ WERTUNG_REGEL = (
 #: Oldenburg, die niemand geprüft hat. Deshalb: erst die Regel, als Regel
 #: benannt, dann die Oldenburger Zahl mit Jahr und Beleg — oder der Satz, dass
 #: es sie hier nicht gibt.
+#:
+#: **Die Oldenburger Zahl gehört dazu** (L1+L2-Messung 24.09.2026): „Was
+#: bedeutet Defizit?" auf der Übersicht nannte mit L1 allein das geplante
+#: Minus 2026 (884 gegen 813 Mio. €); mit dem Erklärtext erklärte Lotti nur
+#: noch die Regel und ließ die Zahl weg, die zwei Absätze darüber stand. Die
+#: Trennung heißt „erst Regel, dann Zahl", nicht „Regel statt Zahl".
 ERKLAERWISSEN_REGEL = (
     "- Steht oben ALLGEMEIN ERKLÄRT, dann beantworte die Frage damit, statt nur\n"
     "  zu sagen, dass die Zahlen es nicht zeigen: in eigenen, kurzen Worten, und\n"
     "  nenne die Quelle in Klammern (z. B. „so regelt es das Niedersächsische\n"
     "  Kommunalverfassungsgesetz, § 120“). Halte es GETRENNT von Oldenburg: Die\n"
-    "  Erklärung gilt für jede Kommune in Niedersachsen; was Oldenburg betrifft,\n"
-    "  sagst du nur mit den Zahlen oben, mit Jahr und Beleg — oder du sagst,\n"
-    "  dass es dazu hier keine Zahl gibt. Füge der Erklärung nichts hinzu und\n"
-    "  schließe aus ihr nichts über Oldenburg.\n"
+    "  Erklärung gilt für jede Kommune in Niedersachsen. Steht oben eine\n"
+    "  Oldenburger Zahl, die zur Frage passt, nenne sie danach mit Jahr und\n"
+    "  Beleg — sie gehört zur Antwort; steht keine da, sag das. Füge der\n"
+    "  Erklärung nichts hinzu und schließe aus ihr nichts über Oldenburg.\n"
 )
 
 
