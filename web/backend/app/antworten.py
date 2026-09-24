@@ -3755,6 +3755,47 @@ class DataLayer(TypedDict):
     month_name: str
 
 
+class SourceStatsLayer(TypedDict):
+    """Eine Datenschicht (oder mehrere, die dieselben Tabellen füllen)."""
+    keys: list[str]
+    labels: list[str]
+    sources: list[str]
+    tables: int
+    rows: int
+    numbers: int
+    documents: int
+
+
+class SourceStatsOther(TypedDict):
+    tables: int
+    rows: int
+    numbers: int
+    documents: int
+
+
+class SourceStatsSource(TypedDict):
+    kind: str
+    label: str
+    documents: int
+
+
+class BudgetSourceStats(TypedDict):
+    """Woher die Zahlen kommen (``council/quellenzahlen.py``). ``numbers``
+    zählt numerische Zellen ohne Schlüssel (Jahre, Seiten, Kennungen);
+    ``documents`` eigenständige Belege; ``citations`` Belegstellen;
+    ``probe_kinds``/``probe_runs`` die bestandenen Proben beim Einlesen."""
+    numbers: int
+    rows: int
+    tables: int
+    documents: int
+    citations: int
+    probe_kinds: int
+    probe_runs: int
+    sources: list[SourceStatsSource]
+    layers: list[SourceStatsLayer]
+    other: SourceStatsOther
+
+
 class BudgetDataState(TypedDict):
     today: str
     layers: list[DataLayer]

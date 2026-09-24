@@ -5861,6 +5861,70 @@
         "title": "BudgetProducts",
         "type": "object"
       },
+      "BudgetSourceStats": {
+        "description": "Woher die Zahlen kommen (``council/quellenzahlen.py``). ``numbers``\nzählt numerische Zellen ohne Schlüssel (Jahre, Seiten, Kennungen);\n``documents`` eigenständige Belege; ``citations`` Belegstellen;\n``probe_kinds``/``probe_runs`` die bestandenen Proben beim Einlesen.",
+        "properties": {
+          "citations": {
+            "title": "Citations",
+            "type": "integer"
+          },
+          "documents": {
+            "title": "Documents",
+            "type": "integer"
+          },
+          "layers": {
+            "items": {
+              "$ref": "#/components/schemas/SourceStatsLayer"
+            },
+            "title": "Layers",
+            "type": "array"
+          },
+          "numbers": {
+            "title": "Numbers",
+            "type": "integer"
+          },
+          "other": {
+            "$ref": "#/components/schemas/SourceStatsOther"
+          },
+          "probe_kinds": {
+            "title": "Probe Kinds",
+            "type": "integer"
+          },
+          "probe_runs": {
+            "title": "Probe Runs",
+            "type": "integer"
+          },
+          "rows": {
+            "title": "Rows",
+            "type": "integer"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/SourceStatsSource"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "tables": {
+            "title": "Tables",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "numbers",
+          "rows",
+          "tables",
+          "documents",
+          "citations",
+          "probe_kinds",
+          "probe_runs",
+          "sources",
+          "layers",
+          "other"
+        ],
+        "title": "BudgetSourceStats",
+        "type": "object"
+      },
       "BudgetStaffPlan": {
         "properties": {
           "editions": {
@@ -22334,6 +22398,110 @@
         "title": "SourceCheck",
         "type": "object"
       },
+      "SourceStatsLayer": {
+        "description": "Eine Datenschicht (oder mehrere, die dieselben Tabellen füllen).",
+        "properties": {
+          "documents": {
+            "title": "Documents",
+            "type": "integer"
+          },
+          "keys": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Keys",
+            "type": "array"
+          },
+          "labels": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Labels",
+            "type": "array"
+          },
+          "numbers": {
+            "title": "Numbers",
+            "type": "integer"
+          },
+          "rows": {
+            "title": "Rows",
+            "type": "integer"
+          },
+          "sources": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "tables": {
+            "title": "Tables",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "keys",
+          "labels",
+          "sources",
+          "tables",
+          "rows",
+          "numbers",
+          "documents"
+        ],
+        "title": "SourceStatsLayer",
+        "type": "object"
+      },
+      "SourceStatsOther": {
+        "properties": {
+          "documents": {
+            "title": "Documents",
+            "type": "integer"
+          },
+          "numbers": {
+            "title": "Numbers",
+            "type": "integer"
+          },
+          "rows": {
+            "title": "Rows",
+            "type": "integer"
+          },
+          "tables": {
+            "title": "Tables",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "tables",
+          "rows",
+          "numbers",
+          "documents"
+        ],
+        "title": "SourceStatsOther",
+        "type": "object"
+      },
+      "SourceStatsSource": {
+        "properties": {
+          "documents": {
+            "title": "Documents",
+            "type": "integer"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "label",
+          "documents"
+        ],
+        "title": "SourceStatsSource",
+        "type": "object"
+      },
       "Speech": {
         "description": "Ein Wortbeitrag aus einem Protokoll.",
         "properties": {
@@ -28353,6 +28521,28 @@
           }
         },
         "summary": "Haushalt Beteiligungen",
+        "tags": [
+          "council"
+        ]
+      }
+    },
+    "/api/council/budget/source-stats": {
+      "get": {
+        "description": "Wie viele Zahlen aus wie vielen Dokumenten der Bereich zusammenträgt —\ngezählt aus dem Bestand, je Datenschicht und gesamt\n(``council/quellenzahlen.py``). Zehn Minuten gepuffert.",
+        "operationId": "haushalt_quellenzahlen_api_council_budget_source_stats_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetSourceStats"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Haushalt Quellenzahlen",
         "tags": [
           "council"
         ]

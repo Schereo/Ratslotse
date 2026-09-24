@@ -47,7 +47,7 @@ from .. import deepresearch
 from ..config import get_settings
 from ..antworten import (AnalysisData, ElectedCouncil, ElectedMember, AssistantStarters, BudgetAmendmentLists, BudgetAuditReports,
                          BudgetBalanceSheet, BudgetComparison, BudgetDataState, BudgetDebt, BudgetLiquidity, BudgetLoans,
-                         BudgetDispute, BudgetDocuments, BudgetExecution, BudgetGrants, GrantRow, GrantTotal, BudgetGrantsReceived, BudgetFederalComparison, BudgetDebtComparison, CityDebt, CityDebtYear, FederalCity, FederalGroup, FederalIndicator, FederalStats, FederalYear, GrantReceivedList, GrantReceivedRow, GrantReceivedTotal, GrantTemplate, Provenance,
+                         BudgetDispute, BudgetDocuments, BudgetExecution, BudgetGrants, GrantRow, GrantTotal, BudgetGrantsReceived, BudgetFederalComparison, BudgetDebtComparison, CityDebt, CityDebtYear, FederalCity, FederalGroup, FederalIndicator, FederalStats, FederalYear, GrantReceivedList, GrantReceivedRow, GrantReceivedTotal, GrantTemplate, BudgetSourceStats, Provenance,
                          BudgetNote, BudgetNotes, BudgetPrefaceFigures, PrefaceFigure, PrefacePlan, BudgetMeasure, BudgetMeasureReport, BudgetMeasures,
                          BudgetFixedAssets, BudgetGroup,
                          BudgetHoldings, BudgetInvestmentProgram, BudgetInvestments,
@@ -1265,6 +1265,18 @@ def haushalt_datenstand(
     for z in zeilen:
         z["month_name"] = finanzquellen.MONATE[z["erwarteter_monat"]]
     return {"today": date.today().isoformat(), "layers": zeilen}
+
+
+@router.get("/budget/source-stats")
+def haushalt_quellenzahlen(
+    _user: dict = Depends(require_budget),
+    store: CouncilStore = Depends(get_council_store),
+) -> BudgetSourceStats:
+    """Wie viele Zahlen aus wie vielen Dokumenten der Bereich zusammenträgt —
+    gezählt aus dem Bestand, je Datenschicht und gesamt
+    (``council/quellenzahlen.py``). Zehn Minuten gepuffert."""
+    from council import quellenzahlen  # noqa: PLC0415
+    return cast(BudgetSourceStats, quellenzahlen.gepuffert(store, str(store._path)))
 
 
 @router.get("/budget/documents")
