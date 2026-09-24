@@ -3,9 +3,10 @@
 import { useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { Check, X, ExternalLink, ThumbsUp, ThumbsDown, ArrowRight, RotateCcw, Send, ChevronDown, ChevronUp, Lightbulb, Scale, Split, Share2 } from "lucide-react";
+import { Check, X, ExternalLink, ThumbsUp, ThumbsDown, ArrowRight, RotateCcw, Send, ChevronDown, ChevronUp, Lightbulb, Scale, Split, Share2, Swords } from "lucide-react";
 import { QuizQuestion, QuizAnswerResult } from "@/lib/types";
 import { Card, Button, Input, toast } from "@/components/ui";
+import { shareDuelLink } from "@/components/quiz-duel";
 import { Mascot } from "@/components/mascot";
 import { ConfettiBurst } from "@/components/confetti";
 import { GlossaryText } from "@/components/glossary-text";
@@ -115,7 +116,7 @@ async function shareResult(text: string) {
  *  `title` beschriftet den Runden-Kontext (Tages-Challenge / Meine Fehler).
  *  `practice` (RL-U14, eigene Fragen): Antworten laufen über `answerPath`,
  *  ohne Punkte, ohne Qualitäts-Bewertung — nur Üben. */
-export function QuizPlay({ questions, onExit, onComplete, title, answerPath = "/quiz/answer", practice = false }: {
+export function QuizPlay({ questions, onExit, onComplete, title, answerPath = "/quiz/answer", practice = false, duel = false, doneExtra }: {
   questions: QuizQuestion[];
   onExit: () => void;
   /** Darf einen Teil-Text zurückgeben (Tages-Challenge) — dann bietet der
@@ -124,6 +125,11 @@ export function QuizPlay({ questions, onExit, onComplete, title, answerPath = "/
   title?: string;
   answerPath?: string;
   practice?: boolean;
+  /** Nach der Runde „Herausfordern" anbieten (Plan Q9) — nicht bei Übung
+   *  und nicht in einem Duell, das man selbst gerade annimmt. */
+  duel?: boolean;
+  /** Was der Ergebnis-Schirm zusätzlich zeigt (die Duell-Tabelle). */
+  doneExtra?: React.ReactNode;
 }) {
   const [idx, setIdx] = useState(0);
   const [chosen, setChosen] = useState<number | null>(null);
@@ -145,6 +151,21 @@ export function QuizPlay({ questions, onExit, onComplete, title, answerPath = "/
   const [removed, setRemoved] = useState<number[]>([]);
   const [results, setResults] = useState<boolean[]>([]);
   const [shareText, setShareText] = useState<string | null>(null);
+  const [duelBusy, setDuelBusy] = useState(false);
+
+  async function challenge() {
+    setDuelBusy(true);
+    try {
+      const r = await api.post<{ code: string }>("/quiz/duel", { question_ids: questions.map((x) => x.id), correct });
+      const url = `${window.location.origin}/quiz?duell=${r.code}`;
+      const how = await shareDuelLink(url, correct, questions.length);
+      if (how === "copied") toast.success("Link kopiert — schick ihn jemandem.");
+    } catch {
+      toast.error("Das Duell konnte nicht angelegt werden.");
+    } finally {
+      setDuelBusy(false);
+    }
+  }
 
   const q = questions[idx];
   const isEstimate = q.qtype === "estimate";
@@ -278,10 +299,16 @@ export function QuizPlay({ questions, onExit, onComplete, title, answerPath = "/
             ))}
           </div>
         )}
+        {doneExtra && <div className="mt-5">{doneExtra}</div>}
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           {shareText && (
             <Button variant="secondary" onClick={() => void shareResult(shareText)}>
               <Share2 className="!size-4" /> Ergebnis teilen
+            </Button>
+          )}
+          {duel && !practice && (
+            <Button variant="secondary" onClick={() => void challenge()} disabled={duelBusy}>
+              <Swords className="!size-4" /> Jemanden herausfordern
             </Button>
           )}
           <Button onClick={onExit}><RotateCcw className="!size-4" /> Zur Auswahl</Button>

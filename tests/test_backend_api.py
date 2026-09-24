@@ -7129,3 +7129,38 @@ def test_quiz_pin_round_and_answer(client):
     assert client.post("/api/quiz/pin-answer", json={"slug": "gibt-es-nicht", "lat": 53.1, "lon": 8.2}).status_code == 404
     by_area = client.get("/api/quiz/stats").json()["by_area"]
     assert sum(a["answered"] for a in by_area if a["area_type"] == "district") == 2
+def test_quiz_duel_roundtrip(client):
+    """Duell (Plan Q9): anlegen, eine zweite Person spielt es, beide sehen die
+    Tabelle; wer noch nicht gespielt hat, sieht keine Ergebnisse."""
+    _register(client)
+    _seed_quiz("Osternburg", n=3)
+    ids = [q["id"] for q in client.get("/api/quiz/round?areas=district:Osternburg&n=3").json()["questions"]]
+    code = client.post("/api/quiz/duel", json={"question_ids": ids, "correct": 2}).json()["code"]
+    assert len(code) == 10
+    mine = client.get(f"/api/quiz/duel/{code}").json()
+    assert mine["mine"] is True and mine["total"] == 3 and [q["id"] for q in mine["questions"]] == ids
+    assert "correct_index" not in mine["questions"][0]
+
+    other = TestClient(app)
+    _register(other, email="gegner@example.org")
+    before = other.get(f"/api/quiz/duel/{code}").json()
+    assert before["played"] is False and before["players"] == [] and before["owner_name"] == "Testkonto"
+    after = other.post(f"/api/quiz/duel/{code}/complete", json={"correct": 3}).json()
+    assert after["played"] is True and after["players"] == [{"name": "Testkonto", "correct": 3, "me": True}]
+    # das erste Ergebnis zählt
+    again = other.post(f"/api/quiz/duel/{code}/complete", json={"correct": 0}).json()
+    assert again["players"][0]["correct"] == 3
+    assert client.get(f"/api/quiz/duel/{code}").json()["players"][0]["me"] is False
+    assert client.get("/api/quiz/duel/gibtesnicht").status_code == 404
+
+
+def test_quiz_duel_expires(client):
+    _register(client)
+    _seed_quiz("Osternburg", n=1)
+    ids = [q["id"] for q in client.get("/api/quiz/round?areas=district:Osternburg").json()["questions"]]
+    code = client.post("/api/quiz/duel", json={"question_ids": ids, "correct": 1}).json()["code"]
+    store = Store(RATSLOTSE_DB)
+    with store._conn:
+        store._conn.execute("UPDATE quiz_duels SET created_at = '2020-01-01T00:00:00'")
+    store.close()
+    assert client.get(f"/api/quiz/duel/{code}").status_code == 404
