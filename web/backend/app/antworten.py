@@ -1037,6 +1037,9 @@ class QuizOthers(TypedDict):
     ``routers.quiz.OTHERS_MIN`` Mitspielenden, sonst fehlt das Feld."""
     players: int
     correct_pct: int
+class QuizJoker(TypedDict):
+    """Die zwei falschen Antworten, die der 50:50-Joker streicht."""
+    remove: list[int]
 
 
 class QuizResult(TypedDict):

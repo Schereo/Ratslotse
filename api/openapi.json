@@ -17673,6 +17673,11 @@
       },
       "QuizAnswerIn": {
         "properties": {
+          "joker": {
+            "default": false,
+            "title": "Joker",
+            "type": "boolean"
+          },
           "order": {
             "items": {
               "type": "integer"
@@ -18176,6 +18181,36 @@
           "comments"
         ],
         "title": "QuizFlaggedQuestion",
+        "type": "object"
+      },
+      "QuizJoker": {
+        "description": "Die zwei falschen Antworten, die der 50:50-Joker streicht.",
+        "properties": {
+          "remove": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Remove",
+            "type": "array"
+          }
+        },
+        "required": [
+          "remove"
+        ],
+        "title": "QuizJoker",
+        "type": "object"
+      },
+      "QuizJokerIn": {
+        "properties": {
+          "question_id": {
+            "title": "Question Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "question_id"
+        ],
+        "title": "QuizJokerIn",
         "type": "object"
       },
       "QuizMapIn": {
@@ -29897,6 +29932,48 @@
           }
         },
         "summary": "Daily Complete",
+        "tags": [
+          "quiz"
+        ]
+      }
+    },
+    "/api/quiz/joker": {
+      "post": {
+        "description": "50:50: zwei falsche Antworten streichen. Kostet die Hälfte der Punkte —\ndas rechnet ``/answer`` mit ``joker: true``.",
+        "operationId": "joker_api_quiz_joker_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuizJokerIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuizJoker"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Joker",
         "tags": [
           "quiz"
         ]

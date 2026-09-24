@@ -461,6 +461,13 @@ class QuizAnswerIn(BaseModel):
     time_ms: int | None = Field(default=None, ge=0)
     # Reihenfolge-Frage: die vier Antworten in der getippten Reihenfolge.
     order: list[int] | None = Field(default=None, min_length=4, max_length=4)
+    # Mit 50:50-Joker beantwortet: halbe Punkte (aufgerundet). Die App
+    # schickt das Feld nie und bekommt deshalb immer volle Punkte.
+    joker: bool = False
+
+
+class QuizJokerIn(BaseModel):
+    question_id: int
 
 
 class QuizRateIn(BaseModel):

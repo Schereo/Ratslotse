@@ -3,7 +3,7 @@
 import { useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { Check, X, ExternalLink, ThumbsUp, ThumbsDown, ArrowRight, RotateCcw, Send, ChevronDown, ChevronUp, Lightbulb, Scale } from "lucide-react";
+import { Check, X, ExternalLink, ThumbsUp, ThumbsDown, ArrowRight, RotateCcw, Send, ChevronDown, ChevronUp, Lightbulb, Scale, Split } from "lucide-react";
 import { QuizQuestion, QuizAnswerResult } from "@/lib/types";
 import { Card, Button, Input } from "@/components/ui";
 import { Mascot } from "@/components/mascot";
@@ -123,6 +123,10 @@ export function QuizPlay({ questions, onExit, onComplete, title, answerPath = "/
   const [hintShown, setHintShown] = useState(false);
   // Reihenfolge-Frage: die angetippten Antworten, Platz 1 zuerst.
   const [orderPicks, setOrderPicks] = useState<number[]>([]);
+  // 50:50-Joker: einer je Runde. `removed` = die zwei gestrichenen Antworten
+  // der aktuellen Frage (vom Server, damit die Lösung nie im Client liegt).
+  const [jokerUsed, setJokerUsed] = useState(false);
+  const [removed, setRemoved] = useState<number[]>([]);
 
   const q = questions[idx];
   const isEstimate = q.qtype === "estimate";
@@ -140,7 +144,7 @@ export function QuizPlay({ questions, onExit, onComplete, title, answerPath = "/
     if (chosen !== null) return;
     setChosen(i);
     try {
-      const r = await api.post<QuizAnswerResult>(answerPath, { question_id: q.id, selected_index: i });
+      const r = await api.post<QuizAnswerResult>(answerPath, { question_id: q.id, selected_index: i, joker: removed.length > 0 });
       setResult(r);
       setPoints((p) => p + r.points);
       if (r.correct) setCorrect((c) => c + 1);
@@ -180,6 +184,17 @@ export function QuizPlay({ questions, onExit, onComplete, title, answerPath = "/
       setResult({ correct: false, correct_index: -1, points: 0, explanation: null, source_type: null, source_ref: null });
     }
   }
+  async function applyJoker() {
+    if (jokerUsed || chosen !== null) return;
+    setJokerUsed(true);
+    try {
+      const r = await api.post<{ remove: number[] }>("/quiz/joker", { question_id: q.id });
+      setRemoved(r.remove);
+    } catch {
+      setJokerUsed(false); // kein Joker verbraucht, wenn der Server ihn nicht gab
+    }
+  }
+  const canJoker = !practice && !isEstimate && q.qtype !== "order" && q.options.length >= 4 && !jokerUsed && chosen === null;
 
   function next() {
     if (idx + 1 >= questions.length) {
@@ -189,7 +204,7 @@ export function QuizPlay({ questions, onExit, onComplete, title, answerPath = "/
     }
     setIdx((i) => i + 1);
     setChosen(null); setResult(null); setRated(null); setGuess(null); setShowMore(false);
-    setHintShown(false); setComment(""); setCommentSent(false); setOrderPicks([]);
+    setHintShown(false); setComment(""); setCommentSent(false); setOrderPicks([]); setRemoved([]);
   }
 
   function rate(verdict: "gut" | "schlecht") {
@@ -261,6 +276,13 @@ export function QuizPlay({ questions, onExit, onComplete, title, answerPath = "/
         </div>
         <h2 className="mt-3 text-lg font-semibold leading-snug text-foreground">{q.question}</h2>
 
+        {canJoker && (
+          <button type="button" onClick={applyJoker}
+            className="mt-3 mr-4 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
+            <Split className="h-4 w-4" /> 50:50-Joker
+            <span className="font-normal text-muted-foreground">· einmal je Runde, halbe Punkte</span>
+          </button>
+        )}
         {/* Optionaler Tipp — hilft bei schweren Fragen, ohne die Lösung zu
             verraten. Nur vor dem Auflösen anbietbar. */}
         {q.hint && chosen === null && (
@@ -399,15 +421,19 @@ export function QuizPlay({ questions, onExit, onComplete, title, answerPath = "/
               const state = result
                 ? isCorrect ? "correct" : isChosen ? "wrong" : "idle"
                 : "idle";
+              // Gestrichen bleibt stehen (sonst springt die Liste), nur leise.
+              const struck = removed.includes(i) && !result;
               return (
                 <button
                   key={i}
                   type="button"
-                  disabled={chosen !== null}
+                  disabled={chosen !== null || struck}
+                  aria-label={struck ? `${opt} (vom Joker gestrichen)` : undefined}
                   onClick={() => choose(i)}
                   className={cn(
                     "flex items-center justify-between gap-3 rounded-lg border px-4 py-3 text-left text-sm transition-colors",
                     state === "idle" && "border-border hover:border-primary/50 hover:bg-primary/5 disabled:opacity-60",
+                    struck && "line-through opacity-40",
                     state === "correct" && "border-green-500 bg-green-500/10 text-foreground",
                     state === "wrong" && "border-red-500 bg-red-500/10 text-foreground",
                   )}
@@ -428,7 +454,7 @@ export function QuizPlay({ questions, onExit, onComplete, title, answerPath = "/
               {practice
                 ? (result.correct ? "Richtig!" : "Leider daneben.")
                 : result.correct
-                  ? `Richtig! +${result.points}`
+                  ? `Richtig! +${result.points}${removed.length ? " (mit Joker)" : ""}`
                   : result.points > 0 ? `Nah dran! +${result.points}` : "Leider daneben."}
             </LottiReaction>
             {/* Wie die anderen lagen: macht aus der einzelnen Frage ein

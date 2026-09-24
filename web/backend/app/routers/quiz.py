@@ -15,12 +15,12 @@ from council import geo, places, quiz_formats
 from council.store import CouncilStore
 from kern.store import Store
 
-from ..antworten import (Ok, OkWithId, QuizAreas, QuizDailyRound, QuizDayCompleted, QuizFlagged,
+from ..antworten import (Ok, OkWithId, QuizAreas, QuizDailyRound, QuizDayCompleted, QuizFlagged, QuizJoker,
                          QuizMapResult, QuizMapRound, QuizOwnQuestions, QuizResult, QuizRound,
                          QuizScore)
 from ..clients import is_app_client
 from ..deps import get_council_store, get_store, require_active, require_admin
-from ..schemas import (QuizAnswerIn, QuizDailyIn, QuizMapIn, QuizRateIn,
+from ..schemas import (QuizAnswerIn, QuizDailyIn, QuizJokerIn, QuizMapIn, QuizRateIn,
                        UserQuizAnswerIn, UserQuizQuestionIn)
 
 router = APIRouter(prefix="/api/quiz", tags=["quiz"])
@@ -237,6 +237,27 @@ def _estimate_score(guess: float, actual: float | None, diff_points: int) -> tup
     return err <= 0.15, round(diff_points * frac)
 
 
+def _joker_remove(question_id: int, owner_id: int, options: int, correct_index: int) -> list[int]:
+    """Zwei falsche Antworten — je Frage und Konto immer dieselben, damit ein
+    zweiter Aufruf nicht zwei andere streicht (und so die Lösung verrät)."""
+    wrong = [i for i in range(options) if i != correct_index]
+    return sorted(random.Random(f"{question_id}:{owner_id}").sample(wrong, 2))
+
+
+@router.post("/joker")
+def joker(payload: QuizJokerIn,
+          user: dict = Depends(require_active),
+          council: CouncilStore = Depends(get_council_store)) -> QuizJoker:
+    """50:50: zwei falsche Antworten streichen. Kostet die Hälfte der Punkte —
+    das rechnet ``/answer`` mit ``joker: true``."""
+    q = council.get_quiz_question(payload.question_id)
+    if not q:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Frage nicht gefunden.")
+    if q.get("qtype") in ("estimate", "order") or len(q.get("options") or []) < 4:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Für diese Frage gibt es keinen Joker.")
+    return {"remove": _joker_remove(q["id"], user["id"], len(q["options"]), q["correct_index"])}
+
+
 @router.post("/answer")
 def answer(payload: QuizAnswerIn,
            user: dict = Depends(require_active),
@@ -271,6 +292,8 @@ def answer(payload: QuizAnswerIn,
     else:
         correct = payload.selected_index == q["correct_index"]
         pts = diff_pts if correct else 0
+        if payload.joker and len(q.get("options") or []) >= 4:
+            pts = -(-pts // 2)  # halbe Punkte, aufgerundet
         resp.update({"correct": correct, "correct_index": q["correct_index"], "points": pts})
     # Vor dem Buchen gezählt und ohne die eigene Antwort: „wie lagen die anderen?"
     players, ok = store.quiz_others_result(q["id"], user["id"])
