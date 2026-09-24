@@ -197,6 +197,35 @@ def council_facts(store, *, stadtteil: str | None = None, place_id: str | None =
     return _clip("\n".join(lines), 4000)
 
 
+#: Gebiet der Fragen zu den jüngsten Sitzungen (Plan Q10).
+RECENT_AREA = ("topic", "aktuell")
+RECENT_SESSIONS = 5
+RECENT_MIN_INTEREST = 55
+#: So alt darf eine „aktuelle" Frage werden, dann mustert der Lauf sie aus.
+RECENT_MAX_DAYS = 45
+
+
+def recent_facts(store) -> str:
+    """Quelltext für „Aus den letzten Sitzungen": Titel, Gremium, Datum,
+    Betrag, Kurzfassung — und bei allem, was nicht beschlossen wurde, der
+    Ergebnis-Absatz (``outcome_note``), damit kein abgelehnter Antrag als
+    Beschluss in eine Frage gerät (council/CLAUDE.md)."""
+    from council import outcome_note
+    lines = []
+    for d in store.quiz_recent_decisions(RECENT_SESSIONS, RECENT_MIN_INTEREST):
+        head = f"- {d['session_date'][:10]} {d['committee']}: {d['title'].strip()}"
+        if d["outcome"] in outcome_note.LABEL:
+            head += f" [{outcome_note.LABEL[d['outcome']]}]"
+        elif d["outcome"] == "accepted":
+            head += " [beschlossen]"
+        if d["amount_eur"]:
+            head += f" {int(d['amount_eur']):,} €".replace(",", ".")
+        lines.append(head)
+        if d["simple_summary"] and d["outcome"] not in outcome_note.LABEL:
+            lines.append(f"  {d['simple_summary'].strip()[:400]}")
+    return _clip("\n".join(lines), 5000)
+
+
 # --- Anreicherung: Locator-Karte + Wikimedia-Commons-Bild --------------------
 
 _NOMINATIM = "https://nominatim.openstreetmap.org/search"
@@ -722,7 +751,8 @@ MAX_COUNCIL_SHARE = 0.34
 def generate_for_area(area_type: str, area_key: str, area_label: str, sources: str,
                       *, n: int = 8, source_type: str, source_ref: str,
                       verify: bool = True, enrich: bool = True, judge: bool = True,
-                      existing: list[str] | None = None) -> list[dict]:
+                      existing: list[str] | None = None,
+                      council_share: float = MAX_COUNCIL_SHARE) -> list[dict]:
     """Fragen für ein Gebiet generieren, validieren, (optional) verifizieren,
     auf Reiz prüfen (``judge``) und (optional) mit Bild/Karte anreichern.
     ``existing`` sind die Fragetexte, die das Gebiet schon hat — was fast
@@ -741,7 +771,7 @@ def generate_for_area(area_type: str, area_key: str, area_label: str, sources: s
     rows: list[dict] = []
     seen: set[str] = set()
     known = list(existing or [])
-    council_cap = max(1, round(n * MAX_COUNCIL_SHARE))
+    council_cap = max(1, round(n * council_share))
     n_council = 0
     for q in raw:
         if not _valid(q):

@@ -30,7 +30,7 @@ class QuizMixin(StoreBasis):
 
     # Themen ohne Entität dahinter (kuratierte Spezial-Gebiete) → Anzeigename.
     _THEMA_LABELS = {"haushalt": "Stadt-Haushalt", "antraege": "Anträge im Rat",
-                     "ratswahl-2026": "Ratswahl 2026"}
+                     "ratswahl-2026": "Ratswahl 2026", "aktuell": "Aus den letzten Sitzungen"}
 
     def save_quiz_questions(self, rows: list[dict]) -> int:
         """Neue Quizfragen speichern; Duplikate (gleicher content_hash) werden
@@ -169,6 +169,35 @@ class QuizMixin(StoreBasis):
         used.sort(key=lambda r: not _appealing(r["appeal"]))
         picked = (fresh + used)[:limit]
         return [self._quiz_row(r, with_answer=False) for r in picked]
+
+    def quiz_recent_decisions(self, sessions: int, min_interest: int) -> list[sqlite3.Row]:
+        """Die Beschlüsse der jüngsten ``sessions`` Sitzungstage mit Gesprächswert
+        — Rohstoff für „Aus den letzten Sitzungen" (Plan Q10). Nach Tagen, nicht
+        nach Wochen: In der Sommerpause wäre „diese Woche" leer."""
+        days = [r[0] for r in self._conn.execute(
+            "SELECT DISTINCT s.session_date FROM council_sessions s "
+            "JOIN council_decisions d ON d.ksinr = s.ksinr "
+            "WHERE COALESCE(d.interest, 0) >= ? ORDER BY s.session_date DESC LIMIT ?",
+            (min_interest, sessions)).fetchall()]
+        if not days:
+            return []
+        ph = ",".join("?" * len(days))
+        return self._conn.execute(
+            f"SELECT d.id, d.title, d.outcome, d.raw_result, d.amount_eur, d.simple_summary, d.interest, "
+            f"       s.committee, s.session_date FROM council_decisions d "
+            f"JOIN council_sessions s ON s.ksinr = d.ksinr "
+            f"WHERE s.session_date IN ({ph}) AND d.kind = 'decision' AND COALESCE(d.interest, 0) >= ? "
+            f"ORDER BY d.interest DESC LIMIT 25", (*days, min_interest)).fetchall()
+
+    def retire_stale_quiz_area(self, area_type: str, area_key: str, older_than: str) -> int:
+        """Fragen eines Gebiets ausmustern, die vor ``older_than`` (ISO)
+        entstanden sind — damit „aktuell" wahr bleibt."""
+        with self._conn:
+            cur = self._conn.execute(
+                "UPDATE council_quiz_questions SET status = 'retired' "
+                "WHERE area_type = ? AND area_key = ? AND status = 'active' AND generated_at < ?",
+                (area_type, area_key, older_than))
+        return cur.rowcount
 
     def quiz_pin_rows(self, min_decisions: int, slug: str | None = None) -> list[sqlite3.Row]:
         """Verortete Orte mit Geometrie für „Wo liegt das?" (``council.quiz_pins``)

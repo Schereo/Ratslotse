@@ -53,12 +53,19 @@ def _areas(store: CouncilStore) -> list[dict]:
         if e["kind"] in ("project", "place", "organisation") and (e.get("n") or 0) >= THEME_MIN_DECISIONS:
             areas.append({"area_type": "topic", "area_key": e["slug"], "label": e["name"], "slug": e["slug"]})
             themes += 1
+    # Aus den letzten Sitzungen (Plan Q10): ein eigenes Gebiet, Quelle sind
+    # die jüngsten Beschlüsse statt Wikipedia/Stadt-Seite.
+    areas.append({"area_type": quiz.RECENT_AREA[0], "area_key": quiz.RECENT_AREA[1],
+                  "label": "den jüngsten Sitzungen des Oldenburger Rats und seiner Ausschüsse",
+                  "slug": None, "recent": True})
     return areas
 
 
 def _sources(area: dict, facts: str) -> tuple[str, str, str]:
     """Quelltext (+ Haupt-Quelltyp/-ref) für ein Gebiet zusammenstellen.
     Netzabruf (Wikipedia/Stadt) — läuft im Worker-Thread."""
+    if area.get("recent"):
+        return f"Beschlüsse der jüngsten Sitzungen:\n{facts}", "ratsinfo", ""
     parts: list[str] = []
     src_type, src_ref = "ratsinfo", ""
     place_name = area.get("place_name") or area["label"]
@@ -82,7 +89,9 @@ def _gen(area: dict, facts: str, n: int, verify: bool, existing: list[str] | Non
         rows = quiz.generate_for_area(
             area["area_type"], area["area_key"], area["label"], sources,
             n=n, source_type=src_type, source_ref=src_ref, verify=verify,
-            existing=existing)
+            existing=existing,
+            # Die jüngsten Sitzungen SIND Ratspolitik — dort kein Deckel.
+            council_share=1.0 if area.get("recent") else quiz.MAX_COUNCIL_SHARE)
         return {"status": "ok", "label": area["label"], "rows": rows}
     except Exception as exc:  # noqa: BLE001 — Einzelfehler ausweisen, weiterlaufen
         return {"status": "failed", "label": area["label"], "error": repr(exc)}
@@ -91,6 +100,14 @@ def _gen(area: dict, facts: str, n: int, verify: bool, existing: list[str] | Non
 def process(council_db: Path, target: int = 10, per_run: int = 8, workers: int = 3,
             limit: int | None = None, verify: bool = True) -> dict:
     store = CouncilStore(council_db)
+    # „Aktuell" nur, solange es aktuell ist: ältere Fragen dort mustern wir
+    # aus — die Lücke füllt derselbe Lauf mit Fragen zu neueren Sitzungen.
+    from datetime import datetime, timedelta
+    cutoff = (datetime.utcnow() - timedelta(days=quiz.RECENT_MAX_DAYS)).isoformat(timespec="seconds")
+    stale = store.retire_stale_quiz_area(*quiz.RECENT_AREA, cutoff)
+    if stale:
+        print(f"{stale} Frage(n) aus „Aus den letzten Sitzungen“ ausgemustert (älter als "
+              f"{quiz.RECENT_MAX_DAYS} Tage).", flush=True)
     counts = store.quiz_area_counts()
     missing = {(a["area_type"], a["area_key"]): target - counts.get((a["area_type"], a["area_key"]), 0)
                for a in _areas(store)}
@@ -109,8 +126,8 @@ def process(council_db: Path, target: int = 10, per_run: int = 8, workers: int =
     print(f"{len(areas)} Gebiet(e) unter Ziel {target}, bis {workers} Worker.", flush=True)
 
     # Ratsdaten-Kontext je Gebiet vorab (Main-Thread, DB-Lesen).
-    facts = {a["area_key"]: quiz.council_facts(
-                store, place_id=a.get("place_id"), slug=a["slug"]) for a, _ in areas}
+    facts = {a["area_key"]: (quiz.recent_facts(store) if a.get("recent") else quiz.council_facts(
+                store, place_id=a.get("place_id"), slug=a["slug"])) for a, _ in areas}
     # Was das Gebiet schon fragt (auch Ausgemustertes) — gegen Umformulierungen.
     existing = {a["area_key"]: store.quiz_questions_of_area(a["area_type"], a["area_key"])
                 for a, _ in areas}
