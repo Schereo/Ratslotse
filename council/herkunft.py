@@ -209,6 +209,12 @@ PROBEN: dict[str, str] = {
         "In jeder Spalte des Erfolgsplans gilt die Rechnung des Dokuments: "
         "Erträge − Aufwendungen = Ergebnis. Geprüft werden alle Spalten, "
         "gespeichert nur das Planjahr.",
+    # Die GuV-Übersichten der Bäder und des Hafens (council/wirtschaftsplan_guv.py).
+    "business_plan_guv_columns":
+        "Die Posten der Ergebnisplanung — ohne Zwischensummen — ergeben in "
+        "jeder Spalte den ausgewiesenen Jahresüberschuss bzw. -fehlbetrag; "
+        "in der Spalte des Planjahres auf den Euro. Dazu trifft das Ergebnis "
+        "die Zahl aus dem Beschlusstext derselben Vorlage.",
     "business_plan_prose":
         "Der Satz unter der Tabelle nennt dieselben beiden Summen wie die "
         "Planspalte — zwei unabhängig gesetzte Stellen desselben Dokuments.",

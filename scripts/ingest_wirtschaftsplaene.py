@@ -27,8 +27,11 @@ Aufruf::
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import re
 import sys
+import time
+import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -47,6 +50,8 @@ from council.wirtschaftsplan_tabelle import (  # noqa: E402
     herkunft_fuer as herkunft_tabelle,
     parse_erfolgsplan,
 )
+from council import wirtschaftsplan_guv as guv  # noqa: E402
+from council.wirtschaftsplan import Wirtschaftsplan, BETRIEBE, dokument_name  # noqa: E402
 from council.wirtschaftsplan_kernzahl import (  # noqa: E402
     BELEGLAGE,
     herkunft_fuer as herkunft_kernzahl,
@@ -73,6 +78,9 @@ COUNCIL_DB = ROOT / "data" / "council.sqlite"
 #: und Finanzplan 2026 für den …", „BBGO: Wirtschaftsplan 2026".
 TITEL_MUSTER = "%Wirtschaftsplan%"
 
+#: Betriebe, deren Anlage eine GuV-Übersicht führt (council/wirtschaftsplan_guv.py).
+GUV_BETRIEBE = {"bbgo", "bbo", "hafen"}
+
 
 def jahr_aus_titel(title: str) -> int | None:
     """Das Haushaltsjahr aus dem Vorlagentitel.
@@ -92,6 +100,8 @@ def main() -> int:
     ap.add_argument("--db", default=str(COUNCIL_DB))
     ap.add_argument("--trockenlauf", action="store_true",
                     help="alles rechnen und zeigen, nichts speichern")
+    ap.add_argument("--ohne-download", action="store_true",
+                    help="die GuV-Übersichten der Bäder und des Hafens nicht laden")
     args = ap.parse_args()
 
     store = CouncilStore(Path(args.db))
@@ -241,6 +251,83 @@ def main() -> int:
                       f"Ergebnis {plan.result / 1e6:+8.3f} Mio. €   "
                       f"[{lage}] {BELEGLAGE[lage]}")
 
+        # --- Vierter Weg: die GuV-Übersicht der Bäder und des Hafens ------
+        #
+        # Die Kernzahl oben ist nur das Ergebnis. Die Anlage derselben Vorlage
+        # führt die ganze Ergebnisplanung (council/wirtschaftsplan_guv.py); sie
+        # ERGÄNZT die Zeile um Erträge und Aufwendungen, wenn ihr Ergebnis die
+        # Kernzahl trifft. Gelesen wird nur die jüngste Vorlage je Betrieb und
+        # Jahr — dieselbe, deren Zahl in der Tabelle steht (eine „Anpassung"
+        # schlägt den ursprünglichen Plan).
+        guv_ergaenzt: list[tuple] = []
+        guv_hinweise: list[str] = []
+        if not args.ohne_download:
+            juengste: dict[tuple[str, int], dict] = {}
+            for r in rows:
+                erkannt = betrieb_aus_titel(r["title"])
+                year = jahr_aus_titel(r["title"])
+                if not erkannt or year is None or erkannt[0] not in GUV_BETRIEBE:
+                    continue
+                alt = juengste.get((erkannt[0], year))
+                if alt is None or r["kvonr"] > alt["kvonr"]:
+                    juengste[(erkannt[0], year)] = r
+            kern_je = {(p.enterprise, p.year): i for i, (p, _w, _l, _r) in enumerate(kernzahlen)}
+            abrufe = 0
+            for (enterprise, year), r in sorted(juengste.items()):
+                if (enterprise, year) in schon:
+                    continue
+                anlagen = [dict(a) for a in store._conn.execute(  # noqa: SLF001
+                    "SELECT document_id, label, url, n_pages FROM council_attachments "
+                    "WHERE kvonr = ? ORDER BY document_id", (r["kvonr"],))]
+                anlagen = [a for a in anlagen if a["url"] and (a["n_pages"] or 0) <= 20
+                           and re.search(r"Wirtschafts", a["label"] or "")
+                           and not re.search(r"Bericht|Kostenentwicklung", a["label"] or "")]
+                i0 = kern_je.get((enterprise, year))
+                soll = (kernzahlen[i0][0].result
+                        if i0 is not None and kernzahlen[i0][3] is r else None)
+                for a in anlagen:
+                    if abrufe:
+                        time.sleep(1.5)
+                    abrufe += 1
+                    try:
+                        anfrage = urllib.request.Request(a["url"], headers={"User-Agent": "Mozilla/5.0"})
+                        with urllib.request.urlopen(anfrage, timeout=60) as antwort:
+                            lesung = guv.lies_guv_pdf(antwort.read(), year, soll)
+                    except (OSError, guv.GuvFehler) as fehler:
+                        guv_hinweise.append(f"{year} {enterprise} ({a['document_id']}): {fehler}")
+                        continue
+                    i = kern_je.get((enterprise, year))
+                    kern = kernzahlen[i][0] if i is not None and kernzahlen[i][3] is r else None
+                    if kern is not None and abs(kern.result - (lesung.result or 0)) > guv.TOLERANZ_EUR:
+                        guv_hinweise.append(
+                            f"{year} {enterprise}: Tabelle {lesung.result:,.0f} €, Beschlusstext "
+                            f"{kern.result:,.0f} € — nicht ergänzt, es bleibt die Kernzahl")
+                        break
+                    if kern is not None and i is not None:
+                        plan = dataclasses.replace(kern, revenues=lesung.revenues,
+                                                   expenses=lesung.expenses, taxes=0.0)
+                        kernzahlen.pop(i)
+                        kern_je = {(p.enterprise, p.year): k
+                                   for k, (p, _w, _l, _r) in enumerate(kernzahlen)}
+                    else:
+                        plan = Wirtschaftsplan(
+                            enterprise=enterprise, enterprise_name=BETRIEBE[enterprise][1],
+                            year=year, template_number=r["template_number"],
+                            revenues=lesung.revenues or 0.0, expenses=lesung.expenses or 0.0,
+                            taxes=0.0, result=lesung.result or 0.0,
+                            capital_plan=None, commitments=None, draft_date=None)
+                    guv_ergaenzt.append((plan, lesung, a, kern is not None))
+                    break
+        if guv_ergaenzt:
+            print("\nErgänzt aus der GuV-Übersicht der Anlage:")
+            for plan, lesung, a, mit_kern in guv_ergaenzt:
+                print(f"  {plan.year}  {plan.enterprise:8s} Erträge {plan.revenues / 1e6:7.3f} Mio. €  "
+                      f"Aufwendungen {plan.expenses / 1e6:7.3f} Mio. €  Ergebnis "
+                      f"{plan.result / 1e6:+7.3f} Mio. €  ({lesung.proben}/{len(lesung.jahre)} Spalten"
+                      f"{', = Kernzahl' if mit_kern else ''}; Anlage {a['document_id']})")
+        for satz in guv_hinweise:
+            print(f"  · {satz}")
+
         if args.trockenlauf:
             print("\n— Trockenlauf, nichts gespeichert.")
             return 1 if risse else 0
@@ -256,8 +343,12 @@ def main() -> int:
         for plan, wort, lage, r in kernzahlen:
             store.save_wirtschaftsplan(plan, herkunft_kernzahl(
                 plan, wort, lage, url=None, kvonr=r["kvonr"]))
+        for plan, lesung, a, mit_kern in guv_ergaenzt:
+            store.save_wirtschaftsplan(plan, guv.herkunft_fuer(
+                lesung, label=dokument_name(plan), jahr=plan.year, url=a["url"],
+                document_id=a["document_id"], kernzahl_geprueft=mit_kern))
         print(f"\n{len(gefunden)} Eckwerte, {len(aus_anlage)} Erfolgspläne, "
-              f"{len(kernzahlen)} Kernzahlen gespeichert.")
+              f"{len(kernzahlen)} Kernzahlen, {len(guv_ergaenzt)} GuV-Übersichten gespeichert.")
 
         luecken_ohne_beleg = store.herkunft_luecken().get("council_business_plans")
         if luecken_ohne_beleg:
