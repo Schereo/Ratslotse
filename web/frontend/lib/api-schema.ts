@@ -4347,6 +4347,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/quiz/blitz-round": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Blitz Round
+         * @description Blitzrunde (Plan Q6): schnelle Fragen für 60 Sekunden, ohne Lösung.
+         *     Ausgewertet wird jede wie immer über ``/answer``.
+         */
+        get: operations["blitz_round_api_quiz_blitz_round_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/quiz/blitz/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Blitz Complete
+         * @description Einen Blitz-Lauf abschließen — bucht nur die Bestmarke.
+         */
+        post: operations["blitz_complete_api_quiz_blitz_complete_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/quiz/daily": {
         parameters: {
             query?: never;
@@ -13126,6 +13167,25 @@ export interface components {
              */
             tier: "bronze" | "silber" | "gold";
         };
+        /** QuizBlitzIn */
+        QuizBlitzIn: {
+            /** Answered */
+            answered: number;
+            /** Correct */
+            correct: number;
+        };
+        /**
+         * QuizBlitzResult
+         * @description Abschluss einer Blitzrunde: Bestmarke gesamt und heute.
+         */
+        QuizBlitzResult: {
+            /** Best */
+            best: number;
+            /** New Best */
+            new_best: boolean;
+            /** Today Best */
+            today_best: number;
+        };
         /** QuizDailyIn */
         QuizDailyIn: {
             /** Correct */
@@ -13396,6 +13456,8 @@ export interface components {
         QuizScore: {
             /** Badges */
             badges: components["schemas"]["QuizBadge"][];
+            /** Blitz Best */
+            blitz_best?: number;
             /** By Area */
             by_area: components["schemas"]["QuizAreaScore"][];
             /** Daily Done */
@@ -20238,6 +20300,70 @@ export interface operations {
             };
         };
     };
+    blitz_round_api_quiz_blitz_round_get: {
+        parameters: {
+            query?: {
+                n?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuizRound"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    blitz_complete_api_quiz_blitz_complete_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuizBlitzIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuizBlitzResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     daily_api_quiz_daily_get: {
         parameters: {
             query?: never;
@@ -22550,4 +22676,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: bd909a78bdd59958a2d49ef53faf4f82fe800bb351d79b85cd1f55997e4ad81a
+// vertrag-sha256: 59788d2335da8cf4606a4a20b53bf686c2785659eb7ce17198f5d043079beea9

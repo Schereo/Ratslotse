@@ -170,6 +170,29 @@ class QuizMixin(StoreBasis):
         picked = (fresh + used)[:limit]
         return [self._quiz_row(r, with_answer=False) for r in picked]
 
+    #: Längste Antwort, die in einer Blitzrunde noch schnell zu lesen ist.
+    BLITZ_MAX_OPTION = 45
+
+    def pick_blitz_questions(self, limit: int) -> list[dict]:
+        """Schnelle Fragen für die Blitzrunde (Plan Q6): Multiple Choice mit
+        zwei Antworten (Antrag, Vergleich) oder leicht mit kurzen Antworten.
+        Reizvolle zuerst, sonst zufällig; OHNE Lösung."""
+        import random
+        rows = self._conn.execute(
+            "SELECT * FROM council_quiz_questions WHERE status = 'active' AND qtype = 'mc' "
+            "AND (appeal IS NULL OR appeal >= ?)", (MIN_APPEAL,)).fetchall()
+        fast = []
+        for r in rows:
+            try:
+                opts = json.loads(r["options"] or "[]")
+            except (json.JSONDecodeError, TypeError):
+                continue
+            if len(opts) == 2 or (r["difficulty"] == "easy" and len(opts) == 4
+                                  and max(len(o) for o in opts) <= self.BLITZ_MAX_OPTION):
+                fast.append(r)
+        random.shuffle(fast)
+        return [self._quiz_row(r, with_answer=False) for r in fast[:limit]]
+
     def pick_quiz_questions_by_ids(self, ids: list[int], limit: int, *, web: bool = True) -> list[dict]:
         """Aktive Fragen (OHNE Lösung) zu einer Id-Liste, gemischt und gedeckelt —
         für den „Meine Fehler"-Wiederholmodus. Retirte Fragen fallen raus."""

@@ -7078,3 +7078,32 @@ def test_quiz_daily_share_text(client):
     assert lines[2].endswith("/quiz")
     r2 = client.post("/api/quiz/daily/complete", json={"correct": 1, "total": 5, "points": 1}).json()
     assert "share_text" not in r2
+def test_quiz_blitz_round_takes_only_fast_questions(client):
+    """Blitzrunde: zwei Antworten oder leicht mit kurzen Antworten — keine
+    Schätzfrage, keine lange Frage."""
+    _register(client)
+    store = CouncilStore(COUNCIL_DB)
+    base = {"area_type": "district", "area_key": "Osternburg", "category": "history",
+            "correct_index": 0, "explanation": "x", "source_type": "wikipedia", "source_ref": ""}
+    store.save_quiz_questions([
+        {**base, "question": "Zwei Antworten?", "difficulty": "hard", "options": ["Ja", "Nein"], "content_hash": "b1"},
+        {**base, "question": "Leicht und kurz?", "difficulty": "easy", "options": ["A", "B", "C", "D"], "content_hash": "b2"},
+        {**base, "question": "Leicht aber lang?", "difficulty": "easy",
+         "options": ["A" * 60, "B", "C", "D"], "content_hash": "b3"},
+        {**base, "question": "Schwer mit vier?", "difficulty": "hard", "options": ["A", "B", "C", "D"], "content_hash": "b4"},
+        {**base, "question": "Schätzung?", "difficulty": "easy", "qtype": "estimate", "options": [],
+         "answer_value": 5.0, "answer_unit": "x", "range_min": 0.0, "range_max": 20.0, "content_hash": "b5"},
+    ])
+    store.close()
+    got = {q["question"] for q in client.get("/api/quiz/blitz-round?n=10").json()["questions"]}
+    assert got == {"Zwei Antworten?", "Leicht und kurz?"}
+
+
+def test_quiz_blitz_best_only_rises(client):
+    _register(client)
+    a = client.post("/api/quiz/blitz/complete", json={"correct": 7, "answered": 9}).json()
+    assert a == {"best": 7, "today_best": 7, "new_best": True}
+    b = client.post("/api/quiz/blitz/complete", json={"correct": 4, "answered": 6}).json()
+    assert b["best"] == 7 and b["new_best"] is False
+    assert client.get("/api/quiz/stats").json()["blitz_best"] == 7
+    assert client.post("/api/quiz/blitz/complete", json={"correct": 5, "answered": 3}).status_code == 400

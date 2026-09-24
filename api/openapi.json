@@ -17917,6 +17917,52 @@
         "title": "QuizBadge",
         "type": "object"
       },
+      "QuizBlitzIn": {
+        "properties": {
+          "answered": {
+            "maximum": 40.0,
+            "minimum": 0.0,
+            "title": "Answered",
+            "type": "integer"
+          },
+          "correct": {
+            "maximum": 40.0,
+            "minimum": 0.0,
+            "title": "Correct",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "correct",
+          "answered"
+        ],
+        "title": "QuizBlitzIn",
+        "type": "object"
+      },
+      "QuizBlitzResult": {
+        "description": "Abschluss einer Blitzrunde: Bestmarke gesamt und heute.",
+        "properties": {
+          "best": {
+            "title": "Best",
+            "type": "integer"
+          },
+          "new_best": {
+            "title": "New Best",
+            "type": "boolean"
+          },
+          "today_best": {
+            "title": "Today Best",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "best",
+          "today_best",
+          "new_best"
+        ],
+        "title": "QuizBlitzResult",
+        "type": "object"
+      },
       "QuizDailyIn": {
         "properties": {
           "correct": {
@@ -18589,6 +18635,10 @@
             },
             "title": "Badges",
             "type": "array"
+          },
+          "blitz_best": {
+            "title": "Blitz Best",
+            "type": "integer"
           },
           "by_area": {
             "items": {
@@ -29883,6 +29933,94 @@
           }
         },
         "summary": "Areas",
+        "tags": [
+          "quiz"
+        ]
+      }
+    },
+    "/api/quiz/blitz-round": {
+      "get": {
+        "description": "Blitzrunde (Plan Q6): schnelle Fragen für 60 Sekunden, ohne Lösung.\nAusgewertet wird jede wie immer über ``/answer``.",
+        "operationId": "blitz_round_api_quiz_blitz_round_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "n",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 40,
+              "minimum": 5,
+              "title": "N",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuizRound"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Blitz Round",
+        "tags": [
+          "quiz"
+        ]
+      }
+    },
+    "/api/quiz/blitz/complete": {
+      "post": {
+        "description": "Einen Blitz-Lauf abschließen — bucht nur die Bestmarke.",
+        "operationId": "blitz_complete_api_quiz_blitz_complete_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuizBlitzIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuizBlitzResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Blitz Complete",
         "tags": [
           "quiz"
         ]
