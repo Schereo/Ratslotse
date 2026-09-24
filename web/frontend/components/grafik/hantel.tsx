@@ -91,6 +91,7 @@ export function Hantel({
   sortierung = "deviation", schwelle, beleg,
   wovon = "der Bereich", keineWertung = AUSGABEN_KEINE_WERTUNG,
   planLabel = "geplant", istLabel = "tatsächlich",
+  planKurz = "Plan", istKurz = "Ist",
 }: {
   zeilen: HantelZeile[];
   /** Einheit der Beträge — steht an den Skalenenden und in der Legende. */
@@ -117,6 +118,11 @@ export function Hantel({
    *  deshalb „erwartet" — dieselbe Hantel, ein anderes Wort. */
   planLabel?: string;
   istLabel?: string;
+  /** Die Kurzform an den Punkten der schmalen Ansicht. „Ist" stimmt nur, wo
+   *  wirklich ein Ist steht — der Gesamtfinanzhaushalt setzt eine Vorausschau
+   *  gegen einen späteren Ansatz, beides Plan. */
+  planKurz?: string;
+  istKurz?: string;
 }) {
   const [alle, setAlle] = useState(false);
   /** Die Zeile unter dem Zeiger — Spotlight (gb-zeile), aus React, nicht
@@ -269,7 +275,7 @@ export function Hantel({
               {achse(z, rang)}
               <div className="flex items-baseline justify-between gap-2">
                 <span className="text-[11px] text-muted-foreground">
-                  ○ Plan <span className="tabular-nums">{deMio(z.plan as number)}</span>
+                  ○ {planKurz} <span className="tabular-nums">{deMio(z.plan as number)}</span>
                 </span>
                 {(() => { const d = diff(z); return (
                   <span className={cn("text-[11.5px] font-semibold tabular-nums",
@@ -278,7 +284,7 @@ export function Hantel({
                   </span>
                 ); })()}
                 <span className="text-[11px] text-muted-foreground">
-                  ● Ist <span className="font-semibold tabular-nums text-foreground">
+                  ● {istKurz} <span className="font-semibold tabular-nums text-foreground">
                     {deMio(z.ist as number)}</span>
                 </span>
               </div>

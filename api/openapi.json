@@ -4831,6 +4831,13 @@
       },
       "BudgetInvestments": {
         "properties": {
+          "finance_budget": {
+            "items": {
+              "$ref": "#/components/schemas/FinanceBudgetRow"
+            },
+            "title": "Finance Budget",
+            "type": "array"
+          },
           "financial_budget": {
             "items": {},
             "title": "Financial Budget",
@@ -11337,6 +11344,66 @@
           }
         },
         "title": "FeedbackNotifyIn",
+        "type": "object"
+      },
+      "FinanceBudgetRow": {
+        "description": "Eine Investitionszeile des Gesamtfinanzhaushalts (Anlage 006).\n\n``kind`` trennt den Ansatz des Planjahres (``budget``) von der\nFinanzplanung (``financial_plan``); ``plan_budget_year`` sagt, aus welchem\nPlan die Zahl stammt. ``role`` ist nur bei den Summen und dem Saldo\ngesetzt, die übrigen Zeilen sind die Auszahlungs- und Einzahlungsarten.",
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          },
+          "herkunft_id": {
+            "title": "Herkunft Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "is_total": {
+            "title": "Is Total",
+            "type": "integer"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "nr": {
+            "title": "Nr",
+            "type": "integer"
+          },
+          "plan_budget_year": {
+            "title": "Plan Budget Year",
+            "type": "integer"
+          },
+          "role": {
+            "title": "Role",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "year": {
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "plan_budget_year",
+          "year",
+          "kind",
+          "nr",
+          "label",
+          "role",
+          "amount",
+          "is_total",
+          "herkunft_id"
+        ],
+        "title": "FinanceBudgetRow",
         "type": "object"
       },
       "Finances": {
@@ -26275,7 +26342,7 @@
     },
     "/api/council/budget/investments": {
       "get": {
-        "description": "Was die Stadt bauen und kaufen will — die Investitionen des\nFinanzhaushalts, je Teilhaushalt.\n\nDie andere Hälfte des Haushaltsplans: Im Ergebnishaushalt, den der Rest des\nBereichs zeigt, steht keine einzige Investition (ein Schulneubau taucht dort\nnur als Abschreibung auf, verteilt über Jahrzehnte).\n\n- ``years``: Haushaltsjahre, für die Investitionen vorliegen,\n- ``sub_budgets``: je Jahr und Teilhaushalt Ein- und Auszahlungen aus\n  Investitionstätigkeit,\n- ``investments``: je Jahr die Summenzeile der Datei — das **Ziel der\n  Rechenprobe**, nicht unsere Addition,\n- ``financial_budget``: je Jahr der Gesamtbetrag aller Ein- und Auszahlungen,\n  also samt laufender Verwaltungstätigkeit. Die Bezugsgröße, die aus\n  „80,8 Mio. €\" erst eine Aussage macht — und die einzige Zahl hier ohne\n  Rechenprobe (eigene ``herkunft_id`` mit ``ungeprueft``, s. u.),\n- ``herkunft``: je ``herkunft_id`` Dokument, Fundstelle, bestandene Probe\n  samt Messwert. Die geprüften Zeilen und die Bezugsgröße tragen\n  **verschiedene** IDs; sie stehen in derselben Datei, aber nur die einen\n  sind durch deren Summenzeile gedeckt.\n\nZwei Grenzen, die die Seite nennt und die API deshalb nicht verwischt:\nDiese Zahlen sind **Plan**, nicht Ist, und sie nennen **kein einzelnes\nVorhaben** — „Verkehr und Straßenbau: 10,5 Mio. €\" sagt nicht, welche\nStraße.",
+        "description": "Was die Stadt bauen und kaufen will — die Investitionen des\nFinanzhaushalts, je Teilhaushalt.\n\nDie andere Hälfte des Haushaltsplans: Im Ergebnishaushalt, den der Rest des\nBereichs zeigt, steht keine einzige Investition (ein Schulneubau taucht dort\nnur als Abschreibung auf, verteilt über Jahrzehnte).\n\n- ``years``: Haushaltsjahre, für die Investitionen vorliegen,\n- ``sub_budgets``: je Jahr und Teilhaushalt Ein- und Auszahlungen aus\n  Investitionstätigkeit,\n- ``investments``: je Jahr die Summenzeile der Datei — das **Ziel der\n  Rechenprobe**, nicht unsere Addition,\n- ``financial_budget``: je Jahr der Gesamtbetrag aller Ein- und Auszahlungen,\n  also samt laufender Verwaltungstätigkeit. Die Bezugsgröße, die aus\n  „80,8 Mio. €\" erst eine Aussage macht — und die einzige Zahl hier ohne\n  Rechenprobe (eigene ``herkunft_id`` mit ``ungeprueft``, s. u.),\n- ``finance_budget``: die Investitionszeilen des Gesamtfinanzhaushalts\n  (Anlage 006) aller Pläne — Summen, Saldo und Auszahlungsarten, je mit\n  ``kind`` (Ansatz oder Finanzplanung) und ``plan_budget_year``,\n- ``herkunft``: je ``herkunft_id`` Dokument, Fundstelle, bestandene Probe\n  samt Messwert. Die geprüften Zeilen und die Bezugsgröße tragen\n  **verschiedene** IDs; sie stehen in derselben Datei, aber nur die einen\n  sind durch deren Summenzeile gedeckt.\n\nZwei Grenzen, die die Seite nennt und die API deshalb nicht verwischt:\nDiese Zahlen sind **Plan**, nicht Ist, und sie nennen **kein einzelnes\nVorhaben** — „Verkehr und Straßenbau: 10,5 Mio. €\" sagt nicht, welche\nStraße.",
         "operationId": "haushalt_investitionen_api_council_budget_investments_get",
         "responses": {
           "200": {

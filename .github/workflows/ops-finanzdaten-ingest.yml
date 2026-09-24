@@ -157,6 +157,9 @@ jobs:
             else
               .venv/bin/python scripts/ingest_finanzberichte.py
             fi
+            # Gesamtfinanzhaushalt (Anlage 006): lädt seine vier Seiten je Plan
+            # selbst, weil die Spalten Wortkoordinaten brauchen.
+            .venv/bin/python scripts/ingest_finanzhaushalt.py
             .venv/bin/python scripts/ingest_pruefberichte.py
             .venv/bin/python scripts/ingest_konzernabschluss.py
             .venv/bin/python scripts/ingest_investitionen_ist.py
