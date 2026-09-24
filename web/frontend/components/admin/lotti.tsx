@@ -103,6 +103,8 @@ export function LottiTab() {
           )}
       </section>
 
+      <Selbstpruefung p={data.self_check} />
+
       <section className="space-y-3">
         <AbschnittKopf titel="Was die Leute dazu sagen">
           Daumen an Lottis Antworten — nur aus ihrem Fenster (<code>source =
@@ -133,6 +135,45 @@ export function LottiTab() {
         )}
       </section>
     </div>
+  );
+}
+
+/** Lottis Selbstprüfung — eine stille Stichprobe: wie oft beanstandet, wo, warum.
+ *
+ *  **Nur Zahlen, keine Fragen.** Frage und Antwort stehen in der Tabelle
+ *  nur bei Konten mit Einwilligung; hier gezeigt wird keins von beiden —
+ *  der Anteil je Seite und die Gründe reichen für „wo hakt es?". */
+function Selbstpruefung({ p }: { p: AdminLotti["self_check"] }) {
+  const anteil = p.checked > 0 ? Math.round((p.poor * 100) / p.checked) : null;
+  return (
+    <section className="space-y-3">
+      <AbschnittKopf titel="Wie gut Lottis Antworten sind — Stichprobe">
+        Ein Teil der Antworten wird nach der Auslieferung geprüft (Schalter{" "}
+        <code>lotti-selbstpruefung</code>, Anteil <code>COUNCIL_ASSISTANT_PRUEFER_ANTEIL</code>):
+        erst ohne Modell, dann von einem Prüfer-Modell. Niemand wartet darauf, nichts
+        wird ersetzt.
+      </AbschnittKopf>
+      {p.checked === 0
+        ? <p className="text-hinweis text-muted-foreground">Noch keine geprüfte Antwort.</p>
+        : (
+          <>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <Zahl label="Geprüft" n={p.checked}
+                note={p.p50_ms != null ? `Median ${(p.p50_ms / 1000).toLocaleString("de-DE", { maximumFractionDigits: 1 })} s` : undefined} />
+              <Zahl label="Beanstandet" n={p.poor}
+                note={anteil != null ? `${anteil} % der geprüften` : undefined} />
+              <Zahl label="Davon ohne Modell" n={p.by_rules} note="Zahl, Jahr, Wertung, Rest" />
+              <Zahl label="Prüfer ausgefallen" n={p.unknown}
+                note={`${p.cost_usd.toLocaleString("de-DE", { maximumFractionDigits: 2 })} $ gesamt`} />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Liste titel="Beanstandet je Seite"
+                zeilen={p.pages.map((s) => ({ key: `${s.route} (${s.poor}/${s.checked})`, n: s.poor }))} />
+              <Liste titel="Gründe" zeilen={p.reasons} />
+            </div>
+          </>
+        )}
+    </section>
   );
 }
 

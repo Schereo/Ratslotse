@@ -1217,6 +1217,9 @@
             "title": "Questions",
             "type": "array"
           },
+          "self_check": {
+            "$ref": "#/components/schemas/AdminLottiSelbstpruefung"
+          },
           "timeline": {
             "items": {
               "$ref": "#/components/schemas/AdminLottiTag"
@@ -1234,6 +1237,7 @@
           "elements",
           "questions",
           "feedback",
+          "self_check",
           "nudge"
         ],
         "title": "AdminLotti",
@@ -1337,6 +1341,87 @@
           "n"
         ],
         "title": "AdminLottiFrage",
+        "type": "object"
+      },
+      "AdminLottiPruefSeite": {
+        "properties": {
+          "checked": {
+            "title": "Checked",
+            "type": "integer"
+          },
+          "poor": {
+            "title": "Poor",
+            "type": "integer"
+          },
+          "route": {
+            "title": "Route",
+            "type": "string"
+          }
+        },
+        "required": [
+          "route",
+          "checked",
+          "poor"
+        ],
+        "title": "AdminLottiPruefSeite",
+        "type": "object"
+      },
+      "AdminLottiSelbstpruefung": {
+        "description": "Lottis Selbstprüfung (``council/self_check.py``), eine stille Stichprobe —\nnur Zahlen, keine Fragen.",
+        "properties": {
+          "by_rules": {
+            "title": "By Rules",
+            "type": "integer"
+          },
+          "checked": {
+            "title": "Checked",
+            "type": "integer"
+          },
+          "cost_usd": {
+            "title": "Cost Usd",
+            "type": "number"
+          },
+          "p50_ms": {
+            "title": "P50 Ms",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "pages": {
+            "items": {
+              "$ref": "#/components/schemas/AdminLottiPruefSeite"
+            },
+            "title": "Pages",
+            "type": "array"
+          },
+          "poor": {
+            "title": "Poor",
+            "type": "integer"
+          },
+          "reasons": {
+            "items": {
+              "$ref": "#/components/schemas/AdminLottiZeile"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "unknown": {
+            "title": "Unknown",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "checked",
+          "poor",
+          "unknown",
+          "by_rules",
+          "cost_usd",
+          "p50_ms",
+          "pages",
+          "reasons"
+        ],
+        "title": "AdminLottiSelbstpruefung",
         "type": "object"
       },
       "AdminLottiTag": {

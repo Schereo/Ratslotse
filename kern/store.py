@@ -346,6 +346,32 @@ CREATE TABLE IF NOT EXISTS qa_conversation_turns (
 );
 CREATE INDEX IF NOT EXISTS idx_qa_turns_gespraech ON qa_conversation_turns(conversation_id);
 
+-- Lottis Selbstprüfung (council/self_check.py, seit 24.09.2026): eine stille
+-- Stichprobe — je geprüfter Antwort das Urteil, geprüft NACH der Auslieferung.
+-- IMMER gespeichert: Urteil, Stufe, Kategorien, kurze Gründe (ohne Zitat der
+-- Frage — der Prüfer darf sie nicht zitieren, und self_check._kurz streicht,
+-- was er trotzdem übernimmt), Seite, Modell, Dauer, Kosten. Frage und Antwort
+-- NUR mit der Einwilligung in die Gesprächsspeicherung
+-- (web_users.saves_conversations = 1) — sonst NULL. user_id für die
+-- Konto-Löschung (USER_OWNED_TABLES).
+CREATE TABLE IF NOT EXISTS assistant_checks (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id      INTEGER NOT NULL,
+    created      TEXT NOT NULL,
+    surface      TEXT NOT NULL DEFAULT 'lotti',
+    route        TEXT NOT NULL,
+    verdict      TEXT NOT NULL,          -- good | poor | unknown
+    stage        TEXT NOT NULL,          -- rules | model
+    categories   TEXT NOT NULL DEFAULT '[]',   -- JSON-Liste
+    reasons      TEXT NOT NULL DEFAULT '[]',   -- JSON-Liste, je ≤ 160 Zeichen
+    model        TEXT,
+    duration_ms  INTEGER,
+    cost_usd     REAL,
+    question     TEXT,
+    answer       TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_assistant_checks_created ON assistant_checks(created);
+
 -- Geteilte „Frag den Rat"-Antworten (Task 31): bewusste Einzel-
 -- Veröffentlichung per Klick — unabhängig vom „Gespräche speichern"-Opt-in.
 -- token ist der öffentliche Schlüssel (unerratbar); user_id nur intern für
@@ -842,6 +868,7 @@ USER_OWNED_TABLES: tuple[tuple[str, str], ...] = (
     ("prediction_players", "owner_id"),
     ("qa_conversations", "user_id"),
     ("qa_conversation_turns", "user_id"),
+    ("assistant_checks", "user_id"),
     ("qa_shares", "user_id"),
     ("deep_research_jobs", "user_id"),
     ("quiz_answers", "owner_id"),
@@ -3565,6 +3592,62 @@ class Store:
                                (now, conversation_id))
             return True
 
+    def assistant_check_speichern(self, user_id: int, *, route: str, verdict: str,
+                                  stage: str, categories: list[str], reasons: list[str],
+                                  model: str | None, duration_ms: int | None,
+                                  cost_usd: float | None, question: str | None = None,
+                                  answer: str | None = None) -> None:
+        """Ein Urteil der Selbstprüfung ablegen.
+
+        Frage und Antwort nur mit Einwilligung — die prüft HIER der Store,
+        nicht der Aufrufer: Eine Stelle, die das vergisst, legte sonst Fragen
+        von Konten ab, die ausdrücklich nichts speichern wollen.
+        """
+        mit_text = self.get_qa_speichern(user_id) == 1
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute(
+                "INSERT INTO assistant_checks (user_id, created, route, verdict, stage, "
+                "categories, reasons, model, duration_ms, cost_usd, question, answer) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (user_id, now, route[:200], verdict, stage,
+                 json.dumps(categories[:6], ensure_ascii=False),
+                 json.dumps([r[:160] for r in reasons[:3]], ensure_ascii=False),
+                 model, duration_ms, cost_usd,
+                 (question or "")[:600] if mit_text and question else None,
+                 (answer or "")[:8000] if mit_text and answer else None))
+
+    def selbstpruefung_auswertung(self, seit: str) -> dict:
+        """Die Zahlen für den Admin-Reiter „Lotti“ — ab dem Tag ``seit``."""
+        zeilen = self._conn.execute(
+            "SELECT route, verdict, stage, categories, duration_ms, cost_usd "
+            "FROM assistant_checks WHERE created >= ?", (seit,)).fetchall()
+        seiten: dict[str, dict] = {}
+        gruende: dict[str, int] = {}
+        dauer = sorted(r["duration_ms"] for r in zeilen if r["duration_ms"] is not None)
+        for r in zeilen:
+            s = seiten.setdefault(r["route"], {"route": r["route"], "checked": 0, "poor": 0})
+            s["checked"] += 1
+            if r["verdict"] == "poor":
+                s["poor"] += 1
+            try:
+                kategorien = json.loads(r["categories"] or "[]")
+            except (ValueError, TypeError):
+                kategorien = []
+            for k in kategorien:
+                gruende[k] = gruende.get(k, 0) + 1
+        return {
+            "checked": len(zeilen),
+            "poor": sum(1 for r in zeilen if r["verdict"] == "poor"),
+            "unknown": sum(1 for r in zeilen if r["verdict"] == "unknown"),
+            "by_rules": sum(1 for r in zeilen if r["stage"] == "rules" and r["verdict"] == "poor"),
+            "cost_usd": round(sum(r["cost_usd"] or 0 for r in zeilen), 4),
+            "p50_ms": dauer[len(dauer) // 2] if dauer else None,
+            "pages": sorted(seiten.values(), key=lambda x: (-x["poor"], -x["checked"]))[:15],
+            "reasons": [{"key": k, "n": n} for k, n in
+                        sorted(gruende.items(), key=lambda p: -p[1])[:10]],
+        }
+
     @staticmethod
     def _titel_muster(suche: str | None) -> str | None:
         """LIKE-Muster für die Titel-Suche — oder None, wenn nicht gesucht wird.
@@ -4676,6 +4759,9 @@ class Store:
             "elements": oben(elemente, 15),
             "questions": sorted(fragen.values(), key=lambda f: -f["n"])[:50],
             "feedback": daumen,
+            # Lottis Selbstprüfung (council/self_check.py): eine stille
+            # Stichprobe — wie oft beanstandet, je Seite und Grund.
+            "self_check": self.selbstpruefung_auswertung(seit),
             # Der Anstupser ist noch nicht gebaut; die drei Zahlen stehen
             # deshalb auf 0 und die Oberfläche sagt das. Sie hier schon zu
             # lesen kostet nichts und erspart später eine Vertragsänderung.

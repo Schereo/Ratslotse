@@ -88,7 +88,7 @@ from typing import Any
 WURZEL = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(WURZEL))
 
-from eval import fakten_abgleich as fa  # noqa: E402
+from council import fakten_abgleich as fa  # noqa: E402
 
 FAELLE_DATEIEN = (WURZEL / "eval" / "cases_fakten_haushalt.json",
                   WURZEL / "eval" / "cases_fakten_rat.json")
@@ -179,6 +179,19 @@ def _uvicorn() -> str:
     return gefunden
 
 
+#: Lottis Selbstprüfung (``council/self_check.py``) bleibt im Mess-Backend
+#: AUS: Sie ist eine stille Stichprobe nach der Antwort und ändert nichts an
+#: dem, was gemessen wird — kostete aber je gezogene Antwort einen
+#: Prüfer-Aufruf. Die Selbstprüfung misst ``eval/run_selbstpruefung.py``.
+SELBSTPRUEFUNG = "lotti-selbstpruefung"
+
+
+def _schalter() -> str:
+    """``FEATURE_FLAGS`` fürs Mess-Backend: alle Schalter außer der Selbstprüfung."""
+    from kern import features
+    return ",".join(k for k in features.FEATURES if k != SELBSTPRUEFUNG)
+
+
 @contextmanager
 def backend(modell: str, mitschnitt: Path, *, ohne_zdr: bool,
             protokoll: Path, aufwand: str | None = None) -> Iterator[str]:
@@ -197,7 +210,7 @@ def backend(modell: str, mitschnitt: Path, *, ohne_zdr: bool,
             "RATSLOTSE_DB": str(konten),
             "WEB_JWT_SECRET": "nur-fuer-die-fakten-eval",
             "DISABLE_RATE_LIMIT": "1",
-            "FEATURE_FLAGS": "*",
+            "FEATURE_FLAGS": _schalter(),
             MITSCHNITT_ENV: str(mitschnitt),
             "COUNCIL_ASSISTANT_MODEL": modell,
             "COUNCIL_QA_MODEL": modell,

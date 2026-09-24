@@ -29,6 +29,8 @@ from council import donations as spenden_mod
 from council import steuertabellen
 from council import trade_tax_statistics as gewst
 from council import assistant as lotti
+from council import self_check
+from starlette.background import BackgroundTask
 from council import beteiligungsbericht, qa
 from council import ernte
 from kern import features, knowledge, seitenaufrufe
@@ -4005,6 +4007,36 @@ def _lotti_turn_speichern(ratslotse: Store, user: dict, body: ExplainBody,
         return None
 
 
+def _selbstpruefung_nachlauf(nachlauf: dict) -> None:
+    """Die stille Stichprobe: prüfen und ablegen, nachdem die Antwort raus ist.
+
+    **Eigener Store**, nicht der aus dem Request: Dessen Verbindung gehört
+    der Anfrage, und die ist hier vorbei. Was immer gespeichert wird und was
+    nur mit Einwilligung, entscheidet ``Store.assistant_check_speichern``
+    (Frage und Antwort nur mit ``saves_conversations = 1``).
+
+    Wirft nie — eine Prüfung ist Zusatz, und ein Fehler hier träfe niemanden,
+    der ihn sehen könnte, außer dem Log.
+    """
+    if not nachlauf:
+        return
+    try:
+        t0 = time.perf_counter()
+        v = self_check.check(nachlauf["frage"], nachlauf["context"], nachlauf["text"],
+                             skip_judge=nachlauf["skip_judge"])
+        store = Store(get_settings().ratslotse_db)
+        try:
+            store.assistant_check_speichern(
+                nachlauf["user_id"], route=nachlauf["route"], verdict=v.verdict,
+                stage=v.stage, categories=v.categories, reasons=v.reasons, model=v.model,
+                duration_ms=round((time.perf_counter() - t0) * 1000), cost_usd=v.cost_usd,
+                question=nachlauf["frage"] or None, answer=nachlauf["text"])
+        finally:
+            store.close()
+    except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
+        _log.warning("Lottis Selbstprüfung (Stichprobe) fehlgeschlagen", exc_info=True)
+
+
 class AssistantEventBody(BaseModel):
     """Ein Ereignis aus Lottis Fenster, das sonst keinen Endpunkt hätte.
 
@@ -4141,6 +4173,8 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
     )
     frage = body.question.strip()
     verlauf = [r.model_dump() for r in body.history]
+    #: Was die stille Stichprobe nach dem Strom prüft — leer, wenn nichts.
+    nachlauf: dict = {}
 
     def gen():
         try:
@@ -4286,6 +4320,16 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
             conversation_id = _lotti_turn_speichern(
                 ratslotse, user, body, screen, frage, text, "explain", weiter, begriffe,
                 belege)
+            # **Die stille Stichprobe** (Schalter `lotti-selbstpruefung`,
+            # council/self_check.py): Für einen Anteil der Antworten prüft der
+            # Server NACH dem `done`-Rahmen — als Hintergrund-Aufgabe der
+            # Antwort, die erst läuft, wenn der Strom beim Client ist. Hier
+            # wird nur vorgemerkt; der Prompt ist derselbe, den Lotti bekam.
+            if features.an("lotti-selbstpruefung") and text.strip() and self_check.gezogen():
+                messages, _extra = lotti.explain_messages(screen, frage, ctx, verlauf)
+                nachlauf.update(user_id=user["id"], route=route, frage=frage, text=text,
+                                context=messages[0]["content"],
+                                skip_judge=(weiter == "ratsfrage"))
             yield _sse({"type": "done", "mode": "explain", "kind": "model",
                         "next": weiter,
                         # Der Verweis auf eine andere Haushalts-Seite, als Ziel
@@ -4309,7 +4353,9 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
 
     return StreamingResponse(
         gen(), media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        # Läuft erst, wenn der Strom ausgeliefert ist — niemand wartet darauf.
+        background=BackgroundTask(_selbstpruefung_nachlauf, nachlauf))
 
 
 class ScreenContext(BaseModel):

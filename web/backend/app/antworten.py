@@ -2170,6 +2170,28 @@ class AdminLottiAnstupser(TypedDict):
     dismissed: int
 
 
+class AdminLottiPruefSeite(TypedDict):
+    route: str
+    checked: int
+    poor: int
+
+
+class AdminLottiSelbstpruefung(TypedDict):
+    """Lottis Selbstprüfung (``council/self_check.py``), eine stille Stichprobe —
+    nur Zahlen, keine Fragen."""
+    checked: int
+    #: Beanstandet — von Stufe 1 (ohne Modell) oder vom Prüfer.
+    poor: int
+    #: Der Prüfer antwortete nicht oder unlesbar.
+    unknown: int
+    #: Davon von Stufe 1, ohne Prüfer-Aufruf.
+    by_rules: int
+    cost_usd: float
+    p50_ms: int | None
+    pages: list[AdminLottiPruefSeite]
+    reasons: list[AdminLottiZeile]
+
+
 class AdminLotti(TypedDict):
     """Was der Reiter „Lotti" im Admin-Panel zeigt.
 
@@ -2184,6 +2206,7 @@ class AdminLotti(TypedDict):
     elements: list[AdminLottiZeile]
     questions: list[AdminLottiFrage]
     feedback: AdminLottiDaumen
+    self_check: AdminLottiSelbstpruefung
     nudge: AdminLottiAnstupser
 
 

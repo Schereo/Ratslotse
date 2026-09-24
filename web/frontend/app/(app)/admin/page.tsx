@@ -84,6 +84,7 @@ type LlmUsage = {
  *  englisch sind, stünde dort `attachment_ocr` — deshalb jetzt vollständig.
  *  Wer ein neues `_feature=` einführt, trägt es hier ein. */
 const FEATURE_LABELS: Record<string, string> = {
+  assistant_check: "Lotti prüft ihre Antwort (Selbstprüfung)",
   assistant_explain: "Lotti erklärt (Assistentin)",
   cities_classify: "Fremde Ratsvorlage einordnen",
   cities_fit: "Hat Oldenburg das schon?",
