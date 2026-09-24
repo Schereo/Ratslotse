@@ -221,6 +221,14 @@ def test_ausgangswert_einer_veraenderung_traegt_nicht_das_neue_jahr():
     assert fa.zahl_im_text({"wert": 4.04, "jahr": 2026}, antwort, satz=True).status == "ok"
 
 
+def test_ausgangswert_mit_rund_traegt_nicht_das_endjahr():
+    """Gemessen 24.09. (GPT-6 Luna): 269 Mio. galt als Wert von 2025."""
+    antwort = ("Vom Jahresende 2020 bis zum Jahresende 2025 stieg der Schuldenstand um "
+               "25,17 Prozent – von rund 269 Millionen auf rund 337 Millionen Euro.")
+    assert fa.zahl_im_text({"wert": 269_230_000, "jahr": 2020}, antwort, satz=True).status == "ok"
+    assert fa.zahl_im_text({"wert": 336_994_000, "jahr": 2025}, antwort, satz=True).status == "ok"
+
+
 def test_elternzeile_zaehlt_ihr_erstes_jahr():
     kontext = ("- Wirtschaftsplan 2026: Ergebnis 711.250 €; im Plan 2025 waren es 627.511 €\n"
                "  - Erfolgsplan: Aufwendungen 26,0 Mio. €")

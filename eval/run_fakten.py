@@ -186,10 +186,16 @@ def _uvicorn() -> str:
 SELBSTPRUEFUNG = "lotti-selbstpruefung"
 
 
+#: Schalter, die ein Lauf zusätzlich auslässt (``--ohne-schalter``) — der
+#: Vergleich „mit und ohne“ eines Features auf demselben Stand.
+OHNE_SCHALTER: set[str] = set()
+
+
 def _schalter() -> str:
     """``FEATURE_FLAGS`` fürs Mess-Backend: alle Schalter außer der Selbstprüfung."""
     from kern import features
-    return ",".join(k for k in features.FEATURES if k != SELBSTPRUEFUNG)
+    return ",".join(k for k in features.FEATURES
+                    if k != SELBSTPRUEFUNG and k not in OHNE_SCHALTER)
 
 
 @contextmanager
@@ -967,6 +973,8 @@ def main(argv: list[str] | None = None) -> int:
                     help="weitere Fall-Datei zusätzlich zur Vorgabe (z. B. aus einem offenen PR)")
     ap.add_argument("--etikett", help="Stand des Laufs für den Bericht; „vor …“ = Vergleichslauf")
     ap.add_argument("--nicht-speichern", action="store_true")
+    ap.add_argument("--ohne-schalter", default="",
+                    help="Feature-Schalter, die dieser Lauf auslässt (kommagetrennt)")
     ap.add_argument("--kanal", choices=("deep",),
                     help="jeden Fall über diesen Weg stellen (deep = ausführliche Recherche)")
     ap.add_argument("--auswahl", help=f"benannte Fallauswahl: {', '.join(AUSWAHL)}")
@@ -982,6 +990,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--voll", action="store_true",
                     help="teures Modell: alle gewählten Fälle statt der Stichprobe")
     a = ap.parse_args(argv)
+    OHNE_SCHALTER.update(k.strip() for k in a.ohne_schalter.split(",") if k.strip())
     pfade = [Path(p) for p in a.faelle.split(",")] if a.faelle else None
     faelle = lade(pfade)
     bekannt = {f["id"] for f in faelle}

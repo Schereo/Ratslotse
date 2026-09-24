@@ -5130,5 +5130,1003 @@
   ],
   "verboten": [],
   "notiz": "Befund B: richtig, aber ohne Oldenburger Zahl."
+ },
+ {
+  "id": "hh-mehr-schulden-seit-2010",
+  "kanal": "lotti",
+  "route": "/haushalt/schulden",
+  "refs": {},
+  "heading": "Wie viel Schulden hat Oldenburg?",
+  "page_title": "Ratslotse — Oldenburger Ratsinformationen verständlich",
+  "anchors": [
+   "Drei Zählweisen, eine Stadt · Stand 31.12.2024",
+   "Kredite und Zinsen",
+   "Schulden total",
+   "Verbürgt und selbst geschuldet",
+   "Liquiditätsstand"
+  ],
+  "frage": "wie haben sich die schulden seit 2010 entwickelt",
+  "kategorie": "haushalt/mehrstufig/zeitreihe",
+  "baustein": "store.schulden_kontext (qa: schulden)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 153997000.0,
+    "einheit": "€",
+    "bezeichnung": "Schuldenstand 2010",
+    "quelle": "SELECT total FROM council_debt WHERE year = 2010",
+    "jahr": 2010
+   },
+   {
+    "art": "zahl",
+    "wert": 336994000.0,
+    "einheit": "€",
+    "bezeichnung": "Schuldenstand 2025",
+    "quelle": "SELECT total FROM council_debt WHERE year = 2025",
+    "jahr": 2025
+   }
+  ],
+  "verboten": [],
+  "notiz": "Der Schulden-Baustein zeigt jüngstes Jahr, Vorjahr, Höchstwert — 2010 nicht."
+ },
+ {
+  "id": "hh-mehr-schulden-2015-heute",
+  "kanal": "lotti",
+  "route": "/haushalt/schulden",
+  "refs": {},
+  "heading": "Wie viel Schulden hat Oldenburg?",
+  "page_title": "Ratslotse — Oldenburger Ratsinformationen verständlich",
+  "anchors": [
+   "Drei Zählweisen, eine Stadt · Stand 31.12.2024",
+   "Kredite und Zinsen",
+   "Schulden total",
+   "Verbürgt und selbst geschuldet",
+   "Liquiditätsstand"
+  ],
+  "frage": "waren die schulden 2015 höher oder niedriger als heute",
+  "kategorie": "haushalt/mehrstufig/zeitreihe",
+  "baustein": "store.schulden_kontext (qa: schulden)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 211503000.0,
+    "einheit": "€",
+    "bezeichnung": "Schuldenstand 2015",
+    "quelle": "SELECT total FROM council_debt WHERE year = 2015",
+    "jahr": 2015
+   },
+   {
+    "art": "zahl",
+    "wert": 336994000.0,
+    "einheit": "€",
+    "bezeichnung": "Schuldenstand 2025",
+    "quelle": "SELECT total FROM council_debt WHERE year = 2025",
+    "jahr": 2025
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-mehr-gewst-zehn-jahre",
+  "kanal": "lotti",
+  "route": "/haushalt/einnahmen",
+  "refs": {},
+  "heading": "Woher kommt das Geld?",
+  "page_title": "Ratslotse — Oldenburger Ratsinformationen verständlich",
+  "anchors": [
+   "Spielraum über alle Quellen"
+  ],
+  "frage": "wie viel mehr gewerbesteuer nimmt die stadt heute ein als vor zehn jahren",
+  "kategorie": "haushalt/mehrstufig/zeitreihe",
+  "baustein": "store.steuern_fuer_begriffe (qa: taxes)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 86249000.0,
+    "einheit": "€",
+    "bezeichnung": "Gewerbesteuer 2015",
+    "quelle": "SELECT amount FROM council_taxes WHERE year = 2015 AND kind = 'Gewerbesteuer (-umlage)'",
+    "jahr": 2015
+   },
+   {
+    "art": "zahl",
+    "wert": 222117000.0,
+    "einheit": "€",
+    "bezeichnung": "Gewerbesteuer 2025",
+    "quelle": "SELECT amount FROM council_taxes WHERE year = 2025 AND kind = 'Gewerbesteuer (-umlage)'",
+    "jahr": 2025
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-mehr-kita-seit-2020",
+  "kanal": "lotti",
+  "route": "/haushalt/produkte",
+  "refs": {},
+  "heading": "Was kostet eigentlich …?",
+  "page_title": "Ratslotse — Oldenburger Ratsinformationen verständlich",
+  "anchors": [
+   "Produktebene · Haushaltsjahr 2026"
+  ],
+  "frage": "wie haben sich die kita-kosten seit 2020 entwickelt",
+  "kategorie": "haushalt/mehrstufig/zeitreihe",
+  "baustein": "store.produkte_fuer_begriffe (qa: produkte)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 57793721.0,
+    "einheit": "€",
+    "bezeichnung": "Kindertagesbetreuung Aufwand Plan 2020",
+    "quelle": "SELECT expenses FROM council_products WHERE year = 2020 AND product_name = 'Kindertagesbetreuung'",
+    "jahr": 2020
+   },
+   {
+    "art": "zahl",
+    "wert": 87915525.0,
+    "einheit": "€",
+    "bezeichnung": "Kindertagesbetreuung Aufwand Plan 2026",
+    "quelle": "SELECT expenses FROM council_products WHERE year = 2026 AND product_name = 'Kindertagesbetreuung'",
+    "jahr": 2026
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-mehr-stellen-seit-2023",
+  "kanal": "lotti",
+  "route": "/haushalt/personal",
+  "refs": {},
+  "heading": "Wer macht die Arbeit?",
+  "page_title": "Ratslotse — Oldenburger Ratsinformationen verständlich",
+  "anchors": [
+   "Stellenplan Teil A · Beamtinnen und Beamte · Plan 2026",
+   "Personalaufwand"
+  ],
+  "frage": "hat die stadt heute mehr stellen als 2023",
+  "kategorie": "haushalt/mehrstufig/zeitreihe",
+  "baustein": "store.stellenplan_kontext (qa: stellenplan)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 1643.0,
+    "einheit": "",
+    "bezeichnung": "Stellen Teil B Plan 2023",
+    "quelle": "SELECT positions_planned FROM council_staff_plan WHERE budget_year = 2023 AND part = 'B' AND kind = 'total' AND label = 'Summe'",
+    "jahr": 2023
+   },
+   {
+    "art": "zahl",
+    "wert": 1769.0,
+    "einheit": "",
+    "bezeichnung": "Stellen Teil B Plan 2026",
+    "quelle": "SELECT positions_planned FROM council_staff_plan WHERE budget_year = 2026 AND part = 'B' AND kind = 'total' AND label = 'Summe'",
+    "jahr": 2026
+   }
+  ],
+  "verboten": [],
+  "notiz": "Teil A und B nie addieren (die Seite sagt das ausdrücklich)."
+ },
+ {
+  "id": "hh-mehr-personalkosten",
+  "kanal": "lotti",
+  "route": "/haushalt/plan-ist",
+  "refs": {},
+  "heading": "Geplant und geworden",
+  "page_title": "Ratslotse — Oldenburger Ratsinformationen verständlich",
+  "anchors": [
+   "Jahresabschluss 2024 · Mio. € Aufwand",
+   "Der Haushaltsvollzug"
+  ],
+  "frage": "sind die personalkosten in den letzten jahren gestiegen",
+  "kategorie": "haushalt/mehrstufig/zeitreihe",
+  "baustein": "store.result_actual_for_terms (qa: ist)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 139748546.04,
+    "einheit": "€",
+    "bezeichnung": "Personalaufwendungen Ist 2019",
+    "quelle": "SELECT result FROM council_income_statement WHERE year = 2019 AND sub_budget_no IS NULL AND nr = 13",
+    "jahr": 2019
+   },
+   {
+    "art": "zahl",
+    "wert": 184779048.0,
+    "einheit": "€",
+    "bezeichnung": "Personalaufwendungen Ist 2024",
+    "quelle": "SELECT result FROM council_income_statement WHERE year = 2024 AND sub_budget_no IS NULL AND nr = 13",
+    "jahr": 2024
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-mehr-feuerwehr-2020",
+  "kanal": "lotti",
+  "route": "/haushalt/produkte",
+  "refs": {},
+  "heading": "Was kostet eigentlich …?",
+  "page_title": "Ratslotse — Oldenburger Ratsinformationen verständlich",
+  "anchors": [
+   "Produktebene · Haushaltsjahr 2026"
+  ],
+  "frage": "was kostet die feuerwehr heute im vergleich zu 2020",
+  "kategorie": "haushalt/mehrstufig/zeitreihe",
+  "baustein": "store.produkte_fuer_begriffe (qa: produkte)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 11244181.0,
+    "einheit": "€",
+    "bezeichnung": "Brand- und Katastrophenschutz Plan 2020",
+    "quelle": "SELECT expenses FROM council_products WHERE year = 2020 AND product_name = 'Brand- und Katastrophenschutz'",
+    "jahr": 2020
+   },
+   {
+    "art": "zahl",
+    "wert": 19487937.0,
+    "einheit": "€",
+    "bezeichnung": "Brand- und Katastrophenschutz Plan 2026",
+    "quelle": "SELECT expenses FROM council_products WHERE year = 2026 AND product_name = 'Brand- und Katastrophenschutz'",
+    "jahr": 2026
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-mehr-hebesatz-2002",
+  "kanal": "lotti",
+  "route": "/haushalt/steuer",
+  "refs": {},
+  "heading": "Gewerbesteuer",
+  "page_title": "Ratslotse — Oldenburger Ratsinformationen verständlich",
+  "anchors": [
+   "Steuer-Steckbrief · Hebesatz Gewerbesteuer",
+   "Der Verlauf im Jahr",
+   "Steuern: geplant und geworden",
+   "Wer zahlt das?",
+   "Hebesatz-Treppe",
+   "Was die Stadt nicht entscheidet"
+  ],
+  "frage": "wie hat sich der gewerbesteuer-hebesatz seit 2002 verändert",
+  "kategorie": "haushalt/mehrstufig/zeitreihe",
+  "baustein": "council/geld/tax_rates.py",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 410.0,
+    "einheit": "%",
+    "bezeichnung": "Hebesatz 2002",
+    "quelle": "SELECT rate FROM council_tax_rates WHERE year = 2002 AND kind = 'Gewerbesteuer'",
+    "jahr": 2002
+   },
+   {
+    "art": "zahl",
+    "wert": 439.0,
+    "einheit": "%",
+    "bezeichnung": "Hebesatz 2025",
+    "quelle": "SELECT rate FROM council_tax_rates WHERE year = 2025 AND kind = 'Gewerbesteuer'",
+    "jahr": 2025
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-mehr-invest-auf-schulden",
+  "kanal": "lotti",
+  "route": "/haushalt/schulden",
+  "refs": {},
+  "heading": "Wie viel Schulden hat Oldenburg?",
+  "page_title": "Ratslotse — Oldenburger Ratsinformationen verständlich",
+  "anchors": [
+   "Drei Zählweisen, eine Stadt · Stand 31.12.2024",
+   "Kredite und Zinsen",
+   "Schulden total",
+   "Verbürgt und selbst geschuldet",
+   "Liquiditätsstand"
+  ],
+  "frage": "wie viel hat die stadt 2024 tatsächlich investiert",
+  "kategorie": "haushalt/mehrstufig/seitenwechsel",
+  "baustein": "store.investitionen_ist_kontext (qa: gebaut)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 67954000.0,
+    "einheit": "€",
+    "bezeichnung": "Investitionsauszahlungen Ist 2024",
+    "quelle": "SELECT total FROM council_investments_actual WHERE year = 2024",
+    "jahr": 2024
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-mehr-gewst-auf-invest",
+  "kanal": "lotti",
+  "route": "/haushalt/investitionen",
+  "refs": {},
+  "heading": "Was gebaut wird — und was daraus wurde",
+  "page_title": "Ratslotse — Oldenburger Ratsinformationen verständlich",
+  "anchors": [
+   "Investitionsprogramm · Pläne 2019–2026",
+   "Vorhaben"
+  ],
+  "frage": "wie viel gewerbesteuer hat die stadt 2025 eingenommen",
+  "kategorie": "haushalt/mehrstufig/seitenwechsel",
+  "baustein": "store.steuern_fuer_begriffe (qa: taxes)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 222117000.0,
+    "einheit": "€",
+    "bezeichnung": "Gewerbesteuer 2025",
+    "quelle": "SELECT amount FROM council_taxes WHERE year = 2025 AND kind = 'Gewerbesteuer (-umlage)'",
+    "jahr": 2025
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-mehr-prokopf-auf-vergleich",
+  "kanal": "lotti",
+  "route": "/haushalt/vergleich",
+  "refs": {},
+  "heading": "Steht Oldenburg besser da als Osnabrück?",
+  "page_title": "Ratslotse — Oldenburger Ratsinformationen verständlich",
+  "anchors": [
+   "Kreisfreie Städte Niedersachsens"
+  ],
+  "frage": "wie hoch sind oldenburgs schulden pro einwohner",
+  "kategorie": "haushalt/mehrstufig/seitenwechsel",
+  "baustein": "store.schulden_kontext (qa: schulden)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 1908.0,
+    "einheit": "€",
+    "bezeichnung": "Schulden je Einwohner*in 2025",
+    "quelle": "SELECT per_capita FROM council_debt WHERE year = 2025",
+    "jahr": 2025
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-mehr-kita-auf-steuer",
+  "kanal": "lotti",
+  "route": "/haushalt/steuer",
+  "refs": {},
+  "heading": "Gewerbesteuer",
+  "page_title": "Ratslotse — Oldenburger Ratsinformationen verständlich",
+  "anchors": [
+   "Steuer-Steckbrief · Hebesatz Gewerbesteuer",
+   "Der Verlauf im Jahr",
+   "Steuern: geplant und geworden",
+   "Wer zahlt das?",
+   "Hebesatz-Treppe",
+   "Was die Stadt nicht entscheidet"
+  ],
+  "frage": "was kostet die kinderbetreuung die stadt",
+  "kategorie": "haushalt/mehrstufig/seitenwechsel",
+  "baustein": "store.produkte_fuer_begriffe (qa: produkte)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 87915525.0,
+    "einheit": "€",
+    "bezeichnung": "Kindertagesbetreuung Aufwand Plan 2026",
+    "quelle": "SELECT expenses FROM council_products WHERE year = 2026 AND product_name = 'Kindertagesbetreuung'",
+    "jahr": 2026
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-mehr-stellen-auf-konzern",
+  "kanal": "lotti",
+  "route": "/haushalt/konzern",
+  "refs": {},
+  "heading": "Und ist das die ganze Stadt?",
+  "page_title": "Ratslotse — Oldenburger Ratsinformationen verständlich",
+  "anchors": [
+   "Gesamtabschluss · Konzern Oldenburg · 2024",
+   "Jahresergebnis im Plan",
+   "Gebühr im Zeitverlauf"
+  ],
+  "frage": "wie viele stellen hat die stadtverwaltung",
+  "kategorie": "haushalt/mehrstufig/seitenwechsel",
+  "baustein": "store.stellenplan_kontext (qa: stellenplan)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 1769.0,
+    "einheit": "",
+    "bezeichnung": "Stellen Teil B Plan 2026",
+    "quelle": "SELECT positions_planned FROM council_staff_plan WHERE budget_year = 2026 AND part = 'B' AND kind = 'total' AND label = 'Summe'",
+    "jahr": 2026
+   },
+   {
+    "art": "zahl",
+    "wert": 815.0,
+    "einheit": "",
+    "bezeichnung": "Stellen Teil A Plan 2026",
+    "quelle": "SELECT positions_planned FROM council_staff_plan WHERE budget_year = 2026 AND part = 'A' AND kind = 'total' AND label = 'Summe'",
+    "jahr": 2026
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-mehr-schulden-auf-personal",
+  "kanal": "lotti",
+  "route": "/haushalt/personal",
+  "refs": {},
+  "heading": "Wer macht die Arbeit?",
+  "page_title": "Ratslotse — Oldenburger Ratsinformationen verständlich",
+  "anchors": [
+   "Stellenplan Teil A · Beamtinnen und Beamte · Plan 2026",
+   "Personalaufwand"
+  ],
+  "frage": "wie hoch ist der schuldenstand der stadt",
+  "kategorie": "haushalt/mehrstufig/seitenwechsel",
+  "baustein": "store.schulden_kontext (qa: schulden)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 336994000.0,
+    "einheit": "€",
+    "bezeichnung": "Schuldenstand 2025",
+    "quelle": "SELECT total FROM council_debt WHERE year = 2025",
+    "jahr": 2025
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-mehr-anteil-soziales",
+  "kanal": "lotti",
+  "route": "/haushalt",
+  "refs": {},
+  "heading": "Oldenburg plant Ausgaben von 883,9 Millionen Euro.",
+  "page_title": "Ratslotse — Oldenburger Ratsinformationen verständlich",
+  "anchors": [
+   "Die Anzeigetafel",
+   "Der Kassenzettel",
+   "Verfügbar nach Jahresergebnis",
+   "Die Teilhaushalte"
+  ],
+  "frage": "welcher anteil der ausgaben geht in soziales und gesundheit",
+  "kategorie": "haushalt/mehrstufig/rechnen",
+  "baustein": "store.haushalt_fuer_begriffe (qa: plan)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 283120052.0,
+    "einheit": "€",
+    "bezeichnung": "Soziales und Gesundheit 2026",
+    "quelle": "SELECT expenses FROM council_budget WHERE year = 2026 AND area = 'Soziales und Gesundheit'",
+    "jahr": 2026
+   },
+   {
+    "art": "zahl",
+    "wert": 32.03,
+    "einheit": "%",
+    "bezeichnung": "Anteil an den Aufwendungen 2026",
+    "quelle": "SELECT 100.0 * (SELECT expenses FROM council_budget WHERE year = 2026 AND area = 'Soziales und Gesundheit') / (SELECT expenses FROM council_budget WHERE year = 2026 AND is_total = 1)",
+    "jahr": 2026,
+    "toleranz": 0.03
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-mehr-anteil-gewst",
+  "kanal": "lotti",
+  "route": "/haushalt/einnahmen",
+  "refs": {},
+  "heading": "Woher kommt das Geld?",
+  "page_title": "Ratslotse — Oldenburger Ratsinformationen verständlich",
+  "anchors": [
+   "Spielraum über alle Quellen"
+  ],
+  "frage": "wie viel prozent der steuereinnahmen kommen aus der gewerbesteuer",
+  "kategorie": "haushalt/mehrstufig/rechnen",
+  "baustein": "store.steuern_fuer_begriffe (qa: taxes)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 57.36,
+    "einheit": "%",
+    "bezeichnung": "Anteil Gewerbesteuer an den Steuern 2025",
+    "quelle": "SELECT 100.0 * (SELECT amount FROM council_taxes WHERE year = 2025 AND kind = 'Gewerbesteuer (-umlage)') / (SELECT amount FROM council_taxes WHERE year = 2025 AND kind = 'total')",
+    "jahr": 2025,
+    "toleranz": 0.03
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-mehr-schulden-prozent-2020",
+  "kanal": "lotti",
+  "route": "/haushalt/schulden",
+  "refs": {},
+  "heading": "Wie viel Schulden hat Oldenburg?",
+  "page_title": "Ratslotse — Oldenburger Ratsinformationen verständlich",
+  "anchors": [
+   "Drei Zählweisen, eine Stadt · Stand 31.12.2024",
+   "Kredite und Zinsen",
+   "Schulden total",
+   "Verbürgt und selbst geschuldet",
+   "Liquiditätsstand"
+  ],
+  "frage": "um wie viel prozent sind die schulden seit 2020 gestiegen",
+  "kategorie": "haushalt/mehrstufig/rechnen",
+  "baustein": "store.schulden_kontext (qa: schulden)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 269230000.0,
+    "einheit": "€",
+    "bezeichnung": "Schuldenstand 2020",
+    "quelle": "SELECT total FROM council_debt WHERE year = 2020",
+    "jahr": 2020
+   },
+   {
+    "art": "zahl",
+    "wert": 25.17,
+    "einheit": "%",
+    "bezeichnung": "Anstieg 2020→2025",
+    "quelle": "SELECT 100.0 * ((SELECT total FROM council_debt WHERE year = 2025) / (SELECT total FROM council_debt WHERE year = 2020) - 1)",
+    "toleranz": 0.04
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-mehr-gewst-ueber-plan",
+  "kanal": "lotti",
+  "route": "/haushalt/plan-ist",
+  "refs": {},
+  "heading": "Geplant und geworden",
+  "page_title": "Ratslotse — Oldenburger Ratsinformationen verständlich",
+  "anchors": [
+   "Jahresabschluss 2024 · Mio. € Aufwand",
+   "Der Haushaltsvollzug"
+  ],
+  "frage": "wie viel mehr gewerbesteuer als geplant hat die stadt 2024 bekommen",
+  "kategorie": "haushalt/mehrstufig/rechnen",
+  "baustein": "council/geld/tax_plan.py",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 133440000.0,
+    "einheit": "€",
+    "bezeichnung": "Gewerbesteuer Plan 2024",
+    "quelle": "SELECT plan FROM council_tax_plan WHERE year = 2024 AND kind = 'Gewerbesteuer (-umlage)'",
+    "jahr": 2024
+   },
+   {
+    "art": "zahl",
+    "wert": 202918000.0,
+    "einheit": "€",
+    "bezeichnung": "Gewerbesteuer Ist 2024",
+    "quelle": "SELECT actual FROM council_tax_plan WHERE year = 2024 AND kind = 'Gewerbesteuer (-umlage)'",
+    "jahr": 2024
+   },
+   {
+    "art": "zahl",
+    "wert": 69478000.0,
+    "einheit": "€",
+    "bezeichnung": "Mehreinnahme 2024",
+    "quelle": "SELECT (SELECT actual FROM council_tax_plan WHERE year = 2024 AND kind = 'Gewerbesteuer (-umlage)') - (SELECT plan FROM council_tax_plan WHERE year = 2024 AND kind = 'Gewerbesteuer (-umlage)')",
+    "jahr": 2024,
+    "toleranz": 0.02,
+    "pflicht": false
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-mehr-kita-prozent",
+  "kanal": "lotti",
+  "route": "/haushalt/produkte",
+  "refs": {},
+  "heading": "Was kostet eigentlich …?",
+  "page_title": "Ratslotse — Oldenburger Ratsinformationen verständlich",
+  "anchors": [
+   "Produktebene · Haushaltsjahr 2026"
+  ],
+  "frage": "um wie viel prozent ist die kita teurer geworden seit 2020",
+  "kategorie": "haushalt/mehrstufig/rechnen",
+  "baustein": "store.produkte_fuer_begriffe (qa: produkte)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 52.12,
+    "einheit": "%",
+    "bezeichnung": "Anstieg Kita-Aufwand 2020→2026",
+    "quelle": "SELECT 100.0 * ((SELECT expenses FROM council_products WHERE year = 2026 AND product_name = 'Kindertagesbetreuung') / (SELECT expenses FROM council_products WHERE year = 2020 AND product_name = 'Kindertagesbetreuung') - 1)",
+    "toleranz": 0.04
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-mehr-zinsen-prokopf",
+  "kanal": "lotti",
+  "route": "/haushalt/schulden",
+  "refs": {},
+  "heading": "Wie viel Schulden hat Oldenburg?",
+  "page_title": "Ratslotse — Oldenburger Ratsinformationen verständlich",
+  "anchors": [
+   "Drei Zählweisen, eine Stadt · Stand 31.12.2024",
+   "Kredite und Zinsen",
+   "Schulden total",
+   "Verbürgt und selbst geschuldet",
+   "Liquiditätsstand"
+  ],
+  "frage": "wie viel zinsen zahlt die stadt pro einwohner",
+  "kategorie": "haushalt/mehrstufig/rechnen",
+  "baustein": "store.result_actual_for_terms (qa: ist)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 4225401.18,
+    "einheit": "€",
+    "bezeichnung": "Zinsaufwand Ist 2024",
+    "quelle": "SELECT result FROM council_income_statement WHERE year = 2024 AND sub_budget_no IS NULL AND nr = 17",
+    "jahr": 2024
+   },
+   {
+    "art": "zahl",
+    "wert": 23.97,
+    "einheit": "€",
+    "bezeichnung": "Zinsen je Einwohner*in 2024",
+    "quelle": "SELECT (SELECT result FROM council_income_statement WHERE year = 2024 AND sub_budget_no IS NULL AND nr = 17) / (SELECT population FROM council_einwohner WHERE year = 2024)",
+    "jahr": 2024,
+    "toleranz": 0.05
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-mehr-gewst-staedte",
+  "kanal": "lotti",
+  "route": "/haushalt/vergleich",
+  "refs": {},
+  "heading": "Steht Oldenburg besser da als Osnabrück?",
+  "page_title": "Ratslotse — Oldenburger Ratsinformationen verständlich",
+  "anchors": [
+   "Kreisfreie Städte Niedersachsens"
+  ],
+  "frage": "zahlen firmen in oldenburg pro kopf mehr gewerbesteuer als in osnabrück",
+  "kategorie": "haushalt/mehrstufig/kombination",
+  "baustein": "store.staedtevergleich_kontext (qa: vergleich)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 1233.36,
+    "einheit": "€",
+    "bezeichnung": "Gewerbesteuer je Einwohner*in Oldenburg",
+    "quelle": "SELECT value FROM council_city_comparison WHERE year = 2025 AND city = 'Oldenburg' AND indicator = 'ist_je_ew_gewerbesteuer'",
+    "jahr": 2025
+   },
+   {
+    "art": "zahl",
+    "wert": 896.26,
+    "einheit": "€",
+    "bezeichnung": "Gewerbesteuer je Einwohner*in Osnabrück",
+    "quelle": "SELECT value FROM council_city_comparison WHERE year = 2025 AND city = 'Osnabrück' AND indicator = 'ist_je_ew_gewerbesteuer'",
+    "jahr": 2025
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-mehr-invest-plan-ist-2024",
+  "kanal": "lotti",
+  "route": "/haushalt/investitionen",
+  "refs": {},
+  "heading": "Was gebaut wird — und was daraus wurde",
+  "page_title": "Ratslotse — Oldenburger Ratsinformationen verständlich",
+  "anchors": [
+   "Investitionsprogramm · Pläne 2019–2026",
+   "Vorhaben"
+  ],
+  "frage": "wurde 2024 so viel investiert wie geplant",
+  "kategorie": "haushalt/mehrstufig/kombination",
+  "baustein": "store.investitionen_fuer_begriffe (qa: investitionen)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 109052867.0,
+    "einheit": "€",
+    "bezeichnung": "Investitionen Plan 2024",
+    "quelle": "SELECT outflows FROM council_investments WHERE year = 2024 AND label = 'Finanzhaushalt Gesamtinvestitionen'",
+    "jahr": 2024
+   },
+   {
+    "art": "zahl",
+    "wert": 67954000.0,
+    "einheit": "€",
+    "bezeichnung": "Investitionsauszahlungen Ist 2024",
+    "quelle": "SELECT total FROM council_investments_actual WHERE year = 2024",
+    "jahr": 2024
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-mehr-steuern-personal",
+  "kanal": "lotti",
+  "route": "/haushalt/einnahmen",
+  "refs": {},
+  "heading": "Woher kommt das Geld?",
+  "page_title": "Ratslotse — Oldenburger Ratsinformationen verständlich",
+  "anchors": [
+   "Spielraum über alle Quellen"
+  ],
+  "frage": "reichen die steuereinnahmen um das personal zu bezahlen",
+  "kategorie": "haushalt/mehrstufig/kombination",
+  "baustein": "store.result_actual_for_terms (qa: ist)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 184779048.0,
+    "einheit": "€",
+    "bezeichnung": "Personalaufwendungen Ist 2024",
+    "quelle": "SELECT result FROM council_income_statement WHERE year = 2024 AND sub_budget_no IS NULL AND nr = 13",
+    "jahr": 2024
+   },
+   {
+    "art": "zahl",
+    "wert": 360649000.0,
+    "einheit": "€",
+    "bezeichnung": "Steuern 2024",
+    "quelle": "SELECT amount FROM council_taxes WHERE year = 2024 AND kind = 'total'",
+    "jahr": 2024,
+    "oder": [
+     {
+      "wert": 377878954.16,
+      "quelle": "SELECT result FROM council_income_statement WHERE year = 2024 AND sub_budget_no IS NULL AND nr = 1",
+      "jahr": 2024
+     }
+    ]
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-mehr-soziales-jugend",
+  "kanal": "lotti",
+  "route": "/haushalt",
+  "refs": {},
+  "heading": "Oldenburg plant Ausgaben von 883,9 Millionen Euro.",
+  "page_title": "Ratslotse — Oldenburger Ratsinformationen verständlich",
+  "anchors": [
+   "Die Anzeigetafel",
+   "Der Kassenzettel",
+   "Verfügbar nach Jahresergebnis",
+   "Die Teilhaushalte"
+  ],
+  "frage": "wofür gibt die stadt mehr aus: soziales oder jugend und familie",
+  "kategorie": "haushalt/mehrstufig/kombination",
+  "baustein": "store.haushalt_fuer_begriffe (qa: plan)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 283120052.0,
+    "einheit": "€",
+    "bezeichnung": "Soziales und Gesundheit 2026",
+    "quelle": "SELECT expenses FROM council_budget WHERE year = 2026 AND area = 'Soziales und Gesundheit'",
+    "jahr": 2026
+   },
+   {
+    "art": "zahl",
+    "wert": 169215200.0,
+    "einheit": "€",
+    "bezeichnung": "Jugend und Familie 2026",
+    "quelle": "SELECT expenses FROM council_budget WHERE year = 2026 AND area = 'Jugend und Familie'",
+    "jahr": 2026
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-mehr-schulden-prokopf-2015",
+  "kanal": "lotti",
+  "route": "/haushalt/schulden",
+  "refs": {},
+  "heading": "Wie viel Schulden hat Oldenburg?",
+  "page_title": "Ratslotse — Oldenburger Ratsinformationen verständlich",
+  "anchors": [
+   "Drei Zählweisen, eine Stadt · Stand 31.12.2024",
+   "Kredite und Zinsen",
+   "Schulden total",
+   "Verbürgt und selbst geschuldet",
+   "Liquiditätsstand"
+  ],
+  "frage": "wie viel schulden hatte jeder einwohner 2015 und wie viel heute",
+  "kategorie": "haushalt/mehrstufig/kombination",
+  "baustein": "store.schulden_kontext (qa: schulden)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 1314.0,
+    "einheit": "€",
+    "bezeichnung": "je Einwohner*in 2015",
+    "quelle": "SELECT per_capita FROM council_debt WHERE year = 2015",
+    "jahr": 2015
+   },
+   {
+    "art": "zahl",
+    "wert": 1908.0,
+    "einheit": "€",
+    "bezeichnung": "je Einwohner*in 2025",
+    "quelle": "SELECT per_capita FROM council_debt WHERE year = 2025",
+    "jahr": 2025
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-mehr-baeder-minus",
+  "kanal": "lotti",
+  "route": "/haushalt/konzern",
+  "refs": {},
+  "heading": "Und ist das die ganze Stadt?",
+  "page_title": "Ratslotse — Oldenburger Ratsinformationen verständlich",
+  "anchors": [
+   "Gesamtabschluss · Konzern Oldenburg · 2024",
+   "Jahresergebnis im Plan",
+   "Gebühr im Zeitverlauf"
+  ],
+  "frage": "welcher städtische betrieb plant 2026 das größte minus",
+  "kategorie": "haushalt/mehrstufig/kombination",
+  "baustein": "council/geld/business_plans.py",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "Bäder",
+      "Bad"
+     ]
+    ],
+    "quelle": "council_business_plans year=2026: kleinstes result = bbgo"
+   },
+   {
+    "art": "zahl",
+    "wert": 10128335.0,
+    "einheit": "€",
+    "bezeichnung": "Plan-Ergebnis Bäder 2026",
+    "quelle": "SELECT result FROM council_business_plans WHERE enterprise = 'bbgo' AND year = 2026",
+    "jahr": 2026
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-mehr-fliegerhorst",
+  "kanal": "lotti",
+  "route": "/haushalt/investitionen",
+  "refs": {},
+  "heading": "Was gebaut wird — und was daraus wurde",
+  "page_title": "Ratslotse — Oldenburger Ratsinformationen verständlich",
+  "anchors": [
+   "Investitionsprogramm · Pläne 2019–2026",
+   "Vorhaben"
+  ],
+  "frage": "was kostet die kampfmittelsondierung auf dem fliegerhorst",
+  "kategorie": "haushalt/mehrstufig/kombination",
+  "baustein": "council/geld/measures.py",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 36850000.0,
+    "einheit": "€",
+    "bezeichnung": "Fliegerhorst Kampfmittelsondierung Gesamtsumme",
+    "quelle": "SELECT grand_total FROM council_investment_measures WHERE year = 2026 AND level = 'measure' AND label = 'Fliegerhorst Kampfmittelsondierung'",
+    "jahr": 2026
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-mehr-stadion-kosten",
+  "kanal": "lotti",
+  "route": "/haushalt",
+  "refs": {},
+  "heading": "Oldenburg plant Ausgaben von 883,9 Millionen Euro.",
+  "page_title": "Ratslotse — Oldenburger Ratsinformationen verständlich",
+  "anchors": [
+   "Die Anzeigetafel",
+   "Der Kassenzettel",
+   "Verfügbar nach Jahresergebnis",
+   "Die Teilhaushalte"
+  ],
+  "frage": "was kostet das neue stadion",
+  "kategorie": "haushalt/mehrstufig/kombination",
+  "baustein": "Ratsarchiv (Beschluss 8677)",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 57339000.0,
+    "einheit": "€",
+    "bezeichnung": "Pauschalpreis Stadionneubau netto (Beschluss 8677)",
+    "quelle": "SELECT amount_eur FROM council_decisions WHERE id = 8677"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Steht in einem Ratsbeschluss, nicht in den Haushaltsdaten."
+ },
+ {
+  "id": "hh-mehr-nd-hannover",
+  "kanal": "lotti",
+  "route": "/haushalt/schulden",
+  "refs": {},
+  "heading": "Wie viel Schulden hat Oldenburg?",
+  "page_title": "Ratslotse — Oldenburger Ratsinformationen verständlich",
+  "anchors": [
+   "Drei Zählweisen, eine Stadt · Stand 31.12.2024",
+   "Kredite und Zinsen",
+   "Schulden total",
+   "Verbürgt und selbst geschuldet",
+   "Liquiditätsstand"
+  ],
+  "frage": "wie viel schulden hat hannover",
+  "kategorie": "haushalt/mehrstufig/nicht-in-daten",
+  "baustein": "store.staedtevergleich_kontext (qa: vergleich)",
+  "antwort_in_daten": false,
+  "gold": [],
+  "verboten": [],
+  "notiz": "Schuldenzahlen anderer Städte gibt es im Bestand nicht."
+ },
+ {
+  "id": "hh-mehr-nd-kitaplatz",
+  "kanal": "lotti",
+  "route": "/haushalt/produkte",
+  "refs": {},
+  "heading": "Was kostet eigentlich …?",
+  "page_title": "Ratslotse — Oldenburger Ratsinformationen verständlich",
+  "anchors": [
+   "Produktebene · Haushaltsjahr 2026"
+  ],
+  "frage": "was kostet ein kitaplatz pro kind",
+  "kategorie": "haushalt/mehrstufig/nicht-in-daten",
+  "baustein": "store.produkte_fuer_begriffe (qa: produkte)",
+  "antwort_in_daten": false,
+  "gold": [],
+  "verboten": [],
+  "notiz": "Keine Kinderzahlen im Bestand — pro Kind lässt sich nicht rechnen."
  }
 ]

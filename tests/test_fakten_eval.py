@@ -72,8 +72,11 @@ def test_lotti_routen_gibt_es(faelle):
 
 def test_verteilung_wie_beauftragt(faelle):
     """~60 % Lotti, ~15 Fälle ohne Antwort in den Daten, alle Haushaltsseiten."""
-    lotti = sum(1 for f in faelle if f["kanal"] == "lotti")
-    assert 0.5 <= lotti / len(faelle) <= 0.7
+    # Die mehrstufigen Fälle (24.09.2026) messen Lottis Nachschlagen und sind
+    # deshalb ALLE Lotti — die Verteilung gilt für den Satz ohne sie.
+    grund = [f for f in faelle if not f["kategorie"].startswith("haushalt/mehrstufig/")]
+    lotti = sum(1 for f in grund if f["kanal"] == "lotti")
+    assert 0.5 <= lotti / len(grund) <= 0.7
     assert sum(1 for f in faelle if not f["antwort_in_daten"]) >= 12
     seiten = {r for r in knowledge.PAGES if knowledge.im_haushalt(r)}
     fehlend = seiten - {f.get("route") for f in faelle} - {"/haushalt/labor", "/haushalt/bereich"}

@@ -1510,12 +1510,18 @@ def kontext_belege(ctx: dict | None, antwort: str = "", auswahl: str = "") -> li
     Glossar-Antwort wäre ein Chip ohne Gegenstand.
     """
     geld = (ctx or {}).get("geld")
-    if not geld:
+    # Was Lotti nachgeschlagen hat (Schalter `lotti-werkzeuge`), lag ihr
+    # genauso vor wie der Kontext — es gehört ebenso unter „Grundlage“.
+    nachgeschlagen = list((ctx or {}).get("werkzeug_belege") or [])
+    if not geld and not nachgeschlagen:
         return []
     from council import qa
     # Erst ALLE Belege des Kontexts, dann ordnen, dann kappen: Sonst fiele
     # ein genanntes Papier an sechster Stelle weg, bevor es nach vorn darf.
-    alle = qa.geld_belege(geld, max_chars=_deckel((ctx or {}).get("geld_max")), max_n=10_000)
+    alle = (qa.geld_belege(geld, max_chars=_deckel((ctx or {}).get("geld_max")), max_n=10_000)
+            if geld else [])
+    urls = {b["url"] for b in alle}
+    alle += [b for b in nachgeschlagen if b["url"] not in urls and not urls.add(b["url"])]
     return belege_ordnen(alle, antwort, auswahl)
 
 
@@ -1805,14 +1811,78 @@ def explain_stream(store, screen: Screen, question: str, *,
                    verlauf: list[dict] | None = None,
                    permissions: frozenset[str] | set[str] = frozenset(),
                    ratslotse=None, user_id: int | None = None,
-                   model: str = MODEL):
-    """Die Erklärung als Token-Strom (wie ``qa.answer_stream``)."""
+                   model: str = MODEL, werkzeuge: bool = False):
+    """Die Erklärung als Token-Strom (wie ``qa.answer_stream``).
+
+    Mit ``werkzeuge`` (Schalter ``lotti-werkzeuge``) darf Lotti nachschlagen;
+    der Strom trägt dann neben den ``str``-Stücken auch :class:`Schritt`-
+    Objekte, die der Router als ``step``-Rahmen weitergibt.
+    """
     ctx = ctx if ctx is not None else screen_context(
         store, screen, question, permissions=permissions,
         ratslotse=ratslotse, user_id=user_id)
     messages, extra = explain_messages(screen, question, ctx, verlauf, model)
-    yield from llm.chat_stream(model=model, _feature="assistant_explain", temperature=0.2,
-                               max_tokens=MAX_TOKENS, messages=messages, **extra)
+    if not werkzeuge:
+        yield from llm.chat_stream(model=model, _feature="assistant_explain", temperature=0.2,
+                                   max_tokens=MAX_TOKENS, messages=messages, **extra)
+        return
+    yield from _mit_werkzeugen(store, messages, extra, ctx, permissions, model)
+
+
+def _mit_werkzeugen(store, messages: list[dict], extra: dict, ctx: dict,
+                    permissions: frozenset[str] | set[str], model: str):
+    """Die Erklärung mit Nachschlagen — ``str``-Stücke und :class:`Schritt`.
+
+    Antwortet das Modell direkt, fließt der Text wie ohne Werkzeuge. Ruft es
+    eines, führt der Server es aus und fragt noch einmal — höchstens
+    :data:`lotti_werkzeuge.MAX_RUNDEN` Mal, dann antwortet es mit dem, was es
+    hat (``tool_choice="none"``). Die Belege der Werkzeuge landen in
+    ``ctx["werkzeug_belege"]`` und damit unter „Grundlage“.
+    """
+    from council import lotti_werkzeuge as lw
+    messages = [dict(m) for m in messages]
+    messages[0]["content"] += prompts.WERKZEUG_REGEL
+    schemas = lw.schemas(permissions)
+    ctx.setdefault("werkzeug_belege", [])
+    geschrieben = False
+    for runde in range(lw.MAX_RUNDEN + 1):
+        letzte = runde == lw.MAX_RUNDEN
+        text = ""
+        aufrufe: list[dict] = []
+        for art, inhalt in llm.chat_stream_events(
+                model=model, _feature="assistant_explain", temperature=0.2,
+                max_tokens=MAX_TOKENS, messages=messages, tools=schemas,
+                tool_choice="none" if letzte else "auto", **extra):
+            if art == "text":
+                if not text and geschrieben:
+                    # Hat das Modell VOR einem Werkzeug schon etwas gesagt,
+                    # steht die eigentliche Antwort als neuer Absatz darunter.
+                    yield "\n\n"
+                text += inhalt
+                yield inhalt
+            else:
+                aufrufe = inhalt
+        geschrieben = geschrieben or bool(text)
+        if not aufrufe or letzte:
+            return
+        messages.append(lw.assistenten_nachricht(text, aufrufe))
+        bekannt = lw.nachrichten_text(messages)
+        for aufruf in aufrufe:
+            e = lw.ausfuehren(store, aufruf["name"], aufruf["arguments"],
+                              permissions=permissions, bekannt=bekannt)
+            if e.schritt:
+                yield Schritt(e.schritt)
+            ctx["werkzeug_belege"].extend(e.belege)
+            messages.append(lw.ergebnis_nachricht(aufruf, e))
+            # Was ein Werkzeug brachte, darf das nächste verrechnen.
+            bekannt += "\n" + e.text
+
+
+@dataclass(frozen=True)
+class Schritt:
+    """Ein Zwischenstand im Strom: Lotti schlägt nach (kein Antworttext)."""
+
+    text: str
 
 
 def explain_question(store, screen: Screen, question: str, *,

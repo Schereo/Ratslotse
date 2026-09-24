@@ -317,7 +317,11 @@ def jahre_der_zahl(zeilen_: list[Zeile], z: Zahl, *, satz: bool = False) -> set[
             bis = m.start()
     # „stieg 2026 um 8 Prozent: von 3,74 € auf 4,04 €“ — der Ausgangswert
     # einer Veränderung trägt das Jahr davor, nicht das genannte.
-    if satz and re.search(r"\bvon\s*$", zeile.text[von:p]) and \
+    # Auch „von rund 269 Millionen auf rund 337 Millionen“ (GPT-6 Luna,
+    # 24.09.): Das „rund“ stand zwischen „von“ und Zahl, und der Ausgangswert
+    # galt als Wert des Endjahres.
+    if satz and re.search(r"\bvon\s+(?:rund|etwa|ca\.|knapp|gut|fast|über|mehr als)?\s*$|"
+                          r"\bvon\s*$", zeile.text[von:p]) and \
             re.match(r"[^.!?;]{0,25}\bauf\b", zeile.text[q:bis]):
         return set()
     # Erst der Satz — auch im Kontext: Die Beschluss-Zeilen von Frag den Rat

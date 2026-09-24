@@ -4301,7 +4301,13 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
             marker = lotti.NEXT_MARKER
             try:
                 for delta in lotti.explain_stream(store, screen, frage, ctx=ctx,
-                                                  verlauf=verlauf):
+                                                  verlauf=verlauf, permissions=rechte,
+                                                  werkzeuge=features.an("lotti-werkzeuge")):
+                    if isinstance(delta, lotti.Schritt):
+                        # Lotti schlägt nach (Schalter `lotti-werkzeuge`) — ein
+                        # Zwischenstand fürs Fenster, kein Antworttext.
+                        yield _sse({"type": "step", "step": "lookup", "text": delta.text})
+                        continue
                     if not buf and delta:
                         zeiten["ttft_ms"] = round((time.perf_counter() - t0) * 1000)
                     buf += delta
