@@ -480,6 +480,8 @@ class QuizDailyIn(BaseModel):
     correct: int = Field(ge=0, le=50)
     total: int = Field(ge=1, le=50)
     points: int = Field(ge=0, le=500)
+    # Je Frage richtig/falsch, in Spielreihenfolge — für das Teil-Raster.
+    results: list[bool] | None = Field(default=None, max_length=10)
 
 
 # Eigene Quizfragen (RL-U14): privat je Konto. Multiple-Choice (2–4 Antworten)

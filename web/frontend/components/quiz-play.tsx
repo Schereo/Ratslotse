@@ -3,9 +3,9 @@
 import { useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { Check, X, ExternalLink, ThumbsUp, ThumbsDown, ArrowRight, RotateCcw, Send, ChevronDown, ChevronUp, Lightbulb, Scale, Split } from "lucide-react";
+import { Check, X, ExternalLink, ThumbsUp, ThumbsDown, ArrowRight, RotateCcw, Send, ChevronDown, ChevronUp, Lightbulb, Scale, Split, Share2 } from "lucide-react";
 import { QuizQuestion, QuizAnswerResult } from "@/lib/types";
-import { Card, Button, Input } from "@/components/ui";
+import { Card, Button, Input, toast } from "@/components/ui";
 import { Mascot } from "@/components/mascot";
 import { ConfettiBurst } from "@/components/confetti";
 import { GlossaryText } from "@/components/glossary-text";
@@ -95,6 +95,20 @@ export function LottiReaction({ outcome, seed, children }: {
   );
 }
 
+/** Teilen, wo das Gerät es kann (Handy), sonst in die Zwischenablage. */
+async function shareResult(text: string) {
+  try {
+    if (typeof navigator !== "undefined" && navigator.share) {
+      await navigator.share({ text });
+      return;
+    }
+    await navigator.clipboard.writeText(text);
+    toast.success("Ergebnis kopiert — jetzt einfügen und teilen.");
+  } catch {
+    // Abgebrochen oder gesperrt: nichts zu tun.
+  }
+}
+
 /** Spielt eine Runde Fragen durch: eine Frage nach der anderen, sofortiges
  *  Feedback (Lösung, Erklärung, Quelle, Bewertung), am Ende eine Zusammenfassung.
  *  `onComplete` meldet das Endergebnis (z. B. um die Tages-Challenge zu buchen);
@@ -104,7 +118,9 @@ export function LottiReaction({ outcome, seed, children }: {
 export function QuizPlay({ questions, onExit, onComplete, title, answerPath = "/quiz/answer", practice = false }: {
   questions: QuizQuestion[];
   onExit: () => void;
-  onComplete?: (r: { correct: number; total: number; points: number }) => void;
+  /** Darf einen Teil-Text zurückgeben (Tages-Challenge) — dann bietet der
+   *  Ergebnis-Schirm „Ergebnis teilen" an. */
+  onComplete?: (r: { correct: number; total: number; points: number; results: boolean[] }) => Promise<string | undefined> | void;
   title?: string;
   answerPath?: string;
   practice?: boolean;
@@ -127,6 +143,8 @@ export function QuizPlay({ questions, onExit, onComplete, title, answerPath = "/
   // der aktuellen Frage (vom Server, damit die Lösung nie im Client liegt).
   const [jokerUsed, setJokerUsed] = useState(false);
   const [removed, setRemoved] = useState<number[]>([]);
+  const [results, setResults] = useState<boolean[]>([]);
+  const [shareText, setShareText] = useState<string | null>(null);
 
   const q = questions[idx];
   const isEstimate = q.qtype === "estimate";
@@ -148,8 +166,10 @@ export function QuizPlay({ questions, onExit, onComplete, title, answerPath = "/
       setResult(r);
       setPoints((p) => p + r.points);
       if (r.correct) setCorrect((c) => c + 1);
+      setResults((xs) => [...xs, r.correct]);
     } catch {
       setResult({ correct: false, correct_index: -1, points: 0, explanation: null, source_type: null, source_ref: null });
+      setResults((xs) => [...xs, false]);
     }
   }
 
@@ -161,8 +181,10 @@ export function QuizPlay({ questions, onExit, onComplete, title, answerPath = "/
       setResult(r);
       setPoints((p) => p + r.points);
       if (r.correct) setCorrect((c) => c + 1);
+      setResults((xs) => [...xs, r.correct]);
     } catch {
       setResult({ correct: false, correct_index: -1, points: 0, answer_value: null, unit: null, explanation: null, source_type: null, source_ref: null });
+      setResults((xs) => [...xs, false]);
     }
   }
 
@@ -199,7 +221,8 @@ export function QuizPlay({ questions, onExit, onComplete, title, answerPath = "/
   function next() {
     if (idx + 1 >= questions.length) {
       setDone(true);
-      onComplete?.({ correct, total: questions.length, points });
+      const maybe = onComplete?.({ correct, total: questions.length, points, results });
+      if (maybe) void maybe.then((text) => { if (text) setShareText(text); });
       return;
     }
     setIdx((i) => i + 1);
@@ -245,7 +268,24 @@ export function QuizPlay({ questions, onExit, onComplete, title, answerPath = "/
         <p className="mx-auto mt-4 max-w-sm rounded-2xl rounded-tl-sm border border-border bg-muted/40 px-4 py-2.5 text-sm text-foreground">
           {cheer}
         </p>
-        <Button onClick={onExit} className="mt-6"><RotateCcw className="!size-4" /> Zur Auswahl</Button>
+        {/* Das Raster der Runde — dasselbe, das geteilt wird, hier als
+            Kästchen in den Semantik-Tönen statt als Emoji. */}
+        {shareText && (
+          <div className="mt-5 flex justify-center gap-1.5" aria-label={`${correct} von ${questions.length} richtig`}>
+            {results.map((ok, i) => (
+              <span key={i} className={cn("h-6 w-6 rounded-md border",
+                ok ? "border-green-600/30 bg-green-500/20" : "border-red-600/30 bg-red-500/15")} />
+            ))}
+          </div>
+        )}
+        <div className="mt-6 flex flex-wrap justify-center gap-2">
+          {shareText && (
+            <Button variant="secondary" onClick={() => void shareResult(shareText)}>
+              <Share2 className="!size-4" /> Ergebnis teilen
+            </Button>
+          )}
+          <Button onClick={onExit}><RotateCcw className="!size-4" /> Zur Auswahl</Button>
+        </div>
       </Card>
     );
   }
