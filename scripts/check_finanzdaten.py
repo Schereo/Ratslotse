@@ -11,7 +11,7 @@ Ratsinformationssystem, werden aber von eigenen Skripten eingelesen
 (``ingest_wirtschaftsplaene.py``, ``ingest_haushaltssatzung.py``,
 ``ingest_gebuehren.py``, ``ingest_haushaltsvollzug.py``,
 ``ingest_liquiditaet.py``, ``ingest_kredite.py``, ``ingest_eigenbetriebe_abschluss.py``,
-``ingest_finanzhaushalt.py``, ``ingest_gesellschaft_abschluss.py``, ``ingest_zuschuesse.py``). Bis 09/2026 hat
+``ingest_finanzhaushalt.py``, ``ingest_gesellschaft_abschluss.py``, ``ingest_uebersichten.py``). Bis 09/2026 hat
 dieser Job sie nur beobachtet; seit Tims Punkt 5 („Frische automatisieren")
 **ruft er ihre Skripte auf, sobald ein neues Dokument im Bestand liegt** —
 gemessen an der Dokumentmarke (``Finanzquelle.dokumentmarke``), die sich der

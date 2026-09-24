@@ -126,3 +126,45 @@ def test_speichern_und_lesen(tmp_path):
     summen = {s["sub_budget_no"]: s for s in store.zuschuss_summen()}
     assert summen[1]["amount"] == 283400.0
     store.close()
+
+
+# --- Schuldenstand und VE (dieselbe Anlage) ---------------------------------
+
+FX2 = json.loads((Path(__file__).parent / "fixtures" / "uebersichten_schulden_ve.json").read_text())
+
+
+def _seiten(key):
+    return [[[tuple(w) for w in seite]] for seite in FX2[key]]
+
+
+def test_schulden_2026_mit_eigenbetrieben():
+    aus = u.lies_schulden(_seiten("2026_schulden"))
+    assert aus.budget_year == 2026 and aus.bestanden
+    posten = {(p[0], p[1]): p[3:] for p in aus.posten}
+    assert posten[("Kernhaushalt", "1.2")] == (43691.0, 40803.0)
+    assert posten[("Eigenbetrieb Bäder", "1.2")] == (42215.0, 117011.0)
+    assert aus.summen["Eigenbetrieb Gebäudewirtschaft und Hochbau"] == (215316.0, 265946.0)
+    # Die Seite bricht im Abfall-Block ab — ohne Summe nicht gespeichert.
+    assert aus.ausgelassen == ["Abfallwirtschaftsbetrieb"]
+    assert all(p[0] != "Abfallwirtschaftsbetrieb" for p in aus.posten)
+
+
+def test_schulden_hafen_aufgeloest_und_randbemerkung():
+    """2022: Neben dem Hafen-Block steht „Der Eigenbetrieb Hafen wurde
+    aufgelöst …" — die Wörter landen nicht in den Bezeichnungen."""
+    aus = u.lies_schulden(_seiten("2022_schulden"))
+    assert aus.bestanden
+    assert aus.ausgelassen == ["Eigenbetrieb Hafen"]
+    assert {p[2] for p in aus.posten} <= set(u.SCHULDENARTEN.values())
+
+
+def test_ve_gegen_satzung():
+    aus = u.lies_ve(_seiten("2019_ve"))
+    assert aus.budget_year == 2019
+    eigene = [(f, b) for p, f, b in aus.zeilen if p == 2019]
+    assert eigene == [(2020, 17362500.0), (2021, 8415200.0), (2022, 4080000.0)]
+    assert u.pruefe_ve(aus, 29857700.0) == []           # § 3 Satzung 2019
+    aus = u.lies_ve(_seiten("2026_ve"))
+    # 2026 weichen Übersicht und Satzung um 30.000 € ab — vermerkt, nicht verworfen.
+    assert u.pruefe_ve(aus, 41489000.0) == [
+        "VE des Plans 2026: Übersicht 41,519,000 €, Haushaltssatzung 41,489,000 €"]

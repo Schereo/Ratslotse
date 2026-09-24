@@ -7843,6 +7843,10 @@ export interface components {
         BudgetDebt: {
             /** Column Kinds */
             column_kinds: unknown[];
+            /** Commitments */
+            commitments?: components["schemas"]["CommitmentRow"][];
+            /** Debt Plan */
+            debt_plan?: components["schemas"]["DebtPlanRow"][];
             guarantees: components["schemas"]["Guarantees"];
             /** Integrated Debt */
             integrated_debt: unknown;
@@ -8437,6 +8441,20 @@ export interface components {
              */
             stack: string;
         };
+        /**
+         * CommitmentRow
+         * @description Eine Fälligkeit aus den Verpflichtungsermächtigungen eines Plans.
+         */
+        CommitmentRow: {
+            /** Amount */
+            amount: number;
+            /** Budget Year */
+            budget_year: number;
+            /** Due Year */
+            due_year: number;
+            /** Herkunft Id */
+            herkunft_id: number | null;
+        };
         /** CommitteeDetail */
         CommitteeDetail: {
             /** Decisions Year */
@@ -8640,6 +8658,31 @@ export interface components {
             unit: string | null;
             /** Was */
             was: string;
+        };
+        /**
+         * DebtPlanRow
+         * @description Der voraussichtliche Stand der Schulden laut Haushaltsplan (Anlage 003).
+         *
+         *     ``entity`` ist „Kernhaushalt" oder ein Eigenbetrieb, ``code`` die
+         *     Schuldenart (1.2 Kredite für Investitionen … 5) oder ``total``.
+         *     ``start_prior`` ist der Stand zu Beginn des Vorjahres, ``start_expected``
+         *     der erwartete zu Beginn des Planjahres — beide in Euro.
+         */
+        DebtPlanRow: {
+            /** Budget Year */
+            budget_year: number;
+            /** Code */
+            code: string;
+            /** Entity */
+            entity: string;
+            /** Herkunft Id */
+            herkunft_id: number | null;
+            /** Label */
+            label: string;
+            /** Start Expected */
+            start_expected: number | null;
+            /** Start Prior */
+            start_prior: number | null;
         };
         /**
          * DecisionDetail
@@ -23199,4 +23242,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 3c6e059de6ac423c7f1e8b3242d83cb8feddacc531c665abd10be496f1242554
+// vertrag-sha256: 8a2628749a17e3b1180d06ee81dbcf196401b3db2b2fde6bb0ad7960459b54ab

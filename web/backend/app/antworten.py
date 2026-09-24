@@ -4073,7 +4073,33 @@ class Guarantees(TypedDict):
     templates: list[GuaranteeTemplate]
 
 
+class DebtPlanRow(TypedDict):
+    """Der voraussichtliche Stand der Schulden laut Haushaltsplan (Anlage 003).
+
+    ``entity`` ist „Kernhaushalt" oder ein Eigenbetrieb, ``code`` die
+    Schuldenart (1.2 Kredite für Investitionen … 5) oder ``total``.
+    ``start_prior`` ist der Stand zu Beginn des Vorjahres, ``start_expected``
+    der erwartete zu Beginn des Planjahres — beide in Euro."""
+    budget_year: int
+    entity: str
+    code: str
+    label: str
+    start_prior: float | None
+    start_expected: float | None
+    herkunft_id: int | None
+
+
+class CommitmentRow(TypedDict):
+    """Eine Fälligkeit aus den Verpflichtungsermächtigungen eines Plans."""
+    budget_year: int
+    due_year: int
+    amount: float
+    herkunft_id: int | None
+
+
 class BudgetDebt(TypedDict):
+    debt_plan: NotRequired[list[DebtPlanRow]]
+    commitments: NotRequired[list[CommitmentRow]]
     scope_note: Any
     column_kinds: list[Any]
     guarantees: Guarantees
