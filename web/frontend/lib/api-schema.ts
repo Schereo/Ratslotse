@@ -2453,7 +2453,13 @@ export interface paths {
          *     - ``indicators``: die Zeitreihe je Gesellschaft (Jahresergebnis,
          *       Bilanzsumme, Eigenkapitalquote). ``n_reports`` sagt, wie viele Berichte
          *       denselben Wert nennen — 1 heißt „durch eine Probe im Dokument gedeckt",
-         *       mehr heißt zusätzlich „von einer zweiten Veröffentlichung bestätigt",
+         *       mehr heißt zusätzlich „von einer zweiten Veröffentlichung bestätigt"
+         *       (ein Jahresabschluss mit demselben Betrag zählt mit). ``source`` sagt,
+         *       woher die Zeile kommt: ``holdings_report`` (Beteiligungsbericht) oder
+         *       ``annual_accounts`` — das jüngste Jahr, das nur der Jahresabschluss der
+         *       Gesellschaft schon nennt, oder ein Jahr, in dem der Abschluss vom
+         *       Bericht abweicht und deshalb gilt (dann steht die Zahl des Berichts in
+         *       ``report_value``; ``council/gesellschaft_abschluss.py``),
          *     - ``group_comparison``: für die Gesellschaften, die auch im
          *       Gesamtabschluss stehen, beide Zahlen desselben Jahres nebeneinander.
          *       **Keine Probe** — die beiden Rechnungen unterscheiden sich systematisch,
@@ -23063,4 +23069,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: e8adbbc730c3d85f6feeb2c297651990005f460d3c0c4aeb5ca3fc12b539d0f5
+// vertrag-sha256: 5fd47d8c9ec4139d16f2ca3968cd187693889b6fa1adf3d93bd428648340e64f

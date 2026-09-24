@@ -664,6 +664,20 @@ PROBEN: dict[str, str] = {
         "Die Mehrjahresübersicht des Prüfberichts nennt ihre Jahre im Kopf und "
         "je Kennzahl genau so viele Werte; Fußnotenziffern vor den Werten "
         "zählen nicht mit.",
+    # Die Jahresabschlüsse der Gesellschaften (council/gesellschaft_abschluss.py)
+    "company_accounts_balance":
+        "Die Bilanzsumme steht in jeder Bilanz zweimal — als Summe der Aktiva "
+        "und als Summe der Passiva. Gelesen wird nur ein Betragspaar "
+        "(Geschäftsjahr, Vorjahr), das beide Male gleich dasteht.",
+    "company_accounts_result_line":
+        "Die Zeile „Jahresüberschuss“ bzw. „Jahresfehlbetrag“ der Gewinn- und "
+        "Verlustrechnung, Geschäftsjahr und Vorjahr. Ein Fehlbetrag, der ohne "
+        "Minus gedruckt ist, zählt negativ.",
+    "company_accounts_overlap":
+        "Dieselbe Zahl steht in zwei Abschlüssen — als Geschäftsjahr im "
+        "eigenen, als Vorjahr im folgenden — und oft auch im "
+        "Beteiligungsbericht. Wo zwei Quellen dasselbe Jahr nennen, nennen "
+        "sie denselben Betrag auf den Cent.",
     "enterprise_accounts_overlap":
         "Dieselbe Zahl steht in mehreren Berichten — als Geschäftsjahr im "
         "eigenen, als Vorjahr in den folgenden. Wo zwei Berichte dasselbe Jahr "
@@ -716,6 +730,8 @@ HERKUNFT_TABELLEN: tuple[str, ...] = (
     "council_income_budget",
     # Und die Zahlungen derselben Pläne, Gesamtfinanzhaushalt (Anlage 006).
     "council_finance_budget",
+    # Die Jahresabschlüsse der Gesellschaften — neu, ohne Altbestand.
+    "council_company_accounts",
     # Die Investitionen des Finanzhaushalts — neu, ohne Altbestand.
     "council_investments",
     # Die einzelnen Vorhaben aus Anlage 004 des Haushaltsplans — ebenso.

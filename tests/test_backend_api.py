@@ -879,7 +879,7 @@ def test_haushalt_datenstand_nennt_alle_schichten(client):
                               "beteiligungsbericht", "fees",
                               "budget_bylaw",
                               "wirtschaftsplan",
-                              "enterprise_accounts",
+                              "enterprise_accounts", "company_accounts",
                               "schulden", "loans", "liquidity",
                               "lsn_steuerkraft", "lsn_realsteuern",
                               "lsn_gewerbesteuer"}

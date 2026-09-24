@@ -144,7 +144,7 @@ function Kopfzahl({ title, k }: { title: string; k: Kennzahl | null }) {
       {k ? (
         <dd className="font-display text-[21px] font-bold leading-tight tracking-tight tabular-nums">
           {wertText(k)}
-          <Beleg q="beteiligungsbericht" />
+          <Beleg q={k.source === "annual_accounts" ? "company_accounts" : "beteiligungsbericht"} />
         </dd>
       ) : (
         <dd className="mt-0.5 text-[12px] leading-snug text-muted-foreground">
@@ -173,9 +173,12 @@ function Zahlenkopf({ daten, g }: { daten: BeteiligungsDaten; g: Gesellschaft })
     && quote[quote.length - 1].year < ergebnisse[ergebnisse.length - 1].year;
   const herkunft = herkunftVon(daten, ergebnisse[ergebnisse.length - 1]?.herkunft_id
     ?? g.herkunft_id);
+  // Kommt das jüngste Jahr aus dem Jahresabschluss, fehlt die Quote aus einem
+  // anderen Grund: Bilanz und GuV nennen sie nicht, erst der Bericht.
+  const ausAbschluss = ergebnisse[ergebnisse.length - 1]?.source === "annual_accounts";
 
   return (
-    <Abschnitt kicker="Die Zahlen aus dem Bericht"
+    <Abschnitt kicker={ausAbschluss ? "Die Zahlen" : "Die Zahlen aus dem Bericht"}
       zusatz={von && bis ? `${von}–${bis}` : undefined}
       className="@container/zahlen">
       {/* Die drei Zahlen hängen zusammen und stehen deshalb beieinander, statt
@@ -208,7 +211,14 @@ function Zahlenkopf({ daten, g }: { daten: BeteiligungsDaten; g: Gesellschaft })
 
       <Einordnung satz={einordnungFuer(daten, g, ergebnisse)} className="mt-3" />
 
-      {quoteFehlt && (
+      {quoteFehlt && ausAbschluss && (
+        <p className="mt-2.5 max-w-[74ch] text-[12px] leading-relaxed text-muted-foreground">
+          {bis} stammt aus dem Jahresabschluss der Gesellschaft, der dem Rat schon vorliegt;
+          der Beteiligungsbericht nennt das Jahr noch nicht. Eine Eigenkapitalquote steht in
+          Bilanz und GuV nicht — sie kommt mit dem nächsten Bericht.
+        </p>
+      )}
+      {quoteFehlt && !ausAbschluss && (
         <p className="mt-2.5 max-w-[74ch] text-[12px] leading-relaxed text-muted-foreground">
           Für {bis} steht die Eigenkapitalquote noch nicht dabei: Der Bericht nennt sie,
           rechnet sie aber nirgends vor. Sobald sie im nächsten Bericht ein zweites Mal
@@ -435,6 +445,7 @@ function Rohtext({ kicker, text, herkunft, note }: {
 function Reihe({ daten, zeilen }: { daten: BeteiligungsDaten; zeilen: Kennzahl[] }) {
   if (!zeilen.length) return null;
   const h = herkunftVon(daten, zeilen[zeilen.length - 1].herkunft_id);
+  const ausAbschluss = zeilen.filter((k) => k.source === "annual_accounts").map((k) => k.year);
   return (
     <div>
       <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
@@ -452,6 +463,13 @@ function Reihe({ daten, zeilen }: { daten: BeteiligungsDaten; zeilen: Kennzahl[]
           </div>
         ))}
       </dl>
+      {ausAbschluss.length > 0 && (
+        <p className="mt-2 max-w-[74ch] text-[11.5px] leading-relaxed text-muted-foreground">
+          {ausAbschluss.join(", ")} aus dem Jahresabschluss der Gesellschaft — der
+          Beteiligungsbericht nennt {ausAbschluss.length === 1 ? "dieses Jahr" : "diese Jahre"} noch
+          nicht.<Beleg q="company_accounts" />
+        </p>
+      )}
       <Fundstelle h={h} className="mt-2.5" />
     </div>
   );

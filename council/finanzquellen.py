@@ -742,6 +742,26 @@ def _marke_eigenbetriebe_abschluss(store: CouncilStore) -> int | None:
     return r[0] if r and r[0] is not None else None
 
 
+def _bestand_gesellschaft_abschluss(store: CouncilStore) -> set[tuple]:
+    """``(Jahr, Gesellschaft)`` — wie bei den Eigenbetrieben: Jede
+    Gesellschaft legt ihren Abschluss in einer eigenen Vorlage vor."""
+    return store.company_account_einheiten()
+
+
+def _marke_gesellschaft_abschluss(store: CouncilStore) -> int | None:
+    """Die jüngste Jahresabschluss-Vorlage einer Gesellschaft (``kvonr``)."""
+    from council.gesellschaft_abschluss import TITEL_MUSTER, TITEL_SQL
+    try:
+        r = store._conn.execute(  # noqa: SLF001
+            f"SELECT MAX(t.kvonr) FROM council_templates t WHERE {TITEL_SQL}",
+            list(TITEL_MUSTER)).fetchone()
+    except sqlite3.OperationalError as fehler:
+        if not tabelle_fehlt(fehler):
+            raise
+        return None
+    return r[0] if r and r[0] is not None else None
+
+
 def _bestand_schulden(store: CouncilStore) -> set[tuple]:
     """Die Jahrgänge der Schuldenzeitreihe.
 
@@ -2352,6 +2372,7 @@ def _kette_pruefen(gelesen: dict[int, list[dict]], p: Protokoll) -> dict:
 # --- Die Registry -----------------------------------------------------------
 
 from council.eigenbetriebe_abschluss import TITEL_MUSTER as _EIGENBETRIEBE_TITEL  # noqa: E402
+from council.gesellschaft_abschluss import TITEL_MUSTER as _GESELLSCHAFTEN_TITEL  # noqa: E402
 
 QUELLEN: dict[str, Finanzquelle] = {}
 
@@ -2881,6 +2902,26 @@ for _q in (
         balance=_bestand_eigenbetriebe_abschluss,
     ),
     Finanzquelle(
+        key="company_accounts",
+        label="Jahresabschlüsse der Gesellschaften",
+        was="Bilanzsumme und Jahresergebnis der städtischen Gesellschaften "
+            "(VWG, OTM, VHS, Weser-Ems Halle, Bäder, Stadion) aus dem "
+            "Jahresabschluss — ein Jahr früher, als der Beteiligungsbericht "
+            "sie nennt.",
+        tabelle="council_company_accounts",
+        unit="Gesellschaften",
+        # Die Abschlüsse kommen im Sommer nach dem Geschäftsjahr in den Rat
+        # (2025: VWG und OTM im Juni, WEH und Stadion im Juli 2026).
+        erwarteter_monat=8,
+        versatz=1,
+        herkunft="ris",
+        erkennung=Erkennung(vorlagen_muster=tuple(_GESELLSCHAFTEN_TITEL), oder=True),
+        marke=_marke_gesellschaft_abschluss,
+        nachschub="scripts/ingest_gesellschaft_abschluss.py (lädt Bilanz und GuV selbst)",
+        lauf=("scripts/ingest_gesellschaft_abschluss.py",),
+        balance=_bestand_gesellschaft_abschluss,
+    ),
+    Finanzquelle(
         key="schulden",
         label="Schuldenstand",
         was="Wie viel die Stadt schuldet und wie sich das seit 1995 entwickelt "
@@ -3039,7 +3080,7 @@ REIHENFOLGE = ("haushaltsplan", "income_budget", "finance_budget", "investitione
                "pruefungsfeststellungen",
                "konzernabschluss", "beteiligungsbericht", "fees",
                "budget_bylaw",
-               "wirtschaftsplan", "enterprise_accounts",
+               "wirtschaftsplan", "enterprise_accounts", "company_accounts",
                "schulden", "loans", "liquidity",
                "lsn_steuerkraft", "lsn_realsteuern", "lsn_gewerbesteuer")
 

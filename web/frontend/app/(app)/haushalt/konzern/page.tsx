@@ -45,7 +45,8 @@ const FELDER = ["business_plans", "enterprise_accounts", "fees", "fee_rates", "p
  *  liest die Literale dieser Liste. Reihenfolge = Nummerierung der Chips, also
  *  die Reihenfolge der Abschnitte. */
 const QUELLEN: QuellenSchluessel[] = [
-  "gesamtabschluss", "beteiligungsbericht", "wirtschaftsplan", "enterprise_accounts", "fees",
+  "gesamtabschluss", "beteiligungsbericht", "company_accounts", "wirtschaftsplan",
+  "enterprise_accounts", "fees",
 ];
 
 const MARKEN = [
