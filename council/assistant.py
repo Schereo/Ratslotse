@@ -262,6 +262,13 @@ NEXT_ZIELE = frozenset({"ratsfrage", "seite"})
 #: Wie viele Runden des laufenden Gesprächs in den Prompt gehen.
 VERLAUF_MAX_RUNDEN = 3
 _VERLAUF_FRAGE_MAX = 200
+#: Wie viel einer früheren Antwort das Fenster mitschickt (``panel.tsx``) und
+#: der Prompt behält. Bis 24.09.2026 waren es 300 Zeichen — oft nur der erste
+#: Satz, und „und 2020?“ wusste nicht mehr, ob es um Plan oder Ist ging
+#: (Schritt 5). ``AskTurn.answer`` erlaubt 600.
+VERLAUF_ANTWORT_FENSTER = 600
+#: Ohne den Schalter ``lotti-werkzeuge`` bleibt es bei 300 — der Prompt ist
+#: dann zeichengleich mit dem von vorher.
 _VERLAUF_ANTWORT_MAX = 300
 
 
@@ -1037,14 +1044,14 @@ def _screen_block(screen: Screen) -> str:
     return "\n".join(teile)
 
 
-def _verlauf_block(verlauf: list[dict] | None) -> str:
+def _verlauf_block(verlauf: list[dict] | None, antwort_max: int = _VERLAUF_ANTWORT_MAX) -> str:
     """Die letzten Runden — damit „und das da?" einen Bezug hat."""
     if not verlauf:
         return ""
     zeilen = []
     for runde in verlauf[-VERLAUF_MAX_RUNDEN:]:
         frage = kuerze(str(runde.get("question") or ""), _VERLAUF_FRAGE_MAX)
-        antwort = kuerze(str(runde.get("answer") or ""), _VERLAUF_ANTWORT_MAX)
+        antwort = kuerze(str(runde.get("answer") or ""), antwort_max)
         if frage:
             zeilen.append(f"  Frage: {frage}\n  Antwort: {antwort}")
     if not zeilen:
@@ -1758,7 +1765,8 @@ def _einordnung_block(geld: dict | None) -> str:
 
 def explain_messages(screen: Screen, question: str, ctx: dict,
                      verlauf: list[dict] | None = None,
-                     model: str = MODEL) -> tuple[list[dict], dict]:
+                     model: str = MODEL,
+                     verlauf_zeichen: int = _VERLAUF_ANTWORT_MAX) -> tuple[list[dict], dict]:
     """Der fertige Prompt — ``(messages, extra)`` wie in ``qa``."""
     # PR 26: Erst rechnen, dann entscheiden. Der Absatz und seine Regel
     # hängen an DERSELBEN Bedingung — kommt keine Zahl heraus (keine
@@ -1798,7 +1806,7 @@ def explain_messages(screen: Screen, question: str, ctx: dict,
         screen=_screen_block(screen),
         anker=_anker_block(screen),
         question=kuerze(question, QUESTION_MAX) or "(keine eigene Frage — erklär das Gezeigte)",
-        gespraech=_verlauf_block(verlauf),
+        gespraech=_verlauf_block(verlauf, verlauf_zeichen),
     )
     # DeepSeek ohne Denken; für alle anderen der Denkaufwand aus
     # `llm.WEB_DENKAUFWAND` (GPT-6 Luna: Vorgabe — gemessen und begründet dort).
@@ -1821,16 +1829,46 @@ def explain_stream(store, screen: Screen, question: str, *,
     ctx = ctx if ctx is not None else screen_context(
         store, screen, question, permissions=permissions,
         ratslotse=ratslotse, user_id=user_id)
-    messages, extra = explain_messages(screen, question, ctx, verlauf, model)
+    messages, extra = explain_messages(
+        screen, question, ctx, verlauf, model,
+        verlauf_zeichen=VERLAUF_ANTWORT_FENSTER if werkzeuge and ANSCHLUSS else _VERLAUF_ANTWORT_MAX)
     if not werkzeuge:
         yield from llm.chat_stream(model=model, _feature="assistant_explain", temperature=0.2,
-                                   max_tokens=MAX_TOKENS, messages=messages, **extra)
+                                   max_tokens=MAX_TOKENS, messages=messages,
+                                   timeout=LLM_FRIST_S, **extra)
         return
-    yield from _mit_werkzeugen(store, messages, extra, ctx, permissions, model)
+    yield from _mit_werkzeugen(store, messages, extra, ctx, permissions, model,
+                               question=question, verlauf=verlauf)
+
+
+#: Schritt 2 (24.09.2026): Lotti schrieb „lässt sich nicht bestimmen“, ohne
+#: nachgeschlagen zu haben — trotz der Regel im Prompt. Zwei Hebel im Code:
+#: A hält den Anfang der ersten Runde zurück und verwirft eine Absage
+#: (:data:`ABSAGE_PRUEFEN`); B verlangt bei Fragen nach Entwicklung, Anteil
+#: oder Vergleich ein Werkzeug in der ersten Runde (:data:`NACHSCHLAGEN_ERZWINGEN`).
+ABSAGE_PRUEFEN = True
+NACHSCHLAGEN_ERZWINGEN = True
+#: Schritt 5: Eine knappe Anschlussfrage („und 2020?“, „pro Einwohner?“)
+#: schlägt in der ersten Runde nach — die Zahlen der Runde davor stehen nur
+#: gekürzt im Verlauf, die Werkzeug-Ergebnisse gar nicht.
+ANSCHLUSS = True
+#: Frist je Modellaufruf in Lottis Fenster (Sekunden ohne neues Stück), auf
+#: allen drei Wegen: Strom, Werkzeug-Schleife, Ersatzweg. Am 24.09.2026 hingen
+#: unter einer Drosselung von GPT-6 Luna Aufrufe über zehn Minuten — das SDK
+#: wartet ohne Angabe 600 s je Anlauf, und der Ersatzweg des Routers hing
+#: dann genauso (Stack: ``explain_question`` → EU-Weg → Antwort-Header). Mit
+#: Frist bekommt der EU-Weg einen Anlauf (``llm._eu_anlauf``), dann der
+#: Verzicht-Weg. OpenRouter hält die Leitung beim Denken mit Kommentarzeilen
+#: offen; 30 s ohne ein einziges Byte heißt: der Anbieter hängt.
+LLM_FRIST_S = 30
+#: So viele Zeichen der ersten Runde warten, bevor sie ans Fenster gehen —
+#: ein Satz, rund 0,5 s. Die Absagen standen in den Messungen im ersten Satz.
+ABSAGE_FENSTER = 200
 
 
 def _mit_werkzeugen(store, messages: list[dict], extra: dict, ctx: dict,
-                    permissions: frozenset[str] | set[str], model: str):
+                    permissions: frozenset[str] | set[str], model: str,
+                    question: str = "", verlauf: list[dict] | None = None):
     """Die Erklärung mit Nachschlagen — ``str``-Stücke und :class:`Schritt`.
 
     Antwortet das Modell direkt, fließt der Text wie ohne Werkzeuge. Ruft es
@@ -1839,32 +1877,67 @@ def _mit_werkzeugen(store, messages: list[dict], extra: dict, ctx: dict,
     hat (``tool_choice="none"``). Die Belege der Werkzeuge landen in
     ``ctx["werkzeug_belege"]`` und damit unter „Grundlage“.
     """
+    from council import fakten_abgleich
     from council import lotti_werkzeuge as lw
     messages = [dict(m) for m in messages]
     messages[0]["content"] += prompts.WERKZEUG_REGEL
     schemas = lw.schemas(permissions)
     ctx.setdefault("werkzeug_belege", [])
     geschrieben = False
+    nachgeschlagen = False
+    erzwingen = ((NACHSCHLAGEN_ERZWINGEN and lw.muss_nachschlagen(question))
+                 or (ANSCHLUSS and bool(verlauf) and lw.ist_anschluss(question)))
     for runde in range(lw.MAX_RUNDEN + 1):
         letzte = runde == lw.MAX_RUNDEN
+        wahl = "none" if letzte else ("required" if erzwingen else "auto")
+        erzwingen = False
+        # Hebel A: Wer noch nichts nachgeschlagen hat, darf nicht absagen.
+        halten = ABSAGE_PRUEFEN and not nachgeschlagen and not letzte
+        puffer = ""
+        verworfen = False
         text = ""
         aufrufe: list[dict] = []
-        for art, inhalt in llm.chat_stream_events(
-                model=model, _feature="assistant_explain", temperature=0.2,
-                max_tokens=MAX_TOKENS, messages=messages, tools=schemas,
-                tool_choice="none" if letzte else "auto", **extra):
-            if art == "text":
-                if not text and geschrieben:
-                    # Hat das Modell VOR einem Werkzeug schon etwas gesagt,
-                    # steht die eigentliche Antwort als neuer Absatz darunter.
-                    yield "\n\n"
-                text += inhalt
-                yield inhalt
-            else:
+        strom = llm.chat_stream_events(
+            model=model, _feature="assistant_explain", temperature=0.2,
+            max_tokens=MAX_TOKENS, messages=messages, tools=schemas, tool_choice=wahl,
+            timeout=LLM_FRIST_S, **extra)
+        for art, inhalt in strom:
+            if art != "text":
                 aufrufe = inhalt
+                continue
+            if halten:
+                puffer += inhalt
+                if len(puffer) < ABSAGE_FENSTER:
+                    continue
+                if fakten_abgleich.verweigert(puffer):
+                    verworfen = True
+                    break
+                halten, inhalt, puffer = False, puffer, ""
+            if not text and geschrieben:
+                # Hat das Modell VOR einem Werkzeug schon etwas gesagt,
+                # steht die eigentliche Antwort als neuer Absatz darunter.
+                yield "\n\n"
+            text += inhalt
+            yield inhalt
+        strom.close()
+        if halten and puffer and not verworfen:
+            # Der Strom endete, bevor das Fenster voll war.
+            if not aufrufe and fakten_abgleich.verweigert(puffer):
+                verworfen = True
+            else:
+                if geschrieben:
+                    yield "\n\n"
+                text = puffer
+                yield puffer
+        if verworfen:
+            # Nicht gezeigt, nicht in den Verlauf: Die nächste Runde MUSS
+            # nachschlagen und antwortet dann mit dem, was sie fand.
+            erzwingen = True
+            continue
         geschrieben = geschrieben or bool(text)
         if not aufrufe or letzte:
             return
+        nachgeschlagen = True
         messages.append(lw.assistenten_nachricht(text, aufrufe))
         bekannt = lw.nachrichten_text(messages)
         for aufruf in aufrufe:
@@ -1897,7 +1970,8 @@ def explain_question(store, screen: Screen, question: str, *,
         ratslotse=ratslotse, user_id=user_id)
     messages, extra = explain_messages(screen, question, ctx, verlauf, model)
     resp = llm.chat_complete(model=model, _feature="assistant_explain", temperature=0.2,
-                             max_tokens=MAX_TOKENS, messages=messages, **extra)
+                             max_tokens=MAX_TOKENS, messages=messages,
+                             timeout=LLM_FRIST_S, **extra)
     return (resp.choices[0].message.content or "").strip()
 
 

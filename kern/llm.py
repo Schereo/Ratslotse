@@ -705,6 +705,20 @@ def _melde_rueckfall(feature: str | None, model: str | None, exc: BaseException)
           "Rückfall auf das Routing ohne ZDR", flush=True)
 
 
+def _eu_anlauf(kwargs: dict[str, Any]):
+    """``_create`` für den EU-Weg — mit EINEM Anlauf, wenn der Aufrufer eine Frist setzt.
+
+    Wer ``timeout=`` mitgibt, wartet vor einem Bildschirm (Lottis Fenster). Am
+    24.09.2026 antwortete Azure EU unter einer Drosselung minutenlang gar
+    nicht: vier Anläufe à Frist vor dem Rückfall waren vier Minuten Warten.
+    Ein Anlauf, dann der Verzicht-Weg mit seinen eigenen Anläufen. Ohne Frist
+    bleibt alles wie beschrieben (vier schnelle Anläufe).
+    """
+    if kwargs.get("timeout") is None:
+        return _create
+    return _create.retry_with(stop=stop_after_attempt(1))
+
+
 def _create_eu_zuerst(kwargs: dict[str, Any], anbieter: tuple[str, ...],
                       feature: str | None, geduld: bool) -> tuple[Any, bool]:
     """Erst der EU-Weg mit ZDR, bei Ausfall derselbe Aufruf ohne ZDR.
@@ -727,7 +741,7 @@ def _create_eu_zuerst(kwargs: dict[str, Any], anbieter: tuple[str, ...],
     """
     eu = {**kwargs, "_zdr": True, "_only": anbieter}
     try:
-        resp = _create(**eu)
+        resp = _eu_anlauf(kwargs)(**eu)
         if getattr(resp, "choices", None):
             return resp, False
         grund: BaseException = EmptyResponseError(
@@ -951,7 +965,8 @@ def chat_stream_events(**kwargs: Any) -> Iterator[tuple[str, Any]]:
         for nr, (zdr, only) in enumerate(wege):
             ausgeliefert = False
             try:
-                for chunk in _create(stream=True, _zdr=zdr, _only=only, **kwargs):
+                erzeugen = _eu_anlauf(kwargs) if only else _create
+                for chunk in erzeugen(stream=True, _zdr=zdr, _only=only, **kwargs):
                     if antwort_anbieter is None:
                         antwort_anbieter = _anbieter(chunk)
                     if mit and antwort_modell is None:

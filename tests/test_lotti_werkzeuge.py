@@ -40,7 +40,7 @@ def _namen(permissions) -> set[str]:
 
 
 def test_haushalts_werkzeuge_nur_mit_dem_recht_budget():
-    assert _namen(frozenset()) == {"ratsarchiv_suchen"}
+    assert "zeitreihe" not in _namen(frozenset()) and "ratsarchiv_suchen" in _namen(frozenset())
     assert {"zeitreihe", "rechnen", "haushalt_nachschlagen"} <= _namen(HAUSHALT)
 
 
@@ -136,7 +136,7 @@ def test_ein_werkzeug_dann_die_antwort(store, monkeypatch):
     assert "".join(t for t in teile if isinstance(t, str)) == "Die Schulden stiegen."
     zweite = modell.aufrufe[1]["messages"]
     assert zweite[-1]["role"] == "tool" and "153.997.000" in zweite[-1]["content"]
-    assert zweite[0]["content"].endswith(prompts.WERKZEUG_REGEL)
+    assert prompts.WERKZEUG_REGEL in zweite[0]["content"]
 
 
 def test_nach_der_letzten_runde_ist_schluss(store, monkeypatch):
@@ -158,3 +158,104 @@ def test_belege_der_werkzeuge_stehen_unter_grundlage():
     ctx = {"werkzeug_belege": [{"label": "Schuldenstatistik", "year": 2024,
                                 "url": "https://example.org/a"}]}
     assert lotti.kontext_belege(ctx)[0]["url"] == "https://example.org/a"
+
+
+class _Absager:
+    """Sagt in der ersten Runde ab, ohne nachzuschlagen — dann, gezwungen, schlägt es nach."""
+
+    def __init__(self) -> None:
+        self.aufrufe: list[dict] = []
+
+    def __call__(self, **kw):
+        self.aufrufe.append(kw)
+        n = len(self.aufrufe)
+        if n == 1:
+            yield ("text", "Das lässt sich aus den vorliegenden Zahlen nicht bestimmen. "
+                           "Für 2025 liegen hier keine Angaben vor, die das zeigen würden.")
+            return
+        if kw["tool_choice"] == "required":
+            yield ("tools", [{"id": "c1", "name": "zeitreihe",
+                              "arguments": '{"reihe":"schulden","von_jahr":2010,"bis_jahr":2015}'}])
+            return
+        yield ("text", "Die Schulden stiegen.")
+
+
+def test_eine_absage_ohne_nachschlagen_wird_verworfen(store, monkeypatch):
+    monkeypatch.setattr(lotti, "NACHSCHLAGEN_ERZWINGEN", False)
+    modell = _Absager()
+    teile, _ = _lauf(store, monkeypatch, modell)
+    text = "".join(t for t in teile if isinstance(t, str))
+    assert text == "Die Schulden stiegen."
+    assert [a["tool_choice"] for a in modell.aufrufe] == ["auto", "required", "auto"]
+
+
+def test_eine_antwort_ohne_absage_fliesst_unveraendert(store, monkeypatch):
+    monkeypatch.setattr(lotti, "NACHSCHLAGEN_ERZWINGEN", False)
+    modell = _Modell(werkzeug_runden=0)
+    teile, _ = _lauf(store, monkeypatch, modell)
+    assert "".join(t for t in teile if isinstance(t, str)) == "Die Schulden stiegen."
+    assert len(modell.aufrufe) == 1
+
+
+def test_fragen_nach_entwicklung_muessen_nachschlagen(store, monkeypatch):
+    modell = _Modell(werkzeug_runden=1)
+    _lauf(store, monkeypatch, modell)  # „Schulden seit 2010?“
+    assert modell.aufrufe[0]["tool_choice"] == "required"
+    assert not lw.muss_nachschlagen("wie hoch sind die schulden")
+    assert lw.muss_nachschlagen("und 2015?")
+
+
+# --------------------------------------------------------------------------- #
+# Schritt 4: Rat, Betriebe, Gebühren, Kasse
+# --------------------------------------------------------------------------- #
+
+@pytest.fixture
+def rat(store):
+    c = store._conn
+    for ksinr, gremium, tag in [(1, "Rat", "2026-06-01"), (2, "Rat", "2026-06-29"),
+                                (3, "Ausschuss für Integration und Migration", "2026-06-10"),
+                                (4, "Ausschuss für Finanzen und Beteiligungen", "2025-11-05")]:
+        c.execute("INSERT INTO council_sessions (ksinr, committee, session_date, session_time, "
+                  "location, fetched_at) VALUES (?, ?, ?, '18:00', 'PFL', 'x')",
+                  (ksinr, gremium, tag))
+    for ksinr, nr, outcome, feld in [(4, "25/0615", "postponed", "finanzen"),
+                                     (2, "25/0615", "rejected", "finanzen"),
+                                     (1, "26/0001", "accepted", "verkehr")]:
+        c.execute("INSERT INTO council_decisions (ksinr, position, template_number, outcome, "
+                  "policy_field, item_number) VALUES (?, 1, ?, ?, ?, 'Ö 1')",
+                  (ksinr, nr, outcome, feld))
+    c.commit()
+    return store
+
+
+def test_ein_genauer_gremienname_trifft_nur_dieses_gremium(rat):
+    e = lw.ausfuehren(rat, "sitzungen",
+                      '{"gremium":"Rat","von_datum":"2026-06-01","bis_datum":"2026-06-30"}',
+                      permissions=frozenset(), bekannt="")
+    assert "2026-06-29" in e.text and "Integration" not in e.text
+
+
+def test_die_beratungsfolge_nennt_jedes_gremium_mit_ergebnis(rat):
+    e = lw.ausfuehren(rat, "beratungsfolge", '{"vorlage":"25/0615"}',
+                      permissions=frozenset(), bekannt="")
+    assert "2025-11-05 · Ausschuss für Finanzen und Beteiligungen: vertagt" in e.text
+    assert "Rat: abgelehnt" in e.text
+
+
+def test_zaehlen_nach_themenfeld(rat):
+    e = lw.ausfuehren(rat, "beschluesse_zaehlen", '{"jahr":2025,"themenfeld":"finanzen"}',
+                      permissions=frozenset(), bekannt="")
+    assert "1 insgesamt" in e.text and "vertagt 1" in e.text
+
+
+def test_betriebe_gebuehren_kasse_nur_mit_recht_budget():
+    ohne = _namen(frozenset())
+    assert {"sitzungen", "tagesordnung", "beratungsfolge", "beschluesse_zaehlen"} <= ohne
+    assert not {"betrieb_zeitreihe", "gebuehren_zeitreihe", "kassenstand", "seite_lesen"} & ohne
+    assert {"betrieb_zeitreihe", "gebuehren_zeitreihe", "kassenstand", "seite_lesen"} <= _namen(HAUSHALT)
+
+
+def test_knappe_anschlussfragen_erkennt_lotti():
+    assert lw.ist_anschluss("und wie sah das 2020 aus?")
+    assert lw.ist_anschluss("pro einwohner?")
+    assert not lw.ist_anschluss("wie hoch sind die schulden der stadt oldenburg insgesamt")
