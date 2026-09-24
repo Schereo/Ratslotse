@@ -10,7 +10,7 @@ import unicodedata
 from collections import Counter, defaultdict
 from datetime import date, timedelta
 from collections.abc import Callable
-from typing import Annotated
+from typing import Annotated, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
@@ -45,7 +45,7 @@ from .. import deepresearch
 from ..config import get_settings
 from ..antworten import (AnalysisData, ElectedCouncil, ElectedMember, AssistantStarters, BudgetAmendmentLists, BudgetAuditReports,
                          BudgetBalanceSheet, BudgetComparison, BudgetDataState, BudgetDebt, BudgetLiquidity, BudgetLoans,
-                         BudgetDispute, BudgetDocuments, BudgetExecution, BudgetGrants, GrantRow,
+                         BudgetDispute, BudgetDocuments, BudgetExecution, BudgetGrants, GrantRow, GrantTotal, Provenance,
                          BudgetFixedAssets, BudgetGroup,
                          BudgetHoldings, BudgetInvestmentProgram, BudgetInvestments,
                          BudgetOverview, BudgetPath, BudgetProducts, BudgetStaffPlan, Committees,
@@ -1016,13 +1016,13 @@ def haushalt_zuschuesse(
     summen = [s for s in store.zuschuss_summen()
               if sub_budget is None or s["sub_budget_no"] == sub_budget]
     ids = sorted({z["herkunft_id"] for z in zeilen if z["herkunft_id"] is not None})
-    return {
-        "years": jahre,
-        "year": jahr,
-        "rows": [{k: z[k] for k in GrantRow.__annotations__} for z in zeilen],
-        "totals": summen,
-        "provenance": {str(h["id"]): h for h in store.get_herkunft(ids)},
-    }
+    rows: list[GrantRow] = [cast(GrantRow, {k: z[k] for k in GrantRow.__annotations__})
+                            for z in zeilen]
+    return BudgetGrants(
+        years=jahre, year=jahr, rows=rows,
+        totals=cast(list[GrantTotal], summen),
+        provenance=cast(Provenance, {str(h["id"]): h for h in store.get_herkunft(ids)}),
+    )
 
 
 @router.get("/budget/investments")
