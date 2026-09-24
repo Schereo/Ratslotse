@@ -1,5 +1,7 @@
 "use client";
 
+import { BeschlussVorschau, istVorschauKlick } from "@/components/beschluss-vorschau";
+import { useWeit } from "@/lib/use-ultra";
 import { Fragment, useEffect, useMemo, useRef, useState, useCallback, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -101,8 +103,12 @@ function subvoteLabel(s: NonNullable<CouncilDecision["subvote_summary"]>): strin
   return parts.join(" · ");
 }
 
-function DecisionCard({ d, query, rang = 0, suchadresse }: {
+function DecisionCard({ d, query, rang = 0, suchadresse, onVorschau, gewaehlt = false }: {
   d: CouncilDecision; query: string; rang?: number; suchadresse: string;
+  /** Breite Schirme: Ein schlichter Klick zeigt den Treffer in der Vorschau
+   *  daneben (components/beschluss-vorschau.tsx) statt auf der ganzen Seite. */
+  onVorschau?: (id: number) => void;
+  gewaehlt?: boolean;
 }) {
   const isSub = d.kind === "subvote";
   const sub = d.subvote_summary;
@@ -126,8 +132,16 @@ function DecisionCard({ d, query, rang = 0, suchadresse }: {
     <Link
       id={`beschluss-${d.id}`}
       href={`${decisionHref(d.id)}&suche=${encodeURIComponent(`${suchadresse}#beschluss-${d.id}`)}`}
-      onClick={(e) => merkeSuchtreffer(suchadresse, e.currentTarget)}
-      className={cn("block", STAFFEL)} style={staffelStil(rang)}
+      onClick={(e) => {
+        if (onVorschau && istVorschauKlick(e)) {
+          e.preventDefault();
+          onVorschau(d.id);
+          return;
+        }
+        merkeSuchtreffer(suchadresse, e.currentTarget);
+      }}
+      aria-current={gewaehlt || undefined}
+      className={cn("block rounded-xl", STAFFEL, gewaehlt && "ring-2 ring-primary")} style={staffelStil(rang)}
     >
       {/* Design 22a: drei feste Zonen statt verstreuter Elemente — Statuszeile
           (Ergebnis-Punkt + „Wichtig" zusammen, Chevron rechts; Gremium·Datum·TOP
@@ -416,6 +430,14 @@ function DecisionsTab({ committees }: { committees: string[] }) {
   }[]>([]);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [decisions, setDecisions] = useState<CouncilDecision[]>([]);
+  // Vorschau-Spalte ab `weit`: der gewählte Treffer, sonst der erste. Ein
+  // gewählter, der nach neuem Suchen nicht mehr in der Liste steht, fällt
+  // still auf den ersten zurück.
+  const weit = useWeit();
+  const [gewaehlt, setGewaehlt] = useState<number | null>(null);
+  const vorschauId = weit && decisions.length > 0
+    ? (decisions.some((d) => d.id === gewaehlt) ? gewaehlt : decisions[0].id)
+    : null;
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [geladenFuer, setGeladenFuer] = useState("");
@@ -806,7 +828,12 @@ function DecisionsTab({ committees }: { committees: string[] }) {
             }
           />
         ) : (
-          <div className="space-y-2.5">
+          // Ab `weit` steht der gewählte Treffer als Vorschau daneben (Tims
+          // Entscheidung 24.09.2026, docs/plan-breite-schirme.md PR 7) —
+          // vorher liefen die Trefferzeilen bei 21:9 über 1.500 px, und jeder
+          // Blick in einen Beschluss hieß: Seite wechseln, zurück, suchen.
+          <div className={vorschauId != null ? "grid grid-cols-[minmax(0,1fr)_minmax(0,560px)] items-start gap-6" : undefined}>
+          <div className="min-w-0 space-y-2.5">
             {/* Design 29a (P7): Sehende sehen die Zahl — beim Filtern oder
                 Blättern wechselte die Liste für Vorleseprogramme lautlos.
                 Dieselbe Bauform wie die KI-Antwort (council-qa.tsx): eine
@@ -842,8 +869,13 @@ function DecisionsTab({ committees }: { committees: string[] }) {
               <Pagination compact page={page} totalPages={totalPages}
                 onChange={(p) => changePage(p, false)} className="ml-auto" />
             </div>
-            {decisions.map((d, i) => <DecisionCard key={d.id} d={d} query={query} rang={i} suchadresse={suchadresse} />)}
+            {decisions.map((d, i) => <DecisionCard key={d.id} d={d} query={query} rang={i} suchadresse={suchadresse}
+              onVorschau={vorschauId != null ? setGewaehlt : undefined} gewaehlt={d.id === vorschauId} />)}
             <Pagination page={page} totalPages={totalPages} onChange={changePage} className="pt-2" />
+          </div>
+          {vorschauId != null && (
+            <BeschlussVorschau key={vorschauId} id={vorschauId} className="sticky top-6" />
+          )}
           </div>
         )}
       </div>
