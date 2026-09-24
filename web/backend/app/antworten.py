@@ -1040,6 +1040,33 @@ class QuizOthers(TypedDict):
 class QuizJoker(TypedDict):
     """Die zwei falschen Antworten, die der 50:50-Joker streicht."""
     remove: list[int]
+class QuizBlitzResult(TypedDict):
+    """Abschluss einer Blitzrunde: Bestmarke gesamt und heute."""
+    best: int
+    today_best: int
+    new_best: bool
+class QuizDuelCreated(TypedDict):
+    code: str
+
+
+class QuizDuelPlayer(TypedDict):
+    name: str
+    correct: int
+    me: bool
+
+
+class QuizDuel(TypedDict):
+    """Ein Duell (Plan Q9). ``questions`` ohne Lösung; ``players`` erst,
+    wenn ich gespielt habe oder das Duell meins ist — sonst verriete die
+    Liste, wie schwer die Runde ist, bevor man sie spielt."""
+    code: str
+    owner_name: str
+    owner_correct: int
+    total: int
+    mine: bool
+    played: bool
+    questions: list[QuizQuestion]
+    players: list[QuizDuelPlayer]
 
 
 class QuizResult(TypedDict):
@@ -1110,6 +1137,31 @@ class QuizDayCompleted(TypedDict):
     ok: bool
     day: str
     streak: int
+    # Zum Teilen, fertig gesetzt (``routers.quiz._share_text``) — nur, wenn
+    # der Client die Einzelergebnisse mitschickt.
+    share_text: NotRequired[str]
+
+
+class QuizPinQuestion(TypedDict):
+    slug: str
+    name: str
+    kind_label: str
+
+
+class QuizPinRound(TypedDict):
+    questions: list[QuizPinQuestion]
+
+
+class QuizPinResult(TypedDict):
+    """Auflösung von „Wo liegt das?": Entfernung zur Geometrie, Punkte, und
+    die Geometrie selbst zum Einzeichnen."""
+    distance_m: int
+    distance_label: str
+    points: int
+    name: str
+    geojson: Any
+    lat: float
+    lon: float
 
 
 class QuizMapQuestion(TypedDict):
@@ -1197,6 +1249,7 @@ class QuizScore(TypedDict):
     districts_all: NotRequired[list[QuizDistrictProgress]]
     # Die Wörter der Stufen 0–3 je Ansicht: {"mine": [...], "all": [...]}.
     district_legend: NotRequired[dict[str, list[str]]]
+    blitz_best: NotRequired[int]
 
 
 class QuizFlaggedQuestion(TypedDict):
@@ -3342,12 +3395,31 @@ class BudgetHoldings(TypedDict):
     texts: Any
 
 
+class FinanceBudgetRow(TypedDict):
+    """Eine Investitionszeile des Gesamtfinanzhaushalts (Anlage 006).
+
+    ``kind`` trennt den Ansatz des Planjahres (``budget``) von der
+    Finanzplanung (``financial_plan``); ``plan_budget_year`` sagt, aus welchem
+    Plan die Zahl stammt. ``role`` ist nur bei den Summen und dem Saldo
+    gesetzt, die übrigen Zeilen sind die Auszahlungs- und Einzahlungsarten."""
+    plan_budget_year: int
+    year: int
+    kind: str
+    nr: int
+    label: str
+    role: str | None
+    amount: float
+    is_total: int
+    herkunft_id: int | None
+
+
 class BudgetInvestments(TypedDict):
     financial_budget: list[Any]
     investments: list[Any]
     provenance: Provenance
     years: Any
     sub_budgets: list[Any]
+    finance_budget: NotRequired[list[FinanceBudgetRow]]
 
 
 class BudgetInvestmentProgram(TypedDict):

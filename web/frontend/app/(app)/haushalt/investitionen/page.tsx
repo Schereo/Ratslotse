@@ -28,12 +28,13 @@ import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
 import { Seitenbuehne, SeitenbuehneLaedt, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
 import { InvestitionsplanAbschnitt } from "@/components/haushalt/section-investitionsplan";
 import { GebautAbschnitt } from "@/components/haushalt/section-gebaut";
+import { FinanzhaushaltPlan } from "@/components/haushalt/finanzhaushalt-plan";
 
 /** Ausgeschrieben, nicht zusammengesetzt: `tests/test_quellen_dokumente.py`
  *  liest die Literale dieser Liste. Reihenfolge = Nummerierung der Chips,
  *  also nach Leserichtung: erst der Plan, dann das Ist. */
 const QUELLEN: QuellenSchluessel[] = [
-  "investitionen", "investitionsprogramm", "gebaut", "jahresabschluss",
+  "investitionen", "finance_budget", "investitionsprogramm", "gebaut", "jahresabschluss",
 ];
 
 const MARKEN = [
@@ -111,6 +112,9 @@ function InvestitionenInner() {
 
         <section id="plan" className={ANKER_KLASSE}>
           <InvestitionsplanAbschnitt onBestand={setPlan} />
+          <div className="mt-4">
+            <FinanzhaushaltPlan />
+          </div>
         </section>
 
         <section id="gebaut" className={`${ANKER_KLASSE} border-t border-border pt-4`}>

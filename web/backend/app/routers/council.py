@@ -1000,6 +1000,9 @@ def haushalt_investitionen(
       also samt laufender Verwaltungstätigkeit. Die Bezugsgröße, die aus
       „80,8 Mio. €" erst eine Aussage macht — und die einzige Zahl hier ohne
       Rechenprobe (eigene ``herkunft_id`` mit ``ungeprueft``, s. u.),
+    - ``finance_budget``: die Investitionszeilen des Gesamtfinanzhaushalts
+      (Anlage 006) aller Pläne — Summen, Saldo und Auszahlungsarten, je mit
+      ``kind`` (Ansatz oder Finanzplanung) und ``plan_budget_year``,
     - ``herkunft``: je ``herkunft_id`` Dokument, Fundstelle, bestandene Probe
       samt Messwert. Die geprüften Zeilen und die Bezugsgröße tragen
       **verschiedene** IDs; sie stehen in derselben Datei, aber nur die einen
@@ -1010,12 +1013,17 @@ def haushalt_investitionen(
     Vorhaben** — „Verkehr und Straßenbau: 10,5 Mio. €" sagt nicht, welche
     Straße."""
     zeilen = store.get_investitionen()
-    ids = sorted({z["herkunft_id"] for z in zeilen if z["herkunft_id"] is not None})
+    # Der Gesamtfinanzhaushalt (Anlage 006): dieselbe Frage aus dem Plan
+    # selbst, mit der Finanzplanung bis drei Jahre voraus und der Aufteilung
+    # nach Auszahlungsarten (Baumaßnahmen, Grundstücke …).
+    plan = store.get_finanzhaushalt_investitionen()
+    ids = sorted({z["herkunft_id"] for z in (*zeilen, *plan) if z["herkunft_id"] is not None})
     return {
         "years": store.investitionen_jahre(),
         "sub_budgets": [z for z in zeilen if z["level"] == "sub_budget"],
         "investments": [z for z in zeilen if z["level"] == "investments"],
         "financial_budget": [z for z in zeilen if z["level"] == "financial_budget"],
+        "finance_budget": plan,
         "provenance": {str(h["id"]): h for h in store.get_herkunft(ids)},
     }
 

@@ -4831,6 +4831,13 @@
       },
       "BudgetInvestments": {
         "properties": {
+          "finance_budget": {
+            "items": {
+              "$ref": "#/components/schemas/FinanceBudgetRow"
+            },
+            "title": "Finance Budget",
+            "type": "array"
+          },
           "financial_budget": {
             "items": {},
             "title": "Financial Budget",
@@ -11337,6 +11344,66 @@
           }
         },
         "title": "FeedbackNotifyIn",
+        "type": "object"
+      },
+      "FinanceBudgetRow": {
+        "description": "Eine Investitionszeile des Gesamtfinanzhaushalts (Anlage 006).\n\n``kind`` trennt den Ansatz des Planjahres (``budget``) von der\nFinanzplanung (``financial_plan``); ``plan_budget_year`` sagt, aus welchem\nPlan die Zahl stammt. ``role`` ist nur bei den Summen und dem Saldo\ngesetzt, die übrigen Zeilen sind die Auszahlungs- und Einzahlungsarten.",
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          },
+          "herkunft_id": {
+            "title": "Herkunft Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "is_total": {
+            "title": "Is Total",
+            "type": "integer"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "nr": {
+            "title": "Nr",
+            "type": "integer"
+          },
+          "plan_budget_year": {
+            "title": "Plan Budget Year",
+            "type": "integer"
+          },
+          "role": {
+            "title": "Role",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "year": {
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "plan_budget_year",
+          "year",
+          "kind",
+          "nr",
+          "label",
+          "role",
+          "amount",
+          "is_total",
+          "herkunft_id"
+        ],
+        "title": "FinanceBudgetRow",
         "type": "object"
       },
       "Finances": {
@@ -17917,6 +17984,52 @@
         "title": "QuizBadge",
         "type": "object"
       },
+      "QuizBlitzIn": {
+        "properties": {
+          "answered": {
+            "maximum": 40.0,
+            "minimum": 0.0,
+            "title": "Answered",
+            "type": "integer"
+          },
+          "correct": {
+            "maximum": 40.0,
+            "minimum": 0.0,
+            "title": "Correct",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "correct",
+          "answered"
+        ],
+        "title": "QuizBlitzIn",
+        "type": "object"
+      },
+      "QuizBlitzResult": {
+        "description": "Abschluss einer Blitzrunde: Bestmarke gesamt und heute.",
+        "properties": {
+          "best": {
+            "title": "Best",
+            "type": "integer"
+          },
+          "new_best": {
+            "title": "New Best",
+            "type": "boolean"
+          },
+          "today_best": {
+            "title": "Today Best",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "best",
+          "today_best",
+          "new_best"
+        ],
+        "title": "QuizBlitzResult",
+        "type": "object"
+      },
       "QuizDailyIn": {
         "properties": {
           "correct": {
@@ -17930,6 +18043,17 @@
             "minimum": 0.0,
             "title": "Points",
             "type": "integer"
+          },
+          "results": {
+            "items": {
+              "type": "boolean"
+            },
+            "maxItems": 10,
+            "title": "Results",
+            "type": [
+              "array",
+              "null"
+            ]
           },
           "total": {
             "maximum": 50.0,
@@ -18054,6 +18178,10 @@
             "title": "Ok",
             "type": "boolean"
           },
+          "share_text": {
+            "title": "Share Text",
+            "type": "string"
+          },
           "streak": {
             "title": "Streak",
             "type": "integer"
@@ -18105,6 +18233,137 @@
           "level_label"
         ],
         "title": "QuizDistrictProgress",
+        "type": "object"
+      },
+      "QuizDuel": {
+        "description": "Ein Duell (Plan Q9). ``questions`` ohne Lösung; ``players`` erst,\nwenn ich gespielt habe oder das Duell meins ist — sonst verriete die\nListe, wie schwer die Runde ist, bevor man sie spielt.",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "mine": {
+            "title": "Mine",
+            "type": "boolean"
+          },
+          "owner_correct": {
+            "title": "Owner Correct",
+            "type": "integer"
+          },
+          "owner_name": {
+            "title": "Owner Name",
+            "type": "string"
+          },
+          "played": {
+            "title": "Played",
+            "type": "boolean"
+          },
+          "players": {
+            "items": {
+              "$ref": "#/components/schemas/QuizDuelPlayer"
+            },
+            "title": "Players",
+            "type": "array"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/QuizQuestion"
+            },
+            "title": "Questions",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "code",
+          "owner_name",
+          "owner_correct",
+          "total",
+          "mine",
+          "played",
+          "questions",
+          "players"
+        ],
+        "title": "QuizDuel",
+        "type": "object"
+      },
+      "QuizDuelCreated": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "title": "QuizDuelCreated",
+        "type": "object"
+      },
+      "QuizDuelDoneIn": {
+        "properties": {
+          "correct": {
+            "maximum": 10.0,
+            "minimum": 0.0,
+            "title": "Correct",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "correct"
+        ],
+        "title": "QuizDuelDoneIn",
+        "type": "object"
+      },
+      "QuizDuelIn": {
+        "properties": {
+          "correct": {
+            "maximum": 10.0,
+            "minimum": 0.0,
+            "title": "Correct",
+            "type": "integer"
+          },
+          "question_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "maxItems": 10,
+            "minItems": 1,
+            "title": "Question Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "question_ids",
+          "correct"
+        ],
+        "title": "QuizDuelIn",
+        "type": "object"
+      },
+      "QuizDuelPlayer": {
+        "properties": {
+          "correct": {
+            "title": "Correct",
+            "type": "integer"
+          },
+          "me": {
+            "title": "Me",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "correct",
+          "me"
+        ],
+        "title": "QuizDuelPlayer",
         "type": "object"
       },
       "QuizFlagged": {
@@ -18325,6 +18584,117 @@
           "questions"
         ],
         "title": "QuizOwnQuestions",
+        "type": "object"
+      },
+      "QuizPinIn": {
+        "properties": {
+          "lat": {
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Lat",
+            "type": "number"
+          },
+          "lon": {
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Lon",
+            "type": "number"
+          },
+          "slug": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "lat",
+          "lon"
+        ],
+        "title": "QuizPinIn",
+        "type": "object"
+      },
+      "QuizPinQuestion": {
+        "properties": {
+          "kind_label": {
+            "title": "Kind Label",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "kind_label"
+        ],
+        "title": "QuizPinQuestion",
+        "type": "object"
+      },
+      "QuizPinResult": {
+        "description": "Auflösung von „Wo liegt das?\": Entfernung zur Geometrie, Punkte, und\ndie Geometrie selbst zum Einzeichnen.",
+        "properties": {
+          "distance_label": {
+            "title": "Distance Label",
+            "type": "string"
+          },
+          "distance_m": {
+            "title": "Distance M",
+            "type": "integer"
+          },
+          "geojson": {
+            "title": "Geojson"
+          },
+          "lat": {
+            "title": "Lat",
+            "type": "number"
+          },
+          "lon": {
+            "title": "Lon",
+            "type": "number"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "points": {
+            "title": "Points",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "distance_m",
+          "distance_label",
+          "points",
+          "name",
+          "geojson",
+          "lat",
+          "lon"
+        ],
+        "title": "QuizPinResult",
+        "type": "object"
+      },
+      "QuizPinRound": {
+        "properties": {
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/QuizPinQuestion"
+            },
+            "title": "Questions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "questions"
+        ],
+        "title": "QuizPinRound",
         "type": "object"
       },
       "QuizQuestion": {
@@ -18574,6 +18944,10 @@
             },
             "title": "Badges",
             "type": "array"
+          },
+          "blitz_best": {
+            "title": "Blitz Best",
+            "type": "integer"
           },
           "by_area": {
             "items": {
@@ -26099,7 +26473,7 @@
     },
     "/api/council/budget/investments": {
       "get": {
-        "description": "Was die Stadt bauen und kaufen will — die Investitionen des\nFinanzhaushalts, je Teilhaushalt.\n\nDie andere Hälfte des Haushaltsplans: Im Ergebnishaushalt, den der Rest des\nBereichs zeigt, steht keine einzige Investition (ein Schulneubau taucht dort\nnur als Abschreibung auf, verteilt über Jahrzehnte).\n\n- ``years``: Haushaltsjahre, für die Investitionen vorliegen,\n- ``sub_budgets``: je Jahr und Teilhaushalt Ein- und Auszahlungen aus\n  Investitionstätigkeit,\n- ``investments``: je Jahr die Summenzeile der Datei — das **Ziel der\n  Rechenprobe**, nicht unsere Addition,\n- ``financial_budget``: je Jahr der Gesamtbetrag aller Ein- und Auszahlungen,\n  also samt laufender Verwaltungstätigkeit. Die Bezugsgröße, die aus\n  „80,8 Mio. €\" erst eine Aussage macht — und die einzige Zahl hier ohne\n  Rechenprobe (eigene ``herkunft_id`` mit ``ungeprueft``, s. u.),\n- ``herkunft``: je ``herkunft_id`` Dokument, Fundstelle, bestandene Probe\n  samt Messwert. Die geprüften Zeilen und die Bezugsgröße tragen\n  **verschiedene** IDs; sie stehen in derselben Datei, aber nur die einen\n  sind durch deren Summenzeile gedeckt.\n\nZwei Grenzen, die die Seite nennt und die API deshalb nicht verwischt:\nDiese Zahlen sind **Plan**, nicht Ist, und sie nennen **kein einzelnes\nVorhaben** — „Verkehr und Straßenbau: 10,5 Mio. €\" sagt nicht, welche\nStraße.",
+        "description": "Was die Stadt bauen und kaufen will — die Investitionen des\nFinanzhaushalts, je Teilhaushalt.\n\nDie andere Hälfte des Haushaltsplans: Im Ergebnishaushalt, den der Rest des\nBereichs zeigt, steht keine einzige Investition (ein Schulneubau taucht dort\nnur als Abschreibung auf, verteilt über Jahrzehnte).\n\n- ``years``: Haushaltsjahre, für die Investitionen vorliegen,\n- ``sub_budgets``: je Jahr und Teilhaushalt Ein- und Auszahlungen aus\n  Investitionstätigkeit,\n- ``investments``: je Jahr die Summenzeile der Datei — das **Ziel der\n  Rechenprobe**, nicht unsere Addition,\n- ``financial_budget``: je Jahr der Gesamtbetrag aller Ein- und Auszahlungen,\n  also samt laufender Verwaltungstätigkeit. Die Bezugsgröße, die aus\n  „80,8 Mio. €\" erst eine Aussage macht — und die einzige Zahl hier ohne\n  Rechenprobe (eigene ``herkunft_id`` mit ``ungeprueft``, s. u.),\n- ``finance_budget``: die Investitionszeilen des Gesamtfinanzhaushalts\n  (Anlage 006) aller Pläne — Summen, Saldo und Auszahlungsarten, je mit\n  ``kind`` (Ansatz oder Finanzplanung) und ``plan_budget_year``,\n- ``herkunft``: je ``herkunft_id`` Dokument, Fundstelle, bestandene Probe\n  samt Messwert. Die geprüften Zeilen und die Bezugsgröße tragen\n  **verschiedene** IDs; sie stehen in derselben Datei, aber nur die einen\n  sind durch deren Summenzeile gedeckt.\n\nZwei Grenzen, die die Seite nennt und die API deshalb nicht verwischt:\nDiese Zahlen sind **Plan**, nicht Ist, und sie nennen **kein einzelnes\nVorhaben** — „Verkehr und Straßenbau: 10,5 Mio. €\" sagt nicht, welche\nStraße.",
         "operationId": "haushalt_investitionen_api_council_budget_investments_get",
         "responses": {
           "200": {
@@ -29873,6 +30247,94 @@
         ]
       }
     },
+    "/api/quiz/blitz-round": {
+      "get": {
+        "description": "Blitzrunde (Plan Q6): schnelle Fragen für 60 Sekunden, ohne Lösung.\nAusgewertet wird jede wie immer über ``/answer``.",
+        "operationId": "blitz_round_api_quiz_blitz_round_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "n",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 40,
+              "minimum": 5,
+              "title": "N",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuizRound"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Blitz Round",
+        "tags": [
+          "quiz"
+        ]
+      }
+    },
+    "/api/quiz/blitz/complete": {
+      "post": {
+        "description": "Einen Blitz-Lauf abschließen — bucht nur die Bestmarke.",
+        "operationId": "blitz_complete_api_quiz_blitz_complete_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuizBlitzIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuizBlitzResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Blitz Complete",
+        "tags": [
+          "quiz"
+        ]
+      }
+    },
     "/api/quiz/daily": {
       "get": {
         "description": "Die heutige Tages-Challenge (5 Fragen, für alle gleich) + mein Ergebnis,\nfalls ich sie heute schon gespielt habe.",
@@ -29932,6 +30394,142 @@
           }
         },
         "summary": "Daily Complete",
+        "tags": [
+          "quiz"
+        ]
+      }
+    },
+    "/api/quiz/duel": {
+      "post": {
+        "description": "Eine gespielte Runde als Herausforderung (Plan Q9). Nur aktive Fragen.",
+        "operationId": "duel_create_api_quiz_duel_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuizDuelIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuizDuelCreated"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Duel Create",
+        "tags": [
+          "quiz"
+        ]
+      }
+    },
+    "/api/quiz/duel/{code}": {
+      "get": {
+        "operationId": "duel_get_api_quiz_duel__code__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "title": "Code",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuizDuel"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Duel Get",
+        "tags": [
+          "quiz"
+        ]
+      }
+    },
+    "/api/quiz/duel/{code}/complete": {
+      "post": {
+        "operationId": "duel_complete_api_quiz_duel__code__complete_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "title": "Code",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuizDuelDoneIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuizDuel"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Duel Complete",
         "tags": [
           "quiz"
         ]
@@ -30302,6 +30900,94 @@
           }
         },
         "summary": "Own Update",
+        "tags": [
+          "quiz"
+        ]
+      }
+    },
+    "/api/quiz/pin-answer": {
+      "post": {
+        "description": "Den Pin werten: Entfernung zur Geometrie des Orts, Punkte in Stufen.\nGebucht wie das Karten-Quiz (``question_id = 0``) auf den Ortsbereich des\nOrts — so zählt es auf die Stadtkarte.",
+        "operationId": "pin_answer_api_quiz_pin_answer_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuizPinIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuizPinResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Pin Answer",
+        "tags": [
+          "quiz"
+        ]
+      }
+    },
+    "/api/quiz/pin-round": {
+      "get": {
+        "description": "„Wo liegt das?\" (Plan Q7): n Orte zum Verorten, ohne Lage.",
+        "operationId": "pin_round_api_quiz_pin_round_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "n",
+            "required": false,
+            "schema": {
+              "default": 5,
+              "maximum": 10,
+              "minimum": 1,
+              "title": "N",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuizPinRound"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Pin Round",
         "tags": [
           "quiz"
         ]

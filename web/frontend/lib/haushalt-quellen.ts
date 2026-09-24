@@ -137,6 +137,10 @@ export type QuellenSchluessel =
   | "lsn_gewerbesteuer"
   // A11: Die Investitionen des Finanzhaushalts.
   | "investitionen"
+  // Und dieselbe Frage aus dem Haushaltsplan selbst (Anlage 006), mit
+  // Finanzplanung. Eigener Schlüssel: anderes Dokument, andere Fassung
+  // (Entwurf statt Open-Data-Datei), andere Probe.
+  | "finance_budget"
   | "investitionsprogramm"
   // Und das Ist-Gegenstück aus dem Statistischen Jahrbuch. Bewusst ein
   // eigener Schlüssel und nicht ein zweiter Absatz unter `investitionen`:
@@ -835,6 +839,22 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     lizenz: "dl-de/by-2.0",
     art: "csv",
     url: "https://opendata.oldenburg.de/dataset/haushaltsplan-stadt-oldenburg-2025",
+  },
+  finance_budget: {
+    title: "Gesamtfinanzhaushalte der Stadt Oldenburg (Anlage 006)",
+    citation:
+      "Anlage 006 des Haushaltsplans: alle Ein- und Auszahlungen des Planjahres — " +
+      "laufende Verwaltungstätigkeit, Investitionen, Finanzierung — und dahinter drei " +
+      "Jahre mittelfristige Finanzplanung. Wir zeigen die Investitionszeilen. " +
+      "Gelesen über die Lage der Zahlen im PDF, weil der Textauszug leere Zellen " +
+      "verschluckt; jede der sechs Spalten muss ihre Summen und Salden selbst ergeben. " +
+      "Es ist der Entwurf der Verwaltung: Die Anlage hängt an der Einbringungs-Vorlage, " +
+      "nicht am Beschluss.",
+    herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
+    standWort: "Haushaltspläne",
+    as_of: "Haushaltspläne 2019–2026, Stand der Einbringung",
+    art: "pdf",
+    url: "https://buergerinfo.oldenburg.de",
   },
   // A12: Das Investitionsprogramm (/haushalt/investitionen, Block „Die
   // einzelnen Vorhaben"). Die Ebene unter A11 — und aus einer ganz anderen

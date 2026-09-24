@@ -170,6 +170,41 @@ class QuizMixin(StoreBasis):
         picked = (fresh + used)[:limit]
         return [self._quiz_row(r, with_answer=False) for r in picked]
 
+    def quiz_pin_rows(self, min_decisions: int, slug: str | None = None) -> list[sqlite3.Row]:
+        """Verortete Orte mit Geometrie für „Wo liegt das?" (``council.quiz_pins``)
+        — alle ab ``min_decisions`` Beschlüssen, oder genau einer (``slug``)."""
+        sql = ("SELECT e.slug, e.name, m.lat, m.lon, m.geojson FROM council_entities e "
+               "JOIN council_entity_meta m ON m.slug = e.slug "
+               "WHERE e.kind = 'place' AND m.lat IS NOT NULL AND m.geojson IS NOT NULL AND e.n >= ?")
+        params: list = [min_decisions]
+        if slug:
+            sql += " AND e.slug = ?"
+            params.append(slug)
+        return self._conn.execute(sql, params).fetchall()
+
+    #: Längste Antwort, die in einer Blitzrunde noch schnell zu lesen ist.
+    BLITZ_MAX_OPTION = 45
+
+    def pick_blitz_questions(self, limit: int) -> list[dict]:
+        """Schnelle Fragen für die Blitzrunde (Plan Q6): Multiple Choice mit
+        zwei Antworten (Antrag, Vergleich) oder leicht mit kurzen Antworten.
+        Reizvolle zuerst, sonst zufällig; OHNE Lösung."""
+        import random
+        rows = self._conn.execute(
+            "SELECT * FROM council_quiz_questions WHERE status = 'active' AND qtype = 'mc' "
+            "AND (appeal IS NULL OR appeal >= ?)", (MIN_APPEAL,)).fetchall()
+        fast = []
+        for r in rows:
+            try:
+                opts = json.loads(r["options"] or "[]")
+            except (json.JSONDecodeError, TypeError):
+                continue
+            if len(opts) == 2 or (r["difficulty"] == "easy" and len(opts) == 4
+                                  and max(len(o) for o in opts) <= self.BLITZ_MAX_OPTION):
+                fast.append(r)
+        random.shuffle(fast)
+        return [self._quiz_row(r, with_answer=False) for r in fast[:limit]]
+
     def pick_quiz_questions_by_ids(self, ids: list[int], limit: int, *, web: bool = True) -> list[dict]:
         """Aktive Fragen (OHNE Lösung) zu einer Id-Liste, gemischt und gedeckelt —
         für den „Meine Fehler"-Wiederholmodus. Retirte Fragen fallen raus."""

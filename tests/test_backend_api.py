@@ -871,7 +871,7 @@ def test_haushalt_datenstand_nennt_alle_schichten(client):
     _register(client)
     b = client.get("/api/council/budget/data-status").json()
     schichten = {s["key"]: s for s in b["layers"]}
-    assert set(schichten) == {"haushaltsplan", "income_budget", "investitionen",
+    assert set(schichten) == {"haushaltsplan", "income_budget", "finance_budget", "investitionen",
                               "investitionsprogramm", "budget_execution",
                               "jahresabschluss", "teilhaushalt", "stellenplan",
                               "indicators", "rpa_fundstelle",
@@ -7065,3 +7065,102 @@ def test_quiz_joker_refuses_estimates(client):
     qid = store.quiz_active_rows()[0]["id"]
     store.close()
     assert client.post("/api/quiz/joker", json={"question_id": qid}).status_code == 400
+def test_quiz_daily_share_text(client):
+    """Das Teil-Raster: ein Kästchen je Frage, Datum, Treffer — und ohne
+    Einzelergebnisse bleibt die Antwort, wie sie war (die App)."""
+    _register(client)
+    r = client.post("/api/quiz/daily/complete", json={
+        "correct": 4, "total": 5, "points": 6, "results": [True, False, True, True, True]}).json()
+    day = r["day"]
+    lines = r["share_text"].split("\n")
+    assert lines[0] == f"Ratslotse-Quiz {day[8:10]}.{day[5:7]}."
+    assert lines[1] == "🟩🟥🟩🟩🟩  4 von 5"
+    assert lines[2].endswith("/quiz")
+    r2 = client.post("/api/quiz/daily/complete", json={"correct": 1, "total": 5, "points": 1}).json()
+    assert "share_text" not in r2
+def test_quiz_blitz_round_takes_only_fast_questions(client):
+    """Blitzrunde: zwei Antworten oder leicht mit kurzen Antworten — keine
+    Schätzfrage, keine lange Frage."""
+    _register(client)
+    store = CouncilStore(COUNCIL_DB)
+    base = {"area_type": "district", "area_key": "Osternburg", "category": "history",
+            "correct_index": 0, "explanation": "x", "source_type": "wikipedia", "source_ref": ""}
+    store.save_quiz_questions([
+        {**base, "question": "Zwei Antworten?", "difficulty": "hard", "options": ["Ja", "Nein"], "content_hash": "b1"},
+        {**base, "question": "Leicht und kurz?", "difficulty": "easy", "options": ["A", "B", "C", "D"], "content_hash": "b2"},
+        {**base, "question": "Leicht aber lang?", "difficulty": "easy",
+         "options": ["A" * 60, "B", "C", "D"], "content_hash": "b3"},
+        {**base, "question": "Schwer mit vier?", "difficulty": "hard", "options": ["A", "B", "C", "D"], "content_hash": "b4"},
+        {**base, "question": "Schätzung?", "difficulty": "easy", "qtype": "estimate", "options": [],
+         "answer_value": 5.0, "answer_unit": "x", "range_min": 0.0, "range_max": 20.0, "content_hash": "b5"},
+    ])
+    store.close()
+    got = {q["question"] for q in client.get("/api/quiz/blitz-round?n=10").json()["questions"]}
+    assert got == {"Zwei Antworten?", "Leicht und kurz?"}
+
+
+def test_quiz_blitz_best_only_rises(client):
+    _register(client)
+    a = client.post("/api/quiz/blitz/complete", json={"correct": 7, "answered": 9}).json()
+    assert a == {"best": 7, "today_best": 7, "new_best": True}
+    b = client.post("/api/quiz/blitz/complete", json={"correct": 4, "answered": 6}).json()
+    assert b["best"] == 7 and b["new_best"] is False
+    assert client.get("/api/quiz/stats").json()["blitz_best"] == 7
+    assert client.post("/api/quiz/blitz/complete", json={"correct": 5, "answered": 3}).status_code == 400
+def test_quiz_pin_round_and_answer(client):
+    """„Wo liegt das?": nur Orte mit Gewicht und Geometrie, gewertet an der
+    Geometrie, gebucht auf den Ortsbereich."""
+    _register(client)
+    store = CouncilStore(COUNCIL_DB)
+    line = json.dumps({"type": "LineString", "coordinates": [[8.2140, 53.1430], [8.2160, 53.1440]]})
+    with store._conn:
+        for slug, name, n in (("schlossplatz", "Schlossplatz", 12), ("kleiner-weg", "Kleiner Weg", 2)):
+            store._conn.execute("INSERT INTO council_entities (slug, name, kind, n) VALUES (?,?,?,?)",
+                                (slug, name, "place", n))
+            store._conn.execute("INSERT INTO council_entity_meta (slug, lat, lon, geojson) VALUES (?,?,?,?)",
+                                (slug, 53.1435, 8.2150, line))
+    store.close()
+    qs = client.get("/api/quiz/pin-round?n=5").json()["questions"]
+    assert [q["slug"] for q in qs] == ["schlossplatz"] and qs[0]["kind_label"] == "Straße"
+    near = client.post("/api/quiz/pin-answer", json={"slug": "schlossplatz", "lat": 53.1435, "lon": 8.2150}).json()
+    assert near["points"] == 3 and near["distance_m"] < 20 and near["geojson"]["type"] == "LineString"
+    far = client.post("/api/quiz/pin-answer", json={"slug": "schlossplatz", "lat": 53.20, "lon": 8.30}).json()
+    assert far["points"] == 0 and "km daneben" in far["distance_label"]
+    assert client.post("/api/quiz/pin-answer", json={"slug": "gibt-es-nicht", "lat": 53.1, "lon": 8.2}).status_code == 404
+    by_area = client.get("/api/quiz/stats").json()["by_area"]
+    assert sum(a["answered"] for a in by_area if a["area_type"] == "district") == 2
+def test_quiz_duel_roundtrip(client):
+    """Duell (Plan Q9): anlegen, eine zweite Person spielt es, beide sehen die
+    Tabelle; wer noch nicht gespielt hat, sieht keine Ergebnisse."""
+    _register(client)
+    _seed_quiz("Osternburg", n=3)
+    ids = [q["id"] for q in client.get("/api/quiz/round?areas=district:Osternburg&n=3").json()["questions"]]
+    code = client.post("/api/quiz/duel", json={"question_ids": ids, "correct": 2}).json()["code"]
+    assert len(code) == 10
+    mine = client.get(f"/api/quiz/duel/{code}").json()
+    assert mine["mine"] is True and mine["total"] == 3 and [q["id"] for q in mine["questions"]] == ids
+    assert "correct_index" not in mine["questions"][0]
+
+    other = TestClient(app)
+    _register(other, email="gegner@example.org")
+    before = other.get(f"/api/quiz/duel/{code}").json()
+    assert before["played"] is False and before["players"] == [] and before["owner_name"] == "Testkonto"
+    after = other.post(f"/api/quiz/duel/{code}/complete", json={"correct": 3}).json()
+    assert after["played"] is True and after["players"] == [{"name": "Testkonto", "correct": 3, "me": True}]
+    # das erste Ergebnis zählt
+    again = other.post(f"/api/quiz/duel/{code}/complete", json={"correct": 0}).json()
+    assert again["players"][0]["correct"] == 3
+    assert client.get(f"/api/quiz/duel/{code}").json()["players"][0]["me"] is False
+    assert client.get("/api/quiz/duel/gibtesnicht").status_code == 404
+
+
+def test_quiz_duel_expires(client):
+    _register(client)
+    _seed_quiz("Osternburg", n=1)
+    ids = [q["id"] for q in client.get("/api/quiz/round?areas=district:Osternburg").json()["questions"]]
+    code = client.post("/api/quiz/duel", json={"question_ids": ids, "correct": 1}).json()["code"]
+    store = Store(RATSLOTSE_DB)
+    with store._conn:
+        store._conn.execute("UPDATE quiz_duels SET created_at = '2020-01-01T00:00:00'")
+    store.close()
+    assert client.get(f"/api/quiz/duel/{code}").status_code == 404

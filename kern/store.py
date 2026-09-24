@@ -416,6 +416,34 @@ CREATE TABLE IF NOT EXISTS quiz_daily (
     PRIMARY KEY (owner_id, day)
 );
 
+-- Blitzrunde (Plan Q6): 60 Sekunden, je Lauf eine Zeile — die Bestmarke ist
+-- das MAX darüber. Einzelantworten stehen wie immer in quiz_answers.
+CREATE TABLE IF NOT EXISTS quiz_blitz (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    owner_id    INTEGER NOT NULL,
+    day         TEXT NOT NULL,          -- YYYY-MM-DD (UTC)
+    correct     INTEGER NOT NULL,
+    answered    INTEGER NOT NULL,
+    finished_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_quiz_blitz_owner ON quiz_blitz(owner_id, correct);
+-- Duell (Plan Q9): eine gespielte Runde als Herausforderung. Der Code steht
+-- im geteilten Link; nach DUEL_DAYS Tagen verfällt er.
+CREATE TABLE IF NOT EXISTS quiz_duels (
+    code          TEXT PRIMARY KEY,
+    owner_id      INTEGER NOT NULL,
+    question_ids  TEXT NOT NULL,        -- JSON-Liste
+    owner_correct INTEGER NOT NULL,
+    created_at    TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS quiz_duel_players (
+    code        TEXT NOT NULL,
+    owner_id    INTEGER NOT NULL,
+    correct     INTEGER NOT NULL,
+    finished_at TEXT NOT NULL,
+    PRIMARY KEY (code, owner_id)
+);
+
 -- Eigene Quizfragen (RL-U14): privat je Konto, zum Üben — geben bewusst
 -- KEINE Punkte und fließen nicht in Statistik/Abzeichen ein. Der Übungs-
 -- Fortschritt lebt als Zähler direkt an der Frage („3× geübt, 100 %").
@@ -819,6 +847,9 @@ USER_OWNED_TABLES: tuple[tuple[str, str], ...] = (
     ("quiz_answers", "owner_id"),
     ("quiz_ratings", "owner_id"),
     ("quiz_daily", "owner_id"),
+    ("quiz_blitz", "owner_id"),
+    ("quiz_duels", "owner_id"),
+    ("quiz_duel_players", "owner_id"),
     ("user_quiz_questions", "owner_id"),
     ("user_activity", "owner_id"),
     # Feedback wird mitgelöscht: Es ist eine Nachricht dieser Person. Die
@@ -2521,6 +2552,64 @@ class Store:
         return [dict(r) for r in self._conn.execute(
             "SELECT area_type, area_key, COUNT(*) answered, COALESCE(SUM(correct), 0) correct "
             "FROM quiz_answers GROUP BY area_type, area_key").fetchall()]
+    def record_quiz_blitz(self, owner_id: int, day: str, correct: int, answered: int) -> dict:
+        """Einen Blitz-Lauf buchen; zurück: Bestmarke gesamt und heute, und ob
+        dieser Lauf sie gerade gesetzt hat."""
+        before = self._conn.execute(
+            "SELECT COALESCE(MAX(correct), 0) FROM quiz_blitz WHERE owner_id = ?", (owner_id,)).fetchone()[0]
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute(
+                "INSERT INTO quiz_blitz (owner_id, day, correct, answered, finished_at) VALUES (?,?,?,?,?)",
+                (owner_id, day, correct, answered, now))
+        today = self._conn.execute(
+            "SELECT MAX(correct) FROM quiz_blitz WHERE owner_id = ? AND day = ?", (owner_id, day)).fetchone()[0]
+        return {"best": max(before, correct), "today_best": today or 0,
+                "new_best": correct > before}
+
+    def quiz_blitz_best(self, owner_id: int) -> int:
+        return self._conn.execute(
+            "SELECT COALESCE(MAX(correct), 0) FROM quiz_blitz WHERE owner_id = ?", (owner_id,)).fetchone()[0]
+    def create_quiz_duel(self, owner_id: int, question_ids: list[int], owner_correct: int) -> str:
+        """Ein Duell anlegen; zurück der Code für den Link (10 Zeichen aus
+        einem Alphabet ohne verwechselbare Zeichen)."""
+        alphabet = "abcdefghjkmnpqrstuvwxyz23456789"
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        for _ in range(5):
+            code = "".join(secrets.choice(alphabet) for _ in range(10))
+            try:
+                with self._conn:
+                    self._conn.execute(
+                        "INSERT INTO quiz_duels (code, owner_id, question_ids, owner_correct, created_at) "
+                        "VALUES (?,?,?,?,?)", (code, owner_id, json.dumps(question_ids), owner_correct, now))
+                return code
+            except sqlite3.IntegrityError:
+                continue
+        raise RuntimeError("Kein freier Duell-Code")
+
+    def quiz_duel(self, code: str) -> dict | None:
+        """Das Duell samt Anzeigename des Herausforderers und allen, die es
+        gespielt haben (Anzeigename, Treffer)."""
+        r = self._conn.execute(
+            "SELECT d.*, u.display_name FROM quiz_duels d LEFT JOIN web_users u ON u.id = d.owner_id "
+            "WHERE d.code = ?", (code,)).fetchone()
+        if not r:
+            return None
+        players = [dict(p) for p in self._conn.execute(
+            "SELECT p.owner_id, p.correct, u.display_name FROM quiz_duel_players p "
+            "LEFT JOIN web_users u ON u.id = p.owner_id WHERE p.code = ? ORDER BY p.finished_at",
+            (code,)).fetchall()]
+        return {"code": r["code"], "owner_id": r["owner_id"], "owner_name": r["display_name"],
+                "question_ids": json.loads(r["question_ids"]), "owner_correct": r["owner_correct"],
+                "created_at": r["created_at"], "players": players}
+
+    def record_quiz_duel_play(self, code: str, owner_id: int, correct: int) -> None:
+        """Einmal je Konto: Das erste Ergebnis zählt, wie bei „wie lagen die anderen"."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute(
+                "INSERT OR IGNORE INTO quiz_duel_players (code, owner_id, correct, finished_at) "
+                "VALUES (?,?,?,?)", (code, owner_id, correct, now))
 
     def quiz_answered_ids(self, owner_id: int) -> list[int]:
         return [r[0] for r in self._conn.execute(

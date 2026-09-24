@@ -90,6 +90,10 @@ class HaushaltMixin(StoreBasis):
         # eines.
         "income_budget":     ("council_income_budget", "year",
                                  "t.kind = 'budget'", None),
+        # Dasselbe für den Gesamtfinanzhaushalt (Anlage 006) — derselbe
+        # Filter aus demselben Grund.
+        "finance_budget":    ("council_finance_budget", "year",
+                                 "t.kind = 'budget'", None),
         # Vierte Ebene: Abschnitt 2.1, die Bilanz. Der älteste Stichtag (2016)
         # stammt aus der Vorjahresspalte des Abschlusses 2017 — er trägt
         # deshalb dessen Dokument, mit eigener Fundstelle.
@@ -1974,6 +1978,59 @@ class HaushaltMixin(StoreBasis):
                   z["amount"], 1 if z.get("is_total") else 0, now, hid)
                  for z in zeilen])
         return len(zeilen)
+
+    def save_finanzhaushalt(self, plan_budget_year: int, zeilen: list[dict],
+                            herkunft) -> int:
+        """Einen Gesamtfinanzhaushalt-Jahrgang ersetzen (Anlage 006) — wie
+        ``save_ergebnishaushalt``: gelöscht wird nach ``plan_budget_year``, und
+        übergeben wird nur, was die Summenprobe bestanden hat."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute(
+                "DELETE FROM council_finance_budget WHERE plan_budget_year = ?",
+                (plan_budget_year,))
+            self._conn.executemany(
+                "INSERT INTO council_finance_budget (plan_budget_year, year, kind, nr, "
+                " label, role, amount, is_total, fetched_at, herkunft_id) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?)",
+                [(plan_budget_year, z["year"], z["kind"], z["nr"], z["label"],
+                  z.get("role"), z["amount"], 1 if z.get("is_total") else 0, now, hid)
+                 for z in zeilen])
+        return len(zeilen)
+
+    def finanzhaushalt_jahrgaenge(self) -> list[int]:
+        """Eingelesene Pläne des Gesamtfinanzhaushalts (aufsteigend)."""
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT DISTINCT plan_budget_year FROM council_finance_budget "
+                "ORDER BY plan_budget_year")]
+        except sqlite3.OperationalError:
+            return []
+
+    def get_finanzhaushalt_investitionen(self) -> list[dict]:
+        """Die Investitionszeilen aller Pläne: Summen und Saldo der
+        Investitionstätigkeit plus die Auszahlungsarten (Baumaßnahmen,
+        Grundstücke …), je Plan und Jahr, samt ``kind`` — die Seite trennt
+        Ansatz und Finanzplanung selbst.
+
+        Die Auszahlungsarten sind die Posten zwischen den beiden Summenzeilen
+        der Investitionstätigkeit; welche Nummern das sind, sagt der jeweilige
+        Plan (die Nummern wandern zwischen den Jahrgängen)."""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                "SELECT t.plan_budget_year, t.year, t.kind, t.nr, t.label, t.role, "
+                "       t.amount, t.is_total, t.herkunft_id "
+                "FROM council_finance_budget t "
+                "JOIN council_finance_budget a ON a.plan_budget_year = t.plan_budget_year "
+                "  AND a.year = t.year AND a.role = 'total_in_capital' "
+                "JOIN council_finance_budget b ON b.plan_budget_year = t.plan_budget_year "
+                "  AND b.year = t.year AND b.role = 'total_out_capital' "
+                "WHERE t.role IN ('total_in_capital', 'total_out_capital', 'balance_capital') "
+                "   OR (t.nr > a.nr AND t.nr < b.nr) "
+                "ORDER BY t.plan_budget_year, t.year, t.nr")]
+        except sqlite3.OperationalError:
+            return []
 
     def ergebnishaushalt_jahrgaenge(self) -> list[int]:
         """Haushaltsplan-Jahrgänge, die eingelesen sind (aufsteigend).
