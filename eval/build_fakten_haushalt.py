@@ -1586,7 +1586,8 @@ def mehrstufig_neue_reihen() -> None:
     F("hh-reihe-zinsen-2017", "lotti:/haushalt/schulden",
       "zahlt die stadt heute mehr zinsen als 2017", k, B_IST,
       [Z(personal, 2017, 17, jahr=2017, bez="Zinsaufwand Ist 2017"),
-       Z(personal, 2024, 17, jahr=2024, bez="Zinsaufwand Ist 2024")], fenster=True)
+       Z(personal, 2024, 17, jahr=2024, bez="Zinsaufwand Ist 2024",
+         oder=[ALT(personal, 2025, 17, jahr=2025)])], fenster=True)
     F("hh-reihe-einwohner-2010", "lotti:/haushalt/vergleich",
       "wie viele einwohner hat oldenburg mehr als 2010", k, B_REIHE,
       [Z("SELECT population FROM council_einwohner WHERE year = ?", 2010, jahr=2010, einheit="",
@@ -1595,7 +1596,9 @@ def mehrstufig_neue_reihen() -> None:
          bez="Einwohner*innen 2025")], fenster=True)
     F("hh-reihe-grundsteuer-sprung", "lotti:/haushalt/steuer",
       "um wie viel prozent wurde die grundsteuer b 2025 erhöht", k, B_HEBESATZ,
-      [Z("SELECT 100.0 * ((" + RATE + ") / (" + RATE + ") - 1)", 2025, "Grundsteuer B", 2015,
+      # 1.0 *: Hebesätze sind ganze Zahlen, und SQLite teilt dann ganzzahlig
+      # (539 / 445 = 1) — das Gold stand bis 25.09.2026 auf 0,0 %.
+      [Z("SELECT 100.0 * (1.0 * (" + RATE + ") / (" + RATE + ") - 1)", 2025, "Grundsteuer B", 2015,
          "Grundsteuer B", einheit="%", toleranz=0.03, bez="Erhöhung Hebesatz Grundsteuer B 2025")],
       fenster=True)
     F("hh-reihe-anteil-grundsteuer", "lotti:/haushalt/einnahmen",

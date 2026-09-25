@@ -27,10 +27,6 @@ import type { MarkierFrage } from "./markier-knopf";
 import { auswahlText, frageMitZitat } from "@/lib/markieren";
 import { leseSseStrom } from "@/lib/sse";
 import { lottiSchrittText } from "@/lib/qa-schritte";
-
-/** Wie viel einer früheren Antwort als Gedächtnis mitgeht — dieselbe Zahl wie
- *  `VERLAUF_ANTWORT_FENSTER` in `council/assistant.py` (Server-Grenze 600). */
-const VERLAUF_ANTWORT_ZEICHEN = 600;
 import { tastaturHoehe } from "@/lib/tastatur";
 import { cn } from "@/lib/utils";
 
@@ -609,7 +605,7 @@ export function LottiPanel({
           // **Nur Runden DIESER Seite** — der Verlauf überlebt den
           // Seitenwechsel, das Gedächtnis nicht (lib/assistentin.ts).
           history: gedaechtnis(turns, route, MAX_TURNS_KONTEXT)
-            .map((t) => ({ question: frageMitZitat(t).slice(0, 200), answer: t.answer.slice(0, VERLAUF_ANTWORT_ZEICHEN) })),
+            .map((t) => ({ question: frageMitZitat(t).slice(0, 200), answer: t.answer.slice(0, 300) })),
           // Das laufende Gespräch. Das Feld MUSS mit, auch als `null`: Der
           // Server speichert nur, wenn der Client es überhaupt geschickt hat
           // (`model_fields_set`) — so bleibt ein alter Client stumm, statt

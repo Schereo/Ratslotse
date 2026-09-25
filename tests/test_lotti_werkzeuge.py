@@ -255,7 +255,12 @@ def test_betriebe_gebuehren_kasse_nur_mit_recht_budget():
     assert {"betrieb_zeitreihe", "gebuehren_zeitreihe", "kassenstand", "seite_lesen"} <= _namen(HAUSHALT)
 
 
-def test_knappe_anschlussfragen_erkennt_lotti():
-    assert lw.ist_anschluss("und wie sah das 2020 aus?")
-    assert lw.ist_anschluss("pro einwohner?")
-    assert not lw.ist_anschluss("wie hoch sind die schulden der stadt oldenburg insgesamt")
+
+
+def test_der_ersatzweg_schlaegt_mit_schalter_auch_nach(store, monkeypatch):
+    modell = _Modell(werkzeug_runden=1)
+    monkeypatch.setattr(lotti.llm, "chat_stream_events", modell)
+    screen = lotti.Screen(route="/haushalt/schulden")
+    text = lotti.explain_question(store, screen, "Schulden seit 2010?", ctx={},
+                                  permissions=HAUSHALT, werkzeuge=True)
+    assert text == "Die Schulden stiegen." and len(modell.aufrufe) == 2

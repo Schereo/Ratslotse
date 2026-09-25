@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 import os
 import time
-from collections.abc import Iterator
+from collections.abc import Generator, Iterator
 from typing import Any
 
 from openai import (
@@ -931,7 +931,7 @@ def _werkzeug_teile(sammel: dict[int, dict], deltas: Any) -> None:
                 ziel["arguments"] += fn.arguments
 
 
-def chat_stream_events(**kwargs: Any) -> Iterator[tuple[str, Any]]:
+def chat_stream_events(**kwargs: Any) -> Generator[tuple[str, Any], None, None]:
     """Wie :func:`chat_stream`, meldet aber auch Werkzeugaufrufe.
 
     Liefert ``("text", str)`` je Textstück und — am Ende, falls das Modell

@@ -62,15 +62,6 @@ _MEHRSTUFIG = re.compile(
     r"\bnächste|\bwieder\b|wie viele beschlüsse", re.I)
 
 
-_ANSCHLUSS = re.compile(r"^\s*(und|davon|dafür|davor|danach|damals|pro|je|was ist mit|"
-                       r"wie viel davon|wie sah|wie war)\b", re.I)
-
-
-def ist_anschluss(frage: str) -> bool:
-    """Eine Frage, die ohne die Runde davor keinen Gegenstand hat (Schritt 5)."""
-    return bool(_ANSCHLUSS.search(frage or "")) or len((frage or "").split()) <= 5
-
-
 def muss_nachschlagen(frage: str) -> bool:
     """Braucht diese Frage ein Werkzeug, bevor Lotti antwortet?"""
     jahre = set(re.findall(r"\b(?:19|20)\d\d\b", frage or ""))

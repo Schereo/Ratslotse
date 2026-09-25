@@ -29,7 +29,7 @@ WURZEL = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(WURZEL))
 
 from eval.build_fakten_rat import (  # noqa: E402
-    DB_STANDARD, Quelle, erwarte, fall, g_datum, g_text, g_zahl, q_beschluss,
+    DB_STANDARD, BaukastenFehler, Quelle, erwarte, fall, g_datum, g_text, g_zahl, q_beschluss,
 )
 
 ZIEL = WURZEL / "eval" / "cases_fakten_mehrstufig_rat.json"
@@ -38,7 +38,8 @@ K = "rat/mehrstufig"
 
 def _wert(q: Quelle, sql: str, *args) -> float:
     r = q.conn.execute(sql, args).fetchone()
-    erwarte(r is not None and r[0] is not None, f"kein Wert: {sql} {args}")
+    if r is None or r[0] is None:
+        raise BaukastenFehler(f"kein Wert: {sql} {args}")
     return float(r[0])
 
 

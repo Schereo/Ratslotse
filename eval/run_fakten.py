@@ -387,10 +387,9 @@ def frage_stellen(client: Any, fall: dict) -> dict:
         body = {"route": fall["route"], "question": fall["frage"], "refs": fall.get("refs") or {},
                 "page_title": fall.get("page_title") or fall.get("heading", ""),
                 "heading": fall.get("heading", ""), "anchors": fall.get("anchors") or []}
-        from council.assistant import VERLAUF_ANTWORT_FENSTER
         # Anschlussfragen (`vorfragen`): erst die früheren Runden, dann die
         # Frage mit dem Verlauf — so wie das Fenster ihn schickt (Frage und
-        # die ersten `VERLAUF_ANTWORT_FENSTER` Zeichen der Antwort, `panel.tsx`). Bewertet wird nur
+        # die ersten 300 Zeichen der Antwort, `panel.tsx`). Bewertet wird nur
         # die letzte Antwort; ihr Prompt trägt den Verlauf mit.
         verlauf: list[dict] = []
         vorher_ms = 0
@@ -398,8 +397,7 @@ def frage_stellen(client: Any, fall: dict) -> dict:
             v = _strom(client, "/api/council/explain", {**body, "question": vorfrage,
                                                         "history": verlauf[-3:]})
             vorher_ms += v["ms"]
-            verlauf.append({"question": vorfrage[:200],
-                            "answer": v["text"][:VERLAUF_ANTWORT_FENSTER]})
+            verlauf.append({"question": vorfrage[:200], "answer": v["text"][:300]})
         if verlauf:
             body["history"] = verlauf[-3:]
         erg = _strom(client, "/api/council/explain", body)

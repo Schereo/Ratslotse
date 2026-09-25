@@ -262,13 +262,6 @@ NEXT_ZIELE = frozenset({"ratsfrage", "seite"})
 #: Wie viele Runden des laufenden Gesprächs in den Prompt gehen.
 VERLAUF_MAX_RUNDEN = 3
 _VERLAUF_FRAGE_MAX = 200
-#: Wie viel einer früheren Antwort das Fenster mitschickt (``panel.tsx``) und
-#: der Prompt behält. Bis 24.09.2026 waren es 300 Zeichen — oft nur der erste
-#: Satz, und „und 2020?“ wusste nicht mehr, ob es um Plan oder Ist ging
-#: (Schritt 5). ``AskTurn.answer`` erlaubt 600.
-VERLAUF_ANTWORT_FENSTER = 600
-#: Ohne den Schalter ``lotti-werkzeuge`` bleibt es bei 300 — der Prompt ist
-#: dann zeichengleich mit dem von vorher.
 _VERLAUF_ANTWORT_MAX = 300
 
 
@@ -1044,14 +1037,14 @@ def _screen_block(screen: Screen) -> str:
     return "\n".join(teile)
 
 
-def _verlauf_block(verlauf: list[dict] | None, antwort_max: int = _VERLAUF_ANTWORT_MAX) -> str:
+def _verlauf_block(verlauf: list[dict] | None) -> str:
     """Die letzten Runden — damit „und das da?" einen Bezug hat."""
     if not verlauf:
         return ""
     zeilen = []
     for runde in verlauf[-VERLAUF_MAX_RUNDEN:]:
         frage = kuerze(str(runde.get("question") or ""), _VERLAUF_FRAGE_MAX)
-        antwort = kuerze(str(runde.get("answer") or ""), antwort_max)
+        antwort = kuerze(str(runde.get("answer") or ""), _VERLAUF_ANTWORT_MAX)
         if frage:
             zeilen.append(f"  Frage: {frage}\n  Antwort: {antwort}")
     if not zeilen:
@@ -1765,8 +1758,7 @@ def _einordnung_block(geld: dict | None) -> str:
 
 def explain_messages(screen: Screen, question: str, ctx: dict,
                      verlauf: list[dict] | None = None,
-                     model: str = MODEL,
-                     verlauf_zeichen: int = _VERLAUF_ANTWORT_MAX) -> tuple[list[dict], dict]:
+                     model: str = MODEL) -> tuple[list[dict], dict]:
     """Der fertige Prompt — ``(messages, extra)`` wie in ``qa``."""
     # PR 26: Erst rechnen, dann entscheiden. Der Absatz und seine Regel
     # hängen an DERSELBEN Bedingung — kommt keine Zahl heraus (keine
@@ -1806,7 +1798,7 @@ def explain_messages(screen: Screen, question: str, ctx: dict,
         screen=_screen_block(screen),
         anker=_anker_block(screen),
         question=kuerze(question, QUESTION_MAX) or "(keine eigene Frage — erklär das Gezeigte)",
-        gespraech=_verlauf_block(verlauf, verlauf_zeichen),
+        gespraech=_verlauf_block(verlauf),
     )
     # DeepSeek ohne Denken; für alle anderen der Denkaufwand aus
     # `llm.WEB_DENKAUFWAND` (GPT-6 Luna: Vorgabe — gemessen und begründet dort).
@@ -1829,16 +1821,14 @@ def explain_stream(store, screen: Screen, question: str, *,
     ctx = ctx if ctx is not None else screen_context(
         store, screen, question, permissions=permissions,
         ratslotse=ratslotse, user_id=user_id)
-    messages, extra = explain_messages(
-        screen, question, ctx, verlauf, model,
-        verlauf_zeichen=VERLAUF_ANTWORT_FENSTER if werkzeuge and ANSCHLUSS else _VERLAUF_ANTWORT_MAX)
+    messages, extra = explain_messages(screen, question, ctx, verlauf, model)
     if not werkzeuge:
         yield from llm.chat_stream(model=model, _feature="assistant_explain", temperature=0.2,
                                    max_tokens=MAX_TOKENS, messages=messages,
                                    timeout=LLM_FRIST_S, **extra)
         return
     yield from _mit_werkzeugen(store, messages, extra, ctx, permissions, model,
-                               question=question, verlauf=verlauf)
+                               question=question)
 
 
 #: Schritt 2 (24.09.2026): Lotti schrieb „lässt sich nicht bestimmen“, ohne
@@ -1848,10 +1838,6 @@ def explain_stream(store, screen: Screen, question: str, *,
 #: oder Vergleich ein Werkzeug in der ersten Runde (:data:`NACHSCHLAGEN_ERZWINGEN`).
 ABSAGE_PRUEFEN = True
 NACHSCHLAGEN_ERZWINGEN = True
-#: Schritt 5: Eine knappe Anschlussfrage („und 2020?“, „pro Einwohner?“)
-#: schlägt in der ersten Runde nach — die Zahlen der Runde davor stehen nur
-#: gekürzt im Verlauf, die Werkzeug-Ergebnisse gar nicht.
-ANSCHLUSS = True
 #: Frist je Modellaufruf in Lottis Fenster (Sekunden ohne neues Stück), auf
 #: allen drei Wegen: Strom, Werkzeug-Schleife, Ersatzweg. Am 24.09.2026 hingen
 #: unter einer Drosselung von GPT-6 Luna Aufrufe über zehn Minuten — das SDK
@@ -1868,7 +1854,7 @@ ABSAGE_FENSTER = 200
 
 def _mit_werkzeugen(store, messages: list[dict], extra: dict, ctx: dict,
                     permissions: frozenset[str] | set[str], model: str,
-                    question: str = "", verlauf: list[dict] | None = None):
+                    question: str = ""):
     """Die Erklärung mit Nachschlagen — ``str``-Stücke und :class:`Schritt`.
 
     Antwortet das Modell direkt, fließt der Text wie ohne Werkzeuge. Ruft es
@@ -1885,8 +1871,7 @@ def _mit_werkzeugen(store, messages: list[dict], extra: dict, ctx: dict,
     ctx.setdefault("werkzeug_belege", [])
     geschrieben = False
     nachgeschlagen = False
-    erzwingen = ((NACHSCHLAGEN_ERZWINGEN and lw.muss_nachschlagen(question))
-                 or (ANSCHLUSS and bool(verlauf) and lw.ist_anschluss(question)))
+    erzwingen = NACHSCHLAGEN_ERZWINGEN and lw.muss_nachschlagen(question)
     for runde in range(lw.MAX_RUNDEN + 1):
         letzte = runde == lw.MAX_RUNDEN
         wahl = "none" if letzte else ("required" if erzwingen else "auto")
@@ -1963,11 +1948,21 @@ def explain_question(store, screen: Screen, question: str, *,
                      verlauf: list[dict] | None = None,
                      permissions: frozenset[str] | set[str] = frozenset(),
                      ratslotse=None, user_id: int | None = None,
-                     model: str = MODEL) -> str:
-    """Einmal komplett — der Ersatzweg, wenn der Strom abreißt."""
+                     model: str = MODEL, werkzeuge: bool = False) -> str:
+    """Einmal komplett — der Ersatzweg, wenn der Strom abreißt.
+
+    Mit ``werkzeuge`` läuft dieselbe Schleife noch einmal und wird
+    eingesammelt: Unter der Drosselung vom 24./25.09.2026 riss der Strom in
+    5–7 von 66 schweren Fällen, und der Ersatzweg ohne Werkzeuge antwortete
+    genau dort mit „lässt sich nicht sagen“.
+    """
     ctx = ctx if ctx is not None else screen_context(
         store, screen, question, permissions=permissions,
         ratslotse=ratslotse, user_id=user_id)
+    if werkzeuge:
+        return "".join(t for t in explain_stream(
+            store, screen, question, ctx=ctx, verlauf=verlauf, permissions=permissions,
+            model=model, werkzeuge=True) if isinstance(t, str)).strip()
     messages, extra = explain_messages(screen, question, ctx, verlauf, model)
     resp = llm.chat_complete(model=model, _feature="assistant_explain", temperature=0.2,
                              max_tokens=MAX_TOKENS, messages=messages,

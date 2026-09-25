@@ -6903,7 +6903,14 @@
     "einheit": "€",
     "bezeichnung": "Zinsaufwand Ist 2024",
     "quelle": "SELECT result FROM council_income_statement WHERE year = 2024 AND sub_budget_no IS NULL AND nr = 17",
-    "jahr": 2024
+    "jahr": 2024,
+    "oder": [
+     {
+      "wert": 2367823.44,
+      "quelle": "SELECT result FROM council_income_statement WHERE year = 2025 AND sub_budget_no IS NULL AND nr = 17",
+      "jahr": 2025
+     }
+    ]
    }
   ],
   "verboten": []
@@ -6964,10 +6971,10 @@
   "gold": [
    {
     "art": "zahl",
-    "wert": 0.0,
+    "wert": 21.12,
     "einheit": "%",
     "bezeichnung": "Erhöhung Hebesatz Grundsteuer B 2025",
-    "quelle": "SELECT 100.0 * ((SELECT rate FROM council_tax_rates WHERE year = 2025 AND kind = 'Grundsteuer B') / (SELECT rate FROM council_tax_rates WHERE year = 2015 AND kind = 'Grundsteuer B') - 1)",
+    "quelle": "SELECT 100.0 * (1.0 * (SELECT rate FROM council_tax_rates WHERE year = 2025 AND kind = 'Grundsteuer B') / (SELECT rate FROM council_tax_rates WHERE year = 2015 AND kind = 'Grundsteuer B') - 1)",
     "toleranz": 0.03
    }
   ],

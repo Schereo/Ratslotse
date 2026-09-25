@@ -309,7 +309,11 @@ def jahre_der_zahl(zeilen_: list[Zeile], z: Zahl, *, satz: bool = False) -> set[
     # In Antworten auch das Komma: „Ende 2025 lag er bei 337 Mio. €, 2024
     # waren es 295 Mio. €“ — und „ist 2026 gestiegen, von 3,74 € auf 4,04 €“
     # nennt für 3,74 € gar kein Jahr (gemessen 23.09., Gemini).
-    grenze = r"[.!?;](?=\s)|\n" + (r"|,(?=\s)" if satz else "")
+    # Kein Satzende nach „Mio.“, „Mrd.“, „Tsd.“, „ca.“, „Nr.“: „124,2 Mio. € →
+    # 176,8 Mio. €“ zerfiel sonst in zwei Sätze, und 176,8 Mio. bekam das Jahr
+    # der NÄCHSTEN Zeile (25.09.2026, Plan/Ist der Gewerbesteuer).
+    grenze = (r"(?<!Mio)(?<!Mrd)(?<!Tsd)(?<!ca)(?<!Nr)[.!?;](?=\s)|\n"
+              + (r"|,(?=\s)" if satz else ""))
     for m in re.finditer(grenze, zeile.text):
         if m.end() <= p:
             von = m.end()
