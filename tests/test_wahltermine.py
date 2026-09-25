@@ -133,6 +133,11 @@ def test_derselbe_termin_wird_nicht_jede_nacht_gemeldet(monkeypatch, merkdatei):
                         lambda text, **k: gesendet.append(text))
     monkeypatch.setattr(job, "hole", lambda url: [*KALENDER, {"date": "11.10.2027", "name": "Landtagswahl"}])
     _ohne_netz(monkeypatch, [])
+    # Hier geht es um den Kalender, nicht um die Id-Suche: Die läuft sonst
+    # gegen die ECHTEN Wahlen und das heutige Datum — zwei Tage vor der
+    # OB-Stichwahl (25.09.2026) meldete sie den Fehlalarm „noch keine Wahl-Id“
+    # in beiden Läufen, und das mit Absicht jede Nacht.
+    monkeypatch.setattr(job, "fehlende_ids", lambda heute=None: [])
 
     erst = job.main()
     assert erst["unbekannt"] == 1 and erst["gemeldet"] >= 1
