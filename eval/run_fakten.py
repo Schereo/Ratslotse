@@ -91,7 +91,10 @@ sys.path.insert(0, str(WURZEL))
 from council import fakten_abgleich as fa  # noqa: E402
 
 FAELLE_DATEIEN = (WURZEL / "eval" / "cases_fakten_haushalt.json",
-                  WURZEL / "eval" / "cases_fakten_rat.json")
+                  WURZEL / "eval" / "cases_fakten_rat.json",
+                  # Lotti auf Rats-Seiten mit Fragen, die nicht auf der Seite
+                  # stehen (build_fakten_mehrstufig_rat.py, 24.09.2026)
+                  WURZEL / "eval" / "cases_fakten_mehrstufig_rat.json")
 ERGEBNISSE = WURZEL / "eval" / "results" / "fakten"
 BERICHT = WURZEL / "docs" / "fakten-eval.md"
 #: Die vollen Prompts eines Laufs — zu groß fürs Repo (rund 15 kB je Fall),
@@ -186,10 +189,16 @@ def _uvicorn() -> str:
 SELBSTPRUEFUNG = "lotti-selbstpruefung"
 
 
+#: Schalter, die ein Lauf zusätzlich auslässt (``--ohne-schalter``) — der
+#: Vergleich „mit und ohne“ eines Features auf demselben Stand.
+OHNE_SCHALTER: set[str] = set()
+
+
 def _schalter() -> str:
     """``FEATURE_FLAGS`` fürs Mess-Backend: alle Schalter außer der Selbstprüfung."""
     from kern import features
-    return ",".join(k for k in features.FEATURES if k != SELBSTPRUEFUNG)
+    return ",".join(k for k in features.FEATURES
+                    if k != SELBSTPRUEFUNG and k not in OHNE_SCHALTER)
 
 
 @contextmanager
@@ -378,7 +387,21 @@ def frage_stellen(client: Any, fall: dict) -> dict:
         body = {"route": fall["route"], "question": fall["frage"], "refs": fall.get("refs") or {},
                 "page_title": fall.get("page_title") or fall.get("heading", ""),
                 "heading": fall.get("heading", ""), "anchors": fall.get("anchors") or []}
+        # Anschlussfragen (`vorfragen`): erst die früheren Runden, dann die
+        # Frage mit dem Verlauf — so wie das Fenster ihn schickt (Frage und
+        # die ersten 300 Zeichen der Antwort, `panel.tsx`). Bewertet wird nur
+        # die letzte Antwort; ihr Prompt trägt den Verlauf mit.
+        verlauf: list[dict] = []
+        vorher_ms = 0
+        for vorfrage in fall.get("vorfragen") or []:
+            v = _strom(client, "/api/council/explain", {**body, "question": vorfrage,
+                                                        "history": verlauf[-3:]})
+            vorher_ms += v["ms"]
+            verlauf.append({"question": vorfrage[:200], "answer": v["text"][:300]})
+        if verlauf:
+            body["history"] = verlauf[-3:]
         erg = _strom(client, "/api/council/explain", body)
+        erg["vorher_ms"] = vorher_ms
         erg["weg"] = (erg.get("done") or {}).get("mode") or "?"
         # Gehört die Frage ins Archiv, geht das Fenster von selbst zu Frag den
         # Rat — mit dem Bildschirm. Genau das tut die Eval auch.
@@ -889,8 +912,12 @@ def _faelle_waehlen(alle: list[dict], nur: str | None, limit: int | None,
         alle = [nach_id[i] for i in ids]
     if nur:
         wahl = {x.strip() for x in nur.split(",") if x.strip()}
+        # „haushalt/mehrstufig/“ (mit Schrägstrich am Ende) wählt alle
+        # Unterkategorien — die mehrstufigen Fälle haben sechs.
+        vorsilben = tuple(w for w in wahl if w.endswith("/"))
         alle = [f for f in alle if f["id"] in wahl or (f.get("kategorie") or "") in wahl
-                or f["kanal"] in wahl]
+                or f["kanal"] in wahl
+                or (vorsilben and (f.get("kategorie") or "").startswith(vorsilben))]
     return alle[:limit] if limit else alle
 
 
@@ -967,6 +994,8 @@ def main(argv: list[str] | None = None) -> int:
                     help="weitere Fall-Datei zusätzlich zur Vorgabe (z. B. aus einem offenen PR)")
     ap.add_argument("--etikett", help="Stand des Laufs für den Bericht; „vor …“ = Vergleichslauf")
     ap.add_argument("--nicht-speichern", action="store_true")
+    ap.add_argument("--ohne-schalter", default="",
+                    help="Feature-Schalter, die dieser Lauf auslässt (kommagetrennt)")
     ap.add_argument("--kanal", choices=("deep",),
                     help="jeden Fall über diesen Weg stellen (deep = ausführliche Recherche)")
     ap.add_argument("--auswahl", help=f"benannte Fallauswahl: {', '.join(AUSWAHL)}")
@@ -982,6 +1011,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--voll", action="store_true",
                     help="teures Modell: alle gewählten Fälle statt der Stichprobe")
     a = ap.parse_args(argv)
+    OHNE_SCHALTER.update(k.strip() for k in a.ohne_schalter.split(",") if k.strip())
     pfade = [Path(p) for p in a.faelle.split(",")] if a.faelle else None
     faelle = lade(pfade)
     bekannt = {f["id"] for f in faelle}

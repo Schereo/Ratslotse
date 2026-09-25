@@ -209,7 +209,8 @@ FENSTER: dict[str, tuple[str, str, tuple[str, ...]]] = {
 
 def F(id_: str, kanal: str, frage: str, kategorie: str, baustein: str, gold: list[dict], *,
       route: str | None = None, verboten: list[dict] | None = None, in_daten: bool = True,
-      notiz: str = "", bekannt: str | None = None, fenster: bool = False) -> None:
+      notiz: str = "", bekannt: str | None = None, fenster: bool = False,
+      vorfragen: list[str] | None = None) -> None:
     # Kurzform „lotti:/haushalt/schulden“ = Lotti auf dieser Seite.
     if kanal.startswith("lotti:"):
         kanal, route = "lotti", kanal.split(":", 1)[1]
@@ -235,6 +236,10 @@ def F(id_: str, kanal: str, frage: str, kategorie: str, baustein: str, gold: lis
                  "antwort_in_daten": in_daten, "gold": gold, "verboten": verboten or []})
     if notiz:
         fall["notiz"] = notiz
+    if vorfragen:
+        # Anschlussfrage: Die Eval stellt erst diese Fragen und schickt die
+        # Antworten als Verlauf mit, wie das Fenster (run_fakten.frage_stellen).
+        fall["vorfragen"] = vorfragen
     if bekannt:
         fall["bekannt"] = bekannt
     assert all(f["id"] != id_ for f in FAELLE), f"doppelte id {id_}"
@@ -366,8 +371,11 @@ def bauen() -> list[dict]:  # noqa: PLR0915 — eine Liste, kein Algorithmus
       [Z(BYLAW.format("out_financing"), 2026, jahr=2026, bez="Auszahlungen Finanzierungstätigkeit",
          oder=[ALT("SELECT result FROM council_cash_flow_statement WHERE year = ? AND "
                    "role = 'balance_financing'", 2024, jahr=2024)])])
+    # 2025 gleichwertig: Der Jahresabschluss 2025 ist seit 24.09.2026 im
+    # Bestand, Lotti nennt dann den jüngeren Stand (gilt für alle „oder 2025“).
     buerg = Z("SELECT balance FROM council_buergschaften WHERE year = ?", 2024, jahr=2024,
-              bez="Bürgschaften")
+              bez="Bürgschaften",
+              oder=[ALT("SELECT balance FROM council_buergschaften WHERE year = ?", 2025, jahr=2025)])
     F("hh-buergschaften-lotti", "lotti", "Für wie viel Geld bürgt die Stadt?",
       "haushalt/schulden", B_SCHULDEN, [buerg], route="/haushalt/schulden")
     F("hh-buergschaften-rat", "rat", "Wofür bürgt die Stadt Oldenburg und in welcher Höhe?",
@@ -1003,17 +1011,21 @@ def bauen() -> list[dict]:  # noqa: PLR0915 — eine Liste, kein Algorithmus
       "haushalt/pruefung", B_KENNZAHLEN,
       [Z(KENNZ, 2024, 2024, "eigenkapitalquote_1", jahr=2024, einheit="%",
          bez="Eigenkapitalquote I 2024",
-         oder=[ALT(KENNZ, 2024, 2024, "eigenkapitalquote_2", jahr=2024)])],
+         oder=[ALT(KENNZ, 2024, 2024, "eigenkapitalquote_2", jahr=2024),
+               ALT(KENNZ, 2025, 2025, "eigenkapitalquote_1", jahr=2025),
+               ALT(KENNZ, 2025, 2025, "eigenkapitalquote_2", jahr=2025)])],
       route="/haushalt/pruefung",
       verboten=[V(KENNZ, 2024, 2023, "eigenkapitalquote_1", grund="2023 als 2024", als_jahr=2024,
                   einheit="%")])
     F("hh-kennzahl-personal-lotti", "lotti:/haushalt/pruefung", "Wie hoch ist die Personalintensität der Stadt Oldenburg?",
       "haushalt/pruefung", B_KENNZAHLEN,
       [Z(KENNZ, 2024, 2024, "personalintensitaet", jahr=2024, einheit="%",
-         bez="Personalintensität 2024")])
+         bez="Personalintensität 2024",
+         oder=[ALT(KENNZ, 2025, 2025, "personalintensitaet", jahr=2025)])])
     F("hh-vermoegen-lotti", "lotti", "Wie viel Vermögen hat die Stadt pro Einwohner?",
       "haushalt/pruefung", B_KENNZAHLEN,
-      [Z(KENNZ, 2024, 2024, "vermoegen_je_einwohner", jahr=2024, bez="Vermögen je EW 2024")],
+      [Z(KENNZ, 2024, 2024, "vermoegen_je_einwohner", jahr=2024, bez="Vermögen je EW 2024",
+         oder=[ALT(KENNZ, 2025, 2025, "vermoegen_je_einwohner", jahr=2025)])],
       route="/haushalt/pruefung")
     F("hh-rpa-lotti", "lotti", "Was hat das Rechnungsprüfungsamt beanstandet?",
       "haushalt/pruefung", B_PRUEFUNG,
@@ -1032,7 +1044,11 @@ def bauen() -> list[dict]:  # noqa: PLR0915 — eine Liste, kein Algorithmus
       [Z("SELECT value FROM council_balance_sheet WHERE year = ? AND role = 'net_position'", 2024,
          jahr=2024, bez="Nettoposition (Eigenkapital) 2024",
          oder=[ALT("SELECT value FROM council_balance_sheet WHERE year = ? AND "
-                   "role = 'tangible_assets'", 2024, jahr=2024)])],
+                   "role = 'tangible_assets'", 2024, jahr=2024),
+               ALT("SELECT value FROM council_balance_sheet WHERE year = ? AND "
+                   "role = 'net_position'", 2025, jahr=2025),
+               ALT("SELECT value FROM council_balance_sheet WHERE year = ? AND "
+                   "role = 'tangible_assets'", 2025, jahr=2025)])],
       route="/haushalt/pruefung")
     F("hh-nachbewilligung-2025-rat", "rat",
       "Welche größte überplanmäßige Ausgabe hat der Rat 2025 nachbewilligt?",
@@ -1084,11 +1100,16 @@ def bauen() -> list[dict]:  # noqa: PLR0915 — eine Liste, kein Algorithmus
       nd, B_KEINE, [], route="/haushalt/personal", in_daten=False)
     F("hh-nd-abwasser-rat", "rat", "Wie hoch ist die Abwassergebühr in Oldenburg?", nd, B_KEINE, [],
       in_daten=False, notiz="council_fees/council_fee_rates kennen nur Abfall und Straßenreinigung.")
-    F("hh-nd-ekq-2025-lotti", "lotti", "Wie hoch war die Eigenkapitalquote 2025?", nd, B_KEINE, [],
-      route="/haushalt/pruefung", in_daten=False,
+    F("hh-nd-ekq-2025-lotti", "lotti", "Wie hoch war die Eigenkapitalquote 2025?",
+      "haushalt/pruefung", B_KENNZAHLEN,
+      [Z(KENNZ, 2025, 2025, "eigenkapitalquote_1", jahr=2025, einheit="%",
+         bez="Eigenkapitalquote I 2025",
+         oder=[ALT(KENNZ, 2025, 2025, "eigenkapitalquote_2", jahr=2025)])],
+      route="/haushalt/pruefung",
       verboten=[V(KENNZ, 2024, 2024, "eigenkapitalquote_1", grund="2024 als 2025", als_jahr=2025,
                   einheit="%")],
-      notiz="Der Jahresabschluss 2025 liegt nicht vor; jüngster Kennzahlen-Jahrgang ist 2024.")
+      notiz="Bis 24.09.2026 ein Fall ohne Antwort in den Daten; seitdem ist der "
+            "Jahresabschluss 2025 im Bestand (ID bleibt für den Vergleich der Läufe).")
     F("hh-nd-schulden-2030-rat", "rat", "Wie hoch werden die Schulden der Stadt 2030 sein?",
       nd, B_KEINE, [], in_daten=False)
     F("hh-nd-zinsen-braunschweig-rat", "rat", "Wie viel Zinsen zahlt Braunschweig für seine Kredite?",
@@ -1097,6 +1118,9 @@ def bauen() -> list[dict]:  # noqa: PLR0915 — eine Liste, kein Algorithmus
       "Wie viel verdient die Geschäftsführung des Klinikums?", nd, B_KEINE, [],
       route="/haushalt/konzern", in_daten=False)
     laien()
+    mehrstufig()
+    mehrstufig_anschluss()
+    mehrstufig_neue_reihen()
     return FAELLE
 
 
@@ -1218,8 +1242,10 @@ def laien() -> None:
       [T([["Stellen"]], "council_staff_plan")],
       notiz="Wertungsfrage: Maßstab = der Stellenplan selbst.")
     L(29, "/haushalt/plan-ist", "hat die stadt mehr ausgegeben als geplant", B_IST,
-      [Z(IST.format("result"), 2024, 20, jahr=2024, bez="Aufwendungen Ist 2024"),
-       Z(IST.format("budgeted"), 2024, 20, jahr=2024, bez="Aufwendungen Ansatz 2024")])
+      [Z(IST.format("result"), 2024, 20, jahr=2024, bez="Aufwendungen Ist 2024",
+         oder=[ALT(IST.format("result"), 2025, 20, jahr=2025)]),
+       Z(IST.format("budgeted"), 2024, 20, jahr=2024, bez="Aufwendungen Ansatz 2024",
+         oder=[ALT(IST.format("budgeted"), 2025, 20, jahr=2025)])])
     L(30, "/haushalt/konzern", "was sind eigenbetriebe", B_WIRTSCHAFTSPLAN,
       [T([["eigene", "eigenen", "eigener", "eigenem"],
           ["Wirtschaftsplan", "Buchführung", "Jahresplan", "getrennt"]], "Glossar/Seitenwissen")])
@@ -1241,6 +1267,349 @@ def laien() -> None:
       [T([["mehr"], ["aus", "Ausgaben", "Aufwendungen"]], "Glossar"),
        aufwand26 | {"pflicht": False}, ertrag26 | {"pflicht": False}],
       notiz="Befund B: richtig, aber ohne Oldenburger Zahl.")
+
+
+
+def mehrstufig() -> None:
+    """30 Fragen, für die EIN vorbereiteter Kontext nicht reicht (25.09.2026).
+
+    Tim: „Ob eine Schwäche von Lotti nicht vielleicht ist, dass sie nicht
+    agentisch auf den Daten handeln kann — sie kriegt den Kontext und muss
+    direkt daraus antworten.“ Die übrigen Fälle sind an der Vorauswahl
+    ausgerichtet; diese hier verlangen, was die Vorauswahl nicht vorhersieht:
+
+    - **zeitreihe:** eine Entwicklung über mehr Jahre, als ein Baustein zeigt
+      (der Schulden-Baustein nennt das jüngste Jahr, das Vorjahr und den
+      Höchstwert — nicht 2010);
+    - **seitenwechsel:** die Antwort steht auf einer ANDEREN Haushaltsseite
+      als der, auf der gefragt wird;
+    - **rechnen:** ein Anteil oder eine Veränderung, die in keinem Dokument
+      steht (Lotti darf nicht selbst rechnen — ohne Rechenweg ist die Zahl
+      „erfunden“, und genau das soll der Fall zeigen);
+    - **kombination:** zwei Datenarten zusammen (Plan und Ist, zwei Städte,
+      Haushalt und Ratsbeschluss).
+
+    Zwei Fälle ohne Antwort in den Daten halten fest, dass mehr Nachschlagen
+    nicht zu mehr Erfinden führt.
+    """
+    k = "haushalt/mehrstufig"
+    pct = ("SELECT 100.0 * ({}) / ({})")
+    kita = "SELECT expenses FROM council_products WHERE year = ? AND product_name = 'Kindertagesbetreuung'"
+    brand = ("SELECT expenses FROM council_products WHERE year = ? "
+             "AND product_name = 'Brand- und Katastrophenschutz'")
+    stellen = ("SELECT positions_planned FROM council_staff_plan WHERE budget_year = ? "
+               "AND part = ? AND kind = 'total' AND label = 'Summe'")
+    gewst = "SELECT amount FROM council_taxes WHERE year = ? AND kind = 'Gewerbesteuer (-umlage)'"
+    personal = IST.format("result")
+    area = BUDGET_AREA.format("expenses")
+    inv_plan = ("SELECT outflows FROM council_investments WHERE year = ? "
+                "AND label = 'Finanzhaushalt Gesamtinvestitionen'")
+    steuerplan = "SELECT {} FROM council_tax_plan WHERE year = ? AND kind = 'Gewerbesteuer (-umlage)'"
+
+    # --- zeitreihe ---------------------------------------------------------
+    F("hh-mehr-schulden-seit-2010", "lotti:/haushalt/schulden",
+      "wie haben sich die schulden seit 2010 entwickelt", f"{k}/zeitreihe", B_SCHULDEN,
+      [Z(DEBT.format("total"), 2010, jahr=2010, bez="Schuldenstand 2010"),
+       Z(DEBT.format("total"), 2025, jahr=2025, bez="Schuldenstand 2025")], fenster=True,
+      notiz="Der Schulden-Baustein zeigt jüngstes Jahr, Vorjahr, Höchstwert — 2010 nicht.")
+    F("hh-mehr-schulden-2015-heute", "lotti:/haushalt/schulden",
+      "waren die schulden 2015 höher oder niedriger als heute", f"{k}/zeitreihe", B_SCHULDEN,
+      [Z(DEBT.format("total"), 2015, jahr=2015, bez="Schuldenstand 2015"),
+       Z(DEBT.format("total"), 2025, jahr=2025, bez="Schuldenstand 2025")], fenster=True)
+    F("hh-mehr-gewst-zehn-jahre", "lotti:/haushalt/einnahmen",
+      "wie viel mehr gewerbesteuer nimmt die stadt heute ein als vor zehn jahren",
+      f"{k}/zeitreihe", B_STEUERN,
+      [Z(gewst, 2015, jahr=2015, bez="Gewerbesteuer 2015"),
+       Z(gewst, 2025, jahr=2025, bez="Gewerbesteuer 2025")], fenster=True)
+    F("hh-mehr-kita-seit-2020", "lotti:/haushalt/produkte",
+      "wie haben sich die kita-kosten seit 2020 entwickelt", f"{k}/zeitreihe", B_PRODUKTE,
+      [Z(kita, 2020, jahr=2020, bez="Kindertagesbetreuung Aufwand Plan 2020"),
+       Z(kita, 2026, jahr=2026, bez="Kindertagesbetreuung Aufwand Plan 2026")], fenster=True)
+    F("hh-mehr-stellen-seit-2023", "lotti:/haushalt/personal",
+      "hat die stadt heute mehr stellen als 2023", f"{k}/zeitreihe", B_STELLEN,
+      [Z(stellen, 2023, "B", jahr=2023, einheit="", bez="Stellen Teil B Plan 2023"),
+       Z(stellen, 2026, "B", jahr=2026, einheit="", bez="Stellen Teil B Plan 2026")],
+      fenster=True, notiz="Teil A und B nie addieren (die Seite sagt das ausdrücklich).")
+    F("hh-mehr-personalkosten", "lotti:/haushalt/plan-ist",
+      "sind die personalkosten in den letzten jahren gestiegen", f"{k}/zeitreihe", B_IST,
+      [Z(personal, 2019, 13, jahr=2019, bez="Personalaufwendungen Ist 2019",
+         # „In den letzten Jahren“ legt kein Startjahr fest; 2020 ist so
+         # richtig wie 2019 (Nachprüfung 24.09.2026).
+         oder=[ALT(personal, 2020, 13, jahr=2020), ALT(personal, 2021, 13, jahr=2021)]),
+       Z(personal, 2024, 13, jahr=2024, bez="Personalaufwendungen Ist 2024")], fenster=True)
+    F("hh-mehr-feuerwehr-2020", "lotti:/haushalt/produkte",
+      "was kostet die feuerwehr heute im vergleich zu 2020", f"{k}/zeitreihe", B_PRODUKTE,
+      [Z(brand, 2020, jahr=2020, bez="Brand- und Katastrophenschutz Plan 2020"),
+       Z(brand, 2026, jahr=2026, bez="Brand- und Katastrophenschutz Plan 2026")], fenster=True)
+    F("hh-mehr-hebesatz-2002", "lotti:/haushalt/steuer",
+      "wie hat sich der gewerbesteuer-hebesatz seit 2002 verändert", f"{k}/zeitreihe", B_HEBESATZ,
+      [Z(RATE, 2002, "Gewerbesteuer", jahr=2002, einheit="%", bez="Hebesatz 2002"),
+       # Der Satz gilt seit 2015 unverändert — „seit 2015 439 %“ nennt den
+       # heutigen Satz richtig (Nachprüfung 24.09.2026).
+       Z(RATE, 2025, "Gewerbesteuer", jahr=2025, einheit="%", bez="Hebesatz 2025",
+         oder=[ALT(RATE, 2015, "Gewerbesteuer", jahr=2015)])],
+      fenster=True)
+
+    # --- seitenwechsel -----------------------------------------------------
+    F("hh-mehr-invest-auf-schulden", "lotti:/haushalt/schulden",
+      "wie viel hat die stadt 2024 tatsächlich investiert", f"{k}/seitenwechsel", B_INVEST_IST,
+      [Z(INV_IST, 2024, jahr=2024, bez="Investitionsauszahlungen Ist 2024")], fenster=True)
+    F("hh-mehr-gewst-auf-invest", "lotti:/haushalt/investitionen",
+      "wie viel gewerbesteuer hat die stadt 2025 eingenommen", f"{k}/seitenwechsel", B_STEUERN,
+      [Z(gewst, 2025, jahr=2025, bez="Gewerbesteuer 2025")], fenster=True)
+    F("hh-mehr-prokopf-auf-vergleich", "lotti:/haushalt/vergleich",
+      "wie hoch sind oldenburgs schulden pro einwohner", f"{k}/seitenwechsel", B_SCHULDEN,
+      [Z(DEBT.format("per_capita"), 2025, jahr=2025, bez="Schulden je Einwohner*in 2025")],
+      fenster=True)
+    F("hh-mehr-kita-auf-steuer", "lotti:/haushalt/steuer",
+      "was kostet die kinderbetreuung die stadt", f"{k}/seitenwechsel", B_PRODUKTE,
+      [Z(kita, 2026, jahr=2026, bez="Kindertagesbetreuung Aufwand Plan 2026")], fenster=True)
+    F("hh-mehr-stellen-auf-konzern", "lotti:/haushalt/konzern",
+      "wie viele stellen hat die stadtverwaltung", f"{k}/seitenwechsel", B_STELLEN,
+      [Z(stellen, 2026, "B", jahr=2026, einheit="", bez="Stellen Teil B Plan 2026"),
+       Z(stellen, 2026, "A", jahr=2026, einheit="", bez="Stellen Teil A Plan 2026")],
+      fenster=True)
+    F("hh-mehr-schulden-auf-personal", "lotti:/haushalt/personal",
+      "wie hoch ist der schuldenstand der stadt", f"{k}/seitenwechsel", B_SCHULDEN,
+      [Z(DEBT.format("total"), 2025, jahr=2025, bez="Schuldenstand 2025")], fenster=True)
+
+    # --- rechnen -----------------------------------------------------------
+    F("hh-mehr-anteil-soziales", "lotti:/haushalt",
+      "welcher anteil der ausgaben geht in soziales und gesundheit", f"{k}/rechnen", B_PLAN,
+      [Z(area, 2026, "Soziales und Gesundheit", jahr=2026, bez="Soziales und Gesundheit 2026"),
+       Z(pct.format(area, BUDGET_SUM.format("expenses")), 2026, "Soziales und Gesundheit", 2026,
+         jahr=2026, einheit="%", toleranz=0.03, bez="Anteil an den Aufwendungen 2026")],
+      fenster=True)
+    F("hh-mehr-anteil-gewst", "lotti:/haushalt/einnahmen",
+      "wie viel prozent der steuereinnahmen kommen aus der gewerbesteuer", f"{k}/rechnen",
+      B_STEUERN,
+      [Z(pct.format(gewst, TAX), 2025, 2025, "total", jahr=2025, einheit="%", toleranz=0.03,
+         bez="Anteil Gewerbesteuer an den Steuern 2025")], fenster=True)
+    F("hh-mehr-schulden-prozent-2020", "lotti:/haushalt/schulden",
+      "um wie viel prozent sind die schulden seit 2020 gestiegen", f"{k}/rechnen", B_SCHULDEN,
+      [Z(DEBT.format("total"), 2020, jahr=2020, bez="Schuldenstand 2020"),
+       Z("SELECT 100.0 * ((SELECT total FROM council_debt WHERE year = ?) / "
+         "(SELECT total FROM council_debt WHERE year = ?) - 1)", 2025, 2020,
+         einheit="%", toleranz=0.04, bez="Anstieg 2020→2025")], fenster=True)
+    F("hh-mehr-gewst-ueber-plan", "lotti:/haushalt/plan-ist",
+      "wie viel mehr gewerbesteuer als geplant hat die stadt 2024 bekommen", f"{k}/rechnen",
+      B_STEUERPLAN,
+      [Z(steuerplan.format("plan"), 2024, jahr=2024, bez="Gewerbesteuer Plan 2024"),
+       Z(steuerplan.format("actual"), 2024, jahr=2024, bez="Gewerbesteuer Ist 2024"),
+       Z(f"SELECT ({steuerplan.format('actual')}) - ({steuerplan.format('plan')})", 2024, 2024,
+         jahr=2024, bez="Mehreinnahme 2024", toleranz=0.02, pflicht=False)], fenster=True)
+    F("hh-mehr-kita-prozent", "lotti:/haushalt/produkte",
+      "um wie viel prozent ist die kita teurer geworden seit 2020", f"{k}/rechnen", B_PRODUKTE,
+      [Z(f"SELECT 100.0 * (({kita}) / ({kita}) - 1)", 2026, 2020, einheit="%", toleranz=0.04,
+         bez="Anstieg Kita-Aufwand 2020→2026")], fenster=True)
+    F("hh-mehr-zinsen-prokopf", "lotti:/haushalt/schulden",
+      "wie viel zinsen zahlt die stadt pro einwohner", f"{k}/rechnen", B_IST,
+      [Z(personal, 2024, 17, jahr=2024, bez="Zinsaufwand Ist 2024"),
+       Z(f"SELECT ({personal}) / (SELECT population FROM council_einwohner WHERE year = ?)",
+         2024, 17, 2024, jahr=2024, toleranz=0.05, bez="Zinsen je Einwohner*in 2024")],
+      fenster=True)
+
+    # --- kombination -------------------------------------------------------
+    F("hh-mehr-gewst-staedte", "lotti:/haushalt/vergleich",
+      "zahlen firmen in oldenburg pro kopf mehr gewerbesteuer als in osnabrück",
+      f"{k}/kombination", B_VERGLEICH,
+      [Z(CITY, 2025, "Oldenburg", "ist_je_ew_gewerbesteuer", jahr=2025,
+         bez="Gewerbesteuer je Einwohner*in Oldenburg"),
+       Z(CITY, 2025, "Osnabrück", "ist_je_ew_gewerbesteuer", jahr=2025,
+         bez="Gewerbesteuer je Einwohner*in Osnabrück")], fenster=True)
+    F("hh-mehr-invest-plan-ist-2024", "lotti:/haushalt/investitionen",
+      "wurde 2024 so viel investiert wie geplant", f"{k}/kombination", B_INVEST_PLAN,
+      [Z(inv_plan, 2024, jahr=2024, bez="Investitionen Plan 2024"),
+       Z(INV_IST, 2024, jahr=2024, bez="Investitionsauszahlungen Ist 2024")], fenster=True)
+    F("hh-mehr-steuern-personal", "lotti:/haushalt/einnahmen",
+      "reichen die steuereinnahmen um das personal zu bezahlen", f"{k}/kombination", B_IST,
+      [Z(personal, 2024, 13, jahr=2024, bez="Personalaufwendungen Ist 2024"),
+       Z(TAX, 2024, "total", jahr=2024, bez="Steuern 2024",
+         oder=[ALT(personal, 2024, 1, jahr=2024)])], fenster=True)
+    F("hh-mehr-soziales-jugend", "lotti:/haushalt",
+      "wofür gibt die stadt mehr aus: soziales oder jugend und familie", f"{k}/kombination",
+      B_PLAN,
+      [Z(area, 2026, "Soziales und Gesundheit", jahr=2026, bez="Soziales und Gesundheit 2026"),
+       Z(area, 2026, "Jugend und Familie", jahr=2026, bez="Jugend und Familie 2026")],
+      fenster=True)
+    F("hh-mehr-schulden-prokopf-2015", "lotti:/haushalt/schulden",
+      "wie viel schulden hatte jeder einwohner 2015 und wie viel heute", f"{k}/kombination",
+      B_SCHULDEN,
+      [Z(DEBT.format("per_capita"), 2015, jahr=2015, bez="je Einwohner*in 2015"),
+       Z(DEBT.format("per_capita"), 2025, jahr=2025, bez="je Einwohner*in 2025")],
+      fenster=True)
+    F("hh-mehr-baeder-minus", "lotti:/haushalt/konzern",
+      "welcher städtische betrieb plant 2026 das größte minus", f"{k}/kombination",
+      B_WIRTSCHAFTSPLAN,
+      [T([["Bäder", "Bad"]], "council_business_plans year=2026: kleinstes result = bbgo"),
+       Z(BP.format("result"), "bbgo", 2026, jahr=2026, bez="Plan-Ergebnis Bäder 2026",
+         betrag=True)], fenster=True)
+    F("hh-mehr-fliegerhorst", "lotti:/haushalt/investitionen",
+      "was kostet die kampfmittelsondierung auf dem fliegerhorst", f"{k}/kombination",
+      B_MASSNAHMEN,
+      [Z("SELECT grand_total FROM council_investment_measures WHERE year = ? AND level = 'measure' "
+         "AND label = 'Fliegerhorst Kampfmittelsondierung'", 2026, jahr=2026,
+         bez="Fliegerhorst Kampfmittelsondierung Gesamtsumme")], fenster=True)
+    F("hh-mehr-stadion-kosten", "lotti:/haushalt",
+      "was kostet das neue stadion", f"{k}/kombination",
+      "Ratsarchiv (Beschluss 8677)",
+      [Z("SELECT amount_eur FROM council_decisions WHERE id = ?", 8677,
+         bez="Pauschalpreis Stadionneubau netto (Beschluss 8677)")], fenster=True,
+      notiz="Steht in einem Ratsbeschluss, nicht in den Haushaltsdaten.")
+
+    # --- nicht in den Daten -------------------------------------------------
+    F("hh-mehr-nd-hannover", "lotti:/haushalt/schulden",
+      "wie viel schulden hat hannover", f"{k}/nicht-in-daten", B_VERGLEICH, [], fenster=True,
+      in_daten=False, notiz="Schuldenzahlen anderer Städte gibt es im Bestand nicht.")
+    F("hh-mehr-nd-kitaplatz", "lotti:/haushalt/produkte",
+      "was kostet ein kitaplatz pro kind", f"{k}/nicht-in-daten", B_PRODUKTE, [], fenster=True,
+      in_daten=False, notiz="Keine Kinderzahlen im Bestand — pro Kind lässt sich nicht rechnen.")
+
+
+def mehrstufig_anschluss() -> None:
+    """Anschlussfragen: Die zweite Frage versteht nur, wer die erste kennt.
+
+    Lotti bekommt aus früheren Runden die Frage und die ersten 300 Zeichen
+    der Antwort (``panel.tsx``) — nicht, was sie dafür nachgeschlagen hat.
+    „Und 2015?“ muss sie also neu nachschlagen (24.09.2026, Tims Auftrag
+    „1–5“, Schritt 1).
+    """
+    k = "haushalt/mehrstufig/anschluss"
+    kita = "SELECT expenses FROM council_products WHERE year = ? AND product_name = 'Kindertagesbetreuung'"
+    stellen = ("SELECT positions_planned FROM council_staff_plan WHERE budget_year = ? "
+               "AND part = ? AND kind = 'total' AND label = 'Summe'")
+    steuerplan = "SELECT {} FROM council_tax_plan WHERE year = ? AND kind = 'Gewerbesteuer (-umlage)'"
+    personal = IST.format("result")
+    gewst = "SELECT amount FROM council_taxes WHERE year = ? AND kind = 'Gewerbesteuer (-umlage)'"
+
+    F("hh-anschl-schulden-2015", "lotti:/haushalt/schulden", "und wie war das 2015?", k,
+      B_SCHULDEN, [Z(DEBT.format("total"), 2015, jahr=2015, bez="Schuldenstand 2015")],
+      fenster=True, vorfragen=["wie hoch sind die schulden der stadt"])
+    F("hh-anschl-gewst-plan", "lotti:/haushalt/einnahmen", "und wie viel war dafür geplant?", k,
+      B_STEUERPLAN, [Z(steuerplan.format("plan"), 2025, jahr=2025, bez="Gewerbesteuer Plan 2025")],
+      fenster=True, vorfragen=["wie viel gewerbesteuer hat die stadt 2025 eingenommen"])
+    F("hh-anschl-kita-2020", "lotti:/haushalt/produkte", "und wie viel war es 2020?", k,
+      B_PRODUKTE, [Z(kita, 2020, jahr=2020, bez="Kindertagesbetreuung Aufwand Plan 2020")],
+      fenster=True, vorfragen=["was kostet die kinderbetreuung"])
+    F("hh-anschl-stellen-2023", "lotti:/haushalt/personal", "und 2023?", k, B_STELLEN,
+      [Z(stellen, 2023, "B", jahr=2023, einheit="", bez="Stellen Teil B Plan 2023")],
+      fenster=True, vorfragen=["wie viele beschäftigte hat die stadtverwaltung"])
+    F("hh-anschl-personal-prozent", "lotti:/haushalt/plan-ist",
+      "um wie viel prozent ist das seit 2020 gestiegen?", k, B_IST,
+      [Z(f"SELECT 100.0 * (({personal}) / ({personal}) - 1)", 2024, 13, 2020, 13, einheit="%",
+         toleranz=0.04, bez="Anstieg Personalaufwand 2020→2024")],
+      fenster=True, vorfragen=["wie hoch waren die personalkosten 2024 tatsächlich"])
+    F("hh-anschl-invest-ist", "lotti:/haushalt/investitionen",
+      "und wie viel wurde dann tatsächlich investiert?", k, B_INVEST_IST,
+      [Z(INV_IST, 2024, jahr=2024, bez="Investitionsauszahlungen Ist 2024")],
+      fenster=True, vorfragen=["wie viel wollte die stadt 2024 investieren"])
+    F("hh-anschl-hebesatz-davor", "lotti:/haushalt/steuer", "und wie hoch war er davor?", k,
+      B_HEBESATZ, [Z(RATE, 2015, "Grundsteuer B", jahr=2015, einheit="%",
+                     bez="Hebesatz Grundsteuer B 2015–2024")],
+      fenster=True, vorfragen=["wie hoch ist der hebesatz der grundsteuer b"])
+    F("hh-anschl-zinsen-prokopf", "lotti:/haushalt/schulden", "und pro einwohner?", k, B_IST,
+      [Z(f"SELECT ({personal}) / (SELECT population FROM council_einwohner WHERE year = ?)",
+         2024, 17, 2024, jahr=2024, toleranz=0.05, bez="Zinsen je Einwohner*in 2024")],
+      fenster=True, vorfragen=["wie viel zinsen hat die stadt 2024 gezahlt"])
+    F("hh-anschl-baeder-2020", "lotti:/haushalt/konzern", "und wie sah das 2020 aus?", k,
+      B_WIRTSCHAFTSPLAN,
+      [Z(BP.format("result"), "bbgo", 2020, jahr=2020, bez="Plan-Ergebnis Bäder 2020",
+         betrag=True)],
+      fenster=True, vorfragen=["wie viel minus planen die bäder 2026"])
+    F("hh-anschl-gewst-anteil", "lotti:/haushalt/einnahmen",
+      "wie viel prozent davon ist gewerbesteuer?", k, B_STEUERN,
+      [Z("SELECT 100.0 * (" + gewst + ") / (" + TAX + ")", 2025, 2025, "total", jahr=2025,
+         einheit="%", toleranz=0.03, bez="Anteil Gewerbesteuer an den Steuern 2025")],
+      fenster=True, vorfragen=["wie viel steuern hat die stadt 2025 eingenommen"])
+
+
+def mehrstufig_neue_reihen() -> None:
+    """Reihen, die heute kein Werkzeug über die Jahre zeigt (Schritt 4).
+
+    Gebühren, Kassenstand, Eigenbetriebe und Steuerplan liegen je Jahr in der
+    Datenbank; die Bausteine zeigen davon das jüngste Jahr.
+    """
+    k = "haushalt/mehrstufig/neue-reihen"
+    fee = "SELECT {} FROM council_fees WHERE year = ? AND area = ?"
+    kasse = "SELECT amount FROM council_liquidity WHERE month = ?"
+    gewst = "SELECT amount FROM council_taxes WHERE year = ? AND kind = 'Gewerbesteuer (-umlage)'"
+    personal = IST.format("result")
+
+    F("hh-reihe-strassenreinigung", "lotti:/haushalt/konzern",
+      "wie hat sich die straßenreinigungsgebühr seit 2019 verändert", k, B_GEBUEHREN,
+      [Z(fee.format("fee"), 2019, "street_cleaning", jahr=2019, einheit="", toleranz=0.01,
+         bez="Straßenreinigungsgebühr 2019"),
+       Z(fee.format("fee"), 2026, "street_cleaning", jahr=2026, einheit="", toleranz=0.01,
+         bez="Straßenreinigungsgebühr 2026")], fenster=True)
+    F("hh-reihe-abfall-kosten", "lotti:/haushalt/einnahmen",
+      "sind die kosten der müllabfuhr seit 2019 gestiegen", k, B_GEBUEHREN,
+      [Z(fee.format("costs_to_cover"), 2019, "waste_collection", jahr=2019,
+         bez="Abfallsammlung zu deckende Kosten 2019"),
+       Z(fee.format("costs_to_cover"), 2026, "waste_collection", jahr=2026,
+         bez="Abfallsammlung zu deckende Kosten 2026")], fenster=True)
+    F("hh-reihe-kasse-jahresanfang", "lotti:/haushalt/schulden",
+      "wie hat sich der kassenstand seit januar entwickelt", k, B_LIQUIDITAET,
+      [Z(kasse, "2026-01", jahr=2026, bez="Liquidität Januar 2026"),
+       Z(kasse, "2026-08", jahr=2026, bez="Liquidität August 2026")], fenster=True)
+    F("hh-reihe-kasse-2025", "lotti:/haushalt",
+      "wie viel geld hatte die stadt ende 2025 auf dem konto", k, B_LIQUIDITAET,
+      [Z(kasse, "2025-12", jahr=2025, bez="Liquidität Dezember 2025")], fenster=True)
+    F("hh-reihe-baeder-defizit", "lotti:/haushalt/schulden",
+      "wie hat sich das defizit der bädergesellschaft seit 2020 entwickelt", k,
+      B_WIRTSCHAFTSPLAN,
+      [Z(BP.format("result"), "bbgo", 2020, jahr=2020, bez="Plan-Ergebnis BBGO 2020", betrag=True),
+       Z(BP.format("result"), "bbgo", 2026, jahr=2026, bez="Plan-Ergebnis BBGO 2026",
+         betrag=True)], fenster=True)
+    F("hh-reihe-awb-ausgaben", "lotti:/haushalt/konzern",
+      "wie viel mehr gibt der abfallwirtschaftsbetrieb heute aus als 2019", k,
+      B_WIRTSCHAFTSPLAN,
+      [Z(BP.format("expenses"), "awb", 2019, jahr=2019, bez="AWB Aufwendungen Plan 2019"),
+       Z(BP.format("expenses"), "awb", 2026, jahr=2026, bez="AWB Aufwendungen Plan 2026")],
+      fenster=True)
+    F("hh-reihe-gebaeudewirtschaft", "lotti:/haushalt/investitionen",
+      "hat die gebäudewirtschaft früher mehr verlust geplant als heute", k, B_WIRTSCHAFTSPLAN,
+      [Z(BP.format("result"), "egh", 2025, jahr=2025, bez="Plan-Ergebnis EGH 2025", betrag=True,
+         oder=[ALT(BP.format("result"), "egh", 2024, jahr=2024),
+               ALT(BP.format("result"), "egh", 2023, jahr=2023)]),
+       Z(BP.format("result"), "egh", 2026, jahr=2026, bez="Plan-Ergebnis EGH 2026", betrag=True)],
+      fenster=True)
+    F("hh-reihe-gewst-plan-ist", "lotti:/haushalt/steuer",
+      "lag die gewerbesteuer in den letzten jahren immer über dem plan", k, B_STEUERPLAN,
+      [Z("SELECT plan FROM council_tax_plan WHERE year = ? AND kind = 'Gewerbesteuer (-umlage)'",
+         2023, jahr=2023, bez="Gewerbesteuer Plan 2023"),
+       Z("SELECT actual FROM council_tax_plan WHERE year = ? AND kind = 'Gewerbesteuer (-umlage)'",
+         2023, jahr=2023, bez="Gewerbesteuer Ist 2023")], fenster=True)
+    F("hh-reihe-invest-2020-2024", "lotti:/haushalt/plan-ist",
+      "wurde 2020 mehr investiert als 2024", k, B_INVEST_IST,
+      [Z(INV_IST, 2020, jahr=2020, bez="Investitionsauszahlungen Ist 2020"),
+       Z(INV_IST, 2024, jahr=2024, bez="Investitionsauszahlungen Ist 2024")], fenster=True)
+    F("hh-reihe-zinsen-2017", "lotti:/haushalt/schulden",
+      "zahlt die stadt heute mehr zinsen als 2017", k, B_IST,
+      [Z(personal, 2017, 17, jahr=2017, bez="Zinsaufwand Ist 2017"),
+       Z(personal, 2024, 17, jahr=2024, bez="Zinsaufwand Ist 2024",
+         oder=[ALT(personal, 2025, 17, jahr=2025)])], fenster=True)
+    F("hh-reihe-einwohner-2010", "lotti:/haushalt/vergleich",
+      "wie viele einwohner hat oldenburg mehr als 2010", k, B_REIHE,
+      [Z("SELECT population FROM council_einwohner WHERE year = ?", 2010, jahr=2010, einheit="",
+         bez="Einwohner*innen 2010"),
+       Z("SELECT population FROM council_einwohner WHERE year = ?", 2025, jahr=2025, einheit="",
+         bez="Einwohner*innen 2025")], fenster=True)
+    F("hh-reihe-grundsteuer-sprung", "lotti:/haushalt/steuer",
+      "um wie viel prozent wurde die grundsteuer b 2025 erhöht", k, B_HEBESATZ,
+      # 1.0 *: Hebesätze sind ganze Zahlen, und SQLite teilt dann ganzzahlig
+      # (539 / 445 = 1) — das Gold stand bis 25.09.2026 auf 0,0 %.
+      [Z("SELECT 100.0 * (1.0 * (" + RATE + ") / (" + RATE + ") - 1)", 2025, "Grundsteuer B", 2015,
+         "Grundsteuer B", einheit="%", toleranz=0.03, bez="Erhöhung Hebesatz Grundsteuer B 2025")],
+      fenster=True)
+    F("hh-reihe-anteil-grundsteuer", "lotti:/haushalt/einnahmen",
+      "welcher anteil der steuereinnahmen kommt aus der grundsteuer", k, B_STEUERN,
+      [Z("SELECT 100.0 * (" + TAX + ") / (" + TAX + ")", 2025, "Grundsteuer A+B", 2025, "total",
+         jahr=2025, einheit="%", toleranz=0.03, bez="Anteil Grundsteuer an den Steuern 2025")],
+      fenster=True)
+    F("hh-reihe-gewst-verdopplung", "lotti:/haushalt/steuer",
+      "hat sich die gewerbesteuer seit 2012 verdoppelt", k, B_STEUERN,
+      [Z(gewst, 2012, jahr=2012, bez="Gewerbesteuer 2012"),
+       Z(gewst, 2025, jahr=2025, bez="Gewerbesteuer 2025")], fenster=True)
 
 
 def main() -> int:

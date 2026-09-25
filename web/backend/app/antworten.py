@@ -4490,8 +4490,10 @@ SSE_ERKLAERUNG: dict[int | str, dict[str, Any]] = {
         "description": (
             "Server-Sent Events (`text/event-stream`). Jeder Rahmen ist eine "
             "`data:`-Zeile mit einem JSON-Objekt, das ein Feld `type` trägt:\n\n"
-            "- `step` — Fortschritt, `step` ist `context`, `answer` oder "
-            "`archiv` (die Frage geht ins Beschluss-Archiv)\n"
+            "- `step` — Fortschritt, `step` ist `context`, `answer`, "
+            "`archiv` (die Frage geht ins Beschluss-Archiv) oder `lookup` "
+            "(Lotti schlägt in den Daten nach; `text` sagt, was — nur mit "
+            "dem Schalter `lotti-werkzeuge`)\n"
             "- `token` — ein Stück Erklärungstext (`text`)\n"
             "- `replace` — ersetzt den bisher gesendeten Text vollständig\n"
             "- `done` — Schluss-Ereignis mit `mode` (`deterministic` für die "

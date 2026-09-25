@@ -127,6 +127,15 @@ FEATURES: dict[str, Feature] = {
                     "und Regelarbeit; dann entscheidet Tim, ob die Stichprobe dauerhaft läuft "
                     "(Schalter raus) oder wegfällt (docs/lotti-selbstpruefung.md).",
     ),
+    "lotti-werkzeuge": Feature(
+        key="lotti-werkzeuge",
+        description="Lotti darf nachschlagen: Zeitreihen, Haushaltszahlen anderer Seiten, "
+                    "Ratsbeschlüsse, und rechnen nur mit belegten Zahlen — höchstens drei "
+                    "Runden je Antwort, nur lesend (council/lotti_werkzeuge.py).",
+        fertig_wenn="Die mehrstufigen Fälle der Fakten-Eval (haushalt/mehrstufig) liegen "
+                    "deutlich über dem Stand ohne Werkzeuge, die übrigen Haushaltsfälle und "
+                    "die Wartezeit nicht schlechter — dann auf Prod an und Schalter raus.",
+    ),
     "neuer-rat": Feature(
         key="neuer-rat",
         description="Der gewählte Rat vor seiner ersten Sitzung: die Liste der 52 "

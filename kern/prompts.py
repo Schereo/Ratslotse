@@ -730,6 +730,32 @@ ERKLAERWISSEN_REGEL = (
 )
 
 
+#: Lottis Werkzeuge (``council/lotti_werkzeuge.py``, Schalter
+#: ``lotti-werkzeuge``): angehängt NUR, wenn sie mitgegeben werden — ohne
+#: Schalter bleibt der Prompt zeichengleich (Regel aus PR 21). Der Kern ist
+#: der zweite Punkt: Was oben steht, reicht meist; nachschlagen heißt einen
+#: Modellaufruf mehr, und die Laienfragen standen ohne Werkzeuge bei 35/36.
+WERKZEUG_REGEL = (
+    "\nNACHSCHLAGEN: Du hast Werkzeuge, mit denen du in den Daten nachsehen kannst.\n"
+    "- Beantwortet der Kontext oben die Frage schon, antworte direkt — ohne Werkzeug.\n"
+    "- Fehlt ein Jahr, eine Entwicklung über mehrere Jahre, eine Zahl von einer\n"
+    "  anderen Seite oder ein Ratsbeschluss: schlag es nach. Mehrere Werkzeuge in\n"
+    "  einer Runde sind erlaubt.\n"
+    "- „Liegt hier nicht vor“, „lässt sich nicht berechnen“ o. ä. darfst du ERST\n"
+    "  schreiben, wenn du nachgeschlagen hast und auch das Werkzeug nichts fand.\n"
+    "  Für Summen der ganzen Stadt über die Jahre (Schulden, Steuern, Personal,\n"
+    "  Zinsen, Einwohner, Stellen, Hebesätze) nimm „zeitreihe“, für eine Aufgabe\n"
+    "  wie Kita oder Feuerwehr „produkt_zeitreihe“.\n"
+    "- Prozente, Differenzen, Summen und Werte je Einwohner*in rechnest du NIE im\n"
+    "  Kopf, sondern mit dem Werkzeug „rechnen“ — und nur mit Zahlen, die oben oder\n"
+    "  in einem Werkzeug-Ergebnis stehen. Nenne das Ergebnis mit seiner Herleitung.\n"
+    "- Was ein Werkzeug liefert, gilt wie der Kontext oben: jede Zahl mit Jahr und\n"
+    "  Beleg, Plan und Ist auseinanderhalten. Findet auch das Werkzeug nichts, sag\n"
+    "  das in einem Satz.\n"
+    "- Erzähl nicht, dass oder wie du nachgeschlagen hast — antworte einfach.\n"
+)
+
+
 DEFAULTS: dict[str, dict[str, str]] = {
     # --- Städte-Speicher (council/cities): fremde Ratsvorlagen einordnen ------
     "cities_classify_system": {

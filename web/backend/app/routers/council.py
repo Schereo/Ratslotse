@@ -4300,8 +4300,15 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
             sent = 0
             marker = lotti.NEXT_MARKER
             try:
+                werkzeuge = features.an("lotti-werkzeuge")
                 for delta in lotti.explain_stream(store, screen, frage, ctx=ctx,
-                                                  verlauf=verlauf):
+                                                  verlauf=verlauf, permissions=rechte,
+                                                  werkzeuge=werkzeuge):
+                    if isinstance(delta, lotti.Schritt):
+                        # Lotti schlägt nach (Schalter `lotti-werkzeuge`) — ein
+                        # Zwischenstand fürs Fenster, kein Antworttext.
+                        yield _sse({"type": "step", "step": "lookup", "text": delta.text})
+                        continue
                     if not buf and delta:
                         zeiten["ttft_ms"] = round((time.perf_counter() - t0) * 1000)
                     buf += delta
@@ -4321,7 +4328,9 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
                 # erzeugen und den Torso ersetzen, statt ihn stehen zu lassen.
                 _log.warning("explain_stream brach nach %d Zeichen ab — one-shot Ersatz",
                              len(buf), exc_info=True)
-                ans = lotti.explain_question(store, screen, frage, ctx=ctx, verlauf=verlauf)
+                ans = lotti.explain_question(store, screen, frage, ctx=ctx, verlauf=verlauf,
+                                             permissions=rechte,
+                                             werkzeuge=features.an("lotti-werkzeuge"))
                 buf = ans
                 yield _sse({"type": "replace",
                             "text": lotti.split_next(ans, rechte, route)[0]})

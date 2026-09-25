@@ -978,3 +978,27 @@ def test_strom_ausserhalb_bleibt_ein_weg(_eu_umgebung, monkeypatch):
     with pytest.raises(llm.EmptyResponseError):
         list(llm.chat_stream(model="openai/gpt-6-luna", messages=[], _feature="qa_analysis"))
     assert len(aufrufe) == 1 and aufrufe[0]["_only"] is None
+
+
+def test_mit_frist_bekommt_der_eu_weg_einen_anlauf(monkeypatch):
+    """Lottis Fenster (``timeout=``) wartet nicht vier Anläufe auf einen hängenden EU-Weg."""
+    import httpx
+    from openai import APITimeoutError
+
+    aufrufe = []
+
+    class _Haengt:
+        def create(self, **kw):
+            aufrufe.append(kw)
+            raise APITimeoutError(request=httpx.Request("POST", "https://example.org"))
+
+    class _Client:
+        chat = type("C", (), {"completions": _Haengt()})()
+
+    monkeypatch.setattr(llm, "get_client", lambda: _Client())
+    monkeypatch.setattr(llm._create.retry, "sleep", lambda s: None)
+    with pytest.raises(APITimeoutError):
+        llm._eu_anlauf({"timeout": 5})(model="openai/gpt-6-luna", messages=[], timeout=5,
+                                       _zdr=True, _only=("azure/eu",))
+    assert len(aufrufe) == 1
+    assert llm._eu_anlauf({}) is llm._create

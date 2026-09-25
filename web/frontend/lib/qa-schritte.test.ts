@@ -48,7 +48,15 @@ describe("lottiSchrittText", () => {
   it("deckt genau die Schritte ab, die die beiden Ströme senden", () => {
     // Kommt im Backend ein Schritt dazu, fällt er hier auf — und nicht erst
     // als „Lotti überlegt" im Fenster, wo niemand ihn vermisst.
-    expect(Object.keys(ERKLAER_SCHRITTE).sort()).toEqual(["answer", "archiv", "context"]);
+    expect(Object.keys(ERKLAER_SCHRITTE).sort()).toEqual(["answer", "archiv", "context", "lookup"]);
     expect(Object.keys(ASK_SCHRITTE).sort()).toEqual(["answer", "expand", "search"]);
+  });
+});
+
+describe("Nachschlagen", () => {
+  it("zeigt den Text des Servers und sonst den Ersatz", () => {
+    expect(lottiSchrittText("lookup", false, "Lotti sieht die Reihe „Schulden“ an"))
+      .toBe("Lotti sieht die Reihe „Schulden“ an");
+    expect(lottiSchrittText("lookup")).toBe(ERKLAER_SCHRITTE.lookup);
   });
 });

@@ -1,0 +1,331 @@
+[
+ {
+  "id": "rat-mehr-grundsteuer-ausschuss",
+  "kanal": "lotti",
+  "route": "/council/decision",
+  "refs": {
+   "decision_id": 8468
+  },
+  "frage": "Wurde diese Vorlage vorher schon in einem Ausschuss beraten?",
+  "kategorie": "rat/mehrstufig/beratungsfolge",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "Finanzen",
+      "Finanzausschuss"
+     ]
+    ],
+    "quelle": "council_decisions id=8076, Ausschuss für Finanzen und Beteiligungen 2025-11-05, TOP 20, Vorlage 25/0615; committee"
+   },
+   {
+    "art": "text",
+    "muss": [
+     [
+      "05.11.2025",
+      "5.11.2025",
+      "5. November 2025",
+      "05. November 2025",
+      "2025-11-05"
+     ]
+    ],
+    "quelle": "council_decisions id=8076, Ausschuss für Finanzen und Beteiligungen 2025-11-05, TOP 20, Vorlage 25/0615; session_date",
+    "antwort_auch": [
+     "November 2025"
+    ]
+   },
+   {
+    "art": "text",
+    "muss": [
+     [
+      "vertagt",
+      "verschoben"
+     ]
+    ],
+    "quelle": "council_decisions id=8076, Ausschuss für Finanzen und Beteiligungen 2025-11-05, TOP 20, Vorlage 25/0615; outcome=postponed"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Vorlage 25/0615: Finanzausschuss 05.11.2025 vertagt, Rat 01.12.2025 vertagt, Finanzausschuss und Rat 15.12.2025 abgelehnt. Die Seite zeigt nur den Ratsbeschluss."
+ },
+ {
+  "id": "rat-mehr-grundsteuer-heute",
+  "kanal": "lotti",
+  "route": "/council/decision",
+  "refs": {
+   "decision_id": 8468
+  },
+  "frage": "Wie hoch ist der Hebesatz der Grundsteuer B heute, nachdem das hier abgelehnt wurde?",
+  "kategorie": "rat/mehrstufig/haushalt",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 539.0,
+    "einheit": "%",
+    "bezeichnung": "Hebesatz Grundsteuer B seit 2025",
+    "toleranz": 0.0,
+    "quelle": "council_tax_rates kind='Grundsteuer B' year=2025"
+   }
+  ],
+  "verboten": [],
+  "notiz": ""
+ },
+ {
+  "id": "rat-mehr-grundsteuer-ertrag",
+  "kanal": "lotti",
+  "route": "/council/decision",
+  "refs": {
+   "decision_id": 8468
+  },
+  "frage": "Wie viel bringt diese Steuer der Stadt im Jahr ein?",
+  "kategorie": "rat/mehrstufig/haushalt",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 32585000.0,
+    "einheit": "€",
+    "jahr": 2025,
+    "bezeichnung": "Grundsteuer A+B 2025",
+    "toleranz": 0.02,
+    "quelle": "council_taxes kind='Grundsteuer A+B' year=2025"
+   }
+  ],
+  "verboten": [],
+  "notiz": ""
+ },
+ {
+  "id": "rat-mehr-stadion-wirtschaftsplan",
+  "kanal": "lotti",
+  "route": "/council/decision",
+  "refs": {
+   "decision_id": 8677
+  },
+  "frage": "Wie viel Verlust plant die Stadiongesellschaft laut Wirtschaftsplan 2026?",
+  "kategorie": "rat/mehrstufig/haushalt",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 651500.0,
+    "einheit": "€",
+    "jahr": 2026,
+    "bezeichnung": "Plan-Ergebnis Stadion 2026",
+    "toleranz": 0.02,
+    "quelle": "council_business_plans stadion 2026; result"
+   }
+  ],
+  "verboten": [],
+  "notiz": ""
+ },
+ {
+  "id": "rat-mehr-bbgo-vorjahr",
+  "kanal": "lotti",
+  "route": "/council/decision",
+  "refs": {
+   "decision_id": 8443
+  },
+  "frage": "Wie viel Minus war im Wirtschaftsplan des Jahres davor geplant?",
+  "kategorie": "rat/mehrstufig/haushalt",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 6247913.0,
+    "einheit": "€",
+    "jahr": 2025,
+    "bezeichnung": "Plan-Ergebnis BBGO 2025",
+    "toleranz": 0.02,
+    "quelle": "council_business_plans bbgo 2025; result"
+   }
+  ],
+  "verboten": [],
+  "notiz": ""
+ },
+ {
+  "id": "rat-mehr-bbo-2020",
+  "kanal": "lotti",
+  "route": "/council/decision",
+  "refs": {
+   "decision_id": 8277
+  },
+  "frage": "Wie viel mehr gibt der Bäderbetrieb hier aus als 2020?",
+  "kategorie": "rat/mehrstufig/haushalt",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 4543530.0,
+    "einheit": "€",
+    "jahr": 2020,
+    "bezeichnung": "BBO Aufwendungen Plan 2020",
+    "toleranz": 0.02,
+    "quelle": "council_business_plans bbo 2020; expenses"
+   },
+   {
+    "art": "zahl",
+    "wert": 16747185.0,
+    "einheit": "€",
+    "jahr": 2026,
+    "bezeichnung": "BBO Aufwendungen Plan 2026",
+    "toleranz": 0.02,
+    "quelle": "council_business_plans bbo 2026; expenses"
+   }
+  ],
+  "verboten": [],
+  "notiz": ""
+ },
+ {
+  "id": "rat-mehr-sitzung-davor",
+  "kanal": "lotti",
+  "route": "/council/sitzung",
+  "refs": {
+   "ksinr": 4695
+  },
+  "frage": "Wann war die Ratssitzung vor dieser hier?",
+  "kategorie": "rat/mehrstufig/sitzungen",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "01.06.2026",
+      "1.6.2026",
+      "1. Juni 2026",
+      "01. Juni 2026",
+      "2026-06-01"
+     ]
+    ],
+    "quelle": "council_sessions committee='Rat', 2026"
+   }
+  ],
+  "verboten": [],
+  "notiz": ""
+ },
+ {
+  "id": "rat-mehr-sitzung-danach",
+  "kanal": "lotti",
+  "route": "/council/sitzung",
+  "refs": {
+   "ksinr": 4695
+  },
+  "frage": "Wann tagt der Rat nach dieser Sitzung wieder?",
+  "kategorie": "rat/mehrstufig/sitzungen",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "31.08.2026",
+      "31.8.2026",
+      "31. August 2026",
+      "2026-08-31"
+     ]
+    ],
+    "quelle": "council_sessions committee='Rat', 2026"
+   }
+  ],
+  "verboten": [],
+  "notiz": ""
+ },
+ {
+  "id": "rat-mehr-sitzung-davor-stadion",
+  "kanal": "lotti",
+  "route": "/council/sitzung",
+  "refs": {
+   "ksinr": 4692
+  },
+  "frage": "Was stand in der Ratssitzung vor dieser hier auf der Tagesordnung?",
+  "kategorie": "rat/mehrstufig/sitzungen",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "13.04.2026",
+      "13.4.2026",
+      "13. April 2026",
+      "2026-04-13"
+     ]
+    ],
+    "quelle": "council_sessions committee='Rat', 2026",
+    "antwort_auch": [
+     "April 2026"
+    ]
+   }
+  ],
+  "verboten": [],
+  "notiz": ""
+ },
+ {
+  "id": "rat-mehr-sport-naechste",
+  "kanal": "lotti",
+  "route": "/council/sitzung",
+  "refs": {
+   "ksinr": 4592
+  },
+  "frage": "Wann tagt dieser Ausschuss das nächste Mal?",
+  "kategorie": "rat/mehrstufig/sitzungen",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "text",
+    "muss": [
+     [
+      "07.10.2026",
+      "7.10.2026",
+      "7. Oktober 2026",
+      "07. Oktober 2026",
+      "2026-10-07"
+     ]
+    ],
+    "quelle": "council_sessions ∪ council_scheduled_sessions, erste Sportausschuss-Sitzung nach 2026-09-24"
+   }
+  ],
+  "verboten": [],
+  "notiz": "ZEITABHÄNGIG: Goldwert relativ zum Stichtag 2026-09-24 gezogen — vor einem Lauf nach diesem Termin den Baukasten neu laufen lassen."
+ },
+ {
+  "id": "rat-mehr-verkehr-2025",
+  "kanal": "lotti",
+  "route": "/council/thema",
+  "refs": {
+   "slug": "verkehr"
+  },
+  "frage": "Wie viele Beschlüsse gab es in diesem Themenfeld 2025?",
+  "kategorie": "rat/mehrstufig/zaehlen",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 130.0,
+    "einheit": "",
+    "bezeichnung": "Verkehrsbeschlüsse 2025",
+    "toleranz": 0.05,
+    "quelle": "COUNT council_decisions policy_field='verkehr', kind='decision', Sitzung 2025"
+   }
+  ],
+  "verboten": [],
+  "notiz": "Zählt Beschlüsse jedes Ergebnisses; 5 % Spielraum für die Frage, ob Kenntnisnahmen mitzählen."
+ },
+ {
+  "id": "rat-mehr-nd-stadion-zuschauer",
+  "kanal": "lotti",
+  "route": "/council/decision",
+  "refs": {
+   "decision_id": 8677
+  },
+  "frage": "Wie viele Zuschauer kamen letzte Saison zu den Spielen, um die es hier geht?",
+  "kategorie": "rat/mehrstufig/nicht-in-daten",
+  "antwort_in_daten": false,
+  "gold": [],
+  "verboten": [],
+  "notiz": "Zuschauerzahlen stehen in keinem Beschluss, keiner Vorlage und keiner Haushaltstabelle."
+ }
+]

@@ -221,6 +221,31 @@ def test_ausgangswert_einer_veraenderung_traegt_nicht_das_neue_jahr():
     assert fa.zahl_im_text({"wert": 4.04, "jahr": 2026}, antwort, satz=True).status == "ok"
 
 
+def test_ausgangswert_mit_rund_traegt_nicht_das_endjahr():
+    """Gemessen 24.09. (GPT-6 Luna): 269 Mio. galt als Wert von 2025."""
+    antwort = ("Vom Jahresende 2020 bis zum Jahresende 2025 stieg der Schuldenstand um "
+               "25,17 Prozent – von rund 269 Millionen auf rund 337 Millionen Euro.")
+    assert fa.zahl_im_text({"wert": 269_230_000, "jahr": 2020}, antwort, satz=True).status == "ok"
+    assert fa.zahl_im_text({"wert": 336_994_000, "jahr": 2025}, antwort, satz=True).status == "ok"
+
+
+def test_paar_gegenueber_folgt_der_reihenfolge_der_jahre():
+    """Gemessen 24.09. (GPT-6 Luna): 222 Mio. galt als Wert von 2015."""
+    for wort in ("gegenüber", "statt"):
+        antwort = ("Die Stadt nahm 2025 rund 136 Millionen Euro mehr Gewerbesteuer ein als 2015: "
+                   f"rund 222 Millionen Euro {wort} rund 86 Millionen Euro.")
+        assert fa.zahl_im_text({"wert": 222_117_000, "jahr": 2025}, antwort, satz=True).status == "ok"
+        assert fa.zahl_im_text({"wert": 86_249_000, "jahr": 2015}, antwort, satz=True).status == "ok"
+
+
+def test_mio_punkt_beendet_keinen_satz():
+    """Gemessen 25.09.: 176,8 Mio. galt als Wert von 2024, dem Jahr dahinter."""
+    kontext = ("- Gewerbesteuer über alle Jahre, Ansatz → Ergebnis: 2023: 124,2 Mio. € → "
+               "176,8 Mio. € · 2024: 133,4 Mio. € → 202,9 Mio. €")
+    assert fa.zahl_im_text({"wert": 176_840_000, "jahr": 2023}, kontext).status == "ok"
+    assert fa.zahl_im_text({"wert": 202_918_000, "jahr": 2024}, kontext).status == "ok"
+
+
 def test_elternzeile_zaehlt_ihr_erstes_jahr():
     kontext = ("- Wirtschaftsplan 2026: Ergebnis 711.250 €; im Plan 2025 waren es 627.511 €\n"
                "  - Erfolgsplan: Aufwendungen 26,0 Mio. €")

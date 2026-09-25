@@ -122,6 +122,8 @@ export type LottiTurn = {
    *  neben der Tipp-Anzeige, also solange noch kein Wort da ist; danach ist
    *  der Text selbst die Auskunft. */
   schritt?: string | null;
+  /** Was Lotti gerade nachschlägt (Rahmen `step: lookup`, Feld `text`). */
+  schrittText?: string | null;
   /** Diese Runde ist der ZWEITE Schritt derselben Frage (Erklärung, dann
    *  Archiv): Die Frage-Blase steht schon darüber. Die Frage selbst bleibt
    *  gesetzt — der Daumen und das gespeicherte Gespräch brauchen sie. */
@@ -627,7 +629,10 @@ export function LottiPanel({
         // **Der Schritt, den das Fenster bis 22.09.2026 wegwarf.** Der Server
         // meldet `context` und `answer`, seit es den Endpunkt gibt; angezeigt
         // wurden drei blasse Punkte, an denen man nicht sah, dass etwas läuft.
-        if (msg.type === "step") patch(() => ({ schritt: msg.step as string }));
+        if (msg.type === "step") {
+          patch(() => ({ schritt: msg.step as string,
+                         schrittText: (msg.text as string | undefined) ?? null }));
+        }
         else if (msg.type === "token") {
           antwort += msg.text as string;
           patch((t) => ({ answer: t.answer + (msg.text as string) }));
@@ -987,7 +992,7 @@ export function LottiPanel({
                       <AntwortText text={t.answer} idToNum={new Map()} />
                     </GlossarAufklappBereich>
                   )
-                  : <Tippt schritt={t.schritt} ratsfrage={t.ratsfrage} />}
+                  : <Tippt schritt={t.schritt} text={t.schrittText} ratsfrage={t.ratsfrage} />}
                 {t.answer && !t.fehler && t.ratsfrage && (
                   <Quellen turn={t} onSchliessen={onSchliessen} />
                 )}
@@ -1323,7 +1328,9 @@ function Quellen({ turn, onSchliessen }: { turn: LottiTurn; onSchliessen: () => 
  * `role="status"` bleibt: Die Anzeige meldet sich, ohne den Fokus zu nehmen —
  * und mit dem Text meldet sie jetzt auch etwas Sagbares.
  */
-function Tippt({ schritt, ratsfrage }: { schritt?: string | null; ratsfrage?: boolean }) {
+function Tippt({ schritt, text, ratsfrage }: {
+  schritt?: string | null; text?: string | null; ratsfrage?: boolean;
+}) {
   return (
     <span className="flex items-center gap-2 py-1" role="status">
       <span className="inline-flex flex-none items-center gap-1" aria-hidden>
@@ -1338,7 +1345,7 @@ function Tippt({ schritt, ratsfrage }: { schritt?: string | null; ratsfrage?: bo
         ))}
       </span>
       <span className="min-w-0 text-hinweis text-muted-foreground">
-        {lottiSchrittText(schritt, ratsfrage)} …
+        {lottiSchrittText(schritt, ratsfrage, text)} …
       </span>
     </span>
   );
