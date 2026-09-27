@@ -139,12 +139,15 @@ def test_derselbe_termin_wird_nicht_jede_nacht_gemeldet(monkeypatch, merkdatei):
     # in beiden Läufen, und das mit Absicht jede Nacht.
     monkeypatch.setattr(job, "fehlende_ids", lambda heute=None: [])
 
-    erst = job.main()
+    # Fester Stichtag: Am echten Datum kann eine Wahl in 0–2 Tagen liegen, deren
+    # „noch keine Id"-Warnung absichtlich jede Nacht kommt (27.09.2026: Stichwahl).
+    heute = date(2026, 9, 14)
+    erst = job.main(heute=heute)
     assert erst["unbekannt"] == 1 and erst["gemeldet"] >= 1
     assert "Landtagswahl" in gesendet[0]
 
     gesendet.clear()
-    zweit = job.main()
+    zweit = job.main(heute=heute)
     assert zweit["unbekannt"] == 1, "gefunden wird er weiter"
     assert not gesendet, "gemeldet wird er nur einmal"
 
