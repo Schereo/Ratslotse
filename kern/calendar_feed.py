@@ -158,7 +158,7 @@ def select_sessions(*, council, ratslotse, owner_id: int, today: date | None = N
     today = today or date.today()
     since = (today - timedelta(days=PAST_DAYS)).isoformat()
     recent = [s for s in council.recent_sessions(limit=200) if (s.get("session_date") or "") >= since]
-    upcoming = council.upcoming_sessions(limit=UPCOMING_LIMIT)
+    upcoming = council.upcoming_sessions(limit=UPCOMING_LIMIT, today=today)
     sessions = list(reversed(recent)) + upcoming
     ksinrs = [s["ksinr"] for s in sessions if s.get("ksinr")]
     mine = ratslotse.agenda_matches_for_owner(owner_id, ksinrs)

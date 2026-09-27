@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import logging
 import re
-from datetime import datetime
+from datetime import date, datetime
 
 from council.scraper import CouncilSession
 from council.store_basis import StoreBasis
@@ -300,12 +300,15 @@ class SitzungenMixin(StoreBasis):
         ).fetchone()
         return str(row["d"]) if row and row["d"] else None
 
-    def upcoming_sessions(self, limit: int = 20, offset: int = 0) -> list[dict]:
+    def upcoming_sessions(self, limit: int = 20, offset: int = 0, today: date | None = None) -> list[dict]:
         """Kommende Sitzungen: echte (mit ksinr/Tagesordnung) plus terminierte
         aus dem Kalender (ksinr NULL), solange keine echte Sitzung desselben
-        Gremiums am selben Tag existiert."""
-        from datetime import date
-        today = date.today().isoformat()
+        Gremiums am selben Tag existiert.
+
+        ``today`` (ein ``date``) setzt den Stichtag — der Kalender-Feed rechnet
+        mit seinem eigenen „jetzt" und muss dasselbe hier hineinreichen, sonst
+        stimmen Feed und Auswahl nur am Tag des Tests überein."""
+        today = (today or date.today()).isoformat()
         rows = self._conn.execute(
             f"""SELECT * {self._UPCOMING_FROM}
                 ORDER BY session_date ASC, session_time ASC
