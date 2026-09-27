@@ -18,6 +18,7 @@ from __future__ import annotations
 import json
 import logging
 from datetime import datetime, timezone
+from decimal import ROUND_HALF_UP, Decimal
 from functools import lru_cache
 
 from ..antworten import ElectionDistrictList, ElectionNight, ElectionTopEntry
@@ -216,8 +217,18 @@ def _mayor_top(wahl: elections.Election, n: int) -> list[ElectionTopEntry]:
     if stand is None:
         return []
     beste = sorted(stand.candidates, key=lambda c: -(c.votes or 0))[:n]
-    return [ElectionTopEntry(label=c.name, seats=None, pct=c.share_pct,
+    return [ElectionTopEntry(label=c.name, seats=None, pct=_eine_stelle(c.share_pct),
                              color=c.color or NEUTRAL[0], color_dark=c.color_dark or NEUTRAL[1]) for c in beste]
+
+
+def _eine_stelle(pct: float | None) -> float | None:
+    """Kaufmännisch auf eine Stelle — über den Dezimaltext, nicht die
+    Gleitkommazahl: 51,55 % ist binär 51,5499…, und ``f"{x:.1f}"`` wie auch
+    ``toFixed(1)`` im Browser machten daraus 51,5. Gemessen an der Stichwahl
+    27.09.2026, amtlich 51,55 % für Rohr."""
+    if pct is None:
+        return None
+    return float(Decimal(str(pct)).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP))
 
 
 def _mayor_summary(wahl: elections.Election) -> str | None:
@@ -233,7 +244,7 @@ def _mayor_summary(wahl: elections.Election) -> str | None:
     if stand is None or not stand.candidates:
         return None
     beste = max(stand.candidates, key=lambda c: c.votes or 0)
-    text = f"{beste.name} {(beste.share_pct or 0):.1f} %".replace(".", ",")
+    text = f"{beste.name} {_eine_stelle(beste.share_pct) or 0:.1f} %".replace(".", ",")
     return f"{text} · Stichwahl" if stand.runoff else text
 
 

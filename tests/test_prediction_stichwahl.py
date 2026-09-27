@@ -107,6 +107,9 @@ def test_setup_nennt_die_beiden_kandidaturen_und_das_parteien_menue(client):
 
 
 def test_die_uebersicht_verlinkt_die_stichwahl_ohne_konto(client):
+    # Die Runde gibt es (wie auf Prod): Seit die Stichwahl eingefroren ist,
+    # gilt sie als vorbei, und eine vorbeie Wahl ohne Runde bekäme keinen Link.
+    client.get(f"/api/tipp/setup{RUNDE}")
     zeilen = {z["slug"]: z for z in client.get("/api/wahlen").json()["elections"]}
     assert zeilen["ob-stichwahl-2026"]["tipp_path"] == "/tipp?runde=stichwahl"
     assert zeilen["ob-stichwahl-2026"]["tipp_locked"] is False

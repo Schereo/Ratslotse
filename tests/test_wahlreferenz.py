@@ -33,7 +33,10 @@ from app.election import reference  # noqa: E402
 from app.election import votemanager  # noqa: E402
 
 KOMMUNALWAHL = WURZEL / "kommunalwahl"
-ORDNER = sorted(p for p in KOMMUNALWAHL.glob("referenz-*") if p.is_dir())
+#: Eine eingefrorene OB-Wahl (``wahl_einfrieren.py --ob``) hat keine CSVs und
+#: keine Sitze, nur die Ergebnisdarstellung — erkennbar an ``quelle.json``.
+OB_ORDNER = sorted(p for p in KOMMUNALWAHL.glob("referenz-*") if (p / "quelle.json").is_file())
+ORDNER = sorted(p for p in KOMMUNALWAHL.glob("referenz-*") if p.is_dir() and p not in OB_ORDNER)
 #: Die drei Gebietsebenen, aus denen eine Referenz besteht.
 EBENEN = ("stadt", "wahlbereiche", "wahlbezirke")
 
@@ -43,6 +46,33 @@ def test_es_gibt_referenzordner():
     assert [p.name for p in ORDNER] == ["referenz-2021", "referenz-2026"], (
         "Neuen Referenzordner? Dann gehört er in diese Liste — und der Grund ist, dass "
         "ein versehentlich gelöschter Ordner sonst als „nichts zu prüfen“ durchginge.")
+
+
+def test_es_gibt_eingefrorene_ob_wahlen():
+    assert [p.name for p in OB_ORDNER] == ["referenz-2026-stichwahl"], (
+        "Neue eingefrorene OB-Wahl? Dann gehört sie in diese Liste.")
+
+
+@pytest.mark.parametrize("ordner", OB_ORDNER, ids=lambda p: p.name)
+def test_eingefrorene_ob_wahl_ist_fertig_und_stimmt_in_sich(ordner: Path):
+    """Dieselbe Gegenprobe wie beim Einfrieren: fertig ausgezählt, und die
+    Bezirke ergeben zusammen die Stadtzeile — je Kandidatur."""
+    from app.election import elections, mayor, mayor_districts
+
+    quelle = json.loads((ordner / "quelle.json").read_text(encoding="utf-8"))
+    assert set(quelle) >= {"wahl", "url", "presentation_id", "city_id", "stand", "abgerufen"}
+    assert quelle["stand"] in ("vorlaeufig", "amtlich")
+    w = elections.get(quelle["wahl"])
+    assert w is not None and w.archive_folder == ordner, "Registry und Ordner zeigen nicht aufeinander"
+    known = mayor.candidates(w)
+    stadt = mayor.parse(json.loads((ordner / "praesentation-ob.json").read_text(encoding="utf-8")), known)
+    assert stadt is not None and stadt.phase == "complete"
+    bezirke = mayor_districts.parse_overview(
+        json.loads((ordner / "praesentation-ob-wahlbezirke.json").read_text(encoding="utf-8")),
+        {c.slug: c.name for c in known})
+    assert len(bezirke) == stadt.reports_expected and all(d.counted for d in bezirke)
+    for c in stadt.candidates:
+        assert sum(d.votes.get(c.slug) or 0 for d in bezirke) == c.votes, c.slug
 
 
 @pytest.mark.parametrize("ordner", ORDNER, ids=lambda p: p.name)
