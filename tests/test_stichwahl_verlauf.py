@@ -145,7 +145,7 @@ def test_die_probe_der_stichwahl_zaehlt_bezirk_fuer_bezirk(datei):
     anteile = {n: next(c.share_pct for c in mayor.probe(n, w).candidates if c.slug == "prange") for n in (30, 91, 133)}
     assert anteile[30] != anteile[133], "der Anteil bewegt sich über den Abend"
     assert anteile[91] > anteile[133], "nach 91 Urnenbezirken drückt die Briefwahl den Anteil"
-    assert {c.slug: c.votes for c in mayor.probe(133, w).candidates} == {"prange": 28075, "rohr": 25850}
+    assert {c.slug: c.votes for c in mayor.probe(133, w).candidates} == {"prange": 28076, "rohr": 25852}
 
 
 # ---------------------------------------------------------------- der Ticker (Tims Wunsch 23.09.2026)

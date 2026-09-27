@@ -48,6 +48,13 @@ Bezirkskarte lesen sie unter diesem Namen):
     python scripts/wahl_einfrieren.py --ob ob-stichwahl-2026 \
         --ziel kommunalwahl/referenz-2026-stichwahl --verlauf <verlauf>.json
 
+Derselbe Modus zieht den ersten Wahlgang nach, der neben der Ratswahl liegt
+(``--ob ob-2026 --ziel kommunalwahl/referenz-2026 --stand amtlich``) — dann
+nur seine drei Dateien, ohne ``termin.json`` und ``quelle.json``. Anlass: Die
+Stadt hat den ersten Wahlgang am 16.09.2026 festgestellt, 14 Bezirke änderten
+sich (Rohr +2, Prange +1, Küßner +1, Briefwählende umgebucht); im Repo lag bis
+27.09. der vorläufige Stand vom Wahlabend.
+
 Die Gegenprobe dort: alle Bezirke gemeldet, und ihre Summe ist die Stadtzeile.
 
 **Vorläufig ist nicht amtlich.** ``--stand vorlaeufig`` (Vorgabe) vermerkt in
@@ -253,7 +260,12 @@ def _freeze_mayor(session: requests.Session, w: elections.Election, target: Path
     if len(districts) != city.reports_expected or still_open:
         raise SystemExit(f"Abbruch: {len(districts)} Bezirke statt {city.reports_expected}, "
                          f"offen: {still_open[:5]}")
+    # Nur Kandidaturen mit eigener Spalte: Im ersten Wahlgang 2026 fasst die
+    # Bezirksübersicht Stille und Castur zu „Sonstige" zusammen.
+    columns = set().union(*(d.votes for d in districts)) if districts else set()
     for c in city.candidates:
+        if c.slug not in columns:
+            continue
         total = sum(d.votes.get(c.slug) or 0 for d in districts)
         if total != c.votes:
             raise SystemExit(f"Abbruch: {c.name} — Bezirke {total}, Stadt {c.votes}.")
@@ -264,6 +276,12 @@ def _freeze_mayor(session: requests.Session, w: elections.Election, target: Path
                           ("praesentation-ob-wahlbezirke.json", overview)):
         (target / name).write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         print(f"  {name}")
+    if any(referenz.META_NAME.fullmatch(p.name) for p in target.glob("*.json")):
+        # Der Ordner einer Ratswahl (der erste OB-Wahlgang liegt neben ihr):
+        # Ihre Meta-Datei und termin.json gehören dem Ratswahl-Lauf, und eine
+        # quelle.json machte aus dem Ordner für den Wächter eine OB-Wahl.
+        print(f"  (neben einer Ratswahl-Referenz: nur die OB-Dateien, Stand {status})")
+        return
     _json_sichern(session, base + mayor.TERMIN_PATH, target / "termin.json")
     source = {"wahl": w.slug, "url": f"{base}/praesentation/", "presentation_id": election_id, "city_id": city_id,
               "stand": status, "abgerufen": datetime.now(timezone.utc).isoformat(timespec="seconds")}

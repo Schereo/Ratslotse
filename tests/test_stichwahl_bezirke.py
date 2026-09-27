@@ -4,7 +4,7 @@ PR S1 aus ``docs/plan-stichwahl-spannung.md``. Die Zusagen, gegen drei
 eingefrorene Übersichten gehalten — ohne Netz:
 
 - ``kommunalwahl/referenz-2026/praesentation-ob-wahlbezirke.json``: der erste
-  Wahlgang 2026, 133 Bezirke, Stadtzeile 28.075 Prange / 25.850 Rohr
+  Wahlgang 2026, 133 Bezirke, Stadtzeile 28.076 Prange / 25.852 Rohr — amtlich festgestellt am 16.09.2026
   (``praesentation-ob.json``).
 - ``tests/fixtures/wahlabend/stichwahl-2021/``: erster Wahlgang und Stichwahl
   2021 (alte API) — dieselbe Form, fünf Jahre älter. Sie sind die
@@ -55,8 +55,8 @@ def test_der_erste_wahlgang_2026_je_bezirk_summiert_sich_zur_stadtzeile():
     for z in stadt:
         label = z["label"]["labelKurz"] if isinstance(z.get("label"), dict) else str(z.get("label"))
         stadtzeile[label.split(",")[0]] = int(str(z["zahl"]).replace(".", ""))
-    assert sum(d.votes["prange"] or 0 for d in bezirke) == stadtzeile["Prange"] == 28075
-    assert sum(d.votes["rohr"] or 0 for d in bezirke) == stadtzeile["Rohr"] == 25850
+    assert sum(d.votes["prange"] or 0 for d in bezirke) == stadtzeile["Prange"] == 28076
+    assert sum(d.votes["rohr"] or 0 for d in bezirke) == stadtzeile["Rohr"] == 25852
 
 
 def test_jeder_bezirk_kennt_wahlbereich_und_wahlberechtigte():
