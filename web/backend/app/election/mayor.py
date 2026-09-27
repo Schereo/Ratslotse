@@ -288,9 +288,22 @@ def _candidate_rows(component: dict[str, Any], known: tuple[MayorCandidate, ...]
 
 
 def _runoff(component: dict[str, Any]) -> tuple[str, ...]:
+    """Die beiden, die in die Stichwahl gehen — aus ``gewaehlte_kandidaten``.
+
+    Dasselbe Feld trägt zwei Bedeutungen, zu unterscheiden nur am Titel:
+
+        1. Wahlgang ohne Mehrheit:  „Es findet eine Stichwahl statt zwischen …"
+        Stichwahl selbst:           „Gewählt ist" — EIN Eintrag, der Gewinner
+
+    Bis 09/2026 galt jeder Eintrag als Stichwahl-Paar. Am Abend des
+    27.09.2026 stand deshalb ``runoff: ["rohr"]`` in der Antwort und
+    ``elected`` blieb leer, obwohl Rohr gewählt war.
+    """
     gk = component.get("gewaehlte_kandidaten")
     items = gk.get("items") if isinstance(gk, dict) else None
     if not isinstance(items, list):
+        return ()
+    if not isinstance(gk, dict) or "stichwahl" not in str(gk.get("title") or "").casefold():
         return ()
     out = []
     for it in items:

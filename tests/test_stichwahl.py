@@ -303,3 +303,17 @@ def test_eine_fertige_wahl_wird_nicht_im_sekundentakt_abgefragt(monkeypatch):
     mayor._cache[w.slug] = (zeit.monotonic() - mayor.TTL_COMPLETE - 1, fertig)
     mayor.fetch(w=w)
     assert aufrufe == [1]
+
+
+def test_die_stichwahl_selbst_nennt_den_gewinner_nicht_ein_paar():
+    """In der Stichwahl heißt ``gewaehlte_kandidaten`` „Gewählt ist" und
+    nennt EINE Person. Bis 09/2026 wurde daraus ``runoff: ["rohr"]`` — und
+    ``elected`` blieb am Abend des 27.09.2026 leer (echte Endstand-Datei)."""
+    from app.routers.wahlabend import _gewaehlt
+
+    payload = json.loads((WURZEL / "tests" / "fixtures" / "wahlabend" / "ob-stichwahl-2026-ergebnis.json")
+                         .read_text(encoding="utf-8"))
+    stand = mayor.parse(payload, mayor.candidates(elections.get("ob-stichwahl-2026")))
+    assert stand is not None and stand.phase == "complete"
+    assert stand.runoff == ()
+    assert _gewaehlt(stand) == "rohr"
