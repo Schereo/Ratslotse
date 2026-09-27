@@ -149,6 +149,11 @@ OEFFENTLICH = {
     # Und ihr Stand als Bild zum Teilen — dieselben Zahlen wie die Seite,
     # abgeholt von Messengern ohne Konto.
     ("get", "/api/wahlabend/stichwahl/bild.png"),
+    # Der Rückblick auf die Stichwahl: nur Arithmetik auf den eingefrorenen,
+    # öffentlichen Ergebnissen beider Wahlgänge — nichts Persönliches, kein
+    # Sprachmodell, gerechnet einmal je Prozess (lru_cache).
+    ("get", "/api/wahlabend/stichwahl/analyse"),
+    ("get", "/api/wahlabend/stichwahl/analyse/bezirke"),
     # Die Potenzial-Rechnung der Stichwahl: kein Konto, aber ein Token aus
     # der .env (WAHLKAMPF_TOKEN) — ohne ihn 404, ein falscher ebenso. Die
     # Daten sind öffentliche Wahlergebnisse; der Token schützt vor Zufall,

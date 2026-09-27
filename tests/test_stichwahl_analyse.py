@@ -3,8 +3,11 @@
 
 Gehalten gegen die beiden eingefrorenen Wahlgänge 2026 — ohne Netz. Die
 Sollwerte sind am 27.09.2026 unabhängig davon aus den Rohdateien gerechnet
-worden (Skript neben dem Modul, nicht im Repo), nicht aus dem Modul
-abgeschrieben: Ein Test, der die eigene Ausgabe zurückliest, hält nichts.
+worden, nicht aus dem Modul abgeschrieben: Ein Test, der die eigene Ausgabe
+zurückliest, hält nichts. Die Gegenrechnung (eigener Parser, exakte Brüche,
+2.612 Vergleiche je Feld, dazu gegen die Prozentangaben der Stadt je Bezirk)
+fand dabei, dass der erste Wahlgang im Repo noch vorläufig war — seitdem
+steht dort der amtliche Stand vom 16.09.2026.
 """
 from __future__ import annotations
 
@@ -40,7 +43,7 @@ def test_der_gewinner_steht_vorn_und_alle_anteile_sind_aus_seiner_sicht(analysis
     assert analysis["winner"] == "rohr"
     assert [c["slug"] for c in analysis["candidates"]] == ["rohr", "prange"]
     rohr = analysis["candidates"][0]
-    assert (rohr["votes_first"], rohr["votes_runoff"]) == (25850, 30792)
+    assert (rohr["votes_first"], rohr["votes_runoff"]) == (25852, 30792)  # 1. Wg amtlich (16.09.)
     assert (rohr["share_first_pct"], rohr["share_runoff_pct"]) == (30.54, 51.55)
     assert analysis["result_status"] == "vorlaeufig"
 
@@ -48,12 +51,12 @@ def test_der_gewinner_steht_vorn_und_alle_anteile_sind_aus_seiner_sicht(analysis
 def test_stadt_stimmt_mit_den_zahlen_der_stadt(analysis):
     city = analysis["city"]
     assert city["districts"] == 133
-    assert city["votes_first"] == {"rohr": 25850, "prange": 28075}
+    assert city["votes_first"] == {"rohr": 25852, "prange": 28076}
     assert city["votes_runoff"] == {"rohr": 30792, "prange": 28942}
-    assert (city["voters_first"], city["voters_runoff"]) == (85991, 60096)
+    assert (city["voters_first"], city["voters_runoff"]) == (85983, 60096)
     # Wählende aller Bezirke durch Wahlberechtigte der Urnenbezirke — und das
     # ist genau die Beteiligung, die die Stadt meldet.
-    assert city["turnout_first_pct"] == 63.46
+    assert city["turnout_first_pct"] == 63.45
     assert city["turnout_runoff_pct"] == 44.42
     assert city["share_first_pct"]["rohr"] == 47.94  # Anteil an den BEIDEN
     assert city["swing_pts"] == pytest.approx(51.55 - 47.94, abs=0.01)
@@ -62,7 +65,7 @@ def test_stadt_stimmt_mit_den_zahlen_der_stadt(analysis):
 def test_die_ausgeschiedenen_summieren_sich_zum_rest_des_ersten_wahlgangs(analysis):
     eliminated = analysis["eliminated"]
     assert [e["slug"] for e in eliminated][:2] == ["boldt", "butzin"]
-    assert sum(e["votes"] for e in eliminated) + 25850 + 28075 == analysis["city"]["valid_first"] == 84656
+    assert sum(e["votes"] for e in eliminated) + 25852 + 28076 == analysis["city"]["valid_first"] == 84660
 
 
 def test_urne_hat_gedreht_brief_kaum(analysis):
@@ -162,3 +165,43 @@ def test_ohne_eingefrorene_stichwahl_gibt_es_keine_auswertung(monkeypatch):
 
 def test_der_erste_wahlgang_ist_keine_stichwahl():
     assert runoff_analysis.analyse("ob-2026") is None
+
+
+def test_jeder_bezirk_passt_zu_den_prozenten_der_stadt():
+    """Eine zweite Quelle neben unserer Rechnung: Die Ergebnisdarstellung
+    nennt je Bezirk selbst Prozente. In der Stichwahl ist Rohrs Prozent der
+    Anteil an den beiden, die Beteiligung steht in beiden Wahlgängen."""
+    import json
+    import re
+
+    def official(folder: str) -> dict[int, dict[str, float]]:
+        table = json.loads((WURZEL / "kommunalwahl" / folder / "praesentation-ob-wahlbezirke.json")
+                           .read_text(encoding="utf-8"))["tabelle"]
+        head = [h.get("labelKurz") for h in table["header"]][2:]
+        out = {}
+        for row in table["zeilen"]:
+            fields = dict(zip(head, row["felder"]))
+            # Briefwahlbezirke haben keine Beteiligung — die Zelle ist leer.
+            digits = {k: re.sub(r"[^\d,]", "", f["prozent"]) for k, f in fields.items()
+                      if k in ("Wahlbeteiligung", "Rohr, GRÜNE")}
+            pct = {k: float(v.replace(",", ".")) for k, v in digits.items() if v}
+            out[int(row["label"][:3])] = pct
+        return out
+
+    runoff, first = official("referenz-2026-stichwahl"), official("referenz-2026")
+    rows = router.stichwahl_analyse_bezirke(sort="number", area=None, pot=None)["rows"]
+    assert len(rows) == 133
+    for r in rows:
+        assert r["share_runoff_pct"] == pytest.approx(runoff[r["number"]]["Rohr, GRÜNE"], abs=0.006), r["number"]
+        if not r["postal"]:
+            assert r["turnout_runoff_pct"] == pytest.approx(runoff[r["number"]]["Wahlbeteiligung"], abs=0.006)
+            assert r["turnout_first_pct"] == pytest.approx(first[r["number"]]["Wahlbeteiligung"], abs=0.006)
+
+
+def test_ein_gleichstand_vorher_ist_kein_drehen():
+    """954 lag im ersten Wahlgang 208 zu 208 — dort lag niemand vorn, also
+    kann dort auch nichts gedreht haben."""
+    row = next(r for r in router.stichwahl_analyse_bezirke(sort="number", area=None, pot=None)["rows"]
+               if r["number"] == 954)
+    assert row["votes_first"] == {"rohr": 208, "prange": 208}
+    assert row["leader_first"] is None and row["flipped"] is False

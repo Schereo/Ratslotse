@@ -23,7 +23,7 @@ Verschiebung zwischen den Töpfen mit und hält sie für einen Meinungswandel.
 (Urne und Brief) durch die Wahlberechtigten seiner Urnenbezirke. Die
 Briefwahlbezirke führen keine eigenen Wahlberechtigten — wer per Brief
 wählt, steht im Verzeichnis seines Urnenbezirks. Stadtweit ergibt das genau
-die Zahl der Stadt (63,46 % und 44,42 %).
+die Zahl der Stadt (63,45 % und 44,42 %).
 
 **Alle Anteile sind die der beiden** (Anteil an den Stimmen für Gewinner
 und Zweiten), auch im ersten Wahlgang — sonst wäre jeder Vergleich einer
