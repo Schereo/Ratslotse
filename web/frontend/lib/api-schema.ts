@@ -14863,6 +14863,53 @@ export interface components {
             lead_districts: components["schemas"]["RunoffLeadDistricts"];
             /** Pots */
             pots: components["schemas"]["RunoffPot"][];
+            /**
+             * RunoffProjectionReview
+             * @description Wie gut lag die Hochrechnung des Abends? Aus dem eingefrorenen Verlauf
+             *     gegen das Endergebnis — EIN Abend, keine allgemeine Güte des Modells.
+             */
+            projection_review: {
+                /** Chance Always Winner */
+                chance_always_winner: boolean | null;
+                /** Chance Cap */
+                chance_cap: number;
+                /** Counted Lead Changes */
+                counted_lead_changes: number;
+                /** Counted Right From */
+                counted_right_from: number | null;
+                /** Final Share Pct */
+                final_share_pct: number;
+                /**
+                 * RunoffProjectionPoint
+                 * @description Ein Stand des Abends, aus Sicht des späteren Gewinners.
+                 */
+                first_chance: {
+                    /** At */
+                    at: string | null;
+                    /** Chance Pct */
+                    chance_pct: number | null;
+                    /** Counted Leader */
+                    counted_leader: string | null;
+                    /** Counted Share Pct */
+                    counted_share_pct: number | null;
+                    /** Error Pts */
+                    error_pts: number | null;
+                    /** Projected Leader */
+                    projected_leader: string | null;
+                    /** Projected Share Pct */
+                    projected_share_pct: number | null;
+                    /** Reports Received */
+                    reports_received: number;
+                } | null;
+                /** Max Error After Min Pts */
+                max_error_after_min_pts: number | null;
+                /** Min Districts */
+                min_districts: number;
+                /** Points */
+                points: components["schemas"]["RunoffProjectionPoint"][];
+                /** Projection Right From */
+                projection_right_from: number | null;
+            } | null;
             /** Quintiles */
             quintiles: components["schemas"]["RunoffQuintile"][];
             /** Result Status */
@@ -15390,6 +15437,75 @@ export interface components {
             trailing: string | null;
             /** Trailing Expected Share Pct */
             trailing_expected_share_pct: number | null;
+        };
+        /**
+         * RunoffProjectionPoint
+         * @description Ein Stand des Abends, aus Sicht des späteren Gewinners.
+         */
+        RunoffProjectionPoint: {
+            /** At */
+            at: string | null;
+            /** Chance Pct */
+            chance_pct: number | null;
+            /** Counted Leader */
+            counted_leader: string | null;
+            /** Counted Share Pct */
+            counted_share_pct: number | null;
+            /** Error Pts */
+            error_pts: number | null;
+            /** Projected Leader */
+            projected_leader: string | null;
+            /** Projected Share Pct */
+            projected_share_pct: number | null;
+            /** Reports Received */
+            reports_received: number;
+        };
+        /**
+         * RunoffProjectionReview
+         * @description Wie gut lag die Hochrechnung des Abends? Aus dem eingefrorenen Verlauf
+         *     gegen das Endergebnis — EIN Abend, keine allgemeine Güte des Modells.
+         */
+        RunoffProjectionReview: {
+            /** Chance Always Winner */
+            chance_always_winner: boolean | null;
+            /** Chance Cap */
+            chance_cap: number;
+            /** Counted Lead Changes */
+            counted_lead_changes: number;
+            /** Counted Right From */
+            counted_right_from: number | null;
+            /** Final Share Pct */
+            final_share_pct: number;
+            /**
+             * RunoffProjectionPoint
+             * @description Ein Stand des Abends, aus Sicht des späteren Gewinners.
+             */
+            first_chance: {
+                /** At */
+                at: string | null;
+                /** Chance Pct */
+                chance_pct: number | null;
+                /** Counted Leader */
+                counted_leader: string | null;
+                /** Counted Share Pct */
+                counted_share_pct: number | null;
+                /** Error Pts */
+                error_pts: number | null;
+                /** Projected Leader */
+                projected_leader: string | null;
+                /** Projected Share Pct */
+                projected_share_pct: number | null;
+                /** Reports Received */
+                reports_received: number;
+            } | null;
+            /** Max Error After Min Pts */
+            max_error_after_min_pts: number | null;
+            /** Min Districts */
+            min_districts: number;
+            /** Points */
+            points: components["schemas"]["RunoffProjectionPoint"][];
+            /** Projection Right From */
+            projection_right_from: number | null;
         };
         /**
          * RunoffQuintile
@@ -24486,4 +24602,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 4beb359b46f8ec375bf7ca6869e192ff07a784fb2396bb4ddba3ed82cdb3246f
+// vertrag-sha256: f162f567440225f9d96e1636f339ece7637a7e72e7000e633b1a829c193577dd

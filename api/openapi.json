@@ -21129,6 +21129,152 @@
             "title": "Pots",
             "type": "array"
           },
+          "projection_review": {
+            "description": "Wie gut lag die Hochrechnung des Abends? Aus dem eingefrorenen Verlauf\ngegen das Endergebnis — EIN Abend, keine allgemeine Güte des Modells.",
+            "properties": {
+              "chance_always_winner": {
+                "title": "Chance Always Winner",
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "chance_cap": {
+                "title": "Chance Cap",
+                "type": "integer"
+              },
+              "counted_lead_changes": {
+                "title": "Counted Lead Changes",
+                "type": "integer"
+              },
+              "counted_right_from": {
+                "title": "Counted Right From",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "final_share_pct": {
+                "title": "Final Share Pct",
+                "type": "number"
+              },
+              "first_chance": {
+                "description": "Ein Stand des Abends, aus Sicht des späteren Gewinners.",
+                "properties": {
+                  "at": {
+                    "title": "At",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "chance_pct": {
+                    "title": "Chance Pct",
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "counted_leader": {
+                    "title": "Counted Leader",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "counted_share_pct": {
+                    "title": "Counted Share Pct",
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "error_pts": {
+                    "title": "Error Pts",
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "projected_leader": {
+                    "title": "Projected Leader",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "projected_share_pct": {
+                    "title": "Projected Share Pct",
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "reports_received": {
+                    "title": "Reports Received",
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "at",
+                  "reports_received",
+                  "counted_share_pct",
+                  "projected_share_pct",
+                  "error_pts",
+                  "chance_pct",
+                  "projected_leader",
+                  "counted_leader"
+                ],
+                "title": "RunoffProjectionPoint",
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "max_error_after_min_pts": {
+                "title": "Max Error After Min Pts",
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "min_districts": {
+                "title": "Min Districts",
+                "type": "integer"
+              },
+              "points": {
+                "items": {
+                  "$ref": "#/components/schemas/RunoffProjectionPoint"
+                },
+                "title": "Points",
+                "type": "array"
+              },
+              "projection_right_from": {
+                "title": "Projection Right From",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "final_share_pct",
+              "min_districts",
+              "chance_cap",
+              "projection_right_from",
+              "counted_right_from",
+              "counted_lead_changes",
+              "max_error_after_min_pts",
+              "first_chance",
+              "chance_always_winner",
+              "points"
+            ],
+            "title": "RunoffProjectionReview",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
           "quintiles": {
             "items": {
               "$ref": "#/components/schemas/RunoffQuintile"
@@ -21157,7 +21303,8 @@
           "quintiles",
           "catch_up_r",
           "lead_districts",
-          "flipped"
+          "flipped",
+          "projection_review"
         ],
         "title": "RunoffAnalysis",
         "type": "object"
@@ -22558,6 +22705,219 @@
           "open_votes_expected"
         ],
         "title": "RunoffProjection",
+        "type": "object"
+      },
+      "RunoffProjectionPoint": {
+        "description": "Ein Stand des Abends, aus Sicht des späteren Gewinners.",
+        "properties": {
+          "at": {
+            "title": "At",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "chance_pct": {
+            "title": "Chance Pct",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "counted_leader": {
+            "title": "Counted Leader",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "counted_share_pct": {
+            "title": "Counted Share Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "error_pts": {
+            "title": "Error Pts",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "projected_leader": {
+            "title": "Projected Leader",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "projected_share_pct": {
+            "title": "Projected Share Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "reports_received": {
+            "title": "Reports Received",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "at",
+          "reports_received",
+          "counted_share_pct",
+          "projected_share_pct",
+          "error_pts",
+          "chance_pct",
+          "projected_leader",
+          "counted_leader"
+        ],
+        "title": "RunoffProjectionPoint",
+        "type": "object"
+      },
+      "RunoffProjectionReview": {
+        "description": "Wie gut lag die Hochrechnung des Abends? Aus dem eingefrorenen Verlauf\ngegen das Endergebnis — EIN Abend, keine allgemeine Güte des Modells.",
+        "properties": {
+          "chance_always_winner": {
+            "title": "Chance Always Winner",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "chance_cap": {
+            "title": "Chance Cap",
+            "type": "integer"
+          },
+          "counted_lead_changes": {
+            "title": "Counted Lead Changes",
+            "type": "integer"
+          },
+          "counted_right_from": {
+            "title": "Counted Right From",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "final_share_pct": {
+            "title": "Final Share Pct",
+            "type": "number"
+          },
+          "first_chance": {
+            "description": "Ein Stand des Abends, aus Sicht des späteren Gewinners.",
+            "properties": {
+              "at": {
+                "title": "At",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "chance_pct": {
+                "title": "Chance Pct",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "counted_leader": {
+                "title": "Counted Leader",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "counted_share_pct": {
+                "title": "Counted Share Pct",
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "error_pts": {
+                "title": "Error Pts",
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "projected_leader": {
+                "title": "Projected Leader",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "projected_share_pct": {
+                "title": "Projected Share Pct",
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "reports_received": {
+                "title": "Reports Received",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "at",
+              "reports_received",
+              "counted_share_pct",
+              "projected_share_pct",
+              "error_pts",
+              "chance_pct",
+              "projected_leader",
+              "counted_leader"
+            ],
+            "title": "RunoffProjectionPoint",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "max_error_after_min_pts": {
+            "title": "Max Error After Min Pts",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "min_districts": {
+            "title": "Min Districts",
+            "type": "integer"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/RunoffProjectionPoint"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "projection_right_from": {
+            "title": "Projection Right From",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "final_share_pct",
+          "min_districts",
+          "chance_cap",
+          "projection_right_from",
+          "counted_right_from",
+          "counted_lead_changes",
+          "max_error_after_min_pts",
+          "first_chance",
+          "chance_always_winner",
+          "points"
+        ],
+        "title": "RunoffProjectionReview",
         "type": "object"
       },
       "RunoffQuintile": {

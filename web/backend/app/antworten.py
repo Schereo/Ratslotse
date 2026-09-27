@@ -5675,6 +5675,44 @@ class RunoffLeadDistricts(TypedDict):
     runoff: dict[str, int]
 
 
+class RunoffProjectionPoint(TypedDict):
+    """Ein Stand des Abends, aus Sicht des späteren Gewinners."""
+    at: str | None
+    reports_received: int
+    counted_share_pct: float | None
+    projected_share_pct: float | None
+    #: Hochrechnung minus Endergebnis, in Prozentpunkten.
+    error_pts: float | None
+    #: Chance des in der Hochrechnung Führenden — ``null`` unter
+    #: ``min_districts`` gezählten Bezirken und am Schluss.
+    chance_pct: int | None
+    projected_leader: str | None
+    counted_leader: str | None
+
+
+class RunoffProjectionReview(TypedDict):
+    """Wie gut lag die Hochrechnung des Abends? Aus dem eingefrorenen Verlauf
+    gegen das Endergebnis — EIN Abend, keine allgemeine Güte des Modells."""
+    final_share_pct: float
+    #: Ab so vielen gezählten Bezirken nennt das Modell eine Chance.
+    min_districts: int
+    #: Höher geht die Chance nicht, bis die Arithmetik entschieden hat.
+    chance_cap: int
+    #: Ab welcher Bezirkszahl die Hochrechnung bis zum Schluss auf dem
+    #: Gewinner lag — ``null``, wenn nie.
+    projection_right_from: int | None
+    #: Dasselbe für den bloßen Auszählungsstand.
+    counted_right_from: int | None
+    counted_lead_changes: int
+    #: Größter Abstand der Hochrechnung zum Endergebnis, sobald eine Chance
+    #: genannt wurde (ab ``min_districts``).
+    max_error_after_min_pts: float | None
+    first_chance: RunoffProjectionPoint | None
+    #: Galt jede genannte Chance dem späteren Gewinner?
+    chance_always_winner: bool | None
+    points: list[RunoffProjectionPoint]
+
+
 class RunoffAnalysis(TypedDict):
     """Die Stichwahl im Rückblick, gegen den ersten Wahlgang gestellt
     (``election.runoff_analysis``). Nur aus eingefrorenen Zahlen; die
@@ -5696,6 +5734,8 @@ class RunoffAnalysis(TypedDict):
     lead_districts: RunoffLeadDistricts
     #: Je Slug: wie viele Bezirke zu ihm gedreht haben.
     flipped: dict[str, int]
+    #: ``null`` ohne eingefrorenen Verlauf des Abends.
+    projection_review: RunoffProjectionReview | None
 
 
 class RunoffDistrictRow(TypedDict):

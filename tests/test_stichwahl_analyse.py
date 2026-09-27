@@ -105,6 +105,23 @@ def test_gedrehte_bezirke_und_bezirke_vorn(analysis):
     assert analysis["flipped"] == {"rohr": 20, "prange": 1}
 
 
+def test_die_hochrechnung_des_abends_im_rueckblick(analysis):
+    """Tims Frage vom Abend: Wie gut lag die Vorhersage? Gemessen am
+    eingefrorenen Verlauf (50 Stände, 16:14–17:24 UTC)."""
+    review = analysis["projection_review"]
+    assert review is not None and len(review["points"]) == 50
+    assert review["final_share_pct"] == 51.55
+    # Ab dem ersten Bezirk auf Rohr — die bloße Auszählung erst ab 58.
+    assert review["projection_right_from"] == 1
+    assert review["counted_right_from"] == 58
+    assert review["counted_lead_changes"] == 3
+    assert review["max_error_after_min_pts"] == 0.95
+    assert review["first_chance"]["reports_received"] == 21 and review["first_chance"]["chance_pct"] == 99
+    assert review["chance_always_winner"] is True
+    last = review["points"][-1]
+    assert last["reports_received"] == 133 and last["chance_pct"] is None
+
+
 def test_die_rangliste_sortiert_und_filtert_auf_dem_server():
     swing = router.stichwahl_analyse_bezirke(sort="swing", area=None, pot=None)
     assert swing["total"] == 133 and len(swing["rows"]) == 133

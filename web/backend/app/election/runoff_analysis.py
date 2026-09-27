@@ -39,7 +39,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 from typing import Any
 
-from . import elections, mayor, mayor_districts
+from . import elections, mayor, mayor_districts, runoff_model
 from .mayor_districts import MayorDistrict
 
 #: Wahlbereiche in der Schreibweise der Stadt.
@@ -231,6 +231,7 @@ def analyse(slug: str) -> dict[str, Any] | None:
                           "swing_pts": block["swing_pts"], "growth": block["growth"]})
 
     flipped = [r for r in rows if r["flipped"]]
+    city_runoff_by_slug = {c.slug: c.share_pct for c in city_runoff.candidates}
     return {
         "election": {"slug": w.slug, "short_title": w.short_title, "date": w.date,
                      "first_round_slug": first_election.slug, "first_round_date": first_election.date},
@@ -248,7 +249,72 @@ def analyse(slug: str) -> dict[str, Any] | None:
             "runoff": {s: sum(1 for r in rows if r["leader_runoff"] == s) for s in slugs},
         },
         "flipped": {s: sum(1 for r in flipped if r["leader_runoff"] == s) for s in slugs},
+        "projection_review": _projection_review(w, a, city_runoff_by_slug.get(a)),
         "districts": sorted(rows, key=lambda r: r["number"]),
+    }
+
+
+def _projection_review(w: elections.Election, winner: str, final_share: float | None) -> dict[str, Any] | None:
+    """Wie gut lag die Hochrechnung des Abends? Aus dem eingefrorenen Verlauf
+    (``verlauf.json``, ein Stand je Meldung) gegen das Endergebnis.
+
+    Am Abend wurde mehrfach gefragt, wie die Vorhersage funktioniert und ob
+    man ihr trauen kann (Tim, 27.09.2026). Die Antwort ist eine Messung,
+    keine Behauptung: je Stand die hochgerechnete Zahl des Gewinners neben
+    der gezählten und der endgültigen. Das ist EIN Abend — eine Aussage über
+    die Güte des Modells im Allgemeinen ist das nicht, und die Seite sagt es.
+    """
+    if w.archive_folder is None or final_share is None:
+        return None
+    try:
+        history = json.loads((w.archive_folder / "verlauf.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if not isinstance(history, list) or not history:
+        return None
+
+    points = []
+    for h in history:
+        projected = h.get("projected_shares") or {}
+        counted = h.get("shares") or {}
+        projected_share = projected.get(winner)
+        projected_leader = max(projected, key=lambda slug: projected[slug]) if projected else None
+        points.append({
+            "at": h.get("at"),
+            "reports_received": int(h.get("reports_received") or 0),
+            "counted_share_pct": counted.get(winner),
+            "projected_share_pct": projected_share,
+            "error_pts": round(projected_share - final_share, 2) if projected_share is not None else None,
+            "chance_pct": h.get("chance_pct"),
+            "projected_leader": projected_leader,
+            "counted_leader": h.get("leader"),
+        })
+
+    def right_from(field: str) -> int | None:
+        """Ab welcher Bezirkszahl lag dieses Feld bis zum Schluss auf dem Gewinner?"""
+        since = None
+        for pt in points:
+            if pt[field] == winner:
+                since = pt["reports_received"] if since is None else since
+            else:
+                since = None
+        return since
+
+    counted_leaders = [pt["counted_leader"] for pt in points if pt["counted_leader"]]
+    after_min = [abs(pt["error_pts"]) for pt in points
+                 if pt["error_pts"] is not None and pt["reports_received"] >= runoff_model.MIN_DISTRICTS]
+    chances = [pt for pt in points if pt["chance_pct"] is not None]
+    return {
+        "final_share_pct": final_share,
+        "min_districts": runoff_model.MIN_DISTRICTS,
+        "chance_cap": runoff_model.CHANCE_CAP,
+        "projection_right_from": right_from("projected_leader"),
+        "counted_right_from": right_from("counted_leader"),
+        "counted_lead_changes": sum(1 for x, y in zip(counted_leaders, counted_leaders[1:]) if x != y),
+        "max_error_after_min_pts": round(max(after_min), 2) if after_min else None,
+        "first_chance": chances[0] if chances else None,
+        "chance_always_winner": all(pt["projected_leader"] == winner for pt in chances) if chances else None,
+        "points": points,
     }
 
 
