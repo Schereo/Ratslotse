@@ -6,7 +6,10 @@ import {
   chanceText,
   datumLang,
   fuehrend,
+  growthText,
   nachStimmen,
+  pointsText,
+  runoffDistrictsPath,
   verschiebung,
   vorsprung,
   zeitlage,
@@ -217,5 +220,21 @@ describe("Karte: Führung und Deckkraft", () => {
     expect(flaechenAlpha(70, 70, true)).toBeCloseTo(0.9);
     expect(flaechenAlpha(70, 70, false)).toBeCloseTo(0.45);
     expect(flaechenAlpha(52, 52, true)).toBeLessThan(0.6);
+  });
+});
+
+describe("Rückblick nach der Wahl", () => {
+  it("die Rangliste fragt den Server mit Sortierung und Filtern", () => {
+    expect(runoffDistrictsPath("share", null, null)).toBe("/wahlabend/stichwahl/analyse/bezirke?sort=share");
+    expect(runoffDistrictsPath("swing", 2, "urn")).toBe("/wahlabend/stichwahl/analyse/bezirke?sort=swing&area=2&pot=urn");
+  });
+  it("Wachstum als Faktor, Punkte mit Vorzeichen", () => {
+    expect(growthText(1.199)).toBe("×1,20");
+    expect(growthText(0.93)).toBe("×0,93");
+    expect(growthText(null)).toBe("–");
+    expect(pointsText(4.78)).toBe("+4,8");
+    expect(pointsText(-6.2)).toBe("−6,2");
+    expect(pointsText(0.01)).toBe("±0,0");
+    expect(pointsText(undefined)).toBe("–");
   });
 });

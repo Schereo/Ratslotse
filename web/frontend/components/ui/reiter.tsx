@@ -25,7 +25,7 @@
 // wandern, Pos1/Ende springen, Auswahl per Tastendruck. Nur der aktive Reiter
 // liegt im Tab-Fokus (`tabIndex`), sonst hangelt man sich mit Tab durch alle.
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 
 export type Reiter<T extends string> = { id: T; label: string };
@@ -39,6 +39,23 @@ export function ReiterLeiste<T extends string>({ reiter, aktiv, onChange, label,
   className?: string;
 }) {
   const leiste = useRef<HTMLDivElement>(null);
+  // Der aktive Reiter gehört ins Bild: Auf 375 px passen fünf Reiter (die
+  // Stichwahl nach der Wahl) nicht nebeneinander, und ein Link mit
+  // `?ansicht=hochrechnung` öffnete die Leiste mit dem gewählten Reiter
+  // außerhalb des Blicks. Nur waagerecht — die Seite selbst bleibt stehen.
+  useEffect(() => {
+    const innen = leiste.current;
+    const huelle = innen?.parentElement;
+    const knopf = innen?.querySelector<HTMLElement>(`#reiter-${CSS.escape(aktiv)}`);
+    if (!huelle || !knopf) return;
+    // Über die Bildschirmlage, nicht `offsetLeft` — das misst gegen den
+    // nächsten positionierten Vorfahren, und das ist nicht die Leiste.
+    const versatz = knopf.getBoundingClientRect().left - huelle.getBoundingClientRect().left + huelle.scrollLeft;
+    const links = versatz - 8;
+    const rechts = versatz + knopf.getBoundingClientRect().width + 8;
+    if (links < huelle.scrollLeft) huelle.scrollLeft = links;
+    else if (rechts > huelle.scrollLeft + huelle.clientWidth) huelle.scrollLeft = rechts - huelle.clientWidth;
+  }, [aktiv]);
 
   function taste(e: React.KeyboardEvent<HTMLButtonElement>, i: number) {
     const schritt = { ArrowRight: 1, ArrowLeft: -1 }[e.key];

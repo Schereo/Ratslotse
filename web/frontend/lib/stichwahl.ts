@@ -336,3 +336,38 @@ export function stichwahlBildPfad(format: BildFormat, probe: string | null, coun
   if (counted && /^\d+$/.test(counted)) q.set("counted", counted);
   return `/wahlabend/stichwahl/bild.png?${q.toString()}`;
 }
+
+/* ── Rückblick: die Stichwahl gegen den ersten Wahlgang ─────────────────── */
+
+export type RunoffAnalysis = ApiAntwort<"/wahlabend/stichwahl/analyse">;
+export type RunoffDistricts = ApiAntwort<"/wahlabend/stichwahl/analyse/bezirke">;
+export type RunoffDistrictRow = RunoffDistricts["rows"][number];
+export type RunoffProjectionReview = NonNullable<RunoffAnalysis["projection_review"]>;
+export type RunoffSort = "share" | "swing" | "turnout" | "number";
+export type RunoffPot = "urn" | "postal";
+
+export const RUNOFF_ANALYSIS_PATH = "/wahlabend/stichwahl/analyse";
+
+/** Die Rangliste — sortiert und gefiltert rechnet der Server. */
+export function runoffDistrictsPath(sort: RunoffSort, area: number | null, pot: RunoffPot | null): string {
+  const q = new URLSearchParams({ sort });
+  if (area !== null) q.set("area", String(area));
+  if (pot) q.set("pot", pot);
+  return `${RUNOFF_ANALYSIS_PATH}/bezirke?${q.toString()}`;
+}
+
+/** Wahlbereich in der Schreibweise der Stadt. */
+export const ROMAN: Record<number, string> = { 1: "I", 2: "II", 3: "III", 4: "IV", 5: "V", 6: "VI" };
+
+/** „×1,20" — Stimmen der Stichwahl je Stimme im ersten Wahlgang. */
+export function growthText(factor: number | null | undefined): string {
+  return factor === null || factor === undefined ? "–" : `×${factor.toFixed(2).replace(".", ",")}`;
+}
+
+/** Veränderung in Prozentpunkten mit Vorzeichen: „+4,8", „−1,2", „±0,0". */
+export function pointsText(pts: number | null | undefined): string {
+  if (pts === null || pts === undefined) return "–";
+  if (Math.abs(pts) < 0.05) return "±0,0";
+  const text = Math.abs(pts).toFixed(1).replace(".", ",");
+  return pts > 0 ? `+${text}` : `−${text}`;
+}

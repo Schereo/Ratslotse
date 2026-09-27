@@ -11,9 +11,9 @@
 // Auszählungsstand, der Vergleich mit dem ersten Wahlgang. Hier steht nur, was
 // die Anzeige daraus macht.
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { ChevronDown, Info } from "lucide-react";
 import { Aufklapp } from "@/components/aufklapp";
@@ -26,6 +26,14 @@ import { StichwahlKarte } from "@/components/wahlabend/stichwahl-karte";
 import { Mitfiebern, StichwahlMomente } from "@/components/wahlabend/stichwahl-momente";
 import { BezirksTicker, BildTeilen, Countdown } from "@/components/wahlabend/stichwahl-bausteine";
 import { StichwahlVerlauf } from "@/components/wahlabend/stichwahl-verlauf";
+import {
+  AreasView,
+  ComparisonView,
+  DistrictsView,
+  ProjectionView,
+  useRunoffAnalysis,
+} from "@/components/wahlabend/runoff-analysis";
+import { ReiterLeiste, ReiterTafel, type Reiter } from "@/components/ui/reiter";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useFeature } from "@/lib/features";
@@ -51,10 +59,27 @@ import {
   verschiebung,
   vorsprung,
   zeitlage,
+  type RunoffPot,
+  type RunoffSort,
   type Stichwahl,
   type StichwahlHochrechnung,
   type StichwahlKandidat,
 } from "@/lib/stichwahl";
+
+/** Die Ansichten nach der Wahl. Am Abend gab es keine Reiter — da war die
+ *  Seite eine Anzeigetafel. Sobald die Stichwahl eingefroren ist, trägt sie
+ *  den Rückblick (Tims Wunsch 27.09.2026). Die Ansicht steht in der URL
+ *  (`?ansicht=`), damit ein Link auf die Rangliste ein Link auf die
+ *  Rangliste ist — wie auf /wahlabend. */
+type View = "abend" | "vergleich" | "bereiche" | "bezirke" | "hochrechnung";
+const VIEWS: Reiter<View>[] = [
+  { id: "abend", label: "Der Abend" },
+  { id: "vergleich", label: "Vergleich" },
+  { id: "bereiche", label: "Wahlbereiche" },
+  { id: "bezirke", label: "Wahlbezirke" },
+  { id: "hochrechnung", label: "Hochrechnung" },
+];
+const RUNOFF_SORTS: readonly RunoffSort[] = ["share", "swing", "turnout", "number"];
 
 const KICKER = "font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground";
 
@@ -694,9 +719,22 @@ function RatslotseEinladung() {
 
 export function StichwahlView() {
   const params = useSearchParams();
+  const router = useRouter();
   const probe = params.get("probe");
   const counted = params.get("counted");
   const frei = useFeature("wahlabend");
+  const setQuery = useCallback(
+    (changes: Record<string, string | null>) => {
+      const q = new URLSearchParams(params.toString());
+      for (const [k, v] of Object.entries(changes)) {
+        if (v === null) q.delete(k);
+        else q.set(k, v);
+      }
+      const text = q.toString();
+      router.replace(text ? `?${text}` : "?", { scroll: false });
+    },
+    [params, router],
+  );
 
   const { data, isLoading, isError, dataUpdatedAt, refetch } = useQuery({
     queryKey: ["stichwahl", probe, counted],
@@ -725,6 +763,8 @@ export function StichwahlView() {
   }, [wahlSlug, slugs]);
   // Vor den frühen Ausstiegen — Hooks laufen in jeder Runde in derselben Reihenfolge.
   const frisch = useFrisch(data?.reports_received);
+  // Der Rückblick gibt es nur zu einer fertigen, echten Stichwahl — nie zur Probe.
+  const analysis = useRunoffAnalysis(frei && data?.phase === "complete" && data?.dataset !== "probe");
   useEffect(() => {
     if (data) document.title = fensterTitel(data);
   }, [data]);
@@ -754,10 +794,27 @@ export function StichwahlView() {
     );
   }
 
+  const viewParam = params.get("ansicht");
+  const view: View = VIEWS.find((v) => v.id === viewParam)?.id ?? "abend";
+  const sortParam = params.get("sort");
+  const runoffSort: RunoffSort = RUNOFF_SORTS.find((x) => x === sortParam) ?? "share";
+  const areaParam = params.get("bereich");
+  const runoffArea = areaParam && /^[1-6]$/.test(areaParam) ? Number(areaParam) : null;
+  const potParam = params.get("topf");
+  const runoffPot: RunoffPot | null = potParam === "urn" || potParam === "postal" ? potParam : null;
+
   const vorn = fuehrend(data.candidates);
   const fertig = data.phase === "complete";
   const zu = zeitlage(data.election.polls_close).phase === "laeuft";
   const entschieden = Boolean(data.projection?.decided);
+  // Was am Abend unter dem Duell stand — nach der Wahl der erste Reiter.
+  const abend = (
+    <>
+      {data.projection ? <Hochrechnung daten={data} p={data.projection} /> : null}
+      {data.phase !== "before" ? <StichwahlVerlauf daten={data} /> : null}
+      <StichwahlKarte daten={data} probe={probe} counted={counted} auswahl={kartenAuswahl} />
+    </>
+  );
 
   return (
     <>
@@ -772,7 +829,14 @@ export function StichwahlView() {
 
         <Tafel daten={data} aktualisiert={dataUpdatedAt} probe={probe} counted={counted} />
         <Meldung daten={data} />
-        <BezirksTicker daten={data} zeigen={(nr) => setKartenAuswahl((a) => ({ nr, n: (a?.n ?? 0) + 1 }))} />
+        <BezirksTicker
+          daten={data}
+          zeigen={(nr) => {
+            // Die Karte steht im Reiter „Der Abend" — dorthin, wenn ein anderer offen ist.
+            if (view !== "abend") setQuery({ ansicht: null });
+            setKartenAuswahl((a) => ({ nr, n: (a?.n ?? 0) + 1 }));
+          }}
+        />
         {/* Der Weg ins Tippspiel dieser Wahl — nur, solange getippt werden
             kann. Ab 18 Uhr gehört die Fläche dem Stand (Tim 23.09.2026: „ab
             18 Uhr weg"); die Rangliste steht dann leise im Fuß. Ob es ein
@@ -794,9 +858,52 @@ export function StichwahlView() {
         </p>
 
 
-        {data.projection ? <Hochrechnung daten={data} p={data.projection} /> : null}
-        {data.phase !== "before" ? <StichwahlVerlauf daten={data} /> : null}
-        <StichwahlKarte daten={data} probe={probe} counted={counted} auswahl={kartenAuswahl} />
+        {analysis.data ? (
+          <>
+            <ReiterLeiste
+              reiter={VIEWS}
+              aktiv={view}
+              onChange={(id) => setQuery({ ansicht: id === "abend" ? null : id })}
+              label="Ansichten der Stichwahl"
+              className="mt-8"
+            />
+            <ReiterTafel id="abend" aktiv={view}>
+              {abend}
+            </ReiterTafel>
+            <ReiterTafel id="vergleich" aktiv={view}>
+              <ComparisonView
+                analysis={analysis.data}
+                showDistricts={() => setQuery({ ansicht: "bezirke", sort: "swing", bereich: null, topf: null })}
+              />
+            </ReiterTafel>
+            <ReiterTafel id="bereiche" aktiv={view}>
+              <AreasView
+                analysis={analysis.data}
+                showArea={(n) => setQuery({ ansicht: "bezirke", bereich: String(n), topf: null })}
+              />
+            </ReiterTafel>
+            <ReiterTafel id="bezirke" aktiv={view}>
+              <DistrictsView
+                analysis={analysis.data}
+                sort={runoffSort}
+                area={runoffArea}
+                pot={runoffPot}
+                onChange={(next) =>
+                  setQuery({
+                    sort: next.sort === "share" ? null : next.sort,
+                    bereich: next.area === null ? null : String(next.area),
+                    topf: next.pot,
+                  })
+                }
+              />
+            </ReiterTafel>
+            <ReiterTafel id="hochrechnung" aktiv={view}>
+              <ProjectionView analysis={analysis.data} />
+            </ReiterTafel>
+          </>
+        ) : (
+          abend
+        )}
 
         <RatslotseEinladung />
         <Mitfiebern daten={data} favorit={favorit} setFavorit={setFavorit} />
