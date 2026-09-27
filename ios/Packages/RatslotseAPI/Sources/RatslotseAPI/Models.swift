@@ -812,9 +812,13 @@ public struct TimelinePoint: Codable, Sendable, Hashable, Identifiable {
     /// Kanonisches Ergebnis; `none`, wenn die Stadt keins ausweist.
     public let outcome: String
     public let kind: String
+    /// Kurztitel für die Ablesung unter der Zeitleiste. Leer bei Servern vor
+    /// #1498 und bei Beständen, die seither nicht neu gebaut wurden — die
+    /// Ablesung nennt dann die Art der Vorlage.
+    public let title: String
 
     enum CodingKeys: String, CodingKey {
-        case city, date, outcome, kind
+        case city, date, outcome, kind, title
         case paperID = "paper_id"
         case bodyID = "body_id"
     }
@@ -827,16 +831,18 @@ public struct TimelinePoint: Codable, Sendable, Hashable, Identifiable {
         date = try v.decodeIfPresent(String.self, forKey: .date)
         outcome = try v.decodeIfPresent(String.self, forKey: .outcome) ?? "none"
         kind = try v.decodeIfPresent(String.self, forKey: .kind) ?? "other"
+        title = try v.decodeIfPresent(String.self, forKey: .title) ?? ""
     }
 
     public init(paperID: String, bodyID: String, city: String, date: String?,
-                outcome: String, kind: String) {
+                outcome: String, kind: String, title: String = "") {
         self.paperID = paperID
         self.bodyID = bodyID
         self.city = city
         self.date = date
         self.outcome = outcome
         self.kind = kind
+        self.title = title
     }
 }
 
