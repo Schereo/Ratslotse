@@ -24,7 +24,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.VPS_SSH_PORT }}
           proxy_host: ${{ secrets.VPS_PROXY_HOST }}
-          proxy_username: ${{ secrets.VPS_USER }}
+          proxy_username: ${{ secrets.VPS_PROXY_USER }}
           proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
           proxy_port: ${{ secrets.VPS_SSH_PORT }}
           # Erstlauf: ~31 Stadtteile + ~12 Themen, je ein LLM-Aufruf + Verify.
