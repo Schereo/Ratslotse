@@ -59,20 +59,20 @@ def test_eingefrorene_ob_wahl_ist_fertig_und_stimmt_in_sich(ordner: Path):
     Bezirke ergeben zusammen die Stadtzeile — je Kandidatur."""
     from app.election import elections, mayor, mayor_districts
 
-    quelle = json.loads((ordner / "quelle.json").read_text(encoding="utf-8"))
-    assert set(quelle) >= {"wahl", "url", "presentation_id", "city_id", "stand", "abgerufen"}
-    assert quelle["stand"] in ("vorlaeufig", "amtlich")
-    w = elections.get(quelle["wahl"])
+    source = json.loads((ordner / "quelle.json").read_text(encoding="utf-8"))
+    assert set(source) >= {"wahl", "url", "presentation_id", "city_id", "stand", "abgerufen"}
+    assert source["stand"] in ("vorlaeufig", "amtlich")
+    w = elections.get(source["wahl"])
     assert w is not None and w.archive_folder == ordner, "Registry und Ordner zeigen nicht aufeinander"
     known = mayor.candidates(w)
-    stadt = mayor.parse(json.loads((ordner / "praesentation-ob.json").read_text(encoding="utf-8")), known)
-    assert stadt is not None and stadt.phase == "complete"
-    bezirke = mayor_districts.parse_overview(
+    city = mayor.parse(json.loads((ordner / "praesentation-ob.json").read_text(encoding="utf-8")), known)
+    assert city is not None and city.phase == "complete"
+    districts = mayor_districts.parse_overview(
         json.loads((ordner / "praesentation-ob-wahlbezirke.json").read_text(encoding="utf-8")),
         {c.slug: c.name for c in known})
-    assert len(bezirke) == stadt.reports_expected and all(d.counted for d in bezirke)
-    for c in stadt.candidates:
-        assert sum(d.votes.get(c.slug) or 0 for d in bezirke) == c.votes, c.slug
+    assert len(districts) == city.reports_expected and all(d.counted for d in districts)
+    for c in city.candidates:
+        assert sum(d.votes.get(c.slug) or 0 for d in districts) == c.votes, c.slug
 
 
 @pytest.mark.parametrize("ordner", ORDNER, ids=lambda p: p.name)

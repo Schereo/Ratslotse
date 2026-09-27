@@ -227,47 +227,48 @@ def _meta(basis: str, stand: str, verteilung: list[dict], votemanager_sitze: dic
     }
 
 
-def _ob_einfrieren(session: requests.Session, w: elections.Election, ziel: Path, stand: str) -> None:
+def _freeze_mayor(session: requests.Session, w: elections.Election, target: Path, status: str) -> None:
     """Eine OB-Wahl (auch eine Stichwahl) aus der Ergebnisdarstellung — mit
     Gegenprobe, bevor etwas liegen bleibt: Eine halb ausgezählte Wahl als
     Rückblick wäre schlimmer als keiner."""
-    basis = mayor.base_url(w)
-    wahl_id, stadt_id = mayor.resolve_ids(session, basis, w)
-    if wahl_id is None:
+    base = mayor.base_url(w)
+    election_id, city_id = mayor.resolve_ids(session, base, w)
+    if election_id is None:
         raise SystemExit(f"Abbruch: „{w.slug}“ steht nicht in termin.json.")
-    api = w.source.api_path(wahl_id)
-    ergebnis = json.loads(_hol(session, f"{basis}{api}/ergebnis_{stadt_id}_0.json"))
-    wahl_json = json.loads(_hol(session, f"{basis}{api}/wahl.json"))
-    ebene = mayor_districts.level_id(wahl_json)
-    if ebene is None:
+    api = w.source.api_path(election_id)
+    result = json.loads(_hol(session, f"{base}{api}/ergebnis_{city_id}_0.json"))
+    election_json = json.loads(_hol(session, f"{base}{api}/wahl.json"))
+    level = mayor_districts.level_id(election_json)
+    if level is None:
         raise SystemExit("Abbruch: wahl.json nennt keine Wahlbezirks-Ebene.")
-    uebersicht = json.loads(_hol(session, f"{basis}{mayor_districts.overview_path(api, ebene)}"))
+    overview = json.loads(_hol(session, f"{base}{mayor_districts.overview_path(api, level)}"))
 
     known = mayor.candidates(w)
-    stadt = mayor.parse(ergebnis, known)
-    if stadt is None or stadt.phase != "complete":
+    city = mayor.parse(result, known)
+    if city is None or city.phase != "complete":
         raise SystemExit(f"Abbruch: „{w.slug}“ ist nicht fertig ausgezählt "
-                         f"({stadt.reports_received if stadt else 0} Meldungen).")
-    bezirke = mayor_districts.parse_overview(uebersicht, {c.slug: c.name for c in known})
-    offen = [d.number for d in bezirke if not d.counted]
-    if len(bezirke) != stadt.reports_expected or offen:
-        raise SystemExit(f"Abbruch: {len(bezirke)} Bezirke statt {stadt.reports_expected}, offen: {offen[:5]}")
-    for c in stadt.candidates:
-        summe = sum(d.votes.get(c.slug) or 0 for d in bezirke)
-        if summe != c.votes:
-            raise SystemExit(f"Abbruch: {c.name} — Bezirke {summe}, Stadt {c.votes}.")
-    print("  Gegenprobe: " + ", ".join(f"{c.name} {c.votes}" for c in stadt.candidates)
-          + f" — {len(bezirke)} Bezirke, Summe = Stadt")
+                         f"({city.reports_received if city else 0} Meldungen).")
+    districts = mayor_districts.parse_overview(overview, {c.slug: c.name for c in known})
+    still_open = [d.number for d in districts if not d.counted]
+    if len(districts) != city.reports_expected or still_open:
+        raise SystemExit(f"Abbruch: {len(districts)} Bezirke statt {city.reports_expected}, "
+                         f"offen: {still_open[:5]}")
+    for c in city.candidates:
+        total = sum(d.votes.get(c.slug) or 0 for d in districts)
+        if total != c.votes:
+            raise SystemExit(f"Abbruch: {c.name} — Bezirke {total}, Stadt {c.votes}.")
+    print("  Gegenprobe: " + ", ".join(f"{c.name} {c.votes}" for c in city.candidates)
+          + f" — {len(districts)} Bezirke, Summe = Stadt")
 
-    for name, payload in (("praesentation-ob.json", ergebnis), ("praesentation-ob-wahl.json", wahl_json),
-                          ("praesentation-ob-wahlbezirke.json", uebersicht)):
-        (ziel / name).write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    for name, payload in (("praesentation-ob.json", result), ("praesentation-ob-wahl.json", election_json),
+                          ("praesentation-ob-wahlbezirke.json", overview)):
+        (target / name).write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         print(f"  {name}")
-    _json_sichern(session, basis + mayor.TERMIN_PATH, ziel / "termin.json")
-    quelle = {"wahl": w.slug, "url": f"{basis}/praesentation/", "presentation_id": wahl_id, "city_id": stadt_id,
-              "stand": stand, "abgerufen": datetime.now(timezone.utc).isoformat(timespec="seconds")}
-    (ziel / "quelle.json").write_text(json.dumps(quelle, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(f"  quelle.json  (Stand: {stand})")
+    _json_sichern(session, base + mayor.TERMIN_PATH, target / "termin.json")
+    source = {"wahl": w.slug, "url": f"{base}/praesentation/", "presentation_id": election_id, "city_id": city_id,
+              "stand": status, "abgerufen": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+    (target / "quelle.json").write_text(json.dumps(source, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print(f"  quelle.json  (Stand: {status})")
 
 
 def main() -> int:
@@ -285,18 +286,18 @@ def main() -> int:
         w = elections.get(args.ob)
         if w is None or w.kind != "mayor":
             raise SystemExit(f"Abbruch: „{args.ob}“ ist keine OB-Wahl in kommunalwahl/wahlen/.")
-        ziel = (WURZEL / args.ziel).resolve()
-        ziel.mkdir(parents=True, exist_ok=True)
-        print(f"Quelle: {mayor.base_url(w)}\nZiel:   {ziel}\n\nErgebnisdarstellung (JSON):")
+        target = (WURZEL / args.ziel).resolve()
+        target.mkdir(parents=True, exist_ok=True)
+        print(f"Quelle: {mayor.base_url(w)}\nZiel:   {target}\n\nErgebnisdarstellung (JSON):")
         with requests.Session() as session:
             session.headers.update({"User-Agent": votemanager.UA})
-            _ob_einfrieren(session, w, ziel, args.stand)
+            _freeze_mayor(session, w, target, args.stand)
         if args.verlauf:
-            quelle = Path(args.verlauf)
-            if not quelle.is_file():
-                raise SystemExit(f"Abbruch: {quelle} gibt es nicht.")
-            shutil.copyfile(quelle, ziel / "verlauf.json")
-            print(f"\nVerlauf:\n  verlauf.json ({len(json.loads(quelle.read_text(encoding='utf-8')))} Punkte)")
+            history = Path(args.verlauf)
+            if not history.is_file():
+                raise SystemExit(f"Abbruch: {history} gibt es nicht.")
+            shutil.copyfile(history, target / "verlauf.json")
+            print(f"\nVerlauf:\n  verlauf.json ({len(json.loads(history.read_text(encoding='utf-8')))} Punkte)")
         return 0
 
     # Dieselbe Regel, nach der ``reference.load`` die Meta-Datei findet — nicht
