@@ -90,7 +90,7 @@ jobs:
           printf '%s\n' \
             'Host edge' \
             "  HostName ${{ secrets.VPS_PROXY_HOST }}" \
-            "  User ${{ secrets.VPS_USER }}" \
+            "  User ${{ secrets.VPS_PROXY_USER }}" \
             "  Port ${{ secrets.VPS_SSH_PORT }}" \
             '  IdentityFile ~/.ssh/id_ed25519' \
             '  StrictHostKeyChecking no' \
@@ -267,7 +267,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.VPS_SSH_PORT }}
           proxy_host: ${{ secrets.VPS_PROXY_HOST }}
-          proxy_username: ${{ secrets.VPS_USER }}
+          proxy_username: ${{ secrets.VPS_PROXY_USER }}
           proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
           proxy_port: ${{ secrets.VPS_SSH_PORT }}
           script: |
