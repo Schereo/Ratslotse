@@ -308,12 +308,12 @@ class SitzungenMixin(StoreBasis):
         ``today`` (ein ``date``) setzt den Stichtag — der Kalender-Feed rechnet
         mit seinem eigenen „jetzt" und muss dasselbe hier hineinreichen, sonst
         stimmen Feed und Auswahl nur am Tag des Tests überein."""
-        today = (today or date.today()).isoformat()
+        stichtag = (today or date.today()).isoformat()
         rows = self._conn.execute(
             f"""SELECT * {self._UPCOMING_FROM}
                 ORDER BY session_date ASC, session_time ASC
                 LIMIT ? OFFSET ?""",
-            (today, today, limit, offset),
+            (stichtag, stichtag, limit, offset),
         ).fetchall()
         return [dict(r) for r in rows]
 
