@@ -18,11 +18,11 @@ from __future__ import annotations
 import json
 import logging
 from datetime import datetime, timezone
-from decimal import ROUND_HALF_UP, Decimal
 from functools import lru_cache
 
 from ..antworten import ElectionDistrictList, ElectionNight, ElectionTopEntry
 from . import elections, reference, register
+from .rounding import half_up
 from .votemanager import Snapshot, parse
 
 _log = logging.getLogger("ratslotse.web.wahlabend")
@@ -222,13 +222,9 @@ def _mayor_top(wahl: elections.Election, n: int) -> list[ElectionTopEntry]:
 
 
 def _eine_stelle(pct: float | None) -> float | None:
-    """Kaufmännisch auf eine Stelle — über den Dezimaltext, nicht die
-    Gleitkommazahl: 51,55 % ist binär 51,5499…, und ``f"{x:.1f}"`` wie auch
-    ``toFixed(1)`` im Browser machten daraus 51,5. Gemessen an der Stichwahl
-    27.09.2026, amtlich 51,55 % für Rohr."""
-    if pct is None:
-        return None
-    return float(Decimal(str(pct)).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP))
+    """Kaufmännisch auf eine Stelle — derselbe Weg wie überall auf den
+    Wahlseiten (``rounding.half_up``): 51,55 % wird 51,6, nicht 51,5."""
+    return None if pct is None else half_up(pct)
 
 
 def _mayor_summary(wahl: elections.Election) -> str | None:

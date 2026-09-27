@@ -69,6 +69,7 @@ from .image import (
     _Sheet,
     semicircle,
 )
+from .rounding import half_up, pct_text
 
 _log = logging.getLogger("ratslotse.web.wahlabend")
 
@@ -259,13 +260,11 @@ def select(data: ElectionNight, slug: str, area: int | None, position: int | Non
 # ------------------------------------------------------------------ Texte
 
 def _pct(value: float | None) -> str:
-    if value is None:
-        return "–"
-    return f"{value:.1f}".replace(".", ",") + " %"
+    return pct_text(value)
 
 
 def _signed(value: float, digits: int = 1) -> str:
-    text = f"{abs(value):.{digits}f}".replace(".", ",")
+    text = f"{half_up(abs(value), digits):.{digits}f}".replace(".", ",")
     return ("+" if value > 0 else "−") + text
 
 
@@ -275,7 +274,7 @@ def _share_delta(party: ElectionParty, vorwahl: str) -> str:
         return ""
     if before is None:
         return "neu angetreten"
-    diff = round(now - before, 1)
+    diff = half_up(now - before)
     if abs(diff) < 0.05:
         return f"wie {vorwahl}"
     return f"{_signed(diff)} Punkte zu {vorwahl}"

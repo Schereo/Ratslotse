@@ -24,6 +24,7 @@ import json
 from datetime import date
 
 from . import archive
+from .rounding import pct_text
 
 ELECTION = "ratswahl-2026"
 AREA = ("topic", "ratswahl-2026")
@@ -43,7 +44,7 @@ def _key(*parts: object) -> str:
 
 
 def _pct(v: float) -> str:
-    return f"{v:.1f}".replace(".", ",") + " %"
+    return pct_text(v)
 
 
 def _pick_pairs(values: dict[str, float], n: int, salt: str) -> list[tuple[str, str]]:

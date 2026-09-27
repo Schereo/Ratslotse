@@ -37,6 +37,7 @@ from .image import (
     _number,
     _Sheet,
 )
+from .rounding import pct_text
 from .share import CARD, TRACK, _ellipsis, _fit, _lines, _lotti, _rounded, _wrap
 
 FORMATS: tuple[str, ...] = ("beitrag", "story", "quer")
@@ -125,7 +126,7 @@ LAYOUTS: dict[str, Layout] = {"beitrag": BEITRAG, "story": STORY, "quer": QUER}
 # ------------------------------------------------------------------ Texte
 
 def _pct(value: float | None) -> str:
-    return "–" if value is None else f"{value:.1f} %".replace(".", ",")
+    return pct_text(value)
 
 
 def _nachname(name: str) -> str:

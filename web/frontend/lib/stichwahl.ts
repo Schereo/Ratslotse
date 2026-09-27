@@ -10,6 +10,7 @@
  * daraus macht (web/frontend/CLAUDE.md).
  */
 import type { ApiAntwort } from "./vertrag";
+import { fixed } from "./wahlabend";
 export { datumLang } from "./wahlabend";
 
 export type Stichwahl = ApiAntwort<"/wahlabend/stichwahl">;
@@ -169,7 +170,7 @@ export function fensterTitel(daten: Stichwahl): string {
 }
 
 function prozentKurz(v: number | null): string {
-  return v === null ? "–" : `${v.toFixed(1).replace(".", ",")}`;
+  return v === null ? "–" : fixed(v);
 }
 
 /* ── Die Karte der Stichwahl (docs/plan-stichwahl-spannung.md S5) ───────── */
@@ -316,7 +317,7 @@ export function aufholText(p: StichwahlHochrechnung, kandidaten: readonly Stichw
   if (p.decided || !p.trailing || p.needed_share_pct === null) return null;
   const k = kandidaten.find((x) => x.slug === p.trailing);
   const wer = k ? nachname(k) : p.trailing;
-  const zahl = (v: number) => `${v.toFixed(1).replace(".", ",")} %`;
+  const zahl = (v: number) => `${fixed(v)} %`;
   if (p.needed_share_pct > 100) {
     return `Nach der Hochrechnung könnte ${wer} den Rückstand nicht mehr aufholen: Dafür wären mehr Stimmen nötig, als das Modell in den offenen Bezirken insgesamt erwartet.`;
   }
@@ -361,13 +362,13 @@ export const ROMAN: Record<number, string> = { 1: "I", 2: "II", 3: "III", 4: "IV
 
 /** „×1,20" — Stimmen der Stichwahl je Stimme im ersten Wahlgang. */
 export function growthText(factor: number | null | undefined): string {
-  return factor === null || factor === undefined ? "–" : `×${factor.toFixed(2).replace(".", ",")}`;
+  return factor === null || factor === undefined ? "–" : `×${fixed(factor, 2)}`;
 }
 
 /** Veränderung in Prozentpunkten mit Vorzeichen: „+4,8", „−1,2", „±0,0". */
 export function pointsText(pts: number | null | undefined): string {
   if (pts === null || pts === undefined) return "–";
   if (Math.abs(pts) < 0.05) return "±0,0";
-  const text = Math.abs(pts).toFixed(1).replace(".", ",");
+  const text = fixed(Math.abs(pts));
   return pts > 0 ? `+${text}` : `−${text}`;
 }

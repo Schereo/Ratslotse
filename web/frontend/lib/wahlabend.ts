@@ -38,16 +38,34 @@ export function zahl(n: number | null | undefined): string {
   return n === null || n === undefined ? "–" : ZAHL.format(n);
 }
 
+/** Kaufmännisch gerundet, mit Komma: `fixed(51.55) === "51,6"`.
+ *
+ *  `toFixed` rundet die GLEITKOMMAZAHL, und 51,55 ist binär 51,5499… — am
+ *  Abend der Stichwahl (27.09.2026) stand deshalb „Rohr 51,5 %" auf der
+ *  Seite, amtlich waren es 51,55 %. Verschoben wird hier über den Text der
+ *  Zahl (`"51.55e1"` ist exakt 515,5), also über genau die Ziffern, die aus
+ *  der Ergebnisdarstellung kamen. Das Backend rundet dasselbe mit `Decimal`
+ *  (`election/rounding.py`). */
+export function fixed(n: number, digits = 1): string {
+  // Erst das Rauschen einer Rechnung glätten: 51,55 − 30,5 ist 21,0499…97.
+  // Zwölf gültige Stellen tragen jede Zahl dieser Seiten, das Rauschen
+  // liegt dahinter.
+  const clean = Number.isFinite(n) ? Number(n.toPrecision(12)) : n;
+  const shifted = Math.round(Number(`${Math.abs(clean)}e${digits}`));
+  const rounded = Number.isFinite(shifted) ? Math.sign(clean) * Number(`${shifted}e-${digits}`) : clean;
+  return (Object.is(rounded, -0) ? 0 : rounded).toFixed(digits).replace(".", ",");
+}
+
 export function prozent(n: number | null | undefined, stellen = 1): string {
   if (n === null || n === undefined) return "–";
-  return `${n.toFixed(stellen).replace(".", ",")} %`;
+  return `${fixed(n, stellen)} %`;
 }
 
 /** Abstand in Prozentpunkten, mit Vorzeichen: „+2,4" / „−1,0"; null ohne Vergleich. */
 export function delta(jetzt: number | null | undefined, vorher: number | null | undefined): string | null {
   if (jetzt === null || jetzt === undefined || vorher === null || vorher === undefined) return null;
   const d = jetzt - vorher;
-  const text = Math.abs(d).toFixed(1).replace(".", ",");
+  const text = fixed(Math.abs(d));
   if (Math.abs(d) < 0.05) return "±0,0";
   return d > 0 ? `+${text}` : `−${text}`;
 }
