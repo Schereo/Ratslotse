@@ -162,7 +162,10 @@ def _merken(schluessel: set[str]) -> None:
                      GESEHEN, exc)
 
 
-def main() -> dict:
+def main(heute: date | None = None) -> dict:
+    """``heute`` setzt den Stichtag für beide Prüfungen; ohne Angabe gilt das
+    echte Datum. Die Tests brauchen ihn, damit ein realer Wahltag in der
+    Nähe (die „kurz vor dem Wahltag"-Warnung) nicht in ihre Zählung fällt."""
     from kern.alerts import notify_admin
 
     url = termine_url()
@@ -174,8 +177,8 @@ def main() -> dict:
         _log.warning("Wahltermine: %s nicht erreichbar (%s)", url, exc)
         return {"termine": 0, "unbekannt": 0, "gemeldet": 0, "fehler": type(exc).__name__}
 
-    neu = unbekannt(termine)
-    ids = fehlende_ids()
+    neu = unbekannt(termine, heute=heute)
+    ids = fehlende_ids(heute=heute)
     vorher = _gesehen()
     meldungen: list[str] = []
     jetzt_gesehen = set(vorher)
