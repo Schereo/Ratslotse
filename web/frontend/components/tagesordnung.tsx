@@ -18,7 +18,8 @@
 import { istVorschauKlick } from "@/components/beschluss-vorschau";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { CalendarPlus, ChevronRight, Flame, Paperclip, Users } from "lucide-react";
+import { CalendarPlus, ChevronRight, ExternalLink, Flame, Paperclip, Users } from "lucide-react";
+import { O1_STREAM_URL } from "@/lib/live";
 import {
   AgendaAenderung, AgendaRowItem, AgendaItem, CouncilDecision, CouncilSession, DecisionOutcome, SessionDetail,
   VideoResult,
@@ -129,7 +130,7 @@ export function kurzfassung(it: AgendaRowItem): string | null {
   return it.social_text || it.summary || null;
 }
 
-export function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flash, ksinr, bookmarkable = true, shareable = true, videoResult, live = false, onVorschau, gewaehlt = false }: {
+export function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flash, ksinr, bookmarkable = true, shareable = true, videoResult, live = false, liveSpeaker, onVorschau, gewaehlt = false }: {
   it: AgendaRowItem; query: string; outcome?: DecisionOutcome | null;
   decisionId?: number; myTopic?: string;
   ksinr?: number;
@@ -151,6 +152,9 @@ export function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flas
   /** Läuft GERADE — aus der Live-Verfolgung der Übertragung (`lib/live`,
    *  `liveItemKeys`). Rote Marke an der Zeile, weiche rote Tönung. */
   live?: boolean;
+  /** Wer an diesem Punkt gerade spricht, fertig formuliert
+   *  (`liveSpeakerText`) — steht neben der Marke „Läuft gerade“. */
+  liveSpeaker?: string | null;
   /** Breite Schirme: Ein schlichter Klick zeigt den Beschluss in der Vorschau
    *  daneben, statt die Seite zu wechseln (components/beschluss-vorschau.tsx).
    *  Cmd-/Strg-Klick öffnet weiter die volle Seite. */
@@ -176,12 +180,26 @@ export function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flas
         {live && (
           /* Dieselbe Bauform wie der LIVE-Chip an der Sitzung, nur an der
              Zeile: Der Punkt ist gerade dran — nach dem Stand der Übertragung. */
-          <span className="mb-0.5 flex items-center gap-1.5 font-mono text-[9.5px] font-semibold uppercase tracking-[0.11em] text-red-600 dark:text-red-400">
+          <span className="mb-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 font-mono text-[9.5px] font-semibold uppercase tracking-[0.11em] text-red-600 dark:text-red-400">
             <span className="relative flex h-1.5 w-1.5" aria-hidden>
               <span className="absolute inset-0 rounded-full bg-red-500 motion-safe:animate-ping" />
               <span className="relative h-1.5 w-1.5 rounded-full bg-red-500" />
             </span>
             Läuft gerade
+            {liveSpeaker && (
+              <span className="font-sans text-[11px] font-medium normal-case tracking-normal text-foreground/80">
+                <span className="hidden sm:inline">· </span>{liveSpeaker}
+              </span>
+            )}
+            {/* Schnell rüber in die Übertragung — nur der Stadtrat hat eine,
+                und nur dort gibt es eine Live-Marke. Die Trennpunkte nur in
+                der Breite: Mobil bricht die Zeile um, und ein Punkt am
+                Zeilenanfang sieht nach Aufzählung aus. */}
+            <a href={O1_STREAM_URL} target="_blank" rel="noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-0.5 font-sans text-[11px] font-medium normal-case tracking-normal text-red-700 hover:underline dark:text-red-400">
+              <span className="hidden sm:inline">·&nbsp;</span>Zum O1-Stream <ExternalLink className="h-3 w-3" aria-hidden />
+            </a>
           </span>
         )}
         <p className="text-sm text-foreground"><Highlight text={it.title} query={query} /></p>
