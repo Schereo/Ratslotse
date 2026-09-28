@@ -40,6 +40,7 @@ from functools import lru_cache
 from typing import Any
 
 from . import elections, mayor, mayor_districts, runoff_model
+from .rounding import EXACT_DIGITS, exact_pct
 from .mayor_districts import MayorDistrict
 
 #: Wahlbereiche in der Schreibweise der Stadt.
@@ -58,7 +59,7 @@ class _Pair:
 
 
 def _pct(part: float, whole: float) -> float | None:
-    return round(100 * part / whole, 2) if whole else None
+    return exact_pct(part, whole)
 
 
 def _share(d: MayorDistrict, slug: str, other: str) -> float | None:
@@ -93,9 +94,9 @@ def _block(pairs: list[_Pair], slugs: tuple[str, str]) -> dict[str, Any]:
         out[f"share_{rnd}_pct"] = {a: _pct(va, va + vb), b: _pct(vb, va + vb)}
     for s in slugs:
         before = out["votes_first"][s]
-        out["growth"][s] = round(out["votes_runoff"][s] / before, 3) if before else None
+        out["growth"][s] = round(out["votes_runoff"][s] / before, EXACT_DIGITS) if before else None
     first, runoff = out["share_first_pct"][a], out["share_runoff_pct"][a]
-    out["swing_pts"] = round(runoff - first, 2) if first is not None and runoff is not None else None
+    out["swing_pts"] = round(runoff - first, EXACT_DIGITS) if first is not None and runoff is not None else None
     out["voters_first"] = _total(pairs, "voters", "first")
     out["voters_runoff"] = _total(pairs, "voters", "runoff")
     return out
@@ -111,7 +112,7 @@ def _correlation(xs: list[float], ys: list[float]) -> float | None:
     if len(xs) < 3:
         return None
     try:
-        return round(statistics.correlation(xs, ys), 2)
+        return round(statistics.correlation(xs, ys), EXACT_DIGITS)
     except statistics.StatisticsError:
         return None
 
@@ -205,12 +206,12 @@ def analyse(slug: str) -> dict[str, Any] | None:
             "number": p.runoff.number, "name": p.runoff.name, "area": p.runoff.area, "postal": p.runoff.postal,
             "votes_first": {s: p.first.votes.get(s) for s in slugs},
             "votes_runoff": {s: p.runoff.votes.get(s) for s in slugs},
-            "share_first_pct": round(s1, 2) if s1 is not None else None,
-            "share_runoff_pct": round(s2, 2) if s2 is not None else None,
-            "swing_pts": round(s2 - s1, 2) if s1 is not None and s2 is not None else None,
+            "share_first_pct": round(s1, EXACT_DIGITS) if s1 is not None else None,
+            "share_runoff_pct": round(s2, EXACT_DIGITS) if s2 is not None else None,
+            "swing_pts": round(s2 - s1, EXACT_DIGITS) if s1 is not None and s2 is not None else None,
             "voters_first": p.first.voters, "voters_runoff": p.runoff.voters,
             "turnout_first_pct": t1, "turnout_runoff_pct": t2,
-            "turnout_change_pts": round(t2 - t1, 2) if t1 is not None and t2 is not None else None,
+            "turnout_change_pts": round(t2 - t1, EXACT_DIGITS) if t1 is not None and t2 is not None else None,
             "leader_first": leader_first, "leader_runoff": leader_runoff,
             "flipped": leader_first is not None and leader_runoff is not None and leader_first != leader_runoff,
         })
@@ -284,7 +285,7 @@ def _projection_review(w: elections.Election, winner: str, final_share: float | 
             "reports_received": int(h.get("reports_received") or 0),
             "counted_share_pct": counted.get(winner),
             "projected_share_pct": projected_share,
-            "error_pts": round(projected_share - final_share, 2) if projected_share is not None else None,
+            "error_pts": round(projected_share - final_share, EXACT_DIGITS) if projected_share is not None else None,
             "chance_pct": h.get("chance_pct"),
             "projected_leader": projected_leader,
             "counted_leader": h.get("leader"),
@@ -311,7 +312,7 @@ def _projection_review(w: elections.Election, winner: str, final_share: float | 
         "projection_right_from": right_from("projected_leader"),
         "counted_right_from": right_from("counted_leader"),
         "counted_lead_changes": sum(1 for x, y in zip(counted_leaders, counted_leaders[1:]) if x != y),
-        "max_error_after_min_pts": round(max(after_min), 2) if after_min else None,
+        "max_error_after_min_pts": round(max(after_min), EXACT_DIGITS) if after_min else None,
         "first_chance": chances[0] if chances else None,
         "chance_always_winner": all(pt["projected_leader"] == winner for pt in chances) if chances else None,
         "points": points,

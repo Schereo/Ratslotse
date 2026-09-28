@@ -531,15 +531,15 @@ def jetzt_abfragen(_admin: dict = Depends(require_admin), runde: Round = Depends
             if wert is not None:
                 zeilen.append({"slug": p["slug"], "seats": wert})
         if night["phase"] != "before":
-            turnout = night["totals"]["turnout_pct"]
+            turnout = service.official_pct(night["totals"]["turnout_pct"])
     if b.ob_wahl is not None:
         ob = mayor.fetch(w=b.ob_wahl)
         if ob.phase != "before":
             for c in ob.candidates:
                 if c.share_pct is not None:
-                    zeilen.append({"slug": f"ob:{c.slug}", "pct": c.share_pct})
+                    zeilen.append({"slug": f"ob:{c.slug}", "pct": service.official_pct(c.share_pct)})
             if not b.sitzwahl:
-                turnout = ob.turnout_pct
+                turnout = service.official_pct(ob.turnout_pct)
     if turnout is not None:
         zeilen.append({"slug": service.TURNOUT_SLUG, "pct": turnout})
     if zeilen:

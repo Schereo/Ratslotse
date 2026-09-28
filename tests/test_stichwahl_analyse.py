@@ -44,7 +44,9 @@ def test_der_gewinner_steht_vorn_und_alle_anteile_sind_aus_seiner_sicht(analysis
     assert [c["slug"] for c in analysis["candidates"]] == ["rohr", "prange"]
     rohr = analysis["candidates"][0]
     assert (rohr["votes_first"], rohr["votes_runoff"]) == (25852, 30792)  # 1. Wg amtlich (16.09.)
-    assert (rohr["share_first_pct"], rohr["share_runoff_pct"]) == (30.54, 51.55)
+    # Exakt aus den Stimmen — die Stadt schreibt 30,54 und 51,55 (gerundet).
+    assert rohr["share_first_pct"] == pytest.approx(100 * 25852 / 84660, abs=1e-6)
+    assert rohr["share_runoff_pct"] == pytest.approx(100 * 30792 / 59734, abs=1e-6)
     assert analysis["result_status"] == "vorlaeufig"
 
 
@@ -56,10 +58,10 @@ def test_stadt_stimmt_mit_den_zahlen_der_stadt(analysis):
     assert (city["voters_first"], city["voters_runoff"]) == (85983, 60096)
     # Wählende aller Bezirke durch Wahlberechtigte der Urnenbezirke — und das
     # ist genau die Beteiligung, die die Stadt meldet.
-    assert city["turnout_first_pct"] == 63.45
-    assert city["turnout_runoff_pct"] == 44.42
-    assert city["share_first_pct"]["rohr"] == 47.94  # Anteil an den BEIDEN
-    assert city["swing_pts"] == pytest.approx(51.55 - 47.94, abs=0.01)
+    assert city["turnout_first_pct"] == pytest.approx(100 * 85983 / 135513, abs=1e-6)  # Stadt: 63,45
+    assert city["turnout_runoff_pct"] == pytest.approx(100 * 60096 / 135299, abs=1e-6)  # Stadt: 44,42
+    assert city["share_first_pct"]["rohr"] == pytest.approx(100 * 25852 / (25852 + 28076), abs=1e-6)  # an den BEIDEN
+    assert city["swing_pts"] == pytest.approx(100 * 30792 / 59734 - 100 * 25852 / 53928, abs=1e-6)
 
 
 def test_die_ausgeschiedenen_summieren_sich_zum_rest_des_ersten_wahlgangs(analysis):
@@ -71,10 +73,10 @@ def test_die_ausgeschiedenen_summieren_sich_zum_rest_des_ersten_wahlgangs(analys
 def test_urne_hat_gedreht_brief_kaum(analysis):
     pots = {p["key"]: p for p in analysis["pots"]}
     assert (pots["urn"]["districts"], pots["postal"]["districts"]) == (91, 42)
-    assert pots["urn"]["share_first_pct"]["rohr"] == 46.3
-    assert pots["urn"]["share_runoff_pct"]["rohr"] == 51.08
-    assert pots["postal"]["share_first_pct"]["rohr"] == 51.07
-    assert pots["postal"]["share_runoff_pct"]["rohr"] == 52.27
+    assert pots["urn"]["share_first_pct"]["rohr"] == pytest.approx(46.30, abs=0.005)
+    assert pots["urn"]["share_runoff_pct"]["rohr"] == pytest.approx(51.08, abs=0.005)
+    assert pots["postal"]["share_first_pct"]["rohr"] == pytest.approx(51.07, abs=0.005)
+    assert pots["postal"]["share_runoff_pct"]["rohr"] == pytest.approx(52.27, abs=0.005)
     # An der Urne verlor Prange Stimmen, trotz des Wegfalls von sieben Namen.
     assert pots["urn"]["growth"]["prange"] < 1 < pots["urn"]["growth"]["rohr"]
     for key in ("votes_first", "votes_runoff"):
@@ -98,8 +100,8 @@ def test_fuenftel_aufholen_wo_er_schwach_war(analysis):
     firsts = [q["share_first_pct"] for q in quintiles]
     assert firsts == sorted(firsts)
     assert quintiles[0]["swing_pts"] > quintiles[-1]["swing_pts"]
-    # −0,345 ungerundet: je nach Rundung der Anteile −0,34 oder −0,35.
-    assert analysis["catch_up_r"] == pytest.approx(-0.345, abs=0.006)
+    # Exakt −0,3513 (mit dem amtlichen ersten Wahlgang).
+    assert analysis["catch_up_r"] == pytest.approx(-0.3513, abs=0.0005)
 
 
 def test_gedrehte_bezirke_und_bezirke_vorn(analysis):
@@ -113,12 +115,12 @@ def test_die_hochrechnung_des_abends_im_rueckblick(analysis):
     eingefrorenen Verlauf (50 Stände, 16:14–17:24 UTC)."""
     review = analysis["projection_review"]
     assert review is not None and len(review["points"]) == 50
-    assert review["final_share_pct"] == 51.55
+    assert review["final_share_pct"] == pytest.approx(51.5485, abs=0.0001)
     # Ab dem ersten Bezirk auf Rohr — die bloße Auszählung erst ab 58.
     assert review["projection_right_from"] == 1
     assert review["counted_right_from"] == 58
     assert review["counted_lead_changes"] == 3
-    assert review["max_error_after_min_pts"] == 0.95
+    assert review["max_error_after_min_pts"] == pytest.approx(52.5 - 100 * 30792 / 59734, abs=1e-6)
     assert review["first_chance"]["reports_received"] == 21 and review["first_chance"]["chance_pct"] == 99
     assert review["chance_always_winner"] is True
     last = review["points"][-1]

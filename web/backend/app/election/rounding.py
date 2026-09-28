@@ -1,4 +1,14 @@
-"""Kaufmännisch runden — über den Dezimaltext, nicht über die Gleitkommazahl.
+"""Kaufmännisch runden — genau EINMAL, und über den Dezimaltext.
+
+**Nur einmal.** Die API liefert Anteile auf sechs Stellen (``exact_pct``),
+gerundet wird erst bei der Anzeige. Bis 09/2026 rundete das Backend auf zwei
+Stellen und die Seite danach auf eine — doppelt gerundet. Nach der Stichwahl
+zeigte sich das: Rohr hat 30.792 von 59.734 Stimmen, 51,5485 %. Die Stadt
+schreibt 51,55 %, und wer das noch einmal rundet, landet bei 51,6 — richtig
+ist 51,5. Ebenso BSW in der Ratswahl: 4.162 von 252.400 sind 1,6490 %, zwei
+Stellen machten 1,65 daraus und eine dann 1,7.
+
+**Über den Dezimaltext.**
 
 Die Stadt meldet Anteile mit zwei Stellen („51,55 %"), wir zeigen eine. Als
 Gleitkommazahl ist 51,55 aber 51,5499…, und ``f"{x:.1f}"`` macht daraus
@@ -26,3 +36,15 @@ def pct_text(value: float | None, digits: int = 1) -> str:
     if value is None:
         return "–"
     return f"{half_up(value, digits):.{digits}f}".replace(".", ",") + " %"
+
+
+#: Nachkommastellen, mit denen die API Anteile ausliefert — genug, dass die
+#: Rundung bei der Anzeige nie an einem schon gerundeten Wert hängt.
+EXACT_DIGITS = 6
+
+
+def exact_pct(part: float, whole: float | None) -> float | None:
+    """Anteil in Prozent auf sechs Stellen — ``None`` ohne Nenner."""
+    if not whole:
+        return None
+    return round(100 * part / whole, EXACT_DIGITS)

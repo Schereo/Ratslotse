@@ -50,6 +50,7 @@ import requests
 
 from . import crosscheck, elections, mayor_districts, presentation
 from .register import KOMMUNALWAHL
+from .rounding import exact_pct
 from .votemanager import TIMEOUT, TTL_SECONDS_BEFORE, UA
 
 
@@ -342,10 +343,16 @@ def parse(payload: Any, known: tuple[MayorCandidate, ...] | None = None) -> Mayo
     expected, received = presentation._reports(component)
     totals = _totals(component)
     cands, notes = _candidate_rows(component, known)
+    # Den Anteil aus den Stimmen, nicht aus dem Prozenttext der Stadt: Der ist
+    # schon auf zwei Stellen gerundet, und die Anzeige rundet noch einmal
+    # (Rohr 51,5485 % → „51,55" → 51,6 statt 51,5; s. ``rounding``).
+    if totals["valid_votes"]:
+        cands = tuple(replace(c, share_pct=exact_pct(c.votes, totals["valid_votes"]))
+                      if c.votes is not None else c for c in cands)
     phase = "before" if received == 0 else ("complete" if received >= expected and expected > 0 else "counting")
     turnout = None
     if totals["voters"] is not None and totals["eligible"]:
-        turnout = round(100 * totals["voters"] / totals["eligible"], 2)
+        turnout = exact_pct(totals["voters"], totals["eligible"])
     return MayorResult(
         phase=phase, reports_expected=expected, reports_received=received,
         turnout_pct=turnout, valid_votes=totals["valid_votes"], invalid_ballots=totals["invalid_ballots"],
@@ -602,7 +609,7 @@ def _nur_die_beiden(voll: MayorResult, known: tuple[MayorCandidate, ...]) -> May
     behalten = [c for c in voll.candidates if c.slug in erlaubt]
     summe = sum(c.votes or 0 for c in behalten)
     neu = tuple(
-        replace(c, share_pct=round(100 * (c.votes or 0) / summe, 2) if summe else None)
+        replace(c, share_pct=exact_pct(c.votes or 0, summe))
         for c in behalten
     )
     # Auch die Hinweise gehören weg: ``parse`` meldet jede Zeile, die zu keiner
@@ -668,7 +675,7 @@ def probe(counted: int | None, w: elections.Election | None = None) -> MayorResu
         stimmen = {c.slug: sum(d.votes.get(c.slug) or 0 for d in gemeldet) for c in voll.candidates}
         summe = sum(stimmen.values())
         skaliert = tuple(
-            replace(c, votes=stimmen[c.slug], share_pct=round(100 * stimmen[c.slug] / summe, 2) if summe else None)
+            replace(c, votes=stimmen[c.slug], share_pct=exact_pct(stimmen[c.slug], summe))
             for c in voll.candidates
         )
         return MayorResult(
