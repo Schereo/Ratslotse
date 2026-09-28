@@ -6,7 +6,10 @@ import {
   chanceText,
   datumLang,
   fuehrend,
+  growthText,
   nachStimmen,
+  pointsText,
+  runoffDistrictsPath,
   verschiebung,
   vorsprung,
   zeitlage,
@@ -119,10 +122,10 @@ const h = (teil: Partial<StichwahlHochrechnung>): StichwahlHochrechnung => ({
 
 describe("chanceText", () => {
   it("nennt die Chance des Führenden mit Namen", () => {
-    expect(chanceText(h({}), "Ulf Prange")).toBe("Chance: Ulf Prange 71 %");
+    expect(chanceText(h({}), "Ulf Prange")).toBe("Wahrscheinlichkeit für Ulf Prange: 71 %");
   });
   it("sagt unter 15 Bezirken, warum es keine gibt", () => {
-    expect(chanceText(h({ chance_pct: null, counted_ballot: 9, counted_postal: 1 }), "Ulf Prange")).toMatch(/Erst 10 Bezirke gezählt/);
+    expect(chanceText(h({ chance_pct: null, counted_ballot: 9, counted_postal: 1 }), "Ulf Prange")).toMatch(/Erst 10 Bezirke sind ausgezählt/);
   });
   it("schweigt, wenn rechnerisch entschieden — dafür gibt es einen eigenen Satz", () => {
     expect(chanceText(h({ decided: true, chance_pct: null }), "Ulf Prange")).toBeNull();
@@ -131,7 +134,7 @@ describe("chanceText", () => {
 
 describe("bezirkeText", () => {
   it("zählt Urne und Brief getrennt und nennt die Gesamtzahl", () => {
-    expect(bezirkeText(h({}))).toBe("nach 47 von 133 Bezirken · Urne 41, Brief 6");
+    expect(bezirkeText(h({}))).toBe("Stand nach 47 von 133 Bezirken · davon Urne: 41, Briefwahl: 6");
   });
 });
 
@@ -217,5 +220,21 @@ describe("Karte: Führung und Deckkraft", () => {
     expect(flaechenAlpha(70, 70, true)).toBeCloseTo(0.9);
     expect(flaechenAlpha(70, 70, false)).toBeCloseTo(0.45);
     expect(flaechenAlpha(52, 52, true)).toBeLessThan(0.6);
+  });
+});
+
+describe("Rückblick nach der Wahl", () => {
+  it("die Rangliste fragt den Server mit Sortierung und Filtern", () => {
+    expect(runoffDistrictsPath("share", null, null)).toBe("/wahlabend/stichwahl/analyse/bezirke?sort=share");
+    expect(runoffDistrictsPath("swing", 2, "urn")).toBe("/wahlabend/stichwahl/analyse/bezirke?sort=swing&area=2&pot=urn");
+  });
+  it("Wachstum als Faktor, Punkte mit Vorzeichen", () => {
+    expect(growthText(1.199)).toBe("×1,20");
+    expect(growthText(0.93)).toBe("×0,93");
+    expect(growthText(null)).toBe("–");
+    expect(pointsText(4.78)).toBe("+4,8");
+    expect(pointsText(-6.2)).toBe("−6,2");
+    expect(pointsText(0.01)).toBe("±0,0");
+    expect(pointsText(undefined)).toBe("–");
   });
 });

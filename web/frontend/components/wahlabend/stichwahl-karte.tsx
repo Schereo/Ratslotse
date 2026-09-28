@@ -276,15 +276,15 @@ export function StichwahlKarte({ daten, probe, counted, auswahl, className }: {
         <div className="min-w-0">
           <p className={KICKER}>Wahlbezirke</p>
           <h2 className="mt-0.5 font-display text-[16px] font-bold tracking-tight">
-            {typeof fokus === "number" ? `Wahlbereich ${roemisch(fokus)}` : "Wo die beiden stark sind"}
+            {typeof fokus === "number" ? `Wahlbereich ${roemisch(fokus)}` : "Ergebnisse nach Wahlbezirk"}
           </h2>
           <p className="mt-1 text-[13px] text-muted-foreground">
             {gezaehlt === 0
-              ? "Noch der erste Wahlgang, blass: wer wo vorn lag. Gezählte Bezirke bekommen ihre Stichwahl-Farbe und einen festen Rand."
-              : `${gezaehlt} von ${urne} Urnenbezirken gezählt — ${daten.candidates
-                  .map((k) => `${vornZaehler.get(k.slug) ?? 0}× ${k.name.split(" ").pop()}`)
-                  .join(", ")} vorn; blass und gestrichelt ist noch der erste Wahlgang.`}{" "}
-            Je kräftiger, desto deutlicher der Vorsprung. Ein Bezirk antippen zeigt beide Wahlgänge.
+              ? "Noch ist kein Urnenbezirk ausgezählt. Die blassen, gestrichelten Flächen zeigen, wer dort im ersten Wahlgang vorn lag."
+              : `${gezaehlt} von ${urne} Urnenbezirken sind ausgezählt. In diesen Bezirken liegt ${daten.candidates
+                  .map((k) => `${k.name.split(" ").pop()} ${vornZaehler.get(k.slug) ?? 0}-mal`)
+                  .join(", ")} vorn. Blasse, gestrichelte Flächen zeigen weiterhin den ersten Wahlgang.`}{" "}
+            Je kräftiger die Farbe, desto größer der Vorsprung. Ein Tipp auf einen Bezirk zeigt die Ergebnisse beider Wahlgänge.
           </p>
         </div>
         {typeof fokus === "number" ? (
@@ -320,7 +320,7 @@ export function StichwahlKarte({ daten, probe, counted, auswahl, className }: {
         })}
         <li className="flex items-center gap-1.5">
           <span aria-hidden className="inline-block h-3 w-5 rounded-sm border border-dashed border-border bg-muted" />
-          noch offen (1. Wahlgang)
+          noch offen · Vergleichswert aus dem 1. Wahlgang
         </li>
       </ul>
       <div className={cn("mt-2 grid items-start gap-4", gewaehlterBezirk && "@3xl:grid-cols-[minmax(0,1fr)_22rem]")}>

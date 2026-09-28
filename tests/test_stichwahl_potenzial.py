@@ -26,9 +26,9 @@ def vorgabe():
 
 def test_die_ausgangslage_2026(vorgabe):
     p = vorgabe
-    assert p["rohr"] == 25850 and p["prange"] == 28075 and p["lead"] == 2225
+    assert p["rohr"] == 25852 and p["prange"] == 28076 and p["lead"] == 2224
     # Alle sieben Ausgeschiedenen: fünf benannt, Castur und Stille als „Sonstige" (1.509).
-    assert p["pool"] == 10198 + 4945 + 6211 + 4025 + 3843 + 1509 == 30731
+    assert p["pool"] == 10198 + 4945 + 6211 + 4026 + 3843 + 1509 == 30732
     assert len(p["districts"]) == 133
     assert all(z["eligible"] > 0 for z in p["districts"] if not z["postal"])
     assert all(z["non_voters"] == 0 and z["strategy"] == "postal" for z in p["districts"] if z["postal"])
@@ -51,7 +51,7 @@ def test_nichtwaehlende_ohne_die_briefwaehlenden(vorgabe):
     (Urne + Brief) = 49.522; je Bezirk geschätzt über die dort ausgestellten
     Wahlscheine, deshalb ein paar Stimmen Rundung."""
     p = vorgabe
-    assert p["eligible"] == 135513 and p["voters"] == 85991
+    assert p["eligible"] == 135513 and p["voters"] == 85983
     assert abs(p["non_voters"] - (p["eligible"] - p["voters"])) <= 10
     assert p["non_voters"] == sum(z["non_voters"] for z in p["districts"])
     urne = [z for z in p["districts"] if not z["postal"]]
@@ -189,7 +189,7 @@ def test_ohne_eigenen_token_zaehlt_der_aus_dem_jwt_geheimnis(monkeypatch):
     monkeypatch.setattr(get_settings(), "web_jwt_secret", "ein-geheimnis-fuer-den-test")
     abgeleitet = router.wahlkampf_token()
     assert abgeleitet and len(abgeleitet) == 24 and abgeleitet == router.wahlkampf_token()
-    assert _ruf(token=abgeleitet)["lead"] == 2225
+    assert _ruf(token=abgeleitet)["lead"] == 2224
     monkeypatch.setenv("WAHLKAMPF_TOKEN", "eigener-token-lang-genug-1234")
     assert router.wahlkampf_token() == "eigener-token-lang-genug-1234"
     with pytest.raises(HTTPException):
@@ -205,7 +205,7 @@ def test_mit_token_kommt_die_rechnung_und_die_regler_greifen(monkeypatch):
     monkeypatch.setenv("FEATURE_FLAGS", "wahlabend")
     monkeypatch.setenv("WAHLKAMPF_TOKEN", "richtig-und-lang-genug-1234")
     p = _ruf(token="richtig-und-lang-genug-1234")
-    assert p["lead"] == 2225 and abs(p["net_total"] - 5061) <= 5
+    assert p["lead"] == 2224 and abs(p["net_total"] - 5061) <= 5
     q = _ruf(token="richtig-und-lang-genug-1234", boldt="80,5", cdu="40,10", turnout_prange=90)
     assert q["assumptions"][0]["to_rohr"] == 80 and q["cdu_to_rohr"] == 40 and q["turnout_prange"] == 90
     assert q["balance"] > p["balance"]

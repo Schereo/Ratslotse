@@ -1,5 +1,5 @@
 {
-  "zeitstempel": "13.09.2026 20:26",
+  "zeitstempel": "25.09.2026 14:40",
   "seitentitel": "Wahl der Oberbürgermeisterin / Wahl des Oberbürgermeisters 13.09.2026 - Stadt Oldenburg (Oldenburg) - Stadt Oldenburg",
   "Komponente": {
     "tabelle": {
@@ -9,7 +9,7 @@
           "label": {
             "labelKurz": "Rohr, GRÜNE"
           },
-          "zahl": "25.850",
+          "zahl": "25.852",
           "prozent": "30,54 %",
           "tagged": false
         },
@@ -18,7 +18,7 @@
           "label": {
             "labelKurz": "Prange, SPD"
           },
-          "zahl": "28.075",
+          "zahl": "28.076",
           "prozent": "33,16 %",
           "tagged": false
         },
@@ -63,8 +63,8 @@
           "label": {
             "labelKurz": "Küßner, Einzelwahlvorschlag"
           },
-          "zahl": "4.025",
-          "prozent": "4,75 %",
+          "zahl": "4.026",
+          "prozent": "4,76 %",
           "tagged": false
         },
         {
@@ -107,24 +107,24 @@
             "label": {
               "labelKurz": "Wähler/-innen"
             },
-            "zahl": "85.991",
-            "prozent": "63,46 %",
+            "zahl": "85.983",
+            "prozent": "63,45 %",
             "tagged": false
           },
           {
             "label": {
               "labelKurz": "ungültige Stimmen"
             },
-            "zahl": "1.335",
-            "prozent": "1,55 %",
+            "zahl": "1.323",
+            "prozent": "1,54 %",
             "tagged": false
           },
           {
             "label": {
               "labelKurz": "gültige Stimmen"
             },
-            "zahl": "84.656",
-            "prozent": "98,45 %",
+            "zahl": "84.660",
+            "prozent": "98,46 %",
             "tagged": false
           }
         ]
@@ -140,8 +140,8 @@
           "bezeichnung": "Rohr, GRÜNE",
           "color": "#33cc00",
           "bezeichnungAusfuehrlich": "Jascha Rohr, BÜNDNIS 90/DIE GRÜNEN",
-          "wert": 25850,
-          "wertString": "25.850 Stimmen",
+          "wert": 25852,
+          "wertString": "25.852 Stimmen",
           "prozentGerundet": 30.54,
           "prozentString": "30,54 %"
         },
@@ -149,8 +149,8 @@
           "bezeichnung": "Prange, SPD",
           "color": "#d60029",
           "bezeichnungAusfuehrlich": "Ulf Prange, Sozialdemokratische Partei Deutschlands",
-          "wert": 28075,
-          "wertString": "28.075 Stimmen",
+          "wert": 28076,
+          "wertString": "28.076 Stimmen",
           "prozentGerundet": 33.16,
           "prozentString": "33,16 %"
         },
@@ -185,10 +185,10 @@
           "bezeichnung": "Küßner, Einzelwahlvorschlag",
           "color": "#dbdbdb",
           "bezeichnungAusfuehrlich": "Byanca Küßner, Einzelwahlvorschlag",
-          "wert": 4025,
-          "wertString": "4.025 Stimmen",
-          "prozentGerundet": 4.75,
-          "prozentString": "4,75 %"
+          "wert": 4026,
+          "wertString": "4.026 Stimmen",
+          "prozentGerundet": 4.76,
+          "prozentString": "4,76 %"
         },
         {
           "bezeichnung": "Wilkens, BB-OL",
@@ -228,10 +228,10 @@
           "prozentString": "1,03 %"
         }
       ],
-      "footer": "13.09.2026 20:25 Uhr - 133 von 133 Ergebnissen",
+      "footer": "16.09.2026 08:04 Uhr - 133 von 133 Ergebnissen",
       "isBalkenDarstellung": false,
-      "file_version": "26.09.01",
-      "file_timestamp": "13.09.2026 20:26:48 485",
+      "file_version": "26.09.04",
+      "file_timestamp": "25.09.2026 14:40:21 393",
       "server_hash": "646b1029f537300d28340ce6ec5ea8d7"
     },
     "gewaehlte_kandidaten": {
@@ -248,12 +248,12 @@
     "wahlbeteiligung": {
       "text": {
         "text": "Die Wahlbeteiligung liegt bei: ",
-        "prozent": 63.46
+        "prozent": 63.45
       },
       "hinweis": ""
     }
   },
-  "file_version": "26.09.01",
-  "file_timestamp": "13.09.2026 20:26:48 485",
+  "file_version": "26.09.04",
+  "file_timestamp": "25.09.2026 14:40:21 392",
   "server_hash": "646b1029f537300d28340ce6ec5ea8d7"
 }

@@ -45,10 +45,10 @@ export function StichwahlVerlauf({ daten }: { daten: Stichwahl }) {
   if (punkte.length < 2 || !wer) {
     return (
       <section className="mt-5 rounded-2xl border border-dashed border-border p-4" data-testid="verlauf-leer">
-        <h2 className="font-display text-[16px] font-bold tracking-tight">Der Verlauf des Abends</h2>
+        <h2 className="font-display text-[16px] font-bold tracking-tight">Der Verlauf des Wahlabends</h2>
         <p className="mt-1 text-[13px] text-muted-foreground">
-          Füllt sich, sobald die ersten Wahlbezirke gemeldet sind: der Anteil über die Uhrzeit, die 50-Prozent-Linie und
-          jeder Führungswechsel.
+          Sobald die ersten Wahlbezirke gemeldet sind, zeigt die Grafik den Stimmenanteil im Zeitverlauf, die
+          50-Prozent-Linie und jeden Führungswechsel.
         </p>
       </section>
     );
@@ -77,7 +77,7 @@ export function StichwahlVerlauf({ daten }: { daten: Stichwahl }) {
       { label: wer.name, value: prozent(ist[i]), farbe: wer.color || undefined },
       ...(andere ? [{ label: andere.name, value: prozent(p.shares[andere.slug] ?? null), farbe: andere.color || undefined }] : []),
       { label: "Hochrechnung", value: hoch[i] === null ? "–" : prozent(hoch[i]) },
-      { label: "Chance", value: p.chance_pct === null ? "–" : `${p.chance_pct} %` },
+      { label: "Wahrscheinlichkeit", value: p.chance_pct === null ? "–" : `${p.chance_pct} %` },
       { label: "Bezirke", value: `${zahl(p.reports_received)} von ${zahl(daten.reports_expected)}` },
     ],
     vorlesen: `${uhrzeit(p.at)} Uhr: ${wer.name} ${prozent(ist[i])}, Hochrechnung ${hoch[i] === null ? "noch keine" : prozent(hoch[i])}, ${p.reports_received} von ${daten.reports_expected} Wahlbezirken.`,
@@ -90,17 +90,17 @@ export function StichwahlVerlauf({ daten }: { daten: Stichwahl }) {
   return (
     <section className="mt-5 rounded-2xl border border-border bg-card p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)]" data-testid="verlauf">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h2 className="font-display text-[16px] font-bold tracking-tight">Der Verlauf des Abends</h2>
+        <h2 className="font-display text-[16px] font-bold tracking-tight">Der Verlauf des Wahlabends</h2>
         <span className={KICKER}>
           {punkte.length} Stände · {uhrzeit(punkte[0].at)}–{uhrzeit(punkte[punkte.length - 1].at)} Uhr
           {wechsel.length > 0 ? ` · ${wechsel.length} Führungswechsel` : ""}
         </span>
       </div>
       <p className={`mt-1 ${KICKER}`}>
-        Anteil {wer.name} · über 50 % vorn · gestrichelt die Hochrechnung
+        Anteil für {wer.name} · über 50 % bedeutet Führung · gestrichelt: Hochrechnung
       </p>
       <AbleseBeschreibung id={id}>
-        Eine Treppenlinie über die Uhrzeit: der Stimmenanteil von {wer.name}, dazu gestrichelt die Hochrechnung und die
+        Eine Treppenlinie über die Uhrzeit zeigt den Stimmenanteil von {wer.name}, dazu gestrichelt die Hochrechnung und die
         50-Prozent-Linie. {punkte.length} Stände, {wechsel.length} Führungswechsel.
       </AbleseBeschreibung>
       <svg viewBox={`0 0 ${W} ${H}`} className="mt-2 block w-full" role="group" aria-describedby={id}>
@@ -151,7 +151,7 @@ export function StichwahlVerlauf({ daten }: { daten: Stichwahl }) {
           hoehe={Y0 - YTOP}
           fangHoehe={H - YTOP}
           marken={(i) => (ist[i] === null ? [] : [{ y: y(ist[i] ?? 50), farbe }])}
-          gruppe="Stände des Abends"
+          gruppe="Zwischenstände des Abends"
         />
       </svg>
       <Ableseleiste stelle={stellen[steuerung.aktiv]} steuerung={steuerung} className="mt-3" haftet={false} />

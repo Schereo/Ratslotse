@@ -1,0 +1,36 @@
+{
+  "titel": "Stichwahl des Oberbürgermeisters",
+  "datum": "27.09.2026",
+  "ergebnisstatus": [
+    {
+      "status": "Vorläufiges Ergebnis",
+      "gebiet_ids": [
+        "ebene_-7935_id_13001"
+      ]
+    }
+  ],
+  "stimmentypen": [
+    {
+      "id": 0,
+      "titel": ""
+    }
+  ],
+  "behoerden_links": [],
+  "menu_links": [
+    {
+      "id": "ebene_-7935_id_13001",
+      "type": "ergebnis",
+      "title": "Stadt Oldenburg (Oldenburg)"
+    },
+    {
+      "id": "ebene_6",
+      "type": "uebersicht",
+      "title": "Wahlbezirke"
+    }
+  ],
+  "geografik_ebenen": [],
+  "hasHochrechnung": false,
+  "file_version": "26.09.04",
+  "file_timestamp": "25.09.2026 13:20:49 258",
+  "server_hash": "646b1029f537300d28340ce6ec5ea8d7"
+}

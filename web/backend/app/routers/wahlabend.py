@@ -19,6 +19,7 @@ import os
 import threading
 import time
 from datetime import datetime, timezone
+from typing import cast
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response, status
 
@@ -40,6 +41,8 @@ from ..antworten import (
     ElectionListItem,
     ElectionMap,
     ElectionNight,
+    RunoffAnalysis,
+    RunoffDistrictList,
     ElectionWatchEntry,
     ElectionWatchList,
     MayorCandidate,
@@ -62,6 +65,7 @@ from ..election import (
     image,
     mayor,
     potential,
+    runoff_analysis,
     runoff_image,
     runoff_model,
     service,
@@ -554,6 +558,44 @@ def stichwahl(probe: str | None = Query(default=None, description="gesetzt = Gen
     if w is None:
         raise HTTPException(status_code=404, detail="Es steht keine Stichwahl an.")
     return _mayor_night(w, probe, counted)
+
+
+def _analyse_or_404() -> dict:
+    w = elections.runoff()
+    data = runoff_analysis.analyse(w.slug) if w is not None else None
+    if data is None:
+        raise HTTPException(status_code=404, detail="Für diese Stichwahl gibt es noch keine Auswertung.")
+    return data
+
+
+@router.get("/api/wahlabend/stichwahl/analyse")
+def stichwahl_analyse() -> RunoffAnalysis:
+    """Die Stichwahl im Rückblick, gegen den ersten Wahlgang gestellt —
+    Stadt, Urne und Brief, Wahlbereiche, Fünftel, gedrehte Bezirke.
+
+    Öffentlich wie die Zahlen selbst. 404, bis die Stichwahl eingefroren ist
+    (``wahl_einfrieren.py --ob``): Gerechnet wird nur auf den Zahlen im
+    Repo, nie auf einem halben Abend.
+    """
+    _frei()
+    return cast(RunoffAnalysis, {k: v for k, v in _analyse_or_404().items() if k != "districts"})
+
+
+@router.get("/api/wahlabend/stichwahl/analyse/bezirke")
+def stichwahl_analyse_bezirke(
+    sort: str = Query(default="share", pattern="^(share|swing|turnout|number)$",
+                      description="share = Anteil des Gewinners, swing = Zugewinn, "
+                                  "turnout = Rückgang der Beteiligung, number = Nummer"),
+    area: int | None = Query(default=None, ge=1, le=6, description="nur dieser Wahlbereich"),
+    pot: str | None = Query(default=None, pattern="^(urn|postal)$", description="nur Urne oder nur Brief"),
+) -> RunoffDistrictList:
+    """Alle Wahlbezirke beider Wahlgänge als Rangliste — sortiert und
+    gefiltert auf dem Server, mit Rang."""
+    _frei()
+    data = _analyse_or_404()
+    rows = runoff_analysis.districts(data["districts"], sort=sort, area=area, pot=pot)
+    return cast(RunoffDistrictList, {"winner": data["winner"], "sort": sort, "area": area, "pot": pot,
+                                     "total": len(data["districts"]), "rows": rows})
 
 
 # ------------------------------------------------------------------ Beobachtungsliste

@@ -94,7 +94,8 @@ export function BezirksTicker({ daten, zeigen }: { daten: Stichwahl; zeigen: (nr
         })}
       </ol>
       <p className="mt-2 text-[11.5px] text-muted-foreground">
-        Ganz rechts: wie viele Punkte die Person in diesem Bezirk gegenüber dem ersten Wahlgang gewonnen oder verloren hat.
+        Die Zahl ganz rechts zeigt, um wie viele Prozentpunkte sich der Anteil der führenden Person gegenüber dem ersten
+        Wahlgang verändert hat.
       </p>
     </section>
   );
@@ -158,7 +159,7 @@ export function BildTeilen({ daten, probe, counted }: { daten: Stichwahl; probe:
         if (navigator.canShare({ files: [datei] })) {
           await navigator.share({
             files: [datei],
-            text: `Stichwahl in Oldenburg — ${daten.reports_received} von ${daten.reports_expected} Bezirken ausgezählt. Live: https://ratslotse.de/wahlabend/stichwahl`,
+            text: `OB-Stichwahl in Oldenburg — ${daten.reports_received} von ${daten.reports_expected} Bezirken ausgezählt. ${daten.phase === "complete" ? "Ergebnis und Rückblick" : "Aktueller Stand"}: https://ratslotse.de/wahlabend/stichwahl`,
           });
           return;
         }

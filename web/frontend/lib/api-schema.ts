@@ -5990,6 +5990,52 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/wahlabend/stichwahl/analyse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stichwahl Analyse
+         * @description Die Stichwahl im Rückblick, gegen den ersten Wahlgang gestellt —
+         *     Stadt, Urne und Brief, Wahlbereiche, Fünftel, gedrehte Bezirke.
+         *
+         *     Öffentlich wie die Zahlen selbst. 404, bis die Stichwahl eingefroren ist
+         *     (``wahl_einfrieren.py --ob``): Gerechnet wird nur auf den Zahlen im
+         *     Repo, nie auf einem halben Abend.
+         */
+        get: operations["stichwahl_analyse_api_wahlabend_stichwahl_analyse_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/wahlabend/stichwahl/analyse/bezirke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stichwahl Analyse Bezirke
+         * @description Alle Wahlbezirke beider Wahlgänge als Rangliste — sortiert und
+         *     gefiltert auf dem Server, mit Rang.
+         */
+        get: operations["stichwahl_analyse_bezirke_api_wahlabend_stichwahl_analyse_bezirke_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/wahlabend/stichwahl/bezirke": {
         parameters: {
             query?: never;
@@ -14793,10 +14839,293 @@ export interface components {
             /** Roles */
             roles?: string[];
         };
+        /**
+         * RunoffAnalysis
+         * @description Die Stichwahl im Rückblick, gegen den ersten Wahlgang gestellt
+         *     (``election.runoff_analysis``). Nur aus eingefrorenen Zahlen; die
+         *     Bezirke einzeln stehen unter ``…/analyse/bezirke``.
+         */
+        RunoffAnalysis: {
+            /** Areas */
+            areas: components["schemas"]["RunoffArea"][];
+            /** Candidates */
+            candidates: components["schemas"]["RunoffAnalysisCandidate"][];
+            /** Catch Up R */
+            catch_up_r: number | null;
+            city: components["schemas"]["RunoffCity"];
+            election: components["schemas"]["RunoffAnalysisElection"];
+            /** Eliminated */
+            eliminated: components["schemas"]["RunoffEliminated"][];
+            /** Flipped */
+            flipped: {
+                [key: string]: number;
+            };
+            lead_districts: components["schemas"]["RunoffLeadDistricts"];
+            /** Pots */
+            pots: components["schemas"]["RunoffPot"][];
+            /**
+             * RunoffProjectionReview
+             * @description Wie gut lag die Hochrechnung des Abends? Aus dem eingefrorenen Verlauf
+             *     gegen das Endergebnis — EIN Abend, keine allgemeine Güte des Modells.
+             */
+            projection_review: {
+                /** Chance Always Winner */
+                chance_always_winner: boolean | null;
+                /** Chance Cap */
+                chance_cap: number;
+                /** Counted Lead Changes */
+                counted_lead_changes: number;
+                /** Counted Right From */
+                counted_right_from: number | null;
+                /** Final Share Pct */
+                final_share_pct: number;
+                /**
+                 * RunoffProjectionPoint
+                 * @description Ein Stand des Abends, aus Sicht des späteren Gewinners.
+                 */
+                first_chance: {
+                    /** At */
+                    at: string | null;
+                    /** Chance Pct */
+                    chance_pct: number | null;
+                    /** Counted Leader */
+                    counted_leader: string | null;
+                    /** Counted Share Pct */
+                    counted_share_pct: number | null;
+                    /** Error Pts */
+                    error_pts: number | null;
+                    /** Projected Leader */
+                    projected_leader: string | null;
+                    /** Projected Share Pct */
+                    projected_share_pct: number | null;
+                    /** Reports Received */
+                    reports_received: number;
+                } | null;
+                /** Max Error After Min Pts */
+                max_error_after_min_pts: number | null;
+                /** Min Districts */
+                min_districts: number;
+                /** Points */
+                points: components["schemas"]["RunoffProjectionPoint"][];
+                /** Projection Right From */
+                projection_right_from: number | null;
+            } | null;
+            /** Quintiles */
+            quintiles: components["schemas"]["RunoffQuintile"][];
+            /** Result Status */
+            result_status: string;
+            /** Winner */
+            winner: string;
+        };
+        /**
+         * RunoffAnalysisCandidate
+         * @description Eine der beiden Kandidaturen — der Gewinner zuerst. Die Anteile sind
+         *     die AMTLICHEN (im ersten Wahlgang also von allen neun).
+         */
+        RunoffAnalysisCandidate: {
+            /** Color */
+            color: string;
+            /** Color Dark */
+            color_dark: string;
+            /** Name */
+            name: string;
+            /** Party */
+            party: string;
+            /** Share First Pct */
+            share_first_pct: number | null;
+            /** Share Runoff Pct */
+            share_runoff_pct: number | null;
+            /** Slug */
+            slug: string;
+            /** Votes First */
+            votes_first: number | null;
+            /** Votes Runoff */
+            votes_runoff: number | null;
+        };
+        /** RunoffAnalysisElection */
+        RunoffAnalysisElection: {
+            /** Date */
+            date: string;
+            /** First Round Date */
+            first_round_date: string;
+            /** First Round Slug */
+            first_round_slug: string;
+            /** Short Title */
+            short_title: string;
+            /** Slug */
+            slug: string;
+        };
+        /** RunoffArea */
+        RunoffArea: {
+            /** Districts */
+            districts: number;
+            /** Growth */
+            growth: {
+                [key: string]: number | null;
+            };
+            /** Label */
+            label: string;
+            /** Number */
+            number: number;
+            /** Share First Pct */
+            share_first_pct: {
+                [key: string]: number | null;
+            };
+            /** Share Runoff Pct */
+            share_runoff_pct: {
+                [key: string]: number | null;
+            };
+            /** Swing Pts */
+            swing_pts: number | null;
+            /** Turnout First Pct */
+            turnout_first_pct: number | null;
+            /** Turnout Runoff Pct */
+            turnout_runoff_pct: number | null;
+            /** Voters First */
+            voters_first: number;
+            /** Voters Runoff */
+            voters_runoff: number;
+            /** Votes First */
+            votes_first: {
+                [key: string]: number;
+            };
+            /** Votes Runoff */
+            votes_runoff: {
+                [key: string]: number;
+            };
+        };
         /** RunoffCandidateStrength */
         RunoffCandidateStrength: {
             strong: components["schemas"]["RunoffStrengthGroup"];
             weak: components["schemas"]["RunoffStrengthGroup"];
+        };
+        /** RunoffCity */
+        RunoffCity: {
+            /** Districts */
+            districts: number;
+            /** Eligible First */
+            eligible_first: number;
+            /** Eligible Runoff */
+            eligible_runoff: number;
+            /** Growth */
+            growth: {
+                [key: string]: number | null;
+            };
+            /** Share First Pct */
+            share_first_pct: {
+                [key: string]: number | null;
+            };
+            /** Share Runoff Pct */
+            share_runoff_pct: {
+                [key: string]: number | null;
+            };
+            /** Swing Pts */
+            swing_pts: number | null;
+            /** Turnout First Pct */
+            turnout_first_pct: number | null;
+            /** Turnout Runoff Pct */
+            turnout_runoff_pct: number | null;
+            /** Valid First */
+            valid_first: number | null;
+            /** Valid Runoff */
+            valid_runoff: number | null;
+            /** Voters First */
+            voters_first: number;
+            /** Voters Runoff */
+            voters_runoff: number;
+            /** Votes First */
+            votes_first: {
+                [key: string]: number;
+            };
+            /** Votes Runoff */
+            votes_runoff: {
+                [key: string]: number;
+            };
+        };
+        /** RunoffDistrictList */
+        RunoffDistrictList: {
+            /** Area */
+            area: number | null;
+            /** Pot */
+            pot: string | null;
+            /** Rows */
+            rows: components["schemas"]["RunoffDistrictRow"][];
+            /** Sort */
+            sort: string;
+            /** Total */
+            total: number;
+            /** Winner */
+            winner: string;
+        };
+        /** RunoffDistrictRow */
+        RunoffDistrictRow: {
+            /** Area */
+            area: number;
+            /** Flipped */
+            flipped: boolean;
+            /** Leader First */
+            leader_first: string | null;
+            /** Leader Runoff */
+            leader_runoff: string | null;
+            /** Name */
+            name: string;
+            /** Number */
+            number: number;
+            /** Postal */
+            postal: boolean;
+            /** Rank */
+            rank: number;
+            /** Share First Pct */
+            share_first_pct: number | null;
+            /** Share Runoff Pct */
+            share_runoff_pct: number | null;
+            /** Swing Pts */
+            swing_pts: number | null;
+            /** Turnout Change Pts */
+            turnout_change_pts: number | null;
+            /** Turnout First Pct */
+            turnout_first_pct: number | null;
+            /** Turnout Runoff Pct */
+            turnout_runoff_pct: number | null;
+            /** Voters First */
+            voters_first: number | null;
+            /** Voters Runoff */
+            voters_runoff: number | null;
+            /** Votes First */
+            votes_first: {
+                [key: string]: number | null;
+            };
+            /** Votes Runoff */
+            votes_runoff: {
+                [key: string]: number | null;
+            };
+        };
+        /**
+         * RunoffEliminated
+         * @description Eine im ersten Wahlgang ausgeschiedene Kandidatur.
+         */
+        RunoffEliminated: {
+            /** Name */
+            name: string;
+            /** Party */
+            party: string;
+            /** Share Pct */
+            share_pct: number | null;
+            /** Slug */
+            slug: string;
+            /** Votes */
+            votes: number;
+        };
+        /** RunoffLeadDistricts */
+        RunoffLeadDistricts: {
+            /** First */
+            first: {
+                [key: string]: number;
+            };
+            /** Runoff */
+            runoff: {
+                [key: string]: number;
+            };
         };
         /**
          * RunoffLessons2014
@@ -14866,6 +15195,41 @@ export interface components {
             voters_first: number;
             /** Voters Runoff */
             voters_runoff: number;
+        };
+        /** RunoffPot */
+        RunoffPot: {
+            /** Districts */
+            districts: number;
+            /** Growth */
+            growth: {
+                [key: string]: number | null;
+            };
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Share First Pct */
+            share_first_pct: {
+                [key: string]: number | null;
+            };
+            /** Share Runoff Pct */
+            share_runoff_pct: {
+                [key: string]: number | null;
+            };
+            /** Swing Pts */
+            swing_pts: number | null;
+            /** Voters First */
+            voters_first: number;
+            /** Voters Runoff */
+            voters_runoff: number;
+            /** Votes First */
+            votes_first: {
+                [key: string]: number;
+            };
+            /** Votes Runoff */
+            votes_runoff: {
+                [key: string]: number;
+            };
         };
         /**
          * RunoffPotential
@@ -15073,6 +15437,96 @@ export interface components {
             trailing: string | null;
             /** Trailing Expected Share Pct */
             trailing_expected_share_pct: number | null;
+        };
+        /**
+         * RunoffProjectionPoint
+         * @description Ein Stand des Abends, aus Sicht des späteren Gewinners.
+         */
+        RunoffProjectionPoint: {
+            /** At */
+            at: string | null;
+            /** Chance Pct */
+            chance_pct: number | null;
+            /** Counted Leader */
+            counted_leader: string | null;
+            /** Counted Share Pct */
+            counted_share_pct: number | null;
+            /** Error Pts */
+            error_pts: number | null;
+            /** Projected Leader */
+            projected_leader: string | null;
+            /** Projected Share Pct */
+            projected_share_pct: number | null;
+            /** Reports Received */
+            reports_received: number;
+        };
+        /**
+         * RunoffProjectionReview
+         * @description Wie gut lag die Hochrechnung des Abends? Aus dem eingefrorenen Verlauf
+         *     gegen das Endergebnis — EIN Abend, keine allgemeine Güte des Modells.
+         */
+        RunoffProjectionReview: {
+            /** Chance Always Winner */
+            chance_always_winner: boolean | null;
+            /** Chance Cap */
+            chance_cap: number;
+            /** Counted Lead Changes */
+            counted_lead_changes: number;
+            /** Counted Right From */
+            counted_right_from: number | null;
+            /** Final Share Pct */
+            final_share_pct: number;
+            /**
+             * RunoffProjectionPoint
+             * @description Ein Stand des Abends, aus Sicht des späteren Gewinners.
+             */
+            first_chance: {
+                /** At */
+                at: string | null;
+                /** Chance Pct */
+                chance_pct: number | null;
+                /** Counted Leader */
+                counted_leader: string | null;
+                /** Counted Share Pct */
+                counted_share_pct: number | null;
+                /** Error Pts */
+                error_pts: number | null;
+                /** Projected Leader */
+                projected_leader: string | null;
+                /** Projected Share Pct */
+                projected_share_pct: number | null;
+                /** Reports Received */
+                reports_received: number;
+            } | null;
+            /** Max Error After Min Pts */
+            max_error_after_min_pts: number | null;
+            /** Min Districts */
+            min_districts: number;
+            /** Points */
+            points: components["schemas"]["RunoffProjectionPoint"][];
+            /** Projection Right From */
+            projection_right_from: number | null;
+        };
+        /**
+         * RunoffQuintile
+         * @description Ein Fünftel der Urnenbezirke nach dem Gewinner-Anteil im ersten
+         *     Wahlgang — Rang 1 ist das schwächste.
+         */
+        RunoffQuintile: {
+            /** Districts */
+            districts: number;
+            /** Growth */
+            growth: {
+                [key: string]: number | null;
+            };
+            /** Rank */
+            rank: number;
+            /** Share First Pct */
+            share_first_pct: number | null;
+            /** Share Runoff Pct */
+            share_runoff_pct: number | null;
+            /** Swing Pts */
+            swing_pts: number | null;
         };
         /**
          * RunoffStrengthGroup
@@ -23871,6 +24325,62 @@ export interface operations {
             };
         };
     };
+    stichwahl_analyse_api_wahlabend_stichwahl_analyse_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunoffAnalysis"];
+                };
+            };
+        };
+    };
+    stichwahl_analyse_bezirke_api_wahlabend_stichwahl_analyse_bezirke_get: {
+        parameters: {
+            query?: {
+                /** @description share = Anteil des Gewinners, swing = Zugewinn, turnout = Rückgang der Beteiligung, number = Nummer */
+                sort?: string;
+                /** @description nur dieser Wahlbereich */
+                area?: number | null;
+                /** @description nur Urne oder nur Brief */
+                pot?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunoffDistrictList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     stichwahl_bezirke_api_wahlabend_stichwahl_bezirke_get: {
         parameters: {
             query?: {
@@ -24092,4 +24602,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 80d3652dfcef374af1aa780b1ad7df7206931f4ef28b73a838302fcd4f7888ac
+// vertrag-sha256: f162f567440225f9d96e1636f339ece7637a7e72e7000e633b1a829c193577dd

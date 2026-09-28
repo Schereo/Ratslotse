@@ -233,8 +233,8 @@ export function Mitfiebern({
         Wem drückst du die Daumen?
       </h2>
       <p className="mt-1.5 max-w-[62ch] text-[13px] leading-relaxed text-muted-foreground">
-        Holt deine Wahl in einer neuen Meldung mehr Stimmen als die andere Seite, gibt es Konfetti. Die Einstellung bleibt
-        in diesem Browser; wir speichern sie nicht.
+        Erhält die von dir gewählte Person in einer neuen Meldung mehr Stimmen als die andere, gibt es Konfetti. Die Einstellung
+        bleibt in diesem Browser; wir speichern sie nicht auf dem Server.
       </p>
       <div role="radiogroup" aria-labelledby="mitfiebern-titel" className="mt-3 flex flex-wrap gap-2">
         {optionen.map((o) => {

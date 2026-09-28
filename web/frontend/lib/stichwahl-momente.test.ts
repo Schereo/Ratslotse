@@ -99,10 +99,12 @@ describe("aufholText", () => {
     ({ decided: false, trailing: "rohr", needed_share_pct: 51.1, trailing_expected_share_pct: 47.4, ...x }) as StichwahlHochrechnung;
   const kandidaten = [{ slug: "rohr", name: "Jascha Rohr" }, { slug: "prange", name: "Ulf Prange" }] as StichwahlKandidat[];
   it("nennt, was der Zurückliegende bräuchte und was das Modell erwartet", () => {
-    expect(aufholText(p({}), kandidaten)).toBe("Rohr bräuchte 51,1 % der noch offenen Stimmen — das Modell erwartet dort 47,4 %.");
+    expect(aufholText(p({}), kandidaten)).toBe(
+      "Rohr müsste 51,1 % der vom Modell noch erwarteten Stimmen erhalten, um den Rückstand aufzuholen. Das Modell rechnet mit 47,4 %.",
+    );
   });
   it("sagt es anders, wenn nicht einmal alles reicht, und schweigt, wenn es entschieden ist", () => {
-    expect(aufholText(p({ needed_share_pct: 112.3 }), kandidaten)).toMatch(/mehr als alle Stimmen/);
+    expect(aufholText(p({ needed_share_pct: 112.3 }), kandidaten)).toMatch(/könnte Rohr den Rückstand nicht mehr aufholen/);
     expect(aufholText(p({ decided: true }), kandidaten)).toBeNull();
     expect(aufholText(p({ trailing: null, needed_share_pct: null }), kandidaten)).toBeNull();
   });

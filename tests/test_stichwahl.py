@@ -281,7 +281,7 @@ def test_das_bild_sagt_wer_gewaehlt_ist_erst_wenn_es_entschieden_ist(monkeypatch
 
     monkeypatch.setenv("FEATURE_FLAGS", "wahlabend")
     assert runoff_image._titel(router.stichwahl(probe="1", counted=60)) == "Stichwahl: Prange vorn"
-    assert runoff_image._titel(router.stichwahl(probe="1", counted=133)) == "Ulf Prange ist gewählt"
+    assert runoff_image._titel(router.stichwahl(probe="1", counted=133)) == "Ulf Prange erhält die meisten Stimmen"
     assert runoff_image._titel(router.stichwahl(probe="1", counted=0)).startswith("Stichwahl — ab 18 Uhr")
 
 

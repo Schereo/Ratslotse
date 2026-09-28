@@ -38,6 +38,25 @@ Wahlabend über jeden Abruf laufen. Eine zweite Fassung davon wäre eine zweite
 Wahrheit — und die stille Sorte, die erst auffällt, wenn eine Referenz schon
 falsch im Repo liegt.
 
+**Eine OB-Wahl für sich** (seit 09/2026, für die Stichwahl): Sie hat keine
+CSV und keine Sitze, nur die Ergebnisdarstellung. ``--ob <slug>`` sichert
+genau die — Stadt, Bezirke, ``wahl.json``, ``termin.json``, dazu eine kleine
+``quelle.json`` mit Wahl-Id und Stand — in einen EIGENEN Ordner (die Dateinamen
+sind dieselben wie die des ersten Wahlgangs, ``archive.summary`` und die
+Bezirkskarte lesen sie unter diesem Namen):
+
+    python scripts/wahl_einfrieren.py --ob ob-stichwahl-2026 \
+        --ziel kommunalwahl/referenz-2026-stichwahl --verlauf <verlauf>.json
+
+Derselbe Modus zieht den ersten Wahlgang nach, der neben der Ratswahl liegt
+(``--ob ob-2026 --ziel kommunalwahl/referenz-2026 --stand amtlich``) — dann
+nur seine drei Dateien, ohne ``termin.json`` und ``quelle.json``. Anlass: Die
+Stadt hat den ersten Wahlgang am 16.09.2026 festgestellt, 14 Bezirke änderten
+sich (Rohr +2, Prange +1, Küßner +1, Briefwählende umgebucht); im Repo lag bis
+27.09. der vorläufige Stand vom Wahlabend.
+
+Die Gegenprobe dort: alle Bezirke gemeldet, und ihre Summe ist die Stadtzeile.
+
 **Vorläufig ist nicht amtlich.** ``--stand vorlaeufig`` (Vorgabe) vermerkt in
 der Quelle, dass das Ergebnis noch nicht vom Wahlausschuss festgestellt ist.
 Nach der Feststellung denselben Befehl mit ``--stand amtlich`` erneut laufen
@@ -215,6 +234,61 @@ def _meta(basis: str, stand: str, verteilung: list[dict], votemanager_sitze: dic
     }
 
 
+def _freeze_mayor(session: requests.Session, w: elections.Election, target: Path, status: str) -> None:
+    """Eine OB-Wahl (auch eine Stichwahl) aus der Ergebnisdarstellung — mit
+    Gegenprobe, bevor etwas liegen bleibt: Eine halb ausgezählte Wahl als
+    Rückblick wäre schlimmer als keiner."""
+    base = mayor.base_url(w)
+    election_id, city_id = mayor.resolve_ids(session, base, w)
+    if election_id is None:
+        raise SystemExit(f"Abbruch: „{w.slug}“ steht nicht in termin.json.")
+    api = w.source.api_path(election_id)
+    result = json.loads(_hol(session, f"{base}{api}/ergebnis_{city_id}_0.json"))
+    election_json = json.loads(_hol(session, f"{base}{api}/wahl.json"))
+    level = mayor_districts.level_id(election_json)
+    if level is None:
+        raise SystemExit("Abbruch: wahl.json nennt keine Wahlbezirks-Ebene.")
+    overview = json.loads(_hol(session, f"{base}{mayor_districts.overview_path(api, level)}"))
+
+    known = mayor.candidates(w)
+    city = mayor.parse(result, known)
+    if city is None or city.phase != "complete":
+        raise SystemExit(f"Abbruch: „{w.slug}“ ist nicht fertig ausgezählt "
+                         f"({city.reports_received if city else 0} Meldungen).")
+    districts = mayor_districts.parse_overview(overview, {c.slug: c.name for c in known})
+    still_open = [d.number for d in districts if not d.counted]
+    if len(districts) != city.reports_expected or still_open:
+        raise SystemExit(f"Abbruch: {len(districts)} Bezirke statt {city.reports_expected}, "
+                         f"offen: {still_open[:5]}")
+    # Nur Kandidaturen mit eigener Spalte: Im ersten Wahlgang 2026 fasst die
+    # Bezirksübersicht Stille und Castur zu „Sonstige" zusammen.
+    columns = set().union(*(d.votes for d in districts)) if districts else set()
+    for c in city.candidates:
+        if c.slug not in columns:
+            continue
+        total = sum(d.votes.get(c.slug) or 0 for d in districts)
+        if total != c.votes:
+            raise SystemExit(f"Abbruch: {c.name} — Bezirke {total}, Stadt {c.votes}.")
+    print("  Gegenprobe: " + ", ".join(f"{c.name} {c.votes}" for c in city.candidates)
+          + f" — {len(districts)} Bezirke, Summe = Stadt")
+
+    for name, payload in (("praesentation-ob.json", result), ("praesentation-ob-wahl.json", election_json),
+                          ("praesentation-ob-wahlbezirke.json", overview)):
+        (target / name).write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        print(f"  {name}")
+    if any(referenz.META_NAME.fullmatch(p.name) for p in target.glob("*.json")):
+        # Der Ordner einer Ratswahl (der erste OB-Wahlgang liegt neben ihr):
+        # Ihre Meta-Datei und termin.json gehören dem Ratswahl-Lauf, und eine
+        # quelle.json machte aus dem Ordner für den Wächter eine OB-Wahl.
+        print(f"  (neben einer Ratswahl-Referenz: nur die OB-Dateien, Stand {status})")
+        return
+    _json_sichern(session, base + mayor.TERMIN_PATH, target / "termin.json")
+    source = {"wahl": w.slug, "url": f"{base}/praesentation/", "presentation_id": election_id, "city_id": city_id,
+              "stand": status, "abgerufen": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+    (target / "quelle.json").write_text(json.dumps(source, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print(f"  quelle.json  (Stand: {status})")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--basis", default=votemanager.base_url(), help="Basis-URL des Votemanagers")
@@ -223,7 +297,26 @@ def main() -> int:
     ap.add_argument("--stand", choices=("vorlaeufig", "amtlich"), default="vorlaeufig",
                     help="Ist das Ergebnis vom Wahlausschuss festgestellt?")
     ap.add_argument("--verlauf", help="Datei mit dem Minutenverlauf des Abends (data/wahlabend-verlauf.json)")
+    ap.add_argument("--ob", metavar="SLUG", help="nur diese OB-Wahl einfrieren (z. B. ob-stichwahl-2026)")
     args = ap.parse_args()
+
+    if args.ob:
+        w = elections.get(args.ob)
+        if w is None or w.kind != "mayor":
+            raise SystemExit(f"Abbruch: „{args.ob}“ ist keine OB-Wahl in kommunalwahl/wahlen/.")
+        target = (WURZEL / args.ziel).resolve()
+        target.mkdir(parents=True, exist_ok=True)
+        print(f"Quelle: {mayor.base_url(w)}\nZiel:   {target}\n\nErgebnisdarstellung (JSON):")
+        with requests.Session() as session:
+            session.headers.update({"User-Agent": votemanager.UA})
+            _freeze_mayor(session, w, target, args.stand)
+        if args.verlauf:
+            history = Path(args.verlauf)
+            if not history.is_file():
+                raise SystemExit(f"Abbruch: {history} gibt es nicht.")
+            shutil.copyfile(history, target / "verlauf.json")
+            print(f"\nVerlauf:\n  verlauf.json ({len(json.loads(history.read_text(encoding='utf-8')))} Punkte)")
+        return 0
 
     # Dieselbe Regel, nach der ``reference.load`` die Meta-Datei findet — nicht
     # nachgebaut, sondern von dort geholt: zwei Fassungen liefen auseinander.

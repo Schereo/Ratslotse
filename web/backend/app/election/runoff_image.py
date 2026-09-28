@@ -152,7 +152,7 @@ def _clock(night: MayorNight) -> str | None:
 
 
 def _entschieden(night: MayorNight) -> MayorCandidate | None:
-    """Wer gewählt ist — rechnerisch entschieden oder alles gezählt."""
+    """Wer uneinholbar vorn liegt — rechnerisch entschieden oder alles gezählt."""
     p = night.get("projection")
     fertig = night["phase"] == "complete"
     if not (fertig or (p is not None and p["decided"])):
@@ -168,7 +168,7 @@ def _kicker(night: MayorNight) -> str:
     if night["dataset"] == "probe":
         teile.append("GENERALPROBE")
     elif night["phase"] == "complete":
-        teile.append("ENDSTAND")
+        teile.append("VORLÄUFIGER ENDSTAND")
     elif (uhr := _clock(night)) is not None:
         teile.append(f"STAND {uhr} UHR")
     return " · ".join(teile)
@@ -177,7 +177,9 @@ def _kicker(night: MayorNight) -> str:
 def _titel(night: MayorNight) -> str:
     gewaehlt = _entschieden(night)
     if gewaehlt is not None:
-        return f"{gewaehlt['name']} ist gewählt"
+        if night["phase"] == "complete":
+            return f"{gewaehlt['name']} erhält die meisten Stimmen"
+        return f"{gewaehlt['name']} liegt uneinholbar vorn"
     if night["phase"] == "before":
         return "Stichwahl — ab 18 Uhr live"
     reihe = _nach_stimmen(night)
@@ -197,7 +199,9 @@ def _unterzeile(night: MayorNight) -> str:
 def _blasentext(night: MayorNight) -> str:
     gewaehlt = _entschieden(night)
     if gewaehlt is not None:
-        return f"Glückwunsch, {gewaehlt['name']} — und danke an alle, die gewählt haben!"
+        if night["phase"] == "complete":
+            return f"{gewaehlt['name']} erhält die meisten Stimmen — danke an alle, die gewählt haben!"
+        return f"{gewaehlt['name']} liegt uneinholbar vorn. Noch sind nicht alle Bezirke ausgezählt."
     if night["phase"] == "before":
         return f"Am {_date(night['election']['date']).title()} ab 18 Uhr zählt Oldenburg aus. Live auf ratslotse.de!"
     offen = night["reports_expected"] - night["reports_received"]
@@ -249,7 +253,7 @@ def render(night: MayorNight, fmt: str = "beitrag") -> bytes:
     fuss = sheet.font(INTER, L.footer_size, 400)
     uhr = _clock(night)
     stand = f" · Stand {uhr} Uhr" if uhr and night["dataset"] != "probe" else ""
-    text = f"ratslotse.de/wahlabend/stichwahl · Quelle: Votemanager der Stadt Oldenburg{stand} · kein amtliches Ergebnis"
+    text = f"ratslotse.de/wahlabend/stichwahl · Quelle: Votemanager der Stadt Oldenburg{stand} · vorläufiges Ergebnis"
     _lines(sheet, L.margin, L.footer_y, text, fuss, MUTED, breite, L.footer_size * 1.3, 2)
     return sheet.png(L.width, L.height)
 
