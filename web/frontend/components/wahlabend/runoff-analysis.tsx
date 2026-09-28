@@ -23,6 +23,7 @@ import {
   useAbleseId,
   type AbleseStelle,
 } from "@/components/grafik/ablesen";
+import { ChartLegend } from "@/components/grafik/chart-legend";
 import { KICKER, Punkt } from "@/components/wahlabend/bausteine";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -178,6 +179,7 @@ export function ComparisonView({ analysis, showDistricts }: {
             {prozent(urn.share_runoff_pct[winner.slug])} und bei der Briefwahl von {prozent(postal.share_first_pct[winner.slug])}
             auf {prozent(postal.share_runoff_pct[winner.slug])}.
           </p>
+          <DumbbellLegend winner={winner} className="mt-3" />
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {[urn, postal].map((p) => (
               <div key={p.key} className="rounded-xl border border-border/70 p-3.5">
@@ -209,6 +211,7 @@ export function ComparisonView({ analysis, showDistricts }: {
             {prozent(weakest.share_runoff_pct)}, in der Gruppe mit seinem höchsten von {prozent(strongest.share_first_pct)} auf{" "}
             {prozent(strongest.share_runoff_pct)}.
           </p>
+          <DumbbellLegend winner={winner} className="mt-3" />
           <ol className="mt-4 space-y-2.5">
             {analysis.quintiles.map((q) => (
               <li key={q.rank} className="grid grid-cols-[8.5rem_1fr_3.5rem] items-center gap-3 text-[13px]">
@@ -340,6 +343,21 @@ function Dumbbell({ first, runoff, winner, className }: {
   );
 }
 
+/** Was die beiden Punkte einer Hantel bedeuten — gezeichnet wie im Bild. */
+function DumbbellLegend({ winner, className }: { winner: Candidate; className?: string }) {
+  const color = `light-dark(${winner.color || "#6b7a8c"}, ${winner.color_dark || winner.color || "#a3b1c2"})`;
+  return (
+    <ChartLegend
+      className={className}
+      items={[
+        { mark: "ring", color, label: "1. Wahlgang" },
+        { mark: "dot", color, label: "Stichwahl" },
+        { mark: "rule", label: "50 %" },
+      ]}
+    />
+  );
+}
+
 /** Die Beschriftung unter einer Reihe von Hanteln: 30, 50, 70 %. */
 function DumbbellAxis() {
   return (
@@ -374,6 +392,7 @@ export function AreasView({ analysis, showArea }: {
         jeweiligen Wahlbereich zugerechnet. Die Faktoren bei „Stimmenzahl“ vergleichen mit dem ersten Wahlgang; ×1,00 bedeutet
         unverändert.
       </p>
+      <DumbbellLegend winner={winner} className="mt-3" />
       <div className="mt-2 grid gap-4 @2xl:grid-cols-2">
         {analysis.areas.map((a) => {
           const w = a.share_runoff_pct[winner.slug] ?? null;
@@ -710,10 +729,15 @@ function ReviewChart({ review, winner }: { review: RunoffProjectionReview; winne
   }));
   return (
     <div className="mt-5">
-      <p className={KICKER}>
-        Anteil für {surname(winner)} nach ausgezählten Bezirken · durchgezogen: Zwischenstand · gestrichelt: Hochrechnung ·
-        blau: Endergebnis
-      </p>
+      <p className={KICKER}>Anteil für {surname(winner)} nach ausgezählten Bezirken</p>
+      <ChartLegend
+        className="mt-1.5"
+        items={[
+          { mark: "line-faint", color, label: "Zwischenstand" },
+          { mark: "dashed", color, label: "Hochrechnung" },
+          { mark: "rule", color: "hsl(var(--primary))", label: `Endergebnis ${prozent(review.final_share_pct)}` },
+        ]}
+      />
       <AbleseBeschreibung id={id}>
         Nach Zahl der ausgezählten Bezirke: der jeweilige Stimmenanteil von {winner.name} als Treppenlinie, die Hochrechnung
         gestrichelt und das Endergebnis von {prozent(review.final_share_pct)} als waagerechte Linie.

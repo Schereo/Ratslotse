@@ -8,6 +8,7 @@
 
 import { scaleLinear, scaleTime } from "d3-scale";
 import { area, curveStepAfter, line } from "d3-shape";
+import { ChartLegend } from "@/components/grafik/chart-legend";
 import {
   AbleseBeschreibung,
   AbleseFlaeche,
@@ -64,7 +65,7 @@ function Bild({
     .curve(curveStepAfter)(werte) ?? "";
   return (
     <div>
-      <p className={KICKER}>{titel}</p>
+      <ChartLegend items={[{ mark: flaeche ? "area" : "line", color: "hsl(var(--primary))", label: titel }]} />
       <svg viewBox={`0 0 ${W} ${H}`} className="mt-1 block w-full" role="group" aria-describedby={id}>
         {ticks.map((t) => (
           <g key={t}>
@@ -114,6 +115,8 @@ function Bild({
   );
 }
 
+const DATUM_KURZ = new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", timeZone: "Europe/Berlin" });
+
 export function Verlauf({ daten, liste }: { daten: Wahlabend; liste: string | null }) {
   const punkte: Punkt[] = daten.history ?? [];
   const partei: WahlabendPartei | undefined =
@@ -134,13 +137,16 @@ export function Verlauf({ daten, liste }: { daten: Wahlabend; liste: string | nu
   }
   const zeiten = punkte.map((p) => new Date(p.at));
   const xSkala = scaleTime().domain([zeiten[0], zeiten[zeiten.length - 1]]).range([X0, X1]);
+  const mehrtaegig = zeiten[zeiten.length - 1].getTime() - zeiten[0].getTime() > 20 * 3_600_000;
+  // Ein Zeitpunkt, mit Datum, sobald der Verlauf mehr als einen Tag umfasst.
+  const wann = (iso: string) => (mehrtaegig ? `${DATUM_KURZ.format(new Date(iso))} ${uhrzeit(iso) ?? ""}` : (uhrzeit(iso) ?? iso));
   const x = (i: number) => xSkala(zeiten[i]);
   const anteile = punkte.map((p) => p.shares[partei.slug] ?? 0);
   const sitze = punkte.map((p) => p.seats[partei.slug] ?? 0);
   const gezaehlt = punkte.map((p) => p.districts_counted);
   const gesamt = daten.progress.districts_total;
   const stellen: AbleseStelle[] = punkte.map((p, i) => ({
-    title: uhrzeit(p.at) ? `${uhrzeit(p.at)} Uhr` : p.at,
+    title: `${wann(p.at)} Uhr`,
     werte: [
       { label: `Anteil ${partei.short}`, value: prozent(anteile[i]), farbe: partei.color },
       { label: "Sitze", value: String(sitze[i]) },
@@ -148,13 +154,18 @@ export function Verlauf({ daten, liste }: { daten: Wahlabend; liste: string | nu
     ],
     vorlesen: `${uhrzeit(p.at)} Uhr: ${partei.short} ${prozent(anteile[i])}, ${sitze[i]} Sitze, ${gezaehlt[i]} von ${gesamt} Wahlbezirken ausgezählt.`,
   }));
-  const zeitTicks = xSkala.ticks(4).map((t) => ({ x: xSkala(t), label: uhrzeit(t.toISOString()) ?? "" }));
+  // Über mehr als einen Tag (Korrekturstände nach dem Wahlabend, 21./23.09.)
+  // trägt die Achse das Datum — mit der Uhrzeit stand dort fünfmal „00:00".
+  const zeitTicks = xSkala.ticks(4).map((t) => ({
+    x: xSkala(t),
+    label: mehrtaegig ? DATUM_KURZ.format(t) : (uhrzeit(t.toISOString()) ?? ""),
+  }));
   return (
     <section className="mt-6 rounded-2xl border border-border bg-card p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)] @container">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h2 className="font-display text-[16px] font-bold tracking-tight">Der Verlauf des Abends</h2>
         <span className={KICKER}>
-          {punkte.length} Stände · {uhrzeit(punkte[0].at)}–{uhrzeit(punkte[punkte.length - 1].at)} Uhr
+          {punkte.length} Stände · {wann(punkte[0].at)} – {wann(punkte[punkte.length - 1].at)} Uhr
         </span>
       </div>
       <AbleseBeschreibung id={id}>
