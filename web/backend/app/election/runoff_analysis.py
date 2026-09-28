@@ -39,7 +39,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 from typing import Any
 
-from . import elections, mayor, mayor_districts, runoff_model
+from . import elections, history, mayor, mayor_districts, runoff_model
 from .rounding import EXACT_DIGITS, exact_pct
 from .mayor_districts import MayorDistrict
 
@@ -268,16 +268,18 @@ def _projection_review(w: elections.Election, winner: str, final_share: float | 
     if w.archive_folder is None or final_share is None:
         return None
     try:
-        history = json.loads((w.archive_folder / "verlauf.json").read_text(encoding="utf-8"))
+        saved = json.loads((w.archive_folder / "verlauf.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
-    if not isinstance(history, list) or not history:
+    if not isinstance(saved, list) or not saved:
         return None
 
     points = []
-    for h in history:
+    for h in saved:
         projected = h.get("projected_shares") or {}
-        counted = h.get("shares") or {}
+        # Aus den Stimmen, nicht aus den gespeicherten Anteilen (zwei Stellen).
+        counted = history.exact_shares({k: v for k, v in (h.get("votes") or {}).items() if isinstance(v, int)}) \
+            or h.get("shares") or {}
         projected_share = projected.get(winner)
         projected_leader = max(projected, key=lambda slug: projected[slug]) if projected else None
         points.append({

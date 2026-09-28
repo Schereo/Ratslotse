@@ -182,3 +182,57 @@ def test_der_ticker_nennt_die_juengsten_bezirke_zuerst(datei):
         assert z["leader"] == max(z["shares"], key=lambda s: z["shares"][s])
         assert set(z["first_round_shares"]) == {"prange", "rohr"}
     assert router.stichwahl(probe="1", counted=0)["recent_districts"] == []
+
+
+# Die beiden letzten Punkte, wie sie am 28.09.2026 auf Prod standen: derselbe
+# Endstand, einmal mit zwei Stellen und einmal exakt (seit #1578).
+ENDSTAND = {"at": "2026-09-27T17:24:25+00:00", "reports_received": 133,
+            "shares": {"rohr": 51.55, "prange": 48.45}, "votes": {"rohr": 30792, "prange": 28942},
+            "projected_shares": {"rohr": 51.5, "prange": 48.5}, "chance_pct": None, "leader": "rohr",
+            "new_districts": [913, 943, 963]}
+SCHEINSTAND = {**ENDSTAND, "at": "2026-09-28T07:02:02+00:00",
+               "shares": {"rohr": 51.548532, "prange": 48.451468}, "new_districts": []}
+
+
+def test_genauere_anteile_bei_gleichen_stimmen_sind_kein_neuer_stand(datei):
+    """Am 28.09.2026 um 09:02 stand ein Punkt im Verlauf, 15 Stunden nach
+    dem Endstand — die Anteile waren genauer geworden, die Stimmen gleich."""
+    history.add_mayor(SLUG, history._mayor_point_from(ENDSTAND))  # noqa: SLF001
+    history.add_mayor(SLUG, history._mayor_point_from(SCHEINSTAND))  # noqa: SLF001
+    punkte = history.mayor_points(SLUG)
+    assert len(punkte) == 1 and punkte[0]["at"] == ENDSTAND["at"]
+
+
+def test_ein_schon_geschriebener_scheinstand_verschwindet_beim_lesen(datei):
+    """Die Datei auf Prod trägt ihn schon — ohne Handarbeit am Server soll er
+    aus Kurve und Achse verschwinden, und der ältere Punkt bleibt."""
+    import json
+
+    datei.write_text(json.dumps([ENDSTAND, SCHEINSTAND]), encoding="utf-8")
+    history.reset()
+    punkte = history.mayor_points(SLUG)
+    assert [p["at"] for p in punkte] == [ENDSTAND["at"]]
+    assert punkte[0]["new_districts"] == [913, 943, 963]
+
+
+def test_ratswahl_genauere_anteile_sind_kein_neuer_stand(tmp_path, monkeypatch):
+    """Dasselbe für die Ratswahl: Ihr Verlauf hat keine Stimmen, dort gelten
+    die Anteile auf zwei Stellen, wie sie bis 09/2026 geschrieben wurden."""
+    import json
+
+    monkeypatch.setenv("WAHLABEND_HISTORY_FILE", str(tmp_path / "rat.json"))
+    alt = {"at": "2026-09-23T14:45:00+00:00", "districts_counted": 133,
+           "shares": {"gruene": 25.12, "bsw": 1.65}, "seats": {"gruene": 13, "bsw": 1}}
+    neu = {**alt, "at": "2026-09-28T07:02:46+00:00", "shares": {"gruene": 25.123961, "bsw": 1.64897}}
+    history.path().write_text(json.dumps([alt, neu]), encoding="utf-8")
+    history.reset()
+    assert [p["at"] for p in history.points()] == [alt["at"]]
+    history.reset()
+
+
+def test_anteile_eines_punktes_kommen_aus_den_stimmen(datei):
+    """Gespeichert ist 51,55 (zwei Stellen); die Ableseleiste nannte am
+    Endstand deshalb 51,6. Aus den Stimmen: 30.792 / 59.734 = 51,5485."""
+    punkt = history._mayor_point_from(ENDSTAND)  # noqa: SLF001
+    assert punkt is not None
+    assert punkt["shares"]["rohr"] == pytest.approx(100 * 30792 / 59734, abs=1e-6)
