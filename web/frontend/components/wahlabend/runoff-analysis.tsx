@@ -102,10 +102,11 @@ export function ComparisonView({ analysis, showDistricts }: {
   return (
     <div data-testid="stichwahl-vergleich">
       <section className={CARD}>
-        <h2 className={H2}>Zwei Wahlgänge, zwei Namen</h2>
+        <h2 className={H2}>Die beiden Wahlgänge im Vergleich</h2>
         <p className="mt-1 text-[14px] leading-relaxed text-muted-foreground">
-          {surname(winner)} gewann {zahl(gained(winner))} Stimmen dazu, {surname(loser)} {zahl(gained(loser))} — obwohl{" "}
-          {zahl(city.voters_first - city.voters_runoff)} Menschen weniger wählten als am 13. September.
+          {surname(winner)} erhielt in der Stichwahl {zahl(gained(winner))} Stimmen mehr als im ersten Wahlgang, {surname(loser)}{" "}
+          {zahl(gained(loser))} mehr. Gleichzeitig beteiligten sich {zahl(city.voters_first - city.voters_runoff)} Menschen weniger
+          als am 13. September.
         </p>
         <div className="mt-4 overflow-x-auto">
           <table className="w-full min-w-[30rem] border-separate border-spacing-0 text-[13.5px]">
@@ -114,7 +115,7 @@ export function ComparisonView({ analysis, showDistricts }: {
                 <th className="border-b border-border pb-2 text-left font-medium" />
                 <th className="border-b border-border pb-2 text-right font-medium">1. Wahlgang</th>
                 <th className="border-b border-border pb-2 text-right font-medium">Stichwahl</th>
-                <th className="border-b border-border pb-2 text-right font-medium">Stimmen</th>
+                <th className="border-b border-border pb-2 text-right font-medium">Veränderung</th>
               </tr>
             </thead>
             <tbody className="tabular-nums">
@@ -138,7 +139,9 @@ export function ComparisonView({ analysis, showDistricts }: {
                 </tr>
               ))}
               <tr>
-                <td className="border-b border-border/60 py-2.5 pr-3 text-muted-foreground">Die sieben anderen</td>
+                <td className="border-b border-border/60 py-2.5 pr-3 text-muted-foreground">
+                  Übrige {analysis.eliminated.length} Kandidaturen
+                </td>
                 <td className="border-b border-border/60 py-2.5 text-right">{zahl(eliminatedVotes)}</td>
                 <td className="border-b border-border/60 py-2.5 text-right text-muted-foreground">nicht mehr auf dem Zettel</td>
                 <td className="border-b border-border/60 py-2.5" />
@@ -160,17 +163,20 @@ export function ComparisonView({ analysis, showDistricts }: {
         </div>
         <p className="mt-3 text-[12.5px] leading-relaxed text-muted-foreground">
           Im ersten Wahlgang ausgeschieden:{" "}
-          {analysis.eliminated.map((e) => `${e.name} ${zahl(e.votes)}`).join(" · ")}. Prozente in dieser Tabelle: amtlich,
-          also im ersten Wahlgang von allen neun. Alle Vergleiche darunter rechnen mit dem Anteil an den beiden.
+          {analysis.eliminated.map((e) => `${e.name} ${zahl(e.votes)}`).join(" · ")}. Die Prozentwerte in dieser Tabelle sind
+          die amtlichen Anteile an allen gültigen Stimmen. In den folgenden Vergleichen werden nur die Stimmen für die beiden
+          Stichwahlkandidaten betrachtet, damit sich beide Wahlgänge vergleichen lassen.
         </p>
       </section>
 
       {urn && postal ? (
         <section className={CARD}>
-          <h2 className={H2}>Urne und Brief</h2>
+          <h2 className={H2}>Urnen- und Briefwahl im Vergleich</h2>
           <p className="mt-1 text-[14px] leading-relaxed text-muted-foreground">
-            {surname(winner)} lag per Brief schon im ersten Wahlgang vorn. Gedreht hat er die Wahl an der Urne: dort{" "}
-            {pointsText(urn.swing_pts)} Punkte, per Brief {pointsText(postal.swing_pts)}.
+            Bei den Briefwahlstimmen lag {surname(winner)} bereits im ersten Wahlgang vor {surname(loser)}. Sein Anteil an den
+            Stimmen für beide Stichwahlkandidaten stieg bei der Urnenwahl von {prozent(urn.share_first_pct[winner.slug])} auf{" "}
+            {prozent(urn.share_runoff_pct[winner.slug])} und bei der Briefwahl von {prozent(postal.share_first_pct[winner.slug])}
+            auf {prozent(postal.share_runoff_pct[winner.slug])}.
           </p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {[urn, postal].map((p) => (
@@ -178,34 +184,40 @@ export function ComparisonView({ analysis, showDistricts }: {
                 <p className={KICKER}>{p.label} · {p.districts} Bezirke</p>
                 <ShareShift first={p.share_first_pct[winner.slug]} runoff={p.share_runoff_pct[winner.slug]} winner={winner} />
                 <p className="mt-2 text-[12.5px] leading-relaxed text-muted-foreground">
-                  Stimmen {surname(winner)} {growthText(p.growth[winner.slug])}, {surname(loser)}{" "}
-                  {growthText(p.growth[loser.slug])} · Wählende {zahl(p.voters_first)} → {zahl(p.voters_runoff)}
+                  Stimmenzahl seit dem ersten Wahlgang: {surname(winner)} {growthText(p.growth[winner.slug])}, {surname(loser)}{" "}
+                  {growthText(p.growth[loser.slug])} · Wählende: {zahl(p.voters_first)} → {zahl(p.voters_runoff)}
                 </p>
               </div>
             ))}
           </div>
           <p className="mt-3 text-[12.5px] leading-relaxed text-muted-foreground">
-            ×1,00 hieße: genauso viele Stimmen wie im ersten Wahlgang. In der Stichwahl kamen{" "}
-            {prozent((100 * postal.voters_runoff) / city.voters_runoff, 0)} der Stimmen per Brief, im ersten Wahlgang{" "}
-            {prozent((100 * postal.voters_first) / city.voters_first, 0)} — deshalb getrennt: Zusammen gerechnet sähe die
-            Verschiebung zwischen den Töpfen aus wie ein Meinungswandel.
+            Der Faktor ×1,00 bedeutet: genauso viele Stimmen wie im ersten Wahlgang. Der Anteil der Briefwählenden an allen
+            Wählenden stieg von {prozent((100 * postal.voters_first) / city.voters_first, 0)} auf{" "}
+            {prozent((100 * postal.voters_runoff) / city.voters_runoff, 0)}. Deshalb werden Urnen- und Briefwahl getrennt
+            ausgewertet; sonst könnte allein diese Verschiebung das Ergebnis verzerren.
           </p>
         </section>
       ) : null}
 
       {weakest && strongest ? (
         <section className={CARD}>
-          <h2 className={H2}>Aufgeholt, wo er schwach war</h2>
+          <h2 className={H2}>Größere Zugewinne in zuvor schwachen Bezirken</h2>
           <p className="mt-1 text-[14px] leading-relaxed text-muted-foreground">
-            Die {analysis.quintiles.reduce((s, q) => s + q.districts, 0)} Urnenbezirke in fünf gleich großen Gruppen, nach{" "}
-            {surname(winner)}s Anteil im ersten Wahlgang. Im schwächsten Fünftel legte er {pointsText(weakest.swing_pts)} Punkte
-            zu, im stärksten {pointsText(strongest.swing_pts)}.
+            Die {analysis.quintiles.reduce((s, q) => s + q.districts, 0)} Urnenbezirke sind nach {surname(winner)}s Anteil an den
+            Stimmen für beide Stichwahlkandidaten im ersten Wahlgang in fünf möglichst gleich große Gruppen geordnet. In der
+            Gruppe mit seinem niedrigsten Ausgangsanteil stieg dieser von {prozent(weakest.share_first_pct)} auf{" "}
+            {prozent(weakest.share_runoff_pct)}, in der Gruppe mit seinem höchsten von {prozent(strongest.share_first_pct)} auf{" "}
+            {prozent(strongest.share_runoff_pct)}.
           </p>
           <ol className="mt-4 space-y-2.5">
             {analysis.quintiles.map((q) => (
               <li key={q.rank} className="grid grid-cols-[8.5rem_1fr_3.5rem] items-center gap-3 text-[13px]">
                 <span className="text-muted-foreground">
-                  {q.rank === 1 ? "schwächstes" : q.rank === analysis.quintiles.length ? "stärkstes" : `${q.rank}.`} Fünftel
+                  {q.rank === 1
+                    ? "1. Fünftel · niedrig"
+                    : q.rank === analysis.quintiles.length
+                      ? "5. Fünftel · hoch"
+                      : `${q.rank}. Fünftel`}
                 </span>
                 <Dumbbell first={q.share_first_pct} runoff={q.share_runoff_pct} winner={winner} />
                 <span className={cn("text-right font-semibold tabular-nums", sign(q.swing_pts))}>{pointsText(q.swing_pts)}</span>
@@ -218,56 +230,61 @@ export function ComparisonView({ analysis, showDistricts }: {
             </li>
           </ol>
           <p className="mt-3 text-[12.5px] leading-relaxed text-muted-foreground">
-            Hohler Punkt: {surname(winner)}s Anteil an den beiden im ersten Wahlgang, voller Punkt: in der Stichwahl.
+            Der hohle Punkt zeigt {surname(winner)}s Anteil an den Stimmen für beide Kandidaten im ersten Wahlgang, der volle
+            Punkt den Anteil in der Stichwahl.
             {analysis.catch_up_r !== null
-              ? ` Über alle Urnenbezirke hängen beide mit r = ${analysis.catch_up_r.toFixed(2).replace(".", ",").replace("-", "−")} zusammen — erkennbar, aber kein strenger Zusammenhang.`
+              ? ` Der Korrelationswert über alle Urnenbezirke beträgt r = ${analysis.catch_up_r.toFixed(2).replace(".", ",").replace("-", "−")}. Der negative Wert bedeutet: Je niedriger der Ausgangsanteil war, desto größer war tendenziell der Zugewinn. Das belegt keine Ursache.`
               : ""}
           </p>
         </section>
       ) : null}
 
       <section className={CARD}>
-        <h2 className={H2}>Gedrehte Bezirke</h2>
+        <h2 className={H2}>In welchen Bezirken die Führung wechselte</h2>
         <p className="mt-1 text-[14px] leading-relaxed text-muted-foreground">
           Im ersten Wahlgang lag {surname(winner)} in {leadFirst} von {city.districts} Bezirken vor {surname(loser)}, in der
-          Stichwahl in {leadRunoff}. {flippedToWinner} Bezirke drehten zu {surname(winner)}
-          {flippedToLoser > 0 ? `, ${flippedToLoser} zu ${surname(loser)}` : ""}.
+          Stichwahl in {leadRunoff}. In {flippedToWinner} Bezirken wechselte die Führung von {surname(loser)} zu {surname(winner)}
+          {flippedToLoser > 0
+            ? `; in ${flippedToLoser === 1 ? "einem Bezirk" : `${flippedToLoser} Bezirken`} wechselte sie von ${surname(winner)} zu ${surname(loser)}`
+            : ""}.
         </p>
         <button
           type="button"
           onClick={showDistricts}
           className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-border px-3.5 py-1.5 text-[13px] font-medium text-primary hover:bg-primary/5"
         >
-          Alle Bezirke nach Zugewinn
+          Alle Bezirke nach Zugewinn sortiert
         </button>
       </section>
 
-      <Limits />
+      <Limits resultStatus={analysis.result_status} />
     </div>
   );
 }
 
-function Limits() {
+function Limits({ resultStatus }: { resultStatus: RunoffAnalysis["result_status"] }) {
   return (
     <section className="mt-5 rounded-2xl border border-dashed border-border p-4 sm:p-5">
       <h2 className={H2}>Was diese Zahlen nicht hergeben</h2>
       <ul className="mt-2 space-y-2 text-[13.5px] leading-relaxed text-muted-foreground @container sm:grid sm:grid-cols-2 sm:gap-x-6 sm:space-y-0">
         <li>
-          <strong className="font-semibold text-foreground">Wer wohin gewandert ist.</strong> Ob Boldt-Wählende zu Rohr gingen
-          oder zu Hause blieben, steht in keinem Bezirksergebnis. Eine Rechnung über die 133 Bezirke liefert hier sogar negative
-          Übergänge — also Unsinn. Belastbar sind nur Aussagen über Orte, nicht über Menschen.
+          <strong className="font-semibold text-foreground">Wer wen im zweiten Wahlgang gewählt hat.</strong> Ob Menschen, die
+          zuvor Boldt gewählt haben, in der Stichwahl Rohr oder Prange wählten oder zu Hause blieben, steht in keinem
+          Bezirksergebnis. Berechnete Wechsel zwischen den Kandidaturen wären daher nicht belastbar.
         </li>
         <li>
-          <strong className="font-semibold text-foreground">Wo die Briefwählenden wohnen.</strong> Briefwahlbezirke haben keine
-          Fläche; sie gehören zu einem Wahlbereich, nicht zu einer Straße. Die Fünftel rechnen deshalb nur mit der Urne.
+          <strong className="font-semibold text-foreground">Wo Briefwählende wohnen.</strong> Briefwahlbezirke lassen sich nur
+          einem Wahlbereich, aber keiner Straße zuordnen. Der Vergleich nach Fünfteln berücksichtigt deshalb nur Urnenbezirke.
         </li>
         <li>
-          <strong className="font-semibold text-foreground">Das amtliche Ergebnis.</strong> Das stellt der Wahlausschuss fest;
-          hier stehen die Zahlen der Ergebnisdarstellung vom Wahlabend.
+          <strong className="font-semibold text-foreground">Das amtliche Endergebnis.</strong> Das stellt der Wahlausschuss fest.
+          {resultStatus === "amtlich"
+            ? " Hier wird das amtlich festgestellte Ergebnis ausgewertet."
+            : " Hier werden die vorläufigen Zahlen aus der Ergebnisdarstellung des Wahlabends ausgewertet."}
         </li>
         <li>
-          <strong className="font-semibold text-foreground">Warum.</strong> Die Zahlen zeigen, wo sich etwas verschoben hat —
-          nicht, was die Leute bewegt hat.
+          <strong className="font-semibold text-foreground">Die Gründe für Veränderungen.</strong> Die Zahlen zeigen, wo sich
+          Anteile verändert haben, aber nicht, warum Menschen anders oder gar nicht gewählt haben.
         </li>
       </ul>
     </section>
@@ -346,13 +363,16 @@ export function AreasView({ analysis, showArea }: {
   const swings = analysis.areas.map((a) => a.swing_pts ?? 0);
   const allUp = swings.every((s) => s > 0);
   const best = analysis.areas.reduce((a, b) => ((b.swing_pts ?? 0) > (a.swing_pts ?? 0) ? b : a));
+  const bestChange = pointsText(best.swing_pts).replace(/^\+/, "");
   return (
     <div data-testid="stichwahl-bereiche" className="@container">
       <p className="mt-5 text-[14px] leading-relaxed text-muted-foreground">
         {allUp
-          ? `${surname(winner)} legte in allen sechs Wahlbereichen zu, am stärksten in ${best.label} (${pointsText(best.swing_pts)} Punkte).`
-          : `Am stärksten legte ${surname(winner)} in ${best.label} zu (${pointsText(best.swing_pts)} Punkte).`}{" "}
-        Jeder Bereich mit seinen Urnen- und Briefwahlbezirken; die Beteiligung rechnet die Briefwählenden zu ihrem Bereich.
+          ? `${surname(winner)}s Anteil an den Stimmen für beide Stichwahlkandidaten stieg in allen sechs Wahlbereichen. Am stärksten war der Anstieg in ${best.label} mit ${bestChange} Prozentpunkten.`
+          : `Die größte Veränderung gab es in ${best.label}: ${pointsText(best.swing_pts)} Prozentpunkte.`}{" "}
+        Jeder Wahlbereich umfasst seine Urnen- und Briefwahlbezirke. Bei der Wahlbeteiligung werden die Briefwählenden dem
+        jeweiligen Wahlbereich zugerechnet. Die Faktoren bei „Stimmenzahl“ vergleichen mit dem ersten Wahlgang; ×1,00 bedeutet
+        unverändert.
       </p>
       <div className="mt-2 grid gap-4 @2xl:grid-cols-2">
         {analysis.areas.map((a) => {
@@ -367,11 +387,11 @@ export function AreasView({ analysis, showArea }: {
               <ShareShift first={a.share_first_pct[winner.slug] ?? null} runoff={w} winner={winner} />
               <dl className="mt-3 grid grid-cols-3 gap-2 text-[12.5px]">
                 <div>
-                  <dt className="text-muted-foreground">Zugewinn</dt>
+                  <dt className="text-muted-foreground">Anteil</dt>
                   <dd className={cn("font-semibold tabular-nums", sign(a.swing_pts))}>{pointsText(a.swing_pts)} Pkt.</dd>
                 </div>
                 <div>
-                  <dt className="text-muted-foreground">Stimmen</dt>
+                  <dt className="text-muted-foreground">Stimmenzahl</dt>
                   <dd className="tabular-nums">
                     {surname(winner)} {growthText(a.growth[winner.slug])}
                     <br />
@@ -384,7 +404,7 @@ export function AreasView({ analysis, showArea }: {
                 </div>
               </dl>
               <p className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[12.5px] text-muted-foreground">
-                <span>{ahead ? `${surname(winner)} vorn` : `${surname(loser)} vorn`}</span>
+                <span>{ahead ? `${surname(winner)} erhielt mehr Stimmen` : `${surname(loser)} erhielt mehr Stimmen`}</span>
                 <button type="button" onClick={() => showArea(a.number)} className="font-medium text-primary">
                   Bezirke in {a.label}
                 </button>
@@ -400,10 +420,10 @@ export function AreasView({ analysis, showArea }: {
 /* ── Wahlbezirke ────────────────────────────────────────────────────────── */
 
 const SORTS: { value: RunoffSort; label: string }[] = [
-  { value: "share", label: "Anteil" },
-  { value: "swing", label: "Zugewinn" },
-  { value: "turnout", label: "Beteiligung" },
-  { value: "number", label: "Nummer" },
+  { value: "share", label: "Stichwahl-Anteil" },
+  { value: "swing", label: "Veränderung" },
+  { value: "turnout", label: "Rückgang der Beteiligung" },
+  { value: "number", label: "Bezirksnummer" },
 ];
 
 export function DistrictsView({ analysis, sort, area, pot, onChange }: {
@@ -425,10 +445,10 @@ export function DistrictsView({ analysis, sort, area, pot, onChange }: {
   const rows = query.data?.rows ?? [];
   const total = query.data?.total ?? analysis.city.districts;
   const explain: Record<RunoffSort, string> = {
-    share: `Wo ${surname(winner)} in der Stichwahl am stärksten war.`,
-    swing: `Wo ${surname(winner)} gegenüber dem ersten Wahlgang am meisten zulegte — in Punkten seines Anteils an den beiden.`,
-    turnout: "Wo die Beteiligung am stärksten zurückging. Briefwahlbezirke haben keine eigenen Wahlberechtigten und stehen am Ende.",
-    number: "In der Reihenfolge der Stadt.",
+    share: `Wahlbezirke mit dem höchsten Stichwahl-Anteil für ${surname(winner)}.`,
+    swing: `Wahlbezirke, in denen ${surname(winner)}s Anteil an den Stimmen für beide Kandidaten gegenüber dem ersten Wahlgang am stärksten stieg.`,
+    turnout: "Wahlbezirke mit dem stärksten Rückgang der Wahlbeteiligung. Für Briefwahlbezirke weist die Stadt keine eigenen Wahlberechtigten aus; sie stehen deshalb am Ende.",
+    number: "Wahlbezirke in der amtlichen Nummernfolge.",
   };
   return (
     <section className={CARD} data-testid="stichwahl-bezirke">
@@ -468,11 +488,11 @@ export function DistrictsView({ analysis, sort, area, pot, onChange }: {
         <table className="w-full min-w-[34rem] border-separate border-spacing-0 text-[13px]">
           <thead>
             <tr className={KICKER}>
-              <th className="border-b border-border pb-2 pr-2 text-right font-medium">#</th>
+              <th className="border-b border-border pb-2 pr-2 text-right font-medium">Rang</th>
               <th className="border-b border-border pb-2 text-left font-medium">Wahlbezirk</th>
               <th className="border-b border-border pb-2 text-right font-medium">{surname(winner)}</th>
-              <th className="border-b border-border pb-2 text-right font-medium">1. Wg.</th>
-              <th className="border-b border-border pb-2 text-right font-medium">±</th>
+              <th className="border-b border-border pb-2 text-right font-medium">1. Wahlgang</th>
+              <th className="border-b border-border pb-2 text-right font-medium">Veränd.</th>
               <th className="border-b border-border pb-2 pl-3 text-right font-medium">Beteiligung</th>
             </tr>
           </thead>
@@ -485,7 +505,8 @@ export function DistrictsView({ analysis, sort, area, pot, onChange }: {
         {query.isError ? <p className="mt-3 text-[13px] text-muted-foreground">Die Liste ließ sich gerade nicht laden.</p> : null}
       </div>
       <p className="mt-3 text-[12.5px] leading-relaxed text-muted-foreground">
-        {surname(winner)}: Anteil an den Stimmen für beide. „gedreht": Im ersten Wahlgang lag dort der andere vorn.
+        Die Anteile beziehen sich in beiden Wahlgängen nur auf die Stimmen für {surname(winner)} und {surname(loser)}.
+        „Führung wechselte“ bedeutet: Im ersten Wahlgang lag dort der andere Kandidat vorn.
       </p>
     </section>
   );
@@ -520,7 +541,7 @@ function DistrictRow({ row, winner, loser }: { row: RunoffDistrictRow; winner: C
         <span className="ml-1.5 text-[11.5px] text-muted-foreground">WB {ROMAN[row.area] ?? row.area}</span>
         {turnedTo ? (
           <span className="ml-1.5 whitespace-nowrap rounded-full bg-primary/10 px-1.5 py-0.5 text-[10.5px] font-semibold text-primary">
-            gedreht zu {surname(turnedTo)}
+            Führung wechselte zu {surname(turnedTo)}
           </span>
         ) : null}
       </td>
@@ -552,44 +573,44 @@ export function ProjectionView({ analysis }: { analysis: RunoffAnalysis }) {
   return (
     <div data-testid="stichwahl-hochrechnung-rueckblick">
       <section className={CARD}>
-        <h2 className={H2}>So rechnet die Hochrechnung</h2>
+        <h2 className={H2}>So wurde die Hochrechnung berechnet</h2>
         <ol className="mt-3 space-y-3 text-[14px] leading-relaxed">
           <li>
-            <strong className="font-semibold">Jeder Bezirk hat ein Gedächtnis.</strong>{" "}
+            <strong className="font-semibold">Ausgangspunkt war das Ergebnis jedes einzelnen Wahlbezirks.</strong>{" "}
             <span className="text-muted-foreground">
-              Aus dem ersten Wahlgang kennen wir für alle 133 Wahlbezirke, wie stark die beiden dort waren. Meldet ein Bezirk,
-              zählt nicht nur sein Ergebnis, sondern auch, wie sehr es sich gegenüber dem 13. September verschoben hat.
+              Für alle 133 Wahlbezirke lagen die Ergebnisse des ersten Wahlgangs vor. Sobald ein Bezirk ausgezählt war, verglich
+              das Modell dessen Stichwahlergebnis mit dem Ergebnis vom 13. September.
             </span>
           </li>
           <li>
-            <strong className="font-semibold">Aus den gemeldeten Bezirken wird ein Trend.</strong>{" "}
+            <strong className="font-semibold">Die ausgezählten Bezirke bestimmten den aktuellen Trend.</strong>{" "}
             <span className="text-muted-foreground">
-              Diese Verschiebung — getrennt für Urne und Briefwahl, weil beide anders schwingen — wird auf die noch offenen
-              Bezirke übertragen: Jeder offene Bezirk stimmt wie im ersten Wahlgang, verschoben um den Trend. Deshalb kann die
-              Hochrechnung schon richtig liegen, wenn die Auszählung noch den Falschen vorn zeigt: Früh melden oft Bezirke, in
-              denen einer ohnehin stark ist.
+              Das Modell ermittelte getrennt für Urnen- und Briefwahlbezirke, wie sich Stimmenanteile und Stimmenzahlen seit dem
+              ersten Wahlgang verändert hatten. Diese durchschnittlichen Veränderungen übertrug es auf die noch offenen Bezirke.
+              Dadurch konnte die Hochrechnung von der laufenden Auszählung abweichen, wenn zunächst vor allem Bezirke meldeten,
+              in denen einer der Kandidaten besonders stark war.
             </span>
           </li>
           <li>
-            <strong className="font-semibold">Die Chance ist die Unsicherheit dieses Trends.</strong>{" "}
+            <strong className="font-semibold">Die angezeigte Wahrscheinlichkeit berücksichtigte die Streuung.</strong>{" "}
             <span className="text-muted-foreground">
-              Wie stark die gemeldeten Bezirke um den Trend streuen, sagt, wie weit er danebenliegen kann. Daraus entsteht eine
-              Wahrscheinlichkeit — erst ab {review?.min_districts ?? 15} gezählten Bezirken, und nie über{" "}
-              {review?.chance_cap ?? 99} %, bis die Arithmetik entschieden hat.
+              Je stärker die Ergebnisse der ausgezählten Bezirke vom Durchschnitt abwichen, desto unsicherer war die
+              Hochrechnung. Eine Wahrscheinlichkeit zeigte das Modell erst ab {review?.min_districts ?? 15} ausgezählten
+              Bezirken und höchstens mit {review?.chance_cap ?? 99} %, solange das Ergebnis nicht rechnerisch feststand.
             </span>
           </li>
           <li>
-            <strong className="font-semibold">„Rechnerisch entschieden" ist keine Schätzung.</strong>{" "}
+            <strong className="font-semibold">„Rechnerisch entschieden“ war keine Hochrechnung.</strong>{" "}
             <span className="text-muted-foreground">
-              Das steht erst da, wenn der tatsächliche Vorsprung größer ist als alle Stimmen, die in den offenen Bezirken
-              höchstens noch kommen können.
+              Dieser Hinweis erschien erst, wenn der tatsächliche Vorsprung größer war als die höchstmögliche Zahl aller noch
+              offenen Stimmen.
             </span>
           </li>
         </ol>
         <p className="mt-3 text-[12.5px] leading-relaxed text-muted-foreground">
-          Vor der Wahl eingestellt und geprüft an der Stichwahl 2021 (Krogmann gegen Fuhrhop, dieselben 133 Bezirke), dort auch
-          mit künstlich knapp gemachten Ergebnissen. Über die Menschen, die im ersten Wahlgang jemand anderen gewählt haben,
-          weiß das Modell nichts — es sieht nur, wie sich die Bezirke bewegen.
+          Das Modell wurde vor der Wahl festgelegt und anhand der Stichwahl 2021 mit denselben 133 Bezirken geprüft — auch mit
+          rechnerisch knapperen Endständen. Es kann nicht erkennen, wie einzelne Menschen zwischen den Wahlgängen entschieden
+          haben; es vergleicht ausschließlich Ergebnisse auf Bezirksebene.
         </p>
       </section>
       {review ? <ReviewCard review={review} winner={winner} /> : null}
@@ -602,33 +623,33 @@ function ReviewCard({ review, winner }: { review: RunoffProjectionReview; winner
   const facts: { value: string; label: string }[] = [
     {
       value: review.projection_right_from === null ? "–" : `ab Bezirk ${review.projection_right_from}`,
-      label: `zeigte die Hochrechnung ${surname(winner)} vorn — und blieb dabei`,
+      label: `nannte die Hochrechnung ${surname(winner)} als voraussichtlichen Sieger — und blieb bis zum Endstand bei dieser Aussage`,
     },
     {
       value: review.counted_right_from === null ? "–" : `ab Bezirk ${review.counted_right_from}`,
-      label: `zeigte die Auszählung selbst ${surname(winner)} vorn — nach ${review.counted_lead_changes} Führungswechseln`,
+      label: `lag ${surname(winner)} auch in der laufenden Auszählung vorn — nach ${review.counted_lead_changes} Führungswechseln`,
     },
     {
       value:
         review.max_error_after_min_pts === null
           ? "–"
-          : `${review.max_error_after_min_pts.toFixed(2).replace(".", ",")} Punkte`,
-      label: `lag die Hochrechnung höchstens daneben, sobald sie eine Chance nannte (ab ${review.min_districts} Bezirken)`,
+          : `${review.max_error_after_min_pts.toFixed(2).replace(".", ",")} Prozentpunkte`,
+      label: `wich die Hochrechnung höchstens vom Endergebnis ab, nachdem sie erstmals eine Wahrscheinlichkeit anzeigte`,
     },
     {
       value: review.first_chance ? `${review.first_chance.chance_pct} %` : "–",
       label: review.first_chance
-        ? `die erste Chance, bei ${review.first_chance.reports_received} Bezirken — ${review.chance_always_winner ? "jede Chance des Abends galt dem Sieger" : "nicht jede galt dem Sieger"}`
-        : "keine Chance genannt",
+        ? `betrug die erste angezeigte Wahrscheinlichkeit nach ${review.first_chance.reports_received} Bezirken — ${review.chance_always_winner ? `sie bezog sich wie alle späteren auf ${surname(winner)}` : "später bezog sie sich zeitweise auf den anderen Kandidaten"}`
+        : "es wurde keine Wahrscheinlichkeit angezeigt",
     },
   ];
   return (
     <section className={CARD}>
-      <h2 className={H2}>Wie gut sie lag</h2>
+      <h2 className={H2}>Wie genau war die Hochrechnung?</h2>
       <p className="mt-1 text-[14px] leading-relaxed text-muted-foreground">
-        Endergebnis {surname(winner)}: {prozent(review.final_share_pct)}.
+        Endergebnis für {surname(winner)}: {prozent(review.final_share_pct)}.
         {first && first.projected_share_pct !== null
-          ? ` Nach dem ersten Bezirk um ${uhrzeit(first.at)} Uhr rechnete die Seite ${prozent(first.projected_share_pct)} hoch — die Richtung stimmte, die Höhe noch nicht.`
+          ? ` Nach dem ersten gemeldeten Bezirk um ${uhrzeit(first.at)} Uhr erwartete das Modell ${prozent(first.projected_share_pct)}. Damit sah es bereits den Kandidaten vorn, der am Ende die meisten Stimmen erhielt; der erwartete Stimmenanteil änderte sich im weiteren Verlauf.`
           : ""}
       </p>
       <dl className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -641,8 +662,9 @@ function ReviewCard({ review, winner }: { review: RunoffProjectionReview; winner
       </dl>
       <ReviewChart review={review} winner={winner} />
       <p className="mt-3 text-[12.5px] leading-relaxed text-muted-foreground">
-        Ein Abend ist keine Statistik: Dass „99 %" diesmal stimmte, beweist nicht, dass es immer stimmt. In der Prüfung vor der
-        Wahl lag „99 %" in 999 von 1.000 nachgestellten Abenden richtig, „90 bis 98 %" in 93 von 100.
+        Ein einzelner Wahlabend reicht nicht aus, um die Zuverlässigkeit solcher Wahrscheinlichkeiten zu beurteilen. In der
+        Prüfung vor der Wahl gewann der vom Modell mit 99 % bevorzugte Kandidat in 999 von 1.000 nachgestellten Auszählungen.
+        Bei angezeigten Werten zwischen 90 und 98 % waren es 93 von 100.
       </p>
     </section>
   );
@@ -679,22 +701,22 @@ function ReviewChart({ review, winner }: { review: RunoffProjectionReview; winne
   const stellen: AbleseStelle[] = points.map((p) => ({
     title: `${p.reports_received} Bezirke`,
     werte: [
-      { label: "ausgezählt", value: prozent(p.counted_share_pct) },
+      { label: "Ausgezählter Stand", value: prozent(p.counted_share_pct) },
       { label: "Hochrechnung", value: prozent(p.projected_share_pct) },
-      { label: "Abstand zum Ende", value: p.error_pts === null ? "–" : pointsText(p.error_pts) },
-      { label: "Chance", value: p.chance_pct === null ? "–" : `${p.chance_pct} %` },
+      { label: "Abweichung vom Endergebnis", value: p.error_pts === null ? "–" : pointsText(p.error_pts) },
+      { label: "Wahrscheinlichkeit", value: p.chance_pct === null ? "–" : `${p.chance_pct} %` },
     ],
     vorlesen: `${p.reports_received} Bezirke, ${uhrzeit(p.at)} Uhr: ausgezählt ${prozent(p.counted_share_pct)}, Hochrechnung ${prozent(p.projected_share_pct)}.`,
   }));
   return (
     <div className="mt-5">
       <p className={KICKER}>
-        Anteil {surname(winner)} nach gezählten Bezirken · durchgezogen ausgezählt · gestrichelt Hochrechnung · blau
-        Endergebnis
+        Anteil für {surname(winner)} nach ausgezählten Bezirken · durchgezogen: Zwischenstand · gestrichelt: Hochrechnung ·
+        blau: Endergebnis
       </p>
       <AbleseBeschreibung id={id}>
-        Über die Zahl der gezählten Bezirke: der ausgezählte Anteil von {winner.name} als Treppe, die Hochrechnung gestrichelt
-        und das Endergebnis von {prozent(review.final_share_pct)} als waagerechte Linie.
+        Nach Zahl der ausgezählten Bezirke: der jeweilige Stimmenanteil von {winner.name} als Treppenlinie, die Hochrechnung
+        gestrichelt und das Endergebnis von {prozent(review.final_share_pct)} als waagerechte Linie.
       </AbleseBeschreibung>
       <svg viewBox={`0 0 ${W} ${H}`} className="mt-2 block w-full" role="group" aria-describedby={id}>
         {y.ticks(4).map((t) => (
@@ -730,7 +752,7 @@ function ReviewChart({ review, winner }: { review: RunoffProjectionReview; winne
           hoehe={Y0 - YTOP}
           fangHoehe={H - YTOP}
           marken={(i) => (projected[i] === null ? [] : [{ y: y(projected[i] ?? 50), farbe: color }])}
-          gruppe="Stände des Abends"
+          gruppe="Zwischenstände des Abends"
         />
       </svg>
       <Ableseleiste stelle={stellen[control.aktiv]} steuerung={control} className="mt-3" haftet={false} />

@@ -185,7 +185,7 @@ def analyse(slug: str) -> dict[str, Any] | None:
     }
 
     pots = []
-    for key, label, postal in (("urn", "Urne", False), ("postal", "Briefwahl", True)):
+    for key, label, postal in (("urn", "Urnenwahl", False), ("postal", "Briefwahl", True)):
         pots.append({"key": key, "label": label, **_block([p for p in pairs if p.first.postal == postal], slugs)})
 
     areas = []

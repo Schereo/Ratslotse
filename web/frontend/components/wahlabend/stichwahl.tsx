@@ -331,7 +331,7 @@ function Person({
         </div>
         {fuehrt ? (
           <span className="flex-none rounded-md bg-foreground px-2 py-1 font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-background">
-            {entschieden || (fertig && !probe) ? "Gewählt" : "Vorn"}
+            {fertig && !probe ? "Vorläufig vorn" : entschieden ? "Uneinholbar vorn" : "Vorn"}
           </span>
         ) : null}
       </div>
@@ -360,13 +360,13 @@ function Person({
           <dd className="mt-0.5 font-semibold tabular-nums">{zahl(stimmen === null ? null : Math.round(stimmen))}</dd>
         </div>
         <div>
-          <dt className={KICKER}>1. Wahlgang</dt>
+          <dt className={KICKER}>1. Wahlgang · 9 Kandidaturen</dt>
           <dd className="mt-0.5 tabular-nums text-muted-foreground">
             {prozent(k.first_round_pct)}
             {diff !== null ? (
               <span className="ml-1.5 font-mono text-[11px] text-signal">
                 {diff > 0 ? "+" : diff < 0 ? "−" : "±"}
-                {Math.abs(diff).toFixed(1).replace(".", ",")}
+                {Math.abs(diff).toFixed(1).replace(".", ",")} Pkt.
               </span>
             ) : null}
           </dd>
@@ -517,8 +517,9 @@ function BuehneVorher({ daten, vorbei }: { daten: Stichwahl; vorbei: () => void 
         <p className="mt-2 max-w-[60ch] text-[13.5px] leading-relaxed text-muted-foreground">
           Am 13. September hat niemand die absolute Mehrheit erreicht; am {datumLang(daten.election.date)} entscheidet die
           Stichwahl zwischen den beiden Bestplatzierten. Ab 18 Uhr melden die 133 Wahlbezirke nach und nach — die Seite
-          fragt alle 15 Sekunden nach, und jede neue Meldung leuchtet einmal kurz auf. Ab dem ersten Bezirk rechnet sie hoch, ab dem 15. nennt sie eine Chance, und sobald der
-          Vorsprung größer ist als alles, was noch offen ist, steht hier, wer gewählt ist.
+          fragt alle 15 Sekunden nach, und jede neue Meldung leuchtet einmal kurz auf. Ab dem ersten Bezirk rechnet sie hoch,
+          ab dem 15. zeigt sie eine Wahrscheinlichkeit. Sobald der Vorsprung größer ist als die höchstmögliche Zahl aller noch
+          offenen Stimmen, zeigt die Seite, wer uneinholbar vorn liegt.
         </p>
       </div>
     </section>
@@ -536,16 +537,21 @@ function BuehneEntschieden({ daten, p }: { daten: Stichwahl; p: StichwahlHochrec
     >
       <Mascot pose="celebrate" className="h-28 w-28 flex-none" decorative />
       <div className="min-w-0">
-        <p className={KICKER}>{daten.dataset === "probe" ? "Generalprobe · " : ""}{fertig ? "Endergebnis" : "Rechnerisch entschieden"}</p>
+        <p className={KICKER}>
+          {daten.dataset === "probe" ? "Generalprobe · " : ""}
+          {fertig ? "Vorläufiges Endergebnis" : "Rechnerisch entschieden"}
+        </p>
         <h2 className="mt-1 font-display text-[24px] font-bold tracking-tight sm:text-[28px]">
-          {wer?.name ?? p.actual_leader} ist gewählt
+          {fertig
+            ? `${wer?.name ?? p.actual_leader} erhält die meisten Stimmen`
+            : `${wer?.name ?? p.actual_leader} liegt uneinholbar vorn`}
         </h2>
         <p className="mt-2 max-w-[60ch] text-[14px] leading-relaxed text-muted-foreground">
           Der Vorsprung von <strong className="font-semibold text-signal">{zahl(p.actual_lead_votes)} Stimmen</strong>{" "}
           {fertig
             ? "steht — alle Bezirke sind gezählt."
             : `ist größer als alle Stimmen, die noch offen sind (höchstens ${zahl(p.open_votes_max)}).`}{" "}
-          Kein amtliches Ergebnis; das stellt der Wahlausschuss fest.
+          Dieser Stand ist vorläufig; das amtliche Endergebnis stellt der Wahlausschuss fest.
         </p>
       </div>
     </section>
@@ -606,7 +612,7 @@ function Hochrechnung({ daten, p }: { daten: Stichwahl; p: StichwahlHochrechnung
           <p className={cn("text-[14px]", p.chance_pct === null ? "text-muted-foreground" : "font-semibold")} data-testid="chance">
             {chance}
           </p>
-          <p className="text-[12px] text-muted-foreground">Modell aus dem ersten Wahlgang je Bezirk</p>
+          <p className="text-[12px] text-muted-foreground">Modell auf Grundlage der Bezirksergebnisse des ersten Wahlgangs</p>
         </div>
       ) : null}
       {/* Die Aufholrechnung (Tim 23.09.2026): die spannendste Zahl des
@@ -635,11 +641,15 @@ function Hochrechnung({ daten, p }: { daten: Stichwahl; p: StichwahlHochrechnung
               <li key={c}>· {c}</li>
             ))}
             <li>
-              · Die Chance ist Φ(Vorsprung ÷ Streuung) über die offenen Bezirke — eine Modellrechnung, keine Umfrage. Unter 15
-              gezählten Bezirken zeigen wir sie nicht, über 99 % nie; „rechnerisch entschieden" ist dagegen kein Modell, sondern
-              Arithmetik gegen die Wahlberechtigten der offenen Bezirke.
+              · Die Wahrscheinlichkeit ergibt sich aus dem erwarteten Vorsprung und der Streuung in den noch offenen Bezirken.
+              Sie ist eine Modellrechnung, keine Umfrage. Vor 15 ausgezählten Bezirken wird sie nicht angezeigt, danach höchstens
+              mit 99 %. „Rechnerisch entschieden“ beruht dagegen nicht auf dem Modell: Dafür muss der tatsächliche Vorsprung
+              größer sein als die höchstmögliche Zahl aller offenen Stimmen.
             </li>
-            <li>· Geprüft an der Stichwahl 2021 (Krogmann gegen Fuhrhop): Nach 30 gezählten Bezirken nannte das Modell in jeder Auszählungsreihenfolge den Sieger.</li>
+            <li>
+              · Geprüft wurde das Modell anhand der Stichwahl 2021 zwischen Krogmann und Fuhrhop. Nach 30 ausgezählten Bezirken
+              nannte es bei jeder geprüften Reihenfolge den späteren Sieger.
+            </li>
           </ul>
         </SheetContent>
       </Sheet>
@@ -852,9 +862,9 @@ export function StichwahlView() {
             ist der Wahlvorschlag. Wer das nicht weiß, liest sie als
             Parteibuch. */}
         <p className="mt-4 text-[12.5px] leading-relaxed text-muted-foreground">
-          Über jedem Namen steht, wer die Kandidatur <strong className="font-semibold text-foreground">vorgeschlagen</strong> hat.
-          Auf dem Stimmzettel ist je Kandidatur genau eine Liste zugelassen — wer dort steht, muss weder deren Mitglied
-          sein noch ihre einzige Unterstützung haben.
+          Über jedem Namen steht die Partei oder Wählergruppe, die den Wahlvorschlag eingereicht hat. Das sagt nicht
+          automatisch aus, ob die kandidierende Person dort Mitglied ist oder von welchen weiteren Parteien sie unterstützt
+          wird.
         </p>
 
 
@@ -919,8 +929,9 @@ export function StichwahlView() {
         <footer className="mt-10 border-t border-border pt-4 text-[12.5px] leading-relaxed text-muted-foreground">
           <p className="max-w-[76ch]">
             <strong className="font-semibold text-foreground">Quelle:</strong> Ergebnisdarstellung des Votemanagers der
-            Stadt Oldenburg, am Abend alle 15 Sekunden abgerufen. Die Stichwahl hat — anders als die Ratswahl — keine
-            Open-Data-Datei. Kein amtliches Ergebnis; das stellt der Wahlausschuss fest.{" "}
+            Stadt Oldenburg, am Wahlabend alle 15 Sekunden abgerufen. Für die Stichwahl stellt die Stadt — anders als für die
+            Ratswahl — keine Open-Data-Datei bereit. Die gezeigten Zahlen sind vorläufig; das amtliche Endergebnis stellt der
+            Wahlausschuss fest.{" "}
             <a href={data.election.presentation_url} className="font-medium text-primary" target="_blank" rel="noopener noreferrer">
               Zur amtlichen Ergebnispräsentation
             </a>

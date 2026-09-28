@@ -122,10 +122,10 @@ const h = (teil: Partial<StichwahlHochrechnung>): StichwahlHochrechnung => ({
 
 describe("chanceText", () => {
   it("nennt die Chance des Führenden mit Namen", () => {
-    expect(chanceText(h({}), "Ulf Prange")).toBe("Chance: Ulf Prange 71 %");
+    expect(chanceText(h({}), "Ulf Prange")).toBe("Wahrscheinlichkeit für Ulf Prange: 71 %");
   });
   it("sagt unter 15 Bezirken, warum es keine gibt", () => {
-    expect(chanceText(h({ chance_pct: null, counted_ballot: 9, counted_postal: 1 }), "Ulf Prange")).toMatch(/Erst 10 Bezirke gezählt/);
+    expect(chanceText(h({ chance_pct: null, counted_ballot: 9, counted_postal: 1 }), "Ulf Prange")).toMatch(/Erst 10 Bezirke sind ausgezählt/);
   });
   it("schweigt, wenn rechnerisch entschieden — dafür gibt es einen eigenen Satz", () => {
     expect(chanceText(h({ decided: true, chance_pct: null }), "Ulf Prange")).toBeNull();
@@ -134,7 +134,7 @@ describe("chanceText", () => {
 
 describe("bezirkeText", () => {
   it("zählt Urne und Brief getrennt und nennt die Gesamtzahl", () => {
-    expect(bezirkeText(h({}))).toBe("nach 47 von 133 Bezirken · Urne 41, Brief 6");
+    expect(bezirkeText(h({}))).toBe("Stand nach 47 von 133 Bezirken · davon Urne: 41, Briefwahl: 6");
   });
 });
 

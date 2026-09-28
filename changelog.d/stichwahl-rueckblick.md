@@ -2,4 +2,4 @@
 kategorie: hinzugefuegt
 ---
 
-**Die Stichwahl im Rückblick.** Nach der Auszählung trägt /wahlabend/stichwahl fünf Ansichten: den Abend wie er war, den Vergleich zum ersten Wahlgang (Stimmen, Urne und Brief getrennt, Aufholen nach Fünfteln, gedrehte Bezirke), die sechs Wahlbereiche, alle 133 Wahlbezirke als Rangliste nach Anteil, Zugewinn oder Beteiligung — und die Hochrechnung: wie sie rechnet und wie nah sie über den Abend am Endergebnis lag. Eine Wählerwanderung steht bewusst nicht dabei; die Bezirkszahlen geben sie nicht her, und die Seite sagt das.
+**Die Stichwahl im Rückblick.** Nach der Auszählung zeigt /wahlabend/stichwahl fünf Ansichten: den Verlauf des Wahlabends, den Vergleich mit dem ersten Wahlgang einschließlich Urnen- und Briefwahl, die sechs Wahlbereiche, alle 133 Wahlbezirke sowie die Hochrechnung und ihre Abweichung vom Endergebnis. Eine Wählerwanderung wird bewusst nicht berechnet, weil sich aus den Bezirksergebnissen nicht ableiten lässt, wie einzelne Menschen zwischen den Wahlgängen entschieden haben.

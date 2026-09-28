@@ -4,15 +4,15 @@ import type { Metadata } from "next";
 // darüberliegenden Layout): kein Konto-Gate, eigener Kopf, Feature-Schalter
 // `wahlabend`.
 export const metadata: Metadata = {
-  title: "Stichwahl zum Oberbürgermeisteramt — Oldenburg 2026 | Ratslotse",
+  title: "OB-Stichwahl 2026 in Oldenburg: Ergebnis und Rückblick | Ratslotse",
   description:
-    "Stichwahl um das Oberbürgermeisteramt in Oldenburg am 27. September 2026: Auszählungsstand und Ergebnis der beiden Bestplatzierten, live aus den Zahlen der Stadt.",
+    "Ergebnis der Oldenburger OB-Stichwahl vom 27. September 2026 mit Vergleich zum ersten Wahlgang, Wahlbezirken und Rückblick auf die Hochrechnung.",
   openGraph: {
     type: "website",
     locale: "de_DE",
     siteName: "Ratslotse",
-    title: "Stichwahl zum Oberbürgermeisteramt — Oldenburg 2026",
-    description: "Auszählungsstand und Ergebnis der Stichwahl, live aus den Zahlen der Stadt.",
+    title: "OB-Stichwahl 2026 in Oldenburg: Ergebnis und Rückblick",
+    description: "Ergebnis, Vergleich zum ersten Wahlgang und Rückblick auf die Hochrechnung.",
     // Das Bild zeigt den Stand von JETZT: Wer den Link am Abend in einen
     // Chat stellt, bekommt die Zahlen als Vorschau (Backend rendert es,
     // `runoff_image.py`). Relativ, `metadataBase` macht es absolut.

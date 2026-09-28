@@ -24,16 +24,16 @@ export function chanceText(p: StichwahlHochrechnung, name: string | undefined): 
   if (p.decided) return null;
   const bezirke = p.counted_ballot + p.counted_postal;
   if (p.chance_pct === null) {
-    return `Erst ${bezirke} ${bezirke === 1 ? "Bezirk" : "Bezirke"} gezählt — zu früh für eine Wahrscheinlichkeit. Ab 15 nennt das Modell eine.`;
+    return `Erst ${bezirke} ${bezirke === 1 ? "Bezirk ist" : "Bezirke sind"} ausgezählt. Eine Wahrscheinlichkeit zeigt das Modell ab 15 ausgezählten Wahlbezirken.`;
   }
-  return `Chance: ${name ?? p.leader} ${p.chance_pct} %`;
+  return `Wahrscheinlichkeit für ${name ?? p.leader}: ${p.chance_pct} %`;
 }
 
-/** Wie das Modell die Bezirke gesehen hat: „nach 47 von 133 Bezirken · Urne 41, Brief 6". */
+/** Wie das Modell die Bezirke gesehen hat: „Stand nach 47 von 133 Bezirken · Urne 41, Briefwahl 6". */
 export function bezirkeText(p: StichwahlHochrechnung): string {
   const gezaehlt = p.counted_ballot + p.counted_postal;
   const gesamt = gezaehlt + p.open_ballot + p.open_postal;
-  return `nach ${gezaehlt} von ${gesamt} Bezirken · Urne ${p.counted_ballot}, Brief ${p.counted_postal}`;
+  return `Stand nach ${gezaehlt} von ${gesamt} Bezirken · davon Urne: ${p.counted_ballot}, Briefwahl: ${p.counted_postal}`;
 }
 
 /** Nach Stimmen, die meisten zuerst.
@@ -309,21 +309,21 @@ export function countdown(pollsClose: string, jetzt: Date = new Date()): { rest:
 
 /* ── Die Aufholrechnung ─────────────────────────────────────────────────── */
 
-/** „Rohr bräuchte 51,1 % der noch offenen Stimmen — das Modell erwartet dort
- *  47,4 %.“ Die Zahlen rechnet das Backend (`runoff_model`); hier steht nur
- *  der Satz. `null`, wenn es nichts aufzuholen gibt. */
+/** „Rohr müsste 51,1 % der noch erwarteten Stimmen erhalten, um den Rückstand
+ *  aufzuholen.“ Die Zahlen rechnet das Backend (`runoff_model`); hier steht
+ *  nur der Satz. `null`, wenn es nichts aufzuholen gibt. */
 export function aufholText(p: StichwahlHochrechnung, kandidaten: readonly StichwahlKandidat[]): string | null {
   if (p.decided || !p.trailing || p.needed_share_pct === null) return null;
   const k = kandidaten.find((x) => x.slug === p.trailing);
   const wer = k ? nachname(k) : p.trailing;
   const zahl = (v: number) => `${v.toFixed(1).replace(".", ",")} %`;
   if (p.needed_share_pct > 100) {
-    return `${wer} bräuchte mehr als alle Stimmen, die das Modell in den offenen Bezirken erwartet.`;
+    return `Nach der Hochrechnung könnte ${wer} den Rückstand nicht mehr aufholen: Dafür wären mehr Stimmen nötig, als das Modell in den offenen Bezirken insgesamt erwartet.`;
   }
   const erwartet = p.trailing_expected_share_pct;
   return erwartet === null
-    ? `${wer} bräuchte ${zahl(p.needed_share_pct)} der noch offenen Stimmen.`
-    : `${wer} bräuchte ${zahl(p.needed_share_pct)} der noch offenen Stimmen — das Modell erwartet dort ${zahl(erwartet)}.`;
+    ? `${wer} müsste ${zahl(p.needed_share_pct)} der vom Modell noch erwarteten Stimmen erhalten, um den Rückstand aufzuholen.`
+    : `${wer} müsste ${zahl(p.needed_share_pct)} der vom Modell noch erwarteten Stimmen erhalten, um den Rückstand aufzuholen. Das Modell rechnet mit ${zahl(erwartet)}.`;
 }
 
 /* ── Das Bild zum Teilen ────────────────────────────────────────────────── */
