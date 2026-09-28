@@ -19,10 +19,10 @@ import json
 import logging
 import os
 import threading
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeVar
 
 from ..antworten import ElectionHistoryPoint, ElectionNight, MayorHistoryPoint, MayorLeadChange, MayorNight
 
@@ -32,6 +32,7 @@ ROOT = Path(__file__).resolve().parents[4]
 MAX_POINTS = 1_440
 
 _log = logging.getLogger("ratslotse.web.wahlabend")
+_P = TypeVar("_P")
 #: Erneuert wird im Hintergrund-Thread (``service.live``), gelesen im Request.
 _lock = threading.RLock()
 _points: list[ElectionHistoryPoint] = []
@@ -115,7 +116,7 @@ def _load() -> None:
         _log.warning("Wahlabend-Verlauf %s ist nicht lesbar (%s) — der Abend beginnt im Speicher.", file, e)
         return
     if isinstance(raw, list):
-        _points = [p for p in (_point_from(r) for r in raw) if p is not None][-MAX_POINTS:]
+        _points = _collapse([p for p in (_point_from(r) for r in raw) if p is not None], _same)[-MAX_POINTS:]
 
 
 def _save() -> None:
@@ -170,9 +171,30 @@ def from_night(night: ElectionNight, at: str | None = None) -> ElectionHistoryPo
 
 
 def _same(a: ElectionHistoryPoint, b: ElectionHistoryPoint) -> bool:
-    """Gleich heißt: derselbe Stand — die Uhrzeit zählt nicht mit."""
-    return (a["districts_counted"] == b["districts_counted"]
-            and a["shares"] == b["shares"] and a["seats"] == b["seats"])
+    """Gleich heißt: derselbe Stand — die Uhrzeit zählt nicht mit.
+
+    Die Anteile auf zwei Stellen: So stehen sie in den Punkten bis 09/2026,
+    seitdem liefert ``service`` sie exakt (``rounding.exact_pct``). Ohne das
+    Runden hielt der Verlauf am 28.09.2026 den ersten Abruf nach dem Deploy
+    für einen neuen Stand — ein Punkt fünf Tage nach dem letzten, an dem
+    sich keine Stimme geändert hatte."""
+    return (a["districts_counted"] == b["districts_counted"] and a["seats"] == b["seats"]
+            and _two(a["shares"]) == _two(b["shares"]))
+
+
+def _two(shares: dict[str, float]) -> dict[str, float]:
+    return {k: round(v, 2) for k, v in shares.items()}
+
+
+def _collapse(rows: list[_P], same: Callable[[_P, _P], bool]) -> list[_P]:
+    """Aufeinanderfolgende gleiche Stände zusammenfassen, der ältere bleibt.
+    Heilt beim Lesen, was ein früherer Vergleich zu viel angehängt hat."""
+    out: list[_P] = []
+    for r in rows:
+        if out and same(out[-1], r):
+            continue
+        out.append(r)
+    return out
 
 
 def add(point: ElectionHistoryPoint) -> list[ElectionHistoryPoint]:
@@ -262,7 +284,7 @@ def _mayor_store(slug: str) -> list[MayorHistoryPoint]:
         _log.warning("Stichwahl-Verlauf %s ist nicht lesbar (%s) — der Abend beginnt im Speicher.", file, e)
         raw = []
     if isinstance(raw, list):
-        rows = [p for p in (_mayor_point_from(r) for r in raw) if p is not None][-MAX_POINTS:]
+        rows = _collapse([p for p in (_mayor_point_from(r) for r in raw) if p is not None], _mayor_same)[-MAX_POINTS:]
     _mayor[slug] = (file, rows)
     return rows
 
@@ -304,9 +326,18 @@ def from_mayor_night(night: MayorNight, at: str | None = None,
 
 def _mayor_same(a: MayorHistoryPoint, b: MayorHistoryPoint) -> bool:
     """Gleich heißt: derselbe Stand — die Uhrzeit zählt nicht mit. Die
-    Hochrechnung zählt mit: Sie ändert sich nur, wenn sich ein Bezirk ändert."""
-    return (a["reports_received"] == b["reports_received"] and a["shares"] == b["shares"]
-            and a["projected_shares"] == b["projected_shares"])
+    Hochrechnung zählt mit: Sie ändert sich nur, wenn sich ein Bezirk ändert.
+
+    Verglichen werden die STIMMEN, nicht die Anteile: Die Anteile sind aus
+    ihnen gerechnet, und seit 09/2026 genauer als vorher (51,55 → 51,548532).
+    Am 28.09.2026 hängte der erste Abruf nach diesem Wechsel deshalb einen
+    Punkt um 09:02 an — 15 Stunden nach dem Endstand, dieselben Stimmen.
+    Ohne Stimmen (ältere Dateien) die Anteile auf zwei Stellen."""
+    if a["reports_received"] != b["reports_received"] or a["projected_shares"] != b["projected_shares"]:
+        return False
+    if a["votes"] and b["votes"]:
+        return a["votes"] == b["votes"]
+    return _two(a["shares"]) == _two(b["shares"])
 
 
 def add_mayor(slug: str, point: MayorHistoryPoint) -> list[MayorHistoryPoint]:
