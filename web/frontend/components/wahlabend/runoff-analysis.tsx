@@ -26,7 +26,7 @@ import {
 import { KICKER, Punkt } from "@/components/wahlabend/bausteine";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { prozent, uhrzeit, zahl } from "@/lib/wahlabend";
+import { fixed, prozent, uhrzeit, zahl } from "@/lib/wahlabend";
 import {
   ROMAN,
   RUNOFF_ANALYSIS_PATH,
@@ -233,7 +233,7 @@ export function ComparisonView({ analysis, showDistricts }: {
             Der hohle Punkt zeigt {surname(winner)}s Anteil an den Stimmen für beide Kandidaten im ersten Wahlgang, der volle
             Punkt den Anteil in der Stichwahl.
             {analysis.catch_up_r !== null
-              ? ` Der Korrelationswert über alle Urnenbezirke beträgt r = ${analysis.catch_up_r.toFixed(2).replace(".", ",").replace("-", "−")}. Der negative Wert bedeutet: Je niedriger der Ausgangsanteil war, desto größer war tendenziell der Zugewinn. Das belegt keine Ursache.`
+              ? ` Der Korrelationswert über alle Urnenbezirke beträgt r = ${fixed(analysis.catch_up_r, 2).replace("-", "−")}. Der negative Wert bedeutet: Je niedriger der Ausgangsanteil war, desto größer war tendenziell der Zugewinn. Das belegt keine Ursache.`
               : ""}
           </p>
         </section>
@@ -633,7 +633,7 @@ function ReviewCard({ review, winner }: { review: RunoffProjectionReview; winner
       value:
         review.max_error_after_min_pts === null
           ? "–"
-          : `${review.max_error_after_min_pts.toFixed(2).replace(".", ",")} Prozentpunkte`,
+          : `${fixed(review.max_error_after_min_pts, 2)} Prozentpunkte`,
       label: `wich die Hochrechnung höchstens vom Endergebnis ab, nachdem sie erstmals eine Wahrscheinlichkeit anzeigte`,
     },
     {

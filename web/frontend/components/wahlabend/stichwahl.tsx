@@ -39,7 +39,7 @@ import { useAuth } from "@/lib/auth";
 import { useFeature } from "@/lib/features";
 import { useFrisch, useTween } from "@/lib/use-tween";
 import { cn } from "@/lib/utils";
-import { prozent, uhrzeit, zahl } from "@/lib/wahlabend";
+import { fixed, prozent, uhrzeit, zahl } from "@/lib/wahlabend";
 import {
   abfragePfad,
   TAKT_LIVE_MS,
@@ -366,7 +366,7 @@ function Person({
             {diff !== null ? (
               <span className="ml-1.5 font-mono text-[11px] text-signal">
                 {diff > 0 ? "+" : diff < 0 ? "−" : "±"}
-                {Math.abs(diff).toFixed(1).replace(".", ",")} Pkt.
+                {fixed(Math.abs(diff))} Pkt.
               </span>
             ) : null}
           </dd>
@@ -387,7 +387,7 @@ function Abstand({ daten }: { daten: Stichwahl }) {
       {name ? (
         <>
           <strong className="font-semibold text-foreground">{name}</strong> liegt {zahl(stimmen)} Stimmen vorn — das sind{" "}
-          {punkte.toFixed(1).replace(".", ",")} Prozentpunkte.
+          {fixed(punkte)} Prozentpunkte.
         </>
       ) : (
         <>Beide liegen gleichauf. Bei Stimmengleichheit entscheidet das Los (§ 45c Abs. 2 NKWG).</>

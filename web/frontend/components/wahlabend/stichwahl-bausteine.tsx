@@ -9,8 +9,9 @@ import { useEffect, useRef, useState } from "react";
 import { Share2 } from "lucide-react";
 import { apiUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { prozent, uhrzeit } from "@/lib/wahlabend";
+import { fixed, prozent, uhrzeit } from "@/lib/wahlabend";
 import {
+  ROMAN,
   countdown,
   nachname,
   stichwahlBildPfad,
@@ -25,6 +26,8 @@ function farbe(k: StichwahlKandidat | undefined): string {
   return k ? `light-dark(${k.color || "#6b7a8c"}, ${k.color_dark || k.color || "#a3b1c2"})` : "hsl(var(--muted-foreground))";
 }
 
+/* Die Stadt nennt jeden Briefwahlbezirk nur „Briefwahl" — dazu gehört sein
+ * Wahlbereich (`ROMAN`), sonst stand „Briefwahl · Briefwahl" im Ticker. */
 /* ── Ticker ───────────────────────────────────────────────────────────── */
 
 const KEINE: Stichwahl["recent_districts"] = [];
@@ -57,7 +60,7 @@ export function BezirksTicker({ daten, zeigen }: { daten: Stichwahl; zeigen: (nr
               <span className="w-11 flex-none font-mono text-[11px] tabular-nums text-muted-foreground">{uhrzeit(z.at) ?? "–"}</span>
               <span className="min-w-0 flex-1 truncate">
                 <span className="hidden font-mono text-[11px] text-muted-foreground sm:inline">{z.number} </span>
-                <span className="font-medium">{z.postal ? `Briefwahl · ${z.name}` : z.name}</span>
+                <span className="font-medium">{z.postal ? `Briefwahl · Wahlbereich ${ROMAN[z.area] ?? z.area}` : z.name}</span>
               </span>
               <span className="flex flex-none items-center gap-1.5 tabular-nums">
                 <span aria-hidden className="inline-block h-2 w-2 rounded-full" style={{ background: farbe(vorn) }} />
@@ -66,7 +69,7 @@ export function BezirksTicker({ daten, zeigen }: { daten: Stichwahl; zeigen: (nr
                 {diff !== null ? (
                   <span className="w-9 text-right font-mono text-[11px] text-muted-foreground" title="Verschiebung gegenüber dem ersten Wahlgang in diesem Bezirk">
                     {diff > 0 ? "+" : diff < 0 ? "−" : "±"}
-                    {Math.abs(diff).toFixed(1).replace(".", ",")}
+                    {fixed(Math.abs(diff))}
                   </span>
                 ) : null}
               </span>
