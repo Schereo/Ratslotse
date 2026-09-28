@@ -172,6 +172,10 @@ export function liveAgoText(asOf: string, now: Date = new Date()): string {
   return `vor ${mins} Min.`;
 }
 
+/** So oft holen Live-Karte und offene Tagesordnung den Übertragungsstand
+ *  nach, solange die Ratssitzung läuft. */
+export const LIVE_REFRESH_MS = 20_000;
+
 /** Ist der Stand noch brauchbar? Nach 20 Minuten ohne neues Stück ist der
  *  Mitschnitt vermutlich abgebrochen — dann lieber nichts behaupten. */
 export const LIVE_STATE_STALE_MINUTES = 20;
