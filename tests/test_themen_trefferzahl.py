@@ -40,16 +40,19 @@ def test_matching_lauf_und_web_rechnen_mit_derselben_funktion():
 
 
 def test_stichtag_ist_ueberall_derselbe():
-    """„Aktuell" darf nicht zweimal gerechnet werden: Die Karte zählt „n in 6
-    Monaten", der Wochenlauf entscheidet damit, ob ein neuer Treffer eine Mail
-    wert ist (30.08.2026). Zwei Kopien wären zwei Grenzen, sobald jemand eine
-    davon anfasst — genau die Sorte Drift, die dieser Datei ihren Namen gab.
+    """„Aktuell" darf nicht zweimal gerechnet werden. Seit 28.09.2026 sind es
+    zwei Grenzen mit Absicht — die Karte zählt „n in 6 Monaten", die Mails
+    melden nur frisch veröffentlichte Protokolle junger Sitzungen
+    (``meldestichtage``) —, aber jede steht an genau einer Stelle. Beide
+    Mail-Wege (Abgleich-Brief und Wochenüberblick) benutzen dieselbe.
     """
+    from council import abendmeldungen
     from scripts import match_topics_decisions as lauf
 
-    assert lauf.vor_sechs_monaten is topic_intel.vor_sechs_monaten
-    # Die Web-Seite derselben Grenze prüft `test_backend_api`, wo der
-    # Backend-Pfad schon im sys.path liegt.
+    assert lauf.meldestichtage is topic_intel.meldestichtage
+    assert abendmeldungen.meldestichtage is topic_intel.meldestichtage
+    # Die Web-Seite der Karten-Grenze (``vor_sechs_monaten``) prüft
+    # `test_backend_api`, wo der Backend-Pfad schon im sys.path liegt.
 
 
 class _Store:

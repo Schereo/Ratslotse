@@ -19,6 +19,24 @@ from council.store_basis import StoreBasis
 class SitzungenMixin(StoreBasis):
     """Die Sitzungs-Abfragen — nur zum Mitvererben."""
 
+    def meldewuerdige_beschluss_ids(self, ids, *, sitzung_seit: str,
+                                    protokoll_seit: str) -> set[int]:
+        """Welche dieser Beschlüsse eine Mail wert sind — Sitzung nicht zu alt,
+        Protokoll frisch da. Die Stichtage kommen aus
+        ``council.topic_intel.meldestichtage``; dort steht, warum es beide
+        braucht. Ohne ``available_at`` gilt ein Protokoll als alt."""
+        ids = [int(i) for i in ids]
+        if not ids:
+            return set()
+        ph = ",".join("?" * len(ids))
+        return {r[0] for r in self._conn.execute(
+            f"""SELECT d.id FROM council_decisions d
+                JOIN council_sessions cs ON cs.ksinr = d.ksinr
+                JOIN council_protocols p ON p.ksinr = d.ksinr
+                WHERE d.id IN ({ph}) AND cs.session_date >= ?
+                  AND COALESCE(p.available_at, '') >= ?""",
+            (*ids, sitzung_seit, protokoll_seit))}
+
     #: Die Eimer eines Tagesordnungs-Diffs. NUR die oberste Ebene — `anlagen`
     #: ist dort ein Eimer, INNERHALB eines Punktes aber dessen Anlagenliste,
     #: und die heißt weiter so.

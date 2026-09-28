@@ -9,6 +9,8 @@ from council.scraper import CouncilSession
 from council.store import CouncilStore
 
 TEXT = "z" * 250
+#: (sitzung_seit, protokoll_seit) — passend zur Vorrichtung in ``_store``.
+STICHTAGE = ("2026-03-01", "2026-06-01")
 
 
 def _store(tmp_path) -> CouncilStore:
@@ -19,7 +21,17 @@ def _store(tmp_path) -> CouncilStore:
                                "accepted", None, None, None, [], None, None, None)
         store._insert_decision(1, 1, "decision", None, "Ö 2", "Berufung Mitglied", TEXT,
                                "accepted", None, None, None, [], None, None, None)
+    _protokoll_da(store, 1, "2026-06-10T08:00:00")
     return store
+
+
+def _protokoll_da(store: CouncilStore, ksinr: int, wann: str) -> None:
+    """Das Protokoll ist ``wann`` bei uns angekommen — ohne das gilt ein
+    Beschluss dem Abgleich-Brief als alt (``meldewuerdige_beschluss_ids``)."""
+    with store._conn:
+        store._conn.execute(
+            "INSERT OR REPLACE INTO council_protocols (ksinr, extracted_at, status, available_at) "
+            "VALUES (?, ?, 'ok', ?)", (ksinr, wann, wann))
 
 
 def test_needing_and_clamp(tmp_path):
@@ -135,10 +147,10 @@ def test_notify_new_matches_leads_with_highest_impact(tmp_path):
     n = mod._notify_new_matches(ratslotse, council, owner_id=owner,
                                 themen=[("Finanzen", [ids["Berufung Mitglied"],
                                                       ids["Haushaltssatzung 2026"]])],
-                                # Fest statt `heute`: Die Sitzung der Vorrichtung
-                                # ist auf 2026-06-01 genagelt, ein wandernder
+                                # Fest statt `heute`: Sitzung und Protokoll der
+                                # Vorrichtung sind genagelt, ein wandernder
                                 # Stichtag machte den Test irgendwann leer.
-                                as_of_date="2026-01-01")
+                                stichtage=STICHTAGE)
     assert n == 1
 
     offen = ratslotse.due_notifications(owner, "2999-01-01")
@@ -185,7 +197,7 @@ def test_notify_new_matches_schweigt_wenn_abgeschaltet(tmp_path):
     mod = _match_modul()
     assert mod._notify_new_matches(ratslotse, council, owner_id=owner,
                                    themen=[("Finanzen", [ids["Haushaltssatzung 2026"]])],
-                                   as_of_date="2026-01-01") == 0
+                                   stichtage=STICHTAGE) == 0
     assert ratslotse.due_notifications(owner, "2999-01-01") == []
     ratslotse.close()
     council.close()
@@ -211,6 +223,8 @@ def test_notify_new_matches_schweigt_ueber_alte_beschluesse(tmp_path):
         council._insert_decision(2, 0, "decision", None, "Ö 10.1",
                                  "Zusätzliche Spätbetreuung", TEXT,
                                  "noted", None, None, None, [], None, None, None)
+    # Protokoll frisch da — ausschließen muss hier das Sitzungsdatum.
+    _protokoll_da(council, 2, "2026-06-10T08:00:00")
     ids = {d["title"]: d["id"] for d in council.decisions_needing_impact()}
 
     ratslotse = Store(tmp_path / "ratslotse.sqlite")
@@ -222,7 +236,7 @@ def test_notify_new_matches_schweigt_ueber_alte_beschluesse(tmp_path):
     assert mod._notify_new_matches(ratslotse, council, owner_id=owner,
                                    themen=[("Grundschule Krusenbusch",
                                             [ids["Zusätzliche Spätbetreuung"]])],
-                                   as_of_date="2026-01-01") == 0
+                                   stichtage=STICHTAGE) == 0
     assert ratslotse.due_notifications(owner, "2999-01-01") == []
 
     # Gemischt: Die Mail kommt, zählt aber nur den aktuellen Beschluss — sonst
@@ -231,7 +245,7 @@ def test_notify_new_matches_schweigt_ueber_alte_beschluesse(tmp_path):
                                    themen=[("Grundschule Krusenbusch",
                                             [ids["Zusätzliche Spätbetreuung"],
                                              ids["Haushaltssatzung 2026"]])],
-                                   as_of_date="2026-01-01") == 1
+                                   stichtage=STICHTAGE) == 1
     offen = ratslotse.due_notifications(owner, "2999-01-01")
     assert len(offen) == 1
     assert offen[0]["title"] == "Neu zu „Grundschule Krusenbusch“"   # kein „— 2 Beschlüsse"
@@ -257,7 +271,7 @@ def test_mehrere_themen_werden_ein_brief(tmp_path):
         ratslotse, council, owner_id=owner,
         themen=[("Finanzen", [ids["Haushaltssatzung 2026"]]),
                 ("Personal", [ids["Berufung Mitglied"], ids["Haushaltssatzung 2026"]])],
-        as_of_date="2026-01-01") == 1
+        stichtage=STICHTAGE) == 1
     offen = ratslotse.due_notifications(owner, "2999-01-01")
     assert len(offen) == 1
     m = offen[0]

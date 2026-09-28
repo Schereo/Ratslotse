@@ -31,11 +31,11 @@ Treffer, die der Vektor allein verfehlte („Vorstellung IQON" stand in keiner
 der 60 besten Vektor-Kandidaten des Themas IQON, per BM25 steht es auf Platz 1).
 
 Gemeldet wird nur, was **aktuell** ist: Ein Treffer wandert immer in die Liste
-und in den Zähler, eine Mail löst er aber nur aus, wenn seine Sitzung innerhalb
-der letzten sechs Monate lag (``topic_intel.vor_sechs_monaten``, dieselbe Grenze
-wie „n in 6 Monaten" auf der Themen-Karte). Sonst verschickt der Lauf Post über
-Beschlüsse von 2023, sobald sie erstmals über die Relevanzschwelle rutschen —
-siehe ``_notify_new_matches``.
+und in den Zähler, eine Mail löst er aber nur aus, wenn seine Sitzung höchstens
+90 Tage zurückliegt und ihr Protokoll gerade erst angekommen ist
+(``topic_intel.meldestichtage``). Sonst verschickt der Lauf Post über
+Beschlüsse von 2019, sobald ein Nachlauf sie einspielt oder sie erstmals über
+die Relevanzschwelle rutschen — siehe ``_notify_new_matches``.
 
 Nach einer Neu-Extraktion der Beschlüsse einmal mit ``--ohne-meldungen``
 laufen lassen: Die gespeicherten Verweise zeigen dann auf gelöschte IDs, der
@@ -55,7 +55,7 @@ sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")
 
 from council.store import CouncilStore  # noqa: E402
-from council.topic_intel import DECKEL, SCHWELLE, treffer, vor_sechs_monaten  # noqa: E402,F401
+from council.topic_intel import DECKEL, SCHWELLE, meldestichtage, treffer  # noqa: E402
 from kern.store import Store  # noqa: E402
 from council.ergebnisse import decision_href  # noqa: E402
 
@@ -64,7 +64,8 @@ COUNCIL_DB = ROOT / "data" / "council.sqlite"
 
 
 def _notify_new_matches(ratslotse, council, owner_id: int,
-                        themen: list[tuple[str, list[int]]], *, as_of_date: str) -> int:
+                        themen: list[tuple[str, list[int]]], *,
+                        stichtage: tuple[str, str]) -> int:
     """EIN Brief je Konto und Wochenlauf — über alle Themen mit neuen Treffern
     (Tims Wunsch 06.09.2026: „mach den Themen-Abgleich auch als Schubbrief").
     Vorher war es eine Meldung je Thema; bei fünf Themen fünf Mails, die die
@@ -91,8 +92,9 @@ def _notify_new_matches(ratslotse, council, owner_id: int,
     ``themen``: ``[(themenname, [decision_id, …])]`` — je Thema die Beschlüsse,
     die letzte Woche noch nicht in der Trefferliste standen.
 
-    ``as_of_date`` (ISO-Datum) ist der Alters-Riegel: Gemeldet wird nur, was seit
-    diesem Tag getagt hat. „Neu" heißt hier nämlich bloß „stand letzte Woche
+    ``stichtage`` (aus ``topic_intel.meldestichtage``) ist der Alters-Riegel:
+    Gemeldet wird nur, was jüngst getagt hat UND dessen Protokoll gerade erst
+    angekommen ist. „Neu" heißt hier nämlich bloß „stand letzte Woche
     noch nicht in der Trefferliste" — und das trifft auch uralte Beschlüsse, die
     erst jetzt über die Relevanzschwelle rutschen. Am 30.08.2026 ging so eine
     Mail zum Thema „Grundschule Krusenbusch" raus, deren Beschluss vom
@@ -102,6 +104,10 @@ def _notify_new_matches(ratslotse, council, owner_id: int,
     er bleibt in der Liste und im Zähler stehen. Als Post ist es das nicht
     (Tim: „über die Mail würde ich immer nur über aktuelle Beschlüsse
     informieren").
+
+    Bis 28.09.2026 prüfte der Riegel nur das Sitzungsdatum (sechs Monate), und
+    der Sitzungs-Nachlauf vom 23.09. schob Beschlüsse vom Juni als Neuigkeit
+    durch — die Begründung steht bei ``meldestichtage``.
 
     Der Riegel ist Pflichtargument, kein Vorgabewert: Wer diese Funktion neu
     aufruft, soll die Grenze bewusst setzen — ein vergessener Wert wäre genau
@@ -118,12 +124,12 @@ def _notify_new_matches(ratslotse, council, owner_id: int,
         # get_decision liefert d.* (impact/importance/amount_eur) — die schlanke
         # Batch-Query der QA-Zitate kennt diese Spalten nicht.
         decisions = [d for d in (council.get_decision(i) for i in new_ids) if d]
-        # Ohne Sitzungsdatum lieber schweigen: `get_decision` verbindet mit
-        # `council_sessions`, ein leeres Feld wäre also ein kaputter Datensatz —
-        # kein Grund, jemanden zu wecken. Ein Beschluss, der zu zwei Themen
-        # passt, steht beim ersten.
-        decisions = [d for d in decisions
-                     if (d.get("session_date") or "") >= as_of_date and d["id"] not in gesehen]
+        # Ohne Sitzungsdatum oder Protokoll-Eingang lieber schweigen — kein
+        # Grund, jemanden zu wecken. Ein Beschluss, der zu zwei Themen passt,
+        # steht beim ersten.
+        aktuell = council.meldewuerdige_beschluss_ids(
+            new_ids, sitzung_seit=stichtage[0], protokoll_seit=stichtage[1])
+        decisions = [d for d in decisions if d["id"] in aktuell and d["id"] not in gesehen]
         if not decisions:
             continue
         gesehen.update(d["id"] for d in decisions)
@@ -159,9 +165,8 @@ def process(top_k: int = DECKEL, threshold: float = SCHWELLE, *, ohne_meldungen:
                   f"(Treffer und Gelesen-Marken)")
 
         # Einmal je Lauf gerechnet, damit ein Lauf über Mitternacht nicht in der
-        # Mitte die Grenze verschiebt — und mit derselben Funktion wie die
-        # „n in 6 Monaten" der Themen-Karte.
-        as_of_date = vor_sechs_monaten().isoformat()
+        # Mitte die Grenze verschiebt.
+        stichtage = meldestichtage()
 
         by_owner = ratslotse.get_all_owner_topics()  # {owner_id: [TopicRow]}
         n_topics = sum(len(v) for v in by_owner.values())
@@ -205,7 +210,7 @@ def process(top_k: int = DECKEL, threshold: float = SCHWELLE, *, ohne_meldungen:
                     neu_je_thema.append((t.name, new_ids))
             if neu_je_thema:
                 notified += _notify_new_matches(ratslotse, council, owner_id, neu_je_thema,
-                                                as_of_date=as_of_date)
+                                                stichtage=stichtage)
         # Eingereiht ist nicht zugestellt: Ohne diesen Aufruf läge alles bis zum
         # nächsten Cron-Job (7 Uhr) still. Die Nachtruhe verschiebt ohnehin, was
         # jetzt nicht raus darf — dieser Lauf startet sonntags um 3 Uhr.

@@ -10,7 +10,7 @@ Zwei davon leben in kern/notify.py und sind hier festgehalten:
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 import pytest
 
@@ -700,26 +700,54 @@ def test_vorabend_ist_ab_werk_aus(store, tmp_path):
     council.close()
 
 
-def test_wochenueberblick_fasst_die_woche_zusammen(store, tmp_path):
-    from datetime import date
-    from council.abendmeldungen import wochenueberblick
+#: Der Sonntag, an dem die Wochenüberblick-Tests laufen. Fest statt
+#: ``date.today()``: Seit 28.09.2026 zählt nur, was aktuell ist
+#: (``topic_intel.meldestichtage``), und ein wandernder Tag machte die
+#: genagelte Sitzung vom 14.08. irgendwann alt.
+SONNTAG = date(2026, 8, 23)
+
+
+def _protokoll_da(council, ksinr: int, wann: str = "2026-08-20T08:00:00") -> None:
+    with council._conn:
+        council._conn.execute(
+            "INSERT OR REPLACE INTO council_protocols (ksinr, extracted_at, status, available_at) "
+            "VALUES (?, ?, 'ok', ?)", (ksinr, wann, wann))
+
+
+def _zwei_beschluesse(council, ksinr: int = 88, sitzung: str = "2026-08-14",
+                      protokoll: str = "2026-08-20T08:00:00"):
     from council.scraper import CouncilSession
+
+    council.save_session(CouncilSession(ksinr, "Rat", sitzung, "18:00", "Rathaus"))
+    with council._conn:
+        council._insert_decision(ksinr, 0, "decision", None, "Ö 1", "Radweg A", "x",
+                                 "accepted", None, None, None, [], None, None, None)
+        council._insert_decision(ksinr, 1, "decision", None, "Ö 2", "Radweg B", "x",
+                                 "rejected", None, None, None, [], None, None, None)
+    _protokoll_da(council, ksinr, protokoll)
+    return [r[0] for r in council._conn.execute(
+        "SELECT id FROM council_decisions WHERE ksinr = ? ORDER BY id", (ksinr,))]
+
+
+def _stempel(store, wann: str) -> None:
+    """Alle Treffer als ``wann`` zugeordnet — so sähe der Sonntagslauf aus."""
+    with store._conn:
+        store._conn.execute("UPDATE council_topic_matches SET matched_at = ?", (wann,))
+
+
+def test_wochenueberblick_fasst_die_woche_zusammen(store, tmp_path):
+    from council.abendmeldungen import wochenueberblick
 
     owner = _konto(store)
     thema = store.add_topic(owner, "Radwege", "Ausbau")
     store.set_notify_prefs(owner, {notify.N6_WOCHE: True})
 
     council = _council(tmp_path)
-    council.save_session(CouncilSession(88, "Rat", "2026-08-14", "18:00", "Rathaus"))
-    with council._conn:
-        council._insert_decision(88, 0, "decision", None, "Ö 1", "Radweg A", "x",
-                                 "accepted", None, None, None, [], None, None, None)
-        council._insert_decision(88, 1, "decision", None, "Ö 2", "Radweg B", "x",
-                                 "rejected", None, None, None, [], None, None, None)
-    ids = [r[0] for r in council._conn.execute("SELECT id FROM council_decisions ORDER BY id")]
+    ids = _zwei_beschluesse(council)
     store.save_topic_decision_matches(thema.id, owner, [(i, 0.9) for i in ids])
+    _stempel(store, "2026-08-22T03:00:00")
 
-    assert wochenueberblick(council, store, date.today()) == 1
+    assert wochenueberblick(council, store, SONNTAG) == 1
     p = store.due_notifications(owner, "2999-01-01")[0]
     assert p["kind"] == "n6_woche"
     assert p["title"] == "Diese Woche: 2 Beschlüsse zu deinen Themen"
@@ -731,26 +759,12 @@ def test_wochenueberblick_fasst_die_woche_zusammen(store, tmp_path):
     council.close()
 
 
-def _zwei_beschluesse(council, ksinr: int = 88):
-    from council.scraper import CouncilSession
-
-    council.save_session(CouncilSession(ksinr, "Rat", "2026-08-14", "18:00", "Rathaus"))
-    with council._conn:
-        council._insert_decision(ksinr, 0, "decision", None, "Ö 1", "Radweg A", "x",
-                                 "accepted", None, None, None, [], None, None, None)
-        council._insert_decision(ksinr, 1, "decision", None, "Ö 2", "Radweg B", "x",
-                                 "rejected", None, None, None, [], None, None, None)
-    return [r[0] for r in council._conn.execute(
-        "SELECT id FROM council_decisions ORDER BY id")]
-
-
 def test_der_matching_lauf_datiert_bekannte_treffer_nicht_um(store, tmp_path):
     """Der wöchentliche Lauf legt dieselben Treffer neu ab. Setzte er dabei
     ``matched_at`` zurück, meldete der Wochenüberblick am selben Abend den
     kompletten Bestand als Neuigkeit der Woche — Tims Befund 17.08.2026,
     „Diese Woche: 119 Beschlüsse zu deinen Themen" (in der Prod-DB trugen
     danach alle 919 Trefferzeilen dasselbe Datum)."""
-    from datetime import date
     from council.abendmeldungen import wochenueberblick
 
     owner = _konto(store)
@@ -769,7 +783,7 @@ def test_der_matching_lauf_datiert_bekannte_treffer_nicht_um(store, tmp_path):
         "SELECT matched_at, score FROM council_topic_matches ORDER BY decision_id"))
     assert [r[0] for r in rows] == ["2026-01-01T00:00:00"] * 2   # Datum bleibt
     assert [r[1] for r in rows] == [0.95, 0.95]                  # Score zieht nach
-    assert wochenueberblick(council, store, date.today()) == 0   # nichts Neues
+    assert wochenueberblick(council, store, SONNTAG) == 0   # nichts Neues
     council.close()
 
 
@@ -801,7 +815,6 @@ def test_reparaturlauf_stempelt_nichts_als_neu(store, tmp_path):
     """``--ohne-meldungen`` nach einer Neu-Extraktion: Dieselben Beschlüsse
     tragen neue IDs, also sind formal alle Treffer neu. Sie dürfen trotzdem
     nicht als Neuigkeit der Woche gelten."""
-    from datetime import date
     from council.abendmeldungen import wochenueberblick
 
     owner = _konto(store)
@@ -813,7 +826,7 @@ def test_reparaturlauf_stempelt_nichts_als_neu(store, tmp_path):
     store.save_topic_decision_matches(thema.id, owner, [(i, 0.9) for i in ids], als_neu=False)
     assert [r[0] for r in store._conn.execute(
         "SELECT matched_at FROM council_topic_matches")] == ["", ""]
-    assert wochenueberblick(council, store, date.today()) == 0
+    assert wochenueberblick(council, store, SONNTAG) == 0
     council.close()
 
 
@@ -851,14 +864,13 @@ def test_altbestand_wird_einmalig_entstempelt(store, tmp_path):
 
 def test_ohne_beschluesse_schweigt_der_wochenueberblick(store, tmp_path):
     """30a, Grenze 3: nie ohne Ereignis — Sommerpause inklusive."""
-    from datetime import date
     from council.abendmeldungen import wochenueberblick
 
     owner = _konto(store)
     store.add_topic(owner, "Radwege", "Ausbau")
     store.set_notify_prefs(owner, {notify.N6_WOCHE: True})
     council = _council(tmp_path)
-    assert wochenueberblick(council, store, date.today()) == 0
+    assert wochenueberblick(council, store, SONNTAG) == 0
     council.close()
 
 
