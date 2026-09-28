@@ -93,7 +93,7 @@ def test_der_anteil_rechnet_gegen_die_gueltigen_stimmen_des_bezirks(bezirke):
     gueltig = z["totals"]["valid_votes"]
     for p in z["parties"]:
         if p["votes"] and gueltig:
-            assert p["share_pct"] == round(100 * p["votes"] / gueltig, 2)
+            assert p["share_pct"] == pytest.approx(100 * p["votes"] / gueltig, abs=1e-6)
 
 
 def test_personenstimmen_stehen_nicht_drin(bezirke):

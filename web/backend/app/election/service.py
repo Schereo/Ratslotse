@@ -62,6 +62,7 @@ from .reference import Reference
 from .reference import load as load_reference
 from .register import Register
 from .register import load as load_register
+from .rounding import EXACT_DIGITS
 from .seats import Allocation, DistrictList, allocate, party_seat_margins, votes_to_seat
 from .votemanager import AreaRow, ListRow, Snapshot
 
@@ -95,7 +96,7 @@ def _pct(part: int | None, whole: int | None) -> float | None:
     if part is None or not whole or part < 0 or whole < 0:
         return None
     try:
-        value = round(100 * part / whole, 2)
+        value = round(100 * part / whole, EXACT_DIGITS)
     except (OverflowError, ZeroDivisionError):
         return None
     return value if 0 <= value <= 100 else None

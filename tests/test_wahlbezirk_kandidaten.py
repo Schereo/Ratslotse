@@ -248,7 +248,7 @@ def test_die_beiden_anteile_zeigen_in_verschiedene_richtungen(stand):
     assert round(sum(b["share_pct"] or 0 for b in bezirke)) == 100
     for b in bezirke:
         if b["votes"]:
-            assert b["share_pct"] == round(100 * b["votes"] / 4028, 2)
+            assert b["share_pct"] == pytest.approx(100 * b["votes"] / 4028, abs=1e-6)
             assert 0 < (b["party_share_pct"] or 0) <= 100, b["name"]
 
 

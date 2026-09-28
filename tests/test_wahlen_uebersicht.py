@@ -60,9 +60,9 @@ def test_jede_zeile_sagt_ihr_ergebnis_in_einem_satz():
     assert zeilen["ratswahl-2021"]["summary"] == "GRÜNE 16, SPD 15, CDU 9, DIE LINKE. 4 — 50 Sitze"
     assert zeilen["ob-2026"]["summary"] == "Ulf Prange 33,2 % · Stichwahl"
     # Die Stichwahl hat noch keine Zahlen — und behauptet auch keine.
-    # Eingefroren am 27.09.2026; amtlich 51,55 % — kaufmännisch 51,6, nicht
-    # das 51,5 der Gleitkommazahl.
-    assert zeilen["ob-stichwahl-2026"]["summary"] == "Jascha Rohr 51,6 %"
+    # 30.792 von 59.734 Stimmen sind 51,5485 %. Die Stadt schreibt 51,55 — wer
+    # das noch einmal rundet, landet bei 51,6. Richtig ist 51,5 (s. rounding).
+    assert zeilen["ob-stichwahl-2026"]["summary"] == "Jascha Rohr 51,5 %"
 
 
 def test_eine_wahl_ohne_register_bekommt_keinen_link():
