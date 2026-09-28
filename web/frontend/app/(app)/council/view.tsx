@@ -26,7 +26,7 @@ import {
 import { OutcomeBadge, OutcomeDot, ImportanceBadge, OUTCOME_META, voteLabel, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
 import { CommitteeName } from "@/components/committee-name";
 import { shortCommittee, hasShortCommittee, committeeIcon } from "@/lib/committees";
-import { isLiveNow, liveItemKeys, liveStateFresh } from "@/lib/live";
+import { isLiveNow, isStadtrat, liveItemKeys, liveStateFresh, LIVE_REFRESH_MS } from "@/lib/live";
 import { reportBadgeEvent } from "@/components/badges";
 import { ChipPopover, DateRangeChip } from "@/components/filter-chips";
 import { SitzungspauseBanner } from "@/components/sitzungspause-banner";
@@ -1111,6 +1111,27 @@ function SessionsTab({ committees }: { committees: string[] }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expanded]);
+
+  // Eine offene Tagesordnung der laufenden Ratssitzung holt ihr Detail alle
+  // 20 s nach — im Takt der Live-Karte (components/live-banner.tsx). Sonst
+  // stand die rote Marke am TOP vom Aufklappen, bis jemand neu lud. Nur
+  // übertragene Sitzungen (Stadtrat), und nur bei sichtbarem Tab.
+  const laufendOffen = sessions
+    .filter((s) => s.ksinr != null && expanded[s.ksinr] && isStadtrat(s.committee) && isLiveNow(s))
+    .map((s) => s.ksinr as number)
+    .join(",");
+  useEffect(() => {
+    if (!laufendOffen) return;
+    const id = setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      for (const ksinr of laufendOffen.split(",").map(Number)) {
+        api.get<SessionDetail>(`/council/session/${ksinr}`)
+          .then((d) => setDetail((prev) => ({ ...prev, [ksinr]: d })))
+          .catch(() => { /* stumm: der alte Stand bleibt stehen */ });
+      }
+    }, LIVE_REFRESH_MS);
+    return () => clearInterval(id);
+  }, [laufendOffen]);
 
 
   const query = q.trim();

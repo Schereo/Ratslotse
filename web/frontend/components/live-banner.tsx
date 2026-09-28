@@ -8,7 +8,7 @@ import { api } from "@/lib/api";
 import { Button } from "@/components/ui";
 import {
   currentSessionToday, isStadtrat, runningTimeText, O1_STREAM_URL,
-  liveAgoText, liveSpeakerText, liveStateFresh, liveTopLabel, type LiveState,
+  liveAgoText, liveSpeakerText, liveStateFresh, liveTopLabel, LIVE_REFRESH_MS, type LiveState,
 } from "@/lib/live";
 
 type Session = {
@@ -51,7 +51,7 @@ export function LiveBanner() {
     // Der Übertragungsstand wechselt alle 30 Sekunden — die Karte holt ihn
     // alle 20 s nach, solange sie steht (sonst zeigte sie den TOP vom
     // Seitenaufruf, bis jemand neu lädt). Billig: nur an Sitzungstagen.
-    refetchInterval: (query) => (currentSessionToday(query.state.data?.sessions) ? 20_000 : 60_000),
+    refetchInterval: (query) => (currentSessionToday(query.state.data?.sessions) ? LIVE_REFRESH_MS : 60_000),
   });
   const live = currentSessionToday(data?.sessions, now);
   if (!live) return null;
