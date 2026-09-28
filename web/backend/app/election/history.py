@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Any, TypeVar
 
 from ..antworten import ElectionHistoryPoint, ElectionNight, MayorHistoryPoint, MayorLeadChange, MayorNight
+from .rounding import exact_pct
 
 #: Repo-Wurzel: web/backend/app/election/ -> vier Ebenen hoch.
 ROOT = Path(__file__).resolve().parents[4]
@@ -257,15 +258,30 @@ def _mayor_point_from(raw: Any) -> MayorHistoryPoint | None:
     chance = raw.get("chance_pct")
     leader = raw.get("leader")
     neu = raw.get("new_districts")
+    stimmen = {str(k): int(v) for k, v in votes.items() if isinstance(v, int) and not isinstance(v, bool)}
     return MayorHistoryPoint(
         at=at, reports_received=n,
-        shares={str(k): float(v) for k, v in shares.items() if isinstance(v, (int, float))},
-        votes={str(k): int(v) for k, v in votes.items() if isinstance(v, int) and not isinstance(v, bool)},
+        shares=exact_shares(stimmen) or {str(k): float(v) for k, v in shares.items() if isinstance(v, (int, float))},
+        votes=stimmen,
         projected_shares={str(k): float(v) for k, v in proj.items() if isinstance(v, (int, float))},
         chance_pct=int(chance) if isinstance(chance, int) and not isinstance(chance, bool) else None,
         leader=leader if isinstance(leader, str) else None,
         new_districts=[n for n in neu if isinstance(n, int) and not isinstance(n, bool)] if isinstance(neu, list) else [],
     )
+
+
+def exact_shares(votes: dict[str, int]) -> dict[str, float]:
+    """Die Anteile eines Stichwahl-Punktes aus seinen Stimmen — exakt.
+
+    Die Punkte des Abends (27.09.2026) tragen die Anteile mit zwei Stellen
+    (Rohr 51,55), und die Anzeige rundet noch einmal: Die Ableseleiste nannte
+    am Endstand 51,6 statt 51,5 (30.792 von 59.734 = 51,5485 %). In einer
+    Stichwahl stehen nur die beiden auf dem Zettel, ihre Stimmen sind also
+    die gültigen. Ohne Stimmen: leer, dann gelten die gespeicherten Anteile."""
+    total = sum(votes.values())
+    if len(votes) != 2 or total <= 0:
+        return {}
+    return {k: exact_pct(v, total) or 0.0 for k, v in votes.items()}
 
 
 def _mayor_store(slug: str) -> list[MayorHistoryPoint]:

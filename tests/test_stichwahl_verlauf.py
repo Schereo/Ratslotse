@@ -228,3 +228,11 @@ def test_ratswahl_genauere_anteile_sind_kein_neuer_stand(tmp_path, monkeypatch):
     history.reset()
     assert [p["at"] for p in history.points()] == [alt["at"]]
     history.reset()
+
+
+def test_anteile_eines_punktes_kommen_aus_den_stimmen(datei):
+    """Gespeichert ist 51,55 (zwei Stellen); die Ableseleiste nannte am
+    Endstand deshalb 51,6. Aus den Stimmen: 30.792 / 59.734 = 51,5485."""
+    punkt = history._mayor_point_from(ENDSTAND)  # noqa: SLF001
+    assert punkt is not None
+    assert punkt["shares"]["rohr"] == pytest.approx(100 * 30792 / 59734, abs=1e-6)
