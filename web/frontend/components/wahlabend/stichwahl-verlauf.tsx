@@ -19,6 +19,7 @@ import {
   useAbleseId,
   type AbleseStelle,
 } from "@/components/grafik/ablesen";
+import { ChartLegend } from "@/components/grafik/chart-legend";
 import { prozent, uhrzeit, zahl } from "@/lib/wahlabend";
 import { type Stichwahl, type StichwahlKandidat } from "@/lib/stichwahl";
 
@@ -96,9 +97,15 @@ export function StichwahlVerlauf({ daten }: { daten: Stichwahl }) {
           {wechsel.length > 0 ? ` · ${wechsel.length} Führungswechsel` : ""}
         </span>
       </div>
-      <p className={`mt-1 ${KICKER}`}>
-        Anteil für {wer.name} · über 50 % bedeutet Führung · gestrichelt: Hochrechnung
-      </p>
+      <ChartLegend
+        className="mt-2"
+        items={[
+          { mark: "line", color: farbe, label: `Anteil für ${wer.name}` },
+          { mark: "dashed", color: farbe, opacity: 0.6, label: "Hochrechnung" },
+          { mark: "rule", label: "50 % – darüber bedeutet Führung" },
+          ...(wechsel.length > 0 ? [{ mark: "dot" as const, color: "hsl(var(--signal))", label: "Führungswechsel" }] : []),
+        ]}
+      />
       <AbleseBeschreibung id={id}>
         Eine Treppenlinie über die Uhrzeit zeigt den Stimmenanteil von {wer.name}, dazu gestrichelt die Hochrechnung und die
         50-Prozent-Linie. {punkte.length} Stände, {wechsel.length} Führungswechsel.

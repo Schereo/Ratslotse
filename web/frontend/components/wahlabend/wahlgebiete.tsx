@@ -28,6 +28,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ChartScale } from "@/components/grafik/chart-legend";
 import { Segmented } from "@/components/ui/segmented";
 import { KICKER, Punkt } from "@/components/wahlabend/bausteine";
 import { BezirksRangliste } from "@/components/wahlabend/bezirks-rangliste";
@@ -191,6 +192,13 @@ export function Wahlgebiete({ daten, partei, probe, counted, rueckblick, classNa
     return m;
   }, [abfrage.data, partei.slug]);
 
+  // Kleinster und größter Wert der gerade gezeigten Tönung — wie in der Karte
+  // über alle übergebenen Werte gerechnet (`Gebietskarte`).
+  const skala = useMemo(() => {
+    const v = [...(inBezirken ? werteBezirke : werteBereiche).values()];
+    return v.length ? ([Math.min(...v), Math.max(...v)] as const) : null;
+  }, [inBezirken, werteBezirke, werteBereiche]);
+
   const bezirkeImFokus = useMemo(
     () => (typeof fokus === "number" ? bezirke.filter((f) => f.properties.wb === fokus) : bezirke),
     [bezirke, fokus],
@@ -249,6 +257,20 @@ export function Wahlgebiete({ daten, partei, probe, counted, rueckblick, classNa
             </Chip>
           ))}
         </div>
+      ) : null}
+
+      {/* Die Tönung als Skala — dieselbe Rechnung wie die Karte
+          (`toenungSpanne`: 18 % Deckkraft beim schwächsten, 62 % beim
+          stärksten gezeigten Wert). */}
+      {zaehlt && skala ? (
+        <ChartScale
+          className="mt-3"
+          label={`Anteil ${partei.short}`}
+          low={prozent(skala[0])}
+          high={prozent(skala[1])}
+          from="hsl(var(--primary) / 0.18)"
+          to="hsl(var(--primary) / 0.62)"
+        />
       ) : null}
 
       {/* Karte und Tafel: nebeneinander, sobald die Karte breit genug bleibt;

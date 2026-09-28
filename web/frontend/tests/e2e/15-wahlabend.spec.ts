@@ -462,6 +462,12 @@ test.describe("Stichwahl: Momente", () => {
     await expect(page.locator("[data-slug=prange]")).toContainText("Uneinholbar vorn");
     await expect(page.getByTestId("hochrechnung")).toContainText("Endstand");
     await expect(page.getByTestId("verlauf")).toContainText("1 Führungswechsel");
+    // Die Legende zeigt jedes Zeichen des Bildes (Tims Wunsch 28.09.2026) —
+    // auch den Punkt für den Führungswechsel, weil es einen gab.
+    const legende = page.getByTestId("verlauf").getByTestId("grafik-legende");
+    await expect(legende.locator("li")).toHaveCount(4);
+    await expect(legende).toContainText("Hochrechnung");
+    await expect(legende).toContainText("Führungswechsel");
   });
 });
 
