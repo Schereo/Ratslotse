@@ -150,6 +150,12 @@ class WortbeitraegeMixin(StoreBasis):
             self._conn.execute("DELETE FROM council_live_state WHERE ksinr = ?", (ksinr,))
             self._conn.execute("DELETE FROM council_live_events WHERE ksinr = ?", (ksinr,))
 
+    def withdraw_live_state(self, ksinr: int) -> None:
+        """Den gezeigten Stand zurückziehen, die Wechsel behalten: Die
+        Übertragung zeigt gerade keine Ratssitzung (s. ``livetracker``)."""
+        with self.transaktion():
+            self._conn.execute("DELETE FROM council_live_state WHERE ksinr = ?", (ksinr,))
+
     def live_states(self, ksinrs: list[int]) -> dict[int, dict]:
         """ksinr → Live-Stand, in der Form der API (``finished`` als bool,
         ohne ksinr/model). Sitzungen ohne Zeile fehlen im Ergebnis."""
