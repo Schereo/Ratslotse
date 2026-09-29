@@ -80,8 +80,14 @@ function useUnreadTopicHits(): number {
 
 /** Zahl offener Feedback-Einträge — dasselbe Zeichen wie bei „Meine Themen",
  *  nur an „Admin". Läuft ausschließlich für Admins: Der Endpunkt verlangt die
- *  Rolle, für alle anderen wäre die Abfrage ein garantierter 403. */
-function useUnreadFeedback(enabled: boolean): number {
+ *  Rolle, für alle anderen wäre die Abfrage ein garantierter 403.
+ *
+ *  Das Admin-Panel liest dieselbe Abfrage für seine Reiter „Menschen" und
+ *  „Feedback". Bis 09/2026 stand die Zahl NUR in der Seitenleiste: Der Klick
+ *  darauf führte zur Übersicht, und dort trug kein Reiter sie weiter — wer
+ *  nicht wusste, dass sie offenes Feedback zählt, fand nicht heraus, woher
+ *  sie kam (Tim, 29.09.2026). */
+export function useUnreadFeedback(enabled: boolean): number {
   const { data } = useQuery({
     queryKey: ["admin-feedback-unread"],
     queryFn: () => vertrag.get("/admin/feedback/unread-count"),
@@ -92,7 +98,20 @@ function useUnreadFeedback(enabled: boolean): number {
   return data?.total ?? 0;
 }
 
-function UnreadBadge({ n }: { n: number }) {
+/** Offene Rückmeldungen als ganzer Satz — für den Hinweis beim Überfahren
+ *  und für Screenreader, die sonst nur „Admin 3" vorläsen. */
+export const feedbackLabel = (n: number) => `${n} ${n === 1 ? "offene Rückmeldung" : "offene Rückmeldungen"}`;
+
+/** Wohin „Admin" führt: Ist Feedback offen, gleich in dessen Reiter — dorthin,
+ *  wo die Zahl sich abarbeiten lässt. Sonst in die Übersicht.
+ *
+ *  Nicht, wenn man schon im Panel steht: Next löst beim Sprung auf einen Anker
+ *  derselben Seite kein `hashchange` aus, das Panel bliebe also stehen, und
+ *  der Klick sähe kaputt aus. Dort trägt der Reiter „Menschen" die Zahl. */
+const adminHref = (openFeedback: number, pathname: string) =>
+  openFeedback > 0 && pathname !== "/admin" ? "/admin#feedback" : "/admin";
+
+export function UnreadBadge({ n, label, className }: { n: number; label?: string; className?: string }) {
   if (n <= 0) return null;
   return (
     // `key` auf der Zahl: Der Zähler wird alle 60 s neu geholt: Springt er von
@@ -101,9 +120,11 @@ function UnreadBadge({ n }: { n: number }) {
     // und genau der Sprung ist die Nachricht.
     <span
       key={n}
-      className="animate-pop-in ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-signal px-1.5 text-[11px] font-bold tabular-nums text-signal-foreground"
+      title={label}
+      className={cn("animate-pop-in ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-signal px-1.5 text-[11px] font-bold tabular-nums text-signal-foreground", className)}
     >
-      {n > 99 ? "99+" : n}
+      <span aria-hidden={label ? true : undefined}>{n > 99 ? "99+" : n}</span>
+      {label && <span className="sr-only">{label}</span>}
     </span>
   );
 }
@@ -179,7 +200,7 @@ function SectionHeader({ children }: { children: React.ReactNode }) {
   return <p className="px-3 pb-1 pt-5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">{children}</p>;
 }
 
-function NavItem({ item, active, badge = 0, onNavigate }: { item: Item; active: boolean; badge?: number; onNavigate?: () => void }) {
+function NavItem({ item, active, badge = 0, badgeLabel, onNavigate }: { item: Item; active: boolean; badge?: number; badgeLabel?: string; onNavigate?: () => void }) {
   const Icon = item.icon;
   return (
     <Link
@@ -207,7 +228,7 @@ function NavItem({ item, active, badge = 0, onNavigate }: { item: Item; active: 
         )}
       />
       {item.label}
-      <UnreadBadge n={badge} />
+      <UnreadBadge n={badge} label={badgeLabel} />
     </Link>
   );
 }
@@ -262,9 +283,10 @@ function NavLinksInner({ activeTab, onNavigate }: { activeTab: string; onNavigat
         <NavItem item={QUIZ} active={isActive("/quiz")} onNavigate={onNavigate} />
         {darfAdmin(user) && (
           <NavItem
-            item={{ href: "/admin", label: "Admin", icon: Settings }}
+            item={{ href: adminHref(openFeedback, pathname), label: "Admin", icon: Settings }}
             active={isActive("/admin")}
             badge={openFeedback}
+            badgeLabel={feedbackLabel(openFeedback)}
             onNavigate={onNavigate}
           />
         )}
@@ -566,8 +588,8 @@ function BottomNavItem({ item, active }: { item: Item; active: boolean }) {
 
 /* --------------------- „Mehr"-Sheet (Design 9a④, mobil) --------------------- */
 
-function MehrZeile({ href, icon: Icon, label, badge = 0, primaerFarbe = true, onClose }: {
-  href: string; icon: typeof Home; label: string; badge?: number;
+function MehrZeile({ href, icon: Icon, label, badge = 0, badgeLabel, primaerFarbe = true, onClose }: {
+  href: string; icon: typeof Home; label: string; badge?: number; badgeLabel?: string;
   primaerFarbe?: boolean; onClose: () => void;
 }) {
   return (
@@ -575,7 +597,7 @@ function MehrZeile({ href, icon: Icon, label, badge = 0, primaerFarbe = true, on
       className="group flex min-h-11 items-center gap-3 border-b border-border/60 px-1 py-2.5 text-sm font-medium text-foreground transition-colors active:bg-muted">
       <Icon className={cn("h-[17px] w-[17px] shrink-0", primaerFarbe ? "text-primary" : "text-muted-foreground")} aria-hidden />
       <span className="min-w-0 flex-1">{label}</span>
-      <UnreadBadge n={badge} />
+      <UnreadBadge n={badge} label={badgeLabel} />
       {/* Der Pfeil rückt unter dem Finger einen Schritt vor — die Zeile
           bestätigt damit die Richtung, in die sie führt. */}
       <ChevronRight
@@ -592,6 +614,7 @@ function MehrZeile({ href, icon: Icon, label, badge = 0, primaerFarbe = true, on
 function MehrSheet({ abgang, onClose, onFertig }: { abgang: boolean; onClose: () => void; onFertig: () => void }) {
   const router = useRouter();
   const { user, logout } = useAuth();
+  const pathname = pfad(usePathname());
   const openFeedbackUnread = useUnreadFeedback(darfAdmin(user));
   const viertel = useFeature("mein-viertel");
   const viertelZiel = useViertelZiel(viertel && !!user);
@@ -676,7 +699,7 @@ function MehrSheet({ abgang, onClose, onFertig }: { abgang: boolean; onClose: ()
           <MehrZeile href="/bookmarks" icon={Bookmark} label="Merkliste" onClose={onClose} />
           <MehrZeile href="/quiz" icon={Trophy} label="Quiz" onClose={onClose} />
           {darfAdmin(user) && (
-            <MehrZeile href="/admin" icon={Settings} label="Admin" badge={openFeedbackUnread} primaerFarbe={false} onClose={onClose} />
+            <MehrZeile href={adminHref(openFeedbackUnread, pathname)} icon={Settings} label="Admin" badge={openFeedbackUnread} badgeLabel={feedbackLabel(openFeedbackUnread)} primaerFarbe={false} onClose={onClose} />
           )}
           <button type="button" onClick={() => { onClose(); openFeedback(); }}
             className="flex min-h-11 items-center gap-3 border-b border-border/60 px-1 py-2.5 text-left text-sm font-medium text-foreground transition-colors active:bg-muted">
