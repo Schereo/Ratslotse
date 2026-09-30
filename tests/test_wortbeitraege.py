@@ -951,3 +951,16 @@ def test_nachextraktion_tritt_dem_deploy_zur_seite(tmp_path, monkeypatch):
     s = CouncilStore(db)
     assert len(s.ksinr_wortbeitraege_vor("2026-09-23")) == 2
     s.close()
+
+
+def test_serien_deckel_laesst_andere_beschluesse_ins_feld():
+    """Gold-Fall Stadion-Stand (30.09.2026): 25 wortgleiche „Sachstandsbericht
+    Stadionplanung" verdrängten den Ratsbeschluss zur Vergabe auf Rang 41."""
+    from council import embeddings as emb
+    hits = [(i, 1.0 - i / 100) for i in range(1, 7)] + [(99, 0.2)]
+    titel = {i: "Sachstandsbericht Stadionplanung" for i in range(1, 7)}
+    titel[5] = "Sachstandsbericht Stadionplanung - Bericht"   # Zusatz zählt nicht
+    titel[99] = "Stadion Oldenburg GmbH & Co. KG: Stadionneubau Maastrichter Straße"
+    neu = [i for i, _ in emb.serien_deckel(hits, titel, max_je=3)]
+    assert neu == [1, 2, 3, 99, 4, 5, 6]          # Serie gedeckelt, nichts verloren
+    assert emb.serien_deckel(hits, titel, max_je=0) == hits

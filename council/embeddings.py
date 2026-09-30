@@ -290,6 +290,7 @@ def hybrid_search(store, query: str, expanded: str, top_k: int = 25, pool: int =
                     ranked, store.session_dates_fuer([i for i, _ in ranked]))
             except Exception:  # noqa: BLE001 — Bonus ist Zusatz, nie Blocker
                 pass
+        ranked = serien_deckel(ranked, {d["id"]: d.get("title") for d in docs})
         ranked = ranked[:top_k]
         if timings is not None:
             timings["rerank_ms"] = round((time.perf_counter() - t2) * 1000)
@@ -299,6 +300,38 @@ def hybrid_search(store, query: str, expanded: str, top_k: int = 25, pool: int =
         order = [i for i, _ in vec] + [i for i in cand_ids if i not in seen]
         sc = dict(vec)
         return [(i, sc.get(i, 0.0)) for i in order[:top_k]]
+
+
+#: So viele Beschlüsse mit wortgleichem Titel bleiben vorn im Feld.
+SERIE_MAX = int(os.environ.get("COUNCIL_SERIE_MAX", "3"))
+_SERIE_ZUSATZ = re.compile(r"\s*[-–]\s*(beschluss|bericht|sachstandsbericht)\s*$", re.IGNORECASE)
+
+
+def serien_deckel(hits: list[tuple], titel: dict[int, str | None],
+                  max_je: int | None = None) -> list[tuple]:
+    """Von einer Serie wortgleicher Beschlüsse nur die stärksten ``max_je`` vorn.
+
+    **Warum.** „Wie ist der Stand beim Stadionneubau?" (Gold-Fall, 30.09.2026):
+    25 monatliche „Sachstandsbericht Stadionplanung" des Finanzausschusses —
+    gleicher Titel, Beschlusstext „wird zur Kenntnis genommen", der Inhalt
+    steht nur im Protokoll — belegten das Feld. Der Ratsbeschluss zur Vergabe
+    vom 01.06.2026 kam auf Rang 41 (Schnitt bei 40), Bürgschaft und
+    Bebauungsplan auf 48 und 56. Mit drei je Serie: 18, 24, 30.
+
+    Die übrigen rücken ans Ende, in ihrer Reihenfolge — weg sind sie nicht.
+    Die Relevanz entscheidet wie vorher; eine Serie belegt nur nicht mehr das
+    ganze Feld."""
+    grenze = SERIE_MAX if max_je is None else max_je
+    if grenze <= 0:
+        return hits
+    zaehler: dict[str, int] = {}
+    vorn: list[tuple] = []
+    hinten: list[tuple] = []
+    for h in hits:
+        t = _SERIE_ZUSATZ.sub("", " ".join((titel.get(h[0]) or "").lower().split()))
+        zaehler[t] = zaehler.get(t, 0) + 1
+        (vorn if not t or zaehler[t] <= grenze else hinten).append(h)
+    return vorn + hinten
 
 
 def recency_boost(hits: list[tuple], dates: dict[int, str],
