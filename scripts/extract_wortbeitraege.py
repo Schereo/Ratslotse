@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -40,18 +41,31 @@ from kern.stopp import Stopp  # noqa: E402
 
 COUNCIL_DB = Path(os.environ.get("COUNCIL_DB") or ROOT / "data" / "council.sqlite")
 
+#: Protokolle mit Protokollnotiz — auch in der Form, in der die PDF-Textschicht
+#: den ersten Buchstaben abtrennt („P\nrotokollnotiz“). Bis 30.09.2026 ließ
+#: GPT-6 Luna Notizen ohne Sprecher aus (Prompt `speeches_extract`); 1.108
+#: davon standen in 444 Protokollen.
+_PROTOKOLLNOTIZ = re.compile(r"P\s*\n?\s*rotokoll(?:notiz|erkl)|zu\s+Protokoll", re.IGNORECASE)
+
 
 def process(db_path: Path, limit: int | None, workers: int,
             ksinrs: list[int] | None = None, neu_vor: str | None = None,
-            trocken: bool = False, stopp: Stopp | None = None) -> dict:
+            trocken: bool = False, stopp: Stopp | None = None,
+            nur_protokollnotizen: bool = False) -> dict:
     store = CouncilStore(db_path)
     try:
         if ksinrs:
             todo = ksinrs[:limit] if limit else ksinrs
         elif neu_vor:
-            todo = store.ksinr_wortbeitraege_vor(neu_vor, limit or 0)
+            # Mit Filter erst alles holen, dann filtern, dann kappen — sonst
+            # prüfte eine Probe (--limit 20) nur die 20 jüngsten überhaupt.
+            todo = store.ksinr_wortbeitraege_vor(neu_vor, 0 if nur_protokollnotizen else (limit or 0))
         else:
             todo = store.ksinr_ohne_wortbeitraege(limit or 0)
+        if nur_protokollnotizen:
+            todo = [k for k in todo if _PROTOKOLLNOTIZ.search(store.protocol_raw_text(k) or "")]
+            if limit:
+                todo = todo[:limit]
         if trocken:
             print(f"Würde {len(todo)} Protokolle extrahieren: {todo[:20]}"
                   f"{' …' if len(todo) > 20 else ''}", flush=True)
@@ -122,12 +136,15 @@ def main() -> dict:
     ap.add_argument("--neu-vor", default=None, metavar="DATUM",
                     help="Protokolle neu extrahieren, deren Beiträge vor DATUM entstanden")
     ap.add_argument("--trocken", action="store_true", help="nur zählen, nichts aufrufen")
+    ap.add_argument("--nur-protokollnotizen", action="store_true",
+                    help="nur Protokolle, die eine Protokollnotiz tragen")
     args = ap.parse_args()
 
     ksinrs = [int(k) for k in args.ksinr.split(",") if k.strip()]
     stats = process(Path(args.db), args.limit, args.workers,
                     ksinrs=ksinrs or None, neu_vor=args.neu_vor, trocken=args.trocken,
-                    stopp=Stopp(Path(args.db).parent))
+                    stopp=Stopp(Path(args.db).parent),
+                    nur_protokollnotizen=args.nur_protokollnotizen)
     if args.trocken:
         return stats
     print(f"Wortbeiträge: {stats['contributions']} aus {stats['protokolle']} Protokollen "

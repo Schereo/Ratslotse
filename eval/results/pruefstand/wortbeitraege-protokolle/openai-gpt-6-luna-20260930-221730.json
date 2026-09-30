@@ -1,0 +1,329 @@
+{
+ "suite": "wortbeitraege-protokolle",
+ "titel": "Wortbeiträge aus ganzen Niederschriften",
+ "kennzahl": "F1 über die Wortmeldungen je Person in ganzen Protokollen (bis 48k-Fenster, wie im Cron), ohne Sammel-TOPs; eval/run_speeches_protokolle.py",
+ "modell": "openai/gpt-6-luna",
+ "variante": null,
+ "tarif": null,
+ "lauf": 2,
+ "zeitstempel": "2026-09-30T22:17:30",
+ "db_stand": "Sitzungen bis 2026-09-30, 9119 Beschlüsse",
+ "qualitaet": 0.8867,
+ "harte_befunde": 0,
+ "warnung": null,
+ "faelle": 9,
+ "p50_ms": 55488,
+ "p95_ms": 85789,
+ "aufrufe": 14,
+ "kosten_usd": 0.053319,
+ "ohne_kostenwert": 0,
+ "ct_je_aufruf": 0.3808,
+ "ct_je_lauf": 5.3319,
+ "kosten_gesamt_usd": 0.053319,
+ "ausfaelle": 0,
+ "nicht_zulaessig": false,
+ "abbruch": null,
+ "modelle_laut_tabelle": [
+  "openai/gpt-6-luna"
+ ],
+ "ersatz": [],
+ "dauer_s": 703.5,
+ "nebenkennzahlen": {
+  "recall_ohne_mandat": 0.9373,
+  "antwort_in_rede": 0,
+  "fremd_zugeschrieben": 0.1014,
+  "zahlen_erhalten": 0.185,
+  "begriffe_erhalten": 0.2907,
+  "beitraege": 896,
+  "fehlgeschlagen": 0
+ },
+ "fehler_beispiele": [],
+ "roh": {
+  "n_cases": 9,
+  "f1": 0.8867,
+  "precision": 0.8329,
+  "recall": 0.9479,
+  "recall_ohne_mandat": 0.9373,
+  "antwort_in_rede": 0,
+  "fremd_zugeschrieben": 0.1014,
+  "zahlen_erhalten": 0.185,
+  "begriffe_erhalten": 0.2907,
+  "erfunden": 0,
+  "beitraege": 896,
+  "fehlgeschlagen": 0,
+  "faelle": [
+   {
+    "id": "4664",
+    "tp": 85,
+    "fp": 3,
+    "fn": 6,
+    "tp_ohne": 28,
+    "fn_ohne": 4,
+    "verpasst": [
+     "kaesemann"
+    ],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 7,
+    "bewertbar": 118,
+    "fremd_beispiele": [
+     "Nicolai Beerheide: Landschaftsbild",
+     "Tanja Piening: Integration",
+     "Peter Zenner: Wärmeversorgung",
+     "Brigitte Kreft-Kohlhage: Verkehrssicherungspflicht, Notwendigkeit",
+     "Robert Sprenger: Erläuterung",
+     "Robert Sprenger: Ausschusssitzung"
+    ],
+    "zahlen": [
+     12,
+     41
+    ],
+    "begriffe": [
+     99,
+     354
+    ],
+    "beitraege": 126
+   },
+   {
+    "id": "4430",
+    "tp": 103,
+    "fp": 7,
+    "fn": 6,
+    "tp_ohne": 38,
+    "fn_ohne": 1,
+    "verpasst": [
+     "phillip"
+    ],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 8,
+    "bewertbar": 135,
+    "fremd_beispiele": [
+     "Christoph Baak: Erläuterung",
+     "Carola Pietsch: Projektsteuerung",
+     "Carola Pietsch: Mitarbeiterin",
+     "Christoph Baak: Bestandteil",
+     "Norbert Korallus: Evangelische, Krankenhaus",
+     "Nicole Piechotta: Evangelischen, Krankenhauses, Rücksichtnahme"
+    ],
+    "zahlen": [
+     17,
+     326
+    ],
+    "begriffe": [
+     98,
+     409
+    ],
+    "beitraege": 153
+   },
+   {
+    "id": "4418",
+    "tp": 68,
+    "fp": 4,
+    "fn": 6,
+    "tp_ohne": 23,
+    "fn_ohne": 5,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 6,
+    "bewertbar": 74,
+    "fremd_beispiele": [
+     "Jan Bembennek: Betreuungsbehörde, Betreuungsorganisationsgesetz, Betreuungsgerichts",
+     "Holger Onken: Zahlungsfähigkeit",
+     "Meike Dikosso: Verwaltungsvorlage",
+     "Thomas Klein: Erläuterung",
+     "Gunnar Rohde: Altersquotient",
+     "Susanne Jungkunz: Umsetzungsbegleitung"
+    ],
+    "zahlen": [
+     5,
+     23
+    ],
+    "begriffe": [
+     64,
+     179
+    ],
+    "beitraege": 81
+   },
+   {
+    "id": "4446",
+    "tp": 71,
+    "fp": 1,
+    "fn": 2,
+    "tp_ohne": 44,
+    "fn_ohne": 2,
+    "verpasst": [
+     "dikosso",
+     "krogmann"
+    ],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 6,
+    "bewertbar": 79,
+    "fremd_beispiele": [
+     "Sander: Bezifferung, Mehrausgaben",
+     "Dr. Lammerding: Umwandlungen",
+     "Dittrich: Landesebene",
+     "Niederstein: Landesregelung",
+     "Eilers-Dörfler: Landesregelung",
+     "Dr. Lammerding: Städtetages, Insellösungen, Landesregelung"
+    ],
+    "zahlen": [
+     16,
+     19
+    ],
+    "begriffe": [
+     72,
+     154
+    ],
+    "beitraege": 80
+   },
+   {
+    "id": "4545",
+    "tp": 76,
+    "fp": 12,
+    "fn": 3,
+    "tp_ohne": 45,
+    "fn_ohne": 3,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 3,
+    "bewertbar": 81,
+    "fremd_beispiele": [
+     "Maik Niederstein: Bordsteinkante",
+     "Christian Lüdke: Bordsteinkante",
+     "Carsten Atzler: Ausführungen"
+    ],
+    "zahlen": [
+     17,
+     21
+    ],
+    "begriffe": [
+     82,
+     162
+    ],
+    "beitraege": 101
+   },
+   {
+    "id": "4611",
+    "tp": 40,
+    "fp": 1,
+    "fn": 2,
+    "tp_ohne": 26,
+    "fn_ohne": 2,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 6,
+    "bewertbar": 43,
+    "fremd_beispiele": [
+     "Welp: Ganztagsschulen",
+     "Denckmann: Schulbetriebs",
+     "Welp: Schulbezirksanpassung",
+     "Freede: Zusammensetzung",
+     "Höpken: Schulbezirksanpassung",
+     "Welp: Härtefallanträgen"
+    ],
+    "zahlen": [
+     4,
+     131
+    ],
+    "begriffe": [
+     82,
+     354
+    ],
+    "beitraege": 44
+   },
+   {
+    "id": "3717",
+    "tp": 90,
+    "fp": 7,
+    "fn": 7,
+    "tp_ohne": 44,
+    "fn_ohne": 0,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 12,
+    "bewertbar": 104,
+    "fremd_beispiele": [
+     "Menke: Inkrafttreten",
+     "Behrens: Maximalwert",
+     "Bertram: Landschaftsschutzgebiete",
+     "Piechotta: Erarbeitung",
+     "Conty: Eigenbetrieb, Gebäudewirtschaft",
+     "Uhrhan: Eigenbetriebs, Gebäudewirtschaft"
+    ],
+    "zahlen": [
+     33,
+     43
+    ],
+    "begriffe": [
+     114,
+     214
+    ],
+    "beitraege": 110
+   },
+   {
+    "id": "2855",
+    "tp": 43,
+    "fp": 33,
+    "fn": 2,
+    "tp_ohne": 19,
+    "fn_ohne": 2,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 4,
+    "bewertbar": 49,
+    "fremd_beispiele": [
+     "Franz Norrenbrock: Entscheidung",
+     "Simon Kurka: Verbandsarbeit",
+     "Eltje Jahnke: Beschäftigte",
+     "Germaid Eilers-Dörfler: Ausbaupläne"
+    ],
+    "zahlen": [
+     17,
+     27
+    ],
+    "begriffe": [
+     56,
+     198
+    ],
+    "beitraege": 85
+   },
+   {
+    "id": "4441",
+    "tp": 42,
+    "fp": 56,
+    "fn": 0,
+    "tp_ohne": 17,
+    "fn_ohne": 0,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 26,
+    "bewertbar": 86,
+    "fremd_beispiele": [
+     "Klein: Information",
+     "Menke: Information",
+     "Behrens: Friedhofsmauer, Gertrudenfriedhofs",
+     "Sprenger: Hindenburgstraße",
+     "Drügemöller: Erläuterungen",
+     "Woltmann: Schwierigkeit, Straßensanierung, Leitungssysteme"
+    ],
+    "zahlen": [
+     7,
+     61
+    ],
+    "begriffe": [
+     44,
+     422
+    ],
+    "beitraege": 116
+   }
+  ]
+ }
+}
