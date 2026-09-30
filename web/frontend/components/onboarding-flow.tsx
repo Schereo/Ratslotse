@@ -10,7 +10,7 @@ import { isNativeApp } from "@/lib/platform";
 import { cn, pfad } from "@/lib/utils";
 import { Button, Input, toast } from "@/components/ui";
 import { Mascot, type MascotPose } from "@/components/mascot";
-import { committeeExplains, committeeIcon, committeeRank, shortCommittee } from "@/lib/committees";
+import { committeeExplains, committeeIcon, committeeImage, committeeRank, shortCommittee } from "@/lib/committees";
 import { useAuth } from "@/lib/auth";
 import { darfAdmin } from "@/lib/rechte";
 import { TopicSheet, type Described } from "@/components/topic-sheet";
@@ -610,13 +610,22 @@ function CommitteeStep({ onNext }: { onNext: () => void }) {
   );
 }
 
-/** Das Zeichen des Gremiums auf getönter Scheibe (Primär-Tint /8, DESIGNSPRACHE
- *  §2); gewählt = gefüllt. Eine eigene Komponente, obwohl sie klein ist: Genau
- *  hier soll später Lottis Gremien-Variante stehen, sobald es die Sprites gibt
- *  (s. `committeeIcon` in lib/committees.ts) — dann ändert sich diese Funktion
- *  und keine Kachel. */
+/** Lotti mit einem Requisit aus dem Sachbereich des Gremiums (`public/gremien/`);
+ *  gewählt = Ring in der Primärfarbe. Gremien ohne Bild und unbekannte behalten
+ *  das Zeichen auf getönter Scheibe (Primär-Tint /8, DESIGNSPRACHE §2; gewählt =
+ *  gefüllt). Eine eigene Komponente, damit keine Kachel davon weiß. */
 function GremiumZeichen({ committee, aktiv }: { committee: string; aktiv: boolean }) {
   const Icon = committeeIcon(committee);
+  const bild = committeeImage(committee);
+  if (bild) {
+    return (
+      // Feste 256-px-Dateien aus dem Repo; `next/image` bringt im statischen Export nichts.
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={bild} alt="" width={56} height={56} loading="lazy" decoding="async"
+        className={cn("h-14 w-14 shrink-0 rounded-xl bg-muted object-cover transition-shadow",
+                      aktiv && "ring-2 ring-primary ring-offset-2 ring-offset-background")} />
+    );
+  }
   return (
     <span aria-hidden className={cn(
       "flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] transition-colors",
@@ -958,6 +967,8 @@ function StadtteilStep({ onNext }: { onNext: () => void }) {
 
 type TopicRow = {
   id: number; name: string; description: string;
+  /** Schlüssel des kuratierten Stadtthemas (Bild unter `public/themen/`). */
+  image_key?: string | null;
   decision_count?: number; decision_count_capped?: boolean; matched?: boolean;
   /** Treffer der letzten zwölf Monate — die Zahl, die dieser Schritt zeigt.
    *  Die Gesamtzahl (`decision_count`) steht auf der Themen-Karte. */
@@ -1363,9 +1374,16 @@ function TopicZeile({ topic, chipZahl, istStadtteil, onEdit, onRemove }: {
   const zahl = chipZahl ?? (topic.matched ? topic.hits_12m : undefined);
   return (
     <li className="flex items-center gap-2 py-1.5 text-[13px]" title={topic.description}>
-      <span className={cn("shrink-0", istStadtteil ? "text-primary" : "text-signal")} aria-hidden>
-        {istStadtteil ? <MapPin className="h-3.5 w-3.5" /> : <Sparkles className="h-3.5 w-3.5" />}
-      </span>
+      {topic.image_key ? (
+        // Feste 256-px-Dateien aus dem Repo; `next/image` bringt im statischen Export nichts.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={stadtthemaBild(topic.image_key)} alt="" width={28} height={28} loading="lazy"
+          className="h-7 w-7 shrink-0 rounded-md bg-muted object-cover" />
+      ) : (
+        <span className={cn("shrink-0", istStadtteil ? "text-primary" : "text-signal")} aria-hidden>
+          {istStadtteil ? <MapPin className="h-3.5 w-3.5" /> : <Sparkles className="h-3.5 w-3.5" />}
+        </span>
+      )}
       <span className="min-w-0 flex-1 truncate font-semibold text-foreground">{topic.name}</span>
       {typeof zahl === "number" && zahl > 0 && (
         <span className="hidden shrink-0 text-[11px] text-muted-foreground sm:inline">

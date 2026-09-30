@@ -268,6 +268,19 @@ def match_question(frage: str) -> CityTopic | None:
     return None
 
 
+def bild_key(name: str | None) -> str | None:
+    """Der Schlüssel des kuratierten Stadtthemas, das so heißt — oder ``None``.
+
+    Daran hängt das Bild (``public/themen/<key>.webp``) auf der Themen-Karte:
+    Ein Thema, das über die Kachel im Assistenten angelegt wurde, trägt genau
+    den Namen der Registry. Gleichheit statt Wortsuche, weil ein selbst
+    getipptes „Schulwegsicherheit" kein Stadtthema „Schulen" ist und sein Bild
+    nicht tragen soll.
+    """
+    wanted = (name or "").strip().casefold()
+    return next((t.key for t in CITY_TOPICS if t.name.casefold() == wanted), None)
+
+
 def count_topics(texts: list[str]) -> dict[str, int]:
     """Wie viele der Texte jedes Thema trifft — ein Text zählt je Thema einmal."""
     counts = {t.key: 0 for t in CITY_TOPICS}

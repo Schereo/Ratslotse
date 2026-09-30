@@ -687,7 +687,11 @@ ganzen Ablauf. Die Themen stehen als Kacheln mit einem kleinen, flach
 gezeichneten Bild, in dem manchmal Lotti, ein Küken oder Krissi mitspielen
 (`public/themen/<key>.webp`, erzeugt von `scripts/themen_grafiken.py`), in
 einer von Hand gemischten Reihenfolge (`ANZEIGE` in `council/city_topics.py`)
-statt nach Zahl. Der Assistent nimmt höchstens **drei Stadtteile** an; mehr
+statt nach Zahl. Die Gremien im ersten Schritt tragen je eine Lotti mit einem
+Requisit (`public/gremien/<key>.webp`, Zuordnung in `lib/committees.ts`,
+erzeugt mit `scripts/themen_grafiken.py --satz gremien`); `GET /api/topics`
+liefert für ein Thema, das so heißt wie ein Stadtthema, `image_key` — daran
+hängt das Bild auf der Themen-Karte. Der Assistent nimmt höchstens **drei Stadtteile** an; mehr
 lassen sich später unter „Themen" anlegen.
 
 **Was angeklickt wird, steht in `onboarding_chip_stats`.** Je Tag und Chip ein

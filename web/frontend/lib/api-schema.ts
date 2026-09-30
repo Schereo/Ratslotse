@@ -15937,6 +15937,8 @@ export interface components {
             hits_6m: number;
             /** Id */
             id: number;
+            /** Image Key */
+            image_key?: string | null;
             /** Last Hit Date */
             last_hit_date?: string | null;
             /** Last Hit Id */
@@ -24165,4 +24167,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 1f8f9dbc630225d03a00fa1a1f09936d396382ff2e151abdee3b5446afa9b036
+// vertrag-sha256: b5fd281b9683570d0703149bef15bc9cec1b8d9ffb5bb0ee1c59d8fb1608b685
