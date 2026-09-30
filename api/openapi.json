@@ -25046,6 +25046,13 @@
             "title": "Id",
             "type": "integer"
           },
+          "image_key": {
+            "title": "Image Key",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "last_hit_date": {
             "title": "Last Hit Date",
             "type": [

@@ -175,3 +175,17 @@ def test_limit_ausser_bereich(client):
     _register(client)
     assert client.get("/api/topics/suggestions?limit=0").status_code == 422
     assert client.get("/api/topics/suggestions?limit=7").status_code == 422
+
+
+def test_themen_liste_nennt_das_bild_nur_fuer_kuratierte_themen(client):
+    """Das Bild auf der Themen-Karte hängt an ``image_key``: gesetzt für ein Thema,
+    das so heißt wie ein Stadtthema, sonst ``None`` — ein selbst getipptes
+    „Schulwegsicherheit" darf das Schulen-Bild nicht bekommen."""
+    _register(client)
+    for name in ("Radverkehr", "Schulwegsicherheit"):
+        r = client.post("/api/topics", json={"name": name, "description": "Beschreibung, lang genug."})
+        assert r.status_code == 201, r.text
+    bilder = {t["name"]: t["image_key"] for t in client.get("/api/topics").json()}
+    assert bilder == {"Radverkehr": "cycling", "Schulwegsicherheit": None}
+    assert city_topics.bild_key(" radverkehr ") == "cycling"
+    assert city_topics.bild_key(None) is None

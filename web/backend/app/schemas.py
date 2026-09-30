@@ -225,6 +225,9 @@ class TopicOut(BaseModel):
     name: str
     description: str
     created_at: str
+    # Schlüssel des kuratierten Stadtthemas, das so heißt (``council.city_topics``),
+    # sonst None — daran hängt das Bild auf der Themen-Karte.
+    image_key: str | None = None
     decision_count: int = 0
     # True, wenn der Matching-Lauf mehr relevante Beschlüsse gefunden hat, als
     # er speichern durfte. Die Karte schreibt dann „40+" — vorher stand dort

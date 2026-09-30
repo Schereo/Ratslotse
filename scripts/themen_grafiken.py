@@ -18,6 +18,7 @@ deshalb nicht in ``kern/jobs.py``: Es ist ein Werkzeug, kein Cron.
     .venv/bin/python scripts/themen_grafiken.py --erzeugen     # alle fehlenden
     .venv/bin/python scripts/themen_grafiken.py --erzeugen --nur cycling,culture
     .venv/bin/python scripts/themen_grafiken.py --erzeugen --neu   # vorhandene ersetzen
+    .venv/bin/python scripts/themen_grafiken.py --satz gremien --erzeugen   # die Ausschüsse
 
 Der Schlüssel kommt aus ``OPENROUTER_API_KEY``. Jedes Bild kostet den Preis
 eines Bildmodell-Aufrufs (Größenordnung vier Cent); ``--modell`` tauscht das
@@ -35,6 +36,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 ZIEL = ROOT / "web" / "frontend" / "public" / "themen"
+ZIEL_GREMIEN = ROOT / "web" / "frontend" / "public" / "gremien"
 REFERENZ = Path(__file__).resolve().parent / "themen_referenz.png"
 
 MODELL = "google/gemini-3.1-flash-image"
@@ -89,6 +91,29 @@ GAESTE: dict[str, tuple[str, str]] = {
     "waste": ("Krissi the crab", "climbing on the edge of the recycling bin"),
     "roads": ("Krissi the crab", "walking across the bridge"),
     "sports": ("the small chick", "sitting on top of the ball"),
+}
+
+#: Die Ausschüsse (Schritt 1 des Assistenten): Hier ist Lotti die HAUPTFIGUR mit
+#: einem Requisit je Sachbereich — Tims alter Wunsch „eine Lotti je Ausschuss".
+#: Schlüssel und Zuordnung zu den Gremiennamen: ``web/frontend/lib/committees.ts``.
+#: Eintrag: (Requisit, Lotti-Rolle, Akzentfarbe, Hintergrund).
+GREMIEN: dict[str, tuple[str, str, str, str]] = {
+    "council": ("a small wooden lectern with a little gavel and a tiny town hall building behind", "standing behind the lectern", "orange", "light sky blue"),
+    "executive": ("a thick closed folder with a padlock on it and a small desk lamp", "sitting at a small desk next to it", "blue", "light lavender"),
+    "general": ("a clipboard with a checklist and a big rubber stamp", "holding the stamp in a wing", "orange", "light warm beige"),
+    "finance": ("a piggy bank and a short stack of coins", "standing next to the piggy bank, dropping a coin in", "orange", "light peach"),
+    "integration": ("a round globe on a little stand with a heart on it", "standing beside the globe together with the small chick, both looking at it", "blue", "light aqua"),
+    "green": ("a young tree in a pot and a watering can", "watering the tree with the can", "green", "light mint"),
+    "planning": ("a rolled-up city plan and a small model house", "wearing a yellow hard hat over her cap, holding the plan", "orange", "light sky blue"),
+    "business": ("a briefcase and an open laptop", "standing next to them, one wing resting on the laptop", "blue", "light lavender"),
+    "waste": ("a recycling bin with a green arrow and a litter picker stick", "holding the litter picker", "green", "light mint"),
+    "buildings": ("a small brick wall, a spirit level and a wrench", "holding the wrench next to the wall", "orange", "light warm beige"),
+    "youth": ("a flying kite with a ribbon tail", "holding the kite string together with the small chick", "orange", "light yellow"),
+    "culture": ("a music note, a paint palette with a brush and a small spotlight", "standing next to the palette, conducting with a wing", "orange", "light lavender"),
+    "school": ("a school bag, an open book and a pencil", "standing next to the bag, reading the book", "orange", "light yellow"),
+    "social": ("a big heart-shaped cushion and a steaming cup", "sitting on the cushion with the small chick, sharing it", "orange", "light peach"),
+    "sport": ("a whistle, a medal on a ribbon and a small cone", "wearing the medal around her neck, blowing the whistle", "orange", "light green"),
+    "traffic": ("a zebra crossing, a round traffic sign and a bicycle helmet", "wearing the bicycle helmet over her cap, standing on the crossing", "blue", "light sky blue"),
 }
 
 MOTIVE: dict[str, tuple[str, str, str]] = {
@@ -146,8 +171,22 @@ def ohne_rahmen(bild):
     return bild
 
 
+#: Wie CAMEO, nur größer: Im Gremien-Satz ist Lotti das Bild, nicht der Gast.
+HAUPTFIGUR = (
+    " The attached reference image shows the mascot family of the app: LOTTI, "
+    "a chubby white seagull with a navy pilot cap with a gold compass badge and "
+    "orange beak and feet; a small fluffy white chick; and KRISSI, a small "
+    "orange crab. LOTTI is the MAIN CHARACTER of this picture, drawn large and "
+    "clearly recognizable: she is {was}. Redraw her in the same flat outline "
+    "style as the props (thin navy outline, flat colors, no shading); do not "
+    "copy the 3D look of the reference. Lotti and the props together fill "
+    "about 70 percent of the frame, fully visible with generous margin on all "
+    "sides, nothing cropped at the edges."
+)
+
+
 def erzeuge(key: str, modell: str, motiv: tuple[str, str, str],
-            gast: tuple[str, str] | None = None) -> bytes:
+            gast: tuple[str, str] | None = None, hauptfigur: bool = False) -> bytes:
     """Ein Bild holen und als WebP mit ``KANTE`` Pixeln zurückgeben."""
     import httpx
     from PIL import Image
@@ -155,7 +194,8 @@ def erzeuge(key: str, modell: str, motiv: tuple[str, str, str],
     beschreibung, farbe, hintergrund = motiv
     text = STIL.format(
         motiv=beschreibung, farbe=farbe, hintergrund=hintergrund,
-        cameo=CAMEO.format(wer=gast[0], was=gast[1]) if gast else "")
+        cameo=(HAUPTFIGUR.format(was=gast[1]) if hauptfigur else CAMEO.format(wer=gast[0], was=gast[1]))
+        if gast else "")
     if gast:
         referenz = base64.b64encode(REFERENZ.read_bytes()).decode()
         inhalt: str | list = [
@@ -198,21 +238,31 @@ def main() -> int:
     ap.add_argument("--neu", action="store_true", help="vorhandene Dateien ersetzen")
     ap.add_argument("--nur", default="", help="kommagetrennte Schlüssel")
     ap.add_argument("--modell", default=MODELL)
+    ap.add_argument("--satz", choices=("themen", "gremien"), default="themen")
     args = ap.parse_args()
 
     sys.path.insert(0, str(ROOT))
     from council.city_topics import CITY_TOPICS
 
-    keys = [t.key for t in CITY_TOPICS]
-    fehlt = [k for k in keys if k not in MOTIVE]
-    if fehlt:
-        sys.exit(f"Kein Motiv für: {', '.join(fehlt)} — in MOTIVE ergänzen.")
+    gremien = args.satz == "gremien"
+    ziel = ZIEL_GREMIEN if gremien else ZIEL
+    if gremien:
+        # Requisit, Rolle, Farbe, Hintergrund → (Motiv, Gast) für `erzeuge`.
+        motive = {k: (v[0], v[2], v[3]) for k, v in GREMIEN.items()}
+        gaeste = {k: ("Lotti with her cap", v[1]) for k, v in GREMIEN.items()}
+        keys = list(GREMIEN)
+    else:
+        motive, gaeste = MOTIVE, GAESTE
+        keys = [t.key for t in CITY_TOPICS]
+        fehlt = [k for k in keys if k not in MOTIVE]
+        if fehlt:
+            sys.exit(f"Kein Motiv für: {', '.join(fehlt)} — in MOTIVE ergänzen.")
     wahl = [k.strip() for k in args.nur.split(",") if k.strip()] or keys
-    unbekannt = [k for k in wahl if k not in MOTIVE]
+    unbekannt = [k for k in wahl if k not in motive]
     if unbekannt:
         sys.exit(f"Unbekannter Schlüssel: {', '.join(unbekannt)}")
 
-    offen = [k for k in wahl if args.neu or not (ZIEL / f"{k}.webp").exists()]
+    offen = [k for k in wahl if args.neu or not (ziel / f"{k}.webp").exists()]
     print(f"{len(offen)} von {len(wahl)} Bildern offen: {', '.join(offen) or '—'}")
     if not args.erzeugen or not offen:
         if offen:
@@ -220,15 +270,15 @@ def main() -> int:
         return 0
 
     key = _schluessel()
-    ZIEL.mkdir(parents=True, exist_ok=True)
+    ziel.mkdir(parents=True, exist_ok=True)
     for k in offen:
         t0 = time.time()
         try:
-            daten = erzeuge(key, args.modell, MOTIVE[k], GAESTE.get(k))
+            daten = erzeuge(key, args.modell, motive[k], gaeste.get(k), hauptfigur=gremien)
         except Exception as e:  # noqa: BLE001 — ein Motiv darf die übrigen nicht aufhalten
             print(f"  {k}: FEHLER {e}")
             continue
-        (ZIEL / f"{k}.webp").write_bytes(daten)
+        (ziel / f"{k}.webp").write_bytes(daten)
         print(f"  {k}: {len(daten) / 1024:.1f} KB in {time.time() - t0:.0f} s")
     return 0
 
