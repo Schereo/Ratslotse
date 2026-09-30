@@ -744,6 +744,18 @@ def test_debatten_block_der_recherche_kuerzt_weniger():
     assert "Heiligengeistpark" in lang_block and lang_block.count("Ö") == 500
 
 
+def test_schnelle_antwort_liest_debatten_mit_eigenem_budget(monkeypatch):
+    """Dieselben Hebel wie bei der Recherche, kleiner: Der Rerank ist bei der
+    schnellen Antwort Wartezeit (150 Paare à 700 Zeichen: lokal 6,5 s)."""
+    assert qa.ASK_WORTBEITRAG_KANDIDATEN < 150 and qa.ASK_WORTBEITRAG_PAIR_MAX >= 700
+    lang = "Einleitung. " * 30 + "Denkmalschutz verhindert das. Heiligengeistpark."
+    d = [{"kind": "speech", "speaker": "Piening", "party": None, "top": "7 Spielleitplanung",
+          "text": lang, "answer": None, "committee": None, "session_date": None}]
+    messages, _ = qa._answer_messages("Wie ist der Stand?", [{"id": 1, "title": "T",
+                                                              "official_text": "B"}], debatten=d)
+    assert "Heiligengeistpark" in messages[0]["content"]
+
+
 def test_debatten_block_im_antwortprompt(monkeypatch):
     messages, _ = qa._answer_messages(
         "Was ist mit dem Radweg?", [{"id": 1, "title": "T", "official_text": "B"}],
