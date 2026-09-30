@@ -752,22 +752,38 @@ def _wb_matrix(store):
 
 
 def search_wortbeitraege(store, query: str, expanded: str, top_k: int = 4,
-                         min_score: float = 0.45) -> list[tuple]:
+                         min_score: float = 0.45, kandidaten: int | None = None) -> list[tuple]:
     """Beste Wortbeiträge (Debatten, Anfragen, Einwohnerfragen) zur Frage →
     ``[(contribution_id, score)]``. Wie search_presse: Vektor liefert Kandidaten, der
     Cross-Encoder bestätigt — der Debatten-Block soll nur bei echter
-    Einschlägigkeit kommen. BM25 nur als Fallback ohne Index."""
+    Einschlägigkeit kommen. BM25 nur als Fallback ohne Index.
+
+    **Beide Texte werden eingebettet, es zählt der bessere Wert.** Die
+    Gründliche Recherche reicht als ``expanded`` eine Facetten-Begriffsliste
+    (Baufortschritt, Finanzierung, Haushaltsmittel, Vorlage, Beschluss …). Deren
+    Vektor liegt nahe an fast allem, was mit Bauen und Geld zu tun hat: Bei „Wie
+    ist der Stand beim Spielplatz auf dem Schlossplatz?" lagen 4.345 von 42.680
+    Beiträgen über der Schwelle, und die drei Aussagen der Verwaltung, um die
+    es ging, auf Rang 130 bis 277 — in den Cross-Encoder kamen nur die ersten 36
+    (Gold-Test, 30.09.2026). Mit der Frage selbst lag dieselbe Aussage auf Rang
+    7. Der Cross-Encoder war unschuldig: Er stellte sie, einmal im Feld, auf
+    Platz 3, 10 und 12.
+
+    ``kandidaten`` weitet das Feld vor dem Cross-Encoder (Vorgabe: dreimal
+    ``top_k``, mindestens 12); die Gründliche Recherche liest mehr und darf mehr
+    prüfen lassen."""
     best: dict[int, float] = {}
     vektor_ok = False
     try:
         ids, mat = _wb_matrix(store)
         if ids:
             vektor_ok = True
-            qv = embed([expanded])[0]
-            scores = mat @ qv
-            for wid, s in zip(ids, scores):
-                if s >= min_score and s > best.get(wid, -1.0):
-                    best[wid] = float(s)
+            texte_q = list(dict.fromkeys(t for t in (expanded, query) if (t or "").strip()))
+            for qv in embed(texte_q):
+                scores = mat @ qv
+                for wid, s in zip(ids, scores):
+                    if s >= min_score and s > best.get(wid, -1.0):
+                        best[wid] = float(s)
     except Exception:  # noqa: BLE001 — ohne fastembed bleibt BM25
         pass
     if not vektor_ok:
@@ -775,11 +791,12 @@ def search_wortbeitraege(store, query: str, expanded: str, top_k: int = 4,
         for wid, score in store.search_wortbeitraege_fts(f"{query} {expanded}", limit=top_k * 3):
             fallback.setdefault(wid, 0.01 + min(score, 50) / 1000)
         return sorted(fallback.items(), key=lambda x: -x[1])[:top_k]
-    kandidaten = sorted(best.items(), key=lambda x: -x[1])[:max(top_k * 3, 12)]
-    rows = store.wortbeitraege_by_ids([wid for wid, _ in kandidaten])
+    pool = kandidaten or max(top_k * 3, 12)
+    kandidaten_liste = sorted(best.items(), key=lambda x: -x[1])[:pool]
+    rows = store.wortbeitraege_by_ids([wid for wid, _ in kandidaten_liste])
     texte = {r["id"]: " — ".join(t for t in (r.get("top"), r.get("text")) if t)
              for r in rows}
-    return _rerank_kontext(query, [(wid, texte[wid]) for wid, _ in kandidaten if wid in texte],
+    return _rerank_kontext(query, [(wid, texte[wid]) for wid, _ in kandidaten_liste if wid in texte],
                            top_k)
 
 
