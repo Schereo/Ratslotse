@@ -5055,7 +5055,10 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                         debatten_rows = emb.search_wortbeitraege_von_person(
                             store, q_suche, person["nachname"])
                     else:
-                        hits_w = emb.search_wortbeitraege(store, q_suche, expanded)
+                        hits_w = emb.search_wortbeitraege(
+                            store, q_suche, expanded, top_k=qa.ASK_WORTBEITRAG_TOP,
+                            kandidaten=qa.ASK_WORTBEITRAG_KANDIDATEN,
+                            pair_max=qa.ASK_WORTBEITRAG_PAIR_MAX)
                         debatten_rows = store.wortbeitraege_by_ids([wid for wid, _ in hits_w])
                         # … plus die Aussprache ZU den gefundenen Beschlüssen:
                         # Fachsprache (Vinylchlorid, Messpunkte) liegt außerhalb

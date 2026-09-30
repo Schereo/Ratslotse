@@ -2435,6 +2435,19 @@ def _staedte_block(staedte: list[dict] | None) -> str:
 DEEP_DEBATTE_TEXT_MAX = 800
 DEEP_DEBATTE_ANTWORT_MAX = 600
 
+#: Dieselben Hebel für die schnelle Antwort, mit kleinerem Budget: Der Rerank
+#: von 150 Paaren à 700 Zeichen dauert lokal 6,5 s (10 Kerne), auf dem Server
+#: mit 2 Kernen ein Mehrfaches — für eine Antwort, auf die jemand wartet, zu
+#: viel. 40 Kandidaten kosten lokal ~2 s. Anlass: „Wie ist der Stand beim
+#: Spielplatz auf dem Schlossplatz?" fand nach allen Reparaturen nur den Stand
+#: vom Dezember 2025; die Aussage der Verwaltung vom 16.04.2026 (Vektor-Rang 7
+#: mit der Frage als Suchtext) fiel am 150-Zeichen-Rerank und an 4 Plätzen.
+ASK_WORTBEITRAG_TOP = 8
+ASK_WORTBEITRAG_KANDIDATEN = 40
+ASK_WORTBEITRAG_PAIR_MAX = 700
+ASK_DEBATTE_TEXT_MAX = 800
+ASK_DEBATTE_ANTWORT_MAX = 600
+
 
 def _debatten_block(debatten: list[dict] | None, eng: bool = False,
                     text_max: int = 400, answer_max: int = 300) -> str:
@@ -4437,7 +4450,9 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "topic",
                             + _glossar_block(begriffe_fuer(question))
                             + _steckbrief_block(steckbriefe) + _presse_block(presse)
                             + _staedte_block(staedte)
-                            + geld_block(geld) + _debatten_block(debatten, eng)
+                            + geld_block(geld)
+                            + _debatten_block(debatten, eng, text_max=ASK_DEBATTE_TEXT_MAX,
+                                              answer_max=ASK_DEBATTE_ANTWORT_MAX)
                             + _anlagen_block(anlagen),
                             gespraech=gespraech)
     # reasoning-Schalter am TATSÄCHLICH genutzten Modell festmachen — vorher
