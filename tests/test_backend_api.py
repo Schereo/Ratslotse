@@ -4025,6 +4025,64 @@ def test_ask_ortssteckbrief_traegt_slug_und_verdraengt_die_dublette(client, monk
     assert sources["steckbriefe"][0]["beschreibung"].startswith("Wohnquartier")
 
 
+def test_ask_ortsfrage_behaelt_debatten_die_den_ort_nennen(client, monkeypatch):
+    """Befund 30.09.2026 auf Prod: „Wie ist der Stand beim Spielplatz auf dem
+    Schlossplatz?“ bekam 0 Debatten. Sprenger und Piening sprachen wörtlich
+    vom Schlossplatz — aber unter dem stadtweiten TOP Spielleitplanung, der
+    keinen Ort trägt; der Orts-Filter ließ nur Beiträge an verorteten
+    Beschlüssen durch. Ein Beitrag, der den Ort nennt, belegt ihn selbst.
+    Einer, der ihn nicht nennt und nicht gekoppelt ist, bleibt draußen."""
+    from app.routers import council as council_router
+    from council import embeddings as emb
+    from council import qa as qa_mod
+
+    _register(client)
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_session(CouncilSession(89, "Sportausschuss", "2025-03-01", "17:00", "Rathaus"))
+    with cs._conn:
+        cs._conn.execute(
+            "INSERT INTO council_decisions (id,ksinr,position,item_number,title,summary,outcome,kind) "
+            "VALUES (6,89,1,'4','Sporthalle Kreyenbrück - Bericht','Planung','noted','decision')")
+    cs.save_decision_locations(6, [{
+        "name": "Kreyenbrück", "kind": "district", "source": "title",
+        "evidence": "Sporthalle Kreyenbrück", "method": "place_catalog", "confidence": 0.99,
+    }], "local")
+    halle = cs.get_decisions_by_ids([6])[0]
+    cs.close()
+    gesehen: dict = {}
+    monkeypatch.setattr(council_router, "_qa_retrieve",
+                        lambda *a, **k: ([dict(halle, score=0.9)], "semantisch"))
+    monkeypatch.setattr(qa_mod, "analyse_query", lambda *a, **k: {
+        "question": "Wie ist der Stand bei der Sporthalle in Kreyenbrück?",
+        "terms": "Sporthalle Kreyenbrück", "kind": "topic",
+        "party": None, "variants": [], "eng": False,
+    })
+    monkeypatch.setattr(emb, "search_wortbeitraege", lambda *a, **k: [(77, 0.9), (78, 0.9)])
+    monkeypatch.setattr(emb, "search_zusagen", lambda *a, **k: [])
+    monkeypatch.setattr(CouncilStore, "wortbeitraege_zu_beschluessen", lambda self, c, **k: [])
+    monkeypatch.setattr(CouncilStore, "wortbeitraege_by_ids", lambda self, ids: [
+        {"id": 77, "speaker": "Robert Sprenger", "party": None, "kind": "speech",
+         "top": "7 Hallenplanung", "text": "In Kreyenbrück fehle der Platz für eine dritte Halle.",
+         "answer": None, "session_date": "2026-04-16", "committee": "Sportausschuss",
+         "page": None, "ksinr": 100},
+        {"id": 78, "speaker": "Anna Beispiel", "party": None, "kind": "speech",
+         "top": "7 Hallenplanung", "text": "Die Halle in Eversten brauche ein neues Dach.",
+         "answer": None, "session_date": "2026-04-16", "committee": "Sportausschuss",
+         "page": None, "ksinr": 100},
+    ] if ids else [])
+
+    def fake_stream(question, ctx, **kwargs):
+        gesehen["debates"] = kwargs.get("debatten")
+        yield "Antwort."
+
+    monkeypatch.setattr(qa_mod, "answer_stream", fake_stream)
+    with client.stream("POST", "/api/council/ask", json={
+            "question": "Wie ist der Stand bei der Sporthalle in Kreyenbrück?"}) as response:
+        assert response.status_code == 200
+        "".join(response.iter_text())
+    assert [row["id"] for row in gesehen["debates"]] == [77]
+
+
 def test_ask_kombiniert_person_mit_ort_ueber_beschlussanker(client, monkeypatch):
     """Regression aus der Produktionsprobe: Die freie Personensuche lieferte
     Beiträge ohne ``zu_beschluss``; der Orts-Guard entfernte sie anschließend
