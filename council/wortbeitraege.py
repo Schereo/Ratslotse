@@ -36,7 +36,19 @@ from council.protocols import _strip_fences
 # je Aufruf etwa so viel wie 2.5 Flash (0,50–0,53 statt 0,56–0,57 ct) und
 # braucht 5,8–6,0 s statt 9,2–9,6 s (p50).
 # 3.1 Flash Lite wäre halb so teuer (0,30 ct). Stand: docs/modell-pruefstand.md.
-MODEL = os.environ.get("COUNCIL_WORTBEITRAG_MODEL", "google/gemini-3.5-flash-lite")
+#
+# 30.09.2026: GPT-6 Luna. Die Abschnitts-Suite sah den Fehler nicht, an dem
+# der Bestand litt — Antworten der Verwaltung im answer-Feld der Frage davor
+# (ksinr 4664, 1.620 Mal im Bestand); das passiert erst in langen Fenstern.
+# Die Suite `wortbeitraege-protokolle` misst ganze Niederschriften: Luna
+# 89,8/89,6 % F1, Verwaltung zu 93 % erfasst, 0 Antworten im falschen Feld;
+# 3.5 Flash Lite 86,9 % (zweimal), 79–82 %, 22–31 falsch abgelegt. GPT-6 Sol
+# (88,3 %), Sonnet 5.5 (84,8 %) und 3.8 Flash (81,1 %) kosten 12- bis 40-mal
+# so viel und sind nicht besser. An den Abschnitten gleichauf (99,4/99,2 %).
+# Luna kostet ein Viertel (0,9 statt 3,8 ct für 4664), braucht aber rund
+# 55 s je Fenster statt 18 s — im Cron egal. Kein ZDR-Endpunkt, hier auch
+# nicht nötig (`speeches` trägt keine Nutzereingabe, kern/llm.py).
+MODEL = os.environ.get("COUNCIL_WORTBEITRAG_MODEL", "openai/gpt-6-luna")
 
 FENSTER = 48_000       # Zeichen je LLM-Fenster
 UEBERLAPP = 3_000      # nur noch für einen TOP, der allein kein Fenster füllt

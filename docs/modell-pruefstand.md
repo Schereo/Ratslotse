@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von `python eval/pruefstand.py bericht` — nicht von Hand ändern. -->
 
-Stand 23.09.2026 12:04. Datenbankstand der Läufe: Sitzungen bis 2026-09-16, 9078 Beschlüsse; Sitzungen bis 2026-09-30, 9091 Beschlüsse.
+Stand 30.09.2026 12:14. Datenbankstand der Läufe: Sitzungen bis 2026-09-16, 9078 Beschlüsse; Sitzungen bis 2026-09-30, 9091 Beschlüsse; Sitzungen bis 2026-09-30, 9119 Beschlüsse.
 
 **Nachmessen:** `python eval/pruefstand.py --suite <name> --modell <id> --laeufe 2`, danach `python eval/pruefstand.py bericht`. Ohne `--modell` misst er das heutige Modell. Rohdaten: `eval/results/pruefstand/<suite>/`.
 
@@ -10,7 +10,7 @@ Stand 23.09.2026 12:04. Datenbankstand der Läufe: Sitzungen bis 2026-09-16, 907
 
 **Nicht zulässig** heißt ein Kandidat, der häufiger als das heutige Modell einer Injektion folgt oder ein falsches Abstimmungsergebnis ausgibt — oder dessen harte Sicherheitsbefunde (erfunden, durchgelassen) in jedem Lauf über jedem Lauf des heutigen Modells liegen. Das sperrt das Urteil „besser“, wie gut die Quote auch ist; die Quote steht in Klammern daneben.
 
-**Laufkosten aller hier liegenden Messungen:** 2,22 $ (101 Läufe).
+**Laufkosten aller hier liegenden Messungen:** 10,66 $ (112 Läufe).
 
 ## Lotti erklärt (`lotti`)
 
@@ -280,9 +280,10 @@ Qualität: F1 über die Beiträge je Person (Name UND Anzahl, gegen Protokoll-Mu
 
 | Modell | Läufe | Qualität | hart | p50 | p95 | ct/Aufruf | ct/Lauf | Ausfälle | ggü. heute |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
-| google/gemini-3.5-flash-lite (heute) | 3 | 99,3 % ± 0,6 | 0, 0, 0 | 5,5 s–6,0 s | 7,4 s–10,5 s | 0,499–0,534 | 8,24–8,55 | 0 | Bezug |
-| google/gemini-2.5-flash | 2 | 99,6 % ± 0,0 | 0, 0 | 9,2 s–9,6 s | 12,4 s–13,2 s | 0,563–0,570 | 9,01–9,12 | 0 | im Rauschen (+0,3 Pp, Streuung 0,6 Pp) |
-| google/gemini-3.1-flash-lite | 2 | 99,1 % ± 0,2 | 0, 0 | 5,3 s–5,7 s | 10,9 s–11,3 s | 0,301–0,302 | 4,82–4,83 | 0 | im Rauschen (-0,2 Pp, Streuung 0,6 Pp) |
+| openai/gpt-6-luna (heute) | 2 | 99,3 % ± 0,2 | 0, 0 | 18,5 s–21,1 s | 25,3 s | 0,125–0,147 | 2,00–2,36 | 0 | Bezug |
+| google/gemini-2.5-flash | 2 | 99,6 % ± 0,0 | 0, 0 | 9,2 s–9,6 s | 12,4 s–13,2 s | 0,563–0,570 | 9,01–9,12 | 0 | **besser** (+0,3 Pp) |
+| google/gemini-3.5-flash-lite | 3 | 99,3 % ± 0,6 | 0, 0, 0 | 5,5 s–6,0 s | 7,4 s–10,5 s | 0,499–0,534 | 8,24–8,55 | 0 | im Rauschen (-0,0 Pp, Streuung 0,6 Pp) |
+| google/gemini-3.1-flash-lite | 2 | 99,1 % ± 0,2 | 0, 0 | 5,3 s–5,7 s | 10,9 s–11,3 s | 0,301–0,302 | 4,82–4,83 | 0 | im Rauschen (-0,2 Pp, Streuung 0,2 Pp) |
 | google/gemini-3-flash-preview | 2 | 98,5 % ± 0,0 | 0, 0 | 10,9 s–11,5 s | 14,9 s–15,4 s | 0,635 | 10,16 | 0 | **schlechter** (-0,8 Pp) |
 
 Ältere Läufe (anderer Prompt oder andere Fallliste, hier nicht verglichen): `eval/results/pruefstand/wortbeitraege/prompt-bis-2026-09-23/` (8).
@@ -298,6 +299,38 @@ Qualität: F1 über die Beiträge je Person (Name UND Anzahl, gegen Protokoll-Mu
 - google/gemini-3.5-flash-lite, Lauf 1: `{"precision": 0.9922, "recall": 1.0, "top_richtig": 0.9151, "partei_ohne_beleg": 0, "fehlgeschlagen": 0}`
 - google/gemini-3.5-flash-lite, Lauf 2: `{"precision": 0.9808, "recall": 1.0, "top_richtig": 0.9318, "partei_ohne_beleg": 0, "fehlgeschlagen": 0}`
 - google/gemini-3.5-flash-lite, Lauf 1: `{"precision": 0.9882, "recall": 0.996, "top_richtig": 0.9059, "partei_ohne_beleg": 0, "fehlgeschlagen": 0}`
+- openai/gpt-6-luna, Lauf 1: `{"precision": 0.9882, "recall": 1.0, "top_richtig": 1.0, "partei_ohne_beleg": 0, "fehlgeschlagen": 0}`
+- openai/gpt-6-luna, Lauf 2: `{"precision": 0.9921, "recall": 0.9921, "top_richtig": 1.0, "partei_ohne_beleg": 0, "fehlgeschlagen": 0}`
+
+</details>
+
+## Wortbeiträge aus ganzen Niederschriften (`wortbeitraege-protokolle`)
+
+Schalter `COUNCIL_WORTBEITRAG_MODEL` · Feature `speeches` · Cron (Latenz egal) · nur öffentliche Ratsdaten — ZDR nicht nötig
+
+Qualität: F1 über die Wortmeldungen je Person in ganzen Protokollen (bis 48k-Fenster, wie im Cron), ohne Sammel-TOPs; eval/run_speeches_protokolle.py. 9 Fälle je Lauf (ein Fall ≈ 11,1 Pp). Harte Befunde: Redner*innen, deren Name im Protokoll gar nicht vorkommt.
+
+| Modell | Läufe | Qualität | hart | p50 | p95 | ct/Aufruf | ct/Lauf | Ausfälle | ggü. heute |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| openai/gpt-6-luna (heute) | 2 | 89,7 % ± 0,2 | 0, 0 | 53,7 s–54,4 s | 90,7 s–104,5 s | 0,476–0,488 | 6,66–6,83 | 0 | Bezug |
+| openai/gpt-6-sol | 1 | 88,3 % | 0 | 64,3 s | 134,8 s | 7,798 | 109,18 | 0 | 1 Lauf — kein Urteil |
+| google/gemini-3.5-flash-lite | 2 | 86,9 % ± 0,0 | 0, 0 | 18,5 s–18,6 s | 30,0 s–33,5 s | 1,701–1,757 | 25,52–26,35 | 0 | **schlechter** (-2,8 Pp) |
+| anthropic/claude-sonnet-5.5 | 1 | 84,8 % | 0 | 73,1 s | 86,3 s | 15,094 | 271,70 | 0 | 1 Lauf — kein Urteil |
+| google/gemini-3.1-flash-lite | 1 | 81,7 % | 0 | 12,5 s | 47,2 s | 0,844 | 11,82 | 0 | 1 Lauf — kein Urteil |
+| google/gemini-3.8-flash | 1 | 81,1 % | 0 | 72,1 s | 99,9 s | 4,743 | 80,63 | 0 | 1 Lauf — kein Urteil |
+| google/gemini-3.5-flash | 1 | 11,0 % | 0 | 72,7 s | 76,7 s | 14,333 | 301,00 | 0 | 1 Lauf — kein Urteil |
+
+<details><summary>Nebenkennzahlen je Lauf</summary>
+
+- anthropic/claude-sonnet-5.5, Lauf 1: `{"recall_ohne_mandat": 0.8548, "antwort_in_rede": 0, "fremd_zugeschrieben": 0.0654, "zahlen_erhalten": 0.1951, "begriffe_erhalten": 0.3317, "beitraege": 830, "fehlgeschlagen": 0}`
+- google/gemini-3.1-flash-lite, Lauf 1: `{"recall_ohne_mandat": 0.703, "antwort_in_rede": 78, "fremd_zugeschrieben": 0.0949, "zahlen_erhalten": 0.0867, "begriffe_erhalten": 0.1172, "beitraege": 733, "fehlgeschlagen": 0}`
+- google/gemini-3.5-flash, Lauf 1: `{"recall_ohne_mandat": 0.1206, "antwort_in_rede": 0, "fremd_zugeschrieben": 0.0656, "zahlen_erhalten": 0.0137, "begriffe_erhalten": 0.0353, "beitraege": 71, "fehlgeschlagen": 3}`
+- google/gemini-3.5-flash-lite, Lauf 1: `{"recall_ohne_mandat": 0.7921, "antwort_in_rede": 22, "fremd_zugeschrieben": 0.0763, "zahlen_erhalten": 0.1474, "begriffe_erhalten": 0.2267, "beitraege": 811, "fehlgeschlagen": 0}`
+- google/gemini-3.5-flash-lite, Lauf 2: `{"recall_ohne_mandat": 0.8218, "antwort_in_rede": 31, "fremd_zugeschrieben": 0.0738, "zahlen_erhalten": 0.1662, "begriffe_erhalten": 0.2304, "beitraege": 838, "fehlgeschlagen": 0}`
+- google/gemini-3.8-flash, Lauf 1: `{"recall_ohne_mandat": 0.8218, "antwort_in_rede": 0, "fremd_zugeschrieben": 0.1392, "zahlen_erhalten": 0.1257, "begriffe_erhalten": 0.1234, "beitraege": 708, "fehlgeschlagen": 0}`
+- openai/gpt-6-luna, Lauf 1: `{"recall_ohne_mandat": 0.9307, "antwort_in_rede": 0, "fremd_zugeschrieben": 0.1085, "zahlen_erhalten": 0.1763, "begriffe_erhalten": 0.2884, "beitraege": 890, "fehlgeschlagen": 0}`
+- openai/gpt-6-luna, Lauf 1: `{"recall_ohne_mandat": 0.9373, "antwort_in_rede": 0, "fremd_zugeschrieben": 0.1061, "zahlen_erhalten": 0.1792, "begriffe_erhalten": 0.2921, "beitraege": 895, "fehlgeschlagen": 0}`
+- openai/gpt-6-sol, Lauf 1: `{"recall_ohne_mandat": 0.9307, "antwort_in_rede": 0, "fremd_zugeschrieben": 0.1115, "zahlen_erhalten": 0.1908, "begriffe_erhalten": 0.2614, "beitraege": 901, "fehlgeschlagen": 0}`
 
 </details>
 
@@ -434,4 +467,4 @@ Qualität: Anteil richtig „im Viertel ja/nein“ (Richter-Stufe). Erwartung = 
 
 Diese Feature-Namen rufen ein Modell, haben aber keine Eval — ein Modellwechsel dort ist ungemessen (Plan P2):
 
-`attachment_ocr`, `cities_cluster_check`, `cities_evidence_terms`, `cities_idea_fit`, `daily_find_story`, `deep_decomposition`, `deep_report`, `entity_description`, `entity_duplicates`, `entity_ner`, `field_recap`, `goal_rating`, `interest_rating`, `minutes_extraction`, `party_opinions`, `qa_query_expansion`, `qa_simple`, `quality_judge`, `quiz_generation`, `quiz_verify`, `simple_summary`, `topic_auto_description`, `topic_classification`, `vagueness_check`
+`assistant_check`, `attachment_ocr`, `cities_cluster_check`, `cities_evidence_terms`, `cities_idea_fit`, `daily_find_story`, `deep_decomposition`, `deep_report`, `entity_description`, `entity_duplicates`, `entity_ner`, `field_recap`, `goal_rating`, `interest_rating`, `minutes_extraction`, `party_opinions`, `qa_query_expansion`, `qa_simple`, `quality_judge`, `quiz_appeal`, `quiz_generation`, `quiz_motion_context`, `quiz_verify`, `simple_summary`, `topic_auto_description`, `topic_classification`, `vagueness_check`

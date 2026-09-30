@@ -1,0 +1,333 @@
+{
+ "suite": "wortbeitraege-protokolle",
+ "titel": "Wortbeiträge aus ganzen Niederschriften",
+ "kennzahl": "F1 über die Wortmeldungen je Person in ganzen Protokollen (bis 48k-Fenster, wie im Cron), ohne Sammel-TOPs; eval/run_speeches_protokolle.py",
+ "modell": "google/gemini-3.1-flash-lite",
+ "variante": null,
+ "tarif": null,
+ "lauf": 1,
+ "zeitstempel": "2026-09-30T11:29:11",
+ "db_stand": "Sitzungen bis 2026-09-30, 9119 Beschlüsse",
+ "qualitaet": 0.8167,
+ "harte_befunde": 0,
+ "warnung": null,
+ "faelle": 9,
+ "p50_ms": 12531,
+ "p95_ms": 47177,
+ "aufrufe": 14,
+ "kosten_usd": 0.118165,
+ "ohne_kostenwert": 0,
+ "ct_je_aufruf": 0.844,
+ "ct_je_lauf": 11.8165,
+ "kosten_gesamt_usd": 0.118165,
+ "ausfaelle": 0,
+ "nicht_zulaessig": false,
+ "abbruch": null,
+ "modelle_laut_tabelle": [
+  "google/gemini-3.1-flash-lite"
+ ],
+ "ersatz": [],
+ "dauer_s": 230.0,
+ "nebenkennzahlen": {
+  "recall_ohne_mandat": 0.703,
+  "antwort_in_rede": 78,
+  "fremd_zugeschrieben": 0.0949,
+  "zahlen_erhalten": 0.0867,
+  "begriffe_erhalten": 0.1172,
+  "beitraege": 733,
+  "fehlgeschlagen": 0
+ },
+ "fehler_beispiele": [],
+ "roh": {
+  "n_cases": 9,
+  "f1": 0.8167,
+  "precision": 0.842,
+  "recall": 0.7929,
+  "recall_ohne_mandat": 0.703,
+  "antwort_in_rede": 78,
+  "fremd_zugeschrieben": 0.0949,
+  "zahlen_erhalten": 0.0867,
+  "begriffe_erhalten": 0.1172,
+  "erfunden": 0,
+  "beitraege": 733,
+  "fehlgeschlagen": 0,
+  "faelle": [
+   {
+    "id": "4664",
+    "tp": 84,
+    "fp": 2,
+    "fn": 7,
+    "tp_ohne": 26,
+    "fn_ohne": 6,
+    "verpasst": [
+     "kaesemann",
+     "schnabelthissen"
+    ],
+    "erfunden": [],
+    "antwort_in_rede": 1,
+    "fremd": 14,
+    "bewertbar": 106,
+    "fremd_beispiele": [
+     "Ratsherr Behrens: Verständnis",
+     "Herr Jaekel: Notwendigkeit",
+     "Ratsherr van Ellen: Lebensdauer",
+     "Ratsherr Beerheide: Notwendigkeit",
+     "Ratsherr Menke: Wichtigkeit",
+     "Ratsfrau Conty: Notwendigkeit"
+    ],
+    "zahlen": [
+     5,
+     41
+    ],
+    "begriffe": [
+     49,
+     355
+    ],
+    "beitraege": 112
+   },
+   {
+    "id": "4430",
+    "tp": 98,
+    "fp": 5,
+    "fn": 11,
+    "tp_ohne": 33,
+    "fn_ohne": 6,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 27,
+    "fremd": 2,
+    "bewertbar": 121,
+    "fremd_beispiele": [
+     "Frau Pietsch: Projektsteuerung",
+     "Frau Pietsch: Finanzierung"
+    ],
+    "zahlen": [
+     7,
+     326
+    ],
+    "begriffe": [
+     46,
+     409
+    ],
+    "beitraege": 136
+   },
+   {
+    "id": "4418",
+    "tp": 54,
+    "fp": 0,
+    "fn": 20,
+    "tp_ohne": 14,
+    "fn_ohne": 14,
+    "verpasst": [
+     "bembennek",
+     "franke",
+     "oncken"
+    ],
+    "erfunden": [],
+    "antwort_in_rede": 18,
+    "fremd": 6,
+    "bewertbar": 59,
+    "fremd_beispiele": [
+     "Meike Dikosso: Seniorensatzung",
+     "Jan Bembennek: Betreuungsbehörde, Betreuungsgerichts, Netzwerkarbeit",
+     "Frau Siegert: Vermittlung",
+     "Rita Schilling: Notwendigkeit",
+     "Herr Rohde: Altersquotienten",
+     "Thomas Klein: Notwendigkeit"
+    ],
+    "zahlen": [
+     4,
+     23
+    ],
+    "begriffe": [
+     19,
+     179
+    ],
+    "beitraege": 62
+   },
+   {
+    "id": "4446",
+    "tp": 36,
+    "fp": 0,
+    "fn": 37,
+    "tp_ohne": 14,
+    "fn_ohne": 32,
+    "verpasst": [
+     "dikosso",
+     "freede",
+     "göhmann",
+     "hasenclever",
+     "heppner",
+     "krogmann"
+    ],
+    "erfunden": [],
+    "antwort_in_rede": 1,
+    "fremd": 5,
+    "bewertbar": 43,
+    "fremd_beispiele": [
+     "Sander: Bezifferung, Mehrausgaben",
+     "Sander: Sinnhaftigkeit",
+     "Dittrich: Empfehlungen",
+     "Dittrich: Landesebene",
+     "Dr. Lammerding: Insellösungen"
+    ],
+    "zahlen": [
+     1,
+     19
+    ],
+    "begriffe": [
+     11,
+     154
+    ],
+    "beitraege": 44
+   },
+   {
+    "id": "4545",
+    "tp": 70,
+    "fp": 9,
+    "fn": 9,
+    "tp_ohne": 39,
+    "fn_ohne": 9,
+    "verpasst": [
+     "görk",
+     "janssen"
+    ],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 6,
+    "bewertbar": 73,
+    "fremd_beispiele": [
+     "Steinbach: Radwegbreite",
+     "Lükermann: Auswirkungen",
+     "Baak: Parkplatzreduktion",
+     "Schnitker: Gesamtkosten",
+     "Finke: Betroffenen",
+     "Atzler: Barrierefreiheit"
+    ],
+    "zahlen": [
+     11,
+     21
+    ],
+    "begriffe": [
+     33,
+     162
+    ],
+    "beitraege": 88
+   },
+   {
+    "id": "4611",
+    "tp": 37,
+    "fp": 1,
+    "fn": 5,
+    "tp_ohne": 23,
+    "fn_ohne": 5,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 3,
+    "bewertbar": 41,
+    "fremd_beispiele": [
+     "Matthias Welp: Ganztagsschulen",
+     "Klaus Schavan: Entscheidung",
+     "Matthias Welp: Härtefallanträgen"
+    ],
+    "zahlen": [
+     2,
+     131
+    ],
+    "begriffe": [
+     34,
+     355
+    ],
+    "beitraege": 41
+   },
+   {
+    "id": "3717",
+    "tp": 53,
+    "fp": 2,
+    "fn": 44,
+    "tp_ohne": 27,
+    "fn_ohne": 17,
+    "verpasst": [
+     "ellberg"
+    ],
+    "erfunden": [],
+    "antwort_in_rede": 14,
+    "fremd": 6,
+    "bewertbar": 62,
+    "fremd_beispiele": [
+     "Paul Behrens: Maximalwerten",
+     "Dr. Brigitte Kreft-Kohlhage: Inkrafttreten",
+     "Dr. Sven Uhrhan: Anreizprogramm",
+     "Mazalla: Amtsleiterstelle",
+     "Dr. Kreft-Kohlhage: Amphibiengewässer",
+     "Dr. Kreft-Kohlhage: Amphibiengewässer"
+    ],
+    "zahlen": [
+     19,
+     43
+    ],
+    "begriffe": [
+     39,
+     214
+    ],
+    "beitraege": 65
+   },
+   {
+    "id": "2855",
+    "tp": 43,
+    "fp": 29,
+    "fn": 2,
+    "tp_ohne": 20,
+    "fn_ohne": 1,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 17,
+    "fremd": 1,
+    "bewertbar": 48,
+    "fremd_beispiele": [
+     "Eltje Jahnke: Auskömmlichkeit"
+    ],
+    "zahlen": [
+     9,
+     27
+    ],
+    "begriffe": [
+     27,
+     198
+    ],
+    "beitraege": 80
+   },
+   {
+    "id": "4441",
+    "tp": 42,
+    "fp": 49,
+    "fn": 0,
+    "tp_ohne": 17,
+    "fn_ohne": 0,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 17,
+    "bewertbar": 79,
+    "fremd_beispiele": [
+     "Behrens: Nachbepflanzung",
+     "Behrens: Information",
+     "Skiba: Alternativplanungen",
+     "Woltmann: Straßensanierung, Leitungssystemen",
+     "Klein: Lambertistraße",
+     "Woltmann: Hemmschwelle"
+    ],
+    "zahlen": [
+     2,
+     61
+    ],
+    "begriffe": [
+     29,
+     422
+    ],
+    "beitraege": 105
+   }
+  ]
+ }
+}

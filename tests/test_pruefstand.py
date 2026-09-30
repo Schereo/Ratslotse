@@ -445,6 +445,50 @@ def test_wortbeitraege_zaehlt_spannen_und_erfundene_namen():
     assert z["partei_ohne_beleg"] == ["Müller: CDU"] and z["top_ok"] == 3
 
 
+_PROTOKOLL = (
+    "zu 7 Spielleitplanung\n"
+    "Ratsherr Behrens bittet um einen Bericht zum Workshop über den Schlossplatz.\n"
+    "Herr Sprenger antwortet, dass auf dem Schlossplatz kein Platz bleibe. "
+    "Die Verwaltung denke über Spielangebote nach und habe 2025 berichtet. Mit der "
+    "Planung solle erst einmal nur ein Rahmen gesetzt werden, der es ermögliche, die "
+    "Spielplätze im gesamten Stadtgebiet weiterzuentwickeln, und zwar unabhängig "
+    "von der heutigen Beschlussfassung.\n"
+    "Frau Piening erläutert, dass wegen Denkmalschutzes kein Planrecht bestehe; "
+    "denkbar sei die Aufwertung des Heiligengeistparks.\n"
+    "zu 12 Anfragen und Anregungen\n"
+    "Ratsherr Niederstein fragt nach dem Entsiegelungswettbewerb.\n"
+    "Herr Jaekel antwortet, er liefere zur nächsten Sitzung eine Antwort.\n"
+)
+
+
+def test_wortbeitraege_protokolle_zaehlt_verwaltung_und_fremdes():
+    """Der Anlass (ksinr 4664): Sprengers und Pienings Antworten im answer-Feld
+    von Behrens' Rede. Und „Denkmalschutz" bei Sprenger, gesagt hat es Piening.
+    Sammel-TOPs zählen nicht — dort gehört die Antwort ins answer-Feld."""
+    from eval import run_speeches_protokolle as r
+    fall = {"id": "x", "text": _PROTOKOLL}
+    versteckt = r.bewerten(fall, [
+        {"kind": "speech", "top": "7", "speaker": "Paul Behrens",
+         "text": "Er bittet um einen Bericht.", "answer": "Herr Sprenger antwortet …"},
+        {"kind": "inquiry", "top": "12 Anfragen und Anregungen", "speaker": "Niederstein",
+         "text": "Er fragt nach dem Entsiegelungswettbewerb.", "answer": "Antwort folgt."},
+    ], roh_antwort_in_rede=1)
+    assert (versteckt["tp"], versteckt["fn"]) == (1, 2)
+    assert (versteckt["tp_ohne"], versteckt["fn_ohne"]) == (0, 2)   # Sprenger, Piening fehlen
+    assert versteckt["antwort_in_rede"] == 1
+
+    eigen = r.bewerten(fall, [
+        {"kind": "speech", "top": "7", "speaker": "Paul Behrens", "text": "Er bittet um einen Bericht."},
+        {"kind": "speech", "top": "7", "speaker": "Robert Sprenger",
+         "text": "Auf dem Platz sei wegen Denkmalschutz kein Raum; Bericht aus 2025."},
+        {"kind": "speech", "top": "7", "speaker": "Tanja Piening",
+         "text": "Wegen Denkmalschutz kein Planrecht; denkbar der Heiligengeistpark."},
+    ])
+    assert (eigen["tp"], eigen["fn"], eigen["fp"]) == (3, 0, 0)
+    assert eigen["fremd"] == 1 and "Sprenger" in eigen["fremd_beispiele"][0]
+    assert eigen["zahlen"] == [1, 1]                      # „2025" bei Sprenger erhalten
+
+
 def test_speeches_faelle_haben_pflicht_redner():
     from eval import run_speeches
     faelle = run_speeches.lade()
