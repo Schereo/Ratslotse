@@ -328,6 +328,19 @@ class WortbeitraegeMixin(StoreBasis):
             sql += f" LIMIT {int(limit)}"
         return [r[0] for r in self._conn.execute(sql).fetchall()]
 
+    def ksinr_wortbeitraege_vor(self, stichtag: str, limit: int = 0) -> list[int]:
+        """Protokolle, deren Wortbeiträge VOR ``stichtag`` extrahiert wurden —
+        die Nachextraktion nach einer Prompt-Änderung. Wiederaufsetzbar: Der
+        Save setzt den Marker neu, ein abgebrochener Lauf macht beim nächsten
+        Mal mit dem Rest weiter."""
+        sql = ("SELECT p.ksinr FROM council_protocols p "
+               "WHERE p.raw_text IS NOT NULL AND p.status = 'ok' "
+               "AND p.contributions_extracted_at < ? "
+               "ORDER BY p.ksinr DESC")
+        if limit:
+            sql += f" LIMIT {int(limit)}"
+        return [r[0] for r in self._conn.execute(sql, (stichtag,)).fetchall()]
+
     def wortbeitrag_ids_nach_art(self, kind: str) -> list[int]:
         """Alle Wortbeitrags-ids einer Art — Filter für den Zusagen-Kanal.
         Klein genug (1.437 Zusagen), um sie je Frage zu holen."""
@@ -449,12 +462,15 @@ class WortbeitraegeMixin(StoreBasis):
         je_top: dict[tuple[int, str], int] = {}
         for r in rows:
             w_nr, w_titel = self._top_schluessel(r["top"])
-            if not w_titel or any(s in w_titel for s in self._SAMMEL_TOPS):
+            # Ein TOP nur als Nummer („7") passt über die Nummer. Ein
+            # Sammel-TOP kann so nicht durchrutschen: Die Stationen oben
+            # führen keine.
+            if (not w_titel and not w_nr) or any(s in w_titel for s in self._SAMMEL_TOPS):
                 continue
             for d_nr, d_titel, did in stationen[r["ksinr"]]:
                 # Titel-Enthaltensein in beide Richtungen: Die Tagesordnung
                 # kürzt mal den Beschluss-, mal den Protokoll-Titel.
-                passt = (d_titel in w_titel or w_titel in d_titel) or (
+                passt = (bool(w_titel) and (d_titel in w_titel or w_titel in d_titel)) or (
                     bool(w_nr) and bool(d_nr) and w_nr == d_nr)
                 if not passt:
                     continue
