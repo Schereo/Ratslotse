@@ -92,12 +92,15 @@ jobs:
               fi
               export COUNCIL_WORTBEITRAG_MODEL="$MODELL"
             fi
-            # `[e]xtract…` statt `extract…`: pgrep -f durchsucht ganze
-            # Kommandozeilen, und die Shell, die dieses Skript ausführt, trägt
-            # den Suchbegriff selbst — sie fand sich immer und meldete „läuft
-            # schon“ (erster Voll-Start 30.09.2026). Die Klammer passt auf den
-            # Python-Prozess, aber nicht auf ihren eigenen Wortlaut.
+            # Ob der Voll-Lauf noch läuft, sagt die PID-Datei — nicht pgrep -f.
+            # Das durchsucht ganze Kommandozeilen, und die Shell dieses Skripts
+            # trägt den Suchbegriff im eigenen Text: Sie fand sich immer und
+            # meldete „läuft schon“. Auch `[e]xtract…` half nicht, weil die
+            # nohup-Zeile unten denselben Namen ungeklammert enthält (beides
+            # am 30.09.2026 auf Prod).
             LOG=data/wortbeitraege_neu.log
+            PID=data/wortbeitraege_neu.pid
+            laeuft() { [ -f "$PID" ] && kill -0 "$(cat "$PID")" 2>/dev/null; }
             PY=.venv/bin/python
             case "$MODUS" in
               trocken) $PY scripts/extract_wortbeitraege.py --neu-vor "$STICHTAG" --trocken ;;
@@ -106,15 +109,16 @@ jobs:
                 $PY scripts/extract_wortbeitraege.py --ksinr "$KSINR" ;;
               probe) $PY scripts/extract_wortbeitraege.py --neu-vor "$STICHTAG" --limit 20 ;;
               voll)
-                if pgrep -f "[e]xtract_wortbeitraege.py --neu-vor" > /dev/null; then
+                if laeuft; then
                   echo "Läuft schon — Stand: modus=stand"; tail -n 5 "$LOG" || true; exit 0
                 fi
                 echo "Start $(date -u +%FT%TZ), Modell: ${COUNCIL_WORTBEITRAG_MODEL:-Vorgabe}" >> "$LOG"
                 nohup $PY scripts/extract_wortbeitraege.py --neu-vor "$STICHTAG" >> "$LOG" 2>&1 &
+                echo $! > "$PID"
                 sleep 5
                 echo "Voll-Lauf gestartet (Log: $LOG)."; tail -n 3 "$LOG" ;;
               stand)
                 tail -n 15 "$LOG" || echo "noch kein Log"
-                pgrep -f "[e]xtract_wortbeitraege.py --neu-vor" > /dev/null && echo "→ läuft noch" || echo "→ läuft nicht"
+                if laeuft; then echo "→ läuft noch (PID $(cat "$PID"))"; else echo "→ läuft nicht"; fi
                 $PY scripts/extract_wortbeitraege.py --neu-vor "$STICHTAG" --trocken ;;
             esac
