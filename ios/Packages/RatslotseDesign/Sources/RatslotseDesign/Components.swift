@@ -76,6 +76,7 @@ public struct OutcomeBadge: View {
         case "postponed": "Vertagt"
         case "noted": "Zur Kenntnis"
         case "no_decision": "Kein Beschluss"
+        case "settled": "Gilt als behandelt"
         default: outcome.replacingOccurrences(of: "_", with: " ").capitalized
         }
     }

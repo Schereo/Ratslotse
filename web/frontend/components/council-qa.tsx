@@ -170,7 +170,7 @@ const OUTCOME_BADGE: Record<string, string> = {
 };
 const OUTCOME_LABEL: Record<string, string> = {
   accepted: "Angenommen", rejected: "Abgelehnt", postponed: "Vertagt",
-  noted: "Zur Kenntnis", no_decision: "Kein Beschluss",
+  noted: "Zur Kenntnis", no_decision: "Kein Beschluss", settled: "Gilt als behandelt",
 };
 
 /** Gesprächs-Zeile der „Meine Gespräche"-Liste (5a/I-04). */

@@ -3983,7 +3983,8 @@
                   "rejected",
                   "postponed",
                   "noted",
-                  "no_decision"
+                  "no_decision",
+                  "settled"
                 ],
                 "title": "Outcome",
                 "type": [
@@ -7432,7 +7433,8 @@
               "rejected",
               "postponed",
               "noted",
-              "no_decision"
+              "no_decision",
+              "settled"
             ],
             "title": "Outcome",
             "type": [
@@ -7855,7 +7857,8 @@
               "rejected",
               "postponed",
               "noted",
-              "no_decision"
+              "no_decision",
+              "settled"
             ],
             "title": "Outcome",
             "type": [
@@ -12584,7 +12587,8 @@
               "rejected",
               "postponed",
               "noted",
-              "no_decision"
+              "no_decision",
+              "settled"
             ],
             "title": "Outcome",
             "type": "string"
@@ -13326,7 +13330,8 @@
                   "rejected",
                   "postponed",
                   "noted",
-                  "no_decision"
+                  "no_decision",
+                  "settled"
                 ],
                 "title": "Outcome",
                 "type": [
@@ -20514,7 +20519,8 @@
               "rejected",
               "postponed",
               "noted",
-              "no_decision"
+              "no_decision",
+              "settled"
             ],
             "title": "Outcome",
             "type": [
@@ -23386,7 +23392,8 @@
               "rejected",
               "postponed",
               "noted",
-              "no_decision"
+              "no_decision",
+              "settled"
             ],
             "title": "Outcome",
             "type": [
@@ -23486,7 +23493,8 @@
               "rejected",
               "postponed",
               "noted",
-              "no_decision"
+              "no_decision",
+              "settled"
             ],
             "title": "Outcome",
             "type": [
@@ -24207,7 +24215,8 @@
               "rejected",
               "postponed",
               "noted",
-              "no_decision"
+              "no_decision",
+              "settled"
             ],
             "title": "Outcome",
             "type": [
@@ -24523,7 +24532,8 @@
               "rejected",
               "postponed",
               "noted",
-              "no_decision"
+              "no_decision",
+              "settled"
             ],
             "title": "Outcome",
             "type": [
@@ -24700,7 +24710,8 @@
               "rejected",
               "postponed",
               "noted",
-              "no_decision"
+              "no_decision",
+              "settled"
             ],
             "title": "Outcome",
             "type": [
@@ -24803,7 +24814,8 @@
               "rejected",
               "postponed",
               "noted",
-              "no_decision"
+              "no_decision",
+              "settled"
             ],
             "title": "Outcome",
             "type": [
@@ -30643,7 +30655,7 @@
             "required": false,
             "schema": {
               "default": "",
-              "pattern": "^(|accepted|rejected|postponed|noted|no_decision)$",
+              "pattern": "^(|accepted|rejected|postponed|noted|no_decision|settled)$",
               "title": "Outcome",
               "type": "string"
             }
@@ -34222,7 +34234,8 @@
                         "rejected",
                         "postponed",
                         "noted",
-                        "no_decision"
+                        "no_decision",
+                        "settled"
                       ],
                       "title": "Outcome",
                       "type": [

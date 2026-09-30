@@ -36,7 +36,7 @@ export type AgendaRowItem = MatchedAgendaItem & Partial<AgendaItem>;
 export type AgendaItem = S["AgendaItemRow"];
 
 export type DecisionOutcome =
-  | "accepted" | "rejected" | "postponed" | "noted" | "no_decision";
+  | "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | "settled";
 
 export interface DecisionLocationMatch {
   name: string;

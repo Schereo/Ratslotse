@@ -1947,7 +1947,7 @@ def _agenda_aenderungen(store: CouncilStore, ksinr: int) -> list[dict]:
 def decisions(
     q: str = "",
     committee: str = "",
-    outcome: str = Query("", pattern="^(|accepted|rejected|postponed|noted|no_decision)$"),
+    outcome: str = Query("", pattern="^(|accepted|rejected|postponed|noted|no_decision|settled)$"),
     faction: str = "",
     date_from: str = "",
     date_to: str = "",
@@ -3675,6 +3675,7 @@ _PREVIEW_OUTCOME = {
     "postponed": "vertagt",
     "noted": "zur Kenntnis genommen",
     "no_decision": "ohne Beschluss",
+    "settled": "als behandelt erklärt",
 }
 
 

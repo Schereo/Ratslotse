@@ -153,7 +153,7 @@ Ausschusssitzung in Oldenburg. Antworte mit NUR JSON in genau dieser Form:
       "item_number": "TOP-Nummer wie '9.4'",
       "title": "TOP-Titel",
       "official_text": "Wortlaut des gefassten Beschlusses (Endergebnis), sinngemäß gekürzt",
-      "outcome": "accepted|rejected|postponed|noted|no_decision",
+      "outcome": "accepted|rejected|postponed|noted|no_decision|settled",
       "vote": "unanimous|majority oder null",
       "no_votes": Zahl oder null,
       "abstentions": Zahl oder null,
@@ -180,6 +180,11 @@ Regeln:
 Formalia (Feststellung der Beschlussfähigkeit, Genehmigung der Tagesordnung, \
 Genehmigung von Protokollen) WEGLASSEN.
 - "outcome" = "noted", wenn nur ein Bericht zur Kenntnis genommen wurde.
+- "outcome" = "settled", wenn das Protokoll den Punkt als behandelt erklärt („gilt als \
+behandelt", „wird als behandelt gelten gelassen", auf Antrag zur Geschäftsordnung): Der \
+Ausschuss hat über den INHALT nicht abgestimmt. Ein „einstimmig" im selben Satz gehört zum \
+Verfahrensantrag — der Inhalt ist NICHT "accepted". Wird der Punkt stattdessen in ein anderes \
+Gremium verwiesen oder vertagt, ist es "postponed".
 - "sub_votes": JEDE einzelne Teilabstimmung (z.B. über Änderungslisten/Anträge \
 einzelner Fraktionen) als eigenen Eintrag. Wenn es keine Teilabstimmungen gab: leere Liste.
 - "description" der sub_votes: Nenne das inhaltliche Anliegen, nicht nur die Antragsart. \

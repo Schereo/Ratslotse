@@ -358,7 +358,7 @@ class DecisionRow(TypedDict):
 #: und eine Abschrift veraltet. Die Quelle sind die beiden Tupel
 #: ``CouncilStore._VOTE_OUTCOMES`` und ``_REPORT_OUTCOMES``; ein Wächter in
 #: ``tests/test_api_vertrag.py`` hält beide zusammen.
-Beschlussergebnis = Literal["accepted", "rejected", "postponed", "noted", "no_decision"]
+Beschlussergebnis = Literal["accepted", "rejected", "postponed", "noted", "no_decision", "settled"]
 
 
 # --------------------------------------------------------------------------

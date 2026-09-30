@@ -107,6 +107,7 @@ def vorabend(council_store, ratslotse_store, heute: date | None = None) -> int:
 ERGEBNIS_WORT = {
     "accepted": "angenommen", "rejected": "abgelehnt", "postponed": "vertagt",
     "noted": "zur Kenntnis genommen", "no_decision": "ohne Beschluss",
+    "settled": "als behandelt erklärt",
 }
 
 

@@ -41,6 +41,7 @@ ERGEBNIS_WORT = {
     "postponed": "vertagt",
     "noted": "zur Kenntnis genommen",
     "no_decision": "ohne Beschluss geblieben",
+    "settled": "als behandelt erklärt",
 }
 
 MONATE = ("Januar", "Februar", "März", "April", "Mai", "Juni", "Juli",

@@ -1528,6 +1528,7 @@ private struct DecisionOutcomeSignal: View {
         case "postponed": "Vertagt"
         case "noted": "Zur Kenntnis"
         case "no_decision": "Kein Beschluss"
+        case "settled": "Gilt als behandelt"
         default: outcome.replacingOccurrences(of: "_", with: " ").capitalized
         }
     }
@@ -1548,7 +1549,7 @@ private struct DecisionOutcomeSignal: View {
         case "rejected": .x
         case "postponed": .history
         case "noted": .eye
-        case "no_decision": .minus
+        case "no_decision", "settled": .minus
         default: .circle
         }
     }

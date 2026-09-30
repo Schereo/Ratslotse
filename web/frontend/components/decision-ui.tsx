@@ -243,6 +243,7 @@ export const OUTCOME_META: Record<DecisionOutcome, { label: string; cls: string 
   postponed: { label: "Vertagt", cls: "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300" },
   noted: { label: "Zur Kenntnis", cls: "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300" },
   no_decision: { label: "Kein Beschluss", cls: "bg-muted text-muted-foreground" },
+  settled: { label: "Gilt als behandelt", cls: "bg-muted text-muted-foreground" },
 };
 
 /** „einstimmig" bzw. „mehrheitlich" — der gespeicherte Wert ist englisch,
@@ -275,6 +276,7 @@ const OUTCOME_DOT_CLS: Record<DecisionOutcome, string> = {
   postponed: "bg-[#f59e0b]",
   noted: "bg-blue-500",
   no_decision: "bg-muted-foreground/50",
+  settled: "bg-muted-foreground/50",
 };
 
 export function OutcomeDot({ outcome }: { outcome: DecisionOutcome | null }) {
