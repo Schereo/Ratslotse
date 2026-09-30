@@ -39,7 +39,7 @@ TOKEN_BUENDEL = 150        # Token-Deltas zu Events bündeln (Replay bleibt schl
 #: Presse im Bericht — weiter geöffnet als der „Aktuelles von der Stadt"-Block
 #: der schnellen Antwort. Dessen Vorgaben (top_k=3, min_score=0.45) sind dort
 #: richtig: Der Block soll nur erscheinen, wenn es wirklich Einschlägiges gibt.
-#: Für einen Bericht, der 28 Beschlüsse und 12 Wortbeiträge liest, sind drei
+#: Für einen Bericht, der 28 Beschlüsse und 24 Wortbeiträge liest, sind drei
 #: Meldungen zu wenig — die Debatten wurden hier längst auf 12 geöffnet, die
 #: Presse nie nachgezogen.
 PRESSE_TOP = 10
@@ -51,6 +51,13 @@ PRESSE_MIN = 0.40
 #: von drei auf Rang 7 bis 45. 150 Paare kosten den Reranker Sekunden — der
 #: Bericht läuft Minuten.
 WORTBEITRAG_KANDIDATEN = 150
+#: Wie viel eines Beitrags der Cross-Encoder liest (die Zusatzkanäle der
+#: schnellen Frage: 150 Zeichen) und wie viele Debatten der Bericht bekommt.
+#: Pienings Begründung (569 Zeichen, die Gründe hinten) fiel bei 150 unter den
+#: Cutoff, mit 700 stand sie auf Rang 25 (Gold-Test 30.09.2026) — 24 Plätze
+#: sind fast der Bericht-Deckel von 28 Beschlüssen.
+WORTBEITRAG_PAIR_MAX = 700
+DEBATTEN_TOP = 24
 MAX_PARALLEL = 4           # globaler Deckel gleichzeitiger Recherchen
 TAGES_KONTINGENT = 5       # je Konto (RG-10: „noch n von 5 heute")
 
@@ -355,7 +362,7 @@ def _run(job: DeepJob, ratslotse_db: str, council_db: str) -> None:
             c["score"] = (round(1.0 / (1.0 + math.exp(-(logit + RERANK_BIAS))), 3)
                           if logit is not None else None)
 
-        # Zusatzkanäle wie im /ask-Pfad — Debatten hier breiter (top_k=12),
+        # Zusatzkanäle wie im /ask-Pfad — Debatten hier breiter (DEBATTEN_TOP),
         # der Bericht hat einen eigenen Debatten-Abschnitt.
         begriffe_alle = " ".join(dict.fromkeys(
             " ".join(f["terms"] for f in facetten).split()))[:300]
@@ -372,8 +379,9 @@ def _run(job: DeepJob, ratslotse_db: str, council_db: str) -> None:
             except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
                 pass
             try:
-                hits_w = emb.search_wortbeitraege(store, job.suchfrage, begriffe_alle, top_k=12,
-                                                 kandidaten=WORTBEITRAG_KANDIDATEN)
+                hits_w = emb.search_wortbeitraege(store, job.suchfrage, begriffe_alle, top_k=DEBATTEN_TOP,
+                                                 kandidaten=WORTBEITRAG_KANDIDATEN,
+                                                 pair_max=WORTBEITRAG_PAIR_MAX)
                 debatten_rows = store.wortbeitraege_by_ids([wid for wid, _ in hits_w])
                 # Aussprache zu den Top-Beschlüssen dazu (wie in /ask): Der
                 # Bericht zitiert die Station ohnehin — dann gehört ihre
