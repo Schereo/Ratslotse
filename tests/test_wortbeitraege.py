@@ -832,3 +832,36 @@ def test_search_zusagen_filtert_und_haelt_die_strengere_grenze(monkeypatch):
             return []
 
     assert emb.search_zusagen(_Leer(), "Frage?", "Frage") == []
+
+
+def test_nachextraktion_tritt_dem_deploy_zur_seite(tmp_path, monkeypatch):
+    """850 Protokolle laufen Stunden. Wartet ein Deploy, bleibt das
+    Gespeicherte, der Rest ist beim nächsten ``--neu-vor``-Lauf wieder dran."""
+    from kern.stopp import Grund
+    from scripts import extract_wortbeitraege as ex
+
+    db = tmp_path / "council.sqlite"
+    s = CouncilStore(db)
+    for ks in (1, 2, 3):
+        s._conn.execute("INSERT INTO council_protocols (ksinr, raw_text, extracted_at, status, "
+                        "contributions_extracted_at) VALUES (?, 'Text', '2026-08-01', 'ok', "
+                        "'2026-08-16T09:00:00')", (ks,))
+    s._conn.commit()
+    s.close()
+    monkeypatch.setattr(ex, "extract_wortbeitraege", lambda text: [dict(BEITRAG)])
+    monkeypatch.setattr(ex, "seiten_aufloesen", lambda store, ksinr: 0)
+
+    class NachEinem:
+        def __init__(self):
+            self.n = 0
+
+        def grund(self):
+            self.n += 1
+            return Grund("deploy", "Ein Deploy wartet.") if self.n >= 1 else None
+
+    stats = ex.process(db, None, 1, neu_vor="2026-09-23", stopp=NachEinem())
+    assert stats["protokolle"] == 1 and stats["abgebrochen"] == "deploy"
+    assert stats["offen"] == 2
+    s = CouncilStore(db)
+    assert len(s.ksinr_wortbeitraege_vor("2026-09-23")) == 2
+    s.close()

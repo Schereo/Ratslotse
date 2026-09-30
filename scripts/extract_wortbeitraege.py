@@ -36,13 +36,14 @@ load_dotenv(ROOT / ".env")
 from council.store import CouncilStore  # noqa: E402
 from council.wortbeitraege import extract_wortbeitraege, seiten_aufloesen  # noqa: E402
 from kern import llm  # noqa: E402
+from kern.stopp import Stopp  # noqa: E402
 
 COUNCIL_DB = Path(os.environ.get("COUNCIL_DB") or ROOT / "data" / "council.sqlite")
 
 
 def process(db_path: Path, limit: int | None, workers: int,
             ksinrs: list[int] | None = None, neu_vor: str | None = None,
-            trocken: bool = False) -> dict:
+            trocken: bool = False, stopp: Stopp | None = None) -> dict:
     store = CouncilStore(db_path)
     try:
         if ksinrs:
@@ -57,6 +58,7 @@ def process(db_path: Path, limit: int | None, workers: int,
             return {"protokolle": 0, "fehler": 0, "contributions": 0,
                     "embeddings": 0, "kosten_usd": 0.0, "geplant": len(todo)}
         ok = fehler = contributions = 0
+        grund = None
 
         # Nur LLM-Calls in den Workern; DB-Zugriffe (Lesen wie Schreiben)
         # bleiben im Main-Thread — die eine Store-Connection ist nicht für
@@ -86,6 +88,15 @@ def process(db_path: Path, limit: int | None, workers: int,
                 if ok % 25 == 0:
                     print(f"  {ok}/{len(todo)} Protokolle, {contributions} Beiträge, "
                           f"~${llm.session_cost()['usd']:.2f}", flush=True)
+                # Die Nachextraktion des Bestands läuft Stunden (kern/stopp.py):
+                # Jedes Protokoll ist schon gespeichert, der nächste Lauf fragt
+                # wieder „was ist noch alt?". Laufende Aufrufe verfallen.
+                grund = stopp.grund() if stopp else None
+                if grund:
+                    print(f"  {grund.text}", flush=True)
+                    for rest in futs:
+                        rest.cancel()
+                    break
 
         try:  # Embeddings direkt mitschreiben (fastembed nötig — best-effort)
             from council import embeddings as emb
@@ -94,7 +105,9 @@ def process(db_path: Path, limit: int | None, workers: int,
             print(f"  Embeddings übersprungen: {exc}", flush=True)
             n_vec = 0
         return {"protokolle": ok, "fehler": fehler, "contributions": contributions,
-                "embeddings": n_vec, "kosten_usd": round(llm.session_cost()["usd"], 2)}
+                "embeddings": n_vec, "kosten_usd": round(llm.session_cost()["usd"], 2),
+                "offen": len(todo) - ok - fehler if grund else 0,
+                "abgebrochen": grund.schluessel if grund else None}
     finally:
         store.close()
 
@@ -113,7 +126,8 @@ def main() -> dict:
 
     ksinrs = [int(k) for k in args.ksinr.split(",") if k.strip()]
     stats = process(Path(args.db), args.limit, args.workers,
-                    ksinrs=ksinrs or None, neu_vor=args.neu_vor, trocken=args.trocken)
+                    ksinrs=ksinrs or None, neu_vor=args.neu_vor, trocken=args.trocken,
+                    stopp=Stopp(Path(args.db).parent))
     if args.trocken:
         return stats
     print(f"Wortbeiträge: {stats['contributions']} aus {stats['protokolle']} Protokollen "
