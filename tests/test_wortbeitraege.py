@@ -447,6 +447,40 @@ def test_cross_encoder_ist_torwaechter(store, monkeypatch):
     assert emb.search_wortbeitraege(store, "Frage", "Frage") == []
 
 
+def test_vektorsuche_bettet_frage_und_begriffe_ein_und_prueft_ein_weites_feld(store, monkeypatch):
+    """Gold-Test 30.09.2026: Die Gründliche Recherche reichte eine Facetten-
+    Begriffsliste als `expanded` — nahe an fast allem zu Bauen und Geld. Die
+    Aussage der Verwaltung lag auf Vektor-Rang 130+ und kam nie in den
+    Cross-Encoder (nur 36). Mit der Frage selbst: Rang 7. Es zählt der bessere
+    der beiden Werte; ``kandidaten`` weitet das Feld."""
+    np = pytest.importorskip("numpy")
+    from council import embeddings as emb
+
+    ziel = {**BEITRAG, "text": "Wegen des Denkmalschutzes gibt es kein Planrecht für einen Spielplatz."}
+    laerm = [{**BEITRAG, "text": f"Baufortschritt und Haushaltsmittel Nummer {i} zum Zeitplan."}
+             for i in range(40)]
+    store.save_wortbeitraege(100, [ziel] + laerm)
+    ids = [r[0] for r in store._conn.execute("SELECT id FROM council_speeches ORDER BY position")]
+    # Die Begriffsliste liegt nahe am Lärm (Vektor [1,0]), die Frage nahe am Ziel ([0,1]).
+    mat = np.array([[0.30, 0.95]] + [[0.98 - i * 0.001, 0.05] for i in range(40)], dtype="float32")
+    monkeypatch.setattr(emb, "_wb_matrix", lambda s: (ids, mat))
+    monkeypatch.setattr(emb, "embed", lambda texte: np.array(
+        [[1.0, 0.0] if "Begriffe" in t else [0.0, 1.0] for t in texte], dtype="float32"))
+    gesehen = {}
+
+    def rerank(q, docs):
+        gesehen["n"] = len(docs)
+        return [(i, 1.0 if "Denkmalschutz" in t else -3.0) for i, t in docs]
+
+    monkeypatch.setattr(emb, "rerank", rerank)
+    treffer = emb.search_wortbeitraege(store, "Frage nach dem Spielplatz", "Begriffe Baufortschritt")
+    assert treffer == [] and gesehen["n"] == 12      # nur Lärm im Feld: das Ziel fehlt
+    # Nur die Begriffsliste eingebettet wäre der alte Zustand; hier zählt die Frage mit …
+    treffer = emb.search_wortbeitraege(store, "Frage nach dem Spielplatz", "Begriffe Baufortschritt",
+                                       kandidaten=60)
+    assert [t[0] for t in treffer] == [ids[0]] and gesehen["n"] == 41
+
+
 # ------------------------------ QA-Kontextblock -----------------------------
 
 def test_fraktions_label_normalisierung():

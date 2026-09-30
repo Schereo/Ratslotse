@@ -44,6 +44,13 @@ TOKEN_BUENDEL = 150        # Token-Deltas zu Events bündeln (Replay bleibt schl
 #: Presse nie nachgezogen.
 PRESSE_TOP = 10
 PRESSE_MIN = 0.40
+#: So viele Wortbeitrags-Kandidaten prüft der Cross-Encoder vor den 12 Plätzen
+#: im Bericht. Bei 36 (Dreifaches) lagen die Aussagen der Verwaltung zum
+#: Schlossplatz-Spielplatz auf Vektor-Rang 130 bis 277 und kamen nie hinein
+#: (Gold-Test 30.09.2026); die Frage selbst zu betten (embeddings.py) holt zwei
+#: von drei auf Rang 7 bis 45. 150 Paare kosten den Reranker Sekunden — der
+#: Bericht läuft Minuten.
+WORTBEITRAG_KANDIDATEN = 150
 MAX_PARALLEL = 4           # globaler Deckel gleichzeitiger Recherchen
 TAGES_KONTINGENT = 5       # je Konto (RG-10: „noch n von 5 heute")
 
@@ -365,7 +372,8 @@ def _run(job: DeepJob, ratslotse_db: str, council_db: str) -> None:
             except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
                 pass
             try:
-                hits_w = emb.search_wortbeitraege(store, job.suchfrage, begriffe_alle, top_k=12)
+                hits_w = emb.search_wortbeitraege(store, job.suchfrage, begriffe_alle, top_k=12,
+                                                 kandidaten=WORTBEITRAG_KANDIDATEN)
                 debatten_rows = store.wortbeitraege_by_ids([wid for wid, _ in hits_w])
                 # Aussprache zu den Top-Beschlüssen dazu (wie in /ask): Der
                 # Bericht zitiert die Station ohnehin — dann gehört ihre
