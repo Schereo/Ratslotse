@@ -236,6 +236,10 @@ def zahlfrage(question: str) -> bool:
     return bool(_ZAHL_FRAGE_RE.search(question or ""))
 
 
+#: „Stand“/„Sachstand“ als eigenes Wort — nicht „Standort“, „Bestand“, „Wohlstand“.
+_STAND_RE = re.compile(r"(?<![a-zäöüß])(?:sach)?stand(?![a-zäöüß])", re.IGNORECASE)
+
+
 def research_plan_with_mandatory(plan: dict, *, typ: str, question: str = "",
                                  person: bool = False,
                                  place: bool = False, sessions: bool = False,
@@ -290,14 +294,30 @@ def research_plan_with_mandatory(plan: dict, *, typ: str, question: str = "",
     inferred_needs: list[str] = []
     if zahl and "documents" not in model_needs:
         inferred_needs.append("documents")
-    if (_OFFICIAL_UPDATE_WORDS_RE.search(question or "")
-            and ("presse" in (question or "").lower()
-                 or _OFFICIAL_SOURCE_RE.search(question or ""))
-            and "official_updates" not in model_needs):
+    stadt_mitteilung = bool(_OFFICIAL_UPDATE_WORDS_RE.search(question or "")
+                            and ("presse" in (question or "").lower()
+                                 or _OFFICIAL_SOURCE_RE.search(question or "")))
+    if stadt_mitteilung and "official_updates" not in model_needs:
         # Kleine semantische Leitplanke für eindeutige Formulierungen. In der
         # Produktionsprobe ließ das Analysemodell „Was hat die Stadt zuletzt …
         # mitgeteilt?“ trotz klarer Quellenart ohne Pressekanal durch.
         inferred_needs.append("official_updates")
+    stand_frage = plan.get("intent") == "status" or bool(_STAND_RE.search(question or ""))
+    if stand_frage and "statements" not in model_needs and not stadt_mitteilung:
+        # Der Stand steckt oft NUR im Protokoll: Die Verwaltung berichtet im
+        # Ausschuss mündlich, und kein Beschluss hält es fest. Das Modell plante
+        # für „Wie ist der Stand beim Spielplatz auf dem Schlossplatz?“ fünfmal
+        # decisions+press und nie debates (30.09.2026) — Sprengers „kein Platz
+        # für einen Spielplatz“ und Pienings Begründung (Denkmalschutz, kein
+        # Planrecht, vier Alternativen) vom 16.04.2026 kamen so nie in den
+        # Kontext; die Antwort endete beim Sachstand vom Dezember davor. Die
+        # Negativregeln unten (neueste Entscheidung, Definition, Finanzen)
+        # entfernen die Debatten weiterhin, wo sie nur Rauschen wären; eine
+        # Frage, die ausdrücklich nach Mitteilungen der Stadt fragt (Wortregel
+        # oben), bleibt bei der Presse. Das Wort „Stand“ zählt auch ohne die
+        # Absicht „status“: „Was ist der aktuelle Stand beim Fliegerhorst?“
+        # plante das Modell als „overview“.
+        inferred_needs.append("statements")
     needs = list(dict.fromkeys([*model_needs, *inferred_needs]))
     consistent = list(dict.fromkeys(
         channel
