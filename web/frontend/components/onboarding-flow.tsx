@@ -1208,8 +1208,8 @@ function istPlannummer(name: string): boolean {
   return /\b(?:vorhabenbezogener\s+)?(?:bebauungs|flächennutzungs)plan\s+[\dSNOWM]/i.test(name);
 }
 
-/** Die Stadtthemen als Kacheln mit Bild — Lottis Stil, je Thema ein kleines
- *  Spielzeug aus Vinyl (`public/themen/`, erzeugt von `scripts/themen_grafiken.py`).
+/** Die Stadtthemen als Kacheln mit Bild — flach gezeichnet, dünne Kontur, Markenfarben, und
+ *  manchmal spielt ein Gast aus Lottis Welt mit (`public/themen/`, erzeugt von `scripts/themen_grafiken.py`).
  *
  *  Kacheln statt Pillen, seit Neue Konten fast nur Stadtteile wählten
  *  (30.09.2026): „Bus und Bahn" als Text neben einem Stadtteil ist abstrakt, ein
