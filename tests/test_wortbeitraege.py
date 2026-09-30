@@ -730,6 +730,20 @@ def test_debatten_block_format():
     assert qa._debatten_block(None) == ""
 
 
+def test_debatten_block_der_recherche_kuerzt_weniger():
+    """Gold-Test 30.09.2026: Pienings Antwort (548 Zeichen) verlor ihre Gründe
+    (Denkmalschutz ab 364, Alternativen ab 490) an der 400er-Kappung. Der Bericht
+    der Gründlichen Recherche bekommt mehr; die schnelle Antwort bleibt kurz."""
+    lang = "Einleitung. " * 30 + "Denkmalschutz verhindert das. " + "x" * 300 + " Heiligengeistpark."
+    d = [{"kind": "speech", "speaker": "Piening", "party": None, "top": "7 Spielleitplanung",
+          "text": lang, "answer": "Ö" * 500, "committee": None, "session_date": None}]
+    kurz = qa._debatten_block(d)
+    lang_block = qa._debatten_block(d, text_max=qa.DEEP_DEBATTE_TEXT_MAX,
+                                    answer_max=qa.DEEP_DEBATTE_ANTWORT_MAX)
+    assert "Heiligengeistpark" not in kurz and kurz.count("Ö") == 300
+    assert "Heiligengeistpark" in lang_block and lang_block.count("Ö") == 500
+
+
 def test_debatten_block_im_antwortprompt(monkeypatch):
     messages, _ = qa._answer_messages(
         "Was ist mit dem Radweg?", [{"id": 1, "title": "T", "official_text": "B"}],

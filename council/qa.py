@@ -2204,7 +2204,8 @@ def deep_bericht_stream(question: str, candidates: list[dict],
     # kurze Antwort — die Fachwörter darin tragen also ohnehin ihre Erklärung
     # als Tooltip. Ohne diesen Block hätte nur der Prompt sie nicht gehabt.
     zusatz = (_glossar_block(begriffe_fuer(question))
-              + _debatten_block(debatten) + _presse_block(presse)
+              + _debatten_block(debatten, text_max=DEEP_DEBATTE_TEXT_MAX,
+                                answer_max=DEEP_DEBATTE_ANTWORT_MAX) + _presse_block(presse)
               + _staedte_block(staedte)
               + geld_regeln(geld) + geld_block(geld) + _anlagen_block(anlagen))
     prompt = prompts.render("deep_report", question=question.strip()[:300],
@@ -2426,7 +2427,17 @@ def _staedte_block(staedte: list[dict] | None) -> str:
             f"{zeilen}\n")
 
 
-def _debatten_block(debatten: list[dict] | None, eng: bool = False) -> str:
+#: Wie viel eines Wortbeitrags der Bericht der Gründlichen Recherche bekommt
+#: (die schnelle Antwort: 400 Zeichen Text, 300 Antwort). Bei Pienings Antwort
+#: zum Schlossplatz (548 Zeichen) stand „Denkmalschutz" bei Zeichen 364, die
+#: Alternativen (Wasserspiele, Bodenbilder, Heiligengeistpark) ab 490 — nie im
+#: Bericht. Mit 800/600: Gold-Test 85 % statt 69 % (30.09.2026).
+DEEP_DEBATTE_TEXT_MAX = 800
+DEEP_DEBATTE_ANTWORT_MAX = 600
+
+
+def _debatten_block(debatten: list[dict] | None, eng: bool = False,
+                    text_max: int = 400, answer_max: int = 300) -> str:
     """Kontext-Absatz „Aus den Ratsdebatten" — Wortbeiträge aus Protokollen
     (Reden, Anfragen, Einwohnerfragen, Zusagen). Das sind BERICHTE, keine
     Beschlüsse: nie mit [id] zitieren, sondern „Laut Protokoll sagte/fragte …"."""
@@ -2452,9 +2463,9 @@ def _debatten_block(debatten: list[dict] | None, eng: bool = False) -> str:
         # Beschluss zu zitieren.
         if d.get("zu_beschluss"):
             kopf += f" — Aussprache zum Beschluss [{d['zu_beschluss']}]"
-        row = f"- {kopf}: {(d.get('text') or '').strip()[:400]}"
+        row = f"- {kopf}: {(d.get('text') or '').strip()[:text_max]}"
         if d.get("answer"):
-            row += f" — Antwort der Verwaltung: {(d['answer'] or '').strip()[:300]}"
+            row += f" — Antwort der Verwaltung: {(d['answer'] or '').strip()[:answer_max]}"
         zeilen.append(row)
     if eng:
         # Punktfrage: Die Wortbeiträge bleiben im Kontext (manchmal steckt die
