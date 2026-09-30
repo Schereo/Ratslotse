@@ -741,6 +741,35 @@ def test_ksinr_wortbeitraege_vor_fuer_die_nachextraktion(store):
     assert store.ksinr_wortbeitraege_vor("2026-09-23") == []
 
 
+def test_station_nimmt_die_naechsten_beitraege_nicht_die_ersten(store):
+    """Befund 30.09.2026 (Gold-Test der Gründlichen Recherche): TOP 7 in ksinr
+    4664 hat zwölf Beiträge; der Deckel von vier nahm die ersten vier in
+    Protokollreihenfolge — Piening (Denkmalschutz, Planrecht, Heiligengeistpark)
+    war der fünfte und wurde nie gelesen. Mit ``begriffe`` zählt die Nähe zur
+    Frage, innerhalb der Sitzung; die neueste Sitzung bleibt vorn."""
+    def beitrag(sprecher, text):
+        return {"kind": "speech", "top": "7 Spielleitplanung - Beschluss", "speaker": sprecher,
+                "party": None, "text": text, "answer": None}
+    store.save_wortbeitraege(100, [
+        beitrag("Sprenger", "Er führt in die Spielleitplanung ein, ein Rahmen für zehn Jahre."),
+        beitrag("Behrens", "Er bittet um einen Bericht zum Workshop."),
+        beitrag("Menke", "Er bedauert das verlorene halbe Jahr."),
+        beitrag("Dittrich", "Die FDP befürwortet die Weiterentwicklung der Spiellandschaft."),
+        beitrag("Piening", "Wegen des Denkmalschutzes bestehe kein Planrecht für einen Spielplatz "
+                           "auf dem Schlossplatz; denkbar sei der Heiligengeistpark."),
+    ])
+    station = [{"id": 1, "ksinr": 100, "item_number": "7", "title": "Spielleitplanung - Beschluss"}]
+    ohne = [r["speaker"] for r in store.wortbeitraege_zu_beschluessen(station, max_je_top=4)]
+    assert ohne == ["Sprenger", "Behrens", "Menke", "Dittrich"]          # Protokollreihenfolge
+    mit = [r["speaker"] for r in store.wortbeitraege_zu_beschluessen(
+        station, max_je_top=4,
+        begriffe="Wie ist der Stand beim Spielplatz auf dem Schlossplatz? Spielplatz Schlossplatz")]
+    assert mit[0] == "Piening" and len(mit) == 4
+    # „Stand" und Füllwörter zählen nicht: Nur die Sache trägt.
+    assert store._frage_staemme("Wie ist der Stand beim Spielplatz auf dem Schlossplatz?") == [
+        "spielp", "schlos"]
+
+
 def test_wortbeitraege_zu_beschluessen_filtert_optional_nach_person(store):
     """Person + Ort bleibt über den Beschlussanker belegt, ohne Wortmeldungen
     anderer Personen aus demselben TOP mitzunehmen."""

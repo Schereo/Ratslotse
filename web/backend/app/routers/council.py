@@ -5062,7 +5062,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                         # suche — Zugehörigkeit trägt hier weiter (Befund 10.08.).
                         have = {d["id"] for d in debatten_rows}
                         debatten_rows += [w for w in store.wortbeitraege_zu_beschluessen(
-                            candidates[:8]) if w["id"] not in have]
+                            candidates[:8], begriffe=f"{q_suche} {expanded}")
+                            if w["id"] not in have]
                     # Zusagen der Verwaltung als EIGENER Kanal: Im allgemeinen
                     # Debatten-Ranking gingen sie unter (1 von 19 Belegen; selbst
                     # auf „Was hat die Verwaltung zugesagt?" kam keine), weil sie
