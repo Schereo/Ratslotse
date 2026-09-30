@@ -34,6 +34,10 @@ from council.votes import normalize_outcome
     ("accepted", "Der Vorschlag des Oberbürgermeisters wird einstimmig angenommen. Beide Anträge "
                  "gelten als behandelt. Der Bericht wird zur Kenntnis genommen.", "accepted"),
     ("rejected", "Die Verweisung in den Ausschuss wird abgelehnt.", "rejected"),
+    # Abgelehnte Verweisung — auch als „lehnt … ab" (14874 auf Prod).
+    ("accepted", "Der Ausschuss lehnt anschließend den Verweisungsantrag der CDU in den "
+                 "Sozialausschuss mehrheitlich ab: - bei 3 Gegenstimmen -", "accepted"),
+    ("accepted", "Dem Verweisungsantrag der SPD-Fraktion wird - einstimmig - zugestimmt.", "postponed"),
     ("noted", "Der Bericht wird zur Kenntnis genommen.", "noted"),
     ("accepted", None, "accepted"),
 ])
