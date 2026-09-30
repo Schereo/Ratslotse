@@ -1,0 +1,186 @@
+[
+  {
+    "id": "schlossplatz-spielplatz-stand",
+    "note": "Vom Ratsbeschluss zur festgefahrenen Umsetzung. Handgeprüft am 30.09.2026 gegen Original-PDFs (Recherche: Schereo/ratslotse-social, redaktion/ausschuesse-erklaert/RECHERCHE.md, Abschnitt 6 A und 6 D).",
+    "stand": "2026-09-30 (Protokolle bis 17.08.2026, Presse bis 26.08.2026)",
+    "question": "Wie ist der Stand beim Spielplatz auf dem Schlossplatz?",
+    "varianten": [
+      "Was ist aus dem Ratsbeschluss zum Spielplatz auf dem Schlossplatz geworden?",
+      "Kommt der Spielplatz auf dem Schlossplatz noch?"
+    ],
+    "pflicht": [
+      {
+        "id": "F1",
+        "gewicht": 3,
+        "fakt": "Der Rat beschloss am 30.09.2024 einstimmig (Antrag SPD und Grüne), dass die Verwaltung ein Konzept für einen dauerhaften inklusiven Spielplatz auf dem Schlossplatz vorlegt.",
+        "beleg": "Rat 30.09.2024, TOP 15.4, Protokoll S. 26–27, getfile id=284331"
+      },
+      {
+        "id": "F2",
+        "gewicht": 1,
+        "fakt": "Vorberaten im September 2024 im Ausschuss für Stadtgrün, Umwelt und Klima (12.09., einstimmig) und im Jugendhilfeausschuss (18.09., Ergebnis: gilt als behandelt).",
+        "beleg": "ASUK 12.09.2024 TOP 12.2 S. 17–18 (id=286682); JHA 18.09.2024 TOP 8.1 S. 7–9 (id=306548)"
+      },
+      {
+        "id": "F3",
+        "gewicht": 1,
+        "fakt": "Der Beschluss verlangte außerdem, Geld im Haushalt 2025 einzuplanen, die Standplanung der Märkte anzupassen und die Planung nach Ratsbeschluss früh 2025 umzusetzen (mindestens zwei dieser Punkte).",
+        "beleg": "Rat 30.09.2024, Protokoll S. 27"
+      },
+      {
+        "id": "F4",
+        "gewicht": 1,
+        "fakt": "Im September 2025 berichtete die Verwaltung über eine kurzfristige Lösung (Eigenplanung, Baumittel vorhanden) und eine langfristige Lösung mit Planungsbüro; Wasserspiele waren im Gespräch.",
+        "beleg": "ASUK 11.09.2025 TOP 12.2, S. 15–16 (id=299861)"
+      },
+      {
+        "id": "F5",
+        "gewicht": 1,
+        "fakt": "Im November 2025 beteiligte die Stadt Kinder und Jugendliche (15.11.2025) an Ideen für einen Themenspielbereich; eine Einweihung wurde für Mai 2026 in Aussicht gestellt.",
+        "beleg": "Pressemitteilung Stadt Oldenburg 04.11.2025; ASUK 11.12.2025 S. 4"
+      },
+      {
+        "id": "F6",
+        "gewicht": 2,
+        "fakt": "Im Dezember 2025 meldete die Verwaltung, die Standflächen ließen sich nicht anpassen, weil alle Flächen durch Veranstaltungen und Rettungswege belegt sind; ein Dialog mit Veranstaltern und Politik im 1. Quartal 2026 wurde vorgeschlagen.",
+        "beleg": "ASUK 11.12.2025 TOP 6, S. 4–6 (id=305267)"
+      },
+      {
+        "id": "F7",
+        "gewicht": 3,
+        "fakt": "Im April 2026 erklärte die Verwaltung, auf dem Schlossplatz sei kein Platz für einen (konventionellen) Spielplatz.",
+        "beleg": "ASUK 16.04.2026 TOP 7, S. 11–12 (id=310610)"
+      },
+      {
+        "id": "F7b",
+        "gewicht": 2,
+        "fakt": "Als Gründe nannte die Verwaltung mindestens: fehlendes Planrecht bzw. Denkmalschutz bzw. dass Veranstalter kleinere Standflächen für wirtschaftlich nicht tragbar halten (mindestens ein konkreter Grund genügt, allgemeines „wegen Vorschriften“ genügt NICHT).",
+        "beleg": "ASUK 16.04.2026 TOP 7, S. 11–12 (id=310610)"
+      },
+      {
+        "id": "F8",
+        "gewicht": 1,
+        "fakt": "Als Alternativen nannte die Verwaltung kleine Einbauten außerhalb des Platzes, Wasserspiele, Bodenbilder oder eine Aufwertung des Heiligengeistparks (mindestens zwei).",
+        "beleg": "ASUK 16.04.2026, S. 12"
+      },
+      {
+        "id": "F9",
+        "gewicht": 1,
+        "fakt": "Teile der Politik (u. a. SPD) halten am Spielplatz fest bzw. kritisieren, dass der Schlossplatz in der vom Rat am 01.06.2026 beschlossenen Spielleitplanung fehlt.",
+        "beleg": "ASUK 16.04.2026 S. 12–13; Rat 01.06.2026 TOP 8.3 S. 22 (id=311268)"
+      },
+      {
+        "id": "F10",
+        "gewicht": 3,
+        "fakt": "Stand: Ein dauerhafter Spielplatz ist nicht gebaut; der Ratsbeschluss von 2024 wurde weder aufgehoben noch durch einen neuen Beschluss ersetzt; der Ausgang ist offen.",
+        "beleg": "Keine entsprechenden Beschlüsse/Presse bis August 2026"
+      },
+      {
+        "id": "F11",
+        "gewicht": 1,
+        "fakt": "Der mobile Spielcontainer zwischen Schloss und Schlosshöfen (seit 2023) ist ein eigenes Projekt und 2026 weiter in Betrieb.",
+        "beleg": "Pressemitteilung Stadt Oldenburg 11.02.2026"
+      }
+    ],
+    "verboten": [
+      {
+        "id": "X1",
+        "behauptung": "Der Spielplatz bzw. Spielbereich auf dem Schlossplatz ist gebaut oder eröffnet (etwa im Mai 2026)."
+      },
+      {
+        "id": "X2",
+        "behauptung": "Der Jugendhilfeausschuss hat dem Antrag am 18.09.2024 zugestimmt bzw. ihn angenommen."
+      },
+      {
+        "id": "X3",
+        "behauptung": "Für den Spielplatz wurde ein konkreter Geldbetrag bewilligt."
+      },
+      {
+        "id": "X4",
+        "behauptung": "Der Rat hat den Spielplatz abgelehnt oder den Beschluss von 2024 aufgehoben."
+      },
+      {
+        "id": "X5",
+        "behauptung": "Der Spielcontainer ist das Ergebnis des Ratsbeschlusses von 2024."
+      },
+      {
+        "id": "X6",
+        "behauptung": "Es wird ein Beratungsergebnis des (nichtöffentlichen) Verwaltungsausschusses zum Spielplatz genannt."
+      }
+    ],
+    "bewertung": "Abdeckung = Summe der Gewichte erfüllter Pflichtfakten / Gesamtgewicht (20). Jede verbotene Behauptung ist ein harter Fehler. Bestanden: Abdeckung >= 0,6, F1, F7 und F10 erfüllt, keine verbotene Behauptung.",
+    "material": [
+      {
+        "id": "M1",
+        "fuer": [
+          "F1",
+          "F3"
+        ],
+        "art": "beschluss",
+        "session_date": "2024-09-30",
+        "committee": "Rat",
+        "titel_enthaelt": "Spielplatz"
+      },
+      {
+        "id": "M2",
+        "fuer": [
+          "F6"
+        ],
+        "art": "debatte",
+        "session_date": "2025-12-11",
+        "text_enthaelt_eins": [
+          "Standfl",
+          "Rettungsweg",
+          "belegt"
+        ]
+      },
+      {
+        "id": "M4",
+        "fuer": [
+          "F5"
+        ],
+        "art": "presse",
+        "date": "2025-11-04",
+        "titel_enthaelt": "Spielbereich"
+      },
+      {
+        "id": "M5",
+        "fuer": [
+          "F11"
+        ],
+        "art": "presse",
+        "date": "2026-02-11",
+        "titel_enthaelt": "Spielcontainer"
+      },
+      {
+        "id": "M3a",
+        "fuer": [
+          "F7"
+        ],
+        "art": "debatte",
+        "session_date": "2026-04-16",
+        "text_enthaelt_eins": [
+          "kein Platz",
+          "kein Spielplatz",
+          "keinen Spielplatz",
+          "Vorschriften"
+        ]
+      },
+      {
+        "id": "M3b",
+        "fuer": [
+          "F7b",
+          "F8"
+        ],
+        "art": "debatte",
+        "session_date": "2026-04-16",
+        "text_enthaelt_eins": [
+          "Denkmalschutz",
+          "Planrecht",
+          "Planungsrecht",
+          "Heiligengeist"
+        ]
+      }
+    ]
+  }
+]
