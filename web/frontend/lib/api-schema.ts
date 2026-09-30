@@ -3057,6 +3057,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/council/debates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Debatten Nachladen
+         * @description Der Baustein „Aus den Ratsdebatten“, vollständig — nach der Antwort.
+         *
+         *     Die Antwort selbst bekommt wenige, ausgewählte Beiträge (das Modell soll
+         *     schnell sein und nicht in Material ertrinken). Wer darunter weiterliest,
+         *     darf alles sehen: Das Frontend lädt diesen Endpunkt automatisch, sobald die
+         *     Antwort steht, und hängt an, was es noch nicht zeigt. Kein Sprachmodell,
+         *     nur Suche und Rerank. Anlass: Zum Schlossplatz-Spielplatz fehlte die
+         *     Aussage der Verwaltung vom 16.04.2026 in der Antwort — lesen konnte man
+         *     sie nirgends.
+         *
+         *     Zwei Kanäle wie in der Gründlichen Recherche: die weite Ähnlichkeitssuche
+         *     (Frage und Begriffe, 150 Kandidaten, 700 Zeichen im Rerank) und die
+         *     Aussprache zu allen belegten Beschlüssen. Neueste Sitzung zuerst.
+         */
+        post: operations["debatten_nachladen_api_council_debates_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/council/decision/{decision_id}": {
         parameters: {
             query?: never;
@@ -9117,6 +9149,45 @@ export interface components {
             unit: string | null;
             /** Was */
             was: string;
+        };
+        /**
+         * DebateHint
+         * @description Ein Wortbeitrag im Baustein „Aus den Ratsdebatten“ — dieselbe Form wie
+         *     ``debates`` im Quellen-Ereignis der KI-Frage (``_debatten_kompakt``).
+         */
+        DebateHint: {
+            /** Agenda Item */
+            agenda_item: string | null;
+            /** Committee */
+            committee: string | null;
+            /** Date */
+            date: string | null;
+            /** Excerpt */
+            excerpt: string;
+            /** Id */
+            id: number | null;
+            /** Kind */
+            kind: string | null;
+            /** Minutes Page */
+            minutes_page: number | null;
+            /** Minutes Url */
+            minutes_url: string | null;
+            /** Party */
+            party: string | null;
+            /** Speaker */
+            speaker: string | null;
+        };
+        /** DebatesBody */
+        DebatesBody: {
+            /** Decision Ids */
+            decision_ids?: number[];
+            /** Question */
+            question: string;
+        };
+        /** DebatesMore */
+        DebatesMore: {
+            /** Debates */
+            debates: components["schemas"]["DebateHint"][];
         };
         /**
          * DebtPlanRow
@@ -20048,6 +20119,39 @@ export interface operations {
             };
         };
     };
+    debatten_nachladen_api_council_debates_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DebatesBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DebatesMore"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     decision_detail_api_council_decision__decision_id__get: {
         parameters: {
             query?: never;
@@ -24602,4 +24706,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 381f2e1e304099f1ec09187ab7257c2646feac032c508642595ab381ca9e9d14
+// vertrag-sha256: 664545e7917210d525395824a9ec31b61b35531aa18985c8b09a121917a1019a

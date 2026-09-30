@@ -64,7 +64,7 @@ from ..antworten import (AnalysisData, ElectedCouncil, ElectedMember, AssistantS
                          IdeaSearchResponse, IdeasResponse,
                          EventStreamResponse, Finances, GoalDetail,
                          Goals, JpegResponse, NumberOfTheWeek, Ok,
-                         PartyFilter, PartyOpinions, PeopleDirectory, PersonDetail, PlaceCatalog,
+                         PartyFilter, PartyOpinions, DebatesMore, PeopleDirectory, PersonDetail, PlaceCatalog,
                          PlaceDetail, PLANZEICHNUNG_JPEG, PolicyFieldRecaps, PolicyFields,
                          PublicNumbers, QaExampleSession, QaExamples,
                          QaShare, QaShareToken, ResearchCurrent, ResearchSnapshot, ResearchStarted,
@@ -80,6 +80,7 @@ from ..ratelimit import (
     assistant_event_limiter,
     assistant_limiter,
     partei_meinungen_limiter,
+    debatten_limiter,
     qa_feedback_limiter,
     qa_limiter,
     qa_share_limiter,
@@ -2915,6 +2916,63 @@ def qa_feedback(
     return {"ok": True}
 
 
+class DebatesBody(BaseModel):
+    question: str = Field(min_length=3, max_length=300)
+    #: Die Beschlüsse, auf denen die Antwort steht — über sie kommt die
+    #: Aussprache zu genau diesen Stationen.
+    decision_ids: list[int] = Field(default_factory=list, max_length=40)
+
+
+#: So viele Beiträge liefert der nachgeladene Baustein höchstens.
+DEBATTEN_NACHLADEN_MAX = 60
+
+
+@router.post("/debates")
+def debatten_nachladen(
+    body: DebatesBody,
+    request: Request,
+    user: dict = Depends(require_active),
+    store: CouncilStore = Depends(get_council_store),
+) -> DebatesMore:
+    """Der Baustein „Aus den Ratsdebatten“, vollständig — nach der Antwort.
+
+    Die Antwort selbst bekommt wenige, ausgewählte Beiträge (das Modell soll
+    schnell sein und nicht in Material ertrinken). Wer darunter weiterliest,
+    darf alles sehen: Das Frontend lädt diesen Endpunkt automatisch, sobald die
+    Antwort steht, und hängt an, was es noch nicht zeigt. Kein Sprachmodell,
+    nur Suche und Rerank. Anlass: Zum Schlossplatz-Spielplatz fehlte die
+    Aussage der Verwaltung vom 16.04.2026 in der Antwort — lesen konnte man
+    sie nirgends.
+
+    Zwei Kanäle wie in der Gründlichen Recherche: die weite Ähnlichkeitssuche
+    (Frage und Begriffe, 150 Kandidaten, 700 Zeichen im Rerank) und die
+    Aussprache zu allen belegten Beschlüssen. Neueste Sitzung zuerst.
+    """
+    if not user.get("limits_unlocked"):
+        debatten_limiter.check(request)
+    from council import embeddings as emb
+    rows: list[dict] = []
+    try:
+        hits = emb.search_wortbeitraege(store, body.question, body.question, top_k=40,
+                                        kandidaten=150, pair_max=700)
+        rows = store.wortbeitraege_by_ids([wid for wid, _ in hits])
+    except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
+        rows = []
+    if body.decision_ids:
+        try:
+            schon = {r["id"] for r in rows}
+            rows += [w for w in store.wortbeitraege_zu_beschluessen(
+                store.get_decisions_by_ids(body.decision_ids[:40]),
+                max_gesamt=DEBATTEN_NACHLADEN_MAX, max_je_top=15) if w["id"] not in schon]
+        except Exception:  # noqa: BLE001
+            pass
+    rows.sort(key=lambda r: (r.get("session_date") or "", -(r.get("id") or 0)), reverse=True)
+    rows = rows[:DEBATTEN_NACHLADEN_MAX]
+    qa.parteien_aufloesen(store, rows)
+    qa.protokolle_verlinken(store, rows)
+    return {"debates": _debatten_kompakt(rows)}  # type: ignore[typeddict-item]
+
+
 class PartyOpinionsBody(BaseModel):
     question: str = Field(min_length=3, max_length=300)
     #: Die Beschlüsse, auf denen die Antwort steht (Reihenfolge = Relevanz).
@@ -4581,8 +4639,11 @@ def _sitzungen_kompakt(sitzungen: list[dict]) -> list[dict]:
 
 
 def _debatten_kompakt(rows: list[dict]) -> list[dict]:
-    return [{"speaker": d.get("speaker"), "party": d.get("party"),
-             "kind": d.get("art"), "agenda_item": d.get("top"),
+    # `kind`, nicht `art`: Die Spalte heißt seit dem Englisch-Umbau so. Hier
+    # stand bis 30.09.2026 d.get("art") — immer None, und im Baustein fehlten
+    # „Rede“/„Anfrage“ und das Abzeichen „Zusage der Verwaltung“.
+    return [{"id": d.get("id"), "speaker": d.get("speaker"), "party": d.get("party"),
+             "kind": d.get("kind") or d.get("art"), "agenda_item": d.get("top"),
              "excerpt": (d.get("text") or "")[:2000],
              "committee": d.get("committee"),
              "date": d.get("session_date"),

@@ -3840,6 +3840,25 @@ class PartyOpinions(TypedDict):
     parties: Any
 
 
+class DebateHint(TypedDict):
+    """Ein Wortbeitrag im Baustein „Aus den Ratsdebatten“ — dieselbe Form wie
+    ``debates`` im Quellen-Ereignis der KI-Frage (``_debatten_kompakt``)."""
+    id: int | None
+    speaker: str | None
+    party: str | None
+    kind: str | None
+    agenda_item: str | None
+    excerpt: str
+    committee: str | None
+    date: str | None
+    minutes_url: str | None
+    minutes_page: int | None
+
+
+class DebatesMore(TypedDict):
+    debates: list[DebateHint]
+
+
 class QaShareToken(TypedDict):
     token: str
 

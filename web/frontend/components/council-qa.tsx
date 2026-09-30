@@ -61,7 +61,7 @@ import {
 // Antworttext und Belege-Bausteine teilen sich Gespräch und Teilen-Seite
 // (app/g) — sonst driften die beiden Ansichten auseinander.
 import {
-  AnlagenBlock, AntwortText, DebattenBlock, GrafikKarte, ParteienListe, PresseBlock,
+  AnlagenBlock, AntwortText, DebattenBaustein, debatteArt, debatteTop, GrafikKarte, ParteienListe, PresseBlock,
   TagesordnungBlock,
   type AnlagenHinweis, type DebattenHinweis, type ParteiMeinung, type PresseHinweis,
   type QaGrafik, type SitzungsInfo,
@@ -2181,7 +2181,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                   </span>
                 </p>
               )}
-              <BelegeSpalte turn={letzter} flashId={flashId}
+              <BelegeSpalte turn={letzter} flashId={flashId} fertig={!loading}
                 onDazuFragen={(title) => frageStellen(`Erzähl mir mehr zu „${title}".`)}
                 onFlash={flash} />
             </>
@@ -2506,7 +2506,16 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
                 showAll={showAll} setShowAll={setShowAll} flashId={flashId} ankerPrefix={`qa-source-${turnIdx}`}
                 onDazuFragen={onDazuFragen} />
             )}
-            {(turn.debates?.length ?? 0) > 0 && <DebattenBlock debates={turn.debates} />}
+            {!turn.research && !turn.unclear && (
+              <DebattenBaustein question={turn.context || turn.question}
+                beschlussIds={turn.sources.slice(0, 40).map((q) => q.id)}
+                debates={turn.debates ?? []}
+                nachladen={!beschaeftigt && !!turn.answer && !turn.fehler && !turn.abgebrochen} />
+            )}
+            {turn.research && (turn.debates?.length ?? 0) > 0 && (
+              <DebattenBaustein question={turn.question} beschlussIds={[]}
+                debates={turn.debates ?? []} nachladen={false} />
+            )}
             {(turn.attachments?.length ?? 0) > 0 && (
               <AnlagenBlock attachments={turn.attachments ?? []} buchstaben={anlBuchstaben}
                 ankerPrefix={`qa-anlage-${turnIdx}`} />
@@ -2852,9 +2861,11 @@ function GespraecheSheet({ gespraeche, gesamt, treffer, weitere, laedtMehr, such
 
 /* ------------------- Belege-Spalte (Desktop, Design 2⑤) ------------------- */
 
-function BelegeSpalte({ turn, flashId, onFlash, onDazuFragen }: {
+function BelegeSpalte({ turn, flashId, onFlash, onDazuFragen, fertig = true }: {
   turn: Turn; flashId: number | null; onFlash: (id: number) => void;
   onDazuFragen?: (title: string) => void;
+  /** Die Antwort ist fertig — erst dann lädt der Debatten-Baustein nach. */
+  fertig?: boolean;
 }) {
   const [showAll, setShowAll] = useState(false);
   const idToNum = useIdToNum(turn);
@@ -2870,7 +2881,11 @@ function BelegeSpalte({ turn, flashId, onFlash, onDazuFragen }: {
           showAll={showAll} setShowAll={setShowAll} flashId={flashId} ankerPrefix="qa-col"
           onDazuFragen={onDazuFragen} />
       )}
-      {(turn.debates?.length ?? 0) > 0 && <DebattenBlock debates={turn.debates} />}
+      <DebattenBaustein question={turn.context || turn.question}
+        beschlussIds={turn.sources.slice(0, 40).map((q) => q.id)}
+        debates={turn.debates ?? []}
+        nachladen={fertig && !turn.research && !turn.unclear && !!turn.answer && !turn.fehler
+          && !turn.abgebrochen} />
       {(turn.attachments?.length ?? 0) > 0 && (
         <AnlagenBlock attachments={turn.attachments ?? []} buchstaben={anlBuchstaben}
           ankerPrefix="qa-anlage-col" />
@@ -3036,8 +3051,8 @@ function TeilenKnopf({ turn, zitierte }: { turn: Turn; zitierte: QaSource[] }) {
               committee: q.committee ?? null, outcome: q.outcome ?? null,
             })),
             debates: (turn.debates ?? []).slice(0, 20).map((d) => ({
-              speaker: d.speaker, party: d.party, art: d.art,
-              top: (d.top ?? "")?.slice(0, 300) || null,
+              speaker: d.speaker, party: d.party, art: debatteArt(d),
+              top: (debatteTop(d) ?? "")?.slice(0, 300) || null,
               excerpt: (d.excerpt ?? "").slice(0, 2000),
               committee: d.committee, date: d.date,
               minutes_url: d.minutes_url?.slice(0, 500) ?? null,

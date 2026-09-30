@@ -111,6 +111,8 @@ qa_feedback_limiter = RateLimiter(max_calls=20, window_seconds=600)
 # Schreiblast, nicht den Inhalt.
 page_view_limiter = RateLimiter(max_calls=120, window_seconds=600)
 partei_meinungen_limiter = RateLimiter(max_calls=15, window_seconds=600)
+#: Nachladen des Debatten-Bausteins: je Antwort einmal, automatisch.
+debatten_limiter = RateLimiter(max_calls=30, window_seconds=600)
 qa_share_limiter = RateLimiter(max_calls=10, window_seconds=600)
 # Öffentliche Share-Links brauchen nach App-Store-Richtlinie 1.2 einen
 # Meldeweg ohne Konto. Drei Meldungen in zehn Minuten reichen für einen
