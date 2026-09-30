@@ -92,6 +92,11 @@ jobs:
               fi
               export COUNCIL_WORTBEITRAG_MODEL="$MODELL"
             fi
+            # `[e]xtract…` statt `extract…`: pgrep -f durchsucht ganze
+            # Kommandozeilen, und die Shell, die dieses Skript ausführt, trägt
+            # den Suchbegriff selbst — sie fand sich immer und meldete „läuft
+            # schon“ (erster Voll-Start 30.09.2026). Die Klammer passt auf den
+            # Python-Prozess, aber nicht auf ihren eigenen Wortlaut.
             LOG=data/wortbeitraege_neu.log
             PY=.venv/bin/python
             case "$MODUS" in
@@ -101,7 +106,7 @@ jobs:
                 $PY scripts/extract_wortbeitraege.py --ksinr "$KSINR" ;;
               probe) $PY scripts/extract_wortbeitraege.py --neu-vor "$STICHTAG" --limit 20 ;;
               voll)
-                if pgrep -f "extract_wortbeitraege.py --neu-vor" > /dev/null; then
+                if pgrep -f "[e]xtract_wortbeitraege.py --neu-vor" > /dev/null; then
                   echo "Läuft schon — Stand: modus=stand"; tail -n 5 "$LOG" || true; exit 0
                 fi
                 echo "Start $(date -u +%FT%TZ), Modell: ${COUNCIL_WORTBEITRAG_MODEL:-Vorgabe}" >> "$LOG"
@@ -110,6 +115,6 @@ jobs:
                 echo "Voll-Lauf gestartet (Log: $LOG)."; tail -n 3 "$LOG" ;;
               stand)
                 tail -n 15 "$LOG" || echo "noch kein Log"
-                pgrep -f "extract_wortbeitraege.py --neu-vor" > /dev/null && echo "→ läuft noch" || echo "→ läuft nicht"
+                pgrep -f "[e]xtract_wortbeitraege.py --neu-vor" > /dev/null && echo "→ läuft noch" || echo "→ läuft nicht"
                 $PY scripts/extract_wortbeitraege.py --neu-vor "$STICHTAG" --trocken ;;
             esac
