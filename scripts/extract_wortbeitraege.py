@@ -12,6 +12,12 @@ Bestand (~800 Protokolle, grob $6–8)::
 
     python scripts/extract_wortbeitraege.py            # alles Fehlende
     python scripts/extract_wortbeitraege.py --limit 5  # Stichprobe
+
+Nachextraktion nach einer Prompt-Änderung (ersetzt die Beiträge des
+Protokolls samt FTS und Embeddings)::
+
+    python scripts/extract_wortbeitraege.py --ksinr 4664 --trocken
+    python scripts/extract_wortbeitraege.py --neu-vor 2026-09-23 --limit 20
 """
 from __future__ import annotations
 
@@ -34,10 +40,22 @@ from kern import llm  # noqa: E402
 COUNCIL_DB = Path(os.environ.get("COUNCIL_DB") or ROOT / "data" / "council.sqlite")
 
 
-def process(db_path: Path, limit: int | None, workers: int) -> dict:
+def process(db_path: Path, limit: int | None, workers: int,
+            ksinrs: list[int] | None = None, neu_vor: str | None = None,
+            trocken: bool = False) -> dict:
     store = CouncilStore(db_path)
     try:
-        todo = store.ksinr_ohne_wortbeitraege(limit or 0)
+        if ksinrs:
+            todo = ksinrs[:limit] if limit else ksinrs
+        elif neu_vor:
+            todo = store.ksinr_wortbeitraege_vor(neu_vor, limit or 0)
+        else:
+            todo = store.ksinr_ohne_wortbeitraege(limit or 0)
+        if trocken:
+            print(f"Würde {len(todo)} Protokolle extrahieren: {todo[:20]}"
+                  f"{' …' if len(todo) > 20 else ''}", flush=True)
+            return {"protokolle": 0, "fehler": 0, "contributions": 0,
+                    "embeddings": 0, "kosten_usd": 0.0, "geplant": len(todo)}
         ok = fehler = contributions = 0
 
         # Nur LLM-Calls in den Workern; DB-Zugriffe (Lesen wie Schreiben)
@@ -86,9 +104,18 @@ def main() -> dict:
     ap.add_argument("--limit", type=int, default=None, help="max. Protokolle in diesem Lauf")
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--db", default=str(COUNCIL_DB))
+    ap.add_argument("--ksinr", default="",
+                    help="kommagetrennt: genau diese Protokolle (neu) extrahieren")
+    ap.add_argument("--neu-vor", default=None, metavar="DATUM",
+                    help="Protokolle neu extrahieren, deren Beiträge vor DATUM entstanden")
+    ap.add_argument("--trocken", action="store_true", help="nur zählen, nichts aufrufen")
     args = ap.parse_args()
 
-    stats = process(Path(args.db), args.limit, args.workers)
+    ksinrs = [int(k) for k in args.ksinr.split(",") if k.strip()]
+    stats = process(Path(args.db), args.limit, args.workers,
+                    ksinrs=ksinrs or None, neu_vor=args.neu_vor, trocken=args.trocken)
+    if args.trocken:
+        return stats
     print(f"Wortbeiträge: {stats['contributions']} aus {stats['protokolle']} Protokollen "
           f"({stats['fehler']} Fehler, {stats['embeddings']} Vektoren, "
           f"~${stats['kosten_usd']})", flush=True)
