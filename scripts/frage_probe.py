@@ -55,6 +55,8 @@ def fragen(basis: str, token: str, frage: str, verlauf: list[dict]) -> str:
     )
     text: list[str] = []
     quellen: list[dict] = []
+    debatten: list[dict] = []
+    kopf: dict = {}
     zitiert: list[int] = []
     with urllib.request.urlopen(anfrage, timeout=240) as antwort:
         for roh in antwort:
@@ -70,15 +72,26 @@ def fragen(basis: str, token: str, frage: str, verlauf: list[dict]) -> str:
                 text.append(ereignis.get("text") or "")
             elif art == "sources":
                 quellen = ereignis.get("sources") or ereignis.get("items") or []
+                debatten = ereignis.get("debates") or []
+                kopf = {"typ": ereignis.get("qtype"),
+                        "ort": [s.get("name") for s in ereignis.get("steckbriefe") or []]}
             elif art == "done":
                 zitiert = ereignis.get("cited") or []
     ganz = "".join(text)
     print("=" * 78)
     print("FRAGE:", frage)
-    print(f"({time.time() - t0:.1f} s · {len(quellen)} Quellen · {len(zitiert)} zitiert)")
+    print(f"({time.time() - t0:.1f} s · {len(quellen)} Quellen · {len(zitiert)} zitiert · "
+          f"Fragetyp {kopf.get('typ')} · Orte {kopf.get('ort') or '—'})")
     for q in quellen[:8]:
         print(f"   - {q.get('session_date') or q.get('date') or '?'} | "
               f"{(q.get('title') or '')[:90]} | {q.get('id')}")
+    # Die Debatten gehören zur Probe: Ob ein Wortbeitrag im Kontext war, sieht
+    # man der Antwort nicht an (Befund 30.09.2026, Schlossplatz-Spielplatz).
+    print(f"  Aus den Ratsdebatten: {len(debatten)}")
+    for d in debatten[:10]:
+        print(f"   - {d.get('session_date') or '?'} | {(d.get('speaker') or '?')[:30]} | "
+              f"{(d.get('top') or d.get('agenda_item') or '')[:50]} | "
+              f"{(d.get('text') or '')[:70]}")
     print("ANTWORT:")
     print(ganz.strip())
     return ganz
