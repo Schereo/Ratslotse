@@ -119,9 +119,12 @@ _RERANK_CACHE: dict[tuple, float] = {}
 _RERANK_CACHE_MAX = 4000
 
 
-def rerank(query: str, docs: list[tuple]) -> list[tuple]:
+def rerank(query: str, docs: list[tuple], max_chars: int | None = None) -> list[tuple]:
     """Reorder ``(id, text)`` candidates by cross-encoder relevance to ``query``.
-    Returns ``[(id, score)]`` best first. Raises ImportError if fastembed is missing."""
+    Returns ``[(id, score)]`` best first. Raises ImportError if fastembed is missing.
+
+    ``max_chars`` hebt die Kappung der Texte an (Vorgabe ``PAIR_MAX_CHARS``): Eine
+    Debatten-Aussage trägt ihre Gründe hinten."""
     if not docs:
         return []
     # Doppelte ids wären im Ergebnis ohnehin bedeutungslos — und würden den
@@ -132,7 +135,7 @@ def rerank(query: str, docs: list[tuple]) -> list[tuple]:
         if i in gesehen:
             continue
         gesehen.add(i)
-        gekappt.append((i, (t or "")[:PAIR_MAX_CHARS]))
+        gekappt.append((i, (t or "")[:max_chars or PAIR_MAX_CHARS]))
 
     werte: dict = {}
     offen: list[tuple] = []
@@ -497,12 +500,16 @@ KONTEXT_PAIR_MAX = int(os.environ.get("COUNCIL_KONTEXT_PAIR_MAX", "150"))
 
 
 def _rerank_kontext(query: str, kandidaten: list[tuple], top_k: int,
-                    min_rerank: float | None = None) -> list[tuple]:
+                    min_rerank: float | None = None, pair_max: int | None = None) -> list[tuple]:
     """``[(id, text)]``-Kandidaten der Zusatzkanäle per Cross-Encoder bestätigen —
     nur Paare über dem Cutoff überleben. Ohne Reranker (fastembed fehlt) lieber
     leer als Rauschen: die Zusatzblöcke sind optional."""
     try:
-        ranked = rerank(query, [(i, (t or "")[:KONTEXT_PAIR_MAX]) for i, t in kandidaten])
+        grenze_text = pair_max or KONTEXT_PAIR_MAX
+        paare = [(i, (t or "")[:grenze_text]) for i, t in kandidaten]
+        # `max_chars` nur, wenn es jemand wirklich setzt: Die Vorgabe der
+        # Zusatzkanäle bleibt byte-gleich (und Test-Doubles brauchen es nicht).
+        ranked = rerank(query, paare, max_chars=pair_max) if pair_max else rerank(query, paare)
     except Exception:  # noqa: BLE001
         return []
     grenze = KONTEXT_RERANK_MIN if min_rerank is None else min_rerank
@@ -752,7 +759,8 @@ def _wb_matrix(store):
 
 
 def search_wortbeitraege(store, query: str, expanded: str, top_k: int = 4,
-                         min_score: float = 0.45, kandidaten: int | None = None) -> list[tuple]:
+                         min_score: float = 0.45, kandidaten: int | None = None,
+                         pair_max: int | None = None) -> list[tuple]:
     """Beste Wortbeiträge (Debatten, Anfragen, Einwohnerfragen) zur Frage →
     ``[(contribution_id, score)]``. Wie search_presse: Vektor liefert Kandidaten, der
     Cross-Encoder bestätigt — der Debatten-Block soll nur bei echter
@@ -771,7 +779,10 @@ def search_wortbeitraege(store, query: str, expanded: str, top_k: int = 4,
 
     ``kandidaten`` weitet das Feld vor dem Cross-Encoder (Vorgabe: dreimal
     ``top_k``, mindestens 12); die Gründliche Recherche liest mehr und darf mehr
-    prüfen lassen."""
+    prüfen lassen. ``pair_max`` lässt den Cross-Encoder mehr vom Text lesen als
+    die 150 Zeichen der Zusatzkanäle: Pienings Begründung zum Schlossplatz (569
+    Zeichen; Planungsrecht, Denkmalschutz, Veranstaltungsflächen, Alternativen
+    stehen hinten) bekam gekürzt −2,28, ganz −0,69 — der Cutoff liegt bei −1,5."""
     best: dict[int, float] = {}
     vektor_ok = False
     try:
@@ -797,7 +808,7 @@ def search_wortbeitraege(store, query: str, expanded: str, top_k: int = 4,
     texte = {r["id"]: " — ".join(t for t in (r.get("top"), r.get("text")) if t)
              for r in rows}
     return _rerank_kontext(query, [(wid, texte[wid]) for wid, _ in kandidaten_liste if wid in texte],
-                           top_k)
+                           top_k, pair_max=pair_max)
 
 
 #: Zusagen ohne Inhalt: „Ich sichere eine Antwort zu Protokoll zu", „wird

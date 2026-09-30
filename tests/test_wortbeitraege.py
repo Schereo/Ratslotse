@@ -481,6 +481,32 @@ def test_vektorsuche_bettet_frage_und_begriffe_ein_und_prueft_ein_weites_feld(st
     assert [t[0] for t in treffer] == [ids[0]] and gesehen["n"] == 41
 
 
+def test_recherche_laesst_den_cross_encoder_mehr_vom_text_lesen(store, monkeypatch):
+    """Pienings Begründung (569 Zeichen, die Gründe hinten): bei 150 Zeichen
+    −2,28 unter dem Cutoff, ganz gelesen −0,69 (Gold-Test 30.09.2026). Die
+    Zusatzkanäle der schnellen Frage behalten ihre Kappung."""
+    np = pytest.importorskip("numpy")
+    from council import embeddings as emb
+
+    lang = "Einleitung zum Workshop. " * 12 + "Denkmalschutz: kein Planrecht für einen Spielplatz."
+    store.save_wortbeitraege(100, [{**BEITRAG, "text": lang}])
+    wid = store._conn.execute("SELECT id FROM council_speeches").fetchone()[0]
+    monkeypatch.setattr(emb, "_wb_matrix", lambda s: ([wid], np.array([[1.0, 0.0]], dtype="float32")))
+    monkeypatch.setattr(emb, "embed", lambda texte: np.array([[1.0, 0.0]] * len(texte), dtype="float32"))
+    gelesen = {}
+
+    def rerank(q, docs, max_chars=None):
+        gelesen["laenge"] = max(len(t) for _i, t in docs)
+        # „Denkmalschutz" steht hinten: nur wer bis dorthin liest, findet es.
+        return [(i, -0.7 if "Denkmalschutz" in t else -2.3) for i, t in docs]
+
+    monkeypatch.setattr(emb, "rerank", rerank)
+    assert emb.search_wortbeitraege(store, "Frage", "Begriffe") == []           # Zusatzkanal: 150
+    assert gelesen["laenge"] == emb.KONTEXT_PAIR_MAX
+    treffer = emb.search_wortbeitraege(store, "Frage", "Begriffe", pair_max=700)  # Recherche
+    assert [t[0] for t in treffer] == [wid] and gelesen["laenge"] > emb.KONTEXT_PAIR_MAX
+
+
 # ------------------------------ QA-Kontextblock -----------------------------
 
 def test_fraktions_label_normalisierung():
