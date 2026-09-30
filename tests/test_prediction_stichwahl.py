@@ -257,11 +257,17 @@ def test_admin_korrigiert_die_partei(client, store):
 
 # ------------------------------------------------------------------ Von der Ratswahl zur Stichwahl
 
-def test_die_hauptrunde_schickt_neue_zur_stichwahl(client, store):
+def test_die_hauptrunde_schickt_neue_zur_stichwahl(client, store, monkeypatch):
     """``/tipp`` steht auf alten QR-Codes und Sharepics — wer heute dort
     landet, soll zum laufenden Spiel, nicht zu „Tippfrist vorbei, trotzdem
     tippen" der Ratswahl. Solange die Ratswahl-Runde offen ist, gibt es
-    keinen Nachfolger."""
+    keinen Nachfolger.
+
+    Der Fokus wird eingefroren: ``elections.focus()`` rechnet mit der Uhr und
+    zeigt drei Tage nach der Stichwahl (27.09.2026, 30.09. ab ~16 Uhr UTC) nicht
+    mehr auf sie — der Test lief davor grün und war danach für JEDEN Pull
+    Request rot."""
+    monkeypatch.setattr(elections, "focus", lambda jetzt=None: elections.get("ob-stichwahl-2026"))
     assert client.get("/api/tipp/setup").json()["successor_path"] == ""
     game_id = store.prediction_spiel_zeile("ratswahl")["id"]
     store.prediction_game_set(game_id, phase="locked")
