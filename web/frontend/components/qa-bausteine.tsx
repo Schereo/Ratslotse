@@ -28,7 +28,8 @@ import {
   CITE_EXACT_RE, CITE_SOURCE, citationIds, datenEindeutschen, fmtDatumKurz,
 } from "@/lib/qa-belege";
 import { markiereBegriffe } from "@/components/glossary-text";
-import { apiUrl, authHeaders } from "@/lib/api";
+import { api, apiUrl, authHeaders } from "@/lib/api";
+import type { ApiAntwort } from "@/lib/vertrag";
 import { Zeitreihe } from "@/components/grafik/zeitreihe";
 import { useAuth } from "@/lib/auth";
 import { darfHaushalt } from "@/lib/rechte";
@@ -73,8 +74,14 @@ export type QaGrafik = {
 };
 
 export type DebattenHinweis = {
-  speaker: string | null; party: string | null; art: string;
-  top: string | null; excerpt: string; committee: string | null; date: string | null;
+  /** Kennung des Beitrags — für den Abgleich mit nachgeladenen Beiträgen. */
+  id?: number | null;
+  /** Das Backend liefert `kind`/`agenda_item`; gespeicherte Gespräche und
+   *  Snapshots tragen noch `art`/`top`. Gelesen wird über `debatteArt`/
+   *  `debatteTop`, die beides kennen. */
+  kind?: string | null; agenda_item?: string | null;
+  speaker: string | null; party: string | null; art?: string;
+  top?: string | null; excerpt: string; committee: string | null; date: string | null;
   /** getfile-URL des Protokoll-PDFs — ältere gespeicherte Gespräche kennen
    *  das Feld nicht, dann fehlt schlicht das Icon. */
   minutes_url?: string | null;
@@ -865,7 +872,86 @@ export function TagesordnungBlock({ sessions }: { sessions: SitzungsInfo[] }) {
 /** Task 16: Wortbeiträge aus den Sitzungsprotokollen — was im Rat GESAGT
  *  wurde (Reden, Anfragen mit Verwaltungsantwort, Einwohnerfragen, Zusagen),
  *  im Unterschied zu dem, was beschlossen wurde. */
-export function DebattenBlock({ debates }: { debates: DebattenHinweis[] }) {
+/** Art des Beitrags (Rede, Anfrage, Zusage …) — neue und alte Feldnamen.
+ *  Bis 30.09.2026 las der Baustein nur `art`, das Backend lieferte `kind`:
+ *  „Rede“/„Anfrage“ und das Abzeichen „Zusage der Verwaltung“ fehlten immer. */
+export function debatteArt(d: DebattenHinweis): string {
+  return d.kind ?? d.art ?? "";
+}
+
+export function debatteTop(d: DebattenHinweis): string | null {
+  return d.agenda_item ?? d.top ?? null;
+}
+
+function debatteSchluessel(d: DebattenHinweis): string {
+  return d.id != null ? `id:${d.id}` : `${d.speaker ?? ""}|${d.date ?? ""}|${d.excerpt.slice(0, 80)}`;
+}
+
+/** Nachgeladene Debatten je Frage — ein Neurendern lädt nicht erneut. */
+const debattenCache = new Map<string, DebattenHinweis[]>();
+/** Laufende Anfragen je Frage: Spalte und Verlauf rendern denselben Turn auf
+ *  breiten Schirmen zweimal — ohne das gingen zwei gleiche Anfragen raus. */
+const debattenLaufend = new Map<string, Promise<DebattenHinweis[]>>();
+
+function ladeDebatten(question: string, decisionIds: number[]): Promise<DebattenHinweis[]> {
+  const laufend = debattenLaufend.get(question);
+  if (laufend) return laufend;
+  const p = api.post<ApiAntwort<"/council/debates", "post">>("/council/debates", {
+    question, decision_ids: decisionIds,
+  })
+    .then((b) => {
+      const liste = (b.debates ?? []) as DebattenHinweis[];
+      debattenCache.set(question, liste);
+      return liste;
+    })
+    .finally(() => { debattenLaufend.delete(question); });
+  debattenLaufend.set(question, p);
+  return p;
+}
+
+/** Der Baustein „Aus den Ratsdebatten“ mit AUTOMATISCHEM Nachladen: Die
+ *  Antwort bekommt nur wenige Beiträge (das Modell soll schnell sein);
+ *  sobald sie steht, holt dieser Baustein die übrige Debatte zum Thema
+ *  (`POST /council/debates`, ohne Sprachmodell) und hängt an, was fehlt.
+ *  Anlass: Die Aussage der Verwaltung vom 16.04.2026 zum Schlossplatz-
+ *  Spielplatz stand weder in der Antwort noch sonst irgendwo zum Nachlesen. */
+export function DebattenBaustein({ question, beschlussIds, debates, nachladen = true }: {
+  question: string; beschlussIds: number[]; debates: DebattenHinweis[];
+  /** Aus, solange die Antwort noch streamt — erst danach lohnt es. */
+  nachladen?: boolean;
+}) {
+  const [weitere, setWeitere] = useState<DebattenHinweis[] | null>(
+    () => debattenCache.get(question) ?? null);
+  const idsKey = beschlussIds.join(",");
+  useEffect(() => {
+    if (!nachladen || question.trim().length < 3) return;
+    const gemerkt = debattenCache.get(question);
+    if (gemerkt) { setWeitere(gemerkt); return; }
+    let aktiv = true;
+    ladeDebatten(question, idsKey ? idsKey.split(",").map(Number) : [])
+      .then((liste) => { if (aktiv) setWeitere(liste); })
+      // Nicht cachen: ein Aussetzer soll nur diesen Moment betreffen.
+      .catch(() => { if (aktiv) setWeitere([]); });
+    return () => { aktiv = false; };
+  }, [question, idsKey, nachladen]);
+
+  const alle = useMemo(() => {
+    const gesehen = new Set(debates.map(debatteSchluessel));
+    const neu = (weitere ?? []).filter((d) => !gesehen.has(debatteSchluessel(d)));
+    return { liste: [...debates, ...neu], neu: neu.length };
+  }, [debates, weitere]);
+
+  if (alle.liste.length === 0) return null;
+  return <DebattenBlock debates={alle.liste} nachgeladen={alle.neu}
+    laedt={nachladen && weitere === null} />;
+}
+
+export function DebattenBlock({ debates, nachgeladen = 0, laedt = false }: {
+  debates: DebattenHinweis[];
+  /** Wie viele der Beiträge erst nach der Antwort dazukamen. */
+  nachgeladen?: number;
+  laedt?: boolean;
+}) {
   const artLabel: Record<string, string> = {
     speech: "Rede", inquiry: "Anfrage", citizen_question: "Einwohnerfrage", pledge: "Zusage",
   };
@@ -873,12 +959,40 @@ export function DebattenBlock({ debates }: { debates: DebattenHinweis[] }) {
     <div className="rounded-xl border border-dashed border-border p-3">
       <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
         Aus den Ratsdebatten <span className="text-muted-foreground/60">· Protokolle</span>
+        {debates.length > 1 && (
+          <span className="text-muted-foreground/60"> · {debates.length} Beiträge</span>
+        )}
       </p>
+      {/* Erst die Beiträge, auf die sich die Antwort stützt; darunter, klar
+          abgesetzt, was nach der Antwort dazukam (neueste Sitzung zuerst).
+          Ohne die Trennung sprang die Datumsfolge mitten in der Liste. */}
       <ul className="mt-1.5 space-y-2">
-        {debates.map((d, i) => (
+        {debates.slice(0, debates.length - nachgeladen).map((d, i) => (
           <DebattenZeile key={i} d={d} artLabel={artLabel} />
         ))}
       </ul>
+      {nachgeladen > 0 && (
+        <>
+          <p className="mt-3 border-t border-dashed border-border pt-2 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+            Weitere Beiträge zum Thema <span className="text-muted-foreground/60">· neueste zuerst</span>
+          </p>
+          <ul className="mt-1.5 space-y-2">
+            {debates.slice(debates.length - nachgeladen).map((d, i) => (
+              <DebattenZeile key={`n${i}`} d={d} artLabel={artLabel} />
+            ))}
+          </ul>
+        </>
+      )}
+      {laedt && (
+        <p className="mt-2 text-[11px] text-muted-foreground" aria-live="polite">
+          Weitere Beiträge zum Thema werden geladen …
+        </p>
+      )}
+      {nachgeladen > 0 && (
+        <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground/60">
+          Die Antwort oben stützt sich nur auf die Beiträge über der Linie.
+        </p>
+      )}
       {/* Ehrlichkeit zur Quelle: Ratsprotokolle sind Verlaufsprotokolle —
           der wesentliche Inhalt in indirekter Rede, kein Wortprotokoll. */}
       <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground/60">
@@ -906,12 +1020,12 @@ function DebattenZeile({ d, artLabel }: { d: DebattenHinweis; artLabel: Record<s
           {/* Zusagen der Verwaltung sind Selbstverpflichtungen — kein
               Meinungsbeitrag unter vielen. Sie bekommen deshalb ein eigenes
               Abzeichen statt nur ein graues Wörtchen. */}
-          {d.art === "pledge" ? (
+          {debatteArt(d) === "pledge" ? (
             <span className="ml-1.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
               Zusage der Verwaltung
             </span>
           ) : (
-            <span className="ml-1.5 font-normal text-muted-foreground">· {artLabel[d.art] ?? d.art}</span>
+            <span className="ml-1.5 font-normal text-muted-foreground">· {artLabel[debatteArt(d)] ?? debatteArt(d)}</span>
           )}
         </span>
         {d.date && <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{fmtDatumKurz(d.date)}</span>}

@@ -6935,6 +6935,131 @@
         "title": "DataLayer",
         "type": "object"
       },
+      "DebateHint": {
+        "description": "Ein Wortbeitrag im Baustein „Aus den Ratsdebatten“ — dieselbe Form wie\n``debates`` im Quellen-Ereignis der KI-Frage (``_debatten_kompakt``).",
+        "properties": {
+          "agenda_item": {
+            "title": "Agenda Item",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "committee": {
+            "title": "Committee",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date": {
+            "title": "Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "excerpt": {
+            "title": "Excerpt",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "kind": {
+            "title": "Kind",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "minutes_page": {
+            "title": "Minutes Page",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "minutes_url": {
+            "title": "Minutes Url",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "party": {
+            "title": "Party",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "speaker": {
+            "title": "Speaker",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "speaker",
+          "party",
+          "kind",
+          "agenda_item",
+          "excerpt",
+          "committee",
+          "date",
+          "minutes_url",
+          "minutes_page"
+        ],
+        "title": "DebateHint",
+        "type": "object"
+      },
+      "DebatesBody": {
+        "properties": {
+          "decision_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "maxItems": 40,
+            "title": "Decision Ids",
+            "type": "array"
+          },
+          "question": {
+            "maxLength": 300,
+            "minLength": 3,
+            "title": "Question",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question"
+        ],
+        "title": "DebatesBody",
+        "type": "object"
+      },
+      "DebatesMore": {
+        "properties": {
+          "debates": {
+            "items": {
+              "$ref": "#/components/schemas/DebateHint"
+            },
+            "title": "Debates",
+            "type": "array"
+          }
+        },
+        "required": [
+          "debates"
+        ],
+        "title": "DebatesMore",
+        "type": "object"
+      },
       "DebtPlanRow": {
         "description": "Der voraussichtliche Stand der Schulden laut Haushaltsplan (Anlage 003).\n\n``entity`` ist „Kernhaushalt\" oder ein Eigenbetrieb, ``code`` die\nSchuldenart (1.2 Kredite für Investitionen … 5) oder ``total``.\n``start_prior`` ist der Stand zu Beginn des Vorjahres, ``start_expected``\nder erwartete zu Beginn des Planjahres — beide in Euro.",
         "properties": {
@@ -30534,6 +30659,48 @@
           }
         },
         "summary": "Fundstueck",
+        "tags": [
+          "council"
+        ]
+      }
+    },
+    "/api/council/debates": {
+      "post": {
+        "description": "Der Baustein „Aus den Ratsdebatten“, vollständig — nach der Antwort.\n\nDie Antwort selbst bekommt wenige, ausgewählte Beiträge (das Modell soll\nschnell sein und nicht in Material ertrinken). Wer darunter weiterliest,\ndarf alles sehen: Das Frontend lädt diesen Endpunkt automatisch, sobald die\nAntwort steht, und hängt an, was es noch nicht zeigt. Kein Sprachmodell,\nnur Suche und Rerank. Anlass: Zum Schlossplatz-Spielplatz fehlte die\nAussage der Verwaltung vom 16.04.2026 in der Antwort — lesen konnte man\nsie nirgends.\n\nZwei Kanäle wie in der Gründlichen Recherche: die weite Ähnlichkeitssuche\n(Frage und Begriffe, 150 Kandidaten, 700 Zeichen im Rerank) und die\nAussprache zu allen belegten Beschlüssen. Neueste Sitzung zuerst.",
+        "operationId": "debatten_nachladen_api_council_debates_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DebatesBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DebatesMore"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Debatten Nachladen",
         "tags": [
           "council"
         ]
