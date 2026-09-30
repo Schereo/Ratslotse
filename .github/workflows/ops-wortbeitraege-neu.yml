@@ -48,6 +48,11 @@ on:
         description: "Modell (leer = COUNCIL_WORTBEITRAG_MODEL bzw. Vorgabe im Code)"
         type: string
         default: ""
+      auswahl:
+        description: "alle fälligen, oder nur Protokolle mit Protokollnotiz"
+        type: choice
+        options: [alle, protokollnotizen]
+        default: alle
 
 concurrency:
   group: ops-wortbeitraege-neu-${{ inputs.umgebung }}
@@ -63,6 +68,7 @@ jobs:
           STICHTAG: ${{ inputs.stichtag }}
           KSINR: ${{ inputs.ksinr }}
           MODELL: ${{ inputs.modell }}
+          AUSWAHL: ${{ inputs.auswahl }}
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ inputs.umgebung == 'prod' && secrets.VPS_HOST || secrets.VPS_DEV_HOST }}
@@ -76,7 +82,7 @@ jobs:
           command_timeout: 60m
           # Eingaben über `envs`, nicht als `${{ … }}` im Skripttext — ein
           # interpolierter Wert wäre eine Kommandozeile (wie ops-vorlagen-backfill.yml).
-          envs: MODUS,STICHTAG,KSINR,MODELL
+          envs: MODUS,STICHTAG,KSINR,MODELL,AUSWAHL
           script: |
             set -e
             cd ~/app
@@ -98,27 +104,29 @@ jobs:
             # meldete „läuft schon“. Auch `[e]xtract…` half nicht, weil die
             # nohup-Zeile unten denselben Namen ungeklammert enthält (beides
             # am 30.09.2026 auf Prod).
+            FILTER=""
+            [ "$AUSWAHL" = "protokollnotizen" ] && FILTER="--nur-protokollnotizen"
             LOG=data/wortbeitraege_neu.log
             PID=data/wortbeitraege_neu.pid
             laeuft() { [ -f "$PID" ] && kill -0 "$(cat "$PID")" 2>/dev/null; }
             PY=.venv/bin/python
             case "$MODUS" in
-              trocken) $PY scripts/extract_wortbeitraege.py --neu-vor "$STICHTAG" --trocken ;;
+              trocken) $PY scripts/extract_wortbeitraege.py --neu-vor "$STICHTAG" $FILTER --trocken ;;
               einzeln)
                 [ -n "$KSINR" ] || { echo "modus=einzeln braucht ksinr"; exit 2; }
                 $PY scripts/extract_wortbeitraege.py --ksinr "$KSINR" ;;
-              probe) $PY scripts/extract_wortbeitraege.py --neu-vor "$STICHTAG" --limit 20 ;;
+              probe) $PY scripts/extract_wortbeitraege.py --neu-vor "$STICHTAG" $FILTER --limit 20 ;;
               voll)
                 if laeuft; then
                   echo "Läuft schon — Stand: modus=stand"; tail -n 5 "$LOG" || true; exit 0
                 fi
                 echo "Start $(date -u +%FT%TZ), Modell: ${COUNCIL_WORTBEITRAG_MODEL:-Vorgabe}" >> "$LOG"
-                nohup $PY scripts/extract_wortbeitraege.py --neu-vor "$STICHTAG" >> "$LOG" 2>&1 &
+                nohup $PY scripts/extract_wortbeitraege.py --neu-vor "$STICHTAG" $FILTER >> "$LOG" 2>&1 &
                 echo $! > "$PID"
                 sleep 5
                 echo "Voll-Lauf gestartet (Log: $LOG)."; tail -n 3 "$LOG" ;;
               stand)
                 tail -n 15 "$LOG" || echo "noch kein Log"
                 if laeuft; then echo "→ läuft noch (PID $(cat "$PID"))"; else echo "→ läuft nicht"; fi
-                $PY scripts/extract_wortbeitraege.py --neu-vor "$STICHTAG" --trocken ;;
+                $PY scripts/extract_wortbeitraege.py --neu-vor "$STICHTAG" $FILTER --trocken ;;
             esac
