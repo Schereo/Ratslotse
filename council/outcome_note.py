@@ -28,13 +28,14 @@ from __future__ import annotations
 import re
 
 #: Die Ergebnisse, bei denen der Beschlusstext NICHT gilt.
-NOT_ADOPTED = ("rejected", "postponed", "no_decision")
+NOT_ADOPTED = ("rejected", "postponed", "no_decision", "settled")
 
 #: Wie das Ergebnis im Prompt heißt.
 LABEL = {
     "rejected": "ABGELEHNT",
     "postponed": "VERTAGT, VERWIESEN ODER ZURÜCKGESTELLT — noch nicht entschieden",
     "no_decision": "KEIN BESCHLUSS GEFASST",
+    "settled": "GILT ALS BEHANDELT — kein inhaltlicher Beschluss",
 }
 
 _RULE = {
@@ -51,6 +52,14 @@ _RULE = {
         "entschieden: Er wurde vertagt, in ein anderes Gremium verwiesen oder "
         "zurückgestellt. Schreib genau das, und beschreibe den Inhalt als Vorschlag "
         "— nie so, als sei er beschlossen."
+    ),
+    "settled": (
+        "Der Ausschuss hat den Punkt auf Antrag als behandelt erklärt („gilt als "
+        "behandelt“): Er hat über den Inhalt NICHT abgestimmt und nichts beschlossen — "
+        "das „einstimmig“ im Abstimmungssatz gehört zum Verfahrensantrag, nicht zum "
+        "Vorschlag. Der Beschlusstext unten ist nur der VORSCHLAG. Schreib ausdrücklich, "
+        "dass der Punkt als behandelt galt, und beschreibe den Inhalt als Vorschlag — "
+        "nie so, als sei er beschlossen oder werde umgesetzt. Erfinde keine Gründe."
     ),
     "no_decision": (
         "Zu diesem Punkt wurde KEIN Beschluss gefasst. Schreib das ausdrücklich; "
@@ -77,6 +86,12 @@ _MARKERS = {
         r"erneut beraten", r"wieder beraten", r"weiter beraten", r"aufgeschoben",
         r"kein\w* (beschluss|entscheidung)",
     ),
+    "settled": (
+        r"als\s+(behandelt|erledigt)", r"(behandelt|erledigt)\s+(erkl[aä]rt|gelten|galt)",
+        r"kein\w* (inhaltlich\w* )?(beschluss|entscheidung|abstimmung)",
+        r"nicht\s+(abgestimmt|beschlossen|entschieden)", r"nichts\s+(entschieden|beschlossen)",
+        r"nicht\s+angenommen", r"abgeschlossen",
+    ),
     "no_decision": (
         r"kein\w* (formal\w* )?(beschluss|entscheidung|abstimmung)",
         r"nicht (entschieden|abgestimmt|beschlossen)", r"nichts (entschieden|beschlossen)",
@@ -96,6 +111,7 @@ PROPOSAL_PREFIX = {
     "rejected": "Abgelehnter Vorschlag: ",
     "postponed": "Vertagter Vorschlag (noch nicht entschieden): ",
     "no_decision": "Ohne Beschluss geblieben — Vorschlag: ",
+    "settled": "Als behandelt erklärt, nicht beschlossen — Vorschlag: ",
 }
 
 

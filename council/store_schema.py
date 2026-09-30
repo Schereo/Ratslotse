@@ -218,7 +218,7 @@ CREATE TABLE IF NOT EXISTS council_decisions (
     item_number  TEXT,
     title        TEXT,
     official_text    TEXT,
-    outcome      TEXT,                          -- accepted|rejected|postponed|noted|no_decision
+    outcome      TEXT,                          -- accepted|rejected|postponed|noted|no_decision|settled
     vote         TEXT,                          -- unanimous|majority|null
     no_votes INTEGER,
     abstentions INTEGER,

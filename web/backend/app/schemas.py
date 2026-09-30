@@ -89,7 +89,7 @@ Zustellweg = Literal["email", "push", "both", "off"]
 
 #: Was aus einem Tagesordnungspunkt geworden ist. Dieselbe Aufzählung wie
 #: ``antworten.Beschlussergebnis``; ein Wächter hält beide zusammen.
-Beschlussergebnis = Literal["accepted", "rejected", "postponed", "noted", "no_decision"]
+Beschlussergebnis = Literal["accepted", "rejected", "postponed", "noted", "no_decision", "settled"]
 
 
 class UserOut(BaseModel):

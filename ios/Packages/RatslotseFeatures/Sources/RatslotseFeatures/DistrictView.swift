@@ -69,6 +69,7 @@ private func outcomeLabel(_ raw: String?) -> String? {
     case "postponed": "Vertagt"
     case "noted": "Zur Kenntnis"
     case "no_decision": "Kein Beschluss"
+    case "settled": "Gilt als behandelt"
     default: raw
     }
 }

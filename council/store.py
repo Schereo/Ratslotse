@@ -434,7 +434,8 @@ class CouncilStore(BplanMixin, FundstueckeMixin, HaushaltMixin, OrteMixin, Perso
     def _insert_decision(self, ksinr, position, kind, parent_item, item_number, title,
                          official_text, outcome, vote, no_votes, abstentions, factions,
                          template_number, kvonr, raw_result) -> None:
-        from council.votes import normalize_vote
+        from council.votes import normalize_outcome, normalize_vote
+        outcome = normalize_outcome(outcome, raw_result, kind)
         cur = self._conn.execute(
             "INSERT INTO council_decisions "
             "(ksinr, position, kind, parent_item, item_number, title, official_text, outcome, "

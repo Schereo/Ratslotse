@@ -7870,7 +7870,7 @@ export interface components {
                  * Outcome
                  * @enum {string|null}
                  */
-                outcome?: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | null;
+                outcome?: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | "settled" | null;
                 /** Parent Item */
                 parent_item?: string | null;
                 /** Parties */
@@ -9311,7 +9311,7 @@ export interface components {
              * Outcome
              * @enum {string|null}
              */
-            outcome?: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | null;
+            outcome?: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | "settled" | null;
             /** Parent Item */
             parent_item?: string | null;
             /** Parties */
@@ -9475,7 +9475,7 @@ export interface components {
              * Outcome
              * @enum {string|null}
              */
-            outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | null;
+            outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | "settled" | null;
             /** Session Date */
             session_date: string | null;
             /** Story */
@@ -11347,7 +11347,7 @@ export interface components {
              * Outcome
              * @enum {string}
              */
-            outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision";
+            outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | "settled";
             /** Policy Field */
             policy_field: string;
             /** Rationale */
@@ -11670,7 +11670,7 @@ export interface components {
                  * Outcome
                  * @enum {string|null}
                  */
-                outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | null;
+                outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | "settled" | null;
                 /** Template Number */
                 template_number: string | null;
                 /** Title */
@@ -14564,7 +14564,7 @@ export interface components {
              * Outcome
              * @enum {string|null}
              */
-            outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | null;
+            outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | "settled" | null;
             /** Template Number */
             template_number: string | null;
             /** Title */
@@ -15730,7 +15730,7 @@ export interface components {
              * Outcome
              * @enum {string|null}
              */
-            outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | null;
+            outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | "settled" | null;
             /** Policy Field */
             policy_field: string | null;
             /** Score */
@@ -15763,7 +15763,7 @@ export interface components {
              * Outcome
              * @enum {string|null}
              */
-            outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | null;
+            outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | "settled" | null;
             /** Session Date */
             session_date: string | null;
             /** Simple Summary */
@@ -16052,7 +16052,7 @@ export interface components {
              * Outcome
              * @enum {string|null}
              */
-            outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | null;
+            outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | "settled" | null;
             /** Session Date */
             session_date: string | null;
             /** Title */
@@ -16183,7 +16183,7 @@ export interface components {
              * Outcome
              * @enum {string|null}
              */
-            outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | null;
+            outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | "settled" | null;
             /** Policy Field */
             policy_field: string | null;
             /** Score */
@@ -16265,7 +16265,7 @@ export interface components {
              * Outcome
              * @enum {string|null}
              */
-            outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | null;
+            outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | "settled" | null;
             /** Session Date */
             session_date: string;
             /** Summary */
@@ -16310,7 +16310,7 @@ export interface components {
              * Outcome
              * @enum {string|null}
              */
-            outcome?: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | null;
+            outcome?: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | "settled" | null;
             /** Session Date */
             session_date: string;
             /** Title */
@@ -22715,7 +22715,7 @@ export interface operations {
                          * Outcome
                          * @enum {string|null}
                          */
-                        outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | null;
+                        outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | "settled" | null;
                         /** Session Date */
                         session_date: string | null;
                         /** Story */
@@ -24602,4 +24602,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: f162f567440225f9d96e1636f339ece7637a7e72e7000e633b1a829c193577dd
+// vertrag-sha256: 381f2e1e304099f1ec09187ab7257c2646feac032c508642595ab381ca9e9d14
