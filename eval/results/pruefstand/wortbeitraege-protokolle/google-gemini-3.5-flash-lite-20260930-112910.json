@@ -1,0 +1,312 @@
+{
+ "suite": "wortbeitraege-protokolle",
+ "titel": "Wortbeiträge aus ganzen Niederschriften",
+ "kennzahl": "F1 über die Wortmeldungen je Person in ganzen Protokollen (bis 48k-Fenster, wie im Cron), ohne Sammel-TOPs; eval/run_speeches_protokolle.py",
+ "modell": "google/gemini-3.5-flash-lite",
+ "variante": null,
+ "tarif": null,
+ "lauf": 1,
+ "zeitstempel": "2026-09-30T11:29:10",
+ "db_stand": "Sitzungen bis 2026-09-30, 9119 Beschlüsse",
+ "qualitaet": 0.8693,
+ "harte_befunde": 0,
+ "warnung": null,
+ "faelle": 9,
+ "p50_ms": 18461,
+ "p95_ms": 29966,
+ "aufrufe": 15,
+ "kosten_usd": 0.255185,
+ "ohne_kostenwert": 0,
+ "ct_je_aufruf": 1.7012,
+ "ct_je_lauf": 25.5185,
+ "kosten_gesamt_usd": 0.255185,
+ "ausfaelle": 0,
+ "nicht_zulaessig": false,
+ "abbruch": null,
+ "modelle_laut_tabelle": [
+  "google/gemini-3.5-flash-lite"
+ ],
+ "ersatz": [],
+ "dauer_s": 229.2,
+ "nebenkennzahlen": {
+  "recall_ohne_mandat": 0.7921,
+  "antwort_in_rede": 22,
+  "fremd_zugeschrieben": 0.0763,
+  "zahlen_erhalten": 0.1474,
+  "begriffe_erhalten": 0.2267,
+  "beitraege": 811,
+  "fehlgeschlagen": 0
+ },
+ "fehler_beispiele": [],
+ "roh": {
+  "n_cases": 9,
+  "f1": 0.8693,
+  "precision": 0.8472,
+  "recall": 0.8926,
+  "recall_ohne_mandat": 0.7921,
+  "antwort_in_rede": 22,
+  "fremd_zugeschrieben": 0.0763,
+  "zahlen_erhalten": 0.1474,
+  "begriffe_erhalten": 0.2267,
+  "erfunden": 0,
+  "beitraege": 811,
+  "fehlgeschlagen": 0,
+  "faelle": [
+   {
+    "id": "4664",
+    "tp": 87,
+    "fp": 2,
+    "fn": 4,
+    "tp_ohne": 29,
+    "fn_ohne": 3,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 5,
+    "fremd": 9,
+    "bewertbar": 116,
+    "fremd_beispiele": [
+     "Ratsherr Behrens: Verständnis",
+     "Ratsherr Dittrich: Investitionen",
+     "Herr Zenner: Notwendigkeit",
+     "Ratsherr Dittrich: Zusammensetzung",
+     "Herr Sprenger: Verschleiß, Schausteller, Denkmalschutz",
+     "Ratsfrau Piechotta: Wichtigkeit"
+    ],
+    "zahlen": [
+     9,
+     41
+    ],
+    "begriffe": [
+     78,
+     355
+    ],
+    "beitraege": 122
+   },
+   {
+    "id": "4430",
+    "tp": 85,
+    "fp": 2,
+    "fn": 24,
+    "tp_ohne": 17,
+    "fn_ohne": 22,
+    "verpasst": [
+     "atzler",
+     "phillip",
+     "rußler"
+    ],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 0,
+    "bewertbar": 109,
+    "fremd_beispiele": [],
+    "zahlen": [
+     13,
+     326
+    ],
+    "begriffe": [
+     64,
+     409
+    ],
+    "beitraege": 121
+   },
+   {
+    "id": "4418",
+    "tp": 69,
+    "fp": 3,
+    "fn": 5,
+    "tp_ohne": 25,
+    "fn_ohne": 3,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 4,
+    "bewertbar": 76,
+    "fremd_beispiele": [
+     "Bembennek: Betreuungsbehörde, Betreuungsorganisationsgesetz, Betreuungsgerichtes",
+     "Dikosso: Verwaltungsvorlage",
+     "Rohde: Prozentsatz, Altersquotient",
+     "Dikosso: Erarbeitung"
+    ],
+    "zahlen": [
+     5,
+     23
+    ],
+    "begriffe": [
+     57,
+     179
+    ],
+    "beitraege": 82
+   },
+   {
+    "id": "4446",
+    "tp": 51,
+    "fp": 0,
+    "fn": 22,
+    "tp_ohne": 24,
+    "fn_ohne": 22,
+    "verpasst": [
+     "dikosso",
+     "freede",
+     "krogmann"
+    ],
+    "erfunden": [],
+    "antwort_in_rede": 2,
+    "fremd": 8,
+    "bewertbar": 58,
+    "fremd_beispiele": [
+     "Sander: Bezifferung, Mehrausgaben",
+     "Sander: Sinnhaftigkeit",
+     "Dr. Lammerding: Umwandlungen",
+     "Adler: Landesregelung",
+     "Dittrich: Landesebene",
+     "Niederstein: Landesregelung"
+    ],
+    "zahlen": [
+     10,
+     19
+    ],
+    "begriffe": [
+     33,
+     154
+    ],
+    "beitraege": 58
+   },
+   {
+    "id": "4545",
+    "tp": 71,
+    "fp": 10,
+    "fn": 8,
+    "tp_ohne": 40,
+    "fn_ohne": 8,
+    "verpasst": [
+     "janssen"
+    ],
+    "erfunden": [],
+    "antwort_in_rede": 2,
+    "fremd": 2,
+    "bewertbar": 72,
+    "fremd_beispiele": [
+     "Bernath: Ausführungen",
+     "Bernath: Zentralbereich"
+    ],
+    "zahlen": [
+     13,
+     21
+    ],
+    "begriffe": [
+     71,
+     162
+    ],
+    "beitraege": 89
+   },
+   {
+    "id": "4611",
+    "tp": 39,
+    "fp": 1,
+    "fn": 3,
+    "tp_ohne": 25,
+    "fn_ohne": 3,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 1,
+    "bewertbar": 42,
+    "fremd_beispiele": [
+     "Herr Welp: Härtefallanträgen"
+    ],
+    "zahlen": [
+     4,
+     131
+    ],
+    "begriffe": [
+     71,
+     355
+    ],
+    "beitraege": 42
+   },
+   {
+    "id": "3717",
+    "tp": 94,
+    "fp": 4,
+    "fn": 3,
+    "tp_ohne": 43,
+    "fn_ohne": 1,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 13,
+    "fremd": 8,
+    "bewertbar": 104,
+    "fremd_beispiele": [
+     "Stefan Menke: Umrüstungen",
+     "Paul Behrens: Maximalwerten",
+     "Frau Bertram: Erarbeitung",
+     "Michael Schilling: Wichtigkeit",
+     "Roland Zielke: Baumfreveln",
+     "Hans Hermann Schreier: Verkehrsausschuss, Anreizprogramm, Zweckbindung"
+    ],
+    "zahlen": [
+     33,
+     43
+    ],
+    "begriffe": [
+     92,
+     214
+    ],
+    "beitraege": 106
+   },
+   {
+    "id": "2855",
+    "tp": 44,
+    "fp": 28,
+    "fn": 1,
+    "tp_ohne": 20,
+    "fn_ohne": 1,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 0,
+    "bewertbar": 49,
+    "fremd_beispiele": [],
+    "zahlen": [
+     13,
+     27
+    ],
+    "begriffe": [
+     48,
+     198
+    ],
+    "beitraege": 80
+   },
+   {
+    "id": "4441",
+    "tp": 42,
+    "fp": 55,
+    "fn": 0,
+    "tp_ohne": 17,
+    "fn_ohne": 0,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 22,
+    "bewertbar": 82,
+    "fremd_beispiele": [
+     "Behrens: Friedhofsmauer, Gertrudenfriedhofs, Nachbepflanzung",
+     "Sprenger: Hindenburgstraße",
+     "Skiba: Alternativplanungen",
+     "Drügemöller: Erläuterungen",
+     "Woltmann: Schwierigkeit, Baumerhaltung, Straßensanierung",
+     "Klein: Lambertistraße"
+    ],
+    "zahlen": [
+     2,
+     61
+    ],
+    "begriffe": [
+     41,
+     422
+    ],
+    "beitraege": 111
+   }
+  ]
+ }
+}

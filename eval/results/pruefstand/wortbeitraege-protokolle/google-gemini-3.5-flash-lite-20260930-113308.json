@@ -1,0 +1,317 @@
+{
+ "suite": "wortbeitraege-protokolle",
+ "titel": "Wortbeiträge aus ganzen Niederschriften",
+ "kennzahl": "F1 über die Wortmeldungen je Person in ganzen Protokollen (bis 48k-Fenster, wie im Cron), ohne Sammel-TOPs; eval/run_speeches_protokolle.py",
+ "modell": "google/gemini-3.5-flash-lite",
+ "variante": null,
+ "tarif": null,
+ "lauf": 2,
+ "zeitstempel": "2026-09-30T11:33:08",
+ "db_stand": "Sitzungen bis 2026-09-30, 9119 Beschlüsse",
+ "qualitaet": 0.8689,
+ "harte_befunde": 0,
+ "warnung": null,
+ "faelle": 9,
+ "p50_ms": 18566,
+ "p95_ms": 33514,
+ "aufrufe": 15,
+ "kosten_usd": 0.263525,
+ "ohne_kostenwert": 0,
+ "ct_je_aufruf": 1.7568,
+ "ct_je_lauf": 26.3525,
+ "kosten_gesamt_usd": 0.263525,
+ "ausfaelle": 0,
+ "nicht_zulaessig": false,
+ "abbruch": null,
+ "modelle_laut_tabelle": [
+  "google/gemini-3.5-flash-lite"
+ ],
+ "ersatz": [],
+ "dauer_s": 237.7,
+ "nebenkennzahlen": {
+  "recall_ohne_mandat": 0.8218,
+  "antwort_in_rede": 31,
+  "fremd_zugeschrieben": 0.0738,
+  "zahlen_erhalten": 0.1662,
+  "begriffe_erhalten": 0.2304,
+  "beitraege": 838,
+  "fehlgeschlagen": 0
+ },
+ "fehler_beispiele": [],
+ "roh": {
+  "n_cases": 9,
+  "f1": 0.8689,
+  "precision": 0.8357,
+  "recall": 0.9049,
+  "recall_ohne_mandat": 0.8218,
+  "antwort_in_rede": 31,
+  "fremd_zugeschrieben": 0.0738,
+  "zahlen_erhalten": 0.1662,
+  "begriffe_erhalten": 0.2304,
+  "erfunden": 0,
+  "beitraege": 838,
+  "fehlgeschlagen": 0,
+  "faelle": [
+   {
+    "id": "4664",
+    "tp": 89,
+    "fp": 3,
+    "fn": 2,
+    "tp_ohne": 31,
+    "fn_ohne": 1,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 1,
+    "fremd": 8,
+    "bewertbar": 120,
+    "fremd_beispiele": [
+     "Herr Jaekel: Wichtigkeit",
+     "Ratsherr Menke: Wichtigkeit",
+     "Herr Zenner: Notwendigkeit, Wichtigkeit",
+     "Ratsherr Dittrich: Zusammensetzung",
+     "Ratsfrau Menge: Jugendlichen",
+     "Ratsherr van Ellen: Beschlussfassung"
+    ],
+    "zahlen": [
+     11,
+     41
+    ],
+    "begriffe": [
+     106,
+     355
+    ],
+    "beitraege": 127
+   },
+   {
+    "id": "4430",
+    "tp": 96,
+    "fp": 4,
+    "fn": 13,
+    "tp_ohne": 30,
+    "fn_ohne": 9,
+    "verpasst": [
+     "phillip"
+    ],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 1,
+    "bewertbar": 120,
+    "fremd_beispiele": [
+     "Mehrtens: Fußverkehrsmaßnahmen"
+    ],
+    "zahlen": [
+     19,
+     326
+    ],
+    "begriffe": [
+     78,
+     409
+    ],
+    "beitraege": 134
+   },
+   {
+    "id": "4418",
+    "tp": 60,
+    "fp": 3,
+    "fn": 14,
+    "tp_ohne": 16,
+    "fn_ohne": 12,
+    "verpasst": [
+     "bembennek"
+    ],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 4,
+    "bewertbar": 68,
+    "fremd_beispiele": [
+     "Siegert: Vermittlung",
+     "Dikosso: Verwaltungsvorlage",
+     "Rohde: Altersquotient",
+     "Schilling: Beteiligten"
+    ],
+    "zahlen": [
+     4,
+     23
+    ],
+    "begriffe": [
+     37,
+     179
+    ],
+    "beitraege": 74
+   },
+   {
+    "id": "4446",
+    "tp": 50,
+    "fp": 0,
+    "fn": 23,
+    "tp_ohne": 23,
+    "fn_ohne": 23,
+    "verpasst": [
+     "dikosso",
+     "freede",
+     "krogmann"
+    ],
+    "erfunden": [],
+    "antwort_in_rede": 1,
+    "fremd": 6,
+    "bewertbar": 56,
+    "fremd_beispiele": [
+     "Sander: Bezifferung, Mehrausgaben",
+     "Sander: Sinnhaftigkeit",
+     "Adler: Landesregelung",
+     "Niederstein: Landesregelung",
+     "Eilers-Dörfler: Landesregelung",
+     "Dr. Lammerding: Oberbürgermeister, Insellösungen, Landesregelung"
+    ],
+    "zahlen": [
+     10,
+     19
+    ],
+    "begriffe": [
+     34,
+     154
+    ],
+    "beitraege": 56
+   },
+   {
+    "id": "4545",
+    "tp": 72,
+    "fp": 8,
+    "fn": 7,
+    "tp_ohne": 41,
+    "fn_ohne": 7,
+    "verpasst": [
+     "görk",
+     "janssen"
+    ],
+    "erfunden": [],
+    "antwort_in_rede": 2,
+    "fremd": 1,
+    "bewertbar": 73,
+    "fremd_beispiele": [
+     "Steinbach: Radwegbreite"
+    ],
+    "zahlen": [
+     17,
+     21
+    ],
+    "begriffe": [
+     73,
+     162
+    ],
+    "beitraege": 87
+   },
+   {
+    "id": "4611",
+    "tp": 41,
+    "fp": 1,
+    "fn": 1,
+    "tp_ohne": 27,
+    "fn_ohne": 1,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 1,
+    "bewertbar": 44,
+    "fremd_beispiele": [
+     "Stadtrat Denckmann: Ausstattung"
+    ],
+    "zahlen": [
+     4,
+     131
+    ],
+    "begriffe": [
+     58,
+     355
+    ],
+    "beitraege": 44
+   },
+   {
+    "id": "3717",
+    "tp": 96,
+    "fp": 10,
+    "fn": 1,
+    "tp_ohne": 44,
+    "fn_ohne": 0,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 9,
+    "fremd": 9,
+    "bewertbar": 115,
+    "fremd_beispiele": [
+     "Paul Behrens: Maximalwert",
+     "Dr. Brigitte Kreft-Kohlhage: Inkrafttreten",
+     "Frau Bertram: Wichtigkeit",
+     "Frau Bertram: Landschaftsschutzgebiete",
+     "Prof. Dr. Dr. Roland Zielke: Baumfreveln",
+     "Dr. Sven Uhrhan: Anreizprogramm, Handwerkern"
+    ],
+    "zahlen": [
+     35,
+     43
+    ],
+    "begriffe": [
+     91,
+     214
+    ],
+    "beitraege": 118
+   },
+   {
+    "id": "2855",
+    "tp": 44,
+    "fp": 29,
+    "fn": 1,
+    "tp_ohne": 20,
+    "fn_ohne": 1,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 18,
+    "fremd": 2,
+    "bewertbar": 49,
+    "fremd_beispiele": [
+     "Herr Krause: Architekturbüros, Alleinnutzung",
+     "Ratsherr Meyer: Alleinnutzung"
+    ],
+    "zahlen": [
+     11,
+     27
+    ],
+    "begriffe": [
+     46,
+     198
+    ],
+    "beitraege": 81
+   },
+   {
+    "id": "4441",
+    "tp": 42,
+    "fp": 58,
+    "fn": 0,
+    "tp_ohne": 17,
+    "fn_ohne": 0,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 22,
+    "bewertbar": 87,
+    "fremd_beispiele": [
+     "Behrens: Friedhofsmauer, Gertrudenfriedhofs, Nachbepflanzung",
+     "Sprenger: Hindenburgstraße",
+     "Skiba: Alternativplanungen",
+     "Drügemöller: Erläuterungen",
+     "Woltmann: Schwierigkeit, Straßensanierung, Gesamtkonzept",
+     "Klein: Lambertistraße"
+    ],
+    "zahlen": [
+     4,
+     61
+    ],
+    "begriffe": [
+     41,
+     422
+    ],
+    "beitraege": 117
+   }
+  ]
+ }
+}

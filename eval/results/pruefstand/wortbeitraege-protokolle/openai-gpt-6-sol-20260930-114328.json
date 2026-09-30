@@ -1,0 +1,325 @@
+{
+ "suite": "wortbeitraege-protokolle",
+ "titel": "Wortbeiträge aus ganzen Niederschriften",
+ "kennzahl": "F1 über die Wortmeldungen je Person in ganzen Protokollen (bis 48k-Fenster, wie im Cron), ohne Sammel-TOPs; eval/run_speeches_protokolle.py",
+ "modell": "openai/gpt-6-sol",
+ "variante": null,
+ "tarif": null,
+ "lauf": 1,
+ "zeitstempel": "2026-09-30T11:43:28",
+ "db_stand": "Sitzungen bis 2026-09-30, 9119 Beschlüsse",
+ "qualitaet": 0.8832,
+ "harte_befunde": 0,
+ "warnung": null,
+ "faelle": 9,
+ "p50_ms": 64273,
+ "p95_ms": 134782,
+ "aufrufe": 14,
+ "kosten_usd": 1.091792,
+ "ohne_kostenwert": 0,
+ "ct_je_aufruf": 7.7985,
+ "ct_je_lauf": 109.1792,
+ "kosten_gesamt_usd": 1.091792,
+ "ausfaelle": 0,
+ "nicht_zulaessig": false,
+ "abbruch": null,
+ "modelle_laut_tabelle": [
+  "openai/gpt-6-sol"
+ ],
+ "ersatz": [],
+ "dauer_s": 893.3,
+ "nebenkennzahlen": {
+  "recall_ohne_mandat": 0.9307,
+  "antwort_in_rede": 0,
+  "fremd_zugeschrieben": 0.1115,
+  "zahlen_erhalten": 0.1908,
+  "begriffe_erhalten": 0.2614,
+  "beitraege": 901,
+  "fehlgeschlagen": 0
+ },
+ "fehler_beispiele": [],
+ "roh": {
+  "n_cases": 9,
+  "f1": 0.8832,
+  "precision": 0.8377,
+  "recall": 0.934,
+  "recall_ohne_mandat": 0.9307,
+  "antwort_in_rede": 0,
+  "fremd_zugeschrieben": 0.1115,
+  "zahlen_erhalten": 0.1908,
+  "begriffe_erhalten": 0.2614,
+  "erfunden": 0,
+  "beitraege": 901,
+  "fehlgeschlagen": 0,
+  "faelle": [
+   {
+    "id": "4664",
+    "tp": 82,
+    "fp": 3,
+    "fn": 9,
+    "tp_ohne": 28,
+    "fn_ohne": 4,
+    "verpasst": [
+     "gerhard",
+     "jaekel"
+    ],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 10,
+    "bewertbar": 125,
+    "fremd_beispiele": [
+     "Paul Behrens: Anwohnenden",
+     "Tanja Piening: Integration",
+     "Peter Zenner: Wärmeversorgung",
+     "René Dittrich: Zusammensetzung",
+     "Paul Behrens: Berücksichtigung",
+     "Maik Niederstein: Erläuterung"
+    ],
+    "zahlen": [
+     13,
+     41
+    ],
+    "begriffe": [
+     99,
+     355
+    ],
+    "beitraege": 131
+   },
+   {
+    "id": "4430",
+    "tp": 97,
+    "fp": 5,
+    "fn": 12,
+    "tp_ohne": 36,
+    "fn_ohne": 3,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 14,
+    "bewertbar": 131,
+    "fremd_beispiele": [
+     "Pietsch: Projektsteuerung",
+     "Pietsch: Mitarbeiterin",
+     "Piechotta: Haushaltsposten",
+     "Bernhardt: Planungsstand",
+     "Korallus: Evangelische, Krankenhaus",
+     "Piechotta: Evangelischen, Krankenhauses"
+    ],
+    "zahlen": [
+     20,
+     326
+    ],
+    "begriffe": [
+     93,
+     409
+    ],
+    "beitraege": 145
+   },
+   {
+    "id": "4418",
+    "tp": 71,
+    "fp": 4,
+    "fn": 3,
+    "tp_ohne": 25,
+    "fn_ohne": 3,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 8,
+    "bewertbar": 79,
+    "fremd_beispiele": [
+     "Jan Bembennek: Betreuungsbehörde, Betreuungsorganisationsgesetz, Betreuungsgerichts",
+     "Anja Maud Siegert: Vermittlung",
+     "Dr. Holger Onken: Zahlungsfähigkeit, Vermittlung",
+     "Anja Maud Siegert: Vermittlung",
+     "Meike Dikosso: Verwaltungsvorlage, Seniorensatzung",
+     "Gunnar Rohde: Altersquotient"
+    ],
+    "zahlen": [
+     5,
+     23
+    ],
+    "begriffe": [
+     60,
+     179
+    ],
+    "beitraege": 86
+   },
+   {
+    "id": "4446",
+    "tp": 70,
+    "fp": 0,
+    "fn": 3,
+    "tp_ohne": 43,
+    "fn_ohne": 3,
+    "verpasst": [
+     "dikosso",
+     "krogmann"
+    ],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 5,
+    "bewertbar": 80,
+    "fremd_beispiele": [
+     "Sander: Bezifferung, Mehrausgaben",
+     "Dr. Lammerding: Mehrausgaben",
+     "Niederstein: Landesregelung",
+     "Eilers-Dörfler: Beschaffung, Landesregelung",
+     "Dr. Lammerding: Städtetages, Insellösungen, Landesregelung"
+    ],
+    "zahlen": [
+     17,
+     19
+    ],
+    "begriffe": [
+     57,
+     154
+    ],
+    "beitraege": 80
+   },
+   {
+    "id": "4545",
+    "tp": 76,
+    "fp": 10,
+    "fn": 3,
+    "tp_ohne": 45,
+    "fn_ohne": 3,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 3,
+    "bewertbar": 80,
+    "fremd_beispiele": [
+     "Bernath: Zentralbereichs",
+     "Bernath: Bordsteinkante",
+     "Schnitker: Gesamtkosten"
+    ],
+    "zahlen": [
+     18,
+     21
+    ],
+    "begriffe": [
+     71,
+     162
+    ],
+    "beitraege": 96
+   },
+   {
+    "id": "4611",
+    "tp": 40,
+    "fp": 0,
+    "fn": 2,
+    "tp_ohne": 26,
+    "fn_ohne": 2,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 2,
+    "bewertbar": 43,
+    "fremd_beispiele": [
+     "Hinnerks: Bezirksänderungen",
+     "Denckmann: Ausstattung"
+    ],
+    "zahlen": [
+     4,
+     131
+    ],
+    "begriffe": [
+     75,
+     355
+    ],
+    "beitraege": 43
+   },
+   {
+    "id": "3717",
+    "tp": 88,
+    "fp": 14,
+    "fn": 9,
+    "tp_ohne": 43,
+    "fn_ohne": 1,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 17,
+    "bewertbar": 116,
+    "fremd_beispiele": [
+     "Paul Behrens: Maximalwert",
+     "Dr. Brigitte Kreft-Kohlhage: Nachbarstreitigkeiten",
+     "Bertram: Landschaftsschutzgebiete",
+     "Rolf Grösch: Ratsfraktionen",
+     "Paul Behrens: Baumfällungen",
+     "Margrit Conty: Eigenbetrieb, Gebäudewirtschaft"
+    ],
+    "zahlen": [
+     34,
+     43
+    ],
+    "begriffe": [
+     105,
+     214
+    ],
+    "beitraege": 119
+   },
+   {
+    "id": "2855",
+    "tp": 43,
+    "fp": 32,
+    "fn": 2,
+    "tp_ohne": 19,
+    "fn_ohne": 2,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 8,
+    "bewertbar": 49,
+    "fremd_beispiele": [
+     "Bernard Krause: Stadtjugendring",
+     "Jan-Martin Meyer: Stadtjugendring",
+     "Simon Kurka: Stadtjugendring, Selbstverwaltung, Stadtjugendrings",
+     "Heike Boldt: Stadtjugendrings",
+     "Jan-Martin Meyer: Stadtjugendrings",
+     "Christine Wolff: Stadtjugendrings"
+    ],
+    "zahlen": [
+     14,
+     27
+    ],
+    "begriffe": [
+     39,
+     198
+    ],
+    "beitraege": 84
+   },
+   {
+    "id": "4441",
+    "tp": 42,
+    "fp": 50,
+    "fn": 0,
+    "tp_ohne": 17,
+    "fn_ohne": 0,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 21,
+    "bewertbar": 86,
+    "fremd_beispiele": [
+     "Behrens: Gertrudenfriedhofs",
+     "Sprenger: Hindenburgstraße",
+     "Drügemöller: Erläuterung",
+     "Woltmann: Gesamtkonzept",
+     "Finke: Baumstandorte",
+     "Klein: Lambertistraße, Fortschritt"
+    ],
+    "zahlen": [
+     7,
+     61
+    ],
+    "begriffe": [
+     41,
+     422
+    ],
+    "beitraege": 117
+   }
+  ]
+ }
+}
