@@ -683,8 +683,9 @@ mit den echten Mengen aus `kern/notify.py`.
 **Die Reihenfolge.** Im Browser kommen die Themen (Schritt 2) VOR den Stadtteilen
 (Schritt 3). Bis 30.09.2026 war es umgekehrt, und neue Konten nahmen fast nur
 Stadtteile: Eine Karte mit einem Klick je Fläche ist die leichteste Wahl im
-ganzen Ablauf. Die Themen stehen als Kacheln mit einem kleinen Bild in Lottis
-Stil (`public/themen/<key>.webp`, erzeugt von `scripts/themen_grafiken.py`), in
+ganzen Ablauf. Die Themen stehen als Kacheln mit einem kleinen, flach
+gezeichneten Bild, in dem manchmal Lotti, ein Küken oder Krissi mitspielen
+(`public/themen/<key>.webp`, erzeugt von `scripts/themen_grafiken.py`), in
 einer von Hand gemischten Reihenfolge (`ANZEIGE` in `council/city_topics.py`)
 statt nach Zahl. Der Assistent nimmt höchstens **drei Stadtteile** an; mehr
 lassen sich später unter „Themen" anlegen.
