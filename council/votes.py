@@ -107,8 +107,11 @@ _VERWIESEN = re.compile(r"verwiesen|verweisung|vertagt|zur[uü]ckgestellt|abgese
 #: ist nicht mehr eindeutig, was entschieden wurde — dann bleibt der Wert, den
 #: das Modell gewählt hat („Beide Anträge gelten als behandelt", nachdem der
 #: Vorschlag des OB angenommen wurde, 3478).
-_ABSTIMMUNG = re.compile(r"abgelehnt|angenommen|beschlossen|beschließt|zugestimmt|stimmt\s+zu|ablehn",
-                         re.IGNORECASE)
+_ABSTIMMUNG = re.compile(r"abgelehnt|angenommen|beschlossen|beschließt|zugestimmt|stimmt\s+zu|ablehn|"
+                         r"\blehnt\b.*\bab\b", re.IGNORECASE)
+#: Ein abgelehnter Verweisungsantrag ist keine Verweisung („Der Ausschuss lehnt
+#: den Verweisungsantrag der CDU mehrheitlich ab", 14874 auf Prod).
+_ABGELEHNT = re.compile(r"abgelehnt|ablehn|\blehnt\b.*\bab\b", re.IGNORECASE)
 
 
 def normalize_outcome(outcome: str | None, raw_result: str | None,
@@ -134,7 +137,7 @@ def normalize_outcome(outcome: str | None, raw_result: str | None,
         if _GILT_AM_ENDE.search(text) or not _ABSTIMMUNG.search(text):
             return "settled"
         return outcome
-    if outcome == "accepted" and _VERWIESEN.search(text) and "abgelehnt" not in text.lower():
+    if outcome == "accepted" and _VERWIESEN.search(text) and not _ABGELEHNT.search(text):
         # „einstimmig … in den Ausschuss verwiesen": angenommen wurde die
         # Verweisung, nicht der Inhalt.
         return "postponed"

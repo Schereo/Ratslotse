@@ -10,8 +10,11 @@
 #
 # Vorgabe ist BERICHT: Jede Änderung steht als Zeile im Log (id, alt → neu, Satz)
 # — wer zurückdrehen will, hat die Liste. `schreiben` stellt die Ergebnisse um
-# und zieht die Kurzfassungen nach (Modellkosten im Log; wenige Cent). Ein
-# zweiter Lauf findet nichts mehr.
+# — die Kurzfassungen sind ein eigener Schritt (`kurzfassungen`), weil er den
+# ganzen Rückstau der Prod-Datenbank mitnimmt: 30.09.2026 waren es 734
+# Themen-Sätze, 34 „Einfach erklärt“ und 247 Themen-Beschreibungen, nicht nur
+# die der umgestellten Punkte. `probe` misst Kosten und zeigt alt/neu an 20
+# Zeilen, ohne zu schreiben. Ein zweiter Lauf findet nichts mehr.
 name: "Ops: Gilt als behandelt (settled)"
 
 on:
@@ -23,9 +26,9 @@ on:
         options: [dev, prod]
         default: dev
       modus:
-        description: "bericht = nur zeigen, schreiben = umstellen + Kurzfassungen neu"
+        description: "bericht | schreiben (nur die Ergebnisse) | probe (Kurzfassungen, 20 Zeilen) | kurzfassungen (alle betroffenen neu)"
         type: choice
-        options: [bericht, schreiben]
+        options: [bericht, schreiben, probe, kurzfassungen]
         default: bericht
 
 concurrency:
@@ -55,10 +58,11 @@ jobs:
             set -e
             cd ~/app
             PY=.venv/bin/python
-            if [ "$MODUS" = "schreiben" ]; then
-              $PY scripts/fix_settled_outcomes.py --schreiben
-              $PY scripts/fix_outcome_summaries.py --schreiben
-            else
-              $PY scripts/fix_settled_outcomes.py
-              $PY scripts/fix_outcome_summaries.py
-            fi
+            case "$MODUS" in
+              bericht)
+                $PY scripts/fix_settled_outcomes.py
+                $PY scripts/fix_outcome_summaries.py ;;
+              schreiben) $PY scripts/fix_settled_outcomes.py --schreiben ;;
+              probe) $PY scripts/fix_outcome_summaries.py --probe --limit 20 ;;
+              kurzfassungen) $PY scripts/fix_outcome_summaries.py --schreiben ;;
+            esac
