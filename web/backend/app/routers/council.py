@@ -5084,11 +5084,16 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 # Wortbeiträge besitzen selbst noch keinen belastbaren
                 # Ortskatalog. Bei einer Ortsfrage zeigen wir deshalb nur die,
                 # die deterministisch an einen gefilterten Beschluss gekoppelt
-                # sind; freie semantische Treffer könnten sonst aus einem ganz
-                # anderen Stadtgebiet stammen.
+                # sind — ODER die den Ort selbst nennen. Freie semantische
+                # Treffer könnten sonst aus einem ganz anderen Stadtgebiet
+                # stammen; ein Beitrag, der „Schlossplatz“ sagt, tut das nicht.
+                # Ohne die zweite Hälfte fiel die Begründung der Verwaltung zum
+                # Schlossplatz-Spielplatz (16.04.2026, TOP Spielleitplanung —
+                # ein stadtweiter Beschluss ohne Ort) aus jeder Antwort.
                 candidate_ids = {c["id"] for c in candidates}
                 debatten_rows = [d for d in debatten_rows
-                                  if d.get("zu_beschluss") in candidate_ids]
+                                  if d.get("zu_beschluss") in candidate_ids
+                                  or qa.nennt_ort(d, ort, store)]
             # Beleg nachlesbar machen: jeder Beitrag bekommt die PDF-URL
             # seines Protokolls (Tims Wunsch 18.08.).
             qa.protokolle_verlinken(store, debatten_rows)

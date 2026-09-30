@@ -1095,6 +1095,24 @@ def finde_ort(question: str, store=None) -> dict | None:
             "description": place.description}
 
 
+def nennt_ort(beitrag: dict, ort: dict, store=None) -> bool:
+    """Nennt ein Wortbeitrag den erfragten Katalogort selbst?
+
+    Derselbe Abgleich wie bei der Frage (:func:`finde_ort`) — Schreibvarianten
+    inklusive, „Neu-Donnerschwee“ zählt nicht als „Donnerschwee“. Für den
+    Orts-Filter der Debatten ist das ein ebenso deterministischer Beleg wie
+    die Kopplung an einen verorteten Beschluss.
+    """
+    from council import places
+
+    text = " ".join(str(beitrag.get(k) or "") for k in ("top", "text", "answer"))
+    if not text.strip():
+        return False
+    catalog = store.all_places() if store is not None else None
+    return any(p.id == ort.get("id")
+               for p in places.find_mentions(text, max_n=10, catalog_places=catalog))
+
+
 #: So viele Alternativ-Fragen höchstens. Drei sind eine Auswahl, sechs sind
 #: eine zweite Suche — und wer gerade „nichts gefunden" gelesen hat, will
 #: keine zweite Suche, sondern einen Ausweg.
