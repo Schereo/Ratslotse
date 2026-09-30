@@ -59,6 +59,21 @@ STIL = (
     "humans, no watermark.{cameo}"
 )
 
+#: So sieht Lotti in JEDEM Bild aus. Ohne diese Zeile wich das Modell ab: am
+#: 01.10.2026 hatte sie in drei von 16 Gremienbildern Kulleraugen, blaue Augen
+#: oder einen schlanken Körper mit langem Schnabel (Tims Befund: „sieht ganz
+#: anders aus").
+LOTTI_GESICHT = (
+    " Lotti ALWAYS looks exactly like this: a chubby, round, egg-shaped white "
+    "body with a wide low stance; a head merged into the body; two SMALL solid "
+    "dark navy oval eyes with one tiny white highlight each, set wide apart "
+    "(never big round eyes, never blue eyes, never white rings around the "
+    "eyes); a SHORT stubby triangular orange beak; a soft pink cheek patch; "
+    "short orange feet; light blue-grey wings; her navy pilot cap always has a "
+    "small gold four-pointed star badge on the front and a cream band, and no "
+    "other badge or emblem appears on her body."
+)
+
 #: Der Zusatz, wenn eine Figur aus Lottis Welt mitspielt. Das Referenzbild
 #: (`themen_referenz.png`, ein Rendering aus dem Lotti-Studio) bekommt das
 #: Modell mitgeschickt; die Figuren werden im flachen Stil NEU GEZEICHNET, nicht
@@ -70,6 +85,7 @@ CAMEO = (
     "orange crab. Redraw {wer} in the same flat outline style as the rest of "
     "the picture (thin navy outline, flat colors, no shading), small in the "
     "scene, {was}. Keep the character recognizable, do not copy the 3D look."
+    + LOTTI_GESICHT
 )
 
 #: key aus ``council/city_topics.py`` → (Motiv, Akzentfarbe, Hintergrund).
@@ -109,7 +125,7 @@ GREMIEN: dict[str, tuple[str, str, str, str]] = {
     "waste": ("a recycling bin with a green arrow and a litter picker stick", "holding the litter picker", "green", "light mint"),
     "buildings": ("a small brick wall, a spirit level and a wrench", "holding the wrench next to the wall", "orange", "light warm beige"),
     "youth": ("a flying kite with a ribbon tail", "holding the kite string together with the small chick", "orange", "light yellow"),
-    "culture": ("a music note, a paint palette with a brush and a small spotlight", "standing next to the palette, conducting with a wing", "orange", "light lavender"),
+    "culture": ("a small paint palette with a brush, resting on the ground right next to her, and one floating music note above it", "standing in the middle of the picture, one wing raised as if conducting", "orange", "light lavender"),
     "school": ("a school bag, an open book and a pencil", "standing next to the bag, reading the book", "orange", "light yellow"),
     "social": ("a big heart-shaped cushion and a steaming cup", "sitting on the cushion with the small chick, sharing it", "orange", "light peach"),
     "sport": ("a whistle, a medal on a ribbon and a small cone", "wearing the medal around her neck, blowing the whistle", "orange", "light green"),
@@ -180,8 +196,10 @@ HAUPTFIGUR = (
     "clearly recognizable: she is {was}. Redraw her in the same flat outline "
     "style as the props (thin navy outline, flat colors, no shading); do not "
     "copy the 3D look of the reference. Lotti and the props together fill "
-    "about 70 percent of the frame, fully visible with generous margin on all "
+    "about 60 percent of the frame, ZOOMED OUT so that Lotti AND every prop are "
+    "completely visible with a wide empty margin on all four sides, "
     "sides, nothing cropped at the edges."
+    + LOTTI_GESICHT
 )
 
 
