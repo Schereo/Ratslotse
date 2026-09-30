@@ -16,8 +16,8 @@ zwei Stufen, damit ein Fehlschlag seine Ursache verrät:
 Der Lauf nutzt die echte Pipeline (``deepresearch._run``) gegen eine
 Datenbank-Kopie; nur die Ablage des Jobs geht in eine Wegwerf-DB::
 
-    python eval/run_deep_gold.py --db /pfad/council.sqlite --label vorher
-    python eval/run_deep_gold.py --db /pfad/council.sqlite --label nachher --premium
+    python scripts/eval_deep_gold.py --db /pfad/council.sqlite --label vorher
+    python scripts/eval_deep_gold.py --db /pfad/council.sqlite --label nachher --premium
 
 Braucht ``OPENROUTER_API_KEY`` und fastembed. Ergebnisse unter
 ``eval/results/deep_gold/<label>.json``.
@@ -104,7 +104,7 @@ def _judge(case: dict, bericht: str) -> dict:
     verboten = "\n".join(f"{v['id']}: {v['behauptung']}" for v in case["verboten"])
     for versuch in range(2):
         resp = llm.chat_complete(
-            model=JUDGE_MODEL, _feature="deep_gold_judge", temperature=0,
+            model=JUDGE_MODEL, _feature="quality_judge", temperature=0,
             max_tokens=3000, timeout=180.0, response_format={"type": "json_object"},
             messages=[{"role": "user", "content": JUDGE_PROMPT.format(
                 frage=case["question"], bericht=bericht[:24000],
