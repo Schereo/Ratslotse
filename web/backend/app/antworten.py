@@ -805,7 +805,7 @@ class CityTopicMatch(TypedDict):
 
 
 class TopicSuggestions(TypedDict):
-    #: Kuratierte Stadtthemen mit Substanz, die aktivsten zuerst. Anders als
+    #: Kuratierte Stadtthemen mit Substanz, gemischt nach ``ANZEIGE``. Anders als
     #: die übrigen Listen NICHT um die eigenen Themen bereinigt: Die Liste ist
     #: stabil, die Oberfläche markiert, was schon angelegt ist. Leer bei
     #: ``?city=0``.

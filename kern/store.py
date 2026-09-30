@@ -561,6 +561,26 @@ CREATE TABLE IF NOT EXISTS signup_rejections (
     PRIMARY KEY (day, reason)
 );
 
+-- Was der Einrichtungs-Assistent anbietet und was davon angeklickt wird — die
+-- Zahlen hinter der Frage „warum wählen alle nur Stadtteile?" (30.09.2026).
+-- Vorher gab es nur, WAS angelegt wurde (`topics`), nie, was angeboten war:
+-- Ein Thema, das niemand nimmt, ist von einem, das nie angezeigt wurde, nicht
+-- zu unterscheiden.
+--
+-- Wie `page_views`: je Tag und Chip eine Zeile, KEIN Konto, keine Sitzung, kein
+-- Gerät. `chip` kommt aus einer Positivliste (`city_topic:<key>` aus
+-- council/city_topics.py plus die Arten `district`, `district_suggestion`, `own`);
+-- Namen von Stadtteilen, Straßen oder selbst getippten Themen stehen hier nie.
+-- Der Zähler `shown` zählt Anzeigen des Chips im Assistenten, `picked` die
+-- Anlage über ihn.
+CREATE TABLE IF NOT EXISTS onboarding_chip_stats (
+    day    TEXT NOT NULL,
+    chip   TEXT NOT NULL,
+    shown  INTEGER NOT NULL DEFAULT 0,
+    picked INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (day, chip)
+);
+
 -- Was tatsächlich als E-Mail rausging — je verschickter Mail EINE Zeile.
 --
 -- Bis 09/2026 gab es dafür keine Quelle im Haus: `notification_queue` sagt,
@@ -4505,6 +4525,35 @@ class Store:
                 )
         except Exception:  # noqa: BLE001 — Zählung darf nie einen Request brechen
             pass
+
+    def record_onboarding_chips(self, shown: list[str], picked: list[str]) -> None:
+        """Anzeigen und Wahlen im Einrichtungs-Assistenten zählen (best-effort).
+
+        Der Aufrufer (``routers/onboarding.py``) hat die Namen schon gegen die
+        Positivliste geprüft; hier wird nur addiert. Ein Zähler, der den Request
+        scheitern lässt, wäre schlimmer als keiner.
+        """
+        if not shown and not picked:
+            return
+        tag = today_utc().isoformat()
+        try:
+            with self._conn:
+                for chip in dict.fromkeys(shown):
+                    self._conn.execute(
+                        "INSERT INTO onboarding_chip_stats (day, chip, shown) VALUES (?, ?, 1) "
+                        "ON CONFLICT(day, chip) DO UPDATE SET shown = shown + 1", (tag, chip))
+                for chip in dict.fromkeys(picked):
+                    self._conn.execute(
+                        "INSERT INTO onboarding_chip_stats (day, chip, picked) VALUES (?, ?, 1) "
+                        "ON CONFLICT(day, chip) DO UPDATE SET picked = picked + 1", (tag, chip))
+        except Exception:  # noqa: BLE001 — Zählung darf nie einen Request brechen
+            pass
+
+    def onboarding_chip_stats_since(self, day: str) -> list[dict]:
+        """Je Chip: wie oft angezeigt, wie oft gewählt — ab diesem Tag."""
+        return [dict(r) for r in self._conn.execute(
+            "SELECT chip, SUM(shown) shown, SUM(picked) picked FROM onboarding_chip_stats "
+            "WHERE day >= ? GROUP BY chip ORDER BY chip", (day,)).fetchall()]
 
     def signup_rejections_since(self, day: str) -> dict[str, int]:
         """Abgewiesene Registrierungen ab diesem Tag (einschließlich), je Grund."""

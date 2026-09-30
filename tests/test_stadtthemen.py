@@ -86,9 +86,30 @@ def test_schwelle_laesst_duenne_themen_weg():
     assert out[0]["name"] == "Radverkehr" and out[0]["description"] and out[0]["context"]
 
 
-def test_aktivste_zuerst():
-    texte = ["Radweg"] * 8 + ["Kita"] * 12
-    assert [e["key"] for e in city_topics.city_topic_suggestions(_Zaehlgut(texte))] == ["childcare", "cycling"]
+def test_reihenfolge_ist_gemischt_nicht_nach_zahl():
+    """Angezeigt wird nach ``ANZEIGE``, nicht nach Zahl: Nach Zahl stünden
+    Schulen und Bauthemen vorn, und genau die Einseitigkeit sollte weg."""
+    texte = ["Radweg"] * 8 + ["Kita"] * 12 + ["Schwimmbad"] * 9
+    keys = [e["key"] for e in city_topics.city_topic_suggestions(_Zaehlgut(texte))]
+    assert keys == ["cycling", "pools", "childcare"]
+
+
+def test_anzeige_nennt_jedes_thema_genau_einmal():
+    """Ein Thema ohne Platz in ``ANZEIGE`` landete am Ende, ein Schlüssel, den
+    es nicht gibt, stünde dort für immer — beides meldet dieser Test."""
+    keys = [t.key for t in city_topics.CITY_TOPICS]
+    assert sorted(city_topics.ANZEIGE) == sorted(keys)
+    assert len(city_topics.ANZEIGE) == len(set(city_topics.ANZEIGE))
+
+
+def test_neue_muster_treffen_und_irren_nicht():
+    n = city_topics.count_topics([
+        "Sanierung der Sporthalle Eversten", "Hallenbad Bümmerstede", "Staatstheater Oldenburg",
+        "Feuerwehr Eversten: Anbau", "Wiedervernässung Ipweger Moor", "Brücke am Hafen",
+        "Fliegerhorst Oldenburg Grundwasser", "Abfallwirtschaft Satzung",
+    ])
+    assert (n["sports"], n["pools"], n["culture"], n["fire"]) == (1, 1, 1, 1)
+    assert (n["roads"], n["airfield"], n["waste"]) == (1, 1, 1)
 
 
 # --- Endpunkt -----------------------------------------------------------------

@@ -4389,6 +4389,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/onboarding/chips": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Chips Zaehlen
+         * @description Anzeigen und Wahlen im Einrichtungs-Assistenten zählen.
+         *
+         *     Ohne Konto-Bezug gespeichert (Tabelle ``onboarding_chip_stats``): Der
+         *     Endpunkt verlangt ein Konto, damit niemand von außen zählen kann, schreibt
+         *     aber nur Tag, Chip und Zähler. Was nicht auf der Positivliste steht, fällt
+         *     still weg — ein Client soll die Tabelle weder erweitern noch mit
+         *     Stadtteil- oder Themennamen füllen können.
+         */
+        post: operations["chips_zaehlen_api_onboarding_chips_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/onboarding/setup": {
         parameters: {
             query?: never;
@@ -12797,6 +12823,20 @@ export interface components {
             situation: string;
             /** Status */
             status: string;
+        };
+        /**
+         * OnboardingChips
+         * @description Was der Einrichtungs-Assistent angeboten hat und was angeklickt wurde.
+         *
+         *     Nur Chip-Kennungen, keine Namen: ``city_topic:<key>`` für die kuratierten
+         *     Stadtthemen, sonst die Arten ``district``, ``district_suggestion`` und ``own``.
+         *     Der Server wirft alles andere weg (Positivliste in ``routers/onboarding.py``).
+         */
+        OnboardingChips: {
+            /** Gewaehlt */
+            gewaehlt?: string[];
+            /** Gezeigt */
+            gezeigt?: string[];
         };
         /** OnboardingState */
         OnboardingState: {
@@ -21319,6 +21359,39 @@ export interface operations {
             };
         };
     };
+    chips_zaehlen_api_onboarding_chips_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OnboardingChips"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ok"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_setup_api_onboarding_setup_get: {
         parameters: {
             query?: never;
@@ -24092,4 +24165,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: b6a5b36f3e629564a2ea920c616b1a28ea5004ec62dfba0e0b9ed741d20dd1db
+// vertrag-sha256: 1f8f9dbc630225d03a00fa1a1f09936d396382ff2e151abdee3b5446afa9b036

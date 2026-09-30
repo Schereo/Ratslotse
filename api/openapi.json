@@ -16239,6 +16239,29 @@
         "title": "OldenburgVerdict",
         "type": "object"
       },
+      "OnboardingChips": {
+        "description": "Was der Einrichtungs-Assistent angeboten hat und was angeklickt wurde.\n\nNur Chip-Kennungen, keine Namen: ``city_topic:<key>`` für die kuratierten\nStadtthemen, sonst die Arten ``district``, ``district_suggestion`` und ``own``.\nDer Server wirft alles andere weg (Positivliste in ``routers/onboarding.py``).",
+        "properties": {
+          "gewaehlt": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 60,
+            "title": "Gewaehlt",
+            "type": "array"
+          },
+          "gezeigt": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 60,
+            "title": "Gezeigt",
+            "type": "array"
+          }
+        },
+        "title": "OnboardingChips",
+        "type": "object"
+      },
       "OnboardingState": {
         "properties": {
           "celebrated": {
@@ -31802,6 +31825,48 @@
           }
         },
         "summary": "Update Onboarding",
+        "tags": [
+          "onboarding"
+        ]
+      }
+    },
+    "/api/onboarding/chips": {
+      "post": {
+        "description": "Anzeigen und Wahlen im Einrichtungs-Assistenten zählen.\n\nOhne Konto-Bezug gespeichert (Tabelle ``onboarding_chip_stats``): Der\nEndpunkt verlangt ein Konto, damit niemand von außen zählen kann, schreibt\naber nur Tag, Chip und Zähler. Was nicht auf der Positivliste steht, fällt\nstill weg — ein Client soll die Tabelle weder erweitern noch mit\nStadtteil- oder Themennamen füllen können.",
+        "operationId": "chips_zaehlen_api_onboarding_chips_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OnboardingChips"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Chips Zaehlen",
         "tags": [
           "onboarding"
         ]
