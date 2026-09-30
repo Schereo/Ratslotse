@@ -22,7 +22,15 @@ mit Embeddings und Cross-Encoder, die Richtung ist dieselbe.
 Zwei Grenzen nach oben, beide bewusst: Bebauungspläne (65 im Jahr) und
 „Sport" allgemein (38) wären als Thema eine Meldung pro Woche — das ist kein
 Interesse mehr, das ist ein Feed. Die Einträge hier liegen bei ein bis zwei
-Meldungen im Monat.
+Meldungen im Monat. Deshalb steht „Sport" nur als *Sporthallen und
+Sportplätze* da (Wortsuche enger, Beschreibung enger), „Kultur" als Häuser
+und Förderung.
+
+**Mischung statt Rangliste** (Tims Befund, 30.09.2026: Neue Konten nahmen fast
+nur Stadtteile). Die Liste wächst deshalb über Verkehr und Bauen hinaus, und
+angezeigt wird sie in ``ANZEIGE`` — von Hand so gemischt, dass schon die erste
+Reihe Verkehr, Freizeit, Kinder und Stadtentwicklung zeigt. Nach Zahl zu
+sortieren hätte Schulen, Haushalts- und Bauthemen nach vorn gespült.
 """
 from __future__ import annotations
 
@@ -142,6 +150,89 @@ CITY_TOPICS: tuple[CityTopic, ...] = (
         "Smart-City-Vorhaben.",
         "Online-Dienste, Bürgerservice",
     ),
+    CityTopic(
+        "pools", "Schwimmbäder",
+        r"schwimmbad|hallenbad|freibad|schwimmhalle|\bbäder|olantis|dobbenbad|nordbad|\bbad\b",
+        "Schwimmbäder in Oldenburg: Hallen- und Freibäder, OLantis Huntebad, "
+        "Sanierung und Betrieb durch die Bäderbetriebsgesellschaft, "
+        "Eintrittspreise, Öffnungszeiten und Schwimmkurse.",
+        "Hallenbäder, Freibäder, Bäderbetrieb",
+    ),
+    CityTopic(
+        "sports", "Sporthallen und Sportplätze",
+        r"sporthalle|sportplatz|sportplätze|sportstätte|sportanlage|turnhalle|kunstrasen|sportförder",
+        "Sporthallen und Sportplätze in Oldenburg: Sanierung und Neubau von "
+        "Hallen und Plätzen, Vergabe an Vereine, Kunstrasen und die "
+        "Richtlinien der Sportförderung.",
+        "Hallen, Plätze, Vereinsförderung",
+    ),
+    CityTopic(
+        "culture", "Theater, Museen und Kultur",
+        r"theater|museum|museen|bibliothek|kulturförder|kulturbüro|kulturzentrum|musikschule|nachtkultur",
+        "Kultur in Oldenburg: Staatstheater, Museen und Stadtbibliothek, "
+        "Kulturförderung, Kulturzentren und Musikschule, Nachtkultur und "
+        "Veranstaltungsorte.",
+        "Theater, Museen, Kulturförderung",
+    ),
+    CityTopic(
+        "youth", "Kinder, Jugend und Spielplätze",
+        r"jugendzentrum|jugendtreff|jugendarbeit|jugendförder|spielplatz|spielplätze|spielgerät|jugendparlament",
+        "Kinder und Jugend in Oldenburg: Spielplätze und Spielgeräte, "
+        "Jugendzentren und Jugendtreffs, Jugendarbeit und Jugendhilfe, "
+        "Beteiligung junger Menschen.",
+        "Spielplätze, Jugendzentren, Jugendarbeit",
+    ),
+    CityTopic(
+        "fire", "Feuerwehr und Rettungsdienst",
+        r"feuerwehr|rettungsdienst|brandschutz|katastrophenschutz|rettungswache|feuerwache",
+        "Feuerwehr und Rettungsdienst in Oldenburg: Feuerwachen und "
+        "Fahrzeuge, Freiwillige Feuerwehren, Rettungsdienst und "
+        "Rettungswachen, Brand- und Katastrophenschutz.",
+        "Feuerwachen, Fahrzeuge, Rettungsdienst",
+    ),
+    CityTopic(
+        "airfield", "Fliegerhorst",
+        r"fliegerhorst",
+        "Das Gelände des ehemaligen Fliegerhorsts in Oldenburg: "
+        "Konversion zum neuen Quartier, Bebauungspläne, Sanierungsgebiet, "
+        "Gewerbe, Wohnen und Altlasten-Monitoring.",
+        "Neues Quartier, Gewerbe, Sanierungsgebiet",
+    ),
+    CityTopic(
+        "waste", "Müll und Sauberkeit",
+        r"abfallwirtschaft|abfallgebühr|müllgebühr|\bmüll|straßenreinigung|sauberkeit|recycling|wertstoff|\bgbo\b",
+        "Müll und Sauberkeit in Oldenburg: Abfallwirtschaft und "
+        "Abfallgebühren, Wertstoffhöfe und Recycling, Straßenreinigung, "
+        "Sauberkeit im öffentlichen Raum.",
+        "Abfallgebühren, Recycling, Straßenreinigung",
+    ),
+    CityTopic(
+        "roads", "Straßen und Brücken",
+        r"straßenbau|straßensanierung|straßenausbau|straßenunterhaltung|brückenbau|\bbrücke|sanierung der straße|ausbaubeitrag|fahrbahn",
+        "Straßen und Brücken in Oldenburg: Straßenbau und -sanierung, "
+        "Kreuzungsumbauten, Brückenneubau und -sanierung, "
+        "Ausbaubeiträge und Verkehrsführung bei Baustellen.",
+        "Straßenbau, Brücken, Kreuzungen",
+    ),
+    CityTopic(
+        "business", "Wirtschaft und Gewerbe",
+        r"gewerbegebiet|gewerbefläche|wirtschaftsförder|ansiedlung|einzelhandel|gewerbeansiedlung",
+        "Wirtschaft und Gewerbe in Oldenburg: Gewerbegebiete und "
+        "-flächen, Wirtschaftsförderung, Unternehmensansiedlungen und "
+        "Einzelhandel.",
+        "Gewerbegebiete, Ansiedlungen, Einzelhandel",
+    ),
+)
+
+#: Die Reihenfolge der Anzeige. Die Reihenfolge von ``CITY_TOPICS`` bleibt davon
+#: unberührt: Sie entscheidet bei ``match_question``, welches Thema eine Frage
+#: bekommt, die mehrere trifft. ``tests/test_stadtthemen.py`` hält fest, dass
+#: hier jeder Schlüssel genau einmal steht.
+ANZEIGE: tuple[str, ...] = (
+    "cycling", "stadium", "pools", "green", "childcare", "culture",
+    "transit", "sports", "housing", "fire", "downtown", "airfield",
+    "schools", "youth", "climate", "waste", "heat", "roads",
+    "business", "digital",
 )
 
 _COMPILED = {t.key: re.compile(t.pattern, re.IGNORECASE) for t in CITY_TOPICS}
@@ -159,9 +250,8 @@ def match_question(frage: str) -> CityTopic | None:
 
     **Wie oft das trifft, ist gemessen, nicht geschätzt:** An den fünfzehn
     echten Fragen vom 08.09.2026 traf es bei vieren (Radverkehr, Kitas,
-    Stadion, Klimaschutz). Fliegerhorst, Haushalt, Sport und Kultur haben
-    bewusst kein kuratiertes Thema — sie waren als Dauerabo zu laut oder zu
-    selten (s. Modul-Kopf). Für den Rest bleibt der vorbefüllte Weg über das
+    Stadion, Klimaschutz). Haushalt und „Sport" allgemein haben bewusst
+    kein kuratiertes Thema — sie waren als Dauerabo zu laut (s. Modul-Kopf). Für den Rest bleibt der vorbefüllte Weg über das
     Themen-Formular; dieser hier ist die Abkürzung, nicht der einzige Weg.
 
     Bei mehreren Treffern gewinnt der ERSTE aus ``CITY_TOPICS``: Die Liste ist
@@ -190,7 +280,7 @@ def count_topics(texts: list[str]) -> dict[str, int]:
 
 def city_topic_suggestions(council, today: date | None = None,
                            minimum: int = MIN_DECISIONS) -> list[dict]:
-    """Die Stadtthemen mit Substanz, die aktivsten zuerst.
+    """Die Stadtthemen mit Substanz, in der Reihenfolge von ``ANZEIGE``.
 
     Jeder Eintrag hat die Form der Entitäts-Vorschläge (``name``,
     ``description``, ``context``, ``n``) plus ``key`` und ``months`` — dieselbe
@@ -202,5 +292,5 @@ def city_topic_suggestions(council, today: date | None = None,
         "key": t.key, "name": t.name, "description": t.description,
         "context": t.context, "n": counts[t.key], "months": round(WINDOW_DAYS / 30.4),
     } for t in CITY_TOPICS if counts[t.key] >= minimum]
-    out.sort(key=lambda e: -e["n"])
+    out.sort(key=lambda e: ANZEIGE.index(e["key"]) if e["key"] in ANZEIGE else len(ANZEIGE))
     return out

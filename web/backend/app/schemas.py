@@ -542,6 +542,17 @@ class PushUnregisterRequest(BaseModel):
     token: str = Field(min_length=1, max_length=512)
 
 
+class OnboardingChips(BaseModel):
+    """Was der Einrichtungs-Assistent angeboten hat und was angeklickt wurde.
+
+    Nur Chip-Kennungen, keine Namen: ``city_topic:<key>`` für die kuratierten
+    Stadtthemen, sonst die Arten ``district``, ``district_suggestion`` und ``own``.
+    Der Server wirft alles andere weg (Positivliste in ``routers/onboarding.py``).
+    """
+    gezeigt: list[str] = Field(default_factory=list, max_length=60)
+    gewaehlt: list[str] = Field(default_factory=list, max_length=60)
+
+
 class TourUpdate(BaseModel):
     """Was mit Lottis Tour-Einladung passiert ist.
 
