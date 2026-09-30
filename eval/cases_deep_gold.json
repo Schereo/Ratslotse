@@ -1,186 +1,692 @@
 [
-  {
-    "id": "schlossplatz-spielplatz-stand",
-    "note": "Vom Ratsbeschluss zur festgefahrenen Umsetzung. Handgeprüft am 30.09.2026 gegen Original-PDFs (Recherche: Schereo/ratslotse-social, redaktion/ausschuesse-erklaert/RECHERCHE.md, Abschnitt 6 A und 6 D).",
-    "stand": "2026-09-30 (Protokolle bis 17.08.2026, Presse bis 26.08.2026)",
-    "question": "Wie ist der Stand beim Spielplatz auf dem Schlossplatz?",
-    "varianten": [
-      "Was ist aus dem Ratsbeschluss zum Spielplatz auf dem Schlossplatz geworden?",
-      "Kommt der Spielplatz auf dem Schlossplatz noch?"
+ {
+  "id": "schlossplatz-spielplatz-stand",
+  "note": "Vom Ratsbeschluss zur festgefahrenen Umsetzung. Handgeprüft am 30.09.2026 gegen Original-PDFs (Recherche: Schereo/ratslotse-social, redaktion/ausschuesse-erklaert/RECHERCHE.md, Abschnitt 6 A und 6 D).",
+  "stand": "2026-09-30 (Protokolle bis 17.08.2026, Presse bis 26.08.2026)",
+  "question": "Wie ist der Stand beim Spielplatz auf dem Schlossplatz?",
+  "varianten": [
+   "Was ist aus dem Ratsbeschluss zum Spielplatz auf dem Schlossplatz geworden?",
+   "Kommt der Spielplatz auf dem Schlossplatz noch?"
+  ],
+  "pflicht": [
+   {
+    "id": "F1",
+    "gewicht": 3,
+    "fakt": "Der Rat beschloss am 30.09.2024 einstimmig (Antrag SPD und Grüne), dass die Verwaltung ein Konzept für einen dauerhaften inklusiven Spielplatz auf dem Schlossplatz vorlegt.",
+    "beleg": "Rat 30.09.2024, TOP 15.4, Protokoll S. 26–27, getfile id=284331"
+   },
+   {
+    "id": "F2",
+    "gewicht": 1,
+    "fakt": "Vorberaten im September 2024 im Ausschuss für Stadtgrün, Umwelt und Klima (12.09., einstimmig) und im Jugendhilfeausschuss (18.09., Ergebnis: gilt als behandelt).",
+    "beleg": "ASUK 12.09.2024 TOP 12.2 S. 17–18 (id=286682); JHA 18.09.2024 TOP 8.1 S. 7–9 (id=306548)"
+   },
+   {
+    "id": "F3",
+    "gewicht": 1,
+    "fakt": "Der Beschluss verlangte außerdem, Geld im Haushalt 2025 einzuplanen, die Standplanung der Märkte anzupassen und die Planung nach Ratsbeschluss früh 2025 umzusetzen (mindestens zwei dieser Punkte).",
+    "beleg": "Rat 30.09.2024, Protokoll S. 27"
+   },
+   {
+    "id": "F4",
+    "gewicht": 1,
+    "fakt": "Im September 2025 berichtete die Verwaltung über eine kurzfristige Lösung (Eigenplanung, Baumittel vorhanden) und eine langfristige Lösung mit Planungsbüro; Wasserspiele waren im Gespräch.",
+    "beleg": "ASUK 11.09.2025 TOP 12.2, S. 15–16 (id=299861)"
+   },
+   {
+    "id": "F5",
+    "gewicht": 1,
+    "fakt": "Im November 2025 beteiligte die Stadt Kinder und Jugendliche (15.11.2025) an Ideen für einen Themenspielbereich; eine Einweihung wurde für Mai 2026 in Aussicht gestellt.",
+    "beleg": "Pressemitteilung Stadt Oldenburg 04.11.2025; ASUK 11.12.2025 S. 4"
+   },
+   {
+    "id": "F6",
+    "gewicht": 2,
+    "fakt": "Im Dezember 2025 meldete die Verwaltung, die Standflächen ließen sich nicht anpassen, weil alle Flächen durch Veranstaltungen und Rettungswege belegt sind; ein Dialog mit Veranstaltern und Politik im 1. Quartal 2026 wurde vorgeschlagen.",
+    "beleg": "ASUK 11.12.2025 TOP 6, S. 4–6 (id=305267)"
+   },
+   {
+    "id": "F7",
+    "gewicht": 3,
+    "fakt": "Im April 2026 erklärte die Verwaltung, auf dem Schlossplatz sei kein Platz für einen (konventionellen) Spielplatz.",
+    "beleg": "ASUK 16.04.2026 TOP 7, S. 11–12 (id=310610)"
+   },
+   {
+    "id": "F7b",
+    "gewicht": 2,
+    "fakt": "Als Gründe nannte die Verwaltung mindestens: fehlendes Planrecht bzw. Denkmalschutz bzw. dass Veranstalter kleinere Standflächen für wirtschaftlich nicht tragbar halten (mindestens ein konkreter Grund genügt, allgemeines „wegen Vorschriften“ genügt NICHT).",
+    "beleg": "ASUK 16.04.2026 TOP 7, S. 11–12 (id=310610)"
+   },
+   {
+    "id": "F8",
+    "gewicht": 1,
+    "fakt": "Als Alternativen nannte die Verwaltung kleine Einbauten außerhalb des Platzes, Wasserspiele, Bodenbilder oder eine Aufwertung des Heiligengeistparks (mindestens zwei).",
+    "beleg": "ASUK 16.04.2026, S. 12"
+   },
+   {
+    "id": "F9",
+    "gewicht": 1,
+    "fakt": "Teile der Politik (u. a. SPD) halten am Spielplatz fest bzw. kritisieren, dass der Schlossplatz in der vom Rat am 01.06.2026 beschlossenen Spielleitplanung fehlt.",
+    "beleg": "ASUK 16.04.2026 S. 12–13; Rat 01.06.2026 TOP 8.3 S. 22 (id=311268)"
+   },
+   {
+    "id": "F10",
+    "gewicht": 3,
+    "fakt": "Stand: Ein dauerhafter Spielplatz ist nicht gebaut; der Ratsbeschluss von 2024 wurde weder aufgehoben noch durch einen neuen Beschluss ersetzt; der Ausgang ist offen.",
+    "beleg": "Keine entsprechenden Beschlüsse/Presse bis August 2026"
+   },
+   {
+    "id": "F11",
+    "gewicht": 1,
+    "fakt": "Der mobile Spielcontainer zwischen Schloss und Schlosshöfen (seit 2023) ist ein eigenes Projekt und 2026 weiter in Betrieb.",
+    "beleg": "Pressemitteilung Stadt Oldenburg 11.02.2026"
+   }
+  ],
+  "verboten": [
+   {
+    "id": "X1",
+    "behauptung": "Der Spielplatz bzw. Spielbereich auf dem Schlossplatz ist gebaut oder eröffnet (etwa im Mai 2026)."
+   },
+   {
+    "id": "X2",
+    "behauptung": "Der Jugendhilfeausschuss hat dem Antrag am 18.09.2024 zugestimmt bzw. ihn angenommen."
+   },
+   {
+    "id": "X3",
+    "behauptung": "Für den Spielplatz wurde ein konkreter Geldbetrag bewilligt."
+   },
+   {
+    "id": "X4",
+    "behauptung": "Der Rat hat den Spielplatz abgelehnt oder den Beschluss von 2024 aufgehoben."
+   },
+   {
+    "id": "X5",
+    "behauptung": "Der Spielcontainer ist das Ergebnis des Ratsbeschlusses von 2024."
+   },
+   {
+    "id": "X6",
+    "behauptung": "Es wird ein Beratungsergebnis des (nichtöffentlichen) Verwaltungsausschusses zum Spielplatz genannt."
+   }
+  ],
+  "bewertung": "Abdeckung = Summe der Gewichte erfüllter Pflichtfakten / Gesamtgewicht (20). Jede verbotene Behauptung ist ein harter Fehler. Bestanden: Abdeckung >= 0,6, F1, F7 und F10 erfüllt, keine verbotene Behauptung.",
+  "material": [
+   {
+    "id": "M1",
+    "fuer": [
+     "F1",
+     "F3"
     ],
-    "pflicht": [
-      {
-        "id": "F1",
-        "gewicht": 3,
-        "fakt": "Der Rat beschloss am 30.09.2024 einstimmig (Antrag SPD und Grüne), dass die Verwaltung ein Konzept für einen dauerhaften inklusiven Spielplatz auf dem Schlossplatz vorlegt.",
-        "beleg": "Rat 30.09.2024, TOP 15.4, Protokoll S. 26–27, getfile id=284331"
-      },
-      {
-        "id": "F2",
-        "gewicht": 1,
-        "fakt": "Vorberaten im September 2024 im Ausschuss für Stadtgrün, Umwelt und Klima (12.09., einstimmig) und im Jugendhilfeausschuss (18.09., Ergebnis: gilt als behandelt).",
-        "beleg": "ASUK 12.09.2024 TOP 12.2 S. 17–18 (id=286682); JHA 18.09.2024 TOP 8.1 S. 7–9 (id=306548)"
-      },
-      {
-        "id": "F3",
-        "gewicht": 1,
-        "fakt": "Der Beschluss verlangte außerdem, Geld im Haushalt 2025 einzuplanen, die Standplanung der Märkte anzupassen und die Planung nach Ratsbeschluss früh 2025 umzusetzen (mindestens zwei dieser Punkte).",
-        "beleg": "Rat 30.09.2024, Protokoll S. 27"
-      },
-      {
-        "id": "F4",
-        "gewicht": 1,
-        "fakt": "Im September 2025 berichtete die Verwaltung über eine kurzfristige Lösung (Eigenplanung, Baumittel vorhanden) und eine langfristige Lösung mit Planungsbüro; Wasserspiele waren im Gespräch.",
-        "beleg": "ASUK 11.09.2025 TOP 12.2, S. 15–16 (id=299861)"
-      },
-      {
-        "id": "F5",
-        "gewicht": 1,
-        "fakt": "Im November 2025 beteiligte die Stadt Kinder und Jugendliche (15.11.2025) an Ideen für einen Themenspielbereich; eine Einweihung wurde für Mai 2026 in Aussicht gestellt.",
-        "beleg": "Pressemitteilung Stadt Oldenburg 04.11.2025; ASUK 11.12.2025 S. 4"
-      },
-      {
-        "id": "F6",
-        "gewicht": 2,
-        "fakt": "Im Dezember 2025 meldete die Verwaltung, die Standflächen ließen sich nicht anpassen, weil alle Flächen durch Veranstaltungen und Rettungswege belegt sind; ein Dialog mit Veranstaltern und Politik im 1. Quartal 2026 wurde vorgeschlagen.",
-        "beleg": "ASUK 11.12.2025 TOP 6, S. 4–6 (id=305267)"
-      },
-      {
-        "id": "F7",
-        "gewicht": 3,
-        "fakt": "Im April 2026 erklärte die Verwaltung, auf dem Schlossplatz sei kein Platz für einen (konventionellen) Spielplatz.",
-        "beleg": "ASUK 16.04.2026 TOP 7, S. 11–12 (id=310610)"
-      },
-      {
-        "id": "F7b",
-        "gewicht": 2,
-        "fakt": "Als Gründe nannte die Verwaltung mindestens: fehlendes Planrecht bzw. Denkmalschutz bzw. dass Veranstalter kleinere Standflächen für wirtschaftlich nicht tragbar halten (mindestens ein konkreter Grund genügt, allgemeines „wegen Vorschriften“ genügt NICHT).",
-        "beleg": "ASUK 16.04.2026 TOP 7, S. 11–12 (id=310610)"
-      },
-      {
-        "id": "F8",
-        "gewicht": 1,
-        "fakt": "Als Alternativen nannte die Verwaltung kleine Einbauten außerhalb des Platzes, Wasserspiele, Bodenbilder oder eine Aufwertung des Heiligengeistparks (mindestens zwei).",
-        "beleg": "ASUK 16.04.2026, S. 12"
-      },
-      {
-        "id": "F9",
-        "gewicht": 1,
-        "fakt": "Teile der Politik (u. a. SPD) halten am Spielplatz fest bzw. kritisieren, dass der Schlossplatz in der vom Rat am 01.06.2026 beschlossenen Spielleitplanung fehlt.",
-        "beleg": "ASUK 16.04.2026 S. 12–13; Rat 01.06.2026 TOP 8.3 S. 22 (id=311268)"
-      },
-      {
-        "id": "F10",
-        "gewicht": 3,
-        "fakt": "Stand: Ein dauerhafter Spielplatz ist nicht gebaut; der Ratsbeschluss von 2024 wurde weder aufgehoben noch durch einen neuen Beschluss ersetzt; der Ausgang ist offen.",
-        "beleg": "Keine entsprechenden Beschlüsse/Presse bis August 2026"
-      },
-      {
-        "id": "F11",
-        "gewicht": 1,
-        "fakt": "Der mobile Spielcontainer zwischen Schloss und Schlosshöfen (seit 2023) ist ein eigenes Projekt und 2026 weiter in Betrieb.",
-        "beleg": "Pressemitteilung Stadt Oldenburg 11.02.2026"
-      }
+    "art": "beschluss",
+    "session_date": "2024-09-30",
+    "committee": "Rat",
+    "titel_enthaelt": "Spielplatz"
+   },
+   {
+    "id": "M2",
+    "fuer": [
+     "F6"
     ],
-    "verboten": [
-      {
-        "id": "X1",
-        "behauptung": "Der Spielplatz bzw. Spielbereich auf dem Schlossplatz ist gebaut oder eröffnet (etwa im Mai 2026)."
-      },
-      {
-        "id": "X2",
-        "behauptung": "Der Jugendhilfeausschuss hat dem Antrag am 18.09.2024 zugestimmt bzw. ihn angenommen."
-      },
-      {
-        "id": "X3",
-        "behauptung": "Für den Spielplatz wurde ein konkreter Geldbetrag bewilligt."
-      },
-      {
-        "id": "X4",
-        "behauptung": "Der Rat hat den Spielplatz abgelehnt oder den Beschluss von 2024 aufgehoben."
-      },
-      {
-        "id": "X5",
-        "behauptung": "Der Spielcontainer ist das Ergebnis des Ratsbeschlusses von 2024."
-      },
-      {
-        "id": "X6",
-        "behauptung": "Es wird ein Beratungsergebnis des (nichtöffentlichen) Verwaltungsausschusses zum Spielplatz genannt."
-      }
-    ],
-    "bewertung": "Abdeckung = Summe der Gewichte erfüllter Pflichtfakten / Gesamtgewicht (20). Jede verbotene Behauptung ist ein harter Fehler. Bestanden: Abdeckung >= 0,6, F1, F7 und F10 erfüllt, keine verbotene Behauptung.",
-    "material": [
-      {
-        "id": "M1",
-        "fuer": [
-          "F1",
-          "F3"
-        ],
-        "art": "beschluss",
-        "session_date": "2024-09-30",
-        "committee": "Rat",
-        "titel_enthaelt": "Spielplatz"
-      },
-      {
-        "id": "M2",
-        "fuer": [
-          "F6"
-        ],
-        "art": "debatte",
-        "session_date": "2025-12-11",
-        "text_enthaelt_eins": [
-          "Standfl",
-          "Rettungsweg",
-          "belegt"
-        ]
-      },
-      {
-        "id": "M4",
-        "fuer": [
-          "F5"
-        ],
-        "art": "presse",
-        "date": "2025-11-04",
-        "titel_enthaelt": "Spielbereich"
-      },
-      {
-        "id": "M5",
-        "fuer": [
-          "F11"
-        ],
-        "art": "presse",
-        "date": "2026-02-11",
-        "titel_enthaelt": "Spielcontainer"
-      },
-      {
-        "id": "M3a",
-        "fuer": [
-          "F7"
-        ],
-        "art": "debatte",
-        "session_date": "2026-04-16",
-        "text_enthaelt_eins": [
-          "kein Platz",
-          "kein Spielplatz",
-          "keinen Spielplatz",
-          "Vorschriften"
-        ]
-      },
-      {
-        "id": "M3b",
-        "fuer": [
-          "F7b",
-          "F8"
-        ],
-        "art": "debatte",
-        "session_date": "2026-04-16",
-        "text_enthaelt_eins": [
-          "Denkmalschutz",
-          "Planrecht",
-          "Planungsrecht",
-          "Heiligengeist"
-        ]
-      }
+    "art": "debatte",
+    "session_date": "2025-12-11",
+    "text_enthaelt_eins": [
+     "Standfl",
+     "Rettungsweg",
+     "belegt"
     ]
-  }
+   },
+   {
+    "id": "M4",
+    "fuer": [
+     "F5"
+    ],
+    "art": "presse",
+    "date": "2025-11-04",
+    "titel_enthaelt": "Spielbereich"
+   },
+   {
+    "id": "M5",
+    "fuer": [
+     "F11"
+    ],
+    "art": "presse",
+    "date": "2026-02-11",
+    "titel_enthaelt": "Spielcontainer"
+   },
+   {
+    "id": "M3a",
+    "fuer": [
+     "F7"
+    ],
+    "art": "debatte",
+    "session_date": "2026-04-16",
+    "text_enthaelt_eins": [
+     "kein Platz",
+     "kein Spielplatz",
+     "keinen Spielplatz",
+     "Vorschriften"
+    ]
+   },
+   {
+    "id": "M3b",
+    "fuer": [
+     "F7b",
+     "F8"
+    ],
+    "art": "debatte",
+    "session_date": "2026-04-16",
+    "text_enthaelt_eins": [
+     "Denkmalschutz",
+     "Planrecht",
+     "Planungsrecht",
+     "Heiligengeist"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "stadion-stand",
+  "note": "Handgeprüft am 30.09.2026 gegen Beschlüsse, Protokolltexte (council_protocols.raw_text) und Pressemitteilungen im Bestand. Tims Hauptanwendungsfall (Direktive 10.08.2026).",
+  "stand": "2026-09-30 (Protokolle bis 24.08.2026, Presse bis 26.08.2026)",
+  "question": "Wie ist der Stand beim Stadionneubau?",
+  "varianten": [
+   "Kommt das neue Stadion an der Maastrichter Straße?",
+   "Was ist beim Stadion zuletzt passiert?"
+  ],
+  "pflicht": [
+   {
+    "id": "F1",
+    "gewicht": 3,
+    "fakt": "Der Rat stimmte am 01.06.2026 der Vergabe des Stadionneubaus an einen Totalunternehmer (Baugesellschaft Walter Hellmich) zum Pauschalfestpreis von rund 57,3 Mio. Euro netto (zuzüglich rund 2,36 Mio. Euro Baunebenkosten) zu.",
+    "beleg": "Rat 01.06.2026 TOP 6.1, Vorlage 26/0396 (Protokoll id=311268); PM 02.06.2026"
+   },
+   {
+    "id": "F2",
+    "gewicht": 1,
+    "fakt": "Die Entscheidung fiel mehrheitlich (29 zu 18 Stimmen bei zwei Enthaltungen).",
+    "beleg": "Rat 01.06.2026 TOP 6.1; PM 02.06.2026"
+   },
+   {
+    "id": "F3",
+    "gewicht": 2,
+    "fakt": "Der Rat beschloss am selben Tag eine 100-%-Ausfallbürgschaft der Stadt für die Finanzierung und die Übertragung der Grundstücke auf die Stadiongesellschaft, jeweils unter Vorbehalt der EU-Beihilfegenehmigung (bzw. der Kommunalaufsicht).",
+    "beleg": "Rat 01.06.2026 TOP 6.2 (26/0374) und 6.3 (26/0398)"
+   },
+   {
+    "id": "F4",
+    "gewicht": 2,
+    "fakt": "Das Planungsrecht steht: Der Rat beschloss am 13.04.2026 den Bebauungsplan 831 als Satzung (und die Flächennutzungsplan-Änderung 82); der Bebauungsplan ist seit 04.06.2026 rechtskräftig.",
+    "beleg": "Rat 13.04.2026 TOP 6.1/6.2 (id=310140); PM 05.06.2026"
+   },
+   {
+    "id": "F5",
+    "gewicht": 1,
+    "fakt": "Der Vertrag mit dem Totalunternehmer wurde am 04.06.2026 unterzeichnet.",
+    "beleg": "PM 05.06.2026"
+   },
+   {
+    "id": "F6",
+    "gewicht": 3,
+    "fakt": "Die EU-Kommission hat am 12.08.2026 die Beihilfen (75 Mio. Euro) genehmigt, und die Kommunalaufsicht hat sich positiv zurückgemeldet; damit liegen die wesentlichen rechtlichen Voraussetzungen vor.",
+    "beleg": "PM 12.08.2026 „EU und Kommunalaufsicht geben endgültig grünes Licht“"
+   },
+   {
+    "id": "F7",
+    "gewicht": 1,
+    "fakt": "Anträge, das Projekt aufzuhalten, scheiterten: u. a. die Einwohnerbefragung (Grüne, Rat 23.02.2026) und die Vergabe erst nach EU-Zusage (Für Oldenburg, Rat 01.06.2026) wurden abgelehnt.",
+    "beleg": "Rat 23.02.2026 TOP 12.7 (id=306560); Rat 01.06.2026 TOP 15.10"
+   }
+  ],
+  "verboten": [
+   {
+    "id": "X1",
+    "behauptung": "Das Stadion ist bereits fertiggestellt oder eröffnet."
+   },
+   {
+    "id": "X2",
+    "behauptung": "Die EU-Kommission hat die Beihilfe abgelehnt, oder ihre Entscheidung steht (Stand Ende August 2026) noch aus."
+   },
+   {
+    "id": "X3",
+    "behauptung": "Der Rat hat den Stadionneubau abgelehnt oder gestoppt."
+   },
+   {
+    "id": "X4",
+    "behauptung": "Der Rat hat einstimmig zugestimmt."
+   }
+  ],
+  "bewertung": "Abdeckung = Summe der Gewichte erfüllter Pflichtfakten / Gesamtgewicht (13). Bestanden: Abdeckung >= 0,6, F1 und F6 erfüllt, keine verbotene Behauptung.",
+  "material": [
+   {
+    "id": "M1",
+    "fuer": [
+     "F1",
+     "F2"
+    ],
+    "art": "beschluss",
+    "session_date": "2026-06-01",
+    "committee": "Rat",
+    "titel_enthaelt": "Stadionneubau"
+   },
+   {
+    "id": "M2",
+    "fuer": [
+     "F6"
+    ],
+    "art": "presse",
+    "date": "2026-08-12",
+    "titel_enthaelt": "grünes Licht"
+   },
+   {
+    "id": "M3",
+    "fuer": [
+     "F4"
+    ],
+    "art": "beschluss",
+    "session_date": "2026-04-13",
+    "committee": "Rat",
+    "titel_enthaelt": "Bebauungsplan 831"
+   }
+  ]
+ },
+ {
+  "id": "stadion-fraktionen",
+  "note": "Handgeprüft am 30.09.2026 gegen Beschlüsse, Protokolltexte (council_protocols.raw_text) und Pressemitteilungen im Bestand. Positionen aus der Ratsdebatte 01.06.2026 und der Abstimmungsaufschlüsselung der PM 02.06.2026.",
+  "stand": "2026-09-30 (Protokolle bis 24.08.2026, Presse bis 26.08.2026)",
+  "question": "Wie stehen die Fraktionen zum neuen Stadion?",
+  "varianten": [
+   "Wer war im Rat für und wer gegen das neue Stadion?"
+  ],
+  "pflicht": [
+   {
+    "id": "F1",
+    "gewicht": 3,
+    "fakt": "Für die Vergabe am 01.06.2026 stimmten SPD, CDU, BSW, FDP, Volt, AfD und der Oberbürgermeister; dagegen stimmten die Grünen und die Gruppe Für Oldenburg (mindestens: SPD und CDU dafür, Grüne dagegen).",
+    "beleg": "PM 02.06.2026; Rat 01.06.2026 TOP 6.1"
+   },
+   {
+    "id": "F2",
+    "gewicht": 1,
+    "fakt": "Zwei CDU-Ratsmitglieder enthielten sich.",
+    "beleg": "PM 02.06.2026"
+   },
+   {
+    "id": "F3",
+    "gewicht": 2,
+    "fakt": "Die Grünen kritisieren vor allem die Finanzierung: das dauerhafte Defizit der Stadiongesellschaft (im Gespräch rund 3 Mio. Euro jährlich), eine volle städtische Finanzierung und den Sanierungsstau bei anderen Sportstätten; sie forderten, das EU-Prüfergebnis abzuwarten.",
+    "beleg": "Rat 01.06.2026 TOP 6.1, Beiträge Schilling und Beerheide (id=311268)"
+   },
+   {
+    "id": "F4",
+    "gewicht": 2,
+    "fakt": "Für Oldenburg hielt den Beschluss wegen des laufenden EU-Notifizierungsverfahrens für hochriskant und verwies darauf, dass das Marschwegstadion genüge; ihr Antrag, erst nach EU-Zusage zu vergeben, wurde abgelehnt.",
+    "beleg": "Rat 01.06.2026, Beiträge Finke und Sander; TOP 15.10"
+   },
+   {
+    "id": "F5",
+    "gewicht": 1,
+    "fakt": "SPD: vertretbare Entscheidung, Spielstätte für Profifußball und „dritter Ort“ für den Zusammenhalt; Totalunternehmermodell sichere Kostenstabilität.",
+    "beleg": "Rat 01.06.2026, Beitrag Prange"
+   },
+   {
+    "id": "F6",
+    "gewicht": 1,
+    "fakt": "CDU: von Beginn an für das Stadion, aber auf solider Grundlage; die Überschreitung der Kostengrenze um rund 1,9 Mio. Euro rechtfertige keinen Abbruch.",
+    "beleg": "Rat 01.06.2026, Beitrag Baak"
+   },
+   {
+    "id": "F7",
+    "gewicht": 1,
+    "fakt": "FDP stimmte zu (Tempo und Kostensicherheit des Totalunternehmerverfahrens; Marschwegstadion erfüllt die DFB-Vorgaben nicht); BSW begrüßte, dass das Stadion auf den Weg gebracht wird.",
+    "beleg": "Rat 01.06.2026, Beiträge Pfeiffer und Höpken"
+   }
+  ],
+  "verboten": [
+   {
+    "id": "X1",
+    "behauptung": "Die Grünen haben der Vergabe zugestimmt."
+   },
+   {
+    "id": "X2",
+    "behauptung": "Die CDU hat gegen die Vergabe gestimmt."
+   },
+   {
+    "id": "X3",
+    "behauptung": "Die Entscheidung fiel einstimmig."
+   }
+  ],
+  "bewertung": "Abdeckung = Summe der Gewichte / 11. Bestanden: Abdeckung >= 0,6, F1 erfüllt, keine verbotene Behauptung.",
+  "material": [
+   {
+    "id": "M1",
+    "fuer": [
+     "F3"
+    ],
+    "art": "debatte",
+    "session_date": "2026-06-01",
+    "text_enthaelt_eins": [
+     "Defizit",
+     "Sanierungsstau"
+    ]
+   },
+   {
+    "id": "M2",
+    "fuer": [
+     "F4"
+    ],
+    "art": "debatte",
+    "session_date": "2026-06-01",
+    "text_enthaelt_eins": [
+     "Notifizierung",
+     "hochriskant"
+    ]
+   },
+   {
+    "id": "M3",
+    "fuer": [
+     "F1",
+     "F2"
+    ],
+    "art": "presse",
+    "date": "2026-06-02",
+    "titel_enthaelt": "Hellmich"
+   }
+  ]
+ },
+ {
+  "id": "trinkwasserspender-draussen",
+  "note": "Handgeprüft am 30.09.2026 gegen Beschlüsse, Protokolltexte (council_protocols.raw_text) und Pressemitteilungen im Bestand. Die Kernaussage steht nur als Protokollnotiz ohne Sprecher; der Beschluss lautet bloß „zur Kenntnis genommen“.",
+  "stand": "2026-09-30 (Protokolle bis 24.08.2026, Presse bis 26.08.2026)",
+  "question": "Wann kommen öffentliche Trinkwasserspender in Oldenburg?",
+  "varianten": [
+   "Was ist aus dem Antrag zu Trinkwasserspendern und Nebelmaschinen geworden?"
+  ],
+  "pflicht": [
+   {
+    "id": "F1",
+    "gewicht": 3,
+    "fakt": "Laut Verwaltung (Protokollnotiz) braucht die Prüfung der technischen, gestalterischen und rechtlichen Anforderungen – vor allem für den Betrieb – weitere Klärung; angestrebt wird das 2027 mit Abschluss des KLAK, danach soll gebaut werden.",
+    "beleg": "ASUK 16.04.2026 TOP 11.1, Vorlage 26/0261, Protokollnotiz (id=310610)"
+   },
+   {
+    "id": "F2",
+    "gewicht": 1,
+    "fakt": "Anlass war ein Informationsantrag der SPD-Fraktion vom 17.03.2026 (Machbarkeit öffentlicher Trinkwasserspender und Nebelmaschinen); der Bericht wurde zur Kenntnis genommen, beschlossen wurde nichts.",
+    "beleg": "ASUK 16.04.2026 TOP 11.1"
+   },
+   {
+    "id": "F3",
+    "gewicht": 1,
+    "fakt": "Zu Nebelmaschinen machte die Verwaltung keine Aussage (differenziert diskutiert); die CDU (Dittrich) bezweifelte deren Sinn in Zeiten von Wasserknappheit.",
+    "beleg": "ASUK 16.04.2026 TOP 11.1"
+   },
+   {
+    "id": "F4",
+    "gewicht": 1,
+    "fakt": "Es gab frühere Anläufe: 2020 wurde ein Antrag auf barrierefreie Trinkwasserbrunnen in der Innenstadt abgelehnt; 2023 ging es auf CDU-Antrag um Trinkwasserspender in öffentlichen Gebäuden (mindestens einer genannt).",
+    "beleg": "ASUK 13.02.2020 TOP 10.1 (id=215473); ASUK 09.11.2023 TOP 12.1 (id=272105)"
+   }
+  ],
+  "verboten": [
+   {
+    "id": "X1",
+    "behauptung": "Der Bau öffentlicher Trinkwasserspender ist beschlossen oder hat schon begonnen."
+   },
+   {
+    "id": "X2",
+    "behauptung": "Die Stadt wird öffentliche Nebelmaschinen aufstellen."
+   },
+   {
+    "id": "X3",
+    "behauptung": "Es werden konkrete Standorte oder eine konkrete Anzahl von Trinkwasserspendern genannt."
+   }
+  ],
+  "bewertung": "Abdeckung = Summe der Gewichte / 6. Bestanden: Abdeckung >= 0,6, F1 erfüllt, keine verbotene Behauptung.",
+  "material": [
+   {
+    "id": "M1",
+    "fuer": [
+     "F1"
+    ],
+    "art": "debatte",
+    "session_date": "2026-04-16",
+    "text_enthaelt_eins": [
+     "2027",
+     "KLAK"
+    ]
+   },
+   {
+    "id": "M2",
+    "fuer": [
+     "F2"
+    ],
+    "art": "beschluss",
+    "session_date": "2026-04-16",
+    "committee": "Stadtgrün",
+    "titel_enthaelt": "Trinkwasserspender"
+   }
+  ]
+ },
+ {
+  "id": "mobilitaetsplan-beschluss",
+  "note": "Handgeprüft am 30.09.2026 gegen Beschlüsse, Protokolltexte (council_protocols.raw_text) und Pressemitteilungen im Bestand. Prüft „gilt als behandelt“ (seit 30.09.2026 eigenes Ergebnis settled): In vier Fachausschüssen wurde nicht über den Inhalt abgestimmt.",
+  "stand": "2026-09-30 (Protokolle bis 24.08.2026, Presse bis 26.08.2026)",
+  "question": "Wie wurde über den Mobilitätsplan Oldenburg 2030 entschieden?",
+  "varianten": [
+   "Welche Ausschüsse haben dem Mobilitätsplan 2030 zugestimmt?"
+  ],
+  "pflicht": [
+   {
+    "id": "F1",
+    "gewicht": 3,
+    "fakt": "Der Rat beschloss den Mobilitätsplan Oldenburg 2030 am 26.06.2023 mehrheitlich.",
+    "beleg": "Rat 26.06.2023 TOP 9.1 (id=267079)"
+   },
+   {
+    "id": "F2",
+    "gewicht": 2,
+    "fakt": "Der Verkehrsausschuss empfahl ihn am 19.06.2023 mehrheitlich (bei drei Gegenstimmen), nachdem er ihn im März 2023 vertagt hatte.",
+    "beleg": "Verkehrsausschuss 19.06.2023 TOP 5 (id=267456); 13.03.2023"
+   },
+   {
+    "id": "F3",
+    "gewicht": 3,
+    "fakt": "In anderen Fachausschüssen (Wirtschaft 08.05.2023, Stadtgrün 11.05.2023, Stadtplanung 25.05.2023, Soziales 13.06.2023) wurde nicht über den Inhalt abgestimmt – der Punkt „galt als behandelt“ (mindestens zwei dieser Ausschüsse genannt).",
+    "beleg": "id=263979, 264262, 264680, 268808"
+   },
+   {
+    "id": "F4",
+    "gewicht": 1,
+    "fakt": "Der Rat beschloss später das weitere Vorgehen (27.11.2023, 32 zu 14) und die Maßnahmenpriorisierung/Umsetzungsplanung (27.05.2024).",
+    "beleg": "Rat 27.11.2023 TOP 13.1 (id=272321); Rat 27.05.2024 TOP 8.1 (id=279184)"
+   },
+   {
+    "id": "F5",
+    "gewicht": 1,
+    "fakt": "Zuletzt berichtete die Verwaltung am 20.04.2026 im Verkehrsausschuss über den Sachstand von Planung und Umsetzung.",
+    "beleg": "Verkehrsausschuss 20.04.2026 TOP 8 (id=308880)"
+   }
+  ],
+  "verboten": [
+   {
+    "id": "X1",
+    "behauptung": "Der Ausschuss für Stadtgrün, Umwelt und Klima, der Stadtplanungs-, der Sozial- oder der Wirtschaftsausschuss hat dem Mobilitätsplan zugestimmt bzw. ihn angenommen oder beschlossen."
+   },
+   {
+    "id": "X2",
+    "behauptung": "Der Rat hat den Mobilitätsplan einstimmig beschlossen oder abgelehnt."
+   }
+  ],
+  "bewertung": "Abdeckung = Summe der Gewichte / 10. Bestanden: Abdeckung >= 0,6, F1 und F3 erfüllt, keine verbotene Behauptung.",
+  "material": [
+   {
+    "id": "M1",
+    "fuer": [
+     "F1"
+    ],
+    "art": "beschluss",
+    "session_date": "2023-06-26",
+    "committee": "Rat",
+    "titel_enthaelt": "Mobilitätsplan"
+   },
+   {
+    "id": "M2",
+    "fuer": [
+     "F3"
+    ],
+    "art": "beschluss",
+    "session_date": "2023-05-11",
+    "committee": "Stadtgrün",
+    "titel_enthaelt": "Mobilitätsplan"
+   }
+  ]
+ },
+ {
+  "id": "waermewende-beirat",
+  "note": "Handgeprüft am 30.09.2026 gegen Beschlüsse, Protokolltexte (council_protocols.raw_text) und Pressemitteilungen im Bestand. Beschluss mit zwei Änderungsanträgen, die den Inhalt verändern.",
+  "stand": "2026-09-30 (Protokolle bis 24.08.2026, Presse bis 26.08.2026)",
+  "question": "Was hat der Rat zum Wärmewende-Beirat beschlossen?",
+  "varianten": [
+   "Wer soll im Wärmewende-Beirat sitzen?"
+  ],
+  "pflicht": [
+   {
+    "id": "F1",
+    "gewicht": 3,
+    "fakt": "Der Rat beschloss am 01.06.2026 die Einrichtung eines Wärmewende-Beirats zur Begleitung der Umsetzung der Kommunalen Wärmeplanung (mehrheitlich bei einer Gegenstimme und vier Enthaltungen).",
+    "beleg": "Rat 01.06.2026 TOP 8.2, Vorlage 26/0238/1 (id=311268)"
+   },
+   {
+    "id": "F2",
+    "gewicht": 2,
+    "fakt": "Im Beirat soll eine politische Vertretung sein (SPD-Änderungsantrag), außerdem Vertretungen von Vermietenden (FDP-Änderungsantrag).",
+    "beleg": "Rat 01.06.2026 TOP 8.2; ASUK 16.04.2026 TOP 6 (id=310610)"
+   },
+   {
+    "id": "F3",
+    "gewicht": 2,
+    "fakt": "Der Beirat soll seine Empfehlungen mit Einschätzungen zu Investitionskosten, Finanzierung/Förderung, Auswirkungen auf Mietende und Eigentümer und zur Umsetzbarkeit versehen.",
+    "beleg": "Rat 01.06.2026 TOP 8.2"
+   },
+   {
+    "id": "F4",
+    "gewicht": 1,
+    "fakt": "Vorberaten im Ausschuss für Stadtgrün, Umwelt und Klima am 16.04.2026 (einstimmig), wo beide Änderungsanträge angenommen wurden.",
+    "beleg": "ASUK 16.04.2026 TOP 6"
+   },
+   {
+    "id": "F5",
+    "gewicht": 1,
+    "fakt": "Der Beirat hat keine Entscheidungsbefugnis, er gibt Empfehlungen; umgesetzt wird er mit der Berlin Governance Platform (gemeinnützig).",
+    "beleg": "ASUK 16.04.2026 TOP 6 (Zenner, Grimm, Dittrich)"
+   },
+   {
+    "id": "F6",
+    "gewicht": 1,
+    "fakt": "Ein Vertagungsantrag der BSW-Fraktion wurde im Rat abgelehnt.",
+    "beleg": "Rat 01.06.2026 TOP 8.2, Teilabstimmung"
+   }
+  ],
+  "verboten": [
+   {
+    "id": "X1",
+    "behauptung": "Der Wärmewende-Beirat kann selbst verbindlich entscheiden."
+   },
+   {
+    "id": "X2",
+    "behauptung": "Politik ist im Beirat ausdrücklich nicht vertreten."
+   },
+   {
+    "id": "X3",
+    "behauptung": "Der Rat hat den Beirat abgelehnt oder vertagt."
+   }
+  ],
+  "bewertung": "Abdeckung = Summe der Gewichte / 10. Bestanden: Abdeckung >= 0,6, F1 erfüllt, keine verbotene Behauptung.",
+  "material": [
+   {
+    "id": "M1",
+    "fuer": [
+     "F1",
+     "F2",
+     "F3"
+    ],
+    "art": "beschluss",
+    "session_date": "2026-06-01",
+    "committee": "Rat",
+    "titel_enthaelt": "Wärmewende"
+   },
+   {
+    "id": "M2",
+    "fuer": [
+     "F5"
+    ],
+    "art": "debatte",
+    "session_date": "2026-04-16",
+    "text_enthaelt_eins": [
+     "Empfehlung",
+     "Governance"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "buergerbusch-faellungen",
+  "note": "Handgeprüft am 30.09.2026 gegen Beschlüsse, Protokolltexte (council_protocols.raw_text) und Pressemitteilungen im Bestand. Test gegen Erfundenes: Gründe und Umfang der Fällungen stehen in keinem Protokoll (nur in einer Präsentation).",
+  "stand": "2026-09-30 (Protokolle bis 24.08.2026, Presse bis 26.08.2026)",
+  "question": "Warum wurden im Großen Bürgerbusch Bäume gefällt?",
+  "varianten": [
+   "Was ist mit den Baumfällungen im Großen Bürgerbusch?"
+  ],
+  "pflicht": [
+   {
+    "id": "F1",
+    "gewicht": 2,
+    "fakt": "Die SPD-Fraktion stellte am 31.03.2026 einen Berichtsantrag zu den Baumfällungen im Großen Bürgerbusch; er wurde am 16.04.2026 im Ausschuss für Stadtgrün, Umwelt und Klima beraten.",
+    "beleg": "ASUK 16.04.2026 TOP 11.6, Vorlage 26/0290 (id=310610)"
+   },
+   {
+    "id": "F2",
+    "gewicht": 3,
+    "fakt": "Die Verwaltung (Sprenger) hielt eine Erklärung vor Ort für zielführender, lud zu einer Ortsbegehung am 11. Juni (15.30 Uhr) ein und sagte ein Fraktionsschreiben mit allen Informationen zu.",
+    "beleg": "ASUK 16.04.2026 TOP 11.6"
+   },
+   {
+    "id": "F3",
+    "gewicht": 1,
+    "fakt": "Am 11.06.2026 berichtete die Verwaltung im Ausschuss anhand einer Präsentation über die Begehung; der Bericht wurde zur Kenntnis genommen.",
+    "beleg": "ASUK 11.06.2026 TOP 6, Vorlage 26/0479 (id=312536)"
+   },
+   {
+    "id": "F4",
+    "gewicht": 1,
+    "fakt": "Die Antwort sagt, dass die Protokolle die konkreten Gründe für die Fällungen nicht wiedergeben (oder verweist dafür auf Präsentation, Fraktionsschreiben oder Begehung).",
+    "beleg": "Protokolle 16.04. und 11.06.2026 enthalten keine Gründe"
+   }
+  ],
+  "verboten": [
+   {
+    "id": "X1",
+    "behauptung": "Es wird eine konkrete Zahl gefällter Bäume genannt."
+   },
+   {
+    "id": "X2",
+    "behauptung": "Es wird ein konkreter Grund für die Fällungen als Tatsache genannt (z. B. Verkehrssicherung, Borkenkäfer, Trockenheit, Durchforstung)."
+   }
+  ],
+  "bewertung": "Abdeckung = Summe der Gewichte / 7. Bestanden: Abdeckung >= 0,6, F2 erfüllt, keine verbotene Behauptung.",
+  "material": [
+   {
+    "id": "M1",
+    "fuer": [
+     "F2"
+    ],
+    "art": "debatte",
+    "session_date": "2026-04-16",
+    "text_enthaelt_eins": [
+     "Ortsbegehung",
+     "Fraktionsschreiben",
+     "Begehung"
+    ]
+   }
+  ]
+ }
 ]
