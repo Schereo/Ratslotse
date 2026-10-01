@@ -8,6 +8,7 @@ import { parteiDot } from "@/components/qa-bausteine";
 import { shortCommittee } from "@/lib/committees";
 import { cn } from "@/lib/utils";
 import { Aufklapp } from "@/components/aufklapp";
+import { Skeleton } from "@/components/ui";
 
 export type WochenSitzung = {
   ksinr: number | null; committee: string; session_date: string;
@@ -161,7 +162,51 @@ export function WocheImRat({ vorschau, heuteIso, size }: {
 }) {
   return <HeuteWidget id="woche-im-rat" title="Die Woche im Rat" icon={CalendarDays} size={size}
     data-tour="woche-im-rat" meta={<WochenMeta vorschau={vorschau} />}>
-    <WochenInhalt vorschau={vorschau} heuteIso={heuteIso} />
+    <div className="inhalt-auf"><WochenInhalt vorschau={vorschau} heuteIso={heuteIso} /></div>
+  </HeuteWidget>;
+}
+
+/** Platzhalter in der Form der Rail, solange die Woche lädt. Vorher stand an
+ *  ihrer Stelle gar nichts: Die Karte erschien erst mit den Daten und schob
+ *  alles darunter um ihre volle Höhe nach unten (Tims Befund 01.10.). Drei
+ *  Tage mit je einer Sitzung treffen die übliche Höhe einer Ratswoche. */
+export function WocheImRatSkelett({ size }: { size?: WidgetSize }) {
+  return <HeuteWidget id="woche-im-rat" title="Die Woche im Rat" icon={CalendarDays} size={size}
+    aria-busy="true" meta={<Skeleton className="h-3.5 w-28" />}>
+    {detail => <>
+      <span role="status" className="sr-only">Die Woche im Rat wird geladen.</span>
+      {detail === "compact" ? (
+        // Mobil: Datum und Gremium als Kopfzeile, der Punkt darunter.
+        <div className="flex flex-col divide-y divide-border/60" aria-hidden>
+          {["w-2/5", "w-1/3", "w-1/2"].map((breite, i) => (
+            <div key={breite} className={cn("flex flex-col gap-2", i > 0 ? "py-3" : "pb-3")}>
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-5 w-12" />
+                <Skeleton className={cn("h-4", breite)} />
+              </div>
+              <Skeleton className="h-3.5 w-11/12" />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-[3.5rem_minmax(0,1fr)] gap-x-3" aria-hidden>
+          {[["w-2/5", "w-4/5", "w-3/5"], ["w-1/3", "w-11/12", "w-1/2"], ["w-1/2", "w-3/4", ""]].map((zeilen, i, alle) => (
+            <div key={i} className="contents">
+              <div className="flex flex-col items-center gap-1 pt-px">
+                <Skeleton className="h-3 w-7" />
+                <Skeleton className="h-3.5 w-10" />
+                {i < alle.length - 1 && <span className="mt-1.5 w-px flex-1 bg-border/70" />}
+              </div>
+              <div className={cn("flex min-w-0 flex-col gap-2", i < alle.length - 1 && "pb-3.5")}>
+                <Skeleton className={cn("h-4", zeilen[0])} />
+                <Skeleton className={cn("h-3.5", zeilen[1])} />
+                {zeilen[2] && <Skeleton className={cn("h-3.5", zeilen[2])} />}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </>}
   </HeuteWidget>;
 }
 

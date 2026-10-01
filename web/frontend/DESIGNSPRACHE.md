@@ -839,3 +839,12 @@ den Richtungspfeil. Reduzierte Bewegung schaltet diese Effekte aus. Große
 Schrift darf mehr Höhe beanspruchen; Metadaten und Aktionen bleiben lesbar.
 Ein Ladefehler erhält vorhandene Inhalte und bietet Wiederholen; er wird
 niemals als „keine Neuigkeiten“ dargestellt.
+
+Solange ein Widget lädt, steht es schon mit Kopf und einem **formgleichen
+Skelett** da — Rückblick, Zahl und Woche ahmen ihre Zeilen nach, die Woche
+mobil als Kopfzeilen, breit als Leiste. Der Inhalt blendet danach nur ein
+(`.inhalt-auf`, ohne Anheben). Vorher erschien die Woche erst mit ihren Daten
+und schob alles darunter weg; die Zahl wuchs von einem 40-px-Balken auf das
+Vierfache (Tims Befund 01.10.2026: „ploppt auf“). Ein Widget, das ohne Daten
+ganz entfällt (Woche ohne Sitzungen, Fundstück), zeigt das Skelett nur,
+solange die Antwort aussteht.
