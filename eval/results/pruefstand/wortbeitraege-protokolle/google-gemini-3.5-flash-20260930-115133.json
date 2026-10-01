@@ -1,0 +1,321 @@
+{
+ "suite": "wortbeitraege-protokolle",
+ "titel": "Wortbeiträge aus ganzen Niederschriften",
+ "kennzahl": "F1 über die Wortmeldungen je Person in ganzen Protokollen (bis 48k-Fenster, wie im Cron), ohne Sammel-TOPs; eval/run_speeches_protokolle.py",
+ "modell": "google/gemini-3.5-flash",
+ "variante": null,
+ "tarif": null,
+ "lauf": 1,
+ "zeitstempel": "2026-09-30T11:51:33",
+ "db_stand": "Sitzungen bis 2026-09-30, 9119 Beschlüsse",
+ "qualitaet": 0.1104,
+ "harte_befunde": 0,
+ "warnung": null,
+ "faelle": 9,
+ "p50_ms": 72719,
+ "p95_ms": 76701,
+ "aufrufe": 21,
+ "kosten_usd": 3.009988,
+ "ohne_kostenwert": 0,
+ "ct_je_aufruf": 14.3333,
+ "ct_je_lauf": 300.9988,
+ "kosten_gesamt_usd": 3.009988,
+ "ausfaelle": 0,
+ "nicht_zulaessig": false,
+ "abbruch": null,
+ "modelle_laut_tabelle": [
+  "google/gemini-3.5-flash"
+ ],
+ "ersatz": [],
+ "dauer_s": 1377.6,
+ "nebenkennzahlen": {
+  "recall_ohne_mandat": 0.1206,
+  "antwort_in_rede": 0,
+  "fremd_zugeschrieben": 0.0656,
+  "zahlen_erhalten": 0.0137,
+  "begriffe_erhalten": 0.0353,
+  "beitraege": 71,
+  "fehlgeschlagen": 3
+ },
+ "fehler_beispiele": [],
+ "roh": {
+  "n_cases": 9,
+  "f1": 0.1104,
+  "precision": 0.9318,
+  "recall": 0.0587,
+  "recall_ohne_mandat": 0.1206,
+  "antwort_in_rede": 0,
+  "fremd_zugeschrieben": 0.0656,
+  "zahlen_erhalten": 0.0137,
+  "begriffe_erhalten": 0.0353,
+  "erfunden": 0,
+  "beitraege": 71,
+  "fehlgeschlagen": 3,
+  "faelle": [
+   {
+    "id": "4664",
+    "tp": 0,
+    "fp": 0,
+    "fn": 128,
+    "fehler": "JSONDecodeError: Expecting value: line 1 column 1 (char 0)"
+   },
+   {
+    "id": "4430",
+    "tp": 5,
+    "fp": 1,
+    "fn": 104,
+    "tp_ohne": 2,
+    "fn_ohne": 37,
+    "verpasst": [
+     "atzler",
+     "bernhardt",
+     "diehl",
+     "finke",
+     "görg",
+     "höpken",
+     "korallus",
+     "lüdke",
+     "meerbothe",
+     "mehrtens",
+     "niederstein",
+     "pfeiffer",
+     "phillip",
+     "piechotta",
+     "pietsch",
+     "rußler",
+     "woltmann"
+    ],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 0,
+    "bewertbar": 9,
+    "fremd_beispiele": [],
+    "zahlen": [
+     4,
+     326
+    ],
+    "begriffe": [
+     11,
+     409
+    ],
+    "beitraege": 11
+   },
+   {
+    "id": "4418",
+    "tp": 0,
+    "fp": 0,
+    "fn": 78,
+    "fehler": "JSONDecodeError: Expecting value: line 1 column 1 (char 0)"
+   },
+   {
+    "id": "4446",
+    "tp": 0,
+    "fp": 0,
+    "fn": 73,
+    "tp_ohne": 0,
+    "fn_ohne": 46,
+    "verpasst": [
+     "adler",
+     "bohlen",
+     "chahine",
+     "dikosso",
+     "dittrich",
+     "eickhoff",
+     "eilersdörfler",
+     "freede",
+     "göhmann",
+     "hasenclever",
+     "heppner",
+     "jahnke",
+     "kleemiß",
+     "krogmann",
+     "lammerding",
+     "lorenz",
+     "niederstein",
+     "sander",
+     "wolff",
+     "zingel"
+    ],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 2,
+    "bewertbar": 5,
+    "fremd_beispiele": [
+     "Sander: Bezifferung, Mehrausgaben",
+     "Sander: Sinnhaftigkeit"
+    ],
+    "zahlen": [
+     0,
+     19
+    ],
+    "begriffe": [
+     0,
+     154
+    ],
+    "beitraege": 5
+   },
+   {
+    "id": "4545",
+    "tp": 0,
+    "fp": 0,
+    "fn": 79,
+    "tp_ohne": 0,
+    "fn_ohne": 48,
+    "verpasst": [
+     "adler",
+     "atzler",
+     "baak",
+     "bernath",
+     "conty",
+     "depenbrock",
+     "drügemöller",
+     "finke",
+     "görk",
+     "harms",
+     "janssen",
+     "korallus",
+     "löwer",
+     "lüdke",
+     "lükermann",
+     "mehrtens",
+     "niederstein",
+     "pfeiffer",
+     "piechotta",
+     "pieper",
+     "rohde",
+     "schilling",
+     "schnitker",
+     "schröder",
+     "steinbach",
+     "wagner",
+     "wehrmeyer",
+     "woltmann"
+    ],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 0,
+    "bewertbar": 1,
+    "fremd_beispiele": [],
+    "zahlen": [
+     0,
+     21
+    ],
+    "begriffe": [
+     0,
+     162
+    ],
+    "beitraege": 5
+   },
+   {
+    "id": "4611",
+    "tp": 29,
+    "fp": 0,
+    "fn": 13,
+    "tp_ohne": 20,
+    "fn_ohne": 8,
+    "verpasst": [
+     "chahine",
+     "multhaupt"
+    ],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 2,
+    "bewertbar": 32,
+    "fremd_beispiele": [
+     "Matthias Welp: Ganztagsschulen",
+     "Matthias Welp: Härtefallanträgen"
+    ],
+    "zahlen": [
+     4,
+     131
+    ],
+    "begriffe": [
+     43,
+     355
+    ],
+    "beitraege": 32
+   },
+   {
+    "id": "3717",
+    "tp": 0,
+    "fp": 0,
+    "fn": 103,
+    "fehler": "JSONDecodeError: Extra data: line 1 column 3 (char 2)"
+   },
+   {
+    "id": "2855",
+    "tp": 2,
+    "fp": 1,
+    "fn": 43,
+    "tp_ohne": 1,
+    "fn_ohne": 20,
+    "verpasst": [
+     "backhaus",
+     "beel",
+     "boldt",
+     "dennerlein",
+     "eilersdörfler",
+     "frankekunz",
+     "jahnke",
+     "kleemiß",
+     "krause",
+     "kurka",
+     "menke",
+     "meyer",
+     "norrenbrock",
+     "zielke"
+    ],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 0,
+    "bewertbar": 4,
+    "fremd_beispiele": [],
+    "zahlen": [
+     0,
+     27
+    ],
+    "begriffe": [
+     1,
+     198
+    ],
+    "beitraege": 6
+   },
+   {
+    "id": "4441",
+    "tp": 5,
+    "fp": 1,
+    "fn": 37,
+    "tp_ohne": 1,
+    "fn_ohne": 16,
+    "verpasst": [
+     "adler",
+     "bernhardt",
+     "dittrich",
+     "drügemöller",
+     "ellberg",
+     "finke",
+     "jaekel",
+     "menke",
+     "skiba",
+     "sprenger",
+     "woltmann",
+     "zenner"
+    ],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 0,
+    "bewertbar": 10,
+    "fremd_beispiele": [],
+    "zahlen": [
+     0,
+     61
+    ],
+    "begriffe": [
+     5,
+     422
+    ],
+    "beitraege": 12
+   }
+  ]
+ }
+}

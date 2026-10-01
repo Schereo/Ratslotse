@@ -22,6 +22,7 @@ from functools import lru_cache
 
 from ..antworten import ElectionDistrictList, ElectionNight, ElectionTopEntry
 from . import elections, reference, register
+from .rounding import half_up
 from .votemanager import Snapshot, parse
 
 _log = logging.getLogger("ratslotse.web.wahlabend")
@@ -216,8 +217,14 @@ def _mayor_top(wahl: elections.Election, n: int) -> list[ElectionTopEntry]:
     if stand is None:
         return []
     beste = sorted(stand.candidates, key=lambda c: -(c.votes or 0))[:n]
-    return [ElectionTopEntry(label=c.name, seats=None, pct=c.share_pct,
+    return [ElectionTopEntry(label=c.name, seats=None, pct=_eine_stelle(c.share_pct),
                              color=c.color or NEUTRAL[0], color_dark=c.color_dark or NEUTRAL[1]) for c in beste]
+
+
+def _eine_stelle(pct: float | None) -> float | None:
+    """Kaufmännisch auf eine Stelle — derselbe Weg wie überall auf den
+    Wahlseiten (``rounding.half_up``): 51,55 % wird 51,6, nicht 51,5."""
+    return None if pct is None else half_up(pct)
 
 
 def _mayor_summary(wahl: elections.Election) -> str | None:
@@ -233,7 +240,7 @@ def _mayor_summary(wahl: elections.Election) -> str | None:
     if stand is None or not stand.candidates:
         return None
     beste = max(stand.candidates, key=lambda c: c.votes or 0)
-    text = f"{beste.name} {(beste.share_pct or 0):.1f} %".replace(".", ",")
+    text = f"{beste.name} {_eine_stelle(beste.share_pct) or 0:.1f} %".replace(".", ",")
     return f"{text} · Stichwahl" if stand.runoff else text
 
 

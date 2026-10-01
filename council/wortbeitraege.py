@@ -36,11 +36,25 @@ from council.protocols import _strip_fences
 # je Aufruf etwa so viel wie 2.5 Flash (0,50–0,53 statt 0,56–0,57 ct) und
 # braucht 5,8–6,0 s statt 9,2–9,6 s (p50).
 # 3.1 Flash Lite wäre halb so teuer (0,30 ct). Stand: docs/modell-pruefstand.md.
-MODEL = os.environ.get("COUNCIL_WORTBEITRAG_MODEL", "google/gemini-3.5-flash-lite")
+#
+# 30.09.2026: GPT-6 Luna. Die Abschnitts-Suite sah den Fehler nicht, an dem
+# der Bestand litt — Antworten der Verwaltung im answer-Feld der Frage davor
+# (ksinr 4664, 1.620 Mal im Bestand); das passiert erst in langen Fenstern.
+# Die Suite `wortbeitraege-protokolle` misst ganze Niederschriften: Luna
+# 89,8/89,6 % F1, Verwaltung zu 93 % erfasst, 0 Antworten im falschen Feld;
+# 3.5 Flash Lite 86,9 % (zweimal), 79–82 %, 22–31 falsch abgelegt. GPT-6 Sol
+# (88,3 %), Sonnet 5.5 (84,8 %) und 3.8 Flash (81,1 %) kosten 12- bis 40-mal
+# so viel und sind nicht besser. An den Abschnitten gleichauf (99,4/99,2 %).
+# Luna kostet ein Viertel (0,9 statt 3,8 ct für 4664), braucht aber rund
+# 55 s je Fenster statt 18 s — im Cron egal. Kein ZDR-Endpunkt, hier auch
+# nicht nötig (`speeches` trägt keine Nutzereingabe, kern/llm.py).
+MODEL = os.environ.get("COUNCIL_WORTBEITRAG_MODEL", "openai/gpt-6-luna")
 
 FENSTER = 48_000       # Zeichen je LLM-Fenster
-UEBERLAPP = 3_000
+UEBERLAPP = 3_000      # nur noch für einen TOP, der allein kein Fenster füllt
 ARTEN = {"speech", "inquiry", "citizen_question", "pledge"}
+#: Nur bei diesen Arten darf answer gefüllt sein (so sagt es der Prompt).
+MIT_ANTWORT = {"inquiry", "citizen_question"}
 # Ab dieser Fensterlänge ist ein leeres Ergebnis fast sicher ein Provider-
 # Aussetzer (ein ganzes Sitzungsprotokoll ohne einen einzigen Wortbeitrag
 # gibt es praktisch nicht) → einmal neu versuchen. Kleine Restfenster am
@@ -48,15 +62,83 @@ ARTEN = {"speech", "inquiry", "citizen_question", "pledge"}
 LEER_VERDAECHTIG_AB = 20_000
 
 
-def _fenster(text: str) -> list[str]:
-    if len(text) <= FENSTER:
-        return [text]
+#: Kopfzeile eines Tagesordnungspunkts im Protokoll-Rumpf: „zu 7 Spielleitplanung",
+#: „zu Ö 11.8 …". Steht in 848 von 852 Protokollen (gemessen 30.09.2026).
+_TOP_KOPF = re.compile(r"(?m)^[ \t]*zu\s+(?:[ÖN]\s*)?(\d{1,2}(?:\.\d{1,2}){0,2})\b[ \t]*(.*)$")
+
+
+def _hart_teilen(text: str) -> list[str]:
     teile = []
     start = 0
     while start < len(text):
         teile.append(text[start:start + FENSTER])
         start += FENSTER - UEBERLAPP
     return teile
+
+
+def _fenster(text: str) -> list[str]:
+    """Fenster an TOP-Grenzen, ohne Überlappung.
+
+    Bis 09/2026 lief das Protokoll in festen 48k-Stücken mit 3k Überlappung
+    durch. Die Beiträge aus der Naht kamen dann zweimal — und weil das Modell
+    dieselbe Wortmeldung im zweiten Fenster anders paraphrasiert („Ratsherr
+    Beerheide weist darauf hin, dass …" gegen „Bei solchen Finanzierungen ist
+    Vorsicht geboten"), griff die Dublettenprüfung nicht (ksinr 4664: zwölf
+    Doppelte zu TOP 11.7/11.8). An einer TOP-Kopfzeile beginnt keine
+    Wortmeldung mitten im Satz, also braucht es dort keine Überlappung.
+    Nur ein einzelner TOP, der allein kein Fenster füllt, wird hart geteilt.
+    """
+    if len(text) <= FENSTER:
+        return [text]
+    grenzen = [0] + [m.start() for m in _TOP_KOPF.finditer(text) if m.start() > 0] + [len(text)]
+    teile: list[str] = []
+    start = 0
+    for a, b in zip(grenzen, grenzen[1:]):
+        if b - start <= FENSTER:
+            continue  # der Abschnitt passt noch ins laufende Fenster
+        if a > start:
+            teile.append(text[start:a])
+            start = a
+        if b - a > FENSTER:
+            teile.extend(_hart_teilen(text[a:b]))
+            start = b
+    if start < len(text):
+        teile.append(text[start:])
+    return teile
+
+
+def _top_titel(text: str) -> dict[str, str]:
+    """TOP-Nummer → „Nummer Titel" aus den Kopfzeilen des Protokolls.
+
+    Das Modell schreibt ``top`` mal als „7 Spielleitplanung - Beschluss", mal
+    nur als „7" (Gemini 3.5 Flash Lite im ersten Fenster von ksinr 4664 fast
+    durchweg). Eine bloße Nummer sagt in der KI-Frage („zu „7““) und auf der
+    Personenseite nichts; die Überschrift steht aber im Protokoll."""
+    titel: dict[str, str] = {}
+    for m in _TOP_KOPF.finditer(text or ""):
+        rest = m.group(2).strip()
+        if rest.endswith("-"):  # Silbentrennung am Zeilenende: „Vorstel-" + „lung …"
+            folgezeile = text[m.end() + 1:].split("\n", 1)[0].strip()
+            rest = rest[:-1] + folgezeile
+        if rest:
+            titel.setdefault(m.group(1), f"{m.group(1)} {rest}")
+    return titel
+
+
+def _top_ergaenzen(top: str | None, titel: dict[str, str]) -> str | None:
+    t = re.sub(r"^zu\s+", "", (top or "").strip(), flags=re.I)
+    if re.fullmatch(r"(?:[ÖN]\s*)?\d{1,2}(?:\.\d{1,2}){0,2}\.?", t):
+        nummer = re.sub(r"^[ÖN]\s*", "", t).rstrip(".")
+        return titel.get(nummer, t)
+    return t or None
+
+
+#: Wer in einer als answer mitgelieferten Antwort spricht: „Herr Sprenger
+#: antwortet, dass …", „Stadtbaurätin Schacht erläutert …".
+_ANTWORT_SPRECHER = re.compile(
+    r"^((?:Herr|Frau|Stadtbaurätin|Stadtbaurat|Stadträtin|Stadtrat|Erste Stadträtin|"
+    r"Erster Stadtrat|Oberbürgermeister(?:in)?)\s+(?:(?:Prof|Dr)\.\s*)*"
+    r"[A-ZÄÖÜ][\w\-äöüß]+)\s+[a-zäöüß]")
 
 
 def _array_bergen(content: str) -> list | None:
@@ -124,6 +206,7 @@ def extract_wortbeitraege(raw_text: str, model: str = MODEL) -> list[dict]:
     auf das erwartete Schema geprüft (unbekannte Arten → 'rede')."""
     gesehen: set[tuple] = set()
     contributions: list[dict] = []
+    titel = _top_titel(raw_text or "")
     for part in _fenster(raw_text or ""):
         for r in _ein_fenster(part, model):
             if not isinstance(r, dict):
@@ -152,16 +235,32 @@ def extract_wortbeitraege(raw_text: str, model: str = MODEL) -> list[dict]:
                     value = (schnitt[:leer] if leer > max_len * 0.6 else schnitt).rstrip(" ,;-/")
                 return value or None
 
+            art = art if art in ARTEN else "speech"
+            top = _top_ergaenzen(field("top", 120), titel)
+            answer = field("answer")
             contributions.append({
-                "kind": art if art in ARTEN else "speech",
-                "top": field("top", 120),
+                "kind": art,
+                "top": top,
                 "speaker": field("speaker", 80),
                 # 40 war zu knapp: „BUND für Umwelt und Naturschutz
                 # Deutschland, Kreisgruppe Stadt Oldenburg" hat 72 Zeichen.
                 "party": field("party", 120),
                 "text": text,
-                "answer": field("answer"),
+                "answer": answer if art in MIT_ANTWORT else None,
             })
+            if answer and art not in MIT_ANTWORT and len(answer) >= 15:
+                # Die Antwort der Verwaltung im answer-Feld der Rede davor:
+                # So lieferte der Prompt bis 09/2026 rund 1.600 Mal. Die Suche
+                # bettet nur ``text`` ein, der Kontext kappt answer auf 300
+                # Zeichen — Sprengers und Pienings Begründung zum Schlossplatz
+                # (ksinr 4664, TOP 7) war damit unauffindbar. Also ein eigener
+                # Eintrag, wie es der Prompt inzwischen verlangt.
+                m = _ANTWORT_SPRECHER.match(answer)
+                contributions.append({
+                    "kind": "speech", "top": top,
+                    "speaker": m.group(1) if m else "Verwaltung",
+                    "party": None, "text": answer, "answer": None,
+                })
     return contributions
 
 

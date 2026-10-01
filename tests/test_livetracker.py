@@ -90,6 +90,7 @@ def _store(tmp_path) -> CouncilStore:
         ksinr=200, committee="Rat", session_date="2026-08-31", session_time="18:00",
         location="PFL", agenda_items=[
             AgendaItem(item_number="Ö 1", title="Feststellung der Beschlussfähigkeit"),
+            AgendaItem(item_number="Ö 5", title="Einwohnerfragestunde"),
             AgendaItem(item_number="Ö 9.3", title="Radweg Alexanderstraße"),
             AgendaItem(item_number="Ö 9.4", title="Veränderungssperre Nord"),
             AgendaItem(item_number="Ö 9.5", title="Veränderungssperre Süd"),
@@ -162,13 +163,14 @@ def test_tracker_marks_a_block_of_quick_items(tmp_path):
     store = _store(tmp_path)
     try:
         tracker, fake = _tracker(store, [
-            '{"transitions": [{"at": "2:05", "kind": "vote", "top": "9.4"},'
-            ' {"at": "2:20", "kind": "vote", "top": "9.5"},'
-            ' {"at": "2:40", "kind": "vote", "top": "9.6"}],'
+            '{"transitions": [{"at": "2:05", "kind": "vote", "top": "9.4", "evidence": "Punkt 9.4"},'
+            ' {"at": "2:20", "kind": "vote", "top": "9.5", "evidence": "Punkt 9.5"},'
+            ' {"at": "2:40", "kind": "vote", "top": "9.6", "evidence": "Punkt 9.6"}],'
             ' "top": "9.6", "phase": "abstimmung", "speaker": null, "party": null}',
         ])
         with mock.patch.object(livetracker.llm, "chat_complete", fake):
-            tracker.on_chunk(1, [(125.0, "Punkt 9.4, wer ist dafür? Punkt 9.5 … 9.6")], False)
+            tracker.on_chunk(1, [(125.0, "Punkt 9.4, wer ist dafür? Punkt 9.5, dafür? Punkt 9.6, dafür?")],
+                             False)
         state = store.get_live_state(200)
         assert (state["item_number"], state["block_start"]) == ("9.6", "9.4")
         assert state["speaker"] is None and state["party"] is None
@@ -180,7 +182,8 @@ def test_tracker_keeps_the_last_top_when_the_model_is_silent(tmp_path):
     store = _store(tmp_path)
     try:
         tracker, fake = _tracker(store, [
-            '{"transitions": [], "top": "9.3", "phase": "aussprache", "speaker": null, "party": null}',
+            '{"transitions": [], "top": "9.3", "phase": "aussprache", "speaker": null, "party": null,'
+            ' "evidence": "Punkt 9.3"}',
             # Leere Antwort des Anbieters → kein Wechsel, Phase unklar.
         ])
         with mock.patch.object(livetracker.llm, "chat_complete", fake):
@@ -201,10 +204,11 @@ def test_tracker_finishes_on_closing_formula_and_on_finish(tmp_path):
     store = _store(tmp_path)
     try:
         tracker, fake = _tracker(store, [
-            '{"transitions": [], "top": "9.6", "phase": "abstimmung", "speaker": null, "party": null}',
+            '{"transitions": [], "top": "9.6", "phase": "abstimmung", "speaker": null, "party": null,'
+            ' "evidence": "Punkt 9.6"}',
         ])
         with mock.patch.object(livetracker.llm, "chat_complete", fake):
-            tracker.on_chunk(0, [(5.0, "Damit schließe ich die Sitzung.")], True)
+            tracker.on_chunk(0, [(5.0, "Punkt 9.6, einstimmig. Damit schließe ich die Sitzung.")], True)
         state = store.get_live_state(200)
         assert state["finished"] is True and state["phase"] == "ende"
         assert state["item_number"] == "9.6"
@@ -247,15 +251,118 @@ def test_tracker_keeps_the_speaker_while_the_debate_continues(tmp_path):
     store = _store(tmp_path)
     try:
         tracker, fake = _tracker(store, [
-            '{"transitions": [], "top": "9.3", "phase": "aussprache", "speaker": "Frau Drügemöller", "party": null}',
+            '{"transitions": [], "top": "9.3", "phase": "aussprache", "speaker": "Frau Drügemöller",'
+            ' "party": null, "evidence": "Punkt 9.3, Frau Drügemöller"}',
             '{"transitions": [], "top": "9.3", "phase": "aussprache", "speaker": null, "party": null}',
             '{"transitions": [], "top": "9.3", "phase": "abstimmung", "speaker": null, "party": null}',
         ])
         with mock.patch.object(livetracker.llm, "chat_complete", fake):
-            tracker.on_window(0, 15, [(2.0, "Frau Drügemöller.")], False)
+            tracker.on_window(0, 15, [(2.0, "Punkt 9.3, Frau Drügemöller.")], False)
             tracker.on_window(15, 30, [(20.0, "… weiter im Text …")], False)
             assert store.get_live_state(200)["speaker"] == "Susanne Drügemöller"
             tracker.on_window(30, 45, [(35.0, "Wer ist dafür?")], False)
         assert store.get_live_state(200)["speaker"] is None
+    finally:
+        store.close()
+
+
+# ------------------------------------------- nur eine Ratssitzung verfolgen
+
+def test_names_item_reads_numbers_and_title_words():
+    assert livetracker.names_item("Tagesordnungspunkt 9.3", "9.3", "Radweg")
+    assert livetracker.names_item("wir kommen zu Punkt 93", "9.3", "Radweg")
+    assert livetracker.names_item("Punkt 10,1, die Studie", "10.1", "Studie")
+    assert not livetracker.names_item("seit 1993", "9.3", "Radweg")
+    assert not livetracker.names_item("510 Millionen Quadratkilometer", "5", "Einwohnerfragestunde")
+    assert livetracker.names_item("dann sind wir bei der Einwohnerfragestunde", "5",
+                                  "Einwohnerfragestunde")
+    # Ein Titelwort ohne Aufruf ist ein Thema (Probe am 29.06.: „Kennedystraße"
+    # in der Einwohnerfragestunde, „Bahnhof" in einer Rede).
+    assert not livetracker.names_item("Kennedystraße", "14.1", "Lärmschutz Kennedystraße")
+    assert not livetracker.names_item("der Bahnhof ist die Visitenkarte", "7.1", "Bahnhofsumfeld")
+    assert livetracker.names_item("wir kommen zum Bahnhofsumfeld", "7.1", "Bahnhofsumfeld")
+    # Ein allgemeines Titelwort kennzeichnet keinen Punkt.
+    assert not livetracker.names_item("ein Beschluss der Stadt", "10.1",
+                                      "Studie Stadt Oldenburg - Beschluss")
+    assert not livetracker.names_item(None, "5", "Einwohnerfragestunde")
+
+
+def test_quoted_accepts_small_slips_but_not_inventions():
+    window = "[2:05] Wir kommen zu Tagesordnungspunkt 9,3, Radweg Alexanderstraße."
+    assert livetracker.quoted("Tagesordnungspunkt 9.3, Radweg", window)
+    assert livetracker.quoted("wir kommen zu Tagesordnungspunkt 9,3 Radweg Alexanderstrasse", window)
+    assert not livetracker.quoted("Ich rufe Punkt 9.3 auf", window)
+    # Über zwei Segmente hinweg (Probe am 29.06.: „mit 7.1 [25:53] weiter").
+    split = "[25:51] angenommen. Dann machen wir mit 7.1\n[25:53] weiter. Umgestaltung"
+    assert livetracker.quoted("Dann machen wir mit 7.1 weiter.", split)
+    assert not livetracker.quoted("", window)
+
+
+def test_replacement_programme_never_reaches_the_card(tmp_path):
+    """28.09.2026: O1 sendete Ersatzprogramm, der Tracker machte aus den
+    Publikumsfragen der Kinder-Uni die Einwohnerfragestunde. Weder das
+    Urteil „anderes" noch ein Zitat ohne Aufruf darf einen Stand zeigen."""
+    store = _store(tmp_path)
+    try:
+        tracker, fake = _tracker(store, [
+            # Das Modell erkennt Ersatzprogramm — und nennt trotzdem einen TOP.
+            '{"broadcast": "anderes", "transitions": [{"at": "0:05", "kind": "top", "top": "5",'
+            ' "evidence": "eine Frage auf der linken Seite"}], "top": "5", "phase": "aussprache",'
+            ' "speaker": "Frau Drügemöller", "evidence": "eine Frage auf der linken Seite"}',
+            # Das Modell hält es für den Rat, aber niemand ruft einen Punkt auf.
+            '{"broadcast": "rat", "transitions": [{"at": "0:20", "kind": "top", "top": "5",'
+            ' "evidence": "eine Frage auf der rechten Seite"}], "top": "5", "phase": "aussprache",'
+            ' "evidence": "eine Frage auf der rechten Seite"}',
+            # Ein erfundenes Zitat: steht so nicht im Transkript.
+            '{"broadcast": "rat", "transitions": [{"at": "0:35", "kind": "top", "top": "5",'
+            ' "evidence": "Wir kommen zur Einwohnerfragestunde"}], "top": "5", "phase": "aufruf"}',
+        ])
+        with mock.patch.object(livetracker.llm, "chat_complete", fake):
+            tracker.on_window(0, 15, [(5.0, "Die letzte Frage, eine Frage auf der linken Seite.")], False)
+            tracker.on_window(15, 30, [(20.0, "Und eine Frage auf der rechten Seite.")], False)
+            tracker.on_window(30, 45, [(35.0, "Wie viele Liter Wasser gibt es?")], False)
+        assert store.get_live_state(200) is None
+        assert store.live_events(200) == []
+        assert tracker.on_air is False and tracker.off_air_windows == 1
+        tracker.finish(t_to=45)
+        state = store.get_live_state(200)
+        assert state["finished"] is True and state["item_number"] is None
+    finally:
+        store.close()
+
+
+def test_off_air_withdraws_the_state_and_the_session_brings_it_back(tmp_path):
+    """Fällt die Übertragung mitten in der Sitzung aus, verschwindet der
+    Stand nach OFF_AIR_SECONDS; setzt sie wieder ein, kommt er nach
+    RESUME_SECONDS zurück — ohne dass erst ein neuer Punkt aufgerufen wird."""
+    store = _store(tmp_path)
+    call = ('{"broadcast": "rat", "transitions": [{"at": "0:02", "kind": "top", "top": "9.3",'
+            ' "evidence": "Punkt 9.3"}], "top": "9.3", "phase": "aufruf"}')
+    other = '{"broadcast": "anderes", "transitions": [], "top": null, "phase": "unklar"}'
+    council = '{"broadcast": "rat", "transitions": [], "top": "9.3", "phase": "aussprache"}'
+    off = livetracker.OFF_AIR_SECONDS // 15
+    back = livetracker.RESUME_SECONDS // 15
+    try:
+        tracker, fake = _tracker(store, [call] + [other] * off + [council] * back)
+        with mock.patch.object(livetracker.llm, "chat_complete", fake):
+            tracker.on_window(0, 15, [(2.0, "Wir kommen zu Punkt 9.3.")], False)
+            assert store.get_live_state(200)["item_number"] == "9.3"
+            t = 15
+            for i in range(off):
+                tracker.on_window(t, t + 15, [(t + 1.0, "Es folgt ein Vortrag.")], False)
+                t += 15
+                if i < off - 1:
+                    assert store.get_live_state(200) is not None
+            assert store.get_live_state(200) is None
+            # Der Aufruf bleibt als Ereignis stehen.
+            assert [e["item_number"] for e in store.live_events(200)] == ["9.3"]
+            for i in range(back):
+                tracker.on_window(t, t + 15, [(t + 1.0, "Herr Baak, bitte.")], False)
+                t += 15
+                if i < back - 1:
+                    assert store.get_live_state(200) is None
+        state = store.get_live_state(200)
+        assert state["item_number"] == "9.3" and state["finished"] is False
+        assert state["since"] == "2026-08-31T18:00:02+00:00"
     finally:
         store.close()

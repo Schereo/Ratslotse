@@ -1,0 +1,222 @@
+{
+ "label": "nachher",
+ "db": "wie vorher, aber Wortbeiträge der Sitzungen 4441, 4444, 4664, 4692 mit dem Code aus #1585–#1590 neu extrahiert (Verwaltungsantworten als eigene Einträge)",
+ "judge": "google/gemini-2.5-flash",
+ "kosten_usd": 0.005,
+ "cases": [
+  {
+   "id": "schlossplatz-spielplatz-stand",
+   "question": "Wie ist der Stand beim Spielplatz auf dem Schlossplatz?",
+   "model": "openai/gpt-6-luna",
+   "dauer_s": 28.5,
+   "wertung": {
+    "abdeckung": 0.7,
+    "erfuellt": [
+     "F1",
+     "F2",
+     "F3",
+     "F5",
+     "F7",
+     "F9",
+     "F10",
+     "F11"
+    ],
+    "verfehlt": [
+     "F4",
+     "F6",
+     "F7b",
+     "F8"
+    ],
+    "verstoesse": [],
+    "bestanden": true
+   },
+   "material": [
+    {
+     "id": "M1",
+     "fuer": [
+      "F1",
+      "F3"
+     ],
+     "art": "beschluss",
+     "vorhanden": true
+    },
+    {
+     "id": "M2",
+     "fuer": [
+      "F6"
+     ],
+     "art": "debatte",
+     "vorhanden": false
+    },
+    {
+     "id": "M4",
+     "fuer": [
+      "F5"
+     ],
+     "art": "presse",
+     "vorhanden": true
+    },
+    {
+     "id": "M5",
+     "fuer": [
+      "F11"
+     ],
+     "art": "presse",
+     "vorhanden": true
+    },
+    {
+     "id": "M3a",
+     "fuer": [
+      "F7"
+     ],
+     "art": "debatte",
+     "vorhanden": true
+    },
+    {
+     "id": "M3b",
+     "fuer": [
+      "F7b",
+      "F8"
+     ],
+     "art": "debatte",
+     "vorhanden": false
+    }
+   ],
+   "urteil": {
+    "pflicht": {
+     "F1": {
+      "ok": true,
+      "zitat": "Im September 2024 beauftragte der Rat die Verwaltung, ein Konzept für einen inklusiven Spielplatz auf dem Schlossplatz vorzulegen und die Planung 2025 umzusetzen."
+     },
+     "F2": {
+      "ok": true,
+      "zitat": "Die zuständigen Ausschüsse hatten zuvor beschlossen, ein Konzept vorzulegen und Mittel im Haushalt 2025 einzustellen."
+     },
+     "F3": {
+      "ok": true,
+      "zitat": "Im September 2024 beauftragte der Rat die Verwaltung, ein Konzept für einen inklusiven Spielplatz auf dem Schlossplatz vorzulegen und die Planung 2025 umzusetzen."
+     },
+     "F4": {
+      "ok": false,
+      "zitat": ""
+     },
+     "F5": {
+      "ok": true,
+      "zitat": "Laut Pressemitteilung vom 4. November 2025 fragte die Stadt junge Oldenburgerinnen und Oldenburger nach Ideen für einen Bereich auf dem Schlossplatz, der auch als Spielbereich genutzt werden kann."
+     },
+     "F6": {
+      "ok": false,
+      "zitat": ""
+     },
+     "F7": {
+      "ok": true,
+      "zitat": "Am 16. April 2026 kritisierte SPD-Vertreter Behrens laut Protokoll, dass bei der Planung des Schlossplatzes keine Spielgelegenheit berücksichtigt sei, und fragte nach dem weiteren Vorgehen. Die Verwaltung erklärte, der Schlossplatz sei ein eigenes Thema; wegen der örtlichen Vorschriften sei dort kein Spielplatz möglich, Spielgelegenheiten sollten aber berücksichtigt werden."
+     },
+     "F7b": {
+      "ok": false,
+      "zitat": ""
+     },
+     "F8": {
+      "ok": false,
+      "zitat": ""
+     },
+     "F9": {
+      "ok": true,
+      "zitat": "Am 16. April 2026 kritisierte SPD-Vertreter Behrens laut Protokoll, dass bei der Planung des Schlossplatzes keine Spielgelegenheit berücksichtigt sei, und fragte nach dem weiteren Vorgehen. ... In der Ratsdebatte am 1. Juni 2026 betonten SPD und Grüne, dass der stadtweite Plan allein noch keine neuen Spielplätze schaffe; die SPD verwies zudem auf den fehlenden tragfähigen Vorschlag für einen Innenstadt-Spielplatz."
+     },
+     "F10": {
+      "ok": true,
+      "zitat": "Ein abschließender Beschluss zur konkreten Anlage oder ihrem Bau ist in den vorliegenden Unterlagen nicht dokumentiert. ... Die Unterlagen nennen für die Schlossplatz-Spielgelegenheit weder einen konkreten Baubeschluss noch einen Kostenrahmen oder einen Fertigstellungstermin."
+     },
+     "F11": {
+      "ok": true,
+      "zitat": "Laut Pressemitteilung vom 11. Februar 2026 ließ die Stadt den bestehenden Spielcontainer am Schlossplatz für die Frühjahrs- und Sommersaison instand setzen; unter anderem sollte der Fallschutz am Rutschenauslauf erneuert werden."
+     }
+    },
+    "verboten": {
+     "X1": {
+      "verstoss": false,
+      "zitat": "Das belegt ein bestehendes Spielangebot und dessen Pflege, aber keinen Baubeginn für eine neue Anlage."
+     },
+     "X2": {
+      "verstoss": false,
+      "zitat": "Die zuständigen Ausschüsse hatten zuvor beschlossen, ein Konzept vorzulegen und Mittel im Haushalt 2025 einzustellen."
+     },
+     "X3": {
+      "verstoss": false,
+      "zitat": "Einen eigenen Kostenrahmen für das Spielangebot nennen sie nicht."
+     },
+     "X4": {
+      "verstoss": false,
+      "zitat": "Ein abschließender Beschluss zur konkreten Anlage oder ihrem Bau ist in den vorliegenden Unterlagen nicht dokumentiert."
+     },
+     "X5": {
+      "verstoss": false,
+      "zitat": "Das belegt ein bestehendes Spielangebot und dessen Pflege, aber keinen Baubeginn für eine neue Anlage."
+     },
+     "X6": {
+      "verstoss": false,
+      "zitat": ""
+     }
+    }
+   },
+   "bericht": "Der Rat hat 2024 ein Konzept für einen inklusiven Spielplatz auf dem Schlossplatz beauftragt; die Planung sollte 2025 umgesetzt werden. Ein abschließender Beschluss zur konkreten Anlage oder ihrem Bau ist in den vorliegenden Unterlagen nicht dokumentiert. Zuletzt beschloss der Rat eine stadtweite Spielleitplanung mit mindestens zwei bis drei neuen Spielplatzanlagen pro Jahr – sie legt aber keinen konkreten Umsetzungsbeschluss für den Schlossplatz fest.[9305]\n\n## Beschlusslage\n\n- Im September 2024 beauftragte der Rat die Verwaltung, ein Konzept für einen inklusiven Spielplatz auf dem Schlossplatz vorzulegen und die Planung 2025 umzusetzen.[9193] Die zuständigen Ausschüsse hatten zuvor beschlossen, ein Konzept vorzulegen und Mittel im Haushalt 2025 einzustellen.[6893][6971]\n- Im Dezember 2025 nahm der Ausschuss für Stadtgrün, Umwelt und Klima einen Sachstandsbericht zum weiteren Vorgehen beim Spielbereich Schlossplatz zur Kenntnis.[8154] Das ist kein Beschluss über Bau oder Umsetzung.\n- Am 1. Juni 2026 beschloss der Rat die Spielleitplanung 2026 mit mindestens zwei bis drei Spielplatzneuanlagen pro Jahr.[9305] Die Planung soll als stadtweites Instrument für künftige Flächenentwicklungen dienen und umfasst neben klassischen Spielplätzen auch weitere Spielflächen.[9305] Ein gesonderter Beschluss, der den Bau eines Spielplatzes auf dem Schlossplatz freigibt, ist in den Unterlagen nicht enthalten.\n- Die Unterlagen nennen für die Schlossplatz-Spielgelegenheit weder einen konkreten Baubeschluss noch einen Kostenrahmen oder einen Fertigstellungstermin.\n\n## Planung und Kosten\n\nLaut Protokoll erklärte die Verwaltung im Juni 2025, dass die Umgestaltung der Straße und die Planung des Spielbereichs aus vergaberechtlichen Gründen parallel, aber getrennt bearbeitet würden. Am 11. September 2025 sagte Stadtbaurätin Christine-Petra Schacht laut Protokoll zu, den Entwurf für die Straße am Schlossplatz bis Jahresende im Verkehrsausschuss vorzustellen. Ein Bericht, der im Dezember 2025 im Verkehrsausschuss zur Kenntnis genommen wurde, präsentierte einen ersten Vorentwurf für die Straße, den Kasinoplatz und den Vorplatz bei Vapiano.[8161] Das ist ein Stand zur Verkehrs- und Freiraumplanung, aber kein Nachweis, dass die Spielplatzplanung abgeschlossen ist.\n\nFür die Planung der Umgestaltung des Schlossplatzes bewilligte der Rat 2023 überplanmäßig 136.000 Euro; die Mittel wurden durch Minderauszahlungen bei anderen Maßnahmen gedeckt.[5910] Dieser Betrag betrifft Planungskosten für die Umgestaltung des Schlossplatzes. Die Unterlagen weisen ihn nicht als Kostenansatz für den Spielbereich aus. Einen eigenen Kostenrahmen für das Spielangebot nennen sie nicht.\n\n## Aus der Debatte\n\nLaut Protokoll begrüßte Barbara Woltmann (CDU) am 11. Dezember 2025 die gemeinsame Konzeptarbeit und den Austausch mit Beteiligten; ihre Fraktion sei bereit, dem Beschluss zur Spielleitplanung zuzustimmen, damit die Verwaltung nächste Schritte umsetzen könne. Ruth Regina Drügemöller (Grüne) sprach sich angesichts des Zeitverzugs ebenfalls für den Beschluss aus und verwies darauf, dass die Schlossplatz-Spielfläche später weiter behandelt werden könne.\n\nAm 16. April 2026 kritisierte SPD-Vertreter Behrens laut Protokoll, dass bei der Planung des Schlossplatzes keine Spielgelegenheit berücksichtigt sei, und fragte nach dem weiteren Vorgehen. Die Verwaltung erklärte, der Schlossplatz sei ein eigenes Thema; wegen der örtlichen Vorschriften sei dort kein Spielplatz möglich, Spielgelegenheiten sollten aber berücksichtigt werden. Sprenger sagte laut Protokoll zu, unabhängig vom Beschluss über die Spielleitplanung weiter über ein Spielangebot auf dem Schlossplatz nachzudenken. In der Ratsdebatte am 1. Juni 2026 betonten SPD und Grüne, dass der stadtweite Plan allein noch keine neuen Spielplätze schaffe; die SPD verwies zudem auf den fehlenden tragfähigen Vorschlag für einen Innenstadt-Spielplatz.\n\n## Aktueller Stand der Stadt\n\nLaut Pressemitteilung vom 4. November 2025 fragte die Stadt junge Oldenburgerinnen und Oldenburger nach Ideen für einen Bereich auf dem Schlossplatz, der auch als Spielbereich genutzt werden kann. Vorgesehen sei kein „normaler“ Spielplatz, sondern ein Themenspielbereich. Laut Pressemitteilung vom 11. Februar 2026 ließ die Stadt den bestehenden Spielcontainer am Schlossplatz für die Frühjahrs- und Sommersaison instand setzen; unter anderem sollte der Fallschutz am Rutschenauslauf erneuert werden. Das belegt ein bestehendes Spielangebot und dessen Pflege, aber keinen Baubeginn für eine neue Anlage.",
+   "gelesen": {
+    "beschluesse": [
+     "2024-09-18 · Jugendhilfeausschuss · Schaffung eines Spielplatzes in der Innenstadt (Fraktionen SPD und Bündnis 90/Die Grünen vom 27.08.2024) - Beschlussantrag mit mündlichem Bericht der Verwaltung",
+     "2024-09-12 · Ausschuss für Stadtgrün, Umwelt und Klima · Schaffung eines Spielplatzes in der Innenstadt (Fraktionen SPD und Bündnis 90/Die Grünen vom 27.08.2024) - Beschlussantrag mit Bericht der Verwaltung",
+     "2025-12-11 · Ausschuss für Stadtgrün, Umwelt und Klima · Sachstandsbericht und weiteres Vorgehen Spielbereich Schlossplatz",
+     "2025-11-19 · Jugendhilfeausschuss · Spielplatzleitplanung",
+     "2026-04-16 · Ausschuss für Stadtgrün, Umwelt und Klima · Spielleitplanung - Beschluss",
+     "2026-06-01 · Rat · Spielleitplanung",
+     "2022-11-14 · Verkehrsausschuss · Summer Street Schloßplatz - Beschluss",
+     "2022-05-30 · Rat · Durchführung einer Veranstaltung „Summer Street“ in der Straße „Schloßplatz“ im Jahr 2023 (SPD-Fraktion, Fraktion Bündnis 90/Die Grünen, CDU-Fraktion, Gruppe FDP/Volt und Gruppe Die Linke./Piratenpartei vom 25.04.2022) - Beschlussantrag",
+     "2024-09-30 · Rat · Schaffung eines Spielplatzes in der Innenstadt",
+     "2023-03-09 · Ausschuss für Stadtgrün, Umwelt und Klima · Spielplatzkonzept der Stadt Oldenburg (Fraktion Bündnis 90/Die Grünen und SPD-Fraktion vom 24.01.2023)",
+     "2021-04-19 · Verkehrsausschuss · Leitantrag Fridays for Future - Ergebnisse aus dem Workshop vom 06.07.2020 - Punkt 4.8 \"Sperrung der Straße Schlossplatz für den Kfz-Verkehr\" - Beschluss",
+     "2025-05-08 · Ausschuss für Stadtgrün, Umwelt und Klima · Spielflächenplanung - mündlicher Bericht",
+     "2025-09-11 · Ausschuss für Stadtgrün, Umwelt und Klima · Sachstand zur Planung des Spielplatzes in der Innenstadt (SPD-Fraktion vom 28.08.2025)",
+     "2023-05-15 · Verkehrsausschuss · Sachstand Umplanung Straße Schloßplatz",
+     "2022-04-25 · Verkehrsausschuss · Temporäre autofreie Zone in den Sommermonaten ab 2023 in der Straße „Schloßplatz\" (CDU-Fraktion und Gruppe FDP/Volt vom 04.04.2022)",
+     "2023-03-15 · Jugendhilfeausschuss · Spielplatzkonzept der Stadt Oldenburg (Fraktion Bündnis 90/Die Grünen und SPD-Fraktion vom 19.01.2023)",
+     "2023-12-14 · Ausschuss für Stadtgrün, Umwelt und Klima · Sachstandsbericht Spielplatzleitplanung",
+     "2023-08-23 · Ausschuss für Finanzen und Beteiligungen · Überplanmäßige Bewilligung einer Mehrauszahlung in Höhe von 136.000 Euro für Planungskosten zur Umgestaltung des Schloßplatzes",
+     "2023-09-28 · Betriebsausschuss Abfallwirtschaftsbetrieb · Pfandretter am Schlossplatz (Bericht)",
+     "2023-09-04 · Rat · Überplanmäßige Bewilligung einer Mehrauszahlung in Höhe von 136.000 Euro für Planungskosten zur Umgestaltung des Schloßplatzes",
+     "2022-03-16 · Jugendhilfeausschuss · Spielplatzplanung (inkl. Beteiligungsprozess Kinder/Jugendliche)",
+     "2024-02-08 · Ausschuss für Stadtgrün, Umwelt und Klima · Sachstandsbericht Spielplatzleitplanung - mündlicher Bericht",
+     "2022-09-19 · Verkehrsausschuss · Sachstand Summer Street Schloßplatz - Bericht",
+     "2025-04-02 · Ausschuss für Finanzen und Beteiligungen · Überplanmäßige Bewilligung einer Mehrauszahlung in Höhe von 400.000 Euro für den Ausbau des Sandwegs",
+     "2025-12-08 · Verkehrsausschuss · Umgestaltung Straße Schloßplatz - Sachstandsbericht zur Planung",
+     "2025-12-15 · Rat · Überplanmäßige Bewilligung in Höhe von 1.800.000 Euro für den Teilhaushalt 03, Budget 11",
+     "2025-11-05 · Ausschuss für Finanzen und Beteiligungen · Außerplanmäßige Bewilligung von Mehraufwendungen in Höhe von 1,9 Millionen Euro für den Teilhaushalt 04, Budget 20.1",
+     "2025-12-01 · Rat · Außerplanmäßige Bewilligung von Mehraufwendungen in Höhe von 1,9 Millionen Euro für den Teilhaushalt 04, Budget 20.1"
+    ],
+    "debatten": [
+     "2025-12-11 · Barbara Woltmann · Der Schlossplatz sei in der Spielplatzleitplanung aufgeführt und biete damit eine Beschlussgrundlage. Ihre Fraktion sei ",
+     "2025-09-11 · Christine-Petra Schacht · Stellt in Aussicht, den Entwurf für die Straße am Schlossplatz bis Ende des Jahres im Verkehrsausschuss vorzustellen.",
+     "2025-12-11 · Ruth Regina Drügemöller · Mit Blick auf den zeitlichen Verzug spricht sie sich für den Beschluss der Spielplatzleitplanung aus. Das Interesse an e",
+     "2026-04-16 · Niederstein · Versteht den Frust und hält am gemeinsamen Ziel eines Spielplatzes auf dem Schlossplatz fest. Er stellt den Änderungsant",
+     "2025-06-19 · Beerheide · Er erkundigt sich nach dem aktuellen Sachstand des Projektes Schlossplatz. || ANTWORT: Stadtbaurätin Schacht berichtet, dass das Thema im Verkehrsausschuss kürzlich behandelt worden sei. Es sei zwischenzeitl",
+     "2025-09-11 · Christine-Petra Schacht · Erklärt, die Maßnahmen müssten aus vergaberechtlichen Gründen getrennt bearbeitet werden. Der Entwurf für die Straße am ",
+     "2026-04-16 · Sprenger · Erklärt, die Verwaltung sei bereit, unabhängig vom Beschluss über die Spielleitplanung weiter über ein Spielangebot auf ",
+     "2024-09-18 · Tanja Piening · Eine Berechnung der Summe wird zugesichert und bekanntgegeben. Für den Schlossplatz muss eine Absprache mit dem bereits ",
+     "2025-12-03 · Ramona Krupke · Planungskosten im Zusammenhang mit dem Neubau sind zu aktivieren.",
+     "2025-12-03 · Rita Schilling · Ratsfrau Schilling bittet um Erläuterung zur Aktivierung der Planungskosten.",
+     "2026-06-01 · Niederstein · Er begrüßt, dass die Spielleitplanung Barrierefreiheit, Nachhaltigkeit und hochwertige, kreative Spielgeräte für Kinder ",
+     "2026-06-01 · Behrens · Er dankt der Verwaltung, betont aber, dass die Planung allein noch keine Spielplätze verbessere oder schaffe. Die besteh",
+     "2026-06-01 · Menke · Er verweist darauf, dass das bisherige Spielplatzkonzept von 2007 stamme und sich die Anforderungen verändert hätten. Gr",
+     "2026-06-01 · Adler · Er erklärt, dass seine Fraktion dem Änderungsantrag der Fraktion Bündnis 90/Die Grünen zustimme.",
+     "2026-04-16 · Sprenger · Erinnert an den ausführlichen Bericht vom 13. November des Vorjahres. Die Spielleitplanung solle für die nächsten zehn b",
+     "2026-04-16 · Behrens · Bittet um einen kurzen Bericht zum Workshop über den Schlossplatz und kritisiert, dass dort keine Spielgelegenheit berüc",
+     "2026-04-16 · Sprenger · Erklärt, die Spielleitplanung sei ein Rahmen für das gesamte Stadtgebiet und eine Spielgelegenheit auf dem Schlossplatz "
+    ],
+    "presse": [
+     "2025-11-04 · Spielbereich auf dem Schlossplatz? Gebt uns eure Ideen!",
+     "2026-02-11 · Spielcontainer am Schlossplatz wird für den Frühling fit gemacht",
+     "2025-07-03 · Freizeitfläche an der 91er-Straße: Stadt erhält Förderbescheid"
+    ]
+   }
+  }
+ ]
+}

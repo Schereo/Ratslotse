@@ -48,6 +48,8 @@ PRICES: dict[str, tuple[float, float]] = {
     "openai/gpt-5.6-terra": (2.0, 12.0),
     "google/gemini-3.5-flash": (1.50, 9.00),
     "deepseek/deepseek-v4-flash-0731": (0.04, 0.64),
+    # Kandidat im Wortbeitrags-Vergleich (30.09.2026), Listenpreis OpenRouter.
+    "anthropic/claude-sonnet-5.5": (2.0, 10.0),
 }
 
 

@@ -94,6 +94,56 @@ _EINSTIMMIG_MIT_ENTHALTUNGEN = re.compile(
 )
 
 
+#: Die amtliche Formel „gilt als behandelt": Der Ausschuss schließt den
+#: Tagesordnungspunkt ab, ohne über den Inhalt zu beschließen (auf Antrag zur
+#: Geschäftsordnung; entschieden wird ggf. in einem anderen Gremium).
+_GILT_ALS_BEHANDELT = re.compile(
+    r"(?:gilt|gelten)\s+als\s+(?:behandelt|erledigt)|als\s+(?:behandelt|erledigt)\s+"
+    r"(?:gelten|angesehen)|f[uü]r\s+erledigt", re.IGNORECASE)
+_GILT_AM_ENDE = re.compile(r"(?:gilt|gelten)\s+als\s+(?:behandelt|erledigt)\W*$", re.IGNORECASE)
+_VERWIESEN = re.compile(r"verwiesen|verweisung|vertagt|zur[uü]ckgestellt|abgesetzt|[uü]berwiesen",
+                        re.IGNORECASE)
+#: Wörter einer inhaltlichen Abstimmung. Steht eines im Satz neben der Formel,
+#: ist nicht mehr eindeutig, was entschieden wurde — dann bleibt der Wert, den
+#: das Modell gewählt hat („Beide Anträge gelten als behandelt", nachdem der
+#: Vorschlag des OB angenommen wurde, 3478).
+_ABSTIMMUNG = re.compile(r"abgelehnt|angenommen|beschlossen|beschließt|zugestimmt|stimmt\s+zu|ablehn|"
+                         r"\blehnt\b.*\bab\b", re.IGNORECASE)
+#: Ein abgelehnter Verweisungsantrag ist keine Verweisung („Der Ausschuss lehnt
+#: den Verweisungsantrag der CDU mehrheitlich ab", 14874 auf Prod).
+_ABGELEHNT = re.compile(r"abgelehnt|ablehn|\blehnt\b.*\bab\b", re.IGNORECASE)
+
+
+def normalize_outcome(outcome: str | None, raw_result: str | None,
+                      kind: str = "decision") -> str | None:
+    """Das Ergebnis eines Hauptpunkts — der Original-Abstimmungssatz gewinnt.
+
+    **Warum.** „gilt als behandelt" stand im Bestand verstreut auf
+    ``no_decision`` (59), ``accepted`` (43), ``postponed`` (20) und ``noted`` (3):
+    das Modell hörte das „einstimmig" des Verfahrensantrags und nahm den
+    Inhalt für angenommen (Datensatz 19018: Schlossplatz-Spielplatz, „Frag den
+    Rat" zitierte ihn als Auftrag). Das Ergebnis heißt jetzt ``settled``.
+    Wird der Punkt dabei verwiesen oder vertagt, ist es ``postponed``.
+
+    Nur Hauptpunkte: Ein Verfahrensantrag selbst (``subvote``) wird ja
+    tatsächlich angenommen oder abgelehnt.
+    """
+    if kind != "decision" or not raw_result:
+        return outcome
+    text = " ".join(raw_result.split())
+    if _GILT_ALS_BEHANDELT.search(text):
+        if _VERWIESEN.search(text):
+            return "postponed"
+        if _GILT_AM_ENDE.search(text) or not _ABSTIMMUNG.search(text):
+            return "settled"
+        return outcome
+    if outcome == "accepted" and _VERWIESEN.search(text) and not _ABGELEHNT.search(text):
+        # „einstimmig … in den Ausschuss verwiesen": angenommen wurde die
+        # Verweisung, nicht der Inhalt.
+        return "postponed"
+    return outcome
+
+
 def normalize_vote(vote: str | None, raw_result: str | None) -> str | None:
     """``unanimous`` / ``majority`` / ``None`` — nie ein anderer Wert.
 

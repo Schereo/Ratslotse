@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Activity, BookOpen, LayoutDashboard, Server, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { UnreadBadge, feedbackLabel, useUnreadFeedback } from "@/components/nav";
 
 const GROUPS = [
   { label: "Überblick", icon: LayoutDashboard, views: [["stats", "Überblick"]] },
@@ -35,6 +36,13 @@ export function useAdminView() {
 
 export function AdminNavigation({ view }: { view: AdminView }) {
   const current = GROUPS.find((g) => g.views.some(([key]) => key === view)) ?? GROUPS[0];
+  // Dieselbe Zahl wie am „Admin"-Eintrag der Seitenleiste — sie führt hier
+  // weiter bis zu dem Reiter, in dem sie sich abarbeiten lässt. Das Panel
+  // rendert nur für Admins, die Abfrage darf also immer laufen.
+  const openFeedback = useUnreadFeedback(true);
+  const badges: Partial<Record<AdminView, number>> = { feedback: openFeedback };
+  const groupBadge = (views: readonly (readonly [AdminView, string])[]) =>
+    views.reduce((sum, [key]) => sum + (badges[key] ?? 0), 0);
   return (
     <div className="mt-6">
       <nav aria-label="Admin-Bereiche" className="grid grid-cols-3 gap-1 rounded-2xl border border-border bg-card p-1.5 sm:grid-cols-5">
@@ -45,6 +53,7 @@ export function AdminNavigation({ view }: { view: AdminView }) {
               className={cn("flex min-h-12 items-center justify-center gap-2 rounded-xl px-2 py-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                 active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
               <Icon className="hidden h-4 w-4 shrink-0 sm:block" aria-hidden />{label}
+              <UnreadBadge n={groupBadge(views)} label={feedbackLabel(groupBadge(views))} className="ml-0" />
             </a>
           );
         })}
@@ -53,9 +62,10 @@ export function AdminNavigation({ view }: { view: AdminView }) {
         <nav aria-label={`${current.label} im Detail`} className="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-b border-border px-1">
           {current.views.map(([key, label]) => (
             <a key={key} href={`#${key}`} aria-current={view === key ? "page" : undefined}
-              className={cn("flex min-h-11 items-center border-b-2 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+              className={cn("flex min-h-11 items-center gap-1.5 border-b-2 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                 view === key ? "border-primary font-semibold text-primary" : "border-transparent text-muted-foreground hover:text-foreground")}>
               {label}
+              <UnreadBadge n={badges[key] ?? 0} label={feedbackLabel(badges[key] ?? 0)} className="ml-0" />
             </a>
           ))}
         </nav>

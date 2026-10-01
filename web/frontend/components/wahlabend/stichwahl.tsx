@@ -11,9 +11,9 @@
 // Auszählungsstand, der Vergleich mit dem ersten Wahlgang. Hier steht nur, was
 // die Anzeige daraus macht.
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { ChevronDown, Info } from "lucide-react";
 import { Aufklapp } from "@/components/aufklapp";
@@ -26,12 +26,20 @@ import { StichwahlKarte } from "@/components/wahlabend/stichwahl-karte";
 import { Mitfiebern, StichwahlMomente } from "@/components/wahlabend/stichwahl-momente";
 import { BezirksTicker, BildTeilen, Countdown } from "@/components/wahlabend/stichwahl-bausteine";
 import { StichwahlVerlauf } from "@/components/wahlabend/stichwahl-verlauf";
+import {
+  AreasView,
+  ComparisonView,
+  DistrictsView,
+  ProjectionView,
+  useRunoffAnalysis,
+} from "@/components/wahlabend/runoff-analysis";
+import { ReiterLeiste, ReiterTafel, type Reiter } from "@/components/ui/reiter";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useFeature } from "@/lib/features";
 import { useFrisch, useTween } from "@/lib/use-tween";
 import { cn } from "@/lib/utils";
-import { prozent, uhrzeit, zahl } from "@/lib/wahlabend";
+import { fixed, prozent, uhrzeit, zahl } from "@/lib/wahlabend";
 import {
   abfragePfad,
   TAKT_LIVE_MS,
@@ -51,10 +59,27 @@ import {
   verschiebung,
   vorsprung,
   zeitlage,
+  type RunoffPot,
+  type RunoffSort,
   type Stichwahl,
   type StichwahlHochrechnung,
   type StichwahlKandidat,
 } from "@/lib/stichwahl";
+
+/** Die Ansichten nach der Wahl. Am Abend gab es keine Reiter — da war die
+ *  Seite eine Anzeigetafel. Sobald die Stichwahl eingefroren ist, trägt sie
+ *  den Rückblick (Tims Wunsch 27.09.2026). Die Ansicht steht in der URL
+ *  (`?ansicht=`), damit ein Link auf die Rangliste ein Link auf die
+ *  Rangliste ist — wie auf /wahlabend. */
+type View = "abend" | "vergleich" | "bereiche" | "bezirke" | "hochrechnung";
+const VIEWS: Reiter<View>[] = [
+  { id: "abend", label: "Der Abend" },
+  { id: "vergleich", label: "Vergleich" },
+  { id: "bereiche", label: "Wahlbereiche" },
+  { id: "bezirke", label: "Wahlbezirke" },
+  { id: "hochrechnung", label: "Hochrechnung" },
+];
+const RUNOFF_SORTS: readonly RunoffSort[] = ["share", "swing", "turnout", "number"];
 
 const KICKER = "font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground";
 
@@ -306,7 +331,7 @@ function Person({
         </div>
         {fuehrt ? (
           <span className="flex-none rounded-md bg-foreground px-2 py-1 font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-background">
-            {entschieden || (fertig && !probe) ? "Gewählt" : "Vorn"}
+            {fertig && !probe ? "Vorläufig vorn" : entschieden ? "Uneinholbar vorn" : "Vorn"}
           </span>
         ) : null}
       </div>
@@ -335,13 +360,13 @@ function Person({
           <dd className="mt-0.5 font-semibold tabular-nums">{zahl(stimmen === null ? null : Math.round(stimmen))}</dd>
         </div>
         <div>
-          <dt className={KICKER}>1. Wahlgang</dt>
+          <dt className={KICKER}>1. Wahlgang · 9 Kandidaturen</dt>
           <dd className="mt-0.5 tabular-nums text-muted-foreground">
             {prozent(k.first_round_pct)}
             {diff !== null ? (
               <span className="ml-1.5 font-mono text-[11px] text-signal">
                 {diff > 0 ? "+" : diff < 0 ? "−" : "±"}
-                {Math.abs(diff).toFixed(1).replace(".", ",")}
+                {fixed(Math.abs(diff))} Pkt.
               </span>
             ) : null}
           </dd>
@@ -362,7 +387,7 @@ function Abstand({ daten }: { daten: Stichwahl }) {
       {name ? (
         <>
           <strong className="font-semibold text-foreground">{name}</strong> liegt {zahl(stimmen)} Stimmen vorn — das sind{" "}
-          {punkte.toFixed(1).replace(".", ",")} Prozentpunkte.
+          {fixed(punkte)} Prozentpunkte.
         </>
       ) : (
         <>Beide liegen gleichauf. Bei Stimmengleichheit entscheidet das Los (§ 45c Abs. 2 NKWG).</>
@@ -492,8 +517,9 @@ function BuehneVorher({ daten, vorbei }: { daten: Stichwahl; vorbei: () => void 
         <p className="mt-2 max-w-[60ch] text-[13.5px] leading-relaxed text-muted-foreground">
           Am 13. September hat niemand die absolute Mehrheit erreicht; am {datumLang(daten.election.date)} entscheidet die
           Stichwahl zwischen den beiden Bestplatzierten. Ab 18 Uhr melden die 133 Wahlbezirke nach und nach — die Seite
-          fragt alle 15 Sekunden nach, und jede neue Meldung leuchtet einmal kurz auf. Ab dem ersten Bezirk rechnet sie hoch, ab dem 15. nennt sie eine Chance, und sobald der
-          Vorsprung größer ist als alles, was noch offen ist, steht hier, wer gewählt ist.
+          fragt alle 15 Sekunden nach, und jede neue Meldung leuchtet einmal kurz auf. Ab dem ersten Bezirk rechnet sie hoch,
+          ab dem 15. zeigt sie eine Wahrscheinlichkeit. Sobald der Vorsprung größer ist als die höchstmögliche Zahl aller noch
+          offenen Stimmen, zeigt die Seite, wer uneinholbar vorn liegt.
         </p>
       </div>
     </section>
@@ -511,16 +537,21 @@ function BuehneEntschieden({ daten, p }: { daten: Stichwahl; p: StichwahlHochrec
     >
       <Mascot pose="celebrate" className="h-28 w-28 flex-none" decorative />
       <div className="min-w-0">
-        <p className={KICKER}>{daten.dataset === "probe" ? "Generalprobe · " : ""}{fertig ? "Endergebnis" : "Rechnerisch entschieden"}</p>
+        <p className={KICKER}>
+          {daten.dataset === "probe" ? "Generalprobe · " : ""}
+          {fertig ? "Vorläufiges Endergebnis" : "Rechnerisch entschieden"}
+        </p>
         <h2 className="mt-1 font-display text-[24px] font-bold tracking-tight sm:text-[28px]">
-          {wer?.name ?? p.actual_leader} ist gewählt
+          {fertig
+            ? `${wer?.name ?? p.actual_leader} erhält die meisten Stimmen`
+            : `${wer?.name ?? p.actual_leader} liegt uneinholbar vorn`}
         </h2>
         <p className="mt-2 max-w-[60ch] text-[14px] leading-relaxed text-muted-foreground">
           Der Vorsprung von <strong className="font-semibold text-signal">{zahl(p.actual_lead_votes)} Stimmen</strong>{" "}
           {fertig
             ? "steht — alle Bezirke sind gezählt."
             : `ist größer als alle Stimmen, die noch offen sind (höchstens ${zahl(p.open_votes_max)}).`}{" "}
-          Kein amtliches Ergebnis; das stellt der Wahlausschuss fest.
+          Dieser Stand ist vorläufig; das amtliche Endergebnis stellt der Wahlausschuss fest.
         </p>
       </div>
     </section>
@@ -581,7 +612,7 @@ function Hochrechnung({ daten, p }: { daten: Stichwahl; p: StichwahlHochrechnung
           <p className={cn("text-[14px]", p.chance_pct === null ? "text-muted-foreground" : "font-semibold")} data-testid="chance">
             {chance}
           </p>
-          <p className="text-[12px] text-muted-foreground">Modell aus dem ersten Wahlgang je Bezirk</p>
+          <p className="text-[12px] text-muted-foreground">Modell auf Grundlage der Bezirksergebnisse des ersten Wahlgangs</p>
         </div>
       ) : null}
       {/* Die Aufholrechnung (Tim 23.09.2026): die spannendste Zahl des
@@ -610,11 +641,15 @@ function Hochrechnung({ daten, p }: { daten: Stichwahl; p: StichwahlHochrechnung
               <li key={c}>· {c}</li>
             ))}
             <li>
-              · Die Chance ist Φ(Vorsprung ÷ Streuung) über die offenen Bezirke — eine Modellrechnung, keine Umfrage. Unter 15
-              gezählten Bezirken zeigen wir sie nicht, über 99 % nie; „rechnerisch entschieden" ist dagegen kein Modell, sondern
-              Arithmetik gegen die Wahlberechtigten der offenen Bezirke.
+              · Die Wahrscheinlichkeit ergibt sich aus dem erwarteten Vorsprung und der Streuung in den noch offenen Bezirken.
+              Sie ist eine Modellrechnung, keine Umfrage. Vor 15 ausgezählten Bezirken wird sie nicht angezeigt, danach höchstens
+              mit 99 %. „Rechnerisch entschieden“ beruht dagegen nicht auf dem Modell: Dafür muss der tatsächliche Vorsprung
+              größer sein als die höchstmögliche Zahl aller offenen Stimmen.
             </li>
-            <li>· Geprüft an der Stichwahl 2021 (Krogmann gegen Fuhrhop): Nach 30 gezählten Bezirken nannte das Modell in jeder Auszählungsreihenfolge den Sieger.</li>
+            <li>
+              · Geprüft wurde das Modell anhand der Stichwahl 2021 zwischen Krogmann und Fuhrhop. Nach 30 ausgezählten Bezirken
+              nannte es bei jeder geprüften Reihenfolge den späteren Sieger.
+            </li>
           </ul>
         </SheetContent>
       </Sheet>
@@ -694,9 +729,22 @@ function RatslotseEinladung() {
 
 export function StichwahlView() {
   const params = useSearchParams();
+  const router = useRouter();
   const probe = params.get("probe");
   const counted = params.get("counted");
   const frei = useFeature("wahlabend");
+  const setQuery = useCallback(
+    (changes: Record<string, string | null>) => {
+      const q = new URLSearchParams(params.toString());
+      for (const [k, v] of Object.entries(changes)) {
+        if (v === null) q.delete(k);
+        else q.set(k, v);
+      }
+      const text = q.toString();
+      router.replace(text ? `?${text}` : "?", { scroll: false });
+    },
+    [params, router],
+  );
 
   const { data, isLoading, isError, dataUpdatedAt, refetch } = useQuery({
     queryKey: ["stichwahl", probe, counted],
@@ -725,6 +773,8 @@ export function StichwahlView() {
   }, [wahlSlug, slugs]);
   // Vor den frühen Ausstiegen — Hooks laufen in jeder Runde in derselben Reihenfolge.
   const frisch = useFrisch(data?.reports_received);
+  // Der Rückblick gibt es nur zu einer fertigen, echten Stichwahl — nie zur Probe.
+  const analysis = useRunoffAnalysis(frei && data?.phase === "complete" && data?.dataset !== "probe");
   useEffect(() => {
     if (data) document.title = fensterTitel(data);
   }, [data]);
@@ -754,10 +804,27 @@ export function StichwahlView() {
     );
   }
 
+  const viewParam = params.get("ansicht");
+  const view: View = VIEWS.find((v) => v.id === viewParam)?.id ?? "abend";
+  const sortParam = params.get("sort");
+  const runoffSort: RunoffSort = RUNOFF_SORTS.find((x) => x === sortParam) ?? "share";
+  const areaParam = params.get("bereich");
+  const runoffArea = areaParam && /^[1-6]$/.test(areaParam) ? Number(areaParam) : null;
+  const potParam = params.get("topf");
+  const runoffPot: RunoffPot | null = potParam === "urn" || potParam === "postal" ? potParam : null;
+
   const vorn = fuehrend(data.candidates);
   const fertig = data.phase === "complete";
   const zu = zeitlage(data.election.polls_close).phase === "laeuft";
   const entschieden = Boolean(data.projection?.decided);
+  // Was am Abend unter dem Duell stand — nach der Wahl der erste Reiter.
+  const abend = (
+    <>
+      {data.projection ? <Hochrechnung daten={data} p={data.projection} /> : null}
+      {data.phase !== "before" ? <StichwahlVerlauf daten={data} /> : null}
+      <StichwahlKarte daten={data} probe={probe} counted={counted} auswahl={kartenAuswahl} />
+    </>
+  );
 
   return (
     <>
@@ -772,7 +839,14 @@ export function StichwahlView() {
 
         <Tafel daten={data} aktualisiert={dataUpdatedAt} probe={probe} counted={counted} />
         <Meldung daten={data} />
-        <BezirksTicker daten={data} zeigen={(nr) => setKartenAuswahl((a) => ({ nr, n: (a?.n ?? 0) + 1 }))} />
+        <BezirksTicker
+          daten={data}
+          zeigen={(nr) => {
+            // Die Karte steht im Reiter „Der Abend" — dorthin, wenn ein anderer offen ist.
+            if (view !== "abend") setQuery({ ansicht: null });
+            setKartenAuswahl((a) => ({ nr, n: (a?.n ?? 0) + 1 }));
+          }}
+        />
         {/* Der Weg ins Tippspiel dieser Wahl — nur, solange getippt werden
             kann. Ab 18 Uhr gehört die Fläche dem Stand (Tim 23.09.2026: „ab
             18 Uhr weg"); die Rangliste steht dann leise im Fuß. Ob es ein
@@ -788,15 +862,58 @@ export function StichwahlView() {
             ist der Wahlvorschlag. Wer das nicht weiß, liest sie als
             Parteibuch. */}
         <p className="mt-4 text-[12.5px] leading-relaxed text-muted-foreground">
-          Über jedem Namen steht, wer die Kandidatur <strong className="font-semibold text-foreground">vorgeschlagen</strong> hat.
-          Auf dem Stimmzettel ist je Kandidatur genau eine Liste zugelassen — wer dort steht, muss weder deren Mitglied
-          sein noch ihre einzige Unterstützung haben.
+          Über jedem Namen steht die Partei oder Wählergruppe, die den Wahlvorschlag eingereicht hat. Das sagt nicht
+          automatisch aus, ob die kandidierende Person dort Mitglied ist oder von welchen weiteren Parteien sie unterstützt
+          wird.
         </p>
 
 
-        {data.projection ? <Hochrechnung daten={data} p={data.projection} /> : null}
-        {data.phase !== "before" ? <StichwahlVerlauf daten={data} /> : null}
-        <StichwahlKarte daten={data} probe={probe} counted={counted} auswahl={kartenAuswahl} />
+        {analysis.data ? (
+          <>
+            <ReiterLeiste
+              reiter={VIEWS}
+              aktiv={view}
+              onChange={(id) => setQuery({ ansicht: id === "abend" ? null : id })}
+              label="Ansichten der Stichwahl"
+              className="mt-8"
+            />
+            <ReiterTafel id="abend" aktiv={view}>
+              {abend}
+            </ReiterTafel>
+            <ReiterTafel id="vergleich" aktiv={view}>
+              <ComparisonView
+                analysis={analysis.data}
+                showDistricts={() => setQuery({ ansicht: "bezirke", sort: "swing", bereich: null, topf: null })}
+              />
+            </ReiterTafel>
+            <ReiterTafel id="bereiche" aktiv={view}>
+              <AreasView
+                analysis={analysis.data}
+                showArea={(n) => setQuery({ ansicht: "bezirke", bereich: String(n), topf: null })}
+              />
+            </ReiterTafel>
+            <ReiterTafel id="bezirke" aktiv={view}>
+              <DistrictsView
+                analysis={analysis.data}
+                sort={runoffSort}
+                area={runoffArea}
+                pot={runoffPot}
+                onChange={(next) =>
+                  setQuery({
+                    sort: next.sort === "share" ? null : next.sort,
+                    bereich: next.area === null ? null : String(next.area),
+                    topf: next.pot,
+                  })
+                }
+              />
+            </ReiterTafel>
+            <ReiterTafel id="hochrechnung" aktiv={view}>
+              <ProjectionView analysis={analysis.data} />
+            </ReiterTafel>
+          </>
+        ) : (
+          abend
+        )}
 
         <RatslotseEinladung />
         <Mitfiebern daten={data} favorit={favorit} setFavorit={setFavorit} />
@@ -812,8 +929,9 @@ export function StichwahlView() {
         <footer className="mt-10 border-t border-border pt-4 text-[12.5px] leading-relaxed text-muted-foreground">
           <p className="max-w-[76ch]">
             <strong className="font-semibold text-foreground">Quelle:</strong> Ergebnisdarstellung des Votemanagers der
-            Stadt Oldenburg, am Abend alle 15 Sekunden abgerufen. Die Stichwahl hat — anders als die Ratswahl — keine
-            Open-Data-Datei. Kein amtliches Ergebnis; das stellt der Wahlausschuss fest.{" "}
+            Stadt Oldenburg, am Wahlabend alle 15 Sekunden abgerufen. Für die Stichwahl stellt die Stadt — anders als für die
+            Ratswahl — keine Open-Data-Datei bereit. Die gezeigten Zahlen sind vorläufig; das amtliche Endergebnis stellt der
+            Wahlausschuss fest.{" "}
             <a href={data.election.presentation_url} className="font-medium text-primary" target="_blank" rel="noopener noreferrer">
               Zur amtlichen Ergebnispräsentation
             </a>

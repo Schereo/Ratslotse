@@ -133,6 +133,10 @@ def test_mit_anmeldung_steht_sie_offen(client):
 def test_die_uebersicht_verlinkt_nur_was_man_benutzen_kann(client):
     """Ein Link, den man sieht und nicht benutzen kann, ist schlechter als
     keiner — also entscheidet das Backend, nicht die Seite."""
+    # Die Runde anlegen, wie auf Prod: Die Stichwahl ist eingefroren, und
+    # eine vorbeie Wahl ohne Runde bekäme gar keinen Link mehr.
+    _als(ANNA)
+    client.get(f"/api/tipp/setup?round={TIPP}")
     _als(None)
     ohne = {z["slug"]: z["tipp_path"] for z in client.get("/api/wahlen").json()["elections"]}
     assert ohne[TIPP] == ""

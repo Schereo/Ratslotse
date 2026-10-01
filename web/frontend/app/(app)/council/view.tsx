@@ -26,7 +26,7 @@ import {
 import { OutcomeBadge, OutcomeDot, ImportanceBadge, OUTCOME_META, voteLabel, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
 import { CommitteeName } from "@/components/committee-name";
 import { shortCommittee, hasShortCommittee, committeeIcon } from "@/lib/committees";
-import { isLiveNow, liveItemKeys, liveStateFresh } from "@/lib/live";
+import { isLiveNow, isStadtrat, liveItemKeys, liveSpeakerText, liveStateFresh, LIVE_REFRESH_MS } from "@/lib/live";
 import { reportBadgeEvent } from "@/components/badges";
 import { ChipPopover, DateRangeChip } from "@/components/filter-chips";
 import { SitzungspauseBanner } from "@/components/sitzungspause-banner";
@@ -1112,6 +1112,27 @@ function SessionsTab({ committees }: { committees: string[] }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expanded]);
 
+  // Eine offene Tagesordnung der laufenden Ratssitzung holt ihr Detail alle
+  // 20 s nach — im Takt der Live-Karte (components/live-banner.tsx). Sonst
+  // stand die rote Marke am TOP vom Aufklappen, bis jemand neu lud. Nur
+  // übertragene Sitzungen (Stadtrat), und nur bei sichtbarem Tab.
+  const laufendOffen = sessions
+    .filter((s) => s.ksinr != null && expanded[s.ksinr] && isStadtrat(s.committee) && isLiveNow(s))
+    .map((s) => s.ksinr as number)
+    .join(",");
+  useEffect(() => {
+    if (!laufendOffen) return;
+    const id = setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      for (const ksinr of laufendOffen.split(",").map(Number)) {
+        api.get<SessionDetail>(`/council/session/${ksinr}`)
+          .then((d) => setDetail((prev) => ({ ...prev, [ksinr]: d })))
+          .catch(() => { /* stumm: der alte Stand bleibt stehen */ });
+      }
+    }, LIVE_REFRESH_MS);
+    return () => clearInterval(id);
+  }, [laufendOffen]);
+
 
   const query = q.trim();
   const totalPages = Math.ceil(total / PAGE_SIZE);
@@ -1275,6 +1296,9 @@ function SessionsTab({ committees }: { committees: string[] }) {
               const liveKeys = liveState && liveStateFresh(liveState) && isLiveNow(s)
                 ? liveItemKeys(liveState, (d?.agenda_items ?? []).map((it) => videoKey(it.item_number)))
                 : new Set<string>();
+              // Der Sprecher steht an dem Punkt, der gerade aufgerufen ist —
+              // bei einem Block am letzten, nicht an jeder Zeile des Blocks.
+              const liveSpeaker = liveKeys.size > 0 && liveState ? liveSpeakerText(liveState) : null;
               return (
                 <Fragment key={s.ksinr}>
                 {trenner}
@@ -1393,6 +1417,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
                                   videoResult={it.is_public ? videoByItem[videoKey(it.item_number)] : undefined}
                                   myTopic={myByItem[it.item_number]}
                                   live={liveKeys.has(videoKey(it.item_number))}
+                                  liveSpeaker={videoKey(it.item_number) === liveState?.item_number ? liveSpeaker : null}
                                   domId={s.ksinr != null ? topDomId(s.ksinr, it.item_number) : undefined}
                                   flash={s.ksinr != null && flashTop === topDomId(s.ksinr, it.item_number)} />
                               ))}

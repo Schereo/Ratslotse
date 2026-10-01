@@ -1,0 +1,87 @@
+# Manuell auslösbar: die Gold-Fälle (eval/cases_deep_gold.json) auf dem Server
+# gegen die echten Daten — für „Frag den Rat“ (scripts/eval_ask_gold.py, über
+# den laufenden Dienst) und/oder die Gründliche Recherche
+# (scripts/eval_deep_gold.py).
+#
+# WARUM AUF DEM SERVER. Beide Wege brauchen die Embeddings; der lokale Abzug
+# lässt sie weg (scripts/lokale_daten.py). Lokal fällt die Suche auf
+# Stichworte zurück und misst etwas anderes als den Betrieb.
+#
+# WAS ES KOSTET. Je Fall eine Antwort bzw. ein Bericht mit dem Modell des
+# Betriebs, dazu ein Richter-Aufruf. Die Summe steht am Ende im Log. Die
+# Fragen zählen als Fragen des Rauchproben-Kontos (WEB_ADMIN_EMAIL), wie
+# ops-frage-probe.yml.
+#
+# Ergebnisse liegen danach unter data/eval_gold/ (ask-<label>.json) bzw.
+# eval/results/deep_gold/<label>.json auf dem Server; das Log zeigt je Fall
+# Abdeckung, verfehlte Fakten, Verstöße und fehlendes Material.
+name: "Ops: Gold-Fälle messen"
+
+on:
+  workflow_dispatch:
+    inputs:
+      umgebung:
+        description: "Welche VM? (prod = ratslotse.de)"
+        type: choice
+        options: [dev, prod]
+        default: prod
+      weg:
+        description: "ask = Frag den Rat, deep = Gründliche Recherche, beide"
+        type: choice
+        options: [ask, deep, beide]
+        default: beide
+      label:
+        description: "Name des Laufs (Buchstaben, Ziffern, Bindestrich)"
+        type: string
+        required: true
+      nur:
+        description: "Nur diesen Fall (id aus cases_deep_gold.json), leer = alle"
+        type: string
+        default: ""
+
+concurrency:
+  group: ops-gold-${{ inputs.umgebung }}
+  cancel-in-progress: false
+
+jobs:
+  gold:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Gold (${{ inputs.umgebung }}, ${{ inputs.weg }})"
+        env:
+          WEG: ${{ inputs.weg }}
+          LABEL: ${{ inputs.label }}
+          NUR: ${{ inputs.nur }}
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ inputs.umgebung == 'prod' && secrets.VPS_HOST || secrets.VPS_DEV_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          proxy_host: ${{ secrets.VPS_PROXY_HOST }}
+          proxy_username: ${{ secrets.VPS_PROXY_USER }}
+          proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          proxy_port: ${{ secrets.VPS_SSH_PORT }}
+          command_timeout: 60m
+          # Eingaben über `envs` und geprüft, nicht als `${{ … }}` im Skripttext.
+          envs: WEG,LABEL,NUR
+          script: |
+            set -e
+            cd ~/app
+            if ! echo "$LABEL" | grep -qE '^[A-Za-z0-9-]{1,40}$'; then
+              echo "label nur aus Buchstaben, Ziffern, Bindestrich: $LABEL"; exit 2
+            fi
+            if [ -n "$NUR" ] && ! echo "$NUR" | grep -qE '^[a-z0-9-]{1,60}$'; then
+              echo "nur muss eine Fall-id sein: $NUR"; exit 2
+            fi
+            PY=.venv/bin/python
+            NUR_ARG=""
+            [ -n "$NUR" ] && NUR_ARG="--nur $NUR"
+            if [ "$WEG" = "ask" ] || [ "$WEG" = "beide" ]; then
+              echo "=== Frag den Rat"
+              $PY scripts/eval_ask_gold.py --label "$LABEL" $NUR_ARG
+            fi
+            if [ "$WEG" = "deep" ] || [ "$WEG" = "beide" ]; then
+              echo "=== Gründliche Recherche"
+              $PY scripts/eval_deep_gold.py --db data/council.sqlite --label "$LABEL" $NUR_ARG
+            fi

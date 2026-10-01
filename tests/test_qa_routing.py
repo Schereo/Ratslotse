@@ -195,7 +195,7 @@ def test_deterministische_finanzquelle_macht_budget_zum_pflichtkanal(question):
 
 def test_current_info_koppelt_presse_und_zukunft_nicht_mehr_pauschal():
     plan = qa._research_plan({"rechercheplan": {
-        "intent": "status", "channels": ["decisions"], "sort": "newest",
+        "intent": "fact", "channels": ["decisions"], "sort": "newest",
         "needs": ["current_info"],
     }})
     resolved = qa.research_plan_with_mandatory(plan, typ="history")
@@ -213,6 +213,39 @@ def test_current_info_koppelt_presse_und_zukunft_nicht_mehr_pauschal():
         "decisions", "future_agenda"]
 
 
+def test_stand_frage_bekommt_die_debatten():
+    """Befund 30.09.2026: „Wie ist der Stand beim Spielplatz auf dem
+    Schlossplatz?“ plante das Modell 5 von 5 Mal als decisions+press — der
+    mündliche Sachstand der Verwaltung im Ausschuss (nur im Protokoll) kam nie
+    in den Kontext. Genau so hat das Modell geantwortet: Plan unten wörtlich."""
+    plan = qa._research_plan({"rechercheplan": {
+        "intent": "status", "channels": ["decisions", "press"], "sort": "newest",
+        "needs": ["current_info", "official_updates"],
+    }})
+    frage = "Wie ist der Stand beim Spielplatz auf dem Schlossplatz?"
+    resolved = qa.research_plan_with_mandatory(plan, typ="history", question=frage,
+                                               place=True)
+    assert resolved["channels"] == ["decisions", "places", "press", "debates"]
+    assert resolved["inferred_needs"] == ["statements"]
+    # Das Wort „Stand“ reicht auch, wenn das Modell „overview“ plant.
+    overview = qa._research_plan({"rechercheplan": {
+        "intent": "overview", "channels": ["decisions"], "needs": []}})
+    assert "debates" in qa.research_plan_with_mandatory(
+        overview, typ="topic", question="Was ist der aktuelle Stand beim Fliegerhorst?")["channels"]
+    assert "debates" not in qa.research_plan_with_mandatory(
+        overview, typ="topic", question="Wo ist der Standort der neuen Grundschule?")["channels"]
+    # Ausdrücklich nach Mitteilungen der Stadt gefragt: Presse, keine Debatten —
+    # auch wenn das Modell official_updates schon selbst gesetzt hat.
+    mitteilung = qa.research_plan_with_mandatory(
+        plan, typ="topic", question="Was hat die Stadt zuletzt zum Radverkehr mitgeteilt?")
+    assert "debates" not in mitteilung["channels"] and "press" in mitteilung["channels"]
+    # Die Negativregel bleibt: Bei „zuletzt beschlossen“ sind Debatten Rauschen.
+    neueste = qa.research_plan_with_mandatory(plan, typ="history", question=frage,
+                                              place=True, latest_decision=True)
+    assert "debates" not in neueste["channels"]
+    assert neueste["suppressed_channels"] == ["debates"]
+
+
 def test_reine_zukunftsfrage_entfernt_presse_ueber_bedarfe():
     nur_zukunft = qa._research_plan({"rechercheplan": {
         "intent": "session", "channels": ["decisions", "press", "future_agenda"],
@@ -227,7 +260,9 @@ def test_reine_zukunftsfrage_entfernt_presse_ueber_bedarfe():
         "needs": ["current_info", "official_updates", "future_dates"],
     }})
     resolved = qa.research_plan_with_mandatory(beides, typ="history")
-    assert resolved["channels"] == ["decisions", "press", "future_agenda"]
+    # Stand + nächste Schritte: Der Stand steht oft nur im Protokoll (s.
+    # test_stand_frage_bekommt_die_debatten).
+    assert resolved["channels"] == ["decisions", "press", "future_agenda", "debates"]
     assert resolved["suppressed_channels"] == []
 
 
@@ -287,11 +322,13 @@ def test_eindeutige_stadtmitteilung_aktiviert_presse_als_leitplanke():
 
     # Das Verb allein reicht nicht: Eine Aussage irgendeiner Person ist keine
     # offizielle Veröffentlichung der Stadtverwaltung.
+    # Seit 30.09.2026 holt eine Stand-Frage die Debatten — und was Müller
+    # gesagt hat, STEHT dort.
     ohne_offizielle_quelle = qa.research_plan_with_mandatory(
         plan, typ="topic", question="Was hat Müller zuletzt mitgeteilt?",
     )
-    assert ohne_offizielle_quelle["channels"] == ["decisions"]
-    assert ohne_offizielle_quelle["inferred_needs"] == []
+    assert ohne_offizielle_quelle["channels"] == ["decisions", "debates"]
+    assert ohne_offizielle_quelle["inferred_needs"] == ["statements"]
 
 
 def test_rechercheplan_entfernt_debatten_bei_neuester_ortsentscheidung():

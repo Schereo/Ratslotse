@@ -1,0 +1,121 @@
+{
+  "zeitstempel": "27.09.2026 19:23",
+  "seitentitel": "Stichwahl des Oberbürgermeisters 27.09.2026 - Stadt Oldenburg (Oldenburg)",
+  "Komponente": {
+    "tabelle": {
+      "zeilen": [
+        {
+          "color": "#33cc00",
+          "label": {
+            "labelKurz": "Rohr, GRÜNE"
+          },
+          "zahl": "30.792",
+          "prozent": "51,55 %",
+          "tagged": false
+        },
+        {
+          "color": "#d60029",
+          "label": {
+            "labelKurz": "Prange, SPD"
+          },
+          "zahl": "28.942",
+          "prozent": "48,45 %",
+          "tagged": false
+        }
+      ]
+    },
+    "info": {
+      "titel": "Stadt Oldenburg (Oldenburg) - Stadt Oldenburg (Oldenburg)",
+      "hinweis": [
+        "Alle Schnellmeldungen eingegangen!",
+        "133 von 133 Ergebnissen"
+      ],
+      "tabelle": {
+        "zeilen": [
+          {
+            "label": {
+              "labelKurz": "Wahlberechtigte"
+            },
+            "zahl": "135.299",
+            "prozent": "",
+            "tagged": false
+          },
+          {
+            "label": {
+              "labelKurz": "Wähler/-innen"
+            },
+            "zahl": "60.096",
+            "prozent": "44,42 %",
+            "tagged": false
+          },
+          {
+            "label": {
+              "labelKurz": "ungültige Stimmen"
+            },
+            "zahl": "362",
+            "prozent": "0,60 %",
+            "tagged": false
+          },
+          {
+            "label": {
+              "labelKurz": "gültige Stimmen"
+            },
+            "zahl": "59.734",
+            "prozent": "99,40 %",
+            "tagged": false
+          }
+        ]
+      }
+    },
+    "grafik": {
+      "title": {
+        "titel": "Stadt Oldenburg (Oldenburg)",
+        "subtitle": "Stichwahl des Oberbürgermeisters 27.09.2026 "
+      },
+      "balken": [
+        {
+          "bezeichnung": "Rohr, GRÜNE",
+          "color": "#33cc00",
+          "bezeichnungAusfuehrlich": "Jascha Rohr, BÜNDNIS 90/DIE GRÜNEN",
+          "wert": 30792,
+          "wertString": "30.792 Stimmen",
+          "prozentGerundet": 51.55,
+          "prozentString": "51,55 %"
+        },
+        {
+          "bezeichnung": "Prange, SPD",
+          "color": "#d60029",
+          "bezeichnungAusfuehrlich": "Ulf Prange, Sozialdemokratische Partei Deutschlands",
+          "wert": 28942,
+          "wertString": "28.942 Stimmen",
+          "prozentGerundet": 48.45,
+          "prozentString": "48,45 %"
+        }
+      ],
+      "sonstigeBalken": [],
+      "footer": "27.09.2026 19:22 Uhr - 133 von 133 Ergebnissen",
+      "isBalkenDarstellung": false,
+      "file_version": "26.09.04",
+      "file_timestamp": "27.09.2026 19:23:54 690",
+      "server_hash": "646b1029f537300d28340ce6ec5ea8d7"
+    },
+    "gewaehlte_kandidaten": {
+      "title": "Gewählt ist",
+      "items": [
+        {
+          "label": "Jascha Rohr (GRÜNE)"
+        }
+      ]
+    },
+    "wahlbeteiligung": {
+      "text": {
+        "text": "Die Wahlbeteiligung liegt bei: ",
+        "prozent": 44.42
+      },
+      "hinweis": ""
+    }
+  },
+  "file_version": "26.09.04",
+  "file_timestamp": "27.09.2026 19:23:54 689",
+  "server_hash": "646b1029f537300d28340ce6ec5ea8d7"
+}

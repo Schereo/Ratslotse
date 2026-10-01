@@ -102,11 +102,14 @@ def test_setup_nennt_die_beiden_kandidaturen_und_das_parteien_menue(client):
     assert "afd" not in slugs, "Tims Entscheidung 19.09.2026: ohne AfD"
     assert "stille" not in slugs, "ein Einzelwahlvorschlag ist keine Partei"
     assert {"gruene", "spd", "cdu", "volt", "fuer-oldenburg"} <= set(slugs)
-    assert daten["turnout_previous"] == pytest.approx(63.46) and daten["turnout_previous_label"] == "1. Wahlgang"
+    assert daten["turnout_previous"] == pytest.approx(63.45) and daten["turnout_previous_label"] == "1. Wahlgang"
     assert "Schließung der Wahllokale" in daten["deadline_hint"]
 
 
 def test_die_uebersicht_verlinkt_die_stichwahl_ohne_konto(client):
+    # Die Runde gibt es (wie auf Prod): Seit die Stichwahl eingefroren ist,
+    # gilt sie als vorbei, und eine vorbeie Wahl ohne Runde bekäme keinen Link.
+    client.get(f"/api/tipp/setup{RUNDE}")
     zeilen = {z["slug"]: z for z in client.get("/api/wahlen").json()["elections"]}
     assert zeilen["ob-stichwahl-2026"]["tipp_path"] == "/tipp?runde=stichwahl"
     assert zeilen["ob-stichwahl-2026"]["tipp_locked"] is False
@@ -158,7 +161,7 @@ def test_sitze_bei_der_stichwahl_sind_422(client):
 
 def test_punkte_zaehlen_gegen_die_stichwahl_nicht_gegen_den_ersten_wahlgang(client, monkeypatch):
     """Generalprobe der Stichwahl bei 133/133: Prange 52,06, Rohr 47,94,
-    Beteiligung 63,46 (der eingefrorene erste Wahlgang auf zwei Namen)."""
+    Beteiligung 63,45 (der eingefrorene erste Wahlgang, amtlich auf zwei Namen)."""
     tippen(client, "Anna", 52.0, 48.0, turnout=63.0)
     tippen(client, "Ben", 45.0, 55.0, turnout=40.0)
     monkeypatch.setattr(mayor_module, "fetch", _stichwahl_stand(133))
@@ -167,7 +170,7 @@ def test_punkte_zaehlen_gegen_die_stichwahl_nicht_gegen_den_ersten_wahlgang(clie
     stand = client.get(f"/api/tipp/stand{RUNDE}").json()
     ist = {m["slug"]: m["actual_pct"] for m in stand["mayor"]}
     assert ist == {"prange": pytest.approx(52.06), "rohr": pytest.approx(47.94)}
-    assert stand["turnout"]["actual_pct"] == pytest.approx(63.46)
+    assert stand["turnout"]["actual_pct"] == pytest.approx(63.45)
     assert stand["mayor_status"] == "complete" and stand["source_label"] == "votemanager"
     assert stand["area_label"] == "133/133 Wahlbezirke"
 
@@ -207,7 +210,7 @@ def test_handeingabe_der_wahlbeteiligung_schlaegt_den_abruf(client, monkeypatch)
     monkeypatch.setattr(mayor_module, "fetch", _stichwahl_stand(133))
     service.reset_all()
     client.put(f"/api/tipp/admin/ergebnis{RUNDE}", json=[{"slug": "turnout", "pct": 50.4}])
-    assert client.get(f"/api/tipp/stand{RUNDE}").json()["turnout"]["actual_pct"] == pytest.approx(63.46), (
+    assert client.get(f"/api/tipp/stand{RUNDE}").json()["turnout"]["actual_pct"] == pytest.approx(63.45), (
         "der Entwurf ändert die Tafel nicht")
     client.post(f"/api/tipp/admin/veroeffentlichen{RUNDE}")
     stand = client.get(f"/api/tipp/stand{RUNDE}").json()
@@ -235,7 +238,7 @@ def test_jetzt_abfragen_holt_die_stichwahl_samt_wahlbeteiligung(client, monkeypa
     daten = client.post(f"/api/tipp/admin/abfragen{RUNDE}").json()
     entwurf = {r["slug"]: r["pct"] for r in daten["results"]}
     assert entwurf["ob:prange"] == pytest.approx(52.06) and entwurf["ob:rohr"] == pytest.approx(47.94)
-    assert entwurf["turnout"] == pytest.approx(63.46)
+    assert entwurf["turnout"] == pytest.approx(63.45)
     assert any("Wahlbeteiligung" in zeile for zeile in daten["log"])
 
 
@@ -254,11 +257,17 @@ def test_admin_korrigiert_die_partei(client, store):
 
 # ------------------------------------------------------------------ Von der Ratswahl zur Stichwahl
 
-def test_die_hauptrunde_schickt_neue_zur_stichwahl(client, store):
+def test_die_hauptrunde_schickt_neue_zur_stichwahl(client, store, monkeypatch):
     """``/tipp`` steht auf alten QR-Codes und Sharepics — wer heute dort
     landet, soll zum laufenden Spiel, nicht zu „Tippfrist vorbei, trotzdem
     tippen" der Ratswahl. Solange die Ratswahl-Runde offen ist, gibt es
-    keinen Nachfolger."""
+    keinen Nachfolger.
+
+    Der Fokus wird eingefroren: ``elections.focus()`` rechnet mit der Uhr und
+    zeigt drei Tage nach der Stichwahl (27.09.2026, 30.09. ab ~16 Uhr UTC) nicht
+    mehr auf sie — der Test lief davor grün und war danach für JEDEN Pull
+    Request rot."""
+    monkeypatch.setattr(elections, "focus", lambda jetzt=None: elections.get("ob-stichwahl-2026"))
     assert client.get("/api/tipp/setup").json()["successor_path"] == ""
     game_id = store.prediction_spiel_zeile("ratswahl")["id"]
     store.prediction_game_set(game_id, phase="locked")

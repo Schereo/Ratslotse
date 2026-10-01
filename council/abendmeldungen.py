@@ -25,6 +25,7 @@ import html
 import logging
 from datetime import date, timedelta
 
+from council.topic_intel import meldestichtage
 from kern import digest_email, notify
 
 logger = logging.getLogger("council.abendmeldungen")
@@ -106,6 +107,7 @@ def vorabend(council_store, ratslotse_store, heute: date | None = None) -> int:
 ERGEBNIS_WORT = {
     "accepted": "angenommen", "rejected": "abgelehnt", "postponed": "vertagt",
     "noted": "zur Kenntnis genommen", "no_decision": "ohne Beschluss",
+    "settled": "als behandelt erklärt",
 }
 
 
@@ -131,13 +133,25 @@ def _n6_text(beschluesse: list[dict]) -> tuple[str, str]:
 
 def wochenueberblick(council_store, ratslotse_store, heute: date | None = None) -> int:
     """N6: Sonntags eine Nachricht mit den Beschlüssen der Woche zu den eigenen
-    Themen. Ohne Treffer passiert nichts — die App schweigt lieber."""
+    Themen. Ohne Treffer passiert nichts — die App schweigt lieber.
+
+    „Der Woche" heißt: diese Woche neu zugeordnet **und** aktuell nach
+    ``topic_intel.meldestichtage`` — dieselbe Regel wie die Abgleich-Mail.
+    Die Zuordnung allein reichte nicht: Ein neu angelegtes Thema bekommt beim
+    ersten Abgleich seinen ganzen Bestand gestempelt, und ein Nachlauf alter
+    Protokolle ebenso. Am 27.09.2026 stand deshalb der Masterplan Fliegerhorst
+    von 2019 unter „Diese Woche: 13 Beschlüsse zu deinen Themen".
+    """
     heute = heute or date.today()
     seit = (heute - timedelta(days=7)).isoformat()
+    sitzung_seit, protokoll_seit = meldestichtage(heute)
     eingereiht = 0
 
     for owner_id in ratslotse_store.owners_with_topic_matches_since(seit):
         ids = ratslotse_store.topic_match_decision_ids_since(owner_id, seit)
+        aktuell = council_store.meldewuerdige_beschluss_ids(
+            ids, sitzung_seit=sitzung_seit, protokoll_seit=protokoll_seit)
+        ids = [i for i in ids if i in aktuell]
         if not ids:
             continue
         beschluesse = council_store.get_decisions_by_ids(ids)

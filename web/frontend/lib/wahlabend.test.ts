@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { abfragePfad, bildPfad, delta, fortschritt, halbkreis, kandidatenStatus, koalitionen, mehrheit, nachStimmen, prozent, sitzband, sitzgrenze, standText, uhrzeit, vorneDrei, wahlabendZeit, zahl } from "./wahlabend";
+import { abfragePfad, bildPfad, delta, fixed, fortschritt, halbkreis, kandidatenStatus, koalitionen, mehrheit, nachStimmen, prozent, sitzband, sitzgrenze, standText, uhrzeit, vorneDrei, wahlabendZeit, zahl } from "./wahlabend";
 
 /** Wahlschluss 13.09.2026, 18 Uhr — kommt im Betrieb aus `election.polls_close`. */
 const SCHLUSS = "2026-09-13T18:00:00+02:00";
@@ -11,6 +11,17 @@ describe("Formate", () => {
     expect(prozent(2.63)).toBe("2,6 %");
     expect(prozent(31.22, 2)).toBe("31,22 %");
     expect(prozent(undefined)).toBe("–");
+  });
+  it("kaufmännisch gerundet, nicht nach der Gleitkommazahl (Stichwahl 27.09.2026)", () => {
+    // 51,55 ist binär 51,5499… — toFixed(1) machte daraus 51,5.
+    expect(prozent(51.55)).toBe("51,6 %");
+    expect(prozent(48.45)).toBe("48,5 %");
+    expect(fixed(1.005, 2)).toBe("1,01");
+    expect(fixed(-2.25)).toBe("-2,3");
+    expect(fixed(-0.04)).toBe("0,0");
+    expect(fixed(0)).toBe("0,0");
+    expect(fixed(1e-7)).toBe("0,0");
+    expect(delta(51.55, 30.5)).toBe("+21,1");
   });
   it("Delta in Punkten mit Vorzeichen", () => {
     expect(delta(31.2, 19.1)).toBe("+12,1");

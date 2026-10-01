@@ -89,7 +89,7 @@ def file_id(document_id: int | str) -> str:
 #: — bis auf einen Wert, den der Städte-Speicher anders nennt.
 _OUTCOME_MAP = {
     "accepted": "accepted", "rejected": "rejected", "postponed": "postponed",
-    "noted": "noted", "no_decision": "none", "": "none", None: "none",
+    "noted": "noted", "no_decision": "none", "settled": "none", "": "none", None: "none",
 }
 
 

@@ -181,10 +181,10 @@ def project(current: Sequence[MayorDistrict], first_round: Sequence[MayorDistric
         return None
     if s_urne is None:
         s_urne = s_brief
-        caveats.append("Noch kein Urnenbezirk gezählt — der Schwung der Briefwahl gilt vorläufig auch für die Urne.")
+        caveats.append("Noch ist kein Urnenbezirk ausgezählt. Bis dahin verwendet das Modell dort die Veränderung aus den Briefwahlbezirken.")
     if s_brief is None:
         s_brief = s_urne
-        caveats.append("Noch kein Briefwahlbezirk gezählt — der Schwung der Urne gilt vorläufig auch für die Briefwahl.")
+        caveats.append("Noch ist kein Briefwahlbezirk ausgezählt. Bis dahin verwendet das Modell dort die Veränderung aus den Urnenbezirken.")
     assert s_urne is not None and s_brief is not None
 
     # Wie stark die Stimmen gegenüber dem ersten Wahlgang wachsen — je Topf:
@@ -265,8 +265,8 @@ def project(current: Sequence[MayorDistrict], first_round: Sequence[MayorDistric
         else:
             open_max += int(d.eligible)
     if fremd_gezaehlt or fremd_offen:
-        caveats.append(f"{len(fremd_gezaehlt) + len(fremd_offen)} Wahlbezirke gibt es im ersten Wahlgang nicht — "
-                       "ihre Stimmen zählen mit, ihre Hochrechnung ist grob.")
+        caveats.append(f"Für {len(fremd_gezaehlt) + len(fremd_offen)} Wahlbezirke gibt es keinen Vergleichswert aus dem "
+                       "ersten Wahlgang. Ihre Stimmen zählen zum Ergebnis; ihre Hochrechnung ist daher ungenauer.")
     # Der Schwung ist selbst nur geschätzt — und ein Fehler darin trifft ALLE
     # offenen Bezirke eines Topfes in dieselbe Richtung. Er wächst deshalb mit
     # den offenen Stimmen, nicht mit ihrer Wurzel. Bis 09/2026 fehlte dieser
@@ -307,14 +307,14 @@ def project(current: Sequence[MayorDistrict], first_round: Sequence[MayorDistric
     elif alles_gezaehlt:
         caveats.append("Gleichstand nach allen Bezirken — nach § 45c Abs. 2 NKWG entscheidet das Los.")
     elif n_gezaehlt < MIN_DISTRICTS:
-        caveats.append(f"Erst {n_gezaehlt} von {n_gezaehlt + len(offen)} Bezirken gezählt — zu früh für eine Wahrscheinlichkeit.")
+        caveats.append(f"Erst {n_gezaehlt} von {n_gezaehlt + len(offen)} Bezirken sind ausgezählt. Für eine Wahrscheinlichkeit ist das noch zu früh.")
     elif sigma > 0:
         chance = min(CHANCE_CAP, int(round(100 * 0.5 * (1 + math.erf(lead / sigma / math.sqrt(2))))))
     else:
         chance = CHANCE_CAP
-    caveats.append("Modell: Jeder offene Bezirk stimmt wie im ersten Wahlgang, verschoben um den Trend der "
-                   "schon gezählten Bezirke — Urne und Briefwahl getrennt. Über die Wähler*innen der "
-                   "ausgeschiedenen Kandidaturen weiß es nichts.")
+    caveats.append("Das Modell überträgt die durchschnittliche Veränderung aus den bereits ausgezählten Bezirken auf die "
+                   "noch offenen Bezirke. Urnen- und Briefwahl werden getrennt berechnet. Wie einzelne Menschen im ersten "
+                   "Wahlgang abgestimmt haben, kann das Modell nicht erkennen.")
 
     # Die Aufholrechnung — Arithmetik auf dem Modell, kein zweites Modell:
     # Rückstand r, erwartete offene Stimmen N; nötig ist x mit

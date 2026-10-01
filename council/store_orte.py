@@ -44,7 +44,7 @@ class OrteMixin(StoreBasis):
     # Outcomes grouped into "real votes" vs "reports / no decision".
     _VOTE_OUTCOMES = ("accepted", "rejected", "postponed")
 
-    _REPORT_OUTCOMES = ("noted", "no_decision")
+    _REPORT_OUTCOMES = ("noted", "no_decision", "settled")
 
     #: Ab welchem Anteil der Stützpunkte ein Ortsbereich als berührt gilt.
     #: Zehn Prozent von bis zu 60 Punkten sind ein echtes Straßenstück, keine

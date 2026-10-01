@@ -3983,7 +3983,8 @@
                   "rejected",
                   "postponed",
                   "noted",
-                  "no_decision"
+                  "no_decision",
+                  "settled"
                 ],
                 "title": "Outcome",
                 "type": [
@@ -6934,6 +6935,131 @@
         "title": "DataLayer",
         "type": "object"
       },
+      "DebateHint": {
+        "description": "Ein Wortbeitrag im Baustein „Aus den Ratsdebatten“ — dieselbe Form wie\n``debates`` im Quellen-Ereignis der KI-Frage (``_debatten_kompakt``).",
+        "properties": {
+          "agenda_item": {
+            "title": "Agenda Item",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "committee": {
+            "title": "Committee",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date": {
+            "title": "Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "excerpt": {
+            "title": "Excerpt",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "kind": {
+            "title": "Kind",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "minutes_page": {
+            "title": "Minutes Page",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "minutes_url": {
+            "title": "Minutes Url",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "party": {
+            "title": "Party",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "speaker": {
+            "title": "Speaker",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "speaker",
+          "party",
+          "kind",
+          "agenda_item",
+          "excerpt",
+          "committee",
+          "date",
+          "minutes_url",
+          "minutes_page"
+        ],
+        "title": "DebateHint",
+        "type": "object"
+      },
+      "DebatesBody": {
+        "properties": {
+          "decision_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "maxItems": 40,
+            "title": "Decision Ids",
+            "type": "array"
+          },
+          "question": {
+            "maxLength": 300,
+            "minLength": 3,
+            "title": "Question",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question"
+        ],
+        "title": "DebatesBody",
+        "type": "object"
+      },
+      "DebatesMore": {
+        "properties": {
+          "debates": {
+            "items": {
+              "$ref": "#/components/schemas/DebateHint"
+            },
+            "title": "Debates",
+            "type": "array"
+          }
+        },
+        "required": [
+          "debates"
+        ],
+        "title": "DebatesMore",
+        "type": "object"
+      },
       "DebtPlanRow": {
         "description": "Der voraussichtliche Stand der Schulden laut Haushaltsplan (Anlage 003).\n\n``entity`` ist „Kernhaushalt\" oder ein Eigenbetrieb, ``code`` die\nSchuldenart (1.2 Kredite für Investitionen … 5) oder ``total``.\n``start_prior`` ist der Stand zu Beginn des Vorjahres, ``start_expected``\nder erwartete zu Beginn des Planjahres — beide in Euro.",
         "properties": {
@@ -7432,7 +7558,8 @@
               "rejected",
               "postponed",
               "noted",
-              "no_decision"
+              "no_decision",
+              "settled"
             ],
             "title": "Outcome",
             "type": [
@@ -7855,7 +7982,8 @@
               "rejected",
               "postponed",
               "noted",
-              "no_decision"
+              "no_decision",
+              "settled"
             ],
             "title": "Outcome",
             "type": [
@@ -12584,7 +12712,8 @@
               "rejected",
               "postponed",
               "noted",
-              "no_decision"
+              "no_decision",
+              "settled"
             ],
             "title": "Outcome",
             "type": "string"
@@ -13326,7 +13455,8 @@
                   "rejected",
                   "postponed",
                   "noted",
-                  "no_decision"
+                  "no_decision",
+                  "settled"
                 ],
                 "title": "Outcome",
                 "type": [
@@ -16237,6 +16367,29 @@
           "related"
         ],
         "title": "OldenburgVerdict",
+        "type": "object"
+      },
+      "OnboardingChips": {
+        "description": "Was der Einrichtungs-Assistent angeboten hat und was angeklickt wurde.\n\nNur Chip-Kennungen, keine Namen: ``city_topic:<key>`` für die kuratierten\nStadtthemen, sonst die Arten ``district``, ``district_suggestion`` und ``own``.\nDer Server wirft alles andere weg (Positivliste in ``routers/onboarding.py``).",
+        "properties": {
+          "gewaehlt": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 60,
+            "title": "Gewaehlt",
+            "type": "array"
+          },
+          "gezeigt": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 60,
+            "title": "Gezeigt",
+            "type": "array"
+          }
+        },
+        "title": "OnboardingChips",
         "type": "object"
       },
       "OnboardingState": {
@@ -20514,7 +20667,8 @@
               "rejected",
               "postponed",
               "noted",
-              "no_decision"
+              "no_decision",
+              "settled"
             ],
             "title": "Outcome",
             "type": [
@@ -21075,6 +21229,445 @@
         "title": "RolesUpdate",
         "type": "object"
       },
+      "RunoffAnalysis": {
+        "description": "Die Stichwahl im Rückblick, gegen den ersten Wahlgang gestellt\n(``election.runoff_analysis``). Nur aus eingefrorenen Zahlen; die\nBezirke einzeln stehen unter ``…/analyse/bezirke``.",
+        "properties": {
+          "areas": {
+            "items": {
+              "$ref": "#/components/schemas/RunoffArea"
+            },
+            "title": "Areas",
+            "type": "array"
+          },
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/RunoffAnalysisCandidate"
+            },
+            "title": "Candidates",
+            "type": "array"
+          },
+          "catch_up_r": {
+            "title": "Catch Up R",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "city": {
+            "$ref": "#/components/schemas/RunoffCity"
+          },
+          "election": {
+            "$ref": "#/components/schemas/RunoffAnalysisElection"
+          },
+          "eliminated": {
+            "items": {
+              "$ref": "#/components/schemas/RunoffEliminated"
+            },
+            "title": "Eliminated",
+            "type": "array"
+          },
+          "flipped": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Flipped",
+            "type": "object"
+          },
+          "lead_districts": {
+            "$ref": "#/components/schemas/RunoffLeadDistricts"
+          },
+          "pots": {
+            "items": {
+              "$ref": "#/components/schemas/RunoffPot"
+            },
+            "title": "Pots",
+            "type": "array"
+          },
+          "projection_review": {
+            "description": "Wie gut lag die Hochrechnung des Abends? Aus dem eingefrorenen Verlauf\ngegen das Endergebnis — EIN Abend, keine allgemeine Güte des Modells.",
+            "properties": {
+              "chance_always_winner": {
+                "title": "Chance Always Winner",
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "chance_cap": {
+                "title": "Chance Cap",
+                "type": "integer"
+              },
+              "counted_lead_changes": {
+                "title": "Counted Lead Changes",
+                "type": "integer"
+              },
+              "counted_right_from": {
+                "title": "Counted Right From",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "final_share_pct": {
+                "title": "Final Share Pct",
+                "type": "number"
+              },
+              "first_chance": {
+                "description": "Ein Stand des Abends, aus Sicht des späteren Gewinners.",
+                "properties": {
+                  "at": {
+                    "title": "At",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "chance_pct": {
+                    "title": "Chance Pct",
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "counted_leader": {
+                    "title": "Counted Leader",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "counted_share_pct": {
+                    "title": "Counted Share Pct",
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "error_pts": {
+                    "title": "Error Pts",
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "projected_leader": {
+                    "title": "Projected Leader",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "projected_share_pct": {
+                    "title": "Projected Share Pct",
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "reports_received": {
+                    "title": "Reports Received",
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "at",
+                  "reports_received",
+                  "counted_share_pct",
+                  "projected_share_pct",
+                  "error_pts",
+                  "chance_pct",
+                  "projected_leader",
+                  "counted_leader"
+                ],
+                "title": "RunoffProjectionPoint",
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "max_error_after_min_pts": {
+                "title": "Max Error After Min Pts",
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "min_districts": {
+                "title": "Min Districts",
+                "type": "integer"
+              },
+              "points": {
+                "items": {
+                  "$ref": "#/components/schemas/RunoffProjectionPoint"
+                },
+                "title": "Points",
+                "type": "array"
+              },
+              "projection_right_from": {
+                "title": "Projection Right From",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "final_share_pct",
+              "min_districts",
+              "chance_cap",
+              "projection_right_from",
+              "counted_right_from",
+              "counted_lead_changes",
+              "max_error_after_min_pts",
+              "first_chance",
+              "chance_always_winner",
+              "points"
+            ],
+            "title": "RunoffProjectionReview",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "quintiles": {
+            "items": {
+              "$ref": "#/components/schemas/RunoffQuintile"
+            },
+            "title": "Quintiles",
+            "type": "array"
+          },
+          "result_status": {
+            "title": "Result Status",
+            "type": "string"
+          },
+          "winner": {
+            "title": "Winner",
+            "type": "string"
+          }
+        },
+        "required": [
+          "election",
+          "result_status",
+          "winner",
+          "candidates",
+          "eliminated",
+          "city",
+          "pots",
+          "areas",
+          "quintiles",
+          "catch_up_r",
+          "lead_districts",
+          "flipped",
+          "projection_review"
+        ],
+        "title": "RunoffAnalysis",
+        "type": "object"
+      },
+      "RunoffAnalysisCandidate": {
+        "description": "Eine der beiden Kandidaturen — der Gewinner zuerst. Die Anteile sind\ndie AMTLICHEN (im ersten Wahlgang also von allen neun).",
+        "properties": {
+          "color": {
+            "title": "Color",
+            "type": "string"
+          },
+          "color_dark": {
+            "title": "Color Dark",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "party": {
+            "title": "Party",
+            "type": "string"
+          },
+          "share_first_pct": {
+            "title": "Share First Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "share_runoff_pct": {
+            "title": "Share Runoff Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "votes_first": {
+            "title": "Votes First",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "votes_runoff": {
+            "title": "Votes Runoff",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "party",
+          "color",
+          "color_dark",
+          "votes_first",
+          "share_first_pct",
+          "votes_runoff",
+          "share_runoff_pct"
+        ],
+        "title": "RunoffAnalysisCandidate",
+        "type": "object"
+      },
+      "RunoffAnalysisElection": {
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "first_round_date": {
+            "title": "First Round Date",
+            "type": "string"
+          },
+          "first_round_slug": {
+            "title": "First Round Slug",
+            "type": "string"
+          },
+          "short_title": {
+            "title": "Short Title",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "short_title",
+          "date",
+          "first_round_slug",
+          "first_round_date"
+        ],
+        "title": "RunoffAnalysisElection",
+        "type": "object"
+      },
+      "RunoffArea": {
+        "properties": {
+          "districts": {
+            "title": "Districts",
+            "type": "integer"
+          },
+          "growth": {
+            "additionalProperties": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "title": "Growth",
+            "type": "object"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "integer"
+          },
+          "share_first_pct": {
+            "additionalProperties": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "title": "Share First Pct",
+            "type": "object"
+          },
+          "share_runoff_pct": {
+            "additionalProperties": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "title": "Share Runoff Pct",
+            "type": "object"
+          },
+          "swing_pts": {
+            "title": "Swing Pts",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "turnout_first_pct": {
+            "title": "Turnout First Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "turnout_runoff_pct": {
+            "title": "Turnout Runoff Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "voters_first": {
+            "title": "Voters First",
+            "type": "integer"
+          },
+          "voters_runoff": {
+            "title": "Voters Runoff",
+            "type": "integer"
+          },
+          "votes_first": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Votes First",
+            "type": "object"
+          },
+          "votes_runoff": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Votes Runoff",
+            "type": "object"
+          }
+        },
+        "required": [
+          "districts",
+          "votes_first",
+          "votes_runoff",
+          "share_first_pct",
+          "share_runoff_pct",
+          "growth",
+          "swing_pts",
+          "voters_first",
+          "voters_runoff",
+          "number",
+          "label",
+          "turnout_first_pct",
+          "turnout_runoff_pct"
+        ],
+        "title": "RunoffArea",
+        "type": "object"
+      },
       "RunoffCandidateStrength": {
         "properties": {
           "strong": {
@@ -21089,6 +21682,376 @@
           "strong"
         ],
         "title": "RunoffCandidateStrength",
+        "type": "object"
+      },
+      "RunoffCity": {
+        "properties": {
+          "districts": {
+            "title": "Districts",
+            "type": "integer"
+          },
+          "eligible_first": {
+            "title": "Eligible First",
+            "type": "integer"
+          },
+          "eligible_runoff": {
+            "title": "Eligible Runoff",
+            "type": "integer"
+          },
+          "growth": {
+            "additionalProperties": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "title": "Growth",
+            "type": "object"
+          },
+          "share_first_pct": {
+            "additionalProperties": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "title": "Share First Pct",
+            "type": "object"
+          },
+          "share_runoff_pct": {
+            "additionalProperties": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "title": "Share Runoff Pct",
+            "type": "object"
+          },
+          "swing_pts": {
+            "title": "Swing Pts",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "turnout_first_pct": {
+            "title": "Turnout First Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "turnout_runoff_pct": {
+            "title": "Turnout Runoff Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "valid_first": {
+            "title": "Valid First",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "valid_runoff": {
+            "title": "Valid Runoff",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "voters_first": {
+            "title": "Voters First",
+            "type": "integer"
+          },
+          "voters_runoff": {
+            "title": "Voters Runoff",
+            "type": "integer"
+          },
+          "votes_first": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Votes First",
+            "type": "object"
+          },
+          "votes_runoff": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Votes Runoff",
+            "type": "object"
+          }
+        },
+        "required": [
+          "districts",
+          "votes_first",
+          "votes_runoff",
+          "share_first_pct",
+          "share_runoff_pct",
+          "growth",
+          "swing_pts",
+          "voters_first",
+          "voters_runoff",
+          "turnout_first_pct",
+          "turnout_runoff_pct",
+          "valid_first",
+          "valid_runoff",
+          "eligible_first",
+          "eligible_runoff"
+        ],
+        "title": "RunoffCity",
+        "type": "object"
+      },
+      "RunoffDistrictList": {
+        "properties": {
+          "area": {
+            "title": "Area",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "pot": {
+            "title": "Pot",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/RunoffDistrictRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "sort": {
+            "title": "Sort",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "winner": {
+            "title": "Winner",
+            "type": "string"
+          }
+        },
+        "required": [
+          "winner",
+          "sort",
+          "area",
+          "pot",
+          "total",
+          "rows"
+        ],
+        "title": "RunoffDistrictList",
+        "type": "object"
+      },
+      "RunoffDistrictRow": {
+        "properties": {
+          "area": {
+            "title": "Area",
+            "type": "integer"
+          },
+          "flipped": {
+            "title": "Flipped",
+            "type": "boolean"
+          },
+          "leader_first": {
+            "title": "Leader First",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "leader_runoff": {
+            "title": "Leader Runoff",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "integer"
+          },
+          "postal": {
+            "title": "Postal",
+            "type": "boolean"
+          },
+          "rank": {
+            "title": "Rank",
+            "type": "integer"
+          },
+          "share_first_pct": {
+            "title": "Share First Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "share_runoff_pct": {
+            "title": "Share Runoff Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "swing_pts": {
+            "title": "Swing Pts",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "turnout_change_pts": {
+            "title": "Turnout Change Pts",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "turnout_first_pct": {
+            "title": "Turnout First Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "turnout_runoff_pct": {
+            "title": "Turnout Runoff Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "voters_first": {
+            "title": "Voters First",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "voters_runoff": {
+            "title": "Voters Runoff",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "votes_first": {
+            "additionalProperties": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "title": "Votes First",
+            "type": "object"
+          },
+          "votes_runoff": {
+            "additionalProperties": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "title": "Votes Runoff",
+            "type": "object"
+          }
+        },
+        "required": [
+          "rank",
+          "number",
+          "name",
+          "area",
+          "postal",
+          "votes_first",
+          "votes_runoff",
+          "share_first_pct",
+          "share_runoff_pct",
+          "swing_pts",
+          "voters_first",
+          "voters_runoff",
+          "turnout_first_pct",
+          "turnout_runoff_pct",
+          "turnout_change_pts",
+          "leader_first",
+          "leader_runoff",
+          "flipped"
+        ],
+        "title": "RunoffDistrictRow",
+        "type": "object"
+      },
+      "RunoffEliminated": {
+        "description": "Eine im ersten Wahlgang ausgeschiedene Kandidatur.",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "party": {
+            "title": "Party",
+            "type": "string"
+          },
+          "share_pct": {
+            "title": "Share Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "votes": {
+            "title": "Votes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "party",
+          "votes",
+          "share_pct"
+        ],
+        "title": "RunoffEliminated",
+        "type": "object"
+      },
+      "RunoffLeadDistricts": {
+        "properties": {
+          "first": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "First",
+            "type": "object"
+          },
+          "runoff": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Runoff",
+            "type": "object"
+          }
+        },
+        "required": [
+          "first",
+          "runoff"
+        ],
+        "title": "RunoffLeadDistricts",
         "type": "object"
       },
       "RunoffLessons2014": {
@@ -21266,6 +22229,96 @@
           "note"
         ],
         "title": "RunoffLessons2021",
+        "type": "object"
+      },
+      "RunoffPot": {
+        "properties": {
+          "districts": {
+            "title": "Districts",
+            "type": "integer"
+          },
+          "growth": {
+            "additionalProperties": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "title": "Growth",
+            "type": "object"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "share_first_pct": {
+            "additionalProperties": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "title": "Share First Pct",
+            "type": "object"
+          },
+          "share_runoff_pct": {
+            "additionalProperties": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "title": "Share Runoff Pct",
+            "type": "object"
+          },
+          "swing_pts": {
+            "title": "Swing Pts",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "voters_first": {
+            "title": "Voters First",
+            "type": "integer"
+          },
+          "voters_runoff": {
+            "title": "Voters Runoff",
+            "type": "integer"
+          },
+          "votes_first": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Votes First",
+            "type": "object"
+          },
+          "votes_runoff": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Votes Runoff",
+            "type": "object"
+          }
+        },
+        "required": [
+          "districts",
+          "votes_first",
+          "votes_runoff",
+          "share_first_pct",
+          "share_runoff_pct",
+          "growth",
+          "swing_pts",
+          "voters_first",
+          "voters_runoff",
+          "key",
+          "label"
+        ],
+        "title": "RunoffPot",
         "type": "object"
       },
       "RunoffPotential": {
@@ -21808,6 +22861,273 @@
         "title": "RunoffProjection",
         "type": "object"
       },
+      "RunoffProjectionPoint": {
+        "description": "Ein Stand des Abends, aus Sicht des späteren Gewinners.",
+        "properties": {
+          "at": {
+            "title": "At",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "chance_pct": {
+            "title": "Chance Pct",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "counted_leader": {
+            "title": "Counted Leader",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "counted_share_pct": {
+            "title": "Counted Share Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "error_pts": {
+            "title": "Error Pts",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "projected_leader": {
+            "title": "Projected Leader",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "projected_share_pct": {
+            "title": "Projected Share Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "reports_received": {
+            "title": "Reports Received",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "at",
+          "reports_received",
+          "counted_share_pct",
+          "projected_share_pct",
+          "error_pts",
+          "chance_pct",
+          "projected_leader",
+          "counted_leader"
+        ],
+        "title": "RunoffProjectionPoint",
+        "type": "object"
+      },
+      "RunoffProjectionReview": {
+        "description": "Wie gut lag die Hochrechnung des Abends? Aus dem eingefrorenen Verlauf\ngegen das Endergebnis — EIN Abend, keine allgemeine Güte des Modells.",
+        "properties": {
+          "chance_always_winner": {
+            "title": "Chance Always Winner",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "chance_cap": {
+            "title": "Chance Cap",
+            "type": "integer"
+          },
+          "counted_lead_changes": {
+            "title": "Counted Lead Changes",
+            "type": "integer"
+          },
+          "counted_right_from": {
+            "title": "Counted Right From",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "final_share_pct": {
+            "title": "Final Share Pct",
+            "type": "number"
+          },
+          "first_chance": {
+            "description": "Ein Stand des Abends, aus Sicht des späteren Gewinners.",
+            "properties": {
+              "at": {
+                "title": "At",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "chance_pct": {
+                "title": "Chance Pct",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "counted_leader": {
+                "title": "Counted Leader",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "counted_share_pct": {
+                "title": "Counted Share Pct",
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "error_pts": {
+                "title": "Error Pts",
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "projected_leader": {
+                "title": "Projected Leader",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "projected_share_pct": {
+                "title": "Projected Share Pct",
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "reports_received": {
+                "title": "Reports Received",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "at",
+              "reports_received",
+              "counted_share_pct",
+              "projected_share_pct",
+              "error_pts",
+              "chance_pct",
+              "projected_leader",
+              "counted_leader"
+            ],
+            "title": "RunoffProjectionPoint",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "max_error_after_min_pts": {
+            "title": "Max Error After Min Pts",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "min_districts": {
+            "title": "Min Districts",
+            "type": "integer"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/RunoffProjectionPoint"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "projection_right_from": {
+            "title": "Projection Right From",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "final_share_pct",
+          "min_districts",
+          "chance_cap",
+          "projection_right_from",
+          "counted_right_from",
+          "counted_lead_changes",
+          "max_error_after_min_pts",
+          "first_chance",
+          "chance_always_winner",
+          "points"
+        ],
+        "title": "RunoffProjectionReview",
+        "type": "object"
+      },
+      "RunoffQuintile": {
+        "description": "Ein Fünftel der Urnenbezirke nach dem Gewinner-Anteil im ersten\nWahlgang — Rang 1 ist das schwächste.",
+        "properties": {
+          "districts": {
+            "title": "Districts",
+            "type": "integer"
+          },
+          "growth": {
+            "additionalProperties": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "title": "Growth",
+            "type": "object"
+          },
+          "rank": {
+            "title": "Rank",
+            "type": "integer"
+          },
+          "share_first_pct": {
+            "title": "Share First Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "share_runoff_pct": {
+            "title": "Share Runoff Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "swing_pts": {
+            "title": "Swing Pts",
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "rank",
+          "districts",
+          "share_first_pct",
+          "share_runoff_pct",
+          "swing_pts",
+          "growth"
+        ],
+        "title": "RunoffQuintile",
+        "type": "object"
+      },
       "RunoffStrengthGroup": {
         "description": "Stimmenzahl in gleich vielen schwachen oder starken Urnenbezirken.",
         "properties": {
@@ -22220,7 +23540,8 @@
               "rejected",
               "postponed",
               "noted",
-              "no_decision"
+              "no_decision",
+              "settled"
             ],
             "title": "Outcome",
             "type": [
@@ -22320,7 +23641,8 @@
               "rejected",
               "postponed",
               "noted",
-              "no_decision"
+              "no_decision",
+              "settled"
             ],
             "title": "Outcome",
             "type": [
@@ -23041,7 +24363,8 @@
               "rejected",
               "postponed",
               "noted",
-              "no_decision"
+              "no_decision",
+              "settled"
             ],
             "title": "Outcome",
             "type": [
@@ -23357,7 +24680,8 @@
               "rejected",
               "postponed",
               "noted",
-              "no_decision"
+              "no_decision",
+              "settled"
             ],
             "title": "Outcome",
             "type": [
@@ -23534,7 +24858,8 @@
               "rejected",
               "postponed",
               "noted",
-              "no_decision"
+              "no_decision",
+              "settled"
             ],
             "title": "Outcome",
             "type": [
@@ -23637,7 +24962,8 @@
               "rejected",
               "postponed",
               "noted",
-              "no_decision"
+              "no_decision",
+              "settled"
             ],
             "title": "Outcome",
             "type": [
@@ -23719,6 +25045,13 @@
           "id": {
             "title": "Id",
             "type": "integer"
+          },
+          "image_key": {
+            "title": "Image Key",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "last_hit_date": {
             "title": "Last Hit Date",
@@ -29361,6 +30694,48 @@
         ]
       }
     },
+    "/api/council/debates": {
+      "post": {
+        "description": "Der Baustein „Aus den Ratsdebatten“, vollständig — nach der Antwort.\n\nDie Antwort selbst bekommt wenige, ausgewählte Beiträge (das Modell soll\nschnell sein und nicht in Material ertrinken). Wer darunter weiterliest,\ndarf alles sehen: Das Frontend lädt diesen Endpunkt automatisch, sobald die\nAntwort steht, und hängt an, was es noch nicht zeigt. Kein Sprachmodell,\nnur Suche und Rerank. Anlass: Zum Schlossplatz-Spielplatz fehlte die\nAussage der Verwaltung vom 16.04.2026 in der Antwort — lesen konnte man\nsie nirgends.\n\nZwei Kanäle wie in der Gründlichen Recherche: die weite Ähnlichkeitssuche\n(Frage und Begriffe, 150 Kandidaten, 700 Zeichen im Rerank) und die\nAussprache zu allen belegten Beschlüssen. Neueste Sitzung zuerst.",
+        "operationId": "debatten_nachladen_api_council_debates_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DebatesBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DebatesMore"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Debatten Nachladen",
+        "tags": [
+          "council"
+        ]
+      }
+    },
     "/api/council/decision/{decision_id}": {
       "get": {
         "description": "Ein Beschluss mit allem Drum und Dran — **ohne Anmeldung lesbar**.\n\nTeilen ist die Kernhandlung der App, aber wer einen weitergereichten Link\nöffnete, sah zuerst das Registrierungsformular. Das schreckt genau die\nLeute ab, die man gewinnen will: Sie haben noch gar nicht gesehen, wofür\nsich ein Konto lohnen würde.\n\nWas hier steht, stammt vollständig aus dem amtlichen\nRatsinformationssystem und ist dort ohnehin für alle einsehbar — es\nentsteht keine neue Öffentlichkeit, nur eine lesbare (dieselbe Abwägung\nwie bei `preview`). Persönliches bleibt draußen: ``follow`` kommt nur\ndazu, wenn wirklich jemand angemeldet ist.",
@@ -29477,7 +30852,7 @@
             "required": false,
             "schema": {
               "default": "",
-              "pattern": "^(|accepted|rejected|postponed|noted|no_decision)$",
+              "pattern": "^(|accepted|rejected|postponed|noted|no_decision|settled)$",
               "title": "Outcome",
               "type": "string"
             }
@@ -31807,6 +33182,48 @@
         ]
       }
     },
+    "/api/onboarding/chips": {
+      "post": {
+        "description": "Anzeigen und Wahlen im Einrichtungs-Assistenten zählen.\n\nOhne Konto-Bezug gespeichert (Tabelle ``onboarding_chip_stats``): Der\nEndpunkt verlangt ein Konto, damit niemand von außen zählen kann, schreibt\naber nur Tag, Chip und Zähler. Was nicht auf der Positivliste steht, fällt\nstill weg — ein Client soll die Tabelle weder erweitern noch mit\nStadtteil- oder Themennamen füllen können.",
+        "operationId": "chips_zaehlen_api_onboarding_chips_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OnboardingChips"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Chips Zaehlen",
+        "tags": [
+          "onboarding"
+        ]
+      }
+    },
     "/api/onboarding/setup": {
       "get": {
         "description": "Resume the first-run setup on another device or after reinstalling.",
@@ -33056,7 +34473,8 @@
                         "rejected",
                         "postponed",
                         "noted",
-                        "no_decision"
+                        "no_decision",
+                        "settled"
                       ],
                       "title": "Outcome",
                       "type": [
@@ -35858,6 +37276,106 @@
           }
         },
         "summary": "Stichwahl",
+        "tags": [
+          "wahlabend"
+        ]
+      }
+    },
+    "/api/wahlabend/stichwahl/analyse": {
+      "get": {
+        "description": "Die Stichwahl im Rückblick, gegen den ersten Wahlgang gestellt —\nStadt, Urne und Brief, Wahlbereiche, Fünftel, gedrehte Bezirke.\n\nÖffentlich wie die Zahlen selbst. 404, bis die Stichwahl eingefroren ist\n(``wahl_einfrieren.py --ob``): Gerechnet wird nur auf den Zahlen im\nRepo, nie auf einem halben Abend.",
+        "operationId": "stichwahl_analyse_api_wahlabend_stichwahl_analyse_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunoffAnalysis"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Stichwahl Analyse",
+        "tags": [
+          "wahlabend"
+        ]
+      }
+    },
+    "/api/wahlabend/stichwahl/analyse/bezirke": {
+      "get": {
+        "description": "Alle Wahlbezirke beider Wahlgänge als Rangliste — sortiert und\ngefiltert auf dem Server, mit Rang.",
+        "operationId": "stichwahl_analyse_bezirke_api_wahlabend_stichwahl_analyse_bezirke_get",
+        "parameters": [
+          {
+            "description": "share = Anteil des Gewinners, swing = Zugewinn, turnout = Rückgang der Beteiligung, number = Nummer",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "share",
+              "description": "share = Anteil des Gewinners, swing = Zugewinn, turnout = Rückgang der Beteiligung, number = Nummer",
+              "pattern": "^(share|swing|turnout|number)$",
+              "title": "Sort",
+              "type": "string"
+            }
+          },
+          {
+            "description": "nur dieser Wahlbereich",
+            "in": "query",
+            "name": "area",
+            "required": false,
+            "schema": {
+              "description": "nur dieser Wahlbereich",
+              "maximum": 6,
+              "minimum": 1,
+              "title": "Area",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "nur Urne oder nur Brief",
+            "in": "query",
+            "name": "pot",
+            "required": false,
+            "schema": {
+              "description": "nur Urne oder nur Brief",
+              "pattern": "^(urn|postal)$",
+              "title": "Pot",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunoffDistrictList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stichwahl Analyse Bezirke",
         "tags": [
           "wahlabend"
         ]

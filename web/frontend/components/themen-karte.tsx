@@ -62,6 +62,15 @@ export function ThemenKarte({
     >
       <div className="flex items-start justify-between gap-2.5">
         <div className="flex min-w-0 items-center gap-2">
+          {/* Das Bild, mit dem das Thema im Assistenten angelegt wurde (nur die
+              kuratierten Stadtthemen — ein selbst getipptes hat keins). */}
+          {topic.image_key && (
+            // Feste 256-px-Dateien aus dem Repo; `next/image` bringt im statischen Export nichts.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={`/themen/${topic.image_key}.webp`} alt="" width={36} height={36}
+              loading="lazy" decoding="async"
+              className="h-9 w-9 shrink-0 rounded-lg bg-muted object-cover" />
+          )}
           <h3 className="truncate font-display text-base font-semibold text-foreground">{topic.name}</h3>
           {/* Das Abzeichen IST der Knopf, der es wegräumt. Vorher ging es nur
               weg, wenn man „alle ansehen" antippte — wer die Treffer direkt auf

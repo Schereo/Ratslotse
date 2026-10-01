@@ -358,7 +358,7 @@ class DecisionRow(TypedDict):
 #: und eine Abschrift veraltet. Die Quelle sind die beiden Tupel
 #: ``CouncilStore._VOTE_OUTCOMES`` und ``_REPORT_OUTCOMES``; ein Wächter in
 #: ``tests/test_api_vertrag.py`` hält beide zusammen.
-Beschlussergebnis = Literal["accepted", "rejected", "postponed", "noted", "no_decision"]
+Beschlussergebnis = Literal["accepted", "rejected", "postponed", "noted", "no_decision", "settled"]
 
 
 # --------------------------------------------------------------------------
@@ -805,7 +805,7 @@ class CityTopicMatch(TypedDict):
 
 
 class TopicSuggestions(TypedDict):
-    #: Kuratierte Stadtthemen mit Substanz, die aktivsten zuerst. Anders als
+    #: Kuratierte Stadtthemen mit Substanz, gemischt nach ``ANZEIGE``. Anders als
     #: die übrigen Listen NICHT um die eigenen Themen bereinigt: Die Liste ist
     #: stabil, die Oberfläche markiert, was schon angelegt ist. Leer bei
     #: ``?city=0``.
@@ -3840,6 +3840,25 @@ class PartyOpinions(TypedDict):
     parties: Any
 
 
+class DebateHint(TypedDict):
+    """Ein Wortbeitrag im Baustein „Aus den Ratsdebatten“ — dieselbe Form wie
+    ``debates`` im Quellen-Ereignis der KI-Frage (``_debatten_kompakt``)."""
+    id: int | None
+    speaker: str | None
+    party: str | None
+    kind: str | None
+    agenda_item: str | None
+    excerpt: str
+    committee: str | None
+    date: str | None
+    minutes_url: str | None
+    minutes_page: int | None
+
+
+class DebatesMore(TypedDict):
+    debates: list[DebateHint]
+
+
 class QaShareToken(TypedDict):
     token: str
 
@@ -5587,6 +5606,191 @@ class RunoffProjection(TypedDict):
     trailing_expected_share_pct: float | None
     #: Erwartete Stimmen der beiden in den offenen Bezirken (Modell).
     open_votes_expected: int
+
+
+class RunoffAnalysisElection(TypedDict):
+    slug: str
+    short_title: str
+    date: str
+    first_round_slug: str
+    first_round_date: str
+
+
+class RunoffAnalysisCandidate(TypedDict):
+    """Eine der beiden Kandidaturen — der Gewinner zuerst. Die Anteile sind
+    die AMTLICHEN (im ersten Wahlgang also von allen neun)."""
+    slug: str
+    name: str
+    party: str
+    color: str
+    color_dark: str
+    votes_first: int | None
+    share_first_pct: float | None
+    votes_runoff: int | None
+    share_runoff_pct: float | None
+
+
+class RunoffEliminated(TypedDict):
+    """Eine im ersten Wahlgang ausgeschiedene Kandidatur."""
+    slug: str
+    name: str
+    party: str
+    votes: int
+    share_pct: float | None
+
+
+class RunoffBlock(TypedDict):
+    """Eine Menge von Bezirken in beiden Wahlgängen. Anteile sind die der
+    BEIDEN (Gewinner und Zweiter), auch im ersten Wahlgang; ``swing_pts`` ist
+    die Veränderung des Gewinner-Anteils in Prozentpunkten."""
+    districts: int
+    votes_first: dict[str, int]
+    votes_runoff: dict[str, int]
+    share_first_pct: dict[str, float | None]
+    share_runoff_pct: dict[str, float | None]
+    #: Stimmen Stichwahl ÷ Stimmen erster Wahlgang, je Slug.
+    growth: dict[str, float | None]
+    swing_pts: float | None
+    voters_first: int
+    voters_runoff: int
+
+
+class RunoffCity(RunoffBlock):
+    turnout_first_pct: float | None
+    turnout_runoff_pct: float | None
+    valid_first: int | None
+    valid_runoff: int | None
+    eligible_first: int
+    eligible_runoff: int
+
+
+class RunoffPot(RunoffBlock):
+    #: "urn" | "postal"
+    key: str
+    label: str
+
+
+class RunoffArea(RunoffBlock):
+    number: int
+    label: str
+    #: Wählende aller Bezirke des Bereichs (Urne und Brief) durch die
+    #: Wahlberechtigten seiner Urnenbezirke.
+    turnout_first_pct: float | None
+    turnout_runoff_pct: float | None
+
+
+class RunoffQuintile(TypedDict):
+    """Ein Fünftel der Urnenbezirke nach dem Gewinner-Anteil im ersten
+    Wahlgang — Rang 1 ist das schwächste."""
+    rank: int
+    districts: int
+    share_first_pct: float | None
+    share_runoff_pct: float | None
+    swing_pts: float | None
+    growth: dict[str, float | None]
+
+
+class RunoffLeadDistricts(TypedDict):
+    #: Je Slug: in wie vielen Bezirken vorn.
+    first: dict[str, int]
+    runoff: dict[str, int]
+
+
+class RunoffProjectionPoint(TypedDict):
+    """Ein Stand des Abends, aus Sicht des späteren Gewinners."""
+    at: str | None
+    reports_received: int
+    counted_share_pct: float | None
+    projected_share_pct: float | None
+    #: Hochrechnung minus Endergebnis, in Prozentpunkten.
+    error_pts: float | None
+    #: Chance des in der Hochrechnung Führenden — ``null`` unter
+    #: ``min_districts`` gezählten Bezirken und am Schluss.
+    chance_pct: int | None
+    projected_leader: str | None
+    counted_leader: str | None
+
+
+class RunoffProjectionReview(TypedDict):
+    """Wie gut lag die Hochrechnung des Abends? Aus dem eingefrorenen Verlauf
+    gegen das Endergebnis — EIN Abend, keine allgemeine Güte des Modells."""
+    final_share_pct: float
+    #: Ab so vielen gezählten Bezirken nennt das Modell eine Chance.
+    min_districts: int
+    #: Höher geht die Chance nicht, bis die Arithmetik entschieden hat.
+    chance_cap: int
+    #: Ab welcher Bezirkszahl die Hochrechnung bis zum Schluss auf dem
+    #: Gewinner lag — ``null``, wenn nie.
+    projection_right_from: int | None
+    #: Dasselbe für den bloßen Auszählungsstand.
+    counted_right_from: int | None
+    counted_lead_changes: int
+    #: Größter Abstand der Hochrechnung zum Endergebnis, sobald eine Chance
+    #: genannt wurde (ab ``min_districts``).
+    max_error_after_min_pts: float | None
+    first_chance: RunoffProjectionPoint | None
+    #: Galt jede genannte Chance dem späteren Gewinner?
+    chance_always_winner: bool | None
+    points: list[RunoffProjectionPoint]
+
+
+class RunoffAnalysis(TypedDict):
+    """Die Stichwahl im Rückblick, gegen den ersten Wahlgang gestellt
+    (``election.runoff_analysis``). Nur aus eingefrorenen Zahlen; die
+    Bezirke einzeln stehen unter ``…/analyse/bezirke``."""
+    election: RunoffAnalysisElection
+    #: "vorlaeufig" | "amtlich"
+    result_status: str
+    #: Slug des Gewinners — aus seiner Sicht sind alle Anteile gerechnet.
+    winner: str
+    candidates: list[RunoffAnalysisCandidate]
+    eliminated: list[RunoffEliminated]
+    city: RunoffCity
+    pots: list[RunoffPot]
+    areas: list[RunoffArea]
+    quintiles: list[RunoffQuintile]
+    #: Korrelation (Urnenbezirke) zwischen Gewinner-Anteil im ersten
+    #: Wahlgang und Schwung. Negativ = aufgeholt, wo er schwach war.
+    catch_up_r: float | None
+    lead_districts: RunoffLeadDistricts
+    #: Je Slug: wie viele Bezirke zu ihm gedreht haben.
+    flipped: dict[str, int]
+    #: ``null`` ohne eingefrorenen Verlauf des Abends.
+    projection_review: RunoffProjectionReview | None
+
+
+class RunoffDistrictRow(TypedDict):
+    rank: int
+    number: int
+    name: str
+    area: int
+    postal: bool
+    votes_first: dict[str, int | None]
+    votes_runoff: dict[str, int | None]
+    #: Gewinner-Anteil an den beiden.
+    share_first_pct: float | None
+    share_runoff_pct: float | None
+    swing_pts: float | None
+    voters_first: int | None
+    voters_runoff: int | None
+    #: Nur Urnenbezirke — Briefwahlbezirke haben keine Wahlberechtigten.
+    turnout_first_pct: float | None
+    turnout_runoff_pct: float | None
+    turnout_change_pts: float | None
+    leader_first: str | None
+    leader_runoff: str | None
+    flipped: bool
+
+
+class RunoffDistrictList(TypedDict):
+    winner: str
+    #: "share" | "swing" | "turnout" | "number"
+    sort: str
+    area: int | None
+    #: "urn" | "postal" | null
+    pot: str | None
+    total: int
+    rows: list[RunoffDistrictRow]
 
 
 class MayorNight(TypedDict):

@@ -363,7 +363,7 @@ def test_ein_bezirk_ohne_ersten_wahlgang_haelt_die_entscheidung_offen(erster, st
     assert p is not None
     assert not p.decided, "ein offener Bezirk ohne Obergrenze — da ist nichts entschieden"
     assert p.open_postal == 1 and p.chance_pct is not None
-    assert any("im ersten Wahlgang nicht" in c for c in p.caveats)
+    assert any("keinen Vergleichswert aus dem ersten Wahlgang" in c for c in p.caveats)
     voll = runoff_model.project(mit, erster, SLUGS)
     assert voll is not None and voll.decided
     assert voll.actual_lead_votes == 6544, "seine Stimmen zählen im Ist mit"

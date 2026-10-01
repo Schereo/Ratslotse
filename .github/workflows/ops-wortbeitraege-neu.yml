@@ -1,0 +1,132 @@
+# Manuell auslösbarer Ops-Lauf: extrahiert die Wortbeiträge des Bestands neu
+# (`scripts/extract_wortbeitraege.py --neu-vor`).
+#
+# ANLASS (30.09.2026). Bis #1491 lieferte der Prompt die Antworten der
+# Verwaltung oft im answer-Feld der Rede davor — 1.620 Mal in 212 Protokollen.
+# Dort fand die KI-Frage sie nicht (ksinr 4664: Sprenger und Piening zum
+# Schlossplatz). Dazu kamen doppelte Beiträge an den Fensternähten. Der Code
+# ist repariert; der Bestand wurde im August extrahiert und muss neu.
+#
+# `stichtag` ist der Zeitpunkt, AB DEM der reparierte Code lief (UTC, wie
+# `contributions_extracted_at`). Alles davor wird neu extrahiert. Der Lauf ist
+# wiederaufsetzbar: Jedes Protokoll bekommt beim Speichern einen frischen
+# Marker, ein zweiter Start nimmt nur den Rest. Deshalb NIE einen Stichtag in
+# der Zukunft setzen — dann fiele jedes gerade neu extrahierte Protokoll
+# wieder in die Liste.
+#
+# Modi — Vorgabe ist Bericht, nicht Ausführung:
+#   trocken  zählt, was dran wäre
+#   einzeln  genau die Protokolle aus `ksinr` (im Vordergrund)
+#   probe    die 20 jüngsten fälligen, mit Kosten im Log (im Vordergrund)
+#   voll     alle, per nohup auf dem Server (Log: data/wortbeitraege_neu.log);
+#            tritt einem Deploy zur Seite (kern/stopp.py) — dann einfach neu starten
+#   stand    Ende des Logs und wie viele noch fällig sind
+name: "Ops: Wortbeiträge neu extrahieren"
+
+on:
+  workflow_dispatch:
+    inputs:
+      umgebung:
+        description: "Welche VM? (prod = ratslotse.de)"
+        type: choice
+        options: [dev, prod]
+        default: dev
+      modus:
+        description: "trocken | einzeln | probe | voll | stand"
+        type: choice
+        options: [trocken, einzeln, probe, voll, stand]
+        default: trocken
+      stichtag:
+        description: "Neu extrahieren, was VOR diesem Zeitpunkt entstand (UTC, JJJJ-MM-TTTHH:MM)"
+        type: string
+        required: true
+      ksinr:
+        description: "Nur für modus=einzeln: kommagetrennte ksinr"
+        type: string
+        default: ""
+      modell:
+        description: "Modell (leer = COUNCIL_WORTBEITRAG_MODEL bzw. Vorgabe im Code)"
+        type: string
+        default: ""
+      auswahl:
+        description: "alle fälligen, oder nur Protokolle mit Protokollnotiz"
+        type: choice
+        options: [alle, protokollnotizen]
+        default: alle
+
+concurrency:
+  group: ops-wortbeitraege-neu-${{ inputs.umgebung }}
+  cancel-in-progress: false
+
+jobs:
+  neu:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Wortbeiträge (${{ inputs.umgebung }}, ${{ inputs.modus }})"
+        env:
+          MODUS: ${{ inputs.modus }}
+          STICHTAG: ${{ inputs.stichtag }}
+          KSINR: ${{ inputs.ksinr }}
+          MODELL: ${{ inputs.modell }}
+          AUSWAHL: ${{ inputs.auswahl }}
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ inputs.umgebung == 'prod' && secrets.VPS_HOST || secrets.VPS_DEV_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          proxy_host: ${{ secrets.VPS_PROXY_HOST }}
+          proxy_username: ${{ secrets.VPS_PROXY_USER }}
+          proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          proxy_port: ${{ secrets.VPS_SSH_PORT }}
+          command_timeout: 60m
+          # Eingaben über `envs`, nicht als `${{ … }}` im Skripttext — ein
+          # interpolierter Wert wäre eine Kommandozeile (wie ops-vorlagen-backfill.yml).
+          envs: MODUS,STICHTAG,KSINR,MODELL,AUSWAHL
+          script: |
+            set -e
+            cd ~/app
+            if ! echo "$STICHTAG" | grep -qE '^[0-9]{4}-[0-9]{2}-[0-9]{2}(T[0-9]{2}:[0-9]{2})?$'; then
+              echo "stichtag muss JJJJ-MM-TT oder JJJJ-MM-TTTHH:MM sein, war: $STICHTAG"; exit 2
+            fi
+            if [ -n "$KSINR" ] && ! echo "$KSINR" | grep -qE '^[0-9]+(,[0-9]+)*$'; then
+              echo "ksinr muss eine kommagetrennte Zahlenliste sein, war: $KSINR"; exit 2
+            fi
+            if [ -n "$MODELL" ]; then
+              if ! echo "$MODELL" | grep -qE '^[a-z0-9._-]+/[a-z0-9._:-]+$'; then
+                echo "modell sieht nicht wie eine Modell-Id aus: $MODELL"; exit 2
+              fi
+              export COUNCIL_WORTBEITRAG_MODEL="$MODELL"
+            fi
+            # Ob der Voll-Lauf noch läuft, sagt die PID-Datei — nicht pgrep -f.
+            # Das durchsucht ganze Kommandozeilen, und die Shell dieses Skripts
+            # trägt den Suchbegriff im eigenen Text: Sie fand sich immer und
+            # meldete „läuft schon“. Auch `[e]xtract…` half nicht, weil die
+            # nohup-Zeile unten denselben Namen ungeklammert enthält (beides
+            # am 30.09.2026 auf Prod).
+            FILTER=""
+            [ "$AUSWAHL" = "protokollnotizen" ] && FILTER="--nur-protokollnotizen"
+            LOG=data/wortbeitraege_neu.log
+            PID=data/wortbeitraege_neu.pid
+            laeuft() { [ -f "$PID" ] && kill -0 "$(cat "$PID")" 2>/dev/null; }
+            PY=.venv/bin/python
+            case "$MODUS" in
+              trocken) $PY scripts/extract_wortbeitraege.py --neu-vor "$STICHTAG" $FILTER --trocken ;;
+              einzeln)
+                [ -n "$KSINR" ] || { echo "modus=einzeln braucht ksinr"; exit 2; }
+                $PY scripts/extract_wortbeitraege.py --ksinr "$KSINR" ;;
+              probe) $PY scripts/extract_wortbeitraege.py --neu-vor "$STICHTAG" $FILTER --limit 20 ;;
+              voll)
+                if laeuft; then
+                  echo "Läuft schon — Stand: modus=stand"; tail -n 5 "$LOG" || true; exit 0
+                fi
+                echo "Start $(date -u +%FT%TZ), Modell: ${COUNCIL_WORTBEITRAG_MODEL:-Vorgabe}" >> "$LOG"
+                nohup $PY scripts/extract_wortbeitraege.py --neu-vor "$STICHTAG" $FILTER >> "$LOG" 2>&1 &
+                echo $! > "$PID"
+                sleep 5
+                echo "Voll-Lauf gestartet (Log: $LOG)."; tail -n 3 "$LOG" ;;
+              stand)
+                tail -n 15 "$LOG" || echo "noch kein Log"
+                if laeuft; then echo "→ läuft noch (PID $(cat "$PID"))"; else echo "→ läuft nicht"; fi
+                $PY scripts/extract_wortbeitraege.py --neu-vor "$STICHTAG" $FILTER --trocken ;;
+            esac

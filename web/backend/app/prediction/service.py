@@ -138,6 +138,15 @@ _probe_ranks: dict[int, tuple[dict[int, int], dict[int, int]]] = {}
 
 # ------------------------------------------------------------------ Bausteine
 
+
+def official_pct(value: float | None) -> float | None:
+    """Ein Anteil, wie die Stadt ihn meldet: auf zwei Stellen. Die Wahlseiten
+    bekommen ihn seit 09/2026 exakt (``election.rounding``) — gewertet wird
+    aber gegen die Zahl, die auf der Ergebnisseite der Stadt steht und gegen
+    die alle getippt haben (Stichwahl: Rohr 51,55, nicht 51,5485). Sonst
+    könnte ein Tipp an einer Punktgrenze nachträglich kippen."""
+    return None if value is None else round(value, 2)
+
 def _reg():
     return register.load()
 
@@ -378,13 +387,13 @@ def _actuals(results: dict[str, dict], night: ElectionNight | None,
             if wert is not None:
                 seats[p["slug"]] = wert
         if night["phase"] != "before":
-            turnout = night["totals"]["turnout_pct"]
+            turnout = official_pct(night["totals"]["turnout_pct"])
     if ob is not None and ob.phase != "before":
         for c in ob.candidates:
             if c.share_pct is not None:
-                pct[c.slug] = c.share_pct
+                pct[c.slug] = official_pct(c.share_pct)
         if night is None:
-            turnout = ob.turnout_pct
+            turnout = official_pct(ob.turnout_pct)
     if seats or pct or turnout is not None:
         quellen.add("votemanager")
     for slug, r in results.items():
@@ -531,7 +540,7 @@ def _turnout_previous(wahl: elections.Election) -> tuple[float | None, str]:
         return None, ""
     if ergebnis is None or ergebnis.turnout_pct is None:
         return None, ""
-    return ergebnis.turnout_pct, "1. Wahlgang"
+    return official_pct(ergebnis.turnout_pct), "1. Wahlgang"
 
 
 def _successor_path(store: Store, game: dict, runde) -> str:

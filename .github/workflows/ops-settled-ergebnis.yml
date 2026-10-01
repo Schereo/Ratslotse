@@ -1,0 +1,68 @@
+# Manuell auslösbarer Ops-Lauf: „gilt als behandelt" im Bestand auf das eigene
+# Ergebnis `settled` umstellen (`scripts/fix_settled_outcomes.py`) und danach die
+# Kurzfassungen der umgestellten Punkte neu schreiben
+# (`scripts/fix_outcome_summaries.py`).
+#
+# ANLASS (30.09.2026). Die amtliche Formel stand auf vier verschiedenen
+# Ergebnissen; „Frag den Rat" gab den Vorschlag als Auftrag wieder (Datensatz
+# 19018, Schlossplatz-Spielplatz). Die Einordnung beim Einlesen macht
+# `council.votes.normalize_outcome`; dieser Lauf zieht den Bestand nach.
+#
+# Vorgabe ist BERICHT: Jede Änderung steht als Zeile im Log (id, alt → neu, Satz)
+# — wer zurückdrehen will, hat die Liste. `schreiben` stellt die Ergebnisse um
+# — die Kurzfassungen sind ein eigener Schritt (`kurzfassungen`), weil er den
+# ganzen Rückstau der Prod-Datenbank mitnimmt: 30.09.2026 waren es 734
+# Themen-Sätze, 34 „Einfach erklärt“ und 247 Themen-Beschreibungen, nicht nur
+# die der umgestellten Punkte. `probe` misst Kosten und zeigt alt/neu an 20
+# Zeilen, ohne zu schreiben. Ein zweiter Lauf findet nichts mehr.
+name: "Ops: Gilt als behandelt (settled)"
+
+on:
+  workflow_dispatch:
+    inputs:
+      umgebung:
+        description: "Welche VM? (prod = ratslotse.de)"
+        type: choice
+        options: [dev, prod]
+        default: dev
+      modus:
+        description: "bericht | schreiben (nur die Ergebnisse) | probe (Kurzfassungen, 20 Zeilen) | kurzfassungen (alle betroffenen neu)"
+        type: choice
+        options: [bericht, schreiben, probe, kurzfassungen]
+        default: bericht
+
+concurrency:
+  group: ops-settled-ergebnis-${{ inputs.umgebung }}
+  cancel-in-progress: false
+
+jobs:
+  settled:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "settled (${{ inputs.umgebung }}, ${{ inputs.modus }})"
+        env:
+          MODUS: ${{ inputs.modus }}
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ inputs.umgebung == 'prod' && secrets.VPS_HOST || secrets.VPS_DEV_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          proxy_host: ${{ secrets.VPS_PROXY_HOST }}
+          proxy_username: ${{ secrets.VPS_PROXY_USER }}
+          proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          proxy_port: ${{ secrets.VPS_SSH_PORT }}
+          command_timeout: 60m
+          envs: MODUS
+          script: |
+            set -e
+            cd ~/app
+            PY=.venv/bin/python
+            case "$MODUS" in
+              bericht)
+                $PY scripts/fix_settled_outcomes.py
+                $PY scripts/fix_outcome_summaries.py ;;
+              schreiben) $PY scripts/fix_settled_outcomes.py --schreiben ;;
+              probe) $PY scripts/fix_outcome_summaries.py --probe --limit 20 ;;
+              kurzfassungen) $PY scripts/fix_outcome_summaries.py --schreiben ;;
+            esac

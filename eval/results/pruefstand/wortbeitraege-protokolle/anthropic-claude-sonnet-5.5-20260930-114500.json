@@ -1,0 +1,314 @@
+{
+ "suite": "wortbeitraege-protokolle",
+ "titel": "Wortbeiträge aus ganzen Niederschriften",
+ "kennzahl": "F1 über die Wortmeldungen je Person in ganzen Protokollen (bis 48k-Fenster, wie im Cron), ohne Sammel-TOPs; eval/run_speeches_protokolle.py",
+ "modell": "anthropic/claude-sonnet-5.5",
+ "variante": null,
+ "tarif": null,
+ "lauf": 1,
+ "zeitstempel": "2026-09-30T11:45:00",
+ "db_stand": "Sitzungen bis 2026-09-30, 9119 Beschlüsse",
+ "qualitaet": 0.8479,
+ "harte_befunde": 0,
+ "warnung": null,
+ "faelle": 9,
+ "p50_ms": 73071,
+ "p95_ms": 86316,
+ "aufrufe": 18,
+ "kosten_usd": 2.716954,
+ "ohne_kostenwert": 0,
+ "ct_je_aufruf": 15.0942,
+ "ct_je_lauf": 271.6954,
+ "kosten_gesamt_usd": 2.716954,
+ "ausfaelle": 0,
+ "nicht_zulaessig": false,
+ "abbruch": null,
+ "modelle_laut_tabelle": [
+  "anthropic/claude-sonnet-5.5"
+ ],
+ "ersatz": [],
+ "dauer_s": 1023.7,
+ "nebenkennzahlen": {
+  "recall_ohne_mandat": 0.8548,
+  "antwort_in_rede": 0,
+  "fremd_zugeschrieben": 0.0654,
+  "zahlen_erhalten": 0.1951,
+  "begriffe_erhalten": 0.3317,
+  "beitraege": 830,
+  "fehlgeschlagen": 0
+ },
+ "fehler_beispiele": [],
+ "roh": {
+  "n_cases": 9,
+  "f1": 0.8479,
+  "precision": 0.8492,
+  "recall": 0.8466,
+  "recall_ohne_mandat": 0.8548,
+  "antwort_in_rede": 0,
+  "fremd_zugeschrieben": 0.0654,
+  "zahlen_erhalten": 0.1951,
+  "begriffe_erhalten": 0.3317,
+  "erfunden": 0,
+  "beitraege": 830,
+  "fehlgeschlagen": 0,
+  "faelle": [
+   {
+    "id": "4664",
+    "tp": 66,
+    "fp": 2,
+    "fn": 25,
+    "tp_ohne": 19,
+    "fn_ohne": 13,
+    "verpasst": [
+     "jaekel",
+     "kaesemann",
+     "kreftkohlhage"
+    ],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 2,
+    "bewertbar": 109,
+    "fremd_beispiele": [
+     "Beerheide: Verständnis",
+     "Piening: Integration"
+    ],
+    "zahlen": [
+     10,
+     41
+    ],
+    "begriffe": [
+     120,
+     355
+    ],
+    "beitraege": 115
+   },
+   {
+    "id": "4430",
+    "tp": 59,
+    "fp": 5,
+    "fn": 50,
+    "tp_ohne": 23,
+    "fn_ohne": 16,
+    "verpasst": [
+     "diehl",
+     "görg",
+     "meerbothe",
+     "phillip"
+    ],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 2,
+    "bewertbar": 93,
+    "fremd_beispiele": [
+     "Mehrtens: Fußverkehrsmaßnahmen",
+     "Baak: Bestandteil"
+    ],
+    "zahlen": [
+     15,
+     326
+    ],
+    "begriffe": [
+     89,
+     409
+    ],
+    "beitraege": 111
+   },
+   {
+    "id": "4418",
+    "tp": 73,
+    "fp": 4,
+    "fn": 1,
+    "tp_ohne": 27,
+    "fn_ohne": 1,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 3,
+    "bewertbar": 81,
+    "fremd_beispiele": [
+     "Dikosso: Seniorensatzung",
+     "Bembennek: Betreuungsbehörde, Betreuungsorganisationsgesetz, Betreuungsgerichtes",
+     "Gunnar Rohde: Altersquotient"
+    ],
+    "zahlen": [
+     6,
+     23
+    ],
+    "begriffe": [
+     76,
+     179
+    ],
+    "beitraege": 88
+   },
+   {
+    "id": "4446",
+    "tp": 68,
+    "fp": 0,
+    "fn": 5,
+    "tp_ohne": 42,
+    "fn_ohne": 4,
+    "verpasst": [
+     "krogmann"
+    ],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 7,
+    "bewertbar": 78,
+    "fremd_beispiele": [
+     "Sander: Mehrausgaben",
+     "Sander: Sinnhaftigkeit",
+     "Dr. Lammerding: Umwandlungen",
+     "Göhmann: Arbeitsgruppe",
+     "Niederstein: Landesregelung",
+     "Eilers-Dörfler: Landesregelung"
+    ],
+    "zahlen": [
+     18,
+     19
+    ],
+    "begriffe": [
+     97,
+     154
+    ],
+    "beitraege": 78
+   },
+   {
+    "id": "4545",
+    "tp": 72,
+    "fp": 8,
+    "fn": 7,
+    "tp_ohne": 41,
+    "fn_ohne": 7,
+    "verpasst": [
+     "janssen",
+     "steinbach"
+    ],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 1,
+    "bewertbar": 77,
+    "fremd_beispiele": [
+     "Steinbach: Radwegbreite"
+    ],
+    "zahlen": [
+     21,
+     21
+    ],
+    "begriffe": [
+     98,
+     162
+    ],
+    "beitraege": 93
+   },
+   {
+    "id": "4611",
+    "tp": 42,
+    "fp": 0,
+    "fn": 0,
+    "tp_ohne": 28,
+    "fn_ohne": 0,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 2,
+    "bewertbar": 45,
+    "fremd_beispiele": [
+     "Welp: Härtefallanträgen",
+     "Denckmann: Ausstattung"
+    ],
+    "zahlen": [
+     4,
+     131
+    ],
+    "begriffe": [
+     101,
+     355
+    ],
+    "beitraege": 45
+   },
+   {
+    "id": "3717",
+    "tp": 87,
+    "fp": 5,
+    "fn": 10,
+    "tp_ohne": 43,
+    "fn_ohne": 1,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 7,
+    "bewertbar": 109,
+    "fremd_beispiele": [
+     "Büscher: Heizkörpern",
+     "Behrens: Maximalwert",
+     "Bertram: Landschaftsschutzgebiete",
+     "Bullwinkel: Schriftbild",
+     "Dr. Uhrhan: Verkehrsausschuss, Einsatzmöglichkeiten, Anreizprogramm",
+     "Mazalla: Amtsleiterstelle, Nachfolgestelle"
+    ],
+    "zahlen": [
+     34,
+     43
+    ],
+    "begriffe": [
+     123,
+     214
+    ],
+    "beitraege": 111
+   },
+   {
+    "id": "2855",
+    "tp": 43,
+    "fp": 31,
+    "fn": 2,
+    "tp_ohne": 19,
+    "fn_ohne": 2,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 0,
+    "bewertbar": 48,
+    "fremd_beispiele": [],
+    "zahlen": [
+     18,
+     27
+    ],
+    "begriffe": [
+     58,
+     198
+    ],
+    "beitraege": 84
+   },
+   {
+    "id": "4441",
+    "tp": 42,
+    "fp": 43,
+    "fn": 0,
+    "tp_ohne": 17,
+    "fn_ohne": 0,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 23,
+    "bewertbar": 79,
+    "fremd_beispiele": [
+     "Behrens: Friedhofsmauer, Gertrudenfriedhofs, Nachbepflanzung",
+     "Skiba: Alternativplanungen",
+     "Drügemöller: Erläuterungen",
+     "Woltmann: Straßensanierung, Leitungssystemen, Gesamtkonzept",
+     "Finke: Baumstandorte",
+     "Klein: Lambertistraße, Fortschritt"
+    ],
+    "zahlen": [
+     9,
+     61
+    ],
+    "begriffe": [
+     50,
+     422
+    ],
+    "beitraege": 105
+   }
+  ]
+ }
+}

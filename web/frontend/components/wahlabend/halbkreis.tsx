@@ -7,6 +7,7 @@
 // kommt aus React, damit er auch für die Tastatur gilt.
 
 import { useId, useState } from "react";
+import { LegendSwatch } from "@/components/grafik/chart-legend";
 import { cn } from "@/lib/utils";
 import { halbkreis, mehrheit, type WahlabendPartei } from "@/lib/wahlabend";
 
@@ -111,6 +112,10 @@ export function Halbkreis({
             </button>
           </li>
         ))}
+        <li className="inline-flex items-center gap-1.5 px-1.5 py-0.5 text-[11.5px] text-muted-foreground">
+          <LegendSwatch mark="rule-dashed" />
+          Mehrheit ab {noetig}
+        </li>
       </ul>
     </figure>
   );

@@ -392,7 +392,7 @@ test.describe("Stichwahl: Momente", () => {
     // Der 60er-Stand trägt den Wechsel beim 50. — nicht bei 60: keine Zeile.
     await expect(page.getByTestId("fuehrungswechsel-zeile")).toHaveCount(0);
     await expect.poll(() => page.title()).toMatch(/Prange 5\d,\d · Rohr 4\d,\d — 60\/133 · Stichwahl/);
-    await expect(page.getByTestId("hochrechnung")).toContainText("Chance: Ulf Prange");
+    await expect(page.getByTestId("hochrechnung")).toContainText("Wahrscheinlichkeit für Ulf Prange");
   });
 
   test("bei einem Führungswechsel tauschen die Karten den Platz", async ({ page }) => {
@@ -455,13 +455,19 @@ test.describe("Stichwahl: Momente", () => {
     expect(await oben("ratslotse-einladung")).toBeGreaterThan(await oben("hochrechnung"));
   });
 
-  test("rechnerisch entschieden: Lotti und „ist gewählt“", async ({ page }) => {
+  test("rechnerisch entschieden: Lotti und uneinholbare Führung", async ({ page }) => {
     stichwahlMock(page, [133]);
     await page.goto("/wahlabend/stichwahl?probe=1");
-    await expect(page.getByTestId("entschieden")).toContainText("Ulf Prange ist gewählt");
-    await expect(page.locator("[data-slug=prange]")).toContainText("Gewählt");
+    await expect(page.getByTestId("entschieden")).toContainText("Ulf Prange erhält die meisten Stimmen");
+    await expect(page.locator("[data-slug=prange]")).toContainText("Uneinholbar vorn");
     await expect(page.getByTestId("hochrechnung")).toContainText("Endstand");
     await expect(page.getByTestId("verlauf")).toContainText("1 Führungswechsel");
+    // Die Legende zeigt jedes Zeichen des Bildes (Tims Wunsch 28.09.2026) —
+    // auch den Punkt für den Führungswechsel, weil es einen gab.
+    const legende = page.getByTestId("verlauf").getByTestId("grafik-legende");
+    await expect(legende.locator("li")).toHaveCount(4);
+    await expect(legende).toContainText("Hochrechnung");
+    await expect(legende).toContainText("Führungswechsel");
   });
 });
 
@@ -491,7 +497,7 @@ test.describe("Stichwahl: Ticker, Aufholen, Teilen, Countdown", () => {
   test("die Aufholrechnung nennt, was der Zurückliegende bräuchte", async ({ page }) => {
     stichwahlMock(page, [60]);
     await page.goto("/wahlabend/stichwahl?probe=1");
-    await expect(page.getByTestId("aufholrechnung")).toContainText(/^Rohr bräuchte \d+,\d % der noch offenen Stimmen/);
+    await expect(page.getByTestId("aufholrechnung")).toContainText(/^Rohr müsste \d+,\d % der vom Modell noch erwarteten Stimmen/);
   });
 
   test("entschieden: keine Aufholrechnung mehr", async ({ page }) => {
@@ -538,7 +544,7 @@ test.describe("Stichwahl: Karte", () => {
     await expect.poll(() => karte.locator("svg path").count()).toBe(91);
     // 60 gezählt, davon alle Urne (die Briefwahl kommt zuletzt): 31 offen.
     await expect.poll(() => karte.locator("svg path[data-offen]").count()).toBe(31);
-    await expect(karte).toContainText("60 von 91 Urnenbezirken gezählt");
+    await expect(karte).toContainText("60 von 91 Urnenbezirken sind ausgezählt");
     await karte.locator("svg path").first().click({ force: true });
     await expect(page.getByTestId("bezirkstafel")).toContainText("1. Wahlgang");
     await expect(page.getByTestId("bezirkstafel")).toContainText("Stichwahl");

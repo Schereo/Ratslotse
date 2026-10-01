@@ -41,6 +41,7 @@ ERGEBNIS_WORT = {
     "postponed": "vertagt",
     "noted": "zur Kenntnis genommen",
     "no_decision": "ohne Beschluss geblieben",
+    "settled": "als behandelt erklärt",
 }
 
 MONATE = ("Januar", "Februar", "März", "April", "Mai", "Juni", "Juli",
@@ -287,8 +288,8 @@ def schubbrief(gruppen: list[dict], protokolle: list[tuple[str, str]],
     if abgleich:
         einleitung = ("<p style='margin:0'>Beim wöchentlichen Abgleich "
                       + ("ist ein Beschluss" if n == 1 else f"sind {n} Beschlüsse")
-                      + " neu zu deinen Themen aufgetaucht — aus Sitzungen der letzten "
-                      "sechs Monate.</p>")
+                      + " neu zu deinen Themen aufgetaucht — aus Protokollen, die "
+                      "gerade erst veröffentlicht wurden.</p>")
     else:
         einleitung = ("<p style='margin:0'>" + _protokoll_satz(protokolle)
                       + (f" Darin {'steht eine Entscheidung' if n == 1 else f'stehen {n} Entscheidungen'} "

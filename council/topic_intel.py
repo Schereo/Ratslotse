@@ -27,7 +27,7 @@ import json
 import logging
 import os
 import re
-from datetime import date
+from datetime import date, timedelta
 
 from kern import llm, prompts
 
@@ -81,8 +81,18 @@ DECKEL = 40
 #: So viele Kandidaten je Quelle (Vektor und BM25) gehen in die Bewertung.
 POOL = 45
 #: Ab wann ein Treffer „aktuell" heißt — die Zahl hinter „n in 6 Monaten" auf
-#: der Themen-Karte UND die Grenze, ab der eine N3-Mail verschickt wird.
+#: der Themen-Karte. Für die Mail gilt seit 28.09.2026 eine engere Regel,
+#: s. ``meldestichtage``.
 AKTUELL_MONATE = 6
+#: Wie alt eine Sitzung höchstens sein darf, damit ein Beschluss daraus noch
+#: per Mail kommt. Dasselbe Fenster, in dem ``check_protocols`` nach neuen
+#: Protokollen sucht (``LOOKBACK_DAYS``, von ``tests/test_meldewuerdig.py``
+#: festgehalten): Was älter ist, kommt nur noch über einen Nachlauf herein —
+#: und ein Nachlauf ist keine Neuigkeit.
+MELDEFENSTER_TAGE = 90
+#: Wie frisch das Protokoll sein muss. Der Abgleich läuft einmal die Woche;
+#: zwei Wochen lassen einen ausgefallenen Lauf nachholen.
+PROTOKOLL_FRISCH_TAGE = 14
 
 
 def vor_sechs_monaten(heute: date | None = None) -> date:
@@ -96,10 +106,10 @@ def vor_sechs_monaten(heute: date | None = None) -> date:
     Tagen"). Ein halbes Jahr umfasst mehrere Sitzungsrunden und trennt
     dadurch wirklich Laufendes von Ruhendem.
 
-    Seit dem 30.08.2026 hängt auch der Mail-Versand daran (Tim: „über die Mail
-    würde ich immer nur über aktuelle Beschlüsse informieren"), deshalb steht
-    die Rechnung hier statt im Web-Router: Karte und Meldung sollen dieselbe
-    Grenze meinen, nicht zwei zufällig gleich große.
+    Vom 30.08. bis 28.09.2026 hing auch der Mail-Versand daran (Tim: „über die
+    Mail würde ich immer nur über aktuelle Beschlüsse informieren"). Sechs
+    Monate waren dafür zu weit — die Mail hat jetzt ihre eigene, engere Regel
+    in ``meldestichtage``.
 
     Kalendarisch gerechnet statt „minus 183 Tage": Der Wert steht als „6
     Monate" auf der Karte, also soll er auch ein halbes Jahr meinen. Am 31.
@@ -111,6 +121,39 @@ def vor_sechs_monaten(heute: date | None = None) -> date:
     year = heute.year + (monat - 1) // 12
     monat = (monat - 1) % 12 + 1
     return date(year, monat, min(heute.day, calendar.monthrange(year, monat)[1]))
+
+
+def meldestichtage(heute: date | None = None) -> tuple[str, str]:
+    """``(sitzung_seit, protokoll_seit)`` als ISO-Daten: Ab wann ein Beschluss,
+    der neu zu einem Thema passt, noch eine Mail wert ist.
+
+    Beides muss stimmen — die Sitzung liegt höchstens ``MELDEFENSTER_TAGE``
+    zurück **und** ihr Protokoll ist innerhalb von ``PROTOKOLL_FRISCH_TAGE``
+    bei uns angekommen (``council_protocols.available_at``). Nur dann hat der
+    Rat für die Person gerade etwas Neues entschieden.
+
+    Vorher galt allein „Sitzung in den letzten sechs Monaten", und der
+    Wochenüberblick hatte gar keine Grenze. Am 27.09.2026 bekam ein Konto
+    deshalb „Diese Woche: 13 Beschlüsse zu deinen Themen" mit dem Masterplan
+    Fliegerhorst von 2019 und „Neu zu Klimaschutz" mit dem Bahnhofsvorplatz
+    vom 8. Juni („dachte erst, da gäbe es was Neues"). Beide stammten aus 152
+    Protokollen, die der Sitzungs-Nachlauf am 23.09. seit 2018 nachgetragen
+    hatte — neu für uns, alt für alle anderen.
+
+    Warum nicht einfach eine engere Datumsgrenze: Protokolle kommen in
+    Oldenburg mit ein bis drei Monaten Verzug (gemessen 28.09.2026: 18 bis
+    85 Tage). Eine Grenze von sechs Wochen hätte die Hälfte der echten
+    Neuigkeiten verschluckt. Und warum nicht allein das Protokolldatum: Genau
+    das tragen die nachgetragenen Protokolle frisch.
+
+    Das Protokolldatum erledigt nebenbei zwei weitere Fälle: das neu
+    angelegte Thema, dessen erster Abgleich den ganzen Bestand stempelt, und
+    den alten Beschluss, der erst jetzt über die Relevanzschwelle rutscht (der
+    Krusenbusch-Fall vom 30.08.2026).
+    """
+    heute = heute or date.today()
+    return ((heute - timedelta(days=MELDEFENSTER_TAGE)).isoformat(),
+            (heute - timedelta(days=PROTOKOLL_FRISCH_TAGE)).isoformat())
 
 
 #: Wörter, die eine Aufzählung einleiten, aber selbst kein Thema sind.

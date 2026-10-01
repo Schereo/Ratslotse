@@ -107,7 +107,7 @@ def _money_signal(amount_eur: float | None, title: str | None = None) -> float |
 def _contention_signal(no_votes: int | None, abstentions: int | None,
                        vote: str | None, outcome: str | None) -> float | None:
     # Nur aussagekräftig, wenn tatsächlich abgestimmt wurde.
-    if outcome in (None, "no_decision", "noted"):
+    if outcome in (None, "no_decision", "noted", "settled"):
         return None
     g = no_votes or 0
     e = abstentions or 0

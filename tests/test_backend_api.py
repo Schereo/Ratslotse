@@ -4025,6 +4025,112 @@ def test_ask_ortssteckbrief_traegt_slug_und_verdraengt_die_dublette(client, monk
     assert sources["steckbriefe"][0]["beschreibung"].startswith("Wohnquartier")
 
 
+def test_debatten_nachladen_liefert_die_ganze_aussprache(client, monkeypatch):
+    """Der Baustein „Aus den Ratsdebatten" lädt nach der Antwort die übrige
+    Debatte nach (POST /council/debates): Ähnlichkeitssuche UND Aussprache zu
+    den belegten Beschlüssen, ohne Dubletten, neueste Sitzung zuerst. Anlass
+    30.09.2026: Die Aussage der Verwaltung vom 16.04.2026 zum Schlossplatz war
+    nirgends nachzulesen. Und `kind` kommt jetzt wirklich an — bis dahin las
+    `_debatten_kompakt` das alte Feld `art` und lieferte immer None."""
+    from council import embeddings as emb
+
+    _register(client)
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_session(CouncilSession(301, "Stadtgrün", "2026-04-16", "17:00", "Rathaus"))
+    cs.save_session(CouncilSession(302, "Stadtgrün", "2025-12-11", "17:00", "Rathaus"))
+    with cs._conn:
+        cs._conn.execute(
+            "INSERT INTO council_decisions (id,ksinr,position,item_number,title,outcome,kind) "
+            "VALUES (71,301,1,'7','Spielleitplanung - Beschluss','accepted','decision')")
+    cs.save_wortbeitraege(301, [
+        {"kind": "speech", "top": "7 Spielleitplanung", "speaker": "Tanja Piening", "party": None,
+         "text": "Wegen des Denkmalschutzes kein Planrecht; denkbar der Heiligengeistpark.",
+         "answer": None},
+        {"kind": "pledge", "top": "7 Spielleitplanung", "speaker": "Robert Sprenger", "party": None,
+         "text": "Die Verwaltung denkt über ein Spielangebot am Schlossplatz weiter nach.",
+         "answer": None},
+    ])
+    cs.save_wortbeitraege(302, [
+        {"kind": "speech", "top": "6 Sachstandsbericht Spielbereich Schlossplatz",
+         "speaker": "Robert Sprenger", "party": None,
+         "text": "Standflächen lassen sich wegen Rettungswegen nicht einfach anpassen.",
+         "answer": None},
+    ])
+    ids = {r[1]: r[0] for r in cs._conn.execute("SELECT id, text FROM council_speeches")}
+    cs.close()
+    alt = next(i for t, i in ids.items() if t.startswith("Standflächen"))
+    piening = next(i for t, i in ids.items() if t.startswith("Wegen"))
+    # Die Suche findet den Dezember-Beitrag UND Piening, die Aussprache zum
+    # Beschluss 71 bringt Piening noch einmal (Dublette) und Sprengers Zusage.
+    monkeypatch.setattr(emb, "search_wortbeitraege", lambda *a, **k: [(alt, 0.9), (piening, 0.8)])
+    r = client.post("/api/council/debates", json={
+        "question": "Wie ist der Stand beim Spielplatz auf dem Schlossplatz?", "decision_ids": [71]})
+    assert r.status_code == 200
+    d = r.json()["debates"]
+    assert [x["speaker"] for x in d] == ["Tanja Piening", "Robert Sprenger", "Robert Sprenger"]
+    assert [x["date"] for x in d] == ["2026-04-16", "2026-04-16", "2025-12-11"]
+    assert [x["kind"] for x in d] == ["speech", "pledge", "speech"]
+    assert d[0]["agenda_item"] == "7 Spielleitplanung" and d[0]["id"] == piening
+
+
+def test_ask_ortsfrage_behaelt_debatten_die_den_ort_nennen(client, monkeypatch):
+    """Befund 30.09.2026 auf Prod: „Wie ist der Stand beim Spielplatz auf dem
+    Schlossplatz?“ bekam 0 Debatten. Sprenger und Piening sprachen wörtlich
+    vom Schlossplatz — aber unter dem stadtweiten TOP Spielleitplanung, der
+    keinen Ort trägt; der Orts-Filter ließ nur Beiträge an verorteten
+    Beschlüssen durch. Ein Beitrag, der den Ort nennt, belegt ihn selbst.
+    Einer, der ihn nicht nennt und nicht gekoppelt ist, bleibt draußen."""
+    from app.routers import council as council_router
+    from council import embeddings as emb
+    from council import qa as qa_mod
+
+    _register(client)
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_session(CouncilSession(89, "Sportausschuss", "2025-03-01", "17:00", "Rathaus"))
+    with cs._conn:
+        cs._conn.execute(
+            "INSERT INTO council_decisions (id,ksinr,position,item_number,title,summary,outcome,kind) "
+            "VALUES (6,89,1,'4','Sporthalle Kreyenbrück - Bericht','Planung','noted','decision')")
+    cs.save_decision_locations(6, [{
+        "name": "Kreyenbrück", "kind": "district", "source": "title",
+        "evidence": "Sporthalle Kreyenbrück", "method": "place_catalog", "confidence": 0.99,
+    }], "local")
+    halle = cs.get_decisions_by_ids([6])[0]
+    cs.close()
+    gesehen: dict = {}
+    monkeypatch.setattr(council_router, "_qa_retrieve",
+                        lambda *a, **k: ([dict(halle, score=0.9)], "semantisch"))
+    monkeypatch.setattr(qa_mod, "analyse_query", lambda *a, **k: {
+        "question": "Wie ist der Stand bei der Sporthalle in Kreyenbrück?",
+        "terms": "Sporthalle Kreyenbrück", "kind": "topic",
+        "party": None, "variants": [], "eng": False,
+    })
+    monkeypatch.setattr(emb, "search_wortbeitraege", lambda *a, **k: [(77, 0.9), (78, 0.9)])
+    monkeypatch.setattr(emb, "search_zusagen", lambda *a, **k: [])
+    monkeypatch.setattr(CouncilStore, "wortbeitraege_zu_beschluessen", lambda self, c, **k: [])
+    monkeypatch.setattr(CouncilStore, "wortbeitraege_by_ids", lambda self, ids: [
+        {"id": 77, "speaker": "Robert Sprenger", "party": None, "kind": "speech",
+         "top": "7 Hallenplanung", "text": "In Kreyenbrück fehle der Platz für eine dritte Halle.",
+         "answer": None, "session_date": "2026-04-16", "committee": "Sportausschuss",
+         "page": None, "ksinr": 100},
+        {"id": 78, "speaker": "Anna Beispiel", "party": None, "kind": "speech",
+         "top": "7 Hallenplanung", "text": "Die Halle in Eversten brauche ein neues Dach.",
+         "answer": None, "session_date": "2026-04-16", "committee": "Sportausschuss",
+         "page": None, "ksinr": 100},
+    ] if ids else [])
+
+    def fake_stream(question, ctx, **kwargs):
+        gesehen["debates"] = kwargs.get("debatten")
+        yield "Antwort."
+
+    monkeypatch.setattr(qa_mod, "answer_stream", fake_stream)
+    with client.stream("POST", "/api/council/ask", json={
+            "question": "Wie ist der Stand bei der Sporthalle in Kreyenbrück?"}) as response:
+        assert response.status_code == 200
+        "".join(response.iter_text())
+    assert [row["id"] for row in gesehen["debates"]] == [77]
+
+
 def test_ask_kombiniert_person_mit_ort_ueber_beschlussanker(client, monkeypatch):
     """Regression aus der Produktionsprobe: Die freie Personensuche lieferte
     Beiträge ohne ``zu_beschluss``; der Orts-Guard entfernte sie anschließend

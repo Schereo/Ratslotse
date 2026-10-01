@@ -424,6 +424,11 @@ def _lauf_wortbeitraege() -> dict:
     return r.ein_lauf(r.lade())
 
 
+def _lauf_wortbeitraege_protokolle() -> dict:
+    from eval import run_speeches_protokolle as r
+    return r.ein_lauf(r.lade())
+
+
 def _lauf_live() -> dict:
     from eval import run_live_tracker as r
     return r.ein_lauf(r.lade())
@@ -744,6 +749,23 @@ REGISTER: tuple[Suite, ...] = (
                                      "top_richtig": roh.get("top_richtig"),
                                      "partei_ohne_beleg": roh.get("partei_ohne_beleg"),
                                      "fehlgeschlagen": roh.get("fehlgeschlagen")},
+        hart_sperrt=True,
+    ),
+    Suite(
+        name="wortbeitraege-protokolle", titel="Wortbeiträge aus ganzen Niederschriften",
+        features=("speeches",), schalter="COUNCIL_WORTBEITRAG_MODEL",
+        modell_aktuell=_attr("council.wortbeitraege", "MODEL"),
+        kennzahl="F1 über die Wortmeldungen je Person in ganzen Protokollen (bis 48k-Fenster, "
+                 "wie im Cron), ohne Sammel-TOPs; eval/run_speeches_protokolle.py",
+        eingabe="eval/cases_speeches_protokolle.json (9 ganze Niederschriften, 2018–2026, Text eingebettet)",
+        laufen=_lauf_wortbeitraege_protokolle, web=False,
+        qualitaet=lambda roh: roh.get("f1"),
+        harte_befunde=lambda roh: roh.get("erfunden"),
+        hart_heisst="Redner*innen, deren Name im Protokoll gar nicht vorkommt",
+        faelle=lambda roh: roh.get("n_cases"),
+        nebenkennzahlen=lambda roh: {k: roh.get(k) for k in (
+            "recall_ohne_mandat", "antwort_in_rede", "fremd_zugeschrieben",
+            "zahlen_erhalten", "begriffe_erhalten", "beitraege", "fehlgeschlagen")},
         hart_sperrt=True,
     ),
     Suite(

@@ -236,6 +236,10 @@ def zahlfrage(question: str) -> bool:
     return bool(_ZAHL_FRAGE_RE.search(question or ""))
 
 
+#: „Stand“/„Sachstand“ als eigenes Wort — nicht „Standort“, „Bestand“, „Wohlstand“.
+_STAND_RE = re.compile(r"(?<![a-zäöüß])(?:sach)?stand(?![a-zäöüß])", re.IGNORECASE)
+
+
 def research_plan_with_mandatory(plan: dict, *, typ: str, question: str = "",
                                  person: bool = False,
                                  place: bool = False, sessions: bool = False,
@@ -290,14 +294,30 @@ def research_plan_with_mandatory(plan: dict, *, typ: str, question: str = "",
     inferred_needs: list[str] = []
     if zahl and "documents" not in model_needs:
         inferred_needs.append("documents")
-    if (_OFFICIAL_UPDATE_WORDS_RE.search(question or "")
-            and ("presse" in (question or "").lower()
-                 or _OFFICIAL_SOURCE_RE.search(question or ""))
-            and "official_updates" not in model_needs):
+    stadt_mitteilung = bool(_OFFICIAL_UPDATE_WORDS_RE.search(question or "")
+                            and ("presse" in (question or "").lower()
+                                 or _OFFICIAL_SOURCE_RE.search(question or "")))
+    if stadt_mitteilung and "official_updates" not in model_needs:
         # Kleine semantische Leitplanke für eindeutige Formulierungen. In der
         # Produktionsprobe ließ das Analysemodell „Was hat die Stadt zuletzt …
         # mitgeteilt?“ trotz klarer Quellenart ohne Pressekanal durch.
         inferred_needs.append("official_updates")
+    stand_frage = plan.get("intent") == "status" or bool(_STAND_RE.search(question or ""))
+    if stand_frage and "statements" not in model_needs and not stadt_mitteilung:
+        # Der Stand steckt oft NUR im Protokoll: Die Verwaltung berichtet im
+        # Ausschuss mündlich, und kein Beschluss hält es fest. Das Modell plante
+        # für „Wie ist der Stand beim Spielplatz auf dem Schlossplatz?“ fünfmal
+        # decisions+press und nie debates (30.09.2026) — Sprengers „kein Platz
+        # für einen Spielplatz“ und Pienings Begründung (Denkmalschutz, kein
+        # Planrecht, vier Alternativen) vom 16.04.2026 kamen so nie in den
+        # Kontext; die Antwort endete beim Sachstand vom Dezember davor. Die
+        # Negativregeln unten (neueste Entscheidung, Definition, Finanzen)
+        # entfernen die Debatten weiterhin, wo sie nur Rauschen wären; eine
+        # Frage, die ausdrücklich nach Mitteilungen der Stadt fragt (Wortregel
+        # oben), bleibt bei der Presse. Das Wort „Stand“ zählt auch ohne die
+        # Absicht „status“: „Was ist der aktuelle Stand beim Fliegerhorst?“
+        # plante das Modell als „overview“.
+        inferred_needs.append("statements")
     needs = list(dict.fromkeys([*model_needs, *inferred_needs]))
     consistent = list(dict.fromkeys(
         channel
@@ -1093,6 +1113,24 @@ def finde_ort(question: str, store=None) -> dict | None:
     return {"id": place.id, "name": place.name, "kind": place.kind,
             "kind_label": places.kind_label(place.kind),
             "description": place.description}
+
+
+def nennt_ort(beitrag: dict, ort: dict, store=None) -> bool:
+    """Nennt ein Wortbeitrag den erfragten Katalogort selbst?
+
+    Derselbe Abgleich wie bei der Frage (:func:`finde_ort`) — Schreibvarianten
+    inklusive, „Neu-Donnerschwee“ zählt nicht als „Donnerschwee“. Für den
+    Orts-Filter der Debatten ist das ein ebenso deterministischer Beleg wie
+    die Kopplung an einen verorteten Beschluss.
+    """
+    from council import places
+
+    text = " ".join(str(beitrag.get(k) or "") for k in ("top", "text", "answer"))
+    if not text.strip():
+        return False
+    catalog = store.all_places() if store is not None else None
+    return any(p.id == ort.get("id")
+               for p in places.find_mentions(text, max_n=10, catalog_places=catalog))
 
 
 #: So viele Alternativ-Fragen höchstens. Drei sind eine Auswahl, sechs sind
@@ -2166,7 +2204,8 @@ def deep_bericht_stream(question: str, candidates: list[dict],
     # kurze Antwort — die Fachwörter darin tragen also ohnehin ihre Erklärung
     # als Tooltip. Ohne diesen Block hätte nur der Prompt sie nicht gehabt.
     zusatz = (_glossar_block(begriffe_fuer(question))
-              + _debatten_block(debatten) + _presse_block(presse)
+              + _debatten_block(debatten, text_max=DEEP_DEBATTE_TEXT_MAX,
+                                answer_max=DEEP_DEBATTE_ANTWORT_MAX) + _presse_block(presse)
               + _staedte_block(staedte)
               + geld_regeln(geld) + geld_block(geld) + _anlagen_block(anlagen))
     prompt = prompts.render("deep_report", question=question.strip()[:300],
@@ -2388,7 +2427,30 @@ def _staedte_block(staedte: list[dict] | None) -> str:
             f"{zeilen}\n")
 
 
-def _debatten_block(debatten: list[dict] | None, eng: bool = False) -> str:
+#: Wie viel eines Wortbeitrags der Bericht der Gründlichen Recherche bekommt
+#: (die schnelle Antwort: 400 Zeichen Text, 300 Antwort). Bei Pienings Antwort
+#: zum Schlossplatz (548 Zeichen) stand „Denkmalschutz" bei Zeichen 364, die
+#: Alternativen (Wasserspiele, Bodenbilder, Heiligengeistpark) ab 490 — nie im
+#: Bericht. Mit 800/600: Gold-Test 85 % statt 69 % (30.09.2026).
+DEEP_DEBATTE_TEXT_MAX = 800
+DEEP_DEBATTE_ANTWORT_MAX = 600
+
+#: Dieselben Hebel für die schnelle Antwort, mit kleinerem Budget: Der Rerank
+#: von 150 Paaren à 700 Zeichen dauert lokal 6,5 s (10 Kerne), auf dem Server
+#: mit 2 Kernen ein Mehrfaches — für eine Antwort, auf die jemand wartet, zu
+#: viel. 40 Kandidaten kosten lokal ~2 s. Anlass: „Wie ist der Stand beim
+#: Spielplatz auf dem Schlossplatz?" fand nach allen Reparaturen nur den Stand
+#: vom Dezember 2025; die Aussage der Verwaltung vom 16.04.2026 (Vektor-Rang 7
+#: mit der Frage als Suchtext) fiel am 150-Zeichen-Rerank und an 4 Plätzen.
+ASK_WORTBEITRAG_TOP = 8
+ASK_WORTBEITRAG_KANDIDATEN = 40
+ASK_WORTBEITRAG_PAIR_MAX = 700
+ASK_DEBATTE_TEXT_MAX = 800
+ASK_DEBATTE_ANTWORT_MAX = 600
+
+
+def _debatten_block(debatten: list[dict] | None, eng: bool = False,
+                    text_max: int = 400, answer_max: int = 300) -> str:
     """Kontext-Absatz „Aus den Ratsdebatten" — Wortbeiträge aus Protokollen
     (Reden, Anfragen, Einwohnerfragen, Zusagen). Das sind BERICHTE, keine
     Beschlüsse: nie mit [id] zitieren, sondern „Laut Protokoll sagte/fragte …"."""
@@ -2414,9 +2476,9 @@ def _debatten_block(debatten: list[dict] | None, eng: bool = False) -> str:
         # Beschluss zu zitieren.
         if d.get("zu_beschluss"):
             kopf += f" — Aussprache zum Beschluss [{d['zu_beschluss']}]"
-        row = f"- {kopf}: {(d.get('text') or '').strip()[:400]}"
+        row = f"- {kopf}: {(d.get('text') or '').strip()[:text_max]}"
         if d.get("answer"):
-            row += f" — Antwort der Verwaltung: {(d['answer'] or '').strip()[:300]}"
+            row += f" — Antwort der Verwaltung: {(d['answer'] or '').strip()[:answer_max]}"
         zeilen.append(row)
     if eng:
         # Punktfrage: Die Wortbeiträge bleiben im Kontext (manchmal steckt die
@@ -4388,7 +4450,9 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "topic",
                             + _glossar_block(begriffe_fuer(question))
                             + _steckbrief_block(steckbriefe) + _presse_block(presse)
                             + _staedte_block(staedte)
-                            + geld_block(geld) + _debatten_block(debatten, eng)
+                            + geld_block(geld)
+                            + _debatten_block(debatten, eng, text_max=ASK_DEBATTE_TEXT_MAX,
+                                              answer_max=ASK_DEBATTE_ANTWORT_MAX)
                             + _anlagen_block(anlagen),
                             gespraech=gespraech)
     # reasoning-Schalter am TATSÄCHLICH genutzten Modell festmachen — vorher

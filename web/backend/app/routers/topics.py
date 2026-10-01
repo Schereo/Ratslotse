@@ -41,6 +41,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
 from kern.store import Store
+from council.city_topics import bild_key
 from council.store import CouncilStore
 
 from ..antworten import (CityTopicMatch, MarkedHits, Ok, SubscriptionRemoved, SubscriptionSet,
@@ -196,6 +197,7 @@ def list_topics(
                 name=t.name,
                 description=t.description,
                 created_at=t.created_at,
+                image_key=bild_key(t.name),
                 decision_count=dec_counts.get(t.id, 0),
                 decision_count_capped=capped.get(t.id, False),
                 matched=t.id in capped,

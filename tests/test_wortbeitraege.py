@@ -39,6 +39,76 @@ def test_fenster_splitting():
     assert teile[0][-wb.UEBERLAPP:] == teile[1][:wb.UEBERLAPP]
 
 
+def _protokoll_mit_tops(n: int, laenge: int) -> str:
+    kopf = "Niederschrift\nTagesordnung\n"
+    return kopf + "".join(f"zu {i} Punkt {i}\n" + ("x" * (laenge - 20) + "\n")
+                          for i in range(1, n + 1))
+
+
+def test_fenster_schneiden_an_top_grenzen_ohne_ueberlapp():
+    """Die feste 3k-Überlappung brachte die Beiträge aus der Naht doppelt —
+    anders paraphrasiert, also an der Dublettenprüfung vorbei (ksinr 4664:
+    TOP 11.7/11.8 zweimal). An einer TOP-Kopfzeile beginnt keine Wortmeldung
+    mitten im Satz; dort geschnitten braucht es keine Überlappung."""
+    text = _protokoll_mit_tops(8, wb.FENSTER // 3)
+    teile = wb._fenster(text)
+    assert len(teile) >= 2
+    assert "".join(teile) == text                      # nichts doppelt, nichts fehlt
+    assert all(len(t) <= wb.FENSTER for t in teile)
+    assert all(t.startswith("zu ") for t in teile[1:])  # jedes Fenster beginnt mit einem TOP
+
+
+def test_fenster_teilt_einen_uebergrossen_top_hart():
+    text = "zu 1 Kurz\nabc\nzu 2 Haushalt\n" + "y" * (wb.FENSTER * 2) + "\nzu 3 Rest\nz\n"
+    teile = wb._fenster(text)
+    assert all(len(t) <= wb.FENSTER for t in teile)
+    assert teile[-1].startswith("zu 3") or "zu 3 Rest" in teile[-1]
+
+
+def test_top_nur_als_nummer_bekommt_die_ueberschrift():
+    """Gemini 3.5 Flash Lite schrieb im ersten Fenster von ksinr 4664 ``top``
+    fast durchweg als bloße Nummer („7")."""
+    raw = ("zu 7 Spielleitplanung \n- Beschluss\nHerr Sprenger führt ein.\n"
+           "zu 8 Lärmschutzwände an der Nordtangente, Sachstand – Vorstel-\n"
+           "lung Machbarkeitsstudie\n")
+    titel = wb._top_titel(raw)
+    assert titel["7"] == "7 Spielleitplanung"
+    assert titel["8"] == "8 Lärmschutzwände an der Nordtangente, Sachstand – Vorstellung Machbarkeitsstudie"
+    assert wb._top_ergaenzen("7", titel) == "7 Spielleitplanung"
+    assert wb._top_ergaenzen("zu 8", titel).startswith("8 Lärmschutzwände")
+    assert wb._top_ergaenzen("zu 12 Anfragen und Anregungen", titel) == "12 Anfragen und Anregungen"
+    assert wb._top_ergaenzen("9", titel) == "9"   # unbekannt: bleibt, wie es kam
+    assert wb._top_ergaenzen(None, titel) is None
+
+
+def test_antwort_im_answer_feld_einer_rede_wird_eigener_eintrag(monkeypatch):
+    """Der Befund an ksinr 4664, TOP 7: Sprengers und Pienings Antworten zum
+    Schlossplatz standen im answer-Feld von Behrens' Rede. Die Suche bettet nur
+    ``text`` ein und der Kontext kappt answer auf 300 Zeichen — „kein Platz für
+    einen Spielplatz", Denkmalschutz, Heiligengeistpark blieben unauffindbar."""
+    rows = [
+        {"kind": "speech", "top": "7", "speaker": "Paul Behrens",
+         "text": "Ratsherr Behrens bittet um einen Bericht über den Schlossplatz-Workshop.",
+         "answer": "Herr Sprenger antwortet, dass auf dem Schlossplatz kein Platz für einen Spielplatz bleibe."},
+        {"kind": "speech", "top": "7", "speaker": "Paul Behrens",
+         "text": "Ratsherr Behrens entgegnet, der Beschluss sei vertagt worden.",
+         "answer": "Aufgrund des Denkmalschutzes sei keine Änderung des Planrechts möglich."},
+        {"kind": "inquiry", "top": "12", "speaker": "Niederstein",
+         "text": "Er bittet um einen Sachstand zum Entsiegelungswettbewerb.",
+         "answer": "Die Verwaltung liefert zur nächsten Sitzung eine Antwort."},
+    ]
+    _llm_liefert(monkeypatch, [json.dumps(rows)])
+    out = wb.extract_wortbeitraege("zu 7 Spielleitplanung\n…\nzu 12 Anfragen und Anregungen\n…")
+    assert [(o["kind"], o["speaker"]) for o in out] == [
+        ("speech", "Paul Behrens"), ("speech", "Herr Sprenger"),
+        ("speech", "Paul Behrens"), ("speech", "Verwaltung"),
+        ("inquiry", "Niederstein"),
+    ]
+    assert all(o["answer"] is None for o in out if o["kind"] == "speech")
+    assert "kein Platz" in out[1]["text"] and out[1]["top"] == "7 Spielleitplanung"
+    assert out[4]["answer"].startswith("Die Verwaltung")  # Anfragen behalten ihre Antwort
+
+
 def test_prompt_nennt_die_arten_wie_das_schema():
     """Bis 09/2026 sagte das Schema `"kind": "speech"|"inquiry"|…`, die Regeln
     darunter aber noch „rede", „anfrage", „einwohnerfrage", „zusage" — ein Rest
@@ -62,6 +132,17 @@ def test_prompt_verlangt_jede_wortmeldung_einzeln():
     text = prompts.DEFAULTS["speeches_extract"]["template"]
     assert "nie zu einem Eintrag zusammenlegen" in text
     assert "EIGENEN Eintrag mit eigenem Namen" in text
+
+
+def test_prompt_nimmt_protokollnotizen_auf():
+    """Gold-Fall 30.09.2026 (Trinkwasserspender, ksinr 4664 TOP 11.1): Die
+    Antwort der Verwaltung stand als Protokollnotiz ohne Sprecher im
+    Protokoll — „Klärung 2027 mit Abschluss des KLAK, danach Bau". GPT-6 Luna
+    ließ sie aus, weil der Prompt eine Wortmeldung über „eine Person spricht"
+    definierte. 1.108 Notizen in 444 Protokollen des Bestands."""
+    from kern import prompts
+    text = prompts.DEFAULTS["speeches_extract"]["template"]
+    assert "Protokollnotiz" in text and "Verwaltung (Protokollnotiz)" in text
 
 
 def test_extract_validierung(monkeypatch):
@@ -377,6 +458,66 @@ def test_cross_encoder_ist_torwaechter(store, monkeypatch):
     assert emb.search_wortbeitraege(store, "Frage", "Frage") == []
 
 
+def test_vektorsuche_bettet_frage_und_begriffe_ein_und_prueft_ein_weites_feld(store, monkeypatch):
+    """Gold-Test 30.09.2026: Die Gründliche Recherche reichte eine Facetten-
+    Begriffsliste als `expanded` — nahe an fast allem zu Bauen und Geld. Die
+    Aussage der Verwaltung lag auf Vektor-Rang 130+ und kam nie in den
+    Cross-Encoder (nur 36). Mit der Frage selbst: Rang 7. Es zählt der bessere
+    der beiden Werte; ``kandidaten`` weitet das Feld."""
+    np = pytest.importorskip("numpy")
+    from council import embeddings as emb
+
+    ziel = {**BEITRAG, "text": "Wegen des Denkmalschutzes gibt es kein Planrecht für einen Spielplatz."}
+    laerm = [{**BEITRAG, "text": f"Baufortschritt und Haushaltsmittel Nummer {i} zum Zeitplan."}
+             for i in range(40)]
+    store.save_wortbeitraege(100, [ziel] + laerm)
+    ids = [r[0] for r in store._conn.execute("SELECT id FROM council_speeches ORDER BY position")]
+    # Die Begriffsliste liegt nahe am Lärm (Vektor [1,0]), die Frage nahe am Ziel ([0,1]).
+    mat = np.array([[0.30, 0.95]] + [[0.98 - i * 0.001, 0.05] for i in range(40)], dtype="float32")
+    monkeypatch.setattr(emb, "_wb_matrix", lambda s: (ids, mat))
+    monkeypatch.setattr(emb, "embed", lambda texte: np.array(
+        [[1.0, 0.0] if "Begriffe" in t else [0.0, 1.0] for t in texte], dtype="float32"))
+    gesehen = {}
+
+    def rerank(q, docs):
+        gesehen["n"] = len(docs)
+        return [(i, 1.0 if "Denkmalschutz" in t else -3.0) for i, t in docs]
+
+    monkeypatch.setattr(emb, "rerank", rerank)
+    treffer = emb.search_wortbeitraege(store, "Frage nach dem Spielplatz", "Begriffe Baufortschritt")
+    assert treffer == [] and gesehen["n"] == 12      # nur Lärm im Feld: das Ziel fehlt
+    # Nur die Begriffsliste eingebettet wäre der alte Zustand; hier zählt die Frage mit …
+    treffer = emb.search_wortbeitraege(store, "Frage nach dem Spielplatz", "Begriffe Baufortschritt",
+                                       kandidaten=60)
+    assert [t[0] for t in treffer] == [ids[0]] and gesehen["n"] == 41
+
+
+def test_recherche_laesst_den_cross_encoder_mehr_vom_text_lesen(store, monkeypatch):
+    """Pienings Begründung (569 Zeichen, die Gründe hinten): bei 150 Zeichen
+    −2,28 unter dem Cutoff, ganz gelesen −0,69 (Gold-Test 30.09.2026). Die
+    Zusatzkanäle der schnellen Frage behalten ihre Kappung."""
+    np = pytest.importorskip("numpy")
+    from council import embeddings as emb
+
+    lang = "Einleitung zum Workshop. " * 12 + "Denkmalschutz: kein Planrecht für einen Spielplatz."
+    store.save_wortbeitraege(100, [{**BEITRAG, "text": lang}])
+    wid = store._conn.execute("SELECT id FROM council_speeches").fetchone()[0]
+    monkeypatch.setattr(emb, "_wb_matrix", lambda s: ([wid], np.array([[1.0, 0.0]], dtype="float32")))
+    monkeypatch.setattr(emb, "embed", lambda texte: np.array([[1.0, 0.0]] * len(texte), dtype="float32"))
+    gelesen = {}
+
+    def rerank(q, docs, max_chars=None):
+        gelesen["laenge"] = max(len(t) for _i, t in docs)
+        # „Denkmalschutz" steht hinten: nur wer bis dorthin liest, findet es.
+        return [(i, -0.7 if "Denkmalschutz" in t else -2.3) for i, t in docs]
+
+    monkeypatch.setattr(emb, "rerank", rerank)
+    assert emb.search_wortbeitraege(store, "Frage", "Begriffe") == []           # Zusatzkanal: 150
+    assert gelesen["laenge"] == emb.KONTEXT_PAIR_MAX
+    treffer = emb.search_wortbeitraege(store, "Frage", "Begriffe", pair_max=700)  # Recherche
+    assert [t[0] for t in treffer] == [wid] and gelesen["laenge"] > emb.KONTEXT_PAIR_MAX
+
+
 # ------------------------------ QA-Kontextblock -----------------------------
 
 def test_fraktions_label_normalisierung():
@@ -600,6 +741,32 @@ def test_debatten_block_format():
     assert qa._debatten_block(None) == ""
 
 
+def test_debatten_block_der_recherche_kuerzt_weniger():
+    """Gold-Test 30.09.2026: Pienings Antwort (548 Zeichen) verlor ihre Gründe
+    (Denkmalschutz ab 364, Alternativen ab 490) an der 400er-Kappung. Der Bericht
+    der Gründlichen Recherche bekommt mehr; die schnelle Antwort bleibt kurz."""
+    lang = "Einleitung. " * 30 + "Denkmalschutz verhindert das. " + "x" * 300 + " Heiligengeistpark."
+    d = [{"kind": "speech", "speaker": "Piening", "party": None, "top": "7 Spielleitplanung",
+          "text": lang, "answer": "Ö" * 500, "committee": None, "session_date": None}]
+    kurz = qa._debatten_block(d)
+    lang_block = qa._debatten_block(d, text_max=qa.DEEP_DEBATTE_TEXT_MAX,
+                                    answer_max=qa.DEEP_DEBATTE_ANTWORT_MAX)
+    assert "Heiligengeistpark" not in kurz and kurz.count("Ö") == 300
+    assert "Heiligengeistpark" in lang_block and lang_block.count("Ö") == 500
+
+
+def test_schnelle_antwort_liest_debatten_mit_eigenem_budget(monkeypatch):
+    """Dieselben Hebel wie bei der Recherche, kleiner: Der Rerank ist bei der
+    schnellen Antwort Wartezeit (150 Paare à 700 Zeichen: lokal 6,5 s)."""
+    assert qa.ASK_WORTBEITRAG_KANDIDATEN < 150 and qa.ASK_WORTBEITRAG_PAIR_MAX >= 700
+    lang = "Einleitung. " * 30 + "Denkmalschutz verhindert das. Heiligengeistpark."
+    d = [{"kind": "speech", "speaker": "Piening", "party": None, "top": "7 Spielleitplanung",
+          "text": lang, "answer": None, "committee": None, "session_date": None}]
+    messages, _ = qa._answer_messages("Wie ist der Stand?", [{"id": 1, "title": "T",
+                                                              "official_text": "B"}], debatten=d)
+    assert "Heiligengeistpark" in messages[0]["content"]
+
+
 def test_debatten_block_im_antwortprompt(monkeypatch):
     messages, _ = qa._answer_messages(
         "Was ist mit dem Radweg?", [{"id": 1, "title": "T", "official_text": "B"}],
@@ -646,6 +813,29 @@ def test_wortbeitraege_zu_beschluessen_koppelt_ueber_die_station(store):
         [{"id": 1, "ksinr": 4663, "item_number": "16", "title": "Anfragen und Anregungen"}]) == []
     # Ohne Sitzungsbezug kein Treffer.
     assert store.wortbeitraege_zu_beschluessen([{"id": 9, "ksinr": None, "title": "Irgendwas"}]) == []
+
+
+def test_wortbeitraege_zu_beschluessen_koppelt_auch_nur_ueber_die_nummer(store):
+    """``top`` nur als Nummer fiel bis 09/2026 aus der Kopplung (leerer Titel
+    → übersprungen). Und ein leerer Titel darf nicht jede Station der Sitzung
+    treffen — ``"" in titel`` ist immer wahr."""
+    store.save_wortbeitraege(100, [
+        {"kind": "speech", "top": "7", "speaker": "Herr Sprenger", "party": None,
+         "text": "Auf dem Schlossplatz bleibe kein Platz für einen Spielplatz.", "answer": None},
+    ])
+    got = store.wortbeitraege_zu_beschluessen(
+        [{"id": 1, "ksinr": 100, "item_number": "7", "title": "Spielleitplanung - Beschluss"}])
+    assert [g["speaker"] for g in got] == ["Herr Sprenger"]
+    assert store.wortbeitraege_zu_beschluessen(
+        [{"id": 2, "ksinr": 100, "item_number": "8", "title": "Lärmschutzwände"}]) == []
+
+
+def test_ksinr_wortbeitraege_vor_fuer_die_nachextraktion(store):
+    store.save_wortbeitraege(100, [BEITRAG])
+    store._conn.execute("UPDATE council_protocols SET contributions_extracted_at = '2026-08-16T09:26:05'")
+    assert store.ksinr_wortbeitraege_vor("2026-09-23") == [100]
+    store.save_wortbeitraege(100, [BEITRAG])  # neu extrahiert → Marker frisch
+    assert store.ksinr_wortbeitraege_vor("2026-09-23") == []
 
 
 def test_wortbeitraege_zu_beschluessen_filtert_optional_nach_person(store):
@@ -739,3 +929,68 @@ def test_search_zusagen_filtert_und_haelt_die_strengere_grenze(monkeypatch):
             return []
 
     assert emb.search_zusagen(_Leer(), "Frage?", "Frage") == []
+
+
+def test_nachextraktion_tritt_dem_deploy_zur_seite(tmp_path, monkeypatch):
+    """850 Protokolle laufen Stunden. Wartet ein Deploy, bleibt das
+    Gespeicherte, der Rest ist beim nächsten ``--neu-vor``-Lauf wieder dran."""
+    from kern.stopp import Grund
+    from scripts import extract_wortbeitraege as ex
+
+    db = tmp_path / "council.sqlite"
+    s = CouncilStore(db)
+    for ks in (1, 2, 3):
+        s._conn.execute("INSERT INTO council_protocols (ksinr, raw_text, extracted_at, status, "
+                        "contributions_extracted_at) VALUES (?, 'Text', '2026-08-01', 'ok', "
+                        "'2026-08-16T09:00:00')", (ks,))
+    s._conn.commit()
+    s.close()
+    monkeypatch.setattr(ex, "extract_wortbeitraege", lambda text: [dict(BEITRAG)])
+    monkeypatch.setattr(ex, "seiten_aufloesen", lambda store, ksinr: 0)
+
+    class NachEinem:
+        def __init__(self):
+            self.n = 0
+
+        def grund(self):
+            self.n += 1
+            return Grund("deploy", "Ein Deploy wartet.") if self.n >= 1 else None
+
+    stats = ex.process(db, None, 1, neu_vor="2026-09-23", stopp=NachEinem())
+    assert stats["protokolle"] == 1 and stats["abgebrochen"] == "deploy"
+    assert stats["offen"] == 2
+    s = CouncilStore(db)
+    assert len(s.ksinr_wortbeitraege_vor("2026-09-23")) == 2
+    s.close()
+
+
+def test_serien_deckel_laesst_andere_beschluesse_ins_feld():
+    """Gold-Fall Stadion-Stand (30.09.2026): 25 wortgleiche „Sachstandsbericht
+    Stadionplanung" verdrängten den Ratsbeschluss zur Vergabe auf Rang 41."""
+    from council import embeddings as emb
+    hits = [(i, 1.0 - i / 100) for i in range(1, 7)] + [(99, 0.2)]
+    titel = {i: "Sachstandsbericht Stadionplanung" for i in range(1, 7)}
+    titel[5] = "Sachstandsbericht Stadionplanung - Bericht"   # Zusatz zählt nicht
+    titel[99] = "Stadion Oldenburg GmbH & Co. KG: Stadionneubau Maastrichter Straße"
+    neu = [i for i, _ in emb.serien_deckel(hits, titel, max_je=3)]
+    assert neu == [1, 2, 3, 99, 4, 5, 6]          # Serie gedeckelt, nichts verloren
+    assert emb.serien_deckel(hits, titel, max_je=0) == hits
+
+def test_nachextraktion_nur_protokolle_mit_protokollnotiz(tmp_path, monkeypatch):
+    """Die gezielte Nachextraktion nimmt nur Protokolle mit Notiz — auch in
+    der Form, in der die PDF-Textschicht den Anfangsbuchstaben abtrennt."""
+    from scripts import extract_wortbeitraege as ex
+
+    db = tmp_path / "council.sqlite"
+    s = CouncilStore(db)
+    for ks, text in ((1, "Herr X antwortet. P\nrotokollnotiz: 2027."), (2, "Keine Notiz hier."),
+                     (3, "Protokollnotiz: Nachtrag.")):
+        s._conn.execute("INSERT INTO council_protocols (ksinr, raw_text, extracted_at, status, "
+                        "contributions_extracted_at) VALUES (?, ?, '2026-08-01', 'ok', "
+                        "'2026-08-16T09:00:00')", (ks, text))
+    s._conn.commit()
+    s.close()
+    stats = ex.process(db, 1, 1, neu_vor="2026-09-23", trocken=True, nur_protokollnotizen=True)
+    assert stats["geplant"] == 1          # erst gefiltert, dann gekappt
+    stats = ex.process(db, None, 1, neu_vor="2026-09-23", trocken=True, nur_protokollnotizen=True)
+    assert stats["geplant"] == 2

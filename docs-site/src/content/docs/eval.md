@@ -61,6 +61,7 @@ messen, sondern die Qualität einer **Bewertung**:
 |--------|-------|-----------|
 | `scripts/eval_ai.py` | Klassifikations-Qualität gegen ein Gold-Set | Regressionsguard vor Prompt-Änderungen |
 | `scripts/eval_impact.py` | Tragweite-Score gegen `scripts/golden_impact.json` | Rangkorrelation + Band-Trefferquote; unterschritten → kein Rollout |
+| `scripts/eval_deep_gold.py` | Gründliche Recherche gegen handgeprüfte Pflichtfakten und verbotene Fehlbehauptungen (`eval/cases_deep_gold.json`); trennt Material (las der Bericht die Belegstelle?) von Bericht (steht der Fakt drin?) | Abdeckung < 60 %, Kernfakt fehlt oder eine verbotene Behauptung → nicht bestanden |
 | `eval/run_cities_transfer.py` | Einordnung fremder Ratsvorlagen (`cities_classify`) | „taugt/taugt nicht" unter 80 % → Regression |
 | `eval/run_cities_fit.py` | Urteil über Oldenburg (`cities_fit`) | Beleg-Disziplin unter 100 % → Regression |
 | `eval/run_cities_sections.py` | Schnitt der Niederschriften (ohne Modell) | unter 75 % der Tagesordnungspunkte mit Abschnitt → Regression |

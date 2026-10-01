@@ -41,6 +41,7 @@ from ..antworten import (
 )
 from . import archive, elections, mayor, mayor_districts, votemanager
 from .register import KOMMUNALWAHL
+from .rounding import EXACT_DIGITS, exact_pct
 
 _log = logging.getLogger("ratslotse.web.wahlabend")
 
@@ -160,8 +161,7 @@ def _ort(name: str) -> str:
 
 def _mayor_rows(bezirke: tuple[mayor_districts.MayorDistrict, ...]) -> list[_Row]:
     return [_Row(number=d.number, name=_ort(d.name), area=d.area, postal=d.postal, counted=d.counted,
-                 turnout_pct=(round(100 * d.voters / d.eligible, 1)
-                              if d.voters is not None and d.eligible else None),
+                 turnout_pct=exact_pct(d.voters, d.eligible) if d.voters is not None else None,
                  valid_votes=d.valid_votes, votes=dict(d.votes))
             for d in bezirke]
 
@@ -205,7 +205,7 @@ def _mayor(w: elections.Election) -> tuple[list[ElectionMapContestant], list[_Ro
 def _shares(votes: dict[str, int | None], valid: int | None) -> list[ElectionMapShare]:
     basis = valid or sum(v or 0 for v in votes.values())
     out = [ElectionMapShare(slug=s, votes=v,
-                            share_pct=round(100 * v / basis, 1) if v is not None and basis else None)
+                            share_pct=exact_pct(v, basis) if v is not None else None)
            for s, v in votes.items()]
     return sorted(out, key=lambda e: (-(e["votes"] or -1), e["slug"]))
 
@@ -220,7 +220,7 @@ def _lead(parteien: list[ElectionMapShare]) -> tuple[str | None, str | None, flo
         return None, None, 0.0  # Gleichstand: niemand „lag vorn"
     abstand = None
     if erster["share_pct"] is not None:
-        abstand = round(erster["share_pct"] - ((zweiter or {}).get("share_pct") or 0.0), 1)
+        abstand = round(erster["share_pct"] - ((zweiter or {}).get("share_pct") or 0.0), EXACT_DIGITS)
     return erster["slug"], zweiter["slug"] if zweiter else None, abstand
 
 
@@ -290,7 +290,7 @@ def build(slug: str | None = None, place: str | None = None,
         election=_choice(w), elections=[_choice(m) for m in moeglich],
         phase="before" if gezaehlt == 0 else ("complete" if gezaehlt == len(urne) else "counting"),
         contestants=wer,
-        postal_share_pct=round(100 * brief / alle, 1) if alle else None,
+        postal_share_pct=exact_pct(brief, alle),
         total=len(urne), counted=gezaehlt,
         wins=[ElectionMapWin(slug=s, districts=n) for s, n in sorted(siege.items(), key=lambda t: (-t[1], t[0]))],
         ties=gleich,
