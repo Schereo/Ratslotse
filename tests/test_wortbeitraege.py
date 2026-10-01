@@ -134,6 +134,17 @@ def test_prompt_verlangt_jede_wortmeldung_einzeln():
     assert "EIGENEN Eintrag mit eigenem Namen" in text
 
 
+def test_prompt_nimmt_protokollnotizen_auf():
+    """Gold-Fall 30.09.2026 (Trinkwasserspender, ksinr 4664 TOP 11.1): Die
+    Antwort der Verwaltung stand als Protokollnotiz ohne Sprecher im
+    Protokoll — „Klärung 2027 mit Abschluss des KLAK, danach Bau". GPT-6 Luna
+    ließ sie aus, weil der Prompt eine Wortmeldung über „eine Person spricht"
+    definierte. 1.108 Notizen in 444 Protokollen des Bestands."""
+    from kern import prompts
+    text = prompts.DEFAULTS["speeches_extract"]["template"]
+    assert "Protokollnotiz" in text and "Verwaltung (Protokollnotiz)" in text
+
+
 def test_extract_validierung(monkeypatch):
     rows = [
         {"kind": "inquiry", "top": "Ö 5", "speaker": "Ratsfrau Meyer", "party": "SPD",
@@ -964,3 +975,22 @@ def test_serien_deckel_laesst_andere_beschluesse_ins_feld():
     neu = [i for i, _ in emb.serien_deckel(hits, titel, max_je=3)]
     assert neu == [1, 2, 3, 99, 4, 5, 6]          # Serie gedeckelt, nichts verloren
     assert emb.serien_deckel(hits, titel, max_je=0) == hits
+
+def test_nachextraktion_nur_protokolle_mit_protokollnotiz(tmp_path, monkeypatch):
+    """Die gezielte Nachextraktion nimmt nur Protokolle mit Notiz — auch in
+    der Form, in der die PDF-Textschicht den Anfangsbuchstaben abtrennt."""
+    from scripts import extract_wortbeitraege as ex
+
+    db = tmp_path / "council.sqlite"
+    s = CouncilStore(db)
+    for ks, text in ((1, "Herr X antwortet. P\nrotokollnotiz: 2027."), (2, "Keine Notiz hier."),
+                     (3, "Protokollnotiz: Nachtrag.")):
+        s._conn.execute("INSERT INTO council_protocols (ksinr, raw_text, extracted_at, status, "
+                        "contributions_extracted_at) VALUES (?, ?, '2026-08-01', 'ok', "
+                        "'2026-08-16T09:00:00')", (ks, text))
+    s._conn.commit()
+    s.close()
+    stats = ex.process(db, 1, 1, neu_vor="2026-09-23", trocken=True, nur_protokollnotizen=True)
+    assert stats["geplant"] == 1          # erst gefiltert, dann gekappt
+    stats = ex.process(db, None, 1, neu_vor="2026-09-23", trocken=True, nur_protokollnotizen=True)
+    assert stats["geplant"] == 2
