@@ -34,7 +34,15 @@ NAME = "donations"
 #: „spende" fängt gefaltet auch Spender, spendet und gespendet — das Wort
 #: steckt in allen. „sponsor" und „schenkung" stehen daneben, weil beide in
 #: Ratsvorlagen für dieselbe Sache benutzt werden.
-_SPENDE = re.compile(r"spende|\bsponsor|schenkung|maezen")
+#:
+#: Ausgenommen sind Geräte: „Trinkwasserspender" ist kein Spender. Bis
+#: 01.10.2026 machte das Wort jede Frage nach öffentlichen Trinkwasser-
+#: spendern zur Geldfrage — dann unterdrückte der Rechercheplan die Debatten,
+#: und die Antwort der Verwaltung (Protokollnotiz, ASUK 16.04.2026) kam nicht
+#: in den Kontext (Gold-Fall `trinkwasserspender-draussen`: 0 %).
+_SPENDE = re.compile(
+    r"(?<!wasser)(?<!seifen)(?<!mittel)(?<!beutel)(?<!tuecher)(?<!tücher)(?<!handtuch)"
+    r"(?<!papier)(?<!kondom)(?<!sonnencreme)spende|\bsponsor|schenkung|maezen")
 #: „Zuwendung" allein feuert NICHT, und das ist gemessen und nicht Geschmack:
 #: Das Wort trägt in der Kommunalfinanzierung zwei Bedeutungen, und die
 #: häufigere ist die andere — „Zuwendungen des Landes" sind Schlüssel-

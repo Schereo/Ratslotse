@@ -700,3 +700,22 @@ def test_haushalt_fuer_begriffe_traegt_entwicklung(tmp_path):
     k = store.haushalt_fuer_begriffe(["Klima"])[0]
     assert "year_before" not in k
     store.close()
+
+
+@pytest.mark.parametrize("frage,spende", [
+    ("Wann kommen öffentliche Trinkwasserspender in Oldenburg?", False),
+    ("Gibt es Seifenspender in den Schulen?", False),
+    ("Welche Spenden hat die Stadt angenommen?", True),
+    ("Welche Spender unterstützen das Theater?", True),
+])
+def test_geraete_spender_sind_keine_spenden(frage, spende):
+    """Gold-Fall Trinkwasserspender (01.10.2026): „Spender" machte die Frage
+    zur Geldfrage, der Plan unterdrückte die Debatten — und mit ihnen die
+    Antwort der Verwaltung. Ein Gerät ist kein Spender."""
+    assert ("donations" in qa.geld_facetten(frage, "topic")) is spende
+    plan = qa._research_plan({"rechercheplan": {
+        "intent": "status", "channels": ["decisions", "press"],
+        "needs": ["dates", "current_info", "official_updates"]}})
+    kanaele = qa.research_plan_with_mandatory(plan, typ="topic", question=frage)["channels"]
+    if not spende:
+        assert "debates" in kanaele and "budget" not in kanaele
