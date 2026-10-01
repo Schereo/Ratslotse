@@ -21,6 +21,9 @@
 #   voll     alle, per nohup auf dem Server (Log: data/wortbeitraege_neu.log);
 #            tritt einem Deploy zur Seite (kern/stopp.py) — dann einfach neu starten
 #   stand    Ende des Logs und wie viele noch fällig sind
+#   vektoren zählt Beiträge ohne Vektor und rechnet sie nach (01.10.2026: der
+#            Lauf über die Protokollnotizen meldete 24.750 Vektoren für
+#            31.897 Beiträge — ohne Vektor findet die Suche einen Beitrag nie)
 name: "Ops: Wortbeiträge neu extrahieren"
 
 on:
@@ -32,9 +35,9 @@ on:
         options: [dev, prod]
         default: dev
       modus:
-        description: "trocken | einzeln | probe | voll | stand"
+        description: "trocken | einzeln | probe | voll | stand | vektoren"
         type: choice
-        options: [trocken, einzeln, probe, voll, stand]
+        options: [trocken, einzeln, probe, voll, stand, vektoren]
         default: trocken
       stichtag:
         description: "Neu extrahieren, was VOR diesem Zeitpunkt entstand (UTC, JJJJ-MM-TTTHH:MM)"
@@ -129,4 +132,22 @@ jobs:
                 tail -n 15 "$LOG" || echo "noch kein Log"
                 if laeuft; then echo "→ läuft noch (PID $(cat "$PID"))"; else echo "→ läuft nicht"; fi
                 $PY scripts/extract_wortbeitraege.py --neu-vor "$STICHTAG" $FILTER --trocken ;;
+              vektoren)
+                $PY - <<'PY'
+            from council.store import CouncilStore
+            from council import embeddings as emb
+            s = CouncilStore("data/council.sqlite")
+            def fehlend():
+                return s._conn.execute(
+                    "SELECT COUNT(*) FROM council_speeches w LEFT JOIN council_speeches_embeddings e "
+                    "ON e.contribution_id = w.id WHERE e.contribution_id IS NULL").fetchone()[0]
+            gesamt = s._conn.execute("SELECT COUNT(*) FROM council_speeches").fetchone()[0]
+            vorher = fehlend()
+            print(f"Beiträge {gesamt}, ohne Vektor vorher: {vorher}", flush=True)
+            if vorher:
+                print(f"nachgerechnet: {emb.embed_wortbeitraege_missing(s)}", flush=True)
+            print(f"ohne Vektor nachher: {fehlend()}", flush=True)
+            s.close()
+            PY
+                ;;
             esac
