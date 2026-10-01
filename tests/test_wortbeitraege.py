@@ -975,6 +975,14 @@ def test_serien_deckel_laesst_andere_beschluesse_ins_feld():
     neu = [i for i, _ in emb.serien_deckel(hits, titel, max_je=3)]
     assert neu == [1, 2, 3, 99, 4, 5, 6]          # Serie gedeckelt, nichts verloren
     assert emb.serien_deckel(hits, titel, max_je=0) == hits
+    # Gleicher Titel in VERSCHIEDENEN Gremien ist keine Serie: Der Rats-
+    # beschluss zum Mobilitätsplan fiel sonst hinter vier Ausschuss-Punkte.
+    mp = [(i, 1.0 - i / 100) for i in range(1, 6)]
+    t = {i: "Mobilitätsplan Oldenburg 2030" for i in range(1, 6)}
+    g = {1: "Wirtschaft", 2: "Stadtgrün", 3: "Stadtplanung", 4: "Soziales", 5: "Rat"}
+    assert [i for i, _ in emb.serien_deckel(mp, t, g, max_je=3)] == [1, 2, 3, 4, 5]
+    gleich = {i: "Finanzen" for i in range(1, 7)}
+    assert [i for i, _ in emb.serien_deckel(hits, titel, {**gleich, 99: "Rat"}, max_je=3)] == [1, 2, 3, 99, 4, 5, 6]
 
 def test_nachextraktion_nur_protokolle_mit_protokollnotiz(tmp_path, monkeypatch):
     """Die gezielte Nachextraktion nimmt nur Protokolle mit Notiz — auch in
