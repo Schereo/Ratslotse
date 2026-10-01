@@ -477,6 +477,19 @@ private struct CommitteeOnboardingStep: View {
     private func load() async {
         loading = true
         error = nil
+#if DEBUG
+        if ratsDebugValue("RATSLOTSE_DEBUG_COMMITTEES") == "1" {
+            committees = [
+                "Rat der Stadt Oldenburg", "Ausschuss für Stadtplanung und Bauen", "Verkehrsausschuss",
+                "Ausschuss für Stadtgrün, Umwelt und Klima", "Schulausschuss", "Sozialausschuss",
+                "Jugendhilfeausschuss", "Ausschuss für Finanzen und Beteiligungen", "Kulturausschuss",
+                "Sportausschuss", "Ausschuss für Integration und Migration",
+            ]
+            subscriptions = ["Verkehrsausschuss"]
+            loading = false
+            return
+        }
+#endif
         do {
             async let committeeRequest: CommitteeResponse = model.api.get("/api/council/committees")
             async let subscriptionRequest: SubscriptionResponse = model.api.get("/api/subscriptions")
@@ -522,22 +535,22 @@ private struct CommitteeChoiceRow: View {
     var body: some View {
         Button(action: action) {
             HStack(alignment: .top, spacing: 12) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 5, style: .continuous)
-                        .fill(selected ? RatsColor.primary : RatsColor.card)
-                    RoundedRectangle(cornerRadius: 5, style: .continuous)
-                        .stroke(selected ? RatsColor.primary : RatsColor.muted, lineWidth: 1.6)
-                    if disabled {
-                        ProgressView()
-                            .controlSize(.mini)
-                            .tint(selected ? RatsColor.primaryText : RatsColor.primary)
-                    } else if selected {
-                        RatsIcon(.check, size: 11)
-                            .foregroundStyle(RatsColor.primaryText)
-                    }
+                // Lotti mit einem Requisit aus dem Sachbereich (Asset-Katalog,
+                // `Committee<Key>`); Gremien ohne Bild behalten das Kästchen vorn.
+                if let asset = CommitteeCopy.imageAssetName(committee) {
+                    Image(asset)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 52, height: 52)
+                        .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 11, style: .continuous)
+                                .stroke(selected ? RatsColor.primary : Color.clear, lineWidth: 2)
+                        )
+                        .accessibilityHidden(true)
+                } else {
+                    checkbox
                 }
-                .frame(width: 22, height: 22)
-                .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(CommitteeCopy.short(committee))
                         .font(RatsFont.body(14, weight: .semibold))
@@ -550,6 +563,7 @@ private struct CommitteeChoiceRow: View {
                     }
                 }
                 Spacer(minLength: 0)
+                if CommitteeCopy.imageAssetName(committee) != nil { checkbox }
             }
             .padding(12)
             .background(selected ? RatsColor.primary.opacity(0.05) : RatsColor.card)
@@ -563,11 +577,61 @@ private struct CommitteeChoiceRow: View {
         .disabled(disabled)
         .accessibilityValue(selected ? "Abonniert" : "Nicht abonniert")
     }
+
+    private var checkbox: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 5, style: .continuous)
+                .fill(selected ? RatsColor.primary : RatsColor.card)
+            RoundedRectangle(cornerRadius: 5, style: .continuous)
+                .stroke(selected ? RatsColor.primary : RatsColor.muted, lineWidth: 1.6)
+            if disabled {
+                ProgressView()
+                    .controlSize(.mini)
+                    .tint(selected ? RatsColor.primaryText : RatsColor.primary)
+            } else if selected {
+                RatsIcon(.check, size: 11)
+                    .foregroundStyle(RatsColor.primaryText)
+            }
+        }
+        .frame(width: 22, height: 22)
+        .accessibilityHidden(true)
+    }
 }
 
 private struct TopicSuggestionResponse: Decodable, Sendable {
     let suggestions: [TopicSuggestion]
+    /// Die kuratierten Stadtthemen (Radverkehr, Kitas, Schwimmbäder …) mit Bild.
+    /// Optional, damit ein älterer Server die Antwort nicht kippt.
+    let city: [CityTopicSuggestion]?
 }
+
+/// Ein kuratiertes Stadtthema aus `council/city_topics.py`. `key` ist der
+/// Schlüssel der Registry; daran hängen das Bild (`Theme<Key>` im
+/// Asset-Katalog) und die Zählung.
+private struct CityTopicSuggestion: Decodable, Sendable, Identifiable {
+    var id: String { key }
+    let key: String
+    let name: String
+    let description: String
+    let context: String?
+    let n: Int
+
+    var imageAssetName: String { "Theme" + key.prefix(1).uppercased() + key.dropFirst() }
+    var chipID: String { "city_topic:\(key)" }
+}
+
+/// Was der Assistent angeboten und was jemand gewählt hat — ein anonymer
+/// Zähler (`POST /api/onboarding/chips`, Positivliste im Backend). Die
+/// Kennungen sind dieselben wie im Web.
+private struct OnboardingChipsBody: Encodable, Sendable {
+    let gezeigt: [String]
+    let gewaehlt: [String]
+}
+
+/// Mehr als so viele Stadtteile nimmt der Assistent nicht an — wie im Web
+/// (`MAX_STADTTEILE`): Die Auswahl ist der leichteste Klick im Ablauf, und
+/// ohne Grenze bestanden neue Konten fast nur daraus.
+private let maxOnboardingDistricts = 3
 
 private struct TopicSuggestion: Decodable, Sendable, Identifiable {
     var id: String { name }
@@ -636,6 +700,59 @@ private struct TopicSuggestionChoice: View {
     }
 }
 
+/// Ein Stadtthema als Kachel mit Bild: Bild links, Name und Beschlusszahl rechts.
+/// Kacheln statt Pillen, seit neue Konten fast nur Stadtteile wählten — „Bus und
+/// Bahn" als Text ist abstrakt, ein kleiner Bus ist es nicht.
+private struct CityTopicTile: View {
+    let city: CityTopicSuggestion
+    let exists: Bool
+    let disabled: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 9) {
+                Image(city.imageAssetName)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 46, height: 46)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(city.name)
+                        .font(RatsFont.body(12.5, weight: .semibold))
+                        .foregroundStyle(exists ? RatsColor.primary : RatsColor.text)
+                        .multilineTextAlignment(.leading)
+                        .lineLimit(3)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(city.n == 1 ? "1 Beschluss" : "\(city.n) Beschlüsse")
+                        .font(RatsFont.body(10.5))
+                        .foregroundStyle(RatsColor.secondary)
+                }
+                Spacer(minLength: 0)
+                if exists {
+                    RatsIcon(.check, size: 14)
+                        .foregroundStyle(RatsColor.primary)
+                        .accessibilityHidden(true)
+                }
+            }
+            .padding(8)
+            .frame(maxWidth: .infinity, minHeight: 62, alignment: .leading)
+            .background(exists ? RatsColor.primary.opacity(0.06) : RatsColor.card)
+            .overlay(
+                RoundedRectangle(cornerRadius: 13, style: .continuous)
+                    .stroke(exists ? RatsColor.primary.opacity(0.4) : RatsColor.border)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+        }
+        .buttonStyle(RatsPlainButtonStyle())
+        .disabled(disabled)
+        .accessibilityLabel(exists
+            ? "\(city.name), schon bei deinen Themen"
+            : "\(city.name), \(city.n) Beschlüsse in den letzten 12 Monaten")
+    }
+}
+
 private struct TopicDescriptionResult: Decodable, Sendable {
     let name: String
     let description: String
@@ -650,6 +767,8 @@ private struct TopicOnboardingStep: View {
     @State private var name = ""
     @State private var topics: [Topic] = []
     @State private var suggestions: [TopicSuggestion] = []
+    @State private var cityTopics: [CityTopicSuggestion] = []
+    @State private var offerReported = false
     @State private var districts: [DistrictOption] = []
     @State private var selectedDistrictID = ""
     @State private var addingDistrict = false
@@ -682,10 +801,6 @@ private struct TopicOnboardingStep: View {
                     .font(RatsFont.body(11.5))
                     .foregroundStyle(RatsColor.secondary)
 
-                if !districts.isEmpty {
-                    favoriteDistrictPicker
-                }
-
                 if let error {
                     Text(error)
                         .font(RatsFont.body(12))
@@ -709,6 +824,28 @@ private struct TopicOnboardingStep: View {
                         .transition(.move(edge: .top).combined(with: .opacity))
                 }
 
+                // Die Stadtthemen ZUERST, der Stadtteil danach: Mit der Auswahl
+                // eines Stadtteils ist man mit dem Themen-Sammeln schnell fertig,
+                // bevor die Themen überhaupt an der Reihe sind (Befund 30.09.2026:
+                // 71 % der gewählten Themen waren Stadtteile).
+                if !cityTopics.isEmpty {
+                    VStack(alignment: .leading, spacing: 9) {
+                        MonoKicker("Gerade in Oldenburg", trailing: "letzte 12 Monate")
+                        LazyVGrid(columns: cityColumns, spacing: 8) {
+                            ForEach(cityTopics) { city in
+                                let exists = topics.contains { $0.name == city.name }
+                                CityTopicTile(city: city, exists: exists, disabled: exists || isWorking) {
+                                    addCityTopic(city)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if !districts.isEmpty {
+                    favoriteDistrictPicker
+                }
+
                 if !suggestions.isEmpty {
                     VStack(alignment: .leading, spacing: 9) {
                         MonoKicker("Gerade aktuell im Rat", trailing: "letzte 12 Monate")
@@ -730,6 +867,14 @@ private struct TopicOnboardingStep: View {
                         MonoKicker("Deine Themen", trailing: "\(topics.count)")
                         ForEach(topics) { topic in
                             HStack(alignment: .top, spacing: 9) {
+                                if let asset = topic.imageAssetName {
+                                    Image(asset)
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: 34, height: 34)
+                                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                                        .accessibilityHidden(true)
+                                }
                                 VStack(alignment: .leading, spacing: 5) {
                                     Text(topic.name).font(RatsFont.body(14, weight: .semibold))
                                     Text(topic.description)
@@ -883,6 +1028,14 @@ private struct TopicOnboardingStep: View {
         name.trimmingCharacters(in: .whitespacesAndNewlines).count >= 2 && !isWorking
     }
 
+    private var cityColumns: [GridItem] {
+        if horizontalSizeClass == .regular {
+            [GridItem(.adaptive(minimum: 220), spacing: 8)]
+        } else {
+            [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)]
+        }
+    }
+
     private var suggestionColumns: [GridItem] {
         if horizontalSizeClass == .regular {
             [GridItem(.adaptive(minimum: 230), spacing: 10)]
@@ -902,6 +1055,11 @@ private struct TopicOnboardingStep: View {
                 TopicSuggestion(name: "Quartier am Krusenbusch", description: "", context: "Wohnen und Infrastruktur im Süden", n: 4),
                 TopicSuggestion(name: "Weser-Ems-Hallen", description: "", context: "Veranstaltungszentrum und Umfeld", n: 3),
             ]
+            cityTopics = [
+                ("cycling", "Radverkehr", 8), ("stadium", "Stadion-Neubau", 25), ("pools", "Schwimmbäder", 17),
+                ("green", "Bäume und Stadtgrün", 14), ("childcare", "Kitas", 6), ("culture", "Theater, Museen und Kultur", 17),
+                ("transit", "Bus und Bahn", 18), ("sports", "Sporthallen und Sportplätze", 24),
+            ].map { CityTopicSuggestion(key: $0.0, name: $0.1, description: "", context: nil, n: $0.2) }
             return
         }
 #endif
@@ -912,9 +1070,11 @@ private struct TopicOnboardingStep: View {
             let result = try await (topicRequest, suggestionRequest, districtRequest)
             topics = result.0
             suggestions = result.1.suggestions
+            cityTopics = result.1.city ?? []
             districts = (result.2?.districts ?? []).sorted {
                 $0.name.localizedStandardCompare($1.name) == .orderedAscending
             }
+            reportOffer()
             if selectedDistrictID.isEmpty,
                let district = districts.first(where: { district in
                    topics.contains { $0.name.localizedCaseInsensitiveCompare(district.name) == .orderedSame }
@@ -949,10 +1109,46 @@ private struct TopicOnboardingStep: View {
                     note = "\(described.matches) passende Beschlüsse gefunden."
                 }
                 try await createTopic(name: described.name, description: described.description)
+                report(picked: ["own"])
                 showSuccess("„\(described.name)“ wird jetzt beobachtet.")
                 name = ""
             } catch { self.error = error.localizedDescription }
         }
+    }
+
+    private func addCityTopic(_ city: CityTopicSuggestion) {
+        guard !isWorking else { return }
+        isWorking = true
+        error = nil
+        report(picked: [city.chipID])
+        Task {
+            defer { isWorking = false }
+            do {
+                try await createTopic(name: city.name, description: city.description)
+                note = nil
+                showSuccess("„\(city.name)“ wurde zu deinen Themen hinzugefügt.")
+            } catch { self.error = error.localizedDescription }
+        }
+    }
+
+    /// Anzeigen und Wahlen zählen — fire and forget, ein Zähler darf den
+    /// Assistenten nie aufhalten.
+    private func report(shown: [String] = [], picked: [String] = []) {
+        guard !shown.isEmpty || !picked.isEmpty else { return }
+        let api = model.api
+        Task {
+            try? await api.sendVoid(
+                "/api/onboarding/chips",
+                body: OnboardingChipsBody(gezeigt: shown, gewaehlt: picked)
+            )
+        }
+    }
+
+    /// Das Angebot einmal je Besuch des Schritts melden.
+    private func reportOffer() {
+        guard !offerReported else { return }
+        offerReported = true
+        report(shown: cityTopics.map(\.chipID) + (districts.isEmpty ? [] : ["district"]))
     }
 
     private func addSuggestion(_ suggestion: TopicSuggestion) {
@@ -976,6 +1172,14 @@ private struct TopicOnboardingStep: View {
             showSuccess("„\(district.name)“ wird bereits als Stadtteil beobachtet.")
             return
         }
+        // Drei Stadtteile reichen für den Anfang; weitere gehen später unter „Themen".
+        let chosen = districts.filter { d in
+            topics.contains { $0.name.localizedCaseInsensitiveCompare(d.name) == .orderedSame }
+        }
+        if chosen.count >= maxOnboardingDistricts {
+            error = "\(maxOnboardingDistricts) Stadtteile reichen für den Anfang — so bleibt die Übersicht ruhig. Weitere kannst du jederzeit unter „Themen“ ergänzen."
+            return
+        }
         let previousSelection = selectedDistrictID
         selectedDistrictID = district.placeID
         addingDistrict = true
@@ -992,6 +1196,7 @@ private struct TopicOnboardingStep: View {
                     description = "Neue Beschlüsse, Planungen und Maßnahmen des Oldenburger Stadtrats mit Bezug zu \(district.name)."
                 }
                 try await createTopic(name: district.name, description: description)
+                report(picked: ["district"])
                 showSuccess("\(district.name) ist jetzt dein beobachteter Stadtteil.")
             } catch {
                 selectedDistrictID = previousSelection
@@ -1202,6 +1407,28 @@ private enum CommitteeCopy {
             break
         }
         return value.replacingOccurrences(of: " und ", with: " & ")
+    }
+
+    /// Schlüssel der Gremienbilder — dieselbe Zuordnung wie `BILDER` in
+    /// `web/frontend/lib/committees.ts`; die Bilder liegen als `Committee<Key>`
+    /// im Asset-Katalog (`scripts/ios_themenbilder.py`).
+    private static let imageKeys = [
+        "Rat": "council", "Verwaltungsausschuss": "executive",
+        "Allgemeine Angelegenheiten": "general", "Finanzen & Beteiligungen": "finance",
+        "Integration & Migration": "integration", "Stadtgrün & Klima": "green",
+        "Umwelt & Klima": "green", "Stadtplanung & Bauen": "planning",
+        "Wirtschaft & Digitales": "business", "Abfallwirtschaft": "waste",
+        "Betrieb Gebäudewirtschaft": "buildings", "Jugendhilfe": "youth",
+        "Kultur": "culture", "Schule": "school", "Soziales": "social",
+        "Sport": "sport", "Verkehr": "traffic",
+    ]
+
+    static var imageKeyList: [String] { Array(Set(imageKeys.values)).sorted() }
+
+    /// Name des Gremienbildes im Asset-Katalog, `nil` für ein Gremium ohne Bild.
+    static func imageAssetName(_ committee: String) -> String? {
+        guard let key = imageKeys[short(committee)] else { return nil }
+        return "Committee" + key.prefix(1).uppercased() + key.dropFirst()
     }
 
     static func explanation(_ committee: String) -> String? { explanations[short(committee)] }

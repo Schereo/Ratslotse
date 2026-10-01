@@ -543,3 +543,17 @@ import Testing
     #expect(d.documents.first?.protocolSource == "withheld")
     #expect(d.similar.first?.cities == 6)
 }
+
+@Test func topicCarriesTheImageOfACuratedCityTopic() throws {
+    // `image_key` kommt vom Server für ein Thema, das so heißt wie ein Stadtthema;
+    // daran hängt das Bild im Asset-Katalog (`ThemeCycling`). Fehlt es, hat das
+    // Thema kein Bild — und die Antwort bricht deshalb nicht.
+    let with = #"{"id": 1, "name": "Radverkehr", "description": "Radwege", "image_key": "cycling"}"#
+    let without = #"{"id": 2, "name": "Schulwegsicherheit", "description": "Schulwege", "image_key": null}"#
+    let missing = #"{"id": 3, "name": "Eigenes", "description": "Ohne Feld"}"#
+
+    let decoder = JSONDecoder()
+    #expect(try decoder.decode(Topic.self, from: Data(with.utf8)).imageAssetName == "ThemeCycling")
+    #expect(try decoder.decode(Topic.self, from: Data(without.utf8)).imageAssetName == nil)
+    #expect(try decoder.decode(Topic.self, from: Data(missing.utf8)).imageAssetName == nil)
+}
