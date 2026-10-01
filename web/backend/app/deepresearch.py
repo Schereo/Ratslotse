@@ -388,7 +388,8 @@ def _run(job: DeepJob, ratslotse_db: str, council_db: str) -> None:
                 # Debatte dazu, auch wenn sie Fachsprache spricht.
                 have = {d["id"] for d in debatten_rows}
                 debatten_rows += [w for w in store.wortbeitraege_zu_beschluessen(
-                    candidates[:10], max_gesamt=8) if w["id"] not in have]
+                    candidates[:10], max_gesamt=8, begriffe=f"{job.suchfrage} {begriffe_alle}")
+                    if w["id"] not in have]
                 qa.parteien_aufloesen(store, debatten_rows)
             except Exception:  # noqa: BLE001
                 pass

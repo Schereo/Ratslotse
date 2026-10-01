@@ -415,9 +415,33 @@ class WortbeitraegeMixin(StoreBasis):
         rest = re.sub(r"[^0-9a-zäöüß]+", " ", rest.lower().replace("ß", "ss")).strip()
         return nummer, rest
 
+    #: Wörter, die eine Frage trägt, ohne etwas über ihren Gegenstand zu sagen.
+    _FRAGE_GERUEST = frozenset({
+        "stand", "sachstand", "aktuell", "aktuelle", "aktuellen", "zuletzt", "neueste",
+        "neuesten", "wurde", "wurden", "werden", "worden", "diese", "dieser", "dieses",
+        "gibt", "haben", "beim", "einen", "einer", "eines",
+    })
+
+    @classmethod
+    def _frage_staemme(cls, begriffe: str) -> list[str]:
+        """Sechs-Buchstaben-Stämme der Fragewörter („Schlossplatzes" ~ „Schlossplatz")."""
+        gefaltet = (begriffe or "").lower().translate(
+            str.maketrans({"ä": "a", "ö": "o", "ü": "u", "ß": "s"}))
+        woerter = re.findall(r"[a-z]{5,}", gefaltet)
+        return list(dict.fromkeys(
+            w[:6] for w in woerter if w not in cls._FRAGE_GERUEST))
+
+    @staticmethod
+    def _naehe(row, staemme: list[str]) -> int:
+        """Wie viele Fragestämme stehen im Beitrag (Punkt + Text + Antwort)?"""
+        text = " ".join(str(row[k] or "") for k in ("top", "text", "answer")).lower().translate(
+            str.maketrans({"ä": "a", "ö": "o", "ü": "u", "ß": "s"}))
+        return sum(1 for s in staemme if s in text)
+
     def wortbeitraege_zu_beschluessen(self, decisions: list[dict], max_gesamt: int = 6,
                                       max_je_top: int = 4,
-                                      speaker: str = "") -> list[dict]:
+                                      speaker: str = "",
+                                      begriffe: str = "") -> list[dict]:
         """Die Debatte, die zu diesen Beschlüssen GEHÖRT — über die Station,
         nicht über Wortähnlichkeit.
 
@@ -432,6 +456,15 @@ class WortbeitraegeMixin(StoreBasis):
         Gekoppelt wird über Sitzung (ksinr) UND Tagesordnungspunkt; Sammel-TOPs
         („Anfragen und Anregungen“) bleiben außen vor, und die Menge ist hart
         gedeckelt — der Kanal soll ergänzen, nicht den Kontext fluten.
+
+        ``begriffe`` (die Frage samt Erweiterung) sortiert INNERHALB einer
+        Sitzung nach Nähe zur Frage, bevor die Deckel greifen. Ohne das gilt
+        die Protokollreihenfolge: Beim Schlossplatz-Spielplatz (ksinr 4664,
+        TOP 7, 12 Beiträge) füllten Einführung, Behrens und zweimal Sprenger die
+        vier Plätze, und Pienings Begründung (Denkmalschutz, kein Planrecht,
+        Heiligengeistpark) wurde nie gelesen — gleichgültig, wie gut sie
+        extrahiert war (30.09.2026). Die Reihenfolge der Sitzungen bleibt:
+        neueste zuerst.
         """
         stationen: dict[int, list[tuple[str | None, str, int]]] = {}
         for d in decisions:
@@ -458,6 +491,12 @@ class WortbeitraegeMixin(StoreBasis):
                 LEFT JOIN council_sessions cs ON cs.ksinr = w.ksinr
                 WHERE w.ksinr IN ({ph}) AND w.top IS NOT NULL{sprecher_filter}
                 ORDER BY cs.session_date DESC, w.id""", params).fetchall()
+        staemme = self._frage_staemme(begriffe)
+        if staemme:
+            # Neueste Sitzung zuerst, darin die nächsten zuerst. `reverse` lässt
+            # gleiche Schlüssel in der Protokollreihenfolge (Python sortiert stabil).
+            rows = sorted(rows, key=lambda r: (r["session_date"] or "", r["ksinr"],
+                                               self._naehe(r, staemme)), reverse=True)
         treffer: list[dict] = []
         je_top: dict[tuple[int, str], int] = {}
         for r in rows:
