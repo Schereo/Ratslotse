@@ -290,7 +290,8 @@ def hybrid_search(store, query: str, expanded: str, top_k: int = 25, pool: int =
                     ranked, store.session_dates_fuer([i for i, _ in ranked]))
             except Exception:  # noqa: BLE001 — Bonus ist Zusatz, nie Blocker
                 pass
-        ranked = serien_deckel(ranked, {d["id"]: d.get("title") for d in docs})
+        ranked = serien_deckel(ranked, {d["id"]: d.get("title") for d in docs},
+                               {d["id"]: d.get("committee") for d in docs})
         ranked = ranked[:top_k]
         if timings is not None:
             timings["rerank_ms"] = round((time.perf_counter() - t2) * 1000)
@@ -308,8 +309,10 @@ _SERIE_ZUSATZ = re.compile(r"\s*[-–]\s*(beschluss|bericht|sachstandsbericht)\s
 
 
 def serien_deckel(hits: list[tuple], titel: dict[int, str | None],
+                  gremium: dict[int, str | None] | None = None,
                   max_je: int | None = None) -> list[tuple]:
-    """Von einer Serie wortgleicher Beschlüsse nur die stärksten ``max_je`` vorn.
+    """Von einer Serie wortgleicher Beschlüsse DESSELBEN Gremiums nur die
+    stärksten ``max_je`` vorn.
 
     **Warum.** „Wie ist der Stand beim Stadionneubau?" (Gold-Fall, 30.09.2026):
     25 monatliche „Sachstandsbericht Stadionplanung" des Finanzausschusses —
@@ -317,6 +320,12 @@ def serien_deckel(hits: list[tuple], titel: dict[int, str | None],
     steht nur im Protokoll — belegten das Feld. Der Ratsbeschluss zur Vergabe
     vom 01.06.2026 kam auf Rang 41 (Schnitt bei 40), Bürgschaft und
     Bebauungsplan auf 48 und 56. Mit drei je Serie: 18, 24, 30.
+
+    **Je Gremium, nicht über alle.** Die erste Fassung zählte gleiche Titel
+    über alle Gremien: „Mobilitätsplan Oldenburg 2030“ heißt im Rat und in
+    vier Ausschüssen genau so, und der Deckel schob den Ratsbeschluss vom
+    26.06.2023 von Rang 4 aus dem Feld (Gold-Fall, 01.10.2026). Eine Serie ist
+    dasselbe Gremium, das denselben Punkt immer wieder aufruft.
 
     Die übrigen rücken ans Ende, in ihrer Reihenfolge — weg sind sie nicht.
     Die Relevanz entscheidet wie vorher; eine Serie belegt nur nicht mehr das
@@ -329,6 +338,8 @@ def serien_deckel(hits: list[tuple], titel: dict[int, str | None],
     hinten: list[tuple] = []
     for h in hits:
         t = _SERIE_ZUSATZ.sub("", " ".join((titel.get(h[0]) or "").lower().split()))
+        if t and gremium:
+            t = f"{(gremium.get(h[0]) or '').lower()}|{t}"
         zaehler[t] = zaehler.get(t, 0) + 1
         (vorn if not t or zaehler[t] <= grenze else hinten).append(h)
     return vorn + hinten
