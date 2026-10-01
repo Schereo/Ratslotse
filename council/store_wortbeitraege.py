@@ -415,6 +415,18 @@ class WortbeitraegeMixin(StoreBasis):
         rest = re.sub(r"[^0-9a-zäöüß]+", " ", rest.lower().replace("ß", "ss")).strip()
         return nummer, rest
 
+    def title_frequencies(self, words: list[str]) -> dict[str, int]:
+        """How many decision titles contain each word (case-insensitive for the
+        first letter, so „trinkwasserspender" matches the noun in a title).
+        Used to tell a carrying term of a question from a common one."""
+        out: dict[str, int] = {}
+        for w in words:
+            row = self._conn.execute(
+                "SELECT COUNT(*) FROM council_decisions WHERE title LIKE ? OR title LIKE ?",
+                (f"%{w}%", f"%{w[:1].upper()}{w[1:]}%")).fetchone()
+            out[w] = int(row[0]) if row else 0
+        return out
+
     def wortbeitraege_zu_beschluessen(self, decisions: list[dict], max_gesamt: int = 6,
                                       max_je_top: int = 4,
                                       speaker: str = "") -> list[dict]:
