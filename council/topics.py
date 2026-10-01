@@ -134,8 +134,16 @@ def classify_batch(decisions: list[dict], model: str = MODEL):
         except json.JSONDecodeError as exc:
             last_err = exc
             continue
+        # Das Modell antwortet bisweilen mit der nackten Liste statt
+        # {"results": [...]}. `data.get` warf dann einen AttributeError, den
+        # niemand fing — und der ganze Stapel ging verloren (Nachlauf
+        # „Gilt als behandelt“, 01.10.2026: 23 Themen-Sätze geleert).
+        results = (data.get("results", []) if isinstance(data, dict)
+                   else data if isinstance(data, list) else [])
         out: dict[int, dict] = {}
-        for r in data.get("results", []):
+        for r in results:
+            if not isinstance(r, dict):
+                continue
             try:
                 rid = int(r["id"])
             except (KeyError, TypeError, ValueError):
