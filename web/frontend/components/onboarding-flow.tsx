@@ -10,13 +10,14 @@ import { isNativeApp } from "@/lib/platform";
 import { cn, pfad } from "@/lib/utils";
 import { Button, Input, toast } from "@/components/ui";
 import { Mascot, type MascotPose } from "@/components/mascot";
-import { committeeExplains, committeeIcon, committeeRank, shortCommittee } from "@/lib/committees";
+import { committeeExplains, committeeIcon, committeeImage, committeeRank, shortCommittee } from "@/lib/committees";
 import { useAuth } from "@/lib/auth";
 import { darfAdmin } from "@/lib/rechte";
 import { TopicSheet, type Described } from "@/components/topic-sheet";
 import { einladungStand, merkeEinladung } from "@/lib/tour-einladung";
 import { StadtteilKarte } from "@/components/stadtteil-karte";
 import { useVollbildMelden } from "@/lib/vollbild";
+import { meldeChips, stadtthemaBild, stadtthemaChip } from "@/lib/onboarding-chips";
 
 /** Design 26a — geführtes Onboarding: einrichten statt nur vorstellen.
  *
@@ -79,9 +80,15 @@ const SchrittKontext = createContext<Step>(1);
  *  steht die Leiste neben ihrem eigenen Schritt. 1040 statt 980, damit die
  *  Antwortspalte rechts 650 px behält — genug für zwei Gremien nebeneinander. */
 const SPALTE = "mx-auto w-full max-w-[1040px]";
-/** Vier Schritte: Gremien, Stadtteil, Themen, Mitteilungen. Die App kennt den
+/** Vier Schritte: Gremien, Themen, Stadtteil, Mitteilungen. Die App kennt den
  *  Stadtteil-Schritt (noch) nicht und läuft mit drei — deshalb steht die Zahl
- *  hier und nicht als `3` an fünf Stellen im Markup. */
+ *  hier und nicht als `3` an fünf Stellen im Markup.
+ *
+ *  **Themen VOR Stadtteil** (seit 30.09.2026). Davor stand der Stadtteil an
+ *  zweiter Stelle, und neue Konten nahmen fast nur Stadtteile: sieben von acht
+ *  Konten seit dem 20.09., 44 von 62 Themen. Eine Karte mit einem Klick je
+ *  Fläche schlägt jede Liste von Begriffen — kommt sie zuerst, ist der Mensch
+ *  mit dem Thema-Sammeln fertig, bevor die Themen an der Reihe sind. */
 const SCHRITTE = 4;
 /** Am Desktop zweispaltig: links Lotti, die Frage und der Schritt-Pfad, rechts
  *  die Antwortfläche. Darunter (`lg` = 1024 px) bleibt es einspaltig. 280 statt
@@ -428,13 +435,13 @@ export function OnboardingFlow() {
           </div>
 
           {step === 1 && <CommitteeStep onNext={() => go(2)} />}
-          {/* Der Stadtteil steht VOR den Themen und ist ein eigener Schritt: Er ist
-              die eine Angabe, die fast alle machen wollen und die den Themen-
-              Schritt danach überhaupt erst persönlich macht — dort stehen dann
-              Vorschläge „aus deinem Stadtteil" neben den stadtweiten. Als Beiwerk
-              im Themen-Schritt (bis 09/2026) ging beides unter. */}
-          {step === 2 && <StadtteilStep onNext={() => go(3)} />}
-          {step === 3 && <TopicStep onNext={() => go(4)} />}
+          {/* Die Themen kommen zuerst (s. `SCHRITTE`), der Stadtteil danach als
+              eigener Schritt: Er ist die Angabe, die fast alle machen wollen —
+              und dort stehen dann auch die Vorschläge „aus deinen Stadtteilen".
+              Als Beiwerk im Themen-Schritt (bis 09/2026) ging der Stadtteil
+              unter; vor den Themen (bis 30.09.2026) verdrängte er sie. */}
+          {step === 2 && <TopicStep onNext={() => go(3)} />}
+          {step === 3 && <StadtteilStep onNext={() => go(4)} />}
           {/* Schritt 4 fragt auf beiden Plattformen dasselbe („Soll Lotti sich
               melden?") — aber der Browser kann keine Push-Erlaubnis geben, dort
               geht es um die E-Mail. */}
@@ -603,13 +610,22 @@ function CommitteeStep({ onNext }: { onNext: () => void }) {
   );
 }
 
-/** Das Zeichen des Gremiums auf getönter Scheibe (Primär-Tint /8, DESIGNSPRACHE
- *  §2); gewählt = gefüllt. Eine eigene Komponente, obwohl sie klein ist: Genau
- *  hier soll später Lottis Gremien-Variante stehen, sobald es die Sprites gibt
- *  (s. `committeeIcon` in lib/committees.ts) — dann ändert sich diese Funktion
- *  und keine Kachel. */
+/** Lotti mit einem Requisit aus dem Sachbereich des Gremiums (`public/gremien/`);
+ *  gewählt = Ring in der Primärfarbe. Gremien ohne Bild und unbekannte behalten
+ *  das Zeichen auf getönter Scheibe (Primär-Tint /8, DESIGNSPRACHE §2; gewählt =
+ *  gefüllt). Eine eigene Komponente, damit keine Kachel davon weiß. */
 function GremiumZeichen({ committee, aktiv }: { committee: string; aktiv: boolean }) {
   const Icon = committeeIcon(committee);
+  const bild = committeeImage(committee);
+  if (bild) {
+    return (
+      // Feste 256-px-Dateien aus dem Repo; `next/image` bringt im statischen Export nichts.
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={bild} alt="" width={56} height={56} loading="lazy" decoding="async"
+        className={cn("h-14 w-14 shrink-0 rounded-xl bg-muted object-cover transition-shadow",
+                      aktiv && "ring-2 ring-primary ring-offset-2 ring-offset-background")} />
+    );
+  }
   return (
     <span aria-hidden className={cn(
       "flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] transition-colors",
@@ -620,7 +636,7 @@ function GremiumZeichen({ committee, aktiv }: { committee: string; aktiv: boolea
   );
 }
 
-/* -------------------------------------------------- Schritt 2: Stadtteil --- */
+/* -------------------------------------------------- Schritt 3: Stadtteil --- */
 
 type Ortsbereich = {
   place_id: string; name: string; kind?: string;
@@ -668,7 +684,73 @@ function ortsBeschreibung(ort: Ortsbereich): string {
     : `Neue Beschlüsse, Planungen und Maßnahmen des Oldenburger Stadtrats mit Bezug zu ${ort.name}.`;
 }
 
-/** Schritt 2 — die Stadtteile, die jemanden interessieren.
+/** Mehr als so viele Stadtteile nimmt der Assistent nicht an. Eine Karte mit
+ *  einem Klick je Fläche ist die leichteste Wahl im ganzen Ablauf: Am
+ *  30.09.2026 standen bei einem Konto acht Stadtteile und sonst nichts. Drei
+ *  reichen für den Start, mehr lassen sich später unter „Themen" ergänzen —
+ *  dort ist die Grenze keine. */
+const MAX_STADTTEILE = 3;
+
+/** Die Vorschläge „aus deinen Stadtteilen" — je gewähltem Stadtteil ein Aufruf,
+ *  einer nach dem anderen.
+ *
+ *  EIN Aufruf JE STADTTEIL statt einem für alle: Der Endpunkt beurteilt jeden
+ *  noch nie gesehenen Vorschlag einmal per Modell; bei zwei, drei Stadtteilen
+ *  wartete man vorher auf den letzten, bevor der erste erschien (Tims Befund,
+ *  03.09.2026). Getrennt gefragt steht jede Gruppe da, sobald sie fertig ist.
+ *
+ *  NACHEINANDER, nicht gleichzeitig: Jeder Aufruf bekommt mit `exclude` zu
+ *  hören, was oben schon steht — ohne das stünde dieselbe Baustelle zweimal.
+ *  ZWEI je Stadtteil, ohne Nachbarschaft: Vier Stadtteile mit je sechs Chips
+ *  plus „direkt nebenan" waren eine Wand aus Straßennamen. */
+function useStadtteilVorschlaege(stadtteile: Ortsbereich[], bereit: boolean) {
+  const qc = useQueryClient();
+  const ortsIds = stadtteile.map((o) => o.place_id);
+  const schluessel = (id: string, gesehen: string[]) =>
+    ["topic-suggestions", "district", id, JE_STADTTEIL, gesehen.join("|")] as const;
+  const namenVon = (g: VorschlagsGruppe | null | undefined) =>
+    g ? g.suggestions.map((v) => v.name) : [];
+  // Die Kette WÄHREND des Renderns aufbauen: Was schon da ist, steht im Cache
+  // — und `useQueries` hängt an genau diesen Schlüsseln, der nächste Render
+  // verlängert die Kette also von selbst.
+  let gesehen: string[] = [];
+  let wartetNoch = false;                 // ab der ersten offenen Gruppe
+  const ketten = ortsIds.map((id) => {
+    const key = schluessel(id, gesehen);
+    const daten = qc.getQueryData<VorschlagsGruppe | null>(key);
+    const eintrag = { id, key, exclude: gesehen, enabled: bereit && !wartetNoch };
+    if (daten === undefined) wartetNoch = true;
+    else gesehen = [...gesehen, ...namenVon(daten)];
+    return eintrag;
+  });
+  const gruppenQueries = useQueries({
+    queries: ketten.map((k) => ({
+      // Die Stadtteile UND das schon Gezeigte gehören in den Schlüssel: Wer
+      // zurückgeht und umwählt, bekäme sonst die Vorschläge der alten Auswahl
+      // aus dem Cache.
+      queryKey: k.key,
+      queryFn: () => api.get<VorschlagsAntwort>(
+        `/topics/suggestions?district=${encodeURIComponent(k.id)}&citywide=0&city=0&limit=${JE_STADTTEIL}&nearby=0`
+        + k.exclude.map((n) => `&exclude=${encodeURIComponent(n)}`).join(""))
+        .then((d) => d.districts[0] ?? null),
+      // Erst fragen, wenn die Auswahl feststeht.
+      enabled: k.enabled,
+    })),
+  });
+  const gruppen = stadtteile.map((ort, i) => ({ ort, query: gruppenQueries[i] }));
+  return {
+    nochUnterwegs: gruppen.filter((g) => g.query?.isPending).map((g) => g.ort.name),
+    // Alle Vorschläge in EINER Reihe, jeder mit seinem Ort.
+    chips: gruppen.flatMap(({ ort, query }): Vorschlag[] =>
+      (query?.data?.suggestions ?? []).map((v) => ({ ...v, place: ort.name }))),
+    stille: gruppen.filter((g) => g.query?.data && g.query.data.suggestions.length === 0)
+      .map((g) => g.ort.name),
+    weitestesFenster: Math.max(0, ...gruppen.map((g) => g.query?.data?.months ?? 0)),
+    anzahl: gruppen.length,
+  };
+}
+
+/** Schritt 3 — die Stadtteile, die jemanden interessieren.
  *
  *  **Die Frage lautet bewusst nicht „wo wohnst du?".** Das wäre eine Frage nach
  *  der Wohnadresse, und die braucht Ratslotse nicht: Es geht um Interesse, nicht
@@ -684,6 +766,14 @@ function StadtteilStep({ onNext }: { onNext: () => void }) {
 
   const orte = useOrtsbereiche();
   const topics = useQuery({ queryKey: ["topics"], queryFn: () => api.get<TopicRow[]>("/topics") });
+  const [anlegend, setAnlegend] = useState<string | null>(null);
+  const gemeldet = useRef({ schritt: false, vorschlaege: false });
+  // Dass der Schritt angeboten wurde, zählt einmal je Besuch — nicht je Fläche.
+  useEffect(() => {
+    if (gemeldet.current.schritt) return;
+    gemeldet.current.schritt = true;
+    meldeChips(["district"]);
+  }, []);
 
   const liste = orte.data ?? [];
   const meine = topics.data ?? [];
@@ -697,6 +787,13 @@ function StadtteilStep({ onNext }: { onNext: () => void }) {
   }, [bestaetigt, unterwegs]);
   const gewaehlt = useMemo(() => liste.filter((o) => namen.has(o.name)), [liste, namen]);
   const auswaehlbar = useMemo(() => new Set(liste.map((o) => o.name)), [liste]);
+  const bereit = !topics.isPending && !orte.isPending;
+  const vorschlaege = useStadtteilVorschlaege(gewaehlteOrtsbereiche(meine, liste), bereit);
+  useEffect(() => {
+    if (vorschlaege.chips.length === 0 || gemeldet.current.vorschlaege) return;
+    gemeldet.current.vorschlaege = true;
+    meldeChips(["district_suggestion"]);
+  }, [vorschlaege.chips.length]);
 
   /** An/aus je Stadtteil — optimistisch und je Stadtteil für sich.
    *
@@ -714,6 +811,11 @@ function StadtteilStep({ onNext }: { onNext: () => void }) {
     const ort = liste.find((o) => o.name === name);
     if (!ort) return;
     const an = !namen.has(name);
+    if (an && namen.size >= MAX_STADTTEILE) {
+      setFehler(`${MAX_STADTTEILE} Stadtteile reichen für den Anfang — so bleibt die Übersicht ruhig. Weitere kannst du jederzeit unter „Themen" ergänzen.`);
+      return;
+    }
+    if (an) meldeChips([], ["district"]);
     setUnterwegs((m) => new Map(m).set(name, an));
     setFehler(null);
     void (async () => {
@@ -733,17 +835,34 @@ function StadtteilStep({ onNext }: { onNext: () => void }) {
     })();
   };
 
+  /** Eine Karte aus „Aus deinen Stadtteilen" anlegen. Die Beschreibung kommt
+   *  vom Server mit; ein Modellaufruf wie beim eigenen Thema braucht es nicht. */
+  const waehleVorschlag = async (v: Vorschlag) => {
+    if (anlegend) return;
+    setAnlegend(v.name);
+    setFehler(null);
+    meldeChips([], ["district_suggestion"]);
+    try {
+      await api.post("/topics", { name: v.name, description: v.description });
+      await qc.invalidateQueries({ queryKey: ["topics"] });
+    } catch {
+      setFehler("Das Thema konnte gerade nicht angelegt werden. Versuch es gleich nochmal.");
+    } finally {
+      setAnlegend(null);
+    }
+  };
+
   return (
     <StepShell
       title="Welche Stadtteile interessieren dich?"
-      lead="Zum Beispiel der, in dem du wohnst — aber genauso jeder andere, in dem gerade etwas passiert. Lotti meldet neue Beschlüsse und Planungen von dort. Mehrere sind möglich, alles jederzeit änderbar."
+      lead="Zum Beispiel der, in dem du wohnst — aber genauso einer, in dem gerade etwas passiert. Lotti meldet neue Beschlüsse und Planungen von dort. Bis zu drei, alles jederzeit änderbar."
       pose="point"
       footer={
-        <Button className="w-full lg:w-auto lg:min-w-44" onClick={onNext} disabled={unterwegs.size > 0}>
+        <Button className="w-full lg:w-auto lg:min-w-44" onClick={onNext} disabled={unterwegs.size > 0 || !!anlegend}>
           {unterwegs.size > 0 ? <><Loader2 className="h-4 w-4 animate-spin" /> Speichert …</>
             : gewaehlt.length === 0 ? "Überspringen"
               : gewaehlt.length === 1 ? `${gewaehlt[0].name} · Weiter`
-                : `${gewaehlt.length} Stadtteile · Weiter`}
+                : `${gewaehlt.length} von ${MAX_STADTTEILE} Stadtteilen · Weiter`}
         </Button>
       }
     >
@@ -789,22 +908,67 @@ function StadtteilStep({ onNext }: { onNext: () => void }) {
           <Check className="mt-px h-3.5 w-3.5 shrink-0" />
           <span>
             {gewaehlt.map((o) => o.name).join(", ")} {gewaehlt.length === 1 ? "steht" : "stehen"} ab
-            jetzt unter „Deine Themen". Im nächsten Schritt siehst du, was dort gerade läuft.
+            jetzt unter „Deine Themen". Darunter siehst du, was dort gerade läuft.
           </span>
         </p>
       ) : (
         <p className="mt-3 text-xs text-muted-foreground">
-          Ohne Angabe geht es auch — dann zeigt der nächste Schritt nur stadtweite Themen.
+          Ohne Angabe geht es auch — die Themen aus dem Schritt davor bleiben stadtweit.
         </p>
+      )}
+
+      {/* „Aus deinen Stadtteilen": ein bis zwei Vorschläge je gewähltem
+          Stadtteil, jeder mit dem Grund, warum er dort hängt. Stand bis
+          30.09.2026 im Themen-Schritt; er folgt dem Stadtteil dorthin, wo
+          der gewählt wird. Jede Karte erscheint, sobald IHR Aufruf zurück ist. */}
+      {vorschlaege.anzahl > 0 && (
+        <div className="mt-5">
+          <Kicker>
+            <MapPin className="h-3 w-3" />
+            Aus deinen Stadtteilen
+            {/* Zeitraum dazuschreiben, sobald es mehr als ein Jahr war. In
+                ruhigen Stadtteilen reicht ein Jahr nicht; das stumm zu weiten
+                hieße, Aktualität zu behaupten. */}
+            {vorschlaege.weitestesFenster > 12 && (
+              <span className="font-sans text-[11px] font-medium normal-case tracking-normal text-muted-foreground">
+                · bis zu {Math.round(vorschlaege.weitestesFenster / 12)} Jahre zurück
+              </span>
+            )}
+            {vorschlaege.nochUnterwegs.length > 0 && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
+          </Kicker>
+          {vorschlaege.chips.length > 0
+            ? <OrtsVorschlaege vorschlaege={vorschlaege.chips} vorhanden={meine}
+                busy={!!anlegend} onWaehlen={(v) => void waehleVorschlag(v)} />
+            : vorschlaege.nochUnterwegs.length > 0
+              ? <KartenPlatzhalter anzahl={JE_STADTTEIL * vorschlaege.anzahl} /> : null}
+          {/* Leere Stadtteile ausdrücklich benennen statt sie wegzulassen —
+              sonst sähe es aus, als hätte der Schritt etwas verschluckt. */}
+          {vorschlaege.stille.length > 0 && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Im Rat {vorschlaege.stille.length === 1 ? "war" : "waren"} {vorschlaege.stille.join(" und ")} zuletzt kaum
+              ein Thema. {vorschlaege.stille.length === 1 ? "Der Stadtteil bleibt" : "Die Stadtteile bleiben"} trotzdem
+              beobachtet — Lotti meldet sich, sobald etwas kommt.
+            </p>
+          )}
+          {vorschlaege.nochUnterwegs.length > 0 && (
+            <p role="status" className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-primary" />
+              Lotti liest noch, was in {vorschlaege.nochUnterwegs.join(" und ")} läuft — du kannst
+              schon auswählen.
+            </p>
+          )}
+        </div>
       )}
     </StepShell>
   );
 }
 
-/* ----------------------------------------------------- Schritt 3: Themen --- */
+/* ----------------------------------------------------- Schritt 2: Themen --- */
 
 type TopicRow = {
   id: number; name: string; description: string;
+  /** Schlüssel des kuratierten Stadtthemas (Bild unter `public/themen/`). */
+  image_key?: string | null;
   decision_count?: number; decision_count_capped?: boolean; matched?: boolean;
   /** Treffer der letzten zwölf Monate — die Zahl, die dieser Schritt zeigt.
    *  Die Gesamtzahl (`decision_count`) steht auf der Themen-Karte. */
@@ -841,67 +1005,27 @@ function TopicStep({ onNext }: { onNext: () => void }) {
     queryFn: () => api.get<TopicRow[]>("/topics"),
   });
   const orte = useOrtsbereiche();
-  // Welche Stadtteile in Schritt 2 gewählt wurden, steht in den Themen — nicht
-  // in einem React-Zustand, der beim Neuladen weg wäre.
+  // Stadtteile, die schon gewählt sind (Zurück aus dem nächsten Schritt), stehen
+  // als Themen in der Liste — die Wahl selbst passiert erst im Schritt danach.
   const stadtteile = gewaehlteOrtsbereiche(topics.data ?? [], orte.data ?? []);
-  const ortsIds = stadtteile.map((o) => o.place_id);
-  const bereit = !topics.isPending && !orte.isPending;
-  // Die Stadtthemen ZUERST und aus einem eigenen Aufruf: Sie kosten kein
-  // Modell, nur eine Zählung, und stehen deshalb sofort da — noch bevor die
-  // Stadtteile ihre Vorschläge haben. Sie sind seit dem 03.09.2026 der Kern
-  // des Schritts: Radverkehr oder Kitas holen ab, wo eine Straße aus der
-  // Entitäts-Erkennung niemandem etwas sagt (Tims Befund: „schreckt eher ab").
+  const bereit = !topics.isPending;
+  // Die Stadtthemen sind der Kern des Schritts (seit 03.09.2026): Radverkehr
+  // oder Kitas holen ab, wo eine Straße aus der Entitäts-Erkennung niemandem
+  // etwas sagt (Tims Befund: „schreckt eher ab"). Sie kosten kein Modell, nur
+  // eine Zählung, und stehen deshalb sofort da.
   const stadtQuery = useQuery({
     queryKey: ["topic-suggestions", "city"],
     queryFn: () => api.get<VorschlagsAntwort>("/topics/suggestions?citywide=0&city=1")
       .then((d) => d.city),
     enabled: bereit,
   });
-  // EIN Aufruf JE STADTTEIL statt einem für alle. Der Endpunkt beurteilt jeden
-  // noch nie gesehenen Vorschlag einmal per Modell; bei zwei, drei Stadtteilen
-  // wartete man vorher auf den letzten, bevor der erste erschien — und sah so
-  // lange nur Platzhalter (Tims Befund, 03.09.2026). Getrennt gefragt steht
-  // jede Gruppe da, sobald sie fertig ist.
-  //
-  // NACHEINANDER, nicht gleichzeitig: Jeder Aufruf bekommt mit `exclude` zu
-  // hören, was oben schon steht — ohne das stünde dieselbe Baustelle zweimal.
-  //
-  // ZWEI je Stadtteil, ohne Nachbarschaft: Vier Stadtteile mit je sechs Chips
-  // plus „direkt nebenan" waren eine Wand aus Straßennamen. Die Stadtteile
-  // sind jetzt ein Sammelbecken unter den Stadtthemen, nicht die Hauptsache.
-  const schluessel = (id: string, gesehen: string[]) =>
-    ["topic-suggestions", "district", id, JE_STADTTEIL, gesehen.join("|")] as const;
-  const namenVon = (g: VorschlagsGruppe | null | undefined) =>
-    g ? g.suggestions.map((v) => v.name) : [];
-  // Die Kette WÄHREND des Renderns aufbauen: Was schon da ist, steht im Cache
-  // — und `useQueries` hängt an genau diesen Schlüsseln, der nächste Render
-  // verlängert die Kette also von selbst.
-  let gesehen: string[] = [];
-  let wartetNoch = false;                 // ab der ersten offenen Gruppe
-  const ketten = ortsIds.map((id) => {
-    const key = schluessel(id, gesehen);
-    const daten = qc.getQueryData<VorschlagsGruppe | null>(key);
-    const eintrag = { id, key, exclude: gesehen, enabled: bereit && !wartetNoch };
-    if (daten === undefined) wartetNoch = true;
-    else gesehen = [...gesehen, ...namenVon(daten)];
-    return eintrag;
-  });
-  const gruppenQueries = useQueries({
-    queries: ketten.map((k) => ({
-      // Die Stadtteile UND das schon Gezeigte gehören in den Schlüssel: Wer in
-      // Schritt 2 zurückgeht und umwählt, bekäme sonst die Vorschläge der alten
-      // Auswahl aus dem Cache.
-      queryKey: k.key,
-      queryFn: () => api.get<VorschlagsAntwort>(
-        `/topics/suggestions?district=${encodeURIComponent(k.id)}&citywide=0&city=0&limit=${JE_STADTTEIL}&nearby=0`
-        + k.exclude.map((n) => `&exclude=${encodeURIComponent(n)}`).join(""))
-        .then((d) => d.districts[0] ?? null),
-      // Erst fragen, wenn die Auswahl feststeht — sonst liefe ein erster Aufruf
-      // ohne sie und die lokalen Listen erschienen mit Verzögerung.
-      enabled: k.enabled,
-    })),
-  });
-
+  // Was angeboten wurde, zählt einmal je Besuch des Schritts.
+  const angebotGemeldet = useRef(false);
+  useEffect(() => {
+    if (angebotGemeldet.current || !stadtQuery.data || stadtQuery.data.length === 0) return;
+    angebotGemeldet.current = true;
+    meldeChips(stadtQuery.data.filter((v) => v.key).map((v) => stadtthemaChip(v.key!)));
+  }, [stadtQuery.data]);
   /** RL-U17: Der Nutzer tippt nur den Namen — die Beschreibung entsteht aus den
    *  Beschlüssen. Sie ist es, an der der Wächter später misst, deshalb wird sie
    *  nicht generisch gefüllt.
@@ -966,15 +1090,6 @@ function TopicStep({ onNext }: { onNext: () => void }) {
   };
 
   const mine = topics.data ?? [];
-  const gruppen = stadtteile.map((ort, i) => ({ ort, query: gruppenQueries[i] }));
-  const nochUnterwegs = gruppen.filter((g) => g.query?.isPending).map((g) => g.ort.name);
-  // Alle Stadtteil-Vorschläge in EINER Reihe, jeder mit seinem Ort — derselbe
-  // Weg, auf dem vorher die Nachbarschafts-Chips ihre Herkunft trugen.
-  const stadtteilChips: Vorschlag[] = gruppen.flatMap(({ ort, query }) =>
-    (query?.data?.suggestions ?? []).map((v) => ({ ...v, place: ort.name })));
-  const stille = gruppen.filter((g) => g.query?.data && g.query.data.suggestions.length === 0)
-    .map((g) => g.ort.name);
-  const weitestesFenster = Math.max(0, ...gruppen.map((g) => g.query?.data?.months ?? 0));
   return (
     <StepShell
       title="Worüber willst du Bescheid wissen?"
@@ -982,7 +1097,7 @@ function TopicStep({ onNext }: { onNext: () => void }) {
       pose="search"
       footer={<Button className="w-full lg:w-auto lg:min-w-44" onClick={onNext}>Weiter</Button>}
     >
-      <form onSubmit={(e) => { e.preventDefault(); void add(name); }} className="flex gap-2">
+      <form onSubmit={(e) => { e.preventDefault(); meldeChips([], ["own"]); void add(name); }} className="flex gap-2">
         <Input ref={inputRef} value={name} onChange={(e) => setName(e.target.value)}
           placeholder="Eigenes Thema, z. B. „Cäcilienbrücke“" enterKeyHint="done" aria-label="Thema" />
         <Button type="submit" disabled={busy || name.trim().length < 2} aria-label="Thema anlegen">
@@ -1044,60 +1159,13 @@ function TopicStep({ onNext }: { onNext: () => void }) {
           {stadtQuery.isPending && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
         </Kicker>
         {stadtQuery.isPending
-          ? <VorschlagsPlatzhalter />
-          : <VorschlagsChips vorschlaege={stadtQuery.data ?? []} vorhanden={mine} busy={busy} betont alle zahl
-              onWaehlen={(v) => void add(v.name, v.description, v.n)} />}
+          ? <KachelPlatzhalter />
+          : <StadtthemenKacheln vorschlaege={stadtQuery.data ?? []} vorhanden={mine} busy={busy}
+              onWaehlen={(v) => {
+                if (v.key) meldeChips([], [stadtthemaChip(v.key)]);
+                void add(v.name, v.description, v.n);
+              }} />}
       </div>
-
-      {/* Ein Sammelbecken für ALLE gewählten Stadtteile: je Stadtteil ein bis
-          zwei Vorschläge, jeder Chip trägt seinen Stadtteil. Vorher stand je
-          Stadtteil ein eigener Block mit sechs Chips plus Nachbarschaft — bei
-          vier Stadtteilen eine Seite voller Straßennamen (Tims Befund,
-          03.09.2026). Jeder Chip erscheint, sobald SEIN Aufruf zurück ist. */}
-      {gruppen.length > 0 && (
-        <div className="mt-4">
-          <Kicker>
-            <MapPin className="h-3 w-3" />
-            Aus deinen Stadtteilen
-            {/* Zeitraum dazuschreiben, sobald es mehr als ein Jahr war. In
-                ruhigen Stadtteilen reicht ein Jahr nicht; das stumm zu weiten
-                hieße, Aktualität zu behaupten. */}
-            {weitestesFenster > 12 && (
-              <span className="font-sans text-[11px] font-medium normal-case tracking-normal text-muted-foreground">
-                · bis zu {Math.round(weitestesFenster / 12)} Jahre zurück
-              </span>
-            )}
-            {nochUnterwegs.length > 0 && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
-          </Kicker>
-          {stadtteilChips.length > 0
-            ? <OrtsVorschlaege vorschlaege={stadtteilChips} vorhanden={mine} busy={busy}
-                /* Ohne `v.n`: Die Karten zeigen keine Zahl (ihr Fenster ist je
-                   Stadtteil verschieden, s. `months`). Die Zeile oben nimmt
-                   deshalb die Zwölf-Monats-Zahl vom Server. */
-                onWaehlen={(v) => void add(v.name, v.description)} />
-            : nochUnterwegs.length > 0 ? <KartenPlatzhalter anzahl={JE_STADTTEIL * gruppen.length} /> : null}
-          {/* Leere Stadtteile ausdrücklich benennen statt sie wegzulassen —
-              sonst sähe es aus, als hätte der Schritt etwas verschluckt. */}
-          {stille.length > 0 && (
-            <p className="mt-2 text-xs text-muted-foreground">
-              Im Rat {stille.length === 1 ? "war" : "waren"} {stille.join(" und ")} zuletzt kaum
-              ein Thema. {stille.length === 1 ? "Der Stadtteil bleibt" : "Die Stadtteile bleiben"} trotzdem
-              beobachtet — Lotti meldet sich, sobald etwas kommt.
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* Was noch aussteht, EINMAL am Ende benennen — sonst liest sich die
-          Seite, als wäre sie fertig, und die letzte Gruppe erschiene aus dem
-          Nichts. */}
-      {nochUnterwegs.length > 0 && (
-        <p role="status" className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-primary" />
-          Lotti liest noch, was in {nochUnterwegs.join(" und ")} läuft — du kannst
-          schon auswählen.
-        </p>
-      )}
 
       {editing && (
         <TopicSheet topic={editing} onClose={() => setEditing(null)}
@@ -1122,6 +1190,9 @@ const JE_STADTTEIL = 2;
 
 type Vorschlag = {
   name: string; description: string; n: number; context?: string | null;
+  /** Nur bei den kuratierten Stadtthemen: ihr Schlüssel (`cycling`, `pools`) —
+   *  daran hängen Bild und Zähler. */
+  key?: string;
   /** Nur bei „nebenan": aus welchem Ortsbereich der Vorschlag stammt. */
   place?: string;
   /** Warum der Vorschlag an diesem Stadtteil hängt — der Titel des
@@ -1129,14 +1200,14 @@ type Vorschlag = {
   place_reason?: string | null;
 };
 
-/** Chips in Wartestellung: gleiche Höhe wie die echten, damit nichts springt,
- *  wenn die Gruppe eintrifft. */
-function VorschlagsPlatzhalter() {
+/** Kacheln in Wartestellung: gleiche Höhe wie die echten, damit nichts springt,
+ *  wenn die Liste eintrifft. */
+function KachelPlatzhalter() {
   return (
-    <div className="mt-2.5 flex flex-wrap gap-2" aria-busy="true">
-      {[104, 128, 92, 140, 112, 96, 120, 100, 132].map((w, i) => (
-        <span key={i} style={{ width: w }}
-          className="h-[34px] animate-pulse rounded-full border border-dashed border-border bg-muted/40" />
+    <div className="mt-2.5 grid grid-cols-2 gap-2 lg:grid-cols-3" aria-busy="true">
+      {Array.from({ length: 9 }, (_, i) => (
+        <span key={i}
+          className="h-[68px] animate-pulse rounded-xl border border-dashed border-border bg-muted/40" />
       ))}
     </div>
   );
@@ -1148,65 +1219,61 @@ function istPlannummer(name: string): boolean {
   return /\b(?:vorhabenbezogener\s+)?(?:bebauungs|flächennutzungs)plan\s+[\dSNOWM]/i.test(name);
 }
 
-/** Eine Reihe anklickbarer Vorschläge. Eigene Komponente, seit es zwei Gruppen
- *  gibt (Stadtteil und stadtweit) — sie müssen gleich aussehen und sich gleich
- *  verhalten, sonst liest man einen Unterschied hinein, den es nicht gibt.
- *  `betont` färbt nur den Rahmen: Die lokale Gruppe soll auffallen, aber nicht
- *  wie eine andere Art Knopf wirken. */
-function VorschlagsChips({ vorschlaege, vorhanden, busy, betont, alle, zahl, onWaehlen }: {
+/** Die Stadtthemen als Kacheln mit Bild — flach gezeichnet, dünne Kontur, Markenfarben, und
+ *  manchmal spielt ein Gast aus Lottis Welt mit (`public/themen/`, erzeugt von `scripts/themen_grafiken.py`).
+ *
+ *  Kacheln statt Pillen, seit Neue Konten fast nur Stadtteile wählten
+ *  (30.09.2026): „Bus und Bahn" als Text neben einem Stadtteil ist abstrakt, ein
+ *  kleiner Bus ist es nicht. Die Reihenfolge kommt fertig vom Server (gemischt,
+ *  nicht nach Zahl); die Zahl der Beschlüsse steht darunter als Beleg dafür,
+ *  dass Lotti bei dem Thema wirklich etwas zu melden hat.
+ *
+ *  Waagerecht gebaut (Bild links, Text rechts): 20 senkrechte Kacheln wären
+ *  fünf Reihen Bildschirm, so sind es sieben Zeilen, die man überfliegt. */
+function StadtthemenKacheln({ vorschlaege, vorhanden, busy, onWaehlen }: {
   vorschlaege: Vorschlag[];
   vorhanden: { name: string }[];
   busy: boolean;
-  betont?: boolean;
-  /** Alle zeigen statt höchstens sechs — die Stadtthemen sind kuratiert, das
-   *  Sammelbecken der Stadtteile ist schon je Stadtteil begrenzt. */
-  alle?: boolean;
-  /** Die Beschlusszahl im Chip. Nur bei den Stadtthemen: Dort ist sie der
-   *  Beleg, dass Lotti liefert; der Zeitraum steht in der Überschrift. */
-  zahl?: boolean;
   onWaehlen: (v: Vorschlag) => void;
 }) {
   return (
-    <div className="mt-2.5 flex flex-wrap gap-2">
-      {(alle ? vorschlaege : vorschlaege.slice(0, 6)).map((v) => {
+    <ul className="mt-2.5 grid grid-cols-2 gap-2 lg:grid-cols-3">
+      {vorschlaege.map((v) => {
         const have = vorhanden.some((t) => t.name === v.name);
         return (
-          <button key={v.name} type="button" disabled={busy || have}
-            onClick={() => onWaehlen(v)}
-            title={v.context || undefined}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-full border px-3.5 py-[7px] text-[13px] transition-colors",
-              have ? "border-primary/30 bg-primary/5 text-primary"
-                   : betont
-                     ? "border-primary/40 bg-primary/[0.04] text-foreground hover:bg-primary/10 disabled:opacity-50"
-                     : "border-border bg-card text-foreground hover:bg-muted disabled:opacity-50",
-            )}>
-            {have ? <Check className="h-3 w-3" /> : <Plus className="h-3 w-3 text-muted-foreground" />}
-            {v.name}
-            {/* Die Einordnung SICHTBAR, nicht als Tooltip — aber nur dort, wo
-                der Name allein kryptisch ist: „Bebauungsplan 862" sagt
-                niemandem etwas, „Quartier am Krusenbusch" schon. Vorher stand
-                sie nur im title-Attribut, und auf dem Telefon gibt es keinen
-                Hover (Tims Befund, 02.09.2026). Bei allen anderen Namen wäre
-                sie der erste Satz der Beschreibung — „Die Sandkruger Straß…"
-                neben „Sandkruger Straße" wiederholt nur, was schon dasteht.
-                Auch MIT Ortsangabe: „Bebauungsplan 862 · Tweelbäke" sagt
-                immer noch nicht, was dort geplant ist. */}
-            {v.context && istPlannummer(v.name) && (
-              <span className="max-w-[26ch] truncate text-[11px] text-muted-foreground">{v.context}</span>
-            )}
-            {/* Ohne den Ortsnamen wäre „Kulturzentrum PFL" unter dem eigenen
-                Stadtteil eine Falschauskunft. */}
-            {v.place && <span className="text-[11px] text-muted-foreground">{v.place}</span>}
-            {zahl && (
-              <span className="rounded-full bg-primary/10 px-1.5 text-[11px] font-semibold tabular-nums text-primary">
-                {v.n}
+          <li key={v.key ?? v.name} className="contents">
+            <button type="button" disabled={busy || have} onClick={() => onWaehlen(v)}
+              aria-pressed={have} title={v.context || undefined}
+              className={cn(
+                "group relative flex items-center gap-2 rounded-xl border p-2 text-left transition-colors sm:gap-2.5",
+                have ? "border-primary/40 bg-primary/5"
+                     : "border-border bg-card hover:border-primary/40 hover:bg-muted disabled:opacity-50",
+              )}>
+              {v.key ? (
+                // Feste 256-px-Dateien aus dem Repo; `next/image` bringt im statischen Export nichts.
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={stadtthemaBild(v.key)} alt="" width={52} height={52} loading="lazy" decoding="async"
+                  className="h-11 w-11 shrink-0 rounded-lg bg-muted object-cover sm:h-[52px] sm:w-[52px]" />
+              ) : (
+                <span aria-hidden className="h-11 w-11 shrink-0 rounded-lg bg-muted sm:h-[52px] sm:w-[52px]" />
+              )}
+              <span className="min-w-0 flex-1">
+                <span className={cn("block text-[13px] font-semibold leading-tight",
+                                    have ? "text-primary" : "text-foreground")}>
+                  {v.name}
+                </span>
+                <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                  {v.n} {v.n === 1 ? "Beschluss" : "Beschlüsse"}
+                </span>
               </span>
-            )}
-          </button>
+              {have
+                ? <Check className="h-4 w-4 shrink-0 text-primary" aria-label="angelegt" />
+                : <Plus className="hidden h-4 w-4 shrink-0 text-muted-foreground group-hover:text-primary sm:block" aria-hidden />}
+            </button>
+          </li>
         );
       })}
-    </div>
+    </ul>
   );
 }
 
@@ -1287,11 +1354,11 @@ function TopicZeile({ topic, chipZahl, istStadtteil, onEdit, onRemove }: {
   topic: TopicRow;
   /** Die Zahl, die am angeklickten Vorschlags-Chip stand. Sie hat Vorrang:
    *  Wer „Digitale Verwaltung 7" anklickt, soll oben keine andere Zahl für
-   *  dasselbe Thema lesen. Fehlt sie (selbst getippt, Stadtteil aus Schritt 2),
+   *  dasselbe Thema lesen. Fehlt sie (selbst getippt, Stadtteil aus dem Stadtteil-Schritt),
    *  zählt `hits_12m` vom Server — dasselbe Fenster, andere Rechnung
    *  (Stichwörter am Chip, semantischer Abgleich am Thema). */
   chipZahl?: number;
-  /** Dieses Thema ist einer der in Schritt 2 gewählten Stadtteile. Es steht mit in der
+  /** Dieses Thema ist einer der im Stadtteil-Schritt gewählten Stadtteile. Es steht mit in der
    *  Liste — es IST ein Thema, nur so löst es Hinweise aus —, sagt das aber
    *  auch: Sonst wirkte die Trennung der beiden Schritte hinterher hinfällig,
    *  weil der Stadtteil unbeschriftet zwischen den anderen Themen auftauchte. */
@@ -1307,9 +1374,16 @@ function TopicZeile({ topic, chipZahl, istStadtteil, onEdit, onRemove }: {
   const zahl = chipZahl ?? (topic.matched ? topic.hits_12m : undefined);
   return (
     <li className="flex items-center gap-2 py-1.5 text-[13px]" title={topic.description}>
-      <span className={cn("shrink-0", istStadtteil ? "text-primary" : "text-signal")} aria-hidden>
-        {istStadtteil ? <MapPin className="h-3.5 w-3.5" /> : <Sparkles className="h-3.5 w-3.5" />}
-      </span>
+      {topic.image_key ? (
+        // Feste 256-px-Dateien aus dem Repo; `next/image` bringt im statischen Export nichts.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={stadtthemaBild(topic.image_key)} alt="" width={28} height={28} loading="lazy"
+          className="h-7 w-7 shrink-0 rounded-md bg-muted object-cover" />
+      ) : (
+        <span className={cn("shrink-0", istStadtteil ? "text-primary" : "text-signal")} aria-hidden>
+          {istStadtteil ? <MapPin className="h-3.5 w-3.5" /> : <Sparkles className="h-3.5 w-3.5" />}
+        </span>
+      )}
       <span className="min-w-0 flex-1 truncate font-semibold text-foreground">{topic.name}</span>
       {typeof zahl === "number" && zahl > 0 && (
         <span className="hidden shrink-0 text-[11px] text-muted-foreground sm:inline">
@@ -1535,7 +1609,7 @@ function Kicker({ children, className }: { children: React.ReactNode; className?
   );
 }
 
-const SCHRITT_NAMEN = ["Gremien", "Stadtteile", "Themen"] as const;
+const SCHRITT_NAMEN = ["Gremien", "Themen", "Stadtteile"] as const;
 
 /** Der Schritt-Pfad in der Frage-Spalte (nur `lg`). Vorher stand dort unter der
  *  Frage nichts — 400 px Luft auf jedem Schritt. Jetzt trägt die Spalte, wo man

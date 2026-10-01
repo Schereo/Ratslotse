@@ -156,6 +156,41 @@ const ICONS: Record<string, LucideIcon> = {
   "Verkehr": Bus,
 };
 
+// Das Bild je Gremium: Lotti mit einem Requisit aus dem Sachbereich, flach
+// gezeichnet (`public/gremien/<key>.webp`, erzeugt von
+// `scripts/themen_grafiken.py --satz gremien`). Das ist Tims alter Wunsch „eine
+// Lotti je Ausschuss" — das Zeichen oben bleibt der Fallback für Gremien ohne Bild
+// und für alle Stellen, an denen ein Bild zu viel wäre (Filter, Chips, Listen).
+const BILDER: Record<string, string> = {
+  "Rat": "council",
+  "Verwaltungsausschuss": "executive",
+  "Allgemeine Angelegenheiten": "general",
+  "Finanzen & Beteiligungen": "finance",
+  "Integration & Migration": "integration",
+  "Stadtgrün & Klima": "green",
+  "Umwelt & Klima": "green",
+  "Stadtplanung & Bauen": "planning",
+  "Wirtschaft & Digitales": "business",
+  "Abfallwirtschaft": "waste",
+  "Betrieb Gebäudewirtschaft": "buildings",
+  "Jugendhilfe": "youth",
+  "Kultur": "culture",
+  "Schule": "school",
+  "Soziales": "social",
+  "Sport": "sport",
+  "Verkehr": "traffic",
+};
+
+/** Die Schlüssel aller Gremienbilder — für den Test, der sie gegen
+ *  `public/gremien/` hält. */
+export const GREMIEN_BILD_SCHLUESSEL: readonly string[] = [...new Set(Object.values(BILDER))];
+
+/** Adresse des Gremienbilds, `null` für ein Gremium ohne eigenes. */
+export function committeeImage(name: string | null | undefined): string | null {
+  const key = BILDER[shortCommittee(name)];
+  return key ? `/gremien/${key}.webp` : null;
+}
+
 /** Das Zeichen des Gremiums. Unbekannte Gremien bekommen die Gruppe — ein
  *  Gremium sind Menschen, die zusammensitzen; das ist nie falsch, nur allgemein. */
 export function committeeIcon(name: string | null | undefined): LucideIcon {

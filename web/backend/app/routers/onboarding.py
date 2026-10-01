@@ -14,7 +14,7 @@ from kern.store import Store
 from ..antworten import Ok, OnboardingState, SetupState
 from ..clients import client_kind
 from ..deps import get_store, require_active
-from ..schemas import OnboardingUpdate, SetupUpdate, TourUpdate
+from ..schemas import OnboardingChips, OnboardingUpdate, SetupUpdate, TourUpdate
 
 router = APIRouter(prefix="/api/onboarding", tags=["onboarding"])
 
@@ -102,4 +102,37 @@ def tour_stand(
     nach der Einrichtung etwas bewirkt.
     """
     store.record_activity(user["id"], TOUR_ZAEHLER[payload.stand], client_kind(request))
+    return {"ok": True}
+
+
+#: Die Arten von Chips, die es neben den Stadtthemen gibt. Die Stadtthemen selbst
+#: kommen aus ``council.city_topics`` — ein neues Thema ist dort ein Eintrag und
+#: hier automatisch zählbar.
+CHIP_ARTEN = frozenset({"district", "district_suggestion", "own"})
+
+
+def _chip_erlaubt() -> frozenset[str]:
+    from council.city_topics import CITY_TOPICS
+    return CHIP_ARTEN | {f"city_topic:{t.key}" for t in CITY_TOPICS}
+
+
+@router.post("/chips")
+def chips_zaehlen(
+    payload: OnboardingChips,
+    user: dict = Depends(require_active),
+    store: Store = Depends(get_store),
+) -> Ok:
+    """Anzeigen und Wahlen im Einrichtungs-Assistenten zählen.
+
+    Ohne Konto-Bezug gespeichert (Tabelle ``onboarding_chip_stats``): Der
+    Endpunkt verlangt ein Konto, damit niemand von außen zählen kann, schreibt
+    aber nur Tag, Chip und Zähler. Was nicht auf der Positivliste steht, fällt
+    still weg — ein Client soll die Tabelle weder erweitern noch mit
+    Stadtteil- oder Themennamen füllen können.
+    """
+    erlaubt = _chip_erlaubt()
+    store.record_onboarding_chips(
+        [c for c in payload.gezeigt if c in erlaubt],
+        [c for c in payload.gewaehlt if c in erlaubt],
+    )
     return {"ok": True}

@@ -680,10 +680,30 @@ FCM. Weil die Zustellung der Punkt ist, an dem die ganze Idee steht oder fällt
 wirbt der Schritt dafür statt bloß zu fragen — mit dem, was konkret käme, und
 mit den echten Mengen aus `kern/notify.py`.
 
-**Die Stadtteile.** Sie sind im Browser ein eigener Schritt VOR den Themen, weil
-Schritt 3 danach lokale Vorschläge zeigen kann:
+**Die Reihenfolge.** Im Browser kommen die Themen (Schritt 2) VOR den Stadtteilen
+(Schritt 3). Bis 30.09.2026 war es umgekehrt, und neue Konten nahmen fast nur
+Stadtteile: Eine Karte mit einem Klick je Fläche ist die leichteste Wahl im
+ganzen Ablauf. Die Themen stehen als Kacheln mit einem kleinen, flach
+gezeichneten Bild, in dem manchmal Lotti, ein Küken oder Krissi mitspielen
+(`public/themen/<key>.webp`, erzeugt von `scripts/themen_grafiken.py`), in
+einer von Hand gemischten Reihenfolge (`ANZEIGE` in `council/city_topics.py`)
+statt nach Zahl. Die Gremien im ersten Schritt tragen je eine Lotti mit einem
+Requisit (`public/gremien/<key>.webp`, Zuordnung in `lib/committees.ts`,
+erzeugt mit `scripts/themen_grafiken.py --satz gremien`); `GET /api/topics`
+liefert für ein Thema, das so heißt wie ein Stadtthema, `image_key` — daran
+hängt das Bild auf der Themen-Karte. Der Assistent nimmt höchstens **drei Stadtteile** an; mehr
+lassen sich später unter „Themen" anlegen.
+
+**Was angeklickt wird, steht in `onboarding_chip_stats`.** Je Tag und Chip ein
+Zähler für „angezeigt" und „gewählt" — ohne Konto, Sitzung oder Namen
+(`POST /api/onboarding/chips`, Positivliste: `city_topic:<key>`, `district`,
+`district_suggestion`, `own`). Gelesen wird mit
+`python scripts/onboarding_chips.py --tage 14`.
+
+**Die Stadtteile.** Sie sind im Browser ein eigener Schritt NACH den Themen; dort
+erscheinen auch lokale Vorschläge:
 `GET /api/topics/suggestions?district=<place_id>` (mehrfach erlaubt) liefert
-dann `districts` — je gefragtem Ortsbereich eine Gruppe, in der gefragten
+`districts` — je gefragtem Ortsbereich eine Gruppe, in der gefragten
 Reihenfolge — plus `suggestions` (stadtweit). Keine Liste wiederholt, was in
 einer anderen schon steht.
 

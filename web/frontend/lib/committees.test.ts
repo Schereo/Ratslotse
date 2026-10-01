@@ -1,6 +1,9 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
-  committeeExplains, committeeIcon, committeeRank, hasShortCommittee, shortCommittee,
+  GREMIEN_BILD_SCHLUESSEL, committeeExplains, committeeIcon, committeeImage, committeeRank,
+  hasShortCommittee, shortCommittee,
 } from "./committees";
 
 // Die amtlichen Oldenburger Gremiennamen sprengen jede Karte, jedes Chip und
@@ -146,5 +149,37 @@ describe("committeeIcon", () => {
 
   it("unterscheidet die Sachbereiche wirklich", () => {
     expect(committeeIcon("Verkehrsausschuss")).not.toBe(committeeIcon("Kulturausschuss"));
+  });
+});
+
+describe("committeeImage — Lotti je Ausschuss", () => {
+  it("jede Bilddatei, auf die die Tabelle zeigt, gibt es", () => {
+    for (const key of GREMIEN_BILD_SCHLUESSEL) {
+      expect(existsSync(join(__dirname, "..", "public", "gremien", `${key}.webp`)), key).toBe(true);
+    }
+  });
+
+  it("jedes Gremium mit Erklärsatz hat auch ein Bild", () => {
+    for (const lang of [
+      "Rat", "Verwaltungsausschuss", "Ausschuss für Allgemeine Angelegenheiten",
+      "Ausschuss für Finanzen und Beteiligungen", "Ausschuss für Integration und Migration",
+      "Ausschuss für Stadtgrün, Umwelt und Klima", "Ausschuss für Stadtplanung und Bauen",
+      "Ausschuss für Wirtschaftsförderung, Digitalisierung und internationale Zusammenarbeit",
+      "Betriebsausschuss Abfallwirtschaftsbetrieb", "Betriebsausschuss Eigenbetrieb Gebäudewirtschaft und Hochbau",
+      "Jugendhilfeausschuss", "Kulturausschuss", "Schulausschuss", "Sozialausschuss",
+      "Sportausschuss", "Verkehrsausschuss",
+    ]) {
+      expect(committeeImage(lang), lang).toMatch(/^\/gremien\/[a-z]+\.webp$/);
+    }
+  });
+
+  it("die historische Umbenennung trägt dasselbe Bild wie der heutige Name", () => {
+    expect(committeeImage("Ausschuss für Umwelt und Klimaschutz"))
+      .toBe(committeeImage("Ausschuss für Stadtgrün, Umwelt und Klima"));
+  });
+
+  it("ein unbekanntes Gremium hat kein Bild, statt ein falsches zu bekommen", () => {
+    expect(committeeImage("Ausschuss für etwas ganz Neues")).toBeNull();
+    expect(committeeImage(null)).toBeNull();
   });
 });
