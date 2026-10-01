@@ -2445,6 +2445,56 @@ DEEP_DEBATTE_ANTWORT_MAX = 600
 ASK_WORTBEITRAG_TOP = 8
 ASK_WORTBEITRAG_KANDIDATEN = 40
 ASK_WORTBEITRAG_PAIR_MAX = 700
+
+# Die Aussprache koppelt /ask an die ersten acht Beschlüsse. Der Cross-Encoder
+# stellt aber bisweilen den einen Beschluss, der die Frage im Titel trägt,
+# dahinter: Auf „Wann kommen öffentliche Trinkwasserspender?“ stand der
+# Bericht vom 16.04.2026 („Prüfung von Machbarkeit zur Aufstellung
+# öffentlicher Trinkwasserspender …“) auf Platz 9, hinter „Ersatz beschädigter
+# Mülltonnen“ — und mit ihm fehlte die Protokollnotiz, die als einzige sagt,
+# wann (KLAK 2027). Die Notiz selbst findet keine Ähnlichkeitssuche: Sie sagt
+# „Trinkwasserbrunnen“, Vektor-Rang 310, Rerank −2,08 (Gold-Test 01.10.2026).
+# Deshalb: Beschlüsse hinter Platz 8, deren Titel ALLE seltenen Wörter der
+# Frage trägt, koppeln ihre Aussprache zusätzlich — mit eigenem Deckel, damit
+# sie die der ersten acht nicht verdrängen. „Alle“, weil ein einzelnes Wort zu
+# viel mitnimmt: Bei „Spielplatz auf dem Schlossplatz“ kamen sonst die
+# Pfandretter am Schlossplatz, bei „Bäume im Großen Bürgerbusch“ fremde
+# Fällungen (gemessen an den Gold-Fragen, 01.10.2026).
+DEBATTE_ANKER_KOPF = 8
+DEBATTE_TITEL_EXTRA = 4
+DEBATTE_TITEL_SELTEN = 50  # höchstens so viele Beschlusstitel tragen das Wort
+
+
+def title_match_decisions(store, question: str, candidates: list[dict],
+                          head: int = DEBATTE_ANKER_KOPF,
+                          max_extra: int = DEBATTE_TITEL_EXTRA,
+                          rare_max: int = DEBATTE_TITEL_SELTEN) -> list[dict]:
+    """Candidates behind ``head`` whose title contains every rare question term.
+
+    „Selten“ misst am Bestand, nicht an einer Liste: „Trinkwasserspender“
+    steht in einer Handvoll Titel, „Antrag“ oder „Bericht“ in Tausenden.
+    """
+    rest = candidates[head:]
+    words = [w for w in extract_keywords(question) if len(w) >= 5]
+    if not rest or not words:
+        return []
+    try:
+        freq = store.title_frequencies(words)
+        # Dativ-Plural und Genitiv („Trinkwasserspendern“, „Stadions“) stehen
+        # in keinem Titel — dann zählt die Grundform.
+        stems = {w: w[:-1] for w in words if not freq.get(w) and w[-1] in "ns"}
+        if stems:
+            stem_freq = store.title_frequencies(list(stems.values()))
+            words = [stems.get(w, w) for w in words]
+            freq.update(stem_freq)
+    except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
+        return []
+    rare = [w for w in words if 0 < freq.get(w, 0) <= rare_max]
+    if not rare:
+        return []
+    out = [c for c in rest
+           if all(w in (c.get("title") or "").lower() for w in rare)]
+    return out[:max_extra]
 ASK_DEBATTE_TEXT_MAX = 800
 ASK_DEBATTE_ANTWORT_MAX = 600
 
