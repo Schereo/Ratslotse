@@ -274,7 +274,7 @@ private struct TopicCard: View {
     let remove: () -> Void
 
     var body: some View {
-        RatsWidget(topic.name, accent: .buoy, glyph: .tag, trailing: {
+        RatsWidget(topic.name, accent: .buoy, glyph: .tag, imageName: topic.imageAssetName, trailing: {
             HStack(spacing: 6) {
                 if topic.unreadCount > 0 {
                     Text(topic.unreadCount == 1 ? "1 neuer" : "\(topic.unreadCount) neue")

@@ -724,6 +724,10 @@ Trennung der beiden Schritte hinterher hinfällig.
 
 Die App kennt den Stadtteil-Schritt (noch) nicht und läuft mit drei Schritten;
 `set_setup_step` deckelt bei 4, was ihr nichts abschneidet.
+Im Themen-Schritt der App stehen dafür seit 10/2026 dieselben Stadtthemen-Kacheln
+wie im Web, über dem (einzelnen) Stadtteil-Menü; Bilder liegen als Imagesets
+im Asset-Katalog (`scripts/ios_themenbilder.py`, ein Test hält sie gegen
+`public/` und die Registry).
 
 ### Anzeigename und Konto löschen
 

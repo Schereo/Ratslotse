@@ -436,9 +436,20 @@ public struct Topic: Codable, Sendable, Equatable, Identifiable {
     /// 30 Tage; die App las den alten Namen noch, bekam ihn nie und zeigte
     /// deshalb bei jedem Thema eine 0.
     public let hits6Months: Int
+    /// Schlüssel des kuratierten Stadtthemas, das so heißt (`cycling`, `pools`),
+    /// sonst `nil`. Daran hängt das Bild des Themas im Asset-Katalog.
+    public let imageKey: String?
+
+    /// Name des Bildes im Asset-Katalog (`ThemeCycling`) — `nil` für ein Thema
+    /// ohne eigenes Bild. Die Bilder legt `scripts/ios_themenbilder.py` an.
+    public var imageAssetName: String? {
+        guard let imageKey, let first = imageKey.first else { return nil }
+        return "Theme" + first.uppercased() + imageKey.dropFirst()
+    }
 
     enum CodingKeys: String, CodingKey {
         case id, name, description, matched
+        case imageKey = "image_key"
         case createdAt = "created_at"
         case decisionCount = "decision_count"
         case decisionCountCapped = "decision_count_capped"
@@ -465,6 +476,7 @@ public struct Topic: Codable, Sendable, Equatable, Identifiable {
         unreadCount = try values.decodeIfPresent(Int.self, forKey: .unreadCount) ?? 0
         recentHits = try values.decodeIfPresent([TopicHit].self, forKey: .recentHits) ?? []
         hits6Months = try values.decodeIfPresent(Int.self, forKey: .hits6Months) ?? 0
+        imageKey = try values.decodeIfPresent(String.self, forKey: .imageKey)
     }
 }
 
