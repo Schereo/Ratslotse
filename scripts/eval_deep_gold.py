@@ -44,7 +44,12 @@ from kern import llm  # noqa: E402
 
 CASES = ROOT / "eval" / "cases_deep_gold.json"
 RESULTS = ROOT / "eval" / "results" / "deep_gold"
-JUDGE_MODEL = os.environ.get("COUNCIL_GOLD_JUDGE_MODEL", "google/gemini-2.5-flash")
+# Richter: GPT-6 Sol (01.10.2026). Gemini 2.5 Flash war zu großzügig (wertete
+# einen Ausschuss-Auftrag als Ratsbeschluss) und läuft am 20.10.2026 aus.
+# GPT-6 Luna urteilte über DIESELBE Antwort einmal 0 %, einmal 50 % — als
+# Messinstrument zu wackelig. Sol gab in zwei Läufen über 14 gespeicherte
+# Antworten fast gleiche Urteile, für etwa 0,8 ct je Fall.
+JUDGE_MODEL = os.environ.get("COUNCIL_GOLD_JUDGE_MODEL", "openai/gpt-6-sol")
 
 JUDGE_PROMPT = """Du prüfst einen Recherche-Bericht über Oldenburger Ratsvorgänge gegen eine handgeprüfte Faktenliste.
 
@@ -55,7 +60,14 @@ BERICHT:
 {bericht}
 >>>
 
-PFLICHTFAKTEN (je Fakt: steht er inhaltlich im Bericht? Sinngemäß genügt; Details in Klammern sind nicht zwingend. Ein Fakt ist NICHT erfüllt, wenn der Bericht nur einen Teil davon nennt, der den Kern verfehlt):
+PFLICHTFAKTEN — je Fakt: Hat eine Leserin, die NUR den Bericht kennt, diese Information im Wesentlichen erfahren?
+- Ja (ok: true), wenn die wesentliche Aussage dasteht — in anderen Worten oder über mehrere Sätze verteilt genügt.
+- FEHLENDE Einzelheiten machen einen Fakt NICHT unerfüllt: Datum, Vorlagennummer, Antragsteller in Klammern, genaues Stimmverhältnis, einzelne Zusatzpunkte nach „außerdem“ oder Semikolon, Begründungen und Hintergrund.
+- FALSCHE Einzelheiten schon: ein anderes Gremium, ein anderer Zeitpunkt, ein anderes Ergebnis, eine andere Aussage.
+- Nein (ok: false) auch, wenn der Kern fehlt oder nur ein Randaspekt genannt ist.
+- Steht im Fakt „mindestens“ (etwa „mindestens zwei genannt“), gilt genau diese Mindestzahl.
+- Findest du eine Stelle, die die Hauptaussage des Fakts trägt, ist er erfüllt — dass Nebenangaben des Fakts dort fehlen, ändert daran nichts. Nur wenn die Stelle dem Fakt WIDERSPRICHT (anderes Gremium, anderer Zeitpunkt, anderes Ergebnis), ist er nicht erfüllt.
+Lies den GANZEN Bericht, bevor du urteilst; zitiere die Stelle, auf die du dich stützt.
 {pflicht}
 
 VERBOTENE BEHAUPTUNGEN (je Punkt: stellt der Bericht das als Tatsache dar? Eine ausdrückliche Verneinung oder Einschränkung ist KEIN Verstoß):
