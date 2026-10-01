@@ -2954,7 +2954,8 @@ def debatten_nachladen(
     rows: list[dict] = []
     try:
         hits = emb.search_wortbeitraege(store, body.question, body.question, top_k=40,
-                                        kandidaten=150, pair_max=700)
+                                        kandidaten=150, pair_max=700,
+                                        text_ids=qa.speech_text_ids(store, body.question))
         rows = store.wortbeitraege_by_ids([wid for wid, _ in hits])
     except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
         rows = []
@@ -5055,7 +5056,12 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     # Stadt" (Pressemitteilungen) — nur wenn der validierte
                     # Rechercheplan einen offiziellen aktuellen Stand braucht.
                     from council import embeddings as emb
-                    hits_p = emb.search_presse(store, q_suche, expanded)
+                    hits_p = emb.search_presse(
+                        store, q_suche, expanded,
+                        top_k=(qa.ASK_PRESSE_TOP_STAND if qa.stand_or_recency(q_suche)
+                               else qa.ASK_PRESSE_TOP),
+                        kandidaten=qa.ASK_PRESSE_KANDIDATEN,
+                        titel_ids=qa.press_title_ids(store, q_suche))
                     presse_rows = store.presse_by_ids([pid for pid, _ in hits_p])
                 except Exception:  # noqa: BLE001 — Presse ist Zusatz, nie Blocker
                     pass
@@ -5128,7 +5134,9 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                         hits_w = emb.search_wortbeitraege(
                             store, q_suche, expanded, top_k=qa.ASK_WORTBEITRAG_TOP,
                             kandidaten=qa.ASK_WORTBEITRAG_KANDIDATEN,
-                            pair_max=qa.ASK_WORTBEITRAG_PAIR_MAX)
+                            pair_max=qa.ASK_WORTBEITRAG_PAIR_MAX,
+                            text_ids=qa.speech_text_ids(store, q_suche),
+                            neueste_zuerst=qa.stand_or_recency(q_suche))
                         debatten_rows = store.wortbeitraege_by_ids([wid for wid, _ in hits_w])
                         # … plus die Aussprache ZU den gefundenen Beschlüssen:
                         # Fachsprache (Vinylchlorid, Messpunkte) liegt außerhalb

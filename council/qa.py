@@ -456,7 +456,7 @@ def analyse_query(question: str, model: str = EXPAND_MODEL,
         # Punktfrage? („Wann wurde X beschlossen?") — dann antwortet das Modell
         # knapp statt mit Verlauf + Debatten-Absatz. Reist im ohnehin laufenden
         # Analyse-Call mit, kostet also keine zusätzliche Latenz.
-        eng = bool(data.get("eng") is True)
+        eng = bool(data.get("eng") is True) and not _KEINE_PUNKTFRAGE_RE.search(question or "")
         # Nennt die Frage überhaupt einen Gegenstand? Auch dieses Urteil reist
         # im Analyse-Call mit. Der Router fragt danach ZURÜCK, statt zu raten
         # (siehe RUECKFRAGE_TEXT) — was es damit auf sich hat, steht dort.
@@ -691,7 +691,12 @@ ENG_REGEL = (
     "Nenne die Tatsache mit Beleg [id] und, wenn es zum Verständnis "
     "nötig ist, den einen wichtigsten Bezug (etwa die Bestätigung im Rat). "
     "KEIN Absatz zur Debatte, KEINE Vorgeschichte, KEINE Aufzählung weiterer "
-    "Beschlüsse — auch dann nicht, wenn der Kontext mehr hergibt. Fehlt die "
+    "Beschlüsse — auch dann nicht, wenn der Kontext mehr hergibt. Ist das, "
+    "was die Frage erwartet, gar NICHT beschlossen — nur geprüft, geplant, "
+    "angekündigt oder als Bericht zur Kenntnis genommen —, sage das im selben "
+    "oder im zweiten Satz ausdrücklich, samt Anlass (wer es beantragt hat): "
+    "Ein Termin aus einer Protokollnotiz ist eine Absicht der Verwaltung, kein "
+    "Ratsbeschluss. Fehlt die "
     "Tatsache in den Quellen, sage das im ERSTEN Satz — und nenne dann in EINEM "
     "weiteren Satz die Beschlüsse, die den gefragten Gegenstand (den Ort, das "
     "Vorhaben, die Sache) betreffen, mit [id], damit man weiß, wo es "
@@ -877,6 +882,24 @@ ZUKUNFT_LEER_REGEL = (
     "vorhandenen Beschlüsse in der VERGANGENHEIT. Ein Beschluss ist kein Plan: "
     "Er sagt, was der Rat entschieden hat, nicht, was als Nächstes passiert."
 )
+
+
+# „Wie wurde über X entschieden?“ fragt nach dem WEG (Ausschüsse, Rat,
+# Mehrheiten), nicht nach einer Tatsache. Das Analyse-Modell stufte die Frage
+# zum Mobilitätsplan 2030 trotzdem in beiden Läufen als Punktfrage ein — und
+# die Antwort bestand aus einem Satz (Gold-Test 01.10.2026). Die Prompt-
+# Definition nennt „Was wurde zu X entschieden?“ längst als Gegenbeispiel; das
+# Muster hier hält es deterministisch.
+_KEINE_PUNKTFRAGE_RE = re.compile(
+    r"\bwie\s+(?:wurde|wird|hat|haben)\b[^?]{0,80}?\b"
+    r"(?:entschieden|abgestimmt|beschlossen|beraten|behandelt|positioniert)\b",
+    re.IGNORECASE)
+
+
+def stand_or_recency(question: str) -> bool:
+    """Will die Frage den heutigen Stand? Für die Presse heißt das: mehr
+    Meldungen, neueste zuerst."""
+    return bool(_STAND_RE.search(question or "")) or recency_intent(question or "")
 
 
 def recency_intent(question: str) -> bool:
@@ -2395,13 +2418,20 @@ def _presse_block(presse: list[dict] | None) -> str:
     „Laut Pressemitteilung vom …". Leer, wenn nichts Einschlägiges da ist."""
     if not presse:
         return ""
+    # Neueste zuerst: Ist die jüngste Meldung neuer als der jüngste Beschluss,
+    # IST sie der Stand. Die Antwort zum Stadion endete am 01.06.2026, obwohl
+    # die EU-Genehmigung vom 12.08.2026 im Kontext stand.
+    neu_zuerst = sorted(presse, key=lambda p: p.get("date") or "", reverse=True)
     zeilen = "\n".join(
         f"- {p.get('title', '')} (Pressemitteilung der Stadt vom {_datum_de(p.get('date'))}): "
         f"{(p.get('auszug') or '').strip()[:280]}"
-        for p in presse)
-    return ("\nAKTUELLES VON DER STADT (thematisch geprüfte Pressemitteilungen). Ergänze\n"
-            "die Antwort um den aktuellen Stand der Verwaltung, wo die Mitteilungen\n"
-            "Neues zur Sache tragen — als „Laut Pressemitteilung vom …“, NIE mit [id]:\n"
+        for p in neu_zuerst)
+    return ("\nAKTUELLES VON DER STADT (thematisch geprüfte Pressemitteilungen, neueste\n"
+            "zuerst). Ergänze die Antwort um den aktuellen Stand der Verwaltung, wo die\n"
+            "Mitteilungen Neues zur Sache tragen — als „Laut Pressemitteilung vom …“,\n"
+            "NIE mit [id]. Ist eine Mitteilung NEUER als der jüngste Beschluss im\n"
+            "Kontext, ist sie der aktuelle Stand: Dann endet die Antwort mit ihr, statt\n"
+            "beim Beschluss stehen zu bleiben:\n"
             f"{zeilen}\n")
 
 
@@ -2445,6 +2475,63 @@ DEEP_DEBATTE_ANTWORT_MAX = 600
 ASK_WORTBEITRAG_TOP = 8
 ASK_WORTBEITRAG_KANDIDATEN = 40
 ASK_WORTBEITRAG_PAIR_MAX = 700
+# Pressemitteilungen in /ask: Feld vor dem Cross-Encoder und Zahl der Treffer.
+# Bei Stand-Fragen mehr, denn dort ist die jüngste Meldung oft die Antwort
+# (Stadion: „EU und Kommunalaufsicht geben endgültig grünes Licht“, 12.08.2026).
+ASK_PRESSE_KANDIDATEN = 40
+ASK_PRESSE_TOP = 3
+ASK_PRESSE_TOP_STAND = 5
+# Wortbeiträge, deren TEXT alle seltenen Fragewörter trägt, kommen zusätzlich
+# ins Prüffeld der Beitragssuche. Die Aussagen der Verwaltung vom 16.04.2026
+# zum Schlossplatz-Spielplatz (TOP Spielleitplanung) bekamen im Reranker
+# 0,03 bis 0,38 — klar über der Schwelle —, kamen aber selbst mit 150
+# Vektor-Kandidaten nicht ins Feld (Gold-Test 01.10.2026).
+WORTBEITRAG_TEXT_MAX = 30
+
+
+def speech_text_ids(store, question: str, rare_max: int | None = None,
+                    limit: int = WORTBEITRAG_TEXT_MAX) -> list[int]:
+    """Contributions naming every rare question word, newest first.
+    Rarity is measured on decision titles, as in :func:`title_match_decisions`."""
+    words = _titel_woerter(question)
+    if not words:
+        return []
+    try:
+        freq = store.title_frequencies(words)
+        grenze = DEBATTE_TITEL_SELTEN if rare_max is None else rare_max
+        rare = [w for w in words if 0 < freq.get(w, 0) <= grenze]
+        return store.wortbeitrag_ids_with_text_words(rare, limit) if rare else []
+    except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
+        return []
+
+
+PRESSE_TITEL_SELTEN = 50
+PRESSE_TITEL_MAX = 15
+# Wörter, die die FRAGE rahmen, nicht die Sache: „Stand“ steckt als Wortteil
+# in „Standort“ und „Zustand“ und galt in Pressetiteln deshalb als selten —
+# die Regel verlangte dann „Stand“ UND „Stadionneubau“ im Titel und fand nichts.
+_TITEL_RAHMEN = {"stand", "sachstand", "stande", "entwicklung", "ergebnis", "thema"}
+
+
+def _titel_woerter(question: str) -> list[str]:
+    return [w for w in extract_keywords(question)
+            if len(w) >= 5 and w not in _TITEL_RAHMEN]
+
+
+def press_title_ids(store, question: str, rare_max: int = PRESSE_TITEL_SELTEN,
+                    limit: int = PRESSE_TITEL_MAX) -> list[int]:
+    """Press releases whose title carries every rare word of the question,
+    newest first — extra candidates for ``emb.search_presse``. Same rule as
+    :func:`title_match_decisions`, measured on press titles."""
+    words = _titel_woerter(question)
+    if not words:
+        return []
+    try:
+        freq = store.presse_title_frequencies(words)
+        rare = [w for w in words if 0 < freq.get(w, 0) <= rare_max]
+        return store.presse_ids_with_title_words(rare, limit) if rare else []
+    except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
+        return []
 
 # Die Aussprache koppelt /ask an die ersten acht Beschlüsse. Der Cross-Encoder
 # stellt aber bisweilen den einen Beschluss, der die Frage im Titel trägt,
@@ -2475,7 +2562,7 @@ def title_match_decisions(store, question: str, candidates: list[dict],
     steht in einer Handvoll Titel, „Antrag“ oder „Bericht“ in Tausenden.
     """
     rest = candidates[head:]
-    words = [w for w in extract_keywords(question) if len(w) >= 5]
+    words = _titel_woerter(question)
     if not rest or not words:
         return []
     try:

@@ -347,6 +347,22 @@ class WortbeitraegeMixin(StoreBasis):
         return [r[0] for r in self._conn.execute(
             "SELECT id FROM council_speeches WHERE kind = ?", (kind,))]
 
+    def wortbeitrag_ids_with_text_words(self, words: list[str], limit: int = 30) -> list[int]:
+        """Contributions whose text or agenda item contains EVERY word, newest first."""
+        if not words:
+            return []
+        conds, params = [], []
+        for w in words:
+            conds.append("(w.text LIKE ? OR w.text LIKE ? OR w.top LIKE ? OR w.top LIKE ?)")
+            cap = f"%{w[:1].upper()}{w[1:]}%"
+            params += [f"%{w}%", cap, f"%{w}%", cap]
+        rows = self._conn.execute(
+            f"""SELECT w.id FROM council_speeches w
+                LEFT JOIN council_sessions cs ON cs.ksinr = w.ksinr
+                WHERE {' AND '.join(conds)}
+                ORDER BY cs.session_date DESC, w.id LIMIT ?""", [*params, limit]).fetchall()
+        return [int(r[0]) for r in rows]
+
     def wortbeitraege_by_ids(self, ids: list[int]) -> list[dict]:
         if not ids:
             return []
