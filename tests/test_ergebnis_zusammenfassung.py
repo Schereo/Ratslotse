@@ -220,3 +220,15 @@ def test_speichern_normalisiert_vote(tmp_path):
     row = store._conn.execute("SELECT vote, abstentions FROM council_decisions").fetchone()
     assert (row["vote"], row["abstentions"]) == ("unanimous", 9)
     store.close()
+
+
+def test_themen_satz_nimmt_auch_eine_nackte_liste(monkeypatch):
+    # 01.10.2026: Das Modell antwortete mit [...] statt {"results": [...]};
+    # der AttributeError riss den ganzen Stapel ab.
+    antwort = [{"id": 1, "field": "finanzen", "tags": [], "summary": "Der Haushalt wird beschlossen."}]
+    monkeypatch.setattr(topics.llm, "chat_complete",
+                        lambda **kw: _fake_resp(json.dumps(antwort, ensure_ascii=False)))
+    out, _usage = topics.classify_batch([
+        {"id": 1, "title": "Haushalt", "official_text": "Der Haushalt wird beschlossen.",
+         "outcome": "accepted", "raw_result": "- einstimmig -"}])
+    assert out[1]["summary"] == "Der Haushalt wird beschlossen."

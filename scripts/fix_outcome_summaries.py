@@ -17,7 +17,9 @@ Dazu ein Schritt ohne Modell: ``vote`` nach ``votes.normalize_vote`` („einstim
 bei neun Enthaltungen" war ``majority``, 8426).
 
 Was nicht gelingt, wird GELEERT statt stehen gelassen: Eine fehlende
-Kurzfassung erzeugt der Wochenlauf neu, eine falsche bliebe für immer.
+Kurzfassung erzeugt der Wochenlauf neu, eine falsche bliebe für immer. Einen
+geleerten Themen-Satz greift der nächste Lauf dieses Skripts wieder auf
+(``--nur summary``) — den füllt kein Wochenlauf.
 Beim Themen-Satz bleiben Themenfeld und Schlagworte, wie sie sind.
 
 Danach die Beschreibungen der Themen-Seiten (``council_entity_meta``): Sie
@@ -60,12 +62,17 @@ _OUTCOMES = ", ".join(f"'{o}'" for o in outcome_note.NOT_ADOPTED)
 
 
 def _affected(store: CouncilStore, column: str) -> list[dict]:
+    # Ein GELEERTER Themen-Satz (Feld da, Satz nicht) kommt wieder mit: Anders
+    # als „Einfach erklärt“ füllt ihn kein Wochenlauf nach — die
+    # Klassifikation greift nur Beschlüsse ohne Themenfeld auf.
+    vorhanden = (f"d.{column} IS NOT NULL" if column != "summary"
+                 else "(d.summary IS NOT NULL OR d.policy_field IS NOT NULL)")
     rows = store._conn.execute(
         f"""SELECT d.id, d.kind, d.title, d.official_text, d.outcome, d.raw_result,
                    d.policy_field, d.policy_tags, d.{column} AS text,
                    cs.committee, cs.session_date
             FROM council_decisions d JOIN council_sessions cs ON cs.ksinr = d.ksinr
-            WHERE d.outcome IN ({_OUTCOMES}) AND d.{column} IS NOT NULL
+            WHERE d.outcome IN ({_OUTCOMES}) AND {vorhanden}
             ORDER BY cs.session_date DESC, d.id"""
     ).fetchall()
     return [dict(r) for r in rows if not outcome_note.states_outcome(r["outcome"], r["text"])]
