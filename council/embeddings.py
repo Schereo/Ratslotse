@@ -537,6 +537,9 @@ def _presse_matrix(store):
 # 0.471 auf die Stadion-Frage!), der Reranker trennt mit >2 Punkten Abstand
 # (gemessen 10.08.: echte Treffer −0.1…−0.5, Fremdthemen ≤ −2.5).
 KONTEXT_RERANK_MIN = float(os.environ.get("COUNCIL_KONTEXT_RERANK_MIN", "-1.5"))
+# Strengere Schwelle für Pressemitteilungen, die nur ein Titelwort ins Feld
+# brachte (search_presse, ``titel_ids``).
+TITEL_RERANK_MIN = -1.0
 # Kürzerer Zeichen-Deckel NUR für die Zusatzkanal-Paare: 260 → 150 spart ~22 %
 # der Kontext-Rerank-Zeit (gemessen 10.08.: 799 → 623 ms) bei unveränderter
 # Trennschärfe (echte PM −0.12 vs. Ampelwartung −2.36 — weiter >2 Punkte).
@@ -561,24 +564,39 @@ def _rerank_kontext(query: str, kandidaten: list[tuple], top_k: int,
 
 
 def search_presse(store, query: str, expanded: str, top_k: int = 3,
-                  min_score: float = 0.45) -> list[tuple]:
+                  min_score: float = 0.45, kandidaten: int | None = None,
+                  titel_ids: list[int] | None = None) -> list[tuple]:
     """Beste Pressemitteilungen zur Frage → ``[(press_id, score)]``.
     Vektor-Kanal (bester Chunk je PM) als Kandidaten-Lieferant, Cross-Encoder
     als Torwächter — der Block „Aktuelles von der Stadt" soll nur auftauchen,
     wenn es wirklich Einschlägiges gibt. BM25 nur als Fallback, solange kein
     PM-Index aufgebaut ist (als Auffüller daneben hob er thematisch fremde
-    PMs in die UI — Tims Ampel-Wartungs-Befund 10.08.)."""
+    PMs in die UI — Tims Ampel-Wartungs-Befund 10.08.).
+
+    Wie bei den Wortbeiträgen werden Frage UND Begriffe eingebettet, und
+    ``kandidaten`` weitet das Feld vor dem Cross-Encoder. Zum Stadion gibt es
+    Dutzende Meldungen; mit neun Kandidaten kam „EU und Kommunalaufsicht geben
+    endgültig grünes Licht“ (12.08.2026) gar nicht erst in die Prüfung — und
+    hätte dort den höchsten Wert aller Meldungen bekommen (Gold-Test
+    01.10.2026).
+
+    ``titel_ids`` sind Meldungen, deren Titel die seltenen Wörter der Frage
+    trägt (``qa.press_title_ids``). Sie kommen zusätzlich ins Feld — der
+    Cross-Encoder entscheidet weiter. Auf „Wie ist der Stand beim
+    Stadionneubau?“ lag die EU-Meldung mit den Begriffen der Analyse („Neubau,
+    Sportstätte …“) jenseits von Rang 40, im Reranker aber auf Platz 3."""
     best: dict[int, tuple[float, str]] = {}
     vektor_ok = False
     try:
         ids, texts, mat = _presse_matrix(store)
         if ids:
             vektor_ok = True
-            qv = embed([expanded])[0]
-            scores = mat @ qv
-            for pid, text, s in zip(ids, texts, scores):
-                if s >= min_score and s > best.get(pid, (-1.0, ""))[0]:
-                    best[pid] = (float(s), text)
+            texte_q = list(dict.fromkeys(t for t in (expanded, query) if (t or "").strip()))
+            for qv in embed(texte_q):
+                scores = mat @ qv
+                for pid, text, s in zip(ids, texts, scores):
+                    if s >= min_score and s > best.get(pid, (-1.0, ""))[0]:
+                        best[pid] = (float(s), text)
     except Exception:  # noqa: BLE001 — ohne fastembed bleibt BM25
         pass
     if not vektor_ok:
@@ -586,8 +604,22 @@ def search_presse(store, query: str, expanded: str, top_k: int = 3,
         for pid, score, _snip in store.search_presse_fts(f"{query} {expanded}", limit=top_k * 3):
             fallback.setdefault(pid, 0.01 + min(score, 50) / 1000)
         return sorted(fallback.items(), key=lambda x: -x[1])[:top_k]
-    kandidaten = sorted(best.items(), key=lambda x: -x[1][0])[:max(top_k * 3, 9)]
-    return _rerank_kontext(query, [(pid, t) for pid, (_s, t) in kandidaten], top_k)
+    pool = kandidaten or max(top_k * 3, 9)
+    feld = sorted(best.items(), key=lambda x: -x[1][0])[:pool]
+    if titel_ids:
+        im_feld = {pid for pid, _ in feld}
+        erster_chunk: dict[int, str] = {}
+        for pid, text in zip(ids, texts):
+            erster_chunk.setdefault(pid, text)
+        nur_titel = {pid for pid in titel_ids if pid not in im_feld and pid in erster_chunk}
+        feld += [(pid, (0.0, erster_chunk[pid])) for pid in titel_ids if pid in nur_titel]
+        # Was NUR über den Titel kam, muss klarer passen: „Stadion“ steht auch
+        # über dem DFB-Pokalspiel im Marschwegstadion (−1,35). Die EU-Meldung
+        # zum Neubau lag bei −0,28.
+        treffer = _rerank_kontext(query, [(pid, t) for pid, (_s, t) in feld], top_k + len(nur_titel))
+        return [(pid, sc) for pid, sc in treffer
+                if pid not in nur_titel or sc >= TITEL_RERANK_MIN][:top_k]
+    return _rerank_kontext(query, [(pid, t) for pid, (_s, t) in feld], top_k)
 
 
 def embed_presse_missing(store) -> int:
@@ -804,7 +836,9 @@ def _wb_matrix(store):
 
 def search_wortbeitraege(store, query: str, expanded: str, top_k: int = 4,
                          min_score: float = 0.45, kandidaten: int | None = None,
-                         pair_max: int | None = None) -> list[tuple]:
+                         pair_max: int | None = None,
+                         text_ids: list[int] | None = None,
+                         neueste_zuerst: bool = False) -> list[tuple]:
     """Beste Wortbeiträge (Debatten, Anfragen, Einwohnerfragen) zur Frage →
     ``[(contribution_id, score)]``. Wie search_presse: Vektor liefert Kandidaten, der
     Cross-Encoder bestätigt — der Debatten-Block soll nur bei echter
@@ -847,12 +881,22 @@ def search_wortbeitraege(store, query: str, expanded: str, top_k: int = 4,
             fallback.setdefault(wid, 0.01 + min(score, 50) / 1000)
         return sorted(fallback.items(), key=lambda x: -x[1])[:top_k]
     pool = kandidaten or max(top_k * 3, 12)
-    kandidaten_liste = sorted(best.items(), key=lambda x: -x[1])[:pool]
-    rows = store.wortbeitraege_by_ids([wid for wid, _ in kandidaten_liste])
+    feld = [wid for wid, _ in sorted(best.items(), key=lambda x: -x[1])[:pool]]
+    # Beiträge, die die seltenen Wörter der Frage wörtlich nennen
+    # (qa.speech_text_ids) — der Cross-Encoder entscheidet auch über sie.
+    feld += [wid for wid in (text_ids or []) if wid not in set(feld)]
+    rows = store.wortbeitraege_by_ids(feld)
     texte = {r["id"]: " — ".join(t for t in (r.get("top"), r.get("text")) if t)
              for r in rows}
-    return _rerank_kontext(query, [(wid, texte[wid]) for wid, _ in kandidaten_liste if wid in texte],
-                           top_k, pair_max=pair_max)
+    paare = [(wid, texte[wid]) for wid in feld if wid in texte]
+    if not neueste_zuerst:
+        return _rerank_kontext(query, paare, top_k, pair_max=pair_max)
+    # Stand-Frage: Unter den bestätigten Beiträgen gewinnen die NEUESTEN. Beim
+    # Schlossplatz lagen die Dezember-Beiträge im Reranker vor denen vom April
+    # und füllten alle acht Plätze — der jüngere Stand fiel heraus.
+    bestaetigt = _rerank_kontext(query, paare, len(paare), pair_max=pair_max)
+    datum = {r["id"]: r.get("session_date") or "" for r in rows}
+    return sorted(bestaetigt, key=lambda x: datum.get(x[0], ""), reverse=True)[:top_k]
 
 
 #: Zusagen ohne Inhalt: „Ich sichere eine Antwort zu Protokoll zu", „wird

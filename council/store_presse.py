@@ -291,6 +291,33 @@ class PresseMixin(StoreBasis):
         by_id = {r["id"]: dict(r) for r in rows}
         return [by_id[i] for i in ids if i in by_id]
 
+    # Titel ohne Bindestriche: „Stadion-Neubau“ soll auf „stadionneubau“ passen.
+    _TITEL_OHNE_STRICH = "REPLACE(title, '-', '')"
+
+    def presse_title_frequencies(self, words: list[str]) -> dict[str, int]:
+        """How many press release titles contain each word (hyphens ignored)."""
+        out: dict[str, int] = {}
+        for w in words:
+            row = self._conn.execute(
+                f"SELECT COUNT(*) FROM council_press WHERE {self._TITEL_OHNE_STRICH} LIKE ? "
+                f"OR {self._TITEL_OHNE_STRICH} LIKE ?",
+                (f"%{w}%", f"%{w[:1].upper()}{w[1:]}%")).fetchone()
+            out[w] = int(row[0]) if row else 0
+        return out
+
+    def presse_ids_with_title_words(self, words: list[str], limit: int = 15) -> list[int]:
+        """Press releases whose title contains EVERY word, newest first."""
+        if not words:
+            return []
+        conds, params = [], []
+        for w in words:
+            conds.append(f"({self._TITEL_OHNE_STRICH} LIKE ? OR {self._TITEL_OHNE_STRICH} LIKE ?)")
+            params += [f"%{w}%", f"%{w[:1].upper()}{w[1:]}%"]
+        rows = self._conn.execute(
+            f"SELECT id FROM council_press WHERE {' AND '.join(conds)} "
+            f"ORDER BY date DESC LIMIT ?", [*params, limit]).fetchall()
+        return [int(r[0]) for r in rows]
+
     def search_presse_fts(self, query: str, limit: int = 20) -> list[tuple]:
         """BM25 über Pressemitteilungen → [(presse_id, score, snippet)] wie bei
         den Beschlüssen (search_decisions_fts)."""
