@@ -66,6 +66,7 @@ public struct RatsWidget<Content: View, Trailing: View>: View {
     private let title: String
     private let accent: RatsWidgetAccent
     private let glyph: RatsGlyph?
+    private let imageName: String?
     private let note: String?
     private let board: Bool
     private let trailing: Trailing
@@ -78,6 +79,7 @@ public struct RatsWidget<Content: View, Trailing: View>: View {
         _ title: String,
         accent: RatsWidgetAccent,
         glyph: RatsGlyph? = nil,
+        imageName: String? = nil,
         note: String? = nil,
         board: Bool = false,
         @ViewBuilder trailing: () -> Trailing,
@@ -86,6 +88,7 @@ public struct RatsWidget<Content: View, Trailing: View>: View {
         self.title = title
         self.accent = accent
         self.glyph = glyph
+        self.imageName = imageName
         self.note = note
         self.board = board
         self.trailing = trailing()
@@ -117,7 +120,16 @@ public struct RatsWidget<Content: View, Trailing: View>: View {
 
     private var header: some View {
         HStack(spacing: 9) {
-            if let glyph {
+            if let imageName {
+                // Das Bild des Stadtthemas (Asset-Katalog, `scripts/ios_themenbilder.py`)
+                // ersetzt die Kachel mit dem Zeichen — es trägt seine Farbe selbst.
+                Image(imageName)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 30, height: 30)
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .accessibilityHidden(true)
+            } else if let glyph {
                 RatsIcon(glyph, size: 14)
                     .foregroundStyle(accentColor)
                     .frame(width: 26, height: 26)
