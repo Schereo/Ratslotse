@@ -75,13 +75,17 @@ jobs:
               echo "nur muss eine Fall-id sein: $NUR"; exit 2
             fi
             PY=.venv/bin/python
-            NUR_ARG=""
-            [ -n "$NUR" ] && NUR_ARG="--nur $NUR"
+            # Die Login-Shell auf dem Server ist zsh: Ein unquotiertes
+            # "--nur $NUR" in einer Variablen wird dort NICHT in zwei Argumente
+            # geteilt (01.10.2026: „unrecognized arguments: --nur …“). Deshalb
+            # ausgeschrieben statt über eine Hilfsvariable.
             if [ "$WEG" = "ask" ] || [ "$WEG" = "beide" ]; then
               echo "=== Frag den Rat"
-              $PY scripts/eval_ask_gold.py --label "$LABEL" $NUR_ARG
+              if [ -n "$NUR" ]; then $PY scripts/eval_ask_gold.py --label "$LABEL" --nur "$NUR"
+              else $PY scripts/eval_ask_gold.py --label "$LABEL"; fi
             fi
             if [ "$WEG" = "deep" ] || [ "$WEG" = "beide" ]; then
               echo "=== Gründliche Recherche"
-              $PY scripts/eval_deep_gold.py --db data/council.sqlite --label "$LABEL" $NUR_ARG
+              if [ -n "$NUR" ]; then $PY scripts/eval_deep_gold.py --db data/council.sqlite --label "$LABEL" --nur "$NUR"
+              else $PY scripts/eval_deep_gold.py --db data/council.sqlite --label "$LABEL"; fi
             fi
