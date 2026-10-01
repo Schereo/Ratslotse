@@ -1,0 +1,41 @@
+# Manuell auslösbar: Welche Sprachmodelle setzt die .env einer VM?
+#
+# Ein Modell-Schalter in der .env schlägt den Vorgabewert im Code. Wer eine
+# Vorgabe umstellt (etwa weg von Gemini 2.5 Flash, das am 20.10.2026 ausläuft),
+# muss wissen, ob der Server sie überhaupt liest. Den Code hält
+# tests/test_keine_auslaufenden_modelle.py; diese Datei schaut auf die Server.
+#
+# Gezeigt werden NUR Zeilen, deren Name „MODEL“ enthält — Modellnamen sind
+# keine Geheimnisse. Schlüssel, Token und Adressen bleiben unberührt.
+name: "Ops: Modelle in der .env"
+
+on:
+  workflow_dispatch:
+    inputs:
+      umgebung:
+        description: "Welche VM? (prod = ratslotse.de)"
+        type: choice
+        options: [dev, prod]
+        default: prod
+
+jobs:
+  modelle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Modelle (${{ inputs.umgebung }})"
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ inputs.umgebung == 'prod' && secrets.VPS_HOST || secrets.VPS_DEV_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          proxy_host: ${{ secrets.VPS_PROXY_HOST }}
+          proxy_username: ${{ secrets.VPS_PROXY_USER }}
+          proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          proxy_port: ${{ secrets.VPS_SSH_PORT }}
+          script: |
+            cd ~/app
+            echo "=== Modell-Schalter in der .env"
+            grep -E '^[A-Z0-9_]*MODEL[A-Z0-9_]*=' .env || echo "(keiner gesetzt — es gelten die Vorgaben im Code)"
+            echo "=== Auslaufend (Gemini 2.5, 20.10.2026)"
+            grep -E '^[A-Z0-9_]*MODEL[A-Z0-9_]*=.*gemini-2\.5' .env || echo "(keiner)"

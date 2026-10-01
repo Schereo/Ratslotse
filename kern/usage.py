@@ -50,6 +50,7 @@ PRICES: dict[str, tuple[float, float]] = {
     "deepseek/deepseek-v4-flash-0731": (0.04, 0.64),
     # Kandidat im Wortbeitrags-Vergleich (30.09.2026), Listenpreis OpenRouter.
     "anthropic/claude-sonnet-5.5": (2.0, 10.0),
+    "anthropic/claude-opus-5.5": (4.0, 20.0),
 }
 
 
