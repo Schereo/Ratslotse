@@ -75,7 +75,11 @@ def _affected(store: CouncilStore, column: str) -> list[dict]:
             WHERE d.outcome IN ({_OUTCOMES}) AND {vorhanden}
             ORDER BY cs.session_date DESC, d.id"""
     ).fetchall()
-    return [dict(r) for r in rows if not outcome_note.states_outcome(r["outcome"], r["text"])]
+    # Ein leerer Text „nennt nichts Falsches“ und bestünde die Probe — der
+    # geleerte Themen-Satz muss aber gerade deshalb wieder mit.
+    return [dict(r) for r in rows
+            if (column == "summary" and not (r["text"] or "").strip())
+            or not outcome_note.states_outcome(r["outcome"], r["text"])]
 
 
 def _vote_fixes(store: CouncilStore) -> list[tuple[int, str | None, str | None]]:

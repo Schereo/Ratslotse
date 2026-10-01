@@ -157,3 +157,19 @@ def test_backfill_redescribes_entities_with_rejected_decisions(tmp_path, monkeyp
                     "radweg": "Ein Radweg.", "stadion": None}
     assert [e["slug"] for e in store.entities_without_description()] == ["stadion"]
     store.close()
+
+
+def test_backfill_picks_up_emptied_topic_sentences(tmp_path):
+    """Ein geleerter Themen-Satz (Feld da, Satz nicht) kommt wieder mit —
+    ihn füllt kein Wochenlauf. Am 01.10.2026 griff der erste Versuch ihn per
+    SQL auf und warf ihn im Filter wieder hinaus (leerer Text „besteht“)."""
+    import scripts.fix_outcome_summaries as fix
+
+    store = _store(tmp_path)
+    with store._conn:
+        store._conn.execute("UPDATE council_decisions SET policy_field = 'finanzen', summary = NULL")
+    betroffen = {r["title"] for r in fix._affected(store, "summary")}
+    ohne_feld = {r["title"] for r in fix._affected(store, "simple_summary")}
+    store.close()
+    assert betroffen == {"Hebesatzung"}   # angenommener Radweg bleibt außen vor
+    assert ohne_feld == set()             # „Einfach erklärt“ füllt der Wochenlauf
