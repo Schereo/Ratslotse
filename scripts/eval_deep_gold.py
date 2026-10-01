@@ -44,12 +44,18 @@ from kern import llm  # noqa: E402
 
 CASES = ROOT / "eval" / "cases_deep_gold.json"
 RESULTS = ROOT / "eval" / "results" / "deep_gold"
-# Richter: GPT-6 Sol (01.10.2026). Gemini 2.5 Flash war zu großzügig (wertete
-# einen Ausschuss-Auftrag als Ratsbeschluss) und läuft am 20.10.2026 aus.
-# GPT-6 Luna urteilte über DIESELBE Antwort einmal 0 %, einmal 50 % — als
-# Messinstrument zu wackelig. Sol gab in zwei Läufen über 14 gespeicherte
-# Antworten fast gleiche Urteile, für etwa 0,8 ct je Fall.
-JUDGE_MODEL = os.environ.get("COUNCIL_GOLD_JUDGE_MODEL", "openai/gpt-6-sol")
+# Richter: Claude Opus 5.5 (01.10.2026). Der Richter läuft nur in unseren
+# Messungen, nie für Nutzer*innen — Kosten und Datenschutz-Routing des
+# Produkts gelten hier nicht. Gemessen an 14 gespeicherten Antworten, je zwei
+# Läufe, gegen ein Urteil von Hand:
+#   Gemini 2.5 Flash  zu großzügig (Ausschuss-Auftrag als Ratsbeschluss gewertet),
+#                     läuft am 20.10.2026 aus, Tim will es nirgends mehr
+#   GPT-6 Luna        wackelig: dieselbe Antwort einmal 0 %, einmal 50 %
+#   GPT-6 Sol         stabil, aber zu streng (Schlossplatz 30 % statt ~65 %)
+#   Claude Sonnet 5.5 noch strenger, Bürgerbusch einmal 57 %, einmal 14 %
+#   Claude Opus 5.5   am nächsten am Urteil von Hand, 12/14 Urteile gleich;
+#                     ≈ 2,8 ct je Fall, ≈ 20 ct je Lauf „Frag den Rat“
+JUDGE_MODEL = os.environ.get("COUNCIL_GOLD_JUDGE_MODEL", "anthropic/claude-opus-5.5")
 
 JUDGE_PROMPT = """Du prüfst einen Recherche-Bericht über Oldenburger Ratsvorgänge gegen eine handgeprüfte Faktenliste.
 
@@ -122,7 +128,11 @@ def _judge(case: dict, bericht: str) -> dict:
                 frage=case["question"], bericht=bericht[:24000],
                 pflicht=pflicht, verboten=verboten)}])
         try:
-            return json.loads((resp.choices[0].message.content or "{}").strip())
+            # Claude setzt das JSON trotz response_format gern in ```json-Zäune.
+            roh = (resp.choices[0].message.content or "{}").strip()
+            if roh.startswith("```"):
+                roh = roh.split("\n", 1)[-1].rsplit("```", 1)[0]
+            return json.loads(roh.strip())
         except (ValueError, IndexError):
             if versuch == 1:
                 raise
