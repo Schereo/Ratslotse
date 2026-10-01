@@ -157,3 +157,31 @@ test("breite Wochenkarte ergänzt Inhalte; auf dem Handy bleiben alle Punkte err
   await expect(week.getByText("Die Entscheidung prägt die Entwicklung des neuen Quartiers.", { exact: true })).toHaveCount(0);
   await expect.poll(() => week.evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(1);
 });
+
+test("Woche, Zahl und Rückblick halten beim Laden ihren Platz statt aufzuploppen", async ({ page }) => {
+  // Tims Befund 01.10.2026: Die Woche erschien erst mit ihren Daten und schob
+  // alles darunter weg. Die Antworten werden hier festgehalten, bis die
+  // Skelette geprüft sind.
+  let freigeben!: () => void;
+  const frei = new Promise<void>(res => { freigeben = res; });
+  await page.route("**/api/today/visit", async route => { await frei; await route.fulfill({ json: first }); });
+  await page.route("**/api/today/updates**", async route => { await frei; await route.fulfill({ json: full }); });
+  await page.route("**/api/council/zahl-der-woche", async route => { await frei;
+    await route.fulfill({ json: { kind: "count", count: 4, window_days: 7 } }); });
+  await page.route("**/api/council/week-preview", async route => { await frei; await route.fulfill({ json: {
+    found: true, from_date: "2026-09-11", to_date: "2026-09-18",
+    sessions: [{ ksinr: 4618, committee: "Wirtschaft & Digitales", session_date: "2026-09-14", session_time: "17:00", n_items: 1 }],
+    items: [{ ksinr: 4618, item_number: "Ö 1", committee: "Wirtschaft & Digitales", session_date: "2026-09-14",
+      title: "Neue Quartiersgarage", summary: null, template_number: null, kvonr: null }],
+  } }); });
+  await page.goto("/dashboard");
+  for (const id of ["seit-besuch", "zahl-der-woche", "woche-im-rat"]) {
+    await expect(page.locator(`[data-heute-widget="${id}"] [aria-busy="true"], [data-heute-widget="${id}"][aria-busy="true"]`)).toHaveCount(1);
+  }
+  const vorher = await page.locator('[data-heute-widget="woche-im-rat"]').boundingBox();
+  expect(vorher!.height).toBeGreaterThan(150);
+  freigeben();
+  const week = page.locator('[data-heute-widget="woche-im-rat"]');
+  await expect(week.getByText("Neue Quartiersgarage", { exact: true })).toBeVisible();
+  await expect(page.locator('[aria-busy="true"]')).toHaveCount(0);
+});

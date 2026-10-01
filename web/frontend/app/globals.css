@@ -490,6 +490,14 @@ lotti-figur {
     animation: page-in 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 
+  /* Inhalt, der ein Skelett ablöst (Heute-Widgets): nur Einblenden. Das
+     Skelett hat den Platz schon gehalten — ein Anheben würde einen Weg
+     behaupten, den der Inhalt nicht gegangen ist, und transform machte den
+     Block zum Containing Block (s. fade-up). */
+  .inhalt-auf {
+    animation: page-in var(--takt-weg) ease-out both;
+  }
+
   /* Onboarding-Auftakt (26a): Lotti winkt herein, zwei Ringe laufen aus, Titel
      steigt auf, die drei Zeilen staffeln sich, dann der Knopf. Einmalig ~4 s —
      im Gegensatz zum Artboard, das für die Vorschau endlos loopt. Bei

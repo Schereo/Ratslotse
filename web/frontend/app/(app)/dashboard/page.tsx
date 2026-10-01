@@ -9,7 +9,7 @@ import { vertrag, type ApiAntwort } from "@/lib/vertrag";
 import { useAuth } from "@/lib/auth";
 import { Topic } from "@/lib/types";
 import { useHeute } from "@/lib/use-heute";
-import { Button, Card } from "@/components/ui";
+import { Button, Card, Skeleton } from "@/components/ui";
 import { Mascot } from "@/components/mascot";
 import { SitzungspauseBanner } from "@/components/sitzungspause-banner";
 import { LiveBanner } from "@/components/live-banner";
@@ -19,7 +19,7 @@ import { HeuteWidget, HeuteWidgetGrid } from "@/components/heute-widget";
 import { useUltra } from "@/lib/use-ultra";
 import { MeinViertelWidget } from "@/components/mein-viertel-widget";
 import { RecentDecisions } from "@/components/recent-decisions";
-import { WocheImRat, type Wochenvorschau } from "@/components/woche-im-rat";
+import { WocheImRat, WocheImRatSkelett, type Wochenvorschau } from "@/components/woche-im-rat";
 import { HinweisSlot } from "@/components/note-slot";
 import { PushPrimer } from "@/components/push-primer";
 import { WahlabendHinweis } from "@/components/wahlabend-hinweis";
@@ -83,6 +83,13 @@ export default function DashboardPage() {
 
   const zahl = zahlQuery.data;
 
+  // Solange die Woche lädt, hält ein Skelett ihren Platz — sonst erschien die
+  // Karte erst mit den Daten und schob alles darunter weg. Ohne Sitzungen
+  // (`found: false`) und bei einem Fehler entfällt sie wie bisher.
+  const woche = vorschau
+    ? <WocheImRat vorschau={vorschau} heuteIso={heuteIso} size="wide" />
+    : vorschauQuery.isPending ? <WocheImRatSkelett size="wide" /> : null;
+
   return (
     <div>
       {/* Kopf: Begrüßung + DIE Signal-Handlung des Screens („Frag den Rat").
@@ -139,14 +146,14 @@ export default function DashboardPage() {
           sie auf ~700 px und damit eine Stufe kürzer gezogen. Umgehängt wird
           per Hook statt doppelt per CSS, weil jede Karte selbst lädt. */}
       <div className={cn("mt-6", ultra && "grid grid-cols-2 items-start gap-4", STAFFEL)} style={staffelStil(2)}>
-      {ultra && vorschau && <WocheImRat vorschau={vorschau} heuteIso={heuteIso} size="wide" />}
+      {ultra && woche}
       <HeuteWidgetGrid>
         <SeitBesuchWidget />
         {/* Zahl der Woche (RL-905) — eine Zahl und ein Satz, braucht am
             wenigsten Breite. */}
         <HeuteWidget id="zahl-der-woche" title="Zahl der Woche" icon={Hash}>
           {zahl?.kind === "amount" && (
-            <>
+            <div className="inhalt-auf">
               <p className="font-display text-[40px] font-extrabold leading-none tracking-tight text-signal">
                 <CountUpEuro amount={zahl.amount_eur} /></p>
               <p className="mt-2 line-clamp-3 flex-1 text-hinweis text-muted-foreground">
@@ -158,10 +165,10 @@ export default function DashboardPage() {
               >
                 Zum Beschluss <ArrowRight className="h-3.5 w-3.5" />
               </Link>
-            </>
+            </div>
           )}
           {zahl?.kind === "count" && (
-            <>
+            <div className="inhalt-auf">
               <p className="font-display text-[40px] font-extrabold leading-none tracking-tight text-signal">
                 <CountUpNumber value={zahl.count} />
               </p>
@@ -180,11 +187,21 @@ export default function DashboardPage() {
                   Diese {zahl.count} ansehen <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
               )}
-            </>
+            </div>
           )}
-          {!zahl && <div className="h-10 animate-pulse rounded-lg bg-signal/10" />}
+          {/* Formgleich mit der Karte: Zahl und zwei Zeilen Satz. Vorher
+              stand hier ein 40-px-Balken, und die Karte wuchs beim Eintreffen
+              auf das Dreifache. */}
+          {zahlQuery.isPending && <div aria-busy="true">
+            <span role="status" className="sr-only">Die Zahl der Woche wird geladen.</span>
+            <div aria-hidden>
+              <Skeleton className="h-10 w-40 rounded-lg bg-signal/10" />
+              <Skeleton className="mt-4 h-3.5 w-full" />
+              <Skeleton className="mt-2 h-3.5 w-3/4" />
+            </div>
+          </div>}
         </HeuteWidget>
-        {!ultra && vorschau && <WocheImRat vorschau={vorschau} heuteIso={heuteIso} size="wide" />}
+        {!ultra && woche}
         <MeinViertelWidget topics={topicsQuery.data} heuteIso={heuteIso} size="wide" />
         <RecentDecisions size="wide" />
         <FundstueckCard size="wide" />

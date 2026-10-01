@@ -9,7 +9,7 @@ import { useAuth } from "@/lib/auth";
 import { vertrag, type ApiAntwort } from "@/lib/vertrag";
 import { sitzungHref } from "@/lib/routes";
 import { shortCommittee } from "@/lib/committees";
-import { Button, formatDate } from "@/components/ui";
+import { Button, Skeleton, formatDate } from "@/components/ui";
 import { HeuteWidget, useWidgetDetail, type WidgetSize } from "@/components/heute-widget";
 import styles from "./seit-besuch-widget.module.css";
 
@@ -38,12 +38,12 @@ export function SeitBesuchWidget({ size }: { size?: WidgetSize }) {
   return (
     <HeuteWidget id="seit-besuch" title={data?.first_visit ? "Neu bei Ratslotse" : "Seit deinem letzten Besuch"}
       icon={History} size={size}>
-      {query.isPending && <p role="status" className="text-hinweis text-muted-foreground">Dein Rückblick wird geladen.</p>}
+      {query.isPending && <RueckblickSkelett />}
       {query.isError && <div role="alert">
         <p className="text-hinweis text-muted-foreground">Der Rückblick konnte nicht {data ? "aktualisiert" : "geladen"} werden.</p>
         <Button variant="ghost" onClick={() => query.refetch()} disabled={query.isFetching} className="min-h-11 h-auto whitespace-normal">Erneut versuchen</Button>
       </div>}
-      {data && <>
+      {data && <div className="inhalt-auf">
         <p className="text-hinweis text-muted-foreground">
           {data.first_visit ? "Dein erster Rückblick: die letzten sieben Tage." : `Seit ${formatDate(data.since)} – auch außerhalb deiner Themen.`}
         </p>
@@ -56,9 +56,30 @@ export function SeitBesuchWidget({ size }: { size?: WidgetSize }) {
           <p className="text-quelle font-medium">Keine neuen relevanten Ratsunterlagen in diesem Zeitraum.</p>
           <p className="mt-1 text-hinweis text-muted-foreground">Hier erscheinen Tagesordnungen für Sitzungen ab heute und ergänzte Protokolle mit ihren Ergebnissen.</p>
         </div>}
-      </>}
+      </div>}
     </HeuteWidget>
   );
+}
+
+/** Zeitraum-Zeile und zwei Arten-Zeilen (Zahl, Name, Meta) — die Form, die der
+ *  Rückblick fast immer hat. Vorher stand hier ein einzelner Satz, und die
+ *  Karte sprang beim Eintreffen auf ihre doppelte Höhe. */
+function RueckblickSkelett() {
+  return <div aria-busy="true">
+    <span role="status" className="sr-only">Dein Rückblick wird geladen.</span>
+    <div aria-hidden>
+      <Skeleton className="h-3.5 w-3/5" />
+      <div className="mt-2 divide-y divide-border">
+        {["w-2/5", "w-1/2"].map(breite => <div key={breite} className="flex items-center gap-3 py-2.5">
+          <Skeleton className="h-7 w-5 shrink-0" />
+          <div className="min-w-0 flex-1">
+            <Skeleton className={`h-4 ${breite}`} />
+            <Skeleton className="mt-1.5 h-3 w-3/4" />
+          </div>
+        </div>)}
+      </div>
+    </div>
+  </div>;
 }
 
 function UpdateSection({ kind, groups, window, userId }: { kind: Kind; groups: Group[]; window: Updates; userId: number }) {
