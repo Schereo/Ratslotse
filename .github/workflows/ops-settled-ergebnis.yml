@@ -26,9 +26,9 @@ on:
         options: [dev, prod]
         default: dev
       modus:
-        description: "bericht | schreiben (nur die Ergebnisse) | probe (Kurzfassungen, 20 Zeilen) | kurzfassungen (alle betroffenen neu)"
+        description: "bericht | schreiben (nur die Ergebnisse) | probe (Kurzfassungen, 20 Zeilen) | kurzfassungen (alle betroffenen neu) | saetze (nur Themen-Sätze, auch geleerte)"
         type: choice
-        options: [bericht, schreiben, probe, kurzfassungen]
+        options: [bericht, schreiben, probe, kurzfassungen, saetze]
         default: bericht
 
 concurrency:
@@ -65,4 +65,6 @@ jobs:
               schreiben) $PY scripts/fix_settled_outcomes.py --schreiben ;;
               probe) $PY scripts/fix_outcome_summaries.py --probe --limit 20 ;;
               kurzfassungen) $PY scripts/fix_outcome_summaries.py --schreiben ;;
+              # nur die Themen-Sätze — auch die geleerten — ohne Themen-Seiten neu
+              saetze) $PY scripts/fix_outcome_summaries.py --schreiben --nur summary ;;
             esac
