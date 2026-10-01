@@ -44,7 +44,18 @@ from kern import llm  # noqa: E402
 
 CASES = ROOT / "eval" / "cases_deep_gold.json"
 RESULTS = ROOT / "eval" / "results" / "deep_gold"
-JUDGE_MODEL = os.environ.get("COUNCIL_GOLD_JUDGE_MODEL", "google/gemini-2.5-flash")
+# Richter: Claude Opus 5.5 (01.10.2026). Der Richter läuft nur in unseren
+# Messungen, nie für Nutzer*innen — Kosten und Datenschutz-Routing des
+# Produkts gelten hier nicht. Gemessen an 14 gespeicherten Antworten, je zwei
+# Läufe, gegen ein Urteil von Hand:
+#   Gemini 2.5 Flash  zu großzügig (Ausschuss-Auftrag als Ratsbeschluss gewertet),
+#                     läuft am 20.10.2026 aus, Tim will es nirgends mehr
+#   GPT-6 Luna        wackelig: dieselbe Antwort einmal 0 %, einmal 50 %
+#   GPT-6 Sol         stabil, aber zu streng (Schlossplatz 30 % statt ~65 %)
+#   Claude Sonnet 5.5 noch strenger, Bürgerbusch einmal 57 %, einmal 14 %
+#   Claude Opus 5.5   am nächsten am Urteil von Hand, 12/14 Urteile gleich;
+#                     ≈ 2,8 ct je Fall, ≈ 20 ct je Lauf „Frag den Rat“
+JUDGE_MODEL = os.environ.get("COUNCIL_GOLD_JUDGE_MODEL", "anthropic/claude-opus-5.5")
 
 JUDGE_PROMPT = """Du prüfst einen Recherche-Bericht über Oldenburger Ratsvorgänge gegen eine handgeprüfte Faktenliste.
 
@@ -55,7 +66,14 @@ BERICHT:
 {bericht}
 >>>
 
-PFLICHTFAKTEN (je Fakt: steht er inhaltlich im Bericht? Sinngemäß genügt; Details in Klammern sind nicht zwingend. Ein Fakt ist NICHT erfüllt, wenn der Bericht nur einen Teil davon nennt, der den Kern verfehlt):
+PFLICHTFAKTEN — je Fakt: Hat eine Leserin, die NUR den Bericht kennt, diese Information im Wesentlichen erfahren?
+- Ja (ok: true), wenn die wesentliche Aussage dasteht — in anderen Worten oder über mehrere Sätze verteilt genügt.
+- FEHLENDE Einzelheiten machen einen Fakt NICHT unerfüllt: Datum, Vorlagennummer, Antragsteller in Klammern, genaues Stimmverhältnis, einzelne Zusatzpunkte nach „außerdem“ oder Semikolon, Begründungen und Hintergrund.
+- FALSCHE Einzelheiten schon: ein anderes Gremium, ein anderer Zeitpunkt, ein anderes Ergebnis, eine andere Aussage.
+- Nein (ok: false) auch, wenn der Kern fehlt oder nur ein Randaspekt genannt ist.
+- Steht im Fakt „mindestens“ (etwa „mindestens zwei genannt“), gilt genau diese Mindestzahl.
+- Findest du eine Stelle, die die Hauptaussage des Fakts trägt, ist er erfüllt — dass Nebenangaben des Fakts dort fehlen, ändert daran nichts. Nur wenn die Stelle dem Fakt WIDERSPRICHT (anderes Gremium, anderer Zeitpunkt, anderes Ergebnis), ist er nicht erfüllt.
+Lies den GANZEN Bericht, bevor du urteilst; zitiere die Stelle, auf die du dich stützt.
 {pflicht}
 
 VERBOTENE BEHAUPTUNGEN (je Punkt: stellt der Bericht das als Tatsache dar? Eine ausdrückliche Verneinung oder Einschränkung ist KEIN Verstoß):
@@ -110,7 +128,11 @@ def _judge(case: dict, bericht: str) -> dict:
                 frage=case["question"], bericht=bericht[:24000],
                 pflicht=pflicht, verboten=verboten)}])
         try:
-            return json.loads((resp.choices[0].message.content or "{}").strip())
+            # Claude setzt das JSON trotz response_format gern in ```json-Zäune.
+            roh = (resp.choices[0].message.content or "{}").strip()
+            if roh.startswith("```"):
+                roh = roh.split("\n", 1)[-1].rsplit("```", 1)[0]
+            return json.loads(roh.strip())
         except (ValueError, IndexError):
             if versuch == 1:
                 raise
