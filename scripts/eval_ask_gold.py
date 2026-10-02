@@ -113,6 +113,12 @@ def lauf(basis: str, label: str, nur: str | None, konto: str | None) -> Path:
         cases = [c for c in cases if c["id"] == nur]
     ergebnisse = []
     for case in cases:
+        # Das Token gilt fünf Minuten (rauchprobe.token_bauen). Sieben Fälle
+        # passten hinein, zwanzig nicht: Der erste Lauf mit dem 20er-Set brach
+        # am 02.10.2026 nach acht Fällen mit 401 ab. Deshalb je Fall neu.
+        token, info = rauchprobe.token_bauen(WURZEL, konto)
+        if not token:
+            raise SystemExit(f"Kein Token: {info}")
         r = fragen(basis, token, case["question"])
         q = r["quellen"]
         material = gold._material_pruefen(case, material_form(q))
