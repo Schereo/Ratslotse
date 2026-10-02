@@ -7,6 +7,7 @@ auf einen Fakt zeigt, den es nicht gibt, fiele erst im Lauf auf — als stilles
 „nicht erfüllt“. Dieser Test hält das Format fest.
 """
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -31,9 +32,13 @@ def test_gold_faelle_sind_wohlgeformt():
         assert f["verboten"], f"{f['id']}: keine verbotene Behauptung"
         for m in f.get("material", []):
             assert set(m["fuer"]) <= fakten, f"{f['id']}/{m['id']}: zeigt auf unbekannte Fakten"
-            assert m["art"] in ("beschluss", "debatte", "presse"), m
+            assert m["art"] in ("beschluss", "debatte", "presse", "vorlage", "beratung"), m
             if m["art"] == "debatte":
                 assert m["text_enthaelt_eins"], m
+            if m["art"] == "vorlage":
+                assert re.fullmatch(r"\d{2}/\d{4}(?:/\d+)?", m["template_number"]), m
+            if m["art"] == "beratung":
+                assert m["session_date"] and m["titel_enthaelt"], m
 
 
 def test_ask_runner_liest_die_debatten_im_web_vertrag():
@@ -70,3 +75,18 @@ def test_bewertung_verlangt_kernfakt_und_keinen_verstoss(urteil, bestanden):
                         {"id": "F3", "gewicht": 1}, {"id": "F4", "gewicht": 1}],
             "verboten": [{"id": "X1"}]}
     assert deep._bewerten(fall, urteil)["bestanden"] is bestanden
+
+
+def test_vorlage_und_beratung_werden_erkannt():
+    """Die beiden Belegarten aus Plan „Akte“, Schritt 0.2."""
+    from scripts import eval_deep_gold as deep
+    fall = {"material": [
+        {"id": "V", "fuer": ["F1"], "art": "vorlage", "template_number": "26/0261"},
+        {"id": "B", "fuer": ["F1"], "art": "beratung", "session_date": "2026-09-28",
+         "committee": "Rat", "titel_enthaelt": "Liquiditätskredit"}]}
+    leer = {m["id"]: m["vorhanden"] for m in deep._material_pruefen(fall, {})}
+    assert leer == {"V": False, "B": False}
+    voll = {"attachments": [{"template_number": "26/0261/1"}],
+            "agenda": [{"session_date": "2026-09-28", "committee": "Rat",
+                        "title": "Verlängerung des Liquiditätskreditvertrages"}]}
+    assert {m["id"]: m["vorhanden"] for m in deep._material_pruefen(fall, voll)} == {"V": True, "B": True}
