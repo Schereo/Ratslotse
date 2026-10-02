@@ -235,8 +235,8 @@ def test_eckdaten_nehmen_den_juengsten_abgestimmten_beschluss():
     e = akte_suche.key_facts([STADION_GRUNDSATZ, STADION_VERGABE, STADION_BUERGSCHAFT],
                              [], [], [], "2026-10-02", "Wie ist der Stand beim Stadionneubau?")
     assert e["decision"] == {"decision_id": 20947, "date": "2026-06-01", "committee": "Rat",
-                             "outcome": "accepted",
-                             "votes": "mehrheitlich, 18 Gegenstimmen, 2 Enthaltungen",
+                             "outcome": "accepted", "vote_label": "mehrheitlich",
+                             "vote_counts": ["18 Gegenstimmen", "2 Enthaltungen"],
                              "title": "Stadionneubau Maastrichter Straße - Beauftragung"}
     assert [a["decision_id"] for a in e["amounts"]] == [20947, 20949]
     assert e["amounts"][0]["amount_eur"] == 57_339_000.0
@@ -288,7 +288,8 @@ def test_eckdaten_falten_umlaute():
                  "rejected", vote="majority", no_votes=43)
     e = akte_suche.key_facts([satzung], [], [], [], "2026-10-02",
                              "Wie hoch ist der Hebesatz der Grundsteuer B?")
-    assert e["decision"]["votes"] == "mehrheitlich, 43 Gegenstimmen"
+    assert (e["decision"]["vote_label"], e["decision"]["vote_counts"]) == \
+        ("mehrheitlich", ["43 Gegenstimmen"])
 
 
 def test_pressemitteilung_die_die_antwort_nennt():
@@ -327,3 +328,19 @@ def test_genannte_pressemitteilung_braucht_ein_sachwort():
     e = akte_suche.key_facts([STADION_VERGABE], [], presse, [], "2026-10-02",
                              "Wie ist der Stand beim Stadionneubau?")
     assert e["latest"]["date"] == "2026-08-12"
+
+
+def test_eckdaten_stellen_routine_hintan():
+    """Stadion: Der Jahresabschluss der GmbH ist jünger als die Vergabe, aber
+    nicht der Stand des Neubaus."""
+    abschluss = _s(21027, "2026-06-29", "Stadion Oldenburg GmbH & Co. KG: Jahresabschluss 2025",
+                   ksinr=2, vote="unanimous", abstentions=2, amount_eur=781_488.67)
+    e = akte_suche.key_facts([STADION_VERGABE, abschluss], [abschluss], [], [], "2026-10-02",
+                             "Wie ist der Stand beim Stadionneubau?")
+    assert e["decision"]["decision_id"] == 20947 and e["latest"] is None
+    # Fragt man nach ihm, zählt er — und ohne Alternative auch.
+    assert akte_suche.key_facts([STADION_VERGABE, abschluss], [], [], [], "2026-10-02",
+                                "Was steht im Jahresabschluss des Stadions?"
+                                )["decision"]["decision_id"] == 21027
+    assert akte_suche.key_facts([abschluss], [], [], [], "2026-10-02",
+                                "Stadionneubau?")["decision"]["decision_id"] == 21027

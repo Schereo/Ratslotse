@@ -360,19 +360,24 @@ def _tage(von: str, bis: str) -> int:
     return (date.fromisoformat(bis) - date.fromisoformat(von)).days
 
 
-def _stimmen_text(d: dict) -> str | None:
-    """„mehrheitlich, 17 Gegenstimmen“ — nur, was belegt ist."""
+def _vote_parts(d: dict) -> tuple[str | None, list[str]]:
+    """(„mehrheitlich“, ["17 Gegenstimmen", "2 Enthaltungen"]) — nur, was belegt ist."""
     from council.ergebnisse import VOTE_WORT
 
-    teile = []
-    if d.get("vote"):
-        teile.append(VOTE_WORT.get(str(d["vote"]), str(d["vote"])))
+    label = VOTE_WORT.get(str(d["vote"]), str(d["vote"])) if d.get("vote") else None
+    counts = []
     nein, enth = d.get("no_votes"), d.get("abstentions")
     if nein:
-        teile.append(f"{int(nein)} Gegenstimme" + ("n" if int(nein) != 1 else ""))
+        counts.append(f"{int(nein)} Gegenstimme" + ("n" if int(nein) != 1 else ""))
     if enth:
-        teile.append(f"{int(enth)} Enthaltung" + ("en" if int(enth) != 1 else ""))
-    return ", ".join(teile) or None
+        counts.append(f"{int(enth)} Enthaltung" + ("en" if int(enth) != 1 else ""))
+    return label, counts
+
+
+def _stimmen_text(d: dict) -> str | None:
+    """„mehrheitlich, 17 Gegenstimmen“ — nur, was belegt ist."""
+    label, counts = _vote_parts(d)
+    return ", ".join(([label] if label else []) + counts) or None
 
 
 def zeitleiste_anzeige(beschluesse: list[dict], presse: list[dict],
@@ -577,6 +582,12 @@ def kern(store: Any, zitiert: list[int], frage: str) -> dict:
 DECISIVE = ("accepted", "rejected")
 #: Höchstens so viele Beträge — derselben Sitzung wie der Beschluss.
 KEY_AMOUNTS_MAX = 2
+#: Routine, die an fast jedem Vorgang einer Gesellschaft hängt. Zur Frage nach
+#: dem Stand des Stadionneubaus zitierte die Antwort einmal den
+#: „Jahresabschluss 2025“ der Stadion-GmbH — als jüngster Beschluss führte er
+#: die Karte an, mit 781.489 € als Betrag. Er zählt nur, wenn die Frage nach ihm
+#: fragt oder sonst nichts da ist.
+_ROUTINE = ("jahresabschluss", "wirtschaftsplan", "entlastung")
 
 
 def _names_date(answer: str, iso: str) -> bool:
@@ -640,8 +651,10 @@ def key_facts(cited: list[dict], decisions: list[dict], press: list[dict],
 
     - ``decision``: der jüngste zitierte Beschluss mit Abstimmung (angenommen
       oder abgelehnt); am selben Tag ein angenommener vor einem abgelehnten,
-      sonst der, den die Antwort zuerst zitiert. Mit
-      ``votes`` („mehrheitlich, 18 Gegenstimmen, 2 Enthaltungen“).
+      sonst der, den die Antwort zuerst zitiert. Die Abstimmung in zwei
+      Teilen, weil die Karte sie zweistufig setzt: ``vote_label``
+      („mehrheitlich“) und ``vote_counts`` (["18 Gegenstimmen",
+      "2 Enthaltungen"] — als Liste, damit keine Angabe mitten im Wort umbricht).
     - ``amounts``: die Beträge angenommener zitierter Beschlüsse derselben
       Sitzung, der Beschluss selbst zuerst. Ein abgelehnter Betrag ist der
       Vorschlag, nicht das, was gilt — er steht nicht da.
@@ -666,8 +679,16 @@ def key_facts(cited: list[dict], decisions: list[dict], press: list[dict],
     def relevant(title: Any) -> bool:
         return not words or gehoert_zum_vorgang(str(title or ""), words, set())
 
+    q = (question or "").lower()
+
+    def routine(d: dict) -> bool:
+        title = str(d.get("title") or "").lower()
+        return any(w in title and w not in q for w in _ROUTINE)
+
     order = [d for d in {d["id"]: d for d in cited}.values() if relevant(d.get("title"))]
-    decisions = [d for d in decisions if relevant(d.get("title"))]
+    if any(not routine(d) for d in order):
+        order = [d for d in order if not routine(d)]
+    decisions = [d for d in decisions if relevant(d.get("title")) and not routine(d)]
     press = [p for p in press if relevant(p.get("title"))]
     announced = [a for a in announced if relevant(a.get("title") or a.get("template_number"))]
     voted = [(n, d) for n, d in enumerate(order)
@@ -703,8 +724,10 @@ def key_facts(cited: list[dict], decisions: list[dict], press: list[dict],
                       key=lambda a: _tag(a.get("date")))
     nxt = _key_station("announced", upcoming[0]) if upcoming else None
 
+    vote_label, vote_counts = _vote_parts(main)
     return {"decision": {"decision_id": main["id"], "date": day,
                          "committee": main.get("committee"), "outcome": main.get("outcome"),
-                         "votes": _stimmen_text(main),
+                         "vote_label": vote_label,
+                         "vote_counts": vote_counts,
                          "title": " ".join(str(main.get("title") or "").split())},
             "amounts": amounts, "latest": latest, "next": nxt}

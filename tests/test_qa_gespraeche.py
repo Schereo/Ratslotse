@@ -191,7 +191,8 @@ def test_snapshot_traegt_verlauf_und_eckdaten(tmp_path):
         uid = _user(store)
         store.set_qa_speichern(uid, True)
         eckdaten = {"decision": {"decision_id": 1, "date": "2026-06-01", "committee": "Rat",
-                                 "outcome": "accepted", "votes": "einstimmig",
+                                 "outcome": "accepted", "vote_label": "einstimmig",
+                                 "vote_counts": [],
                                  "title": "Wärmewende-Beirat"},
                     "amounts": [], "latest": None, "next": None}
         gid = _turn_speichern(store, {"id": uid}, AskBody(question="Beirat?", conversation_id=None), "Beirat?",

@@ -385,14 +385,16 @@ iOS-Schrift.
   Punkt mit Halo + primary/6-Box „AKTUELLER STAND".
 - **Geld** (RG-04): Bricolage-Großbetrag + Vergleichszeilen (Label · Balken h 6 ·
   Betrag), Delta in Signal-Orange, jeder Betrag mit [n].
-- **Eckdaten** (Plan „Akte“, `components/key-facts.tsx`): Kicker ECKDATEN, dann
-  Zeilen mit Haarlinie — links das Etikett in Mono (Spalte 7,5 rem, auf dem
-  Handy darüber), rechts die Angabe: Beschluss (Datum · Gremium, Ergebnis-Badge,
-  Titel mit [n]), Abstimmung als **Text** (keine Grafik, s. § 8), Betrag als
-  Bricolage-Großbetrag 24 mit der Grenze darunter („der größte Betrag, den der
-  Beschlusstext nennt“), Zuletzt, Als Nächstes. Steht **unter** der Antwort,
-  nicht darüber: Die Karte kommt erst mit dem Ende der Antwort, und darüber
-  eingeschoben spränge der Text, den man gerade liest.
+- **Eckdaten** (Plan „Akte“, `components/key-facts.tsx`): Kicker ECKDATEN, darunter
+  der Beschluss als Kopf (Datum · Gremium in Mono, Ergebnis-Badge, Titel mit
+  [n]) — **ohne Etikett-Spalte**, die nahm ein Drittel der Breite für fünf
+  Wörter (Tim, 02.10.2026). Dann Kacheln (Radius 10, `bg-muted/60`, Mono-Etikett
+  oben): Abstimmung als **Text** (keine Grafik, s. § 8) — „Mehrheitlich“ groß,
+  die Zählungen darunter —, Betrag als Bricolage-Großbetrag 22 mit der Grenze
+  („größter Betrag im Beschlusstext“). Unter 480 px untereinander. Zuletzt
+  und Als Nächstes mit Punkt wie im Verlauf (RG-03). Steht **unter** der
+  Antwort, nicht darüber: Die Karte kommt erst mit dem Ende der Antwort, und
+  darüber eingeschoben spränge der Text, den man gerade liest.
 - **Parteien** (RG-09): Dot + Label 700 + Position 1–2 Sätze + Paraphrase kursiv
   „— Sprecher, Datum"; Badge „uneinheitlich" (Amber); Fußzeile „Paraphrasen,
   keine wörtlichen Zitate".
