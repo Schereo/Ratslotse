@@ -7,6 +7,12 @@ gewirkt, und jeder hat dieselbe Lücke an einer anderen Stelle geflickt. Dieser
 Plan beschreibt den Umbau, der die Lücke selbst schließt, und wie wir ihn
 messen.
 
+**Stand 02.10.2026, abends.** Tim hat Phase 0 und 1 freigegeben; beide sind
+gebaut. Phase 0: 20 Gold-Fälle (#1621), Belegarten und Messskript (#1622),
+Token-Reparatur des Gold-Laufs (#1624). Phase 1: Grundakten (#1623, auf dev).
+Die Ergebnisse stehen bei den Phasen; zwei Messziele waren falsch gesetzt und
+sind korrigiert (Phase 1 und 2, mit Begründung).
+
 ## 1. Befund
 
 ### 1.1 Was eine Frage will
@@ -116,7 +122,7 @@ wenn ihr Tor (letzte Spalte) erreicht ist.
 | B1 | **Gold „Frag den Rat“** | `ops-gold.yml weg=ask`, 20 Fälle, Richter Claude Opus 5.5, ≥ 3 Läufe; Abdeckung, bestanden, Verstöße | 7 Fälle: 49–55 %, 2–4/7 (01.10.) — mit 20 Fällen in Phase 0 neu | Phase 3: +10 Pp Abdeckung **und** ≥ 3 Fälle mehr bestanden, keine neuen Verstöße |
 | B2 | **Gold Gründliche Recherche** | dieselben Fälle, `weg=deep` | 7 Fälle: ≈ 57–61 %, 3/7 — neu in Phase 0 | wie B1 |
 | B3 | **Material vorhanden** (Suche) | aus B1/B2: Anteil der Gold-Material-Einträge im Kontext der Antwort; getrennt von „Fakt genannt“ | neu in Phase 0 | Phase 3: ≥ 90 % |
-| B4 | **Akten-Abdeckung** (ohne LLM) | `eval/run_akten.py` (neu): Liegt jedes Gold-Material in der Akte, die zur Frage gehört? Deterministisch, Sekunden | heute über Entitäten: neu in Phase 0 | Phase 1: ≥ 80 %, Phase 2: ≥ 95 % |
+| B4 | **Akten-Abdeckung** (ohne LLM) | `eval/run_akten.py`: Liegt jedes Gold-Material in der Akte des Kernbeschlusses? Deterministisch, Sekunden; Personen-/Sitzungsfälle zählen nicht; auch **ohne Presse** und mit **Aktengröße** | Entitäten heute: 61,8 %, ohne Presse 77,9 %, Ø 37 Beschlüsse je Akte (02.10.) | Phase 1: ≥ Vorlagennummer allein, alle Beschlüsse in einer Akte; Phase 2: ≥ 90 % ohne Presse, ≥ 85 % gesamt |
 | B5 | **Retrieval ki-frage** | `eval/run_qa.py --nur-retrieval`, 22 handgelabelte Fragen inkl. Stadion | hit@8 18/23, recall@8 0,545, MRR 0,523 (lokal, 01.10.) | keine Verschlechterung über die Streuung hinaus (Stadion-Regel) |
 | B6 | **Fakten-Eval** | `eval/run_fakten.py`, 233 Fälle (Lotti + Rat) | Stand #1504 | keine Zunahme falscher/erfundener Aussagen |
 | B7 | **Zuordnungsqualität** | Handstichprobe je 100 Zuordnungen der unscharfen Stufe: Präzision (gehört dazu?) und Vollständigkeit (fehlt etwas?), Negativliste der Namensvettern (Stadion Marschweg, DB-Huntebrücke, Sechsfeldhalle …) | — | Präzision ≥ 95 %, Namensvettern 0 Fehlgriffe |
@@ -150,6 +156,25 @@ Jede Phase ist eine Folge kleiner PRs, Squash-Merge, Vorgaben aus
 | 0.5 | **Offene Datenfrage klären:** Trägt das Ratsinformationssystem das Ergebnis einer Station vor dem Protokoll? `council/ergebnisse.py` sagt am 26.07.2026 nein, der Gold-Agent sah am 02.10. auf Sitzungsseiten „ungeändert beschlossen“. Wenn ja: eigener Ernte-Schritt, eigener PR (er verkürzt die Protokoll-Lücke von Wochen auf Tage). |
 
 Tor: Grundlinie steht, B3 und B4 sind messbar.
+
+**Ergebnis (02.10.2026).**
+- **0.5 geklärt:** Das Ratsinformationssystem zeigt Ergebnisse je TOP erst
+  zusammen mit dem Protokoll (Rat 28.09.: weder Protokoll noch Ergebnis;
+  Finanzausschuss 02.09.: beides). Die drei ältesten Sitzungen ohne Protokoll
+  bei uns haben auch dort keins — die Lücke ist der Verzug der Stadt (vier bis
+  sieben Wochen), kein Ernte-Fehler. Folge für die Akte: Tagesordnung und
+  Beratungsfolge gehören hinein, als „beraten, Ergebnis noch nicht
+  protokolliert“.
+- **B4-Grundlinie** (18 Vorgangsfälle, 165 Belege; Personen- und
+  Sitzungsfall ausgenommen):
+
+  | Methode | gesamt | ohne Presse | Ø Akte |
+  |---|---|---|---|
+  | Vorlagennummer | 43,0 % | 54,2 % | 3,7 Beschlüsse |
+  | Entitäten heute | 61,8 % | 77,9 % | 37,4 Beschlüsse |
+
+  Pressemitteilungen (34 der 165 Belege) hängen an keiner Akte.
+- **B1/B2-Grundlinie:** läuft (drei Läufe, Richter Opus 5.5).
 
 ### Phase 1 — Grundakte (Datenschicht, unsichtbar)
 
@@ -200,8 +225,23 @@ derselben; Migration gegen die eingecheckten Schema-Auszüge
 (`test_migration_bestand.py`); Neuaufbau zweimal hintereinander ergibt
 dasselbe.
 
-Tor: B4 ≥ 80 %, B9 ohne Verstöße auf dem Prod-Abzug, Neuaufbau auf Prod
-< 5 min.
+Tor (korrigiert): jeder Beschluss in genau einer Grundakte, Neuaufbau
+stabil und < 5 min, B4 mindestens so gut wie die Vorlagennummer allein.
+Ursprünglich stand hier „B4 ≥ 80 %“ — das war falsch gedacht: Die Grundakte
+ist per Bauart EINE Vorlage, ein Vorgang wie das Stadion besteht aus vielen.
+Verklebt werden sie in Phase 2; an der Grundakte allein ist 80 % nicht zu
+erreichen, ohne ihren Zweck aufzugeben.
+
+**Ergebnis (02.10.2026, #1623, Prod-Abzug 01.10.):**
+- 7.822 Akten, 80.243 Einträge, 1.837 Kanten; **1,0 s** je Vollaufbau, Neuaufbau
+  identisch, ids stabil. Läuft jede Nacht in `check_protocols.py`; auf dev
+  (ohne Crons) per `scripts/build_matters.py`.
+- **Alle 9.524 Beschlüsse** in genau einer Akte: 7.032 über die
+  Vorlagennummer, 1.629 über den Titelkern, 850 Teilabstimmungen über ihren
+  TOP, 13 einzeln. 41.195 von 52.804 Wortbeiträgen (der Rest steht in
+  Sammel-TOPs).
+- B4: **55,7 % ohne Presse** bei Ø 5,3 Beschlüssen (Vorlagennummer 54,2 %).
+- Tor erreicht.
 
 ### Phase 2 — Entitäten auf Grundakten
 
@@ -222,7 +262,31 @@ Tor: B4 ≥ 80 %, B9 ohne Verstöße auf dem Prod-Abzug, Neuaufbau auf Prod
    Modell wählt aus wenigen Kandidaten, nie frei. Jede Zuordnung trägt
    `source` und `confidence`; Handkorrekturen überleben den Neuaufbau.
 
-Tor: B4 ≥ 95 %, B7 Präzision ≥ 95 % und keine Namensvettern-Fehlgriffe,
+**Vorab gemessen (02.10.2026)** — welcher Klebstoff trägt? (B4, gleiche Fälle)
+
+| Klebstoff | gesamt | ohne Presse | Ø Akte |
+|---|---|---|---|
+| Grundakte + ein Schritt über Verweise | 49,7 % | 62,6 % | 9,4 Beschlüsse |
+| nur Projekt-Entitäten über Grundakten | 45,5 % | 57,3 % | 10,7 |
+| Projekte + Organisationen über Grundakten | 55,2 % | 69,5 % | 19,1 |
+| alle Entitäten über Grundakten | 65,5 % | 82,4 % | 49,8 |
+| **alle Entitäten über Grundakten + Erwähnungen** | **83,0 %** | **90,1 %** | 49,8 (+ 348 Beiträge, 24 PM) |
+
+„Erwähnungen“: Wortbeiträge und Pressemitteilungen, die den Namen einer
+Entität des Vorgangs nennen. Das ist die Verallgemeinerung des Textkanals aus
+#1613 — und der einzige Weg, auf dem die Aussage der Verwaltung zum
+Schlossplatz (sie steht unter TOP „Spielleitplanung“, einem anderen Vorgang)
+in die Akte kommt. Zwei Folgerungen:
+- **Der Gewinn kommt von Orten und Organisationen**, nicht von Projekten.
+  Projekt-Entitäten verknüpfen die Kernbeschlüsse der Gold-Fälle zu selten —
+  ihre Extraktion (Titel + 300 Zeichen, ab zwei Beobachtungen, nur sonntags)
+  ist die eigentliche Schwachstelle.
+- **Die Akten werden groß.** Phase 3 muss innerhalb einer Akte auswählen und
+  von alt nach neu verdichten; alles in den Kontext zu legen geht nicht.
+
+Tor (korrigiert): B4 ≥ 90 % ohne Presse und ≥ 85 % gesamt, mittlere Akte
+höchstens so groß wie mit allen Entitäten heute (≈ 50 Beschlüsse), B7
+Präzision ≥ 95 % und keine Namensvettern-Fehlgriffe,
 Entitäts-Abdeckung der Beschlüsse von 42 % auf ≥ 70 %, keine kaputte
 Themen-Adresse (Test über alle Slugs und Aliase).
 
@@ -297,8 +361,7 @@ Ein täglicher Check (eigener Job in `kern/jobs.py` oder Teil von
 
 ## 6. Was zu entscheiden ist
 
-1. **Freigabe von Phase 0** (Messbasis, rund 10 $ Messkosten) und Phase 1
-   (unsichtbar, keine Produktänderung).
+1. ~~Freigabe von Phase 0 und 1~~ — erteilt am 02.10.2026, beide gebaut.
 2. **Dubletten-Freigabe in Phase 2:** Zusammenführen automatisch ab hoher
    Sicherheit oder immer per Klick im Admin-Panel?
 3. **Sichtbarkeit:** Sollen die Themen-Seiten die Zeitleiste in Phase 2
