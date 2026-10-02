@@ -1,8 +1,8 @@
 [
  {
   "id": "schlossplatz-spielplatz-stand",
-  "note": "Vom Ratsbeschluss zur festgefahrenen Umsetzung. Handgeprüft am 30.09.2026 gegen Original-PDFs (Recherche: Schereo/ratslotse-social, redaktion/ausschuesse-erklaert/RECHERCHE.md, Abschnitt 6 A und 6 D).",
-  "stand": "2026-09-30 (Protokolle bis 17.08.2026, Presse bis 26.08.2026)",
+  "note": "Vom Ratsbeschluss zur festgefahrenen Umsetzung. Handgeprüft am 30.09.2026 gegen Original-PDFs (Recherche: Schereo/ratslotse-social, redaktion/ausschuesse-erklaert/RECHERCHE.md, Abschnitt 6 A und 6 D). Am 02.10.2026 gegen den Prod-Abzug vom 01.10.2026 neu geprüft: F2 in Ausschuss (F2a) und Jugendhilfeausschuss (F2b) geteilt, F6 in Standflächen (F6) und Dialog (F6b) geteilt, F9 neu gefasst (die Spielleitplanung legt keinen neuen Spielplatz am Schlossplatz fest; der vorhandene Spielpunkt steht laut RECHERCHE.md im Kartenanhang) und um F9b ergänzt, F10/F11 mit Kernaussage vorn. Neu: F12 Haushaltsmittel, F13 Hürden schon im Mai 2025, F14 getrennte Planung Straße/Spielplatz. X3 war falsch: Der Haushalt 2025 hatte 50.000 Euro zusätzliche Planungsmittel, der Haushalt 2026 enthält die Maßnahme „Spielplatz Schlossplatz“ (85.000 Euro im Entwurf, 100.000 Euro beschlossen). X3 verbietet jetzt nur noch vergebene Bauleistungen. X7 neu.",
+  "stand": "2026-10-01 (Prod-Abzug)",
   "question": "Wie ist der Stand beim Spielplatz auf dem Schlossplatz?",
   "varianten": [
    "Was ist aus dem Ratsbeschluss zum Spielplatz auf dem Schlossplatz geworden?",
@@ -12,74 +12,110 @@
    {
     "id": "F1",
     "gewicht": 3,
-    "fakt": "Der Rat beschloss am 30.09.2024 einstimmig (Antrag SPD und Grüne), dass die Verwaltung ein Konzept für einen dauerhaften inklusiven Spielplatz auf dem Schlossplatz vorlegt.",
-    "beleg": "Rat 30.09.2024, TOP 15.4, Protokoll S. 26–27, getfile id=284331"
+    "fakt": "Der Rat beschloss am 30.09.2024 einstimmig (Antrag von SPD und Grünen vom 27.08.2024), dass die Verwaltung ein Konzept für einen dauerhaften inklusiven Spielplatz auf dem Schlossplatz vorlegt.",
+    "beleg": "Rat 30.09.2024 TOP 15.4, Protokoll S. 26–27 (id=284331); Beschluss-Datensatz 19307"
    },
    {
-    "id": "F2",
+    "id": "F2a",
     "gewicht": 1,
-    "fakt": "Vorberaten im September 2024 im Ausschuss für Stadtgrün, Umwelt und Klima (12.09., einstimmig) und im Jugendhilfeausschuss (18.09., Ergebnis: gilt als behandelt).",
-    "beleg": "ASUK 12.09.2024 TOP 12.2 S. 17–18 (id=286682); JHA 18.09.2024 TOP 8.1 S. 7–9 (id=306548)"
+    "fakt": "Der Ausschuss für Stadtgrün, Umwelt und Klima stimmte dem Antrag am 12.09.2024 einstimmig zu.",
+    "beleg": "ASUK 12.09.2024 TOP 12.2, Vorlage 24/0530, S. 17–18 (id=286682)"
+   },
+   {
+    "id": "F2b",
+    "gewicht": 1,
+    "fakt": "Im Jugendhilfeausschuss (18.09.2024) wurde nicht in der Sache abgestimmt: Der Punkt galt auf Geschäftsordnungsantrag als behandelt, weil die antragstellenden Fraktionen den Antrag noch ändern wollten.",
+    "beleg": "JHA 18.09.2024 TOP 8.1, S. 7–9 (id=306548): „gilt als behandelt“"
    },
    {
     "id": "F3",
     "gewicht": 1,
-    "fakt": "Der Beschluss verlangte außerdem, Geld im Haushalt 2025 einzuplanen, die Standplanung der Märkte anzupassen und die Planung nach Ratsbeschluss früh 2025 umzusetzen (mindestens zwei dieser Punkte).",
-    "beleg": "Rat 30.09.2024, Protokoll S. 27"
+    "fakt": "Der Ratsauftrag umfasste neben dem Konzept weitere Punkte (mindestens zwei genannt): Geld im Haushalt 2025 einstellen, die Standplanung der Märkte ab 2025 anpassen, die Planung früh 2025 umsetzen.",
+    "beleg": "Rat 30.09.2024 TOP 15.4, Beschlusstext (Protokoll S. 27)"
    },
    {
     "id": "F4",
     "gewicht": 1,
-    "fakt": "Im September 2025 berichtete die Verwaltung über eine kurzfristige Lösung (Eigenplanung, Baumittel vorhanden) und eine langfristige Lösung mit Planungsbüro; Wasserspiele waren im Gespräch.",
-    "beleg": "ASUK 11.09.2025 TOP 12.2, S. 15–16 (id=299861)"
+    "fakt": "Im September 2025 unterschied die Verwaltung zwei Stufen: eine kurzfristige Lösung in Eigenplanung (Baumittel vorhanden) und eine langfristige Lösung mit einem externen Planungsbüro (Wasserspiele waren im Gespräch).",
+    "beleg": "ASUK 11.09.2025 TOP 12.2 (Berichtsantrag SPD vom 28.08.2025), S. 15–16 (id=299861)"
    },
    {
     "id": "F5",
     "gewicht": 1,
-    "fakt": "Im November 2025 beteiligte die Stadt Kinder und Jugendliche (15.11.2025) an Ideen für einen Themenspielbereich; eine Einweihung wurde für Mai 2026 in Aussicht gestellt.",
-    "beleg": "Pressemitteilung Stadt Oldenburg 04.11.2025; ASUK 11.12.2025 S. 4"
+    "fakt": "Am 15.11.2025 beteiligte die Stadt Kinder und Jugendliche an Ideen für einen Themenspielbereich auf dem Schlossplatz (die Einladung stellte bei glattem Verlauf eine Einweihung im Mai 2026 in Aussicht).",
+    "beleg": "Pressemitteilung 04.11.2025 „Spielbereich auf dem Schlossplatz? Gebt uns eure Ideen!“; ASUK 11.12.2025 TOP 6 S. 4"
    },
    {
     "id": "F6",
     "gewicht": 2,
-    "fakt": "Im Dezember 2025 meldete die Verwaltung, die Standflächen ließen sich nicht anpassen, weil alle Flächen durch Veranstaltungen und Rettungswege belegt sind; ein Dialog mit Veranstaltern und Politik im 1. Quartal 2026 wurde vorgeschlagen.",
-    "beleg": "ASUK 11.12.2025 TOP 6, S. 4–6 (id=305267)"
+    "fakt": "Im Dezember 2025 meldete die Verwaltung, die Standflächen der Märkte ließen sich nicht anpassen, weil alle Flächen durch Veranstaltungen und Rettungswege belegt seien (ein Spielplatz ginge nur, wenn Veranstaltungsflächen verkleinert würden).",
+    "beleg": "ASUK 11.12.2025 TOP 6 „Sachstandsbericht und weiteres Vorgehen Spielbereich Schlossplatz“, S. 4–6 (id=305267)"
+   },
+   {
+    "id": "F6b",
+    "gewicht": 1,
+    "fakt": "Die Verwaltung schlug dazu einen Dialog mit Veranstaltern und Politik für das 1. Quartal 2026 vor; bis April 2026 fanden Gespräche bzw. ein Workshop statt, und ein Fraktionsschreiben stellte vier mögliche Spielbereiche vor.",
+    "beleg": "ASUK 11.12.2025 TOP 6 S. 4–5; ASUK 16.04.2026 TOP 7 S. 11–12 (id=310610)"
    },
    {
     "id": "F7",
     "gewicht": 3,
-    "fakt": "Im April 2026 erklärte die Verwaltung, auf dem Schlossplatz sei kein Platz für einen (konventionellen) Spielplatz.",
-    "beleg": "ASUK 16.04.2026 TOP 7, S. 11–12 (id=310610)"
+    "fakt": "Im April 2026 erklärte die Verwaltung (Ausschuss für Stadtgrün, Umwelt und Klima, bei der Beratung der Spielleitplanung), auf dem Schlossplatz sei kein Platz für einen (konventionellen) Spielplatz.",
+    "beleg": "ASUK 16.04.2026 TOP 7 (Vorlage 26/0255), S. 11–12 (id=310610)"
    },
    {
     "id": "F7b",
     "gewicht": 2,
-    "fakt": "Als Gründe nannte die Verwaltung mindestens: fehlendes Planrecht bzw. Denkmalschutz bzw. dass Veranstalter kleinere Standflächen für wirtschaftlich nicht tragbar halten (mindestens ein konkreter Grund genügt, allgemeines „wegen Vorschriften“ genügt NICHT).",
-    "beleg": "ASUK 16.04.2026 TOP 7, S. 11–12 (id=310610)"
+    "fakt": "Als Gründe nannte die Verwaltung mindestens einen konkreten Grund: kein Planrecht für einen Spielplatz und wegen des Denkmalschutzes keine Änderung des Planrechts möglich; Veranstalter halten kleinere Standflächen für wirtschaftlich nicht vertretbar; ständiger Auf- und Abbau von Geräten ist nicht möglich (allgemeines „wegen Vorschriften“ genügt NICHT).",
+    "beleg": "ASUK 16.04.2026 TOP 7, S. 12 (id=310610)"
    },
    {
     "id": "F8",
     "gewicht": 1,
-    "fakt": "Als Alternativen nannte die Verwaltung kleine Einbauten außerhalb des Platzes, Wasserspiele, Bodenbilder oder eine Aufwertung des Heiligengeistparks (mindestens zwei).",
-    "beleg": "ASUK 16.04.2026, S. 12"
+    "fakt": "Als Alternativen ohne Flächenanpassung nannte die Verwaltung kleine Einbauten außerhalb des Platzes, Wasserspiele, Bodenbilder oder eine Aufwertung des Heiligengeistparks (mindestens zwei).",
+    "beleg": "ASUK 16.04.2026 TOP 7, S. 12"
    },
    {
     "id": "F9",
     "gewicht": 1,
-    "fakt": "Teile der Politik (u. a. SPD) halten am Spielplatz fest bzw. kritisieren, dass der Schlossplatz in der vom Rat am 01.06.2026 beschlossenen Spielleitplanung fehlt.",
-    "beleg": "ASUK 16.04.2026 S. 12–13; Rat 01.06.2026 TOP 8.3 S. 22 (id=311268)"
+    "fakt": "Am 01.06.2026 beschloss der Rat die gesamtstädtische Spielleitplanung 2026; einen neuen Spielplatz auf dem Schlossplatz legt sie nicht fest.",
+    "beleg": "Rat 01.06.2026 TOP 8.3, Vorlage 26/0255 (id=311268); Vorlage S. 3: neue Standorte kommen erst nach abgeschlossener Prüfung in die Karte. Der vorhandene Spielpunkt am Schlossplatz steht im Kartenanhang (RECHERCHE.md 6 D)"
+   },
+   {
+    "id": "F9b",
+    "gewicht": 1,
+    "fakt": "Die Politik hält am Spielplatzwunsch fest: Die SPD kritisierte im April und Juni 2026, dass ein Spielplatz auf dem Schlossplatz bzw. in der Innenstadt in der Spielleitplanung fehlt (die Grünen wollen am Ratsbeschluss festhalten).",
+    "beleg": "ASUK 16.04.2026 TOP 7 S. 12–13 (SPD enttäuscht; Grüne: festhalten, eigener TOP angeregt); Rat 01.06.2026 TOP 8.3 S. 22"
    },
    {
     "id": "F10",
     "gewicht": 3,
-    "fakt": "Stand: Ein dauerhafter Spielplatz ist nicht gebaut; der Ratsbeschluss von 2024 wurde weder aufgehoben noch durch einen neuen Beschluss ersetzt; der Ausgang ist offen.",
-    "beleg": "Keine entsprechenden Beschlüsse/Presse bis August 2026"
+    "fakt": "Stand: Ein dauerhafter Spielplatz auf dem Schlossplatz ist nicht gebaut, der Ausgang ist offen (der Ratsauftrag von 2024 wurde weder aufgehoben noch durch einen neuen Beschluss ersetzt).",
+    "beleg": "Keine Beschlüsse oder Pressemitteilungen dazu bis zum Abzug 01.10.2026; ASUK-Protokolle bis 11.06.2026 (13.08. und 10.09.2026 ohne Protokoll im Bestand)"
    },
    {
     "id": "F11",
     "gewicht": 1,
-    "fakt": "Der mobile Spielcontainer zwischen Schloss und Schlosshöfen (seit 2023) ist ein eigenes Projekt und 2026 weiter in Betrieb.",
-    "beleg": "Pressemitteilung Stadt Oldenburg 11.02.2026"
+    "fakt": "Der Spielcontainer auf dem Schlossplatz ist ein eigenes, schon bestehendes Angebot und kein Ergebnis des Ratsbeschlusses von 2024 (im Februar 2026 wurde er für die Saison instand gesetzt).",
+    "beleg": "Pressemitteilung 11.02.2026; ASUK 14.11.2024 (Reinigung des Spielcontainers, Rückblick 2024); ASUK 08.05.2025 TOP 9, Protokollnotiz: Container bleibt auf Wunsch der Fraktionen auf dem Schlossplatz"
+   },
+   {
+    "id": "F12",
+    "gewicht": 1,
+    "fakt": "Geld ist eingeplant: Der Haushalt 2026 enthält eine Investitionsmaßnahme „Spielplatz Schlossplatz“ (100.000 Euro für 2026, im Entwurf 85.000 Euro; Gesamtsumme rund 0,5 Mio. Euro); schon 2025 kamen 50.000 Euro Planungsmittel hinzu.",
+    "beleg": "Haushalt 2026: Veränderungsliste Finanzausschuss (council_budget_amendments_cash, Teilhaushalt 9: 85.000 → 100.000 Euro), Maßnahme I10.214605 (council_investment_measures 500.000 Euro; genehmigter THH 515.000 Euro laut RECHERCHE.md); Rat 09.02.2026 TOP 6.5. Haushalt 2025: Veränderungsliste der Verwaltung +50.000 Euro unter Verweis auf den Ratsbeschluss vom 30.09.2024"
+   },
+   {
+    "id": "F13",
+    "gewicht": 1,
+    "fakt": "Schon im Mai 2025 hielt die Verwaltung einen Spielplatz auf dem Schlossplatz kurzfristig nicht ohne Weiteres für möglich (Planungsrecht, Denkmalschutz, Veranstaltungen).",
+    "beleg": "ASUK 08.05.2025 TOP 7 (Spielflächenplanung), S. 8–9 (id=295393)"
+   },
+   {
+    "id": "F14",
+    "gewicht": 1,
+    "fakt": "Spielplatz und Umgestaltung der Straße Schlossplatz werden aus vergaberechtlichen Gründen getrennt geplant (der vergebene Planungsauftrag für die Straße durfte nicht erweitert werden), aber aufeinander abgestimmt.",
+    "beleg": "ASUK 08.05.2025 TOP 7; ASUK 11.09.2025 TOP 12.2; Ausschuss Stadtplanung 19.06.2025; Verkehrsausschuss 08.12.2025 TOP 6"
    }
   ],
   "verboten": [
@@ -93,11 +129,11 @@
    },
    {
     "id": "X3",
-    "behauptung": "Für den Spielplatz wurde ein konkreter Geldbetrag bewilligt."
+    "behauptung": "Für den Spielplatz sind Bauleistungen vergeben oder Baugelder ausgegeben worden (die Haushaltsansätze – 50.000 Euro Planungsmittel 2025, 100.000 Euro 2026 – zu nennen ist KEIN Verstoß)."
    },
    {
     "id": "X4",
-    "behauptung": "Der Rat hat den Spielplatz abgelehnt oder den Beschluss von 2024 aufgehoben."
+    "behauptung": "Der Rat hat den Spielplatz abgelehnt oder den Beschluss von 2024 aufgehoben (auch nicht durch die Spielleitplanung vom 01.06.2026)."
    },
    {
     "id": "X5",
@@ -106,9 +142,13 @@
    {
     "id": "X6",
     "behauptung": "Es wird ein Beratungsergebnis des (nichtöffentlichen) Verwaltungsausschusses zum Spielplatz genannt."
+   },
+   {
+    "id": "X7",
+    "behauptung": "Die am 01.06.2026 beschlossene Spielleitplanung sieht einen neuen Spielplatz auf dem Schlossplatz vor."
    }
   ],
-  "bewertung": "Abdeckung = Summe der Gewichte erfüllter Pflichtfakten / Gesamtgewicht (20). Jede verbotene Behauptung ist ein harter Fehler. Bestanden: Abdeckung >= 0,6, F1, F7 und F10 erfüllt, keine verbotene Behauptung.",
+  "bewertung": "Abdeckung = Summe der Gewichte erfüllter Pflichtfakten / Gesamtgewicht (26). Jede verbotene Behauptung ist ein harter Fehler. Bestanden: Abdeckung >= 0,6, F1, F7 und F10 erfüllt, keine verbotene Behauptung.",
   "material": [
    {
     "id": "M1",
@@ -180,13 +220,75 @@
      "Planungsrecht",
      "Heiligengeist"
     ]
+   },
+   {
+    "id": "M6",
+    "fuer": [
+     "F6b"
+    ],
+    "art": "debatte",
+    "session_date": "2026-04-16",
+    "text_enthaelt_eins": [
+     "Fraktionsschreiben",
+     "Workshop"
+    ]
+   },
+   {
+    "id": "M7",
+    "fuer": [
+     "F9b"
+    ],
+    "art": "debatte",
+    "session_date": "2026-04-16",
+    "text_enthaelt_eins": [
+     "enttäuscht",
+     "festhalten",
+     "fehle"
+    ]
+   },
+   {
+    "id": "M8",
+    "fuer": [
+     "F9"
+    ],
+    "art": "beschluss",
+    "session_date": "2026-06-01",
+    "committee": "Rat",
+    "titel_enthaelt": "Spielleitplanung"
+   },
+   {
+    "id": "M9",
+    "fuer": [
+     "F13",
+     "F14"
+    ],
+    "art": "debatte",
+    "session_date": "2025-05-08",
+    "text_enthaelt_eins": [
+     "Denkmalschutz",
+     "Planungsrecht",
+     "vergaberechtlich"
+    ]
+   },
+   {
+    "id": "M10",
+    "fuer": [
+     "F4",
+     "F14"
+    ],
+    "art": "debatte",
+    "session_date": "2025-09-11",
+    "text_enthaelt_eins": [
+     "Landschaftsarchitekturbüro",
+     "vergaberechtlich"
+    ]
    }
   ]
  },
  {
   "id": "stadion-stand",
-  "note": "Handgeprüft am 30.09.2026 gegen Beschlüsse, Protokolltexte (council_protocols.raw_text) und Pressemitteilungen im Bestand. Tims Hauptanwendungsfall (Direktive 10.08.2026).",
-  "stand": "2026-09-30 (Protokolle bis 24.08.2026, Presse bis 26.08.2026)",
+  "note": "Handgeprüft am 30.09.2026 gegen Beschlüsse, Protokolltexte (council_protocols.raw_text) und Pressemitteilungen im Bestand. Tims Hauptanwendungsfall (Direktive 10.08.2026). Am 02.10.2026 gegen den Prod-Abzug vom 01.10.2026 neu geprüft: F1 auf die Kernaussage „Rat stimmte am 01.06.2026 dem Neubau bzw. der Vergabe zu“ gekürzt (Firmenname nach F5, Beträge in Klammern) – der alte F1 bündelte Vergabe, Firma, Festpreis und Baunebenkosten. F3 geteilt (F3 Bürgschaft, F3b Grundstücke; die Grundstücksübertragung steht nur unter EU-Vorbehalt), F6 geteilt (F6 EU, F6b Kommunalaufsicht). Neu: F8 Zeitplan (Baubeginn 01.07.2027), F9 Kapazität, F10 Finanzierung, F11 Grundsatzbeschluss 2024; F7 um das unzulässige Bürgerbegehren ergänzt. X5/X6 neu.",
+  "stand": "2026-10-01 (Prod-Abzug)",
   "question": "Wie ist der Stand beim Stadionneubau?",
   "varianten": [
    "Kommt das neue Stadion an der Maastrichter Straße?",
@@ -196,44 +298,80 @@
    {
     "id": "F1",
     "gewicht": 3,
-    "fakt": "Der Rat stimmte am 01.06.2026 der Vergabe des Stadionneubaus an einen Totalunternehmer (Baugesellschaft Walter Hellmich) zum Pauschalfestpreis von rund 57,3 Mio. Euro netto (zuzüglich rund 2,36 Mio. Euro Baunebenkosten) zu.",
-    "beleg": "Rat 01.06.2026 TOP 6.1, Vorlage 26/0396 (Protokoll id=311268); PM 02.06.2026"
+    "fakt": "Der Rat hat am 01.06.2026 dem Stadionneubau an der Maastrichter Straße zugestimmt, also der Vergabe an einen Totalunternehmer (Pauschalfestpreis rund 57,3 Mio. Euro netto zuzüglich rund 2,36 Mio. Euro Baunebenkosten).",
+    "beleg": "Rat 01.06.2026 TOP 6.1, Vorlage 26/0396 (Protokoll id=311268); Pressemitteilung 02.06.2026"
    },
    {
     "id": "F2",
     "gewicht": 1,
     "fakt": "Die Entscheidung fiel mehrheitlich (29 zu 18 Stimmen bei zwei Enthaltungen).",
-    "beleg": "Rat 01.06.2026 TOP 6.1; PM 02.06.2026"
+    "beleg": "Rat 01.06.2026 TOP 6.1 („mehrheitlich bei 18 Gegenstimmen und zwei Enthaltungen“); PM 02.06.2026 (29 zu 18)"
    },
    {
     "id": "F3",
     "gewicht": 2,
-    "fakt": "Der Rat beschloss am selben Tag eine 100-%-Ausfallbürgschaft der Stadt für die Finanzierung und die Übertragung der Grundstücke auf die Stadiongesellschaft, jeweils unter Vorbehalt der EU-Beihilfegenehmigung (bzw. der Kommunalaufsicht).",
-    "beleg": "Rat 01.06.2026 TOP 6.2 (26/0374) und 6.3 (26/0398)"
+    "fakt": "Am selben Tag beschloss der Rat eine 100-%-Ausfallbürgschaft der Stadt für den Kredit der Stadiongesellschaft (rund 44,7 Mio. Euro), unter dem Vorbehalt der EU-Genehmigung und der Nichtbeanstandung durch die Kommunalaufsicht.",
+    "beleg": "Rat 01.06.2026 TOP 6.2, Vorlage 26/0374"
+   },
+   {
+    "id": "F3b",
+    "gewicht": 1,
+    "fakt": "Außerdem beschloss der Rat, die Stadiongrundstücke (rund 42.000 m² der Stadt, rund 26.000 m² der Weser-Ems-Halle) auf die Stadiongesellschaft zu übertragen, unter dem Vorbehalt der EU-Genehmigung.",
+    "beleg": "Rat 01.06.2026 TOP 6.3, Vorlage 26/0398, mit SPD-Änderungsantrag (Parkplatzeinnahmen bis Baubeginn bei der Weser-Ems-Halle)"
    },
    {
     "id": "F4",
     "gewicht": 2,
-    "fakt": "Das Planungsrecht steht: Der Rat beschloss am 13.04.2026 den Bebauungsplan 831 als Satzung (und die Flächennutzungsplan-Änderung 82); der Bebauungsplan ist seit 04.06.2026 rechtskräftig.",
-    "beleg": "Rat 13.04.2026 TOP 6.1/6.2 (id=310140); PM 05.06.2026"
+    "fakt": "Das Planungsrecht steht: Der Bebauungsplan 831 ist seit 04.06.2026 rechtskräftig (Satzungsbeschluss des Rates am 13.04.2026, zusammen mit der Flächennutzungsplan-Änderung 82).",
+    "beleg": "Rat 13.04.2026 TOP 6.1/6.2, je mehrheitlich bei 18 Gegenstimmen (id=310140); PM 14.04.2026; PM 05.06.2026"
    },
    {
     "id": "F5",
     "gewicht": 1,
-    "fakt": "Der Vertrag mit dem Totalunternehmer wurde am 04.06.2026 unterzeichnet.",
-    "beleg": "PM 05.06.2026"
+    "fakt": "Die Stadiongesellschaft unterzeichnete den Vertrag mit dem Totalunternehmer, der Baugesellschaft Walter Hellmich, am 04.06.2026.",
+    "beleg": "PM 05.06.2026 „Vertrag für Bau des neuen Stadions unter Dach und Fach“; PM 02.06.2026"
    },
    {
     "id": "F6",
     "gewicht": 3,
-    "fakt": "Die EU-Kommission hat am 12.08.2026 die Beihilfen (75 Mio. Euro) genehmigt, und die Kommunalaufsicht hat sich positiv zurückgemeldet; damit liegen die wesentlichen rechtlichen Voraussetzungen vor.",
-    "beleg": "PM 12.08.2026 „EU und Kommunalaufsicht geben endgültig grünes Licht“"
+    "fakt": "Die EU-Kommission hat am 12.08.2026 die Beihilfen für das Stadion genehmigt (75 Mio. Euro); damit liegen laut Stadt die wesentlichen rechtlichen Voraussetzungen vor.",
+    "beleg": "PM 12.08.2026 „Stadion-Neubau: EU und Kommunalaufsicht geben endgültig grünes Licht“"
+   },
+   {
+    "id": "F6b",
+    "gewicht": 1,
+    "fakt": "Die Kommunalaufsicht hat die Beschlüsse zur Ausfallbürgschaft nicht beanstandet (Schreiben vom 16.07.2026).",
+    "beleg": "PM 12.08.2026"
    },
    {
     "id": "F7",
     "gewicht": 1,
-    "fakt": "Anträge, das Projekt aufzuhalten, scheiterten: u. a. die Einwohnerbefragung (Grüne, Rat 23.02.2026) und die Vergabe erst nach EU-Zusage (Für Oldenburg, Rat 01.06.2026) wurden abgelehnt.",
-    "beleg": "Rat 23.02.2026 TOP 12.7 (id=306560); Rat 01.06.2026 TOP 15.10"
+    "fakt": "Versuche, das Projekt aufzuhalten oder zu verzögern, scheiterten (mindestens einer genannt): Einwohnerbefragung (Antrag der Grünen, Rat 23.02.2026 abgelehnt), Vergabe erst nach EU-Zusage (Antrag der Gruppe Für Oldenburg, Rat 01.06.2026 abgelehnt), Bürgerbegehren (vom Verwaltungsausschuss am 11.05.2026 für unzulässig erklärt).",
+    "beleg": "Rat 23.02.2026 TOP 12.7 (id=306560); Rat 01.06.2026 TOP 15.10 (31 Gegenstimmen); PM 11.05.2026"
+   },
+   {
+    "id": "F8",
+    "gewicht": 2,
+    "fakt": "Der Baubeginn ist für den 1. Juli 2027 vorgesehen, die Fertigstellung wird für Ende 2028/Anfang 2029 angestrebt.",
+    "beleg": "PM 05.06.2026; PM 12.08.2026"
+   },
+   {
+    "id": "F9",
+    "gewicht": 1,
+    "fakt": "Geplant sind laut Entwurf rund 10.600 Plätze, erweiterbar auf 15.000.",
+    "beleg": "PM 20.05.2026 (10.604 Plätze, optional 15.000); Grundsatzbeschluss Rat 15.04.2024 (10.000 Plätze, Ausbaureserve bis 15.000)"
+   },
+   {
+    "id": "F10",
+    "gewicht": 1,
+    "fakt": "Finanziert wird über einen Eigenkapitalzuschuss der Stadt von 15 Mio. Euro (Rat 28.10.2024) und Bankkredite der Stadiongesellschaft (das laufende Defizit, im Gespräch rund 3 Mio. Euro im Jahr, gleicht die Stadt aus).",
+    "beleg": "Rat 28.10.2024 TOP 6.1 (Vorlage 24/0511/1); PM 02.06.2026; Rat 01.06.2026 TOP 6.1 (Beiträge OB, SPD)"
+   },
+   {
+    "id": "F11",
+    "gewicht": 1,
+    "fakt": "Den Grundsatzbeschluss für den Neubau (10.000 Plätze, eigene Bau- und Betriebsgesellschaft) fasste der Rat am 15.04.2024 mehrheitlich (18 Gegenstimmen).",
+    "beleg": "Rat 15.04.2024 TOP 8, Vorlage 24/0158"
    }
   ],
   "verboten": [
@@ -243,7 +381,7 @@
    },
    {
     "id": "X2",
-    "behauptung": "Die EU-Kommission hat die Beihilfe abgelehnt, oder ihre Entscheidung steht (Stand Ende August 2026) noch aus."
+    "behauptung": "Die EU-Kommission hat die Beihilfe abgelehnt, oder ihre Entscheidung steht (Stand Abzug 01.10.2026) noch aus."
    },
    {
     "id": "X3",
@@ -252,9 +390,17 @@
    {
     "id": "X4",
     "behauptung": "Der Rat hat einstimmig zugestimmt."
+   },
+   {
+    "id": "X5",
+    "behauptung": "Der eigentliche Stadionbau (Hochbau) hat bereits begonnen (die vorbereitende Altlastensanierung auf dem Gelände zu nennen ist KEIN Verstoß)."
+   },
+   {
+    "id": "X6",
+    "behauptung": "Über das Stadion findet ein Bürgerentscheid statt, oder das Bürgerbegehren wurde zugelassen."
    }
   ],
-  "bewertung": "Abdeckung = Summe der Gewichte erfüllter Pflichtfakten / Gesamtgewicht (13). Bestanden: Abdeckung >= 0,6, F1 und F6 erfüllt, keine verbotene Behauptung.",
+  "bewertung": "Abdeckung = Summe der Gewichte erfüllter Pflichtfakten / Gesamtgewicht (20). Jede verbotene Behauptung ist ein harter Fehler. Bestanden: Abdeckung >= 0,6, F1 und F6 erfüllt, keine verbotene Behauptung.",
   "material": [
    {
     "id": "M1",
@@ -270,7 +416,8 @@
    {
     "id": "M2",
     "fuer": [
-     "F6"
+     "F6",
+     "F6b"
     ],
     "art": "presse",
     "date": "2026-08-12",
@@ -285,13 +432,71 @@
     "session_date": "2026-04-13",
     "committee": "Rat",
     "titel_enthaelt": "Bebauungsplan 831"
+   },
+   {
+    "id": "M4",
+    "fuer": [
+     "F5",
+     "F8"
+    ],
+    "art": "presse",
+    "date": "2026-06-05",
+    "titel_enthaelt": "Vertrag"
+   },
+   {
+    "id": "M5",
+    "fuer": [
+     "F1",
+     "F2"
+    ],
+    "art": "presse",
+    "date": "2026-06-02",
+    "titel_enthaelt": "Hellmich"
+   },
+   {
+    "id": "M6",
+    "fuer": [
+     "F3"
+    ],
+    "art": "beschluss",
+    "session_date": "2026-06-01",
+    "committee": "Rat",
+    "titel_enthaelt": "Ausfallbürgschaft"
+   },
+   {
+    "id": "M7",
+    "fuer": [
+     "F3b"
+    ],
+    "art": "beschluss",
+    "session_date": "2026-06-01",
+    "committee": "Rat",
+    "titel_enthaelt": "Grundstücksübertragungen"
+   },
+   {
+    "id": "M8",
+    "fuer": [
+     "F7"
+    ],
+    "art": "presse",
+    "date": "2026-05-11",
+    "titel_enthaelt": "Bürgerbegehren"
+   },
+   {
+    "id": "M9",
+    "fuer": [
+     "F9"
+    ],
+    "art": "presse",
+    "date": "2026-05-20",
+    "titel_enthaelt": "nächste Hürde"
    }
   ]
  },
  {
   "id": "stadion-fraktionen",
-  "note": "Handgeprüft am 30.09.2026 gegen Beschlüsse, Protokolltexte (council_protocols.raw_text) und Pressemitteilungen im Bestand. Positionen aus der Ratsdebatte 01.06.2026 und der Abstimmungsaufschlüsselung der PM 02.06.2026.",
-  "stand": "2026-09-30 (Protokolle bis 24.08.2026, Presse bis 26.08.2026)",
+  "note": "Handgeprüft am 30.09.2026 gegen Beschlüsse, Protokolltexte (council_protocols.raw_text) und Pressemitteilungen im Bestand. Positionen aus der Ratsdebatte 01.06.2026 und der Abstimmungsaufschlüsselung der PM 02.06.2026. Am 02.10.2026 gegen den Prod-Abzug vom 01.10.2026 neu geprüft: Material M1–M3 ist richtig spezifiziert (Wortbeiträge Schilling/Beerheide bzw. Finke am 01.06.2026 enthalten „Defizit“/„Sanierungsstau“ bzw. „Notifizierung“/„hochriskant“; der Titel der PM 02.06.2026 enthält „Hellmich“) – es fehlt, weil die Suche diese Quellen nicht holt. F4 geteilt (F4 Haltung, F4b abgelehnter Antrag), F7 geteilt (F7 FDP, F7b BSW/AfD). Neu: F8 Einwohnerbefragung, F9 stabile Mehrheit seit 2024, F10 Transparenzstreit Juli 2026. X4/X5 neu, M4–M8 neu.",
+  "stand": "2026-10-01 (Prod-Abzug)",
   "question": "Wie stehen die Fraktionen zum neuen Stadion?",
   "varianten": [
    "Wer war im Rat für und wer gegen das neue Stadion?"
@@ -301,7 +506,7 @@
     "id": "F1",
     "gewicht": 3,
     "fakt": "Für die Vergabe am 01.06.2026 stimmten SPD, CDU, BSW, FDP, Volt, AfD und der Oberbürgermeister; dagegen stimmten die Grünen und die Gruppe Für Oldenburg (mindestens: SPD und CDU dafür, Grüne dagegen).",
-    "beleg": "PM 02.06.2026; Rat 01.06.2026 TOP 6.1"
+    "beleg": "PM 02.06.2026; Rat 01.06.2026 TOP 6.1 (id=311268)"
    },
    {
     "id": "F2",
@@ -312,32 +517,62 @@
    {
     "id": "F3",
     "gewicht": 2,
-    "fakt": "Die Grünen kritisieren vor allem die Finanzierung: das dauerhafte Defizit der Stadiongesellschaft (im Gespräch rund 3 Mio. Euro jährlich), eine volle städtische Finanzierung und den Sanierungsstau bei anderen Sportstätten; sie forderten, das EU-Prüfergebnis abzuwarten.",
-    "beleg": "Rat 01.06.2026 TOP 6.1, Beiträge Schilling und Beerheide (id=311268)"
+    "fakt": "Die Grünen lehnen das Projekt vor allem wegen der Finanzierung ab (dauerhaftes Defizit der Stadiongesellschaft, im Gespräch rund 3 Mio. Euro jährlich; Sanierungsstau bei anderen Sportstätten; Sorge vor einem Haushaltssicherungskonzept; sie wollten zudem das EU-Prüfergebnis abwarten).",
+    "beleg": "Rat 01.06.2026 TOP 5 und 6.1, Beiträge Schilling, Beerheide, Wenzel, Küpker (id=311268); FiBe 27.05.2026 TOP 4 (Drügemöller, Bernhardt)"
    },
    {
     "id": "F4",
     "gewicht": 2,
-    "fakt": "Für Oldenburg hielt den Beschluss wegen des laufenden EU-Notifizierungsverfahrens für hochriskant und verwies darauf, dass das Marschwegstadion genüge; ihr Antrag, erst nach EU-Zusage zu vergeben, wurde abgelehnt.",
-    "beleg": "Rat 01.06.2026, Beiträge Finke und Sander; TOP 15.10"
+    "fakt": "Die Gruppe Für Oldenburg hielt den Beschluss wegen des laufenden EU-Notifizierungsverfahrens für hochriskant (und hält das Marschwegstadion für ausreichend).",
+    "beleg": "Rat 01.06.2026 TOP 6.1 (Finke) und TOP 5 (Sander)"
+   },
+   {
+    "id": "F4b",
+    "gewicht": 1,
+    "fakt": "Ihr Antrag, den Totalunternehmer erst nach einer positiven Rückmeldung der EU-Kommission zu beauftragen, wurde im Rat abgelehnt (31 Gegenstimmen).",
+    "beleg": "Rat 01.06.2026 TOP 15.10 (Antrag vom 15.05.2026)"
    },
    {
     "id": "F5",
     "gewicht": 1,
-    "fakt": "SPD: vertretbare Entscheidung, Spielstätte für Profifußball und „dritter Ort“ für den Zusammenhalt; Totalunternehmermodell sichere Kostenstabilität.",
-    "beleg": "Rat 01.06.2026, Beitrag Prange"
+    "fakt": "SPD: vertretbare Entscheidung, Spielstätte für Profifußball und „dritter Ort“ für den Zusammenhalt; das Totalunternehmermodell sichere Kostenstabilität.",
+    "beleg": "Rat 01.06.2026 TOP 6.1, Beitrag Prange"
    },
    {
     "id": "F6",
     "gewicht": 1,
-    "fakt": "CDU: von Beginn an für das Stadion, aber auf solider Grundlage; die Überschreitung der Kostengrenze um rund 1,9 Mio. Euro rechtfertige keinen Abbruch.",
-    "beleg": "Rat 01.06.2026, Beitrag Baak"
+    "fakt": "CDU: von Beginn an für das Stadion, aber auf solider Grundlage; die Überschreitung der eigenen Kostengrenze um rund 1,9 Mio. Euro rechtfertige keinen Abbruch.",
+    "beleg": "Rat 01.06.2026 TOP 6.1, Beitrag Baak; FiBe 27.05.2026 TOP 4"
    },
    {
     "id": "F7",
     "gewicht": 1,
-    "fakt": "FDP stimmte zu (Tempo und Kostensicherheit des Totalunternehmerverfahrens; Marschwegstadion erfüllt die DFB-Vorgaben nicht); BSW begrüßte, dass das Stadion auf den Weg gebracht wird.",
-    "beleg": "Rat 01.06.2026, Beiträge Pfeiffer und Höpken"
+    "fakt": "Die FDP stimmte zu (Tempo und Kostensicherheit des Totalunternehmerverfahrens; das Marschwegstadion erfüllt die DFB-Vorgaben nicht).",
+    "beleg": "Rat 01.06.2026 TOP 6.1, Beitrag Pfeiffer"
+   },
+   {
+    "id": "F7b",
+    "gewicht": 1,
+    "fakt": "BSW und AfD unterstützen das Stadion (mindestens eine Partei genannt; BSW: seit zwei Kommunalwahlkämpfen gefordert, Marschweg ist kein Fußballstadion; AfD: Zukunftsinvestition, aber mit Controlling).",
+    "beleg": "Rat 01.06.2026 TOP 5 und 6.1, Beiträge Höpken, Adler, Dr. Onken (BSW), Paul (AfD)"
+   },
+   {
+    "id": "F8",
+    "gewicht": 1,
+    "fakt": "Die Grünen setzten sich wiederholt für eine Einwohnerbefragung zum Stadion ein; die Anträge scheiterten im Rat.",
+    "beleg": "Rat 26.02.2024 TOP 12.7 (Beschlussantrag 2 „Einwohnerbefragung im Rahmen der Europawahl“ abgelehnt); Rat 23.02.2026 TOP 12.7 (27 Gegenstimmen); Rat 01.06.2026 TOP 5 (Rohde)"
+   },
+   {
+    "id": "F9",
+    "gewicht": 1,
+    "fakt": "Die Mehrheit für das Stadion besteht seit Jahren: Schon den Grundsatzbeschluss vom 15.04.2024 fasste der Rat mehrheitlich bei 18 Gegenstimmen.",
+    "beleg": "Rat 15.04.2024 TOP 8 (Vorlage 24/0158); Rat 27.02.2023 TOP 8.1 (Planungsaufnahme, 18 Gegenstimmen)"
+   },
+   {
+    "id": "F10",
+    "gewicht": 1,
+    "fakt": "Der Streit hält an: Im Juli 2026 warfen die Grünen dem Oberbürgermeister mangelnde Transparenz im EU-Verfahren vor; die Stadt wies das zurück.",
+    "beleg": "PM 27.07.2026 „Stadion-Neubau: Stadt weist Vorwurf mangelnder Transparenz zurück“"
    }
   ],
   "verboten": [
@@ -352,9 +587,17 @@
    {
     "id": "X3",
     "behauptung": "Die Entscheidung fiel einstimmig."
+   },
+   {
+    "id": "X4",
+    "behauptung": "Die Gruppe Für Oldenburg hat der Vergabe zugestimmt."
+   },
+   {
+    "id": "X5",
+    "behauptung": "Die SPD hat gegen die Vergabe gestimmt."
    }
   ],
-  "bewertung": "Abdeckung = Summe der Gewichte / 11. Bestanden: Abdeckung >= 0,6, F1 erfüllt, keine verbotene Behauptung.",
+  "bewertung": "Abdeckung = Summe der Gewichte erfüllter Pflichtfakten / Gesamtgewicht (16). Jede verbotene Behauptung ist ein harter Fehler. Bestanden: Abdeckung >= 0,6, F1 erfüllt, keine verbotene Behauptung.",
   "material": [
    {
     "id": "M1",
@@ -389,13 +632,65 @@
     "art": "presse",
     "date": "2026-06-02",
     "titel_enthaelt": "Hellmich"
+   },
+   {
+    "id": "M4",
+    "fuer": [
+     "F4b"
+    ],
+    "art": "beschluss",
+    "session_date": "2026-06-01",
+    "committee": "Rat",
+    "titel_enthaelt": "Totalunternehmers"
+   },
+   {
+    "id": "M5",
+    "fuer": [
+     "F8"
+    ],
+    "art": "beschluss",
+    "session_date": "2026-02-23",
+    "committee": "Rat",
+    "titel_enthaelt": "Einwohnerbefragung"
+   },
+   {
+    "id": "M6",
+    "fuer": [
+     "F10"
+    ],
+    "art": "presse",
+    "date": "2026-07-27",
+    "titel_enthaelt": "Transparenz"
+   },
+   {
+    "id": "M7",
+    "fuer": [
+     "F5"
+    ],
+    "art": "debatte",
+    "session_date": "2026-06-01",
+    "text_enthaelt_eins": [
+     "Totalunternehmermodell",
+     "dritter Ort"
+    ]
+   },
+   {
+    "id": "M8",
+    "fuer": [
+     "F6"
+    ],
+    "art": "debatte",
+    "session_date": "2026-06-01",
+    "text_enthaelt_eins": [
+     "Kostengrenze"
+    ]
    }
   ]
  },
  {
   "id": "trinkwasserspender-draussen",
-  "note": "Handgeprüft am 30.09.2026 gegen Beschlüsse, Protokolltexte (council_protocols.raw_text) und Pressemitteilungen im Bestand. Die Kernaussage steht nur als Protokollnotiz ohne Sprecher; der Beschluss lautet bloß „zur Kenntnis genommen“.",
-  "stand": "2026-09-30 (Protokolle bis 24.08.2026, Presse bis 26.08.2026)",
+  "note": "Handgeprüft am 30.09.2026 gegen Beschlüsse, Protokolltexte (council_protocols.raw_text) und Pressemitteilungen im Bestand. Die Kernaussage steht nur als Protokollnotiz ohne Sprecher; der Beschluss lautet bloß „zur Kenntnis genommen“. Am 02.10.2026 gegen den Prod-Abzug vom 01.10.2026 neu geprüft: F3 war falsch (die Zweifel an Nebelmaschinen äußerte der FDP-, nicht ein CDU-Vertreter). F2 geteilt (F2 Antrag, F2b nur Kenntnisnahme). Neu: F5 Abraten der Verwaltung 2020, F6 ehemalige Brunnen Haarenstraße, F7 offene Punkte laut Vorlage 26/0261, F8 eingeplante Einzelbrunnen (Hauptbahnhof im Haushalt 2026, Pulverturm in der Entwurfsplanung Schlossplatz), F9 Bahnhofsvorplatz. X1 und X3 präzisiert, weil es konkrete Standorte in Planungen gibt.",
+  "stand": "2026-10-01 (Prod-Abzug)",
   "question": "Wann kommen öffentliche Trinkwasserspender in Oldenburg?",
   "varianten": [
    "Was ist aus dem Antrag zu Trinkwasserspendern und Nebelmaschinen geworden?"
@@ -404,32 +699,68 @@
    {
     "id": "F1",
     "gewicht": 3,
-    "fakt": "Laut Verwaltung (Protokollnotiz) braucht die Prüfung der technischen, gestalterischen und rechtlichen Anforderungen – vor allem für den Betrieb – weitere Klärung; angestrebt wird das 2027 mit Abschluss des KLAK, danach soll gebaut werden.",
+    "fakt": "Laut Verwaltung (Protokollnotiz) braucht es noch eine Klärung der Anforderungen an öffentliche Trinkwasserbrunnen – vor allem für den Betrieb; angestrebt wird sie 2027 mit Abschluss des Klimaanpassungskonzepts (KLAK), danach soll gebaut werden.",
     "beleg": "ASUK 16.04.2026 TOP 11.1, Vorlage 26/0261, Protokollnotiz (id=310610)"
    },
    {
     "id": "F2",
     "gewicht": 1,
-    "fakt": "Anlass war ein Informationsantrag der SPD-Fraktion vom 17.03.2026 (Machbarkeit öffentlicher Trinkwasserspender und Nebelmaschinen); der Bericht wurde zur Kenntnis genommen, beschlossen wurde nichts.",
+    "fakt": "Anlass war ein Antrag der SPD-Fraktion vom 17.03.2026, die Machbarkeit öffentlicher Trinkwasserspender und Nebelmaschinen zu prüfen und geeignete Standorte zu benennen.",
+    "beleg": "ASUK 16.04.2026 TOP 11.1; Vorlage 26/0261"
+   },
+   {
+    "id": "F2b",
+    "gewicht": 1,
+    "fakt": "Beschlossen wurde nichts: Der Ausschuss nahm den Bericht nur zur Kenntnis (die SPD sprach von einem Informationsantrag; ein Beschlussantrag könne folgen).",
     "beleg": "ASUK 16.04.2026 TOP 11.1"
    },
    {
     "id": "F3",
     "gewicht": 1,
-    "fakt": "Zu Nebelmaschinen machte die Verwaltung keine Aussage (differenziert diskutiert); die CDU (Dittrich) bezweifelte deren Sinn in Zeiten von Wasserknappheit.",
-    "beleg": "ASUK 16.04.2026 TOP 11.1"
+    "fakt": "Zu Nebelmaschinen traf die Verwaltung keine Aussage, weil sie differenziert diskutiert würden (die FDP bezweifelte ihren Sinn in Zeiten von Wasserknappheit).",
+    "beleg": "ASUK 16.04.2026 TOP 11.1, Protokollnotiz; Beitrag Dittrich (FDP)"
    },
    {
     "id": "F4",
     "gewicht": 1,
-    "fakt": "Es gab frühere Anläufe: 2020 wurde ein Antrag auf barrierefreie Trinkwasserbrunnen in der Innenstadt abgelehnt; 2023 ging es auf CDU-Antrag um Trinkwasserspender in öffentlichen Gebäuden (mindestens einer genannt).",
-    "beleg": "ASUK 13.02.2020 TOP 10.1 (id=215473); ASUK 09.11.2023 TOP 12.1 (id=272105)"
+    "fakt": "Es gab frühere Anläufe (mindestens einer genannt): 2019 ein Prüfauftrag zu Trinkwasserbrunnen in der Innenstadt, 2020 ein abgelehnter Antrag auf barrierefreie Trinkwasserbrunnen in der Innenstadt, 2023 ein CDU-Antrag zu Trinkwasserspendern in öffentlichen Gebäuden.",
+    "beleg": "ASUK 12.09.2019 TOP 8 (Vorlage 19/0699); ASUK 13.02.2020 TOP 10.1 (Vorlage 20/0077, id=215473); ASUK 09.11.2023 TOP 12.1 (id=272105), Bericht ASUK 08.02.2024 TOP 5"
+   },
+   {
+    "id": "F5",
+    "gewicht": 1,
+    "fakt": "2020 riet die Verwaltung von Trinkwasserbrunnen in der Fußgängerzone ab (Hygieneanforderungen, Vandalismus, rund 25.000–30.000 Euro Bau- und mindestens 5.000 Euro Betriebskosten je Brunnen im Jahr) und empfahl stattdessen Initiativen wie „Refill“.",
+    "beleg": "Vorlage 20/0077 zu ASUK 13.02.2020"
+   },
+   {
+    "id": "F6",
+    "gewicht": 1,
+    "fakt": "Früher standen zwei Trinkwasserbrunnen in der Haarenstraße; sie wurden wiederholt von Fahrzeugen beschädigt und sind nicht mehr in Betrieb.",
+    "beleg": "Vorlage 19/0699 zu ASUK 12.09.2019; Vorlage 20/0077"
+   },
+   {
+    "id": "F7",
+    "gewicht": 1,
+    "fakt": "Im Bericht zum SPD-Antrag ordnet die Verwaltung das Thema in das Klimaanpassungskonzept ein und nennt offene Punkte wie Hygiene, Barrierefreiheit, Gestaltung und die Zuständigkeit für Betrieb und Wartung (mindestens zwei).",
+    "beleg": "Vorlage 26/0261 (Stadtplanungsamt, 26.03.2026)"
+   },
+   {
+    "id": "F8",
+    "gewicht": 1,
+    "fakt": "Einzelne Brunnen sind in anderen Projekten eingeplant (mindestens einer genannt): 15.000 Euro für einen Trinkwasserbrunnen am Hauptbahnhof im Haushalt 2026, ein Trinkbrunnen am Pulverturm in der Entwurfsplanung zur Umgestaltung der Straße Schlossplatz.",
+    "beleg": "Verkehrsausschuss 17.11.2025, Präsentation Haushalt 2026 („Trinkwasserbrunnen am Hbf 15.000 €“); council_investment_measures I10.242102; Verkehrsausschuss 08.12.2025 TOP 6, Anlage Entwurf Schloßplatz"
+   },
+   {
+    "id": "F9",
+    "gewicht": 1,
+    "fakt": "Bei der geplanten Umgestaltung des Bahnhofsvorplatzes sollen Trinkwasserspender nach dem Wunsch von Grünen und SPD von Anfang an mitgedacht werden.",
+    "beleg": "Verkehrsausschuss 08.06.2026 TOP 8 (Vorlage 26/0445, Niederstein); Rat 29.06.2026 (Prange)"
    }
   ],
   "verboten": [
    {
     "id": "X1",
-    "behauptung": "Der Bau öffentlicher Trinkwasserspender ist beschlossen oder hat schon begonnen."
+    "behauptung": "Die Stadt hat die Aufstellung öffentlicher Trinkwasserspender allgemein beschlossen, oder ihr Bau hat begonnen (einzelne Haushaltsansätze oder Planungen wie am Hauptbahnhof oder am Pulverturm als Planung zu nennen ist KEIN Verstoß)."
    },
    {
     "id": "X2",
@@ -437,10 +768,10 @@
    },
    {
     "id": "X3",
-    "behauptung": "Es werden konkrete Standorte oder eine konkrete Anzahl von Trinkwasserspendern genannt."
+    "behauptung": "Es werden andere konkrete Standorte als Hauptbahnhof bzw. Bahnhofsvorplatz und Schlossplatz/Pulverturm oder eine konkrete Gesamtzahl geplanter öffentlicher Trinkwasserspender genannt (die ehemaligen Brunnen in der Haarenstraße zu nennen ist KEIN Verstoß)."
    }
   ],
-  "bewertung": "Abdeckung = Summe der Gewichte / 6. Bestanden: Abdeckung >= 0,6, F1 erfüllt, keine verbotene Behauptung.",
+  "bewertung": "Abdeckung = Summe der Gewichte erfüllter Pflichtfakten / Gesamtgewicht (12). Jede verbotene Behauptung ist ein harter Fehler. Bestanden: Abdeckung >= 0,6, F1 erfüllt, keine verbotene Behauptung.",
   "material": [
    {
     "id": "M1",
@@ -468,8 +799,8 @@
  },
  {
   "id": "mobilitaetsplan-beschluss",
-  "note": "Handgeprüft am 30.09.2026 gegen Beschlüsse, Protokolltexte (council_protocols.raw_text) und Pressemitteilungen im Bestand. Prüft „gilt als behandelt“ (seit 30.09.2026 eigenes Ergebnis settled): In vier Fachausschüssen wurde nicht über den Inhalt abgestimmt.",
-  "stand": "2026-09-30 (Protokolle bis 24.08.2026, Presse bis 26.08.2026)",
+  "note": "Handgeprüft am 30.09.2026 gegen Beschlüsse, Protokolltexte (council_protocols.raw_text) und Pressemitteilungen im Bestand. Prüft „gilt als behandelt“ (seit 30.09.2026 eigenes Ergebnis settled): In vier Fachausschüssen wurde nicht über den Inhalt abgestimmt. Am 02.10.2026 gegen den Prod-Abzug vom 01.10.2026 neu geprüft: F1–F5 bestätigt (Stimmzahl Rat ergänzt: 17 Gegenstimmen); F4 auf „mindestens einer“ gestellt. Neu: F6 Ergänzungen aus dem Änderungsantrag von Grünen und SPD, F7 gescheiterte CDU-Anträge, F8 offene SUMP-Frage (Förderantrag am 11.05.2026 abgelehnt). X3 neu, M3–M6 neu.",
+  "stand": "2026-10-01 (Prod-Abzug)",
   "question": "Wie wurde über den Mobilitätsplan Oldenburg 2030 entschieden?",
   "varianten": [
    "Welche Ausschüsse haben dem Mobilitätsplan 2030 zugestimmt?"
@@ -478,32 +809,50 @@
    {
     "id": "F1",
     "gewicht": 3,
-    "fakt": "Der Rat beschloss den Mobilitätsplan Oldenburg 2030 am 26.06.2023 mehrheitlich.",
-    "beleg": "Rat 26.06.2023 TOP 9.1 (id=267079)"
+    "fakt": "Der Rat beschloss den Mobilitätsplan Oldenburg 2030 am 26.06.2023 mehrheitlich (bei 17 Gegenstimmen).",
+    "beleg": "Rat 26.06.2023 TOP 9.1, Vorlage 23/0211/2 (id=267079)"
    },
    {
     "id": "F2",
     "gewicht": 2,
     "fakt": "Der Verkehrsausschuss empfahl ihn am 19.06.2023 mehrheitlich (bei drei Gegenstimmen), nachdem er ihn im März 2023 vertagt hatte.",
-    "beleg": "Verkehrsausschuss 19.06.2023 TOP 5 (id=267456); 13.03.2023"
+    "beleg": "Verkehrsausschuss 19.06.2023 TOP 5 (id=267456); 13.03.2023 TOP 5 (id=261671)"
    },
    {
     "id": "F3",
     "gewicht": 3,
     "fakt": "In anderen Fachausschüssen (Wirtschaft 08.05.2023, Stadtgrün 11.05.2023, Stadtplanung 25.05.2023, Soziales 13.06.2023) wurde nicht über den Inhalt abgestimmt – der Punkt „galt als behandelt“ (mindestens zwei dieser Ausschüsse genannt).",
-    "beleg": "id=263979, 264262, 264680, 268808"
+    "beleg": "id=263979, 264262, 264680, 268808 (Vorlage 23/0211/1)"
    },
    {
     "id": "F4",
     "gewicht": 1,
-    "fakt": "Der Rat beschloss später das weitere Vorgehen (27.11.2023, 32 zu 14) und die Maßnahmenpriorisierung/Umsetzungsplanung (27.05.2024).",
-    "beleg": "Rat 27.11.2023 TOP 13.1 (id=272321); Rat 27.05.2024 TOP 8.1 (id=279184)"
+    "fakt": "Der Rat beschloss später das weitere Vorgehen (27.11.2023, 32 zu 14 Stimmen) und die Maßnahmenpriorisierung und Umsetzungsplanung (27.05.2024; mindestens einer der beiden Beschlüsse genannt).",
+    "beleg": "Rat 27.11.2023 TOP 13.1 (id=272321); Rat 27.05.2024 TOP 8.1, 11 Gegenstimmen (id=279184)"
    },
    {
     "id": "F5",
     "gewicht": 1,
-    "fakt": "Zuletzt berichtete die Verwaltung am 20.04.2026 im Verkehrsausschuss über den Sachstand von Planung und Umsetzung.",
-    "beleg": "Verkehrsausschuss 20.04.2026 TOP 8 (id=308880)"
+    "fakt": "Zuletzt berichtete die Verwaltung am 20.04.2026 im Verkehrsausschuss über den Sachstand von Planung und Umsetzung (u. a. neue Fahrradstraßen umgesetzt, Neuaufteilung am Damm noch nicht begonnen).",
+    "beleg": "Verkehrsausschuss 20.04.2026 TOP 8, Vorlage 26/0190 (id=308880); PM 24.04.2026"
+   },
+   {
+    "id": "F6",
+    "gewicht": 1,
+    "fakt": "Beschlossen wurde der Plan mit Ergänzungen aus einem Änderungsantrag von Grünen und SPD (u. a. ein zusätzliches Teilkonzept für den Fußverkehr, Präzisierung der Premiumrouten).",
+    "beleg": "Verkehrsausschuss 19.06.2023 TOP 5 (Änderungsantrag angenommen); Rat 26.06.2023 TOP 9.1, Beschlusstext"
+   },
+   {
+    "id": "F7",
+    "gewicht": 1,
+    "fakt": "Die CDU lehnte den Plan ab: Ihr Antrag, ihn nicht zu beschließen (Verkehrsausschuss), und ihr Antrag auf ein erneutes Gutachten (Rat) scheiterten (mindestens einer genannt).",
+    "beleg": "Verkehrsausschuss 19.06.2023 TOP 5 (Änderungsantrag CDU abgelehnt); Rat 26.06.2023 TOP 9.1 (Änderungsantrag CDU abgelehnt)"
+   },
+   {
+    "id": "F8",
+    "gewicht": 1,
+    "fakt": "Ob der Plan die EU-Pflicht zu einem nachhaltigen urbanen Mobilitätsplan (SUMP, bis Ende 2027) erfüllt, ist offen; die Verwaltung geht davon aus (zusammen mit dem ISEK), ein Antrag, eine SUMP-Förderung zu beantragen, wurde am 11.05.2026 im Verkehrsausschuss einstimmig abgelehnt.",
+    "beleg": "Verkehrsausschuss 20.04.2026 TOP 10.6 (Vorlage 26/0298); Verkehrsausschuss 11.05.2026 TOP 6.9"
    }
   ],
   "verboten": [
@@ -514,9 +863,13 @@
    {
     "id": "X2",
     "behauptung": "Der Rat hat den Mobilitätsplan einstimmig beschlossen oder abgelehnt."
+   },
+   {
+    "id": "X3",
+    "behauptung": "Der Verkehrsausschuss hat den Mobilitätsplan bereits im März 2023 beschlossen bzw. empfohlen."
    }
   ],
-  "bewertung": "Abdeckung = Summe der Gewichte / 10. Bestanden: Abdeckung >= 0,6, F1 und F3 erfüllt, keine verbotene Behauptung.",
+  "bewertung": "Abdeckung = Summe der Gewichte erfüllter Pflichtfakten / Gesamtgewicht (13). Jede verbotene Behauptung ist ein harter Fehler. Bestanden: Abdeckung >= 0,6, F1 und F3 erfüllt, keine verbotene Behauptung.",
   "material": [
    {
     "id": "M1",
@@ -537,13 +890,53 @@
     "session_date": "2023-05-11",
     "committee": "Stadtgrün",
     "titel_enthaelt": "Mobilitätsplan"
+   },
+   {
+    "id": "M3",
+    "fuer": [
+     "F2",
+     "F6"
+    ],
+    "art": "beschluss",
+    "session_date": "2023-06-19",
+    "committee": "Verkehrsausschuss",
+    "titel_enthaelt": "Mobilitätsplan Oldenburg 2030"
+   },
+   {
+    "id": "M4",
+    "fuer": [
+     "F3"
+    ],
+    "art": "beschluss",
+    "session_date": "2023-05-25",
+    "committee": "Stadtplanung",
+    "titel_enthaelt": "Mobilitätsplan"
+   },
+   {
+    "id": "M5",
+    "fuer": [
+     "F3"
+    ],
+    "art": "beschluss",
+    "session_date": "2023-06-13",
+    "committee": "Sozialausschuss",
+    "titel_enthaelt": "Mobilitätsplan"
+   },
+   {
+    "id": "M6",
+    "fuer": [
+     "F5"
+    ],
+    "art": "presse",
+    "date": "2026-04-24",
+    "titel_enthaelt": "Mobilitätsplan"
    }
   ]
  },
  {
   "id": "waermewende-beirat",
-  "note": "Handgeprüft am 30.09.2026 gegen Beschlüsse, Protokolltexte (council_protocols.raw_text) und Pressemitteilungen im Bestand. Beschluss mit zwei Änderungsanträgen, die den Inhalt verändern.",
-  "stand": "2026-09-30 (Protokolle bis 24.08.2026, Presse bis 26.08.2026)",
+  "note": "Handgeprüft am 30.09.2026 gegen Beschlüsse, Protokolltexte (council_protocols.raw_text) und Pressemitteilungen im Bestand. Beschluss mit zwei Änderungsanträgen, die den Inhalt verändern. Am 02.10.2026 gegen den Prod-Abzug vom 01.10.2026 neu geprüft: F2 geteilt (F2 politische Vertretung, F2b Vermietende), F5 geteilt (F5 keine Entscheidungsbefugnis, F5b Berlin Governance Platform), Personennamen aus den Belegen entfernt. Neu: F7 Besetzung laut Vorlage (Frage-Variante „Wer soll im Beirat sitzen?“), F8 Kosten/Förderung, F9 Zeitplan, F10 Maßnahme des am selben Tag beschlossenen Wärmeplans. X4 neu: Im Ausschuss lautete der SPD-Antrag noch „ein Mitglied je Fraktion“, der Rat beschloss nur „eine politische Vertretung“.",
+  "stand": "2026-10-01 (Prod-Abzug)",
   "question": "Was hat der Rat zum Wärmewende-Beirat beschlossen?",
   "varianten": [
    "Wer soll im Wärmewende-Beirat sitzen?"
@@ -558,32 +951,68 @@
    {
     "id": "F2",
     "gewicht": 2,
-    "fakt": "Im Beirat soll eine politische Vertretung sein (SPD-Änderungsantrag), außerdem Vertretungen von Vermietenden (FDP-Änderungsantrag).",
-    "beleg": "Rat 01.06.2026 TOP 8.2; ASUK 16.04.2026 TOP 6 (id=310610)"
+    "fakt": "Auf Änderungsantrag der SPD soll eine politische Vertretung im Beirat sein.",
+    "beleg": "Rat 01.06.2026 TOP 8.2 (Änderungsantrag angenommen, 18 Gegenstimmen); ASUK 16.04.2026 TOP 6 (id=310610)"
+   },
+   {
+    "id": "F2b",
+    "gewicht": 1,
+    "fakt": "Auf Änderungsantrag der FDP sollen auch Vermietende im Beirat vertreten sein.",
+    "beleg": "Rat 01.06.2026 TOP 8.2 (Änderungsantrag angenommen, 18 Gegenstimmen); ASUK 16.04.2026 TOP 6"
    },
    {
     "id": "F3",
     "gewicht": 2,
-    "fakt": "Der Beirat soll seine Empfehlungen mit Einschätzungen zu Investitionskosten, Finanzierung/Förderung, Auswirkungen auf Mietende und Eigentümer und zur Umsetzbarkeit versehen.",
-    "beleg": "Rat 01.06.2026 TOP 8.2"
+    "fakt": "Der Beirat soll seine Empfehlungen jeweils mit Einschätzungen zu Investitionskosten, Finanzierungs- und Fördermöglichkeiten, Auswirkungen auf Mietende und Eigentümer sowie zur praktischen Umsetzbarkeit versehen (mindestens zwei dieser Punkte genannt).",
+    "beleg": "Rat 01.06.2026 TOP 8.2, Beschlusstext"
    },
    {
     "id": "F4",
     "gewicht": 1,
-    "fakt": "Vorberaten im Ausschuss für Stadtgrün, Umwelt und Klima am 16.04.2026 (einstimmig), wo beide Änderungsanträge angenommen wurden.",
-    "beleg": "ASUK 16.04.2026 TOP 6"
+    "fakt": "Vorberaten im Ausschuss für Stadtgrün, Umwelt und Klima am 16.04.2026: Einrichtung einstimmig beschlossen, beide Änderungsanträge angenommen.",
+    "beleg": "ASUK 16.04.2026 TOP 6, Vorlage 26/0238 (FDP-Antrag einstimmig bei drei Enthaltungen, SPD-Antrag mehrheitlich bei drei Gegenstimmen)"
    },
    {
     "id": "F5",
     "gewicht": 1,
-    "fakt": "Der Beirat hat keine Entscheidungsbefugnis, er gibt Empfehlungen; umgesetzt wird er mit der Berlin Governance Platform (gemeinnützig).",
-    "beleg": "ASUK 16.04.2026 TOP 6 (Zenner, Grimm, Dittrich)"
+    "fakt": "Der Beirat hat keine Entscheidungsbefugnis; er erarbeitet Empfehlungen für Verwaltung und Rat.",
+    "beleg": "Vorlage 26/0238 bzw. 26/0238/1 („explizit keine Entscheidungskompetenz“); ASUK 16.04.2026 TOP 6; Rat 01.06.2026 TOP 8.2"
+   },
+   {
+    "id": "F5b",
+    "gewicht": 1,
+    "fakt": "Begleitet wird der Aufbau von der gemeinnützigen Berlin Governance Platform im Rahmen eines Förderprojekts.",
+    "beleg": "Vorlage 26/0238; ASUK 16.04.2026 TOP 6"
    },
    {
     "id": "F6",
     "gewicht": 1,
-    "fakt": "Ein Vertagungsantrag der BSW-Fraktion wurde im Rat abgelehnt.",
-    "beleg": "Rat 01.06.2026 TOP 8.2, Teilabstimmung"
+    "fakt": "Ein Antrag der BSW-Fraktion, den Beschluss bis nach der Kommunalwahl zu vertagen, wurde im Rat abgelehnt.",
+    "beleg": "Rat 01.06.2026 TOP 8.2, Geschäftsordnungsantrag (45 Gegenstimmen)"
+   },
+   {
+    "id": "F7",
+    "gewicht": 2,
+    "fakt": "Besetzt werden soll der Beirat aus der Stadtgesellschaft, laut Vorlage etwa mit Wohnungswirtschaft, Energiewirtschaft, Handwerk, Vertretung der Mietenden, Wissenschaft, Umwelt- und Klimaschutzinitiativen und Stadtverwaltung (mindestens drei Gruppen genannt); eine Planungsgruppe schlug die Besetzung vor.",
+    "beleg": "Vorlage 26/0238 und 26/0238/1 (Anlage „Vorschlag Besetzung“), Rat 01.06.2026: „gemäß Aufgabenbeschreibung und Besetzungsliste“"
+   },
+   {
+    "id": "F8",
+    "gewicht": 1,
+    "fakt": "Die Kosten von bis zu 130.000 Euro werden aus Stiftungsmitteln gefördert; der Eigenanteil der Stadt beträgt höchstens 30.000 Euro.",
+    "beleg": "Vorlage 26/0238, Auswirkungen/Finanzen"
+   },
+   {
+    "id": "F9",
+    "gewicht": 1,
+    "fakt": "Zeitplan laut Vorlage: Konstituierung und moderierte Sitzungen bis etwa Dezember 2026, Empfehlungen Anfang 2027, danach soll der Beirat als dauerhaftes beratendes Gremium bestehen.",
+    "beleg": "Vorlage 26/0238/1, „Weiteres Vorgehen und Zeitplan“"
+   },
+   {
+    "id": "F10",
+    "gewicht": 1,
+    "fakt": "Der Beirat ist eine Maßnahme des Oldenburger Wärmeplans (Kommunale Wärmeplanung), den der Rat am selben Tag beschloss.",
+    "beleg": "Vorlage 26/0238 (Maßnahme O7); Rat 01.06.2026 TOP 8.1 (Vorlage 26/0236, 5 Gegenstimmen); PM 02.06.2026"
    }
   ],
   "verboten": [
@@ -598,15 +1027,20 @@
    {
     "id": "X3",
     "behauptung": "Der Rat hat den Beirat abgelehnt oder vertagt."
+   },
+   {
+    "id": "X4",
+    "behauptung": "Der Rat hat beschlossen, dass jede Fraktion mindestens ein Mitglied in den Beirat entsendet."
    }
   ],
-  "bewertung": "Abdeckung = Summe der Gewichte / 10. Bestanden: Abdeckung >= 0,6, F1 erfüllt, keine verbotene Behauptung.",
+  "bewertung": "Abdeckung = Summe der Gewichte erfüllter Pflichtfakten / Gesamtgewicht (17). Jede verbotene Behauptung ist ein harter Fehler. Bestanden: Abdeckung >= 0,6, F1 erfüllt, keine verbotene Behauptung.",
   "material": [
    {
     "id": "M1",
     "fuer": [
      "F1",
      "F2",
+     "F2b",
      "F3"
     ],
     "art": "beschluss",
@@ -617,7 +1051,8 @@
    {
     "id": "M2",
     "fuer": [
-     "F5"
+     "F5",
+     "F5b"
     ],
     "art": "debatte",
     "session_date": "2026-04-16",
@@ -625,13 +1060,43 @@
      "Empfehlung",
      "Governance"
     ]
+   },
+   {
+    "id": "M3",
+    "fuer": [
+     "F4"
+    ],
+    "art": "beschluss",
+    "session_date": "2026-04-16",
+    "committee": "Stadtgrün",
+    "titel_enthaelt": "Wärmewende"
+   },
+   {
+    "id": "M4",
+    "fuer": [
+     "F6"
+    ],
+    "art": "debatte",
+    "session_date": "2026-06-01",
+    "text_enthaelt_eins": [
+     "Vertagung"
+    ]
+   },
+   {
+    "id": "M5",
+    "fuer": [
+     "F10"
+    ],
+    "art": "presse",
+    "date": "2026-06-02",
+    "titel_enthaelt": "Wärmeplan"
    }
   ]
  },
  {
   "id": "buergerbusch-faellungen",
-  "note": "Handgeprüft am 30.09.2026 gegen Beschlüsse, Protokolltexte (council_protocols.raw_text) und Pressemitteilungen im Bestand. Test gegen Erfundenes: Gründe und Umfang der Fällungen stehen in keinem Protokoll (nur in einer Präsentation).",
-  "stand": "2026-09-30 (Protokolle bis 24.08.2026, Presse bis 26.08.2026)",
+  "note": "Handgeprüft am 30.09.2026 gegen Beschlüsse, Protokolltexte (council_protocols.raw_text) und Pressemitteilungen im Bestand. Am 02.10.2026 gegen den Prod-Abzug vom 01.10.2026 grundlegend überarbeitet: Die alte Annahme „Gründe stehen nirgends“ war falsch. Die Protokolle nennen keine Gründe, aber der Bericht der Verwaltung zum SPD-Antrag (Vorlage 26/0290, am Beschluss vom 16.04.2026) begründet die Fällungen ausdrücklich: Waldumbau zu einem klimaresilienten Mischwald, Lichtsteuerung für Naturverjüngung, Vitalisierung, Verkehrssicherung; nur Einzelentnahmen ohne Harvester. Das alte X2 verbot also belegte Gründe (u. a. Verkehrssicherung) und ist präzisiert. F4 („Protokolle nennen keine Gründe“) entfällt; neu sind F5 (Kernfakt Waldumbau), F6 (Einzelgründe), F7 (Art der Fällung). F2 (Ortsbegehung) bleibt, aber nicht mehr als Kernfakt. Nicht geprüft: die Präsentation zur Begehung vom 11.06.2026 (Anlage 2 des Protokolls, Text nicht im Bestand) – X1 (Anzahl) daher nur gegen Vorlage und Protokolle geprüft.",
+  "stand": "2026-10-01 (Prod-Abzug)",
   "question": "Warum wurden im Großen Bürgerbusch Bäume gefällt?",
   "varianten": [
    "Was ist mit den Baumfällungen im Großen Bürgerbusch?"
@@ -639,27 +1104,39 @@
   "pflicht": [
    {
     "id": "F1",
-    "gewicht": 2,
-    "fakt": "Die SPD-Fraktion stellte am 31.03.2026 einen Berichtsantrag zu den Baumfällungen im Großen Bürgerbusch; er wurde am 16.04.2026 im Ausschuss für Stadtgrün, Umwelt und Klima beraten.",
+    "gewicht": 1,
+    "fakt": "Die SPD-Fraktion beantragte am 31.03.2026 einen Bericht zu den Baumfällungen im Großen Bürgerbusch; er wurde am 16.04.2026 im Ausschuss für Stadtgrün, Umwelt und Klima beraten.",
     "beleg": "ASUK 16.04.2026 TOP 11.6, Vorlage 26/0290 (id=310610)"
    },
    {
     "id": "F2",
-    "gewicht": 3,
-    "fakt": "Die Verwaltung (Sprenger) hielt eine Erklärung vor Ort für zielführender, lud zu einer Ortsbegehung am 11. Juni (15.30 Uhr) ein und sagte ein Fraktionsschreiben mit allen Informationen zu.",
+    "gewicht": 2,
+    "fakt": "Im Ausschuss erklärte die Verwaltung die Fällungen nicht näher, sondern hielt eine Erklärung vor Ort für zielführender: Sie lud zu einer Ortsbegehung am 11.06.2026 ein und sagte ein Fraktionsschreiben mit allen Informationen zu.",
     "beleg": "ASUK 16.04.2026 TOP 11.6"
    },
    {
     "id": "F3",
     "gewicht": 1,
-    "fakt": "Am 11.06.2026 berichtete die Verwaltung im Ausschuss anhand einer Präsentation über die Begehung; der Bericht wurde zur Kenntnis genommen.",
+    "fakt": "Am 11.06.2026 berichtete die Verwaltung im Ausschuss anhand einer Präsentation über die Begehung; der Bericht wurde zur Kenntnis genommen (die SPD lobte, der Bürgerbusch sehe lebendiger aus als vor zehn Jahren).",
     "beleg": "ASUK 11.06.2026 TOP 6, Vorlage 26/0479 (id=312536)"
    },
    {
-    "id": "F4",
+    "id": "F5",
+    "gewicht": 3,
+    "fakt": "Laut Bericht der Verwaltung sind die Fällungen Teil eines Waldumbaus: Der Bestand soll schrittweise in einen klimaresilienten (klimaresistenten) Mischwald überführt werden, der Trockenperioden und veränderte Bedingungen besser verträgt.",
+    "beleg": "Vorlage 26/0290 (Bericht zum SPD-Antrag, Amt für Umweltschutz und Bauordnung, 01.04.2026)"
+   },
+   {
+    "id": "F6",
+    "gewicht": 2,
+    "fakt": "Als konkrete Gründe nennt der Bericht (mindestens zwei): Licht für junge Bäume (Naturverjüngung) schaffen, die verbleibenden Bäume stärken (Vitalisierung, Stabilität gegen Sturm und Hitze) und Verkehrssicherung (Bäume mit Bruchgefahr entfernen).",
+    "beleg": "Vorlage 26/0290, „Erforderlichkeit von Pflegemaßnahmen“"
+   },
+   {
+    "id": "F7",
     "gewicht": 1,
-    "fakt": "Die Antwort sagt, dass die Protokolle die konkreten Gründe für die Fällungen nicht wiedergeben (oder verweist dafür auf Präsentation, Fraktionsschreiben oder Begehung).",
-    "beleg": "Protokolle 16.04. und 11.06.2026 enthalten keine Gründe"
+    "fakt": "Gefällt wird nur in Einzelentnahmen ohne große Holzerntemaschinen; das Holz wird zwar verkauft, wirtschaftliche Interessen stehen laut Verwaltung aber nicht im Vordergrund.",
+    "beleg": "Vorlage 26/0290"
    }
   ],
   "verboten": [
@@ -669,10 +1146,18 @@
    },
    {
     "id": "X2",
-    "behauptung": "Es wird ein konkreter Grund für die Fällungen als Tatsache genannt (z. B. Verkehrssicherung, Borkenkäfer, Trockenheit, Durchforstung)."
+    "behauptung": "Es wird ein Grund als Tatsache genannt, den die Unterlagen nicht nennen (z. B. Borkenkäferbefall, Sturm- oder Trockenschäden als Auslöser, ein Bauvorhaben). Die Gründe aus dem Bericht der Verwaltung – Waldumbau zu einem klimaresilienten Mischwald, Licht für Naturverjüngung, Vitalisierung, Verkehrssicherung – zu nennen ist KEIN Verstoß."
+   },
+   {
+    "id": "X3",
+    "behauptung": "Die Fällungen dienten vor allem dem Holzverkauf, oder es wurde großflächig bzw. mit Harvestern gefällt (Kahlschlag)."
+   },
+   {
+    "id": "X4",
+    "behauptung": "Der Ausschuss hat die Fällungen beschlossen, genehmigt oder gestoppt."
    }
   ],
-  "bewertung": "Abdeckung = Summe der Gewichte / 7. Bestanden: Abdeckung >= 0,6, F2 erfüllt, keine verbotene Behauptung.",
+  "bewertung": "Abdeckung = Summe der Gewichte erfüllter Pflichtfakten / Gesamtgewicht (10). Jede verbotene Behauptung ist ein harter Fehler. Bestanden: Abdeckung >= 0,6, F5 erfüllt, keine verbotene Behauptung.",
   "material": [
    {
     "id": "M1",
@@ -686,6 +1171,2796 @@
      "Fraktionsschreiben",
      "Begehung"
     ]
+   },
+   {
+    "id": "M2",
+    "fuer": [
+     "F1",
+     "F5",
+     "F6",
+     "F7"
+    ],
+    "art": "beschluss",
+    "session_date": "2026-04-16",
+    "committee": "Stadtgrün",
+    "titel_enthaelt": "Bürgerbusch"
+   },
+   {
+    "id": "M3",
+    "fuer": [
+     "F3"
+    ],
+    "art": "beschluss",
+    "session_date": "2026-06-11",
+    "committee": "Stadtgrün",
+    "titel_enthaelt": "Bürgerbusch"
+   }
+  ]
+ },
+ {
+  "id": "caecilienbruecke-neubau-stand",
+  "note": "Handgeprüft am 02.10.2026 gegen council_decisions, council_protocols.raw_text (Volltextsuche 'Cäcili*' 2018–2026, auch Silbentrennung), council_speeches, council_templates (24/0252) und alle 18 Pressemitteilungen mit 'Cäcilienbrücke'. Fallstricke: (1) Die bekannteste Station (BMV stellt den Neubau im Juni 2026 'auf unbestimmte Zeit' zurück, Rat beschließt am 29.06.2026 Fachaufsichtsbeschwerde) ist NICHT der jüngste Stand – am 10.07.2026 gab der Bund die Mittel frei und die Ausschreibung wurde veröffentlicht. (2) Ältere Zeitpläne (Ende 2025, 2028, Baubeginn 2026) sind überholt; die PM vom 10.07.2026 nennt kein Fertigstellungsjahr, nur Vergabe bis Ende 2026, Baubeginn Q2/Frühjahr 2027 und 33 Monate Bauzeit – ein Jahr wie '2030' ist daher eine eigene Rechnung, kein Beleg. (3) Namensvetter: Die einstimmige Resolution 'zum schnellstmöglichen Neubau der Oldenburger Huntebrücke' (Verkehrsausschuss 17.11.2025, Rat 01.12.2025) und der CDU-Antrag 'Planung Huntebrücke' (16.02.2026) betreffen die DB-Eisenbahnbrücke über die Hunte, nicht die Cäcilienbrücke. (4) Widerspruch in den Quellen: PM 21.03.2025 meldet den Turmabriss als abgeschlossen, spätere PMs (28.04., 01.07., 10.07.2026) sagen 'Rückbau der Türme bis August 2025 abgeschlossen'. (5) Der Rats-Beschlusstext in council_decisions (id 21055) enthält die angenommene CDU-Ergänzung zur Vorfinanzierung nicht; sie steht im Protokoll (Baak, angenommen bei einer Gegenstimme) und in der PM 01.07.2026. Nach dem 10.07.2026 gibt es im Bestand keine weitere Station (kein Protokoll, keine PM) – ob die Dienst-/Fachaufsichtsbeschwerde tatsächlich eingelegt wurde, ist nicht belegt. Bauherr ist der Bund (WSA Weser-Jade-Nordsee), nicht die Stadt.",
+  "stand": "2026-10-01 (Prod-Abzug)",
+  "question": "Wie ist der Stand beim Neubau der Cäcilienbrücke?",
+  "varianten": [
+   "Wann wird die neue Cäcilienbrücke endlich gebaut?",
+   "Was ist aus dem Ersatzneubau der Cäcilienbrücke geworden – ist er noch gestoppt?"
+  ],
+  "pflicht": [
+   {
+    "id": "F1",
+    "gewicht": 3,
+    "fakt": "Jüngster Stand: Im Juli 2026 hat das Bundesverkehrsministerium die Finanzmittel freigegeben; die Ausschreibung für den Ersatzneubau wurde am 10.07.2026 veröffentlicht.",
+    "beleg": "Pressemitteilung Stadt Oldenburg 10.07.2026 'Weg für Neubau der Cäcilienbrücke ist frei' (council_press id 101)"
+   },
+   {
+    "id": "F2",
+    "gewicht": 3,
+    "fakt": "Zeitplan nach der Freigabe: Auftragsvergabe bis Ende 2026 geplant, Baubeginn bei planmäßigem Verlauf im 2. Quartal bzw. Frühjahr 2027, Bauzeit rund 33 Monate (mindestens: Baubeginn frühestens 2027).",
+    "beleg": "PM 10.07.2026 (id 101)"
+   },
+   {
+    "id": "F3",
+    "gewicht": 2,
+    "fakt": "Kurz zuvor, Mitte Juni 2026 (Schreiben vom 18.06.2026), hatte das Bundesverkehrsministerium mitgeteilt, dass der Ersatzneubau wegen fehlender Haushaltsmittel auf unbestimmte Zeit zurückgestellt werde.",
+    "beleg": "PM 01.07.2026 'Stadt Oldenburg erhöht Druck …' (id 140); PM 10.07.2026 (id 101)"
+   },
+   {
+    "id": "F4",
+    "gewicht": 2,
+    "fakt": "Der Rat beschloss am 29.06.2026 auf FDP-Antrag (mehrheitlich bei einer Gegenstimme), dass die Verwaltung eine Dienst- und Fachaufsichtsbeschwerde gegen das WSA Weser-Jade-Nordsee einlegt und der Oberbürgermeister mit den Oldenburger Bundes- und Landtagsabgeordneten auf den Bundesverkehrsminister einwirkt, die Finanzierung sicherzustellen.",
+    "beleg": "Rat 29.06.2026 TOP 14.12, Beschluss id 21055, Protokoll S. 23–25 (getfile id=313514); PM 01.07.2026"
+   },
+   {
+    "id": "F5",
+    "gewicht": 1,
+    "fakt": "Per CDU-Ergänzung soll außerdem geprüft werden, ob die Stadt den Neubau organisatorisch, planerisch oder finanziell vorziehen kann – eine Vorfinanzierung nur, wenn der Bund vorher rechtsverbindlich die volle Kostenerstattung zusichert (es ist also keine Vorfinanzierung beschlossen).",
+    "beleg": "Rat 29.06.2026 TOP 14.12, Wortbeitrag Baak (id 46672), Änderungsantrag angenommen bei einer Gegenstimme; PM 01.07.2026"
+   },
+   {
+    "id": "F6",
+    "gewicht": 1,
+    "fakt": "Vorstationen des FDP-Antrags: Im Rat am 01.06.2026 zog die FDP ihren Dringlichkeitsantrag zurück; im Ausschuss für Stadtplanung und Bauen am 18.06.2026 galt der Punkt nach Kritik an der Formulierung (fehlende Bundesmittel seien fachaufsichtlich nicht beanstandbar) per GO-Antrag einstimmig als behandelt.",
+    "beleg": "Rat 01.06.2026 TOP 2 (Protokoll getfile id=311268); ASB 18.06.2026 TOP 16.2, Beschluss id 21015, Wortbeiträge Adler (100255), Prange (100257), Beerheide (100266)"
+   },
+   {
+    "id": "F7",
+    "gewicht": 1,
+    "fakt": "Auslöser der Wende war der Kabinettsbeschluss vom 06.07.2026 zum Bundeshaushaltsentwurf 2027: Bundeswasserstraßen werden zusätzlich aus dem Infrastruktur-Sondervermögen finanziert (rund 230 Mio. € pro Jahr).",
+    "beleg": "PM 07.07.2026 'Keine Ausreden mehr …' (id 120); PM 10.07.2026"
+   },
+   {
+    "id": "F8",
+    "gewicht": 1,
+    "fakt": "Zuständig für Planung, Bau und Finanzierung ist der Bund (Wasserstraßen- und Schifffahrtsamt Weser-Jade-Nordsee bzw. Bundesverkehrsministerium), nicht die Stadt Oldenburg.",
+    "beleg": "Rat 25.08.2025 TOP 7 (Resolution an das WSA); ASB 18.06.2026 TOP 16.2 Adler (100255); Rat 29.06.2026 Dittrich (46671)"
+   },
+   {
+    "id": "F9",
+    "gewicht": 2,
+    "fakt": "Vorgeschichte: Die 1927 gebaute Brücke ist seit April 2020 für den Verkehr gesperrt und wurde ab Mai 2020 abgebaut; seitdem gibt es nur eine Behelfsbrücke für Rad- und Fußverkehr; der Planfeststellungsbeschluss liegt seit März 2023 vor; die alten Brückentürme wurden 2025 abgerissen (mindestens zwei dieser Punkte).",
+    "beleg": "PM 18.09.2025 (id 1439); PM 10.07.2026 (id 101); PM 06.02.2025 (id 2417) und 21.03.2025 (id 2212) zum Turmabriss; Vorlage 24/0252 (VA 22.04.2024 TOP 18.4)"
+   },
+   {
+    "id": "F10",
+    "gewicht": 1,
+    "fakt": "Frühere Zeitpläne sind mehrfach geplatzt: 2021 hieß es Fertigstellung Ende 2025; das WSA nannte im November 2024 und noch im September 2025 eine Fertigstellung bis 2028; Ende 2025 war ein Baubeginn 2026 zugesichert, im April 2026 verschob sich die Ausschreibung ins zweite Halbjahr (mindestens zwei dieser Stationen).",
+    "beleg": "Rat 25.08.2025 Resolutionstext; VA 18.11.2024 TOP 20.2 (Eickmeyer, id 106743; Meerbothe, id 106742); PM 18.09.2025 (id 1439); PM 28.04.2026 (id 446)"
+   },
+   {
+    "id": "F11",
+    "gewicht": 1,
+    "fakt": "Bereits am 25.08.2025 hatte der Rat per Dringlichkeitsantrag eine Resolution an das WSA zur Beschleunigung des Neubaus beschlossen (mehrheitlich bei zwei Enthaltungen und einer Gegenstimme).",
+    "beleg": "Rat 25.08.2025 TOP 7, Beschluss id 20397, Protokoll getfile id=297397"
+   }
+  ],
+  "verboten": [
+   {
+    "id": "X1",
+    "behauptung": "Mit dem Bau der neuen Cäcilienbrücke wurde bereits begonnen bzw. die Brücke ist im Bau."
+   },
+   {
+    "id": "X2",
+    "behauptung": "Als aktueller Stand wird genannt, der Neubau sei (weiterhin) auf unbestimmte Zeit gestoppt bzw. es gebe keine Finanzierung des Bundes."
+   },
+   {
+    "id": "X3",
+    "behauptung": "Als aktueller Plan wird eine Fertigstellung der neuen Brücke im Jahr 2028 (oder früher) genannt."
+   },
+   {
+    "id": "X4",
+    "behauptung": "Die Resolution zur 'Oldenburger Huntebrücke' (Verkehrsausschuss 17.11.2025 / Rat 01.12.2025) oder der Antrag 'Planung Huntebrücke' wird als Beschluss zur Cäcilienbrücke dargestellt."
+   }
+  ],
+  "bewertung": "Abdeckung = Summe der Gewichte erfüllter Pflichtfakten / Gesamtgewicht (18). Jede verbotene Behauptung ist ein harter Fehler. Bestanden: Abdeckung >= 0,6, F1 und F2 erfüllt, keine verbotene Behauptung.",
+  "material": [
+   {
+    "id": "M1",
+    "fuer": [
+     "F1",
+     "F2"
+    ],
+    "art": "presse",
+    "date": "2026-07-10",
+    "titel_enthaelt": "Weg für Neubau der Cäcilienbrücke"
+   },
+   {
+    "id": "M2",
+    "fuer": [
+     "F3",
+     "F4",
+     "F5"
+    ],
+    "art": "presse",
+    "date": "2026-07-01",
+    "titel_enthaelt": "Druck beim Neubau der Cäcilienbrücke"
+   },
+   {
+    "id": "M3",
+    "fuer": [
+     "F4"
+    ],
+    "art": "beschluss",
+    "session_date": "2026-06-29",
+    "committee": "Rat",
+    "titel_enthaelt": "Fachaufsichtsbeschwerde"
+   },
+   {
+    "id": "M4",
+    "fuer": [
+     "F5"
+    ],
+    "art": "debatte",
+    "session_date": "2026-06-29",
+    "text_enthaelt_eins": [
+     "Vorfinanzierung",
+     "Kostenübernahme"
+    ]
+   },
+   {
+    "id": "M5",
+    "fuer": [
+     "F6"
+    ],
+    "art": "beschluss",
+    "session_date": "2026-06-18",
+    "committee": "Stadtplanung",
+    "titel_enthaelt": "Fachaufsichtsbeschwerde"
+   },
+   {
+    "id": "M6",
+    "fuer": [
+     "F7"
+    ],
+    "art": "presse",
+    "date": "2026-07-07",
+    "titel_enthaelt": "Keine Ausreden mehr"
+   },
+   {
+    "id": "M7",
+    "fuer": [
+     "F8"
+    ],
+    "art": "debatte",
+    "session_date": "2026-06-18",
+    "text_enthaelt_eins": [
+     "Bundesverkehrsministerium",
+     "WSA"
+    ]
+   },
+   {
+    "id": "M8",
+    "fuer": [
+     "F9"
+    ],
+    "art": "presse",
+    "date": "2025-02-06",
+    "titel_enthaelt": "Abriss der Türme der Cäcilienbrücke"
+   },
+   {
+    "id": "M9",
+    "fuer": [
+     "F9",
+     "F10"
+    ],
+    "art": "presse",
+    "date": "2025-09-18",
+    "titel_enthaelt": "2028"
+   },
+   {
+    "id": "M10",
+    "fuer": [
+     "F10"
+    ],
+    "art": "presse",
+    "date": "2026-04-28",
+    "titel_enthaelt": "Bundesmittel für Cäcilienbrücke"
+   },
+   {
+    "id": "M11",
+    "fuer": [
+     "F10"
+    ],
+    "art": "debatte",
+    "session_date": "2024-11-18",
+    "text_enthaelt_eins": [
+     "30 Monate",
+     "2028"
+    ]
+   },
+   {
+    "id": "M12",
+    "fuer": [
+     "F11",
+     "F8"
+    ],
+    "art": "beschluss",
+    "session_date": "2025-08-25",
+    "committee": "Rat",
+    "titel_enthaelt": "Cäcilienbrücke"
+   }
+  ]
+ },
+ {
+  "id": "bahnuebergang-am-stadtrand-verlauf",
+  "note": "Handgeprüft am 02.10.2026 gegen council_decisions (alle Titel/Beschlusstexte mit 'Stadtrand'/'Ofenerdiek'), council_templates (19/0617, 23/0073, 23/0355, 24/0255, 24/0255/1, 24/0255/2, 24/0744, 26/0198, 26/0372, 26/0537), Protokoll-Volltexte (VA 13.05.2024, 09.03.2026, 11.05.2026, 08.06.2026, 24.08.2026; Rat 27.05.2024, 01.06.2026, 29.06.2026; AAA 20.01.2025), council_speeches und Pressemitteilungen (u. a. 20.01.2025, 18.06.2026). Wendungen: Unterführung (Y-Variante) als kurzfristige Lösung verworfen → Zwischenlösung 1A; 2026 starke Kritik (einseitige Nebenanlage), Pieper-Antrag 'Interimslösungen' einstimmig abgelehnt, Rats-TOPs abgesetzt/vertagt – die Linie 1A wurde aber nie geändert. Fallstricke: Der Rat hat 2024 nur beschlossen, die Realisierung 'vorzubereiten' (Pieper 11.05.2026: 'nur Planungsauftrag'; Verwaltung: umfasst die bauliche Umsetzung). Die Erneuerung der Schrankenbäume Ende 2024/Jan. 2025 ist NICHT die Automatisierung. Die Untersuchung der Variante 6 (vergeben 2024) taucht danach in keinem Protokoll mehr auf. Widerspruch in den Quellen: PM 18.06.2026 nennt einen 'einseitigen Geh- und Radweg auf der Südseite', die Verwaltungsvorlage 26/0537 (Rat 29.06.2026) sagt, die südliche Nebenanlage entfalle und nördlich entstehe die neue – die Seite ist deshalb kein Pflichtfakt. Inhalt des SPD-Beschlussantrags vom 28.04.2026 (Rat 01.06.2026, abgesetzt) ist im Bestand nicht enthalten. Der Bahnhaltepunkt Ofenerdiek (26/0372) ist ein eigener Vorgang. Keine Namen von Privatpersonen übernommen.",
+  "stand": "2026-10-01 (Prod-Abzug)",
+  "question": "Was ist aus den Plänen für den Bahnübergang Am Stadtrand in Ofenerdiek geworden?",
+  "varianten": [
+   "Wie hat sich das Thema Bahnübergang Ofenerdiek entwickelt – kommt die Unterführung?",
+   "Wann wird der Bahnübergang Am Stadtrand umgebaut?"
+  ],
+  "pflicht": [
+   {
+    "id": "F1",
+    "gewicht": 3,
+    "fakt": "Der Rat beschloss am 27.05.2024 einstimmig (Vorlage 24/0255/2), als Zwischenlösung die Variante 1A vorzubereiten: Der Bahnübergang bleibt höhengleich, wird von Handbedienung auf eine automatische Schrankenanlage umgestellt, und die Straße Am Stadtrand wird über eine neue Planstraße nach Norden an die Ofenerdieker Straße angebunden; langfristig soll die vollständige Aufhebung des Bahnübergangs (Variante 6, Eisenbahnüberführung) weiter untersucht werden.",
+    "beleg": "Rat 27.05.2024 TOP 9.1, Beschluss id 19117; vorberaten VA 13.05.2024 TOP 5 (24/0255/1, einstimmig, id 18950)"
+   },
+   {
+    "id": "F2",
+    "gewicht": 2,
+    "fakt": "Wendung gegenüber den früheren Plänen: Eine Unterführung (Y-Variante 5.3) wurde als kurzfristige Lösung nicht weiterverfolgt – das Gutachten der Bernard-Gruppe ergab, dass auch sie die Rückstaus nicht löst und Sicherheitsbedenken für den Radverkehr bestehen, und die Deutsche Bahn hält eine Eisenbahnüberführung nur langfristig (15–20 Jahre) für machbar (mindestens einer dieser Gründe).",
+    "beleg": "Vorlage 23/0355 (VA 15.05.2023, id 17851); Vorlage 24/0255 (VA 22.04.2024, id 18893); VA 11.12.2023 TOP 5 (Meis, id 66326)"
+   },
+   {
+    "id": "F3",
+    "gewicht": 1,
+    "fakt": "Per Änderungsantrag von SPD und Grünen (einstimmig) sollten zusätzlich Abbiegespuren nach Vorschlägen der Ofenerdieker Vereine geprüft werden.",
+    "beleg": "Rat 27.05.2024 TOP 9.1, Änderungsantrag id 19118; Conty (id 59263)"
+   },
+   {
+    "id": "F4",
+    "gewicht": 1,
+    "fakt": "Kosten laut Vorlage 2024: Planstraße überschlägig rund 1 Mio. € (Mittel für 2027/2028 anzumelden); Untersuchung der Variante 6 rund 23.000 € brutto (mindestens eine Zahl).",
+    "beleg": "Vorlagen 24/0255/1 und 24/0255/2, Abschnitt Finanzen"
+   },
+   {
+    "id": "F5",
+    "gewicht": 1,
+    "fakt": "Nach gefährlichen Vorfällen im Januar 2025 (u. a. Unfall am 11.01.2025, Züge bei offenen Schranken) beschloss der Ausschuss für Allgemeine Angelegenheiten am 20.01.2025 einstimmig auf CDU-Dringlichkeitsantrag, die Deutsche Bahn auf ihre Verantwortung für die Verkehrssicherheit hinzuweisen.",
+    "beleg": "AAA 20.01.2025 TOP 8, Beschluss id 21827; PM 20.01.2025 'Oberbürgermeister fordert Deutsche Bahn zu mehr Verantwortung auf' (id 2476)"
+   },
+   {
+    "id": "F6",
+    "gewicht": 2,
+    "fakt": "Im März 2026 stellte die Verwaltung die konkrete Planung vor (Vorlage 26/0198): Die DB will im April 2027 mit dem Umbau beginnen; kritisiert wurde vor allem, dass es nur noch eine einseitige Nebenanlage (Gehweg) gibt, weil die Fahrbahn für Lkw-Begegnungen über 10 m breit sein muss – eine beidseitige Lösung würde den Bau um etwa fünf Jahre verzögern.",
+    "beleg": "VA 09.03.2026 TOP 6, Vorlage 26/0198, id 20823; Wortbeiträge Conty (99413), Mehrtens (99414), Schacht (99420)"
+   },
+   {
+    "id": "F7",
+    "gewicht": 2,
+    "fakt": "Am 11.05.2026 lehnte der Verkehrsausschuss den Beschlussantrag 'Interimslösungen' des beratenden Mitglieds Pieper einstimmig ab; die Verwaltung berichtete, die Plangenehmigung des Eisenbahn-Bundesamtes liege vor und der Bau der vollautomatisierten Schranken- und Lichtzeichenanlage müsse im April 2027 beginnen.",
+    "beleg": "VA 11.05.2026 TOP 6.6, Beschluss id 21171; TOP 6.5/6.8 Mehrtens (99025)"
+   },
+   {
+    "id": "F8",
+    "gewicht": 1,
+    "fakt": "Im Rat kam es 2026 zu keiner Entscheidung: Am 01.06.2026 wurde der SPD-Beschlussantrag abgesetzt und der FDP-Berichtsantrag zur Verkehrssicherheit vertagt, am 29.06.2026 auch dieser (Vorlage 26/0537) abgesetzt.",
+    "beleg": "Rat 01.06.2026 TOP 15.8 (id 20985) und 15.9 (id 20986); Rat 29.06.2026 TOP 14.5 (id 21048)"
+   },
+   {
+    "id": "F9",
+    "gewicht": 1,
+    "fakt": "Eine Planungsalternative des beratenden Mitglieds Pieper (Verkehrsleitsystem) hielt die Verwaltung im Juni 2026 nicht für genehmigungsfähig; Polizei und Verkehrsbehörde lehnten sie ab, VWG und – trotz Bedenken – ADFC tragen die Interimslösung mit.",
+    "beleg": "VA 08.06.2026 TOP 15.2, id 21187; Mehrtens (98778), Reh (98782), Myrthus (98785)"
+   },
+   {
+    "id": "F10",
+    "gewicht": 3,
+    "fakt": "Jüngster Stand: Der Umbau nach Variante 1A (Vollautomatisierung mit Lichtzeichenanlage, neue Planstraße, Tempo 30, Zebrastreifen, Aufstellflächen für Radfahrende) soll im April 2027 beginnen, das Bauende ist für Dezember 2027 angepeilt; Plangenehmigung und Finanzierung (GVFG) liegen vor, gebaut ist noch nichts.",
+    "beleg": "PM 18.06.2026 'Bahnübergang Am Stadtrand: Sicherheit jetzt …' (id 201); VA 24.08.2026 TOP 16.7 (id 21112)"
+   },
+   {
+    "id": "F11",
+    "gewicht": 1,
+    "fakt": "Das beauftragte Sicherheitsaudit lag am 23.06.2026 vor und wurde im Verkehrsausschuss am 24.08.2026 vorgestellt (u. a. Mittelinsel muss für Gelenkbusse überfahrbar sein; eine empfohlene Sackgassenregelung lehnt die Stadt ab); am 23.06.2026 fand zudem eine Bürgerinformation in Ofenerdiek statt.",
+    "beleg": "VA 24.08.2026 TOP 16.7, Mehrtens (98910), Piechotta (98911); PM 18.06.2026"
+   },
+   {
+    "id": "F12",
+    "gewicht": 2,
+    "fakt": "Eine Unter- oder Überführung, die den Bahnübergang ganz ersetzt, bleibt nur ein langfristiges Ziel ohne Beschluss und ohne Termin (laut Verwaltung Jahre bis Jahrzehnte); auch eine Verkürzung der Schrankenschließzeiten war nicht Gegenstand des Planungsauftrags.",
+    "beleg": "VA 11.05.2026 TOP 6.5/6.8, Schacht (99028, 99043); PM 18.06.2026"
+   }
+  ],
+  "verboten": [
+   {
+    "id": "X1",
+    "behauptung": "Eine Unterführung bzw. Eisenbahnüberführung am Bahnübergang Am Stadtrand ist beschlossen oder wird als die anstehende Lösung gebaut."
+   },
+   {
+    "id": "X2",
+    "behauptung": "Der Umbau ist bereits erfolgt bzw. der Bahnübergang ist schon vollautomatisiert."
+   },
+   {
+    "id": "X3",
+    "behauptung": "Verkehrsausschuss oder Rat haben die Zwischenlösung (Variante 1A) abgelehnt oder gestoppt."
+   },
+   {
+    "id": "X4",
+    "behauptung": "Der Umbau beginnt noch 2026."
+   }
+  ],
+  "bewertung": "Abdeckung = Summe der Gewichte erfüllter Pflichtfakten / Gesamtgewicht (20). Jede verbotene Behauptung ist ein harter Fehler. Bestanden: Abdeckung >= 0,6, F1 und F10 erfüllt, keine verbotene Behauptung.",
+  "material": [
+   {
+    "id": "M1",
+    "fuer": [
+     "F1"
+    ],
+    "art": "beschluss",
+    "session_date": "2024-05-27",
+    "committee": "Rat",
+    "titel_enthaelt": "Bahnübergang Am Stadtrand"
+   },
+   {
+    "id": "M2",
+    "fuer": [
+     "F1"
+    ],
+    "art": "beschluss",
+    "session_date": "2024-05-13",
+    "committee": "Verkehrsausschuss",
+    "titel_enthaelt": "Bahnübergang Am Stadtrand"
+   },
+   {
+    "id": "M3",
+    "fuer": [
+     "F3"
+    ],
+    "art": "beschluss",
+    "session_date": "2024-05-27",
+    "committee": "Rat",
+    "titel_enthaelt": "Abbiegespuren"
+   },
+   {
+    "id": "M4",
+    "fuer": [
+     "F2"
+    ],
+    "art": "beschluss",
+    "session_date": "2023-05-15",
+    "committee": "Verkehrsausschuss",
+    "titel_enthaelt": "Bahnübergang Am Stadtrand"
+   },
+   {
+    "id": "M5",
+    "fuer": [
+     "F2",
+     "F4"
+    ],
+    "art": "beschluss",
+    "session_date": "2024-04-22",
+    "committee": "Verkehrsausschuss",
+    "titel_enthaelt": "Bahnübergang Am Stadtrand"
+   },
+   {
+    "id": "M6",
+    "fuer": [
+     "F5"
+    ],
+    "art": "beschluss",
+    "session_date": "2025-01-20",
+    "committee": "Allgemeine Angelegenheiten",
+    "titel_enthaelt": "Am Stadtrand"
+   },
+   {
+    "id": "M7",
+    "fuer": [
+     "F5"
+    ],
+    "art": "presse",
+    "date": "2025-01-20",
+    "titel_enthaelt": "Deutsche Bahn"
+   },
+   {
+    "id": "M8",
+    "fuer": [
+     "F6"
+    ],
+    "art": "debatte",
+    "session_date": "2026-03-09",
+    "text_enthaelt_eins": [
+     "einseitige",
+     "Schleppkurve"
+    ]
+   },
+   {
+    "id": "M9",
+    "fuer": [
+     "F7"
+    ],
+    "art": "beschluss",
+    "session_date": "2026-05-11",
+    "committee": "Verkehrsausschuss",
+    "titel_enthaelt": "Interimslösungen"
+   },
+   {
+    "id": "M10",
+    "fuer": [
+     "F7",
+     "F10"
+    ],
+    "art": "debatte",
+    "session_date": "2026-05-11",
+    "text_enthaelt_eins": [
+     "Plangenehmigung"
+    ]
+   },
+   {
+    "id": "M11",
+    "fuer": [
+     "F8"
+    ],
+    "art": "beschluss",
+    "session_date": "2026-06-01",
+    "committee": "Rat",
+    "titel_enthaelt": "Stadtrand"
+   },
+   {
+    "id": "M12",
+    "fuer": [
+     "F8"
+    ],
+    "art": "beschluss",
+    "session_date": "2026-06-29",
+    "committee": "Rat",
+    "titel_enthaelt": "Am Stadtrand"
+   },
+   {
+    "id": "M13",
+    "fuer": [
+     "F9"
+    ],
+    "art": "debatte",
+    "session_date": "2026-06-08",
+    "text_enthaelt_eins": [
+     "Piepers Leitsystem",
+     "Verkehrsbehörde"
+    ]
+   },
+   {
+    "id": "M14",
+    "fuer": [
+     "F10",
+     "F12"
+    ],
+    "art": "presse",
+    "date": "2026-06-18",
+    "titel_enthaelt": "Bahnübergang Am Stadtrand"
+   },
+   {
+    "id": "M15",
+    "fuer": [
+     "F11"
+    ],
+    "art": "debatte",
+    "session_date": "2026-08-24",
+    "text_enthaelt_eins": [
+     "23. Juni",
+     "Mittelinsel"
+    ]
+   },
+   {
+    "id": "M16",
+    "fuer": [
+     "F12"
+    ],
+    "art": "debatte",
+    "session_date": "2026-05-11",
+    "text_enthaelt_eins": [
+     "Jahrzehnte",
+     "Schrankenschließzeiten"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "fliegerhorst-entlastungsstrasse-bplan-beschluss",
+  "note": "Handgeprüft am 02.10.2026 gegen council_decisions (alle Titel mit '777 G'/'Entlastungsstraße'/'Baumoratorium'), Vorlagen 24/0360 (OVG-Bericht), 24/0476, 25/0153, 26/0210 (Planverfahren mit allen Daten), Protokolle Rat 28.09.2020 (TOP 14.3/14.4) und 13.04.2026 (TOP 6.3/8.1), ASB 20.06.2024, 19.03.2026, VA 19.08.2024, sowie PMs 02.01.2025, 30.04.2025, 30.12.2025, 12.02.2026, 14.04.2026. Fallstricke: (1) Zwei Satzungsbeschlüsse – der erste (28.09.2020) ist durch das OVG-Urteil vom 15.05.2024 unwirksam, maßgeblich ist der zweite vom 13.04.2026. (2) Die PM der Stadt vom 14.04.2026 behauptet, der Plan sei '2022 schon einmal vom Rat als Satzung beschlossen' worden – das ist falsch (Rat 28.09.2020, Beschluss id 15163; Vorlage 26/0210; Conty im Rat 13.04.2026). 2022 gab es nur den Ratsbeschluss zum Baumoratorium bis zum Abschluss der Normenkontrollverfahren (28.03.2022). (3) Zwischenstationen sind keine Satzungsbeschlüsse: Aufstellungsbeschluss VA 17.12.2018, Auslegungsbeschluss VA 06.04.2020, Beschluss zur erneuten Veröffentlichung VA 28.04.2025 (ASB 20.03.2025), Empfehlung ASB 19.03.2026. (4) Die PM 30.04.2025 nennt als Ende der erneuten Beteiligung den 04.06.2025, die Vorlage 26/0210 den 10.06.2025. (5) Ob/wann die Satzung bekanntgemacht wurde und ob erneut ein Normenkontrollantrag läuft, steht nicht im Bestand (Wenzel nennt den Plan im Rat 'noch nicht rechtskräftig'). (6) Namensvetter: B-Plan 869 'Gewerbegebiet Brokhausen' an der Entlastungsstraße (ASB 21.05.2026) ist ein eigenes Verfahren; die Änderung F-Plan Nr. 78 ist der Flächennutzungsplan, nicht der B-Plan. Der Normenkontrollantrag kam von einem ansässigen Betrieb – kein Name übernommen.",
+  "stand": "2026-10-01 (Prod-Abzug)",
+  "question": "Wann hat der Rat den Bebauungsplan für die Entlastungsstraße am Fliegerhorst beschlossen?",
+  "varianten": [
+   "Ist der Bebauungsplan N-777 G für die Fliegerhorststraße beschlossen – und seit wann?",
+   "Seit wann gibt es Baurecht für die Entlastungsstraße zwischen Alexanderstraße und Ammerländer Heerstraße?"
+  ],
+  "pflicht": [
+   {
+    "id": "F1",
+    "gewicht": 3,
+    "fakt": "Der maßgebliche Satzungsbeschluss zum Bebauungsplan N-777 G (Fliegerhorst/Hallensichel-Ost/Entlastungsstraße) fiel im Rat am 13.04.2026 (Vorlage 26/0210), mehrheitlich bei 23 Gegenstimmen.",
+    "beleg": "Rat 13.04.2026 TOP 6.3, Beschluss id 20886, Protokoll S. 10–12; PM 14.04.2026 (id 518)"
+   },
+   {
+    "id": "F2",
+    "gewicht": 3,
+    "fakt": "Ein erster Satzungsbeschluss vom 28.09.2020 (Rat, mehrheitlich bei 18 Gegenstimmen und zwei Enthaltungen) ist nicht mehr maßgeblich: Das Niedersächsische Oberverwaltungsgericht Lüneburg erklärte den Plan am 15.05.2024 auf einen Normenkontrollantrag hin für unwirksam.",
+    "beleg": "Rat 28.09.2020 TOP 14.4, Vorlage 20/0515/1, Beschluss id 15163; Vorlage 24/0360 (ASB 20.06.2024 TOP 7, id 18802); Rat 13.04.2026 Conty (id 46590)"
+   },
+   {
+    "id": "F3",
+    "gewicht": 2,
+    "fakt": "Grund der Unwirksamkeit waren formelle Fehler: Nach der öffentlichen Auslegung wurden Festsetzungen zum Gewerbegebiet geändert oder ergänzt (Geschossflächenzahl, Einzelhandels-/Betriebsgrößenregel, Hochwasserschutz zum Hinweis herabgestuft), ohne erneut auszulegen; die Straßenplanung selbst, die Trassenwahl, der Verzicht auf die Nullvariante und der Artenschutz wurden nicht beanstandet (mindestens: formeller Fehler/fehlende erneute Auslegung).",
+    "beleg": "Vorlage 24/0360; Vorlage 26/0210 S. 4–5; ASB 20.06.2024 TOP 7 Corbes (id 107019); PM 30.04.2025 (id 2060)"
+   },
+   {
+    "id": "F4",
+    "gewicht": 1,
+    "fakt": "Geheilt wurde im ergänzenden Verfahren: Der Verwaltungsausschuss beschloss am 28.04.2025 (vorberaten ASB 20.03.2025, 5 Gegenstimmen) die erneute Veröffentlichung (30.04.–10.06.2025); wegen eines Fehlers im Bekanntmachungstext musste sie vom 21.11. bis 22.12.2025 wiederholt werden.",
+    "beleg": "Vorlage 25/0153 (ASB 20.03.2025 TOP 7, id 20245); Vorlage 26/0210 S. 4–6; PM 30.04.2025 (id 2060); PM 30.12.2025 (id 963)"
+   },
+   {
+    "id": "F5",
+    "gewicht": 1,
+    "fakt": "Der Ausschuss für Stadtplanung und Bauen hatte am 19.03.2026 nur empfohlen (mehrheitlich bei fünf Gegenstimmen); den Satzungsbeschluss fasste der Rat.",
+    "beleg": "ASB 19.03.2026 TOP 6, Beschluss id 20678; Beratungsfolge Vorlage 26/0210"
+   },
+   {
+    "id": "F6",
+    "gewicht": 1,
+    "fakt": "Im Rat am 13.04.2026 scheiterten der Grünen-Änderungsantrag, die Planstraße I (den umstrittenen Teil der Entlastungsstraße) herauszunehmen, und der Grünen-Antrag auf ein Baumoratorium (jeweils mehrheitlich mit 26 Gegenstimmen abgelehnt; mindestens ein abgelehnter Antrag genügt).",
+    "beleg": "Rat 13.04.2026 TOP 6.3 (Änderungsantrag id 20887) und TOP 8.1 (id 20892); Wortbeiträge 46587–46597"
+   },
+   {
+    "id": "F7",
+    "gewicht": 1,
+    "fakt": "Der Plan umfasst rund 20 Hektar: etwa 7 ha Gewerbefläche, etwa 6 ha Verkehrsflächen sowie Wald und Regenrückhaltung; die Entlastungsstraße verbindet Alexanderstraße und Ammerländer Heerstraße (Trassenvariante 5 aus zehn Varianten).",
+    "beleg": "Vorlage 26/0210 S. 2; PM 14.04.2026 (id 518)"
+   },
+   {
+    "id": "F8",
+    "gewicht": 2,
+    "fakt": "Mit Satzungsbeschluss und anschließender Bekanntmachung bestehen die planungsrechtlichen Voraussetzungen; die konkreten Erschließungs- bzw. Baumaßnahmen für den umstrittenen Abschnitt sind laut Stadt (April 2026) noch nicht terminiert.",
+    "beleg": "PM 14.04.2026 (id 518)"
+   },
+   {
+    "id": "F9",
+    "gewicht": 1,
+    "fakt": "Unabhängig davon ist ein erster, unstrittiger Bauabschnitt der Entlastungsstraße (rund 780 m von der Alexanderstraße bis zur Hans-Jürgen-Appelrath-Straße, Erschließung der B-Pläne 777 E/F) bereits gebaut.",
+    "beleg": "PM 30.04.2025 (id 2060), Abschnitt 'Erster Bauabschnitt abgeschlossen'"
+   },
+   {
+    "id": "F10",
+    "gewicht": 1,
+    "fakt": "Das Verfahren begann mit dem Aufstellungsbeschluss des Verwaltungsausschusses am 17.12.2018; die erste öffentliche Auslegung lief 2020 (30.04.–10.06.2020).",
+    "beleg": "Vorlage 26/0210 S. 2–3 (Planverfahren)"
+   }
+  ],
+  "verboten": [
+   {
+    "id": "X1",
+    "behauptung": "Als gültiger Beschluss wird der Satzungsbeschluss vom 28.09.2020 genannt, ohne dass das OVG-Urteil bzw. die Unwirksamkeit erwähnt wird."
+   },
+   {
+    "id": "X2",
+    "behauptung": "Der Rat hat den Bebauungsplan erstmals 2022 als Satzung beschlossen."
+   },
+   {
+    "id": "X3",
+    "behauptung": "Das OVG hat den Plan wegen der Entlastungsstraße selbst, der Trassenwahl oder des Artenschutzes für unwirksam erklärt."
+   },
+   {
+    "id": "X4",
+    "behauptung": "Der Ausschuss für Stadtplanung und Bauen (19.03.2026) oder der Verwaltungsausschuss (28.04.2025) hat den Bebauungsplan als Satzung beschlossen."
+   }
+  ],
+  "bewertung": "Abdeckung = Summe der Gewichte erfüllter Pflichtfakten / Gesamtgewicht (16). Jede verbotene Behauptung ist ein harter Fehler. Bestanden: Abdeckung >= 0,6, F1 und F2 erfüllt, keine verbotene Behauptung.",
+  "material": [
+   {
+    "id": "M1",
+    "fuer": [
+     "F1"
+    ],
+    "art": "beschluss",
+    "session_date": "2026-04-13",
+    "committee": "Rat",
+    "titel_enthaelt": "Entlastungsstraße) mit örtlichen Bauvorschriften"
+   },
+   {
+    "id": "M2",
+    "fuer": [
+     "F1",
+     "F7",
+     "F8"
+    ],
+    "art": "presse",
+    "date": "2026-04-14",
+    "titel_enthaelt": "Bebauungsplan N-777 G"
+   },
+   {
+    "id": "M3",
+    "fuer": [
+     "F2"
+    ],
+    "art": "beschluss",
+    "session_date": "2020-09-28",
+    "committee": "Rat",
+    "titel_enthaelt": "N-777 G"
+   },
+   {
+    "id": "M4",
+    "fuer": [
+     "F2",
+     "F3"
+    ],
+    "art": "beschluss",
+    "session_date": "2024-06-20",
+    "committee": "Stadtplanung",
+    "titel_enthaelt": "Urteil des Oberverwaltungsgerichtes"
+   },
+   {
+    "id": "M5",
+    "fuer": [
+     "F2",
+     "F3"
+    ],
+    "art": "debatte",
+    "session_date": "2024-06-20",
+    "text_enthaelt_eins": [
+     "formellen Gründen",
+     "unwirksam"
+    ]
+   },
+   {
+    "id": "M6",
+    "fuer": [
+     "F2"
+    ],
+    "art": "debatte",
+    "session_date": "2026-04-13",
+    "text_enthaelt_eins": [
+     "Oberverwaltungsgericht",
+     "bereits 2020"
+    ]
+   },
+   {
+    "id": "M7",
+    "fuer": [
+     "F3",
+     "F4",
+     "F9"
+    ],
+    "art": "presse",
+    "date": "2025-04-30",
+    "titel_enthaelt": "Sorgfältig ausgearbeitet"
+   },
+   {
+    "id": "M8",
+    "fuer": [
+     "F4"
+    ],
+    "art": "beschluss",
+    "session_date": "2025-03-20",
+    "committee": "Stadtplanung",
+    "titel_enthaelt": "N-777 G"
+   },
+   {
+    "id": "M9",
+    "fuer": [
+     "F5"
+    ],
+    "art": "beschluss",
+    "session_date": "2026-03-19",
+    "committee": "Stadtplanung",
+    "titel_enthaelt": "Entlastungsstraße) mit örtlichen Bauvorschriften"
+   },
+   {
+    "id": "M10",
+    "fuer": [
+     "F6"
+    ],
+    "art": "beschluss",
+    "session_date": "2026-04-13",
+    "committee": "Rat",
+    "titel_enthaelt": "Planstraße I"
+   }
+  ]
+ },
+ {
+  "id": "weser-ems-hallen-neubau-kosten",
+  "note": "Kosten-Frage mit fünf Kostenständen. Handgeprüft am 02.10.2026 gegen den Prod-Abzug: Vorlagentexte (council_templates 22/0705, 23/0714, 23/0906, 25/0321, 25/0332/1, 25/0929, 26/0733), Beschlüsse (ids 17017, 18108, 18212, 19789, 19792, 20422, 20423, 20711), Wortbeiträge (AFB 04.06.2025 ids 103850–103876, Rat 30.06.2025 ids 100740–100748, AFB 04.02.2026 ids 48463–48482) und Pressemitteilungen (03.06.2025, 01.07.2025, 11.12.2025, 29.12.2025, 22.05.2026). Fallstricke: (1) Die 50 Mio. Euro aus dem Grundsatzbeschluss 2023 waren nie ein beschlossenes Budget, sondern eine grobe Schätzung (Leistungsphase 0); sie dürfen nicht als aktuelle Kosten erscheinen. (2) 83,73 Mio. Euro war das erste Angebot (Dez. 2024), nicht der vereinbarte Preis. (3) Die Park- und Kramermarktfläche ist ein eigenes Projekt mit eigener Bürgschaft (12 → 16,9 Mio. Euro, Vorschlag 18,96 Mio. Euro); die Ratsentscheidung über 26/0733 ist für den 26.10.2026 terminiert, der AFB vom 30.09.2026 hat im Abzug noch kein Ergebnis. (4) Finanziert wird über Bankkredite der WEH mit städtischer Ausfallbürgschaft, nicht direkt aus dem Kernhaushalt. Für F8 gibt es nur Vorlagen- und Beschluss-Material, für den 19-Mio.-Vorschlag gar keins (keine Beschlusszeile).",
+  "stand": "2026-10-01 (Prod-Abzug)",
+  "question": "Was kostet der Neubau von Kongresshalle und Festsälen der Weser-Ems-Hallen, und wie haben sich die Kosten entwickelt?",
+  "varianten": [
+   "Wie teuer wird der Umbau der Weser-Ems-Hallen?",
+   "Warum ist die neue Kongresshalle so viel teurer geworden als geplant?"
+  ],
+  "pflicht": [
+   {
+    "id": "F1",
+    "gewicht": 3,
+    "fakt": "Aktueller Stand der Kosten: Der Rat stimmte am 30.06.2025 dem Neubau (Kongresshalle, Festsäle, Galerieausbau, Übergang zur EWE ARENA) zum Pauschalfestpreis eines Totalunternehmers von 78.681.607,64 Euro netto (rund 78,7 Mio. Euro) zu – mehrheitlich bei zwei Gegenstimmen und einer Enthaltung (der Finanzausschuss hatte am 04.06.2025 einstimmig bei zwei Enthaltungen zugestimmt).",
+    "beleg": "Rat 30.06.2025 TOP 9.4, Vorlage 25/0332/1, Beschluss-id 20422; AFB 04.06.2025 TOP 10, Vorlage 25/0332, Beschluss-id 19789; PM 03.06.2025 und PM 01.07.2025"
+   },
+   {
+    "id": "F2",
+    "gewicht": 3,
+    "fakt": "Ursprünglich lag die Kostenerwartung bei rund 50 Mio. Euro: Dem Grundsatzbeschluss des Rates vom 09.10.2023 (Totalunternehmer-Vergabe, Szenario 5, einstimmig) lag eine Schätzung der Gesamtbaukosten von etwa 48 bis 50 Mio. Euro zugrunde (Dezember 2022: 46,8 Mio. Euro netto). Der Preis liegt damit rund 29 Mio. Euro bzw. gut die Hälfte (in der Debatte: 60 Prozent) höher.",
+    "beleg": "Rat 09.10.2023 TOP 13.10, Vorlage 23/0714 (S. 5, Auswirkungen Finanzen), Beschluss-id 18108; Vorlage 25/0332/1 S. 1; Wortbeitrag AFB 04.06.2025 id 103860"
+   },
+   {
+    "id": "F3",
+    "gewicht": 2,
+    "fakt": "Zwischenstation: Das erste Angebot des Totalunternehmers lag im Dezember 2024 bei 83,73 Mio. Euro netto; nach Prüfung von Sparvarianten (Sondersitzung der Gesellschafterversammlung 28.03.2025) und Nachverhandlungen sank es auf 78,68 Mio. Euro (Gesellschafterversammlung 23.05.2025).",
+    "beleg": "Vorlage 25/0332/1 S. 1–2; Wortbeitrag Rat 30.06.2025 id 100740"
+   },
+   {
+    "id": "F4",
+    "gewicht": 2,
+    "fakt": "Finanziert wird über Bankkredite der Weser-Ems Halle GmbH & Co. KG, abgesichert durch eine 100-prozentige Ausfallbürgschaft der Stadt; diese wurde für den Neubau von 50 Mio. Euro (Rat 18.12.2023) auf maximal 79 Mio. Euro erhöht (Rat 30.06.2025).",
+    "beleg": "Rat 18.12.2023 TOP 9.14, Vorlage 23/0906, Beschluss-id 18212; Rat 30.06.2025 TOP 9.5, Vorlage 25/0321, Beschluss-id 20423; PM 01.07.2025"
+   },
+   {
+    "id": "F5",
+    "gewicht": 1,
+    "fakt": "Der Festpreis gilt nicht für unvorhersehbare Bestandsrisiken (z. B. Altlasten, Boden); Baupreissteigerungen bis 4 Prozent pro Jahr trägt der Unternehmer, darüber trägt die WEH die Steigerung für 70 Prozent des Preises.",
+    "beleg": "Vorlage 25/0332/1 S. 3 (Auswirkungen Finanzen); Wortbeiträge AFB 04.06.2025 ids 103853–103855"
+   },
+   {
+    "id": "F6",
+    "gewicht": 2,
+    "fakt": "Zeitplan: Der Abriss der alten Festsäle und der Kongresshalle begann ab Mitte Februar 2026 (die Kongresshalle wurde im Frühjahr 2026 abgerissen); die Fertigstellung ist für Mitte 2029 vorgesehen (2023 war noch ein Bauende Ende 2026 geplant).",
+    "beleg": "PM 11.12.2025 „Vom Großprojekt bis zur Gehwegkante“; PM 29.12.2025 „Oldenburg 2025 von A bis Z“; PM 22.05.2026 (Kongresshalle abgerissen); PM 01.07.2025 (Fertigstellung 2029); Vorlage 23/0714 S. 5"
+   },
+   {
+    "id": "F7",
+    "gewicht": 1,
+    "fakt": "Als Alternative hätte laut Stadt schon eine bloße Instandsetzung rund 35 Mio. Euro gekostet, ohne Umsatzverluste zu verhindern; mit einem Neubaubudget um 50 Mio. Euro sei das Raumprogramm nicht zu erreichen (mindestens eine dieser Aussagen).",
+    "beleg": "PM 03.06.2025 „Weser-Ems-Hallen wollen Top-Adresse bleiben“; Vorlage 25/0332/1 S. 2"
+   },
+   {
+    "id": "F8",
+    "gewicht": 1,
+    "fakt": "Getrennt davon wird die Park- und Kramermarktfläche saniert: Die Bürgschaft dafür stieg von 12 Mio. Euro (Dezember 2023) auf 16,9 Mio. Euro (Rat 23.02.2026, einstimmig; Ursache u. a. kontaminiertes Deponiewasser); eine weitere Erhöhung auf rund 19 Mio. Euro (18.962.554 Euro) hat die Verwaltung im September 2026 vorgeschlagen (Ratsentscheidung für den 26.10.2026 geplant).",
+    "beleg": "Rat 23.02.2026 TOP 5.4, Vorlage 25/0929, Beschluss-id 20711; Vorlage 26/0733 (AFB 30.09.2026 TOP 5, Rat 26.10.2026)"
+   },
+   {
+    "id": "F9",
+    "gewicht": 1,
+    "fakt": "Die Kostensteigerung wurde im Rat kritisiert (u. a. CDU: rund 60 Prozent über der ursprünglichen Schätzung; Grüne: unzureichende Information über die Steigerung; Gruppe Für Oldenburg: 30 Mio. Euro Mehrkosten), trotzdem stimmte eine breite Mehrheit zu, weil der Neubau als alternativlos galt.",
+    "beleg": "AFB 04.06.2025 ids 103860, 103866, 103869; Rat 30.06.2025 ids 100742, 100743, 100747"
+   }
+  ],
+  "verboten": [
+   {
+    "id": "X1",
+    "behauptung": "Der Neubau kostet (aktuell) rund 50 Mio. Euro bzw. 46,8 oder 48 Mio. Euro – die frühe Schätzung wird als heutiger Preis genannt."
+   },
+   {
+    "id": "X2",
+    "behauptung": "Der vereinbarte bzw. beschlossene Preis beträgt 83,7 Mio. Euro."
+   },
+   {
+    "id": "X3",
+    "behauptung": "Der Neubau ist fertiggestellt bzw. die neue Kongresshalle ist in Betrieb."
+   },
+   {
+    "id": "X4",
+    "behauptung": "Der Rat hat die Bürgschaft für die Park- und Kramermarktfläche bereits auf rund 19 Mio. Euro erhöht, oder die Mehrkosten der Kramermarktfläche (16,9 bzw. 19 Mio. Euro) werden als Kosten des Kongresshallen-Neubaus dargestellt."
+   },
+   {
+    "id": "X5",
+    "behauptung": "Die Stadt zahlt die rund 78,7 Mio. Euro direkt als Zuschuss aus dem städtischen Haushalt (statt Kreditfinanzierung der WEH mit städtischer Bürgschaft)."
+   }
+  ],
+  "bewertung": "Abdeckung = Summe der Gewichte erfüllter Pflichtfakten / Gesamtgewicht (16). Jede verbotene Behauptung ist ein harter Fehler. Bestanden: Abdeckung >= 0,6, F1 und F2 erfüllt, keine verbotene Behauptung.",
+  "material": [
+   {
+    "id": "M1",
+    "fuer": [
+     "F1"
+    ],
+    "art": "beschluss",
+    "session_date": "2025-06-30",
+    "committee": "Rat",
+    "titel_enthaelt": "Neubau Kongresshalle"
+   },
+   {
+    "id": "M2",
+    "fuer": [
+     "F1",
+     "F7"
+    ],
+    "art": "presse",
+    "date": "2025-06-03",
+    "titel_enthaelt": "Top-Adresse"
+   },
+   {
+    "id": "M3",
+    "fuer": [
+     "F1",
+     "F4",
+     "F6"
+    ],
+    "art": "presse",
+    "date": "2025-07-01",
+    "titel_enthaelt": "erste Geige"
+   },
+   {
+    "id": "M4",
+    "fuer": [
+     "F2"
+    ],
+    "art": "beschluss",
+    "session_date": "2023-10-09",
+    "committee": "Rat",
+    "titel_enthaelt": "Totalunternehmer"
+   },
+   {
+    "id": "M5",
+    "fuer": [
+     "F2",
+     "F3"
+    ],
+    "art": "debatte",
+    "session_date": "2025-06-30",
+    "text_enthaelt_eins": [
+     "50 Millionen",
+     "78 Millionen",
+     "Pauschalfestpreis"
+    ]
+   },
+   {
+    "id": "M6",
+    "fuer": [
+     "F2",
+     "F9"
+    ],
+    "art": "debatte",
+    "session_date": "2025-06-04",
+    "text_enthaelt_eins": [
+     "60 Prozent",
+     "65 Millionen"
+    ]
+   },
+   {
+    "id": "M7",
+    "fuer": [
+     "F4"
+    ],
+    "art": "beschluss",
+    "session_date": "2023-12-18",
+    "committee": "Rat",
+    "titel_enthaelt": "Ausfallbürgschaften"
+   },
+   {
+    "id": "M8",
+    "fuer": [
+     "F4"
+    ],
+    "art": "beschluss",
+    "session_date": "2025-06-30",
+    "committee": "Rat",
+    "titel_enthaelt": "Ausfallbürgschaft der Stadt Oldenburg für die Weser-Ems"
+   },
+   {
+    "id": "M9",
+    "fuer": [
+     "F6"
+    ],
+    "art": "presse",
+    "date": "2025-12-29",
+    "titel_enthaelt": "von A bis Z"
+   },
+   {
+    "id": "M10",
+    "fuer": [
+     "F8"
+    ],
+    "art": "beschluss",
+    "session_date": "2026-02-23",
+    "committee": "Rat",
+    "titel_enthaelt": "Anpassung Ausfallbürgschaft"
+   },
+   {
+    "id": "M11",
+    "fuer": [
+     "F5"
+    ],
+    "art": "debatte",
+    "session_date": "2025-06-04",
+    "text_enthaelt_eins": [
+     "vier Prozent"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "grundsteuer-hebesatz-aktuell",
+  "note": "Punktfrage mit Zahl. Handgeprüft am 02.10.2026 gegen den Prod-Abzug: Vorlagen 23/0632, 24/0645 und 25/0615 (council_templates, Volltext), Beschlüsse ids 18358, 19440, 19195, 19934, 20554, 20498, 20592, 21952, 21973, Protokolle AFB 05.11.2025 (ksinr 4428, TOP 20), AFB 15.12.2025 (ksinr 4580, TOP 4), Rat 25.11.2024 (ksinr 4299, TOP 8.11), Rat 15.12.2025 (ksinr 4516, TOP 16.1), Pressemitteilungen 14.10.2024, 04.11.2024, 07.01.2025, 28.10.2025, 16.12.2025, 02.01.2026; council_tax_rates bestätigt 2025: A 500, B 539. Fallstricke: (1) Die vorgeschlagene Erhöhung auf 613/530 v. H. wurde abgelehnt – es gilt weiter 539/500. (2) Rat 09.02.2026 (Haushalt 2026), Protokoll ksinr 4726: Ein Ratsherr sagt, ein Großteil der Verhandlungen sei „mit Verabschiedung der Erhöhung der Grundsteuer hinfällig gewesen“ (die Zusammenfassung in council_speeches id 46367 macht daraus „Die Erhöhung der Grundsteuer mit erwarteten Mehreinnahmen von 4 Millionen Euro“) – das ist hypothetisch gemeint, es gab keine Erhöhung; PM 02.01.2026 bestätigt unveränderte Hebesätze, und kein Beschluss nach dem 15.12.2025 ändert sie. (3) Rat 15.12.2025, Einwohnerfragestunde: Die Verwaltung spricht noch vor der Abstimmung von der „im Haushaltsentwurf vorgesehenen moderaten Grundsteuererhöhung“ – Zwischenstand, nicht Ergebnis. (4) Der Sprung 445 → 539 zum 01.01.2025 war die aufkommensneutrale Umrechnung nach der Grundsteuerreform, keine Erhöhung des Aufkommens. (5) Grundsteuer C: nur verwiesen bzw. im AFB 30.09.2026 auf der Tagesordnung, kein Ergebnis im Abzug. Ratsbeschluss zu 25/0615 laut Protokoll „mehrheitlich mit 43 Gegenstimmen“ abgelehnt; laut PM stimmten nur der Oberbürgermeister und ein Ratsmitglied (Volt) dafür.",
+  "stand": "2026-10-01 (Prod-Abzug)",
+  "question": "Wie hoch ist der Hebesatz der Grundsteuer B in Oldenburg?",
+  "varianten": [
+   "Hat Oldenburg die Grundsteuer für 2026 erhöht?",
+   "Welcher Grundsteuer-Hebesatz gilt aktuell in Oldenburg?"
+  ],
+  "pflicht": [
+   {
+    "id": "F1",
+    "gewicht": 3,
+    "fakt": "Aktuell gilt für die Grundsteuer B ein Hebesatz von 539 v. H. (Grundsteuer A: 500 v. H.), festgesetzt ab 01.01.2025 durch die Satzung, die der Rat am 25.11.2024 beschlossen hat (mehrheitlich bei einer Gegenstimme; Finanzausschuss 06.11.2024 einstimmig).",
+    "beleg": "Rat 25.11.2024 TOP 8.11, Vorlage 24/0645, Beschluss-id 19195; AFB 06.11.2024 TOP 18, Beschluss-id 19440; PM 04.11.2024 und PM 07.01.2025"
+   },
+   {
+    "id": "F2",
+    "gewicht": 3,
+    "fakt": "Die von der Verwaltung vorgeschlagene Erhöhung zum 01.01.2026 auf 613 v. H. (Grundsteuer B) bzw. 530 v. H. (Grundsteuer A) hat der Rat am 15.12.2025 abgelehnt (43 Gegenstimmen; dafür stimmten nur der Oberbürgermeister und ein weiteres Ratsmitglied). Der Finanzausschuss hatte sie am selben Tag einstimmig abgelehnt.",
+    "beleg": "Rat 15.12.2025 TOP 16.1, Vorlage 25/0615, Beschluss-id 20592 (Protokoll ksinr 4516, S. 25); AFB 15.12.2025 TOP 4, Beschluss-id 20498; PM 16.12.2025 „Keine höheren Grundsteuern in Oldenburg“"
+   },
+   {
+    "id": "F3",
+    "gewicht": 2,
+    "fakt": "Für 2026 bleiben die Hebesätze damit unverändert; die Stadt teilte mit, dass sich die Hebesätze für die Grundsteuer A und B gegenüber 2025 nicht ändern (Bescheide gelten weiter).",
+    "beleg": "PM 02.01.2026 „Stadt informiert zu Grundbesitzabgaben und Hundesteuer“; keine spätere Hebesatz-Satzung im Bestand"
+   },
+   {
+    "id": "F4",
+    "gewicht": 2,
+    "fakt": "Der Sprung von 445 auf 539 v. H. (Grundsteuer A: 390 auf 500 v. H.) zum 01.01.2025 war keine Steuererhöhung im Gesamtaufkommen, sondern der aufkommensneutrale Hebesatz nach der Grundsteuerreform (niedersächsisches Flächen-Lage-Modell); das Aufkommen sollte bei rund 34,1 Mio. Euro bleiben (mit Sicherheitsabschlag von rund 700.000 Euro).",
+    "beleg": "Vorlage 24/0645 S. 2–4; PM 04.11.2024 „Grundsteuer: Stadt erzielt mit neuen Hebesätzen keine Mehrerträge“; Wortbeitrag Rat 25.11.2024 id 59086"
+   },
+   {
+    "id": "F5",
+    "gewicht": 1,
+    "fakt": "Vor der Reform galt seit 2015 ein Hebesatz von 445 v. H.; eine Anhebung auf 490 v. H. für 2024 hatte der Finanzausschuss am 06.09.2023 einstimmig abgelehnt.",
+    "beleg": "AFB 06.09.2023 TOP 20, Vorlage 23/0632, Beschluss-id 18358; PM 14.10.2024 „Grundsteuer-Rangliste“; Vorlage 25/0615 S. 4"
+   },
+   {
+    "id": "F6",
+    "gewicht": 2,
+    "fakt": "Begründet hatte die Verwaltung die abgelehnte Erhöhung mit Mindererträgen: Das Grundsteueraufkommen 2025 bleibe rund 1,9 Mio. Euro hinter dem Plan von 34,12 Mio. Euro zurück (nach über 6.000 korrigierten Messbescheiden); zusätzlich sollten rund 2,5 Mio. Euro jährlich für die 2019 abgeschafften Straßenausbaubeiträge ausgeglichen werden – erwartet waren rund 4,4 Mio. Euro Mehrertrag (mindestens zwei dieser Angaben).",
+    "beleg": "Vorlage 25/0615 S. 1–5; PM 28.10.2025 „Stadt Oldenburg plant Anpassung der Grundsteuerhebesätze“; Wortbeitrag AFB 05.11.2025 id 54571"
+   },
+   {
+    "id": "F7",
+    "gewicht": 1,
+    "fakt": "Vor der Ablehnung wurde die Vorlage zweimal vertagt: im Finanzausschuss am 05.11.2025 (Antrag auf Vertagung, einstimmig) und im Rat am 01.12.2025, weil der Verwaltungsausschuss nicht abschließend beraten hatte.",
+    "beleg": "AFB 05.11.2025 TOP 20, Beschluss-id 19934 (Protokoll ksinr 4428, S. 15–16); Rat 01.12.2025 TOP 16.1, Beschluss-id 20554"
+   },
+   {
+    "id": "F8",
+    "gewicht": 1,
+    "fakt": "Durch die Reform zahlen rund 60 Prozent der Grundsteuerpflichtigen weniger und rund 40 Prozent mehr als vorher; im Haus-&-Grund-Ranking der 100 größten Städte liegt Oldenburg auf Platz 15 (durchschnittlich 347 Euro im Jahr).",
+    "beleg": "PM 16.12.2025; PM 28.10.2025; Vorlage 25/0615 S. 4"
+   },
+   {
+    "id": "F9",
+    "gewicht": 1,
+    "fakt": "Über eine zusätzliche Grundsteuer C für baureife Grundstücke (Antrag der BSW-Fraktion, Vorlage 26/0666) ist nicht entschieden: Der Rat hat den Antrag am 31.08.2026 einstimmig in den Finanzausschuss verwiesen.",
+    "beleg": "Rat 31.08.2026 TOP 10.3, Beschluss-id 21973; Bauausschuss 27.08.2026 TOP 32.1, Beschluss-id 21952; Tagesordnung AFB 30.09.2026 TOP 21.1"
+   }
+  ],
+  "verboten": [
+   {
+    "id": "X1",
+    "behauptung": "Der Hebesatz der Grundsteuer B beträgt 613 v. H. bzw. wurde zum 01.01.2026 (etwa mit dem Haushalt 2026) erhöht."
+   },
+   {
+    "id": "X2",
+    "behauptung": "Der Hebesatz der Grundsteuer B beträgt aktuell 445 v. H. oder 490 v. H."
+   },
+   {
+    "id": "X3",
+    "behauptung": "Die Umstellung auf 539 v. H. zum 01.01.2025 war eine Steuererhöhung, mit der die Stadt ihre Grundsteuereinnahmen gesteigert hat."
+   },
+   {
+    "id": "X4",
+    "behauptung": "Oldenburg hat eine Grundsteuer C eingeführt oder beschlossen."
+   }
+  ],
+  "bewertung": "Abdeckung = Summe der Gewichte erfüllter Pflichtfakten / Gesamtgewicht (16). Jede verbotene Behauptung ist ein harter Fehler. Bestanden: Abdeckung >= 0,6, F1 und F2 erfüllt, keine verbotene Behauptung.",
+  "material": [
+   {
+    "id": "M1",
+    "fuer": [
+     "F1"
+    ],
+    "art": "beschluss",
+    "session_date": "2024-11-25",
+    "committee": "Rat",
+    "titel_enthaelt": "Realsteuerhebesätze"
+   },
+   {
+    "id": "M2",
+    "fuer": [
+     "F1",
+     "F4"
+    ],
+    "art": "presse",
+    "date": "2024-11-04",
+    "titel_enthaelt": "keine Mehrerträge"
+   },
+   {
+    "id": "M3",
+    "fuer": [
+     "F2"
+    ],
+    "art": "beschluss",
+    "session_date": "2025-12-15",
+    "committee": "Rat",
+    "titel_enthaelt": "Realsteuerhebesätze"
+   },
+   {
+    "id": "M4",
+    "fuer": [
+     "F2",
+     "F8"
+    ],
+    "art": "presse",
+    "date": "2025-12-16",
+    "titel_enthaelt": "Keine höheren Grundsteuern"
+   },
+   {
+    "id": "M5",
+    "fuer": [
+     "F3"
+    ],
+    "art": "presse",
+    "date": "2026-01-02",
+    "titel_enthaelt": "Grundbesitzabgaben"
+   },
+   {
+    "id": "M6",
+    "fuer": [
+     "F6"
+    ],
+    "art": "presse",
+    "date": "2025-10-28",
+    "titel_enthaelt": "Anpassung der Grundsteuerhebesätze"
+   },
+   {
+    "id": "M7",
+    "fuer": [
+     "F6",
+     "F7"
+    ],
+    "art": "debatte",
+    "session_date": "2025-11-05",
+    "text_enthaelt_eins": [
+     "1,9 Millionen",
+     "520 Prozent",
+     "Straßenausbaubeitr"
+    ]
+   },
+   {
+    "id": "M8",
+    "fuer": [
+     "F5"
+    ],
+    "art": "beschluss",
+    "session_date": "2023-09-06",
+    "committee": "Finanzen",
+    "titel_enthaelt": "Hebesatzung 2024"
+   },
+   {
+    "id": "M9",
+    "fuer": [
+     "F9"
+    ],
+    "art": "beschluss",
+    "session_date": "2026-08-31",
+    "committee": "Rat",
+    "titel_enthaelt": "Grundsteuer C"
+   },
+   {
+    "id": "M10",
+    "fuer": [
+     "F1",
+     "F4"
+    ],
+    "art": "presse",
+    "date": "2025-01-07",
+    "titel_enthaelt": "Grundbesitzabgabenbescheide"
+   }
+  ]
+ },
+ {
+  "id": "klinikum-buergschaften-stand",
+  "note": "Stand-Frage zur städtischen Beteiligung Klinikum Oldenburg AöR über Finanzausschuss und Rat 2022–2026. Handgeprüft am 02.10.2026 gegen den Prod-Abzug: Vorlagen 22/0252, 22/0348/1, 22/0916, 23/0811, 24/0520, 26/0525, 26/0616 (Volltext), Beschlüsse ids 16998, 16897, 21667, 17146, 18148, 18149, 18150, 18209, 19407, 19522, 19446, 20490, Rat-Protokoll 30.06.2025 (TOP 14.3, einstimmig) und Rat-Protokoll 15.12.2025 (ksinr 4516, S. 7–8), Wortbeiträge (Rat 15.12.2025 id 50612 mit Antwort der Verwaltung, AFB 04.12.2024 ids 58545–58558, Rat 16.12.2024 ids 59194/59195/59250–59255), PM 11.12.2025 und 29.12.2025. Zum jüngsten Stand (F5): Bürgschaft 13,5 Mio. Euro und Verlängerung des Liquiditätskredits standen im AFB 02.09.2026 (TOP 10/11) und im Rat 28.09.2026 (TOP 7.5/7.6) auf der Tagesordnung; im Abzug gibt es dafür weder Beschlusszeilen noch Protokoll, nur Vorlagen und Tagesordnung. Laut öffentlichem Ratsinformationssystem (si0057, ksinr 4640, abgerufen 02.10.2026) hat der Finanzausschuss am 02.09.2026 beide Vorlagen „ungeändert beschlossen“; das Ratsergebnis vom 28.09.2026 war dort noch nicht eingetragen. Deshalb gibt es für F5 kein Material, und F5 ist kein Kernfakt; eine Antwort, die die Vorlagen als beraten/vorgeschlagen nennt, erfüllt F5. Fallstricke: Bürgschaften sind keine Zahlungen; die Eigenkapitalstärkungen wurden aus dem städtischen Liquiditätskredit „umgewandelt“; die Ratsentscheidung zur Universitätsmedizin (30.06.2025) steht im Abzug nur als Beschlusszeile des Finanzausschusses vom selben Tag (id 20490). Eine Überführung des Klinikums in Landesträgerschaft wurde in der Debatte 2024 erwähnt, ist aber nicht erfolgt.",
+  "stand": "2026-10-01 (Prod-Abzug)",
+  "question": "Wie steht es um die Bürgschaften und Finanzhilfen der Stadt für das Klinikum Oldenburg?",
+  "varianten": [
+   "Für welche Kredite des Klinikums Oldenburg bürgt die Stadt, und was ist zuletzt beschlossen worden?",
+   "Mit wie viel Geld stützt die Stadt das Klinikum Oldenburg?"
+  ],
+  "pflicht": [
+   {
+    "id": "F1",
+    "gewicht": 3,
+    "fakt": "Das Klinikum schreibt weiter hohe Verluste: Für 2025 erwartete die Verwaltung ein Jahresergebnis von rund minus 24,2 Mio. Euro (operativ rund minus 12 Mio. Euro, der Rest Abschreibungen und Zinsen für nicht vom Land geförderte Eigeninvestitionen); der Wirtschaftsplan 2026 sieht einen Jahresfehlbetrag von rund 21,4 Mio. Euro vor (Hochrechnung Mitte 2026: 21,3 Mio. Euro). Eine der beiden Zahlen genügt.",
+    "beleg": "Rat 15.12.2025 TOP 6 Einwohnerfragestunde, Antwort der Verwaltung (Wortbeitrag id 50612, Protokoll ksinr 4516 S. 7–8); Vorlage 26/0525 S. 2"
+   },
+   {
+    "id": "F2",
+    "gewicht": 3,
+    "fakt": "Die größte Absicherung ist die Ausfallbürgschaft über 116,5 Mio. Euro für den Bankkredit zum Eigenanteil des Neubaus Herz- und Notfallzentrum / Perinatalzentrum (Konsortialkredit von drei Banken) samt Patronatserklärung – beschlossen vom Rat am 27.06.2022 (mehrheitlich bei sechs Enthaltungen), am 29.08.2022 entfristet.",
+    "beleg": "Rat 27.06.2022 TOP 7.7, Vorlage 22/0348/1, Beschluss-id 16897; Rat 29.08.2022 TOP 3.1, Vorlage 22/0348/2, Beschluss-id 21667"
+   },
+   {
+    "id": "F3",
+    "gewicht": 2,
+    "fakt": "Zusätzlich zur im Haushalt eingeplanten Kapitalstärkung (19,5 Mio. Euro) bewilligte der Rat überplanmäßige Eigenkapitalstärkungen von 5 Mio. Euro (19.12.2022), 7,3 Mio. Euro (18.12.2023) und 9 Mio. Euro (16.12.2024, einstimmig bei elf Enthaltungen), damit das Eigenkapital positiv bleibt (mindestens zwei der drei Beträge).",
+    "beleg": "Rat 19.12.2022 TOP 10.12, Vorlage 22/0916, Beschluss-id 17146; Rat 18.12.2023 TOP 9.11, Vorlage 23/0811, Beschluss-id 18209; Rat 16.12.2024 TOP 11.9, Vorlage 24/0520, Beschluss-id 19522"
+   },
+   {
+    "id": "F4",
+    "gewicht": 2,
+    "fakt": "Für die laufende Liquidität stellt die Stadt einen Liquiditätskreditrahmen von 40 Mio. Euro bereit (Vertrag vom 16.06.2022, zuletzt bis 31.12.2027 verlängert); dazu kommen Betriebsmittelkreditlinien bei Banken von 23,2 Mio. Euro, für die die Stadt unbefristet bürgt (u. a. 10 Mio. Euro, Rat 30.05.2022) – zusammen 63,2 Mio. Euro. Zum 31.12.2025 war der städtische Liquiditätskredit nicht in Anspruch genommen.",
+    "beleg": "Vorlage 26/0525 S. 1–2; Rat 30.05.2022 TOP 11.4, Vorlage 22/0252, Beschluss-id 16998"
+   },
+   {
+    "id": "F5",
+    "gewicht": 2,
+    "fakt": "Jüngster Stand (September 2026): Zur Beratung im Finanzausschuss (02.09.2026) und im Rat (28.09.2026) standen eine 100-prozentige Ausfallbürgschaft samt Patronatserklärung für ein neues Darlehen des Klinikums über 13,5 Mio. Euro (Investitionen in Medizingeräte, Bestandsbau und IT; Gesamtinvestition rund 25,3 Mio. Euro, Rest aus Fördermitteln) sowie die Verlängerung des Liquiditätskreditrahmens von 40 Mio. Euro bis 31.12.2029 (mindestens einer der beiden Punkte).",
+    "beleg": "Vorlage 26/0616 und Vorlage 26/0525; Tagesordnung AFB 02.09.2026 TOP 10/11 und Rat 28.09.2026 TOP 7.5/7.6"
+   },
+   {
+    "id": "F6",
+    "gewicht": 1,
+    "fakt": "Im Juni 2023 übernahm die Stadt weitere Ausfallbürgschaften für ein Bestandsdarlehen (bis 8.759.575,90 Euro, befristet bis 30.04.2037) und ein neues Darlehen (bis 7.021.000 Euro) sowie eine Patronatserklärung (Rat 26.06.2023).",
+    "beleg": "Rat 26.06.2023 TOP 6.8 (Vorlage 23/0385, Beschluss-id 18148), TOP 6.9 (Vorlage 23/0401, Beschluss-id 18149), TOP 2 Patronatserklärung (Beschluss-id 18150)"
+   },
+   {
+    "id": "F7",
+    "gewicht": 1,
+    "fakt": "Am 30.06.2025 stimmte der Rat einstimmig der Rahmenvereinbarung zur Universitätsmedizin mit dem Land zu: Das Klinikum wird nicht mehr unentgeltlich für die Universitätsmedizin bereitgestellt und soll die Bezeichnung „Universitätsklinikum“ beantragen.",
+    "beleg": "Rat 30.06.2025 TOP 14.3, Vorlage 25/0421 (Protokoll S. 25–26); AFB 30.06.2025 TOP 7, Beschluss-id 20490; Wortbeitrag id 100773"
+   },
+   {
+    "id": "F8",
+    "gewicht": 1,
+    "fakt": "Politisch wird die Last kritisch gesehen: Der Oberbürgermeister nannte das Klinikum im Haushalt 2025 das größte Risiko (rund 25 Mio. Euro Unterstützung), mehrere Fraktionen verweisen auf die unzureichende Krankenhausfinanzierung durch das Land; ein CDU-Antrag auf einen Prüfauftrag dazu wurde im Finanzausschuss am 06.11.2024 mehrheitlich abgelehnt (mindestens eine dieser Angaben).",
+    "beleg": "Rat 16.12.2024 TOP 5, Wortbeiträge ids 59194, 59195; AFB 06.11.2024 TOP 24.1, Beschluss-id 19446"
+   },
+   {
+    "id": "F9",
+    "gewicht": 1,
+    "fakt": "Die Neubauten für das Herz- und Notfallzentrum und das Perinatalzentrum sollen im März 2027 fertig werden.",
+    "beleg": "PM 11.12.2025 „Vom Großprojekt bis zur Gehwegkante“; PM 29.12.2025"
+   }
+  ],
+  "verboten": [
+   {
+    "id": "X1",
+    "behauptung": "Das Klinikum arbeitet (2025 oder 2026) mit Gewinn oder einem ausgeglichenen Ergebnis."
+   },
+   {
+    "id": "X2",
+    "behauptung": "Die Stadt hat dem Klinikum 116,5 Mio. Euro gezahlt bzw. als Zuschuss gegeben (statt einer Bürgschaft für einen Bankkredit)."
+   },
+   {
+    "id": "X3",
+    "behauptung": "Das Land Niedersachsen hat das Klinikum übernommen bzw. ist inzwischen sein Träger."
+   },
+   {
+    "id": "X4",
+    "behauptung": "Die Bürgschaft über 13,5 Mio. Euro oder die Verlängerung des Liquiditätskredits wurde abgelehnt, oder der Liquiditätskreditrahmen der Stadt wurde über 40 Mio. Euro hinaus erhöht."
+   }
+  ],
+  "bewertung": "Abdeckung = Summe der Gewichte erfüllter Pflichtfakten / Gesamtgewicht (16). Jede verbotene Behauptung ist ein harter Fehler. Bestanden: Abdeckung >= 0,6, F1 und F2 erfüllt, keine verbotene Behauptung.",
+  "material": [
+   {
+    "id": "M1",
+    "fuer": [
+     "F1"
+    ],
+    "art": "debatte",
+    "session_date": "2025-12-15",
+    "text_enthaelt_eins": [
+     "24,2 Millionen",
+     "Jahresergebnis"
+    ]
+   },
+   {
+    "id": "M2",
+    "fuer": [
+     "F2"
+    ],
+    "art": "beschluss",
+    "session_date": "2022-06-27",
+    "committee": "Rat",
+    "titel_enthaelt": "116.500.000"
+   },
+   {
+    "id": "M3",
+    "fuer": [
+     "F2"
+    ],
+    "art": "beschluss",
+    "session_date": "2022-08-29",
+    "committee": "Rat",
+    "titel_enthaelt": "Entfristung"
+   },
+   {
+    "id": "M4",
+    "fuer": [
+     "F3"
+    ],
+    "art": "beschluss",
+    "session_date": "2024-12-16",
+    "committee": "Rat",
+    "titel_enthaelt": "Eigenkapitalstärkung"
+   },
+   {
+    "id": "M5",
+    "fuer": [
+     "F3"
+    ],
+    "art": "beschluss",
+    "session_date": "2023-12-18",
+    "committee": "Rat",
+    "titel_enthaelt": "Eigenkapitalstärkung"
+   },
+   {
+    "id": "M6",
+    "fuer": [
+     "F3"
+    ],
+    "art": "beschluss",
+    "session_date": "2022-12-19",
+    "committee": "Rat",
+    "titel_enthaelt": "Kapitalstärkung Klinikum"
+   },
+   {
+    "id": "M7",
+    "fuer": [
+     "F4"
+    ],
+    "art": "beschluss",
+    "session_date": "2022-05-30",
+    "committee": "Rat",
+    "titel_enthaelt": "Betriebsmitteldarlehen"
+   },
+   {
+    "id": "M8",
+    "fuer": [
+     "F6"
+    ],
+    "art": "beschluss",
+    "session_date": "2023-06-26",
+    "committee": "Rat",
+    "titel_enthaelt": "Patronatserklärung"
+   },
+   {
+    "id": "M9",
+    "fuer": [
+     "F7"
+    ],
+    "art": "beschluss",
+    "session_date": "2025-06-30",
+    "committee": "Finanzen",
+    "titel_enthaelt": "Universitätsmedizin"
+   },
+   {
+    "id": "M10",
+    "fuer": [
+     "F8"
+    ],
+    "art": "beschluss",
+    "session_date": "2024-11-06",
+    "committee": "Finanzen",
+    "titel_enthaelt": "Krankenhausfinanzierung"
+   },
+   {
+    "id": "M11",
+    "fuer": [
+     "F9"
+    ],
+    "art": "presse",
+    "date": "2025-12-11",
+    "titel_enthaelt": "Großprojekt"
+   }
+  ]
+ },
+ {
+  "id": "zweckentfremdungssatzung-fraktionen",
+  "note": "Fraktionsfrage Wohnen. Handgeprüft am 02.10.2026 gegen Beschlüsse, Vorlagen (25/0817, 26/0337, 26/0585), Protokoll-Volltexte (Rat 01.12.2025, ASB 20.11.2025, 21.05.2026, 27.08.2026) und Wortbeiträge im Prod-Abzug. Das Ratsinfo kennt kein Stimmverhalten je Fraktion: Positionen nur aus Antragstellern und Wortbeiträgen, Ergebnisse nur als Gesamtzahl. Für Oldenburg spricht nicht mit einer Stimme.",
+  "stand": "2026-10-01 (Prod-Abzug)",
+  "question": "Wie stehen die Fraktionen im Oldenburger Rat zu einer Zweckentfremdungssatzung gegen Wohnungsleerstand?",
+  "varianten": [
+   "Wer war im Rat für und wer gegen die Zweckentfremdungssatzung?",
+   "Welche Parteien wollen eine Zweckentfremdungssatzung für Oldenburg und wie weit ist sie?"
+  ],
+  "pflicht": [
+   {
+    "id": "F1",
+    "gewicht": 3,
+    "fakt": "Der Rat beschloss am 01.12.2025 auf Antrag der BSW-Fraktion (vom 03.11.2025) mehrheitlich bei zehn Gegenstimmen und einer Enthaltung, festzustellen, dass die Versorgung mit Mietwohnungen in Oldenburg gefährdet ist (Gebiet nach § 1 des Niedersächsischen Zweckentfremdungsgesetzes), und die Verwaltung mit dem Entwurf einer Zweckentfremdungssatzung zu beauftragen.",
+    "beleg": "Rat 01.12.2025, TOP 17.6, Vorlage 25/0817, Beschluss-ids 20558/20559, Protokoll S. 25–26"
+   },
+   {
+    "id": "F2",
+    "gewicht": 3,
+    "fakt": "Für die Satzung sprachen sich in der Ratsdebatte am 01.12.2025 aus: BSW (Antragsteller; Adler, Höpken), Bündnis 90/Die Grünen (Drügemöller: Fraktion unterstützt den Antrag), SPD (Prange: wichtiger Baustein für den Wohnungsmarkt) und für die Gruppe Für Oldenburg Finke (stimme zu); dagegen erklärte Baak, die CDU-Fraktion werde nicht zustimmen und folge der rechtlichen Einschätzung der Verwaltung (mindestens: BSW, Grüne und SPD dafür, CDU dagegen).",
+    "beleg": "Rat 01.12.2025 TOP 17.6, Wortbeiträge ids 50777–50783; Protokoll S. 25–26"
+   },
+   {
+    "id": "F3",
+    "gewicht": 2,
+    "fakt": "Das Protokoll nennt nur das Gesamtergebnis (zehn Gegenstimmen, eine Enthaltung); wer genau dagegen stimmte, ist nicht festgehalten — Positionen lassen sich nur aus Anträgen und Wortbeiträgen ablesen.",
+    "beleg": "Rat 01.12.2025, Protokoll S. 26 („mehrheitlich bei zehn Gegenstimmen und einer Enthaltung“)"
+   },
+   {
+    "id": "F4",
+    "gewicht": 2,
+    "fakt": "SPD und Grüne hatten am 29.09.2025 einen eigenen Antrag gestellt (Satzung gezielt für große leerstehende Immobilien, Beispiel Hermann-Ehlers-Haus). Weil eine Beschränkung auf große Objekte laut Verwaltung und BSW gegen den Gleichbehandlungsgrundsatz verstößt, erübrigte er sich im Ausschuss für Stadtplanung und Bauen am 20.11.2025; die Grünen schlossen sich dem BSW-Antrag an, der dort (ohne die Frist „bis zur nächsten Ratssitzung“) mehrheitlich bei zwei Gegenstimmen angenommen wurde.",
+    "beleg": "ASB 20.11.2025 TOP 20.1/20.5, Beschluss-ids 20283/20287, Wortbeiträge 101031, 101033, 101046; Vorlage 25/0817"
+   },
+   {
+    "id": "F5",
+    "gewicht": 2,
+    "fakt": "Die CDU bleibt Gegnerin: Im ASB am 27.08.2026 lehnte Klaukien die Satzung ab, kritisierte den Meinungswandel der Verwaltung (Dezember 2025 noch „nicht zielführend“, nicht rechtssicher), hielt den Ratsbeschluss für rechtswidrig und erwartet erfolgreiche Klagen.",
+    "beleg": "ASB 27.08.2026 TOP 6, Wortbeiträge 100312, 100318; Protokoll S. 12–13"
+   },
+   {
+    "id": "F6",
+    "gewicht": 1,
+    "fakt": "Die FDP ist dagegen (Pfeiffer, 27.08.2026: hoher Verwaltungsaufwand mit fünf Stellen, Eigentümer unter Generalverdacht); bereits 2022/2023 lehnte die Gruppe FDP/Volt eine solche Satzung als Eingriff in Eigentumsrechte ab.",
+    "beleg": "ASB 27.08.2026, Wortbeitrag 100316; ASB 15.12.2022 und 16.02.2023, Wortbeiträge 70341, 109900"
+   },
+   {
+    "id": "F7",
+    "gewicht": 1,
+    "fakt": "Die Gruppe Für Oldenburg ist uneinheitlich: Finke stimmte im Rat am 01.12.2025 zu, Sander kündigte im ASB am 20.11.2025 Ablehnung an und nannte die Satzung am 27.08.2026 ein „Bürokratiemonster“ (erst Bau-Turbo nutzen).",
+    "beleg": "Rat 01.12.2025 Wortbeitrag 50783; ASB 20.11.2025 Wortbeitrag 101039; ASB 27.08.2026 Wortbeitrag 100321"
+   },
+   {
+    "id": "F8",
+    "gewicht": 1,
+    "fakt": "Vorgeschichte: Anträge der Linken scheiterten — 2019 (Gruppe Linke/Piraten) im ASB am 16.05.2019 abgelehnt (1 Ja, 8 Nein, 2 Enthaltungen), 2022 (Fraktion Die Linke) nach Vertagungen am 16.02.2023 zurückgezogen. Damals sah auch die SPD die Voraussetzungen nicht (Ellberg, Rat 07.11.2022).",
+    "beleg": "ASB 16.05.2019 TOP 13.6 (Beschluss-id 13546); ASB 16.02.2023 TOP 14.1 (Beschluss-id 18286); Rat 07.11.2022 TOP 12.3, Wortbeitrag 72419"
+   },
+   {
+    "id": "F9",
+    "gewicht": 1,
+    "fakt": "Die Verwaltung riet im November 2025 ab (Leerstand nur 1,9 %, Satzung nicht zielführend, voraussichtlich nicht rechtsbeständig, hoher Aufwand); im Entwurf vom Juli 2026 hält sie die Voraussetzungen für gegeben, warnt aber, dass das vor Gericht nicht sicher hält, und rechnet mit fünf Vollzeitstellen.",
+    "beleg": "Vorlage 25/0817 (20.11.2025) S. 3–4; Vorlage 26/0585 (20.07.2026) S. 4–5"
+   },
+   {
+    "id": "F10",
+    "gewicht": 1,
+    "fakt": "Ein SPD-Antrag vom 10.03.2026 (Entwurf oder Zeitplan vorlegen) erledigte sich durch den Verwaltungsbericht im ASB am 21.05.2026 und wurde im Rat am 01.06.2026 abgesetzt.",
+    "beleg": "ASB 21.05.2026 TOP 16.1, Vorlage 26/0337, Beschluss-id 20674, Wortbeitrag 100568; Rat 01.06.2026 TOP 15.1 (Beschluss-id 20978)"
+   },
+   {
+    "id": "F11",
+    "gewicht": 3,
+    "fakt": "Stand: Der ASB stimmte am 27.08.2026 dem Satzungsentwurf samt Öffentlichkeitsbeteiligung mehrheitlich bei zwei Gegenstimmen zu (Vorlage 26/0585; Verwaltungsausschuss 31.08.2026 nichtöffentlich). Die Öffentlichkeitsbeteiligung ist für Ende September bis Oktober 2026 vorgesehen, der Satzungsbeschluss im Rat für das erste Quartal 2027 — die Satzung gilt noch nicht.",
+    "beleg": "ASB 27.08.2026 TOP 6, Beschluss-id 21909, Protokoll S. 14; Vorlage 26/0337 (Zeitplanung)"
+   }
+  ],
+  "verboten": [
+   {
+    "id": "X1",
+    "behauptung": "Die zehn Gegenstimmen im Rat am 01.12.2025 (oder die zwei Gegenstimmen im ASB) werden bestimmten Fraktionen als Tatsache zugeordnet oder nach Fraktionen aufgeschlüsselt (etwa „die Gegenstimmen kamen von CDU und FDP“). Die Ankündigung der CDU, nicht zuzustimmen, wiederzugeben, ist erlaubt."
+   },
+   {
+    "id": "X2",
+    "behauptung": "Die Zweckentfremdungssatzung ist vom Rat bereits endgültig beschlossen oder in Kraft."
+   },
+   {
+    "id": "X3",
+    "behauptung": "Der Ratsbeschluss vom 01.12.2025 fiel einstimmig."
+   },
+   {
+    "id": "X4",
+    "behauptung": "Die CDU-Fraktion unterstützt die Zweckentfremdungssatzung oder hat dem Antrag zugestimmt."
+   }
+  ],
+  "material": [
+   {
+    "id": "M1",
+    "fuer": [
+     "F1",
+     "F3"
+    ],
+    "art": "beschluss",
+    "session_date": "2025-12-01",
+    "committee": "Rat",
+    "titel_enthaelt": "Zweckentfremdungssatzung"
+   },
+   {
+    "id": "M2",
+    "fuer": [
+     "F2"
+    ],
+    "art": "debatte",
+    "session_date": "2025-12-01",
+    "text_enthaelt_eins": [
+     "wichtiger Baustein",
+     "dritten Mal",
+     "Gruppe Für Oldenburg zu"
+    ]
+   },
+   {
+    "id": "M3",
+    "fuer": [
+     "F2"
+    ],
+    "art": "debatte",
+    "session_date": "2025-12-01",
+    "text_enthaelt_eins": [
+     "rechtliche Einschätzung der Verwaltung"
+    ]
+   },
+   {
+    "id": "M4",
+    "fuer": [
+     "F4"
+    ],
+    "art": "beschluss",
+    "session_date": "2025-11-20",
+    "committee": "Stadtplanung und Bauen",
+    "titel_enthaelt": "Zweckentfremdungssatzung"
+   },
+   {
+    "id": "M5",
+    "fuer": [
+     "F4"
+    ],
+    "art": "debatte",
+    "session_date": "2025-11-20",
+    "text_enthaelt_eins": [
+     "große Immobilien",
+     "großen Immobilien"
+    ]
+   },
+   {
+    "id": "M6",
+    "fuer": [
+     "F5",
+     "F6",
+     "F7"
+    ],
+    "art": "debatte",
+    "session_date": "2026-08-27",
+    "text_enthaelt_eins": [
+     "Meinungswandel",
+     "Generalverdacht",
+     "Bürokratiemonster"
+    ]
+   },
+   {
+    "id": "M7",
+    "fuer": [
+     "F8"
+    ],
+    "art": "beschluss",
+    "session_date": "2023-02-16",
+    "committee": "Stadtplanung und Bauen",
+    "titel_enthaelt": "Zweckentfremdungssatzung"
+   },
+   {
+    "id": "M8",
+    "fuer": [
+     "F10"
+    ],
+    "art": "beschluss",
+    "session_date": "2026-05-21",
+    "committee": "Stadtplanung und Bauen",
+    "titel_enthaelt": "Zweckentfremdungssatzung"
+   },
+   {
+    "id": "M9",
+    "fuer": [
+     "F11",
+     "F9"
+    ],
+    "art": "beschluss",
+    "session_date": "2026-08-27",
+    "committee": "Stadtplanung und Bauen",
+    "titel_enthaelt": "Zweckentfremdung"
+   }
+  ],
+  "bewertung": "Abdeckung = Summe der Gewichte erfüllter Pflichtfakten / Gesamtgewicht (20). Jede verbotene Behauptung ist ein harter Fehler. Bestanden: Abdeckung >= 0,6, F1, F2 und F11 erfüllt, keine verbotene Behauptung."
+ },
+ {
+  "id": "grundschule-wechloy-stand",
+  "note": "Ortsfrage Bildung (Stadtteil Wechloy). Handgeprüft am 02.10.2026 gegen Vorlagen 22/0985, 24/0264/3, 25/0031, 25/0586, 25/0630, 26/0178, Protokolle (Rat 25.11.2024 und 16.03.2026, Schulausschuss 02.09.2025 und 10.03.2026), Wortbeiträge und PM 23.06.2026 im Prod-Abzug. Schwer, weil die Kette über drei Jahre, zwei Standorte und mehrere Vorlagennummern läuft und der jüngste Beschluss (Zweizügigkeit) anders heißt als der abgelehnte (Neubau).",
+  "stand": "2026-10-01 (Prod-Abzug)",
+  "question": "Was passiert in Wechloy mit der Grundschule?",
+  "varianten": [
+   "Was wurde für die Grundschule Wechloy beschlossen – kommt der Neubau an der Theodor-Heuss-Straße?",
+   "Wird die Grundschule Wechloy erweitert oder verlegt?"
+  ],
+  "pflicht": [
+   {
+    "id": "F1",
+    "gewicht": 2,
+    "fakt": "Der Rat beschloss am 27.02.2023 einstimmig, die Grundschule Wechloy zur Ganztagsschule umzuwandeln (Rahmenkonzept „Kooperative Ganztagsbildung“); zuvor war berichtet worden, dass im Stadtwesten zusätzliche Grundschulzüge nötig sind (Hogenkamp und Wechloy).",
+    "beleg": "Rat 27.02.2023 TOP 7.4, Vorlage 22/0985, Beschluss-id 17989 (vorher Schulausschuss 25.01.2023, JHA 15.02.2023); Schulausschuss 08.11.2022, Vorlage 22/0778"
+   },
+   {
+    "id": "F2",
+    "gewicht": 2,
+    "fakt": "2024 schlug die Verwaltung vor, die Schule an die Theodor-Heuss-Straße zu verlagern und dort neu zu bauen (Raumprogramm wie Grundschule Fliegerhorst; rund 15,7 Mio. € gegenüber rund 16,5 Mio. € für den Ausbau am Küpkersweg). Begründet wurde das mit kürzeren Schulwegen, besserer sozialer Durchmischung und Schwierigkeiten beim Ausbau am alten Standort (Schulhof, nötiger Bebauungsplan).",
+    "beleg": "Vorlagen 24/0264 bis 24/0264/3, v. a. 24/0264/3 S. 1–3 und 16"
+   },
+   {
+    "id": "F3",
+    "gewicht": 1,
+    "fakt": "Der Vorschlag war umstritten: Schulvorstand, Kollegium und eine Elterninitiative (Petition mit rund 3.000 Unterschriften) wollten die Schule am bisherigen Standort halten, Stadtelternrat und GEW befürworteten den Neubau. Er wurde 2024 mehrfach vertagt; der Schulausschuss stimmte am 05.11.2024 bei fünf Gegenstimmen und drei Enthaltungen zu.",
+    "beleg": "Vorlage 24/0264/3 S. 16; Schulausschuss 07.05., 04.06., 03.09.2024 (vertagt), 05.11.2024 TOP 5, Beschluss-id 19008"
+   },
+   {
+    "id": "F4",
+    "gewicht": 3,
+    "fakt": "Der Rat lehnte den Neubau an der Theodor-Heuss-Straße am 25.11.2024 mit 26 Gegenstimmen und einer Enthaltung ab.",
+    "beleg": "Rat 25.11.2024 TOP 7.1, Vorlage 24/0264/3, Beschluss-id 19184, Protokoll S. 8–10"
+   },
+   {
+    "id": "F5",
+    "gewicht": 2,
+    "fakt": "In der Ratsdebatte kündigten SPD (Schulwegsicherheit, „Kompromissstandort“), CDU (gegen die Schließung am bisherigen Standort) und FDP/Volt Ablehnung an; Grüne (Bildungsgerechtigkeit), BSW und Oberbürgermeister Krogmann unterstützten den Neubau; Für Oldenburg war geteilt (Finke dafür, Sander für den Erhalt am alten Standort). Mindestens: SPD und CDU dagegen, Grüne dafür.",
+    "beleg": "Rat 25.11.2024 TOP 7.1, Wortbeiträge ids 59072–59083"
+   },
+   {
+    "id": "F6",
+    "gewicht": 1,
+    "fakt": "Danach wollte die Verwaltung zunächst nicht am Küpkersweg ausbauen (Schulausschuss 11.02.2025). Ein CDU-Änderungsantrag, die Schule am bestehenden Standort zweizügig auszubauen, wurde vertagt und am 02.09.2025 im Schulausschuss bei Stimmengleichheit abgelehnt (ebenso ein Vertagungsantrag der Grünen).",
+    "beleg": "Schulausschuss 11.02.2025 TOP 5, Vorlage 25/0031, Beschluss-ids 20147/20148; Schulausschuss 02.09.2025 TOP 9.1, Vorlage 25/0586, Beschluss-ids 20156/20157"
+   },
+   {
+    "id": "F7",
+    "gewicht": 2,
+    "fakt": "Die Verwaltung prüfte sechs Ersatzgrundstücke: vier ungeeignet, die „Bloherfelder Wiesen“ positiv bewertet, aber in Privatbesitz und allenfalls langfristig verfügbar; die Theodor-Heuss-Straße gilt fachlich weiter als am besten geeignet, ist nach der Ratsentscheidung aber ausgeschieden.",
+    "beleg": "Vorlage 25/0630 S. 1–2 (Schulausschuss 04.11.2025); Schulausschuss 02.09.2025, Wortbeiträge 101331, 101348"
+   },
+   {
+    "id": "F8",
+    "gewicht": 3,
+    "fakt": "Lösung: Die Schule wird am Küpkersweg übergangsweise mit einer gekauften, zweigeschossigen Containeranlage (mobile Räume, Kosten rund 3,6 Mio. € plus rund 120.000 € Ausstattung) zur zweizügigen Ganztagsgrundschule erweitert, Start zum Schuljahr 2027/2028; die Verwaltung rechnet mit mindestens acht Jahren Standzeit.",
+    "beleg": "Schulausschuss 04.11.2025 TOP 11, Vorlage 25/0630 S. 2–3, Beschluss-id 20142, Wortbeitrag 52328"
+   },
+   {
+    "id": "F9",
+    "gewicht": 3,
+    "fakt": "Am 16.03.2026 beschloss der Rat einstimmig, die Grundschule Wechloy ab dem Schuljahr 2027/2028 aufwachsend zweizügig zu führen (vollständig 2030/2031; Schulausschuss 10.03.2026 einstimmig bei zwei Enthaltungen); am selben Tag wurden die Schulbezirke angepasst (einstimmig bei neun Enthaltungen).",
+    "beleg": "Rat 16.03.2026 TOP 7.1/7.2, Vorlagen 26/0178 und 26/0179, Beschluss-ids 20652/20653; Schulausschuss 10.03.2026, Beschluss-ids 20646/20647"
+   },
+   {
+    "id": "F10",
+    "gewicht": 2,
+    "fakt": "Die Schule bleibt damit vorerst am Küpkersweg; ein Neubau ist nicht beschlossen, eine Dauerlösung offen (BSW nannte es eine Notlösung, ein anderer Standort im Stadtwesten könne noch gefunden werden).",
+    "beleg": "Vorlage 25/0630 S. 2 („keine dauerhafte Lösung“); Rat 16.03.2026 Wortbeiträge 48849, 48853"
+   },
+   {
+    "id": "F11",
+    "gewicht": 1,
+    "fakt": "Die Schule ist derzeit klein: 2025/2026 wurden 13 Kinder eingeschult, für 2026/2027 waren 18 angemeldet — die wenigsten aller städtischen Grundschulen.",
+    "beleg": "Vorlage 25/0586 S. 2; Pressemitteilung Stadt Oldenburg 23.06.2026"
+   }
+  ],
+  "verboten": [
+   {
+    "id": "X1",
+    "behauptung": "Die Grundschule Wechloy wird an der Theodor-Heuss-Straße neu gebaut bzw. der Neubau oder die Verlagerung ist beschlossen."
+   },
+   {
+    "id": "X2",
+    "behauptung": "Die Grundschule Wechloy wird geschlossen oder aufgelöst."
+   },
+   {
+    "id": "X3",
+    "behauptung": "Die Schule ist bereits zweizügig bzw. die Container stehen schon (Start ist erst das Schuljahr 2027/2028)."
+   },
+   {
+    "id": "X4",
+    "behauptung": "Die 26 Gegenstimmen vom 25.11.2024 werden als Tatsache nach Fraktionen aufgeschlüsselt (etwa „alle Gegenstimmen kamen von SPD, CDU und FDP“); das Protokoll nennt nur die Gesamtzahl."
+   }
+  ],
+  "material": [
+   {
+    "id": "M1",
+    "fuer": [
+     "F1"
+    ],
+    "art": "beschluss",
+    "session_date": "2023-02-27",
+    "committee": "Rat",
+    "titel_enthaelt": "Grundschule Wechloy in eine Ganztagsschule"
+   },
+   {
+    "id": "M2",
+    "fuer": [
+     "F2",
+     "F3"
+    ],
+    "art": "beschluss",
+    "session_date": "2024-11-05",
+    "committee": "Schulausschuss",
+    "titel_enthaelt": "Grundschule Wechloy"
+   },
+   {
+    "id": "M3",
+    "fuer": [
+     "F4"
+    ],
+    "art": "beschluss",
+    "session_date": "2024-11-25",
+    "committee": "Rat",
+    "titel_enthaelt": "Grundschule Wechloy"
+   },
+   {
+    "id": "M4",
+    "fuer": [
+     "F5"
+    ],
+    "art": "debatte",
+    "session_date": "2024-11-25",
+    "text_enthaelt_eins": [
+     "Kompromissstandort",
+     "Bildungsgerechtigkeit",
+     "lehne die Schließung"
+    ]
+   },
+   {
+    "id": "M5",
+    "fuer": [
+     "F6"
+    ],
+    "art": "beschluss",
+    "session_date": "2025-09-02",
+    "committee": "Schulausschuss",
+    "titel_enthaelt": "Zweizügigkeit Grundschule Wechloy"
+   },
+   {
+    "id": "M6",
+    "fuer": [
+     "F7"
+    ],
+    "art": "debatte",
+    "session_date": "2025-09-02",
+    "text_enthaelt_eins": [
+     "endgültig ausgeschieden",
+     "Bloherfelder Wiesen"
+    ]
+   },
+   {
+    "id": "M7",
+    "fuer": [
+     "F7",
+     "F8"
+    ],
+    "art": "beschluss",
+    "session_date": "2025-11-04",
+    "committee": "Schulausschuss",
+    "titel_enthaelt": "Grundschule Wechloy"
+   },
+   {
+    "id": "M8",
+    "fuer": [
+     "F8"
+    ],
+    "art": "debatte",
+    "session_date": "2025-11-04",
+    "text_enthaelt_eins": [
+     "3,6 Millionen",
+     "provisorische Lösung"
+    ]
+   },
+   {
+    "id": "M9",
+    "fuer": [
+     "F9"
+    ],
+    "art": "beschluss",
+    "session_date": "2026-03-16",
+    "committee": "Rat",
+    "titel_enthaelt": "Grundschule Wechloy"
+   },
+   {
+    "id": "M10",
+    "fuer": [
+     "F10"
+    ],
+    "art": "debatte",
+    "session_date": "2026-03-16",
+    "text_enthaelt_eins": [
+     "Notlösung",
+     "Containerlösung"
+    ]
+   },
+   {
+    "id": "M11",
+    "fuer": [
+     "F11"
+    ],
+    "art": "presse",
+    "date": "2026-06-23",
+    "titel_enthaelt": "Einschulung"
+   }
+  ],
+  "bewertung": "Abdeckung = Summe der Gewichte erfüllter Pflichtfakten / Gesamtgewicht (22). Jede verbotene Behauptung ist ein harter Fehler. Bestanden: Abdeckung >= 0,6, F4, F8 und F9 erfüllt, keine verbotene Behauptung."
+ },
+ {
+  "id": "dreifeldhalle-fliegerhorst-antrag",
+  "note": "„Was wurde aus dem Antrag“, Sport. Handgeprüft am 02.10.2026 gegen Vorlagen 24/0462, 24/0462/1, 26/0089, 26/0089/1, 26/0170, Protokolle (Sportausschuss 14.08./11.09.2024 und 11.02.2026, BEGH 05.09.2024 und 05.03.2026, Rat 23.02.2026 und 29.06.2026), Wortbeiträge und PM 30.06.2026 im Prod-Abzug. Schwer, weil der Antrag anderthalb Jahre ruhte („gilt als behandelt“/vertagt), dann gegen die Verwaltung durchging und die Sechsfeldhalle Kennedystraße als Verwechslungsgefahr danebensteht.",
+  "stand": "2026-10-01 (Prod-Abzug)",
+  "question": "Was wurde aus dem CDU-Antrag für eine Dreifeldhalle auf dem Fliegerhorst?",
+  "varianten": [
+   "Bekommt die neue Grundschule Fliegerhorst eine Dreifeldhalle statt einer Einfeldhalle?",
+   "Wie ist der Antrag zur Dreifeldhalle am Fliegerhorst ausgegangen?"
+  ],
+  "pflicht": [
+   {
+    "id": "F1",
+    "gewicht": 2,
+    "fakt": "Die CDU-Fraktion beantragte am 07.06.2024, auf dem Gelände der künftigen Grundschule Fliegerhorst (B-Plan 777 F) statt der geplanten Einfeldhalle eine Dreifeldhalle zu bauen.",
+    "beleg": "Vorlage 24/0462 (Sportausschuss 14.08.2024 TOP 9.1, Beschluss-id 19564)"
+   },
+   {
+    "id": "F2",
+    "gewicht": 2,
+    "fakt": "Die Verwaltung hielt das 2024 für nicht zielführend: Eine Einfeldhalle genüge für den Schulsport, eine Dreifeldhalle am Stadtrand sei für Schulen wegen langer Wege nicht praktikabel, zusätzliche Hallen gehörten zentral bzw. dorthin, wo der Bedarf ist; Kosten rund 5,0 Mio. € (Einfeld) gegenüber rund 11,7 Mio. € (Dreifeld).",
+    "beleg": "Vorlagen 24/0462 S. 2–3 und 24/0462/1 S. 2–3"
+   },
+   {
+    "id": "F3",
+    "gewicht": 3,
+    "fakt": "2024 wurde nicht entschieden: Der Sportausschuss vertagte am 14.08.2024 (einstimmig), der Betriebsausschuss Gebäudewirtschaft und Hochbau ließ den Punkt am 05.09.2024 „als behandelt gelten“ (bis zur Stellungnahme des Stadtsportbunds), der Sportausschuss vertagte am 11.09.2024 erneut; entschieden werden sollte nach Auswertung der Sporthallen-Neuvergabe 2025.",
+    "beleg": "Sportausschuss 14.08.2024 TOP 9.1 (id 19564); BEGH 05.09.2024 TOP 10.2 (id 18646, Wortbeiträge 108238–108240); Sportausschuss 11.09.2024 TOP 8.1 (id 19576); Vorlage 26/0089 Anlass"
+   },
+   {
+    "id": "F4",
+    "gewicht": 1,
+    "fakt": "Der Stadtsportbund sah im September 2024 keinen klaren Vereinsbedarf am Fliegerhorst und schlug zunächst eine Einfeldhalle mit Erweiterungsoption vor; nach seiner Bedarfserhebung sprach er sich im November 2025 für eine Dreifeldhalle auf dem Fliegerhorst aus.",
+    "beleg": "Sportausschuss 11.09.2024, Wortbeiträge 105175, 105176; Sportausschuss 12.11.2025, Wortbeitrag 104919; Vorlage 26/0089"
+   },
+   {
+    "id": "F5",
+    "gewicht": 1,
+    "fakt": "Die Auswertung der Hallen-Neuvergabe ergab stadtweit einen Bedarf von rund drei zusätzlichen Hallenteilen.",
+    "beleg": "Sportausschuss 10.09.2025 TOP 5, Vorlage 25/0555 (Beschluss-id 19597); Vorlage 26/0089 Bericht"
+   },
+   {
+    "id": "F6",
+    "gewicht": 3,
+    "fakt": "Der Sportausschuss stimmte dem Antrag am 11.02.2026 einstimmig zu; der Rat beschloss am 23.02.2026 mehrheitlich bei einer Gegenstimme: „Auf dem Gelände der künftigen Grundschule Fliegerhorst wird statt der geplanten Einfeldhalle eine Dreifeldhalle errichtet.“",
+    "beleg": "Sportausschuss 11.02.2026 TOP 9.1, Vorlage 26/0089, Beschluss-id 20518; Rat 23.02.2026 TOP 12.1, Vorlage 26/0089/1, Beschluss-id 20730"
+   },
+   {
+    "id": "F7",
+    "gewicht": 2,
+    "fakt": "Der Beschluss fiel gegen die Empfehlung der Verwaltung: Oberbürgermeister Krogmann sah am Fliegerhorst keinen Bedarf, Planungsmittel standen nicht im Wirtschaftsplan des Eigenbetriebs; das Investitionscontrolling hielt den Bau mangels schulischen Bedarfs für unvereinbar mit § 110 NKomVG/§ 12 KomHKVO. Die Verwaltung bevorzugte zusätzliche Kapazität an der Kennedystraße.",
+    "beleg": "Rat 23.02.2026 TOP 12.1, Wortbeitrag 49075; Vorlage 26/0089/1 S. 2"
+   },
+   {
+    "id": "F8",
+    "gewicht": 1,
+    "fakt": "Neben der CDU erklärten 2026 SPD, Grüne, FDP, BSW und für Für Oldenburg Sander Zustimmung, meist mit Verweis auf den vom Stadtsportbund belegten Bedarf.",
+    "beleg": "Sportausschuss 11.02.2026, Wortbeiträge 50399–50405; Rat 23.02.2026, Wortbeiträge 49070–49074"
+   },
+   {
+    "id": "F9",
+    "gewicht": 2,
+    "fakt": "Umsetzung: Der Betriebsausschuss Gebäudewirtschaft und Hochbau fasste am 05.03.2026 einstimmig den Planungsbeschluss für die Grundschule Fliegerhorst im Funktionszusammenhang mit einer Dreifeldsporthalle (Vergabe an einen Generalübernehmer; orientierende Kosten: Halle knapp unter 20 Mio. €, Schule rund 16 Mio. €; Fertigstellung der Schule 2029 angestrebt).",
+    "beleg": "BEGH 05.03.2026 TOP 6, Vorlage 26/0170, Beschluss-id 20842; Vorlage 26/0089/1 S. 3"
+   },
+   {
+    "id": "F10",
+    "gewicht": 1,
+    "fakt": "Getrennt davon beschloss der Rat am 29.06.2026 eine Sechsfeldhalle an der Kennedystraße als Ersatz für die Brandsweghalle (Antrag SPD, Grüne, CDU, FDP); laut Verwaltung werden beide Hallen umgesetzt.",
+    "beleg": "Rat 29.06.2026 TOP 14.1 (Beschluss-id 21044); PM 30.06.2026; Sportausschuss 10.06.2026, Wortbeitrag 50348"
+   },
+   {
+    "id": "F11",
+    "gewicht": 2,
+    "fakt": "Stand: Die Dreifeldhalle ist beschlossen und in Planung, aber weder gebaut noch per Baubeschluss freigegeben; belastbare Kosten gibt es erst mit der Entwurfsplanung.",
+    "beleg": "Vorlagen 26/0089/1 und 26/0170 (Kosten nur orientierend); kein späterer Bau- oder Vergabebeschluss im Bestand bis 31.08.2026"
+   }
+  ],
+  "verboten": [
+   {
+    "id": "X1",
+    "behauptung": "Der Antrag wurde abgelehnt bzw. auf dem Fliegerhorst wird nur eine Einfeldhalle gebaut."
+   },
+   {
+    "id": "X2",
+    "behauptung": "Die Dreifeldhalle auf dem Fliegerhorst ist gebaut, im Bau oder eröffnet."
+   },
+   {
+    "id": "X3",
+    "behauptung": "Der Rat beschloss die Dreifeldhalle einstimmig."
+   },
+   {
+    "id": "X4",
+    "behauptung": "Die eine Gegenstimme im Rat am 23.02.2026 wird einer bestimmten Fraktion oder Person zugeordnet; das Protokoll nennt das nicht."
+   },
+   {
+    "id": "X5",
+    "behauptung": "Mit „gilt als behandelt“ im September 2024 war der Antrag erledigt, abgelehnt oder zurückgezogen."
+   }
+  ],
+  "material": [
+   {
+    "id": "M1",
+    "fuer": [
+     "F1",
+     "F3"
+    ],
+    "art": "beschluss",
+    "session_date": "2024-08-14",
+    "committee": "Sportausschuss",
+    "titel_enthaelt": "Dreifeldhalle"
+   },
+   {
+    "id": "M1b",
+    "fuer": [
+     "F2"
+    ],
+    "art": "debatte",
+    "session_date": "2024-08-14",
+    "text_enthaelt_eins": [
+     "Einfeldhalle ausreiche",
+     "zentrumsnah"
+    ]
+   },
+   {
+    "id": "M2",
+    "fuer": [
+     "F3"
+    ],
+    "art": "beschluss",
+    "session_date": "2024-09-05",
+    "committee": "Gebäudewirtschaft",
+    "titel_enthaelt": "Dreifeldhalle"
+   },
+   {
+    "id": "M3",
+    "fuer": [
+     "F3"
+    ],
+    "art": "debatte",
+    "session_date": "2024-09-05",
+    "text_enthaelt_eins": [
+     "als behandelt"
+    ]
+   },
+   {
+    "id": "M4",
+    "fuer": [
+     "F4"
+    ],
+    "art": "debatte",
+    "session_date": "2024-09-11",
+    "text_enthaelt_eins": [
+     "Erweiterungsoption"
+    ]
+   },
+   {
+    "id": "M5",
+    "fuer": [
+     "F5"
+    ],
+    "art": "beschluss",
+    "session_date": "2025-09-10",
+    "committee": "Sportausschuss",
+    "titel_enthaelt": "Neuvergabe"
+   },
+   {
+    "id": "M6",
+    "fuer": [
+     "F6"
+    ],
+    "art": "beschluss",
+    "session_date": "2026-02-11",
+    "committee": "Sportausschuss",
+    "titel_enthaelt": "Dreifeldhalle"
+   },
+   {
+    "id": "M7",
+    "fuer": [
+     "F6"
+    ],
+    "art": "beschluss",
+    "session_date": "2026-02-23",
+    "committee": "Rat",
+    "titel_enthaelt": "Dreifeldhalle"
+   },
+   {
+    "id": "M8",
+    "fuer": [
+     "F7"
+    ],
+    "art": "debatte",
+    "session_date": "2026-02-23",
+    "text_enthaelt_eins": [
+     "entgegen der Empfehlung",
+     "Wirtschaftsplan"
+    ]
+   },
+   {
+    "id": "M9",
+    "fuer": [
+     "F8"
+    ],
+    "art": "debatte",
+    "session_date": "2026-02-11",
+    "text_enthaelt_eins": [
+     "nachvollziehbar nachgewiesen",
+     "überzeugend dargelegt"
+    ]
+   },
+   {
+    "id": "M10",
+    "fuer": [
+     "F9",
+     "F11"
+    ],
+    "art": "beschluss",
+    "session_date": "2026-03-05",
+    "committee": "Gebäudewirtschaft",
+    "titel_enthaelt": "Sporthalle Fliegerhorst"
+   },
+   {
+    "id": "M11",
+    "fuer": [
+     "F10"
+    ],
+    "art": "presse",
+    "date": "2026-06-30",
+    "titel_enthaelt": "Sechsfeldhalle"
+   }
+  ],
+  "bewertung": "Abdeckung = Summe der Gewichte erfüllter Pflichtfakten / Gesamtgewicht (20). Jede verbotene Behauptung ist ein harter Fehler. Bestanden: Abdeckung >= 0,6, F3 und F6 erfüllt, keine verbotene Behauptung."
+ },
+ {
+  "id": "behrens-baumschutz",
+  "note": "Personenfrage. Handgeprüft am 02.10.2026 gegen council_speeches, Protokoll-Volltexte (council_protocols.raw_text: ASUK 4439, 4443, 4441, 4664, 4665, 4197; Rat 4499, 4505), Beschlüsse und Pressemitteilungen. Fallstrick Namensvettern: In den Einwohnerfragestunden des ASUK am 11.09.2025 und 11.06.2026 fragt laut Protokoll ein „Einwohner Behrens“ (nicht der Ratsherr) nach den Fällungen an der Nadorster Straße; die Protokollführerin des ASUK heißt ebenfalls Behrens. Viele Wortbeiträge des Ratsherrn stehen in council_speeches nur als „Behrens“ ohne Partei. Paul Behrens spricht auch in Sozial- und Schulausschuss viel – die Antwort muss beim Baumschutz bleiben.",
+  "stand": "2026-10-01 (Prod-Abzug)",
+  "question": "Was hat Paul Behrens (SPD) im Rat und im Umweltausschuss zum Baumschutz gesagt und beantragt?",
+  "varianten": [
+   "Wie hat sich Ratsherr Behrens zur Baumschutzsatzung positioniert?",
+   "Welche Anträge zum Schutz von Bäumen hat Paul Behrens eingebracht?"
+  ],
+  "pflicht": [
+   {
+    "id": "F1",
+    "gewicht": 3,
+    "fakt": "Behrens (SPD-Fraktion, Mitglied im Ausschuss für Stadtgrün, Umwelt und Klima) setzte sich gemeinsam mit den Grünen für eine Baumerhalt- und Entwicklungsstrategie ein; der Antrag von SPD und Grünen „Baumerhalt- und Entwicklungsstrategie auf den Weg bringen und konsequent umsetzen“ wurde im ASUK am 12.09.2024 (mehrheitlich bei drei Gegenstimmen) und im Rat am 30.09.2024 (mehrheitlich bei 13 Gegenstimmen und einer Enthaltung) angenommen. Er betonte, die Strategie müsse öffentlichen und privaten Raum umfassen und ein verbindliches Regelwerk einschließen (Nebenangabe: „Verbindlichkeit“ bewusst statt des belasteten Begriffs „Satzung“).",
+    "beleg": "ASUK 12.09.2024 TOP 12.1 (Beschluss id=18682, Wortbeitrag id=63126); Rat 30.09.2024 TOP 15.3 (Beschluss id=19306, Wortbeitrag id=59414)"
+   },
+   {
+    "id": "F2",
+    "gewicht": 3,
+    "fakt": "Er warb für die Baumschutzsatzung: Im ASUK am 12.06.2025 sagte er, die SPD stehe zur Baumschutzstrategie, eine Satzung sei nötig; von 487 Einwendungen seien viele negativ gewesen; die SPD habe ihren eigenen Antrag zurückgezogen, weil die Verwaltung Änderungen übernommen habe. Im Rat am 30.06.2025 sagte er, die SPD habe sich zunächst mit dem NABU nur für eine Strategie eingesetzt, dann sei ein verbindliches Regelwerk nötig geworden; der Entwurf sei vergleichsweise bürgerfreundlich. Der Rat beschloss die Satzung (Vorlage 25/0387) mehrheitlich bei 15 Gegenstimmen.",
+    "beleg": "ASUK 12.06.2025 TOP 7.1 (Beschluss id=20032, Wortbeitrag id=102479, Protokoll 4439 S. 12); Rat 30.06.2025 TOP 11.1 (Beschluss id=20431, Wortbeitrag id=100751)"
+   },
+   {
+    "id": "F3",
+    "gewicht": 2,
+    "fakt": "Platanen am Stadtmuseum: Behrens brachte im Rat am 29.09.2025 den gemeinsamen Antrag von Grünen, SPD und CDU zum Erhalt der beiden Platanen ein (beschlossen einstimmig bei einer Enthaltung, Vorlage 25/0618) und schlug die Namen „Theo“ und „Leni“ vor (nach Theodor Francksen und Helene Lange). Im ASUK am 13.11.2025 kritisierte er den Umfang der geplanten Schnittmaßnahmen.",
+    "beleg": "ASUK 11.09.2025 TOP 5 (Beschluss id=20038, einstimmig); Rat 29.09.2025 TOP 11.4 (Beschluss id=20470, Wortbeitrag id=50993); ASUK 13.11.2025 TOP 11 (Wortbeitrag id=102271, Protokoll 4443)"
+   },
+   {
+    "id": "F4",
+    "gewicht": 2,
+    "fakt": "Informationspflicht über Baumfällungen: Behrens brachte den SPD-Antrag vom 01.04.2026 im ASUK am 16.04.2026 ein; eine halbjährliche Berichterstattung reiche, es gehe ihm um prägnante Bäume, damit man auf Bürgeranfragen reagieren könne. Der Bericht wurde zur Kenntnis genommen; im Rat am 01.06.2026 wurde der Punkt abgesetzt – beschlossen ist nichts.",
+    "beleg": "ASUK 16.04.2026 TOP 11.8 (Beschluss id=20912, Wortbeiträge id=98486, 98490, 98495; Protokoll 4664 S. 18–19); Rat 01.06.2026 TOP 15.3 (id=20980, abgesetzt)"
+   },
+   {
+    "id": "F5",
+    "gewicht": 2,
+    "fakt": "Schramperweg: Behrens erläuterte 2023 den gemeinsamen Antrag von SPD und Grünen „Alten Baumbestand am Schramperweg ausreichend schützen“ (ASUK 08.06.2023 einstimmig angenommen) und begrüßte im Rat am 26.02.2024 die Ausweisung der Gehölze als Geschützte Landschaftsbestandteile, die fast alle Eichen am Schramperweg unter Schutz stelle (Rat: einstimmig bei einer Enthaltung).",
+    "beleg": "ASUK 11.05.2023 TOP 10.2 (Wortbeitrag id=69470); ASUK 08.06.2023 TOP 13.2 (Beschluss id=17641); Rat 26.02.2024 TOP 8.1 (Beschluss id=19160, Wortbeitrag id=59675)"
+   },
+   {
+    "id": "F6",
+    "gewicht": 1,
+    "fakt": "Zur Kompensation forderte er Ersatzbäume mit größerem Stammumfang und regte an, Tiny Forests mitzudenken und den Wert von Bäumen ins Anlagevermögen aufzunehmen (mindestens zwei dieser Punkte).",
+    "beleg": "ASUK 14.12.2023 TOP 13 (Wortbeitrag id=111823); ASUK 18.04.2024 TOP 6 (Wortbeitrag id=108603, Protokoll 4197 S. 7)"
+   },
+   {
+    "id": "F7",
+    "gewicht": 1,
+    "fakt": "Untere Nadorster Straße: Im Rat am 29.09.2025 sagte er, Verkehrssicherheit sei für die SPD nicht verhandelbar, Baumschutz habe aber hohe Priorität; Bäume dürften nicht gegen Stellplätze abgewogen werden, die Einigung auf den Erhalt von vier Bäumen sei eine politische Entscheidung gewesen.",
+    "beleg": "Rat 29.09.2025 TOP 5 und TOP 9.1/11.1 (Wortbeiträge id=50926, 50969)"
+   },
+   {
+    "id": "F8",
+    "gewicht": 1,
+    "fakt": "Weitere Beiträge: Bei den Fällungen auf dem Fliegerhorst fragte er, warum Bäume in den Randbereichen nicht erhalten werden könnten (ASUK 13.02.2025); den CDU-Antrag „Förderprogramm Baumerhalt“ ließ er vertagen, weil die Inhalte schon in der Strategie stünden (mindestens einer genannt).",
+    "beleg": "ASUK 13.02.2025 TOP 10.1 und 11.3 (Wortbeiträge id=102729, 102736, 102766; Beschluss id=19995 vertagt)"
+   },
+   {
+    "id": "F9",
+    "gewicht": 1,
+    "fakt": "Die Baumschutzsatzung gilt seit 19.07.2025 und blieb nach dem Bürgerentscheid vom 22.02.2026 bestehen: 60,58 % stimmten zwar für die Aufhebung, das Quorum von 20 % der Stimmberechtigten wurde aber verfehlt.",
+    "beleg": "Pressemitteilungen Stadt Oldenburg 22.02.2026 und 24.02.2026"
+   },
+   {
+    "id": "F10",
+    "gewicht": 1,
+    "fakt": "Jüngster Stand: Die SPD-Fraktion beantragte am 18.05.2026 zusammen mit dem BSW Änderungen der Baumschutzsatzung (u. a. Jungbaum mit 12–14 cm statt 20–25 cm Stammumfang als Ersatz, Härtefallregel, 400 Euro Ausgleich je Baum, Erfahrungsbericht). Im Rat am 29.06.2026 abgesetzt, im ASUK am 13.08.2026 auf der Tagesordnung; ein Ergebnis ist im Bestand nicht dokumentiert.",
+    "beleg": "Vorlage 26/0613 (Berichtsvorlage zum Antrag SPD/BSW); Rat 29.06.2026 TOP 14.10 (id=21053, abgesetzt); Tagesordnung ASUK 13.08.2026 TOP 14.1"
+   }
+  ],
+  "verboten": [
+   {
+    "id": "X1",
+    "behauptung": "Paul Behrens habe in einer Einwohnerfragestunde nach den Kriterien für die Fällung der Sumpfeichen an der Nadorster Straße oder nach zusätzlichen Jungbäumen gefragt (das war ein Einwohner gleichen Nachnamens, 11.09.2025 und 11.06.2026)."
+   },
+   {
+    "id": "X2",
+    "behauptung": "Behrens bzw. die SPD habe 2025 gegen die Baumschutzsatzung gestimmt oder sie abgelehnt."
+   },
+   {
+    "id": "X3",
+    "behauptung": "Die Baumschutzsatzung sei durch den Bürgerentscheid aufgehoben worden."
+   },
+   {
+    "id": "X4",
+    "behauptung": "Behrens wird einer anderen Fraktion als der SPD zugeordnet (etwa den Grünen oder dem BSW)."
+   }
+  ],
+  "bewertung": "Abdeckung = Summe der Gewichte erfüllter Pflichtfakten / Gesamtgewicht (17). Jede verbotene Behauptung ist ein harter Fehler. Bestanden: Abdeckung >= 0,6, F1 und F2 erfüllt, keine verbotene Behauptung.",
+  "material": [
+   {
+    "id": "M1",
+    "fuer": [
+     "F1"
+    ],
+    "art": "beschluss",
+    "session_date": "2024-09-30",
+    "committee": "Rat",
+    "titel_enthaelt": "Baumerhalt- und Entwicklungsstrategie"
+   },
+   {
+    "id": "M2",
+    "fuer": [
+     "F1"
+    ],
+    "art": "debatte",
+    "session_date": "2024-09-12",
+    "text_enthaelt_eins": [
+     "stark belasteten Begriffs"
+    ]
+   },
+   {
+    "id": "M3",
+    "fuer": [
+     "F2"
+    ],
+    "art": "debatte",
+    "session_date": "2025-06-12",
+    "text_enthaelt_eins": [
+     "487",
+     "Antrag sei zurückgezogen"
+    ]
+   },
+   {
+    "id": "M4",
+    "fuer": [
+     "F2"
+    ],
+    "art": "beschluss",
+    "session_date": "2025-06-30",
+    "committee": "Rat",
+    "titel_enthaelt": "Satzung zum Schutz"
+   },
+   {
+    "id": "M5",
+    "fuer": [
+     "F2"
+    ],
+    "art": "debatte",
+    "session_date": "2025-06-30",
+    "text_enthaelt_eins": [
+     "NABU",
+     "bürgerfreundlich"
+    ]
+   },
+   {
+    "id": "M6",
+    "fuer": [
+     "F3"
+    ],
+    "art": "beschluss",
+    "session_date": "2025-09-29",
+    "committee": "Rat",
+    "titel_enthaelt": "Platanen"
+   },
+   {
+    "id": "M7",
+    "fuer": [
+     "F3"
+    ],
+    "art": "debatte",
+    "session_date": "2025-09-29",
+    "text_enthaelt_eins": [
+     "Theo",
+     "Leni"
+    ]
+   },
+   {
+    "id": "M8",
+    "fuer": [
+     "F4"
+    ],
+    "art": "beschluss",
+    "session_date": "2026-04-16",
+    "committee": "Stadtgrün",
+    "titel_enthaelt": "Informationspflicht über Baumfällungen"
+   },
+   {
+    "id": "M9",
+    "fuer": [
+     "F4"
+    ],
+    "art": "debatte",
+    "session_date": "2026-04-16",
+    "text_enthaelt_eins": [
+     "halbjährliche Berichterstattung",
+     "prägnante Bäume"
+    ]
+   },
+   {
+    "id": "M10",
+    "fuer": [
+     "F5"
+    ],
+    "art": "beschluss",
+    "session_date": "2024-02-26",
+    "committee": "Rat",
+    "titel_enthaelt": "Geschützte Landschaftsbestandteile"
+   },
+   {
+    "id": "M11",
+    "fuer": [
+     "F6"
+    ],
+    "art": "debatte",
+    "session_date": "2024-04-18",
+    "text_enthaelt_eins": [
+     "Tiny Forests",
+     "Anlagevermögen"
+    ]
+   },
+   {
+    "id": "M12",
+    "fuer": [
+     "F7"
+    ],
+    "art": "debatte",
+    "session_date": "2025-09-29",
+    "text_enthaelt_eins": [
+     "Stellplätze",
+     "vier Bäumen"
+    ]
+   },
+   {
+    "id": "M13",
+    "fuer": [
+     "F9"
+    ],
+    "art": "presse",
+    "date": "2026-02-22",
+    "titel_enthaelt": "Baumschutzsatzung bleibt bestehen"
+   },
+   {
+    "id": "M14",
+    "fuer": [
+     "F10"
+    ],
+    "art": "beschluss",
+    "session_date": "2026-06-29",
+    "committee": "Rat",
+    "titel_enthaelt": "Änderungen der Baumschutzsatzung"
+   },
+   {
+    "id": "M15",
+    "fuer": [
+     "F8"
+    ],
+    "art": "debatte",
+    "session_date": "2025-02-13",
+    "text_enthaelt_eins": [
+     "Randgebiete"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "asuk-2026-02-12-beschluesse",
+  "note": "Sitzungsfrage. Handgeprüft am 02.10.2026 gegen Protokoll ASUK 01/26 (council_protocols ksinr=4663, 22 Seiten), council_decisions der Sitzung, die Folgeberatungen (council_deliberations, Rat 23.02.2026 ksinr=4625, Rat 31.08.2026) und Pressemitteilungen. Von 16 Tagesordnungspunkten mit Ergebnis sind nur vier echte Sachbeschlüsse; die meisten Punkte sind Berichte, zwei FDP-Anträge wurden nur verwiesen. Formal-TOPs (Tagesordnung, Protokoll) gehören nicht in die Antwort.",
+  "stand": "2026-10-01 (Prod-Abzug)",
+  "question": "Was hat der Ausschuss für Stadtgrün, Umwelt und Klima am 12. Februar 2026 beschlossen?",
+  "varianten": [
+   "Welche Beschlüsse fasste der Umweltausschuss in seiner Sitzung vom 12.02.2026?",
+   "Was kam bei der ASUK-Sitzung im Februar 2026 heraus?"
+  ],
+  "pflicht": [
+   {
+    "id": "F1",
+    "gewicht": 3,
+    "fakt": "Der Ausschuss beschloss einstimmig das „Konzept für eine treibhausgasneutrale Verwaltung“ (Vorlage 25/0896), das das Niedersächsische Klimagesetz (§ 18) von kreisfreien Städten verlangt; es gilt für Kernverwaltung und Eigenbetriebe, nicht verpflichtend für die städtischen Gesellschaften. Der Rat folgte am 23.02.2026 (einstimmig bei fünf Enthaltungen).",
+    "beleg": "ASUK 12.02.2026 TOP 5 (Beschluss id=20847; Wortbeiträge id=98538, 98539; Protokoll S. 5–7); Rat 23.02.2026 TOP 7.1 (id=20716)"
+   },
+   {
+    "id": "F2",
+    "gewicht": 2,
+    "fakt": "Auf Antrag der Grünen (21.01.2026) beauftragte der Ausschuss einstimmig die Verwaltung, die Starkregen-Förderrichtlinie (Zuschüsse für Regentonnen und Flächenentsiegelung, bisher nur Ofenerdiek) auf das ganze Stadtgebiet auszuweiten. Der Rat stimmte am 23.02.2026 einstimmig zu; die geänderte Richtlinie (Vorlage 26/0644) beschloss der Rat am 31.08.2026 mehrheitlich bei einer Gegenstimme und einer Enthaltung.",
+    "beleg": "ASUK 12.02.2026 TOP 15.3 (id=20859); Rat 23.02.2026 TOP 12.6 (id=20732); Rat 31.08.2026 TOP 6.2 (id=21959)"
+   },
+   {
+    "id": "F3",
+    "gewicht": 2,
+    "fakt": "Einstimmig beschlossen wurde die Neufassung der Richtlinie zur Förderung von Gebäude- und Solar-Checks („Check-Richtlinie“, Vorlage 25/0865); die Richtlinie vom 16.12.2024 tritt außer Kraft (Rat 23.02.2026 einstimmig).",
+    "beleg": "ASUK 12.02.2026 TOP 7 (id=20849); Rat 23.02.2026 TOP 7.3 (id=20718)"
+   },
+   {
+    "id": "F4",
+    "gewicht": 1,
+    "fakt": "Wettbewerb „Alle fürs Klima 2025“ (einstimmig): Der Preis von 1.000 Euro ging an die „Schnibbeldisko Bloherfelde“ des Ökumenischen Zentrums Oldenburg; Anerkennungen von je 250 Euro an „Solarcamp“ und „Kochworkshops für Kinder“ (Ernährungsrat). Der Rat bestätigte am 23.02.2026.",
+    "beleg": "ASUK 12.02.2026 TOP 6 (id=20848, Vorlage 26/0071); Rat 23.02.2026 TOP 7.2 (id=20717); PM 26.02.2026"
+   },
+   {
+    "id": "F5",
+    "gewicht": 2,
+    "fakt": "Über die FDP-Anträge zur Überarbeitung der Förderrichtlinien Fassaden- und Dachbegrünung wurde nicht in der Sache entschieden: Sie wurden einstimmig in den Ausschuss für Stadtplanung und Bauen verwiesen (dorthin hatte der Finanzausschuss sie schon am 04.02.2026 verwiesen). Der ASB vertagte sie am 19.02. und 19.03.2026 und nahm am 27.08.2026 einen Bericht (26/0538) zur Kenntnis.",
+    "beleg": "ASUK 12.02.2026 TOP 15.1/15.2 (id=20857, 20858; Protokoll S. 15–16); ASB 19.02.2026 (id=20635), 19.03.2026 (id=20685), 27.08.2026 (id=21947)"
+   },
+   {
+    "id": "F6",
+    "gewicht": 2,
+    "fakt": "Die übrigen Punkte waren Berichte ohne Beschluss (zur Kenntnis genommen), darunter: Unterschutzstellung des Heidbrooks (angestrebt wird ein Landschafts-, kein Naturschutzgebiet), Ernährungsrat, Grundwassermonitoring an der ehemaligen Schießanlage Fliegerhorst, Überschwemmungsgebiet Bümmersteder Fleth, Wiedervernässung Ipweger Moor, Förderprogramm Altbau, Klimaschutz-Aktivitäten 1/2026, geplantes Wohnquartier Krusenbusch und Ausnahmeanträge nach der Baumschutzsatzung (mindestens drei genannt und als Bericht/ohne Beschluss eingeordnet).",
+    "beleg": "ASUK 12.02.2026 TOP 8–14, 15.4, 15.5 (ids 20850–20856, 20860, 20861)"
+   },
+   {
+    "id": "F7",
+    "gewicht": 1,
+    "fakt": "Zum Ernährungsrat wurde über die Haushaltskürzung gestritten: Im Haushalt sind 50.000 Euro eingeplant, der Zuwendungsvertrag (bis 2028) sah jährlich 103.950 Euro vor; der Ausschuss fasste dazu keinen Beschluss.",
+    "beleg": "ASUK 12.02.2026 TOP 8 (Vorlage 26/0072; Wortbeiträge id=98556, 98558; Protokoll S. 8–10)"
+   },
+   {
+    "id": "F8",
+    "gewicht": 1,
+    "fakt": "Zur Baumschutzsatzung berichtete die Verwaltung (Stand 11.02.2026): 90 Anträge für 218 Bäume, Genehmigungsquote 64 %, 306 nachgepflanzte Bäume (mindestens zwei Zahlen).",
+    "beleg": "ASUK 12.02.2026 TOP 15.5 (Wortbeitrag id=98649; Protokoll S. 20)"
+   }
+  ],
+  "verboten": [
+   {
+    "id": "X1",
+    "behauptung": "Der Ausschuss habe den Heidbrook unter Schutz gestellt bzw. ein Natur- oder Landschaftsschutzgebiet beschlossen."
+   },
+   {
+    "id": "X2",
+    "behauptung": "Der Ausschuss habe die Förderrichtlinien für Fassaden- oder Dachbegrünung geändert oder die FDP-Anträge abgelehnt."
+   },
+   {
+    "id": "X3",
+    "behauptung": "Der Ausschuss habe die Kürzung der Mittel für den Ernährungsrat beschlossen oder zurückgenommen."
+   },
+   {
+    "id": "X4",
+    "behauptung": "Das Konzept für eine treibhausgasneutrale Verwaltung verpflichte auch die städtischen Gesellschaften."
+   }
+  ],
+  "bewertung": "Abdeckung = Summe der Gewichte erfüllter Pflichtfakten / Gesamtgewicht (14). Jede verbotene Behauptung ist ein harter Fehler. Bestanden: Abdeckung >= 0,6, F1 erfüllt, keine verbotene Behauptung.",
+  "material": [
+   {
+    "id": "M1",
+    "fuer": [
+     "F1"
+    ],
+    "art": "beschluss",
+    "session_date": "2026-02-12",
+    "committee": "Stadtgrün",
+    "titel_enthaelt": "treibhausgasneutrale Verwaltung"
+   },
+   {
+    "id": "M2",
+    "fuer": [
+     "F1"
+    ],
+    "art": "beschluss",
+    "session_date": "2026-02-23",
+    "committee": "Rat",
+    "titel_enthaelt": "treibhausgasneutrale Verwaltung"
+   },
+   {
+    "id": "M3",
+    "fuer": [
+     "F2"
+    ],
+    "art": "beschluss",
+    "session_date": "2026-02-12",
+    "committee": "Stadtgrün",
+    "titel_enthaelt": "Starkregen"
+   },
+   {
+    "id": "M4",
+    "fuer": [
+     "F2"
+    ],
+    "art": "beschluss",
+    "session_date": "2026-08-31",
+    "committee": "Rat",
+    "titel_enthaelt": "Starkregenvorsorge"
+   },
+   {
+    "id": "M5",
+    "fuer": [
+     "F3"
+    ],
+    "art": "beschluss",
+    "session_date": "2026-02-12",
+    "committee": "Stadtgrün",
+    "titel_enthaelt": "Solar-Checks"
+   },
+   {
+    "id": "M6",
+    "fuer": [
+     "F4"
+    ],
+    "art": "beschluss",
+    "session_date": "2026-02-12",
+    "committee": "Stadtgrün",
+    "titel_enthaelt": "Alle fürs Klima"
+   },
+   {
+    "id": "M7",
+    "fuer": [
+     "F5"
+    ],
+    "art": "beschluss",
+    "session_date": "2026-02-12",
+    "committee": "Stadtgrün",
+    "titel_enthaelt": "Fassadenbegrünung"
+   },
+   {
+    "id": "M8",
+    "fuer": [
+     "F6"
+    ],
+    "art": "beschluss",
+    "session_date": "2026-02-12",
+    "committee": "Stadtgrün",
+    "titel_enthaelt": "Heidbrook"
+   },
+   {
+    "id": "M9",
+    "fuer": [
+     "F7"
+    ],
+    "art": "debatte",
+    "session_date": "2026-02-12",
+    "text_enthaelt_eins": [
+     "50.000 Euro",
+     "103.950"
+    ]
+   },
+   {
+    "id": "M10",
+    "fuer": [
+     "F8"
+    ],
+    "art": "debatte",
+    "session_date": "2026-02-12",
+    "text_enthaelt_eins": [
+     "218 Bäume",
+     "306 Bäume"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "heidbrook-zusagen",
+  "note": "Zusagen-Frage. Handgeprüft am 02.10.2026 gegen council_speeches (kind pledge und Antworten), Protokoll-Volltexte (ASUK 4440, 4441, 4444, 4663, 4665; ASB 4473), Vorlagen 24/0169 und 26/0051 sowie Pressemitteilungen. Die Zusagen stehen verstreut unter TOPs mit anderem Titel (Einwohnerfragestunde, Anfragen und Anregungen, Waldentwicklung). Wichtig: Es gibt bis heute keinen Rats- oder Ausschussbeschluss zur Unterschutzstellung, nur Berichte; die Pressemitteilung „Heidbrook unter Schutz“ vom 12.02.2026 beschreibt ein Vorhaben, keinen erlassenen Schutz. Einwohnerinnen und Einwohner, die gefragt haben, werden bewusst nicht namentlich genannt. Das Protokoll der ASUK-Sitzung vom 13.08.2026 liegt im Bestand noch nicht vor.",
+  "stand": "2026-10-01 (Prod-Abzug)",
+  "question": "Was hat die Stadtverwaltung zur Unterschutzstellung des Heidbrooks zugesagt, und was ist daraus geworden?",
+  "varianten": [
+   "Wann wird der Heidbrook unter Schutz gestellt?",
+   "Welche Zusagen gab es im Umweltausschuss zum Heidbrook?"
+  ],
+  "pflicht": [
+   {
+    "id": "F1",
+    "gewicht": 3,
+    "fakt": "Die Verwaltung strebt für den Heidbrook ein Landschaftsschutzgebiet an, kein Naturschutzgebiet: große Teile erfüllen laut Landschaftsrahmenplan die Voraussetzungen eines LSG, nur kleinere Teilflächen die eines NSG. Das Gebiet soll parallel zur Entlastungsstraße bzw. Ofenerdieker Bäke zwischen Ammerländer Heerstraße und Alexanderstraße liegen; ein kombiniertes Schutzgebiet lehnte die Verwaltung ab, besondere Regelungen (etwa für Amphibien) und ein Pflege- und Entwicklungsplan seien aber möglich.",
+    "beleg": "ASUK 12.02.2026 TOP 9, Vorlage 26/0051 (Beschluss id=20851 zur Kenntnis; Wortbeitrag id=98579; Protokoll 4663 S. 10–11); PM 12.02.2026"
+   },
+   {
+    "id": "F2",
+    "gewicht": 3,
+    "fakt": "Jüngster Stand (11.06.2026): Die Schutzgebietsverordnung soll erst im nächsten Jahr (2027) kommen; als Gründe für die Verzögerung nannte die Verwaltung organisatorische Gründe, erhöhten Prüfaufwand und Personalengpässe. Ein Schutzgebiet ist bislang nicht ausgewiesen.",
+    "beleg": "ASUK 11.06.2026 TOP 13 und TOP 16 (Wortbeiträge id=47723, 47732)"
+   },
+   {
+    "id": "F3",
+    "gewicht": 2,
+    "fakt": "Im August 2025 sagte die Stadtbaurätin auf einen Antrag zweier beratender Mitglieder („Naturschutzgebiet Oldenburger Heidbrook“) zu, das Verfahren werde eingeleitet und der Ablauf einer Unterschutzstellung für die Septembersitzung aufbereitet. Eingelöst: Am 11.09.2025 stellte die Verwaltung das Verwaltungsverfahren einer Schutzgebietsausweisung vor (zu Protokoll: eine Beteiligung von BUND und NABU über eigene Fachgutachten sei nicht erforderlich, sie könnten sich in der öffentlichen Auslegung einbringen).",
+    "beleg": "ASUK 14.08.2025 TOP 8.5 (id=21859; Zusage id=102588; Protokoll 4440 S. 17–18); ASUK 11.09.2025 TOP 11 (id=20043; Protokollnotiz id=102382)"
+   },
+   {
+    "id": "F4",
+    "gewicht": 2,
+    "fakt": "Im Dezember 2025 wurde ein Bericht für Anfang 2026 und die Anmeldung eines eigenen Tagesordnungspunkts zugesagt; eingelöst mit dem Sachstandsbericht im ASUK am 12.02.2026 (Vorlage 26/0051).",
+    "beleg": "ASUK 11.12.2025 TOP 4 und 11 (Antwort zu id=102066; Zusage id=102155); ASUK 12.02.2026 TOP 9 (id=20851)"
+   },
+   {
+    "id": "F5",
+    "gewicht": 2,
+    "fakt": "Offene Zusage aus der Vorlage 26/0051: Nach Klärung der Gebietsabgrenzung soll ein Verordnungsentwurf erarbeitet werden, und vor der gesetzlich vorgeschriebenen Beteiligung will die Verwaltung im ASUK erneut über Abgrenzung und Inhalte berichten – das ist bis zum Stand nicht geschehen.",
+    "beleg": "Vorlage 26/0051 S. 2 (Sachstandsbericht vom 10.02.2026); keine entsprechende Vorlage bis 01.10.2026"
+   },
+   {
+    "id": "F6",
+    "gewicht": 2,
+    "fakt": "Heuschrecken: Der Antrag auf eine Kartierung der Heuschreckenbestände im Raum Heidbrook/Kuhbrook wurde im Juni 2024 abgelehnt (ASUK 13.06.2024; Rat 17.06.2024 mit 30 Gegenstimmen), die Verwaltung sagte aber zu, das Gebiet erneut anzusehen und bei Bedarf zu kartieren. Eingelöst: Kartierung Juli bis September 2024 für den Bebauungsplan N-777 G mit 18 Arten, davon vier gefährdete; vorgestellt im ASUK am 13.03.2025 (zugesagt am 13.02.2025) und im ASB am 20.03.2025.",
+    "beleg": "ASUK 13.06.2024 TOP 13.4 (id=18633; Zusage id=108471); Rat 17.06.2024 TOP 11.5 (id=19113); ASUK 13.02.2025 TOP 12 (id=102771); ASUK 13.03.2025 TOP 11 (id=20010); ASB 20.03.2025 TOP 7 (Protokoll 4473, Anlage)"
+   },
+   {
+    "id": "F7",
+    "gewicht": 1,
+    "fakt": "Einen Widerspruch zur geplanten Entlastungsstraße (B-Plan N-777 G) sieht die Verwaltung nicht: Die Straße sei im Flächennutzungsplan festgelegt und werde dem Schutzgebiet zugeordnet.",
+    "beleg": "ASUK 11.09.2025 TOP 11 (id=102381); Rat 16.03.2026 TOP 5, Antwort der Stadtbaurätin (id=48839)"
+   },
+   {
+    "id": "F8",
+    "gewicht": 1,
+    "fakt": "Am 11.06.2026 sagte die Verwaltung schriftliche Antworten auf Einwohnerfragen zum Konflikt zwischen Unterschutzstellung und geplantem Gewerbegebiet Brokhausen zu sowie eine Erkundigung nach Alternativflächen; die Einlösung ist im Bestand nicht dokumentiert. Die Bauleitplanung für das Gewerbegebiet wurde im ASB am 21.05. und 27.08.2026 jeweils vertagt.",
+    "beleg": "ASUK 11.06.2026 TOP 4 (Zusagen id=47629, 47640, 47643); ASB 21.05.2026 TOP 11.2–11.4 (ids 20667–20669), ASB 27.08.2026 TOP 11.1–11.4 (ids 21916–21919)"
+   },
+   {
+    "id": "F9",
+    "gewicht": 1,
+    "fakt": "Zugesagt wurde auch, neue Ergebnisse zu Vegetation und Lebensräumen im Heidbrook im August 2026 zu behandeln; der Punkt stand auf der Tagesordnung des ASUK am 13.08.2026 (TOP 14.2), ein Protokoll liegt noch nicht vor.",
+    "beleg": "ASUK 11.06.2026 TOP 13 (Zusage id=47727); Tagesordnung ASUK 13.08.2026 (council_agenda_items ksinr=4666)"
+   },
+   {
+    "id": "F10",
+    "gewicht": 1,
+    "fakt": "Schon 2024 hatte die Verwaltung erklärt, ein formales Verfahren zur Ausweisung müsse von Verwaltungsausschuss bzw. Rat beschlossen und in Gang gesetzt werden; einen solchen öffentlichen Rats- oder Ausschussbeschluss gibt es bis heute nicht, alle Heidbrook-Punkte wurden nur zur Kenntnis genommen.",
+    "beleg": "ASUK 14.03.2024 TOP 11.4, Vorlage 24/0169 (id=18617); ASUK 14.08.2025 (id=21859), 12.02.2026 (id=20851), 16.04.2026 TOP 11.5 (id=20909)"
+   }
+  ],
+  "verboten": [
+   {
+    "id": "X1",
+    "behauptung": "Der Heidbrook ist bereits als Landschafts- oder Naturschutzgebiet ausgewiesen (etwa seit Februar 2026)."
+   },
+   {
+    "id": "X2",
+    "behauptung": "Der Rat oder der Umweltausschuss hat die Unterschutzstellung des Heidbrooks beschlossen."
+   },
+   {
+    "id": "X3",
+    "behauptung": "Die Verwaltung hat zugesagt, den Heidbrook als Naturschutzgebiet auszuweisen."
+   },
+   {
+    "id": "X4",
+    "behauptung": "Mit der Unterschutzstellung ist die Entlastungsstraße durch den Heidbrook gestoppt bzw. ausgeschlossen."
+   }
+  ],
+  "bewertung": "Abdeckung = Summe der Gewichte erfüllter Pflichtfakten / Gesamtgewicht (18). Jede verbotene Behauptung ist ein harter Fehler. Bestanden: Abdeckung >= 0,6, F1 und F2 erfüllt, keine verbotene Behauptung.",
+  "material": [
+   {
+    "id": "M1",
+    "fuer": [
+     "F1",
+     "F4"
+    ],
+    "art": "beschluss",
+    "session_date": "2026-02-12",
+    "committee": "Stadtgrün",
+    "titel_enthaelt": "Unterschutzstellung des Heidbrooks"
+   },
+   {
+    "id": "M2",
+    "fuer": [
+     "F1"
+    ],
+    "art": "debatte",
+    "session_date": "2026-02-12",
+    "text_enthaelt_eins": [
+     "kombiniertes Schutzgebiet",
+     "Landschaftsschutzgebietsverordnung"
+    ]
+   },
+   {
+    "id": "M3",
+    "fuer": [
+     "F1"
+    ],
+    "art": "presse",
+    "date": "2026-02-12",
+    "titel_enthaelt": "Heidbrook"
+   },
+   {
+    "id": "M4",
+    "fuer": [
+     "F2"
+    ],
+    "art": "debatte",
+    "session_date": "2026-06-11",
+    "text_enthaelt_eins": [
+     "Verordnung solle im nächsten Jahr",
+     "Personalengp"
+    ]
+   },
+   {
+    "id": "M5",
+    "fuer": [
+     "F3"
+    ],
+    "art": "debatte",
+    "session_date": "2025-08-14",
+    "text_enthaelt_eins": [
+     "Ablauf einer Unterschutzstellung"
+    ]
+   },
+   {
+    "id": "M6",
+    "fuer": [
+     "F3",
+     "F7"
+    ],
+    "art": "beschluss",
+    "session_date": "2025-09-11",
+    "committee": "Stadtgrün",
+    "titel_enthaelt": "Schutzgebietsausweisung"
+   },
+   {
+    "id": "M7",
+    "fuer": [
+     "F4"
+    ],
+    "art": "debatte",
+    "session_date": "2025-12-11",
+    "text_enthaelt_eins": [
+     "Anfang des Jahres",
+     "Tagesordnungspunkt zur Unterschutzstellung"
+    ]
+   },
+   {
+    "id": "M8",
+    "fuer": [
+     "F6"
+    ],
+    "art": "debatte",
+    "session_date": "2024-06-13",
+    "text_enthaelt_eins": [
+     "Kartierungsbedarf"
+    ]
+   },
+   {
+    "id": "M9",
+    "fuer": [
+     "F6"
+    ],
+    "art": "beschluss",
+    "session_date": "2025-03-13",
+    "committee": "Stadtgrün",
+    "titel_enthaelt": "Heuschreckengutachten"
+   },
+   {
+    "id": "M10",
+    "fuer": [
+     "F7"
+    ],
+    "art": "debatte",
+    "session_date": "2026-03-16",
+    "text_enthaelt_eins": [
+     "im Flächennutzungsplan festgelegt"
+    ]
+   },
+   {
+    "id": "M11",
+    "fuer": [
+     "F8"
+    ],
+    "art": "debatte",
+    "session_date": "2026-06-11",
+    "text_enthaelt_eins": [
+     "Alternativflächen",
+     "schriftliche Beantwortung"
+    ]
+   },
+   {
+    "id": "M12",
+    "fuer": [
+     "F10"
+    ],
+    "art": "beschluss",
+    "session_date": "2024-03-14",
+    "committee": "Stadtgrün",
+    "titel_enthaelt": "Unterschutzstellung des Raum Heidbrook"
+   }
+  ]
+ },
+ {
+  "id": "boellerverbot-kein-beschluss",
+  "note": "Leer-/Abgrenzungsfrage. Handgeprüft am 02.10.2026 gegen Beschlüsse, Tagesordnungen (council_agenda_items), Vorlagen 25/0068 und 19/0860, Protokoll-Volltexte (ASUK 4434, 4437; AAA 4486), council_speeches und Pressemitteilungen. Volltextsuche über alle Protokolle ab 10/2024 findet Feuerwerk/Böller nur in diesen drei Sitzungen; keine Vorlage zu einer Allgemeinverfügung. Kernaussage: Es gibt keinen Beschluss für ein Böller- oder Feuerwerksverbot – nur einen Berichtsantrag, der zur Kenntnis genommen wurde. Der eine „accepted“-Eintrag (AAA 17.03.2025) ist nur die Rückverweisung in den ASUK; der von 2019 nur das Einverständnis mit der Linie des Oberbürgermeisters, kein Verbot zu erlassen.",
+  "stand": "2026-10-01 (Prod-Abzug)",
+  "question": "Hat Oldenburg ein Böllerverbot oder Verbotszonen für Silvesterfeuerwerk beschlossen?",
+  "varianten": [
+   "Was ist aus dem Antrag zu Böllern und Feuerwerk in Oldenburg geworden?",
+   "Darf man in Oldenburg an Silvester in Landschaftsschutzgebieten böllern – hat der Rat dazu etwas entschieden?"
+  ],
+  "pflicht": [
+   {
+    "id": "F1",
+    "gewicht": 3,
+    "fakt": "Nein: Weder der Rat noch ein Ausschuss hat ein Böller- oder Feuerwerksverbot oder Verbotszonen beschlossen. Der Antrag von Grünen und SPD vom 16.01.2025 („Auswirkungen von Böllern und Feuerwerk in Oldenburg“) war ein Berichtsantrag; der Bericht der Verwaltung (Vorlage 25/0068) wurde am 08.05.2025 im ASUK zur Kenntnis genommen.",
+    "beleg": "ASUK 13.02.2025 TOP 11.1 (id=19991); ASUK 08.05.2025 TOP 8.1 (id=20000); Vorlage 25/0068"
+   },
+   {
+    "id": "F2",
+    "gewicht": 2,
+    "fakt": "Die Verwaltung hält ein grundsätzliches Böllerverbot mangels gesetzlicher Grundlage für nicht möglich; örtlich begrenzte Verbotszonen gingen nur zur Gefahrenabwehr bei konkreter Gefahrenlage (etwa Brandschutz in Altstädten mit Fachwerk- oder Reetdachhäusern).",
+    "beleg": "Vorlage 25/0068 S. 2 (Antwort zu Frage 1)"
+   },
+   {
+    "id": "F3",
+    "gewicht": 2,
+    "fakt": "Landschaftsschutzgebiete: Nur die Verordnung des LSG „Obere Hunte“ verbietet Feuerwerk ausdrücklich (in anderen greifen allgemeine Lärmverbote); eine Allgemeinverfügung für alle LSG wäre möglich. Im Mai 2025 hieß es, das Rechtsamt prüfe das und eine Vorlage zur Beschlussfassung werde kommen – eine solche Vorlage oder Allgemeinverfügung ist im Bestand bis 01.10.2026 nicht zu finden.",
+    "beleg": "Vorlage 25/0068 S. 3 (Frage 3); ASUK 13.02.2025 (Wortbeitrag id=102759); ASUK 08.05.2025 TOP 8.1 (Wortbeiträge id=102660, 102662)"
+   },
+   {
+    "id": "F4",
+    "gewicht": 1,
+    "fakt": "Es gelten nur die bundesrechtlichen Regeln: Feuerwerk der Kategorie II darf nur am 31.12. und 1.1. von Volljährigen gezündet werden; verboten ist es in unmittelbarer Nähe von Kirchen, Krankenhäusern, Kinder- und Altenheimen sowie Reet- und Fachwerkhäusern; Bußgeld bis 10.000 Euro (mindestens zwei Punkte).",
+    "beleg": "Vorlage 25/0068 S. 1–3; Pressemitteilungen 27.12.2024 und 23.12.2025"
+   },
+   {
+    "id": "F5",
+    "gewicht": 1,
+    "fakt": "Verfahrensweg ohne Sachbeschluss: Der ASUK verwies den Punkt am 13.02.2025 (auf Anregung von SPD und Grünen) in den Ausschuss für Allgemeine Angelegenheiten, der ihn am 17.03.2025 in den ASUK zurückverwies; dort wurde er am 08.05.2025 zur Kenntnis genommen.",
+    "beleg": "ASUK 13.02.2025 (Verweisung id=19992); AAA 17.03.2025 TOP 8.1 (id=21822); ASUK 08.05.2025 (id=20000)"
+   },
+   {
+    "id": "F6",
+    "gewicht": 1,
+    "fakt": "Laut Bericht wurden für 28.–30.12.2024 zwei Straftaten mit Feuerwerksbezug aufgenommen, aber keine Ordnungswidrigkeiten angezeigt; eine Sensibilisierungskampagne hielt das Ordnungsamt zunächst nicht für nötig.",
+    "beleg": "Vorlage 25/0068 S. 2 (Frage 2)"
+   },
+   {
+    "id": "F7",
+    "gewicht": 1,
+    "fakt": "Zusagen: Eine Übersichtskarte der Verbotszonen wurde in Auftrag gegeben (Bericht, sobald sie vorliegt – nicht dokumentiert); nach Kritik u. a. der SPD kündigte das Ordnungsamt im Mai 2025 an, über soziale Medien stärker zu sensibilisieren (im Dezember 2025 veröffentlichte die Stadt Videobeiträge zu Silvester auf Instagram und Facebook).",
+    "beleg": "ASUK 13.02.2025 (Protokollnotiz id=102756); ASUK 08.05.2025 (id=102665, Zusage id=102666); PM 22.12.2025"
+   },
+   {
+    "id": "F8",
+    "gewicht": 1,
+    "fakt": "Vorgeschichte: 2019 erklärte sich der ASUK mit der Linie des Oberbürgermeisters einverstanden, der Forderung der Deutschen Umwelthilfe nach Feuerwerksverboten nicht zu folgen; 2021 kündigte die Verwaltung an, keine Verbotszonen einzurichten (mindestens eins genannt).",
+    "beleg": "ASUK 14.11.2019 TOP 12 (id=14171, Vorlage 19/0860); ASUK 09.12.2021, Anfragen (Antwort der Verwaltung)"
+   }
+  ],
+  "verboten": [
+   {
+    "id": "X1",
+    "behauptung": "Oldenburg hat ein Böller- oder Feuerwerksverbot oder städtische Verbotszonen beschlossen bzw. erlassen."
+   },
+   {
+    "id": "X2",
+    "behauptung": "Für die Landschaftsschutzgebiete wurde eine Allgemeinverfügung mit Feuerwerksverbot erlassen oder beschlossen."
+   },
+   {
+    "id": "X3",
+    "behauptung": "Der Rat hat den Antrag von Grünen und SPD angenommen oder abgelehnt (es war ein Berichtsantrag, der zur Kenntnis genommen wurde)."
+   }
+  ],
+  "bewertung": "Abdeckung = Summe der Gewichte erfüllter Pflichtfakten / Gesamtgewicht (12). Jede verbotene Behauptung ist ein harter Fehler. Bestanden: Abdeckung >= 0,6, F1 erfüllt, keine verbotene Behauptung.",
+  "material": [
+   {
+    "id": "M1",
+    "fuer": [
+     "F1",
+     "F2",
+     "F3"
+    ],
+    "art": "beschluss",
+    "session_date": "2025-05-08",
+    "committee": "Stadtgrün",
+    "titel_enthaelt": "Böllern und Feuerwerk"
+   },
+   {
+    "id": "M2",
+    "fuer": [
+     "F1",
+     "F5"
+    ],
+    "art": "beschluss",
+    "session_date": "2025-02-13",
+    "committee": "Stadtgrün",
+    "titel_enthaelt": "Böllern und Feuerwerk"
+   },
+   {
+    "id": "M3",
+    "fuer": [
+     "F3"
+    ],
+    "art": "debatte",
+    "session_date": "2025-05-08",
+    "text_enthaelt_eins": [
+     "Allgemeinverfügung",
+     "Rechtsamt"
+    ]
+   },
+   {
+    "id": "M4",
+    "fuer": [
+     "F5"
+    ],
+    "art": "beschluss",
+    "session_date": "2025-03-17",
+    "committee": "Allgemeine Angelegenheiten",
+    "titel_enthaelt": "Böllern und Feuerwerk"
+   },
+   {
+    "id": "M5",
+    "fuer": [
+     "F7"
+    ],
+    "art": "debatte",
+    "session_date": "2025-02-13",
+    "text_enthaelt_eins": [
+     "Übersichtskarte"
+    ]
+   },
+   {
+    "id": "M6",
+    "fuer": [
+     "F4"
+    ],
+    "art": "presse",
+    "date": "2025-12-23",
+    "titel_enthaelt": "Feuerwerk"
+   },
+   {
+    "id": "M7",
+    "fuer": [
+     "F8"
+    ],
+    "art": "beschluss",
+    "session_date": "2019-11-14",
+    "committee": "Stadtgrün",
+    "titel_enthaelt": "Feuerwerksverboten"
    }
   ]
  }

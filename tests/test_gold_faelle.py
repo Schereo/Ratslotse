@@ -62,6 +62,11 @@ def test_ask_runner_liest_die_debatten_im_web_vertrag():
     ({"pflicht": {"F2": {"ok": True}, "F3": {"ok": True}, "F4": {"ok": True}}, "verboten": {}}, False),
 ])
 def test_bewertung_verlangt_kernfakt_und_keinen_verstoss(urteil, bestanden):
+    # Eigener Mini-Fall: Die Probe hing an den Gewichten des Trinkwasser-
+    # Falls und wurde rot, als die Gold-Recherche vom 02.10.2026 ihn um
+    # Fakten ergänzte. Hier geht es um die Regel, nicht um einen Fall.
     from scripts import eval_deep_gold as deep
-    fall = next(f for f in _faelle() if f["id"] == "trinkwasserspender-draussen")
+    fall = {"pflicht": [{"id": "F1", "gewicht": 3}, {"id": "F2", "gewicht": 1},
+                        {"id": "F3", "gewicht": 1}, {"id": "F4", "gewicht": 1}],
+            "verboten": [{"id": "X1"}]}
     assert deep._bewerten(fall, urteil)["bestanden"] is bestanden
