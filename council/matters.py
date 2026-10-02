@@ -30,7 +30,8 @@ Was nichts Eigenes ist — Formal-TOPs (Beschlussfähigkeit, Protokoll,
 Einwohnerfragestunde), Sammel-TOPs der Wortbeiträge — bekommt keine Akte.
 
 Die Grundakte ist **abgeleitet**: :func:`build` rechnet sie vollständig aus
-den Rohdaten neu, schnell genug für jeden Ernte-Lauf. Die ``key``-Spalte ist
+den Rohdaten neu, schnell genug für jeden Ernte-Lauf (Grundakten rund eine
+Sekunde, Entitäten und Erwähnungen rund 20 Sekunden — Phase 2). Die ``key``-Spalte ist
 über Neuaufbauten stabil, damit es die ids auch sind.
 """
 from __future__ import annotations
@@ -234,6 +235,135 @@ def zuordnen(store: Any, stopp: Callable[[], bool] | None = None) -> _Aufbau:
     return a
 
 
+# --------------------------------------------------------------------------- #
+# Phase 2: Themen-Entitäten über Grundakten
+# --------------------------------------------------------------------------- #
+#
+# Eine Grundakte ist EINE Vorlage; ein Vorgang wie das Stadion besteht aus
+# vielen. Verklebt werden sie über die Themen-Entitäten — und zwar über die
+# Grundakte, nicht über den einzelnen Beschluss: Hängt „Stadionneubau“ an einem
+# Ausschussbeschluss, gehört die ganze Vorlage samt Ratsbeschluss dazu.
+#
+# Dazu kommen ERWÄHNUNGEN: Wortbeiträge und Pressemitteilungen, die den Namen
+# einer Entität nennen. Nur so kommt die Aussage der Verwaltung zum
+# Schlossplatz-Spielplatz in die Akte — sie steht unter TOP „Spielleitplanung“,
+# einem anderen Vorgang. Gemessen am Gold-Set (eval/run_akten.py, 02.10.2026):
+# Grundakte allein 55,7 % der Belege ohne Presse, mit Entitäten und
+# Erwähnungen 90,8 %; Presse 0/34 → 24/34.
+
+#: Kürzere Namen treffen zu viel („Markt“ in „Marktplatz“, „Rat“ überall).
+NAME_MIN = 5
+#: Gremien sind Organisationen, aber kein Thema: Ein Beitrag, der den
+#: Schulausschuss nennt, handelt nicht vom Schulausschuss.
+_GREMIUM = re.compile(r"(?i)(ausschuss\b|^rat$|^rat der stadt|^(stadt)?verwaltung$|ortsrat\b|"
+                      r"^integration$)")
+#: Ein EINWORT-Name, der in mehr Wortbeiträgen steht, ist ein Allerweltswort
+#: oder ein Stadtteil-Rauschen („Innenstadt“ 627, „Markt“ 304, „Fliegerhorst“
+#: 373). Mehrwort-Namen („Stadion Oldenburg“) bleiben: Sie sind lang genug, um
+#: zu treffen, was sie meinen.
+ALLGEMEIN_BEITRAEGE = 200
+#: Von einer Pressemitteilung zählen Titel und Anfang. Der Fuß nennt Ort und
+#: Zeit — „Kulturzentrum PFL, Peterstraße 3“ stand in 322 Mitteilungen und
+#: hängte jede Ratseinladung an die Peterstraße. Mit Fuß 38 Mitteilungen je
+#: Akte, ohne 10, bei 24 statt 26 Gold-Belegen.
+PRESSE_ANFANG = 600
+#: Ein Ort mit mehr verknüpften Beschlüssen ist ein Stadtteil, kein Vorgang
+#: („Fliegerhorst“ 185): Er verklebt keine Akten. Gemessen: Abdeckung gleich,
+#: mittlere Akte 62 → 28 Beschlüsse (60 und 100 messen gleich).
+ORT_KLEBT_BIS = 60
+#: Haushalts-Vorlagen BÜNDELN: 22/0025 trägt Haushalt, Wirtschaftspläne der
+#: Eigenbetriebe und Stiftungshaushalte in einer Vorlage. Erbte eine Entität
+#: die ganze Akte, hinge der Abfallwirtschaftsbetrieb an der Klävemann-Stiftung
+#: (Stichprobe B7, 02.10.2026: 5 von 30 Vererbungen). Dasselbe beim
+#: Stellenplan (der Hafen erbte „Stellenplan 2020“). Als Einstieg bleiben sie
+#: erreichbar, nur verklebt wird über sie nicht.
+_SAMMELAKTE = re.compile(r"(?i)^\s*(haushalt|stellenplan)")
+
+_NICHT_DAVOR = r"(?<![0-9A-Za-zÄÖÜäöüß])"
+_NICHT_DAHINTER = r"(?![0-9A-Za-zÄÖÜäöüß])"
+
+
+def _namensmuster(namen: list[str]) -> re.Pattern[str]:
+    """Ein Muster für viele Namen, längste zuerst.
+
+    Vorn immer eine Wortgrenze. Hinten nur bei MEHRWORT-Namen: Einwort-Namen
+    stecken in deutschen Komposita („Pferdemarktplanungen“, „Fliegerhorstes“),
+    ein Mehrwort-Name nicht — „Oldenburg Pass“ traf sonst „zu Oldenburg
+    passten“ (Stichprobe B7).
+    """
+    teile = [re.escape(n) + (_NICHT_DAHINTER if (" " in n or "-" in n) else "")
+             for n in sorted(namen, key=len, reverse=True)]
+    return re.compile(_NICHT_DAVOR + "(" + "|".join(teile) + ")", re.IGNORECASE)
+
+
+def entitaeten_verknuepfen(store: Any) -> dict:
+    """Entität ↔ Grundakte und Entität ↔ Erwähnung neu ableiten (ohne LLM)."""
+    t0 = time.perf_counter()
+    namen: dict[str, set[str]] = defaultdict(set)
+    orte: set[str] = set()
+    for slug, name, kind, _n in store.entity_name_variants():
+        name = " ".join(name.split())
+        if len(name) >= NAME_MIN and not _GREMIUM.search(name):
+            namen[slug].add(name)
+            if kind == "place":
+                orte.add(slug)
+    zu: dict[str, set[str]] = defaultdict(set)
+    for slug, varianten in namen.items():
+        for n in varianten:
+            zu[n.lower()].add(slug)
+    erwaehnungen: list[tuple] = []
+    if zu:
+        muster = _namensmuster(list(zu))
+        beitraege: dict[str, int] = defaultdict(int)
+        for wid, text in store.speech_texts():
+            for slug in {s for m in muster.findall(text) for s in zu[m.lower()]}:
+                erwaehnungen.append((slug, "speech", wid))
+                beitraege[slug] += 1
+        # Pressemitteilungen: Orte und Straßen nur im TITEL. Im Text sind sie
+        # fast immer Veranstaltungsort („Am Dienstag tagt der Sozialausschuss
+        # … Industriestraße 1d“, Kurse „im Alter Postweg“) — Stichprobe B7.
+        for pid, titel, anfang in store.press_leads(PRESSE_ANFANG):
+            im_titel = {s for m in muster.findall(titel) for s in zu[m.lower()]}
+            im_text = {s for m in muster.findall(anfang) for s in zu[m.lower()]} - orte
+            for slug in im_titel | im_text:
+                erwaehnungen.append((slug, "press", pid))
+        einwort = {s for s, v in namen.items() if all(" " not in n and "-" not in n for n in v)}
+        allgemein = {s for s in einwort if beitraege[s] > ALLGEMEIN_BEITRAEGE}
+        erwaehnungen = [e for e in erwaehnungen if e[0] not in allgemein]
+    # Vererbung über die Grundakte — ohne Gremien und ohne Sammelakten.
+    paare = sorted({(slug, mid) for slug, name, mid, titel in store.entity_matter_pairs()
+                    if not _GREMIUM.search(name or "") and not _SAMMELAKTE.search(titel or "")})
+    store.replace_entity_akten(paare, erwaehnungen)
+    return {"entitaet_akte": len(paare), "erwaehnungen": len(erwaehnungen),
+            "sekunden": round(time.perf_counter() - t0, 1)}
+
+
+#: Lesbare Namen der Zeilenarten — dieselben wie in eval/run_akten.py.
+ART = {"decision": "beschluss", "speech": "debatte", "press": "presse",
+       "template": "vorlage", "agenda_item": "beratung", "deliberation": "station"}
+
+
+def akte_von(store: Any, decision_ids: list[int]) -> dict:
+    """Die Akte zu einem Einstieg (Beschlüsse, die die Suche gefunden hat).
+
+    1. Die Grundakten des Einstiegs.
+    2. Die Entitäten dieser Grundakten — ohne große Orte (``ORT_KLEBT_BIS``)
+       und ohne Allerweltsnamen — und alle Grundakten, an denen sie hängen.
+    3. Alle Zeilen dieser Grundakten und die Erwähnungen der Entitäten.
+
+    Gibt ``{"matters", "entities", "items"}`` zurück; ``items`` ist eine Menge
+    aus (Art, id) mit den Arten aus ``ART``.
+    """
+    start = store.matters_of_decisions(list(decision_ids))
+    entities = [e for e in store.entities_of_matters(sorted(start))
+                if not (e["kind"] == "place" and (e["n"] or 0) > ORT_KLEBT_BIS)]
+    slugs = sorted(e["slug"] for e in entities)
+    matters = start | store.matters_of_entities(slugs)
+    items = {(ART[t], i) for t, i in store.items_of_matters(sorted(matters)) if t in ART}
+    items |= {(ART[t], i) for t, i in store.mentions_of_entities(slugs) if t in ART}
+    return {"matters": matters, "entities": entities, "items": items}
+
+
 def build(store: Any, stopp: Callable[[], bool] | None = None) -> dict:
     """Grundakten vollständig neu aufbauen. Idempotent; ids bleiben über ``key``
     stabil. Bricht ``stopp`` ab, bleibt der alte Stand stehen (nichts halb)."""
@@ -251,7 +381,10 @@ def build(store: Any, stopp: Callable[[], bool] | None = None) -> dict:
     je_art: dict[str, int] = defaultdict(int)
     for art, _ in a.zuordnung:
         je_art[art] += 1
+    entitaeten = entitaeten_verknuepfen(store)
     stats = {"akten": len(keys), "eintraege": len(a.zuordnung), "je_art": dict(je_art),
-             "kanten": len(a.kanten), "sekunden": round(time.perf_counter() - t0, 1)}
+             "kanten": len(a.kanten), "entitaet_akte": entitaeten["entitaet_akte"],
+             "erwaehnungen": entitaeten["erwaehnungen"],
+             "sekunden": round(time.perf_counter() - t0, 1)}
     log.info("Grundakten: %s", stats)
     return stats

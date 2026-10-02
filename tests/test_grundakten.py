@@ -159,3 +159,106 @@ def test_vorlagenbasen_und_top_nummer():
     assert matters.vorlagen_basen("26/0001, 26/0002/1") == ["26/0001", "26/0002"]
     assert matters.top_nummer("Ö 7.5") == "7.5"
     assert matters.top_nummer("11.1 Trinkwasser") == "11.1"
+
+
+# --------------------------------------------------------------------------- #
+# Phase 2: Entitäten über Grundakten, Erwähnungen, akte_von
+# --------------------------------------------------------------------------- #
+
+@pytest.fixture
+def themen(store):
+    c = store._conn
+    c.executemany(
+        "INSERT INTO council_decisions (id, ksinr, position, item_number, title, template_number, "
+        "kind) VALUES (?, ?, ?, ?, ?, ?, 'decision')", [
+            (20, 3, 5, "12", "Spielplatz Schlossplatz - Sachstandsbericht", "26/0300"),
+            (21, 2, 9, "8", "Haushalt 2026 - Beschluss", "25/0667"),
+            (22, 2, 10, "8.1", "Wirtschaftsplan Abfallwirtschaftsbetrieb 2026", "25/0667"),
+            (23, 3, 6, "13", "Klävemann-Stiftung: Haushaltsplan 2026", "25/0667"),
+            (24, 3, 7, "14", "Neubau am Fliegerhorst", "26/0400"),
+        ])
+    c.executemany("INSERT INTO council_entities (id, slug, name, kind, n) VALUES (?, ?, ?, ?, ?)", [
+        (1, "schlossplatz", "Schlossplatz", "place", 7),
+        (2, "abfallwirtschaftsbetrieb", "Abfallwirtschaftsbetrieb", "organisation", 30),
+        (3, "schulausschuss", "Schulausschuss", "organisation", 40),
+        (4, "fliegerhorst", "Fliegerhorst", "place", 185),
+        (5, "oldenburg-pass", "Oldenburg Pass", "project", 3),
+        (6, "peterstrasse", "Peterstraße", "place", 4),
+    ])
+    c.executemany("INSERT INTO council_entity_obs (decision_id, slug, name, kind) VALUES "
+                  "(?, ?, ?, ?)", [(20, "schlossplatz", "Schlossplatz", "place"),
+                                   (22, "abfallwirtschaftsbetrieb", "Abfallwirtschaftsbetrieb",
+                                    "organisation")])
+    c.executemany("INSERT INTO council_entity_links (entity_id, decision_id) VALUES (?, ?)", [
+        (1, 20), (2, 22), (3, 10), (4, 24), (4, 10)])
+    c.executemany(
+        "INSERT INTO council_speeches (id, ksinr, position, kind, top, speaker, text, extracted_at) "
+        "VALUES (?, ?, ?, 'speech', ?, ?, ?, '')", [
+            (810, 3, 5, "1 Mitteilungen", "A", "Das gehe nur, wenn es zu Oldenburg passt."),
+            (811, 3, 6, "1 Mitteilungen", "B", "Der Oldenburg Pass soll günstiger werden."),
+            (812, 3, 7, "1 Mitteilungen", "C", "Der Schulausschuss tagt im Mai."),
+            (813, 3, 8, "1 Mitteilungen", "D", "Die Pferdemarktplanungen am Schlossplatzrand."),
+        ])
+    c.executemany(
+        "INSERT INTO council_press (id, url, title, date, text, fetched_at) VALUES "
+        "(?, ?, ?, ?, ?, '')", [
+            (30, "u1", "Spielbereich auf dem Schlossplatz: Ideen gesucht", "2025-11-04", "Kinder…"),
+            (31, "u2", "Am Dienstag tagt der Sozialausschuss", "2026-04-20",
+             "Die Sitzung findet im Kulturzentrum PFL, Peterstraße 3, statt."),
+            (32, "u3", "Neuer Tarif ab Januar", "2026-01-02", "Der Oldenburg Pass wird günstiger."),
+        ])
+    c.commit()
+    matters.build(store)
+    return store
+
+
+def _erwaehnt(store, art, iid):
+    return {r[0] for r in store._conn.execute(
+        "SELECT slug FROM council_entity_mentions WHERE item_type = ? AND item_id = ?", (art, iid))}
+
+
+def test_mehrwortname_braucht_hinten_eine_wortgrenze(themen):
+    assert _erwaehnt(themen, "speech", 810) == set()          # „zu Oldenburg passt“
+    assert _erwaehnt(themen, "speech", 811) == {"oldenburg-pass"}
+
+
+def test_einwortname_trifft_auch_im_kompositum(themen):
+    assert "schlossplatz" in _erwaehnt(themen, "speech", 813)
+
+
+def test_gremium_wird_nicht_erwaehnt_und_verklebt_nicht(themen):
+    assert _erwaehnt(themen, "speech", 812) == set()
+    assert not themen._conn.execute(
+        "SELECT 1 FROM council_entity_matters WHERE slug = 'schulausschuss'").fetchone()
+
+
+def test_ort_zaehlt_in_der_presse_nur_im_titel(themen):
+    assert _erwaehnt(themen, "press", 30) == {"schlossplatz"}   # Titel
+    assert _erwaehnt(themen, "press", 31) == set()              # Sitzungsort im Text
+    assert _erwaehnt(themen, "press", 32) == {"oldenburg-pass"} # Projekt im Text zählt
+
+
+def test_haushalt_vererbt_nicht(themen):
+    """Die Haushaltsvorlage bündelt Haushalt, Wirtschaftspläne und Stiftungen."""
+    haushalt = themen.matter_of("decision", 21)["id"]
+    assert not themen._conn.execute(
+        "SELECT 1 FROM council_entity_matters WHERE matter_id = ?", (haushalt,)).fetchone()
+
+
+def test_akte_verklebt_ueber_entitaeten_und_nimmt_erwaehnungen_mit(themen):
+    akte = matters.akte_von(themen, [20])
+    assert ("presse", 30) in akte["items"]                      # PM nennt den Schlossplatz
+    assert ("debatte", 813) in akte["items"]                    # Beitrag nennt ihn
+    assert ("beschluss", 20) in akte["items"]
+
+
+def test_grosser_ort_verklebt_keine_akten(themen):
+    akte = matters.akte_von(themen, [24])                        # Fliegerhorst: n = 185
+    assert [e["slug"] for e in akte["entities"]] == []
+    assert ("beschluss", 10) not in akte["items"]               # andere Vorlage am Fliegerhorst
+
+
+def test_allerweltsname_wird_nicht_erwaehnt(themen, monkeypatch):
+    monkeypatch.setattr(matters, "ALLGEMEIN_BEITRAEGE", 0)
+    matters.build(themen)
+    assert "schlossplatz" not in _erwaehnt(themen, "speech", 813)

@@ -29,6 +29,8 @@ Methoden:
 - ``entitaeten``: heutiger Stand — alle Beschlüsse, die eine Themen-Entität
   mit dem Einstieg teilen.
 - ``grundakte``: ab Phase 1 (``council_matter_items``).
+- ``akte``: ab Phase 2 — ``council.matters.akte_von``, genau die Akte, die
+  die Suche ab Phase 3 liest (Grundakten + Entitäten + Erwähnungen).
 
 Alle Methoden hängen Wortbeiträge über Sitzung und TOP an ihren Beschluss
 (dieselbe Regel wie ``wortbeitraege_zu_beschluessen``, ohne Deckel).
@@ -52,7 +54,7 @@ sys.path.insert(0, str(WURZEL))
 
 CASES = WURZEL / "eval" / "cases_deep_gold.json"
 ERGEBNISSE = WURZEL / "eval" / "results" / "akten"
-METHODEN = ("vorlage", "entitaeten", "grundakte")
+METHODEN = ("vorlage", "entitaeten", "grundakte", "akte")
 
 
 def _vorlage_basis(nr: str | None) -> str:
@@ -183,7 +185,18 @@ def akte_grundakte(store, conn, start: set[int]) -> set[tuple[str, int]]:
     return {(namen[t], i) for t, i in rows if t in namen}
 
 
-BAUER = {"vorlage": akte_vorlage, "entitaeten": akte_entitaeten, "grundakte": akte_grundakte}
+def akte_phase2(store, conn, start: set[int]) -> set[tuple[str, int]]:
+    """Ab Phase 2: die Akte, wie ``council.matters.akte_von`` sie baut."""
+    from council import matters
+    try:
+        return {(art, i) for art, i in matters.akte_von(store, sorted(start))["items"]
+                if art != "station"}
+    except sqlite3.OperationalError:
+        return set()
+
+
+BAUER = {"vorlage": akte_vorlage, "entitaeten": akte_entitaeten, "grundakte": akte_grundakte,
+         "akte": akte_phase2}
 
 
 # --------------------------------------------------------------------------- #
@@ -198,7 +211,7 @@ def messen(db: Path, methoden: list[str], zeigen: bool = False) -> dict:
     cases = json.loads(CASES.read_text(encoding="utf-8"))
     bericht: dict = {"db": str(db), "methoden": {}}
     for methode in methoden:
-        if methode == "grundakte" and not conn.execute(
+        if methode in ("grundakte", "akte") and not conn.execute(
                 "SELECT 1 FROM sqlite_master WHERE name = 'council_matter_items'").fetchone():
             print(f"[{methode}] übersprungen — council_matter_items fehlt (Phase 1)")
             continue

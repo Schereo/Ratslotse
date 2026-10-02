@@ -146,8 +146,9 @@ def main() -> dict:
     print(f"Wichtig-Score: {wichtig} Beschlüsse berechnet.")
     print(f"FTS rebuilt: {_store.rebuild_fts()} decisions indexed.")
     # Grundakten (docs/plan-akte.md): vollständig neu aus den Rohdaten, ohne
-    # LLM, rund eine Sekunde — NACH Vorlagen, Beratungsfolge und Wortbeiträgen,
-    # damit die frischen Stationen am selben Tag in ihrer Akte stehen.
+    # LLM, samt Entitäten und Erwähnungen rund 20 Sekunden — NACH Vorlagen,
+    # Beratungsfolge und Wortbeiträgen, damit die frischen Stationen am selben
+    # Tag in ihrer Akte stehen.
     try:
         from council import matters
         akten = matters.build(_store)
