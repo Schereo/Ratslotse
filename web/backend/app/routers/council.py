@@ -5190,9 +5190,18 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # Beschlüsse, die passenden Wortbeiträge samt jüngster Aussagen der
             # Verwaltung, die neuesten Pressemitteilungen (council/akte_suche.py).
             # Die Akten-Beschlüsse halten den Ortsfilter ein wie alles andere.
+            # Nicht bei Sitzungsfragen und nicht, wenn die Frage eine
+            # Ratsperson nennt: Die fragen nach einer Sitzung bzw. nach den
+            # Beiträgen EINER Person, nicht nach einem Vorgang. Bei „Was hat
+            # Paul Behrens (SPD) zum Baumschutz gesagt?“ erzählte die Antwort
+            # mit Akte den Vorgang statt seiner Beiträge: Abdeckung 0,53 in
+            # 1 von 5 Läufen, ohne Akte in 4 von 6 (Rest 0,12–0,29; Gold-Lauf
+            # lokal, 02.10.2026). Bewusst `person`, nicht der Fragetyp: Die
+            # Partei in Klammern macht daraus `party`.
             akte_beschluesse: list[dict] = []
             akte: dict | None = None
-            if features.an("akten-suche") and not einfach and typ != "session" and candidates:
+            if (features.an("akten-suche") and not einfach and typ != "session" and not person
+                    and candidates):
                 try:
                     from council import akte_suche
                     akte = akte_suche.material(store, q_suche, candidates)
