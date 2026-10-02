@@ -249,7 +249,7 @@ def messen(db: Path, methoden: list[str], zeigen: bool = False) -> dict:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    ap = argparse.ArgumentParser(description=(__doc__ or "").split("\n\n")[0])
     ap.add_argument("--db", type=Path, default=WURZEL / "data" / "council.sqlite")
     ap.add_argument("--methode", choices=METHODEN, action="append")
     ap.add_argument("--zeigen", action="store_true", help="je Fall eine Zeile")
