@@ -10,6 +10,8 @@ messen.
 **Stand 02.10.2026, abends.** Tim hat Phase 0 und 1 freigegeben; beide sind
 gebaut. Phase 0: 20 Gold-Fälle (#1621), Belegarten und Messskript (#1622),
 Token-Reparatur des Gold-Laufs (#1624). Phase 1: Grundakten (#1623, auf dev).
+Phase 2 (freigegeben am selben Tag): Entitäten über Grundakten, Erwähnungen,
+`akte_von` (#1626, auf dev).
 Die Ergebnisse stehen bei den Phasen; zwei Messziele waren falsch gesetzt und
 sind korrigiert (Phase 1 und 2, mit Begründung).
 
@@ -289,6 +291,32 @@ höchstens so groß wie mit allen Entitäten heute (≈ 50 Beschlüsse), B7
 Präzision ≥ 95 % und keine Namensvettern-Fehlgriffe,
 Entitäts-Abdeckung der Beschlüsse von 42 % auf ≥ 70 %, keine kaputte
 Themen-Adresse (Test über alle Slugs und Aliase).
+
+**Ergebnis (02.10.2026, #1626).** Gebaut: `council_entity_matters`,
+`council_entity_mentions`, `matters.akte_von` — nur Daten, nichts sichtbar.
+Fünf Regeln, jede an einer Handstichprobe (B7) gefunden:
+Gremien sind kein Thema; Haushalts- und Stellenplan-Akten vererben nicht (die
+Haushaltsvorlage bündelt Eigenbetriebe und Stiftungen); Orte mit mehr als 60
+Beschlüssen verkleben nicht; Mehrwortnamen brauchen hinten eine Wortgrenze;
+Orte zählen in Pressemitteilungen nur im Titel.
+
+| Tor | gemessen | erreicht |
+|---|---|---|
+| B4 ≥ 90 % ohne Presse | **90,8 %** | ja |
+| B4 ≥ 85 % gesamt | **86,7 %** (Presse 24/34) | ja |
+| mittlere Akte ≤ ≈ 50 Beschlüsse | **28,4** (5 PM) | ja |
+| B7 Präzision ≥ 95 % | **96/100** (Vererbung 29/30, Beiträge 39/40, Presse 28/30; erste Stichprobe vor den Regeln: Vererbung 18/30) | ja |
+| Namensvettern 0 | 0 | ja |
+| Beschlüsse mit Thema ≥ 70 % | **48 %** (vorher 42 %) | **nein** |
+| keine kaputte Themen-Adresse | keine Slugs geändert | ja |
+
+Das verfehlte Tor liegt nicht an der Vererbung: Die Themen-Extraktion
+(Titel + 300 Zeichen, ab zwei Beobachtungen, nur sonntags) erkennt bei 54 %
+der Hauptbeschlüsse gar kein Thema, und die verbliebenen B7-Fehler sind
+falsch verknüpfte Beschlüsse aus derselben Extraktion. Für die Akte reicht es
+(B4 erreicht); für die Themen-Seiten wäre eine bessere Extraktion ein eigener
+Schritt. Dubletten mussten nicht zusammengeführt werden — die fünf
+Stadion-Einträge sind teils verschiedene Dinge (Gesellschaft ≠ Bauprojekt).
 
 ### Phase 3 — Suche über Akten (Schalter `akten-suche`)
 
