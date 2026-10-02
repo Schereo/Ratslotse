@@ -499,7 +499,7 @@ ermöglichen.“), **2 Sitzungen** ohne Protokoll nach über zehn Wochen
 Treffer waren Fehlalarme der Probe selbst („Vertagung“ statt „vertagt“) —
 die Wortliste ist ergänzt.
 
-### Nach Phase 6: Antwortstufe und Auswahl (02.10.2026)
+### Nach Phase 6: Antwortstufe, Auswahl, Gründliche Recherche (02.10.2026)
 
 **Messaufbau ohne Opus-Kosten.** Ab hier richtet Claude in der Sitzung selbst,
 **blind**: je Fall Frage und Pflichtfakten einmal, darunter die Antworten der
@@ -533,6 +533,28 @@ Akte 86,7 % → Auswahl 12/30/5 nur 66,7 % (Wortbeiträge 29 von 50 in der
 Akte); 16/50/8 gibt 77,0 % weiter. Rangfolge statt Menge half kaum, Presse
 nach Vektor-Nähe war schlechter als nach Datum. Am Ende der Kette (neun
 betroffene Fälle, blind): 51,7 → 56,1 %, keine Verstöße.
+
+**Gründliche Recherche mit Akte — der größere Hebel.** Dieselben 20 Fälle,
+Bericht mit und ohne Akten-Material (Schalter `akten-suche` und
+`akten-zeitleiste`), je ein Lauf, blind gerichtet. Kosten beider Arme
+zusammen 0,17 $.
+
+| Arm | Abdeckung | bestanden | Verstöße | Fakt genannt, wenn Beleg da |
+|---|---|---|---|---|
+| ohne Akte | 56,9 % | 10 | 0 | 78 von 111 = 70,3 % |
+| mit Akte | **63,7 %** | **11** | 0 | 101 von 138 = 73,2 % |
+
+Je Fall: zehnmal besser, zweimal schlechter, achtmal gleich. Der Gewinn
+kommt fast ganz aus dem Material — 138 statt 111 der 208 Pflichtfakten haben
+einen Beleg —, die Berichte werden kaum länger (Median 527 → 549 Wörter,
+30 → 34 s). Am deutlichsten: Stadion-Stand 45 → 75 % (Vertrag, EU- und
+Aufsichts-Freigabe, Bebauungsplan), Grundschule Wechloy 50 → 77 %,
+Zweckentfremdungssatzung 65 → 85 %, Heidbrook 33 → 50 %. Die beiden
+Verluste (Schlossplatz, Fliegerhorst) sind je ein einzelner Fakt.
+
+Zur Einordnung, alles mit Claude als Richter: Frag den Rat steht mit Akte
+bei rund 51–56 %, die Gründliche Recherche mit Akte bei 63,7 %. Der Abstand
+zwischen den beiden bleibt — die Akte hebt beide.
 
 ## 5. Risiken
 
