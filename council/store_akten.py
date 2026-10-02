@@ -176,6 +176,11 @@ class AktenMixin(StoreBasis):
             f"FROM council_deliberations d LEFT JOIN council_templates t ON t.kvonr = d.kvonr "
             f"WHERE d.id IN ({','.join('?' * len(ids))})", ids)]
 
+    def ortsnamen(self) -> set[str]:
+        """Die Namen aller Orte (klein geschrieben) — für den Pressefilter der Akte."""
+        return {str(r[0]).lower() for r in self._conn.execute(
+            "SELECT name FROM council_entities WHERE kind = 'place' AND name IS NOT NULL")}
+
     def hauptbeschluesse(self, decision_ids: list[int]) -> list[int]:
         """Die ids darunter, die keine Teilabstimmung sind (``kind = 'decision'``)."""
         if not decision_ids:

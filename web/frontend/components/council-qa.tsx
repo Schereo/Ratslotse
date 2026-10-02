@@ -888,7 +888,6 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             records_state: (msg.records_state as Turn["records_state"]) ?? null,
             steckbriefe: (msg.steckbriefe as Turn["steckbriefe"]) ?? [],
             chart: (msg.chart as QaGrafik | null) ?? null,
-            timeline: (msg.timeline as AkteZeitleisteDaten | null) ?? null,
           });
           else if (msg.type === "token") patchLast((t) => ({ answer: t.answer + (msg.text as string) }));
           // Riss der LLM-Stream mitten in der Antwort, generiert das Backend
@@ -905,6 +904,11 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                         // Zitate), bleibt der erste Wert stehen.
                         ...(msg.records_state !== undefined
                           ? { records_state: msg.records_state as Turn["records_state"] }
+                          : {}),
+                        // Die Zeitleiste entsteht erst nach der Antwort, aus
+                        // den zitierten Beschlüssen (akte_suche.kern).
+                        ...(msg.timeline !== undefined
+                          ? { timeline: (msg.timeline as AkteZeitleisteDaten | null) ?? null }
                           : {}),
                         unclear: Boolean(msg.unclear) });
             // null heißt: Server konnte/durfte nicht (mehr) in dieses Gespräch

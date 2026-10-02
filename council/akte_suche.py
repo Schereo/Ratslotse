@@ -25,6 +25,7 @@ Phase 5 raus — erst nachdem es gemessen ist.
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 log = logging.getLogger("council.akte_suche")
@@ -241,18 +242,38 @@ _MONATE = ("Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August
            "September", "Oktober", "November", "Dezember")
 
 
+_MONAT_JAHR_RE = re.compile(r"(" + "|".join(_MONATE) + r") (\d{4})")
+_DATUM_RE = re.compile(r"\b(\d{1,2})\.(\d{1,2})\.(\d{4})\b")
+
+
+def _juengster_monat(antwort: str) -> tuple[int, int] | None:
+    """Der späteste Monat, den die Antwort nennt — (Jahr, Monat)."""
+    werte = [(int(j), _MONATE.index(m) + 1) for m, j in _MONAT_JAHR_RE.findall(antwort)]
+    werte += [(int(j), int(m)) for _, m, j in _DATUM_RE.findall(antwort) if 1 <= int(m) <= 12]
+    return max(werte) if werte else None
+
+
 def nennt(antwort: str, station: dict) -> bool:
-    """Nennt die Antwort diese Station? Beschluss: seine [id]. Sonst: Monat und
-    Jahr der Station (so schreibt die Antwort Daten) oder das Datum in Ziffern."""
+    """Nennt die Antwort diese Station — oder schon etwas Späteres?
+
+    Beschluss: seine [id]. Sonst Monat und Jahr der Station (so schreibt die
+    Antwort Daten) oder das Datum in Ziffern. Nennt die Antwort einen
+    SPÄTEREN Monat, ist sie schon weiter als die Station: Beim Schlossplatz
+    hätte „Zuletzt: Dezember 2025“ unter einer Antwort gestanden, die mit
+    April 2026 endete.
+    """
     if station["art"] == "beschluss" and f"[{station['c']['id']}]" in antwort:
         return True
     try:
         jahr, monat, tag = (int(x) for x in station["datum"][:10].split("-"))
     except ValueError:
         return False
-    return (f"{_MONATE[monat - 1]} {jahr}" in antwort
+    if (f"{_MONATE[monat - 1]} {jahr}" in antwort
             or f"{tag:02d}.{monat:02d}.{jahr}" in antwort
-            or f"{tag}.{monat}.{jahr}" in antwort)
+            or f"{tag}.{monat}.{jahr}" in antwort):
+        return True
+    spaetester = _juengster_monat(antwort)
+    return spaetester is not None and spaetester > (jahr, monat)
 
 
 def zuletzt_satz(station: dict) -> str:
@@ -412,3 +433,106 @@ def zeitleiste_anzeige(beschluesse: list[dict], presse: list[dict],
     erste, letzte = stationen[0]["date"], stationen[-1]["date_end"] or stationen[-1]["date"]
     return {"span": abstand_text(_tage(erste, letzte)), "count": len(roh),
             "stations": stationen}
+
+
+# --------------------------------------------------------------------------- #
+# Die Akte der ZITIERTEN Beschlüsse — für „Zuletzt“ und die Zeitleiste
+# --------------------------------------------------------------------------- #
+#
+# Die Akte des Sucheinstiegs ist für den Prompt gedacht: lieber etwas zu viel
+# Stoff als zu wenig. Für das, was der Server SELBST unter die Antwort setzt —
+# den Satz „Zuletzt: …“ und die Zeitleiste —, ist sie zu breit. Gemessen am
+# 02.10.2026 (60 Gold-Antworten): Jede sechste bekam einen sachfremden
+# „Zuletzt“-Satz — das Stadionsingen unter der Stadion-Frage, „Ersatz
+# beschädigter Mülltonnen“ unter den Trinkwasserspendern, die Sportanlage in
+# Ofenerdiek unter dem Bahnübergang. Ursache: Ein unscharfer Suchtreffer im
+# Einstieg zieht seine ganze Akte mit, und Pressemitteilungen hängen über
+# Themen-Erwähnungen an, nicht über Vorlagen.
+#
+# Deshalb hier: die Akte der Beschlüsse, die die Antwort tatsächlich ZITIERT,
+# und Pressemitteilungen nur, wenn ihr Titel ein Sachwort mit diesen
+# Beschlüssen teilt.
+
+#: Wörter, die in fast jedem Titel stehen und nichts über die Sache sagen.
+_AMTSWOERTER = frozenset("""
+beschluss beschlüsse bericht berichte berichtsantrag antrag anträge sachstand
+sachstandsbericht oldenburg oldenburger stadt städtische städtischen verwaltung
+zustimmung änderung änderungen fraktion ratsfraktion gruppe ausschuss vorlage
+umsetzung planung planungen weiteres weitere vorgehen entwurf förderung maßnahme
+maßnahmen information informationen mitteilung neubau sanierung erweiterung
+sitzung termin projekt projekte konzept strategie richtlinie überplanmäßige
+außerplanmäßige bewilligung haushalt haushaltsjahr wirtschaftsplan jahresabschluss
+gemeinsam gemeinsame gemeinsamer gemeinsamen gemeinsames aktuelle aktuellen aktueller
+neuen neuer neues weiterer weiteren erste ersten zweite zweiten künftige künftigen
+""".split())
+_WORT_RE = re.compile(r"[a-zäöüß]{5,}")
+
+
+def _sachwoerter(text: str, orte: set[str]) -> set[str]:
+    return {w for w in _WORT_RE.findall((text or "").lower())
+            if w not in _AMTSWOERTER and w not in orte}
+
+
+def _verwandt(a: str, b: str) -> bool:
+    """Teilen zwei Wörter einen Stamm? Komposita zählen („stadion“ in
+    „stadionfinanzierung“), sonst ein gemeinsamer Anfang von 7 Buchstaben."""
+    if a in b or b in a:
+        return True
+    return len(a) >= 7 and len(b) >= 7 and a[:7] == b[:7]
+
+
+#: Rohe Zeilenarten der Grundakten → die Namen aus ``matters.ART``.
+ART_ROH = {"decision": "beschluss", "deliberation": "station", "speech": "debatte",
+           "template": "vorlage", "agenda_item": "beratung"}
+
+
+def gehoert_zum_vorgang(titel: str, sachwoerter: set[str], orte: set[str]) -> bool:
+    """Teilt der Titel einer Pressemitteilung ein Sachwort mit dem Vorgang?"""
+    return any(_verwandt(w, s) for w in _sachwoerter(titel, orte) for s in sachwoerter)
+
+
+def kern(store: Any, zitiert: list[int], frage: str) -> dict:
+    """Die Akte der zitierten Beschlüsse: ``{"decisions", "press", "announced"}``.
+
+    Die Grundakten der zitierten Beschlüsse gehören ganz dazu. Was nur über
+    ein Thema daran klebt, kommt hinzu, wenn sein Titel ein Sachwort mit der
+    FRAGE teilt — beim Stadion trugen zwei zitierte Beschlüsse (Grundstücke,
+    Parkplatz) die Weser-Ems-Halle, und deren Bürgschaft stand als „Zuletzt“
+    unter der Stadion-Antwort. Pressemitteilungen gelten immer als geklebt.
+    Leer, wenn nichts zitiert ist.
+    """
+    from council import matters
+
+    leer: dict = {"decisions": [], "press": [], "announced": []}
+    haupt = store.hauptbeschluesse(list(dict.fromkeys(zitiert)))
+    if not haupt:
+        return leer
+    try:
+        akte = matters.akte_von(store, haupt)
+        start = store.matters_of_decisions(haupt)
+        eigen = {(ART_ROH.get(t, t), i) for t, i in store.items_of_matters(sorted(start))}
+    except Exception as exc:  # noqa: BLE001 — ohne Grundakten nichts anhängen
+        log.info("Kern-Akte nicht verfügbar: %s", exc)
+        return leer
+    orte = store.ortsnamen()
+    sach = _sachwoerter(frage, orte)
+
+    def passt(art: str, iid: int, titel: str | None) -> bool:
+        return (art, iid) in eigen or gehoert_zum_vorgang(titel or "", sach, orte)
+
+    ids: dict[str, list[int]] = {}
+    for art, iid in akte["items"]:
+        ids.setdefault(art, []).append(iid)
+    decisions = [d for d in store.get_decisions_by_ids(
+        sorted(store.hauptbeschluesse(sorted(ids.get("beschluss", [])))))
+        if passt("beschluss", d["id"], d.get("title"))]
+    decisions.sort(key=lambda d: (str(d.get("session_date") or ""), d["id"]), reverse=True)
+    presse = [p for p in store.presse_by_ids(sorted(ids.get("presse", [])))
+              if gehoert_zum_vorgang(p.get("title") or "", sach, orte)]
+    presse.sort(key=lambda p: str(p.get("date") or ""), reverse=True)
+    neuester = max((str(d.get("session_date") or "")[:10] for d in decisions), default="")
+    stationen = [st for st in store.deliberations_by_ids(sorted(ids.get("station", [])))
+                 if str(st.get("date") or "")[:10] > neuester
+                 and passt("station", st["id"], st.get("title"))]
+    stationen.sort(key=lambda st: str(st.get("date") or ""))
+    return {"decisions": decisions, "press": presse[:PRESSE], "announced": stationen[:ANGEKUENDIGT]}
