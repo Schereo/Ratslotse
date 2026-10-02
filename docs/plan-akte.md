@@ -1,0 +1,305 @@
+# Plan: Die Akte — Suche nach Vorgängen statt nach ähnlichem Text
+
+Stand 02.10.2026. Anlass ist die Arbeit vom 30.09. bis 02.10.2026 an „Frag
+den Rat“ und der Gründlichen Recherche (Ausgangsfall: Schlossplatz-Spielplatz,
+ksinr 4664). In drei Tagen kamen zwölf Fixes zusammen (#1585–#1615). Jeder hat
+gewirkt, und jeder hat dieselbe Lücke an einer anderen Stelle geflickt. Dieser
+Plan beschreibt den Umbau, der die Lücke selbst schließt, und wie wir ihn
+messen.
+
+## 1. Befund
+
+### 1.1 Was eine Frage will
+
+Fast jede Frage an „Frag den Rat“ betrifft einen **Vorgang**: das Stadion, den
+Spielplatz, die Trinkwasserspender. Ein Vorgang ist eine Folge von Ereignissen
+über Jahre: Antrag, Vorberatung, Ratsbeschluss, Bericht, Protokollnotiz,
+Pressemitteilung. Eine gute Antwort braucht **alle Stationen dieses Vorgangs**
+und **ihre Reihenfolge**, vor allem die letzte.
+
+### 1.2 Wie die Pipeline sucht
+
+Die Pipeline zerlegt die Frage in Suchbegriffe und sucht in jeder Quelle
+getrennt nach **ähnlichem Text**: Beschlüsse (Vektor + BM25 + Cross-Encoder,
+`QA_TOP_K = 40`), Wortbeiträge (8 Treffer plus Kopplung an die ersten acht
+Beschlüsse), Pressemitteilungen (3 bzw. 5), Anlagen. Jede Quelle hat eigene
+Ränge, Schwellen und Deckel. Ähnlichkeit sagt aber nicht, ob etwas zum
+Vorgang gehört, und sie kennt keine Zeit.
+
+### 1.3 Alle Fehler sind eine Lücke
+
+| Befund (Gold-Fall) | Was fehlte | Flicken |
+|---|---|---|
+| Schlossplatz: Verwaltung vom 16.04.2026 fehlt | Zugehörigkeit: steht unter TOP „Spielleitplanung“, Vektor-Rang > 150 | Textkanal, „neueste zuerst“ (#1613) |
+| Trinkwasser: Protokollnotiz fehlt | Zugehörigkeit: sagt „Trinkwasserbrunnen“, ihr Beschluss stand auf Platz 9 | Titel-Kopplung (#1612) |
+| Stadion: Antwort endet im Juni statt August | Zeit: neueste PM verlor gegen ähnlichere ältere | Presse-Titelkanal, 5 statt 3 (#1613) |
+| Stadion: Bürgschaft, B-Plan 831 fehlen | Zugehörigkeit: Titel klingen nicht nach „Stadion-Stand“ | — (offen) |
+| 25× „Sachstandsbericht Stadionplanung“ | Identität: dieselbe Sache 25-mal statt einmal | Serien-Deckel (#1605, #1608) |
+| „Ersatz beschädigter Mülltonnen“ vor „Trinkwasserspender“ | Ähnlichkeit ≠ Zugehörigkeit | Kopplung hinter Platz 8 (#1612) |
+| „Trinkwasser**spender**“ → Spenden-Facette | Router sperrt Material | Ausnahmeliste (#1609) |
+
+Jeder Flicken bringt Stellschrauben mit: 40, 8, 150, 700, 3/5, −1,5, −1,0,
+50 Titel, 30 Beiträge, Serien-Deckel 3. Sie hängen voneinander ab und werden
+einzeln gemessen.
+
+### 1.4 Fünf grundlegende Probleme
+
+1. **Es gibt keine Akte als Objekt.** Die Bausteine liegen vor, sind aber
+   nicht verbunden (Zahlen in 1.5).
+2. **Zeit ist kein Teil der Suche.** Die Reranker sind zeitblind; bei einer
+   Stand-Frage *ist* die neueste Station die Antwort.
+3. **Ein Klassifikator steuert alles, und seine Fehler sind still.** Die
+   Frage-Analyse entscheidet in einem Aufruf über Fragetyp, Punktfrage,
+   Facetten und Kanäle; jede Entscheidung sperrt etwas aus („Wie wurde
+   entschieden?“ → Punktfrage → ein Satz; Fraktionsfrage ohne Fraktion → kein
+   Material).
+4. **Die Antwortstufe bekommt Kanäle statt einer Geschichte.** Sieben Blöcke
+   mit eigenen Regeln; das Modell puzzelt den Verlauf selbst und lässt
+   Material liegen (Stadion: alles im Kontext, die Hälfte genannt).
+5. **Datenfehler fallen nur zufällig auf.** Verwaltungsantworten im falschen
+   Feld, fehlende Protokollnotizen, „gilt als behandelt“ als angenommen,
+   falsche Parteien an Wortbeiträgen, eine Kurzfassung, die eine hypothetische
+   Grundsteuererhöhung als Tatsache führt (Wortbeitrag 46367) — alles durch
+   Nutzerfragen oder Gold-Recherche entdeckt, nichts durch eine Prüfung.
+
+### 1.5 Was die Daten schon hergeben (Prod-Abzug 01.10.2026)
+
+| Baustein | Zahl | Taugt für |
+|---|---:|---|
+| Beschlüsse | 9.524 | |
+| … mit Vorlagennummer | 7.032 (74 %) | Grundakte, sicher |
+| Vorlagen mit mehreren Stationen | 1.600 (Ø 2,1) | Grundakte, sicher |
+| Vorlagen, deren Text eine andere Vorlage nennt | 949 von 5.558 (17 %) | Verbinden, prüfbar |
+| Beschlüsse ohne Vorlagennummer | 2.492 | meist Fraktionsanträge/Berichte — unscharf |
+| Wortbeiträge mit TOP-Nummer | 52.598 von 52.804 | Kopplung über Sitzung + TOP, sicher |
+| Beratungsfolge (`council_deliberations`) | 7.651 Stationen zu 5.558 Vorlagen | Stationen **vor** dem Protokoll (Art, kein Ergebnis) |
+| Tagesordnungen (`council_agenda_items`) | alle 24 Sitzungen Jul–Sep 2026 | angekündigte Stationen |
+| Sitzungen Jul–Sep 2026 mit Protokoll/Beschlusszeilen | 6 von 24 | Lücke: Beschlüsse entstehen erst aus dem Protokoll |
+| Beschlüsse mit Themen-Entität | 42 % (2026: 46 %) | Projekt-Entitäten = große Akten, heute lückenhaft |
+| Projekt-Entitäten zum Stadion | 5 („Stadion Oldenburg“, „Stadionneubau Maastrichter Straße“, „Stadion Maastrichter Straße“, „Stadionplanungsgesellschaft“, „Stadionplanung“) | Dubletten, über `council_entity_aliases` zusammenführbar |
+
+Die Entitäten entstehen per Sprachmodell aus Titel und den ersten 300 Zeichen
+eines Beschlusses (`council/entities.py`, `deepseek-v4-pro`), zählen erst ab
+zwei Beobachtungen (`rebuild_entities_from_obs(min_n=2)`) und laufen **nur im
+Wochenlauf** (`weekly_enrich.py`, sonntags). Ein neuer Beschluss steht bis zu
+sieben Tage ohne Thema da.
+
+## 2. Ziel
+
+**Eine Akte ist alles, was zu einer Sache gehört, an einer Stelle und in
+zeitlicher Reihenfolge.** „Frag den Rat“ findet per Ähnlichkeit nur noch den
+**Einstieg** (welcher Vorgang ist gemeint?) und liest dann die **Akte**:
+vollständig, chronologisch, die letzte Station zuletzt.
+
+Kein neues sichtbares Konstrukt neben den Entitäten. Zwei Schichten:
+
+1. **Grundakte (unsichtbar):** je Vorlage eine Gruppe aus allen Stationen
+   (Beratungsfolge, Tagesordnung, Beschlüsse), den Wortbeiträgen und
+   Protokollnotizen ihrer TOPs, der Vorlage selbst. Mechanisch, für jeden
+   Beschluss.
+2. **Projekt-Entität (sichtbar, wie heute):** verknüpft **Grundakten** statt
+   einzelner Beschlüsse. Orte und Organisationen bleiben Querschnitte und
+   verknüpfen ebenfalls Grundakten.
+
+Die Themen-Seiten profitieren ohne eigenen Umbau: Sie zeigen dann den ganzen
+Vorgang statt einer Beschlussliste.
+
+## 3. Benchmarks
+
+Gemessen wird **vor** jeder Phase (Grundlinie) und **nach** jeder Phase, mit
+denselben Daten (eingefrorener Prod-Abzug bzw. Prod direkt) und mindestens
+zwei Läufen, wo ein Sprachmodell beteiligt ist. Eine Phase geht nur weiter,
+wenn ihr Tor (letzte Spalte) erreicht ist.
+
+| # | Benchmark | Wie gemessen | Grundlinie | Ziel / Tor |
+|---|---|---|---|---|
+| B1 | **Gold „Frag den Rat“** | `ops-gold.yml weg=ask`, 20 Fälle, Richter Claude Opus 5.5, ≥ 3 Läufe; Abdeckung, bestanden, Verstöße | 7 Fälle: 49–55 %, 2–4/7 (01.10.) — mit 20 Fällen in Phase 0 neu | Phase 3: +10 Pp Abdeckung **und** ≥ 3 Fälle mehr bestanden, keine neuen Verstöße |
+| B2 | **Gold Gründliche Recherche** | dieselben Fälle, `weg=deep` | 7 Fälle: ≈ 57–61 %, 3/7 — neu in Phase 0 | wie B1 |
+| B3 | **Material vorhanden** (Suche) | aus B1/B2: Anteil der Gold-Material-Einträge im Kontext der Antwort; getrennt von „Fakt genannt“ | neu in Phase 0 | Phase 3: ≥ 90 % |
+| B4 | **Akten-Abdeckung** (ohne LLM) | `eval/run_akten.py` (neu): Liegt jedes Gold-Material in der Akte, die zur Frage gehört? Deterministisch, Sekunden | heute über Entitäten: neu in Phase 0 | Phase 1: ≥ 80 %, Phase 2: ≥ 95 % |
+| B5 | **Retrieval ki-frage** | `eval/run_qa.py --nur-retrieval`, 22 handgelabelte Fragen inkl. Stadion | hit@8 18/23, recall@8 0,545, MRR 0,523 (lokal, 01.10.) | keine Verschlechterung über die Streuung hinaus (Stadion-Regel) |
+| B6 | **Fakten-Eval** | `eval/run_fakten.py`, 233 Fälle (Lotti + Rat) | Stand #1504 | keine Zunahme falscher/erfundener Aussagen |
+| B7 | **Zuordnungsqualität** | Handstichprobe je 100 Zuordnungen der unscharfen Stufe: Präzision (gehört dazu?) und Vollständigkeit (fehlt etwas?), Negativliste der Namensvettern (Stadion Marschweg, DB-Huntebrücke, Sechsfeldhalle …) | — | Präzision ≥ 95 %, Namensvettern 0 Fehlgriffe |
+| B8 | **Latenz und Kosten** | `timings` aus /ask (p50/p95 bis zum ersten Wort, Gesamt), Kontext-Tokens und Kosten je Antwort aus `llm_usage` | heute messen in Phase 0 | p50 bis zum ersten Wort + ≤ 1 s, Kosten je Antwort ≤ +30 % |
+| B9 | **Datenregeln** | täglicher Check (Phase 6): jede Station in genau einer Grundakte, Wortbeitrag in derselben Akte wie sein Beschluss, Waisenquote, Akten-Wachstum | — | 0 Verstöße; Alarm per Mail |
+
+**Kosten der Messung.** Ein Gold-Lauf mit 20 Fällen auf beiden Wegen kostet
+rund 1,10 $ für den Richter plus die Antworten (Luna, Cent-Bereich) — etwa
+1,50 $ je Lauf, 4,50 $ für drei. Je Phase zwei solcher Messungen (vorher,
+nachher): rund 9 $ je Phase, gut 40 $ über den ganzen Umbau. B4, B5 und B9
+kosten nichts.
+
+**Streuung.** Die Grundlinie vom 01.10. schwankte bei gleichem Richter um
+6 Pp (49 vs. 55 %), einzelne Fälle um 30 Pp. Deshalb drei Läufe und Tore
+erst jenseits von 10 Pp.
+
+## 4. Phasen
+
+Jede Phase ist eine Folge kleiner PRs, Squash-Merge, Vorgaben aus
+`CLAUDE.md`. Sichtbare Änderungen hinter dem Schalter `akten-suche`
+(`kern/features.py`), auf dev an, auf Prod erst nach bestandenem Tor.
+
+### Phase 0 — Messbasis (keine Produktänderung)
+
+| PR | Inhalt |
+|---|---|
+| 0.1 | **20 Gold-Fälle** nach `eval/cases_deep_gold.json` (7 überarbeitet, 13 neu, recherchiert am 02.10. gegen den Prod-Abzug). `tests/test_gold_faelle.py`: die Bewertungsprobe bekommt ein eigenes Mini-Fixture (sie hing an den Gewichten des Trinkwasser-Falls). |
+| 0.2 | **Material-Arten erweitern**: `vorlage` und `beratung` (Tagesordnung/Beratungsfolge) in `_material_pruefen` und `eval_ask_gold.material_form`. Ohne sie lassen sich Belege, die nur in Vorlagen oder angekündigten TOPs stehen, nicht prüfen (drei Fakten der neuen Fälle). |
+| 0.3 | **`eval/run_akten.py`** (B4): je Gold-Fall die erwartete Akte aus den Material-Einträgen; Abdeckung heute über Entitäten und Vorlagennummern. |
+| 0.4 | **Grundlinie** B1–B8: drei Gold-Läufe auf Prod (beide Wege), `run_qa.py`, `run_fakten.py`, Latenz/Kosten. Ergebnis in diesen Plan. |
+| 0.5 | **Offene Datenfrage klären:** Trägt das Ratsinformationssystem das Ergebnis einer Station vor dem Protokoll? `council/ergebnisse.py` sagt am 26.07.2026 nein, der Gold-Agent sah am 02.10. auf Sitzungsseiten „ungeändert beschlossen“. Wenn ja: eigener Ernte-Schritt, eigener PR (er verkürzt die Protokoll-Lücke von Wochen auf Tage). |
+
+Tor: Grundlinie steht, B3 und B4 sind messbar.
+
+### Phase 1 — Grundakte (Datenschicht, unsichtbar)
+
+**Schema** (Schema *und* Migration, `council/CLAUDE.md`):
+
+```
+council_matters        (id, key, kind, title, first_date, last_date, built_at)
+                        key  = normalisierte Vorlagennummer ("26/0396")
+                               bzw. Antragsschlüssel (s. u.)
+                        kind = 'template' | 'motion' | 'single'
+council_matter_items   (matter_id, item_type, item_id, source, confidence)
+                        item_type = decision | deliberation | agenda_item |
+                                    template | speech | press
+                        source    = template_number | reference | top |
+                                    motion_key | title | model
+council_matter_edges   (matter_a, matter_b, source, confidence)
+                        -- Vorlagen-Verweise, nicht zusammengelegt
+```
+
+**Aufbau** (`council/matters.py`, ohne LLM):
+
+1. **Vorlagenkette:** gleiche Vorlagennummer inkl. `/1`, `/2` → eine
+   Grundakte; dazu Beratungsfolge, Tagesordnungspunkte und Vorlagen-Volltext
+   mit derselben Nummer bzw. `kvonr`.
+2. **Wortbeiträge und Protokollnotizen:** über (ksinr, TOP-Nummer) an den
+   Beschluss ihres TOPs → dessen Grundakte. Das ist die heutige Logik aus
+   `wortbeitraege_zu_beschluessen`, einmal beim Einlesen statt je Frage und
+   ohne Deckel.
+3. **Anträge ohne Vorlagennummer:** Schlüssel aus Antragsteller und
+   Antragsdatum, wie es im Titel steht („(SPD-Fraktion vom 17.03.2026)“).
+   Antrag und „– Bericht“ / „– Antrag mit Bericht“ landen so in derselben
+   Grundakte. Rest: `single`.
+4. **Verweise** zwischen Vorlagen (17 %) werden als **Kanten** gespeichert,
+   nicht zusammengelegt. Ein „vgl. 22/1006“ kann Fortsetzung oder bloßer
+   Seitenblick sein; zusammengelegt wird erst in Phase 2 über die
+   Projekt-Entität.
+
+**Betrieb:**
+- Inkrementell in `check_protocols.py` und `check_council.py` (neue Stationen,
+  Tagesordnungen, Wortbeiträge), Presse in `check_presse.py`.
+- Vollständiger Neuaufbau im Wochenlauf als Rückhalt; idempotent, bricht
+  über `kern/stopp.py` beim Deploy ab, schreibt stapelweise.
+- Die Grundakte ist **abgeleitet**: jederzeit aus den Rohdaten neu
+  berechenbar, kein Handpflege-Zustand.
+
+**Tests:** jede Station in genau einer Grundakte; Wortbeitrag und Beschluss in
+derselben; Migration gegen die eingecheckten Schema-Auszüge
+(`test_migration_bestand.py`); Neuaufbau zweimal hintereinander ergibt
+dasselbe.
+
+Tor: B4 ≥ 80 %, B9 ohne Verstöße auf dem Prod-Abzug, Neuaufbau auf Prod
+< 5 min.
+
+### Phase 2 — Entitäten auf Grundakten
+
+1. **Verknüpfung erben:** Ist eine Entität mit einem Beschluss verknüpft,
+   gilt sie für dessen ganze Grundakte. Eine neue Station einer bekannten
+   Vorlage hat ihr Thema damit **sofort**, nicht erst nach dem Wochenlauf.
+   (`council_entity_links` bleibt die gespeicherte Beobachtung; die
+   Grundakten-Zugehörigkeit wird daraus abgeleitet.)
+2. **Dubletten zusammenführen** über `council_entity_aliases` (Stadion: fünf
+   → eins). Vorschläge aus dem vorhandenen `entity_duplicates`-Prompt, Freigabe
+   im Admin-Panel. Alte Adressen bleiben gültig (Alias-Weiterleitung).
+3. **Presse an Entitäten und Grundakten:** über Titelwörter (Bindestriche
+   egal, wie `qa.press_title_ids`), Entitätsnamen und die vorhandenen
+   Ortsbezüge (`council_press_places`). Unscharf → `source='title'`,
+   `confidence`.
+4. **Unscharfe Zuordnung** für den Rest (Anträge ohne Schlüssel, neue Vorlage
+   zu altem Vorgang): Kandidaten aus Entitäten und Kanten, ein günstiges
+   Modell wählt aus wenigen Kandidaten, nie frei. Jede Zuordnung trägt
+   `source` und `confidence`; Handkorrekturen überleben den Neuaufbau.
+
+Tor: B4 ≥ 95 %, B7 Präzision ≥ 95 % und keine Namensvettern-Fehlgriffe,
+Entitäts-Abdeckung der Beschlüsse von 42 % auf ≥ 70 %, keine kaputte
+Themen-Adresse (Test über alle Slugs und Aliase).
+
+### Phase 3 — Suche über Akten (Schalter `akten-suche`)
+
+1. **Einstieg:** die heutige Suche (hybrid + Rerank) und `finde_entitaeten`
+   liefern Kandidaten; daraus die **Akten** (Projekt-Entität, sonst
+   Grundakte), bewertet nach ihrem besten Treffer und Entitäts-Treffer in der
+   Frage. Höchstens drei Akten.
+2. **Akte lesen:** alle Stationen chronologisch. Lange Akten werden von alt
+   nach neu verdichtet, nie von neu nach alt: die letzten zwölf Monate
+   vollständig, davor nur Beschlüsse mit Ergebnis. Angekündigte, noch nicht
+   protokollierte Stationen kommen als „steht am … auf der Tagesordnung“.
+3. **Rückfall:** Findet die Frage keine Akte (allgemeine Fragen, „Was hat der
+   Rat 2025 zum Klima beschlossen?“), läuft der heutige Weg.
+4. **Router entschärfen:** Fragetyp und Punktfrage bestimmen nur noch Form
+   und Länge, sperren kein Material mehr (Problem 3). Facetten (Geld) bleiben
+   Zusatz.
+5. Gründliche Recherche (`deepresearch.py`) nutzt denselben Einstieg.
+
+Tor: B1/B2 +10 Pp und ≥ 3 Fälle mehr bestanden, B3 ≥ 90 %, B5 ohne
+Verschlechterung, B6 ohne Zunahme, B8 im Budget. Dann Schalter auf Prod.
+
+### Phase 4 — Antwort aus der Zeitleiste
+
+1. **Ein Kontextblock „AKTE“** statt sieben: datierte Zeilen mit Marke
+   (Beschluss · Ergebnis · Stimmen | Bericht | Zusage der Verwaltung |
+   Wortbeitrag | Pressemitteilung | angekündigt), Belegnummer je Zeile.
+2. **Prompt vereinfachen:** Die Regeln für Debatten-Absatz, Presse-Stand und
+   „neueste zuerst“ entfallen, weil die Zeitleiste sie trägt. Bleiben:
+   Ergebnis-Treue (abgelehnt ≠ beschlossen), Kürze bei Punktfragen, Belege.
+3. **Selbstprüfung ohne Zusatzaufruf:** Die Antwort muss die letzte Station
+   der Akte nennen. Fehlt sie, hängt der Server einen Hinweis „Zuletzt: …“
+   an — deterministisch, kein zweites Modell.
+
+Tor: B1 „Fakt genannt, wenn Material vorhanden“ + 10 Pp gegenüber Phase 3,
+B6 ohne Zunahme.
+
+### Phase 5 — Aufräumen
+
+Die Flicken aus 1.3 kommen raus, sobald Phase 3 und 4 sie nachweislich
+ersetzen: `title_match_decisions`, `speech_text_ids`, `press_title_ids`,
+Kopplung bis Platz 8, Serien-Deckel, „neueste zuerst“, die Kanal-Deckel.
+Jeder Ausbau einzeln, jeweils mit B1/B5 gegengeprüft. Danach Schalter
+`akten-suche` entfernen (`fertig_wenn` in `kern/features.py`).
+
+### Phase 6 — Stehende Datenprüfungen
+
+Ein täglicher Check (eigener Job in `kern/jobs.py` oder Teil von
+`check_herzschlag.py`), Mail bei Abweichung:
+- B9-Regeln der Akten;
+- Anteil der Verwaltungsbeiträge je Monat (der Ausgangsfehler vom 30.09.);
+- Wortbeiträge ohne oder mit widersprüchlicher Partei je Monat;
+- Beschlüsse, deren `outcome` dem `raw_result` widerspricht;
+- Protokoll-Verzug je Gremium (heute 18 von 24 Sitzungen Jul–Sep ohne
+  Protokoll — normal oder Ernte-Fehler?);
+- Kurzfassungen, die einen nicht gefassten Beschluss als gefasst nennen
+  (`outcome_note.states_outcome`).
+
+## 5. Risiken
+
+| Risiko | Gegenmittel |
+|---|---|
+| Falsches Zusammenlegen (Namensvettern, „vgl.“-Verweise) | Verweise nur als Kanten; Zusammenlegen nur über Projekt-Entitäten mit Freigabe; B7-Negativliste |
+| Riesige Akten (Haushalt, Jahresabschlüsse, Sammel-TOPs) | Sammel-TOPs ausnehmen (`_SAMMEL_TOPS`); Haushalt je Jahr eine Akte; Verdichtung von alt nach neu; Kontext-Budget in B8 |
+| Längerer Kontext → teurer, langsamer | B8-Budget als Tor; Verdichtung |
+| Kaputte Themen-Adressen, App-Links, Abos | nur über Aliase zusammenführen; Test über alle Slugs |
+| Migration auf gewachsener DB | Schema *und* Migration; `test_migration_bestand.py` mit Zeilen |
+| Neuaufbau blockiert Deploy | stapelweise, `kern/stopp.py` |
+| Gold-Set misst falsch | 0.1 hat das schon gezeigt: Das Bürgerbusch-Verbot X2 war falsch (die Vorlage 26/0290 nennt die Gründe ausdrücklich), Opus hatte eine korrekte Antwort als Verstoß gewertet. Jede Änderung am Gold mit Begründung im Fall (`note`) |
+| Protokoll-Lücke bleibt | Phase 0.5 klären; bis dahin angekündigte Stationen als solche kennzeichnen |
+
+## 6. Was zu entscheiden ist
+
+1. **Freigabe von Phase 0** (Messbasis, rund 10 $ Messkosten) und Phase 1
+   (unsichtbar, keine Produktänderung).
+2. **Dubletten-Freigabe in Phase 2:** Zusammenführen automatisch ab hoher
+   Sicherheit oder immer per Klick im Admin-Panel?
+3. **Sichtbarkeit:** Sollen die Themen-Seiten die Zeitleiste in Phase 2
+   gleich zeigen (UI-PR, Bild vor dem Merge) oder erst nach Phase 3?
