@@ -180,6 +180,35 @@ def test_snapshot_traegt_die_kondensierte_frage(tmp_path):
         store.close()
 
 
+def test_snapshot_traegt_verlauf_und_eckdaten(tmp_path):
+    """Ein wieder geöffnetes Gespräch zeigt dieselbe Akte wie das Original:
+    Zeitleiste und Eckdaten kommen erst mit dem done-Ereignis und stünden
+    sonst nur im ersten Durchlauf da."""
+    from app.routers.council import AskBody, _turn_speichern
+
+    store = Store(tmp_path / "ratslotse.sqlite")
+    try:
+        uid = _user(store)
+        store.set_qa_speichern(uid, True)
+        eckdaten = {"decision": {"decision_id": 1, "date": "2026-06-01", "committee": "Rat",
+                                 "outcome": "accepted", "votes": "einstimmig",
+                                 "title": "Wärmewende-Beirat"},
+                    "amounts": [], "latest": None, "next": None}
+        gid = _turn_speichern(store, {"id": uid}, AskBody(question="Beirat?", conversation_id=None), "Beirat?",
+                              "Beschlossen [1].", [], [1],
+                              zeitleiste={"span": "1 Monat", "count": 2, "stations": []},
+                              eckdaten=eckdaten)
+        quellen = json.loads(store.qa_gespraech(gid, uid)["turns"][0]["sources"])
+        assert quellen["key_facts"] == eckdaten
+        assert quellen["timeline"]["count"] == 2
+        # Ohne Eckdaten kein leeres Feld im Snapshot.
+        gid2 = _turn_speichern(store, {"id": uid}, AskBody(question="Und?", conversation_id=None), "Und?",
+                               "Nichts.", [], [])
+        assert "key_facts" not in json.loads(store.qa_gespraech(gid2, uid)["turns"][0]["sources"])
+    finally:
+        store.close()
+
+
 def test_liste_blaettert_statt_bei_50_zu_enden(tmp_path):
     """Tims Befund 30.08.2026: Die Liste zeigte dauerhaft 50 Gespräche.
 

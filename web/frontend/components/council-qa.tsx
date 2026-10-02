@@ -51,6 +51,7 @@ import { KOPFLEISTE_HOEHE, TABLEISTE_HOEHE } from "@/components/nav";
 import { decisionHref } from "@/lib/routes";
 import { PrintButton } from "@/components/print-button";
 import { AkteZeitleiste, type AkteZeitleisteDaten } from "@/components/akte-zeitleiste";
+import { KeyFactsCard, type KeyFacts } from "@/components/key-facts";
 import { pfad, cn } from "@/lib/utils";
 import { isNativeApp } from "@/lib/platform";
 import { reportBadgeEvent } from "@/components/badges";
@@ -246,6 +247,8 @@ type Turn = {
   chart?: QaGrafik | null;
   /** Der Verlauf des Vorgangs (Akte), fertig gebaut vom Backend. */
   timeline?: AkteZeitleisteDaten | null;
+  /** Die Eckdaten dazu: Abstimmung, Betrag, Stand, nächster Termin. */
+  key_facts?: KeyFacts | null;
 };
 
 /** Antwort vorlesen (5a/I-12, nur die TTS-Hälfte): SpeechSynthesis mit
@@ -910,6 +913,9 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                         ...(msg.timeline !== undefined
                           ? { timeline: (msg.timeline as AkteZeitleisteDaten | null) ?? null }
                           : {}),
+                        ...(msg.key_facts !== undefined
+                          ? { key_facts: (msg.key_facts as KeyFacts | null) ?? null }
+                          : {}),
                         unclear: Boolean(msg.unclear) });
             // null heißt: Server konnte/durfte nicht (mehr) in dieses Gespräch
             // speichern (z. B. auf anderem Gerät gelöscht) — die tote id nicht
@@ -1460,7 +1466,8 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         records_state?: Turn["records_state"];
         research?: boolean; context?: string | null; unclear?: boolean;
         documents_read?: number; period?: string; premium_model?: boolean;
-        chart?: QaGrafik | null; timeline?: AkteZeitleisteDaten | null } | null };
+        chart?: QaGrafik | null; timeline?: AkteZeitleisteDaten | null;
+        key_facts?: KeyFacts | null } | null };
       setTurns((g.turns as DbTurn[]).map((t) => ({
         key: naechsterKey(),
         question: t.question, answer: t.answer, qtype: null, mode: null,
@@ -1472,6 +1479,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         sessions: t.sources?.sessions ?? [],
         chart: t.sources?.chart ?? null,
         timeline: t.sources?.timeline ?? null,
+        key_facts: t.sources?.key_facts ?? null,
         records_state: t.sources?.records_state ?? null,
         cited: t.sources?.cited ?? [],
         // Die kondensierte Frage aus dem Snapshot, sonst die Originalfrage.
@@ -2431,6 +2439,15 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
             && !turn.fehler && !turn.abgebrochen && (
             <DuenneBeleglage onGruendlich={onGruendlich}
               mitSteckbrief={(turn.steckbriefe?.length ?? 0) > 0} />
+          )}
+
+          {/* Eckdaten (Plan „Akte“): Abstimmung, Betrag, Stand und nächster
+              Termin — direkt aus den Daten, weil das Modell genau diese
+              Fakten weglässt. Unter der Antwort, nicht darüber: Sie kommen
+              erst mit dem done-Ereignis, und darüber eingeschoben würde der
+              Text, den man gerade liest, nach unten springen. */}
+          {!beschaeftigt && turn.key_facts && !turn.fehler && !turn.abgebrochen && (
+            <KeyFactsCard facts={turn.key_facts} idToNum={idToNum} onJump={(id) => setPeekId(id)} />
           )}
 
           {/* RG-09: „Das sagen die Parteien" — direkt unter dem Antworttext,

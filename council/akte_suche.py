@@ -267,7 +267,7 @@ def nennt(antwort: str, station: dict) -> bool:
     """Nennt die Antwort diese Station — oder schon etwas Späteres?
 
     Beschluss: seine [id]. Sonst Monat und Jahr der Station (so schreibt die
-    Antwort Daten) oder das Datum in Ziffern. Nennt die Antwort einen
+    Antwort Daten), Tag und Monat oder das Datum in Ziffern. Nennt die Antwort einen
     SPÄTEREN Monat, ist sie schon weiter als die Station: Beim Schlossplatz
     hätte „Zuletzt: Dezember 2025“ unter einer Antwort gestanden, die mit
     April 2026 endete.
@@ -280,7 +280,10 @@ def nennt(antwort: str, station: dict) -> bool:
         return False
     if (f"{_MONATE[monat - 1]} {jahr}" in antwort
             or f"{tag:02d}.{monat:02d}.{jahr}" in antwort
-            or f"{tag}.{monat}.{jahr}" in antwort):
+            or f"{tag}.{monat}.{jahr}" in antwort
+            # „… laut Pressemitteilung vom 12. August hat die EU …“: Tag und
+            # Monat ohne Jahr — das Jahr steht ein paar Sätze vorher.
+            or re.search(rf"\b{tag}\. {_MONATE[monat - 1]}\b", antwort)):
         return True
     spaetester = _juengster_monat(antwort)
     return spaetester is not None and spaetester > (jahr, monat)
@@ -474,7 +477,11 @@ sitzung termin projekt projekte konzept strategie richtlinie überplanmäßige
 außerplanmäßige bewilligung haushalt haushaltsjahr wirtschaftsplan jahresabschluss
 gemeinsam gemeinsame gemeinsamer gemeinsamen gemeinsames aktuelle aktuellen aktueller
 neuen neuer neues weiterer weiteren erste ersten zweite zweiten künftige künftigen
+stand steht stehen wurde wurden kommen kommt geworden passiert entschieden
+beschlossen gesagt beantragt kostet kosten
 """.split())
+#: ^ Die letzte Zeile sind Fragewörter: „Wie ist der STAND …“ steckt sonst in
+#: jedem „Sachstandsbericht“, „beschlossen“ in jedem „beschlossenen“.
 _WORT_RE = re.compile(r"[a-zäöüß]{5,}")
 
 
@@ -483,9 +490,14 @@ def _sachwoerter(text: str, orte: set[str]) -> set[str]:
             if w not in _AMTSWOERTER and w not in orte}
 
 
+_FALTEN = str.maketrans({"ä": "a", "ö": "o", "ü": "u", "ß": "ss"})
+
+
 def _verwandt(a: str, b: str) -> bool:
     """Teilen zwei Wörter einen Stamm? Komposita zählen („stadion“ in
-    „stadionfinanzierung“), sonst ein gemeinsamer Anfang von 7 Buchstaben."""
+    „stadionfinanzierung“), sonst ein gemeinsamer Anfang von 7 Buchstaben.
+    Umlaute zählen wie ihr Grundlaut — „Hebesatz“ steckt in „Hebesätze“."""
+    a, b = a.translate(_FALTEN), b.translate(_FALTEN)
     if a in b or b in a:
         return True
     return len(a) >= 7 and len(b) >= 7 and a[:7] == b[:7]
@@ -546,3 +558,153 @@ def kern(store: Any, zitiert: list[int], frage: str) -> dict:
                  and passt("station", st["id"], st.get("title"))]
     stationen.sort(key=lambda st: str(st.get("date") or ""))
     return {"decisions": decisions, "press": presse[:PRESSE], "announced": stationen[:ANGEKUENDIGT]}
+
+
+# --------------------------------------------------------------------------- #
+# Eckdaten unter der Antwort (Schalter ``akten-zeitleiste``)
+# --------------------------------------------------------------------------- #
+#
+# Was das Modell weglässt, steht im Protokoll ausdrücklich: Von den verfehlten
+# Pflichtfakten der Gold-Runde vom 02.10.2026 hatten 30 % ihren Beleg im
+# Kontext — fast immer Stimmen, Beträge und Daten. Eine feste Gliederung und
+# mehr Denkaufwand bewegten das um keinen Punkt. Deshalb zeigt der Server sie
+# selbst, direkt aus den Daten: den jüngsten zitierten Beschluss mit seiner
+# Abstimmung, den Betrag, den er nennt, was danach kam und was als Nächstes
+# ansteht. Kein Modell, also auch keine Zahl, die das Modell sich ausdenkt.
+
+#: Ergebnisse, über die abgestimmt wurde. „Zur Kenntnis“, „vertagt“ und „gilt
+#: als behandelt“ sind Stationen, aber kein Beschluss in der Sache.
+DECISIVE = ("accepted", "rejected")
+#: Höchstens so viele Beträge — derselben Sitzung wie der Beschluss.
+KEY_AMOUNTS_MAX = 2
+
+
+def _names_date(answer: str, iso: str) -> bool:
+    """Nennt die Antwort dieses Datum — „10. Juli 2026“ oder „10.07.2026“?"""
+    try:
+        year, month, day = (int(x) for x in iso[:10].split("-"))
+    except ValueError:
+        return False
+    return (f"{day}. {_MONATE[month - 1]} {year}" in answer
+            or f"{day:02d}.{month:02d}.{year}" in answer
+            or f"{day}.{month}.{year}" in answer)
+
+
+def press_named(answer: str, press: list[dict]) -> list[dict]:
+    """Die Pressemitteilungen, auf die sich die Antwort beruft („Laut
+    Pressemitteilung vom 10.07.2026“). Sie gehören zum Vorgang, auch wenn die
+    Akte sie nicht kennt — bei der Cäcilienbrücke stand die Freigabe der
+    Bundesmittel nur dort."""
+    if "Pressemitteilung" not in answer:
+        return []
+    return [p for p in press if _tag(p.get("date")) and _names_date(answer, _tag(p.get("date")))]
+
+
+def _key_station(kind: str, row: dict) -> dict:
+    if kind == "decision":
+        return {"kind": "decision", "date": _tag(row.get("session_date")),
+                "title": " ".join(str(row.get("title") or "").split()),
+                "committee": row.get("committee"), "outcome": row.get("outcome"),
+                "decision_id": row["id"], "url": None}
+    if kind == "press":
+        return {"kind": "press", "date": _tag(row.get("date")),
+                "title": " ".join(str(row.get("title") or "").split()),
+                "committee": None, "outcome": None, "decision_id": None, "url": row.get("url")}
+    return {"kind": "announced", "date": _tag(row.get("date")),
+            "title": " ".join(str(row.get("title") or row.get("template_number") or "").split()),
+            "committee": row.get("committee"), "outcome": None, "decision_id": None, "url": None}
+
+
+_ART_KIND = {"beschluss": "decision", "presse": "press", "angekuendigt": "announced"}
+
+
+def without_station(facts: dict | None, station: dict | None) -> dict | None:
+    """Die Eckdaten ohne die Station, die der Server schon als „Zuletzt:“
+    an die Antwort gehängt hat — dieselbe Zeile zweimal untereinander, einmal
+    im Text und einmal in der Karte, sähe nach einem Versehen aus."""
+    if not facts or not station:
+        return facts
+    kind, day = _ART_KIND.get(station["art"]), str(station.get("datum") or "")[:10]
+    return {**facts, **{k: None for k in ("latest", "next")
+                        if facts.get(k) and facts[k]["kind"] == kind and facts[k]["date"] == day}}
+
+
+def key_facts(cited: list[dict], decisions: list[dict], press: list[dict],
+              announced: list[dict], today: str, question: str = "") -> dict | None:
+    """Die Eckdaten zur Antwort — ``None`` ohne zitierten Beschluss mit Abstimmung.
+
+    ``cited``: die Beschlüsse, die die Antwort zitiert, in der Reihenfolge des
+    ersten Zitats (volle Zeilen mit Abstimmung und Betrag). ``decisions``,
+    ``press``, ``announced``: was als spätere Station infrage kommt — dieselbe
+    Auswahl wie beim Satz „Zuletzt“.
+
+    - ``decision``: der jüngste zitierte Beschluss mit Abstimmung (angenommen
+      oder abgelehnt); am selben Tag ein angenommener vor einem abgelehnten,
+      sonst der, den die Antwort zuerst zitiert. Mit
+      ``votes`` („mehrheitlich, 18 Gegenstimmen, 2 Enthaltungen“).
+    - ``amounts``: die Beträge angenommener zitierter Beschlüsse derselben
+      Sitzung, der Beschluss selbst zuerst. Ein abgelehnter Betrag ist der
+      Vorschlag, nicht das, was gilt — er steht nicht da.
+    - ``latest``: die jüngste Station NACH dem Beschluss — ein Beschluss, eine
+      Pressemitteilung oder ein Termin ohne protokolliertes Ergebnis.
+    - ``next``: der nächste angekündigte Termin ab ``today``.
+
+    Beschlüsse und Termine zählen nur, wenn ihr Titel ein Sachwort mit der
+    ``question`` teilt: Die Antwort auf „Wann kommen öffentliche
+    Trinkwasserspender?“ zitierte am Rand die „Unterstützung Schwimmbad
+    BTB“ — als jüngster Beschluss mit Abstimmung hätte er die Eckdaten
+    angeführt. Ortsnamen zählen hier als Sachwort (anders als in ``kern``):
+    Die Titel stammen aus zitierten Beschlüssen, nicht aus einem Thema, an
+    dem halb Oldenburg klebt — und beim Schlossplatz trägt nur der Ort den
+    Sachstandsbericht („Spielbereich Schlossplatz“). Pressemitteilungen
+    ebenso, auch die, die die Antwort selbst nennt: Zur Stadion-Frage nannte
+    sie den Vorverkauf des Stadionsingens („Im Spätsommer bereits an den
+    Advent denken“) — als „Zuletzt“ unter dem Stadionneubau.
+    """
+    words = _sachwoerter(question, set())
+
+    def relevant(title: Any) -> bool:
+        return not words or gehoert_zum_vorgang(str(title or ""), words, set())
+
+    order = [d for d in {d["id"]: d for d in cited}.values() if relevant(d.get("title"))]
+    decisions = [d for d in decisions if relevant(d.get("title"))]
+    press = [p for p in press if relevant(p.get("title"))]
+    announced = [a for a in announced if relevant(a.get("title") or a.get("template_number"))]
+    voted = [(n, d) for n, d in enumerate(order)
+             if d.get("outcome") in DECISIVE and _tag(d.get("session_date"))]
+    if not voted:
+        return None
+    # Am selben Tag: erst das Angenommene — ein abgelehnter Gegenantrag (FO:
+    # „erst nach EU-Zusage beauftragen“) ist nicht der Stand —, dann das
+    # zuerst Zitierte.
+    _, main = max(voted, key=lambda nd: (_tag(nd[1].get("session_date")),
+                                         nd[1].get("outcome") == "accepted", -nd[0]))
+    day = _tag(main.get("session_date"))
+
+    def same_session(d: dict) -> bool:
+        if main.get("ksinr") is not None and d.get("ksinr") is not None:
+            return d["ksinr"] == main["ksinr"]
+        return _tag(d.get("session_date")) == day and d.get("committee") == main.get("committee")
+
+    amounts = [{"amount_eur": float(d["amount_eur"]), "decision_id": d["id"],
+                "title": " ".join(str(d.get("title") or "").split())}
+               for d in sorted(order, key=lambda d: d["id"] != main["id"])
+               if d.get("outcome") == "accepted" and (d.get("amount_eur") or 0) > 0
+               and same_session(d)][:KEY_AMOUNTS_MAX]
+
+    later = ([_key_station("decision", d) for d in {x["id"]: x for x in [*order, *decisions]}.values()]
+             + [_key_station("press", p) for p in press]
+             + [_key_station("announced", a) for a in announced if _tag(a.get("date")) < today])
+    later = [s for s in later if s["date"] > day]
+    rank = {"decision": 0, "press": 1, "announced": 2}
+    latest = max(later, key=lambda s: (s["date"], -rank[s["kind"]])) if later else None
+
+    upcoming = sorted((a for a in announced if _tag(a.get("date")) >= today),
+                      key=lambda a: _tag(a.get("date")))
+    nxt = _key_station("announced", upcoming[0]) if upcoming else None
+
+    return {"decision": {"decision_id": main["id"], "date": day,
+                         "committee": main.get("committee"), "outcome": main.get("outcome"),
+                         "votes": _stimmen_text(main),
+                         "title": " ".join(str(main.get("title") or "").split())},
+            "amounts": amounts, "latest": latest, "next": nxt}
