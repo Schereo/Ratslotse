@@ -556,6 +556,16 @@ Zur Einordnung, alles mit Claude als Richter: Frag den Rat steht mit Akte
 bei rund 51–56 %, die Gründliche Recherche mit Akte bei 63,7 %. Der Abstand
 zwischen den beiden bleibt — die Akte hebt beide.
 
+**Eckdaten unter der Antwort (#1635).** Weil das Modell Stimmen, Beträge und
+Termine weglässt, zeigt der Server sie selbst, aus den Daten: der jüngste
+zitierte Beschluss mit Abstimmung, sein Betrag („größter Betrag im
+Beschlusstext“), was danach kam und was als Nächstes ansteht
+(`akte_suche.key_facts`, Feld `key_facts`). Nur Titel mit einem Sachwort der
+Frage — sonst führte das Schwimmbad BTB die Trinkwasser-Frage an —, Routine
+(Jahresabschluss, Wirtschaftsplan, Entlastung) hintan. Über die 20
+Gold-Antworten bekommen 16 eine Karte, alle zur Sache. Unter der Antwort,
+nicht darüber: Sie braucht die Zitate und käme sonst als Sprung über dem Text.
+
 ## 5. Risiken
 
 | Risiko | Gegenmittel |
