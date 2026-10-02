@@ -38,6 +38,10 @@ on:
         description: "Nur diesen Fall (id aus cases_deep_gold.json), leer = alle"
         type: string
         default: ""
+      befreien:
+        description: "Messkonto von den Rate-Limitern befreien (Tims Freigabe 02.10.2026; zurücknehmen im Admin-Panel)"
+        type: boolean
+        default: true
 
 concurrency:
   group: ops-gold-${{ inputs.umgebung }}
@@ -52,6 +56,7 @@ jobs:
           WEG: ${{ inputs.weg }}
           LABEL: ${{ inputs.label }}
           NUR: ${{ inputs.nur }}
+          BEFREIEN: ${{ inputs.befreien }}
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ inputs.umgebung == 'prod' && secrets.VPS_HOST || secrets.VPS_DEV_HOST }}
@@ -64,7 +69,7 @@ jobs:
           proxy_port: ${{ secrets.VPS_SSH_PORT }}
           command_timeout: 60m
           # Eingaben über `envs` und geprüft, nicht als `${{ … }}` im Skripttext.
-          envs: WEG,LABEL,NUR
+          envs: WEG,LABEL,NUR,BEFREIEN
           script: |
             set -e
             cd ~/app
@@ -81,8 +86,14 @@ jobs:
             # ausgeschrieben statt über eine Hilfsvariable.
             if [ "$WEG" = "ask" ] || [ "$WEG" = "beide" ]; then
               echo "=== Frag den Rat"
-              if [ -n "$NUR" ]; then $PY scripts/eval_ask_gold.py --label "$LABEL" --nur "$NUR"
-              else $PY scripts/eval_ask_gold.py --label "$LABEL"; fi
+              # Wieder ausgeschrieben statt über eine Hilfsvariable (zsh, s. o.).
+              if [ "$BEFREIEN" = "true" ]; then
+                if [ -n "$NUR" ]; then $PY scripts/eval_ask_gold.py --label "$LABEL" --nur "$NUR" --befreien
+                else $PY scripts/eval_ask_gold.py --label "$LABEL" --befreien; fi
+              else
+                if [ -n "$NUR" ]; then $PY scripts/eval_ask_gold.py --label "$LABEL" --nur "$NUR"
+                else $PY scripts/eval_ask_gold.py --label "$LABEL"; fi
+              fi
             fi
             if [ "$WEG" = "deep" ] || [ "$WEG" = "beide" ]; then
               echo "=== Gründliche Recherche"
