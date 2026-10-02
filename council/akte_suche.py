@@ -29,8 +29,10 @@ from typing import Any
 
 log = logging.getLogger("council.akte_suche")
 
-#: Wie viele der besten Suchtreffer die Akte bestimmen.
-EINSTIEG = 3
+#: Wie viele der besten Suchtreffer die Akte bestimmen. Gemessen am Gold-Set
+#: (Anteil der Belege in Suche + Akten-Auswahl, 02.10.2026): 3 → 63,0 %,
+#: 5 → 64,8 % — der fünfte Treffer trifft öfter die Pressemitteilungen.
+EINSTIEG = 5
 #: So viele Beschlüsse der Akte kommen höchstens zusätzlich in den Kontext.
 BESCHLUESSE = 12
 #: Wortbeiträge: die so vielen der Akte, deren Vektor der Frage am nächsten
@@ -38,8 +40,11 @@ BESCHLUESSE = 12
 #: nach Vektor brachten 20 von 52 Debatten-Belegen in 17 ms; 40 nach Vektor
 #: und dann 10 nach Cross-Encoder 21 von 52 in 573 ms, 200 Paare durch den
 #: Cross-Encoder dauerten 9–11 s. Innerhalb einer Akte ist schon alles beim
-#: Thema; dort trennt der Cross-Encoder kaum noch.
-BEITRAEGE = 20
+#: Thema; dort trennt der Cross-Encoder kaum noch. Mit Einstieg 5: 20 Beiträge
+#: 64,8 %, 30 → 69,1 %, 40 → 72,1 % — 30 als Mitte, weil jeder Beitrag den
+#: Prompt verlängert und die Antwort das Material ohnehin nicht ausschöpft
+#: (Phase 4).
+BEITRAEGE = 30
 #: Dazu immer so viele jüngste Aussagen der Verwaltung.
 VERWALTUNG = 4
 PRESSE = 5
