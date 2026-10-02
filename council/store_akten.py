@@ -155,6 +155,14 @@ class AktenMixin(StoreBasis):
             f"SELECT DISTINCT item_type, item_id FROM council_entity_mentions WHERE slug IN "
             f"({','.join('?' * len(slugs))})", slugs)]
 
+    def hauptbeschluesse(self, decision_ids: list[int]) -> list[int]:
+        """Die ids darunter, die keine Teilabstimmung sind (``kind = 'decision'``)."""
+        if not decision_ids:
+            return []
+        return [r[0] for r in self._conn.execute(
+            f"SELECT id FROM council_decisions WHERE kind = 'decision' AND id IN "
+            f"({','.join('?' * len(decision_ids))})", decision_ids)]
+
     def items_of_matters(self, matter_ids: list[int]) -> list[tuple]:
         """(item_type, item_id) aller Zeilen dieser Grundakten."""
         if not matter_ids:
