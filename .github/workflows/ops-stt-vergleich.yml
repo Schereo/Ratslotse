@@ -1,0 +1,123 @@
+# Manuell auslösbar: Audio-Modelle für die Livestream-Transkription an den
+# aufbewahrten Sitzungs-Stücken vergleichen.
+#
+# WARUM AUF DEM SERVER. Das Audio liegt nur dort: council/stt_retain.py hebt je
+# Ratssitzung eine feste Auswahl von 30-s-Stücken auf
+# (~/.cache/ratslotse/stt/<ksinr>/), seit 23.09.2026. Lokal gibt es keins.
+#
+# WAS ES TUT. Für jedes Modell `eval/pruefstand.py --suite transkription`
+# (eval/run_stt.py): jedes Stück transkribieren wie im Betrieb
+# (livestream.transcribe_chunk), Wort-F1 gegen die Referenz, Latenz und Kosten
+# aus der eigenen Kostendatei des Laufs. Danach die Stücke nebeneinander zum
+# Nachlesen (Auslassungen, Sprecherwechsel).
+#
+# WAS ES NICHT TUT. Keine Produktionsdaten: Die Stücke werden nur gelesen, die
+# Kosten zählt der Prüfstand in eine Wegwerf-Datei (RATSLOTSE_SQLITE), nicht in
+# llm_usage. Geschrieben werden nur die Ergebnis-JSONs unter
+# eval/results/pruefstand/transkription/ — wie bei ops-eval-ai.yml.
+#
+# REFERENZ. Vorgabe ist der Gladia-Text, den der Streaming-Weg im Betrieb für
+# dasselbe Fenster geliefert hat (s. eval/run_stt.py, „Ersatz-Referenz“) —
+# gut für den Vergleich zweier Modelle, keine absolute Güte. `youtube` nimmt
+# <name>.txt aus eval/stt_referenz.py, sobald es die gibt.
+#
+# WAS ES KOSTET. 20 Stücke à 30 s je Sitzung, je Modell und Lauf ein Aufruf
+# pro Stück — mit den Flash-(Lite)-Modellen Cent-Beträge. Die Kostenbremse des
+# Prüfstands (1 $ je Suite) gilt.
+name: "Ops: Transkriptions-Modelle vergleichen"
+
+on:
+  workflow_dispatch:
+    inputs:
+      umgebung:
+        description: "Welche VM? (prod = ratslotse.de, nur dort läuft der Mitschnitt)"
+        type: choice
+        options: [dev, prod]
+        default: prod
+      modelle:
+        description: "Modelle, kommagetrennt (müssen Audio annehmen)"
+        type: string
+        default: "google/gemini-2.5-flash,google/gemini-3.5-flash-lite,google/gemini-3.1-flash-lite"
+      laeufe:
+        description: "Läufe je Modell (für ein Urteil: 2)"
+        type: choice
+        options: ["1", "2", "3"]
+        default: "2"
+      referenz:
+        description: "gladia = Text des Streaming-Wegs, youtube = <name>.txt aus eval/stt_referenz.py"
+        type: choice
+        options: [gladia, chunks, youtube]
+        default: gladia
+
+concurrency:
+  group: ops-stt-vergleich-${{ inputs.umgebung }}
+  cancel-in-progress: false
+
+jobs:
+  vergleich:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Transkription (${{ inputs.umgebung }})"
+        env:
+          MODELLE: ${{ inputs.modelle }}
+          LAEUFE: ${{ inputs.laeufe }}
+          REFERENZ: ${{ inputs.referenz }}
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ inputs.umgebung == 'prod' && secrets.VPS_HOST || secrets.VPS_DEV_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          proxy_host: ${{ secrets.VPS_PROXY_HOST }}
+          proxy_username: ${{ secrets.VPS_PROXY_USER }}
+          proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          proxy_port: ${{ secrets.VPS_SSH_PORT }}
+          command_timeout: 60m
+          # Eingaben über `envs` und geprüft, nicht als `${{ … }}` im Skripttext.
+          envs: MODELLE,LAEUFE,REFERENZ
+          script: |
+            set -e
+            cd ~/app
+            if ! echo "$MODELLE" | grep -qE '^[a-z0-9./:,-]{1,300}$'; then
+              echo "modelle: nur Modell-Ids, kommagetrennt: $MODELLE"; exit 2
+            fi
+            if ! echo "$LAEUFE" | grep -qE '^[1-3]$'; then
+              echo "laeufe: 1 bis 3"; exit 2
+            fi
+            PY=.venv/bin/python
+            STT="$HOME/.cache/ratslotse/stt"
+            echo "=== Aufbewahrte Stücke in $STT"
+            # find statt Glob: Die Login-Shell ist zsh, und ein Glob ohne
+            # Treffer bricht dort mit „no matches found“ ab.
+            if [ -d "$STT" ]; then
+              find "$STT" -mindepth 1 -maxdepth 1 -type d | sort | while read -r d; do
+                echo "$d: $(find "$d" -name '*.mp3' | wc -l) mp3," \
+                  "$(find "$d" -name '*.gladia.txt' | wc -l) gladia," \
+                  "$(find "$d" -name '*.chunks.txt' | wc -l) chunks," \
+                  "$(find "$d" -name 'chunk_[0-9][0-9][0-9].txt' | wc -l) youtube," \
+                  "Stand $(date -r "$d" '+%Y-%m-%d %H:%M')"
+              done
+            else
+              echo "(kein Ordner — noch keine Sitzung mit Aufbewahrung)"; exit 0
+            fi
+            if [ "$REFERENZ" = "youtube" ]; then
+              export RATSLOTSE_STT_REFERENZ=""
+            else
+              export RATSLOTSE_STT_REFERENZ="$REFERENZ"
+            fi
+            MARKE=$(mktemp)
+            echo "$MODELLE" | tr ',' '\n' | while read -r m; do
+              [ -n "$m" ] || continue
+              $PY eval/pruefstand.py --suite transkription --modell "$m" --laeufe "$LAEUFE" \
+                || echo "(Lauf mit $m rot — weiter mit dem nächsten Modell)"
+            done
+            echo ""
+            echo "=== Stücke nebeneinander"
+            ERG=eval/results/pruefstand/transkription
+            find "$ERG" -name '*.json' -newer "$MARKE" | sort > "$MARKE.liste"
+            if [ -s "$MARKE.liste" ]; then
+              # Einzeln als Argumente — zsh teilt eine unquotierte Variable
+              # nicht in Wörter, xargs schon.
+              xargs $PY eval/run_stt.py zeigen < "$MARKE.liste"
+            fi
+            rm -f "$MARKE" "$MARKE.liste"
