@@ -48,7 +48,7 @@ und ist trotzdem kein Beleg für den einzelnen Einsatz.
 | KI-Frage | `COUNCIL_QA_MODEL` | gpt-6-luna (P4a) | Web (Strom) | `eval/run_qa.py` (Server), `run_qa_answer.py`, `quality_qa.py` |
 | KI-Frage: Erweiterung | `COUNCIL_QA_EXPAND_MODEL` | gemini-3.1-flash-lite (P4a) | Web | `eval/run_qa_routing.py` |
 | Eval-Richter | `COUNCIL_QUALITY_JUDGE_MODEL` | gemini-3.5-flash (P4a) | Eval | — |
-| Livestream-Transkription | `COUNCIL_STT_MODEL` | gemini-2.5-flash | Sitzungs-Mitschnitt | `transkription` (ohne Audio, misst noch nicht) |
+| Livestream-Transkription | `COUNCIL_STT_MODEL` | gemini-3.1-flash-lite (02.10.) | Sitzungs-Mitschnitt | `transkription` (Server: `ops-stt-vergleich.yml`) |
 | Live-Verfolgung | `COUNCIL_LIVE_TRACKER_MODEL` | gemini-3.5-flash-lite (P4b) | Sitzungs-Mitschnitt | `live-verfolgung` |
 | Wortbeiträge | `COUNCIL_WORTBEITRAG_MODEL` | gemini-3.5-flash-lite (P4b) | Cron `check_protocols` | `wortbeitraege` |
 | Ortszuordnung | `COUNCIL_LOCATION_MODEL` | gemini-3.1-flash-lite (P4b) | Cron | `eval/run_locations.py` |
@@ -196,6 +196,12 @@ Gemini 3.1 Flash Lite steht bei Lotti deshalb jetzt so da. Kurz:
   (100 % heute): Sie sagt „kein Rückschritt“, nicht „besser“.
 - **Transkription:** keine Messung. Es gibt nirgends Sitzungs-Audio, auch
   nicht auf dem Server (s. `eval/run_stt.py`, was gebraucht wird).
+  **Nachtrag 02.10.2026:** Seit der Sitzung vom 28.09. liegen 20 Stücke auf
+  dem Server; gemessen gegen den Gladia-Text derselben Fenster
+  (`ops-stt-vergleich.yml`, zwei Läufe je Modell). 2.5 Flash F1 0,75,
+  3.5 Flash Lite 0,75, 3.1 Flash Lite 0,77 — im Rauschen, 3.1 Flash Lite
+  zum halben Preis und am schnellsten. Umgestellt; Zahlen in
+  `council/livestream.py`.
 - **Video-Ergebnisse:** GPT-6 Luna **schlechter** (85,2 gegen 89,3 %), im
   Flex-Tarif im Rauschen. Kein Kandidat gab ein falsches Ergebnis aus.
 - **Social-Text, Kritiker, Viertel:** GPT-6 Luna normal und Flex im

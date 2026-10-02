@@ -181,7 +181,7 @@ def test_runtime_preflight_accepts_required_configuration_and_crons():
 
     assert build == 19
     assert video_model == "openai/gpt-5.6-luna"
-    assert stt_model == "google/gemini-2.5-flash"
+    assert stt_model == "google/gemini-3.1-flash-lite"
 
 
 @pytest.mark.parametrize(

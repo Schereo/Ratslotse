@@ -24,13 +24,10 @@ _VORGABE = re.compile(
 
 #: Ausnahmen mit Grund. Jede ist eine Schuld: Der Test meldet auch, wenn sie
 #: nicht mehr gebraucht wird.
-AUSNAHMEN = {
-    # Rückfall der Livestream-Transkription, wenn Gladia ausfällt. Er braucht
-    # AUDIO-Eingabe, die GPT-6 Luna nicht kann — Nachfolger wählt Tim
-    # (Kandidaten mit Audio: Voxtral, GPT Audio Mini, Gemini 3.x).
-    ("council/livestream.py", "COUNCIL_STT_MODEL"),
-    ("scripts/verify_release_runtime.py", "DEFAULT_STT_MODEL"),
-}
+#: Leer seit 02.10.2026: Die letzten beiden (Rückfall der Livestream-
+#: Transkription, braucht Audio-Eingabe) stehen jetzt auf Gemini 3.1 Flash
+#: Lite, gemessen in council/livestream.py.
+AUSNAHMEN: set[tuple[str, str]] = set()
 
 
 def _funde() -> set[tuple[str, str]]:

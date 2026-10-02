@@ -18,7 +18,8 @@ from pathlib import Path
 
 
 DEFAULT_VIDEO_MODEL = "openai/gpt-5.6-luna"
-DEFAULT_STT_MODEL = "google/gemini-2.5-flash"
+# Muss zu council/livestream.py::STT_MODEL passen (Messung dort, 02.10.2026).
+DEFAULT_STT_MODEL = "google/gemini-3.1-flash-lite"
 
 
 class PreflightError(RuntimeError):
