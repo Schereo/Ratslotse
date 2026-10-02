@@ -3148,6 +3148,7 @@
  },
  {
   "id": "behrens-baumschutz",
+  "akte": false,
   "note": "Personenfrage. Handgeprüft am 02.10.2026 gegen council_speeches, Protokoll-Volltexte (council_protocols.raw_text: ASUK 4439, 4443, 4441, 4664, 4665, 4197; Rat 4499, 4505), Beschlüsse und Pressemitteilungen. Fallstrick Namensvettern: In den Einwohnerfragestunden des ASUK am 11.09.2025 und 11.06.2026 fragt laut Protokoll ein „Einwohner Behrens“ (nicht der Ratsherr) nach den Fällungen an der Nadorster Straße; die Protokollführerin des ASUK heißt ebenfalls Behrens. Viele Wortbeiträge des Ratsherrn stehen in council_speeches nur als „Behrens“ ohne Partei. Paul Behrens spricht auch in Sozial- und Schulausschuss viel – die Antwort muss beim Baumschutz bleiben.",
   "stand": "2026-10-01 (Prod-Abzug)",
   "question": "Was hat Paul Behrens (SPD) im Rat und im Umweltausschuss zum Baumschutz gesagt und beantragt?",
@@ -3404,6 +3405,7 @@
  },
  {
   "id": "asuk-2026-02-12-beschluesse",
+  "akte": false,
   "note": "Sitzungsfrage. Handgeprüft am 02.10.2026 gegen Protokoll ASUK 01/26 (council_protocols ksinr=4663, 22 Seiten), council_decisions der Sitzung, die Folgeberatungen (council_deliberations, Rat 23.02.2026 ksinr=4625, Rat 31.08.2026) und Pressemitteilungen. Von 16 Tagesordnungspunkten mit Ergebnis sind nur vier echte Sachbeschlüsse; die meisten Punkte sind Berichte, zwei FDP-Anträge wurden nur verwiesen. Formal-TOPs (Tagesordnung, Protokoll) gehören nicht in die Antwort.",
   "stand": "2026-10-01 (Prod-Abzug)",
   "question": "Was hat der Ausschuss für Stadtgrün, Umwelt und Klima am 12. Februar 2026 beschlossen?",

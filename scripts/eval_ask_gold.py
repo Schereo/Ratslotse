@@ -92,6 +92,12 @@ def material_form(quellen: dict, debatten: list[dict] | None = None) -> dict:
                      "text": d.get("excerpt") or d.get("text") or "",
                      "speaker": d.get("speaker")} for d in deb],
         "press_releases": quellen.get("press_releases") or [],
+        "attachments": quellen.get("attachments") or [],
+        # Tagesordnungspunkte aus dem Sitzungs-Baustein — die einzige Stelle,
+        # an der „Frag den Rat“ heute angekündigte Stationen zeigt.
+        "agenda": [{"session_date": s.get("session_date"), "committee": s.get("committee"),
+                    "title": a.get("title")}
+                   for s in quellen.get("sessions") or [] for a in s.get("agenda") or []],
     }
 
 
