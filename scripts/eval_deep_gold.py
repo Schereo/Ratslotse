@@ -113,6 +113,21 @@ def _material_pruefen(case: dict, m: dict) -> list[dict]:
             treffer = any(str(p.get("date", ""))[:10] == b["date"]
                           and b["titel_enthaelt"].lower() in (p.get("title") or "").lower()
                           for p in m.get("press_releases", []))
+        elif b["art"] == "vorlage":
+            # Der Vorlagen-Text lag vor, wenn ein Beschluss oder eine Anlage
+            # derselben Vorlage im Kontext stand („26/0261“ trifft auch
+            # „26/0261/1“).
+            nr = b["template_number"]
+            treffer = any(str(x.get("template_number") or "").startswith(nr)
+                          for x in [*m.get("candidates", []), *m.get("attachments", [])])
+        elif b["art"] == "beratung":
+            # Eine angekündigte oder noch nicht protokollierte Station: steht
+            # nur auf der Tagesordnung (Plan „Akte“, Schritt 0.2). Heute trägt
+            # sie nur der Sitzungs-Fragetyp in den Kontext; ab Phase 3 die Akte.
+            treffer = any(str(a.get("session_date", ""))[:10] == b["session_date"]
+                          and b.get("committee", "") in (a.get("committee") or "")
+                          and b["titel_enthaelt"].lower() in (a.get("title") or "").lower()
+                          for a in m.get("agenda", []))
         out.append({"id": b["id"], "fuer": b["fuer"], "art": b["art"], "vorhanden": treffer})
     return out
 
