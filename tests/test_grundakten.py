@@ -164,3 +164,18 @@ def test_allerweltsname_wird_nicht_erwaehnt(themen, monkeypatch):
     monkeypatch.setattr(matters, "ALLGEMEIN_BEITRAEGE", 0)
     matters.build(themen)
     assert "schlossplatz" not in _erwaehnt(themen, "speech", 813)
+
+
+def test_offene_vorlage_haengt_ueber_ihren_titel_an_der_entitaet(themen):
+    """Ohne Protokoll kein Beschluss, ohne Beschluss kein Thema — die Rats-
+    Station vom 20.10. (Vorlage „Heidbrook“) erreichte sonst keine Akte.
+    Eine protokollierte Vorlage („Spielleitplanung“) bekommt nichts dazu."""
+    themen._conn.executemany(
+        "INSERT INTO council_entities (id, slug, name, kind, n) VALUES (?, ?, ?, ?, ?)",
+        [(7, "heidbrook", "Heidbrook", "place", 3),
+         (8, "spielleitplanung", "Spielleitplanung", "project", 2)])
+    themen._conn.commit()
+    matters.build(themen)
+    offen = themen.matter_of("template", 501)["id"]
+    assert themen.matters_of_entities(["heidbrook"]) == {offen}
+    assert themen.matters_of_entities(["spielleitplanung"]) == set()

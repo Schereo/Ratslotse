@@ -110,6 +110,16 @@ class AktenMixin(StoreBasis):
             "JOIN council_matter_items i ON i.item_type = 'decision' AND i.item_id = l.decision_id "
             "JOIN council_matters m ON m.id = i.matter_id")]
 
+    def open_matter_template_titles(self) -> list[tuple]:
+        """(matter_id, Vorlagen-Titel, Akten-Titel) je Vorlage in einer Grundakte,
+        die noch KEINEN Beschluss trägt (die Vorlage ist noch nicht protokolliert)."""
+        return [tuple(r) for r in self._conn.execute(
+            "SELECT i.matter_id, t.title, m.title FROM council_templates t "
+            "JOIN council_matter_items i ON i.item_type = 'template' AND i.item_id = t.kvonr "
+            "JOIN council_matters m ON m.id = i.matter_id WHERE t.title IS NOT NULL "
+            "AND NOT EXISTS (SELECT 1 FROM council_matter_items d WHERE d.matter_id = i.matter_id "
+            "AND d.item_type = 'decision')")]
+
     def replace_entity_akten(self, matters: list[tuple], mentions: list[tuple]) -> None:
         """Beide Phase-2-Tabellen vollständig ersetzen, in EINER Transaktion."""
         with self._conn:
@@ -154,6 +164,17 @@ class AktenMixin(StoreBasis):
         return [tuple(r) for r in self._conn.execute(
             f"SELECT DISTINCT item_type, item_id FROM council_entity_mentions WHERE slug IN "
             f"({','.join('?' * len(slugs))})", slugs)]
+
+    def deliberations_by_ids(self, ids: list[int]) -> list[dict]:
+        """Stationen der Beratungsfolge samt Vorlage: id, date, committee,
+        result (die BeratungsART — Vorberatung/Entscheidung/Kenntnisnahme, kein
+        Ergebnis), template_number, title."""
+        if not ids:
+            return []
+        return [dict(r) for r in self._conn.execute(
+            f"SELECT d.id, d.date, d.committee, d.result, t.template_number, t.title "
+            f"FROM council_deliberations d LEFT JOIN council_templates t ON t.kvonr = d.kvonr "
+            f"WHERE d.id IN ({','.join('?' * len(ids))})", ids)]
 
     def hauptbeschluesse(self, decision_ids: list[int]) -> list[int]:
         """Die ids darunter, die keine Teilabstimmung sind (``kind = 'decision'``)."""

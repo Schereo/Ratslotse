@@ -72,6 +72,16 @@ FEATURES: dict[str, Feature] = {
                     "mindestens drei Fälle mehr bestanden, Retrieval ohne Rückschritt) "
                     "und lag zwei Wochen auf Prod an; dann ist die Akte der Normalweg.",
     ),
+    "akten-zeitleiste": Feature(
+        key="akten-zeitleiste",
+        description="„Frag den Rat“ bekommt den Vorgang als datierte Zeitleiste (Block "
+                    "„AKTE“) samt angekündigter Stationen, erzählt ihn in zeitlicher Folge "
+                    "und nennt den aktuellen Stand; fehlt er, hängt der Server ihn an "
+                    "(Plan „Akte“, Phase 4). Wirkt nur zusammen mit `akten-suche`.",
+        fertig_wenn="Phase 4 hat ihr Tor erreicht (Gold „Frag den Rat“: +10 Pp bei "
+                    "„Fakt genannt, wenn Material vorhanden“ gegenüber Phase 3, Fakten-Eval "
+                    "ohne Zunahme) und lag zwei Wochen auf Prod an.",
+    ),
     "mein-viertel": Feature(
         key="mein-viertel",
         description="„Mein Viertel“: Was sich in einem Ortsbereich in den nächsten "

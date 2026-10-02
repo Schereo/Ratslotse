@@ -48,6 +48,9 @@ BEITRAEGE = 30
 #: Dazu immer so viele jüngste Aussagen der Verwaltung.
 VERWALTUNG = 4
 PRESSE = 5
+#: So viele angekündigte Stationen (Beratungsfolge nach dem letzten
+#: protokollierten Beschluss) höchstens.
+ANGEKUENDIGT = 6
 
 
 def _ist_verwaltung(w: dict) -> bool:
@@ -90,7 +93,7 @@ def material(store: Any, frage: str, candidates: list[dict]) -> dict:
     """
     from council import matters
 
-    leer: dict = {"decisions": [], "speeches": [], "press": [], "akte": {}}
+    leer: dict = {"decisions": [], "speeches": [], "press": [], "announced": [], "akte": {}}
     einstieg = [c["id"] for c in candidates[:EINSTIEG] if c.get("id")]
     if not einstieg:
         return leer
@@ -122,8 +125,149 @@ def material(store: Any, frage: str, candidates: list[dict]) -> dict:
     presse = store.presse_by_ids(sorted(ids.get("presse", [])))
     presse.sort(key=lambda p: str(p.get("date") or ""), reverse=True)
 
+    # Angekündigt: Stationen der Beratungsfolge NACH dem jüngsten
+    # protokollierten Beschluss der Akte. Das Ratsinformationssystem trägt das
+    # Ergebnis erst mit dem Protokoll ein, und das kommt vier bis sieben Wochen
+    # später (Plan „Akte“, Schritt 0.5) — bis dahin ist die Tagesordnung der
+    # jüngste Stand (Klinikum: Bürgschaft im Rat am 28.09.2026).
+    neuester = max((str(d.get("session_date") or "")[:10] for d in decisions), default="")
+    stationen = [st for st in store.deliberations_by_ids(sorted(ids.get("station", [])))
+                 if str(st.get("date") or "")[:10] > neuester]
+    stationen.sort(key=lambda st: str(st.get("date") or ""))
+
     return {"decisions": decisions, "speeches": speeches, "press": presse[:PRESSE],
+            "announced": stationen[:ANGEKUENDIGT],
             "akte": {"matters": len(akte["matters"]),
                      "entities": [e["name"] for e in akte["entities"]],
                      "decisions": len(decisions), "speeches": len(beitraege),
                      "press": len(presse)}}
+
+
+# --------------------------------------------------------------------------- #
+# Phase 4: die Akte als Zeitleiste im Prompt (Schalter ``akten-zeitleiste``)
+# --------------------------------------------------------------------------- #
+#
+# Die Antwort bekam bis hierhin sieben Blöcke — Beschlüsse, Debatten, Presse,
+# Anlagen … — und musste den Verlauf selbst puzzeln. Gemessen (Phase 3, lokal
+# 02.10.2026): Mit der Akte stieg das Material im Kontext von 52 auf 67 %, die
+# Abdeckung der Antwort aber nur von 38 auf 43 %. Beim Mobilitätsplan lag alles
+# vor, und die Antwort nannte den Ausschussweg trotzdem nicht. Eine datierte
+# Zeitleiste, älteste zuerst, nimmt dem Modell das Puzzeln ab.
+
+AKTE_REGEL = (
+    "\n\nZUM VORGANG IN DER AKTE: Erzähle ihn in zeitlicher Reihenfolge — welches "
+    "Gremium hat wann (Monat und Jahr) was empfohlen, beschlossen, abgelehnt, vertagt "
+    "oder als behandelt erklärt — und ENDE mit dem aktuellen Stand aus den letzten "
+    "Zeilen der Akte, auch wenn er nur angekündigt (noch nicht protokolliert) oder nur "
+    "aus einer Pressemitteilung bekannt ist. Für den Vorgang sind Monat und Jahr "
+    "ausdrücklich erwünscht, und die Regel „neueste zuerst“ gilt für ihn nicht. "
+    "Unterscheide klar: empfohlen (Ausschuss) ≠ beschlossen (Rat) ≠ angekündigt ≠ "
+    "abgelehnt ≠ gilt als behandelt."
+)
+AKTE_REGEL_ENG = (
+    "\n\nZUM VORGANG IN DER AKTE: Nutze die letzten Zeilen der Akte, um den AKTUELLEN "
+    "Stand richtig zu nennen — auch wenn er nur angekündigt oder nur aus einer "
+    "Pressemitteilung bekannt ist. Keine Vorgeschichte."
+)
+
+
+def _datum(wert: Any) -> str:
+    from council import qa
+    return qa._datum_de(str(wert)) if wert else "ohne Datum"
+
+
+def _beitrag_art(w: dict) -> str:
+    sprecher = (w.get("speaker") or "")
+    if "protokollnotiz" in sprecher.lower():
+        return "Protokollnotiz der Verwaltung"
+    if w.get("kind") == "pledge":
+        return "Zusage"
+    return {"inquiry": "Anfrage", "citizen_question": "Einwohnerfrage"}.get(
+        w.get("kind") or "", "Wortbeitrag")
+
+
+def zeitleiste(beschluesse: list[dict], beitraege: list[dict], presse: list[dict],
+               angekuendigt: list[dict]) -> str:
+    """Der Block „AKTE“: alles zum Vorgang, älteste Zeile zuerst."""
+    from council import qa
+
+    zeilen: list[tuple[str, int, str]] = []
+    for c in beschluesse:
+        zeilen.append((str(c.get("session_date") or ""), 0, "- " + qa._build_context([c])))
+    for w in beitraege:
+        wer = w.get("speaker") or "?"
+        if w.get("party"):
+            wer += f" ({w['party']})"
+        text = (w.get("text") or "").strip()[:600]
+        if w.get("answer"):
+            text += f" — Antwort der Verwaltung: {(w['answer'] or '').strip()[:400]}"
+        zeilen.append((str(w.get("session_date") or ""), 1,
+                       f"- {_datum(w.get('session_date'))} · {w.get('committee') or ''} · "
+                       f"{_beitrag_art(w)} von {wer}: {text}"))
+    for pm in presse:
+        zeilen.append((str(pm.get("date") or ""), 2,
+                       f"- {_datum(pm.get('date'))} · Pressemitteilung der Stadt: "
+                       f"{pm.get('title') or ''} — {(pm.get('auszug') or '').strip()[:400]}"))
+    for st in angekuendigt:
+        art = f" ({st['result']})" if st.get("result") else ""
+        zeilen.append((str(st.get("date") or ""), 3,
+                       f"- {_datum(st.get('date'))} · {st.get('committee') or ''} · "
+                       f"ANGEKÜNDIGT{art}: {st.get('title') or st.get('template_number') or ''} — "
+                       f"steht auf der Tagesordnung, ein Ergebnis ist noch nicht protokolliert"))
+    if not zeilen:
+        return ""
+    zeilen.sort(key=lambda z: (z[0][:10], z[1]))
+    return ("\nAKTE DES VORGANGS (alles, was zu dieser Sache gehört, älteste Zeile zuerst — "
+            "die letzten Zeilen sind der aktuelle Stand. Beschlüsse mit [id] zitieren; "
+            "Wortbeiträge und Pressemitteilungen NIE mit [id], sondern „Laut Protokoll …“ "
+            "bzw. „Laut Pressemitteilung vom …“):\n"
+            + "\n".join(z[2] for z in zeilen) + "\n")
+
+
+def letzte_station(beschluesse: list[dict], presse: list[dict],
+                   angekuendigt: list[dict]) -> dict | None:
+    """Die jüngste Station der Akte, die die Antwort nennen muss — Beschluss,
+    Pressemitteilung oder angekündigter Termin (Wortbeiträge zählen nicht)."""
+    kandidaten = ([{"art": "beschluss", "datum": str(c.get("session_date") or ""), "c": c}
+                   for c in beschluesse]
+                  + [{"art": "presse", "datum": str(p.get("date") or ""), "c": p} for p in presse]
+                  + [{"art": "angekuendigt", "datum": str(st.get("date") or ""), "c": st}
+                     for st in angekuendigt])
+    kandidaten = [k for k in kandidaten if k["datum"]]
+    return max(kandidaten, key=lambda k: k["datum"][:10]) if kandidaten else None
+
+
+_MONATE = ("Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August",
+           "September", "Oktober", "November", "Dezember")
+
+
+def nennt(antwort: str, station: dict) -> bool:
+    """Nennt die Antwort diese Station? Beschluss: seine [id]. Sonst: Monat und
+    Jahr der Station (so schreibt die Antwort Daten) oder das Datum in Ziffern."""
+    if station["art"] == "beschluss" and f"[{station['c']['id']}]" in antwort:
+        return True
+    try:
+        jahr, monat, tag = (int(x) for x in station["datum"][:10].split("-"))
+    except ValueError:
+        return False
+    return (f"{_MONATE[monat - 1]} {jahr}" in antwort
+            or f"{tag:02d}.{monat:02d}.{jahr}" in antwort
+            or f"{tag}.{monat}.{jahr}" in antwort)
+
+
+def zuletzt_satz(station: dict) -> str:
+    """Der Satz, den der Server anhängt, wenn die Antwort den Stand verschweigt."""
+    c = station["c"]
+    if station["art"] == "beschluss":
+        from council import outcome_note
+        ergebnis = outcome_note.LABEL.get(c.get("outcome") or "", "")
+        zusatz = f" ({ergebnis.split(' — ')[0].lower()})" if ergebnis else ""
+        return (f"\n\n**Zuletzt:** {_datum(station['datum'])}, {c.get('committee') or 'Rat'}: "
+                f"{(c.get('title') or '').strip()}{zusatz} [{c['id']}].")
+    if station["art"] == "presse":
+        return (f"\n\n**Zuletzt:** Laut Pressemitteilung vom {_datum(station['datum'])}: "
+                f"{(c.get('title') or '').strip()}.")
+    return (f"\n\n**Zuletzt:** Am {_datum(station['datum'])} steht "
+            f"„{(c.get('title') or c.get('template_number') or '').strip()}“ im Gremium "
+            f"{c.get('committee') or ''} auf der Tagesordnung; ein Ergebnis ist noch nicht "
+            f"protokolliert.")

@@ -5191,6 +5191,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # Verwaltung, die neuesten Pressemitteilungen (council/akte_suche.py).
             # Die Akten-Beschlüsse halten den Ortsfilter ein wie alles andere.
             akte_beschluesse: list[dict] = []
+            akte: dict | None = None
             if features.an("akten-suche") and not einfach and typ != "session" and candidates:
                 try:
                     from council import akte_suche
@@ -5543,6 +5544,17 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             frage_thema = q_suche
             if einfach and frage_thema.strip() == q and verlauf:
                 frage_thema = verlauf[-1].get("question") or q
+            # Plan „Akte“, Phase 4 (Schalter `akten-zeitleiste`): die Akte als
+            # Zeitleiste in den Prompt (council/akte_suche.py::zeitleiste).
+            akte_prompt: dict | None = None
+            if (akte and features.an("akten-zeitleiste") and not einfach
+                    and not latest_place and not vorher_ids):
+                akte_prompt = {
+                    "decision_ids": {d["id"] for d in akte["decisions"]},
+                    "speech_ids": {w["id"] for w in akte["speeches"]},
+                    "press_ids": {p["id"] for p in akte["press"]},
+                    "announced": akte.get("announced") or [],
+                }
             if latest_place and not einfach:
                 # Bei „zuletzt beschlossen“ ist das Ergebnis vollständig aus
                 # Datum + Abstimmung ableitbar. Die Produktionsprobe zeigte,
@@ -5562,7 +5574,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                           duenn=(lage == "duenn"), eng=eng,
                                           sitzungen=sitzungen, ort=ort,
                                           zukunft_leer=zukunft_leer, stand=stand,
-                                          screen=bildschirm))
+                                          screen=bildschirm, akte=akte_prompt))
             try:
                 for delta in strom:
                     if not buf and delta:
@@ -5599,7 +5611,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                                  duenn=(lage == "duenn"), eng=eng,
                                                  sitzungen=sitzungen, ort=ort,
                                                  zukunft_leer=zukunft_leer,
-                                                 stand=stand, screen=bildschirm))
+                                                 stand=stand, screen=bildschirm,
+                                                 akte=akte_prompt))
                     buf = ans
                     yield _sse({"type": "replace", "text": qa.split_followups(ans)[0]})
                     sent = len(ans)
@@ -5609,6 +5622,19 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                         raise  # nichts gesendet → Netz-Fehlerpfad des Clients
                     yield _sse({"type": "abbruch"})
             answer_text, followups = qa.split_followups(buf)
+            if akte_prompt and akte is not None and answer_text.strip():
+                # Nennt die Antwort die jüngste Station des Vorgangs nicht, hängt
+                # der Server sie an — deterministisch, ohne zweiten Modellaufruf.
+                # Bei einer Stand-Frage IST sie die Antwort (Plan „Akte“, Phase 4).
+                from council import akte_suche
+                im_ctx = {c["id"] for c in ctx}
+                station = akte_suche.letzte_station(
+                    [d for d in akte["decisions"] if d["id"] in im_ctx],
+                    akte["press"], akte.get("announced") or [])
+                if station and not akte_suche.nennt(answer_text, station):
+                    zuletzt = akte_suche.zuletzt_satz(station)
+                    yield _sse({"type": "token", "text": zuletzt})
+                    answer_text += zuletzt
             if not followups:
                 followups = qa.fallback_followups(ctx)
             if followups:

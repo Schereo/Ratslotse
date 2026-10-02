@@ -331,8 +331,21 @@ def entitaeten_verknuepfen(store: Any) -> dict:
         allgemein = {s for s in einwort if beitraege[s] > ALLGEMEIN_BEITRAEGE}
         erwaehnungen = [e for e in erwaehnungen if e[0] not in allgemein]
     # Vererbung über die Grundakte — ohne Gremien und ohne Sammelakten.
-    paare = sorted({(slug, mid) for slug, name, mid, titel in store.entity_matter_pairs()
-                    if not _GREMIUM.search(name or "") and not _SAMMELAKTE.search(titel or "")})
+    paare = {(slug, mid) for slug, name, mid, titel in store.entity_matter_pairs()
+             if not _GREMIUM.search(name or "") and not _SAMMELAKTE.search(titel or "")}
+    # Dazu: Akten ohne Beschluss über den TITEL ihrer Vorlage. Eine Vorlage
+    # ohne Protokoll hat noch keinen Beschluss und damit kein Thema — ihre
+    # angekündigten Stationen erreichten keine Akte (Klinikum: „Klinikum
+    # Oldenburg AöR (KOL): Ausfallbürgschaft …“, im Rat am 28.09.2026; Phase 4,
+    # lokale Probe 02.10.2026). Nur diese: Über ALLE Vorlagen hingen 740 Akten
+    # mehr an Entitäten, „Innenstadt“ allein an 42 protokollierten.
+    if zu:
+        for mid, vorlage, aktentitel in store.open_matter_template_titles():
+            if _SAMMELAKTE.search(aktentitel or ""):
+                continue
+            for slug in {s for m in muster.findall(vorlage or "") for s in zu[m.lower()]}:
+                paare.add((slug, mid))
+    paare = sorted(paare)
     store.replace_entity_akten(paare, erwaehnungen)
     return {"entitaet_akte": len(paare), "erwaehnungen": len(erwaehnungen),
             "sekunden": round(time.perf_counter() - t0, 1)}
