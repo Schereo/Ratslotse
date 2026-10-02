@@ -62,6 +62,16 @@ class Feature:
 #:                     "wie vorher (tests/…/eval).",
 #:     ),
 FEATURES: dict[str, Feature] = {
+    "akten-suche": Feature(
+        key="akten-suche",
+        description="„Frag den Rat“ liest zu den besten Treffern die ganze Akte des "
+                    "Vorgangs mit — die neuesten Beschlüsse, die passenden Wortbeiträge "
+                    "samt jüngster Aussagen der Verwaltung, die neuesten "
+                    "Pressemitteilungen (council/akte_suche.py, docs/plan-akte.md).",
+        fertig_wenn="Phase 3 hat ihr Tor erreicht (Gold „Frag den Rat“ +10 Pp und "
+                    "mindestens drei Fälle mehr bestanden, Retrieval ohne Rückschritt) "
+                    "und lag zwei Wochen auf Prod an; dann ist die Akte der Normalweg.",
+    ),
     "mein-viertel": Feature(
         key="mein-viertel",
         description="„Mein Viertel“: Was sich in einem Ortsbereich in den nächsten "

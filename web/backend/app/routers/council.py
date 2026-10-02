@@ -5184,6 +5184,32 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 debatten_rows = [d for d in debatten_rows
                                   if d.get("zu_beschluss") in candidate_ids
                                   or qa.nennt_ort(d, ort, store)]
+            # Plan „Akte“, Phase 3 (Schalter `akten-suche`): Die besten Treffer
+            # bestimmen die Akte des Vorgangs, und aus ihr kommt zusätzlich,
+            # was ähnlich klingende Suche nicht findet — die neuesten
+            # Beschlüsse, die passenden Wortbeiträge samt jüngster Aussagen der
+            # Verwaltung, die neuesten Pressemitteilungen (council/akte_suche.py).
+            # Die Akten-Beschlüsse halten den Ortsfilter ein wie alles andere.
+            akte_beschluesse: list[dict] = []
+            if features.an("akten-suche") and not einfach and typ != "session" and candidates:
+                try:
+                    from council import akte_suche
+                    akte = akte_suche.material(store, q_suche, candidates)
+                    have = {c["id"] for c in candidates}
+                    akte_beschluesse = [
+                        d for d in akte["decisions"] if d["id"] not in have
+                        and (allowed_place_ids is None or d["id"] in allowed_place_ids)
+                    ][:akte_suche.BESCHLUESSE]
+                    candidates += akte_beschluesse
+                    schon = {d["id"] for d in debatten_rows}
+                    neu = [w for w in akte["speeches"] if w["id"] not in schon]
+                    qa.parteien_aufloesen(store, neu)
+                    debatten_rows += neu
+                    schon = {p["id"] for p in presse_rows}
+                    presse_rows += [p for p in akte["press"] if p["id"] not in schon]
+                    zeiten["akte"] = akte["akte"]
+                except Exception:  # noqa: BLE001 — die Akte ist Zusatz, nie Blocker
+                    _log.exception("Akte nicht geladen")
             # Beleg nachlesbar machen: jeder Beitrag bekommt die PDF-URL
             # seines Protokolls (Tims Wunsch 18.08.).
             qa.protokolle_verlinken(store, debatten_rows)
@@ -5438,6 +5464,12 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     # gesetzte neueste Entscheidung bleibt davor.
                     anker = 1 if (latest_place or latest_topic) and ctx else 0
                     ctx = ctx[:anker] + nach + ctx[anker:QA_ANSWER_N - len(nach)]
+            if akte_beschluesse and not vorher_ids:
+                # Die Akten-Beschlüsse KOMMEN DAZU, statt Plätze der Suche zu
+                # nehmen: Was die Suche fand, bleibt; die Akte ergänzt die
+                # Stationen, die anders klingen (Bürgschaft, B-Plan, Vertrag).
+                im_ctx = {c["id"] for c in ctx}
+                ctx = ctx + [d for d in akte_beschluesse if d["id"] not in im_ctx]
             if typ == "history":
                 ctx = qa.sort_verlauf(ctx)
             if typ == "session" and sitzung_ids and not einfach:

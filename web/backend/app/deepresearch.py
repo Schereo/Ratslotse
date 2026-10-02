@@ -22,6 +22,7 @@ import threading
 from dataclasses import dataclass, field
 
 from council.store import CouncilStore
+from kern import features
 from kern.store import Store
 
 _log = logging.getLogger(__name__)
@@ -392,6 +393,25 @@ def _run(job: DeepJob, ratslotse_db: str, council_db: str) -> None:
                 qa.parteien_aufloesen(store, debatten_rows)
             except Exception:  # noqa: BLE001
                 pass
+            # Plan „Akte“, Phase 3 (Schalter `akten-suche`): dieselbe Ergänzung
+            # aus der Akte des Vorgangs wie in /ask — neueste Beschlüsse,
+            # passende Wortbeiträge samt jüngster Aussagen der Verwaltung,
+            # neueste Pressemitteilungen (council/akte_suche.py).
+            if features.an("akten-suche") and candidates:
+                try:
+                    from council import akte_suche
+                    akte = akte_suche.material(store, job.suchfrage, candidates)
+                    have = {c["id"] for c in candidates}
+                    candidates += [d for d in akte["decisions"]
+                                   if d["id"] not in have][:akte_suche.BESCHLUESSE]
+                    have = {d["id"] for d in debatten_rows}
+                    neu = [w for w in akte["speeches"] if w["id"] not in have]
+                    qa.parteien_aufloesen(store, neu)
+                    debatten_rows += neu
+                    have = {p["id"] for p in presse_rows}
+                    presse_rows += [p for p in akte["press"] if p["id"] not in have]
+                except Exception:  # noqa: BLE001 — die Akte ist Zusatz, nie Blocker
+                    _log.exception("Akte nicht geladen")
             # Beleg nachlesbar machen: PDF-URL des Protokolls je Beitrag
             # (deckungsgleich mit /ask, damit beide Wege gleich rendern).
             qa.protokolle_verlinken(store, debatten_rows)
