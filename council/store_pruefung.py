@@ -9,6 +9,7 @@ from __future__ import annotations
 import sqlite3
 
 from council.store_basis import StoreBasis
+from kern.dbfehler import tabelle_fehlt
 
 
 class PruefungMixin(StoreBasis):
@@ -50,7 +51,9 @@ class PruefungMixin(StoreBasis):
         """Wann die Grundakten zuletzt gebaut wurden — None, wenn es keine gibt."""
         try:
             r = self._conn.execute("SELECT max(built_at) FROM council_matters").fetchone()
-        except sqlite3.OperationalError:          # Tabelle fehlt (vor Phase 1)
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):           # vor Phase 1 gibt es sie nicht
+                raise
             return None
         return r[0] if r else None
 
