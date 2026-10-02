@@ -438,6 +438,28 @@ Kopplung bis Platz 8, Serien-Deckel, „neueste zuerst“, die Kanal-Deckel.
 Jeder Ausbau einzeln, jeweils mit B1/B5 gegengeprüft. Danach Schalter
 `akten-suche` entfernen (`fertig_wenn` in `kern/features.py`).
 
+**Erster Versuch (02.10.2026, nicht gemergt).** Alle Flicken zugleich hinter
+einem Schalter `akten-ohne-flicken` (Titel- und Textkanal, Kopplung bis
+Platz 8 und zu titelgleichen Beschlüssen, „neueste zuerst“), gemessen lokal
+mit allen Vektoren (Beschlüsse, Vorlagen-Abschnitte, Presse, Beiträge), je
+zwei Läufe:
+
+| Arm | Abdeckung | bestanden | Material im Kontext |
+|---|---|---|---|
+| ohne Akte | 38 / 37 % | 3 / 3 | 55,8 % |
+| Akte (Phase 3+4) | 50 / 47 % | 6 / 5 | **75,2 %** |
+| Akte ohne Flicken | 46 / 47 % | 4 / 5 | 68,6 % |
+
+**Die Flicken sind noch nicht ersetzt.** Sie holen Belege, die in keiner
+Akte-Auswahl landen: Trinkwasserspender (Material 100 → 50 %, der Titelkanal
+wurde genau dafür gebaut), Schlossplatz-Spielplatz (82 → 45 %),
+Zweckentfremdungssatzung, Cäcilienbrücke. Sie bleiben, bis die Auswahl in
+der Akte das selbst leistet; dann einzeln statt als Gruppe.
+
+Nebenbei bestätigt: Phase 3+4 hält auch mit allen Vektoren (+11 Pp,
++2,5 Fälle); die Vektoren von Vorlagen und Presse heben das Material im
+Kontext von 69,5 auf 75,2 %.
+
 ### Phase 6 — Stehende Datenprüfungen
 
 Ein täglicher Check (eigener Job in `kern/jobs.py` oder Teil von
