@@ -369,7 +369,8 @@ Lokal gemessen (Prod-Abzug 01.10., 20 Fälle, Richter Opus 5.5):
 |---|---|---|
 | B1 +10 Pp, ≥ 3 Fälle mehr | +4,6 Pp, +2,5 Fälle | **nein** |
 | B3 ≥ 90 % | 69,5 % | **nein** |
-| B5, B6 | nicht gemessen | offen |
+| B5 | Hybrid-Suche unverändert — die Akte setzt erst danach an | ja (bauartbedingt) |
+| B6 | siehe Phase 4 | ja |
 
 Das Material kam an, die Antwort nutzte es nicht: Ein Fakt, dessen Beleg im
 Kontext stand, wurde mit Akte **seltener** genannt (46 % statt 50 %) — mehr
@@ -415,7 +416,7 @@ an der Entität (187 Verknüpfungen; über alle Vorlagen wären es 740 gewesen,
 | Tor | gemessen | erreicht |
 |---|---|---|
 | B1 „Fakt genannt“ +10 Pp gegenüber Phase 3 | +8,6 Pp | **knapp nein** |
-| B6 ohne Zunahme | nicht gemessen; Gold-Verstöße 0 in allen Läufen | offen |
+| B6 ohne Zunahme | 112 Fälle über „Frag den Rat“: falsch 3 → 2, erfunden 0 → 0, in Ordnung 66 → 67 | ja |
 | B8 erstes Wort p50 + ≤ 1 s | 15,6 → 14,1 s (p95 22,0 → 23,2 s) | ja |
 
 Phase 3 und 4 **zusammen** erreichen das Tor von Phase 3 gegenüber „aus“:
@@ -449,6 +450,32 @@ Ein täglicher Check (eigener Job in `kern/jobs.py` oder Teil von
   Protokoll — normal oder Ernte-Fehler?);
 - Kurzfassungen, die einen nicht gefassten Beschluss als gefasst nennen
   (`outcome_note.states_outcome`).
+
+**Ergebnis (02.10.2026, #1631).** Teil des Herzschlags, kein eigener Cron
+(der bräuchte einen crontab-Eintrag auf dem Server). Regeln in
+`council/datenpruefung.py`, Doku unter *Betrieb → Der Herzschlag*. Zwei
+Sorten: **Bestandsregeln** stehen auf null und melden, solange ein Verstoß
+steht; **Stromregeln** schauen nur auf das, was seit dem letzten Herzschlag
+neu ist (sonst jeden Tag dieselbe Mail).
+
+Gegenüber der Liste oben zwei Änderungen, beide aus dem Bestand:
+- Statt „Anteil der Verwaltungsbeiträge je Monat“ die genaue Spur des
+  Ausgangsfehlers: **Ratsbeitrag mit Antwort im eigenen Feld** (0 von 52.804
+  nach der Neuextraktion). Der Monatsanteil schwankt mit der Zahl der
+  Sitzungen (Januar 0 %, sonst 3–7 %) und hätte grundlos gemeldet.
+- „Ohne Partei“ fällt weg: Die Verwaltung hat keine Partei, und die Partei
+  wird erst beim Lesen aufgelöst (`qa.parteien_aufloesen`). Gemeldet wird nur
+  **eine Person mit zwei Parteien in einer Sitzung**, Schreibweisen gefaltet
+  (24 im Bestand, 3 in 2026 — etwa Behrens als SPD und Grüne am 29.06.).
+
+Erster Lauf gegen den Prod-Abzug: **8 Kurzfassungen** aus Juni-Sitzungen
+nennen einen abgesetzten, vertagten oder abgelehnten Punkt nicht als solchen
+(21047, Bau-Turbo, mit 46 Gegenstimmen abgelehnt: „Änderung des
+Grundsatzbeschlusses … um Einzelfallprüfungen auch auf Gewerbeflächen zu
+ermöglichen.“), **2 Sitzungen** ohne Protokoll nach über zehn Wochen
+(Finanzausschuss 06.05., Abfallwirtschaftsbetrieb 25.06.). Zwei weitere
+Treffer waren Fehlalarme der Probe selbst („Vertagung“ statt „vertagt“) —
+die Wortliste ist ergänzt.
 
 ## 5. Risiken
 
