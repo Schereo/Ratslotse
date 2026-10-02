@@ -109,3 +109,57 @@ def test_ohne_akte_bleibt_der_prompt_wie_er_war():
     from council import qa
     mit, _ = qa._answer_messages("Frage?", [BESCHLUSS_ALT], akte=None)
     assert "AKTE DES VORGANGS" not in mit[0]["content"]
+
+
+# --------------------------------------------------------------------------- #
+# Die Zeitleiste im Chat
+# --------------------------------------------------------------------------- #
+
+@pytest.mark.parametrize("tage, text", [
+    (0, "am selben Tag"), (1, "1 Tag"), (6, "6 Tage"), (13, "13 Tage"),
+    (14, "2 Wochen"), (56, "8 Wochen"), (63, "2 Monate"), (154, "5 Monate"),
+    (365, "1 Jahr"), (396, "1 Jahr, 1 Monat"), (761, "2 Jahre, 1 Monat"),
+])
+def test_abstand_wie_man_ihn_sagt(tage, text):
+    assert akte_suche.abstand_text(tage) == text
+
+
+def _b(i, tag, outcome="accepted", gremium="Rat", **rest):
+    return {"id": i, "session_date": tag, "outcome": outcome, "committee": gremium,
+            "title": f"Mobilitätsplan {i}", **rest}
+
+
+def test_zeitleiste_gruppiert_beratungen_ohne_abstimmung():
+    """Vier Fachausschüsse binnen fünf Wochen ohne Abstimmung sind EINE Zeile."""
+    z = akte_suche.zeitleiste_anzeige([
+        _b(1, "2023-03-13", "postponed", "Verkehrsausschuss", vote="unanimous"),
+        _b(2, "2023-05-08", "settled", "Wirtschaft"),
+        _b(3, "2023-05-11", "settled", "Stadtgrün"),
+        _b(4, "2023-06-13", "no_decision", "Soziales"),
+        _b(5, "2023-06-26", no_votes=17, vote="majority"),
+    ], [], [])
+    st = z["stations"]
+    assert [s["kind"] for s in st] == ["decision", "group", "decision"]
+    gruppe = st[1]
+    assert gruppe["title"] == "3 Beratungen ohne Abstimmung"
+    assert gruppe["date"] == "2023-05-08" and gruppe["date_end"] == "2023-06-13"
+    assert [m["decision_id"] for m in gruppe["members"]] == [2, 3, 4]
+    assert st[2]["gap_label"] == "13 Tage"          # ab dem ENDE der Gruppe
+    assert st[2]["detail"] == "mehrheitlich, 17 Gegenstimmen"
+    assert z["count"] == 5 and z["span"] == "3 Monate"
+
+
+def test_lange_pause_und_reihenfolge_am_selben_tag():
+    z = akte_suche.zeitleiste_anzeige(
+        [_b(1, "2024-05-27"), _b(2, "2026-04-20", "noted", "Verkehrsausschuss")],
+        [{"id": 9, "date": "2026-04-20", "title": "Viel erreicht", "url": "https://example.org/pm"}],
+        [{"date": "2026-09-28", "committee": "Rat", "title": "SUMP 2040"}])
+    st = z["stations"]
+    assert [s["kind"] for s in st] == ["decision", "decision", "press", "announced"]
+    assert st[1]["pause"] and st[1]["gap_label"] == "1 Jahr, 11 Monate"
+    assert st[2]["gap_label"] == "am selben Tag" and not st[2]["pause"]
+    assert st[2]["url"] == "https://example.org/pm"
+
+
+def test_eine_station_ist_kein_verlauf():
+    assert akte_suche.zeitleiste_anzeige([_b(1, "2024-05-27")], [], []) is None

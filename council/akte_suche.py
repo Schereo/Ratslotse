@@ -271,3 +271,144 @@ def zuletzt_satz(station: dict) -> str:
             f"„{(c.get('title') or c.get('template_number') or '').strip()}“ im Gremium "
             f"{c.get('committee') or ''} auf der Tagesordnung; ein Ergebnis ist noch nicht "
             f"protokolliert.")
+
+
+# --------------------------------------------------------------------------- #
+# Die Zeitleiste im Chat (Schalter ``akten-zeitleiste``)
+# --------------------------------------------------------------------------- #
+#
+# Dieselbe Akte, die das Modell als Block „AKTE“ liest, steht unter der
+# Antwort als Grafik: Station für Station, mit dem Abstand dazwischen und
+# einem Link je Station. Gebaut wird sie HIER, fertig formuliert — Web und
+# App stellen nur dar (Tims Regel: Logik ins Backend, zwei Frontends).
+
+#: Ab so vielen Tagen zwischen zwei Stationen ist der Abstand eine Pause
+#: (gestrichelt). Ein halbes Jahr ohne neue Station ist im Rat eine Aussage —
+#: beim Mobilitätsplan lag zwischen Priorisierung und nächstem Bericht über ein
+#: Jahr.
+PAUSE_TAGE = 183
+#: Aufeinanderfolgende Beratungen ohne Abstimmung („gilt als behandelt“, ohne
+#: Beschluss) werden EINE Zeile, wenn sie höchstens so weit auseinanderliegen —
+#: beim Mobilitätsplan behandelten vier Fachausschüsse den Plan binnen fünf
+#: Wochen, ohne abzustimmen; vier Zeilen dafür wären Lärm.
+GRUPPE_TAGE = 45
+#: Höchstens so viele Beschlüsse (die neuesten) — eine verklebte Akte kann
+#: groß werden; ein Verlauf über 60 Stationen liest niemand.
+ZEITLEISTE_MAX = 60
+_OHNE_ABSTIMMUNG = ("settled", "no_decision")
+
+
+def abstand_text(tage: int) -> str:
+    """„6 Tage“, „8 Wochen“, „5 Monate“, „1 Jahr, 1 Monat“ — wie man es sagt."""
+    if tage <= 0:
+        return "am selben Tag"
+    if tage < 14:
+        return "1 Tag" if tage == 1 else f"{tage} Tage"
+    if tage < 63:
+        w = round(tage / 7)
+        return "1 Woche" if w == 1 else f"{w} Wochen"
+    monate = round(tage / 30.4375)
+    if monate < 12:
+        return "1 Monat" if monate == 1 else f"{monate} Monate"
+    j, m = divmod(monate, 12)
+    jahre = "1 Jahr" if j == 1 else f"{j} Jahre"
+    if not m:
+        return jahre
+    return f"{jahre}, " + ("1 Monat" if m == 1 else f"{m} Monate")
+
+
+def _tag(wert: Any) -> str:
+    return str(wert or "")[:10]
+
+
+def _tage(von: str, bis: str) -> int:
+    from datetime import date
+    return (date.fromisoformat(bis) - date.fromisoformat(von)).days
+
+
+def _stimmen_text(d: dict) -> str | None:
+    """„mehrheitlich, 17 Gegenstimmen“ — nur, was belegt ist."""
+    from council.ergebnisse import VOTE_WORT
+
+    teile = []
+    if d.get("vote"):
+        teile.append(VOTE_WORT.get(str(d["vote"]), str(d["vote"])))
+    nein, enth = d.get("no_votes"), d.get("abstentions")
+    if nein:
+        teile.append(f"{int(nein)} Gegenstimme" + ("n" if int(nein) != 1 else ""))
+    if enth:
+        teile.append(f"{int(enth)} Enthaltung" + ("en" if int(enth) != 1 else ""))
+    return ", ".join(teile) or None
+
+
+def zeitleiste_anzeige(beschluesse: list[dict], presse: list[dict],
+                       angekuendigt: list[dict]) -> dict | None:
+    """Die Zeitleiste für die Oberfläche — ``None`` unter zwei Stationen.
+
+    ``{"span": "3 Jahre, 1 Monat", "count": 21, "stations": [...]}``, älteste
+    Station zuerst. Jede Station: ``date`` (ISO), ``date_end`` (bei einer
+    Gruppe), ``kind`` (decision | group | press | announced), ``outcome``,
+    ``title``, ``committee``, ``detail``, ``decision_id``, ``url``,
+    ``members`` (bei einer Gruppe), ``gap_days``/``gap_label``/``pause`` (der
+    Abstand zur vorigen Station; bei der ersten ``None``).
+    """
+    roh: list[dict] = []
+    for d in sorted((d for d in beschluesse if _tag(d.get("session_date"))),
+                    key=lambda d: (_tag(d.get("session_date")), d["id"]))[-ZEITLEISTE_MAX:]:
+        roh.append({"date": _tag(d.get("session_date")), "kind": "decision",
+                    "outcome": d.get("outcome"),
+                    "title": " ".join(str(d.get("title") or "").split()),
+                    "committee": d.get("committee"), "detail": _stimmen_text(d),
+                    "decision_id": d["id"], "url": None})
+    for p in presse:
+        if _tag(p.get("date")):
+            roh.append({"date": _tag(p.get("date")), "kind": "press", "outcome": None,
+                        "title": " ".join(str(p.get("title") or "").split()),
+                        "committee": None, "detail": "Pressemitteilung der Stadt",
+                        "decision_id": None, "url": p.get("url")})
+    for st in angekuendigt:
+        if _tag(st.get("date")):
+            roh.append({"date": _tag(st.get("date")), "kind": "announced", "outcome": None,
+                        "title": " ".join(str(st.get("title") or st.get("template_number")
+                                              or "").split()),
+                        "committee": st.get("committee"),
+                        "detail": "steht auf der Tagesordnung, noch kein Ergebnis",
+                        "decision_id": None, "url": None})
+    roh.sort(key=lambda s: (s["date"], {"decision": 0, "press": 1, "announced": 2}[s["kind"]]))
+    if len(roh) < 2:
+        return None
+
+    stationen: list[dict] = []
+    for s in roh:
+        vorige = stationen[-1] if stationen else None
+        ohne = s["kind"] == "decision" and s["outcome"] in _OHNE_ABSTIMMUNG
+        if (ohne and vorige and vorige.get("_ohne")
+                and _tage(vorige.get("date_end") or vorige["date"], s["date"]) <= GRUPPE_TAGE):
+            if vorige["kind"] != "group":
+                erste = {k: vorige[k] for k in ("date", "committee", "decision_id", "title")}
+                vorige.update({"kind": "group", "members": [erste], "decision_id": None,
+                               "detail": None})
+            vorige["members"].append({k: s[k] for k in ("date", "committee", "decision_id",
+                                                         "title")})
+            vorige["date_end"] = s["date"]
+            continue
+        stationen.append({**s, "date_end": None, "members": [], "_ohne": ohne})
+    for g in stationen:
+        if g["kind"] == "group":
+            n = len(g["members"])
+            g["title"] = f"{n} Beratungen ohne Abstimmung"
+            g["detail"] = ", ".join(dict.fromkeys(m["committee"] or "" for m in g["members"]))
+        g.pop("_ohne", None)
+
+    ende_vorher: str | None = None
+    for s in stationen:
+        if ende_vorher is None:
+            s.update({"gap_days": None, "gap_label": None, "pause": False})
+        else:
+            tage = _tage(ende_vorher, s["date"])
+            s.update({"gap_days": tage, "gap_label": abstand_text(tage),
+                      "pause": tage >= PAUSE_TAGE})
+        ende_vorher = s["date_end"] or s["date"]
+    erste, letzte = stationen[0]["date"], stationen[-1]["date_end"] or stationen[-1]["date"]
+    return {"span": abstand_text(_tage(erste, letzte)), "count": len(roh),
+            "stations": stationen}

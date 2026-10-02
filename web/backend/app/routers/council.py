@@ -31,7 +31,7 @@ from council import trade_tax_statistics as gewst
 from council import assistant as lotti
 from council import self_check
 from starlette.background import BackgroundTask
-from council import beteiligungsbericht, qa
+from council import akte_suche, beteiligungsbericht, qa
 from council import ernte
 from kern import features, knowledge, seitenaufrufe
 from kern import roles as rollen
@@ -4685,7 +4685,8 @@ def _turn_speichern(ratslotse: Store, user: dict, body: AskBody, q_suche: str,
                     grafik: dict | None = None,
                     sitzungen: list[dict] | None = None,
                     stand: dict | None = None,
-                    unclear: bool = False) -> int | None:
+                    unclear: bool = False,
+                    zeitleiste: dict | None = None) -> int | None:
     """„Meine Gespräche" (6a): Turn ins laufende Gespräch hängen (oder eines
     eröffnen) — nur mit ausdrücklicher Einwilligung, nie als Blocker.
 
@@ -4747,6 +4748,8 @@ def _turn_speichern(ratslotse: Store, user: dict, body: AskBody, q_suche: str,
              # Und das Alter der Belege: Ein gespeichertes Gespräch zeigte
              # sonst dieselbe Antwort ohne den Hinweis „Ältere Aktenlage".
              "records_state": stand or None,
+             # Und der Verlauf des Vorgangs (Akte), aus demselben Grund.
+             **({"timeline": zeitleiste} if zeitleiste else {}),
              # Und die Marke der Rückfrage: Ohne sie sähe der Turn beim
              # Wiederöffnen aus wie eine Antwort ohne Treffer.
              **({"unclear": True} if unclear else {})}, ensure_ascii=False)
@@ -5203,7 +5206,6 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             if (features.an("akten-suche") and not einfach and typ != "session" and not person
                     and candidates):
                 try:
-                    from council import akte_suche
                     akte = akte_suche.material(store, q_suche, candidates)
                     have = {c["id"] for c in candidates}
                     akte_beschluesse = [
@@ -5325,6 +5327,20 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # einmal, dass es sie gibt: Sie hängt am Ereignis, nicht am
             # Prompt.
             grafik = qa.geld_grafik(store, geld) if geld else None
+            # Plan „Akte“, Phase 4 (Schalter `akten-zeitleiste`): Die Akte geht
+            # als Zeitleiste in den Prompt UND als Grafik unter die Antwort —
+            # beides nur, wenn die Antwort den Vorgang erzählt (nicht bei
+            # „zuletzt am Ort“ und nicht bei Anschlussfragen, die an zitierten
+            # Beschlüssen hängen).
+            zeitleiste_an = bool(akte and features.an("akten-zeitleiste") and not einfach
+                                 and not latest_place and not vorher_ids)
+            zeitleiste_daten: dict | None = None
+            if zeitleiste_an and akte:
+                try:
+                    zeitleiste_daten = akte_suche.zeitleiste_anzeige(
+                        akte["decisions"], akte["press"], akte.get("announced") or [])
+                except Exception:  # noqa: BLE001 — die Grafik ist Zusatz, nie Blocker
+                    _log.exception("Zeitleiste nicht gebaut")
             # 5a/I-06: die kondensierte Frage mitschicken — der Kontext-Chip im
             # Frontend zeigt, worauf sich Anschlussfragen beziehen.
             yield _sse({"type": "sources", "mode": mode, "qtype": typ,
@@ -5347,6 +5363,9 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                         # oder eben nicht.
                         "geldquellen": geld.get("facets") or [],
                         "chart": grafik,
+                        # Der Verlauf des Vorgangs als Grafik — fertig
+                        # gebaut (council/akte_suche.py, zeitleiste_anzeige).
+                        "timeline": zeitleiste_daten,
                         # Der Hintergrund geht IMMER in die Antwort; als eigene
                         # Karte erscheint er nur, wenn die Antwort ihn nicht
                         # ohnehin wiederholt (Definitionsfragen, Tims Befund).
@@ -5556,8 +5575,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # Plan „Akte“, Phase 4 (Schalter `akten-zeitleiste`): die Akte als
             # Zeitleiste in den Prompt (council/akte_suche.py::zeitleiste).
             akte_prompt: dict | None = None
-            if (akte and features.an("akten-zeitleiste") and not einfach
-                    and not latest_place and not vorher_ids):
+            if zeitleiste_an and akte:
                 akte_prompt = {
                     "decision_ids": {d["id"] for d in akte["decisions"]},
                     "speech_ids": {w["id"] for w in akte["speeches"]},
@@ -5635,7 +5653,6 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 # Nennt die Antwort die jüngste Station des Vorgangs nicht, hängt
                 # der Server sie an — deterministisch, ohne zweiten Modellaufruf.
                 # Bei einer Stand-Frage IST sie die Antwort (Plan „Akte“, Phase 4).
-                from council import akte_suche
                 im_ctx = {c["id"] for c in ctx}
                 station = akte_suche.letzte_station(
                     [d for d in akte["decisions"] if d["id"] in im_ctx],
@@ -5676,7 +5693,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                            planungen=planungen,
                                            grafik=grafik,
                                            sitzungen=sitzungen,
-                                           stand=stand_zitiert)
+                                           stand=stand_zitiert,
+                                           zeitleiste=zeitleiste_daten)
             if not cited:
                 ratslotse.record_activity(user["id"], "ai_answer_empty", client_kind(request))
             yield _sse({"type": "done", "cited": cited, "timings": zeiten,
