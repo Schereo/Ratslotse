@@ -1109,7 +1109,9 @@ export function ParteienListe({ parties, ohneBeitraege = [], onFrageStellen }: {
   const nurFraktionen = (parties ?? []).every((p) => parteiKuerzel(p.party) !== "Rat");
   return (
     <div className="rounded-xl border border-border bg-card p-3.5 shadow-sm print:break-inside-avoid">
-      <div className="flex items-baseline justify-between gap-2">
+      {/* Umbrechen statt quetschen: Bei 320 px passen Kicker und Zählung
+          nicht nebeneinander — sonst zerfielen beide in je zwei Zeilen. */}
+      <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
         <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
           Aus den Ratsdebatten
         </p>
@@ -1149,10 +1151,23 @@ export function ParteienListe({ parties, ohneBeitraege = [], onFrageStellen }: {
                   <span aria-hidden className="mt-[5px] h-2 w-2 shrink-0 rounded-full"
                     style={{ background: dot.bg, boxShadow: dot.ring ? "inset 0 0 0 1px rgba(0,0,0,0.15)" : undefined }} />
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
+                    {/* Die Kopfzeile BRICHT UM, statt die Seite zu verbreitern
+                        (02.10.2026, 375 px: „Bündnis 90/Die Grünen · dagegen ·
+                        12 Beiträge · Dazu fragen" ragte 32 px über den Rand,
+                        der Name stand trotzdem auf drei Zeilen). Jedes Stück
+                        bleibt für sich ganz; was nicht mehr passt, rutscht in
+                        die nächste Zeile — „Dazu fragen" dort an den rechten
+                        Rand, wo es auch in den kurzen Zeilen steht.
+
+                        Mit Maus (`desk`) zeigt sich der Knopf erst beim Hover.
+                        Im Fluss belegte er dann, umgebrochen, eine UNSICHTBARE
+                        Zeile — ein Loch zwischen Name und Position. Dort sitzt
+                        er deshalb absolut oben rechts in freigehaltenem Raum. */}
+                    <div className={cn("relative flex flex-wrap items-center gap-x-2 gap-y-1",
+                      onFrageStellen && "desk:pr-24")}>
                       <p className="text-[12.5px] font-bold">{p.party}</p>
                       {p.stance && HALTUNG_BADGE[p.stance] && (
-                        <span className={cn("rounded-full px-2 py-px text-[10px] font-semibold",
+                        <span className={cn("whitespace-nowrap rounded-full px-2 py-px text-[10px] font-semibold",
                           HALTUNG_BADGE[p.stance].cls)}>
                           {HALTUNG_BADGE[p.stance].label}
                         </span>
@@ -1160,7 +1175,7 @@ export function ParteienListe({ parties, ohneBeitraege = [], onFrageStellen }: {
                       {/* Ehrlichkeit zur Datenbasis: aus wie vielen Wortbeiträgen
                           die Position verdichtet ist (Tims Befund 10.08.). */}
                       {p.contributions > 0 && (
-                        <span className="inline-flex items-center gap-0.5 font-mono text-[10px] text-muted-foreground/70">
+                        <span className="inline-flex items-center gap-0.5 whitespace-nowrap font-mono text-[10px] text-muted-foreground/70">
                           {p.contributions === 1 ? "1 Beitrag" : `${p.contributions} Beiträge`}
                           {aufklappbar && (
                             <ChevronDown aria-hidden
@@ -1169,14 +1184,14 @@ export function ParteienListe({ parties, ohneBeitraege = [], onFrageStellen }: {
                         </span>
                       )}
                       {!p.unanimous && (
-                        <span className="rounded-full bg-amber-100 px-2 py-px text-[10px] font-semibold text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                        <span className="whitespace-nowrap rounded-full bg-amber-100 px-2 py-px text-[10px] font-semibold text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
                           uneinheitlich
                         </span>
                       )}
                       {onFrageStellen && (
                         <button type="button"
                           onClick={(e) => { e.stopPropagation(); onFrageStellen(`Was sagt ${p.party} dazu im Detail?`); }}
-                          className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10.5px] text-muted-foreground transition-opacity hover:text-foreground lg:opacity-0 lg:group-hover:opacity-100 lg:focus:opacity-100"
+                          className="ml-auto inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10.5px] text-muted-foreground transition-opacity hover:text-foreground desk:absolute desk:right-0 desk:top-0 desk:opacity-0 desk:group-hover:opacity-100 desk:focus:opacity-100"
                           title={`Was sagt ${p.party} dazu im Detail?`}>
                           <MessageSquarePlus className="h-3 w-3" aria-hidden /> Dazu fragen
                         </button>

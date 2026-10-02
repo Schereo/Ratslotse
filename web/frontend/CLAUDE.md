@@ -218,7 +218,7 @@ Genau so ist der einzige Test aufgefallen, der nur mit Daten grün war.
 | `11-quiz-admin` | Quiz und die Admin-Grenze (drei Konten, drei Rechte) |
 | `12-navigation` | Jeder Navigationspunkt, der aktive Zustand, Deep-Links |
 | `13-einrichtung` | Der Assistent — den alle anderen absichtlich überspringen |
-| `14-layout` | Keine Seite scrollt seitwärts (390 px und 320 px) |
+| `14-layout` | Keine Seite scrollt seitwärts (390 px und 320 px); die Antwort samt Parteien-Baustein gestubbt bei 375 und 320 px |
 
 **Der Assistent ist der Sonderfall.** `einrichtungUeberspringen()` schaltet ihn
 über den Server ab, weil seine Fläche (`fixed inset-0`) jeden Klick abfängt:
