@@ -5332,15 +5332,11 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # beides nur, wenn die Antwort den Vorgang erzählt (nicht bei
             # „zuletzt am Ort“ und nicht bei Anschlussfragen, die an zitierten
             # Beschlüssen hängen).
+            # Die Grafik entsteht erst NACH der Antwort, aus den zitierten
+            # Beschlüssen (s. unten bei „Zuletzt“).
             zeitleiste_an = bool(akte and features.an("akten-zeitleiste") and not einfach
                                  and not latest_place and not vorher_ids)
             zeitleiste_daten: dict | None = None
-            if zeitleiste_an and akte:
-                try:
-                    zeitleiste_daten = akte_suche.zeitleiste_anzeige(
-                        akte["decisions"], akte["press"], akte.get("announced") or [])
-                except Exception:  # noqa: BLE001 — die Grafik ist Zusatz, nie Blocker
-                    _log.exception("Zeitleiste nicht gebaut")
             # 5a/I-06: die kondensierte Frage mitschicken — der Kontext-Chip im
             # Frontend zeigt, worauf sich Anschlussfragen beziehen.
             yield _sse({"type": "sources", "mode": mode, "qtype": typ,
@@ -5363,9 +5359,6 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                         # oder eben nicht.
                         "geldquellen": geld.get("facets") or [],
                         "chart": grafik,
-                        # Der Verlauf des Vorgangs als Grafik — fertig
-                        # gebaut (council/akte_suche.py, zeitleiste_anzeige).
-                        "timeline": zeitleiste_daten,
                         # Der Hintergrund geht IMMER in die Antwort; als eigene
                         # Karte erscheint er nur, wenn die Antwort ihn nicht
                         # ohnehin wiederholt (Definitionsfragen, Tims Befund).
@@ -5650,17 +5643,31 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     yield _sse({"type": "abbruch"})
             answer_text, followups = qa.split_followups(buf)
             if akte_prompt and akte is not None and answer_text.strip():
-                # Nennt die Antwort die jüngste Station des Vorgangs nicht, hängt
-                # der Server sie an — deterministisch, ohne zweiten Modellaufruf.
-                # Bei einer Stand-Frage IST sie die Antwort (Plan „Akte“, Phase 4).
-                im_ctx = {c["id"] for c in ctx}
-                station = akte_suche.letzte_station(
-                    [d for d in akte["decisions"] if d["id"] in im_ctx],
-                    akte["press"], akte.get("announced") or [])
-                if station and not akte_suche.nennt(answer_text, station):
-                    zuletzt = akte_suche.zuletzt_satz(station)
-                    yield _sse({"type": "token", "text": zuletzt})
-                    answer_text += zuletzt
+                # „Zuletzt“ und die Zeitleiste kommen aus der Akte der ZITIERTEN
+                # Beschlüsse, nicht aus der des Sucheinstiegs: Die zog bei einem
+                # unscharfen Treffer fremde Vorgänge mit, und jede sechste
+                # Gold-Antwort bekam einen sachfremden „Zuletzt“-Satz
+                # (Stadionsingen, Mülltonnen; 02.10.2026, akte_suche.kern).
+                try:
+                    _, zitiert_jetzt = qa.resolve_citations(
+                        answer_text, {c["id"] for c in candidates})
+                    kern = akte_suche.kern(store, zitiert_jetzt, q_suche)
+                    # Nennt die Antwort die jüngste Station nicht, hängt der
+                    # Server sie an — deterministisch, ohne zweiten Modellaufruf.
+                    # Ein Beschluss nur, wenn das Modell ihn gesehen hat (sonst
+                    # trüge der Satz eine Nummer ohne Beleg).
+                    im_ctx = {c["id"] for c in ctx}
+                    station = akte_suche.letzte_station(
+                        [d for d in kern["decisions"] if d["id"] in im_ctx],
+                        kern["press"], kern["announced"])
+                    if station and not akte_suche.nennt(answer_text, station):
+                        zuletzt = akte_suche.zuletzt_satz(station)
+                        yield _sse({"type": "token", "text": zuletzt})
+                        answer_text += zuletzt
+                    zeitleiste_daten = akte_suche.zeitleiste_anzeige(
+                        kern["decisions"], kern["press"], kern["announced"])
+                except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
+                    _log.exception("Kern-Akte nicht gebaut")
             if not followups:
                 followups = qa.fallback_followups(ctx)
             if followups:
@@ -5703,6 +5710,9 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                         # zitierten. Die Karte erscheint ohnehin erst nach dem
                         # done, es flackert also nichts.
                         "records_state": stand_zitiert or None,
+                        # Der Verlauf des Vorgangs als Grafik — aus der Akte
+                        # der zitierten Beschlüsse (akte_suche.zeitleiste_anzeige).
+                        "timeline": zeitleiste_daten,
                         "conversation_id": conversation_id})
         except Exception:  # noqa: BLE001 — surface a terminal error to the client
             _log.exception("KI-Frage fehlgeschlagen")

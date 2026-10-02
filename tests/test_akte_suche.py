@@ -163,3 +163,48 @@ def test_lange_pause_und_reihenfolge_am_selben_tag():
 
 def test_eine_station_ist_kein_verlauf():
     assert akte_suche.zeitleiste_anzeige([_b(1, "2024-05-27")], [], []) is None
+
+
+# --------------------------------------------------------------------------- #
+# Die Akte der zitierten Beschlüsse: was der Server selbst anhängt
+# --------------------------------------------------------------------------- #
+
+ORTE = {"ofenerdiek", "heidbrook"}
+
+
+@pytest.mark.parametrize("titel, frage, gehoert", [
+    ("Stadion-Neubau: EU und Kommunalaufsicht geben endgültig grünes Licht",
+     "Wie ist der Stand beim Stadionneubau?", True),
+    ("Im Spätsommer bereits an den Advent denken", "Wie ist der Stand beim Stadionneubau?", False),
+    # Ortsname allein reicht nicht — die Sportanlage in Ofenerdiek ist nicht der Bahnübergang.
+    ("Umgestaltung der Sportanlage in Ofenerdiek gestartet",
+     "Was ist aus dem Bahnübergang in Ofenerdiek geworden?", False),
+    ("Bahnübergang Am Stadtrand erneut gesperrt",
+     "Was ist aus dem Bahnübergang in Ofenerdiek geworden?", True),
+    # Füllwörter tragen nicht.
+    ("Bücher treffen Klemmbausteine: Gemeinsame Aktion",
+     "Was wurde aus dem gemeinsamen Antrag zum Bahnübergang?", False),
+])
+def test_pressemitteilung_gehoert_nur_mit_sachwort_dazu(titel, frage, gehoert):
+    sach = akte_suche._sachwoerter(frage, ORTE)
+    assert akte_suche.gehoert_zum_vorgang(titel, sach, ORTE) is gehoert
+
+
+def test_spaeteres_datum_in_der_antwort_genuegt():
+    """Schlossplatz: Die Antwort endet im April 2026 — ein „Zuletzt: Dezember
+    2025“ darunter wäre ein Rückschritt."""
+    station = {"art": "beschluss", "datum": "2025-12-11", "c": {"id": 99}}
+    assert akte_suche.nennt("Am 16. April 2026 erklärte die Verwaltung …", station)
+    assert akte_suche.nennt("Stand: 16.04.2026.", station)
+    assert not akte_suche.nennt("Im Mai 2025 hieß es …", station)
+
+
+def test_kern_ohne_zitat_haengt_nichts_an(themen):
+    assert akte_suche.kern(themen, [], "Frage?") == {"decisions": [], "press": [], "announced": []}
+
+
+def test_kern_nimmt_die_eigene_grundakte_ganz(themen):
+    """Die Grundakte eines zitierten Beschlusses gehört ganz dazu, auch ohne
+    Sachwort in der Frage (Ausschuss UND Rat zur Spielleitplanung)."""
+    k = akte_suche.kern(themen, [11], "Wie ging es weiter?")
+    assert {d["id"] for d in k["decisions"]} >= {10, 11}
