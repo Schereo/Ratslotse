@@ -435,6 +435,38 @@ CREATE TABLE IF NOT EXISTS council_press_places (
 );
 CREATE INDEX IF NOT EXISTS idx_press_places_place ON council_press_places(place_id);
 
+-- Grundakten (council/matters.py, docs/plan-akte.md): je Vorgang eine Gruppe
+-- aus Stationen, Tagesordnungspunkten, Vorlage und Wortbeiträgen. ABGELEITET —
+-- jederzeit aus den Rohdaten neu berechenbar. `key` ist stabil über
+-- Neuaufbauten ("v:26/0396", "t:<Titelkern>"), damit es die id auch ist.
+CREATE TABLE IF NOT EXISTS council_matters (
+    id          INTEGER PRIMARY KEY,
+    key         TEXT NOT NULL UNIQUE,
+    kind        TEXT NOT NULL,
+    title       TEXT,
+    first_date  TEXT,
+    last_date   TEXT,
+    built_at    TEXT NOT NULL
+);
+-- Jede Zeile gehört zu höchstens EINER Grundakte (Primärschlüssel).
+CREATE TABLE IF NOT EXISTS council_matter_items (
+    item_type   TEXT NOT NULL,
+    item_id     INTEGER NOT NULL,
+    matter_id   INTEGER NOT NULL,
+    source      TEXT NOT NULL,
+    confidence  REAL NOT NULL DEFAULT 1.0,
+    PRIMARY KEY (item_type, item_id)
+);
+CREATE INDEX IF NOT EXISTS idx_matter_items_matter ON council_matter_items(matter_id);
+-- Verweise zwischen Grundakten (Vorlage nennt Vorlage). Bewusst NICHT
+-- zusammengelegt: „vgl. 22/1006" kann Fortsetzung oder Seitenblick sein.
+CREATE TABLE IF NOT EXISTS council_matter_edges (
+    matter_a    INTEGER NOT NULL,
+    matter_b    INTEGER NOT NULL,
+    source      TEXT NOT NULL,
+    PRIMARY KEY (matter_a, matter_b, source)
+);
+
 -- Umringe der Bebauungspläne der Stadt aus ihrem Geoportal (rechtsverbindlich
 -- UND in Aufstellung, `status`), wöchentlich als Ganzes ersetzt (council/bplan.py). `key` ist
 -- die Vergleichsform der Plannummer (bplan.schluessel), über die ein
@@ -1904,6 +1936,22 @@ class SchemaMixin(StoreBasis):
         )
         self._conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_press_places_place ON council_press_places(place_id)")
+        # Grundakten (Plan „Akte“, Phase 1) — dieselben drei Tabellen wie im SCHEMA.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_matters ("
+            "id INTEGER PRIMARY KEY, key TEXT NOT NULL UNIQUE, kind TEXT NOT NULL, "
+            "title TEXT, first_date TEXT, last_date TEXT, built_at TEXT NOT NULL)")
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_matter_items ("
+            "item_type TEXT NOT NULL, item_id INTEGER NOT NULL, matter_id INTEGER NOT NULL, "
+            "source TEXT NOT NULL, confidence REAL NOT NULL DEFAULT 1.0, "
+            "PRIMARY KEY (item_type, item_id))")
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_matter_items_matter ON council_matter_items(matter_id)")
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_matter_edges ("
+            "matter_a INTEGER NOT NULL, matter_b INTEGER NOT NULL, source TEXT NOT NULL, "
+            "PRIMARY KEY (matter_a, matter_b, source))")
         # Bebauungsplan-Umringe der Stadt (council/bplan.py) — Spiegel der
         # offenen Geodaten, je Wochenlauf ersetzt.
         self._conn.execute(

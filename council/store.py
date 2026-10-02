@@ -35,6 +35,7 @@ from council.store_schema import (  # noqa: F401
     SchemaMixin,
 )
 from council.store_sitzungen import SitzungenMixin
+from council.store_akten import AktenMixin
 from council.store_themen import ThemenMixin
 from council.store_viertel import ViertelMixin
 from council.store_wortbeitraege import WortbeitraegeMixin
@@ -151,7 +152,7 @@ def _produkt_stufe(begriffe: list[str]) -> str | None:
 # Methode `(woerter, year=None)`, die mit `_conn`, `_trifft` und `_beleg`
 # arbeitet. Der Stern ist Absicht — wer eine Facette baut, fasst diese
 # Datei nicht an.
-class CouncilStore(BplanMixin, FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
+class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
                    PresseMixin, QuizMixin, SchemaMixin, SitzungenMixin,
                    ThemenMixin, ViertelMixin, WortbeitraegeMixin, *_geld.MIXINS):
     def __init__(self, path: str | Path, ratslotse_db_path: str | Path | None = None):
