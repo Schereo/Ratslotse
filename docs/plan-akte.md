@@ -338,6 +338,37 @@ Stadion-Einträge sind teils verschiedene Dinge (Gesellschaft ≠ Bauprojekt).
 Tor: B1/B2 +10 Pp und ≥ 3 Fälle mehr bestanden, B3 ≥ 90 %, B5 ohne
 Verschlechterung, B6 ohne Zunahme, B8 im Budget. Dann Schalter auf Prod.
 
+**Ergebnis (02.10.2026, #1628, Nachtrag #1630).** Gebaut anders als oben
+skizziert, weil die Messung es so wollte: keine „höchstens drei Akten“ und
+keine Verdichtung nach zwölf Monaten, sondern eine Auswahl **aus** der Akte
+der fünf besten Treffer (`council/akte_suche.py`) — bis zu 12 neueste
+Hauptbeschlüsse (Ortsfilter gilt), 30 Wortbeiträge nach Vektor-Nähe zur
+Frage, die 4 neuesten Aussagen der Verwaltung, 5 neueste Pressemitteilungen,
+6 angekündigte Stationen. Der Cross-Encoder für die Beiträge kostete 9–11 s
+und flog raus (Vektor allein: 17 ms). Ausgenommen sind Sitzungsfragen und
+Fragen, die eine Ratsperson nennen (#1630).
+
+Lokal gemessen (Prod-Abzug 01.10., 20 Fälle, Richter Opus 5.5):
+
+| Stand | Läufe | Abdeckung | bestanden | B3 Material |
+|---|---|---|---|---|
+| Schalter aus | 2 | 38,2 / 38,3 % | 3 / 2 | 51,6 % |
+| Einstieg 3, 20 Beiträge | 2 | 43,1 / 41,6 % | 4 / 5 | 65,8 / 67,4 % |
+| **Einstieg 5, 30 Beiträge** | 1 | **42,9 %** | **5** | **69,5 %** |
+
+| Tor | gemessen | erreicht |
+|---|---|---|
+| B1 +10 Pp, ≥ 3 Fälle mehr | +4,6 Pp, +2,5 Fälle | **nein** |
+| B3 ≥ 90 % | 69,5 % | **nein** |
+| B5, B6 | nicht gemessen | offen |
+
+Das Material kam an, die Antwort nutzte es nicht: Ein Fakt, dessen Beleg im
+Kontext stand, wurde mit Akte **seltener** genannt (46 % statt 50 %) — mehr
+Stoff, gleicher Prompt. Genau das ist Phase 4. Tims Entscheidung: trotzdem
+nach dev. Von den 65 fehlenden Belegen lagen 24 in der Akte und wurden nicht
+gewählt, 14 kamen über einen falschen Einstieg nicht an, 27 liegen gar nicht
+in der Akte des Kernbeschlusses.
+
 ### Phase 4 — Antwort aus der Zeitleiste
 
 1. **Ein Kontextblock „AKTE“** statt sieben: datierte Zeilen mit Marke
@@ -352,6 +383,42 @@ Verschlechterung, B6 ohne Zunahme, B8 im Budget. Dann Schalter auf Prod.
 
 Tor: B1 „Fakt genannt, wenn Material vorhanden“ + 10 Pp gegenüber Phase 3,
 B6 ohne Zunahme.
+
+**Ergebnis (02.10.2026, #1629).** Gebaut wie skizziert, aber als
+**zusätzlicher** Block: Was in der Akte steht, fliegt aus den übrigen
+Blöcken; die alten Regeln bleiben bis Phase 5. „Zuletzt:“ greift, wenn die
+Antwort die jüngste Station weder per Belegnummer noch per Monat oder Datum
+nennt.
+
+Dazu ein Fund aus der ersten Probe: Eine Vorlage **ohne Protokoll** hat
+keinen Beschluss und damit kein Thema — ihre angekündigten Stationen
+erreichten keine Akte (Klinikum: Ausfallbürgschaft 13,5 Mio. €, Rat
+28.09.2026). Akten ohne Beschluss hängen jetzt über den Titel ihrer Vorlage
+an der Entität (187 Verknüpfungen; über alle Vorlagen wären es 740 gewesen,
+„Innenstadt“ allein an 42). B4 unverändert.
+
+| Stand | Läufe | Abdeckung | bestanden | Fakt genannt, wenn Material da |
+|---|---|---|---|---|
+| Schalter aus | 2 | 38,2 / 38,3 % | 3 / 2 | 49,5 / 51,4 % |
+| Phase 3 | 3 | 43,1 / 41,6 / 42,9 % | 4 / 5 / 5 | 48,9 / 44,1 / 46,4 % |
+| **Phase 3 + 4** | 2 | **48,9 / 48,4 %** | **6 / 7** | **55,7 / 54,3 %** |
+
+| Tor | gemessen | erreicht |
+|---|---|---|
+| B1 „Fakt genannt“ +10 Pp gegenüber Phase 3 | +8,6 Pp | **knapp nein** |
+| B6 ohne Zunahme | nicht gemessen; Gold-Verstöße 0 in allen Läufen | offen |
+| B8 erstes Wort p50 + ≤ 1 s | 15,6 → 14,1 s (p95 22,0 → 23,2 s) | ja |
+
+Phase 3 und 4 **zusammen** erreichen das Tor von Phase 3 gegenüber „aus“:
+Abdeckung +10,4 Pp, bestanden +4. Die großen Gewinne: Mobilitätsplan
+0,38 → 0,85, Zweckentfremdungssatzung 0,47 → 0,68, Dreifeldhalle
+0,57 → 0,78, Grundsteuer 0,19 → 0,38. Lokal fehlen die Embeddings (die Suche
+fällt auf Stichworte zurück) — vor dem Schalter auf Prod gehört dieselbe
+Messung auf Prod bzw. dev (`ops-gold.yml`).
+
+Bemerkenswert und nicht Teil des Umbaus: Das erste Wort kommt lokal erst nach
+rund 15 s, die ganze Antwort nach 17 s — der Strom liefert fast alles am
+Stück.
 
 ### Phase 5 — Aufräumen
 
