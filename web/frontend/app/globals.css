@@ -1411,6 +1411,30 @@ lotti-figur {
     animation: fade-up var(--takt-buehne) var(--ease-out-strong) both;
     animation-delay: calc(var(--staffel-i, 0) * 45ms);
   }
+
+  /* ── Die Akte-Zeitleiste geht chronologisch auf ────────────────────────
+     (components/akte-zeitleiste.tsx, Tims Wunsch 02.10.2026). Hier IST die
+     Reihenfolge der Inhalt: Station für Station von der ältesten zur
+     jüngsten, und die Schiene wächst jeweils zur nächsten nach. Derselbe
+     Schritt wie `.staffel-auf` (45 ms), aber über Station UND Abstand
+     gezählt und erst bei der 16. Zeile gedeckelt — offen stehen höchstens
+     acht Stationen, das sind 15 Zeilen, also gut 0,7 s bis zum aktuellen
+     Stand. Die Schiene wächst per `scaleY` (nur transform), von oben. */
+  .zeitleiste-auf {
+    animation: fade-up var(--takt-buehne) var(--ease-out-strong) both;
+    animation-delay: calc(var(--zl-i, 0) * 45ms);
+  }
+  .zeitleiste-schiene {
+    transform-origin: top;
+    animation: schiene-wachsen var(--takt-weg) var(--ease-in-out-strong) both;
+    animation-delay: calc(var(--zl-i, 0) * 45ms + 90ms);
+  }
+}
+
+@keyframes schiene-wachsen {
+  from { transform: scaleY(0); }
+  /* `none` statt `scaleY(1)` — derselbe Grund wie bei `fade-up`. */
+  to { transform: none; }
 }
 
 /* „Mein Viertel": Pins und Popover auf der Viertel-Karte (components/viertel-karte.tsx).

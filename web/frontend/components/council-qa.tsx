@@ -50,6 +50,7 @@ import { Button, Input, toast } from "@/components/ui";
 import { KOPFLEISTE_HOEHE, TABLEISTE_HOEHE } from "@/components/nav";
 import { decisionHref } from "@/lib/routes";
 import { PrintButton } from "@/components/print-button";
+import { AkteZeitleiste, type AkteZeitleisteDaten } from "@/components/akte-zeitleiste";
 import { pfad, cn } from "@/lib/utils";
 import { isNativeApp } from "@/lib/platform";
 import { reportBadgeEvent } from "@/components/badges";
@@ -243,6 +244,8 @@ type Turn = {
   steckbriefe?: { name: string; slug: string; beschreibung: string }[];
   /** Die Grafik zur Antwort — Rohreihen aus dem Store, nie vom Modell. */
   chart?: QaGrafik | null;
+  /** Der Verlauf des Vorgangs (Akte), fertig gebaut vom Backend. */
+  timeline?: AkteZeitleisteDaten | null;
 };
 
 /** Antwort vorlesen (5a/I-12, nur die TTS-Hälfte): SpeechSynthesis mit
@@ -885,6 +888,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             records_state: (msg.records_state as Turn["records_state"]) ?? null,
             steckbriefe: (msg.steckbriefe as Turn["steckbriefe"]) ?? [],
             chart: (msg.chart as QaGrafik | null) ?? null,
+            timeline: (msg.timeline as AkteZeitleisteDaten | null) ?? null,
           });
           else if (msg.type === "token") patchLast((t) => ({ answer: t.answer + (msg.text as string) }));
           // Riss der LLM-Stream mitten in der Antwort, generiert das Backend
@@ -1452,7 +1456,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         records_state?: Turn["records_state"];
         research?: boolean; context?: string | null; unclear?: boolean;
         documents_read?: number; period?: string; premium_model?: boolean;
-        chart?: QaGrafik | null } | null };
+        chart?: QaGrafik | null; timeline?: AkteZeitleisteDaten | null } | null };
       setTurns((g.turns as DbTurn[]).map((t) => ({
         key: naechsterKey(),
         question: t.question, answer: t.answer, qtype: null, mode: null,
@@ -1463,6 +1467,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         planning_procedures: t.sources?.planning_procedures ?? [],
         sessions: t.sources?.sessions ?? [],
         chart: t.sources?.chart ?? null,
+        timeline: t.sources?.timeline ?? null,
         records_state: t.sources?.records_state ?? null,
         cited: t.sources?.cited ?? [],
         // Die kondensierte Frage aus dem Snapshot, sonst die Originalfrage.
@@ -2457,6 +2462,12 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
             <GrafikKarte chart={turn.chart} />
           )}
 
+          {/* Der Verlauf des Vorgangs (Plan „Akte“) — Stationen, Abstände und
+              Links kommen fertig vom Backend (council/akte_suche.py). */}
+          {!beschaeftigt && turn.timeline && !turn.fehler && !turn.abgebrochen && (
+            <AkteZeitleiste daten={turn.timeline} idToNum={idToNum} onJump={(id) => setPeekId(id)} />
+          )}
+
           {!beschaeftigt && <Baustein turn={turn} idToNum={idToNum} onJump={(id) => setPeekId(id)} />}
 
           {/* RG-10 (8b): „Wie es weitergeht" — künftige Beratungsstationen
@@ -3395,7 +3406,9 @@ function Baustein({ turn, idToNum, onJump }: {
   // fünf Beschlüsse derselben Ratssitzung („Was wurde am 01.06. beschlossen?")
   // sind eine Aufzählung, kein Verlauf (Tims Befund 09.08.).
   const termine = new Set(zitierteQuellen.map((s) => s.session_date).filter(Boolean));
-  if (turn.qtype === "history" && zitierteQuellen.length >= 2 && termine.size >= 2) {
+  // Liegt die Akte-Zeitleiste vor, erzählt sie den Verlauf vollständiger —
+  // zwei Zeitstrahlen untereinander wären derselbe Verlauf zweimal.
+  if (turn.qtype === "history" && !turn.timeline && zitierteQuellen.length >= 2 && termine.size >= 2) {
     const stationen = [...zitierteQuellen].sort((a, b) => (a.session_date ?? "").localeCompare(b.session_date ?? ""));
     return (
       <div className="rounded-xl border border-border bg-card p-3.5">
