@@ -466,6 +466,23 @@ CREATE TABLE IF NOT EXISTS council_matter_edges (
     source      TEXT NOT NULL,
     PRIMARY KEY (matter_a, matter_b, source)
 );
+-- Phase 2 (docs/plan-akte.md): Themen-Entitäten über Grundakten. Über den
+-- SLUG, nicht die id — council_entities wird im Wochenlauf neu aufgebaut, der
+-- Slug bleibt. Beides ABGELEITET, jede Nacht neu (council/matters.py).
+CREATE TABLE IF NOT EXISTS council_entity_matters (
+    slug        TEXT NOT NULL,
+    matter_id   INTEGER NOT NULL,
+    PRIMARY KEY (slug, matter_id)
+);
+CREATE INDEX IF NOT EXISTS idx_entity_matters_matter ON council_entity_matters(matter_id);
+-- Wortbeiträge und Pressemitteilungen, die den Namen einer Entität nennen.
+CREATE TABLE IF NOT EXISTS council_entity_mentions (
+    slug        TEXT NOT NULL,
+    item_type   TEXT NOT NULL,
+    item_id     INTEGER NOT NULL,
+    PRIMARY KEY (slug, item_type, item_id)
+);
+CREATE INDEX IF NOT EXISTS idx_entity_mentions_item ON council_entity_mentions(item_type, item_id);
 
 -- Umringe der Bebauungspläne der Stadt aus ihrem Geoportal (rechtsverbindlich
 -- UND in Aufstellung, `status`), wöchentlich als Ganzes ersetzt (council/bplan.py). `key` ist
@@ -1952,6 +1969,20 @@ class SchemaMixin(StoreBasis):
             "CREATE TABLE IF NOT EXISTS council_matter_edges ("
             "matter_a INTEGER NOT NULL, matter_b INTEGER NOT NULL, source TEXT NOT NULL, "
             "PRIMARY KEY (matter_a, matter_b, source))")
+        # Phase 2: Entitäten über Grundakten — dieselben Tabellen wie im SCHEMA.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_entity_matters ("
+            "slug TEXT NOT NULL, matter_id INTEGER NOT NULL, PRIMARY KEY (slug, matter_id))")
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_entity_matters_matter "
+            "ON council_entity_matters(matter_id)")
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_entity_mentions ("
+            "slug TEXT NOT NULL, item_type TEXT NOT NULL, item_id INTEGER NOT NULL, "
+            "PRIMARY KEY (slug, item_type, item_id))")
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_entity_mentions_item "
+            "ON council_entity_mentions(item_type, item_id)")
         # Bebauungsplan-Umringe der Stadt (council/bplan.py) — Spiegel der
         # offenen Geodaten, je Wochenlauf ersetzt.
         self._conn.execute(

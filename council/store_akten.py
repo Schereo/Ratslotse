@@ -75,6 +75,94 @@ class AktenMixin(StoreBasis):
                 "(SELECT DISTINCT matter_id FROM council_matter_items)")
         return ids
 
+    # --- Phase 2: Entitäten über Grundakten ---------------------------------
+
+    def entity_name_variants(self) -> list[tuple]:
+        """(slug, name, kind, n) — jede Schreibweise jeder Entität, Aliasse auf
+        ihren Kanon gefaltet (dieselbe Regel wie ``rebuild_entities_from_obs``)."""
+        alias = {r[0]: r[1] for r in self._conn.execute(
+            "SELECT slug, canonical_slug FROM council_entity_aliases")}
+        ents = {r["slug"]: (r["kind"], r["n"]) for r in self._conn.execute(
+            "SELECT slug, kind, n FROM council_entities")}
+        out = {(s, r[1]) for s, r in ((alias.get(r[0], r[0]), r) for r in self._conn.execute(
+            "SELECT DISTINCT slug, name FROM council_entity_obs")) if s in ents and r[1]}
+        out |= {(r["slug"], r["name"]) for r in self._conn.execute(
+            "SELECT slug, name FROM council_entities") if r["name"]}
+        return sorted((s, name, ents[s][0], ents[s][1]) for s, name in out)
+
+    def speech_texts(self) -> list[tuple]:
+        """(id, Text samt Antwort) je Wortbeitrag."""
+        return [tuple(r) for r in self._conn.execute(
+            "SELECT id, coalesce(text, '') || ' ' || coalesce(answer, '') FROM council_speeches")]
+
+    def press_leads(self, zeichen: int) -> list[tuple]:
+        """(id, Titel, Anfang) je Pressemitteilung — ohne den Fuß mit Ort und Zeit."""
+        return [tuple(r) for r in self._conn.execute(
+            "SELECT id, coalesce(title, ''), substr(coalesce(text, ''), 1, ?) "
+            "FROM council_press", (zeichen,))]
+
+    def entity_matter_pairs(self) -> list[tuple]:
+        """(slug, Name, matter_id, Akten-Titel): jede Entität an jeder Grundakte,
+        in der einer ihrer Beschlüsse liegt."""
+        return [tuple(r) for r in self._conn.execute(
+            "SELECT DISTINCT e.slug, e.name, i.matter_id, m.title FROM council_entity_links l "
+            "JOIN council_entities e ON e.id = l.entity_id "
+            "JOIN council_matter_items i ON i.item_type = 'decision' AND i.item_id = l.decision_id "
+            "JOIN council_matters m ON m.id = i.matter_id")]
+
+    def replace_entity_akten(self, matters: list[tuple], mentions: list[tuple]) -> None:
+        """Beide Phase-2-Tabellen vollständig ersetzen, in EINER Transaktion."""
+        with self._conn:
+            self._conn.execute("DELETE FROM council_entity_matters")
+            self._conn.executemany(
+                "INSERT OR IGNORE INTO council_entity_matters (slug, matter_id) VALUES (?, ?)",
+                matters)
+            self._conn.execute("DELETE FROM council_entity_mentions")
+            self._conn.executemany(
+                "INSERT OR IGNORE INTO council_entity_mentions (slug, item_type, item_id) "
+                "VALUES (?, ?, ?)", mentions)
+
+    # --- Akte zusammenstellen ---------------------------------------------
+
+    def matters_of_decisions(self, decision_ids: list[int]) -> set[int]:
+        if not decision_ids:
+            return set()
+        return {r[0] for r in self._conn.execute(
+            f"SELECT matter_id FROM council_matter_items WHERE item_type = 'decision' "
+            f"AND item_id IN ({','.join('?' * len(decision_ids))})", decision_ids)}
+
+    def entities_of_matters(self, matter_ids: list[int]) -> list[dict]:
+        """slug, name, kind, n der Entitäten an diesen Grundakten."""
+        if not matter_ids:
+            return []
+        return [dict(r) for r in self._conn.execute(
+            f"SELECT DISTINCT e.slug, e.name, e.kind, e.n FROM council_entity_matters m "
+            f"JOIN council_entities e ON e.slug = m.slug "
+            f"WHERE m.matter_id IN ({','.join('?' * len(matter_ids))})", matter_ids)]
+
+    def matters_of_entities(self, slugs: list[str]) -> set[int]:
+        if not slugs:
+            return set()
+        return {r[0] for r in self._conn.execute(
+            f"SELECT matter_id FROM council_entity_matters WHERE slug IN "
+            f"({','.join('?' * len(slugs))})", slugs)}
+
+    def mentions_of_entities(self, slugs: list[str]) -> list[tuple]:
+        """(item_type, item_id) der Erwähnungen dieser Entitäten."""
+        if not slugs:
+            return []
+        return [tuple(r) for r in self._conn.execute(
+            f"SELECT DISTINCT item_type, item_id FROM council_entity_mentions WHERE slug IN "
+            f"({','.join('?' * len(slugs))})", slugs)]
+
+    def items_of_matters(self, matter_ids: list[int]) -> list[tuple]:
+        """(item_type, item_id) aller Zeilen dieser Grundakten."""
+        if not matter_ids:
+            return []
+        return [tuple(r) for r in self._conn.execute(
+            f"SELECT item_type, item_id FROM council_matter_items WHERE matter_id IN "
+            f"({','.join('?' * len(matter_ids))})", matter_ids)]
+
     # --- Abfragen ----------------------------------------------------------
 
     def matter_of(self, item_type: str, item_id: int) -> dict | None:
