@@ -499,6 +499,41 @@ ermöglichen.“), **2 Sitzungen** ohne Protokoll nach über zehn Wochen
 Treffer waren Fehlalarme der Probe selbst („Vertagung“ statt „vertagt“) —
 die Wortliste ist ergänzt.
 
+### Nach Phase 6: Antwortstufe und Auswahl (02.10.2026)
+
+**Messaufbau ohne Opus-Kosten.** Ab hier richtet Claude in der Sitzung selbst,
+**blind**: je Fall Frage und Pflichtfakten einmal, darunter die Antworten der
+Arme in zufälliger Reihenfolge ohne Kennzeichnung (Zuordnung in einer Datei,
+die erst beim Auswerten gelesen wird). Die Antworten schreibt weiter GPT-6
+Luna — gemessen werden soll das Produkt. 60 Antworten kosten rund 0,20 $. Zur
+Einordnung: Derselbe Stand bekam von Opus 48,5 %, von Claude 50,9 %.
+
+**Antwortstufe — kein Hebel.** Je ein Lauf, 20 Fälle:
+
+| Arm | Abdeckung | bestanden | Fakt genannt, wenn Beleg da |
+|---|---|---|---|
+| heute | 50,9 % | 6 | 55,3 % |
+| feste Gliederung (Stand → Weg mit Stimmen und Beträgen → Positionen → Offenes), ohne 2–5-Sätze-Grenze | 51,5 % | 6 | 59,6 % |
+| Denkaufwand `high` | 51,8 % | 6 | 57,9 % |
+
+Unter einem Punkt — die Antwort lässt Stimmen, Beträge und Bauzeitpläne
+weg, egal wie man fragt. Nicht übernommen.
+
+**„Zuletzt“ und Zeitleiste aus den zitierten Beschlüssen (#1633).** Dieselbe
+Runde zeigte: Jede sechste Antwort bekam einen sachfremden „Zuletzt“-Satz
+(Stadionsingen, Mülltonnen, Sportanlage Ofenerdiek), dieselben Stationen
+standen in der Zeitleiste. Ursache war die Akte des Sucheinstiegs. Jetzt:
+Grundakten der zitierten Beschlüsse ganz, Geklebtes und Presse nur mit einem
+Sachwort der Frage im Titel; kein „Zuletzt“, wenn die Antwort schon einen
+späteren Monat nennt.
+
+**Auswahl aus der Akte (#1634).** Neu: `eval/run_akten.py --methode auswahl`
+misst ohne Sprachmodell, was die Auswahl an die Antwort weitergibt.
+Akte 86,7 % → Auswahl 12/30/5 nur 66,7 % (Wortbeiträge 29 von 50 in der
+Akte); 16/50/8 gibt 77,0 % weiter. Rangfolge statt Menge half kaum, Presse
+nach Vektor-Nähe war schlechter als nach Datum. Am Ende der Kette (neun
+betroffene Fälle, blind): 51,7 → 56,1 %, keine Verstöße.
+
 ## 5. Risiken
 
 | Risiko | Gegenmittel |
