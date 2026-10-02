@@ -34,6 +34,7 @@ import importlib
 import json
 import sys
 import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -48,6 +49,8 @@ load_dotenv(WURZEL / ".env")
 from kern import llm  # noqa: E402
 
 CASES = WURZEL / "eval" / "cases_deep_gold.json"
+FRAGEN_JE_FENSTER = 9
+FENSTER_S = 600
 ZIEL = WURZEL / "data" / "eval_gold"
 
 
@@ -112,14 +115,34 @@ def lauf(basis: str, label: str, nur: str | None, konto: str | None) -> Path:
     if nur:
         cases = [c for c in cases if c["id"] == nur]
     ergebnisse = []
+    gestellt: list[float] = []
     for case in cases:
-        # Das Token gilt fünf Minuten (rauchprobe.token_bauen). Sieben Fälle
-        # passten hinein, zwanzig nicht: Der erste Lauf mit dem 20er-Set brach
-        # am 02.10.2026 nach acht Fällen mit 401 ab. Deshalb je Fall neu.
-        token, info = rauchprobe.token_bauen(WURZEL, konto)
-        if not token:
-            raise SystemExit(f"Kein Token: {info}")
-        r = fragen(basis, token, case["question"])
+        # /ask erlaubt einem Konto 10 Fragen je 10 Minuten
+        # (``ratelimit.qa_limiter``). Sieben Fälle passten hinein, zwanzig
+        # nicht: Der Grundlinien-Lauf vom 02.10.2026 brach nach zehn Fällen mit
+        # 429 ab. Statt das Messkonto zu befreien (eine Kontoänderung auf Prod)
+        # hält sich der Lauf an neun je Fenster — eine bleibt für den Menschen,
+        # dem das Konto gehört.
+        if len(gestellt) >= FRAGEN_JE_FENSTER:
+            warten = FENSTER_S - (time.time() - gestellt[-FRAGEN_JE_FENSTER]) + 5
+            if warten > 0:
+                print(f"  Rate-Limit: warte {warten:.0f} s", flush=True)
+                time.sleep(warten)
+        for versuch in range(3):
+            # Das Token gilt fünf Minuten (rauchprobe.token_bauen) — je Fall
+            # und nach jedem Warten neu.
+            token, info = rauchprobe.token_bauen(WURZEL, konto)
+            if not token:
+                raise SystemExit(f"Kein Token: {info}")
+            try:
+                gestellt.append(time.time())
+                r = fragen(basis, token, case["question"])
+                break
+            except urllib.error.HTTPError as exc:
+                if exc.code != 429 or versuch == 2:
+                    raise
+                print(f"  429 — warte {FENSTER_S // 2} s", flush=True)
+                time.sleep(FENSTER_S // 2)
         q = r["quellen"]
         material = gold._material_pruefen(case, material_form(q))
         baustein: list[dict] = []
