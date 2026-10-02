@@ -110,6 +110,16 @@ class AktenMixin(StoreBasis):
             "JOIN council_matter_items i ON i.item_type = 'decision' AND i.item_id = l.decision_id "
             "JOIN council_matters m ON m.id = i.matter_id")]
 
+    def open_matter_template_titles(self) -> list[tuple]:
+        """(matter_id, Vorlagen-Titel, Akten-Titel) je Vorlage in einer Grundakte,
+        die noch KEINEN Beschluss trägt (die Vorlage ist noch nicht protokolliert)."""
+        return [tuple(r) for r in self._conn.execute(
+            "SELECT i.matter_id, t.title, m.title FROM council_templates t "
+            "JOIN council_matter_items i ON i.item_type = 'template' AND i.item_id = t.kvonr "
+            "JOIN council_matters m ON m.id = i.matter_id WHERE t.title IS NOT NULL "
+            "AND NOT EXISTS (SELECT 1 FROM council_matter_items d WHERE d.matter_id = i.matter_id "
+            "AND d.item_type = 'decision')")]
+
     def replace_entity_akten(self, matters: list[tuple], mentions: list[tuple]) -> None:
         """Beide Phase-2-Tabellen vollständig ersetzen, in EINER Transaktion."""
         with self._conn:
