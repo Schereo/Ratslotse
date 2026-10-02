@@ -32,6 +32,7 @@ from __future__ import annotations
 import argparse
 import importlib
 import json
+import re
 import sys
 import time
 import urllib.error
@@ -60,6 +61,38 @@ def _post(basis: str, token: str, pfad: str, body: dict, strom: bool = False):
         headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json",
                  "Accept": "text/event-stream" if strom else "application/json"})
     return urllib.request.urlopen(anfrage, timeout=300)
+
+
+def befreien(basis: str, token: str, info: str) -> bool:
+    """Das Messkonto von den Rate-Limitern befreien (``web_users.limits_unlocked``).
+
+    Tims Freigabe 02.10.2026: „die 10 Fragen in 10 Minuten kannst du zum
+    Testen brechen“. Geht über denselben Admin-Endpunkt wie das Panel; das
+    Recherche-Kontingent bleibt, wie es ist. Zurücknehmen: Admin-Panel →
+    Web-Nutzer*innen. True, wenn das Konto danach befreit ist.
+    """
+    m = re.match(r"Konto (\d+)", info)
+    if not m:
+        return False
+    uid = m.group(1)
+    kopf = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    try:
+        with urllib.request.urlopen(urllib.request.Request(
+                f"{basis}/api/admin/users/{uid}", headers=kopf), timeout=30) as a:
+            konto = json.loads(a.read().decode("utf-8"))
+        if konto.get("limits_unlocked"):
+            return True
+        body = {"deep_limit": konto.get("deep_limit"), "limits_unlocked": True}
+        with urllib.request.urlopen(urllib.request.Request(
+                f"{basis}/api/admin/users/{uid}/limits", data=json.dumps(body).encode("utf-8"),
+                headers=kopf, method="PUT"), timeout=30) as a:
+            frei = bool(json.loads(a.read().decode("utf-8")).get("limits_unlocked"))
+        print(f"Messkonto {uid} vom Rate-Limit befreit "
+              "(zurücknehmen: Admin-Panel → Web-Nutzer*innen).", flush=True)
+        return frei
+    except urllib.error.HTTPError as exc:
+        print(f"Befreien nicht möglich ({exc.code}) — der Lauf drosselt sich selbst.", flush=True)
+        return False
 
 
 def fragen(basis: str, token: str, frage: str) -> dict:
@@ -104,13 +137,15 @@ def material_form(quellen: dict, debatten: list[dict] | None = None) -> dict:
     }
 
 
-def lauf(basis: str, label: str, nur: str | None, konto: str | None) -> Path:
+def lauf(basis: str, label: str, nur: str | None, konto: str | None,
+         frei_machen: bool = False) -> Path:
     from scripts import eval_deep_gold as gold
 
     rauchprobe = importlib.import_module("rauchprobe")
     token, info = rauchprobe.token_bauen(WURZEL, konto)
     if not token:
         raise SystemExit(f"Kein Token: {info}")
+    frei = befreien(basis, token, info) if frei_machen else False
     cases = json.loads(CASES.read_text(encoding="utf-8"))
     if nur:
         cases = [c for c in cases if c["id"] == nur]
@@ -123,7 +158,7 @@ def lauf(basis: str, label: str, nur: str | None, konto: str | None) -> Path:
         # 429 ab. Statt das Messkonto zu befreien (eine Kontoänderung auf Prod)
         # hält sich der Lauf an neun je Fenster — eine bleibt für den Menschen,
         # dem das Konto gehört.
-        if len(gestellt) >= FRAGEN_JE_FENSTER:
+        if not frei and len(gestellt) >= FRAGEN_JE_FENSTER:
             warten = FENSTER_S - (time.time() - gestellt[-FRAGEN_JE_FENSTER]) + 5
             if warten > 0:
                 print(f"  Rate-Limit: warte {warten:.0f} s", flush=True)
@@ -193,8 +228,10 @@ def main() -> None:
     ap.add_argument("--nur", default=None, help="nur diesen Fall")
     ap.add_argument("--basis", default="http://127.0.0.1:8000")
     ap.add_argument("--konto", default=None, help="Konto-Adresse fürs Token (Vorgabe wie Rauchprobe)")
+    ap.add_argument("--befreien", action="store_true",
+                    help="Messkonto von den Rate-Limitern befreien (Admin-Endpunkt)")
     a = ap.parse_args()
-    lauf(a.basis, a.label, a.nur, a.konto)
+    lauf(a.basis, a.label, a.nur, a.konto, frei_machen=a.befreien)
 
 
 if __name__ == "__main__":
