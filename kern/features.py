@@ -77,7 +77,9 @@ FEATURES: dict[str, Feature] = {
         description="„Frag den Rat“ bekommt den Vorgang als datierte Zeitleiste (Block "
                     "„AKTE“) samt angekündigter Stationen, erzählt ihn in zeitlicher Folge "
                     "und nennt den aktuellen Stand; fehlt er, hängt der Server ihn an "
-                    "(Plan „Akte“, Phase 4). Wirkt nur zusammen mit `akten-suche`.",
+                    "(Plan „Akte“, Phase 4). Unter der Antwort stehen der Verlauf als "
+                    "Zeitleiste und die Eckdaten (Abstimmung, Betrag, Stand, nächster "
+                    "Termin). Wirkt nur zusammen mit `akten-suche`.",
         fertig_wenn="Phase 4 hat ihr Tor erreicht (Gold „Frag den Rat“: +10 Pp bei "
                     "„Fakt genannt, wenn Material vorhanden“ gegenüber Phase 3, Fakten-Eval "
                     "ohne Zunahme) und lag zwei Wochen auf Prod an.",

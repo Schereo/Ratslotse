@@ -4686,7 +4686,8 @@ def _turn_speichern(ratslotse: Store, user: dict, body: AskBody, q_suche: str,
                     sitzungen: list[dict] | None = None,
                     stand: dict | None = None,
                     unclear: bool = False,
-                    zeitleiste: dict | None = None) -> int | None:
+                    zeitleiste: dict | None = None,
+                    eckdaten: dict | None = None) -> int | None:
     """„Meine Gespräche" (6a): Turn ins laufende Gespräch hängen (oder eines
     eröffnen) — nur mit ausdrücklicher Einwilligung, nie als Blocker.
 
@@ -4750,6 +4751,7 @@ def _turn_speichern(ratslotse: Store, user: dict, body: AskBody, q_suche: str,
              "records_state": stand or None,
              # Und der Verlauf des Vorgangs (Akte), aus demselben Grund.
              **({"timeline": zeitleiste} if zeitleiste else {}),
+             **({"key_facts": eckdaten} if eckdaten else {}),
              # Und die Marke der Rückfrage: Ohne sie sähe der Turn beim
              # Wiederöffnen aus wie eine Antwort ohne Treffer.
              **({"unclear": True} if unclear else {})}, ensure_ascii=False)
@@ -5337,6 +5339,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             zeitleiste_an = bool(akte and features.an("akten-zeitleiste") and not einfach
                                  and not latest_place and not vorher_ids)
             zeitleiste_daten: dict | None = None
+            eckdaten: dict | None = None
             # 5a/I-06: die kondensierte Frage mitschicken — der Kontext-Chip im
             # Frontend zeigt, worauf sich Anschlussfragen beziehen.
             yield _sse({"type": "sources", "mode": mode, "qtype": typ,
@@ -5660,12 +5663,23 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     station = akte_suche.letzte_station(
                         [d for d in kern["decisions"] if d["id"] in im_ctx],
                         kern["press"], kern["announced"])
+                    angehaengt = None
                     if station and not akte_suche.nennt(answer_text, station):
                         zuletzt = akte_suche.zuletzt_satz(station)
                         yield _sse({"type": "token", "text": zuletzt})
                         answer_text += zuletzt
+                        angehaengt = station
                     zeitleiste_daten = akte_suche.zeitleiste_anzeige(
                         kern["decisions"], kern["press"], kern["announced"])
+                    # Die Eckdaten über dem Verlauf: Abstimmung, Betrag, Stand
+                    # und nächster Termin — aus den Daten, nie vom Modell (das
+                    # lässt gerade diese Fakten weg, Gold-Runde 02.10.2026).
+                    eckdaten = akte_suche.key_facts(
+                        store.get_decisions_by_ids(zitiert_jetzt),
+                        [d for d in kern["decisions"] if d["id"] in im_ctx],
+                        kern["press"] + akte_suche.press_named(answer_text, presse_rows or []),
+                        kern["announced"], date.today().isoformat(), q_suche)
+                    eckdaten = akte_suche.without_station(eckdaten, angehaengt)
                 except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
                     _log.exception("Kern-Akte nicht gebaut")
             if not followups:
@@ -5701,7 +5715,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                            grafik=grafik,
                                            sitzungen=sitzungen,
                                            stand=stand_zitiert,
-                                           zeitleiste=zeitleiste_daten)
+                                           zeitleiste=zeitleiste_daten,
+                                           eckdaten=eckdaten)
             if not cited:
                 ratslotse.record_activity(user["id"], "ai_answer_empty", client_kind(request))
             yield _sse({"type": "done", "cited": cited, "timings": zeiten,
@@ -5713,6 +5728,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                         # Der Verlauf des Vorgangs als Grafik — aus der Akte
                         # der zitierten Beschlüsse (akte_suche.zeitleiste_anzeige).
                         "timeline": zeitleiste_daten,
+                        # Die Eckdaten dazu (akte_suche.key_facts).
+                        "key_facts": eckdaten,
                         "conversation_id": conversation_id})
         except Exception:  # noqa: BLE001 — surface a terminal error to the client
             _log.exception("KI-Frage fehlgeschlagen")
