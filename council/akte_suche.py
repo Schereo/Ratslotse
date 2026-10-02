@@ -35,7 +35,16 @@ log = logging.getLogger("council.akte_suche")
 #: 5 → 64,8 % — der fünfte Treffer trifft öfter die Pressemitteilungen.
 EINSTIEG = 5
 #: So viele Beschlüsse der Akte kommen höchstens zusätzlich in den Kontext.
-BESCHLUESSE = 12
+#:
+#: **Gemessen ohne Sprachmodell** (``eval/run_akten.py --methode auswahl``,
+#: Prod-Abzug, 02.10.2026): Die Akte enthält 86,7 % der Gold-Belege, die
+#: Auswahl gab mit 12/30/5 nur 66,7 % weiter — am meisten gingen Wortbeiträge
+#: verloren (29 von 50 in der Akte). 16/50/8 gibt 77,0 % weiter. Eine bessere
+#: RANGFOLGE half kaum (Deckel je Sitzung +0,6 Pp, Pressemitteilungen nach
+#: Vektor-Nähe sogar schlechter als nach Datum: 16 statt 18 von 34). Am Ende
+#: der Kette, blind gerichtet an den neun Fällen, deren Auswahl sich ändert:
+#: Abdeckung 51,7 → 56,1 %, keine Verstöße. Preis: rund 2.400 Tokens mehr.
+BESCHLUESSE = 16
 #: Wortbeiträge: die so vielen der Akte, deren Vektor der Frage am nächsten
 #: liegt — OHNE Cross-Encoder. Gemessen an den Gold-Fällen (02.10.2026): 20
 #: nach Vektor brachten 20 von 52 Debatten-Belegen in 17 ms; 40 nach Vektor
@@ -44,11 +53,12 @@ BESCHLUESSE = 12
 #: Thema; dort trennt der Cross-Encoder kaum noch. Mit Einstieg 5: 20 Beiträge
 #: 64,8 %, 30 → 69,1 %, 40 → 72,1 % — 30 als Mitte, weil jeder Beitrag den
 #: Prompt verlängert und die Antwort das Material ohnehin nicht ausschöpft
-#: (Phase 4).
-BEITRAEGE = 30
+#: (Phase 4). Seit 02.10.2026 50 (Messung bei ``BESCHLUESSE``).
+BEITRAEGE = 50
 #: Dazu immer so viele jüngste Aussagen der Verwaltung.
 VERWALTUNG = 4
-PRESSE = 5
+#: Die neuesten — nach Vektor-Nähe gewählt wurde es schlechter (s. ``BESCHLUESSE``).
+PRESSE = 8
 #: So viele angekündigte Stationen (Beratungsfolge nach dem letzten
 #: protokollierten Beschluss) höchstens.
 ANGEKUENDIGT = 6
