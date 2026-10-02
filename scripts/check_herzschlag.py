@@ -22,6 +22,12 @@ fehl — und zwar als ``OperationalError: attempt to write a readonly database``
 oder ``disk I/O error``. Das sieht wie ein Anwendungsfehler aus, und man sucht
 tagelang am falschen Ende. Eine Zahl im Blick zu haben, kostet nichts.
 
+**Und den Bestand** (Plan „Akte“, Phase 6). Ein Fehler in den Ratsdaten
+stürzt nicht ab, er steht einfach da — die Antworten der Verwaltung lagen
+wochenlang im Feld eines Ratsbeitrags, bevor eine Antwort es zeigte. Die
+Regeln stehen in ``council/datenpruefung.py``; was über NEUE Zeilen urteilt,
+schaut nur auf die Zeit seit dem letzten Herzschlag.
+
 **Was er NICHT auffängt**, und das gehört dazu: Stirbt der Cron-Dienst als
 GANZES, stirbt dieser Lauf mit. Er merkt, dass EIN Job schweigt, nicht dass
 alle schweigen. Dafür bräuchte es eine Prüfung von außerhalb der Maschine —
@@ -130,6 +136,43 @@ def anmeldungen(store) -> dict:
     }
 
 
+def letzter_lauf(store) -> str:
+    """Beginn des letzten Herzschlags (UTC, ISO) — ab da gilt eine Zeile als
+    neu. Ohne früheren Lauf: die letzten 24 Stunden."""
+    from datetime import datetime, timedelta
+
+    for r in store.job_runs(job="check_herzschlag", limit=1):
+        if r.get("started_at"):
+            return r["started_at"]
+    return (datetime.utcnow() - timedelta(hours=24)).isoformat(timespec="seconds")
+
+
+def daten(seit: str) -> dict:
+    """Die stehenden Datenprüfungen über den Rats-Bestand.
+
+    Scheitert die Prüfung, wird das ein Befund — die übrigen Meldungen
+    (stumme Jobs, Platz) dürfen nicht an ihr hängen."""
+    import logging
+    import os
+
+    pfad = Path(os.environ.get("COUNCIL_DB", WURZEL / "data" / "council.sqlite"))
+    if not pfad.exists():
+        return {"kennzahlen": {}, "befunde": []}
+    try:
+        from council import datenpruefung
+        from council.store import CouncilStore
+
+        store = CouncilStore(pfad)
+        try:
+            return datenpruefung.pruefen(store, seit)
+        finally:
+            store.close()
+    except Exception as exc:  # noqa: BLE001 — eine Meldung, kein Absturz
+        logging.getLogger(__name__).exception("Datenprüfung gescheitert")
+        return {"kennzahlen": {"fehler": type(exc).__name__},
+                "befunde": [f"Die Datenprüfung lief nicht: {type(exc).__name__}: {exc}"]}
+
+
 def main() -> dict:
     from kern.alerts import notify_admin
     from kern.store import Store
@@ -139,8 +182,10 @@ def main() -> dict:
     try:
         stumm = schweigende(store)
         konten = anmeldungen(store)
+        seit = letzter_lauf(store)
     finally:
         store.close()
+    pruefung = daten(seit)
 
     p = platz(db.parent if db.parent.exists() else WURZEL)
 
@@ -184,11 +229,17 @@ def main() -> dict:
             f"und heute ({je_grund}). Die Bremse und der Wegwerf-Riegel haben also "
             "gehalten — aber jemand hat es oft versucht.")
 
+    if pruefung["befunde"]:
+        meldungen.append("Die Datenprüfung hat etwas gefunden:\n"
+                         + "\n".join(f"• {b}" for b in pruefung["befunde"]))
+
     if meldungen:
         if stumm:
             betreff = "Ratslotse – ein Job schweigt"
         elif auffaellig:
             betreff = "Ratslotse – auffällige Registrierungen"
+        elif pruefung["befunde"]:
+            betreff = "Ratslotse – Datenprüfung"
         else:
             betreff = "Ratslotse – Platz wird knapp"
         notify_admin(
@@ -205,6 +256,7 @@ def main() -> dict:
         "konten_24h": konten["created"],
         "konten_24h_unbestaetigt": konten["unverified"],
         "registrierungen_abgewiesen": konten["abgewiesen"],
+        **{f"daten_{k}": v for k, v in pruefung["kennzahlen"].items()},
         "gemeldet": len(meldungen),
     }
 

@@ -234,6 +234,9 @@ def test_eine_welle_loest_eine_mail_aus(store, tmp_path, monkeypatch):
     monkeypatch.setattr(kern.alerts, "notify_admin",
                         lambda text, betreff="", fusszeile="", **kw: gesendet.append((betreff, text)))
     monkeypatch.setenv("RATSLOTSE_DB", str(tmp_path / "r.sqlite"))
+    # Eigene, leere Rats-DB: Die Datenprüfung liest sonst, was andere Tests
+    # dieses Prozesses in die gemeinsame COUNCIL_DB geschrieben haben.
+    monkeypatch.setenv("COUNCIL_DB", str(tmp_path / "c.sqlite"))
 
     ergebnis = herzschlag.main()
     assert ergebnis["konten_24h"] == herzschlag.ANMELDUNGEN_ALARM + 2
@@ -262,6 +265,13 @@ def test_ein_ruhiger_tag_meldet_nichts(store, tmp_path, monkeypatch):
     monkeypatch.setattr(kern.alerts, "notify_admin",
                         lambda *a, **kw: gesendet.append(kw.get("betreff", "")))
     monkeypatch.setenv("RATSLOTSE_DB", str(tmp_path / "r.sqlite"))
+    # Eigene, leere Rats-DB: Die Datenprüfung liest sonst, was andere Tests
+    # dieses Prozesses in die gemeinsame COUNCIL_DB geschrieben haben.
+    monkeypatch.setenv("COUNCIL_DB", str(tmp_path / "c.sqlite"))
+    # Der Platz der Platte, auf der der Test läuft, gehört nicht zum Test —
+    # auf einem vollen Entwicklungsrechner meldete er sonst „Platz wird knapp“.
+    monkeypatch.setattr(herzschlag, "platz", lambda pfad: {
+        "frei_gb": 100.0, "gesamt_gb": 200.0, "frei_prozent": 50.0})
 
     ergebnis = herzschlag.main()
     assert ergebnis["gemeldet"] == 0, gesendet

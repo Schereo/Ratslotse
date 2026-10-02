@@ -60,6 +60,9 @@ def test_probe_faengt_vertagt_als_beschlossen():
     ("rejected", "Der Stadtrat lehnte den Vorschlag ab, die Reinigung selbst zu übernehmen."),
     ("postponed", "Der Ausschuss hat die Entscheidung einstimmig vertagt."),
     ("postponed", "Das Thema wurde an den Wirtschaftsausschuss weitergegeben."),
+    # Das Substantiv zählt auch (Datenprüfung 02.10.2026, Beschluss 21067).
+    ("postponed", "Vertagung des Beschlusses zur Kompensation bei städtischen Baumfällungen."),
+    ("postponed", "Verweisung in den Bauausschuss."),
     ("no_decision", "Zum Stellenplan 2026 wurde kein Beschluss gefasst."),
 ])
 def test_probe_laesst_richtige_texte_durch(outcome, text):

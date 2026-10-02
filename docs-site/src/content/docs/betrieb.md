@@ -314,6 +314,32 @@ null sieht. Der Mailweg ist strikt best-effort: ohne `RESEND_API_KEY` — oder
 wenn der Versand selbst scheitert — bleibt der Alarm im Log, und der
 Alarmpfad selbst wirft nie.
 
+### Der Herzschlag
+
+Ein Job, der gar nicht startet, stürzt auch nicht ab. `check_herzschlag.py`
+(täglich `30 6 * * *`) prüft deshalb jeden Job gegen seinen Takt aus
+`kern/jobs.py`, schaut auf den freien Platz und zählt die Registrierungen des
+letzten Tages. Gemeldet wird höchstens eine Mail am Tag.
+
+Seit 10/2026 prüft derselbe Lauf auch den **Rats-Bestand**
+(`council/datenpruefung.py`). Ein Fehler in den Daten stürzt ebenfalls
+nicht ab, er steht einfach da: Die Antworten der Verwaltung lagen wochenlang
+im Feld eines Ratsbeitrags, bevor eine Antwort es zeigte. Die Regeln:
+
+| Regel | Art | Behebung |
+|---|---|---|
+| Ergebnis widerspricht dem Abstimmungssatz („gilt als behandelt“ als angenommen) | Bestand | `ops-settled-ergebnis.yml` |
+| Kurzfassung eines nicht gefassten Beschlusses nennt das Ergebnis nicht (120 Tage) | Bestand | `ops-settled-ergebnis.yml modus=kurzfassungen` |
+| Ratsbeitrag mit Antwort im eigenen Feld | neu extrahiert | Extraktion prüfen |
+| eine Person, zwei Parteien in einer Sitzung | neu extrahiert | Protokoll nachsehen |
+| Protokoll fehlt nach 10 Wochen | einmal je Sitzung | bei der Stadt nachsehen |
+| Grundakten älter als 36 Stunden, Hauptpunkt ohne Akte, über 40 % der Beiträge ohne Akte | Bestand (90 Tage) | `scripts/build_matters.py` |
+
+**Bestandsregeln** stehen im ganzen Bestand auf null und melden sich, solange
+ein Verstoß steht. **Die übrigen** schauen nur auf das, was seit dem letzten
+Herzschlag neu ist — sonst käme jeden Tag dieselbe Mail. Die Kennzahlen
+(`daten_…`) stehen auch ohne Meldung unter *Statistik → Cron-Jobs*.
+
 ---
 
 ## Ops-Workflows (manuell auslösbar)
