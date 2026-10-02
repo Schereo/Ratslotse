@@ -568,6 +568,30 @@ def test_stt_ohne_audio_nennt_was_fehlt(tmp_path, monkeypatch):
     assert run_stt.fehlend() is None
 
 
+def test_stt_ersatz_referenz_liest_den_gladia_text(tmp_path, monkeypatch):
+    """``RATSLOTSE_STT_REFERENZ=gladia``: Referenz ist ``<name>.gladia.txt``,
+    ein ``<name>.txt`` (YouTube) zählt dann nicht."""
+    from eval import run_stt
+    sitzung = tmp_path / "4705"
+    sitzung.mkdir()
+    monkeypatch.setenv("RATSLOTSE_STT_AUDIO", str(tmp_path))
+    monkeypatch.setenv("RATSLOTSE_STT_REFERENZ", "gladia")
+    (sitzung / "chunk_003.mp3").write_bytes(b"x")
+    (sitzung / "chunk_004.mp3").write_bytes(b"x")
+    (sitzung / "chunk_004.txt").write_text("youtube")
+    assert "chunk_003.gladia.txt" not in str(run_stt.stuecke())
+    assert "gladia" in (run_stt.fehlend() or "")
+    (sitzung / "chunk_003.gladia.txt").write_text("wir kommen zu punkt drei")
+    assert [ref.name for _, ref in run_stt.stuecke()] == ["chunk_003.gladia.txt"]
+
+    from council import livestream
+    monkeypatch.setattr(livestream, "transcribe_chunk", lambda _p: "[00:01] Wir kommen zu Punkt drei")
+    roh = run_stt.ein_lauf()
+    assert roh["referenz"] == "gladia" and roh["f1"] == 1.0
+    assert roh["stuecke"][0]["stueck"] == "4705/chunk_003.mp3"
+    assert "Punkt drei" in roh["stuecke"][0]["text"]
+
+
 def test_viertel_zaehlt_fremde_vorhaben_auf_der_tafel():
     from eval import run_district
     fall = {"place_id": "eversten", "decision_id": 1, "im_viertel": False}
