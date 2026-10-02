@@ -3215,22 +3215,25 @@ function SteckbriefBaustein({ steckbriefe }: {
                 karussell && "w-full shrink-0 snap-start",
               )}
             >
-              <p className="flex items-center gap-1.5 font-mono text-[9px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
-                <BookOpen className="h-3 w-3" aria-hidden /> Worum geht es?
+              <p className="flex items-center gap-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                <BookOpen className="h-3.5 w-3.5" aria-hidden /> Worum geht es?
               </p>
-              <p className="mt-1.5 text-[13px] leading-relaxed text-foreground">
+              {/* Leserolle `quelle` (16), eine Stufe unter der Antwort (17):
+                  Bis 10/2026 stand hier 13 px — „ziemlich klein“ (Tim). Die
+                  Karte ist Inhalt, kein Hinweis; DESIGNSPRACHE § 3. */}
+              <p className="mt-1.5 text-quelle text-foreground">
                 <strong className="font-semibold">{s.name}:</strong>{" "}
                 {auf || !lang ? s.beschreibung : `${s.beschreibung.slice(0, 180).trimEnd()} …`}
               </p>
               <div className="mt-1 flex items-center gap-3">
                 {lang && (
                   <button type="button" onClick={() => setOffen(auf ? null : s.slug)}
-                    className="text-[11.5px] font-medium text-primary hover:underline">
+                    className="text-meta font-medium text-primary hover:underline">
                     {auf ? "Weniger" : "Mehr"}
                   </button>
                 )}
                 <Link href={`/council/entity?slug=${encodeURIComponent(s.slug)}`}
-                  className="text-[11.5px] font-medium text-primary hover:underline">
+                  className="text-meta font-medium text-primary hover:underline">
                   Alle Beschlüsse dazu
                 </Link>
               </div>
