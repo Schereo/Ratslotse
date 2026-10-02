@@ -176,7 +176,16 @@ Tor: Grundlinie steht, B3 und B4 sind messbar.
   | Entitäten heute | 61,8 % | 77,9 % | 37,4 Beschlüsse |
 
   Pressemitteilungen (34 der 165 Belege) hängen an keiner Akte.
-- **B1/B2-Grundlinie:** läuft (drei Läufe, Richter Opus 5.5).
+- **B1/B2-Grundlinie** (Prod, 02.10., drei Läufe, Richter Opus 5.5):
+
+  | Weg | Abdeckung je Lauf | Mittel | bestanden | Fälle mit Verstoß |
+  |---|---|---|---|---|
+  | Frag den Rat (B1) | 39 · 38 · 40 % | **39 %** | 5 · 3 · 4 | 1 · 1 · 1 |
+  | Gründliche Recherche (B2) | 55,5 · 50,7 · 55,3 % | **53,8 %** | 9 · 5 · 8 | — · 1 · 2 |
+
+  Lokal ohne Akte (Prod-Abzug ohne Embeddings) kam „Frag den Rat“ auf
+  38 % — der lokale Messaufbau trifft Prod also gut genug für Vergleiche
+  innerhalb einer Phase.
 
 ### Phase 1 — Grundakte (Datenschicht, unsichtbar)
 
