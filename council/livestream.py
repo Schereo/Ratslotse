@@ -57,7 +57,25 @@ log = logging.getLogger(__name__)
 
 STREAM_URL = os.environ.get("COUNCIL_STREAM_URL",
                             "https://cdn.oeins.de/sd480/index.m3u8")
-STT_MODEL = os.environ.get("COUNCIL_STT_MODEL", "google/gemini-2.5-flash")
+#: Rückfall, wenn die Streaming-Transkription (Gladia, ``council/stream_stt.py``)
+#: nicht verfügbar ist. Bis 02.10.2026 Gemini 2.5 Flash — läuft am 20.10.2026
+#: bei OpenRouter aus. Gemessen 02.10.2026 an den 20 aufbewahrten Stücken der
+#: Sitzung vom 28.09. (``ops-stt-vergleich.yml``, je Modell zwei Läufe,
+#: Wort-F1 gegen den Gladia-Text derselben Fenster):
+#:
+#:   google/gemini-2.5-flash       F1 0,752/0,755   p50 1,7–1,8 s   0,22 ct je Audio-Minute
+#:   google/gemini-3.5-flash-lite  F1 0,752/0,752   p50 1,7–1,8 s   0,12 ct
+#:   google/gemini-3.1-flash-lite  F1 0,764/0,766   p50 1,6 s       0,12 ct
+#:
+#: Alle drei im Rauschen (die niedrigen Absolutwerte kommen von der
+#: Fenstergrenze der Referenz, nicht vom Modell: dieselben Stücke liegen bei
+#: allen gleich tief), keine Schleife, kein leeres Stück, und kein Stück,
+#: an dem nur ein Modell abfällt (eine Auslassung zeigte sich so). 3.1 Flash Lite liegt in beiden Läufen knapp vorn,
+#: ist am schnellsten und kostet halb so viel. Vorbehalt: Die Stücke waren
+#: O1-Programm mit Studio-Ton, kein Saal-Audio, und keins war ohne Rede — ob
+#: es auf Musik so fabuliert wie 2.5 Flash, ist ungemessen (die Wächter unten
+#: greifen unabhängig vom Modell).
+STT_MODEL = os.environ.get("COUNCIL_STT_MODEL", "google/gemini-3.1-flash-lite")
 #: Länge eines Audio-Stücks. Bis 09/2026 zehn Minuten — reichte für die
 #: Abstimmungsergebnisse am Abend, nicht für „welcher TOP läuft gerade":
 #: Die Live-Verfolgung (``council/livetracker.py``) sieht die Sitzung erst,

@@ -491,7 +491,7 @@ COUNCIL_GOAL_MODEL=deepseek/deepseek-v4-pro
 COUNCIL_EMBED_MODEL=sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
 COUNCIL_RECAP_MODEL=deepseek/deepseek-v4-pro
 COUNCIL_VIDEO_MODEL=openai/gpt-5.6-luna     # liest Abstimmungsergebnisse aus Sitzungs-Transkripten
-COUNCIL_STT_MODEL=google/gemini-2.5-flash   # transkribiert den Livestream-Mitschnitt (Audio-Input)
+COUNCIL_STT_MODEL=google/gemini-3.1-flash-lite  # Rückfall-Transkription des Livestreams ohne Gladia (Audio-Input)
 WAHLABEND_ELECTION=ratswahl-2026          # welche Wahl /wahlabend zeigt (kommunalwahl/wahlen/); leer = die jüngste
 WAHLABEND_VOTEMANAGER_URL=...             # Basis-URL des Votemanagers, überschreibt die der Wahl
 WAHLABEND_COLUMNS=gruene,spd,cdu,…        # Notausgang: Spaltenreihenfolge der Open-Data-CSVs
