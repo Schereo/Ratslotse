@@ -199,8 +199,9 @@ JOBS: list[dict] = [
     {
         "key": "check_herzschlag",
         "label": "Herzschlag",
-        "description": "Meldet Jobs, die nicht mehr laufen, einen vollen Datenträger "
-                       "und auffällige Registrierungen. Ein Job, der gar nicht startet, "
+        "description": "Meldet Jobs, die nicht mehr laufen, einen vollen Datenträger, "
+                       "auffällige Registrierungen und Verstöße gegen die Datenregeln "
+                       "(council/datenpruefung.py). Ein Job, der gar nicht startet, "
                        "stürzt auch nicht ab — und Konten, die ihre Adresse nie "
                        "bestätigen, lösen keine einzige Mail aus.",
         "schedule": "täglich 6:30 Uhr",
