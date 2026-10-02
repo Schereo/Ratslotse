@@ -31,6 +31,11 @@ Methoden:
 - ``grundakte``: ab Phase 1 (``council_matter_items``).
 - ``akte``: ab Phase 2 — ``council.matters.akte_von``, genau die Akte, die
   die Suche ab Phase 3 liest (Grundakten + Entitäten + Erwähnungen).
+- ``auswahl``: ab Phase 3 — was ``council.akte_suche.material`` aus dieser
+  Akte an die Antwort WEITERGIBT (die neuesten Beschlüsse, die der Frage
+  nächsten Wortbeiträge, die neuesten Pressemitteilungen). Die Akte ist
+  größer als der Kontext; hier zeigt sich, was bei der Auswahl verloren geht.
+  Ohne Sprachmodell — nur die Frage wird lokal eingebettet (fastembed).
 
 Alle Methoden hängen Wortbeiträge über Sitzung und TOP an ihren Beschluss
 (dieselbe Regel wie ``wortbeitraege_zu_beschluessen``, ohne Deckel).
@@ -54,7 +59,7 @@ sys.path.insert(0, str(WURZEL))
 
 CASES = WURZEL / "eval" / "cases_deep_gold.json"
 ERGEBNISSE = WURZEL / "eval" / "results" / "akten"
-METHODEN = ("vorlage", "entitaeten", "grundakte", "akte")
+METHODEN = ("vorlage", "entitaeten", "grundakte", "akte", "auswahl")
 
 
 def _vorlage_basis(nr: str | None) -> str:
@@ -195,8 +200,23 @@ def akte_phase2(store, conn, start: set[int]) -> set[tuple[str, int]]:
         return set()
 
 
+def auswahl_phase3(store, conn, start: set[int], frage: str = "") -> set[tuple[str, int]]:
+    """Ab Phase 3: was ``akte_suche.material`` aus der Akte an die Antwort gibt —
+    der Einstieg, dazu bis zu ``BESCHLUESSE`` neueste Beschlüsse, die gewählten
+    Wortbeiträge und Pressemitteilungen (wie im Router für /ask)."""
+    from council import akte_suche
+    try:
+        m = akte_suche.material(store, frage, [{"id": i} for i in sorted(start)])
+    except sqlite3.OperationalError:
+        return set()
+    neu = [d["id"] for d in m["decisions"] if d["id"] not in start][:akte_suche.BESCHLUESSE]
+    return ({("beschluss", i) for i in set(start) | set(neu)}
+            | {("debatte", w["id"]) for w in m["speeches"]}
+            | {("presse", p["id"]) for p in m["press"]})
+
+
 BAUER = {"vorlage": akte_vorlage, "entitaeten": akte_entitaeten, "grundakte": akte_grundakte,
-         "akte": akte_phase2}
+         "akte": akte_phase2, "auswahl": auswahl_phase3}
 
 
 # --------------------------------------------------------------------------- #
@@ -211,7 +231,7 @@ def messen(db: Path, methoden: list[str], zeigen: bool = False) -> dict:
     cases = json.loads(CASES.read_text(encoding="utf-8"))
     bericht: dict = {"db": str(db), "methoden": {}}
     for methode in methoden:
-        if methode in ("grundakte", "akte") and not conn.execute(
+        if methode in ("grundakte", "akte", "auswahl") and not conn.execute(
                 "SELECT 1 FROM sqlite_master WHERE name = 'council_matter_items'").fetchone():
             print(f"[{methode}] übersprungen — council_matter_items fehlt (Phase 1)")
             continue
@@ -224,7 +244,12 @@ def messen(db: Path, methoden: list[str], zeigen: bool = False) -> dict:
             aufgeloest = {m["id"]: belege_aufloesen(conn, m) for m in case.get("material", [])}
             leer = [mid for mid, rows in aufgeloest.items() if not rows]
             start = einstieg(case, aufgeloest)
-            akte = BAUER[methode](store, conn, start) if start else set()
+            if not start:
+                akte = set()
+            elif methode == "auswahl":
+                akte = auswahl_phase3(store, conn, start, case["question"])
+            else:
+                akte = BAUER[methode](store, conn, start)
             drin = {mid: bool(rows & akte) for mid, rows in aufgeloest.items() if rows}
             ok = sum(drin.values())
             summe_ok += ok
