@@ -771,14 +771,51 @@ public struct IdeaFields: Codable, Sendable {
     /// Satz im Kopf der Ansicht (der zählte bis 09/2026 fünf fest auf, als es
     /// schon acht waren).
     public let bodies: [String]
+    /// Wie frisch der Bestand ist (seit 10/2026). Optional: Ein älterer
+    /// Server liefert das Feld nicht.
+    public let dataStatus: IdeaDataStatus?
 
     public init(from decoder: Decoder) throws {
         let v = try decoder.container(keyedBy: CodingKeys.self)
         fields = try v.decodeIfPresent([IdeaFieldSummary].self, forKey: .fields) ?? []
         bodies = try v.decodeIfPresent([String].self, forKey: .bodies) ?? []
+        dataStatus = try? v.decodeIfPresent(IdeaDataStatus.self, forKey: .dataStatus)
     }
 
-    enum CodingKeys: String, CodingKey { case fields, bodies }
+    enum CodingKeys: String, CodingKey {
+        case fields, bodies
+        case dataStatus = "data_status"
+    }
+}
+
+/// „Stand: TT.MM.JJJJ" — der älteste letzte Abgleich unter den Städten,
+/// dazu die Städte, deren Bestand deutlich früher endet.
+public struct IdeaDataStatus: Codable, Sendable {
+    public let asOf: String?
+    public let lagging: [IdeaLaggingCity]
+
+    public init(from decoder: Decoder) throws {
+        let v = try decoder.container(keyedBy: CodingKeys.self)
+        asOf = try v.decodeIfPresent(String.self, forKey: .asOf)
+        lagging = (try? v.decodeIfPresent([IdeaLaggingCity].self, forKey: .lagging)) ?? []
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case asOf = "as_of"
+        case lagging
+    }
+}
+
+public struct IdeaLaggingCity: Codable, Sendable {
+    public let bodyID: String
+    public let city: String
+    public let latestPaper: String
+
+    enum CodingKeys: String, CodingKey {
+        case bodyID = "body_id"
+        case city
+        case latestPaper = "latest_paper"
+    }
 }
 
 
