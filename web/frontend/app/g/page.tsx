@@ -15,9 +15,12 @@ import { BrandMark } from "@/components/brand";
 import { ShareAktionen } from "@/components/share-aktionen";
 import {
   AnlagenBlock, DebattenBlock, GeteilterAntwortText, ParteienListe, PresseBlock,
+  RulesOfProcedureBlock,
   type AnlagenHinweis, type DebattenHinweis, type ParteiMeinung, type PresseHinweis,
+  type RulesOfProcedureCard,
 } from "@/components/qa-bausteine";
 import { anlagenBuchstaben } from "@/lib/qa-belege";
+import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +34,9 @@ type Share = {
    *  haben sie nicht, dann bleiben die Listen leer. */
   debates?: DebattenHinweis[]; press_releases?: PresseHinweis[];
   attachments?: AnlagenHinweis[]; parties?: ParteiMeinung[];
+  /** Die Karte „Aus der Geschäftsordnung" — `null` ohne Verfahrensfrage und
+   *  bei allen vor ihrem Nachtrag geteilten Antworten. */
+  rules_of_procedure?: RulesOfProcedureCard | null;
 };
 
 // Server-seitig direkt ans Backend (gleiche env wie der /api-Rewrite).
@@ -124,8 +130,15 @@ export default async function GeteiltPage({ searchParams }: PageProps) {
               <ParteienListe parties={share.parties ?? []} />
             </div>
           )}
+          {/* Für eine Verfahrensfrage IST die Geschäftsordnung der Beleg —
+              wie im Gespräch vor den Beschlüssen, die nur Beispiele sind. */}
+          {share.rules_of_procedure && (
+            <div className="mt-6">
+              <RulesOfProcedureBlock card={share.rules_of_procedure} />
+            </div>
+          )}
           {share.sources.length > 0 && (
-            <div className="mt-6 rounded-xl border border-border bg-card p-4">
+            <div className={cn(share.rules_of_procedure ? "mt-3.5" : "mt-6", "rounded-xl border border-border bg-card p-4")}>
               <p className="font-mono text-meta uppercase tracking-[0.08em] text-muted-foreground">
                 Zitierte Beschlüsse
               </p>

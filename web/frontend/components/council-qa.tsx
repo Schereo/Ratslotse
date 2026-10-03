@@ -3101,8 +3101,9 @@ function QuellenBlock({ turn, turnIdx, idToNum, zitierte, showAll, setShowAll, f
  *  Antwort sehen (Tims Befund). Das Token wird je Turn nur einmal erzeugt.
  *
  *  Der Snapshot nimmt seit dem Bausteine-Nachtrag auch Debatten, Presse,
- *  Anlagen und die verdichteten Fraktions-Positionen mit: Wer den Link
- *  öffnete, sah vorher deutlich weniger als die Person, die ihn teilte. */
+ *  Anlagen, die verdichteten Fraktions-Positionen und die Karte „Aus der
+ *  Geschäftsordnung" mit: Wer den Link öffnete, sah vorher deutlich weniger
+ *  als die Person, die ihn teilte. */
 function TeilenKnopf({ turn, zitierte }: { turn: Turn; zitierte: QaSource[] }) {
   const tokenRef = useRef<string | null>(null);
   const [laedt, setLaedt] = useState(false);
@@ -3159,6 +3160,10 @@ function TeilenKnopf({ turn, zitierte }: { turn: Turn; zitierte: QaSource[] }) {
             // Die Grafik gehört in den Snapshot wie Debatten und Presse:
             // Wer dem Link folgt, soll sehen, was geteilt wurde.
             chart: turn.chart ?? null,
+            // Bei Verfahrensfragen oft der einzige Beleg: Ohne die Karte
+            // stünde die geteilte Antwort ohne Quelle da. Sie geht so
+            // zurück, wie das Backend sie lieferte — gedeckelt wird dort.
+            rules_of_procedure: turn.rules_of_procedure ?? null,
           }),
         });
         if (!r.ok) throw new Error(String(r.status));

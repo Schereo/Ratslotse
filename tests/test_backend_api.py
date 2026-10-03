@@ -3477,6 +3477,74 @@ def test_qa_share_kappt_rohe_eintraege_statt_abzuweisen(client):
     assert len(body["press_releases"][0]["excerpt"]) == 600
 
 
+def _go_karte(frage: str = "Wie lange darf man im Rat reden?") -> dict:
+    """Die Karte, wie das ``sources``-Ereignis sie dem Client bringt."""
+    from council import rules_of_procedure
+    karte = rules_of_procedure.card(rules_of_procedure.find(frage, frage))
+    assert karte and karte["sections"], frage
+    return karte
+
+
+def test_qa_share_traegt_die_geschaeftsordnung(client):
+    """Bei einer Verfahrensfrage ist die Karte „Aus der Geschäftsordnung"
+    oft der einzige Beleg — ohne sie stünde die geteilte Antwort quellenlos
+    da. Sie reist unverändert mit, samt Wortlaut."""
+    _register(client)
+    karte = _go_karte()
+    r = client.post("/api/council/qa-share", json={
+        "question": "Wie lange darf man im Rat reden?",
+        "answer": "Laut Geschäftsordnung höchstens zehn Minuten.",
+        "rules_of_procedure": karte,
+    })
+    assert r.status_code == 201
+    client.cookies.clear()
+    body = client.get(f"/api/council/qa-share/{r.json()['token']}").json()
+    assert body["rules_of_procedure"] == karte
+    assert body["sources"] == []
+
+
+def test_qa_share_ohne_geschaeftsordnung(client):
+    """Ohne Karte — und für alle vor dem Nachtrag geteilten Antworten — steht
+    das Feld auf ``null``, statt zu fehlen."""
+    _register(client)
+    r = client.post("/api/council/qa-share", json={
+        "question": "Was wurde zum Stadion entschieden?", "answer": "Zugestimmt [5].",
+        "sources": [{"id": 5, "title": "Stadionneubau"}],
+    })
+    client.cookies.clear()
+    body = client.get(f"/api/council/qa-share/{r.json()['token']}").json()
+    assert body["rules_of_procedure"] is None
+
+
+def test_qa_share_geschaeftsordnung_nur_mit_dem_pdf_der_stadt(client):
+    """Der Snapshot ist öffentlich, die Karte kommt vom Client: Ein Link,
+    der nicht auf das PDF der Stadt zeigt, verwirft die Karte. Das Teilen
+    selbst scheitert daran nicht — eine Karte aus einer älteren Fassung soll
+    die Antwort nicht unteilbar machen."""
+    _register(client)
+    karte = _go_karte()
+    karte["sections"][0]["url"] = "https://boese.example.org/phishing.pdf"
+    r = client.post("/api/council/qa-share", json={
+        "question": "Wie lange darf man im Rat reden?", "answer": "Zehn Minuten.",
+        "rules_of_procedure": karte,
+    })
+    assert r.status_code == 201
+    body = client.get(f"/api/council/qa-share/{r.json()['token']}").json()
+    assert body["rules_of_procedure"] is None
+
+    # Ebenso eine Karte über dem Deckel: mehr Paragrafen, als je eine
+    # Antwort mitbringt.
+    karte = _go_karte()
+    karte["sections"] = karte["sections"] * 10
+    r = client.post("/api/council/qa-share", json={
+        "question": "Wie lange darf man im Rat reden?", "answer": "Zehn Minuten.",
+        "rules_of_procedure": karte,
+    })
+    assert r.status_code == 201
+    body = client.get(f"/api/council/qa-share/{r.json()['token']}").json()
+    assert body["rules_of_procedure"] is None
+
+
 def test_qa_share_public_report_and_admin_removal(client):
     _register(client)
     made = client.post("/api/council/qa-share", json={

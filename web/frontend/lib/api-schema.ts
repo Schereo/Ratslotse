@@ -13958,7 +13958,8 @@ export interface components {
          *
          *     Festes Literal, deshalb vollständig und ohne ``NotRequired``: Vor dem
          *     Bausteine-Nachtrag geteilte Antworten haben keine ``extras``, der Store
-         *     setzt die vier Listen dann auf leer und ``chart`` auf ``None``.
+         *     setzt die vier Listen dann auf leer, ``chart`` und
+         *     ``rules_of_procedure`` auf ``None``.
          */
         QaShare: {
             /** Answer */
@@ -13987,6 +13988,10 @@ export interface components {
             }[];
             /** Question */
             question: string;
+            /** Rules Of Procedure */
+            rules_of_procedure: {
+                [key: string]: unknown;
+            } | null;
             /** Sources */
             sources: {
                 [key: string]: unknown;
@@ -14028,6 +14033,43 @@ export interface components {
             press_releases?: components["schemas"]["QaSharePress"][];
             /** Question */
             question: string;
+            /**
+             * QaShareRulesOfProcedure
+             * @description Die Karte „Aus der Geschäftsordnung" (``rules_of_procedure.card``).
+             *
+             *     Der Client reicht sie zurück, wie das ``sources``-Ereignis sie brachte.
+             *     Weil der Snapshot öffentlich ist, gilt für die Links dasselbe wie beim
+             *     Protokoll der Debatten: Nur das PDF der Stadt, aus dem die Karte stammt,
+             *     darf verlinkt sein — sonst ließe sich unter unserem Absender Beliebiges
+             *     unterschieben. Ein fremder Link verwirft die ganze Karte (s.
+             *     ``QaShareBody._karte_oder_nichts``).
+             */
+            rules_of_procedure?: {
+                /** Contents */
+                contents?: components["schemas"]["QaShareRulesContents"][];
+                /**
+                 * Full Title
+                 * @default
+                 */
+                full_title: string;
+                /** Sections */
+                sections?: components["schemas"]["QaShareRulesSection"][];
+                /**
+                 * State
+                 * @default current
+                 * @enum {string}
+                 */
+                state: "current" | "term_ended" | "superseded";
+                /** Title */
+                title: string;
+                /** Url */
+                url: string;
+                /**
+                 * Version
+                 * @default
+                 */
+                version: string;
+            } | null;
             /** Sources */
             sources?: components["schemas"]["QaShareSource"][];
         };
@@ -14127,6 +14169,70 @@ export interface components {
              * @default other
              */
             reason: string;
+        };
+        /** QaShareRulesContents */
+        QaShareRulesContents: {
+            /** Label */
+            label: string;
+            /** Title */
+            title: string;
+            /** Url */
+            url: string;
+        };
+        /**
+         * QaShareRulesOfProcedure
+         * @description Die Karte „Aus der Geschäftsordnung" (``rules_of_procedure.card``).
+         *
+         *     Der Client reicht sie zurück, wie das ``sources``-Ereignis sie brachte.
+         *     Weil der Snapshot öffentlich ist, gilt für die Links dasselbe wie beim
+         *     Protokoll der Debatten: Nur das PDF der Stadt, aus dem die Karte stammt,
+         *     darf verlinkt sein — sonst ließe sich unter unserem Absender Beliebiges
+         *     unterschieben. Ein fremder Link verwirft die ganze Karte (s.
+         *     ``QaShareBody._karte_oder_nichts``).
+         */
+        QaShareRulesOfProcedure: {
+            /** Contents */
+            contents?: components["schemas"]["QaShareRulesContents"][];
+            /**
+             * Full Title
+             * @default
+             */
+            full_title: string;
+            /** Sections */
+            sections?: components["schemas"]["QaShareRulesSection"][];
+            /**
+             * State
+             * @default current
+             * @enum {string}
+             */
+            state: "current" | "term_ended" | "superseded";
+            /** Title */
+            title: string;
+            /** Url */
+            url: string;
+            /**
+             * Version
+             * @default
+             */
+            version: string;
+        };
+        /** QaShareRulesSection */
+        QaShareRulesSection: {
+            /** Label */
+            label: string;
+            /** Number */
+            number: string;
+            /** Part */
+            part: string;
+            /**
+             * Text
+             * @default
+             */
+            text: string;
+            /** Title */
+            title: string;
+            /** Url */
+            url: string;
         };
         /** QaShareSource */
         QaShareSource: {
@@ -24786,4 +24892,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: f7124b2ca1439323e162841e35038ccd95ff698acc18ee4a0966352f8b4115ec
+// vertrag-sha256: 6e12c363a0b7a9f0a600dcbfae9de6dea57b9533e723452b7a0fdf149fc1bafe
