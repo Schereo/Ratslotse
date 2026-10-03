@@ -109,12 +109,15 @@ def test_share_extras_und_alte_zeilen(tmp_path):
     assert share["debates"][0]["speaker"] == "Wenzel"
     assert share["parties"][0]["party"] == "SPD"
     assert share["press_releases"] == [] and share["attachments"] == []
+    # Vor dem Geschäftsordnungs-Nachtrag geteilt: extras ohne den Schlüssel.
+    assert share["rules_of_procedure"] is None
 
     # Zeile aus der Zeit vor dem Nachtrag: extras ist NULL.
     with store._conn:
         store._conn.execute("UPDATE qa_shares SET extras = NULL WHERE token = ?", (token,))
     alt = store.qa_share_get(token)
     assert alt["answer"] == "Antwort [5]." and alt["debates"] == []
+    assert alt["rules_of_procedure"] is None
     store.close()
 
     # Alte Datei mit den ALTEN (deutschen) Spalten und ohne `extras`:

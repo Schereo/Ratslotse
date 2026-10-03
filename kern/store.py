@@ -3433,7 +3433,7 @@ class Store:
         """Snapshot einer geteilten Antwort (Task 31) → öffentliches Token.
         Bewusste Einzel-Veröffentlichung — unabhängig vom Gespräche-Opt-in.
         `extras` hält die Bausteine neben den Beschlüssen (Debatten, Presse,
-        Anlagen, Parteien-Positionen), damit die geteilte Seite dieselbe
+        Anlagen, Parteien-Positionen, Grafik, Geschäftsordnung), damit die geteilte Seite dieselbe
         Antwort zeigt wie das Gespräch — und nicht nur deren Textkern."""
         import secrets
 
@@ -3473,7 +3473,10 @@ class Store:
                 "parties": extras.get("parties") or [],
                 # Die Grafik zur Antwort — vor diesem Nachtrag geteilte
                 # Antworten haben keine; die Seite zeigt dann keine.
-                "chart": extras.get("chart")}
+                "chart": extras.get("chart"),
+                # Die Karte „Aus der Geschäftsordnung" — ebenso erst später
+                # dazugekommen; ältere Snapshots zeigen sie nicht.
+                "rules_of_procedure": extras.get("rules_of_procedure")}
 
     def qa_share_owner_id(self, token: str) -> int | None:
         """Interne Zuordnung für Moderation; nie Teil der öffentlichen API."""

@@ -10,11 +10,11 @@ import unicodedata
 from collections import Counter, defaultdict
 from datetime import date, timedelta
 from collections.abc import Callable
-from typing import Annotated, cast
+from typing import Annotated, Literal, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 
 from council.cities.store import CitiesStore
 from council.store import CouncilStore
@@ -3148,6 +3148,50 @@ class QaShareParty(BaseModel):
     contributions: int = Field(default=0, ge=0)
 
 
+class QaShareRulesSection(BaseModel):
+    number: str = Field(max_length=8)
+    label: str = Field(max_length=12)
+    title: str = Field(max_length=120)
+    part: str = Field(max_length=60)
+    url: str = Field(max_length=300)
+    # § 23 hat 2.900 Zeichen; der Deckel lässt der nächsten Fassung Luft.
+    text: str = Field(default="", max_length=6000)
+
+
+class QaShareRulesContents(BaseModel):
+    label: str = Field(max_length=12)
+    title: str = Field(max_length=120)
+    url: str = Field(max_length=300)
+
+
+class QaShareRulesOfProcedure(BaseModel):
+    """Die Karte „Aus der Geschäftsordnung" (``rules_of_procedure.card``).
+
+    Der Client reicht sie zurück, wie das ``sources``-Ereignis sie brachte.
+    Weil der Snapshot öffentlich ist, gilt für die Links dasselbe wie beim
+    Protokoll der Debatten: Nur das PDF der Stadt, aus dem die Karte stammt,
+    darf verlinkt sein — sonst ließe sich unter unserem Absender Beliebiges
+    unterschieben. Ein fremder Link verwirft die ganze Karte (s.
+    ``QaShareBody._karte_oder_nichts``).
+    """
+    title: str = Field(max_length=120)
+    full_title: str = Field(default="", max_length=300)
+    version: str = Field(default="", max_length=300)
+    state: Literal["current", "term_ended", "superseded"] = "current"
+    url: str = Field(max_length=300)
+    sections: list[QaShareRulesSection] = Field(
+        default_factory=list, max_length=rules_of_procedure.MAX_SECTIONS)
+    contents: list[QaShareRulesContents] = Field(default_factory=list, max_length=80)
+
+    @model_validator(mode="after")
+    def _nur_das_pdf_der_stadt(self) -> QaShareRulesOfProcedure:
+        pdf = rules_of_procedure.load().source_url
+        urls = [self.url, *(s.url for s in self.sections), *(c.url for c in self.contents)]
+        if any(u != pdf and not u.startswith(f"{pdf}#page=") for u in urls):
+            raise ValueError("Geschäftsordnung: nur Links auf das PDF der Stadt")
+        return self
+
+
 class QaShareBody(BaseModel):
     question: str = Field(min_length=1, max_length=300)
     answer: str = Field(min_length=1, max_length=8000)
@@ -3163,6 +3207,22 @@ class QaShareBody(BaseModel):
     # Backend, und ein zweites Schema hier wäre eine Kopie, die driftet.
     # Begrenzt wird trotzdem: höchstens 60 Punkte, nur bekannte Felder.
     chart: dict | None = None
+    # Die Karte „Aus der Geschäftsordnung" — bei Verfahrensfragen oft der
+    # einzige Beleg der Antwort; ohne sie stünde die geteilte Antwort ohne
+    # Quelle da.
+    rules_of_procedure: QaShareRulesOfProcedure | None = None
+
+    @field_validator("rules_of_procedure", mode="wrap")
+    @classmethod
+    def _karte_oder_nichts(cls, v, handler):
+        # Eine Karte, die nicht passt, fällt weg, statt das Teilen zu
+        # verweigern: Nach einer neuen Fassung (Nov. 2026) trägt ein noch
+        # offenes Gespräch die alte PDF-Adresse — die Antwort soll sich
+        # trotzdem teilen lassen, nur eben ohne diese Karte.
+        try:
+            return handler(v)
+        except ValidationError:
+            return None
 
 
 _SHARE_BLOCKED_PHRASES = (
@@ -3250,6 +3310,8 @@ def qa_share_anlegen(
         "attachments": [a.model_dump() for a in body.attachments],
         "parties": [p.model_dump() for p in body.parties],
         "chart": _grafik_pruefen(body.chart),
+        "rules_of_procedure": (body.rules_of_procedure.model_dump()
+                               if body.rules_of_procedure else None),
     }
     token = ratslotse.qa_share_anlegen(user["id"], body.question, body.answer,
                                  [q.model_dump() for q in body.sources],
