@@ -333,14 +333,16 @@ def test_buendelung_braucht_richterspruch_und_veraenderung(monkeypatch):
     monkeypatch.setattr(viertel, "date", SimpleNamespace(today=lambda: date(2026, 10, 3)))
     viertel.build_place(store, store.resolve_place("eversten"))
     conf = {p["name"]: p["confidence"] for p in store.district_projects("eversten", min_confidence=0)}
-    assert conf["Zweifel des Richters"] == PROJECT_MIN_CONFIDENCE - 1
+    # Die Sicherheit ist die des Richters, nicht die der Bündelung (98).
+    assert conf["Zweifel des Richters"] == 82
     assert conf["Nur ein Bericht"] == PROJECT_MIN_CONFIDENCE - 1
     # Ein sicherer Beschluss mit Veränderung reicht, auch neben einem unsicheren.
-    assert conf["Echtes Vorhaben"] == 97
+    assert conf["Echtes Vorhaben"] == 96
     # Abgelehnt ändert per Definition nichts — und bleibt trotzdem sichtbar.
-    assert conf["Abgelehnt"] == 96
+    assert conf["Abgelehnt"] == 95
     # Dasselbe für Fertiges: Die Abrechnung einer fertigen Kreuzung ändert nichts mehr.
-    assert conf["Fertig"] == 95
+    assert conf["Fertig"] == 93
+    assert {p["name"] for p in store.district_projects("eversten")} == {"Abgelehnt", "Echtes Vorhaben", "Fertig"}
     store.close()
 
 
@@ -349,6 +351,23 @@ def test_neuer_richter_prompt_macht_den_cache_ungueltig(monkeypatch):
     vorher = viertel.source_hash(k)
     monkeypatch.setattr(viertel.prompts, "render", lambda key, **kw: "eine andere Regel")
     assert viertel.source_hash(k) != vorher
+
+
+def test_sichere_treffer_ohne_vorhaben_werden_nachgetragen():
+    """Die Bündelung ließ bei gleicher Eingabe einzelne sichere Beschlüsse
+    liegen; sie bekommen ein eigenes Vorhaben — eins je Vorlage."""
+    def treffer(did, kvonr, conf, changes=True, datum="2026-05-04"):
+        return {"id": did, "kvonr": kvonr, "date": datum,
+                "title": f"Spielplatz Schlossplatz (SPD-Fraktion vom 01.02.2026) - Bericht {did}",
+                "review": {"confidence": conf, "changes": changes, "what": "Ein Spielplatz entsteht.",
+                           "stage": "planning", "when": "2027", "category": "green"}}
+    hits = [treffer(1, 500, 99), treffer(2, 500, 95, datum="2026-06-01"), treffer(3, None, 97),
+            treffer(4, None, 80), treffer(5, None, 99, changes=False), treffer(6, None, 99)]
+    waisen = viertel.verwaiste_vorhaben(hits, [{"decision_ids": [6]}])
+    assert sorted(w["decision_ids"] for w in waisen) == [[1, 2], [3]]
+    ausschuss_und_rat = next(w for w in waisen if w["decision_ids"] == [1, 2])
+    assert ausschuss_und_rat["name"] == "Spielplatz Schlossplatz"
+    assert ausschuss_und_rat["confidence"] == 99 and ausschuss_und_rat["when"] == "2027"
 
 
 # ------------------------------------------------- 5. Sperrungen, Fehler

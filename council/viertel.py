@@ -29,6 +29,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 from datetime import date
 
 from council.impact import vorlagen_kern
@@ -60,16 +61,6 @@ CATEGORIES = ("housing", "traffic", "school_childcare", "green", "culture_sport_
 #: kein Vorlagentext den Ort belegt — knapp unter der Tafel-Schwelle.
 NAMESAKE_CAP = PROJECT_MIN_CONFIDENCE - 1
 
-#: So sicher muss sich der Richter bei MINDESTENS einem Beschluss eines
-#: Vorhabens gewesen sein, dass es hierher gehört. Die Bündelung vergibt
-#: ihre eigene Sicherheit — und hob am 03.10.2026 Vorhaben auf die Tafel,
-#: bei denen der Richter für jeden einzelnen Beschluss gezweifelt hatte:
-#: „Schulwegsicherheit Hermann-Ehlers-Schule" in Osternburg (82, die
-#: Kampstraße stand dort nur als Vergleich), „Kulturplattform Bloherfel.de"
-#: (82, ein Bericht), B-Plan 858 in Bürgeresch (78), Eßkamp in Dietrichsfeld
-#: (78) und Ofenerdiek (80). Die Bündelung sieht die Orte nicht, nur die
-#: Texte; sie kann den Zweifel des Richters nicht auflösen, nur übersehen.
-REVIEW_FLOOR = 85
 
 
 def _prompt_stand() -> str:
@@ -303,15 +294,21 @@ def bundle_projects(place, hits: list[dict], *, today: date | None = None) -> li
                 ids.append(i)
         if not ids or not p.get("name"):
             continue
-        confidence = max(0, min(100, int(p.get("confidence") or 0)))
+        # Die Sicherheit eines Vorhabens ist die des sichersten Richter-
+        # Spruchs über seine Beschlüsse — NICHT die, die die Bündelung angibt.
+        # Der Richter sieht Orte, Anteile und Umringe und urteilt über die
+        # Lage; die Bündelung sieht nur Texte. Bis 10/2026 zählte ihre Zahl,
+        # und sie hob Vorhaben auf die Tafel, bei denen der Richter an jedem
+        # Beschluss gezweifelt hatte („Schulwegsicherheit Hermann-Ehlers-
+        # Schule" in Osternburg: 82, die Kampstraße stand nur als Vergleich;
+        # „Kulturplattform Bloherfel.de": 82; B-Plan 858 in Bürgeresch: 78) —
+        # und senkte im lokalen Neulauf ebenso grundlos sichere (Alte Fleiwa:
+        # Richter 98, Bündelung 82; Lebensquartier Schützenweg: 99 gegen 76).
+        confidence = max(int(by_id[i]["review"].get("confidence") or 0) for i in ids)
         # Namensvetter-Regel: Trägt einer der Beschlüsse einen Ortsnamen, den
         # es auch anderswo gibt, und belegt kein Vorlagentext den Ort, bleibt
         # das Vorhaben unter der Tafel-Schwelle.
         if any(by_id[i].get("namesakes") and not by_id[i].get("template_text") for i in ids):
-            confidence = min(confidence, NAMESAKE_CAP)
-        # Richter-Boden: Zweifelte der Richter an JEDEM Beschluss, hebt die
-        # Bündelung das Vorhaben nicht über die Schwelle (s. REVIEW_FLOOR).
-        if max(int(by_id[i]["review"].get("confidence") or 0) for i in ids) < REVIEW_FLOOR:
             confidence = min(confidence, NAMESAKE_CAP)
         stage = p.get("stage") if p.get("stage") in STAGES else "planning"
         # Ein Vorhaben braucht einen Beschluss, mit dem sich vor Ort etwas
@@ -335,6 +332,50 @@ def bundle_projects(place, hits: list[dict], *, today: date | None = None) -> li
     return out
 
 
+def _titel_kurz(titel: str) -> str:
+    """Ein Beschlusstitel als Vorhaben-Name: ohne Antragsklammer, ohne
+    Verfahrensschwanz („- Bericht", „- Aufstellungsbeschluss")."""
+    t = re.sub(r"\s*\((?:[^()]*(?:Fraktion|Gruppe|Mitglied|vom\s+\d)[^()]*)\)", "", titel or "")
+    t = re.split(r"\s+[-–]\s+", t)[0].strip()
+    return t[:80] if len(t) <= 80 else t[:79].rstrip() + "…"
+
+
+def verwaiste_vorhaben(hits: list[dict], projects: list[dict]) -> list[dict]:
+    """Sichere Viertel-Treffer, die die Bündelung in KEIN Vorhaben gesteckt
+    hat — je Vorlage ein eigenes Vorhaben aus dem Richter-Urteil.
+
+    Die Bündelung ließ bei gleicher Eingabe von Lauf zu Lauf einzelne
+    Beschlüsse einfach liegen: Im lokalen Neulauf am 03.10.2026 fehlten
+    „Spielplatz auf dem Schlossplatz" (Richter 99), „Sanierung des
+    Fliegerhorsts" (94) und „Dreifeldhalle Maastrichter Straße" (99), die im
+    Lauf davor dastanden. Ein Beschluss, bei dem der Richter sicher ist, dass
+    er hierher gehört und vor Ort etwas ändert, darf nicht am Zufall der
+    Bündelung hängen. Name aus dem Titel, Satz, Stand, Termin aus dem Urteil.
+    """
+    gebuendelt = {i for p in projects for i in p.get("decision_ids") or []}
+    je_vorlage: dict[object, list[dict]] = {}
+    for k in hits:
+        u = k["review"]
+        if k["id"] in gebuendelt or not u.get("changes") or int(u.get("confidence") or 0) < PROJECT_MIN_CONFIDENCE:
+            continue
+        je_vorlage.setdefault(k.get("kvonr") or f"id:{k['id']}", []).append(k)
+    out = []
+    for gruppe in je_vorlage.values():
+        gruppe.sort(key=lambda k: k["date"])
+        juengst = gruppe[-1]
+        u = juengst["review"]
+        out.append({
+            "name": _titel_kurz(juengst["title"]),
+            "what": str(u.get("what") or "").strip(),
+            "stage": u.get("stage") if u.get("stage") in STAGES else "planning",
+            "when": u.get("when"),
+            "category": u.get("category") if u.get("category") in CATEGORIES else "other",
+            "decision_ids": [k["id"] for k in gruppe],
+            "confidence": max(int(k["review"].get("confidence") or 0) for k in gruppe),
+        })
+    return out
+
+
 def build_place(store, place, *, dry_run: bool = False) -> dict:
     """Das Register eines Ortsbereichs neu rechnen. Gibt Kennzahlen zurück."""
     candidates = store.district_candidates(place)
@@ -346,11 +387,14 @@ def build_place(store, place, *, dry_run: bool = False) -> dict:
     reviews = review_candidates(store, place, offen) if offen else {}
     hits = _hits(offen, reviews)
     projects = bundle_projects(place, hits) if hits else []
+    waisen = verwaiste_vorhaben(hits, projects)
+    projects += waisen
     if not dry_run:
         store.replace_district_projects(place.id, projects)
     visible = sum(1 for p in projects if p["confidence"] >= PROJECT_MIN_CONFIDENCE)
     return {"place_id": place.id, "candidates": len(candidates), "excluded": len(candidates) - len(offen),
-            "reviewed": len(reviews), "hits": len(hits), "projects": len(projects), "visible": visible}
+            "reviewed": len(reviews), "hits": len(hits), "projects": len(projects), "visible": visible,
+            "orphans": len(waisen)}
 
 
 def build_all(store, place_ids: list[str] | None = None, *, dry_run: bool = False) -> list[dict]:

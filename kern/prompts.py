@@ -1926,8 +1926,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "\"culture_sport_social\" | \"other\"\n"
             "- \"decision_ids\": alle zugehörigen ids\n"
             "- \"confidence\": 0–100, wie sicher die Beschlüsse wirklich EIN Vorhaben bilden und es richtig "
-            "beschrieben ist. Dass alle Beschlüsse dieses Viertel betreffen, hat eine Vorstufe schon geprüft; "
-            "zieh nichts ab, nur weil ein Text den Stadtteil nicht ausdrücklich nennt.\n\n"
+            "beschrieben ist (Dass alle Beschlüsse dieses Viertel betreffen, hat eine Vorstufe schon geprüft.)\n\n"
             "Antworte als JSON: {{\"projects\": [ … ]}}, wichtigstes zuerst."
         ),
     },

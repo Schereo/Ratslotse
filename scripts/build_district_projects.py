@@ -44,6 +44,7 @@ def main(place_ids: list[str] | None = None, *, trocken: bool = False) -> dict:
         "im Viertel": sum(s["hits"] for s in stats),
         "Vorhaben": sum(s["projects"] for s in stats),
         "auf der Tafel": sum(s["visible"] for s in stats),
+        "ohne Bündelung nachgetragen": sum(s.get("orphans", 0) for s in stats),
         "übersprungen": sum(1 for s in stats if s.get("failed")),
         "übersprungen_namen": [s["place_id"] for s in stats if s.get("failed")],
     }
