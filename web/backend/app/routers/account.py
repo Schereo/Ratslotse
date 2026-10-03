@@ -14,11 +14,12 @@ from kern.digest_email import render_html_email
 from kern.email import send_email
 from kern.disposable_email import EMAIL_CHANGE_REJECTED, domain_of, is_disposable
 from kern.store import Store
+from council.cities.store import CitiesStore
 from council.store import CouncilStore
 
 from ..config import get_settings
 from ..antworten import NotifySettings, Ok, TestDelivery
-from ..deps import get_council_store, get_current_user, get_store, ist_admin, require_active
+from ..deps import get_cities_store, get_council_store, get_current_user, get_store, ist_admin, require_active
 from ..ratelimit import change_email_limiter
 from ..schemas import (NAME_FEHLT, ChangeEmailRequest, ChangePasswordRequest,
                        DeleteAccountRequest, DeliveryUpdate, NotifyPrefsIn, UserOut)
@@ -350,6 +351,7 @@ def delete_account(
     user: dict = Depends(require_active),
     store: Store = Depends(get_store),
     council: CouncilStore = Depends(get_council_store),
+    cities: CitiesStore = Depends(get_cities_store),
 ) -> None:
     """Permanently delete the account and all data keyed to it (DSGVO right to
     erasure). Verlangt eine frische Bestätigung — eine Session allein (offener
@@ -357,10 +359,12 @@ def delete_account(
     Passwort-Konten bestätigen mit dem Passwort, Apple-only-Konten mit einem
     frischen Apple-Identity-Token (Re-Auth in der App, RL-1002).
 
-    Geräumt werden **beide** Datenbanken. Zwischen ihnen gibt es keine
+    Geräumt werden **alle drei** Datenbanken. Zwischen ihnen gibt es keine
     Fremdschlüssel, und in ``council.sqlite`` steht mit
     ``committee_notifications``/``session_followups_sent``, welche Sitzungen
-    diesem Konto gemeldet wurden — eine Verhaltensspur, die mit weg muss."""
+    diesem Konto gemeldet wurden — eine Verhaltensspur, die mit weg muss. In
+    ``cities.sqlite`` liegen die Rückmeldungen zu den Städte-Urteilen samt
+    Freitext (``CITIES_USER_OWNED_TABLES``)."""
     _reauth(user, body.current_password, body.apple_identity_token)
     # Nur beim Löschen: Apple die Autorisierung zurückgeben. Steht bewusst
     # außerhalb von `_reauth` — beim Adresswechsel würde derselbe Aufruf die
@@ -374,6 +378,7 @@ def delete_account(
         )
     email = str(user.get("email", ""))
     council.delete_owner_data(user["id"])
+    cities.delete_owner_data(int(user["id"]))
     store.delete_web_user(user["id"])
     background.add_task(_send_goodbye_email, email)
     settings = get_settings()

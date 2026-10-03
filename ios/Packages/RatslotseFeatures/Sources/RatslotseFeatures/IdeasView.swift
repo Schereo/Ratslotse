@@ -589,9 +589,10 @@ private struct IdeaCard: View {
         do {
             // Der Parameter geht über `query:`, nicht in den Pfad — sonst wird
             // das „?" mitkodiert und der Server antwortet mit 404. Dieselbe
-            // Falle wie bei der Ideen-Liste.
+            // Falle wie bei der Ideen-Liste. Die Kennung selbst ist meist eine
+            // Adresse (`https://…`) und geht deshalb VOLL kodiert in den Pfad.
             try await model.api.sendVoid(
-                "/api/council/cities/ideas/\(idee.paperID)/feedback",
+                "/api/council/cities/ideas/\(APIClient.pathSegment(idee.paperID))/feedback",
                 query: [URLQueryItem(name: "verdict", value: wert)])
         } catch {
             gesagt = ""

@@ -95,6 +95,54 @@ public actor APIClient {
         baseURL.appending(path: path.hasPrefix("/") ? String(path.dropFirst()) : path)
     }
 
+    /// Ein Wert als EIN Pfadstück — vollständig kodiert, auch „/", „:" und „?".
+    ///
+    /// Für Kennungen, die selbst Adressen sind: Die Vorlagen der OParl-Städte
+    /// heißen `https://…/papers/1`. Roh in den Pfad gesetzt, wurde aus dem
+    /// `//` unterwegs ein `/`, und „Stimmt das?" an jeder Idee endete mit
+    /// 404 „unbekannte Vorlage" (Review 3.0.0).
+    public nonisolated static func pathSegment(_ value: String) -> String {
+        value.addingPercentEncoding(withAllowedCharacters: segmentAllowed) ?? value
+    }
+
+    private static let segmentAllowed = CharacterSet(
+        charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")
+
+    /// Basis plus Pfad. Der Pfad wird kodiert wie bisher (Leerzeichen, „?",
+    /// Umlaute) — nur was schon kodiert ist (`%2F` aus `pathSegment`), bleibt
+    /// stehen. `URL.appending(path:)` kodierte das „%" ein zweites Mal, ein
+    /// vorab kodiertes Pfadstück kam so nie heil beim Server an.
+    static func endpointURL(base: URL, path: String) -> URL? {
+        let relativ = path.hasPrefix("/") ? String(path.dropFirst()) : path
+        guard var components = URLComponents(url: base, resolvingAgainstBaseURL: false) else {
+            return nil
+        }
+        var basis = components.percentEncodedPath
+        if !basis.hasSuffix("/") { basis += "/" }
+        components.percentEncodedPath = basis + encodePath(relativ)
+        return components.url
+    }
+
+    private static func encodePath(_ path: String) -> String {
+        var aus = ""
+        var i = path.startIndex
+        while i < path.endIndex {
+            let zeichen = path[i]
+            if zeichen == "%",
+               let a = path.index(i, offsetBy: 1, limitedBy: path.endIndex), a < path.endIndex,
+               let b = path.index(i, offsetBy: 2, limitedBy: path.endIndex), b < path.endIndex,
+               path[a].isHexDigit, path[b].isHexDigit {
+                aus += String(path[i...b])
+                i = path.index(after: b)
+                continue
+            }
+            aus += String(zeichen).addingPercentEncoding(withAllowedCharacters: .urlPathAllowed)
+                ?? ""
+            i = path.index(after: i)
+        }
+        return aus
+    }
+
     public func get<Response: Decodable & Sendable>(
         _ path: String,
         query: [URLQueryItem] = [],
@@ -187,10 +235,9 @@ public actor APIClient {
         body: Data? = nil,
         acceptsSSE: Bool = false
     ) throws -> URLRequest {
-        guard var components = URLComponents(
-            url: baseURL.appending(path: path.hasPrefix("/") ? String(path.dropFirst()) : path),
-            resolvingAgainstBaseURL: false
-        ) else {
+        guard let endpoint = Self.endpointURL(base: baseURL, path: path),
+              var components = URLComponents(url: endpoint, resolvingAgainstBaseURL: false)
+        else {
             throw APIError(statusCode: 0, message: "Die Serveradresse ist ungültig.", retryAfter: nil)
         }
         if !query.isEmpty { components.queryItems = query }

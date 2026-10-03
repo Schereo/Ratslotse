@@ -75,10 +75,11 @@ from ..antworten import (AnalysisData, ElectedCouncil, ElectedMember, AssistantS
                          TodayBriefing, TrendData)
 from ..clients import client_kind
 from ..election import elected as elected_mod
-from ..deps import (get_cities_store, get_council_store, get_current_user, get_store,
+from ..deps import (get_cities_store, get_council_store, get_store,
                     optional_user, require_active, require_permission)
 from ..ratelimit import (
     assistant_event_limiter,
+    cities_feedback_limiter,
     assistant_limiter,
     partei_meinungen_limiter,
     debatten_limiter,
@@ -2036,12 +2037,26 @@ def _eigene_rueckmeldungen(cities: CitiesStore, user: dict | None) -> dict[str, 
     return cities.feedback_by_paper(ann, ver, int(user["id"]))
 
 
+def _papier_kennung(roh: str) -> str:
+    """Die Vorlagen-Kennung aus dem Pfad, so wie der Speicher sie führt.
+
+    Die Kennungen der OParl-Städte SIND Adressen (``https://…/papers/1``).
+    Die App bis Build 3.0 setzte sie roh in den Pfad; aus ``https://`` wurde
+    unterwegs ``https:/`` (ein Doppel-Schrägstrich übersteht Proxy und
+    Weiterleitung nicht), und jede Rückmeldung endete mit „unbekannte
+    Vorlage". Die ausgelieferten Builds kommen so weiter an — der neue
+    kodiert die Kennung vollständig.
+    """
+    return re.sub(r"^(https?):/+(?=[^/])", r"\1://", roh)
+
+
 @router.post("/cities/movements/feedback")
 def cities_movement_feedback(
+    request: Request,
     id: int,
     verdict: str,
     note: str | None = None,
-    user: dict = Depends(get_current_user),
+    user: dict = Depends(require_active),
     cities: CitiesStore = Depends(get_cities_store),
 ) -> FeedbackAck:
     """„Stimmt" oder „stimmt nicht" zum Urteil über Oldenburg JE IDEE.
@@ -2053,6 +2068,7 @@ def cities_movement_feedback(
     """
     from council.cities.clusters import CLUSTER_VERSION
 
+    cities_feedback_limiter.check(request, subject=user["id"])
     if verdict not in ("right", "wrong"):
         raise HTTPException(400, "verdict muss 'right' oder 'wrong' sein")
     if not cities.idea_group(EMBED_MODEL_FUER_SUCHE, CLUSTER_VERSION, id):
@@ -2065,10 +2081,11 @@ def cities_movement_feedback(
 
 @router.post("/cities/ideas/{paper_id:path}/feedback")
 def cities_idea_feedback(
+    request: Request,
     paper_id: str,
     verdict: str,
     note: str | None = None,
-    user: dict = Depends(get_current_user),
+    user: dict = Depends(require_active),
     cities: CitiesStore = Depends(get_cities_store),
 ) -> FeedbackAck:
     """„Stimmt" oder „stimmt nicht" zu einem Urteil — ein Klick an der Karte.
@@ -2081,13 +2098,17 @@ def cities_idea_feedback(
 
     **Nur angemeldet**, und das ist keine Hürde, sondern der Punkt: Eine
     Rückmeldung ohne Konto ließe sich nicht zählen (ein Mensch, viele
-    Stimmen), und der Maßstab wäre wieder wertlos.
+    Stimmen), und der Maßstab wäre wieder wertlos. **Und nur aktiv**
+    (``require_active``): ein gesperrtes oder unbestätigtes Konto schreibt
+    hier so wenig wie anderswo; die Bremse zählt je Konto.
 
     Die FASSUNG des Annotators geht in den Schlüssel: „Das Urteil ist falsch"
     gilt für das Urteil, das jemand gesehen hat, nicht für ein späteres.
     """
+    cities_feedback_limiter.check(request, subject=user["id"])
     if verdict not in ("right", "wrong"):
         raise HTTPException(400, "verdict muss 'right' oder 'wrong' sein")
+    paper_id = _papier_kennung(paper_id)
     if not cities.paper(paper_id):
         raise HTTPException(404, "unbekannte Vorlage")
     ann, ver = CitiesStore.IDEEN_FIT

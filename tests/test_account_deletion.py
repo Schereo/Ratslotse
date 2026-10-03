@@ -176,6 +176,52 @@ def test_konto_loeschen_raeumt_auch_die_council_db(tmp_path):
     assert [r[0][0] for r in rest] == [2, 2], "nur die Zeilen von Konto 1 dürfen weg sein"
 
 
+# ---- Die dritte Datenbank ----
+
+def test_cities_db_kennt_ihre_nutzerbezogenen_tabellen(tmp_path):
+    """Derselbe Wächter für cities.sqlite.
+
+    Die Rückmeldungen zu den Städte-Urteilen (Konto-Nummer und Freitext bis
+    500 Zeichen) überlebten die Konto-Löschung, bis das Review zu 3.0.0 sie
+    fand. Wer dort eine neue Tabelle mit ``user_id``/``owner_id`` anlegt,
+    trägt sie in ``CITIES_USER_OWNED_TABLES`` ein — sonst ist dieser Test rot.
+    """
+    from council.cities.store import CITIES_USER_OWNED_TABLES, CitiesStore
+
+    cs = CitiesStore(tmp_path / "cities.sqlite")
+    im_schema = _user_keyed_tables(cs._conn)
+    cs.close()
+
+    fehlend = im_schema - set(CITIES_USER_OWNED_TABLES)
+    assert not fehlend, (
+        "Diese Tabellen in cities.sqlite hängen an einem Konto, werden aber bei der "
+        "Löschung nicht geräumt. In council/cities/store.py in CITIES_USER_OWNED_TABLES "
+        f"ergänzen: {sorted(fehlend)}"
+    )
+    veraltet = set(CITIES_USER_OWNED_TABLES) - im_schema
+    assert not veraltet, f"Gelistet, aber nicht im Schema: {sorted(veraltet)}"
+
+
+def test_konto_loeschen_raeumt_auch_die_cities_db(tmp_path):
+    from council.cities.store import CITIES_USER_OWNED_TABLES, CitiesStore
+
+    cs = CitiesStore(tmp_path / "cities.sqlite")
+    # Über den echten Schreibweg: `feedback` lässt nur „right"/„wrong" zu.
+    for konto in (1, 2):
+        cs.put_feedback("paper", "os:p:1", "fit", "4", konto, "wrong", "Freitext mit Persönlichem")
+        cs.put_feedback("cluster", "1:7", "idea_fit", "1", konto, "right")
+    assert CITIES_USER_OWNED_TABLES == (("feedback", "user_id"),), (
+        "neue Tabelle in der Liste — dann bitte hier eine Zeile dafür einfügen")
+    assert cs.delete_owner_data(1) == 2
+    for tabelle, spalte in CITIES_USER_OWNED_TABLES:
+        assert cs._conn.execute(
+            f"SELECT COUNT(*) FROM {tabelle} WHERE {spalte} = 1").fetchone()[0] == 0
+        assert cs._conn.execute(
+            f"SELECT COUNT(*) FROM {tabelle} WHERE {spalte} = 2").fetchone()[0] == 2, (
+            f"{tabelle}: fremdes Konto wurde mitgelöscht")
+    cs.close()
+
+
 def test_zeitungsreste_werden_nur_leer_entfernt(tmp_path):
     """Die Tabellen-Hüllen aus der Zeitungs-Zeit (articles, editions …) wurden
     bei jedem Start neu angelegt. Sie fliegen jetzt raus — aber nur LEER:
