@@ -3332,6 +3332,9 @@ class DeepResearchBody(BaseModel):
     # „Meine Gespräche": läuft ein Gespräch, wird der fertige Bericht dort
     # angehängt — auch wenn die App längst zu ist.
     conversation_id: int | None = Field(default=None, ge=1)
+    # Aus dem Angebot unter einer Antwort gestartet (``research_offer``) —
+    # nur für die Nutzungsstatistik, ändert am Job nichts.
+    from_offer: bool = False
 
 
 def _deep_limit(user: dict) -> int | None:
@@ -3405,6 +3408,8 @@ def deep_research_start(body: DeepResearchBody, request: Request,
             {"detail": qa.RUECKFRAGE_TEXT, "unclear": True, "questions": vorschlaege},
             status_code=status.HTTP_400_BAD_REQUEST)
     ratslotse.record_activity(user["id"], "research")
+    if body.from_offer:
+        ratslotse.record_activity(user["id"], "research_offer_taken", client_kind(request))
     # Recherche Plus: Das Recht wird HIER am Konto geprüft und mit dem Job
     # festgehalten — der Hintergrundlauf fragt das Konto nicht noch einmal.
     # Das Konto-Dict trägt `roles`, nie ein `permissions`-Feld. Das
@@ -5340,6 +5345,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                  and not latest_place and not vorher_ids)
             zeitleiste_daten: dict | None = None
             eckdaten: dict | None = None
+            recherche_angebot: dict | None = None
             # 5a/I-06: die kondensierte Frage mitschicken — der Kontext-Chip im
             # Frontend zeigt, worauf sich Anschlussfragen beziehen.
             yield _sse({"type": "sources", "mode": mode, "qtype": typ,
@@ -5680,6 +5686,15 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                         kern["press"] + akte_suche.press_named(answer_text, presse_rows or []),
                         kern["announced"], date.today().isoformat(), q_suche)
                     eckdaten = akte_suche.without_station(eckdaten, angehaengt)
+                    # Ein langer Vorgang: Die Gründliche Recherche holt dort
+                    # deutlich mehr heraus (akte_suche.RECHERCHE_AB). Nicht bei
+                    # einer engen Zahlfrage — „Wie hoch ist der Hebesatz?“ ist
+                    # mit einer Zahl beantwortet.
+                    if not eng:
+                        recherche_angebot = akte_suche.research_offer(zeitleiste_daten)
+                    if recherche_angebot:
+                        ratslotse.record_activity(user["id"], "research_offer_shown",
+                                                  client_kind(request))
                 except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
                     _log.exception("Kern-Akte nicht gebaut")
             if not followups:
@@ -5730,6 +5745,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                         "timeline": zeitleiste_daten,
                         # Die Eckdaten dazu (akte_suche.key_facts).
                         "key_facts": eckdaten,
+                        # Ein langer Vorgang: die Gründliche Recherche anbieten.
+                        "research_offer": recherche_angebot,
                         "conversation_id": conversation_id})
         except Exception:  # noqa: BLE001 — surface a terminal error to the client
             _log.exception("KI-Frage fehlgeschlagen")

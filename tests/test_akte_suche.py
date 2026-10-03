@@ -344,3 +344,12 @@ def test_eckdaten_stellen_routine_hintan():
                                 )["decision"]["decision_id"] == 21027
     assert akte_suche.key_facts([abschluss], [], [], [], "2026-10-02",
                                 "Stadionneubau?")["decision"]["decision_id"] == 21027
+
+
+def test_recherche_nur_bei_langem_vorgang():
+    """Ab sechs Stationen bietet die Antwort die Gründliche Recherche an —
+    dort holt sie am meisten heraus (Gold-Set 02./03.10.2026)."""
+    assert akte_suche.research_offer(None) is None
+    assert akte_suche.research_offer({"count": 5, "span": "1 Jahr", "stations": []}) is None
+    assert akte_suche.research_offer({"count": 21, "span": "3 Jahre, 2 Monate", "stations": []}) \
+        == {"stations": 21, "span": "3 Jahre, 2 Monate"}

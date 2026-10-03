@@ -7782,6 +7782,11 @@
               "null"
             ]
           },
+          "from_offer": {
+            "default": false,
+            "title": "From Offer",
+            "type": "boolean"
+          },
           "history": {
             "items": {
               "$ref": "#/components/schemas/AskTurn"
