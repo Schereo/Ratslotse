@@ -566,6 +566,47 @@ Frage — sonst führte das Schwimmbad BTB die Trinkwasser-Frage an —, Routine
 Gold-Antworten bekommen 16 eine Karte, alle zur Sache. Unter der Antwort,
 nicht darüber: Sie braucht die Zitate und käme sonst als Sprung über dem Text.
 
+### Release 2.10.0 und Verbesserungen A–D (03.10.2026)
+
+**Auf Prod.** Release 2.10.0 (#1639) trägt Akte, Zeitleiste und Eckdaten.
+Auf Prod sind die Grundakten gebaut (7.822). Die Schalter `akten-suche` und
+`akten-zeitleiste` sind an. Die Rauchprobe lief mit Akte 51/51.
+
+**Vier Lücken aus der Fehlerzerlegung, je gezielt geschlossen (#1640):**
+
+- **A — Teilabstimmungen.** Änderungsanträge standen nicht im Kontext. Jetzt
+  hängen sie am Beschluss (`store.subvotes_of`) und stehen in der
+  Kontextzeile: „Dazu abgestimmt: …“. Das gilt für Frag den Rat und die
+  Gründliche Recherche.
+- **B — Ortsfilter und Stadtteile.** Die Akten-Beschlüsse liefen durch den
+  Ortsfilter der Frage und fielen dabei heraus. Außerdem klebten Stadtteile
+  als Orts-Entität fremde Vorgänge zusammen. Jetzt gilt beides nicht mehr.
+- **C — Presse per Titelwort.** Mitteilungen mit anderen Wörtern als die
+  Frage (etwa „Grundbesitzabgaben“) fand nur die Titelsuche. Sie bekommen
+  einen eigenen Deckel von 4.
+- **D — Frische.** Wortbeiträge bekommen einen Bonus von 0,3, der mit einem
+  Jahr abklingt. So verdrängen alte Debatten nicht die jüngsten.
+
+| Messung | vorher | nachher |
+|---|---|---|
+| Material an die Antwort (ohne Sprachmodell) | 77,0 % | 83,0 % |
+| Material Frag den Rat (Gold, Beleg im Kontext) | 74,2 % | 78,9 % |
+| Material Gründliche Recherche | 63,2 % | 70,5 % |
+| Zielfakten A, Frag den Rat | 0 von 18 | 9 von 12 |
+| Zielfakten B, Frag den Rat | 0 von 6 | 3 von 4 |
+| Zielfakten Gründliche Recherche (27, vorab festgelegt) | 9 (45 %) | 15 (66 %), 0 Verstöße |
+
+**Lehre.** Ein einzelner Lauf von Frag den Rat schwankt je Fall um bis zu
+30 Punkte. Die Gesamtabdeckung über einen Lauf (51,4 gegen 48,9 %) ist deshalb
+Rauschen. Gemessen wurde stattdessen an Zielfakten, die vor dem Lauf
+festgelegt waren.
+
+**Recherche anbieten (#1641, ungetestet).** Die Gründliche Recherche liegt
+bei Vorgangsfragen deutlich vor der kurzen Antwort. Deshalb steht ab sechs
+Stationen im Verlauf unter der Antwort ein Knopf, der dieselbe Frage
+gründlich recherchiert (`akte_suche.research_offer`). Ob Leute ihn annehmen,
+zeigen die Zähler `research_offer_shown` und `research_offer_taken`.
+
 ## 5. Risiken
 
 | Risiko | Gegenmittel |
