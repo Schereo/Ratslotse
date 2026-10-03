@@ -24,7 +24,7 @@ import { personHref } from "@/lib/routes";
 // damit auch die Server-Komponente app/g sie AUFRUFEN kann (aus einem
 // Client-Modul kämen dort nur Referenzen an, keine Funktionen).
 import {
-  ANL_EXACT_RE, ANL_SOURCE, anlagenBuchstaben, anlagenNr, BELEG_SPLIT_RE,
+  ANL_EXACT_RE, ANL_SOURCE, anlageNummer, anlagenBuchstaben, anlagenNr, BELEG_SPLIT_RE,
   CITE_EXACT_RE, CITE_SOURCE, citationIds, datenEindeutschen, fmtDatumKurz,
 } from "@/lib/qa-belege";
 import { markiereBegriffe } from "@/components/glossary-text";
@@ -62,9 +62,11 @@ export type RulesOfProcedureCard = {
 /** Task 33: Anlagen-Fundstelle (Gutachten, Konzept, Stellungnahme) aus der
  *  schnellen oder gründlichen Recherche. */
 export type AnlagenHinweis = {
-  /** Beleg-Nummer aus dem Recherchepfad; im Text steht sie als „[A<nr>]".
-   *  Ältere gespeicherte Gespräche kennen das Feld nicht — dann bleibt die
-   *  Karte einfach ohne Buchstabe (in diesen Texten steht auch kein Marker). */
+  /** Beleg-Nummer aus dem Recherchepfad; im Text steht sie als „[A<n>]".
+   *  So heißt das Feld im Strom und in Schnappschüssen; gespeicherte
+   *  Gespräche von vor dem Wire-Umbau tragen `nr`. Gelesen wird über
+   *  `anlageNummer`, das beides kennt. */
+  number?: number | null;
   nr?: number | null;
   label: string | null; url: string | null;
   template_number: string | null; template_title: string | null; excerpt: string;
@@ -737,7 +739,7 @@ export function AnlagenBlock({ attachments, ankerPrefix, buchstaben }: {
       </p>
       <ul className="mt-1.5 space-y-2">
         {attachments.map((a, i) => {
-          const nr = a.nr ?? i + 1;
+          const nr = anlageNummer(a, i);
           const b = buchstaben.get(nr);
           return (
           <li key={i} id={`${ankerPrefix}-${nr}`}

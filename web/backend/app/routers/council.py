@@ -10,11 +10,11 @@ import unicodedata
 from collections import Counter, defaultdict
 from datetime import date, timedelta
 from collections.abc import Callable
-from typing import Annotated, cast
+from typing import Annotated, Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
-from pydantic import BaseModel, Field, field_validator
+from pydantic import AliasChoices, BaseModel, Field, field_validator, model_validator
 
 from council.cities.store import CitiesStore
 from council.store import CouncilStore
@@ -3079,7 +3079,41 @@ def partei_meinungen_endpoint(
     return {"parties": meinungen or [], "without_speeches": ohne}
 
 
-class QaShareSource(BaseModel):
+class _QaShareTeil(BaseModel):
+    """Basis der Teilen-Bausteine: kappt, statt abzuweisen.
+
+    Der Client reicht Einträge aus dem Strom zurück; das Web kürzt sie
+    selbst, die iOS-App nicht. Ein zu langer Titel, ein Eintrag zu viel oder
+    ein ``null``, wo ein Wert mit Vorgabe steht (``kind`` fehlt im Strom
+    gelegentlich), machten sonst aus dem ganzen Teilen ein 422 — für einen
+    Baustein, der nur Beiwerk der Antwort ist. Gekappt wird auf genau die
+    Längen der Felder; was danach noch nicht passt, weist die Validierung ab
+    wie bisher.
+    """
+
+    @model_validator(mode="before")
+    @classmethod
+    def _kappen(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        data = dict(data)
+        for name, feld in cls.model_fields.items():
+            alias = feld.validation_alias
+            namen = [name, *(alias.choices if isinstance(alias, AliasChoices) else [])]
+            grenze = next((m.max_length for m in feld.metadata
+                           if getattr(m, "max_length", None) is not None), None)
+            for key in namen:
+                if not isinstance(key, str) or key not in data:
+                    continue
+                wert = data[key]
+                if wert is None and not feld.is_required() and feld.default is not None:
+                    del data[key]          # null → die Vorgabe des Feldes
+                elif grenze is not None and isinstance(wert, (str, list)):
+                    data[key] = wert[:grenze]
+        return data
+
+
+class QaShareSource(_QaShareTeil):
     id: int
     title: str = Field(max_length=300)
     session_date: str | None = Field(default=None, max_length=10)
@@ -3087,11 +3121,18 @@ class QaShareSource(BaseModel):
     outcome: str | None = Field(default=None, max_length=40)
 
 
-class QaShareDebate(BaseModel):
+# Die alten Feldnamen (``art``, ``top``, ``nr``; im Körper ``debatten`` …)
+# nimmt das Modell weiter an. Pydantic verwirft unbekannte Schlüssel still:
+# Das Web schickte bis 10/2026 ``art``/``top``/``nr``, die ausgelieferte
+# iOS-App schickt die Bausteine unter deutschen Namen — beides kam nie an.
+# Die App im Store lässt sich nicht nachziehen, also hört der Server hin.
+class QaShareDebate(_QaShareTeil):
     speaker: str | None = Field(default=None, max_length=120)
     party: str | None = Field(default=None, max_length=60)
-    kind: str = Field(default="speech", max_length=30)
-    agenda_item: str | None = Field(default=None, max_length=300)
+    kind: str = Field(default="speech", max_length=30,
+                      validation_alias=AliasChoices("kind", "art"))
+    agenda_item: str | None = Field(default=None, max_length=300,
+                                    validation_alias=AliasChoices("agenda_item", "top"))
     excerpt: str = Field(default="", max_length=2000)
     committee: str | None = Field(default=None, max_length=120)
     date: str | None = Field(default=None, max_length=10)
@@ -3109,7 +3150,7 @@ class QaShareDebate(BaseModel):
         return v
 
 
-class QaSharePress(BaseModel):
+class QaSharePress(_QaShareTeil):
     title: str = Field(max_length=300)
     url: str = Field(max_length=500)
     date: str | None = Field(default=None, max_length=10)
@@ -3121,10 +3162,11 @@ class QaSharePress(BaseModel):
     excerpt: str = Field(default="", max_length=600)
 
 
-class QaShareAttachment(BaseModel):
+class QaShareAttachment(_QaShareTeil):
     # Beleg-Nummer des Recherche-Berichts („[A1]") — ohne sie findet der
     # Marker im geteilten Text seine Anlage nicht.
-    number: int | None = Field(default=None, ge=1, le=99)
+    number: int | None = Field(default=None, ge=1, le=99,
+                               validation_alias=AliasChoices("number", "nr"))
     label: str | None = Field(default=None, max_length=300)
     url: str | None = Field(default=None, max_length=500)
     template_number: str | None = Field(default=None, max_length=60)
@@ -3132,13 +3174,13 @@ class QaShareAttachment(BaseModel):
     excerpt: str = Field(default="", max_length=600)
 
 
-class QaShareKeyQuote(BaseModel):
+class QaShareKeyQuote(_QaShareTeil):
     text: str = Field(default="", max_length=600)
     speaker: str | None = Field(default=None, max_length=120)
     date: str | None = Field(default=None, max_length=10)
 
 
-class QaShareParty(BaseModel):
+class QaShareParty(_QaShareTeil):
     party: str = Field(max_length=60)
     stance: str | None = Field(default=None, max_length=20)
     position: str = Field(default="", max_length=800)
@@ -3148,21 +3190,29 @@ class QaShareParty(BaseModel):
     contributions: int = Field(default=0, ge=0)
 
 
-class QaShareBody(BaseModel):
+class QaShareBody(_QaShareTeil):
     question: str = Field(min_length=1, max_length=300)
     answer: str = Field(min_length=1, max_length=8000)
     sources: list[QaShareSource] = Field(default_factory=list, max_length=40)
     # Bausteine neben den Beschlüssen: ohne sie zeigte die geteilte Seite
     # weniger als das Gespräch, aus dem sie stammt (Tims Befund 10.08.).
-    debates: list[QaShareDebate] = Field(default_factory=list, max_length=20)
-    press_releases: list[QaSharePress] = Field(default_factory=list, max_length=10)
-    attachments: list[QaShareAttachment] = Field(default_factory=list, max_length=10)
-    parties: list[QaShareParty] = Field(default_factory=list, max_length=12)
+    debates: list[QaShareDebate] = Field(
+        default_factory=list, max_length=20,
+        validation_alias=AliasChoices("debates", "debatten"))
+    press_releases: list[QaSharePress] = Field(
+        default_factory=list, max_length=10,
+        validation_alias=AliasChoices("press_releases", "presse"))
+    attachments: list[QaShareAttachment] = Field(
+        default_factory=list, max_length=10,
+        validation_alias=AliasChoices("attachments", "anlagen"))
+    parties: list[QaShareParty] = Field(
+        default_factory=list, max_length=12,
+        validation_alias=AliasChoices("parties", "parteien"))
     # Die Grafik zur Antwort (council/qa.py, geld_grafik) — als loses dict,
     # weil der Client sie unverändert zurückreicht: Sie stammt aus DIESEM
     # Backend, und ein zweites Schema hier wäre eine Kopie, die driftet.
     # Begrenzt wird trotzdem: höchstens 60 Punkte, nur bekannte Felder.
-    chart: dict | None = None
+    chart: dict | None = Field(default=None, validation_alias=AliasChoices("chart", "grafik"))
 
 
 _SHARE_BLOCKED_PHRASES = (

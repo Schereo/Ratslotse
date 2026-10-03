@@ -3378,8 +3378,9 @@ def test_qa_share_traegt_bausteine(client):
         "answer": "Der Rat stimmte zu [5].",
         "sources": [{"id": 5, "title": "Stadionneubau", "session_date": "2026-06-01",
                      "committee": "Rat", "outcome": "accepted"}],
-        "debates": [{"speaker": "Ratsherr Wenzel", "party": "SPD", "art": "rede",
-                      "top": "6.1 Stadionneubau", "excerpt": "Warnte vor einem Millionengrab.",
+        "debates": [{"speaker": "Ratsherr Wenzel", "party": "SPD", "kind": "inquiry",
+                      "agenda_item": "6.1 Stadionneubau",
+                      "excerpt": "Warnte vor einem Millionengrab.",
                       "committee": "Rat", "date": "2026-06-01",
                       "minutes_url": "https://buergerinfo.oldenburg.de/getfile.php?id=4711&type=do",
                       "minutes_page": 6},
@@ -3391,8 +3392,10 @@ def test_qa_share_traegt_bausteine(client):
                       "committee": "Rat", "date": "2026-06-01",
                       "minutes_url": "https://boese.example.org/phishing.pdf"}],
         "press_releases": [{"title": "Stadion: Stadt informiert",
-                    "url": "https://www.oldenburg.de/x", "date": "2026-06-02"}],
-        "attachments": [{"label": "Machbarkeitsstudie", "url": "https://ris/anlage.pdf",
+                    "url": "https://www.oldenburg.de/x", "date": "2026-06-02",
+                    "excerpt": "Die Stadt lädt zur Infoveranstaltung."}],
+        "attachments": [{"number": 3, "label": "Machbarkeitsstudie",
+                     "url": "https://ris/anlage.pdf",
                      "template_number": "26/0123", "template_title": "Stadionneubau",
                      "excerpt": "Kapazität 15.000."}],
         "parties": [{"party": "SPD", "stance": "dagegen", "position": "Skeptisch.",
@@ -3406,15 +3409,72 @@ def test_qa_share_traegt_bausteine(client):
     client.cookies.clear()  # öffentlich lesbar
     body = client.get(f"/api/council/qa-share/{token}").json()
     assert body["debates"][0]["speaker"] == "Ratsherr Wenzel"
+    assert body["debates"][0]["kind"] == "inquiry"
+    assert body["debates"][0]["agenda_item"] == "6.1 Stadionneubau"
     assert body["debates"][0]["minutes_url"] == (
         "https://buergerinfo.oldenburg.de/getfile.php?id=4711&type=do")
     assert body["debates"][0]["minutes_page"] == 6
     assert body["debates"][1]["minutes_url"] is None
     assert body["debates"][1]["minutes_page"] is None
     assert body["press_releases"][0]["url"] == "https://www.oldenburg.de/x"
+    assert body["press_releases"][0]["excerpt"] == "Die Stadt lädt zur Infoveranstaltung."
     assert body["attachments"][0]["template_number"] == "26/0123"
+    # Die Beleg-Nummer: Ohne sie fände „[A3]" im Text seine Karte nicht.
+    assert body["attachments"][0]["number"] == 3
     assert body["parties"][0]["stance"] == "dagegen"
     assert "user_id" not in body
+
+
+def test_qa_share_nimmt_die_alten_feldnamen_an(client):
+    """Unbekannte Schlüssel verwirft Pydantic still — so gingen bis 10/2026
+    Art, TOP und Anlagen-Nummer aus dem Web verloren (``art``/``top``/``nr``)
+    und aus der iOS-App sogar alle Bausteine (``debatten``, ``presse``,
+    ``anlagen``, ``parteien``, ``grafik``). Die App im Store lässt sich nicht
+    nachziehen; der Server nimmt die alten Namen deshalb weiter an."""
+    _register(client)
+    r = client.post("/api/council/qa-share", json={
+        "question": "Was sagt der Rat zum Stadion?",
+        "answer": "Die Studie [A2] rechnet mit 15.000 Plätzen.",
+        "debatten": [{"speaker": "Ratsherr Wenzel", "art": "inquiry",
+                      "top": "6.1 Stadionneubau", "excerpt": "Fragte nach."}],
+        "presse": [{"title": "Stadion: Stadt informiert",
+                    "url": "https://www.oldenburg.de/x", "excerpt": "Infoabend."}],
+        "anlagen": [{"nr": 2, "label": "Machbarkeitsstudie", "excerpt": "15.000."}],
+        "parteien": [{"party": "SPD", "position": "Skeptisch."},
+                     {"party": "CDU", "position": "Dafür."}],
+        "grafik": {"kind": "linie", "title": "Kosten", "series": [
+            {"year": 2025, "value": 1.0}, {"year": 2026, "value": 2.0}]},
+    })
+    assert r.status_code == 201
+    client.cookies.clear()
+    body = client.get(f"/api/council/qa-share/{r.json()['token']}").json()
+    assert body["debates"][0]["kind"] == "inquiry"
+    assert body["debates"][0]["agenda_item"] == "6.1 Stadionneubau"
+    assert body["press_releases"][0]["excerpt"] == "Infoabend."
+    assert body["attachments"][0]["number"] == 2
+    assert [p["party"] for p in body["parties"]] == ["SPD", "CDU"]
+    assert body["chart"]["title"] == "Kosten"
+
+
+def test_qa_share_kappt_rohe_eintraege_statt_abzuweisen(client):
+    """Die iOS-App reicht die Strom-Einträge ungekürzt zurück. Ein ``null``
+    bei ``kind``, ein überlanger Titel oder ein Eintrag zu viel darf das
+    Teilen nicht scheitern lassen — gekappt wird auf die Feldgrenzen."""
+    _register(client)
+    r = client.post("/api/council/qa-share", json={
+        "question": "Was sagt der Rat?", "answer": "Viel.",
+        "debates": [{"speaker": "Wenzel", "kind": None, "agenda_item": None,
+                     "excerpt": "x" * 5000, "id": 7}] * 25,
+        "press_releases": [{"title": "T" * 900, "url": "https://www.oldenburg.de/x",
+                            "excerpt": "y" * 900}],
+    })
+    assert r.status_code == 201, r.text
+    body = client.get(f"/api/council/qa-share/{r.json()['token']}").json()
+    assert len(body["debates"]) == 20
+    assert body["debates"][0]["kind"] == "speech"
+    assert len(body["debates"][0]["excerpt"]) == 2000
+    assert len(body["press_releases"][0]["title"]) == 300
+    assert len(body["press_releases"][0]["excerpt"]) == 600
 
 
 def test_qa_share_public_report_and_admin_removal(client):

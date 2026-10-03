@@ -2860,11 +2860,14 @@ private struct QuestionAnswerActions: View {
             let question: String
             let answer: String
             let sources: [Source]
-            let debatten: [JSONValue]
-            let presse: [JSONValue]
-            let anlagen: [JSONValue]
-            let parteien: [PartyOpinion]
-            let grafik: JSONValue?
+            // Die Namen des Backend-Modells (QaShareBody). Bis 10/2026 standen
+            // hier deutsche Namen, die der Server still verwarf — geteilte
+            // Antworten aus der App kamen ohne jeden Baustein an.
+            let debates: [JSONValue]
+            let press_releases: [JSONValue]
+            let attachments: [JSONValue]
+            let parties: [PartyOpinion]
+            let chart: JSONValue?
         }
         struct Response: Codable, Sendable { let token: String }
 
@@ -2886,11 +2889,11 @@ private struct QuestionAnswerActions: View {
                             outcome: $0.outcome
                         )
                     },
-                    debatten: turn.evidence["debates"]?.array ?? [],
-                    presse: turn.evidence["press_releases"]?.array ?? [],
-                    anlagen: turn.evidence["attachments"]?.array ?? [],
-                    parteien: parties,
-                    grafik: turn.evidence["chart"]
+                    debates: turn.evidence["debates"]?.array ?? [],
+                    press_releases: turn.evidence["press_releases"]?.array ?? [],
+                    attachments: turn.evidence["attachments"]?.array ?? [],
+                    parties: parties,
+                    chart: turn.evidence["chart"]
                 )
             )
             guard let url = URL(string: "https://ratslotse.de/g?t=\(response.token)") else { return }

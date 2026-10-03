@@ -71,7 +71,7 @@ import {
   RulesOfProcedureBlock, type RulesOfProcedureCard,
 } from "@/components/qa-bausteine";
 import {
-  anlagenBuchstaben, ANL_RE, CITE_RE, citationIds, fmtDatumKurz,
+  anlageNummer, anlagenBuchstaben, ANL_RE, CITE_RE, citationIds, fmtDatumKurz,
 } from "@/lib/qa-belege";
 
 /** Bewährte Beispielfragen für den Empty State — kuratiert, nicht beliebig.
@@ -3127,9 +3127,12 @@ function TeilenKnopf({ turn, zitierte }: { turn: Turn; zitierte: QaSource[] }) {
               session_date: q.session_date ?? null,
               committee: q.committee ?? null, outcome: q.outcome ?? null,
             })),
+            // Feldnamen wie im Backend-Modell (QaShareDebate): Unbekannte
+            // Schlüssel verwirft es still — bis 10/2026 gingen `art`/`top`
+            // hier so verloren, und jede geteilte Debatte war eine „Rede".
             debates: (turn.debates ?? []).slice(0, 20).map((d) => ({
-              speaker: d.speaker, party: d.party, art: debatteArt(d),
-              top: (debatteTop(d) ?? "")?.slice(0, 300) || null,
+              speaker: d.speaker, party: d.party, kind: debatteArt(d) || "speech",
+              agenda_item: (debatteTop(d) ?? "").slice(0, 300) || null,
               excerpt: (d.excerpt ?? "").slice(0, 2000),
               committee: d.committee, date: d.date,
               minutes_url: d.minutes_url?.slice(0, 500) ?? null,
@@ -3137,11 +3140,12 @@ function TeilenKnopf({ turn, zitierte }: { turn: Turn; zitierte: QaSource[] }) {
             })),
             press_releases: (turn.press_releases ?? []).slice(0, 10).map((p) => ({
               title: p.title.slice(0, 300), url: p.url.slice(0, 500), date: p.date,
+              excerpt: (p.excerpt ?? "").slice(0, 600),
             })),
-            // nr muss mit: Ohne sie fänden die „[A1]"-Belege im geteilten
-            // Text ihre Anlage nicht und würden ersatzlos geschluckt.
+            // Die Nummer muss mit: Ohne sie fänden die „[A1]"-Belege im
+            // geteilten Text ihre Anlage nicht und würden ersatzlos geschluckt.
             attachments: (turn.attachments ?? []).slice(0, 10).map((a, i) => ({
-              nr: a.nr ?? i + 1,
+              number: anlageNummer(a, i),
               label: a.label, url: a.url, template_number: a.template_number,
               template_title: a.template_title, excerpt: (a.excerpt ?? "").slice(0, 600),
             })),
