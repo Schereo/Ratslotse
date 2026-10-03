@@ -12,7 +12,7 @@ import { decisionHref, sitzungHref } from "@/lib/routes";
 import { shortCommittee } from "@/lib/committees";
 import { cn, formatDate } from "@/lib/utils";
 import { STAND } from "@/lib/viertel-einblick";
-import { Badge, Button, Card, Input, Spinner, toast } from "@/components/ui";
+import { Badge, Button, Card, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Input, Label, Spinner, Textarea, toast } from "@/components/ui";
 import { STAND_FARBE } from "@/components/viertel-zeichner";
 import { loadOrtsbereiche, ortsbereichFor } from "@/lib/districts";
 import { formatEuro, OUTCOME_META } from "@/components/decision-ui";
@@ -568,8 +568,12 @@ export function VorhabenListe({ sichtbar, aktiv, schwebt, onAktiv, onSchwebt, cl
   );
 }
 
-export function VorhabenDetail({ v, angemeldet, gemeldet, onMelden, onSchliessen, schliessenSichtbar }: {
-  v: Vorhaben; angemeldet: boolean; gemeldet: boolean; onMelden: () => void; onSchliessen: () => void;
+export function VorhabenDetail({ v, ortName, angemeldet, gemeldet, onMelden, onZuruecknehmen, onSchliessen, schliessenSichtbar }: {
+  v: Vorhaben; ortName?: string; angemeldet: boolean; gemeldet: boolean;
+  /** Erst nach der Rückfrage (`MeldenDialog`); `true`, wenn die Meldung durch ist. */
+  onMelden: (grund: string | null) => Promise<boolean>;
+  onZuruecknehmen: () => Promise<boolean>;
+  onSchliessen: () => void;
   /** Der Schließen-Knopf: `immer` in einer Seitenspalte, `breit` nur ab
    *  `@3xl`, `nie` im Bottom-Sheet — das bringt sein eigenes X mit, und zwei
    *  Kreuze übereinander sind ein Fehler (Tims Befund 07.09.2026). */
@@ -577,6 +581,7 @@ export function VorhabenDetail({ v, angemeldet, gemeldet, onMelden, onSchliessen
 }) {
   const stand = STAND[v.stage] ?? STAND.planning;
   const erreicht = WEG.indexOf(v.stage as (typeof WEG)[number]);
+  const [frage, setFrage] = useState(false);
   return (
     <div>
       <div className="flex items-start justify-between gap-3">
@@ -670,24 +675,76 @@ export function VorhabenDetail({ v, angemeldet, gemeldet, onMelden, onSchliessen
       </ul>
 
       {angemeldet && (
-        <div className="mt-4 border-t border-border pt-3 text-xs">
+        <div className="mt-4 border-t border-border pt-1 text-xs">
           {gemeldet ? (
-            <span className="inline-flex items-center gap-1 text-muted-foreground"><Flag className="h-3 w-3" /> Gemeldet — danke.</span>
+            <p className="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground">
+              <span className="inline-flex items-center gap-1"><Flag className="h-3 w-3" /> Gemeldet — wir sehen uns das an.</span>
+              <button type="button" onClick={() => void onZuruecknehmen()} className="min-h-11 underline underline-offset-2 hover:text-foreground">
+                Zurücknehmen
+              </button>
+            </p>
           ) : (
-            <button type="button" onClick={onMelden} className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground">
+            <button type="button" onClick={() => setFrage(true)} className="inline-flex min-h-11 items-center gap-1 text-muted-foreground hover:text-foreground">
               <Flag className="h-3 w-3" /> Gehört nicht hierher
             </button>
           )}
+          <MeldenDialog open={frage} onOpenChange={setFrage} name={v.name} ortName={ortName} onMelden={onMelden} />
         </div>
       )}
     </div>
   );
 }
 
+/** Die Rückfrage vor dem Melden: Ein Tipp allein meldet nichts mehr (Befund
+ *  zum Release 3.0.0 — vorher meldete ein Fehltipp sofort, und zwei Konten
+ *  nahmen ein Vorhaben dauerhaft von der Tafel). Der Grund ist freiwillig;
+ *  der Text sagt, was danach wirklich passiert: Die Redaktion prüft, und erst
+ *  sie blendet aus. */
+export function MeldenDialog({ open, onOpenChange, name, ortName, onMelden }: {
+  open: boolean; onOpenChange: (open: boolean) => void; name: string; ortName?: string;
+  onMelden: (grund: string | null) => Promise<boolean>;
+}) {
+  const [grund, setGrund] = useState("");
+  const [sendet, setSendet] = useState(false);
+  async function absenden() {
+    setSendet(true);
+    const ok = await onMelden(grund.trim() || null);
+    setSendet(false);
+    if (ok) { setGrund(""); onOpenChange(false); }
+  }
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Gehört nicht hierher?</DialogTitle>
+          <DialogDescription>
+            Du meldest „{name}“ als falsch {ortName ? `in ${ortName}` : "in diesem Viertel"} verortet. Wir sehen uns
+            das an; das Vorhaben bleibt stehen, bis entschieden ist. Die Redaktion sieht nicht, von wem die Meldung kommt.
+          </DialogDescription>
+        </DialogHeader>
+        <div>
+          <Label htmlFor="melden-grund">Was stimmt nicht? <span className="font-normal text-muted-foreground">(freiwillig)</span></Label>
+          <Textarea id="melden-grund" value={grund} onChange={(e) => setGrund(e.target.value)} maxLength={300} rows={3}
+            className="mt-1.5" placeholder="z. B. Die Straße liegt in Bümmerstede." />
+          <p className="mt-1 text-right text-[11px] tabular-nums text-muted-foreground">{grund.length}/300</p>
+        </div>
+        <div className="flex flex-wrap justify-end gap-3">
+          <Button variant="secondary" onClick={() => onOpenChange(false)}>Abbrechen</Button>
+          <Button onClick={() => void absenden()} disabled={sendet}>
+            <Flag className="h-4 w-4" /> {sendet ? "Wird gemeldet …" : "Melden"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 /** Der Tafel-Zustand, den `/viertel` und `/karte` teilen: Stufe, aktives
  *  Vorhaben, Hover, gemeldet — und die Handlung „Gehört nicht hierher". */
 export function useTafelZustand(data: Tafel | undefined, vorgewaehlt: number | null) {
-  const [gemeldet, setGemeldet] = useState<Set<string>>(new Set());
+  // Was dieses Konto in dieser Sitzung gemeldet oder zurückgenommen hat — bis
+  // die Tafel neu geladen ist, gilt das vor `reported` aus der Antwort.
+  const [gemeldet, setGemeldet] = useState<Map<string, boolean>>(new Map());
   const [stufe, setStufe] = useState<string | null>(null);
   const [aktiv, setAktiv] = useState<number | null>(vorgewaehlt);
   const [schwebt, setSchwebt] = useState<number | null>(null);
@@ -701,15 +758,36 @@ export function useTafelZustand(data: Tafel | undefined, vorgewaehlt: number | n
   const gedimmt = useMemo(() => new Set(vorhaben.filter((v) => stufe && v.stage !== stufe).map((v) => v.id)), [vorhaben, stufe]);
   const ausgewaehlt = vorhaben.find((v) => v.id === aktiv) ?? null;
 
-  async function melden(v: Vorhaben) {
+  // Ein Vorhaben aus der Adresse, das die Tafel nicht (mehr) kennt — ein alter
+  // Link, eine Mail von vor dem Abgleich, ein inzwischen ausgeblendetes:
+  // Das Viertel bleibt offen, statt ins Leere zu laufen.
+  const vorhabenFehlt = !!data && vorgewaehlt != null && !vorhaben.some((v) => v.id === vorgewaehlt);
+
+  const istGemeldet = (v: Vorhaben) => gemeldet.get(v.project_key) ?? v.reported;
+
+  async function melden(v: Vorhaben, grund: string | null): Promise<boolean> {
     try {
-      const r = await api.post<{ ok: boolean; hidden: boolean }>(`/districts/projects/${v.id}/report`, { reason: null });
-      setGemeldet((s) => new Set(s).add(v.project_key));
-      toast.success(r.hidden ? "Danke — das Vorhaben ist jetzt ausgeblendet." : "Danke, wir prüfen das.");
+      await api.post<ApiAntwort<"/districts/projects/{project_id}/report", "post">>(
+        `/districts/projects/${v.id}/report`, { reason: grund });
+      setGemeldet((m) => new Map(m).set(v.project_key, true));
+      toast.success("Danke — die Redaktion sieht sich das an.");
+      return true;
     } catch {
       /* die API hat schon einen Toast gezeigt */
+      return false;
     }
   }
 
-  return { vorhaben, zaehler, sichtbar, gedimmt, ausgewaehlt, stufe, setStufe, aktiv, setAktiv, schwebt, setSchwebt, gemeldet, melden };
+  async function zuruecknehmen(v: Vorhaben): Promise<boolean> {
+    try {
+      await api.del(`/districts/projects/${v.id}/report`);
+      setGemeldet((m) => new Map(m).set(v.project_key, false));
+      toast.success("Meldung zurückgenommen.");
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  return { vorhaben, zaehler, sichtbar, gedimmt, ausgewaehlt, vorhabenFehlt, stufe, setStufe, aktiv, setAktiv, schwebt, setSchwebt, istGemeldet, melden, zuruecknehmen };
 }

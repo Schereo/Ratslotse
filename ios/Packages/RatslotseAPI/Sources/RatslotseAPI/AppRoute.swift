@@ -22,8 +22,9 @@ public enum AppRoute: Sendable, Hashable {
     case person(slug: String)
     case topic(slug: String)
     case place(id: String)
-    /// „Mein Viertel": ohne id die Auswahl der Ortsbereiche, mit id die Tafel.
-    case district(id: String?)
+    /// „Mein Viertel": ohne id die Auswahl der Ortsbereiche, mit id die Tafel,
+    /// mit `project` (Web: `?v=`) zusätzlich das Vorhaben geöffnet.
+    case district(id: String?, project: Int? = nil)
     case quiz(area: String?)
     /// Die Ausschuss-Abos samt Kalender-Abo — Ziel der Karte „Neu bei
     /// Ratslotse" und der Abo-Meldungen (`/abos`).
@@ -91,10 +92,14 @@ public struct AppRouter: Sendable {
             // Die alte Adresse der Tafel — steht in Mails und Push und leitet
             // im Web auf /karte?ort= weiter (STADTKARTE-PLAN.md, Schritt 5).
             let id = value("id")
-            return .district(id: (id?.isEmpty ?? true) ? nil : id)
+            return .district(id: (id?.isEmpty ?? true) ? nil : id, project: districtProject(value("v")))
         case "/karte":
+            // `v` öffnet das Vorhaben — der Link aus Mails, Highlights und
+            // dem Teilen. Bis 10/2026 fiel er hier weg, und die App zeigte
+            // nur das Viertel.
             let ort = value("ort")
-            return .district(id: (ort?.isEmpty ?? true) ? nil : ort)
+            let id = (ort?.isEmpty ?? true) ? nil : ort
+            return .district(id: id, project: id == nil ? nil : districtProject(value("v")))
         case "/council":
             if value("mode") == "fragen" {
                 return .question(prefill: value("q"), share: value("share"))
@@ -161,10 +166,13 @@ public struct AppRouter: Sendable {
             components.path = "/council/thema"; components.queryItems = [.init(name: "slug", value: slug)]
         case .place(let id):
             components.path = "/council/ort"; components.queryItems = [.init(name: "id", value: id)]
-        case .district(let id):
+        case let .district(id, project):
             // Geteilt wird die neue Adresse; /viertel bleibt nur als Einstieg.
             components.path = "/karte"
-            if let id { components.queryItems = [.init(name: "ort", value: id)] }
+            if let id {
+                components.queryItems = [.init(name: "ort", value: id)]
+                if let project { components.queryItems?.append(.init(name: "v", value: String(project))) }
+            }
         case .quiz(let area):
             components.path = "/quiz"; components.queryItems = [.init(name: "area", value: area)]
         case .subscriptions: components.path = "/abos"
@@ -174,6 +182,11 @@ public struct AppRouter: Sendable {
         case .web(let url): return url
         }
         return components.url
+    }
+
+    private func districtProject(_ raw: String?) -> Int? {
+        guard let raw, let id = Int(raw), id > 0 else { return nil }
+        return id
     }
 
     private func normalized(path: String) -> String {

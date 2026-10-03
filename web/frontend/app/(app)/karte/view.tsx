@@ -131,6 +131,18 @@ function Buehne() {
     z.setAktiv(vorgewaehlt);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vorgewaehlt, ort]);
+  // Kennt die Tafel das Vorhaben aus der Adresse nicht (alter Link,
+  // inzwischen ausgeblendet): Viertel zeigen, sagen warum, `v` aus der Adresse.
+  useEffect(() => {
+    if (!z.vorhabenFehlt) return;
+    toast.info("Dieses Vorhaben steht so nicht mehr auf der Tafel — hier ist das Viertel.");
+    z.setAktiv(null);
+    const p = new URLSearchParams(sp.toString());
+    p.delete("v");
+    const q = p.toString();
+    router.replace(`${window.location.pathname}${q ? `?${q}` : ""}`, { scroll: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [z.vorhabenFehlt]);
   // Ein anderer Ortsbereich → der Bezirk des vorigen gilt nicht mehr.
   const [ortVorher, setOrtVorher] = useState(ort);
   if (ortVorher !== ort) { setOrtVorher(ort); if (wahlBezirk != null && ortVorher != null) setWahlBezirk(null); }
@@ -247,9 +259,11 @@ function Buehne() {
   const detail = (schliessenSichtbar: "immer" | "nie") => z.ausgewaehlt && (
     <VorhabenDetail
       v={z.ausgewaehlt}
+      ortName={place?.name}
       angemeldet={!!user}
-      gemeldet={z.gemeldet.has(z.ausgewaehlt.project_key) || z.ausgewaehlt.reported}
-      onMelden={() => z.ausgewaehlt && z.melden(z.ausgewaehlt)}
+      gemeldet={z.istGemeldet(z.ausgewaehlt)}
+      onMelden={(grund) => z.melden(z.ausgewaehlt!, grund)}
+      onZuruecknehmen={() => z.zuruecknehmen(z.ausgewaehlt!)}
       onSchliessen={() => z.setAktiv(null)}
       schliessenSichtbar={schliessenSichtbar}
     />
@@ -261,7 +275,10 @@ function Buehne() {
     // aus dem Polster aus, blieb dabei aber im 1600er-Deckel stecken.
     // `@container` für die Spalten-Varianten der Bausteine.
     <div className="@container flex flex-col desk:h-[calc(100dvh)] desk:flex-row desk:overflow-hidden">
-      <div className="relative h-[45dvh] min-h-[280px] desk:h-auto desk:min-h-0 desk:flex-1">
+      {/* `isolate`: Leaflet und die Schwebeteile darüber brauchen z-[500] —
+          ohne eigenen Stapelkontext lagen Brotkrumen und Chips damit ÜBER
+          jedem Dialog (z-50), etwa der Melde-Rückfrage. */}
+      <div className="relative isolate h-[45dvh] min-h-[280px] desk:h-auto desk:min-h-0 desk:flex-1">
         <StadtKarte
           stufe={stufe}
           ebenen={ebenen}
@@ -537,7 +554,11 @@ function ViertelTafel({ data, place, z, wahl, nebenan }: {
                 (data.updated_at ? ` · Stand ${formatDate(data.updated_at.slice(0, 10))}` : "")}
           </p>
         </div>
-        <ShareButton path={karteHref(place.id)} title={`Mein Viertel: ${place.name} — Ratslotse`} />
+        {/* Die Tafel liegt hinter der Anmeldung — eine öffentliche Ansicht
+            gibt es nicht. Der Hinweis reist mit dem Link, damit niemand
+            überrascht auf der Anmeldeseite steht. */}
+        <ShareButton path={karteHref(place.id)} title={`Mein Viertel: ${place.name} — Ratslotse`}
+          hinweis={`Was sich in ${place.name} tut — zum Öffnen braucht man ein kostenloses Ratslotse-Konto.`} />
       </div>
 
       {wahl}

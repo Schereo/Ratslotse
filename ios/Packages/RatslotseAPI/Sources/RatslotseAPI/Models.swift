@@ -330,10 +330,13 @@ public struct DistrictPlace: Codable, Sendable, Hashable {
 public struct DistrictProjectReportOut: Codable, Sendable {
     public let ok: Bool
     public let reportCount: Int
+    /// Seit 10/2026 die Entscheidung der Redaktion, nicht die Zahl der Meldungen.
     public let hidden: Bool
+    /// Ob das eigene Konto jetzt gemeldet hat (nach dem Zurücknehmen `false`).
+    public let reported: Bool?
 
     enum CodingKeys: String, CodingKey {
-        case ok, hidden
+        case ok, hidden, reported
         case reportCount = "report_count"
     }
 }

@@ -23,7 +23,11 @@ private let router = AppRouter()
     ("https://ratslotse.de/viertel?id=kreyenbrueck", .district(id: "kreyenbrueck")),
     // Die vereinte Stadtkarte (Schritt 5): dieselbe Ansicht, neue Adresse.
     ("https://ratslotse.de/karte", .district(id: nil)),
-    ("https://ratslotse.de/karte?ort=kreyenbrueck&v=94", .district(id: "kreyenbrueck")),
+    // `v` öffnet das Vorhaben (bis 10/2026 fiel es weg); ohne Ort zählt es nicht.
+    ("https://ratslotse.de/karte?ort=kreyenbrueck&v=94", .district(id: "kreyenbrueck", project: 94)),
+    ("https://ratslotse.de/karte?ort=kreyenbrueck&v=abc", .district(id: "kreyenbrueck")),
+    ("https://ratslotse.de/karte?v=94", .district(id: nil)),
+    ("https://ratslotse.de/viertel?id=kreyenbrueck&v=7", .district(id: "kreyenbrueck", project: 7)),
     ("https://ratslotse.de/topics", .tab(.topics)),
     // Ziel der Kalender-Neuerung auf der Karte „Neu bei Ratslotse" — bis
     // 09/2026 landete /abos im Browser statt auf dem eigenen Screen.
@@ -54,6 +58,7 @@ func mapsHistoricalUniversalLinks(input: String, expected: AppRoute) throws {
         .decision(id: 91), .sessions(ksinr: 8, tops: ["Ö 2"]),
         .person(slug: "max-muster"), .topic(slug: "wohnen"), .place(id: "ort:1"),
         .sharedAnswer(token: "share-token"),
+        .district(id: nil), .district(id: "eversten"), .district(id: "eversten", project: 12),
     ]
     for route in routes {
         let link = router.universalLink(for: route)
