@@ -272,11 +272,11 @@ export function StadtKarte({ stufe, ebenen, orte, gewaehlt, schwebtOrt, onOrt, o
     if (stufe.art !== "district") { z.leeren(); return; }
     z.zeichnen({ vorhaben, sperrungen, beteiligungen, aktiv, gedimmt,
       ebenen: { vorhaben: ebenen.has("vorhaben"), plaene: ebenen.has("plaene"), sperrungen: ebenen.has("sperrungen"), beteiligungen: ebenen.has("mitreden") } });
-    // Höchstens anderthalb Stufen tiefer als das Viertel: Ein Vorhaben mit
+    // Höchstens eine Stufe tiefer als das Viertel: Ein Vorhaben mit
     // einem einzigen Pin hat Grenzen ohne Ausdehnung, und `maxZoom: 16` flog
     // dann so nah heran, dass nur noch der Pin auf grauer Fläche stand —
     // ohne Straße, ohne Viertel drumherum (Befund 03.10.2026).
-    const nah = Math.min(15, Math.round((stufenZoomRef.current.viertel ?? 13.5) + 1.5));
+    const nah = Math.min(15, Math.floor((stufenZoomRef.current.viertel ?? 13) + 1));
     if (z.aktivBounds) { eigenerFlug(); map.flyToBounds(z.aktivBounds.pad(0.6), { maxZoom: nah, duration: 0.5 }); }
   }
 

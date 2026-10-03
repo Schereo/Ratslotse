@@ -452,9 +452,10 @@ struct DistrictBoardPanel: View {
                                 .foregroundStyle(RatsColor.text)
                                 .lineLimit(1)
                             if let label = scheduleLabel(project.schedule) {
-                                (Text([stage.label, project.when].compactMap { $0 }.joined(separator: " · ") + " · ")
-                                    .foregroundStyle(RatsColor.secondary)
-                                 + Text(label).foregroundStyle(RatsColor.warning))
+                                // Der Hinweis direkt hinter dem Stand — am Zeilenende schnitte ihn die Breite ab.
+                                (Text(stage.label + " · ").foregroundStyle(RatsColor.secondary)
+                                 + Text(label).foregroundStyle(RatsColor.warning)
+                                 + Text(project.when.map { " · \($0)" } ?? "").foregroundStyle(RatsColor.secondary))
                                     .font(RatsFont.body(12))
                                     .lineLimit(1)
                             } else {

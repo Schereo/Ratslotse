@@ -777,6 +777,10 @@ struct CityMapView: View {
         if let stage = board.stage {
             return "\(board.visible.count) von \(n) Vorhaben · \(stage.label)"
         }
+        // Der Datenstand statt „letzte zwei Jahre", sobald der Server ihn nennt.
+        if let until = board.data?.decisionsUntil {
+            return "\(n) Vorhaben · Beschlüsse bis \(RatsDate.short(until) ?? until)"
+        }
         return "\(n) Vorhaben · letzte zwei Jahre"
     }
 

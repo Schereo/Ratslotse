@@ -576,8 +576,12 @@ export function VorhabenZeile({ v, aktiv, schwebt, onClick, onHover }: {
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-semibold text-foreground">{v.name}</span>
           <span className="block truncate text-xs text-muted-foreground">
-            {stand.label}{v.when ? ` · ${v.when}` : ""}
-            {v.schedule && ZEITPLAN[v.schedule] ? <span className="font-medium text-amber-800 dark:text-amber-300"> · {ZEITPLAN[v.schedule]}</span> : ` · ${KATEGORIE[v.category] ?? KATEGORIE.other}`}
+            {/* Der Hinweis direkt hinter dem Stand — am Ende der Zeile
+                schnitt ihn das Telefon ab („Mitte Juni 2025–Januar 2026 · ve…"). */}
+            {stand.label}
+            {v.schedule && ZEITPLAN[v.schedule] && <span className="font-medium text-amber-800 dark:text-amber-300"> · {ZEITPLAN[v.schedule]}</span>}
+            {v.when ? ` · ${v.when}` : ""}
+            {!v.schedule && ` · ${KATEGORIE[v.category] ?? KATEGORIE.other}`}
           </span>
         </span>
         <ArrowRight className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", aktiv && "translate-x-0.5 text-primary")} />
