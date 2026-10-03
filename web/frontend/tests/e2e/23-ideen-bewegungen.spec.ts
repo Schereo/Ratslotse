@@ -154,13 +154,13 @@ test("eine unbekannte Idee zeigt einen Leerzustand statt eines Fehlers", async (
 test("die Ideen sind ein Reiter der Analyse, kein eigener Punkt in der Navigation", async ({ page }) => {
   await mocks(page);
   await page.goto("/council/ideen");
-  const reiter = page.getByRole("button", { name: /Andere Städte/ });
+  const reiter = page.getByRole("button", { name: /Ideen aus anderen Städten/ });
   await expect(reiter).toHaveAttribute("aria-pressed", "true");
   // Zurück in die Analyse über dieselbe Leiste.
   await page.getByRole("button", { name: /^Trends$/ }).click();
   await expect(page).toHaveURL(/\/council\?tab=analysis$/, { timeout: 20_000 });
   // Und von dort wieder hin.
-  await page.getByRole("button", { name: /Andere Städte/ }).click();
+  await page.getByRole("button", { name: /Ideen aus anderen Städten/ }).click();
   await expect(page).toHaveURL(/\/council\/ideen$/, { timeout: 20_000 });
 });
 
@@ -197,4 +197,53 @@ test("die Zeitleiste liest ab: Überfahren, Tasten und der Sprung in die Chronik
   // Der Sprung in die Chronik landet beim Eintrag.
   await buehne.getByRole("button", { name: "In der Chronik zeigen" }).click();
   await expect(page.locator("#vorlage-p14-3")).toBeInViewport();
+});
+
+test("ein gescheiterter Abruf ist ein Fehler mit „Nochmal versuchen“, keine Leere", async ({ page }) => {
+  await mocks(page);
+  let fehlschlagen = true;
+  await page.route((u) => u.pathname === "/api/council/cities/movements", (route) =>
+    fehlschlagen
+      ? route.fulfill({ status: 500, json: { detail: "kaputt" } })
+      : route.fulfill({ json: { items: [KLEIN], total: 1, page: 1, per_page: 12, axis: ACHSE, counts: {} } }));
+  await page.goto("/council/ideen");
+  const liste = page.getByRole("region", { name: "Ideen, die mehrere Räte hatten" });
+  // Bis 10/2026 stand hier „Noch keine Bewegungen" — als gäbe es keine.
+  await expect(liste.getByRole("alert")).toBeVisible({ timeout: 20_000 });
+  await expect(liste).not.toContainText("Noch keine");
+  fehlschlagen = false;
+  await liste.getByRole("button", { name: "Nochmal versuchen" }).click();
+  await expect(liste).toContainText("Verpackungssteuer einführen");
+});
+
+test("ein Netzfehler auf der Ideen-Seite sagt nicht „gibt es nicht“", async ({ page }) => {
+  await mocks(page);
+  await page.route((u) => u.pathname === "/api/council/cities/movements/detail", (route) =>
+    route.fulfill({ status: 503, json: { detail: "Wartung" } }));
+  await page.goto("/council/ideen/bewegung?id=14");
+  await expect(page.getByRole("alert")).toContainText("konnte nicht geladen werden", { timeout: 20_000 });
+  await expect(page.getByText("Diese Idee gibt es nicht (mehr).")).toHaveCount(0);
+});
+
+test("der Datenstand steht unter der Überschrift", async ({ page }) => {
+  await mocks(page);
+  await page.route("**/api/council/cities/ideas/fields", (route) =>
+    route.fulfill({ json: {
+      fields: [{ field: "klima_umwelt", total: 4, missing: 2, partial: 1, present: 1, not_applicable: 0, multi_city: 1, movements: 2 }],
+      bodies: ["Münster", "Wolfsburg"],
+      data_status: { as_of: "2026-09-10", lagging: [{ body_id: "wolfsburg", city: "Wolfsburg", latest_paper: "2026-06-25" }] },
+    } }));
+  await page.goto("/council/ideen");
+  await expect(page.getByText("Stand: 10.09.2026")).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText(/Aus Wolfsburg liegen Vorlagen nur bis 25\.06\.2026 vor/)).toBeVisible();
+});
+
+test("ohne den Schalter ist die Seite ein 404, keine leere Seite", async ({ page }) => {
+  await page.route("**/api/app-config", (route) =>
+    route.fulfill({ json: { min_build: 0, note: null, features: [] } }));
+  for (const pfad of ["/council/ideen", "/council/ideen/bewegung?id=14"]) {
+    await page.goto(pfad);
+    await expect(page.getByText("Diesen Inhalt finde ich nicht").first(), pfad)
+      .toBeVisible({ timeout: 20_000 });
+  }
 });

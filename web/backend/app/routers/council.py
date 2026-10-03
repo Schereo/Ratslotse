@@ -16,6 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response,
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field, field_validator
 
+from council.cities.model import display_title
 from council.cities.store import CitiesStore
 from council.store import CouncilStore
 from council.topics import POLICY_FIELDS
@@ -58,7 +59,8 @@ from ..antworten import (AnalysisData, ElectedCouncil, ElectedMember, AssistantS
                          DecisionDetail, DecisionList, DiscoveryOfTheDay, Districts, Entities,
                          ElsewhereItem, ElsewhereResponse, EntitiesMap, EntityDetail,
                          FeedbackAck,
-                         Idea, IdeaEvidence, IdeaFields, IdeaFieldSummary, IdeaProtocol,
+                         Idea, IdeaDataStatus, IdeaEvidence, IdeaFields, IdeaFieldSummary,
+                         IdeaLaggingCity, IdeaProtocol,
                          IdeaSibling, Movement, MovementCity, MovementDetail,
                          MovementDocument, MovementSimilar, MovementsResponse,
                          OldenburgVerdict, TimeAxis, TimelinePoint,
@@ -75,10 +77,11 @@ from ..antworten import (AnalysisData, ElectedCouncil, ElectedMember, AssistantS
                          TodayBriefing, TrendData)
 from ..clients import client_kind
 from ..election import elected as elected_mod
-from ..deps import (get_cities_store, get_council_store, get_current_user, get_store,
+from ..deps import (get_cities_store, get_council_store, get_store,
                     optional_user, require_active, require_permission)
 from ..ratelimit import (
     assistant_event_limiter,
+    cities_feedback_limiter,
     assistant_limiter,
     partei_meinungen_limiter,
     debatten_limiter,
@@ -90,7 +93,7 @@ from ..ratelimit import (
 
 router = APIRouter(prefix="/api/council", tags=["council"])
 
-#: So viele fremde Vorlagen zeigt „Anderswo beschlossen" höchstens. Mehr als
+#: So viele fremde Vorlagen zeigt „In anderen Städten" höchstens. Mehr als
 #: eine Handvoll liest niemand, und die Nähe fällt danach spürbar ab.
 ELSEWHERE_LIMIT = 6
 
@@ -109,6 +112,33 @@ ELSEWHERE_LIMIT = 6
 #: ist ein gelegentlich verlorener guter Treffer knapp darunter — ein leerer
 #: Block ist ehrlicher als ein voller aus Zufallstreffern.
 ELSEWHERE_MIN_SCORE = 0.70
+
+#: Ist der Oldenburger Beschluss selbst ortsgebunden (`transfer=local`: eine
+#: Straße, eine Schule, ein Bebauungsplan), gilt eine höhere Schwelle, und
+#: es zählen nur Anträge und Vorlagen. Die Nähe misst dort fast nur die
+#: Gattung — „Widmung der Straße Im Technologiepark" fand „Land & Lions:
+#: Park- und Verkehrskonzept" (eine Antwort, 0,80), die Grundschule Wechloy
+#: „Schulwechsel zum Schuljahr 24/25" (0,71). Gute Treffer ortsgebundener
+#: Beschlüsse liegen darüber („Parksituation Wittingsbrok" → „Parksituation in
+#: der Händelstraße", Antrag, 0,84). Gemessen im Review zu 3.0.0.
+ELSEWHERE_LOKAL_MIN_SCORE = 0.80
+ELSEWHERE_LOKAL_ARTEN = ("motion", "proposal", "amendment")
+
+#: Formale Oldenburger Beschlüsse bekommen gar keinen Block: Widmungen und
+#: Einziehungen von Straßen, über- und außerplanmäßige Bewilligungen,
+#: Aufwandsspaltungen, Entgelte, die Pflasterung eines Platzes, Bebauungs-
+#: und Flächennutzungspläne samt Veränderungssperren, Jahresabschlüsse. Ihr
+#: Text ist Verwaltungsformel, und die Formel findet Formeln — „überplanmäßige
+#: Bewilligung" fand die Deckelungsquote in Magdeburg und den Bürgerhaushalt
+#: in Potsdam, die Pflasterung am Rathausmarkt die Entgeltordnung eines
+#: Gemeindehofs, jede Änderung eines Oldenburger Bebauungsplans einen
+#: Hannoverschen für eine andere Straße (0,82 bis 0,88). Was dort anderswo
+#: „dieselbe Sache" wäre, gibt es nicht.
+ELSEWHERE_FORMAL = re.compile(
+    r"\b(?:Widmung|Entwidmung|Einziehung|Teileinziehung|[üÜ]berplanm[äa](?:ß|ss)ig"
+    r"|[aA]u(?:ß|ss)erplanm[äa](?:ß|ss)ig|Aufwandsspaltung|Pflasterung|Entgelt"
+    r"|Bebauungspl[aä]n|Fl[äa]chennutzungspl[aä]n|Ver[äa]nderungssperre|Jahresabschl[uü]ss)",
+    re.IGNORECASE)
 
 #: Vorgabe der Ideen-Seite: was Oldenburg fehlt oder halb hat. „Vorhanden“ ist
 #: über den Filter erreichbar — es gehört zur Antwort, nur nicht in die erste
@@ -2036,12 +2066,26 @@ def _eigene_rueckmeldungen(cities: CitiesStore, user: dict | None) -> dict[str, 
     return cities.feedback_by_paper(ann, ver, int(user["id"]))
 
 
+def _papier_kennung(roh: str) -> str:
+    """Die Vorlagen-Kennung aus dem Pfad, so wie der Speicher sie führt.
+
+    Die Kennungen der OParl-Städte SIND Adressen (``https://…/papers/1``).
+    Die App bis Build 3.0 setzte sie roh in den Pfad; aus ``https://`` wurde
+    unterwegs ``https:/`` (ein Doppel-Schrägstrich übersteht Proxy und
+    Weiterleitung nicht), und jede Rückmeldung endete mit „unbekannte
+    Vorlage". Die ausgelieferten Builds kommen so weiter an — der neue
+    kodiert die Kennung vollständig.
+    """
+    return re.sub(r"^(https?):/+(?=[^/])", r"\1://", roh)
+
+
 @router.post("/cities/movements/feedback")
 def cities_movement_feedback(
+    request: Request,
     id: int,
     verdict: str,
     note: str | None = None,
-    user: dict = Depends(get_current_user),
+    user: dict = Depends(require_active),
     cities: CitiesStore = Depends(get_cities_store),
 ) -> FeedbackAck:
     """„Stimmt" oder „stimmt nicht" zum Urteil über Oldenburg JE IDEE.
@@ -2053,6 +2097,7 @@ def cities_movement_feedback(
     """
     from council.cities.clusters import CLUSTER_VERSION
 
+    cities_feedback_limiter.check(request, subject=user["id"])
     if verdict not in ("right", "wrong"):
         raise HTTPException(400, "verdict muss 'right' oder 'wrong' sein")
     if not cities.idea_group(EMBED_MODEL_FUER_SUCHE, CLUSTER_VERSION, id):
@@ -2065,10 +2110,11 @@ def cities_movement_feedback(
 
 @router.post("/cities/ideas/{paper_id:path}/feedback")
 def cities_idea_feedback(
+    request: Request,
     paper_id: str,
     verdict: str,
     note: str | None = None,
-    user: dict = Depends(get_current_user),
+    user: dict = Depends(require_active),
     cities: CitiesStore = Depends(get_cities_store),
 ) -> FeedbackAck:
     """„Stimmt" oder „stimmt nicht" zu einem Urteil — ein Klick an der Karte.
@@ -2081,13 +2127,17 @@ def cities_idea_feedback(
 
     **Nur angemeldet**, und das ist keine Hürde, sondern der Punkt: Eine
     Rückmeldung ohne Konto ließe sich nicht zählen (ein Mensch, viele
-    Stimmen), und der Maßstab wäre wieder wertlos.
+    Stimmen), und der Maßstab wäre wieder wertlos. **Und nur aktiv**
+    (``require_active``): ein gesperrtes oder unbestätigtes Konto schreibt
+    hier so wenig wie anderswo; die Bremse zählt je Konto.
 
     Die FASSUNG des Annotators geht in den Schlüssel: „Das Urteil ist falsch"
     gilt für das Urteil, das jemand gesehen hat, nicht für ein späteres.
     """
+    cities_feedback_limiter.check(request, subject=user["id"])
     if verdict not in ("right", "wrong"):
         raise HTTPException(400, "verdict muss 'right' oder 'wrong' sein")
+    paper_id = _papier_kennung(paper_id)
     if not cities.paper(paper_id):
         raise HTTPException(404, "unbekannte Vorlage")
     ann, ver = CitiesStore.IDEEN_FIT
@@ -2120,9 +2170,40 @@ def cities_idea_fields(cities: CitiesStore = Depends(get_cities_store)) -> IdeaF
          "movements": bewegungen.get(r["field"], 0)}
         for r in cities.idea_fields()]
     from council.cities.registry import BODIES
-    namen = sorted({(BODIES[b].name if b in BODIES else b)
-                    for b in cities.idea_body_ids()})
-    return {"fields": felder, "bodies": namen}
+    ids = cities.idea_body_ids()
+    namen = sorted({(BODIES[b].name if b in BODIES else b) for b in ids})
+    return {"fields": felder, "bodies": namen, "data_status": _datenstand(cities, ids)}
+
+
+#: Ab wann eine Stadt als „hinkt hinterher" gilt: so viele Tage zwischen
+#: ihrer jüngsten Vorlage und ihrem letzten Abgleich. Zwei Monate tragen eine
+#: Sommerpause; Wolfsburg (25.06. gegen 14.09.2026) fällt trotzdem auf.
+STAND_LUECKE_TAGE = 60
+
+
+def _datenstand(cities: CitiesStore, body_ids: list[str]) -> IdeaDataStatus:
+    """„Stand: …" für die Seite — und welche Stadt deutlich älter endet."""
+    from datetime import date as _date
+
+    from council.cities.registry import BODIES
+
+    zeilen = cities.coverage(body_ids)
+    abgleiche = [str(z["last_fetched"])[:10] for z in zeilen if z.get("last_fetched")]
+    hinten: list[IdeaLaggingCity] = []
+    for z in zeilen:
+        if not z.get("last_fetched") or not z.get("latest_paper"):
+            continue
+        try:
+            luecke = (_date.fromisoformat(str(z["last_fetched"])[:10])
+                      - _date.fromisoformat(str(z["latest_paper"])[:10])).days
+        except ValueError:
+            continue
+        if luecke > STAND_LUECKE_TAGE:
+            b = str(z["body_id"])
+            hinten.append({"body_id": b, "city": BODIES[b].name if b in BODIES else b,
+                           "latest_paper": str(z["latest_paper"])[:10]})
+    return {"as_of": min(abgleiche) if abgleiche else None,
+            "lagging": sorted(hinten, key=lambda h: h["city"])}
 
 
 @router.get("/cities/search")
@@ -2268,7 +2349,7 @@ def cities_movement_detail(
         dokumente.append({
             "paper_id": m["id"], "body_id": m["body_id"],
             "city": namen.get(m["body_id"]) or m.get("body_name") or m["body_id"],
-            "name": m.get("name") or "", "date": (m.get("date") or "")[:10] or None,
+            "name": display_title(m.get("name")), "date": (m.get("date") or "")[:10] or None,
             "kind": m.get("kind") or "other", "web": m.get("web"),
             "outcome": (cities.outcome_for_paper(m["id"]) or {}).get("outcome") or "none",
             "originator": display_originator(klasse.get("originator"), m.get("kind")),
@@ -2314,7 +2395,7 @@ def _bewegung(store: CouncilStore, z: dict,
         TimelinePoint(paper_id=str(p["paper_id"]), body_id=str(p["body_id"]),
                       city=namen.get(p["body_id"], str(p["body_id"])), date=p.get("date"),
                       outcome=p.get("outcome") or "none", kind=p.get("kind") or "other",
-                      title=p.get("title") or "")
+                      title=display_title(p.get("title")))
         for p in json.loads(z.get("timeline") or "[]")]
     return {
         "cluster_id": int(z["cluster_id"]), "label": z.get("label") or "",
@@ -2373,7 +2454,7 @@ def _idee_aus_zeile(store: CouncilStore, cities: CitiesStore, r: dict,
         "paper_id": r["id"], "body_id": r["body_id"],
         "body_name": (BODIES[r["body_id"]].name if r["body_id"] in BODIES
                       else (r.get("body_name") or r["body_id"])),
-        "name": r.get("name") or "", "date": r.get("date"),
+        "name": display_title(r.get("name")), "date": r.get("date"),
         "kind": r.get("kind") or "other", "web": r.get("web"),
         "outcome": (cities.outcome_for_paper(r["id"]) or {}).get("outcome") or "none",
         "field": klasse.get("field"), "instrument": klasse.get("instrument"),
@@ -2458,7 +2539,7 @@ def _geschwister(roh: str | None) -> list[IdeaSibling]:
         return []
     zeilen = json.loads(roh)
     zeilen.sort(key=lambda z: (z.get("date") is None, z.get("date") or ""))
-    return [{"paper_id": z["id"], "name": z.get("name") or "",
+    return [{"paper_id": z["id"], "name": display_title(z.get("name")),
              "date": z.get("date")} for z in zeilen]
 
 
@@ -2568,7 +2649,7 @@ def decision_elsewhere(
         # die Tagesordnung unter der Grundnummer führt.
         vorlage = store.get_vorlage_by_nr(beschluss["template_number"])
         kvonr = vorlage.get("kvonr") if vorlage else None
-    if not kvonr:
+    if not kvonr or ELSEWHERE_FORMAL.search(beschluss.get("title") or ""):
         return {"decision_id": decision_id, "items": [], "bodies": []}
 
     from council.cities.annotators import USABLE, get as get_annotator
@@ -2587,6 +2668,11 @@ def decision_elsewhere(
     # heraus, und der Index legt ohnehin nur acht Kanten je Papier an.
     treffer = cities.neighbors("paper", f"oldenburg:paper:{kvonr}", EMBED_MODEL,
                                limit=ELSEWHERE_LIMIT + 4)
+    # Die Einordnung der EIGENEN Vorlage: Themenfeld und ob sie ortsgebunden ist.
+    eigen = (cities.annotation("paper", f"oldenburg:paper:{kvonr}", ann.key, ann.version)
+             or {}).get("payload", {})
+    eigenes_feld = eigen.get("field")
+    ortsgebunden = eigen.get("transfer") == "local"
 
     items: list[ElsewhereItem] = []
     gesehen: set[tuple[str, str]] = set()
@@ -2624,12 +2710,28 @@ def decision_elsewhere(
         # Es ist noch nicht eingeordnet, der nächste Cron holt es nach.
         if annotation.get("transfer") not in USABLE:
             continue
+        # **Dasselbe Themenfeld.** Wo beide Seiten eingeordnet sind und sich
+        # widersprechen, ist es nicht dieselbe Sache: Die Pflasterung am
+        # Rathausmarkt (Verkehr) fand die Entgeltordnung eines Gemeindehofs
+        # (Kultur/Sport) und zwei Zentrenkonzepte (Wirtschaft). In einer
+        # Stichprobe von 36 Beschlüssen nahm diese Regel 16 Fehltreffer und
+        # einen guten heraus (Review 3.0.0). „sonstiges" ist kein Feld, sondern
+        # „im Zweifel" — es widerspricht nichts: „Partnerschaften für
+        # Demokratie" stand in Magdeburg dort und ist dasselbe Bundesprogramm.
+        fremdes_feld = annotation.get("field")
+        if (eigenes_feld and fremdes_feld and fremdes_feld != eigenes_feld
+                and "sonstiges" not in (eigenes_feld, fremdes_feld)):
+            continue
+        if ortsgebunden and (float(t["score"]) < ELSEWHERE_LOKAL_MIN_SCORE
+                             or (t.get("kind") or "other") not in ELSEWHERE_LOKAL_ARTEN):
+            continue
         ergebnis = cities.outcome_for_paper(t["b_id"]) or {}
         items.append({
             "body_id": t["body_id"],
             "body_name": namen.get(t["body_id"], t["body_id"]),
             "paper_id": t["b_id"],
-            "name": t.get("name") or "",
+            # Privatpersonen im Titel nur mit Anfangsbuchstaben (Hannover).
+            "name": display_title(t.get("name")),
             "reference": t.get("reference"),
             "date": t.get("date"),
             "kind": t.get("kind") or "other",

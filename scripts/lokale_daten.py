@@ -208,18 +208,50 @@ def hol(quelle: str) -> int:
     return 0
 
 
-def hol_staedte(quelle: str) -> int:
-    """Den Städte-Speicher unverändert herunterladen.
+def staedte_abspecken(pfad: Path) -> int:
+    """Die konto-bezogenen Zeilen aus einem Städte-Abzug entfernen.
 
-    Keine Abspeckung wie bei der Rats-Datenbank: Es stehen ausschließlich
-    öffentliche Ratsdokumente anderer Städte darin, keine Konten, keine
-    Personendaten. Deshalb reicht ein `scp`.
+    Der Speicher trägt fast nur öffentliche Ratsdokumente anderer Städte —
+    aber auch die Rückmeldungen zu den Urteilen, mit Konto-Nummer und
+    Freitext (``CITIES_USER_OWNED_TABLES``). Die gehören so wenig auf ein
+    Notebook wie die Konten selbst. Gibt die Zahl entfernter Zeilen zurück.
+    """
+    sys.path.insert(0, str(WURZEL))
+    from council.cities.store import CITIES_USER_OWNED_TABLES
+
+    n = 0
+    verbindung = sqlite3.connect(str(pfad))
+    try:
+        for tabelle, _spalte in CITIES_USER_OWNED_TABLES:
+            try:
+                n += verbindung.execute(f'DELETE FROM "{tabelle}"').rowcount or 0
+            except sqlite3.OperationalError:
+                continue  # ältere Datei ohne die Tabelle
+        verbindung.commit()
+    finally:
+        verbindung.close()
+    return n
+
+
+def hol_staedte(quelle: str) -> int:
+    """Den Städte-Speicher herunterladen — ohne die Rückmeldungen.
+
+    Eine Abspeckung wie bei der Rats-Datenbank braucht es sonst nicht: Es
+    stehen öffentliche Ratsdokumente anderer Städte darin. Die eine
+    Ausnahme sind die Rückmeldungen zu den Urteilen (Konto-Nummer und
+    Freitext); sie werden geleert, BEVOR die Datei an ihren Platz rückt.
+    Serverseitig abzuspecken hieße eine zweite Kopie von 2,4 GB auf einer
+    Platte, die schon einmal voll lief.
     """
     host, _ = QUELLEN[quelle]
     SPEICHER.mkdir(parents=True, exist_ok=True)
     t0 = time.monotonic()
     print(f"Städte-Speicher von {quelle} holen …")
-    _lauf(["scp", f"{host}:{STAEDTE_FERN}", str(STAEDTE_ABZUG)])
+    zwischen = STAEDTE_ABZUG.with_suffix(".teil")
+    _lauf(["scp", f"{host}:{STAEDTE_FERN}", str(zwischen)])
+    geleert = staedte_abspecken(zwischen)
+    zwischen.replace(STAEDTE_ABZUG)
+    print(f"  {geleert} Rückmeldungen entfernt (konto-bezogen)")
     print(f"✓ {STAEDTE_ABZUG}  ({STAEDTE_ABZUG.stat().st_size / 1e6:.0f} MB, "
           f"{time.monotonic() - t0:.0f}s)")
     return 0

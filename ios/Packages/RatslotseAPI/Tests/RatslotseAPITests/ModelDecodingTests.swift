@@ -364,7 +364,7 @@ import Testing
     #expect(abo.subscribedCommittees == 3)
 }
 
-/// „Anderswo beschlossen": Sechs von sechzehn Feldern tragen einen
+/// „In anderen Städten": Sechs von sechzehn Feldern tragen einen
 /// Unterstrich, und die Ratsinformationssysteme füllen sehr unterschiedlich
 /// viel aus. Der zweite Eintrag hier ist der gemessene Münster-Fall — kein
 /// `web`, keine Einordnung, kein Ergebnis.
@@ -453,6 +453,23 @@ import Testing
     """#.utf8))
     #expect(felder.fields.first?.multiCity == 12)
     #expect(felder.fields.first?.id == "verkehr")
+    #expect(felder.dataStatus == nil, "ein älterer Server liefert keinen Stand")
+}
+
+/// „Stand: …" (seit 10/2026): der älteste Abgleich und Städte mit altem Bestand.
+@Test func ideaFieldsDecodesDataStatus() throws {
+    let felder = try JSONDecoder().decode(IdeaFields.self, from: Data(#"""
+    {"fields": [], "bodies": ["Wolfsburg"],
+     "data_status": {"as_of": "2026-09-10",
+                     "lagging": [{"body_id": "wolfsburg", "city": "Wolfsburg",
+                                  "latest_paper": "2026-06-25"}]}}
+    """#.utf8))
+    #expect(felder.dataStatus?.asOf == "2026-09-10")
+    #expect(felder.dataStatus?.lagging.first?.latestPaper == "2026-06-25")
+    let ohne = try JSONDecoder().decode(IdeaFields.self, from: Data(#"""
+    {"fields": [], "bodies": [], "data_status": {"as_of": null, "lagging": []}}
+    """#.utf8))
+    #expect(ohne.dataStatus?.asOf == nil)
 }
 
 /// Die Karte „Neu bei Ratslotse": Bühne (mit Aufnahme) und Liste (ohne) in

@@ -2,7 +2,7 @@ import RatslotseAPI
 import RatslotseDesign
 import SwiftUI
 
-/// „Ideen aus anderen Städten" — was andere Räte beschlossen haben und
+/// „Ideen aus anderen Städten" — was andere Räte beantragt oder beschlossen haben und
 /// Oldenburg fehlt.
 ///
 /// **Zwei Zustände, eine Ansicht.** Ohne gewähltes Feld die Übersicht, mit
@@ -16,6 +16,8 @@ struct IdeasView: View {
     let model: AppModel
     @State private var felder: [IdeaFieldSummary] = []
     @State private var staedte: [String] = []
+    @State private var datenstand: IdeaDataStatus?
+    @State private var feldFehler: String?
     @State private var gewaehlt: String?
     @State private var ideen: IdeasResponse?
     @State private var laedt = true
@@ -54,7 +56,7 @@ struct IdeasView: View {
         .background(RatsColor.page)
         // Eigener Takt am Schalter: Der kommt aus `/api/app-config` und ist
         // beim ersten Aufbau der Ansicht oft noch nicht da (Lehre aus dem
-        // Block „Anderswo beschlossen").
+        // Block „In anderen Städten").
         .task(id: model.feature("ideen-anderswo")) { await ladeFelder() }
     }
 
@@ -65,15 +67,60 @@ struct IdeasView: View {
                 .foregroundStyle(RatsColor.text)
             // Die Städte kommen aus den DATEN (`bodies`). Hier standen bis
             // 22.09.2026 fünf fest aufgezählt, als es längst acht waren.
-            Text("Was Räte in \(Self.aufzaehlung(staedte)) beantragt und beschlossen "
-                 + "haben — und ob Oldenburg dasselbe schon hat. Den Stand in Oldenburg "
+            Text("Was Räte in \(Self.aufzaehlung(staedte)) beantragt oder beschlossen "
+                 + "haben — und ob Oldenburg dasselbe schon hat. Nicht alles davon wurde "
+                 + "dort auch beschlossen; das Ergebnis steht bei jeder Vorlage. Den Stand in Oldenburg "
                  + "prüft ein Sprachmodell an Oldenburger Beschlüssen; sie stehen bei "
                  + "jeder Idee.")
                 .font(RatsFont.body(12.5))
                 .foregroundStyle(RatsColor.muted)
                 .fixedSize(horizontal: false, vertical: true)
+            if let stand = Self.standZeile(datenstand) {
+                // Wie alt ist, was hier steht? Kein Takt-Versprechen.
+                Text(stand)
+                    .font(RatsFont.mono(10.5))
+                    .foregroundStyle(RatsColor.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .padding(.top, 8)
+    }
+
+    /// „Stand: 10.09.2026 · Aus Wolfsburg liegen Vorlagen nur bis 25.06.2026 vor."
+    /// Dieselbe Aussage wie im Web (`lib/ideen.ts::standZeilen`).
+    static func standZeile(_ s: IdeaDataStatus?) -> String? {
+        guard let s, let asOf = s.asOf else { return nil }
+        var zeile = "Stand: \(datum(asOf))"
+        if s.lagging.count == 1, let h = s.lagging.first {
+            zeile += " · Aus \(h.city) liegen Vorlagen nur bis \(datum(h.latestPaper)) vor."
+        } else if s.lagging.count > 1 {
+            let teile = s.lagging.map { "\($0.city) (bis \(datum($0.latestPaper)))" }
+            zeile += " · Aus \(aufzaehlung(teile)) liegen nur ältere Vorlagen vor."
+        }
+        return zeile
+    }
+
+    private static func datum(_ iso: String) -> String {
+        let t = iso.prefix(10).split(separator: "-")
+        return t.count == 3 ? "\(t[2]).\(t[1]).\(t[0])" : iso
+    }
+
+    /// Ein Ladefehler ist keine Leere: Meldung plus „Nochmal versuchen".
+    private func fehlerKarte(_ text: String, nochmal: @escaping () async -> Void) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Das konnte nicht geladen werden.")
+                .font(RatsFont.body(14, weight: .semibold))
+                .foregroundStyle(RatsColor.text)
+            Text(text)
+                .font(RatsFont.body(12))
+                .foregroundStyle(RatsColor.muted)
+                .fixedSize(horizontal: false, vertical: true)
+            Button("Nochmal versuchen") { Task { await nochmal() } }
+                .font(RatsFont.body(14, weight: .semibold))
+                .foregroundStyle(RatsColor.primary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .ratsCard()
     }
 
     // ---------------------------------------------------------------- Suche
@@ -153,10 +200,15 @@ struct IdeasView: View {
         if laedt {
             ProgressView().frame(maxWidth: .infinity).padding(.top, 24)
         } else if let fehler {
-            Text(fehler).font(RatsFont.body(13)).foregroundStyle(RatsColor.danger)
+            fehlerKarte(fehler) {
+                laedt = true
+                await ladeFelder()
+            }
         } else if felder.isEmpty {
-            Text("Noch keine Ideen eingelesen. Sobald der wöchentliche Abgleich "
-                 + "mit den anderen Städten gelaufen ist, steht hier etwas.")
+            // Kein Takt-Versprechen — wann der nächste Abgleich läuft, weiß
+            // die App nicht.
+            Text("Noch keine Ideen eingelesen. Sobald die Ratsinformationssysteme "
+                 + "der anderen Städte abgeglichen sind, steht hier etwas.")
                 .font(RatsFont.body(13))
                 .foregroundStyle(RatsColor.muted)
                 .fixedSize(horizontal: false, vertical: true)
@@ -219,7 +271,9 @@ struct IdeasView: View {
             Text(Self.feldLabel(feld))
                 .font(RatsFont.body(17, weight: .semibold))
                 .foregroundStyle(RatsColor.text)
-            if let ideen {
+            if let feldFehler {
+                fehlerKarte(feldFehler) { await ladeIdeen(feld) }
+            } else if let ideen {
                 Text("\(ideen.total) Ideen aus anderen Städten, sortiert nach dem, "
                      + "was sich am ehesten lohnen könnte.")
                     .font(RatsFont.body(11.5))
@@ -250,6 +304,7 @@ struct IdeasView: View {
             let antwort: IdeaFields = try await model.api.get("/api/council/cities/ideas/fields")
             felder = antwort.fields
             staedte = antwort.bodies
+            datenstand = antwort.dataStatus
             fehler = nil
         } catch {
             fehler = error.localizedDescription
@@ -259,6 +314,7 @@ struct IdeasView: View {
 
     private func ladeIdeen(_ feld: String) async {
         ideen = nil
+        feldFehler = nil
         do {
             // Der Parameter geht über `query:`, nicht in den Pfad: `request`
             // kodiert den Pfad als Ganzes, ein „?" darin würde zu „%3F" und
@@ -267,7 +323,9 @@ struct IdeasView: View {
                 "/api/council/cities/ideas", query: [URLQueryItem(name: "field", value: feld)])
             ideen = antwort
         } catch {
-            fehler = error.localizedDescription
+            // Eigener Zustand: Bis 10/2026 setzte ein Fehler hier `fehler`
+            // der Übersicht, und die Liste drehte ewig ihr Rad.
+            feldFehler = error.localizedDescription
         }
     }
 
@@ -589,9 +647,10 @@ private struct IdeaCard: View {
         do {
             // Der Parameter geht über `query:`, nicht in den Pfad — sonst wird
             // das „?" mitkodiert und der Server antwortet mit 404. Dieselbe
-            // Falle wie bei der Ideen-Liste.
+            // Falle wie bei der Ideen-Liste. Die Kennung selbst ist meist eine
+            // Adresse (`https://…`) und geht deshalb VOLL kodiert in den Pfad.
             try await model.api.sendVoid(
-                "/api/council/cities/ideas/\(idee.paperID)/feedback",
+                "/api/council/cities/ideas/\(APIClient.pathSegment(idee.paperID))/feedback",
                 query: [URLQueryItem(name: "verdict", value: wert)])
         } catch {
             gesagt = ""
