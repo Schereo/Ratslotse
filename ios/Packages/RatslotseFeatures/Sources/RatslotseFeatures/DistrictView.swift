@@ -769,7 +769,7 @@ private struct DistrictProjectSheet: View {
                 Task { await report(text) }
             }
         } message: {
-            Text("Du meldest „\(project.name)“ als falsch \(placeName.map { "in \($0)" } ?? "in diesem Viertel") verortet. Die Redaktion sieht sich das an; das Vorhaben bleibt stehen, bis sie entschieden hat. Wer gemeldet hat, sieht sie nicht.")
+            Text("Du meldest „\(project.name)“ als falsch \(placeName.map { "in \($0)" } ?? "in diesem Viertel") verortet. Wir sehen uns das an; das Vorhaben bleibt stehen, bis entschieden ist. Die Redaktion sieht nicht, von wem die Meldung kommt.")
         }
     }
 
