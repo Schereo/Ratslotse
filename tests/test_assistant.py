@@ -773,6 +773,69 @@ def test_ein_befreites_konto_umgeht_den_zaehler(client, konto, monkeypatch):
     assistant_limiter._calls.clear()
 
 
+def test_beide_wege_duzen():
+    """Release-Prüfung 03.10.2026: Die Archiv-Antwort siezte („in Ihrer
+    Nachricht“), die App duzt überall (DESIGNSPRACHE § 1)."""
+    from council import qa
+    from kern import prompts
+    assert "„du“" in prompts.ANREDE_REGEL and "nie mit „Sie“" in prompts.ANREDE_REGEL
+    assert prompts.ANREDE_REGEL in _prompt(lotti.Screen(route="/haushalt"))
+    msgs, _ = qa._answer_messages("Was kostet das Stadion?",
+                                  [{"id": 1, "title": "Stadion", "session_date": "2026-01-01"}])
+    assert prompts.ANREDE_REGEL in msgs[0]["content"]
+
+
+def test_das_tageskontingent_bremst_mit_einem_satz(client, konto, monkeypatch):
+    """Release-Prüfung 03.10.2026: Bis dahin bremste nur der Fenster-Zähler —
+    180 Erklärungen je Stunde, über den Tag ein offener Hahn."""
+    konto["limits_unlocked"] = False
+    gefragt = []
+
+    def heute(uid, merkmal):
+        gefragt.append((uid, merkmal))
+        return lotti.TAGES_KONTINGENT
+    monkeypatch.setattr(client.ratslotse, "aktivitaet_heute", heute, raising=False)
+    r = client.post("/api/council/explain",
+                    json={"route": "/haushalt", "question": "Was sehe ich hier?"})
+    assert r.status_code == 429
+    assert "ab morgen" in r.json()["detail"]
+    # Gezählt wird, was die Nutzungsstatistik ohnehin schreibt — nur Antworten
+    # mit Modell (s. `lotti.KONTINGENT_MERKMAL`).
+    assert gefragt == [(konto["id"], "assistant_explain")]
+
+
+def test_unter_dem_kontingent_geht_es_weiter(client, konto, monkeypatch):
+    konto["limits_unlocked"] = False
+    monkeypatch.setattr(client.ratslotse, "aktivitaet_heute",
+                        lambda uid, m: lotti.TAGES_KONTINGENT - 1, raising=False)
+    r = client.post("/api/council/explain",
+                    json={"route": "/haushalt", "question": "Was sehe ich hier?"})
+    assert r.status_code == 200
+
+
+def test_ein_befreites_konto_hat_kein_tageskontingent(client, konto, monkeypatch):
+    konto["limits_unlocked"] = True
+    monkeypatch.setattr(client.ratslotse, "aktivitaet_heute",
+                        lambda uid, m: 10_000, raising=False)
+    r = client.post("/api/council/explain",
+                    json={"route": "/haushalt", "question": "Was sehe ich hier?"})
+    assert r.status_code == 200
+
+
+def test_die_tageszahl_summiert_alle_clients_von_heute(tmp_path):
+    from kern.store import Store
+    s = Store(str(tmp_path / "k.sqlite"))
+    s.record_activity(1, "assistant_explain", "web")
+    s.record_activity(1, "assistant_explain", "ios")
+    s.record_activity(1, "assistant_deterministic", "web")
+    s.record_activity(2, "assistant_explain", "web")
+    s._conn.execute("INSERT INTO user_activity (owner_id, day, feature, client, count) "
+                    "VALUES (1, '2000-01-01', 'assistant_explain', 'web', 50)")
+    s._conn.commit()
+    assert s.aktivitaet_heute(1, "assistant_explain") == 2
+    assert s.aktivitaet_heute(3, "assistant_explain") == 0
+
+
 def test_der_endpunkt_verlangt_ein_konto():
     """Ohne Konto keine Erklärung — der Endpunkt kostet ein Sprachmodell."""
     import inspect
@@ -875,6 +938,58 @@ def test_eine_lange_markierung_wird_im_snapshot_gekuerzt(client, modell):
         "selection": "x" * 900})
     quelle = _json.loads(client.ratslotse.turns[0]["sources"])
     assert len(quelle["selection"]) <= 200
+
+
+def test_ein_absturz_im_strom_landet_in_der_fehlerliste(client, monkeypatch):
+    """Release-Prüfung 03.10.2026: Der Strom hat schon mit 200 geantwortet —
+    der 500er-Handler sah Lottis Abstürze nie, sie standen nur im Log."""
+    from app.routers import council as router_modul
+
+    def kaputt(*a, **k):
+        raise RuntimeError("Anbieter weg")
+    monkeypatch.setattr(lotti, "explain_stream", kaputt)
+    monkeypatch.setattr(lotti, "explain_question", kaputt)
+    gesammelt: list = []
+    gemeldet: list = []
+
+    def sammeln(exc, methode, route, pfad):
+        gesammelt.append((type(exc).__name__, methode, route, pfad))
+        return lambda: gemeldet.append(1)
+    monkeypatch.setattr(router_modul.fehlersammler, "sammeln", sammeln)
+    r = client.post("/api/council/explain", json={
+        "route": "/haushalt", "question": "Wie hoch sind die Schulden genau, bitte?"})
+    rahmen = _rahmen(r)
+    assert rahmen[-1]["type"] == "error"
+    assert gesammelt == [("RuntimeError", "POST", "/api/council/explain",
+                          "/api/council/explain")]
+    # Die Meldung an die Admins läuft NACH dem Strom (Hintergrund-Aufgabe).
+    assert gemeldet == [1]
+
+
+def test_der_sammler_legt_ab_und_meldet_nur_einmal(tmp_path, monkeypatch):
+    """Derselbe Weg wie der 500er-Handler (`kern.fehler.aufbereiten` +
+    `merke_request_fehler`): eine Zeile je Fehlerart, eine Mail beim ersten
+    Mal."""
+    from app import fehlersammler
+    from app.config import get_settings
+    from kern.store import Store
+    db = str(tmp_path / "r.sqlite")
+    Store(db).close()
+    monkeypatch.setattr(get_settings(), "ratslotse_db", db)
+    import kern.alerts
+    monkeypatch.setattr(kern.alerts, "notify_admin", lambda *a, **k: None)
+    def einmal():
+        # Dieselbe Stelle beide Male — sonst sind es zwei Fehlerarten.
+        try:
+            raise RuntimeError("Anbieter weg, Frage: Wie hoch sind die Schulden?")
+        except RuntimeError as exc:
+            return fehlersammler.sammeln(exc, "POST", "/api/council/explain",
+                                         "/api/council/explain")
+    assert einmal() is not None
+    zeile = Store(db)._conn.execute("SELECT * FROM request_errors").fetchone()
+    assert zeile["route"] == "/api/council/explain" and zeile["exc_type"] == "RuntimeError"
+    # Zweite Begegnung: gezählt, nicht noch einmal gemeldet.
+    assert einmal() is None
 
 
 # --- 9. Der Ereignis-Zähler -------------------------------------------------
@@ -1894,6 +2009,14 @@ def test_die_pro_kopf_zahl_wird_gerechnet_und_nennt_beide_jahre():
     # Beide Jahre: das der Summe und das des Nenners.
     assert "2025:" in schulden and "Ende 2025" in schulden
     assert "," not in schulden.split("= ")[1].split(" €")[0]  # keine Nachkommastellen
+
+
+def test_der_zaehler_steht_voll_nicht_vorgerundet():
+    """Release-Prüfung 03.10.2026: Aus „1.234,5 Mio. €“ machte das Modell
+    „1.235 Millionen“ — zweimal gerundet. Der Zähler steht deshalb voll da."""
+    zeilen = lotti._einordnung(_GELD_ATTRAPPE, _GELD_ATTRAPPE["population"])
+    konzern = next(z for z in zeilen if "2024" in z and "Konzern" in z)
+    assert "1.234.483.073 €" in konzern and "Mio." not in konzern
 
 
 def test_der_nenner_kommt_aus_dem_jahr_der_summe():

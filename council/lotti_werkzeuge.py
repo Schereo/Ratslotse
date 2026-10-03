@@ -32,9 +32,39 @@ import json
 import re
 import sqlite3
 from dataclasses import dataclass, field
+from datetime import date, datetime, timedelta
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from kern import foreign_text
+
+#: Der Tag gilt in Oldenburg, nicht in UTC — kurz nach Mitternacht wäre
+#: „heute“ sonst noch gestern.
+BERLIN = ZoneInfo("Europe/Berlin")
+_WOCHENTAGE = ("Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag")
+
+
+def heute() -> date:
+    """Der heutige Tag in Oldenburg.
+
+    **Warum Lotti ihn braucht (03.10.2026).** Ihr Prompt nannte kein Datum.
+    „Wann tagt der Finanzausschuss als nächstes?“ bekam „am 2. April 2025“ —
+    das Modell suchte mit dem Jahr, das es für das laufende hielt, und fand
+    eine Sitzung von vor anderthalb Jahren. Richtig war der 23.11.2026 aus
+    ``council_scheduled_sessions``.
+    """
+    return datetime.now(BERLIN).date()
+
+
+def heute_lang(tag: date | None = None) -> str:
+    """„Samstag, 3. Oktober 2026 (2026-10-03)“ — für den Prompt.
+
+    Mit der ISO-Form dahinter, weil die Werkzeuge ihre Daten so verlangen
+    (``von_datum``): Das Modell soll nichts umrechnen müssen.
+    """
+    from council.ergebnisse import datum_lang
+    tag = tag or heute()
+    return f"{_WOCHENTAGE[tag.weekday()]}, {datum_lang(tag.isoformat())} ({tag.isoformat()})"
 
 #: Höchstens so viele Werkzeug-Runden je Antwort. Jede Runde ist ein
 #: weiterer Modellaufruf (GPT-6 Luna über Azure EU: 2–4 s). Drei reichen für
@@ -164,7 +194,10 @@ _BESCHREIBUNG = {
     "sitzungen": (
         "Die Sitzungen eines Gremiums in einem Zeitraum — vergangene und geplante, mit Datum, "
         "Uhrzeit, Ort und Kennung (ksinr) für die Tagesordnung. Für „wann tagt … wieder“, "
-        "„die Sitzung davor“. Gremium als Namensstück („Rat“, „Sportausschuss“, „Finanzen“)."),
+        "„die Sitzung davor“. Gremium als Namensstück („Rat“, „Sportausschuss“, „Finanzen“). "
+        "Ohne Zeitraum: ab HEUTE ein Jahr voraus — das Richtige für „wann tagt … als "
+        "nächstes“. Künftige Sitzungen sind als solche gekennzeichnet, und die nächste ab "
+        "heute steht immer dabei."),
     "tagesordnung": (
         "Die Tagesordnung einer Sitzung (ksinr aus „sitzungen“ oder von der Seite) samt den "
         "Ergebnissen, sobald beschlossen ist."),
@@ -227,8 +260,11 @@ def schemas(permissions: frozenset[str] | set[str]) -> list[dict]:
     fn("ratsarchiv_suchen", {"suchbegriffe": {"type": "string"}}, ["suchbegriffe"])
     if SCHRITT4:
         datum = {"type": "string", "description": "JJJJ-MM-TT"}
+        # Der Zeitraum ist OPTIONAL (03.10.2026): Mit Pflichtfeldern musste
+        # das Modell ein Datum erfinden und nahm das Jahr, das es für das
+        # laufende hielt. Ohne Angabe sucht das Werkzeug ab heute.
         fn("sitzungen", {"gremium": {"type": "string"}, "von_datum": datum, "bis_datum": datum},
-           ["gremium", "von_datum", "bis_datum"])
+           ["gremium"])
         fn("tagesordnung", {"ksinr": {"type": "integer"}}, ["ksinr"])
         fn("beratungsfolge", {"vorlage": {"type": "string"}}, ["vorlage"])
         fn("beschluesse_zaehlen", {"jahr": jahr, "themenfeld": {"type": "string"},
@@ -510,20 +546,10 @@ def _datum(text: str) -> str:
     return m.group(1) if m else ""
 
 
-def sitzungen(store, args: dict) -> Ergebnis:
-    gremium = str(args.get("gremium") or "").strip()[:80]
-    von, bis = _datum(str(args.get("von_datum") or "")), _datum(str(args.get("bis_datum") or ""))
-    schritt = f"Lotti sieht in den Sitzungskalender: {gremium}"
-    if not gremium or not von or not bis:
-        return Ergebnis("sitzungen braucht gremium, von_datum und bis_datum (JJJJ-MM-TT).",
-                        schritt=schritt)
-    # „Rat“ steckt in „Integration“: Gibt es das Gremium unter genau diesem
-    # Namen, gilt nur es; sonst das Namensstück.
-    genau = store._conn.execute(  # noqa: SLF001
-        "SELECT 1 FROM council_sessions WHERE committee = ? LIMIT 1", (gremium,)).fetchone()
-    muster = gremium if genau else f"%{gremium}%"
-    zeilen = store._conn.execute(  # noqa: SLF001
-        """SELECT cs.ksinr, cs.committee, cs.session_date, cs.session_time, cs.location,
+#: Ohne Zeitraum sucht ``sitzungen`` so weit voraus.
+SITZUNGEN_VORAUS_TAGE = 365
+
+_SITZUNGEN_SQL = """SELECT cs.ksinr, cs.committee, cs.session_date, cs.session_time, cs.location,
                   (SELECT COUNT(*) FROM council_agenda_items ci WHERE ci.ksinr = cs.ksinr) AS n
            FROM council_sessions cs
            WHERE cs.committee LIKE ? AND cs.session_date BETWEEN ? AND ?
@@ -533,19 +559,63 @@ def sitzungen(store, args: dict) -> Ergebnis:
            WHERE ss.committee LIKE ? AND ss.session_date BETWEEN ? AND ?
              AND NOT EXISTS (SELECT 1 FROM council_sessions x WHERE x.committee = ss.committee
                              AND x.session_date = ss.session_date)
-           ORDER BY 3""",
-        (muster, von, bis, muster, von, bis)).fetchall()
+           ORDER BY 3"""
+
+
+def _sitzung_zeile(z: tuple, tag_heute: str) -> str:
+    ksinr, gr, tag, zeit, ort, n = z
+    teile = [tag, zeit or "", gr]
+    if ort:
+        teile.append(ort)
+    if str(tag)[:10] > tag_heute:
+        # Künftig: Ergebnisse gibt es noch keine, und „die nächste Sitzung“
+        # ist genau diese Art Zeile — sie soll man nicht erst am Datum
+        # erkennen müssen.
+        teile.append("STEHT NOCH BEVOR")
+    elif str(tag)[:10] == tag_heute:
+        teile.append("HEUTE")
+    teile.append(f"ksinr {ksinr}, {n} Tagesordnungspunkte" if ksinr else "nur im Kalender")
+    return "- " + " · ".join(t for t in teile if t)
+
+
+def sitzungen(store, args: dict, tag: date | None = None) -> Ergebnis:
+    gremium = str(args.get("gremium") or "").strip()[:80]
+    tag = tag or heute()
+    tag_heute = tag.isoformat()
+    von = _datum(str(args.get("von_datum") or "")) or tag_heute
+    bis = (_datum(str(args.get("bis_datum") or ""))
+           or (tag + timedelta(days=SITZUNGEN_VORAUS_TAGE)).isoformat())
+    if von > bis:
+        von, bis = bis, von
+    schritt = f"Lotti sieht in den Sitzungskalender: {gremium}"
+    if not gremium:
+        return Ergebnis("sitzungen braucht ein gremium.", schritt=schritt)
+    # „Rat“ steckt in „Integration“: Gibt es das Gremium unter genau diesem
+    # Namen, gilt nur es; sonst das Namensstück.
+    genau = store._conn.execute(  # noqa: SLF001
+        "SELECT 1 FROM council_sessions WHERE committee = ? LIMIT 1", (gremium,)).fetchone()
+    muster = gremium if genau else f"%{gremium}%"
+    zeilen = store._conn.execute(  # noqa: SLF001
+        _SITZUNGEN_SQL, (muster, von, bis, muster, von, bis)).fetchall()
+    # **Die nächste Sitzung ab heute steht IMMER dabei** — auch wenn der
+    # gefragte Zeitraum in der Vergangenheit liegt. Genau dort lag der Fehler
+    # vom 03.10.2026: ein Zeitraum im falschen Jahr, und die Antwort war die
+    # letzte Sitzung darin.
+    naechste = store._conn.execute(  # noqa: SLF001
+        _SITZUNGEN_SQL + " LIMIT 1",
+        (muster, tag_heute, "9999-12-31", muster, tag_heute, "9999-12-31")).fetchone()
+    kopf = f"Heute ist {tag_heute}."
+    if naechste:
+        kopf += f" Nächste Sitzung ab heute: {_sitzung_zeile(tuple(naechste), tag_heute)[2:]}"
+    else:
+        kopf += " Ab heute ist keine Sitzung dieses Gremiums im Kalender."
     if not zeilen:
-        return Ergebnis(f"Keine Sitzung von „{gremium}“ zwischen {von} und {bis}.",
+        return Ergebnis(f"{kopf}\nKeine Sitzung von „{gremium}“ zwischen {von} und {bis}.",
                         schritt=schritt)
     namen = sorted({z[1] for z in zeilen})
-    text = [f"Sitzungen {von} bis {bis} ({', '.join(namen[:5])}):"]
-    for ksinr, gr, tag, zeit, ort, n in zeilen[:25]:
-        teile = [tag, zeit or "", gr]
-        if ort:
-            teile.append(ort)
-        teile.append(f"ksinr {ksinr}, {n} Tagesordnungspunkte" if ksinr else "nur im Kalender")
-        text.append("- " + " · ".join(t for t in teile if t))
+    text = [kopf, f"Sitzungen {von} bis {bis} ({', '.join(namen[:5])}):"]
+    for z in zeilen[:25]:
+        text.append(_sitzung_zeile(tuple(z), tag_heute))
     if len(zeilen) > 25:
         text.append(f"(und {len(zeilen) - 25} weitere)")
     return Ergebnis("\n".join(text), [], schritt)
@@ -781,11 +851,28 @@ def ergebnis_nachricht(aufruf: dict, e: Ergebnis) -> dict:
     return {"role": "tool", "tool_call_id": aufruf["id"], "content": e.text}
 
 
-def nachrichten_text(messages: list[dict]) -> str:
-    """Alles, was im Gespräch steht — die Grundlage für „belegt?“ beim Rechnen."""
+def nachrichten_text(messages: list[dict], ohne: tuple[str, ...] = ()) -> str:
+    """Was als BELEGT gilt — die Grundlage für „belegt?“ beim Rechnen.
+
+    **Nur der Kontext und die Werkzeug-Ergebnisse** (03.10.2026). Bis dahin
+    galt „alles im Gespräch“, und das hieß auch: die Frage der Person (sie
+    steht im Prompt zwischen den FRAGE-Marken) und Lottis eigene Sätze vor
+    einem Werkzeug. „Stimmt es, dass die Schulden 900 Millionen sind? Wie
+    viel Prozent mehr als 2024?“ ließ sich so mit der 900 durchrechnen — eine
+    Zahl, die niemand belegt hat, kam als „VON RATSLOTSE GERECHNET“ zurück.
+
+    ``ohne``: Textstücke, die aus dem Prompt herausfallen — die Frage und der
+    Gesprächsverlauf (der trägt frühere Fragen UND frühere Antworten, also
+    Modelltext). Der Bildschirm bleibt: Was auf der Seite steht, ist belegt.
+    """
     teile = []
     for m in messages:
+        if m.get("role") not in ("user", "system", "tool"):
+            continue
         c = m.get("content")
         if isinstance(c, str):
+            for stueck in ohne:
+                if stueck:
+                    c = c.replace(stueck, "")
             teile.append(c)
     return "\n".join(teile)
