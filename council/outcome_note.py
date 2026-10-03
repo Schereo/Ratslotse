@@ -79,7 +79,8 @@ _MARKERS = {
         r"dagegen gestimmt", r"nicht durch",
     ),
     "postponed": (
-        r"vertagt", r"verschoben", r"verschiebt", r"verwiesen", r"verweist",
+        r"vertagt", r"vertagung", r"verschoben", r"verschiebt", r"verschiebung",
+        r"verwiesen", r"verweist", r"verweisung",
         r"zurückgestellt", r"weiter\w*(geben|leiten|leitet)", r"abgegeben",
         r"(an|in) (einen |zwei |die )?(anderen?|weiteren?) (fach-?)?(ausschü|ausschu|gremi)",
         r"abgesetzt", r"zurückgezogen", r"noch nicht", r"später", r"nächsten sitzung",

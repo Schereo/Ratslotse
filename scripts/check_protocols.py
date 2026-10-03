@@ -145,6 +145,18 @@ def main() -> dict:
     wichtig = _store.backfill_importance()
     print(f"Wichtig-Score: {wichtig} Beschlüsse berechnet.")
     print(f"FTS rebuilt: {_store.rebuild_fts()} decisions indexed.")
+    # Grundakten (docs/plan-akte.md): vollständig neu aus den Rohdaten, ohne
+    # LLM, samt Entitäten und Erwähnungen rund 20 Sekunden — NACH Vorlagen,
+    # Beratungsfolge und Wortbeiträgen, damit die frischen Stationen am selben
+    # Tag in ihrer Akte stehen.
+    try:
+        from council import matters
+        akten = matters.build(_store)
+        print(f"Grundakten: {akten['akten']} Akten, {akten['eintraege']} Einträge "
+              f"in {akten['sekunden']} s.")
+    except Exception as exc:  # noqa: BLE001 — abgeleitete Daten, nie Blocker des Nachtlaufs
+        akten = {"akten": 0}
+        print(f"Grundakten übersprungen: {exc}")
 
     # N3 „Es ist entschieden" (Design 30a): Erst hier — beim Protokoll-Import —
     # steht das Ergebnis überhaupt fest. Die Sitzung selbst liegt dann meist
@@ -167,6 +179,7 @@ def main() -> dict:
         "Interessantheit bewertet": irated,
         "Tragweite bewertet": prated,
         "Wortbeiträge": wstats["contributions"],
+        "Grundakten": akten["akten"],
         "Vorlagen geladen": vstats["fetched"],
         "Beschlüsse mit Ortszuordnung": lstats["assigned"],
         "Orte geokodiert": geostats["located"],

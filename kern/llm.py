@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import os
 import time
+from collections.abc import Generator, Iterator
 from typing import Any
 
 from openai import (
@@ -704,6 +705,20 @@ def _melde_rueckfall(feature: str | None, model: str | None, exc: BaseException)
           "Rückfall auf das Routing ohne ZDR", flush=True)
 
 
+def _eu_anlauf(kwargs: dict[str, Any]):
+    """``_create`` für den EU-Weg — mit EINEM Anlauf, wenn der Aufrufer eine Frist setzt.
+
+    Wer ``timeout=`` mitgibt, wartet vor einem Bildschirm (Lottis Fenster). Am
+    24.09.2026 antwortete Azure EU unter einer Drosselung minutenlang gar
+    nicht: vier Anläufe à Frist vor dem Rückfall waren vier Minuten Warten.
+    Ein Anlauf, dann der Verzicht-Weg mit seinen eigenen Anläufen. Ohne Frist
+    bleibt alles wie beschrieben (vier schnelle Anläufe).
+    """
+    if kwargs.get("timeout") is None:
+        return _create
+    return _create.retry_with(stop=stop_after_attempt(1))
+
+
 def _create_eu_zuerst(kwargs: dict[str, Any], anbieter: tuple[str, ...],
                       feature: str | None, geduld: bool) -> tuple[Any, bool]:
     """Erst der EU-Weg mit ZDR, bei Ausfall derselbe Aufruf ohne ZDR.
@@ -726,7 +741,7 @@ def _create_eu_zuerst(kwargs: dict[str, Any], anbieter: tuple[str, ...],
     """
     eu = {**kwargs, "_zdr": True, "_only": anbieter}
     try:
-        resp = _create(**eu)
+        resp = _eu_anlauf(kwargs)(**eu)
         if getattr(resp, "choices", None):
             return resp, False
         grund: BaseException = EmptyResponseError(
@@ -887,11 +902,46 @@ def _create_geduldig(kwargs: dict[str, Any]):
     raise AssertionError("unerreichbar")  # pragma: no cover
 
 
-def chat_stream(**kwargs: Any):
+def chat_stream(**kwargs: Any) -> Iterator[str]:
     """Stream content deltas as they are generated — used for the live "Frag den Rat"
     answer. Same per-model params and connect-time retry as chat_complete. Pass
     ``_feature="…"`` to record token usage (requests the usage chunk; best-effort).
     Yields non-empty text chunks."""
+    for art, inhalt in chat_stream_events(**kwargs):
+        if art == "text":
+            yield inhalt
+
+
+def _werkzeug_teile(sammel: dict[int, dict], deltas: Any) -> None:
+    """Die Teilstücke eines Werkzeugaufrufs zusammensetzen.
+
+    Im Strom kommt ein Aufruf in Scheiben: erst ``id`` und Name, dann die
+    Argumente als JSON-Text in mehreren Stücken — zusammengehalten über
+    ``index``."""
+    for d in deltas or ():
+        nr = getattr(d, "index", 0) or 0
+        ziel = sammel.setdefault(nr, {"id": "", "name": "", "arguments": ""})
+        if getattr(d, "id", None):
+            ziel["id"] = d.id
+        fn = getattr(d, "function", None)
+        if fn is not None:
+            if getattr(fn, "name", None):
+                ziel["name"] += fn.name
+            if getattr(fn, "arguments", None):
+                ziel["arguments"] += fn.arguments
+
+
+def chat_stream_events(**kwargs: Any) -> Generator[tuple[str, Any], None, None]:
+    """Wie :func:`chat_stream`, meldet aber auch Werkzeugaufrufe.
+
+    Liefert ``("text", str)`` je Textstück und — am Ende, falls das Modell
+    Werkzeuge aufruft — einmal ``("tools", [{id, name, arguments}])``. Lottis
+    Nachschlagen (``council/lotti_werkzeuge.py``, 25.09.2026) braucht beides
+    im selben Strom: Antwortet das Modell direkt, fließt der Text ohne
+    Umweg ans Fenster; ruft es ein Werkzeug, führt der Aufrufer es aus und
+    fragt noch einmal. EU-zuerst, Rückfall, Kostenzählung und Mitschnitt
+    sind dieselben wie bei ``chat_stream`` — es ist derselbe Code.
+    """
     feature = kwargs.pop("_feature", None)
     if feature:
         kwargs.setdefault("stream_options", {"include_usage": True})
@@ -899,6 +949,7 @@ def chat_stream(**kwargs: Any):
     # bleibt der Strom, wie er war.
     mit = bool(os.environ.get(MITSCHNITT_ENV, "").strip())
     teile: list[str] = []
+    werkzeuge: dict[int, dict] = {}
     antwort_modell: str | None = None
     antwort_anbieter: str | None = None
     grund: str | None = None
@@ -914,7 +965,8 @@ def chat_stream(**kwargs: Any):
         for nr, (zdr, only) in enumerate(wege):
             ausgeliefert = False
             try:
-                for chunk in _create(stream=True, _zdr=zdr, _only=only, **kwargs):
+                erzeugen = _eu_anlauf(kwargs) if only else _create
+                for chunk in erzeugen(stream=True, _zdr=zdr, _only=only, **kwargs):
                     if antwort_anbieter is None:
                         antwort_anbieter = _anbieter(chunk)
                     if mit and antwort_modell is None:
@@ -926,11 +978,13 @@ def chat_stream(**kwargs: Any):
                                       chunk.usage)
                     if mit and chunk.choices and getattr(chunk.choices[0], "finish_reason", None):
                         grund = chunk.choices[0].finish_reason
+                    if chunk.choices and getattr(chunk.choices[0].delta, "tool_calls", None):
+                        _werkzeug_teile(werkzeuge, chunk.choices[0].delta.tool_calls)
                     if chunk.choices and chunk.choices[0].delta.content:
                         if mit:
                             teile.append(chunk.choices[0].delta.content)
                         ausgeliefert = True
-                        yield chunk.choices[0].delta.content
+                        yield ("text", chunk.choices[0].delta.content)
             except Exception as exc:  # noqa: BLE001 — Rückfall nur vor dem ersten Token
                 # Ist schon Text beim Leser, hieße ein zweiter Weg eine zweite,
                 # andere Antwort im selben Fenster. Dann reißt der Strom wie
@@ -941,9 +995,12 @@ def chat_stream(**kwargs: Any):
                 _melde_rueckfall(feature, kwargs.get("model"), exc)
                 rueckfall = True
                 antwort_anbieter = antwort_modell = None
+                werkzeuge.clear()
                 continue
             break
         fertig = True
+        if werkzeuge:
+            yield ("tools", [werkzeuge[i] for i in sorted(werkzeuge)])
     finally:
         # Auch ein abgerissener Strom wird festgehalten: Der Router erzeugt
         # dann einmal neu (`chat_complete`, eigene Zeile), und die Eval muss

@@ -20,6 +20,7 @@ from council.store_haushalt import HaushaltMixin
 from council.store_orte import OrteMixin
 from council.store_personen import PersonenMixin
 from council.store_presse import PresseMixin
+from council.store_pruefung import PruefungMixin
 from council.store_quiz import QuizMixin
 # Schema, Migration und die Vokabulare des Umbenennungs-Umbaus liegen seit
 # 09/2026 in `store_schema.py` — `_migrate` allein war 2.458 Zeilen. Sie werden
@@ -35,6 +36,7 @@ from council.store_schema import (  # noqa: F401
     SchemaMixin,
 )
 from council.store_sitzungen import SitzungenMixin
+from council.store_akten import AktenMixin
 from council.store_themen import ThemenMixin
 from council.store_viertel import ViertelMixin
 from council.store_wortbeitraege import WortbeitraegeMixin
@@ -151,8 +153,8 @@ def _produkt_stufe(begriffe: list[str]) -> str | None:
 # Methode `(woerter, year=None)`, die mit `_conn`, `_trifft` und `_beleg`
 # arbeitet. Der Stern ist Absicht — wer eine Facette baut, fasst diese
 # Datei nicht an.
-class CouncilStore(BplanMixin, FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
-                   PresseMixin, QuizMixin, SchemaMixin, SitzungenMixin,
+class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
+                   PresseMixin, PruefungMixin, QuizMixin, SchemaMixin, SitzungenMixin,
                    ThemenMixin, ViertelMixin, WortbeitraegeMixin, *_geld.MIXINS):
     def __init__(self, path: str | Path, ratslotse_db_path: str | Path | None = None):
         self._path = path

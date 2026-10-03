@@ -23,7 +23,7 @@ export const ASK_SCHRITTE: Record<AskSchritt, string> = {
 };
 
 /** Die Schritte der Erklärung (`POST /api/council/explain`). */
-export type ErklaerSchritt = "context" | "answer" | "archiv";
+export type ErklaerSchritt = "context" | "answer" | "archiv" | "lookup";
 
 /**
  * Der Schritt, der auf BEIDEN Wegen gilt: Lotti geht ins Archiv.
@@ -45,6 +45,10 @@ export const ERKLAER_SCHRITTE: Record<ErklaerSchritt, string> = {
   context: "Lotti liest die Seite",
   answer: "Lotti schreibt",
   archiv: "Das steht nicht auf der Seite — ich sehe im Ratsarchiv nach",
+  // Lotti schlägt nach (Schalter `lotti-werkzeuge`). Der Rahmen trägt meist
+  // einen eigenen `text` („Lotti sieht die Reihe … an“) — der hier ist der
+  // Ersatz, falls nicht.
+  lookup: "Lotti schlägt in den Daten nach",
 };
 
 /**
@@ -55,7 +59,10 @@ export const ERKLAER_SCHRITTE: Record<ErklaerSchritt, string> = {
  * Millisekunden fertig). Dann steht da, was in jedem Fall wahr ist.
  */
 export function lottiSchrittText(schritt: string | null | undefined,
-                                 ratsfrage = false): string {
+                                 ratsfrage = false,
+                                 text?: string | null): string {
+  // Beim Nachschlagen sagt der Server selbst, WAS Lotti gerade ansieht.
+  if (schritt === "lookup" && text) return text;
   // **Zuerst und auf beiden Wegen.** Der Archiv-Schritt kommt aus `/explain`
   // und bleibt stehen, während die Ratsfrage anläuft — dort gilt sonst die
   // Tabelle der KI-Frage, und die kennt ihn nicht.

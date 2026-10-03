@@ -1510,12 +1510,18 @@ def kontext_belege(ctx: dict | None, antwort: str = "", auswahl: str = "") -> li
     Glossar-Antwort wäre ein Chip ohne Gegenstand.
     """
     geld = (ctx or {}).get("geld")
-    if not geld:
+    # Was Lotti nachgeschlagen hat (Schalter `lotti-werkzeuge`), lag ihr
+    # genauso vor wie der Kontext — es gehört ebenso unter „Grundlage“.
+    nachgeschlagen = list((ctx or {}).get("werkzeug_belege") or [])
+    if not geld and not nachgeschlagen:
         return []
     from council import qa
     # Erst ALLE Belege des Kontexts, dann ordnen, dann kappen: Sonst fiele
     # ein genanntes Papier an sechster Stelle weg, bevor es nach vorn darf.
-    alle = qa.geld_belege(geld, max_chars=_deckel((ctx or {}).get("geld_max")), max_n=10_000)
+    alle = (qa.geld_belege(geld, max_chars=_deckel((ctx or {}).get("geld_max")), max_n=10_000)
+            if geld else [])
+    urls = {b["url"] for b in alle}
+    alle += [b for b in nachgeschlagen if b["url"] not in urls and not urls.add(b["url"])]
     return belege_ordnen(alle, antwort, auswahl)
 
 
@@ -1805,14 +1811,136 @@ def explain_stream(store, screen: Screen, question: str, *,
                    verlauf: list[dict] | None = None,
                    permissions: frozenset[str] | set[str] = frozenset(),
                    ratslotse=None, user_id: int | None = None,
-                   model: str = MODEL):
-    """Die Erklärung als Token-Strom (wie ``qa.answer_stream``)."""
+                   model: str = MODEL, werkzeuge: bool = False):
+    """Die Erklärung als Token-Strom (wie ``qa.answer_stream``).
+
+    Mit ``werkzeuge`` (Schalter ``lotti-werkzeuge``) darf Lotti nachschlagen;
+    der Strom trägt dann neben den ``str``-Stücken auch :class:`Schritt`-
+    Objekte, die der Router als ``step``-Rahmen weitergibt.
+    """
     ctx = ctx if ctx is not None else screen_context(
         store, screen, question, permissions=permissions,
         ratslotse=ratslotse, user_id=user_id)
     messages, extra = explain_messages(screen, question, ctx, verlauf, model)
-    yield from llm.chat_stream(model=model, _feature="assistant_explain", temperature=0.2,
-                               max_tokens=MAX_TOKENS, messages=messages, **extra)
+    if not werkzeuge:
+        yield from llm.chat_stream(model=model, _feature="assistant_explain", temperature=0.2,
+                                   max_tokens=MAX_TOKENS, messages=messages,
+                                   timeout=LLM_FRIST_S, **extra)
+        return
+    yield from _mit_werkzeugen(store, messages, extra, ctx, permissions, model,
+                               question=question)
+
+
+#: Schritt 2 (24.09.2026): Lotti schrieb „lässt sich nicht bestimmen“, ohne
+#: nachgeschlagen zu haben — trotz der Regel im Prompt. Zwei Hebel im Code:
+#: A hält den Anfang der ersten Runde zurück und verwirft eine Absage
+#: (:data:`ABSAGE_PRUEFEN`); B verlangt bei Fragen nach Entwicklung, Anteil
+#: oder Vergleich ein Werkzeug in der ersten Runde (:data:`NACHSCHLAGEN_ERZWINGEN`).
+ABSAGE_PRUEFEN = True
+NACHSCHLAGEN_ERZWINGEN = True
+#: Frist je Modellaufruf in Lottis Fenster (Sekunden ohne neues Stück), auf
+#: allen drei Wegen: Strom, Werkzeug-Schleife, Ersatzweg. Am 24.09.2026 hingen
+#: unter einer Drosselung von GPT-6 Luna Aufrufe über zehn Minuten — das SDK
+#: wartet ohne Angabe 600 s je Anlauf, und der Ersatzweg des Routers hing
+#: dann genauso (Stack: ``explain_question`` → EU-Weg → Antwort-Header). Mit
+#: Frist bekommt der EU-Weg einen Anlauf (``llm._eu_anlauf``), dann der
+#: Verzicht-Weg. OpenRouter hält die Leitung beim Denken mit Kommentarzeilen
+#: offen; 30 s ohne ein einziges Byte heißt: der Anbieter hängt.
+LLM_FRIST_S = 30
+#: So viele Zeichen der ersten Runde warten, bevor sie ans Fenster gehen —
+#: ein Satz, rund 0,5 s. Die Absagen standen in den Messungen im ersten Satz.
+ABSAGE_FENSTER = 200
+
+
+def _mit_werkzeugen(store, messages: list[dict], extra: dict, ctx: dict,
+                    permissions: frozenset[str] | set[str], model: str,
+                    question: str = ""):
+    """Die Erklärung mit Nachschlagen — ``str``-Stücke und :class:`Schritt`.
+
+    Antwortet das Modell direkt, fließt der Text wie ohne Werkzeuge. Ruft es
+    eines, führt der Server es aus und fragt noch einmal — höchstens
+    :data:`lotti_werkzeuge.MAX_RUNDEN` Mal, dann antwortet es mit dem, was es
+    hat (``tool_choice="none"``). Die Belege der Werkzeuge landen in
+    ``ctx["werkzeug_belege"]`` und damit unter „Grundlage“.
+    """
+    from council import fakten_abgleich
+    from council import lotti_werkzeuge as lw
+    messages = [dict(m) for m in messages]
+    messages[0]["content"] += prompts.WERKZEUG_REGEL
+    schemas = lw.schemas(permissions)
+    ctx.setdefault("werkzeug_belege", [])
+    geschrieben = False
+    nachgeschlagen = False
+    erzwingen = NACHSCHLAGEN_ERZWINGEN and lw.muss_nachschlagen(question)
+    for runde in range(lw.MAX_RUNDEN + 1):
+        letzte = runde == lw.MAX_RUNDEN
+        wahl = "none" if letzte else ("required" if erzwingen else "auto")
+        erzwingen = False
+        # Hebel A: Wer noch nichts nachgeschlagen hat, darf nicht absagen.
+        halten = ABSAGE_PRUEFEN and not nachgeschlagen and not letzte
+        puffer = ""
+        verworfen = False
+        text = ""
+        aufrufe: list[dict] = []
+        strom = llm.chat_stream_events(
+            model=model, _feature="assistant_explain", temperature=0.2,
+            max_tokens=MAX_TOKENS, messages=messages, tools=schemas, tool_choice=wahl,
+            timeout=LLM_FRIST_S, **extra)
+        for art, inhalt in strom:
+            if art != "text":
+                aufrufe = inhalt
+                continue
+            if halten:
+                puffer += inhalt
+                if len(puffer) < ABSAGE_FENSTER:
+                    continue
+                if fakten_abgleich.verweigert(puffer):
+                    verworfen = True
+                    break
+                halten, inhalt, puffer = False, puffer, ""
+            if not text and geschrieben:
+                # Hat das Modell VOR einem Werkzeug schon etwas gesagt,
+                # steht die eigentliche Antwort als neuer Absatz darunter.
+                yield "\n\n"
+            text += inhalt
+            yield inhalt
+        strom.close()
+        if halten and puffer and not verworfen:
+            # Der Strom endete, bevor das Fenster voll war.
+            if not aufrufe and fakten_abgleich.verweigert(puffer):
+                verworfen = True
+            else:
+                if geschrieben:
+                    yield "\n\n"
+                text = puffer
+                yield puffer
+        if verworfen:
+            # Nicht gezeigt, nicht in den Verlauf: Die nächste Runde MUSS
+            # nachschlagen und antwortet dann mit dem, was sie fand.
+            erzwingen = True
+            continue
+        geschrieben = geschrieben or bool(text)
+        if not aufrufe or letzte:
+            return
+        nachgeschlagen = True
+        messages.append(lw.assistenten_nachricht(text, aufrufe))
+        bekannt = lw.nachrichten_text(messages)
+        for aufruf in aufrufe:
+            e = lw.ausfuehren(store, aufruf["name"], aufruf["arguments"],
+                              permissions=permissions, bekannt=bekannt)
+            if e.schritt:
+                yield Schritt(e.schritt)
+            ctx["werkzeug_belege"].extend(e.belege)
+            messages.append(lw.ergebnis_nachricht(aufruf, e))
+            # Was ein Werkzeug brachte, darf das nächste verrechnen.
+            bekannt += "\n" + e.text
+
+
+@dataclass(frozen=True)
+class Schritt:
+    """Ein Zwischenstand im Strom: Lotti schlägt nach (kein Antworttext)."""
+
+    text: str
 
 
 def explain_question(store, screen: Screen, question: str, *,
@@ -1820,14 +1948,25 @@ def explain_question(store, screen: Screen, question: str, *,
                      verlauf: list[dict] | None = None,
                      permissions: frozenset[str] | set[str] = frozenset(),
                      ratslotse=None, user_id: int | None = None,
-                     model: str = MODEL) -> str:
-    """Einmal komplett — der Ersatzweg, wenn der Strom abreißt."""
+                     model: str = MODEL, werkzeuge: bool = False) -> str:
+    """Einmal komplett — der Ersatzweg, wenn der Strom abreißt.
+
+    Mit ``werkzeuge`` läuft dieselbe Schleife noch einmal und wird
+    eingesammelt: Unter der Drosselung vom 24./25.09.2026 riss der Strom in
+    5–7 von 66 schweren Fällen, und der Ersatzweg ohne Werkzeuge antwortete
+    genau dort mit „lässt sich nicht sagen“.
+    """
     ctx = ctx if ctx is not None else screen_context(
         store, screen, question, permissions=permissions,
         ratslotse=ratslotse, user_id=user_id)
+    if werkzeuge:
+        return "".join(t for t in explain_stream(
+            store, screen, question, ctx=ctx, verlauf=verlauf, permissions=permissions,
+            model=model, werkzeuge=True) if isinstance(t, str)).strip()
     messages, extra = explain_messages(screen, question, ctx, verlauf, model)
     resp = llm.chat_complete(model=model, _feature="assistant_explain", temperature=0.2,
-                             max_tokens=MAX_TOKENS, messages=messages, **extra)
+                             max_tokens=MAX_TOKENS, messages=messages,
+                             timeout=LLM_FRIST_S, **extra)
     return (resp.choices[0].message.content or "").strip()
 
 

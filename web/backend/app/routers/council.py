@@ -31,7 +31,7 @@ from council import trade_tax_statistics as gewst
 from council import assistant as lotti
 from council import self_check
 from starlette.background import BackgroundTask
-from council import beteiligungsbericht, qa
+from council import akte_suche, beteiligungsbericht, qa
 from council import ernte
 from kern import features, knowledge, seitenaufrufe
 from kern import roles as rollen
@@ -4360,8 +4360,15 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
             sent = 0
             marker = lotti.NEXT_MARKER
             try:
+                werkzeuge = features.an("lotti-werkzeuge")
                 for delta in lotti.explain_stream(store, screen, frage, ctx=ctx,
-                                                  verlauf=verlauf):
+                                                  verlauf=verlauf, permissions=rechte,
+                                                  werkzeuge=werkzeuge):
+                    if isinstance(delta, lotti.Schritt):
+                        # Lotti schlägt nach (Schalter `lotti-werkzeuge`) — ein
+                        # Zwischenstand fürs Fenster, kein Antworttext.
+                        yield _sse({"type": "step", "step": "lookup", "text": delta.text})
+                        continue
                     if not buf and delta:
                         zeiten["ttft_ms"] = round((time.perf_counter() - t0) * 1000)
                     buf += delta
@@ -4381,7 +4388,9 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
                 # erzeugen und den Torso ersetzen, statt ihn stehen zu lassen.
                 _log.warning("explain_stream brach nach %d Zeichen ab — one-shot Ersatz",
                              len(buf), exc_info=True)
-                ans = lotti.explain_question(store, screen, frage, ctx=ctx, verlauf=verlauf)
+                ans = lotti.explain_question(store, screen, frage, ctx=ctx, verlauf=verlauf,
+                                             permissions=rechte,
+                                             werkzeuge=features.an("lotti-werkzeuge"))
                 buf = ans
                 yield _sse({"type": "replace",
                             "text": lotti.split_next(ans, rechte, route)[0]})
@@ -4676,7 +4685,9 @@ def _turn_speichern(ratslotse: Store, user: dict, body: AskBody, q_suche: str,
                     grafik: dict | None = None,
                     sitzungen: list[dict] | None = None,
                     stand: dict | None = None,
-                    unclear: bool = False) -> int | None:
+                    unclear: bool = False,
+                    zeitleiste: dict | None = None,
+                    eckdaten: dict | None = None) -> int | None:
     """„Meine Gespräche" (6a): Turn ins laufende Gespräch hängen (oder eines
     eröffnen) — nur mit ausdrücklicher Einwilligung, nie als Blocker.
 
@@ -4738,6 +4749,9 @@ def _turn_speichern(ratslotse: Store, user: dict, body: AskBody, q_suche: str,
              # Und das Alter der Belege: Ein gespeichertes Gespräch zeigte
              # sonst dieselbe Antwort ohne den Hinweis „Ältere Aktenlage".
              "records_state": stand or None,
+             # Und der Verlauf des Vorgangs (Akte), aus demselben Grund.
+             **({"timeline": zeitleiste} if zeitleiste else {}),
+             **({"key_facts": eckdaten} if eckdaten else {}),
              # Und die Marke der Rückfrage: Ohne sie sähe der Turn beim
              # Wiederöffnen aus wie eine Antwort ohne Treffer.
              **({"unclear": True} if unclear else {})}, ensure_ascii=False)
@@ -5175,6 +5189,41 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 debatten_rows = [d for d in debatten_rows
                                   if d.get("zu_beschluss") in candidate_ids
                                   or qa.nennt_ort(d, ort, store)]
+            # Plan „Akte“, Phase 3 (Schalter `akten-suche`): Die besten Treffer
+            # bestimmen die Akte des Vorgangs, und aus ihr kommt zusätzlich,
+            # was ähnlich klingende Suche nicht findet — die neuesten
+            # Beschlüsse, die passenden Wortbeiträge samt jüngster Aussagen der
+            # Verwaltung, die neuesten Pressemitteilungen (council/akte_suche.py).
+            # Die Akten-Beschlüsse halten den Ortsfilter ein wie alles andere.
+            # Nicht bei Sitzungsfragen und nicht, wenn die Frage eine
+            # Ratsperson nennt: Die fragen nach einer Sitzung bzw. nach den
+            # Beiträgen EINER Person, nicht nach einem Vorgang. Bei „Was hat
+            # Paul Behrens (SPD) zum Baumschutz gesagt?“ erzählte die Antwort
+            # mit Akte den Vorgang statt seiner Beiträge: Abdeckung 0,53 in
+            # 1 von 5 Läufen, ohne Akte in 4 von 6 (Rest 0,12–0,29; Gold-Lauf
+            # lokal, 02.10.2026). Bewusst `person`, nicht der Fragetyp: Die
+            # Partei in Klammern macht daraus `party`.
+            akte_beschluesse: list[dict] = []
+            akte: dict | None = None
+            if (features.an("akten-suche") and not einfach and typ != "session" and not person
+                    and candidates):
+                try:
+                    akte = akte_suche.material(store, q_suche, candidates)
+                    have = {c["id"] for c in candidates}
+                    akte_beschluesse = [
+                        d for d in akte["decisions"] if d["id"] not in have
+                        and (allowed_place_ids is None or d["id"] in allowed_place_ids)
+                    ][:akte_suche.BESCHLUESSE]
+                    candidates += akte_beschluesse
+                    schon = {d["id"] for d in debatten_rows}
+                    neu = [w for w in akte["speeches"] if w["id"] not in schon]
+                    qa.parteien_aufloesen(store, neu)
+                    debatten_rows += neu
+                    schon = {p["id"] for p in presse_rows}
+                    presse_rows += [p for p in akte["press"] if p["id"] not in schon]
+                    zeiten["akte"] = akte["akte"]
+                except Exception:  # noqa: BLE001 — die Akte ist Zusatz, nie Blocker
+                    _log.exception("Akte nicht geladen")
             # Beleg nachlesbar machen: jeder Beitrag bekommt die PDF-URL
             # seines Protokolls (Tims Wunsch 18.08.).
             qa.protokolle_verlinken(store, debatten_rows)
@@ -5280,6 +5329,17 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # einmal, dass es sie gibt: Sie hängt am Ereignis, nicht am
             # Prompt.
             grafik = qa.geld_grafik(store, geld) if geld else None
+            # Plan „Akte“, Phase 4 (Schalter `akten-zeitleiste`): Die Akte geht
+            # als Zeitleiste in den Prompt UND als Grafik unter die Antwort —
+            # beides nur, wenn die Antwort den Vorgang erzählt (nicht bei
+            # „zuletzt am Ort“ und nicht bei Anschlussfragen, die an zitierten
+            # Beschlüssen hängen).
+            # Die Grafik entsteht erst NACH der Antwort, aus den zitierten
+            # Beschlüssen (s. unten bei „Zuletzt“).
+            zeitleiste_an = bool(akte and features.an("akten-zeitleiste") and not einfach
+                                 and not latest_place and not vorher_ids)
+            zeitleiste_daten: dict | None = None
+            eckdaten: dict | None = None
             # 5a/I-06: die kondensierte Frage mitschicken — der Kontext-Chip im
             # Frontend zeigt, worauf sich Anschlussfragen beziehen.
             yield _sse({"type": "sources", "mode": mode, "qtype": typ,
@@ -5429,6 +5489,12 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     # gesetzte neueste Entscheidung bleibt davor.
                     anker = 1 if (latest_place or latest_topic) and ctx else 0
                     ctx = ctx[:anker] + nach + ctx[anker:QA_ANSWER_N - len(nach)]
+            if akte_beschluesse and not vorher_ids:
+                # Die Akten-Beschlüsse KOMMEN DAZU, statt Plätze der Suche zu
+                # nehmen: Was die Suche fand, bleibt; die Akte ergänzt die
+                # Stationen, die anders klingen (Bürgschaft, B-Plan, Vertrag).
+                im_ctx = {c["id"] for c in ctx}
+                ctx = ctx + [d for d in akte_beschluesse if d["id"] not in im_ctx]
             if typ == "history":
                 ctx = qa.sort_verlauf(ctx)
             if typ == "session" and sitzung_ids and not einfach:
@@ -5502,6 +5568,16 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             frage_thema = q_suche
             if einfach and frage_thema.strip() == q and verlauf:
                 frage_thema = verlauf[-1].get("question") or q
+            # Plan „Akte“, Phase 4 (Schalter `akten-zeitleiste`): die Akte als
+            # Zeitleiste in den Prompt (council/akte_suche.py::zeitleiste).
+            akte_prompt: dict | None = None
+            if zeitleiste_an and akte:
+                akte_prompt = {
+                    "decision_ids": {d["id"] for d in akte["decisions"]},
+                    "speech_ids": {w["id"] for w in akte["speeches"]},
+                    "press_ids": {p["id"] for p in akte["press"]},
+                    "announced": akte.get("announced") or [],
+                }
             if latest_place and not einfach:
                 # Bei „zuletzt beschlossen“ ist das Ergebnis vollständig aus
                 # Datum + Abstimmung ableitbar. Die Produktionsprobe zeigte,
@@ -5521,7 +5597,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                           duenn=(lage == "duenn"), eng=eng,
                                           sitzungen=sitzungen, ort=ort,
                                           zukunft_leer=zukunft_leer, stand=stand,
-                                          screen=bildschirm))
+                                          screen=bildschirm, akte=akte_prompt))
             try:
                 for delta in strom:
                     if not buf and delta:
@@ -5558,7 +5634,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                                  duenn=(lage == "duenn"), eng=eng,
                                                  sitzungen=sitzungen, ort=ort,
                                                  zukunft_leer=zukunft_leer,
-                                                 stand=stand, screen=bildschirm))
+                                                 stand=stand, screen=bildschirm,
+                                                 akte=akte_prompt))
                     buf = ans
                     yield _sse({"type": "replace", "text": qa.split_followups(ans)[0]})
                     sent = len(ans)
@@ -5568,6 +5645,43 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                         raise  # nichts gesendet → Netz-Fehlerpfad des Clients
                     yield _sse({"type": "abbruch"})
             answer_text, followups = qa.split_followups(buf)
+            if akte_prompt and akte is not None and answer_text.strip():
+                # „Zuletzt“ und die Zeitleiste kommen aus der Akte der ZITIERTEN
+                # Beschlüsse, nicht aus der des Sucheinstiegs: Die zog bei einem
+                # unscharfen Treffer fremde Vorgänge mit, und jede sechste
+                # Gold-Antwort bekam einen sachfremden „Zuletzt“-Satz
+                # (Stadionsingen, Mülltonnen; 02.10.2026, akte_suche.kern).
+                try:
+                    _, zitiert_jetzt = qa.resolve_citations(
+                        answer_text, {c["id"] for c in candidates})
+                    kern = akte_suche.kern(store, zitiert_jetzt, q_suche)
+                    # Nennt die Antwort die jüngste Station nicht, hängt der
+                    # Server sie an — deterministisch, ohne zweiten Modellaufruf.
+                    # Ein Beschluss nur, wenn das Modell ihn gesehen hat (sonst
+                    # trüge der Satz eine Nummer ohne Beleg).
+                    im_ctx = {c["id"] for c in ctx}
+                    station = akte_suche.letzte_station(
+                        [d for d in kern["decisions"] if d["id"] in im_ctx],
+                        kern["press"], kern["announced"])
+                    angehaengt = None
+                    if station and not akte_suche.nennt(answer_text, station):
+                        zuletzt = akte_suche.zuletzt_satz(station)
+                        yield _sse({"type": "token", "text": zuletzt})
+                        answer_text += zuletzt
+                        angehaengt = station
+                    zeitleiste_daten = akte_suche.zeitleiste_anzeige(
+                        kern["decisions"], kern["press"], kern["announced"])
+                    # Die Eckdaten über dem Verlauf: Abstimmung, Betrag, Stand
+                    # und nächster Termin — aus den Daten, nie vom Modell (das
+                    # lässt gerade diese Fakten weg, Gold-Runde 02.10.2026).
+                    eckdaten = akte_suche.key_facts(
+                        store.get_decisions_by_ids(zitiert_jetzt),
+                        [d for d in kern["decisions"] if d["id"] in im_ctx],
+                        kern["press"] + akte_suche.press_named(answer_text, presse_rows or []),
+                        kern["announced"], date.today().isoformat(), q_suche)
+                    eckdaten = akte_suche.without_station(eckdaten, angehaengt)
+                except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
+                    _log.exception("Kern-Akte nicht gebaut")
             if not followups:
                 followups = qa.fallback_followups(ctx)
             if followups:
@@ -5600,7 +5714,9 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                            planungen=planungen,
                                            grafik=grafik,
                                            sitzungen=sitzungen,
-                                           stand=stand_zitiert)
+                                           stand=stand_zitiert,
+                                           zeitleiste=zeitleiste_daten,
+                                           eckdaten=eckdaten)
             if not cited:
                 ratslotse.record_activity(user["id"], "ai_answer_empty", client_kind(request))
             yield _sse({"type": "done", "cited": cited, "timings": zeiten,
@@ -5609,6 +5725,11 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                         # zitierten. Die Karte erscheint ohnehin erst nach dem
                         # done, es flackert also nichts.
                         "records_state": stand_zitiert or None,
+                        # Der Verlauf des Vorgangs als Grafik — aus der Akte
+                        # der zitierten Beschlüsse (akte_suche.zeitleiste_anzeige).
+                        "timeline": zeitleiste_daten,
+                        # Die Eckdaten dazu (akte_suche.key_facts).
+                        "key_facts": eckdaten,
                         "conversation_id": conversation_id})
         except Exception:  # noqa: BLE001 — surface a terminal error to the client
             _log.exception("KI-Frage fehlgeschlagen")

@@ -189,3 +189,9 @@ jobs:
             # Vorprobe oben hat den Code geprüft, diese hier die Unit — eine
             # falsche EnvironmentFile, ein fehlendes venv, ein belegter Port.
             python3 ~/app/scripts/rauchprobe.py --basis http://127.0.0.1:8000
+            # Grundakten und Akten (docs/plan-akte.md): Auf Prod baut sie
+            # check_protocols.py jede Nacht, auf dev laufen keine Crons —
+            # ohne diesen Schritt bliebe der Schalter `akten-suche` hier
+            # wirkungslos. Ohne LLM, rund 12 Sekunden; scheitert er, ist der
+            # Deploy trotzdem gut (die Suche fällt auf den heutigen Weg zurück).
+            .venv/bin/python scripts/build_matters.py || echo "Grundakten nicht gebaut"

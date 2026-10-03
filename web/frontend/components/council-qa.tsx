@@ -50,6 +50,8 @@ import { Button, Input, toast } from "@/components/ui";
 import { KOPFLEISTE_HOEHE, TABLEISTE_HOEHE } from "@/components/nav";
 import { decisionHref } from "@/lib/routes";
 import { PrintButton } from "@/components/print-button";
+import { AkteZeitleiste, type AkteZeitleisteDaten } from "@/components/akte-zeitleiste";
+import { KeyFactsCard, type KeyFacts } from "@/components/key-facts";
 import { pfad, cn } from "@/lib/utils";
 import { isNativeApp } from "@/lib/platform";
 import { reportBadgeEvent } from "@/components/badges";
@@ -243,6 +245,10 @@ type Turn = {
   steckbriefe?: { name: string; slug: string; beschreibung: string }[];
   /** Die Grafik zur Antwort — Rohreihen aus dem Store, nie vom Modell. */
   chart?: QaGrafik | null;
+  /** Der Verlauf des Vorgangs (Akte), fertig gebaut vom Backend. */
+  timeline?: AkteZeitleisteDaten | null;
+  /** Die Eckdaten dazu: Abstimmung, Betrag, Stand, nächster Termin. */
+  key_facts?: KeyFacts | null;
 };
 
 /** Antwort vorlesen (5a/I-12, nur die TTS-Hälfte): SpeechSynthesis mit
@@ -902,6 +908,14 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                         ...(msg.records_state !== undefined
                           ? { records_state: msg.records_state as Turn["records_state"] }
                           : {}),
+                        // Die Zeitleiste entsteht erst nach der Antwort, aus
+                        // den zitierten Beschlüssen (akte_suche.kern).
+                        ...(msg.timeline !== undefined
+                          ? { timeline: (msg.timeline as AkteZeitleisteDaten | null) ?? null }
+                          : {}),
+                        ...(msg.key_facts !== undefined
+                          ? { key_facts: (msg.key_facts as KeyFacts | null) ?? null }
+                          : {}),
                         unclear: Boolean(msg.unclear) });
             // null heißt: Server konnte/durfte nicht (mehr) in dieses Gespräch
             // speichern (z. B. auf anderem Gerät gelöscht) — die tote id nicht
@@ -1452,7 +1466,8 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         records_state?: Turn["records_state"];
         research?: boolean; context?: string | null; unclear?: boolean;
         documents_read?: number; period?: string; premium_model?: boolean;
-        chart?: QaGrafik | null } | null };
+        chart?: QaGrafik | null; timeline?: AkteZeitleisteDaten | null;
+        key_facts?: KeyFacts | null } | null };
       setTurns((g.turns as DbTurn[]).map((t) => ({
         key: naechsterKey(),
         question: t.question, answer: t.answer, qtype: null, mode: null,
@@ -1463,6 +1478,8 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         planning_procedures: t.sources?.planning_procedures ?? [],
         sessions: t.sources?.sessions ?? [],
         chart: t.sources?.chart ?? null,
+        timeline: t.sources?.timeline ?? null,
+        key_facts: t.sources?.key_facts ?? null,
         records_state: t.sources?.records_state ?? null,
         cited: t.sources?.cited ?? [],
         // Die kondensierte Frage aus dem Snapshot, sonst die Originalfrage.
@@ -2424,6 +2441,15 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
               mitSteckbrief={(turn.steckbriefe?.length ?? 0) > 0} />
           )}
 
+          {/* Eckdaten (Plan „Akte“): Abstimmung, Betrag, Stand und nächster
+              Termin — direkt aus den Daten, weil das Modell genau diese
+              Fakten weglässt. Unter der Antwort, nicht darüber: Sie kommen
+              erst mit dem done-Ereignis, und darüber eingeschoben würde der
+              Text, den man gerade liest, nach unten springen. */}
+          {!beschaeftigt && turn.key_facts && !turn.fehler && !turn.abgebrochen && (
+            <KeyFactsCard facts={turn.key_facts} idToNum={idToNum} onJump={(id) => setPeekId(id)} />
+          )}
+
           {/* RG-09: „Das sagen die Parteien" — direkt unter dem Antworttext,
               vor Zeitstrahl/Geld/Karte. Lädt nach der Antwort nach; bei dünner
               Lage verschwindet er ganz (kein Leerzustand). Gate ≥1 statt ≥2:
@@ -2455,6 +2481,12 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
               Zahlen im Text, nicht zu den Fundstellen darunter. */}
           {!beschaeftigt && turn.chart && !turn.fehler && !turn.abgebrochen && (
             <GrafikKarte chart={turn.chart} />
+          )}
+
+          {/* Der Verlauf des Vorgangs (Plan „Akte“) — Stationen, Abstände und
+              Links kommen fertig vom Backend (council/akte_suche.py). */}
+          {!beschaeftigt && turn.timeline && !turn.fehler && !turn.abgebrochen && (
+            <AkteZeitleiste daten={turn.timeline} idToNum={idToNum} onJump={(id) => setPeekId(id)} />
           )}
 
           {!beschaeftigt && <Baustein turn={turn} idToNum={idToNum} onJump={(id) => setPeekId(id)} />}
@@ -3200,22 +3232,25 @@ function SteckbriefBaustein({ steckbriefe }: {
                 karussell && "w-full shrink-0 snap-start",
               )}
             >
-              <p className="flex items-center gap-1.5 font-mono text-[9px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
-                <BookOpen className="h-3 w-3" aria-hidden /> Worum geht es?
+              <p className="flex items-center gap-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                <BookOpen className="h-3.5 w-3.5" aria-hidden /> Worum geht es?
               </p>
-              <p className="mt-1.5 text-[13px] leading-relaxed text-foreground">
+              {/* Leserolle `quelle` (16), eine Stufe unter der Antwort (17):
+                  Bis 10/2026 stand hier 13 px — „ziemlich klein“ (Tim). Die
+                  Karte ist Inhalt, kein Hinweis; DESIGNSPRACHE § 3. */}
+              <p className="mt-1.5 text-quelle text-foreground">
                 <strong className="font-semibold">{s.name}:</strong>{" "}
                 {auf || !lang ? s.beschreibung : `${s.beschreibung.slice(0, 180).trimEnd()} …`}
               </p>
               <div className="mt-1 flex items-center gap-3">
                 {lang && (
                   <button type="button" onClick={() => setOffen(auf ? null : s.slug)}
-                    className="text-[11.5px] font-medium text-primary hover:underline">
+                    className="text-meta font-medium text-primary hover:underline">
                     {auf ? "Weniger" : "Mehr"}
                   </button>
                 )}
                 <Link href={`/council/entity?slug=${encodeURIComponent(s.slug)}`}
-                  className="text-[11.5px] font-medium text-primary hover:underline">
+                  className="text-meta font-medium text-primary hover:underline">
                   Alle Beschlüsse dazu
                 </Link>
               </div>
@@ -3395,7 +3430,9 @@ function Baustein({ turn, idToNum, onJump }: {
   // fünf Beschlüsse derselben Ratssitzung („Was wurde am 01.06. beschlossen?")
   // sind eine Aufzählung, kein Verlauf (Tims Befund 09.08.).
   const termine = new Set(zitierteQuellen.map((s) => s.session_date).filter(Boolean));
-  if (turn.qtype === "history" && zitierteQuellen.length >= 2 && termine.size >= 2) {
+  // Liegt die Akte-Zeitleiste vor, erzählt sie den Verlauf vollständiger —
+  // zwei Zeitstrahlen untereinander wären derselbe Verlauf zweimal.
+  if (turn.qtype === "history" && !turn.timeline && zitierteQuellen.length >= 2 && termine.size >= 2) {
     const stationen = [...zitierteQuellen].sort((a, b) => (a.session_date ?? "").localeCompare(b.session_date ?? ""));
     return (
       <div className="rounded-xl border border-border bg-card p-3.5">

@@ -309,7 +309,11 @@ def jahre_der_zahl(zeilen_: list[Zeile], z: Zahl, *, satz: bool = False) -> set[
     # In Antworten auch das Komma: „Ende 2025 lag er bei 337 Mio. €, 2024
     # waren es 295 Mio. €“ — und „ist 2026 gestiegen, von 3,74 € auf 4,04 €“
     # nennt für 3,74 € gar kein Jahr (gemessen 23.09., Gemini).
-    grenze = r"[.!?;](?=\s)|\n" + (r"|,(?=\s)" if satz else "")
+    # Kein Satzende nach „Mio.“, „Mrd.“, „Tsd.“, „ca.“, „Nr.“: „124,2 Mio. € →
+    # 176,8 Mio. €“ zerfiel sonst in zwei Sätze, und 176,8 Mio. bekam das Jahr
+    # der NÄCHSTEN Zeile (25.09.2026, Plan/Ist der Gewerbesteuer).
+    grenze = (r"(?<!Mio)(?<!Mrd)(?<!Tsd)(?<!ca)(?<!Nr)[.!?;](?=\s)|\n"
+              + (r"|,(?=\s)" if satz else ""))
     for m in re.finditer(grenze, zeile.text):
         if m.end() <= p:
             von = m.end()
@@ -317,9 +321,21 @@ def jahre_der_zahl(zeilen_: list[Zeile], z: Zahl, *, satz: bool = False) -> set[
             bis = m.start()
     # „stieg 2026 um 8 Prozent: von 3,74 € auf 4,04 €“ — der Ausgangswert
     # einer Veränderung trägt das Jahr davor, nicht das genannte.
-    if satz and re.search(r"\bvon\s*$", zeile.text[von:p]) and \
+    # Auch „von rund 269 Millionen auf rund 337 Millionen“ (GPT-6 Luna,
+    # 24.09.): Das „rund“ stand zwischen „von“ und Zahl, und der Ausgangswert
+    # galt als Wert des Endjahres.
+    if satz and re.search(r"\bvon\s+(?:rund|etwa|ca\.|knapp|gut|fast|über|mehr als)?\s*$|"
+                          r"\bvon\s*$", zeile.text[von:p]) and \
             re.match(r"[^.!?;]{0,25}\bauf\b", zeile.text[q:bis]):
         return set()
+    # „2025 rund 136 Mio. mehr als 2015: 222 Mio. gegenüber 86 Mio.“ (GPT-6
+    # Luna, 24.09.): Ein Paar „X gegenüber/statt Y“ nach zwei Jahren im Satz
+    # nennt die Werte in der Reihenfolge der Jahre — sonst galt 222 Mio. als
+    # Wert von 2015, dem letzten Jahr davor.
+    if satz:
+        paar = _paar_jahr(zeile, p, q, von, bis)
+        if paar is not None:
+            return {paar}
     # Erst der Satz — auch im Kontext: Die Beschluss-Zeilen von Frag den Rat
     # sind ein Absatz aus Titel, Datum, Vorlagentext; das letzte Jahr davor
     # in der ganzen Zeile gehört oft zu einem anderen Satz.
@@ -329,6 +345,32 @@ def jahre_der_zahl(zeilen_: list[Zeile], z: Zahl, *, satz: bool = False) -> set[
     if eigen is not None:
         return {eigen}
     return _jahre_der_eltern(zeilen_, zeile.eltern)
+
+
+_PAAR_WORT = r"(?:gegenüber|gegenueber|statt|anstatt|im vergleich zu|verglichen mit)"
+_EINHEIT = r"(?:\s*(?:mio\.?|millionen|mrd\.?|milliarden|tsd\.?|tausend))?(?:\s*(?:euro|€))?"
+_PAAR_VORNE = re.compile(_EINHEIT + r"\s*" + _PAAR_WORT + r"\s+(?:rund |etwa |knapp |gut )?\d", re.I)
+_PAAR_HINTEN = re.compile(_PAAR_WORT + r"\s+(?:rund |etwa |knapp |gut )?$", re.I)
+
+
+def _paar_jahr(zeile: Zeile, p: int, q: int, von: int, bis: int) -> int | None:
+    """Das Jahr eines Werts in „X gegenüber Y“, wenn der Satz davor zwei Jahre nennt."""
+    t = zeile.text
+    if _PAAR_VORNE.match(t[q:bis]):
+        stelle, index = p, 0
+    elif _PAAR_HINTEN.search(t[max(von, p - 40):p]):
+        stelle, index = p, 1
+    else:
+        return None
+    jahre = list(dict.fromkeys(j for (s, j) in zeile.jahre if von <= s < stelle))
+    if index == 1:
+        # Der zweite Wert: die Jahre vor dem ERSTEN Wert des Paares zählen.
+        m = _PAAR_HINTEN.search(t[max(von, p - 40):p])
+        vorne = max(von, p - 40) + (m.start() if m else 0)
+        jahre = list(dict.fromkeys(j for (s, j) in zeile.jahre if von <= s < vorne))
+    if len(jahre) != 2:
+        return None
+    return jahre[index]
 
 
 def _jahr_in_zeile(zeile: Zeile, p: int, q: int, von: int = 0, bis: int | None = None) -> int | None:

@@ -4532,7 +4532,9 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "topic",
                      zukunft_leer: bool = False,
                      stand: dict | None = None,
                      # ANS ENDE, aus demselben Grund wie `stand` darüber.
-                     screen: dict | None = None) -> tuple[list[dict], dict]:
+                     screen: dict | None = None,
+                     # Plan „Akte“, Phase 4 — ebenfalls ANS ENDE.
+                     akte: dict | None = None) -> tuple[list[dict], dict]:
     vtext = _verlauf_zeilen(verlauf)
     gespraech = (f"Dies ist eine Anschlussfrage in einem Gespräch. Bisher:\n{vtext}\n"
                  f"{ANSCHLUSS_REGEL}\n\n"
@@ -4566,8 +4568,27 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "topic",
             "angenommene/abgelehnte Beschlüsse klar von bloßen Berichten oder "
             f"Kenntnisnahmen.{anker}"
         )
+    # Plan „Akte“, Phase 4 (Schalter `akten-zeitleiste`): Was zum Vorgang
+    # gehört, steht EINMAL — als Zeitleiste im Block „AKTE“, nicht zusätzlich in
+    # den Blöcken für Beschlüsse, Debatten und Presse.
+    from council import akte_suche
+    akte_text = ""
+    if akte:
+        im = set(akte.get("decision_ids") or ())
+        akte_beschluesse = [c for c in candidates if c["id"] in im]
+        if akte_beschluesse:
+            beitrag_ids = set(akte.get("speech_ids") or ())
+            presse_ids = set(akte.get("press_ids") or ())
+            akte_text = akte_suche.zeitleiste(
+                akte_beschluesse, [d for d in debatten or [] if d.get("id") in beitrag_ids],
+                [x for x in presse or [] if x.get("id") in presse_ids],
+                akte.get("announced") or [])
+            candidates = [c for c in candidates if c["id"] not in im]
+            debatten = [d for d in debatten or [] if d.get("id") not in beitrag_ids]
+            presse = [x for x in presse or [] if x.get("id") not in presse_ids]
     prompt = prompts.render("qa_answer", question=question.strip()[:300],
-                            context=_build_context(candidates),
+                            context=_build_context(candidates) if candidates or not akte_text
+                            else "(alle passenden Beschlüsse stehen in der AKTE unten)",
                             # Die Haushalts-Regeln hängen am KONTEXT, nicht am
                             # Fragetyp: „Was hat das Rechnungsprüfungsamt
                             # beanstandet?" ist für das Analyse-Modell mit gutem
@@ -4582,8 +4603,10 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "topic",
                             # Zuletzt, damit die Zeit-Tatsachen direkt über der
                             # FRAGE stehen und nicht zwischen den Fachregeln
                             # verschwinden.
-                            + aktenstand_regel(stand),
-                            presse=_sitzungen_block(sitzungen)
+                            + aktenstand_regel(stand)
+                            + ((akte_suche.AKTE_REGEL_ENG if eng else akte_suche.AKTE_REGEL)
+                               if akte_text else ""),
+                            presse=akte_text + _sitzungen_block(sitzungen)
                             + _glossar_block(begriffe_fuer(question))
                             + _steckbrief_block(steckbriefe) + _presse_block(presse)
                             + _staedte_block(staedte)
@@ -4738,7 +4761,7 @@ def answer_question(question: str, candidates: list[dict], model: str = MODEL, t
                     geld: dict | None = None, sitzungen: list[dict] | None = None,
                     ort: dict | None = None, staedte: list[dict] | None = None,
                     zukunft_leer: bool = False, stand: dict | None = None,
-                  screen: dict | None = None):
+                  screen: dict | None = None, akte: dict | None = None):
     """Synthesise an answer from retrieved candidates. Returns ``(answer, cited_ids)``."""
     messages, extra = _answer_messages(question, candidates, typ, model, presse, verlauf,
                                        haushalt, debatten, anlagen, gross, steckbriefe, duenn, eng,
@@ -4749,7 +4772,7 @@ def answer_question(question: str, candidates: list[dict], model: str = MODEL, t
                                        # die Ratsfrage aus Lottis Fenster fragte
                                        # ohne ihn. Positionsweise durchgereicht
                                        # wie alles hier; deshalb ganz ans Ende.
-                                       staedte, zukunft_leer, stand, screen)
+                                       staedte, zukunft_leer, stand, screen, akte)
     resp = llm.chat_complete(model=model, _feature="qa_answer", temperature=0.2,
                              max_tokens=_answer_tokens(typ, gross, eng), messages=messages, **extra)
     answer = (resp.choices[0].message.content or "").strip()
@@ -4766,7 +4789,7 @@ def answer_stream(question: str, candidates: list[dict], model: str = MODEL, typ
                   geld: dict | None = None, sitzungen: list[dict] | None = None,
                   ort: dict | None = None, staedte: list[dict] | None = None,
                   zukunft_leer: bool = False, stand: dict | None = None,
-                  screen: dict | None = None):
+                  screen: dict | None = None, akte: dict | None = None):
     """Stream the answer text deltas (same prompt/context as answer_question) so the
     UI can render the answer as it is written. Citation resolution is the caller's
     job once the full text is assembled (see resolve_citations)."""
@@ -4779,7 +4802,7 @@ def answer_stream(question: str, candidates: list[dict], model: str = MODEL, typ
                                        # die Ratsfrage aus Lottis Fenster fragte
                                        # ohne ihn. Positionsweise durchgereicht
                                        # wie alles hier; deshalb ganz ans Ende.
-                                       staedte, zukunft_leer, stand, screen)
+                                       staedte, zukunft_leer, stand, screen, akte)
     yield from llm.chat_stream(model=model, _feature="qa_answer", temperature=0.2,
                                max_tokens=_answer_tokens(typ, gross, eng), messages=messages, **extra)
 

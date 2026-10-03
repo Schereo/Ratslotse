@@ -20723,7 +20723,7 @@ export interface operations {
             /**
              * @description Server-Sent Events (`text/event-stream`). Jeder Rahmen ist eine `data:`-Zeile mit einem JSON-Objekt, das ein Feld `type` trägt:
              *
-             *     - `step` — Fortschritt, `step` ist `context`, `answer` oder `archiv` (die Frage geht ins Beschluss-Archiv)
+             *     - `step` — Fortschritt, `step` ist `context`, `answer`, `archiv` (die Frage geht ins Beschluss-Archiv) oder `lookup` (Lotti schlägt in den Daten nach; `text` sagt, was — nur mit dem Schalter `lotti-werkzeuge`)
              *     - `token` — ein Stück Erklärungstext (`text`)
              *     - `replace` — ersetzt den bisher gesendeten Text vollständig
              *     - `done` — Schluss-Ereignis mit `mode` (`deterministic` für die Wege ohne Modell, `handoff` für eine Archivfrage, die ohne Modellaufruf direkt an `POST /council/ask` geht — der Strom trägt dann keinen Text und kein `conversation_id` —, sonst `explain`), `next` (`ratsfrage`, wenn die Frage ins Beschluss-Archiv gehört, sonst `null`), `next_page` (`{route, title}` einer anderen Haushalts-Seite, auf der die Sache ausführlich steht — geprüft gegen die bekannten Seiten und die Rechte des Kontos, sonst `null`), `glossary` (die geprüften Fachwörter im Kontext), `evidence` (die Papiere hinter den Haushaltszahlen, die im Prompt standen — je Eintrag `label`, `year` und `url`; höchstens fünf, leer bei den Wegen ohne Modell) und `timings`
@@ -24781,4 +24781,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 6ad84eed892a80c71d544f23cceb70f630ccacb3b47defd22f514cf83f1e65ed
+// vertrag-sha256: 58b4a7b0455e87b63361e4a2999c85989dc722afdef21375b87484828dc58861

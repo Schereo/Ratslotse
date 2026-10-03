@@ -62,6 +62,28 @@ class Feature:
 #:                     "wie vorher (tests/…/eval).",
 #:     ),
 FEATURES: dict[str, Feature] = {
+    "akten-suche": Feature(
+        key="akten-suche",
+        description="„Frag den Rat“ liest zu den besten Treffern die ganze Akte des "
+                    "Vorgangs mit — die neuesten Beschlüsse, die passenden Wortbeiträge "
+                    "samt jüngster Aussagen der Verwaltung, die neuesten "
+                    "Pressemitteilungen (council/akte_suche.py, docs/plan-akte.md).",
+        fertig_wenn="Phase 3 hat ihr Tor erreicht (Gold „Frag den Rat“ +10 Pp und "
+                    "mindestens drei Fälle mehr bestanden, Retrieval ohne Rückschritt) "
+                    "und lag zwei Wochen auf Prod an; dann ist die Akte der Normalweg.",
+    ),
+    "akten-zeitleiste": Feature(
+        key="akten-zeitleiste",
+        description="„Frag den Rat“ bekommt den Vorgang als datierte Zeitleiste (Block "
+                    "„AKTE“) samt angekündigter Stationen, erzählt ihn in zeitlicher Folge "
+                    "und nennt den aktuellen Stand; fehlt er, hängt der Server ihn an "
+                    "(Plan „Akte“, Phase 4). Unter der Antwort stehen der Verlauf als "
+                    "Zeitleiste und die Eckdaten (Abstimmung, Betrag, Stand, nächster "
+                    "Termin). Wirkt nur zusammen mit `akten-suche`.",
+        fertig_wenn="Phase 4 hat ihr Tor erreicht (Gold „Frag den Rat“: +10 Pp bei "
+                    "„Fakt genannt, wenn Material vorhanden“ gegenüber Phase 3, Fakten-Eval "
+                    "ohne Zunahme) und lag zwei Wochen auf Prod an.",
+    ),
     "mein-viertel": Feature(
         key="mein-viertel",
         description="„Mein Viertel“: Was sich in einem Ortsbereich in den nächsten "
@@ -126,6 +148,15 @@ FEATURES: dict[str, Feature] = {
                     "auffällig vielen Beanstandungen, gehen sie als Aufgaben an die Kontext- "
                     "und Regelarbeit; dann entscheidet Tim, ob die Stichprobe dauerhaft läuft "
                     "(Schalter raus) oder wegfällt (docs/lotti-selbstpruefung.md).",
+    ),
+    "lotti-werkzeuge": Feature(
+        key="lotti-werkzeuge",
+        description="Lotti darf nachschlagen: Zeitreihen, Haushaltszahlen anderer Seiten, "
+                    "Ratsbeschlüsse, und rechnen nur mit belegten Zahlen — höchstens drei "
+                    "Runden je Antwort, nur lesend (council/lotti_werkzeuge.py).",
+        fertig_wenn="Die mehrstufigen Fälle der Fakten-Eval (haushalt/mehrstufig) liegen "
+                    "deutlich über dem Stand ohne Werkzeuge, die übrigen Haushaltsfälle und "
+                    "die Wartezeit nicht schlechter — dann auf Prod an und Schalter raus.",
     ),
     "neuer-rat": Feature(
         key="neuer-rat",
