@@ -142,3 +142,71 @@ private final class RateLimitURLProtocol: URLProtocol {
     }
     override func stopLoading() {}
 }
+
+/// Die Karte „Aus der Geschäftsordnung" (seit #1642) reist im `sources`-Rahmen
+/// unter `rules_of_procedure`. Die Aufzeichnung trägt dieselbe Karte wie die
+/// Abschrift der Browsertests (`geschaeftsordnung-karte.json`), die
+/// `tests/test_browsertest_fixtures.py` gegen das Backend hält.
+@Test func sourcesFrameCarriesRulesOfProcedureCard() throws {
+    let quellen = try #require(try frames("ask-geschaeftsordnung").first { $0.type == "sources" })
+    let karte = try #require(RulesOfProcedureCard(sourcesFrame: quellen.fields))
+
+    #expect(karte.isCurrent)
+    #expect(karte.version.hasPrefix("Fassung vom 19.07.2021"))
+    #expect(karte.url?.host == "www.oldenburg.de")
+    #expect(karte.sections.map(\.label) == ["§ 15", "§ 32"])
+    #expect(karte.sections.first?.title == "Redeordnung, Redezeit")
+    #expect(karte.sections.last?.part == "Ratsausschüsse")
+    #expect(karte.sections.first?.url?.fragment == "page=7")
+    // Absätze stehen je auf einer Zeile — die Ansicht bricht genau dort um.
+    #expect(karte.sections.first?.text.contains("\n(2) ") == true)
+    #expect(karte.contents.isEmpty)
+}
+
+/// Ältere Server kennen das Feld nicht, eine Frage ohne Regel sendet `null` —
+/// beides heißt „keine Karte", nie ein Abbruch.
+@Test func rulesOfProcedureCardIsAbsentWithoutTheField() throws {
+    let alt = try #require(try frames("ask").first { $0.type == "sources" })
+    #expect(RulesOfProcedureCard(sourcesFrame: alt.fields) == nil)
+    #expect(RulesOfProcedureCard(sourcesFrame: ["rules_of_procedure": .null]) == nil)
+    #expect(RulesOfProcedureCard(sourcesFrame: ["rules_of_procedure": .string("kaputt")]) == nil)
+}
+
+@Test func rulesOfProcedureCardDropsBrokenSectionsAndKeepsUnknownState() throws {
+    let raw = #"""
+    {"rules_of_procedure": {
+      "version": "Fassung vom 19.07.2021. Der Rat hat eine neuere beschlossen.",
+      "state": "spaeter_erfunden",
+      "sections": [
+        {"label": "§ 4", "title": "Öffentlichkeit der Sitzungen", "text": "(1) Die Sitzungen des Rates sind öffentlich."},
+        {"label": "§ 99", "title": "ohne Wortlaut"}
+      ],
+      "contents": [{"label": "§ 1", "title": "Einberufung"}, {"title": "ohne Etikett"}]
+    }}
+    """#
+    let fields = try JSONDecoder().decode([String: JSONValue].self, from: Data(raw.utf8))
+    let karte = try #require(RulesOfProcedureCard(sourcesFrame: fields))
+
+    // Ein Zustand, den die App nicht kennt, heißt „gilt nicht sicher".
+    #expect(!karte.isCurrent)
+    #expect(karte.sections.map(\.label) == ["§ 4"])
+    #expect(karte.sections.first?.number == "§ 4")
+    #expect(karte.sections.first?.url == nil)
+    #expect(karte.contents.map(\.label) == ["§ 1"])
+    #expect(karte.title == "Geschäftsordnung des Rates")
+}
+
+/// Ohne Paragraf und ohne Verzeichnis belegt die Karte nichts — dann keine.
+/// Die Frage nach dem Ganzen darf dagegen nur das Verzeichnis tragen.
+@Test func rulesOfProcedureCardNeedsSectionsOrContents() throws {
+    let leer: [String: JSONValue] = ["rules_of_procedure": .object([
+        "version": .string("Fassung vom 19.07.2021"), "sections": .array([]), "contents": .array([]),
+    ])]
+    #expect(RulesOfProcedureCard(sourcesFrame: leer) == nil)
+
+    let verzeichnis: [String: JSONValue] = ["rules_of_procedure": .object([
+        "sections": .array([]),
+        "contents": .array([.object(["label": .string("§ 1"), "title": .string("Einberufung")])]),
+    ])]
+    #expect(RulesOfProcedureCard(sourcesFrame: verzeichnis)?.contents.count == 1)
+}
