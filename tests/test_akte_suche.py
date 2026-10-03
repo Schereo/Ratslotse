@@ -399,3 +399,12 @@ def test_presse_per_titel_kommt_mit_eigenem_deckel(themen, monkeypatch):
 def test_frische_bonus(tag, bonus):
     from datetime import date
     assert akte_suche.frische({"session_date": tag}, date(2026, 10, 3)) == pytest.approx(bonus, abs=1e-3)
+
+
+def test_recherche_nur_bei_langem_vorgang():
+    """Ab sechs Stationen bietet die Antwort die Gründliche Recherche an —
+    dort holt sie am meisten heraus (Gold-Set 02./03.10.2026)."""
+    assert akte_suche.research_offer(None) is None
+    assert akte_suche.research_offer({"count": 5, "span": "1 Jahr", "stations": []}) is None
+    assert akte_suche.research_offer({"count": 21, "span": "3 Jahre, 2 Monate", "stations": []}) \
+        == {"stations": 21, "span": "3 Jahre, 2 Monate"}

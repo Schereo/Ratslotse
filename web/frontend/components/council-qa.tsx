@@ -52,6 +52,7 @@ import { decisionHref } from "@/lib/routes";
 import { PrintButton } from "@/components/print-button";
 import { AkteZeitleiste, type AkteZeitleisteDaten } from "@/components/akte-zeitleiste";
 import { KeyFactsCard, type KeyFacts } from "@/components/key-facts";
+import { ResearchOffer, type ResearchOfferData } from "@/components/research-offer";
 import { pfad, cn } from "@/lib/utils";
 import { isNativeApp } from "@/lib/platform";
 import { reportBadgeEvent } from "@/components/badges";
@@ -249,6 +250,8 @@ type Turn = {
   timeline?: AkteZeitleisteDaten | null;
   /** Die Eckdaten dazu: Abstimmung, Betrag, Stand, nächster Termin. */
   key_facts?: KeyFacts | null;
+  /** Ein langer Vorgang — die Gründliche Recherche anbieten (Backend entscheidet). */
+  research_offer?: ResearchOfferData | null;
 };
 
 /** Antwort vorlesen (5a/I-12, nur die TTS-Hälfte): SpeechSynthesis mit
@@ -916,6 +919,9 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                         ...(msg.key_facts !== undefined
                           ? { key_facts: (msg.key_facts as KeyFacts | null) ?? null }
                           : {}),
+                        ...(msg.research_offer !== undefined
+                          ? { research_offer: (msg.research_offer as ResearchOfferData | null) ?? null }
+                          : {}),
                         unclear: Boolean(msg.unclear) });
             // null heißt: Server konnte/durfte nicht (mehr) in dieses Gespräch
             // speichern (z. B. auf anderem Gerät gelöscht) — die tote id nicht
@@ -1136,7 +1142,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     void lauf();
   };
 
-  const askDeep = async (question: string) => {
+  const askDeep = async (question: string, ausAngebot = false) => {
     const text = question.trim();
     if (text.length < 4 || einstellung === null || einstellung === undefined) return;
     try { localStorage.setItem("ratslotse:qa-benutzt", "1"); } catch { /* egal */ }
@@ -1157,7 +1163,10 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify({ question: text, conversation_id: gespraechId,
-                               history: baueVerlauf() }),
+                               history: baueVerlauf(),
+                               // Nur für die Statistik: aus dem Angebot unter
+                               // einer Antwort gestartet (research_offer).
+                               ...(ausAngebot ? { from_offer: true } : {}) }),
       });
       if (res.status === 429) {
         setTurns((ts) => ts.filter((t) => t.key !== key));
@@ -1955,6 +1964,10 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                 onDeepFortsetzen={() => { deepVerwerfen(t); void askDeep(t.question); }}
                 onDeepSchnell={() => { deepVerwerfen(t); void ask(t.question); }}
                 onGruendlich={() => void askDeep(t.context || t.question)}
+                // Aufgebraucht heißt: kein Angebot, das dann mit „ab morgen“ scheitert.
+                onRechercheAngebot={deepFrei === 0 ? undefined
+                  : () => void askDeep(t.context || t.question, true)}
+                rechercheFrei={deepFrei}
               />
             ))}
           </div>
@@ -2228,7 +2241,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
 
 /* ------------------------------------------------------------------------- */
 
-function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJump, onRetry, onEigeneFrage, onDazuFragen, onFrageStellen, onDeepStop, onDeepTeilbericht, onDeepVerwerfen, onDeepFortsetzen, onDeepSchnell, onGruendlich }: {
+function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJump, onRetry, onEigeneFrage, onDazuFragen, onFrageStellen, onDeepStop, onDeepTeilbericht, onDeepVerwerfen, onDeepFortsetzen, onDeepSchnell, onGruendlich, onRechercheAngebot, rechercheFrei }: {
   turn: Turn; turnIdx: number; istLetzter: boolean; loading: boolean;
   step: Step | null; word: string; flashId: number | null;
   onJump: (id: number) => void; onRetry: () => void; onEigeneFrage: () => void;
@@ -2238,6 +2251,8 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
   onDeepFortsetzen?: () => void; onDeepSchnell?: () => void;
   /** Dieselbe Frage gründlich nachrecherchieren — der Ausweg bei dünner Beleglage. */
   onGruendlich?: () => void;
+  onRechercheAngebot?: () => void;
+  rechercheFrei?: number | null;
 }) {
   const [showAll, setShowAll] = useState(false);
   // Ältere Turns beruhigen (Design 2⑤): Belege hinter der Kompaktzeile.
@@ -2487,6 +2502,15 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
               Links kommen fertig vom Backend (council/akte_suche.py). */}
           {!beschaeftigt && turn.timeline && !turn.fehler && !turn.abgebrochen && (
             <AkteZeitleiste daten={turn.timeline} idToNum={idToNum} onJump={(id) => setPeekId(id)} />
+          )}
+
+          {/* Ein langer Vorgang: die Gründliche Recherche anbieten — direkt
+              unter dem Verlauf, auf den sie sich bezieht. Nur am jüngsten
+              Turn: Nach einer Anschlussfrage wäre das Angebot veraltet. */}
+          {!beschaeftigt && istLetzter && turn.research_offer && onRechercheAngebot
+            && !turn.fehler && !turn.abgebrochen && (
+            <ResearchOffer offer={turn.research_offer} frei={rechercheFrei}
+              onStart={onRechercheAngebot} />
           )}
 
           {!beschaeftigt && <Baustein turn={turn} idToNum={idToNum} onJump={(id) => setPeekId(id)} />}

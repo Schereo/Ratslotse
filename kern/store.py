@@ -4688,6 +4688,11 @@ class Store:
         ("assistant_nudge_dismissed", "Lotti: Anklopfen weggeklickt"),
         ("search", "Suchbegriffe eingegeben"),
         ("research", "Tiefen-Recherchen"),
+        # Unter der Antwort eines langen Vorgangs (akte_suche.research_offer):
+        # wie oft angeboten, wie oft angenommen — die Messung zur Idee vom
+        # 03.10.2026, dass die Recherche dort mehr herausholt.
+        ("research_offer_shown", "Recherche angeboten"),
+        ("research_offer_taken", "davon angenommen"),
         ("analysis", "Auswertungen geöffnet"),
         ("map", "Karte geöffnet"),
         ("topic_created", "Themen angelegt"),

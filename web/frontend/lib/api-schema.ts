@@ -9480,6 +9480,11 @@ export interface components {
         DeepResearchBody: {
             /** Conversation Id */
             conversation_id?: number | null;
+            /**
+             * From Offer
+             * @default false
+             */
+            from_offer: boolean;
             /** History */
             history?: components["schemas"]["AskTurn"][];
             /** Question */
@@ -24781,4 +24786,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 58b4a7b0455e87b63361e4a2999c85989dc722afdef21375b87484828dc58861
+// vertrag-sha256: f7124b2ca1439323e162841e35038ccd95ff698acc18ee4a0966352f8b4115ec

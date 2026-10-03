@@ -770,3 +770,28 @@ def key_facts(cited: list[dict], decisions: list[dict], press: list[dict],
                          "vote_counts": vote_counts,
                          "title": " ".join(str(main.get("title") or "").split())},
             "amounts": amounts, "latest": latest, "next": nxt}
+
+
+# --------------------------------------------------------------------------- #
+# Die Gründliche Recherche anbieten, wo sie mehr herausholt
+# --------------------------------------------------------------------------- #
+
+#: Ab so vielen Stationen im Verlauf bietet die Antwort die Gründliche
+#: Recherche an. Gemessen am Gold-Set (02./03.10.2026, Prod-Abzug, Richter
+#: Claude): Bei denselben Vorgangsfragen nennt die Recherche mit Akte 63,7 %
+#: der Pflichtfakten, „Frag den Rat“ rund 51–56 %; von den Fakten, deren Beleg
+#: im Kontext steht, schreibt die Recherche gut 70 % hin, die kurze Antwort gut
+#: die Hälfte. Der Abstand ist am größten, wo viel Stoff liegt — ein langer
+#: Vorgang. Sechs Stationen sind ein Vorgang mit Geschichte, nicht ein
+#: Beschluss mit Vorberatung.
+RECHERCHE_AB = 6
+
+
+def research_offer(timeline: dict | None) -> dict | None:
+    """``{"stations": 21, "span": "3 Jahre, 2 Monate"}`` für einen langen
+    Vorgang — sonst ``None``. Die Oberfläche bietet damit die Gründliche
+    Recherche an; ob jemand annimmt, zählt die Nutzungsstatistik
+    (``research_offer_shown`` / ``research_offer_taken``)."""
+    if not timeline or int(timeline.get("count") or 0) < RECHERCHE_AB:
+        return None
+    return {"stations": int(timeline["count"]), "span": str(timeline.get("span") or "")}
