@@ -25,7 +25,9 @@ Phase 5 raus — erst nachdem es gemessen ist.
 from __future__ import annotations
 
 import logging
+import math
 import re
+from datetime import date
 from typing import Any
 
 log = logging.getLogger("council.akte_suche")
@@ -55,10 +57,24 @@ BESCHLUESSE = 16
 #: Prompt verlängert und die Antwort das Material ohnehin nicht ausschöpft
 #: (Phase 4). Seit 02.10.2026 50 (Messung bei ``BESCHLUESSE``).
 BEITRAEGE = 50
+#: Bonus auf die Vektor-Nähe eines Beitrags, je jünger, desto mehr
+#: (``frische``). Gemessen ohne Sprachmodell (``eval/run_akten.py --methode
+#: auswahl``, 03.10.2026): Alle 12 Debatten-Belege, die die Auswahl verlor,
+#: stammten aus 2025/26 — in einer Akte mit 250 Beiträgen über Jahre gewinnt
+#: nach reiner Nähe oft der ältere. Debatten-Belege 40 → 45 von 52 bei 0,3
+#: (0,5 gleich, 1,0 → 43, 3,0 — praktisch „die neuesten“ — wieder 40). Die
+#: Mischung macht es; 0,3 ist der kleinste Wert mit dem vollen Gewinn.
+FRISCH = 0.3
 #: Dazu immer so viele jüngste Aussagen der Verwaltung.
 VERWALTUNG = 4
 #: Die neuesten — nach Vektor-Nähe gewählt wurde es schlechter (s. ``BESCHLUESSE``).
 PRESSE = 8
+#: Dazu höchstens so viele Mitteilungen, deren Titel die Frage trägt.
+#: Gemessen (03.10.2026, ohne Sprachmodell): Presse-Belege 22 → 27 von 34
+#: (Grundsteuer +3, Stadion +2: „Bürgerbegehren“, „nächste Hürde“). Ein Treffer
+#: kann daneben liegen („Verbindungsstraße zum Klinikum“) — der Titel trägt
+#: dann nur das eine seltene Wort.
+PRESSE_TITEL = 4
 #: So viele angekündigte Stationen (Beratungsfolge nach dem letzten
 #: protokollierten Beschluss) höchstens.
 ANGEKUENDIGT = 6
@@ -67,6 +83,16 @@ ANGEKUENDIGT = 6
 def _ist_verwaltung(w: dict) -> bool:
     sprecher = (w.get("speaker") or "").lower()
     return w.get("kind") == "pledge" or sprecher.startswith("verwaltung")
+
+
+def frische(w: dict, heute: date) -> float:
+    """Der Bonus für einen jungen Beitrag: ``FRISCH`` am Sitzungstag, nach
+    einem Jahr gut ein Drittel davon (e^-1), ohne Datum nichts."""
+    try:
+        alter = (heute - date.fromisoformat(str(w.get("session_date") or "")[:10])).days
+    except ValueError:
+        return 0.0
+    return FRISCH * math.exp(-max(alter, 0) / 365.0)
 
 
 def _naechste(store: Any, frage: str, beitraege: list[dict]) -> list[dict]:
@@ -87,7 +113,9 @@ def _naechste(store: Any, frage: str, beitraege: list[dict]) -> list[dict]:
             return beitraege[:BEITRAEGE]
         qv = emb.embed([frage])[0]
         werte = mat[[zeile[w["id"]] for w in mit]] @ qv
-        rang = sorted(range(len(mit)), key=lambda i: -float(werte[i]))[:BEITRAEGE]
+        heute = date.today()
+        werte = [float(werte[i]) + frische(mit[i], heute) for i in range(len(mit))]
+        rang = sorted(range(len(mit)), key=lambda i: -werte[i])[:BEITRAEGE]
         return [mit[i] for i in rang]
     except Exception:  # noqa: BLE001 — ohne Vektoren die neuesten
         return beitraege[:BEITRAEGE]
@@ -135,6 +163,16 @@ def material(store: Any, frage: str, candidates: list[dict]) -> dict:
 
     presse = store.presse_by_ids(sorted(ids.get("presse", [])))
     presse.sort(key=lambda p: str(p.get("date") or ""), reverse=True)
+    # Dazu Mitteilungen, deren Titel jedes seltene Wort der Frage trägt: Sie
+    # gehören zur Sache, auch wenn keine Themen-Erwähnung sie anklebt — die
+    # Grundsteuer-Akte hatte keine einzige, „Keine höheren Grundsteuern in
+    # Oldenburg“ fehlte. Mit eigenem Deckel, damit sie die neuesten der Akte
+    # nicht verdrängen (``PRESSE_TITEL``).
+    from council import qa
+    titel = store.presse_by_ids(qa.press_title_ids(store, frage))
+    titel.sort(key=lambda p: str(p.get("date") or ""), reverse=True)
+    schon = {p["id"] for p in presse[:PRESSE]}
+    presse = presse[:PRESSE] + [p for p in titel if p["id"] not in schon][:PRESSE_TITEL]
 
     # Angekündigt: Stationen der Beratungsfolge NACH dem jüngsten
     # protokollierten Beschluss der Akte. Das Ratsinformationssystem trägt das
@@ -146,7 +184,8 @@ def material(store: Any, frage: str, candidates: list[dict]) -> dict:
                  if str(st.get("date") or "")[:10] > neuester]
     stationen.sort(key=lambda st: str(st.get("date") or ""))
 
-    return {"decisions": decisions, "speeches": speeches, "press": presse[:PRESSE],
+    return {"decisions": decisions, "speeches": speeches,
+            "press": presse[:PRESSE + PRESSE_TITEL],
             "announced": stationen[:ANGEKUENDIGT],
             "akte": {"matters": len(akte["matters"]),
                      "entities": [e["name"] for e in akte["entities"]],

@@ -5215,9 +5215,14 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 try:
                     akte = akte_suche.material(store, q_suche, candidates)
                     have = {c["id"] for c in candidates}
+                    # OHNE Ortsfilter: Die Akte hängt an einem Einstieg, der
+                    # ihn schon bestanden hat. Ein zweites Mal gefiltert, warf
+                    # er bei „Bahnübergang Am Stadtrand in Ofenerdiek“ genau
+                    # die jüngsten Stationen weg — Interimslösungen, Rat vom
+                    # 29.06., Sicherheitsaudit —, weil sie nicht als Ofenerdiek
+                    # verortet sind (Gold-Lauf 03.10.2026: +5 Belege).
                     akte_beschluesse = [
                         d for d in akte["decisions"] if d["id"] not in have
-                        and (allowed_place_ids is None or d["id"] in allowed_place_ids)
                     ][:akte_suche.BESCHLUESSE]
                     candidates += akte_beschluesse
                     schon = {d["id"] for d in debatten_rows}
@@ -5509,6 +5514,18 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 # und genau das Anschneiden ist der Anlass dieses Fragetyps.
                 im_set = set(sitzung_ids)
                 ctx = [c for c in candidates if c["id"] in im_set][:QA_SITZUNG_N]
+            if not einfach:
+                # Änderungs- und GO-Anträge gehören zum Beschluss: „Auf Antrag
+                # der FDP auch Vermietende im Beirat“ stand bisher nur im
+                # Suchindex, nie im Kontext. Gold-Läufe 03.10.2026: Fakten aus
+                # Teilabstimmungen ohne sie 0 von 18, mit ihnen 9 von 12.
+                try:
+                    teile = store.subvotes_of(ctx)
+                    for c in ctx:
+                        if teile.get(c["id"]):
+                            c["subvotes"] = teile[c["id"]]
+                except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
+                    _log.exception("Teilabstimmungen nicht geladen")
             if documents_enabled and not einfach:
                 try:  # Vorlagen-Auszüge (Sachverhalt) beilegen — best-effort
                     texts = store.vorlage_texts_for([c.get("template_number") or "" for c in ctx])

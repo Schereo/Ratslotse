@@ -346,6 +346,61 @@ def test_eckdaten_stellen_routine_hintan():
                                 "Stadionneubau?")["decision"]["decision_id"] == 21027
 
 
+# --------------------------------------------------------------------------- #
+# Gold-Runde 03.10.2026: Teilabstimmungen, Stadtteile, Presse per Titel, Frische
+# --------------------------------------------------------------------------- #
+
+def test_teilabstimmungen_haengen_am_beschluss(tmp_path):
+    """Der SPD-Änderungsantrag gehört zum Rats-TOP 5 (Beschluss 11), nicht
+    zum Ausschuss-Beschluss 10 — verbunden über Sitzung und TOP."""
+    st = store_bauen(tmp_path)
+    teile = st.subvotes_of(st.get_decisions_by_ids([10, 11]))
+    assert list(teile) == [11]
+    assert teile[11][0]["title"] == "Änderungsantrag der SPD-Fraktion"
+
+
+def test_teilabstimmung_steht_im_kontext():
+    """Wärmewende-Beirat: „Auf Antrag der FDP auch Vermietende“ stand bisher
+    nur im Suchindex, nie im Kontext der Antwort."""
+    from council import qa
+    beschluss = {"id": 20958, "title": "Wärmewende-Beirat", "committee": "Rat",
+                 "session_date": "2026-06-01", "outcome": "accepted",
+                 "subvotes": [{"title": "Änderungsantrag der FDP-Fraktion: Aufnahme der "
+                                        "Vermieterseite in den Beirat", "outcome": "accepted",
+                               "vote": "majority", "no_votes": 18},
+                              {"title": "Geschäftsordnungsantrag der BSW-Fraktion auf Vertagung",
+                               "outcome": "rejected", "vote": "majority", "no_votes": 45}]}
+    ctx = qa._build_context([beschluss])
+    assert ("Dazu abgestimmt: Änderungsantrag der FDP-Fraktion: Aufnahme der Vermieterseite "
+            "in den Beirat (angenommen, mehrheitlich, 18 Gegenstimmen); "
+            "Geschäftsordnungsantrag der BSW-Fraktion auf Vertagung "
+            "(abgelehnt, mehrheitlich, 45 Gegenstimmen)") in ctx
+
+
+def test_ein_stadtteil_klebt_keine_akten(themen, monkeypatch):
+    """Ofenerdiek hing nur an 14 Akten — unter der Größengrenze — und klebte
+    Starkregen und Bürgerhaus an den Bahnübergang."""
+    from council import matters
+    assert "Schlossplatz" in [e["name"] for e in matters.akte_von(themen, [20])["entities"]]
+    monkeypatch.setattr(matters, "_stadtteile", lambda: {"schlossplatz"})
+    assert "Schlossplatz" not in [e["name"] for e in matters.akte_von(themen, [20])["entities"]]
+
+
+def test_presse_per_titel_kommt_mit_eigenem_deckel(themen, monkeypatch):
+    """„Keine höheren Grundsteuern“ klebte über kein Thema an der Akte."""
+    from council import qa
+    monkeypatch.setattr(qa, "press_title_ids", lambda store, frage, **kw: [32, 30])
+    m = akte_suche.material(themen, "Spielplatz Schlossplatz?", [{"id": 20}])
+    assert [p["id"] for p in m["press"]] == [30, 32]      # Akte zuerst, Titel-Treffer dazu
+
+
+@pytest.mark.parametrize("tag, bonus", [
+    ("2026-10-03", 0.3), ("2025-10-03", 0.3 * 0.3679), ("", 0.0), ("2026-12-01", 0.3)])
+def test_frische_bonus(tag, bonus):
+    from datetime import date
+    assert akte_suche.frische({"session_date": tag}, date(2026, 10, 3)) == pytest.approx(bonus, abs=1e-3)
+
+
 def test_recherche_nur_bei_langem_vorgang():
     """Ab sechs Stationen bietet die Antwort die Gründliche Recherche an —
     dort holt sie am meisten heraus (Gold-Set 02./03.10.2026)."""
