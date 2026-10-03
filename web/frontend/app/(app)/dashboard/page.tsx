@@ -125,7 +125,7 @@ export default function DashboardPage() {
         className={cn("mt-6", STAFFEL)}
         style={staffelStil(1)}
         hinweise={[
-          // Am Wahlabend das Dringendste — der Schalter `wahlabend` entscheidet.
+          // Am Wahlabend das Dringendste — nur um den Wahltag (`election.prominent`).
           { key: "wahlabend", label: "Wahlabend", node: <WahlabendHinweis /> },
           { key: "live", label: "Sitzung läuft", node: <LiveBanner /> },
           { key: "pause", label: "Sitzungspause", node: <SitzungspauseBanner /> },

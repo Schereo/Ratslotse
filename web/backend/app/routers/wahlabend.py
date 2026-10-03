@@ -307,6 +307,7 @@ def wahlen(user: dict | None = Depends(optional_user), store: Store = Depends(ge
             slug=w.slug, short_title=w.short_title, title=w.title, date=w.date,
             polls_close=w.polls_close.isoformat(), kind=w.kind, status=w.status,
             path=_pfad_zu(w), summary=archive.summary(w), focus=w.slug == fokus.slug,
+            result_status=archive.result_status(w),
             tipp_path=tipp, tipp_locked=gesperrt, top=archive.top(w),
         ))
     return ElectionList(elections=zeilen)

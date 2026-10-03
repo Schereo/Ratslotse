@@ -244,6 +244,29 @@ def _mayor_summary(wahl: elections.Election) -> str | None:
     return f"{text} · Stichwahl" if stand.runoff else text
 
 
+def result_status(wahl: elections.Election) -> str:
+    """„amtlich" | „vorlaeufig" — was der eingefrorene Stand dieser Wahl ist.
+
+    ``scripts/wahl_einfrieren.py --stand amtlich`` vermerkt es nach der
+    Feststellung durch den Wahlausschuss: bei einer Ratswahl in der
+    Meta-Datei (``quelle.stand``), bei einer Mehrheitswahl in ``quelle.json``.
+    Ohne Archiv oder ohne Vermerk ist es vorläufig — „amtlich" zu behaupten,
+    wo es niemand geprüft hat, wäre der schlimmere Fehler.
+    """
+    ordner = wahl.archive_folder
+    if ordner is None or not ordner.is_dir():
+        return "vorlaeufig"
+    try:
+        if wahl.kind == "council":
+            meta = json.loads(reference.meta_path(ordner).read_text(encoding="utf-8"))
+            stand = (meta.get("quelle") or {}).get("stand")
+        else:
+            stand = json.loads((ordner / "quelle.json").read_text(encoding="utf-8")).get("stand")
+    except (OSError, ValueError):
+        return "vorlaeufig"
+    return "amtlich" if stand == "amtlich" else "vorlaeufig"
+
+
 def reset() -> None:
     night.cache_clear()
     districts.cache_clear()

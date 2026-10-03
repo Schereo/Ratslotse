@@ -88,8 +88,11 @@ def test_app_config_nennt_die_wahl_im_fokus(client):
     kaputte Registry darf das nicht auslösen."""
     wahl = client.get("/api/app-config").json().get("election")
     assert wahl is not None
-    assert set(wahl) == {"slug", "short_title", "date", "polls_close", "kind", "path"}
+    assert set(wahl) == {"slug", "short_title", "date", "polls_close", "kind", "path",
+                         "prominent", "result_status"}
     assert wahl["kind"] in ("council", "mayor")
+    assert isinstance(wahl["prominent"], bool)
+    assert wahl["result_status"] in ("amtlich", "vorlaeufig")
     assert wahl["path"].startswith("/wahlabend")
 
 

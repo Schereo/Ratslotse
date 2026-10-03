@@ -113,9 +113,16 @@ FEATURES: dict[str, Feature] = {
         description="Der Wahlabend zur Ratswahl am 13.09.2026: Auszählungsstand, "
                     "Sitze je Liste und Wahlbereich, wer nach NKWG gerade drin wäre "
                     "— aus den Open-Data-CSVs des Votemanagers der Stadt.",
-        fertig_wenn="Das amtliche Endergebnis steht (Wahlausschuss, voraussichtlich "
-                    "in der Woche nach dem 13.09.2026); danach ist die Seite ein "
-                    "Rückblick und braucht keinen Schalter mehr.",
+        # Seit 10/2026 regelt dieser Schalter NICHT mehr, wie laut die Wahl ist —
+        # das tut der Kalender (`elections.prominent`: Hinweis auf Heute und
+        # Streifen auf der Startseite nur eine Woche vor bis drei Tage nach dem
+        # Wahlschluss). Er ist nur noch der Notaus für den ganzen Bereich:
+        # /wahlen, /wahlabend, Stichwahl, Wahlkarte in Mein Viertel.
+        fertig_wenn="Die Wahlseiten sind ein dauerhafter Bereich (/wahlen, Reiter "
+                    "„Wahlen“ in der Analyse); die Prominenz kommt aus der Wahl-Phase. "
+                    "Er kann weg, sobald keine App-Fassung im Store mehr `wahlabend` "
+                    "abfragt (Karten-Ebene in CityMapView, Mehr-Zeile) — dann alle "
+                    "Abfragen entfernen und APP_MIN_BUILD nachziehen.",
     ),
     "lotti-assistentin": Feature(
         key="lotti-assistentin",
@@ -173,8 +180,13 @@ FEATURES: dict[str, Feature] = {
                     "Liste, zur OB-Stichwahl am 27.09. die Prozente der beiden Kandidaturen, "
                     "jeweils dazu die Wahlbeteiligung; Live-Vergleich und Scoreboard "
                     "(docs/plan-tippspiel-ratswahl.md) — ohne Konto, per QR-Link.",
-        fertig_wenn="Auch der Stichwahl-Abend ist vorbei und das Scoreboard ein Rückblick "
-                    "statt eines laufenden Spiels.",
+        # Seit 10/2026: Die Einladungen zum Tippen hängen an der Wahl-Phase
+        # (nur, solange die Wahl prominent ist bzw. in /wahlen noch nicht vorbei),
+        # die Scoreboards bleiben als Rückblick erreichbar.
+        fertig_wenn="Die Scoreboards 2026 sind Rückblick, Einladungen kommen nur noch "
+                    "aus der Wahl-Phase. Er kann weg, wenn das Tippspiel zu einer "
+                    "künftigen Wahl ohne Freischaltung starten darf — dann die "
+                    "Abfragen in /tipp und /api/tipp entfernen.",
     ),
 }
 

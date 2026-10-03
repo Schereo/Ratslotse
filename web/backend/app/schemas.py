@@ -159,6 +159,16 @@ class AppElectionOut(BaseModel):
     kind: str
     #: Der Pfad, auf dem diese Wahl zu sehen ist.
     path: str
+    #: Darf sie gerade laut sein — Hinweis oben auf Heute, Streifen auf der
+    #: Startseite? Nur in der Woche vor und drei Tage nach dem Wahlschluss
+    #: (``elections.prominent``). Sonst führt nur der dauerhafte Ort
+    #: (``/wahlen``) hin. Vorgabe ``False``: Wer das Feld nicht kennt, wirbt
+    #: lieber gar nicht als zur falschen Zeit.
+    prominent: bool = False
+    #: „amtlich" | „vorlaeufig" — aus dem eingefrorenen Stand
+    #: (``archive.result_status``). Die Texte behaupten nur dann „kein
+    #: amtliches Ergebnis", wenn es keins gibt.
+    result_status: str = "vorlaeufig"
 
 
 class AppConfigOut(BaseModel):
