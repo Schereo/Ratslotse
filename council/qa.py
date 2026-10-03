@@ -2003,6 +2003,27 @@ def markiere_veraltete(store, candidates: list[dict],
         }
 
 
+#: So viele Teilabstimmungen je Beschluss höchstens im Kontext.
+TEILABSTIMMUNGEN = 5
+_TEIL_ERGEBNIS = {"accepted": "angenommen", "rejected": "abgelehnt", "postponed": "vertagt",
+                  "settled": "gilt als behandelt", "no_decision": "kein Beschluss",
+                  "noted": "zur Kenntnis genommen"}
+
+
+def _teilabstimmung(t: dict) -> str:
+    """„Änderungsantrag der FDP-Fraktion: Aufnahme der Vermieterseite
+    (angenommen, mehrheitlich, 18 Gegenstimmen)“."""
+    from council.akte_suche import _stimmen_text
+
+    teile = [_TEIL_ERGEBNIS.get(str(t.get("outcome") or ""), "")]
+    stimmen = _stimmen_text(t)
+    if stimmen:
+        teile.append(stimmen)
+    titel = " ".join(str(t.get("title") or "").split())[:160]
+    rest = ", ".join(p for p in teile if p)
+    return f"{titel} ({rest})" if rest else titel
+
+
 def _build_context(candidates: list[dict]) -> str:
     """Eine Zeile pro Beschluss: id, Titel, Gremium, Datum, Ergebnis + Kern des
     Beschlusstexts. 450 Zeichen statt 200 und die Metadaten machen die Antworten
@@ -2040,6 +2061,9 @@ def _build_context(candidates: list[dict]) -> str:
             suffix += f" — Abstimmung: {raw_result[:180]}"
         if c.get("amount_eur"):
             suffix += f" — Volumen: {c['amount_eur']:,.0f} €".replace(",", ".")
+        if c.get("subvotes"):
+            suffix += " — Dazu abgestimmt: " + "; ".join(
+                _teilabstimmung(t) for t in c["subvotes"][:TEILABSTIMMUNGEN])
         if c.get("beteiligung"):
             suffix += (f" — BÜRGERBETEILIGUNG LÄUFT: {c['beteiligung']} "
                        f"(Stellungnahme auf oldenburg.planungsbeteiligung.de möglich — "

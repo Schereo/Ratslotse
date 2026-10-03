@@ -517,6 +517,14 @@ def _run(job: DeepJob, ratslotse_db: str, council_db: str) -> None:
             _gestoppt(job, ratslotse_db)
             return
         _emit(job, {"type": "phase", "phase": "lesen", "dokumente": gelesen})
+        # Änderungs- und GO-Anträge gehören zum Beschluss (wie in /ask).
+        try:
+            teile = store.subvotes_of(candidates)
+            for c in candidates:
+                if teile.get(c["id"]):
+                    c["subvotes"] = teile[c["id"]]
+        except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
+            _log.exception("deep %s: Teilabstimmungen nicht geladen", job.id)
         try:
             from council import vorlagen as vorlagen_mod
             texts = store.vorlage_texts_for([c.get("template_number") or "" for c in candidates])
