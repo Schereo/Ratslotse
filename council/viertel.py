@@ -29,6 +29,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+from datetime import date
 
 from council.impact import vorlagen_kern
 from council.locations import affects_whole_city
@@ -59,13 +60,66 @@ CATEGORIES = ("housing", "traffic", "school_childcare", "green", "culture_sport_
 #: kein Vorlagentext den Ort belegt — knapp unter der Tafel-Schwelle.
 NAMESAKE_CAP = PROJECT_MIN_CONFIDENCE - 1
 
+#: So sicher muss sich der Richter bei MINDESTENS einem Beschluss eines
+#: Vorhabens gewesen sein, dass es hierher gehört. Die Bündelung vergibt
+#: ihre eigene Sicherheit — und hob am 03.10.2026 Vorhaben auf die Tafel,
+#: bei denen der Richter für jeden einzelnen Beschluss gezweifelt hatte:
+#: „Schulwegsicherheit Hermann-Ehlers-Schule" in Osternburg (82, die
+#: Kampstraße stand dort nur als Vergleich), „Kulturplattform Bloherfel.de"
+#: (82, ein Bericht), B-Plan 858 in Bürgeresch (78), Eßkamp in Dietrichsfeld
+#: (78) und Ofenerdiek (80). Die Bündelung sieht die Orte nicht, nur die
+#: Texte; sie kann den Zweifel des Richters nicht auflösen, nur übersehen.
+REVIEW_FLOOR = 85
+
+
+def _prompt_stand() -> str:
+    """Fingerabdruck des Richter-Prompts. Ändert sich der Prompt, sind die
+    gecachten Urteile nach der alten Regel gefällt — der Hash der Eingabe
+    muss das wissen, sonst wirkt eine Regeländerung nur auf neue Beschlüsse."""
+    return hashlib.sha256(prompts.render("district_review_system").encode("utf-8")).hexdigest()[:8]
+
+
 def source_hash(k: dict) -> str:
-    """Hash der Eingabe eines Kandidaten — ändert sich, wenn Text oder Orte sich ändern."""
+    """Hash der Eingabe eines Kandidaten — ändert sich, wenn Text, Orte oder
+    der Richter-Prompt sich ändern."""
     teile = [str(k.get("title")), str(k.get("summary")), str(k.get("official_text"))[:LIMITS["official_text"]],
              str(k.get("template_text"))[:LIMITS["template"]],
              ",".join(sorted(loc["slug"] for loc in k.get("locations") or [])),
-             ",".join(sorted(k.get("other_districts") or []))]
+             ",".join(sorted(k.get("other_districts") or [])), _prompt_stand()]
     return hashlib.sha256("\x1f".join(teile).encode("utf-8", "replace")).hexdigest()[:24]
+
+
+def ortsregel(k: dict, place) -> str | None:
+    """Ein Kandidat, der nach festen Regeln NICHT in dieses Viertel gehört —
+    mit dem Grund; sonst ``None``. Er geht gar nicht erst an den Richter.
+
+    1. **Der Bebauungsplan liegt woanders.** Nennt der Titel einen Plan mit
+       Umring (``store._plan_shares``), entscheidet dessen Fläche: unter
+       ``BPLAN_MIN_SHARE`` hier → nicht hier. Eine Straße am Rand des Plans,
+       die ins Nachbarviertel reicht, zieht den Plan nicht mit.
+    2. **Der Titel nennt einen anderen Ortsbereich als Standort** („Neue
+       Grundschule auf dem Gelände des ehemaligen Fliegerhorstes"), dieses
+       Viertel aber nicht, und kein Ort aus dem Titel liegt hier. Dass die
+       Vorlage nebenbei Dietrichsfeld erwähnt, macht die Schule nicht zu
+       einem Dietrichsfelder Vorhaben. Ein Ort AUS dem Titel, der hier
+       liegt, hebt die Regel auf: „Sportpark Osternburg" liegt in Tweelbäke.
+    """
+    from council.store_viertel import ViertelMixin
+    plan = k.get("plan")
+    if plan and plan.get("shares"):
+        anteil = plan["shares"].get(place.name, 0)
+        if anteil < ViertelMixin.BPLAN_MIN_SHARE:
+            wo = max(plan["shares"].items(), key=lambda kv: kv[1])[0]
+            return f"{plan['label']} liegt in {wo}"
+        return None
+    genannt = k.get("title_districts") or []
+    fremd = [d for d in genannt if d != place.name]
+    if fremd and place.name not in genannt:
+        aus_titel_hier = any(loc.get("source") == "title" and loc.get("kind") != "district"
+                             for loc in k.get("locations") or [])
+        if not aus_titel_hier:
+            return f"Titel nennt {', '.join(fremd)}"
+    return None
 
 
 def _candidate_text(k: dict) -> str:
@@ -75,6 +129,7 @@ def _candidate_text(k: dict) -> str:
              f"erkannt aus {loc['source']}/{loc['method']})")
         orte.append(s)
     namesakes = ", ".join(f"{n['name']} in {n['district']}" for n in k.get("namesakes") or [])
+    plan = k.get("plan")
     teile = [
         f"id {k['id']}: {k['title']}",
         f"  Sitzung: {k['date']} · {k['committee']} · Ergebnis: {k.get('outcome') or '?'} · Art: {k.get('kind')}",
@@ -83,6 +138,10 @@ def _candidate_text(k: dict) -> str:
     ]
     if namesakes:
         teile.append(f"  Namensgleich anderswo: {namesakes}")
+    if plan and plan.get("shares"):
+        flaeche = ", ".join(f"{n} {round(a * 100)} %" for n, a in
+                            sorted(plan["shares"].items(), key=lambda kv: -kv[1]) if a >= 0.05)
+        teile.append(f"  Geltungsbereich {plan['label']} (amtlicher Umring): {flaeche}")
     if k.get("summary"):
         teile.append(f"  Kurzfassung: {k['summary'][:LIMITS['summary']]}")
     if k.get("official_text"):
@@ -185,6 +244,8 @@ def _hits(candidates: list[dict], reviews: dict[int, dict]) -> list[dict]:
     """Die Viertel-Treffer: relation=district, nicht stadtweit per Regel, mit Urteil."""
     out = []
     for k in candidates:
+        if k.get("excluded"):
+            continue
         u = reviews.get(k["id"])
         if not u or u["relation"] != "district":
             continue
@@ -201,17 +262,25 @@ def _project_text(hits: list[dict]) -> str:
         zeilen.append(
             f"id {k['id']} · {k['date']} · {k['committee']} · Ergebnis {k.get('outcome') or '?'}\n"
             f"  Titel: {k['title']}\n"
-            f"  Kurz: {u.get('what')} (Stand: {u.get('stage')}, wann: {u.get('when')})\n"
+            f"  Kurz: {u.get('what')} (Stand: {u.get('stage')}, wann: {u.get('when')}, "
+            f"Veränderung vor Ort: {'ja' if u.get('changes') else 'nein'})\n"
             f"  Zusammenfassung: {(k.get('summary') or '')[:400]}")
     return "\n\n".join(zeilen)
 
 
-def bundle_projects(place, hits: list[dict]) -> list[dict]:
-    """Ein Bündelungs-Aufruf je Ortsbereich → Vorhaben mit Beschluss-IDs."""
+def bundle_projects(place, hits: list[dict], *, today: date | None = None) -> list[dict]:
+    """Ein Bündelungs-Aufruf je Ortsbereich → Vorhaben mit Beschluss-IDs.
+
+    Das heutige Datum geht mit: Das Modell schreibt „wird bis Januar 2026
+    gebaut" sonst auch im Oktober 2026 in die Zukunftsform. Ob der Zeitraum
+    vorbei ist, entscheidet trotzdem nicht das Modell, sondern
+    ``council/viertel_zeitplan.py`` beim Lesen.
+    """
     if not hits:
         return []
+    heute = (today or date.today()).strftime("%d.%m.%Y")
     user = prompts.render("district_projects_user", district=place.name, count=len(hits),
-                          batch=_project_text(hits))
+                          batch=_project_text(hits), today=heute)
     resp = llm.chat_complete(
         model=MODEL, response_format={"type": "json_object"},
         messages=[{"role": "system", "content": prompts.render("district_projects_system")},
@@ -240,10 +309,24 @@ def bundle_projects(place, hits: list[dict]) -> list[dict]:
         # das Vorhaben unter der Tafel-Schwelle.
         if any(by_id[i].get("namesakes") and not by_id[i].get("template_text") for i in ids):
             confidence = min(confidence, NAMESAKE_CAP)
+        # Richter-Boden: Zweifelte der Richter an JEDEM Beschluss, hebt die
+        # Bündelung das Vorhaben nicht über die Schwelle (s. REVIEW_FLOOR).
+        if max(int(by_id[i]["review"].get("confidence") or 0) for i in ids) < REVIEW_FLOOR:
+            confidence = min(confidence, NAMESAKE_CAP)
+        stage = p.get("stage") if p.get("stage") in STAGES else "planning"
+        # Ein Vorhaben braucht einen Beschluss, mit dem sich vor Ort etwas
+        # ändert. Ein Bericht über eine Plattform, eine Vorstellung allein
+        # sind keins („Kulturplattform Bloherfel.de", 03.10.2026). Abgelehnte
+        # und fertige Vorhaben sind die Ausnahme: Ein Ablehnungs- oder
+        # Abrechnungsbeschluss ändert per Definition nichts mehr, und trotzdem
+        # will man wissen, dass die Sportbox nicht kommt oder die Kreuzung
+        # fertig ist.
+        if stage not in ("rejected", "done") and not any(by_id[i]["review"].get("changes") for i in ids):
+            confidence = min(confidence, NAMESAKE_CAP)
         out.append({
             "name": str(p["name"]).strip()[:80],
             "what": str(p.get("what") or "").strip(),
-            "stage": p.get("stage") if p.get("stage") in STAGES else "planning",
+            "stage": stage,
             "when": (str(p["when"]).strip() or None) if p.get("when") else None,
             "category": p.get("category") if p.get("category") in CATEGORIES else "other",
             "decision_ids": ids,
@@ -255,14 +338,19 @@ def bundle_projects(place, hits: list[dict]) -> list[dict]:
 def build_place(store, place, *, dry_run: bool = False) -> dict:
     """Das Register eines Ortsbereichs neu rechnen. Gibt Kennzahlen zurück."""
     candidates = store.district_candidates(place)
-    reviews = review_candidates(store, place, candidates) if candidates else {}
-    hits = _hits(candidates, reviews)
+    for k in candidates:
+        grund = ortsregel(k, place)
+        if grund:
+            k["excluded"] = grund
+    offen = [k for k in candidates if not k.get("excluded")]
+    reviews = review_candidates(store, place, offen) if offen else {}
+    hits = _hits(offen, reviews)
     projects = bundle_projects(place, hits) if hits else []
     if not dry_run:
         store.replace_district_projects(place.id, projects)
     visible = sum(1 for p in projects if p["confidence"] >= PROJECT_MIN_CONFIDENCE)
-    return {"place_id": place.id, "candidates": len(candidates), "reviewed": len(reviews),
-            "hits": len(hits), "projects": len(projects), "visible": visible}
+    return {"place_id": place.id, "candidates": len(candidates), "excluded": len(candidates) - len(offen),
+            "reviewed": len(reviews), "hits": len(hits), "projects": len(projects), "visible": visible}
 
 
 def build_all(store, place_ids: list[str] | None = None, *, dry_run: bool = False) -> list[dict]:
@@ -283,10 +371,12 @@ def build_all(store, place_ids: list[str] | None = None, *, dry_run: bool = Fals
             stats = build_place(store, place, dry_run=dry_run)
         except Exception as exc:  # noqa: BLE001 — ein Ortsbereich, nicht der Lauf
             print(f"  ⚠️ {place.name} übersprungen: {exc!r}", flush=True)
-            out.append({"place_id": place.id, "candidates": 0, "reviewed": 0, "hits": 0,
-                        "projects": 0, "visible": 0, "failed": True})
+            out.append({"place_id": place.id, "candidates": 0, "excluded": 0, "reviewed": 0, "hits": 0,
+                        "projects": 0, "visible": 0, "failed": True,
+                        "error": f"{type(exc).__name__}: {exc}"[:200]})
             continue
-        print(f"  {place.name}: {stats['candidates']} Kandidaten → {stats['hits']} im Viertel → "
+        print(f"  {place.name}: {stats['candidates']} Kandidaten ({stats['excluded']} per Regel raus) → "
+              f"{stats['hits']} im Viertel → "
               f"{stats['projects']} Vorhaben ({stats['visible']} auf der Tafel)", flush=True)
         out.append(stats)
     return out

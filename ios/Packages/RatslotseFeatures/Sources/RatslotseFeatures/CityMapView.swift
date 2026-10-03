@@ -338,7 +338,7 @@ struct CityMapView: View {
                 .stroke(RatsColor.card.opacity(0.95), lineWidth: 1)
         }
         if showProjects {
-            ForEach(DistrictShapes.all().filter { (counts[$0.name] ?? 0) > 0 }) { shape in
+            ForEach(countPinShapes(counts)) { shape in
                 Annotation(shape.name, coordinate: shape.centroid, anchor: .center) {
                     Button {
                         if let entry = overview?.districts.first(where: { $0.name == shape.name }) { select(entry.placeID) }
@@ -361,6 +361,35 @@ struct CityMapView: View {
                 .annotationTitles(.hidden)
             }
         }
+    }
+
+    /// Die Ortsbereiche, deren Zahlen-Pin im aktuellen Ausschnitt Platz hat.
+    ///
+    /// In der Stadtmitte liegen Innenstadt, Bahnhofs-, Gerichts- und
+    /// Dobbenviertel so dicht, dass ihre Pins im Weitzoom übereinander lagen
+    /// (Befund 03.10.2026). Größere Zahl zuerst; ein Pin, der näher als
+    /// `minimumGap` Punkte an einem schon gesetzten liegt, bleibt weg — die
+    /// Fläche bleibt antippbar und färbt sich weiter, und beim Hineinzoomen
+    /// kommt die Zahl zurück.
+    private func countPinShapes(_ counts: [String: Int], minimumGap: Double = 30) -> [DistrictShape] {
+        let candidates = DistrictShapes.all()
+            .filter { (counts[$0.name] ?? 0) > 0 }
+            .sorted { (counts[$0.name] ?? 0) > (counts[$1.name] ?? 0) }
+        let lonPerPoint = visibleRegion.span.longitudeDelta / max(stageWidth, 1)
+        guard lonPerPoint > 0 else { return candidates }
+        // Mercator: Ein Grad Breite ist auf dem Schirm 1/cos(Breite)-mal so
+        // hoch wie ein Grad Länge breit.
+        let latScale = cos(visibleRegion.center.latitude * .pi / 180)
+        var placed: [DistrictShape] = []
+        for shape in candidates {
+            let free = placed.allSatisfy { other in
+                let dx = (shape.centroid.longitude - other.centroid.longitude) / lonPerPoint
+                let dy = (shape.centroid.latitude - other.centroid.latitude) / lonPerPoint / max(latScale, 0.1)
+                return (dx * dx + dy * dy).squareRoot() >= minimumGap
+            }
+            if free { placed.append(shape) }
+        }
+        return placed
     }
 
     /// Viertel-Stufe: der Umriss und die Ebenen der Tafel.

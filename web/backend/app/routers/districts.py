@@ -56,19 +56,21 @@ def district_projects_overview(
     overview = store.district_projects_overview()
     rows = []
     updated: str | None = None
-    stages: dict[str, int] = {}
     for place in sorted(_primary_places(store), key=lambda p: p.name):
         o = overview.get(place.id) or {}
         rows.append({"place_id": place.id, "name": place.name, "count": o.get("count", 0),
                      "last_date": o.get("last_date"), "stages": o.get("stages") or {}})
-        for stage, n in (o.get("stages") or {}).items():
-            stages[stage] = stages.get(stage, 0) + n
         if o.get("updated_at") and (updated is None or o["updated_at"] > updated):
             updated = o["updated_at"]
+    # Die Stadtzahl ist NICHT die Summe der Viertel: Ein Vorhaben an der
+    # Grenze steht auf zwei Tafeln, zählt in der Stadt aber einmal.
+    stadt = store.district_city_totals()
     # Lose dicts aus dem Store; die Form hält der Vertrag, geprüft vom Test.
     return cast(DistrictProjectsOverview, {
-        "districts": rows, "total": sum(r["count"] for r in rows), "stages": stages,
+        "districts": rows, "total": stadt["total"], "stages": stadt["stages"],
+        "shared": stadt["shared"],
         "highlights": store.district_highlights(), "updated_at": updated,
+        "decisions_until": store.district_decisions_until(),
     })
 
 
@@ -136,6 +138,7 @@ def district_projects(
         "press": store.district_press(place.id),
         "neighbours": neighbours,
         "updated_at": store.district_projects_updated_at(place.id),
+        "decisions_until": store.district_decisions_until(),
     })
 
 

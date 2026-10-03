@@ -6,7 +6,7 @@ import { ArrowLeft, ChevronRight, X } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { featureAktiv, useAppConfig } from "@/lib/features";
 import { karteHref } from "@/lib/routes";
-import { cn, formatDate } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { Button, DetailSkeleton, EmptyState, Sheet, SheetContent, SheetTitle, toast } from "@/components/ui";
 import { SEITEN_POLSTER } from "@/lib/vollbreit";
 import { useUltra } from "@/lib/use-ultra";
@@ -15,7 +15,7 @@ import { EbenenChips } from "@/components/ebenen-chips";
 import { ebeneUmschalten, ebenenMerken, ebenenStart, ebenenZuUrl, type EbenenId } from "@/lib/karten-ebenen";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { themaHref } from "@/lib/routes";
 import type { Entity, EntityMapPoint } from "@/lib/types";
 import { loadOrtsbereiche, ortsbereichFor, type OrtsbereichFeature } from "@/lib/districts";
@@ -31,7 +31,7 @@ import { STAFFEL, staffelStil } from "@/components/staffel";
 import {
   BeteiligungKarte, DemnaechstKarte, Highlights, InvestitionenKarte, MeineKnoepfe, Nachbarn, OrtSuche, PresseBlock,
   QUELLEN_HINWEIS, Rangliste, SperrungenKarte, StandChips, StandortKnopf, Stadtzahl, VorhabenDetail, VorhabenListe,
-  useMeineOrtsbereiche, useTafel, useTafelZustand, useUebersicht,
+  datenstand, useMeineOrtsbereiche, useTafel, useTafelZustand, useUebersicht,
 } from "@/components/viertel/bausteine";
 
 /** Die vereinte Stadtkarte — Richtung A aus `STADTKARTE-PLAN.md`: die Karte
@@ -235,7 +235,15 @@ function Buehne() {
 
   if (uebersicht.isLoading) return <div className={SEITEN_POLSTER}><DetailSkeleton /></div>;
   if (!orte || !uebersicht.data) {
-    return <div className={SEITEN_POLSTER}><EmptyState title="Die Karte lässt sich gerade nicht laden." mascot="confused" /></div>;
+    return (
+      <div className={SEITEN_POLSTER}>
+        <EmptyState title="Die Karte lässt sich gerade nicht laden." hint="Vielleicht hakt die Verbindung. Ein zweiter Versuch hilft meistens."
+          mascot="confused"
+          action={<Button variant="secondary" onClick={() => void uebersicht.refetch()} disabled={uebersicht.isFetching}>
+            {uebersicht.isFetching ? "Lädt …" : "Erneut versuchen"}
+          </Button>} />
+      </div>
+    );
   }
   const daten = uebersicht.data;
   const stufe: KartenStufe = ortName ? { art: "district", name: ortName } : { art: "city" };
@@ -261,7 +269,7 @@ function Buehne() {
     // aus dem Polster aus, blieb dabei aber im 1600er-Deckel stecken.
     // `@container` für die Spalten-Varianten der Bausteine.
     <div className="@container flex flex-col desk:h-[calc(100dvh)] desk:flex-row desk:overflow-hidden">
-      <div className="relative h-[45dvh] min-h-[280px] desk:h-auto desk:min-h-0 desk:flex-1">
+      <div className="@container/karte relative h-[45dvh] min-h-[280px] desk:h-auto desk:min-h-0 desk:flex-1">
         <StadtKarte
           stufe={stufe}
           ebenen={ebenen}
@@ -319,18 +327,26 @@ function Buehne() {
           className="absolute left-3 top-3 z-[500] max-w-[calc(100%-4.5rem)]"
         />
         {/* Brotkrumen: wo bin ich, und wie komme ich eine Stufe hoch. */}
-        <nav aria-label="Stufe" className="absolute bottom-4 left-4 z-[500] flex items-center gap-2 rounded-xl border border-border bg-card/95 px-3 py-2 text-[12.5px] font-medium shadow-lg backdrop-blur">
+        {/* Am Schreibtisch sitzt unten rechts die Mini-Karte (180 px + Rand);
+            die Pille hört davor auf, statt unter ihr zu verschwinden — auf
+            schmaler Kartenfläche stand sonst nur „Oldenburg > Evers…".
+            Den Hinweis aufs Hineinzoomen gibt es erst, wenn er in EINE Zeile
+            passt (gemessen an der Kartenfläche, nicht am Fenster). */}
+        <nav aria-label="Stufe" className={cn(
+          "absolute bottom-4 left-4 z-[500] flex min-w-0 items-center gap-2 rounded-xl border border-border bg-card/95 px-3 py-2 text-[12.5px] font-medium shadow-lg backdrop-blur",
+          ortName ? "max-w-[calc(100%-2rem)] desk:max-w-[calc(100%-14rem)]" : "max-w-[calc(100%-2rem)]",
+        )}>
           {ortName ? (
             <>
-              <button type="button" onClick={zurStadt} className="text-muted-foreground hover:text-foreground">Oldenburg</button>
-              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
-              <span className="font-bold">{ortName}</span>
-              <button type="button" onClick={zurStadt} className="ml-1 font-semibold text-primary hover:underline">Stadt zeigen</button>
+              <button type="button" onClick={zurStadt} className="shrink-0 text-muted-foreground hover:text-foreground">Oldenburg</button>
+              <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
+              <span className="min-w-0 truncate font-bold">{ortName}</span>
+              <button type="button" onClick={zurStadt} className="ml-1 shrink-0 whitespace-nowrap font-semibold text-primary hover:underline">Stadt zeigen</button>
             </>
           ) : (
             <>
-              <span className="font-bold">Oldenburg · 31 Ortsbereiche</span>
-              <span className="hidden text-muted-foreground sm:inline">· hineinzoomen öffnet ein Viertel</span>
+              <span className="whitespace-nowrap font-bold">Oldenburg · 31 Ortsbereiche</span>
+              <span className="hidden whitespace-nowrap text-muted-foreground @lg/karte:inline">· hineinzoomen öffnet ein Viertel</span>
             </>
           )}
         </nav>
@@ -357,7 +373,22 @@ function Buehne() {
           <div className="p-5"><DetailSkeleton /></div>
         ) : !tafel.data || !place ? (
           <div className="p-5">
-            <EmptyState title="Diesen Ortsbereich gibt es nicht." mascot="search" action={<Button variant="secondary" onClick={zurStadt}>Zur Stadt</Button>} />
+            {/* Nur ein 404 heißt „gibt es nicht". Alles andere (Netz weg,
+                Server-Fehler) ist ein Ladefehler — bis 10/2026 stand auch
+                dann „Diesen Ortsbereich gibt es nicht", und der Weg zurück
+                war der einzige Knopf. */}
+            {tafel.error instanceof ApiError && tafel.error.status === 404 ? (
+              <EmptyState title="Diesen Ortsbereich gibt es nicht." mascot="search" action={<Button variant="secondary" onClick={zurStadt}>Zur Stadt</Button>} />
+            ) : (
+              <EmptyState title="Die Tafel lässt sich gerade nicht laden." hint="Vielleicht hakt die Verbindung. Ein zweiter Versuch hilft meistens."
+                mascot="confused"
+                action={
+                  <div className="flex flex-wrap justify-center gap-2">
+                    <Button onClick={() => void tafel.refetch()} disabled={tafel.isFetching}>{tafel.isFetching ? "Lädt …" : "Erneut versuchen"}</Button>
+                    <Button variant="secondary" onClick={zurStadt}>Zur Stadt</Button>
+                  </div>
+                } />
+            )}
           </div>
         ) : wahl && gewaehlterBezirk && !ultra ? (
           <div className="p-5">
@@ -534,7 +565,7 @@ function ViertelTafel({ data, place, z, wahl, nebenan }: {
             {z.vorhaben.length === 0
               ? (data.updated_at ? "Noch kein Vorhaben aus den Beschlüssen der letzten zwei Jahre." : "Die Tafel ist noch nicht gerechnet.")
               : `${z.vorhaben.length} Vorhaben aus den Beschlüssen der letzten zwei Jahre` +
-                (data.updated_at ? ` · Stand ${formatDate(data.updated_at.slice(0, 10))}` : "")}
+                (datenstand(data) ? ` · ${datenstand(data)}` : "")}
           </p>
         </div>
         <ShareButton path={karteHref(place.id)} title={`Mein Viertel: ${place.name} — Ratslotse`} />

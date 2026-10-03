@@ -40,11 +40,25 @@ def main(place_ids: list[str] | None = None, *, trocken: bool = False) -> dict:
     return {
         "Ortsbereiche": len(stats),
         "Kandidaten": sum(s["candidates"] for s in stats),
+        "per Regel raus": sum(s.get("excluded", 0) for s in stats),
         "im Viertel": sum(s["hits"] for s in stats),
         "Vorhaben": sum(s["projects"] for s in stats),
         "auf der Tafel": sum(s["visible"] for s in stats),
         "übersprungen": sum(1 for s in stats if s.get("failed")),
+        "übersprungen_namen": [s["place_id"] for s in stats if s.get("failed")],
     }
+
+
+def exit_code(kennzahlen: dict) -> int:
+    """1, sobald ein Ortsbereich übersprungen wurde — sonst 0.
+
+    ``weekly_enrich`` ruft dieses Skript als Unterprozess und kennt nur den
+    Exit-Code. Bis 10/2026 endete der Lauf immer mit 0, auch wenn die Hälfte
+    der Viertel am Rate-Limit gescheitert war; deren Tafeln blieben auf dem
+    Stand der Vorwoche, und weder der Wochenlauf noch der Herzschlag merkten
+    es. Die übrigen Viertel sind trotzdem geschrieben — der Code sagt nur,
+    dass der Lauf nicht vollständig war."""
+    return 1 if kennzahlen.get("übersprungen") else 0
 
 
 if __name__ == "__main__":
@@ -52,4 +66,10 @@ if __name__ == "__main__":
     p.add_argument("place_ids", nargs="*", help="Ortsbereich-IDs (Vorgabe: alle)")
     p.add_argument("--trocken", action="store_true", help="rechnen, aber nichts schreiben")
     a = p.parse_args()
-    print(main(a.place_ids, trocken=a.trocken))
+    ergebnis = main(a.place_ids, trocken=a.trocken)
+    print(ergebnis)
+    if exit_code(ergebnis):
+        print(f"!! {ergebnis['übersprungen']} Ortsbereich(e) übersprungen: "
+              f"{', '.join(ergebnis['übersprungen_namen'])} — ihre Tafeln stehen auf dem alten Stand.",
+              file=sys.stderr)
+    sys.exit(exit_code(ergebnis))

@@ -2,6 +2,35 @@ import Foundation
 import Testing
 @testable import RatslotseAPI
 
+@Test func viertelTraegtZeitplanUndDatenstand() throws {
+    // Seit 10/2026 leitet der Server ab, ob der Zeitraum eines Vorhabens
+    // vorbei ist (`schedule`), und nennt den Datenstand (`decisions_until`).
+    // Ein älterer Server kennt beides nicht — dann bleibt es nil, und die
+    // Tafel decodiert trotzdem.
+    let neu = #"""
+    {"id": 1, "project_key": "eversten:1", "place_id": "eversten", "name": "Skateanlage", "what": "x",
+     "stage": "building", "when": "bis 31. Januar 2026", "category": "other", "confidence": 95,
+     "first_date": null, "last_date": "2025-03-01", "report_count": 0, "hidden": false, "reported": false,
+     "decisions": [], "locations": [], "schedule": "likely_done",
+     "schedule_note": "Laut Beschluss – der Zeitraum ist vorbei.", "when_end": "2026-01-31"}
+    """#
+    let alt = #"""
+    {"id": 2, "project_key": "eversten:2", "place_id": "eversten", "name": "Brücke", "what": "x",
+     "stage": "planning", "when": null, "category": "other", "confidence": 95, "first_date": null,
+     "last_date": null, "report_count": 0, "hidden": false, "reported": false, "decisions": [], "locations": []}
+    """#
+    let decoder = JSONDecoder()
+    let p = try decoder.decode(DistrictProject.self, from: Data(neu.utf8))
+    #expect(p.schedule == "likely_done" && p.whenEnd == "2026-01-31" && p.scheduleNote != nil)
+    #expect(try decoder.decode(DistrictProject.self, from: Data(alt.utf8)).schedule == nil)
+
+    let overview = #"{"districts": [], "total": 4, "stages": {"idea": 1}, "highlights": [], "updated_at": null, "shared": 1, "decisions_until": "2026-08-27"}"#
+    let o = try decoder.decode(DistrictProjectsOverview.self, from: Data(overview.utf8))
+    #expect(o.decisionsUntil == "2026-08-27" && o.shared == 1)
+    let ohne = #"{"districts": []}"#
+    #expect(try decoder.decode(DistrictProjectsOverview.self, from: Data(ohne.utf8)).decisionsUntil == nil)
+}
+
 @Test func richDecisionDetailDecodesWithoutDiscardingNativeSections() throws {
     let json = #"""
     {
