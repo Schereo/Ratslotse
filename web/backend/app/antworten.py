@@ -2766,7 +2766,8 @@ class QaShare(TypedDict):
 
     Festes Literal, deshalb vollständig und ohne ``NotRequired``: Vor dem
     Bausteine-Nachtrag geteilte Antworten haben keine ``extras``, der Store
-    setzt die vier Listen dann auf leer und ``chart`` auf ``None``.
+    setzt die vier Listen dann auf leer, ``chart`` und
+    ``rules_of_procedure`` auf ``None``.
     """
     question: str
     answer: str
@@ -2777,6 +2778,9 @@ class QaShare(TypedDict):
     attachments: list[dict[str, Any]]
     parties: list[dict[str, Any]]
     chart: dict[str, Any] | None
+    #: Die Karte „Aus der Geschäftsordnung" (``council.rules_of_procedure.card``),
+    #: wie sie beim Teilen unter der Antwort stand.
+    rules_of_procedure: dict[str, Any] | None
 
 
 class ResearchSnapshot(TypedDict):
