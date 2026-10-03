@@ -356,17 +356,47 @@ def _probe(main: CitiesStore, rats: CouncilStore, papiere: list[dict],
 def run(main: CitiesStore, rats: CouncilStore, ann: Annotator,
         model: str, body_id: str | None = None, limit: int | None = None,
         workers: int = WORKERS, probe_after: int | None = None,
-        stopp: Stopp | None = None, nur_neu: bool = False) -> dict:
+        stopp: Stopp | None = None, nur_neu: bool = False,
+        schlank: bool = False, nur_hashes: bool = False) -> dict:
     """Jede übertragbare fremde Vorlage einmal gegen Oldenburg halten.
 
     ``stopp`` wird an beiden Stapelgrenzen gefragt — beim Sammeln der Belege
     und beim Urteilen (s. ``kern/stopp.py``). ``nur_neu`` lässt aus, was nur
     ein Versionssprung offen gemacht hat; das ist ein Backfill
     (``cities_backfill.py --run --stage annotate``) und kein Wochenlauf.
+
+    ``schlank`` ist der Wochenlauf seit 10/2026: geurteilt wird nur über
+    Vorlagen OHNE Urteil und über solche, deren Einordnung jünger ist als ihr
+    Urteil. Ein gewachsener Oldenburger Beleg-Pool allein öffnet kein Urteil
+    mehr — sonst urteilte jeder neue Oldenburger Beschluss Dutzende fremde
+    Vorlagen neu, und der Wochenlauf wäre wieder ein Bestandslauf. Belege
+    werden dann auch nur für diese Vorlagen gesammelt; das spart die Stunde,
+    die das Sammeln über alle 10.000 Kandidaten kostet.
+
+    ``nur_hashes`` fällt kein Urteil: Es rechnet den Quell-Hash jedes
+    bestehenden Urteils neu und übernimmt ihn (``set_source_hashes``). Das
+    ist für eine Änderung an der FORM der Eingabe, nicht am Inhalt — beim
+    Umschlüsseln der Beschluss-Belege (``cities_belege_umschluesseln.py``).
+
+    Was ein Aufruf kostet, meldet der Lauf an ``stopp`` (``ausgeben``); trägt
+    der eine Kostengrenze, hört er an der nächsten Stapelgrenze auf wie bei
+    einem wartenden Deploy.
     """
     einordnung = main.annotations_for("classify", "2")
     aufwand = main.annotations_for("effort", "1")
     kandidaten = candidates_for(main, body_id)
+    if schlank and not nur_hashes:
+        offen_ids = {p["id"] for p in main.annotations_missing(
+            "paper", ann.key, ann.version, body_id=body_id, nur_neu=True)}
+        offen_ids |= set(main.annotations_newer_than("classify", "2", ann.key))
+        # Neueste zuerst, und der Deckel VOR dem Sammeln der Belege: Was über
+        # ihm liegt, kommt nächste Woche dran und braucht heute keine Belege.
+        kandidaten = sorted((p for p in kandidaten if p["id"] in offen_ids),
+                            key=lambda p: (p.get("date") or "", p["id"]), reverse=True)
+        if limit:
+            kandidaten = kandidaten[:limit]
+        logger.info("fit (schlank): %s Vorlagen ohne Urteil oder mit neuer Einordnung",
+                    len(kandidaten))
     if not kandidaten:
         return _leer()
 
@@ -454,8 +484,21 @@ def run(main: CitiesStore, rats: CouncilStore, ann: Annotator,
             logger.info("fit: %s", abbruch.text)
             return stand_leer
 
-    offen = main.annotations_missing("paper", ann.key, ann.version, body_id=body_id,
-                                     source_hashes=hashes, nur_neu=nur_neu)
+    if nur_hashes:
+        stand_h = _leer()
+        stand_h["hashes_adopted"] = main.set_source_hashes("paper", ann.key, ann.version,
+                                                           hashes)
+        logger.info("fit: %s Quell-Hashes übernommen, kein Urteil gefällt",
+                    stand_h["hashes_adopted"])
+        return stand_h
+
+    if schlank:
+        # Die Kandidaten SIND die Arbeitsliste; ihr Hash wird mitgeschrieben,
+        # damit ein späterer Bestandslauf sie als aktuell erkennt.
+        offen = list(kandidaten)
+    else:
+        offen = main.annotations_missing("paper", ann.key, ann.version, body_id=body_id,
+                                         source_hashes=hashes, nur_neu=nur_neu)
     offen = [p for p in offen if p["id"] in belege_je]
     if limit:
         offen = offen[:limit]
@@ -505,6 +548,8 @@ def run(main: CitiesStore, rats: CouncilStore, ann: Annotator,
         kosten = float(getattr(verbrauch, "cost", 0) or 0) if verbrauch else 0.0
         if korb is not None:
             korb.append(kosten)
+        if stopp is not None:
+            stopp.ausgeben(kosten)
         with sperre:
             if verbrauch:
                 stand["prompt_tokens"] += verbrauch.prompt_tokens or 0
