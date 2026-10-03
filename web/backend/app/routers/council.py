@@ -32,6 +32,7 @@ from council import assistant as lotti
 from council import self_check
 from starlette.background import BackgroundTask
 from council import akte_suche, beteiligungsbericht, qa
+from council import rules_of_procedure
 from council import ernte
 from kern import features, knowledge, seitenaufrufe
 from kern import roles as rollen
@@ -4692,7 +4693,8 @@ def _turn_speichern(ratslotse: Store, user: dict, body: AskBody, q_suche: str,
                     stand: dict | None = None,
                     unclear: bool = False,
                     zeitleiste: dict | None = None,
-                    eckdaten: dict | None = None) -> int | None:
+                    eckdaten: dict | None = None,
+                    rules: dict | None = None) -> int | None:
     """„Meine Gespräche" (6a): Turn ins laufende Gespräch hängen (oder eines
     eröffnen) — nur mit ausdrücklicher Einwilligung, nie als Blocker.
 
@@ -4757,6 +4759,8 @@ def _turn_speichern(ratslotse: Store, user: dict, body: AskBody, q_suche: str,
              # Und der Verlauf des Vorgangs (Akte), aus demselben Grund.
              **({"timeline": zeitleiste} if zeitleiste else {}),
              **({"key_facts": eckdaten} if eckdaten else {}),
+             # Und die Karte „Aus der Geschäftsordnung", aus demselben Grund.
+             **({"rules_of_procedure": rules} if rules else {}),
              # Und die Marke der Rückfrage: Ohne sie sähe der Turn beim
              # Wiederöffnen aus wie eine Antwort ohne Treffer.
              **({"unclear": True} if unclear else {})}, ensure_ascii=False)
@@ -4834,6 +4838,12 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # Frage — „Und was kostet das?" sucht sonst nach nichts.
             q_suche = analyse["question"]
             zeiten["expand_ms"] = round((time.perf_counter() - t0) * 1000)
+            # Verfahrensfragen („Wie lange darf ein Ratsmitglied reden?") an
+            # der Geschäftsordnung — deterministisch am Wortlaut, roh UND
+            # kondensiert (council/rules_of_procedure.py). Nicht beim
+            # Vereinfachen: Der Knopf schreibt die vorige Antwort um.
+            rules_sel = (rules_of_procedure.Selection() if einfach
+                          else rules_of_procedure.find(q, q_suche))
             # Personen-Fragetyp (10.08.26): nennt die Frage eine Ratsperson,
             # antworten wir aus DEREN Wortbeiträgen — deterministisch erkannt,
             # schlägt thema/verlauf (nicht aber partei/geld).
@@ -4863,8 +4873,18 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # Original-Frage noch (Tims Befund 26.08., zweiter Anlauf).
             sitzungen = [] if person else (qa.finde_sitzungen(store, q_suche)
                                            or qa.finde_sitzungen(store, q))
+            # Eine Regelfrage nennt oft „Rat" und „Tagesordnung" — für die
+            # Erkennung heißt das „die nächste Sitzung". „Kann der Rat über
+            # etwas abstimmen, das nicht auf der Tagesordnung steht?" begann
+            # deshalb mit dem Termin der nächsten Ratssitzung (Messung
+            # 03.10.2026). Die Sitzung bleibt nur, wenn die Frage selbst eine
+            # nennt („für die nächste Ratssitzung") — und auch dann wird die
+            # Frage keine Sitzungsfrage: Sie fragt nach der Frist, nicht nach
+            # jedem Punkt der Tagesordnung.
+            if rules_sel and not qa.nennt_sitzung(q_suche, q):
+                sitzungen = []
             sitzung_ids = [i for s in sitzungen for i in s.get("decision_ids") or []]
-            if sitzungen and typ not in ("party", "money"):
+            if sitzungen and typ not in ("party", "money") and not rules_sel:
                 typ = "session"
             # Nennt die Frage überhaupt einen Gegenstand? Wenn nicht, wird hier
             # ZURÜCKGEFRAGT statt geantwortet — warum, steht bei
@@ -4878,7 +4898,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # Vielfaches des einen Analyse-Calls, der das Urteil ohnehin schon
             # mitgebracht hat.
             if qa.rueckfrage_noetig(analyse, einfach=einfach, person=person,
-                                    ort=ort, sitzungen=sitzungen):
+                                    ort=ort, sitzungen=sitzungen,
+                                    procedure=bool(rules_sel)):
                 yield _sse({"type": "token", "text": qa.RUECKFRAGE_TEXT})
                 try:
                     vorschlaege = qa.rueckfrage_vorschlaege(store, q)
@@ -4999,6 +5020,18 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     candidates += store.get_decisions_by_ids(
                         [i for i in qa.screen_session_ids(store, bildschirm)
                          if i not in have])
+            # Steht im Archiv eine NEUERE Geschäftsordnung als die gespeicherte
+            # (der neue Rat beschließt seine in der ersten Sitzung), kommt der
+            # Beschluss nach vorn — die Antwort sagt dann, dass der Wortlaut
+            # überholt sein kann, und zitiert ihn. Nicht unter einem
+            # Ortsfilter: Eine Geschäftsordnung hat keinen Ort.
+            rules_newer: list[dict] = []
+            if rules_sel:
+                rules_newer = rules_of_procedure.newer_adoptions(store)
+                if rules_newer and allowed_place_ids is None:
+                    have = {c["id"] for c in candidates}
+                    if rules_newer[0]["id"] not in have:
+                        candidates = store.get_decisions_by_ids([rules_newer[0]["id"]]) + candidates
             # Beim Vereinfachen zählen die Belege der VORIGEN Antwort: Ihre ids
             # müssen im Kandidatenset stehen, sonst streicht resolve_citations
             # genau die Fußnoten weg, die die einfache Fassung übernehmen soll —
@@ -5210,8 +5243,12 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # Partei in Klammern macht daraus `party`.
             akte_beschluesse: list[dict] = []
             akte: dict | None = None
+            # Und nicht bei einer Verfahrensfrage: Die Geschäftsordnung ist
+            # kein Vorgang, und die Akte baute sich aus den Treffern davor —
+            # bei „Wie lange darf man reden?" aus irgendeinem
+            # „Geschäftsordnungsantrag auf Vertagung".
             if (features.an("akten-suche") and not einfach and typ != "session" and not person
-                    and candidates):
+                    and not rules_sel and candidates):
                 try:
                     akte = akte_suche.material(store, q_suche, candidates)
                     have = {c["id"] for c in candidates}
@@ -5314,6 +5351,13 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 # Da antwortet der Sitzungskalender, und der „mit Vorsicht"-
                 # Hinweis stünde falsch neben der Tagesordnungs-Karte.
                 lage = "solide"
+            if rules_sel:
+                # Die Geschäftsordnung ist ein direkter Beleg (wie ein
+                # Anlagenfund oben). Der Hinweis „dünne Beleglage" und seine
+                # Prompt-Regel stünden sonst neben einer Antwort, die aus dem
+                # Wortlaut kommt — „Wie lange darf man reden?" hat nie gute
+                # Beschluss-Treffer.
+                lage = "solide"
             zeiten["retrieve_ms"] = round((time.perf_counter() - t0) * 1000)
             # Haushalts-Kontext: welche der zehn Geld-Quellen diese Frage
             # beantworten, entscheidet `qa.geld_facetten` deterministisch am
@@ -5351,6 +5395,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             zeitleiste_daten: dict | None = None
             eckdaten: dict | None = None
             recherche_angebot: dict | None = None
+            rules_card = rules_of_procedure.card(rules_sel, newer=rules_newer)
+            rules_block = rules_of_procedure.prompt_block(rules_sel, newer=rules_newer)
             # 5a/I-06: die kondensierte Frage mitschicken — der Kontext-Chip im
             # Frontend zeigt, worauf sich Anschlussfragen beziehen.
             yield _sse({"type": "sources", "mode": mode, "qtype": typ,
@@ -5363,6 +5409,10 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                         # Tagesordnungs-Baustein: die aufgelösten Sitzungen des
                         # Sitzungs-Fragetyps — deterministisch, nie vom Modell.
                         "sessions": _sitzungen_kompakt(sitzungen),
+                        # Die Karte „Aus der Geschäftsordnung" — Paragrafen
+                        # samt Wortlaut und Seitensprung ins PDF; None, wenn
+                        # die Frage keine Regel meint.
+                        "rules_of_procedure": rules_card,
                         "evidence_level": lage,
                         # Alter des jüngsten Belegs samt Sitzungskalender —
                         # dieselbe Rolle wie die Beleglage, nur für die Zeit.
@@ -5391,7 +5441,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # hier „keine Beschlüsse gefunden“, obwohl der Kontext die Zahl hatte.
             hat_geld = bool(geld.get("facets")) and any(
                 v for k, v in geld.items() if k != "facets")
-            if not candidates and not anlagen_rows and not hat_geld:
+            if not candidates and not anlagen_rows and not hat_geld and not rules_sel:
                 leer_text = "Dazu habe ich keine passenden Beschlüsse gefunden."
                 if sitzungen and ort:
                     leer_text = (f"In der gefragten Sitzung habe ich keine Beschlüsse mit "
@@ -5442,7 +5492,11 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # Beim Vereinfachen NIE die Langfassungs-Regel: „umfangreiches Thema"
             # verlangt ~500 Wörter mit Zwischenüberschriften — das ist das
             # Gegenteil von dem, was der Knopf verspricht.
-            gross = (len(candidates) >= 25 or spanne >= 3) and not einfach
+            # Und nie bei einer Regelfrage: Die Beschluss-Treffer daneben
+            # spannen oft Jahre, die Frage ist trotzdem eine nach einem
+            # Absatz (Messung 03.10.2026: „Warum tagt der Verwaltungsausschuss
+            # nicht öffentlich?" bekam „Kurz gesagt" und Zwischentitel).
+            gross = (len(candidates) >= 25 or spanne >= 3) and not einfach and not rules_sel
             if typ == "session":
                 # Länge nach Sitzungsgröße statt Kandidatenzahl — die zählt
                 # nach dem Voll-Merge der Sitzung immer hoch.
@@ -5620,7 +5674,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                           duenn=(lage == "duenn"), eng=eng,
                                           sitzungen=sitzungen, ort=ort,
                                           zukunft_leer=zukunft_leer, stand=stand,
-                                          screen=bildschirm, akte=akte_prompt))
+                                          screen=bildschirm, akte=akte_prompt,
+                                          rules_block=rules_block))
             try:
                 for delta in strom:
                     if not buf and delta:
@@ -5658,7 +5713,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                                  sitzungen=sitzungen, ort=ort,
                                                  zukunft_leer=zukunft_leer,
                                                  stand=stand, screen=bildschirm,
-                                                 akte=akte_prompt))
+                                                 akte=akte_prompt,
+                                                 rules_block=rules_block))
                     buf = ans
                     yield _sse({"type": "replace", "text": qa.split_followups(ans)[0]})
                     sent = len(ans)
@@ -5733,6 +5789,11 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             if cited:
                 zitierte = [c for c in candidates if c["id"] in set(cited)]
                 stand_zitiert = qa.aktenstand(store, zitierte) or stand
+            elif rules_sel:
+                # Antwortet die Geschäftsordnung allein, sagt das Alter der
+                # Beschluss-Treffer nichts über die Antwort — „Ältere
+                # Aktenlage" stünde unter einer Regel, die heute gilt.
+                stand_zitiert = None
             zeiten["antwort_ms"] = round((time.perf_counter() - t0) * 1000)
             zeiten["total_ms"] = (zeiten.get("expand_ms", 0) + zeiten.get("retrieve_ms", 0)
                                   + zeiten.get("antwort_ms", 0))
@@ -5748,7 +5809,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                            sitzungen=sitzungen,
                                            stand=stand_zitiert,
                                            zeitleiste=zeitleiste_daten,
-                                           eckdaten=eckdaten)
+                                           eckdaten=eckdaten,
+                                           rules=rules_card)
             if not cited:
                 ratslotse.record_activity(user["id"], "ai_answer_empty", client_kind(request))
             yield _sse({"type": "done", "cited": cited, "timings": zeiten,

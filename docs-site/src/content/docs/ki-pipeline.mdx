@@ -394,6 +394,71 @@ Aufwandsspaltung (186), Teileinrichtung (178) und Leitantrag (212), Wörter, die
 außerhalb des Straßenausbaubeitragsrechts und des Sitzungssaals niemandem
 begegnen.
 
+## Frag den Rat: die Geschäftsordnung
+
+„Wie lange darf ein Ratsmitglied reden?", „Bis wann muss meine Frage für die
+Einwohnerfragestunde da sein?", „Was passiert bei Stimmengleichheit?" — solche
+Fragen hat das Beschluss-Archiv nicht. Die Antwort steht in der
+**Geschäftsordnung**, die sich der Rat für jede Wahlperiode gibt (§ 69 NKomVG).
+Seit 10/2026 kennt Ratslotse sie.
+
+**Woher der Text kommt.** Aus der Lesefassung, die die Stadt im Stadtrecht unter
+Nr. 1.02 veröffentlicht: Fassung vom 19.07.2021, vom Rat am 01.11.2021 für die
+Wahlperiode 2021–2026 unverändert bestätigt (Vorlage 21/0741). Sie liegt als
+`council/rules_of_procedure.json` im Repo — 33 Paragrafen plus § 28a, je mit
+Abschnitt, Seite und Wortlaut —, erzeugt von
+`scripts/fetch_rules_of_procedure.py`. Nicht in der Datenbank: Der Wortlaut
+ändert sich einmal je Wahlperiode, und eine neue Fassung soll im PR als Diff zu
+sehen sein. Der Parser liest mit PyMuPDF; pypdf zerlegte Wörter („bet rägt").
+Der Text ist Wort für Wort gegen eine zweite Extraktion abgeglichen (3.777
+Wörter, kein Unterschied).
+
+**Wann sie greift: an der Frage, deterministisch** (`council/rules_of_procedure.py`).
+Wie beim Glossar entscheidet ein Wortfeld, kein Sprachmodell. Der schwierige
+Teil sind die Fragen, die NICHT gemeint sind:
+
+| Frage | Paragraf |
+|---|---|
+| „Wie wird im Rat abgestimmt?" | § 18 |
+| „Wie hat der Rat zum Stadion abgestimmt?" | — (ein Ergebnis, keine Regel) |
+| „Wie bringt eine Fraktion ein Thema auf die Tagesordnung?" | § 3 |
+| „Kommt das Stadion wieder auf die Tagesordnung?" | — (ein Termin) |
+| „Wie lange darf man im Ausschuss reden?" | § 15 und § 32 |
+| „Was sagt § 62 NKomVG?" | — (ein anderes Gesetz) |
+
+Manche Auslöser gelten nur, wenn die Frage zugleich den Rat, einen Ausschuss
+oder eine Sitzung nennt („Einberufung", „Ladung"). Eine Frage zum Ausschuss
+bekommt zur Rats-Regel den Paragrafen, der sagt, was davon dort gilt (§ 26 für
+den Verwaltungsausschuss, § 32 für die Ratsausschüsse): Ohne § 32 hieße die
+Antwort „nur einmal reden", obwohl genau das im Ausschuss nicht gilt.
+Höchstens vier Paragrafen je Frage; „Was steht in der Geschäftsordnung?" und
+„Wie funktioniert der Rat?" bekommen das Inhaltsverzeichnis. Gemessen an den
+496 Fragen der Eval-Sätze zog eine einzige die Geschäftsordnung, und zu Recht
+(„Was ist der Verwaltungsausschuss?").
+
+**Was daraus wird.**
+
+| Wo | Was |
+|---|---|
+| Antwort-Prompt | Der Wortlaut als Block „Geschäftsordnung des Rates", **nie mit `[id]`**, und eine Regel (`qa.GESCHAEFTSORDNUNG_REGEL`), die den Vorbehalt „die Beschlüsse geben nichts her" für die Regel aufhebt und den Paragrafen im Satz verlangt. Ohne Auslöser ist der Prompt zeichengleich |
+| Router `/ask` | Eine Regelfrage ist nie „unklar" (keine Rückfrage), läuft ohne Akte, gilt als solide belegt und geht auch ohne Beschluss-Treffer in die Antwort |
+| Karte unter der Antwort | „Aus der Geschäftsordnung des Rates": je Paragraf Titel mit Sprung auf die Seite im PDF und der Wortlaut (lange als Vorschau), darunter Fassung und Wahlperiode. Steht auch im gespeicherten Gespräch |
+| Lotti | Dieselbe Auswahl an der Frage, Block und Regel im Erklär-Prompt (keine Weiterreichung ans Archiv dafür), der Paragraf als Beleg-Chip |
+
+**Sie gilt für eine Wahlperiode (§ 33).** `rules_of_procedure.status` kennt drei
+Zustände: `current`; `term_ended` nach dem 31.10.2026 — dann sagt die Antwort,
+dass die Fassung für die alte Wahlperiode galt; `superseded`, sobald im Archiv
+ein jüngerer Ratsbeschluss steht, der eine Geschäftsordnung des Rates beschließt
+oder ändert. Dann kommt der Beschluss in die Kandidaten, die Antwort zitiert ihn
+und sagt, dass der Wortlaut überholt sein kann — und die tägliche Datenprüfung
+(`council/datenpruefung.py`) meldet es, bis die Datei nachgezogen ist:
+
+```bash
+python scripts/fetch_rules_of_procedure.py --check     # verlinkt die Stadt eine neue Lesefassung?
+python scripts/fetch_rules_of_procedure.py --pdf neu.pdf \
+    --adopted 2026-11-xx --template 26/xxxx --term-end 2031-10-31
+```
+
 ## Lotti als Assistentin: erklären statt suchen
 
 Ein Knopf auf jeder Seite öffnet ein Fenster, in dem Lotti erklärt, was gerade

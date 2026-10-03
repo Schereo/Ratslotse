@@ -32,6 +32,14 @@ auch wenn nichts gemeldet wird.
 | Protokoll fehlt nach 10 Wochen | 2 von 62 Sitzungen seit April |
 | Hauptpunkt ohne Grundakte | 0 (599 in 2026) |
 | Wortbeiträge ohne Grundakte | 19–25 % (Mitteilungen, Anfragen, Fragestunde) |
+
+**Und die Geschäftsordnung** (seit 10/2026). „Frag den Rat" antwortet auf
+Verfahrensfragen aus einer Fassung im Repo (``council/rules_of_procedure.json``).
+Beschließt der Rat eine neue — der neue Rat tut das in seiner ersten Sitzung —,
+merkt das niemand, solange niemand hinsieht. Gemeldet wird erst, wenn der
+Beschluss im Archiv steht: Vorher gibt es nichts nachzuziehen, und die
+Antwort sagt nach dem Ende der Wahlperiode ohnehin dazu, dass die Fassung
+für die alte galt.
 """
 from __future__ import annotations
 
@@ -197,6 +205,18 @@ def pruefen(store: Any, seit: str, jetzt: datetime | None = None) -> dict:
                 f"<b>{anteil:.0%} der Wortbeiträge ohne Grundakte</b> ({ohne} von {alle}, "
                 f"{AKTEN_FENSTER_TAGE} Tage; üblich 19–25 %) — die Kopplung über den TOP "
                 "greift nicht mehr.")
+
+    from council import rules_of_procedure
+    neuer = rules_of_procedure.newer_adoptions(store)
+    go = rules_of_procedure.status(heute, neuer)
+    k["geschaeftsordnung"] = go["state"]
+    if go["state"] == "superseded":
+        befunde.append(
+            f"<b>Der Rat hat am {go['decision_date']} eine Geschäftsordnung beschlossen</b> "
+            f"(Beschluss {go['decision_id']}) — „Frag den Rat“ antwortet noch aus der Fassung "
+            f"vom {rules_of_procedure.load().version_date} und sagt das dazu. Nachziehen: "
+            "<code>python scripts/fetch_rules_of_procedure.py --check</code>, dann mit "
+            "<code>--pdf … --adopted … --template … --term-end …</code> neu schreiben.")
 
     k["befunde"] = len(befunde)
     return {"kennzahlen": k, "befunde": befunde}
