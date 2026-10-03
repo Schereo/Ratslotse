@@ -169,7 +169,8 @@ def test_buendelung_namensvetter_und_stadtweit_regel(monkeypatch):
     projekte = store.district_projects(place.id, min_confidence=0)
     by_name = {p["name"]: p for p in projekte}
     assert set(by_name) == {"Wohnungen Sandkruger Straße", "Schießstand aufräumen"}
-    assert by_name["Wohnungen Sandkruger Straße"]["confidence"] == 97
+    # Die Sicherheit ist die des Richters (95), nicht die der Bündelung (97).
+    assert by_name["Wohnungen Sandkruger Straße"]["confidence"] == 95
     # Namensvetter ohne Vorlagenbeleg: unter der Tafel-Schwelle, und die
     # halluzinierte 999 sowie die ausgesiebte 12 hängen nicht dran.
     schiess = by_name["Schießstand aufräumen"]

@@ -3153,6 +3153,15 @@ class DistrictProject(TypedDict):
     reported: bool
     decisions: list[DistrictProjectDecision]
     locations: list[DistrictProjectLocation]
+    #: Abgeleitet aus ``when`` und dem heutigen Datum (``council/viertel_zeitplan.py``):
+    #: ``likely_done`` (im Bau, Zeitraum vorbei), ``overdue`` (Planung/beschlossen,
+    #: Zeitraum vorbei), ``quiet`` (kein Ende genannt, seit 12 Monaten kein
+    #: Beschluss) oder null. Optional, weil ältere Server es nicht kennen.
+    schedule: NotRequired[str | None]
+    #: Der Satz dazu, fertig zum Anzeigen — Web und App rechnen nichts nach.
+    schedule_note: NotRequired[str | None]
+    #: Das aus ``when`` gelesene Ende als ISO-Datum, sonst null.
+    when_end: NotRequired[str | None]
 
 
 class DistrictUpcomingItem(TypedDict):
@@ -3242,7 +3251,11 @@ class DistrictProjects(TypedDict):
     closures: list[DistrictClosure]
     press: list[DistrictPressItem]
     neighbours: list[DistrictNeighbour]
+    #: Wann das Register zuletzt gerechnet wurde — NICHT der Datenstand.
     updated_at: str | None
+    #: Der jüngste Sitzungstag, dessen Beschlüsse das Register gesehen hat:
+    #: „Beschlüsse bis …". Optional, weil ältere Server es nicht kennen.
+    decisions_until: NotRequired[str | None]
 
 
 class DistrictProjectsOverviewEntry(TypedDict):
@@ -3271,10 +3284,19 @@ class DistrictProjectsOverview(TypedDict):
     """``GET /api/districts/projects`` — alle Ortsbereiche mit Vorhaben-Zahl,
     dazu die Stadtzahlen und die Vorhaben, die gerade herausstechen."""
     districts: list[DistrictProjectsOverviewEntry]
+    #: Sichtbare Vorhaben der Stadt, jedes einmal — ein Vorhaben an der
+    #: Grenze steht auf zwei Tafeln, zählt hier aber einfach. Daher ist
+    #: ``total`` nicht die Summe der ``count`` je Ortsbereich.
     total: int
+    #: Je Stand, summiert sich zu ``total`` (alle Stände, auch idea/done/rejected).
     stages: dict[str, int]
+    #: Wie viele Tafel-Einträge als Doppel an einer Grenze nicht mitzählen.
+    shared: NotRequired[int]
     highlights: list[DistrictHighlight]
+    #: Wann das Register zuletzt gerechnet wurde — NICHT der Datenstand.
     updated_at: str | None
+    #: Der jüngste Sitzungstag, dessen Beschlüsse das Register gesehen hat.
+    decisions_until: NotRequired[str | None]
 
 
 class DistrictLookupMatch(TypedDict):
