@@ -145,3 +145,98 @@ test.describe("Schmalstes übliches Gerät (320px)", () => {
       .toBeLessThanOrEqual(1);
   });
 });
+
+/* ------------------------ Die Antwort von „Frag den Rat" ------------------------ */
+
+// Die Antwort-Seite ist keine Adresse, die man aufrufen kann — sie entsteht
+// erst mit einer Frage, und ihre breitesten Bausteine erscheinen nur mit
+// Daten. Deshalb gestubbt: Antwortstrom wie in `07-qa-feedback.spec.ts`,
+// dazu die Fraktions-Positionen, die der Baustein „Aus den Ratsdebatten"
+// nachlädt. So genügt auch die leere CI-Datenbank.
+//
+// Der Anlass (02.10.2026, 375 px, „Wie ist der Stand beim Stadionneubau?"):
+// Die Zeile „Bündnis 90/Die Grünen · dagegen · 12 Beiträge · Dazu fragen"
+// brach nicht um. Der Name stand auf drei Zeilen, „Dazu fragen" ragte trotzdem
+// 32 px über den Rand — und mit der Seite rutschten Eingabezeile und
+// Anschlussfragen rechts aus dem Bild.
+const FRAGE = "Wie ist der Stand beim Stadionneubau?";
+const ANTWORT_STROM = [
+  { type: "step", step: "answer" },
+  {
+    type: "sources", question: FRAGE, qtype: "status",
+    sources: [{
+      id: 8679, title: "Stadionneubau – Übernahme einer Ausfallbürgschaft",
+      committee: "Rat", session_date: "2025-12-15", outcome: "accepted", kind: "decision",
+    }],
+    debates: [{
+      speaker: null, party: "Bündnis 90/Die Grünen", kind: "debate", agenda_item: null,
+      excerpt: "Die Fraktion hält die Bürgschaft für ein zu großes Risiko für den Haushalt.",
+      committee: "Rat", date: "2025-12-15",
+    }],
+  },
+  { type: "token", text: "Der Rat hat die Ausfallbürgschaft für den Stadionneubau übernommen. [8679]" },
+  {
+    type: "suggestions", questions: [
+      "Wie hoch ist die Ausfallbürgschaft für den Stadionneubau insgesamt?",
+      "Welche Fraktionen haben gegen den Stadionneubau gestimmt?",
+    ],
+  },
+  { type: "done", cited: [8679] },
+].map((e) => `data: ${JSON.stringify(e)}\n\n`).join("");
+
+/** Die Zeilen, an denen es eng wird: langer Name, Haltung, Zähler — und
+ *  einmal alles zugleich („Haltung gewandelt" + „uneinheitlich"). */
+const PARTEIEN = {
+  parties: [
+    {
+      party: "Bündnis 90/Die Grünen", stance: "dagegen", unanimous: true, note: null,
+      position: "Hält die Bürgschaft für ein zu großes Risiko für den städtischen Haushalt.",
+      kernaussage: { text: "Das Risiko trägt am Ende die Stadt.", speaker: null, date: "2025-12-15" },
+      contributions: 12,
+      beitraege_liste: [{ speaker: null, date: "2025-12-15", art: null, committee: "Rat", text: "Das Risiko trägt am Ende die Stadt." }],
+    },
+    {
+      party: "Ortslandvolkverband Oldenburg", stance: "gewandelt", unanimous: false,
+      note: "einzelne Stimmen dagegen",
+      position: "Erst skeptisch, inzwischen für den Bau am bisherigen Standort.",
+      kernaussage: null, contributions: 7,
+      beitraege_liste: [{ speaker: null, date: "2025-06-02", art: null, committee: "Sport", text: "Der Standort ist inzwischen gesetzt." }],
+    },
+    {
+      party: "SPD", stance: "dafür", unanimous: true, note: null,
+      position: "Sieht im Stadion eine Investition in den Sport der Stadt.",
+      kernaussage: null, contributions: 3,
+    },
+  ],
+  without_speeches: ["FDP"],
+};
+
+for (const breite of [375, 320]) {
+  test.describe(`Antwort mit Parteien-Baustein (${breite}px)`, () => {
+    test.use({ storageState: zustandsDatei("nutzerin"), viewport: { width: breite, height: 812 } });
+
+    test("bleibt in der Breite", async ({ page }) => {
+      // Abzeichen sind eine eigene Oberfläche und legen sich sonst über die
+      // erste Antwort (s. `17-lesbarkeit.spec.ts`).
+      await page.route("**/api/badges**", (route) => route.fulfill({
+        json: { badges: [], newly_earned: [], earned_count: 0, total: 0 },
+      }));
+      await page.route("**/api/council/ask", (route) =>
+        route.fulfill({ status: 200, contentType: "text/event-stream", body: ANTWORT_STROM }));
+      await page.route("**/api/council/party-meinungen", (route) =>
+        route.fulfill({ json: PARTEIEN }));
+
+      await page.goto("/fragen");
+      await page.getByPlaceholder(/Deine Frage/).fill(FRAGE);
+      await page.keyboard.press("Enter");
+      // Erst wenn die Fraktionszeilen stehen, ist die breiteste Stelle da —
+      // vorher zeigt der Baustein nur das Lade-Gerüst.
+      await expect(page.getByText("Bündnis 90/Die Grünen", { exact: true })).toBeVisible();
+      await expect(page.getByRole("button", { name: /Dazu fragen/ }).first()).toBeVisible();
+
+      const zuviel = await ueberbreite(page);
+      expect(zuviel, `Die Antwort ist bei ${breite}px ${zuviel}px zu breit. Schuldige:\n  `
+        + (await ueberstehende(page)).join("\n  ")).toBeLessThanOrEqual(1);
+    });
+  });
+}

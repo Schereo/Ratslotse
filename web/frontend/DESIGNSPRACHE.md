@@ -397,7 +397,10 @@ iOS-Schrift.
   darüber eingeschoben spränge der Text, den man gerade liest.
 - **Parteien** (RG-09): Dot + Label 700 + Position 1–2 Sätze + Paraphrase kursiv
   „— Sprecher, Datum"; Badge „uneinheitlich" (Amber); Fußzeile „Paraphrasen,
-  keine wörtlichen Zitate".
+  keine wörtlichen Zitate". Die Kopfzeile (Name · Haltung · Beiträge · „Dazu
+  fragen") **bricht um**, jedes Stück bleibt für sich ganz; „Dazu fragen"
+  steht am rechten Rand seiner Zeile. Mit Maus sitzt es oben rechts in
+  freigehaltenem Raum, damit der Hover-Knopf keine leere Zeile belegt.
 - **Presse-Block** (RG-06): max 3 Zeilen, gestrichelt, External-Link-Icon,
   nie Fußnoten-Ziel.
 - **Composer**: h 48–52, Radius 16, Funken-Icon (Signal-Orange) links, Senden
@@ -636,6 +639,8 @@ eine. Die Rücknavigation liegt oberhalb der Karte.
 - Vorschlags-Chips (antippbare Fragen): primary-Rahmen /30 + bg /4 (auf Tonfläche
   weiß) + Pfeil/Icon; nur am jüngsten Turn.
 - Hover legt Zeilen-Aktionen frei („Dazu fragen") — Fläche primary/5, Radius 9.
+  Verstecken nur mit Maus (`desk:`), nie nach bloßer Breite (`lg:`): Ein iPad
+  quer ist breit, hat aber keinen Hover — dort war die Aktion unerreichbar.
 - Horizontales Blättern: Touch wischt, `maus:` bekommt stille runde
   Blätter-Pfeile (24 px, Rahmen + bg-card + Schatten). An Scroll-Zeilen
   schweben sie über den Enden, der Inhalt fadet dort per CSS-**Maske** aus
