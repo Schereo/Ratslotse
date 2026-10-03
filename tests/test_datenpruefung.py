@@ -141,6 +141,24 @@ def test_ohne_grundakten_gibt_es_keine_aktenregel(tmp_path):
     assert erg["kennzahlen"]["akten"] == "keine"
 
 
+def test_eine_neue_geschaeftsordnung_meldet_sich(store):
+    """Der neue Rat beschließt seine Geschäftsordnung — dann muss die Fassung
+    im Repo nachgezogen werden (council/rules_of_procedure.py)."""
+    jetzt = datetime.now(timezone.utc)
+    assert _pruefen(store, jetzt)["kennzahlen"]["geschaeftsordnung"] in ("current", "term_ended")
+    store._conn.execute(
+        "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, location, "
+        "fetched_at) VALUES (77, 'Rat', '2026-11-03', '', '', '')")
+    store._conn.execute(
+        "INSERT INTO council_decisions (id, ksinr, position, title, outcome, kind) VALUES "
+        "(7700, 77, 0, 'Geschäftsordnung für den Rat, den Verwaltungsausschuss und die "
+        "Ratsausschüsse - Beschluss', 'accepted', 'decision')")
+    store._conn.commit()
+    erg = _pruefen(store, jetzt)
+    assert erg["kennzahlen"]["geschaeftsordnung"] == "superseded"
+    assert any("Geschäftsordnung" in b and "7700" in b for b in erg["befunde"])
+
+
 def test_der_herzschlag_meldet_den_befund(tmp_path, monkeypatch):
     """Ende zu Ende: Ein Verstoß im Rats-Bestand landet in der Mail des
     Herzschlags, mit eigenem Betreff, und die Kennzahlen im Lauf."""

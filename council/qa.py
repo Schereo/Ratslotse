@@ -1281,7 +1281,8 @@ RUECKFRAGE_MINDEST_TOPS = 5
 
 
 def rueckfrage_noetig(analyse: dict, *, einfach: bool = False,
-                      person=None, ort=None, sitzungen=None) -> bool:
+                      person=None, ort=None, sitzungen=None,
+                      procedure: bool = False) -> bool:
     """Wird auf diese Frage zurückgefragt, statt sie zu beantworten?
 
     Die Regel steht hier und nicht in den Endpunkten, weil sie ZWEI Wege
@@ -1296,8 +1297,13 @@ def rueckfrage_noetig(analyse: dict, *, einfach: bool = False,
     teurere der beiden Fehler. ``einfach`` ist aus demselben Grund dabei: Der
     Knopf „Einfacher erklären" schickt einen Wunsch, keine Frage — der sieht
     gegenstandslos aus und meint die vorige Antwort.
+
+    ``procedure``: Die Frage meint eine Regel der Geschäftsordnung
+    (:func:`council.rules_of_procedure.find`) — „Wie lange darf man reden?"
+    nennt kein Vorhaben, ist aber beantwortbar, und zwar ohne Archiv.
     """
-    return bool(analyse.get("unklar")) and not einfach and not (person or ort or sitzungen)
+    return (bool(analyse.get("unklar")) and not einfach
+            and not (person or ort or sitzungen or procedure))
 
 #: „Stadt Oldenburg (Oldb)" — der amtliche Zusatz steht in jedem zweiten Titel
 #: und trägt in einer Frage an Ratslotse null Information.
@@ -1712,6 +1718,25 @@ _SITZUNG_VORAUS_RE = re.compile(
 #: Mehr als 3 Sitzungen (ein Tag mit vollem Kalender) beantwortet niemand
 #: sinnvoll in einer Antwort.
 _SITZUNGEN_MAX = 3
+
+#: „die nächste Ratssitzung", „in der letzten Sitzung" — die Frage nennt
+#: selbst eine Sitzung, nicht bloß ein Gremium und die Tagesordnung.
+_SITZUNG_GENANNT_RE = re.compile(
+    r"\b(?:naechst|kommend|letzt|juengst|vergangen|vorig|heutig|morgig)\w*\s+(?:\w+)?sitzung")
+
+
+def nennt_sitzung(*fragen: str) -> bool:
+    """Nennt eine der Fassungen der Frage eine bestimmte Sitzung — ein Datum
+    oder „die nächste/letzte Sitzung"?
+
+    Für Regelfragen (``council.rules_of_procedure``): Die Sitzungserkennung
+    oben reicht dort „Rat" und „Tagesordnung" für die nächste Sitzung, und
+    eine Frage nach § 11 bekäme den Termin vorangestellt."""
+    for frage in fragen:
+        datum, monat_tag = _datum_in_frage(frage or "")
+        if datum or monat_tag or _SITZUNG_GENANNT_RE.search(_falte(frage or "")):
+            return True
+    return False
 
 
 def finde_sitzungen(store, question: str) -> list[dict]:
@@ -4415,6 +4440,36 @@ DUENN_REGEL = (
     "Antwort — lieber kurz und ehrlich als lang und geraten."
 )
 
+#: Wie die Antwort den Wortlaut der Geschäftsordnung benutzt
+#: (:mod:`council.rules_of_procedure`) — angehängt NUR, wenn die Frage
+#: Paragrafen gezogen hat; ohne sie ist der Prompt zeichengleich mit dem von
+#: vorher (Regel aus PR 21, s. ``kern/prompts.py::ERKLAERWISSEN_REGEL``).
+#:
+#: **Der Vorbehalt fällt, aber nur für die Regel.** Der Antwort-Prompt sagt
+#: „nur anhand der Beschlüsse … sonst ehrlich sagen" — und „Wie lange darf
+#: ein Ratsmitglied reden?" hat keinen Beschluss. Ohne diesen Absatz stünde
+#: § 15 Abs. 5 zwar im Prompt, aber hinter einer Regel, die das Gegenteil
+#: verlangt — dieselbe Falle wie beim Haushalt am 02.09.2026 („Die
+#: Ratsunterlagen geben keine direkte Auskunft … Der Liquiditätsstand betrug
+#: 136,1 Millionen Euro“, s. Prompt ``qa_answer``). Für alles, was der Rat
+#: ENTSCHIEDEN hat, gilt der Vorbehalt weiter.
+#:
+#: **Nichts aus dem Gedächtnis.** Was die Geschäftsordnung nicht regelt,
+#: regelt oft das NKomVG — das Modell kennt es ungefähr, und „ungefähr" ist
+#: bei einer Frist das Falsche.
+GESCHAEFTSORDNUNG_REGEL = (
+    "\nGESCHÄFTSORDNUNG: Unten steht der Wortlaut der Geschäftsordnung des Rates. "
+    "Fragt die Frage, wie der Rat, seine Ausschüsse oder die Einwohnerfragestunde "
+    "ARBEITEN — wer reden darf und wie lange, welche Fristen gelten, wie abgestimmt "
+    "oder gewählt wird —, beantworte sie aus diesem Wortlaut: geradeheraus, ohne den "
+    "Vorbehalt, die Beschlüsse gäben nichts her. Nenne den Paragrafen mit Absatz im "
+    "Satz („nach § 15 Abs. 5 der Geschäftsordnung“), NIE als [id]. Gib nur wieder, "
+    "was dort steht; regelt sie etwas nicht, sag das, statt es zu ergänzen. "
+    "Beschlüsse nennst du nur, wenn sie die Regel an einem Oldenburger Fall zeigen "
+    "oder die Frage nach ihnen fragt. Die Anschlussfragen dürfen sich hier auch auf "
+    "andere Regeln der Geschäftsordnung beziehen."
+)
+
 
 #: Deckel für den Bildschirm im Antwort-Prompt. Enger als bei Lotti (1.200):
 #: Dort TRÄGT der Element-Text die Antwort, hier ist er Beiwerk — die Antwort
@@ -4558,7 +4613,11 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "topic",
                      # ANS ENDE, aus demselben Grund wie `stand` darüber.
                      screen: dict | None = None,
                      # Plan „Akte“, Phase 4 — ebenfalls ANS ENDE.
-                     akte: dict | None = None) -> tuple[list[dict], dict]:
+                     akte: dict | None = None,
+                     # Die Geschäftsordnung — fertiger Baustein aus
+                     # ``rules_of_procedure.prompt_block``; ebenfalls ANS ENDE
+                     # und von den Aufrufern per NAME übergeben.
+                     rules_block: str = "") -> tuple[list[dict], dict]:
     vtext = _verlauf_zeilen(verlauf)
     gespraech = (f"Dies ist eine Anschlussfrage in einem Gespräch. Bisher:\n{vtext}\n"
                  f"{ANSCHLUSS_REGEL}\n\n"
@@ -4629,8 +4688,12 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "topic",
                             # verschwinden.
                             + aktenstand_regel(stand)
                             + ((akte_suche.AKTE_REGEL_ENG if eng else akte_suche.AKTE_REGEL)
-                               if akte_text else ""),
-                            presse=akte_text + _sitzungen_block(sitzungen)
+                               if akte_text else "")
+                            + (GESCHAEFTSORDNUNG_REGEL if rules_block else ""),
+                            # Die Geschäftsordnung zuerst: Für eine
+                            # Verfahrensfrage IST sie die Antwort, die übrigen
+                            # Bausteine sind Beiwerk.
+                            presse=rules_block + akte_text + _sitzungen_block(sitzungen)
                             + _glossar_block(begriffe_fuer(question))
                             + _steckbrief_block(steckbriefe) + _presse_block(presse)
                             + _staedte_block(staedte)
@@ -4785,7 +4848,8 @@ def answer_question(question: str, candidates: list[dict], model: str = MODEL, t
                     geld: dict | None = None, sitzungen: list[dict] | None = None,
                     ort: dict | None = None, staedte: list[dict] | None = None,
                     zukunft_leer: bool = False, stand: dict | None = None,
-                  screen: dict | None = None, akte: dict | None = None):
+                  screen: dict | None = None, akte: dict | None = None,
+                  rules_block: str = ""):
     """Synthesise an answer from retrieved candidates. Returns ``(answer, cited_ids)``."""
     messages, extra = _answer_messages(question, candidates, typ, model, presse, verlauf,
                                        haushalt, debatten, anlagen, gross, steckbriefe, duenn, eng,
@@ -4796,7 +4860,8 @@ def answer_question(question: str, candidates: list[dict], model: str = MODEL, t
                                        # die Ratsfrage aus Lottis Fenster fragte
                                        # ohne ihn. Positionsweise durchgereicht
                                        # wie alles hier; deshalb ganz ans Ende.
-                                       staedte, zukunft_leer, stand, screen, akte)
+                                       staedte, zukunft_leer, stand, screen, akte,
+                                       rules_block=rules_block)
     resp = llm.chat_complete(model=model, _feature="qa_answer", temperature=0.2,
                              max_tokens=_answer_tokens(typ, gross, eng), messages=messages, **extra)
     answer = (resp.choices[0].message.content or "").strip()
@@ -4813,7 +4878,8 @@ def answer_stream(question: str, candidates: list[dict], model: str = MODEL, typ
                   geld: dict | None = None, sitzungen: list[dict] | None = None,
                   ort: dict | None = None, staedte: list[dict] | None = None,
                   zukunft_leer: bool = False, stand: dict | None = None,
-                  screen: dict | None = None, akte: dict | None = None):
+                  screen: dict | None = None, akte: dict | None = None,
+                  rules_block: str = ""):
     """Stream the answer text deltas (same prompt/context as answer_question) so the
     UI can render the answer as it is written. Citation resolution is the caller's
     job once the full text is assembled (see resolve_citations)."""
@@ -4826,7 +4892,8 @@ def answer_stream(question: str, candidates: list[dict], model: str = MODEL, typ
                                        # die Ratsfrage aus Lottis Fenster fragte
                                        # ohne ihn. Positionsweise durchgereicht
                                        # wie alles hier; deshalb ganz ans Ende.
-                                       staedte, zukunft_leer, stand, screen, akte)
+                                       staedte, zukunft_leer, stand, screen, akte,
+                                       rules_block=rules_block)
     yield from llm.chat_stream(model=model, _feature="qa_answer", temperature=0.2,
                                max_tokens=_answer_tokens(typ, gross, eng), messages=messages, **extra)
 

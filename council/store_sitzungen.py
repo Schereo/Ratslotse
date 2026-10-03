@@ -1528,6 +1528,19 @@ class SitzungenMixin(StoreBasis):
             "SELECT id FROM council_decisions WHERE ksinr = ? AND kind = 'decision' "
             "ORDER BY position", (int(ksinr),))]
 
+    def rules_of_procedure_decisions(self, after: str) -> list[dict]:
+        """Ratsbeschlüsse NACH ``after``, deren Titel eine Geschäftsordnung
+        nennt — grob, neueste zuerst. Fein entscheidet
+        ``council.rules_of_procedure.ADOPTION_TITLE``: Hier stehen auch die
+        „Geschäftsordnungsanträge auf Vertagung", die keine neue Fassung sind.
+        Gebraucht, um zu merken, dass die gespeicherte Fassung überholt ist."""
+        return [dict(r) for r in self._conn.execute(
+            """SELECT d.id, d.title, d.outcome, cs.session_date
+               FROM council_decisions d JOIN council_sessions cs ON cs.ksinr = d.ksinr
+               WHERE cs.committee = 'Rat' AND cs.session_date > ?
+                 AND d.title LIKE '%Geschäftsordnung%'
+               ORDER BY cs.session_date DESC, d.id DESC""", (after,))]
+
     def known_session_ids(self, ksinrs: list[int]) -> set[int]:
         """Welche dieser Sitzungs-IDs kennen wir schon? Für den Nachlauf im
         Watcher, der den Kalender rückwärts liest: Von den Sitzungen der letzten

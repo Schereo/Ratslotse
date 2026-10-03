@@ -41,6 +41,24 @@ export type PresseHinweis = { title: string; url: string; date: string | null;
    *  Gespräche kennen das Feld nicht — dann bleibt es die reine Titelzeile. */
   excerpt?: string };
 
+/** Ein Paragraf der Geschäftsordnung des Rates, wie ihn
+ *  `council/rules_of_procedure.py::card` ausliefert — Wortlaut samt Sprung auf
+ *  die Seite im PDF der Stadt. */
+export type RulesOfProcedureSection = {
+  number: string; label: string; title: string; part: string; url: string; text: string;
+};
+
+/** Die Karte „Aus der Geschäftsordnung". `version` ist fertiger Text vom
+ *  Server (Fassung, Beschluss, Wahlperiode); `state` sagt, ob sie noch gilt. */
+export type RulesOfProcedureCard = {
+  title: string; full_title: string; version: string;
+  state: "current" | "term_ended" | "superseded";
+  url: string;
+  sections: RulesOfProcedureSection[];
+  /** Nur bei der Frage nach dem Ganzen: das Inhaltsverzeichnis. */
+  contents: { label: string; title: string; url: string }[];
+};
+
 /** Task 33: Anlagen-Fundstelle (Gutachten, Konzept, Stellungnahme) aus der
  *  schnellen oder gründlichen Recherche. */
 export type AnlagenHinweis = {
@@ -788,6 +806,93 @@ export function PresseBlock({ press_releases }: { press_releases: PresseHinweis[
         ))}
       </ul>
     </div>
+  );
+}
+
+/** „Aus der Geschäftsordnung" — der Wortlaut, auf den eine Verfahrensfrage
+ *  antwortet („Wie lange darf ein Ratsmitglied reden?").
+ *
+ *  Gestrichelt wie der Presse-Block: Die Geschäftsordnung ist ein Dokument
+ *  der Stadt, kein Beschluss aus dem Archiv, und bekommt deshalb auch keine
+ *  Fußnoten-Nummer (DESIGNSPRACHE § 8, „Externes nie wie Beschlüsse
+ *  stylen"). Der Wortlaut steht DA, nicht nur ein Link: Die Karte ist der
+ *  Beleg — wer prüfen will, was die Antwort sagt, liest den Absatz hier und
+ *  muss nicht das PDF öffnen. Lange Paragrafen (§ 23 hat 2.900 Zeichen)
+ *  beginnen als Vorschau und lassen sich aufklappen. */
+export function RulesOfProcedureBlock({ card }: { card: RulesOfProcedureCard }) {
+  const veraltet = card.state !== "current";
+  return (
+    <div className="rounded-xl border border-dashed border-border p-3">
+      <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+        Aus der Geschäftsordnung des Rates
+      </p>
+      {card.sections.length > 0 && (
+        <ul className="mt-2 space-y-3">
+          {card.sections.map((s) => <RulesOfProcedureParagraph key={s.number} section={s} />)}
+        </ul>
+      )}
+      {card.contents.length > 0 && (
+        <details className="group mt-2">
+          <summary className="flex min-h-[44px] cursor-pointer list-none items-center gap-1.5 text-hinweis font-medium text-primary sm:min-h-0">
+            <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" aria-hidden />
+            Alle {card.contents.length} Paragrafen
+          </summary>
+          <ul className="mt-1.5 space-y-1">
+            {card.contents.map((c) => (
+              <li key={c.label}>
+                <a href={c.url} target="_blank" rel="noopener noreferrer"
+                  className="group/z flex items-baseline gap-2 text-hinweis">
+                  <span className="w-11 shrink-0 font-mono text-meta text-muted-foreground">{c.label}</span>
+                  <span className="min-w-0 break-words text-foreground group-hover/z:underline">{c.title}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+      <p className={cn("mt-2.5 border-t border-border/60 pt-2 text-meta",
+        veraltet ? "text-amber-800 dark:text-amber-300" : "text-muted-foreground")}>
+        {card.version}
+        {" · "}
+        <a href={card.url} target="_blank" rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 font-medium text-primary hover:underline">
+          PDF auf oldenburg.de <ExternalLink className="h-3 w-3" aria-hidden />
+        </a>
+      </p>
+    </div>
+  );
+}
+
+/** Ein Paragraf: Kopf als Link auf die Seite im PDF, darunter der Wortlaut.
+ *  Absätze stehen im Text je auf einer Zeile („(1) …\n(2) …") — daher
+ *  `whitespace-pre-line`. */
+function RulesOfProcedureParagraph({ section }: { section: RulesOfProcedureSection }) {
+  const [offen, setOffen] = useState(false);
+  // Ab hier lohnt die Vorschau: Kürzere Paragrafen (§ 30 hat 86 Zeichen)
+  // stehen ganz da, ein Knopf für drei Zeilen wäre Lärm.
+  const lang = section.text.length > 420;
+  return (
+    <li>
+      <a href={section.url} target="_blank" rel="noopener noreferrer"
+        className="group flex items-baseline gap-2">
+        <span className="min-w-0 flex-1 break-words text-quelle font-medium group-hover:underline">
+          {section.label} {section.title}
+        </span>
+        <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
+      </a>
+      <p className="font-mono text-meta text-muted-foreground">Abschnitt {section.part}</p>
+      <p className={cn("mt-1 whitespace-pre-line text-hinweis text-muted-foreground",
+        lang && !offen && "line-clamp-5")}>
+        {section.text}
+      </p>
+      {lang && (
+        <button type="button" onClick={() => setOffen((o) => !o)} aria-expanded={offen}
+          className="mt-1 inline-flex min-h-[44px] items-center gap-1 text-hinweis font-medium text-primary hover:underline sm:min-h-0">
+          <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", offen && "rotate-180")} aria-hidden />
+          {offen ? "Weniger anzeigen" : "Ganzen Wortlaut lesen"}
+        </button>
+      )}
+    </li>
   );
 }
 

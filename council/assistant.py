@@ -43,7 +43,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from council import outcome_note
+from council import outcome_note, rules_of_procedure
 from kern import erklaerwissen, glossar, knowledge, llm, prompts
 from kern.foreign_text import defuse
 
@@ -1421,6 +1421,11 @@ def screen_context(store, screen: Screen, question: str, *,
         # neben einem Beschluss, zu dem sie nichts sagen.
         "erklaerungen": (erklaerwissen.finde(question)
                          if haushaltsseite or geld_gewollt else []),
+        # Verfahrensfragen („Wie lange darf man im Rat reden?") — an der
+        # FRAGE, auf jeder Seite: Die Regel gilt überall gleich, und eine
+        # Sitzungsseite, auf der „Geschäftsordnungsantrag" steht, soll sie
+        # nicht von selbst ziehen.
+        "rules_of_procedure": rules_of_procedure.find(question),
         # Wer selbst fragt, bekommt den vollen Deckel der KI-Frage: Dann
         # tragen die Zahlen die Antwort und dürfen nicht als dritter
         # Baustein herausfallen (s. GELD_MAX).
@@ -1504,15 +1509,18 @@ def belege_ordnen(belege: list[dict], antwort: str = "", auswahl: str = "",
 def kontext_belege(ctx: dict | None, antwort: str = "", auswahl: str = "") -> list[dict]:
     """``[{label, year, url}]`` — die Papiere hinter den Zahlen im Prompt.
 
-    Nur aus dem Haushalts-Kontext: Die anderen Bausteine (Seitenwissen,
-    Glossar, Beschluss-Kurzfassung) sind entweder unser eigener kuratierter
-    Text oder tragen ihre Quelle schon im Text. Ein Beleg unter einer
-    Glossar-Antwort wäre ein Chip ohne Gegenstand.
+    Aus dem Haushalts-Kontext und der Geschäftsordnung: Die anderen
+    Bausteine (Seitenwissen, Glossar, Beschluss-Kurzfassung) sind entweder
+    unser eigener kuratierter Text oder tragen ihre Quelle schon im Text. Ein
+    Beleg unter einer Glossar-Antwort wäre ein Chip ohne Gegenstand.
     """
     geld = (ctx or {}).get("geld")
     # Was Lotti nachgeschlagen hat (Schalter `lotti-werkzeuge`), lag ihr
     # genauso vor wie der Kontext — es gehört ebenso unter „Grundlage“.
     nachgeschlagen = list((ctx or {}).get("werkzeug_belege") or [])
+    # Die Geschäftsordnung ist ein Papier der Stadt, kein eigener Text von
+    # Ratslotse — sie bekommt ihren Chip, mit Sprung auf die Seite im PDF.
+    nachgeschlagen += rules_of_procedure.belege((ctx or {}).get("rules_of_procedure"))
     if not geld and not nachgeschlagen:
         return []
     from council import qa
@@ -1795,6 +1803,11 @@ def explain_messages(screen: Screen, question: str, ctx: dict,
         erklaerwissen=_erklaerwissen_block(ctx.get("erklaerungen") or []),
         erklaerwissen_regel=(prompts.ERKLAERWISSEN_REGEL
                              if ctx.get("erklaerungen") else ""),
+        # Die Geschäftsordnung und ihre Regel — beide an DERSELBEN Bedingung.
+        geschaeftsordnung=rules_of_procedure.prompt_block(
+            ctx.get("rules_of_procedure") or rules_of_procedure.Selection()),
+        geschaeftsordnung_regel=(prompts.GESCHAEFTSORDNUNG_REGEL
+                                 if ctx.get("rules_of_procedure") else ""),
         screen=_screen_block(screen),
         anker=_anker_block(screen),
         question=kuerze(question, QUESTION_MAX) or "(keine eigene Frage — erklär das Gezeigte)",

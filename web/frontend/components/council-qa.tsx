@@ -68,6 +68,7 @@ import {
   TagesordnungBlock,
   type AnlagenHinweis, type DebattenHinweis, type ParteiMeinung, type PresseHinweis,
   type QaGrafik, type SitzungsInfo,
+  RulesOfProcedureBlock, type RulesOfProcedureCard,
 } from "@/components/qa-bausteine";
 import {
   anlagenBuchstaben, ANL_RE, CITE_RE, citationIds, fmtDatumKurz,
@@ -252,6 +253,9 @@ type Turn = {
   key_facts?: KeyFacts | null;
   /** Ein langer Vorgang — die Gründliche Recherche anbieten (Backend entscheidet). */
   research_offer?: ResearchOfferData | null;
+  /** Die Paragrafen der Geschäftsordnung, aus denen eine Verfahrensfrage
+   *  beantwortet wurde — fertig vom Backend (council/rules_of_procedure.py). */
+  rules_of_procedure?: RulesOfProcedureCard | null;
 };
 
 /** Antwort vorlesen (5a/I-12, nur die TTS-Hälfte): SpeechSynthesis mit
@@ -894,6 +898,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             records_state: (msg.records_state as Turn["records_state"]) ?? null,
             steckbriefe: (msg.steckbriefe as Turn["steckbriefe"]) ?? [],
             chart: (msg.chart as QaGrafik | null) ?? null,
+            rules_of_procedure: (msg.rules_of_procedure as RulesOfProcedureCard | null) ?? null,
           });
           else if (msg.type === "token") patchLast((t) => ({ answer: t.answer + (msg.text as string) }));
           // Riss der LLM-Stream mitten in der Antwort, generiert das Backend
@@ -1476,7 +1481,8 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         research?: boolean; context?: string | null; unclear?: boolean;
         documents_read?: number; period?: string; premium_model?: boolean;
         chart?: QaGrafik | null; timeline?: AkteZeitleisteDaten | null;
-        key_facts?: KeyFacts | null } | null };
+        key_facts?: KeyFacts | null;
+        rules_of_procedure?: RulesOfProcedureCard | null } | null };
       setTurns((g.turns as DbTurn[]).map((t) => ({
         key: naechsterKey(),
         question: t.question, answer: t.answer, qtype: null, mode: null,
@@ -1489,6 +1495,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         chart: t.sources?.chart ?? null,
         timeline: t.sources?.timeline ?? null,
         key_facts: t.sources?.key_facts ?? null,
+        rules_of_procedure: t.sources?.rules_of_procedure ?? null,
         records_state: t.sources?.records_state ?? null,
         cited: t.sources?.cited ?? [],
         // Die kondensierte Frage aus dem Snapshot, sonst die Originalfrage.
@@ -2297,7 +2304,8 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
   // Vorschlags-Chips, die der Server mitschickt.
   const nichtsGefunden = !beschaeftigt && hatAntwort && turn.sources.length === 0
     && turn.press_releases.length === 0 && (turn.debates?.length ?? 0) === 0
-    && (turn.attachments?.length ?? 0) === 0 && !turn.fehler && !turn.unclear;
+    && (turn.attachments?.length ?? 0) === 0 && !turn.rules_of_procedure
+    && !turn.fehler && !turn.unclear;
   // Einspaltig zeigt der jüngste Turn seine Belege inline; sobald die
   // Belege-Spalte danebensteht (`breit`, also auch iPad quer), übernimmt sie —
   // sonst stünden dieselben Quellen zweimal auf dem Schirm. Ältere Turns
@@ -2306,6 +2314,11 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
   // eine quer gedruckte Seite ist breiter als 1024 px — ohne das fiele der
   // Ausdruck genau um seine Quellen kürzer aus.
   const belegeInline = istLetzter ? "breit:hidden print:flex" : aufgeklappt ? "" : "hidden";
+  // Eine Regelfrage, beantwortet aus der Geschäftsordnung allein: Darunter
+  // gehören weder „Daraus ein Thema machen" (ein Thema „Redezeit" meldet sich
+  // nie) noch nachgeladene Ratsdebatten — die Suche danach fände Beiträge zu
+  // irgendetwas, das zufällig „reden" heißt.
+  const nurGeschaeftsordnung = !!turn.rules_of_procedure && zitierte.length === 0;
 
   return (
     <div className="flex flex-col gap-3">
@@ -2548,15 +2561,18 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
 
           {/* Kompaktzeile älterer Turns (Design 2⑤). */}
           {/* turn.debates defensiv (?.) — Fast-Refresh/alte States kennen das Feld nicht. */}
-          {!istLetzter && !aufgeklappt && (turn.sources.length > 0 || turn.press_releases.length > 0 || (turn.debates?.length ?? 0) > 0 || (turn.attachments?.length ?? 0) > 0) && (
+          {!istLetzter && !aufgeklappt && (turn.sources.length > 0 || turn.press_releases.length > 0 || (turn.debates?.length ?? 0) > 0 || (turn.attachments?.length ?? 0) > 0 || !!turn.rules_of_procedure) && (
             <button type="button" onClick={() => setAufgeklappt(true)}
               className="flex w-fit items-center gap-1.5 rounded-full border border-border px-3 py-1 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
               <ChevronDown className="h-3 w-3" aria-hidden />
-              Quellen ({turn.sources.length}){turn.press_releases.length > 0 ? ` · Presse (${turn.press_releases.length})` : ""}{(turn.debates?.length ?? 0) > 0 ? ` · Debatten (${turn.debates.length})` : ""}{(turn.attachments?.length ?? 0) > 0 ? ` · Anlagen (${turn.attachments?.length})` : ""}
+              Quellen ({turn.sources.length}){turn.press_releases.length > 0 ? ` · Presse (${turn.press_releases.length})` : ""}{(turn.debates?.length ?? 0) > 0 ? ` · Debatten (${turn.debates.length})` : ""}{(turn.attachments?.length ?? 0) > 0 ? ` · Anlagen (${turn.attachments?.length})` : ""}{turn.rules_of_procedure ? " · Geschäftsordnung" : ""}
             </button>
           )}
 
           <div className={cn("flex flex-col gap-3.5", belegeInline)}>
+            {/* Für eine Verfahrensfrage IST die Geschäftsordnung der Beleg —
+                deshalb vor den Beschlüssen, die nur Beispiele sind. */}
+            {turn.rules_of_procedure && <RulesOfProcedureBlock card={turn.rules_of_procedure} />}
             {turn.sources.length > 0 && (
               <QuellenBlock turn={turn} turnIdx={turnIdx} idToNum={idToNum} zitierte={zitierte}
                 showAll={showAll} setShowAll={setShowAll} flashId={flashId} ankerPrefix={`qa-source-${turnIdx}`}
@@ -2566,7 +2582,8 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
               <DebattenBaustein question={turn.context || turn.question}
                 beschlussIds={turn.sources.slice(0, 40).map((q) => q.id)}
                 debates={turn.debates ?? []}
-                nachladen={!beschaeftigt && !!turn.answer && !turn.fehler && !turn.abgebrochen} />
+                nachladen={!beschaeftigt && !!turn.answer && !turn.fehler && !turn.abgebrochen
+                  && !nurGeschaeftsordnung} />
             )}
             {turn.research && (turn.debates?.length ?? 0) > 0 && (
               <DebattenBaustein question={turn.question} beschlussIds={[]}
@@ -2599,7 +2616,7 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
               Gremium; für die gibt es keinen Anlass, sie je wieder
               anzusprechen. */}
           {!beschaeftigt && hatAntwort && !turn.fehler && !nichtsGefunden
-            && !turn.unclear && (
+            && !turn.unclear && !nurGeschaeftsordnung && (
             <ThemenBruecke frage={turn.question} />
           )}
 
@@ -2624,6 +2641,8 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
                   ? null
                   : turn.research && turn.documents_read
                   ? <>Bericht aus {turn.documents_read} gelesenen Dokumenten{turn.period ? ` (${turn.period})` : ""}{zitierte.length > 0 ? `, ${zitierte.length} zitiert` : ""} — kann unvollständig sein. Quellen prüfen.</>
+                  : zitierte.length === 0 && turn.rules_of_procedure
+                  ? <>Automatische Antwort aus der Geschäftsordnung des Rates — kann unvollständig sein. Wortlaut prüfen.</>
                   : <>Automatische Antwort{zitierte.length > 0 ? `, ${stuetztAuf(zitierte)}` : " aus den gefundenen Beschlüssen"} — kann unvollständig sein. Quellen prüfen.</>}
               </span>
             </div>
@@ -2928,10 +2947,12 @@ function BelegeSpalte({ turn, flashId, onFlash, onDazuFragen, fertig = true }: {
   const anlBuchstaben = useAnlagenBuchstaben(turn);
   const zitierte = useMemo(() => zitierteVon(turn, idToNum), [turn, idToNum]);
   if (turn.sources.length === 0 && turn.press_releases.length === 0
-      && (turn.debates?.length ?? 0) === 0 && (turn.attachments?.length ?? 0) === 0) return null;
+      && (turn.debates?.length ?? 0) === 0 && (turn.attachments?.length ?? 0) === 0
+      && !turn.rules_of_procedure) return null;
   // Scroll und Höhe übernimmt seit Design 4a die Karten-Hülle im QaTab.
   return (
     <div className="flex flex-col gap-3.5">
+      {turn.rules_of_procedure && <RulesOfProcedureBlock card={turn.rules_of_procedure} />}
       {turn.sources.length > 0 && (
         <QuellenBlock turn={turn} turnIdx={-1} idToNum={idToNum} zitierte={zitierte}
           showAll={showAll} setShowAll={setShowAll} flashId={flashId} ankerPrefix="qa-col"
@@ -2941,7 +2962,7 @@ function BelegeSpalte({ turn, flashId, onFlash, onDazuFragen, fertig = true }: {
         beschlussIds={turn.sources.slice(0, 40).map((q) => q.id)}
         debates={turn.debates ?? []}
         nachladen={fertig && !turn.research && !turn.unclear && !!turn.answer && !turn.fehler
-          && !turn.abgebrochen} />
+          && !turn.abgebrochen && !(turn.rules_of_procedure && zitierte.length === 0)} />
       {(turn.attachments?.length ?? 0) > 0 && (
         <AnlagenBlock attachments={turn.attachments ?? []} buchstaben={anlBuchstaben}
           ankerPrefix="qa-anlage-col" />
