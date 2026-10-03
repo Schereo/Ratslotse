@@ -36,3 +36,24 @@ def test_erfundene_und_gerechnete_betraege_bleiben_befunde():
     assert erfundene_zahlen("rund 5.000 Euro", "Erträge 4.602 € je Einwohner*in") == ["5.000 Euro"]
     # Eine Hochrechnung bleibt erfunden.
     assert erfundene_zahlen("rund 421 Millionen Euro", KONTEXT) == ["421 Millionen"]
+
+
+def test_der_lauf_misst_den_ausgelieferten_weg_mit_werkzeugen():
+    """Release-Prüfung 03.10.2026: Der Lauf rief ohne `werkzeuge=True` auf und
+    maß damit eine Lotti, die mit 3.0.0 niemand mehr bekommt."""
+    import inspect
+
+    from eval import run_assistant
+    assert inspect.signature(run_assistant.lauf).parameters["werkzeuge"].default is True
+
+
+def test_der_mitschnitt_sammelt_werkzeug_texte_und_raeumt_auf():
+    from council import lotti_werkzeuge as lw
+    from eval import run_assistant
+    original = lw.ausfuehren
+
+    def fn():
+        return lw.ausfuehren(None, "gibt_es_nicht", "{}", permissions=frozenset(), bekannt="")
+    _e, texte = run_assistant._mit_werkzeug_mitschnitt(fn)
+    assert texte and "nicht zur Verfügung" in texte[0]
+    assert lw.ausfuehren is original

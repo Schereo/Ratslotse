@@ -14,7 +14,7 @@ import { api, apiUrl, authHeaders, qs } from "@/lib/api";
 import type { ApiAntwort } from "@/lib/vertrag";
 import {
   ankerKennung, ankerListe, ankerTreffer, anschlussfragen, belegName,
-  chipTitel, daumenZeigen, erklaerAktion,
+  chipTitel, daumenZeigen, erklaerAktion, erklaerFehler, FRAGE_MAX, frageZaehler,
   ernteElement, gedaechtnis, kuerze, ortsfrage, refsAus, routeAus, seitenName,
   seitenTitel, seitenUeberschrift, trenneWeiter, ueberschriftenPfad, zaesur,
   type Anker, type Bildschirm, type NaechsteSeite,
@@ -264,6 +264,8 @@ export function LottiPanel({
     } catch { /* privates Fenster — dann eben nicht */ }
   }, []);
   const [frage, setFrage] = useState("");
+  /** „262/300“ nahe der Grenze, sonst nichts (lib/assistentin.ts). */
+  const zaehler = frageZaehler(frage);
   const [laden, setLaden] = useState(false);
   const abbruch = useRef<AbortController | null>(null);
   const eingabeRef = useRef<HTMLInputElement>(null);
@@ -363,13 +365,10 @@ export function LottiPanel({
   const ratsfrageStellen = useCallback(async (frageText: string, opts: {
     /** Die bestehende Runde, in die geantwortet wird (statt einer neuen). */
     inTurn?: number;
-    /** Die Erklärung, die gerade darüber entstanden ist — sie gehört ins
-     *  Gedächtnis der Ratsfrage („und wer hat das beantragt?"). Der Zustand
-     *  `turns` trägt sie zu diesem Zeitpunkt noch nicht: React hat den
-     *  Setzer erst eingereiht, und dieser `useCallback` hält den Stand vom
-     *  letzten Zeichnen. Gesetzt heißt außerdem: Diese Runde ist der ZWEITE
-     *  Schritt derselben Frage — die Frage-Blase steht schon darüber und
-     *  wird nicht wiederholt. */
+    /** Die Erklärung, die gerade darüber entstanden ist. Gesetzt heißt:
+     *  Diese Runde ist der ZWEITE Schritt derselben Frage — die Frage-Blase
+     *  steht schon darüber und wird nicht wiederholt. Ins Gedächtnis der
+     *  Ratsfrage geht sie NICHT (s. `history` unten). */
     dazu?: { question: string; answer: string };
     /** Die Markierung der Runde, aus der dieser Weg kommt. Der Zustand
      *  `markierung` taugt dafür nicht: Auf dem Handy ist die Auswahl nach dem
@@ -408,13 +407,20 @@ export function LottiPanel({
           // beiden Felder blieb er ungespeichert, und der Verlauf hatte ein
           // Loch genau an der interessantesten Stelle.
           conversation_id: gespraechId,
-          // Wie bei `/explain`: nur Runden dieser Seite — plus die Erklärung,
-          // die gerade darüber entstanden ist und noch nicht im Zustand steht.
-          history: [
-            ...gedaechtnis(turns, route, MAX_TURNS_KONTEXT).map((t) => ({
-              question: frageMitZitat(t), answer: t.answer })),
-            ...(opts.dazu ? [opts.dazu] : []),
-          ].slice(-MAX_TURNS_KONTEXT)
+          // Wie bei `/explain`: nur Runden dieser Seite.
+          //
+          // **Die Erklärung darüber gehört NICHT hinein** (03.10.2026). Bis
+          // dahin stand sie hier als `dazu` — samt derselben Frage, die gleich
+          // darunter noch einmal als neue Frage ging. Das Archiv las daraus
+          // eine Anschlussfrage ohne neuen Inhalt und antwortete „Eine neue
+          // Frage ist in Ihrer Nachricht nicht enthalten“, mit 0 Quellen. Den
+          // Gegenstand trägt `screen` unten; die Erklärung selbst sagte in
+          // diesem Fall ohnehin nur, dass das Archiv antworten muss. Der
+          // Server verwirft eine solche Dublette inzwischen auch selbst
+          // (`qa.verlauf_ohne_dieselbe_frage`) — für die App und alte Stände.
+          history: gedaechtnis(turns, route, MAX_TURNS_KONTEXT)
+            .map((t) => ({ question: frageMitZitat(t), answer: t.answer }))
+            .slice(-MAX_TURNS_KONTEXT)
             .map((t) => ({ question: t.question.slice(0, 200), answer: t.answer.slice(0, 300) })),
           screen: {
             route,
@@ -616,13 +622,18 @@ export function LottiPanel({
       });
       if (!res.ok || !res.body) {
         // 400 heißt: Zu dieser Seite gibt es nichts zu sagen — der Grund steht
-        // in der Antwort und ist für Menschen geschrieben.
-        let msg = "Dazu kann ich gerade nichts sagen.";
+        // in der Antwort und ist für Menschen geschrieben. Dasselbe gilt für
+        // beide 429 (zu schnell, Tageskontingent). 422 dagegen trägt Pydantics
+        // englische Liste; daraus wird ein Satz (`erklaerFehler`).
+        let detail: unknown = null;
         try {
-          const b = await res.json();
-          if (typeof b?.detail === "string") msg = b.detail;
+          detail = (await res.json())?.detail;
         } catch { /* kein JSON — dann bleibt der allgemeine Satz */ }
-        patch(() => ({ answer: msg, fehler: true }));
+        patch(() => ({ answer: erklaerFehler(res.status, detail), fehler: true }));
+        // **Die Frage geht nicht verloren** (Designsprache § 6: „Fehler/Limits:
+        // immer mit Ausweg"). Bis 03.10.2026 war sie nach einem 422 weg — wer
+        // 320 Zeichen getippt hatte, durfte neu anfangen.
+        if (sauber) setFrage(sauber);
         return;
       }
       await leseSseStrom(res.body, (msg) => {
@@ -869,7 +880,7 @@ export function LottiPanel({
       // zur Bauzeit, er entsteht erst beim Tippen.
       style={{ "--rl-tastatur": `${tastatur}px` } as React.CSSProperties}
       className={cn(
-        "fixed z-50 flex flex-col overflow-hidden rounded-2xl border border-border",
+        "fixed z-[45] flex flex-col overflow-hidden rounded-2xl border border-border",
         "bg-card shadow-lifted print:hidden",
         "animate-in fade-in-0 slide-in-from-bottom-4 duration-buehne ease-out-strong",
         // Handy: die Fläche zwischen Kopfleiste und Knopf.
@@ -1147,10 +1158,23 @@ export function LottiPanel({
           ref={eingabeRef}
           value={frage}
           onChange={(e) => setFrage(e.target.value)}
+          // Dieselbe Grenze wie der Server (`assistant.QUESTION_MAX`) — sonst
+          // kommt eine lange Frage als 422 zurück (lib/assistentin.ts).
+          maxLength={FRAGE_MAX}
           placeholder="Frag mich zu dieser Seite …"
           aria-label="Frage an Lotti"
+          aria-describedby={zaehler ? "lotti-zaehler" : undefined}
           className="min-w-0 flex-1 bg-transparent text-[13.5px] text-foreground outline-none placeholder:text-muted-foreground"
         />
+        {/* Erst nahe der Grenze, und dann ruhig: Mono, gedämpft — am Ende
+            in der Signalfarbe, weil dort jedes weitere Zeichen wegfällt. */}
+        {zaehler && (
+          <span id="lotti-zaehler" aria-live="polite"
+                className={cn("flex-none font-mono text-[10.5px] tabular-nums",
+                              [...frage].length >= FRAGE_MAX ? "text-signal" : "text-muted-foreground")}>
+            {zaehler}
+          </span>
+        )}
         <button
           type="submit"
           disabled={laden || !frage.trim() || merken == null}

@@ -75,6 +75,7 @@ from ..antworten import (AnalysisData, ElectedCouncil, ElectedMember, AssistantS
                          TodayBriefing, TrendData)
 from ..clients import client_kind
 from ..election import elected as elected_mod
+from .. import fehlersammler
 from ..deps import (get_cities_store, get_council_store, get_current_user, get_store,
                     optional_user, require_active, require_permission)
 from ..ratelimit import (
@@ -4144,6 +4145,44 @@ def _selbstpruefung_nachlauf(nachlauf: dict) -> None:
         _log.warning("Lottis Selbstprüfung (Stichprobe) fehlgeschlagen", exc_info=True)
 
 
+def _lotti_anderswo(store: CouncilStore, screen: lotti.Screen) -> list[dict]:
+    """Was die Beschluss-Seite unter „In anderen Städten“ zeigt — für Lotti.
+
+    **Derselbe Weg wie die Seite** (``decision_elsewhere``), nicht ein
+    zweiter: Welche Treffer dort stehen, entscheiden Schwelle und Filter des
+    Endpunkts, und Lotti soll genau die kennen, die man sieht. Nur mit dem
+    Schalter ``andere-staedte`` — ohne ihn gibt es den Block auf der Seite
+    nicht, also auch nichts zu erklären.
+
+    Der Städte-Speicher wird NUR hier geöffnet, nur auf einer Beschluss-Seite
+    und nur auf dem Weg mit Modell. Ein Fehler darin kostet die Zeilen, nie
+    die Erklärung.
+    """
+    did = (screen.refs or {}).get("decision_id")
+    if not did or not features.an("andere-staedte"):
+        return []
+    cities = None
+    try:
+        cities = CitiesStore(get_settings().cities_db)
+        return [dict(i) for i in decision_elsewhere(int(did), store=store, cities=cities)["items"]]
+    except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
+        _log.warning("Lotti: „In anderen Städten“ nicht lesbar", exc_info=True)
+        return []
+    finally:
+        if cities is not None:
+            cities.close()
+
+
+def _lotti_nachlauf(nachlauf: dict, meldungen: list) -> None:
+    """Was nach Lottis Strom läuft: die Stichprobe und die Fehlermeldungen."""
+    _selbstpruefung_nachlauf(nachlauf)
+    for melden in meldungen:
+        try:
+            melden()
+        except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
+            _log.warning("Fehlermeldung an die Admins ging nicht raus", exc_info=True)
+
+
 class AssistantEventBody(BaseModel):
     """Ein Ereignis aus Lottis Fenster, das sonst keinen Endpunkt hätte.
 
@@ -4258,6 +4297,15 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
                             "Diese Seite steht deinem Konto nicht offen.")
     if not user.get("limits_unlocked"):
         assistant_limiter.check(request, subject=user["id"])
+        # Das Tageskontingent (`lotti.TAGES_KONTINGENT`, dort begründet). Der
+        # Satz ist für Menschen geschrieben — Web und App zeigen `detail`.
+        heute = ratslotse.aktivitaet_heute(user["id"], lotti.KONTINGENT_MERKMAL) or 0
+        if heute >= lotti.TAGES_KONTINGENT:
+            raise HTTPException(
+                status.HTTP_429_TOO_MANY_REQUESTS,
+                f"Für heute hast du mich schon {lotti.TAGES_KONTINGENT}-mal gefragt — "
+                "ab morgen erkläre ich wieder. Fachwörter und die Seiten selbst "
+                "bleiben natürlich lesbar.")
 
     # **Der Anzeigename fällt hier heraus, nicht erst im Prompt.** Auf
     # `/dashboard` ist die `h1` „Moin, <Name>!" — der Client streicht den Namen
@@ -4282,6 +4330,8 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
     verlauf = [r.model_dump() for r in body.history]
     #: Was die stille Stichprobe nach dem Strom prüft — leer, wenn nichts.
     nachlauf: dict = {}
+    #: Fehlermeldungen an die Admins, die nach dem Strom rausgehen.
+    meldungen: list = []
 
     def gen():
         try:
@@ -4358,7 +4408,8 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
             # mit; nie als Name, Adresse oder Rollenwort.
             ctx = lotti.screen_context(store, screen, frage,
                                        permissions=rechte,
-                                       ratslotse=ratslotse, user_id=user["id"])
+                                       ratslotse=ratslotse, user_id=user["id"],
+                                       anderswo=_lotti_anderswo(store, screen))
             zeiten["context_ms"] = round((time.perf_counter() - t0) * 1000)
             yield _sse({"type": "step", "step": "answer"})
 
@@ -4463,15 +4514,26 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
                         "evidence": belege,
                         "timings": zeiten,
                         "conversation_id": conversation_id})
-        except Exception:  # noqa: BLE001 — Fehler beim Client sichtbar machen
+        except Exception as exc:  # noqa: BLE001 — Fehler beim Client sichtbar machen
             _log.exception("Lottis Erklärung fehlgeschlagen")
+            # **Auch in die Fehlerliste** (Admin-Panel *Fehler*, Mail bei der
+            # ersten Begegnung). Der Strom hat schon mit 200 geantwortet, der
+            # 500er-Handler in `main.py` sieht diese Ausnahme also nie — bis
+            # 03.10.2026 stand sie nur im Log. Gespeichert wird, was
+            # `kern.fehler.aufbereiten` durchlässt: keine Frage, kein
+            # Seiteninhalt, die Route als Vorlage.
+            melden = fehlersammler.sammeln(
+                exc, request.method, getattr(request.scope.get("route"), "path", None),
+                request.url.path)
+            if melden:
+                meldungen.append(melden)
             yield _sse({"type": "error", "message": "Erklärung fehlgeschlagen."})
 
     return StreamingResponse(
         gen(), media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
         # Läuft erst, wenn der Strom ausgeliefert ist — niemand wartet darauf.
-        background=BackgroundTask(_selbstpruefung_nachlauf, nachlauf))
+        background=BackgroundTask(_lotti_nachlauf, nachlauf, meldungen))
 
 
 class ScreenContext(BaseModel):
@@ -4816,7 +4878,11 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # (expand_ms misst seit dem Fragetyp-Routing den EINEN Analyse-Call
             # — Begriffe + Typ —, der Schlüssel bleibt für Vergleichbarkeit.)
             zeiten: dict = {}
-            verlauf = [r.model_dump() for r in body.history]
+            # Eine Runde mit DERSELBEN Frage ist keine Vorgeschichte, sondern
+            # eine Dublette — sie machte aus der Weiterreichung aus Lottis
+            # Fenster eine leere Anschlussfrage (`qa.verlauf_ohne_dieselbe_frage`).
+            verlauf = qa.verlauf_ohne_dieselbe_frage(
+                [r.model_dump() for r in body.history], q)
             yield _sse({"type": "step", "step": "expand"})
             t0 = time.perf_counter()
             analyse = qa.analyse_query(q, verlauf=verlauf)
