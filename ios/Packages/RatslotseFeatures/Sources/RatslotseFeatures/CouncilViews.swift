@@ -1332,8 +1332,10 @@ private struct SessionYearDivider: View {
     }
 }
 
-/// „Anderswo beschlossen" — was andere Städte zu derselben Sache beantragt
-/// oder beschlossen haben.
+/// „In anderen Städten" — was andere Räte zu derselben Sache beantragt,
+/// beraten oder beschlossen haben. Bis 10/2026 hieß der Block „Anderswo
+/// beschlossen"; beschlossen war aber nur gut ein Drittel der Treffer (Review
+/// 3.0.0), deshalb steht das Ergebnis an jeder Zeile und nicht im Titel.
 ///
 /// Die Zeilen führen aus dem Haus heraus, ins Ratsinformationssystem der
 /// jeweiligen Stadt. Deshalb kein Chevron: Der verspricht eine Detailseite
@@ -1349,10 +1351,10 @@ struct ElsewhereSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 13) {
             VStack(alignment: .leading, spacing: 4) {
-                MonoKicker("Anderswo beschlossen")
-                Text("Was \(response.bodies.formatted(.list(type: .and))) zu einer ähnlichen "
-                     + "Sache beantragt oder beschlossen haben — aus den Ratsinformations"
-                     + "systemen dieser Städte.")
+                MonoKicker("In anderen Städten")
+                Text("Ähnliche Vorlagen aus \(response.bodies.formatted(.list(type: .and))), "
+                     + "nach Ähnlichkeit der Texte ausgewählt. Nicht jede wurde beschlossen — "
+                     + "das Ergebnis steht dabei, wo es bekannt ist.")
                     .font(RatsFont.body(11.5))
                     .foregroundStyle(RatsColor.muted)
                     .fixedSize(horizontal: false, vertical: true)
@@ -1610,7 +1612,7 @@ struct DecisionDetailView: View {
         } catch { self.error = error.localizedDescription }
     }
 
-    /// „Anderswo beschlossen" — eigener Aufruf, der still scheitern darf.
+    /// „In anderen Städten" — eigener Aufruf, der still scheitern darf.
     ///
     /// Der Block ist Zugabe, kein Inhalt der Seite: Ein Fehler hier darf
     /// weder die Fehlermeldung der Seite setzen noch das schon geladene

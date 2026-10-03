@@ -2495,9 +2495,12 @@ def _staedte_block(staedte: list[dict] | None) -> str:
     """
     if not staedte:
         return ""
+    # Privatpersonen im Titel nur mit Anfangsbuchstaben — wie auf den Karten.
+    from council.cities.model import display_title
+
     zeilen = "\n".join(
         f"- {s.get('body_name') or s.get('body_id')}, {_datum_de(s.get('date'))}: "
-        f"{(s.get('name') or '').strip()[:160]}"
+        f"{display_title(s.get('name')).strip()[:160]}"
         + (f" — {s['summary'].strip()[:180]}" if s.get("summary") else "")
         for s in staedte)
     return ("\nAUS ANDEREN STÄDTEN (Beschlüsse und Anträge fremder Räte, nicht "

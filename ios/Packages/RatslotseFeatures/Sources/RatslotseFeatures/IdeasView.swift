@@ -2,7 +2,7 @@ import RatslotseAPI
 import RatslotseDesign
 import SwiftUI
 
-/// „Ideen aus anderen Städten" — was andere Räte beschlossen haben und
+/// „Ideen aus anderen Städten" — was andere Räte beantragt oder beschlossen haben und
 /// Oldenburg fehlt.
 ///
 /// **Zwei Zustände, eine Ansicht.** Ohne gewähltes Feld die Übersicht, mit
@@ -54,7 +54,7 @@ struct IdeasView: View {
         .background(RatsColor.page)
         // Eigener Takt am Schalter: Der kommt aus `/api/app-config` und ist
         // beim ersten Aufbau der Ansicht oft noch nicht da (Lehre aus dem
-        // Block „Anderswo beschlossen").
+        // Block „In anderen Städten").
         .task(id: model.feature("ideen-anderswo")) { await ladeFelder() }
     }
 
@@ -65,8 +65,9 @@ struct IdeasView: View {
                 .foregroundStyle(RatsColor.text)
             // Die Städte kommen aus den DATEN (`bodies`). Hier standen bis
             // 22.09.2026 fünf fest aufgezählt, als es längst acht waren.
-            Text("Was Räte in \(Self.aufzaehlung(staedte)) beantragt und beschlossen "
-                 + "haben — und ob Oldenburg dasselbe schon hat. Den Stand in Oldenburg "
+            Text("Was Räte in \(Self.aufzaehlung(staedte)) beantragt oder beschlossen "
+                 + "haben — und ob Oldenburg dasselbe schon hat. Nicht alles davon wurde "
+                 + "dort auch beschlossen; das Ergebnis steht bei jeder Vorlage. Den Stand in Oldenburg "
                  + "prüft ein Sprachmodell an Oldenburger Beschlüssen; sie stehen bei "
                  + "jeder Idee.")
                 .font(RatsFont.body(12.5))

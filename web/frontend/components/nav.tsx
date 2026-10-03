@@ -688,7 +688,7 @@ function MehrSheet({ abgang, onClose, onFertig }: { abgang: boolean; onClose: ()
           <MehrZeile href="/council" icon={Search} label="Suche" onClose={onClose} />
           {viertel && <MehrZeile href={viertelZiel} icon={MapPinned} label="Mein Viertel" onClose={onClose} />}
           {/* Die Ideen aus anderen Städten stehen seit 23.09.2026 als Reiter
-              „Andere Städte" IN der Analyse, nicht mehr als eigene Zeile hier
+              „Ideen aus anderen Städten" IN der Analyse, nicht mehr als eigene Zeile hier
               (Tim: „ungern noch einen weiteren Punkt in die Navigation"). */}
           <MehrZeile href="/council?tab=analysis" icon={BarChart3} label="Analyse" onClose={onClose} />
           {darfHaushalt(user) && <MehrZeile href="/haushalt" icon={Euro} label="Haushalt" onClose={onClose} />}

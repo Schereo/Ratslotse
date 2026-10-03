@@ -308,3 +308,96 @@ def test_nur_richtig_oder_falsch(cities_db):
     import pytest
     with pytest.raises(ValueError):
         cities_db.put_feedback("paper", "os:p:1", "fit", "4", 7, "vielleicht")
+
+
+# ------------------------------------------------- Fehltreffer (Review 3.0.0)
+#
+# In einer Stichprobe von 18 Beschluss-Seiten lagen 6 daneben, in einer
+# zweiten von 36 waren 16 Blöcke überwiegend Fehltreffer. Drei Regeln nehmen
+# davon das meiste heraus; jede steht hier mit ihrem Anlass.
+
+
+def _fremd(cities_db, pid: str, titel: str, *, field: str | None, kind: str = "motion",
+           transfer: str = "adaptable") -> None:
+    cities_db.upsert_batch(Batch(papers=[Paper(pid, "osnabrueck", titel, kind=kind)]))
+    nutzlast = {"summary": titel, "transfer": transfer}
+    if field:
+        nutzlast["field"] = field
+    cities_db.put_annotation("paper", pid, "classify", "2", nutzlast, "h" + pid)
+
+
+def _eigen(cities_db, *, field: str | None, transfer: str = "adaptable") -> None:
+    nutzlast = {"summary": "Oldenburg.", "transfer": transfer}
+    if field:
+        nutzlast["field"] = field
+    cities_db.put_annotation("paper", "oldenburg:paper:4711", "classify", "2", nutzlast, "ho")
+
+
+def test_ein_anderes_themenfeld_ist_nicht_dieselbe_sache(client, cities_db):
+    """Die Pflasterung am Rathausmarkt (Verkehr) fand die Entgeltordnung eines
+    Gemeindehofs (Kultur/Sport). „sonstiges" widerspricht dagegen nichts."""
+    _eigen(cities_db, field="klima_umwelt")
+    _fremd(cities_db, "os:p:kultur", "Entgeltordnung Gemeindehof", field="kultur_sport")
+    _fremd(cities_db, "os:p:klima", "Wärmeplan Osnabrück", field="klima_umwelt")
+    _fremd(cities_db, "os:p:sonst", "Partnerschaft für Wärme", field="sonstiges")
+    cities_db.replace_neighbors(EMBED_MODEL, "paper", "oldenburg:paper:4711",
+                                [("paper", "os:p:kultur", 0.90), ("paper", "os:p:klima", 0.85),
+                                 ("paper", "os:p:sonst", 0.80)])
+    daten = client.get("/api/council/decision/1/elsewhere").json()
+    assert [i["paper_id"] for i in daten["items"]] == ["os:p:klima", "os:p:sonst"]
+
+
+def test_ohne_eigene_einordnung_wird_nicht_nach_feld_gefiltert(client, cities_db):
+    _fremd(cities_db, "os:p:kultur", "Irgendwas mit Kultur", field="kultur_sport")
+    cities_db.replace_neighbors(EMBED_MODEL, "paper", "oldenburg:paper:4711",
+                                [("paper", "os:p:kultur", 0.90)])
+    daten = client.get("/api/council/decision/1/elsewhere").json()
+    assert [i["paper_id"] for i in daten["items"]] == ["os:p:kultur"]
+
+
+def test_ortsgebundene_beschluesse_brauchen_einen_starken_antrag(client, cities_db):
+    """„Widmung der Straße Im Technologiepark" fand eine ANTWORT bei 0,80, die
+    Grundschule Wechloy einen Antrag bei 0,71 — beides Gattung, nicht Sache."""
+    _eigen(cities_db, field="verkehr", transfer="local")
+    _fremd(cities_db, "os:p:antwort", "Park- und Verkehrskonzept", field="verkehr", kind="answer")
+    _fremd(cities_db, "os:p:schwach", "Schulwechsel", field="verkehr", kind="motion")
+    _fremd(cities_db, "os:p:stark", "Parksituation in der Händelstraße", field="verkehr",
+           kind="motion")
+    cities_db.replace_neighbors(EMBED_MODEL, "paper", "oldenburg:paper:4711",
+                                [("paper", "os:p:antwort", 0.90), ("paper", "os:p:stark", 0.84),
+                                 ("paper", "os:p:schwach", 0.75)])
+    daten = client.get("/api/council/decision/1/elsewhere").json()
+    assert [i["paper_id"] for i in daten["items"]] == ["os:p:stark"]
+
+
+@pytest.mark.parametrize("titel", [
+    'Widmung der Straße "Im Technologiepark"',
+    "Umsetzung der Pflasterung am Rathausmarkt und Julius-Mosen-Platz",
+    "Überplanmäßige Bewilligung in Höhe von 416.000 Euro für den Teilhaushalt 05",
+    "Unterrichtung des Rates über eine außerplanmäßige Bewilligung",
+    "Entgeltordnung der Stadt Oldenburg (Oldb) über die Erhebung von Entgelten",
+    "Aufwandsspaltungsbeschluss Raiffeisenstraße",
+    "Geplante Einziehung von Teilflächen des Muttenpottsweg - Bericht",
+    "Änderung 4 des Bebauungsplanes 534 (Bereich zwischen Sandkruger Straße)",
+    "Verlängerung der Veränderungssperre Nummer 76 (Meerkamp/Mittagsweg)",
+    "Jahresabschluss und Lagebericht 2019 für den Eigenbetrieb Gebäudewirtschaft",
+])
+def test_formale_beschluesse_bekommen_keinen_block(client, rats_db, titel):
+    with rats_db._conn:
+        rats_db._conn.execute("UPDATE council_decisions SET title=? WHERE id=1", (titel,))
+    daten = client.get("/api/council/decision/1/elsewhere").json()
+    assert daten["items"] == [], titel
+
+
+@pytest.mark.parametrize("titel", [
+    "Änderung der Satzung über die Erhebung von Marktgebühren",
+    "Änderung der Gebühren für Bewohnerparkausweise",
+    "Umwandlung der Grundschule Bürgeresch in eine Ganztagsschule",
+])
+def test_gebuehren_und_sachbeschluesse_behalten_ihn(client, rats_db, titel):
+    """Gebühren sind keine Formel: Bewohnerparken und Marktgebühren finden
+    anderswo genau dieselbe Sache (gemessen: fünf von fünf)."""
+    with rats_db._conn:
+        rats_db._conn.execute("UPDATE council_decisions SET title=? WHERE id=1", (titel,))
+    daten = client.get("/api/council/decision/1/elsewhere").json()
+    assert [i["paper_id"] for i in daten["items"]] == ["os:p:1"], titel

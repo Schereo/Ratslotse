@@ -217,7 +217,9 @@ def test_ohne_staedte_datenbank_antwortet_er_trotzdem(rats_db, tmp_path):
         # Frontend schreibt daraus den Satz „Was Räte in … beschlossen haben"
         # und braucht eine Liste, keine fehlende Angabe.
         assert c.get("/api/council/cities/ideas/fields").json() == {
-            "fields": [], "bodies": []}
+            "fields": [], "bodies": [],
+            # Ohne Abgleich auch kein „Stand" — kein erfundenes Datum.
+            "data_status": {"as_of": None, "lagging": []}}
         daten = c.get("/api/council/cities/ideas?field=verkehr").json()
         assert daten["items"] == [] and daten["total"] == 0
     finally:
@@ -381,3 +383,28 @@ def test_rueckmeldungen_sind_je_konto_gebremst(client, cities_db, angemeldet, mo
     codes = [client.post("/api/council/cities/ideas/os:p:1/feedback?verdict=right").status_code
              for _ in range(3)]
     assert codes == [200, 200, 429]
+
+
+# -------------------------------------------------------------- Datenstand
+
+def test_der_datenstand_nennt_den_aeltesten_abgleich_und_wer_hinterherhinkt(client, cities_db):
+    """„Stand: …" über der Seite: der älteste Abgleich (nur bis dahin ist
+    ALLES drin), und Städte, deren Bestand weit davor endet (Wolfsburg
+    25.06. gegen 14.09.2026)."""
+    cities_db.upsert_body(Body("wolfsburg", "Wolfsburg", "NI", "allris4_html"))
+    cities_db.upsert_batch(Batch(papers=[
+        Paper("wob:p:1", "wolfsburg", "Altes Papier", date="2026-06-25"),
+        # Nach dem Abgleich datiert (Sitzungsdatum) — zählt nicht als frisch.
+        Paper("os:p:zukunft", "osnabrueck", "Kommt noch", date="2026-12-01"),
+    ]))
+    cities_db.put_annotation("paper", "wob:p:1", *FIT_FASSUNG, _urteil("missing"), "fw")
+    with cities_db._conn:
+        cities_db._conn.execute(
+            "UPDATE bodies SET last_fetched='2026-09-14T09:15:21' WHERE id='wolfsburg'")
+        cities_db._conn.execute(
+            "UPDATE bodies SET last_fetched='2026-05-10T18:00:00' WHERE id='osnabrueck'")
+    stand = client.get("/api/council/cities/ideas/fields").json()["data_status"]
+    assert stand["as_of"] == "2026-05-10"
+    assert stand["lagging"] == [
+        {"body_id": "wolfsburg", "city": "Wolfsburg", "latest_paper": "2026-06-25"}]
+

@@ -364,7 +364,7 @@ import Testing
     #expect(abo.subscribedCommittees == 3)
 }
 
-/// „Anderswo beschlossen": Sechs von sechzehn Feldern tragen einen
+/// „In anderen Städten": Sechs von sechzehn Feldern tragen einen
 /// Unterstrich, und die Ratsinformationssysteme füllen sehr unterschiedlich
 /// viel aus. Der zweite Eintrag hier ist der gemessene Münster-Fall — kein
 /// `web`, keine Einordnung, kein Ergebnis.

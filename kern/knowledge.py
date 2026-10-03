@@ -329,7 +329,8 @@ PAGES: dict[str, PageKnowledge] = dict([
        ),
     ),
     _p("/council/ideen", "Ideen aus anderen Städten",
-       "Was andere Stadträte beschlossen haben und in Oldenburg fehlt — je "
+       "Was andere Stadträte beantragt oder beschlossen haben und in Oldenburg "
+       "fehlt — je "
        "Themenfeld, mit dem Weg zum Original im Ratsinformationssystem der "
        "jeweiligen Stadt.",
        "Die Vorlagen stammen aus den Ratsinformationssystemen anderer Kommunen; "

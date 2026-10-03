@@ -419,6 +419,22 @@ class CitiesStore:
             sql += " LIMIT ?"; args.append(limit)
         return [dict(r) for r in self._conn.execute(sql, args)]
 
+    def coverage(self, body_ids: Sequence[str]) -> list[dict]:
+        """Je Stadt: letzter Abgleich und jüngste Vorlage bis zu diesem Tag.
+
+        Vorlagen mit einem Datum NACH dem Abgleich (Hannover datiert
+        Drucksachen auf die Sitzung) zählen nicht — sonst sähe ein Bestand
+        frischer aus, als er abgeholt ist.
+        """
+        if not body_ids:
+            return []
+        platz = ",".join("?" * len(body_ids))
+        return [dict(r) for r in self._conn.execute(
+            "SELECT b.id AS body_id, b.last_fetched, "
+            "  (SELECT MAX(p.date) FROM papers p WHERE p.body_id = b.id "
+            "     AND p.date <= substr(b.last_fetched, 1, 10)) AS latest_paper "
+            f"FROM bodies b WHERE b.id IN ({platz}) ORDER BY b.id", tuple(body_ids))]
+
     def idea_body_ids(self) -> list[str]:
         """Die Städte, aus denen beurteilte Ideen vorliegen.
 

@@ -93,16 +93,16 @@ FEATURES: dict[str, Feature] = {
     ),
     "andere-staedte": Feature(
         key="andere-staedte",
-        description="„Anderswo beschlossen“: Auf Beschluss-Seiten, was andere Städte "
-                    "zu derselben Sache beantragt oder beschlossen haben — aus deren "
-                    "Ratsinformationssystemen (council/cities).",
+        description="„In anderen Städten“: Auf Beschluss-Seiten, was andere Städte "
+                    "zu derselben Sache beantragt, beraten oder beschlossen haben — aus "
+                    "deren Ratsinformationssystemen (council/cities).",
         fertig_wenn="Der Block lag vier Wochen auf dev, und mindestens zwei Nutzer*innen "
                     "mit Mandat haben die Treffer als brauchbar bestätigt.",
     ),
     "ideen-anderswo": Feature(
         key="ideen-anderswo",
         description="„Ideen aus anderen Städten“: je Themenfeld, was andere Räte "
-                    "beschlossen haben und Oldenburg fehlt — mit Urteil, Belegen "
+                    "beantragt oder beschlossen haben und Oldenburg fehlt — mit Urteil, Belegen "
                     "und dem Weg zum Original (council/cities, Annotator `fit`).",
         fertig_wenn="Tim hat zwei Themenfelder durchgesehen und die Urteile für "
                     "tragfähig erklärt. Bis dahin ist die Seite auf dev sichtbar "

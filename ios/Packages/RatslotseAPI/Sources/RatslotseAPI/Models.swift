@@ -1061,7 +1061,7 @@ public struct MovementDetail: Codable, Sendable {
 
 
 /// Eine Vorlage aus einer anderen Stadt, die zu einem Oldenburger Beschluss
-/// passt — der Block „Anderswo beschlossen".
+/// passt — der Block „In anderen Städten" (bis 10/2026 „Anderswo beschlossen").
 ///
 /// Alles außer der Kennung ist optional: Die Ratsinformationssysteme der
 /// Städte füllen unterschiedlich viel aus. Münster etwa liefert über OParl

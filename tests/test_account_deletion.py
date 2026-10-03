@@ -277,3 +277,21 @@ def test_neue_datenbank_legt_keine_zeitungstabellen_an(tmp_path):
                              "article_topic_matches", "topic_classified_editions"})
     finally:
         store.close()
+
+
+def test_der_lokale_staedte_abzug_traegt_keine_rueckmeldungen(tmp_path):
+    """`lokale_daten.py hol --mit-staedten` holt den Städte-Speicher aufs
+    Notebook — die Rückmeldungen (Konto-Nummer, Freitext) bleiben draußen,
+    wie die Konten beim Rats-Abzug."""
+    from council.cities.store import CitiesStore
+    from scripts.lokale_daten import staedte_abspecken
+
+    pfad = tmp_path / "cities.sqlite"
+    cs = CitiesStore(pfad)
+    cs.put_feedback("paper", "os:p:1", "fit", "4", 7, "wrong", "Freitext")
+    cs._conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    cs.close()
+    assert staedte_abspecken(pfad) == 1
+    cs = CitiesStore(pfad)
+    assert cs._conn.execute("SELECT COUNT(*) FROM feedback").fetchone()[0] == 0
+    cs.close()
