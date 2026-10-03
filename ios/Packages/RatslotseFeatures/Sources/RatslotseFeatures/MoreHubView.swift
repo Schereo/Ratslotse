@@ -17,6 +17,7 @@ struct MoreHubView: View {
     let openTour: () -> Void
     @Environment(\.dismiss) private var dismiss
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.openURL) private var openURL
     @State private var showsFeedback = ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_FEEDBACK"] == "1"
     @State private var path: NavigationPath = {
         var path = NavigationPath()
@@ -148,6 +149,16 @@ struct MoreHubView: View {
                 // aus verschiedenen Richtungen.
                 .link("Ideen anderswo", "Was andere Räte beschlossen haben und Oldenburg fehlt",
                       .lightbulb, .ideas),
+            ] : []) + (model.feature("wahlabend") ? [
+                // Der dauerhafte Weg zur Wahl-Auswertung (Tims Entscheidung
+                // 03.10.2026: Wahlabend und Tippspiel bleiben, aber nicht mehr
+                // prominent — die Auswertung soll immer erreichbar sein). Im Web
+                // ist es der Reiter „Wahlen" in der Analyse; hier, wie bei den
+                // Ideen, eine Zeile dahinter. Die Seiten gibt es nur im Web.
+                .action("Wahlen in Oldenburg", "Ratswahl, OB-Wahl und Stichwahl 2026 — Ergebnisse und Rückblick",
+                        .landmark) {
+                    if let url = URL(string: "https://ratslotse.de/wahlen") { openURL(url) }
+                },
             ] : [])
         )
     }

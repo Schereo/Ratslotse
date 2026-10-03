@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Users, Euro, TrendingUp, Target, User, Lightbulb } from "lucide-react";
+import { Users, Euro, TrendingUp, Target, User, Lightbulb, Vote } from "lucide-react";
 import { useFeature } from "@/lib/features";
 import { PartyAnalysis, FinanceData } from "@/lib/types";
 import { Card, ChartSkeleton, Segmented, EmptyState } from "@/components/ui";
@@ -397,7 +397,16 @@ const ANALYSE_FRAGEN: Record<AnalysisSub, readonly string[]> = {
  *  Analyse — was tut der Rat? — aus der anderen Richtung: was tun andere Räte,
  *  was Oldenburg nicht tut. Tims Entscheidung 23.09.2026: kein eigener Punkt
  *  in der Navigation, sondern ein Reiter hier. */
-type AnalyseReiterWert = AnalysisSub | "staedte";
+type AnalyseReiterWert = AnalysisSub | "staedte" | "wahlen";
+
+/* „Wahlen" ist der dauerhafte Weg zur Wahl-Auswertung (`/wahlen`: Ratswahl,
+ * OB-Wahl, Stichwahl, Rückblicke). Tims Entscheidung 03.10.2026: Wahlabend
+ * und Tippspiel bleiben, aber nicht mehr prominent — die Auswertung soll
+ * trotzdem immer erreichbar sein. Laut (oben auf Heute, auf der Startseite)
+ * wird eine Wahl nur noch um ihren Wahltag (`election.prominent`); hier steht
+ * sie das ganze Jahr. Gleiche Bauform wie „Andere Städte": kein eigener
+ * Navigationspunkt, ein Reiter, der auf die eigene Seite führt. Am Schalter
+ * `wahlabend`, weil die Zielseite daran hängt. */
 
 export function AnalyseReiter({ aktiv, className }: { aktiv: AnalyseReiterWert; className?: string }) {
   const sp = useSearchParams();
@@ -405,10 +414,13 @@ export function AnalyseReiter({ aktiv, className }: { aktiv: AnalyseReiterWert; 
   const staedte = useFeature("ideen-anderswo");
   const optionen: { value: AnalyseReiterWert; label: string; icon: typeof Users }[] =
     SUB_TABS.map(([s, lbl, Icon]) => ({ value: s, label: lbl, icon: Icon }));
+  const wahlen = useFeature("wahlabend");
   if (staedte) optionen.push({ value: "staedte", label: "Andere Städte", icon: Lightbulb });
+  if (wahlen) optionen.push({ value: "wahlen", label: "Wahlen", icon: Vote });
   const wechsel = (s: AnalyseReiterWert) => {
     if (s === aktiv) return;
     if (s === "staedte") { router.push("/council/ideen"); return; }
+    if (s === "wahlen") { router.push("/wahlen"); return; }
     // Von der Ideen-Seite zurück: deren Parameter (feld, stand, …) gehören
     // nicht in die Analyse.
     const params = new URLSearchParams(aktiv === "staedte" ? "" : sp.toString());
@@ -424,7 +436,7 @@ export function AnalyseReiter({ aktiv, className }: { aktiv: AnalyseReiterWert; 
   useEffect(() => {
     huelle.current?.querySelector('[aria-pressed="true"]')
       ?.scrollIntoView({ block: "nearest", inline: "nearest" });
-  }, [aktiv, staedte]);
+  }, [aktiv, staedte, wahlen]);
   return (
     <div ref={huelle}>
       <Segmented

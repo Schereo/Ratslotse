@@ -26,7 +26,7 @@ import { useAuth } from "@/lib/auth";
 import { useFeature } from "@/lib/features";
 import { cn } from "@/lib/utils";
 import { datumLang, wahlabendZeit, type WahlabendZeit } from "@/lib/wahlabend";
-import { geteilt, gesperrtesTippspiel, nachJahren, type Wahlliste, type Wahlpunkt, type Wahlzeile } from "@/lib/wahlen";
+import { geteilt, gesperrtesTippspiel, istAmtlich, nachJahren, type Wahlliste, type Wahlpunkt, type Wahlzeile } from "@/lib/wahlen";
 
 const KICKER = "font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground";
 
@@ -80,7 +80,10 @@ function Buehne({ z }: { z: Wahlzeile }) {
       <div className="relative z-10 grid items-center gap-6 px-5 py-7 sm:grid-cols-[1fr_auto] sm:px-8 sm:py-9">
         <div className="min-w-0">
           <p className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 font-mono text-[10.5px] font-medium uppercase tracking-[0.11em] text-primary">
-            {datumLang(z.date)} · <span suppressHydrationWarning>{zeit.kicker}</span>
+            {datumLang(z.date)} ·{" "}
+            <span suppressHydrationWarning>
+              {zeit.phase === "danach" && z.top.length ? (istAmtlich(z.result_status) ? "Amtlich" : "Vorläufig") : zeit.kicker}
+            </span>
           </p>
           <h2 className="mt-3 text-balance font-display text-[34px] font-extrabold leading-[1.05] tracking-tight sm:text-[44px]">
             {z.short_title}
@@ -177,7 +180,10 @@ function Zeile({ z, i }: { z: Wahlzeile; i: number }) {
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
           <p className="font-display text-[16px] font-bold tracking-tight">{z.short_title}</p>
-          <p className="text-[12.5px] text-muted-foreground">{datumLang(z.date)}</p>
+          <p className="text-[12.5px] text-muted-foreground">
+            {datumLang(z.date)}
+            {!kommt && (z.top.length || z.summary) ? (istAmtlich(z.result_status) ? " · amtlich" : " · vorläufig") : null}
+          </p>
         </div>
         {z.top.length ? (
           <div className="mt-2">
@@ -294,8 +300,8 @@ export function WahlenView() {
           <p className="max-w-[76ch]">
             <strong className="font-semibold text-foreground">Quelle:</strong> Die Zahlen stammen aus den
             Open-Data-Dateien und der Ergebnisdarstellung des Votemanagers der Stadt Oldenburg. Gelaufene Wahlen
-            liegen bei uns eingefroren — sie brauchen keinen Abruf mehr. Kein amtliches Ergebnis; das stellt der
-            Wahlausschuss fest.
+            liegen bei uns eingefroren — sie brauchen keinen Abruf mehr. „Amtlich“ steht dort, wo wir den Stand nach
+            der Feststellung durch den Wahlausschuss eingefroren haben; „vorläufig“ ist der Stand vom Wahlabend.
           </p>
         </footer>
       </main>

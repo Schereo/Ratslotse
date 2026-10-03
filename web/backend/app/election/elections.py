@@ -262,6 +262,35 @@ def focus(jetzt: datetime | None = None) -> Election:
     return active()
 
 
+#: Wie lange vor und nach dem Wahlschluss eine Wahl **laut** sein darf: als
+#: Hinweis oben auf Heute, als Streifen auf der Startseite, mit Tippspiel-Knopf
+#: (Tims Entscheidung 03.10.2026: „vorhanden bleiben, aber nicht mehr prominent
+#: verlinkt"). Danach führt nur noch der dauerhafte Ort hin (``/wahlen``).
+#:
+#: Sieben Tage vorher ist die Wahlwoche — die Briefwahl läuft, das Tippspiel
+#: sammelt Tipps. Früher stünde der Hinweis wochenlang als Dauergast oben auf
+#: Heute. Drei Tage danach (= ``FOKUS_NACHHER``) reichen bis Mittwoch nach dem
+#: Wahlsonntag: 2021 lag das vorläufige Ergebnis der Ratswahl erst am
+#: Montagmorgen vor, und wer Montag oder Dienstag nachliest, findet es noch
+#: oben. Am 03.10.2026 war die Stichwahl sechs Tage her — still, wie gewünscht.
+PROMINENT_VORHER = timedelta(days=7)
+PROMINENT_NACHHER = FOKUS_NACHHER
+
+
+def prominent(wahl: Election, jetzt: datetime | None = None) -> bool:
+    """Darf diese Wahl gerade prominent beworben werden?
+
+    Die Antwort kommt aus dem Kalender, nicht aus einem Schalter: Eine neue
+    Datei in ``kommunalwahl/wahlen/`` macht ihre Wahl eine Woche vorher von
+    selbst laut und drei Tage danach wieder still. Ein Rückblick oder Entwurf
+    ist es nie.
+    """
+    if wahl.status in ("entwurf", "rueckblick"):
+        return False
+    jetzt = jetzt or datetime.now(timezone.utc)
+    return wahl.polls_close - PROMINENT_VORHER <= jetzt <= wahl.polls_close + PROMINENT_NACHHER
+
+
 def path_of(wahl: Election) -> str:
     """Wo diese Wahl zu sehen ist."""
     return "/wahlabend/stichwahl" if wahl.first_round else "/wahlabend"

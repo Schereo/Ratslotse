@@ -5,6 +5,7 @@
  * hier steht nur, was die Anzeige daraus macht.
  */
 import type { ApiAntwort } from "./vertrag";
+import type { AppWahl } from "./features";
 
 export type Wahlliste = ApiAntwort<"/wahlen">;
 export type Wahlzeile = Wahlliste["elections"][number];
@@ -39,4 +40,28 @@ export function nachJahren(zeilen: readonly Wahlzeile[]): { jahr: string; zeilen
     else gruppen.set(jahr, [z]);
   }
   return [...gruppen.entries()].map(([jahr, zeilen]) => ({ jahr, zeilen }));
+}
+
+/** Darf die Wahl gerade laut sein — Hinweis oben auf Heute, Streifen auf der
+ *  Startseite? Das entscheidet das Backend aus dem Kalender
+ *  (`elections.prominent`: eine Woche vor bis drei Tage nach dem
+ *  Wahlschluss). Fehlt das Feld (ältere Antwort), lieber still: Ein Hinweis
+ *  zur falschen Zeit ist der Fehler, den Tim am 03.10.2026 gemeldet hat. */
+export function wahlLaut(wahl: { prominent?: AppWahl["prominent"] } | null | undefined): boolean {
+  return wahl?.prominent === true;
+}
+
+/** Ist das Ergebnis amtlich festgestellt? Nur, wenn das Backend es ausdrücklich
+ *  sagt (`result_status: "amtlich"` aus dem eingefrorenen Stand). */
+export function istAmtlich(status: string | null | undefined): boolean {
+  return status === "amtlich";
+}
+
+/** Der eine Satz zur Herkunft eines fertigen Ergebnisses. Bis 10/2026 stand
+ *  überall „Eigene Rechnung, kein amtliches Ergebnis" — auch drei Wochen,
+ *  nachdem der Wahlausschuss es festgestellt hatte. */
+export function ergebnisVermerk(status: string | null | undefined): string {
+  return istAmtlich(status)
+    ? "Das amtliche Endergebnis, vom Wahlausschuss festgestellt."
+    : "Vorläufiges Ergebnis — das amtliche stellt der Wahlausschuss fest.";
 }

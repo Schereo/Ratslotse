@@ -122,3 +122,30 @@ def test_alles_haengt_am_schalter(monkeypatch):
         with pytest.raises(Exception) as fehler:
             aufruf()
         assert getattr(fehler.value, "status_code", None) == 404
+
+
+def test_amtlich_steht_nur_da_wo_es_vermerkt_ist():
+    """„Kein amtliches Ergebnis" stand bis 10/2026 unter jeder Wahl — auch
+    unter der Ratswahl, deren amtliches Endergebnis seit dem 24.09. im Repo
+    liegt (``wahl_einfrieren.py --stand amtlich``). Die Stichwahl ist dort
+    als vorläufig eingefroren und bleibt es, bis jemand nachzieht."""
+    zeilen = _zeilen()
+    assert zeilen["ratswahl-2026"]["result_status"] == "amtlich"
+    assert zeilen["ob-stichwahl-2026"]["result_status"] == "vorlaeufig"
+    # 2021 ist die Referenz, gegen die die Sitzrechnung geprüft ist — das
+    # amtliche Endergebnis (Stand der Präsentation 16.09.2021).
+    assert zeilen["ratswahl-2021"]["result_status"] == "amtlich"
+    for z in zeilen.values():
+        assert z["result_status"] in ("amtlich", "vorlaeufig")
+
+
+def test_der_rueckblick_traegt_den_amtlichen_stand():
+    bild = archive.night("ratswahl-2026")
+    assert bild is not None and bild["phase"] == "complete"
+    assert bild["election"]["result_status"] == "amtlich"
+
+
+def test_ein_zwischenstand_ist_nie_amtlich():
+    from app.election import service
+
+    assert service.probe(60)["election"]["result_status"] == "vorlaeufig"

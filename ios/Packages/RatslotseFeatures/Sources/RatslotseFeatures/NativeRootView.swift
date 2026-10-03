@@ -122,6 +122,12 @@ public struct NativeRootView: View {
             } else {
                 await model.bootstrap()
             }
+            // Die Schalter kommen sonst aus `bootstrap()`, das die gestellte
+            // Sitzung überspringt — ohne sie fehlen alle geschalteten Zeilen
+            // im Bild (Mein Viertel, Ideen, Wahlen). Kommagetrennt.
+            if let raw = ratsDebugValue("RATSLOTSE_DEBUG_FEATURES") {
+                model.features = Set(raw.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) })
+            }
             if ratsDebugValue("RATSLOTSE_DEBUG_BADGES") == "1",
                let snapshot = debugBadgeSnapshot() {
                 model.badgeSnapshot = snapshot

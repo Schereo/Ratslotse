@@ -3061,6 +3061,16 @@
                 "title": "Polls Close",
                 "type": "string"
               },
+              "prominent": {
+                "default": false,
+                "title": "Prominent",
+                "type": "boolean"
+              },
+              "result_status": {
+                "default": "vorlaeufig",
+                "title": "Result Status",
+                "type": "string"
+              },
               "short_title": {
                 "title": "Short Title",
                 "type": "string"
@@ -3127,6 +3137,16 @@
           },
           "polls_close": {
             "title": "Polls Close",
+            "type": "string"
+          },
+          "prominent": {
+            "default": false,
+            "title": "Prominent",
+            "type": "boolean"
+          },
+          "result_status": {
+            "default": "vorlaeufig",
+            "title": "Result Status",
             "type": "string"
           },
           "short_title": {
@@ -10377,6 +10397,10 @@
             "title": "Previous Label",
             "type": "string"
           },
+          "result_status": {
+            "title": "Result Status",
+            "type": "string"
+          },
           "seats": {
             "title": "Seats",
             "type": "integer"
@@ -10407,7 +10431,8 @@
           "polls_close",
           "status",
           "presentation_url",
-          "previous_label"
+          "previous_label",
+          "result_status"
         ],
         "title": "ElectionInfo",
         "type": "object"
@@ -10449,6 +10474,10 @@
           },
           "polls_close": {
             "title": "Polls Close",
+            "type": "string"
+          },
+          "result_status": {
+            "title": "Result Status",
             "type": "string"
           },
           "short_title": {
@@ -10501,6 +10530,7 @@
           "path",
           "summary",
           "focus",
+          "result_status",
           "tipp_path",
           "tipp_locked",
           "top"

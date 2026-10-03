@@ -351,13 +351,14 @@ def _naechste_wahl() -> AppElectionOut | None:
     Wirft nie: Ohne ``/api/app-config`` startet die native App gar nicht, und
     eine unlesbare Registry darf das nicht auslösen.
     """
-    from .election import elections
+    from .election import archive, elections
 
     try:
         wahl = elections.focus()
         return AppElectionOut(slug=wahl.slug, short_title=wahl.short_title, date=wahl.date,
                               polls_close=wahl.polls_close.isoformat(), kind=wahl.kind,
-                              path=elections.path_of(wahl))
+                              path=elections.path_of(wahl), prominent=elections.prominent(wahl),
+                              result_status=archive.result_status(wahl))
     except Exception:
         logging.getLogger("ratslotse.web").exception("app-config: Wahl nicht lesbar")
         return None
