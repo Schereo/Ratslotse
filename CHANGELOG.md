@@ -7,6 +7,227 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [2.10.0] – 2026-10-03
+
+### Hinzugefügt
+- **Unter einer Antwort steht jetzt die ganze Debatte zum Thema, nicht nur die
+  paar Beiträge, auf die sich die Antwort stützt.** Sobald die Antwort fertig
+  ist, lädt der Baustein „Aus den Ratsdebatten" die übrigen Wortmeldungen nach —
+  aus der Aussprache zu den belegten Beschlüssen und aus der Suche in den
+  Protokollen, neueste Sitzung zuerst. Zum Spielplatz auf dem Schlossplatz steht
+  so etwa auch die Begründung der Verwaltung vom April 2026 darunter. Nebenbei
+  zeigt der Baustein wieder, ob ein Beitrag eine Rede, eine Anfrage oder eine
+  Zusage der Verwaltung ist; diese Kennzeichnung fehlte seit der Umstellung der
+  Feldnamen. (#1601)
+- **„Frag den Rat“ und die Gründliche Recherche lesen jetzt den ganzen
+  Vorgang.** Statt nur ähnliche Beschlüsse zu suchen, holt die Antwort die Akte
+  der Sache dazu: alle Beratungen zur selben Vorlage, die Wortbeiträge dazu,
+  Berichte der Verwaltung, Pressemitteilungen und angekündigte Termine, in
+  zeitlicher Reihenfolge. Unter der Antwort stehen die Eckdaten direkt aus den
+  Ratsdaten — Abstimmung, Betrag, letzter Stand und nächster Termin — und der
+  Verlauf als Zeitleiste mit den Abständen zwischen den Stationen und Links zu
+  den Beschlüssen. (#1638)
+- **Lotti schlägt nach, statt aufzugeben.** Fragen, deren Antwort nicht auf der
+  Seite steht, beantwortet Lotti jetzt selbst: Sie sieht Zahlen über mehrere
+  Jahre an („seit 2010“), holt Haushaltszahlen von anderen Seiten, verfolgt
+  Wirtschaftspläne, Gebühren und den Kassenstand über die Jahre, sucht im
+  Ratsarchiv, findet die Sitzung davor oder danach, verfolgt eine Vorlage durch
+  die Ausschüsse, zählt Beschlüsse und rechnet Anteile, Veränderungen und Werte
+  je Einwohner*in aus. Jede nachgeschlagene Zahl steht mit Beleg unter
+  „Grundlage“, und gerechnet wird nur mit Zahlen, die in den Daten stehen.
+  Während sie nachschlägt, sagt das Fenster, was sie gerade ansieht. Vorerst
+  hinter dem Schalter `lotti-werkzeuge`. (#1570)
+- **Die OB-Stichwahl steht mit Ergebnis in der Wahlübersicht.** Unter /wahlen
+  trägt sie jetzt „Jascha Rohr 51,6 %" samt Balken, und die Bezirkskarte liest
+  ihre Zahlen aus dem Archiv im Repo statt vom Votemanager der Stadt.
+  Prozentwerte in der Übersicht werden kaufmännisch gerundet — 51,55 % stand
+  vorher als 51,5 da. (#1577)
+- **Die Stichwahl im Rückblick.** Nach der Auszählung zeigt /wahlabend/stichwahl
+  fünf Ansichten: den Verlauf des Wahlabends, den Vergleich mit dem ersten
+  Wahlgang einschließlich Urnen- und Briefwahl, die sechs Wahlbereiche, alle 133
+  Wahlbezirke sowie die Hochrechnung und ihre Abweichung vom Endergebnis. Eine
+  Wählerwanderung wird bewusst nicht berechnet, weil sich aus den
+  Bezirksergebnissen nicht ableiten lässt, wie einzelne Menschen zwischen den
+  Wahlgängen entschieden haben. (#1577)
+
+### Geändert
+- **Die Grafiken der Wahlseiten erklären sich im Bild.** Statt einer Zeile wie
+  „durchgezogen: Zwischenstand · gestrichelt: Hochrechnung" steht über jedem
+  Diagramm eine Legende, die das Zeichen so zeigt wie in der Grafik: im Verlauf
+  der Stichwahl Anteil, Hochrechnung, 50-Prozent-Linie und Führungswechsel; im
+  Rückblick auf die Hochrechnung Zwischenstand, Hochrechnung und Endergebnis;
+  bei den Vergleichspunkten erster Wahlgang (hohl) und Stichwahl (voll); im
+  Sitz-Halbkreis zusätzlich die Mehrheitslinie; auf der Ratswahl-Karte eine
+  Farbskala mit dem schwächsten und dem stärksten Wert. Der Verlauf der Ratswahl
+  beschriftet seine Zeitachse außerdem mit dem Datum, seit er über mehrere Tage
+  reicht — vorher stand dort fünfmal „00:00". (#1580)
+- **Die App zeigt in der Einrichtung Stadtthemen mit Bild — und die Gremien mit
+  Lotti.** Wie im Web stehen die Stadtthemen (Radverkehr, Schwimmbäder, Kultur,
+  Feuerwehr …) jetzt als Kacheln mit einem kleinen, flach gezeichneten Bild über
+  dem Stadtteil; der Stadtteil nimmt bis zu drei an. Im ersten Schritt trägt
+  jedes Gremium eine Lotti mit einem Requisit aus seinem Sachbereich, und ein so
+  angelegtes Thema zeigt sein Bild auch unter „Themen". Der anonyme Zähler
+  hinter dem Assistenten gilt jetzt auch für die App. (#1607)
+- **Die Einrichtung zeigt Themen vor Stadtteilen — mit kleinen Bildern.** Neue
+  Konten wählten bisher fast nur Stadtteile, weil die Karte die leichteste Wahl
+  im Ablauf war und zuerst kam. Jetzt steht der Themen-Schritt an zweiter
+  Stelle, und die Stadtthemen sind Kacheln mit einem kleinen, flach gezeichneten
+  Bild (Fahrrad, Theatermasken, Feuerwehrauto …), in dem manchmal Lotti, ein
+  Küken oder Krissi, die Krabbe, mitspielen. Dazu sind neun Themen neu:
+  Schwimmbäder, Sporthallen und Sportplätze, Theater und Kultur, Kinder und
+  Spielplätze, Feuerwehr, Fliegerhorst, Müll und Sauberkeit, Straßen und
+  Brücken, Wirtschaft und Gewerbe. Der Stadtteil-Schritt folgt danach und nimmt
+  bis zu drei Stadtteile an; weitere gehen später unter „Themen". Was angezeigt
+  und angeklickt wird, zählt ein anonymer Zähler ohne Konto und ohne Namen. Auch
+  die Gremien im ersten Schritt tragen jetzt je eine Lotti mit einem Requisit
+  aus ihrem Sachbereich (Sparschwein, Bauhelm, Gießkanne …), und ein so
+  angelegtes Thema zeigt sein Bild auch unter „Meine Themen". (#1606)
+
+### Behoben
+- **Die Zahl am „Admin"-Eintrag sagt jetzt, was sie zählt, und führt dorthin.**
+  Sie zählt offenes Feedback, stand aber nur in der Seitenleiste: Der Klick
+  führte zur Übersicht, und kein Reiter im Panel trug sie weiter. Jetzt steht
+  sie auch an „Menschen" und „Feedback", der Klick auf „Admin" öffnet bei
+  offenem Feedback gleich diesen Reiter, und beim Überfahren nennt sie sich „3
+  offene Rückmeldungen". (#1584)
+- **Mails zu deinen Themen melden nur noch, was der Rat gerade entschieden
+  hat.** Der Wochenüberblick und der wöchentliche Themen-Abgleich meldeten auch
+  Beschlüsse aus nachträglich eingelesenen Protokollen, zum Teil von 2019, sowie
+  den ganzen Bestand eines neu angelegten Themas. Jetzt kommt eine Mail nur,
+  wenn die Sitzung höchstens drei Monate zurückliegt und ihr Protokoll gerade
+  erst veröffentlicht wurde. In der Trefferliste des Themas stehen die älteren
+  Beschlüsse weiterhin. (#1581)
+- **„Frag den Rat“ nennt bei Stand-Fragen den jüngsten Stand.** Die Antwort
+  zieht jetzt auch Pressemitteilungen und Wortbeiträge heran, die das Gefragte
+  beim Namen nennen, obwohl die Ähnlichkeitssuche sie übersieht. Bei Fragen nach
+  dem Stand haben die neuesten Aussagen Vorrang. Beim Stadion endete die Antwort
+  bisher am Ratsbeschluss vom Juni, obwohl die EU im August zugestimmt hatte.
+  Beim Spielplatz auf dem Schlossplatz fehlte die Aussage der Verwaltung vom
+  April. „Wie wurde über … entschieden?“ bekommt wieder den ganzen Weg statt
+  eines Satzes, und eine Kurzantwort sagt ausdrücklich, wenn etwas nur geplant
+  und nicht beschlossen ist. (#1613)
+- **Die Beschreibungen der städtischen Gesellschaften brechen nicht mehr mitten
+  im Wort um.** Der Beteiligungsbericht ist mit Silbentrennung gesetzt, und die
+  Trennstriche samt Zeilenenden standen bisher mit auf der Seite („Feuerweh- /
+  ren“) — in 58 von 225 Texten. Sie werden jetzt zusammengefügt. Kurze
+  Beschreibungen stehen außerdem gleich ganz da, statt hinter „Ganzen Wortlaut
+  zeigen“. (#1569)
+- **„Frag den Rat“ bringt die Aussprache zum passenden Bericht auch dann mit,
+  wenn er weiter hinten gerankt ist.** Trägt ein Beschluss alle seltenen Wörter
+  der Frage im Titel, kommen seine Wortbeiträge mit, auch wenn er nicht unter
+  den ersten acht Funden steht. Auf die Frage nach öffentlichen
+  Trinkwasserspendern fehlte dadurch bisher die Protokollnotiz der Verwaltung,
+  die als einzige sagt, wann es weitergeht. (#1612)
+- **„Frag den Rat" liest die Debatten aus den Ausschüssen gründlicher.** Bei der
+  Auswahl der Wortmeldungen prüft die schnelle Antwort jetzt mehr Kandidaten und
+  liest von jeder bis zu 700 statt 150 Zeichen; in die Antwort gehen bis zu acht
+  statt vier Aussagen, jede ausführlicher. Die Gründe stehen oft am Ende einer
+  Aussage — beim Spielplatz auf dem Schlossplatz etwa Denkmalschutz, fehlendes
+  Planrecht und die Alternativen, die die Verwaltung im April 2026 nannte.
+  (#1600)
+- **„Gilt als behandelt" ist jetzt ein eigenes Ergebnis und nicht mehr
+  „angenommen".** Beschließt ein Ausschuss auf Antrag, einen Punkt als behandelt
+  gelten zu lassen, hat er über den Inhalt nicht abgestimmt. Das „einstimmig" im
+  Protokoll gehört zum Verfahrensantrag — trotzdem stand die Formel bei 129
+  Beschlüssen als angenommen, kein Beschluss, vertagt oder zur Kenntnis, und
+  „Frag den Rat" gab den Vorschlag dann als Auftrag wieder (etwa beim Spielplatz
+  auf dem Schlossplatz, September 2024). Wer verwiesen wurde, gilt jetzt als
+  vertagt. Die Oberflächen zeigen „Gilt als behandelt"; die Kurzfassungen der
+  betroffenen Punkte werden neu geschrieben. (#1592)
+- **Die Heute-Seite lädt ruhig statt aufzuploppen.** „Seit deinem letzten
+  Besuch“, „Zahl der Woche“ und „Die Woche im Rat“ halten ihren Platz während
+  des Ladens mit einem Platzhalter in ihrer eigenen Form; der Inhalt blendet
+  danach sanft ein, statt die Karten darunter wegzuschieben. (#1616)
+- **Die Live-Verfolgung zeigt nur noch, was wirklich im Rat läuft.** Fiel die
+  Übertragung aus und der Sender zeigte eigenes Programm, las sie daraus
+  Tagesordnungspunkte heraus – am 28.09. wurde aus einer Kinder-Uni die
+  Einwohnerfragestunde. Jetzt erscheint ein Punkt erst, wenn er im Saal
+  aufgerufen wird; zeigt der Sender länger etwas anderes, verschwindet der
+  Stand, bis die Sitzung zurück ist. (#1583)
+- **Fragen zu einem Ort bekommen wieder die Debatten, die von diesem Ort
+  handeln.** Bei einer Ortsfrage ließ „Frag den Rat" bisher nur Wortbeiträge zu
+  Beschlüssen durch, die selbst an diesem Ort verortet sind. Was unter einem
+  stadtweiten Punkt gesagt wurde, fiel heraus — auf die Frage nach dem
+  Spielplatz auf dem Schlossplatz etwa die Begründung der Verwaltung aus der
+  Debatte zur Spielleitplanung. Jetzt zählt auch ein Beitrag, der den Ort selbst
+  nennt. (#1589)
+- **Protokollnotizen der Verwaltung sind wieder als eigene Beiträge
+  durchsuchbar.** Nachgereichte Antworten, die als „Protokollnotiz“ ohne
+  Sprecher im Protokoll stehen, fielen seit dem Modellwechsel bei der Auswertung
+  der Protokolle heraus. Darin steht oft die eigentliche Antwort, etwa dass
+  öffentliche Trinkwasserspender nach Abschluss der Prüfung 2027 gebaut werden
+  sollen. Sie erscheinen jetzt unter „Verwaltung (Protokollnotiz)“, ebenso
+  Aussagen, die das Protokoll nur „der Verwaltung“ zuschreibt. (#1604)
+- **Prozente auf den Wahlseiten werden genau einmal gerundet.** Das Backend
+  lieferte Anteile schon auf zwei Stellen, die Seite rundete sie noch einmal auf
+  eine — je nach Lage kam dabei eine Zehntelstelle zu viel oder zu wenig heraus.
+  Jetzt kommen die Anteile exakt aus den Stimmen und werden erst bei der Anzeige
+  kaufmännisch gerundet: Jascha Rohr hat 30.792 von 59.734 Stimmen, also 51,5 %
+  (die Stadt schreibt 51,55 %), BSW in der Ratswahl 1,6 %. Das Tippspiel wertet
+  weiter gegen die Zahlen, wie die Stadt sie meldet. Im Ticker heißen
+  Briefwahlbezirke außerdem nach ihrem Wahlbereich statt doppelt „Briefwahl ·
+  Briefwahl". (#1576)
+- **Der Bericht der Gründlichen Recherche gibt Wortmeldungen länger wieder.**
+  Von jeder Aussage aus den Ausschüssen bekam das Modell bisher die ersten 400
+  Zeichen (bei Antworten der Verwaltung 300); die Gründe und Alternativen stehen
+  aber oft am Ende. Jetzt sind es 800 und 600 Zeichen. Die schnelle Antwort in
+  „Frag den Rat" bleibt kurz. (#1599)
+- **Die Gründliche Recherche liest von jeder Wortmeldung mehr und nimmt mehr
+  davon in den Bericht.** Bei der Auswahl der Debatten sah die Prüfung bisher
+  nur die ersten 150 Zeichen einer Aussage; die Gründe stehen aber oft am Ende
+  (etwa Denkmalschutz, fehlendes Planrecht und Alternativen in der Antwort der
+  Verwaltung zum Spielplatz auf dem Schlossplatz). Jetzt liest sie bis zu 700
+  Zeichen, und der Bericht bekommt bis zu 24 statt 12 Debatten. (#1596)
+- **Ein Ratsbeschluss mit demselben Titel wie mehrere Ausschuss-Punkte fällt
+  nicht mehr aus der Antwort.** Die Regel gegen Serien gleichlautender Berichte
+  (etwa die monatlichen Sachstandsberichte zum Stadion) zählte gleiche Titel
+  über alle Gremien hinweg; beim „Mobilitätsplan Oldenburg 2030“, der im Rat und
+  in vier Ausschüssen gleich heißt, verdrängte sie so den Ratsbeschluss. Jetzt
+  gilt sie nur innerhalb eines Gremiums. (#1608)
+- **Fragen zum Stadion finden wieder die Ratsbeschlüsse, nicht nur die
+  monatlichen Sachstandsberichte.** Der Finanzausschuss nimmt jeden Monat einen
+  „Sachstandsbericht Stadionplanung“ zur Kenntnis — über zwanzig Beschlüsse mit
+  gleichem Titel und ohne Inhalt, denn der steht im Protokoll. Bei „Wie ist der
+  Stand beim Stadionneubau?“ verdrängten sie die Vergabe vom 1. Juni 2026, die
+  Bürgschaft und den Bebauungsplan aus der Antwort. Jetzt zählen von einer
+  solchen Serie nur die drei passendsten. (#1605)
+- **Fragen nach dem „Stand“ einer Sache bekommen jetzt auch die Debatten aus den
+  Ausschüssen.** Der aktuelle Stand steht oft nur im Protokoll: Die Verwaltung
+  berichtet mündlich, und kein Beschluss hält es fest. Bisher plante „Frag den
+  Rat“ für solche Fragen nur Beschlüsse und Pressemitteilungen. Auf die Frage
+  nach dem Spielplatz auf dem Schlossplatz fehlte so die Begründung der
+  Verwaltung vom April 2026; die Antwort endete beim Sachstandsbericht vom
+  Dezember davor. Fragen nach der neuesten Entscheidung, nach Definitionen und
+  nach Mitteilungen der Stadt bleiben, wie sie waren. (#1591)
+- **Die Tagesordnung der laufenden Ratssitzung läuft im Web mit.** Die rote
+  Marke „Läuft gerade“ blieb bisher am Punkt stehen, der beim Aufklappen dran
+  war, bis jemand die Seite neu lud. Jetzt holt eine offene Tagesordnung den
+  Stand aus der Übertragung alle 20 Sekunden nach — im selben Takt wie die
+  Live-Karte auf „Heute“. An der Marke steht außerdem, wer gerade spricht, und
+  ein Link führt direkt in den O1-Stream. (#1582)
+- **Eine Frage nach Trinkwasserspendern ist keine Frage nach Spenden mehr.**
+  „Frag den Rat“ las das Wort als Spender im Sinne von Geld, behandelte die
+  Frage als Haushaltsfrage und ließ deshalb die Debatten weg — und mit ihnen die
+  Antwort der Verwaltung, dass öffentliche Trinkwasserbrunnen nach Abschluss der
+  Prüfung 2027 gebaut werden sollen. Geräte wie Wasser-, Seifen- oder
+  Hundekotbeutelspender zählen jetzt nicht mehr als Spende. (#1609)
+- **Antworten der Verwaltung in den Ratsdebatten sind wieder eigene, auffindbare
+  Wortbeiträge.** Die Extraktion hatte sie oft in das Antwortfeld der Frage
+  davor gesteckt; dort fand die KI-Frage sie nicht, und im Kontext standen
+  höchstens die ersten 300 Zeichen. Beim Schlossplatz-Spielplatz fehlte so die
+  Begründung der Verwaltung (kein Planrecht, Denkmalschutz, vier Alternativen
+  bis zum Heiligengeistpark). Außerdem kommen Beiträge an den Nahtstellen langer
+  Protokolle nicht mehr doppelt, und ein Tagesordnungspunkt, den das Modell nur
+  als Nummer nennt, trägt wieder seinen Titel. (#1585)
+- **Die Gründliche Recherche findet die Aussagen der Verwaltung aus den
+  Ausschüssen jetzt zuverlässiger.** Für die Suche in den Protokollen bettete
+  sie bisher eine lange Begriffsliste (Baufortschritt, Finanzierung, Vorlage …)
+  ein, die zu fast allem über Bauen und Geld passt; die Aussagen, um die es
+  ging, lagen weit hinten und kamen nie in die Prüfung. Jetzt zählen Frage und
+  Begriffe, und die Recherche prüft ein weiteres Feld. Beim Spielplatz auf dem
+  Schlossplatz sind damit die Begründungen der Verwaltung von April 2026 und
+  Dezember 2025 im Bericht erreichbar. (#1595)
+
 ## [2.9.0] – 2026-09-24
 
 ### Hinzugefügt
@@ -9368,7 +9589,8 @@ Open-Source-Go-Live von Ratslotse.
 *Dieser Changelog beginnt mit dem Open-Source-Release von Ratslotse. Die
 Entwicklungshistorie davor ist nicht Teil dieses Repositories.*
 
-[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v2.9.0...main
+[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v2.10.0...main
+[2.10.0]: https://github.com/Schereo/Ratslotse/compare/v2.9.0...v2.10.0
 [2.9.0]: https://github.com/Schereo/Ratslotse/compare/v2.8.0...v2.9.0
 [2.8.0]: https://github.com/Schereo/Ratslotse/compare/v2.7.0...v2.8.0
 [2.7.0]: https://github.com/Schereo/Ratslotse/compare/v2.6.7...v2.7.0
