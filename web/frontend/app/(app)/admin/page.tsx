@@ -23,6 +23,7 @@ import { MailDashboard } from "@/components/admin/mail";
 import { AdminOverview } from "@/components/admin/overview";
 import { StatsTab, OperationsTab } from "@/components/admin/statistics";
 import { LottiTab } from "@/components/admin/lotti";
+import { ViertelMeldungenTab } from "@/components/admin/viertel-meldungen";
 
 export default function AdminPage() {
   const { user, loading } = useAuth();
@@ -51,6 +52,7 @@ export default function AdminPage() {
         {tab === "users" && <UsersTab currentUserId={user.id} route={route} />}
         {tab === "quiz" && <QuizModerationTab />}
         {tab === "orte" && <PlaceCandidatesTab />}
+        {tab === "viertel" && <ViertelMeldungenTab />}
         {tab === "themen" && <EntityAliasTab />}
         {tab === "live" && <LiveProbeTab />}
         {tab === "news" && <NewsTab />}

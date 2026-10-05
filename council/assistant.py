@@ -1415,9 +1415,10 @@ def screen_context(store, screen: Screen, question: str, *,
                  if darf_geld and geld_gewollt
                  and not (screen.anchors and ortsfrage(question)) else [])
 
-    # Eigene Themen NUR, wenn die Frage sie meint. Die gewählten Viertel
-    # stehen bewusst nicht dabei: „Mein Viertel" wählt im Browser, das
-    # Backend kennt die Auswahl gar nicht.
+    # Eigene Themen NUR, wenn die Frage sie meint. Die eigenen Viertel sind
+    # darin enthalten: „Mein Viertel" leitet sie aus den Themen des Kontos ab
+    # (ein gewählter Stadtteil IST ein Thema, auf dem Server gespeichert) —
+    # es gibt keine zweite, nur im Browser gemerkte Auswahl.
     themen: list[str] = []
     if ratslotse is not None and user_id and meint_eigenes(question):
         try:

@@ -3296,9 +3296,55 @@ class DistrictLookup(TypedDict):
 
 
 class DistrictProjectReportOut(TypedDict):
+    """``POST``/``DELETE /api/districts/projects/{id}/report``.
+
+    ``hidden`` ist seit 10/2026 die Entscheidung der Redaktion, nicht mehr die
+    Zahl der Meldungen — eine Meldung allein blendet nichts aus. Die Form
+    bleibt, weil die ausgelieferte iOS-App sie decodiert."""
     ok: bool
     report_count: int
     hidden: bool
+    #: Ob das eigene Konto das Vorhaben jetzt gemeldet hat (nach POST true,
+    #: nach DELETE false).
+    reported: NotRequired[bool]
+
+
+class AdminDistrictReport(TypedDict):
+    """Eine Meldung — ohne Konto: Für die Prüfung zählt der Grund, nicht wer."""
+    reason: str | None
+    created_at: str
+
+
+class AdminDistrictReportProject(TypedDict):
+    """Das Vorhaben, wie es gerade auf der Tafel steht."""
+    id: int
+    name: str
+    what: str
+    stage: str
+
+
+class AdminDistrictReportGroup(TypedDict):
+    """Alle Meldungen zu einem Vorhaben samt Entscheidung der Redaktion."""
+    project_key: str
+    place_id: str
+    place_name: str
+    name: str
+    count: int
+    last_at: str
+    reports: list[AdminDistrictReport]
+    #: ``hidden`` | ``kept`` | ``None`` (offen).
+    verdict: str | None
+    note: str | None
+    decided_at: str | None
+    #: ``None``: Ein späterer Lauf kennt das Vorhaben nicht mehr.
+    project: AdminDistrictReportProject | None
+
+
+class AdminDistrictReports(TypedDict):
+    """``GET /api/admin/district-reports`` — die Meldungen aus „Mein Viertel"."""
+    groups: list[AdminDistrictReportGroup]
+    status: str
+    open_count: int
 
 
 class SessionList(TypedDict):

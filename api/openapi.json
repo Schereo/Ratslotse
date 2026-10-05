@@ -224,6 +224,188 @@
         "title": "AdminCouncilStats",
         "type": "object"
       },
+      "AdminDistrictReport": {
+        "description": "Eine Meldung — ohne Konto: Für die Prüfung zählt der Grund, nicht wer.",
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "reason",
+          "created_at"
+        ],
+        "title": "AdminDistrictReport",
+        "type": "object"
+      },
+      "AdminDistrictReportGroup": {
+        "description": "Alle Meldungen zu einem Vorhaben samt Entscheidung der Redaktion.",
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "decided_at": {
+            "title": "Decided At",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "last_at": {
+            "title": "Last At",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "place_id": {
+            "title": "Place Id",
+            "type": "string"
+          },
+          "place_name": {
+            "title": "Place Name",
+            "type": "string"
+          },
+          "project": {
+            "description": "Das Vorhaben, wie es gerade auf der Tafel steht.",
+            "properties": {
+              "id": {
+                "title": "Id",
+                "type": "integer"
+              },
+              "name": {
+                "title": "Name",
+                "type": "string"
+              },
+              "stage": {
+                "title": "Stage",
+                "type": "string"
+              },
+              "what": {
+                "title": "What",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "what",
+              "stage"
+            ],
+            "title": "AdminDistrictReportProject",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "project_key": {
+            "title": "Project Key",
+            "type": "string"
+          },
+          "reports": {
+            "items": {
+              "$ref": "#/components/schemas/AdminDistrictReport"
+            },
+            "title": "Reports",
+            "type": "array"
+          },
+          "verdict": {
+            "title": "Verdict",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "project_key",
+          "place_id",
+          "place_name",
+          "name",
+          "count",
+          "last_at",
+          "reports",
+          "verdict",
+          "note",
+          "decided_at",
+          "project"
+        ],
+        "title": "AdminDistrictReportGroup",
+        "type": "object"
+      },
+      "AdminDistrictReportProject": {
+        "description": "Das Vorhaben, wie es gerade auf der Tafel steht.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "stage": {
+            "title": "Stage",
+            "type": "string"
+          },
+          "what": {
+            "title": "What",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "what",
+          "stage"
+        ],
+        "title": "AdminDistrictReportProject",
+        "type": "object"
+      },
+      "AdminDistrictReports": {
+        "description": "``GET /api/admin/district-reports`` — die Meldungen aus „Mein Viertel\".",
+        "properties": {
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/AdminDistrictReportGroup"
+            },
+            "title": "Groups",
+            "type": "array"
+          },
+          "open_count": {
+            "title": "Open Count",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "groups",
+          "status",
+          "open_count"
+        ],
+        "title": "AdminDistrictReports",
+        "type": "object"
+      },
       "AdminEntityAlias": {
         "description": "Eine zusammengelegte Entität (``CouncilStore.list_entity_aliases``).\n\n``canonical_slug`` ist das AUFGELÖSTE Ziel: Eine Kette A→B→C wird bis zum\nEnde verfolgt, damit in der Liste nicht das leere Mittelglied steht.",
         "properties": {
@@ -8757,6 +8939,7 @@
         "type": "object"
       },
       "DistrictProjectReportOut": {
+        "description": "``POST``/``DELETE /api/districts/projects/{id}/report``.\n\n``hidden`` ist seit 10/2026 die Entscheidung der Redaktion, nicht mehr die\nZahl der Meldungen — eine Meldung allein blendet nichts aus. Die Form\nbleibt, weil die ausgelieferte iOS-App sie decodiert.",
         "properties": {
           "hidden": {
             "title": "Hidden",
@@ -8769,6 +8952,10 @@
           "report_count": {
             "title": "Report Count",
             "type": "integer"
+          },
+          "reported": {
+            "title": "Reported",
+            "type": "boolean"
           }
         },
         "required": [
@@ -25890,6 +26077,34 @@
         "title": "ValidationError",
         "type": "object"
       },
+      "VerdictIn": {
+        "properties": {
+          "note": {
+            "maxLength": 300,
+            "title": "Note",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "verdict": {
+            "enum": [
+              "hidden",
+              "kept"
+            ],
+            "title": "Verdict",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "verdict"
+        ],
+        "title": "VerdictIn",
+        "type": "object"
+      },
       "VerifyEmailRequest": {
         "properties": {
           "token": {
@@ -26687,6 +26902,104 @@
           }
         },
         "summary": "Cities Stats",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/district-reports": {
+      "get": {
+        "description": "Die Meldungen aus „Mein Viertel\", je Vorhaben gebündelt.",
+        "operationId": "district_reports_api_admin_district_reports_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": "open",
+              "pattern": "^(open|decided|all)$",
+              "title": "Status",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminDistrictReports"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "District Reports",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/district-reports/{project_key}": {
+      "put": {
+        "description": "Entscheiden: ausblenden, stehen lassen — oder die Entscheidung zurücknehmen.",
+        "operationId": "decide_district_report_api_admin_district_reports__project_key__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_key",
+            "required": true,
+            "schema": {
+              "title": "Project Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerdictIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Decide District Report",
         "tags": [
           "admin"
         ]
@@ -32957,7 +33270,7 @@
     },
     "/api/districts/lookup": {
       "get": {
-        "description": "„Ich wohne in der …\": Straße, Platz oder Stadtteilname → Ortsbereich.\n\nStadtteile (Name und Aliase) zuerst, dann Straßen und Plätze aus den\nBeschlüssen. Öffentlich wie die Auswahl-Seite selbst; kein Konto, kein\nSprachmodell, keine Speicherung der Eingabe.",
+        "description": "„Ich wohne in der …\": Straße, Platz oder Stadtteilname → Ortsbereich.\n\nStadtteile (Name und Aliase) zuerst, dann Straßen und Plätze aus den\nBeschlüssen. Mit Konto wie die Auswahl-Seite selbst; kein Sprachmodell,\nkeine Speicherung der Eingabe.",
         "operationId": "district_lookup_api_districts_lookup_get",
         "parameters": [
           {
@@ -33023,8 +33336,49 @@
       }
     },
     "/api/districts/projects/{project_id}/report": {
+      "delete": {
+        "description": "Die eigene Meldung zurücknehmen — ein Fehltipp soll nicht stehen bleiben.\nEine Entscheidung der Redaktion bleibt davon unberührt.",
+        "operationId": "withdraw_project_report_api_districts_projects__project_id__report_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DistrictProjectReportOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Withdraw Project Report",
+        "tags": [
+          "districts"
+        ]
+      },
       "post": {
-        "description": "„Gehört nicht hierher\": Ein Konto meldet ein Vorhaben als falsch verortet.\nAb zwei Meldungen verschwindet es von der Tafel; die Meldung bleibt beim\nKonto und geht mit dessen Löschung.",
+        "description": "„Gehört nicht hierher\": Ein Konto meldet ein Vorhaben als falsch verortet.\n\n**Eine Meldung blendet nichts aus.** Bis 10/2026 verschwand ein Vorhaben ab\nzwei Meldungen dauerhaft — zwei Konten konnten so jede Tafel leeren, und\nniemand sah die Meldungen. Jetzt landet sie in der Admin-Liste, die erste\nje Vorhaben zusätzlich als Mail, und ausgeblendet wird erst, wenn die\nRedaktion bestätigt. Die Meldung hängt am Konto und geht mit dessen\nLöschung (``COUNCIL_USER_OWNED_TABLES``).",
         "operationId": "report_project_api_districts_projects__project_id__report_post",
         "parameters": [
           {
