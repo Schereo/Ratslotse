@@ -511,6 +511,7 @@ COUNCIL_DEEP_PLUS_MODEL=openai/gpt-6-sol  # derselbe Bericht für Konten mit Rec
 COUNCIL_RETRIEVAL_KLASSISCH=0        # "1" = Notausschalter: Retrieval-Stand vor dem Vorlagen-Chunk-Ausbau
 # Städtevergleich (check_cities.py) — der teuerste und längste Cron
 CITIES_MAX_SECONDS=14400             # Frist je Lauf; 0 hebt sie auf (Nachlauf von Hand)
+CITIES_MAX_USD=2                     # Kostengrenze je Lauf über ALLE Stufen; 0 hebt sie auf
 CITIES_ANNOTATE_MAX=3000             # Stückzahl je Lauf (Deckel gegen den Rückstau)
 CITIES_FIT_WORKERS=8                 # gleichzeitige Urteile; mehr = schneller, nicht teurer
 # OpenRouter Provider-Routing (DSGVO) — schließt China-Anbieter aus, verlangt ZDR
@@ -699,18 +700,24 @@ RATSLOTSE_PROXY_HOSTS=gisportal4ol.oldenburg.de,youtube.com         # nur diese 
   anlaufen kann>"` tragen. Dann ist sein Schweigen der gewollte Zustand: keine
   Überfällig-Ampel im Panel, keine Mail aus `check_herzschlag.py`. Ohne dieses
   Feld hieße „Cron aus" entweder „jeden Tag eine Mail" oder „Eintrag löschen" —
-  und beim Wiedereinschalten fiele niemandem auf, dass er fehlt. **Pausiert
-  seit 20.09.2026: `check_cities`** (Städtevergleich noch nicht ausgeliefert,
-  stand aber für rund 70 % der Modellkosten). Wieder anschalten heißt: Zeile in
-  `kern/jobs.py` raus UND die crontab-Zeile auf dem Server wieder scharf
-  stellen.
+  und beim Wiedereinschalten fiele niemandem auf, dass er fehlt. Erster
+  Anwendungsfall war `check_cities` (pausiert 20.09. bis 10/2026, rund 70 % der
+  Modellkosten bei einem noch nicht ausgelieferten Feature). **Seit 3.0.0 läuft
+  er wieder — schlank:** werktags 10:15 nur Oldenburg (ohne Netz und Modell;
+  daraus entsteht „Anderswo" unter neuen Beschlüssen), sonntags 5 Uhr alles,
+  Urteile nur über Neues, EINE Kostengrenze für den ganzen Lauf
+  (`CITIES_MAX_USD`, Vorgabe 2 $). Die beiden crontab-Zeilen stehen im Kopf von
+  `scripts/check_cities.py`.
 - **Lange Cron-Läufe treten dem Deploy zur Seite** (`kern/stopp.py`). Der
   Deploy legt `data/.deploy-wartet`, bevor er irgendetwas anfasst; die
   Stapelschleifen sehen an ihrer nächsten Grenze nach, behalten das
   Geschriebene und hören auf. Anlass: `check_cities.py` lief am 20.09.2026
   vierzehn Stunden und ließ sechs Deploys hintereinander abbrechen. Wer eine
   neue lange Schleife baut, reicht `stopp` durch — und schreibt **stapelweise**,
-  nicht am Ende: Nur dann ist das Zur-Seite-Treten kostenlos.
+  nicht am Ende: Nur dann ist das Zur-Seite-Treten kostenlos. Seit 10/2026
+  trägt `stopp` auch die **Kostengrenze**: Jede Stufe mit Modellaufruf meldet
+  ihre Kosten über `stopp.ausgeben(…)`, sonst deckelt die Grenze sie nicht
+  (`tests/test_cities_cron_schlank.py` hält die Liste).
 - **„Ähnliche Beschlüsse"** (`scripts/embed_decisions.py`): berechnet semantische
   Nachbarn per **fastembed** (ONNX, kein torch) — bewusst **nicht** in
   `requirements.txt`, damit Deploy + Web-Service unberührt bleiben.

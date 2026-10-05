@@ -78,24 +78,24 @@ JOBS: list[dict] = [
     {
         "key": "check_cities",
         "label": "Andere Städte",
-        "description": "Vorlagen, Sitzungen und Ergebnisse der Vergleichsstädte über OParl — "
-                       "plus Oldenburg aus der eigenen Rats-Datenbank. Holt und "
-                       "schneidet auch die Sitzungs-Niederschriften und liest daraus, "
-                       "warum ein fremder Rat so entschieden hat.",
-        # Fünf Uhr und nicht drei: `weekly_enrich` läuft sonntags um drei, und
-        # zwei Läufe, die beide ein Embedding-Modell laden, gehören nicht auf
-        # dieselbe Stunde einer VM mit zwei Kernen.
-        "schedule": "sonntags 5 Uhr",
-        # PAUSIERT seit 20.09.2026 (Tims Entscheidung). Der Städtevergleich
-        # ist noch nicht ausgeliefert, und der Lauf stand für rund 70 % der
-        # gesamten Modellkosten ($3,83 von $5,44 zwischen dem 07. und
-        # 20.09.2026). Wieder anschalten heißt: diese Zeile entfernen UND die
-        # crontab-Zeile auf dem Server wieder scharf stellen.
-        "pausiert": "Städtevergleich noch nicht ausgeliefert; Kosten gespart "
-                    "(Tim, 20.09.2026). Erst mit dem Feature wieder anschalten.",
-        # Großzügig: Der Lauf ist wöchentlich, und ein einzelner ausgefallener
-        # Sonntag ist kein Alarm — erst zwei hintereinander.
-        "max_age_h": 8 * 24,
+        "description": "Werktags Oldenburg aus der eigenen Rats-Datenbank übernehmen "
+                       "und einbetten (ohne Netz und Modell) — daraus entsteht „Anderswo“ "
+                       "unter neuen Beschlüssen. Sonntags zusätzlich Vorlagen, Sitzungen "
+                       "und Ergebnisse der Vergleichsstädte, Einordnung, Ideen-Gruppen "
+                       "und die Urteile über Oldenburg, gedeckelt auf CITIES_MAX_USD.",
+        # Zwei crontab-Zeilen, EIN Job (s. scripts/check_cities.py): werktags
+        # 10:15 nach `check_protocols` (9 Uhr) mit `--nur-oldenburg`, sonntags
+        # 5 Uhr alles. Fünf Uhr und nicht drei: `weekly_enrich` läuft sonntags
+        # um drei, und zwei Läufe, die beide ein Embedding-Modell laden,
+        # gehören nicht auf dieselbe Stunde einer VM mit zwei Kernen.
+        #
+        # Vom 20.09. bis 10/2026 pausiert (Tims Entscheidung: Feature nicht
+        # ausgeliefert, rund 70 % der Modellkosten). Wieder an mit dem Release
+        # 3.0.0 — schlank: Urteile nur über Neues, eine Kostengrenze für den
+        # ganzen Lauf (CITIES_MAX_USD, Vorgabe 2 $).
+        "schedule": "werktags 10:15 Uhr (nur Oldenburg), sonntags 5 Uhr (alles)",
+        # Täglich: Sonntag 5 Uhr bis Montag 10:15 sind 29 Stunden.
+        "max_age_h": 30,
     },
     {
         "key": "social_kartentexte",

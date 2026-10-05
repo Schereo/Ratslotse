@@ -2472,25 +2472,30 @@ def _belege_aufloesen(store: CouncilStore, kennungen: list,
     keine Vorlagen-Id; sie fallen hier weg. Auf der Karte stünde sonst eine
     Zeile ohne Titel und ohne Ziel.
     """
-    from council.cities.evidence import kvonr_aus
+    from council.cities.evidence import (BESCHLUSS_PRAEFIX, beschluss_zu, kvonr_aus,
+                                         vorlage_hinter)
 
     aus: list[IdeaEvidence] = []
     for kennung in kennungen[:hoechstens]:
-        if str(kennung).startswith("oldenburg:decision:"):
+        titel_ersatz = ""
+        if str(kennung).startswith(BESCHLUSS_PRAEFIX):
             # Ein Beschluss als Beleg — `idea_fit` und `fit` dürfen ihn nennen.
             # Bis 22.09.2026 fiel er hier still weg: Die Karte zeigte dann
-            # „vorhanden" ohne die Zeile, die es belegt.
-            try:
-                beschluss = store.get_decision(int(str(kennung).rsplit(":", 1)[1]))
-            except ValueError:
-                beschluss = None
+            # „vorhanden" ohne die Zeile, die es belegt. Aufgelöst wird über
+            # Sitzung und Punkt (`beschluss_zu`), nicht über die Zeilennummer:
+            # Die stammte aus der Datenbank, in der das Urteil entstand, und
+            # auf Prod fand sie keinen einzigen der 1.294 Beschluss-Belege.
+            beschluss = beschluss_zu(store, str(kennung))
             if beschluss:
                 aus.append({"decision_id": beschluss["id"], "kvonr": beschluss.get("kvonr"),
                             "title": beschluss.get("title") or "",
                             "date": beschluss.get("session_date"),
                             "outcome": beschluss.get("outcome")})
-            continue
-        kvonr = kvonr_aus(str(kennung))
+                continue
+            # Der Beschluss fehlt hier, der Punkt nicht: dann seine Vorlage.
+            kvonr, titel_ersatz = vorlage_hinter(store, str(kennung))
+        else:
+            kvonr = kvonr_aus(str(kennung))
         if kvonr is None:
             continue
         vorlage = store.get_vorlage(kvonr)
@@ -2500,7 +2505,8 @@ def _belege_aufloesen(store: CouncilStore, kennungen: list,
         aus.append({
             "decision_id": beschluss["id"] if beschluss else None,
             "kvonr": kvonr,
-            "title": (beschluss or {}).get("title") or (vorlage or {}).get("title") or "",
+            "title": ((beschluss or {}).get("title") or (vorlage or {}).get("title")
+                      or titel_ersatz),
             "date": (beschluss or {}).get("session_date"),
             "outcome": (beschluss or {}).get("outcome"),
         })

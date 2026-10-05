@@ -108,6 +108,8 @@ def run(main: CitiesStore, body_id: str | None = None, limit: int | None = None,
                 continue
             puffer.append(ergebnis)
             stand["cost_usd"] += ergebnis[3]
+            if stopp is not None:
+                stopp.ausgeben(ergebnis[3])
             stand["grounded"] += bool(ergebnis[1].get("grounded"))
             if len(puffer) >= BLOCK:
                 _schreiben(main, ann, puffer)
