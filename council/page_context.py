@@ -149,6 +149,64 @@ def decision_extra(store, d: dict) -> list[str]:
     return zeilen
 
 
+#: Einträge aus „In anderen Städten“ — so viele zeigt der Block auf der Seite
+#: höchstens (``ELSEWHERE_LIMIT`` im Router); mehr stünde dort gar nicht.
+ANDERSWO_MAX = 6
+ANDERSWO_TITEL_MAX = 140
+
+#: Kanonische Ergebnisse aus ``council/cities/model.py`` — dieselben Wörter
+#: wie in ``web/frontend/components/elsewhere.tsx``.
+_ANDERSWO_ERGEBNIS = {
+    "accepted": "beschlossen", "amended": "geändert beschlossen", "rejected": "abgelehnt",
+    "postponed": "vertagt", "noted": "zur Kenntnis genommen", "referred": "verwiesen",
+    "withdrawn": "zurückgezogen",
+}
+_ANDERSWO_ART = {
+    "motion": "Antrag", "amendment": "Änderungsantrag", "inquiry": "Anfrage",
+    "answer": "Antwort", "proposal": "Beschlussvorlage", "report": "Bericht",
+    "notice": "Mitteilung", "petition": "Eingabe",
+}
+
+
+def elsewhere_lines(items: list[dict]) -> list[str]:
+    """Was der Block „In anderen Städten“ auf der Beschluss-Seite zeigt.
+
+    **Warum (Release-Prüfung 03.10.2026).** Auf der Seite zur Grundsteuer C
+    standen darunter Vorlagen aus anderen Städten; Lotti sah sie nicht und
+    schickte „Was haben andere Städte gemacht?“ ins Archiv, das nur
+    Oldenburger Beschlüsse kennt. Jetzt kennt sie, was die Seite zeigt —
+    dieselbe Regel wie für den Rest dieses Moduls.
+
+    Die Einträge kommen fertig herein (``decision_elsewhere`` im Router, nur
+    mit Schalter ``andere-staedte``) — dieses Modul fragt nichts nach. Je
+    Eintrag Stadt, Art, Datum, Titel und Ergebnis; ein fehlendes Ergebnis
+    heißt bei rund der Hälfte der Tagesordnungspunkte nur, dass die Stadt
+    keines veröffentlicht, und wird deshalb auch so benannt. Gedeckelt, und
+    die Titel sind Fremdtext — der ganze Block läuft in
+    ``assistant._record_block`` durch den Anweisungsfilter und steht zwischen
+    den AKTEN-Marken.
+    """
+    zeilen = []
+    for it in items[:ANDERSWO_MAX]:
+        stadt = str(it.get("body_name") or it.get("body_id") or "").strip()
+        titel = kuerze(it.get("name"), ANDERSWO_TITEL_MAX)
+        if not stadt or not titel:
+            continue
+        kopf = ", ".join(x for x in (
+            stadt,
+            _ANDERSWO_ART.get(str(it.get("kind") or ""), "") or (it.get("paper_type_raw") or ""),
+            _datum(it.get("date")) if it.get("date") else "",
+        ) if x)
+        ergebnis = _ANDERSWO_ERGEBNIS.get(str(it.get("outcome") or ""),
+                                          "Ergebnis nicht veröffentlicht")
+        zeilen.append(f"  - {kopf}: „{titel}“ — {ergebnis}")
+    if not zeilen:
+        return []
+    return ["  IN ANDEREN STÄDTEN (unter dem Beschluss auf dieser Seite: ähnliche Vorlagen "
+            "aus den Ratsinformationssystemen anderer Städte — KEINE Oldenburger "
+            "Beschlüsse; ob sie dort gelten, steht nur beim Ergebnis):"] + zeilen
+
+
 # --------------------------------------------------------------------------- #
 # Sitzung
 # --------------------------------------------------------------------------- #

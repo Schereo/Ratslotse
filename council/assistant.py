@@ -43,7 +43,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from council import outcome_note, rules_of_procedure
+from council import lotti_werkzeuge, outcome_note, rules_of_procedure
 from kern import erklaerwissen, glossar, knowledge, llm, prompts
 from kern.foreign_text import defuse
 
@@ -58,6 +58,26 @@ from kern.foreign_text import defuse
 # Läuft ohne ZDR (kern/llm.py::ZDR_VERZICHT) — GPT-6 Luna hat keinen
 # ZDR-Anbieter. Zahlen und Verlauf: docs/plan-modellwechsel.md § 5.
 MODEL = os.environ.get("COUNCIL_ASSISTANT_MODEL", "openai/gpt-6-luna")
+
+#: **Tageskontingent je Konto** (Release-Prüfung 03.10.2026): so viele
+#: Erklärungen MIT Modell am Tag. Bis dahin bremste nur der Fenster-Zähler
+#: (30 in zehn Minuten, ``app.ratelimit.assistant_limiter``) — 180 in der
+#: Stunde, über den Tag ein offener Hahn.
+#:
+#: **Warum 100.** Gemessen kostet eine Antwort rund 0,06 Cent (GPT-6 Luna,
+#: ``eval/run_assistant.py``); mit Werkzeugen sind es zwei bis vier Aufrufe,
+#: also bis gut 0,2 Cent. 100 am Tag sind damit höchstens rund 20 Cent je
+#: Konto und Tag — und für einen Menschen eine halbe Stunde ununterbrochenes
+#: Fragen. Gezählt wird dieselbe Zeile wie in der Nutzungsstatistik
+#: (``user_activity``, Merkmal ``assistant_explain``), also nur Antworten,
+#: die ein Modell gekostet haben: Glossar, Seitenwissen und der Weg ins Archiv
+#: zählen nicht, ein abgebrochener Strom auch nicht. Dieselbe Mechanik wie
+#: bei der Recherche (``deep_jobs_heute``): ein Zähler in der Datenbank, der
+#: Neustarts übersteht. Konten mit ``limits_unlocked`` sind ausgenommen —
+#: wie beim Fenster-Zähler.
+TAGES_KONTINGENT = 100
+#: Was im Kontingent zählt — der Name aus ``record_activity`` im Router.
+KONTINGENT_MERKMAL = "assistant_explain"
 
 #: Kurz ist das Ziel — der Prompt sagt „höchstens fünf Sätze", das Budget ist
 #: die zweite Bremse (dieselbe Bauform wie ``qa.VEREINFACHEN_TOKENS``).
@@ -788,7 +808,7 @@ def _abstimmung(d: dict) -> str:
 WORTLAUT_MAX = 1500
 
 
-def _record_block(store, screen: Screen) -> str:
+def _record_block(store, screen: Screen, anderswo: list[dict] | None = None) -> str:
     """Der Gegenstand hinter den Kennungen — Beschluss, Sitzung, Person, Ort, Thema.
 
     Nur über die **Kennung** aus der Adresszeile, nie über eine Suche: Was
@@ -843,6 +863,10 @@ def _record_block(store, screen: Screen) -> str:
                        if outcome in outcome_note.NOT_ADOPTED else "Amtlicher Wortlaut")
                 zeilen.append(f"  {art} (Auszug): {kuerze(_ohne_anweisung(d['official_text']), WORTLAUT_MAX)}")
             zeilen += page_context.decision_extra(store, d)
+            # „In anderen Städten“ (Schalter `andere-staedte`): Die Einträge
+            # bringt der Router mit — er liest sie über denselben Endpunkt
+            # wie die Seite, und `council/` darf `app/` nicht importieren.
+            zeilen += page_context.elsewhere_lines(anderswo or [])
             teile.append("\n".join(zeilen))
 
     ksinr = refs.get("ksinr")
@@ -1236,7 +1260,8 @@ THEMEN_MAX = 8
 
 def screen_context(store, screen: Screen, question: str, *,
                    permissions: frozenset[str] | set[str] = frozenset(),
-                   ratslotse=None, user_id: int | None = None) -> dict:
+                   ratslotse=None, user_id: int | None = None,
+                   anderswo: list[dict] | None = None) -> dict:
     """Alles, was der Prompt bekommt — ohne einen einzigen Modellaufruf.
 
     ``ratslotse`` und ``user_id`` sind für die eigenen Themen da und bleiben
@@ -1403,7 +1428,7 @@ def screen_context(store, screen: Screen, question: str, *,
 
     return {
         "knowledge": wissen,
-        "record": _record_block(store, screen),
+        "record": _record_block(store, screen, anderswo),
         "glossary": begriffe,
         "geld": geld,
         # PR 27: beide Bedingungen erfüllt — der Prompt bekommt den Absatz
@@ -1632,8 +1657,12 @@ def _einordnung(geld: dict | None, einwohner: dict | None) -> list[str]:
         if not ew or not ew.get("population"):
             continue
         pro_kopf = round(betrag / ew["population"])
+        # Der Zähler VOLL, nicht als „1.234,5 Mio. €“ (Release-Prüfung
+        # 03.10.2026): Aus der schon gerundeten Zahl machte das Modell
+        # „1.235 Millionen“ — zweimal gerundet, und 1.234.483.073 € sind
+        # 1.234 Millionen. Gerundet wird genau einmal, beim Schreiben.
         zeilen.append(
-            f"- {label} {jahr}: {_geld.de_betrag(betrag)} geteilt durch "
+            f"- {label} {jahr}: {_geld.de_euro(round(betrag))} geteilt durch "
             f"{_geld.de_zahl(ew['population'])} Einwohner*innen (Ende {ew['year']}) "
             f"= {_geld.de_euro(pro_kopf)} je Einwohner*in")
     zeilen += _stellen_je_tausend(geld.get("stellenplan"), einwohner)
@@ -1813,6 +1842,7 @@ def explain_messages(screen: Screen, question: str, ctx: dict,
         anker=_anker_block(screen),
         question=kuerze(question, QUESTION_MAX) or "(keine eigene Frage — erklär das Gezeigte)",
         gespraech=_verlauf_block(verlauf),
+        heute=lotti_werkzeuge.heute_lang(),
     )
     # DeepSeek ohne Denken; für alle anderen der Denkaufwand aus
     # `llm.WEB_DENKAUFWAND` (GPT-6 Luna: Vorgabe — gemessen und begründet dort).
@@ -1842,7 +1872,7 @@ def explain_stream(store, screen: Screen, question: str, *,
                                    timeout=LLM_FRIST_S, **extra)
         return
     yield from _mit_werkzeugen(store, messages, extra, ctx, permissions, model,
-                               question=question)
+                               question=question, verlauf=verlauf)
 
 
 #: Schritt 2 (24.09.2026): Lotti schrieb „lässt sich nicht bestimmen“, ohne
@@ -1868,7 +1898,7 @@ ABSAGE_FENSTER = 200
 
 def _mit_werkzeugen(store, messages: list[dict], extra: dict, ctx: dict,
                     permissions: frozenset[str] | set[str], model: str,
-                    question: str = ""):
+                    question: str = "", verlauf: list[dict] | None = None):
     """Die Erklärung mit Nachschlagen — ``str``-Stücke und :class:`Schritt`.
 
     Antwortet das Modell direkt, fließt der Text wie ohne Werkzeuge. Ruft es
@@ -1938,7 +1968,11 @@ def _mit_werkzeugen(store, messages: list[dict], extra: dict, ctx: dict,
             return
         nachgeschlagen = True
         messages.append(lw.assistenten_nachricht(text, aufrufe))
-        bekannt = lw.nachrichten_text(messages)
+        # Belegt ist, was Kontext und Werkzeuge sagen — nicht die Frage und
+        # nicht der Verlauf (`lw.nachrichten_text`). Genau die Zeichenketten,
+        # die `explain_messages` eingesetzt hat.
+        bekannt = lw.nachrichten_text(messages, ohne=(
+            kuerze(question, QUESTION_MAX), _verlauf_block(verlauf)))
         for aufruf in aufrufe:
             e = lw.ausfuehren(store, aufruf["name"], aufruf["arguments"],
                               permissions=permissions, bekannt=bekannt)

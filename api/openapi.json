@@ -19046,7 +19046,7 @@
         "type": "object"
       },
       "QaShare": {
-        "description": "Ein geteilter Antwort-Schnappschuss (``Store.qa_share_get``).\n\nFestes Literal, deshalb vollständig und ohne ``NotRequired``: Vor dem\nBausteine-Nachtrag geteilte Antworten haben keine ``extras``, der Store\nsetzt die vier Listen dann auf leer und ``chart`` auf ``None``.",
+        "description": "Ein geteilter Antwort-Schnappschuss (``Store.qa_share_get``).\n\nFestes Literal, deshalb vollständig und ohne ``NotRequired``: Vor dem\nBausteine-Nachtrag geteilte Antworten haben keine ``extras``, der Store\nsetzt die vier Listen dann auf leer, ``chart`` und\n``rules_of_procedure`` auf ``None``.",
         "properties": {
           "answer": {
             "title": "Answer",
@@ -19100,6 +19100,14 @@
             "title": "Question",
             "type": "string"
           },
+          "rules_of_procedure": {
+            "additionalProperties": true,
+            "title": "Rules Of Procedure",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
           "sources": {
             "items": {
               "additionalProperties": true,
@@ -19118,7 +19126,8 @@
           "press_releases",
           "attachments",
           "parties",
-          "chart"
+          "chart",
+          "rules_of_procedure"
         ],
         "title": "QaShare",
         "type": "object"
@@ -19229,6 +19238,68 @@
             "minLength": 1,
             "title": "Question",
             "type": "string"
+          },
+          "rules_of_procedure": {
+            "description": "Die Karte „Aus der Geschäftsordnung\" (``rules_of_procedure.card``).\n\nDer Client reicht sie zurück, wie das ``sources``-Ereignis sie brachte.\nWeil der Snapshot öffentlich ist, gilt für die Links dasselbe wie beim\nProtokoll der Debatten: Nur das PDF der Stadt, aus dem die Karte stammt,\ndarf verlinkt sein — sonst ließe sich unter unserem Absender Beliebiges\nunterschieben. Ein fremder Link verwirft die ganze Karte (s.\n``QaShareBody._karte_oder_nichts``).",
+            "properties": {
+              "contents": {
+                "items": {
+                  "$ref": "#/components/schemas/QaShareRulesContents"
+                },
+                "maxItems": 80,
+                "title": "Contents",
+                "type": "array"
+              },
+              "full_title": {
+                "default": "",
+                "maxLength": 300,
+                "title": "Full Title",
+                "type": "string"
+              },
+              "sections": {
+                "items": {
+                  "$ref": "#/components/schemas/QaShareRulesSection"
+                },
+                "maxItems": 4,
+                "title": "Sections",
+                "type": "array"
+              },
+              "state": {
+                "default": "current",
+                "enum": [
+                  "current",
+                  "term_ended",
+                  "superseded"
+                ],
+                "title": "State",
+                "type": "string"
+              },
+              "title": {
+                "maxLength": 120,
+                "title": "Title",
+                "type": "string"
+              },
+              "url": {
+                "maxLength": 300,
+                "title": "Url",
+                "type": "string"
+              },
+              "version": {
+                "default": "",
+                "maxLength": 300,
+                "title": "Version",
+                "type": "string"
+              }
+            },
+            "required": [
+              "title",
+              "url"
+            ],
+            "title": "QaShareRulesOfProcedure",
+            "type": [
+              "object",
+              "null"
+            ]
           },
           "sources": {
             "items": {
@@ -19471,6 +19542,135 @@
           }
         },
         "title": "QaShareReportBody",
+        "type": "object"
+      },
+      "QaShareRulesContents": {
+        "properties": {
+          "label": {
+            "maxLength": 12,
+            "title": "Label",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 120,
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "maxLength": 300,
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "title",
+          "url"
+        ],
+        "title": "QaShareRulesContents",
+        "type": "object"
+      },
+      "QaShareRulesOfProcedure": {
+        "description": "Die Karte „Aus der Geschäftsordnung\" (``rules_of_procedure.card``).\n\nDer Client reicht sie zurück, wie das ``sources``-Ereignis sie brachte.\nWeil der Snapshot öffentlich ist, gilt für die Links dasselbe wie beim\nProtokoll der Debatten: Nur das PDF der Stadt, aus dem die Karte stammt,\ndarf verlinkt sein — sonst ließe sich unter unserem Absender Beliebiges\nunterschieben. Ein fremder Link verwirft die ganze Karte (s.\n``QaShareBody._karte_oder_nichts``).",
+        "properties": {
+          "contents": {
+            "items": {
+              "$ref": "#/components/schemas/QaShareRulesContents"
+            },
+            "maxItems": 80,
+            "title": "Contents",
+            "type": "array"
+          },
+          "full_title": {
+            "default": "",
+            "maxLength": 300,
+            "title": "Full Title",
+            "type": "string"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/QaShareRulesSection"
+            },
+            "maxItems": 4,
+            "title": "Sections",
+            "type": "array"
+          },
+          "state": {
+            "default": "current",
+            "enum": [
+              "current",
+              "term_ended",
+              "superseded"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 120,
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "maxLength": 300,
+            "title": "Url",
+            "type": "string"
+          },
+          "version": {
+            "default": "",
+            "maxLength": 300,
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "url"
+        ],
+        "title": "QaShareRulesOfProcedure",
+        "type": "object"
+      },
+      "QaShareRulesSection": {
+        "properties": {
+          "label": {
+            "maxLength": 12,
+            "title": "Label",
+            "type": "string"
+          },
+          "number": {
+            "maxLength": 8,
+            "title": "Number",
+            "type": "string"
+          },
+          "part": {
+            "maxLength": 60,
+            "title": "Part",
+            "type": "string"
+          },
+          "text": {
+            "default": "",
+            "maxLength": 6000,
+            "title": "Text",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 120,
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "maxLength": 300,
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "number",
+          "label",
+          "title",
+          "part",
+          "url"
+        ],
+        "title": "QaShareRulesSection",
         "type": "object"
       },
       "QaShareSource": {

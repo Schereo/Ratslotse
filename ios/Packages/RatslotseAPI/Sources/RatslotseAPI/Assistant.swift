@@ -110,6 +110,39 @@ public struct ExplainRequest: Codable, Sendable {
     }
 }
 
+/// Die Grenzen einer Frage an Lotti — gespiegelt aus `council.assistant`.
+///
+/// **Warum hier (Release-Prüfung 03.10.2026).** Länger als 300 Zeichen lehnt
+/// der Server mit 422 ab, und die App zeigte dann Pydantics englische Meldung
+/// („String should have at most 300 characters"); die Frage war weg. Hier
+/// und nicht in der Ansicht, weil dieses Paket ohne Simulator testbar ist.
+public enum LottiFrage {
+    /// `council.assistant.QUESTION_MAX`.
+    public static let maxZeichen = 300
+    /// Ab so vielen Zeichen zeigt das Feld den Zähler.
+    public static let zaehlerAb = 240
+
+    /// „262/300" nahe der Grenze, sonst `nil`.
+    public static func zaehler(_ text: String) -> String? {
+        text.count >= zaehlerAb ? "\(text.count)/\(maxZeichen)" : nil
+    }
+
+    /// Der Text auf die Grenze gekürzt.
+    public static func gekuerzt(_ text: String) -> String {
+        text.count > maxZeichen ? String(text.prefix(maxZeichen)) : text
+    }
+
+    /// Der Satz für einen abgelehnten Aufruf — nie Pydantics Liste. 429 und
+    /// 400 bringen ihren Satz vom Server mit; er ist für Menschen geschrieben.
+    public static func fehlerText(_ fehler: APIError) -> String {
+        if fehler.statusCode == 422 {
+            return "Deine Frage ist zu lang — höchstens \(maxZeichen) Zeichen. "
+                + "Sie steht wieder im Eingabefeld."
+        }
+        return fehler.message
+    }
+}
+
 /// Der Schluss-Rahmen des Erklär-Stroms (`type = "done"`).
 ///
 /// Handgeschrieben gegen `SSE_ERKLAERUNG`; `scripts/ios_vertrag.py` kommt an
