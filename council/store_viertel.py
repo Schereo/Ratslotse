@@ -32,10 +32,13 @@ from kern.dbfehler import tabelle_fehlt
 #: Viertel.
 PROJECT_MIN_CONFIDENCE = 90
 
-#: Ab so vielen Konten, die „Gehört nicht hierher" gesagt haben, verschwindet
-#: ein Vorhaben von der Tafel. Eins reicht nicht — sonst nähme ein Tippfehler
-#: allen anderen die Karte weg; zwei unabhängige Stimmen sind ein Signal.
-PROJECT_HIDE_REPORTS = 2
+#: Ausgeblendet ist ein Vorhaben NUR, wenn die Redaktion eine Meldung
+#: bestätigt hat (``council_district_project_verdicts``). Bis 10/2026 reichten
+#: zwei Meldungen — zwei Konten konnten so jedes Vorhaben dauerhaft von der
+#: Tafel nehmen, und niemand sah die Meldungen. Als SQL-Ausdruck, weil Tafel
+#: und Highlights ihn beide brauchen.
+_HIDDEN_SQL = ("EXISTS (SELECT 1 FROM council_district_project_verdicts vd "
+               "WHERE vd.project_key = p.project_key AND vd.verdict = 'hidden')")
 
 #: Wie weit zurück Beschlüsse als Kandidaten zählen (Monate). Ein Vorhaben
 #: lebt über Jahre, aber ein Beschluss von 2019 sagt nichts über 2027 —
@@ -310,41 +313,101 @@ class ViertelMixin(StoreBasis):
     # -------------------------------------------------------------- Vorhaben
 
     def replace_district_projects(self, place_id: str, projects: list[dict]) -> int:
-        """Die Vorhaben eines Ortsbereichs komplett ersetzen — EINE Transaktion.
+        """Die Vorhaben eines Ortsbereichs auf den neuen Lauf bringen — EINE Transaktion.
 
-        ``project_key`` = ``place_id:<kleinste decision_id>`` bleibt über Läufe
-        stabil, solange der älteste Beschluss des Vorhabens derselbe bleibt.
-        Daran hängen die Meldungen; ein Vorhaben, das beim nächsten Lauf anders
-        geschnitten wird, verliert sie im schlimmsten Fall — und nicht mehr.
+        **Abgleich, nicht Ersetzen.** Bis 10/2026 löschte jeder Lauf alle
+        Vorhaben und schrieb sie neu; die ids liefen so in einem Monat bis 769
+        bei 199 Zeilen, und jeder ``?v=``-Link (geteilt, in einer Mail, im
+        offenen Tab) zeigte nach dem nächsten Sonntag ins Leere. Jetzt erbt ein
+        neues Vorhaben id und ``project_key`` des bisherigen, mit dem es die
+        meisten Beschlüsse teilt (``_match_projects``). Das hält auch dann,
+        wenn der älteste Beschluss herausfällt — der Schlüssel ist nur bei der
+        Geburt ``place_id:<kleinste decision_id>``, danach eine Kennung.
+
+        Was keinen Nachfolger hat, verschwindet aus dem Register. Wurde es mit
+        einem anderen zusammengelegt (teilt Beschlüsse mit einem neuen
+        Vorhaben, das schon einen Vorgänger hat), ziehen seine Meldungen und
+        die Entscheidung der Redaktion dorthin um — still verlieren darf eine
+        Bündelung sie nicht. Ohne jeden Nachfolger bleiben sie unter ihrem
+        Schlüssel stehen; die Admin-Liste zeigt sie als „nicht mehr auf der Tafel".
         """
         now = _now()
         with self._conn:
-            alte = [r[0] for r in self._conn.execute(
-                "SELECT id FROM council_district_projects WHERE place_id = ?", (place_id,)).fetchall()]
+            alte: dict[int, tuple[str, set[int]]] = {
+                r[0]: (r[1], set()) for r in self._conn.execute(
+                    "SELECT id, project_key FROM council_district_projects WHERE place_id = ?", (place_id,))}
             if alte:
                 ph = ",".join("?" * len(alte))
-                self._conn.execute(
-                    f"DELETE FROM council_district_project_decisions WHERE project_id IN ({ph})", alte)
-                self._conn.execute("DELETE FROM council_district_projects WHERE place_id = ?", (place_id,))
-            for p in projects:
-                ids = sorted({int(i) for i in p.get("decision_ids") or []})
-                if not ids:
-                    continue
+                for pid, did in self._conn.execute(
+                        f"SELECT project_id, decision_id FROM council_district_project_decisions "
+                        f"WHERE project_id IN ({ph})", list(alte)):
+                    alte[pid][1].add(did)
+            neue = [(p, ids) for p in projects
+                    if (ids := sorted({int(i) for i in p.get("decision_ids") or []}))]
+            zuordnung = _match_projects({pid: d for pid, (_k, d) in alte.items()},
+                                        [set(ids) for _p, ids in neue])
+            vergeben: set[str] = set()
+            behalten: set[int] = set()
+            neue_ids: list[tuple[int, str, set[int]]] = []
+            for (p, ids), alt in zip(neue, zuordnung):
                 dates = self._conn.execute(
                     f"SELECT MIN(se.session_date), MAX(se.session_date) FROM council_decisions d "
                     f"JOIN council_sessions se ON se.ksinr = d.ksinr WHERE d.id IN ({','.join('?' * len(ids))})",
                     ids).fetchone()
-                cur = self._conn.execute(
-                    "INSERT INTO council_district_projects (place_id, project_key, name, what, stage, "
-                    "when_text, category, confidence, first_date, last_date, updated_at) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    (place_id, f"{place_id}:{ids[0]}", (p.get("name") or "")[:80], (p.get("what") or "")[:600],
-                     p.get("stage") or "planning", p.get("when"), p.get("category") or "other",
-                     int(p.get("confidence") or 0), dates[0], dates[1], now))
+                werte = ((p.get("name") or "")[:80], (p.get("what") or "")[:600],
+                         p.get("stage") or "planning", p.get("when"), p.get("category") or "other",
+                         int(p.get("confidence") or 0), dates[0], dates[1], now)
+                if alt is not None:
+                    pid, key = alt, alte[alt][0]
+                    behalten.add(pid)
+                    self._conn.execute(
+                        "UPDATE council_district_projects SET name = ?, what = ?, stage = ?, when_text = ?, "
+                        "category = ?, confidence = ?, first_date = ?, last_date = ?, updated_at = ? "
+                        "WHERE id = ?", (*werte, pid))
+                    self._conn.execute(
+                        "DELETE FROM council_district_project_decisions WHERE project_id = ?", (pid,))
+                else:
+                    key = f"{place_id}:{ids[0]}"
+                    belegt = vergeben | {alte[a][0] for a in zuordnung if a is not None}
+                    n = 2
+                    while key in belegt:
+                        key, n = f"{place_id}:{ids[0]}-{n}", n + 1
+                    cur = self._conn.execute(
+                        "INSERT INTO council_district_projects (place_id, project_key, name, what, stage, "
+                        "when_text, category, confidence, first_date, last_date, updated_at) "
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (place_id, key, *werte))
+                    pid = int(cur.lastrowid or 0)
+                vergeben.add(key)
+                neue_ids.append((pid, key, set(ids)))
                 self._conn.executemany(
                     "INSERT OR IGNORE INTO council_district_project_decisions (project_id, decision_id) "
-                    "VALUES (?, ?)", [(cur.lastrowid, i) for i in ids])
+                    "VALUES (?, ?)", [(pid, i) for i in ids])
+            weg = [pid for pid in alte if pid not in behalten]
+            for pid in weg:
+                key, beschluesse = alte[pid]
+                # Zusammengelegt? Dann gehören Meldungen und Entscheidung dem
+                # Vorhaben, das die meisten seiner Beschlüsse übernommen hat.
+                erbe = max(neue_ids, key=lambda n: len(n[2] & beschluesse), default=None)
+                if erbe and erbe[2] & beschluesse and erbe[1] != key:
+                    self._carry_district_reports(key, erbe[1])
+            if weg:
+                ph = ",".join("?" * len(weg))
+                self._conn.execute(f"DELETE FROM council_district_project_decisions WHERE project_id IN ({ph})", weg)
+                self._conn.execute(f"DELETE FROM council_district_projects WHERE id IN ({ph})", weg)
         return len(projects)
+
+    def _carry_district_reports(self, old_key: str, new_key: str) -> None:
+        """Meldungen und Entscheidung von ``old_key`` auf ``new_key`` umhängen.
+
+        Ein Konto, das beide gemeldet hat, behält eine Meldung (UNIQUE je
+        Konto und Vorhaben). Hat das Ziel schon eine Entscheidung, gilt die.
+        """
+        self._conn.execute("UPDATE OR IGNORE council_district_project_reports SET project_key = ? "
+                           "WHERE project_key = ?", (new_key, old_key))
+        self._conn.execute("DELETE FROM council_district_project_reports WHERE project_key = ?", (old_key,))
+        self._conn.execute("UPDATE OR IGNORE council_district_project_verdicts SET project_key = ? "
+                           "WHERE project_key = ?", (new_key, old_key))
+        self._conn.execute("DELETE FROM council_district_project_verdicts WHERE project_key = ?", (old_key,))
 
     def district_projects(self, place_id: str, *, min_confidence: int = PROJECT_MIN_CONFIDENCE,
                           include_hidden: bool = False) -> list[dict]:
@@ -352,7 +415,7 @@ class ViertelMixin(StoreBasis):
         try:
             rows = self._conn.execute(
                 "SELECT p.*, (SELECT COUNT(*) FROM council_district_project_reports r "
-                "WHERE r.project_key = p.project_key) AS report_count "
+                f"WHERE r.project_key = p.project_key) AS report_count, {_HIDDEN_SQL} AS hidden "
                 "FROM council_district_projects p WHERE p.place_id = ? AND p.confidence >= ? "
                 "ORDER BY p.last_date DESC, p.id", (place_id, min_confidence)).fetchall()
         except sqlite3.OperationalError as fehler:
@@ -361,7 +424,7 @@ class ViertelMixin(StoreBasis):
             return []
         out = []
         for r in rows:
-            hidden = r["report_count"] >= PROJECT_HIDE_REPORTS
+            hidden = bool(r["hidden"])
             if hidden and not include_hidden:
                 continue
             decisions = self._conn.execute(
@@ -514,17 +577,16 @@ class ViertelMixin(StoreBasis):
 
     def _visible_project_rows(self, min_confidence: int) -> list[sqlite3.Row]:
         """Die Vorhaben, die auf einer Tafel stehen: sicher genug und nicht
-        von ``PROJECT_HIDE_REPORTS`` Konten als falsch verortet gemeldet.
+        von der Redaktion nach einer Meldung ausgeblendet.
 
         EINE Stelle für „sichtbar" — Übersicht, Stadtzahl und Highlights
         zählten bis 10/2026 die gemeldeten mit, die Tafel nicht; die Zahl
         im Kopf passte dann nicht zur Liste darunter."""
         return [r for r in self._conn.execute(
             "SELECT p.id, p.place_id, p.name, p.what, p.stage, p.when_text, p.category, p.last_date, "
-            "p.updated_at, p.project_key, (SELECT COUNT(*) FROM council_district_project_reports r "
-            "WHERE r.project_key = p.project_key) AS report_count "
+            f"p.updated_at, p.project_key, {_HIDDEN_SQL} AS hidden "
             "FROM council_district_projects p WHERE p.confidence >= ?", (min_confidence,)).fetchall()
-            if r["report_count"] < PROJECT_HIDE_REPORTS]
+            if not r["hidden"]]
 
     def district_projects_overview(self, *, min_confidence: int = PROJECT_MIN_CONFIDENCE) -> dict[str, dict]:
         """Je Ortsbereich: wie viele sichtbare Vorhaben, wann zuletzt etwas
@@ -633,8 +695,8 @@ class ViertelMixin(StoreBasis):
         Termin vor denen ohne, dann das jüngste zuerst. Und **je Ortsbereich
         höchstens eines**, solange die Auswahl reicht: Sechs Karten aus
         Eversten sagen nichts über die Stadt, sie sagen, dass Eversten groß ist.
-        Vorhaben, die zwei Konten als falsch verortet gemeldet haben, bleiben
-        weg — wie auf der Tafel.
+        Vorhaben, die die Redaktion nach einer Meldung ausgeblendet hat,
+        bleiben weg — wie auf der Tafel.
 
         **Nichts, dessen Zeit vorbei ist** (``viertel_zeitplan``): Am
         03.10.2026 standen hier vier von sechs Vorhaben „Im Bau“, deren
@@ -730,14 +792,101 @@ class ViertelMixin(StoreBasis):
         return row[0] if row else None
 
     def save_district_project_report(self, project_key: str, place_id: str, owner_id: int,
-                                     reason: str | None) -> bool:
-        """„Gehört nicht hierher" — einmal je Konto und Vorhaben. False, wenn schon gemeldet."""
+                                     reason: str | None, project_name: str | None = None) -> bool:
+        """„Gehört nicht hierher" — einmal je Konto und Vorhaben. False, wenn schon gemeldet.
+
+        Die Meldung blendet nichts aus; sie landet in der Admin-Liste
+        (``district_report_groups``), und erst die Redaktion entscheidet."""
         with self._conn:
             cur = self._conn.execute(
                 "INSERT OR IGNORE INTO council_district_project_reports "
-                "(project_key, place_id, owner_id, reason, created_at) VALUES (?, ?, ?, ?, ?)",
-                (project_key, place_id, owner_id, (reason or "")[:300] or None, _now()))
+                "(project_key, place_id, owner_id, reason, created_at, project_name) VALUES (?, ?, ?, ?, ?, ?)",
+                (project_key, place_id, owner_id, (reason or "").strip()[:300] or None, _now(),
+                 (project_name or "")[:80] or None))
         return cur.rowcount == 1
+
+    def delete_district_project_report(self, project_key: str, owner_id: int) -> bool:
+        """Die eigene Meldung zurücknehmen. False, wenn es keine gab."""
+        with self._conn:
+            cur = self._conn.execute(
+                "DELETE FROM council_district_project_reports WHERE project_key = ? AND owner_id = ?",
+                (project_key, owner_id))
+        return cur.rowcount > 0
+
+    def district_project_hidden(self, project_key: str) -> bool:
+        row = self._conn.execute(
+            "SELECT 1 FROM council_district_project_verdicts WHERE project_key = ? AND verdict = 'hidden'",
+            (project_key,)).fetchone()
+        return row is not None
+
+    def district_report_groups(self, status: str = "open") -> list[dict]:
+        """Die Meldungen für die Admin-Liste, je Vorhaben gebündelt, jüngste zuerst.
+
+        ``status``: ``open`` (noch keine Entscheidung), ``decided`` oder ``all``.
+        Wer gemeldet hat, steht NICHT darin — für die Frage „liegt das Vorhaben
+        im richtigen Viertel?" ist das ohne Belang, und die Liste soll keine
+        Verhaltensspur über Konten werden. Ein Vorhaben, das ein späterer Lauf
+        nicht mehr kennt, steht mit ``project = None`` da.
+        """
+        gruppen: dict[str, dict] = {}
+        for r in self._conn.execute(
+                "SELECT project_key, place_id, reason, created_at, project_name "
+                "FROM council_district_project_reports ORDER BY created_at DESC, id DESC"):
+            g = gruppen.setdefault(r["project_key"], {
+                "project_key": r["project_key"], "place_id": r["place_id"],
+                "place_name": self._place_name(r["place_id"]), "name": r["project_name"],
+                "reports": [], "last_at": r["created_at"], "verdict": None, "note": None,
+                "decided_at": None, "project": None})
+            g["reports"].append({"reason": r["reason"], "created_at": r["created_at"]})
+            g["name"] = g["name"] or r["project_name"]
+        if not gruppen:
+            return []
+        keys = list(gruppen)
+        ph = ",".join("?" * len(keys))
+        for v in self._conn.execute(
+                f"SELECT project_key, verdict, note, decided_at FROM council_district_project_verdicts "
+                f"WHERE project_key IN ({ph})", keys):
+            gruppen[v["project_key"]].update(verdict=v["verdict"], note=v["note"], decided_at=v["decided_at"])
+        for p in self._conn.execute(
+                f"SELECT id, project_key, name, what, stage, confidence FROM council_district_projects "
+                f"WHERE project_key IN ({ph})", keys):
+            g = gruppen[p["project_key"]]
+            g["project"] = {"id": p["id"], "name": p["name"], "what": p["what"], "stage": p["stage"]}
+            g["name"] = p["name"]
+        out = [g for g in gruppen.values()
+               if status == "all" or (status == "open") == (g["verdict"] is None)]
+        for g in out:
+            g["count"] = len(g["reports"])
+            g["name"] = g["name"] or g["project_key"]
+        return out
+
+    def set_district_project_verdict(self, project_key: str, verdict: str | None,
+                                     note: str | None = None) -> bool:
+        """Die Entscheidung der Redaktion: ``hidden`` blendet aus, ``kept`` lässt
+        stehen, ``None`` nimmt sie zurück (die Meldungen sind wieder offen).
+
+        False, wenn es zu diesem Schlüssel weder Meldung noch Vorhaben gibt —
+        entschieden wird nur, was jemand gemeldet hat oder was auf der Tafel steht.
+        """
+        with self._conn:
+            if verdict is None:
+                cur = self._conn.execute(
+                    "DELETE FROM council_district_project_verdicts WHERE project_key = ?", (project_key,))
+                return cur.rowcount > 0
+            if verdict not in ("hidden", "kept"):
+                raise ValueError(f"Unbekannte Entscheidung: {verdict}")
+            row = self._conn.execute(
+                "SELECT place_id FROM council_district_project_reports WHERE project_key = ? "
+                "UNION ALL SELECT place_id FROM council_district_projects WHERE project_key = ? LIMIT 1",
+                (project_key, project_key)).fetchone()
+            if not row:
+                return False
+            self._conn.execute(
+                "INSERT INTO council_district_project_verdicts (project_key, place_id, verdict, note, decided_at) "
+                "VALUES (?, ?, ?, ?, ?) ON CONFLICT(project_key) DO UPDATE SET verdict = excluded.verdict, "
+                "note = excluded.note, decided_at = excluded.decided_at",
+                (project_key, row[0], verdict, (note or "").strip()[:300] or None, _now()))
+        return True
 
     def district_project_by_id(self, project_id: int) -> dict | None:
         try:
@@ -1020,6 +1169,30 @@ def _ortsklammer(titel: str) -> str | None:
     return None
 
 
+def _match_projects(old: dict[int, set[int]], new: list[set[int]]) -> list[int | None]:
+    """Je neuem Vorhaben das bisherige, dessen id es erbt — oder ``None``.
+
+    Gierig über die gemeinsamen Beschlüsse: das Paar mit den meisten zuerst,
+    bei Gleichstand das mit dem größeren Anteil (Jaccard), dann die kleinere
+    alte id. Jedes alte Vorhaben vererbt höchstens einmal — teilt sich eins in
+    zwei, behält die größere Hälfte die id, die andere ist neu.
+    """
+    paare = []
+    for i, ids in enumerate(new):
+        for pid, alt in old.items():
+            gemeinsam = len(ids & alt)
+            if gemeinsam:
+                paare.append((-gemeinsam, -gemeinsam / len(ids | alt), pid, i))
+    paare.sort()
+    out: list[int | None] = [None] * len(new)
+    vergeben: set[int] = set()
+    for _g, _j, pid, i in paare:
+        if out[i] is None and pid not in vergeben:
+            out[i] = pid
+            vergeben.add(pid)
+    return out
+
+
 def _months_ago(months: int) -> str:
     heute = date.today()
     monat = heute.month - months
@@ -1035,5 +1208,5 @@ def project_key_ids(project: dict) -> list[int]:
     return sorted({int(i) for i in project.get("decision_ids") or []})
 
 
-__all__ = ["ViertelMixin", "PROJECT_MIN_CONFIDENCE", "PROJECT_HIDE_REPORTS", "CANDIDATE_MONTHS",
+__all__ = ["ViertelMixin", "PROJECT_MIN_CONFIDENCE", "CANDIDATE_MONTHS",
            "CANDIDATE_MIN_SHARE", "project_key_ids", "ortsrollen", "json"]

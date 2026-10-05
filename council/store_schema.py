@@ -370,9 +370,10 @@ CREATE TABLE IF NOT EXISTS council_district_reviews (
     PRIMARY KEY (decision_id, place_id)
 );
 
--- Vorhaben je Ortsbereich, aus den Urteilen gebündelt; je Lauf und Ortsbereich
--- ersetzt. project_key bleibt über Läufe stabil (place_id + ältester Beschluss),
--- daran hängen die „Gehört nicht hierher"-Meldungen.
+-- Vorhaben je Ortsbereich, aus den Urteilen gebündelt. Ein Lauf schreibt sie
+-- NICHT neu, sondern gleicht ab: Ein Vorhaben, das Beschlüsse mit einem
+-- bisherigen teilt, behält dessen id und project_key (``?v=``-Links, Mails).
+-- An project_key hängen Meldungen und die Entscheidung der Redaktion.
 CREATE TABLE IF NOT EXISTS council_district_projects (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     place_id     TEXT NOT NULL,
@@ -400,7 +401,17 @@ CREATE TABLE IF NOT EXISTS council_district_project_reports (
     owner_id    INTEGER NOT NULL,
     reason      TEXT,
     created_at  TEXT NOT NULL,
+    project_name TEXT,
     UNIQUE (project_key, owner_id)
+);
+-- Was die Redaktion zu gemeldeten Vorhaben entschieden hat: ``hidden`` blendet
+-- aus, ``kept`` heißt „passt doch“. Eine Meldung allein blendet nie aus.
+CREATE TABLE IF NOT EXISTS council_district_project_verdicts (
+    project_key TEXT PRIMARY KEY,
+    place_id    TEXT NOT NULL,
+    verdict     TEXT NOT NULL CHECK (verdict IN ('hidden', 'kept')),
+    note        TEXT,
+    decided_at  TEXT NOT NULL
 );
 
 -- Aktuelle Sperrungen der Stadt (Geoportal, council/sperrungen.py), täglich
@@ -1934,8 +1945,19 @@ class SchemaMixin(StoreBasis):
         self._conn.execute(
             "CREATE TABLE IF NOT EXISTS council_district_project_reports ("
             "id INTEGER PRIMARY KEY AUTOINCREMENT, project_key TEXT NOT NULL, place_id TEXT NOT NULL, "
-            "owner_id INTEGER NOT NULL, reason TEXT, created_at TEXT NOT NULL, "
+            "owner_id INTEGER NOT NULL, reason TEXT, created_at TEXT NOT NULL, project_name TEXT, "
             "UNIQUE (project_key, owner_id))"
+        )
+        # Der Name des Vorhabens zum Zeitpunkt der Meldung: Verschwindet es aus
+        # dem Register, weiß die Admin-Liste trotzdem, worum es ging.
+        if "project_name" not in {r[1] for r in self._conn.execute(
+                "PRAGMA table_info(council_district_project_reports)")}:
+            self._conn.execute("ALTER TABLE council_district_project_reports ADD COLUMN project_name TEXT")
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_district_project_verdicts ("
+            "project_key TEXT PRIMARY KEY, place_id TEXT NOT NULL, "
+            "verdict TEXT NOT NULL CHECK (verdict IN ('hidden', 'kept')), note TEXT, "
+            "decided_at TEXT NOT NULL)"
         )
         # Stadt-Quellen je Viertel: Sperrungen (council/sperrungen.py) und die
         # Ortsbereiche der Pressemitteilungen (council/presse_orte.py).

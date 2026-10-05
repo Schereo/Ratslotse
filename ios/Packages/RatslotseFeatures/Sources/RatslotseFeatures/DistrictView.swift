@@ -377,8 +377,10 @@ struct DistrictBoardPanel: View {
             DistrictProjectSheet(
                 model: model,
                 project: project,
-                reported: board.reported.contains(project.projectKey) || project.reported,
-                report: { await board.report(project) }
+                placeName: board.data?.place.name,
+                reported: board.isReported(project),
+                report: { reason in await board.report(project, reason: reason) },
+                withdraw: { await board.withdraw(project) }
             )
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
@@ -672,9 +674,14 @@ struct DistrictPin: View {
 private struct DistrictProjectSheet: View {
     let model: AppModel
     let project: DistrictProject
+    let placeName: String?
     let reported: Bool
-    let report: () async -> Void
+    let report: (String?) async -> Void
+    let withdraw: () async -> Void
     @Environment(\.dismiss) private var dismiss
+    /// Die Rückfrage vor dem Melden — ein Tipp allein meldet nichts.
+    @State private var asking = false
+    @State private var reason = ""
 
     var body: some View {
         let stage = stageOf(project)
@@ -799,14 +806,23 @@ private struct DistrictProjectSheet: View {
                 if model.user != nil {
                     Divider().overlay(RatsColor.separator)
                     if reported {
-                        RatsLabel("Gemeldet — danke.", .check)
-                            .font(RatsFont.body(12))
-                            .foregroundStyle(RatsColor.secondary)
+                        HStack(spacing: 12) {
+                            RatsLabel("Gemeldet — wir sehen uns das an.", .check)
+                                .foregroundStyle(RatsColor.secondary)
+                            Button { Task { await withdraw() } } label: {
+                                Text("Zurücknehmen").underline()
+                                    .foregroundStyle(RatsColor.secondary)
+                                    .frame(minHeight: 44)
+                            }
+                            .buttonStyle(RatsPlainButtonStyle())
+                        }
+                        .font(RatsFont.body(12))
                     } else {
-                        Button { Task { await report() } } label: {
+                        Button { asking = true } label: {
                             RatsLabel("Gehört nicht hierher", .mailWarning)
                                 .font(RatsFont.body(12))
                                 .foregroundStyle(RatsColor.secondary)
+                                .frame(minHeight: 44)
                         }
                         .buttonStyle(RatsPlainButtonStyle())
                     }
@@ -815,6 +831,17 @@ private struct DistrictProjectSheet: View {
             .padding(.horizontal, 20)
             .padding(.top, 26)
             .padding(.bottom, 30)
+        }
+        .alert("Gehört nicht hierher?", isPresented: $asking) {
+            TextField("Was stimmt nicht? (freiwillig)", text: $reason)
+            Button("Abbrechen", role: .cancel) { reason = "" }
+            Button("Melden") {
+                let text = reason
+                reason = ""
+                Task { await report(text) }
+            }
+        } message: {
+            Text("Du meldest „\(project.name)“ als falsch \(placeName.map { "in \($0)" } ?? "in diesem Viertel") verortet. Wir sehen uns das an; das Vorhaben bleibt stehen, bis entschieden ist. Die Redaktion sieht nicht, von wem die Meldung kommt.")
         }
     }
 

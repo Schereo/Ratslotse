@@ -1100,7 +1100,22 @@ struct RouteDestinationView: View {
         case .person(let slug): PublicProfileView(model: model, kind: .person, key: slug)
         case .topic(let slug): PublicProfileView(model: model, kind: .topic, key: slug)
         case .place(let id): PublicProfileView(model: model, kind: .place, key: id)
-        case .district(let id): CityMapView(model: model, placeID: id)
+        case let .district(id, project):
+            // Der Schalter gilt auch für Links: Bis 10/2026 öffnete
+            // `/karte?ort=` die Karte auch dort, wo „Mein Viertel" aus ist —
+            // im Web ist die Seite dann ein 404.
+            if model.feature("mein-viertel") {
+                CityMapView(model: model, placeID: id, projectID: project)
+            } else if !model.featuresLoaded {
+                RatsLoadingState(message: "Mein Viertel wird geladen …")
+            } else {
+                RatsEmptyState(
+                    title: "Mein Viertel ist noch nicht da",
+                    message: "Diese Ansicht ist in der App noch nicht freigeschaltet.",
+                    symbol: .mapPin
+                )
+                .padding(20)
+            }
         case .quiz(let area): QuizView(model: model, area: area)
         case .subscriptions: CommitteeSubscriptionsView(model: model)
         case .analysis: CouncilInsightsView(model: model)

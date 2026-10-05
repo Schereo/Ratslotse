@@ -110,10 +110,15 @@ struct CityMapView: View {
         span: MKCoordinateSpan(latitudeDelta: 0.17, longitudeDelta: 0.24)
     )
 
-    init(model: AppModel, placeID: String?, topicsFirst: Bool = false) {
+    /// Das Vorhaben aus dem Link (`/karte?ort=…&v=…`) — einmal, beim ersten
+    /// Betreten des Viertels; danach wählt man selbst.
+    @State private var linkedProject: Int?
+
+    init(model: AppModel, placeID: String?, projectID: Int? = nil, topicsFirst: Bool = false) {
         self.model = model
         self.topicsFirst = topicsFirst
         _placeID = State(initialValue: placeID)
+        _linkedProject = State(initialValue: placeID == nil ? nil : projectID)
     }
 
     private var districtName: String? {
@@ -866,6 +871,8 @@ struct CityMapView: View {
             return
         }
         let state = DistrictBoardState(model: model, placeID: placeID)
+        state.pendingProject = linkedProject
+        linkedProject = nil
         board = state
         await state.load()
         guard let data = state.data else { return }

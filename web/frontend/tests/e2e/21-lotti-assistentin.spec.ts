@@ -431,6 +431,103 @@ test.describe("Lotti-Knopf und -Fenster", () => {
         .toHaveCount(0);
     });
 
+  test("beim Weiterreichen geht die Frage NICHT zusätzlich als Verlauf mit", async ({ page }) => {
+    // Release-Prüfung 03.10.2026: Die Frage stand samt Erklärung im Verlauf
+    // UND als neue Frage — das Archiv antwortete „Eine neue Frage ist in Ihrer
+    // Nachricht nicht enthalten“, mit 0 Quellen.
+    let ask: { question: string; history: { question: string }[] } | null = null;
+    await page.route("**/api/council/ask", (route) => {
+      ask = route.request().postDataJSON();
+      return route.fulfill({ status: 200, contentType: "text/event-stream", body: STROM_ARCHIV })
+        .catch(() => { /* Test ist schon zu Ende */ });
+    });
+    await stromStubben(page, { next: "ratsfrage" });
+    await page.goto("/dashboard");
+    await knopf(page).click();
+    await fenster(page).getByLabel("Frage an Lotti").fill("Und wie ging das aus?");
+    await fenster(page).getByRole("button", { name: "Fragen" }).click();
+    await expect(fenster(page).getByText(RATS_ANTWORT)).toBeVisible();
+    expect(ask).not.toBeNull();
+    expect(ask!.question).toBe("Und wie ging das aus?");
+    expect(ask!.history.map((r) => r.question)).not.toContain("Und wie ging das aus?");
+  });
+
+  test("eine zu lange Frage: das Feld hält bei 300, und ein 422 nimmt sie nicht weg",
+    async ({ page }) => {
+      await page.goto("/dashboard");
+      await knopf(page).click();
+      const feld = fenster(page).getByLabel("Frage an Lotti");
+      await feld.fill("x".repeat(320));
+      await expect(feld).toHaveValue("x".repeat(300));
+      await expect(fenster(page).getByText("300/300")).toBeVisible();
+
+      // Kommt doch ein 422 (ein alter Stand, ein anderer Weg), steht ein Satz
+      // da — nicht Pydantics Liste — und die Frage wieder im Feld.
+      await page.route("**/api/council/explain", (route) => route.fulfill({
+        status: 422, contentType: "application/json",
+        body: JSON.stringify({ detail: [{ msg: "String should have at most 300 characters" }] }),
+      }).catch(() => { /* Test ist schon zu Ende */ }));
+      await feld.fill("Wie hoch sind die Schulden?");
+      await fenster(page).getByRole("button", { name: "Fragen" }).click();
+      await expect(fenster(page).getByText(/zu lang/)).toBeVisible();
+      await expect(fenster(page).getByText(/String should/)).toHaveCount(0);
+      await expect(feld).toHaveValue("Wie hoch sind die Schulden?");
+    });
+
+  test("auf der Karte liegt nichts über dem Fenster (375 px)", async ({ page }) => {
+    // Release-Prüfung 03.10.2026: Ebenen-Chips und Brotkrumen der Karte lagen
+    // mit `z-[500]` über Lottis Fenster und verdeckten dessen Kopf.
+    await page.setViewportSize({ width: 375, height: 812 });
+    // Die Karte hängt am Schalter `mein-viertel` — dazu, nicht statt Lotti.
+    await page.route("**/api/app-config", async (route) => {
+      try {
+        const body = await (await route.fetch()).json();
+        const features = new Set<string>(body.features ?? []);
+        features.add("lotti-assistentin");
+        features.add("mein-viertel");
+        await route.fulfill({ json: { ...body, features: [...features] } });
+      } catch {
+        await route.fallback().catch(() => { /* der Test ist schon zu Ende */ });
+      }
+    });
+    await page.goto("/karte");
+    await expect(page.getByRole("navigation", { name: "Stufe" })).toBeVisible();
+    await knopf(page).click();
+    const box = (await fenster(page).boundingBox())!;
+    // Kopf, Kontextzeile und Mitte — dort lagen Chips und Brotkrumen.
+    for (const anteil of [0.04, 0.12, 0.2, 0.5]) {
+      const oben = await page.evaluate(([x, y]) => {
+        const el = document.elementFromPoint(x, y);
+        return !!el?.closest("[data-lotti-fenster]");
+      }, [box.x + box.width / 3, box.y + box.height * anteil]);
+      expect(oben, `bei ${Math.round(anteil * 100)} % der Fensterhöhe`).toBe(true);
+    }
+  });
+
+  test("Knopf und Fenster liegen UNTER einem modalen Dialog", async ({ page }) => {
+    // Release-Prüfung 03.10.2026: Der Knopf lag hell über der Abdunkelung
+    // des Melde-Dialogs in „Mein Viertel“ — beide `z-50`, und die
+    // Reihenfolge im DOM entschied. Nachgestellt mit derselben Ebene wie
+    // `components/ui/dialog.tsx` (Overlay `fixed inset-0 z-50`), und zwar
+    // VOR Lottis Knoten im DOM — der ungünstigste Fall.
+    await page.goto("/dashboard");
+    await knopf(page).click();
+    await expect(fenster(page)).toBeVisible();
+    await page.evaluate(() => {
+      const schleier = document.createElement("div");
+      schleier.className = "fixed inset-0 z-50 bg-black/50";
+      schleier.setAttribute("data-test-schleier", "");
+      document.body.prepend(schleier);
+    });
+    for (const ziel of [knopf(page), fenster(page)]) {
+      const b = (await ziel.boundingBox())!;
+      const oben = await page.evaluate(([x, y]) =>
+        !!document.elementFromPoint(x, y)?.closest("[data-test-schleier]"),
+      [b.x + b.width / 2, b.y + b.height / 2]);
+      expect(oben).toBe(true);
+    }
+  });
+
   test("unter einer Erklärung steht ein stiller Textlink ins Archiv", async ({ page }) => {
     // Der Nachweg, wenn Lotti geantwortet hat und die Person trotzdem tiefer
     // will — ein Verb, das sagt, was passiert, statt „Den Rat fragen".

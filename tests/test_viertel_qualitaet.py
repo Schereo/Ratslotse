@@ -35,7 +35,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 from app.main import app  # noqa: E402
 from council import bplan, geo, viertel  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
-from council.store_viertel import PROJECT_HIDE_REPORTS, PROJECT_MIN_CONFIDENCE  # noqa: E402
+from council.store_viertel import PROJECT_MIN_CONFIDENCE  # noqa: E402
 
 COUNCIL_DB = os.environ["COUNCIL_DB"]
 RATSLOTSE_DB = os.environ["RATSLOTSE_DB"]
@@ -156,16 +156,17 @@ def _zaehler_bestand(store: CouncilStore) -> None:
         _projekt("Gemeldet", [4], "building"),
     ])
     key = store._conn.execute("SELECT project_key FROM council_district_projects WHERE name = 'Gemeldet'").fetchone()[0]
-    for owner in range(PROJECT_HIDE_REPORTS):
-        store.save_district_project_report(key, "ofenerdiek", owner + 1, None)
+    # Ausgeblendet wird erst, wenn die Redaktion die Meldung bestätigt.
+    store.save_district_project_report(key, "ofenerdiek", 1, None)
+    assert store.set_district_project_verdict(key, "hidden")
 
 
-def test_stadtzahl_entdoppelt_und_zaehlt_gemeldete_nicht():
+def test_stadtzahl_entdoppelt_und_zaehlt_ausgeblendete_nicht():
     store = _store()
     _zaehler_bestand(store)
     uebersicht = store.district_projects_overview()
     assert uebersicht["nadorst"]["count"] == 3
-    # Das gemeldete fehlt — auf der Tafel fehlt es auch.
+    # Das ausgeblendete fehlt — auf der Tafel fehlt es auch.
     assert uebersicht["ofenerdiek"]["count"] == 2
     assert "building" not in uebersicht["ofenerdiek"]["stages"]
     stadt = store.district_city_totals()

@@ -267,3 +267,56 @@ def test_nachzuegler_liest_auch_die_kurzfassung():
     nach = qa.nachzuegler(cands, 20, "Wie viele Bäume werden an der Nadorster Straße gefällt?",
                           "Baum Baumfällung Nadorster Straße")
     assert [c["id"] for c in nach] == [60]
+
+
+# --- Die Frage ist nicht ihre eigene Vorgeschichte (Release-Prüfung 03.10.2026) ---
+#
+# Lottis Fenster reichte nach einer Erklärung („danach“) dieselbe Frage ans
+# Archiv und legte sie samt Erklärung in den Verlauf. Die Antwort: „Eine neue
+# Frage ist in Ihrer Nachricht nicht enthalten“, 0 Zitate. Genau dieser
+# Verlauf, wie ihn `panel.tsx` bis dahin geschickt hat:
+
+GRUNDSTEUER = "Wurde die Grundsteuer C jetzt eingeführt? Und was haben andere Städte gemacht?"
+LOTTI_VERLAUF = [{
+    "question": GRUNDSTEUER,
+    "answer": "Was andere Städte gemacht haben, kann nur das Ratsarchiv sagen. Auf dieser "
+              "Seite steht: Der Antrag zur Grundsteuer C wurde vertagt.",
+}]
+
+
+def test_die_weitergereichte_frage_ist_keine_anschlussfrage():
+    messages, _ = qa._answer_messages(GRUNDSTEUER,
+                                      [{"id": 1, "title": "Grundsteuer C",
+                                        "session_date": "2026-09-01"}],
+                                      verlauf=LOTTI_VERLAUF)
+    text = "\n".join(str(m.get("content") or "") for m in messages)
+    assert "Dies ist eine Anschlussfrage" not in text
+    assert qa.ANSCHLUSS_REGEL not in text
+
+
+def test_die_analyse_sieht_die_dublette_nicht(monkeypatch):
+    gesehen = {}
+
+    def fake(**kwargs):
+        gesehen["prompt"] = kwargs["messages"][0]["content"]
+        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(
+            content=json.dumps({"question": GRUNDSTEUER, "terms": "Grundsteuer C",
+                                "kind": "topic"})))], usage=None)
+    monkeypatch.setattr(qa.llm, "chat_complete", fake)
+    qa.analyse_query(GRUNDSTEUER, verlauf=LOTTI_VERLAUF)
+    assert "Bisheriges Gespräch" not in gesehen["prompt"]
+
+
+def test_die_dublette_wird_gefaltet_erkannt_auch_mit_zitat_davor():
+    f = qa.verlauf_ohne_dieselbe_frage
+    assert f(LOTTI_VERLAUF, GRUNDSTEUER.lower().replace("?", "")) == []
+    zitat = [{"question": "„Hebesatz 0 %“ — " + GRUNDSTEUER, "answer": "…"}]
+    assert f(zitat, GRUNDSTEUER) == []
+
+
+def test_echte_vorgeschichte_bleibt_stehen():
+    f = qa.verlauf_ohne_dieselbe_frage
+    assert f(VERLAUF, "Sag mir mehr zum Beschluss von 2023") == VERLAUF
+    # Kurze Fragen nur bei Gleichheit: „Und warum?“ ist keine Dublette von „warum“.
+    assert f([{"question": "Und warum?", "answer": "x"}], "warum") != []
+    assert f(None, "egal") == []

@@ -131,6 +131,18 @@ function Buehne() {
     z.setAktiv(vorgewaehlt);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vorgewaehlt, ort]);
+  // Kennt die Tafel das Vorhaben aus der Adresse nicht (alter Link,
+  // inzwischen ausgeblendet): Viertel zeigen, sagen warum, `v` aus der Adresse.
+  useEffect(() => {
+    if (!z.vorhabenFehlt) return;
+    toast.info("Dieses Vorhaben steht so nicht mehr auf der Tafel — hier ist das Viertel.");
+    z.setAktiv(null);
+    const p = new URLSearchParams(sp.toString());
+    p.delete("v");
+    const q = p.toString();
+    router.replace(`${window.location.pathname}${q ? `?${q}` : ""}`, { scroll: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [z.vorhabenFehlt]);
   // Ein anderer Ortsbereich → der Bezirk des vorigen gilt nicht mehr.
   const [ortVorher, setOrtVorher] = useState(ort);
   if (ortVorher !== ort) { setOrtVorher(ort); if (wahlBezirk != null && ortVorher != null) setWahlBezirk(null); }
@@ -255,9 +267,11 @@ function Buehne() {
   const detail = (schliessenSichtbar: "immer" | "nie") => z.ausgewaehlt && (
     <VorhabenDetail
       v={z.ausgewaehlt}
+      ortName={place?.name}
       angemeldet={!!user}
-      gemeldet={z.gemeldet.has(z.ausgewaehlt.project_key) || z.ausgewaehlt.reported}
-      onMelden={() => z.ausgewaehlt && z.melden(z.ausgewaehlt)}
+      gemeldet={z.istGemeldet(z.ausgewaehlt)}
+      onMelden={(grund) => z.melden(z.ausgewaehlt!, grund)}
+      onZuruecknehmen={() => z.zuruecknehmen(z.ausgewaehlt!)}
       onSchliessen={() => z.setAktiv(null)}
       schliessenSichtbar={schliessenSichtbar}
     />
@@ -269,7 +283,10 @@ function Buehne() {
     // aus dem Polster aus, blieb dabei aber im 1600er-Deckel stecken.
     // `@container` für die Spalten-Varianten der Bausteine.
     <div className="@container flex flex-col desk:h-[calc(100dvh)] desk:flex-row desk:overflow-hidden">
-      <div className="@container/karte relative h-[45dvh] min-h-[280px] desk:h-auto desk:min-h-0 desk:flex-1">
+      {/* `isolate`: Leaflet stapelt seine Ebenen bis z-index 1000 — ohne
+          eigenen Stapelkontext lägen Karte, Brotkrumen und Chips damit ÜBER
+          jedem Dialog (z-50), etwa der Melde-Rückfrage. */}
+      <div className="@container/karte relative isolate h-[45dvh] min-h-[280px] desk:h-auto desk:min-h-0 desk:flex-1">
         <StadtKarte
           stufe={stufe}
           ebenen={ebenen}
@@ -294,7 +311,14 @@ function Buehne() {
           className="h-full w-full"
         />
         {/* Ebenen-Chips oben links AUF der Karte — zugleich die Legende. Die
-            Zähler sagen, was gerade auf dieser Stufe liegt. */}
+            Zähler sagen, was gerade auf dieser Stufe liegt.
+
+            **`z-10`, nicht `z-[500]`** (03.10.2026). Leaflet hält seine
+            Ebenen in einem eigenen Stapel (`.leaflet-container { isolation:
+            isolate }` in globals.css) — über der Karte liegt alles, was im
+            DOM danach kommt, schon mit `z-10`. Die 500 galten dagegen im
+            Stapel der ganzen Seite: Chips und Brotkrumen lagen auf dem
+            Handy ÜBER Lottis Fenster (damals `z-50`, heute `z-[45]`) und verdeckten dessen Kopf. */}
         <EbenenChips
           ebenen={ebenen}
           stufe={stufe.art}
@@ -324,7 +348,7 @@ function Buehne() {
               {themenAn && <ThemenArtChips art={art} zaehler={artZaehler} onArt={setArt} />}
             </div>
           )}
-          className="absolute left-3 top-3 z-[500] max-w-[calc(100%-4.5rem)]"
+          className="absolute left-3 top-3 z-10 max-w-[calc(100%-4.5rem)]"
         />
         {/* Brotkrumen: wo bin ich, und wie komme ich eine Stufe hoch. */}
         {/* Am Schreibtisch sitzt unten rechts die Mini-Karte (180 px + Rand);
@@ -333,7 +357,7 @@ function Buehne() {
             Den Hinweis aufs Hineinzoomen gibt es erst, wenn er in EINE Zeile
             passt (gemessen an der Kartenfläche, nicht am Fenster). */}
         <nav aria-label="Stufe" className={cn(
-          "absolute bottom-4 left-4 z-[500] flex min-w-0 items-center gap-2 rounded-xl border border-border bg-card/95 px-3 py-2 text-[12.5px] font-medium shadow-lg backdrop-blur",
+          "absolute bottom-4 left-4 z-10 flex min-w-0 items-center gap-2 rounded-xl border border-border bg-card/95 px-3 py-2 text-[12.5px] font-medium shadow-lg backdrop-blur",
           ortName ? "max-w-[calc(100%-2rem)] desk:max-w-[calc(100%-14rem)]" : "max-w-[calc(100%-2rem)]",
         )}>
           {ortName ? (
@@ -353,7 +377,7 @@ function Buehne() {
         {/* Mini-Stadtkarte unten rechts: wo das Viertel in der Stadt liegt —
             und ein Tipp auf einen Nachbarn wechselt dorthin. */}
         {ortName && (
-          <div className="absolute bottom-4 right-4 z-[500] hidden w-[180px] rounded-xl border border-border bg-card/95 p-1.5 shadow-lg backdrop-blur desk:block">
+          <div className="absolute bottom-4 right-4 z-10 hidden w-[180px] rounded-xl border border-border bg-card/95 p-1.5 shadow-lg backdrop-blur desk:block">
             <StadtteilKarte
               gewaehlt={new Set([ortName])}
               auswaehlbar={new Set(orte.map((o) => o.name))}
@@ -568,7 +592,11 @@ function ViertelTafel({ data, place, z, wahl, nebenan }: {
                 (datenstand(data) ? ` · ${datenstand(data)}` : "")}
           </p>
         </div>
-        <ShareButton path={karteHref(place.id)} title={`Mein Viertel: ${place.name} — Ratslotse`} />
+        {/* Die Tafel liegt hinter der Anmeldung — eine öffentliche Ansicht
+            gibt es nicht. Der Hinweis reist mit dem Link, damit niemand
+            überrascht auf der Anmeldeseite steht. */}
+        <ShareButton path={karteHref(place.id)} title={`Mein Viertel: ${place.name} — Ratslotse`}
+          hinweis={`Was sich in ${place.name} tut — zum Öffnen braucht man ein kostenloses Ratslotse-Konto.`} />
       </div>
 
       {wahl}
